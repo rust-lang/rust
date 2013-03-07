@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type foo = {a: int, b: int};
+struct foo {
+    a: int,
+    b: int,
+}
+
 type bar = @foo;
 
 fn want_foo(f: foo) {}
 fn have_bar(b: bar) {
-    want_foo(b); //~ ERROR (expected record but found @-ptr)
+    want_foo(b); //~ ERROR (expected struct foo but found @-ptr)
 }
 
 fn main() {}

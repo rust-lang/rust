@@ -22,7 +22,7 @@ pub fn main() {
         _ => fail!()
     }
     match Y {
-        Bar(s) => assert(s == 2654435769),
+        Bar(s) => fail_unless!(s == 2654435769),
         _ => fail!()
     }
     match Z {

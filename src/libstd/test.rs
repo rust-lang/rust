@@ -962,7 +962,9 @@ mod tests {
 
         for vec::each(pairs) |p| {
             match *p {
-                (ref a, ref b) => { fail_unless!((*a == b.desc.name.to_str())); }
+                (ref a, ref b) => {
+                    fail_unless!((*a == b.desc.name.to_str()));
+                }
             }
         }
     }

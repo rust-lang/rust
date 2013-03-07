@@ -380,7 +380,8 @@ mod test {
     #[test]
     pub fn extract_mods_deep() {
         let doc = mk_doc(~"mod a { mod b { mod c { } } }");
-        fail_unless!(doc.cratemod().mods()[0].mods()[0].mods()[0].name() == ~"c");
+        fail_unless!(doc.cratemod().mods()[0].mods()[0].mods()[0].name() ==
+            ~"c");
     }
 
     #[test]

@@ -66,7 +66,7 @@ mod test_multi_attr_outer {
 
     #[attr1 = "val"]
     #[attr2 = "val"]
-    type t = {x: int};
+    struct t {x: int}
 }
 
 mod test_stmt_single_attr_outer {

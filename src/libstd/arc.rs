@@ -519,7 +519,8 @@ mod tests {
             let _ = p.recv();
             do arc2.access_cond |one, cond| {
                 cond.signal();
-                fail_unless!(*one == 0); // Parent should fail when it wakes up.
+                // Parent should fail when it wakes up.
+                fail_unless!(*one == 0);
             }
         }
 

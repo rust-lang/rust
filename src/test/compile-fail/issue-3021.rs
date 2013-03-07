@@ -10,17 +10,16 @@
 
 extern mod std;
 
-trait siphash {
+trait SipHash {
     fn reset();
 }
 
-fn siphash(k0 : u64) -> siphash {
-    type sipstate = {
-        mut v0 : u64,
-    };
+fn siphash(k0 : u64) -> SipHash {
+    struct SipState {
+        v0: u64,
+    }
 
-
-   impl siphash for sipstate {
+    impl SipHash for SipState {
         fn reset() {
            self.v0 = k0 ^ 0x736f6d6570736575; //~ ERROR attempted dynamic environment-capture
            //~^ ERROR unresolved name: `k0`.

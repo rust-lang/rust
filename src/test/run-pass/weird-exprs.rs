@@ -61,9 +61,9 @@ fn hammertime() -> int {
 
 fn canttouchthis() -> uint {
     pure fn p() -> bool { true }
-    let _a = (fail_unless!((true)) == (assert (p())));
+    let _a = (fail_unless!((true)) == (fail_unless!(p())));
     let _c = (fail_unless!((p())) == ());
-    let _b: bool = (log(debug, 0) == (return 0u));
+    let _b: bool = (debug!("%d", 0) == (return 0u));
 }
 
 fn angrydome() {

@@ -54,11 +54,11 @@ pub fn main() {
     fail_unless!(leaf(cyan).isEq(leaf(cyan)));
     fail_unless!(!leaf(cyan).isEq(leaf(yellow)));
 
-    assert branch(@leaf(magenta), @leaf(cyan))
-        .isEq(branch(@leaf(magenta), @leaf(cyan)));
+    fail_unless!(branch(@leaf(magenta), @leaf(cyan))
+        .isEq(branch(@leaf(magenta), @leaf(cyan))));
 
-    assert !branch(@leaf(magenta), @leaf(cyan))
-        .isEq(branch(@leaf(magenta), @leaf(magenta)));
+    fail_unless!(!branch(@leaf(magenta), @leaf(cyan))
+        .isEq(branch(@leaf(magenta), @leaf(magenta))));
 
-    log(error, "Assertions all succeeded!");
+    error!("Assertions all succeeded!");
 }

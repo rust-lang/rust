@@ -10,7 +10,7 @@
 
 // In this case, the code should compile but
 // the assert should fail at runtime
-// error-pattern:Assertion same_length(chars, ints) failed
+// error-pattern:assertion failed
 extern mod std;
 use core::vec::{same_length, zip};
 

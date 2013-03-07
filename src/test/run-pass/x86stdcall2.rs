@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type HANDLE = u32;
-type DWORD = u32;
-type SIZE_T = u32;
-type LPVOID = uint;
-type BOOL = u8;
+pub type HANDLE = u32;
+pub type DWORD = u32;
+pub type SIZE_T = u32;
+pub type LPVOID = uint;
+pub type BOOL = u8;
 
 mod kernel32 {
+    use super::{HANDLE, DWORD, SIZE_T, LPVOID, BOOL};
+
     #[cfg(target_os = "win32")]
     #[abi = "stdcall"]
     pub extern {

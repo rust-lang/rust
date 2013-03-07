@@ -790,7 +790,8 @@ mod test_treemap {
             fail_unless!(r.key.cmp(&parent.key) == Greater);
             let red = r.level == parent.level;
             if parent_red { fail_unless!(!red) } // no dual horizontal links
-            fail_unless!(red || r.level == parent.level - 1); // right red or black
+            // Right red or black
+            fail_unless!(red || r.level == parent.level - 1);
             check_left(&r.left, r);
             check_right(&r.right, r, red);
           }

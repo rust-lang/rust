@@ -10,10 +10,12 @@
 
 
 
-type foo<T> = {a: T};
+struct Foo<T> {
+    a: T
+}
 
-type bar<T> = foo<T>;
+type Bar<T> = Foo<T>;
 
-fn takebar<T>(b: bar<T>) { }
+fn takebar<T>(b: Bar<T>) { }
 
 pub fn main() { }

@@ -28,11 +28,11 @@ pub mod pipes {
         terminated
     }
 
-    pub type packet<T> = {
+    pub struct packet<T> {
         state: state,
         blocked_task: Option<task::Task>,
         payload: Option<T>
-    };
+    }
 
     pub fn packet<T:Owned>() -> *packet<T> {
         unsafe {

@@ -160,7 +160,8 @@ fn pandoc_header_id(header: &str) -> ~str {
 
 #[test]
 fn should_remove_punctuation_from_headers() {
-    fail_unless!(pandoc_header_id(~"impl foo of bar<A>") == ~"impl-foo-of-bara");
+    fail_unless!(pandoc_header_id(~"impl foo of bar<A>") ==
+        ~"impl-foo-of-bara");
     fail_unless!(pandoc_header_id(~"impl of num::num for int")
         == ~"impl-of-numnum-for-int");
     fail_unless!(pandoc_header_id(~"impl of num::num for int/&")

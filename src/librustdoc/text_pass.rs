@@ -265,7 +265,8 @@ fn should_execute_on_trait_method_section_bodies() {
          # Header\n\
          Body     \"]\
          fn a(); }");
-    fail_unless!(doc.cratemod().traits()[0].methods[0].sections[0].body == ~"Body");
+    fail_unless!(doc.cratemod().traits()[0].methods[0].sections[0].body ==
+        ~"Body");
 }
 
 #[test]
@@ -288,7 +289,8 @@ fn should_execute_on_impl_method_section_bodies() {
          # Header\n\
          Body    \"]\
          fn a() { } }");
-    fail_unless!(doc.cratemod().impls()[0].methods[0].sections[0].body == ~"Body");
+    fail_unless!(doc.cratemod().impls()[0].methods[0].sections[0].body ==
+        ~"Body");
 }
 
 #[cfg(test)]

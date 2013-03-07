@@ -313,7 +313,8 @@ pub fn waitpid(pid: pid_t) -> c_int {
         use libc::funcs::posix01::wait::*;
         let mut status = 0 as c_int;
 
-        fail_unless!((waitpid(pid, &mut status, 0 as c_int) != (-1 as c_int)));
+        fail_unless!((waitpid(pid, &mut status, 0 as c_int) !=
+                     (-1 as c_int)));
         return status;
     }
 }
@@ -1309,7 +1310,8 @@ mod tests {
     #[test]
     fn path_exists() {
         fail_unless!((os::path_exists(&Path("."))));
-        fail_unless!((!os::path_exists(&Path("test/nonexistent-bogus-path"))));
+        fail_unless!((!os::path_exists(&Path(
+                     "test/nonexistent-bogus-path"))));
     }
 
     #[test]

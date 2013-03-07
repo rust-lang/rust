@@ -1238,7 +1238,8 @@ mod tests {
 
     #[test]
     pub fn test_from_bools() {
-        fail_unless!(from_bools([true, false, true, true]).to_str() == ~"1011");
+        fail_unless!(from_bools([true, false, true, true]).to_str() ==
+            ~"1011");
     }
 
     #[test]

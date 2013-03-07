@@ -92,7 +92,8 @@ fn should_add_fn_sig() {
 #[test]
 fn should_add_foreign_fn_sig() {
     let doc = test::mk_doc(~"extern mod a { fn a<T>() -> int; }");
-    fail_unless!(doc.cratemod().nmods()[0].fns[0].sig == Some(~"fn a<T>() -> int"));
+    fail_unless!(doc.cratemod().nmods()[0].fns[0].sig ==
+        Some(~"fn a<T>() -> int"));
 }
 
 fn fold_const(
@@ -165,7 +166,8 @@ fn fold_enum(
 #[test]
 fn should_add_variant_sigs() {
     let doc = test::mk_doc(~"enum a { b(int) }");
-    fail_unless!(doc.cratemod().enums()[0].variants[0].sig == Some(~"b(int)"));
+    fail_unless!(doc.cratemod().enums()[0].variants[0].sig ==
+        Some(~"b(int)"));
 }
 
 fn fold_trait(
@@ -407,7 +409,8 @@ fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
 #[test]
 fn should_add_struct_defs() {
     let doc = test::mk_doc(~"struct S { field: () }");
-    fail_unless!((&doc.cratemod().structs()[0].sig).get().contains("struct S {"));
+    fail_unless!((&doc.cratemod().structs()[0].sig).get().contains(
+        "struct S {"));
 }
 
 #[test]

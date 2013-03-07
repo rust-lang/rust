@@ -266,8 +266,10 @@ pub fn test_parse_bytes() {
     fail_unless!(parse_bytes(to_bytes(~"123"), 10u) == Some(123u as T));
     fail_unless!(parse_bytes(to_bytes(~"1001"), 2u) == Some(9u as T));
     fail_unless!(parse_bytes(to_bytes(~"123"), 8u) == Some(83u as T));
-    fail_unless!(u16::parse_bytes(to_bytes(~"123"), 16u) == Some(291u as u16));
-    fail_unless!(u16::parse_bytes(to_bytes(~"ffff"), 16u) == Some(65535u as u16));
+    fail_unless!(u16::parse_bytes(to_bytes(~"123"), 16u) ==
+                 Some(291u as u16));
+    fail_unless!(u16::parse_bytes(to_bytes(~"ffff"), 16u) ==
+                 Some(65535u as u16));
     fail_unless!(parse_bytes(to_bytes(~"z"), 36u) == Some(35u as T));
 
     fail_unless!(parse_bytes(to_bytes(~"Z"), 10u).is_none());

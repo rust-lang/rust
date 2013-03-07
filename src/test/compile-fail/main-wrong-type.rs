@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main(foo: {x: int, y: int}) {
-//~^ ERROR Wrong type in main function: found `extern fn({x: int,y: int})`
+struct S {
+    x: int,
+    y: int,
+}
+
+fn main(foo: S) {
+//~^ ERROR Wrong type in main function: found `extern fn(S)`
 }

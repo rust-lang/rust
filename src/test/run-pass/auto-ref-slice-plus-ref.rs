@@ -17,13 +17,13 @@ trait MyIter {
 }
 
 impl MyIter for &'self [int] {
-    pure fn test_imm(&self) { assert self[0] == 1 }
-    pure fn test_const(&const self) { assert self[0] == 1 }
+    pure fn test_imm(&self) { fail_unless!(self[0] == 1) }
+    pure fn test_const(&const self) { fail_unless!(self[0] == 1) }
 }
 
 impl MyIter for &'self str {
-    pure fn test_imm(&self) { assert *self == "test" }
-    pure fn test_const(&const self) { assert *self == "test" }
+    pure fn test_imm(&self) { fail_unless!(*self == "test") }
+    pure fn test_const(&const self) { fail_unless!(*self == "test") }
 }
 
 pub fn main() {

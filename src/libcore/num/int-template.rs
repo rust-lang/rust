@@ -298,17 +298,22 @@ fn test_parse_bytes() {
     fail_unless!(parse_bytes(to_bytes(~"1001"), 2u) == Some(9 as T));
     fail_unless!(parse_bytes(to_bytes(~"123"), 8u) == Some(83 as T));
     fail_unless!(i32::parse_bytes(to_bytes(~"123"), 16u) == Some(291 as i32));
-    fail_unless!(i32::parse_bytes(to_bytes(~"ffff"), 16u) == Some(65535 as i32));
-    fail_unless!(i32::parse_bytes(to_bytes(~"FFFF"), 16u) == Some(65535 as i32));
+    fail_unless!(i32::parse_bytes(to_bytes(~"ffff"), 16u) ==
+                 Some(65535 as i32));
+    fail_unless!(i32::parse_bytes(to_bytes(~"FFFF"), 16u) ==
+                 Some(65535 as i32));
     fail_unless!(parse_bytes(to_bytes(~"z"), 36u) == Some(35 as T));
     fail_unless!(parse_bytes(to_bytes(~"Z"), 36u) == Some(35 as T));
 
     fail_unless!(parse_bytes(to_bytes(~"-123"), 10u) == Some(-123 as T));
     fail_unless!(parse_bytes(to_bytes(~"-1001"), 2u) == Some(-9 as T));
     fail_unless!(parse_bytes(to_bytes(~"-123"), 8u) == Some(-83 as T));
-    fail_unless!(i32::parse_bytes(to_bytes(~"-123"), 16u) == Some(-291 as i32));
-    fail_unless!(i32::parse_bytes(to_bytes(~"-ffff"), 16u) == Some(-65535 as i32));
-    fail_unless!(i32::parse_bytes(to_bytes(~"-FFFF"), 16u) == Some(-65535 as i32));
+    fail_unless!(i32::parse_bytes(to_bytes(~"-123"), 16u) ==
+                 Some(-291 as i32));
+    fail_unless!(i32::parse_bytes(to_bytes(~"-ffff"), 16u) ==
+                 Some(-65535 as i32));
+    fail_unless!(i32::parse_bytes(to_bytes(~"-FFFF"), 16u) ==
+                 Some(-65535 as i32));
     fail_unless!(parse_bytes(to_bytes(~"-z"), 36u) == Some(-35 as T));
     fail_unless!(parse_bytes(to_bytes(~"-Z"), 36u) == Some(-35 as T));
 

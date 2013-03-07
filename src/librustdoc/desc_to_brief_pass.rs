@@ -90,7 +90,8 @@ fn should_promote_desc() {
 #[test]
 fn should_promote_trait_method_desc() {
     let doc = test::mk_doc(~"trait i { #[doc = \"desc\"] fn a(); }");
-    fail_unless!(doc.cratemod().traits()[0].methods[0].brief == Some(~"desc"));
+    fail_unless!(doc.cratemod().traits()[0].methods[0].brief ==
+        Some(~"desc"));
 }
 
 #[test]

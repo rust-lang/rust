@@ -328,10 +328,12 @@ pub fn test() {
         fail_unless!((v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16));
         copy_memory(vec::raw::to_mut_ptr(v1),
                     offset(vec::raw::to_ptr(v0), 2u), 1u);
-        fail_unless!((v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 0u16));
+        fail_unless!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
+                      v1[2] == 0u16));
         copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 2u),
                     vec::raw::to_ptr(v0), 1u);
-        fail_unless!((v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 32000u16));
+        fail_unless!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
+                      v1[2] == 32000u16));
     }
 }
 
@@ -342,9 +344,12 @@ pub fn test_position() {
 
     let s = ~"hello";
     unsafe {
-        fail_unless!(2u == as_c_str(s, |p| position(p, |c| *c == 'l' as c_char)));
-        fail_unless!(4u == as_c_str(s, |p| position(p, |c| *c == 'o' as c_char)));
-        fail_unless!(5u == as_c_str(s, |p| position(p, |c| *c == 0 as c_char)));
+        fail_unless!(2u == as_c_str(s, |p| position(p,
+            |c| *c == 'l' as c_char)));
+        fail_unless!(4u == as_c_str(s, |p| position(p,
+            |c| *c == 'o' as c_char)));
+        fail_unless!(5u == as_c_str(s, |p| position(p,
+            |c| *c == 0 as c_char)));
     }
 }
 

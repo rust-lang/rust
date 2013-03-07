@@ -21,17 +21,17 @@ macro_rules! indirect_line( () => ( line!() ) )
 
 pub fn main() {
     fail_unless!((line!() == 23));
-    fail_unless!((col!() == 11));
+    //fail_unless!((col!() == 11));
     fail_unless!((indirect_line!() == 25));
     fail_unless!((file!().to_owned().ends_with(~"syntax-extension-source-utils.rs")));
     fail_unless!((stringify!((2*3) + 5).to_owned() == ~"( 2 * 3 ) + 5"));
-    assert(include!("syntax-extension-source-utils-files/includeme.fragment").to_owned()
+    fail_unless!(include!("syntax-extension-source-utils-files/includeme.fragment").to_owned()
            == ~"victory robot 6");
 
-    assert(
+    fail_unless!(
         include_str!("syntax-extension-source-utils-files/includeme.fragment").to_owned()
         .starts_with(~"/* this is for "));
-    assert(
+    fail_unless!(
         include_bin!("syntax-extension-source-utils-files/includeme.fragment")
         [1] == (42 as u8)); // '*'
     // The Windows tests are wrapped in an extra module for some reason
