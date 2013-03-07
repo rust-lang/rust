@@ -49,6 +49,7 @@ public:
         case 0: return NULL;
         case 1: return m_annihilate_fn;
         default: assert(false && "Unknown crate map version!");
+            return NULL; // Appease -Werror=return-type
         }
     }
 
@@ -57,6 +58,7 @@ public:
         case 0: return reinterpret_cast<const cratemap_v0 *>(this)->m_entries;
         case 1: return m_entries;
         default: assert(false && "Unknown crate map version!");
+            return NULL; // Appease -Werror=return-type
         }
     }
 
@@ -68,6 +70,7 @@ public:
         case 1:
             return &m_children[1];
         default: assert(false && "Unknown crate map version!");
+            return NULL; // Appease -Werror=return-type
         }
     }
 

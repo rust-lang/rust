@@ -138,6 +138,7 @@ pub struct options {
     parse_only: bool,
     no_trans: bool,
     debugging_opts: uint,
+    android_cross_path: Option<~str>
 }
 
 pub struct crate_metadata {
@@ -297,7 +298,8 @@ pub fn basic_options() -> @options {
         test: false,
         parse_only: false,
         no_trans: false,
-        debugging_opts: 0u
+        debugging_opts: 0u,
+        android_cross_path: None
     }
 }
 

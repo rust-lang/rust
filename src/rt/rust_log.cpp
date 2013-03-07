@@ -314,9 +314,11 @@ void update_log_settings(void* crate_map, char* settings) {
                      n_dirs, &n_matches);
 
     if (n_matches < n_dirs) {
-        printf("warning: got %" PRIdPTR " RUST_LOG specs, "
+        // NOTE: Android compiler is complaining about format specifiers here
+        // and I don't understand why
+        /*printf("warning: got %" PRIdPTR " RUST_LOG specs, "
                "enabled %" PRIdPTR " flags.",
-               (uintptr_t)n_dirs, (uintptr_t)n_matches);
+               (uintptr_t)n_dirs, (uintptr_t)n_matches);*/
     }
 
     free(buffer);

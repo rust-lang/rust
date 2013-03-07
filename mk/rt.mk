@@ -26,6 +26,7 @@
 # Hack for passing flags into LIBUV, see below.
 LIBUV_FLAGS_i386 = -m32 -fPIC
 LIBUV_FLAGS_x86_64 = -m64 -fPIC
+LIBUV_FLAGS_arm = -fPIC -DANDROID -std=gnu99
 
 # when we're doing a snapshot build, we intentionally degrade as many
 # features in libuv and the runtime as possible, to ease portability.
@@ -73,7 +74,8 @@ RUNTIME_CXXS_$(1) := \
               rt/memory_region.cpp \
               rt/boxed_region.cpp \
               rt/arch/$$(HOST_$(1))/context.cpp \
-              rt/arch/$$(HOST_$(1))/gpr.cpp
+              rt/arch/$$(HOST_$(1))/gpr.cpp \
+              rt/rust_android_dummy.cpp
 
 RUNTIME_CS_$(1) := rt/linenoise/linenoise.c rt/linenoise/utf8.c
 
@@ -81,31 +83,24 @@ RUNTIME_S_$(1) := rt/arch/$$(HOST_$(1))/_context.S \
                   rt/arch/$$(HOST_$(1))/ccall.S \
                   rt/arch/$$(HOST_$(1))/record_sp.S
 
-ifeq ($$(HOST_$(1)), i386)
-  LIBUV_ARCH_$(1) := ia32
-else ifeq  ($$(HOST_$(1)), x86_64)
-  LIBUV_ARCH_$(1) := x86_64
-else ifeq  ($$(HOST_$(1)), arm)
-  LIBUV_ARCH_$(1) := arm
-else ifeq  ($$(HOST_$(1)), mips)
-  LIBUV_ARCH_$(1) := mips
-endif
-
-ifeq ($$(CFG_WINDOWSY), 1)
+ifeq ($$(CFG_WINDOWSY_$(1)), 1)
   LIBUV_OSTYPE_$(1) := win
   LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
-else ifeq ($(CFG_OSTYPE), apple-darwin)
+else ifeq ($(OSTYPE_$(1)), apple-darwin)
   LIBUV_OSTYPE_$(1) := mac
   LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
-else ifeq ($(CFG_OSTYPE), unknown-freebsd)
+else ifeq ($(OSTYPE_$(1)), unknown-freebsd)
   LIBUV_OSTYPE_$(1) := unix/freebsd
+  LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
+else ifeq ($(OSTYPE_$(1)), unknown-android)
+  LIBUV_OSTYPE_$(1) := unix/android
   LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
 else
   LIBUV_OSTYPE_$(1) := unix/linux
   LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
 endif
 
-RUNTIME_DEF_$(1) := rt/rustrt$$(CFG_DEF_SUFFIX)
+RUNTIME_DEF_$(1) := rt/rustrt$(CFG_DEF_SUFFIX_$(1))
 RUNTIME_INCS_$(1) := -I $$(S)src/rt -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
                      -I $$(S)src/rt/arch/$$(HOST_$(1)) \
                      -I $$(S)src/rt/linenoise \
@@ -131,7 +126,7 @@ rt/$(1)/%.o: rt/%.c $$(MKFILE_DEPS)
                  $$(SNAP_DEFINES)) $$<
 
 rt/$(1)/%.o: rt/%.S  $$(MKFILE_DEPS) \
-                     $$(LLVM_CONFIG_$$(CFG_HOST_TRIPLE))
+                     $$(LLVM_CONFIG_$$(CFG_BUILD_TRIPLE))
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_ASSEMBLE_$(1),$$@,$$<)
 
@@ -139,13 +134,13 @@ rt/$(1)/arch/$$(HOST_$(1))/libmorestack.a: $$(MORESTACK_OBJ_$(1))
 	@$$(call E, link: $$@)
 	$$(Q)ar rcs $$@ $$<
 
-rt/$(1)/$(CFG_RUNTIME): $$(RUNTIME_OBJS_$(1)) $$(MKFILE_DEPS) \
+rt/$(1)/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)) $$(MKFILE_DEPS) \
                         $$(RUNTIME_DEF_$(1)) \
                         $$(RUNTIME_LIBS_$(1))
 	@$$(call E, link: $$@)
 	$$(Q)$$(call CFG_LINK_CXX_$(1),$$@, $$(RUNTIME_OBJS_$(1)) \
-	  $$(CFG_GCCISH_POST_LIB_FLAGS) $$(RUNTIME_LIBS_$(1)) \
-	  $$(CFG_LIBUV_LINK_FLAGS),$$(RUNTIME_DEF_$(1)),$$(CFG_RUNTIME))
+	  $$(CFG_GCCISH_POST_LIB_FLAGS_$(1)) $$(RUNTIME_LIBS_$(1)) \
+	  $$(CFG_LIBUV_LINK_FLAGS_$(1)),$$(RUNTIME_DEF_$(1)),$$(CFG_RUNTIME_$(1)))
 
 # FIXME: For some reason libuv's makefiles can't figure out the
 # correct definition of CC on the mingw I'm using, so we are
@@ -162,11 +157,24 @@ LIBUV_DEPS := $$(wildcard \
               $$(S)src/libuv/*/*/*/*)
 endif
 
-ifdef CFG_WINDOWSY
+# XXX: Shouldn't need platform-specific conditions here
+ifdef CFG_WINDOWSY_$(1)
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
 		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
 		OS=mingw \
+		V=$$(VERBOSE)
+else ifeq ($(OSTYPE_$(1)), unknown-android)
+$$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
+	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
+		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
+		CC="$$(CC_$(1))" \
+		CXX="$$(CXX_$(1))" \
+		AR="$$(AR_$(1))" \
+		BUILDTYPE=Release \
+		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
+		host=android OS=linux \
 		V=$$(VERBOSE)
 else
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
@@ -196,13 +204,17 @@ endif
 	@$$(call E, def: $$@)
 	$$(Q)sed 's/^./_&/' $$< > $$@
 
-ifdef CFG_WINDOWSY
-%.def:	%.def.in $$(MKFILE_DEPS)
+%.android.def:  %.def.in $$(MKFILE_DEPS)
+	@$$(call E, def: $$@)
+	$$(Q)echo "{" > $$@
+	$$(Q)sed 's/.$$$$/&;/' $$< >> $$@
+	$$(Q)echo "};" >> $$@
+
+%.mingw32.def:	%.def.in $$(MKFILE_DEPS)
 	@$$(call E, def: $$@)
 	$$(Q)echo LIBRARY $$* > $$@
 	$$(Q)echo EXPORTS >> $$@
 	$$(Q)sed 's/^./    &/' $$< >> $$@
-endif
 
 endef
 
