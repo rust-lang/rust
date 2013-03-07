@@ -74,6 +74,7 @@ struct Stats {
     attr_bytes: uint,
     dep_bytes: uint,
     lang_item_bytes: uint,
+    link_args_bytes: uint,
     item_bytes: uint,
     index_bytes: uint,
     zero_bytes: uint,
@@ -1255,6 +1256,20 @@ fn encode_lang_items(ecx: @EncodeContext, ebml_w: writer::Encoder) {
     ebml_w.end_tag();   // tag_lang_items
 }
 
+fn encode_link_args(ecx: @EncodeContext,
+                    ebml_w: writer::Encoder) {
+    ebml_w.start_tag(tag_link_args);
+
+    let link_args = cstore::get_used_link_args(ecx.cstore);
+    for link_args.each |link_arg| {
+        ebml_w.start_tag(tag_link_args_arg);
+        ebml_w.writer.write_str(link_arg.to_str());
+        ebml_w.end_tag();
+    }
+
+    ebml_w.end_tag();
+}
+
 fn encode_crate_dep(ecx: @EncodeContext, ebml_w: writer::Encoder,
                     dep: decoder::crate_dep) {
     ebml_w.start_tag(tag_crate_dep);
@@ -1291,6 +1306,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
         attr_bytes: 0,
         dep_bytes: 0,
         lang_item_bytes: 0,
+        link_args_bytes: 0,
         item_bytes: 0,
         index_bytes: 0,
         zero_bytes: 0,
@@ -1329,6 +1345,11 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
     encode_lang_items(ecx, ebml_w);
     ecx.stats.lang_item_bytes = wr.pos - i;
 
+    // Encode the link args.
+    i = wr.pos;
+    encode_link_args(ecx, ebml_w);
+    ecx.stats.link_args_bytes = wr.pos - i;
+
     // Encode and index the items.
     ebml_w.start_tag(tag_items);
     i = wr.pos;
@@ -1359,6 +1380,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
         io::println(fmt!(" attribute bytes: %u", ecx.stats.attr_bytes));
         io::println(fmt!("       dep bytes: %u", ecx.stats.dep_bytes));
         io::println(fmt!(" lang item bytes: %u", ecx.stats.lang_item_bytes));
+        io::println(fmt!(" link args bytes: %u", ecx.stats.link_args_bytes));
         io::println(fmt!("      item bytes: %u", ecx.stats.item_bytes));
         io::println(fmt!("     index bytes: %u", ecx.stats.index_bytes));
         io::println(fmt!("      zero bytes: %u", ecx.stats.zero_bytes));
