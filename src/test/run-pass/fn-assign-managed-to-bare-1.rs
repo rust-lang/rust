@@ -15,6 +15,6 @@ fn add(n: int) -> @fn(int) -> int {
 
 pub fn main() {
       fail_unless!(add(3)(4) == 7);
-      let add3 : fn(int)->int = add(3);
+      let add3 : &fn(int)->int = add(3);
       fail_unless!(add3(4) == 7);
 }

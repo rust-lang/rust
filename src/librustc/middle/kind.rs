@@ -95,7 +95,7 @@ type check_fn = @fn(Context, @freevar_entry);
 // Yields the appropriate function to check the kind of closed over
 // variables. `id` is the node_id for some expression that creates the
 // closure.
-fn with_appropriate_checker(cx: Context, id: node_id, b: fn(check_fn)) {
+fn with_appropriate_checker(cx: Context, id: node_id, b: &fn(check_fn)) {
     fn check_for_uniq(cx: Context, fv: @freevar_entry) {
         // all captured data must be owned, regardless of whether it is
         // moved in or copied in.

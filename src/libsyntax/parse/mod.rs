@@ -173,7 +173,7 @@ pub fn parse_tts_from_source_str(
 }
 
 pub fn parse_from_source_str<T>(
-    f: fn (Parser) -> T,
+    f: &fn (Parser) -> T,
     name: ~str, ss: codemap::FileSubstr,
     source: @~str,
     +cfg: ast::crate_cfg,

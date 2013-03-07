@@ -1846,7 +1846,7 @@ pub impl Parser {
 
     fn parse_sugary_call_expr(&self, keyword: ~str,
                               sugar: CallSugar,
-                              ctor: fn(+v: @expr) -> expr_) -> @expr {
+                              ctor: &fn(+v: @expr) -> expr_) -> @expr {
         let lo = self.last_span;
         // Parse the callee `foo` in
         //    for foo || {
@@ -2776,7 +2776,7 @@ pub impl Parser {
         (lifetimes, opt_vec::take_vec(result))
     }
 
-    fn parse_fn_decl(&self, parse_arg_fn: fn(&Parser) -> arg_or_capture_item)
+    fn parse_fn_decl(&self, parse_arg_fn: &fn(&Parser) -> arg_or_capture_item)
         -> fn_decl
     {
         let args_or_capture_items: ~[arg_or_capture_item] =
@@ -2823,7 +2823,7 @@ pub impl Parser {
         fn(&Parser) -> arg_or_capture_item
     ) -> (self_ty, fn_decl) {
         fn maybe_parse_self_ty(
-            cnstr: fn(+v: mutability) -> ast::self_ty_,
+            cnstr: &fn(+v: mutability) -> ast::self_ty_,
             p: &Parser
         ) -> ast::self_ty_ {
             // We need to make sure it isn't a mode or a type

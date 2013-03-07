@@ -11,7 +11,7 @@
 // no-reformat
 // Testing various forms of `do` and `for` with empty arg lists
 
-fn f(f: fn() -> bool) {
+fn f(f: &fn() -> bool) {
 }
 
 pub fn main() {

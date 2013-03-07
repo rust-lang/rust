@@ -16,7 +16,7 @@ struct S<'self> {
     f: &'self fn(uint)
 }
 
-pure fn range(from: uint, to: uint, f: fn(uint)) {
+pure fn range(from: uint, to: uint, f: &fn(uint)) {
     let mut i = from;
     while i < to {
         f(i); // Note: legal to call argument, even if it is not pure.
@@ -24,13 +24,13 @@ pure fn range(from: uint, to: uint, f: fn(uint)) {
     }
 }
 
-pure fn range2(from: uint, to: uint, f: fn(uint)) {
+pure fn range2(from: uint, to: uint, f: &fn(uint)) {
     do range(from, to) |i| {
         f(i*2u);
     }
 }
 
-pure fn range3(from: uint, to: uint, f: fn(uint)) {
+pure fn range3(from: uint, to: uint, f: &fn(uint)) {
     range(from, to, f)
 }
 

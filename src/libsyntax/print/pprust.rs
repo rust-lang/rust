@@ -314,8 +314,8 @@ pub fn commasep<IN>(s: @ps, b: breaks, elts: ~[IN], op: &fn(@ps, IN)) {
 }
 
 
-pub fn commasep_cmnt<IN>(s: @ps, b: breaks, elts: ~[IN], op: fn(@ps, IN),
-                         get_span: fn(IN) -> codemap::span) {
+pub fn commasep_cmnt<IN>(s: @ps, b: breaks, elts: ~[IN], op: &fn(@ps, IN),
+                         get_span: &fn(IN) -> codemap::span) {
     box(s, 0u, b);
     let len = vec::len::<IN>(elts);
     let mut i = 0u;

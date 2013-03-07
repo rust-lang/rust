@@ -88,7 +88,7 @@ pub fn have_crate_data(cstore: @mut CStore, cnum: ast::crate_num) -> bool {
 }
 
 pub fn iter_crate_data(cstore: @mut CStore,
-                       i: fn(ast::crate_num, @crate_metadata)) {
+                       i: &fn(ast::crate_num, @crate_metadata)) {
     let metas = cstore.metas;
     for metas.each |&k, &v| {
         i(k, v);

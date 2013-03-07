@@ -856,7 +856,7 @@ pub impl mem_categorization_ctxt {
     fn cat_pattern(&self,
                    cmt: cmt,
                    pat: @ast::pat,
-                   op: fn(cmt, @ast::pat))
+                   op: &fn(cmt, @ast::pat))
     {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.

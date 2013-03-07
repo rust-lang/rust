@@ -176,7 +176,7 @@ pub impl<T:Owned> MutexARC<T> {
      * blocked on the mutex) will also fail immediately.
      */
     #[inline(always)]
-    unsafe fn access<U>(&self, blk: fn(x: &mut T) -> U) -> U {
+    unsafe fn access<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
         unsafe {
             let state = get_shared_mutable_state(&self.x);
             // Borrowck would complain about this if the function were
@@ -301,7 +301,7 @@ pub impl<T:Const + Owned> RWARC<T> {
      * poison the ARC, so subsequent readers and writers will both also fail.
      */
     #[inline(always)]
-    fn write<U>(&self, blk: fn(x: &mut T) -> U) -> U {
+    fn write<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
         unsafe {
             let state = get_shared_mutable_state(&self.x);
             do (*borrow_rwlock(state)).write {
@@ -313,7 +313,7 @@ pub impl<T:Const + Owned> RWARC<T> {
     }
     /// As write(), but with a condvar, as sync::rwlock.write_cond().
     #[inline(always)]
-    fn write_cond<U>(&self, blk: fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
+    fn write_cond<U>(&self, blk: &fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
         unsafe {
             let state = get_shared_mutable_state(&self.x);
             do (*borrow_rwlock(state)).write_cond |cond| {
@@ -335,7 +335,7 @@ pub impl<T:Const + Owned> RWARC<T> {
      * Failing will unlock the ARC while unwinding. However, unlike all other
      * access modes, this will not poison the ARC.
      */
-    fn read<U>(&self, blk: fn(x: &T) -> U) -> U {
+    fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
         let state = unsafe { get_shared_immutable_state(&self.x) };
         do (&state.lock).read {
             check_poison(false, state.failed);
@@ -360,7 +360,7 @@ pub impl<T:Const + Owned> RWARC<T> {
      * }
      * ~~~
      */
-    fn write_downgrade<U>(&self, blk: fn(v: RWWriteMode<T>) -> U) -> U {
+    fn write_downgrade<U>(&self, blk: &fn(v: RWWriteMode<T>) -> U) -> U {
         unsafe {
             let state = get_shared_mutable_state(&self.x);
             do (*borrow_rwlock(state)).write_downgrade |write_mode| {
@@ -408,7 +408,7 @@ pub enum RWReadMode<T> = (&self/T, sync::RWlockReadMode/&self);
 
 pub impl<T:Const + Owned> RWWriteMode/&self<T> {
     /// Access the pre-downgrade RWARC in write mode.
-    fn write<U>(&self, blk: fn(x: &mut T) -> U) -> U {
+    fn write<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
         match *self {
             RWWriteMode((ref data, ref token, _)) => {
                 do token.write {
@@ -418,7 +418,7 @@ pub impl<T:Const + Owned> RWWriteMode/&self<T> {
         }
     }
     /// Access the pre-downgrade RWARC in write mode with a condvar.
-    fn write_cond<U>(&self, blk: fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
+    fn write_cond<U>(&self, blk: &fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
         match *self {
             RWWriteMode((ref data, ref token, ref poison)) => {
                 do token.write_cond |cond| {
@@ -438,7 +438,7 @@ pub impl<T:Const + Owned> RWWriteMode/&self<T> {
 
 pub impl<T:Const + Owned> RWReadMode/&self<T> {
     /// Access the post-downgrade rwlock in read mode.
-    fn read<U>(&self, blk: fn(x: &T) -> U) -> U {
+    fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
         match *self {
             RWReadMode((data, ref token)) => {
                 do token.read { blk(data) }

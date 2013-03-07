@@ -134,7 +134,7 @@ pub mod chained {
     }
 
     pub impl<K:Eq + IterBytes + Hash,V> T<K, V> {
-        pure fn each_entry(&self, blk: fn(@Entry<K,V>) -> bool) {
+        pure fn each_entry(&self, blk: &fn(@Entry<K,V>) -> bool) {
             // n.b. we can't use vec::iter() here because self.chains
             // is stored in a mutable location.
             let mut i = 0u, n = self.chains.len();
@@ -236,17 +236,17 @@ pub mod chained {
             }
         }
 
-        pure fn each(&self, blk: fn(key: &K, value: &V) -> bool) {
+        pure fn each(&self, blk: &fn(key: &K, value: &V) -> bool) {
             for self.each_entry |entry| {
                 if !blk(&entry.key, &entry.value) { break; }
             }
         }
 
-        pure fn each_key(&self, blk: fn(key: &K) -> bool) {
+        pure fn each_key(&self, blk: &fn(key: &K) -> bool) {
             self.each(|k, _v| blk(k))
         }
 
-        pure fn each_value(&self, blk: fn(value: &V) -> bool) {
+        pure fn each_value(&self, blk: &fn(value: &V) -> bool) {
             self.each(|_k, v| blk(v))
         }
     }
@@ -260,8 +260,8 @@ pub mod chained {
             }
         }
 
-        fn update_with_key(&self, key: K, newval: V, ff: fn(K, V, V) -> V)
-                          -> bool {
+        fn update_with_key(&self, key: K, newval: V, ff: &fn(K, V, V) -> V)
+                        -> bool {
 /*
             match self.find(key) {
                 None            => return self.insert(key, val),
@@ -312,7 +312,7 @@ pub mod chained {
             }
         }
 
-        fn update(&self, key: K, newval: V, ff: fn(V, V) -> V) -> bool {
+        fn update(&self, key: K, newval: V, ff: &fn(V, V) -> V) -> bool {
             return self.update_with_key(key, newval, |_k, v, v1| ff(v,v1));
         }
 

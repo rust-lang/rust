@@ -14,7 +14,7 @@ fn takes_mut(&&x: @mut int) { }
 fn takes_const(&&x: @const int) { }
 fn takes_imm(&&x: @int) { }
 
-fn apply<T>(t: T, f: fn(T)) {
+fn apply<T>(t: T, f: &fn(T)) {
     f(t)
 }
 

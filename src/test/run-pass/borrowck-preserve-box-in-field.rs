@@ -10,7 +10,7 @@
 
 // exec-env:RUST_POISON_ON_FREE=1
 
-fn borrow(x: &int, f: fn(x: &int)) {
+fn borrow(x: &int, f: &fn(x: &int)) {
     let before = *x;
     f(x);
     let after = *x;

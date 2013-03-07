@@ -190,7 +190,7 @@ fn md_from_metadata<T>(val: debug_metadata) -> T {
 
 fn cached_metadata<T:Copy>(cache: metadata_cache,
                             mdtag: int,
-                            eq_fn: fn(md: T) -> bool)
+                            eq_fn: &fn(md: T) -> bool)
                          -> Option<T> {
     unsafe {
         if cache.contains_key(&mdtag) {
