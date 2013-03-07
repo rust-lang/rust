@@ -107,7 +107,7 @@ pub fn check_expr(sess: Session,
           expr_lit(_) => (),
           expr_cast(_, _) => {
             let ety = ty::expr_ty(tcx, e);
-            if !ty::type_is_numeric(ety) {
+            if !ty::type_is_numeric(ety) && !ty::type_is_unsafe_ptr(ety) {
                 sess.span_err(e.span, ~"can not cast to `" +
                               ppaux::ty_to_str(tcx, ety) +
                               ~"` in a constant expression");
@@ -124,17 +124,11 @@ pub fn check_expr(sess: Session,
                               items without type parameters");
             }
             match def_map.find(&e.id) {
-                Some(def_variant(_, _)) |
-                Some(def_struct(_)) => { }
+              Some(def_const(_)) |
+              Some(def_fn(_, _)) |
+              Some(def_variant(_, _)) |
+              Some(def_struct(_)) => { }
 
-                Some(def_const(def_id)) |
-                Some(def_fn(def_id, _)) => {
-                if !ast_util::is_local(def_id) {
-                    sess.span_err(
-                        e.span, ~"paths in constants may only refer to \
-                                 crate-local constants or functions");
-                }
-              }
               Some(def) => {
                 debug!("(checking const) found bad def: %?", def);
                 sess.span_err(
@@ -246,11 +240,13 @@ pub fn check_item_recursion(sess: Session,
           expr_path(*) => {
             match env.def_map.find(&e.id) {
               Some(def_const(def_id)) => {
-                match env.ast_map.get(&def_id.node) {
-                  ast_map::node_item(it, _) => {
-                    (v.visit_item)(it, env, v);
+                if ast_util::is_local(def_id) {
+                  match env.ast_map.get(&def_id.node) {
+                    ast_map::node_item(it, _) => {
+                      (v.visit_item)(it, env, v);
+                    }
+                    _ => fail!(~"const not bound to an item")
                   }
-                  _ => fail!(~"const not bound to an item")
                 }
               }
               _ => ()

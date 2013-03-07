@@ -11,6 +11,7 @@
 use core::prelude::*;
 
 use lib::llvm::{llvm, ValueRef, TypeRef, Bool, True, False};
+use metadata::csearch;
 use middle::const_eval;
 use middle::trans::adt;
 use middle::trans::base;
@@ -18,6 +19,7 @@ use middle::trans::base::get_insn_ctxt;
 use middle::trans::common::*;
 use middle::trans::consts;
 use middle::trans::expr;
+use middle::trans::inline;
 use middle::trans::machine;
 use middle::trans::type_of;
 use middle::ty;
@@ -110,7 +112,7 @@ pub fn const_autoderef(cx: @CrateContext, ty: ty::t, v: ValueRef)
     let mut v1 = v;
     loop {
         // Only rptrs can be autoderef'ed in a const context.
-        match ty::get(ty).sty {
+        match ty::get(t1).sty {
             ty::ty_rptr(_, mt) => {
                 t1 = mt.ty;
                 v1 = const_deref(cx, v1);
@@ -121,10 +123,12 @@ pub fn const_autoderef(cx: @CrateContext, ty: ty::t, v: ValueRef)
 }
 
 pub fn get_const_val(cx: @CrateContext, def_id: ast::def_id) -> ValueRef {
-    if !ast_util::is_local(def_id) {
-        cx.tcx.sess.bug(~"cross-crate constants");
-    }
-    if !cx.const_values.contains_key(&def_id.node) {
+    let mut def_id = def_id;
+    if !ast_util::is_local(def_id) ||
+       !cx.const_values.contains_key(&def_id.node) {
+        if !ast_util::is_local(def_id) {
+            def_id = inline::maybe_instantiate_inline(cx, def_id, true);
+        }
         match cx.tcx.items.get(&def_id.node) {
             ast_map::node_item(@ast::item {
                 node: ast::item_const(_, subexpr), _
@@ -338,6 +342,12 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                                        integral or float")
                 }
               }
+              (expr::cast_pointer, expr::cast_pointer) => {
+                llvm::LLVMConstPointerCast(v, llty)
+              }
+              (expr::cast_integral, expr::cast_pointer) => {
+                llvm::LLVMConstIntToPtr(v, llty)
+              }
               _ => {
                 cx.sess.impossible_case(e.span,
                                         ~"bad combination of types for cast")
@@ -416,8 +426,13 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
             assert pth.types.len() == 0;
             match cx.tcx.def_map.find(&e.id) {
                 Some(ast::def_fn(def_id, _purity)) => {
-                    assert ast_util::is_local(def_id);
-                    let f = base::get_item_val(cx, def_id.node);
+                    let f = if !ast_util::is_local(def_id) {
+                        let ty = csearch::get_type(cx.tcx, def_id).ty;
+                        base::trans_external_path(cx, def_id, ty)
+                    } else {
+                        assert ast_util::is_local(def_id);
+                        base::get_item_val(cx, def_id.node)
+                    };
                     let ety = ty::expr_ty_adjusted(cx.tcx, e);
                     match ty::get(ety).sty {
                         ty::ty_bare_fn(*) | ty::ty_ptr(*) => {
