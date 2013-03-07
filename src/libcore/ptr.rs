@@ -82,7 +82,7 @@ pub unsafe fn buf_len<T>(buf: **T) -> uint {
 
 /// Return the first offset `i` such that `f(buf[i]) == true`.
 #[inline(always)]
-pub unsafe fn position<T>(buf: *T, f: fn(&T) -> bool) -> uint {
+pub unsafe fn position<T>(buf: *T, f: &fn(&T) -> bool) -> uint {
     let mut i = 0;
     loop {
         if f(&(*offset(buf, i))) { return i; }

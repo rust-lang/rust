@@ -24,7 +24,7 @@ struct Results {
     delete_strings: float
 }
 
-fn timed(result: &mut float, op: fn()) {
+fn timed(result: &mut float, op: &fn()) {
     let start = std::time::precise_time_s();
     op();
     let end = std::time::precise_time_s();
@@ -33,7 +33,7 @@ fn timed(result: &mut float, op: fn()) {
 
 pub impl Results {
     fn bench_int<T:Set<uint>>(&mut self, rng: @rand::Rng, num_keys: uint,
-                               rand_cap: uint, f: fn() -> T) {
+                               rand_cap: uint, f: &fn() -> T) {
         {
             let mut set = f();
             do timed(&mut self.sequential_ints) {
@@ -71,7 +71,7 @@ pub impl Results {
     }
 
     fn bench_str<T:Set<~str>>(&mut self, rng: @rand::Rng, num_keys: uint,
-                               f: fn() -> T) {
+                               f: &fn() -> T) {
         {
             let mut set = f();
             do timed(&mut self.sequential_strings) {

@@ -36,33 +36,33 @@ impl bool_like for int {
 // A trait for sequences that can be constructed imperatively.
 trait buildable<A> {
      static pure fn build_sized(size: uint,
-                                builder: fn(push: pure fn(+v: A))) -> Self;
+                                builder: &fn(push: &pure fn(+v: A))) -> Self;
 }
 
 
 impl<A> buildable<A> for @[A] {
     #[inline(always)]
      static pure fn build_sized(size: uint,
-                                builder: fn(push: pure fn(+v: A))) -> @[A] {
+                                builder: &fn(push: &pure fn(+v: A))) -> @[A] {
          at_vec::build_sized(size, builder)
      }
 }
 impl<A> buildable<A> for ~[A] {
     #[inline(always)]
      static pure fn build_sized(size: uint,
-                                builder: fn(push: pure fn(+v: A))) -> ~[A] {
+                                builder: &fn(push: &pure fn(+v: A))) -> ~[A] {
          vec::build_sized(size, builder)
      }
 }
 
 #[inline(always)]
-pure fn build<A, B: buildable<A>>(builder: fn(push: pure fn(+v: A))) -> B {
+pure fn build<A, B: buildable<A>>(builder: &fn(push: &pure fn(+v: A))) -> B {
     buildable::build_sized(4, builder)
 }
 
 /// Apply a function to each element of an iterable and return the results
 fn map<T, IT: BaseIter<T>, U, BU: buildable<U>>
-    (v: IT, f: fn(T) -> U) -> BU {
+    (v: IT, f: &fn(T) -> U) -> BU {
     do build |push| {
         for v.each() |elem| {
             push(f(*elem));

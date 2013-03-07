@@ -728,8 +728,8 @@ pub fn cast_shift_const_rhs(op: ast::binop,
 
 pub fn cast_shift_rhs(op: ast::binop,
                       lhs: ValueRef, rhs: ValueRef,
-                      trunc: fn(ValueRef, TypeRef) -> ValueRef,
-                      zext: fn(ValueRef, TypeRef) -> ValueRef)
+                      trunc: &fn(ValueRef, TypeRef) -> ValueRef,
+                      zext: &fn(ValueRef, TypeRef) -> ValueRef)
                    -> ValueRef {
     // Shifts may have any size int on the rhs
     unsafe {
@@ -863,7 +863,7 @@ pub fn have_cached_lpad(bcx: block) -> bool {
     return res;
 }
 
-pub fn in_lpad_scope_cx(bcx: block, f: fn(+si: &mut scope_info)) {
+pub fn in_lpad_scope_cx(bcx: block, f: &fn(+si: &mut scope_info)) {
     let mut bcx = bcx;
     loop {
         {
@@ -1326,7 +1326,7 @@ pub fn leave_block(bcx: block, out_of: block) -> block {
 pub fn with_scope(bcx: block,
                   opt_node_info: Option<NodeInfo>,
                   +name: ~str,
-                  f: fn(block) -> block) -> block {
+                  f: &fn(block) -> block) -> block {
     let _icx = bcx.insn_ctxt("with_scope");
 
     debug!("with_scope(bcx=%s, opt_node_info=%?, name=%s)",
@@ -1341,7 +1341,7 @@ pub fn with_scope(bcx: block,
 pub fn with_scope_result(bcx: block,
                          opt_node_info: Option<NodeInfo>,
                          +name: ~str,
-                         f: fn(block) -> Result) -> Result {
+                         f: &fn(block) -> Result) -> Result {
     let _icx = bcx.insn_ctxt("with_scope_result");
     let scope_cx = scope_block(bcx, opt_node_info, name);
     Br(bcx, scope_cx.llbb);
@@ -1350,7 +1350,7 @@ pub fn with_scope_result(bcx: block,
 }
 
 pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,
-                             +name: ~str, f: fn(block) -> datum::DatumBlock)
+                             +name: ~str, f: &fn(block) -> datum::DatumBlock)
                           -> datum::DatumBlock {
     use middle::trans::datum::DatumBlock;
 
@@ -1361,7 +1361,7 @@ pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,
     DatumBlock {bcx: leave_block(bcx, scope_cx), datum: datum}
 }
 
-pub fn block_locals(b: &ast::blk, it: fn(@ast::local)) {
+pub fn block_locals(b: &ast::blk, it: &fn(@ast::local)) {
     for vec::each(b.node.stmts) |s| {
         match s.node {
           ast::stmt_decl(d, _) => {
@@ -1401,7 +1401,7 @@ pub fn alloc_local(cx: block, local: @ast::local) -> block {
 }
 
 
-pub fn with_cond(bcx: block, val: ValueRef, f: fn(block) -> block) -> block {
+pub fn with_cond(bcx: block, val: ValueRef, f: &fn(block) -> block) -> block {
     let _icx = bcx.insn_ctxt("with_cond");
     let next_cx = base::sub_block(bcx, ~"next");
     let cond_cx = base::sub_block(bcx, ~"cond");
@@ -1742,8 +1742,8 @@ pub fn trans_closure(ccx: @CrateContext,
                      param_substs: Option<@param_substs>,
                      id: ast::node_id,
                      impl_id: Option<ast::def_id>,
-                     maybe_load_env: fn(fn_ctxt),
-                     finish: fn(block)) {
+                     maybe_load_env: &fn(fn_ctxt),
+                     finish: &fn(block)) {
     ccx.stats.n_closures += 1;
     let _icx = ccx.insn_ctxt("trans_closure");
     set_uwtable(llfndecl);

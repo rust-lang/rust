@@ -22,9 +22,9 @@ class keys<K:Copy,V:Copy,M:Copy + map<K,V>>
         self.map = map;
     }
 
-    fn each(blk: fn(K) -> bool) { self.map.each(|k, _v| blk(k) ) }
+    fn each(blk: &fn(K) -> bool) { self.map.each(|k, _v| blk(k) ) }
     fn size_hint() -> Option<uint> { Some(self.map.size()) }
-    fn eachi(blk: fn(uint, K) -> bool) { iter::eachi(self, blk) }
+    fn eachi(blk: &fn(uint, K) -> bool) { iter::eachi(self, blk) }
 }
 
 pub fn main() {

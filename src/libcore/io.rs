@@ -118,13 +118,13 @@ pub trait ReaderUtil {
     fn read_whole_stream(&self) -> ~[u8];
 
     /// Iterate over every byte until the iterator breaks or EOF.
-    fn each_byte(&self, it: fn(int) -> bool);
+    fn each_byte(&self, it: &fn(int) -> bool);
 
     /// Iterate over every char until the iterator breaks or EOF.
-    fn each_char(&self, it: fn(char) -> bool);
+    fn each_char(&self, it: &fn(char) -> bool);
 
     /// Iterate over every line until the iterator breaks or EOF.
-    fn each_line(&self, it: fn(&str) -> bool);
+    fn each_line(&self, it: &fn(&str) -> bool);
 
     /// Read n (between 1 and 8) little-endian unsigned integer bytes.
     fn read_le_uint_n(&self, nbytes: uint) -> u64;
@@ -315,19 +315,19 @@ impl<T:Reader> ReaderUtil for T {
         bytes
     }
 
-    fn each_byte(&self, it: fn(int) -> bool) {
+    fn each_byte(&self, it: &fn(int) -> bool) {
         while !self.eof() {
             if !it(self.read_byte()) { break; }
         }
     }
 
-    fn each_char(&self, it: fn(char) -> bool) {
+    fn each_char(&self, it: &fn(char) -> bool) {
         while !self.eof() {
             if !it(self.read_char()) { break; }
         }
     }
 
-    fn each_line(&self, it: fn(s: &str) -> bool) {
+    fn each_line(&self, it: &fn(s: &str) -> bool) {
         while !self.eof() {
             if !it(self.read_line()) { break; }
         }
@@ -618,11 +618,11 @@ impl Reader for BytesReader/&self {
     fn tell(&self) -> uint { self.pos }
 }
 
-pub pure fn with_bytes_reader<t>(bytes: &[u8], f: fn(@Reader) -> t) -> t {
+pub pure fn with_bytes_reader<t>(bytes: &[u8], f: &fn(@Reader) -> t) -> t {
     f(@BytesReader { bytes: bytes, pos: 0u } as @Reader)
 }
 
-pub pure fn with_str_reader<T>(s: &str, f: fn(@Reader) -> T) -> T {
+pub pure fn with_str_reader<T>(s: &str, f: &fn(@Reader) -> T) -> T {
     str::byte_slice(s, |bytes| with_bytes_reader(bytes, f))
 }
 
@@ -819,7 +819,7 @@ pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
 }
 
 pub fn u64_to_le_bytes<T>(n: u64, size: uint,
-                          f: fn(v: &[u8]) -> T) -> T {
+                          f: &fn(v: &[u8]) -> T) -> T {
     fail_unless!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
@@ -851,7 +851,7 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint,
 }
 
 pub fn u64_to_be_bytes<T>(n: u64, size: uint,
-                           f: fn(v: &[u8]) -> T) -> T {
+                           f: &fn(v: &[u8]) -> T) -> T {
     fail_unless!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
@@ -1142,14 +1142,14 @@ pub pure fn BytesWriter() -> BytesWriter {
     BytesWriter { bytes: ~[], mut pos: 0u }
 }
 
-pub pure fn with_bytes_writer(f: fn(Writer)) -> ~[u8] {
+pub pure fn with_bytes_writer(f: &fn(Writer)) -> ~[u8] {
     let wr = @BytesWriter();
     f(wr as Writer);
     let @BytesWriter{bytes, _} = wr;
     return bytes;
 }
 
-pub pure fn with_str_writer(f: fn(Writer)) -> ~str {
+pub pure fn with_str_writer(f: &fn(Writer)) -> ~str {
     let mut v = with_bytes_writer(f);
 
     // FIXME (#3758): This should not be needed.
@@ -1251,7 +1251,7 @@ pub mod fsync {
     // FIXME (#2004) find better way to create resources within lifetime of
     // outer res
     pub fn FILE_res_sync(file: &FILERes, opt_level: Option<Level>,
-                         blk: fn(v: Res<*libc::FILE>)) {
+                         blk: &fn(v: Res<*libc::FILE>)) {
         unsafe {
             blk(Res(Arg {
                 val: file.f, opt_level: opt_level,
@@ -1266,7 +1266,7 @@ pub mod fsync {
 
     // fsync fd after executing blk
     pub fn fd_res_sync(fd: &FdRes, opt_level: Option<Level>,
-                       blk: fn(v: Res<fd_t>)) {
+                       blk: &fn(v: Res<fd_t>)) {
         blk(Res(Arg {
             val: fd.fd, opt_level: opt_level,
             fsync_fn: |fd, l| os::fsync_fd(fd, l) as int
@@ -1278,7 +1278,7 @@ pub mod fsync {
 
     // Call o.fsync after executing blk
     pub fn obj_sync(o: FSyncable, opt_level: Option<Level>,
-                    blk: fn(v: Res<FSyncable>)) {
+                    blk: &fn(v: Res<FSyncable>)) {
         blk(Res(Arg {
             val: o, opt_level: opt_level,
             fsync_fn: |o, l| o.fsync(l)

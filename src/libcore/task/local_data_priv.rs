@@ -176,7 +176,7 @@ pub unsafe fn local_set<T:Durable>(
 
 pub unsafe fn local_modify<T:Durable>(
     task: *rust_task, key: LocalDataKey<T>,
-    modify_fn: fn(Option<@T>) -> Option<@T>) {
+    modify_fn: &fn(Option<@T>) -> Option<@T>) {
 
     // Could be more efficient by doing the lookup work, but this is easy.
     let newdata = modify_fn(local_pop(task, key));

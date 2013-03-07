@@ -29,7 +29,7 @@ fn compute(x: &ast) -> uint {
     }
 }
 
-fn map_nums(x: &ast, f: fn(uint) -> uint) -> &ast {
+fn map_nums(x: &ast, f: &fn(uint) -> uint) -> &ast {
     match *x {
       num(x) => {
         return &num(f(x)); //~ ERROR illegal borrow

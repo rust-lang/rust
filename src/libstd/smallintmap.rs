@@ -24,7 +24,7 @@ pub struct SmallIntMap<T> {
 
 impl<V> BaseIter<(uint, &self/V)> for SmallIntMap<V> {
     /// Visit all key-value pairs in order
-    pure fn each(&self, it: fn(&(uint, &self/V)) -> bool) {
+    pure fn each(&self, it: &fn(&(uint, &self/V)) -> bool) {
         for uint::range(0, self.v.len()) |i| {
             match self.v[i] {
               Some(ref elt) => if !it(&(i, elt)) { break },
@@ -38,7 +38,7 @@ impl<V> BaseIter<(uint, &self/V)> for SmallIntMap<V> {
 
 impl<V> ReverseIter<(uint, &self/V)> for SmallIntMap<V> {
     /// Visit all key-value pairs in reverse order
-    pure fn each_reverse(&self, it: fn(&(uint, &self/V)) -> bool) {
+    pure fn each_reverse(&self, it: &fn(&(uint, &self/V)) -> bool) {
         for uint::range_rev(self.v.len(), 0) |i| {
             match self.v[i - 1] {
               Some(ref elt) => if !it(&(i - 1, elt)) { break },
@@ -76,12 +76,12 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
     }
 
     /// Visit all keys in order
-    pure fn each_key(&self, blk: fn(key: &uint) -> bool) {
+    pure fn each_key(&self, blk: &fn(key: &uint) -> bool) {
         self.each(|&(k, _)| blk(&k))
     }
 
     /// Visit all values in order
-    pure fn each_value(&self, blk: fn(value: &V) -> bool) {
+    pure fn each_value(&self, blk: &fn(value: &V) -> bool) {
         self.each(|&(_, v)| blk(v))
     }
 
@@ -133,7 +133,7 @@ pub impl<V> SmallIntMap<V> {
 
 pub impl<V:Copy> SmallIntMap<V> {
     fn update_with_key(&mut self, key: uint, val: V,
-                       ff: fn(uint, V, V) -> V) -> bool {
+                       ff: &fn(uint, V, V) -> V) -> bool {
         let new_val = match self.find(&key) {
             None => val,
             Some(orig) => ff(key, *orig, val)
@@ -141,7 +141,7 @@ pub impl<V:Copy> SmallIntMap<V> {
         self.insert(key, new_val)
     }
 
-    fn update(&mut self, key: uint, newval: V, ff: fn(V, V) -> V) -> bool {
+    fn update(&mut self, key: uint, newval: V, ff: &fn(V, V) -> V) -> bool {
         self.update_with_key(key, newval, |_k, v, v1| ff(v,v1))
     }
 }

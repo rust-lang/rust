@@ -34,7 +34,7 @@ fn main() {
     bench!(vec_push_all);
 }
 
-fn maybe_run_test(argv: &[~str], name: ~str, test: fn()) {
+fn maybe_run_test(argv: &[~str], name: ~str, test: &fn()) {
     let mut run_test = false;
 
     if os::getenv(~"RUST_BENCH").is_some() { run_test = true }
