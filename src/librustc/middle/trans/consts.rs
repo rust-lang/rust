@@ -10,7 +10,7 @@
 
 use core::prelude::*;
 
-use lib::llvm::{llvm, ValueRef, True, TypeRef, False};
+use lib::llvm::{llvm, ValueRef, TypeRef, Bool, True, False};
 use middle::const_eval;
 use middle::trans::base;
 use middle::trans::base::get_insn_ctxt;
@@ -323,7 +323,7 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                    expr::cast_type_kind(ety)) {
 
               (expr::cast_integral, expr::cast_integral) => {
-                let s = if ty::type_is_signed(basety) { True } else { False };
+                let s = ty::type_is_signed(basety) as Bool;
                 llvm::LLVMConstIntCast(v, llty, s)
               }
               (expr::cast_integral, expr::cast_float) => {
@@ -339,6 +339,37 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
               (expr::cast_float, expr::cast_integral) => {
                 if ty::type_is_signed(ety) { llvm::LLVMConstFPToSI(v, llty) }
                 else { llvm::LLVMConstFPToUI(v, llty) }
+              }
+              (expr::cast_enum, expr::cast_integral) |
+              (expr::cast_enum, expr::cast_float)  => {
+                let def = ty::resolve_expr(cx.tcx, base);
+                let (enum_did, variant_did) = match def {
+                    ast::def_variant(enum_did, variant_did) => {
+                        (enum_did, variant_did)
+                    }
+                    _ => cx.sess.bug(~"enum cast source is not enum")
+                };
+                // Note that we know this is a C-like (nullary) enum
+                // variant or we wouldn't have gotten here
+                let variants = ty::enum_variants(cx.tcx, enum_did);
+                let iv = if variants.len() == 1 {
+                    // Univariants don't have a discriminant field,
+                    // because there's only one value it could have:
+                    C_integral(T_i64(),
+                               variants[0].disr_val as u64, True)
+                } else {
+                    base::get_discrim_val(cx, e.span, enum_did, variant_did)
+                };
+                let ety_cast = expr::cast_type_kind(ety);
+                match ety_cast {
+                    expr::cast_integral => {
+                        let s = ty::type_is_signed(ety) as Bool;
+                        llvm::LLVMConstIntCast(iv, llty, s)
+                    }
+                    expr::cast_float => llvm::LLVMConstUIToFP(iv, llty),
+                    _ => cx.sess.bug(~"enum cast destination is not \
+                                       integral or float")
+                }
               }
               _ => {
                 cx.sess.impossible_case(e.span,
