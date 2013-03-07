@@ -36,6 +36,7 @@ struct TtFrame {
 pub struct TtReader {
     sp_diag: span_handler,
     interner: @ident_interner,
+    // the unzipped tree:
     cur: @mut TtFrame,
     /* for MBE-style macro transcription */
     interpolations: std::oldmap::HashMap<ident, @named_match>,
