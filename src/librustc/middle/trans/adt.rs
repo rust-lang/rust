@@ -269,10 +269,15 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
             assert min <= discr && discr <= max;
             C_int(ccx, discr)
         }
-        Univariant(ref st, _dt) => {
+        Univariant(ref st, dt) => {
             assert discr == 0;
-            // consts are never destroyed, so the dtor flag is not needed
-            C_struct(build_const_struct(ccx, st, vals))
+            let s = C_struct(build_const_struct(ccx, st, vals));
+            match dt {
+                NoDtor => s,
+                // The actual destructor flag doesn't need to be present.
+                // But add an extra struct layer for compatibility.
+                DtorPresent | DtorAbsent => C_struct(~[s])
+            }
         }
         General(ref cases) => {
             let case = &cases[discr as uint];
@@ -336,7 +341,9 @@ pub fn const_get_element(ccx: @CrateContext, r: &Repr, val: ValueRef,
     match *r {
         Unit(*) | CEnum(*) => ccx.sess.bug(~"element access in C-like enum \
                                              const"),
-        Univariant(*) => const_struct_field(ccx, val, ix),
+        Univariant(_, NoDtor) => const_struct_field(ccx, val, ix),
+        Univariant(*) => const_struct_field(ccx, const_get_elt(ccx, val,
+                                                               [0]), ix),
         General(*) => const_struct_field(ccx, const_get_elt(ccx, val,
                                                             [1, 0]), ix)
     }
