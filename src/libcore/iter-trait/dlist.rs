@@ -24,7 +24,7 @@ mod inst {
     * allow for e.g. breadth-first search with in-place enqueues), but
     * removing the current node is forbidden.
     */
-    pub pure fn EACH<A>(self: &IMPL_T<A>, f: fn(v: &A) -> bool) {
+    pub pure fn EACH<A>(self: &IMPL_T<A>, f: &fn(v: &A) -> bool) {
         let mut link = self.peek_n();
         while option::is_some(&link) {
             let nobe = option::get(link);

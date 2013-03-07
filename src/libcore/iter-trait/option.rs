@@ -15,7 +15,7 @@ mod inst {
     pub type IMPL_T<A> = Option<A>;
 
     #[inline(always)]
-    pub pure fn EACH<A>(self: &IMPL_T<A>, f: fn(v: &A) -> bool) {
+    pub pure fn EACH<A>(self: &IMPL_T<A>, f: &fn(v: &A) -> bool) {
         match *self {
             None => (),
             Some(ref a) => { f(a); }

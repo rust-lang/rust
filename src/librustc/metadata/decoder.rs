@@ -48,7 +48,7 @@ type cmd = @crate_metadata;
 // what crate that's in and give us a def_id that makes sense for the current
 // build.
 
-fn lookup_hash(d: ebml::Doc, eq_fn: fn(x:&[u8]) -> bool, hash: uint) ->
+fn lookup_hash(d: ebml::Doc, eq_fn: &fn(x:&[u8]) -> bool, hash: uint) ->
    Option<ebml::Doc> {
     let index = reader::get_doc(d, tag_index);
     let table = reader::get_doc(index, tag_index_table);
@@ -193,7 +193,7 @@ fn item_def_id(d: ebml::Doc, cdata: cmd) -> ast::def_id {
                                                     |d| parse_def_id(d)));
 }
 
-fn each_reexport(d: ebml::Doc, f: fn(ebml::Doc) -> bool) {
+fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) {
     for reader::tagged_docs(d, tag_items_data_item_reexport) |reexport_doc| {
         if !f(reexport_doc) {
             return;
@@ -451,7 +451,7 @@ pub fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) {
 /// Iterates over all the paths in the given crate.
 pub fn each_path(intr: @ident_interner, cdata: cmd,
                  get_crate_data: GetCrateDataCb,
-                 f: fn(&str, def_like) -> bool) {
+                 f: &fn(&str, def_like) -> bool) {
     let root = reader::Doc(cdata.data);
     let items = reader::get_doc(root, tag_items);
     let items_data = reader::get_doc(items, tag_items_data);
@@ -855,7 +855,7 @@ pub fn get_static_methods_if_impl(intr: @ident_interner,
 
 pub fn get_item_attrs(cdata: cmd,
                       node_id: ast::node_id,
-                      f: fn(~[@ast::meta_item])) {
+                      f: &fn(~[@ast::meta_item])) {
 
     let item = lookup_item(node_id, cdata.data);
     for reader::tagged_docs(item, tag_attributes) |attributes| {
@@ -1093,7 +1093,7 @@ pub fn get_crate_vers(data: @~[u8]) -> @~str {
 
 fn iter_crate_items(intr: @ident_interner, cdata: cmd,
                     get_crate_data: GetCrateDataCb,
-                    proc: fn(path: &str, ast::def_id)) {
+                    proc: &fn(path: &str, ast::def_id)) {
     for each_path(intr, cdata, get_crate_data) |path_string, def_like| {
         match def_like {
             dl_impl(*) | dl_field => {}

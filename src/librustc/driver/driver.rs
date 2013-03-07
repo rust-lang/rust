@@ -164,7 +164,7 @@ pub fn parse_input(sess: Session, +cfg: ast::crate_cfg, input: input)
     }
 }
 
-pub fn time<T>(do_it: bool, what: ~str, thunk: fn() -> T) -> T {
+pub fn time<T>(do_it: bool, what: ~str, thunk: &fn() -> T) -> T {
     if !do_it { return thunk(); }
     let start = std::time::precise_time_s();
     let rv = thunk();

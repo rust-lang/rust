@@ -795,12 +795,12 @@ impl ebml_writer_helpers for writer::Encoder {
 }
 
 trait write_tag_and_id {
-    fn tag(&self, tag_id: c::astencode_tag, f: fn());
+    fn tag(&self, tag_id: c::astencode_tag, f: &fn());
     fn id(&self, id: ast::node_id);
 }
 
 impl write_tag_and_id for writer::Encoder {
-    fn tag(&self, tag_id: c::astencode_tag, f: fn()) {
+    fn tag(&self, tag_id: c::astencode_tag, f: &fn()) {
         do self.wr_tag(tag_id as uint) { f() }
     }
 

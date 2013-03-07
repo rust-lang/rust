@@ -397,7 +397,7 @@ pub impl<T> DList<T> {
     }
 
     /// Iterate over nodes.
-    pure fn each_node(@mut self, f: fn(@mut DListNode<T>) -> bool) {
+    pure fn each_node(@mut self, f: &fn(@mut DListNode<T>) -> bool) {
         let mut link = self.peek_n();
         while link.is_some() {
             let nobe = link.get();

@@ -124,7 +124,7 @@ struct AnnihilateStats {
     n_bytes_freed: uint
 }
 
-unsafe fn each_live_alloc(f: fn(box: *mut BoxRepr, uniq: bool) -> bool) {
+unsafe fn each_live_alloc(f: &fn(box: *mut BoxRepr, uniq: bool) -> bool) {
     use managed;
 
     let task: *Task = transmute(rustrt::rust_get_task());

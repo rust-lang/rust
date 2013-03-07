@@ -79,7 +79,7 @@ pub unsafe fn local_data_set<T:Durable>(
  */
 pub unsafe fn local_data_modify<T:Durable>(
     key: LocalDataKey<T>,
-    modify_fn: fn(Option<@T>) -> Option<@T>) {
+    modify_fn: &fn(Option<@T>) -> Option<@T>) {
 
     local_modify(rt::rust_get_task(), key, modify_fn)
 }

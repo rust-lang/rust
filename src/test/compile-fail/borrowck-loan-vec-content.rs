@@ -12,7 +12,7 @@
 // (locally rooted) mutable, unique vector, and that we then prevent
 // modifications to the contents.
 
-fn takes_imm_elt(_v: &int, f: fn()) {
+fn takes_imm_elt(_v: &int, f: &fn()) {
     f();
 }
 
@@ -29,7 +29,7 @@ fn has_mut_vec_but_tries_to_change_it() {
     }
 }
 
-fn takes_const_elt(_v: &const int, f: fn()) {
+fn takes_const_elt(_v: &const int, f: &fn()) {
     f();
 }
 

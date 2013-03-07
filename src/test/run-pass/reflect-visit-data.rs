@@ -19,7 +19,7 @@ use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
 
 /// Trait for visitor that wishes to reflect on data.
 trait movable_ptr {
-    fn move_ptr(adjustment: fn(*c_void) -> *c_void);
+    fn move_ptr(adjustment: &fn(*c_void) -> *c_void);
 }
 
 /// Helper function for alignment calculation.
@@ -479,7 +479,7 @@ struct Stuff {
 }
 
 pub impl my_visitor {
-    fn get<T>(f: fn(T)) {
+    fn get<T>(f: &fn(T)) {
         unsafe {
             f(*(self.ptr1 as *T));
         }
@@ -498,7 +498,7 @@ pub impl my_visitor {
 struct Inner<V> { inner: V }
 
 impl movable_ptr for my_visitor {
-    fn move_ptr(adjustment: fn(*c_void) -> *c_void) {
+    fn move_ptr(adjustment: &fn(*c_void) -> *c_void) {
         self.ptr1 = adjustment(self.ptr1);
         self.ptr2 = adjustment(self.ptr2);
     }

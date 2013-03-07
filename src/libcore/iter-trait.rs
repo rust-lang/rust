@@ -22,38 +22,38 @@ use self::inst::{IMPL_T, EACH, SIZE_HINT};
 
 impl<A> iter::BaseIter<A> for IMPL_T<A> {
     #[inline(always)]
-    pure fn each(&self, blk: fn(v: &A) -> bool) { EACH(self, blk) }
+    pure fn each(&self, blk: &fn(v: &A) -> bool) { EACH(self, blk) }
     #[inline(always)]
     pure fn size_hint(&self) -> Option<uint> { SIZE_HINT(self) }
 }
 
 impl<A> iter::ExtendedIter<A> for IMPL_T<A> {
     #[inline(always)]
-    pure fn eachi(&self, blk: fn(uint, v: &A) -> bool) {
+    pure fn eachi(&self, blk: &fn(uint, v: &A) -> bool) {
         iter::eachi(self, blk)
     }
     #[inline(always)]
-    pure fn all(&self, blk: fn(&A) -> bool) -> bool {
+    pure fn all(&self, blk: &fn(&A) -> bool) -> bool {
         iter::all(self, blk)
     }
     #[inline(always)]
-    pure fn any(&self, blk: fn(&A) -> bool) -> bool {
+    pure fn any(&self, blk: &fn(&A) -> bool) -> bool {
         iter::any(self, blk)
     }
     #[inline(always)]
-    pure fn foldl<B>(&self, b0: B, blk: fn(&B, &A) -> B) -> B {
+    pure fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
         iter::foldl(self, b0, blk)
     }
     #[inline(always)]
-    pure fn position(&self, f: fn(&A) -> bool) -> Option<uint> {
+    pure fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
         iter::position(self, f)
     }
     #[inline(always)]
-    pure fn map_to_vec<B>(&self, op: fn(&A) -> B) -> ~[B] {
+    pure fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
         iter::map_to_vec(self, op)
     }
     #[inline(always)]
-    pure fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: fn(&A) -> IB)
+    pure fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
         -> ~[B] {
         iter::flat_map_to_vec(self, op)
     }
@@ -69,13 +69,13 @@ impl<A:Eq> iter::EqIter<A> for IMPL_T<A> {
 
 impl<A:Copy> iter::CopyableIter<A> for IMPL_T<A> {
     #[inline(always)]
-    pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A] {
+    pure fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
     #[inline(always)]
     pure fn to_vec(&self) -> ~[A] { iter::to_vec(self) }
     #[inline(always)]
-    pure fn find(&self, f: fn(&A) -> bool) -> Option<A> {
+    pure fn find(&self, f: &fn(&A) -> bool) -> Option<A> {
         iter::find(self, f)
     }
 }

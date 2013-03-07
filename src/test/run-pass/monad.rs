@@ -11,11 +11,11 @@
 // xfail-fast
 
 trait vec_monad<A> {
-    fn bind<B:Copy>(f: fn(&A) -> ~[B]) -> ~[B];
+    fn bind<B:Copy>(f: &fn(&A) -> ~[B]) -> ~[B];
 }
 
 impl<A> vec_monad<A> for ~[A] {
-    fn bind<B:Copy>(f: fn(&A) -> ~[B]) -> ~[B] {
+    fn bind<B:Copy>(f: &fn(&A) -> ~[B]) -> ~[B] {
         let mut r = ~[];
         for self.each |elt| { r += f(elt); }
         r
@@ -23,11 +23,11 @@ impl<A> vec_monad<A> for ~[A] {
 }
 
 trait option_monad<A> {
-    fn bind<B>(f: fn(&A) -> Option<B>) -> Option<B>;
+    fn bind<B>(f: &fn(&A) -> Option<B>) -> Option<B>;
 }
 
 impl<A> option_monad<A> for Option<A> {
-    fn bind<B>(f: fn(&A) -> Option<B>) -> Option<B> {
+    fn bind<B>(f: &fn(&A) -> Option<B>) -> Option<B> {
         match self {
           Some(ref a) => { f(a) }
           None => { None }
