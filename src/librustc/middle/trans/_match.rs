@@ -145,12 +145,12 @@
 use core::prelude::*;
 
 use back::abi;
-use lib;
 use lib::llvm::{llvm, ValueRef, BasicBlockRef};
 use middle::const_eval;
 use middle::borrowck::root_map_key;
 use middle::pat_util::*;
 use middle::resolve::DefMap;
+use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
@@ -169,9 +169,7 @@ use util::common::indenter;
 
 use core::dvec::DVec;
 use core::dvec;
-use core::libc::c_ulonglong;
 use std::oldmap::HashMap;
-use syntax::ast::def_id;
 use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_util::path_to_ident;
@@ -191,15 +189,15 @@ pub enum Lit {
 // range)
 pub enum Opt {
     lit(Lit),
-    var(/* disr val */int, /* variant dids (enm, var) */(def_id, def_id)),
+    var(/* disr val */int, @adt::Repr),
     range(@ast::expr, @ast::expr),
     vec_len_eq(uint),
     vec_len_ge(uint)
 }
 
 pub fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
-    match (*a, *b) {
-      (lit(a), lit(b)) => {
+    match (a, b) {
+      (&lit(a), &lit(b)) => {
         match (a, b) {
             (UnitLikeStructLit(a), UnitLikeStructLit(b)) => a == b,
             _ => {
@@ -233,13 +231,13 @@ pub fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
             }
         }
       }
-      (range(a1, a2), range(b1, b2)) => {
+      (&range(a1, a2), &range(b1, b2)) => {
         const_eval::compare_lit_exprs(tcx, a1, b1) == 0 &&
         const_eval::compare_lit_exprs(tcx, a2, b2) == 0
       }
-      (var(a, _), var(b, _)) => a == b,
-      (vec_len_eq(a), vec_len_eq(b)) => a == b,
-      (vec_len_ge(a), vec_len_ge(b)) => a == b,
+      (&var(a, _), &var(b, _)) => a == b,
+      (&vec_len_eq(a), &vec_len_eq(b)) => a == b,
+      (&vec_len_ge(a), &vec_len_ge(b)) => a == b,
       _ => false
     }
 }
@@ -267,8 +265,8 @@ pub fn trans_opt(bcx: block, o: &Opt) -> opt_result {
             let llval = consts::get_const_val(bcx.ccx(), lit_id);
             return single_result(rslt(bcx, llval));
         }
-        var(disr_val, _) => {
-            return single_result(rslt(bcx, C_int(ccx, disr_val)));
+        var(disr_val, repr) => {
+            return adt::trans_case(bcx, repr, disr_val);
         }
         range(l1, l2) => {
             return range_result(rslt(bcx, consts::const_expr(ccx, l1)),
@@ -283,13 +281,16 @@ pub fn trans_opt(bcx: block, o: &Opt) -> opt_result {
     }
 }
 
-pub fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> Opt {
-    match tcx.def_map.get(&pat_id) {
+pub fn variant_opt(bcx: block, pat_id: ast::node_id)
+    -> Opt {
+    let ccx = bcx.ccx();
+    match ccx.tcx.def_map.get(&pat_id) {
         ast::def_variant(enum_id, var_id) => {
-            let variants = ty::enum_variants(tcx, enum_id);
+            let variants = ty::enum_variants(ccx.tcx, enum_id);
             for vec::each(*variants) |v| {
                 if var_id == v.id {
-                    return var(v.disr_val, (enum_id, var_id));
+                    return var(v.disr_val,
+                               adt::represent_node(bcx, pat_id))
                 }
             }
             ::core::util::unreachable();
@@ -298,7 +299,7 @@ pub fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> Opt {
             return lit(UnitLikeStructLit(pat_id));
         }
         _ => {
-            tcx.sess.bug(~"non-variant or struct in variant_opt()");
+            ccx.sess.bug(~"non-variant or struct in variant_opt()");
         }
     }
 }
@@ -505,7 +506,7 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
     do enter_match(bcx, tcx.def_map, m, col, val) |p| {
         match /*bad*/copy p.node {
             ast::pat_enum(_, subpats) => {
-                if opt_eq(tcx, &variant_opt(tcx, p.id), opt) {
+                if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
                     Some(option::get_or_default(subpats,
                                              vec::from_elem(variant_size,
                                                             dummy)))
@@ -515,7 +516,7 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
             }
             ast::pat_ident(_, _, None)
                     if pat_is_variant_or_struct(tcx.def_map, p) => {
-                if opt_eq(tcx, &variant_opt(tcx, p.id), opt) {
+                if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
                     Some(~[])
                 } else {
                     None
@@ -537,7 +538,7 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
                 if opt_eq(tcx, &range(l1, l2), opt) {Some(~[])} else {None}
             }
             ast::pat_struct(_, field_pats, _) => {
-                if opt_eq(tcx, &variant_opt(tcx, p.id), opt) {
+                if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
                     // Look up the struct variant ID.
                     let struct_id;
                     match tcx.def_map.get(&p.id) {
@@ -762,8 +763,9 @@ pub fn enter_region(bcx: block,
 // Returns the options in one column of matches. An option is something that
 // needs to be conditionally matched at runtime; for example, the discriminant
 // on a set of enum variants or a literal.
-pub fn get_options(ccx: @CrateContext, m: &[@Match], col: uint) -> ~[Opt] {
-    fn add_to_set(tcx: ty::ctxt, set: &DVec<Opt>, val: Opt) {
+pub fn get_options(bcx: block, m: &[@Match], col: uint) -> ~[Opt] {
+    let ccx = bcx.ccx();
+    fn add_to_set(tcx: ty::ctxt, set: &DVec<Opt>, +val: Opt) {
         if set.any(|l| opt_eq(tcx, l, &val)) {return;}
         set.push(val);
     }
@@ -781,7 +783,7 @@ pub fn get_options(ccx: @CrateContext, m: &[@Match], col: uint) -> ~[Opt] {
                 match ccx.tcx.def_map.find(&cur.id) {
                     Some(ast::def_variant(*)) => {
                         add_to_set(ccx.tcx, &found,
-                                   variant_opt(ccx.tcx, cur.id));
+                                   variant_opt(bcx, cur.id));
                     }
                     Some(ast::def_struct(*)) => {
                         add_to_set(ccx.tcx, &found,
@@ -800,7 +802,7 @@ pub fn get_options(ccx: @CrateContext, m: &[@Match], col: uint) -> ~[Opt] {
                 match ccx.tcx.def_map.find(&cur.id) {
                     Some(ast::def_variant(*)) => {
                         add_to_set(ccx.tcx, &found,
-                                   variant_opt(ccx.tcx, cur.id));
+                                   variant_opt(bcx, cur.id));
                     }
                     _ => {}
                 }
@@ -827,34 +829,13 @@ pub struct ExtractedBlock {
 }
 
 pub fn extract_variant_args(bcx: block,
-                            pat_id: ast::node_id,
-                            vdefs: (def_id, def_id),
+                            repr: &adt::Repr,
+                            disr_val: int,
                             val: ValueRef)
-                         -> ExtractedBlock {
-    let (enm, evar) = vdefs;
+    -> ExtractedBlock {
     let _icx = bcx.insn_ctxt("match::extract_variant_args");
-    let ccx = *bcx.fcx.ccx;
-    let enum_ty_substs = match ty::get(node_id_type(bcx, pat_id)).sty {
-      ty::ty_enum(id, ref substs) => {
-        assert id == enm;
-        /*bad*/copy (*substs).tps
-      }
-      _ => bcx.sess().bug(~"extract_variant_args: pattern has non-enum type")
-    };
-    let mut blobptr = val;
-    let variants = ty::enum_variants(ccx.tcx, enm);
-    let size = ty::enum_variant_with_id(ccx.tcx, enm,
-                                        evar).args.len();
-    if size > 0u && (*variants).len() != 1u {
-        let enumptr =
-            PointerCast(bcx, val, T_opaque_enum_ptr(ccx));
-        blobptr = GEPi(bcx, enumptr, [0u, 1u]);
-    }
-    let vdefs_tg = enm;
-    let vdefs_var = evar;
-    let args = do vec::from_fn(size) |i| {
-        GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
-                 /*bad*/copy enum_ty_substs, i)
+    let args = do vec::from_fn(adt::num_args(repr, disr_val)) |i| {
+        adt::trans_field_ptr(bcx, repr, val, disr_val, i)
     };
 
     ExtractedBlock { vals: args, bcx: bcx }
@@ -1283,14 +1264,14 @@ pub fn compile_submatch(bcx: block,
     }
 
     bcx = root_pats_as_necessary(bcx, m, col, val);
-
     let rec_fields = collect_record_or_struct_fields(bcx, m, col);
     if rec_fields.len() > 0 {
         let pat_ty = node_id_type(bcx, pat_id);
-        do expr::with_field_tys(tcx, pat_ty, None) |_has_dtor, field_tys| {
+        let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
+        do expr::with_field_tys(tcx, pat_ty, None) |discr, field_tys| {
             let rec_vals = rec_fields.map(|field_name| {
                 let ix = ty::field_idx_strict(tcx, *field_name, field_tys);
-                GEPi(bcx, val, struct_field(ix))
+                adt::trans_field_ptr(bcx, pat_repr, val, discr, ix)
             });
             compile_submatch(
                 bcx,
@@ -1303,11 +1284,14 @@ pub fn compile_submatch(bcx: block,
 
     if any_tup_pat(m, col) {
         let tup_ty = node_id_type(bcx, pat_id);
+        let tup_repr = adt::represent_type(bcx.ccx(), tup_ty);
         let n_tup_elts = match /*bad*/copy ty::get(tup_ty).sty {
           ty::ty_tup(elts) => elts.len(),
           _ => ccx.sess.bug(~"non-tuple type in tuple pattern")
         };
-        let tup_vals = vec::from_fn(n_tup_elts, |i| GEPi(bcx, val, [0u, i]));
+        let tup_vals = do vec::from_fn(n_tup_elts) |i| {
+            adt::trans_field_ptr(bcx, tup_repr, val, 0, i)
+        };
         compile_submatch(bcx, enter_tup(bcx, dm, m, col, val, n_tup_elts),
                          vec::append(tup_vals, vals_left), chk);
         return;
@@ -1326,8 +1310,10 @@ pub fn compile_submatch(bcx: block,
             }
         }
 
-        let llstructvals = vec::from_fn(
-            struct_element_count, |i| GEPi(bcx, val, struct_field(i)));
+        let struct_repr = adt::represent_type(bcx.ccx(), struct_ty);
+        let llstructvals = do vec::from_fn(struct_element_count) |i| {
+            adt::trans_field_ptr(bcx, struct_repr, val, 0, i)
+        };
         compile_submatch(bcx,
                          enter_tuple_struct(bcx, dm, m, col, val,
                                             struct_element_count),
@@ -1365,37 +1351,15 @@ pub fn compile_submatch(bcx: block,
     }
 
     // Decide what kind of branch we need
-    let opts = get_options(ccx, m, col);
+    let opts = get_options(bcx, m, col);
     let mut kind = no_branch;
     let mut test_val = val;
     if opts.len() > 0u {
         match opts[0] {
-            var(_, (enm, _)) => {
-                let variants = ty::enum_variants(tcx, enm);
-                if variants.len() == 1 {
-                    kind = single;
-                } else {
-                    let enumptr =
-                        PointerCast(bcx, val, T_opaque_enum_ptr(ccx));
-                    let discrimptr = GEPi(bcx, enumptr, [0u, 0u]);
-
-
-                    assert variants.len() > 1;
-                    let min_discrim = do variants.foldr(0) |&x, y| {
-                        int::min(x.disr_val, y)
-                    };
-                    let max_discrim = do variants.foldr(0) |&x, y| {
-                        int::max(x.disr_val, y)
-                    };
-
-                    test_val = LoadRangeAssert(bcx, discrimptr,
-                                               min_discrim as c_ulonglong,
-                                               (max_discrim + 1)
-                                               as c_ulonglong,
-                                               lib::llvm::True);
-
-                    kind = switch;
-                }
+            var(_, repr) => {
+                let (the_kind, val_opt) = adt::trans_switch(bcx, repr, val);
+                kind = the_kind;
+                for val_opt.each |&tval| { test_val = tval; }
             }
             lit(_) => {
                 let pty = node_id_type(bcx, pat_id);
@@ -1544,11 +1508,12 @@ pub fn compile_submatch(bcx: block,
         let mut size = 0u;
         let mut unpacked = ~[];
         match *opt {
-            var(_, vdef) => {
-                let args = extract_variant_args(opt_cx, pat_id, vdef, val);
-                size = args.vals.len();
-                unpacked = /*bad*/copy args.vals;
-                opt_cx = args.bcx;
+            var(disr_val, repr) => {
+                let ExtractedBlock {vals: argvals, bcx: new_bcx} =
+                    extract_variant_args(opt_cx, repr, disr_val, val);
+                size = argvals.len();
+                unpacked = argvals;
+                opt_cx = new_bcx;
             }
             vec_len_eq(n) | vec_len_ge(n) => {
                 let tail = match *opt {
@@ -1757,10 +1722,15 @@ pub fn bind_irrefutable_pat(bcx: block,
         }
         ast::pat_enum(_, sub_pats) => {
             match bcx.tcx().def_map.find(&pat.id) {
-                Some(ast::def_variant(*)) => {
-                    let pat_def = ccx.tcx.def_map.get(&pat.id);
-                    let vdefs = ast_util::variant_def_ids(pat_def);
-                    let args = extract_variant_args(bcx, pat.id, vdefs, val);
+                Some(ast::def_variant(enum_id, var_id)) => {
+                    let repr = adt::represent_node(bcx, pat.id);
+                    let vinfo = ty::enum_variant_with_id(ccx.tcx,
+                                                         enum_id,
+                                                         var_id);
+                    let args = extract_variant_args(bcx,
+                                                    repr,
+                                                    vinfo.disr_val,
+                                                    val);
                     for sub_pats.each |sub_pat| {
                         for vec::eachi(args.vals) |i, argval| {
                             bcx = bind_irrefutable_pat(bcx,
@@ -1777,9 +1747,11 @@ pub fn bind_irrefutable_pat(bcx: block,
                             // This is a unit-like struct. Nothing to do here.
                         }
                         Some(elems) => {
-                            // This is the tuple variant case.
+                            // This is the tuple struct case.
+                            let repr = adt::represent_node(bcx, pat.id);
                             for vec::eachi(elems) |i, elem| {
-                                let fldptr = GEPi(bcx, val, struct_field(i));
+                                let fldptr = adt::trans_field_ptr(bcx, repr,
+                                                            val, 0, i);
                                 bcx = bind_irrefutable_pat(bcx,
                                                            *elem,
                                                            fldptr,
@@ -1797,10 +1769,12 @@ pub fn bind_irrefutable_pat(bcx: block,
         ast::pat_rec(fields, _) | ast::pat_struct(_, fields, _) => {
             let tcx = bcx.tcx();
             let pat_ty = node_id_type(bcx, pat.id);
-            do expr::with_field_tys(tcx, pat_ty, None) |_hd, field_tys| {
+            let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
+            do expr::with_field_tys(tcx, pat_ty, None) |discr, field_tys| {
                 for vec::each(fields) |f| {
                     let ix = ty::field_idx_strict(tcx, f.ident, field_tys);
-                    let fldptr = GEPi(bcx, val, struct_field(ix));
+                    let fldptr = adt::trans_field_ptr(bcx, pat_repr, val,
+                                                discr, ix);
                     bcx = bind_irrefutable_pat(bcx,
                                                f.pat,
                                                fldptr,
@@ -1810,8 +1784,9 @@ pub fn bind_irrefutable_pat(bcx: block,
             }
         }
         ast::pat_tup(elems) => {
+            let repr = adt::represent_node(bcx, pat.id);
             for vec::eachi(elems) |i, elem| {
-                let fldptr = GEPi(bcx, val, [0u, i]);
+                let fldptr = adt::trans_field_ptr(bcx, repr, val, 0, i);
                 bcx = bind_irrefutable_pat(bcx,
                                            *elem,
                                            fldptr,

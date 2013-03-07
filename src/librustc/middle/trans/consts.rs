@@ -12,6 +12,7 @@ use core::prelude::*;
 
 use lib::llvm::{llvm, ValueRef, TypeRef, Bool, True, False};
 use middle::const_eval;
+use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::base::get_insn_ctxt;
 use middle::trans::common::*;
@@ -100,20 +101,6 @@ pub fn const_deref(cx: @CrateContext, v: ValueRef) -> ValueRef {
         assert llvm::LLVMIsGlobalConstant(v) == True;
         let v = llvm::LLVMGetInitializer(v);
         v
-    }
-}
-
-pub fn const_get_elt(cx: @CrateContext, v: ValueRef, us: &[c_uint])
-                  -> ValueRef {
-    unsafe {
-        let r = do vec::as_imm_buf(us) |p, len| {
-            llvm::LLVMConstExtractValue(v, p, len as c_uint)
-        };
-
-        debug!("const_get_elt(v=%s, us=%?, r=%s)",
-               val_str(cx.tn, v), us, val_str(cx.tn, r));
-
-        return r;
     }
 }
 
@@ -253,16 +240,12 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
           }
           ast::expr_field(base, field, _) => {
               let bt = ty::expr_ty(cx.tcx, base);
+              let brepr = adt::represent_type(cx, bt);
               let bv = const_expr(cx, base);
               let (bt, bv) = const_autoderef(cx, bt, bv);
-              do expr::with_field_tys(cx.tcx, bt, None) |_, field_tys| {
+              do expr::with_field_tys(cx.tcx, bt, None) |discr, field_tys| {
                   let ix = ty::field_idx_strict(cx.tcx, field, field_tys);
-
-                  // Note: ideally, we'd use `struct_field()` here instead
-                  // of hardcoding [0, ix], but we can't because it yields
-                  // the wrong type and also inserts an extra 0 that is
-                  // not needed in the constant variety:
-                  const_get_elt(cx, bv, [0, ix as c_uint])
+                  adt::const_get_field(cx, brepr, bv, discr, ix)
               }
           }
 
@@ -342,24 +325,8 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
               }
               (expr::cast_enum, expr::cast_integral) |
               (expr::cast_enum, expr::cast_float)  => {
-                let def = ty::resolve_expr(cx.tcx, base);
-                let (enum_did, variant_did) = match def {
-                    ast::def_variant(enum_did, variant_did) => {
-                        (enum_did, variant_did)
-                    }
-                    _ => cx.sess.bug(~"enum cast source is not enum")
-                };
-                // Note that we know this is a C-like (nullary) enum
-                // variant or we wouldn't have gotten here
-                let variants = ty::enum_variants(cx.tcx, enum_did);
-                let iv = if variants.len() == 1 {
-                    // Univariants don't have a discriminant field,
-                    // because there's only one value it could have:
-                    C_integral(T_i64(),
-                               variants[0].disr_val as u64, True)
-                } else {
-                    base::get_discrim_val(cx, e.span, enum_did, variant_did)
-                };
+                let repr = adt::represent_type(cx, basety);
+                let iv = C_int(cx, adt::const_get_discrim(cx, repr, v));
                 let ety_cast = expr::cast_type_kind(ety);
                 match ety_cast {
                     expr::cast_integral => {
@@ -387,18 +354,22 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
             gv
           }
           ast::expr_tup(es) => {
-            C_struct(es.map(|e| const_expr(cx, *e)))
+              let ety = ty::expr_ty(cx.tcx, e);
+              let repr = adt::represent_type(cx, ety);
+              adt::trans_const(cx, repr, 0, es.map(|e| const_expr(cx, *e)))
           }
           ast::expr_rec(ref fs, None) => {
-              C_struct([C_struct(
-                  (*fs).map(|f| const_expr(cx, f.node.expr)))])
-          }
-          ast::expr_struct(_, ref fs, _) => {
               let ety = ty::expr_ty(cx.tcx, e);
-              let cs = do expr::with_field_tys(cx.tcx,
-                                               ety,
-                                               None) |_hd, field_tys| {
-                  field_tys.map(|field_ty| {
+              let repr = adt::represent_type(cx, ety);
+              adt::trans_const(cx, repr, 0,
+                               fs.map(|f| const_expr(cx, f.node.expr)))
+          }
+          ast::expr_struct(_, ref fs, None) => {
+              let ety = ty::expr_ty(cx.tcx, e);
+              let repr = adt::represent_type(cx, ety);
+              do expr::with_field_tys(cx.tcx, ety, Some(e.id))
+                  |discr, field_tys| {
+                  let cs = field_tys.map(|field_ty| {
                       match fs.find(|f| field_ty.ident == f.node.ident) {
                           Some(ref f) => const_expr(cx, (*f).node.expr),
                           None => {
@@ -406,9 +377,9 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                                   e.span, ~"missing struct field");
                           }
                       }
-                  })
-              };
-              C_struct([C_struct(cs)])
+                  });
+                  adt::trans_const(cx, repr, discr, cs)
+              }
           }
           ast::expr_vec(es, ast::m_imm) => {
             let (v, _, _) = const_vec(cx, e, es);
@@ -466,25 +437,12 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                     get_const_val(cx, def_id)
                 }
                 Some(ast::def_variant(enum_did, variant_did)) => {
-                    // Note that we know this is a C-like (nullary) enum
-                    // variant or we wouldn't have gotten here -- the constant
-                    // checker forbids paths that don't map to C-like enum
-                    // variants.
-                    if ty::enum_is_univariant(cx.tcx, enum_did) {
-                        // Univariants have no discriminant field.
-                        C_struct(~[])
-                    } else {
-                    let lldiscrim = base::get_discrim_val(cx, e.span,
-                                                          enum_did,
-                                                          variant_did);
-                    // However, we still have to pad it out to the
-                    // size of the full enum; see the expr_call case,
-                    // below.
                     let ety = ty::expr_ty(cx.tcx, e);
-                    let size = machine::static_size_of_enum(cx, ety);
-                    let padding = C_null(T_array(T_i8(), size));
-                    C_struct(~[lldiscrim, padding])
-                }
+                    let repr = adt::represent_type(cx, ety);
+                    let vinfo = ty::enum_variant_with_id(cx.tcx,
+                                                         enum_did,
+                                                         variant_did);
+                    adt::trans_const(cx, repr, vinfo.disr_val, [])
                 }
                 Some(ast::def_struct(_)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
@@ -492,52 +450,31 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                     C_null(llty)
                 }
                 _ => {
-                    cx.sess.span_bug(e.span,
-                                     ~"expected a const, fn, or variant def")
+                    cx.sess.span_bug(e.span, ~"expected a const, fn, \
+                                               struct, or variant def")
                 }
             }
           }
           ast::expr_call(callee, args, _) => {
-            match cx.tcx.def_map.find(&callee.id) {
-                Some(ast::def_struct(def_id)) => {
-                    let llstructbody =
-                        C_struct(args.map(|a| const_expr(cx, *a)));
-                    if ty::ty_dtor(cx.tcx, def_id).is_present() {
-                        C_struct(~[ llstructbody, C_u8(0) ])
-                    } else {
-                        C_struct(~[ llstructbody ])
-                    }
-                }
-            Some(ast::def_variant(tid, vid)) => {
-                let ety = ty::expr_ty(cx.tcx, e);
-                let univar = ty::enum_is_univariant(cx.tcx, tid);
-                let size = machine::static_size_of_enum(cx, ety);
-
-                let discrim = base::get_discrim_val(cx, e.span, tid, vid);
-                let c_args = C_struct(args.map(|a| const_expr(cx, *a)));
-
-                // FIXME (#1645): enum body alignment is generaly wrong.
-                if !univar {
-                    // Pad out the data to the size of its type_of;
-                    // this is necessary if the enum is contained
-                    // within an aggregate (tuple, struct, vector) so
-                    // that the next element is at the right offset.
-                    let actual_size =
-                        machine::llsize_of_real(cx, llvm::LLVMTypeOf(c_args));
-                    let padding =
-                        C_null(T_array(T_i8(), size - actual_size));
-                    // A packed_struct has an alignment of 1; thus,
-                    // wrapping one around c_args will misalign it the
-                    // same way we normally misalign enum bodies
-                    // without affecting its internal alignment or
-                    // changing the alignment of the enum.
-                    C_struct(~[discrim, C_packed_struct(~[c_args]), padding])
-                } else {
-                    C_struct(~[c_args])
-                }
-            }
-                _ => cx.sess.span_bug(e.span, ~"expected a struct def")
-            }
+              match cx.tcx.def_map.find(&callee.id) {
+                  Some(ast::def_struct(_)) => {
+                      let ety = ty::expr_ty(cx.tcx, e);
+                      let repr = adt::represent_type(cx, ety);
+                      adt::trans_const(cx, repr, 0,
+                                       args.map(|a| const_expr(cx, *a)))
+                  }
+                  Some(ast::def_variant(enum_did, variant_did)) => {
+                      let ety = ty::expr_ty(cx.tcx, e);
+                      let repr = adt::represent_type(cx, ety);
+                      let vinfo = ty::enum_variant_with_id(cx.tcx,
+                                                           enum_did,
+                                                           variant_did);
+                      adt::trans_const(cx, repr, vinfo.disr_val,
+                                       args.map(|a| const_expr(cx, *a)))
+                  }
+                  _ => cx.sess.span_bug(e.span, ~"expected a struct or \
+                                                  variant def")
+              }
           }
           ast::expr_paren(e) => { return const_expr(cx, e); }
           _ => cx.sess.span_bug(e.span,

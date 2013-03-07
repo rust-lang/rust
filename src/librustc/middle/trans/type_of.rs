@@ -11,15 +11,14 @@
 
 use lib::llvm::llvm;
 use lib::llvm::{TypeRef};
+use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::common;
-use middle::trans::machine;
 use middle::ty;
 use util::ppaux;
 
 use core::option::None;
-use core::vec;
 use syntax::ast;
 
 pub fn type_of_explicit_arg(ccx: @CrateContext, arg: ty::arg) -> TypeRef {
@@ -143,31 +142,11 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
         ty::ty_unboxed_vec(mt) => T_vec(cx, sizing_type_of(cx, mt.ty)),
 
-        ty::ty_tup(ref elems) => {
-            T_struct(elems.map(|&t| sizing_type_of(cx, t)))
+        ty::ty_tup(*) | ty::ty_rec(*) | ty::ty_struct(*)
+        | ty::ty_enum(*) => {
+            let repr = adt::represent_type(cx, t);
+            T_struct(adt::sizing_fields_of(cx, repr))
         }
-
-        ty::ty_rec(ref fields) => {
-            T_struct(fields.map(|f| sizing_type_of(cx, f.mt.ty)))
-        }
-
-        ty::ty_struct(def_id, ref substs) => {
-            let fields = ty::lookup_struct_fields(cx.tcx, def_id);
-            let lltype = T_struct(fields.map(|field| {
-                let field_type = ty::lookup_field_type(cx.tcx,
-                                                       def_id,
-                                                       field.id,
-                                                       substs);
-                sizing_type_of(cx, field_type)
-            }));
-            if ty::ty_dtor(cx.tcx, def_id).is_present() {
-                T_struct(~[lltype, T_i8()])
-            } else {
-                lltype
-            }
-        }
-
-        ty::ty_enum(def_id, _) => T_struct(enum_body_types(cx, def_id, t)),
 
         ty::ty_self | ty::ty_infer(*) | ty::ty_param(*) | ty::ty_err(*) => {
             cx.tcx.sess.bug(
@@ -257,28 +236,13 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
         T_array(type_of(cx, mt.ty), n)
       }
 
-      ty::ty_rec(fields) => {
-        let mut tys: ~[TypeRef] = ~[];
-        for vec::each(fields) |f| {
-            let mt_ty = f.mt.ty;
-            tys.push(type_of(cx, mt_ty));
-        }
-
-        // n.b.: introduce an extra layer of indirection to match
-        // structs
-        T_struct(~[T_struct(tys)])
-      }
-
       ty::ty_bare_fn(_) => T_ptr(type_of_fn_from_ty(cx, t)),
       ty::ty_closure(_) => T_fn_pair(cx, type_of_fn_from_ty(cx, t)),
       ty::ty_trait(_, _, vstore) => T_opaque_trait(cx, vstore),
       ty::ty_type => T_ptr(cx.tydesc_type),
-      ty::ty_tup(elts) => {
-        let mut tys = ~[];
-        for vec::each(elts) |elt| {
-            tys.push(type_of(cx, *elt));
-        }
-        T_struct(tys)
+      ty::ty_tup(*) | ty::ty_rec(*) => {
+          let repr = adt::represent_type(cx, t);
+          T_struct(adt::fields_of(cx, repr))
       }
       ty::ty_opaque_closure_ptr(_) => T_opaque_box_ptr(cx),
       ty::ty_struct(did, ref substs) => {
@@ -301,57 +265,14 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
     // If this was an enum or struct, fill in the type now.
     match ty::get(t).sty {
-      ty::ty_enum(did, _) => {
-        fill_type_of_enum(cx, did, t, llty);
-      }
-      ty::ty_struct(did, ref substs) => {
-        // Only instance vars are record fields at runtime.
-        let fields = ty::lookup_struct_fields(cx.tcx, did);
-        let mut tys = do vec::map(fields) |f| {
-            let t = ty::lookup_field_type(cx.tcx, did, f.id, substs);
-            type_of(cx, t)
-        };
-
-        // include a byte flag if there is a dtor so that we know when we've
-        // been dropped
-        if ty::ty_dtor(cx.tcx, did).is_present() {
-            common::set_struct_body(llty, ~[T_struct(tys), T_i8()]);
-        } else {
-            common::set_struct_body(llty, ~[T_struct(tys)]);
-        }
+      ty::ty_enum(*) | ty::ty_struct(*) => {
+          let repr = adt::represent_type(cx, t);
+          common::set_struct_body(llty, adt::fields_of(cx, repr));
       }
       _ => ()
     }
 
     return llty;
-}
-
-pub fn enum_body_types(cx: @CrateContext, did: ast::def_id, t: ty::t)
-                    -> ~[TypeRef] {
-    let univar = ty::enum_is_univariant(cx.tcx, did);
-    if !univar {
-        let size = machine::static_size_of_enum(cx, t);
-        ~[T_enum_discrim(cx), T_array(T_i8(), size)]
-    }
-    else {
-        // Use the actual fields, so we get the alignment right.
-        match ty::get(t).sty {
-            ty::ty_enum(_, ref substs) => {
-                do ty::enum_variants(cx.tcx, did)[0].args.map |&field_ty| {
-                    sizing_type_of(cx, ty::subst(cx.tcx, substs, field_ty))
-                }
-            }
-            _ => cx.sess.bug(~"enum is not an enum")
-        }
-    }
-}
-
-pub fn fill_type_of_enum(cx: @CrateContext,
-                         did: ast::def_id,
-                         t: ty::t,
-                         llty: TypeRef) {
-    debug!("type_of_enum %?: %?", t, ty::get(t));
-    common::set_struct_body(llty, enum_body_types(cx, did, t));
 }
 
 // Want refinements! (Or case classes, I guess
