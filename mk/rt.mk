@@ -157,6 +157,7 @@ LIBUV_DEPS := $$(wildcard \
               $$(S)src/libuv/*/*/*/*)
 endif
 
+# XXX: Shouldn't need platform-specific conditions here
 ifdef CFG_WINDOWSY_$(1)
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
@@ -168,9 +169,9 @@ $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
 		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
 		LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
-		CC="$$(CFG_GCCISH_CROSS_PREFIX_$(1))$$(CC)" \
-		CXX="$$(CFG_GCCISH_CROSS_PREFIX_$(1))$$(CXX)" \
-		AR="$$(CFG_GCCISH_CROSS_PREFIX_$(1))$$(AR)" \
+		CC="$$(CC_$(1))" \
+		CXX="$$(CXX_$(1))" \
+		AR="$$(AR_$(1))" \
 		BUILDTYPE=Release \
 		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
 		host=android OS=linux \
