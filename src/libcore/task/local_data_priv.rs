@@ -12,7 +12,6 @@
 
 use cast;
 use cmp::Eq;
-use dvec;
 use libc;
 use option;
 use prelude::*;
@@ -35,11 +34,11 @@ impl Eq for LocalData {
     pure fn ne(&self, other: &@LocalData) -> bool { !(*self).eq(other) }
 }
 
-// We use dvec because it's the best data structure in core. If TLS is used
-// heavily in future, this could be made more efficient with a proper map.
+// If TLS is used heavily in future, this could be made more efficient with a
+// proper map.
 type TaskLocalElement = (*libc::c_void, *libc::c_void, LocalData);
 // Has to be a pointer at outermost layer; the foreign call returns void *.
-type TaskLocalMap = @dvec::DVec<Option<TaskLocalElement>>;
+type TaskLocalMap = @mut ~[Option<TaskLocalElement>];
 
 extern fn cleanup_task_local_map(map_ptr: *libc::c_void) {
     unsafe {
@@ -60,17 +59,21 @@ unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
     // drop when they finish. No "re-storing after modifying" is needed.
     let map_ptr = rt::rust_get_task_local_data(task);
     if map_ptr.is_null() {
-        let map: TaskLocalMap = @dvec::DVec();
+        let map: TaskLocalMap = @mut ~[];
         // Use reinterpret_cast -- transmute would take map away from us also.
         rt::rust_set_task_local_data(
             task, cast::reinterpret_cast(&map));
         rt::rust_task_local_data_atexit(task, cleanup_task_local_map);
         // Also need to reference it an extra time to keep it for now.
-        cast::bump_box_refcount(map);
+        let nonmut = cast::transmute::<TaskLocalMap,
+                                       @~[Option<TaskLocalElement>]>(map);
+        cast::bump_box_refcount(nonmut);
         map
     } else {
         let map = cast::transmute(map_ptr);
-        cast::bump_box_refcount(map);
+        let nonmut = cast::transmute::<TaskLocalMap,
+                                       @~[Option<TaskLocalElement>]>(map);
+        cast::bump_box_refcount(nonmut);
         map
     }
 }
@@ -118,7 +121,7 @@ unsafe fn local_get_helper<T:Durable>(
         let data: @T = cast::transmute(data_ptr);
         cast::bump_box_refcount(data);
         if do_pop {
-            (*map).set_elt(index, None);
+            map[index] = None;
         }
         data
     }
@@ -159,13 +162,13 @@ pub unsafe fn local_set<T:Durable>(
         Some((index, _old_data_ptr)) => {
             // Key already had a value set, _old_data_ptr, whose reference
             // will get dropped when the local_data box is overwritten.
-            (*map).set_elt(index, new_entry);
+            map[index] = new_entry;
         }
         None => {
             // Find an empty slot. If not, grow the vector.
             match (*map).position(|x| x.is_none()) {
-                Some(empty_index) => (*map).set_elt(empty_index, new_entry),
-                None => (*map).push(new_entry)
+                Some(empty_index) => { map[empty_index] = new_entry; }
+                None => { map.push(new_entry); }
             }
         }
     }
