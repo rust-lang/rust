@@ -3040,7 +3040,7 @@ pub fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
     }
 }
 
-fn resolve_expr(tcx: ctxt, expr: @ast::expr) -> ast::def {
+pub fn resolve_expr(tcx: ctxt, expr: @ast::expr) -> ast::def {
     match tcx.def_map.find(&expr.id) {
         Some(def) => def,
         None => {
