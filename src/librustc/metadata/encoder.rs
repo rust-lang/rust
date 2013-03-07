@@ -18,6 +18,7 @@ use metadata::csearch;
 use metadata::cstore;
 use metadata::decoder;
 use metadata::tyencode;
+use middle::astencode;
 use middle::resolve;
 use middle::ty::node_id_to_type;
 use middle::ty;
@@ -617,7 +618,7 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
     let must_write =
         match item.node {
           item_enum(_, _) | item_impl(*) | item_trait(*) | item_struct(*) |
-          item_mod(*) | item_foreign_mod(*) => true,
+          item_mod(*) | item_foreign_mod(*) | item_const(*) => true,
           _ => false
         };
     if !must_write && !reachable(ecx, item.id) { return; }
@@ -640,6 +641,18 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
+        astencode::encode_inlined_item(ecx, ebml_w, path,
+                                       ii_item(item),
+                                       astencode::Maps {
+                                         mutbl_map: HashMap(),
+                                         root_map: HashMap(),
+                                         last_use_map: HashMap(),
+                                         method_map: HashMap(),
+                                         vtable_map: HashMap(),
+                                         write_guard_map: HashMap(),
+                                         moves_map: HashMap(),
+                                         capture_map: HashMap()
+                                       });
         ebml_w.end_tag();
       }
       item_fn(_, purity, ref generics, _) => {

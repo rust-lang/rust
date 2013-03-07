@@ -126,17 +126,11 @@ pub fn check_expr(sess: Session,
                               items without type parameters");
             }
             match def_map.find(&e.id) {
-                Some(def_variant(_, _)) |
-                Some(def_struct(_)) => { }
+              Some(def_const(_)) |
+              Some(def_fn(_, _)) |
+              Some(def_variant(_, _)) |
+              Some(def_struct(_)) => { }
 
-                Some(def_const(def_id)) |
-                Some(def_fn(def_id, _)) => {
-                if !ast_util::is_local(def_id) {
-                    sess.span_err(
-                        e.span, ~"paths in constants may only refer to \
-                                 crate-local constants or functions");
-                }
-              }
               Some(def) => {
                 debug!("(checking const) found bad def: %?", def);
                 sess.span_err(
@@ -248,11 +242,16 @@ pub fn check_item_recursion(sess: Session,
           expr_path(*) => {
             match env.def_map.find(&e.id) {
               Some(def_const(def_id)) => {
-                match env.ast_map.get(&def_id.node) {
-                  ast_map::node_item(it, _) => {
-                    (v.visit_item)(it, env, v);
+                if !ast_util::is_local(def_id) {
+                    //XXXjdm need to check that a::foo doesn't
+                    //       refer to b::bar which refers to a::foo
+                } else {
+                  match env.ast_map.get(&def_id.node) {
+                    ast_map::node_item(it, _) => {
+                      (v.visit_item)(it, env, v);
+                    }
+                    _ => fail!(~"const not bound to an item")
                   }
-                  _ => fail!(~"const not bound to an item")
                 }
               }
               _ => ()

@@ -11,12 +11,14 @@
 use core::prelude::*;
 
 use lib::llvm::{llvm, ValueRef, True, TypeRef, False};
+use metadata::csearch;
 use middle::const_eval;
 use middle::trans::base;
 use middle::trans::base::get_insn_ctxt;
 use middle::trans::common::*;
 use middle::trans::consts;
 use middle::trans::expr;
+use middle::trans::inline;
 use middle::trans::machine;
 use middle::trans::type_of;
 use middle::ty;
@@ -133,10 +135,12 @@ pub fn const_autoderef(cx: @CrateContext, ty: ty::t, v: ValueRef)
 }
 
 pub fn get_const_val(cx: @CrateContext, def_id: ast::def_id) -> ValueRef {
-    if !ast_util::is_local(def_id) {
-        cx.tcx.sess.bug(~"cross-crate constants");
-    }
-    if !cx.const_values.contains_key(&def_id.node) {
+    let mut def_id = def_id;
+    if !ast_util::is_local(def_id) ||
+       !cx.const_values.contains_key(&def_id.node) {
+        if !ast_util::is_local(def_id) {
+            def_id = inline::maybe_instantiate_inline(cx, def_id, true);
+        }
         match cx.tcx.items.get(&def_id.node) {
             ast_map::node_item(@ast::item {
                 node: ast::item_const(_, subexpr), _
@@ -398,8 +402,13 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
             assert pth.types.len() == 0;
             match cx.tcx.def_map.find(&e.id) {
                 Some(ast::def_fn(def_id, purity)) => {
-                    assert ast_util::is_local(def_id);
-                    let f = base::get_item_val(cx, def_id.node);
+                    let f = if !ast_util::is_local(def_id) {
+                        let ty = csearch::get_type(cx.tcx, def_id).ty;
+                        base::trans_external_path(cx, def_id, ty)
+                    } else {
+                        assert ast_util::is_local(def_id);
+                        base::get_item_val(cx, def_id.node)
+                    };
                     match purity {
                       ast::extern_fn =>
                         llvm::LLVMConstPointerCast(f, T_ptr(T_i8())),
