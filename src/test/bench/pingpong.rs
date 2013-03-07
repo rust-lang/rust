@@ -71,7 +71,7 @@ macro_rules! follow (
 )
 
 fn switch<T:Owned,Tb:Owned,U>(+endp: core::pipes::RecvPacketBuffered<T, Tb>,
-                      f: fn(+v: Option<T>) -> U) -> U {
+                      f: &fn(+v: Option<T>) -> U) -> U {
     f(core::pipes::try_recv(endp))
 }
 
@@ -131,7 +131,7 @@ fn unbounded(count: uint) {
     }
 }
 
-fn timeit(f: fn()) -> float {
+fn timeit(f: &fn()) -> float {
     let start = precise_time_s();
     f();
     let stop = precise_time_s();

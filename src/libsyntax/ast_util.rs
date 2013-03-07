@@ -516,7 +516,7 @@ pub pure fn is_item_impl(item: @ast::item) -> bool {
     }
 }
 
-pub fn walk_pat(pat: @pat, it: fn(@pat)) {
+pub fn walk_pat(pat: @pat, it: &fn(@pat)) {
     it(pat);
     match pat.node {
         pat_ident(_, _, Some(p)) => walk_pat(p, it),

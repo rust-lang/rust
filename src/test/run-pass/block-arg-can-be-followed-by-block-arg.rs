@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    fn f(i: fn() -> uint) -> uint { i() }
+    fn f(i: &fn() -> uint) -> uint { i() }
     let v = ~[-1f, 0f, 1f, 2f, 3f];
     let z = do do vec::foldl(f, v) |x, _y| { x } { 22u };
     fail_unless!(z == 22u);

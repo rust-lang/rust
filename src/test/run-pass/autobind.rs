@@ -10,10 +10,10 @@
 
 fn f<T:Copy>(x: ~[T]) -> T { return x[0]; }
 
-fn g(act: fn(~[int]) -> int) -> int { return act(~[1, 2, 3]); }
+fn g(act: &fn(~[int]) -> int) -> int { return act(~[1, 2, 3]); }
 
 pub fn main() {
     fail_unless!((g(f) == 1));
-    let f1: fn(~[~str]) -> ~str = f;
+    let f1: &fn(~[~str]) -> ~str = f;
     fail_unless!((f1(~[~"x", ~"y", ~"z"]) == ~"x"));
 }

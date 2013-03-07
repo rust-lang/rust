@@ -342,7 +342,7 @@ pub impl Context {
      * current lint context, call the provided function, then reset the
      * lints in effect to their previous state.
      */
-    fn with_lint_attrs(&self, attrs: ~[ast::attribute], f: fn(Context)) {
+    fn with_lint_attrs(&self, attrs: ~[ast::attribute], f: &fn(Context)) {
 
         let mut new_ctxt = *self;
         let mut triples = ~[];

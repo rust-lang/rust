@@ -438,7 +438,7 @@ pub fn trans_call_inner(
     call_info: Option<NodeInfo>,
     fn_expr_ty: ty::t,
     ret_ty: ty::t,
-    get_callee: fn(block) -> Callee,
+    get_callee: &fn(block) -> Callee,
     args: CallArgs,
     dest: expr::Dest,
     autoref_arg: AutorefArg) -> block {

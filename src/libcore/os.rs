@@ -75,11 +75,11 @@ pub fn getcwd() -> Path {
     }
 }
 
-pub fn as_c_charp<T>(s: &str, f: fn(*c_char) -> T) -> T {
+pub fn as_c_charp<T>(s: &str, f: &fn(*c_char) -> T) -> T {
     str::as_c_str(s, |b| f(b as *c_char))
 }
 
-pub fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
+pub fn fill_charp_buf(f: &fn(*mut c_char, size_t) -> bool)
     -> Option<~str> {
     let mut buf = vec::from_elem(TMPBUF_SZ, 0u8 as c_char);
     do vec::as_mut_buf(buf) |b, sz| {
@@ -103,7 +103,7 @@ pub mod win32 {
     use os::TMPBUF_SZ;
     use libc::types::os::arch::extra::DWORD;
 
-    pub fn fill_utf16_buf_and_decode(f: fn(*mut u16, DWORD) -> DWORD)
+    pub fn fill_utf16_buf_and_decode(f: &fn(*mut u16, DWORD) -> DWORD)
         -> Option<~str> {
         unsafe {
             let mut n = TMPBUF_SZ as DWORD;
@@ -133,7 +133,7 @@ pub mod win32 {
         }
     }
 
-    pub fn as_utf16_p<T>(s: &str, f: fn(*u16) -> T) -> T {
+    pub fn as_utf16_p<T>(s: &str, f: &fn(*u16) -> T) -> T {
         let mut t = str::to_utf16(s);
         // Null terminate before passing on.
         t += ~[0u16];
@@ -518,11 +518,11 @@ pub fn tmpdir() -> Path {
     }
 }
 /// Recursively walk a directory structure
-pub fn walk_dir(p: &Path, f: fn(&Path) -> bool) {
+pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) {
 
     walk_dir_(p, f);
 
-    fn walk_dir_(p: &Path, f: fn(&Path) -> bool) -> bool {
+    fn walk_dir_(p: &Path, f: &fn(&Path) -> bool) -> bool {
         let mut keepgoing = true;
         do list_dir(p).each |q| {
             let path = &p.push(*q);

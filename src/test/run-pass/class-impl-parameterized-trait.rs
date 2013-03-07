@@ -57,17 +57,17 @@ class cat : map<int, bool> {
   fn [](&&k:int) -> bool { k <= self.meows }
   fn find(&&k:int) -> Option<bool> { Some(self.get(k)) }
   fn remove(&&k:int) -> Option<bool> { self.meows -= k; Some(true) }
-  fn each(f: fn(&&int, &&bool) -> bool) {
+  fn each(f: &fn(&&int, &&bool) -> bool) {
     let mut n = int::abs(self.meows);
     while n > 0 {
         if !f(n, true) { break; }
         n -= 1;
     }
   }
-  fn each_key(&&f: fn(&&int) -> bool) {
+  fn each_key(&&f: &fn(&&int) -> bool) {
     for self.each |k, _v| { if !f(k) { break; } again;};
   }
-  fn each_value(&&f: fn(&&bool) -> bool) {
+  fn each_value(&&f: &fn(&&bool) -> bool) {
     for self.each |_k, v| { if !f(v) { break; } again;};
   }
   fn clear() { }

@@ -1054,7 +1054,7 @@ fn create_index<T:Copy + Hash + IterBytes>(index: ~[entry<T>]) ->
 }
 
 fn encode_index<T>(ebml_w: writer::Encoder, buckets: ~[@~[entry<T>]],
-                   write_fn: fn(io::Writer, T)) {
+                   write_fn: &fn(io::Writer, T)) {
     let writer = ebml_w.writer;
     ebml_w.start_tag(tag_index);
     let mut bucket_locs: ~[uint] = ~[];

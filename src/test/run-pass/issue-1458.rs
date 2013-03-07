@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn plus_one(f: fn() -> int) -> int {
+fn plus_one(f: &fn() -> int) -> int {
   return f() + 1;
 }
 

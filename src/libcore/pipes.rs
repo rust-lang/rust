@@ -246,7 +246,7 @@ pub fn packet<T>() -> *Packet<T> {
 #[doc(hidden)]
 pub fn entangle_buffer<T:Owned,Tstart:Owned>(
     buffer: ~Buffer<T>,
-    init: fn(*libc::c_void, x: &T) -> *Packet<Tstart>)
+    init: &fn(*libc::c_void, x: &T) -> *Packet<Tstart>)
     -> (SendPacketBuffered<Tstart, T>, RecvPacketBuffered<Tstart, T>)
 {
     let p = init(unsafe { reinterpret_cast(&buffer) }, &buffer.data);

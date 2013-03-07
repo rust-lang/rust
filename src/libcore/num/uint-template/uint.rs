@@ -101,7 +101,7 @@ pub mod inst {
     * `true` If execution proceeded correctly, `false` if it was interrupted,
     * that is if `it` returned `false` at any point.
     */
-    pub pure fn iterate(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
+    pub pure fn iterate(lo: uint, hi: uint, it: &fn(uint) -> bool) -> bool {
         let mut i = lo;
         while i < hi {
             if (!it(i)) { return false; }
@@ -122,7 +122,7 @@ pub mod inst {
         * use with integer literals of inferred integer-type as
         * the self-value (eg. `for 100.times { ... }`).
         */
-        pure fn times(&self, it: fn() -> bool) {
+        pure fn times(&self, it: &fn() -> bool) {
             let mut i = *self;
             while i > 0 {
                 if !it() { break }

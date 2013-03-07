@@ -1142,7 +1142,7 @@ pub fn break_here() {
 pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                expr: @ast::expr,
                                expected: Option<ty::t>,
-                               unifier: fn()) -> bool {
+                               unifier: &fn()) -> bool {
     debug!(">> typechecking %s", fcx.expr_to_str(expr));
 
     // A generic function to factor out common logic from call and
@@ -1602,7 +1602,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     // returns `none`.
     fn unpack_expected<O:Copy>(fcx: @mut FnCtxt,
                                 expected: Option<ty::t>,
-                                unpack: fn(&ty::sty) -> Option<O>)
+                                unpack: &fn(&ty::sty) -> Option<O>)
                              -> Option<O> {
         match expected {
             Some(t) => {

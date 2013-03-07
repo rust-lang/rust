@@ -122,7 +122,7 @@ pub pure fn to_either<T:Copy,U:Copy>(res: &Result<U, T>)
  *     }
  */
 #[inline(always)]
-pub pure fn chain<T, U, V>(res: Result<T, V>, op: fn(T)
+pub pure fn chain<T, U, V>(res: Result<T, V>, op: &fn(T)
     -> Result<U, V>) -> Result<U, V> {
     match res {
         Ok(t) => op(t),
@@ -141,7 +141,7 @@ pub pure fn chain<T, U, V>(res: Result<T, V>, op: fn(T)
 #[inline(always)]
 pub pure fn chain_err<T, U, V>(
     res: Result<T, V>,
-    op: fn(t: V) -> Result<T, U>)
+    op: &fn(t: V) -> Result<T, U>)
     -> Result<T, U> {
     match res {
       Ok(t) => Ok(t),
@@ -164,7 +164,7 @@ pub pure fn chain_err<T, U, V>(
  *     }
  */
 #[inline(always)]
-pub pure fn iter<T, E>(res: &Result<T, E>, f: fn(&T)) {
+pub pure fn iter<T, E>(res: &Result<T, E>, f: &fn(&T)) {
     match *res {
       Ok(ref t) => f(t),
       Err(_) => ()
@@ -180,7 +180,7 @@ pub pure fn iter<T, E>(res: &Result<T, E>, f: fn(&T)) {
  * handling an error.
  */
 #[inline(always)]
-pub pure fn iter_err<T, E>(res: &Result<T, E>, f: fn(&E)) {
+pub pure fn iter_err<T, E>(res: &Result<T, E>, f: &fn(&E)) {
     match *res {
       Ok(_) => (),
       Err(ref e) => f(e)
@@ -202,7 +202,7 @@ pub pure fn iter_err<T, E>(res: &Result<T, E>, f: fn(&E)) {
  *     }
  */
 #[inline(always)]
-pub pure fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: fn(&T) -> U)
+pub pure fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: &fn(&T) -> U)
   -> Result<U, E> {
     match *res {
       Ok(ref t) => Ok(op(t)),
@@ -219,7 +219,7 @@ pub pure fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: fn(&T) -> U)
  * successful result while handling an error.
  */
 #[inline(always)]
-pub pure fn map_err<T:Copy,E,F:Copy>(res: &Result<T, E>, op: fn(&E) -> F)
+pub pure fn map_err<T:Copy,E,F:Copy>(res: &Result<T, E>, op: &fn(&E) -> F)
   -> Result<T, F> {
     match *res {
       Ok(copy t) => Ok(t),
@@ -238,10 +238,10 @@ pub impl<T, E> Result<T, E> {
     pure fn is_err(&self) -> bool { is_err(self) }
 
     #[inline(always)]
-    pure fn iter(&self, f: fn(&T)) { iter(self, f) }
+    pure fn iter(&self, f: &fn(&T)) { iter(self, f) }
 
     #[inline(always)]
-    pure fn iter_err(&self, f: fn(&E)) { iter_err(self, f) }
+    pure fn iter_err(&self, f: &fn(&E)) { iter_err(self, f) }
 
     #[inline(always)]
     pure fn unwrap(self) -> T { unwrap(self) }
@@ -250,12 +250,12 @@ pub impl<T, E> Result<T, E> {
     pure fn unwrap_err(self) -> E { unwrap_err(self) }
 
     #[inline(always)]
-    pure fn chain<U>(self, op: fn(T) -> Result<U,E>) -> Result<U,E> {
+    pure fn chain<U>(self, op: &fn(T) -> Result<U,E>) -> Result<U,E> {
         chain(self, op)
     }
 
     #[inline(always)]
-    pure fn chain_err<F>(self, op: fn(E) -> Result<T,F>) -> Result<T,F> {
+    pure fn chain_err<F>(self, op: &fn(E) -> Result<T,F>) -> Result<T,F> {
         chain_err(self, op)
     }
 }
@@ -265,7 +265,7 @@ pub impl<T:Copy,E> Result<T, E> {
     pure fn get(&self) -> T { get(self) }
 
     #[inline(always)]
-    pure fn map_err<F:Copy>(&self, op: fn(&E) -> F) -> Result<T,F> {
+    pure fn map_err<F:Copy>(&self, op: &fn(&E) -> F) -> Result<T,F> {
         map_err(self, op)
     }
 }
@@ -275,7 +275,7 @@ pub impl<T, E: Copy> Result<T, E> {
     pure fn get_err(&self) -> E { get_err(self) }
 
     #[inline(always)]
-    pure fn map<U:Copy>(&self, op: fn(&T) -> U) -> Result<U,E> {
+    pure fn map<U:Copy>(&self, op: &fn(&T) -> U) -> Result<U,E> {
         map(self, op)
     }
 }
@@ -299,7 +299,7 @@ pub impl<T, E: Copy> Result<T, E> {
  */
 #[inline(always)]
 pub fn map_vec<T,U:Copy,V:Copy>(
-    ts: &[T], op: fn(&T) -> Result<V,U>) -> Result<~[V],U> {
+    ts: &[T], op: &fn(&T) -> Result<V,U>) -> Result<~[V],U> {
 
     let mut vs: ~[V] = vec::with_capacity(vec::len(ts));
     for vec::each(ts) |t| {
@@ -313,7 +313,7 @@ pub fn map_vec<T,U:Copy,V:Copy>(
 
 #[inline(always)]
 pub fn map_opt<T,U:Copy,V:Copy>(
-    o_t: &Option<T>, op: fn(&T) -> Result<V,U>) -> Result<Option<V>,U> {
+    o_t: &Option<T>, op: &fn(&T) -> Result<V,U>) -> Result<Option<V>,U> {
 
     match *o_t {
       None => Ok(None),
@@ -335,7 +335,7 @@ pub fn map_opt<T,U:Copy,V:Copy>(
  */
 #[inline(always)]
 pub fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
-                op: fn(&S,&T) -> Result<V,U>) -> Result<~[V],U> {
+                op: &fn(&S,&T) -> Result<V,U>) -> Result<~[V],U> {
 
     fail_unless!(vec::same_length(ss, ts));
     let n = vec::len(ts);
@@ -358,7 +358,7 @@ pub fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
  */
 #[inline(always)]
 pub fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
-                         op: fn(&S,&T) -> Result<(),U>) -> Result<(),U> {
+                         op: &fn(&S,&T) -> Result<(),U>) -> Result<(),U> {
 
     fail_unless!(vec::same_length(ss, ts));
     let n = vec::len(ts);

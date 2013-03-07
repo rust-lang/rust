@@ -24,8 +24,8 @@ pub enum Either<T, U> {
 }
 
 #[inline(always)]
-pub fn either<T, U, V>(f_left: fn(&T) -> V,
-                       f_right: fn(&U) -> V, value: &Either<T, U>) -> V {
+pub fn either<T, U, V>(f_left: &fn(&T) -> V,
+                       f_right: &fn(&U) -> V, value: &Either<T, U>) -> V {
     /*!
      * Applies a function based on the given either value
      *
@@ -148,7 +148,7 @@ pub pure fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
 
 pub impl<T, U> Either<T, U> {
     #[inline(always)]
-    fn either<V>(&self, f_left: fn(&T) -> V, f_right: fn(&U) -> V) -> V {
+    fn either<V>(&self, f_left: &fn(&T) -> V, f_right: &fn(&U) -> V) -> V {
         either(f_left, f_right, self)
     }
 

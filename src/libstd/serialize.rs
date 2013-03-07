@@ -43,25 +43,25 @@ pub trait Encoder {
     fn emit_managed_str(&self, v: &str);
 
     // Compound types:
-    fn emit_borrowed(&self, f: fn());
-    fn emit_owned(&self, f: fn());
-    fn emit_managed(&self, f: fn());
+    fn emit_borrowed(&self, f: &fn());
+    fn emit_owned(&self, f: &fn());
+    fn emit_managed(&self, f: &fn());
 
-    fn emit_enum(&self, name: &str, f: fn());
-    fn emit_enum_variant(&self, v_name: &str, v_id: uint, sz: uint, f: fn());
-    fn emit_enum_variant_arg(&self, idx: uint, f: fn());
+    fn emit_enum(&self, name: &str, f: &fn());
+    fn emit_enum_variant(&self, v_name: &str, v_id: uint, sz: uint, f: &fn());
+    fn emit_enum_variant_arg(&self, idx: uint, f: &fn());
 
-    fn emit_borrowed_vec(&self, len: uint, f: fn());
-    fn emit_owned_vec(&self, len: uint, f: fn());
-    fn emit_managed_vec(&self, len: uint, f: fn());
-    fn emit_vec_elt(&self, idx: uint, f: fn());
+    fn emit_borrowed_vec(&self, len: uint, f: &fn());
+    fn emit_owned_vec(&self, len: uint, f: &fn());
+    fn emit_managed_vec(&self, len: uint, f: &fn());
+    fn emit_vec_elt(&self, idx: uint, f: &fn());
 
-    fn emit_rec(&self, f: fn());
-    fn emit_struct(&self, name: &str, _len: uint, f: fn());
-    fn emit_field(&self, f_name: &str, f_idx: uint, f: fn());
+    fn emit_rec(&self, f: &fn());
+    fn emit_struct(&self, name: &str, _len: uint, f: &fn());
+    fn emit_field(&self, f_name: &str, f_idx: uint, f: &fn());
 
-    fn emit_tup(&self, len: uint, f: fn());
-    fn emit_tup_elt(&self, idx: uint, f: fn());
+    fn emit_tup(&self, len: uint, f: &fn());
+    fn emit_tup_elt(&self, idx: uint, f: &fn());
 }
 
 pub trait Decoder {
@@ -86,23 +86,23 @@ pub trait Decoder {
     fn read_managed_str(&self) -> @str;
 
     // Compound types:
-    fn read_enum<T>(&self, name: &str, f: fn() -> T) -> T;
-    fn read_enum_variant<T>(&self, f: fn(uint) -> T) -> T;
-    fn read_enum_variant_arg<T>(&self, idx: uint, f: fn() -> T) -> T;
+    fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T;
+    fn read_enum_variant<T>(&self, f: &fn(uint) -> T) -> T;
+    fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
-    fn read_owned<T>(&self, f: fn() -> T) -> T;
-    fn read_managed<T>(&self, f: fn() -> T) -> T;
+    fn read_owned<T>(&self, f: &fn() -> T) -> T;
+    fn read_managed<T>(&self, f: &fn() -> T) -> T;
 
-    fn read_owned_vec<T>(&self, f: fn(uint) -> T) -> T;
-    fn read_managed_vec<T>(&self, f: fn(uint) -> T) -> T;
-    fn read_vec_elt<T>(&self, idx: uint, f: fn() -> T) -> T;
+    fn read_owned_vec<T>(&self, f: &fn(uint) -> T) -> T;
+    fn read_managed_vec<T>(&self, f: &fn(uint) -> T) -> T;
+    fn read_vec_elt<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
-    fn read_rec<T>(&self, f: fn() -> T) -> T;
-    fn read_struct<T>(&self, name: &str, _len: uint, f: fn() -> T) -> T;
-    fn read_field<T>(&self, name: &str, idx: uint, f: fn() -> T) -> T;
+    fn read_rec<T>(&self, f: &fn() -> T) -> T;
+    fn read_struct<T>(&self, name: &str, _len: uint, f: &fn() -> T) -> T;
+    fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T;
 
-    fn read_tup<T>(&self, sz: uint, f: fn() -> T) -> T;
-    fn read_tup_elt<T>(&self, idx: uint, f: fn() -> T) -> T;
+    fn read_tup<T>(&self, sz: uint, f: &fn() -> T) -> T;
+    fn read_tup_elt<T>(&self, idx: uint, f: &fn() -> T) -> T;
 }
 
 pub trait Encodable<S:Encoder> {
@@ -547,11 +547,11 @@ impl<
 // In some cases, these should eventually be coded as traits.
 
 pub trait EncoderHelpers {
-    fn emit_from_vec<T>(&self, v: &[T], f: fn(v: &T));
+    fn emit_from_vec<T>(&self, v: &[T], f: &fn(v: &T));
 }
 
 impl<S:Encoder> EncoderHelpers for S {
-    fn emit_from_vec<T>(&self, v: &[T], f: fn(v: &T)) {
+    fn emit_from_vec<T>(&self, v: &[T], f: &fn(v: &T)) {
         do self.emit_owned_vec(v.len()) {
             for v.eachi |i, e| {
                 do self.emit_vec_elt(i) {
@@ -563,11 +563,11 @@ impl<S:Encoder> EncoderHelpers for S {
 }
 
 pub trait DecoderHelpers {
-    fn read_to_vec<T>(&self, f: fn() -> T) -> ~[T];
+    fn read_to_vec<T>(&self, f: &fn() -> T) -> ~[T];
 }
 
 impl<D:Decoder> DecoderHelpers for D {
-    fn read_to_vec<T>(&self, f: fn() -> T) -> ~[T] {
+    fn read_to_vec<T>(&self, f: &fn() -> T) -> ~[T] {
         do self.read_owned_vec |len| {
             do vec::from_fn(len) |i| {
                 self.read_vec_elt(i, || f())

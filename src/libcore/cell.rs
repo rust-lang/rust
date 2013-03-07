@@ -54,7 +54,7 @@ pub impl<T> Cell<T> {
     }
 
     // Calls a closure with a reference to the value.
-    fn with_ref<R>(&self, op: fn(v: &T) -> R) -> R {
+    fn with_ref<R>(&self, op: &fn(v: &T) -> R) -> R {
         let v = self.take();
         let r = op(&v);
         self.put_back(v);

@@ -153,7 +153,7 @@ pub mod jit {
                     code: entry,
                     env: ptr::null()
                 };
-                let func: fn(++argv: ~[~str]) = cast::transmute(closure);
+                let func: &fn(++argv: ~[~str]) = cast::transmute(closure);
 
                 func(~[/*bad*/copy sess.opts.binary]);
             }

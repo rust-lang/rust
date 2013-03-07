@@ -306,7 +306,7 @@ pub fn basic_options() -> @options {
 // Seems out of place, but it uses session, so I'm putting it here
 pub fn expect<T:Copy>(sess: Session,
                        opt: Option<T>,
-                       msg: fn() -> ~str)
+                       msg: &fn() -> ~str)
                     -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
