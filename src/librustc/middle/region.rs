@@ -26,7 +26,6 @@ use middle::ty::{region_variance, rv_covariant, rv_invariant};
 use middle::ty::{rv_contravariant};
 use middle::ty;
 
-use core::dvec::DVec;
 use core::vec;
 use std::oldmap::HashMap;
 use syntax::ast_map;
@@ -395,7 +394,7 @@ pub struct region_dep {
     id: ast::node_id
 }
 
-pub type dep_map = HashMap<ast::node_id, @DVec<region_dep>>;
+pub type dep_map = HashMap<ast::node_id, @mut ~[region_dep]>;
 
 pub struct DetermineRpCtxt {
     sess: Session,
@@ -498,7 +497,7 @@ pub impl DetermineRpCtxt {
         let vec = match self.dep_map.find(&from) {
             Some(vec) => vec,
             None => {
-                let vec = @DVec();
+                let vec = @mut ~[];
                 let dep_map = self.dep_map;
                 dep_map.insert(from, vec);
                 vec

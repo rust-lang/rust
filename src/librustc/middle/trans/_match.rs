@@ -167,8 +167,6 @@ use middle::trans::type_of;
 use middle::ty;
 use util::common::indenter;
 
-use core::dvec::DVec;
-use core::dvec;
 use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast::ident;
@@ -553,7 +551,7 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
                     // Reorder the patterns into the same order they were
                     // specified in the struct definition. Also fill in
                     // unspecified fields with dummy.
-                    let reordered_patterns = dvec::DVec();
+                    let mut reordered_patterns = ~[];
                     for ty::lookup_struct_fields(tcx, struct_id).each
                         |field| {
                             match field_pats.find(|p|
@@ -562,7 +560,7 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
                                 Some(fp) => reordered_patterns.push(fp.pat)
                             }
                     }
-                    Some(dvec::unwrap(reordered_patterns))
+                    Some(reordered_patterns)
                 } else {
                     None
                 }
@@ -764,32 +762,32 @@ pub fn enter_region(bcx: block,
 // on a set of enum variants or a literal.
 pub fn get_options(bcx: block, m: &[@Match], col: uint) -> ~[Opt] {
     let ccx = bcx.ccx();
-    fn add_to_set(tcx: ty::ctxt, set: &DVec<Opt>, +val: Opt) {
+    fn add_to_set(tcx: ty::ctxt, set: &mut ~[Opt], +val: Opt) {
         if set.any(|l| opt_eq(tcx, l, &val)) {return;}
         set.push(val);
     }
 
-    let found = DVec();
-    for vec::each(m) |br| {
+    let mut found = ~[];
+    for m.each |br| {
         let cur = br.pats[col];
         match /*bad*/copy cur.node {
             ast::pat_lit(l) => {
-                add_to_set(ccx.tcx, &found, lit(ExprLit(l)));
+                add_to_set(ccx.tcx, &mut found, lit(ExprLit(l)));
             }
             ast::pat_ident(*) => {
                 // This is one of: an enum variant, a unit-like struct, or a
                 // variable binding.
                 match ccx.tcx.def_map.find(&cur.id) {
                     Some(ast::def_variant(*)) => {
-                        add_to_set(ccx.tcx, &found,
+                        add_to_set(ccx.tcx, &mut found,
                                    variant_opt(bcx, cur.id));
                     }
                     Some(ast::def_struct(*)) => {
-                        add_to_set(ccx.tcx, &found,
+                        add_to_set(ccx.tcx, &mut found,
                                    lit(UnitLikeStructLit(cur.id)));
                     }
                     Some(ast::def_const(const_did)) => {
-                        add_to_set(ccx.tcx, &found,
+                        add_to_set(ccx.tcx, &mut found,
                                    lit(ConstLit(const_did)));
                     }
                     _ => {}
@@ -800,26 +798,26 @@ pub fn get_options(bcx: block, m: &[@Match], col: uint) -> ~[Opt] {
                 // struct-like enum variant, or a struct.
                 match ccx.tcx.def_map.find(&cur.id) {
                     Some(ast::def_variant(*)) => {
-                        add_to_set(ccx.tcx, &found,
+                        add_to_set(ccx.tcx, &mut found,
                                    variant_opt(bcx, cur.id));
                     }
                     _ => {}
                 }
             }
             ast::pat_range(l1, l2) => {
-                add_to_set(ccx.tcx, &found, range(l1, l2));
+                add_to_set(ccx.tcx, &mut found, range(l1, l2));
             }
             ast::pat_vec(elems, tail) => {
                 let opt = match tail {
                     None => vec_len_eq(elems.len()),
                     Some(_) => vec_len_ge(elems.len())
                 };
-                add_to_set(ccx.tcx, &found, opt);
+                add_to_set(ccx.tcx, &mut found, opt);
             }
             _ => {}
         }
     }
-    return dvec::unwrap(found);
+    return found;
 }
 
 pub struct ExtractedBlock {
@@ -1074,7 +1072,7 @@ pub fn compare_values(cx: block,
 
 pub fn store_non_ref_bindings(bcx: block,
                               data: &ArmData,
-                              opt_temp_cleanups: Option<&DVec<ValueRef>>)
+                              opt_temp_cleanups: Option<&mut ~[ValueRef]>)
                            -> block {
     /*!
      *
@@ -1166,8 +1164,8 @@ pub fn compile_guard(bcx: block,
     let _indenter = indenter();
 
     let mut bcx = bcx;
-    let temp_cleanups = DVec();
-    bcx = store_non_ref_bindings(bcx, data, Some(&temp_cleanups));
+    let mut temp_cleanups = ~[];
+    bcx = store_non_ref_bindings(bcx, data, Some(&mut temp_cleanups));
     bcx = insert_lllocals(bcx, data, false);
 
     let val = unpack_result!(bcx, {
@@ -1627,7 +1625,7 @@ pub fn trans_match_inner(scope_cx: block,
     let lldiscr = discr_datum.to_ref_llval(bcx);
     compile_submatch(bcx, matches, ~[lldiscr], chk);
 
-    let arm_cxs = DVec();
+    let mut arm_cxs = ~[];
     for arm_datas.each |arm_data| {
         let mut bcx = arm_data.bodycx;
 
@@ -1647,7 +1645,7 @@ pub fn trans_match_inner(scope_cx: block,
         arm_cxs.push(bcx);
     }
 
-    bcx = controlflow::join_blocks(scope_cx, dvec::unwrap(arm_cxs));
+    bcx = controlflow::join_blocks(scope_cx, arm_cxs);
     return bcx;
 
     fn mk_fail(bcx: block, sp: span, msg: @~str,

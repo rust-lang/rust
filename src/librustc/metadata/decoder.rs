@@ -22,8 +22,6 @@ use metadata::decoder;
 use metadata::tydecode::{parse_ty_data, parse_def_id, parse_bounds_data};
 use middle::{ty, resolve};
 
-use core::dvec;
-use core::dvec::DVec;
 use core::hash::{Hash, HashUtil};
 use core::int;
 use core::io::WriterUtil;
@@ -766,12 +764,12 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
 /// Returns the supertraits of the given trait.
 pub fn get_supertraits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
                     -> ~[ty::t] {
-    let results = dvec::DVec();
+    let mut results = ~[];
     let item_doc = lookup_item(id, cdata.data);
     for reader::tagged_docs(item_doc, tag_impl_trait) |trait_doc| {
         results.push(doc_type(trait_doc, tcx, cdata));
     }
-    return dvec::unwrap(results);
+    return results;
 }
 
 // If the item in question is a trait, returns its set of methods and
@@ -779,14 +777,14 @@ pub fn get_supertraits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
 // annoying way with get_trait_methods.
 pub fn get_method_names_if_trait(intr: @ident_interner, cdata: cmd,
                                  node_id: ast::node_id)
-                              -> Option<@DVec<(ast::ident, ast::self_ty_)>> {
+                              -> Option<~[(ast::ident, ast::self_ty_)]> {
 
     let item = lookup_item(node_id, cdata.data);
     if item_family(item) != Trait {
         return None;
     }
 
-    let resulting_methods = @DVec();
+    let mut resulting_methods = ~[];
     for reader::tagged_docs(item, tag_item_trait_method) |method| {
         resulting_methods.push(
             (item_name(intr, method), get_self_ty(method)));
@@ -823,12 +821,12 @@ pub fn get_static_methods_if_impl(intr: @ident_interner,
         return None;
     }
 
-    let impl_method_ids = DVec();
+    let mut impl_method_ids = ~[];
     for reader::tagged_docs(item, tag_item_impl_method) |impl_method_doc| {
         impl_method_ids.push(parse_def_id(reader::doc_data(impl_method_doc)));
     }
 
-    let static_impl_methods = DVec();
+    let mut static_impl_methods = ~[];
     for impl_method_ids.each |impl_method_id| {
         let impl_method_doc = lookup_item(impl_method_id.node, cdata.data);
         let family = item_family(impl_method_doc);
@@ -852,7 +850,7 @@ pub fn get_static_methods_if_impl(intr: @ident_interner,
         }
     }
 
-    return Some(dvec::unwrap(static_impl_methods));
+    return Some(static_impl_methods);
 }
 
 pub fn get_item_attrs(cdata: cmd,
