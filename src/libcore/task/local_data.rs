@@ -94,7 +94,8 @@ fn test_tls_multitask() {
                 // TLS shouldn't carry over.
                 fail_unless!(local_data_get(my_key).is_none());
                 local_data_set(my_key, @~"child data");
-                fail_unless!(*(local_data_get(my_key).get()) == ~"child data");
+                fail_unless!(*(local_data_get(my_key).get()) ==
+                    ~"child data");
                 // should be cleaned up for us
             }
         }

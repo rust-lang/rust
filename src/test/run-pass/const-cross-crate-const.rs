@@ -17,9 +17,9 @@ const a: uint = cci_const::uint_val;
 const b: uint = cci_const::uint_expr + 5;
 
 fn main() {
-    assert a == 12;
+    fail_unless!(a == 12);
     let foo2 = a;
-    assert foo2 == cci_const::uint_val;
-    assert b == cci_const::uint_expr + 5;
-    assert foo == cci_const::foopy;
+    fail_unless!(foo2 == cci_const::uint_val);
+    fail_unless!(b == cci_const::uint_expr + 5);
+    fail_unless!(foo == cci_const::foopy);
 }

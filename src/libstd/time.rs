@@ -22,10 +22,6 @@ const NSEC_PER_SEC: i32 = 1_000_000_000_i32;
 pub mod rustrt {
     use super::Tm;
 
-    #[cfg(target_os = "linux")]
-    #[link_args = "-lrt"]
-    pub extern {}
-
     #[abi = "cdecl"]
     pub extern {
         pub unsafe fn get_time(sec: &mut i64, nsec: &mut i32);
@@ -1164,10 +1160,14 @@ mod tests {
         fail_unless!(test(~"6", ~"%w"));
         fail_unless!(test(~"2009", ~"%Y"));
         fail_unless!(test(~"09", ~"%y"));
-        fail_unless!(result::unwrap(strptime(~"UTC", ~"%Z")).tm_zone == ~"UTC");
-        fail_unless!(result::unwrap(strptime(~"PST", ~"%Z")).tm_zone == ~"");
-        fail_unless!(result::unwrap(strptime(~"-0000", ~"%z")).tm_gmtoff == 0);
-        fail_unless!(result::unwrap(strptime(~"-0800", ~"%z")).tm_gmtoff == 0);
+        fail_unless!(result::unwrap(strptime(~"UTC", ~"%Z")).tm_zone ==
+            ~"UTC");
+        fail_unless!(result::unwrap(strptime(~"PST", ~"%Z")).tm_zone ==
+            ~"");
+        fail_unless!(result::unwrap(strptime(~"-0000", ~"%z")).tm_gmtoff ==
+            0);
+        fail_unless!(result::unwrap(strptime(~"-0800", ~"%z")).tm_gmtoff ==
+            0);
         fail_unless!(test(~"%", ~"%%"));
     }
 

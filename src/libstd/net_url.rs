@@ -971,7 +971,8 @@ mod tests {
         fail_unless!(encode_component("") == ~"");
         fail_unless!(encode_component("http://example.com") ==
             ~"http%3A%2F%2Fexample.com");
-        fail_unless!(encode_component("foo bar% baz") == ~"foo%20bar%25%20baz");
+        fail_unless!(encode_component("foo bar% baz") ==
+            ~"foo%20bar%25%20baz");
         fail_unless!(encode_component(" ") == ~"%20");
         fail_unless!(encode_component("!") == ~"%21");
         fail_unless!(encode_component("#") == ~"%23");
@@ -1065,7 +1066,8 @@ mod tests {
 
         let mut m = LinearMap::new();
         m.insert(~"foo bar", ~[~"abc", ~"12 = 34"]);
-        fail_unless!(encode_form_urlencoded(&m) == ~"foo+bar=abc&foo+bar=12+%3D+34");
+        fail_unless!(encode_form_urlencoded(&m) ==
+            ~"foo+bar=abc&foo+bar=12+%3D+34");
     }
 
     #[test]

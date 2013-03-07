@@ -13,7 +13,10 @@
 
 type a<'self> = &'self int;
 type b<'self> = @a<'self>;
-type c<'self> = {f: @b<'self>};
+
+struct c<'self> {
+    f: @b<'self>
+}
 
 trait set_f<'self> {
     fn set_f_ok(b: @b<'self>);

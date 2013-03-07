@@ -2807,9 +2807,10 @@ mod tests {
     #[test]
     fn test_to_lower() {
         unsafe {
-            fail_unless!(~"" == map(~"", |c| libc::tolower(c as c_char) as char));
+            fail_unless!(~"" == map(~"",
+                |c| libc::tolower(c as c_char) as char));
             fail_unless!(~"ymca" == map(~"YMCA",
-                                 |c| libc::tolower(c as c_char) as char));
+                |c| libc::tolower(c as c_char) as char));
         }
     }
 
@@ -2867,7 +2868,8 @@ mod tests {
         fail_unless!(replace(~"a", a, ~"b") == ~"b");
         fail_unless!(replace(~"ab", a, ~"b") == ~"bb");
         let test = ~"test";
-        fail_unless!(replace(~" test test ", test, ~"toast") == ~" toast toast ");
+        fail_unless!(replace(~" test test ", test, ~"toast") ==
+            ~" toast toast ");
         fail_unless!(replace(~" test test ", test, ~"") == ~"   ");
     }
 
@@ -2977,18 +2979,24 @@ mod tests {
 
     #[test]
     fn test_trim_left_chars() {
-        fail_unless!(trim_left_chars(~" *** foo *** ", ~[]) == ~" *** foo *** ");
-        fail_unless!(trim_left_chars(~" *** foo *** ", ~['*', ' ']) == ~"foo *** ");
+        fail_unless!(trim_left_chars(~" *** foo *** ", ~[]) ==
+                     ~" *** foo *** ");
+        fail_unless!(trim_left_chars(~" *** foo *** ", ~['*', ' ']) ==
+                     ~"foo *** ");
         fail_unless!(trim_left_chars(~" ***  *** ", ~['*', ' ']) == ~"");
-        fail_unless!(trim_left_chars(~"foo *** ", ~['*', ' ']) == ~"foo *** ");
+        fail_unless!(trim_left_chars(~"foo *** ", ~['*', ' ']) ==
+                     ~"foo *** ");
     }
 
     #[test]
     fn test_trim_right_chars() {
-        fail_unless!(trim_right_chars(~" *** foo *** ", ~[]) == ~" *** foo *** ");
-        fail_unless!(trim_right_chars(~" *** foo *** ", ~['*', ' ']) == ~" *** foo");
+        fail_unless!(trim_right_chars(~" *** foo *** ", ~[]) ==
+                     ~" *** foo *** ");
+        fail_unless!(trim_right_chars(~" *** foo *** ", ~['*', ' ']) ==
+                     ~" *** foo");
         fail_unless!(trim_right_chars(~" ***  *** ", ~['*', ' ']) == ~"");
-        fail_unless!(trim_right_chars(~" *** foo", ~['*', ' ']) == ~" *** foo");
+        fail_unless!(trim_right_chars(~" *** foo", ~['*', ' ']) ==
+                     ~" *** foo");
     }
 
     #[test]
@@ -3321,7 +3329,8 @@ mod tests {
     #[test]
     fn test_map() {
         unsafe {
-            fail_unless!(~"" == map(~"", |c| libc::toupper(c as c_char) as char));
+            fail_unless!(~"" == map(~"", |c|
+                libc::toupper(c as c_char) as char));
             fail_unless!(~"YMCA" == map(~"ymca",
                                   |c| libc::toupper(c as c_char) as char));
         }

@@ -1859,7 +1859,8 @@ pub mod test {
             // .. can't get the uv::ll::sockaddr_in6 to == 28 :/
             // .. so the type always appears to be 32 in size.. which is
             // good, i guess.. better too big than too little
-            fail_unless!((4u+foreign_handle_size as uint) == rust_handle_size);
+            fail_unless!((4u+foreign_handle_size as uint) ==
+                rust_handle_size);
         }
     }
     #[test]
@@ -1873,7 +1874,8 @@ pub mod test {
                               foreign_handle_size as uint, rust_handle_size);
             log(debug, output);
             // FIXME #1645 .. see note above about struct padding
-            fail_unless!((4u+foreign_handle_size as uint) == rust_handle_size);
+            fail_unless!((4u+foreign_handle_size as uint) ==
+                rust_handle_size);
         }
     }
 

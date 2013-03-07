@@ -940,6 +940,8 @@ fn test_spawn_sched_childs_on_default_sched() {
 
 #[cfg(test)]
 pub mod testrt {
+    use libc;
+
     #[nolink]
     pub extern {
         unsafe fn rust_dbg_lock_create() -> *libc::c_void;

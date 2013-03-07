@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pure fn range(from: uint, to: uint, f: fn(uint) -> bool) {
+struct S<'self> {
+    x: &'self fn(uint)
+}
+
+pure fn range<'a>(from: uint, to: uint, f: &'a fn(uint) -> bool) {
     let mut i = from;
     while i < to {
         if !f(i) {return;} // Note: legal to call argument, even if it is not pure.
@@ -16,13 +20,13 @@ pure fn range(from: uint, to: uint, f: fn(uint) -> bool) {
     }
 }
 
-pure fn range2(from: uint, to: uint, f: fn(uint)) {
+pure fn range2<'a>(from: uint, to: uint, f: &'a fn(uint)) {
     for range(from, to) |i| {
         f(i*2u);
     }
 }
 
-pure fn range3(from: uint, to: uint, f: {x: fn(uint)}) {
+pure fn range3<'a>(from: uint, to: uint, f: S<'a>) {
     for range(from, to) |i| {
         (f.x)(i*2u); //~ ERROR access to impure function prohibited
     }

@@ -3409,7 +3409,8 @@ mod tests {
         fail_unless!(rsplit(~[], f) == ~[]);
         fail_unless!(rsplit(~[1, 2], f) == ~[~[1, 2]]);
         fail_unless!(rsplit(~[1, 2, 3], f) == ~[~[1, 2], ~[]]);
-        fail_unless!(rsplit(~[1, 2, 3, 4, 3, 5], f) == ~[~[1, 2], ~[4], ~[5]]);
+        fail_unless!(rsplit(~[1, 2, 3, 4, 3, 5], f) ==
+            ~[~[1, 2], ~[4], ~[5]]);
     }
 
     #[test]
@@ -3427,9 +3428,12 @@ mod tests {
     fn test_partition() {
         // FIXME (#4355 maybe): using v.partition here crashes
         fail_unless!(partition(~[], |x: &int| *x < 3) == (~[], ~[]));
-        fail_unless!(partition(~[1, 2, 3], |x: &int| *x < 4) == (~[1, 2, 3], ~[]));
-        fail_unless!(partition(~[1, 2, 3], |x: &int| *x < 2) == (~[1], ~[2, 3]));
-        fail_unless!(partition(~[1, 2, 3], |x: &int| *x < 0) == (~[], ~[1, 2, 3]));
+        fail_unless!(partition(~[1, 2, 3], |x: &int| *x < 4) ==
+            (~[1, 2, 3], ~[]));
+        fail_unless!(partition(~[1, 2, 3], |x: &int| *x < 2) ==
+            (~[1], ~[2, 3]));
+        fail_unless!(partition(~[1, 2, 3], |x: &int| *x < 0) ==
+            (~[], ~[1, 2, 3]));
     }
 
     #[test]

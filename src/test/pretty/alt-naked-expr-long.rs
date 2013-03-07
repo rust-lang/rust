@@ -22,5 +22,4 @@ fn main() {
               + ~"very" + ~"very" + ~"long" + ~"string",
           None => ~"none"
         };
-    fail_unless!(y == ~"some(_)");
 }

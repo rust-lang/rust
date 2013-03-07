@@ -22,7 +22,7 @@ pub fn main() {
     fail_unless!((size_of::<{a: u8, b: i8, c: u8}>() == 3 as uint));
     // Alignment causes padding before the char and the u32.
 
-    assert (size_of::<{a: u8, b: i8, c: {u: char, v: u8}, d: u32}>() ==
+    fail_unless!(size_of::<{a: u8, b: i8, c: {u: char, v: u8}, d: u32}>() ==
                 16 as uint);
     fail_unless!((size_of::<int>() == size_of::<uint>()));
     fail_unless!((size_of::<{a: int, b: ()}>() == size_of::<int>()));

@@ -405,7 +405,9 @@ pub impl Printer {
             self.print(x, L);
             match x {
               BREAK(b) => self.left_total += b.blank_space,
-              STRING(_, len) => { fail_unless!((len == L)); self.left_total += len; }
+              STRING(_, len) => {
+                fail_unless!((len == L)); self.left_total += len;
+              }
               _ => ()
             }
             if self.left != self.right {
