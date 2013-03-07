@@ -1131,6 +1131,15 @@ pub fn translate_def_id(cdata: cmd, did: ast::def_id) -> ast::def_id {
     }
 }
 
+pub fn get_link_args_for_crate(cdata: cmd) -> ~[~str] {
+    let link_args = reader::get_doc(reader::Doc(cdata.data), tag_link_args);
+    let mut result = ~[];
+    for reader::tagged_docs(link_args, tag_link_args_arg) |arg_doc| {
+        result.push(reader::doc_as_str(arg_doc));
+    }
+    result
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

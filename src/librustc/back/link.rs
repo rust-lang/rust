@@ -17,7 +17,7 @@ use lib::llvm::llvm;
 use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False};
 use lib;
 use metadata::common::LinkMeta;
-use metadata::{encoder, cstore};
+use metadata::{encoder, csearch, cstore};
 use middle::trans::common::CrateContext;
 use middle::ty;
 use util::ppaux;
@@ -813,6 +813,14 @@ pub fn link_binary(sess: Session,
 
     let ula = cstore::get_used_link_args(cstore);
     for ula.each |arg| { cc_args.push(/*bad*/copy *arg); }
+
+    // Add all the link args for external crates.
+    do cstore::iter_crate_data(cstore) |crate_num, _| {
+        let link_args = csearch::get_link_args_for_crate(cstore, crate_num);
+        do vec::consume(link_args) |_, link_arg| {
+            cc_args.push(link_arg);
+        }
+    }
 
     // # Extern library linking
 
