@@ -534,6 +534,7 @@ fi
 # a little post-processing of various config values
 
 CFG_PREFIX=${CFG_PREFIX%/}
+CFG_HOST_TRIPLES="$(echo $CFG_HOST_TRIPLES | tr ',' ' ')"
 CFG_TARGET_TRIPLES="$(echo $CFG_TARGET_TRIPLES | tr ',' ' ')"
 
 # copy host-triples to target-triples so that hosts are a subset of targets

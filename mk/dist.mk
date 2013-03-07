@@ -83,7 +83,7 @@ $(PKG_TAR): $(PKG_FILES)
 
 .PHONY: dist distcheck
 
-ifdef CFG_WINDOWSY
+ifdef CFG_WINDOWSY_$(CFG_BUILD_TRIPLE)
 
 dist: $(PKG_EXE)
 
