@@ -30,5 +30,5 @@ endif
 
 endef
 
-$(foreach target,$(CFG_TARGET_TRIPLES), \
- $(eval $(call DEF_LLVM_RULES,$(target))))
+$(foreach host,$(CFG_HOST_TRIPLES), \
+ $(eval $(call DEF_LLVM_RULES,$(host))))

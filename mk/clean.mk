@@ -14,7 +14,7 @@
 
 CLEAN_STAGE_RULES =								\
  $(foreach stage, $(STAGES),					\
-  $(foreach host, $(CFG_TARGET_TRIPLES),		\
+  $(foreach host, $(CFG_HOST_TRIPLES),		\
    clean$(stage)_H_$(host)						\
    $(foreach target, $(CFG_TARGET_TRIPLES),		\
     clean$(stage)_T_$(target)_H_$(host))))
@@ -33,7 +33,7 @@ clean: clean-misc $(CLEAN_STAGE_RULES)
 
 clean-misc:
 	@$(call E, cleaning)
-	$(Q)find rustllvm rt $(CFG_HOST_TRIPLE)/test \
+	$(Q)find rustllvm rt $(CFG_BUILD_TRIPLE)/test \
          -name '*.[odasS]' -o \
          -name '*.so' -o      \
          -name '*.dylib' -o   \
@@ -41,7 +41,7 @@ clean-misc:
          -name '*.def' -o     \
          -name '*.bc'         \
          | xargs rm -f
-	$(Q)find rustllvm rt $(CFG_HOST_TRIPLE)\
+	$(Q)find rustllvm rt $(CFG_BUILD_TRIPLE)\
          -name '*.dSYM'       \
          | xargs rm -Rf
 	$(Q)rm -f $(RUNTIME_OBJS) $(RUNTIME_DEF)
@@ -62,77 +62,83 @@ clean-misc:
 define CLEAN_HOST_STAGE_N
 
 clean$(1)_H_$(2):
-	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustc$(X)
-	$(Q)rm -f $$(HBIN$(1)_H_$(2))/fuzzer$(X)
-	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustpkg$(X)
-	$(Q)rm -f $$(HBIN$(1)_H_$(2))/serializer$(X)
-	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustdoc$(X)
-	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rusti$(X)
-	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rust$(X)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBFUZZER)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTPKG)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTDOC)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUNTIME)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_CORELIB)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_STDLIB)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTC)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBSYNTAX)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTI)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUST)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CORELIB_GLOB)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(STDLIB_GLOB)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTC_GLOB)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBSYNTAX_GLOB)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBFUZZER_GLOB)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTPKG_GLOB)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTDOC_GLOB)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTI_GLOB)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUST_GLOB)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUSTLLVM)
+	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustc$(X_$(2))
+	$(Q)rm -f $$(HBIN$(1)_H_$(2))/fuzzer$(X_$(2))
+	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustpkg$(X_$(2))
+	$(Q)rm -f $$(HBIN$(1)_H_$(2))/serializer$(X_$(2))
+	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustdoc$(X_$(2))
+	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rusti$(X_$(2))
+	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rust$(X_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBFUZZER_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTPKG_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTDOC_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUNTIME_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_CORELIB_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_STDLIB_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTC_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBSYNTAX_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTI_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUST_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CORELIB_GLOB_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(STDLIB_GLOB_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTC_GLOB_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBSYNTAX_GLOB_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBFUZZER_GLOB_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTPKG_GLOB_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTDOC_GLOB_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTI_GLOB_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUST_GLOB_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUSTLLVM_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/libstd.rlib
 
 endef
 
-$(foreach host, $(CFG_TARGET_TRIPLES), \
+$(foreach host, $(CFG_HOST_TRIPLES), \
  $(eval $(foreach stage, $(STAGES), \
   $(eval $(call CLEAN_HOST_STAGE_N,$(stage),$(host))))))
 
 define CLEAN_TARGET_STAGE_N
 
 clean$(1)_T_$(2)_H_$(3):
-	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustc$(X)
-	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/fuzzer$(X)
-	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustpkg$(X)
-	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/serializer$(X)
-	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustdoc$(X)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBFUZZER)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTPKG)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOC)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUNTIME)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CORELIB_GLOB)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(STDLIB_GLOB)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTC_GLOB)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBSYNTAX_GLOB)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBFUZZER_GLOB)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTPKG_GLOB)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTDOC_GLOB)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM)
+	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustc$(X_$(2))
+	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/fuzzer$(X_$(2))
+	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustpkg$(X_$(2))
+	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/serializer$(X_$(2))
+	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustdoc$(X_$(2))
+	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rusti$(X_$(2))
+	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rust$(X_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBFUZZER_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTPKG_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOC_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUNTIME_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTI_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUST_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CORELIB_GLOB_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(STDLIB_GLOB_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTC_GLOB_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBSYNTAX_GLOB_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBFUZZER_GLOB_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTPKG_GLOB_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTDOC_GLOB_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTI_GLOB_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUST_GLOB_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libstd.rlib
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/librun_pass_stage* # For unix
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/run_pass_stage* # For windows
 endef
 
-$(foreach host, $(CFG_TARGET_TRIPLES), \
+$(foreach host, $(CFG_HOST_TRIPLES), \
  $(eval $(foreach target, $(CFG_TARGET_TRIPLES), \
   $(eval $(foreach stage, 0 1 2 3, \
    $(eval $(call CLEAN_TARGET_STAGE_N,$(stage),$(target),$(host))))))))
 
-define DEF_CLEAN_LLVM_TARGET
+define DEF_CLEAN_LLVM_HOST
 ifeq ($(CFG_LLVM_ROOT),)
 clean-llvm$(1):
 	$$(Q)$$(MAKE) -C $$(CFG_LLVM_BUILD_DIR_$(1)) clean
@@ -142,5 +148,5 @@ clean-llvm$(1): ;
 endif
 endef
 
-$(foreach target, $(CFG_TARGET_TRIPLES), \
- $(eval $(call DEF_CLEAN_LLVM_TARGET,$(target))))
+$(foreach host, $(CFG_HOST_TRIPLES), \
+ $(eval $(call DEF_CLEAN_LLVM_HOST,$(host))))
