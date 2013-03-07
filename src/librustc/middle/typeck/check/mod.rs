@@ -93,7 +93,7 @@ use middle::typeck::check::method::TransformTypeNormally;
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use middle::typeck::check::vtable::{LocationInfo, VtableContext};
 use middle::typeck::CrateCtxt;
-use middle::typeck::infer::{resolve_type, force_tvar};
+use middle::typeck::infer::{resolve_type, force_tvar, mk_eqty};
 use middle::typeck::infer;
 use middle::typeck::rscope::{binding_rscope, bound_self_region};
 use middle::typeck::rscope::{RegionError};
@@ -2452,6 +2452,44 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             let t_1_is_scalar = type_is_scalar(fcx, expr.span, t_1);
             if type_is_c_like_enum(fcx,expr.span,t_e) && t_1_is_scalar {
                 /* this case is allowed */
+            } else if type_is_region_ptr(fcx, expr.span, t_e) &&
+                      type_is_unsafe_ptr(fcx, expr.span, t_1) {
+
+                fn is_vec(t: ty::t) -> bool {
+                    match ty::get(t).sty {
+                      ty::ty_evec(_,_) => true,
+                      _ => false
+                    }
+                }
+                fn types_compatible(fcx: @mut FnCtxt, sp: span, t1: ty::t,
+                                    t2: ty::t) -> bool {
+                    if !is_vec(t1) {
+                        false
+                    } else {
+                        let el = ty::sequence_element_type(fcx.tcx(), t1);
+                        infer::mk_eqty(fcx.infcx(), false, sp, el, t2).is_ok()
+                    }
+                }
+
+                // Due to the limitations of LLVM global constants,
+                // region pointers end up pointing at copies of
+                // vector elements instead of the original values.
+                // To allow unsafe pointers to work correctly, we
+                // need to special-case obtaining an unsafe pointer
+                // from a region pointer to a vector.
+
+                /* this cast is only allowed from &[T] to *T or
+                   &T to *T. */
+                let te = structurally_resolved_type(fcx, e.span, t_e);
+                match (&ty::get(te).sty, &ty::get(t_1).sty) {
+                  (&ty::ty_rptr(_, mt1), &ty::ty_ptr(mt2))
+                    if types_compatible(fcx, e.span, mt1.ty, mt2.ty) => {
+                      /* this case is allowed */
+                  }
+                  _ => {
+                    demand::coerce(fcx, e.span, t_1, e);
+                  }
+                }
             } else if !(type_is_scalar(fcx,expr.span,t_e) && t_1_is_scalar) {
                 /*
                 If more type combinations should be supported than are
@@ -3079,6 +3117,16 @@ pub fn type_is_integral(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {
 pub fn type_is_scalar(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
     return ty::type_is_scalar(typ_s);
+}
+
+pub fn type_is_unsafe_ptr(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_unsafe_ptr(typ_s);
+}
+
+pub fn type_is_region_ptr(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_region_ptr(typ_s);
 }
 
 pub fn type_is_c_like_enum(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {
