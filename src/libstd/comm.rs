@@ -29,19 +29,19 @@ pub struct DuplexStream<T, U> {
 #[cfg(stage1)]
 #[cfg(stage2)]
 pub impl<T:Owned,U:Owned> DuplexStream<T, U> {
-    fn send(x: T) {
+    fn send(&self, x: T) {
         self.chan.send(x)
     }
-    fn try_send(x: T) -> bool {
+    fn try_send(&self, x: T) -> bool {
         self.chan.try_send(x)
     }
-    fn recv() -> U {
+    fn recv(&self, ) -> U {
         self.port.recv()
     }
-    fn try_recv() -> Option<U> {
+    fn try_recv(&self) -> Option<U> {
         self.port.try_recv()
     }
-    pure fn peek() -> bool {
+    pure fn peek(&self) -> bool {
         self.port.peek()
     }
 }

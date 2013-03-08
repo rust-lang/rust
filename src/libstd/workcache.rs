@@ -200,7 +200,7 @@ struct Logger {
 }
 
 pub impl Logger {
-    fn info(i: &str) {
+    fn info(&self, i: &str) {
         io::println(~"workcache: " + i.to_owned());
     }
 }

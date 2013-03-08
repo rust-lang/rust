@@ -217,7 +217,7 @@ pub mod reader {
     }
 
     priv impl Decoder {
-        fn _check_label(lbl: &str) {
+        fn _check_label(&self, lbl: &str) {
             if self.pos < self.parent.end {
                 let TaggedDoc { tag: r_tag, doc: r_doc } =
                     doc_at(self.parent.data, self.pos);
@@ -233,7 +233,7 @@ pub mod reader {
             }
         }
 
-        fn next_doc(exp_tag: EbmlEncoderTag) -> Doc {
+        fn next_doc(&self, exp_tag: EbmlEncoderTag) -> Doc {
             debug!(". next_doc(exp_tag=%?)", exp_tag);
             if self.pos >= self.parent.end {
                 fail!(~"no more documents in current node!");
@@ -255,7 +255,7 @@ pub mod reader {
             r_doc
         }
 
-        fn push_doc<T>(d: Doc, f: fn() -> T) -> T {
+        fn push_doc<T>(&self, d: Doc, f: fn() -> T) -> T {
             let old_parent = self.parent;
             let old_pos = self.pos;
             self.parent = d;
@@ -266,7 +266,7 @@ pub mod reader {
             r
         }
 
-        fn _next_uint(exp_tag: EbmlEncoderTag) -> uint {
+        fn _next_uint(&self, exp_tag: EbmlEncoderTag) -> uint {
             let r = doc_as_u32(self.next_doc(exp_tag));
             debug!("_next_uint exp_tag=%? result=%?", exp_tag, r);
             r as uint
@@ -446,7 +446,7 @@ pub mod writer {
 
     // FIXME (#2741): Provide a function to write the standard ebml header.
     pub impl Encoder {
-        fn start_tag(tag_id: uint) {
+        fn start_tag(&self, tag_id: uint) {
             debug!("Start tag %u", tag_id);
 
             // Write the enum ID:
@@ -458,7 +458,7 @@ pub mod writer {
             self.writer.write(zeroes);
         }
 
-        fn end_tag() {
+        fn end_tag(&self) {
             let last_size_pos = self.size_positions.pop();
             let cur_pos = self.writer.tell();
             self.writer.seek(last_size_pos as int, io::SeekSet);
@@ -469,72 +469,72 @@ pub mod writer {
             debug!("End tag (size = %u)", size);
         }
 
-        fn wr_tag(tag_id: uint, blk: fn()) {
+        fn wr_tag(&self, tag_id: uint, blk: fn()) {
             self.start_tag(tag_id);
             blk();
             self.end_tag();
         }
 
-        fn wr_tagged_bytes(tag_id: uint, b: &[u8]) {
+        fn wr_tagged_bytes(&self, tag_id: uint, b: &[u8]) {
             write_vuint(self.writer, tag_id);
             write_vuint(self.writer, vec::len(b));
             self.writer.write(b);
         }
 
-        fn wr_tagged_u64(tag_id: uint, v: u64) {
+        fn wr_tagged_u64(&self, tag_id: uint, v: u64) {
             do io::u64_to_be_bytes(v, 8u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
-        fn wr_tagged_u32(tag_id: uint, v: u32) {
+        fn wr_tagged_u32(&self, tag_id: uint, v: u32) {
             do io::u64_to_be_bytes(v as u64, 4u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
-        fn wr_tagged_u16(tag_id: uint, v: u16) {
+        fn wr_tagged_u16(&self, tag_id: uint, v: u16) {
             do io::u64_to_be_bytes(v as u64, 2u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
-        fn wr_tagged_u8(tag_id: uint, v: u8) {
+        fn wr_tagged_u8(&self, tag_id: uint, v: u8) {
             self.wr_tagged_bytes(tag_id, &[v]);
         }
 
-        fn wr_tagged_i64(tag_id: uint, v: i64) {
+        fn wr_tagged_i64(&self, tag_id: uint, v: i64) {
             do io::u64_to_be_bytes(v as u64, 8u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
-        fn wr_tagged_i32(tag_id: uint, v: i32) {
+        fn wr_tagged_i32(&self, tag_id: uint, v: i32) {
             do io::u64_to_be_bytes(v as u64, 4u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
-        fn wr_tagged_i16(tag_id: uint, v: i16) {
+        fn wr_tagged_i16(&self, tag_id: uint, v: i16) {
             do io::u64_to_be_bytes(v as u64, 2u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
-        fn wr_tagged_i8(tag_id: uint, v: i8) {
+        fn wr_tagged_i8(&self, tag_id: uint, v: i8) {
             self.wr_tagged_bytes(tag_id, &[v as u8]);
         }
 
-        fn wr_tagged_str(tag_id: uint, v: &str) {
+        fn wr_tagged_str(&self, tag_id: uint, v: &str) {
             str::byte_slice(v, |b| self.wr_tagged_bytes(tag_id, b));
         }
 
-        fn wr_bytes(b: &[u8]) {
+        fn wr_bytes(&self, b: &[u8]) {
             debug!("Write %u bytes", vec::len(b));
             self.writer.write(b);
         }
 
-        fn wr_str(s: &str) {
+        fn wr_str(&self, s: &str) {
             debug!("Write str: %?", s);
             self.writer.write(str::to_bytes(s));
         }
@@ -549,12 +549,12 @@ pub mod writer {
 
     priv impl Encoder {
         // used internally to emit things like the vector length and so on
-        fn _emit_tagged_uint(t: EbmlEncoderTag, v: uint) {
+        fn _emit_tagged_uint(&self, t: EbmlEncoderTag, v: uint) {
             assert v <= 0xFFFF_FFFF_u;
             self.wr_tagged_u32(t as uint, v as u32);
         }
 
-        fn _emit_label(label: &str) {
+        fn _emit_label(&self, label: &str) {
             // There are various strings that we have access to, such as
             // the name of a record field, which do not actually appear in
             // the encoded EBML (normally).  This is just for
