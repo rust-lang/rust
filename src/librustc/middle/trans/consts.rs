@@ -182,8 +182,10 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
         }
         Some(@ty::AutoDerefRef(ref adj)) => {
             let mut ty = ety;
+            let mut maybe_ptr = None;
             for adj.autoderefs.times {
                 let (dv, dt) = const_deref(cx, llconst, ty, false);
+                maybe_ptr = Some(llconst);
                 llconst = dv;
                 ty = dt;
             }
@@ -193,17 +195,21 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                 Some(ref autoref) => {
                     fail_unless!(autoref.region == ty::re_static);
                     fail_unless!(autoref.mutbl != ast::m_mutbl);
+                    // Don't copy data to do a deref+ref.
+                    let llptr = match maybe_ptr {
+                        Some(ptr) => ptr,
+                        None => const_addr_of(cx, llconst)
+                    };
                     match autoref.kind {
                         ty::AutoPtr => {
-                            llconst = const_addr_of(cx, llconst);
+                            llconst = llptr;
                         }
                         ty::AutoBorrowVec => {
-                            let base = const_addr_of(cx, llconst);
                             let size = machine::llsize_of(cx,
                                                           val_ty(llconst));
                             fail_unless!(abi::slice_elt_base == 0);
                             fail_unless!(abi::slice_elt_len == 1);
-                            llconst = C_struct(~[base, size]);
+                            llconst = C_struct(~[llptr, size]);
                         }
                         _ => {
                             cx.sess.span_bug(e.span,
