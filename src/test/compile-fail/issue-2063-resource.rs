@@ -16,7 +16,7 @@ struct t { //~ ERROR this type cannot be instantiated
   to_str: (),
 }
 
-enum x = @t; //~ ERROR this type cannot be instantiated
+struct x(@t); //~ ERROR this type cannot be instantiated
 
 fn main() {
 }

@@ -10,7 +10,7 @@
 
 // xfail-test #3387
 
-enum foo = ~uint;
+struct foo(~uint);
 
 impl Add<foo, foo> for foo {
     pure fn add(f: &foo) -> foo {
