@@ -1442,17 +1442,15 @@ mod tests {
     fn bytes_buffer_overwrite() {
         let wr = BytesWriter();
         wr.write(~[0u8, 1u8, 2u8, 3u8]);
-        fail_unless!(wr.bytes.borrow(|bytes| bytes == ~[0u8, 1u8, 2u8, 3u8]));
+        fail_unless!(wr.bytes == ~[0u8, 1u8, 2u8, 3u8]);
         wr.seek(-2, SeekCur);
         wr.write(~[4u8, 5u8, 6u8, 7u8]);
-        fail_unless!(wr.bytes.borrow(|bytes| bytes ==
-            ~[0u8, 1u8, 4u8, 5u8, 6u8, 7u8]));
+        fail_unless!(wr.bytes == ~[0u8, 1u8, 4u8, 5u8, 6u8, 7u8]);
         wr.seek(-2, SeekEnd);
         wr.write(~[8u8]);
         wr.seek(1, SeekSet);
         wr.write(~[9u8]);
-        fail_unless!(wr.bytes.borrow(|bytes| bytes ==
-            ~[0u8, 9u8, 4u8, 5u8, 8u8, 7u8]));
+        fail_unless!(wr.bytes == ~[0u8, 9u8, 4u8, 5u8, 8u8, 7u8]);
     }
 
     #[test]
