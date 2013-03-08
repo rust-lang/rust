@@ -162,7 +162,17 @@ pub struct inherited {
     adjustments: HashMap<ast::node_id, @ty::AutoAdjustment>
 }
 
-pub enum FnKind { ForLoop, DoBlock, Vanilla }
+pub enum FnKind {
+    // This is a for-closure.  The ty::t is the return type of the
+    // enclosing function.
+    ForLoop(ty::t),
+
+    // A do-closure.
+    DoBlock,
+
+    // A normal closure or fn item.
+    Vanilla
+}
 
 pub struct FnCtxt {
     // var_bindings, locals and next_var_id are shared
@@ -250,8 +260,14 @@ pub fn check_bare_fn(ccx: @mut CrateCtxt,
     let fty = ty::node_id_to_type(ccx.tcx, id);
     match ty::get(fty).sty {
         ty::ty_bare_fn(ref fn_ty) => {
-            check_fn(ccx, self_info, fn_ty.purity, None,
-                     &fn_ty.sig, decl, body, Vanilla, None)
+            let fcx =
+                check_fn(ccx, self_info, fn_ty.purity,
+                         &fn_ty.sig, decl, body, Vanilla,
+                         @Nil, blank_inherited(ccx));;
+
+            vtable::resolve_in_block(fcx, body);
+            regionck::regionck_fn(fcx, body);
+            writeback::resolve_type_vars_in_fn(fcx, decl, body, self_info);
         }
         _ => ccx.tcx.sess.impossible_case(body.span,
                                  "check_bare_fn: function type expected")
@@ -261,16 +277,26 @@ pub fn check_bare_fn(ccx: @mut CrateCtxt,
 pub fn check_fn(ccx: @mut CrateCtxt,
                 +self_info: Option<SelfInfo>,
                 purity: ast::purity,
-                sigil: Option<ast::Sigil>,
                 fn_sig: &ty::FnSig,
                 decl: &ast::fn_decl,
                 body: &ast::blk,
                 fn_kind: FnKind,
-                old_fcx: Option<@mut FnCtxt>) {
+                inherited_isr: isr_alist,
+                inherited: @inherited) -> @mut FnCtxt
+{
+    /*!
+     *
+     * Helper used by check_bare_fn and check_expr_fn.  Does the
+     * grungy work of checking a function body and returns the
+     * function context used for that purpose, since in the case of a
+     * fn item there is still a bit more to do.
+     *
+     * - ...
+     * - inherited_isr: regions in scope from the enclosing fn (if any)
+     * - inherited: other fields inherited from the enclosing fn (if any)
+     */
+
     let tcx = ccx.tcx;
-    let indirect_ret = match fn_kind {
-        ForLoop => true, _ => false
-    };
 
     // ______________________________________________________________________
     // First, we have to replace any bound regions in the fn and self
@@ -278,9 +304,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
     // the node_id of the body block.
 
     let (isr, self_info, fn_sig) = {
-        let old_isr = option::map_default(&old_fcx, @Nil,
-                                          |fcx| fcx.in_scope_regions);
-        replace_bound_regions_in_fn_sig(tcx, old_isr, self_info, fn_sig,
+        replace_bound_regions_in_fn_sig(tcx, inherited_isr, self_info, fn_sig,
                                         |br| ty::re_free(body.node.id, br))
     };
 
@@ -296,22 +320,12 @@ pub fn check_fn(ccx: @mut CrateCtxt,
     // Create the function context.  This is either derived from scratch or,
     // in the case of function expressions, based on the outer context.
     let fcx: @mut FnCtxt = {
-        let (purity, inherited) = match old_fcx {
-            None => (purity, blank_inherited(ccx)),
-            Some(fcx) => {
-                (ty::determine_inherited_purity(fcx.purity, purity,
-                                                sigil.get()),
-                 fcx.inh)
-            }
+        // In a for-loop, you have an 'indirect return' because return
+        // does not return out of the directly enclosing fn
+        let indirect_ret_ty = match fn_kind {
+            ForLoop(t) => Some(t),
+            DoBlock | Vanilla => None
         };
-
-        let indirect_ret_ty = if indirect_ret {
-            let ofcx = old_fcx.get();
-            match ofcx.indirect_ret_ty {
-              Some(t) => Some(t),
-              None => Some(ofcx.ret_ty)
-            }
-        } else { None };
 
         @mut FnCtxt {
             self_info: self_info,
@@ -370,15 +384,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         fcx.write_ty(input.id, *arg);
     }
 
-    // If we don't have any enclosing function scope, it is time to
-    // force any remaining type vars to be resolved.
-    // If we have an enclosing function scope, our type variables will be
-    // resolved when the enclosing scope finishes up.
-    if old_fcx.is_none() {
-        vtable::resolve_in_block(fcx, body);
-        regionck::regionck_fn(fcx, body);
-        writeback::resolve_type_vars_in_fn(fcx, decl, body, self_info);
-    }
+    return fcx;
 
     fn gather_locals(fcx: @mut FnCtxt,
                      decl: &ast::fn_decl,
@@ -903,7 +909,7 @@ pub impl FnCtxt {
                                       a: ty::t,
                                       err: &ty::type_err) {
         match self.fn_kind {
-            ForLoop if !ty::type_is_bool(e) && !ty::type_is_nil(a) =>
+            ForLoop(_) if !ty::type_is_bool(e) && !ty::type_is_nil(a) =>
                     self.tcx().sess.span_err(sp, fmt!("A for-loop body must \
                         return (), but it returns %s here. \
                         Perhaps you meant to write a `do`-block?",
@@ -1667,10 +1673,15 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         fcx.write_ty(expr.id, fty);
 
+        let inherited_purity =
+            ty::determine_inherited_purity(fcx.purity, purity,
+                                           fn_ty.sigil);
+
         // We inherit the same self info as the enclosing scope,
         // since the function we're checking might capture `self`
-        check_fn(fcx.ccx, fcx.self_info, fn_ty.purity, Some(fn_ty.sigil),
-                 &fn_ty.sig, decl, body, fn_kind, Some(fcx));
+        check_fn(fcx.ccx, fcx.self_info, inherited_purity,
+                 &fn_ty.sig, decl, body, fn_kind,
+                 fcx.in_scope_regions, fcx.inh);
     }
 
 
@@ -2080,7 +2091,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 // derived errors. If we passed in ForLoop in the
                 // error case, we'd potentially emit a spurious error
                 // message because of the indirect_ret_ty.
-                let fn_kind = if err_happened {Vanilla} else {ForLoop};
+                let fn_kind = if err_happened {
+                    Vanilla
+                } else {
+                    let indirect_ret_ty =
+                        fcx.indirect_ret_ty.get_or_default(fcx.ret_ty);
+                    ForLoop(indirect_ret_ty)
+                };
                 check_expr_fn(fcx, loop_body, None,
                               decl, body, fn_kind, Some(inner_ty));
                 demand::suptype(fcx, loop_body.span,
