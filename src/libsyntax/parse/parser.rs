@@ -3774,7 +3774,7 @@ pub impl Parser {
                         enum");
         }
 
-        enum_def(ast::enum_def_ { variants: variants, common: common_fields })
+        ast::enum_def { variants: variants, common: common_fields }
     }
 
     fn parse_item_enum(&self) -> item_info {
@@ -3800,9 +3800,7 @@ pub impl Parser {
             return (
                 id,
                 item_enum(
-                    enum_def(
-                        ast::enum_def_ { variants: ~[variant], common: None }
-                    ),
+                    ast::enum_def { variants: ~[variant], common: None },
                     generics),
                 None
             );
