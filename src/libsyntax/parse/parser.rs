@@ -246,6 +246,7 @@ pub fn Parser(sess: @mut ParseSess,
     }
 }
 
+// ooh, nasty mutable fields everywhere....
 pub struct Parser {
     sess: @mut ParseSess,
     cfg: crate_cfg,
@@ -338,6 +339,7 @@ pub impl Parser {
         self.sess.interner.get(id)
     }
 
+    // is this one of the keywords that signals a closure type?
     fn token_is_closure_keyword(&self, tok: &token::Token) -> bool {
         self.token_is_keyword(&~"pure", tok) ||
             self.token_is_keyword(&~"unsafe", tok) ||
@@ -345,6 +347,7 @@ pub impl Parser {
             self.token_is_keyword(&~"fn", tok)
     }
 
+    // parse a ty_bare_fun type:
     fn parse_ty_bare_fn(&self) -> ty_
     {
         /*
@@ -372,6 +375,7 @@ pub impl Parser {
         });
     }
 
+    // parse a ty_closure type
     fn parse_ty_closure(&self,
                         sigil: ast::Sigil,
                         region: Option<@ast::Lifetime>) -> ty_
@@ -430,6 +434,7 @@ pub impl Parser {
         }
     }
 
+    // parse a function type (following the 'fn')
     fn parse_ty_fn_decl(&self) -> (fn_decl, OptVec<ast::Lifetime>) {
         /*
 
@@ -541,12 +546,14 @@ pub impl Parser {
     }
 
 
+    // parse a possibly mutable type
     fn parse_mt(&self) -> mt {
         let mutbl = self.parse_mutability();
         let t = self.parse_ty(false);
         mt { ty: t, mutbl: mutbl }
     }
 
+    // parse [mut/const/imm] ID : TY
     fn parse_ty_field(&self) -> ty_field {
         let lo = self.span.lo;
         let mutbl = self.parse_mutability();
@@ -563,6 +570,7 @@ pub impl Parser {
         )
     }
 
+    // parse optional return type [ -> TY ] in function decl
     fn parse_ret_ty(&self) -> (ret_style, @Ty) {
         return if self.eat(&token::RARROW) {
             let lo = self.span.lo;
@@ -591,6 +599,7 @@ pub impl Parser {
         }
     }
 
+    // parse a type.
     // Useless second parameter for compatibility with quasiquote macros.
     // Bleh!
     fn parse_ty(&self, _: bool) -> @Ty {
@@ -627,15 +636,19 @@ pub impl Parser {
                 t
             }
         } else if *self.token == token::AT {
+            // MANAGED POINTER
             self.bump();
             self.parse_box_or_uniq_pointee(ManagedSigil, ty_box)
         } else if *self.token == token::TILDE {
+            // OWNED POINTER
             self.bump();
             self.parse_box_or_uniq_pointee(OwnedSigil, ty_uniq)
         } else if *self.token == token::BINOP(token::STAR) {
+            // STAR POINTER (bare pointer?)
             self.bump();
             ty_ptr(self.parse_mt())
         } else if *self.token == token::LBRACE {
+            // STRUCTURAL RECORD (remove?)
             let elems = self.parse_unspanned_seq(
                 &token::LBRACE,
                 &token::RBRACE,
@@ -648,6 +661,7 @@ pub impl Parser {
             self.obsolete(*self.last_span, ObsoleteRecordType);
             ty_nil
         } else if *self.token == token::LBRACKET {
+            // VECTOR
             self.expect(&token::LBRACKET);
             let mt = self.parse_mt();
             if mt.mutbl == m_mutbl {    // `m_const` too after snapshot
@@ -663,16 +677,20 @@ pub impl Parser {
             self.expect(&token::RBRACKET);
             t
         } else if *self.token == token::BINOP(token::AND) {
+            // BORROWED POINTER
             self.bump();
             self.parse_borrowed_pointee()
         } else if self.eat_keyword(&~"extern") {
+            // EXTERN FUNCTION
             self.parse_ty_bare_fn()
         } else if self.token_is_closure_keyword(&copy *self.token) {
+            // CLOSURE
             let result = self.parse_ty_closure(ast::BorrowedSigil, None);
             self.obsolete(*self.last_span, ObsoleteBareFnType);
             result
         } else if *self.token == token::MOD_SEP
             || is_ident_or_path(&*self.token) {
+            // NAMED TYPE
             let path = self.parse_path_with_tps(false);
             ty_path(path, self.get_id())
         } else {
@@ -881,6 +899,8 @@ pub impl Parser {
         let global = self.eat(&token::MOD_SEP);
         let mut ids = ~[];
         loop {
+            // if there's a ::< coming, stop processing
+            // the path.
             let is_not_last =
                 self.look_ahead(2u) != token::LT
                 && self.look_ahead(1u) == token::MOD_SEP;
@@ -900,6 +920,9 @@ pub impl Parser {
                      types: ~[] }
     }
 
+    // parse a path optionally with type parameters. If 'colons'
+    // is true, then type parameters must be preceded by colons,
+    // as in a::t::<t1,t2>
     fn parse_path_with_tps(&self, colons: bool) -> @ast::path {
         debug!("parse_path_with_tps(colons=%b)", colons);
 
@@ -1067,6 +1090,7 @@ pub impl Parser {
         self.token_is_keyword(&~"const", tok)
     }
 
+    // parse mutability declaration (mut/const/imm)
     fn parse_mutability(&self) -> mutability {
         if self.eat_keyword(&~"mut") {
             m_mutbl

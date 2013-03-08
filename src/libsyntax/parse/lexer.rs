@@ -80,7 +80,8 @@ pub fn new_low_level_string_reader(span_diagnostic: @span_handler,
         last_pos: filemap.start_pos,
         col: CharPos(0),
         curr: initial_char,
-        filemap: filemap, interner: itr,
+        filemap: filemap,
+        interner: itr,
         /* dummy values; not read */
         peek_tok: token::EOF,
         peek_span: codemap::dummy_sp()
@@ -150,6 +151,7 @@ impl reader for TtReader {
 }
 
 // EFFECT: advance peek_tok and peek_span to refer to the next token.
+// EFFECT: update the interner, maybe.
 fn string_advance_token(r: @mut StringReader) {
     match (consume_whitespace_and_comments(r)) {
         Some(comment) => {
@@ -539,6 +541,9 @@ fn ident_continue(c: char) -> bool {
         || (c > 'z' && char::is_XID_continue(c))
 }
 
+// return the next token from the string
+// EFFECT: advances the input past that token
+// EFFECT: updates the interner
 fn next_token_inner(rdr: @mut StringReader) -> token::Token {
     let mut accum_str = ~"";
     let mut c = rdr.curr;
