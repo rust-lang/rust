@@ -700,7 +700,7 @@ pub impl RegionVarBindings {
             match undo_item {
               Snapshot => {}
               AddVar(vid) => {
-                fail_unless!(self.var_spans.len() == *vid + 1);
+                fail_unless!(self.var_spans.len() == vid.to_uint() + 1);
                 self.var_spans.pop();
               }
               AddConstraint(ref constraint) => {
@@ -720,7 +720,7 @@ pub impl RegionVarBindings {
     fn new_region_var(&mut self, span: span) -> RegionVid {
         let id = self.num_vars();
         self.var_spans.push(span);
-        let vid = RegionVid(id);
+        let vid = RegionVid { id: id };
         if self.in_snapshot() {
             self.undo_log.push(AddVar(vid));
         }
@@ -863,15 +863,15 @@ pub impl RegionVarBindings {
     }
 
     fn resolve_var(&mut self, rid: RegionVid) -> ty::Region {
-        debug!("RegionVarBindings: resolve_var(%?=%u)", rid, *rid);
+        debug!("RegionVarBindings: resolve_var(%?=%u)", rid, rid.to_uint());
         if self.values.is_empty() {
             self.tcx.sess.span_bug(
-                self.var_spans[*rid],
+                self.var_spans[rid.to_uint()],
                 fmt!("Attempt to resolve region variable before values have \
                       been computed!"));
         }
 
-        let v = self.values.with_ref(|values| values[*rid]);
+        let v = self.values.with_ref(|values| values[rid.to_uint()]);
         match v {
             Value(r) => r,
 
@@ -886,13 +886,13 @@ pub impl RegionVarBindings {
                 // should ultimately have some bounds.
 
                 self.tcx.sess.span_err(
-                    self.var_spans[*rid],
-                    fmt!("Unconstrained region variable #%u", *rid));
+                    self.var_spans[rid.to_uint()],
+                    fmt!("Unconstrained region variable #%u", rid.to_uint()));
 
                 // Touch of a hack: to suppress duplicate messages,
                 // replace the NoValue entry with ErrorValue.
                 let mut values = self.values.take();
-                values[*rid] = ErrorValue;
+                values[rid.to_uint()] = ErrorValue;
                 self.values.put_back(values);
                 re_static
             }
@@ -1049,7 +1049,7 @@ priv impl RegionVarBindings {
 
           (re_infer(ReVar(v_id)), _) | (_, re_infer(ReVar(v_id))) => {
             self.tcx.sess.span_bug(
-                self.var_spans[*v_id],
+                self.var_spans[v_id.to_uint()],
                 fmt!("lub_concrete_regions invoked with \
                       non-concrete regions: %?, %?", a, b));
           }
@@ -1111,7 +1111,7 @@ priv impl RegionVarBindings {
             (re_infer(ReVar(v_id)), _) |
             (_, re_infer(ReVar(v_id))) => {
                 self.tcx.sess.span_bug(
-                    self.var_spans[*v_id],
+                    self.var_spans[v_id.to_uint()],
                     fmt!("glb_concrete_regions invoked with \
                           non-concrete regions: %?, %?", a, b));
             }
@@ -1275,8 +1275,8 @@ pub impl RegionVarBindings {
                        edge_idx: uint) {
             let edge_dir = edge_dir as uint;
             graph.edges[edge_idx].next_edge[edge_dir] =
-                graph.nodes[*node_id].head_edge[edge_dir];
-            graph.nodes[*node_id].head_edge[edge_dir] =
+                graph.nodes[node_id.to_uint()].head_edge[edge_dir];
+            graph.nodes[node_id.to_uint()].head_edge[edge_dir] =
                 edge_idx;
         }
     }
@@ -1285,14 +1285,14 @@ pub impl RegionVarBindings {
         do iterate_until_fixed_point(~"Expansion", graph) |nodes, edge| {
             match edge.constraint {
               ConstrainRegSubVar(a_region, b_vid) => {
-                let b_node = &mut nodes[*b_vid];
+                let b_node = &mut nodes[b_vid.to_uint()];
                 self.expand_node(a_region, b_vid, b_node)
               }
               ConstrainVarSubVar(a_vid, b_vid) => {
-                match nodes[*a_vid].value {
+                match nodes[a_vid.to_uint()].value {
                   NoValue | ErrorValue => false,
                   Value(a_region) => {
-                    let b_node = &mut nodes[*b_vid];
+                    let b_node = &mut nodes[b_vid.to_uint()];
                     self.expand_node(a_region, b_vid, b_node)
                   }
                 }
@@ -1349,16 +1349,16 @@ pub impl RegionVarBindings {
                 false
               }
               ConstrainVarSubVar(a_vid, b_vid) => {
-                match nodes[*b_vid].value {
+                match nodes[b_vid.to_uint()].value {
                   NoValue | ErrorValue => false,
                   Value(b_region) => {
-                    let a_node = &mut nodes[*a_vid];
+                    let a_node = &mut nodes[a_vid.to_uint()];
                     self.contract_node(a_vid, a_node, b_region)
                   }
                 }
               }
               ConstrainVarSubReg(a_vid, b_region) => {
-                let a_node = &mut nodes[*a_vid];
+                let a_node = &mut nodes[a_vid.to_uint()];
                 self.contract_node(a_vid, a_node, b_region)
               }
             }
@@ -1474,7 +1474,7 @@ pub impl RegionVarBindings {
                        that is not used is not a problem, so if this rule
                        starts to create problems we'll have to revisit
                        this portion of the code and think hard about it. =) */
-                    let node_vid = RegionVid(idx);
+                    let node_vid = RegionVid { id: idx };
                     match node.classification {
                         Expanding => {
                             self.report_error_for_expanding_node(
@@ -1525,7 +1525,7 @@ pub impl RegionVarBindings {
                     }
 
                     self.tcx.sess.span_err(
-                        self.var_spans[*node_idx],
+                        self.var_spans[node_idx.to_uint()],
                         fmt!("cannot infer an appropriate lifetime \
                               due to conflicting requirements"));
 
@@ -1578,7 +1578,7 @@ pub impl RegionVarBindings {
                     }
 
                     self.tcx.sess.span_err(
-                        self.var_spans[*node_idx],
+                        self.var_spans[node_idx.to_uint()],
                         fmt!("cannot infer an appropriate lifetime \
                               due to conflicting requirements"));
 
@@ -1616,7 +1616,7 @@ pub impl RegionVarBindings {
                              -> ~[SpannedRegion] {
         let set = HashMap();
         let mut stack = ~[orig_node_idx];
-        set.insert(*orig_node_idx, ());
+        set.insert(orig_node_idx.to_uint(), ());
         let mut result = ~[];
         while !vec::is_empty(stack) {
             let node_idx = stack.pop();
@@ -1627,7 +1627,7 @@ pub impl RegionVarBindings {
                       Incoming => from_vid,
                       Outgoing => to_vid
                     };
-                    if set.insert(*vid, ()) {
+                    if set.insert(vid.to_uint(), ()) {
                         stack.push(vid);
                     }
                   }
@@ -1658,7 +1658,8 @@ pub impl RegionVarBindings {
                  node_idx: RegionVid,
                  dir: Direction,
                  op: &fn(edge: &GraphEdge) -> bool) {
-        let mut edge_idx = graph.nodes[*node_idx].head_edge[dir as uint];
+        let mut edge_idx =
+            graph.nodes[node_idx.to_uint()].head_edge[dir as uint];
         while edge_idx != uint::max_value {
             let edge_ptr = &graph.edges[edge_idx];
             if !op(edge_ptr) {
