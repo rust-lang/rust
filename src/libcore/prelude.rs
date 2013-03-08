@@ -50,7 +50,6 @@ pub use bool;
 pub use cast;
 pub use char;
 pub use cmp;
-pub use dvec;
 pub use either;
 pub use f32;
 pub use f64;
