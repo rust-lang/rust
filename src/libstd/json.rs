@@ -387,7 +387,7 @@ pub fn Parser(rdr: io::Reader) -> Parser {
 }
 
 pub impl Parser {
-    fn parse() -> Result<Json, Error> {
+    fn parse(&self) -> Result<Json, Error> {
         match self.parse_value() {
           Ok(value) => {
             // Skip trailing whitespaces.
@@ -405,9 +405,9 @@ pub impl Parser {
 }
 
 priv impl Parser {
-    fn eof() -> bool { self.ch == -1 as char }
+    fn eof(&self) -> bool { self.ch == -1 as char }
 
-    fn bump() {
+    fn bump(&self) {
         self.ch = self.rdr.read_char();
 
         if self.ch == '\n' {
@@ -418,16 +418,16 @@ priv impl Parser {
         }
     }
 
-    fn next_char() -> char {
+    fn next_char(&self) -> char {
         self.bump();
         self.ch
     }
 
-    fn error<T>(msg: ~str) -> Result<T, Error> {
+    fn error<T>(&self, msg: ~str) -> Result<T, Error> {
         Err(Error { line: self.line, col: self.col, msg: @msg })
     }
 
-    fn parse_value() -> Result<Json, Error> {
+    fn parse_value(&self) -> Result<Json, Error> {
         self.parse_whitespace();
 
         if self.eof() { return self.error(~"EOF while parsing value"); }
@@ -448,11 +448,11 @@ priv impl Parser {
         }
     }
 
-    fn parse_whitespace() {
+    fn parse_whitespace(&self) {
         while char::is_whitespace(self.ch) { self.bump(); }
     }
 
-    fn parse_ident(ident: &str, value: Json) -> Result<Json, Error> {
+    fn parse_ident(&self, ident: &str, value: Json) -> Result<Json, Error> {
         if str::all(ident, |c| c == self.next_char()) {
             self.bump();
             Ok(value)
@@ -461,7 +461,7 @@ priv impl Parser {
         }
     }
 
-    fn parse_number() -> Result<Json, Error> {
+    fn parse_number(&self) -> Result<Json, Error> {
         let mut neg = 1f;
 
         if self.ch == '-' {
@@ -491,7 +491,7 @@ priv impl Parser {
         Ok(Number(neg * res))
     }
 
-    fn parse_integer() -> Result<float, Error> {
+    fn parse_integer(&self) -> Result<float, Error> {
         let mut res = 0f;
 
         match self.ch {
@@ -523,7 +523,7 @@ priv impl Parser {
         Ok(res)
     }
 
-    fn parse_decimal(res: float) -> Result<float, Error> {
+    fn parse_decimal(&self, res: float) -> Result<float, Error> {
         self.bump();
 
         // Make sure a digit follows the decimal place.
@@ -549,7 +549,7 @@ priv impl Parser {
         Ok(res)
     }
 
-    fn parse_exponent(res: float) -> Result<float, Error> {
+    fn parse_exponent(&self, res: float) -> Result<float, Error> {
         self.bump();
 
         let mut res = res;
@@ -590,7 +590,7 @@ priv impl Parser {
         Ok(res)
     }
 
-    fn parse_str() -> Result<~str, Error> {
+    fn parse_str(&self) -> Result<~str, Error> {
         let mut escape = false;
         let mut res = ~"";
 
@@ -654,7 +654,7 @@ priv impl Parser {
         self.error(~"EOF while parsing string")
     }
 
-    fn parse_list() -> Result<Json, Error> {
+    fn parse_list(&self) -> Result<Json, Error> {
         self.bump();
         self.parse_whitespace();
 
@@ -684,7 +684,7 @@ priv impl Parser {
         };
     }
 
-    fn parse_object() -> Result<Json, Error> {
+    fn parse_object(&self) -> Result<Json, Error> {
         self.bump();
         self.parse_whitespace();
 
@@ -1072,87 +1072,87 @@ impl Eq for Error {
     pure fn ne(&self, other: &Error) -> bool { !(*self).eq(other) }
 }
 
-trait ToJson { fn to_json() -> Json; }
+trait ToJson { fn to_json(&self) -> Json; }
 
 impl ToJson for Json {
-    fn to_json() -> Json { copy self }
+    fn to_json(&self) -> Json { copy *self }
 }
 
 impl ToJson for @Json {
-    fn to_json() -> Json { (*self).to_json() }
+    fn to_json(&self) -> Json { (**self).to_json() }
 }
 
 impl ToJson for int {
-    fn to_json() -> Json { Number(self as float) }
+    fn to_json(&self) -> Json { Number(*self as float) }
 }
 
 impl ToJson for i8 {
-    fn to_json() -> Json { Number(self as float) }
+    fn to_json(&self) -> Json { Number(*self as float) }
 }
 
 impl ToJson for i16 {
-    fn to_json() -> Json { Number(self as float) }
+    fn to_json(&self) -> Json { Number(*self as float) }
 }
 
 impl ToJson for i32 {
-    fn to_json() -> Json { Number(self as float) }
+    fn to_json(&self) -> Json { Number(*self as float) }
 }
 
 impl ToJson for i64 {
-    fn to_json() -> Json { Number(self as float) }
+    fn to_json(&self) -> Json { Number(*self as float) }
 }
 
 impl ToJson for uint {
-    fn to_json() -> Json { Number(self as float) }
+    fn to_json(&self) -> Json { Number(*self as float) }
 }
 
 impl ToJson for u8 {
-    fn to_json() -> Json { Number(self as float) }
+    fn to_json(&self) -> Json { Number(*self as float) }
 }
 
 impl ToJson for u16 {
-    fn to_json() -> Json { Number(self as float) }
+    fn to_json(&self) -> Json { Number(*self as float) }
 }
 
 impl ToJson for u32 {
-    fn to_json() -> Json { Number(self as float) }
+    fn to_json(&self) -> Json { Number(*self as float) }
 }
 
 impl ToJson for u64 {
-    fn to_json() -> Json { Number(self as float) }
+    fn to_json(&self) -> Json { Number(*self as float) }
 }
 
 impl ToJson for float {
-    fn to_json() -> Json { Number(self) }
+    fn to_json(&self) -> Json { Number(*self) }
 }
 
 impl ToJson for f32 {
-    fn to_json() -> Json { Number(self as float) }
+    fn to_json(&self) -> Json { Number(*self as float) }
 }
 
 impl ToJson for f64 {
-    fn to_json() -> Json { Number(self as float) }
+    fn to_json(&self) -> Json { Number(*self as float) }
 }
 
 impl ToJson for () {
-    fn to_json() -> Json { Null }
+    fn to_json(&self) -> Json { Null }
 }
 
 impl ToJson for bool {
-    fn to_json() -> Json { Boolean(self) }
+    fn to_json(&self) -> Json { Boolean(*self) }
 }
 
 impl ToJson for ~str {
-    fn to_json() -> Json { String(copy self) }
+    fn to_json(&self) -> Json { String(copy *self) }
 }
 
 impl ToJson for @~str {
-    fn to_json() -> Json { String(copy *self) }
+    fn to_json(&self) -> Json { String(copy **self) }
 }
 
 impl<A:ToJson,B:ToJson> ToJson for (A, B) {
-    fn to_json() -> Json {
-        match self {
+    fn to_json(&self) -> Json {
+        match *self {
           (ref a, ref b) => {
             List(~[a.to_json(), b.to_json()])
           }
@@ -1161,8 +1161,8 @@ impl<A:ToJson,B:ToJson> ToJson for (A, B) {
 }
 
 impl<A:ToJson,B:ToJson,C:ToJson> ToJson for (A, B, C) {
-    fn to_json() -> Json {
-        match self {
+    fn to_json(&self) -> Json {
+        match *self {
           (ref a, ref b, ref c) => {
             List(~[a.to_json(), b.to_json(), c.to_json()])
           }
@@ -1171,11 +1171,11 @@ impl<A:ToJson,B:ToJson,C:ToJson> ToJson for (A, B, C) {
 }
 
 impl<A:ToJson> ToJson for ~[A] {
-    fn to_json() -> Json { List(self.map(|elt| elt.to_json())) }
+    fn to_json(&self) -> Json { List(self.map(|elt| elt.to_json())) }
 }
 
 impl<A:ToJson + Copy> ToJson for LinearMap<~str, A> {
-    fn to_json() -> Json {
+    fn to_json(&self) -> Json {
         let mut d = LinearMap::new();
         for self.each |&(key, value)| {
             d.insert(copy *key, value.to_json());
@@ -1185,8 +1185,8 @@ impl<A:ToJson + Copy> ToJson for LinearMap<~str, A> {
 }
 
 impl<A:ToJson> ToJson for Option<A> {
-    fn to_json() -> Json {
-        match self {
+    fn to_json(&self) -> Json {
+        match *self {
           None => Null,
           Some(ref value) => value.to_json()
         }

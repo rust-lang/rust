@@ -187,13 +187,13 @@ pub mod v4 {
     pub struct Ipv4Rep { a: u8, b: u8, c: u8, d: u8 }
 
     pub trait AsUnsafeU32 {
-        unsafe fn as_u32() -> u32;
+        unsafe fn as_u32(&self) -> u32;
     }
 
     impl AsUnsafeU32 for Ipv4Rep {
         // this is pretty dastardly, i know
-        unsafe fn as_u32() -> u32 {
-            *((ptr::addr_of(&self)) as *u32)
+        unsafe fn as_u32(&self) -> u32 {
+            *((ptr::addr_of(self)) as *u32)
         }
     }
     pub fn parse_to_ipv4_rep(ip: &str) -> result::Result<Ipv4Rep, ~str> {

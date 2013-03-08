@@ -13,11 +13,11 @@ use core::str;
 use core::vec;
 
 pub trait ToBase64 {
-    pure fn to_base64() -> ~str;
+    pure fn to_base64(&self) -> ~str;
 }
 
 impl ToBase64 for &self/[u8] {
-    pure fn to_base64() -> ~str {
+    pure fn to_base64(&self) -> ~str {
         let chars = str::chars(
           ~"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
         );
@@ -70,17 +70,17 @@ impl ToBase64 for &self/[u8] {
 }
 
 impl ToBase64 for &self/str {
-    pure fn to_base64() -> ~str {
-        str::to_bytes(self).to_base64()
+    pure fn to_base64(&self) -> ~str {
+        str::to_bytes(*self).to_base64()
     }
 }
 
 pub trait FromBase64 {
-    pure fn from_base64() -> ~[u8];
+    pure fn from_base64(&self) -> ~[u8];
 }
 
 impl FromBase64 for ~[u8] {
-    pure fn from_base64() -> ~[u8] {
+    pure fn from_base64(&self) -> ~[u8] {
         if self.len() % 4u != 0u { fail!(~"invalid base64 length"); }
 
         let len = self.len();
@@ -142,8 +142,8 @@ impl FromBase64 for ~[u8] {
 }
 
 impl FromBase64 for ~str {
-    pure fn from_base64() -> ~[u8] {
-        str::to_bytes(self).from_base64()
+    pure fn from_base64(&self) -> ~[u8] {
+        str::to_bytes(*self).from_base64()
     }
 }
 
