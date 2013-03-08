@@ -17,8 +17,8 @@ fn failfn() {
 fn main() {
     let y = ~0;
     let x: @@fn() = @|| {
-        log(error, copy y);
+        error!(copy y);
     };
     failfn();
-    log(error, x);
+    error!(x);
 }

@@ -19,7 +19,6 @@ use sys;
 #[cfg(test)] use vec;
 #[cfg(test)] use str;
 #[cfg(notest)] use cmp::{Eq, Ord};
-use debug;
 use uint;
 
 pub mod libc_ {
@@ -191,7 +190,7 @@ pub pure fn ref_eq<T>(thing: &a/T, other: &b/T) -> bool {
   SAFETY NOTE: Pointer-arithmetic. Dragons be here.
 */
 pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: &fn(*T)) {
-    log(debug, "array_each_with_len: before iterate");
+    debug!("array_each_with_len: before iterate");
     if (arr as uint == 0) {
         fail!(~"ptr::array_each_with_len failure: arr input is null pointer");
     }
@@ -201,7 +200,7 @@ pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: &fn(*T)) {
         cb(*n);
         true
     });
-    log(debug, "array_each_with_len: after iterate");
+    debug!("array_each_with_len: after iterate");
 }
 
 /**
@@ -218,8 +217,8 @@ pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
         fail!(~"ptr::array_each_with_len failure: arr input is null pointer");
     }
     let len = buf_len(arr);
-    log(debug, fmt!("array_each inferred len: %u",
-                    len));
+    debug!("array_each inferred len: %u",
+                    len);
     array_each_with_len(arr, len, cb);
 }
 
@@ -434,7 +433,6 @@ pub fn test_is_null() {
 
 #[cfg(test)]
 pub mod ptr_tests {
-    use debug;
     use ptr;
     use str;
     use libc;
@@ -460,9 +458,9 @@ pub mod ptr_tests {
                 |e| {
                 let actual = str::raw::from_c_str(e);
                 let expected = copy expected_arr[ctr];
-                log(debug,
-                    fmt!("test_ptr_array_each e: %s, a: %s",
-                         expected, actual));
+                debug!(
+                    "test_ptr_array_each e: %s, a: %s",
+                         expected, actual);
                 fail_unless!(actual == expected);
                 ctr += 1;
                 iteration_count += 1;
@@ -492,9 +490,9 @@ pub mod ptr_tests {
             ptr::array_each(arr_ptr, |e| {
                 let actual = str::raw::from_c_str(e);
                 let expected = copy expected_arr[ctr];
-                log(debug,
-                    fmt!("test_ptr_array_each e: %s, a: %s",
-                         expected, actual));
+                debug!(
+                    "test_ptr_array_each e: %s, a: %s",
+                         expected, actual);
                 fail_unless!(actual == expected);
                 ctr += 1;
                 iteration_count += 1;

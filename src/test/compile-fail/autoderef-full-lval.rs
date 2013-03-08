@@ -22,11 +22,11 @@ fn main() {
     let a: clam = clam{x: @1, y: @2};
     let b: clam = clam{x: @10, y: @20};
     let z: int = a.x + b.y;
-    log(debug, z);
+    debug!(z);
     fail_unless!((z == 21));
     let forty: fish = fish{a: @40};
     let two: fish = fish{a: @2};
     let answer: int = forty.a + two.a;
-    log(debug, answer);
+    debug!(answer);
     fail_unless!((answer == 42));
 }

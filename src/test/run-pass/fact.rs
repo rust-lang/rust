@@ -15,7 +15,7 @@
 fn f(x: int) -> int {
     // debug!("in f:");
 
-    log(debug, x);
+    debug!(x);
     if x == 1 {
         // debug!("bottoming out");
 
@@ -26,7 +26,7 @@ fn f(x: int) -> int {
         let y: int = x * f(x - 1);
         // debug!("returned");
 
-        log(debug, y);
+        debug!(y);
         return y;
     }
 }

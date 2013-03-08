@@ -181,7 +181,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
     let mut i = 0;
     while vec::any(colors, is_gray) {
         // Do the BFS.
-        log(info, fmt!("PBFS iteration %?", i));
+        info!("PBFS iteration %?", i);
         i += 1;
         colors = do colors.mapi() |i, c| {
             let c : color = *c;
@@ -257,7 +257,7 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
     let mut i = 0;
     while par::any(colors, is_gray_factory) {
         // Do the BFS.
-        log(info, fmt!("PBFS iteration %?", i));
+        info!("PBFS iteration %?", i);
         i += 1;
         let old_len = colors.len();
 
@@ -320,7 +320,7 @@ fn validate(edges: ~[(node_id, node_id)],
     // parent chains back to the root. While we do this, we also
     // compute the levels for each node.
 
-    log(info, ~"Verifying tree structure...");
+    info!(~"Verifying tree structure...");
 
     let mut status = true;
     let level = do tree.map() |parent| {
@@ -352,7 +352,7 @@ fn validate(edges: ~[(node_id, node_id)],
     // 2. Each tree edge connects vertices whose BFS levels differ by
     //    exactly one.
 
-    log(info, ~"Verifying tree edges...");
+    info!(~"Verifying tree edges...");
 
     let status = do tree.alli() |k, parent| {
         if *parent != root && *parent != -1i64 {
@@ -368,7 +368,7 @@ fn validate(edges: ~[(node_id, node_id)],
     // 3. Every edge in the input list has vertices with levels that
     //    differ by at most one or that both are not in the BFS tree.
 
-    log(info, ~"Verifying graph edges...");
+    info!(~"Verifying graph edges...");
 
     let status = do edges.all() |e| {
         let (u, v) = *e;
@@ -385,7 +385,7 @@ fn validate(edges: ~[(node_id, node_id)],
     // 5. A node and its parent are joined by an edge of the original
     //    graph.
 
-    log(info, ~"Verifying tree and graph edges...");
+    info!(~"Verifying tree and graph edges...");
 
     let status = do par::alli(tree) {
         let edges = copy edges;

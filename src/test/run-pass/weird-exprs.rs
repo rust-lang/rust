@@ -55,10 +55,6 @@ fn notsure() {
     let _b = (_y <-> _z) == (_y <-> _z);
 }
 
-fn hammertime() -> int {
-    let _x = log(debug, true == (return 0));
-}
-
 fn canttouchthis() -> uint {
     pure fn p() -> bool { true }
     let _a = (fail_unless!((true)) == (fail_unless!(p())));
@@ -81,7 +77,6 @@ pub fn main() {
     what();
     zombiejesus();
     notsure();
-    hammertime();
     canttouchthis();
     angrydome();
     evil_lincoln();

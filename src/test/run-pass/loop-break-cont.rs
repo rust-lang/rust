@@ -11,7 +11,7 @@
 pub fn main() {
   let mut i = 0u;
   loop {
-    log(error, ~"a");
+    error!(~"a");
     i += 1u;
     if i == 10u {
       break;
@@ -23,7 +23,7 @@ pub fn main() {
     if i == 21u {
         break;
     }
-    log(error, ~"b");
+    error!(~"b");
     is_even = false;
     i += 1u;
     if i % 2u != 0u {
@@ -33,7 +33,7 @@ pub fn main() {
   }
   fail_unless!(!is_even);
   loop {
-    log(error, ~"c");
+    error!(~"c");
     if i == 22u {
         break;
     }

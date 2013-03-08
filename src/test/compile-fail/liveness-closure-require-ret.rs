@@ -9,4 +9,4 @@
 // except according to those terms.
 
 fn force(f: &fn() -> int) -> int { f() }
-fn main() { log(debug, force(|| {})); } //~ ERROR mismatched types
+fn main() { debug!(force(|| {})); } //~ ERROR mismatched types

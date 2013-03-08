@@ -5,7 +5,7 @@
 pub fn main() {
     let mut i: int = 90;
     while i < 100 {
-        log(debug, i);
+        debug!(i);
         i = i + 1;
         if i == 95 {
             let v: ~[int] =

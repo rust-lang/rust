@@ -19,12 +19,12 @@ fn foo(s: @int) {
 
     match x {
       make_t(y) => {
-        log(debug, y); // ref up then down
+        debug!("%?", y); // ref up then down
 
       }
       _ => { debug!("?"); fail!(); }
     }
-    log(debug, ::core::sys::refcount(s));
+    debug!(::core::sys::refcount(s));
     fail_unless!((::core::sys::refcount(s) == count + 1u));
     let _ = ::core::sys::refcount(s); // don't get bitten by last-use.
 }
@@ -36,7 +36,7 @@ pub fn main() {
 
     foo(s); // ref up then down
 
-    log(debug, ::core::sys::refcount(s));
+    debug!("%u", ::core::sys::refcount(s));
     let count2 = ::core::sys::refcount(s);
     let _ = ::core::sys::refcount(s); // don't get bitten by last-use.
     fail_unless!(count == count2);

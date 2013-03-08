@@ -183,7 +183,7 @@ fn read_line_comments(rdr: @mut StringReader, code_to_the_left: bool,
     let mut lines: ~[~str] = ~[];
     while rdr.curr == '/' && nextch(rdr) == '/' {
         let line = read_one_line_comment(rdr);
-        log(debug, line);
+        debug!("%s", line);
         if is_doc_comment(line) { // doc-comments are not put in comments
             break;
         }
@@ -221,7 +221,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
             s1 = str::slice(s, col, len);
         } else { s1 = ~""; }
     } else { s1 = /*bad*/ copy s; }
-    log(debug, ~"pushing line: " + s1);
+    debug!("pushing line: %s", s1);
     lines.push(s1);
 }
 

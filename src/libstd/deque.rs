@@ -116,7 +116,6 @@ mod tests {
     use super::*;
     use core::cmp::Eq;
     use core::kinds::{Durable, Copy};
-    use core::prelude::debug;
 
     #[test]
     fn test_simple() {
@@ -128,21 +127,21 @@ mod tests {
         fail_unless!(d.len() == 3u);
         d.add_back(137);
         fail_unless!(d.len() == 4u);
-        log(debug, d.peek_front());
+        debug!(d.peek_front());
         fail_unless!(*d.peek_front() == 42);
-        log(debug, d.peek_back());
+        debug!(d.peek_back());
         fail_unless!(*d.peek_back() == 137);
         let mut i: int = d.pop_front();
-        log(debug, i);
+        debug!(i);
         fail_unless!(i == 42);
         i = d.pop_back();
-        log(debug, i);
+        debug!(i);
         fail_unless!(i == 137);
         i = d.pop_back();
-        log(debug, i);
+        debug!(i);
         fail_unless!(i == 137);
         i = d.pop_back();
-        log(debug, i);
+        debug!(i);
         fail_unless!(i == 17);
         fail_unless!(d.len() == 0u);
         d.add_back(3);
@@ -153,10 +152,10 @@ mod tests {
         fail_unless!(d.len() == 3u);
         d.add_front(1);
         fail_unless!(d.len() == 4u);
-        log(debug, d.get(0));
-        log(debug, d.get(1));
-        log(debug, d.get(2));
-        log(debug, d.get(3));
+        debug!(d.get(0));
+        debug!(d.get(1));
+        debug!(d.get(2));
+        debug!(d.get(3));
         fail_unless!(*d.get(0) == 1);
         fail_unless!(*d.get(1) == 2);
         fail_unless!(*d.get(2) == 3);

@@ -472,7 +472,7 @@ pub impl Printer {
     fn print(&mut self, x: token, L: int) {
         debug!("print %s %d (remaining line space=%d)", tok_str(x), L,
                self.space);
-        log(debug, buf_str(copy self.token,
+        debug!("%s", buf_str(copy self.token,
                            copy self.size,
                            self.left,
                            self.right,

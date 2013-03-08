@@ -42,10 +42,10 @@ pub fn main() {
     fn check_str_eq(a: ~str, b: ~str) {
         let mut i: int = 0;
         for str::each(a) |ab| {
-            log(debug, i);
-            log(debug, ab);
+            debug!(i);
+            debug!(ab);
             let bb: u8 = b[i];
-            log(debug, bb);
+            debug!(bb);
             fail_unless!((ab == bb));
             i += 1;
         }

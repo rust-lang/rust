@@ -17,4 +17,4 @@ fn cmp() -> int {
     }
 }
 
-fn main() { log(error, cmp()); }
+fn main() { error!(cmp()); }

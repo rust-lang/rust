@@ -31,10 +31,10 @@ fn test05() {
     let (po, ch) = comm::stream();
     task::spawn(|| test05_start(ch) );
     let mut value = po.recv();
-    log(error, value);
+    error!(value);
     value = po.recv();
-    log(error, value);
+    error!(value);
     value = po.recv();
-    log(error, value);
+    error!(value);
     fail_unless!((value == 30));
 }

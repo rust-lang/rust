@@ -31,6 +31,6 @@ fn main() {
 
     do task::spawn {
         let y = x.take();   //~ ERROR value has non-owned type
-        log(error, y);
+        error!(y);
     }
 }

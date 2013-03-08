@@ -17,10 +17,9 @@ pub fn main() {
     let mut sum = 0;
     iter_vec(copy v, |i| {
         iter_vec(copy v, |j| {
-            log(error, *i * *j);
             sum += *i * *j;
         });
     });
-    log(error, sum);
+    error!(sum);
     fail_unless!((sum == 225));
 }

@@ -17,7 +17,7 @@ pure fn even(x: uint) -> bool {
 
 fn foo(x: uint) {
     if even(x) {
-        log(debug, x);
+        debug!(x);
     } else {
         fail!(~"Number is odd");
     }

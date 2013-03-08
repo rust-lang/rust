@@ -289,10 +289,10 @@ pub fn check_variants_T<T: Copy>(
 
     if L < 100 {
         do under(uint::min(L, 20)) |i| {
-            log(error, ~"Replacing... #" + uint::to_str(i));
+            error!("Replacing... #%?", uint::to_str(i));
             let fname = str::from_slice(filename.to_str());
             do under(uint::min(L, 30)) |j| {
-                log(error, ~"With... " + stringifier(@things[j], intr));
+                error!("With... %?", stringifier(@things[j], intr));
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but
                 // testing the string for stability is easier and ok for now.
@@ -363,8 +363,8 @@ pub fn check_whole_compiler(code: ~str, suggested_filename_prefix: &Path,
         removeDirIfExists(&suggested_filename_prefix.with_filetype("dSYM"));
       }
       failed(s) => {
-        log(error, ~"check_whole_compiler failure: " + s);
-        log(error, ~"Saved as: " + filename.to_str());
+        error!("check_whole_compiler failure: %?", s);
+        error!("Saved as: %?", filename.to_str());
       }
     }
 }
@@ -387,7 +387,7 @@ pub fn check_running(exe_filename: &Path) -> happiness {
         ~[exe_filename.to_str()]);
     let comb = p.out + ~"\n" + p.err;
     if str::len(comb) > 1u {
-        log(error, ~"comb comb comb: " + comb);
+        error!("comb comb comb: %?", comb);
     }
 
     if contains(comb, ~"Assertion failed:") {
@@ -433,21 +433,21 @@ pub fn check_compiling(filename: &Path) -> happiness {
         if contains(p.err, ~"error:") {
             cleanly_rejected(~"rejected with span_error")
         } else {
-            log(error, ~"Stderr: " + p.err);
+            error!("Stderr: %?", p.err);
             failed(~"Unfamiliar error message")
         }
     } else if contains(p.out, ~"Assertion") && contains(p.out, ~"failed") {
-        log(error, ~"Stdout: " + p.out);
+        error!("Stdout: %?", p.out);
         failed(~"Looks like an llvm assertion failure")
     } else if contains(p.out, ~"internal compiler error unimplemented") {
         known_bug(~"Something unimplemented")
     } else if contains(p.out, ~"internal compiler error") {
-        log(error, ~"Stdout: " + p.out);
+        error!("Stdout: %?", p.out);
         failed(~"internal compiler error")
 
     } else {
-        log(error, p.status);
-        log(error, ~"!Stdout: " + p.out);
+        error!("%?", p.status);
+        error!("!Stdout: %?", p.out);
         failed(~"What happened?")
     }
 }
@@ -609,7 +609,7 @@ pub fn check_variants(files: &[Path], cx: Context) {
 
         let file_str = file.to_str();
 
-        log(error, ~"check_variants: " + file_str);
+        error!("check_variants: %?", file_str);
         let sess = parse::new_parse_sess(option::None);
         let crate =
             parse::parse_crate_from_source_str(

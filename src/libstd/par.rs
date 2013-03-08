@@ -41,7 +41,7 @@ fn map_slices<A:Copy + Owned,B:Copy + Owned>(
 
     let len = xs.len();
     if len < min_granularity {
-        log(info, ~"small slice");
+        info!("small slice");
         // This is a small vector, fall back on the normal map.
         ~[f()(0u, xs)]
     }
@@ -52,7 +52,7 @@ fn map_slices<A:Copy + Owned,B:Copy + Owned>(
 
         let mut futures = ~[];
         let mut base = 0u;
-        log(info, ~"spawning tasks");
+        info!("spawning tasks");
         while base < len {
             let end = uint::min(len, base + items_per_task);
             do vec::as_imm_buf(xs) |p, _len| {
@@ -63,11 +63,11 @@ fn map_slices<A:Copy + Owned,B:Copy + Owned>(
                         let len = end - base;
                         let slice = (ptr::offset(p, base),
                                      len * sys::size_of::<A>());
-                        log(info, fmt!("pre-slice: %?", (base, slice)));
+                        info!("pre-slice: %?", (base, slice));
                         let slice : &[A] =
                             cast::reinterpret_cast(&slice);
-                        log(info, fmt!("slice: %?",
-                                       (base, vec::len(slice), end - base)));
+                        info!("slice: %?",
+                                       (base, vec::len(slice), end - base));
                         fail_unless!((vec::len(slice) == end - base));
                         f(base, slice)
                     }
@@ -76,9 +76,9 @@ fn map_slices<A:Copy + Owned,B:Copy + Owned>(
             };
             base += items_per_task;
         }
-        log(info, ~"tasks spawned");
+        info!("tasks spawned");
 
-        log(info, fmt!("num_tasks: %?", (num_tasks, futures.len())));
+        info!("num_tasks: %?", (num_tasks, futures.len()));
         fail_unless!((num_tasks == futures.len()));
 
         let r = do futures.map() |ys| {
@@ -114,7 +114,7 @@ pub fn mapi<A:Copy + Owned,B:Copy + Owned>(
         result
     });
     let r = vec::concat(slices);
-    log(info, (r.len(), xs.len()));
+    info!("%?", (r.len(), xs.len()));
     fail_unless!((r.len() == xs.len()));
     r
 }

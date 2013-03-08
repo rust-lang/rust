@@ -13,15 +13,15 @@ pub fn main() { task::spawn(|| child((10, 20, 30, 40, 50, 60, 70, 80, 90)) ); }
 
 fn child(&&args: (int, int, int, int, int, int, int, int, int)) {
     let (i1, i2, i3, i4, i5, i6, i7, i8, i9) = args;
-    log(error, i1);
-    log(error, i2);
-    log(error, i3);
-    log(error, i4);
-    log(error, i5);
-    log(error, i6);
-    log(error, i7);
-    log(error, i8);
-    log(error, i9);
+    error!(i1);
+    error!(i2);
+    error!(i3);
+    error!(i4);
+    error!(i5);
+    error!(i6);
+    error!(i7);
+    error!(i8);
+    error!(i9);
     fail_unless!((i1 == 10));
     fail_unless!((i2 == 20));
     fail_unless!((i3 == 30));

@@ -136,26 +136,25 @@ mod test {
                 timer_ptr as *libc::c_void);
             let exit_ch = transmute::<*c_void, ~Chan<bool>>(exit_ch_ptr);
             exit_ch.send(true);
-            log(debug,
-                fmt!("EXIT_CH_PTR simple_timer_close_cb exit_ch_ptr: %?",
-                     exit_ch_ptr));
+            debug!("EXIT_CH_PTR simple_timer_close_cb exit_ch_ptr: %?",
+                     exit_ch_ptr);
         }
     }
     extern fn simple_timer_cb(timer_ptr: *ll::uv_timer_t,
                              _status: libc::c_int) {
         unsafe {
-            log(debug, ~"in simple timer cb");
+            debug!(~"in simple timer cb");
             ll::timer_stop(timer_ptr);
             let hl_loop = &get_gl();
             do iotask::interact(hl_loop) |_loop_ptr| {
-                log(debug, ~"closing timer");
+                debug!(~"closing timer");
                 unsafe {
                     ll::close(timer_ptr, simple_timer_close_cb);
                 }
-                log(debug, ~"about to deref exit_ch_ptr");
-                log(debug, ~"after msg sent on deref'd exit_ch");
+                debug!(~"about to deref exit_ch_ptr");
+                debug!(~"after msg sent on deref'd exit_ch");
             };
-            log(debug, ~"exiting simple timer cb");
+            debug!(~"exiting simple timer cb");
         }
     }
 
@@ -163,13 +162,13 @@ mod test {
         unsafe {
             let (exit_po, exit_ch) = stream::<bool>();
             let exit_ch_ptr: *libc::c_void = transmute(~exit_ch);
-            log(debug, fmt!("EXIT_CH_PTR newly created exit_ch_ptr: %?",
-                            exit_ch_ptr));
+            debug!("EXIT_CH_PTR newly created exit_ch_ptr: %?",
+                            exit_ch_ptr);
             let timer_handle = ll::timer_t();
             let timer_ptr = ptr::addr_of(&timer_handle);
             do iotask::interact(iotask) |loop_ptr| {
                 unsafe {
-                    log(debug, ~"user code inside interact loop!!!");
+                    debug!(~"user code inside interact loop!!!");
                     let init_status = ll::timer_init(loop_ptr, timer_ptr);
                     if(init_status == 0i32) {
                         ll::set_data_for_uv_handle(
@@ -188,7 +187,7 @@ mod test {
                 }
             };
             exit_po.recv();
-            log(debug,
+            debug!(
                 ~"global_loop timer test: msg recv on exit_po, done..");
         }
     }
@@ -225,7 +224,7 @@ mod test {
         for iter::repeat(cycles) {
             exit_po.recv();
         };
-        log(debug, ~"test_stress_gl_uv_global_loop_high_level_global_timer"+
+        debug!(~"test_stress_gl_uv_global_loop_high_level_global_timer"+
             ~" exiting sucessfully!");
     }
 }

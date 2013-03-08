@@ -22,7 +22,7 @@ impl<'self> get_chowder<'self> for Clam<'self> {
 
 pub fn main() {
     let clam = Clam { chowder: &3 };
-    log(debug, *clam.get_chowder());
+    debug!(*clam.get_chowder());
     clam.get_chowder();
 }
 
