@@ -1327,16 +1327,4 @@ mod test {
                        CallToEmitEnumVariantArg (1),
                        CallToEmitUint (44)]);
         }
-
-    pub enum BPos = uint;
-
-    #[auto_encode]
-    pub struct HasPos { pos : BPos }
-
-    #[test] fn encode_newtype_test () {
-        check_equal (to_call_log (HasPos {pos:BPos(48)}),
-                    ~[CallToEmitStruct(~"HasPos",1),
-                      CallToEmitField(~"pos",0),
-                      CallToEmitUint(48)]);
-    }
 }

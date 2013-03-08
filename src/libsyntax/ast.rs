@@ -1086,15 +1086,10 @@ pub enum variant_kind {
 #[auto_encode]
 #[auto_decode]
 #[deriving_eq]
-pub struct enum_def_ {
+pub struct enum_def {
     variants: ~[variant],
     common: Option<@struct_def>,
 }
-
-#[auto_encode]
-#[auto_decode]
-#[deriving_eq]
-pub enum enum_def = enum_def_;
 
 #[auto_encode]
 #[auto_decode]
