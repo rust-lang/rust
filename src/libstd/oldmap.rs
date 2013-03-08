@@ -74,7 +74,7 @@ pub mod chained {
     }
 
     priv impl<K:Eq + IterBytes + Hash,V> T<K, V> {
-        pure fn search_rem(k: &K, h: uint, idx: uint,
+        pure fn search_rem(&self, k: &K, h: uint, idx: uint,
                            e_root: @Entry<K,V>) -> SearchResult<K,V> {
             let mut e0 = e_root;
             let mut comp = 1u;   // for logging
@@ -100,7 +100,7 @@ pub mod chained {
             };
         }
 
-        pure fn search_tbl(k: &K, h: uint) -> SearchResult<K,V> {
+        pure fn search_tbl(&self, k: &K, h: uint) -> SearchResult<K,V> {
             let idx = h % vec::len(self.chains);
             match copy self.chains[idx] {
               None => {
@@ -120,7 +120,7 @@ pub mod chained {
             }
         }
 
-        fn rehash() {
+        fn rehash(&self) {
             let n_old_chains = self.chains.len();
             let n_new_chains: uint = uint::next_power_of_two(n_old_chains+1u);
             let mut new_chains = chains(n_new_chains);
@@ -134,7 +134,7 @@ pub mod chained {
     }
 
     pub impl<K:Eq + IterBytes + Hash,V> T<K, V> {
-        pure fn each_entry(blk: fn(@Entry<K,V>) -> bool) {
+        pure fn each_entry(&self, blk: fn(@Entry<K,V>) -> bool) {
             // n.b. we can't use vec::iter() here because self.chains
             // is stored in a mutable location.
             let mut i = 0u, n = self.chains.len();
@@ -176,7 +176,7 @@ pub mod chained {
             }
         }
 
-        fn insert(k: K, v: V) -> bool {
+        fn insert(&self, k: K, v: V) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(&k, hash) {
               NotFound => {
@@ -220,7 +220,7 @@ pub mod chained {
             }
         }
 
-        fn remove(k: &K) -> bool {
+        fn remove(&self, k: &K) -> bool {
             match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
               NotFound => false,
               FoundFirst(idx, entry) => {
@@ -260,7 +260,8 @@ pub mod chained {
             }
         }
 
-        fn update_with_key(key: K, newval: V, ff: fn(K, V, V) -> V) -> bool {
+        fn update_with_key(&self, key: K, newval: V, ff: fn(K, V, V) -> V)
+                          -> bool {
 /*
             match self.find(key) {
                 None            => return self.insert(key, val),
@@ -311,7 +312,7 @@ pub mod chained {
             }
         }
 
-        fn update(key: K, newval: V, ff: fn(V, V) -> V) -> bool {
+        fn update(&self, key: K, newval: V, ff: fn(V, V) -> V) -> bool {
             return self.update_with_key(key, newval, |_k, v, v1| ff(v,v1));
         }
 
@@ -325,7 +326,7 @@ pub mod chained {
     }
 
     pub impl<K:Eq + IterBytes + Hash + Copy + ToStr,V:ToStr + Copy> T<K, V> {
-        fn to_writer(wr: io::Writer) {
+        fn to_writer(&self, wr: io::Writer) {
             if self.count == 0u {
                 wr.write_str(~"{}");
                 return;

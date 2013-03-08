@@ -47,7 +47,7 @@ priv enum FutureState<A> {
 
 /// Methods on the `future` type
 pub impl<A:Copy> Future<A> {
-    fn get() -> A {
+    fn get(&self) -> A {
         //! Get the value of the future
         *(self.get_ref())
     }
