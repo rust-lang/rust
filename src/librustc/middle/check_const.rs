@@ -91,8 +91,8 @@ pub fn check_expr(sess: Session,
                   v: visit::vt<bool>) {
     if is_const {
         match e.node {
-          expr_unary(box(_), _) | expr_unary(uniq(_), _) |
-          expr_unary(deref, _) => {
+          expr_unary(deref, _) => { }
+          expr_unary(box(_), _) | expr_unary(uniq(_), _) => {
             sess.span_err(e.span,
                           ~"disallowed operator in constant expression");
             return;
