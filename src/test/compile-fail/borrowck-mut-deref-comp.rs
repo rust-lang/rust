@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum foo = ~int;
+struct foo(~int);
 
 fn borrow(x: @mut foo) {
     let _y = &***x; //~ ERROR illegal borrow unless pure

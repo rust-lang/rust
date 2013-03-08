@@ -28,7 +28,7 @@ fn align(size: uint, align: uint) -> uint {
     ((size + align) - 1u) & !(align - 1u)
 }
 
-enum ptr_visit_adaptor<V> = Inner<V>;
+struct ptr_visit_adaptor<V>(Inner<V>);
 
 pub impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
 
@@ -470,7 +470,7 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
     }
 }
 
-enum my_visitor = @mut Stuff;
+struct my_visitor(@mut Stuff);
 
 struct Stuff {
     ptr1: *c_void,

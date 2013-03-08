@@ -24,7 +24,7 @@ fn noncopyable() -> noncopyable {
     }
 }
 
-enum wrapper = noncopyable;
+struct wrapper(noncopyable);
 
 fn main() {
     let x1 = wrapper(noncopyable());

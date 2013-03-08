@@ -12,7 +12,7 @@ struct box<T> {
     f: T
 }
 
-enum box_impl<T> = box<T>;
+struct box_impl<T>(box<T>);
 
 fn set_box_impl<T>(b: box_impl<@const T>, v: @const T) {
     b.f = v;
