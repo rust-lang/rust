@@ -11,7 +11,6 @@
 //! Sorting methods
 
 use core::cmp::{Eq, Ord};
-use core::dvec::DVec;
 use core::prelude::*;
 use core::util;
 use core::vec::{len, push};
@@ -189,7 +188,7 @@ pub fn tim_sort<T:Copy + Ord>(array: &mut [T]) {
         return;
     }
 
-    let ms = &MergeState();
+    let mut ms = MergeState();
     let min_run = min_run_length(size);
 
     let mut idx = 0;
@@ -392,66 +391,63 @@ struct RunState {
 }
 
 struct MergeState<T> {
-    mut min_gallop: uint,
-    runs: DVec<RunState>,
+    min_gallop: uint,
+    runs: ~[RunState],
 }
 
 // Fixme (#3853) Move into MergeState
 fn MergeState<T>() -> MergeState<T> {
     MergeState {
         min_gallop: MIN_GALLOP,
-        runs: DVec(),
+        runs: ~[],
     }
 }
 
-pub impl<T:Copy + Ord> MergeState<T> {
-    fn push_run(&self, run_base: uint, run_len: uint) {
+impl<T:Copy + Ord> MergeState<T> {
+    fn push_run(&mut self, run_base: uint, run_len: uint) {
         let tmp = RunState{base: run_base, len: run_len};
         self.runs.push(tmp);
     }
 
-    fn merge_at(&self, n: uint, array: &mut [T]) {
+    fn merge_at(&mut self, n: uint, array: &mut [T]) {
         let mut size = self.runs.len();
         fail_unless!(size >= 2);
         fail_unless!(n == size-2 || n == size-3);
 
-        do self.runs.borrow_mut |arr| {
+        let mut b1 = self.runs[n].base;
+        let mut l1 = self.runs[n].len;
+        let b2 = self.runs[n+1].base;
+        let l2 = self.runs[n+1].len;
 
-            let mut b1 = arr[n].base;
-            let mut l1 = arr[n].len;
-            let b2 = arr[n+1].base;
-            let l2 = arr[n+1].len;
+        fail_unless!(l1 > 0 && l2 > 0);
+        fail_unless!(b1 + l1 == b2);
 
-            fail_unless!(l1 > 0 && l2 > 0);
-            fail_unless!(b1 + l1 == b2);
+        self.runs[n].len = l1 + l2;
+        if n == size-3 {
+            self.runs[n+1].base = self.runs[n+2].base;
+            self.runs[n+1].len = self.runs[n+2].len;
+        }
 
-            arr[n].len = l1 + l2;
-            if n == size-3 {
-                arr[n+1].base = arr[n+2].base;
-                arr[n+1].len = arr[n+2].len;
-            }
-
-            let slice = vec::mut_slice(array, b1, b1+l1);
-            let k = gallop_right(&const array[b2], slice, 0);
-            b1 += k;
-            l1 -= k;
-            if l1 != 0 {
-                let slice = vec::mut_slice(array, b2, b2+l2);
-                let l2 = gallop_left(
-                    &const array[b1+l1-1],slice,l2-1);
-                if l2 > 0 {
-                    if l1 <= l2 {
-                        self.merge_lo(array, b1, l1, b2, l2);
-                    } else {
-                        self.merge_hi(array, b1, l1, b2, l2);
-                    }
+        let slice = vec::mut_slice(array, b1, b1+l1);
+        let k = gallop_right(&const array[b2], slice, 0);
+        b1 += k;
+        l1 -= k;
+        if l1 != 0 {
+            let slice = vec::mut_slice(array, b2, b2+l2);
+            let l2 = gallop_left(
+                &const array[b1+l1-1],slice,l2-1);
+            if l2 > 0 {
+                if l1 <= l2 {
+                    self.merge_lo(array, b1, l1, b2, l2);
+                } else {
+                    self.merge_hi(array, b1, l1, b2, l2);
                 }
             }
         }
         self.runs.pop();
     }
 
-    fn merge_lo(&self, array: &mut [T], base1: uint, len1: uint,
+    fn merge_lo(&mut self, array: &mut [T], base1: uint, len1: uint,
                 base2: uint, len2: uint) {
         fail_unless!(len1 != 0 && len2 != 0 && base1+len1 == base2);
 
@@ -554,7 +550,7 @@ pub impl<T:Copy + Ord> MergeState<T> {
         }
     }
 
-    fn merge_hi(&self, array: &mut [T], base1: uint, len1: uint,
+    fn merge_hi(&mut self, array: &mut [T], base1: uint, len1: uint,
                 base2: uint, len2: uint) {
         fail_unless!(len1 != 1 && len2 != 0 && base1 + len1 == base2);
 
@@ -672,32 +668,28 @@ pub impl<T:Copy + Ord> MergeState<T> {
         }
     }
 
-    fn merge_collapse(&self, array: &mut [T]) {
+    fn merge_collapse(&mut self, array: &mut [T]) {
         while self.runs.len() > 1 {
             let mut n = self.runs.len()-2;
-            let chk = do self.runs.borrow |arr| {
-                if n > 0 && arr[n-1].len <= arr[n].len + arr[n+1].len {
-                    if arr[n-1].len < arr[n+1].len { n -= 1; }
-                    true
-                } else if arr[n].len <= arr[n+1].len {
-                    true
-                } else {
-                    false
-                }
-            };
-            if !chk { break; }
+            if n > 0 &&
+                self.runs[n-1].len <= self.runs[n].len + self.runs[n+1].len
+            {
+                if self.runs[n-1].len < self.runs[n+1].len { n -= 1; }
+            } else if self.runs[n].len <= self.runs[n+1].len {
+                /* keep going */
+            } else {
+                break;
+            }
             self.merge_at(n, array);
         }
     }
 
-    fn merge_force_collapse(&self, array: &mut [T]) {
+    fn merge_force_collapse(&mut self, array: &mut [T]) {
         while self.runs.len() > 1 {
             let mut n = self.runs.len()-2;
             if n > 0 {
-                do self.runs.borrow |arr| {
-                    if arr[n-1].len < arr[n+1].len {
-                        n -= 1;
-                    }
+                if self.runs[n-1].len < self.runs[n+1].len {
+                    n -= 1;
                 }
             }
             self.merge_at(n, array);

@@ -15,12 +15,11 @@ extern mod req;
 extern mod std;
 
 use req::*;
-use std::oldmap::*;
 use std::oldmap::HashMap;
 
 pub fn main() {
   let v = ~[@~"hi"];
   let m: req::header_map = HashMap();
-  m.insert(~"METHOD", @dvec::from_vec(v));
+  m.insert(~"METHOD", @mut v);
   request::<int>(m);
 }
