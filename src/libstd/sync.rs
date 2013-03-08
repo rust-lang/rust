@@ -79,8 +79,9 @@ struct SemInner<Q> {
     // a condition variable attached, others should.
     blocked:   Q
 }
+
 #[doc(hidden)]
-enum Sem<Q> = Exclusive<SemInner<Q>>;
+struct Sem<Q>(Exclusive<SemInner<Q>>);
 
 #[doc(hidden)]
 fn new_sem<Q:Owned>(count: int, q: Q) -> Sem<Q> {
