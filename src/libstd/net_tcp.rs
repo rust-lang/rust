@@ -823,31 +823,31 @@ pub fn socket_buf(sock: TcpSocket) -> TcpSocketBuf {
 
 /// Convenience methods extending `net::tcp::TcpSocket`
 pub impl TcpSocket {
-    pub fn read_start() -> result::Result<@Port<
+    pub fn read_start(&self) -> result::Result<@Port<
         result::Result<~[u8], TcpErrData>>, TcpErrData> {
-        read_start(&self)
+        read_start(self)
     }
-    pub fn read_stop() ->
+    pub fn read_stop(&self) ->
         result::Result<(), TcpErrData> {
-        read_stop(&self)
+        read_stop(self)
     }
-    fn read(timeout_msecs: uint) ->
+    fn read(&self, timeout_msecs: uint) ->
         result::Result<~[u8], TcpErrData> {
-        read(&self, timeout_msecs)
+        read(self, timeout_msecs)
     }
-    fn read_future(timeout_msecs: uint) ->
+    fn read_future(&self, timeout_msecs: uint) ->
         future::Future<result::Result<~[u8], TcpErrData>> {
-        read_future(&self, timeout_msecs)
+        read_future(self, timeout_msecs)
     }
-    pub fn write(raw_write_data: ~[u8])
+    pub fn write(&self, raw_write_data: ~[u8])
         -> result::Result<(), TcpErrData> {
-        write(&self, raw_write_data)
+        write(self, raw_write_data)
     }
-    pub fn write_future(raw_write_data: ~[u8])
+    pub fn write_future(&self, raw_write_data: ~[u8])
         -> future::Future<result::Result<(), TcpErrData>> {
-        write_future(&self, raw_write_data)
+        write_future(self, raw_write_data)
     }
-    pub fn get_peer_addr() -> ip::IpAddr {
+    pub fn get_peer_addr(&self) -> ip::IpAddr {
         unsafe {
             if self.socket_data.ipv6 {
                 let addr = uv::ll::ip6_addr("", 0);
@@ -1264,11 +1264,11 @@ enum TcpReadResult {
 }
 
 trait ToTcpErr {
-    fn to_tcp_err() -> TcpErrData;
+    fn to_tcp_err(&self) -> TcpErrData;
 }
 
 impl ToTcpErr for uv::ll::uv_err_data {
-    fn to_tcp_err() -> TcpErrData {
+    fn to_tcp_err(&self) -> TcpErrData {
         TcpErrData { err_name: self.err_name, err_msg: self.err_msg }
     }
 }

@@ -24,7 +24,7 @@ pub impl BufReader {
         }
     }
 
-    priv fn as_bytes_reader<A>(f: &fn(&BytesReader) -> A) -> A {
+    priv fn as_bytes_reader<A>(&self, f: &fn(&BytesReader) -> A) -> A {
         // Recreating the BytesReader state every call since
         // I can't get the borrowing to work correctly
         let bytes_reader = BytesReader {
