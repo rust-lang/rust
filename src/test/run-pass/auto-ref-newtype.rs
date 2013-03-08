@@ -11,7 +11,7 @@
 // Check that we can define inherent methods on newtype enums that use
 // an auto-ref'd receiver.
 
-enum Foo = uint;
+struct Foo(uint);
 
 pub impl Foo {
     fn len(&self) -> uint { **self }
