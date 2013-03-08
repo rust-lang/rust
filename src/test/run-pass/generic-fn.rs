@@ -24,14 +24,14 @@ pub fn main() {
     let p: Triple = Triple {x: 65, y: 66, z: 67};
     let mut q: Triple = Triple {x: 68, y: 69, z: 70};
     y = id::<int>(x);
-    log(debug, y);
+    debug!(y);
     fail_unless!((x == y));
     b = id::<char>(a);
-    log(debug, b);
+    debug!(b);
     fail_unless!((a == b));
     q = id::<Triple>(p);
     x = p.z;
     y = q.z;
-    log(debug, y);
+    debug!(y);
     fail_unless!((x == y));
 }

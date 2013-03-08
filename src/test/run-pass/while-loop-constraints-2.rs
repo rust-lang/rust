@@ -16,7 +16,7 @@ pub fn main() {
     while z < 50 {
         z += 1;
         while false { x = y; y = z; }
-        log(debug, y);
+        debug!(y);
     }
     fail_unless!((y == 42 && z == 50));
 }

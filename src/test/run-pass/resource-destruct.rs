@@ -14,7 +14,7 @@ struct shrinky_pointer {
 
 impl Drop for shrinky_pointer {
     fn finalize(&self) {
-        log(error, ~"Hello!"); **(self.i) -= 1;
+        error!(~"Hello!"); **(self.i) -= 1;
     }
 }
 
@@ -31,6 +31,6 @@ fn shrinky_pointer(i: @@mut int) -> shrinky_pointer {
 pub fn main() {
     let my_total = @@mut 10;
     { let pt = shrinky_pointer(my_total); fail_unless!((pt.look_at() == 10)); }
-    log(error, fmt!("my_total = %d", **my_total));
+    error!("my_total = %d", **my_total);
     fail_unless!((**my_total == 9));
 }

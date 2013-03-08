@@ -35,7 +35,7 @@ fn test00() {
     let mut i: int = 0;
     while i < number_of_messages {
         sum += p.recv();
-        log(debug, r);
+        debug!(r);
         i += 1;
     }
 

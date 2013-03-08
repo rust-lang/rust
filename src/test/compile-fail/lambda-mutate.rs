@@ -13,10 +13,10 @@
 fn main() {
     let i = 0;
     let ctr: @fn() -> int = || { i = i + 1; i };
-    log(error, ctr());
-    log(error, ctr());
-    log(error, ctr());
-    log(error, ctr());
-    log(error, ctr());
-    log(error, i);
+    error!(ctr());
+    error!(ctr());
+    error!(ctr());
+    error!(ctr());
+    error!(ctr());
+    error!(i);
 }

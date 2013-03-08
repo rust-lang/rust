@@ -22,5 +22,5 @@ fn main() {
 
     fail_unless!((*arc::get(&arc_v))[2] == 3); //~ ERROR use of moved value: `arc_v`
 
-    log(info, arc_v);
+    info!(arc_v);
 }

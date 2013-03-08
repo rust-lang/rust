@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn main() {
-    log(error, ("hi there!", "you"));
+    error!(("hi there!", "you"));
 }

@@ -848,7 +848,7 @@ pub fn add_span_comment(bcx: block, sp: span, text: &str) {
     let ccx = bcx.ccx();
     if !ccx.sess.no_asm_comments() {
         let s = fmt!("%s (%s)", text, ccx.sess.codemap.span_to_str(sp));
-        log(debug, copy s);
+        debug!("%s", copy s);
         add_comment(bcx, s);
     }
 }

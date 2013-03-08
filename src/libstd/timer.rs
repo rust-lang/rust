@@ -142,8 +142,8 @@ pub fn recv_timeout<T:Copy + Owned>(iotask: &IoTask,
 extern fn delayed_send_cb(handle: *uv::ll::uv_timer_t,
                                 status: libc::c_int) {
     unsafe {
-        log(debug,
-            fmt!("delayed_send_cb handle %? status %?", handle, status));
+        debug!(
+            "delayed_send_cb handle %? status %?", handle, status);
         // Faking a borrowed pointer to our ~SharedChan
         let timer_done_ch_ptr: &*c_void = &uv::ll::get_data_for_uv_handle(
             handle);
@@ -163,7 +163,7 @@ extern fn delayed_send_cb(handle: *uv::ll::uv_timer_t,
 
 extern fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) {
     unsafe {
-        log(debug, fmt!("delayed_send_close_cb handle %?", handle));
+        debug!("delayed_send_close_cb handle %?", handle);
         let timer_done_ch_ptr = uv::ll::get_data_for_uv_handle(handle);
         let timer_done_ch = transmute::<*c_void, ~SharedChan<()>>(
             timer_done_ch_ptr);

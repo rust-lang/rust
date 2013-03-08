@@ -18,5 +18,5 @@ pub fn main() {
     debug!("main thread exiting");
 }
 
-fn child(&&x: int) { log(debug, x); }
+fn child(&&x: int) { debug!(x); }
 

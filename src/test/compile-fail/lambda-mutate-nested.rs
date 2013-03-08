@@ -16,10 +16,10 @@ fn f2(x: &fn()) { x(); }
 fn main() {
     let i = 0;
     let ctr: @fn() -> int = || { f2(|| i = i + 1 ); i };
-    log(error, ctr());
-    log(error, ctr());
-    log(error, ctr());
-    log(error, ctr());
-    log(error, ctr());
-    log(error, i);
+    error!(ctr());
+    error!(ctr());
+    error!(ctr());
+    error!(ctr());
+    error!(ctr());
+    error!(i);
 }

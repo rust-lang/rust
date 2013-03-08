@@ -14,5 +14,5 @@ fn test(f: @fn(uint) -> uint) -> uint {
 
 fn main() {
     let f: ~fn(x: uint) -> uint = |x| 4u;
-    log(debug, test(f)); //~ ERROR expected @ closure, found ~ closure
+    debug!(test(f)); //~ ERROR expected @ closure, found ~ closure
 }

@@ -18,7 +18,7 @@ pub fn main() {
 
 fn run(i: int) {
 
-    log(debug, i);
+    debug!(i);
 
     if i == 0 {
         return;

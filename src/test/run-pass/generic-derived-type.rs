@@ -22,8 +22,8 @@ fn f<T:Copy>(t: T) -> Pair<T> {
 
 pub fn main() {
     let b = f::<int>(10);
-    log(debug, b.a);
-    log(debug, b.b);
+    debug!(b.a);
+    debug!(b.b);
     fail_unless!((b.a == 10));
     fail_unless!((b.b == 10));
 }

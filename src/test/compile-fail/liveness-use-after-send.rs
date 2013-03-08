@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn send<T:Owned>(ch: _chan<T>, -data: T) {
-    log(debug, ch);
-    log(debug, data);
+    debug!(ch);
+    debug!(data);
     fail!();
 }
 
@@ -20,7 +20,7 @@ struct _chan<T>(int);
 // message after the send deinitializes it
 fn test00_start(ch: _chan<~int>, message: ~int, _count: ~int) {
     send(ch, message);
-    log(debug, message); //~ ERROR use of moved value: `message`
+    debug!(message); //~ ERROR use of moved value: `message`
 }
 
 fn main() { fail!(); }

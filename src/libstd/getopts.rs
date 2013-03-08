@@ -881,7 +881,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Err(copy f) => {
-            log(error, fail_str(f));
+            error!(fail_str(f));
             check_fail_type(f, UnexpectedArgument_);
           }
           _ => fail!()

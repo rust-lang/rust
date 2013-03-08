@@ -64,7 +64,7 @@ fn test00() {
     for results.each |r| { r.recv(); }
 
     debug!("Completed: Final number is: ");
-    log(error, sum);
+    error!(sum);
     // assert (sum == (((number_of_tasks * (number_of_tasks - 1)) / 2) *
     //       number_of_messages));
     fail_unless!((sum == 480));

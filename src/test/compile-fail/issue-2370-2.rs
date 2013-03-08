@@ -15,5 +15,5 @@ struct cat {
 
 fn main() {
     let kitty : cat = cat { x: () };
-    log (error, *kitty);
+    error!(*kitty);
 }

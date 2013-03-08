@@ -11,6 +11,6 @@
 enum test { thing = 3u } //~ ERROR mismatched types
 //~^ ERROR expected signed integer constant
 fn main() {
-    log(error, thing as int);
+    error!(thing as int);
     fail_unless!((thing as int == 3));
 }

@@ -20,11 +20,11 @@ pub fn main() {
     fail_unless!((v[3i8] == 3));
     fail_unless!((v[3u32] == 3));
     fail_unless!((v[3i32] == 3));
-    log(debug, v[3u8]);
+    debug!(v[3u8]);
     fail_unless!((s[3u] == 'd' as u8));
     fail_unless!((s[3u8] == 'd' as u8));
     fail_unless!((s[3i8] == 'd' as u8));
     fail_unless!((s[3u32] == 'd' as u8));
     fail_unless!((s[3i32] == 'd' as u8));
-    log(debug, s[3u8]);
+    debug!(s[3u8]);
 }

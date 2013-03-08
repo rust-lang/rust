@@ -13,8 +13,8 @@
 pub fn main() {
     let x = ~[1, 2, 3];
     let mut y = 0;
-    for x.each |i| { log(debug, *i); y += *i; }
-    log(debug, y);
+    for x.each |i| { debug!(*i); y += *i; }
+    debug!(y);
     fail_unless!((y == 6));
     let s = ~"hello there";
     let mut i: int = 0;
@@ -27,8 +27,8 @@ pub fn main() {
         // ...
 
         i += 1;
-        log(debug, i);
-        log(debug, c);
+        debug!(i);
+        debug!(c);
     }
     fail_unless!((i == 11));
 }

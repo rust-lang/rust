@@ -758,7 +758,7 @@ pub fn link_binary(sess: Session,
         /*bad*/copy *out_filename
     };
 
-    log(debug, ~"output: " + output.to_str());
+    debug!("output: %s", output.to_str());
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.

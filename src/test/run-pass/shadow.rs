@@ -17,7 +17,7 @@ fn foo(c: ~[int]) {
     match none::<int> {
       some::<int>(_) => {
         for c.each |i| {
-            log(debug, a);
+            debug!(a);
             let a = 17;
             b += ~[a];
         }

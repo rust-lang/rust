@@ -31,7 +31,7 @@ pub fn main() {
         let a = r(i);
         let b = (a, 10);
         let (c, _d) = b;
-        log(debug, c);
+        debug!(c);
     }
     fail_unless!(*i == 1);
 }

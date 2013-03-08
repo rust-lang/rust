@@ -683,7 +683,7 @@ impl Writer for *libc::FILE {
                                         *self);
                 if nout != len as size_t {
                     error!("error writing buffer");
-                    log(error, os::last_os_error());
+                    error!("%s", os::last_os_error());
                     fail!();
                 }
             }
@@ -733,7 +733,7 @@ impl Writer for fd_t {
                     let nout = libc::write(*self, vb, len as size_t);
                     if nout < 0 as ssize_t {
                         error!("error writing buffer");
-                        log(error, os::last_os_error());
+                        error!("%s", os::last_os_error());
                         fail!();
                     }
                     count += nout as uint;
@@ -1288,7 +1288,6 @@ pub mod fsync {
 
 #[cfg(test)]
 mod tests {
-    use debug;
     use i32;
     use io::{BytesWriter, SeekCur, SeekEnd, SeekSet};
     use io;
@@ -1301,10 +1300,10 @@ mod tests {
     #[test]
     fn test_simple() {
         let tmpfile = &Path("tmp/lib-io-test-simple.tmp");
-        log(debug, tmpfile);
+        debug!(tmpfile);
         let frood: ~str =
             ~"A hoopy frood who really knows where his towel is.";
-        log(debug, copy frood);
+        debug!(copy frood);
         {
             let out: io::Writer =
                 result::get(
@@ -1313,7 +1312,7 @@ mod tests {
         }
         let inp: io::Reader = result::get(&io::file_reader(tmpfile));
         let frood2: ~str = inp.read_c_str();
-        log(debug, copy frood2);
+        debug!(copy frood2);
         fail_unless!(frood == frood2);
     }
 

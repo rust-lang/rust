@@ -14,7 +14,7 @@ fn test1() {
     let x = u(~10);
     fail_unless!(match x {
       u(a) => {
-        log(error, a);
+        error!(a);
         *a
       }
       _ => { 66 }

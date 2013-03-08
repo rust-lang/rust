@@ -12,4 +12,4 @@
 
 const i: int = 10;
 
-pub fn main() { log(debug, i); }
+pub fn main() { debug!("%i", i); }

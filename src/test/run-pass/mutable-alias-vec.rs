@@ -21,6 +21,6 @@ pub fn main() {
     grow(&mut v);
     grow(&mut v);
     let len = vec::len::<int>(v);
-    log(debug, len);
+    debug!(len);
     fail_unless!((len == 3 as uint));
 }
