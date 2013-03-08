@@ -408,7 +408,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
         --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))			\
         --aux-base $$(S)src/test/auxiliary/                 \
         --stage-id stage$(1)-$(2)							\
-       --rustcflags "$$(CFG_RUSTC_FLAGS) --target=$(2)"	\
+        --rustcflags "$(RUSTC_FLAGS_$(2)) $$(CFG_RUSTC_FLAGS) --target=$(2)" \
         $$(CTEST_TESTARGS)
 
 CTEST_DEPS_rpass_$(1)-T-$(2)-H-$(3) = $$(RPASS_TESTS)

@@ -239,7 +239,7 @@ CFG_PATH_MUNGE_arm-unknown-android := true
 CFG_LDPATH_arm-unknown-android :=
 CFG_RUN_arm-unknown-android=
 CFG_RUN_TARG_arm-unknown-android=
-RUSTC_FLAGS_arm-unknown-android :=--android-cross-path='$(CFG_ANDROID_CROSS_PATH)'
+RUSTC_FLAGS_arm-unknown-android :=--android-cross-path=$(CFG_ANDROID_CROSS_PATH)
 
 # i686-pc-mingw32 configuration
 CC_i686-pc-mingw32=$(CC)
