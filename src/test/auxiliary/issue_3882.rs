@@ -13,7 +13,9 @@ mod issue_3882 {
         len: libc::size_t,
     }
     
-    extern mod c {
-        fn linenoiseAddCompletion(lc: *mut Completions);
+    mod c {
+        extern {
+            fn linenoiseAddCompletion(lc: *mut Completions);
+        }
     }
 }

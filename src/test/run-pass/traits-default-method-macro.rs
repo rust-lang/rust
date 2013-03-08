@@ -25,5 +25,5 @@ impl Foo for Baz {
 
 pub fn main() {
     let q = Quux;
-    assert q.bar() == ~"test";
+    fail_unless!(q.bar() == ~"test");
 }

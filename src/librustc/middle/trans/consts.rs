@@ -70,7 +70,7 @@ pub fn const_lit(cx: @CrateContext, e: @ast::expr, lit: ast::lit)
 pub fn const_ptrcast(cx: @CrateContext, a: ValueRef, t: TypeRef) -> ValueRef {
     unsafe {
         let b = llvm::LLVMConstPointerCast(a, T_ptr(t));
-        assert cx.const_globals.insert(b as int, a);
+        fail_unless!(cx.const_globals.insert(b as int, a));
         b
     }
 }
@@ -100,7 +100,7 @@ pub fn const_deref(cx: @CrateContext, v: ValueRef) -> ValueRef {
             Some(v) => v,
             None => v
         };
-        assert llvm::LLVMIsGlobalConstant(v) == True;
+        fail_unless!(llvm::LLVMIsGlobalConstant(v) == True);
         let v = llvm::LLVMGetInitializer(v);
         v
     }
@@ -290,7 +290,7 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
               let len = match ty::get(bt).sty {
-                  ty::ty_estr(*) => {assert len > 0; len - 1},
+                  ty::ty_estr(*) => {fail_unless!(len > 0); len - 1},
                   _ => len
               };
               if iv >= len {
@@ -368,12 +368,6 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
               let repr = adt::represent_type(cx, ety);
               adt::trans_const(cx, repr, 0, es.map(|e| const_expr(cx, *e)))
           }
-          ast::expr_rec(ref fs, None) => {
-              let ety = ty::expr_ty(cx.tcx, e);
-              let repr = adt::represent_type(cx, ety);
-              adt::trans_const(cx, repr, 0,
-                               fs.map(|f| const_expr(cx, f.node.expr)))
-          }
           ast::expr_struct(_, ref fs, None) => {
               let ety = ty::expr_ty(cx.tcx, e);
               let repr = adt::represent_type(cx, ety);
@@ -423,14 +417,14 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
             }
           }
           ast::expr_path(pth) => {
-            assert pth.types.len() == 0;
+            fail_unless!(pth.types.len() == 0);
             match cx.tcx.def_map.find(&e.id) {
                 Some(ast::def_fn(def_id, _purity)) => {
                     let f = if !ast_util::is_local(def_id) {
                         let ty = csearch::get_type(cx.tcx, def_id).ty;
                         base::trans_external_path(cx, def_id, ty)
                     } else {
-                        assert ast_util::is_local(def_id);
+                        fail_unless!(ast_util::is_local(def_id));
                         base::get_item_val(cx, def_id.node)
                     };
                     let ety = ty::expr_ty_adjusted(cx.tcx, e);

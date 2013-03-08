@@ -26,5 +26,5 @@ impl Cat for int {
 }
 
 pub fn main() {
-    assert 5.meow();
+    fail_unless!(5.meow());
 }

@@ -17,6 +17,6 @@ fn x_coord(p: &r/Point) -> &r/int {
 pub fn main() {
     let p = @Point {x: 3, y: 4};
     let xc = x_coord(p);
-    assert *xc == 3;
+    fail_unless!(*xc == 3);
 }
 

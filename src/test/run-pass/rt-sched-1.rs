@@ -12,17 +12,21 @@
 
 use core::comm::*;
 
-type sched_id = int;
-type task_id = *libc::c_void;
+pub type sched_id = int;
+pub type task_id = *libc::c_void;
 
-type task = *libc::c_void;
-type closure = *libc::c_void;
+pub type task = *libc::c_void;
+pub type closure = *libc::c_void;
 
-extern mod rustrt {
-    pub fn rust_new_sched(num_threads: libc::uintptr_t) -> sched_id;
-    pub fn rust_get_sched_id() -> sched_id;
-    pub fn rust_new_task_in_sched(id: sched_id) -> task_id;
-    pub fn start_task(id: task_id, f: closure);
+mod rustrt {
+    use super::{closure, sched_id, task, task_id};
+
+    pub extern {
+        pub fn rust_new_sched(num_threads: libc::uintptr_t) -> sched_id;
+        pub fn rust_get_sched_id() -> sched_id;
+        pub fn rust_new_task_in_sched(id: sched_id) -> task_id;
+        pub fn start_task(id: task_id, f: closure);
+    }
 }
 
 pub fn main() {
@@ -34,13 +38,13 @@ pub fn main() {
         let new_sched_id = rustrt::rust_new_sched(num_threads);
         error!("new_sched_id %?", new_sched_id);
         let new_task_id = rustrt::rust_new_task_in_sched(new_sched_id);
-        assert !new_task_id.is_null();
+        fail_unless!(!new_task_id.is_null());
         let f: ~fn() = || {
             unsafe {
                 let child_sched_id = rustrt::rust_get_sched_id();
                 error!("child_sched_id %?", child_sched_id);
-                assert child_sched_id != parent_sched_id;
-                assert child_sched_id == new_sched_id;
+                fail_unless!(child_sched_id != parent_sched_id);
+                fail_unless!(child_sched_id == new_sched_id);
                 ch.send(());
             }
         };

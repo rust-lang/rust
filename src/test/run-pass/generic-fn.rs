@@ -25,13 +25,13 @@ pub fn main() {
     let mut q: Triple = Triple {x: 68, y: 69, z: 70};
     y = id::<int>(x);
     log(debug, y);
-    assert (x == y);
+    fail_unless!((x == y));
     b = id::<char>(a);
     log(debug, b);
-    assert (a == b);
+    fail_unless!((a == b));
     q = id::<Triple>(p);
     x = p.z;
     y = q.z;
     log(debug, y);
-    assert (x == y);
+    fail_unless!((x == y));
 }

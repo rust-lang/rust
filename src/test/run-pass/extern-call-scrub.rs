@@ -12,9 +12,11 @@
 // make sure the stack pointers are maintained properly in both
 // directions
 
-extern mod rustrt {
-    pub fn rust_dbg_call(cb: *u8,
-                         data: libc::uintptr_t) -> libc::uintptr_t;
+mod rustrt {
+    pub extern {
+        pub fn rust_dbg_call(cb: *u8, data: libc::uintptr_t)
+                          -> libc::uintptr_t;
+    }
 }
 
 extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
@@ -38,6 +40,6 @@ pub fn main() {
     do task::spawn {
         let result = count(12u);
         debug!("result = %?", result);
-        assert result == 2048u;
+        fail_unless!(result == 2048u);
     };
 }

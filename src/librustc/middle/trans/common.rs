@@ -1339,7 +1339,7 @@ pub fn monomorphize_type(bcx: block, t: ty::t) -> ty::t {
         Some(substs) => {
             ty::subst_tps(bcx.tcx(), substs.tys, substs.self_ty, t)
         }
-        _ => { assert !ty::type_has_params(t); t }
+        _ => { fail_unless!(!ty::type_has_params(t)); t }
     }
 }
 

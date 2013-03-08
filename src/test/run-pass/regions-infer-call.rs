@@ -15,5 +15,5 @@ fn has_two(x: &a/int, y: &b/int) -> int {
 }
 
 pub fn main() {
-    assert has_two(&20, &2) == 22;
+    fail_unless!(has_two(&20, &2) == 22);
 }

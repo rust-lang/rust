@@ -21,7 +21,7 @@ fn with(bi: &r/boxed_int) {
     // contravariant with respect to `&r`.  See also
     // compile-fail/regions-infer-invariance-due-to-mutability.rs
     let bi: &blk/boxed_int/&blk = bi;
-    assert *get(bi) == 22;
+    fail_unless!(*get(bi) == 22);
 }
 
 pub fn main() {

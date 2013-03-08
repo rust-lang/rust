@@ -8,16 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[nolink]
-#[abi = "rust-intrinsic"]
-extern mod rusti {
-    pub fn morestack_addr() -> *();
+mod rusti {
+    #[nolink]
+    #[abi = "rust-intrinsic"]
+    pub extern {
+        pub fn morestack_addr() -> *();
+    }
 }
 
 pub fn main() {
     unsafe {
         let addr = rusti::morestack_addr();
-        assert addr.is_not_null();
+        fail_unless!(addr.is_not_null());
         error!("%?", addr);
     }
 }

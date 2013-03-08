@@ -11,5 +11,5 @@
 pub fn main() {
     let i = ~1;
     let j = i;
-    assert *j == 1;
+    fail_unless!(*j == 1);
 }

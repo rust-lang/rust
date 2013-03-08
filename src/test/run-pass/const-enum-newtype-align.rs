@@ -13,5 +13,5 @@ struct S { a: u8, b: E }
 const C: S = S { a: 0xA5, b: E(0xDEADBEEF) };
 
 pub fn main() {
-    assert C.b == 0xDEADBEEF;
+    fail_unless!(C.b == 0xDEADBEEF);
 }

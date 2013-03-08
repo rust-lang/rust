@@ -106,7 +106,7 @@ pub fn get_used_crate_files(cstore: @mut CStore) -> ~[Path] {
 }
 
 pub fn add_used_library(cstore: @mut CStore, lib: @~str) -> bool {
-    assert *lib != ~"";
+    fail_unless!(*lib != ~"");
 
     if cstore.used_libraries.contains(&*lib) { return false; }
     cstore.used_libraries.push(/*bad*/ copy *lib);

@@ -13,10 +13,16 @@ extern mod std;
 use std::oldmap::HashMap;
 use std::bitv;
 
-type fn_info = {vars: HashMap<uint, var_info>};
-type var_info = {a: uint, b: uint};
+struct FnInfo {
+    vars: HashMap<uint, VarInfo>
+}
 
-fn bitv_to_str(enclosing: fn_info, v: ~bitv::Bitv) -> str {
+struct VarInfo {
+    a: uint,
+    b: uint,
+}
+
+fn bitv_to_str(enclosing: FnInfo, v: ~bitv::Bitv) -> str {
     let s = "";
 
     // error is that the value type in the hash map is var_info, not a box

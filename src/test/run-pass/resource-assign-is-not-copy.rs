@@ -33,5 +33,5 @@ pub fn main() {
         let (c, _d) = b;
         log(debug, c);
     }
-    assert *i == 1;
+    fail_unless!(*i == 1);
 }

@@ -19,10 +19,10 @@ fn start(c: &comm::Chan<comm::Chan<~str>>) {
     let mut a;
     let mut b;
     a = p.recv();
-    assert a == ~"A";
+    fail_unless!(a == ~"A");
     log(error, a);
     b = p.recv();
-    assert b == ~"B";
+    fail_unless!(b == ~"B");
     log(error, b);
 }
 

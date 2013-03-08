@@ -197,7 +197,7 @@ pub fn next_node_id(sess: @mut ParseSess) -> node_id {
     let rv = sess.next_id;
     sess.next_id += 1;
     // ID 0 is reserved for the crate and doesn't actually exist in the AST
-    assert rv != 0;
+    fail_unless!(rv != 0);
     return rv;
 }
 

@@ -49,6 +49,9 @@ pub enum ObsoleteSyntax {
     ObsoleteMutOwnedPointer,
     ObsoleteMutVector,
     ObsoleteTraitImplVisibility,
+    ObsoleteRecordType,
+    ObsoleteRecordPattern,
+    ObsoleteAssertion,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -144,6 +147,18 @@ pub impl Parser {
                 "`pub` or `priv` is meaningless for trait implementations, \
                  because the `impl...for...` form defines overloads for \
                  methods that already exist; remove the `pub` or `priv`"
+            ),
+            ObsoleteRecordType => (
+                "structural record type",
+                "use a structure instead"
+            ),
+            ObsoleteRecordPattern => (
+                "structural record pattern",
+                "use a structure instead"
+            ),
+            ObsoleteAssertion => (
+                "assertion",
+                "use `fail_unless!()` instead"
             ),
         };
 

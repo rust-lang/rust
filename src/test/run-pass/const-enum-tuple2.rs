@@ -13,6 +13,6 @@ const C: (E, u16, u16) = (V0, 0x600D, 0xBAD);
 
 pub fn main() {
     let (_, n, _) = C;
-    assert n != 0xBAD;
-    assert n == 0x600D;
+    fail_unless!(n != 0xBAD);
+    fail_unless!(n == 0x600D);
 }

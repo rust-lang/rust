@@ -26,12 +26,16 @@ pub const FROZEN_BIT: uint = 0x80000000;
 #[cfg(target_word_size = "64")]
 pub const FROZEN_BIT: uint = 0x8000000000000000;
 
-pub extern mod rustrt {
-    #[rust_stack]
-    unsafe fn rust_upcall_malloc(td: *c_char, size: uintptr_t) -> *c_char;
+pub mod rustrt {
+    use libc::{c_char, uintptr_t};
 
-    #[rust_stack]
-    unsafe fn rust_upcall_free(ptr: *c_char);
+    pub extern {
+        #[rust_stack]
+        unsafe fn rust_upcall_malloc(td: *c_char, size: uintptr_t) -> *c_char;
+
+        #[rust_stack]
+        unsafe fn rust_upcall_free(ptr: *c_char);
+    }
 }
 
 #[lang="fail_"]

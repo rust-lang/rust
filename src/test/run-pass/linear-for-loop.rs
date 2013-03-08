@@ -15,20 +15,20 @@ pub fn main() {
     let mut y = 0;
     for x.each |i| { log(debug, *i); y += *i; }
     log(debug, y);
-    assert (y == 6);
+    fail_unless!((y == 6));
     let s = ~"hello there";
     let mut i: int = 0;
     for str::each(s) |c| {
-        if i == 0 { assert (c == 'h' as u8); }
-        if i == 1 { assert (c == 'e' as u8); }
-        if i == 2 { assert (c == 'l' as u8); }
-        if i == 3 { assert (c == 'l' as u8); }
-        if i == 4 { assert (c == 'o' as u8); }
+        if i == 0 { fail_unless!((c == 'h' as u8)); }
+        if i == 1 { fail_unless!((c == 'e' as u8)); }
+        if i == 2 { fail_unless!((c == 'l' as u8)); }
+        if i == 3 { fail_unless!((c == 'l' as u8)); }
+        if i == 4 { fail_unless!((c == 'o' as u8)); }
         // ...
 
         i += 1;
         log(debug, i);
         log(debug, c);
     }
-    assert (i == 11);
+    fail_unless!((i == 11));
 }

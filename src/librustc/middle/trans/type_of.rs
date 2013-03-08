@@ -70,7 +70,7 @@ pub fn type_of_fn_from_ty(cx: @CrateContext, fty: ty::t) -> TypeRef {
 }
 
 pub fn type_of_non_gc_box(cx: @CrateContext, t: ty::t) -> TypeRef {
-    assert !ty::type_needs_infer(t);
+    fail_unless!(!ty::type_needs_infer(t));
 
     let t_norm = ty::normalize_ty(cx.tcx, t);
     if t != t_norm {
@@ -142,8 +142,7 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
         ty::ty_unboxed_vec(mt) => T_vec(cx, sizing_type_of(cx, mt.ty)),
 
-        ty::ty_tup(*) | ty::ty_rec(*) | ty::ty_struct(*)
-        | ty::ty_enum(*) => {
+        ty::ty_tup(*) | ty::ty_struct(*) | ty::ty_enum(*) => {
             let repr = adt::represent_type(cx, t);
             T_struct(adt::sizing_fields_of(cx, repr))
         }
@@ -240,7 +239,7 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
       ty::ty_closure(_) => T_fn_pair(cx, type_of_fn_from_ty(cx, t)),
       ty::ty_trait(_, _, vstore) => T_opaque_trait(cx, vstore),
       ty::ty_type => T_ptr(cx.tydesc_type),
-      ty::ty_tup(*) | ty::ty_rec(*) => {
+      ty::ty_tup(*) => {
           let repr = adt::represent_type(cx, t);
           T_struct(adt::fields_of(cx, repr))
       }

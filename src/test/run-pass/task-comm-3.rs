@@ -67,5 +67,5 @@ fn test00() {
     log(error, sum);
     // assert (sum == (((number_of_tasks * (number_of_tasks - 1)) / 2) *
     //       number_of_messages));
-    assert (sum == 480);
+    fail_unless!((sum == 480));
 }

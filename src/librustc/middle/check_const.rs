@@ -162,8 +162,7 @@ pub fn check_expr(sess: Session,
           expr_field(*) |
           expr_index(*) |
           expr_tup(*) |
-          expr_struct(_, _, None) |
-          expr_rec(_, None) => { }
+          expr_struct(_, _, None) => { }
           expr_addr_of(*) => {
                 sess.span_err(
                     e.span,

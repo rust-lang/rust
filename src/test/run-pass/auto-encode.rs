@@ -34,7 +34,7 @@ fn test_prettyprint<A:Encodable<prettyprint::Serializer>>(
         a.encode(&prettyprint::Serializer(w))
     };
     debug!("s == %?", s);
-    assert s == *expected;
+    fail_unless!(s == *expected);
 }
 
 fn test_ebml<A:
@@ -48,7 +48,7 @@ fn test_ebml<A:
     };
     let d = EBReader::Doc(@bytes);
     let a2: A = Decodable::decode(&EBReader::Decoder(d));
-    assert *a1 == a2;
+    fail_unless!(*a1 == a2);
 }
 
 #[auto_encode]

@@ -13,5 +13,5 @@ fn foo() -> int { 22 }
 pub fn main() {
     let x = dvec::DVec::<@fn() -> int>();
     x.push(foo);
-    assert (x[0])() == 22;
+    fail_unless!((x[0])() == 22);
 }

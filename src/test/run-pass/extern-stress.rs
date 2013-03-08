@@ -11,9 +11,11 @@
 // This creates a bunch of yielding tasks that run concurrently
 // while holding onto C stacks
 
-extern mod rustrt {
-    pub fn rust_dbg_call(cb: *u8,
-                         data: libc::uintptr_t) -> libc::uintptr_t;
+mod rustrt {
+    pub extern {
+        pub fn rust_dbg_call(cb: *u8, data: libc::uintptr_t)
+                          -> libc::uintptr_t;
+    }
 }
 
 extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
@@ -34,7 +36,7 @@ fn count(n: uint) -> uint {
 pub fn main() {
     for iter::repeat(100u) {
         do task::spawn {
-            assert count(5u) == 16u;
+            fail_unless!(count(5u) == 16u);
         };
     }
 }

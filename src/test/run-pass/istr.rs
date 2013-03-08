@@ -12,9 +12,9 @@ fn test_stack_assign() {
     let s: ~str = ~"a";
     log(debug, copy s);
     let t: ~str = ~"a";
-    assert (s == t);
+    fail_unless!((s == t));
     let u: ~str = ~"b";
-    assert (s != u);
+    fail_unless!((s != u));
 }
 
 fn test_heap_lit() { ~"a big string"; }
@@ -22,42 +22,42 @@ fn test_heap_lit() { ~"a big string"; }
 fn test_heap_assign() {
     let s: ~str = ~"a big ol' string";
     let t: ~str = ~"a big ol' string";
-    assert (s == t);
+    fail_unless!((s == t));
     let u: ~str = ~"a bad ol' string";
-    assert (s != u);
+    fail_unless!((s != u));
 }
 
 fn test_heap_log() { let s = ~"a big ol' string"; log(debug, s); }
 
 fn test_stack_add() {
-    assert (~"a" + ~"b" == ~"ab");
+    fail_unless!((~"a" + ~"b" == ~"ab"));
     let s: ~str = ~"a";
-    assert (s + s == ~"aa");
-    assert (~"" + ~"" == ~"");
+    fail_unless!((s + s == ~"aa"));
+    fail_unless!((~"" + ~"" == ~""));
 }
 
-fn test_stack_heap_add() { assert (~"a" + ~"bracadabra" == ~"abracadabra"); }
+fn test_stack_heap_add() { fail_unless!((~"a" + ~"bracadabra" == ~"abracadabra")); }
 
 fn test_heap_add() {
-    assert (~"this should" + ~" totally work" == ~"this should totally work");
+    fail_unless!((~"this should" + ~" totally work" == ~"this should totally work"));
 }
 
 fn test_append() {
     let mut s = ~"";
     s += ~"a";
-    assert (s == ~"a");
+    fail_unless!((s == ~"a"));
 
     let mut s = ~"a";
     s += ~"b";
     log(debug, copy s);
-    assert (s == ~"ab");
+    fail_unless!((s == ~"ab"));
 
     let mut s = ~"c";
     s += ~"offee";
-    assert (s == ~"coffee");
+    fail_unless!((s == ~"coffee"));
 
     s += ~"&tea";
-    assert (s == ~"coffee&tea");
+    fail_unless!((s == ~"coffee&tea"));
 }
 
 pub fn main() {

@@ -15,5 +15,5 @@
 mod mod_file_aux;
 
 pub fn main() {
-    assert mod_file_aux::foo() == 10;
+    fail_unless!(mod_file_aux::foo() == 10);
 }

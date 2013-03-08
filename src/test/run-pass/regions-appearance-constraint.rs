@@ -25,7 +25,7 @@ fn testfn(cond: bool) {
 
     x = @5;
     y = @6;
-    assert *a == exp;
+    fail_unless!(*a == exp);
 }
 
 pub fn main() {

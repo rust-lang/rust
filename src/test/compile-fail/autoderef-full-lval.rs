@@ -23,10 +23,10 @@ fn main() {
     let b: clam = clam{x: @10, y: @20};
     let z: int = a.x + b.y;
     log(debug, z);
-    assert (z == 21);
+    fail_unless!((z == 21));
     let forty: fish = fish{a: @40};
     let two: fish = fish{a: @2};
     let answer: int = forty.a + two.a;
     log(debug, answer);
-    assert (answer == 42);
+    fail_unless!((answer == 42));
 }

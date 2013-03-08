@@ -15,9 +15,11 @@ mod spam {
     pub fn eggs() { }
 }
 
-#[abi = "cdecl"]
-extern mod rustrt {
-    pub use spam::{ham, eggs};
+mod rustrt {
+    #[abi = "cdecl"]
+    pub extern {
+        pub use spam::{ham, eggs};
+    }
 }
 
 pub fn main() { rustrt::ham(); rustrt::eggs(); }

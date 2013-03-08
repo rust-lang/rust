@@ -29,5 +29,5 @@ pub fn main() {
     {
         let j = ~r(i);
     }
-    assert *i == 1;
+    fail_unless!(*i == 1);
 }

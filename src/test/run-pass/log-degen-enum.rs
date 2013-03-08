@@ -13,5 +13,5 @@ enum Foo = uint;
 pub fn main() {
     let x = Foo(1);
     let y = fmt!("%?", x);
-    assert y == ~"Foo(1)";
+    fail_unless!(y == ~"Foo(1)");
 }

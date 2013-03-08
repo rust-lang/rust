@@ -14,7 +14,7 @@ pub fn main() {
     let x = @3;
     loop {
         let y = borrow(x);
-        assert *x == *y;
+        fail_unless!(*x == *y);
 	break;
     }
 }

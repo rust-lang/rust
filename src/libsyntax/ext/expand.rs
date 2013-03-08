@@ -430,7 +430,7 @@ pub fn core_macros() -> ~str {
     macro_rules! fail_unless(
         ($cond:expr) => {
             if !$cond {
-                fail!(~\"assertion failed: \" + stringify!($cond))
+                ::core::sys::fail_assert(stringify!($cond), file!(), line!())
             }
         }
     )

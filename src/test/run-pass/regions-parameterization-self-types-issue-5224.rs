@@ -24,5 +24,5 @@ fn get_int<G: Getter>(g: &G) -> int {
 
 fn main() {
     let foo = Foo { field: 22 };
-    assert get_int(&foo) == 22;
+    fail_unless!(get_int(&foo) == 22);
 }

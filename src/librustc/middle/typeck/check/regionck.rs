@@ -692,7 +692,6 @@ pub mod guarantor {
             ast::expr_again(*) |
             ast::expr_ret(*) |
             ast::expr_log(*) |
-            ast::expr_assert(*) |
             ast::expr_while(*) |
             ast::expr_loop(*) |
             ast::expr_assign(*) |
@@ -701,7 +700,6 @@ pub mod guarantor {
             ast::expr_cast(*) |
             ast::expr_call(*) |
             ast::expr_method_call(*) |
-            ast::expr_rec(*) |
             ast::expr_struct(*) |
             ast::expr_tup(*) |
             ast::expr_if(*) |
@@ -713,8 +711,8 @@ pub mod guarantor {
             ast::expr_copy(*) |
             ast::expr_repeat(*) |
             ast::expr_vec(*) => {
-                assert !ty::expr_is_lval(
-                    rcx.fcx.tcx(), rcx.fcx.ccx.method_map, expr);
+                fail_unless!(!ty::expr_is_lval(
+                    rcx.fcx.tcx(), rcx.fcx.ccx.method_map, expr));
                 None
             }
         }
@@ -875,7 +873,6 @@ pub mod guarantor {
                 }
             }
             ast::pat_enum(*) => {}
-            ast::pat_rec(ref fpats, _) |
             ast::pat_struct(_, ref fpats, _) => {
                 for fpats.each |fpat| {
                     link_ref_bindings_in_pat(rcx, fpat.pat, guarantor);

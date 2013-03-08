@@ -18,9 +18,9 @@ impl<T> foo for ~[const T] {
 
 pub fn main() {
     let v = ~[const 0];
-    assert v.foo() == 1u;
+    fail_unless!(v.foo() == 1u);
     let v = ~[0];
-    assert v.foo() == 1u;
+    fail_unless!(v.foo() == 1u);
     let mut v = ~[0];
-    assert v.foo() == 1u;
+    fail_unless!(v.foo() == 1u);
 }

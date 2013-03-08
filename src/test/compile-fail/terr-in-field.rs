@@ -8,12 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type foo = {a: int, b: int};
-type bar = {a: int, b: uint};
+struct foo {
+    a: int,
+    b: int,
+}
+
+struct bar {
+    a: int,
+    b: uint,
+}
 
 fn want_foo(f: foo) {}
 fn have_bar(b: bar) {
-    want_foo(b); //~ ERROR (in field `b`, expected int but found uint)
+    want_foo(b); //~ ERROR (expected struct foo but found struct bar)
 }
 
 fn main() {}

@@ -40,7 +40,7 @@ pub enum grid_t { grid_ctor(grid), }
 
 // read a sudoku problem from file f
 pub fn read_grid(f: io::Reader) -> grid_t {
-    assert f.read_line() == ~"9,9"; /* assert first line is exactly "9,9" */
+    fail_unless!(f.read_line() == ~"9,9"); /* assert first line is exactly "9,9" */
 
     let mut g = vec::from_fn(10u, {|_i|
         vec::from_elem(10u, 0 as u8)

@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type quux = {bar: int};
+struct Quux {
+    bar: int
+}
 
 fn g(i: int) { }
-fn f(foo: @@quux) { g(foo.bar); }
+fn f(foo: @@Quux) { g(foo.bar); }
 
 pub fn main() { }

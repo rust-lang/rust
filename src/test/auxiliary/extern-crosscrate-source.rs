@@ -13,9 +13,11 @@
 
 #[crate_type = "lib"];
 
-pub extern mod rustrt {
-    pub fn rust_dbg_call(cb: *u8,
-                         data: libc::uintptr_t) -> libc::uintptr_t;
+pub mod rustrt {
+    pub extern {
+        pub fn rust_dbg_call(cb: *u8, data: libc::uintptr_t)
+                          -> libc::uintptr_t;
+    }
 }
 
 pub fn fact(n: uint) -> uint {

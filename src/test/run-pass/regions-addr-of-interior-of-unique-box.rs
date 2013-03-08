@@ -8,10 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type point = { x: int, y: int };
-type character = { pos: ~point };
+struct Point {
+    x: int,
+    y: int
+}
 
-fn get_x(x: &r/character) -> &r/int {
+struct Character {
+    pos: ~Point
+}
+
+fn get_x(x: &'r Character) -> &'r int {
     // interesting case because the scope of this
     // borrow of the unique pointer is in fact
     // larger than the fn itself

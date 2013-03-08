@@ -200,20 +200,6 @@ pub impl Reflector {
               self.visit(~"rptr", extra)
           }
 
-          ty::ty_rec(fields) => {
-              let extra = ~[self.c_uint(vec::len(fields))]
-                  + self.c_size_and_align(t);
-              do self.bracketed(~"rec", extra) |this| {
-                for fields.eachi |i, field| {
-                    let extra = ~[this.c_uint(i),
-                                  this.c_slice(
-                                      bcx.ccx().sess.str_of(field.ident))]
-                        + this.c_mt(field.mt);
-                    this.visit(~"rec_field", extra);
-                }
-            }
-          }
-
           ty::ty_tup(tys) => {
               let extra = ~[self.c_uint(vec::len(tys))]
                   + self.c_size_and_align(t);
@@ -350,7 +336,7 @@ pub fn emit_calls_to_trait_visit_ty(bcx: block,
                                  -> block {
     use syntax::parse::token::special_idents::tydesc;
     let final = sub_block(bcx, ~"final");
-    assert bcx.ccx().tcx.intrinsic_defs.contains_key(&tydesc);
+    fail_unless!(bcx.ccx().tcx.intrinsic_defs.contains_key(&tydesc));
     let (_, tydesc_ty) = bcx.ccx().tcx.intrinsic_defs.get(&tydesc);
     let tydesc_ty = type_of(bcx.ccx(), tydesc_ty);
     let mut r = Reflector {

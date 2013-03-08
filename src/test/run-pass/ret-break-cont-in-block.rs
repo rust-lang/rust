@@ -33,11 +33,11 @@ fn bail_deep(x: ~[~[bool]]) {
     let mut seen = false;
     for iter(copy x) |x| {
         for iter(copy *x) |x| {
-            assert !seen;
+            fail_unless!(!seen);
             if *x { seen = true; return; }
         }
     }
-    assert !seen;
+    fail_unless!(!seen);
 }
 
 fn ret_deep() -> ~str {
@@ -55,17 +55,17 @@ pub fn main() {
         last = *e;
         if *e == 5 { break; }
         if *e % 2 == 1 { loop; }
-        assert *e % 2 == 0;
+        fail_unless!(*e % 2 == 0);
     };
-    assert last == 5;
+    fail_unless!(last == 5);
 
-    assert find_pos(1, ~[0, 1, 2, 3]) == Some(1u);
-    assert find_pos(1, ~[0, 4, 2, 3]) == None;
-    assert find_pos(~"hi", ~[~"foo", ~"bar", ~"baz", ~"hi"]) == Some(3u);
+    fail_unless!(find_pos(1, ~[0, 1, 2, 3]) == Some(1u));
+    fail_unless!(find_pos(1, ~[0, 4, 2, 3]) == None);
+    fail_unless!(find_pos(~"hi", ~[~"foo", ~"bar", ~"baz", ~"hi"]) == Some(3u));
 
     bail_deep(~[~[false, false], ~[true, true], ~[false, true]]);
     bail_deep(~[~[true]]);
     bail_deep(~[~[false, false, false]]);
 
-    assert ret_deep() == ~"hi";
+    fail_unless!(ret_deep() == ~"hi");
 }
