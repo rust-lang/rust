@@ -216,14 +216,17 @@ pub use clone::Clone;
  * more-verbosity. Error is the bottom level, default logging level is
  * warn-and-below.
  */
-
 /// The error log level
+#[cfg(stage0)]
 pub const error : u32 = 1_u32;
 /// The warning log level
+#[cfg(stage0)]
 pub const warn : u32 = 2_u32;
 /// The info log level
+#[cfg(stage0)]
 pub const info : u32 = 3_u32;
 /// The debug log level
+#[cfg(stage0)]
 pub const debug : u32 = 4_u32;
 
 
@@ -251,9 +254,13 @@ pub mod rt;
 // can be resolved within libcore.
 #[doc(hidden)] // FIXME #3538
 pub mod core {
+    #[cfg(stage0)]
     pub const error : u32 = 1_u32;
+    #[cfg(stage0)]
     pub const warn : u32 = 2_u32;
+    #[cfg(stage0)]
     pub const info : u32 = 3_u32;
+    #[cfg(stage0)]
     pub const debug : u32 = 4_u32;
 
     pub use cmp;
