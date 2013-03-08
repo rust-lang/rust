@@ -685,7 +685,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
             log(debug, "os::list_dir -- BEFORE OPENDIR");
             let dir_ptr = opendir(input_ptr);
             if (dir_ptr as uint != 0) {
-		log(debug, "os::list_dir -- opendir() SUCCESS");
+        log(debug, "os::list_dir -- opendir() SUCCESS");
                 let mut entry_ptr = readdir(dir_ptr);
                 while (entry_ptr as uint != 0) {
                     strings.push(
@@ -697,9 +697,11 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                 closedir(dir_ptr);
             }
             else {
-		log(debug, "os::list_dir -- opendir() FAILURE");
+        log(debug, "os::list_dir -- opendir() FAILURE");
             }
-            log(debug, fmt!("os::list_dir -- AFTER ITERATION -- # of results: %?", strings.len()));
+            log(debug,
+                fmt!("os::list_dir -- AFTER -- #: %?",
+                     strings.len()));
             strings
         }
         #[cfg(windows)]
