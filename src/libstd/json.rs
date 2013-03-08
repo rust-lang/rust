@@ -1311,8 +1311,7 @@ mod tests {
                 }
             }
         }
-        check_equal(str::from_bytes(bw.bytes.data),
-                    ~"[\"frog\",[\"Henry\",349]]");
+        check_equal(str::from_bytes(bw.bytes), ~"[\"frog\",[\"Henry\",349]]");
     }
 
     #[test]
@@ -1327,8 +1326,7 @@ mod tests {
                 }
             }
         }
-        check_equal(str::from_bytes(bw.bytes.data),
-                    ~"\"jodhpurs\"");
+        check_equal(str::from_bytes(bw.bytes), ~"\"jodhpurs\"");
     }
 
     #[test]
@@ -1340,8 +1338,7 @@ mod tests {
             do encoder.emit_enum_variant (~"None",37,1242) {
             }
         }
-        check_equal(str::from_bytes(bw.bytes.data),
-                    ~"null");
+        check_equal(str::from_bytes(bw.bytes), ~"null");
     }
 
     #[test]

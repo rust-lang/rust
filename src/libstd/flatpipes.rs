@@ -452,13 +452,10 @@ pub mod flatteners {
 
     pub fn serialize_value<D: Encoder + FromWriter,
                            T: Encodable<D>>(val: &T) -> ~[u8] {
-        let mut bytes_writer = BytesWriter();
-        let writer = @bytes_writer as @Writer;
-        let ser = FromWriter::from_writer(writer);
-        val.encode(&ser);
-        let mut ret = ~[];
-        ret <-> bytes_writer.bytes;
-        return ret;
+        do io::with_bytes_writer |writer| {
+            let ser = FromWriter::from_writer(writer);
+            val.encode(&ser);
+        }
     }
 
     pub trait FromReader {
@@ -652,7 +649,7 @@ mod test {
 
         chan.send(10);
 
-        let bytes = chan.byte_chan.writer.bytes.get();
+        let bytes = copy chan.byte_chan.writer.bytes;
 
         let reader = BufReader::new(bytes);
         let port = serial::reader_port(reader);
@@ -698,7 +695,7 @@ mod test {
 
         chan.send(10);
 
-        let bytes = chan.byte_chan.writer.bytes.get();
+        let bytes = copy chan.byte_chan.writer.bytes;
 
         let reader = BufReader::new(bytes);
         let port = pod::reader_port(reader);
