@@ -29,7 +29,7 @@ use syntax::ast::{Onceness, m_const, purity, ret_style};
 use syntax::codemap::span;
 
 
-pub enum Sub = CombineFields;  // "subtype", "subregion" etc
+pub struct Sub(CombineFields);  // "subtype", "subregion" etc
 
 impl Combine for Sub {
     fn infcx(&self) -> @mut InferCtxt { self.infcx }

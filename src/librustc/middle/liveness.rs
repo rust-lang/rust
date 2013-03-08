@@ -137,8 +137,8 @@ use syntax::{visit, ast_util};
 // if it detects an outstanding loan (that is, the addr is taken).
 pub type last_use_map = HashMap<node_id, @mut ~[node_id]>;
 
-enum Variable = uint;
-enum LiveNode = uint;
+struct Variable(uint);
+struct LiveNode(uint);
 
 impl cmp::Eq for Variable {
     pure fn eq(&self, other: &Variable) -> bool { *(*self) == *(*other) }
