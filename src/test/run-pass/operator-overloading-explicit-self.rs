@@ -21,6 +21,6 @@ pub impl S {
 pub fn main() {
     let mut s = S { x: 1 };
     s += S { x: 2 };
-    assert s.x == 3;
+    fail_unless!(s.x == 3);
 }
 

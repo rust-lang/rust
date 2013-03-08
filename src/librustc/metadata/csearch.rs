@@ -237,6 +237,13 @@ pub fn get_method_visibility(cstore: @mut cstore::CStore,
     decoder::get_method_visibility(cdata, def_id.node)
 }
 
+pub fn get_link_args_for_crate(cstore: @mut cstore::CStore,
+                               crate_num: ast::crate_num)
+                            -> ~[~str] {
+    let cdata = cstore::get_crate_data(cstore, crate_num);
+    decoder::get_link_args_for_crate(cdata)
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

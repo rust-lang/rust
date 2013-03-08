@@ -33,7 +33,7 @@ fn tester()
     let table = HashMap();
     table.insert(@~"one", 1);
     table.insert(@~"two", 2);
-    assert check_strs(table.to_str(), ~"xxx");   // not sure what expected should be
+    fail_unless!(check_strs(table.to_str(), ~"xxx"));   // not sure what expected should be
 }
 
 pub fn main() {}

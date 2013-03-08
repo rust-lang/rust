@@ -464,6 +464,6 @@ pub mod test {
             let _chan = chan;
         }
 
-        assert !port.peek();
+        fail_unless!(!port.peek());
     }
 }

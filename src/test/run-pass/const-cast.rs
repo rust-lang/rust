@@ -16,6 +16,6 @@ const a: &static/int = &10;
 const b: *int = a as *int;
 
 fn main() {
-    assert x as *libc::c_void == y;
-    assert a as *int == b;
+    fail_unless!(x as *libc::c_void == y);
+    fail_unless!(a as *int == b);
 }

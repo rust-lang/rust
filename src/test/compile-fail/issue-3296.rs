@@ -14,7 +14,9 @@ struct Deserializer : std::serialization::deserializer{ //~ ERROR obsolete synta
     x: ()
 }
 
-type foo = {a: (),};
+struct Foo {
+    a: ()
+}
 
 fn deserialize_foo<__D: std::serialization::deserializer>(&&__d: __D) {
 }

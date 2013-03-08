@@ -30,5 +30,5 @@ pub fn main() {
         let p = Some(r(b));
     }
 
-    assert *b == 1;
+    fail_unless!(*b == 1);
 }

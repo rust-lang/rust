@@ -23,5 +23,5 @@ pub fn main() {
         log(error, odds);
     });
     log(error, odds);
-    assert (odds == 4);
+    fail_unless!((odds == 4));
 }

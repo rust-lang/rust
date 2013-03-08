@@ -16,5 +16,5 @@ use cci_const::bar;
 const foo: *u8 = bar;
 
 fn main() {
-    assert foo == cci_const::bar;
+    fail_unless!(foo == cci_const::bar);
 }

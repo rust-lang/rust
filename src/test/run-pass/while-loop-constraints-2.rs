@@ -18,5 +18,5 @@ pub fn main() {
         while false { x = y; y = z; }
         log(debug, y);
     }
-    assert (y == 42 && z == 50);
+    fail_unless!((y == 42 && z == 50));
 }

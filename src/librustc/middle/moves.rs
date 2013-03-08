@@ -469,7 +469,6 @@ pub impl VisitContext {
                 self.use_fn_args(expr.callee_id, *args, visitor);
             }
 
-            expr_rec(ref fields, opt_with) |
             expr_struct(_, ref fields, opt_with) => {
                 for fields.each |field| {
                     self.consume_expr(field.node.expr, visitor);
@@ -480,7 +479,6 @@ pub impl VisitContext {
                     // then `with` is consumed, otherwise it is only read
                     let with_ty = ty::expr_ty(self.tcx, *with_expr);
                     let with_fields = match ty::get(with_ty).sty {
-                        ty::ty_rec(ref f) => copy *f,
                         ty::ty_struct(did, ref substs) => {
                             ty::struct_fields(self.tcx, did, substs)
                         }
@@ -571,10 +569,6 @@ pub impl VisitContext {
             expr_log(_, a_expr, b_expr) => {
                 self.consume_expr(a_expr, visitor);
                 self.use_expr(b_expr, Read, visitor);
-            }
-
-            expr_assert(cond_expr) => {
-                self.consume_expr(cond_expr, visitor);
             }
 
             expr_while(cond_expr, ref blk) => {

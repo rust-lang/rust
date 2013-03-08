@@ -546,17 +546,6 @@ pub fn super_tys<C:Combine>(
         }
       }
 
-      (ty::ty_rec(as_), ty::ty_rec(bs)) => {
-        if vec::same_length(as_, bs) {
-            map_vec2(as_, bs, |a,b| {
-                self.flds(*a, *b)
-            }).chain(|flds| Ok(ty::mk_rec(tcx, flds)) )
-        } else {
-            Err(ty::terr_record_size(expected_found(self, as_.len(),
-                                                    bs.len())))
-        }
-      }
-
       (ty::ty_tup(as_), ty::ty_tup(bs)) => {
         if vec::same_length(as_, bs) {
             map_vec2(as_, bs, |a, b| self.tys(*a, *b) )

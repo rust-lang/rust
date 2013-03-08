@@ -12,7 +12,7 @@ pub fn main() {
     let d = dvec::DVec();
     d.push(3);
     d.push(4);
-    assert d.get() == ~[3, 4];
+    fail_unless!(d.get() == ~[3, 4]);
     d.set(~[5]);
     d.push(6);
     d.push(7);
@@ -23,14 +23,14 @@ pub fn main() {
     d.push_slice(~[11, 12, 13], 1u, 2u);
 
     let exp = ~[5, 6, 7, 8, 9, 10, 11, 12, 13, 12];
-    assert d.get() == exp;
-    assert d.get() == exp;
-    assert d.len() == exp.len();
+    fail_unless!(d.get() == exp);
+    fail_unless!(d.get() == exp);
+    fail_unless!(d.len() == exp.len());
 
     for d.eachi |i, e| {
-        assert *e == exp[i];
+        fail_unless!(*e == exp[i]);
     }
 
     let v = dvec::unwrap(d);
-    assert v == exp;
+    fail_unless!(v == exp);
 }

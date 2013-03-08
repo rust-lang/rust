@@ -200,7 +200,7 @@ pub pure fn escape_unicode(c: char) -> ~str {
     let (c, pad) = (if c <= '\xff' { ('x', 2u) }
                     else if c <= '\uffff' { ('u', 4u) }
                     else { ('U', 8u) });
-    assert str::len(s) <= pad;
+    fail_unless!(str::len(s) <= pad);
     let mut out = ~"\\";
     unsafe {
         str::push_str(&mut out, str::from_char(c));
@@ -258,91 +258,91 @@ impl Eq for char {
 
 #[test]
 fn test_is_lowercase() {
-    assert is_lowercase('a');
-    assert is_lowercase('ö');
-    assert is_lowercase('ß');
-    assert !is_lowercase('Ü');
-    assert !is_lowercase('P');
+    fail_unless!(is_lowercase('a'));
+    fail_unless!(is_lowercase('ö'));
+    fail_unless!(is_lowercase('ß'));
+    fail_unless!(!is_lowercase('Ü'));
+    fail_unless!(!is_lowercase('P'));
 }
 
 #[test]
 fn test_is_uppercase() {
-    assert !is_uppercase('h');
-    assert !is_uppercase('ä');
-    assert !is_uppercase('ß');
-    assert is_uppercase('Ö');
-    assert is_uppercase('T');
+    fail_unless!(!is_uppercase('h'));
+    fail_unless!(!is_uppercase('ä'));
+    fail_unless!(!is_uppercase('ß'));
+    fail_unless!(is_uppercase('Ö'));
+    fail_unless!(is_uppercase('T'));
 }
 
 #[test]
 fn test_is_whitespace() {
-    assert is_whitespace(' ');
-    assert is_whitespace('\u2007');
-    assert is_whitespace('\t');
-    assert is_whitespace('\n');
+    fail_unless!(is_whitespace(' '));
+    fail_unless!(is_whitespace('\u2007'));
+    fail_unless!(is_whitespace('\t'));
+    fail_unless!(is_whitespace('\n'));
 
-    assert !is_whitespace('a');
-    assert !is_whitespace('_');
-    assert !is_whitespace('\u0000');
+    fail_unless!(!is_whitespace('a'));
+    fail_unless!(!is_whitespace('_'));
+    fail_unless!(!is_whitespace('\u0000'));
 }
 
 #[test]
 fn test_to_digit() {
-    assert to_digit('0', 10u) == Some(0u);
-    assert to_digit('1', 2u) == Some(1u);
-    assert to_digit('2', 3u) == Some(2u);
-    assert to_digit('9', 10u) == Some(9u);
-    assert to_digit('a', 16u) == Some(10u);
-    assert to_digit('A', 16u) == Some(10u);
-    assert to_digit('b', 16u) == Some(11u);
-    assert to_digit('B', 16u) == Some(11u);
-    assert to_digit('z', 36u) == Some(35u);
-    assert to_digit('Z', 36u) == Some(35u);
+    fail_unless!(to_digit('0', 10u) == Some(0u));
+    fail_unless!(to_digit('1', 2u) == Some(1u));
+    fail_unless!(to_digit('2', 3u) == Some(2u));
+    fail_unless!(to_digit('9', 10u) == Some(9u));
+    fail_unless!(to_digit('a', 16u) == Some(10u));
+    fail_unless!(to_digit('A', 16u) == Some(10u));
+    fail_unless!(to_digit('b', 16u) == Some(11u));
+    fail_unless!(to_digit('B', 16u) == Some(11u));
+    fail_unless!(to_digit('z', 36u) == Some(35u));
+    fail_unless!(to_digit('Z', 36u) == Some(35u));
 
-    assert to_digit(' ', 10u).is_none();
-    assert to_digit('$', 36u).is_none();
+    fail_unless!(to_digit(' ', 10u).is_none());
+    fail_unless!(to_digit('$', 36u).is_none());
 }
 
 #[test]
 fn test_is_ascii() {
-   assert str::all(~"banana", is_ascii);
-   assert ! str::all(~"ประเทศไทย中华Việt Nam", is_ascii);
+   fail_unless!(str::all(~"banana", is_ascii));
+   fail_unless!(! str::all(~"ประเทศไทย中华Việt Nam", is_ascii));
 }
 
 #[test]
 fn test_is_digit() {
-   assert is_digit('2');
-   assert is_digit('7');
-   assert ! is_digit('c');
-   assert ! is_digit('i');
-   assert ! is_digit('z');
-   assert ! is_digit('Q');
+   fail_unless!(is_digit('2'));
+   fail_unless!(is_digit('7'));
+   fail_unless!(! is_digit('c'));
+   fail_unless!(! is_digit('i'));
+   fail_unless!(! is_digit('z'));
+   fail_unless!(! is_digit('Q'));
 }
 
 #[test]
 fn test_escape_default() {
-    assert escape_default('\n') == ~"\\n";
-    assert escape_default('\r') == ~"\\r";
-    assert escape_default('\'') == ~"\\'";
-    assert escape_default('"') == ~"\\\"";
-    assert escape_default(' ') == ~" ";
-    assert escape_default('a') == ~"a";
-    assert escape_default('~') == ~"~";
-    assert escape_default('\x00') == ~"\\x00";
-    assert escape_default('\x1f') == ~"\\x1f";
-    assert escape_default('\x7f') == ~"\\x7f";
-    assert escape_default('\xff') == ~"\\xff";
-    assert escape_default('\u011b') == ~"\\u011b";
-    assert escape_default('\U0001d4b6') == ~"\\U0001d4b6";
+    fail_unless!(escape_default('\n') == ~"\\n");
+    fail_unless!(escape_default('\r') == ~"\\r");
+    fail_unless!(escape_default('\'') == ~"\\'");
+    fail_unless!(escape_default('"') == ~"\\\"");
+    fail_unless!(escape_default(' ') == ~" ");
+    fail_unless!(escape_default('a') == ~"a");
+    fail_unless!(escape_default('~') == ~"~");
+    fail_unless!(escape_default('\x00') == ~"\\x00");
+    fail_unless!(escape_default('\x1f') == ~"\\x1f");
+    fail_unless!(escape_default('\x7f') == ~"\\x7f");
+    fail_unless!(escape_default('\xff') == ~"\\xff");
+    fail_unless!(escape_default('\u011b') == ~"\\u011b");
+    fail_unless!(escape_default('\U0001d4b6') == ~"\\U0001d4b6");
 }
 
 
 #[test]
 fn test_escape_unicode() {
-    assert escape_unicode('\x00') == ~"\\x00";
-    assert escape_unicode('\n') == ~"\\x0a";
-    assert escape_unicode(' ') == ~"\\x20";
-    assert escape_unicode('a') == ~"\\x61";
-    assert escape_unicode('\u011b') == ~"\\u011b";
-    assert escape_unicode('\U0001d4b6') == ~"\\U0001d4b6";
+    fail_unless!(escape_unicode('\x00') == ~"\\x00");
+    fail_unless!(escape_unicode('\n') == ~"\\x0a");
+    fail_unless!(escape_unicode(' ') == ~"\\x20");
+    fail_unless!(escape_unicode('a') == ~"\\x61");
+    fail_unless!(escape_unicode('\u011b') == ~"\\u011b");
+    fail_unless!(escape_unicode('\U0001d4b6') == ~"\\U0001d4b6");
 }

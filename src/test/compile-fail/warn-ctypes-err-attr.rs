@@ -11,9 +11,11 @@
 // error-pattern:found rust type
 #[deny(ctypes)];
 
-#[nolink]
-extern mod libc {
-    pub fn malloc(size: int) -> *u8;
+mod libc {
+    #[nolink]
+    pub extern {
+        pub fn malloc(size: int) -> *u8;
+    }
 }
 
 fn main() {

@@ -18,5 +18,5 @@ extern mod cr5_2 (name = "crateresolve5", vers = "0.2");
 
 fn main() {
     // Nominal types from two multiple versions of a crate are different types
-    assert cr5_1::nominal() == cr5_2::nominal();
+    fail_unless!(cr5_1::nominal() == cr5_2::nominal());
 }

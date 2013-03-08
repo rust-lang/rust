@@ -124,7 +124,7 @@ mod test {
             trouble(1);
         }
 
-        assert inner_trapped;
+        fail_unless!(inner_trapped);
     }
 
     #[test]
@@ -140,7 +140,7 @@ mod test {
             trouble(1);
         }
 
-        assert outer_trapped;
+        fail_unless!(outer_trapped);
     }
 
     fn nested_reraise_trap_test_inner() {
@@ -157,7 +157,7 @@ mod test {
             trouble(1);
         }
 
-        assert inner_trapped;
+        fail_unless!(inner_trapped);
     }
 
     #[test]
@@ -172,7 +172,7 @@ mod test {
             nested_reraise_trap_test_inner();
         }
 
-        assert outer_trapped;
+        fail_unless!(outer_trapped);
     }
 
     #[test]
@@ -187,6 +187,6 @@ mod test {
             trouble(1);
         }
 
-        assert trapped;
+        fail_unless!(trapped);
     }
 }

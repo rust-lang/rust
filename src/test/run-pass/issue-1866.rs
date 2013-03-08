@@ -11,15 +11,19 @@
 // xfail-test
 mod a {
     pub type rust_task = uint;
-    pub extern mod rustrt {
-        pub fn rust_task_is_unwinding(rt: *rust_task) -> bool;
+    pub mod rustrt {
+        pub extern {
+            pub fn rust_task_is_unwinding(rt: *rust_task) -> bool;
+        }
     }
 }
 
 mod b {
     pub type rust_task = bool;
-    pub extern mod rustrt {
-        pub fn rust_task_is_unwinding(rt: *rust_task) -> bool;
+    pub mod rustrt {
+        pub extern {
+            pub fn rust_task_is_unwinding(rt: *rust_task) -> bool;
+        }
     }
 }
 

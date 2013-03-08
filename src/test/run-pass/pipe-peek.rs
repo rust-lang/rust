@@ -24,9 +24,9 @@ proto! oneshot (
 pub fn main() {
     let (c, p) = oneshot::init();
 
-    assert !pipes::peek(&p);
+    fail_unless!(!pipes::peek(&p));
 
     oneshot::client::signal(c);
 
-    assert pipes::peek(&p);
+    fail_unless!(pipes::peek(&p));
 }

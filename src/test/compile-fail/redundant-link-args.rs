@@ -1,3 +1,6 @@
+// xfail-fast
+// xfail-test
+
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -18,10 +21,10 @@
 
 #[link_name= "m"]
 #[link_args="-foo"]             // this could have been elided.
-extern mod m1 {
+extern {
 }
 
 #[link_name= "m"]
 #[link_args="-bar"]             // this is the actual error trigger.
-extern mod m2 {
+extern {
 }

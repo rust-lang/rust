@@ -168,9 +168,9 @@ fn should_create_section_headers() {
          Body\"]\
          mod a {
          }");
-    assert str::contains(
+    fail_unless!(str::contains(
         doc.cratemod().mods()[0].item.sections[0].header,
-        ~"Header");
+        ~"Header"));
 }
 
 #[test]
@@ -181,9 +181,9 @@ fn should_create_section_bodies() {
          Body\"]\
          mod a {
          }");
-    assert str::contains(
+    fail_unless!(str::contains(
         doc.cratemod().mods()[0].item.sections[0].body,
-        ~"Body");
+        ~"Body"));
 }
 
 #[test]
@@ -194,7 +194,7 @@ fn should_not_create_sections_from_indented_headers() {
          Body\"]\
          mod a {
          }");
-    assert vec::is_empty(doc.cratemod().mods()[0].item.sections);
+    fail_unless!(vec::is_empty(doc.cratemod().mods()[0].item.sections));
 }
 
 #[test]
@@ -206,12 +206,12 @@ fn should_remove_section_text_from_main_desc() {
          Body\"]\
          mod a {
          }");
-    assert !str::contains(
+    fail_unless!(!str::contains(
         doc.cratemod().mods()[0].desc().get(),
-        ~"Header");
-    assert !str::contains(
+        ~"Header"));
+    fail_unless!(!str::contains(
         doc.cratemod().mods()[0].desc().get(),
-        ~"Body");
+        ~"Body"));
 }
 
 #[test]
@@ -222,7 +222,7 @@ fn should_eliminate_desc_if_it_is_just_whitespace() {
          Body\"]\
          mod a {
          }");
-    assert doc.cratemod().mods()[0].desc() == None;
+    fail_unless!(doc.cratemod().mods()[0].desc() == None);
 }
 
 #[test]
@@ -233,7 +233,7 @@ fn should_sectionalize_trait_methods() {
          # Header\n\
          Body\"]\
          fn a(); }");
-    assert doc.cratemod().traits()[0].methods[0].sections.len() == 1u;
+    fail_unless!(doc.cratemod().traits()[0].methods[0].sections.len() == 1u);
 }
 
 #[test]
@@ -244,7 +244,7 @@ fn should_sectionalize_impl_methods() {
          # Header\n\
          Body\"]\
          fn a() { } }");
-    assert doc.cratemod().impls()[0].methods[0].sections.len() == 1u;
+    fail_unless!(doc.cratemod().impls()[0].methods[0].sections.len() == 1u);
 }
 
 #[cfg(test)]

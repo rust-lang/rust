@@ -22,19 +22,6 @@ use util::ppaux::ty_to_str;
 // ______________________________________________________________________
 // compute sizeof / alignof
 
-pub type metrics = {
-    bcx: block,
-    sz: ValueRef,
-    align: ValueRef
-};
-
-pub type tag_metrics = {
-    bcx: block,
-    sz: ValueRef,
-    align: ValueRef,
-    payload_align: ValueRef
-};
-
 // Returns the number of bytes clobbered by a Store to this type.
 pub fn llsize_of_store(cx: @CrateContext, t: TypeRef) -> uint {
     unsafe {

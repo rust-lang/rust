@@ -27,5 +27,5 @@ fn main() {
         let x: &blk/int = &3;
         repeater(@x)
     };
-    assert 3 == *(y.get()); //~ ERROR reference is not valid
+    fail_unless!(3 == *(y.get())); //~ ERROR reference is not valid
 }

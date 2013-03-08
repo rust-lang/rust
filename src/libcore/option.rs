@@ -437,7 +437,7 @@ fn test_unwrap_ptr() {
     let opt = Some(x);
     let y = unwrap(opt);
     let addr_y = ptr::addr_of(&(*y));
-    assert addr_x == addr_y;
+    fail_unless!(addr_x == addr_y);
 }
 
 #[test]
@@ -447,7 +447,7 @@ fn test_unwrap_str() {
     let opt = Some(x);
     let y = unwrap(opt);
     let addr_y = str::as_buf(y, |buf, _len| buf);
-    assert addr_x == addr_y;
+    fail_unless!(addr_x == addr_y);
 }
 
 #[test]
@@ -472,7 +472,7 @@ fn test_unwrap_resource() {
         let opt = Some(x);
         let _y = unwrap(opt);
     }
-    assert *i == 1;
+    fail_unless!(*i == 1);
 }
 
 #[test]
@@ -483,8 +483,8 @@ fn test_option_dance() {
     for x.each |_x| {
         y2 = swap_unwrap(&mut y);
     }
-    assert y2 == 5;
-    assert y.is_none();
+    fail_unless!(y2 == 5);
+    fail_unless!(y.is_none());
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_option_too_much_dance() {
@@ -504,15 +504,15 @@ fn test_option_while_some() {
             None
         }
     }
-    assert i == 11;
+    fail_unless!(i == 11);
 }
 
 #[test]
 fn test_get_or_zero() {
     let some_stuff = Some(42);
-    assert some_stuff.get_or_zero() == 42;
+    fail_unless!(some_stuff.get_or_zero() == 42);
     let no_stuff: Option<int> = None;
-    assert no_stuff.get_or_zero() == 0;
+    fail_unless!(no_stuff.get_or_zero() == 0);
 }
 
 // Local Variables:

@@ -18,14 +18,14 @@ struct Pair { x: int, y: int }
 
 pub fn main() {
     let nop: noption<int> = some::<int>(5);
-    match nop { some::<int>(n) => { log(debug, n); assert (n == 5); } }
+    match nop { some::<int>(n) => { log(debug, n); fail_unless!((n == 5)); } }
     let nop2: noption<Pair> = some(Pair{x: 17, y: 42});
     match nop2 {
       some(t) => {
         log(debug, t.x);
         log(debug, t.y);
-        assert (t.x == 17);
-        assert (t.y == 42);
+        fail_unless!((t.x == 17));
+        fail_unless!((t.y == 42));
       }
     }
 }

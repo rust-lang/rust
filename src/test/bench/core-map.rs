@@ -42,7 +42,7 @@ fn old_int_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
             }
 
             for uint::range(0, num_keys) |i| {
-                assert map.get(&i) == i+1;
+                fail_unless!(map.get(&i) == i+1);
             }
         }
     }
@@ -64,7 +64,7 @@ fn old_int_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
 
         do timed(&mut results.delete_ints) {
             for uint::range(0, num_keys) |i| {
-                assert map.remove(&i);
+                fail_unless!(map.remove(&i));
             }
         }
     }
@@ -81,7 +81,7 @@ fn old_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
 
             for uint::range(0, num_keys) |i| {
                 let s = uint::to_str(i);
-                assert map.get(&s) == i;
+                fail_unless!(map.get(&s) == i);
             }
         }
     }
@@ -103,7 +103,7 @@ fn old_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
         }
         do timed(&mut results.delete_strings) {
             for uint::range(0, num_keys) |i| {
-                assert map.remove(&uint::to_str(i));
+                fail_unless!(map.remove(&uint::to_str(i)));
             }
         }
     }
@@ -118,7 +118,7 @@ fn linear_int_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results)
             }
 
             for uint::range(0, num_keys) |i| {
-                assert map.find(&i).unwrap() == &(i+1);
+                fail_unless!(map.find(&i).unwrap() == &(i+1));
             }
         }
     }
@@ -140,7 +140,7 @@ fn linear_int_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results)
 
         do timed(&mut results.delete_ints) {
             for uint::range(0, num_keys) |i| {
-                assert map.remove(&i);
+                fail_unless!(map.remove(&i));
             }
         }
     }
@@ -157,7 +157,7 @@ fn linear_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results)
 
             for uint::range(0, num_keys) |i| {
                 let s = uint::to_str(i);
-                assert map.find(&s).unwrap() == &i;
+                fail_unless!(map.find(&s).unwrap() == &i);
             }
         }
     }
@@ -179,7 +179,7 @@ fn linear_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results)
         }
         do timed(&mut results.delete_strings) {
             for uint::range(0, num_keys) |i| {
-                assert map.remove(&uint::to_str(i));
+                fail_unless!(map.remove(&uint::to_str(i)));
             }
         }
     }
@@ -194,7 +194,7 @@ fn tree_int_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
             }
 
             for uint::range(0, num_keys) |i| {
-                assert map.find(&i).unwrap() == &(i+1);
+                fail_unless!(map.find(&i).unwrap() == &(i+1));
             }
         }
     }
@@ -216,7 +216,7 @@ fn tree_int_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
 
         do timed(&mut results.delete_ints) {
             for uint::range(0, num_keys) |i| {
-                assert map.remove(&i);
+                fail_unless!(map.remove(&i));
             }
         }
     }
@@ -233,7 +233,7 @@ fn tree_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
 
             for uint::range(0, num_keys) |i| {
                 let s = uint::to_str(i);
-                assert map.find(&s).unwrap() == &i;
+                fail_unless!(map.find(&s).unwrap() == &i);
             }
         }
     }
@@ -255,7 +255,7 @@ fn tree_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
         }
         do timed(&mut results.delete_strings) {
             for uint::range(0, num_keys) |i| {
-                assert map.remove(&uint::to_str(i));
+                fail_unless!(map.remove(&uint::to_str(i)));
             }
         }
     }

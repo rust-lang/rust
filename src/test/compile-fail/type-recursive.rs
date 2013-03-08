@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:illegal recursive type
-type t1 = {foo: int, foolish: t1};
+// error-pattern:this type cannot be instantiated
+struct t1 {
+    foo: int,
+    foolish: t1
+}
 
 fn main() { }

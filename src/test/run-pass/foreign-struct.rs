@@ -11,11 +11,15 @@
 // xfail-win32
 // Passing enums by value
 
-enum void { }
+pub enum void { }
 
-#[nolink]
-extern mod bindgen {
-    pub fn printf(++v: void);
+mod bindgen {
+    use super::void;
+
+    #[nolink]
+    pub extern {
+        pub fn printf(++v: void);
+    }
 }
 
 pub fn main() { }

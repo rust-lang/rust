@@ -95,7 +95,7 @@ fn warn_if_multiple_versions(e: @mut Env,
                 }
             }));
 
-        assert !matches.is_empty();
+        fail_unless!(!matches.is_empty());
 
         if matches.len() != 1u {
             diag.handler().warn(

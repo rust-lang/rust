@@ -68,7 +68,7 @@ fn map_slices<A:Copy + Owned,B:Copy + Owned>(
                             cast::reinterpret_cast(&slice);
                         log(info, fmt!("slice: %?",
                                        (base, vec::len(slice), end - base)));
-                        assert(vec::len(slice) == end - base);
+                        fail_unless!((vec::len(slice) == end - base));
                         f(base, slice)
                     }
                 };
@@ -79,12 +79,12 @@ fn map_slices<A:Copy + Owned,B:Copy + Owned>(
         log(info, ~"tasks spawned");
 
         log(info, fmt!("num_tasks: %?", (num_tasks, futures.len())));
-        assert(num_tasks == futures.len());
+        fail_unless!((num_tasks == futures.len()));
 
         let r = do futures.map() |ys| {
             ys.get()
         };
-        assert(r.len() == futures.len());
+        fail_unless!((r.len() == futures.len()));
         r
     }
 }
@@ -115,7 +115,7 @@ pub fn mapi<A:Copy + Owned,B:Copy + Owned>(
     });
     let r = vec::concat(slices);
     log(info, (r.len(), xs.len()));
-    assert(r.len() == xs.len());
+    fail_unless!((r.len() == xs.len()));
     r
 }
 

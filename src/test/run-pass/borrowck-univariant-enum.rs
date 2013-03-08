@@ -25,5 +25,5 @@ pub fn main() {
         *x * b
       }
     };
-    assert z == 18;
+    fail_unless!(z == 18);
 }

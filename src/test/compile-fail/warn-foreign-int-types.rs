@@ -9,9 +9,11 @@
 // except according to those terms.
 
 //error-pattern:libc::c_int or libc::c_long should be used
-extern mod xx {
-    pub fn strlen(str: *u8) -> uint;
-    pub fn foo(x: int, y: uint);
+mod xx {
+    pub extern {
+        pub fn strlen(str: *u8) -> uint;
+        pub fn foo(x: int, y: uint);
+    }
 }
 
 fn main() {

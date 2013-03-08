@@ -187,7 +187,7 @@ pub fn bump(rdr: @mut StringReader) {
     rdr.last_pos = rdr.pos;
     let current_byte_offset = byte_offset(rdr).to_uint();;
     if current_byte_offset < (*rdr.src).len() {
-        assert rdr.curr != -1 as char;
+        fail_unless!(rdr.curr != -1 as char);
         let last_char = rdr.curr;
         let next = str::char_range_at(*rdr.src, current_byte_offset);
         let byte_offset_diff = next.next - current_byte_offset;
@@ -314,7 +314,7 @@ fn consume_any_line_comment(rdr: @mut StringReader)
 }
 
 pub pure fn is_block_non_doc_comment(s: &str) -> bool {
-    assert s.len() >= 1u;
+    fail_unless!(s.len() >= 1u);
     str::all_between(s, 1u, s.len() - 1u, |ch| ch == '*')
 }
 
@@ -872,21 +872,21 @@ pub mod test {
         let env = setup(~"'a'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
-        assert tok == token::LIT_INT('a' as i64, ast::ty_char);
+        fail_unless!(tok == token::LIT_INT('a' as i64, ast::ty_char));
     }
 
     #[test] fn character_space() {
         let env = setup(~"' '");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
-        assert tok == token::LIT_INT(' ' as i64, ast::ty_char);
+        fail_unless!(tok == token::LIT_INT(' ' as i64, ast::ty_char));
     }
 
     #[test] fn character_escaped() {
         let env = setup(~"'\n'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
-        assert tok == token::LIT_INT('\n' as i64, ast::ty_char);
+        fail_unless!(tok == token::LIT_INT('\n' as i64, ast::ty_char));
     }
 
     #[test] fn lifetime_name() {
@@ -894,7 +894,7 @@ pub mod test {
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         let id = env.interner.intern(@~"abc");
-        assert tok == token::LIFETIME(id);
+        fail_unless!(tok == token::LIFETIME(id));
     }
 }
 

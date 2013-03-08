@@ -17,11 +17,11 @@ pub fn main() {
             ::core::util::unreachable();
         }
         [a, b, c, d, e] => {
-            assert a == 1;
-            assert b == 2;
-            assert c == 3;
-            assert d == 4;
-            assert e == 5;
+            fail_unless!(a == 1);
+            fail_unless!(b == 2);
+            fail_unless!(c == 3);
+            fail_unless!(d == 4);
+            fail_unless!(e == 5);
         }
         _ => {
             ::core::util::unreachable();
@@ -29,5 +29,5 @@ pub fn main() {
     }
 
     let product = foldl(x, 1, |a, b| a * *b);
-    assert product == 120;
+    fail_unless!(product == 120);
 }

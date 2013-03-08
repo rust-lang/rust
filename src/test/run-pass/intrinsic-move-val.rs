@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[abi = "rust-intrinsic"]
-extern mod rusti {
-    pub fn move_val_init<T>(dst: &mut T, -src: T);
-    pub fn move_val<T>(dst: &mut T, -src: T);
+mod rusti {
+    #[abi = "rust-intrinsic"]
+    pub extern {
+        pub fn move_val_init<T>(dst: &mut T, -src: T);
+        pub fn move_val<T>(dst: &mut T, -src: T);
+    }
 }
 
 pub fn main() {
@@ -19,6 +21,6 @@ pub fn main() {
         let mut x = @1;
         let mut y = @2;
         rusti::move_val(&mut y, x);
-        assert *y == 1;
+        fail_unless!(*y == 1);
     }
 }

@@ -232,11 +232,6 @@ pub fn visit_ty<E>(t: @Ty, e: E, v: vt<E>) {
         ty_vec(mt) | ty_ptr(mt) | ty_rptr(_, mt) => {
             (v.visit_ty)(mt.ty, e, v);
         },
-        ty_rec(ref flds) => {
-            for flds.each |f| {
-                (v.visit_ty)(f.node.mt.ty, e, v);
-            }
-        },
         ty_tup(ref ts) => {
             for ts.each |tt| {
                 (v.visit_ty)(*tt, e, v);
@@ -268,11 +263,6 @@ pub fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
                 for children.each |child| { (v.visit_pat)(*child, e, v); }
             }
         }
-        pat_rec(ref fields, _) => {
-            for fields.each |f| {
-                (v.visit_pat)(f.pat, e, v)
-            }
-        },
         pat_struct(path, ref fields, _) => {
             visit_path(path, e, v);
             for fields.each |f| {
@@ -484,10 +474,6 @@ pub fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
             (v.visit_expr)(element, e, v);
             (v.visit_expr)(count, e, v);
         }
-        expr_rec(ref flds, base) => {
-            for flds.each |f| { (v.visit_expr)(f.node.expr, e, v); }
-            visit_expr_opt(base, e, v);
-        }
         expr_struct(p, ref flds, base) => {
             visit_path(p, e, v);
             for flds.each |f| { (v.visit_expr)(f.node.expr, e, v); }
@@ -510,8 +496,7 @@ pub fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
             (v.visit_expr)(b, e, v);
         }
         expr_addr_of(_, x) | expr_unary(_, x) |
-        expr_loop_body(x) | expr_do_body(x) |
-        expr_assert(x) => (v.visit_expr)(x, e, v),
+        expr_loop_body(x) | expr_do_body(x) => (v.visit_expr)(x, e, v),
         expr_lit(_) => (),
         expr_cast(x, t) => {
             (v.visit_expr)(x, e, v);

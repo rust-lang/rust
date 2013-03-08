@@ -263,12 +263,9 @@ pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
 
 pub fn mark_for_expr(cx: Context, e: @expr) {
     match e.node {
-      expr_vstore(_, _) |
-      expr_vec(_, _) |
-      expr_rec(_, _) | expr_struct(*) | expr_tup(_) |
+      expr_vstore(_, _) | expr_vec(_, _) | expr_struct(*) | expr_tup(_) |
       expr_unary(box(_), _) | expr_unary(uniq(_), _) |
-      expr_binary(add, _, _) |
-      expr_copy(_) | expr_repeat(*) => {
+      expr_binary(add, _, _) | expr_copy(_) | expr_repeat(*) => {
         node_type_needs(cx, use_repr, e.id);
       }
       expr_cast(base, _) => {
@@ -352,11 +349,10 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
         mark_for_method_call(cx, e.id, e.callee_id);
       }
       expr_paren(e) => mark_for_expr(cx, e),
-      expr_match(*) | expr_block(_) | expr_if(*) |
-      expr_while(*) | expr_break(_) | expr_again(_) |
-      expr_unary(_, _) | expr_lit(_) | expr_assert(_) |
-      expr_mac(_) | expr_addr_of(_, _) |
-      expr_ret(_) | expr_loop(_, _) |
+
+      expr_match(*) | expr_block(_) | expr_if(*) | expr_while(*) |
+      expr_break(_) | expr_again(_) | expr_unary(_, _) | expr_lit(_) |
+      expr_mac(_) | expr_addr_of(_, _) | expr_ret(_) | expr_loop(_, _) |
       expr_loop_body(_) | expr_do_body(_) => ()
     }
 }

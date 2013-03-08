@@ -10,15 +10,18 @@
 
 // xfail-fast
 #[legacy_modes];
-#[abi = "rust-intrinsic"]
-extern mod rusti {
-    pub fn frame_address(f: &once fn(*u8));
+
+mod rusti {
+    #[abi = "rust-intrinsic"]
+    pub extern {
+        pub fn frame_address(f: &once fn(*u8));
+    }
 }
 
 pub fn main() {
     unsafe {
         do rusti::frame_address |addr| {
-            assert addr.is_not_null();
+            fail_unless!(addr.is_not_null());
         }
     }
 }

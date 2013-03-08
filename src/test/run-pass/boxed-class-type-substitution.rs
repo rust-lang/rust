@@ -11,9 +11,9 @@
 // Regression test that rustc doesn't recurse infinitely substituting
 // the boxed type parameter
 
-type Tree<T> = {
-    parent: Option<T>,
-};
+struct Tree<T> {
+    parent: Option<T>
+}
 
 fn empty<T>() -> Tree<T> { fail!() }
 
@@ -27,8 +27,8 @@ fn Box() -> Box {
     }
 }
 
-enum layout_data = {
+struct LayoutData {
     box: Option<@Box>
-};
+}
 
 pub fn main() { }

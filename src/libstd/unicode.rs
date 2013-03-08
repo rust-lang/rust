@@ -157,16 +157,19 @@ pub mod icu {
 
     pub const UCHAR_INVALID_CODE : UProperty = -1;
 
-    #[link_name = "icuuc"]
-    #[abi = "cdecl"]
-    pub extern mod libicu {
-        unsafe fn u_hasBinaryProperty(c: UChar32, which: UProperty) -> UBool;
-        unsafe fn u_isdigit(c: UChar32) -> UBool;
-        unsafe fn u_islower(c: UChar32) -> UBool;
-        unsafe fn u_isspace(c: UChar32) -> UBool;
-        unsafe fn u_isupper(c: UChar32) -> UBool;
-        unsafe fn u_tolower(c: UChar32) -> UChar32;
-        unsafe fn u_toupper(c: UChar32) -> UChar32;
+    pub mod libicu {
+        #[link_name = "icuuc"]
+        #[abi = "cdecl"]
+        pub extern {
+            unsafe fn u_hasBinaryProperty(c: UChar32, which: UProperty)
+                                       -> UBool;
+            unsafe fn u_isdigit(c: UChar32) -> UBool;
+            unsafe fn u_islower(c: UChar32) -> UBool;
+            unsafe fn u_isspace(c: UChar32) -> UBool;
+            unsafe fn u_isupper(c: UChar32) -> UBool;
+            unsafe fn u_tolower(c: UChar32) -> UChar32;
+            unsafe fn u_toupper(c: UChar32) -> UChar32;
+        }
     }
 }
 
@@ -221,25 +224,25 @@ mod tests {
 
     #[test]
     fn test_is_digit() {
-        assert (unicode::icu::is_digit('0'));
-        assert (!unicode::icu::is_digit('m'));
+        fail_unless!((unicode::icu::is_digit('0')));
+        fail_unless!((!unicode::icu::is_digit('m')));
     }
 
     #[test]
     fn test_is_lower() {
-        assert (unicode::icu::is_lower('m'));
-        assert (!unicode::icu::is_lower('M'));
+        fail_unless!((unicode::icu::is_lower('m')));
+        fail_unless!((!unicode::icu::is_lower('M')));
     }
 
     #[test]
     fn test_is_space() {
-        assert (unicode::icu::is_space(' '));
-        assert (!unicode::icu::is_space('m'));
+        fail_unless!((unicode::icu::is_space(' ')));
+        fail_unless!((!unicode::icu::is_space('m')));
     }
 
     #[test]
     fn test_is_upper() {
-        assert (unicode::icu::is_upper('M'));
-        assert (!unicode::icu::is_upper('m'));
+        fail_unless!((unicode::icu::is_upper('M')));
+        fail_unless!((!unicode::icu::is_upper('m')));
     }
 }

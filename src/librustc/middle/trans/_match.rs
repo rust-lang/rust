@@ -459,8 +459,7 @@ pub fn enter_default(bcx: block, dm: DefMap, m: &[@Match/&r],
 
     do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
-          ast::pat_wild | ast::pat_rec(_, _) | ast::pat_tup(_) |
-          ast::pat_struct(*) => Some(~[]),
+          ast::pat_wild | ast::pat_tup(_) | ast::pat_struct(*) => Some(~[]),
           ast::pat_ident(_, _, None) if pat_is_binding(dm, p) => Some(~[]),
           _ => None
         }
@@ -611,7 +610,7 @@ pub fn enter_rec_or_struct(bcx: block,
     let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
         match /*bad*/copy p.node {
-            ast::pat_rec(fpats, _) | ast::pat_struct(_, fpats, _) => {
+            ast::pat_struct(_, fpats, _) => {
                 let mut pats = ~[];
                 for vec::each(fields) |fname| {
                     match fpats.find(|p| p.ident == *fname) {
@@ -887,7 +886,6 @@ pub fn collect_record_or_struct_fields(bcx: block,
     let mut fields: ~[ast::ident] = ~[];
     for vec::each(m) |br| {
         match /*bad*/copy br.pats[col].node {
-          ast::pat_rec(fs, _) => extend(&mut fields, fs),
           ast::pat_struct(_, fs, _) => {
             match ty::get(node_id_type(bcx, br.pats[col].id)).sty {
               ty::ty_struct(*) => extend(&mut fields, fs),
@@ -1221,7 +1219,7 @@ pub fn compile_submatch(bcx: block,
     /*
       For an empty match, a fall-through case must exist
      */
-    assert(m.len() > 0u || chk.is_some());
+    fail_unless!((m.len() > 0u || chk.is_some()));
     let _icx = bcx.insn_ctxt("match::compile_submatch");
     let mut bcx = bcx;
     let tcx = bcx.tcx(), dm = tcx.def_map;
@@ -1766,7 +1764,7 @@ pub fn bind_irrefutable_pat(bcx: block,
                 }
             }
         }
-        ast::pat_rec(fields, _) | ast::pat_struct(_, fields, _) => {
+        ast::pat_struct(_, fields, _) => {
             let tcx = bcx.tcx();
             let pat_ty = node_id_type(bcx, pat.id);
             let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);

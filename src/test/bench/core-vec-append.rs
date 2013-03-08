@@ -47,10 +47,10 @@ fn main() {
     let end = std::time::precise_time_s();
 
     // check each vector
-    assert raw_v.len() == max;
-    for raw_v.eachi |i, v| { assert i == *v; }
-    assert dvec_v.len() == max;
-    for dvec_v.eachi |i, v| { assert i == *v; }
+    fail_unless!(raw_v.len() == max);
+    for raw_v.eachi |i, v| { fail_unless!(i == *v); }
+    fail_unless!(dvec_v.len() == max);
+    for dvec_v.eachi |i, v| { fail_unless!(i == *v); }
 
     let raw = mid - start;
     let dvec = end - mid;

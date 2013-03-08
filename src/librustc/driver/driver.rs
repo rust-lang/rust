@@ -902,7 +902,7 @@ pub mod test {
             ~"rustc", matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
         let cfg = build_configuration(sess, ~"whatever", str_input(~""));
-        assert (attr::contains_name(cfg, ~"test"));
+        fail_unless!((attr::contains_name(cfg, ~"test")));
     }
 
     // When the user supplies --test and --cfg test, don't implicitly add
@@ -922,7 +922,7 @@ pub mod test {
         let sess = build_session(sessopts, diagnostic::emit);
         let cfg = build_configuration(sess, ~"whatever", str_input(~""));
         let test_items = attr::find_meta_items_by_name(cfg, ~"test");
-        assert (vec::len(test_items) == 1u);
+        fail_unless!((vec::len(test_items) == 1u));
     }
 }
 

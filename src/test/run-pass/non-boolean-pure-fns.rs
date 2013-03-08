@@ -23,12 +23,12 @@ pure fn pure_length<T:Copy>(ls: @List<T>) -> uint { pure_length_go(ls, 0u) }
 pure fn nonempty_list<T:Copy>(ls: @List<T>) -> bool { pure_length(ls) > 0u }
 
 fn safe_head<T:Copy>(ls: @List<T>) -> T {
-    assert !is_empty(ls);
+    fail_unless!(!is_empty(ls));
     return head(ls);
 }
 
 pub fn main() {
     let mylist = @Cons(@1u, @Nil);
-    assert (nonempty_list(mylist));
-    assert (*safe_head(mylist) == 1u);
+    fail_unless!((nonempty_list(mylist)));
+    fail_unless!((*safe_head(mylist) == 1u));
 }

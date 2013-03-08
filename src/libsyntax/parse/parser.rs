@@ -21,11 +21,11 @@ use ast::{blk_check_mode, box, by_copy, by_ref, by_val};
 use ast::{crate, crate_cfg, decl, decl_item};
 use ast::{decl_local, default_blk, deref, div, enum_def, enum_variant_kind};
 use ast::{expl, expr, expr_, expr_addr_of, expr_match, expr_again};
-use ast::{expr_assert, expr_assign, expr_assign_op, expr_binary, expr_block};
+use ast::{expr_assign, expr_assign_op, expr_binary, expr_block};
 use ast::{expr_break, expr_call, expr_cast, expr_copy, expr_do_body};
 use ast::{expr_field, expr_fn_block, expr_if, expr_index};
 use ast::{expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac};
-use ast::{expr_method_call, expr_paren, expr_path, expr_rec, expr_repeat};
+use ast::{expr_method_call, expr_paren, expr_path, expr_repeat};
 use ast::{expr_ret, expr_swap, expr_struct, expr_tup, expr_unary};
 use ast::{expr_vec, expr_vstore, expr_vstore_mut_box};
 use ast::{expr_vstore_fixed, expr_vstore_slice, expr_vstore_box};
@@ -40,8 +40,8 @@ use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const};
 use ast::{m_imm, m_mutbl, mac_, mac_invoc_tt, matcher, match_nonterminal};
 use ast::{match_seq, match_tok, method, mode, module_ns, mt, mul, mutability};
 use ast::{named_field, neg, node_id, noreturn, not, pat, pat_box, pat_enum};
-use ast::{pat_ident, pat_lit, pat_range, pat_rec, pat_region, pat_struct};
-use ast::{pat_tup, pat_uniq, pat_wild, path, private};
+use ast::{pat_ident, pat_lit, pat_range, pat_region, pat_struct, pat_tup};
+use ast::{pat_uniq, pat_wild, path, private};
 use ast::{re_self, re_anon, re_named, region, rem, required};
 use ast::{ret_style, return_val, self_ty, shl, shr, stmt, stmt_decl};
 use ast::{stmt_expr, stmt_semi, stmt_mac, struct_def, struct_field};
@@ -51,7 +51,7 @@ use ast::{token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok};
 use ast::{tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot, ty_box};
 use ast::{ty_field, ty_fixed_length_vec, ty_closure, ty_bare_fn};
 use ast::{ty_infer, ty_mac, ty_method};
-use ast::{ty_nil, TyParam, TyParamBound, ty_path, ty_ptr, ty_rec, ty_rptr};
+use ast::{ty_nil, TyParam, TyParamBound, ty_path, ty_ptr, ty_rptr};
 use ast::{ty_tup, ty_u32, ty_uniq, ty_vec, type_value_ns, uniq};
 use ast::{unnamed_field, unsafe_blk, unsafe_fn, variant, view_item};
 use ast::{view_item_, view_item_extern_mod, view_item_use};
@@ -75,6 +75,8 @@ use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
 use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
+use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
+use parse::obsolete::{ObsoleteAssertion};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -657,7 +659,8 @@ pub impl Parser {
             if elems.len() == 0 {
                 self.unexpected_last(&token::RBRACE);
             }
-            ty_rec(elems)
+            self.obsolete(*self.last_span, ObsoleteRecordType);
+            ty_nil
         } else if *self.token == token::LBRACKET {
             self.expect(&token::LBRACKET);
             let mt = self.parse_mt();
@@ -1206,8 +1209,8 @@ pub impl Parser {
             self.expect(&token::RPAREN);
         } else if self.eat_keyword(&~"assert") {
             let e = self.parse_expr();
-            ex = expr_assert(e);
-            hi = e.span.hi;
+            ex = expr_copy(e);  // whatever
+            self.obsolete(*self.last_span, ObsoleteAssertion);
         } else if self.eat_keyword(&~"return") {
             if can_begin_expr(&*self.token) {
                 let e = self.parse_expr();
@@ -1954,34 +1957,6 @@ pub impl Parser {
               self.look_ahead(2) == token::COLON))
     }
 
-    fn parse_record_literal(&self) -> expr_ {
-        self.expect(&token::LBRACE);
-        let mut fields = ~[self.parse_field(token::COLON)];
-        let mut base = None;
-        while *self.token != token::RBRACE {
-            if *self.token == token::COMMA
-                && self.look_ahead(1) == token::DOTDOT {
-                self.bump();
-                self.bump();
-                base = Some(self.parse_expr()); break;
-            }
-
-            if self.try_parse_obsolete_with() {
-                break;
-            }
-
-            self.expect(&token::COMMA);
-            if *self.token == token::RBRACE {
-                // record ends by an optional trailing comma
-                break;
-            }
-            fields.push(self.parse_field(token::COLON));
-        }
-        self.expect(&token::RBRACE);
-        self.warn(~"REC");
-        return expr_rec(fields, base);
-    }
-
     fn parse_match_expr(&self) -> @expr {
         let lo = self.last_span.lo;
         let discriminant = self.parse_expr();
@@ -2218,10 +2193,11 @@ pub impl Parser {
           }
           token::LBRACE => {
             self.bump();
-            let (fields, etc) = self.parse_pat_fields(refutable);
+            let (_, _) = self.parse_pat_fields(refutable);
             hi = self.span.hi;
             self.bump();
-            pat = pat_rec(fields, etc);
+            self.obsolete(*self.span, ObsoleteRecordPattern);
+            pat = pat_wild;
           }
           token::LPAREN => {
             self.bump();
@@ -2524,7 +2500,7 @@ pub impl Parser {
 
     fn parse_block(&self) -> blk {
         let (attrs, blk) = self.parse_inner_attrs_and_block(false);
-        assert vec::is_empty(attrs);
+        fail_unless!(vec::is_empty(attrs));
         return blk;
     }
 
@@ -3871,7 +3847,7 @@ pub impl Parser {
         foreign_items_allowed: bool,
         macros_allowed: bool
     ) -> item_or_view_item {
-        assert items_allowed != foreign_items_allowed;
+        fail_unless!(items_allowed != foreign_items_allowed);
 
         maybe_whole!(iovi self, nt_item);
         let lo = self.span.lo;
@@ -4240,11 +4216,11 @@ pub impl Parser {
                     view_items.push(view_item);
                 }
                 iovi_item(item) => {
-                    assert items_allowed;
+                    fail_unless!(items_allowed);
                     items.push(item)
                 }
                 iovi_foreign_item(foreign_item) => {
-                    assert foreign_items_allowed;
+                    fail_unless!(foreign_items_allowed);
                     foreign_items.push(foreign_item);
                 }
             }

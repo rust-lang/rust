@@ -23,12 +23,20 @@ use str;
 use task;
 use vec;
 
-#[abi = "cdecl"]
-extern mod rustrt {
-    unsafe fn rust_run_program(argv: **libc::c_char, envp: *c_void,
-                               dir: *libc::c_char,
-                               in_fd: c_int, out_fd: c_int, err_fd: c_int)
-                            -> pid_t;
+pub mod rustrt {
+    use libc::{c_int, c_void, pid_t};
+    use libc;
+
+    #[abi = "cdecl"]
+    pub extern {
+        unsafe fn rust_run_program(argv: **libc::c_char,
+                                   envp: *c_void,
+                                   dir: *libc::c_char,
+                                   in_fd: c_int,
+                                   out_fd: c_int,
+                                   err_fd: c_int)
+                                -> pid_t;
+    }
 }
 
 /// A value representing a child process
@@ -488,7 +496,7 @@ mod tests {
 
         log(debug, copy expected);
         log(debug, copy actual);
-        assert (expected == actual);
+        fail_unless!((expected == actual));
     }
 
     #[test]
@@ -497,7 +505,7 @@ mod tests {
                                      &None, &None,
                                      0i32, 0i32, 0i32);
         let status = run::waitpid(pid);
-        assert status == 1;
+        fail_unless!(status == 1);
     }
 
 }

@@ -43,7 +43,7 @@ type TaskLocalMap = @dvec::DVec<Option<TaskLocalElement>>;
 
 extern fn cleanup_task_local_map(map_ptr: *libc::c_void) {
     unsafe {
-        assert !map_ptr.is_null();
+        fail_unless!(!map_ptr.is_null());
         // Get and keep the single reference that was created at the
         // beginning.
         let _map: TaskLocalMap = cast::reinterpret_cast(&map_ptr);

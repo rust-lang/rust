@@ -10,9 +10,11 @@
 // except according to those terms.
 
 
-#[abi = "cdecl"]
-extern mod test {
-    pub unsafe fn free();
+mod test {
+    #[abi = "cdecl"]
+    pub extern {
+        pub unsafe fn free();
+    }
 }
 
 fn main() {

@@ -156,6 +156,9 @@ pub const tag_item_unnamed_field: uint = 0x76;
 pub const tag_items_data_item_struct_ctor: uint = 0x77;
 pub const tag_items_data_item_visibility: uint = 0x78;
 
+pub const tag_link_args: uint = 0x79;
+pub const tag_link_args_arg: uint = 0x7a;
+
 pub struct LinkMeta {
     name: @str,
     vers: @str,

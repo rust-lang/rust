@@ -399,15 +399,6 @@ pub fn noop_fold_pat(p: &pat_, fld: @ast_fold) -> pat_ {
                 pats.map(|pats| pats.map(|x| fld.fold_pat(*x)))
             )
         }
-        pat_rec(ref fields, etc) => {
-            let fs = do fields.map |f| {
-                ast::field_pat {
-                    ident: /* FIXME (#2543) */ copy f.ident,
-                    pat: fld.fold_pat(f.pat),
-                }
-            };
-            pat_rec(fs, etc)
-        }
         pat_struct(pth, ref fields, etc) => {
             let pth_ = fld.fold_path(pth);
             let fs = do fields.map |f| {
@@ -478,12 +469,6 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
         }
         expr_repeat(expr, count, mutt) => {
             expr_repeat(fld.fold_expr(expr), fld.fold_expr(count), mutt)
-        }
-        expr_rec(ref fields, maybe_expr) => {
-            expr_rec(
-                fields.map(|x| fold_field(*x)),
-                maybe_expr.map(|x| fld.fold_expr(*x))
-            )
         }
         expr_tup(ref elts) => expr_tup(elts.map(|x| fld.fold_expr(*x))),
         expr_call(f, ref args, blk) => {
@@ -576,7 +561,6 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 fld.fold_expr(e)
             )
         }
-        expr_assert(e) => expr_assert(fld.fold_expr(e)),
         expr_mac(ref mac) => expr_mac(fold_mac((*mac))),
         expr_struct(path, ref fields, maybe_expr) => {
             expr_struct(
@@ -613,7 +597,6 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
         ty_vec(ref mt) => ty_vec(fold_mt(mt, fld)),
         ty_ptr(ref mt) => ty_ptr(fold_mt(mt, fld)),
         ty_rptr(region, ref mt) => ty_rptr(region, fold_mt(mt, fld)),
-        ty_rec(ref fields) => ty_rec(fields.map(|f| fold_field(*f, fld))),
         ty_closure(ref f) => {
             ty_closure(@TyClosure {
                 sigil: f.sigil,

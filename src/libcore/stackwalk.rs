@@ -86,11 +86,16 @@ fn frame_address(f: fn(++x: *u8)) {
     }
 }
 
-extern mod rustrt {
-    pub unsafe fn rust_dbg_breakpoint();
+pub mod rustrt {
+    pub extern {
+        pub unsafe fn rust_dbg_breakpoint();
+    }
 }
 
-#[abi = "rust-intrinsic"]
-extern mod rusti {
-    pub fn frame_address(f: &once fn(++x: *u8));
+pub mod rusti {
+    #[abi = "rust-intrinsic"]
+    pub extern {
+        pub fn frame_address(f: &once fn(++x: *u8));
+    }
 }
+

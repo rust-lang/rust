@@ -20,6 +20,6 @@ fn m(in: t3) -> int {
 }
 
 pub fn main() {
-    assert (m(c(T2 {x: a(10), y: 5}, 4u)) == 10);
-    assert (m(c(T2 {x: b(10u), y: 5}, 4u)) == 19);
+    fail_unless!((m(c(T2 {x: a(10), y: 5}, 4u)) == 10));
+    fail_unless!((m(c(T2 {x: b(10u), y: 5}, 4u)) == 19));
 }
