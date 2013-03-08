@@ -77,6 +77,7 @@ use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
 use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
 use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
 use parse::obsolete::{ObsoleteAssertion, ObsoleteBareFnType};
+use parse::obsolete::{ObsoleteNewtypeEnum};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -3796,6 +3797,8 @@ pub impl Parser {
                 disr_expr: None,
                 vis: public,
             });
+
+            self.obsolete(*self.last_span, ObsoleteNewtypeEnum);
 
             return (
                 id,
