@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-enum S = ();
+struct S(())
 
 pub impl S {
     fn foo() { }

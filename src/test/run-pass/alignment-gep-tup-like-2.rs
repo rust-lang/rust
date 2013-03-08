@@ -12,7 +12,7 @@ struct Pair<A,B> {
     a: A, b: B
 }
 
-enum RecEnum<A> = Rec<A>;
+struct RecEnum<A>(Rec<A>);
 struct Rec<A> {
     val: A,
     rec: Option<@mut RecEnum<A>>

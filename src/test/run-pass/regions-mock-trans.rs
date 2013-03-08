@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum arena = ();
+struct arena(());
 
 struct Bcx {
     fcx: &'self Fcx<'self>
