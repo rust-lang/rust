@@ -335,7 +335,7 @@ pub impl<T:Const + Owned> RWARC<T> {
      * Failing will unlock the ARC while unwinding. However, unlike all other
      * access modes, this will not poison the ARC.
      */
-    fn read<U>(blk: fn(x: &T) -> U) -> U {
+    fn read<U>(&self, blk: fn(x: &T) -> U) -> U {
         let state = unsafe { get_shared_immutable_state(&self.x) };
         do (&state.lock).read {
             check_poison(false, state.failed);
@@ -360,7 +360,7 @@ pub impl<T:Const + Owned> RWARC<T> {
      * }
      * ~~~
      */
-    fn write_downgrade<U>(blk: fn(v: RWWriteMode<T>) -> U) -> U {
+    fn write_downgrade<U>(&self, blk: fn(v: RWWriteMode<T>) -> U) -> U {
         unsafe {
             let state = get_shared_mutable_state(&self.x);
             do (*borrow_rwlock(state)).write_downgrade |write_mode| {
@@ -373,7 +373,7 @@ pub impl<T:Const + Owned> RWARC<T> {
     }
 
     /// To be called inside of the write_downgrade block.
-    fn downgrade(token: RWWriteMode/&a<T>) -> RWReadMode/&a<T> {
+    fn downgrade(&self, token: RWWriteMode/&a<T>) -> RWReadMode/&a<T> {
         // The rwlock should assert that the token belongs to us for us.
         let state = unsafe { get_shared_immutable_state(&self.x) };
         let RWWriteMode((data, t, _poison)) = token;

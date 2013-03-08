@@ -99,7 +99,7 @@ fn new_sem_and_signal(count: int, num_condvars: uint)
 
 #[doc(hidden)]
 pub impl<Q:Owned> &self/Sem<Q> {
-    fn acquire() {
+    fn acquire(&self) {
         let mut waiter_nobe = None;
         unsafe {
             do (**self).with |state| {
@@ -121,7 +121,7 @@ pub impl<Q:Owned> &self/Sem<Q> {
             let _ = comm::recv_one(option::unwrap(waiter_nobe));
         }
     }
-    fn release() {
+    fn release(&self) {
         unsafe {
             do (**self).with |state| {
                 state.count += 1;
@@ -135,12 +135,12 @@ pub impl<Q:Owned> &self/Sem<Q> {
 // FIXME(#3154) move both copies of this into Sem<Q>, and unify the 2 structs
 #[doc(hidden)]
 pub impl &self/Sem<()> {
-    fn access<U>(blk: fn() -> U) -> U {
+    fn access<U>(&self, blk: fn() -> U) -> U {
         let mut release = None;
         unsafe {
             do task::unkillable {
                 self.acquire();
-                release = Some(SemRelease(self));
+                release = Some(SemRelease(*self));
             }
         }
         blk()
@@ -148,12 +148,12 @@ pub impl &self/Sem<()> {
 }
 #[doc(hidden)]
 pub impl &self/Sem<~[Waitqueue]> {
-    fn access<U>(blk: fn() -> U) -> U {
+    fn access<U>(&self, blk: fn() -> U) -> U {
         let mut release = None;
         unsafe {
             do task::unkillable {
                 self.acquire();
-                release = Some(SemAndSignalRelease(self));
+                release = Some(SemAndSignalRelease(*self));
             }
         }
         blk()
@@ -385,7 +385,7 @@ pub impl Semaphore {
     fn release(&self) { (&self.sem).release() }
 
     /// Run a function with ownership of one of the semaphore's resources.
-    fn access<U>(blk: fn() -> U) -> U { (&self.sem).access(blk) }
+    fn access<U>(&self, blk: fn() -> U) -> U { (&self.sem).access(blk) }
 }
 
 /****************************************************************************

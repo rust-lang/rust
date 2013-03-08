@@ -209,25 +209,25 @@ pub pure fn strftime(format: &str, tm: &Tm) -> ~str {
 
 pub impl Tm {
     /// Convert time to the seconds from January 1, 1970
-    fn to_timespec() -> Timespec {
+    fn to_timespec(&self) -> Timespec {
         unsafe {
             let mut sec = 0i64;
             if self.tm_gmtoff == 0_i32 {
-                rustrt::rust_timegm(self, &mut sec);
+                rustrt::rust_timegm(*self, &mut sec);
             } else {
-                rustrt::rust_mktime(self, &mut sec);
+                rustrt::rust_mktime(*self, &mut sec);
             }
             Timespec::new(sec, self.tm_nsec)
         }
     }
 
     /// Convert time to the local timezone
-    fn to_local() -> Tm {
+    fn to_local(&self) -> Tm {
         at(self.to_timespec())
     }
 
     /// Convert time to the UTC
-    fn to_utc() -> Tm {
+    fn to_utc(&self) -> Tm {
         at_utc(self.to_timespec())
     }
 
@@ -235,7 +235,7 @@ pub impl Tm {
      * Return a string of the current time in the form
      * "Thu Jan  1 00:00:00 1970".
      */
-    pure fn ctime() -> ~str { self.strftime(~"%c") }
+    pure fn ctime(&self) -> ~str { self.strftime(~"%c") }
 
     /// Formats the time according to the format string.
     pure fn strftime(&self, format: &str) -> ~str {
@@ -248,7 +248,7 @@ pub impl Tm {
      * local: "Thu, 22 Mar 2012 07:53:18 PST"
      * utc:   "Thu, 22 Mar 2012 14:53:18 UTC"
      */
-    pure fn rfc822() -> ~str {
+    pure fn rfc822(&self) -> ~str {
         if self.tm_gmtoff == 0_i32 {
             self.strftime(~"%a, %d %b %Y %T GMT")
         } else {
@@ -262,7 +262,7 @@ pub impl Tm {
      * local: "Thu, 22 Mar 2012 07:53:18 -0700"
      * utc:   "Thu, 22 Mar 2012 14:53:18 -0000"
      */
-    pure fn rfc822z() -> ~str {
+    pure fn rfc822z(&self) -> ~str {
         self.strftime(~"%a, %d %b %Y %T %z")
     }
 
@@ -272,7 +272,7 @@ pub impl Tm {
      * local: "2012-02-22T07:53:18-07:00"
      * utc:   "2012-02-22T14:53:18Z"
      */
-    pure fn rfc3339() -> ~str {
+    pure fn rfc3339(&self) -> ~str {
         if self.tm_gmtoff == 0_i32 {
             self.strftime(~"%Y-%m-%dT%H:%M:%SZ")
         } else {
