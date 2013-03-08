@@ -409,14 +409,38 @@ pub fn core_macros() -> ~str {
 ~"pub mod macros {
     macro_rules! ignore (($($x:tt)*) => (()))
 
-    macro_rules! error ( ($( $arg:expr ),+) => (
-        log(::core::error, fmt!( $($arg),+ )) ))
-    macro_rules! warn ( ($( $arg:expr ),+) => (
-        log(::core::warn, fmt!( $($arg),+ )) ))
-    macro_rules! info ( ($( $arg:expr ),+) => (
-        log(::core::info, fmt!( $($arg),+ )) ))
-    macro_rules! debug ( ($( $arg:expr ),+) => (
-        log(::core::debug, fmt!( $($arg),+ )) ))
+    macro_rules! error (
+        ($arg:expr) => (
+            log(::core::error, fmt!( \"%?\", $arg ))
+        );
+        ($( $arg:expr ),+) => (
+            log(::core::error, fmt!( $($arg),+ ))
+        )
+    )
+    macro_rules! warn (
+        ($arg:expr) => (
+            log(::core::warn, fmt!( \"%?\", $arg ))
+        );
+        ($( $arg:expr ),+) => (
+            log(::core::warn, fmt!( $($arg),+ ))
+        )
+    )
+    macro_rules! info (
+        ($arg:expr) => (
+            log(::core::info, fmt!( \"%?\", $arg ))
+        );
+        ($( $arg:expr ),+) => (
+            log(::core::info, fmt!( $($arg),+ ))
+        )
+    )
+    macro_rules! debug (
+        ($arg:expr) => (
+            log(::core::debug, fmt!( \"%?\", $arg ))
+        );
+        ($( $arg:expr ),+) => (
+            log(::core::debug, fmt!( $($arg),+ ))
+        )
+    )
 
     macro_rules! fail(
         ($msg: expr) => (
