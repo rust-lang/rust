@@ -18,6 +18,8 @@ Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
 
 */
 
+use iter;
+use iter::BaseIter;
 use kinds::Copy;
 use managed;
 use option::{None, Option, Some};
@@ -489,12 +491,52 @@ pub impl<T:Copy> DList<T> {
         let mut v = vec::with_capacity(self.size);
         unsafe {
             // Take this out of the unchecked when iter's functions are pure
-            for self.eachi |index,data| {
+            for iter::eachi(&self) |index,data| {
                 v[index] = *data;
             }
         }
         v
     }
+}
+
+impl<T> BaseIter<T> for @mut DList<T> {
+    /**
+    * Iterates through the current contents.
+    *
+    * Attempts to access this dlist during iteration are allowed (to
+    * allow for e.g. breadth-first search with in-place enqueues), but
+    * removing the current node is forbidden.
+    */
+    pure fn each(&self, f: fn(v: &T) -> bool) {
+        let mut link = self.peek_n();
+        while option::is_some(&link) {
+            let nobe = option::get(link);
+            fail_unless!(nobe.linked);
+
+            {
+                let frozen_nobe = &*nobe;
+                if !f(&frozen_nobe.data) { break; }
+            }
+
+            // Check (weakly) that the user didn't do a remove.
+            if self.size == 0 {
+                fail!(~"The dlist became empty during iteration??")
+            }
+            if !nobe.linked ||
+                (!((nobe.prev.is_some()
+                    || managed::mut_ptr_eq(self.hd.expect(~"headless dlist?"),
+                                           nobe))
+                   && (nobe.next.is_some()
+                    || managed::mut_ptr_eq(self.tl.expect(~"tailless dlist?"),
+                                           nobe)))) {
+                fail!(~"Removing a dlist node during iteration is forbidden!")
+            }
+            link = nobe.next_link();
+        }
+    }
+
+    #[inline(always)]
+    pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 #[cfg(test)]

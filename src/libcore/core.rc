@@ -142,8 +142,6 @@ pub mod option;
 pub mod result;
 pub mod either;
 pub mod dlist;
-#[path="iter-trait.rs"] #[merge = "iter-trait/dlist.rs"]
-pub mod dlist_iter;
 pub mod hashmap;
 pub mod cell;
 pub mod trie;
