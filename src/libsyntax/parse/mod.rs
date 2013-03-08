@@ -45,10 +45,14 @@ pub mod classify;
 /// Reporting obsolete syntax
 pub mod obsolete;
 
+// info about a parsing session.
+// This structure and the reader both have
+// an interner associated with them. If they're
+// not the same, bad things can happen.
 pub struct ParseSess {
-    cm: @codemap::CodeMap,
+    cm: @codemap::CodeMap, // better be the same as the one in the reader!
     next_id: node_id,
-    span_diagnostic: @span_handler,
+    span_diagnostic: @span_handler, // better be the same as the one in the reader!
     interner: @ident_interner,
 }
 
