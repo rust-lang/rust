@@ -234,7 +234,6 @@ use middle::moves;
 use util::common::{indenter, stmt_set};
 use util::ppaux::note_and_explain_region;
 
-use core::dvec::DVec;
 use core::io;
 use core::result::{Result, Ok, Err};
 use core::to_bytes;
@@ -406,7 +405,7 @@ pub struct Loan {
 /// - `pure_map`: map from block/expr that must be pure to the error message
 ///   that should be reported if they are not pure
 pub struct ReqMaps {
-    req_loan_map: HashMap<ast::node_id, @DVec<Loan>>,
+    req_loan_map: HashMap<ast::node_id, @mut ~[Loan]>,
     pure_map: HashMap<ast::node_id, bckerr>
 }
 

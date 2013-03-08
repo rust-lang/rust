@@ -16,7 +16,6 @@ More runtime type reflection
 
 use cast::transmute;
 use char;
-use dvec::DVec;
 use intrinsic;
 use intrinsic::{TyDesc, TyVisitor, visit_tydesc};
 use io::{Writer, WriterUtil};
@@ -147,14 +146,14 @@ enum VariantState {
 
 pub struct ReprVisitor {
     mut ptr: *c_void,
-    ptr_stk: DVec<*c_void>,
-    var_stk: DVec<VariantState>,
+    mut ptr_stk: ~[*c_void],
+    mut var_stk: ~[VariantState],
     writer: @Writer
 }
 pub fn ReprVisitor(ptr: *c_void, writer: @Writer) -> ReprVisitor {
     ReprVisitor { ptr: ptr,
-                  ptr_stk: DVec(),
-                  var_stk: DVec(),
+                  ptr_stk: ~[],
+                  var_stk: ~[],
                   writer: writer }
 }
 
@@ -500,7 +499,7 @@ impl TyVisitor for ReprVisitor {
     }
 
     fn visit_enum_variant_field(&self, i: uint, inner: *TyDesc) -> bool {
-        match self.var_stk.last() {
+        match self.var_stk[self.var_stk.len() - 1] {
             Degenerate | TagMatch => {
                 if i != 0 {
                     self.writer.write_str(", ");
@@ -518,7 +517,7 @@ impl TyVisitor for ReprVisitor {
                                 _disr_val: int,
                                 n_fields: uint,
                                 _name: &str) -> bool {
-        match self.var_stk.last() {
+        match self.var_stk[self.var_stk.len() - 1] {
             Degenerate | TagMatch => {
                 if n_fields > 0 {
                     self.writer.write_char(')');

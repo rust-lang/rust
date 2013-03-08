@@ -303,9 +303,9 @@ mod test {
     use util::testing::*;
 
     #[test] fn to_json_str (val: Encodable<std::json::Encoder>) -> ~str {
-        let bw = @io::BytesWriter();
-        val.encode(~std::json::Encoder(bw as io::Writer));
-        str::from_bytes(bw.bytes.data)
+        do io::with_str_writer |writer| {
+            val.encode(~std::json::Encoder(writer));
+        }
     }
 
     #[test] fn alltts () {

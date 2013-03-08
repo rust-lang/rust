@@ -29,8 +29,6 @@ use util::common::{indenter};
 
 use core::cast;
 use core::cmp;
-use core::dvec::DVec;
-use core::dvec;
 use core::ops;
 use core::option;
 use core::ptr::to_unsafe_ptr;
@@ -213,7 +211,7 @@ pub enum AutoRefKind {
 // This is a map from ID of each implementation to the method info and trait
 // method ID of each of the default methods belonging to the trait that that
 // implementation implements.
-pub type ProvidedMethodsMap = HashMap<def_id,@DVec<@ProvidedMethodInfo>>;
+pub type ProvidedMethodsMap = HashMap<def_id,@mut ~[@ProvidedMethodInfo]>;
 
 // Stores the method info and definition ID of the associated trait method for
 // each instantiation of each provided method.
@@ -3522,7 +3520,7 @@ pub fn trait_supertraits(cx: ctxt,
 
     // Get the supertraits out of the metadata and create the
     // InstantiatedTraitRef for each.
-    let result = dvec::DVec();
+    let mut result = ~[];
     for csearch::get_supertraits(cx, id).each |trait_type| {
         match get(*trait_type).sty {
             ty_trait(def_id, ref substs, _) => {
@@ -3539,7 +3537,7 @@ pub fn trait_supertraits(cx: ctxt,
     }
 
     // Unwrap and return the result.
-    return @dvec::unwrap(result);
+    return @result;
 }
 
 pub fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {

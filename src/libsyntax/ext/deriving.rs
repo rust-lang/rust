@@ -29,7 +29,6 @@ use parse::token::special_idents::clownshoes_extensions;
 use ast_util;
 use opt_vec;
 
-use core::dvec;
 use core::uint;
 
 enum Junction {
@@ -99,7 +98,7 @@ fn expand_deriving(cx: ext_ctxt,
                    expand_deriving_struct_def: ExpandDerivingStructDefFn,
                    expand_deriving_enum_def: ExpandDerivingEnumDefFn)
                 -> ~[@item] {
-    let result = dvec::DVec();
+    let mut result = ~[];
     for in_items.each |item| {
         result.push(copy *item);
         match item.node {
@@ -120,7 +119,7 @@ fn expand_deriving(cx: ext_ctxt,
             _ => ()
         }
     }
-    dvec::unwrap(result)
+    result
 }
 
 fn create_impl_item(cx: ext_ctxt, span: span, +item: item_) -> @item {
@@ -202,14 +201,13 @@ fn create_self_type_with_params(cx: ext_ctxt,
                                 generics: &Generics)
                              -> @Ty {
     // Create the type parameters on the `self` path.
-    let self_ty_params = dvec::DVec();
+    let mut self_ty_params = ~[];
     for generics.ty_params.each |ty_param| {
         let self_ty_param = build::mk_simple_ty_path(cx,
                                                      span,
                                                      ty_param.ident);
         self_ty_params.push(self_ty_param);
     }
-    let self_ty_params = dvec::unwrap(self_ty_params);
 
     // Create the type of `self`.
     let self_type = build::mk_raw_path_(span,
@@ -433,7 +431,7 @@ fn create_subpatterns(cx: ext_ctxt,
                       prefix: ~str,
                       n: uint)
                    -> ~[@pat] {
-    let subpats = dvec::DVec();
+    let mut subpats = ~[];
     for uint::range(0, n) |_i| {
         // Create the subidentifier.
         let index = subpats.len().to_str();
@@ -445,7 +443,7 @@ fn create_subpatterns(cx: ext_ctxt,
         let subpat = build::mk_pat(cx, span, subpat);
         subpats.push(subpat);
     }
-    return dvec::unwrap(subpats);
+    return subpats;
 }
 
 fn is_struct_tuple(struct_def: &struct_def) -> bool {
@@ -809,7 +807,7 @@ fn expand_deriving_iter_bytes_struct_method(cx: ext_ctxt,
     let self_ident = cx.ident_of(~"self");
 
     // Create the body of the method.
-    let statements = dvec::DVec();
+    let mut statements = ~[];
     for struct_def.fields.each |struct_field| {
         match struct_field.node.kind {
             named_field(ident, _, _) => {
@@ -833,7 +831,6 @@ fn expand_deriving_iter_bytes_struct_method(cx: ext_ctxt,
     }
 
     // Create the method itself.
-    let statements = dvec::unwrap(statements);
     return create_iter_bytes_method(cx, span, statements);
 }
 
@@ -942,9 +939,9 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
     }
 
     // Create the arms of the self match in the method body.
-    let self_arms = dvec::DVec();
+    let mut self_arms = ~[];
     for enum_definition.variants.each |self_variant| {
-        let other_arms = dvec::DVec();
+        let mut other_arms = ~[];
 
         // Create the matching pattern.
         let matching_pat = create_enum_variant_pattern(cx,
@@ -1026,7 +1023,6 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
         // Create the self pattern body.
         let other_expr = build::mk_path(cx, span, ~[ other_ident ]);
         let other_expr = build::mk_unary(cx, span, deref, other_expr);
-        let other_arms = dvec::unwrap(other_arms);
         let other_match_expr = expr_match(other_expr, other_arms);
         let other_match_expr = build::mk_expr(cx,
                                               span,
@@ -1047,7 +1043,6 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
     // Create the method body.
     let self_expr = build::mk_path(cx, span, ~[ self_ident ]);
     let self_expr = build::mk_unary(cx, span, deref, self_expr);
-    let self_arms = dvec::unwrap(self_arms);
     let self_match_expr = expr_match(self_expr, self_arms);
     let self_match_expr = build::mk_expr(cx, span, self_match_expr);
 
@@ -1148,7 +1143,7 @@ fn expand_deriving_iter_bytes_enum_method(cx: ext_ctxt,
         }
 
         // Feed the discriminant to the byte iteration function.
-        let stmts = dvec::DVec();
+        let mut stmts = ~[];
         let discrim_stmt = call_substructure_iter_bytes_method(cx,
                                                                span,
                                                                discriminant);
@@ -1167,7 +1162,6 @@ fn expand_deriving_iter_bytes_enum_method(cx: ext_ctxt,
         }
 
         // Create the pattern body.
-        let stmts = dvec::unwrap(stmts);
         let match_body_block = build::mk_block_(cx, span, stmts);
 
         // Create the arm.

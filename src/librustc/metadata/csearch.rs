@@ -19,7 +19,6 @@ use metadata::decoder;
 use metadata;
 use middle::{ty, resolve};
 
-use core::dvec::DVec;
 use core::vec;
 use reader = std::ebml::reader;
 use syntax::ast;
@@ -136,7 +135,7 @@ pub fn get_supertraits(tcx: ty::ctxt, def: ast::def_id) -> ~[ty::t] {
 
 pub fn get_method_names_if_trait(cstore: @mut cstore::CStore,
                                  def: ast::def_id)
-                              -> Option<@DVec<(ast::ident, ast::self_ty_)>> {
+                              -> Option<~[(ast::ident, ast::self_ty_)]> {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     return decoder::get_method_names_if_trait(cstore.intr, cdata, def.node);
 }

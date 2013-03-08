@@ -21,10 +21,10 @@ used features.
 the floating point types, the `bool` type, tuples, characters, strings,
 vectors (`vec`), managed boxes (`managed`), owned boxes (`owned`), and unsafe
 and borrowed pointers (`ptr`).  Additionally, `core` provides task management
-and creation (`task`), communication primitives (`comm` and `pipes`), an
-efficient vector builder (`dvec`), platform abstractions (`os` and `path`),
-basic I/O abstractions (`io`), common traits (`cmp`, `num`, `to_str`), and
-complete bindings to the C standard library (`libc`).
+and creation (`task`), communication primitives (`comm` and `pipes`), platform
+abstractions (`os` and `path`), basic I/O abstractions (`io`), common traits
+(`cmp`, `num`, `to_str`), and complete bindings to the C standard library
+(`libc`).
 
 `core` is linked to all crates by default and its contents imported.
 Implicitly, all crates behave as if they included the following prologue:
@@ -141,9 +141,6 @@ pub mod container;
 pub mod option;
 pub mod result;
 pub mod either;
-pub mod dvec;
-#[path="iter-trait.rs"] #[merge = "iter-trait/dvec.rs"]
-pub mod dvec_iter;
 pub mod dlist;
 #[path="iter-trait.rs"] #[merge = "iter-trait/dlist.rs"]
 pub mod dlist_iter;

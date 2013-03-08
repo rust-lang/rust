@@ -25,7 +25,6 @@ use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
 
-use core::{dvec, io, option, vec};
 use std::ebml::reader;
 use std::ebml;
 use std::serialize;
@@ -912,11 +911,11 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         }
     }
 
-    for maps.last_use_map.find(&id).each |m| {
+    for maps.last_use_map.find(&id).each |&m| {
         do ebml_w.tag(c::tag_table_last_use) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                do ebml_w.emit_from_vec((*m).get()) |id| {
+                do ebml_w.emit_from_vec(/*bad*/ copy *m) |id| {
                     id.encode(&ebml_w);
                 }
             }
@@ -1131,8 +1130,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                 let ids = val_dsr.read_to_vec(|| {
                     xcx.tr_id(val_dsr.read_int())
                 });
-                let dvec = @dvec::from_vec(ids);
-                dcx.maps.last_use_map.insert(id, dvec);
+                dcx.maps.last_use_map.insert(id, @mut ids);
             } else if tag == (c::tag_table_method_map as uint) {
                 dcx.maps.method_map.insert(
                     id,
@@ -1211,6 +1209,7 @@ fn mk_ctxt() -> fake_ext_ctxt {
 
 #[cfg(test)]
 fn roundtrip(in_item: Option<@ast::item>) {
+    use core::io;
     use std::prettyprint;
 
     let in_item = in_item.get();

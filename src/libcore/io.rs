@@ -16,7 +16,6 @@ Basic input/output
 
 use result::Result;
 
-use dvec::DVec;
 use int;
 use libc;
 use libc::{c_int, c_long, c_uint, c_void, size_t, ssize_t};
@@ -1109,30 +1108,25 @@ pub fn print(s: &str) { stdout().write_str(s); }
 pub fn println(s: &str) { stdout().write_line(s); }
 
 pub struct BytesWriter {
-    bytes: DVec<u8>,
+    mut bytes: ~[u8],
     mut pos: uint,
 }
 
 impl Writer for BytesWriter {
     fn write(&self, v: &[const u8]) {
-        do self.bytes.swap |bytes| {
-            let mut bytes = bytes;
-            let v_len = v.len();
-            let bytes_len = bytes.len();
+        let v_len = v.len();
+        let bytes_len = self.bytes.len();
 
-            let count = uint::max(bytes_len, self.pos + v_len);
-            vec::reserve(&mut bytes, count);
-            unsafe { vec::raw::set_len(&mut bytes, count); }
+        let count = uint::max(bytes_len, self.pos + v_len);
+        vec::reserve(&mut self.bytes, count);
 
-            {
-                let view = vec::mut_slice(bytes, self.pos, count);
-                vec::bytes::copy_memory(view, v, v_len);
-            }
-
-            self.pos += v_len;
-
-            bytes
+        unsafe {
+            vec::raw::set_len(&mut self.bytes, count);
+            let view = vec::mut_slice(self.bytes, self.pos, count);
+            vec::bytes::copy_memory(view, v, v_len);
         }
+
+        self.pos += v_len;
     }
     fn seek(&self, offset: int, whence: SeekStyle) {
         let pos = self.pos;
@@ -1145,14 +1139,14 @@ impl Writer for BytesWriter {
 }
 
 pub pure fn BytesWriter() -> BytesWriter {
-    BytesWriter { bytes: DVec(), mut pos: 0u }
+    BytesWriter { bytes: ~[], mut pos: 0u }
 }
 
 pub pure fn with_bytes_writer(f: fn(Writer)) -> ~[u8] {
     let wr = @BytesWriter();
     f(wr as Writer);
-    // FIXME (#3758): This should not be needed.
-    unsafe { wr.bytes.check_out(|bytes| bytes) }
+    let @BytesWriter{bytes, _} = wr;
+    return bytes;
 }
 
 pub pure fn with_str_writer(f: fn(Writer)) -> ~str {
@@ -1448,17 +1442,15 @@ mod tests {
     fn bytes_buffer_overwrite() {
         let wr = BytesWriter();
         wr.write(~[0u8, 1u8, 2u8, 3u8]);
-        fail_unless!(wr.bytes.borrow(|bytes| bytes == ~[0u8, 1u8, 2u8, 3u8]));
+        fail_unless!(wr.bytes == ~[0u8, 1u8, 2u8, 3u8]);
         wr.seek(-2, SeekCur);
         wr.write(~[4u8, 5u8, 6u8, 7u8]);
-        fail_unless!(wr.bytes.borrow(|bytes| bytes ==
-            ~[0u8, 1u8, 4u8, 5u8, 6u8, 7u8]));
+        fail_unless!(wr.bytes == ~[0u8, 1u8, 4u8, 5u8, 6u8, 7u8]);
         wr.seek(-2, SeekEnd);
         wr.write(~[8u8]);
         wr.seek(1, SeekSet);
         wr.write(~[9u8]);
-        fail_unless!(wr.bytes.borrow(|bytes| bytes ==
-            ~[0u8, 9u8, 4u8, 5u8, 8u8, 7u8]));
+        fail_unless!(wr.bytes == ~[0u8, 9u8, 4u8, 5u8, 8u8, 7u8]);
     }
 
     #[test]

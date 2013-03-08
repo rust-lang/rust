@@ -18,7 +18,6 @@ use core::io;
 use core::option;
 use core::str;
 use core::vec;
-use core::dvec::DVec;
 
 use std::term;
 
@@ -203,7 +202,7 @@ fn print_diagnostic(topic: ~str, lvl: level, msg: &str) {
     io::stderr().write_str(fmt!(" %s\n", msg));
 }
 
-pub fn collect(messages: @DVec<~str>)
+pub fn collect(messages: @mut ~[~str])
             -> @fn(Option<(@codemap::CodeMap, span)>, &str, level) {
     let f: @fn(Option<(@codemap::CodeMap, span)>, &str, level) =
         |_o, msg: &str, _l| { messages.push(msg.to_str()); };
