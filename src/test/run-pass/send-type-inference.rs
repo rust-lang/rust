@@ -11,9 +11,12 @@
 use core::comm::*;
 
 // tests that ctrl's type gets inferred properly
-type command<K, V> = {key: K, val: V};
+struct Command<K, V> {
+    key: K,
+    val: V
+}
 
-fn cache_server<K:Owned,V:Owned>(c: Chan<Chan<command<K, V>>>) {
+fn cache_server<K:Owned,V:Owned>(c: Chan<Chan<Command<K, V>>>) {
     let (ctrl_port, ctrl_chan) = stream();
     c.send(ctrl_chan);
 }

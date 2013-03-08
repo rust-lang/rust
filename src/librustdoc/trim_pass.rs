@@ -31,7 +31,7 @@ fn should_trim_text() {
     let doc = test::mk_doc(~"#[doc = \" desc \"] \
                             mod m {
                             }");
-    assert doc.cratemod().mods()[0].desc() == Some(~"desc");
+    fail_unless!(doc.cratemod().mods()[0].desc() == Some(~"desc"));
 }
 
 #[cfg(test)]

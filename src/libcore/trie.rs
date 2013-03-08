@@ -327,7 +327,7 @@ fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
 
 #[cfg(test)]
 pub fn check_integrity<T>(trie: &TrieNode<T>) {
-    assert trie.count != 0;
+    fail_unless!(trie.count != 0);
 
     let mut sum = 0;
 
@@ -342,7 +342,7 @@ pub fn check_integrity<T>(trie: &TrieNode<T>) {
         }
     }
 
-    assert sum == trie.count;
+    fail_unless!(sum == trie.count);
 }
 
 #[cfg(test)]
@@ -356,32 +356,32 @@ mod tests {
         let n = 300;
 
         for uint::range_step(1, n, 2) |x| {
-            assert trie.insert(x, x + 1);
-            assert trie.contains_key(&x);
+            fail_unless!(trie.insert(x, x + 1));
+            fail_unless!(trie.contains_key(&x));
             check_integrity(&trie.root);
         }
 
         for uint::range_step(0, n, 2) |x| {
-            assert !trie.contains_key(&x);
-            assert trie.insert(x, x + 1);
+            fail_unless!(!trie.contains_key(&x));
+            fail_unless!(trie.insert(x, x + 1));
             check_integrity(&trie.root);
         }
 
         for uint::range(0, n) |x| {
-            assert trie.contains_key(&x);
-            assert !trie.insert(x, x + 1);
+            fail_unless!(trie.contains_key(&x));
+            fail_unless!(!trie.insert(x, x + 1));
             check_integrity(&trie.root);
         }
 
         for uint::range_step(1, n, 2) |x| {
-            assert trie.remove(&x);
-            assert !trie.contains_key(&x);
+            fail_unless!(trie.remove(&x));
+            fail_unless!(!trie.contains_key(&x));
             check_integrity(&trie.root);
         }
 
         for uint::range_step(0, n, 2) |x| {
-            assert trie.contains_key(&x);
-            assert !trie.insert(x, x + 1);
+            fail_unless!(trie.contains_key(&x));
+            fail_unless!(!trie.insert(x, x + 1));
             check_integrity(&trie.root);
         }
     }
@@ -390,16 +390,16 @@ mod tests {
     fn test_each() {
         let mut m = TrieMap::new();
 
-        assert m.insert(3, 6);
-        assert m.insert(0, 0);
-        assert m.insert(4, 8);
-        assert m.insert(2, 4);
-        assert m.insert(1, 2);
+        fail_unless!(m.insert(3, 6));
+        fail_unless!(m.insert(0, 0));
+        fail_unless!(m.insert(4, 8));
+        fail_unless!(m.insert(2, 4));
+        fail_unless!(m.insert(1, 2));
 
         let mut n = 0;
         for m.each |&(k, v)| {
-            assert k == n;
-            assert *v == n * 2;
+            fail_unless!(k == n);
+            fail_unless!(*v == n * 2);
             n += 1;
         }
     }
@@ -415,10 +415,10 @@ mod tests {
         let mut n = uint::max_value - 9999;
         for m.each |&(k, v)| {
             if n == uint::max_value - 5000 { break }
-            assert n < uint::max_value - 5000;
+            fail_unless!(n < uint::max_value - 5000);
 
-            assert k == n;
-            assert *v == n / 2;
+            fail_unless!(k == n);
+            fail_unless!(*v == n / 2);
             n += 1;
         }
     }
@@ -427,16 +427,16 @@ mod tests {
     fn test_each_reverse() {
         let mut m = TrieMap::new();
 
-        assert m.insert(3, 6);
-        assert m.insert(0, 0);
-        assert m.insert(4, 8);
-        assert m.insert(2, 4);
-        assert m.insert(1, 2);
+        fail_unless!(m.insert(3, 6));
+        fail_unless!(m.insert(0, 0));
+        fail_unless!(m.insert(4, 8));
+        fail_unless!(m.insert(2, 4));
+        fail_unless!(m.insert(1, 2));
 
         let mut n = 4;
         for m.each_reverse |&(k, v)| {
-            assert k == n;
-            assert *v == n * 2;
+            fail_unless!(k == n);
+            fail_unless!(*v == n * 2);
             n -= 1;
         }
     }
@@ -452,10 +452,10 @@ mod tests {
         let mut n = uint::max_value;
         for m.each_reverse |&(k, v)| {
             if n == uint::max_value - 5000 { break }
-            assert n > uint::max_value - 5000;
+            fail_unless!(n > uint::max_value - 5000);
 
-            assert k == n;
-            assert *v == n / 2;
+            fail_unless!(k == n);
+            fail_unless!(*v == n / 2);
             n -= 1;
         }
     }

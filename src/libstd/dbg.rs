@@ -14,15 +14,19 @@ use core::cast::reinterpret_cast;
 use core::ptr;
 use core::sys;
 
-#[abi = "cdecl"]
-extern mod rustrt {
-    pub unsafe fn debug_tydesc(td: *sys::TypeDesc);
-    pub unsafe fn debug_opaque(td: *sys::TypeDesc, x: *());
-    pub unsafe fn debug_box(td: *sys::TypeDesc, x: *());
-    pub unsafe fn debug_tag(td: *sys::TypeDesc, x: *());
-    pub unsafe fn debug_fn(td: *sys::TypeDesc, x: *());
-    pub unsafe fn debug_ptrcast(td: *sys::TypeDesc, x: *()) -> *();
-    pub unsafe fn rust_dbg_breakpoint();
+pub mod rustrt {
+    use core::sys;
+
+    #[abi = "cdecl"]
+    pub extern {
+        pub unsafe fn debug_tydesc(td: *sys::TypeDesc);
+        pub unsafe fn debug_opaque(td: *sys::TypeDesc, x: *());
+        pub unsafe fn debug_box(td: *sys::TypeDesc, x: *());
+        pub unsafe fn debug_tag(td: *sys::TypeDesc, x: *());
+        pub unsafe fn debug_fn(td: *sys::TypeDesc, x: *());
+        pub unsafe fn debug_ptrcast(td: *sys::TypeDesc, x: *()) -> *();
+        pub unsafe fn rust_dbg_breakpoint();
+    }
 }
 
 pub fn debug_tydesc<T>() {

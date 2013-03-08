@@ -11,5 +11,5 @@
 const a: *u8 = 0 as *u8;
 
 fn main() {
-    assert a == ptr::null();
+    fail_unless!(a == ptr::null());
 }

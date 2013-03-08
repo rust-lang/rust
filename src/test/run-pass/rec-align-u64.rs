@@ -10,10 +10,12 @@
 
 // Issue #2303
 
-#[abi = "rust-intrinsic"]
-extern mod rusti {
-    pub fn pref_align_of<T>() -> uint;
-    pub fn min_align_of<T>() -> uint;
+mod rusti {
+    #[abi = "rust-intrinsic"]
+    pub extern {
+        pub fn pref_align_of<T>() -> uint;
+        pub fn min_align_of<T>() -> uint;
+    }
 }
 
 // This is the type with the questionable alignment
@@ -67,12 +69,12 @@ pub fn main() {
         debug!("y = %s", y);
 
         // per clang/gcc the alignment of `Inner` is 4 on x86.
-        assert rusti::min_align_of::<Inner>() == m::m::align();
+        fail_unless!(rusti::min_align_of::<Inner>() == m::m::align());
 
         // per clang/gcc the size of `Outer` should be 12
         // because `Inner`s alignment was 4.
-        assert sys::size_of::<Outer>() == m::m::size();
+        fail_unless!(sys::size_of::<Outer>() == m::m::size());
 
-        assert y == ~"{c8: 22, t: {c64: 44}}";
+        fail_unless!(y == ~"{c8: 22, t: {c64: 44}}");
     }
 }

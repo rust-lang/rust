@@ -22,5 +22,4 @@ fn main() {
               + ~"very" + ~"very" + ~"long" + ~"string",
           None => ~"none"
         };
-    assert y == ~"some(_)";
 }

@@ -11,15 +11,17 @@
 // This test attempts to force the dynamic linker to resolve
 // external symbols as close to the red zone as possible.
 
-extern mod rustrt {
-    pub fn debug_get_stk_seg() -> *u8;
+mod rustrt {
+    pub extern {
+        pub fn debug_get_stk_seg() -> *u8;
 
-    pub fn rust_get_sched_id() -> libc::intptr_t;
-    pub fn rust_get_argc() -> libc::c_int;
-    pub fn rust_getcwd() -> ~str;
-    pub fn get_task_id() -> libc::intptr_t;
-    pub fn rust_sched_threads();
-    pub fn rust_get_task();
+        pub fn rust_get_sched_id() -> libc::intptr_t;
+        pub fn rust_get_argc() -> libc::c_int;
+        pub fn rust_getcwd() -> ~str;
+        pub fn get_task_id() -> libc::intptr_t;
+        pub fn rust_sched_threads();
+        pub fn rust_get_task();
+    }
 }
 
 fn calllink01() { unsafe { rustrt::rust_get_sched_id(); } }

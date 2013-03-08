@@ -10,10 +10,12 @@
 
 // xfail-fast Does not work with main in a submodule
 
-#[abi = "rust-intrinsic"]
-extern mod rusti {
-    pub fn pref_align_of<T>() -> uint;
-    pub fn min_align_of<T>() -> uint;
+mod rusti {
+    #[abi = "rust-intrinsic"]
+    pub extern {
+        pub fn pref_align_of<T>() -> uint;
+        pub fn min_align_of<T>() -> uint;
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -23,16 +25,16 @@ mod m {
     #[cfg(target_arch = "x86")]
     pub fn main() {
         unsafe {
-            assert ::rusti::pref_align_of::<u64>() == 8u;
-            assert ::rusti::min_align_of::<u64>() == 4u;
+            fail_unless!(::rusti::pref_align_of::<u64>() == 8u);
+            fail_unless!(::rusti::min_align_of::<u64>() == 4u);
         }
     }
 
     #[cfg(target_arch = "x86_64")]
     pub fn main() {
         unsafe {
-            assert ::rusti::pref_align_of::<u64>() == 8u;
-            assert ::rusti::min_align_of::<u64>() == 8u;
+            fail_unless!(::rusti::pref_align_of::<u64>() == 8u);
+            fail_unless!(::rusti::min_align_of::<u64>() == 8u);
         }
     }
 }
@@ -42,8 +44,8 @@ mod m {
     #[cfg(target_arch = "x86")]
     pub fn main() {
         unsafe {
-            assert ::rusti::pref_align_of::<u64>() == 8u;
-            assert ::rusti::min_align_of::<u64>() == 8u;
+            fail_unless!(::rusti::pref_align_of::<u64>() == 8u);
+            fail_unless!(::rusti::min_align_of::<u64>() == 8u);
         }
     }
 }

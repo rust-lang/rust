@@ -36,13 +36,6 @@ use syntax::{ast, visit};
 
 pub type parent = Option<ast::node_id>;
 
-/* Records the parameter ID of a region name. */
-pub type binding = {
-    node_id: ast::node_id,
-    name: ~str,
-    br: ty::bound_region
-};
-
 /**
 Encodes the bounding lifetime for a given AST node:
 
@@ -470,7 +463,7 @@ pub impl DetermineRpCtxt {
     /// variance `variance`.  If `id` was already parameterized, then
     /// the new variance is joined with the old variance.
     fn add_rp(&mut self, id: ast::node_id, variance: region_variance) {
-        assert id != 0;
+        fail_unless!(id != 0);
         let old_variance = self.region_paramd_items.find(&id);
         let joined_variance = match old_variance {
           None => variance,
@@ -734,12 +727,6 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
       ast::ty_box(mt) | ast::ty_uniq(mt) | ast::ty_vec(mt) |
       ast::ty_rptr(_, mt) | ast::ty_ptr(mt) => {
         visit_mt(mt, cx, visitor);
-      }
-
-      ast::ty_rec(ref fields) => {
-        for (*fields).each |field| {
-            visit_mt(field.node.mt, cx, visitor);
-        }
       }
 
       ast::ty_path(path, _) => {

@@ -28,7 +28,7 @@ mod inst {
         let mut link = self.peek_n();
         while option::is_some(&link) {
             let nobe = option::get(link);
-            assert nobe.linked;
+            fail_unless!(nobe.linked);
 
             {
                 let frozen_nobe = &*nobe;

@@ -20,5 +20,5 @@ mod cat {
 
 fn main() {
     let nyan = cat::new_cat();
-    assert nyan.meows == 52;    //~ ERROR field `meows` is private
+    fail_unless!(nyan.meows == 52);    //~ ERROR field `meows` is private
 }

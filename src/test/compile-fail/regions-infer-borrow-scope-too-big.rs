@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type point = {x: int, y: int};
+struct point {
+    x: int,
+    y: int,
+}
 
 fn x_coord(p: &r/point) -> &r/int {
     return &p.x;
@@ -16,7 +19,7 @@ fn x_coord(p: &r/point) -> &r/int {
 
 fn foo(p: @point) -> &int {
     let xc = x_coord(p); //~ ERROR illegal borrow
-    assert *xc == 3;
+    fail_unless!(*xc == 3);
     return xc;
 }
 

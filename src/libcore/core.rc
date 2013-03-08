@@ -52,6 +52,14 @@ Implicitly, all crates behave as if they included the following prologue:
 #[deny(non_camel_case_types)];
 #[allow(deprecated_mutable_fields)];
 
+// On Linux, link to the runtime with -lrt.
+#[cfg(target_os = "linux")]
+pub mod linkhack {
+    #[link_args="-lrustrt -lrt"]
+    extern {
+    }
+}
+
 /* The Prelude. */
 
 pub mod prelude;

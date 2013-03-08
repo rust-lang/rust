@@ -260,14 +260,14 @@ mod test {
 
             match recv_timeout(hl_loop, 10u, &test_po) {
               Some(val) => {
-                assert val == expected;
+                fail_unless!(val == expected);
                 successes += 1;
               }
               _ => failures += 1
             };
         }
 
-        assert successes > times / 2;
+        fail_unless!(successes > times / 2);
     }
 
     #[test]
@@ -291,6 +291,6 @@ mod test {
             };
         }
 
-        assert successes > times / 2;
+        fail_unless!(successes > times / 2);
     }
 }

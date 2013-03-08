@@ -22,6 +22,6 @@ mod gravy {
 }
 
 pub fn main() {
-    assert biscuits::test::foo() == 10;
-    assert gravy::test::foo() == 10;
+    fail_unless!(biscuits::test::foo() == 10);
+    fail_unless!(gravy::test::foo() == 10);
 }

@@ -17,5 +17,5 @@ pub fn main() {
     let town_bike = Bike { name: ~"schwinn" };
     let my_bike = Bike { name: ~"surly" };
 
-    assert town_bike != my_bike;
+    fail_unless!(town_bike != my_bike);
 }

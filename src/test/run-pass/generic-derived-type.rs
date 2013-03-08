@@ -24,6 +24,6 @@ pub fn main() {
     let b = f::<int>(10);
     log(debug, b.a);
     log(debug, b.b);
-    assert (b.a == 10);
-    assert (b.b == 10);
+    fail_unless!((b.a == 10));
+    fail_unless!((b.b == 10));
 }

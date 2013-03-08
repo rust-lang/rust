@@ -16,19 +16,19 @@ trait siphash {
 }
 
 fn siphash(k0 : u64, k1 : u64) -> siphash {
-    type sipstate = {
-        mut v0 : u64,
-        mut v1 : u64,
-    };
+    struct SipState {
+        v0: u64,
+        v1: u64,
+    }
 
-    fn mk_result(st : sipstate) -> u64 {
+    fn mk_result(st : SipState) -> u64 {
 
         let v0 = st.v0,
             v1 = st.v1;
         return v0 ^ v1;
     }
 
-   impl siphash for sipstate {
+   impl siphash for SipState {
         fn reset() {
             self.v0 = k0 ^ 0x736f6d6570736575;  //~ ERROR attempted dynamic environment-capture
             //~^ ERROR unresolved name: `k0`.

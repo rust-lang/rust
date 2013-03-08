@@ -10,11 +10,13 @@
 
 extern mod std;
 
-#[abi = "cdecl"]
-#[nolink]
-extern mod libc {
-    pub fn atol(x: *u8) -> int;
-    pub fn atoll(x: *u8) -> i64;
+mod libc {
+    #[abi = "cdecl"]
+    #[nolink]
+    pub extern {
+        pub fn atol(x: *u8) -> int;
+        pub fn atoll(x: *u8) -> i64;
+    }
 }
 
 fn atol(s: ~str) -> int {
@@ -27,8 +29,8 @@ fn atoll(s: ~str) -> i64 {
 
 pub fn main() {
     unsafe {
-        assert atol(~"1024") * 10 == atol(~"10240");
-        assert (atoll(~"11111111111111111") * 10i64)
-            == atoll(~"111111111111111110");
+        fail_unless!(atol(~"1024") * 10 == atol(~"10240"));
+        fail_unless!((atoll(~"11111111111111111") * 10i64)
+            == atoll(~"111111111111111110"));
     }
 }

@@ -11,10 +11,10 @@
 /*!
  * # Representation of Algebraic Data Types
  *
- * This module determines how to represent enums, structs, tuples, and
- * (deprecated) structural records based on their monomorphized types;
- * it is responsible both for choosing a representation and
- * translating basic operations on values of those types.
+ * This module determines how to represent enums, structs, and tuples
+ * based on their monomorphized types; it is responsible both for
+ * choosing a representation and translating basic operations on
+ * values of those types.
  *
  * Note that the interface treats everything as a general case of an
  * enum, so structs/tuples/etc. have one pseudo-variant with
@@ -131,11 +131,6 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
         ty::ty_tup(ref elems) => {
             Univariant(mk_struct(cx, *elems), NonStruct)
         }
-        ty::ty_rec(ref fields) => {
-            // XXX: Are these in the right order?
-            Univariant(mk_struct(cx, fields.map(|f| f.mt.ty)),
-                       StructWithoutDtor)
-        }
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx, def_id);
             let dt = ty::ty_dtor(cx.tcx, def_id).is_present();
@@ -160,7 +155,7 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
                 Unit(cases[0].discr)
             } else if cases.len() == 1 {
                 // Equivalent to a struct/tuple/newtype.
-                assert cases[0].discr == 0;
+                fail_unless!(cases[0].discr == 0);
                 Univariant(mk_struct(cx, cases[0].tys), NonStruct)
             } else if cases.all(|c| c.tys.len() == 0) {
                 // All bodies empty -> intlike
@@ -307,18 +302,18 @@ pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
 pub fn trans_start_init(bcx: block, r: &Repr, val: ValueRef, discr: int) {
     match *r {
         Unit(the_discr) => {
-            assert discr == the_discr;
+            fail_unless!(discr == the_discr);
         }
         CEnum(min, max) => {
-            assert min <= discr && discr <= max;
+            fail_unless!(min <= discr && discr <= max);
             Store(bcx, C_int(bcx.ccx(), discr), GEPi(bcx, val, [0, 0]))
         }
         Univariant(_, StructWithDtor) => {
-            assert discr == 0;
+            fail_unless!(discr == 0);
             Store(bcx, C_u8(1), GEPi(bcx, val, [0, 1]))
         }
         Univariant(*) => {
-            assert discr == 0;
+            fail_unless!(discr == 0);
         }
         General(*) => {
             Store(bcx, C_int(bcx.ccx(), discr), GEPi(bcx, val, [0, 0]))
@@ -333,7 +328,7 @@ pub fn trans_start_init(bcx: block, r: &Repr, val: ValueRef, discr: int) {
 pub fn num_args(r: &Repr, discr: int) -> uint {
     match *r {
         Unit(*) | CEnum(*) => 0,
-        Univariant(ref st, _dt) => { assert discr == 0; st.fields.len() }
+        Univariant(ref st, _) => { fail_unless!(discr == 0); st.fields.len() }
         General(ref cases) => cases[discr as uint].fields.len()
     }
 }
@@ -349,7 +344,7 @@ pub fn trans_field_ptr(bcx: block, r: &Repr, val: ValueRef, discr: int,
             bcx.ccx().sess.bug(~"element access in C-like enum")
         }
         Univariant(ref st, dt) => {
-            assert discr == 0;
+            fail_unless!(discr == 0);
             let val = match dt {
                 NonStruct => val,
                 StructWithDtor | StructWithoutDtor => GEPi(bcx, val, [0, 0])
@@ -416,12 +411,12 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
             C_struct(~[])
         }
         CEnum(min, max) => {
-            assert vals.len() == 0;
-            assert min <= discr && discr <= max;
+            fail_unless!(vals.len() == 0);
+            fail_unless!(min <= discr && discr <= max);
             C_int(ccx, discr)
         }
         Univariant(ref st, dt) => {
-            assert discr == 0;
+            fail_unless!(discr == 0);
             let s = C_struct(build_const_struct(ccx, st, vals));
             match dt {
                 NonStruct => s,
@@ -457,7 +452,7 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
  */
 fn build_const_struct(ccx: @CrateContext, st: &Struct, vals: &[ValueRef])
     -> ~[ValueRef] {
-    assert vals.len() == st.fields.len();
+    fail_unless!(vals.len() == st.fields.len());
 
     let mut offset = 0;
     let mut cfields = ~[];
@@ -473,7 +468,7 @@ fn build_const_struct(ccx: @CrateContext, st: &Struct, vals: &[ValueRef])
             cfields.push(padding(target_offset - offset));
             offset = target_offset;
         }
-        assert !is_undef(vals[i]);
+        fail_unless!(!is_undef(vals[i]));
         // If that assert fails, could change it to wrap in a struct?
         // (See `const_struct_field` for why real fields must not be undef.)
         cfields.push(vals[i]);

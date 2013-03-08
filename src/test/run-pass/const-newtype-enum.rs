@@ -13,8 +13,8 @@ enum Foo = u32;
 const X: Foo = Foo(17);
 
 pub fn main() {
-    assert(*X == 17);
-    assert(*Y == 23);
+    fail_unless!((*X == 17));
+    fail_unless!((*Y == 23));
 }
 
 const Y: Foo = Foo(23);

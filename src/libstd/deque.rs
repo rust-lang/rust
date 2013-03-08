@@ -95,7 +95,7 @@ pub impl<T> Deque<T> {
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.
 fn grow<T>(nelts: uint, lo: uint, elts: &mut [Option<T>]) -> ~[Option<T>] {
-    assert nelts == elts.len();
+    fail_unless!(nelts == elts.len());
     let mut rv = ~[];
 
     do rv.grow_fn(nelts + 1) |i| {
@@ -121,46 +121,46 @@ mod tests {
     #[test]
     fn test_simple() {
         let mut d = Deque::new();
-        assert d.len() == 0u;
+        fail_unless!(d.len() == 0u);
         d.add_front(17);
         d.add_front(42);
         d.add_back(137);
-        assert d.len() == 3u;
+        fail_unless!(d.len() == 3u);
         d.add_back(137);
-        assert d.len() == 4u;
+        fail_unless!(d.len() == 4u);
         log(debug, d.peek_front());
-        assert *d.peek_front() == 42;
+        fail_unless!(*d.peek_front() == 42);
         log(debug, d.peek_back());
-        assert *d.peek_back() == 137;
+        fail_unless!(*d.peek_back() == 137);
         let mut i: int = d.pop_front();
         log(debug, i);
-        assert i == 42;
+        fail_unless!(i == 42);
         i = d.pop_back();
         log(debug, i);
-        assert i == 137;
+        fail_unless!(i == 137);
         i = d.pop_back();
         log(debug, i);
-        assert i == 137;
+        fail_unless!(i == 137);
         i = d.pop_back();
         log(debug, i);
-        assert i == 17;
-        assert d.len() == 0u;
+        fail_unless!(i == 17);
+        fail_unless!(d.len() == 0u);
         d.add_back(3);
-        assert d.len() == 1u;
+        fail_unless!(d.len() == 1u);
         d.add_front(2);
-        assert d.len() == 2u;
+        fail_unless!(d.len() == 2u);
         d.add_back(4);
-        assert d.len() == 3u;
+        fail_unless!(d.len() == 3u);
         d.add_front(1);
-        assert d.len() == 4u;
+        fail_unless!(d.len() == 4u);
         log(debug, d.get(0));
         log(debug, d.get(1));
         log(debug, d.get(2));
         log(debug, d.get(3));
-        assert *d.get(0) == 1;
-        assert *d.get(1) == 2;
-        assert *d.get(2) == 3;
-        assert *d.get(3) == 4;
+        fail_unless!(*d.get(0) == 1);
+        fail_unless!(*d.get(1) == 2);
+        fail_unless!(*d.get(2) == 3);
+        fail_unless!(*d.get(3) == 4);
     }
 
     #[test]
@@ -171,62 +171,62 @@ mod tests {
         let d: @int = @175;
 
         let mut deq = Deque::new();
-        assert deq.len() == 0;
+        fail_unless!(deq.len() == 0);
         deq.add_front(a);
         deq.add_front(b);
         deq.add_back(c);
-        assert deq.len() == 3;
+        fail_unless!(deq.len() == 3);
         deq.add_back(d);
-        assert deq.len() == 4;
-        assert *deq.peek_front() == b;
-        assert *deq.peek_back() == d;
-        assert deq.pop_front() == b;
-        assert deq.pop_back() == d;
-        assert deq.pop_back() == c;
-        assert deq.pop_back() == a;
-        assert deq.len() == 0;
+        fail_unless!(deq.len() == 4);
+        fail_unless!(*deq.peek_front() == b);
+        fail_unless!(*deq.peek_back() == d);
+        fail_unless!(deq.pop_front() == b);
+        fail_unless!(deq.pop_back() == d);
+        fail_unless!(deq.pop_back() == c);
+        fail_unless!(deq.pop_back() == a);
+        fail_unless!(deq.len() == 0);
         deq.add_back(c);
-        assert deq.len() == 1;
+        fail_unless!(deq.len() == 1);
         deq.add_front(b);
-        assert deq.len() == 2;
+        fail_unless!(deq.len() == 2);
         deq.add_back(d);
-        assert deq.len() == 3;
+        fail_unless!(deq.len() == 3);
         deq.add_front(a);
-        assert deq.len() == 4;
-        assert *deq.get(0) == a;
-        assert *deq.get(1) == b;
-        assert *deq.get(2) == c;
-        assert *deq.get(3) == d;
+        fail_unless!(deq.len() == 4);
+        fail_unless!(*deq.get(0) == a);
+        fail_unless!(*deq.get(1) == b);
+        fail_unless!(*deq.get(2) == c);
+        fail_unless!(*deq.get(3) == d);
     }
 
     fn test_parameterized<T:Copy + Eq + Durable>(a: T, b: T, c: T, d: T) {
         let mut deq = Deque::new();
-        assert deq.len() == 0;
+        fail_unless!(deq.len() == 0);
         deq.add_front(a);
         deq.add_front(b);
         deq.add_back(c);
-        assert deq.len() == 3;
+        fail_unless!(deq.len() == 3);
         deq.add_back(d);
-        assert deq.len() == 4;
-        assert *deq.peek_front() == b;
-        assert *deq.peek_back() == d;
-        assert deq.pop_front() == b;
-        assert deq.pop_back() == d;
-        assert deq.pop_back() == c;
-        assert deq.pop_back() == a;
-        assert deq.len() == 0;
+        fail_unless!(deq.len() == 4);
+        fail_unless!(*deq.peek_front() == b);
+        fail_unless!(*deq.peek_back() == d);
+        fail_unless!(deq.pop_front() == b);
+        fail_unless!(deq.pop_back() == d);
+        fail_unless!(deq.pop_back() == c);
+        fail_unless!(deq.pop_back() == a);
+        fail_unless!(deq.len() == 0);
         deq.add_back(c);
-        assert deq.len() == 1;
+        fail_unless!(deq.len() == 1);
         deq.add_front(b);
-        assert deq.len() == 2;
+        fail_unless!(deq.len() == 2);
         deq.add_back(d);
-        assert deq.len() == 3;
+        fail_unless!(deq.len() == 3);
         deq.add_front(a);
-        assert deq.len() == 4;
-        assert *deq.get(0) == a;
-        assert *deq.get(1) == b;
-        assert *deq.get(2) == c;
-        assert *deq.get(3) == d;
+        fail_unless!(deq.len() == 4);
+        fail_unless!(*deq.get(0) == a);
+        fail_unless!(*deq.get(1) == b);
+        fail_unless!(*deq.get(2) == c);
+        fail_unless!(*deq.get(3) == d);
     }
 
     #[deriving_eq]

@@ -13,5 +13,5 @@
 const toplevel_mod: int = -1;
 
 pub fn main() {
-    assert toplevel_mod == -1;
+    fail_unless!(toplevel_mod == -1);
 }

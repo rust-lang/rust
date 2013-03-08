@@ -217,7 +217,6 @@ pub struct FileLines {
 pub enum FileSubstr {
     pub FssNone,
     pub FssInternal(span),
-    pub FssExternal({filename: ~str, line: uint, col: CharPos})
 }
 
 /// Identifies an offset of a multi-byte character in a FileMap
@@ -254,7 +253,7 @@ pub impl FileMap {
     // about what ends a line between this file and parse.rs
     fn next_line(&self, +pos: BytePos) {
         // the new charpos must be > the last one (or it's the first one).
-        assert ((self.lines.len() == 0)
+        fail_unless!((self.lines.len() == 0)
                 || (self.lines[self.lines.len() - 1] < pos));
         self.lines.push(pos);
     }
@@ -273,7 +272,7 @@ pub impl FileMap {
     }
 
     pub fn record_multibyte_char(&self, pos: BytePos, bytes: uint) {
-        assert bytes >=2 && bytes <= 4;
+        fail_unless!(bytes >=2 && bytes <= 4);
         let mbc = MultiByteChar {
             pos: pos,
             bytes: bytes,
@@ -348,12 +347,6 @@ pub impl CodeMap {
             FssInternal(sp) =>
             self.lookup_char_pos_adj(
                 sp.lo + (pos - loc.file.start_pos)),
-            FssExternal(ref eloc) =>
-            LocWithOpt {
-                filename: /* FIXME (#2543) */ copy (*eloc).filename,
-                line: (*eloc).line + loc.line - 1u,
-                col: if loc.line == 1 {eloc.col + loc.col} else {loc.col},
-                file: None}
         }
     }
 
@@ -368,7 +361,6 @@ pub impl CodeMap {
                     expn_info: sp.expn_info
                 })
             }
-            FssExternal(_) => sp
         }
     }
 
@@ -401,7 +393,7 @@ pub impl CodeMap {
     pub fn span_to_snippet(&self, sp: span) -> ~str {
         let begin = self.lookup_byte_offset(sp.lo);
         let end = self.lookup_byte_offset(sp.hi);
-        assert begin.fm.start_pos == end.fm.start_pos;
+        fail_unless!(begin.fm.start_pos == end.fm.start_pos);
         return str::slice(*begin.fm.src,
                           begin.pos.to_uint(), end.pos.to_uint());
     }
@@ -461,7 +453,7 @@ priv impl CodeMap {
         debug!("codemap: char pos %? is on the line at char pos %?",
                chpos, linechpos);
         debug!("codemap: byte is on line: %?", line);
-        assert chpos >= linechpos;
+        fail_unless!(chpos >= linechpos);
         return Loc {
             file: f,
             line: line,
@@ -500,8 +492,8 @@ priv impl CodeMap {
                 total_extra_bytes += mbc.bytes;
                 // We should never see a byte position in the middle of a
                 // character
-                assert bpos == mbc.pos
-                    || bpos.to_uint() >= mbc.pos.to_uint() + mbc.bytes;
+                fail_unless!(bpos == mbc.pos
+                    || bpos.to_uint() >= mbc.pos.to_uint() + mbc.bytes);
             } else {
                 break;
             }

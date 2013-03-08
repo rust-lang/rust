@@ -1000,7 +1000,7 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
             let meta_items = get_meta_items(attr_doc);
             // Currently it's only possible to have a single meta item on
             // an attribute
-            assert (vec::len(meta_items) == 1u);
+            fail_unless!((vec::len(meta_items) == 1u));
             let meta_item = meta_items[0];
             attrs.push(
                 codemap::spanned {
@@ -1129,6 +1129,15 @@ pub fn translate_def_id(cdata: cmd, did: ast::def_id) -> ast::def_id {
       option::Some(n) => ast::def_id { crate: n, node: did.node },
       option::None => fail!(~"didn't find a crate in the cnum_map")
     }
+}
+
+pub fn get_link_args_for_crate(cdata: cmd) -> ~[~str] {
+    let link_args = reader::get_doc(reader::Doc(cdata.data), tag_link_args);
+    let mut result = ~[];
+    for reader::tagged_docs(link_args, tag_link_args_arg) |arg_doc| {
+        result.push(reader::doc_as_str(arg_doc));
+    }
+    result
 }
 
 // Local Variables:

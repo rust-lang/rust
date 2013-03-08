@@ -56,8 +56,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         }
     });
 
-    for real_substs.each() |s| { assert !ty::type_has_params(*s); }
-    for substs.each() |s| { assert !ty::type_has_params(*s); }
+    for real_substs.each() |s| { fail_unless!(!ty::type_has_params(*s)); }
+    for substs.each() |s| { fail_unless!(!ty::type_has_params(*s)); }
     let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
     // XXX: Bad copy.
     let hash_id = make_mono_id(ccx, fn_id, copy substs, vtables, impl_did_opt,

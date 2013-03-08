@@ -20,25 +20,32 @@ use sys;
 #[cfg(test)] use str;
 #[cfg(notest)] use cmp::{Eq, Ord};
 
-#[nolink]
-#[abi = "cdecl"]
-extern mod libc_ {
-    #[rust_stack]
-    unsafe fn memmove(dest: *mut c_void,
-                      src: *const c_void,
-                      n: libc::size_t)
-                   -> *c_void;
+pub mod libc_ {
+    use libc::c_void;
+    use libc;
 
-    #[rust_stack]
-    unsafe fn memset(dest: *mut c_void,
-                     c: libc::c_int,
-                     len: libc::size_t)
-                  -> *c_void;
+    #[nolink]
+    #[abi = "cdecl"]
+    pub extern {
+        #[rust_stack]
+        unsafe fn memmove(dest: *mut c_void,
+                          src: *const c_void,
+                          n: libc::size_t)
+                       -> *c_void;
+
+        #[rust_stack]
+        unsafe fn memset(dest: *mut c_void,
+                         c: libc::c_int,
+                         len: libc::size_t)
+                      -> *c_void;
+    }
 }
 
-#[abi = "rust-intrinsic"]
-extern mod rusti {
-    fn addr_of<T>(&&val: T) -> *T;
+pub mod rusti {
+    #[abi = "rust-intrinsic"]
+    pub extern {
+        fn addr_of<T>(&&val: T) -> *T;
+    }
 }
 
 /// Get an unsafe pointer to a value
@@ -303,28 +310,30 @@ pub fn test() {
         let mut p = Pair {fst: 10, snd: 20};
         let pptr: *mut Pair = &mut p;
         let iptr: *mut int = cast::reinterpret_cast(&pptr);
-        assert (*iptr == 10);;
+        fail_unless!((*iptr == 10));;
         *iptr = 30;
-        assert (*iptr == 30);
-        assert (p.fst == 30);;
+        fail_unless!((*iptr == 30));
+        fail_unless!((p.fst == 30));;
 
         *pptr = Pair {fst: 50, snd: 60};
-        assert (*iptr == 50);
-        assert (p.fst == 50);
-        assert (p.snd == 60);
+        fail_unless!((*iptr == 50));
+        fail_unless!((p.fst == 50));
+        fail_unless!((p.snd == 60));
 
         let mut v0 = ~[32000u16, 32001u16, 32002u16];
         let mut v1 = ~[0u16, 0u16, 0u16];
 
         copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 1u),
                     offset(vec::raw::to_ptr(v0), 1u), 1u);
-        assert (v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16);
+        fail_unless!((v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16));
         copy_memory(vec::raw::to_mut_ptr(v1),
                     offset(vec::raw::to_ptr(v0), 2u), 1u);
-        assert (v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 0u16);
+        fail_unless!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
+                      v1[2] == 0u16));
         copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 2u),
                     vec::raw::to_ptr(v0), 1u);
-        assert (v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 32000u16);
+        fail_unless!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
+                      v1[2] == 32000u16));
     }
 }
 
@@ -335,9 +344,12 @@ pub fn test_position() {
 
     let s = ~"hello";
     unsafe {
-        assert 2u == as_c_str(s, |p| position(p, |c| *c == 'l' as c_char));
-        assert 4u == as_c_str(s, |p| position(p, |c| *c == 'o' as c_char));
-        assert 5u == as_c_str(s, |p| position(p, |c| *c == 0 as c_char));
+        fail_unless!(2u == as_c_str(s, |p| position(p,
+            |c| *c == 'l' as c_char)));
+        fail_unless!(4u == as_c_str(s, |p| position(p,
+            |c| *c == 'o' as c_char)));
+        fail_unless!(5u == as_c_str(s, |p| position(p,
+            |c| *c == 0 as c_char)));
     }
 }
 
@@ -351,8 +363,8 @@ pub fn test_buf_len() {
             do str::as_c_str(s2) |p2| {
                 let v = ~[p0, p1, p2, null()];
                 do vec::as_imm_buf(v) |vp, len| {
-                    assert unsafe { buf_len(vp) } == 3u;
-                    assert len == 4u;
+                    fail_unless!(unsafe { buf_len(vp) } == 3u);
+                    fail_unless!(len == 4u);
                 }
             }
         }
@@ -362,18 +374,18 @@ pub fn test_buf_len() {
 #[test]
 pub fn test_is_null() {
    let p: *int = null();
-   assert p.is_null();
-   assert !p.is_not_null();
+   fail_unless!(p.is_null());
+   fail_unless!(!p.is_not_null());
 
    let q = offset(p, 1u);
-   assert !q.is_null();
-   assert q.is_not_null();
+   fail_unless!(!q.is_null());
+   fail_unless!(q.is_not_null());
 
    let mp: *mut int = mut_null();
-   assert mp.is_null();
-   assert !mp.is_not_null();
+   fail_unless!(mp.is_null());
+   fail_unless!(!mp.is_not_null());
 
    let mq = mp.offset(1u);
-   assert !mq.is_null();
-   assert mq.is_not_null();
+   fail_unless!(!mq.is_null());
+   fail_unless!(mq.is_not_null());
 }

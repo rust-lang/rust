@@ -74,6 +74,7 @@ struct Stats {
     attr_bytes: uint,
     dep_bytes: uint,
     lang_item_bytes: uint,
+    link_args_bytes: uint,
     item_bytes: uint,
     index_bytes: uint,
     zero_bytes: uint,
@@ -1064,7 +1065,7 @@ fn encode_index<T>(ebml_w: writer::Encoder, buckets: ~[@~[entry<T>]],
         ebml_w.start_tag(tag_index_buckets_bucket);
         for vec::each(**bucket) |elt| {
             ebml_w.start_tag(tag_index_buckets_bucket_elt);
-            assert elt.pos < 0xffff_ffff;
+            fail_unless!(elt.pos < 0xffff_ffff);
             writer.write_be_u32(elt.pos as u32);
             write_fn(writer, elt.val);
             ebml_w.end_tag();
@@ -1074,7 +1075,7 @@ fn encode_index<T>(ebml_w: writer::Encoder, buckets: ~[@~[entry<T>]],
     ebml_w.end_tag();
     ebml_w.start_tag(tag_index_table);
     for bucket_locs.each |pos| {
-        assert *pos < 0xffff_ffff;
+        fail_unless!(*pos < 0xffff_ffff);
         writer.write_be_u32(*pos as u32);
     }
     ebml_w.end_tag();
@@ -1084,7 +1085,7 @@ fn encode_index<T>(ebml_w: writer::Encoder, buckets: ~[@~[entry<T>]],
 fn write_str(writer: io::Writer, &&s: ~str) { writer.write_str(s); }
 
 fn write_int(writer: io::Writer, &&n: int) {
-    assert n < 0x7fff_ffff;
+    fail_unless!(n < 0x7fff_ffff);
     writer.write_be_u32(n as u32);
 }
 
@@ -1145,8 +1146,8 @@ fn synthesize_crate_attrs(ecx: @EncodeContext,
     fn synthesize_link_attr(ecx: @EncodeContext, +items: ~[@meta_item]) ->
        attribute {
 
-        assert !ecx.link_meta.name.is_empty();
-        assert !ecx.link_meta.vers.is_empty();
+        fail_unless!(!ecx.link_meta.name.is_empty());
+        fail_unless!(!ecx.link_meta.vers.is_empty());
 
         let name_item =
             attr::mk_name_value_item_str(@~"name",
@@ -1212,7 +1213,7 @@ fn encode_crate_deps(ecx: @EncodeContext,
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;
         for deps.each |n| {
-            assert (n.cnum == expected_cnum);
+            fail_unless!((n.cnum == expected_cnum));
             expected_cnum += 1;
         }
 
@@ -1255,6 +1256,20 @@ fn encode_lang_items(ecx: @EncodeContext, ebml_w: writer::Encoder) {
     ebml_w.end_tag();   // tag_lang_items
 }
 
+fn encode_link_args(ecx: @EncodeContext,
+                    ebml_w: writer::Encoder) {
+    ebml_w.start_tag(tag_link_args);
+
+    let link_args = cstore::get_used_link_args(ecx.cstore);
+    for link_args.each |link_arg| {
+        ebml_w.start_tag(tag_link_args_arg);
+        ebml_w.writer.write_str(link_arg.to_str());
+        ebml_w.end_tag();
+    }
+
+    ebml_w.end_tag();
+}
+
 fn encode_crate_dep(ecx: @EncodeContext, ebml_w: writer::Encoder,
                     dep: decoder::crate_dep) {
     ebml_w.start_tag(tag_crate_dep);
@@ -1291,6 +1306,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
         attr_bytes: 0,
         dep_bytes: 0,
         lang_item_bytes: 0,
+        link_args_bytes: 0,
         item_bytes: 0,
         index_bytes: 0,
         zero_bytes: 0,
@@ -1329,6 +1345,11 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
     encode_lang_items(ecx, ebml_w);
     ecx.stats.lang_item_bytes = wr.pos - i;
 
+    // Encode the link args.
+    i = wr.pos;
+    encode_link_args(ecx, ebml_w);
+    ecx.stats.link_args_bytes = wr.pos - i;
+
     // Encode and index the items.
     ebml_w.start_tag(tag_items);
     i = wr.pos;
@@ -1359,6 +1380,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
         io::println(fmt!(" attribute bytes: %u", ecx.stats.attr_bytes));
         io::println(fmt!("       dep bytes: %u", ecx.stats.dep_bytes));
         io::println(fmt!(" lang item bytes: %u", ecx.stats.lang_item_bytes));
+        io::println(fmt!(" link args bytes: %u", ecx.stats.link_args_bytes));
         io::println(fmt!("      item bytes: %u", ecx.stats.item_bytes));
         io::println(fmt!("     index bytes: %u", ecx.stats.index_bytes));
         io::println(fmt!("      zero bytes: %u", ecx.stats.zero_bytes));

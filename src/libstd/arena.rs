@@ -46,18 +46,26 @@ use core::sys;
 use core::uint;
 use core::vec;
 
-#[abi = "rust-intrinsic"]
-extern mod rusti {
-    fn move_val_init<T>(dst: &mut T, -src: T);
-    fn needs_drop<T>() -> bool;
+pub mod rusti {
+    #[abi = "rust-intrinsic"]
+    pub extern {
+        fn move_val_init<T>(dst: &mut T, -src: T);
+        fn needs_drop<T>() -> bool;
+    }
 }
 
-extern mod rustrt {
-    #[rust_stack]
-    unsafe fn rust_call_tydesc_glue(root: *u8,
-                                    tydesc: *TypeDesc,
-                                    field: size_t);
+pub mod rustrt {
+    use core::libc::size_t;
+    use core::sys::TypeDesc;
+
+    pub extern {
+        #[rust_stack]
+        unsafe fn rust_call_tydesc_glue(root: *u8,
+                                        tydesc: *TypeDesc,
+                                        field: size_t);
+    }
 }
+
 // This probably belongs somewhere else. Needs to be kept in sync with
 // changes to glue...
 const tydesc_drop_glue_index: size_t = 3 as size_t;

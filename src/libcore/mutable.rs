@@ -38,7 +38,7 @@ pub fn Mut<T>(t: T) -> Mut<T> {
 pub fn unwrap<T>(m: Mut<T>) -> T {
     // Borrowck should prevent us from calling unwrap while the value
     // is in use, as that would be a move from a borrowed value.
-    assert (m.mode as uint) == (ReadOnly as uint);
+    fail_unless!((m.mode as uint) == (ReadOnly as uint));
     let Data {value: value, mode: _} = m;
     value
 }
@@ -105,9 +105,9 @@ pub fn test_const_in_mut() {
     let m = @Mut(1);
     do m.borrow_mut |p| {
         do m.borrow_const |q| {
-            assert *p == *q;
+            fail_unless!(*p == *q);
             *p += 1;
-            assert *p == *q;
+            fail_unless!(*p == *q);
         }
     }
 }
@@ -117,9 +117,9 @@ pub fn test_mut_in_const() {
     let m = @Mut(1);
     do m.borrow_const |p| {
         do m.borrow_mut |q| {
-            assert *p == *q;
+            fail_unless!(*p == *q);
             *q += 1;
-            assert *p == *q;
+            fail_unless!(*p == *q);
         }
     }
 }
@@ -129,7 +129,7 @@ pub fn test_imm_in_const() {
     let m = @Mut(1);
     do m.borrow_const |p| {
         do m.borrow_imm |q| {
-            assert *p == *q;
+            fail_unless!(*p == *q);
         }
     }
 }
@@ -139,7 +139,7 @@ pub fn test_const_in_imm() {
     let m = @Mut(1);
     do m.borrow_imm |p| {
         do m.borrow_const |q| {
-            assert *p == *q;
+            fail_unless!(*p == *q);
         }
     }
 }

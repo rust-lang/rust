@@ -17,5 +17,5 @@ struct Bar { f: &'self fn() -> int }
 const b : Bar/&static = Bar { f: foo };
 
 pub fn main() {
-    assert (b.f)() == 0xca7f000d;
+    fail_unless!((b.f)() == 0xca7f000d);
 }

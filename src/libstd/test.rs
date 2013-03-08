@@ -35,9 +35,13 @@ use core::str;
 use core::task;
 use core::vec;
 
-#[abi = "cdecl"]
-extern mod rustrt {
-    pub unsafe fn rust_sched_threads() -> size_t;
+pub mod rustrt {
+    use core::libc::size_t;
+
+    #[abi = "cdecl"]
+    pub extern {
+        pub unsafe fn rust_sched_threads() -> size_t;
+    }
 }
 
 // The name of a test. By convention this follows the rules for rust
@@ -279,8 +283,8 @@ pub fn run_tests_console(opts: &TestOpts,
 
     run_tests(opts, tests, |x| callback(&x, st));
 
-    assert (st.passed + st.failed +
-            st.ignored + st.benchmarked == st.total);
+    fail_unless!(st.passed + st.failed +
+                 st.ignored + st.benchmarked == st.total);
     let success = st.failed == 0u;
 
     if !success {
@@ -393,7 +397,7 @@ fn should_sort_failures_before_printing_them() {
 
     let apos = str::find_str(s, ~"a").get();
     let bpos = str::find_str(s, ~"b").get();
-    assert apos < bpos;
+    fail_unless!(apos < bpos);
 }
 
 fn use_color() -> bool { return get_concurrency() == 1; }
@@ -787,7 +791,7 @@ mod tests {
         let ch = SharedChan(ch);
         run_test(false, desc, ch);
         let (_, res) = p.recv();
-        assert res != TrOk;
+        fail_unless!(res != TrOk);
     }
 
     #[test]
@@ -805,7 +809,7 @@ mod tests {
         let ch = SharedChan(ch);
         run_test(false, desc, ch);
         let (_, res) = p.recv();
-        assert res == TrIgnored;
+        fail_unless!(res == TrIgnored);
     }
 
     #[test]
@@ -824,7 +828,7 @@ mod tests {
         let ch = SharedChan(ch);
         run_test(false, desc, ch);
         let (_, res) = p.recv();
-        assert res == TrOk;
+        fail_unless!(res == TrOk);
     }
 
     #[test]
@@ -842,7 +846,7 @@ mod tests {
         let ch = SharedChan(ch);
         run_test(false, desc, ch);
         let (_, res) = p.recv();
-        assert res == TrFailed;
+        fail_unless!(res == TrFailed);
     }
 
     #[test]
@@ -852,7 +856,7 @@ mod tests {
           either::Left(copy o) => o,
           _ => fail!(~"Malformed arg in first_free_arg_should_be_a_filter")
         };
-        assert ~"filter" == opts.filter.get();
+        fail_unless!(~"filter" == opts.filter.get());
     }
 
     #[test]
@@ -862,7 +866,7 @@ mod tests {
           either::Left(copy o) => o,
           _ => fail!(~"Malformed arg in parse_ignored_flag")
         };
-        assert (opts.run_ignored);
+        fail_unless!((opts.run_ignored));
     }
 
     #[test]
@@ -902,9 +906,9 @@ mod tests {
         ];
         let filtered = filter_tests(&opts, tests);
 
-        assert (vec::len(filtered) == 1);
-        assert (filtered[0].desc.name.to_str() == ~"1");
-        assert (filtered[0].desc.ignore == false);
+        fail_unless!((vec::len(filtered) == 1));
+        fail_unless!((filtered[0].desc.name.to_str() == ~"1"));
+        fail_unless!((filtered[0].desc.ignore == false));
     }
 
     #[test]
@@ -958,7 +962,9 @@ mod tests {
 
         for vec::each(pairs) |p| {
             match *p {
-                (ref a, ref b) => { assert (*a == b.desc.name.to_str()); }
+                (ref a, ref b) => {
+                    fail_unless!((*a == b.desc.name.to_str()));
+                }
             }
         }
     }

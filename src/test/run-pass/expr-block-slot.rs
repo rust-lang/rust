@@ -15,7 +15,7 @@ struct V { v: int }
 
 pub fn main() {
     let a = { let b = A {a: 3}; b };
-    assert (a.a == 3);
+    fail_unless!((a.a == 3));
     let c = { let d = V {v: 3}; d };
-    assert (c.v == 3);
+    fail_unless!((c.v == 3));
 }

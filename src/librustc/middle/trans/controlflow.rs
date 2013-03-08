@@ -48,7 +48,7 @@ pub fn trans_block(bcx: block, b: &ast::blk, dest: expr::Dest) -> block {
             bcx = expr::trans_into(bcx, e, dest);
         }
         None => {
-            assert dest == expr::Ignore || bcx.unreachable;
+            fail_unless!(dest == expr::Ignore || bcx.unreachable);
         }
     }
     return bcx;
@@ -320,25 +320,6 @@ pub fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
     cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
     Unreachable(bcx);
     return bcx;
-}
-
-pub fn trans_check_expr(bcx: block,
-                        chk_expr: @ast::expr,
-                        pred_expr: @ast::expr,
-                        s: &str)
-                     -> block {
-    let _icx = bcx.insn_ctxt("trans_check_expr");
-    let expr_str = @(fmt!("%s %s failed",
-                          s, expr_to_str(pred_expr, bcx.ccx().sess.intr())));
-    let Result {bcx, val} = {
-        do with_scope_result(bcx, chk_expr.info(), ~"check") |bcx| {
-            expr::trans_to_datum(bcx, pred_expr).to_result()
-        }
-    };
-    let val = bool_to_i1(bcx, val);
-    do with_cond(bcx, Not(bcx, val)) |bcx| {
-        trans_fail(bcx, Some(pred_expr.span), expr_str)
-    }
 }
 
 pub fn trans_fail_expr(bcx: block,

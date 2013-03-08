@@ -15,7 +15,7 @@ fn spawn<T:Owned>(val: T, f: extern fn(T)) {
 }
 
 fn f(+i: int) {
-    assert i == 100;
+    fail_unless!(i == 100);
 }
 
 pub fn main() {

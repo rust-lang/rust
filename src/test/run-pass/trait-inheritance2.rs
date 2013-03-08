@@ -22,9 +22,9 @@ impl Baz for A { fn h() -> int { 30 } }
 impl Quux for A;
 
 fn f<T:Quux + Foo + Bar + Baz>(a: &T) {
-    assert a.f() == 10;
-    assert a.g() == 20;
-    assert a.h() == 30;
+    fail_unless!(a.f() == 10);
+    fail_unless!(a.g() == 20);
+    fail_unless!(a.h() == 30);
 }
 
 pub fn main() {

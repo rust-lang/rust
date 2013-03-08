@@ -20,7 +20,7 @@ pub fn main() {
         match i {
           i => {
             let y = &x;
-            assert i < *y;
+            fail_unless!(i < *y);
           }
         }
         let mut y = 4;

@@ -17,5 +17,5 @@ fn f() -> int {
 }
 
 pub fn main() {
-    assert f() == 720;
+    fail_unless!(f() == 720);
 }

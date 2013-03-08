@@ -36,5 +36,5 @@ fn test05() {
     log(error, value);
     value = po.recv();
     log(error, value);
-    assert (value == 30);
+    fail_unless!((value == 30));
 }

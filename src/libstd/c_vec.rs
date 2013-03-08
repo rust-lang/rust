@@ -119,7 +119,7 @@ pub unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: @fn())
  * Fails if `ofs` is greater or equal to the length of the vector
  */
 pub fn get<T:Copy>(t: CVec<T>, ofs: uint) -> T {
-    assert ofs < len(t);
+    fail_unless!(ofs < len(t));
     return unsafe { *ptr::mut_offset(t.base, ofs) };
 }
 
@@ -129,7 +129,7 @@ pub fn get<T:Copy>(t: CVec<T>, ofs: uint) -> T {
  * Fails if `ofs` is greater or equal to the length of the vector
  */
 pub fn set<T:Copy>(t: CVec<T>, ofs: uint, v: T) {
-    assert ofs < len(t);
+    fail_unless!(ofs < len(t));
     unsafe { *ptr::mut_offset(t.base, ofs) = v };
 }
 
@@ -156,7 +156,7 @@ mod tests {
         unsafe {
             let mem = libc::malloc(n);
 
-            assert mem as int != 0;
+            fail_unless!(mem as int != 0);
 
             return unsafe { c_vec_with_dtor(mem as *mut u8, n as uint,
                                          || unsafe { free(mem) }) };
@@ -169,9 +169,9 @@ mod tests {
 
         set(cv, 3u, 8u8);
         set(cv, 4u, 9u8);
-        assert get(cv, 3u) == 8u8;
-        assert get(cv, 4u) == 9u8;
-        assert len(cv) == 16u;
+        fail_unless!(get(cv, 3u) == 8u8);
+        fail_unless!(get(cv, 4u) == 9u8);
+        fail_unless!(len(cv) == 16u);
     }
 
     #[test]
@@ -199,7 +199,7 @@ mod tests {
 
         set(cv, 0u, 32u8);
         set(cv, 1u, 33u8);
-        assert unsafe { *p } == 32u8;
+        fail_unless!(unsafe { *p } == 32u8);
         set(cv, 2u, 34u8); /* safety */
     }
 

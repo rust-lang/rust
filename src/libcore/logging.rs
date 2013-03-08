@@ -12,13 +12,16 @@
 
 use libc;
 
-#[nolink]
-extern mod rustrt {
-    unsafe fn rust_log_console_on();
-    unsafe fn rust_log_console_off();
-    unsafe fn rust_log_str(level: u32,
-                           string: *libc::c_char,
-                           size: libc::size_t);
+pub mod rustrt {
+    use libc;
+
+    pub extern {
+        unsafe fn rust_log_console_on();
+        unsafe fn rust_log_console_off();
+        unsafe fn rust_log_str(level: u32,
+                               string: *libc::c_char,
+                               size: libc::size_t);
+    }
 }
 
 /// Turns on logging to stdout globally

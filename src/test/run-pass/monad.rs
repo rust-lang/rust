@@ -40,10 +40,10 @@ fn transform(x: Option<int>) -> Option<~str> {
 }
 
 pub fn main() {
-    assert transform(Some(10)) == Some(~"11");
-    assert transform(None) == None;
-    assert (~[~"hi"])
+    fail_unless!(transform(Some(10)) == Some(~"11"));
+    fail_unless!(transform(None) == None);
+    fail_unless!((~[~"hi"])
         .bind(|x| ~[copy *x, *x + ~"!"] )
         .bind(|x| ~[copy *x, *x + ~"?"] ) ==
-        ~[~"hi", ~"hi?", ~"hi!", ~"hi!?"];
+        ~[~"hi", ~"hi?", ~"hi!", ~"hi!?"]);
 }

@@ -12,6 +12,10 @@
 
 // Test rules governing higher-order pure fns.
 
+struct S<'self> {
+    f: &'self fn(uint)
+}
+
 pure fn range(from: uint, to: uint, f: fn(uint)) {
     let mut i = from;
     while i < to {
@@ -34,11 +38,11 @@ pure fn range4(from: uint, to: uint) {
     range(from, to, print) //~ ERROR access to impure function prohibited in pure context
 }
 
-pure fn range5(from: uint, to: uint, x: {f: fn(uint)}) {
+pure fn range5<'a>(from: uint, to: uint, x: S<'a>) {
     range(from, to, x.f) //~ ERROR access to impure function prohibited in pure context
 }
 
-pure fn range6(from: uint, to: uint, x: @{f: fn(uint)}) {
+pure fn range6<'a>(from: uint, to: uint, x: @S<'a>) {
     range(from, to, x.f) //~ ERROR access to impure function prohibited in pure context
 }
 

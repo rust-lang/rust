@@ -402,20 +402,6 @@ pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
           print_region(s, ~"&", region, ~"/");
           print_mt(s, mt);
       }
-      ast::ty_rec(ref fields) => {
-        word(s.s, ~"{");
-        fn print_field(s: @ps, f: ast::ty_field) {
-            cbox(s, indent_unit);
-            print_mutability(s, f.node.mt.mutbl);
-            print_ident(s, f.node.ident);
-            word_space(s, ~":");
-            print_type(s, f.node.mt.ty);
-            end(s);
-        }
-        fn get_span(f: ast::ty_field) -> codemap::span { return f.span; }
-        commasep_cmnt(s, consistent, (*fields), print_field, get_span);
-        word(s.s, ~",}");
-      }
       ast::ty_tup(elts) => {
         popen(s);
         commasep(s, inconsistent, elts, print_type);
@@ -1183,22 +1169,6 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         end(s);
       }
 
-      ast::expr_rec(ref fields, wth) => {
-        word(s.s, ~"{");
-        commasep_cmnt(s, consistent, (*fields), print_field, get_span);
-        match wth {
-          Some(expr) => {
-            ibox(s, indent_unit);
-            word(s.s, ~",");
-            space(s.s);
-            word(s.s, ~"..");
-            print_expr(s, expr);
-            end(s);
-          }
-          _ => word(s.s, ~",")
-        }
-        word(s.s, ~"}");
-      }
       ast::expr_struct(path, ref fields, wth) => {
         print_path(s, path, true);
         word(s.s, ~"{");
@@ -1357,8 +1327,8 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         print_fn_block_args(s, decl);
         space(s.s);
         // }
-        assert body.node.stmts.is_empty();
-        assert body.node.expr.is_some();
+        fail_unless!(body.node.stmts.is_empty());
+        fail_unless!(body.node.expr.is_some());
         // we extract the block, so as not to create another set of boxes
         match body.node.expr.get().node {
             ast::expr_block(ref blk) => {
@@ -1457,10 +1427,6 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
           }
         }
       }
-      ast::expr_assert(expr) => {
-        word_nbsp(s, ~"assert");
-        print_expr(s, expr);
-      }
       ast::expr_mac(ref m) => print_mac(s, (*m)),
       ast::expr_paren(e) => {
           popen(s);
@@ -1490,7 +1456,7 @@ pub fn print_decl(s: @ps, decl: @ast::decl) {
 
         // if any are mut, all are mut
         if vec::any(locs, |l| l.node.is_mutbl) {
-            assert vec::all(locs, |l| l.node.is_mutbl);
+            fail_unless!(vec::all(locs, |l| l.node.is_mutbl));
             word_nbsp(s, ~"mut");
         }
 
@@ -1603,25 +1569,6 @@ pub fn print_pat(s: @ps, &&pat: @ast::pat, refutable: bool) {
             } else { }
           }
         }
-      }
-      ast::pat_rec(fields, etc) => {
-        word(s.s, ~"{");
-        fn print_field(s: @ps, f: ast::field_pat, refutable: bool) {
-            cbox(s, indent_unit);
-            print_ident(s, f.ident);
-            word_space(s, ~":");
-            print_pat(s, f.pat, refutable);
-            end(s);
-        }
-        fn get_span(f: ast::field_pat) -> codemap::span { return f.pat.span; }
-        commasep_cmnt(s, consistent, fields,
-                      |s, f| print_field(s, f, refutable),
-                      get_span);
-        if etc {
-            if vec::len(fields) != 0u { word_space(s, ~","); }
-            word(s.s, ~"_");
-        }
-        word(s.s, ~"}");
       }
       ast::pat_struct(path, fields, etc) => {
         print_path(s, path, true);
@@ -2135,7 +2082,7 @@ pub fn maybe_print_comment(s: @ps, pos: BytePos) {
 pub fn print_comment(s: @ps, cmnt: comments::cmnt) {
     match cmnt.style {
       comments::mixed => {
-        assert (vec::len(cmnt.lines) == 1u);
+        fail_unless!((vec::len(cmnt.lines) == 1u));
         zerobreak(s.s);
         word(s.s, cmnt.lines[0]);
         zerobreak(s.s);

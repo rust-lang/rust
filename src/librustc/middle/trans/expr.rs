@@ -286,7 +286,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         debug!("add_env(closure_ty=%s)", ty_to_str(tcx, closure_ty));
         let scratch = scratch_datum(bcx, closure_ty, false);
         let llfn = GEPi(bcx, scratch.val, [0u, abi::fn_field_code]);
-        assert datum.appropriate_mode() == ByValue;
+        fail_unless!(datum.appropriate_mode() == ByValue);
         Store(bcx, datum.to_appropriate_llval(bcx), llfn);
         let llenv = GEPi(bcx, scratch.val, [0u, abi::fn_field_box]);
         Store(bcx, base::null_env_ptr(bcx), llenv);
@@ -465,7 +465,7 @@ fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         }
         ast::expr_binary(op, lhs, rhs) => {
             // if overloaded, would be RvalueDpsExpr
-            assert !bcx.ccx().maps.method_map.contains_key(&expr.id);
+            fail_unless!(!bcx.ccx().maps.method_map.contains_key(&expr.id));
 
             return trans_binary(bcx, expr, op, lhs, rhs);
         }
@@ -509,9 +509,6 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
         }
         ast::expr_log(_, lvl, a) => {
             return controlflow::trans_log(expr, lvl, bcx, a);
-        }
-        ast::expr_assert(a) => {
-            return controlflow::trans_check_expr(bcx, expr, a, ~"Assertion");
         }
         ast::expr_while(cond, ref body) => {
             return controlflow::trans_while(bcx, cond, body);
@@ -599,7 +596,6 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                 controlflow::trans_block(bcx, blk, dest)
             };
         }
-        ast::expr_rec(ref fields, base) |
         ast::expr_struct(_, ref fields, base) => {
             return trans_rec_or_struct(bcx, (*fields), base, expr.id, dest);
         }
@@ -1141,10 +1137,6 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
                          node_id_opt: Option<ast::node_id>,
                          op: fn(int, (&[ty::field])) -> R) -> R {
     match ty::get(ty).sty {
-        ty::ty_rec(ref fields) => {
-            op(0, *fields)
-        }
-
         ty::ty_struct(did, ref substs) => {
             op(0, struct_mutable_fields(tcx, did, substs))
         }
@@ -1323,10 +1315,10 @@ fn trans_unary_datum(bcx: block,
     let _icx = bcx.insn_ctxt("trans_unary_datum");
 
     // if deref, would be LvalueExpr
-    assert op != ast::deref;
+    fail_unless!(op != ast::deref);
 
     // if overloaded, would be RvalueDpsExpr
-    assert !bcx.ccx().maps.method_map.contains_key(&un_expr.id);
+    fail_unless!(!bcx.ccx().maps.method_map.contains_key(&un_expr.id));
 
     let un_ty = expr_ty(bcx, un_expr);
     let sub_ty = expr_ty(bcx, sub_expr);

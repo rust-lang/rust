@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type point = { x: int, y: int };
+struct Point {
+    x: int,
+    y: int,
+}
 
 fn a() {
     let mut p = ~[1];
