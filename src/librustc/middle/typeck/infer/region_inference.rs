@@ -549,7 +549,6 @@ use util::ppaux::note_and_explain_region;
 
 use core::cell::{Cell, empty_cell};
 use core::cmp;
-use core::dvec::DVec;
 use core::result::{Err, Ok, Result};
 use core::to_bytes;
 use core::uint;
@@ -627,7 +626,7 @@ type CombineMap = HashMap<TwoRegions, RegionVid>;
 
 pub struct RegionVarBindings {
     tcx: ty::ctxt,
-    var_spans: DVec<span>,
+    var_spans: ~[span],
     constraints: HashMap<Constraint, span>,
     lubs: CombineMap,
     glbs: CombineMap,
@@ -653,7 +652,7 @@ pub struct RegionVarBindings {
 pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
     RegionVarBindings {
         tcx: tcx,
-        var_spans: DVec(),
+        var_spans: ~[],
         values: empty_cell(),
         constraints: HashMap(),
         lubs: CombineMap(),

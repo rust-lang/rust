@@ -11,7 +11,7 @@
 fn foo() -> int { 22 }
 
 pub fn main() {
-    let x = dvec::DVec::<@fn() -> int>();
+    let mut x: ~[@fn() -> int] = ~[];
     x.push(foo);
     fail_unless!((x[0])() == 22);
 }

@@ -28,7 +28,6 @@ use print::pp;
 use print::pprust;
 
 use core::char;
-use core::dvec::DVec;
 use core::io;
 use core::str;
 use core::u64;
@@ -63,7 +62,7 @@ pub struct ps {
     comments: Option<~[comments::cmnt]>,
     literals: Option<~[comments::lit]>,
     cur_cmnt_and_lit: @mut CurrentCommentAndLiteral,
-    boxes: DVec<pp::breaks>,
+    boxes: @mut ~[pp::breaks],
     ann: pp_ann
 }
 
@@ -88,7 +87,7 @@ pub fn rust_printer(writer: io::Writer, intr: @ident_interner) -> @ps {
             cur_cmnt: 0,
             cur_lit: 0
         },
-        boxes: DVec(),
+        boxes: @mut ~[],
         ann: no_ann()
     };
 }
@@ -123,7 +122,7 @@ pub fn print_crate(cm: @CodeMap, intr: @ident_interner,
             cur_cmnt: 0,
             cur_lit: 0
         },
-        boxes: DVec(),
+        boxes: @mut ~[],
         ann: ann
     };
     print_crate_(s, crate);

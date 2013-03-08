@@ -19,8 +19,6 @@ use parse::parser::Parser;
 use parse::token::{Token, EOF, to_str, nonterminal};
 use parse::token;
 
-use core::dvec::DVec;
-use core::dvec;
 use core::option::{Option, Some, None};
 use core::str;
 use core::uint;
@@ -115,7 +113,7 @@ pub struct MatcherPos {
     sep: Option<Token>,
     idx: uint,
     up: matcher_pos_up, // mutable for swapping only
-    matches: ~[DVec<@named_match>],
+    matches: ~[~[@named_match]],
     match_lo: uint, match_hi: uint,
     sp_lo: BytePos,
 }
@@ -151,7 +149,7 @@ pub fn initial_matcher_pos(+ms: ~[matcher], +sep: Option<Token>, lo: BytePos)
           }
         }
     }
-    let matches = vec::from_fn(count_names(ms), |_i| dvec::DVec());
+    let matches = vec::from_fn(count_names(ms), |_i| ~[]);
     ~MatcherPos {
         elts: ms,
         sep: sep,
@@ -283,7 +281,7 @@ pub fn parse(
 
                         // Only touch the binders we have actually bound
                         for uint::range(ei.match_lo, ei.match_hi) |idx| {
-                            let sub = ei.matches[idx].get();
+                            let sub = ei.matches[idx];
                             new_pos.matches[idx]
                                 .push(@matched_seq(sub,
                                                    mk_sp(ei.sp_lo,
@@ -331,7 +329,7 @@ pub fn parse(
                     }
 
                     let matches = vec::map(ei.matches, // fresh, same size:
-                                           |_m| DVec::<@named_match>());
+                                           |_m| ~[]);
                     let ei_t = ei;
                     cur_eis.push(~MatcherPos {
                         elts: copy *matchers,
@@ -358,9 +356,11 @@ pub fn parse(
         /* error messages here could be improved with links to orig. rules */
         if tok == EOF {
             if eof_eis.len() == 1u {
-                return success(
-                    nameize(sess, ms,
-                            eof_eis[0u].matches.map(|dv| dv.pop())));
+                let mut v = ~[];
+                for vec::each_mut(eof_eis[0u].matches) |dv| {
+                    v.push(dv.pop());
+                }
+                return success(nameize(sess, ms, v));
             } else if eof_eis.len() > 1u {
                 return error(sp, ~"Ambiguity: multiple successful parses");
             } else {
