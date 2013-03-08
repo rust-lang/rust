@@ -106,15 +106,46 @@ fn const_addr_of(cx: @CrateContext, cv: ValueRef) -> ValueRef {
     }
 }
 
-pub fn const_deref(cx: @CrateContext, v: ValueRef) -> ValueRef {
+fn const_deref_ptr(cx: @CrateContext, v: ValueRef) -> ValueRef {
+    let v = match cx.const_globals.find(&(v as int)) {
+        Some(v) => v,
+        None => v
+    };
     unsafe {
-        let v = match cx.const_globals.find(&(v as int)) {
-            Some(v) => v,
-            None => v
-        };
         fail_unless!(llvm::LLVMIsGlobalConstant(v) == True);
-        let v = llvm::LLVMGetInitializer(v);
-        v
+        llvm::LLVMGetInitializer(v)
+    }
+}
+
+fn const_deref_newtype(cx: @CrateContext, v: ValueRef, t: ty::t)
+    -> ValueRef {
+    let repr = adt::represent_type(cx, t);
+    adt::const_get_field(cx, repr, v, 0, 0)
+}
+
+fn const_deref(cx: @CrateContext, v: ValueRef, t: ty::t, explicit: bool)
+    -> (ValueRef, ty::t) {
+    match ty::deref(cx.tcx, t, explicit) {
+        Some(ref mt) => {
+            fail_unless!(mt.mutbl != ast::m_mutbl);
+            let dv = match ty::get(t).sty {
+                ty::ty_ptr(*) | ty::ty_rptr(*) => {
+                     const_deref_ptr(cx, v)
+                }
+                ty::ty_enum(*) | ty::ty_struct(*) => {
+                    const_deref_newtype(cx, v, t)
+                }
+                _ => {
+                    cx.sess.bug(fmt!("Unexpected dereferenceable type %s",
+                                     ty_to_str(cx.tcx, t)))
+                }
+            };
+            (dv, mt.ty)
+        }
+        None => {
+            cx.sess.bug(fmt!("Can't dereference const of type %s",
+                             ty_to_str(cx.tcx, t)))
+        }
     }
 }
 
@@ -150,8 +181,11 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                                            region %? sigil %?", *r, *s))
         }
         Some(@ty::AutoDerefRef(ref adj)) => {
+            let mut ty = ety;
             for adj.autoderefs.times {
-                llconst = const_deref(cx, llconst)
+                let (dv, dt) = const_deref(cx, llconst, ty, false);
+                llconst = dv;
+                ty = dt;
             }
 
             match adj.autoref {
@@ -263,7 +297,10 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
             return match u {
               ast::box(_)  |
               ast::uniq(_) |
-              ast::deref  => const_deref(cx, te),
+              ast::deref  => {
+                let (dv, _dt) = const_deref(cx, te, ty, true);
+                dv
+              }
               ast::not    => {
                 match ty::get(ty).sty {
                     ty::ty_bool => {
@@ -313,7 +350,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                           let llunitty = type_of::type_of(cx, unit_ty);
                           let unit_sz = machine::llsize_of(cx, llunitty);
 
-                          (const_deref(cx, const_get_elt(cx, bv, [0])),
+                          (const_deref_ptr(cx, const_get_elt(cx, bv, [0])),
                            llvm::LLVMConstUDiv(const_get_elt(cx, bv, [1]),
                                                unit_sz))
                       },
