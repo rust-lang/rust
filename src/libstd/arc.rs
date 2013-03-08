@@ -365,9 +365,11 @@ pub impl<T:Const + Owned> RWARC<T> {
             let state = get_shared_mutable_state(&self.x);
             do (*borrow_rwlock(state)).write_downgrade |write_mode| {
                 check_poison(false, (*state).failed);
-                blk(RWWriteMode((&mut (*state).data,
-                                 write_mode,
-                                 PoisonOnFail(&mut (*state).failed))))
+                blk(RWWriteMode {
+                    data: &mut (*state).data,
+                    token: write_mode,
+                    poison: PoisonOnFail(&mut (*state).failed)
+                })
             }
         }
     }
@@ -376,7 +378,11 @@ pub impl<T:Const + Owned> RWARC<T> {
     fn downgrade(&self, token: RWWriteMode/&a<T>) -> RWReadMode/&a<T> {
         // The rwlock should assert that the token belongs to us for us.
         let state = unsafe { get_shared_immutable_state(&self.x) };
-        let RWWriteMode((data, t, _poison)) = token;
+        let RWWriteMode {
+            data: data,
+            token: t,
+            poison: _poison
+        } = token;
         // Let readers in
         let new_token = (&state.lock).downgrade(t);
         // Whatever region the input reference had, it will be safe to use
@@ -386,7 +392,10 @@ pub impl<T:Const + Owned> RWARC<T> {
         // Downgrade ensured the token belonged to us. Just a sanity check.
         fail_unless!(ptr::ref_eq(&state.data, new_data));
         // Produce new token
-        RWReadMode((new_data, new_token))
+        RWReadMode {
+            data: new_data,
+            token: new_token,
+        }
     }
 }
 
@@ -398,19 +407,28 @@ fn borrow_rwlock<T:Const + Owned>(state: *const RWARCInner<T>) -> *RWlock {
     unsafe { cast::transmute(&const (*state).lock) }
 }
 
-// FIXME (#3154) ice with struct/&<T> prevents these from being structs.
-
 /// The "write permission" token used for RWARC.write_downgrade().
-pub enum RWWriteMode<T> =
-    (&self/mut T, sync::RWlockWriteMode/&self, PoisonOnFail);
+pub struct RWWriteMode<'self, T> {
+    data: &'self mut T,
+    token: sync::RWlockWriteMode<'self>,
+    poison: PoisonOnFail,
+}
+
 /// The "read permission" token used for RWARC.write_downgrade().
-pub enum RWReadMode<T> = (&self/T, sync::RWlockReadMode/&self);
+pub struct RWReadMode<'self, T> {
+    data: &'self T,
+    token: sync::RWlockReadMode<'self>,
+}
 
 pub impl<T:Const + Owned> RWWriteMode/&self<T> {
     /// Access the pre-downgrade RWARC in write mode.
     fn write<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
         match *self {
-            RWWriteMode((ref data, ref token, _)) => {
+            RWWriteMode {
+                data: ref data,
+                token: ref token,
+                poison: _
+            } => {
                 do token.write {
                     blk(&mut **data)
                 }
@@ -420,7 +438,11 @@ pub impl<T:Const + Owned> RWWriteMode/&self<T> {
     /// Access the pre-downgrade RWARC in write mode with a condvar.
     fn write_cond<U>(&self, blk: &fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
         match *self {
-            RWWriteMode((ref data, ref token, ref poison)) => {
+            RWWriteMode {
+                data: ref data,
+                token: ref token,
+                poison: ref poison
+            } => {
                 do token.write_cond |cond| {
                     unsafe {
                         let cvar = Condvar {
@@ -440,7 +462,10 @@ pub impl<T:Const + Owned> RWReadMode/&self<T> {
     /// Access the post-downgrade rwlock in read mode.
     fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
         match *self {
-            RWReadMode((data, ref token)) => {
+            RWReadMode {
+                data: data,
+                token: ref token
+            } => {
                 do token.read { blk(data) }
             }
         }
