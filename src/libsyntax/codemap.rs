@@ -35,11 +35,11 @@ pub trait Pos {
 }
 
 /// A byte offset
-pub enum BytePos = uint;
+pub struct BytePos(uint);
 /// A character offset. Because of multibyte utf8 characters, a byte offset
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
 /// values to CharPos values as necessary.
-pub enum CharPos = uint;
+pub struct CharPos(uint);
 
 // XXX: Lots of boilerplate in these impls, but so far my attempts to fix
 // have been unsuccessful
