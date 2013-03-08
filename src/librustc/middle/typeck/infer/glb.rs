@@ -29,7 +29,7 @@ use util::ppaux::mt_to_str;
 
 use std::list;
 
-pub enum Glb = CombineFields;  // "greatest lower bound" (common subtype)
+pub struct Glb(CombineFields);  // "greatest lower bound" (common subtype)
 
 impl Combine for Glb {
     fn infcx(&self) -> @mut InferCtxt { self.infcx }

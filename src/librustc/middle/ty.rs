@@ -582,18 +582,20 @@ pub enum param_bound {
 }
 
 #[deriving_eq]
-pub enum TyVid = uint;
+pub struct TyVid(uint);
 
 #[deriving_eq]
-pub enum IntVid = uint;
+pub struct IntVid(uint);
 
 #[deriving_eq]
-pub enum FloatVid = uint;
+pub struct FloatVid(uint);
 
 #[deriving_eq]
 #[auto_encode]
 #[auto_decode]
-pub enum RegionVid = uint;
+pub struct RegionVid {
+    id: uint
+}
 
 #[deriving_eq]
 pub enum InferTy {
@@ -687,11 +689,11 @@ impl ToStr for FloatVid {
 }
 
 impl Vid for RegionVid {
-    pure fn to_uint(&self) -> uint { **self }
+    pure fn to_uint(&self) -> uint { self.id }
 }
 
 impl ToStr for RegionVid {
-    pure fn to_str(&self) -> ~str { fmt!("%?", self) }
+    pure fn to_str(&self) -> ~str { fmt!("%?", self.id) }
 }
 
 impl ToStr for FnSig {
