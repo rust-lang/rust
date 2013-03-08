@@ -25,7 +25,6 @@ use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
 
-use core::{io, option, vec};
 use std::ebml::reader;
 use std::ebml;
 use std::serialize;
@@ -1210,6 +1209,7 @@ fn mk_ctxt() -> fake_ext_ctxt {
 
 #[cfg(test)]
 fn roundtrip(in_item: Option<@ast::item>) {
+    use core::io;
     use std::prettyprint;
 
     let in_item = in_item.get();
