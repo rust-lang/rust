@@ -249,20 +249,26 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
                             type_def_id, path);
                         match ty::get(result.ty).sty {
                             ty::ty_trait(trait_def_id, ref substs, _) => {
-                                match vst {
-                                    ty::vstore_box | ty::vstore_slice(*) |
-                                    ty::vstore_uniq => {}
-                                    _ => {
+                                let trait_store = match vst {
+                                    ty::vstore_box => ty::BoxTraitStore,
+                                    ty::vstore_uniq => ty::UniqTraitStore,
+                                    ty::vstore_slice(r) => {
+                                        ty::RegionTraitStore(r)
+                                    }
+                                    ty::vstore_fixed(*) => {
                                         tcx.sess.span_err(
                                             path.span,
                                             ~"@trait, ~trait or &trait \
                                               are the only supported \
                                               forms of casting-to-\
                                               trait");
+                                        ty::BoxTraitStore
                                     }
-                                }
-                                return ty::mk_trait(tcx, trait_def_id,
-                                                    /*bad*/copy *substs, vst);
+                                };
+                                return ty::mk_trait(tcx,
+                                                    trait_def_id,
+                                                    /*bad*/copy *substs,
+                                                    trait_store);
 
                             }
                             _ => {}

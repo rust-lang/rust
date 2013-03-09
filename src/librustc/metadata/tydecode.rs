@@ -157,6 +157,16 @@ fn parse_vstore(st: @mut PState) -> ty::vstore {
     }
 }
 
+fn parse_trait_store(st: @mut PState) -> ty::TraitStore {
+    match next(st) {
+        '~' => ty::UniqTraitStore,
+        '@' => ty::BoxTraitStore,
+        '&' => ty::RegionTraitStore(parse_region(st)),
+        '.' => ty::BareTraitStore,
+        c => st.tcx.sess.bug(fmt!("parse_trait_store(): bad input '%c'", c))
+    }
+}
+
 fn parse_substs(st: @mut PState, conv: conv_did) -> ty::substs {
     let self_r = parse_opt(st, || parse_region(st) );
 
@@ -269,9 +279,9 @@ fn parse_ty(st: @mut PState, conv: conv_did) -> ty::t {
         fail_unless!(next(st) == '[');
         let def = parse_def(st, NominalType, conv);
         let substs = parse_substs(st, conv);
-        let vstore = parse_vstore(st);
+        let store = parse_trait_store(st);
         fail_unless!(next(st) == ']');
-        return ty::mk_trait(st.tcx, def, substs, vstore);
+        return ty::mk_trait(st.tcx, def, substs, store);
       }
       'p' => {
         let did = parse_def(st, TypeParameter, conv);
