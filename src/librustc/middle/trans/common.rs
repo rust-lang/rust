@@ -1033,17 +1033,19 @@ pub fn T_captured_tydescs(cx: @CrateContext, n: uint) -> TypeRef {
     return T_struct(vec::from_elem::<TypeRef>(n, T_ptr(cx.tydesc_type)));
 }
 
-pub fn T_opaque_trait(cx: @CrateContext, vstore: ty::vstore) -> TypeRef {
-    match vstore {
-        ty::vstore_box => {
+pub fn T_opaque_trait(cx: @CrateContext, store: ty::TraitStore) -> TypeRef {
+    match store {
+        ty::BoxTraitStore | ty::BareTraitStore => {
             T_struct(~[T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)])
         }
-        ty::vstore_uniq => {
+        ty::UniqTraitStore => {
             T_struct(~[T_ptr(cx.tydesc_type),
                        T_unique_ptr(T_unique(cx, T_i8())),
                        T_ptr(cx.tydesc_type)])
         }
-        _ => T_struct(~[T_ptr(cx.tydesc_type), T_ptr(T_i8())])
+        ty::RegionTraitStore(_) => {
+            T_struct(~[T_ptr(cx.tydesc_type), T_ptr(T_i8())])
+        }
     }
 }
 

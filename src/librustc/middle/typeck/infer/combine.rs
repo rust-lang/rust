@@ -102,10 +102,16 @@ pub trait Combine {
     fn purities(&self, a: purity, b: purity) -> cres<purity>;
     fn abis(&self, a: ast::Abi, b: ast::Abi) -> cres<ast::Abi>;
     fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<Onceness>;
-    fn contraregions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region>;
+    fn contraregions(&self, a: ty::Region, b: ty::Region)
+                  -> cres<ty::Region>;
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region>;
     fn vstores(&self, vk: ty::terr_vstore_kind,
                a: ty::vstore, b: ty::vstore) -> cres<ty::vstore>;
+    fn trait_stores(&self,
+                    vk: ty::terr_vstore_kind,
+                    a: ty::TraitStore,
+                    b: ty::TraitStore)
+                 -> cres<ty::TraitStore>;
 }
 
 pub struct CombineFields {
@@ -349,6 +355,36 @@ pub fn super_vstores<C:Combine>(
     }
 }
 
+pub fn super_trait_stores<C:Combine>(self: &C,
+                                     vk: ty::terr_vstore_kind,
+                                     a: ty::TraitStore,
+                                     b: ty::TraitStore)
+                                  -> cres<ty::TraitStore> {
+    debug!("%s.super_vstores(a=%?, b=%?)", self.tag(), a, b);
+
+    match (a, b) {
+      (ty::RegionTraitStore(a_r), ty::RegionTraitStore(b_r)) => {
+        do self.contraregions(a_r, b_r).chain |r| {
+            Ok(ty::RegionTraitStore(r))
+        }
+      }
+
+      // XXX: This should go away soon.
+      (ty::BareTraitStore, ty::BoxTraitStore) |
+      (ty::BoxTraitStore, ty::BareTraitStore) => {
+        Ok(ty::BoxTraitStore)
+      }
+
+      _ if a == b => {
+        Ok(a)
+      }
+
+      _ => {
+        Err(ty::terr_trait_stores_differ(vk, expected_found(self, a, b)))
+      }
+    }
+}
+
 pub fn super_closure_tys<C:Combine>(
     self: &C, a_f: &ty::ClosureTy, b_f: &ty::ClosureTy) -> cres<ty::ClosureTy>
 {
@@ -491,12 +527,12 @@ pub fn super_tys<C:Combine>(
         }
       }
 
-      (ty::ty_trait(a_id, ref a_substs, a_vstore),
-       ty::ty_trait(b_id, ref b_substs, b_vstore))
+      (ty::ty_trait(a_id, ref a_substs, a_store),
+       ty::ty_trait(b_id, ref b_substs, b_store))
       if a_id == b_id => {
         do self.substs(a_id, a_substs, b_substs).chain |substs| {
-            do self.vstores(ty::terr_trait, a_vstore, b_vstore).chain |vs| {
-                Ok(ty::mk_trait(tcx, a_id, /*bad*/copy substs, vs))
+            do self.trait_stores(ty::terr_trait, a_store, b_store).chain |s| {
+                Ok(ty::mk_trait(tcx, a_id, /*bad*/copy substs, s))
             }
         }
       }

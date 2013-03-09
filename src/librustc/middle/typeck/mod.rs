@@ -90,7 +90,7 @@ pub enum method_origin {
     method_param(method_param),
 
     // method invoked on a trait instance
-    method_trait(ast::def_id, uint, ty::vstore),
+    method_trait(ast::def_id, uint, ty::TraitStore),
 
     // method invoked on "self" inside a default method
     method_self(ast::def_id, uint)

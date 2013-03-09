@@ -288,9 +288,9 @@ pub impl LookupContext/&self {
                 ty_param(p) => {
                     self.push_inherent_candidates_from_param(self_ty, p);
                 }
-                ty_trait(did, ref substs, vstore) => {
+                ty_trait(did, ref substs, store) => {
                     self.push_inherent_candidates_from_trait(
-                        self_ty, did, substs, vstore);
+                        self_ty, did, substs, store);
                     self.push_inherent_impl_candidates_for_type(did);
                 }
                 ty_self => {
@@ -490,7 +490,7 @@ pub impl LookupContext/&self {
                                            self_ty: ty::t,
                                            did: def_id,
                                            substs: &ty::substs,
-                                           vstore: ty::vstore) {
+                                           store: ty::TraitStore) {
         debug!("push_inherent_candidates_from_trait(did=%s, substs=%s)",
                self.did_to_str(did),
                substs_to_str(self.tcx(), substs));
@@ -539,7 +539,7 @@ pub impl LookupContext/&self {
             explicit_self: method.self_ty,
             num_method_tps: method.tps.len(),
             self_mode: get_mode_from_self_type(method.self_ty),
-            origin: method_trait(did, index, vstore)
+            origin: method_trait(did, index, store)
         });
     }
 
