@@ -584,7 +584,7 @@ pub impl @mut InferCtxt {
     }
 
     /// Execute `f` and commit the bindings if successful
-    fn commit<T,E>(f: fn() -> Result<T,E>) -> Result<T,E> {
+    fn commit<T,E>(&self, f: fn() -> Result<T,E>) -> Result<T,E> {
         fail_unless!(!self.in_snapshot());
 
         debug!("commit()");
@@ -599,7 +599,7 @@ pub impl @mut InferCtxt {
     }
 
     /// Execute `f`, unroll bindings on failure
-    fn try<T,E>(f: fn() -> Result<T,E>) -> Result<T,E> {
+    fn try<T,E>(&self, f: fn() -> Result<T,E>) -> Result<T,E> {
         debug!("try()");
         do indent {
             let snapshot = self.start_snapshot();
@@ -613,7 +613,7 @@ pub impl @mut InferCtxt {
     }
 
     /// Execute `f` then unroll any bindings it creates
-    fn probe<T,E>(f: fn() -> Result<T,E>) -> Result<T,E> {
+    fn probe<T,E>(&self, f: fn() -> Result<T,E>) -> Result<T,E> {
         debug!("probe()");
         do indent {
             let snapshot = self.start_snapshot();
