@@ -2268,45 +2268,27 @@ pub mod bytes {
 
 // ___________________________________________________________________________
 // ITERATION TRAIT METHODS
-//
-// This cannot be used with iter-trait.rs because of the region pointer
-// required in the slice.
 
 impl<A> iter::BaseIter<A> for &self/[A] {
-    pub pure fn each(&self, blk: fn(v: &A) -> bool) {
-        // FIXME(#2263)---should be able to call each(self, blk)
-        for each(*self) |e| {
-            if (!blk(e)) {
-                return;
-            }
-        }
-    }
+    #[inline(always)]
+    pure fn each(&self, blk: fn(v: &'self A) -> bool) { each(*self, blk) }
+    #[inline(always)]
     pure fn size_hint(&self) -> Option<uint> { Some(len(*self)) }
 }
 
 // FIXME(#4148): This should be redundant
 impl<A> iter::BaseIter<A> for ~[A] {
-    pub pure fn each(&self, blk: fn(v: &A) -> bool) {
-        // FIXME(#2263)---should be able to call each(self, blk)
-        for each(*self) |e| {
-            if (!blk(e)) {
-                return;
-            }
-        }
-    }
+    #[inline(always)]
+    pure fn each(&self, blk: fn(v: &'self A) -> bool) { each(*self, blk) }
+    #[inline(always)]
     pure fn size_hint(&self) -> Option<uint> { Some(len(*self)) }
 }
 
 // FIXME(#4148): This should be redundant
 impl<A> iter::BaseIter<A> for @[A] {
-    pub pure fn each(&self, blk: fn(v: &A) -> bool) {
-        // FIXME(#2263)---should be able to call each(self, blk)
-        for each(*self) |e| {
-            if (!blk(e)) {
-                return;
-            }
-        }
-    }
+    #[inline(always)]
+    pure fn each(&self, blk: fn(v: &'self A) -> bool) { each(*self, blk) }
+    #[inline(always)]
     pure fn size_hint(&self) -> Option<uint> { Some(len(*self)) }
 }
 
