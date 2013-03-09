@@ -222,7 +222,7 @@ pub fn env() -> ~[(~str,~str)] {
                 log(debug,
                     fmt!("splitting: len: %u",
                     vs.len()));
-                assert vs.len() == 2;
+                fail_unless!(vs.len() == 2);
                 pairs.push((copy vs[0], copy vs[1]));
             }
             pairs
