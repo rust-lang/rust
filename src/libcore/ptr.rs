@@ -463,11 +463,11 @@ pub mod ptr_tests {
                 log(debug,
                     fmt!("test_ptr_array_each e: %s, a: %s",
                          expected, actual));
-                assert actual == expected;
+                fail_unless!(actual == expected);
                 ctr += 1;
                 iteration_count += 1;
             });
-            assert iteration_count == 3u;
+            fail_unless!(iteration_count == 3u);
         }
     }
     #[test]
@@ -495,11 +495,11 @@ pub mod ptr_tests {
                 log(debug,
                     fmt!("test_ptr_array_each e: %s, a: %s",
                          expected, actual));
-                assert actual == expected;
+                fail_unless!(actual == expected);
                 ctr += 1;
                 iteration_count += 1;
             });
-            assert iteration_count == 3;
+            fail_unless!(iteration_count == 3);
         }
     }
     #[test]
