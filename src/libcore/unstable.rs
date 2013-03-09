@@ -45,7 +45,7 @@ mod rustrt {
         pub unsafe fn rust_lock_little_lock(lock: rust_little_lock);
         pub unsafe fn rust_unlock_little_lock(lock: rust_little_lock);
 
-        pub unsafe fn rust_raw_thread_start(f: &fn()) -> *raw_thread;
+        pub unsafe fn rust_raw_thread_start(f: &(&fn())) -> *raw_thread;
         pub unsafe fn rust_raw_thread_join_delete(thread: *raw_thread);
     }
 }
@@ -70,7 +70,7 @@ pub unsafe fn run_in_bare_thread(f: ~fn()) {
             let closure: &fn() = || {
                 f()
             };
-            let thread = rustrt::rust_raw_thread_start(closure);
+            let thread = rustrt::rust_raw_thread_start(&closure);
             rustrt::rust_raw_thread_join_delete(thread);
             chan.send(());
         }

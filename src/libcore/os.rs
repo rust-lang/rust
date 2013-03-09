@@ -61,7 +61,7 @@ pub mod rustrt {
         unsafe fn rust_getcwd() -> ~str;
         unsafe fn rust_path_is_dir(path: *libc::c_char) -> c_int;
         unsafe fn rust_path_exists(path: *libc::c_char) -> c_int;
-        unsafe fn rust_list_files2(&&path: ~str) -> ~[~str];
+        unsafe fn rust_list_files2(path: &~str) -> ~[~str];
         unsafe fn rust_process_wait(handle: c_int) -> c_int;
         unsafe fn rust_set_exit_status(code: libc::intptr_t);
     }
@@ -621,7 +621,8 @@ pub fn list_dir(p: &Path) -> ~[~str] {
         #[cfg(windows)]
         fn star(p: &Path) -> Path { p.push("*") }
 
-        do rustrt::rust_list_files2(star(p).to_str()).filtered |filename| {
+        let s = star(p).to_str();
+        do rustrt::rust_list_files2(&s).filtered |filename| {
             *filename != ~"." && *filename != ~".."
         }
     }
