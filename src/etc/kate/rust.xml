@@ -17,7 +17,6 @@
 	</list>
 	<list name="keywords">
 		<item> as </item>
-		<item> assert </item>
 		<item> break </item>
 		<item> const </item>
 		<item> copy </item>
@@ -69,6 +68,7 @@
 		<item> Shl </item>
 		<item> Shr </item>
 		<item> Index </item>
+		<item> Not </item>
 	</list>
 	<list name="types">
 		<item> bool </item>
