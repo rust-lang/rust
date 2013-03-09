@@ -58,59 +58,90 @@ pub fn link_name(ccx: @CrateContext, i: @ast::foreign_item) -> @~str {
     }
 }
 
-struct c_stack_tys {
-    arg_tys: ~[TypeRef],
-    ret_ty: TypeRef,
+struct ShimTypes {
+    fn_sig: ty::FnSig,
+
+    /// LLVM types that will appear on the foreign function
+    llsig: LlvmSignature,
+
+    /// True if there is a return value (not bottom, not unit)
     ret_def: bool,
+
+    /// Type of the struct we will use to shuttle values back and forth.
+    /// This is always derived from the llsig.
     bundle_ty: TypeRef,
+
+    /// Type of the shim function itself.
     shim_fn_ty: TypeRef,
+
+    /// Adapter object for handling native ABI rules (trust me, you
+    /// don't want to know).
     fn_ty: cabi::FnType
 }
 
-fn c_arg_and_ret_lltys(ccx: @CrateContext,
-                       id: ast::node_id) -> (~[TypeRef], TypeRef, ty::t) {
-    match ty::get(ty::node_id_to_type(ccx.tcx, id)).sty {
-        ty::ty_bare_fn(ref fn_ty) => {
-            let llargtys = type_of_explicit_args(ccx, fn_ty.sig.inputs);
-            let llretty = type_of::type_of(ccx, fn_ty.sig.output);
-            (llargtys, llretty, fn_ty.sig.output)
-        }
-        _ => ccx.sess.bug(~"c_arg_and_ret_lltys called on non-function type")
-    }
+struct LlvmSignature {
+    llarg_tys: ~[TypeRef],
+    llret_ty: TypeRef,
 }
 
-fn c_stack_tys(ccx: @CrateContext,
-               id: ast::node_id) -> @c_stack_tys {
-    let (llargtys, llretty, ret_ty) = c_arg_and_ret_lltys(ccx, id);
-    // XXX: Bad copy.
-    let bundle_ty = T_struct(vec::append_one(copy llargtys, T_ptr(llretty)));
-    let ret_def = !ty::type_is_bot(ret_ty) && !ty::type_is_nil(ret_ty);
-    let fn_ty = abi_info(ccx.sess.targ_cfg.arch).
-                    compute_info(llargtys, llretty, ret_def);
-    return @c_stack_tys {
-        arg_tys: llargtys,
-        ret_ty: llretty,
+fn foreign_signature(ccx: @CrateContext,
+                     fn_sig: &ty::FnSig) -> LlvmSignature {
+    /*!
+     * The ForeignSignature is the LLVM types of the arguments/return type
+     * of a function.  Note that these LLVM types are not quite the same
+     * as the LLVM types would be for a native Rust function because foreign
+     * functions just plain ignore modes.  They also don't pass aggregate
+     * values by pointer like we do.
+     */
+
+    let llarg_tys = fn_sig.inputs.map(|arg| type_of(ccx, arg.ty));
+    let llret_ty = type_of::type_of(ccx, fn_sig.output);
+    LlvmSignature {llarg_tys: llarg_tys, llret_ty: llret_ty}
+}
+
+fn shim_types(ccx: @CrateContext, id: ast::node_id) -> ShimTypes {
+    let fn_sig = match ty::get(ty::node_id_to_type(ccx.tcx, id)).sty {
+        ty::ty_bare_fn(ref fn_ty) => copy fn_ty.sig,
+        _ => ccx.sess.bug(~"c_arg_and_ret_lltys called on non-function type")
+    };
+    let llsig = foreign_signature(ccx, &fn_sig);
+    let bundle_ty = T_struct(vec::append_one(copy llsig.llarg_tys,
+                                             T_ptr(llsig.llret_ty)));
+    let ret_def =
+        !ty::type_is_bot(fn_sig.output) &&
+        !ty::type_is_nil(fn_sig.output);
+    let fn_ty =
+        abi_info(ccx.sess.targ_cfg.arch).compute_info(
+            llsig.llarg_tys,
+            llsig.llret_ty,
+            ret_def);
+    ShimTypes {
+        fn_sig: fn_sig,
+        llsig: llsig,
         ret_def: ret_def,
         bundle_ty: bundle_ty,
         shim_fn_ty: T_fn(~[T_ptr(bundle_ty)], T_void()),
         fn_ty: fn_ty
-    };
+    }
 }
 
-type shim_arg_builder = &self/fn(bcx: block, tys: @c_stack_tys,
-                                 llargbundle: ValueRef) -> ~[ValueRef];
+type shim_arg_builder<'self> =
+    &'self fn(bcx: block, tys: &ShimTypes,
+              llargbundle: ValueRef) -> ~[ValueRef];
 
-type shim_ret_builder = &self/fn(bcx: block, tys: @c_stack_tys,
-                                 llargbundle: ValueRef, llretval: ValueRef);
+type shim_ret_builder<'self> =
+    &'self fn(bcx: block, tys: &ShimTypes,
+              llargbundle: ValueRef,
+              llretval: ValueRef);
 
 fn build_shim_fn_(ccx: @CrateContext,
                   +shim_name: ~str,
                   llbasefn: ValueRef,
-                  tys: @c_stack_tys,
+                  tys: &ShimTypes,
                   cc: lib::llvm::CallConv,
                   arg_builder: shim_arg_builder,
-                  ret_builder: shim_ret_builder) -> ValueRef {
-
+                  ret_builder: shim_ret_builder) -> ValueRef
+{
     let llshimfn = decl_internal_cdecl_fn(
         ccx.llmod, shim_name, tys.shim_fn_ty);
 
@@ -122,8 +153,7 @@ fn build_shim_fn_(ccx: @CrateContext,
     let llargvals = arg_builder(bcx, tys, llargbundle);
 
     // Create the call itself and store the return value:
-    let llretval = CallWithConv(bcx, llbasefn,
-                                llargvals, cc); // r
+    let llretval = CallWithConv(bcx, llbasefn, llargvals, cc);
 
     ret_builder(bcx, tys, llargbundle, llretval);
 
@@ -133,21 +163,22 @@ fn build_shim_fn_(ccx: @CrateContext,
     return llshimfn;
 }
 
-type wrap_arg_builder = &self/fn(bcx: block, tys: @c_stack_tys,
-                                 llwrapfn: ValueRef,
-                                 llargbundle: ValueRef);
+type wrap_arg_builder<'self> =
+    &'self fn(bcx: block, tys: &ShimTypes,
+              llwrapfn: ValueRef, llargbundle: ValueRef);
 
-type wrap_ret_builder = &self/fn(bcx: block, tys: @c_stack_tys,
-                                 llargbundle: ValueRef);
+type wrap_ret_builder<'self> =
+    &'self fn(bcx: block, tys: &ShimTypes,
+              llargbundle: ValueRef);
 
 fn build_wrap_fn_(ccx: @CrateContext,
-                  tys: @c_stack_tys,
+                  tys: &ShimTypes,
                   llshimfn: ValueRef,
                   llwrapfn: ValueRef,
                   shim_upcall: ValueRef,
                   arg_builder: wrap_arg_builder,
-                  ret_builder: wrap_ret_builder) {
-
+                  ret_builder: wrap_ret_builder)
+{
     let _icx = ccx.insn_ctxt("foreign::build_wrap_fn_");
     let fcx = new_fn_ctxt(ccx, ~[], llwrapfn, None);
     let bcx = top_scope_block(fcx, None);
@@ -199,36 +230,83 @@ fn build_wrap_fn_(ccx: @CrateContext,
 //         F(args->z, args->x, args->y);
 //     }
 //
-// Note: on i386, the layout of the args struct is generally the same as the
-// desired layout of the arguments on the C stack.  Therefore, we could use
-// upcall_alloc_c_stack() to allocate the `args` structure and switch the
-// stack pointer appropriately to avoid a round of copies.  (In fact, the shim
-// function itself is unnecessary). We used to do this, in fact, and will
-// perhaps do so in the future.
+// Note: on i386, the layout of the args struct is generally the same
+// as the desired layout of the arguments on the C stack.  Therefore,
+// we could use upcall_alloc_c_stack() to allocate the `args`
+// structure and switch the stack pointer appropriately to avoid a
+// round of copies.  (In fact, the shim function itself is
+// unnecessary). We used to do this, in fact, and will perhaps do so
+// in the future.
 pub fn trans_foreign_mod(ccx: @CrateContext,
                          foreign_mod: &ast::foreign_mod,
-                         abi: ast::foreign_abi) {
-
+                         abi: ast::foreign_abi)
+{
     let _icx = ccx.insn_ctxt("foreign::trans_foreign_mod");
+
+    let mut cc = match abi {
+        ast::foreign_abi_rust_intrinsic |
+        ast::foreign_abi_cdecl => lib::llvm::CCallConv,
+        ast::foreign_abi_stdcall => lib::llvm::X86StdcallCallConv
+    };
+
+    for vec::each(foreign_mod.items) |foreign_item| {
+        match foreign_item.node {
+            ast::foreign_item_fn(*) => {
+                let id = foreign_item.id;
+                if abi != ast::foreign_abi_rust_intrinsic {
+                    let llwrapfn = get_item_val(ccx, id);
+                    let tys = shim_types(ccx, id);
+                    if attr::attrs_contains_name(
+                        foreign_item.attrs, "rust_stack")
+                    {
+                        build_direct_fn(ccx, llwrapfn, *foreign_item,
+                                        &tys, cc);
+                    } else {
+                        let llshimfn = build_shim_fn(ccx, *foreign_item,
+                                                     &tys, cc);
+                        build_wrap_fn(ccx, &tys, llshimfn, llwrapfn);
+                    }
+                } else {
+                    // Intrinsics are emitted by monomorphic fn
+                }
+            }
+            ast::foreign_item_const(*) => {
+                let ident = ccx.sess.parse_sess.interner.get(
+                    foreign_item.ident);
+                ccx.item_symbols.insert(foreign_item.id, copy *ident);
+            }
+        }
+    }
 
     fn build_shim_fn(ccx: @CrateContext,
                      foreign_item: @ast::foreign_item,
-                     tys: @c_stack_tys,
-                     cc: lib::llvm::CallConv) -> ValueRef {
+                     tys: &ShimTypes,
+                     cc: lib::llvm::CallConv) -> ValueRef
+    {
+        /*!
+         *
+         * Build S, from comment above:
+         *
+         *     void S(struct { X x; Y y; Z *z; } *args) {
+         *         F(args->z, args->x, args->y);
+         *     }
+         */
 
         let _icx = ccx.insn_ctxt("foreign::build_shim_fn");
 
-        fn build_args(bcx: block, tys: @c_stack_tys,
+        fn build_args(bcx: block, tys: &ShimTypes,
                       llargbundle: ValueRef) -> ~[ValueRef] {
             let _icx = bcx.insn_ctxt("foreign::shim::build_args");
-            return tys.fn_ty.build_shim_args(bcx, tys.arg_tys, llargbundle);
+            tys.fn_ty.build_shim_args(
+                bcx, tys.llsig.llarg_tys, llargbundle)
         }
 
-        fn build_ret(bcx: block, tys: @c_stack_tys,
+        fn build_ret(bcx: block, tys: &ShimTypes,
                      llargbundle: ValueRef, llretval: ValueRef)  {
             let _icx = bcx.insn_ctxt("foreign::shim::build_ret");
-            tys.fn_ty.build_shim_ret(bcx, tys.arg_tys, tys.ret_def,
-                                     llargbundle, llretval);
+            tys.fn_ty.build_shim_ret(
+                bcx, tys.llsig.llarg_tys,
+                tys.ret_def, llargbundle, llretval);
         }
 
         let lname = link_name(ccx, foreign_item);
@@ -239,7 +317,7 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
                            build_args, build_ret);
     }
 
-    fn base_fn(ccx: @CrateContext, lname: &str, tys: @c_stack_tys,
+    fn base_fn(ccx: @CrateContext, lname: &str, tys: &ShimTypes,
                cc: lib::llvm::CallConv) -> ValueRef {
         // Declare the "prototype" for the base function F:
         do tys.fn_ty.decl_fn |fnty| {
@@ -250,7 +328,7 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
     // FIXME (#2535): this is very shaky and probably gets ABIs wrong all
     // over the place
     fn build_direct_fn(ccx: @CrateContext, decl: ValueRef,
-                       item: @ast::foreign_item, tys: @c_stack_tys,
+                       item: @ast::foreign_item, tys: &ShimTypes,
                        cc: lib::llvm::CallConv) {
         let fcx = new_fn_ctxt(ccx, ~[], decl, None);
         let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
@@ -269,66 +347,55 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
     }
 
     fn build_wrap_fn(ccx: @CrateContext,
-                     tys: @c_stack_tys,
+                     tys: &ShimTypes,
                      llshimfn: ValueRef,
                      llwrapfn: ValueRef) {
+        /*!
+         *
+         * Build W, from comment above:
+         *
+         *     void W(Z* dest, void *env, X x, Y y) {
+         *         struct { X x; Y y; Z *z; } args = { x, y, z };
+         *         call_on_c_stack_shim(S, &args);
+         *     }
+         *
+         * One thing we have to be very careful of is to
+         * account for the Rust modes.
+         */
 
         let _icx = ccx.insn_ctxt("foreign::build_wrap_fn");
 
-        fn build_args(bcx: block, tys: @c_stack_tys,
+        build_wrap_fn_(ccx, tys, llshimfn, llwrapfn,
+                       ccx.upcalls.call_shim_on_c_stack,
+                       build_args, build_ret);
+
+        fn build_args(bcx: block, tys: &ShimTypes,
                       llwrapfn: ValueRef, llargbundle: ValueRef) {
             let _icx = bcx.insn_ctxt("foreign::wrap::build_args");
-            let mut i = 0u;
-            let n = vec::len(tys.arg_tys);
+            let ccx = bcx.ccx();
+            let n = vec::len(tys.llsig.llarg_tys);
             let implicit_args = first_real_arg; // return + env
-            while i < n {
-                let llargval = get_param(llwrapfn, i + implicit_args);
+            for uint::range(0, n) |i| {
+                let mut llargval = get_param(llwrapfn, i + implicit_args);
+
+                // In some cases, Rust will pass a pointer which the
+                // native C type doesn't have.  In that case, just
+                // load the value from the pointer.
+                if type_of::arg_is_indirect(ccx, &tys.fn_sig.inputs[i]) {
+                    llargval = Load(bcx, llargval);
+                }
+
                 store_inbounds(bcx, llargval, llargbundle, ~[0u, i]);
-                i += 1u;
             }
             let llretptr = get_param(llwrapfn, 0u);
             store_inbounds(bcx, llretptr, llargbundle, ~[0u, n]);
         }
 
-        fn build_ret(bcx: block, _tys: @c_stack_tys,
+        fn build_ret(bcx: block, _tys: &ShimTypes,
                      _llargbundle: ValueRef) {
             let _icx = bcx.insn_ctxt("foreign::wrap::build_ret");
             RetVoid(bcx);
         }
-
-        build_wrap_fn_(ccx, tys, llshimfn, llwrapfn,
-                       ccx.upcalls.call_shim_on_c_stack,
-                       build_args, build_ret);
-    }
-
-    let mut cc = match abi {
-      ast::foreign_abi_rust_intrinsic |
-      ast::foreign_abi_cdecl => lib::llvm::CCallConv,
-      ast::foreign_abi_stdcall => lib::llvm::X86StdcallCallConv
-    };
-
-    for vec::each(foreign_mod.items) |foreign_item| {
-      match foreign_item.node {
-        ast::foreign_item_fn(*) => {
-          let id = foreign_item.id;
-          if abi != ast::foreign_abi_rust_intrinsic {
-              let llwrapfn = get_item_val(ccx, id);
-              let tys = c_stack_tys(ccx, id);
-              if attr::attrs_contains_name(foreign_item.attrs, "rust_stack") {
-                  build_direct_fn(ccx, llwrapfn, *foreign_item, tys, cc);
-              } else {
-                  let llshimfn = build_shim_fn(ccx, *foreign_item, tys, cc);
-                  build_wrap_fn(ccx, tys, llshimfn, llwrapfn);
-              }
-          } else {
-              // Intrinsics are emitted by monomorphic fn
-          }
-        }
-        ast::foreign_item_const(*) => {
-            let ident = ccx.sess.parse_sess.interner.get(foreign_item.ident);
-            ccx.item_symbols.insert(foreign_item.id, copy *ident);
-        }
-      }
     }
 }
 
@@ -842,6 +909,32 @@ pub fn trans_intrinsic(ccx: @CrateContext,
     finish_fn(fcx, lltop);
 }
 
+/**
+ * Translates a "crust" fn, meaning a Rust fn that can be called
+ * from C code.  In this case, we have to perform some adaptation
+ * to (1) switch back to the Rust stack and (2) adapt the C calling
+ * convention to our own.
+ *
+ * Example: Given a crust fn F(x: X, y: Y) -> Z, we generate a
+ * Rust function R as normal:
+ *
+ *    void R(Z* dest, void *env, X x, Y y) {...}
+ *
+ * and then we generate a wrapper function W that looks like:
+ *
+ *    Z W(X x, Y y) {
+ *        struct { X x; Y y; Z *z; } args = { x, y, z };
+ *        call_on_c_stack_shim(S, &args);
+ *    }
+ *
+ * Note that the wrapper follows the foreign (typically "C") ABI.
+ * The wrapper is the actual "value" of the foreign fn.  Finally,
+ * we generate a shim function S that looks like:
+ *
+ *     void S(struct { X x; Y y; Z *z; } *args) {
+ *         R(args->z, NULL, args->x, args->y);
+ *     }
+ */
 pub fn trans_foreign_fn(ccx: @CrateContext,
                         +path: ast_map::path,
                         decl: &ast::fn_decl,
@@ -867,28 +960,51 @@ pub fn trans_foreign_fn(ccx: @CrateContext,
     }
 
     fn build_shim_fn(ccx: @CrateContext, +path: ast_map::path,
-                     llrustfn: ValueRef, tys: @c_stack_tys) -> ValueRef {
+                     llrustfn: ValueRef, tys: &ShimTypes) -> ValueRef {
+        /*!
+         *
+         * Generate the shim S:
+         *
+         *     void S(struct { X x; Y y; Z *z; } *args) {
+         *         R(args->z, NULL, &args->x, args->y);
+         *     }
+         *
+         * One complication is that we must adapt to the Rust
+         * calling convention, which introduces indirection
+         * in some cases.  To demonstrate this, I wrote one of the
+         * entries above as `&args->x`, because presumably `X` is
+         * one of those types that is passed by pointer in Rust.
+         */
+
         let _icx = ccx.insn_ctxt("foreign::foreign::build_shim_fn");
 
-        fn build_args(bcx: block, tys: @c_stack_tys,
+        fn build_args(bcx: block, tys: &ShimTypes,
                       llargbundle: ValueRef) -> ~[ValueRef] {
             let _icx = bcx.insn_ctxt("foreign::extern::shim::build_args");
+            let ccx = bcx.ccx();
             let mut llargvals = ~[];
             let mut i = 0u;
-            let n = vec::len(tys.arg_tys);
+            let n = tys.fn_sig.inputs.len();
             let llretptr = load_inbounds(bcx, llargbundle, ~[0u, n]);
             llargvals.push(llretptr);
             let llenvptr = C_null(T_opaque_box_ptr(bcx.ccx()));
             llargvals.push(llenvptr);
             while i < n {
-                let llargval = load_inbounds(bcx, llargbundle, ~[0u, i]);
+                // Get a pointer to the argument:
+                let mut llargval = GEPi(bcx, llargbundle, [0u, i]);
+
+                if !type_of::arg_is_indirect(ccx, &tys.fn_sig.inputs[i]) {
+                    // If Rust would pass this by value, load the value.
+                    llargval = Load(bcx, llargval);
+                }
+
                 llargvals.push(llargval);
                 i += 1u;
             }
             return llargvals;
         }
 
-        fn build_ret(_bcx: block, _tys: @c_stack_tys,
+        fn build_ret(_bcx: block, _tys: &ShimTypes,
                      _llargbundle: ValueRef, _llretval: ValueRef)  {
             // Nop. The return pointer in the Rust ABI function
             // is wired directly into the return slot in the shim struct
@@ -904,36 +1020,48 @@ pub fn trans_foreign_fn(ccx: @CrateContext,
     }
 
     fn build_wrap_fn(ccx: @CrateContext, llshimfn: ValueRef,
-                     llwrapfn: ValueRef, tys: @c_stack_tys) {
+                     llwrapfn: ValueRef, tys: &ShimTypes)
+    {
+        /*!
+         *
+         * Generate the wrapper W:
+         *
+         *    Z W(X x, Y y) {
+         *        struct { X x; Y y; Z *z; } args = { x, y, z };
+         *        call_on_c_stack_shim(S, &args);
+         *    }
+         */
 
         let _icx = ccx.insn_ctxt("foreign::foreign::build_wrap_fn");
-
-        fn build_args(bcx: block, tys: @c_stack_tys,
-                      llwrapfn: ValueRef, llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_args");
-            tys.fn_ty.build_wrap_args(bcx, tys.ret_ty,
-                                      llwrapfn, llargbundle);
-        }
-
-        fn build_ret(bcx: block, tys: @c_stack_tys,
-                     llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_ret");
-            tys.fn_ty.build_wrap_ret(bcx, tys.arg_tys, llargbundle);
-        }
 
         build_wrap_fn_(ccx, tys, llshimfn, llwrapfn,
                        ccx.upcalls.call_shim_on_rust_stack,
                        build_args, build_ret);
+
+        fn build_args(bcx: block, tys: &ShimTypes,
+                      llwrapfn: ValueRef, llargbundle: ValueRef) {
+            let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_args");
+            tys.fn_ty.build_wrap_args(
+                bcx, tys.llsig.llret_ty,
+                llwrapfn, llargbundle);
+        }
+
+        fn build_ret(bcx: block, tys: &ShimTypes,
+                     llargbundle: ValueRef) {
+            let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_ret");
+            tys.fn_ty.build_wrap_ret(
+                bcx, tys.llsig.llarg_tys, llargbundle);
+        }
     }
 
-    let tys = c_stack_tys(ccx, id);
+    let tys = shim_types(ccx, id);
     // The internal Rust ABI function - runs on the Rust stack
     // XXX: Bad copy.
     let llrustfn = build_rust_fn(ccx, copy path, decl, body, id);
     // The internal shim function - runs on the Rust stack
-    let llshimfn = build_shim_fn(ccx, path, llrustfn, tys);
+    let llshimfn = build_shim_fn(ccx, path, llrustfn, &tys);
     // The foreign C function - runs on the C stack
-    build_wrap_fn(ccx, llshimfn, llwrapfn, tys)
+    build_wrap_fn(ccx, llshimfn, llwrapfn, &tys)
 }
 
 pub fn register_foreign_fn(ccx: @CrateContext,
@@ -944,11 +1072,8 @@ pub fn register_foreign_fn(ccx: @CrateContext,
                         -> ValueRef {
     let _icx = ccx.insn_ctxt("foreign::register_foreign_fn");
     let t = ty::node_id_to_type(ccx.tcx, node_id);
-    let (llargtys, llretty, ret_ty) = c_arg_and_ret_lltys(ccx, node_id);
-    let ret_def = !ty::type_is_bot(ret_ty) && !ty::type_is_nil(ret_ty);
-    let fn_ty = abi_info(ccx.sess.targ_cfg.arch).
-                    compute_info(llargtys, llretty, ret_def);
-    do fn_ty.decl_fn |fnty| {
+    let tys = shim_types(ccx, node_id);
+    do tys.fn_ty.decl_fn |fnty| {
         register_fn_fuller(ccx, sp, /*bad*/copy path, node_id, attrs,
                            t, lib::llvm::CCallConv, fnty)
     }
