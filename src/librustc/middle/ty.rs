@@ -24,7 +24,7 @@ use middle::typeck;
 use middle;
 use util::ppaux::{note_and_explain_region, bound_region_to_str};
 use util::ppaux::{region_to_str, explain_region, vstore_to_str};
-use util::ppaux::{ty_to_str, tys_to_str};
+use util::ppaux::{trait_store_to_str, ty_to_str, tys_to_str};
 use util::common::{indenter};
 
 use core::cast;
@@ -84,11 +84,22 @@ pub struct mt {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum vstore {
     vstore_fixed(uint),
     vstore_uniq,
     vstore_box,
     vstore_slice(Region)
+}
+
+#[auto_encode]
+#[auto_decode]
+#[deriving_eq]
+pub enum TraitStore {
+    BareTraitStore,             // a plain trait without a sigil
+    BoxTraitStore,              // @Trait
+    UniqTraitStore,             // ~Trait
+    RegionTraitStore(Region),   // &Trait
 }
 
 pub struct field_ty {
@@ -506,7 +517,7 @@ pub enum sty {
     ty_rptr(Region, mt),
     ty_bare_fn(BareFnTy),
     ty_closure(ClosureTy),
-    ty_trait(def_id, substs, vstore),
+    ty_trait(def_id, substs, TraitStore),
     ty_struct(def_id, substs),
     ty_tup(~[t]),
 
@@ -565,6 +576,7 @@ pub enum type_err {
     terr_regions_insufficiently_polymorphic(bound_region, Region),
     terr_regions_overly_polymorphic(bound_region, Region),
     terr_vstores_differ(terr_vstore_kind, expected_found<vstore>),
+    terr_trait_stores_differ(terr_vstore_kind, expected_found<TraitStore>),
     terr_in_field(@type_err, ast::ident),
     terr_sorts(expected_found<t>),
     terr_self_substs,
@@ -1048,10 +1060,13 @@ pub fn mk_ctor_fn(cx: ctxt, input_tys: &[ty::t], output: ty::t) -> t {
 }
 
 
-pub fn mk_trait(cx: ctxt, did: ast::def_id, +substs: substs, vstore: vstore)
-         -> t {
+pub fn mk_trait(cx: ctxt,
+                did: ast::def_id,
+                +substs: substs,
+                store: TraitStore)
+             -> t {
     // take a copy of substs so that we own the vectors inside
-    mk_t(cx, ty_trait(did, substs, vstore))
+    mk_t(cx, ty_trait(did, substs, store))
 }
 
 pub fn mk_struct(cx: ctxt, struct_id: ast::def_id, +substs: substs) -> t {
@@ -1213,8 +1228,8 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
         ty_enum(tid, ref substs) => {
             ty_enum(tid, fold_substs(substs, fldop))
         }
-        ty_trait(did, ref substs, vst) => {
-            ty_trait(did, fold_substs(substs, fldop), vst)
+        ty_trait(did, ref substs, st) => {
+            ty_trait(did, fold_substs(substs, fldop), st)
         }
         ty_tup(ts) => {
             let new_ts = vec::map(ts, |tt| fldop(*tt));
@@ -1304,8 +1319,8 @@ pub fn fold_regions_and_ty(
       ty_struct(def_id, ref substs) => {
         ty::mk_struct(cx, def_id, fold_substs(substs, fldr, fldt))
       }
-      ty_trait(def_id, ref substs, vst) => {
-        ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), vst)
+      ty_trait(def_id, ref substs, st) => {
+        ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), st)
       }
       ty_bare_fn(ref f) => {
           ty::mk_bare_fn(cx, BareFnTy {sig: fold_sig(&f.sig, fldfnt),
@@ -1893,15 +1908,16 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 TC_MANAGED + nonowned(tc_mt(cx, mt, cache))
             }
 
-            ty_trait(_, _, vstore_uniq) => {
+            ty_trait(_, _, UniqTraitStore) => {
                 TC_OWNED_CLOSURE
             }
 
-            ty_trait(_, _, vstore_box) => {
+            ty_trait(_, _, BoxTraitStore) |
+            ty_trait(_, _, BareTraitStore) => {
                 TC_MANAGED
             }
 
-            ty_trait(_, _, vstore_slice(r)) => {
+            ty_trait(_, _, RegionTraitStore(r)) => {
                 borrowed_contents(r, m_imm)
             }
 
@@ -2013,7 +2029,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_type => TC_NONE,
-            ty_trait(_, _, vstore_fixed(_)) => TC_NONE,
 
             ty_err => {
                 cx.sess.bug(~"Asked to compute contents of fictitious type");
@@ -2553,6 +2568,17 @@ impl to_bytes::IterBytes for vstore {
 
           vstore_slice(ref r) =>
           to_bytes::iter_bytes_2(&3u8, r, lsb0, f),
+        }
+    }
+}
+
+impl to_bytes::IterBytes for TraitStore {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        match *self {
+          BareTraitStore => 0u8.iter_bytes(lsb0, f),
+          UniqTraitStore => 1u8.iter_bytes(lsb0, f),
+          BoxTraitStore => 2u8.iter_bytes(lsb0, f),
+          RegionTraitStore(ref r) => to_bytes::iter_bytes_2(&3u8, r, lsb0, f),
         }
     }
 }
@@ -3419,6 +3445,11 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
                  vstore_to_str(cx, (*values).expected),
                  vstore_to_str(cx, (*values).found))
         }
+        terr_trait_stores_differ(_, ref values) => {
+            fmt!("trait storage differs: expected %s but found %s",
+                 trait_store_to_str(cx, (*values).expected),
+                 trait_store_to_str(cx, (*values).found))
+        }
         terr_in_field(err, fname) => {
             fmt!("in field `%s`, %s", *cx.sess.str_of(fname),
                  type_err_to_str(cx, err))
@@ -3565,12 +3596,19 @@ pub fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
 /*
   Could this return a list of (def_id, substs) pairs?
  */
-pub fn impl_traits(cx: ctxt, id: ast::def_id, vstore: vstore) -> ~[t] {
-    fn vstoreify(cx: ctxt, ty: t, vstore: vstore) -> t {
+pub fn impl_traits(cx: ctxt, id: ast::def_id, store: TraitStore) -> ~[t] {
+    fn storeify(cx: ctxt, ty: t, store: TraitStore) -> t {
         match ty::get(ty).sty {
-            ty::ty_trait(_, _, trait_vstore) if vstore == trait_vstore => ty,
-            ty::ty_trait(did, ref substs, _) => {
-                mk_trait(cx, did, (/*bad*/copy *substs), vstore)
+            ty::ty_trait(did, ref substs, trait_store) => {
+                if store == trait_store ||
+                        (store == BareTraitStore &&
+                         trait_store == BoxTraitStore) ||
+                        (store == BoxTraitStore &&
+                         trait_store == BareTraitStore) {
+                    ty
+                } else {
+                    mk_trait(cx, did, (/*bad*/copy *substs), store)
+                }
             }
             _ => cx.sess.bug(~"impl_traits: not a trait")
         }
@@ -3585,16 +3623,16 @@ pub fn impl_traits(cx: ctxt, id: ast::def_id, vstore: vstore) -> ~[t] {
                     _)) => {
 
                do option::map_default(&opt_trait, ~[]) |trait_ref| {
-                       ~[vstoreify(cx,
-                                   node_id_to_type(cx, trait_ref.ref_id),
-                                   vstore)]
+                       ~[storeify(cx,
+                                  node_id_to_type(cx, trait_ref.ref_id),
+                                  store)]
                    }
            }
            _ => ~[]
         }
     } else {
         vec::map(csearch::get_impl_traits(cx, id),
-                 |x| vstoreify(cx, *x, vstore))
+                 |x| storeify(cx, *x, store))
     }
 }
 
@@ -4163,6 +4201,9 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
                 t
             },
 
+        ty_trait(did, ref substs, BareTraitStore) =>
+            mk_trait(cx, did, copy *substs, BoxTraitStore),
+
         _ =>
             t
     };
@@ -4316,38 +4357,6 @@ impl cmp::Eq for mt {
         (*self).ty == (*other).ty && (*self).mutbl == (*other).mutbl
     }
     pure fn ne(&self, other: &mt) -> bool { !(*self).eq(other) }
-}
-
-impl cmp::Eq for vstore {
-    pure fn eq(&self, other: &vstore) -> bool {
-        match (*self) {
-            vstore_fixed(e0a) => {
-                match (*other) {
-                    vstore_fixed(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            vstore_uniq => {
-                match (*other) {
-                    vstore_uniq => true,
-                    _ => false
-                }
-            }
-            vstore_box => {
-                match (*other) {
-                    vstore_box => true,
-                    _ => false
-                }
-            }
-            vstore_slice(e0a) => {
-                match (*other) {
-                    vstore_slice(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &vstore) -> bool { !(*self).eq(other) }
 }
 
 impl cmp::Eq for Region {

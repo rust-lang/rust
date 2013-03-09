@@ -249,12 +249,12 @@ pub fn trans_method_callee(bcx: block,
                 None => fail!(~"trans_method_callee: missing param_substs")
             }
         }
-        typeck::method_trait(_, off, vstore) => {
+        typeck::method_trait(_, off, store) => {
             trans_trait_callee(bcx,
                                callee_id,
                                off,
                                self,
-                               vstore,
+                               store,
                                mentry.explicit_self)
         }
         typeck::method_self(*) | typeck::method_super(*) => {
@@ -570,7 +570,7 @@ pub fn trans_trait_callee(bcx: block,
                           callee_id: ast::node_id,
                           n_method: uint,
                           self_expr: @ast::expr,
-                          vstore: ty::vstore,
+                          store: ty::TraitStore,
                           explicit_self: ast::self_ty_)
                        -> Callee {
     //!
@@ -599,7 +599,7 @@ pub fn trans_trait_callee(bcx: block,
                                   callee_ty,
                                   n_method,
                                   llpair,
-                                  vstore,
+                                  store,
                                   explicit_self)
 }
 
@@ -607,7 +607,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
                                      callee_ty: ty::t,
                                      n_method: uint,
                                      llpair: ValueRef,
-                                     vstore: ty::vstore,
+                                     store: ty::TraitStore,
                                      explicit_self: ast::self_ty_)
                                   -> Callee {
     //!
@@ -641,15 +641,14 @@ pub fn trans_trait_callee_from_llval(bcx: block,
         }
         ast::sty_by_ref => {
             // We need to pass a pointer to a pointer to the payload.
-            match vstore {
-                ty::vstore_box | ty::vstore_uniq => {
+            match store {
+                ty::BoxTraitStore |
+                ty::BareTraitStore |
+                ty::UniqTraitStore => {
                     llself = GEPi(bcx, llbox, [0u, abi::box_field_body]);
                 }
-                ty::vstore_slice(_) => {
+                ty::RegionTraitStore(_) => {
                     llself = llbox;
-                }
-                ty::vstore_fixed(*) => {
-                    bcx.tcx().sess.bug(~"vstore_fixed trait");
                 }
             }
 
@@ -662,15 +661,14 @@ pub fn trans_trait_callee_from_llval(bcx: block,
         ast::sty_region(_) => {
             // As before, we need to pass a pointer to a pointer to the
             // payload.
-            match vstore {
-                ty::vstore_box | ty::vstore_uniq => {
+            match store {
+                ty::BoxTraitStore |
+                ty::BareTraitStore |
+                ty::UniqTraitStore => {
                     llself = GEPi(bcx, llbox, [0u, abi::box_field_body]);
                 }
-                ty::vstore_slice(_) => {
+                ty::RegionTraitStore(_) => {
                     llself = llbox;
-                }
-                ty::vstore_fixed(*) => {
-                    bcx.tcx().sess.bug(~"vstore_fixed trait");
                 }
             }
 
@@ -687,8 +685,8 @@ pub fn trans_trait_callee_from_llval(bcx: block,
             bcx = glue::take_ty(bcx, llbox, callee_ty);
 
             // Pass a pointer to the box.
-            match vstore {
-                ty::vstore_box => llself = llbox,
+            match store {
+                ty::BoxTraitStore | ty::BareTraitStore => llself = llbox,
                 _ => bcx.tcx().sess.bug(~"@self receiver with non-@Trait")
             }
 
@@ -700,8 +698,8 @@ pub fn trans_trait_callee_from_llval(bcx: block,
         }
         ast::sty_uniq(_) => {
             // Pass the unique pointer.
-            match vstore {
-                ty::vstore_uniq => llself = llbox,
+            match store {
+                ty::UniqTraitStore => llself = llbox,
                 _ => bcx.tcx().sess.bug(~"~self receiver with non-~Trait")
             }
 
@@ -796,7 +794,9 @@ pub fn make_impl_vtable(ccx: @CrateContext,
     // XXX: This should support multiple traits.
     let trt_id = driver::session::expect(
         tcx.sess,
-        ty::ty_to_def_id(ty::impl_traits(tcx, impl_id, ty::vstore_box)[0]),
+        ty::ty_to_def_id(ty::impl_traits(tcx,
+                                         impl_id,
+                                         ty::BoxTraitStore)[0]),
         || ~"make_impl_vtable: non-trait-type implemented");
 
     let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;
@@ -834,7 +834,7 @@ pub fn trans_trait_cast(bcx: block,
                         val: @ast::expr,
                         id: ast::node_id,
                         dest: expr::Dest,
-                        vstore: ty::vstore)
+                        store: ty::TraitStore)
                      -> block {
     let mut bcx = bcx;
     let _icx = bcx.insn_ctxt("impl::trans_cast");
@@ -849,8 +849,8 @@ pub fn trans_trait_cast(bcx: block,
     let ccx = bcx.ccx();
     let v_ty = expr_ty(bcx, val);
 
-    match vstore {
-        ty::vstore_slice(*) | ty::vstore_box => {
+    match store {
+        ty::RegionTraitStore(_) | ty::BoxTraitStore | ty::BareTraitStore => {
             let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
             // Just store the pointer into the pair.
             llboxdest = PointerCast(bcx,
@@ -858,7 +858,7 @@ pub fn trans_trait_cast(bcx: block,
                                     T_ptr(type_of(bcx.ccx(), v_ty)));
             bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
         }
-        ty::vstore_uniq => {
+        ty::UniqTraitStore => {
             // Translate the uniquely-owned value into the second element of
             // the triple. (The first element is the vtable.)
             let mut llvaldest = GEPi(bcx, lldest, [0, 1]);
@@ -873,10 +873,6 @@ pub fn trans_trait_cast(bcx: block,
             glue::lazily_emit_all_tydesc_glue(bcx.ccx(), tydesc);
             let lltydescdest = GEPi(bcx, lldest, [0, 2]);
             Store(bcx, tydesc.tydesc, lltydescdest);
-        }
-        _ => {
-            bcx.tcx().sess.span_bug(val.span, ~"unexpected vstore in \
-                                                trans_trait_cast");
         }
     }
 
