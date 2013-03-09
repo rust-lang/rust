@@ -31,7 +31,7 @@ impl<T:Ord> BaseIter<T> for PriorityQueue<T> {
     /// Visit all values in the underlying vector.
     ///
     /// The values are **not** visited in order.
-    pure fn each(&self, f: fn(&T) -> bool) { self.data.each(f) }
+    pure fn each(&self, f: &fn(&T) -> bool) { self.data.each(f) }
     pure fn size_hint(&self) -> Option<uint> { self.data.size_hint() }
 }
 

@@ -14,7 +14,7 @@ fn send<T:Owned>(ch: _chan<T>, -data: T) {
     fail!();
 }
 
-enum _chan<T> = int;
+struct _chan<T>(int);
 
 // Tests that "log(debug, message);" is flagged as using
 // message after the send deinitializes it

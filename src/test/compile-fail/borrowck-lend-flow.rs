@@ -94,7 +94,7 @@ fn loop_in_block() {
 }
 
 fn at_most_once_block() {
-    fn at_most_once(f: fn()) { f() }
+    fn at_most_once(f: &fn()) { f() }
 
     // Here, the borrow check has no way of knowing that the block is
     // executed at most once.

@@ -22,7 +22,7 @@ fn a() {
     p[0] = 5; //~ ERROR assigning to mutable vec content prohibited due to outstanding loan
 }
 
-fn borrow(_x: &[int], _f: fn()) {}
+fn borrow(_x: &[int], _f: &fn()) {}
 
 fn b() {
     // here we alias the mutable vector into an imm slice and try to

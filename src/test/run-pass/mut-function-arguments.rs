@@ -14,7 +14,7 @@ fn f(mut y: ~int) {
 }
 
 fn g() {
-    let frob: fn(~int) = |mut q| { *q = 2; fail_unless!(*q == 2); };
+    let frob: &fn(~int) = |mut q| { *q = 2; fail_unless!(*q == 2); };
     let w = ~37;
     frob(w);
 

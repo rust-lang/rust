@@ -26,12 +26,12 @@ mod b {
 
 trait uint_utils {
     fn str() -> ~str;
-    fn multi(f: fn(uint));
+    fn multi(f: &fn(uint));
 }
 
 impl uint_utils for uint {
     fn str() -> ~str { uint::to_str(self) }
-    fn multi(f: fn(uint)) {
+    fn multi(f: &fn(uint)) {
         let mut c = 0u;
         while c < self { f(c); c += 1u; }
     }
@@ -39,14 +39,14 @@ impl uint_utils for uint {
 
 trait vec_utils<T> {
     fn length_() -> uint;
-    fn iter_(f: fn(&T));
-    fn map_<U:Copy>(f: fn(&T) -> U) -> ~[U];
+    fn iter_(f: &fn(&T));
+    fn map_<U:Copy>(f: &fn(&T) -> U) -> ~[U];
 }
 
 impl<T> vec_utils<T> for ~[T] {
     fn length_() -> uint { vec::len(self) }
-    fn iter_(f: fn(&T)) { for self.each |x| { f(x); } }
-    fn map_<U:Copy>(f: fn(&T) -> U) -> ~[U] {
+    fn iter_(f: &fn(&T)) { for self.each |x| { f(x); } }
+    fn map_<U:Copy>(f: &fn(&T) -> U) -> ~[U] {
         let mut r = ~[];
         for self.each |elt| { r += ~[f(elt)]; }
         r

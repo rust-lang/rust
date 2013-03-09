@@ -248,7 +248,7 @@ pub impl Parser {
     fn parse_seq_to_before_gt<T: Copy>(
         &self,
         sep: Option<token::Token>,
-        f: fn(&Parser) -> T
+        f: &fn(&Parser) -> T
     ) -> OptVec<T> {
         let mut first = true;
         let mut v = opt_vec::Empty;
@@ -269,7 +269,7 @@ pub impl Parser {
     fn parse_seq_to_gt<T: Copy>(
         &self,
         sep: Option<token::Token>,
-        f: fn(&Parser) -> T
+        f: &fn(&Parser) -> T
     ) -> OptVec<T> {
         let v = self.parse_seq_to_before_gt(sep, f);
         self.expect_gt();
@@ -283,7 +283,7 @@ pub impl Parser {
         &self,
         ket: &token::Token,
         sep: SeqSep,
-        f: fn(&Parser) -> T
+        f: &fn(&Parser) -> T
     ) -> ~[T] {
         let val = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
@@ -297,7 +297,7 @@ pub impl Parser {
         &self,
         ket: &token::Token,
         sep: SeqSep,
-        f: fn(&Parser) -> T
+        f: &fn(&Parser) -> T
     ) -> ~[T] {
         let mut first: bool = true;
         let mut v: ~[T] = ~[];
@@ -323,7 +323,7 @@ pub impl Parser {
         bra: &token::Token,
         ket: &token::Token,
         sep: SeqSep,
-        f: fn(&Parser) -> T
+        f: &fn(&Parser) -> T
     ) -> ~[T] {
         self.expect(bra);
         let result = self.parse_seq_to_before_end(ket, sep, f);
@@ -338,7 +338,7 @@ pub impl Parser {
         bra: &token::Token,
         ket: &token::Token,
         sep: SeqSep,
-        f: fn(&Parser) -> T
+        f: &fn(&Parser) -> T
     ) -> spanned<~[T]> {
         let lo = self.span.lo;
         self.expect(bra);

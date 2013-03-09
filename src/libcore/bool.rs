@@ -67,7 +67,7 @@ pub pure fn to_str(v: bool) -> ~str { if v { ~"true" } else { ~"false" } }
  * Iterates over all truth values by passing them to `blk` in an unspecified
  * order
  */
-pub fn all_values(blk: fn(v: bool)) {
+pub fn all_values(blk: &fn(v: bool)) {
     blk(true);
     blk(false);
 }

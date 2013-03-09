@@ -68,7 +68,7 @@ pub unsafe fn read(prompt: ~str) -> Option<~str> {
     }
 }
 
-pub type CompletionCb = @fn(~str, fn(~str));
+pub type CompletionCb<'self> = @fn(~str, &'self fn(~str));
 
 fn complete_key(_v: @CompletionCb) {}
 

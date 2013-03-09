@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn force(f: fn() -> int) -> int { return f(); }
+fn force(f: &fn() -> int) -> int { return f(); }
 pub fn main() {
     fn f() -> int { return 7; }
     fail_unless!((force(f) == 7));

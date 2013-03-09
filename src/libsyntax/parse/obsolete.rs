@@ -52,6 +52,8 @@ pub enum ObsoleteSyntax {
     ObsoleteRecordType,
     ObsoleteRecordPattern,
     ObsoleteAssertion,
+    ObsoleteBareFnType,
+    ObsoleteNewtypeEnum,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -159,6 +161,14 @@ pub impl Parser {
             ObsoleteAssertion => (
                 "assertion",
                 "use `fail_unless!()` instead"
+            ),
+            ObsoleteBareFnType => (
+                "bare function type",
+                "use `&fn` or `extern fn` instead"
+            ),
+            ObsoleteNewtypeEnum => (
+                "newtype enum",
+                "instead of `enum Foo = int`, write `struct Foo(int)`"
             ),
         };
 

@@ -20,7 +20,7 @@ pub fn main() {
     fail_unless!((sum == 45));
 }
 
-fn first_ten(it: fn(int)) {
+fn first_ten(it: &fn(int)) {
     let mut i: int = 0;
     while i < 10 { debug!("first_ten"); it(i); i = i + 1; }
 }

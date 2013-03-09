@@ -131,7 +131,7 @@ pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
 }
 
 #[inline(always)]
-pub pure fn map<T, U>(opt: &r/Option<T>, f: fn(x: &r/T) -> U) -> Option<U> {
+pub pure fn map<T, U>(opt: &r/Option<T>, f: &fn(x: &r/T) -> U) -> Option<U> {
     //! Maps a `some` value by reference from one type to another
 
     match *opt { Some(ref x) => Some(f(x)), None => None }
@@ -139,7 +139,7 @@ pub pure fn map<T, U>(opt: &r/Option<T>, f: fn(x: &r/T) -> U) -> Option<U> {
 
 #[inline(always)]
 pub pure fn map_consume<T, U>(opt: Option<T>,
-                              f: fn(v: T) -> U) -> Option<U> {
+                              f: &fn(v: T) -> U) -> Option<U> {
     /*!
      * As `map`, but consumes the option and gives `f` ownership to avoid
      * copying.
@@ -149,7 +149,7 @@ pub pure fn map_consume<T, U>(opt: Option<T>,
 
 #[inline(always)]
 pub pure fn chain<T, U>(opt: Option<T>,
-                        f: fn(t: T) -> Option<U>) -> Option<U> {
+                        f: &fn(t: T) -> Option<U>) -> Option<U> {
     /*!
      * Update an optional value by optionally running its content through a
      * function that returns an option.
@@ -163,7 +163,7 @@ pub pure fn chain<T, U>(opt: Option<T>,
 
 #[inline(always)]
 pub pure fn chain_ref<T, U>(opt: &Option<T>,
-                            f: fn(x: &T) -> Option<U>) -> Option<U> {
+                            f: &fn(x: &T) -> Option<U>) -> Option<U> {
     /*!
      * Update an optional value by optionally running its content by reference
      * through a function that returns an option.
@@ -184,7 +184,7 @@ pub pure fn or<T>(opta: Option<T>, optb: Option<T>) -> Option<T> {
 }
 
 #[inline(always)]
-pub pure fn while_some<T>(x: Option<T>, blk: fn(v: T) -> Option<T>) {
+pub pure fn while_some<T>(x: Option<T>, blk: &fn(v: T) -> Option<T>) {
     //! Applies a function zero or more times until the result is none.
 
     let mut opt = x;
@@ -223,7 +223,7 @@ pub pure fn get_or_default<T:Copy>(opt: Option<T>, def: T) -> T {
 
 #[inline(always)]
 pub pure fn map_default<T, U>(opt: &r/Option<T>, def: U,
-                              f: fn(&r/T) -> U) -> U {
+                              f: &fn(&r/T) -> U) -> U {
     //! Applies a function to the contained value or returns a default
 
     match *opt { None => def, Some(ref t) => f(t) }
@@ -279,7 +279,7 @@ pub pure fn expect<T>(opt: Option<T>, reason: &str) -> T {
 impl<T> BaseIter<T> for Option<T> {
     /// Performs an operation on the contained value by reference
     #[inline(always)]
-    pure fn each(&self, f: fn(x: &self/T) -> bool) {
+    pure fn each(&self, f: &fn(x: &self/T) -> bool) {
         match *self { None => (), Some(ref t) => { f(t); } }
     }
 
@@ -303,43 +303,43 @@ pub impl<T> Option<T> {
      * through a function that returns an option.
      */
     #[inline(always)]
-    pure fn chain_ref<U>(&self, f: fn(x: &T) -> Option<U>) -> Option<U> {
+    pure fn chain_ref<U>(&self, f: &fn(x: &T) -> Option<U>) -> Option<U> {
         chain_ref(self, f)
     }
 
     /// Maps a `some` value from one type to another by reference
     #[inline(always)]
-    pure fn map<U>(&self, f: fn(&self/T) -> U) -> Option<U> { map(self, f) }
+    pure fn map<U>(&self, f: &fn(&self/T) -> U) -> Option<U> { map(self, f) }
 
     /// As `map`, but consumes the option and gives `f` ownership to avoid
     /// copying.
     #[inline(always)]
-    pure fn map_consume<U>(self, f: fn(v: T) -> U) -> Option<U> {
+    pure fn map_consume<U>(self, f: &fn(v: T) -> U) -> Option<U> {
         map_consume(self, f)
     }
 
     /// Applies a function to the contained value or returns a default
     #[inline(always)]
-    pure fn map_default<U>(&self, def: U, f: fn(&self/T) -> U) -> U {
+    pure fn map_default<U>(&self, def: U, f: &fn(&self/T) -> U) -> U {
         map_default(self, def, f)
     }
 
     /// As `map_default`, but consumes the option and gives `f`
     /// ownership to avoid copying.
     #[inline(always)]
-    pure fn map_consume_default<U>(self, def: U, f: fn(v: T) -> U) -> U {
+    pure fn map_consume_default<U>(self, def: U, f: &fn(v: T) -> U) -> U {
         match self { None => def, Some(v) => f(v) }
     }
 
     /// Apply a function to the contained value or do nothing
-    fn mutate(&mut self, f: fn(T) -> T) {
+    fn mutate(&mut self, f: &fn(T) -> T) {
         if self.is_some() {
             *self = Some(f(self.swap_unwrap()));
         }
     }
 
     /// Apply a function to the contained value or set it to a default
-    fn mutate_default(&mut self, def: T, f: fn(T) -> T) {
+    fn mutate_default(&mut self, def: T, f: &fn(T) -> T) {
         if self.is_some() {
             *self = Some(f(self.swap_unwrap()));
         } else {
@@ -420,7 +420,7 @@ pub impl<T:Copy> Option<T> {
 
     /// Applies a function zero or more times until the result is none.
     #[inline(always)]
-    pure fn while_some(self, blk: fn(v: T) -> Option<T>) {
+    pure fn while_some(self, blk: &fn(v: T) -> Option<T>) {
         while_some(self, blk)
     }
 }

@@ -12,7 +12,7 @@
 
 trait clam<A> { }
 
-enum foo = int;
+struct foo(int);
 
 pub impl foo {
     fn bar<B,C:clam<B>>(c: C) -> B { fail!(); }

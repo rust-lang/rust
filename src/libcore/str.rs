@@ -382,7 +382,7 @@ pub pure fn to_bytes(s: &str) -> ~[u8] {
 
 /// Work with the string as a byte slice, not including trailing null.
 #[inline(always)]
-pub pure fn byte_slice<T>(s: &str, f: fn(v: &[u8]) -> T) -> T {
+pub pure fn byte_slice<T>(s: &str, f: &fn(v: &[u8]) -> T) -> T {
     do as_buf(s) |p,n| {
         unsafe { vec::raw::buf_as_slice(p, n-1u, f) }
     }
@@ -483,7 +483,7 @@ pure fn split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool)
 
 
 /// Splits a string into substrings using a character function
-pub pure fn split(s: &str, sepfn: fn(char) -> bool) -> ~[~str] {
+pub pure fn split(s: &str, sepfn: &fn(char) -> bool) -> ~[~str] {
     split_inner(s, sepfn, len(s), true)
 }
 
@@ -491,16 +491,19 @@ pub pure fn split(s: &str, sepfn: fn(char) -> bool) -> ~[~str] {
  * Splits a string into substrings using a character function, cutting at
  * most `count` times.
  */
-pub pure fn splitn(s: &str, sepfn: fn(char) -> bool, count: uint) -> ~[~str] {
+pub pure fn splitn(s: &str,
+                   sepfn: &fn(char) -> bool,
+                   count: uint)
+                -> ~[~str] {
     split_inner(s, sepfn, count, true)
 }
 
 /// Like `split`, but omits empty strings from the returned vector
-pub pure fn split_nonempty(s: &str, sepfn: fn(char) -> bool) -> ~[~str] {
+pub pure fn split_nonempty(s: &str, sepfn: &fn(char) -> bool) -> ~[~str] {
     split_inner(s, sepfn, len(s), false)
 }
 
-pure fn split_inner(s: &str, sepfn: fn(cc: char) -> bool, count: uint,
+pure fn split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
                allow_empty: bool) -> ~[~str] {
     let l = len(s);
     let mut result = ~[], i = 0u, start = 0u, done = 0u;
@@ -526,7 +529,7 @@ pure fn split_inner(s: &str, sepfn: fn(cc: char) -> bool, count: uint,
 }
 
 // See Issue #1932 for why this is a naive search
-pure fn iter_matches(s: &a/str, sep: &b/str, f: fn(uint, uint)) {
+pure fn iter_matches(s: &a/str, sep: &b/str, f: &fn(uint, uint)) {
     let sep_len = len(sep), l = len(s);
     fail_unless!(sep_len > 0u);
     let mut i = 0u, match_start = 0u, match_i = 0u;
@@ -553,7 +556,7 @@ pure fn iter_matches(s: &a/str, sep: &b/str, f: fn(uint, uint)) {
     }
 }
 
-pure fn iter_between_matches(s: &a/str, sep: &b/str, f: fn(uint, uint)) {
+pure fn iter_between_matches(s: &a/str, sep: &b/str, f: &fn(uint, uint)) {
     let mut last_end = 0u;
     do iter_matches(s, sep) |from, to| {
         f(last_end, from);
@@ -912,7 +915,7 @@ Section: Iterating through strings
  * Return true if a predicate matches all characters or if the string
  * contains no characters
  */
-pub pure fn all(s: &str, it: fn(char) -> bool) -> bool {
+pub pure fn all(s: &str, it: &fn(char) -> bool) -> bool {
     all_between(s, 0u, len(s), it)
 }
 
@@ -920,12 +923,12 @@ pub pure fn all(s: &str, it: fn(char) -> bool) -> bool {
  * Return true if a predicate matches any character (and false if it
  * matches none or there are no characters)
  */
-pub pure fn any(ss: &str, pred: fn(char) -> bool) -> bool {
+pub pure fn any(ss: &str, pred: &fn(char) -> bool) -> bool {
     !all(ss, |cc| !pred(cc))
 }
 
 /// Apply a function to each character
-pub pure fn map(ss: &str, ff: fn(char) -> char) -> ~str {
+pub pure fn map(ss: &str, ff: &fn(char) -> char) -> ~str {
     let mut result = ~"";
     unsafe {
         reserve(&mut result, len(ss));
@@ -937,7 +940,7 @@ pub pure fn map(ss: &str, ff: fn(char) -> char) -> ~str {
 }
 
 /// Iterate over the bytes in a string
-pub pure fn bytes_each(ss: &str, it: fn(u8) -> bool) {
+pub pure fn bytes_each(ss: &str, it: &fn(u8) -> bool) {
     let mut pos = 0u;
     let len = len(ss);
 
@@ -949,13 +952,13 @@ pub pure fn bytes_each(ss: &str, it: fn(u8) -> bool) {
 
 /// Iterate over the bytes in a string
 #[inline(always)]
-pub pure fn each(s: &str, it: fn(u8) -> bool) {
+pub pure fn each(s: &str, it: &fn(u8) -> bool) {
     eachi(s, |_i, b| it(b) )
 }
 
 /// Iterate over the bytes in a string, with indices
 #[inline(always)]
-pub pure fn eachi(s: &str, it: fn(uint, u8) -> bool) {
+pub pure fn eachi(s: &str, it: &fn(uint, u8) -> bool) {
     let mut i = 0u, l = len(s);
     while (i < l) {
         if !it(i, s[i]) { break; }
@@ -965,13 +968,13 @@ pub pure fn eachi(s: &str, it: fn(uint, u8) -> bool) {
 
 /// Iterates over the chars in a string
 #[inline(always)]
-pub pure fn each_char(s: &str, it: fn(char) -> bool) {
+pub pure fn each_char(s: &str, it: &fn(char) -> bool) {
     each_chari(s, |_i, c| it(c))
 }
 
 /// Iterates over the chars in a string, with indices
 #[inline(always)]
-pub pure fn each_chari(s: &str, it: fn(uint, char) -> bool) {
+pub pure fn each_chari(s: &str, it: &fn(uint, char) -> bool) {
     let mut pos = 0u, ch_pos = 0u;
     let len = len(s);
     while pos < len {
@@ -983,7 +986,7 @@ pub pure fn each_chari(s: &str, it: fn(uint, char) -> bool) {
 }
 
 /// Iterate over the characters in a string
-pub pure fn chars_each(s: &str, it: fn(char) -> bool) {
+pub pure fn chars_each(s: &str, it: &fn(char) -> bool) {
     let mut pos = 0u;
     let len = len(s);
     while (pos < len) {
@@ -994,7 +997,7 @@ pub pure fn chars_each(s: &str, it: fn(char) -> bool) {
 }
 
 /// Apply a function to each substring after splitting by character
-pub pure fn split_char_each(ss: &str, cc: char, ff: fn(v: &str) -> bool) {
+pub pure fn split_char_each(ss: &str, cc: char, ff: &fn(v: &str) -> bool) {
     vec::each(split_char(ss, cc), |s| ff(*s))
 }
 
@@ -1003,19 +1006,19 @@ pub pure fn split_char_each(ss: &str, cc: char, ff: fn(v: &str) -> bool) {
  * `count` times
  */
 pub pure fn splitn_char_each(ss: &str, sep: char, count: uint,
-                         ff: fn(v: &str) -> bool) {
+                         ff: &fn(v: &str) -> bool) {
     vec::each(splitn_char(ss, sep, count), |s| ff(*s))
 }
 
 /// Apply a function to each word
-pub pure fn words_each(ss: &str, ff: fn(v: &str) -> bool) {
+pub pure fn words_each(ss: &str, ff: &fn(v: &str) -> bool) {
     vec::each(words(ss), |s| ff(*s))
 }
 
 /**
  * Apply a function to each line (by '\n')
  */
-pub pure fn lines_each(ss: &str, ff: fn(v: &str) -> bool) {
+pub pure fn lines_each(ss: &str, ff: &fn(v: &str) -> bool) {
     vec::each(lines(ss), |s| ff(*s))
 }
 
@@ -1195,7 +1198,7 @@ pub pure fn rfind_char_between(s: &str, c: char, start: uint, end: uint)
  * An `option` containing the byte index of the first matching character
  * or `none` if there is no match
  */
-pub pure fn find(s: &str, f: fn(char) -> bool) -> Option<uint> {
+pub pure fn find(s: &str, f: &fn(char) -> bool) -> Option<uint> {
     find_between(s, 0u, len(s), f)
 }
 
@@ -1219,7 +1222,7 @@ pub pure fn find(s: &str, f: fn(char) -> bool) -> Option<uint> {
  * `start` must be less than or equal to `len(s)`. `start` must be the
  * index of a character boundary, as defined by `is_char_boundary`.
  */
-pub pure fn find_from(s: &str, start: uint, f: fn(char)
+pub pure fn find_from(s: &str, start: uint, f: &fn(char)
     -> bool) -> Option<uint> {
     find_between(s, start, len(s), f)
 }
@@ -1246,8 +1249,11 @@ pub pure fn find_from(s: &str, start: uint, f: fn(char)
  * or equal to `len(s)`. `start` must be the index of a character
  * boundary, as defined by `is_char_boundary`.
  */
-pub pure fn find_between(s: &str, start: uint, end: uint, f: fn(char) -> bool)
-    -> Option<uint> {
+pub pure fn find_between(s: &str,
+                         start: uint,
+                         end: uint,
+                         f: &fn(char) -> bool)
+                      -> Option<uint> {
     fail_unless!(start <= end);
     fail_unless!(end <= len(s));
     fail_unless!(is_char_boundary(s, start));
@@ -1274,7 +1280,7 @@ pub pure fn find_between(s: &str, start: uint, end: uint, f: fn(char) -> bool)
  * An option containing the byte index of the last matching character
  * or `none` if there is no match
  */
-pub pure fn rfind(s: &str, f: fn(char) -> bool) -> Option<uint> {
+pub pure fn rfind(s: &str, f: &fn(char) -> bool) -> Option<uint> {
     rfind_between(s, len(s), 0u, f)
 }
 
@@ -1298,7 +1304,7 @@ pub pure fn rfind(s: &str, f: fn(char) -> bool) -> Option<uint> {
  * `start` must be less than or equal to `len(s)', `start` must be the
  * index of a character boundary, as defined by `is_char_boundary`
  */
-pub pure fn rfind_from(s: &str, start: uint, f: fn(char) -> bool)
+pub pure fn rfind_from(s: &str, start: uint, f: &fn(char) -> bool)
     -> Option<uint> {
     rfind_between(s, start, 0u, f)
 }
@@ -1326,7 +1332,7 @@ pub pure fn rfind_from(s: &str, start: uint, f: fn(char) -> bool)
  * boundary, as defined by `is_char_boundary`
  */
 pub pure fn rfind_between(s: &str, start: uint, end: uint,
-                          f: fn(char) -> bool)
+                          f: &fn(char) -> bool)
     -> Option<uint> {
     fail_unless!(start >= end);
     fail_unless!(start <= len(s));
@@ -1589,7 +1595,7 @@ pub pure fn to_utf16(s: &str) -> ~[u16] {
     u
 }
 
-pub pure fn utf16_chars(v: &[u16], f: fn(char)) {
+pub pure fn utf16_chars(v: &[u16], f: &fn(char)) {
     let len = vec::len(v);
     let mut i = 0u;
     while (i < len && v[i] != 0u16) {
@@ -1815,7 +1821,7 @@ pure fn char_range_at_reverse(ss: &str, start: uint) -> CharRange {
  * that is if `it` returned `false` at any point.
  */
 pub pure fn all_between(s: &str, start: uint, end: uint,
-                    it: fn(char) -> bool) -> bool {
+                    it: &fn(char) -> bool) -> bool {
     fail_unless!(is_char_boundary(s, start));
     let mut i = start;
     while i < end {
@@ -1848,7 +1854,7 @@ pub pure fn all_between(s: &str, start: uint, end: uint,
  * `true` if `it` returns `true` for any character
  */
 pub pure fn any_between(s: &str, start: uint, end: uint,
-                    it: fn(char) -> bool) -> bool {
+                    it: &fn(char) -> bool) -> bool {
     !all_between(s, start, end, |c| !it(c))
 }
 
@@ -1886,7 +1892,7 @@ pub const nan_buf: [u8*3] = ['N' as u8, 'a' as u8, 'N' as u8];
  * let i = str::as_bytes("Hello World") { |bytes| vec::len(bytes) };
  * ~~~
  */
-pub pure fn as_bytes<T>(s: &const ~str, f: fn(&~[u8]) -> T) -> T {
+pub pure fn as_bytes<T>(s: &const ~str, f: &fn(&~[u8]) -> T) -> T {
     unsafe {
         let v: *~[u8] = cast::transmute(copy s);
         f(&*v)
@@ -1921,7 +1927,7 @@ pub pure fn as_bytes_slice(s: &a/str) -> &a/[u8] {
  * let s = str::as_c_str("PATH", { |path| libc::getenv(path) });
  * ~~~
  */
-pub pure fn as_c_str<T>(s: &str, f: fn(*libc::c_char) -> T) -> T {
+pub pure fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
     do as_buf(s) |buf, len| {
         // NB: len includes the trailing null.
         fail_unless!(len > 0);
@@ -1943,7 +1949,7 @@ pub pure fn as_c_str<T>(s: &str, f: fn(*libc::c_char) -> T) -> T {
  * to full strings, or suffixes of them.
  */
 #[inline(always)]
-pub pure fn as_buf<T>(s: &str, f: fn(*u8, uint) -> T) -> T {
+pub pure fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
     unsafe {
         let v : *(*u8,uint) = ::cast::reinterpret_cast(&ptr::addr_of(&s));
         let (buf,len) = *v;
@@ -2088,7 +2094,7 @@ pub mod raw {
 
     /// Form a slice from a *u8 buffer of the given length without copying.
     pub unsafe fn buf_as_slice<T>(buf: *u8, len: uint,
-                              f: fn(v: &str) -> T) -> T {
+                              f: &fn(v: &str) -> T) -> T {
         let v = (buf, len + 1);
         fail_unless!(is_utf8(::cast::reinterpret_cast(&v)));
         f(::cast::transmute(v))
@@ -2238,21 +2244,21 @@ pub mod traits {
 pub mod traits {}
 
 pub trait StrSlice {
-    pure fn all(&self, it: fn(char) -> bool) -> bool;
-    pure fn any(&self, it: fn(char) -> bool) -> bool;
+    pure fn all(&self, it: &fn(char) -> bool) -> bool;
+    pure fn any(&self, it: &fn(char) -> bool) -> bool;
     pure fn contains(&self, needle: &a/str) -> bool;
     pure fn contains_char(&self, needle: char) -> bool;
-    pure fn each(&self, it: fn(u8) -> bool);
-    pure fn eachi(&self, it: fn(uint, u8) -> bool);
-    pure fn each_char(&self, it: fn(char) -> bool);
-    pure fn each_chari(&self, it: fn(uint, char) -> bool);
+    pure fn each(&self, it: &fn(u8) -> bool);
+    pure fn eachi(&self, it: &fn(uint, u8) -> bool);
+    pure fn each_char(&self, it: &fn(char) -> bool);
+    pure fn each_chari(&self, it: &fn(uint, char) -> bool);
     pure fn ends_with(&self, needle: &str) -> bool;
     pure fn is_empty(&self) -> bool;
     pure fn is_whitespace(&self) -> bool;
     pure fn is_alphanumeric(&self) -> bool;
     pure fn len(&self) -> uint;
     pure fn slice(&self, begin: uint, end: uint) -> ~str;
-    pure fn split(&self, sepfn: fn(char) -> bool) -> ~[~str];
+    pure fn split(&self, sepfn: &fn(char) -> bool) -> ~[~str];
     pure fn split_char(&self, sep: char) -> ~[~str];
     pure fn split_str(&self, sep: &a/str) -> ~[~str];
     pure fn starts_with(&self, needle: &a/str) -> bool;
@@ -2276,13 +2282,13 @@ impl StrSlice for &self/str {
      * contains no characters
      */
     #[inline]
-    pure fn all(&self, it: fn(char) -> bool) -> bool { all(*self, it) }
+    pure fn all(&self, it: &fn(char) -> bool) -> bool { all(*self, it) }
     /**
      * Return true if a predicate matches any character (and false if it
      * matches none or there are no characters)
      */
     #[inline]
-    pure fn any(&self, it: fn(char) -> bool) -> bool { any(*self, it) }
+    pure fn any(&self, it: &fn(char) -> bool) -> bool { any(*self, it) }
     /// Returns true if one string contains another
     #[inline]
     pure fn contains(&self, needle: &a/str) -> bool {
@@ -2295,16 +2301,16 @@ impl StrSlice for &self/str {
     }
     /// Iterate over the bytes in a string
     #[inline]
-    pure fn each(&self, it: fn(u8) -> bool) { each(*self, it) }
+    pure fn each(&self, it: &fn(u8) -> bool) { each(*self, it) }
     /// Iterate over the bytes in a string, with indices
     #[inline]
-    pure fn eachi(&self, it: fn(uint, u8) -> bool) { eachi(*self, it) }
+    pure fn eachi(&self, it: &fn(uint, u8) -> bool) { eachi(*self, it) }
     /// Iterate over the chars in a string
     #[inline]
-    pure fn each_char(&self, it: fn(char) -> bool) { each_char(*self, it) }
+    pure fn each_char(&self, it: &fn(char) -> bool) { each_char(*self, it) }
     /// Iterate over the chars in a string, with indices
     #[inline]
-    pure fn each_chari(&self, it: fn(uint, char) -> bool) {
+    pure fn each_chari(&self, it: &fn(uint, char) -> bool) {
         each_chari(*self, it)
     }
     /// Returns true if one string ends with another
@@ -2345,7 +2351,7 @@ impl StrSlice for &self/str {
     }
     /// Splits a string into substrings using a character function
     #[inline]
-    pure fn split(&self, sepfn: fn(char) -> bool) -> ~[~str] {
+    pure fn split(&self, sepfn: &fn(char) -> bool) -> ~[~str] {
         split(*self, sepfn)
     }
     /**

@@ -140,7 +140,7 @@ condition! {
 
 fn take_nonempty_prefix(rdr: io::Reader,
                         ch: char,
-                        pred: fn(char) -> bool) -> (~str, char) {
+                        pred: &fn(char) -> bool) -> (~str, char) {
     let mut buf = ~"";
     let mut ch = ch;
     while pred(ch) {

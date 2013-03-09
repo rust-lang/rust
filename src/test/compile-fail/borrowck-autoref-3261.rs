@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum X = Either<(uint,uint),extern fn()>;
+struct X(Either<(uint,uint),extern fn()>);
+
 pub impl &'self X {
-    fn with(blk: fn(x: &Either<(uint,uint),extern fn()>)) {
+    fn with(blk: &fn(x: &Either<(uint,uint),extern fn()>)) {
         blk(&**self)
     }
 }

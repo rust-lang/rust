@@ -24,10 +24,10 @@ impl to_str for () {
 }
 
 trait map<T> {
-    fn map<U:Copy>(f: fn(&T) -> U) -> ~[U];
+    fn map<U:Copy>(f: &fn(&T) -> U) -> ~[U];
 }
 impl<T> map<T> for ~[T] {
-    fn map<U:Copy>(f: fn(&T) -> U) -> ~[U] {
+    fn map<U:Copy>(f: &fn(&T) -> U) -> ~[U] {
         let mut r = ~[];
         for self.each |x| { r += ~[f(x)]; }
         r

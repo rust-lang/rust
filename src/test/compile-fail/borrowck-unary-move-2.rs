@@ -24,9 +24,9 @@ fn noncopyable() -> noncopyable {
     }
 }
 
-enum wrapper = noncopyable;
+struct wrapper(noncopyable);
 
 fn main() {
     let x1 = wrapper(noncopyable());
-    let _x2 = *x1; //~ ERROR moving out of enum content
+    let _x2 = *x1; //~ ERROR moving out of anonymous field
 }

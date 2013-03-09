@@ -29,7 +29,7 @@ use util::ppaux::mt_to_str;
 
 use std::list;
 
-pub enum Glb = CombineFields;  // "greatest lower bound" (common subtype)
+pub struct Glb(CombineFields);  // "greatest lower bound" (common subtype)
 
 impl Combine for Glb {
     fn infcx(&self) -> @mut InferCtxt { self.infcx }
@@ -228,7 +228,7 @@ impl Combine for Glb {
                 // NB---I do not believe this algorithm computes
                 // (necessarily) the GLB.  As written it can
                 // spuriously fail.  In particular, if there is a case
-                // like: fn(fn(&a)) and fn(fn(&b)), where a and b are
+                // like: &fn(fn(&a)) and fn(fn(&b)), where a and b are
                 // free, it will return fn(&c) where c = GLB(a,b).  If
                 // however this GLB is not defined, then the result is
                 // an error, even though something like

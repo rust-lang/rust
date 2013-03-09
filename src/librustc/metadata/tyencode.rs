@@ -122,7 +122,7 @@ fn enc_mt(w: io::Writer, cx: @ctxt, mt: ty::mt) {
     enc_ty(w, cx, mt.ty);
 }
 
-fn enc_opt<T>(w: io::Writer, t: Option<T>, enc_f: fn(T)) {
+fn enc_opt<T>(w: io::Writer, t: Option<T>, enc_f: &fn(T)) {
     match &t {
       &None => w.write_char('n'),
       &Some(ref v) => {

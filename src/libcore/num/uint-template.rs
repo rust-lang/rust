@@ -67,7 +67,10 @@ pub pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
  * Iterate over the range [`start`,`start`+`step`..`stop`)
  *
  */
-pub pure fn range_step(start: T, stop: T, step: T_SIGNED, it: fn(T) -> bool) {
+pub pure fn range_step(start: T,
+                       stop: T,
+                       step: T_SIGNED,
+                       it: &fn(T) -> bool) {
     let mut i = start;
     if step == 0 {
         fail!(~"range_step called with step == 0");
@@ -88,13 +91,13 @@ pub pure fn range_step(start: T, stop: T, step: T_SIGNED, it: fn(T) -> bool) {
 
 #[inline(always)]
 /// Iterate over the range [`lo`..`hi`)
-pub pure fn range(lo: T, hi: T, it: fn(T) -> bool) {
+pub pure fn range(lo: T, hi: T, it: &fn(T) -> bool) {
     range_step(lo, hi, 1 as T_SIGNED, it);
 }
 
 #[inline(always)]
 /// Iterate over the range [`hi`..`lo`)
-pub pure fn range_rev(hi: T, lo: T, it: fn(T) -> bool) {
+pub pure fn range_rev(hi: T, lo: T, it: &fn(T) -> bool) {
     range_step(hi, lo, -1 as T_SIGNED, it);
 }
 
@@ -200,7 +203,7 @@ impl FromStrRadix for T {
 
 /// Convert to a string as a byte slice in a given base.
 #[inline(always)]
-pub pure fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
+pub pure fn to_str_bytes<U>(n: T, radix: uint, f: &fn(v: &[u8]) -> U) -> U {
     let (buf, _) = strconv::to_str_bytes_common(&n, radix, false,
                             strconv::SignNeg, strconv::DigAll);
     f(buf)
