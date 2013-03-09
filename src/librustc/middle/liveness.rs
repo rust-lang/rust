@@ -816,7 +816,7 @@ pub impl Liveness {
         }
     }
 
-    fn indices2(ln: LiveNode, succ_ln: LiveNode,
+    fn indices2(&self, ln: LiveNode, succ_ln: LiveNode,
                 op: fn(uint, uint)) {
         let node_base_idx = self.idx(ln, Variable(0u));
         let succ_base_idx = self.idx(succ_ln, Variable(0u));

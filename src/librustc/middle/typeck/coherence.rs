@@ -191,15 +191,14 @@ pub struct CoherenceChecker {
 }
 
 pub impl CoherenceChecker {
-    // IMPLICIT SELF WARNING: fix this!
-    fn check_coherence(crate: @crate) {
+    fn check_coherence(self, crate: @crate) {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
         visit_crate(*crate, (), mk_simple_visitor(@SimpleVisitor {
             visit_item: |item| {
-                debug!("(checking coherence) item '%s'",
-                       *self.crate_context.tcx.sess.str_of(item.ident));
+//                debug!("(checking coherence) item '%s'",
+//                       self.crate_context.tcx.sess.str_of(item.ident));
 
                 match item.node {
                     item_impl(_, opt_trait, _, _) => {
@@ -617,8 +616,7 @@ pub impl CoherenceChecker {
     }
 
     // Privileged scope checking
-    // IMPLICIT SELF WARNING: fix this!
-    fn check_privileged_scopes(crate: @crate) {
+    fn check_privileged_scopes(self, crate: @crate) {
         visit_crate(*crate, (), mk_vt(@Visitor {
             visit_item: |item, _context, visitor| {
                 match /*bad*/copy item.node {

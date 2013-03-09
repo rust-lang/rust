@@ -12,6 +12,8 @@
 // XXX: Make commands run and test emit proper file endings on winds
 // XXX: Make run only accept source that emits an executable
 
+#[deny(deprecated_self)];
+
 #[link(name = "rust",
        vers = "0.6",
        uuid = "4a24da33-5cc8-4037-9352-2cbe9bd9d27c",

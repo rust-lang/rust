@@ -235,7 +235,8 @@ pub impl LookupContext/&self {
         self.search_for_autosliced_method(self_ty, autoderefs)
     }
 
-    fn deref(ty: ty::t, enum_dids: &mut ~[ast::def_id]) -> Option<ty::t> {
+    fn deref(&self, ty: ty::t, enum_dids: &mut ~[ast::def_id])
+            -> Option<ty::t> {
         match ty::get(ty).sty {
             ty_enum(did, _) => {
                 // Watch out for newtype'd enums like "enum t = @T".
@@ -599,7 +600,7 @@ pub impl LookupContext/&self {
         }
     }
 
-    fn push_inherent_impl_candidates_for_type(did: def_id) {
+    fn push_inherent_impl_candidates_for_type(&self, did: def_id) {
         let opt_impl_infos =
             self.fcx.ccx.coherence_info.inherent_methods.find(&did);
         for opt_impl_infos.each |impl_infos| {
