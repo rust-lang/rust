@@ -214,6 +214,18 @@ pub fn enc_vstore(w: io::Writer, cx: @ctxt, v: ty::vstore) {
     }
 }
 
+pub fn enc_trait_store(w: io::Writer, cx: @ctxt, s: ty::TraitStore) {
+    match s {
+        ty::UniqTraitStore => w.write_char('~'),
+        ty::BoxTraitStore => w.write_char('@'),
+        ty::BareTraitStore => w.write_char('.'),
+        ty::RegionTraitStore(re) => {
+            w.write_char('&');
+            enc_region(w, cx, re);
+        }
+    }
+}
+
 fn enc_sty(w: io::Writer, cx: @ctxt, +st: ty::sty) {
     match st {
       ty::ty_nil => w.write_char('n'),
@@ -252,12 +264,12 @@ fn enc_sty(w: io::Writer, cx: @ctxt, +st: ty::sty) {
         enc_substs(w, cx, (*substs));
         w.write_char(']');
       }
-      ty::ty_trait(def, ref substs, vstore) => {
+      ty::ty_trait(def, ref substs, store) => {
         w.write_str(&"x[");
         w.write_str((cx.ds)(def));
         w.write_char('|');
         enc_substs(w, cx, (*substs));
-        enc_vstore(w, cx, vstore);
+        enc_trait_store(w, cx, store);
         w.write_char(']');
       }
       ty::ty_tup(ts) => {

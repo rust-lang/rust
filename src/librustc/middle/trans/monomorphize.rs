@@ -286,14 +286,11 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
         ty::ty_closure(ref fty) => {
             Some(normalized_closure_ty(tcx, fty.sigil))
         }
-        ty::ty_trait(_, _, ref vstore) => {
-            let sigil = match *vstore {
-                ty::vstore_uniq => ast::OwnedSigil,
-                ty::vstore_box => ast::ManagedSigil,
-                ty::vstore_slice(_) => ast::BorrowedSigil,
-                ty::vstore_fixed(*) => {
-                    tcx.sess.bug(fmt!("ty_trait with vstore_fixed"));
-                }
+        ty::ty_trait(_, _, ref store) => {
+            let sigil = match *store {
+                ty::UniqTraitStore => ast::OwnedSigil,
+                ty::BoxTraitStore | ty::BareTraitStore => ast::ManagedSigil,
+                ty::RegionTraitStore(_) => ast::BorrowedSigil,
             };
 
             // Traits have the same runtime representation as closures.
