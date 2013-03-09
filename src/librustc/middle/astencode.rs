@@ -721,12 +721,12 @@ impl vtable_decoder_helpers for reader::Decoder {
 // Encoding and decoding the side tables
 
 trait get_ty_str_ctxt {
-    fn ty_str_ctxt() -> @tyencode::ctxt;
+    fn ty_str_ctxt(@self) -> @tyencode::ctxt;
 }
 
-impl get_ty_str_ctxt for @e::EncodeContext {
+impl get_ty_str_ctxt for e::EncodeContext {
     // IMPLICIT SELF WARNING: fix this!
-    fn ty_str_ctxt() -> @tyencode::ctxt {
+    fn ty_str_ctxt(@self) -> @tyencode::ctxt {
         @tyencode::ctxt {diag: self.tcx.sess.diagnostic(),
                         ds: e::def_to_str,
                         tcx: self.tcx,

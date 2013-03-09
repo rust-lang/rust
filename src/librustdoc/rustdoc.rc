@@ -22,6 +22,7 @@
 #[no_core];
 
 #[allow(non_implicitly_copyable_typarams)];
+#[deny(deprecated_self)];
 
 extern mod core(vers = "0.6");
 extern mod std(vers = "0.6");
