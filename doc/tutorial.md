@@ -1361,7 +1361,7 @@ the enclosing scope.
 
 ~~~~
 # use println = core::io::println;
-fn call_closure_with_ten(b: fn(int)) { b(10); }
+fn call_closure_with_ten(b: &fn(int)) { b(10); }
 
 let captured_var = 20;
 let closure = |arg| println(fmt!("captured_var=%d, arg=%d", captured_var, arg));
@@ -1447,7 +1447,7 @@ should almost always declare the type of that argument as `fn()`. That way,
 callers may pass any kind of closure.
 
 ~~~~
-fn call_twice(f: fn()) { f(); f(); }
+fn call_twice(f: &fn()) { f(); f(); }
 let closure = || { "I'm a closure, and it doesn't matter what type I am"; };
 fn function() { "I'm a normal function"; }
 call_twice(closure);
@@ -1467,7 +1467,7 @@ Consider this function that iterates over a vector of
 integers, passing in a pointer to each integer in the vector:
 
 ~~~~
-fn each(v: &[int], op: fn(v: &int)) {
+fn each(v: &[int], op: &fn(v: &int)) {
    let mut n = 0;
    while n < v.len() {
        op(&v[n]);
@@ -1488,7 +1488,7 @@ argument, we can write it in a way that has a pleasant, block-like
 structure.
 
 ~~~~
-# fn each(v: &[int], op: fn(v: &int)) { }
+# fn each(v: &[int], op: &fn(v: &int)) { }
 # fn do_some_work(i: &int) { }
 each([1, 2, 3], |n| {
     do_some_work(n);
@@ -1499,7 +1499,7 @@ This is such a useful pattern that Rust has a special form of function
 call that can be written more like a built-in control structure:
 
 ~~~~
-# fn each(v: &[int], op: fn(v: &int)) { }
+# fn each(v: &[int], op: &fn(v: &int)) { }
 # fn do_some_work(i: &int) { }
 do each([1, 2, 3]) |n| {
     do_some_work(n);
@@ -1546,7 +1546,7 @@ Consider again our `each` function, this time improved to
 break early when the iteratee returns `false`:
 
 ~~~~
-fn each(v: &[int], op: fn(v: &int) -> bool) {
+fn each(v: &[int], op: &fn(v: &int) -> bool) {
    let mut n = 0;
    while n < v.len() {
        if !op(&v[n]) {
@@ -1770,7 +1770,7 @@ vector consisting of the result of applying `function` to each element
 of `vector`:
 
 ~~~~
-fn map<T, U>(vector: &[T], function: fn(v: &T) -> U) -> ~[U] {
+fn map<T, U>(vector: &[T], function: &fn(v: &T) -> U) -> ~[U] {
     let mut accumulator = ~[];
     for vec::each(vector) |element| {
         accumulator.push(function(element));
@@ -1969,12 +1969,12 @@ types might look like the following:
 ~~~~
 trait Seq<T> {
     fn len(&self) -> uint;
-    fn iter(&self, b: fn(v: &T));
+    fn iter(&self, b: &fn(v: &T));
 }
 
 impl<T> Seq<T> for ~[T] {
     fn len(&self) -> uint { vec::len(*self) }
-    fn iter(&self, b: fn(v: &T)) {
+    fn iter(&self, b: &fn(v: &T)) {
         for vec::each(*self) |elt| { b(elt); }
     }
 }
