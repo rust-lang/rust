@@ -411,34 +411,34 @@ pub fn core_macros() -> ~str {
 
     macro_rules! error (
         ($arg:expr) => (
-            log(1u32, fmt!( \"%?\", $arg ))
+            __log(1u32, fmt!( \"%?\", $arg ))
         );
         ($( $arg:expr ),+) => (
-            log(1u32, fmt!( $($arg),+ ))
+            __log(1u32, fmt!( $($arg),+ ))
         )
     )
     macro_rules! warn (
         ($arg:expr) => (
-            log(2u32, fmt!( \"%?\", $arg ))
+            __log(2u32, fmt!( \"%?\", $arg ))
         );
         ($( $arg:expr ),+) => (
-            log(2u32, fmt!( $($arg),+ ))
+            __log(2u32, fmt!( $($arg),+ ))
         )
     )
     macro_rules! info (
         ($arg:expr) => (
-            log(3u32, fmt!( \"%?\", $arg ))
+            __log(3u32, fmt!( \"%?\", $arg ))
         );
         ($( $arg:expr ),+) => (
-            log(3u32, fmt!( $($arg),+ ))
+            __log(3u32, fmt!( $($arg),+ ))
         )
     )
     macro_rules! debug (
         ($arg:expr) => (
-            log(4u32, fmt!( \"%?\", $arg ))
+            __log(4u32, fmt!( \"%?\", $arg ))
         );
         ($( $arg:expr ),+) => (
-            log(4u32, fmt!( $($arg),+ ))
+            __log(4u32, fmt!( $($arg),+ ))
         )
     )
 

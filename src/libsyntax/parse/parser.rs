@@ -1184,7 +1184,7 @@ pub impl Parser {
                 }
             }
             hi = self.span.hi;
-        } else if self.eat_keyword(&~"log") {
+        } else if self.eat_keyword(&~"__log") {
             self.expect(&token::LPAREN);
             let lvl = self.parse_expr();
             self.expect(&token::COMMA);
