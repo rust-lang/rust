@@ -1443,7 +1443,7 @@ pub mod llvm {
         /** Prepares inline assembly. */
         pub unsafe fn LLVMInlineAsm(Ty: TypeRef, AsmString: *c_char,
                                     Constraints: *c_char, SideEffects: Bool,
-                                    AlignStack: Bool, Dialect: AsmDialect)
+                                    AlignStack: Bool, Dialect: c_uint)
                                  -> ValueRef;
     }
 }

@@ -546,8 +546,8 @@ extern "C" LLVMValueRef LLVMInlineAsm(LLVMTypeRef Ty,
                                       char *Constraints,
                                       LLVMBool HasSideEffects,
                                       LLVMBool IsAlignStack,
-                                      InlineAsm::AsmDialect Dialect) {
+                                      unsigned Dialect) {
     return wrap(InlineAsm::get(unwrap<FunctionType>(Ty), AsmString,
                                Constraints, HasSideEffects,
-                               IsAlignStack, Dialect));
+                               IsAlignStack, (InlineAsm::AsmDialect) Dialect));
 }

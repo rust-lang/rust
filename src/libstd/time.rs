@@ -30,10 +30,10 @@ pub mod rustrt {
 
         pub unsafe fn rust_tzset();
         // FIXME: The i64 values can be passed by-val when #2064 is fixed.
-        pub unsafe fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: Tm);
-        pub unsafe fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: Tm);
-        pub unsafe fn rust_timegm(&&tm: Tm, sec: &mut i64);
-        pub unsafe fn rust_mktime(&&tm: Tm, sec: &mut i64);
+        pub unsafe fn rust_gmtime(sec: i64, nsec: i32, result: &mut Tm);
+        pub unsafe fn rust_localtime(sec: i64, nsec: i32, result: &mut Tm);
+        pub unsafe fn rust_timegm(tm: &Tm, sec: &mut i64);
+        pub unsafe fn rust_mktime(tm: &Tm, sec: &mut i64);
     }
 }
 
@@ -172,7 +172,7 @@ pub fn at_utc(clock: Timespec) -> Tm {
     unsafe {
         let mut Timespec { sec, nsec } = clock;
         let mut tm = empty_tm();
-        rustrt::rust_gmtime(sec, nsec, tm);
+        rustrt::rust_gmtime(sec, nsec, &mut tm);
         tm
     }
 }
@@ -187,7 +187,7 @@ pub fn at(clock: Timespec) -> Tm {
     unsafe {
         let mut Timespec { sec, nsec } = clock;
         let mut tm = empty_tm();
-        rustrt::rust_localtime(sec, nsec, tm);
+        rustrt::rust_localtime(sec, nsec, &mut tm);
         tm
     }
 }
@@ -217,9 +217,9 @@ pub impl Tm {
         unsafe {
             let mut sec = 0i64;
             if self.tm_gmtoff == 0_i32 {
-                rustrt::rust_timegm(*self, &mut sec);
+                rustrt::rust_timegm(self, &mut sec);
             } else {
-                rustrt::rust_mktime(*self, &mut sec);
+                rustrt::rust_mktime(self, &mut sec);
             }
             Timespec::new(sec, self.tm_nsec)
         }

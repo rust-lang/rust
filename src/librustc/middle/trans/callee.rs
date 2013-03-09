@@ -757,7 +757,7 @@ pub fn trans_arg_expr(bcx: block,
 
         if formal_ty.ty != arg_datum.ty {
             // this could happen due to e.g. subtyping
-            let llformal_ty = type_of::type_of_explicit_arg(ccx, formal_ty);
+            let llformal_ty = type_of::type_of_explicit_arg(ccx, &formal_ty);
             debug!("casting actual type (%s) to match formal (%s)",
                    bcx.val_str(val), bcx.llty_str(llformal_ty));
             val = PointerCast(bcx, val, llformal_ty);
