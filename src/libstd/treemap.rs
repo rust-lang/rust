@@ -509,8 +509,8 @@ pub fn set_next<T>(iter: &mut TreeSetIterator/&r<T>) -> Option<&r/T> {
 }
 
 /// Advance the iterator through the set
-fn set_advance<T>(iter: &mut TreeSetIterator/&r<T>,
-                       f: &fn(&r/T) -> bool) {
+pub fn set_advance<T>(iter: &mut TreeSetIterator/&r<T>,
+                      f: &fn(&r/T) -> bool) {
     do map_advance(&mut iter.iter) |(k, _)| { f(k) }
 }
 
