@@ -594,10 +594,7 @@ fn mk_ser_method(
     let ty_s = @ast::Ty {
         id: cx.next_id(),
         node: ast::ty_rptr(
-            @ast::region {
-                id: cx.next_id(),
-                node: ast::re_anon,
-            },
+            None,
             ast::mt {
                 ty: cx.ty_path(span, ~[cx.ident_of(~"__S")], ~[]),
                 mutbl: ast::m_imm
@@ -658,10 +655,7 @@ fn mk_deser_method(
     let ty_d = @ast::Ty {
         id: cx.next_id(),
         node: ast::ty_rptr(
-            @ast::region {
-                id: cx.next_id(),
-                node: ast::re_anon,
-            },
+            None,
             ast::mt {
                 ty: cx.ty_path(span, ~[cx.ident_of(~"__D")], ~[]),
                 mutbl: ast::m_imm
