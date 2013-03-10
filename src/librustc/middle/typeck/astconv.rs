@@ -65,7 +65,8 @@ use core::result;
 use core::vec;
 use syntax::ast;
 use syntax::codemap::span;
-use syntax::print::pprust::{region_to_str, path_to_str};
+use syntax::print::pprust::{lifetime_to_str, path_to_str};
+use syntax::parse::token::special_idents;
 use util::common::indenter;
 
 pub trait AstConv {
@@ -79,7 +80,7 @@ pub trait AstConv {
 pub fn get_region_reporting_err(
     tcx: ty::ctxt,
     span: span,
-    a_r: Option<@ast::region>,
+    a_r: Option<@ast::Lifetime>,
     res: Result<ty::Region, RegionError>) -> ty::Region
 {
     match res {
@@ -87,13 +88,8 @@ pub fn get_region_reporting_err(
         result::Err(ref e) => {
             let descr = match a_r {
                 None => ~"anonymous lifetime",
-                Some(a) if a.node == ast::re_anon => {
-                    ~"anonymous lifetime"
-                }
-                Some(a) => {
-                    fmt!("lifetime %s",
-                         region_to_str(a, tcx.sess.intr()))
-                }
+                Some(a) => fmt!("lifetime %s",
+                                lifetime_to_str(a, tcx.sess.intr()))
             };
             tcx.sess.span_err(
                 span,
@@ -105,19 +101,28 @@ pub fn get_region_reporting_err(
 }
 
 pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Copy + Durable>(
-        self: &AC,
-        rscope: &RS,
-        span: span,
-        a_r: @ast::region)
-     -> ty::Region {
-    let res = match a_r.node {
-        ast::re_static => Ok(ty::re_static),
-        ast::re_anon => rscope.anon_region(span),
-        ast::re_self => rscope.self_region(span),
-        ast::re_named(id) => rscope.named_region(span, id)
+    self: &AC,
+    rscope: &RS,
+    default_span: span,
+    opt_lifetime: Option<@ast::Lifetime>) -> ty::Region
+{
+    let (span, res) = match opt_lifetime {
+        None => {
+            (default_span, rscope.anon_region(default_span))
+        }
+        Some(ref lifetime) if lifetime.ident == special_idents::static => {
+            (lifetime.span, Ok(ty::re_static))
+        }
+        Some(ref lifetime) if lifetime.ident == special_idents::self_ => {
+            (lifetime.span, rscope.self_region(lifetime.span))
+        }
+        Some(ref lifetime) => {
+            (lifetime.span, rscope.named_region(lifetime.span,
+                                                lifetime.ident))
+        }
     };
 
-    get_region_reporting_err(self.tcx(), span, Some(a_r), res)
+    get_region_reporting_err(self.tcx(), span, opt_lifetime, res)
 }
 
 pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
@@ -156,8 +161,8 @@ pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
         let r = get_region_reporting_err(self.tcx(), path.span, None, res);
         Some(r)
       }
-      (Some(_), Some(r)) => {
-        Some(ast_region_to_region(self, rscope, path.span, r))
+      (Some(_), Some(_)) => {
+        Some(ast_region_to_region(self, rscope, path.span, path.rp))
       }
     };
 
@@ -504,7 +509,7 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
         sigil: ast::Sigil,
         purity: ast::purity,
         onceness: ast::Onceness,
-        opt_region: Option<@ast::region>,
+        opt_lifetime: Option<@ast::Lifetime>,
         decl: &ast::fn_decl,
         expected_tys: Option<ty::FnSig>,
         span: span)
@@ -514,9 +519,9 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
 
     // resolve the function bound region in the original region
     // scope `rscope`, not the scope of the function parameters
-    let bound_region = match opt_region {
-        Some(region) => {
-            ast_region_to_region(self, rscope, span, region)
+    let bound_region = match opt_lifetime {
+        Some(_) => {
+            ast_region_to_region(self, rscope, span, opt_lifetime)
         }
         None => {
             match sigil {
@@ -526,9 +531,8 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
                     ty::re_static
                 }
                 ast::BorrowedSigil => {
-                    // &fn() defaults to an anonymous region:
-                    let r_result = rscope.anon_region(span);
-                    get_region_reporting_err(self.tcx(), span, None, r_result)
+                    // &fn() defaults as normal for an omitted lifetime:
+                    ast_region_to_region(self, rscope, span, opt_lifetime)
                 }
             }
         }

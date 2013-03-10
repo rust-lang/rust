@@ -2950,19 +2950,19 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
     // determine the region bound, using the value given by the user
     // (if any) and otherwise using a fresh region variable
     let self_r = match pth.rp {
-      Some(r) => {
+      Some(_) => { // user supplied a lifetime parameter...
         match tpt.region_param {
-          None => {
+          None => { // ...but the type is not lifetime parameterized!
             fcx.ccx.tcx.sess.span_err
                 (span, ~"this item is not region-parameterized");
             None
           }
-          Some(_) => {
-            Some(ast_region_to_region(fcx, fcx, span, r))
+          Some(_) => { // ...and the type is lifetime parameterized, ok.
+            Some(ast_region_to_region(fcx, fcx, span, pth.rp))
           }
         }
       }
-      None => {
+      None => { // no lifetime parameter supplied, insert default
         fcx.region_var_if_parameterized(
             tpt.region_param, span, region_lb)
       }
