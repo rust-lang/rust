@@ -27,7 +27,7 @@ use ast::{expr_field, expr_fn_block, expr_if, expr_index};
 use ast::{expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac};
 use ast::{expr_method_call, expr_paren, expr_path, expr_repeat};
 use ast::{expr_ret, expr_swap, expr_struct, expr_tup, expr_unary};
-use ast::{expr_vec, expr_vstore, expr_vstore_mut_box};
+use ast::{expr_vec, expr_vstore, expr_vstore_mut_box, expr_inline_asm};
 use ast::{expr_vstore_fixed, expr_vstore_slice, expr_vstore_box};
 use ast::{expr_vstore_mut_slice, expr_while, extern_fn, field, fn_decl};
 use ast::{expr_vstore_uniq, TyClosure, TyBareFn, Onceness, Once, Many};
@@ -1184,6 +1184,14 @@ pub impl Parser {
                 }
             }
             hi = self.span.hi;
+        } else if self.eat_keyword(&~"__asm__") {
+            self.expect(&token::LPAREN);
+            let asm = self.parse_str();
+            self.expect(&token::COMMA);
+            let cons = self.parse_str();
+            ex = expr_inline_asm(asm, cons);
+            hi = self.span.hi;
+            self.expect(&token::RPAREN);
         } else if self.eat_keyword(&~"log") {
             self.expect(&token::LPAREN);
             let lvl = self.parse_expr();

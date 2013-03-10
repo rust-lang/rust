@@ -691,6 +691,14 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_assign_op(op, dst, src) => {
             return trans_assign_op(bcx, expr, op, dst, src);
         }
+        ast::expr_inline_asm(asm, cons) => {
+            do str::as_c_str(*asm) |a| {
+                do str::as_c_str(*cons) |c| {
+                    InlineAsmCall(bcx, a, c);
+                }
+            }
+            return bcx;
+        }
         _ => {
             bcx.tcx().sess.span_bug(
                 expr.span,

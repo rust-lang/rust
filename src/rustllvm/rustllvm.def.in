@@ -583,3 +583,4 @@ LLVMX86MMXTypeInContext
 LLVMConstNamedStruct
 LLVMStructCreateNamed
 LLVMStructSetBody
+LLVMInlineAsm

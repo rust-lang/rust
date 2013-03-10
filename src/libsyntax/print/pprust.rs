@@ -1398,6 +1398,14 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
           }
         }
       }
+      ast::expr_inline_asm(a, c) => {
+        word(s.s, ~"__asm__");
+        popen(s);
+        print_string(s, *a);
+        word_space(s, ~", ");
+        print_string(s, *c);
+        pclose(s);
+      }
       ast::expr_mac(ref m) => print_mac(s, (*m)),
       ast::expr_paren(e) => {
           popen(s);

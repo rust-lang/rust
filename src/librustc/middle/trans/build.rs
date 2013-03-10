@@ -18,7 +18,7 @@ use syntax::codemap::span;
 
 use core::prelude::*;
 use core::cast;
-use core::libc::{c_uint, c_int, c_ulonglong};
+use core::libc::{c_uint, c_int, c_ulonglong, c_char};
 use core::libc;
 use core::option::Some;
 use core::ptr;
@@ -869,6 +869,17 @@ pub fn add_comment(bcx: block, text: &str) {
             });
             Call(bcx, asm, ~[]);
         }
+    }
+}
+
+pub fn InlineAsmCall(cx: block, asm: *c_char, cons: *c_char) -> ValueRef {
+    unsafe {
+        count_insn(cx, "inlineasm");
+
+        let llfty = T_fn(~[], T_void());
+        let v = llvm::LLVMInlineAsm(llfty, asm, cons, False, False);
+
+        Call(cx, v, ~[])
     }
 }
 
