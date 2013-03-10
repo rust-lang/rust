@@ -53,7 +53,7 @@ pub pure fn is_empty<T>(v: &[const T]) -> bool {
 
 /// Returns true if two vectors have the same length
 pub pure fn same_length<T, U>(xs: &[const T], ys: &[const U]) -> bool {
-    len(xs) == len(ys)
+    xs.len() == ys.len()
 }
 
 /**
@@ -136,7 +136,7 @@ pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
             }
         }
         raw::set_len(&mut v, n_elts);
-        return v;
+        v
     }
 }
 
@@ -158,7 +158,7 @@ pub pure fn from_slice<T:Copy>(t: &[T]) -> ~[T] {
 pub pure fn with_capacity<T>(capacity: uint) -> ~[T] {
     let mut vec = ~[];
     unsafe { reserve(&mut vec, capacity); }
-    return vec;
+    vec
 }
 
 /**
@@ -257,8 +257,8 @@ pub pure fn last_opt<T>(v: &r/[T]) -> Option<&r/T> {
 /// Return a slice that points into another slice.
 #[inline(always)]
 pub pure fn slice<T>(v: &r/[T], start: uint, end: uint) -> &r/[T] {
-    fail_unless!((start <= end));
-    fail_unless!((end <= len(v)));
+    fail_unless!(start <= end);
+    fail_unless!(end <= len(v));
     do as_imm_buf(v) |p, _len| {
         unsafe {
             ::cast::reinterpret_cast(
@@ -274,8 +274,8 @@ pub pure fn mut_slice<T>(v: &r/mut [T],
                          start: uint,
                          end: uint)
                       -> &r/mut [T] {
-    fail_unless!((start <= end));
-    fail_unless!((end <= len(v)));
+    fail_unless!(start <= end);
+    fail_unless!(end <= v.len());
     do as_mut_buf(v) |p, _len| {
         unsafe {
             ::cast::reinterpret_cast(
@@ -291,8 +291,8 @@ pub pure fn const_slice<T>(v: &r/[const T],
                            start: uint,
                            end: uint)
                         -> &r/[const T] {
-    fail_unless!((start <= end));
-    fail_unless!((end <= len(v)));
+    fail_unless!(start <= end);
+    fail_unless!(end <= len(v));
     do as_const_buf(v) |p, _len| {
         unsafe {
             ::cast::reinterpret_cast(
@@ -371,7 +371,7 @@ pub fn rsplit<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
     }
     result.push(slice(v, 0u, end).to_vec());
     reverse(result);
-    return result;
+    result
 }
 
 /**
@@ -496,7 +496,7 @@ pub fn shift<T>(v: &mut ~[T]) -> T {
         let vp = ptr::mut_offset(vp, next_ln - 1);
         *vp <-> work_elt;
 
-        return work_elt;
+        work_elt
     }
 }
 
@@ -584,7 +584,7 @@ pub fn swap_remove<T>(v: &mut ~[T], index: uint) -> T {
     if index < ln - 1 {
         v[index] <-> v[ln - 1];
     }
-    vec::pop(v)
+    v.pop()
 }
 
 /// Append an element to a vector
@@ -650,7 +650,7 @@ pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
 /// Shorten a vector, dropping excess elements.
 pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
     do as_mut_buf(*v) |p, oldlen| {
-        fail_unless!((newlen <= oldlen));
+        fail_unless!(newlen <= oldlen);
         unsafe {
             // This loop is optimized out for non-drop types.
             for uint::range(newlen, oldlen) |i| {
@@ -973,7 +973,7 @@ pub pure fn foldl<T, U>(z: T, v: &[U], p: fn(t: T, u: &U) -> T) -> T {
         accum = p(accum, &v[i]);
         i += 1;
     }
-    return accum;
+    accum
 }
 
 /**
@@ -1000,7 +1000,7 @@ pub pure fn foldr<T, U: Copy>(v: &[T], z: U, p: fn(t: &T, u: U) -> U) -> U {
     for rev_each(v) |elt| {
         accum = p(elt, accum);
     }
-    return accum;
+    accum
 }
 
 /**
@@ -1010,7 +1010,7 @@ pub pure fn foldr<T, U: Copy>(v: &[T], z: U, p: fn(t: &T, u: U) -> U) -> U {
  */
 pub pure fn any<T>(v: &[T], f: fn(t: &T) -> bool) -> bool {
     for each(v) |elem| { if f(elem) { return true; } }
-    return false;
+    false
 }
 
 /**
@@ -1027,7 +1027,7 @@ pub pure fn any2<T, U>(v0: &[T], v1: &[U],
         if f(&v0[i], &v1[i]) { return true; };
         i += 1u;
     }
-    return false;
+    false
 }
 
 /**
@@ -1037,7 +1037,7 @@ pub pure fn any2<T, U>(v0: &[T], v1: &[U],
  */
 pub pure fn all<T>(v: &[T], f: fn(t: &T) -> bool) -> bool {
     for each(v) |elem| { if !f(elem) { return false; } }
-    return true;
+    true
 }
 
 /**
@@ -1047,7 +1047,7 @@ pub pure fn all<T>(v: &[T], f: fn(t: &T) -> bool) -> bool {
  */
 pub pure fn alli<T>(v: &[T], f: fn(uint, t: &T) -> bool) -> bool {
     for eachi(v) |i, elem| { if !f(i, elem) { return false; } }
-    return true;
+    true
 }
 
 /**
@@ -1061,20 +1061,20 @@ pub pure fn all2<T, U>(v0: &[T], v1: &[U],
     if v0_len != len(v1) { return false; }
     let mut i = 0u;
     while i < v0_len { if !f(&v0[i], &v1[i]) { return false; }; i += 1u; }
-    return true;
+    true
 }
 
 /// Return true if a vector contains an element with the given value
 pub pure fn contains<T:Eq>(v: &[T], x: &T) -> bool {
     for each(v) |elt| { if *x == *elt { return true; } }
-    return false;
+    false
 }
 
 /// Returns the number of elements that are equal to a given value
 pub pure fn count<T:Eq>(v: &[T], x: &T) -> uint {
     let mut cnt = 0u;
     for each(v) |elt| { if *x == *elt { cnt += 1u; } }
-    return cnt;
+    cnt
 }
 
 /**
@@ -1152,7 +1152,7 @@ pub pure fn position_between<T>(v: &[T], start: uint, end: uint,
     fail_unless!(end <= len(v));
     let mut i = start;
     while i < end { if f(&v[i]) { return Some::<uint>(i); } i += 1u; }
-    return None;
+    None
 }
 
 /// Find the last index containing a matching value
@@ -1188,7 +1188,7 @@ pub pure fn rposition_between<T>(v: &[T], start: uint, end: uint,
         if f(&v[i - 1u]) { return Some::<uint>(i - 1u); }
         i -= 1u;
     }
-    return None;
+    None
 }
 
 // FIXME: if issue #586 gets implemented, could have a postcondition
@@ -1207,7 +1207,7 @@ pure fn unzip_slice<T:Copy,U:Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
             us.push(u);
         }
     }
-    return (ts, us);
+    (ts, us)
 }
 
 /**
@@ -1478,7 +1478,7 @@ pub pure fn windowed<TT:Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
     let mut ww = ~[];
     fail_unless!(1u <= nn);
     for vec::eachi (xx) |ii, _x| {
-        let len = vec::len(xx);
+        let len = xx.len();
         if ii+nn <= len {
             unsafe {
                 ww.push(slice(xx, ii, ii+nn).to_vec());
@@ -1551,7 +1551,7 @@ pure fn eq<T:Eq>(a: &[T], b: &[T]) -> bool {
         i += 1;
     }
 
-    return true;
+    true
 }
 
 #[cfg(notest)]
@@ -1631,7 +1631,7 @@ pure fn lt<T:Ord>(a: &[T], b: &[T]) -> bool {
         i += 1;
     }
 
-    return a_len < b_len;
+    a_len < b_len
 }
 
 pure fn le<T:Ord>(a: &[T], b: &[T]) -> bool { !lt(b, a) }
@@ -2114,21 +2114,21 @@ pub mod raw {
     #[inline(always)]
     pub unsafe fn to_ptr<T>(v: &[T]) -> *T {
         let repr: **SliceRepr = ::cast::transmute(&v);
-        return ::cast::reinterpret_cast(&addr_of(&((**repr).data)));
+        ::cast::reinterpret_cast(&addr_of(&((**repr).data)))
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
     pub unsafe fn to_const_ptr<T>(v: &[const T]) -> *const T {
         let repr: **SliceRepr = ::cast::transmute(&v);
-        return ::cast::reinterpret_cast(&addr_of(&((**repr).data)));
+        ::cast::reinterpret_cast(&addr_of(&((**repr).data)))
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
     pub unsafe fn to_mut_ptr<T>(v: &mut [T]) -> *mut T {
         let repr: **SliceRepr = ::cast::transmute(&v);
-        return ::cast::reinterpret_cast(&addr_of(&((**repr).data)));
+        ::cast::reinterpret_cast(&addr_of(&((**repr).data)))
     }
 
     /**
@@ -2165,7 +2165,7 @@ pub mod raw {
             let mut box2 = None;
             box2 <-> box;
             intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)),
-                                 option::unwrap(box2));
+                                      box2.unwrap());
         }
     }
 
@@ -2210,14 +2210,13 @@ pub mod raw {
 pub mod bytes {
     use libc;
     use uint;
-    use vec::len;
     use vec::raw;
     use vec;
 
     /// Bytewise string comparison
     pub pure fn memcmp(a: &~[u8], b: &~[u8]) -> int {
-        let a_len = len(*a);
-        let b_len = len(*b);
+        let a_len = a.len();
+        let b_len = b.len();
         let n = uint::min(a_len, b_len) as libc::size_t;
         let r = unsafe {
             libc::memcmp(raw::to_ptr(*a) as *libc::c_void,
@@ -2268,46 +2267,28 @@ pub mod bytes {
 
 // ___________________________________________________________________________
 // ITERATION TRAIT METHODS
-//
-// This cannot be used with iter-trait.rs because of the region pointer
-// required in the slice.
 
 impl<A> iter::BaseIter<A> for &self/[A] {
-    pub pure fn each(&self, blk: fn(v: &A) -> bool) {
-        // FIXME(#2263)---should be able to call each(self, blk)
-        for each(*self) |e| {
-            if (!blk(e)) {
-                return;
-            }
-        }
-    }
-    pure fn size_hint(&self) -> Option<uint> { Some(len(*self)) }
+    #[inline(always)]
+    pure fn each(&self, blk: fn(v: &'self A) -> bool) { each(*self, blk) }
+    #[inline(always)]
+    pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 // FIXME(#4148): This should be redundant
 impl<A> iter::BaseIter<A> for ~[A] {
-    pub pure fn each(&self, blk: fn(v: &A) -> bool) {
-        // FIXME(#2263)---should be able to call each(self, blk)
-        for each(*self) |e| {
-            if (!blk(e)) {
-                return;
-            }
-        }
-    }
-    pure fn size_hint(&self) -> Option<uint> { Some(len(*self)) }
+    #[inline(always)]
+    pure fn each(&self, blk: fn(v: &'self A) -> bool) { each(*self, blk) }
+    #[inline(always)]
+    pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 // FIXME(#4148): This should be redundant
 impl<A> iter::BaseIter<A> for @[A] {
-    pub pure fn each(&self, blk: fn(v: &A) -> bool) {
-        // FIXME(#2263)---should be able to call each(self, blk)
-        for each(*self) |e| {
-            if (!blk(e)) {
-                return;
-            }
-        }
-    }
-    pure fn size_hint(&self) -> Option<uint> { Some(len(*self)) }
+    #[inline(always)]
+    pure fn each(&self, blk: fn(v: &'self A) -> bool) { each(*self, blk) }
+    #[inline(always)]
+    pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 impl<A> iter::ExtendedIter<A> for &self/[A] {
@@ -2495,25 +2476,25 @@ mod tests {
     use vec::*;
     use cmp::*;
 
-    fn square(n: uint) -> uint { return n * n; }
+    fn square(n: uint) -> uint { n * n }
 
-    fn square_ref(n: &uint) -> uint { return square(*n); }
+    fn square_ref(n: &uint) -> uint { square(*n) }
 
-    pure fn is_three(n: &uint) -> bool { return *n == 3u; }
+    pure fn is_three(n: &uint) -> bool { *n == 3u }
 
-    pure fn is_odd(n: &uint) -> bool { return *n % 2u == 1u; }
+    pure fn is_odd(n: &uint) -> bool { *n % 2u == 1u }
 
-    pure fn is_equal(x: &uint, y:&uint) -> bool { return *x == *y; }
+    pure fn is_equal(x: &uint, y:&uint) -> bool { *x == *y }
 
     fn square_if_odd_r(n: &uint) -> Option<uint> {
-        return if *n % 2u == 1u { Some(*n * *n) } else { None };
+        if *n % 2u == 1u { Some(*n * *n) } else { None }
     }
 
     fn square_if_odd_v(n: uint) -> Option<uint> {
-        return if n % 2u == 1u { Some(n * n) } else { None };
+        if n % 2u == 1u { Some(n * n) } else { None }
     }
 
-    fn add(x: uint, y: &uint) -> uint { return x + *y; }
+    fn add(x: uint, y: &uint) -> uint { x + *y }
 
     #[test]
     fn test_unsafe_ptrs() {
@@ -2522,21 +2503,21 @@ mod tests {
             let a = ~[1, 2, 3];
             let mut ptr = raw::to_ptr(a);
             let b = from_buf(ptr, 3u);
-            fail_unless!((len(b) == 3u));
-            fail_unless!((b[0] == 1));
-            fail_unless!((b[1] == 2));
-            fail_unless!((b[2] == 3));
+            fail_unless!(b.len() == 3u);
+            fail_unless!(b[0] == 1);
+            fail_unless!(b[1] == 2);
+            fail_unless!(b[2] == 3);
 
             // Test on-heap copy-from-buf.
             let c = ~[1, 2, 3, 4, 5];
             ptr = raw::to_ptr(c);
             let d = from_buf(ptr, 5u);
-            fail_unless!((len(d) == 5u));
-            fail_unless!((d[0] == 1));
-            fail_unless!((d[1] == 2));
-            fail_unless!((d[2] == 3));
-            fail_unless!((d[3] == 4));
-            fail_unless!((d[4] == 5));
+            fail_unless!(d.len() == 5u);
+            fail_unless!(d[0] == 1);
+            fail_unless!(d[1] == 2);
+            fail_unless!(d[2] == 3);
+            fail_unless!(d[3] == 4);
+            fail_unless!(d[4] == 5);
         }
     }
 
@@ -2544,43 +2525,43 @@ mod tests {
     fn test_from_fn() {
         // Test on-stack from_fn.
         let mut v = from_fn(3u, square);
-        fail_unless!((len(v) == 3u));
-        fail_unless!((v[0] == 0u));
-        fail_unless!((v[1] == 1u));
-        fail_unless!((v[2] == 4u));
+        fail_unless!(v.len() == 3u);
+        fail_unless!(v[0] == 0u);
+        fail_unless!(v[1] == 1u);
+        fail_unless!(v[2] == 4u);
 
         // Test on-heap from_fn.
         v = from_fn(5u, square);
-        fail_unless!((len(v) == 5u));
-        fail_unless!((v[0] == 0u));
-        fail_unless!((v[1] == 1u));
-        fail_unless!((v[2] == 4u));
-        fail_unless!((v[3] == 9u));
-        fail_unless!((v[4] == 16u));
+        fail_unless!(v.len() == 5u);
+        fail_unless!(v[0] == 0u);
+        fail_unless!(v[1] == 1u);
+        fail_unless!(v[2] == 4u);
+        fail_unless!(v[3] == 9u);
+        fail_unless!(v[4] == 16u);
     }
 
     #[test]
     fn test_from_elem() {
         // Test on-stack from_elem.
         let mut v = from_elem(2u, 10u);
-        fail_unless!((len(v) == 2u));
-        fail_unless!((v[0] == 10u));
-        fail_unless!((v[1] == 10u));
+        fail_unless!(v.len() == 2u);
+        fail_unless!(v[0] == 10u);
+        fail_unless!(v[1] == 10u);
 
         // Test on-heap from_elem.
         v = from_elem(6u, 20u);
-        fail_unless!((v[0] == 20u));
-        fail_unless!((v[1] == 20u));
-        fail_unless!((v[2] == 20u));
-        fail_unless!((v[3] == 20u));
-        fail_unless!((v[4] == 20u));
-        fail_unless!((v[5] == 20u));
+        fail_unless!(v[0] == 20u);
+        fail_unless!(v[1] == 20u);
+        fail_unless!(v[2] == 20u);
+        fail_unless!(v[3] == 20u);
+        fail_unless!(v[4] == 20u);
+        fail_unless!(v[5] == 20u);
     }
 
     #[test]
     fn test_is_empty() {
-        fail_unless!((is_empty::<int>(~[])));
-        fail_unless!((!is_empty(~[0])));
+        fail_unless!(is_empty::<int>(~[]));
+        fail_unless!(!is_empty(~[0]));
     }
 
     #[test]
@@ -2589,10 +2570,10 @@ mod tests {
         let v0 : &[Z] = &[];
         let v1 : &[Z] = &[[]];
         let v2 : &[Z] = &[[], []];
-        fail_unless!((sys::size_of::<Z>() == 0));
-        fail_unless!((len(v0) == 0));
-        fail_unless!((len(v1) == 1));
-        fail_unless!((len(v2) == 2));
+        fail_unless!(sys::size_of::<Z>() == 0);
+        fail_unless!(v0.len() == 0);
+        fail_unless!(v1.len() == 1);
+        fail_unless!(v2.len() == 2);
     }
 
     #[test]
@@ -2714,36 +2695,36 @@ mod tests {
     fn test_slice() {
         // Test fixed length vector.
         let vec_fixed = [1, 2, 3, 4];
-        let v_a = slice(vec_fixed, 1u, len(vec_fixed)).to_vec();
-        fail_unless!((len(v_a) == 3u));
-        fail_unless!((v_a[0] == 2));
-        fail_unless!((v_a[1] == 3));
-        fail_unless!((v_a[2] == 4));
+        let v_a = slice(vec_fixed, 1u, vec_fixed.len()).to_vec();
+        fail_unless!(v_a.len() == 3u);
+        fail_unless!(v_a[0] == 2);
+        fail_unless!(v_a[1] == 3);
+        fail_unless!(v_a[2] == 4);
 
         // Test on stack.
         let vec_stack = &[1, 2, 3];
         let v_b = slice(vec_stack, 1u, 3u).to_vec();
-        fail_unless!((len(v_b) == 2u));
-        fail_unless!((v_b[0] == 2));
-        fail_unless!((v_b[1] == 3));
+        fail_unless!(v_b.len() == 2u);
+        fail_unless!(v_b[0] == 2);
+        fail_unless!(v_b[1] == 3);
 
         // Test on managed heap.
         let vec_managed = @[1, 2, 3, 4, 5];
         let v_c = slice(vec_managed, 0u, 3u).to_vec();
-        fail_unless!((len(v_c) == 3u));
-        fail_unless!((v_c[0] == 1));
-        fail_unless!((v_c[1] == 2));
-        fail_unless!((v_c[2] == 3));
+        fail_unless!(v_c.len() == 3u);
+        fail_unless!(v_c[0] == 1);
+        fail_unless!(v_c[1] == 2);
+        fail_unless!(v_c[2] == 3);
 
         // Test on exchange heap.
         let vec_unique = ~[1, 2, 3, 4, 5, 6];
         let v_d = slice(vec_unique, 1u, 6u).to_vec();
-        fail_unless!((len(v_d) == 5u));
-        fail_unless!((v_d[0] == 2));
-        fail_unless!((v_d[1] == 3));
-        fail_unless!((v_d[2] == 4));
-        fail_unless!((v_d[3] == 5));
-        fail_unless!((v_d[4] == 6));
+        fail_unless!(v_d.len() == 5u);
+        fail_unless!(v_d[0] == 2);
+        fail_unless!(v_d[1] == 3);
+        fail_unless!(v_d[2] == 4);
+        fail_unless!(v_d[3] == 5);
+        fail_unless!(v_d[4] == 6);
     }
 
     #[test]
@@ -2751,27 +2732,27 @@ mod tests {
         // Test on-heap pop.
         let mut v = ~[1, 2, 3, 4, 5];
         let e = v.pop();
-        fail_unless!((len(v) == 4u));
-        fail_unless!((v[0] == 1));
-        fail_unless!((v[1] == 2));
-        fail_unless!((v[2] == 3));
-        fail_unless!((v[3] == 4));
-        fail_unless!((e == 5));
+        fail_unless!(v.len() == 4u);
+        fail_unless!(v[0] == 1);
+        fail_unless!(v[1] == 2);
+        fail_unless!(v[2] == 3);
+        fail_unless!(v[3] == 4);
+        fail_unless!(e == 5);
     }
 
     #[test]
     fn test_swap_remove() {
         let mut v = ~[1, 2, 3, 4, 5];
         let mut e = v.swap_remove(0);
-        fail_unless!((len(v) == 4));
+        fail_unless!(v.len() == 4);
         fail_unless!(e == 1);
-        fail_unless!((v[0] == 5));
+        fail_unless!(v[0] == 5);
         e = v.swap_remove(3);
-        fail_unless!((len(v) == 3));
+        fail_unless!(v.len() == 3);
         fail_unless!(e == 4);
-        fail_unless!((v[0] == 5));
-        fail_unless!((v[1] == 2));
-        fail_unless!((v[2] == 3));
+        fail_unless!(v[0] == 5);
+        fail_unless!(v[1] == 2);
+        fail_unless!(v[2] == 3);
     }
 
     #[test]
@@ -2780,11 +2761,11 @@ mod tests {
         let mut v = ~[::unstable::exclusive(()), ::unstable::exclusive(()),
                       ::unstable::exclusive(())];
         let mut _e = v.swap_remove(0);
-        fail_unless!((len(v) == 2));
+        fail_unless!(v.len() == 2);
         _e = v.swap_remove(1);
-        fail_unless!((len(v) == 1));
+        fail_unless!(v.len() == 1);
         _e = v.swap_remove(0);
-        fail_unless!((len(v) == 0));
+        fail_unless!(v.len() == 0);
     }
 
     #[test]
@@ -2792,14 +2773,14 @@ mod tests {
         // Test on-stack push().
         let mut v = ~[];
         v.push(1);
-        fail_unless!((len(v) == 1u));
-        fail_unless!((v[0] == 1));
+        fail_unless!(v.len() == 1u);
+        fail_unless!(v[0] == 1);
 
         // Test on-heap push().
         v.push(2);
-        fail_unless!((len(v) == 2u));
-        fail_unless!((v[0] == 1));
-        fail_unless!((v[1] == 2));
+        fail_unless!(v.len() == 2u);
+        fail_unless!(v[0] == 1);
+        fail_unless!(v[1] == 2);
     }
 
     #[test]
@@ -2807,48 +2788,48 @@ mod tests {
         // Test on-stack grow().
         let mut v = ~[];
         v.grow(2u, &1);
-        fail_unless!((len(v) == 2u));
-        fail_unless!((v[0] == 1));
-        fail_unless!((v[1] == 1));
+        fail_unless!(v.len() == 2u);
+        fail_unless!(v[0] == 1);
+        fail_unless!(v[1] == 1);
 
         // Test on-heap grow().
         v.grow(3u, &2);
-        fail_unless!((len(v) == 5u));
-        fail_unless!((v[0] == 1));
-        fail_unless!((v[1] == 1));
-        fail_unless!((v[2] == 2));
-        fail_unless!((v[3] == 2));
-        fail_unless!((v[4] == 2));
+        fail_unless!(v.len() == 5u);
+        fail_unless!(v[0] == 1);
+        fail_unless!(v[1] == 1);
+        fail_unless!(v[2] == 2);
+        fail_unless!(v[3] == 2);
+        fail_unless!(v[4] == 2);
     }
 
     #[test]
     fn test_grow_fn() {
         let mut v = ~[];
         v.grow_fn(3u, square);
-        fail_unless!((len(v) == 3u));
-        fail_unless!((v[0] == 0u));
-        fail_unless!((v[1] == 1u));
-        fail_unless!((v[2] == 4u));
+        fail_unless!(v.len() == 3u);
+        fail_unless!(v[0] == 0u);
+        fail_unless!(v[1] == 1u);
+        fail_unless!(v[2] == 4u);
     }
 
     #[test]
     fn test_grow_set() {
         let mut v = ~[1, 2, 3];
         v.grow_set(4u, &4, 5);
-        fail_unless!((len(v) == 5u));
-        fail_unless!((v[0] == 1));
-        fail_unless!((v[1] == 2));
-        fail_unless!((v[2] == 3));
-        fail_unless!((v[3] == 4));
-        fail_unless!((v[4] == 5));
+        fail_unless!(v.len() == 5u);
+        fail_unless!(v[0] == 1);
+        fail_unless!(v[1] == 2);
+        fail_unless!(v[2] == 3);
+        fail_unless!(v[3] == 4);
+        fail_unless!(v[4] == 5);
     }
 
     #[test]
     fn test_truncate() {
         let mut v = ~[@6,@5,@4];
         v.truncate(1);
-        fail_unless!((v.len() == 1));
-        fail_unless!((*(v[0]) == 6));
+        fail_unless!(v.len() == 1);
+        fail_unless!(*(v[0]) == 6);
         // If the unsafe block didn't drop things properly, we blow up here.
     }
 
@@ -2856,7 +2837,7 @@ mod tests {
     fn test_clear() {
         let mut v = ~[@6,@5,@4];
         v.clear();
-        fail_unless!((v.len() == 0));
+        fail_unless!(v.len() == 0);
         // If the unsafe block didn't drop things properly, we blow up here.
     }
 
@@ -2865,7 +2846,7 @@ mod tests {
         fn case(a: ~[uint], b: ~[uint]) {
             let mut v = a;
             v.dedup();
-            fail_unless!((v == b));
+            fail_unless!(v == b);
         }
         case(~[], ~[]);
         case(~[1], ~[1]);
@@ -2910,31 +2891,31 @@ mod tests {
         // Test on-stack map.
         let mut v = ~[1u, 2u, 3u];
         let mut w = map(v, square_ref);
-        fail_unless!((len(w) == 3u));
-        fail_unless!((w[0] == 1u));
-        fail_unless!((w[1] == 4u));
-        fail_unless!((w[2] == 9u));
+        fail_unless!(w.len() == 3u);
+        fail_unless!(w[0] == 1u);
+        fail_unless!(w[1] == 4u);
+        fail_unless!(w[2] == 9u);
 
         // Test on-heap map.
         v = ~[1u, 2u, 3u, 4u, 5u];
         w = map(v, square_ref);
-        fail_unless!((len(w) == 5u));
-        fail_unless!((w[0] == 1u));
-        fail_unless!((w[1] == 4u));
-        fail_unless!((w[2] == 9u));
-        fail_unless!((w[3] == 16u));
-        fail_unless!((w[4] == 25u));
+        fail_unless!(w.len() == 5u);
+        fail_unless!(w[0] == 1u);
+        fail_unless!(w[1] == 4u);
+        fail_unless!(w[2] == 9u);
+        fail_unless!(w[3] == 16u);
+        fail_unless!(w[4] == 25u);
     }
 
     #[test]
     fn test_map2() {
-        fn times(x: &int, y: &int) -> int { return *x * *y; }
+        fn times(x: &int, y: &int) -> int { *x * *y }
         let f = times;
         let v0 = ~[1, 2, 3, 4, 5];
         let v1 = ~[5, 4, 3, 2, 1];
         let u = map2::<int, int, int>(v0, v1, f);
         let mut i = 0;
-        while i < 5 { fail_unless!((v0[i] * v1[i] == u[i])); i += 1; }
+        while i < 5 { fail_unless!(v0[i] * v1[i] == u[i]); i += 1; }
     }
 
     #[test]
@@ -2942,26 +2923,26 @@ mod tests {
         // Test on-stack filter-map.
         let mut v = ~[1u, 2u, 3u];
         let mut w = filter_mapped(v, square_if_odd_r);
-        fail_unless!((len(w) == 2u));
-        fail_unless!((w[0] == 1u));
-        fail_unless!((w[1] == 9u));
+        fail_unless!(w.len() == 2u);
+        fail_unless!(w[0] == 1u);
+        fail_unless!(w[1] == 9u);
 
         // Test on-heap filter-map.
         v = ~[1u, 2u, 3u, 4u, 5u];
         w = filter_mapped(v, square_if_odd_r);
-        fail_unless!((len(w) == 3u));
-        fail_unless!((w[0] == 1u));
-        fail_unless!((w[1] == 9u));
-        fail_unless!((w[2] == 25u));
+        fail_unless!(w.len() == 3u);
+        fail_unless!(w[0] == 1u);
+        fail_unless!(w[1] == 9u);
+        fail_unless!(w[2] == 25u);
 
         fn halve(i: &int) -> Option<int> {
             if *i % 2 == 0 {
-                return option::Some::<int>(*i / 2);
+                Some::<int>(*i / 2)
             } else {
-                return option::None::<int>;
+                None::<int>
             }
         }
-        fn halve_for_sure(i: &int) -> int { return *i / 2; }
+        fn halve_for_sure(i: &int) -> int { *i / 2 }
         let all_even: ~[int] = ~[0, 2, 8, 6];
         let all_odd1: ~[int] = ~[1, 7, 3];
         let all_odd2: ~[int] = ~[];
@@ -2969,9 +2950,9 @@ mod tests {
         let mix_dest: ~[int] = ~[1, 3, 0, 0];
         fail_unless!(filter_mapped(all_even, halve) ==
                      map(all_even, halve_for_sure));
-        fail_unless!((filter_mapped(all_odd1, halve) == ~[]));
-        fail_unless!((filter_mapped(all_odd2, halve) == ~[]));
-        fail_unless!((filter_mapped(mix, halve) == mix_dest));
+        fail_unless!(filter_mapped(all_odd1, halve) == ~[]);
+        fail_unless!(filter_mapped(all_odd2, halve) == ~[]);
+        fail_unless!(filter_mapped(mix, halve) == mix_dest);
     }
 
     #[test]
@@ -2979,26 +2960,26 @@ mod tests {
         // Test on-stack filter-map.
         let mut v = ~[1u, 2u, 3u];
         let mut w = filter_map(v, square_if_odd_v);
-        fail_unless!((len(w) == 2u));
-        fail_unless!((w[0] == 1u));
-        fail_unless!((w[1] == 9u));
+        fail_unless!(w.len() == 2u);
+        fail_unless!(w[0] == 1u);
+        fail_unless!(w[1] == 9u);
 
         // Test on-heap filter-map.
         v = ~[1u, 2u, 3u, 4u, 5u];
         w = filter_map(v, square_if_odd_v);
-        fail_unless!((len(w) == 3u));
-        fail_unless!((w[0] == 1u));
-        fail_unless!((w[1] == 9u));
-        fail_unless!((w[2] == 25u));
+        fail_unless!(w.len() == 3u);
+        fail_unless!(w[0] == 1u);
+        fail_unless!(w[1] == 9u);
+        fail_unless!(w[2] == 25u);
 
         fn halve(i: int) -> Option<int> {
             if i % 2 == 0 {
-                return option::Some::<int>(i / 2);
+                Some::<int>(i / 2)
             } else {
-                return option::None::<int>;
+                None::<int>
             }
         }
-        fn halve_for_sure(i: &int) -> int { return *i / 2; }
+        fn halve_for_sure(i: &int) -> int { *i / 2 }
         let all_even: ~[int] = ~[0, 2, 8, 6];
         let all_even0: ~[int] = copy all_even;
         let all_odd1: ~[int] = ~[1, 7, 3];
@@ -3007,9 +2988,9 @@ mod tests {
         let mix_dest: ~[int] = ~[1, 3, 0, 0];
         fail_unless!(filter_map(all_even, halve) ==
                      map(all_even0, halve_for_sure));
-        fail_unless!((filter_map(all_odd1, halve) == ~[]));
-        fail_unless!((filter_map(all_odd2, halve) == ~[]));
-        fail_unless!((filter_map(mix, halve) == mix_dest));
+        fail_unless!(filter_map(all_odd1, halve) == ~[]);
+        fail_unless!(filter_map(all_odd2, halve) == ~[]);
+        fail_unless!(filter_map(mix, halve) == mix_dest);
     }
 
     #[test]
@@ -3030,12 +3011,12 @@ mod tests {
         // Test on-stack fold.
         let mut v = ~[1u, 2u, 3u];
         let mut sum = foldl(0u, v, add);
-        fail_unless!((sum == 6u));
+        fail_unless!(sum == 6u);
 
         // Test on-heap fold.
         v = ~[1u, 2u, 3u, 4u, 5u];
         sum = foldl(0u, v, add);
-        fail_unless!((sum == 15u));
+        fail_unless!(sum == 15u);
     }
 
     #[test]
@@ -3137,29 +3118,29 @@ mod tests {
 
     #[test]
     fn test_any_and_all() {
-        fail_unless!((any(~[1u, 2u, 3u], is_three)));
-        fail_unless!((!any(~[0u, 1u, 2u], is_three)));
-        fail_unless!((any(~[1u, 2u, 3u, 4u, 5u], is_three)));
-        fail_unless!((!any(~[1u, 2u, 4u, 5u, 6u], is_three)));
+        fail_unless!(any(~[1u, 2u, 3u], is_three));
+        fail_unless!(!any(~[0u, 1u, 2u], is_three));
+        fail_unless!(any(~[1u, 2u, 3u, 4u, 5u], is_three));
+        fail_unless!(!any(~[1u, 2u, 4u, 5u, 6u], is_three));
 
-        fail_unless!((all(~[3u, 3u, 3u], is_three)));
-        fail_unless!((!all(~[3u, 3u, 2u], is_three)));
-        fail_unless!((all(~[3u, 3u, 3u, 3u, 3u], is_three)));
-        fail_unless!((!all(~[3u, 3u, 0u, 1u, 2u], is_three)));
+        fail_unless!(all(~[3u, 3u, 3u], is_three));
+        fail_unless!(!all(~[3u, 3u, 2u], is_three));
+        fail_unless!(all(~[3u, 3u, 3u, 3u, 3u], is_three));
+        fail_unless!(!all(~[3u, 3u, 0u, 1u, 2u], is_three));
     }
 
     #[test]
     fn test_any2_and_all2() {
 
-        fail_unless!((any2(~[2u, 4u, 6u], ~[2u, 4u, 6u], is_equal)));
-        fail_unless!((any2(~[1u, 2u, 3u], ~[4u, 5u, 3u], is_equal)));
-        fail_unless!((!any2(~[1u, 2u, 3u], ~[4u, 5u, 6u], is_equal)));
-        fail_unless!((any2(~[2u, 4u, 6u], ~[2u, 4u], is_equal)));
+        fail_unless!(any2(~[2u, 4u, 6u], ~[2u, 4u, 6u], is_equal));
+        fail_unless!(any2(~[1u, 2u, 3u], ~[4u, 5u, 3u], is_equal));
+        fail_unless!(!any2(~[1u, 2u, 3u], ~[4u, 5u, 6u], is_equal));
+        fail_unless!(any2(~[2u, 4u, 6u], ~[2u, 4u], is_equal));
 
-        fail_unless!((all2(~[2u, 4u, 6u], ~[2u, 4u, 6u], is_equal)));
-        fail_unless!((!all2(~[1u, 2u, 3u], ~[4u, 5u, 3u], is_equal)));
-        fail_unless!((!all2(~[1u, 2u, 3u], ~[4u, 5u, 6u], is_equal)));
-        fail_unless!((!all2(~[2u, 4u, 6u], ~[2u, 4u], is_equal)));
+        fail_unless!(all2(~[2u, 4u, 6u], ~[2u, 4u, 6u], is_equal));
+        fail_unless!(!all2(~[1u, 2u, 3u], ~[4u, 5u, 3u], is_equal));
+        fail_unless!(!all2(~[1u, 2u, 3u], ~[4u, 5u, 6u], is_equal));
+        fail_unless!(!all2(~[2u, 4u, 6u], ~[2u, 4u], is_equal));
     }
 
     #[test]
@@ -3169,15 +3150,15 @@ mod tests {
 
         let z1 = zip(v1, v2);
 
-        fail_unless!(((1, 4) == z1[0]));
-        fail_unless!(((2, 5) == z1[1]));
-        fail_unless!(((3, 6) == z1[2]));
+        fail_unless!((1, 4) == z1[0]);
+        fail_unless!((2, 5) == z1[1]);
+        fail_unless!((3, 6) == z1[2]);
 
         let (left, right) = unzip(z1);
 
-        fail_unless!(((1, 4) == (left[0], right[0])));
-        fail_unless!(((2, 5) == (left[1], right[1])));
-        fail_unless!(((3, 6) == (left[2], right[2])));
+        fail_unless!((1, 4) == (left[0], right[0]));
+        fail_unless!((2, 5) == (left[1], right[1]));
+        fail_unless!((3, 6) == (left[2], right[2]));
     }
 
     #[test]
@@ -3193,8 +3174,8 @@ mod tests {
 
     #[test]
     fn test_position() {
-        fn less_than_three(i: &int) -> bool { return *i < 3; }
-        fn is_eighteen(i: &int) -> bool { return *i == 18; }
+        fn less_than_three(i: &int) -> bool { *i < 3 }
+        fn is_eighteen(i: &int) -> bool { *i == 18 }
 
         fail_unless!(position(~[], less_than_three).is_none());
 
@@ -3354,20 +3335,20 @@ mod tests {
     #[test]
     fn reverse_and_reversed() {
         let mut v: ~[int] = ~[10, 20];
-        fail_unless!((v[0] == 10));
-        fail_unless!((v[1] == 20));
+        fail_unless!(v[0] == 10);
+        fail_unless!(v[1] == 20);
         reverse(v);
-        fail_unless!((v[0] == 20));
-        fail_unless!((v[1] == 10));
+        fail_unless!(v[0] == 20);
+        fail_unless!(v[1] == 10);
         let v2 = reversed::<int>(~[10, 20]);
-        fail_unless!((v2[0] == 20));
-        fail_unless!((v2[1] == 10));
+        fail_unless!(v2[0] == 20);
+        fail_unless!(v2[1] == 10);
         v[0] = 30;
-        fail_unless!((v2[0] == 20));
+        fail_unless!(v2[0] == 20);
         // Make sure they work with 0-length vectors too.
 
         let v4 = reversed::<int>(~[]);
-        fail_unless!((v4 == ~[]));
+        fail_unless!(v4 == ~[]);
         let mut v3: ~[int] = ~[];
         reverse::<int>(v3);
     }
@@ -3375,8 +3356,8 @@ mod tests {
     #[test]
     fn reversed_mut() {
         let mut v2 = reversed::<int>(~[10, 20]);
-        fail_unless!((v2[0] == 20));
-        fail_unless!((v2[1] == 10));
+        fail_unless!(v2[0] == 20);
+        fail_unless!(v2[1] == 10);
     }
 
     #[test]
@@ -3548,9 +3529,9 @@ mod tests {
     fn test_view() {
         let v = ~[1, 2, 3, 4, 5];
         let v = v.view(1u, 3u);
-        fail_unless!((len(v) == 2u));
-        fail_unless!((v[0] == 2));
-        fail_unless!((v[1] == 3));
+        fail_unless!(v.len() == 2u);
+        fail_unless!(v[0] == 2);
+        fail_unless!(v[1] == 3);
     }
 
 
