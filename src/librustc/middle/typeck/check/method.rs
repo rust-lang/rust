@@ -743,10 +743,12 @@ pub impl LookupContext/&self {
                 sty_box(_) | sty_uniq(_) => {
                     self_substs
                 }
-                sty_region(_) if self_substs.self_r.is_some() => {
+                sty_region(*) if self_substs.self_r.is_some() => {
+                    // FIXME(#4846) ignoring expl lifetime here
                     self_substs
                 }
-                sty_region(_) => {
+                sty_region(*) => {
+                    // FIXME(#4846) ignoring expl lifetime here
                     substs {
                         self_r:
                              Some(self.infcx().next_region_var(
@@ -1326,7 +1328,8 @@ pub fn transform_self_type_for_method(tcx: ty::ctxt,
       sty_by_ref | sty_value => {
         impl_ty
       }
-      sty_region(mutability) => {
+      sty_region(_, mutability) => {
+        // FIXME(#4846) ignoring expl lifetime here
         mk_rptr(tcx,
                 self_region.expect(~"self region missing for &self param"),
                 ty::mt { ty: impl_ty, mutbl: mutability })

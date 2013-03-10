@@ -105,6 +105,7 @@ pub impl Reflector {
                                                       v,
                                                       ty::BoxTraitStore,
                                                       ast::sty_region(
+                                                        None,
                                                         ast::m_imm)),
             ArgVals(args), SaveIn(scratch.val), DontAutorefArg);
         let result = scratch.to_value_llval(bcx);

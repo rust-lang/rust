@@ -634,8 +634,10 @@ fn mk_ser_method(
         ident: cx.ident_of(~"encode"),
         attrs: ~[],
         generics: ast_util::empty_generics(),
-        self_ty: codemap::spanned { node: ast::sty_region(ast::m_imm),
-                                span: span },
+        self_ty: codemap::spanned {
+            node: ast::sty_region(None, ast::m_imm),
+            span: span
+        },
         purity: ast::impure_fn,
         decl: ser_decl,
         body: ser_body,
