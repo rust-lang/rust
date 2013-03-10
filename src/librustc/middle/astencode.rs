@@ -105,7 +105,7 @@ pub fn encode_inlined_item(ecx: @e::EncodeContext,
 pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
                            tcx: ty::ctxt,
                            maps: Maps,
-                           path: ast_map::path,
+                           +path: ast_map::path,
                            par_doc: ebml::Doc)
                         -> Option<ast::inlined_item> {
     let dcx = @DecodeContext {

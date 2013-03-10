@@ -1710,7 +1710,6 @@ pub fn mode_to_str(m: ast::mode) -> ~str {
     match m {
       ast::expl(ast::by_ref) => ~"&&",
       ast::expl(ast::by_copy) => ~"+",
-      ast::expl(ast::by_val) => ~"++",
       ast::infer(_) => ~""
     }
 }

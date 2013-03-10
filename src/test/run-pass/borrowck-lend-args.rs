@@ -18,15 +18,7 @@ fn borrow_from_arg_mut_ref(v: &mut ~int) {
     borrow(*v);
 }
 
-fn borrow_from_arg_move(-v: ~int) {
-    borrow(v);
-}
-
 fn borrow_from_arg_copy(+v: ~int) {
-    borrow(v);
-}
-
-fn borrow_from_arg_val(++v: ~int) {
     borrow(v);
 }
 
