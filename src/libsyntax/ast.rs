@@ -600,6 +600,8 @@ pub enum expr_ {
     expr_again(Option<ident>),
     expr_ret(Option<@expr>),
     expr_log(log_level, @expr, @expr),
+    
+    expr_inline_asm(@~str /* asm */, @~str /* constraints */),
 
     expr_mac(mac),
 

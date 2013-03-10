@@ -11,7 +11,7 @@ elseif exists("b:current_syntax")
 endif
 
 syn match     rustAssert      "\<assert\(\w\)*"
-syn keyword   rustKeyword     as break
+syn keyword   rustKeyword     __asm__ as break
 syn keyword   rustKeyword     copy do drop else extern
 syn keyword   rustKeyword     for if impl let log
 syn keyword   rustKeyword     loop match mod once priv pub pure

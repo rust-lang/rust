@@ -1433,6 +1433,11 @@ pub mod llvm {
 
         /** Enables LLVM debug output. */
         pub unsafe fn LLVMSetDebug(Enabled: c_int);
+
+        /** Prepares inline assembly. */
+        pub unsafe fn LLVMInlineAsm(Ty: TypeRef, AsmString: *c_char,
+                                    Constraints: *c_char, SideEffects: Bool,
+                                    AlignStack: Bool) -> ValueRef;
     }
 }
 

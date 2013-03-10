@@ -447,7 +447,7 @@ pub impl mem_categorization_ctxt {
           ast::expr_while(*) | ast::expr_block(*) | ast::expr_loop(*) |
           ast::expr_match(*) | ast::expr_lit(*) | ast::expr_break(*) |
           ast::expr_mac(*) | ast::expr_again(*) | ast::expr_struct(*) |
-          ast::expr_repeat(*) => {
+          ast::expr_repeat(*) | ast::expr_inline_asm(*) => {
             return self.cat_rvalue(expr, expr_ty);
           }
         }
