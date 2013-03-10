@@ -149,9 +149,9 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
             match *current {
               Some(ref r) => {
                 match key.cmp(&r.key) {
-                   Less => current = &r.left,
-                   Greater => current = &r.right,
-                   Equal => return Some(&r.value)
+                  Less => current = &r.left,
+                  Greater => current = &r.right,
+                  Equal => return Some(&r.value)
                 }
               }
               None => return None
@@ -532,7 +532,7 @@ pub impl<K: TotalOrd, V> TreeNode<K, V> {
 }
 
 pure fn each<K: TotalOrd, V>(node: &r/Option<~TreeNode<K, V>>,
-                        f: &fn(&(&r/K, &r/V)) -> bool) {
+                             f: &fn(&(&r/K, &r/V)) -> bool) {
     for node.each |x| {
         each(&x.left, f);
         if f(&(&x.key, &x.value)) { each(&x.right, f) }
@@ -540,7 +540,7 @@ pure fn each<K: TotalOrd, V>(node: &r/Option<~TreeNode<K, V>>,
 }
 
 pure fn each_reverse<K: TotalOrd, V>(node: &r/Option<~TreeNode<K, V>>,
-                                f: &fn(&(&r/K, &r/V)) -> bool) {
+                                     f: &fn(&(&r/K, &r/V)) -> bool) {
     for node.each |x| {
         each_reverse(&x.right, f);
         if f(&(&x.key, &x.value)) { each_reverse(&x.left, f) }
@@ -665,20 +665,20 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
                 skew(save);
 
                 match save.right {
-                    Some(ref mut right) => {
-                        skew(right);
-                        match right.right {
-                            Some(ref mut x) => { skew(x) },
-                            None => ()
-                        }
+                  Some(ref mut right) => {
+                    skew(right);
+                    match right.right {
+                      Some(ref mut x) => { skew(x) },
+                      None => ()
                     }
-                    None => ()
+                  }
+                  None => ()
                 }
 
                 split(save);
                 match save.right {
-                    Some(ref mut x) => { split(x) },
-                    None => ()
+                  Some(ref mut x) => { split(x) },
+                  None => ()
                 }
             }
 
