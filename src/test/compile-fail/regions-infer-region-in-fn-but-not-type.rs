@@ -13,7 +13,7 @@
 // contains region pointers
 enum foo = ~fn(x: &int);
 
-fn take_foo(x: foo/&) {} //~ ERROR no region bound is allowed on `foo`
+fn take_foo(x: foo<'static>) {} //~ ERROR no region bound is allowed on `foo`
 
 fn main() {
 }

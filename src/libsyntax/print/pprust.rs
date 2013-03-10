@@ -146,8 +146,8 @@ pub fn expr_to_str(e: @ast::expr, intr: @ident_interner) -> ~str {
     to_str(e, print_expr, intr)
 }
 
-pub fn region_to_str(e: @ast::region, intr: @ident_interner) -> ~str {
-    to_str(e, |s, e| print_region(s, ~"&", e, ~""), intr)
+pub fn lifetime_to_str(e: &ast::Lifetime, intr: @ident_interner) -> ~str {
+    to_str(e, print_lifetime, intr)
 }
 
 pub fn tt_to_str(tt: ast::token_tree, intr: @ident_interner) -> ~str {
@@ -355,23 +355,11 @@ pub fn print_foreign_mod(s: @ps, nmod: ast::foreign_mod,
     for nmod.items.each |item| { print_foreign_item(s, *item); }
 }
 
-pub fn print_region(s: @ps, prefix: ~str, region: @ast::region, sep: ~str) {
-    word(s.s, prefix);
-    match region.node {
-        ast::re_anon => {
-            return;
-        }
-        ast::re_static => {
-            word_space(s, ~"static")
-        }
-        ast::re_self => {
-            word_space(s, ~"self")
-        }
-        ast::re_named(name) => {
-            print_ident(s, name);
-        }
+pub fn print_opt_lifetime(s: @ps, lifetime: Option<@ast::Lifetime>) {
+    for lifetime.each |l| {
+        print_lifetime(s, *l);
+        nbsp(s);
     }
-    word(s.s, sep);
 }
 
 pub fn print_type(s: @ps, &&ty: @ast::Ty) {
@@ -397,8 +385,9 @@ pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
         word(s.s, ~"]");
       }
       ast::ty_ptr(mt) => { word(s.s, ~"*"); print_mt(s, mt); }
-      ast::ty_rptr(region, mt) => {
-          print_region(s, ~"&", region, ~"/");
+      ast::ty_rptr(lifetime, mt) => {
+          word(s.s, ~"&");
+          print_opt_lifetime(s, lifetime);
           print_mt(s, mt);
       }
       ast::ty_tup(elts) => {
@@ -1048,7 +1037,10 @@ pub fn print_vstore(s: @ps, t: ast::vstore) {
         ast::vstore_fixed(None) => word(s.s, ~"_"),
         ast::vstore_uniq => word(s.s, ~"~"),
         ast::vstore_box => word(s.s, ~"@"),
-        ast::vstore_slice(r) => print_region(s, ~"&", r, ~"/")
+        ast::vstore_slice(r) => {
+            word(s.s, ~"&");
+            print_opt_lifetime(s, r);
+        }
     }
 }
 
@@ -1501,17 +1493,18 @@ pub fn print_path(s: @ps, &&path: @ast::path, colons_before_params: bool) {
     if path.rp.is_some() || !path.types.is_empty() {
         if colons_before_params { word(s.s, ~"::"); }
 
-        match path.rp {
-          None => { /* ok */ }
-          Some(r) => {
-            word(s.s, ~"/");
-            print_region(s, ~"&", r, ~"");
-          }
-        }
-
-        if !path.types.is_empty() {
+        if path.rp.is_some() || !path.types.is_empty() {
             word(s.s, ~"<");
+
+            for path.rp.each |r| {
+                print_lifetime(s, *r);
+                if !path.types.is_empty() {
+                    word_space(s, ~",");
+                }
+            }
+
             commasep(s, inconsistent, path.types, print_type);
+
             word(s.s, ~">");
         }
     }
@@ -1749,7 +1742,7 @@ pub fn print_bounds(s: @ps, bounds: @OptVec<ast::TyParamBound>) {
     }
 }
 
-pub fn print_lifetime(s: @ps, lifetime: &ast::Lifetime) {
+pub fn print_lifetime(s: @ps, &&lifetime: &ast::Lifetime) {
     word(s.s, ~"'");
     print_ident(s, lifetime.ident);
 }
@@ -1908,7 +1901,7 @@ pub fn print_arg(s: @ps, input: ast::arg) {
 pub fn print_ty_fn(s: @ps,
                    opt_abi: Option<ast::Abi>,
                    opt_sigil: Option<ast::Sigil>,
-                   opt_region: Option<@ast::region>,
+                   opt_region: Option<@ast::Lifetime>,
                    purity: ast::purity,
                    onceness: ast::Onceness,
                    decl: &ast::fn_decl, id: Option<ast::ident>,
@@ -1921,7 +1914,7 @@ pub fn print_ty_fn(s: @ps,
     print_self_ty_if_static(s, opt_self_ty);
     print_opt_abi(s, opt_abi);
     print_opt_sigil(s, opt_sigil);
-    for opt_region.each |r| { print_region(s, ~"", *r, ~"/"); }
+    print_opt_lifetime(s, opt_region);
     print_purity(s, purity);
     print_onceness(s, onceness);
     word(s.s, ~"fn");

@@ -14,7 +14,7 @@ use ast::{Sigil, BorrowedSigil, ManagedSigil, OwnedSigil, RustAbi};
 use ast::{CallSugar, NoSugar, DoSugar, ForSugar};
 use ast::{TyBareFn, TyClosure};
 use ast::{RegionTyParamBound, TraitTyParamBound};
-use ast::{provided, public, pure_fn, purity, re_static};
+use ast::{provided, public, pure_fn, purity};
 use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
 use ast::{bind_by_copy, bitand, bitor, bitxor, blk};
 use ast::{blk_check_mode, box, by_copy, by_ref, by_val};
@@ -40,9 +40,9 @@ use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const};
 use ast::{m_imm, m_mutbl, mac_, mac_invoc_tt, matcher, match_nonterminal};
 use ast::{match_seq, match_tok, method, mode, module_ns, mt, mul, mutability};
 use ast::{named_field, neg, node_id, noreturn, not, pat, pat_box, pat_enum};
-use ast::{pat_ident, pat_lit, pat_range, pat_region, pat_struct, pat_tup};
-use ast::{pat_uniq, pat_wild, path, private};
-use ast::{re_self, re_anon, re_named, region, rem, required};
+use ast::{pat_ident, pat_lit, pat_range, pat_region, pat_struct};
+use ast::{pat_tup, pat_uniq, pat_wild, path, private};
+use ast::{rem, required};
 use ast::{ret_style, return_val, self_ty, shl, shr, stmt, stmt_decl};
 use ast::{stmt_expr, stmt_semi, stmt_mac, struct_def, struct_field};
 use ast::{struct_immutable, struct_mutable, struct_variant_kind, subtract};
@@ -76,7 +76,7 @@ use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
 use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
 use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
-use parse::obsolete::{ObsoleteAssertion};
+use parse::obsolete::{ObsoleteAssertion, ObsoletePostFnTySigil};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -363,12 +363,13 @@ pub impl Parser {
         });
     }
 
-    fn parse_ty_closure(&self, pre_sigil: Option<ast::Sigil>,
-                        pre_region_name: Option<ident>) -> ty_
+    fn parse_ty_closure(&self,
+                        sigil: ast::Sigil,
+                        region: Option<@ast::Lifetime>) -> ty_
     {
         /*
 
-        (&|~|@) [r/] [pure|unsafe] [once] fn <'lt> (S) -> T
+        (&|~|@) ['r] [pure|unsafe] [once] fn <'lt> (S) -> T
         ^~~~~~^ ^~~^ ^~~~~~~~~~~~^ ^~~~~^    ^~~~^ ^~^    ^
            |     |     |             |         |    |     |
            |     |     |             |         |    |   Return type
@@ -388,13 +389,10 @@ pub impl Parser {
         let onceness = parse_onceness(self);
         self.expect_keyword(&~"fn");
 
-        let sigil = match pre_sigil { None => BorrowedSigil, Some(p) => p };
-
-        let region = if pre_region_name.is_some() {
-            Some(self.region_from_name(pre_region_name))
-        } else {
-            None
-        };
+        if self.parse_fn_ty_sigil().is_some() {
+            self.obsolete(*self.span,
+                          ObsoletePostFnTySigil);
+        }
 
         return ty_closure(@TyClosure {
             sigil: sigil,
@@ -432,7 +430,7 @@ pub impl Parser {
         */
         if self.eat(&token::LT) {
             let _lifetimes = self.parse_lifetimes();
-            self.expect(&token::GT);
+            self.expect_gt();
         }
         let inputs = self.parse_unspanned_seq(
             &token::LPAREN,
@@ -575,38 +573,6 @@ pub impl Parser {
         }
     }
 
-    fn region_from_name(&self, s: Option<ident>) -> @region {
-        let r = match s {
-            Some(id) if id == special_idents::static => ast::re_static,
-            Some(id) if id == special_idents::self_ => re_self,
-            Some(id) => re_named(id),
-            None => re_anon
-        };
-
-        @ast::region { id: self.get_id(), node: r }
-    }
-
-    // Parses something like "&x"
-    fn parse_region(&self) -> @region {
-        self.expect(&token::BINOP(token::AND));
-
-        match *self.token {
-          token::IDENT(sid, _) => {
-            self.bump();
-            self.region_from_name(Some(sid))
-          }
-          _ => {
-            self.region_from_name(None)
-          }
-        }
-    }
-
-    fn region_from_lifetime(&self, l: &ast::Lifetime) -> @region {
-        // eventually `ast::region` should go away in favor of
-        // `ast::Lifetime`.  For now we convert between them.
-        self.region_from_name(Some(l.ident))
-    }
-
     fn parse_ty(&self, colons_before_params: bool) -> @Ty {
         maybe_whole!(self, nt_ty);
 
@@ -681,7 +647,8 @@ pub impl Parser {
         } else if self.eat_keyword(&~"extern") {
             self.parse_ty_bare_fn()
         } else if self.token_is_closure_keyword(&copy *self.token) {
-            self.parse_ty_closure(None, None)
+            // self.warn(fmt!("Old-school closure keyword"));
+            self.parse_ty_closure(ast::BorrowedSigil, None)
         } else if *self.token == token::MOD_SEP
             || is_ident_or_path(&*self.token) {
             let path = self.parse_path_with_tps(colons_before_params);
@@ -701,20 +668,20 @@ pub impl Parser {
     {
         // @'foo fn() or @foo/fn() or @fn() are parsed directly as fn types:
         match *self.token {
-            token::LIFETIME(rname) => {
+            token::LIFETIME(*) => {
+                let lifetime = @self.parse_lifetime();
                 self.bump();
-                return self.parse_ty_closure(Some(sigil), Some(rname));
+                return self.parse_ty_closure(sigil, Some(lifetime));
             }
 
-            token::IDENT(rname, _) => {
+            token::IDENT(*) => {
                 if self.look_ahead(1u) == token::BINOP(token::SLASH) &&
                     self.token_is_closure_keyword(&self.look_ahead(2u))
                 {
-                    self.bump();
-                    self.bump();
-                    return self.parse_ty_closure(Some(sigil), Some(rname));
+                    let lifetime = @self.parse_lifetime();
+                    return self.parse_ty_closure(sigil, Some(lifetime));
                 } else if self.token_is_closure_keyword(&copy *self.token) {
-                    return self.parse_ty_closure(Some(sigil), None);
+                    return self.parse_ty_closure(sigil, None);
                 }
             }
             _ => {}
@@ -735,31 +702,14 @@ pub impl Parser {
 
     fn parse_borrowed_pointee(&self) -> ty_ {
         // look for `&'lt` or `&foo/` and interpret `foo` as the region name:
-        let rname = match *self.token {
-            token::LIFETIME(sid) => {
-                self.bump();
-                Some(sid)
-            }
-
-            token::IDENT(sid, _) => {
-                if self.look_ahead(1u) == token::BINOP(token::SLASH) {
-                    self.bump(); self.bump();
-                    Some(sid)
-                } else {
-                    None
-                }
-            }
-
-            _ => { None }
-        };
+        let opt_lifetime = self.parse_opt_lifetime();
 
         if self.token_is_closure_keyword(&copy *self.token) {
-            return self.parse_ty_closure(Some(BorrowedSigil), rname);
+            return self.parse_ty_closure(BorrowedSigil, opt_lifetime);
         }
 
-        let r = self.region_from_name(rname);
         let mt = self.parse_mt();
-        return ty_rptr(r, mt);
+        return ty_rptr(opt_lifetime, mt);
     }
 
     fn parse_arg_mode(&self) -> mode {
@@ -939,19 +889,27 @@ pub impl Parser {
             return path;
         }
 
-        // Parse the region parameter, if any, which will
+        // Parse the (obsolete) trailing region parameter, if any, which will
         // be written "foo/&x"
         let rp_slash = {
-            // Hack: avoid parsing vstores like /@ and /~.  This is painful
-            // because the notation for region bounds and the notation for
-            // vstores is... um... the same.  I guess that's my fault.  This
-            // is still not ideal as for &str we end up parsing more than we
-            // ought to and have to sort it out later.
             if *self.token == token::BINOP(token::SLASH)
-                && self.look_ahead(1u) == token::BINOP(token::AND) {
-
-                self.expect(&token::BINOP(token::SLASH));
-                Some(self.parse_region())
+                && self.look_ahead(1u) == token::BINOP(token::AND)
+            {
+                self.bump(); self.bump();
+                match *self.token {
+                    token::IDENT(sid, _) => {
+                        let span = copy self.span;
+                        self.bump();
+                        Some(@ast::Lifetime {
+                            id: self.get_id(),
+                            span: *span,
+                            ident: sid
+                        })
+                    }
+                    _ => {
+                        self.fatal(fmt!("Expected a lifetime name"));
+                    }
+                }
             } else {
                 None
             }
@@ -967,7 +925,7 @@ pub impl Parser {
                 if v.len() == 0 {
                     None
                 } else if v.len() == 1 {
-                    Some(self.region_from_lifetime(v.get(0)))
+                    Some(@*v.get(0))
                 } else {
                     self.fatal(fmt!("Expected at most one \
                                      lifetime name (for now)"));
@@ -981,16 +939,26 @@ pub impl Parser {
                      .. copy *path }
     }
 
-    fn parse_opt_lifetime(&self) -> Option<ast::Lifetime> {
+    fn parse_opt_lifetime(&self) -> Option<@ast::Lifetime> {
         /*!
          *
          * Parses 0 or 1 lifetime.
          */
 
         match *self.token {
-            token::LIFETIME(_) => {
-                Some(self.parse_lifetime())
+            token::LIFETIME(*) => {
+                Some(@self.parse_lifetime())
             }
+
+            // Also accept the (obsolete) syntax `foo/`
+            token::IDENT(*) => {
+                if self.look_ahead(1u) == token::BINOP(token::SLASH) {
+                    Some(@self.parse_lifetime())
+                } else {
+                    None
+                }
+            }
+
             _ => {
                 None
             }
@@ -1005,13 +973,27 @@ pub impl Parser {
 
         match *self.token {
             token::LIFETIME(i) => {
+                let span = copy self.span;
                 self.bump();
                 return ast::Lifetime {
                     id: self.get_id(),
-                    span: *self.span,
+                    span: *span,
                     ident: i
                 };
             }
+
+            // Also accept the (obsolete) syntax `foo/`
+            token::IDENT(i, _) => {
+                let span = copy self.span;
+                self.bump();
+                self.expect(&token::BINOP(token::SLASH));
+                return ast::Lifetime {
+                    id: self.get_id(),
+                    span: *span,
+                    ident: i
+                };
+            }
+
             _ => {
                 self.fatal(fmt!("Expected a lifetime name"));
             }
@@ -1041,6 +1023,7 @@ pub impl Parser {
             match *self.token {
                 token::COMMA => { self.bump();}
                 token::GT => { return res; }
+                token::BINOP(token::SHR) => { return res; }
                 _ => {
                     self.fatal(~"expected `,` or `>` after lifetime name");
                 }
