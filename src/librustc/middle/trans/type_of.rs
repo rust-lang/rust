@@ -23,7 +23,6 @@ use syntax::ast;
 
 pub fn arg_is_indirect(ccx: @CrateContext, arg: &ty::arg) -> bool {
     match ty::resolved_mode(ccx.tcx, arg.mode) {
-        ast::by_val => false,
         ast::by_copy => !ty::type_is_immediate(arg.ty),
         ast::by_ref => true
     }

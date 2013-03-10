@@ -440,7 +440,7 @@ pub fn pretty_print_input(sess: Session, +cfg: ast::crate_cfg, input: input,
     }
 }
 
-pub fn get_os(triple: ~str) -> Option<session::os> {
+pub fn get_os(triple: &str) -> Option<session::os> {
     if str::contains(triple, ~"win32") ||
                str::contains(triple, ~"mingw32") {
             Some(session::os_win32)
@@ -455,7 +455,7 @@ pub fn get_os(triple: ~str) -> Option<session::os> {
         } else { None }
 }
 
-pub fn get_arch(triple: ~str) -> Option<session::arch> {
+pub fn get_arch(triple: &str) -> Option<session::arch> {
     if str::contains(triple, ~"i386") ||
         str::contains(triple, ~"i486") ||
                str::contains(triple, ~"i586") ||

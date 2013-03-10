@@ -17,7 +17,7 @@ use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{provided, public, pure_fn, purity};
 use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
 use ast::{bind_by_copy, bitand, bitor, bitxor, blk};
-use ast::{blk_check_mode, box, by_copy, by_ref, by_val};
+use ast::{blk_check_mode, box, by_copy, by_ref};
 use ast::{crate, crate_cfg, decl, decl_item};
 use ast::{decl_local, default_blk, deref, div, enum_def, enum_variant_kind};
 use ast::{expl, expr, expr_, expr_addr_of, expr_match, expr_again};
@@ -78,6 +78,7 @@ use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
 use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
 use parse::obsolete::{ObsoleteAssertion, ObsoletePostFnTySigil};
 use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
+use parse::obsolete::{ObsoleteMode};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -716,12 +717,15 @@ pub impl Parser {
 
     fn parse_arg_mode(&self) -> mode {
         if self.eat(&token::BINOP(token::MINUS)) {
-            expl(by_copy) // NDM outdated syntax
+            self.obsolete(*self.span, ObsoleteMode);
+            expl(by_copy)
         } else if self.eat(&token::ANDAND) {
             expl(by_ref)
         } else if self.eat(&token::BINOP(token::PLUS)) {
             if self.eat(&token::BINOP(token::PLUS)) {
-                expl(by_val)
+                // ++ mode is obsolete, but we need a snapshot
+                // to stop parsing it.
+                expl(by_copy)
             } else {
                 expl(by_copy)
             }

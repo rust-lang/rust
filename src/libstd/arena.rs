@@ -49,7 +49,7 @@ use core::vec;
 pub mod rusti {
     #[abi = "rust-intrinsic"]
     pub extern {
-        fn move_val_init<T>(dst: &mut T, -src: T);
+        fn move_val_init<T>(dst: &mut T, +src: T);
         fn needs_drop<T>() -> bool;
     }
 }

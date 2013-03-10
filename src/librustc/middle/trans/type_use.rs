@@ -81,7 +81,7 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
         ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => {
             for vec::each(sig.inputs) |arg| {
                 match ty::resolved_mode(ccx.tcx, arg.mode) {
-                    by_val | by_copy => {
+                    by_copy => {
                         type_needs(cx, use_repr, arg.ty);
                     }
                     by_ref => {}
@@ -326,7 +326,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
               ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id))
           ) |a| {
               match a.mode {
-                  expl(by_copy) | expl(by_val) => {
+                  expl(by_copy) => {
                       type_needs(cx, use_repr, a.ty);
                   }
                   _ => ()
@@ -340,7 +340,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
         for ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx,
                                                e.callee_id)).each |a| {
           match a.mode {
-              expl(by_copy) | expl(by_val) => {
+              expl(by_copy) => {
                   type_needs(cx, use_repr, a.ty);
               }
               _ => ()

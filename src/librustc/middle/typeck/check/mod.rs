@@ -3207,7 +3207,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
           let (_, visitor_trait) = tcx.intrinsic_defs.get(&ty_visitor_name);
           let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {ty: tydesc_ty,
                                                    mutbl: ast::m_imm});
-          (0u, ~[arg(ast::by_val, td_ptr),
+          (0u, ~[arg(ast::by_copy, td_ptr),
                  arg(ast::by_ref, visitor_trait)], ty::mk_nil(tcx))
       }
       ~"frame_address" => {
@@ -3217,7 +3217,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             onceness: ast::Once,
             region: ty::re_bound(ty::br_anon(0)),
             sig: ty::FnSig {
-                inputs: ~[arg {mode: ast::expl(ast::by_val),
+                inputs: ~[arg {mode: ast::expl(ast::by_copy),
                                ty: ty::mk_imm_ptr(
                                    ccx.tcx,
                                    ty::mk_mach_uint(ccx.tcx, ast::ty_u8))}],

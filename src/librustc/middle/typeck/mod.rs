@@ -273,26 +273,6 @@ impl get_and_find_region for isr_alist {
     }
 }
 
-fn arg_is_argv_ty(tcx: ty::ctxt, a: ty::arg) -> bool {
-    match ty::resolved_mode(tcx, a.mode) {
-        ast::by_val => { /*ok*/ }
-        _ => {
-            return false;
-        }
-    }
-
-    match ty::get(a.ty).sty {
-      ty::ty_evec(mt, vstore_uniq) => {
-        if mt.mutbl != ast::m_imm { return false; }
-        match ty::get(mt.ty).sty {
-          ty::ty_estr(vstore_uniq) => return true,
-          _ => return false
-        }
-      }
-      _ => return false
-    }
-}
-
 fn check_main_fn_ty(ccx: @mut CrateCtxt,
                     main_id: ast::node_id,
                     main_span: span) {

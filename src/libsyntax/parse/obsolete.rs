@@ -55,6 +55,7 @@ pub enum ObsoleteSyntax {
     ObsoletePostFnTySigil,
     ObsoleteBareFnType,
     ObsoleteNewtypeEnum,
+    ObsoleteMode,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -175,6 +176,10 @@ pub impl Parser {
             ObsoleteNewtypeEnum => (
                 "newtype enum",
                 "instead of `enum Foo = int`, write `struct Foo(int)`"
+            ),
+            ObsoleteMode => (
+                "obsolete argument mode",
+                "replace `-` or `++` mode with `+`"
             ),
         };
 

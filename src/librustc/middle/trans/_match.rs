@@ -599,7 +599,7 @@ pub fn enter_rec_or_struct(bcx: block,
                            dm: DefMap,
                            m: &[@Match/&r],
                            col: uint,
-                           fields: ~[ast::ident],
+                           fields: &[ast::ident],
                            val: ValueRef)
                         -> ~[@Match/&r] {
     debug!("enter_rec_or_struct(bcx=%s, m=%s, col=%u, val=%?)",

@@ -765,7 +765,7 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
         // deprecated and because its semantics have changed recently:
         for decl.inputs.eachi |i, arg| {
             match ty::resolved_mode(cx, arg.mode) {
-                ast::by_val | ast::by_copy => {}
+                ast::by_copy => {}
                 ast::by_ref => {
                     cx.sess.span_lint(
                         foreign_mode, fn_id, fn_id, arg.ty.span,

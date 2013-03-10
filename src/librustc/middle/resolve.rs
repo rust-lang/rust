@@ -2021,7 +2021,7 @@ pub impl Resolver {
     }
 
     fn import_path_to_str(@mut self,
-                          idents: ~[ident],
+                          idents: &[ident],
                           subclass: ImportDirectiveSubclass)
                        -> @~str {
         if idents.is_empty() {
@@ -2573,7 +2573,7 @@ pub impl Resolver {
     /// Resolves the given module path from the given root `module_`.
     fn resolve_module_path_from_root(@mut self,
                                      module_: @mut Module,
-                                     module_path: ~[ident],
+                                     module_path: &[ident],
                                      index: uint,
                                      span: span,
                                      mut name_search_type: NameSearchType)
@@ -2658,7 +2658,7 @@ pub impl Resolver {
     /// rooted at the given module.
     fn resolve_module_path_for_import(@mut self,
                                       module_: @mut Module,
-                                      module_path: ~[ident],
+                                      module_path: &[ident],
                                       use_lexical_scope: UseLexicalScopeFlag,
                                       span: span)
                                    -> ResolveResult<@mut Module> {
@@ -2944,7 +2944,7 @@ pub impl Resolver {
      */
     fn resolve_module_prefix(@mut self,
                              module_: @mut Module,
-                             module_path: ~[ident])
+                             module_path: &[ident])
                           -> ResolveResult<ModulePrefixResult> {
         let interner = self.session.parse_sess.interner;
 
@@ -3876,7 +3876,7 @@ pub impl Resolver {
                               generics: &Generics,
                               opt_trait_reference: Option<@trait_ref>,
                               self_type: @Ty,
-                              methods: ~[@method],
+                              methods: &[@method],
                               visitor: ResolveVisitor) {
         // If applicable, create a rib for the type parameters.
         let outer_type_parameter_count = generics.ty_params.len();

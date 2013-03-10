@@ -486,7 +486,7 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
 
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(symbol_hasher: &hash::State,
-                              -cmh_items: ~[@ast::meta_item],
+                              +cmh_items: ~[@ast::meta_item],
                               dep_hashes: ~[~str]) -> @str {
         fn len_and_str(s: &str) -> ~str {
             fmt!("%u_%s", s.len(), s)
@@ -535,7 +535,7 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
                        name, default));
     }
 
-    fn crate_meta_name(sess: Session, output: &Path, -opt_name: Option<@str>)
+    fn crate_meta_name(sess: Session, output: &Path, +opt_name: Option<@str>)
                     -> @str {
         return match opt_name {
               Some(v) => v,
