@@ -694,7 +694,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_inline_asm(asm, cons) => {
             do str::as_c_str(*asm) |a| {
                 do str::as_c_str(*cons) |c| {
-                    InlineAsmCall(bcx, a, c);
+                    InlineAsmCall(bcx, a, c, lib::llvm::AD_ATT);
                 }
             }
             return bcx;

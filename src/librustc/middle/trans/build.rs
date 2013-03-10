@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use lib::llvm::llvm;
-use lib::llvm::{CallConv, TypeKind, AtomicBinOp, AtomicOrdering};
+use lib::llvm::{CallConv, TypeKind, AtomicBinOp, AtomicOrdering, AsmDialect};
 use lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False};
 use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
 use lib;
@@ -872,12 +872,13 @@ pub fn add_comment(bcx: block, text: &str) {
     }
 }
 
-pub fn InlineAsmCall(cx: block, asm: *c_char, cons: *c_char) -> ValueRef {
+pub fn InlineAsmCall(cx: block, asm: *c_char, cons: *c_char,
+                     dia: AsmDialect) -> ValueRef {
     unsafe {
         count_insn(cx, "inlineasm");
 
         let llfty = T_fn(~[], T_void());
-        let v = llvm::LLVMInlineAsm(llfty, asm, cons, False, False);
+        let v = llvm::LLVMInlineAsm(llfty, asm, cons, False, False, dia);
 
         Call(cx, v, ~[])
     }
