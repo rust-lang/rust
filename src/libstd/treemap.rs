@@ -486,6 +486,9 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
                     a = set_next(&mut x);
                 }
             }
+            do b.while_some |b1| {
+                if f(b1) { set_next(&mut y) } else { None }
+            }
         }
     }
 }
@@ -1182,6 +1185,7 @@ mod test_set {
 
         check_union([], [], []);
         check_union([1, 2, 3], [2], [1, 2, 3]);
+        check_union([2], [1, 2, 3], [1, 2, 3]);
         check_union([1, 3, 5, 9, 11, 16, 19, 24],
                     [-2, 1, 5, 9, 13, 19],
                     [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24]);
