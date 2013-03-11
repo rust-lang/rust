@@ -116,15 +116,15 @@ impl serialize::Encoder for Encoder {
     fn emit_owned_str(&self, v: &str) { self.emit_borrowed_str(v) }
     fn emit_managed_str(&self, v: &str) { self.emit_borrowed_str(v) }
 
-    fn emit_borrowed(&self, f: fn()) { f() }
-    fn emit_owned(&self, f: fn()) { f() }
-    fn emit_managed(&self, f: fn()) { f() }
+    fn emit_borrowed(&self, f: &fn()) { f() }
+    fn emit_owned(&self, f: &fn()) { f() }
+    fn emit_managed(&self, f: &fn()) { f() }
 
-    fn emit_enum(&self, _name: &str, f: fn()) {
+    fn emit_enum(&self, _name: &str, f: &fn()) {
         f()
     }
 
-    fn emit_enum_variant(&self, name: &str, _id: uint, _cnt: uint, f: fn()) {
+    fn emit_enum_variant(&self, name: &str, _id: uint, _cnt: uint, f: &fn()) {
         // encoding of enums is special-cased for Option. Specifically:
         // Some(34) => 34
         // None => null
@@ -160,49 +160,49 @@ impl serialize::Encoder for Encoder {
         }
     }
 
-    fn emit_enum_variant_arg(&self, idx: uint, f: fn()) {
+    fn emit_enum_variant_arg(&self, idx: uint, f: &fn()) {
         if (idx != 0) {self.wr.write_char(',');}
         f();
     }
 
-    fn emit_borrowed_vec(&self, _len: uint, f: fn()) {
+    fn emit_borrowed_vec(&self, _len: uint, f: &fn()) {
         self.wr.write_char('[');
         f();
         self.wr.write_char(']');
     }
 
-    fn emit_owned_vec(&self, len: uint, f: fn()) {
+    fn emit_owned_vec(&self, len: uint, f: &fn()) {
         self.emit_borrowed_vec(len, f)
     }
-    fn emit_managed_vec(&self, len: uint, f: fn()) {
+    fn emit_managed_vec(&self, len: uint, f: &fn()) {
         self.emit_borrowed_vec(len, f)
     }
-    fn emit_vec_elt(&self, idx: uint, f: fn()) {
+    fn emit_vec_elt(&self, idx: uint, f: &fn()) {
         if idx != 0 { self.wr.write_char(','); }
         f()
     }
 
-    fn emit_rec(&self, f: fn()) {
+    fn emit_rec(&self, f: &fn()) {
         self.wr.write_char('{');
         f();
         self.wr.write_char('}');
     }
-    fn emit_struct(&self, _name: &str, _len: uint, f: fn()) {
+    fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) {
         self.wr.write_char('{');
         f();
         self.wr.write_char('}');
     }
-    fn emit_field(&self, name: &str, idx: uint, f: fn()) {
+    fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
         if idx != 0 { self.wr.write_char(','); }
         self.wr.write_str(escape_str(name));
         self.wr.write_char(':');
         f();
     }
 
-    fn emit_tup(&self, len: uint, f: fn()) {
+    fn emit_tup(&self, len: uint, f: &fn()) {
         self.emit_borrowed_vec(len, f);
     }
-    fn emit_tup_elt(&self, idx: uint, f: fn()) {
+    fn emit_tup_elt(&self, idx: uint, f: &fn()) {
         self.emit_vec_elt(idx, f)
     }
 }
@@ -251,39 +251,39 @@ impl serialize::Encoder for PrettyEncoder {
     fn emit_owned_str(&self, v: &str) { self.emit_borrowed_str(v) }
     fn emit_managed_str(&self, v: &str) { self.emit_borrowed_str(v) }
 
-    fn emit_borrowed(&self, f: fn()) { f() }
-    fn emit_owned(&self, f: fn()) { f() }
-    fn emit_managed(&self, f: fn()) { f() }
+    fn emit_borrowed(&self, f: &fn()) { f() }
+    fn emit_owned(&self, f: &fn()) { f() }
+    fn emit_managed(&self, f: &fn()) { f() }
 
-    fn emit_enum(&self, name: &str, f: fn()) {
+    fn emit_enum(&self, name: &str, f: &fn()) {
         if name != "option" { fail!(~"only supports option enum") }
         f()
     }
-    fn emit_enum_variant(&self, _name: &str, id: uint, _cnt: uint, f: fn()) {
+    fn emit_enum_variant(&self, _name: &str, id: uint, _cnt: uint, f: &fn()) {
         if id == 0 {
             self.emit_nil();
         } else {
             f()
         }
     }
-    fn emit_enum_variant_arg(&self, _idx: uint, f: fn()) {
+    fn emit_enum_variant_arg(&self, _idx: uint, f: &fn()) {
         f()
     }
 
-    fn emit_borrowed_vec(&self, _len: uint, f: fn()) {
+    fn emit_borrowed_vec(&self, _len: uint, f: &fn()) {
         self.wr.write_char('[');
         self.indent += 2;
         f();
         self.indent -= 2;
         self.wr.write_char(']');
     }
-    fn emit_owned_vec(&self, len: uint, f: fn()) {
+    fn emit_owned_vec(&self, len: uint, f: &fn()) {
         self.emit_borrowed_vec(len, f)
     }
-    fn emit_managed_vec(&self, len: uint, f: fn()) {
+    fn emit_managed_vec(&self, len: uint, f: &fn()) {
         self.emit_borrowed_vec(len, f)
     }
-    fn emit_vec_elt(&self, idx: uint, f: fn()) {
+    fn emit_vec_elt(&self, idx: uint, f: &fn()) {
         if idx == 0 {
             self.wr.write_char('\n');
         } else {
@@ -293,17 +293,17 @@ impl serialize::Encoder for PrettyEncoder {
         f()
     }
 
-    fn emit_rec(&self, f: fn()) {
+    fn emit_rec(&self, f: &fn()) {
         self.wr.write_char('{');
         self.indent += 2;
         f();
         self.indent -= 2;
         self.wr.write_char('}');
     }
-    fn emit_struct(&self, _name: &str, _len: uint, f: fn()) {
+    fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) {
         self.emit_rec(f)
     }
-    fn emit_field(&self, name: &str, idx: uint, f: fn()) {
+    fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
         if idx == 0 {
             self.wr.write_char('\n');
         } else {
@@ -314,10 +314,10 @@ impl serialize::Encoder for PrettyEncoder {
         self.wr.write_str(": ");
         f();
     }
-    fn emit_tup(&self, sz: uint, f: fn()) {
+    fn emit_tup(&self, sz: uint, f: &fn()) {
         self.emit_borrowed_vec(sz, f);
     }
-    fn emit_tup_elt(&self, idx: uint, f: fn()) {
+    fn emit_tup_elt(&self, idx: uint, f: &fn()) {
         self.emit_vec_elt(idx, f)
     }
 }
@@ -828,23 +828,23 @@ impl serialize::Decoder for Decoder/&self {
         }
     }
 
-    fn read_owned<T>(&self, f: fn() -> T) -> T {
+    fn read_owned<T>(&self, f: &fn() -> T) -> T {
         debug!("read_owned()");
         f()
     }
 
-    fn read_managed<T>(&self, f: fn() -> T) -> T {
+    fn read_managed<T>(&self, f: &fn() -> T) -> T {
         debug!("read_managed()");
         f()
     }
 
-    fn read_enum<T>(&self, name: &str, f: fn() -> T) -> T {
+    fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T {
         debug!("read_enum(%s)", name);
         if name != ~"option" { fail!(~"only supports the option enum") }
         f()
     }
 
-    fn read_enum_variant<T>(&self, f: fn(uint) -> T) -> T {
+    fn read_enum_variant<T>(&self, f: &fn(uint) -> T) -> T {
         debug!("read_enum_variant()");
         let idx = match *self.peek() {
             Null => 0,
@@ -853,13 +853,13 @@ impl serialize::Decoder for Decoder/&self {
         f(idx)
     }
 
-    fn read_enum_variant_arg<T>(&self, idx: uint, f: fn() -> T) -> T {
+    fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T {
         debug!("read_enum_variant_arg(idx=%u)", idx);
         if idx != 0 { fail!(~"unknown index") }
         f()
     }
 
-    fn read_owned_vec<T>(&self, f: fn(uint) -> T) -> T {
+    fn read_owned_vec<T>(&self, f: &fn(uint) -> T) -> T {
         debug!("read_owned_vec()");
         let len = match *self.peek() {
             List(ref list) => list.len(),
@@ -870,7 +870,7 @@ impl serialize::Decoder for Decoder/&self {
         res
     }
 
-    fn read_managed_vec<T>(&self, f: fn(uint) -> T) -> T {
+    fn read_managed_vec<T>(&self, f: &fn(uint) -> T) -> T {
         debug!("read_owned_vec()");
         let len = match *self.peek() {
             List(ref list) => list.len(),
@@ -881,7 +881,7 @@ impl serialize::Decoder for Decoder/&self {
         res
     }
 
-    fn read_vec_elt<T>(&self, idx: uint, f: fn() -> T) -> T {
+    fn read_vec_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
         debug!("read_vec_elt(idx=%u)", idx);
         match *self.peek() {
             List(ref list) => {
@@ -892,21 +892,21 @@ impl serialize::Decoder for Decoder/&self {
         }
     }
 
-    fn read_rec<T>(&self, f: fn() -> T) -> T {
+    fn read_rec<T>(&self, f: &fn() -> T) -> T {
         debug!("read_rec()");
         let value = f();
         self.pop();
         value
     }
 
-    fn read_struct<T>(&self, _name: &str, _len: uint, f: fn() -> T) -> T {
+    fn read_struct<T>(&self, _name: &str, _len: uint, f: &fn() -> T) -> T {
         debug!("read_struct()");
         let value = f();
         self.pop();
         value
     }
 
-    fn read_field<T>(&self, name: &str, idx: uint, f: fn() -> T) -> T {
+    fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
         debug!("read_rec_field(%s, idx=%u)", name, idx);
         let top = self.peek();
         match *top {
@@ -929,14 +929,14 @@ impl serialize::Decoder for Decoder/&self {
         }
     }
 
-    fn read_tup<T>(&self, len: uint, f: fn() -> T) -> T {
+    fn read_tup<T>(&self, len: uint, f: &fn() -> T) -> T {
         debug!("read_tup(len=%u)", len);
         let value = f();
         self.pop();
         value
     }
 
-    fn read_tup_elt<T>(&self, idx: uint, f: fn() -> T) -> T {
+    fn read_tup_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
         debug!("read_tup_elt(idx=%u)", idx);
         match *self.peek() {
             List(ref list) => {

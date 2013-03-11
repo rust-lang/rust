@@ -17,7 +17,7 @@ use syntax::visit;
 use core::str;
 use std::oldmap::HashMap;
 
-pub fn indent<R>(op: fn() -> R) -> R {
+pub fn indent<R>(op: &fn() -> R) -> R {
     // Use in conjunction with the log post-processor like `src/etc/indenter`
     // to make debug output more readable.
     debug!(">>");

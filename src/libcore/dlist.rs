@@ -399,7 +399,7 @@ pub impl<T> DList<T> {
     }
 
     /// Iterate over nodes.
-    pure fn each_node(@mut self, f: fn(@mut DListNode<T>) -> bool) {
+    pure fn each_node(@mut self, f: &fn(@mut DListNode<T>) -> bool) {
         let mut link = self.peek_n();
         while link.is_some() {
             let nobe = link.get();
@@ -507,7 +507,7 @@ impl<T> BaseIter<T> for @mut DList<T> {
     * allow for e.g. breadth-first search with in-place enqueues), but
     * removing the current node is forbidden.
     */
-    pure fn each(&self, f: fn(v: &T) -> bool) {
+    pure fn each(&self, f: &fn(v: &T) -> bool) {
         let mut link = self.peek_n();
         while option::is_some(&link) {
             let nobe = option::get(link);

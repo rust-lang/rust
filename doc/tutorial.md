@@ -681,45 +681,6 @@ the value of `North` is 0, `East` is 1, `South` is 2, and `West` is 3.
 When an enum is C-like, you can apply the `as` cast operator to
 convert it to its discriminator value as an `int`.
 
-<a name="single_variant_enum"></a>
-
-There is a special case for enums with a single variant, which are
-sometimes called "newtype-style enums" (after Haskell's "newtype"
-feature). These are used to define new types in such a way that the
-new name is not just a synonym for an existing type, but its own
-distinct type: `type` creates a structural synonym, while this form of
-`enum` creates a nominal synonym. If you say:
-
-~~~~
-enum GizmoId = int;
-~~~~
-
-That is a shorthand for this:
-
-~~~~
-enum GizmoId { GizmoId(int) }
-~~~~
-
-You can extract the contents of such an enum type with the
-dereference (`*`) unary operator:
-
-~~~~
-# enum GizmoId = int;
-let my_gizmo_id: GizmoId = GizmoId(10);
-let id_int: int = *my_gizmo_id;
-~~~~
-
-Types like this can be useful to differentiate between data that have
-the same type but must be used in different ways.
-
-~~~~
-enum Inches = int;
-enum Centimeters = int;
-~~~~
-
-The above definitions allow for a simple way for programs to avoid
-confusing numbers that correspond to different units.
-
 For enum types with multiple variants, destructuring is the only way to
 get at their contents. All variant constructors can be used as
 patterns, as in this definition of `area`:
@@ -789,10 +750,10 @@ match mytup {
 
 ## Tuple structs
 
-Rust also has _nominal tuples_, which behave like both structs and tuples,
-except that nominal tuple types have names
-(so `Foo(1, 2)` has a different type from `Bar(1, 2)`),
-and nominal tuple types' _fields_ do not have names.
+Rust also has _tuple structs_, which behave like both structs and tuples,
+except that, unlike tuples, tuple structs have names (so `Foo(1, 2)` has a
+different type from `Bar(1, 2)`), and tuple structs' _fields_ do not have
+names.
 
 For example:
 ~~~~
@@ -802,6 +763,37 @@ match mytup {
   MyTup(a, b, c) => log(info, a + b + (c as int))
 }
 ~~~~
+
+<a name="newtype"></a>
+
+There is a special case for tuple structs with a single field, which are
+sometimes called "newtypes" (after Haskell's "newtype" feature). These are
+used to define new types in such a way that the new name is not just a
+synonym for an existing type but is rather its own distinct type.
+
+~~~~
+struct GizmoId(int);
+~~~~
+
+For convenience, you can extract the contents of such a struct with the
+dereference (`*`) unary operator:
+
+~~~~
+# struct GizmoId(int);
+let my_gizmo_id: GizmoId = GizmoId(10);
+let id_int: int = *my_gizmo_id;
+~~~~
+
+Types like this can be useful to differentiate between data that have
+the same type but must be used in different ways.
+
+~~~~
+struct Inches(int);
+struct Centimeters(int);
+~~~~
+
+The above definitions allow for a simple way for programs to avoid
+confusing numbers that correspond to different units.
 
 # Functions
 
@@ -1369,7 +1361,7 @@ the enclosing scope.
 
 ~~~~
 # use println = core::io::println;
-fn call_closure_with_ten(b: fn(int)) { b(10); }
+fn call_closure_with_ten(b: &fn(int)) { b(10); }
 
 let captured_var = 20;
 let closure = |arg| println(fmt!("captured_var=%d, arg=%d", captured_var, arg));
@@ -1455,7 +1447,7 @@ should almost always declare the type of that argument as `fn()`. That way,
 callers may pass any kind of closure.
 
 ~~~~
-fn call_twice(f: fn()) { f(); f(); }
+fn call_twice(f: &fn()) { f(); f(); }
 let closure = || { "I'm a closure, and it doesn't matter what type I am"; };
 fn function() { "I'm a normal function"; }
 call_twice(closure);
@@ -1475,7 +1467,7 @@ Consider this function that iterates over a vector of
 integers, passing in a pointer to each integer in the vector:
 
 ~~~~
-fn each(v: &[int], op: fn(v: &int)) {
+fn each(v: &[int], op: &fn(v: &int)) {
    let mut n = 0;
    while n < v.len() {
        op(&v[n]);
@@ -1496,7 +1488,7 @@ argument, we can write it in a way that has a pleasant, block-like
 structure.
 
 ~~~~
-# fn each(v: &[int], op: fn(v: &int)) { }
+# fn each(v: &[int], op: &fn(v: &int)) { }
 # fn do_some_work(i: &int) { }
 each([1, 2, 3], |n| {
     do_some_work(n);
@@ -1507,7 +1499,7 @@ This is such a useful pattern that Rust has a special form of function
 call that can be written more like a built-in control structure:
 
 ~~~~
-# fn each(v: &[int], op: fn(v: &int)) { }
+# fn each(v: &[int], op: &fn(v: &int)) { }
 # fn do_some_work(i: &int) { }
 do each([1, 2, 3]) |n| {
     do_some_work(n);
@@ -1554,7 +1546,7 @@ Consider again our `each` function, this time improved to
 break early when the iteratee returns `false`:
 
 ~~~~
-fn each(v: &[int], op: fn(v: &int) -> bool) {
+fn each(v: &[int], op: &fn(v: &int) -> bool) {
    let mut n = 0;
    while n < v.len() {
        if !op(&v[n]) {
@@ -1778,7 +1770,7 @@ vector consisting of the result of applying `function` to each element
 of `vector`:
 
 ~~~~
-fn map<T, U>(vector: &[T], function: fn(v: &T) -> U) -> ~[U] {
+fn map<T, U>(vector: &[T], function: &fn(v: &T) -> U) -> ~[U] {
     let mut accumulator = ~[];
     for vec::each(vector) |element| {
         accumulator.push(function(element));
@@ -1977,12 +1969,12 @@ types might look like the following:
 ~~~~
 trait Seq<T> {
     fn len(&self) -> uint;
-    fn iter(&self, b: fn(v: &T));
+    fn iter(&self, b: &fn(v: &T));
 }
 
 impl<T> Seq<T> for ~[T] {
     fn len(&self) -> uint { vec::len(*self) }
-    fn iter(&self, b: fn(v: &T)) {
+    fn iter(&self, b: &fn(v: &T)) {
         for vec::each(*self) |elt| { b(elt); }
     }
 }
@@ -2294,7 +2286,7 @@ struct level. Note that fields and methods are _public_ by default.
 pub mod farm {
 # pub type Chicken = int;
 # type Cow = int;
-# enum Human = int;
+# struct Human(int);
 # impl Human { fn rest(&self) { } }
 # pub fn make_me_a_farm() -> Farm { Farm { chickens: ~[], cows: ~[], farmer: Human(0) } }
     pub struct Farm {

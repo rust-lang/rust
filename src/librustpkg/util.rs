@@ -260,7 +260,7 @@ pub fn hash(data: ~str) -> ~str {
     hasher.result_str()
 }
 
-pub fn temp_change_dir<T>(dir: &Path, cb: fn() -> T) {
+pub fn temp_change_dir<T>(dir: &Path, cb: &fn() -> T) {
     let cwd = os::getcwd();
 
     os::change_dir(dir);

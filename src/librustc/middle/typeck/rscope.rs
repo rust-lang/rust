@@ -74,7 +74,8 @@ impl region_scope for MethodRscope {
     }
 }
 
-pub enum type_rscope = Option<ty::region_variance>;
+pub struct type_rscope(Option<ty::region_variance>);
+
 impl type_rscope {
     priv fn replacement(&self) -> ty::Region {
         if self.is_some() {

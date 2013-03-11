@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-enum sty = ~[int];
+struct sty(~[int]);
 
 fn unpack(_unpack: &fn(v: &sty) -> ~[int]) {}
 

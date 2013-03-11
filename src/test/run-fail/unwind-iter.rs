@@ -10,7 +10,7 @@
 
 // error-pattern:fail
 
-fn x(it: fn(int)) {
+fn x(it: &fn(int)) {
     fail!();
     it(0);
 }

@@ -143,7 +143,7 @@ fn run(config: Config) {
     }
 }
 
-pub fn time<T>(what: ~str, f: fn() -> T) -> T {
+pub fn time<T>(what: ~str, f: &fn() -> T) -> T {
     let start = std::time::precise_time_s();
     let rv = f();
     let end = std::time::precise_time_s();

@@ -159,7 +159,7 @@ pub fn ReprVisitor(ptr: *c_void, writer: @Writer) -> ReprVisitor {
 
 impl MovePtr for ReprVisitor {
     #[inline(always)]
-    fn move_ptr(&self, adjustment: fn(*c_void) -> *c_void) {
+    fn move_ptr(&self, adjustment: &fn(*c_void) -> *c_void) {
         self.ptr = adjustment(self.ptr);
     }
     fn push_ptr(&self) {
@@ -175,7 +175,7 @@ pub impl ReprVisitor {
     // Various helpers for the TyVisitor impl
 
     #[inline(always)]
-    fn get<T>(&self, f: fn(&T)) -> bool {
+    fn get<T>(&self, f: &fn(&T)) -> bool {
         unsafe {
             f(transmute::<*c_void,&T>(copy self.ptr));
         }

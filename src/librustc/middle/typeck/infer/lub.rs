@@ -29,7 +29,7 @@ use syntax::ast::{pure_fn, ret_style, return_val, unsafe_fn};
 use syntax::ast::{Onceness, purity};
 use syntax::codemap::span;
 
-pub enum Lub = CombineFields;  // least-upper-bound: common supertype
+pub struct Lub(CombineFields);  // least-upper-bound: common supertype
 
 pub impl Lub {
     fn bot_ty(&self, b: ty::t) -> cres<ty::t> { Ok(b) }

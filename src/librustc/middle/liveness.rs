@@ -137,8 +137,8 @@ use syntax::{visit, ast_util};
 // if it detects an outstanding loan (that is, the addr is taken).
 pub type last_use_map = HashMap<node_id, @mut ~[node_id]>;
 
-enum Variable = uint;
-enum LiveNode = uint;
+struct Variable(uint);
+struct LiveNode(uint);
 
 impl cmp::Eq for Variable {
     pure fn eq(&self, other: &Variable) -> bool { *(*self) == *(*other) }
@@ -735,7 +735,7 @@ pub impl Liveness {
         }
     }
 
-    fn pat_bindings(&self, pat: @pat, f: fn(LiveNode, Variable, span)) {
+    fn pat_bindings(&self, pat: @pat, f: &fn(LiveNode, Variable, span)) {
         let def_map = self.tcx.def_map;
         do pat_util::pat_bindings(def_map, pat) |_bm, p_id, sp, _n| {
             let ln = self.live_node(p_id, sp);
@@ -745,7 +745,7 @@ pub impl Liveness {
     }
 
     fn arm_pats_bindings(&self,
-                         pats: &[@pat], f: fn(LiveNode, Variable, span)) {
+                         pats: &[@pat], f: &fn(LiveNode, Variable, span)) {
         // only consider the first pattern; any later patterns must have
         // the same bindings, and we also consider the first pattern to be
         // the "authoratative" set of ids
@@ -809,15 +809,14 @@ pub impl Liveness {
         self.assigned_on_entry(copy self.successors[*ln], var)
     }
 
-    fn indices(&self, ln: LiveNode, op: fn(uint)) {
+    fn indices(&self, ln: LiveNode, op: &fn(uint)) {
         let node_base_idx = self.idx(ln, Variable(0));
         for uint::range(0, self.ir.num_vars) |var_idx| {
             op(node_base_idx + var_idx)
         }
     }
 
-    fn indices2(&self, ln: LiveNode, succ_ln: LiveNode,
-                op: fn(uint, uint)) {
+    fn indices2(&self, ln: LiveNode, succ_ln: LiveNode, op: &fn(uint, uint)) {
         let node_base_idx = self.idx(ln, Variable(0u));
         let succ_base_idx = self.idx(succ_ln, Variable(0u));
         for uint::range(0u, self.ir.num_vars) |var_idx| {
@@ -827,7 +826,7 @@ pub impl Liveness {
 
     fn write_vars(&self, wr: io::Writer,
                   ln: LiveNode,
-                  test: fn(uint) -> LiveNode) {
+                  test: &fn(uint) -> LiveNode) {
         let node_base_idx = self.idx(ln, Variable(0));
         for uint::range(0, self.ir.num_vars) |var_idx| {
             let idx = node_base_idx + var_idx;
@@ -1510,7 +1509,7 @@ pub impl Liveness {
     fn with_loop_nodes<R>(&self, loop_node_id: node_id,
                           break_ln: LiveNode,
                           cont_ln: LiveNode,
-                          f: fn() -> R) -> R {
+                          f: &fn() -> R) -> R {
       debug!("with_loop_nodes: %d %u", loop_node_id, *break_ln);
         self.loop_scope.push(loop_node_id);
         self.break_ln.insert(loop_node_id, break_ln);

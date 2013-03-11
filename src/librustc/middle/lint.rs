@@ -77,6 +77,7 @@ pub enum lint {
     default_methods,
     deprecated_self,
     deprecated_mutable_fields,
+    deprecated_drop,
 
     managed_heap_memory,
     owned_heap_memory,
@@ -251,6 +252,13 @@ pub fn get_lint_dict() -> LintDict {
             default: deny
         }),
 
+        (@~"deprecated_drop",
+         @LintSpec {
+            lint: deprecated_drop,
+            desc: "deprecated \"drop\" notation for the destructor",
+            default: deny
+        }),
+
         /* FIXME(#3266)--make liveness warnings lintable
         (@~"unused_variable",
          @LintSpec {
@@ -342,7 +350,7 @@ pub impl Context {
      * current lint context, call the provided function, then reset the
      * lints in effect to their previous state.
      */
-    fn with_lint_attrs(&self, attrs: ~[ast::attribute], f: fn(Context)) {
+    fn with_lint_attrs(&self, attrs: ~[ast::attribute], f: &fn(Context)) {
 
         let mut new_ctxt = *self;
         let mut triples = ~[];
@@ -483,6 +491,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_default_methods(cx, i);
     check_item_deprecated_self(cx, i);
     check_item_deprecated_mutable_fields(cx, i);
+    check_item_deprecated_drop(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -713,6 +722,26 @@ fn check_item_deprecated_mutable_fields(cx: ty::ctxt, item: @ast::item) {
                                           ~"mutable fields are deprecated");
                     }
                     ast::named_field(*) | ast::unnamed_field => {}
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn check_item_deprecated_drop(cx: ty::ctxt, item: @ast::item) {
+    match item.node {
+        ast::item_struct(struct_def, _) => {
+            match struct_def.dtor {
+                None => {}
+                Some(ref dtor) => {
+                    cx.sess.span_lint(deprecated_drop,
+                                      item.id,
+                                      item.id,
+                                      dtor.span,
+                                      ~"`drop` notation for destructors is \
+                                        deprecated; implement the `Drop` \
+                                        trait instead");
                 }
             }
         }

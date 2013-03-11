@@ -16,7 +16,7 @@ impl double for uint {
     fn double() -> uint { self * 2u }
 }
 
-enum foo = uint;
+struct foo(uint);
 
 pub fn main() {
     let x = foo(3u);
