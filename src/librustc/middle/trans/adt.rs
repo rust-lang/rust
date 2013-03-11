@@ -71,18 +71,16 @@ use util::ppaux::ty_to_str;
 
 /// Representations.
 pub enum Repr {
-    /**
-     * `Unit` exists only so that an enum with a single C-like variant
-     * can occupy no space, for ABI compatibility with rustc from
-     * before (and during) the creation of this module.  It may not be
-     * worth keeping around; `CEnum` and `Univariant` cover it
-     * overwise.
-     */
-    Unit(int),
     /// C-like enums; basically an int.
     CEnum(int, int), // discriminant range
-    /// Single-case variants, and structs/tuples/records.
-    Univariant(Struct, Destructor),
+    /**
+     * Single-case variants, and structs/tuples/records.
+     *
+     * Structs with destructors need a dynamic destroyedness flag to
+     * avoid running the destructor too many times; this is included
+     * in the `Struct` if present.
+     */
+    Univariant(Struct, bool),
     /**
      * General-case enums: discriminant as int, followed by fields.
      * The fields start immediately after the discriminant, meaning
@@ -90,18 +88,6 @@ pub enum Repr {
      * see above.
      */
     General(~[Struct])
-}
-
-/**
- * Structs without destructors have historically had an extra layer of
- * LLVM-struct to make accessing them work the same as structs with
- * destructors.  This could probably be flattened to a boolean now
- * that this module exists.
- */
-enum Destructor {
-    StructWithDtor,
-    StructWithoutDtor,
-    NonStruct
 }
 
 /// For structs, and struct-like parts of anything fancier.
@@ -129,14 +115,17 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
     }
     let repr = @match ty::get(t).sty {
         ty::ty_tup(ref elems) => {
-            Univariant(mk_struct(cx, *elems), NonStruct)
+            Univariant(mk_struct(cx, *elems), false)
         }
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx, def_id);
-            let dt = ty::ty_dtor(cx.tcx, def_id).is_present();
-            Univariant(mk_struct(cx, fields.map(|field| {
+            let ftys = do fields.map |field| {
                 ty::lookup_field_type(cx.tcx, def_id, field.id, substs)
-            })), if dt { StructWithDtor } else { StructWithoutDtor })
+            };
+            let dtor = ty::ty_dtor(cx.tcx, def_id).is_present();
+            let ftys =
+                if dtor { ftys + [ty::mk_bool(cx.tcx)] } else { ftys };
+            Univariant(mk_struct(cx, ftys), dtor)
         }
         ty::ty_enum(def_id, ref substs) => {
             struct Case { discr: int, tys: ~[ty::t] };
@@ -149,18 +138,15 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
             };
             if cases.len() == 0 {
                 // Uninhabitable; represent as unit
-                Unit(0)
-            } else if cases.len() == 1 && cases[0].tys.len() == 0 {
-                // `()`-like; see comment on definition of `Unit`.
-                Unit(cases[0].discr)
-            } else if cases.len() == 1 {
-                // Equivalent to a struct/tuple/newtype.
-                fail_unless!(cases[0].discr == 0);
-                Univariant(mk_struct(cx, cases[0].tys), NonStruct)
+                Univariant(mk_struct(cx, ~[]), false)
             } else if cases.all(|c| c.tys.len() == 0) {
                 // All bodies empty -> intlike
                 let discrs = cases.map(|c| c.discr);
                 CEnum(discrs.min(), discrs.max())
+            } else if cases.len() == 1 {
+                // Equivalent to a struct/tuple/newtype.
+                fail_unless!(cases[0].discr == 0);
+                Univariant(mk_struct(cx, cases[0].tys), false)
             } else {
                 // The general case.  Since there's at least one
                 // non-empty body, explicit discriminants should have
@@ -204,18 +190,12 @@ pub fn sizing_fields_of(cx: @CrateContext, r: &Repr) -> ~[TypeRef] {
 fn generic_fields_of(cx: @CrateContext, r: &Repr, sizing: bool)
     -> ~[TypeRef] {
     match *r {
-        Unit(*) => ~[],
         CEnum(*) => ~[T_enum_discrim(cx)],
-        Univariant(ref st, dt) => {
-            let f = if sizing {
+        Univariant(ref st, _dtor) => {
+            if sizing {
                 st.fields.map(|&ty| type_of::sizing_type_of(cx, ty))
             } else {
                 st.fields.map(|&ty| type_of::type_of(cx, ty))
-            };
-            match dt {
-                NonStruct => f,
-                StructWithoutDtor => ~[T_struct(f)],
-                StructWithDtor => ~[T_struct(f), T_i8()]
             }
         }
         General(ref sts) => {
@@ -237,7 +217,7 @@ pub fn trans_switch(bcx: block, r: &Repr, scrutinee: ValueRef)
         CEnum(*) | General(*) => {
             (_match::switch, Some(trans_get_discr(bcx, r, scrutinee)))
         }
-        Unit(*) | Univariant(*) => {
+        Univariant(*) => {
             (_match::single, None)
         }
     }
@@ -247,7 +227,6 @@ pub fn trans_switch(bcx: block, r: &Repr, scrutinee: ValueRef)
 pub fn trans_get_discr(bcx: block, r: &Repr, scrutinee: ValueRef)
     -> ValueRef {
     match *r {
-        Unit(the_disc) => C_int(bcx.ccx(), the_disc),
         CEnum(min, max) => load_discr(bcx, scrutinee, min, max),
         Univariant(*) => C_int(bcx.ccx(), 0),
         General(ref cases) => load_discr(bcx, scrutinee, 0,
@@ -285,7 +264,7 @@ pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
         CEnum(*) => {
             _match::single_result(rslt(bcx, C_int(bcx.ccx(), discr)))
         }
-        Unit(*) | Univariant(*)=> {
+        Univariant(*)=> {
             bcx.ccx().sess.bug(~"no cases for univariants or structs")
         }
         General(*) => {
@@ -301,16 +280,14 @@ pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
  */
 pub fn trans_start_init(bcx: block, r: &Repr, val: ValueRef, discr: int) {
     match *r {
-        Unit(the_discr) => {
-            fail_unless!(discr == the_discr);
-        }
         CEnum(min, max) => {
             fail_unless!(min <= discr && discr <= max);
             Store(bcx, C_int(bcx.ccx(), discr), GEPi(bcx, val, [0, 0]))
         }
-        Univariant(_, StructWithDtor) => {
+        Univariant(ref st, true) => {
             fail_unless!(discr == 0);
-            Store(bcx, C_u8(1), GEPi(bcx, val, [0, 1]))
+            Store(bcx, C_bool(true),
+                  GEPi(bcx, val, [0, st.fields.len() - 1]))
         }
         Univariant(*) => {
             fail_unless!(discr == 0);
@@ -327,8 +304,11 @@ pub fn trans_start_init(bcx: block, r: &Repr, val: ValueRef, discr: int) {
  */
 pub fn num_args(r: &Repr, discr: int) -> uint {
     match *r {
-        Unit(*) | CEnum(*) => 0,
-        Univariant(ref st, _) => { fail_unless!(discr == 0); st.fields.len() }
+        CEnum(*) => 0,
+        Univariant(ref st, dtor) => {
+            fail_unless!(discr == 0);
+            st.fields.len() - (if dtor { 1 } else { 0 })
+        }
         General(ref cases) => cases[discr as uint].fields.len()
     }
 }
@@ -340,15 +320,11 @@ pub fn trans_field_ptr(bcx: block, r: &Repr, val: ValueRef, discr: int,
     // decide to do some kind of cdr-coding-like non-unique repr
     // someday), it will need to return a possibly-new bcx as well.
     match *r {
-        Unit(*) | CEnum(*) => {
+        CEnum(*) => {
             bcx.ccx().sess.bug(~"element access in C-like enum")
         }
-        Univariant(ref st, dt) => {
+        Univariant(ref st, _dtor) => {
             fail_unless!(discr == 0);
-            let val = match dt {
-                NonStruct => val,
-                StructWithDtor | StructWithoutDtor => GEPi(bcx, val, [0, 0])
-            };
             struct_field_ptr(bcx, st, val, ix, false)
         }
         General(ref cases) => {
@@ -376,7 +352,7 @@ fn struct_field_ptr(bcx: block, st: &Struct, val: ValueRef, ix: uint,
 /// Access the struct drop flag, if present.
 pub fn trans_drop_flag_ptr(bcx: block, r: &Repr, val: ValueRef) -> ValueRef {
     match *r {
-        Univariant(_, StructWithDtor) => GEPi(bcx, val, [0, 1]),
+        Univariant(ref st, true) => GEPi(bcx, val, [0, st.fields.len() - 1]),
         _ => bcx.ccx().sess.bug(~"tried to get drop flag of non-droppable \
                                   type")
     }
@@ -407,23 +383,14 @@ pub fn trans_drop_flag_ptr(bcx: block, r: &Repr, val: ValueRef) -> ValueRef {
 pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
                    vals: &[ValueRef]) -> ValueRef {
     match *r {
-        Unit(*) => {
-            C_struct(~[])
-        }
         CEnum(min, max) => {
             fail_unless!(vals.len() == 0);
             fail_unless!(min <= discr && discr <= max);
             C_int(ccx, discr)
         }
-        Univariant(ref st, dt) => {
+        Univariant(ref st, _dro) => {
             fail_unless!(discr == 0);
-            let s = C_struct(build_const_struct(ccx, st, vals));
-            match dt {
-                NonStruct => s,
-                // The actual destructor flag doesn't need to be present.
-                // But add an extra struct layer for compatibility.
-                StructWithDtor | StructWithoutDtor => C_struct(~[s])
-            }
+            C_struct(build_const_struct(ccx, st, vals))
         }
         General(ref cases) => {
             let case = &cases[discr as uint];
@@ -489,7 +456,6 @@ fn roundup(x: u64, a: u64) -> u64 { ((x + (a - 1)) / a) * a }
 pub fn const_get_discrim(ccx: @CrateContext, r: &Repr, val: ValueRef)
     -> int {
     match *r {
-        Unit(discr) => discr,
         CEnum(*) => const_to_int(val) as int,
         Univariant(*) => 0,
         General(*) => const_to_int(const_get_elt(ccx, val, [0])) as int,
@@ -506,11 +472,9 @@ pub fn const_get_discrim(ccx: @CrateContext, r: &Repr, val: ValueRef)
 pub fn const_get_field(ccx: @CrateContext, r: &Repr, val: ValueRef,
                        _discr: int, ix: uint) -> ValueRef {
     match *r {
-        Unit(*) | CEnum(*) => ccx.sess.bug(~"element access in C-like enum \
+        CEnum(*) => ccx.sess.bug(~"element access in C-like enum \
                                              const"),
-        Univariant(_, NonStruct) => const_struct_field(ccx, val, ix),
-        Univariant(*) => const_struct_field(ccx, const_get_elt(ccx, val,
-                                                               [0]), ix),
+        Univariant(*) => const_struct_field(ccx, val, ix),
         General(*) => const_struct_field(ccx, const_get_elt(ccx, val,
                                                             [1, 0]), ix)
     }
@@ -542,8 +506,7 @@ fn const_struct_field(ccx: @CrateContext, val: ValueRef, ix: uint)
 /// Is it safe to bitcast a value to the one field of its one variant?
 pub fn is_newtypeish(r: &Repr) -> bool {
     match *r {
-        Univariant(ref st, StructWithoutDtor)
-        | Univariant(ref st, NonStruct) => st.fields.len() == 1,
+        Univariant(ref st, false) => st.fields.len() == 1,
         _ => false
     }
 }
