@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // xfail-test
-fn find<T>(_f: fn(@T) -> bool, _v: [@T]) {}
+fn find<T>(_f: &fn(@T) -> bool, _v: [@T]) {}
 
 pub fn main() {
     let x = 10, arr = [];

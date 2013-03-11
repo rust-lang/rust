@@ -34,7 +34,7 @@ fn r(v: U) -> r {
     }
 }
 
-enum t = Node;
+struct t(Node);
 
 struct Node {
     next: Option<@mut t>,

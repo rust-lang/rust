@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // xfail-test
-enum x = ();
+struct x(());
 pub impl x {
     unsafe fn with() { } // This should fail
 }

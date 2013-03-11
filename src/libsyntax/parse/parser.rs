@@ -77,6 +77,7 @@ use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
 use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
 use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
 use parse::obsolete::{ObsoleteAssertion, ObsoletePostFnTySigil};
+use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -647,8 +648,9 @@ pub impl Parser {
         } else if self.eat_keyword(&~"extern") {
             self.parse_ty_bare_fn()
         } else if self.token_is_closure_keyword(&copy *self.token) {
-            // self.warn(fmt!("Old-school closure keyword"));
-            self.parse_ty_closure(ast::BorrowedSigil, None)
+            let result = self.parse_ty_closure(ast::BorrowedSigil, None);
+            self.obsolete(*self.last_span, ObsoleteBareFnType);
+            result
         } else if *self.token == token::MOD_SEP
             || is_ident_or_path(&*self.token) {
             let path = self.parse_path_with_tps(colons_before_params);
@@ -1829,7 +1831,7 @@ pub impl Parser {
 
     fn parse_sugary_call_expr(&self, keyword: ~str,
                               sugar: CallSugar,
-                              ctor: fn(+v: @expr) -> expr_) -> @expr {
+                              ctor: &fn(+v: @expr) -> expr_) -> @expr {
         let lo = self.last_span;
         // Parse the callee `foo` in
         //    for foo || {
@@ -2769,7 +2771,7 @@ pub impl Parser {
         (lifetimes, opt_vec::take_vec(result))
     }
 
-    fn parse_fn_decl(&self, parse_arg_fn: fn(&Parser) -> arg_or_capture_item)
+    fn parse_fn_decl(&self, parse_arg_fn: &fn(&Parser) -> arg_or_capture_item)
         -> fn_decl
     {
         let args_or_capture_items: ~[arg_or_capture_item] =
@@ -2813,10 +2815,10 @@ pub impl Parser {
     fn parse_fn_decl_with_self(
         &self,
         parse_arg_fn:
-        fn(&Parser) -> arg_or_capture_item
+        &fn(&Parser) -> arg_or_capture_item
     ) -> (self_ty, fn_decl) {
         fn maybe_parse_self_ty(
-            cnstr: fn(+v: mutability) -> ast::self_ty_,
+            cnstr: &fn(+v: mutability) -> ast::self_ty_,
             p: &Parser
         ) -> ast::self_ty_ {
             // We need to make sure it isn't a mode or a type
@@ -3765,7 +3767,7 @@ pub impl Parser {
                         enum");
         }
 
-        enum_def(ast::enum_def_ { variants: variants, common: common_fields })
+        ast::enum_def { variants: variants, common: common_fields }
     }
 
     fn parse_item_enum(&self) -> item_info {
@@ -3788,12 +3790,12 @@ pub impl Parser {
                 vis: public,
             });
 
+            self.obsolete(*self.last_span, ObsoleteNewtypeEnum);
+
             return (
                 id,
                 item_enum(
-                    enum_def(
-                        ast::enum_def_ { variants: ~[variant], common: None }
-                    ),
+                    ast::enum_def { variants: ~[variant], common: None },
                     generics),
                 None
             );

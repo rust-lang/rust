@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum foo = uint;
+struct foo(uint);
 
 fn main() {
     let (foo, _) = (2, 3); //~ ERROR declaration of `foo` shadows

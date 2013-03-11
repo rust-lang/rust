@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    fn baz(_x: fn(y: int) -> int) {}
+    fn baz(_x: &fn(y: int) -> int) {}
     for baz |_e| { } //~ ERROR A `for` loop iterator should expect a closure that returns `bool`
 }

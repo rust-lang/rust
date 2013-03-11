@@ -393,7 +393,7 @@ Section: Iterating
  * `true` If execution proceeded correctly, `false` if it was interrupted,
  * that is if `it` returned `false` at any point.
  */
-pub fn loop_chars(rope: Rope, it: fn(c: char) -> bool) -> bool {
+pub fn loop_chars(rope: Rope, it: &fn(c: char) -> bool) -> bool {
    match (rope) {
       node::Empty => return true,
       node::Content(x) => return node::loop_chars(x, it)
@@ -407,7 +407,7 @@ pub fn loop_chars(rope: Rope, it: fn(c: char) -> bool) -> bool {
  * * rope - A rope to traverse. It may be empty
  * * it - A block to execute with each consecutive character of the rope.
  */
-pub fn iter_chars(rope: Rope, it: fn(char)) {
+pub fn iter_chars(rope: Rope, it: &fn(char)) {
     do loop_chars(rope) |x| {
         it(x);
         true
@@ -436,7 +436,7 @@ pub fn iter_chars(rope: Rope, it: fn(char)) {
  * `true` If execution proceeded correctly, `false` if it was interrupted,
  * that is if `it` returned `false` at any point.
  */
-pub fn loop_leaves(rope: Rope, it: fn(node::Leaf) -> bool) -> bool{
+pub fn loop_leaves(rope: Rope, it: &fn(node::Leaf) -> bool) -> bool{
    match (rope) {
       node::Empty => return true,
       node::Content(x) => return node::loop_leaves(x, it)
@@ -1078,7 +1078,7 @@ pub mod node {
         return result;
     }
 
-    pub fn loop_chars(node: @Node, it: fn(c: char) -> bool) -> bool {
+    pub fn loop_chars(node: @Node, it: &fn(c: char) -> bool) -> bool {
         return loop_leaves(node,|leaf| {
             str::all_between(*leaf.content,
                              leaf.byte_offset,
@@ -1100,7 +1100,7 @@ pub mod node {
      * `true` If execution proceeded correctly, `false` if it was interrupted,
      * that is if `it` returned `false` at any point.
      */
-    pub fn loop_leaves(node: @Node, it: fn(Leaf) -> bool) -> bool{
+    pub fn loop_leaves(node: @Node, it: &fn(Leaf) -> bool) -> bool{
         let mut current = node;
         loop {
             match (*current) {

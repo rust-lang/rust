@@ -43,8 +43,8 @@ mod pingpong {
             ptr::addr_of(&(data.ping))
         }
     }
-    pub enum ping = server::pong;
-    pub enum pong = client::ping;
+    pub struct ping(server::pong);
+    pub struct pong(client::ping);
     pub mod client {
         use core::pipes;
         use core::pipes::*;

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn something(f: pure fn()) { f(); }
+fn something(f: &pure fn()) { f(); }
 
 fn main() {
     let mut x = ~[];

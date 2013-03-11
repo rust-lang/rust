@@ -9,13 +9,13 @@
 // except according to those terms.
 
 
-enum S = ();
+pub struct S(());
 
 pub impl S {
     fn foo() { }
 }
 
-trait T {
+pub trait T {
     fn bar();
 }
 

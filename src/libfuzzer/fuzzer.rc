@@ -247,7 +247,7 @@ pub fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::Ty,
     *crate2
 }
 
-pub fn under(n: uint, it: fn(uint)) {
+pub fn under(n: uint, it: &fn(uint)) {
     let mut i: uint = 0u;
     while i < n { it(i); i += 1u; }
 }

@@ -25,7 +25,7 @@ struct Results {
 }
 
 fn timed(result: &mut float,
-         op: fn()) {
+         op: &fn()) {
     let start = std::time::precise_time_s();
     op();
     let end = std::time::precise_time_s();

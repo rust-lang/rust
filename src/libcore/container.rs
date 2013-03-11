@@ -30,10 +30,10 @@ pub trait Map<K, V>: Mutable {
     pure fn contains_key(&self, key: &K) -> bool;
 
     /// Visit all keys
-    pure fn each_key(&self, f: fn(&K) -> bool);
+    pure fn each_key(&self, f: &fn(&K) -> bool);
 
     /// Visit all values
-    pure fn each_value(&self, f: fn(&V) -> bool);
+    pure fn each_value(&self, f: &fn(&V) -> bool);
 
     /// Return the value corresponding to the key in the map
     pure fn find(&self, key: &K) -> Option<&self/V>;
@@ -71,14 +71,14 @@ pub trait Set<T>: Mutable {
     pure fn is_superset(&self, other: &Self) -> bool;
 
     /// Visit the values representing the difference
-    pure fn difference(&self, other: &Self, f: fn(&T) -> bool);
+    pure fn difference(&self, other: &Self, f: &fn(&T) -> bool);
 
     /// Visit the values representing the symmetric difference
-    pure fn symmetric_difference(&self, other: &Self, f: fn(&T) -> bool);
+    pure fn symmetric_difference(&self, other: &Self, f: &fn(&T) -> bool);
 
     /// Visit the values representing the intersection
-    pure fn intersection(&self, other: &Self, f: fn(&T) -> bool);
+    pure fn intersection(&self, other: &Self, f: &fn(&T) -> bool);
 
     /// Visit the values representing the union
-    pure fn union(&self, other: &Self, f: fn(&T) -> bool);
+    pure fn union(&self, other: &Self, f: &fn(&T) -> bool);
 }

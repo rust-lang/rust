@@ -105,17 +105,24 @@ use syntax::ast::{m_const, m_mutbl, m_imm};
 use syntax::ast;
 use syntax::ast_map;
 
+#[deriving_eq]
+pub enum CheckTraitsFlag {
+    CheckTraitsOnly,
+    CheckTraitsAndInherentMethods,
+}
+
 pub fn lookup(
     fcx: @mut FnCtxt,
 
     // In a call `a.b::<X, Y, ...>(...)`:
-    expr: @ast::expr,        // The expression `a.b`.
-    self_expr: @ast::expr,   // The expression `a`.
-    callee_id: node_id, // Where to store the type of `a.b`
-    m_name: ast::ident,      // The ident `b`.
-    self_ty: ty::t,          // The type of `a`.
-    supplied_tps: &[ty::t],  // The list of types X, Y, ... .
-    deref_args: check::DerefArgs)   // Whether we autopointer first.
+    expr: @ast::expr,                   // The expression `a.b`.
+    self_expr: @ast::expr,              // The expression `a`.
+    callee_id: node_id,                 // Where to store the type of `a.b`
+    m_name: ast::ident,                 // The ident `b`.
+    self_ty: ty::t,                     // The type of `a`.
+    supplied_tps: &[ty::t],             // The list of types X, Y, ... .
+    deref_args: check::DerefArgs,       // Whether we autopointer first.
+    check_traits: CheckTraitsFlag)      // Whether we check traits only.
     -> Option<method_map_entry>
 {
     let lcx = LookupContext {
@@ -129,6 +136,7 @@ pub fn lookup(
         inherent_candidates: @mut ~[],
         extension_candidates: @mut ~[],
         deref_args: deref_args,
+        check_traits: check_traits,
     };
     let mme = lcx.do_lookup(self_ty);
     debug!("method lookup for %s yielded %?",
@@ -147,6 +155,7 @@ pub struct LookupContext {
     inherent_candidates: @mut ~[Candidate],
     extension_candidates: @mut ~[Candidate],
     deref_args: check::DerefArgs,
+    check_traits: CheckTraitsFlag,
 }
 
 /**
@@ -299,7 +308,9 @@ pub impl LookupContext/&self {
                         self_ty, self_did, &substs);
                 }
                 ty_enum(did, _) | ty_struct(did, _) => {
-                    self.push_inherent_impl_candidates_for_type(did);
+                    if self.check_traits == CheckTraitsAndInherentMethods {
+                        self.push_inherent_impl_candidates_for_type(did);
+                    }
                 }
                 _ => { /* No inherent methods in these types */ }
             }

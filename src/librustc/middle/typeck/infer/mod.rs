@@ -481,12 +481,12 @@ fn resolve_borrowings(cx: @mut InferCtxt) {
 */
 
 trait then {
-    fn then<T:Copy>(&self, f: fn() -> Result<T,ty::type_err>)
+    fn then<T:Copy>(&self, f: &fn() -> Result<T,ty::type_err>)
         -> Result<T,ty::type_err>;
 }
 
 impl then for ures {
-    fn then<T:Copy>(&self, f: fn() -> Result<T,ty::type_err>)
+    fn then<T:Copy>(&self, f: &fn() -> Result<T,ty::type_err>)
         -> Result<T,ty::type_err> {
         self.chain(|_i| f())
     }
@@ -506,11 +506,11 @@ impl<T> ToUres for cres<T> {
 }
 
 trait CresCompare<T> {
-    fn compare(&self, t: T, f: fn() -> ty::type_err) -> cres<T>;
+    fn compare(&self, t: T, f: &fn() -> ty::type_err) -> cres<T>;
 }
 
 impl<T:Copy + Eq> CresCompare<T> for cres<T> {
-    fn compare(&self, t: T, f: fn() -> ty::type_err) -> cres<T> {
+    fn compare(&self, t: T, f: &fn() -> ty::type_err) -> cres<T> {
         do self.chain |s| {
             if s == t {
                 *self
@@ -584,7 +584,7 @@ pub impl @mut InferCtxt {
     }
 
     /// Execute `f` and commit the bindings if successful
-    fn commit<T,E>(&self, f: fn() -> Result<T,E>) -> Result<T,E> {
+    fn commit<T,E>(&self, f: &fn() -> Result<T,E>) -> Result<T,E> {
         fail_unless!(!self.in_snapshot());
 
         debug!("commit()");
@@ -599,7 +599,7 @@ pub impl @mut InferCtxt {
     }
 
     /// Execute `f`, unroll bindings on failure
-    fn try<T,E>(&self, f: fn() -> Result<T,E>) -> Result<T,E> {
+    fn try<T,E>(&self, f: &fn() -> Result<T,E>) -> Result<T,E> {
         debug!("try()");
         do indent {
             let snapshot = self.start_snapshot();
@@ -613,7 +613,7 @@ pub impl @mut InferCtxt {
     }
 
     /// Execute `f` then unroll any bindings it creates
-    fn probe<T,E>(&self, f: fn() -> Result<T,E>) -> Result<T,E> {
+    fn probe<T,E>(&self, f: &fn() -> Result<T,E>) -> Result<T,E> {
         debug!("probe()");
         do indent {
             let snapshot = self.start_snapshot();
@@ -706,7 +706,7 @@ pub impl @mut InferCtxt {
         }
     }
 
-    fn type_error_message(&self, sp: span, mk_msg: fn(~str) -> ~str,
+    fn type_error_message(&self, sp: span, mk_msg: &fn(~str) -> ~str,
                           actual_ty: ty::t, err: Option<&ty::type_err>) {
         let actual_ty = self.resolve_type_vars_if_possible(actual_ty);
 

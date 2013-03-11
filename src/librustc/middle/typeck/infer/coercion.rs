@@ -84,7 +84,7 @@ use syntax::ast;
 // Note: Coerce is not actually a combiner, in that it does not
 // conform to the same interface, though it performs a similar
 // function.
-pub enum Coerce = CombineFields;
+pub struct Coerce(CombineFields);
 
 pub impl Coerce {
     fn tys(&self, a: ty::t, b: ty::t) -> CoerceResult {

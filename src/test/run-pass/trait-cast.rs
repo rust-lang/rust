@@ -13,7 +13,7 @@
 
 // Test cyclic detector when using trait instances.
 
-enum Tree = @mut TreeR;
+struct Tree(@mut TreeR);
 struct TreeR {
     left: Option<Tree>,
     right: Option<Tree>,

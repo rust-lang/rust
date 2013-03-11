@@ -30,7 +30,7 @@ pub fn replace_bound_regions_in_fn_sig(
     isr: isr_alist,
     self_info: Option<SelfInfo>,
     fn_sig: &ty::FnSig,
-    mapf: fn(ty::bound_region) -> ty::Region) ->
+    mapf: &fn(ty::bound_region) -> ty::Region) ->
     (isr_alist, Option<SelfInfo>, ty::FnSig) {
     // Take self_info apart; the self_ty part is the only one we want
     // to update here.
@@ -96,7 +96,7 @@ pub fn replace_bound_regions_in_fn_sig(
         tcx: ty::ctxt,
         isr: isr_alist,
         tys: ~[ty::t],
-        to_r: fn(ty::bound_region) -> ty::Region) -> isr_alist {
+        to_r: &fn(ty::bound_region) -> ty::Region) -> isr_alist {
 
         // Takes `isr` (described above), `to_r` (described above),
         // and `r`, a region.  If `r` is anything other than a bound
@@ -106,7 +106,7 @@ pub fn replace_bound_regions_in_fn_sig(
         // updated isr_alist that now contains a mapping from `r` to
         // the result of calling `to_r` on it.
         fn append_isr(isr: isr_alist,
-                      to_r: fn(ty::bound_region) -> ty::Region,
+                      to_r: &fn(ty::bound_region) -> ty::Region,
                       r: ty::Region) -> isr_alist {
             match r {
               ty::re_free(_, _) | ty::re_static | ty::re_scope(_) |

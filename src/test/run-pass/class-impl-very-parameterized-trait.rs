@@ -50,7 +50,7 @@ pub impl<T> cat<T> {
 }
 
 impl<T> BaseIter<(int, &'self T)> for cat<T> {
-    pure fn each(&self, f: fn(&(int, &'self T)) -> bool) {
+    pure fn each(&self, f: &fn(&(int, &'self T)) -> bool) {
         let mut n = int::abs(self.meows);
         while n > 0 {
             if !f(&(n, &self.name)) { break; }
@@ -73,11 +73,11 @@ impl<T> Mutable for cat<T> {
 impl<T> Map<int, T> for cat<T> {
     pure fn contains_key(&self, k: &int) -> bool { *k <= self.meows }
 
-    pure fn each_key(&self, f: fn(v: &int) -> bool) {
+    pure fn each_key(&self, f: &fn(v: &int) -> bool) {
         for self.each |&(k, _)| { if !f(&k) { break; } loop;};
     }
 
-    pure fn each_value(&self, f: fn(v: &T) -> bool) {
+    pure fn each_value(&self, f: &fn(v: &T) -> bool) {
         for self.each |&(_, v)| { if !f(v) { break; } loop;};
     }
 

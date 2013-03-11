@@ -19,7 +19,7 @@ use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
 
 /// Trait for visitor that wishes to reflect on data.
 trait movable_ptr {
-    fn move_ptr(adjustment: fn(*c_void) -> *c_void);
+    fn move_ptr(adjustment: &fn(*c_void) -> *c_void);
 }
 
 /// Helper function for alignment calculation.
@@ -28,7 +28,7 @@ fn align(size: uint, align: uint) -> uint {
     ((size + align) - 1u) & !(align - 1u)
 }
 
-enum ptr_visit_adaptor<V> = Inner<V>;
+struct ptr_visit_adaptor<V>(Inner<V>);
 
 pub impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
 
@@ -470,7 +470,7 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
     }
 }
 
-enum my_visitor = @mut Stuff;
+struct my_visitor(@mut Stuff);
 
 struct Stuff {
     ptr1: *c_void,
@@ -479,7 +479,7 @@ struct Stuff {
 }
 
 pub impl my_visitor {
-    fn get<T>(f: fn(T)) {
+    fn get<T>(f: &fn(T)) {
         unsafe {
             f(*(self.ptr1 as *T));
         }
@@ -498,7 +498,7 @@ pub impl my_visitor {
 struct Inner<V> { inner: V }
 
 impl movable_ptr for my_visitor {
-    fn move_ptr(adjustment: fn(*c_void) -> *c_void) {
+    fn move_ptr(adjustment: &fn(*c_void) -> *c_void) {
         self.ptr1 = adjustment(self.ptr1);
         self.ptr2 = adjustment(self.ptr2);
     }

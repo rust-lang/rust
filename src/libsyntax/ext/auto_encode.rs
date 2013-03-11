@@ -432,7 +432,7 @@ fn mk_impl(
     ty_param: ast::TyParam,
     path: @ast::path,
     generics: &ast::Generics,
-    f: fn(@ast::Ty) -> @ast::method
+    f: &fn(@ast::Ty) -> @ast::method
 ) -> @ast::item {
     /*!
      *
@@ -1256,51 +1256,51 @@ mod test {
         fn emit_owned_str(&self, +_v: &str) { self.add_unknown_to_log(); }
         fn emit_managed_str(&self, +_v: &str) { self.add_unknown_to_log(); }
 
-        fn emit_borrowed(&self, f: fn()) { self.add_unknown_to_log(); f() }
-        fn emit_owned(&self, f: fn()) { self.add_unknown_to_log(); f() }
-        fn emit_managed(&self, f: fn()) { self.add_unknown_to_log(); f() }
+        fn emit_borrowed(&self, f: &fn()) { self.add_unknown_to_log(); f() }
+        fn emit_owned(&self, f: &fn()) { self.add_unknown_to_log(); f() }
+        fn emit_managed(&self, f: &fn()) { self.add_unknown_to_log(); f() }
 
-        fn emit_enum(&self, name: &str, f: fn()) {
+        fn emit_enum(&self, name: &str, f: &fn()) {
             self.add_to_log(CallToEmitEnum(name.to_str())); f(); }
 
         fn emit_enum_variant(&self, name: &str, +id: uint,
-                             +cnt: uint, f: fn()) {
+                             +cnt: uint, f: &fn()) {
             self.add_to_log(CallToEmitEnumVariant (name.to_str(),id,cnt));
             f();
         }
 
-        fn emit_enum_variant_arg(&self, +idx: uint, f: fn()) {
+        fn emit_enum_variant_arg(&self, +idx: uint, f: &fn()) {
             self.add_to_log(CallToEmitEnumVariantArg (idx)); f();
         }
 
-        fn emit_borrowed_vec(&self, +_len: uint, f: fn()) {
+        fn emit_borrowed_vec(&self, +_len: uint, f: &fn()) {
             self.add_unknown_to_log(); f();
         }
 
-        fn emit_owned_vec(&self, +_len: uint, f: fn()) {
+        fn emit_owned_vec(&self, +_len: uint, f: &fn()) {
             self.add_unknown_to_log(); f();
         }
-        fn emit_managed_vec(&self, +_len: uint, f: fn()) {
+        fn emit_managed_vec(&self, +_len: uint, f: &fn()) {
             self.add_unknown_to_log(); f();
         }
-        fn emit_vec_elt(&self, +_idx: uint, f: fn()) {
+        fn emit_vec_elt(&self, +_idx: uint, f: &fn()) {
             self.add_unknown_to_log(); f();
         }
 
-        fn emit_rec(&self, f: fn()) {
+        fn emit_rec(&self, f: &fn()) {
             self.add_unknown_to_log(); f();
         }
-        fn emit_struct(&self, name: &str, +len: uint, f: fn()) {
+        fn emit_struct(&self, name: &str, +len: uint, f: &fn()) {
             self.add_to_log(CallToEmitStruct (name.to_str(),len)); f();
         }
-        fn emit_field(&self, name: &str, +idx: uint, f: fn()) {
+        fn emit_field(&self, name: &str, +idx: uint, f: &fn()) {
             self.add_to_log(CallToEmitField (name.to_str(),idx)); f();
         }
 
-        fn emit_tup(&self, +_len: uint, f: fn()) {
+        fn emit_tup(&self, +_len: uint, f: &fn()) {
             self.add_unknown_to_log(); f();
         }
-        fn emit_tup_elt(&self, +_idx: uint, f: fn()) {
+        fn emit_tup_elt(&self, +_idx: uint, f: &fn()) {
             self.add_unknown_to_log(); f();
         }
     }
@@ -1327,16 +1327,4 @@ mod test {
                        CallToEmitEnumVariantArg (1),
                        CallToEmitUint (44)]);
         }
-
-    pub enum BPos = uint;
-
-    #[auto_encode]
-    pub struct HasPos { pos : BPos }
-
-    #[test] fn encode_newtype_test () {
-        check_equal (to_call_log (HasPos {pos:BPos(48)}),
-                    ~[CallToEmitStruct(~"HasPos",1),
-                      CallToEmitField(~"pos",0),
-                      CallToEmitUint(48)]);
-    }
 }

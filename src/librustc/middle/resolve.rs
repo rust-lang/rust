@@ -3241,7 +3241,7 @@ pub impl Resolver {
     // generate a fake "implementation scope" containing all the
     // implementations thus found, for compatibility with old resolve pass.
 
-    fn with_scope(@mut self, name: Option<ident>, f: fn()) {
+    fn with_scope(@mut self, name: Option<ident>, f: &fn()) {
         let orig_module = self.current_module;
 
         // Move down in the graph.
@@ -3661,7 +3661,7 @@ pub impl Resolver {
 
     fn with_type_parameter_rib(@mut self,
                                type_parameters: TypeParameters,
-                               f: fn()) {
+                               f: &fn()) {
         match type_parameters {
             HasTypeParameters(generics, node_id, initial_index,
                               rib_kind) => {
@@ -3702,13 +3702,13 @@ pub impl Resolver {
         }
     }
 
-    fn with_label_rib(@mut self, f: fn()) {
+    fn with_label_rib(@mut self, f: &fn()) {
         self.label_ribs.push(@Rib(NormalRibKind));
         f();
         self.label_ribs.pop();
     }
 
-    fn with_constant_rib(@mut self, f: fn()) {
+    fn with_constant_rib(@mut self, f: &fn()) {
         self.value_ribs.push(@Rib(ConstantItemRibKind));
         f();
         self.value_ribs.pop();

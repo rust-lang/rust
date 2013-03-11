@@ -36,7 +36,7 @@
  * scopes and (b) the default region may change.  To understand case (a),
  * consider something like:
  *
- *   type foo = { x: &a.int, y: fn(&a.int) }
+ *   type foo = { x: &a.int, y: &fn(&a.int) }
  *
  * The type of `x` is an error because there is no region `a` in scope.
  * In the type of `y`, however, region `a` is considered a bound region
@@ -224,7 +224,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
         rscope: &RS,
         a_seq_ty: ast::mt,
         vst: ty::vstore,
-        constr: fn(ty::mt) -> ty::t) -> ty::t
+        constr: &fn(ty::mt) -> ty::t) -> ty::t
     {
         let tcx = self.tcx();
 

@@ -582,18 +582,20 @@ pub enum param_bound {
 }
 
 #[deriving_eq]
-pub enum TyVid = uint;
+pub struct TyVid(uint);
 
 #[deriving_eq]
-pub enum IntVid = uint;
+pub struct IntVid(uint);
 
 #[deriving_eq]
-pub enum FloatVid = uint;
+pub struct FloatVid(uint);
 
 #[deriving_eq]
 #[auto_encode]
 #[auto_decode]
-pub enum RegionVid = uint;
+pub struct RegionVid {
+    id: uint
+}
 
 #[deriving_eq]
 pub enum InferTy {
@@ -687,11 +689,11 @@ impl ToStr for FloatVid {
 }
 
 impl Vid for RegionVid {
-    pure fn to_uint(&self) -> uint { **self }
+    pure fn to_uint(&self) -> uint { self.id }
 }
 
 impl ToStr for RegionVid {
-    pure fn to_str(&self) -> ~str { fmt!("%?", self) }
+    pure fn to_str(&self) -> ~str { fmt!("%?", self.id) }
 }
 
 impl ToStr for FnSig {
@@ -1138,11 +1140,11 @@ pub fn encl_region(cx: ctxt, id: ast::node_id) -> ty::Region {
     }
 }
 
-pub fn walk_ty(ty: t, f: fn(t)) {
+pub fn walk_ty(ty: t, f: &fn(t)) {
     maybe_walk_ty(ty, |t| { f(t); true });
 }
 
-pub fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
+pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
     if !f(ty) { return; }
     match /*bad*/copy get(ty).sty {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
@@ -1170,11 +1172,11 @@ pub fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
     }
 }
 
-pub fn fold_sty_to_ty(tcx: ty::ctxt, sty: &sty, foldop: fn(t) -> t) -> t {
+pub fn fold_sty_to_ty(tcx: ty::ctxt, sty: &sty, foldop: &fn(t) -> t) -> t {
     mk_t(tcx, fold_sty(sty, foldop))
 }
 
-pub fn fold_sig(sig: &FnSig, fldop: fn(t) -> t) -> FnSig {
+pub fn fold_sig(sig: &FnSig, fldop: &fn(t) -> t) -> FnSig {
     let args = do sig.inputs.map |arg| {
         arg { mode: arg.mode, ty: fldop(arg.ty) }
     };
@@ -1185,8 +1187,8 @@ pub fn fold_sig(sig: &FnSig, fldop: fn(t) -> t) -> FnSig {
     }
 }
 
-fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
-    fn fold_substs(substs: &substs, fldop: fn(t) -> t) -> substs {
+fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
+    fn fold_substs(substs: &substs, fldop: &fn(t) -> t) -> substs {
         substs {self_r: substs.self_r,
                 self_ty: substs.self_ty.map(|t| fldop(*t)),
                 tps: substs.tps.map(|t| fldop(*t))}
@@ -1241,7 +1243,7 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
 }
 
 // Folds types from the bottom up.
-pub fn fold_ty(cx: ctxt, t0: t, fldop: fn(t) -> t) -> t {
+pub fn fold_ty(cx: ctxt, t0: t, fldop: &fn(t) -> t) -> t {
     let sty = fold_sty(&get(t0).sty, |t| fold_ty(cx, fldop(t), fldop));
     fldop(mk_t(cx, sty))
 }
@@ -1249,8 +1251,8 @@ pub fn fold_ty(cx: ctxt, t0: t, fldop: fn(t) -> t) -> t {
 pub fn walk_regions_and_ty(
     cx: ctxt,
     ty: t,
-    walkr: fn(r: Region),
-    walkt: fn(t: t) -> bool) {
+    walkr: &fn(r: Region),
+    walkt: &fn(t: t) -> bool) {
 
     if (walkt(ty)) {
         fold_regions_and_ty(
@@ -1264,14 +1266,14 @@ pub fn walk_regions_and_ty(
 pub fn fold_regions_and_ty(
     cx: ctxt,
     ty: t,
-    fldr: fn(r: Region) -> Region,
-    fldfnt: fn(t: t) -> t,
-    fldt: fn(t: t) -> t) -> t {
+    fldr: &fn(r: Region) -> Region,
+    fldfnt: &fn(t: t) -> t,
+    fldt: &fn(t: t) -> t) -> t {
 
     fn fold_substs(
         substs: &substs,
-        fldr: fn(r: Region) -> Region,
-        fldt: fn(t: t) -> t)
+        fldr: &fn(r: Region) -> Region,
+        fldt: &fn(t: t) -> t)
      -> substs {
         substs {
             self_r: substs.self_r.map(|r| fldr(*r)),
@@ -1325,9 +1327,9 @@ pub fn fold_regions_and_ty(
 pub fn fold_regions(
     cx: ctxt,
     ty: t,
-    fldr: fn(r: Region, in_fn: bool) -> Region) -> t {
+    fldr: &fn(r: Region, in_fn: bool) -> Region) -> t {
     fn do_fold(cx: ctxt, ty: t, in_fn: bool,
-               fldr: fn(Region, bool) -> Region) -> t {
+               fldr: &fn(Region, bool) -> Region) -> t {
         debug!("do_fold(ty=%s, in_fn=%b)", ty_to_str(cx, ty), in_fn);
         if !type_has_regions(ty) { return ty; }
         fold_regions_and_ty(
@@ -2274,7 +2276,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 
 pub fn type_structurally_contains(cx: ctxt,
                                   ty: t,
-                                  test: fn(x: &sty) -> bool)
+                                  test: &fn(x: &sty) -> bool)
                                -> bool {
     let sty = &get(ty).sty;
     debug!("type_structurally_contains: %s",
@@ -4008,7 +4010,7 @@ pub fn struct_fields(cx: ctxt,
 fn struct_item_fields(cx:ctxt,
                      did: ast::def_id,
                      substs: &substs,
-                     frob_mutability: fn(struct_mutability) -> mutability)
+                     frob_mutability: &fn(struct_mutability) -> mutability)
     -> ~[field] {
     do lookup_struct_fields(cx, did).map |f| {
        // consider all instance vars mut, because the

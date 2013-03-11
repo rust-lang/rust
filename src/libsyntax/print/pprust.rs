@@ -314,8 +314,8 @@ pub fn commasep<IN>(s: @ps, b: breaks, elts: ~[IN], op: &fn(@ps, IN)) {
 }
 
 
-pub fn commasep_cmnt<IN>(s: @ps, b: breaks, elts: ~[IN], op: fn(@ps, IN),
-                         get_span: fn(IN) -> codemap::span) {
+pub fn commasep_cmnt<IN>(s: @ps, b: breaks, elts: ~[IN], op: &fn(@ps, IN),
+                         get_span: &fn(IN) -> codemap::span) {
     box(s, 0u, b);
     let len = vec::len::<IN>(elts);
     let mut i = 0u;
@@ -612,36 +612,11 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
 pub fn print_enum_def(s: @ps, enum_definition: ast::enum_def,
                       generics: &ast::Generics, ident: ast::ident,
                       span: codemap::span, visibility: ast::visibility) {
-    let mut newtype =
-        vec::len(enum_definition.variants) == 1u &&
-        ident == enum_definition.variants[0].node.name;
-    if newtype {
-        match enum_definition.variants[0].node.kind {
-            ast::tuple_variant_kind(ref args) if args.len() == 1 => {}
-            _ => newtype = false
-        }
-    }
-    if newtype {
-        ibox(s, indent_unit);
-        word_space(s, visibility_qualified(visibility, ~"enum"));
-    } else {
-        head(s, visibility_qualified(visibility, ~"enum"));
-    }
-
+    head(s, visibility_qualified(visibility, ~"enum"));
     print_ident(s, ident);
     print_generics(s, generics);
     space(s.s);
-    if newtype {
-        word_space(s, ~"=");
-        match /*bad*/ copy enum_definition.variants[0].node.kind {
-            ast::tuple_variant_kind(args) => print_type(s, args[0].ty),
-            _ => fail!(~"newtype syntax with struct?")
-        }
-        word(s.s, ~";");
-        end(s);
-    } else {
-        print_variants(s, enum_definition.variants, span);
-    }
+    print_variants(s, enum_definition.variants, span);
 }
 
 pub fn print_variants(s: @ps,
