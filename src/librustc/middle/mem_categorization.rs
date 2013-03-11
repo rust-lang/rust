@@ -963,16 +963,19 @@ pub impl mem_categorization_ctxt {
             self.cat_pattern(subcmt, subpat, op);
           }
 
-          ast::pat_vec(ref pats, opt_tail_pat) => {
-              for pats.each |pat| {
+          ast::pat_vec(ref before, slice, ref after) => {
+              for before.each |pat| {
                   let elt_cmt = self.cat_index(*pat, cmt);
                   self.cat_pattern(elt_cmt, *pat, op);
               }
-
-              for opt_tail_pat.each |tail_pat| {
-                  let tail_ty = self.tcx.ty(*tail_pat);
-                  let tail_cmt = self.cat_rvalue(*tail_pat, tail_ty);
-                  self.cat_pattern(tail_cmt, *tail_pat, op);
+              for slice.each |slice_pat| {
+                  let slice_ty = self.tcx.ty(*slice_pat);
+                  let slice_cmt = self.cat_rvalue(*slice_pat, slice_ty);
+                  self.cat_pattern(slice_cmt, *slice_pat, op);
+              }
+              for after.each |pat| {
+                  let elt_cmt = self.cat_index(*pat, cmt);
+                  self.cat_pattern(elt_cmt, *pat, op);
               }
           }
 
