@@ -1141,25 +1141,30 @@ mod test_set {
 
     #[test]
     fn test_difference() {
-        let mut a = TreeSet::new();
-        let mut b = TreeSet::new();
+        fn check_difference(a: &[int], b: &[int], expected: &[int]) {
+            let mut set_a = TreeSet::new();
+            let mut set_b = TreeSet::new();
 
-        fail_unless!(a.insert(1));
-        fail_unless!(a.insert(3));
-        fail_unless!(a.insert(5));
-        fail_unless!(a.insert(9));
-        fail_unless!(a.insert(11));
+            for a.each |x| { fail_unless!(set_a.insert(*x)) }
+            for b.each |y| { fail_unless!(set_b.insert(*y)) }
 
-        fail_unless!(b.insert(3));
-        fail_unless!(b.insert(9));
-
-        let mut i = 0;
-        let expected = [1, 5, 11];
-        for a.difference(&b) |x| {
-            fail_unless!(*x == expected[i]);
-            i += 1
+            let mut i = 0;
+            for set_a.difference(&set_b) |x| {
+                fail_unless!(*x == expected[i]);
+                i += 1;
+            }
+            fail_unless!(i == expected.len());
         }
-        fail_unless!(i == expected.len());
+
+        check_difference([], [], []);
+        check_difference([1, 12], [], [1, 12]);
+        check_difference([], [1, 2, 3, 9], []);
+        check_difference([1, 3, 5, 9, 11],
+                         [3, 9],
+                         [1, 5, 11]);
+        check_difference([-5, 11, 22, 33, 40, 42],
+                         [-12, -5, 14, 23, 34, 38, 39, 50],
+                         [11, 22, 33, 40, 42]);
     }
 
     #[test]
