@@ -1109,51 +1109,37 @@ mod test_set {
         }
     }
 
-    #[test]
-    fn test_intersection() {
-        let mut a = TreeSet::new();
-        let mut b = TreeSet::new();
+    fn check(a: &[int], b: &[int], expected: &[int],
+             f: &fn(&TreeSet<int>, &TreeSet<int>, f: &fn(&int) -> bool)) {
+        let mut set_a = TreeSet::new();
+        let mut set_b = TreeSet::new();
 
-        fail_unless!(a.insert(11));
-        fail_unless!(a.insert(1));
-        fail_unless!(a.insert(3));
-        fail_unless!(a.insert(77));
-        fail_unless!(a.insert(103));
-        fail_unless!(a.insert(5));
-        fail_unless!(a.insert(-5));
-
-        fail_unless!(b.insert(2));
-        fail_unless!(b.insert(11));
-        fail_unless!(b.insert(77));
-        fail_unless!(b.insert(-9));
-        fail_unless!(b.insert(-42));
-        fail_unless!(b.insert(5));
-        fail_unless!(b.insert(3));
+        for a.each |x| { fail_unless!(set_a.insert(*x)) }
+        for b.each |y| { fail_unless!(set_b.insert(*y)) }
 
         let mut i = 0;
-        let expected = [3, 5, 11, 77];
-        for a.intersection(&b) |x| {
+        for f(&set_a, &set_b) |x| {
             fail_unless!(*x == expected[i]);
-            i += 1
+            i += 1;
         }
         fail_unless!(i == expected.len());
     }
 
     #[test]
+    fn test_intersection() {
+        fn check_intersection(a: &[int], b: &[int], expected: &[int]) {
+            check(a, b, expected, |x, y, z| x.intersection(y, z))
+        }
+
+        check_intersection([11, 1, 3, 77, 103, 5, -5],
+                           [2, 11, 77, -9, -42, 5, 3],
+                           [3, 5, 11, 77]);
+    }
+
+    #[test]
     fn test_difference() {
         fn check_difference(a: &[int], b: &[int], expected: &[int]) {
-            let mut set_a = TreeSet::new();
-            let mut set_b = TreeSet::new();
-
-            for a.each |x| { fail_unless!(set_a.insert(*x)) }
-            for b.each |y| { fail_unless!(set_b.insert(*y)) }
-
-            let mut i = 0;
-            for set_a.difference(&set_b) |x| {
-                fail_unless!(*x == expected[i]);
-                i += 1;
-            }
-            fail_unless!(i == expected.len());
+            check(a, b, expected, |x, y, z| x.difference(y, z))
         }
 
         check_difference([], [], []);
@@ -1169,57 +1155,25 @@ mod test_set {
 
     #[test]
     fn test_symmetric_difference() {
-        let mut a = TreeSet::new();
-        let mut b = TreeSet::new();
-
-        fail_unless!(a.insert(1));
-        fail_unless!(a.insert(3));
-        fail_unless!(a.insert(5));
-        fail_unless!(a.insert(9));
-        fail_unless!(a.insert(11));
-
-        fail_unless!(b.insert(-2));
-        fail_unless!(b.insert(3));
-        fail_unless!(b.insert(9));
-        fail_unless!(b.insert(14));
-        fail_unless!(b.insert(22));
-
-        let mut i = 0;
-        let expected = [-2, 1, 5, 11, 14, 22];
-        for a.symmetric_difference(&b) |x| {
-            fail_unless!(*x == expected[i]);
-            i += 1
+        fn check_symmetric_difference(a: &[int], b: &[int],
+                                      expected: &[int]) {
+            check(a, b, expected, |x, y, z| x.symmetric_difference(y, z))
         }
-        fail_unless!(i == expected.len());
+
+        check_symmetric_difference([1, 3, 5, 9, 11],
+                                   [-2, 3, 9, 14, 22],
+                                   [-2, 1, 5, 11, 14, 22]);
     }
 
     #[test]
     fn test_union() {
-        let mut a = TreeSet::new();
-        let mut b = TreeSet::new();
-
-        fail_unless!(a.insert(1));
-        fail_unless!(a.insert(3));
-        fail_unless!(a.insert(5));
-        fail_unless!(a.insert(9));
-        fail_unless!(a.insert(11));
-        fail_unless!(a.insert(16));
-        fail_unless!(a.insert(19));
-        fail_unless!(a.insert(24));
-
-        fail_unless!(b.insert(-2));
-        fail_unless!(b.insert(1));
-        fail_unless!(b.insert(5));
-        fail_unless!(b.insert(9));
-        fail_unless!(b.insert(13));
-        fail_unless!(b.insert(19));
-
-        let mut i = 0;
-        let expected = [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24];
-        for a.union(&b) |x| {
-            fail_unless!(*x == expected[i]);
-            i += 1
+        fn check_union(a: &[int], b: &[int],
+                                      expected: &[int]) {
+            check(a, b, expected, |x, y, z| x.union(y, z))
         }
-        fail_unless!(i == expected.len());
+
+        check_union([1, 3, 5, 9, 11, 16, 19, 24],
+                    [-2, 1, 5, 9, 13, 19],
+                    [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24]);
     }
 }
