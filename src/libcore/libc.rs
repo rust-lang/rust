@@ -534,6 +534,8 @@ pub mod types {
 
                 pub type LPCWSTR = *WCHAR;
                 pub type LPCSTR = *CHAR;
+                pub type LPCTSTR = *CHAR;
+                pub type LPTCH = *CHAR;
 
                 pub type LPWSTR = *mut WCHAR;
                 pub type LPSTR = *mut CHAR;
@@ -792,6 +794,7 @@ pub mod consts {
 
             pub const ERROR_SUCCESS : int = 0;
             pub const ERROR_INSUFFICIENT_BUFFER : int = 122;
+            pub const INVALID_HANDLE_VALUE: int = -1;
         }
     }
 
@@ -1115,6 +1118,7 @@ pub mod funcs {
         pub mod string {
             use libc::types::common::c95::c_void;
             use libc::types::os::arch::c95::{c_char, c_int, size_t};
+            use libc::types::os::arch::c95::{wchar_t};
 
             pub extern {
                 unsafe fn strcpy(dst: *c_char, src: *c_char) -> *c_char;
@@ -1138,6 +1142,7 @@ pub mod funcs {
                 unsafe fn strtok(s: *c_char, t: *c_char) -> *c_char;
                 unsafe fn strxfrm(s: *c_char, ct: *c_char, n: size_t)
                                -> size_t;
+                unsafe fn wcslen(buf: *wchar_t) -> size_t;
 
                 // These are fine to execute on the Rust stack. They must be,
                 // in fact, because LLVM generates calls to them!
@@ -1381,9 +1386,28 @@ pub mod funcs {
             use libc::types::os::arch::c95::{c_char, c_int, c_long};
 
             pub extern {
+                // default bindings for opendir and readdir in
+                // non-macos unix
+                #[cfg(target_os = "linux")]
+                #[cfg(target_os = "android")]
+                #[cfg(target_os = "freebsd")]
                 unsafe fn opendir(dirname: *c_char) -> *DIR;
-                unsafe fn closedir(dirp: *DIR) -> c_int;
+                #[cfg(target_os = "linux")]
+                #[cfg(target_os = "android")]
+                #[cfg(target_os = "freebsd")]
                 unsafe fn readdir(dirp: *DIR) -> *dirent_t;
+                // on OSX (particularly when running with a
+                // 64bit kernel), we have an issue where there
+                // are separate bindings for opendir and readdir,
+                // which we have to explicitly link, as below.
+                #[cfg(target_os = "macos")]
+                #[link_name = "opendir$INODE64"]
+                unsafe fn opendir(dirname: *c_char) -> *DIR;
+                #[cfg(target_os = "macos")]
+                #[link_name = "readdir$INODE64"]
+                unsafe fn readdir(dirp: *DIR) -> *dirent_t;
+
+                unsafe fn closedir(dirp: *DIR) -> c_int;
                 unsafe fn rewinddir(dirp: *DIR);
                 unsafe fn seekdir(dirp: *DIR, loc: c_long);
                 unsafe fn telldir(dirp: *DIR) -> c_long;
@@ -1594,8 +1618,9 @@ pub mod funcs {
 
         pub mod kernel32 {
             use libc::types::os::arch::extra::{BOOL, DWORD, HMODULE};
-            use libc::types::os::arch::extra::{LPCWSTR, LPWSTR};
+            use libc::types::os::arch::extra::{LPCWSTR, LPWSTR, LPTCH};
             use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES};
+            use libc::types::os::arch::extra::{HANDLE};
 
             #[abi = "stdcall"]
             pub extern {
@@ -1605,6 +1630,8 @@ pub mod funcs {
                                                -> DWORD;
                 unsafe fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR)
                                                -> BOOL;
+                unsafe fn GetEnvironmentStringsA() -> LPTCH;
+                unsafe fn FreeEnvironmentStringsA(env_ptr: LPTCH) -> BOOL;
 
                 unsafe fn GetModuleFileNameW(hModule: HMODULE,
                                              lpFilename: LPWSTR,
@@ -1623,6 +1650,13 @@ pub mod funcs {
                 unsafe fn SetCurrentDirectoryW(lpPathName: LPCWSTR) -> BOOL;
 
                 unsafe fn GetLastError() -> DWORD;
+                unsafe fn FindFirstFileW(fileName: *u16,
+                                        findFileData: HANDLE)
+                    -> HANDLE;
+                unsafe fn FindNextFileW(findFile: HANDLE,
+                                       findFileData: HANDLE)
+                    -> BOOL;
+                unsafe fn FindClose(findFile: HANDLE) -> BOOL;
             }
         }
 
