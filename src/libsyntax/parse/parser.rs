@@ -1184,14 +1184,6 @@ pub impl Parser {
                 }
             }
             hi = self.span.hi;
-        } else if self.eat_keyword(&~"__asm__") {
-            self.expect(&token::LPAREN);
-            let asm = self.parse_str();
-            self.expect(&token::COMMA);
-            let cons = self.parse_str();
-            ex = expr_inline_asm(asm, cons);
-            hi = self.span.hi;
-            self.expect(&token::RPAREN);
         } else if self.eat_keyword(&~"log") {
             self.expect(&token::LPAREN);
             let lvl = self.parse_expr();
