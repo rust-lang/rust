@@ -23,10 +23,6 @@
  * Having everything in one place will enable improvements to data
  * structure representation; possibilities include:
  *
- * - Aligning enum bodies correctly, which in turn makes possible SIMD
- *   vector types (which are strict-alignment even on x86) and ports
- *   to strict-alignment architectures (PowerPC, SPARC, etc.).
- *
  * - User-specified alignment (e.g., cacheline-aligning parts of
  *   concurrently accessed data structures); LLVM can't represent this
  *   directly, so we'd have to insert padding fields in any structure
@@ -82,10 +78,8 @@ pub enum Repr {
      */
     Univariant(Struct, bool),
     /**
-     * General-case enums: discriminant as int, followed by fields.
-     * The fields start immediately after the discriminant, meaning
-     * that they may not be correctly aligned for the platform's ABI;
-     * see above.
+     * General-case enums: for each case there is a struct, and they
+     * all start with a field for the discriminant.
      */
     General(~[Struct])
 }
@@ -156,7 +150,8 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
                                       discriminants",
                                      ty::item_path_str(cx.tcx, def_id)))
                 }
-                General(cases.map(|c| mk_struct(cx, c.tys)))
+                let discr = ~[ty::mk_int(cx.tcx)];
+                General(cases.map(|c| mk_struct(cx, discr + c.tys)))
             }
         }
         _ => cx.sess.bug(~"adt::represent_type called on non-ADT type")
@@ -191,17 +186,41 @@ fn generic_fields_of(cx: @CrateContext, r: &Repr, sizing: bool)
     -> ~[TypeRef] {
     match *r {
         CEnum(*) => ~[T_enum_discrim(cx)],
-        Univariant(ref st, _dtor) => {
-            if sizing {
-                st.fields.map(|&ty| type_of::sizing_type_of(cx, ty))
-            } else {
-                st.fields.map(|&ty| type_of::type_of(cx, ty))
-            }
-        }
+        Univariant(ref st, _dtor) => struct_llfields(cx, st, sizing),
         General(ref sts) => {
-            ~[T_enum_discrim(cx),
-              T_array(T_i8(), sts.map(|st| st.size).max() /*bad*/as uint)]
+            // To get "the" type of a general enum, we pick the case
+            // with the largest alignment (so it will always align
+            // correctly in containing structures) and pad it out.
+            fail_unless!(sts.len() >= 1);
+            let mut most_aligned = None;
+            let mut largest_align = 0;
+            let mut largest_size = 0;
+            for sts.each |st| {
+                if largest_size < st.size {
+                    largest_size = st.size;
+                }
+                if largest_align < st.align {
+                    // Clang breaks ties by size; it is unclear if
+                    // that accomplishes anything important.
+                    largest_align = st.align;
+                    most_aligned = Some(st);
+                }
+            }
+            let most_aligned = most_aligned.get();
+            let padding = largest_size - most_aligned.size;
+
+            struct_llfields(cx, most_aligned, sizing)
+                + [T_array(T_i8(), padding /*bad*/as uint)]
         }
+    }
+}
+
+fn struct_llfields(cx: @CrateContext, st: &Struct, sizing: bool)
+    -> ~[TypeRef] {
+    if sizing {
+        st.fields.map(|&ty| type_of::sizing_type_of(cx, ty))
+    } else {
+        st.fields.map(|&ty| type_of::type_of(cx, ty))
     }
 }
 
@@ -309,7 +328,7 @@ pub fn num_args(r: &Repr, discr: int) -> uint {
             fail_unless!(discr == 0);
             st.fields.len() - (if dtor { 1 } else { 0 })
         }
-        General(ref cases) => cases[discr as uint].fields.len()
+        General(ref cases) => cases[discr as uint].fields.len() - 1
     }
 }
 
@@ -328,8 +347,7 @@ pub fn trans_field_ptr(bcx: block, r: &Repr, val: ValueRef, discr: int,
             struct_field_ptr(bcx, st, val, ix, false)
         }
         General(ref cases) => {
-            struct_field_ptr(bcx, &cases[discr as uint],
-                                 GEPi(bcx, val, [0, 1]), ix, true)
+            struct_field_ptr(bcx, &cases[discr as uint], val, ix + 1, true)
         }
     }
 }
@@ -371,13 +389,12 @@ pub fn trans_drop_flag_ptr(bcx: block, r: &Repr, val: ValueRef) -> ValueRef {
  * depending on which case of an enum it is.
  *
  * To understand the alignment situation, consider `enum E { V64(u64),
- * V32(u32, u32) }` on win32.  The type should have 8-byte alignment
- * to accommodate the u64 (currently it doesn't; this is a known bug),
- * but `V32(x, y)` would have LLVM type `{i32, i32, i32}`, which is
- * 4-byte aligned.
+ * V32(u32, u32) }` on win32.  The type has 8-byte alignment to
+ * accommodate the u64, but `V32(x, y)` would have LLVM type `{i32,
+ * i32, i32}`, which is 4-byte aligned.
  *
  * Currently the returned value has the same size as the type, but
- * this may be changed in the future to avoid allocating unnecessary
+ * this could be changed in the future to avoid allocating unnecessary
  * space after values of shorter-than-maximum cases.
  */
 pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
@@ -395,14 +412,9 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
         General(ref cases) => {
             let case = &cases[discr as uint];
             let max_sz = cases.map(|s| s.size).max();
-            let body = build_const_struct(ccx, case, vals);
-
-            // The unary packed struct has alignment 1 regardless of
-            // its contents, so it will always be located at the
-            // expected offset at runtime.
-            C_struct([C_int(ccx, discr),
-                      C_packed_struct([C_struct(body)]),
-                      padding(max_sz - case.size)])
+            let contents = build_const_struct(ccx, case,
+                                              ~[C_int(ccx, discr)] + vals);
+            C_struct(contents + [padding(max_sz - case.size)])
         }
     }
 }
@@ -472,11 +484,9 @@ pub fn const_get_discrim(ccx: @CrateContext, r: &Repr, val: ValueRef)
 pub fn const_get_field(ccx: @CrateContext, r: &Repr, val: ValueRef,
                        _discr: int, ix: uint) -> ValueRef {
     match *r {
-        CEnum(*) => ccx.sess.bug(~"element access in C-like enum \
-                                             const"),
+        CEnum(*) => ccx.sess.bug(~"element access in C-like enum const"),
         Univariant(*) => const_struct_field(ccx, val, ix),
-        General(*) => const_struct_field(ccx, const_get_elt(ccx, val,
-                                                            [1, 0]), ix)
+        General(*) => const_struct_field(ccx, val, ix + 1)
     }
 }
 
