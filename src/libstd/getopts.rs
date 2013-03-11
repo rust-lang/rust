@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -29,8 +29,10 @@
  * The following example shows simple command line parsing for an application
  * that requires an input file to be specified, accepts an optional output
  * file name following -o, and accepts both -h and --help as optional flags.
- * extern mod std;
- * use std::getopts::*;
+ *
+ * ```
+ *    extern mod std;
+ *    use std::getopts::*;
  *
  *    fn do_work(in: &str, out: Option<~str>) {
  *      io::println(in);
@@ -58,7 +60,7 @@
  *        ];
  *        let matches = match getopts(vec::tail(args), opts) {
  *            result::Ok(m) => { m }
- *            result::Err(f) => { fail fail_str(f) }
+ *            result::Err(f) => { fail!(fail_str(f)) }
  *        };
  *        if opt_present(&matches, "h") || opt_present(&matches, "help") {
  *            print_usage(program, opts);
@@ -66,13 +68,14 @@
  *        }
  *        let output = opt_maybe_str(&matches, "o");
  *        let input: &str = if !matches.free.is_empty() {
- *            matches.free[0]
+ *            copy matches.free[0]
  *        } else {
  *            print_usage(program, opts);
  *            return;
  *        };
  *        do_work(input, output);
  *    }
+ * ```
  */
 
 use core::cmp::Eq;
