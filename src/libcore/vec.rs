@@ -2146,6 +2146,20 @@ pub mod raw {
     }
 
     /**
+     * Form a slice from a pointer and length (as a number of units,
+     * not bytes).
+     */
+    #[inline(always)]
+    pub unsafe fn mut_buf_as_slice<T,U>(p: *mut T,
+                                        len: uint,
+                                        f: &fn(v: &mut [T]) -> U) -> U {
+        let pair = (p, len * sys::nonzero_size_of::<T>());
+        let v : *(&blk/mut [T]) =
+            ::cast::reinterpret_cast(&addr_of(&pair));
+        f(*v)
+    }
+
+    /**
      * Unchecked vector indexing.
      */
     #[inline(always)]
