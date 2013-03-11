@@ -58,20 +58,25 @@ pub mod rustrt {
     pub extern {
         unsafe fn rust_get_argc() -> c_int;
         unsafe fn rust_get_argv() -> **c_char;
-        unsafe fn rust_getcwd() -> ~str;
         unsafe fn rust_path_is_dir(path: *libc::c_char) -> c_int;
         unsafe fn rust_path_exists(path: *libc::c_char) -> c_int;
-        unsafe fn rust_list_files2(&&path: ~str) -> ~[~str];
         unsafe fn rust_process_wait(handle: c_int) -> c_int;
         unsafe fn rust_set_exit_status(code: libc::intptr_t);
     }
 }
 
 pub const TMPBUF_SZ : uint = 1000u;
+const BUF_BYTES : uint = 2048u;
 
 pub fn getcwd() -> Path {
+    let buf = [0 as libc::c_char, ..BUF_BYTES];
     unsafe {
-        Path(rustrt::rust_getcwd())
+        if(0 as *libc::c_char == libc::getcwd(
+            &buf[0],
+            BUF_BYTES as libc::size_t)) {
+            fail!();
+        }
+        Path(str::raw::from_c_str(&buf[0]))
     }
 }
 
@@ -164,19 +169,67 @@ fn with_env_lock<T>(f: &fn() -> T) -> T {
 }
 
 pub fn env() -> ~[(~str,~str)] {
-    extern {
-        unsafe fn rust_env_pairs() -> ~[~str];
-    }
-
     unsafe {
-        do with_env_lock {
+        #[cfg(windows)]
+        unsafe fn get_env_pairs() -> ~[~str] {
+            use libc::types::os::arch::extra::LPTCH;
+            use libc::funcs::extra::kernel32::{
+                GetEnvironmentStringsA,
+                FreeEnvironmentStringsA
+            };
+            let ch = GetEnvironmentStringsA();
+            if (ch as uint == 0) {
+                fail!(fmt!("os::env() failure getting env string from OS: %s",
+                           os::last_os_error()));
+            }
+            let mut curr_ptr: uint = ch as uint;
+            let mut result = ~[];
+            while(*(curr_ptr as *libc::c_char) != 0 as libc::c_char) {
+                let env_pair = str::raw::from_c_str(
+                    curr_ptr as *libc::c_char);
+                result.push(env_pair);
+                curr_ptr +=
+                    libc::strlen(curr_ptr as *libc::c_char) as uint
+                    + 1;
+            }
+            FreeEnvironmentStringsA(ch);
+            result
+        }
+        #[cfg(unix)]
+        unsafe fn get_env_pairs() -> ~[~str] {
+            extern mod rustrt {
+                unsafe fn rust_env_pairs() -> **libc::c_char;
+            }
+            let environ = rustrt::rust_env_pairs();
+            if (environ as uint == 0) {
+                fail!(fmt!("os::env() failure getting env string from OS: %s",
+                           os::last_os_error()));
+            }
+            let mut result = ~[];
+            ptr::array_each(environ, |e| {
+                let env_pair = str::raw::from_c_str(e);
+                log(debug, fmt!("get_env_pairs: %s",
+                                env_pair));
+                result.push(env_pair);
+            });
+            result
+        }
+
+        fn env_convert(input: ~[~str]) -> ~[(~str, ~str)] {
             let mut pairs = ~[];
-            for vec::each(rust_env_pairs()) |p| {
-                let vs = str::splitn_char(*p, '=', 1u);
-                fail_unless!(vec::len(vs) == 2u);
+            for input.each |p| {
+                let vs = str::splitn_char(*p, '=', 1);
+                log(debug,
+                    fmt!("splitting: len: %u",
+                    vs.len()));
+                fail_unless!(vs.len() == 2);
                 pairs.push((copy vs[0], copy vs[1]));
             }
             pairs
+        }
+        do with_env_lock {
+            let unparsed_environ = get_env_pairs();
+            env_convert(unparsed_environ)
         }
     }
 }
@@ -615,13 +668,97 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
 #[allow(non_implicitly_copyable_typarams)]
 pub fn list_dir(p: &Path) -> ~[~str] {
     unsafe {
-        #[cfg(unix)]
-        fn star(p: &Path) -> Path { copy *p }
-
+        #[cfg(target_os = "linux")]
+        #[cfg(target_os = "android")]
+        #[cfg(target_os = "freebsd")]
+        #[cfg(target_os = "macos")]
+        unsafe fn get_list(p: &Path) -> ~[~str] {
+            use libc::{DIR, dirent_t};
+            use libc::{opendir, readdir, closedir};
+            extern mod rustrt {
+                unsafe fn rust_list_dir_val(ptr: *dirent_t)
+                    -> *libc::c_char;
+            }
+            let input = p.to_str();
+            let mut strings = ~[];
+            let input_ptr = ::cast::transmute(&input[0]);
+            log(debug, "os::list_dir -- BEFORE OPENDIR");
+            let dir_ptr = opendir(input_ptr);
+            if (dir_ptr as uint != 0) {
+        log(debug, "os::list_dir -- opendir() SUCCESS");
+                let mut entry_ptr = readdir(dir_ptr);
+                while (entry_ptr as uint != 0) {
+                    strings.push(
+                        str::raw::from_c_str(
+                            rustrt::rust_list_dir_val(
+                                entry_ptr)));
+                    entry_ptr = readdir(dir_ptr);
+                }
+                closedir(dir_ptr);
+            }
+            else {
+        log(debug, "os::list_dir -- opendir() FAILURE");
+            }
+            log(debug,
+                fmt!("os::list_dir -- AFTER -- #: %?",
+                     strings.len()));
+            strings
+        }
         #[cfg(windows)]
-        fn star(p: &Path) -> Path { p.push("*") }
-
-        do rustrt::rust_list_files2(star(p).to_str()).filtered |filename| {
+        unsafe fn get_list(p: &Path) -> ~[~str] {
+            use libc::types::os::arch::extra::{LPCTSTR, HANDLE, BOOL};
+            use libc::consts::os::extra::INVALID_HANDLE_VALUE;
+            use libc::wcslen;
+            use libc::funcs::extra::kernel32::{
+                FindFirstFileW,
+                FindNextFileW,
+                FindClose,
+            };
+            use os::win32::{
+                as_utf16_p
+            };
+            use unstable::exchange_alloc::{malloc_raw, free_raw};
+            #[nolink]
+            extern mod rustrt {
+                unsafe fn rust_list_dir_wfd_size() -> libc::size_t;
+                unsafe fn rust_list_dir_wfd_fp_buf(wfd: *libc::c_void)
+                    -> *u16;
+            }
+            fn star(p: &Path) -> Path { p.push("*") }
+            do as_utf16_p(star(p).to_str()) |path_ptr| {
+                let mut strings = ~[];
+                let wfd_ptr = malloc_raw(
+                    rustrt::rust_list_dir_wfd_size() as uint);
+                let find_handle =
+                    FindFirstFileW(
+                        path_ptr,
+                        ::cast::transmute(wfd_ptr));
+                if find_handle as int != INVALID_HANDLE_VALUE {
+                    let mut more_files = 1 as libc::c_int;
+                    while more_files != 0 {
+                        let fp_buf = rustrt::rust_list_dir_wfd_fp_buf(
+                            wfd_ptr);
+                        if fp_buf as uint == 0 {
+                            fail!(~"os::list_dir() failure:"+
+                                  ~" got null ptr from wfd");
+                        }
+                        else {
+                            let fp_vec = vec::from_buf(
+                                fp_buf, wcslen(fp_buf) as uint);
+                            let fp_str = str::from_utf16(fp_vec);
+                            strings.push(fp_str);
+                        }
+                        more_files = FindNextFileW(
+                            find_handle,
+                            ::cast::transmute(wfd_ptr));
+                    }
+                    FindClose(find_handle);
+                    free_raw(wfd_ptr);
+                }
+                strings
+            }
+        }
+        do get_list(p).filtered |filename| {
             *filename != ~"." && *filename != ~".."
         }
     }
@@ -1274,9 +1411,8 @@ mod tests {
         setenv(~"USERPROFILE", ~"/home/PaloAlto");
         fail_unless!(os::homedir() == Some(Path("/home/MountainView")));
 
-        option::iter(&oldhome, |s| setenv(~"HOME", *s));
-        option::iter(&olduserprofile,
-                               |s| setenv(~"USERPROFILE", *s));
+        oldhome.each(|s| {setenv(~"HOME", *s);true});
+        olduserprofile.each(|s| {setenv(~"USERPROFILE", *s);true});
     }
 
     #[test]

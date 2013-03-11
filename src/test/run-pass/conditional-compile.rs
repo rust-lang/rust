@@ -112,8 +112,8 @@ mod test_foreign_items {
         #[abi = "cdecl"]
         pub extern {
             #[cfg(bogus)]
-            pub fn rust_getcwd() -> ~str;
-            pub fn rust_getcwd() -> ~str;
+            pub fn rust_get_stdin() -> ~str;
+            pub fn rust_get_stdin() -> ~str;
         }
     }
 }
