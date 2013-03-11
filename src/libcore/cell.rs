@@ -15,6 +15,7 @@ use prelude::*;
 ///
 /// Similar to a mutable option type, but friendlier.
 
+#[deriving_eq]
 pub struct Cell<T> {
     mut value: Option<T>
 }
