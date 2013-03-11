@@ -416,10 +416,11 @@ pub fn noop_fold_pat(p: &pat_, fld: @ast_fold) -> pat_ {
         pat_range(e1, e2) => {
             pat_range(fld.fold_expr(e1), fld.fold_expr(e2))
         },
-        pat_vec(ref elts, ref tail) => {
+        pat_vec(ref before, ref slice, ref after) => {
             pat_vec(
-                elts.map(|x| fld.fold_pat(*x)),
-                tail.map(|tail| fld.fold_pat(*tail))
+                before.map(|x| fld.fold_pat(*x)),
+                slice.map(|x| fld.fold_pat(*x)),
+                after.map(|x| fld.fold_pat(*x))
             )
         }
     }

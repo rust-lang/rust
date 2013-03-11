@@ -244,7 +244,9 @@ pub fn is_useful(cx: @MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
               ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
                 let max_len = do m.foldr(0) |r, max_len| {
                   match /*bad*/copy r[0].node {
-                    pat_vec(elems, _) => uint::max(elems.len(), max_len),
+                    pat_vec(before, _, after) => {
+                      uint::max(before.len() + after.len(), max_len)
+                    }
                     _ => max_len
                   }
                 };
@@ -322,10 +324,10 @@ pub fn pat_ctor_id(cx: @MatchCheckCtxt, p: @pat) -> Option<ctor> {
       pat_box(_) | pat_uniq(_) | pat_tup(_) | pat_region(*) => {
         Some(single)
       }
-      pat_vec(elems, tail) => {
-        match tail {
+      pat_vec(before, slice, after) => {
+        match slice {
           Some(_) => None,
-          None => Some(vec(elems.len()))
+          None => Some(vec(before.len() + after.len()))
         }
       }
     }
@@ -393,22 +395,22 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
       }
       ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
 
-        // Find the lengths and tails of all vector patterns.
+        // Find the lengths and slices of all vector patterns.
         let vec_pat_lens = do m.filter_mapped |r| {
             match r[0].node {
-                pat_vec(ref elems, ref tail) => {
-                    Some((elems.len(), tail.is_some()))
+                pat_vec(ref before, ref slice, ref after) => {
+                    Some((before.len() + after.len(), slice.is_some()))
                 }
                 _ => None
             }
         };
 
         // Sort them by length such that for patterns of the same length,
-        // those with a destructured tail come first.
+        // those with a destructured slice come first.
         let mut sorted_vec_lens = sort::merge_sort(vec_pat_lens,
-            |&(len1, tail1), &(len2, tail2)| {
+            |&(len1, slice1), &(len2, slice2)| {
                 if len1 == len2 {
-                    tail1 > tail2
+                    slice1 > slice2
                 } else {
                     len1 <= len2
                 }
@@ -416,24 +418,24 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
         );
         vec::dedup(&mut sorted_vec_lens);
 
-        let mut found_tail = false;
+        let mut found_slice = false;
         let mut next = 0;
         let mut missing = None;
-        for sorted_vec_lens.each |&(length, tail)| {
+        for sorted_vec_lens.each |&(length, slice)| {
             if length != next {
                 missing = Some(next);
                 break;
             }
-            if tail {
-                found_tail = true;
+            if slice {
+                found_slice = true;
                 break;
             }
             next += 1;
         }
 
         // We found patterns of all lengths within <0, next), yet there was no
-        // pattern with a tail - therefore, we report vec(next) as missing.
-        if !found_tail {
+        // pattern with a slice - therefore, we report vec(next) as missing.
+        if !found_slice {
             missing = Some(next);
         }
         match missing {
@@ -621,19 +623,25 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     compare_const_vals(c_hi, v_hi) <= 0;
           if match_ { Some(vec::from_slice(r.tail())) } else { None }
       }
-            pat_vec(elems, tail) => {
+            pat_vec(before, slice, after) => {
                 match ctor_id {
                     vec(_) => {
-                        let num_elements = elems.len();
-                        if num_elements < arity && tail.is_some() {
+                        let num_elements = before.len() + after.len();
+                        if num_elements < arity && slice.is_some() {
                             Some(vec::append(
-                                vec::append(elems, vec::from_elem(
-                                    arity - num_elements, wild()
-                                )),
-                                vec::from_slice(r.tail())
+                                vec::concat(&[
+                                    before,
+                                    vec::from_elem(
+                                        arity - num_elements, wild()),
+                                    after
+                                ]),
+                                r.tail()
                             ))
                         } else if num_elements == arity {
-                            Some(vec::append(elems, r.tail()))
+                            Some(vec::append(
+                                vec::append(before, after),
+                                r.tail()
+                            ))
                         } else {
                             None
                         }
