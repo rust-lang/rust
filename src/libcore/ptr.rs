@@ -190,7 +190,7 @@ pub pure fn ref_eq<T>(thing: &a/T, other: &b/T) -> bool {
 
   SAFETY NOTE: Pointer-arithmetic. Dragons be here.
 */
-pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: fn(*T)) {
+pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: &fn(*T)) {
     log(debug, "array_each_with_len: before iterate");
     if (arr as uint == 0) {
         fail!(~"ptr::array_each_with_len failure: arr input is null pointer");
@@ -213,7 +213,7 @@ pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: fn(*T)) {
   pointer array. Barely less-dodgey Pointer Arithmetic.
   Dragons be here.
 */
-pub unsafe fn array_each<T>(arr: **T, cb: fn(*T)) {
+pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
     if (arr as uint == 0) {
         fail!(~"ptr::array_each_with_len failure: arr input is null pointer");
     }
