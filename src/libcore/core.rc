@@ -58,6 +58,7 @@ Implicitly, all crates behave as if they included the following prologue:
 #[cfg(target_os = "linux")]
 pub mod linkhack {
     #[link_args="-lrustrt -lrt"]
+    #[link_args = "-lpthread"]
     extern {
     }
 }
