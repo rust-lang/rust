@@ -39,6 +39,7 @@ use str;
 use task;
 use uint;
 use vec;
+use unstable::global::with_global_lock;
 
 pub use libc::fclose;
 pub use os::consts::*;
@@ -146,28 +147,7 @@ pub mod win32 {
     }
 }
 
-/*
-Accessing environment variables is not generally threadsafe.
-This uses a per-runtime lock to serialize access.
-FIXME #4726: It would probably be appropriate to make this a real global
-*/
-fn with_env_lock<T>(f: &fn() -> T) -> T {
-    use unstable::global::global_data_clone_create;
-    use unstable::{Exclusive, exclusive};
-
-    struct SharedValue(());
-    type ValueMutex = Exclusive<SharedValue>;
-    fn key(_: ValueMutex) { }
-
-    unsafe {
-        let lock: ValueMutex = global_data_clone_create(key, || {
-            ~exclusive(SharedValue(()))
-        });
-
-        lock.with_imm(|_| f() )
-    }
-}
-
+// Accessing environment variables is not generally threadsafe.
 pub fn env() -> ~[(~str,~str)] {
     unsafe {
         #[cfg(windows)]
@@ -227,7 +207,8 @@ pub fn env() -> ~[(~str,~str)] {
             }
             pairs
         }
-        do with_env_lock {
+
+        do with_global_lock {
             let unparsed_environ = get_env_pairs();
             env_convert(unparsed_environ)
         }
@@ -237,7 +218,7 @@ pub fn env() -> ~[(~str,~str)] {
 #[cfg(unix)]
 pub fn getenv(n: &str) -> Option<~str> {
     unsafe {
-        do with_env_lock {
+        do with_global_lock {
             let s = str::as_c_str(n, |s| libc::getenv(s));
             if ptr::null::<u8>() == cast::reinterpret_cast(&s) {
                 option::None::<~str>
@@ -252,7 +233,7 @@ pub fn getenv(n: &str) -> Option<~str> {
 #[cfg(windows)]
 pub fn getenv(n: &str) -> Option<~str> {
     unsafe {
-        do with_env_lock {
+        do with_global_lock {
             use os::win32::{as_utf16_p, fill_utf16_buf_and_decode};
             do as_utf16_p(n) |u| {
                 do fill_utf16_buf_and_decode() |buf, sz| {
@@ -267,7 +248,7 @@ pub fn getenv(n: &str) -> Option<~str> {
 #[cfg(unix)]
 pub fn setenv(n: &str, v: &str) {
     unsafe {
-        do with_env_lock {
+        do with_global_lock {
             do str::as_c_str(n) |nbuf| {
                 do str::as_c_str(v) |vbuf| {
                     libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1);
@@ -281,7 +262,7 @@ pub fn setenv(n: &str, v: &str) {
 #[cfg(windows)]
 pub fn setenv(n: &str, v: &str) {
     unsafe {
-        do with_env_lock {
+        do with_global_lock {
             use os::win32::as_utf16_p;
             do as_utf16_p(n) |nbuf| {
                 do as_utf16_p(v) |vbuf| {

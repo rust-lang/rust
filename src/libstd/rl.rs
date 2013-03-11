@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,10 +15,13 @@ use core::libc::{c_char, c_int};
 use core::prelude::*;
 use core::str;
 use core::task;
+use core::unstable::global::with_global_lock;
 
 pub mod rustrt {
     use core::libc::{c_char, c_int};
 
+    // The linenoise library is not threadsafe, but we have wrapped
+    // it with a global mutex.
     pub extern {
         pub unsafe fn linenoise(prompt: *c_char) -> *c_char;
         pub unsafe fn linenoiseHistoryAdd(line: *c_char) -> c_int;
@@ -32,27 +35,35 @@ pub mod rustrt {
 
 /// Add a line to history
 pub unsafe fn add_history(line: ~str) -> bool {
-    do str::as_c_str(line) |buf| {
-        rustrt::linenoiseHistoryAdd(buf) == 1 as c_int
+    do with_global_lock {
+        do str::as_c_str(line) |buf| {
+            rustrt::linenoiseHistoryAdd(buf) == 1 as c_int
+        }
     }
 }
 
 /// Set the maximum amount of lines stored
 pub unsafe fn set_history_max_len(len: int) -> bool {
-    rustrt::linenoiseHistorySetMaxLen(len as c_int) == 1 as c_int
+    do with_global_lock {
+        rustrt::linenoiseHistorySetMaxLen(len as c_int) == 1 as c_int
+    }
 }
 
 /// Save line history to a file
 pub unsafe fn save_history(file: ~str) -> bool {
-    do str::as_c_str(file) |buf| {
-        rustrt::linenoiseHistorySave(buf) == 1 as c_int
+    do with_global_lock {
+        do str::as_c_str(file) |buf| {
+            rustrt::linenoiseHistorySave(buf) == 1 as c_int
+        }
     }
 }
 
 /// Load line history from a file
 pub unsafe fn load_history(file: ~str) -> bool {
-    do str::as_c_str(file) |buf| {
-        rustrt::linenoiseHistoryLoad(buf) == 1 as c_int
+    do with_global_lock {
+        do str::as_c_str(file) |buf| {
+            rustrt::linenoiseHistoryLoad(buf) == 1 as c_int
+        }
     }
 }
 

@@ -157,6 +157,24 @@ impl Drop for GlobalState {
     }
 }
 
+/*
+This uses a per-runtime lock to serialize access.
+FIXME #4726: It would probably be appropriate to make this a real global
+*/
+pub unsafe fn with_global_lock<T>(f: &fn() -> T) -> T {
+   struct SharedValue(());
+   type ValueMutex = Exclusive<SharedValue>;
+   fn key(_: ValueMutex) { }
+
+   unsafe {
+        let lock: ValueMutex = global_data_clone_create(key, || {
+            ~exclusive(SharedValue(()))
+        });
+
+        lock.with_imm(|_| f() )
+   }
+}
+
 fn get_global_state() -> Exclusive<GlobalState> {
 
     const POISON: int = -1;
