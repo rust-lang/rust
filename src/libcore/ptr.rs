@@ -19,6 +19,8 @@ use sys;
 #[cfg(test)] use vec;
 #[cfg(test)] use str;
 #[cfg(notest)] use cmp::{Eq, Ord};
+use debug;
+use uint;
 
 pub mod libc_ {
     use libc::c_void;
@@ -179,6 +181,46 @@ pub pure fn to_uint<T>(thing: &T) -> uint {
 #[inline(always)]
 pub pure fn ref_eq<T>(thing: &a/T, other: &b/T) -> bool {
     to_uint(thing) == to_uint(other)
+}
+
+/**
+  Given a **T (pointer to an array of pointers),
+  iterate through each *T, up to the provided `len`,
+  passing to the provided callback function
+
+  SAFETY NOTE: Pointer-arithmetic. Dragons be here.
+*/
+pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: &fn(*T)) {
+    log(debug, "array_each_with_len: before iterate");
+    if (arr as uint == 0) {
+        fail!(~"ptr::array_each_with_len failure: arr input is null pointer");
+    }
+    //let start_ptr = *arr;
+    uint::iterate(0, len, |e| {
+        let n = offset(arr, e);
+        cb(*n);
+        true
+    });
+    log(debug, "array_each_with_len: after iterate");
+}
+
+/**
+  Given a null-pointer-terminated **T (pointer to
+  an array of pointers), iterate through each *T,
+  passing to the provided callback function
+
+  SAFETY NOTE: This will only work with a null-terminated
+  pointer array. Barely less-dodgey Pointer Arithmetic.
+  Dragons be here.
+*/
+pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
+    if (arr as uint == 0) {
+        fail!(~"ptr::array_each_with_len failure: arr input is null pointer");
+    }
+    let len = buf_len(arr);
+    log(debug, fmt!("array_each inferred len: %u",
+                    len));
+    array_each_with_len(arr, len, cb);
 }
 
 pub trait Ptr<T> {
@@ -388,4 +430,96 @@ pub fn test_is_null() {
    let mq = mp.offset(1u);
    fail_unless!(!mq.is_null());
    fail_unless!(mq.is_not_null());
+}
+
+#[cfg(test)]
+pub mod ptr_tests {
+    use debug;
+    use ptr;
+    use str;
+    use libc;
+    use vec;
+    #[test]
+    pub fn test_ptr_array_each_with_len() {
+        unsafe {
+            let one = ~"oneOne";
+            let two = ~"twoTwo";
+            let three = ~"threeThree";
+            let arr: ~[*i8] = ~[
+                ::cast::transmute(&one[0]),
+                ::cast::transmute(&two[0]),
+                ::cast::transmute(&three[0]),
+            ];
+            let expected_arr = [
+                one, two, three
+            ];
+            let arr_ptr = &arr[0];
+            let mut ctr = 0;
+            let mut iteration_count = 0;
+            ptr::array_each_with_len(arr_ptr, vec::len(arr),
+                |e| {
+                let actual = str::raw::from_c_str(e);
+                let expected = copy expected_arr[ctr];
+                log(debug,
+                    fmt!("test_ptr_array_each e: %s, a: %s",
+                         expected, actual));
+                fail_unless!(actual == expected);
+                ctr += 1;
+                iteration_count += 1;
+            });
+            fail_unless!(iteration_count == 3u);
+        }
+    }
+    #[test]
+    pub fn test_ptr_array_each() {
+        unsafe {
+            let one = ~"oneOne";
+            let two = ~"twoTwo";
+            let three = ~"threeThree";
+            let arr: ~[*i8] = ~[
+                ::cast::transmute(&one[0]),
+                ::cast::transmute(&two[0]),
+                ::cast::transmute(&three[0]),
+                // fake a null terminator
+                0 as *i8
+            ];
+            let expected_arr = [
+                one, two, three
+            ];
+            let arr_ptr = &arr[0];
+            let mut ctr = 0;
+            let mut iteration_count = 0;
+            ptr::array_each(arr_ptr, |e| {
+                let actual = str::raw::from_c_str(e);
+                let expected = copy expected_arr[ctr];
+                log(debug,
+                    fmt!("test_ptr_array_each e: %s, a: %s",
+                         expected, actual));
+                fail_unless!(actual == expected);
+                ctr += 1;
+                iteration_count += 1;
+            });
+            fail_unless!(iteration_count == 3);
+        }
+    }
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    pub fn test_ptr_array_each_with_len_null_ptr() {
+        unsafe {
+            ptr::array_each_with_len(0 as **libc::c_char, 1, |e| {
+                str::raw::from_c_str(e);
+            });
+        }
+    }
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    pub fn test_ptr_array_each_null_ptr() {
+        unsafe {
+            ptr::array_each(0 as **libc::c_char, |e| {
+                str::raw::from_c_str(e);
+            });
+        }
+    }
 }

@@ -17,7 +17,6 @@ mod rustrt {
 
         pub fn rust_get_sched_id() -> libc::intptr_t;
         pub fn rust_get_argc() -> libc::c_int;
-        pub fn rust_getcwd() -> ~str;
         pub fn get_task_id() -> libc::intptr_t;
         pub fn rust_sched_threads();
         pub fn rust_get_task();
@@ -26,7 +25,6 @@ mod rustrt {
 
 fn calllink01() { unsafe { rustrt::rust_get_sched_id(); } }
 fn calllink02() { unsafe { rustrt::rust_get_argc(); } }
-fn calllink03() { unsafe { rustrt::rust_getcwd(); } }
 fn calllink08() { unsafe { rustrt::get_task_id(); } }
 fn calllink09() { unsafe { rustrt::rust_sched_threads(); } }
 fn calllink10() { unsafe { rustrt::rust_get_task(); } }
@@ -59,7 +57,6 @@ pub fn main() {
     let fns = ~[
         calllink01,
         calllink02,
-        calllink03,
         calllink08,
         calllink09,
         calllink10

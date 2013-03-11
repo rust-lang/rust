@@ -29,12 +29,12 @@ rust_new_task_in_sched
 rust_num_threads
 rust_path_is_dir
 rust_path_exists
-rust_getcwd
 rust_get_stdin
 rust_get_stdout
 rust_get_stderr
-rust_list_files
-rust_list_files2
+rust_list_dir_val
+rust_list_dir_wfd_size
+rust_list_dir_wfd_fp_buf
 rust_log_console_on
 rust_log_console_off
 rust_process_wait
@@ -43,7 +43,6 @@ rust_sched_current_nonlazy_threads
 rust_sched_threads
 rust_set_exit_status
 rust_start
-rust_getcwd
 rust_env_pairs
 rust_task_yield
 rust_task_is_unwinding
