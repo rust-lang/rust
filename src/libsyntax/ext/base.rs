@@ -148,6 +148,9 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(@~"log_syntax",
                             builtin_normal_tt(
                                 ext::log_syntax::expand_syntax_ext));
+    syntax_expanders.insert(@~"deriving",
+                            @SE(ItemDecorator(
+                                ext::deriving::expand_meta_deriving)));
     syntax_expanders.insert(@~"deriving_eq",
                             @SE(ItemDecorator(
                                 ext::deriving::expand_deriving_eq)));
