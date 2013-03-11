@@ -1402,7 +1402,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         word(s.s, ~"__asm__");
         popen(s);
         print_string(s, *a);
-        word_space(s, ~", ");
+        word_space(s, ~",");
         print_string(s, *c);
         pclose(s);
       }
