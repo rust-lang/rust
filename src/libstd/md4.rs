@@ -105,7 +105,7 @@ pub pure fn md4(msg: &[u8]) -> Quad {
 
 pub pure fn md4_str(msg: &[u8]) -> ~str {
     let Quad {a, b, c, d} = md4(msg);
-    pure fn app(a: u32, b: u32, c: u32, d: u32, f: fn(u32)) {
+    pure fn app(a: u32, b: u32, c: u32, d: u32, f: &fn(u32)) {
         f(a); f(b); f(c); f(d);
     }
     let mut result = ~"";

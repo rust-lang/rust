@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pure fn f(f: fn()) {
+pure fn f(f: &fn()) {
 }
 
 pure fn g() {

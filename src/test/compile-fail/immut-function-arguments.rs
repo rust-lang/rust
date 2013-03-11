@@ -13,7 +13,7 @@ fn f(y: ~int) {
 }
 
 fn g() {
-    let _frob: fn(~int) = |q| { *q = 2; }; //~ ERROR assigning to dereference of immutable ~ pointer
+    let _frob: &fn(~int) = |q| { *q = 2; }; //~ ERROR assigning to dereference of immutable ~ pointer
 
 }
 

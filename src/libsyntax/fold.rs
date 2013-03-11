@@ -254,16 +254,14 @@ pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
         }
         item_enum(ref enum_definition, ref generics) => {
             item_enum(
-                ast::enum_def(
-                    ast::enum_def_ {
-                        variants: do enum_definition.variants.map |x| {
-                            fld.fold_variant(x)
-                        },
-                        common: do enum_definition.common.map |x| {
-                            fold_struct_def(*x, fld)
-                        }
+                ast::enum_def {
+                    variants: do enum_definition.variants.map |x| {
+                        fld.fold_variant(x)
+                    },
+                    common: do enum_definition.common.map |x| {
+                        fold_struct_def(*x, fld)
                     }
-                ),
+                },
                 fold_generics(generics, fld))
         }
         item_struct(ref struct_def, ref generics) => {
@@ -684,10 +682,7 @@ fn noop_fold_variant(v: &variant_, fld: @ast_fold) -> variant_ {
                 fold_struct_def(*x, fld)
             };
             kind = enum_variant_kind(
-                ast::enum_def(ast::enum_def_ {
-                    variants: variants,
-                    common: common
-                })
+                ast::enum_def { variants: variants, common: common }
             );
         }
     }

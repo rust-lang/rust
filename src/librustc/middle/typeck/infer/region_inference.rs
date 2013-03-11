@@ -153,7 +153,7 @@ The problem we are addressing is that there is a kind of subtyping
 between functions with bound region parameters.  Consider, for
 example, whether the following relation holds:
 
-    fn(&a/int) <: fn(&b/int)? (Yes, a => b)
+    fn(&a/int) <: &fn(&b/int)? (Yes, a => b)
 
 The answer is that of course it does.  These two types are basically
 the same, except that in one we used the name `a` and one we used
@@ -170,7 +170,7 @@ Now let's consider two more function types.  Here, we assume that the
 `self` lifetime is defined somewhere outside and hence is not a
 lifetime parameter bound by the function type (it "appears free"):
 
-    fn<a>(&a/int) <: fn(&self/int)? (Yes, a => self)
+    fn<a>(&a/int) <: &fn(&self/int)? (Yes, a => self)
 
 This subtyping relation does in fact hold.  To see why, you have to
 consider what subtyping means.  One way to look at `T1 <: T2` is to
@@ -187,7 +187,7 @@ to the same thing: a function that accepts pointers with any lifetime
 
 So, what if we reverse the order of the two function types, like this:
 
-    fn(&self/int) <: fn<a>(&a/int)? (No)
+    fn(&self/int) <: &fn<a>(&a/int)? (No)
 
 Does the subtyping relationship still hold?  The answer of course is
 no.  In this case, the function accepts *only the lifetime `&self`*,
@@ -196,8 +196,8 @@ accepted any lifetime.
 
 What about these two examples:
 
-    fn<a,b>(&a/int, &b/int) <: fn<a>(&a/int, &a/int)? (Yes)
-    fn<a>(&a/int, &a/int) <: fn<a,b>(&a/int, &b/int)? (No)
+    fn<a,b>(&a/int, &b/int) <: &fn<a>(&a/int, &a/int)? (Yes)
+    fn<a>(&a/int, &a/int) <: &fn<a,b>(&a/int, &b/int)? (No)
 
 Here, it is true that functions which take two pointers with any two
 lifetimes can be treated as if they only accepted two pointers with
@@ -221,12 +221,12 @@ Let's walk through some examples and see how this algorithm plays out.
 
 We'll start with the first example, which was:
 
-    1. fn<a>(&a/T) <: fn<b>(&b/T)?        Yes: a -> b
+    1. fn<a>(&a/T) <: &fn<b>(&b/T)?        Yes: a -> b
 
 After steps 1 and 2 of the algorithm we will have replaced the types
 like so:
 
-    1. fn(&A/T) <: fn(&x/T)?
+    1. fn(&A/T) <: &fn(&x/T)?
 
 Here the upper case `&A` indicates a *region variable*, that is, a
 region whose value is being inferred by the system.  I also replaced
@@ -255,12 +255,12 @@ So far we have encountered no error, so the subtype check succeeds.
 
 Now let's look first at the third example, which was:
 
-    3. fn(&self/T)    <: fn<b>(&b/T)?        No!
+    3. fn(&self/T)    <: &fn<b>(&b/T)?        No!
 
 After steps 1 and 2 of the algorithm we will have replaced the types
 like so:
 
-    3. fn(&self/T) <: fn(&x/T)?
+    3. fn(&self/T) <: &fn(&x/T)?
 
 This looks pretty much the same as before, except that on the LHS
 `&self` was not bound, and hence was left as-is and not replaced with
@@ -275,7 +275,7 @@ You may be wondering about that mysterious last step in the algorithm.
 So far it has not been relevant.  The purpose of that last step is to
 catch something like *this*:
 
-    fn<a>() -> fn(&a/T) <: fn() -> fn<b>(&b/T)?   No.
+    fn<a>() -> fn(&a/T) <: &fn() -> fn<b>(&b/T)?   No.
 
 Here the function types are the same but for where the binding occurs.
 The subtype returns a function that expects a value in precisely one
@@ -289,15 +289,15 @@ So let's step through what happens when we perform this subtype check.
 We first replace the bound regions in the subtype (the supertype has
 no bound regions).  This gives us:
 
-    fn() -> fn(&A/T) <: fn() -> fn<b>(&b/T)?
+    fn() -> fn(&A/T) <: &fn() -> fn<b>(&b/T)?
 
 Now we compare the return types, which are covariant, and hence we have:
 
-    fn(&A/T) <: fn<b>(&b/T)?
+    fn(&A/T) <: &fn<b>(&b/T)?
 
 Here we skolemize the bound region in the supertype to yield:
 
-    fn(&A/T) <: fn(&x/T)?
+    fn(&A/T) <: &fn(&x/T)?
 
 And then proceed to compare the argument types:
 
@@ -314,7 +314,7 @@ The difference between this example and the first one is that the variable
 `A` already existed at the point where the skolemization occurred.  In
 the first example, you had two functions:
 
-    fn<a>(&a/T) <: fn<b>(&b/T)
+    fn<a>(&a/T) <: &fn<b>(&b/T)
 
 and hence `&A` and `&x` were created "together".  In general, the
 intention of the skolemized names is that they are supposed to be
@@ -700,7 +700,7 @@ pub impl RegionVarBindings {
             match undo_item {
               Snapshot => {}
               AddVar(vid) => {
-                fail_unless!(self.var_spans.len() == *vid + 1);
+                fail_unless!(self.var_spans.len() == vid.to_uint() + 1);
                 self.var_spans.pop();
               }
               AddConstraint(ref constraint) => {
@@ -720,7 +720,7 @@ pub impl RegionVarBindings {
     fn new_region_var(&mut self, span: span) -> RegionVid {
         let id = self.num_vars();
         self.var_spans.push(span);
-        let vid = RegionVid(id);
+        let vid = RegionVid { id: id };
         if self.in_snapshot() {
             self.undo_log.push(AddVar(vid));
         }
@@ -863,15 +863,15 @@ pub impl RegionVarBindings {
     }
 
     fn resolve_var(&mut self, rid: RegionVid) -> ty::Region {
-        debug!("RegionVarBindings: resolve_var(%?=%u)", rid, *rid);
+        debug!("RegionVarBindings: resolve_var(%?=%u)", rid, rid.to_uint());
         if self.values.is_empty() {
             self.tcx.sess.span_bug(
-                self.var_spans[*rid],
+                self.var_spans[rid.to_uint()],
                 fmt!("Attempt to resolve region variable before values have \
                       been computed!"));
         }
 
-        let v = self.values.with_ref(|values| values[*rid]);
+        let v = self.values.with_ref(|values| values[rid.to_uint()]);
         match v {
             Value(r) => r,
 
@@ -886,13 +886,13 @@ pub impl RegionVarBindings {
                 // should ultimately have some bounds.
 
                 self.tcx.sess.span_err(
-                    self.var_spans[*rid],
-                    fmt!("Unconstrained region variable #%u", *rid));
+                    self.var_spans[rid.to_uint()],
+                    fmt!("Unconstrained region variable #%u", rid.to_uint()));
 
                 // Touch of a hack: to suppress duplicate messages,
                 // replace the NoValue entry with ErrorValue.
                 let mut values = self.values.take();
-                values[*rid] = ErrorValue;
+                values[rid.to_uint()] = ErrorValue;
                 self.values.put_back(values);
                 re_static
             }
@@ -1049,7 +1049,7 @@ priv impl RegionVarBindings {
 
           (re_infer(ReVar(v_id)), _) | (_, re_infer(ReVar(v_id))) => {
             self.tcx.sess.span_bug(
-                self.var_spans[*v_id],
+                self.var_spans[v_id.to_uint()],
                 fmt!("lub_concrete_regions invoked with \
                       non-concrete regions: %?, %?", a, b));
           }
@@ -1111,7 +1111,7 @@ priv impl RegionVarBindings {
             (re_infer(ReVar(v_id)), _) |
             (_, re_infer(ReVar(v_id))) => {
                 self.tcx.sess.span_bug(
-                    self.var_spans[*v_id],
+                    self.var_spans[v_id.to_uint()],
                     fmt!("glb_concrete_regions invoked with \
                           non-concrete regions: %?, %?", a, b));
             }
@@ -1275,8 +1275,8 @@ pub impl RegionVarBindings {
                        edge_idx: uint) {
             let edge_dir = edge_dir as uint;
             graph.edges[edge_idx].next_edge[edge_dir] =
-                graph.nodes[*node_id].head_edge[edge_dir];
-            graph.nodes[*node_id].head_edge[edge_dir] =
+                graph.nodes[node_id.to_uint()].head_edge[edge_dir];
+            graph.nodes[node_id.to_uint()].head_edge[edge_dir] =
                 edge_idx;
         }
     }
@@ -1285,14 +1285,14 @@ pub impl RegionVarBindings {
         do iterate_until_fixed_point(~"Expansion", graph) |nodes, edge| {
             match edge.constraint {
               ConstrainRegSubVar(a_region, b_vid) => {
-                let b_node = &mut nodes[*b_vid];
+                let b_node = &mut nodes[b_vid.to_uint()];
                 self.expand_node(a_region, b_vid, b_node)
               }
               ConstrainVarSubVar(a_vid, b_vid) => {
-                match nodes[*a_vid].value {
+                match nodes[a_vid.to_uint()].value {
                   NoValue | ErrorValue => false,
                   Value(a_region) => {
-                    let b_node = &mut nodes[*b_vid];
+                    let b_node = &mut nodes[b_vid.to_uint()];
                     self.expand_node(a_region, b_vid, b_node)
                   }
                 }
@@ -1349,16 +1349,16 @@ pub impl RegionVarBindings {
                 false
               }
               ConstrainVarSubVar(a_vid, b_vid) => {
-                match nodes[*b_vid].value {
+                match nodes[b_vid.to_uint()].value {
                   NoValue | ErrorValue => false,
                   Value(b_region) => {
-                    let a_node = &mut nodes[*a_vid];
+                    let a_node = &mut nodes[a_vid.to_uint()];
                     self.contract_node(a_vid, a_node, b_region)
                   }
                 }
               }
               ConstrainVarSubReg(a_vid, b_region) => {
-                let a_node = &mut nodes[*a_vid];
+                let a_node = &mut nodes[a_vid.to_uint()];
                 self.contract_node(a_vid, a_node, b_region)
               }
             }
@@ -1474,7 +1474,7 @@ pub impl RegionVarBindings {
                        that is not used is not a problem, so if this rule
                        starts to create problems we'll have to revisit
                        this portion of the code and think hard about it. =) */
-                    let node_vid = RegionVid(idx);
+                    let node_vid = RegionVid { id: idx };
                     match node.classification {
                         Expanding => {
                             self.report_error_for_expanding_node(
@@ -1525,7 +1525,7 @@ pub impl RegionVarBindings {
                     }
 
                     self.tcx.sess.span_err(
-                        self.var_spans[*node_idx],
+                        self.var_spans[node_idx.to_uint()],
                         fmt!("cannot infer an appropriate lifetime \
                               due to conflicting requirements"));
 
@@ -1578,7 +1578,7 @@ pub impl RegionVarBindings {
                     }
 
                     self.tcx.sess.span_err(
-                        self.var_spans[*node_idx],
+                        self.var_spans[node_idx.to_uint()],
                         fmt!("cannot infer an appropriate lifetime \
                               due to conflicting requirements"));
 
@@ -1616,7 +1616,7 @@ pub impl RegionVarBindings {
                              -> ~[SpannedRegion] {
         let set = HashMap();
         let mut stack = ~[orig_node_idx];
-        set.insert(*orig_node_idx, ());
+        set.insert(orig_node_idx.to_uint(), ());
         let mut result = ~[];
         while !vec::is_empty(stack) {
             let node_idx = stack.pop();
@@ -1627,7 +1627,7 @@ pub impl RegionVarBindings {
                       Incoming => from_vid,
                       Outgoing => to_vid
                     };
-                    if set.insert(*vid, ()) {
+                    if set.insert(vid.to_uint(), ()) {
                         stack.push(vid);
                     }
                   }
@@ -1657,8 +1657,9 @@ pub impl RegionVarBindings {
                  graph: &Graph,
                  node_idx: RegionVid,
                  dir: Direction,
-                 op: fn(edge: &GraphEdge) -> bool) {
-        let mut edge_idx = graph.nodes[*node_idx].head_edge[dir as uint];
+                 op: &fn(edge: &GraphEdge) -> bool) {
+        let mut edge_idx =
+            graph.nodes[node_idx.to_uint()].head_edge[dir as uint];
         while edge_idx != uint::max_value {
             let edge_ptr = &graph.edges[edge_idx];
             if !op(edge_ptr) {

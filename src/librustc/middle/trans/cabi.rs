@@ -37,7 +37,7 @@ pub struct FnType {
 }
 
 pub impl FnType {
-    fn decl_fn(&self, decl: fn(fnty: TypeRef) -> ValueRef) -> ValueRef {
+    fn decl_fn(&self, decl: &fn(fnty: TypeRef) -> ValueRef) -> ValueRef {
         let atys = vec::map(self.arg_tys, |t| t.ty);
         let rty = self.ret_ty.ty;
         let fnty = T_fn(atys, rty);

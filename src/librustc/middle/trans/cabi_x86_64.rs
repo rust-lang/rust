@@ -346,7 +346,7 @@ fn x86_64_tys(atys: &[TypeRef],
     }
 
     fn x86_64_ty(ty: TypeRef,
-                 is_mem_cls: fn(cls: &[x86_64_reg_class]) -> bool,
+                 is_mem_cls: &fn(cls: &[x86_64_reg_class]) -> bool,
                  attr: Attribute) -> (LLVMType, Option<Attribute>) {
         let mut cast = false;
         let mut ty_attr = option::None;

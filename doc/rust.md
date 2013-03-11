@@ -889,10 +889,10 @@ declared, in an angle-bracket-enclosed, comma-separated list following
 the function name.
 
 ~~~~ {.xfail-test}
-fn iter<T>(seq: &[T], f: fn(T)) {
+fn iter<T>(seq: &[T], f: &fn(T)) {
     for seq.each |elt| { f(elt); }
 }
-fn map<T, U>(seq: &[T], f: fn(T) -> U) -> ~[U] {
+fn map<T, U>(seq: &[T], f: &fn(T) -> U) -> ~[U] {
     let mut acc = ~[];
     for seq.each |elt| { acc.push(f(elt)); }
     acc
@@ -1198,7 +1198,7 @@ These appear after the trait name, using the same syntax used in [generic functi
 trait Seq<T> {
    fn len() -> uint;
    fn elt_at(n: uint) -> T;
-   fn iter(fn(T));
+   fn iter(&fn(T));
 }
 ~~~~
 
@@ -2074,7 +2074,7 @@ and moving values from the environment into the lambda expression's captured env
 An example of a lambda expression:
 
 ~~~~
-fn ten_times(f: fn(int)) {
+fn ten_times(f: &fn(int)) {
     let mut i = 0;
     while i < 10 {
         f(i);
@@ -2177,7 +2177,7 @@ If the `expr` is a [field expression](#field-expressions), it is parsed as thoug
 In this example, both calls to `f` are equivalent:
 
 ~~~~
-# fn f(f: fn(int)) { }
+# fn f(f: &fn(int)) { }
 # fn g(i: int) { }
 
 f(|j| g(j));
@@ -2755,7 +2755,7 @@ and the cast expression in `main`.
 Within the body of an item that has type parameter declarations, the names of its type parameters are types:
 
 ~~~~~~~
-fn map<A: Copy, B: Copy>(f: fn(A) -> B, xs: &[A]) -> ~[B] {
+fn map<A: Copy, B: Copy>(f: &fn(A) -> B, xs: &[A]) -> ~[B] {
    if xs.len() == 0 { return ~[]; }
    let first: B = f(xs[0]);
    let rest: ~[B] = map(f, xs.slice(1, xs.len()));

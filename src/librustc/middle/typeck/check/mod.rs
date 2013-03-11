@@ -89,7 +89,8 @@ use middle::typeck::astconv::{AstConv, ast_path_to_ty};
 use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
 use middle::typeck::astconv;
 use middle::typeck::check::_match::pat_ctxt;
-use middle::typeck::check::method::TransformTypeNormally;
+use middle::typeck::check::method::{CheckTraitsAndInherentMethods};
+use middle::typeck::check::method::{CheckTraitsOnly, TransformTypeNormally};
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use middle::typeck::check::vtable::{LocationInfo, VtableContext};
 use middle::typeck::CrateCtxt;
@@ -1142,7 +1143,7 @@ pub fn break_here() {
 pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                expr: @ast::expr,
                                expected: Option<ty::t>,
-                               unifier: fn()) -> bool {
+                               unifier: &fn()) -> bool {
     debug!(">> typechecking %s", fcx.expr_to_str(expr));
 
     // A generic function to factor out common logic from call and
@@ -1371,7 +1372,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                              method_name,
                              expr_t,
                              tps,
-                             DontDerefArgs) {
+                             DontDerefArgs,
+                             CheckTraitsAndInherentMethods) {
             Some(ref entry) => {
                 let method_map = fcx.ccx.method_map;
                 method_map.insert(expr.id, (*entry));
@@ -1453,9 +1455,15 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         +args: ~[@ast::expr],
                         +deref_args: DerefArgs)
                      -> Option<(ty::t, bool)> {
-        match method::lookup(fcx, op_ex, self_ex,
-                             op_ex.callee_id, opname, self_t, ~[],
-                             deref_args) {
+        match method::lookup(fcx,
+                             op_ex,
+                             self_ex,
+                             op_ex.callee_id,
+                             opname,
+                             self_t,
+                             ~[],
+                             deref_args,
+                             CheckTraitsOnly) {
           Some(ref origin) => {
               let method_ty = fcx.node_ty(op_ex.callee_id);
               let method_map = fcx.ccx.method_map;
@@ -1602,7 +1610,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     // returns `none`.
     fn unpack_expected<O:Copy>(fcx: @mut FnCtxt,
                                 expected: Option<ty::t>,
-                                unpack: fn(&ty::sty) -> Option<O>)
+                                unpack: &fn(&ty::sty) -> Option<O>)
                              -> Option<O> {
         match expected {
             Some(t) => {
@@ -1732,7 +1740,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                              field,
                              expr_t,
                              tps,
-                             DontDerefArgs) {
+                             DontDerefArgs,
+                             CheckTraitsAndInherentMethods) {
             Some(ref entry) => {
                 let method_map = fcx.ccx.method_map;
                 method_map.insert(expr.id, (*entry));

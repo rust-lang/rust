@@ -86,7 +86,7 @@ pub mod linear {
 
         #[inline(always)]
         pure fn bucket_sequence(&self, hash: uint,
-                                op: fn(uint) -> bool) -> uint {
+                                op: &fn(uint) -> bool) -> uint {
             let start_idx = self.to_bucket(hash);
             let len_buckets = self.buckets.len();
             let mut idx = start_idx;
@@ -263,7 +263,7 @@ pub mod linear {
         }
 
         fn search(&self, hash: uint,
-                  op: fn(x: &Option<Bucket<K, V>>) -> bool) {
+                  op: &fn(x: &Option<Bucket<K, V>>) -> bool) {
             let _ = self.bucket_sequence(hash, |i| op(&self.buckets[i]));
         }
     }
@@ -272,7 +272,7 @@ pub mod linear {
         BaseIter<(&self/K, &self/V)> for LinearMap<K, V>
     {
         /// Visit all key-value pairs
-        pure fn each(&self, blk: fn(&(&self/K, &self/V)) -> bool) {
+        pure fn each(&self, blk: &fn(&(&self/K, &self/V)) -> bool) {
             for uint::range(0, self.buckets.len()) |i| {
                 let mut broke = false;
                 do self.buckets[i].map |bucket| {
@@ -315,12 +315,12 @@ pub mod linear {
         }
 
         /// Visit all keys
-        pure fn each_key(&self, blk: fn(k: &K) -> bool) {
+        pure fn each_key(&self, blk: &fn(k: &K) -> bool) {
             self.each(|&(k, _)| blk(k))
         }
 
         /// Visit all values
-        pure fn each_value(&self, blk: fn(v: &V) -> bool) {
+        pure fn each_value(&self, blk: &fn(v: &V) -> bool) {
             self.each(|&(_, v)| blk(v))
         }
 
@@ -428,7 +428,7 @@ pub mod linear {
 
         /// Return the value corresponding to the key in the map, or create,
         /// insert, and return a new value if it doesn't exist.
-        fn find_or_insert_with(&mut self, k: K, f: fn(&K) -> V) -> &self/V {
+        fn find_or_insert_with(&mut self, k: K, f: &fn(&K) -> V) -> &self/V {
             if self.size >= self.resize_at {
                 // n.b.: We could also do this after searching, so
                 // that we do not resize if this call to insert is
@@ -457,7 +457,7 @@ pub mod linear {
             }
         }
 
-        fn consume(&mut self, f: fn(K, V)) {
+        fn consume(&mut self, f: &fn(K, V)) {
             let mut buckets = ~[];
             self.buckets <-> buckets;
             self.size = 0;
@@ -526,7 +526,7 @@ pub mod linear {
 
     impl<T:Hash + IterBytes + Eq> BaseIter<T> for LinearSet<T> {
         /// Visit all values in order
-        pure fn each(&self, f: fn(&T) -> bool) { self.map.each_key(f) }
+        pure fn each(&self, f: &fn(&T) -> bool) { self.map.each_key(f) }
         pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
     }
 
@@ -583,7 +583,7 @@ pub mod linear {
         }
 
         /// Visit the values representing the difference
-        pure fn difference(&self, other: &LinearSet<T>, f: fn(&T) -> bool) {
+        pure fn difference(&self, other: &LinearSet<T>, f: &fn(&T) -> bool) {
             for self.each |v| {
                 if !other.contains(v) {
                     if !f(v) { return }
@@ -593,13 +593,15 @@ pub mod linear {
 
         /// Visit the values representing the symmetric difference
         pure fn symmetric_difference(&self, other: &LinearSet<T>,
-                                     f: fn(&T) -> bool) {
+                                     f: &fn(&T) -> bool) {
             self.difference(other, f);
             other.difference(self, f);
         }
 
         /// Visit the values representing the intersection
-        pure fn intersection(&self, other: &LinearSet<T>, f: fn(&T) -> bool) {
+        pure fn intersection(&self,
+                             other: &LinearSet<T>,
+                             f: &fn(&T) -> bool) {
             for self.each |v| {
                 if other.contains(v) {
                     if !f(v) { return }
@@ -608,7 +610,7 @@ pub mod linear {
         }
 
         /// Visit the values representing the union
-        pure fn union(&self, other: &LinearSet<T>, f: fn(&T) -> bool) {
+        pure fn union(&self, other: &LinearSet<T>, f: &fn(&T) -> bool) {
             for self.each |v| {
                 if !f(v) { return }
             }

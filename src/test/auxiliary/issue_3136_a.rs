@@ -11,7 +11,7 @@
 trait x {
     fn use_x<T>();
 }
-enum y = (); 
+struct y(());
 impl x for y { 
     fn use_x<T>() {
         struct foo { //~ ERROR quux

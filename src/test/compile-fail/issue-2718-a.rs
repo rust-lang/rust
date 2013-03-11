@@ -1,3 +1,5 @@
+// xfail-test
+
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -16,7 +18,7 @@ pub struct send_packet<T> {
 mod pingpong {
     use send_packet;
     pub type ping = send_packet<pong>;
-    pub enum pong = send_packet<ping>; //~ ERROR illegal recursive enum type; wrap the inner value in a box to make it representable
+    pub struct pong(send_packet<ping>); //~ ERROR illegal recursive enum type; wrap the inner value in a box to make it representable
 }
 
 fn main() {}

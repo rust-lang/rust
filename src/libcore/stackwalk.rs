@@ -24,7 +24,7 @@ pub fn Frame(fp: *Word) -> Frame {
     }
 }
 
-pub fn walk_stack(visit: fn(Frame) -> bool) {
+pub fn walk_stack(visit: &fn(Frame) -> bool) {
 
     debug!("beginning stack walk");
 
@@ -80,7 +80,7 @@ fn breakpoint() {
     }
 }
 
-fn frame_address(f: fn(++x: *u8)) {
+fn frame_address(f: &fn(++x: *u8)) {
     unsafe {
         rusti::frame_address(f)
     }

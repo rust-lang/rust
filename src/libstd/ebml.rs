@@ -142,7 +142,7 @@ pub mod reader {
         }
     }
 
-    pub fn docs(d: Doc, it: fn(uint, Doc) -> bool) {
+    pub fn docs(d: Doc, it: &fn(uint, Doc) -> bool) {
         let mut pos = d.start;
         while pos < d.end {
             let elt_tag = vuint_at(*d.data, pos);
@@ -155,7 +155,7 @@ pub mod reader {
         }
     }
 
-    pub fn tagged_docs(d: Doc, tg: uint, it: fn(Doc) -> bool) {
+    pub fn tagged_docs(d: Doc, tg: uint, it: &fn(Doc) -> bool) {
         let mut pos = d.start;
         while pos < d.end {
             let elt_tag = vuint_at(*d.data, pos);
@@ -175,7 +175,7 @@ pub mod reader {
         vec::slice::<u8>(*d.data, d.start, d.end).to_vec()
     }
 
-    pub fn with_doc_data<T>(d: Doc, f: fn(x: &[u8]) -> T) -> T {
+    pub fn with_doc_data<T>(d: Doc, f: &fn(x: &[u8]) -> T) -> T {
         f(vec::slice(*d.data, d.start, d.end))
     }
 
@@ -255,7 +255,7 @@ pub mod reader {
             r_doc
         }
 
-        fn push_doc<T>(&self, d: Doc, f: fn() -> T) -> T {
+        fn push_doc<T>(&self, d: Doc, f: &fn() -> T) -> T {
             let old_parent = self.parent;
             let old_pos = self.pos;
             self.parent = d;
@@ -274,7 +274,7 @@ pub mod reader {
     }
 
     pub impl Decoder {
-        fn read_opaque<R>(&self, op: fn(Doc) -> R) -> R {
+        fn read_opaque<R>(&self, op: &fn(Doc) -> R) -> R {
             do self.push_doc(self.next_doc(EsOpaque)) {
                 op(copy self.parent)
             }
@@ -321,23 +321,23 @@ pub mod reader {
         fn read_managed_str(&self) -> @str { fail!(~"read_managed_str()"); }
 
         // Compound types:
-        fn read_owned<T>(&self, f: fn() -> T) -> T {
+        fn read_owned<T>(&self, f: &fn() -> T) -> T {
             debug!("read_owned()");
             f()
         }
 
-        fn read_managed<T>(&self, f: fn() -> T) -> T {
+        fn read_managed<T>(&self, f: &fn() -> T) -> T {
             debug!("read_managed()");
             f()
         }
 
-        fn read_enum<T>(&self, name: &str, f: fn() -> T) -> T {
+        fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T {
             debug!("read_enum(%s)", name);
             self._check_label(name);
             self.push_doc(self.next_doc(EsEnum), f)
         }
 
-        fn read_enum_variant<T>(&self, f: fn(uint) -> T) -> T {
+        fn read_enum_variant<T>(&self, f: &fn(uint) -> T) -> T {
             debug!("read_enum_variant()");
             let idx = self._next_uint(EsEnumVid);
             debug!("  idx=%u", idx);
@@ -346,12 +346,12 @@ pub mod reader {
             }
         }
 
-        fn read_enum_variant_arg<T>(&self, idx: uint, f: fn() -> T) -> T {
+        fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T {
             debug!("read_enum_variant_arg(idx=%u)", idx);
             f()
         }
 
-        fn read_owned_vec<T>(&self, f: fn(uint) -> T) -> T {
+        fn read_owned_vec<T>(&self, f: &fn(uint) -> T) -> T {
             debug!("read_owned_vec()");
             do self.push_doc(self.next_doc(EsVec)) {
                 let len = self._next_uint(EsVecLen);
@@ -360,7 +360,7 @@ pub mod reader {
             }
         }
 
-        fn read_managed_vec<T>(&self, f: fn(uint) -> T) -> T {
+        fn read_managed_vec<T>(&self, f: &fn(uint) -> T) -> T {
             debug!("read_managed_vec()");
             do self.push_doc(self.next_doc(EsVec)) {
                 let len = self._next_uint(EsVecLen);
@@ -369,33 +369,33 @@ pub mod reader {
             }
         }
 
-        fn read_vec_elt<T>(&self, idx: uint, f: fn() -> T) -> T {
+        fn read_vec_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
             debug!("read_vec_elt(idx=%u)", idx);
             self.push_doc(self.next_doc(EsVecElt), f)
         }
 
-        fn read_rec<T>(&self, f: fn() -> T) -> T {
+        fn read_rec<T>(&self, f: &fn() -> T) -> T {
             debug!("read_rec()");
             f()
         }
 
-        fn read_struct<T>(&self, name: &str, _len: uint, f: fn() -> T) -> T {
+        fn read_struct<T>(&self, name: &str, _len: uint, f: &fn() -> T) -> T {
             debug!("read_struct(name=%s)", name);
             f()
         }
 
-        fn read_field<T>(&self, name: &str, idx: uint, f: fn() -> T) -> T {
+        fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
             debug!("read_field(name=%s, idx=%u)", name, idx);
             self._check_label(name);
             f()
         }
 
-        fn read_tup<T>(&self, len: uint, f: fn() -> T) -> T {
+        fn read_tup<T>(&self, len: uint, f: &fn() -> T) -> T {
             debug!("read_tup(len=%u)", len);
             f()
         }
 
-        fn read_tup_elt<T>(&self, idx: uint, f: fn() -> T) -> T {
+        fn read_tup_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
             debug!("read_tup_elt(idx=%u)", idx);
             f()
         }
@@ -469,7 +469,7 @@ pub mod writer {
             debug!("End tag (size = %u)", size);
         }
 
-        fn wr_tag(&self, tag_id: uint, blk: fn()) {
+        fn wr_tag(&self, tag_id: uint, blk: &fn()) {
             self.start_tag(tag_id);
             blk();
             self.end_tag();
@@ -566,7 +566,7 @@ pub mod writer {
     }
 
     pub impl Encoder {
-        fn emit_opaque(&self, f: fn()) {
+        fn emit_opaque(&self, f: &fn()) {
             do self.wr_tag(EsOpaque as uint) {
                 f()
             }
@@ -623,49 +623,49 @@ pub mod writer {
             self.emit_borrowed_str(v)
         }
 
-        fn emit_borrowed(&self, f: fn()) { f() }
-        fn emit_owned(&self, f: fn()) { f() }
-        fn emit_managed(&self, f: fn()) { f() }
+        fn emit_borrowed(&self, f: &fn()) { f() }
+        fn emit_owned(&self, f: &fn()) { f() }
+        fn emit_managed(&self, f: &fn()) { f() }
 
-        fn emit_enum(&self, name: &str, f: fn()) {
+        fn emit_enum(&self, name: &str, f: &fn()) {
             self._emit_label(name);
             self.wr_tag(EsEnum as uint, f)
         }
         fn emit_enum_variant(&self, _v_name: &str, v_id: uint, _cnt: uint,
-                             f: fn()) {
+                             f: &fn()) {
             self._emit_tagged_uint(EsEnumVid, v_id);
             self.wr_tag(EsEnumBody as uint, f)
         }
-        fn emit_enum_variant_arg(&self, _idx: uint, f: fn()) { f() }
+        fn emit_enum_variant_arg(&self, _idx: uint, f: &fn()) { f() }
 
-        fn emit_borrowed_vec(&self, len: uint, f: fn()) {
+        fn emit_borrowed_vec(&self, len: uint, f: &fn()) {
             do self.wr_tag(EsVec as uint) {
                 self._emit_tagged_uint(EsVecLen, len);
                 f()
             }
         }
 
-        fn emit_owned_vec(&self, len: uint, f: fn()) {
+        fn emit_owned_vec(&self, len: uint, f: &fn()) {
             self.emit_borrowed_vec(len, f)
         }
 
-        fn emit_managed_vec(&self, len: uint, f: fn()) {
+        fn emit_managed_vec(&self, len: uint, f: &fn()) {
             self.emit_borrowed_vec(len, f)
         }
 
-        fn emit_vec_elt(&self, _idx: uint, f: fn()) {
+        fn emit_vec_elt(&self, _idx: uint, f: &fn()) {
             self.wr_tag(EsVecElt as uint, f)
         }
 
-        fn emit_rec(&self, f: fn()) { f() }
-        fn emit_struct(&self, _name: &str, _len: uint, f: fn()) { f() }
-        fn emit_field(&self, name: &str, _idx: uint, f: fn()) {
+        fn emit_rec(&self, f: &fn()) { f() }
+        fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) { f() }
+        fn emit_field(&self, name: &str, _idx: uint, f: &fn()) {
             self._emit_label(name);
             f()
         }
 
-        fn emit_tup(&self, _len: uint, f: fn()) { f() }
-        fn emit_tup_elt(&self, _idx: uint, f: fn()) { f() }
+        fn emit_tup(&self, _len: uint, f: &fn()) { f() }
+        fn emit_tup_elt(&self, _idx: uint, f: &fn()) { f() }
     }
 
 }

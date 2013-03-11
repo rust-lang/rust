@@ -15,15 +15,15 @@
 // warrant still having a test, so I inlined the old definitions.
 
 trait iterable<A> {
-    fn iter(blk: fn(A));
+    fn iter(blk: &fn(A));
 }
 
 impl<A> iterable<A> for @fn(&fn(A)) {
-    fn iter(blk: fn(A)) { self(blk); }
+    fn iter(blk: &fn(A)) { self(blk); }
 }
 
 impl iterable<uint> for @fn(&fn(uint)) {
-    fn iter(blk: fn(&&v: uint)) { self( |i| blk(i) ) }
+    fn iter(blk: &fn(&&v: uint)) { self( |i| blk(i) ) }
 }
 
 fn filter<A,IA:iterable<A>>(self: IA, prd: @fn(A) -> bool, blk: &fn(A)) {

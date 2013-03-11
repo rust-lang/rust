@@ -515,7 +515,7 @@ pub impl Datum {
     fn get_element(&self, bcx: block,
                    ty: ty::t,
                    source: DatumCleanup,
-                   gep: fn(ValueRef) -> ValueRef) -> Datum {
+                   gep: &fn(ValueRef) -> ValueRef) -> Datum {
         let base_val = self.to_ref_llval(bcx);
         Datum {
             val: gep(base_val),

@@ -85,13 +85,6 @@ impl cmp::Eq for Expr {
     pure fn ne(&self, other: &Expr) -> bool { !(*self).eq(other) }
 }
 
-impl cmp::Eq for AnEnum {
-    pure fn eq(&self, other: &AnEnum) -> bool {
-        (*self).v == other.v
-    }
-    pure fn ne(&self, other: &AnEnum) -> bool { !(*self).eq(other) }
-}
-
 impl cmp::Eq for Point {
     pure fn eq(&self, other: &Point) -> bool {
         self.x == other.x && self.y == other.y
@@ -141,10 +134,6 @@ struct SomeStruct { v: ~[uint] }
 
 #[auto_encode]
 #[auto_decode]
-enum AnEnum = SomeStruct;
-
-#[auto_encode]
-#[auto_decode]
 struct Point {x: uint, y: uint}
 
 #[auto_encode]
@@ -166,10 +155,6 @@ pub fn main() {
 
     let a = &Spanned {lo: 0u, hi: 5u, node: 22u};
     test_prettyprint(a, &~"Spanned {lo: 0u, hi: 5u, node: 22u}");
-    test_ebml(a);
-
-    let a = &AnEnum(SomeStruct {v: ~[1u, 2u, 3u]});
-    test_prettyprint(a, &~"AnEnum(SomeStruct {v: ~[1u, 2u, 3u]})");
     test_ebml(a);
 
     let a = &Point {x: 3u, y: 5u};
