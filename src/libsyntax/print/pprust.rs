@@ -1398,8 +1398,12 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
           }
         }
       }
-      ast::expr_inline_asm(a, c) => {
-        word(s.s, ~"__asm__");
+      ast::expr_inline_asm(a, c, v) => {
+        if v {
+            word(s.s, ~"__volatile__ asm!");
+        } else {
+            word(s.s, ~"asm!");
+        }
         popen(s);
         print_string(s, *a);
         word_space(s, ~",");

@@ -20,28 +20,146 @@ use ast;
 use codemap::span;
 use ext::base;
 use ext::base::*;
+use parse;
+use parse::token;
+
+enum State {
+    Asm,
+    Outputs,
+    Inputs,
+    Clobbers,
+    Options
+}
+
+fn next_state(s: State) -> Option<State> {
+    match s {
+        Asm      => Some(Outputs),
+        Outputs  => Some(Inputs),
+        Inputs   => Some(Clobbers),
+        Clobbers => Some(Options),
+        Options  => None
+    }
+}
 
 pub fn expand_asm(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
-    let args = get_exprs_from_tts(cx, tts);
-    if args.len() == 0 {
-        cx.span_fatal(sp, "ast! takes at least 1 argument.");
+
+    let p = parse::new_parser_from_tts(cx.parse_sess(), cx.cfg(),
+                                       vec::from_slice(tts));
+
+    let mut asm = ~"";
+    let mut outputs = ~[];
+    let mut inputs = ~[];
+    let mut cons = ~"";
+    let mut volatile = false;
+
+    let mut state = Asm;
+    loop outer: {
+        
+        match state {
+            Asm => {
+                asm = expr_to_str(cx, p.parse_expr(),
+                                ~"inline assembly must be a string literal.");
+            }
+            Outputs => {
+                while *p.token != token::EOF &&
+                      *p.token != token::COLON &&
+                      *p.token != token::MOD_SEP {
+                    
+                    if outputs.len() != 0 {
+                        p.eat(&token::COMMA);
+                    }
+                    
+                    let constraint = p.parse_str();
+                    p.expect(&token::LPAREN);
+                    let out = p.parse_expr();
+                    p.expect(&token::RPAREN);
+
+                    outputs.push((constraint, out));
+                }
+            }
+            Inputs => {
+                while *p.token != token::EOF &&
+                      *p.token != token::COLON &&
+                      *p.token != token::MOD_SEP {
+                    
+                    if inputs.len() != 0 {
+                        p.eat(&token::COMMA);
+                    }
+                    
+                    let constraint = p.parse_str();
+                    p.expect(&token::LPAREN);
+                    let in = p.parse_expr();
+                    p.expect(&token::RPAREN);
+
+                    inputs.push((constraint, in));
+                }
+            }
+            Clobbers => {
+                let mut clobs = ~[];
+                while *p.token != token::EOF &&
+                      *p.token != token::COLON &&
+                      *p.token != token::MOD_SEP {
+                    
+                    if clobs.len() != 0 {
+                        p.eat(&token::COMMA);
+                    }
+                    
+                    let clob = ~"~{" + *p.parse_str() + ~"}";
+                    clobs.push(clob);
+                }
+
+                cons = str::connect(clobs, ",");
+            }
+            Options => {
+                let option = *p.parse_str();
+                
+                if option == ~"volatile" {
+                    volatile = true;
+                }
+
+                if *p.token == token::COMMA {
+                    p.eat(&token::COMMA);
+                }
+            }
+        }
+
+        while *p.token == token::COLON   ||
+              *p.token == token::MOD_SEP ||
+              *p.token == token::EOF {
+            state = if *p.token == token::COLON {
+                p.bump();
+                match next_state(state) {
+                    Some(x) => x,
+                    None    => break outer
+                }
+            } else if *p.token == token::MOD_SEP {
+                p.bump();
+                let s = match next_state(state) {
+                    Some(x) => x,
+                    None    => break outer
+                };
+                match next_state(s) {
+                    Some(x) => x,
+                    None    => break outer
+                }
+            } else if *p.token == token::EOF {
+                break outer;
+            } else {
+               state 
+            };
+        }
     }
-    let asm =
-        expr_to_str(cx, args[0],
-                    ~"inline assembly must be a string literal.");
-    let cons = if args.len() > 1 {
-        expr_to_str(cx, args[1],
-                    ~"constraints must be a string literal.")
-    } else { ~"" };
 
     MRExpr(@ast::expr {
         id: cx.next_id(),
         callee_id: cx.next_id(),
-        node: ast::expr_inline_asm(@asm, @cons),
+        node: ast::expr_inline_asm(@asm, @cons, volatile),
         span: sp
     })
 }
+
+
 
 //
 // Local Variables:
