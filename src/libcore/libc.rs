@@ -1396,6 +1396,15 @@ pub mod funcs {
                 #[cfg(target_os = "android")]
                 #[cfg(target_os = "freebsd")]
                 unsafe fn readdir(dirp: *DIR) -> *dirent_t;
+
+                unsafe fn closedir(dirp: *DIR) -> c_int;
+                unsafe fn rewinddir(dirp: *DIR);
+                unsafe fn seekdir(dirp: *DIR, loc: c_long);
+                unsafe fn telldir(dirp: *DIR) -> c_long;
+            }
+
+            #[cfg(target_word_size = "64")]
+            pub extern {
                 // on OSX (particularly when running with a
                 // 64bit kernel), we have an issue where there
                 // are separate bindings for opendir and readdir,
@@ -1406,11 +1415,17 @@ pub mod funcs {
                 #[cfg(target_os = "macos")]
                 #[link_name = "readdir$INODE64"]
                 unsafe fn readdir(dirp: *DIR) -> *dirent_t;
-
-                unsafe fn closedir(dirp: *DIR) -> c_int;
-                unsafe fn rewinddir(dirp: *DIR);
-                unsafe fn seekdir(dirp: *DIR, loc: c_long);
-                unsafe fn telldir(dirp: *DIR) -> c_long;
+            }
+            #[cfg(target_word_size = "32")]
+            pub extern {
+                // on OSX (particularly when running with a
+                // 64bit kernel), we have an issue where there
+                // are separate bindings for opendir and readdir,
+                // which we have to explicitly link, as below.
+                #[cfg(target_os = "macos")]
+                unsafe fn opendir(dirname: *c_char) -> *DIR;
+                #[cfg(target_os = "macos")]
+                unsafe fn readdir(dirp: *DIR) -> *dirent_t;
             }
         }
 
