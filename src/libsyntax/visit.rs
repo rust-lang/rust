@@ -562,6 +562,7 @@ pub fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         }
         expr_mac(ref mac) => visit_mac((*mac), e, v),
         expr_paren(x) => (v.visit_expr)(x, e, v),
+        expr_inline_asm(*) => (),
     }
     (v.visit_expr_post)(ex, e, v);
 }

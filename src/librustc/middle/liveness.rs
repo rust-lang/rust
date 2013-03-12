@@ -620,7 +620,8 @@ fn visit_expr(expr: @expr, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
       expr_do_body(*) | expr_cast(*) | expr_unary(*) | expr_break(_) |
       expr_again(_) | expr_lit(_) | expr_ret(*) | expr_block(*) |
       expr_assign(*) | expr_swap(*) | expr_assign_op(*) | expr_mac(*) |
-      expr_struct(*) | expr_repeat(*) | expr_paren(*) => {
+      expr_struct(*) | expr_repeat(*) | expr_paren(*) |
+      expr_inline_asm(*) => {
           visit::visit_expr(expr, self, vt);
       }
     }
@@ -1345,6 +1346,7 @@ pub impl Liveness {
             self.propagate_through_expr(e, succ)
           }
 
+          expr_inline_asm(*) |
           expr_lit(*) => {
             succ
           }
@@ -1618,7 +1620,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
       expr_cast(*) | expr_unary(*) | expr_ret(*) | expr_break(*) |
       expr_again(*) | expr_lit(_) | expr_block(*) | expr_swap(*) |
       expr_mac(*) | expr_addr_of(*) | expr_struct(*) | expr_repeat(*) |
-      expr_paren(*) => {
+      expr_paren(*) | expr_inline_asm(*) => {
         visit::visit_expr(expr, self, vt);
       }
     }
