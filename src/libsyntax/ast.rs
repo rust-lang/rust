@@ -601,8 +601,8 @@ pub enum expr_ {
     expr_ret(Option<@expr>),
     expr_log(log_level, @expr, @expr),
 
-    /* asm, clobbers + constraints, volatile */
-    expr_inline_asm(@~str, @~str, bool),
+    /* asm, clobbers + constraints, volatile, align stack */
+    expr_inline_asm(@~str, @~str, bool, bool),
 
     expr_mac(mac),
 
