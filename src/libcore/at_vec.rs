@@ -13,7 +13,6 @@
 use cast::transmute;
 use kinds::Copy;
 use iter;
-use libc;
 use option::Option;
 use ptr::addr_of;
 use sys;
