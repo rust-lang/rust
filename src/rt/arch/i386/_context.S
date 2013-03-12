@@ -15,9 +15,15 @@ getcontext.
 The registers_t variable is in (%esp)
 */
 
+#if defined(__APPLE__) || defined(_WIN32)
+#define SWAP_REGISTERS _swap_registers
+#else
+#define SWAP_REGISTERS swap_registers
+#endif
+
 // swap_registers(registers_t *oregs, registers_t *regs)
-.globl swap_registers
-swap_registers:
+.globl SWAP_REGISTERS
+SWAP_REGISTERS:
     // save the old context
     movl 4(%esp), %eax
     movl %ebx, 4(%eax)

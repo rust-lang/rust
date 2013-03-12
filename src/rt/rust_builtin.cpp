@@ -769,20 +769,20 @@ extern "C" CDECL void      record_sp_limit(void *limit);
 
 class raw_thread: public rust_thread {
 public:
-    fn_env_pair *fn;
+    fn_env_pair fn;
 
-    raw_thread(fn_env_pair *fn) : fn(fn) { }
+    raw_thread(fn_env_pair fn) : fn(fn) { }
 
     virtual void run() {
         record_sp_limit(0);
-        fn->f(NULL, fn->env, NULL);
+        fn.f(NULL, fn.env, NULL);
     }
 };
 
 extern "C" raw_thread*
 rust_raw_thread_start(fn_env_pair *fn) {
     assert(fn);
-    raw_thread *thread = new raw_thread(fn);
+    raw_thread *thread = new raw_thread(*fn);
     thread->start();
     return thread;
 }

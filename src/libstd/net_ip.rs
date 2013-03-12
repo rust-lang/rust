@@ -21,20 +21,20 @@ use core::vec;
 use iotask = uv::iotask::IoTask;
 use interact = uv::iotask::interact;
 
-use sockaddr_in = uv::ll::sockaddr_in;
-use sockaddr_in6 = uv::ll::sockaddr_in6;
-use addrinfo = uv::ll::addrinfo;
-use uv_getaddrinfo_t = uv::ll::uv_getaddrinfo_t;
-use uv_ip4_name = uv::ll::ip4_name;
-use uv_ip4_port = uv::ll::ip4_port;
-use uv_ip6_name = uv::ll::ip6_name;
-use uv_ip6_port = uv::ll::ip6_port;
-use uv_getaddrinfo = uv::ll::getaddrinfo;
-use uv_freeaddrinfo = uv::ll::freeaddrinfo;
-use create_uv_getaddrinfo_t = uv::ll::getaddrinfo_t;
-use set_data_for_req = uv::ll::set_data_for_req;
-use get_data_for_req = uv::ll::get_data_for_req;
-use ll = uv::ll;
+use sockaddr_in = core::unstable::uvll::sockaddr_in;
+use sockaddr_in6 = core::unstable::uvll::sockaddr_in6;
+use addrinfo = core::unstable::uvll::addrinfo;
+use uv_getaddrinfo_t = core::unstable::uvll::uv_getaddrinfo_t;
+use uv_ip4_name = core::unstable::uvll::ip4_name;
+use uv_ip4_port = core::unstable::uvll::ip4_port;
+use uv_ip6_name = core::unstable::uvll::ip6_name;
+use uv_ip6_port = core::unstable::uvll::ip6_port;
+use uv_getaddrinfo = core::unstable::uvll::getaddrinfo;
+use uv_freeaddrinfo = core::unstable::uvll::freeaddrinfo;
+use create_uv_getaddrinfo_t = core::unstable::uvll::getaddrinfo_t;
+use set_data_for_req = core::unstable::uvll::set_data_for_req;
+use get_data_for_req = core::unstable::uvll::get_data_for_req;
+use ll = core::unstable::uvll;
 
 /// An IP address
 pub enum IpAddr {
