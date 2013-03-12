@@ -372,9 +372,9 @@ pub fn opt_count(mm: &Matches, nm: &str) -> uint {
 pub fn opts_present(mm: &Matches, names: &[~str]) -> bool {
     for vec::each(names) |nm| {
         match find_opt(mm.opts, mkname(*nm)) {
-          Some(_) => return true,
-          None    => ()
-        }
+            Some(id) if !mm.vals[id].is_empty() => return true,
+            _ => (),
+        };
     }
     false
 }
@@ -1177,7 +1177,7 @@ mod tests {
     #[test]
     pub fn test_multi() {
         let args = ~[~"-e", ~"foo", ~"--encrypt", ~"foo"];
-        let opts = ~[optopt(~"e"), optopt(~"encrypt")];
+        let opts = ~[optopt(~"e"), optopt(~"encrypt"), optopt(~"f")];
         let matches = &match getopts(args, opts) {
           result::Ok(m) => m,
           result::Err(_) => fail!()
@@ -1186,6 +1186,7 @@ mod tests {
         fail_unless!(opts_present(matches, ~[~"encrypt"]));
         fail_unless!(opts_present(matches, ~[~"encrypt", ~"e"]));
         fail_unless!(opts_present(matches, ~[~"e", ~"encrypt"]));
+        fail_unless!(!opts_present(matches, ~[~"f"]));
         fail_unless!(!opts_present(matches, ~[~"thing"]));
         fail_unless!(!opts_present(matches, ~[]));
 
