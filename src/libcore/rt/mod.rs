@@ -15,16 +15,10 @@ macro_rules! rtdebug_ (
         dumb_println(fmt!( $($arg),+ ));
 
         fn dumb_println(s: &str) {
-            use str::as_c_str;
-            use libc::c_char;
-
-            extern {
-                fn printf(s: *c_char);
-            }
-
-            do as_c_str(s.to_str() + "\n") |s| {
-                unsafe { printf(s); }
-            }
+            use io::WriterUtil;
+            let dbg = ::libc::STDERR_FILENO as ::io::fd_t;
+            dbg.write_str(s);
+            dbg.write_str("\n");
         }
 
     } )
