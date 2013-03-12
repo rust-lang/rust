@@ -600,7 +600,7 @@ pub enum expr_ {
     expr_again(Option<ident>),
     expr_ret(Option<@expr>),
     expr_log(log_level, @expr, @expr),
-    
+
     /* asm, clobbers + constraints, volatile */
     expr_inline_asm(@~str, @~str, bool),
 

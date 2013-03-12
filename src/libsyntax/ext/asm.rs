@@ -55,7 +55,6 @@ pub fn expand_asm(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
 
     let mut state = Asm;
     loop outer: {
-        
         match state {
             Asm => {
                 asm = expr_to_str(cx, p.parse_expr(),
@@ -65,11 +64,11 @@ pub fn expand_asm(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
                 while *p.token != token::EOF &&
                       *p.token != token::COLON &&
                       *p.token != token::MOD_SEP {
-                    
+
                     if outputs.len() != 0 {
                         p.eat(&token::COMMA);
                     }
-                    
+
                     let constraint = p.parse_str();
                     p.expect(&token::LPAREN);
                     let out = p.parse_expr();
@@ -82,11 +81,11 @@ pub fn expand_asm(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
                 while *p.token != token::EOF &&
                       *p.token != token::COLON &&
                       *p.token != token::MOD_SEP {
-                    
+
                     if inputs.len() != 0 {
                         p.eat(&token::COMMA);
                     }
-                    
+
                     let constraint = p.parse_str();
                     p.expect(&token::LPAREN);
                     let in = p.parse_expr();
@@ -100,11 +99,11 @@ pub fn expand_asm(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
                 while *p.token != token::EOF &&
                       *p.token != token::COLON &&
                       *p.token != token::MOD_SEP {
-                    
+
                     if clobs.len() != 0 {
                         p.eat(&token::COMMA);
                     }
-                    
+
                     let clob = ~"~{" + *p.parse_str() + ~"}";
                     clobs.push(clob);
                 }
@@ -113,7 +112,7 @@ pub fn expand_asm(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
             }
             Options => {
                 let option = *p.parse_str();
-                
+
                 if option == ~"volatile" {
                     volatile = true;
                 }
@@ -146,7 +145,7 @@ pub fn expand_asm(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
             } else if *p.token == token::EOF {
                 break outer;
             } else {
-               state 
+               state
             };
         }
     }
