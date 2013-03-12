@@ -1,8 +1,85 @@
-Version 0.6 (?)
+Version 0.6 (March 2013)
 ---------------------------
 
+   * ~??? changes, numerous bugfixes
+
+   * TODO:
+      * Ord/Cmp
+      * Lifetime changes
+      * Implicit self
+      * Remove `static` keyword
+      * Static method syntax
+      * `as Trait`
+      * `copy` removed?
+
+   * Syntax changes
+      * The self type parameter in traits is now spelled `Self`
+      * Replaced the `Durable` trait with the `'static` lifetime
+      * The old closure type syntax with the trailing sigil has been
+        removed in favor of the more consistent leading sigil
+      * `super` is a keyword, and may be prefixed to paths
+      * Trait bounds are separated with `+` instead of whitespace
+      * Traits are implemented with `impl Trait for Type`
+        instead of `impl Type: Trait`
+      * The `export` keyword has finally been removed
+      * The `move` keyword has been removed (linear types move by default)
+      * The interior mutability qualifier on vectors, `[mut T]`, has been
+        removed. Use `&mut [T]`, etc.
+      * `mut` is no longer valid in `~mut T`. Use inherited mutability
+      * `fail` is no longer a keyword. Use `fail!()`
+      * `assert` is no longer a keyword. Use `assert!()`
+      * `log` is no longer a keyword. use `debug!`, etc.
+      * 1-tuples may be represented as `(T,)`
+      * Struct fields may no longer be `mut`. Use inherited mutability,
+        `@mut T`, `core::mut` or `core::cell`
+      * `extern mod { ... }` is no longer valid syntax for foreign
+        function modules. Use extern blocks: `extern { ... }`
+      * Newtype enums removed. Used tuple-structs.
+      * Trait implementations no longer support visibility modifiers
+
+   * Semantic changes
+      * Linear types move by default, eliminating the `move` keyword
+      * All foreign functions are considered unsafe
+      * &mut is now unaliasable
+      * Writes to borrowed @mut pointers are prevented dynamically
+      * () has size 0
+      * The name of the main function can be customized using #[main]
+      * The default type of an inferred closure is &fn instead of @fn
+      * Name resolution continues to be tweaked
+      * Method visibility is inherited from the implementation declaration
+
+   * Other language changes
+      * Structural records have been removed
+      * Many more types can be used in constants, including enums
+        `static lifetime pointers and vectors
+      * Pattern matching over vectors improved and expanded
+      * Typechecking of closure types has been overhauled to
+        improve inference and eliminate unsoundness
+
    * Libraries
-     * `core::send_map` renamed to `core::hashmap`
+      * Lots of effort to organize the container API's around `core::container`
+      * `core::send_map` renamed to `core::hashmap`
+      * Added big integers to `std::bigint`
+      * Removed `core::oldcomm` module
+      * Added pipe-based `core::comm` module
+      * Reimplemented `std::treemap`
+      * Numeric traits have been reorganized under `core::num`
+      * `core::dvec` removed. Use `@mut ~[T]` or other language types
+      * `vec::slice` finally returns a slice
+      * `debug!` and friends don't require a format string, e.g. `debug!(Foo)`
+
+   * Tools
+      * Replaced the 'cargo' package manager with 'rustpkg'
+      * Added all-purpose 'rust' tool
+      * `rustc --test` now supports a benchmarks with the `#[bench]` attribute
+      * rustc now attempts to offer spelling suggestions
+
+   * Misc
+      * Improved support for ARM and Android
+      * Preliminary MIPS backend
+      * Improved foreign function ABI implementation for x86, x86_64
+      * Various and memory usage improvements
+      * Rust code may be embedded in foreign code under limited circumstances
 
 Version 0.5 (December 2012)
 ---------------------------
