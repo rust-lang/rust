@@ -77,21 +77,13 @@ pure fn lt<K: Ord + TotalOrd, V>(a: &TreeMap<K, V>,
 
 impl<K: Ord + TotalOrd, V> Ord for TreeMap<K, V> {
     #[inline(always)]
-    pure fn lt(&self, other: &TreeMap<K, V>) -> bool {
-        lt(self, other)
-    }
+    pure fn lt(&self, other: &TreeMap<K, V>) -> bool { lt(self, other) }
     #[inline(always)]
-    pure fn le(&self, other: &TreeMap<K, V>) -> bool {
-        !lt(other, self)
-    }
+    pure fn le(&self, other: &TreeMap<K, V>) -> bool { !lt(other, self) }
     #[inline(always)]
-    pure fn ge(&self, other: &TreeMap<K, V>) -> bool {
-        !lt(self, other)
-    }
+    pure fn ge(&self, other: &TreeMap<K, V>) -> bool { !lt(self, other) }
     #[inline(always)]
-    pure fn gt(&self, other: &TreeMap<K, V>) -> bool {
-        lt(other, self)
-    }
+    pure fn gt(&self, other: &TreeMap<K, V>) -> bool { lt(other, self) }
 }
 
 impl<'self, K: TotalOrd, V> BaseIter<(&'self K, &'self V)> for TreeMap<K, V> {
@@ -149,9 +141,9 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
             match *current {
               Some(ref r) => {
                 match key.cmp(&r.key) {
-                   Less => current = &r.left,
-                   Greater => current = &r.right,
-                   Equal => return Some(&r.value)
+                  Less => current = &r.left,
+                  Greater => current = &r.right,
+                  Equal => return Some(&r.value)
                 }
               }
               None => return None
@@ -244,19 +236,24 @@ pub struct TreeSet<T> {
 
 impl<T: TotalOrd> BaseIter<T> for TreeSet<T> {
     /// Visit all values in order
+    #[inline(always)]
     pure fn each(&self, f: &fn(&T) -> bool) { self.map.each_key(f) }
+    #[inline(always)]
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 impl<T: TotalOrd> ReverseIter<T> for TreeSet<T> {
     /// Visit all values in reverse order
+    #[inline(always)]
     pure fn each_reverse(&self, f: &fn(&T) -> bool) {
         self.map.each_key_reverse(f)
     }
 }
 
 impl<T: Eq + TotalOrd> Eq for TreeSet<T> {
+    #[inline(always)]
     pure fn eq(&self, other: &TreeSet<T>) -> bool { self.map == other.map }
+    #[inline(always)]
     pure fn ne(&self, other: &TreeSet<T>) -> bool { self.map != other.map }
 }
 
@@ -273,29 +270,35 @@ impl<T: Ord + TotalOrd> Ord for TreeSet<T> {
 
 impl<T: TotalOrd> Container for TreeSet<T> {
     /// Return the number of elements in the set
+    #[inline(always)]
     pure fn len(&self) -> uint { self.map.len() }
 
     /// Return true if the set contains no elements
+    #[inline(always)]
     pure fn is_empty(&self) -> bool { self.map.is_empty() }
 }
 
 impl<T: TotalOrd> Mutable for TreeSet<T> {
     /// Clear the set, removing all values.
+    #[inline(always)]
     fn clear(&mut self) { self.map.clear() }
 }
 
 impl<T: TotalOrd> Set<T> for TreeSet<T> {
     /// Return true if the set contains a value
+    #[inline(always)]
     pure fn contains(&self, value: &T) -> bool {
         self.map.contains_key(value)
     }
 
     /// Add a value to the set. Return true if the value was not already
     /// present in the set.
+    #[inline(always)]
     fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
 
     /// Remove a value from the set. Return true if the value was
     /// present in the set.
+    #[inline(always)]
     fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 
     /// Return true if the set has no elements in common with `other`.
@@ -320,6 +323,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     }
 
     /// Return true if the set is a subset of another
+    #[inline(always)]
     pure fn is_subset(&self, other: &TreeSet<T>) -> bool {
         other.is_superset(self)
     }
@@ -482,16 +486,21 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
                     a = set_next(&mut x);
                 }
             }
+            do b.while_some |b1| {
+                if f(b1) { set_next(&mut y) } else { None }
+            }
         }
     }
 }
 
 pub impl <T: TotalOrd> TreeSet<T> {
     /// Create an empty TreeSet
+    #[inline(always)]
     static pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
 
     /// Get a lazy iterator over the values in the set.
     /// Requires that it be frozen (immutable).
+    #[inline(always)]
     pure fn iter(&self) -> TreeSetIterator/&self<T> {
         TreeSetIterator{iter: self.map.iter()}
     }
@@ -504,13 +513,15 @@ pub struct TreeSetIterator<T> {
 
 /// Advance the iterator to the next node (in order). If this iterator is
 /// finished, does nothing.
+#[inline(always)]
 pub fn set_next<T>(iter: &mut TreeSetIterator/&r<T>) -> Option<&r/T> {
     do map_next(&mut iter.iter).map |&(value, _)| { value }
 }
 
 /// Advance the iterator through the set
-fn set_advance<T>(iter: &mut TreeSetIterator/&r<T>,
-                       f: &fn(&r/T) -> bool) {
+#[inline(always)]
+pub fn set_advance<T>(iter: &mut TreeSetIterator/&r<T>,
+                      f: &fn(&r/T) -> bool) {
     do map_advance(&mut iter.iter) |(k, _)| { f(k) }
 }
 
@@ -532,7 +543,7 @@ pub impl<K: TotalOrd, V> TreeNode<K, V> {
 }
 
 pure fn each<K: TotalOrd, V>(node: &r/Option<~TreeNode<K, V>>,
-                        f: &fn(&(&r/K, &r/V)) -> bool) {
+                             f: &fn(&(&r/K, &r/V)) -> bool) {
     for node.each |x| {
         each(&x.left, f);
         if f(&(&x.key, &x.value)) { each(&x.right, f) }
@@ -540,7 +551,7 @@ pure fn each<K: TotalOrd, V>(node: &r/Option<~TreeNode<K, V>>,
 }
 
 pure fn each_reverse<K: TotalOrd, V>(node: &r/Option<~TreeNode<K, V>>,
-                                f: &fn(&(&r/K, &r/V)) -> bool) {
+                                     f: &fn(&(&r/K, &r/V)) -> bool) {
     for node.each |x| {
         each_reverse(&x.right, f);
         if f(&(&x.key, &x.value)) { each_reverse(&x.left, f) }
@@ -665,20 +676,20 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
                 skew(save);
 
                 match save.right {
-                    Some(ref mut right) => {
-                        skew(right);
-                        match right.right {
-                            Some(ref mut x) => { skew(x) },
-                            None => ()
-                        }
+                  Some(ref mut right) => {
+                    skew(right);
+                    match right.right {
+                      Some(ref mut x) => { skew(x) },
+                      None => ()
                     }
-                    None => ()
+                  }
+                  None => ()
                 }
 
                 split(save);
                 match save.right {
-                    Some(ref mut x) => { split(x) },
-                    None => ()
+                  Some(ref mut x) => { split(x) },
+                  None => ()
                 }
             }
 
@@ -1101,112 +1112,82 @@ mod test_set {
         }
     }
 
-    #[test]
-    fn test_intersection() {
-        let mut a = TreeSet::new();
-        let mut b = TreeSet::new();
+    fn check(a: &[int], b: &[int], expected: &[int],
+             f: &fn(&TreeSet<int>, &TreeSet<int>, f: &fn(&int) -> bool)) {
+        let mut set_a = TreeSet::new();
+        let mut set_b = TreeSet::new();
 
-        fail_unless!(a.insert(11));
-        fail_unless!(a.insert(1));
-        fail_unless!(a.insert(3));
-        fail_unless!(a.insert(77));
-        fail_unless!(a.insert(103));
-        fail_unless!(a.insert(5));
-        fail_unless!(a.insert(-5));
-
-        fail_unless!(b.insert(2));
-        fail_unless!(b.insert(11));
-        fail_unless!(b.insert(77));
-        fail_unless!(b.insert(-9));
-        fail_unless!(b.insert(-42));
-        fail_unless!(b.insert(5));
-        fail_unless!(b.insert(3));
+        for a.each |x| { fail_unless!(set_a.insert(*x)) }
+        for b.each |y| { fail_unless!(set_b.insert(*y)) }
 
         let mut i = 0;
-        let expected = [3, 5, 11, 77];
-        for a.intersection(&b) |x| {
+        for f(&set_a, &set_b) |x| {
             fail_unless!(*x == expected[i]);
-            i += 1
+            i += 1;
         }
         fail_unless!(i == expected.len());
+    }
+
+    #[test]
+    fn test_intersection() {
+        fn check_intersection(a: &[int], b: &[int], expected: &[int]) {
+            check(a, b, expected, |x, y, z| x.intersection(y, z))
+        }
+
+        check_intersection([], [], []);
+        check_intersection([1, 2, 3], [], []);
+        check_intersection([], [1, 2, 3], []);
+        check_intersection([2], [1, 2, 3], [2]);
+        check_intersection([1, 2, 3], [2], [2]);
+        check_intersection([11, 1, 3, 77, 103, 5, -5],
+                           [2, 11, 77, -9, -42, 5, 3],
+                           [3, 5, 11, 77]);
     }
 
     #[test]
     fn test_difference() {
-        let mut a = TreeSet::new();
-        let mut b = TreeSet::new();
-
-        fail_unless!(a.insert(1));
-        fail_unless!(a.insert(3));
-        fail_unless!(a.insert(5));
-        fail_unless!(a.insert(9));
-        fail_unless!(a.insert(11));
-
-        fail_unless!(b.insert(3));
-        fail_unless!(b.insert(9));
-
-        let mut i = 0;
-        let expected = [1, 5, 11];
-        for a.difference(&b) |x| {
-            fail_unless!(*x == expected[i]);
-            i += 1
+        fn check_difference(a: &[int], b: &[int], expected: &[int]) {
+            check(a, b, expected, |x, y, z| x.difference(y, z))
         }
-        fail_unless!(i == expected.len());
+
+        check_difference([], [], []);
+        check_difference([1, 12], [], [1, 12]);
+        check_difference([], [1, 2, 3, 9], []);
+        check_difference([1, 3, 5, 9, 11],
+                         [3, 9],
+                         [1, 5, 11]);
+        check_difference([-5, 11, 22, 33, 40, 42],
+                         [-12, -5, 14, 23, 34, 38, 39, 50],
+                         [11, 22, 33, 40, 42]);
     }
 
     #[test]
     fn test_symmetric_difference() {
-        let mut a = TreeSet::new();
-        let mut b = TreeSet::new();
-
-        fail_unless!(a.insert(1));
-        fail_unless!(a.insert(3));
-        fail_unless!(a.insert(5));
-        fail_unless!(a.insert(9));
-        fail_unless!(a.insert(11));
-
-        fail_unless!(b.insert(-2));
-        fail_unless!(b.insert(3));
-        fail_unless!(b.insert(9));
-        fail_unless!(b.insert(14));
-        fail_unless!(b.insert(22));
-
-        let mut i = 0;
-        let expected = [-2, 1, 5, 11, 14, 22];
-        for a.symmetric_difference(&b) |x| {
-            fail_unless!(*x == expected[i]);
-            i += 1
+        fn check_symmetric_difference(a: &[int], b: &[int],
+                                      expected: &[int]) {
+            check(a, b, expected, |x, y, z| x.symmetric_difference(y, z))
         }
-        fail_unless!(i == expected.len());
+
+        check_symmetric_difference([], [], []);
+        check_symmetric_difference([1, 2, 3], [2], [1, 3]);
+        check_symmetric_difference([2], [1, 2, 3], [1, 3]);
+        check_symmetric_difference([1, 3, 5, 9, 11],
+                                   [-2, 3, 9, 14, 22],
+                                   [-2, 1, 5, 11, 14, 22]);
     }
 
     #[test]
     fn test_union() {
-        let mut a = TreeSet::new();
-        let mut b = TreeSet::new();
-
-        fail_unless!(a.insert(1));
-        fail_unless!(a.insert(3));
-        fail_unless!(a.insert(5));
-        fail_unless!(a.insert(9));
-        fail_unless!(a.insert(11));
-        fail_unless!(a.insert(16));
-        fail_unless!(a.insert(19));
-        fail_unless!(a.insert(24));
-
-        fail_unless!(b.insert(-2));
-        fail_unless!(b.insert(1));
-        fail_unless!(b.insert(5));
-        fail_unless!(b.insert(9));
-        fail_unless!(b.insert(13));
-        fail_unless!(b.insert(19));
-
-        let mut i = 0;
-        let expected = [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24];
-        for a.union(&b) |x| {
-            fail_unless!(*x == expected[i]);
-            i += 1
+        fn check_union(a: &[int], b: &[int],
+                                      expected: &[int]) {
+            check(a, b, expected, |x, y, z| x.union(y, z))
         }
-        fail_unless!(i == expected.len());
+
+        check_union([], [], []);
+        check_union([1, 2, 3], [2], [1, 2, 3]);
+        check_union([2], [1, 2, 3], [1, 2, 3]);
+        check_union([1, 3, 5, 9, 11, 16, 19, 24],
+                    [-2, 1, 5, 9, 13, 19],
+                    [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24]);
     }
 }
