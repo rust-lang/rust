@@ -326,7 +326,7 @@ pub mod chained {
     }
 
     pub impl<K:Eq + IterBytes + Hash + Copy + ToStr,V:ToStr + Copy> T<K, V> {
-        fn to_writer(&self, wr: io::Writer) {
+        fn to_writer(&self, wr: @io::Writer) {
             if self.count == 0u {
                 wr.write_str(~"{}");
                 return;

@@ -22,97 +22,100 @@ use libc::size_t;
 
 /// A type that can be randomly generated using an RNG
 pub trait Rand {
-    static fn rand(rng: rand::Rng) -> Self;
+    static fn rand(rng: @rand::Rng) -> Self;
 }
 
 impl Rand for int {
-    static fn rand(rng: rand::Rng) -> int {
+    static fn rand(rng: @rand::Rng) -> int {
         rng.gen_int()
     }
 }
 
 impl Rand for i8 {
-    static fn rand(rng: rand::Rng) -> i8 {
+    static fn rand(rng: @rand::Rng) -> i8 {
         rng.gen_i8()
     }
 }
 
 impl Rand for i16 {
-    static fn rand(rng: rand::Rng) -> i16 {
+    static fn rand(rng: @rand::Rng) -> i16 {
         rng.gen_i16()
     }
 }
 
 impl Rand for i32 {
-    static fn rand(rng: rand::Rng) -> i32 {
+    static fn rand(rng: @rand::Rng) -> i32 {
         rng.gen_i32()
     }
 }
 
 impl Rand for i64 {
-    static fn rand(rng: rand::Rng) -> i64 {
+    static fn rand(rng: @rand::Rng) -> i64 {
         rng.gen_i64()
     }
 }
 
 impl Rand for u8 {
-    static fn rand(rng: rand::Rng) -> u8 {
+    static fn rand(rng: @rand::Rng) -> u8 {
         rng.gen_u8()
     }
 }
 
 impl Rand for u16 {
-    static fn rand(rng: rand::Rng) -> u16 {
+    static fn rand(rng: @rand::Rng) -> u16 {
         rng.gen_u16()
     }
 }
 
 impl Rand for u32 {
-    static fn rand(rng: rand::Rng) -> u32 {
+    static fn rand(rng: @rand::Rng) -> u32 {
         rng.gen_u32()
     }
 }
 
 impl Rand for u64 {
-    static fn rand(rng: rand::Rng) -> u64 {
+    static fn rand(rng: @rand::Rng) -> u64 {
         rng.gen_u64()
     }
 }
 
 impl Rand for float {
-    static fn rand(rng: rand::Rng) -> float {
+    static fn rand(rng: @rand::Rng) -> float {
         rng.gen_float()
     }
 }
 
 impl Rand for f32 {
-    static fn rand(rng: rand::Rng) -> f32 {
+    static fn rand(rng: @rand::Rng) -> f32 {
         rng.gen_f32()
     }
 }
 
 impl Rand for f64 {
-    static fn rand(rng: rand::Rng) -> f64 {
+    static fn rand(rng: @rand::Rng) -> f64 {
         rng.gen_f64()
     }
 }
 
 impl Rand for char {
-    static fn rand(rng: rand::Rng) -> char {
+    static fn rand(rng: @rand::Rng) -> char {
         rng.gen_char()
     }
 }
 
 impl Rand for bool {
-    static fn rand(rng: rand::Rng) -> bool {
+    static fn rand(rng: @rand::Rng) -> bool {
         rng.gen_bool()
     }
 }
 
 impl<T:Rand> Rand for Option<T> {
-    static fn rand(rng: rand::Rng) -> Option<T> {
-        if rng.gen_bool() { Some(Rand::rand(rng)) }
-        else { None }
+    static fn rand(rng: @rand::Rng) -> Option<T> {
+        if rng.gen_bool() {
+            Some(Rand::rand(rng))
+        } else {
+            None
+        }
     }
 }
 
@@ -145,8 +148,83 @@ pub struct Weighted<T> {
     item: T,
 }
 
+pub trait RngUtil {
+    fn gen<T:Rand>(&self) -> T;
+    /// Return a random int
+    fn gen_int(&self) -> int;
+    fn gen_int_range(&self, start: int, end: int) -> int;
+    /// Return a random i8
+    fn gen_i8(&self) -> i8;
+    /// Return a random i16
+    fn gen_i16(&self) -> i16;
+    /// Return a random i32
+    fn gen_i32(&self) -> i32;
+    /// Return a random i64
+    fn gen_i64(&self) -> i64;
+    /// Return a random uint
+    fn gen_uint(&self) -> uint;
+    /**
+     * Return a uint randomly chosen from the range [start, end),
+     * failing if start >= end
+     */
+    fn gen_uint_range(&self, start: uint, end: uint) -> uint;
+    /// Return a random u8
+    fn gen_u8(&self) -> u8;
+    /// Return a random u16
+    fn gen_u16(&self) -> u16;
+    /// Return a random u32
+    fn gen_u32(&self) -> u32;
+    /// Return a random u64
+    fn gen_u64(&self) -> u64;
+    /// Return a random float in the interval [0,1]
+    fn gen_float(&self) -> float;
+    /// Return a random f32 in the interval [0,1]
+    fn gen_f32(&self) -> f32;
+    /// Return a random f64 in the interval [0,1]
+    fn gen_f64(&self) -> f64;
+    /// Return a random char
+    fn gen_char(&self) -> char;
+    /**
+     * Return a char randomly chosen from chars, failing if chars is empty
+     */
+    fn gen_char_from(&self, chars: &str) -> char;
+    /// Return a random bool
+    fn gen_bool(&self) -> bool;
+    /// Return a bool with a 1 in n chance of true
+    fn gen_weighted_bool(&self, n: uint) -> bool;
+    /**
+     * Return a random string of the specified length composed of A-Z,a-z,0-9
+     */
+    fn gen_str(&self, len: uint) -> ~str;
+    /// Return a random byte string of the specified length
+    fn gen_bytes(&self, len: uint) -> ~[u8];
+    /// Choose an item randomly, failing if values is empty
+    fn choose<T:Copy>(&self, values: &[T]) -> T;
+    /// Choose Some(item) randomly, returning None if values is empty
+    fn choose_option<T:Copy>(&self, values: &[T]) -> Option<T>;
+    /**
+     * Choose an item respecting the relative weights, failing if the sum of
+     * the weights is 0
+     */
+    fn choose_weighted<T:Copy>(&self, v : &[Weighted<T>]) -> T;
+    /**
+     * Choose Some(item) respecting the relative weights, returning none if
+     * the sum of the weights is 0
+     */
+    fn choose_weighted_option<T:Copy>(&self, v: &[Weighted<T>]) -> Option<T>;
+    /**
+     * Return a vec containing copies of the items, in order, where
+     * the weight of the item determines how many copies there are
+     */
+    fn weighted_vec<T:Copy>(&self, v: &[Weighted<T>]) -> ~[T];
+    /// Shuffle a vec
+    fn shuffle<T:Copy>(&self, values: &[T]) -> ~[T];
+    /// Shuffle a mutable vec in place
+    fn shuffle_mut<T>(&self, values: &mut [T]);
+}
+
 /// Extension methods for random number generators
-pub impl Rng {
+impl RngUtil for @Rng {
     /// Return a random value for a Rand type
     fn gen<T:Rand>(&self) -> T {
         Rand::rand(*self)
@@ -407,7 +485,7 @@ pub fn seed() -> ~[u8] {
 }
 
 /// Create a random number generator with a system specified seed
-pub fn Rng() -> Rng {
+pub fn Rng() -> @Rng {
     seeded_rng(seed())
 }
 
@@ -449,7 +527,7 @@ impl Rng for XorShiftState {
     }
 }
 
-pub pure fn xorshift() -> Rng {
+pub pure fn xorshift() -> @Rng {
     // constants taken from http://en.wikipedia.org/wiki/Xorshift
     seeded_xorshift(123456789u32, 362436069u32, 521288629u32, 88675123u32)
 }
@@ -467,7 +545,7 @@ fn tls_rng_state(_v: @RandRes) {}
  * seeded by the system. Intended to be used in method chaining style, ie
  * task_rng().gen_int().
  */
-pub fn task_rng() -> Rng {
+pub fn task_rng() -> @Rng {
     let r : Option<@RandRes>;
     unsafe {
         r = task::local_data::local_data_get(tls_rng_state);

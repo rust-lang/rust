@@ -63,7 +63,7 @@ fn filter_view_item(cx: @Context, &&view_item: @ast::view_item
     }
 }
 
-fn fold_mod(cx: @Context, m: &ast::_mod, fld: fold::ast_fold) -> ast::_mod {
+fn fold_mod(cx: @Context, m: &ast::_mod, fld: @fold::ast_fold) -> ast::_mod {
     let filtered_items =
         m.items.filter_mapped(|a| filter_item(cx, *a));
     let filtered_view_items =
@@ -84,7 +84,7 @@ fn filter_foreign_item(cx: @Context, &&item: @ast::foreign_item) ->
 fn fold_foreign_mod(
     cx: @Context,
     nm: &ast::foreign_mod,
-    fld: fold::ast_fold
+    fld: @fold::ast_fold
 ) -> ast::foreign_mod {
     let filtered_items =
         nm.items.filter_mapped(|a| filter_foreign_item(cx, *a));
@@ -99,7 +99,7 @@ fn fold_foreign_mod(
 }
 
 fn fold_item_underscore(cx: @Context, item: &ast::item_,
-                        fld: fold::ast_fold) -> ast::item_ {
+                        fld: @fold::ast_fold) -> ast::item_ {
     let item = match *item {
         ast::item_impl(ref a, b, c, ref methods) => {
             let methods = methods.filtered(|m| method_in_cfg(cx, *m) );
@@ -135,7 +135,7 @@ fn filter_stmt(cx: @Context, &&stmt: @ast::stmt) ->
 fn fold_block(
     cx: @Context,
     b: &ast::blk_,
-    fld: fold::ast_fold
+    fld: @fold::ast_fold
 ) -> ast::blk_ {
     let filtered_stmts =
         b.stmts.filter_mapped(|a| filter_stmt(cx, *a));

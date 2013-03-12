@@ -202,10 +202,13 @@ pub fn replace_expr_in_crate(crate: ast::crate, i: uint,
                              newexpr: ast::expr, tm: test_mode) ->
    ast::crate {
     let j: @mut uint = @mut 0u;
-    fn fold_expr_rep(j_: @mut uint, i_: uint, newexpr_: ast::expr_,
-                     original: &ast::expr_, fld: fold::ast_fold,
-                     tm_: test_mode) ->
-       ast::expr_ {
+    fn fold_expr_rep(j_: @mut uint,
+                     i_: uint,
+                     newexpr_: ast::expr_,
+                     original: &ast::expr_,
+                     fld: @fold::ast_fold,
+                     tm_: test_mode)
+                  -> ast::expr_ {
         *j_ += 1u;
         if i_ + 1u == *j_ && safe_to_replace_expr(original, tm_) {
             newexpr_
@@ -229,10 +232,13 @@ pub fn replace_expr_in_crate(crate: ast::crate, i: uint,
 pub fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::Ty,
                            tm: test_mode) -> ast::crate {
     let j: @mut uint = @mut 0u;
-    fn fold_ty_rep(j_: @mut uint, i_: uint, newty_: ast::ty_,
-                   original: &ast::ty_, fld: fold::ast_fold,
-                   tm_: test_mode) ->
-       ast::ty_ {
+    fn fold_ty_rep(j_: @mut uint,
+                   i_: uint,
+                   newty_: ast::ty_,
+                   original: &ast::ty_,
+                   fld: @fold::ast_fold,
+                   tm_: test_mode)
+                -> ast::ty_ {
         *j_ += 1u;
         if i_ + 1u == *j_ && safe_to_replace_ty(original, tm_) {
             newty_
@@ -252,7 +258,7 @@ pub fn under(n: uint, it: &fn(uint)) {
     while i < n { it(i); i += 1u; }
 }
 
-pub fn as_str(f: @fn(+x: io::Writer)) -> ~str {
+pub fn as_str(f: @fn(+x: @io::Writer)) -> ~str {
     io::with_str_writer(f)
 }
 
@@ -304,7 +310,8 @@ pub fn check_variants_T<T: Copy>(
                         diagnostic::mk_span_handler(handler, codemap),
                         crate2,
                         fname,
-                        rdr, a,
+                        rdr,
+                        a,
                         pprust::no_ann(),
                         false))
                 };

@@ -1227,7 +1227,7 @@ to pointers to the trait name, used as a type.
 # impl Shape for int { }
 # let mycircle = 0;
 
-let myshape: Shape = @mycircle as @Shape;
+let myshape: @Shape = @mycircle as @Shape;
 ~~~~
 
 The resulting value is a managed box containing the value that was cast,

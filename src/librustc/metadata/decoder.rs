@@ -1017,14 +1017,15 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
 }
 
 fn list_meta_items(intr: @ident_interner,
-                   meta_items: ebml::Doc, out: io::Writer) {
+                   meta_items: ebml::Doc,
+                   out: @io::Writer) {
     for get_meta_items(meta_items).each |mi| {
         out.write_str(fmt!("%s\n", pprust::meta_item_to_str(*mi, intr)));
     }
 }
 
 fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: &str,
-                         out: io::Writer) {
+                         out: @io::Writer) {
     out.write_str(fmt!("=Crate Attributes (%s)=\n", hash));
 
     for get_attributes(md).each |attr| {
@@ -1063,7 +1064,7 @@ pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
     return deps;
 }
 
-fn list_crate_deps(intr: @ident_interner, data: @~[u8], out: io::Writer) {
+fn list_crate_deps(intr: @ident_interner, data: @~[u8], out: @io::Writer) {
     out.write_str(~"=External Dependencies=\n");
 
     for get_crate_deps(intr, data).each |dep| {
@@ -1106,7 +1107,7 @@ fn iter_crate_items(intr: @ident_interner, cdata: cmd,
 }
 
 pub fn list_crate_metadata(intr: @ident_interner, bytes: @~[u8],
-                           out: io::Writer) {
+                           out: @io::Writer) {
     let hash = get_crate_hash(bytes);
     let md = reader::Doc(bytes);
     list_crate_attributes(intr, md, *hash, out);

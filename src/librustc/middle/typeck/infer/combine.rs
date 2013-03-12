@@ -369,12 +369,6 @@ pub fn super_trait_stores<C:Combine>(self: &C,
         }
       }
 
-      // XXX: This should go away soon.
-      (ty::BareTraitStore, ty::BoxTraitStore) |
-      (ty::BoxTraitStore, ty::BareTraitStore) => {
-        Ok(ty::BoxTraitStore)
-      }
-
       _ if a == b => {
         Ok(a)
       }

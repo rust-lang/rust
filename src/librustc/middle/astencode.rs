@@ -292,7 +292,7 @@ fn encode_ast(ebml_w: writer::Encoder, item: ast::inlined_item) {
 // nested items, as otherwise it would get confused when translating
 // inlined items.
 fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
-    fn drop_nested_items(blk: &ast::blk_, fld: fold::ast_fold) -> ast::blk_ {
+    fn drop_nested_items(blk: &ast::blk_, fld: @fold::ast_fold) -> ast::blk_ {
         let stmts_sans_items = do blk.stmts.filtered |stmt| {
             match stmt.node {
               ast::stmt_expr(_, _) | ast::stmt_semi(_, _) |

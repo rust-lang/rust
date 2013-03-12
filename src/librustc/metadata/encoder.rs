@@ -57,7 +57,7 @@ pub type encode_inlined_item = @fn(ecx: @EncodeContext,
                                    ii: ast::inlined_item);
 
 pub struct EncodeParams {
-    diag: span_handler,
+    diag: @span_handler,
     tcx: ty::ctxt,
     reachable: HashMap<ast::node_id, ()>,
     reexports2: middle::resolve::ExportMap2,
@@ -83,7 +83,7 @@ struct Stats {
 }
 
 pub struct EncodeContext {
-    diag: span_handler,
+    diag: @span_handler,
     tcx: ty::ctxt,
     stats: @mut Stats,
     reachable: HashMap<ast::node_id, ()>,
@@ -1054,7 +1054,7 @@ fn create_index<T:Copy + Hash + IterBytes>(index: ~[entry<T>]) ->
 }
 
 fn encode_index<T>(ebml_w: writer::Encoder, buckets: ~[@~[entry<T>]],
-                   write_fn: &fn(io::Writer, T)) {
+                   write_fn: &fn(@io::Writer, T)) {
     let writer = ebml_w.writer;
     ebml_w.start_tag(tag_index);
     let mut bucket_locs: ~[uint] = ~[];
@@ -1081,9 +1081,9 @@ fn encode_index<T>(ebml_w: writer::Encoder, buckets: ~[@~[entry<T>]],
     ebml_w.end_tag();
 }
 
-fn write_str(writer: io::Writer, &&s: ~str) { writer.write_str(s); }
+fn write_str(writer: @io::Writer, &&s: ~str) { writer.write_str(s); }
 
-fn write_int(writer: io::Writer, &&n: int) {
+fn write_int(writer: @io::Writer, &&n: int) {
     fail_unless!(n < 0x7fff_ffff);
     writer.write_be_u32(n as u32);
 }
@@ -1326,7 +1326,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
         type_abbrevs: ty::new_ty_hash()
      };
 
-    let ebml_w = writer::Encoder(wr as io::Writer);
+    let ebml_w = writer::Encoder(wr as @io::Writer);
 
     encode_hash(ebml_w, ecx.link_meta.extras_hash);
 

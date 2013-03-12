@@ -218,7 +218,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
 
     // Handle @, ~, and & being able to mean estrs and evecs.
     // If a_seq_ty is a str or a vec, make it an estr/evec.
-    // Also handle function sigils and first-class trait types.
+    // Also handle first-class trait types.
     fn mk_pointer<AC:AstConv,RS:region_scope + Copy + Durable>(
         self: &AC,
         rscope: &RS,

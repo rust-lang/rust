@@ -406,6 +406,6 @@ impl ABIInfo for X86_64_ABIInfo {
     }
 }
 
-pub fn x86_64_abi_info() -> ABIInfo {
+pub fn x86_64_abi_info() -> @ABIInfo {
     return @X86_64_ABIInfo as @ABIInfo;
 }

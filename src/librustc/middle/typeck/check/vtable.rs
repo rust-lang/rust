@@ -198,12 +198,19 @@ pub fn lookup_vtable(vcx: &VtableContext,
                        vcx.infcx.ty_to_str(ity));
 
                 match ty::get(ity).sty {
-                    ty::ty_trait(idid, _, _) => {
+                    ty::ty_trait(idid, ref isubsts, _) => {
                         if trait_id == idid {
                             debug!("(checking vtable) @0 \
                                     relating ty to trait \
                                     ty with did %?",
                                    idid);
+
+                            // Convert `ity` so that it has the right vstore.
+                            let ity = ty::mk_trait(vcx.tcx(),
+                                                   idid,
+                                                   copy *isubsts,
+                                                   trait_store);
+
                             relate_trait_tys(vcx, location_info,
                                              trait_ty, ity);
                             let vtable = vtable_param(n, n_bound);
@@ -570,7 +577,6 @@ pub fn early_resolve_expr(ex: @ast::expr,
                   match (&ty::get(ty).sty, store) {
                       (&ty::ty_box(mt), ty::BoxTraitStore) |
                       // XXX: Bare trait store is deprecated.
-                      (&ty::ty_box(mt), ty::BareTraitStore) |
                       (&ty::ty_uniq(mt), ty::UniqTraitStore) |
                       (&ty::ty_rptr(_, mt), ty::RegionTraitStore(*)) => {
                           let location_info =
@@ -622,8 +628,14 @@ pub fn early_resolve_expr(ex: @ast::expr,
                           }
                       }
 
-                      // XXX: Remove bare below.
-                      (_, ty::BoxTraitStore) | (_, ty::BareTraitStore) => {
+                      (_, ty::BareTraitStore) => {
+                          fcx.ccx.tcx.sess.span_err(
+                              ex.span,
+                              ~"a sigil (`@`, `~`, or `&`) must be specified \
+                                when casting to a trait");
+                      }
+
+                      (_, ty::BoxTraitStore) => {
                           fcx.ccx.tcx.sess.span_err(
                               ex.span,
                               fmt!("can only cast an @-pointer \
