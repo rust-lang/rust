@@ -47,7 +47,7 @@ pub fn seq_sep_none() -> SeqSep {
     }
 }
 
-pub fn token_to_str(reader: reader, token: &token::Token) -> ~str {
+pub fn token_to_str(reader: @reader, token: &token::Token) -> ~str {
     token::to_str(reader.interner(), token)
 }
 

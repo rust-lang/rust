@@ -44,8 +44,8 @@ pub enum os {
 }
 
 pub struct Context {
-    diag: span_handler,
-    filesearch: FileSearch,
+    diag: @span_handler,
+    filesearch: @FileSearch,
     span: span,
     ident: ast::ident,
     metas: ~[@ast::meta_item],
@@ -87,7 +87,7 @@ fn libname(cx: Context) -> (~str, ~str) {
 fn find_library_crate_aux(
     cx: Context,
     (prefix, suffix): (~str, ~str),
-    filesearch: filesearch::FileSearch
+    filesearch: @filesearch::FileSearch
 ) -> Option<(~str, @~[u8])> {
     let crate_name = crate_name_from_metas(cx.metas);
     let prefix: ~str = prefix + *crate_name + ~"-";
@@ -156,7 +156,8 @@ pub fn crate_name_from_metas(metas: &[@ast::meta_item]) -> @~str {
     }
 }
 
-pub fn note_linkage_attrs(intr: @ident_interner, diag: span_handler,
+pub fn note_linkage_attrs(intr: @ident_interner,
+                          diag: @span_handler,
                           attrs: ~[ast::attribute]) {
     for attr::find_linkage_metas(attrs).each |mi| {
         diag.handler().note(fmt!("meta: %s",
@@ -252,7 +253,9 @@ pub fn meta_section_name(os: os) -> ~str {
 
 // A diagnostic function for dumping crate metadata to an output stream
 pub fn list_file_metadata(intr: @ident_interner,
-                          os: os, path: &Path, out: io::Writer) {
+                          os: os,
+                          path: &Path,
+                          out: @io::Writer) {
     match get_metadata_section(os, path) {
       option::Some(bytes) => decoder::list_crate_metadata(intr, bytes, out),
       option::None => {

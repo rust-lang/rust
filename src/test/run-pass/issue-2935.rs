@@ -25,7 +25,7 @@ pub fn main() {
   //   let y = @({a: 4i});
   //    let z = @({a: 4i} as it);
   //    let z = @({a: true} as it);
-    let z = @(@true as it);
+    let z = @(@true as @it);
     //  x.f();
     // y.f();
     // (*z).f();

@@ -17,6 +17,7 @@ Simple compression
 use libc;
 use libc::{c_void, size_t, c_int};
 use ptr;
+use rand::RngUtil;
 use vec;
 
 #[cfg(test)] use rand;

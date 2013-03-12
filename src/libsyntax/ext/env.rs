@@ -23,7 +23,7 @@ use ext::base::*;
 use ext::base;
 use ext::build::mk_uniq_str;
 
-pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
+pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
 
     let var = get_single_str_from_tts(cx, sp, tts, "env!");

@@ -1035,7 +1035,7 @@ pub fn T_captured_tydescs(cx: @CrateContext, n: uint) -> TypeRef {
 
 pub fn T_opaque_trait(cx: @CrateContext, store: ty::TraitStore) -> TypeRef {
     match store {
-        ty::BoxTraitStore | ty::BareTraitStore => {
+        ty::BoxTraitStore => {
             T_struct(~[T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)])
         }
         ty::UniqTraitStore => {
@@ -1045,6 +1045,9 @@ pub fn T_opaque_trait(cx: @CrateContext, store: ty::TraitStore) -> TypeRef {
         }
         ty::RegionTraitStore(_) => {
             T_struct(~[T_ptr(cx.tydesc_type), T_ptr(T_i8())])
+        }
+        ty::BareTraitStore => {
+            cx.sess.bug(~"can't make T_opaque_trait with bare trait store")
         }
     }
 }

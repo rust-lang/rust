@@ -138,7 +138,7 @@ pub trait ext_ctxt_ast_builder {
     fn strip_bounds(&self, bounds: &Generics) -> Generics;
 }
 
-impl ext_ctxt_ast_builder for ext_ctxt {
+impl ext_ctxt_ast_builder for @ext_ctxt {
     fn ty_option(&self, ty: @ast::Ty) -> @ast::Ty {
         self.ty_path_ast_builder(path_global(~[
             self.ident_of(~"core"),

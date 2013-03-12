@@ -244,7 +244,7 @@ pub struct InstantiatedTraitRef {
 pub type ctxt = @ctxt_;
 
 struct ctxt_ {
-    diag: syntax::diagnostic::span_handler,
+    diag: @syntax::diagnostic::span_handler,
     interner: HashMap<intern_key, t_box>,
     next_id: @mut uint,
     vecs_implicitly_copyable: bool,
@@ -3600,11 +3600,7 @@ pub fn impl_traits(cx: ctxt, id: ast::def_id, store: TraitStore) -> ~[t] {
     fn storeify(cx: ctxt, ty: t, store: TraitStore) -> t {
         match ty::get(ty).sty {
             ty::ty_trait(did, ref substs, trait_store) => {
-                if store == trait_store ||
-                        (store == BareTraitStore &&
-                         trait_store == BoxTraitStore) ||
-                        (store == BoxTraitStore &&
-                         trait_store == BareTraitStore) {
+                if store == trait_store {
                     ty
                 } else {
                     mk_trait(cx, did, (/*bad*/copy *substs), store)
