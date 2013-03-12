@@ -3102,7 +3102,6 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_block(*) |
         ast::expr_copy(*) |
         ast::expr_repeat(*) |
-        ast::expr_inline_asm(*) |
         ast::expr_lit(@codemap::spanned {node: lit_str(_), _}) |
         ast::expr_vstore(_, ast::expr_vstore_slice) |
         ast::expr_vstore(_, ast::expr_vstore_mut_slice) |
@@ -3145,6 +3144,7 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_loop(*) |
         ast::expr_assign(*) |
         ast::expr_swap(*) |
+        ast::expr_inline_asm(*) |
         ast::expr_assign_op(*) => {
             RvalueStmtExpr
         }
