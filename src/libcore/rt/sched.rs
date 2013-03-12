@@ -285,8 +285,6 @@ pub impl Scheduler {
 const TASK_MIN_STACK_SIZE: uint = 10000000; // XXX: Too much stack
 
 pub struct Task {
-    /// The task entry point, saved here for later destruction
-    priv start: ~~fn(),
     /// The segment of stack on which the task is currently running or,
     /// if the task is blocked, on which the task will resume execution
     priv current_stack_segment: StackSegment,
@@ -297,15 +295,11 @@ pub struct Task {
 
 impl Task {
     static fn new(stack_pool: &mut StackPool, start: ~fn()) -> Task {
-        // XXX: Putting main into a ~ so it's a thin pointer and can
-        // be passed to the spawn function.  Another unfortunate
-        // allocation
-        let start = ~Task::build_start_wrapper(start);
+        let start = Task::build_start_wrapper(start);
         let mut stack = stack_pool.take_segment(TASK_MIN_STACK_SIZE);
         // NB: Context holds a pointer to that ~fn
-        let initial_context = Context::new(&*start, &mut stack);
+        let initial_context = Context::new(start, &mut stack);
         return Task {
-            start: start,
             current_stack_segment: stack,
             saved_context: initial_context,
         };
