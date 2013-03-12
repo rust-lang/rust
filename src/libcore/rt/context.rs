@@ -65,7 +65,42 @@ extern {
     fn swap_registers(out_regs: *mut Registers, in_regs: *Registers);
 }
 
-// Definitions of these registers are in rt/arch/x86_64/regs.h
+#[cfg(target_arch = "x86")]
+struct Registers {
+    eax: u32, ebx: u32, ecx: u32, edx: u32,
+    ebp: u32, esi: u32, edi: u32, esp: u32,
+    cs: u16, ds: u16, ss: u16, es: u16, fs: u16, gs: u16,
+    eflags: u32, eip: u32
+}
+
+#[cfg(target_arch = "x86")]
+fn new_regs() -> ~Registers {
+    ~Registers {
+        eax: 0, ebx: 0, ecx: 0, edx: 0,
+        ebp: 0, esi: 0, edi: 0, esp: 0,
+        cs: 0, ds: 0, ss: 0, es: 0, fs: 0, gs: 0,
+        eflags: 0, eip: 0
+    }
+}
+
+#[cfg(target_arch = "x86")]
+fn initialize_call_frame(regs: &mut Registers,
+                         fptr: *c_void, arg: *c_void, sp: *mut uint) {
+
+    let sp = align_down(sp);
+    let sp = mut_offset(sp, -4); // XXX: -4 words? Needs this be done at all?
+
+    unsafe { *sp = arg as uint; }
+    let sp = mut_offset(sp, -1);
+    unsafe { *sp = 0; } // The final return address
+
+    regs.esp = sp as u32;
+    regs.eip = fptr as u32;
+
+    // Last base pointer on the stack is 0
+    regs.ebp = 0;
+}
+
 #[cfg(target_arch = "x86_64")]
 type Registers = [uint * 22];
 
@@ -101,40 +136,42 @@ fn initialize_call_frame(regs: &mut Registers,
     regs[RUSTRT_RBP] = 0;
 }
 
-#[cfg(target_arch = "x86")]
-struct Registers {
-    eax: u32, ebx: u32, ecx: u32, edx: u32,
-    ebp: u32, esi: u32, edi: u32, esp: u32,
-    cs: u16, ds: u16, ss: u16, es: u16, fs: u16, gs: u16,
-    eflags: u32, eip: u32
-}
+#[cfg(target_arch = "arm")]
+type Registers = [uint * 32];
 
-#[cfg(target_arch = "x86")]
-fn new_regs() -> ~Registers {
-    ~Registers {
-        eax: 0, ebx: 0, ecx: 0, edx: 0,
-        ebp: 0, esi: 0, edi: 0, esp: 0,
-        cs: 0, ds: 0, ss: 0, es: 0, fs: 0, gs: 0,
-        eflags: 0, eip: 0
-    }
-}
+#[cfg(target_arch = "arm")]
+fn new_regs() -> ~Registers { ~[0, .. 32] }
 
-#[cfg(target_arch = "x86")]
+#[cfg(target_arch = "arm")]
 fn initialize_call_frame(regs: &mut Registers,
                          fptr: *c_void, arg: *c_void, sp: *mut uint) {
-
-    let sp = align_down(sp);
-    let sp = mut_offset(sp, -4); // XXX: -4 words? Needs this be done at all?
-
-    unsafe { *sp = arg as uint; }
     let sp = mut_offset(sp, -1);
-    unsafe { *sp = 0; } // The final return address
 
-    regs.esp = sp as u32;
-    regs.eip = fptr as u32;
+    // The final return address. 0 indicates the bottom of the stack
+    unsafe { *sp = 0; }
 
-    // Last base pointer on the stack is 0
-    regs.ebp = 0;
+    regs[0] = arg as uint;   // r0
+    regs[13] = sp as uint;   // #53 sp, r13
+    regs[14] = fptr as uint; // #60 pc, r15 --> lr
+}
+
+#[cfg(target_arch = "mips")]
+type Registers = [uint * 32];
+
+#[cfg(target_arch = "mips")]
+fn new_regs() -> ~Registers { ~[0, .. 32] }
+
+#[cfg(target_arch = "mips")]
+fn initialize_call_frame(regs: &mut Registers,
+                         fptr: *c_void, arg: *c_void, sp: *mut uint) {
+    let sp = mut_offset(sp, -1);
+
+    // The final return address. 0 indicates the bottom of the stack
+    unsafe { *sp = 0; }
+
+    regs[4] = arg as uint;
+    regs[29] = sp as uint;
+    regs[31] = fptr as uint;
 }
 
 fn align_down(sp: *mut uint) -> *mut uint {
