@@ -681,7 +681,7 @@ pub fn build_session(sopts: @session::options,
 pub fn build_session_(sopts: @session::options,
                       cm: @codemap::CodeMap,
                       demitter: diagnostic::Emitter,
-                      span_diagnostic_handler: diagnostic::span_handler)
+                      span_diagnostic_handler: @diagnostic::span_handler)
                    -> Session {
     let target_cfg = build_target_config(sopts, demitter);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler,
@@ -870,7 +870,7 @@ pub fn early_error(emitter: diagnostic::Emitter, msg: ~str) -> ! {
     fail!();
 }
 
-pub fn list_metadata(sess: Session, path: &Path, out: io::Writer) {
+pub fn list_metadata(sess: Session, path: &Path, out: @io::Writer) {
     metadata::loader::list_file_metadata(
         sess.parse_sess.interner,
         session::sess_os_to_meta_os(sess.targ_cfg.os), path, out);

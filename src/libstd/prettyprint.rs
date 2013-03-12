@@ -14,10 +14,10 @@ use core::io::WriterUtil;
 use core::io;
 
 pub struct Serializer {
-    wr: io::Writer,
+    wr: @io::Writer,
 }
 
-pub fn Serializer(wr: io::Writer) -> Serializer {
+pub fn Serializer(wr: @io::Writer) -> Serializer {
     Serializer { wr: wr }
 }
 

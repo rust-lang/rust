@@ -893,6 +893,7 @@ mod test_tim_sort {
 
     use sort::tim_sort;
 
+    use core::rand::RngUtil;
     use core::rand;
     use core::vec;
 
@@ -990,6 +991,7 @@ mod big_tests {
 
     use sort::*;
 
+    use core::rand::RngUtil;
     use core::rand;
     use core::task;
     use core::uint;

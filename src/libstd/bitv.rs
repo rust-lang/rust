@@ -1424,7 +1424,7 @@ mod tests {
         fail_unless!(a.capacity() == uint::bits);
     }
 
-    fn rng() -> rand::Rng {
+    fn rng() -> @rand::Rng {
         let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
         rand::seeded_rng(seed)
     }

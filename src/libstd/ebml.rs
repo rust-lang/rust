@@ -415,11 +415,11 @@ pub mod writer {
 
     // ebml writing
     pub struct Encoder {
-        writer: io::Writer,
+        writer: @io::Writer,
         priv mut size_positions: ~[uint],
     }
 
-    fn write_sized_vuint(w: io::Writer, n: uint, size: uint) {
+    fn write_sized_vuint(w: @io::Writer, n: uint, size: uint) {
         match size {
             1u => w.write(&[0x80u8 | (n as u8)]),
             2u => w.write(&[0x40u8 | ((n >> 8_u) as u8), n as u8]),
@@ -431,7 +431,7 @@ pub mod writer {
         };
     }
 
-    fn write_vuint(w: io::Writer, n: uint) {
+    fn write_vuint(w: @io::Writer, n: uint) {
         if n < 0x7f_u { write_sized_vuint(w, n, 1u); return; }
         if n < 0x4000_u { write_sized_vuint(w, n, 2u); return; }
         if n < 0x200000_u { write_sized_vuint(w, n, 3u); return; }
@@ -439,7 +439,7 @@ pub mod writer {
         fail!(fmt!("vint to write too big: %?", n));
     }
 
-    pub fn Encoder(w: io::Writer) -> Encoder {
+    pub fn Encoder(w: @io::Writer) -> Encoder {
         let size_positions: ~[uint] = ~[];
         Encoder { writer: w, mut size_positions: size_positions }
     }

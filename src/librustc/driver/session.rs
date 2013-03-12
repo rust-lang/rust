@@ -154,8 +154,8 @@ pub struct Session_ {
     codemap: @codemap::CodeMap,
     // For a library crate, this is always none
     main_fn: @mut Option<(node_id, codemap::span)>,
-    span_diagnostic: diagnostic::span_handler,
-    filesearch: filesearch::FileSearch,
+    span_diagnostic: @diagnostic::span_handler,
+    filesearch: @filesearch::FileSearch,
     building_library: @mut bool,
     working_dir: Path,
     lint_settings: lint::LintSettings
@@ -227,7 +227,7 @@ pub impl Session {
     fn next_node_id(&self) -> ast::node_id {
         return syntax::parse::next_node_id(self.parse_sess);
     }
-    fn diagnostic(&self) -> diagnostic::span_handler {
+    fn diagnostic(&self) -> @diagnostic::span_handler {
         self.span_diagnostic
     }
     fn debugging_opt(&self, opt: uint) -> bool {
