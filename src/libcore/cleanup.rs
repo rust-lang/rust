@@ -145,11 +145,7 @@ unsafe fn each_live_alloc(f: &fn(box: *mut BoxRepr, uniq: bool) -> bool) {
 
 #[cfg(unix)]
 fn debug_mem() -> bool {
-    use os;
-    use libc;
-    do os::as_c_charp("RUST_DEBUG_MEM") |p| {
-        unsafe { libc::getenv(p) != null() }
-    }
+    ::rt::env::get().debug_mem
 }
 
 #[cfg(windows)]
