@@ -157,10 +157,6 @@ impl Drop for GlobalState {
     }
 }
 
-/*
-This uses a per-runtime lock to serialize access.
-FIXME #4726: It would probably be appropriate to make this a real global
-*/
 pub unsafe fn with_global_lock<T>(f: &fn() -> T) -> T {
    struct SharedValue(());
    type ValueMutex = Exclusive<SharedValue>;

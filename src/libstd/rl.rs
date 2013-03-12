@@ -20,8 +20,6 @@ use core::unstable::global::with_global_lock;
 pub mod rustrt {
     use core::libc::{c_char, c_int};
 
-    // The linenoise library is not threadsafe, but we have wrapped
-    // it with a global mutex.
     pub extern {
         pub unsafe fn linenoise(prompt: *c_char) -> *c_char;
         pub unsafe fn linenoiseHistoryAdd(line: *c_char) -> c_int;
@@ -32,6 +30,12 @@ pub mod rustrt {
         pub unsafe fn linenoiseAddCompletion(completions: *(), line: *c_char);
     }
 }
+
+/*
+The linenoise library is not threadsafe,
+This uses a per-runtime lock to serialize access.
+FIXME #4726: It would probably be appropriate to make this a real global
+*/
 
 /// Add a line to history
 pub unsafe fn add_history(line: ~str) -> bool {

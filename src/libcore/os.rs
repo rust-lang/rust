@@ -147,7 +147,11 @@ pub mod win32 {
     }
 }
 
-// Accessing environment variables is not generally threadsafe.
+/*
+Accessing environment variables is not generally threadsafe.
+This uses a per-runtime lock to serialize access.
+FIXME #4726: It would probably be appropriate to make this a real global
+*/
 pub fn env() -> ~[(~str,~str)] {
     unsafe {
         #[cfg(windows)]
