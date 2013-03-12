@@ -15,7 +15,7 @@ Functions for the unit type.
 */
 
 #[cfg(notest)]
-use cmp::{Eq, Ord};
+use cmp::{Eq, Ord, TotalOrd, Ordering, Equal};
 
 #[cfg(notest)]
 impl Eq for () {
@@ -37,3 +37,8 @@ impl Ord for () {
     pure fn gt(&self, _other: &()) -> bool { false }
 }
 
+#[cfg(notest)]
+impl TotalOrd for () {
+    #[inline(always)]
+    pure fn cmp(&self, _other: &()) -> Ordering { Equal }
+}
