@@ -23,6 +23,7 @@
 #define DETAILED_LEAKS "DETAILED_LEAKS"
 #define RUST_SEED "RUST_SEED"
 #define RUST_POISON_ON_FREE "RUST_POISON_ON_FREE"
+#define RUST_DEBUG_MEM "RUST_DEBUG_MEM"
 
 #if defined(__WIN32__)
 static int
@@ -128,6 +129,7 @@ load_env(int argc, char **argv) {
     env->poison_on_free = getenv(RUST_POISON_ON_FREE) != NULL;
     env->argc = argc;
     env->argv = argv;
+    env->debug_mem = getenv(RUST_DEBUG_MEM) != NULL;
     return env;
 }
 
