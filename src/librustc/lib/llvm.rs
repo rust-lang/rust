@@ -188,6 +188,12 @@ pub enum Metadata {
     MD_tbaa_struct = 5
 }
 
+// Inline Asm Dialect
+pub enum AsmDialect {
+    AD_ATT   = 0,
+    AD_Intel = 1
+}
+
 // Opaque pointer types
 pub enum Module_opaque {}
 pub type ModuleRef = *Module_opaque;
@@ -217,9 +223,9 @@ pub enum SectionIterator_opaque {}
 pub type SectionIteratorRef = *SectionIterator_opaque;
 
 pub mod llvm {
-    use super::{AtomicBinOp, AtomicOrdering, BasicBlockRef, Bool, BuilderRef};
-    use super::{ContextRef, MemoryBufferRef, ModuleRef, ObjectFileRef};
-    use super::{Opcode, PassManagerRef, PassManagerBuilderRef};
+    use super::{AsmDialect, AtomicBinOp, AtomicOrdering, BasicBlockRef};
+    use super::{Bool, BuilderRef, ContextRef, MemoryBufferRef, ModuleRef};
+    use super::{ObjectFileRef, Opcode, PassManagerRef, PassManagerBuilderRef};
     use super::{SectionIteratorRef, TargetDataRef, TypeKind, TypeRef, UseRef};
     use super::{ValueRef};
 
@@ -1433,6 +1439,12 @@ pub mod llvm {
 
         /** Enables LLVM debug output. */
         pub unsafe fn LLVMSetDebug(Enabled: c_int);
+
+        /** Prepares inline assembly. */
+        pub unsafe fn LLVMInlineAsm(Ty: TypeRef, AsmString: *c_char,
+                                    Constraints: *c_char, SideEffects: Bool,
+                                    AlignStack: Bool, Dialect: AsmDialect)
+                                 -> ValueRef;
     }
 }
 
