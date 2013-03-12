@@ -818,6 +818,12 @@ rust_dec_kernel_live_count() {
     task->kernel->dec_live_count();
 }
 
+extern "C" rust_env*
+rust_get_rt_env() {
+    rust_task *task = rust_get_current_task();
+    return task->kernel->env;
+}
+
 //
 // Local Variables:
 // mode: C++
