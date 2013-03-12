@@ -46,3 +46,4 @@ cp ${PREFIX}/lib/rustc/${TARG_DIR}/${LIBDIR}/* ${TARG_DIR}/stage0/${LIBDIR}/
 cp ${PREFIX}/lib/librust*${LIB_SUF} ${TARG_DIR}/stage0/${LIBDIR}/
 cp ${PREFIX}/lib/libcore*${LIB_SUF} ${TARG_DIR}/stage0/${LIBDIR}/
 cp ${PREFIX}/lib/libstd*${LIB_SUF} ${TARG_DIR}/stage0/${LIBDIR}/
+cp ${PREFIX}/lib/libsyntax*${LIB_SUF} ${TARG_DIR}/stage0/${LIBDIR}/
