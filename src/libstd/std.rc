@@ -36,6 +36,8 @@ not required in or otherwise suitable for the core library.
 extern mod core(vers = "0.6");
 use core::*;
 
+pub use uv_ll = core::unstable::uvll;
+
 // General io and system-services modules
 
 pub mod net;
@@ -45,7 +47,6 @@ pub mod net_url;
 
 // libuv modules
 pub mod uv;
-pub mod uv_ll;
 pub mod uv_iotask;
 pub mod uv_global_loop;
 
