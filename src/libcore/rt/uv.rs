@@ -43,7 +43,7 @@ use libc::{c_void, c_int, size_t, malloc, free, ssize_t};
 use cast::{transmute, transmute_mut_region};
 use ptr::null;
 use sys::size_of;
-use unstable::uvll;
+use super::uvll;
 use super::io::{IpAddr, Ipv4, Ipv6};
 
 #[cfg(test)] use unstable::run_in_bare_thread;

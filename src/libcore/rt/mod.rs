@@ -37,6 +37,7 @@ macro_rules! rtdebug (
 
 mod sched;
 mod io;
+pub mod uvll;
 mod uvio;
 mod uv;
 // FIXME #5248: The import in `sched` doesn't resolve unless this is pub!
