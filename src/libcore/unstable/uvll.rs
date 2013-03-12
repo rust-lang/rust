@@ -32,14 +32,15 @@
 
 #[allow(non_camel_case_types)]; // C types
 
-use core::libc::size_t;
-use core::libc;
-use core::prelude::*;
-use core::ptr::to_unsafe_ptr;
-use core::ptr;
-use core::str;
-use core::vec;
-use core::comm::{stream, Chan, SharedChan, Port};
+use libc::size_t;
+use libc::c_void;
+use prelude::*;
+use ptr::to_unsafe_ptr;
+
+pub type uv_handle_t = c_void;
+pub type uv_loop_t = c_void;
+pub type uv_idle_t = c_void;
+pub type uv_idle_cb = *u8;
 
 // libuv struct mappings
 pub struct uv_ip4_addr {
@@ -355,7 +356,10 @@ pub struct uv_getaddrinfo_t {
 }
 
 pub mod uv_ll_struct_stubgen {
-    use uv_ll::{
+
+    use ptr;
+
+    use super::{
         uv_async_t,
         uv_connect_t,
         uv_getaddrinfo_t,
@@ -369,14 +373,12 @@ pub mod uv_ll_struct_stubgen {
     #[cfg(target_os = "android")]
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
-    use uv_ll::{
+    use super::{
         uv_async_t_32bit_unix_riders,
         uv_tcp_t_32bit_unix_riders,
         uv_timer_t_32bit_unix_riders,
         uv_write_t_32bit_unix_riders,
     };
-
-    use core::ptr;
 
     pub fn gen_stub_uv_tcp_t() -> uv_tcp_t {
         return gen_stub_os();
@@ -724,157 +726,157 @@ pub mod uv_ll_struct_stubgen {
     }
 }
 
-pub mod rustrt {
-    use super::{addrinfo, sockaddr_in, sockaddr_in6, uv_async_t, uv_buf_t};
-    use super::{uv_connect_t, uv_err_t, uv_getaddrinfo_t, uv_stream_t};
-    use super::{uv_tcp_t, uv_timer_t, uv_write_t};
+#[nolink]
+extern mod rustrt {
 
-    use core::libc;
+    // libuv public API
+    unsafe fn rust_uv_loop_new() -> *libc::c_void;
+    unsafe fn rust_uv_loop_delete(lp: *libc::c_void);
+    unsafe fn rust_uv_run(loop_handle: *libc::c_void);
+    unsafe fn rust_uv_close(handle: *libc::c_void, cb: *u8);
+    unsafe fn rust_uv_walk(loop_handle: *libc::c_void, cb: *u8,
+                           arg: *libc::c_void);
 
-    #[nolink]
-    pub extern {
-        // libuv public API
-        unsafe fn rust_uv_loop_new() -> *libc::c_void;
-        unsafe fn rust_uv_loop_delete(lp: *libc::c_void);
-        unsafe fn rust_uv_run(loop_handle: *libc::c_void);
-        unsafe fn rust_uv_close(handle: *libc::c_void, cb: *u8);
-        unsafe fn rust_uv_walk(loop_handle: *libc::c_void, cb: *u8,
-                               arg: *libc::c_void);
-        unsafe fn rust_uv_async_send(handle: *uv_async_t);
-        unsafe fn rust_uv_async_init(loop_handle: *libc::c_void,
-                              async_handle: *uv_async_t,
-                              cb: *u8) -> libc::c_int;
-        unsafe fn rust_uv_tcp_init(
-            loop_handle: *libc::c_void,
-            handle_ptr: *uv_tcp_t) -> libc::c_int;
-        // FIXME ref #2604 .. ?
-        unsafe fn rust_uv_buf_init(out_buf: *uv_buf_t, base: *u8,
-                            len: libc::size_t);
-        unsafe fn rust_uv_last_error(loop_handle: *libc::c_void) -> uv_err_t;
-        // FIXME ref #2064
-        unsafe fn rust_uv_strerror(err: *uv_err_t) -> *libc::c_char;
-        // FIXME ref #2064
-        unsafe fn rust_uv_err_name(err: *uv_err_t) -> *libc::c_char;
-        unsafe fn rust_uv_ip4_addr(ip: *u8, port: libc::c_int)
-            -> sockaddr_in;
-        unsafe fn rust_uv_ip6_addr(ip: *u8, port: libc::c_int)
-            -> sockaddr_in6;
-        unsafe fn rust_uv_ip4_name(src: *sockaddr_in,
-                                   dst: *u8,
-                                   size: libc::size_t)
-                                -> libc::c_int;
-        unsafe fn rust_uv_ip6_name(src: *sockaddr_in6,
-                                   dst: *u8,
-                                   size: libc::size_t)
-                                -> libc::c_int;
-        unsafe fn rust_uv_ip4_port(src: *sockaddr_in) -> libc::c_uint;
-        unsafe fn rust_uv_ip6_port(src: *sockaddr_in6) -> libc::c_uint;
-        // FIXME ref #2064
-        unsafe fn rust_uv_tcp_connect(connect_ptr: *uv_connect_t,
-                                      tcp_handle_ptr: *uv_tcp_t,
-                                      ++after_cb: *u8,
-                                      ++addr: *sockaddr_in) -> libc::c_int;
-        // FIXME ref #2064
-        unsafe fn rust_uv_tcp_bind(tcp_server: *uv_tcp_t,
-                                   ++addr: *sockaddr_in) -> libc::c_int;
-        // FIXME ref #2064
-        unsafe fn rust_uv_tcp_connect6(connect_ptr: *uv_connect_t,
-                                       tcp_handle_ptr: *uv_tcp_t,
-                                       ++after_cb: *u8,
-                                       ++addr: *sockaddr_in6) -> libc::c_int;
-        // FIXME ref #2064
-        unsafe fn rust_uv_tcp_bind6(tcp_server: *uv_tcp_t,
-                                    ++addr: *sockaddr_in6) -> libc::c_int;
-        unsafe fn rust_uv_tcp_getpeername(tcp_handle_ptr: *uv_tcp_t,
-                                          ++name: *sockaddr_in)
-                                       -> libc::c_int;
-        unsafe fn rust_uv_tcp_getpeername6(tcp_handle_ptr: *uv_tcp_t,
-                                           ++name: *sockaddr_in6)
-                                        -> libc::c_int;
-        unsafe fn rust_uv_listen(stream: *libc::c_void,
-                                 backlog: libc::c_int,
-                                 cb: *u8) -> libc::c_int;
-        unsafe fn rust_uv_accept(server: *libc::c_void, client: *libc::c_void)
-                              -> libc::c_int;
-        unsafe fn rust_uv_write(req: *libc::c_void,
-                                stream: *libc::c_void,
-                                ++buf_in: *uv_buf_t,
-                                buf_cnt: libc::c_int,
-                                cb: *u8)
-                             -> libc::c_int;
-        unsafe fn rust_uv_read_start(stream: *libc::c_void,
-                                     on_alloc: *u8,
-                                     on_read: *u8)
-                                  -> libc::c_int;
-        unsafe fn rust_uv_read_stop(stream: *libc::c_void) -> libc::c_int;
-        unsafe fn rust_uv_timer_init(loop_handle: *libc::c_void,
-                                     timer_handle: *uv_timer_t)
-                                  -> libc::c_int;
-        unsafe fn rust_uv_timer_start(
-            timer_handle: *uv_timer_t,
-            cb: *u8,
-            timeout: libc::c_uint,
-            repeat: libc::c_uint) -> libc::c_int;
-        unsafe fn rust_uv_timer_stop(handle: *uv_timer_t) -> libc::c_int;
+    unsafe fn rust_uv_idle_new() -> *uv_idle_t;
+    unsafe fn rust_uv_idle_delete(handle: *uv_idle_t);
+    unsafe fn rust_uv_idle_init(loop_handle: *uv_loop_t,
+                                handle: *uv_idle_t) -> libc::c_int;
+    unsafe fn rust_uv_idle_start(handle: *uv_idle_t,
+                                 cb: uv_idle_cb) -> libc::c_int;
+    unsafe fn rust_uv_idle_stop(handle: *uv_idle_t) -> libc::c_int;
 
-        unsafe fn rust_uv_getaddrinfo(loop_ptr: *libc::c_void,
-                                      handle: *uv_getaddrinfo_t,
-                                      cb: *u8,
-                                      node_name_ptr: *u8,
-                                      service_name_ptr: *u8,
-                                      // should probably only pass ptr::null()
-                                      hints: *addrinfo)
-                                   -> libc::c_int;
-        unsafe fn rust_uv_freeaddrinfo(res: *addrinfo);
+    unsafe fn rust_uv_async_send(handle: *uv_async_t);
+    unsafe fn rust_uv_async_init(loop_handle: *libc::c_void,
+                          async_handle: *uv_async_t,
+                          cb: *u8) -> libc::c_int;
+    unsafe fn rust_uv_tcp_init(
+        loop_handle: *libc::c_void,
+        handle_ptr: *uv_tcp_t) -> libc::c_int;
+    // FIXME ref #2604 .. ?
+    unsafe fn rust_uv_buf_init(out_buf: *uv_buf_t, base: *u8,
+                        len: libc::size_t);
+    unsafe fn rust_uv_last_error(loop_handle: *libc::c_void) -> uv_err_t;
+    // FIXME ref #2064
+    unsafe fn rust_uv_strerror(err: *uv_err_t) -> *libc::c_char;
+    // FIXME ref #2064
+    unsafe fn rust_uv_err_name(err: *uv_err_t) -> *libc::c_char;
+    unsafe fn rust_uv_ip4_addr(ip: *u8, port: libc::c_int)
+        -> sockaddr_in;
+    unsafe fn rust_uv_ip6_addr(ip: *u8, port: libc::c_int)
+        -> sockaddr_in6;
+    unsafe fn rust_uv_ip4_name(src: *sockaddr_in,
+                               dst: *u8,
+                               size: libc::size_t)
+                            -> libc::c_int;
+    unsafe fn rust_uv_ip6_name(src: *sockaddr_in6,
+                               dst: *u8,
+                               size: libc::size_t)
+                            -> libc::c_int;
+    unsafe fn rust_uv_ip4_port(src: *sockaddr_in) -> libc::c_uint;
+    unsafe fn rust_uv_ip6_port(src: *sockaddr_in6) -> libc::c_uint;
+    // FIXME ref #2064
+    unsafe fn rust_uv_tcp_connect(connect_ptr: *uv_connect_t,
+                                  tcp_handle_ptr: *uv_tcp_t,
+                                  ++after_cb: *u8,
+                                  ++addr: *sockaddr_in) -> libc::c_int;
+    // FIXME ref #2064
+    unsafe fn rust_uv_tcp_bind(tcp_server: *uv_tcp_t,
+                               ++addr: *sockaddr_in) -> libc::c_int;
+    // FIXME ref #2064
+    unsafe fn rust_uv_tcp_connect6(connect_ptr: *uv_connect_t,
+                                   tcp_handle_ptr: *uv_tcp_t,
+                                   ++after_cb: *u8,
+                                   ++addr: *sockaddr_in6) -> libc::c_int;
+    // FIXME ref #2064
+    unsafe fn rust_uv_tcp_bind6(tcp_server: *uv_tcp_t,
+                                ++addr: *sockaddr_in6) -> libc::c_int;
+    unsafe fn rust_uv_tcp_getpeername(tcp_handle_ptr: *uv_tcp_t,
+                                      ++name: *sockaddr_in) -> libc::c_int;
+    unsafe fn rust_uv_tcp_getpeername6(tcp_handle_ptr: *uv_tcp_t,
+                                       ++name: *sockaddr_in6) ->libc::c_int;
+    unsafe fn rust_uv_listen(stream: *libc::c_void,
+                             backlog: libc::c_int,
+                             cb: *u8) -> libc::c_int;
+    unsafe fn rust_uv_accept(server: *libc::c_void, client: *libc::c_void)
+                          -> libc::c_int;
+    unsafe fn rust_uv_write(req: *libc::c_void,
+                            stream: *libc::c_void,
+                            ++buf_in: *uv_buf_t,
+                            buf_cnt: libc::c_int,
+                            cb: *u8)
+        -> libc::c_int;
+    unsafe fn rust_uv_read_start(stream: *libc::c_void,
+                                 on_alloc: *u8,
+                                 on_read: *u8)
+        -> libc::c_int;
+    unsafe fn rust_uv_read_stop(stream: *libc::c_void) -> libc::c_int;
+    unsafe fn rust_uv_timer_init(loop_handle: *libc::c_void,
+                                 timer_handle: *uv_timer_t)
+        -> libc::c_int;
+    unsafe fn rust_uv_timer_start(
+        timer_handle: *uv_timer_t,
+        cb: *u8,
+        timeout: libc::c_uint,
+        repeat: libc::c_uint) -> libc::c_int;
+    unsafe fn rust_uv_timer_stop(handle: *uv_timer_t) -> libc::c_int;
 
-        // data accessors/helpers for rust-mapped uv structs
-        unsafe fn rust_uv_helper_get_INADDR_NONE() -> u32;
-        unsafe fn rust_uv_is_ipv4_addrinfo(input: *addrinfo) -> bool;
-        unsafe fn rust_uv_is_ipv6_addrinfo(input: *addrinfo) -> bool;
-        unsafe fn rust_uv_get_next_addrinfo(input: *addrinfo) -> *addrinfo;
-        unsafe fn rust_uv_addrinfo_as_sockaddr_in(input: *addrinfo)
-                                               -> *sockaddr_in;
-        unsafe fn rust_uv_addrinfo_as_sockaddr_in6(input: *addrinfo)
-                                                -> *sockaddr_in6;
-        unsafe fn rust_uv_malloc_buf_base_of(sug_size: libc::size_t) -> *u8;
-        unsafe fn rust_uv_free_base_of_buf(++buf: uv_buf_t);
-        unsafe fn rust_uv_get_stream_handle_from_connect_req(
-            connect_req: *uv_connect_t)
-            -> *uv_stream_t;
-        unsafe fn rust_uv_get_stream_handle_from_write_req(
-            write_req: *uv_write_t)
-            -> *uv_stream_t;
-        unsafe fn rust_uv_get_loop_for_uv_handle(handle: *libc::c_void)
-            -> *libc::c_void;
-        unsafe fn rust_uv_get_data_for_uv_loop(loop_ptr: *libc::c_void)
-                                            -> *libc::c_void;
-        unsafe fn rust_uv_set_data_for_uv_loop(loop_ptr: *libc::c_void,
-                                               data: *libc::c_void);
-        unsafe fn rust_uv_get_data_for_uv_handle(handle: *libc::c_void)
-                                              -> *libc::c_void;
-        unsafe fn rust_uv_set_data_for_uv_handle(handle: *libc::c_void,
-                                                 data: *libc::c_void);
-        unsafe fn rust_uv_get_data_for_req(req: *libc::c_void)
-                                        -> *libc::c_void;
-        unsafe fn rust_uv_set_data_for_req(req: *libc::c_void,
+    unsafe fn rust_uv_getaddrinfo(loop_ptr: *libc::c_void,
+                                  handle: *uv_getaddrinfo_t,
+                                  cb: *u8,
+                                  node_name_ptr: *u8,
+                                  service_name_ptr: *u8,
+                                  // should probably only pass ptr::null()
+                                  hints: *addrinfo)
+        -> libc::c_int;
+    unsafe fn rust_uv_freeaddrinfo(res: *addrinfo);
+
+    // data accessors/helpers for rust-mapped uv structs
+    unsafe fn rust_uv_helper_get_INADDR_NONE() -> u32;
+    unsafe fn rust_uv_is_ipv4_addrinfo(input: *addrinfo) -> bool;
+    unsafe fn rust_uv_is_ipv6_addrinfo(input: *addrinfo) -> bool;
+    unsafe fn rust_uv_get_next_addrinfo(input: *addrinfo) -> *addrinfo;
+    unsafe fn rust_uv_addrinfo_as_sockaddr_in(input: *addrinfo)
+        -> *sockaddr_in;
+    unsafe fn rust_uv_addrinfo_as_sockaddr_in6(input: *addrinfo)
+        -> *sockaddr_in6;
+    unsafe fn rust_uv_malloc_buf_base_of(sug_size: libc::size_t) -> *u8;
+    unsafe fn rust_uv_free_base_of_buf(++buf: uv_buf_t);
+    unsafe fn rust_uv_get_stream_handle_from_connect_req(
+        connect_req: *uv_connect_t)
+        -> *uv_stream_t;
+    unsafe fn rust_uv_get_stream_handle_from_write_req(
+        write_req: *uv_write_t)
+        -> *uv_stream_t;
+    unsafe fn rust_uv_get_loop_for_uv_handle(handle: *libc::c_void)
+        -> *libc::c_void;
+    unsafe fn rust_uv_get_data_for_uv_loop(loop_ptr: *libc::c_void)
+        -> *libc::c_void;
+    unsafe fn rust_uv_set_data_for_uv_loop(loop_ptr: *libc::c_void,
                                            data: *libc::c_void);
-        unsafe fn rust_uv_get_base_from_buf(++buf: uv_buf_t) -> *u8;
-        unsafe fn rust_uv_get_len_from_buf(++buf: uv_buf_t) -> libc::size_t;
+    unsafe fn rust_uv_get_data_for_uv_handle(handle: *libc::c_void)
+        -> *libc::c_void;
+    unsafe fn rust_uv_set_data_for_uv_handle(handle: *libc::c_void,
+                                             data: *libc::c_void);
+    unsafe fn rust_uv_get_data_for_req(req: *libc::c_void)
+        -> *libc::c_void;
+    unsafe fn rust_uv_set_data_for_req(req: *libc::c_void,
+                                       data: *libc::c_void);
+    unsafe fn rust_uv_get_base_from_buf(++buf: uv_buf_t) -> *u8;
+    unsafe fn rust_uv_get_len_from_buf(++buf: uv_buf_t) -> libc::size_t;
 
-        // sizeof testing helpers
-        unsafe fn rust_uv_helper_uv_tcp_t_size() -> libc::c_uint;
-        unsafe fn rust_uv_helper_uv_connect_t_size() -> libc::c_uint;
-        unsafe fn rust_uv_helper_uv_buf_t_size() -> libc::c_uint;
-        unsafe fn rust_uv_helper_uv_write_t_size() -> libc::c_uint;
-        unsafe fn rust_uv_helper_uv_err_t_size() -> libc::c_uint;
-        unsafe fn rust_uv_helper_sockaddr_in_size() -> libc::c_uint;
-        unsafe fn rust_uv_helper_sockaddr_in6_size() -> libc::c_uint;
-        unsafe fn rust_uv_helper_uv_async_t_size() -> libc::c_uint;
-        unsafe fn rust_uv_helper_uv_timer_t_size() -> libc::c_uint;
-        unsafe fn rust_uv_helper_uv_getaddrinfo_t_size() -> libc::c_uint;
-        unsafe fn rust_uv_helper_addrinfo_size() -> libc::c_uint;
-        unsafe fn rust_uv_helper_addr_in_size() -> libc::c_uint;
-    }
+    // sizeof testing helpers
+    unsafe fn rust_uv_helper_uv_tcp_t_size() -> libc::c_uint;
+    unsafe fn rust_uv_helper_uv_connect_t_size() -> libc::c_uint;
+    unsafe fn rust_uv_helper_uv_buf_t_size() -> libc::c_uint;
+    unsafe fn rust_uv_helper_uv_write_t_size() -> libc::c_uint;
+    unsafe fn rust_uv_helper_uv_err_t_size() -> libc::c_uint;
+    unsafe fn rust_uv_helper_sockaddr_in_size() -> libc::c_uint;
+    unsafe fn rust_uv_helper_sockaddr_in6_size() -> libc::c_uint;
+    unsafe fn rust_uv_helper_uv_async_t_size() -> libc::c_uint;
+    unsafe fn rust_uv_helper_uv_timer_t_size() -> libc::c_uint;
+    unsafe fn rust_uv_helper_uv_getaddrinfo_t_size() -> libc::c_uint;
+    unsafe fn rust_uv_helper_addrinfo_size() -> libc::c_uint;
+    unsafe fn rust_uv_helper_addr_in_size() -> libc::c_uint;
 }
 
 pub unsafe fn loop_new() -> *libc::c_void {
@@ -895,6 +897,27 @@ pub unsafe fn close<T>(handle: *T, cb: *u8) {
 
 pub unsafe fn walk(loop_handle: *libc::c_void, cb: *u8, arg: *libc::c_void) {
     rustrt::rust_uv_walk(loop_handle, cb, arg);
+}
+
+pub unsafe fn idle_new() -> *uv_idle_t {
+    rustrt::rust_uv_idle_new()
+}
+
+pub unsafe fn idle_delete(handle: *uv_idle_t) {
+    rustrt::rust_uv_idle_delete(handle)
+}
+
+pub unsafe fn idle_init(loop_handle: *uv_loop_t,
+                        handle: *uv_idle_t) -> libc::c_int {
+    rustrt::rust_uv_idle_init(loop_handle, handle)
+}
+
+pub unsafe fn idle_start(handle: *uv_idle_t, cb: uv_idle_cb) -> libc::c_int {
+    rustrt::rust_uv_idle_start(handle, cb)
+}
+
+pub unsafe fn idle_stop(handle: *uv_idle_t) -> libc::c_int {
+    rustrt::rust_uv_idle_stop(handle)
 }
 
 pub unsafe fn tcp_init(loop_handle: *libc::c_void, handle: *uv_tcp_t)
@@ -1215,19 +1238,11 @@ pub unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
     rustrt::rust_uv_addrinfo_as_sockaddr_in6(input)
 }
 
-//#[cfg(test)]
+#[cfg(test)]
 pub mod test {
-    use core::prelude::*;
-
-    use uv_ll::*;
-
-    use core::comm::{SharedChan, stream};
-    use core::libc;
-    use core::ptr;
-    use core::str;
-    use core::sys;
-    use core::task;
-    use core::vec;
+    use prelude::*;
+    use super::*;
+    use comm::{SharedChan, stream, GenericChan, GenericPort};
 
     enum tcp_read_data {
         tcp_read_eof,
@@ -1473,7 +1488,7 @@ pub mod test {
                 let client_data = get_data_for_uv_handle(
                     client_stream_ptr as *libc::c_void) as *tcp_server_data;
 
-                let server_kill_msg = (*client_data).server_kill_msg;
+                let server_kill_msg = copy (*client_data).server_kill_msg;
                 let write_req = (*client_data).server_write_req;
                 if str::contains(request_str, server_kill_msg) {
                     log(debug, ~"SERVER: client req contains kill_msg!");
@@ -1606,8 +1621,8 @@ pub mod test {
 
     fn impl_uv_tcp_server(server_ip: &str,
                           server_port: int,
-                          +kill_server_msg: ~str,
-                          +server_resp_msg: ~str,
+                          kill_server_msg: ~str,
+                          server_resp_msg: ~str,
                           server_chan: SharedChan<~str>,
                           continue_chan: SharedChan<bool>) {
         unsafe {
@@ -1725,10 +1740,12 @@ pub mod test {
             let (continue_port, continue_chan) = stream::<bool>();
             let continue_chan = SharedChan(continue_chan);
 
+            let kill_server_msg_copy = copy kill_server_msg;
+            let server_resp_msg_copy = copy server_resp_msg;
             do task::spawn_sched(task::ManualThreads(1)) {
                 impl_uv_tcp_server(bind_ip, port,
-                                   kill_server_msg,
-                                   server_resp_msg,
+                                   copy kill_server_msg_copy,
+                                   copy server_resp_msg_copy,
                                    server_chan.clone(),
                                    continue_chan.clone());
             };
@@ -1738,9 +1755,10 @@ pub mod test {
             continue_port.recv();
             log(debug, ~"received on continue port, set up tcp client");
 
+            let kill_server_msg_copy = copy kill_server_msg;
             do task::spawn_sched(task::ManualThreads(1u)) {
                 impl_uv_tcp_request(request_ip, port,
-                                   kill_server_msg,
+                                   kill_server_msg_copy,
                                    client_chan.clone());
             };
 
@@ -1760,11 +1778,10 @@ pub mod test {
     pub mod tcp_and_server_client_test {
         #[cfg(target_arch="x86_64")]
         pub mod impl64 {
-            use uv_ll::test::*;
             #[test]
             pub fn test_uv_ll_tcp_server_and_request() {
                 unsafe {
-                    impl_uv_tcp_server_and_request();
+                    super::super::impl_uv_tcp_server_and_request();
                 }
             }
         }
@@ -1772,12 +1789,11 @@ pub mod test {
         #[cfg(target_arch="arm")]
         #[cfg(target_arch="mips")]
         pub mod impl32 {
-            use uv_ll::test::*;
             #[test]
             #[ignore(cfg(target_os = "linux"))]
             pub fn test_uv_ll_tcp_server_and_request() {
                 unsafe {
-                    impl_uv_tcp_server_and_request();
+                    super::super::impl_uv_tcp_server_and_request();
                 }
             }
         }
@@ -1804,7 +1820,7 @@ pub mod test {
         unsafe {
             struct_size_check_common::<uv_tcp_t>(
                 ~"uv_tcp_t",
-                ::uv_ll::rustrt::rust_uv_helper_uv_tcp_t_size()
+                super::rustrt::rust_uv_helper_uv_tcp_t_size()
             );
         }
     }
@@ -1813,7 +1829,7 @@ pub mod test {
         unsafe {
             struct_size_check_common::<uv_connect_t>(
                 ~"uv_connect_t",
-                ::uv_ll::rustrt::rust_uv_helper_uv_connect_t_size()
+                super::rustrt::rust_uv_helper_uv_connect_t_size()
             );
         }
     }
@@ -1822,7 +1838,7 @@ pub mod test {
         unsafe {
             struct_size_check_common::<uv_buf_t>(
                 ~"uv_buf_t",
-                ::uv_ll::rustrt::rust_uv_helper_uv_buf_t_size()
+                super::rustrt::rust_uv_helper_uv_buf_t_size()
             );
         }
     }
@@ -1831,7 +1847,7 @@ pub mod test {
         unsafe {
             struct_size_check_common::<uv_write_t>(
                 ~"uv_write_t",
-                ::uv_ll::rustrt::rust_uv_helper_uv_write_t_size()
+                super::rustrt::rust_uv_helper_uv_write_t_size()
             );
         }
     }
@@ -1841,7 +1857,7 @@ pub mod test {
         unsafe {
             struct_size_check_common::<sockaddr_in>(
                 ~"sockaddr_in",
-                ::uv_ll::rustrt::rust_uv_helper_sockaddr_in_size()
+                super::rustrt::rust_uv_helper_sockaddr_in_size()
             );
         }
     }
@@ -1849,7 +1865,7 @@ pub mod test {
     fn test_uv_ll_struct_size_sockaddr_in6() {
         unsafe {
             let foreign_handle_size =
-                ::uv_ll::rustrt::rust_uv_helper_sockaddr_in6_size();
+                super::rustrt::rust_uv_helper_sockaddr_in6_size();
             let rust_handle_size = sys::size_of::<sockaddr_in6>();
             let output = fmt!("sockaddr_in6 -- foreign: %u rust: %u",
                               foreign_handle_size as uint, rust_handle_size);
@@ -1868,7 +1884,7 @@ pub mod test {
     fn test_uv_ll_struct_size_addr_in() {
         unsafe {
             let foreign_handle_size =
-                ::uv_ll::rustrt::rust_uv_helper_addr_in_size();
+                super::rustrt::rust_uv_helper_addr_in_size();
             let rust_handle_size = sys::size_of::<addr_in>();
             let output = fmt!("addr_in -- foreign: %u rust: %u",
                               foreign_handle_size as uint, rust_handle_size);
@@ -1884,7 +1900,7 @@ pub mod test {
         unsafe {
             struct_size_check_common::<uv_async_t>(
                 ~"uv_async_t",
-                ::uv_ll::rustrt::rust_uv_helper_uv_async_t_size()
+                super::rustrt::rust_uv_helper_uv_async_t_size()
             );
         }
     }
@@ -1894,7 +1910,7 @@ pub mod test {
         unsafe {
             struct_size_check_common::<uv_timer_t>(
                 ~"uv_timer_t",
-                ::uv_ll::rustrt::rust_uv_helper_uv_timer_t_size()
+                super::rustrt::rust_uv_helper_uv_timer_t_size()
             );
         }
     }
@@ -1905,7 +1921,7 @@ pub mod test {
         unsafe {
             struct_size_check_common::<uv_getaddrinfo_t>(
                 ~"uv_getaddrinfo_t",
-                ::uv_ll::rustrt::rust_uv_helper_uv_getaddrinfo_t_size()
+                super::rustrt::rust_uv_helper_uv_getaddrinfo_t_size()
             );
         }
     }
@@ -1916,7 +1932,7 @@ pub mod test {
         unsafe {
             struct_size_check_common::<uv_timer_t>(
                 ~"addrinfo",
-                ::uv_ll::rustrt::rust_uv_helper_uv_timer_t_size()
+                super::rustrt::rust_uv_helper_uv_timer_t_size()
             );
         }
     }

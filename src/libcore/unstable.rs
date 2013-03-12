@@ -35,6 +35,8 @@ pub mod extfmt;
 #[path = "unstable/lang.rs"]
 #[cfg(notest)]
 pub mod lang;
+#[path = "unstable/uvll.rs"]
+pub mod uvll;
 
 mod rustrt {
     use unstable::{raw_thread, rust_little_lock};
@@ -61,7 +63,7 @@ for it to terminate.
 The executing thread has no access to a task pointer and will be using
 a normal large stack.
 */
-pub unsafe fn run_in_bare_thread(f: ~fn()) {
+pub fn run_in_bare_thread(f: ~fn()) {
     let (port, chan) = comm::stream();
     // FIXME #4525: Unfortunate that this creates an extra scheduler but it's
     // necessary since rust_raw_thread_join_delete is blocking
@@ -80,22 +82,18 @@ pub unsafe fn run_in_bare_thread(f: ~fn()) {
 
 #[test]
 fn test_run_in_bare_thread() {
-    unsafe {
-        let i = 100;
-        do run_in_bare_thread {
-            fail_unless!(i == 100);
-        }
+    let i = 100;
+    do run_in_bare_thread {
+        fail_unless!(i == 100);
     }
 }
 
 #[test]
 fn test_run_in_bare_thread_exchange() {
-    unsafe {
-        // Does the exchange heap work without the runtime?
-        let i = ~100;
-        do run_in_bare_thread {
-            fail_unless!(i == ~100);
-        }
+    // Does the exchange heap work without the runtime?
+    let i = ~100;
+    do run_in_bare_thread {
+        fail_unless!(i == ~100);
     }
 }
 

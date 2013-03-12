@@ -130,6 +130,27 @@ pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
     }
 }
 
+pub pure fn get_mut_ref<T>(opt: &r/mut Option<T>) -> &r/mut T {
+    /*!
+    Gets a mutable reference to the value inside an option.
+
+    # Failure
+
+    Fails if the value equals `None`
+
+    # Safety note
+
+    In general, because this function may fail, its use is discouraged
+    (calling `get` on `None` is akin to dereferencing a null pointer).
+    Instead, prefer to use pattern matching and handle the `None`
+    case explicitly.
+     */
+    match *opt {
+        Some(ref mut x) => x,
+        None => fail!(~"option::get_mut_ref none")
+    }
+}
+
 #[inline(always)]
 pub pure fn map<T, U>(opt: &r/Option<T>, f: &fn(x: &r/T) -> U) -> Option<U> {
     //! Maps a `some` value by reference from one type to another
@@ -363,6 +384,23 @@ pub impl<T> Option<T> {
      */
     #[inline(always)]
     pure fn get_ref(&self) -> &self/T { get_ref(self) }
+
+    /**
+    Gets a mutable reference to the value inside an option.
+
+    # Failure
+
+    Fails if the value equals `None`
+
+    # Safety note
+
+    In general, because this function may fail, its use is discouraged
+    (calling `get` on `None` is akin to dereferencing a null pointer).
+    Instead, prefer to use pattern matching and handle the `None`
+    case explicitly.
+     */
+    #[inline(always)]
+    pure fn get_mut_ref(&mut self) -> &self/mut T { get_mut_ref(self) }
 
     /**
      * Gets the value out of an option without copying.
