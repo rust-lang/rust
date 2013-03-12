@@ -89,8 +89,11 @@ use middle::typeck::astconv::{AstConv, ast_path_to_ty};
 use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
 use middle::typeck::astconv;
 use middle::typeck::check::_match::pat_ctxt;
+use middle::typeck::check::method::{AutoderefReceiver};
+use middle::typeck::check::method::{AutoderefReceiverFlag};
 use middle::typeck::check::method::{CheckTraitsAndInherentMethods};
-use middle::typeck::check::method::{CheckTraitsOnly, TransformTypeNormally};
+use middle::typeck::check::method::{CheckTraitsOnly, DontAutoderefReceiver};
+use middle::typeck::check::method::{TransformTypeNormally};
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use middle::typeck::check::vtable::{LocationInfo, VtableContext};
 use middle::typeck::CrateCtxt;
@@ -1373,7 +1376,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                              expr_t,
                              tps,
                              DontDerefArgs,
-                             CheckTraitsAndInherentMethods) {
+                             CheckTraitsAndInherentMethods,
+                             AutoderefReceiver) {
             Some(ref entry) => {
                 let method_map = fcx.ccx.method_map;
                 method_map.insert(expr.id, (*entry));
@@ -1453,7 +1457,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         self_t: ty::t,
                         opname: ast::ident,
                         +args: ~[@ast::expr],
-                        +deref_args: DerefArgs)
+                        +deref_args: DerefArgs,
+                        +autoderef_receiver: AutoderefReceiverFlag)
                      -> Option<(ty::t, bool)> {
         match method::lookup(fcx,
                              op_ex,
@@ -1463,7 +1468,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                              self_t,
                              ~[],
                              deref_args,
-                             CheckTraitsOnly) {
+                             CheckTraitsOnly,
+                             autoderef_receiver) {
           Some(ref origin) => {
               let method_ty = fcx.node_ty(op_ex.callee_id);
               let method_map = fcx.ccx.method_map;
@@ -1548,9 +1554,14 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let tcx = fcx.ccx.tcx;
         match ast_util::binop_to_method_name(op) {
           Some(ref name) => {
-            match lookup_op_method(fcx, ex, lhs_expr, lhs_resolved_t,
+            match lookup_op_method(fcx,
+                                   ex,
+                                   lhs_expr,
+                                   lhs_resolved_t,
                                    fcx.tcx().sess.ident_of(copy *name),
-                                   ~[rhs], DoDerefArgs) {
+                                   ~[rhs],
+                                   DoDerefArgs,
+                                   DontAutoderefReceiver) {
               Some(pair) => return pair,
               _ => ()
             }
@@ -1588,11 +1599,14 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                        rhs_expr: @ast::expr,
                        rhs_t: ty::t)
                     -> ty::t {
-        match lookup_op_method(
-            fcx, ex, rhs_expr, rhs_t,
-            fcx.tcx().sess.ident_of(/*bad*/ copy mname), ~[],
-            DontDerefArgs)
-        {
+        match lookup_op_method(fcx,
+                               ex,
+                               rhs_expr,
+                               rhs_t,
+                               fcx.tcx().sess.ident_of(/*bad*/ copy mname),
+                               ~[],
+                               DontDerefArgs,
+                               DontAutoderefReceiver) {
           Some((ret_ty, _)) => ret_ty,
           _ => {
               fcx.type_error_message(ex.span, |actual| {
@@ -1740,7 +1754,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                              expr_t,
                              tps,
                              DontDerefArgs,
-                             CheckTraitsAndInherentMethods) {
+                             CheckTraitsAndInherentMethods,
+                             AutoderefReceiver) {
             Some(ref entry) => {
                 let method_map = fcx.ccx.method_map;
                 method_map.insert(expr.id, (*entry));
@@ -2569,9 +2584,14 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
               None => {
                   let resolved = structurally_resolved_type(fcx, expr.span,
                                                             raw_base_t);
-                  match lookup_op_method(fcx, expr, base, resolved,
+                  match lookup_op_method(fcx,
+                                         expr,
+                                         base,
+                                         resolved,
                                          tcx.sess.ident_of(~"index"),
-                                         ~[idx], DontDerefArgs) {
+                                         ~[idx],
+                                         DontDerefArgs,
+                                         AutoderefReceiver) {
                       Some((ret_ty, _)) => fcx.write_ty(id, ret_ty),
                       _ => {
                           fcx.type_error_message(expr.span, |actual|

@@ -3407,7 +3407,7 @@ pub impl Parser {
         let prefix = Path(self.sess.cm.span_to_filename(*self.span));
         let prefix = prefix.dir_path();
         let mod_path = Path(".").push_many(*self.mod_path_stack);
-        let default_path = self.sess.interner.get(id) + ~".rs";
+        let default_path = *self.sess.interner.get(id) + ~".rs";
         let file_path = match ::attr::first_attr_value_str_by_name(
             outer_attrs, ~"path") {
             Some(d) => {
