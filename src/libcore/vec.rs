@@ -19,7 +19,6 @@ use iter::BaseIter;
 use iter;
 use kinds::Copy;
 use libc;
-use libc::size_t;
 use option::{None, Option, Some};
 use unstable::intrinsics;
 use ptr;
@@ -76,9 +75,9 @@ pub fn reserve<T>(v: &mut ~[T], n: uint) {
             let td = sys::get_type_desc::<T>();
             if ((**ptr).box_header.ref_count ==
                 managed::raw::RC_MANAGED_UNIQUE) {
-                rustrt::vec_reserve_shared_actual(td, ptr, n as size_t);
+                rustrt::vec_reserve_shared_actual(td, ptr, n as libc::size_t);
             } else {
-                rustrt::vec_reserve_shared(td, ptr, n as size_t);
+                rustrt::vec_reserve_shared(td, ptr, n as libc::size_t);
             }
         }
     }
@@ -2071,7 +2070,6 @@ pub mod raw {
     use kinds::Copy;
     use managed;
     use option::{None, Some};
-    use option;
     use unstable::intrinsics;
     use ptr::addr_of;
     use ptr;
