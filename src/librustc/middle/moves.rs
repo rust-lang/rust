@@ -560,7 +560,8 @@ pub impl VisitContext {
 
             expr_break(*) |
             expr_again(*) |
-            expr_lit(*) => {}
+            expr_lit(*)   |
+            expr_inline_asm(*) => {}
 
             expr_loop(ref blk, _) => {
                 self.consume_block(blk, visitor);

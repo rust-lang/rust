@@ -2303,6 +2303,10 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let region_lb = ty::re_scope(expr.id);
         instantiate_path(fcx, pth, tpt, expr.span, expr.id, region_lb);
       }
+      ast::expr_inline_asm(*) => {
+          fcx.require_unsafe(expr.span, ~"use of inline assembly");
+          fcx.write_nil(id);
+      }
       ast::expr_mac(_) => tcx.sess.bug(~"unexpanded macro"),
       ast::expr_break(_) => { fcx.write_bot(id); bot = true; }
       ast::expr_again(_) => { fcx.write_bot(id); bot = true; }

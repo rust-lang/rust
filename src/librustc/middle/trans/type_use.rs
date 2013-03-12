@@ -353,7 +353,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
       expr_match(*) | expr_block(_) | expr_if(*) | expr_while(*) |
       expr_break(_) | expr_again(_) | expr_unary(_, _) | expr_lit(_) |
       expr_mac(_) | expr_addr_of(_, _) | expr_ret(_) | expr_loop(_, _) |
-      expr_loop_body(_) | expr_do_body(_) => ()
+      expr_loop_body(_) | expr_do_body(_) | expr_inline_asm(*) => ()
     }
 }
 

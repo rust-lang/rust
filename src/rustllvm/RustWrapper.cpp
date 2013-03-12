@@ -15,6 +15,7 @@
 //
 //===----------------------------------------------------------------------===
 
+#include "llvm/InlineAsm.h"
 #include "llvm/LLVMContext.h"
 #include "llvm/Linker.h"
 #include "llvm/PassManager.h"
@@ -538,4 +539,15 @@ extern "C" void LLVMSetDebug(int Enabled) {
 #ifndef NDEBUG
   DebugFlag = Enabled;
 #endif
+}
+
+extern "C" LLVMValueRef LLVMInlineAsm(LLVMTypeRef Ty,
+                                      char *AsmString,
+                                      char *Constraints,
+                                      LLVMBool HasSideEffects,
+                                      LLVMBool IsAlignStack,
+                                      InlineAsm::AsmDialect Dialect) {
+    return wrap(InlineAsm::get(unwrap<FunctionType>(Ty), AsmString,
+                               Constraints, HasSideEffects,
+                               IsAlignStack, Dialect));
 }

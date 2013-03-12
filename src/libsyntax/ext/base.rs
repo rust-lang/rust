@@ -198,6 +198,8 @@ pub fn syntax_expander_table() -> SyntaxEnv {
                                 ext::source_util::expand_mod));
     syntax_expanders.insert(@~"proto",
                             builtin_item_tt(ext::pipes::expand_proto));
+    syntax_expanders.insert(@~"asm",
+                            builtin_normal_tt(ext::asm::expand_asm));
     syntax_expanders.insert(
         @~"trace_macros",
         builtin_normal_tt(ext::trace_macros::expand_trace_macros));
