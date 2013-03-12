@@ -1398,7 +1398,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
           }
         }
       }
-      ast::expr_inline_asm(a, c, v) => {
+      ast::expr_inline_asm(a, c, v, _) => {
         if v {
             word(s.s, ~"__volatile__ asm!");
         } else {

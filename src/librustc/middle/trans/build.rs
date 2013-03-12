@@ -873,12 +873,19 @@ pub fn add_comment(bcx: block, text: &str) {
 }
 
 pub fn InlineAsmCall(cx: block, asm: *c_char, cons: *c_char,
-                     volatile: lib::llvm::Bool, dia: AsmDialect) -> ValueRef {
+                     volatile: bool, alignstack: bool,
+                     dia: AsmDialect) -> ValueRef {
     unsafe {
         count_insn(cx, "inlineasm");
 
+        let volatile = if volatile { lib::llvm::True }
+                       else        { lib::llvm::False };
+        let alignstack = if alignstack { lib::llvm::True }
+                         else          { lib::llvm::False };
+
         let llfty = T_fn(~[], T_void());
-        let v = llvm::LLVMInlineAsm(llfty, asm, cons, volatile, False, dia);
+        let v = llvm::LLVMInlineAsm(llfty, asm, cons, volatile,
+                                    alignstack, dia);
 
         Call(cx, v, ~[])
     }

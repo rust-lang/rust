@@ -691,14 +691,13 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_assign_op(op, dst, src) => {
             return trans_assign_op(bcx, expr, op, dst, src);
         }
-        ast::expr_inline_asm(asm, cons, volatile) => {
+        ast::expr_inline_asm(asm, cons, volatile, alignstack) => {
             // XXX: cons doesn't actual contain ALL the stuff we should
             // be passing since the constraints for in/outputs aren't included
             do str::as_c_str(*asm) |a| {
                 do str::as_c_str(*cons) |c| {
-                    let v = if volatile { lib::llvm::True }
-                            else        { lib::llvm::False };
-                    InlineAsmCall(bcx, a, c, v, lib::llvm::AD_ATT);
+                    InlineAsmCall(bcx, a, c, volatile, alignstack,
+                                  lib::llvm::AD_ATT);
                 }
             }
             return bcx;

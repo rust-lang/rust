@@ -52,6 +52,7 @@ pub fn expand_asm(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     let mut inputs = ~[];
     let mut cons = ~"";
     let mut volatile = false;
+    let mut alignstack = false;
 
     let mut state = Asm;
     loop outer: {
@@ -115,6 +116,8 @@ pub fn expand_asm(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
 
                 if option == ~"volatile" {
                     volatile = true;
+                } else if option == ~"alignstack" {
+                    alignstack = true;
                 }
 
                 if *p.token == token::COMMA {
@@ -153,7 +156,7 @@ pub fn expand_asm(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     MRExpr(@ast::expr {
         id: cx.next_id(),
         callee_id: cx.next_id(),
-        node: ast::expr_inline_asm(@asm, @cons, volatile),
+        node: ast::expr_inline_asm(@asm, @cons, volatile, alignstack),
         span: sp
     })
 }
