@@ -42,6 +42,7 @@ let unwrapped_msg = match msg {
 */
 
 use cmp::{Eq,Ord};
+use ops::Add;
 use kinds::Copy;
 use util;
 use num::Zero;
@@ -82,6 +83,18 @@ impl<T:Ord> Ord for Option<T> {
 
     pure fn gt(&self, other: &Option<T>) -> bool {
         ! (self <= other)
+    }
+}
+
+impl<T: Copy + Add<T,T>> Add<Option<T>, Option<T>> for Option<T> {
+    #[inline(always)]
+    pure fn add(&self, other: &Option<T>) -> Option<T> {
+        match (*self, *other) {
+            (None, None) => None,
+            (_, None) => *self,
+            (None, _) => *other,
+            (Some(ref lhs), Some(ref rhs)) => Some(*lhs + *rhs)
+        }
     }
 }
 
