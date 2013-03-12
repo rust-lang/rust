@@ -8,11 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// XXX: Missing some implementation for other architectures
-#[cfg(target_os = "linux")];
-#[cfg(target_os = "mac")];
-#[cfg(target_os = "win32")];
-
 // Some basic logging
 macro_rules! rtdebug (
     ($( $arg:expr),+) => ( {
