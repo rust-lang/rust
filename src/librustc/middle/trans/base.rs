@@ -2014,7 +2014,7 @@ pub fn trans_enum_variant(ccx: @mut CrateContext,
                           _enum_id: ast::NodeId,
                           variant: &ast::variant,
                           args: &[ast::variant_arg],
-                          disr: uint,
+                          disr: ty::Disr,
                           param_substs: Option<@param_substs>,
                           llfndecl: ValueRef) {
     let _icx = push_ctxt("trans_enum_variant");
@@ -2063,7 +2063,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
     ccx: @mut CrateContext,
     ctor_id: ast::NodeId,
     args: &[A],
-    disr: uint,
+    disr: ty::Disr,
     param_substs: Option<@param_substs>,
     llfndecl: ValueRef)
 {

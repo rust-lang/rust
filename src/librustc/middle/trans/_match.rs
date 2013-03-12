@@ -245,7 +245,7 @@ pub enum VecLenOpt {
 // range)
 enum Opt {
     lit(Lit),
-    var(/* disr val */ uint, @adt::Repr),
+    var(ty::Disr, @adt::Repr),
     range(@ast::expr, @ast::expr),
     vec_len(/* length */ uint, VecLenOpt, /*range of matches*/(uint, uint))
 }
@@ -992,7 +992,7 @@ struct ExtractedBlock {
 
 fn extract_variant_args(bcx: @mut Block,
                             repr: &adt::Repr,
-                            disr_val: uint,
+                            disr_val: ty::Disr,
                             val: ValueRef)
     -> ExtractedBlock {
     let _icx = push_ctxt("match::extract_variant_args");
