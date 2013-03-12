@@ -26,7 +26,7 @@ use middle::astencode::vtable_decoder_helpers;
 
 
 use std::hash::HashUtil;
-use std::uint;
+use std::u64;
 use std::io::WriterUtil;
 use std::io;
 use std::option;
@@ -207,9 +207,9 @@ fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) -> bool {
     reader::tagged_docs(d, tag_items_data_item_reexport, f)
 }
 
-fn variant_disr_val(d: ebml::Doc) -> Option<uint> {
+fn variant_disr_val(d: ebml::Doc) -> Option<ty::Disr> {
     do reader::maybe_get_doc(d, tag_disr_val).chain |val_doc| {
-        do reader::with_doc_data(val_doc) |data| { uint::parse_bytes(data, 10u) }
+        do reader::with_doc_data(val_doc) |data| { u64::parse_bytes(data, 10u) }
     }
 }
 
