@@ -56,6 +56,48 @@ type ExpandDerivingEnumDefFn = &self/fn(ext_ctxt,
                                         ident,
                                         y: &Generics) -> @item;
 
+pub fn expand_meta_deriving(cx: ext_ctxt,
+                            _span: span,
+                            mitem: @meta_item,
+                            in_items: ~[@item])
+                         -> ~[@item] {
+    use ast::{meta_list, meta_name_value, meta_word};
+
+    match mitem.node {
+        meta_name_value(_, l) => {
+            cx.span_err(l.span, ~"unexpected value in `deriving`");
+            in_items
+        }
+        meta_word(_) | meta_list(_, []) => {
+            cx.span_warn(mitem.span, ~"empty trait list in `deriving`");
+            in_items
+        }
+        meta_list(_, titems) => {
+            do titems.foldr(in_items) |&titem, in_items| {
+                match titem.node {
+                    meta_name_value(tname, _) |
+                    meta_list(tname, _) |
+                    meta_word(tname) => {
+                        match *tname {
+                            ~"Clone" => expand_deriving_clone(cx,
+                                titem.span, titem, in_items),
+                            ~"Eq" => expand_deriving_eq(cx, titem.span,
+                                titem, in_items),
+                            ~"IterBytes" => expand_deriving_iter_bytes(cx,
+                                titem.span, titem, in_items),
+                            tname => {
+                                cx.span_err(titem.span, fmt!("unknown \
+                                    `deriving` trait: `%s`", tname));
+                                in_items
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub fn expand_deriving_eq(cx: ext_ctxt,
                           span: span,
                           _mitem: @meta_item,
