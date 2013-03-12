@@ -36,7 +36,7 @@ not required in or otherwise suitable for the core library.
 extern mod core(vers = "0.6");
 use core::*;
 
-pub use uv_ll = core::unstable::uvll;
+pub mod uv_ll;
 
 // General io and system-services modules
 
