@@ -12,7 +12,7 @@
 
 use core::cmp::Eq;
 
-fn iter<T>(v: ~[T], it: fn(&T) -> bool) {
+fn iter<T>(v: ~[T], it: &fn(&T) -> bool) {
     let mut i = 0u, l = v.len();
     while i < l {
         if !it(&v[i]) { break; }

@@ -108,7 +108,7 @@ fn taskset_remove(tasks: &mut TaskSet, task: *rust_task) {
     let was_present = tasks.remove(&task);
     fail_unless!(was_present);
 }
-pub fn taskset_each(tasks: &TaskSet, blk: fn(v: *rust_task) -> bool) {
+pub fn taskset_each(tasks: &TaskSet, blk: &fn(v: *rust_task) -> bool) {
     tasks.each(|k| blk(*k))
 }
 
@@ -151,17 +151,17 @@ struct AncestorNode {
     mut ancestors:    AncestorList,
 }
 
-enum AncestorList = Option<unstable::Exclusive<AncestorNode>>;
+struct AncestorList(Option<unstable::Exclusive<AncestorNode>>);
 
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline(always)]
-fn access_group<U>(x: &TaskGroupArc, blk: fn(TaskGroupInner) -> U) -> U {
+fn access_group<U>(x: &TaskGroupArc, blk: &fn(TaskGroupInner) -> U) -> U {
     unsafe { x.with(blk) }
 }
 
 #[inline(always)]
 fn access_ancestors<U>(x: &unstable::Exclusive<AncestorNode>,
-                       blk: fn(x: &mut AncestorNode) -> U) -> U {
+                       blk: &fn(x: &mut AncestorNode) -> U) -> U {
     unsafe { x.with(blk) }
 }
 
@@ -175,7 +175,7 @@ fn access_ancestors<U>(x: &unstable::Exclusive<AncestorNode>,
 // allocations. Once that bug is fixed, changing the sigil should suffice.
 fn each_ancestor(list:        &mut AncestorList,
                  bail_opt:    Option<@fn(TaskGroupInner)>,
-                 forward_blk: fn(TaskGroupInner) -> bool)
+                 forward_blk: &fn(TaskGroupInner) -> bool)
               -> bool {
     // "Kickoff" call - there was no last generation.
     return !coalesce(list, bail_opt, forward_blk, uint::max_value);
@@ -184,7 +184,7 @@ fn each_ancestor(list:        &mut AncestorList,
     // whether or not unwinding is needed (i.e., !successful iteration).
     fn coalesce(list:            &mut AncestorList,
                 bail_opt:        Option<@fn(TaskGroupInner)>,
-                forward_blk:     fn(TaskGroupInner) -> bool,
+                forward_blk:     &fn(TaskGroupInner) -> bool,
                 last_generation: uint) -> bool {
         // Need to swap the list out to use it, to appease borrowck.
         let tmp_list = util::replace(&mut *list, AncestorList(None));
@@ -288,7 +288,7 @@ fn each_ancestor(list:        &mut AncestorList,
 
         // Wrapper around exclusive::with that appeases borrowck.
         fn with_parent_tg<U>(parent_group: &mut Option<TaskGroupArc>,
-                             blk: fn(TaskGroupInner) -> U) -> U {
+                             blk: &fn(TaskGroupInner) -> U) -> U {
             // If this trips, more likely the problem is 'blk' failed inside.
             let tmp_arc = option::swap_unwrap(&mut *parent_group);
             let result = do access_group(&tmp_arc) |tg_opt| { blk(tg_opt) };

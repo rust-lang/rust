@@ -32,7 +32,7 @@ pub struct TrieMap<T> {
 impl<T> BaseIter<(uint, &'self T)> for TrieMap<T> {
     /// Visit all key-value pairs in order
     #[inline(always)]
-    pure fn each(&self, f: fn(&(uint, &self/T)) -> bool) {
+    pure fn each(&self, f: &fn(&(uint, &self/T)) -> bool) {
         self.root.each(f);
     }
     #[inline(always)]
@@ -42,7 +42,7 @@ impl<T> BaseIter<(uint, &'self T)> for TrieMap<T> {
 impl<T> ReverseIter<(uint, &'self T)> for TrieMap<T> {
     /// Visit all key-value pairs in reverse order
     #[inline(always)]
-    pure fn each_reverse(&self, f: fn(&(uint, &self/T)) -> bool) {
+    pure fn each_reverse(&self, f: &fn(&(uint, &self/T)) -> bool) {
         self.root.each_reverse(f);
     }
 }
@@ -75,13 +75,16 @@ impl<T> Map<uint, T> for TrieMap<T> {
 
     /// Visit all keys in order
     #[inline(always)]
-    pure fn each_key(&self, f: fn(&uint) -> bool) {
+    pure fn each_key(&self, f: &fn(&uint) -> bool) {
         self.each(|&(k, _)| f(&k))
     }
 
     /// Visit all values in order
     #[inline(always)]
-    pure fn each_value(&self, f: fn(&T) -> bool) { self.each(|&(_, v)| f(v)) }
+    pure fn each_value(&self,
+                       f: &fn(&T) -> bool) {
+        self.each(|&(_, v)| f(v))
+    }
 
     /// Return the value corresponding to the key in the map
     #[inline(hint)]
@@ -138,18 +141,18 @@ impl<T> TrieMap<T> {
 impl<T> TrieMap<T> {
     /// Visit all keys in reverse order
     #[inline(always)]
-    pure fn each_key_reverse(&self, f: fn(&uint) -> bool) {
+    pure fn each_key_reverse(&self, f: &fn(&uint) -> bool) {
         self.each_reverse(|&(k, _)| f(&k))
     }
 
     /// Visit all values in reverse order
     #[inline(always)]
-    pure fn each_value_reverse(&self, f: fn(&T) -> bool) {
+    pure fn each_value_reverse(&self, f: &fn(&T) -> bool) {
         self.each_reverse(|&(_, v)| f(v))
     }
 
     /// Iterate over the map and mutate the contained values
-    fn mutate_values(&mut self, f: fn(uint, &mut T) -> bool) {
+    fn mutate_values(&mut self, f: &fn(uint, &mut T) -> bool) {
         self.root.mutate_values(f);
     }
 }
@@ -160,13 +163,13 @@ pub struct TrieSet {
 
 impl BaseIter<uint> for TrieSet {
     /// Visit all values in order
-    pure fn each(&self, f: fn(&uint) -> bool) { self.map.each_key(f) }
+    pure fn each(&self, f: &fn(&uint) -> bool) { self.map.each_key(f) }
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 impl ReverseIter<uint> for TrieSet {
     /// Visit all values in reverse order
-    pure fn each_reverse(&self, f: fn(&uint) -> bool) {
+    pure fn each_reverse(&self, f: &fn(&uint) -> bool) {
         self.map.each_key_reverse(f)
     }
 }
@@ -223,7 +226,7 @@ impl<T> TrieNode<T> {
 }
 
 impl<T> TrieNode<T> {
-    pure fn each(&self, f: fn(&(uint, &self/T)) -> bool) -> bool {
+    pure fn each(&self, f: &fn(&(uint, &self/T)) -> bool) -> bool {
         for uint::range(0, self.children.len()) |idx| {
             match self.children[idx] {
                 Internal(ref x) => if !x.each(f) { return false },
@@ -234,7 +237,7 @@ impl<T> TrieNode<T> {
         true
     }
 
-    pure fn each_reverse(&self, f: fn(&(uint, &self/T)) -> bool) -> bool {
+    pure fn each_reverse(&self, f: &fn(&(uint, &self/T)) -> bool) -> bool {
         for uint::range_rev(self.children.len(), 0) |idx| {
             match self.children[idx - 1] {
                 Internal(ref x) => if !x.each_reverse(f) { return false },
@@ -245,7 +248,7 @@ impl<T> TrieNode<T> {
         true
     }
 
-    fn mutate_values(&mut self, f: fn(uint, &mut T) -> bool) -> bool {
+    fn mutate_values(&mut self, f: &fn(uint, &mut T) -> bool) -> bool {
         for vec::each_mut(self.children) |child| {
             match *child {
                 Internal(ref mut x) => if !x.mutate_values(f) {

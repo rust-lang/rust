@@ -13,8 +13,7 @@
 #include "../../rust_globals.h"
 
 extern "C" uint32_t CDECL swap_registers(registers_t *oregs,
-                                         registers_t *regs)
-  asm ("swap_registers");
+                                         registers_t *regs);
 
 context::context()
 {

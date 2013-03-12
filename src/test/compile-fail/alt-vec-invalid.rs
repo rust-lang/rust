@@ -1,7 +1,7 @@
 fn main() {
     let a = ~[];
     match a {
-        [1, ..tail, ..tail] => {}, //~ ERROR: expected `]` but found `,`
+        [1, ..tail, ..tail] => {}, //~ ERROR: unexpected token: `..`
         _ => ()
     }
 }

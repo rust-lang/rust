@@ -51,11 +51,14 @@ Implicitly, all crates behave as if they included the following prologue:
 #[warn(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 #[allow(deprecated_mutable_fields)];
+#[deny(deprecated_self)];
+#[allow(deprecated_drop)];
 
 // On Linux, link to the runtime with -lrt.
 #[cfg(target_os = "linux")]
 pub mod linkhack {
     #[link_args="-lrustrt -lrt"]
+    #[link_args = "-lpthread"]
     extern {
     }
 }
@@ -142,8 +145,6 @@ pub mod option;
 pub mod result;
 pub mod either;
 pub mod dlist;
-#[path="iter-trait.rs"] #[merge = "iter-trait/dlist.rs"]
-pub mod dlist_iter;
 pub mod hashmap;
 pub mod cell;
 pub mod trie;
@@ -242,7 +243,8 @@ pub mod unicode;
 #[path = "num/cmath.rs"]
 pub mod cmath;
 pub mod stackwalk;
-
+#[path = "rt/mod.rs"]
+pub mod rt;
 
 // A curious inner-module that's not exported that contains the binding
 // 'core' so that macro-expanded references to core::error and such

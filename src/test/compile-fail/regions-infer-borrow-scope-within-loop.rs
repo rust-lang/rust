@@ -10,7 +10,7 @@
 
 fn borrow<T>(x: &r/T) -> &r/T {x}
 
-fn foo(cond: fn() -> bool, box: fn() -> @int) {
+fn foo(cond: &fn() -> bool, box: &fn() -> @int) {
     let mut y: &int;
     loop {
         let x = box();

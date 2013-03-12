@@ -102,7 +102,7 @@ pub fn spawn_process(prog: &str, args: &[~str],
 }
 
 fn with_argv<T>(prog: &str, args: &[~str],
-                cb: fn(**libc::c_char) -> T) -> T {
+                cb: &fn(**libc::c_char) -> T) -> T {
     let mut argptrs = str::as_c_str(prog, |b| ~[b]);
     let mut tmps = ~[];
     for vec::each(args) |arg| {
@@ -116,7 +116,7 @@ fn with_argv<T>(prog: &str, args: &[~str],
 
 #[cfg(unix)]
 fn with_envp<T>(env: &Option<~[(~str,~str)]>,
-                cb: fn(*c_void) -> T) -> T {
+                cb: &fn(*c_void) -> T) -> T {
     // On posixy systems we can pass a char** for envp, which is
     // a null-terminated array of "k=v\n" strings.
     match *env {
@@ -141,7 +141,7 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
 
 #[cfg(windows)]
 fn with_envp<T>(env: &Option<~[(~str,~str)]>,
-                cb: fn(*c_void) -> T) -> T {
+                cb: &fn(*c_void) -> T) -> T {
     // On win32 we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
@@ -165,7 +165,7 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
 }
 
 fn with_dirp<T>(d: &Option<~str>,
-                cb: fn(*libc::c_char) -> T) -> T {
+                cb: &fn(*libc::c_char) -> T) -> T {
     match *d {
       Some(ref dir) => str::as_c_str(*dir, cb),
       None => cb(ptr::null())

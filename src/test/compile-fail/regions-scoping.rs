@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn with<T>(t: T, f: fn(T)) { f(t) }
+fn with<T>(t: T, f: &fn(T)) { f(t) }
 
 fn nested<'x>(x: &'x int) {  // (1)
     do with(

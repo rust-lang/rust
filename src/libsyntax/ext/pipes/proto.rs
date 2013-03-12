@@ -104,7 +104,7 @@ pub impl state_ {
 
     /// Iterate over the states that can be reached in one message
     /// from this state.
-    fn reachable(&self, f: fn(state) -> bool) {
+    fn reachable(&self, f: &fn(state) -> bool) {
         for self.messages.each |m| {
             match *m {
               message(_, _, _, _, Some(next_state { state: ref id, _ })) => {

@@ -510,7 +510,7 @@ pub impl BorrowckCtxt {
                                  method_map: self.method_map}
     }
 
-    fn cat_pattern(&self, cmt: cmt, pat: @ast::pat, op: fn(cmt, @ast::pat)) {
+    fn cat_pattern(&self, cmt: cmt, pat: @ast::pat, op: &fn(cmt, @ast::pat)) {
         let mc = self.mc_ctxt();
         mc.cat_pattern(cmt, pat, op);
     }

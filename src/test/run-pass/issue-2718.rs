@@ -225,8 +225,8 @@ pub mod pingpong {
     use core::cast;
     use core::ptr;
 
-    pub enum ping = ::pipes::send_packet<pong>;
-    pub enum pong = ::pipes::send_packet<ping>;
+    pub struct ping(::pipes::send_packet<pong>);
+    pub struct pong(::pipes::send_packet<ping>);
 
     pub fn liberate_ping(-p: ping) -> ::pipes::send_packet<pong> {
         unsafe {

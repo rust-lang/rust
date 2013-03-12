@@ -41,12 +41,27 @@ pub unsafe fn malloc(td: *TypeDesc, size: uint) -> *c_void {
         return transmute(box);
     }
 }
+/**
+Thin wrapper around libc::malloc, none of the box header
+stuff in exchange_alloc::malloc
+*/
+pub unsafe fn malloc_raw(size: uint) -> *c_void {
+    let p = c_malloc(size as size_t);
+    if p.is_null() {
+        fail!(~"Failure in malloc_raw: result ptr is null");
+    }
+    p
+}
 
 pub unsafe fn free(ptr: *c_void) {
     let exchange_count = &mut *rust_get_exchange_count_ptr();
     atomic_xsub(exchange_count, 1);
 
     fail_unless!(ptr.is_not_null());
+    c_free(ptr);
+}
+///Thin wrapper around libc::free, as with exchange_alloc::malloc_raw
+pub unsafe fn free_raw(ptr: *c_void) {
     c_free(ptr);
 }
 

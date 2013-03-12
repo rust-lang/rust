@@ -1135,7 +1135,7 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
 pub fn with_field_tys<R>(tcx: ty::ctxt,
                          ty: ty::t,
                          node_id_opt: Option<ast::node_id>,
-                         op: fn(int, (&[ty::field])) -> R) -> R {
+                         op: &fn(int, (&[ty::field])) -> R) -> R {
     match ty::get(ty).sty {
         ty::ty_struct(did, ref substs) => {
             op(0, struct_mutable_fields(tcx, did, substs))

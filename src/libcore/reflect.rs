@@ -26,7 +26,7 @@ use vec;
  * then build a MovePtrAdaptor wrapped around your struct.
  */
 pub trait MovePtr {
-    fn move_ptr(&self, adjustment: fn(*c_void) -> *c_void);
+    fn move_ptr(&self, adjustment: &fn(*c_void) -> *c_void);
     fn push_ptr(&self);
     fn pop_ptr(&self);
 }

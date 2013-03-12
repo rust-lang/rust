@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let f: fn((int,int)) = |(x, y)| {
+    let f: &fn((int,int)) = |(x, y)| {
         fail_unless!(x == 1);
         fail_unless!(y == 2);
     };

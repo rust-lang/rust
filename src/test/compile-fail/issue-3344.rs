@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum thing = uint;
+struct thing(uint);
 impl cmp::Ord for thing { //~ ERROR missing method `gt`
     pure fn lt(&self, other: &thing) -> bool { **self < **other }
     pure fn le(&self, other: &thing) -> bool { **self < **other }

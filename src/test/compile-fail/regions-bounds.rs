@@ -12,7 +12,7 @@
 // nominal types (but not on other types) and that they are type
 // checked.
 
-enum an_enum = &'self int;
+struct an_enum(&'self int);
 trait a_trait {
     fn foo() -> &'self int;
 }

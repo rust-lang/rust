@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum myvec<X> = ~[X];
+struct myvec<X>(~[X]);
 
 fn myvec_deref<X:Copy>(mv: myvec<X>) -> ~[X] { return copy *mv; }
 

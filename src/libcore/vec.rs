@@ -53,7 +53,7 @@ pub pure fn is_empty<T>(v: &[const T]) -> bool {
 
 /// Returns true if two vectors have the same length
 pub pure fn same_length<T, U>(xs: &[const T], ys: &[const U]) -> bool {
-    len(xs) == len(ys)
+    xs.len() == ys.len()
 }
 
 /**
@@ -136,7 +136,7 @@ pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
             }
         }
         raw::set_len(&mut v, n_elts);
-        return v;
+        v
     }
 }
 
@@ -158,7 +158,7 @@ pub pure fn from_slice<T:Copy>(t: &[T]) -> ~[T] {
 pub pure fn with_capacity<T>(capacity: uint) -> ~[T] {
     let mut vec = ~[];
     unsafe { reserve(&mut vec, capacity); }
-    return vec;
+    vec
 }
 
 /**
@@ -175,7 +175,7 @@ pub pure fn with_capacity<T>(capacity: uint) -> ~[T] {
  */
 #[inline(always)]
 pub pure fn build_sized<A>(size: uint,
-                       builder: fn(push: pure fn(v: A))) -> ~[A] {
+                       builder: &fn(push: &pure fn(v: A))) -> ~[A] {
     let mut vec = with_capacity(size);
     builder(|x| unsafe { vec.push(x) });
     vec
@@ -192,7 +192,7 @@ pub pure fn build_sized<A>(size: uint,
  *             onto the vector being constructed.
  */
 #[inline(always)]
-pub pure fn build<A>(builder: fn(push: pure fn(v: A))) -> ~[A] {
+pub pure fn build<A>(builder: &fn(push: &pure fn(v: A))) -> ~[A] {
     build_sized(4, builder)
 }
 
@@ -210,7 +210,7 @@ pub pure fn build<A>(builder: fn(push: pure fn(v: A))) -> ~[A] {
  */
 #[inline(always)]
 pub pure fn build_sized_opt<A>(size: Option<uint>,
-                           builder: fn(push: pure fn(v: A))) -> ~[A] {
+                           builder: &fn(push: &pure fn(v: A))) -> ~[A] {
     build_sized(size.get_or_default(4), builder)
 }
 
@@ -257,8 +257,8 @@ pub pure fn last_opt<T>(v: &r/[T]) -> Option<&r/T> {
 /// Return a slice that points into another slice.
 #[inline(always)]
 pub pure fn slice<T>(v: &r/[T], start: uint, end: uint) -> &r/[T] {
-    fail_unless!((start <= end));
-    fail_unless!((end <= len(v)));
+    fail_unless!(start <= end);
+    fail_unless!(end <= len(v));
     do as_imm_buf(v) |p, _len| {
         unsafe {
             ::cast::reinterpret_cast(
@@ -274,8 +274,8 @@ pub pure fn mut_slice<T>(v: &r/mut [T],
                          start: uint,
                          end: uint)
                       -> &r/mut [T] {
-    fail_unless!((start <= end));
-    fail_unless!((end <= len(v)));
+    fail_unless!(start <= end);
+    fail_unless!(end <= v.len());
     do as_mut_buf(v) |p, _len| {
         unsafe {
             ::cast::reinterpret_cast(
@@ -291,8 +291,8 @@ pub pure fn const_slice<T>(v: &r/[const T],
                            start: uint,
                            end: uint)
                         -> &r/[const T] {
-    fail_unless!((start <= end));
-    fail_unless!((end <= len(v)));
+    fail_unless!(start <= end);
+    fail_unless!(end <= len(v));
     do as_const_buf(v) |p, _len| {
         unsafe {
             ::cast::reinterpret_cast(
@@ -305,7 +305,7 @@ pub pure fn const_slice<T>(v: &r/[const T],
 /// Copies
 
 /// Split the vector `v` by applying each element against the predicate `f`.
-pub fn split<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
+pub fn split<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let ln = len(v);
     if (ln == 0u) { return ~[] }
 
@@ -328,7 +328,7 @@ pub fn split<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
  * Split the vector `v` by applying each element against the predicate `f` up
  * to `n` times.
  */
-pub fn splitn<T:Copy>(v: &[T], n: uint, f: fn(t: &T) -> bool) -> ~[~[T]] {
+pub fn splitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let ln = len(v);
     if (ln == 0u) { return ~[] }
 
@@ -354,7 +354,7 @@ pub fn splitn<T:Copy>(v: &[T], n: uint, f: fn(t: &T) -> bool) -> ~[~[T]] {
  * Reverse split the vector `v` by applying each element against the predicate
  * `f`.
  */
-pub fn rsplit<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
+pub fn rsplit<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let ln = len(v);
     if (ln == 0) { return ~[] }
 
@@ -371,14 +371,14 @@ pub fn rsplit<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
     }
     result.push(slice(v, 0u, end).to_vec());
     reverse(result);
-    return result;
+    result
 }
 
 /**
  * Reverse split the vector `v` by applying each element against the predicate
  * `f` up to `n times.
  */
-pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: fn(t: &T) -> bool) -> ~[~[T]] {
+pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let ln = len(v);
     if (ln == 0u) { return ~[] }
 
@@ -405,7 +405,7 @@ pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: fn(t: &T) -> bool) -> ~[~[T]] {
  * Partitions a vector into two new vectors: those that satisfies the
  * predicate, and those that do not.
  */
-pub fn partition<T>(v: ~[T], f: fn(&T) -> bool) -> (~[T], ~[T]) {
+pub fn partition<T>(v: ~[T], f: &fn(&T) -> bool) -> (~[T], ~[T]) {
     let mut lefts  = ~[];
     let mut rights = ~[];
 
@@ -426,7 +426,7 @@ pub fn partition<T>(v: ~[T], f: fn(&T) -> bool) -> (~[T], ~[T]) {
  * Partitions a vector into two new vectors: those that satisfies the
  * predicate, and those that do not.
  */
-pub pure fn partitioned<T:Copy>(v: &[T], f: fn(&T) -> bool) -> (~[T], ~[T]) {
+pub pure fn partitioned<T:Copy>(v: &[T], f: &fn(&T) -> bool) -> (~[T], ~[T]) {
     let mut lefts  = ~[];
     let mut rights = ~[];
 
@@ -496,7 +496,7 @@ pub fn shift<T>(v: &mut ~[T]) -> T {
         let vp = ptr::mut_offset(vp, next_ln - 1);
         *vp <-> work_elt;
 
-        return work_elt;
+        work_elt
     }
 }
 
@@ -535,7 +535,7 @@ pub fn remove<T>(v: &mut ~[T], i: uint) -> T {
     v.pop()
 }
 
-pub fn consume<T>(mut v: ~[T], f: fn(uint, v: T)) {
+pub fn consume<T>(mut v: ~[T], f: &fn(uint, v: T)) {
     unsafe {
         do as_mut_buf(v) |p, ln| {
             for uint::range(0, ln) |i| {
@@ -584,7 +584,7 @@ pub fn swap_remove<T>(v: &mut ~[T], index: uint) -> T {
     if index < ln - 1 {
         v[index] <-> v[ln - 1];
     }
-    vec::pop(v)
+    v.pop()
 }
 
 /// Append an element to a vector
@@ -650,7 +650,7 @@ pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
 /// Shorten a vector, dropping excess elements.
 pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
     do as_mut_buf(*v) |p, oldlen| {
-        fail_unless!((newlen <= oldlen));
+        fail_unless!(newlen <= oldlen);
         unsafe {
             // This loop is optimized out for non-drop types.
             for uint::range(newlen, oldlen) |i| {
@@ -780,7 +780,7 @@ pub fn grow_set<T:Copy>(v: &mut ~[T], index: uint, initval: &T, val: T) {
 // Functional utilities
 
 /// Apply a function to each element of a vector and return the results
-pub pure fn map<T, U>(v: &[T], f: fn(t: &T) -> U) -> ~[U] {
+pub pure fn map<T, U>(v: &[T], f: &fn(t: &T) -> U) -> ~[U] {
     let mut result = with_capacity(len(v));
     for each(v) |elem| {
         unsafe {
@@ -790,7 +790,7 @@ pub pure fn map<T, U>(v: &[T], f: fn(t: &T) -> U) -> ~[U] {
     result
 }
 
-pub fn map_consume<T, U>(v: ~[T], f: fn(v: T) -> U) -> ~[U] {
+pub fn map_consume<T, U>(v: ~[T], f: &fn(v: T) -> U) -> ~[U] {
     let mut result = ~[];
     do consume(v) |_i, x| {
         result.push(f(x));
@@ -799,7 +799,7 @@ pub fn map_consume<T, U>(v: ~[T], f: fn(v: T) -> U) -> ~[U] {
 }
 
 /// Apply a function to each element of a vector and return the results
-pub pure fn mapi<T, U>(v: &[T], f: fn(uint, t: &T) -> U) -> ~[U] {
+pub pure fn mapi<T, U>(v: &[T], f: &fn(uint, t: &T) -> U) -> ~[U] {
     let mut i = 0;
     do map(v) |e| {
         i += 1;
@@ -811,7 +811,7 @@ pub pure fn mapi<T, U>(v: &[T], f: fn(uint, t: &T) -> U) -> ~[U] {
  * Apply a function to each element of a vector and return a concatenation
  * of each result vector
  */
-pub pure fn flat_map<T, U>(v: &[T], f: fn(t: &T) -> ~[U]) -> ~[U] {
+pub pure fn flat_map<T, U>(v: &[T], f: &fn(t: &T) -> ~[U]) -> ~[U] {
     let mut result = ~[];
     for each(v) |elem| { unsafe{ result.push_all_move(f(elem)); } }
     result
@@ -819,7 +819,7 @@ pub pure fn flat_map<T, U>(v: &[T], f: fn(t: &T) -> ~[U]) -> ~[U] {
 
 /// Apply a function to each pair of elements and return the results
 pub pure fn map2<T:Copy,U:Copy,V>(v0: &[T], v1: &[U],
-                                  f: fn(t: &T, v: &U) -> V) -> ~[V] {
+                                  f: &fn(t: &T, v: &U) -> V) -> ~[V] {
     let v0_len = len(v0);
     if v0_len != len(v1) { fail!(); }
     let mut u: ~[V] = ~[];
@@ -833,7 +833,7 @@ pub pure fn map2<T:Copy,U:Copy,V>(v0: &[T], v1: &[U],
 
 pub fn filter_map<T, U>(
     v: ~[T],
-    f: fn(t: T) -> Option<U>) -> ~[U]
+    f: &fn(t: T) -> Option<U>) -> ~[U]
 {
     /*!
      *
@@ -854,7 +854,7 @@ pub fn filter_map<T, U>(
 
 pub pure fn filter_mapped<T, U: Copy>(
     v: &[T],
-    f: fn(t: &T) -> Option<U>) -> ~[U]
+    f: &fn(t: &T) -> Option<U>) -> ~[U]
 {
     /*!
      *
@@ -879,7 +879,7 @@ pub pure fn filter_mapped<T, U: Copy>(
  * Apply function `f` to each element of `v` and return a vector containing
  * only those elements for which `f` returned true.
  */
-pub fn filter<T>(v: ~[T], f: fn(t: &T) -> bool) -> ~[T] {
+pub fn filter<T>(v: ~[T], f: &fn(t: &T) -> bool) -> ~[T] {
     let mut result = ~[];
     // FIXME (#4355 maybe): using v.consume here crashes
     // do v.consume |_, elem| {
@@ -896,7 +896,7 @@ pub fn filter<T>(v: ~[T], f: fn(t: &T) -> bool) -> ~[T] {
  * Apply function `f` to each element of `v` and return a vector containing
  * only those elements for which `f` returned true.
  */
-pub pure fn filtered<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[T] {
+pub pure fn filtered<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[T] {
     let mut result = ~[];
     for each(v) |elem| {
         if f(elem) { unsafe { result.push(*elem); } }
@@ -907,7 +907,7 @@ pub pure fn filtered<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[T] {
 /**
  * Like `filter()`, but in place.  Preserves order of `v`.  Linear time.
  */
-pub fn retain<T>(v: &mut ~[T], f: pure fn(t: &T) -> bool) {
+pub fn retain<T>(v: &mut ~[T], f: &pure fn(t: &T) -> bool) {
     let len = v.len();
     let mut deleted: uint = 0;
 
@@ -963,7 +963,7 @@ pub pure fn connect<T:Copy>(v: &[~[T]], sep: &T) -> ~[T] {
  * ~~~
  *
  */
-pub pure fn foldl<T, U>(z: T, v: &[U], p: fn(t: T, u: &U) -> T) -> T {
+pub pure fn foldl<T, U>(z: T, v: &[U], p: &fn(t: T, u: &U) -> T) -> T {
     let mut accum = z;
     let mut i = 0;
     let l = v.len();
@@ -973,7 +973,7 @@ pub pure fn foldl<T, U>(z: T, v: &[U], p: fn(t: T, u: &U) -> T) -> T {
         accum = p(accum, &v[i]);
         i += 1;
     }
-    return accum;
+    accum
 }
 
 /**
@@ -995,12 +995,12 @@ pub pure fn foldl<T, U>(z: T, v: &[U], p: fn(t: T, u: &U) -> T) -> T {
  * ~~~
  *
  */
-pub pure fn foldr<T, U: Copy>(v: &[T], z: U, p: fn(t: &T, u: U) -> U) -> U {
+pub pure fn foldr<T, U: Copy>(v: &[T], z: U, p: &fn(t: &T, u: U) -> U) -> U {
     let mut accum = z;
     for rev_each(v) |elt| {
         accum = p(elt, accum);
     }
-    return accum;
+    accum
 }
 
 /**
@@ -1008,9 +1008,9 @@ pub pure fn foldr<T, U: Copy>(v: &[T], z: U, p: fn(t: &T, u: U) -> U) -> U {
  *
  * If the vector contains no elements then false is returned.
  */
-pub pure fn any<T>(v: &[T], f: fn(t: &T) -> bool) -> bool {
+pub pure fn any<T>(v: &[T], f: &fn(t: &T) -> bool) -> bool {
     for each(v) |elem| { if f(elem) { return true; } }
-    return false;
+    false
 }
 
 /**
@@ -1019,7 +1019,7 @@ pub pure fn any<T>(v: &[T], f: fn(t: &T) -> bool) -> bool {
  * If the vectors contains no elements then false is returned.
  */
 pub pure fn any2<T, U>(v0: &[T], v1: &[U],
-                   f: fn(a: &T, b: &U) -> bool) -> bool {
+                   f: &fn(a: &T, b: &U) -> bool) -> bool {
     let v0_len = len(v0);
     let v1_len = len(v1);
     let mut i = 0u;
@@ -1027,7 +1027,7 @@ pub pure fn any2<T, U>(v0: &[T], v1: &[U],
         if f(&v0[i], &v1[i]) { return true; };
         i += 1u;
     }
-    return false;
+    false
 }
 
 /**
@@ -1035,9 +1035,9 @@ pub pure fn any2<T, U>(v0: &[T], v1: &[U],
  *
  * If the vector contains no elements then true is returned.
  */
-pub pure fn all<T>(v: &[T], f: fn(t: &T) -> bool) -> bool {
+pub pure fn all<T>(v: &[T], f: &fn(t: &T) -> bool) -> bool {
     for each(v) |elem| { if !f(elem) { return false; } }
-    return true;
+    true
 }
 
 /**
@@ -1045,9 +1045,9 @@ pub pure fn all<T>(v: &[T], f: fn(t: &T) -> bool) -> bool {
  *
  * If the vector contains no elements then true is returned.
  */
-pub pure fn alli<T>(v: &[T], f: fn(uint, t: &T) -> bool) -> bool {
+pub pure fn alli<T>(v: &[T], f: &fn(uint, t: &T) -> bool) -> bool {
     for eachi(v) |i, elem| { if !f(i, elem) { return false; } }
-    return true;
+    true
 }
 
 /**
@@ -1056,25 +1056,25 @@ pub pure fn alli<T>(v: &[T], f: fn(uint, t: &T) -> bool) -> bool {
  * If the vectors are not the same size then false is returned.
  */
 pub pure fn all2<T, U>(v0: &[T], v1: &[U],
-                   f: fn(t: &T, u: &U) -> bool) -> bool {
+                   f: &fn(t: &T, u: &U) -> bool) -> bool {
     let v0_len = len(v0);
     if v0_len != len(v1) { return false; }
     let mut i = 0u;
     while i < v0_len { if !f(&v0[i], &v1[i]) { return false; }; i += 1u; }
-    return true;
+    true
 }
 
 /// Return true if a vector contains an element with the given value
 pub pure fn contains<T:Eq>(v: &[T], x: &T) -> bool {
     for each(v) |elt| { if *x == *elt { return true; } }
-    return false;
+    false
 }
 
 /// Returns the number of elements that are equal to a given value
 pub pure fn count<T:Eq>(v: &[T], x: &T) -> uint {
     let mut cnt = 0u;
     for each(v) |elt| { if *x == *elt { cnt += 1u; } }
-    return cnt;
+    cnt
 }
 
 /**
@@ -1084,7 +1084,7 @@ pub pure fn count<T:Eq>(v: &[T], x: &T) -> uint {
  * When function `f` returns true then an option containing the element
  * is returned. If `f` matches no elements then none is returned.
  */
-pub pure fn find<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> Option<T> {
+pub pure fn find<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> Option<T> {
     find_between(v, 0u, len(v), f)
 }
 
@@ -1096,7 +1096,7 @@ pub pure fn find<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> Option<T> {
  * the element is returned. If `f` matches no elements then none is returned.
  */
 pub pure fn find_between<T:Copy>(v: &[T], start: uint, end: uint,
-                      f: fn(t: &T) -> bool) -> Option<T> {
+                      f: &fn(t: &T) -> bool) -> Option<T> {
     position_between(v, start, end, f).map(|i| v[*i])
 }
 
@@ -1107,7 +1107,7 @@ pub pure fn find_between<T:Copy>(v: &[T], start: uint, end: uint,
  * `f` returns true then an option containing the element is returned. If `f`
  * matches no elements then none is returned.
  */
-pub pure fn rfind<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> Option<T> {
+pub pure fn rfind<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> Option<T> {
     rfind_between(v, 0u, len(v), f)
 }
 
@@ -1119,7 +1119,7 @@ pub pure fn rfind<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> Option<T> {
  * the element is returned. If `f` matches no elements then none is return.
  */
 pub pure fn rfind_between<T:Copy>(v: &[T], start: uint, end: uint,
-                               f: fn(t: &T) -> bool) -> Option<T> {
+                               f: &fn(t: &T) -> bool) -> Option<T> {
     rposition_between(v, start, end, f).map(|i| v[*i])
 }
 
@@ -1135,7 +1135,7 @@ pub pure fn position_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
  * then an option containing the index is returned. If `f` matches no elements
  * then none is returned.
  */
-pub pure fn position<T>(v: &[T], f: fn(t: &T) -> bool) -> Option<uint> {
+pub pure fn position<T>(v: &[T], f: &fn(t: &T) -> bool) -> Option<uint> {
     position_between(v, 0u, len(v), f)
 }
 
@@ -1147,12 +1147,12 @@ pub pure fn position<T>(v: &[T], f: fn(t: &T) -> bool) -> Option<uint> {
  * the index is returned. If `f` matches no elements then none is returned.
  */
 pub pure fn position_between<T>(v: &[T], start: uint, end: uint,
-                            f: fn(t: &T) -> bool) -> Option<uint> {
+                            f: &fn(t: &T) -> bool) -> Option<uint> {
     fail_unless!(start <= end);
     fail_unless!(end <= len(v));
     let mut i = start;
     while i < end { if f(&v[i]) { return Some::<uint>(i); } i += 1u; }
-    return None;
+    None
 }
 
 /// Find the last index containing a matching value
@@ -1167,7 +1167,7 @@ pure fn rposition_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
  * `f` returns true then an option containing the index is returned. If `f`
  * matches no elements then none is returned.
  */
-pub pure fn rposition<T>(v: &[T], f: fn(t: &T) -> bool) -> Option<uint> {
+pub pure fn rposition<T>(v: &[T], f: &fn(t: &T) -> bool) -> Option<uint> {
     rposition_between(v, 0u, len(v), f)
 }
 
@@ -1180,7 +1180,7 @@ pub pure fn rposition<T>(v: &[T], f: fn(t: &T) -> bool) -> Option<uint> {
  * returned.
  */
 pub pure fn rposition_between<T>(v: &[T], start: uint, end: uint,
-                             f: fn(t: &T) -> bool) -> Option<uint> {
+                             f: &fn(t: &T) -> bool) -> Option<uint> {
     fail_unless!(start <= end);
     fail_unless!(end <= len(v));
     let mut i = end;
@@ -1188,7 +1188,7 @@ pub pure fn rposition_between<T>(v: &[T], start: uint, end: uint,
         if f(&v[i - 1u]) { return Some::<uint>(i - 1u); }
         i -= 1u;
     }
-    return None;
+    None
 }
 
 // FIXME: if issue #586 gets implemented, could have a postcondition
@@ -1207,7 +1207,7 @@ pure fn unzip_slice<T:Copy,U:Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
             us.push(u);
         }
     }
-    return (ts, us);
+    (ts, us)
 }
 
 /**
@@ -1334,7 +1334,7 @@ pub pure fn reversed<T:Copy>(v: &[const T]) -> ~[T] {
  * ~~~
  */
 #[inline(always)]
-pub pure fn each<T>(v: &r/[T], f: fn(&r/T) -> bool) {
+pub pure fn each<T>(v: &r/[T], f: &fn(&r/T) -> bool) {
     //             ^^^^
     // NB---this CANNOT be &[const T]!  The reason
     // is that you are passing it to `f()` using
@@ -1358,7 +1358,7 @@ pub pure fn each<T>(v: &r/[T], f: fn(&r/T) -> bool) {
 /// a vector with mutable contents and you would like
 /// to mutate the contents as you iterate.
 #[inline(always)]
-pub fn each_mut<T>(v: &mut [T], f: fn(elem: &mut T) -> bool) {
+pub fn each_mut<T>(v: &mut [T], f: &fn(elem: &mut T) -> bool) {
     let mut i = 0;
     let n = v.len();
     while i < n {
@@ -1372,7 +1372,7 @@ pub fn each_mut<T>(v: &mut [T], f: fn(elem: &mut T) -> bool) {
 /// Like `each()`, but for the case where you have a vector that *may or may
 /// not* have mutable contents.
 #[inline(always)]
-pub pure fn each_const<T>(v: &[const T], f: fn(elem: &const T) -> bool) {
+pub pure fn each_const<T>(v: &[const T], f: &fn(elem: &const T) -> bool) {
     let mut i = 0;
     let n = v.len();
     while i < n {
@@ -1389,7 +1389,7 @@ pub pure fn each_const<T>(v: &[const T], f: fn(elem: &const T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pub pure fn eachi<T>(v: &r/[T], f: fn(uint, v: &r/T) -> bool) {
+pub pure fn eachi<T>(v: &r/[T], f: &fn(uint, v: &r/T) -> bool) {
     let mut i = 0;
     for each(v) |p| {
         if !f(i, p) { return; }
@@ -1403,7 +1403,7 @@ pub pure fn eachi<T>(v: &r/[T], f: fn(uint, v: &r/T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pub pure fn rev_each<T>(v: &r/[T], blk: fn(v: &r/T) -> bool) {
+pub pure fn rev_each<T>(v: &r/[T], blk: &fn(v: &r/T) -> bool) {
     rev_eachi(v, |_i, v| blk(v))
 }
 
@@ -1413,7 +1413,7 @@ pub pure fn rev_each<T>(v: &r/[T], blk: fn(v: &r/T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pub pure fn rev_eachi<T>(v: &r/[T], blk: fn(i: uint, v: &r/T) -> bool) {
+pub pure fn rev_eachi<T>(v: &r/[T], blk: &fn(i: uint, v: &r/T) -> bool) {
     let mut i = v.len();
     while i > 0 {
         i -= 1;
@@ -1431,7 +1431,7 @@ pub pure fn rev_eachi<T>(v: &r/[T], blk: fn(i: uint, v: &r/T) -> bool) {
  * Both vectors must have the same length
  */
 #[inline]
-pub pure fn each2<U, T>(v1: &[U], v2: &[T], f: fn(u: &U, t: &T) -> bool) {
+pub pure fn each2<U, T>(v1: &[U], v2: &[T], f: &fn(u: &U, t: &T) -> bool) {
     fail_unless!(len(v1) == len(v2));
     for uint::range(0u, len(v1)) |i| {
         if !f(&v1[i], &v2[i]) {
@@ -1450,7 +1450,7 @@ pub pure fn each2<U, T>(v1: &[U], v2: &[T], f: fn(u: &U, t: &T) -> bool) {
  * The total number of permutations produced is `len(v)!`.  If `v` contains
  * repeated elements, then some permutations are repeated.
  */
-pub pure fn each_permutation<T:Copy>(v: &[T], put: fn(ts: &[T]) -> bool) {
+pub pure fn each_permutation<T:Copy>(v: &[T], put: &fn(ts: &[T]) -> bool) {
     let ln = len(v);
     if ln <= 1 {
         put(v);
@@ -1478,7 +1478,7 @@ pub pure fn windowed<TT:Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
     let mut ww = ~[];
     fail_unless!(1u <= nn);
     for vec::eachi (xx) |ii, _x| {
-        let len = vec::len(xx);
+        let len = xx.len();
         if ii+nn <= len {
             unsafe {
                 ww.push(slice(xx, ii, ii+nn).to_vec());
@@ -1497,7 +1497,7 @@ pub pure fn windowed<TT:Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
 #[inline(always)]
 pub pure fn as_imm_buf<T,U>(s: &[T],
                             /* NB---this CANNOT be const, see below */
-                            f: fn(*T, uint) -> U) -> U {
+                            f: &fn(*T, uint) -> U) -> U {
 
     // NB---Do not change the type of s to `&[const T]`.  This is
     // unsound.  The reason is that we are going to create immutable pointers
@@ -1516,7 +1516,7 @@ pub pure fn as_imm_buf<T,U>(s: &[T],
 /// Similar to `as_imm_buf` but passing a `*const T`
 #[inline(always)]
 pub pure fn as_const_buf<T,U>(s: &[const T],
-                          f: fn(*const T, uint) -> U) -> U {
+                          f: &fn(*const T, uint) -> U) -> U {
 
     unsafe {
         let v : *(*const T,uint) =
@@ -1529,7 +1529,7 @@ pub pure fn as_const_buf<T,U>(s: &[const T],
 /// Similar to `as_imm_buf` but passing a `*mut T`
 #[inline(always)]
 pub pure fn as_mut_buf<T,U>(s: &mut [T],
-                        f: fn(*mut T, uint) -> U) -> U {
+                        f: &fn(*mut T, uint) -> U) -> U {
 
     unsafe {
         let v : *(*mut T,uint) =
@@ -1551,7 +1551,7 @@ pure fn eq<T:Eq>(a: &[T], b: &[T]) -> bool {
         i += 1;
     }
 
-    return true;
+    true
 }
 
 #[cfg(notest)]
@@ -1631,7 +1631,7 @@ pure fn lt<T:Ord>(a: &[T], b: &[T]) -> bool {
         i += 1;
     }
 
-    return a_len < b_len;
+    a_len < b_len
 }
 
 pure fn le<T:Ord>(a: &[T], b: &[T]) -> bool { !lt(b, a) }
@@ -1721,13 +1721,13 @@ pub trait ImmutableVector<T> {
     pure fn initn(&self, n: uint) -> &self/[T];
     pure fn last(&self) -> &self/T;
     pure fn last_opt(&self) -> Option<&self/T>;
-    pure fn foldr<U: Copy>(&self, z: U, p: fn(t: &T, u: U) -> U) -> U;
-    pure fn map<U>(&self, f: fn(t: &T) -> U) -> ~[U];
-    pure fn mapi<U>(&self, f: fn(uint, t: &T) -> U) -> ~[U];
-    fn map_r<U>(&self, f: fn(x: &T) -> U) -> ~[U];
-    pure fn alli(&self, f: fn(uint, t: &T) -> bool) -> bool;
-    pure fn flat_map<U>(&self, f: fn(t: &T) -> ~[U]) -> ~[U];
-    pure fn filter_mapped<U:Copy>(&self, f: fn(t: &T) -> Option<U>) -> ~[U];
+    pure fn foldr<U: Copy>(&self, z: U, p: &fn(t: &T, u: U) -> U) -> U;
+    pure fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U];
+    pure fn mapi<U>(&self, f: &fn(uint, t: &T) -> U) -> ~[U];
+    fn map_r<U>(&self, f: &fn(x: &T) -> U) -> ~[U];
+    pure fn alli(&self, f: &fn(uint, t: &T) -> bool) -> bool;
+    pure fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U];
+    pure fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U];
 }
 
 /// Extension methods for vectors
@@ -1772,24 +1772,24 @@ impl<T> ImmutableVector<T> for &self/[T] {
 
     /// Reduce a vector from right to left
     #[inline]
-    pure fn foldr<U:Copy>(&self, z: U, p: fn(t: &T, u: U) -> U) -> U {
+    pure fn foldr<U:Copy>(&self, z: U, p: &fn(t: &T, u: U) -> U) -> U {
         foldr(*self, z, p)
     }
 
     /// Apply a function to each element of a vector and return the results
     #[inline]
-    pure fn map<U>(&self, f: fn(t: &T) -> U) -> ~[U] { map(*self, f) }
+    pure fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U] { map(*self, f) }
 
     /**
      * Apply a function to the index and value of each element in the vector
      * and return the results
      */
-    pure fn mapi<U>(&self, f: fn(uint, t: &T) -> U) -> ~[U] {
+    pure fn mapi<U>(&self, f: &fn(uint, t: &T) -> U) -> ~[U] {
         mapi(*self, f)
     }
 
     #[inline]
-    fn map_r<U>(&self, f: fn(x: &T) -> U) -> ~[U] {
+    fn map_r<U>(&self, f: &fn(x: &T) -> U) -> ~[U] {
         let mut r = ~[];
         let mut i = 0;
         while i < self.len() {
@@ -1804,7 +1804,7 @@ impl<T> ImmutableVector<T> for &self/[T] {
      *
      *     If the vector is empty, true is returned.
      */
-    pure fn alli(&self, f: fn(uint, t: &T) -> bool) -> bool {
+    pure fn alli(&self, f: &fn(uint, t: &T) -> bool) -> bool {
         alli(*self, f)
     }
     /**
@@ -1812,7 +1812,7 @@ impl<T> ImmutableVector<T> for &self/[T] {
      * of each result vector
      */
     #[inline]
-    pure fn flat_map<U>(&self, f: fn(t: &T) -> ~[U]) -> ~[U] {
+    pure fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U] {
         flat_map(*self, f)
     }
     /**
@@ -1822,15 +1822,15 @@ impl<T> ImmutableVector<T> for &self/[T] {
      * the resulting vector.
      */
     #[inline]
-    pure fn filter_mapped<U:Copy>(&self, f: fn(t: &T) -> Option<U>) -> ~[U] {
+    pure fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U] {
         filter_mapped(*self, f)
     }
 }
 
 pub trait ImmutableEqVector<T:Eq> {
-    pure fn position(&self, f: fn(t: &T) -> bool) -> Option<uint>;
+    pure fn position(&self, f: &fn(t: &T) -> bool) -> Option<uint>;
     pure fn position_elem(&self, t: &T) -> Option<uint>;
-    pure fn rposition(&self, f: fn(t: &T) -> bool) -> Option<uint>;
+    pure fn rposition(&self, f: &fn(t: &T) -> bool) -> Option<uint>;
     pure fn rposition_elem(&self, t: &T) -> Option<uint>;
 }
 
@@ -1843,7 +1843,7 @@ impl<T:Eq> ImmutableEqVector<T> for &self/[T] {
      * elements then none is returned.
      */
     #[inline]
-    pure fn position(&self, f: fn(t: &T) -> bool) -> Option<uint> {
+    pure fn position(&self, f: &fn(t: &T) -> bool) -> Option<uint> {
         position(*self, f)
     }
 
@@ -1861,7 +1861,7 @@ impl<T:Eq> ImmutableEqVector<T> for &self/[T] {
      * returned. If `f` matches no elements then none is returned.
      */
     #[inline]
-    pure fn rposition(&self, f: fn(t: &T) -> bool) -> Option<uint> {
+    pure fn rposition(&self, f: &fn(t: &T) -> bool) -> Option<uint> {
         rposition(*self, f)
     }
 
@@ -1873,9 +1873,9 @@ impl<T:Eq> ImmutableEqVector<T> for &self/[T] {
 }
 
 pub trait ImmutableCopyableVector<T> {
-    pure fn filtered(&self, f: fn(&T) -> bool) -> ~[T];
-    pure fn rfind(&self, f: fn(t: &T) -> bool) -> Option<T>;
-    pure fn partitioned(&self, f: fn(&T) -> bool) -> (~[T], ~[T]);
+    pure fn filtered(&self, f: &fn(&T) -> bool) -> ~[T];
+    pure fn rfind(&self, f: &fn(t: &T) -> bool) -> Option<T>;
+    pure fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
 }
 
 /// Extension methods for vectors
@@ -1888,7 +1888,7 @@ impl<T:Copy> ImmutableCopyableVector<T> for &self/[T] {
      * containing only those elements for which `f` returned true.
      */
     #[inline]
-    pure fn filtered(&self, f: fn(t: &T) -> bool) -> ~[T] {
+    pure fn filtered(&self, f: &fn(t: &T) -> bool) -> ~[T] {
         filtered(*self, f)
     }
 
@@ -1900,7 +1900,7 @@ impl<T:Copy> ImmutableCopyableVector<T> for &self/[T] {
      * returned. If `f` matches no elements then none is returned.
      */
     #[inline]
-    pure fn rfind(&self, f: fn(t: &T) -> bool) -> Option<T> {
+    pure fn rfind(&self, f: &fn(t: &T) -> bool) -> Option<T> {
         rfind(*self, f)
     }
 
@@ -1909,7 +1909,7 @@ impl<T:Copy> ImmutableCopyableVector<T> for &self/[T] {
      * those that do not.
      */
     #[inline]
-    pure fn partitioned(&self, f: fn(&T) -> bool) -> (~[T], ~[T]) {
+    pure fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]) {
         partitioned(*self, f)
     }
 }
@@ -1924,10 +1924,10 @@ pub trait OwnedVector<T> {
     fn remove(&mut self, i: uint) -> T;
     fn swap_remove(&mut self, index: uint) -> T;
     fn truncate(&mut self, newlen: uint);
-    fn retain(&mut self, f: pure fn(t: &T) -> bool);
-    fn consume(self, f: fn(uint, v: T));
-    fn filter(self, f: fn(t: &T) -> bool) -> ~[T];
-    fn partition(self, f: pure fn(&T) -> bool) -> (~[T], ~[T]);
+    fn retain(&mut self, f: &pure fn(t: &T) -> bool);
+    fn consume(self, f: &fn(uint, v: T));
+    fn filter(self, f: &fn(t: &T) -> bool) -> ~[T];
+    fn partition(self, f: &pure fn(&T) -> bool) -> (~[T], ~[T]);
     fn grow_fn(&mut self, n: uint, op: iter::InitOp<T>);
 }
 
@@ -1978,17 +1978,17 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     #[inline]
-    fn retain(&mut self, f: pure fn(t: &T) -> bool) {
+    fn retain(&mut self, f: &pure fn(t: &T) -> bool) {
         retain(self, f);
     }
 
     #[inline]
-    fn consume(self, f: fn(uint, v: T)) {
+    fn consume(self, f: &fn(uint, v: T)) {
         consume(self, f)
     }
 
     #[inline]
-    fn filter(self, f: fn(&T) -> bool) -> ~[T] {
+    fn filter(self, f: &fn(&T) -> bool) -> ~[T] {
         filter(self, f)
     }
 
@@ -1997,7 +1997,7 @@ impl<T> OwnedVector<T> for ~[T] {
      * those that do not.
      */
     #[inline]
-    fn partition(self, f: fn(&T) -> bool) -> (~[T], ~[T]) {
+    fn partition(self, f: &fn(&T) -> bool) -> (~[T], ~[T]) {
         partition(self, f)
     }
 
@@ -2114,21 +2114,21 @@ pub mod raw {
     #[inline(always)]
     pub unsafe fn to_ptr<T>(v: &[T]) -> *T {
         let repr: **SliceRepr = ::cast::transmute(&v);
-        return ::cast::reinterpret_cast(&addr_of(&((**repr).data)));
+        ::cast::reinterpret_cast(&addr_of(&((**repr).data)))
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
     pub unsafe fn to_const_ptr<T>(v: &[const T]) -> *const T {
         let repr: **SliceRepr = ::cast::transmute(&v);
-        return ::cast::reinterpret_cast(&addr_of(&((**repr).data)));
+        ::cast::reinterpret_cast(&addr_of(&((**repr).data)))
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
     pub unsafe fn to_mut_ptr<T>(v: &mut [T]) -> *mut T {
         let repr: **SliceRepr = ::cast::transmute(&v);
-        return ::cast::reinterpret_cast(&addr_of(&((**repr).data)));
+        ::cast::reinterpret_cast(&addr_of(&((**repr).data)))
     }
 
     /**
@@ -2138,9 +2138,23 @@ pub mod raw {
     #[inline(always)]
     pub unsafe fn buf_as_slice<T,U>(p: *T,
                                     len: uint,
-                                    f: fn(v: &[T]) -> U) -> U {
+                                    f: &fn(v: &[T]) -> U) -> U {
         let pair = (p, len * sys::nonzero_size_of::<T>());
         let v : *(&blk/[T]) =
+            ::cast::reinterpret_cast(&addr_of(&pair));
+        f(*v)
+    }
+
+    /**
+     * Form a slice from a pointer and length (as a number of units,
+     * not bytes).
+     */
+    #[inline(always)]
+    pub unsafe fn mut_buf_as_slice<T,U>(p: *mut T,
+                                        len: uint,
+                                        f: &fn(v: &mut [T]) -> U) -> U {
+        let pair = (p, len * sys::nonzero_size_of::<T>());
+        let v : *(&blk/mut [T]) =
             ::cast::reinterpret_cast(&addr_of(&pair));
         f(*v)
     }
@@ -2165,7 +2179,7 @@ pub mod raw {
             let mut box2 = None;
             box2 <-> box;
             intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)),
-                                 option::unwrap(box2));
+                                      box2.unwrap());
         }
     }
 
@@ -2210,14 +2224,13 @@ pub mod raw {
 pub mod bytes {
     use libc;
     use uint;
-    use vec::len;
     use vec::raw;
     use vec;
 
     /// Bytewise string comparison
     pub pure fn memcmp(a: &~[u8], b: &~[u8]) -> int {
-        let a_len = len(*a);
-        let b_len = len(*b);
+        let a_len = a.len();
+        let b_len = b.len();
         let n = uint::min(a_len, b_len) as libc::size_t;
         let r = unsafe {
             libc::memcmp(raw::to_ptr(*a) as *libc::c_void,
@@ -2268,68 +2281,52 @@ pub mod bytes {
 
 // ___________________________________________________________________________
 // ITERATION TRAIT METHODS
-//
-// This cannot be used with iter-trait.rs because of the region pointer
-// required in the slice.
 
 impl<A> iter::BaseIter<A> for &self/[A] {
-    pub pure fn each(&self, blk: fn(v: &A) -> bool) {
-        // FIXME(#2263)---should be able to call each(self, blk)
-        for each(*self) |e| {
-            if (!blk(e)) {
-                return;
-            }
-        }
+    #[inline(always)]
+    pub pure fn each(&self, blk: &fn(v: &'self A) -> bool) {
+        each(*self, blk)
     }
-    pure fn size_hint(&self) -> Option<uint> { Some(len(*self)) }
+    #[inline(always)]
+    pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 // FIXME(#4148): This should be redundant
 impl<A> iter::BaseIter<A> for ~[A] {
-    pub pure fn each(&self, blk: fn(v: &A) -> bool) {
-        // FIXME(#2263)---should be able to call each(self, blk)
-        for each(*self) |e| {
-            if (!blk(e)) {
-                return;
-            }
-        }
-    }
-    pure fn size_hint(&self) -> Option<uint> { Some(len(*self)) }
+    #[inline(always)]
+    pure fn each(&self, blk: &fn(v: &'self A) -> bool) { each(*self, blk) }
+    #[inline(always)]
+    pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 // FIXME(#4148): This should be redundant
 impl<A> iter::BaseIter<A> for @[A] {
-    pub pure fn each(&self, blk: fn(v: &A) -> bool) {
-        // FIXME(#2263)---should be able to call each(self, blk)
-        for each(*self) |e| {
-            if (!blk(e)) {
-                return;
-            }
-        }
-    }
-    pure fn size_hint(&self) -> Option<uint> { Some(len(*self)) }
+    #[inline(always)]
+    pure fn each(&self, blk: &fn(v: &'self A) -> bool) { each(*self, blk) }
+    #[inline(always)]
+    pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 impl<A> iter::ExtendedIter<A> for &self/[A] {
-    pub pure fn eachi(&self, blk: fn(uint, v: &A) -> bool) {
+    pub pure fn eachi(&self, blk: &fn(uint, v: &A) -> bool) {
         iter::eachi(self, blk)
     }
-    pub pure fn all(&self, blk: fn(&A) -> bool) -> bool {
+    pub pure fn all(&self, blk: &fn(&A) -> bool) -> bool {
         iter::all(self, blk)
     }
-    pub pure fn any(&self, blk: fn(&A) -> bool) -> bool {
+    pub pure fn any(&self, blk: &fn(&A) -> bool) -> bool {
         iter::any(self, blk)
     }
-    pub pure fn foldl<B>(&self, b0: B, blk: fn(&B, &A) -> B) -> B {
+    pub pure fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
         iter::foldl(self, b0, blk)
     }
-    pub pure fn position(&self, f: fn(&A) -> bool) -> Option<uint> {
+    pub pure fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
         iter::position(self, f)
     }
-    pure fn map_to_vec<B>(&self, op: fn(&A) -> B) -> ~[B] {
+    pure fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
         iter::map_to_vec(self, op)
     }
-    pure fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: fn(&A) -> IB)
+    pure fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
         -> ~[B] {
         iter::flat_map_to_vec(self, op)
     }
@@ -2337,25 +2334,25 @@ impl<A> iter::ExtendedIter<A> for &self/[A] {
 
 // FIXME(#4148): This should be redundant
 impl<A> iter::ExtendedIter<A> for ~[A] {
-    pub pure fn eachi(&self, blk: fn(uint, v: &A) -> bool) {
+    pub pure fn eachi(&self, blk: &fn(uint, v: &A) -> bool) {
         iter::eachi(self, blk)
     }
-    pub pure fn all(&self, blk: fn(&A) -> bool) -> bool {
+    pub pure fn all(&self, blk: &fn(&A) -> bool) -> bool {
         iter::all(self, blk)
     }
-    pub pure fn any(&self, blk: fn(&A) -> bool) -> bool {
+    pub pure fn any(&self, blk: &fn(&A) -> bool) -> bool {
         iter::any(self, blk)
     }
-    pub pure fn foldl<B>(&self, b0: B, blk: fn(&B, &A) -> B) -> B {
+    pub pure fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
         iter::foldl(self, b0, blk)
     }
-    pub pure fn position(&self, f: fn(&A) -> bool) -> Option<uint> {
+    pub pure fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
         iter::position(self, f)
     }
-    pure fn map_to_vec<B>(&self, op: fn(&A) -> B) -> ~[B] {
+    pure fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
         iter::map_to_vec(self, op)
     }
-    pure fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: fn(&A) -> IB)
+    pure fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
         -> ~[B] {
         iter::flat_map_to_vec(self, op)
     }
@@ -2363,25 +2360,25 @@ impl<A> iter::ExtendedIter<A> for ~[A] {
 
 // FIXME(#4148): This should be redundant
 impl<A> iter::ExtendedIter<A> for @[A] {
-    pub pure fn eachi(&self, blk: fn(uint, v: &A) -> bool) {
+    pub pure fn eachi(&self, blk: &fn(uint, v: &A) -> bool) {
         iter::eachi(self, blk)
     }
-    pub pure fn all(&self, blk: fn(&A) -> bool) -> bool {
+    pub pure fn all(&self, blk: &fn(&A) -> bool) -> bool {
         iter::all(self, blk)
     }
-    pub pure fn any(&self, blk: fn(&A) -> bool) -> bool {
+    pub pure fn any(&self, blk: &fn(&A) -> bool) -> bool {
         iter::any(self, blk)
     }
-    pub pure fn foldl<B>(&self, b0: B, blk: fn(&B, &A) -> B) -> B {
+    pub pure fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
         iter::foldl(self, b0, blk)
     }
-    pub pure fn position(&self, f: fn(&A) -> bool) -> Option<uint> {
+    pub pure fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
         iter::position(self, f)
     }
-    pure fn map_to_vec<B>(&self, op: fn(&A) -> B) -> ~[B] {
+    pure fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
         iter::map_to_vec(self, op)
     }
-    pure fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: fn(&A) -> IB)
+    pure fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
         -> ~[B] {
         iter::flat_map_to_vec(self, op)
     }
@@ -2405,33 +2402,33 @@ impl<A:Eq> iter::EqIter<A> for @[A] {
 }
 
 impl<A:Copy> iter::CopyableIter<A> for &self/[A] {
-    pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A] {
+    pure fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
     pure fn to_vec(&self) -> ~[A] { iter::to_vec(self) }
-    pub pure fn find(&self, f: fn(&A) -> bool) -> Option<A> {
+    pub pure fn find(&self, f: &fn(&A) -> bool) -> Option<A> {
         iter::find(self, f)
     }
 }
 
 // FIXME(#4148): This should be redundant
 impl<A:Copy> iter::CopyableIter<A> for ~[A] {
-    pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A] {
+    pure fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
     pure fn to_vec(&self) -> ~[A] { iter::to_vec(self) }
-    pub pure fn find(&self, f: fn(&A) -> bool) -> Option<A> {
+    pub pure fn find(&self, f: &fn(&A) -> bool) -> Option<A> {
         iter::find(self, f)
     }
 }
 
 // FIXME(#4148): This should be redundant
 impl<A:Copy> iter::CopyableIter<A> for @[A] {
-    pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A] {
+    pure fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
     pure fn to_vec(&self) -> ~[A] { iter::to_vec(self) }
-    pub pure fn find(&self, f: fn(&A) -> bool) -> Option<A> {
+    pub pure fn find(&self, f: &fn(&A) -> bool) -> Option<A> {
         iter::find(self, f)
     }
 }
@@ -2454,7 +2451,7 @@ impl<A:Copy + Ord> iter::CopyableOrderedIter<A> for @[A] {
 }
 
 impl<A:Copy> iter::CopyableNonstrictIter<A> for &self/[A] {
-    pure fn each_val(&const self, f: fn(A) -> bool) {
+    pure fn each_val(&const self, f: &fn(A) -> bool) {
         let mut i = 0;
         while i < self.len() {
             if !f(copy self[i]) { break; }
@@ -2465,7 +2462,7 @@ impl<A:Copy> iter::CopyableNonstrictIter<A> for &self/[A] {
 
 // FIXME(#4148): This should be redundant
 impl<A:Copy> iter::CopyableNonstrictIter<A> for ~[A] {
-    pure fn each_val(&const self, f: fn(A) -> bool) {
+    pure fn each_val(&const self, f: &fn(A) -> bool) {
         let mut i = 0;
         while i < self.len() {
             if !f(copy self[i]) { break; }
@@ -2476,7 +2473,7 @@ impl<A:Copy> iter::CopyableNonstrictIter<A> for ~[A] {
 
 // FIXME(#4148): This should be redundant
 impl<A:Copy> iter::CopyableNonstrictIter<A> for @[A] {
-    pure fn each_val(&const self, f: fn(A) -> bool) {
+    pure fn each_val(&const self, f: &fn(A) -> bool) {
         let mut i = 0;
         while i < self.len() {
             if !f(copy self[i]) { break; }
@@ -2495,25 +2492,25 @@ mod tests {
     use vec::*;
     use cmp::*;
 
-    fn square(n: uint) -> uint { return n * n; }
+    fn square(n: uint) -> uint { n * n }
 
-    fn square_ref(n: &uint) -> uint { return square(*n); }
+    fn square_ref(n: &uint) -> uint { square(*n) }
 
-    pure fn is_three(n: &uint) -> bool { return *n == 3u; }
+    pure fn is_three(n: &uint) -> bool { *n == 3u }
 
-    pure fn is_odd(n: &uint) -> bool { return *n % 2u == 1u; }
+    pure fn is_odd(n: &uint) -> bool { *n % 2u == 1u }
 
-    pure fn is_equal(x: &uint, y:&uint) -> bool { return *x == *y; }
+    pure fn is_equal(x: &uint, y:&uint) -> bool { *x == *y }
 
     fn square_if_odd_r(n: &uint) -> Option<uint> {
-        return if *n % 2u == 1u { Some(*n * *n) } else { None };
+        if *n % 2u == 1u { Some(*n * *n) } else { None }
     }
 
     fn square_if_odd_v(n: uint) -> Option<uint> {
-        return if n % 2u == 1u { Some(n * n) } else { None };
+        if n % 2u == 1u { Some(n * n) } else { None }
     }
 
-    fn add(x: uint, y: &uint) -> uint { return x + *y; }
+    fn add(x: uint, y: &uint) -> uint { x + *y }
 
     #[test]
     fn test_unsafe_ptrs() {
@@ -2522,21 +2519,21 @@ mod tests {
             let a = ~[1, 2, 3];
             let mut ptr = raw::to_ptr(a);
             let b = from_buf(ptr, 3u);
-            fail_unless!((len(b) == 3u));
-            fail_unless!((b[0] == 1));
-            fail_unless!((b[1] == 2));
-            fail_unless!((b[2] == 3));
+            fail_unless!(b.len() == 3u);
+            fail_unless!(b[0] == 1);
+            fail_unless!(b[1] == 2);
+            fail_unless!(b[2] == 3);
 
             // Test on-heap copy-from-buf.
             let c = ~[1, 2, 3, 4, 5];
             ptr = raw::to_ptr(c);
             let d = from_buf(ptr, 5u);
-            fail_unless!((len(d) == 5u));
-            fail_unless!((d[0] == 1));
-            fail_unless!((d[1] == 2));
-            fail_unless!((d[2] == 3));
-            fail_unless!((d[3] == 4));
-            fail_unless!((d[4] == 5));
+            fail_unless!(d.len() == 5u);
+            fail_unless!(d[0] == 1);
+            fail_unless!(d[1] == 2);
+            fail_unless!(d[2] == 3);
+            fail_unless!(d[3] == 4);
+            fail_unless!(d[4] == 5);
         }
     }
 
@@ -2544,43 +2541,43 @@ mod tests {
     fn test_from_fn() {
         // Test on-stack from_fn.
         let mut v = from_fn(3u, square);
-        fail_unless!((len(v) == 3u));
-        fail_unless!((v[0] == 0u));
-        fail_unless!((v[1] == 1u));
-        fail_unless!((v[2] == 4u));
+        fail_unless!(v.len() == 3u);
+        fail_unless!(v[0] == 0u);
+        fail_unless!(v[1] == 1u);
+        fail_unless!(v[2] == 4u);
 
         // Test on-heap from_fn.
         v = from_fn(5u, square);
-        fail_unless!((len(v) == 5u));
-        fail_unless!((v[0] == 0u));
-        fail_unless!((v[1] == 1u));
-        fail_unless!((v[2] == 4u));
-        fail_unless!((v[3] == 9u));
-        fail_unless!((v[4] == 16u));
+        fail_unless!(v.len() == 5u);
+        fail_unless!(v[0] == 0u);
+        fail_unless!(v[1] == 1u);
+        fail_unless!(v[2] == 4u);
+        fail_unless!(v[3] == 9u);
+        fail_unless!(v[4] == 16u);
     }
 
     #[test]
     fn test_from_elem() {
         // Test on-stack from_elem.
         let mut v = from_elem(2u, 10u);
-        fail_unless!((len(v) == 2u));
-        fail_unless!((v[0] == 10u));
-        fail_unless!((v[1] == 10u));
+        fail_unless!(v.len() == 2u);
+        fail_unless!(v[0] == 10u);
+        fail_unless!(v[1] == 10u);
 
         // Test on-heap from_elem.
         v = from_elem(6u, 20u);
-        fail_unless!((v[0] == 20u));
-        fail_unless!((v[1] == 20u));
-        fail_unless!((v[2] == 20u));
-        fail_unless!((v[3] == 20u));
-        fail_unless!((v[4] == 20u));
-        fail_unless!((v[5] == 20u));
+        fail_unless!(v[0] == 20u);
+        fail_unless!(v[1] == 20u);
+        fail_unless!(v[2] == 20u);
+        fail_unless!(v[3] == 20u);
+        fail_unless!(v[4] == 20u);
+        fail_unless!(v[5] == 20u);
     }
 
     #[test]
     fn test_is_empty() {
-        fail_unless!((is_empty::<int>(~[])));
-        fail_unless!((!is_empty(~[0])));
+        fail_unless!(is_empty::<int>(~[]));
+        fail_unless!(!is_empty(~[0]));
     }
 
     #[test]
@@ -2589,10 +2586,10 @@ mod tests {
         let v0 : &[Z] = &[];
         let v1 : &[Z] = &[[]];
         let v2 : &[Z] = &[[], []];
-        fail_unless!((sys::size_of::<Z>() == 0));
-        fail_unless!((len(v0) == 0));
-        fail_unless!((len(v1) == 1));
-        fail_unless!((len(v2) == 2));
+        fail_unless!(sys::size_of::<Z>() == 0);
+        fail_unless!(v0.len() == 0);
+        fail_unless!(v1.len() == 1);
+        fail_unless!(v2.len() == 2);
     }
 
     #[test]
@@ -2695,6 +2692,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[ignore(cfg(windows))]
     fn test_last_empty() {
         let a: ~[int] = ~[];
         a.last();
@@ -2714,36 +2712,36 @@ mod tests {
     fn test_slice() {
         // Test fixed length vector.
         let vec_fixed = [1, 2, 3, 4];
-        let v_a = slice(vec_fixed, 1u, len(vec_fixed)).to_vec();
-        fail_unless!((len(v_a) == 3u));
-        fail_unless!((v_a[0] == 2));
-        fail_unless!((v_a[1] == 3));
-        fail_unless!((v_a[2] == 4));
+        let v_a = slice(vec_fixed, 1u, vec_fixed.len()).to_vec();
+        fail_unless!(v_a.len() == 3u);
+        fail_unless!(v_a[0] == 2);
+        fail_unless!(v_a[1] == 3);
+        fail_unless!(v_a[2] == 4);
 
         // Test on stack.
         let vec_stack = &[1, 2, 3];
         let v_b = slice(vec_stack, 1u, 3u).to_vec();
-        fail_unless!((len(v_b) == 2u));
-        fail_unless!((v_b[0] == 2));
-        fail_unless!((v_b[1] == 3));
+        fail_unless!(v_b.len() == 2u);
+        fail_unless!(v_b[0] == 2);
+        fail_unless!(v_b[1] == 3);
 
         // Test on managed heap.
         let vec_managed = @[1, 2, 3, 4, 5];
         let v_c = slice(vec_managed, 0u, 3u).to_vec();
-        fail_unless!((len(v_c) == 3u));
-        fail_unless!((v_c[0] == 1));
-        fail_unless!((v_c[1] == 2));
-        fail_unless!((v_c[2] == 3));
+        fail_unless!(v_c.len() == 3u);
+        fail_unless!(v_c[0] == 1);
+        fail_unless!(v_c[1] == 2);
+        fail_unless!(v_c[2] == 3);
 
         // Test on exchange heap.
         let vec_unique = ~[1, 2, 3, 4, 5, 6];
         let v_d = slice(vec_unique, 1u, 6u).to_vec();
-        fail_unless!((len(v_d) == 5u));
-        fail_unless!((v_d[0] == 2));
-        fail_unless!((v_d[1] == 3));
-        fail_unless!((v_d[2] == 4));
-        fail_unless!((v_d[3] == 5));
-        fail_unless!((v_d[4] == 6));
+        fail_unless!(v_d.len() == 5u);
+        fail_unless!(v_d[0] == 2);
+        fail_unless!(v_d[1] == 3);
+        fail_unless!(v_d[2] == 4);
+        fail_unless!(v_d[3] == 5);
+        fail_unless!(v_d[4] == 6);
     }
 
     #[test]
@@ -2751,27 +2749,27 @@ mod tests {
         // Test on-heap pop.
         let mut v = ~[1, 2, 3, 4, 5];
         let e = v.pop();
-        fail_unless!((len(v) == 4u));
-        fail_unless!((v[0] == 1));
-        fail_unless!((v[1] == 2));
-        fail_unless!((v[2] == 3));
-        fail_unless!((v[3] == 4));
-        fail_unless!((e == 5));
+        fail_unless!(v.len() == 4u);
+        fail_unless!(v[0] == 1);
+        fail_unless!(v[1] == 2);
+        fail_unless!(v[2] == 3);
+        fail_unless!(v[3] == 4);
+        fail_unless!(e == 5);
     }
 
     #[test]
     fn test_swap_remove() {
         let mut v = ~[1, 2, 3, 4, 5];
         let mut e = v.swap_remove(0);
-        fail_unless!((len(v) == 4));
+        fail_unless!(v.len() == 4);
         fail_unless!(e == 1);
-        fail_unless!((v[0] == 5));
+        fail_unless!(v[0] == 5);
         e = v.swap_remove(3);
-        fail_unless!((len(v) == 3));
+        fail_unless!(v.len() == 3);
         fail_unless!(e == 4);
-        fail_unless!((v[0] == 5));
-        fail_unless!((v[1] == 2));
-        fail_unless!((v[2] == 3));
+        fail_unless!(v[0] == 5);
+        fail_unless!(v[1] == 2);
+        fail_unless!(v[2] == 3);
     }
 
     #[test]
@@ -2780,11 +2778,11 @@ mod tests {
         let mut v = ~[::unstable::exclusive(()), ::unstable::exclusive(()),
                       ::unstable::exclusive(())];
         let mut _e = v.swap_remove(0);
-        fail_unless!((len(v) == 2));
+        fail_unless!(v.len() == 2);
         _e = v.swap_remove(1);
-        fail_unless!((len(v) == 1));
+        fail_unless!(v.len() == 1);
         _e = v.swap_remove(0);
-        fail_unless!((len(v) == 0));
+        fail_unless!(v.len() == 0);
     }
 
     #[test]
@@ -2792,14 +2790,14 @@ mod tests {
         // Test on-stack push().
         let mut v = ~[];
         v.push(1);
-        fail_unless!((len(v) == 1u));
-        fail_unless!((v[0] == 1));
+        fail_unless!(v.len() == 1u);
+        fail_unless!(v[0] == 1);
 
         // Test on-heap push().
         v.push(2);
-        fail_unless!((len(v) == 2u));
-        fail_unless!((v[0] == 1));
-        fail_unless!((v[1] == 2));
+        fail_unless!(v.len() == 2u);
+        fail_unless!(v[0] == 1);
+        fail_unless!(v[1] == 2);
     }
 
     #[test]
@@ -2807,48 +2805,48 @@ mod tests {
         // Test on-stack grow().
         let mut v = ~[];
         v.grow(2u, &1);
-        fail_unless!((len(v) == 2u));
-        fail_unless!((v[0] == 1));
-        fail_unless!((v[1] == 1));
+        fail_unless!(v.len() == 2u);
+        fail_unless!(v[0] == 1);
+        fail_unless!(v[1] == 1);
 
         // Test on-heap grow().
         v.grow(3u, &2);
-        fail_unless!((len(v) == 5u));
-        fail_unless!((v[0] == 1));
-        fail_unless!((v[1] == 1));
-        fail_unless!((v[2] == 2));
-        fail_unless!((v[3] == 2));
-        fail_unless!((v[4] == 2));
+        fail_unless!(v.len() == 5u);
+        fail_unless!(v[0] == 1);
+        fail_unless!(v[1] == 1);
+        fail_unless!(v[2] == 2);
+        fail_unless!(v[3] == 2);
+        fail_unless!(v[4] == 2);
     }
 
     #[test]
     fn test_grow_fn() {
         let mut v = ~[];
         v.grow_fn(3u, square);
-        fail_unless!((len(v) == 3u));
-        fail_unless!((v[0] == 0u));
-        fail_unless!((v[1] == 1u));
-        fail_unless!((v[2] == 4u));
+        fail_unless!(v.len() == 3u);
+        fail_unless!(v[0] == 0u);
+        fail_unless!(v[1] == 1u);
+        fail_unless!(v[2] == 4u);
     }
 
     #[test]
     fn test_grow_set() {
         let mut v = ~[1, 2, 3];
         v.grow_set(4u, &4, 5);
-        fail_unless!((len(v) == 5u));
-        fail_unless!((v[0] == 1));
-        fail_unless!((v[1] == 2));
-        fail_unless!((v[2] == 3));
-        fail_unless!((v[3] == 4));
-        fail_unless!((v[4] == 5));
+        fail_unless!(v.len() == 5u);
+        fail_unless!(v[0] == 1);
+        fail_unless!(v[1] == 2);
+        fail_unless!(v[2] == 3);
+        fail_unless!(v[3] == 4);
+        fail_unless!(v[4] == 5);
     }
 
     #[test]
     fn test_truncate() {
         let mut v = ~[@6,@5,@4];
         v.truncate(1);
-        fail_unless!((v.len() == 1));
-        fail_unless!((*(v[0]) == 6));
+        fail_unless!(v.len() == 1);
+        fail_unless!(*(v[0]) == 6);
         // If the unsafe block didn't drop things properly, we blow up here.
     }
 
@@ -2856,7 +2854,7 @@ mod tests {
     fn test_clear() {
         let mut v = ~[@6,@5,@4];
         v.clear();
-        fail_unless!((v.len() == 0));
+        fail_unless!(v.len() == 0);
         // If the unsafe block didn't drop things properly, we blow up here.
     }
 
@@ -2865,7 +2863,7 @@ mod tests {
         fn case(a: ~[uint], b: ~[uint]) {
             let mut v = a;
             v.dedup();
-            fail_unless!((v == b));
+            fail_unless!(v == b);
         }
         case(~[], ~[]);
         case(~[1], ~[1]);
@@ -2910,31 +2908,31 @@ mod tests {
         // Test on-stack map.
         let mut v = ~[1u, 2u, 3u];
         let mut w = map(v, square_ref);
-        fail_unless!((len(w) == 3u));
-        fail_unless!((w[0] == 1u));
-        fail_unless!((w[1] == 4u));
-        fail_unless!((w[2] == 9u));
+        fail_unless!(w.len() == 3u);
+        fail_unless!(w[0] == 1u);
+        fail_unless!(w[1] == 4u);
+        fail_unless!(w[2] == 9u);
 
         // Test on-heap map.
         v = ~[1u, 2u, 3u, 4u, 5u];
         w = map(v, square_ref);
-        fail_unless!((len(w) == 5u));
-        fail_unless!((w[0] == 1u));
-        fail_unless!((w[1] == 4u));
-        fail_unless!((w[2] == 9u));
-        fail_unless!((w[3] == 16u));
-        fail_unless!((w[4] == 25u));
+        fail_unless!(w.len() == 5u);
+        fail_unless!(w[0] == 1u);
+        fail_unless!(w[1] == 4u);
+        fail_unless!(w[2] == 9u);
+        fail_unless!(w[3] == 16u);
+        fail_unless!(w[4] == 25u);
     }
 
     #[test]
     fn test_map2() {
-        fn times(x: &int, y: &int) -> int { return *x * *y; }
+        fn times(x: &int, y: &int) -> int { *x * *y }
         let f = times;
         let v0 = ~[1, 2, 3, 4, 5];
         let v1 = ~[5, 4, 3, 2, 1];
         let u = map2::<int, int, int>(v0, v1, f);
         let mut i = 0;
-        while i < 5 { fail_unless!((v0[i] * v1[i] == u[i])); i += 1; }
+        while i < 5 { fail_unless!(v0[i] * v1[i] == u[i]); i += 1; }
     }
 
     #[test]
@@ -2942,26 +2940,26 @@ mod tests {
         // Test on-stack filter-map.
         let mut v = ~[1u, 2u, 3u];
         let mut w = filter_mapped(v, square_if_odd_r);
-        fail_unless!((len(w) == 2u));
-        fail_unless!((w[0] == 1u));
-        fail_unless!((w[1] == 9u));
+        fail_unless!(w.len() == 2u);
+        fail_unless!(w[0] == 1u);
+        fail_unless!(w[1] == 9u);
 
         // Test on-heap filter-map.
         v = ~[1u, 2u, 3u, 4u, 5u];
         w = filter_mapped(v, square_if_odd_r);
-        fail_unless!((len(w) == 3u));
-        fail_unless!((w[0] == 1u));
-        fail_unless!((w[1] == 9u));
-        fail_unless!((w[2] == 25u));
+        fail_unless!(w.len() == 3u);
+        fail_unless!(w[0] == 1u);
+        fail_unless!(w[1] == 9u);
+        fail_unless!(w[2] == 25u);
 
         fn halve(i: &int) -> Option<int> {
             if *i % 2 == 0 {
-                return option::Some::<int>(*i / 2);
+                Some::<int>(*i / 2)
             } else {
-                return option::None::<int>;
+                None::<int>
             }
         }
-        fn halve_for_sure(i: &int) -> int { return *i / 2; }
+        fn halve_for_sure(i: &int) -> int { *i / 2 }
         let all_even: ~[int] = ~[0, 2, 8, 6];
         let all_odd1: ~[int] = ~[1, 7, 3];
         let all_odd2: ~[int] = ~[];
@@ -2969,9 +2967,9 @@ mod tests {
         let mix_dest: ~[int] = ~[1, 3, 0, 0];
         fail_unless!(filter_mapped(all_even, halve) ==
                      map(all_even, halve_for_sure));
-        fail_unless!((filter_mapped(all_odd1, halve) == ~[]));
-        fail_unless!((filter_mapped(all_odd2, halve) == ~[]));
-        fail_unless!((filter_mapped(mix, halve) == mix_dest));
+        fail_unless!(filter_mapped(all_odd1, halve) == ~[]);
+        fail_unless!(filter_mapped(all_odd2, halve) == ~[]);
+        fail_unless!(filter_mapped(mix, halve) == mix_dest);
     }
 
     #[test]
@@ -2979,26 +2977,26 @@ mod tests {
         // Test on-stack filter-map.
         let mut v = ~[1u, 2u, 3u];
         let mut w = filter_map(v, square_if_odd_v);
-        fail_unless!((len(w) == 2u));
-        fail_unless!((w[0] == 1u));
-        fail_unless!((w[1] == 9u));
+        fail_unless!(w.len() == 2u);
+        fail_unless!(w[0] == 1u);
+        fail_unless!(w[1] == 9u);
 
         // Test on-heap filter-map.
         v = ~[1u, 2u, 3u, 4u, 5u];
         w = filter_map(v, square_if_odd_v);
-        fail_unless!((len(w) == 3u));
-        fail_unless!((w[0] == 1u));
-        fail_unless!((w[1] == 9u));
-        fail_unless!((w[2] == 25u));
+        fail_unless!(w.len() == 3u);
+        fail_unless!(w[0] == 1u);
+        fail_unless!(w[1] == 9u);
+        fail_unless!(w[2] == 25u);
 
         fn halve(i: int) -> Option<int> {
             if i % 2 == 0 {
-                return option::Some::<int>(i / 2);
+                Some::<int>(i / 2)
             } else {
-                return option::None::<int>;
+                None::<int>
             }
         }
-        fn halve_for_sure(i: &int) -> int { return *i / 2; }
+        fn halve_for_sure(i: &int) -> int { *i / 2 }
         let all_even: ~[int] = ~[0, 2, 8, 6];
         let all_even0: ~[int] = copy all_even;
         let all_odd1: ~[int] = ~[1, 7, 3];
@@ -3007,9 +3005,9 @@ mod tests {
         let mix_dest: ~[int] = ~[1, 3, 0, 0];
         fail_unless!(filter_map(all_even, halve) ==
                      map(all_even0, halve_for_sure));
-        fail_unless!((filter_map(all_odd1, halve) == ~[]));
-        fail_unless!((filter_map(all_odd2, halve) == ~[]));
-        fail_unless!((filter_map(mix, halve) == mix_dest));
+        fail_unless!(filter_map(all_odd1, halve) == ~[]);
+        fail_unless!(filter_map(all_odd2, halve) == ~[]);
+        fail_unless!(filter_map(mix, halve) == mix_dest);
     }
 
     #[test]
@@ -3030,12 +3028,12 @@ mod tests {
         // Test on-stack fold.
         let mut v = ~[1u, 2u, 3u];
         let mut sum = foldl(0u, v, add);
-        fail_unless!((sum == 6u));
+        fail_unless!(sum == 6u);
 
         // Test on-heap fold.
         v = ~[1u, 2u, 3u, 4u, 5u];
         sum = foldl(0u, v, add);
-        fail_unless!((sum == 15u));
+        fail_unless!(sum == 15u);
     }
 
     #[test]
@@ -3137,29 +3135,29 @@ mod tests {
 
     #[test]
     fn test_any_and_all() {
-        fail_unless!((any(~[1u, 2u, 3u], is_three)));
-        fail_unless!((!any(~[0u, 1u, 2u], is_three)));
-        fail_unless!((any(~[1u, 2u, 3u, 4u, 5u], is_three)));
-        fail_unless!((!any(~[1u, 2u, 4u, 5u, 6u], is_three)));
+        fail_unless!(any(~[1u, 2u, 3u], is_three));
+        fail_unless!(!any(~[0u, 1u, 2u], is_three));
+        fail_unless!(any(~[1u, 2u, 3u, 4u, 5u], is_three));
+        fail_unless!(!any(~[1u, 2u, 4u, 5u, 6u], is_three));
 
-        fail_unless!((all(~[3u, 3u, 3u], is_three)));
-        fail_unless!((!all(~[3u, 3u, 2u], is_three)));
-        fail_unless!((all(~[3u, 3u, 3u, 3u, 3u], is_three)));
-        fail_unless!((!all(~[3u, 3u, 0u, 1u, 2u], is_three)));
+        fail_unless!(all(~[3u, 3u, 3u], is_three));
+        fail_unless!(!all(~[3u, 3u, 2u], is_three));
+        fail_unless!(all(~[3u, 3u, 3u, 3u, 3u], is_three));
+        fail_unless!(!all(~[3u, 3u, 0u, 1u, 2u], is_three));
     }
 
     #[test]
     fn test_any2_and_all2() {
 
-        fail_unless!((any2(~[2u, 4u, 6u], ~[2u, 4u, 6u], is_equal)));
-        fail_unless!((any2(~[1u, 2u, 3u], ~[4u, 5u, 3u], is_equal)));
-        fail_unless!((!any2(~[1u, 2u, 3u], ~[4u, 5u, 6u], is_equal)));
-        fail_unless!((any2(~[2u, 4u, 6u], ~[2u, 4u], is_equal)));
+        fail_unless!(any2(~[2u, 4u, 6u], ~[2u, 4u, 6u], is_equal));
+        fail_unless!(any2(~[1u, 2u, 3u], ~[4u, 5u, 3u], is_equal));
+        fail_unless!(!any2(~[1u, 2u, 3u], ~[4u, 5u, 6u], is_equal));
+        fail_unless!(any2(~[2u, 4u, 6u], ~[2u, 4u], is_equal));
 
-        fail_unless!((all2(~[2u, 4u, 6u], ~[2u, 4u, 6u], is_equal)));
-        fail_unless!((!all2(~[1u, 2u, 3u], ~[4u, 5u, 3u], is_equal)));
-        fail_unless!((!all2(~[1u, 2u, 3u], ~[4u, 5u, 6u], is_equal)));
-        fail_unless!((!all2(~[2u, 4u, 6u], ~[2u, 4u], is_equal)));
+        fail_unless!(all2(~[2u, 4u, 6u], ~[2u, 4u, 6u], is_equal));
+        fail_unless!(!all2(~[1u, 2u, 3u], ~[4u, 5u, 3u], is_equal));
+        fail_unless!(!all2(~[1u, 2u, 3u], ~[4u, 5u, 6u], is_equal));
+        fail_unless!(!all2(~[2u, 4u, 6u], ~[2u, 4u], is_equal));
     }
 
     #[test]
@@ -3169,15 +3167,15 @@ mod tests {
 
         let z1 = zip(v1, v2);
 
-        fail_unless!(((1, 4) == z1[0]));
-        fail_unless!(((2, 5) == z1[1]));
-        fail_unless!(((3, 6) == z1[2]));
+        fail_unless!((1, 4) == z1[0]);
+        fail_unless!((2, 5) == z1[1]);
+        fail_unless!((3, 6) == z1[2]);
 
         let (left, right) = unzip(z1);
 
-        fail_unless!(((1, 4) == (left[0], right[0])));
-        fail_unless!(((2, 5) == (left[1], right[1])));
-        fail_unless!(((3, 6) == (left[2], right[2])));
+        fail_unless!((1, 4) == (left[0], right[0]));
+        fail_unless!((2, 5) == (left[1], right[1]));
+        fail_unless!((3, 6) == (left[2], right[2]));
     }
 
     #[test]
@@ -3193,8 +3191,8 @@ mod tests {
 
     #[test]
     fn test_position() {
-        fn less_than_three(i: &int) -> bool { return *i < 3; }
-        fn is_eighteen(i: &int) -> bool { return *i == 18; }
+        fn less_than_three(i: &int) -> bool { *i < 3 }
+        fn is_eighteen(i: &int) -> bool { *i == 18 }
 
         fail_unless!(position(~[], less_than_three).is_none());
 
@@ -3354,20 +3352,20 @@ mod tests {
     #[test]
     fn reverse_and_reversed() {
         let mut v: ~[int] = ~[10, 20];
-        fail_unless!((v[0] == 10));
-        fail_unless!((v[1] == 20));
+        fail_unless!(v[0] == 10);
+        fail_unless!(v[1] == 20);
         reverse(v);
-        fail_unless!((v[0] == 20));
-        fail_unless!((v[1] == 10));
+        fail_unless!(v[0] == 20);
+        fail_unless!(v[1] == 10);
         let v2 = reversed::<int>(~[10, 20]);
-        fail_unless!((v2[0] == 20));
-        fail_unless!((v2[1] == 10));
+        fail_unless!(v2[0] == 20);
+        fail_unless!(v2[1] == 10);
         v[0] = 30;
-        fail_unless!((v2[0] == 20));
+        fail_unless!(v2[0] == 20);
         // Make sure they work with 0-length vectors too.
 
         let v4 = reversed::<int>(~[]);
-        fail_unless!((v4 == ~[]));
+        fail_unless!(v4 == ~[]);
         let mut v3: ~[int] = ~[];
         reverse::<int>(v3);
     }
@@ -3375,8 +3373,8 @@ mod tests {
     #[test]
     fn reversed_mut() {
         let mut v2 = reversed::<int>(~[10, 20]);
-        fail_unless!((v2[0] == 20));
-        fail_unless!((v2[1] == 10));
+        fail_unless!(v2[0] == 20);
+        fail_unless!(v2[1] == 10);
     }
 
     #[test]
@@ -3548,9 +3546,9 @@ mod tests {
     fn test_view() {
         let v = ~[1, 2, 3, 4, 5];
         let v = v.view(1u, 3u);
-        fail_unless!((len(v) == 2u));
-        fail_unless!((v[0] == 2));
-        fail_unless!((v[1] == 3));
+        fail_unless!(v.len() == 2u);
+        fail_unless!(v[0] == 2);
+        fail_unless!(v[1] == 3);
     }
 
 

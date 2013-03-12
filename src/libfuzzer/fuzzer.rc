@@ -25,6 +25,7 @@
 #[allow(non_camel_case_types)];
 #[allow(deprecated_mode)];
 #[allow(deprecated_pattern)];
+#[deny(deprecated_self)];
 
 extern mod core(vers = "0.6");
 extern mod std(vers = "0.6");
@@ -246,7 +247,7 @@ pub fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::Ty,
     *crate2
 }
 
-pub fn under(n: uint, it: fn(uint)) {
+pub fn under(n: uint, it: &fn(uint)) {
     let mut i: uint = 0u;
     while i < n { it(i); i += 1u; }
 }

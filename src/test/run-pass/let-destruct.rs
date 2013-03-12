@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum xx = int;
+struct xx(int);
 
 struct X { x: xx, y: int }
 

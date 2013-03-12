@@ -295,7 +295,7 @@ pub impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn future_result(&self, blk: fn(v: Port<TaskResult>)) -> TaskBuilder {
+    fn future_result(&self, blk: &fn(v: Port<TaskResult>)) -> TaskBuilder {
         // FIXME (#3725): Once linked failure and notification are
         // handled in the library, I can imagine implementing this by just
         // registering an arbitrary number of task::on_exit handlers and
@@ -572,7 +572,7 @@ pub fn get_scheduler() -> Scheduler {
  * }
  * ~~~
  */
-pub unsafe fn unkillable<U>(f: fn() -> U) -> U {
+pub unsafe fn unkillable<U>(f: &fn() -> U) -> U {
     struct AllowFailure {
         t: *rust_task,
         drop {
@@ -597,7 +597,7 @@ pub unsafe fn unkillable<U>(f: fn() -> U) -> U {
 }
 
 /// The inverse of unkillable. Only ever to be used nested in unkillable().
-pub unsafe fn rekillable<U>(f: fn() -> U) -> U {
+pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
     struct DisallowFailure {
         t: *rust_task,
         drop {
@@ -625,7 +625,7 @@ pub unsafe fn rekillable<U>(f: fn() -> U) -> U {
  * A stronger version of unkillable that also inhibits scheduling operations.
  * For use with exclusive ARCs, which use pthread mutexes directly.
  */
-pub unsafe fn atomically<U>(f: fn() -> U) -> U {
+pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
     struct DeferInterrupts {
         t: *rust_task,
         drop {

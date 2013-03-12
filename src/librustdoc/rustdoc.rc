@@ -22,6 +22,7 @@
 #[no_core];
 
 #[allow(non_implicitly_copyable_typarams)];
+#[deny(deprecated_self)];
 
 extern mod core(vers = "0.6");
 extern mod std(vers = "0.6");
@@ -142,7 +143,7 @@ fn run(config: Config) {
     }
 }
 
-pub fn time<T>(what: ~str, f: fn() -> T) -> T {
+pub fn time<T>(what: ~str, f: &fn() -> T) -> T {
     let start = std::time::precise_time_s();
     let rv = f();
     let end = std::time::precise_time_s();

@@ -269,7 +269,7 @@ pub impl Context {
               Decodable<json::Decoder/&static>>( // FIXME(#5121)
                   @self,
                   fn_name:&str,
-                  blk: fn(@Mut<Prep>)->Work<T>) -> Work<T> {
+                  blk: &fn(@Mut<Prep>)->Work<T>) -> Work<T> {
         let p = @Mut(Prep {ctxt: self,
                            fn_name: fn_name.to_owned(),
                            declared_inputs: LinearMap::new()});

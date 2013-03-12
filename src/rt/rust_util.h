@@ -79,38 +79,6 @@ inline void reserve_vec_exact(rust_vec_box** vpp,
 
 typedef rust_vec_box rust_str;
 
-inline rust_str *
-make_str(rust_kernel* kernel, const char* c, size_t strlen,
-         const char* name) {
-    size_t str_fill = strlen + 1;
-    size_t str_alloc = str_fill;
-    rust_str *str = (rust_str *)
-        kernel->malloc(vec_size<char>(str_fill), name);
-    str->header.td = &str_body_tydesc;
-    str->body.fill = str_fill;
-    str->body.alloc = str_alloc;
-    memcpy(&str->body.data, c, strlen);
-    str->body.data[strlen] = '\0';
-    return str;
-}
-
-inline rust_vec_box *
-make_str_vec(rust_kernel* kernel, size_t nstrs, char **strs) {
-    rust_vec_box *v = (rust_vec_box *)
-        kernel->malloc(vec_size<rust_vec_box*>(nstrs),
-                       "str vec interior");
-    // FIXME: should have a real td (Issue #2639)
-    v->header.td = NULL;
-    v->body.fill = v->body.alloc = sizeof(rust_vec_box*) * nstrs;
-    for (size_t i = 0; i < nstrs; ++i) {
-        rust_str *str = make_str(kernel, strs[i],
-                                 strlen(strs[i]),
-                                 "str");
-        ((rust_str**)&v->body.data)[i] = str;
-    }
-    return v;
-}
-
 inline size_t get_box_size(size_t body_size, size_t body_align) {
     size_t header_size = sizeof(rust_opaque_box);
     // FIXME (#2699): This alignment calculation is suspicious. Is it right?

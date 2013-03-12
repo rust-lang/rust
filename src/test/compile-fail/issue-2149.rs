@@ -9,11 +9,11 @@
 // except according to those terms.
 
 trait vec_monad<A> {
-    fn bind<B>(f: fn(A) -> ~[B]);
+    fn bind<B>(f: &fn(A) -> ~[B]);
 }
 
 impl<A> vec_monad<A> for ~[A] {
-    fn bind<B>(f: fn(A) -> ~[B]) {
+    fn bind<B>(f: &fn(A) -> ~[B]) {
         let mut r = fail!();
         for self.each |elt| { r += f(*elt); }
         //~^ WARNING unreachable expression

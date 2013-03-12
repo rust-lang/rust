@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum foo = int;
+struct foo(int);
 
 fn main() {
     let x = foo(3);
-    *x = 4; //~ ERROR assigning to enum content
+    *x = 4; //~ ERROR assigning to anonymous field
 }

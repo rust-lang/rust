@@ -227,7 +227,7 @@ pub mod tests {
     pub fn synthesize_closure() {
         unsafe {
             let x = 10;
-            let f: fn(int) -> int = |y| x + y;
+            let f: &fn(int) -> int = |y| x + y;
 
             fail_unless!(f(20) == 30);
 
@@ -241,7 +241,7 @@ pub mod tests {
                 env: environment
             };
 
-            let new_f: fn(int) -> int = cast::transmute(new_closure);
+            let new_f: &fn(int) -> int = cast::transmute(new_closure);
             fail_unless!(new_f(20) == 30);
         }
     }

@@ -530,7 +530,7 @@ fn compose_and_run(config: config, testfile: &Path,
 }
 
 fn make_compile_args(config: config, props: TestProps, extras: ~[~str],
-                     xform: fn(config, (&Path)) -> Path,
+                     xform: &fn(config, (&Path)) -> Path,
                      testfile: &Path) -> ProcArgs {
     let prog = config.rustc_path;
     let mut args = ~[testfile.to_str(),

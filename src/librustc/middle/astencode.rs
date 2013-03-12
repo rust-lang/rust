@@ -721,12 +721,12 @@ impl vtable_decoder_helpers for reader::Decoder {
 // Encoding and decoding the side tables
 
 trait get_ty_str_ctxt {
-    fn ty_str_ctxt() -> @tyencode::ctxt;
+    fn ty_str_ctxt(@self) -> @tyencode::ctxt;
 }
 
-impl get_ty_str_ctxt for @e::EncodeContext {
+impl get_ty_str_ctxt for e::EncodeContext {
     // IMPLICIT SELF WARNING: fix this!
-    fn ty_str_ctxt() -> @tyencode::ctxt {
+    fn ty_str_ctxt(@self) -> @tyencode::ctxt {
         @tyencode::ctxt {diag: self.tcx.sess.diagnostic(),
                         ds: e::def_to_str,
                         tcx: self.tcx,
@@ -795,12 +795,12 @@ impl ebml_writer_helpers for writer::Encoder {
 }
 
 trait write_tag_and_id {
-    fn tag(&self, tag_id: c::astencode_tag, f: fn());
+    fn tag(&self, tag_id: c::astencode_tag, f: &fn());
     fn id(&self, id: ast::node_id);
 }
 
 impl write_tag_and_id for writer::Encoder {
-    fn tag(&self, tag_id: c::astencode_tag, f: fn()) {
+    fn tag(&self, tag_id: c::astencode_tag, f: &fn()) {
         do self.wr_tag(tag_id as uint) { f() }
     }
 

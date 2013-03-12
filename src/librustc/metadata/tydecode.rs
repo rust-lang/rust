@@ -217,7 +217,7 @@ fn parse_region(st: @mut PState) -> ty::Region {
     }
 }
 
-fn parse_opt<T>(st: @mut PState, f: fn() -> T) -> Option<T> {
+fn parse_opt<T>(st: @mut PState, f: &fn() -> T) -> Option<T> {
     match next(st) {
       'n' => None,
       's' => Some(f()),

@@ -11,7 +11,7 @@
 
 // check that we do not report a type like this as uninstantiable,
 // even though it would be if the nxt field had type @foo:
-enum foo = X;
+struct foo(X);
 
 struct X { x: uint, nxt: *foo }
 
