@@ -1192,6 +1192,11 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
       ast::expr_addr_of(m, expr) => {
         word(s.s, ~"&");
         print_mutability(s, m);
+        // Avoid `& &e` => `&&e`.
+        match (m, &expr.node) {
+            (ast::m_imm, &ast::expr_addr_of(*)) => space(s.s),
+            _ => { }
+        }
         print_expr(s, expr);
       }
       ast::expr_lit(lit) => print_literal(s, lit),
