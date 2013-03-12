@@ -198,8 +198,8 @@ pub struct BenchSamples {
 pub enum TestResult { TrOk, TrFailed, TrIgnored, TrBench(BenchSamples) }
 
 struct ConsoleTestState {
-    out: io::Writer,
-    log_out: Option<io::Writer>,
+    out: @io::Writer,
+    log_out: Option<@io::Writer>,
     use_color: bool,
     mut total: uint,
     mut passed: uint,
@@ -316,7 +316,7 @@ pub fn run_tests_console(opts: &TestOpts,
         }
     }
 
-    fn write_log(out: io::Writer, result: TestResult, test: &TestDesc) {
+    fn write_log(out: @io::Writer, result: TestResult, test: &TestDesc) {
         out.write_line(fmt!("%s %s",
                     match result {
                         TrOk => ~"ok",
@@ -326,23 +326,26 @@ pub fn run_tests_console(opts: &TestOpts,
                     }, test.name.to_str()));
     }
 
-    fn write_ok(out: io::Writer, use_color: bool) {
+    fn write_ok(out: @io::Writer, use_color: bool) {
         write_pretty(out, ~"ok", term::color_green, use_color);
     }
 
-    fn write_failed(out: io::Writer, use_color: bool) {
+    fn write_failed(out: @io::Writer, use_color: bool) {
         write_pretty(out, ~"FAILED", term::color_red, use_color);
     }
 
-    fn write_ignored(out: io::Writer, use_color: bool) {
+    fn write_ignored(out: @io::Writer, use_color: bool) {
         write_pretty(out, ~"ignored", term::color_yellow, use_color);
     }
 
-    fn write_bench(out: io::Writer, use_color: bool) {
+    fn write_bench(out: @io::Writer, use_color: bool) {
         write_pretty(out, ~"bench", term::color_cyan, use_color);
     }
 
-    fn write_pretty(out: io::Writer, word: &str, color: u8, use_color: bool) {
+    fn write_pretty(out: @io::Writer,
+                    word: &str,
+                    color: u8,
+                    use_color: bool) {
         if use_color && term::color_supported() {
             term::fg(out, color);
         }
@@ -601,6 +604,7 @@ pub mod bench {
     use stats::Stats;
 
     use core::num;
+    use core::rand::RngUtil;
     use core::rand;
     use core::u64;
     use core::vec;
@@ -700,7 +704,6 @@ pub mod bench {
             let mut prev_madp = 0.0;
 
             loop {
-
                 let n_samples = rng.gen_uint_range(50, 60);
                 let n_iter = rng.gen_uint_range(magnitude,
                                                 magnitude * 2);

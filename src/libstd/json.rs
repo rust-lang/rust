@@ -74,10 +74,10 @@ fn spaces(n: uint) -> ~str {
 }
 
 pub struct Encoder {
-    priv wr: io::Writer,
+    priv wr: @io::Writer,
 }
 
-pub fn Encoder(wr: io::Writer) -> Encoder {
+pub fn Encoder(wr: @io::Writer) -> Encoder {
     Encoder { wr: wr }
 }
 
@@ -208,11 +208,11 @@ impl serialize::Encoder for Encoder {
 }
 
 pub struct PrettyEncoder {
-    priv wr: io::Writer,
+    priv wr: @io::Writer,
     priv mut indent: uint,
 }
 
-pub fn PrettyEncoder(wr: io::Writer) -> PrettyEncoder {
+pub fn PrettyEncoder(wr: @io::Writer) -> PrettyEncoder {
     PrettyEncoder { wr: wr, indent: 0 }
 }
 
@@ -346,7 +346,7 @@ impl<S:serialize::Encoder> serialize::Encodable<S> for Json {
 }
 
 /// Encodes a json value into a io::writer
-pub fn to_writer(wr: io::Writer, json: &Json) {
+pub fn to_writer(wr: @io::Writer, json: &Json) {
     json.encode(&Encoder(wr))
 }
 
@@ -359,7 +359,7 @@ pub pure fn to_str(json: &Json) -> ~str {
 }
 
 /// Encodes a json value into a io::writer
-pub fn to_pretty_writer(wr: io::Writer, json: &Json) {
+pub fn to_pretty_writer(wr: @io::Writer, json: &Json) {
     json.encode(&PrettyEncoder(wr))
 }
 
@@ -369,14 +369,14 @@ pub fn to_pretty_str(json: &Json) -> ~str {
 }
 
 pub struct Parser {
-    priv rdr: io::Reader,
+    priv rdr: @io::Reader,
     priv mut ch: char,
     priv mut line: uint,
     priv mut col: uint,
 }
 
 /// Decode a json value from an io::reader
-pub fn Parser(rdr: io::Reader) -> Parser {
+pub fn Parser(rdr: @io::Reader) -> Parser {
     Parser {
         rdr: rdr,
         ch: rdr.read_char(),
@@ -734,8 +734,8 @@ priv impl Parser {
     }
 }
 
-/// Decodes a json value from an io::reader
-pub fn from_reader(rdr: io::Reader) -> Result<Json, Error> {
+/// Decodes a json value from an @io::Reader
+pub fn from_reader(rdr: @io::Reader) -> Result<Json, Error> {
     Parser(rdr).parse()
 }
 

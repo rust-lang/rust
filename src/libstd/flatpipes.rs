@@ -459,15 +459,15 @@ pub mod flatteners {
     }
 
     pub trait FromReader {
-        static fn from_reader(r: Reader) -> Self;
+        static fn from_reader(r: @Reader) -> Self;
     }
 
     pub trait FromWriter {
-        static fn from_writer(w: Writer) -> Self;
+        static fn from_writer(w: @Writer) -> Self;
     }
 
     impl FromReader for json::Decoder/&self {
-        static fn from_reader(r: Reader) -> json::Decoder/&self {
+        static fn from_reader(r: @Reader) -> json::Decoder/&self {
             match json::from_reader(r) {
                 Ok(json) => {
                     json::Decoder(json)
@@ -478,13 +478,13 @@ pub mod flatteners {
     }
 
     impl FromWriter for json::Encoder {
-        static fn from_writer(w: Writer) -> json::Encoder {
+        static fn from_writer(w: @Writer) -> json::Encoder {
             json::Encoder(w)
         }
     }
 
     impl FromReader for ebml::reader::Decoder {
-        static fn from_reader(r: Reader) -> ebml::reader::Decoder {
+        static fn from_reader(r: @Reader) -> ebml::reader::Decoder {
             let buf = @r.read_whole_stream();
             let doc = ebml::reader::Doc(buf);
             ebml::reader::Decoder(doc)
@@ -492,7 +492,7 @@ pub mod flatteners {
     }
 
     impl FromWriter for ebml::writer::Encoder {
-        static fn from_writer(w: Writer) -> ebml::writer::Encoder {
+        static fn from_writer(w: @Writer) -> ebml::writer::Encoder {
             ebml::writer::Encoder(w)
         }
     }

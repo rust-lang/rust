@@ -1799,7 +1799,7 @@ pub mod test {
         let sock_buf = @socket_buf(result::unwrap(conn_result));
         buf_write(sock_buf, expected_req);
 
-        let buf_reader = sock_buf as Reader;
+        let buf_reader = sock_buf as @Reader;
         let actual_response = str::from_bytes(buf_reader.read_whole_stream());
         debug!("Actual response: %s", actual_response);
         fail_unless!(expected_resp == actual_response);

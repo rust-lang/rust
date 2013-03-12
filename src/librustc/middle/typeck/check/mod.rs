@@ -3204,6 +3204,19 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
           fail_unless!(ccx.tcx.intrinsic_defs.contains_key(&ty_visitor_name));
           let (_, tydesc_ty) = tcx.intrinsic_defs.get(&tydesc_name);
           let (_, visitor_trait) = tcx.intrinsic_defs.get(&ty_visitor_name);
+
+          let visitor_trait = match ty::get(visitor_trait).sty {
+            ty::ty_trait(trait_def_id, ref trait_substs, _) => {
+                ty::mk_trait(tcx,
+                             trait_def_id,
+                             copy *trait_substs,
+                             ty::BoxTraitStore)
+            }
+            _ => {
+                tcx.sess.span_bug(it.span, ~"TyVisitor wasn't a trait?!")
+            }
+          };
+
           let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {ty: tydesc_ty,
                                                    mutbl: ast::m_imm});
           (0u, ~[arg(ast::by_copy, td_ptr),

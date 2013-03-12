@@ -360,7 +360,7 @@ pub fn find_inline_attr(attrs: &[ast::attribute]) -> inline_attr {
 }
 
 
-pub fn require_unique_names(diagnostic: span_handler,
+pub fn require_unique_names(diagnostic: @span_handler,
                             metas: &[@ast::meta_item]) {
     let mut set = LinearSet::new();
     for metas.each |meta| {

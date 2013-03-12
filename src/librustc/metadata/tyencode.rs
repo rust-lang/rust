@@ -27,7 +27,7 @@ use syntax::print::pprust::*;
 use middle::ty::Vid;
 
 pub struct ctxt {
-    diag: span_handler,
+    diag: @span_handler,
     // Def -> str Callback:
     ds: @fn(def_id) -> ~str,
     // The type context.
@@ -57,7 +57,7 @@ fn cx_uses_abbrevs(cx: @ctxt) -> bool {
     }
 }
 
-pub fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
+pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
     match cx.abbrevs {
       ac_no_abbrevs => {
         let result_str = match cx.tcx.short_names_cache.find(&t) {
@@ -113,7 +113,7 @@ pub fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
       }
     }
 }
-fn enc_mt(w: io::Writer, cx: @ctxt, mt: ty::mt) {
+fn enc_mt(w: @io::Writer, cx: @ctxt, mt: ty::mt) {
     match mt.mutbl {
       m_imm => (),
       m_mutbl => w.write_char('m'),
@@ -122,7 +122,7 @@ fn enc_mt(w: io::Writer, cx: @ctxt, mt: ty::mt) {
     enc_ty(w, cx, mt.ty);
 }
 
-fn enc_opt<T>(w: io::Writer, t: Option<T>, enc_f: &fn(T)) {
+fn enc_opt<T>(w: @io::Writer, t: Option<T>, enc_f: &fn(T)) {
     match &t {
       &None => w.write_char('n'),
       &Some(ref v) => {
@@ -132,7 +132,7 @@ fn enc_opt<T>(w: io::Writer, t: Option<T>, enc_f: &fn(T)) {
     }
 }
 
-fn enc_substs(w: io::Writer, cx: @ctxt, substs: ty::substs) {
+fn enc_substs(w: @io::Writer, cx: @ctxt, substs: ty::substs) {
     do enc_opt(w, substs.self_r) |r| { enc_region(w, cx, r) }
     do enc_opt(w, substs.self_ty) |t| { enc_ty(w, cx, t) }
     w.write_char('[');
@@ -140,7 +140,7 @@ fn enc_substs(w: io::Writer, cx: @ctxt, substs: ty::substs) {
     w.write_char(']');
 }
 
-fn enc_region(w: io::Writer, cx: @ctxt, r: ty::Region) {
+fn enc_region(w: @io::Writer, cx: @ctxt, r: ty::Region) {
     match r {
       ty::re_bound(br) => {
         w.write_char('b');
@@ -169,7 +169,7 @@ fn enc_region(w: io::Writer, cx: @ctxt, r: ty::Region) {
     }
 }
 
-fn enc_bound_region(w: io::Writer, cx: @ctxt, br: ty::bound_region) {
+fn enc_bound_region(w: @io::Writer, cx: @ctxt, br: ty::bound_region) {
     match br {
       ty::br_self => w.write_char('s'),
       ty::br_anon(idx) => {
@@ -194,7 +194,7 @@ fn enc_bound_region(w: io::Writer, cx: @ctxt, br: ty::bound_region) {
     }
 }
 
-pub fn enc_vstore(w: io::Writer, cx: @ctxt, v: ty::vstore) {
+pub fn enc_vstore(w: @io::Writer, cx: @ctxt, v: ty::vstore) {
     w.write_char('/');
     match v {
       ty::vstore_fixed(u) => {
@@ -214,7 +214,7 @@ pub fn enc_vstore(w: io::Writer, cx: @ctxt, v: ty::vstore) {
     }
 }
 
-pub fn enc_trait_store(w: io::Writer, cx: @ctxt, s: ty::TraitStore) {
+pub fn enc_trait_store(w: @io::Writer, cx: @ctxt, s: ty::TraitStore) {
     match s {
         ty::UniqTraitStore => w.write_char('~'),
         ty::BoxTraitStore => w.write_char('@'),
@@ -226,7 +226,7 @@ pub fn enc_trait_store(w: io::Writer, cx: @ctxt, s: ty::TraitStore) {
     }
 }
 
-fn enc_sty(w: io::Writer, cx: @ctxt, +st: ty::sty) {
+fn enc_sty(w: @io::Writer, cx: @ctxt, +st: ty::sty) {
     match st {
       ty::ty_nil => w.write_char('n'),
       ty::ty_bot => w.write_char('z'),
@@ -337,7 +337,7 @@ fn enc_sty(w: io::Writer, cx: @ctxt, +st: ty::sty) {
     }
 }
 
-fn enc_sigil(w: io::Writer, sigil: Sigil) {
+fn enc_sigil(w: @io::Writer, sigil: Sigil) {
     match sigil {
         ManagedSigil => w.write_str("@"),
         OwnedSigil => w.write_str("~"),
@@ -345,19 +345,19 @@ fn enc_sigil(w: io::Writer, sigil: Sigil) {
     }
 }
 
-pub fn enc_arg(w: io::Writer, cx: @ctxt, arg: ty::arg) {
+pub fn enc_arg(w: @io::Writer, cx: @ctxt, arg: ty::arg) {
     enc_mode(w, cx, arg.mode);
     enc_ty(w, cx, arg.ty);
 }
 
-pub fn enc_mode(w: io::Writer, cx: @ctxt, m: mode) {
+pub fn enc_mode(w: @io::Writer, cx: @ctxt, m: mode) {
     match ty::resolved_mode(cx.tcx, m) {
       by_copy => w.write_char('+'),
       by_ref => w.write_char('='),
     }
 }
 
-fn enc_purity(w: io::Writer, p: purity) {
+fn enc_purity(w: @io::Writer, p: purity) {
     match p {
       pure_fn => w.write_char('p'),
       impure_fn => w.write_char('i'),
@@ -366,26 +366,26 @@ fn enc_purity(w: io::Writer, p: purity) {
     }
 }
 
-fn enc_abi(w: io::Writer, a: Abi) {
+fn enc_abi(w: @io::Writer, a: Abi) {
     match a {
         RustAbi => w.write_char('r'),
     }
 }
 
-fn enc_onceness(w: io::Writer, o: Onceness) {
+fn enc_onceness(w: @io::Writer, o: Onceness) {
     match o {
         Once => w.write_char('o'),
         Many => w.write_char('m')
     }
 }
 
-fn enc_bare_fn_ty(w: io::Writer, cx: @ctxt, ft: &ty::BareFnTy) {
+fn enc_bare_fn_ty(w: @io::Writer, cx: @ctxt, ft: &ty::BareFnTy) {
     enc_purity(w, ft.purity);
     enc_abi(w, ft.abi);
     enc_fn_sig(w, cx, &ft.sig);
 }
 
-fn enc_closure_ty(w: io::Writer, cx: @ctxt, ft: &ty::ClosureTy) {
+fn enc_closure_ty(w: @io::Writer, cx: @ctxt, ft: &ty::ClosureTy) {
     enc_sigil(w, ft.sigil);
     enc_purity(w, ft.purity);
     enc_onceness(w, ft.onceness);
@@ -393,7 +393,7 @@ fn enc_closure_ty(w: io::Writer, cx: @ctxt, ft: &ty::ClosureTy) {
     enc_fn_sig(w, cx, &ft.sig);
 }
 
-fn enc_fn_sig(w: io::Writer, cx: @ctxt, fsig: &ty::FnSig) {
+fn enc_fn_sig(w: @io::Writer, cx: @ctxt, fsig: &ty::FnSig) {
     w.write_char('[');
     for fsig.inputs.each |arg| {
         enc_arg(w, cx, *arg);
@@ -402,7 +402,7 @@ fn enc_fn_sig(w: io::Writer, cx: @ctxt, fsig: &ty::FnSig) {
     enc_ty(w, cx, fsig.output);
 }
 
-pub fn enc_bounds(w: io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
+pub fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
     for vec::each(*bs) |bound| {
         match *bound {
           ty::bound_owned => w.write_char('S'),

@@ -39,7 +39,7 @@ struct TestCtxt {
     sess: session::Session,
     crate: @ast::crate,
     path: ~[ast::ident],
-    ext_cx: ext_ctxt,
+    ext_cx: @ext_ctxt,
     testfns: ~[Test]
 }
 
@@ -102,7 +102,7 @@ fn strip_test_functions(crate: @ast::crate) -> @ast::crate {
 
 fn fold_mod(cx: @mut TestCtxt,
             m: &ast::_mod,
-            fld: fold::ast_fold)
+            fld: @fold::ast_fold)
          -> ast::_mod {
     // Remove any #[main] from the AST so it doesn't clash with
     // the one we're going to add. Only if compiling an executable.
@@ -125,7 +125,7 @@ fn fold_mod(cx: @mut TestCtxt,
 
 fn fold_crate(cx: @mut TestCtxt,
               c: &ast::crate_,
-              fld: fold::ast_fold)
+              fld: @fold::ast_fold)
            -> ast::crate_ {
     let folded = fold::noop_fold_crate(c, fld);
 
@@ -138,7 +138,7 @@ fn fold_crate(cx: @mut TestCtxt,
 }
 
 
-fn fold_item(cx: @mut TestCtxt, &&i: @ast::item, fld: fold::ast_fold)
+fn fold_item(cx: @mut TestCtxt, &&i: @ast::item, fld: @fold::ast_fold)
           -> Option<@ast::item> {
     cx.path.push(i.ident);
     debug!("current path: %s",

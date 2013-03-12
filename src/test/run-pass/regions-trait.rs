@@ -22,7 +22,7 @@ impl get_ctxt<'self> for HasCtxt<'self> {
     }
 }
 
-fn get_v(gc: get_ctxt) -> uint {
+fn get_v(gc: @get_ctxt) -> uint {
     gc.get_ctxt().v
 }
 

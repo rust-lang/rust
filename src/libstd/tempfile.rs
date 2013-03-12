@@ -12,6 +12,7 @@
 
 use core::os;
 use core::prelude::*;
+use core::rand::RngUtil;
 use core::rand;
 
 pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {

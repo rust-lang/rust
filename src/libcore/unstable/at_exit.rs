@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use sys;
 use cast;
+use libc::{c_void, size_t};
+use rand::RngUtil;
+use rand;
+use sys;
 use task;
 use vec;
-use rand;
-use libc::{c_void, size_t};
 
 #[cfg(test)] use uint;
 

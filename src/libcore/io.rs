@@ -785,8 +785,7 @@ pub fn fd_writer(fd: fd_t, cleanup: bool) -> @Writer {
 
 
 pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
-    -> Result<Writer, ~str> {
-
+                   -> Result<@Writer, ~str> {
     #[cfg(windows)]
     fn wb() -> c_int {
       (O_WRONLY | libc::consts::os::extra::O_BINARY) as c_int
@@ -1079,22 +1078,24 @@ impl<T:Writer> WriterUtil for T {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-pub fn file_writer(path: &Path, flags: &[FileFlag]) -> Result<Writer, ~str> {
+pub fn file_writer(path: &Path, flags: &[FileFlag]) -> Result<@Writer, ~str> {
     mk_file_writer(path, flags).chain(|w| result::Ok(w))
 }
 
 
 // FIXME: fileflags // #2004
-pub fn buffered_file_writer(path: &Path) -> Result<Writer, ~str> {
+pub fn buffered_file_writer(path: &Path) -> Result<@Writer, ~str> {
     unsafe {
         let f = do os::as_c_charp(path.to_str()) |pathbuf| {
             do os::as_c_charp("w") |modebuf| {
                 libc::fopen(pathbuf, modebuf)
             }
         };
-        return if f as uint == 0u { result::Err(~"error opening "
-                                                + path.to_str()) }
-        else { result::Ok(FILE_writer(f, true)) }
+        return if f as uint == 0u {
+            result::Err(~"error opening " + path.to_str())
+        } else {
+            result::Ok(FILE_writer(f, true))
+        }
     }
 }
 
@@ -1142,14 +1143,14 @@ pub pure fn BytesWriter() -> BytesWriter {
     BytesWriter { bytes: ~[], mut pos: 0u }
 }
 
-pub pure fn with_bytes_writer(f: &fn(Writer)) -> ~[u8] {
+pub pure fn with_bytes_writer(f: &fn(@Writer)) -> ~[u8] {
     let wr = @BytesWriter();
-    f(wr as Writer);
+    f(wr as @Writer);
     let @BytesWriter{bytes, _} = wr;
     return bytes;
 }
 
-pub pure fn with_str_writer(f: &fn(Writer)) -> ~str {
+pub pure fn with_str_writer(f: &fn(@Writer)) -> ~str {
     let mut v = with_bytes_writer(f);
 
     // FIXME (#3758): This should not be needed.
@@ -1277,8 +1278,8 @@ pub mod fsync {
     pub trait FSyncable { fn fsync(&self, l: Level) -> int; }
 
     // Call o.fsync after executing blk
-    pub fn obj_sync(o: FSyncable, opt_level: Option<Level>,
-                    blk: &fn(v: Res<FSyncable>)) {
+    pub fn obj_sync(o: @FSyncable, opt_level: Option<Level>,
+                    blk: &fn(v: Res<@FSyncable>)) {
         blk(Res(Arg {
             val: o, opt_level: opt_level,
             fsync_fn: |o, l| o.fsync(l)
@@ -1305,12 +1306,12 @@ mod tests {
             ~"A hoopy frood who really knows where his towel is.";
         debug!(copy frood);
         {
-            let out: io::Writer =
+            let out: @io::Writer =
                 result::get(
                     &io::file_writer(tmpfile, ~[io::Create, io::Truncate]));
             out.write_str(frood);
         }
-        let inp: io::Reader = result::get(&io::file_reader(tmpfile));
+        let inp: @io::Reader = result::get(&io::file_reader(tmpfile));
         let frood2: ~str = inp.read_c_str();
         debug!(copy frood2);
         fail_unless!(frood == frood2);
