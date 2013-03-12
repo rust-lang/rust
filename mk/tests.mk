@@ -687,7 +687,8 @@ $(foreach host,$(CFG_HOST_TRIPLES), \
  $(eval $(foreach target,$(CFG_TARGET_TRIPLES), \
    $(eval $(call DEF_CHECK_FAST_FOR_T_H,,$(target),$(host))))))
 
-check-fast: tidy check-fast-H-$(CFG_BUILD_TRIPLE)
+check-fast: tidy check-fast-H-$(CFG_BUILD_TRIPLE) \
+            check-stage2-core check-stage2-std
 
 define DEF_CHECK_FAST_FOR_H
 
