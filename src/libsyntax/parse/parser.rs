@@ -469,11 +469,11 @@ pub impl Parser {
                 either::Left(p.parse_arg_general(false))
             };
             // XXX: Wrong. Shouldn't allow both static and self_ty
-            let self_ty = if is_static { static_sty } else { self_ty };
-
-            if self_ty.node == sty_by_ref {
-                self.obsolete(self_ty.span, ObsoleteImplicitSelf);
-            }
+            let self_ty = if is_static || self_ty.node == sty_by_ref {
+                static_sty
+            } else {
+                self_ty
+            };
 
             let hi = p.last_span.hi;
             debug!("parse_trait_methods(): trait method signature ends in \
@@ -2983,11 +2983,11 @@ pub impl Parser {
             p.parse_arg()
         };
         // XXX: interaction between staticness, self_ty is broken now
-        let self_ty = if is_static { static_sty} else { self_ty };
-
-        if self_ty.node == sty_by_ref {
-            self.obsolete(self_ty.span, ObsoleteImplicitSelf);
-        }
+        let self_ty = if is_static || self_ty.node == sty_by_ref {
+            static_sty
+        } else {
+            self_ty
+        };
 
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
         let hi = body.span.hi;
