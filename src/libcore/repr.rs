@@ -218,7 +218,7 @@ pub impl ReprVisitor {
 
     fn write_escaped_slice(&self, slice: &str) {
         self.writer.write_char('"');
-        for str::chars_each(slice) |ch| {
+        for slice.each_char |ch| {
             self.writer.write_escaped_char(ch);
         }
         self.writer.write_char('"');

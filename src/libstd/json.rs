@@ -14,19 +14,13 @@
 
 //! json serialization
 
+use core::prelude::*;
+use core::io::{WriterUtil, ReaderUtil};
+use core::hashmap::linear::LinearMap;
+
 use serialize::Encodable;
 use serialize;
 use sort::Sort;
-
-use core::char;
-use core::cmp::{Eq, Ord};
-use core::float;
-use core::io::{WriterUtil, ReaderUtil};
-use core::io;
-use core::prelude::*;
-use core::hashmap::linear::LinearMap;
-use core::str;
-use core::to_str;
 
 /// Represents a json value
 pub enum Json {
@@ -49,7 +43,7 @@ pub struct Error {
 
 fn escape_str(s: &str) -> ~str {
     let mut escaped = ~"\"";
-    for str::chars_each(s) |c| {
+    for str::each_char(s) |c| {
         match c {
           '"' => escaped += ~"\\\"",
           '\\' => escaped += ~"\\\\",
