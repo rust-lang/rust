@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // rust - central access to other rust tools
-// XXX: Make commands run and test emit proper file endings on winds
-// XXX: Make run only accept source that emits an executable
+// FIXME #2238 Make commands run and test emit proper file endings on winds
+// FIXME #2238 Make run only accept source that emits an executable
 
 #[deny(deprecated_self)];
 
