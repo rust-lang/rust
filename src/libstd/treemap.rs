@@ -134,6 +134,11 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
         self.each(|&(_, v)| f(v))
     }
 
+    /// Iterate over the map and mutate the contained values
+    fn mutate_values(&mut self, f: &fn(&'self K, &'self mut V) -> bool) {
+        mutate_values(&mut self.root, f);
+    }
+
     /// Return the value corresponding to the key in the map
     pure fn find(&self, key: &K) -> Option<&self/V> {
         let mut current: &self/Option<~TreeNode<K, V>> = &self.root;
@@ -556,6 +561,20 @@ pure fn each_reverse<K: TotalOrd, V>(node: &r/Option<~TreeNode<K, V>>,
         each_reverse(&x.right, f);
         if f(&(&x.key, &x.value)) { each_reverse(&x.left, f) }
     }
+}
+
+fn mutate_values<K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
+                                 f: &fn(&'r K, &'r mut V) -> bool) -> bool {
+    match *node {
+      Some(~TreeNode{key: ref key, value: ref mut value, left: ref mut left,
+                     right: ref mut right, _}) => {
+        if !mutate_values(left, f) { return false }
+        if !f(key, value) { return false }
+        if !mutate_values(right, f) { return false }
+      }
+      None => return false
+    }
+    true
 }
 
 // Remove left horizontal link by rotating right

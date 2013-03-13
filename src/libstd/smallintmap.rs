@@ -85,7 +85,17 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
         self.each(|&(_, v)| blk(v))
     }
 
-    /// Return the value corresponding to the key in the map
+    /// Visit all key-value pairs in order
+    fn mutate_values(&mut self, it: &fn(&uint, &'self mut V) -> bool) {
+        for uint::range(0, self.v.len()) |i| {
+            match self.v[i] {
+              Some(ref mut elt) => if !it(&i, elt) { break },
+              None => ()
+            }
+        }
+    }
+
+    /// Iterate over the map and mutate the contained values
     pure fn find(&self, key: &uint) -> Option<&self/V> {
         if *key < self.v.len() {
             match self.v[*key] {

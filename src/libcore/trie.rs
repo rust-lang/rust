@@ -81,9 +81,14 @@ impl<T> Map<uint, T> for TrieMap<T> {
 
     /// Visit all values in order
     #[inline(always)]
-    pure fn each_value(&self,
-                       f: &fn(&T) -> bool) {
+    pure fn each_value(&self, f: &fn(&T) -> bool) {
         self.each(|&(_, v)| f(v))
+    }
+
+    /// Iterate over the map and mutate the contained values
+    #[inline(always)]
+    fn mutate_values(&mut self, f: &fn(&uint, &mut T) -> bool) {
+        self.root.mutate_values(f);
     }
 
     /// Return the value corresponding to the key in the map
@@ -149,11 +154,6 @@ impl<T> TrieMap<T> {
     #[inline(always)]
     pure fn each_value_reverse(&self, f: &fn(&T) -> bool) {
         self.each_reverse(|&(_, v)| f(v))
-    }
-
-    /// Iterate over the map and mutate the contained values
-    fn mutate_values(&mut self, f: &fn(uint, &mut T) -> bool) {
-        self.root.mutate_values(f);
     }
 }
 
@@ -248,13 +248,13 @@ impl<T> TrieNode<T> {
         true
     }
 
-    fn mutate_values(&mut self, f: &fn(uint, &mut T) -> bool) -> bool {
+    fn mutate_values(&mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
         for vec::each_mut(self.children) |child| {
             match *child {
                 Internal(ref mut x) => if !x.mutate_values(f) {
                     return false
                 },
-                External(k, ref mut v) => if !f(k, v) { return false },
+                External(k, ref mut v) => if !f(&k, v) { return false },
                 Nothing => ()
             }
         }
@@ -269,8 +269,8 @@ pure fn chunk(n: uint, idx: uint) -> uint {
     (n >> (SHIFT * real_idx)) & MASK
 }
 
-fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint,
-                   value: T, idx: uint) -> bool {
+fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
+             idx: uint) -> bool {
     let mut tmp = Nothing;
     tmp <-> *child;
     let mut added = false;
