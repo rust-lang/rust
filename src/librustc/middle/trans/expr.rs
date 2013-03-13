@@ -562,17 +562,33 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
             let mut constraints = ~[];
             let mut cleanups = ~[];
 
-            // TODO: Handle outputs
+            let outputs = do outs.map |&(c, out)| {
+                constraints.push(copy *c);
+
+                let outty = ty::arg {
+                    mode: ast::expl(ast::by_val),
+                    ty: expr_ty(bcx, out)
+                };
+
+                unpack_result!(bcx, {
+                    callee::trans_arg_expr(bcx, outty, out, &mut cleanups,
+                                           None, callee::DontAutorefArg)
+                })
+
+            };
+
+            for cleanups.each |c| {
+                revoke_clean(bcx, *c);
+            }
+            cleanups = ~[];
 
             let inputs = do ins.map |&(c, in)| {
-
                 constraints.push(copy *c);
 
                 let inty = ty::arg {
                     mode: ast::expl(ast::by_val),
                     ty: expr_ty(bcx, in)
                 };
-
                 
                 unpack_result!(bcx, {
                     callee::trans_arg_expr(bcx, inty, in, &mut cleanups,
@@ -598,14 +614,22 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
                 constraints += *clobs;
             }
 
-            io::println(fmt!("Inputs: %?\nConstraints: %?\n", ins, constraints));
+            io::println(fmt!("Constraints: %?\n", constraints));
 
-            do str::as_c_str(*asm) |a| {
+            // TODO: Handle >1 outputs
+            let output = outputs[0];
+
+            let r = do str::as_c_str(*asm) |a| {
                 do str::as_c_str(constraints) |c| {
-                    InlineAsmCall(bcx, a, c, inputs, volatile, alignstack,
-                                  lib::llvm::AD_ATT);
+                    InlineAsmCall(bcx, a, c, inputs, output, volatile,
+                                  alignstack, lib::llvm::AD_ATT)
                 }
-            }
+            };
+
+            // TODO: Handle >1 outputs
+            let op = PointerCast(bcx, output, T_ptr(val_ty(output)));
+            Store(bcx, r, op);
+
             return bcx;
         }
         _ => {
