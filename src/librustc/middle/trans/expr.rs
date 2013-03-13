@@ -629,10 +629,15 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
                 constraints += *clobs;
             }
 
-            io::println(fmt!("Constraints: %?\n", constraints));
+            debug!("Asm Constraints: %?", constraints);
 
-            // TODO: Handle >1 outputs
-            let output = outputs[0];
+            let output = if outputs.len() == 0 {
+                T_void()
+            } else if outputs.len() == 1 {
+                val_ty(outputs[0])
+            } else {
+                T_struct(outputs.map(|o| val_ty(*o)))
+            };
 
             let r = do str::as_c_str(*asm) |a| {
                 do str::as_c_str(constraints) |c| {
@@ -641,9 +646,16 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
                 }
             };
 
-            // TODO: Handle >1 outputs
-            let op = PointerCast(bcx, aoutputs[0], T_ptr(val_ty(output)));
-            Store(bcx, r, op);
+            if outputs.len() == 1 {
+                let op = PointerCast(bcx, aoutputs[0], T_ptr(val_ty(outputs[0])));
+                Store(bcx, r, op);
+            } else {
+                for aoutputs.eachi |i, o| {
+                    let v = ExtractValue(bcx, r, i);
+                    let op = PointerCast(bcx, *o, T_ptr(val_ty(outputs[i])));
+                    Store(bcx, v, op);
+                }
+            }
 
             return bcx;
         }
