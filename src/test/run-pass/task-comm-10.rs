@@ -20,10 +20,10 @@ fn start(c: &comm::Chan<comm::Chan<~str>>) {
     let mut b;
     a = p.recv();
     fail_unless!(a == ~"A");
-    log(error, a);
+    error!(a);
     b = p.recv();
     fail_unless!(b == ~"B");
-    log(error, b);
+    error!(b);
 }
 
 pub fn main() {

@@ -708,7 +708,7 @@ pub fn declare_tydesc(ccx: @CrateContext, t: ty::t) -> @mut tydesc_info {
         free_glue: None,
         visit_glue: None
     };
-    log(debug, ~"--- declare_tydesc " + ppaux::ty_to_str(ccx.tcx, t));
+    debug!("--- declare_tydesc %s", ppaux::ty_to_str(ccx.tcx, t));
     return inf;
 }
 

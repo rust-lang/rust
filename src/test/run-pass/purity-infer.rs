@@ -11,5 +11,5 @@
 
 fn something(f: &pure fn()) { f(); }
 pub fn main() {
-    something(|| log(error, "hi!") );
+    something(|| error!("hi!") );
 }

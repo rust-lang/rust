@@ -26,7 +26,7 @@ fn mk<T>() -> @mut Smallintmap<T> {
 
 fn f<T,U>() {
     let mut sim = mk::<U>();
-    log(error, sim);
+    error!(sim);
 }
 
 pub fn main() {

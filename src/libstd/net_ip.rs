@@ -117,7 +117,7 @@ pub fn get_addr(node: &str, iotask: &iotask)
     do str::as_buf(node) |node_ptr, len| {
         let output_ch = output_ch.swap_unwrap();
         unsafe {
-            log(debug, fmt!("slice len %?", len));
+            debug!("slice len %?", len);
             let handle = create_uv_getaddrinfo_t();
             let handle_ptr = ptr::addr_of(&handle);
             let handle_data = GetAddrData {
@@ -228,8 +228,8 @@ pub mod v4 {
 
             let new_addr = uv_ip4_addr(str::from_slice(ip), 22);
             let reformatted_name = uv_ip4_name(&new_addr);
-            log(debug, fmt!("try_parse_addr: input ip: %s reparsed ip: %s",
-                            ip, reformatted_name));
+            debug!("try_parse_addr: input ip: %s reparsed ip: %s",
+                            ip, reformatted_name);
             let ref_ip_rep_result = parse_to_ipv4_rep(reformatted_name);
             if result::is_err(&ref_ip_rep_result) {
                 let err_str = result::get_err(&ref_ip_rep_result);
@@ -282,8 +282,8 @@ pub mod v6 {
             // need to figure out how to establish a parse failure..
             let new_addr = uv_ip6_addr(str::from_slice(ip), 22);
             let reparsed_name = uv_ip6_name(&new_addr);
-            log(debug, fmt!("v6::try_parse_addr ip: '%s' reparsed '%s'",
-                            ip, reparsed_name));
+            debug!("v6::try_parse_addr ip: '%s' reparsed '%s'",
+                            ip, reparsed_name);
             // '::' appears to be uv_ip6_name() returns for bogus
             // parses..
             if  ip != &"::" && reparsed_name == ~"::" {
@@ -303,14 +303,14 @@ struct GetAddrData {
 extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
                       res: *addrinfo) {
     unsafe {
-        log(debug, ~"in get_addr_cb");
+        debug!("in get_addr_cb");
         let handle_data = get_data_for_req(handle) as
             *GetAddrData;
         let output_ch = (*handle_data).output_ch.clone();
         if status == 0i32 {
             if res != (ptr::null::<addrinfo>()) {
                 let mut out_vec = ~[];
-                log(debug, fmt!("initial addrinfo: %?", res));
+                debug!("initial addrinfo: %?", res);
                 let mut curr_addr = res;
                 loop {
                     let new_ip_addr = if ll::is_ipv4_addrinfo(curr_addr) {
@@ -322,8 +322,8 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
                             *ll::addrinfo_as_sockaddr_in6(curr_addr))))
                     }
                     else {
-                        log(debug, ~"curr_addr is not of family AF_INET or "+
-                            ~"AF_INET6. Error.");
+                        debug!("curr_addr is not of family AF_INET or \
+                                AF_INET6. Error.");
                         output_ch.send(
                             result::Err(GetAddrUnknownError));
                         break;
@@ -332,33 +332,33 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
 
                     let next_addr = ll::get_next_addrinfo(curr_addr);
                     if next_addr == ptr::null::<addrinfo>() as *addrinfo {
-                        log(debug, ~"null next_addr encountered. no mas");
+                        debug!("null next_addr encountered. no mas");
                         break;
                     }
                     else {
                         curr_addr = next_addr;
-                        log(debug, fmt!("next_addr addrinfo: %?", curr_addr));
+                        debug!("next_addr addrinfo: %?", curr_addr);
                     }
                 }
-                log(debug, fmt!("successful process addrinfo result, len: %?",
-                                vec::len(out_vec)));
+                debug!("successful process addrinfo result, len: %?",
+                                vec::len(out_vec));
                 output_ch.send(result::Ok(out_vec));
             }
             else {
-                log(debug, ~"addrinfo pointer is NULL");
+                debug!("addrinfo pointer is NULL");
                 output_ch.send(
                     result::Err(GetAddrUnknownError));
             }
         }
         else {
-            log(debug, ~"status != 0 error in get_addr_cb");
+            debug!("status != 0 error in get_addr_cb");
             output_ch.send(
                 result::Err(GetAddrUnknownError));
         }
         if res != (ptr::null::<addrinfo>()) {
             uv_freeaddrinfo(res);
         }
-        log(debug, ~"leaving get_addr_cb");
+        debug!("leaving get_addr_cb");
     }
 }
 
@@ -384,15 +384,15 @@ mod test {
     fn test_ip_ipv6_parse_and_format_ip() {
         let localhost_str = ~"::1";
         let format_result = format_addr(&v6::parse_addr(localhost_str));
-        log(debug, fmt!("results: expected: '%s' actual: '%s'",
-            localhost_str, format_result));
+        debug!("results: expected: '%s' actual: '%s'",
+            localhost_str, format_result);
         fail_unless!(format_result == localhost_str);
     }
     #[test]
     fn test_ip_ipv4_bad_parse() {
         match v4::try_parse_addr(~"b4df00d") {
           result::Err(ref err_info) => {
-            log(debug, fmt!("got error as expected %?", err_info));
+            debug!("got error as expected %?", err_info);
             fail_unless!(true);
           }
           result::Ok(ref addr) => {
@@ -405,7 +405,7 @@ mod test {
     fn test_ip_ipv6_bad_parse() {
         match v6::try_parse_addr(~"::,~2234k;") {
           result::Err(ref err_info) => {
-            log(debug, fmt!("got error as expected %?", err_info));
+            debug!("got error as expected %?", err_info);
             fail_unless!(true);
           }
           result::Ok(ref addr) => {
@@ -425,15 +425,15 @@ mod test {
         // note really sure how to realiably test/assert
         // this.. mostly just wanting to see it work, atm.
         let results = result::unwrap(ga_result);
-        log(debug, fmt!("test_get_addr: Number of results for %s: %?",
-                        localhost_name, vec::len(results)));
+        debug!("test_get_addr: Number of results for %s: %?",
+                        localhost_name, vec::len(results));
         for vec::each(results) |r| {
             let ipv_prefix = match *r {
               Ipv4(_) => ~"IPv4",
               Ipv6(_) => ~"IPv6"
             };
-            log(debug, fmt!("test_get_addr: result %s: '%s'",
-                            ipv_prefix, format_addr(r)));
+            debug!("test_get_addr: result %s: '%s'",
+                            ipv_prefix, format_addr(r));
         }
         // at least one result.. this is going to vary from system
         // to system, based on stuff like the contents of /etc/hosts

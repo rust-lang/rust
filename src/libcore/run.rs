@@ -458,7 +458,6 @@ pub fn waitpid(pid: pid_t) -> int {
 
 #[cfg(test)]
 mod tests {
-    use debug;
     use option::{None, Some};
     use os;
     use run::{readclose, writeclose};
@@ -494,8 +493,8 @@ mod tests {
         readclose(pipe_err.in);
         os::waitpid(pid);
 
-        log(debug, copy expected);
-        log(debug, copy actual);
+        debug!(copy expected);
+        debug!(copy actual);
         fail_unless!((expected == actual));
     }
 

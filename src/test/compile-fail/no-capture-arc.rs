@@ -24,5 +24,5 @@ fn main() {
 
     fail_unless!((*arc::get(&arc_v))[2] == 3);
 
-    log(info, arc_v);
+    info!(arc_v);
 }

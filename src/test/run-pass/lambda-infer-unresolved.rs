@@ -16,6 +16,6 @@ struct Refs { refs: ~[int], n: int }
 
 pub fn main() {
     let e = @mut Refs{refs: ~[], n: 0};
-    let f: @fn() = || log(error, e.n);
+    let f: @fn() = || error!(e.n);
     e.refs += ~[1];
 }

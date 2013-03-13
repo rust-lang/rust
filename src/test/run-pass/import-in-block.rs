@@ -10,9 +10,9 @@
 
 pub fn main() {
     use core::vec::from_fn;
-    log(debug, ::core::vec::len(from_fn(2, |i| i)));
+    debug!(::core::vec::len(from_fn(2, |i| i)));
     {
         use core::vec::*;
-        log(debug, len(~[2]));
+        debug!(len(~[2]));
     }
 }

@@ -14,7 +14,7 @@ enum bar { u(~int), w(int), }
 pub fn main() {
     fail_unless!(match u(~10) {
       u(a) => {
-        log(error, a);
+        error!(a);
         *a
       }
       _ => { 66 }

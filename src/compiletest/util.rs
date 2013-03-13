@@ -46,6 +46,6 @@ pub fn path_div() -> ~str { ~":" }
 pub fn path_div() -> ~str { ~";" }
 
 pub fn logv(config: config, s: ~str) {
-    log(debug, s);
+    debug!("%s", s);
     if config.verbose { io::println(s); }
 }

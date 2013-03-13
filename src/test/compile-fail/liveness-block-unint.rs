@@ -12,6 +12,6 @@ fn force(f: &fn()) { f(); }
 fn main() {
     let x: int;
     force(|| {
-        log(debug, x); //~ ERROR capture of possibly uninitialized variable: `x`
+        debug!(x); //~ ERROR capture of possibly uninitialized variable: `x`
     });
 }

@@ -301,16 +301,16 @@ pub mod pingpong {
 
 fn client(-chan: pingpong::client::ping) {
     let chan = pingpong::client::do_ping(chan);
-    log(error, ~"Sent ping");
+    error!(~"Sent ping");
     let (_chan, _data) = pingpong::client::do_pong(chan);
-    log(error, ~"Received pong");
+    error!(~"Received pong");
 }
 
 fn server(-chan: pingpong::server::ping) {
     let (chan, _data) = pingpong::server::do_ping(chan);
-    log(error, ~"Received ping");
+    error!(~"Received ping");
     let _chan = pingpong::server::do_pong(chan);
-    log(error, ~"Sent pong");
+    error!(~"Sent pong");
 }
 
 pub fn main() {

@@ -17,7 +17,7 @@ fn test05_start(&&f: ~fn(int)) {
 fn test05() {
     let three = ~3;
     let fn_to_send: ~fn(int) = |n| {
-        log(error, *three + n); // will copy x into the closure
+        error!(*three + n); // will copy x into the closure
         fail_unless!((*three == 3));
     };
     task::spawn(|| {

@@ -16,7 +16,7 @@ pub fn main() {
     let x = 1 == 2 || 3 == 3;
     fail_unless!((x));
     let mut y: int = 10;
-    log(debug, x || incr(&mut y));
+    debug!(x || incr(&mut y));
     fail_unless!((y == 10));
     if true && x { fail_unless!((true)); } else { fail_unless!((false)); }
 }

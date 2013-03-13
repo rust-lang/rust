@@ -21,8 +21,8 @@ pub fn main() {
     let mut j: int = 0;
     do pairs() |p| {
         let (_0, _1) = p;
-        log(debug, _0);
-        log(debug, _1);
+        debug!(_0);
+        debug!(_1);
         fail_unless!((_0 + 10 == i));
         i += 1;
         j = _1;
