@@ -44,7 +44,7 @@ be generated once they are invoked with specific type parameters,
 see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
 pub fn trans_impl(ccx: @CrateContext, +path: path, name: ast::ident,
-                  methods: ~[@ast::method], generics: &ast::Generics,
+                  methods: &[@ast::method], generics: &ast::Generics,
                   self_ty: Option<ty::t>, id: ast::node_id) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
     if !generics.ty_params.is_empty() { return; }

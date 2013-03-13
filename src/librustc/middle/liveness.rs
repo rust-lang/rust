@@ -427,7 +427,7 @@ pub impl IrMaps {
             v.push(id);
           }
           Arg(_, _, by_ref) |
-          Arg(_, _, by_val) | ImplicitRet => {
+          ImplicitRet => {
             debug!("--but it is not owned");
           }
         }
@@ -1006,7 +1006,7 @@ pub impl Liveness {
         // inputs passed by & mode should be considered live on exit:
         for decl.inputs.each |arg| {
             match ty::resolved_mode(self.tcx, arg.mode) {
-                by_val | by_ref => {
+                by_ref => {
                     // By val and by ref do not own, so register a
                     // read at the end.  This will prevent us from
                     // moving out of such variables but also prevent

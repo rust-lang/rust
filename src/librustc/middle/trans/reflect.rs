@@ -313,7 +313,6 @@ pub impl Reflector {
                 ast::infer(_) => 0u,
                 ast::expl(e) => match e {
                     ast::by_ref => 1u,
-                    ast::by_val => 2u,
                     ast::by_copy => 5u
                 }
             };

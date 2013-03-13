@@ -21,24 +21,21 @@ use util::ppaux;
 use core::option::None;
 use syntax::ast;
 
-pub fn type_of_explicit_arg(ccx: @CrateContext, arg: ty::arg) -> TypeRef {
-    let llty = type_of(ccx, arg.ty);
+pub fn arg_is_indirect(ccx: @CrateContext, arg: &ty::arg) -> bool {
     match ty::resolved_mode(ccx.tcx, arg.mode) {
-        ast::by_val => llty,
-        ast::by_copy => {
-            if ty::type_is_immediate(arg.ty) {
-                llty
-            } else {
-                T_ptr(llty)
-            }
-        }
-        _ => T_ptr(llty)
+        ast::by_copy => !ty::type_is_immediate(arg.ty),
+        ast::by_ref => true
     }
+}
+
+pub fn type_of_explicit_arg(ccx: @CrateContext, arg: &ty::arg) -> TypeRef {
+    let llty = type_of(ccx, arg.ty);
+    if arg_is_indirect(ccx, arg) {T_ptr(llty)} else {llty}
 }
 
 pub fn type_of_explicit_args(ccx: @CrateContext,
                              inputs: &[ty::arg]) -> ~[TypeRef] {
-    inputs.map(|arg| type_of_explicit_arg(ccx, *arg))
+    inputs.map(|arg| type_of_explicit_arg(ccx, arg))
 }
 
 pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::arg],

@@ -53,7 +53,7 @@ fn switch<T:Owned,U>(+endp: pipes::RecvPacket<T>,
     f(pipes::try_recv(endp))
 }
 
-fn move_it<T>(-x: T) -> T { x }
+fn move_it<T>(+x: T) -> T { x }
 
 macro_rules! follow (
     {

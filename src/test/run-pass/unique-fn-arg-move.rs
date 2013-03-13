@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(-i: ~int) {
+fn f(+i: ~int) {
     fail_unless!(*i == 100);
 }
 

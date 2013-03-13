@@ -12,7 +12,7 @@ pub mod rusti {
     #[abi = "rust-intrinsic"]
     #[link_name = "rusti"]
     pub extern {
-        fn forget<T>(-x: T);
+        fn forget<T>(+x: T);
         fn reinterpret_cast<T, U>(&&e: T) -> U;
     }
 }

@@ -782,7 +782,7 @@ pub impl VisitContext {
          */
 
         match arg_mode {
-            by_val | by_ref => self.use_expr(arg_expr, Read, visitor),
+            by_ref => self.use_expr(arg_expr, Read, visitor),
             by_copy => self.consume_expr(arg_expr, visitor)
         }
     }

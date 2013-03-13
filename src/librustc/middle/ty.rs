@@ -1110,7 +1110,7 @@ pub fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
             // forward-compatible with non-legacy, we should use +
             ast::by_copy
         } else if ty::type_is_immediate(ty) {
-            ast::by_val
+            ast::by_copy
         } else {
             ast::by_ref
         }

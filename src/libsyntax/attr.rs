@@ -72,7 +72,7 @@ pub fn attr_meta(attr: ast::attribute) -> @ast::meta_item {
 }
 
 // Get the meta_items from inside a vector of attributes
-pub fn attr_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
+pub fn attr_metas(attrs: &[ast::attribute]) -> ~[@ast::meta_item] {
     do attrs.map |a| { attr_meta(*a) }
 }
 
@@ -214,7 +214,7 @@ pub fn attrs_contains_name(attrs: &[ast::attribute], name: &str) -> bool {
     !find_attrs_by_name(attrs, name).is_empty()
 }
 
-pub fn first_attr_value_str_by_name(attrs: ~[ast::attribute], name: &str)
+pub fn first_attr_value_str_by_name(attrs: &[ast::attribute], name: &str)
                                  -> Option<@~str> {
 
     let mattrs = find_attrs_by_name(attrs, name);
@@ -304,7 +304,7 @@ pub fn find_linkage_metas(attrs: &[ast::attribute]) -> ~[@ast::meta_item] {
     }
 }
 
-pub fn foreign_abi(attrs: ~[ast::attribute])
+pub fn foreign_abi(attrs: &[ast::attribute])
                 -> Either<~str, ast::foreign_abi> {
     return match attr::first_attr_value_str_by_name(attrs, ~"abi") {
         None => {

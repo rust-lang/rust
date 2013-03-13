@@ -427,7 +427,6 @@ fn parse_mode(st: @mut PState) -> ast::mode {
     let m = ast::expl(match next(st) {
         '+' => ast::by_copy,
         '=' => ast::by_ref,
-        '#' => ast::by_val,
         _ => fail!(~"bad mode")
     });
     return m;

@@ -222,7 +222,7 @@ fn metas_with_ident(ident: @~str, +metas: ~[@ast::meta_item])
     metas_with(ident, @~"name", metas)
 }
 
-fn existing_match(e: @mut Env, metas: ~[@ast::meta_item], hash: @~str)
+fn existing_match(e: @mut Env, metas: &[@ast::meta_item], hash: @~str)
                -> Option<int> {
     for e.crate_cache.each |c| {
         if loader::metadata_matches(*c.metas, metas)

@@ -8,19 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn borrow(_v: &int) {}
-
-fn borrow_from_arg_imm_ref(&&v: ~int) {
-    borrow(v);
-}
-
-fn borrow_from_arg_mut_ref(v: &mut ~int) {
-    borrow(*v);
-}
-
-fn borrow_from_arg_copy(+v: ~int) {
-    borrow(v);
+pub extern {
+    pub fn rust_dbg_extern_identity_double(v: f64) -> f64;
 }
 
 pub fn main() {
+    unsafe {
+        fail_unless!(22.0_f64 == rust_dbg_extern_identity_double(22.0_f64));
+    }
 }
+
