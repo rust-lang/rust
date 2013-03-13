@@ -567,7 +567,7 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
                 constraints.push(copy *c);
 
                 let aoutty = ty::arg {
-                    mode: ast::expl(ast::by_val),
+                    mode: ast::expl(ast::by_copy),
                     ty: expr_ty(bcx, out)
                 };
                 aoutputs.push(unpack_result!(bcx, {
@@ -581,7 +581,7 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
                 };
 
                 let outty = ty::arg {
-                    mode: ast::expl(ast::by_val),
+                    mode: ast::expl(ast::by_copy),
                     ty: expr_ty(bcx, e)
                 };
 
@@ -601,7 +601,7 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
                 constraints.push(copy *c);
 
                 let inty = ty::arg {
-                    mode: ast::expl(ast::by_val),
+                    mode: ast::expl(ast::by_copy),
                     ty: expr_ty(bcx, in)
                 };
 
