@@ -11,13 +11,13 @@
 #[link(name="cci_impl_lib", vers="0.0")];
 
 trait uint_helpers {
-    fn to(self, v: uint, f: &fn(uint));
+    fn to(&self, v: uint, f: &fn(uint));
 }
 
 impl uint_helpers for uint {
     #[inline]
-    fn to(self, v: uint, f: &fn(uint)) {
-        let mut i = self;
+    fn to(&self, v: uint, f: &fn(uint)) {
+        let mut i = *self;
         while i < v {
             f(i);
             i += 1u;
