@@ -464,6 +464,15 @@ pub fn core_macros() -> ~str {
         }
     )
 
+    macro_rules! assert_eq (
+        ($given:expr , $expected:expr) =>
+        ({let given_val = $given;
+          let expected_val = $expected;
+          // check both directions of equality....
+          if !((given_val == expected_val) && (expected_val == given_val)) {
+            fail!(fmt!(\"expected: %?, given: %?\",expected_val,given_val));
+        }}))
+
     macro_rules! condition (
 
         { $c:ident: $in:ty -> $out:ty; } => {
@@ -480,6 +489,7 @@ pub fn core_macros() -> ~str {
             }
         }
     )
+
 
 }";
 }
