@@ -176,7 +176,7 @@ fn crate_matches(crate_data: @~[u8],
     metadata_matches(linkage_metas, metas)
 }
 
-pub fn metadata_matches(extern_metas: ~[@ast::meta_item],
+pub fn metadata_matches(extern_metas: &[@ast::meta_item],
                         local_metas: &[@ast::meta_item]) -> bool {
 
     debug!("matching %u metadata requirements against %u items",

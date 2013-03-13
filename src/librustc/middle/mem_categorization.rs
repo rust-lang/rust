@@ -486,14 +486,6 @@ pub impl mem_categorization_ctxt {
             let lp = match ty::resolved_mode(self.tcx, mode) {
                 ast::by_copy => Some(@lp_arg(vid)),
                 ast::by_ref => None,
-                ast::by_val => {
-                    // by-value is this hybrid mode where we have a
-                    // pointer but we do not own it.  This is not
-                    // considered loanable because, for example, a by-ref
-                    // and and by-val argument might both actually contain
-                    // the same unique ptr.
-                    None
-                }
             };
             @cmt_ {
                 id:id,

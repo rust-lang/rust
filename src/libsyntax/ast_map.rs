@@ -148,7 +148,7 @@ pub fn map_crate(diag: span_handler, c: crate) -> map {
 // the item itself.
 pub fn map_decoded_item(diag: span_handler,
                         map: map,
-                        path: path,
+                        +path: path,
                         ii: inlined_item) {
     // I believe it is ok for the local IDs of inlined items from other crates
     // to overlap with the local ids from this crate, so just generate the ids
@@ -171,10 +171,10 @@ pub fn map_decoded_item(diag: span_handler,
       ii_item(*) | ii_dtor(*) => { /* fallthrough */ }
       ii_foreign(i) => {
         cx.map.insert(i.id, node_foreign_item(i, foreign_abi_rust_intrinsic,
-                                              @/*bad*/ copy path));
+                                              @path));
       }
       ii_method(impl_did, m) => {
-        map_method(impl_did, @/*bad*/ copy path, m, cx);
+        map_method(impl_did, @path, m, cx);
       }
     }
 
