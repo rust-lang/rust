@@ -558,12 +558,51 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
             return trans_rvalue_stmt_unadjusted(bcx, a);
         }
         ast::expr_inline_asm(asm, ref ins, ref outs,
-                             cons, volatile, alignstack) => {
-            // XXX: cons doesn't actual contain ALL the stuff we should
-            // be passing since the constraints for in/outputs aren't included
+                             clobs, volatile, alignstack) => {
+            let mut constraints = ~[];
+            let mut cleanups = ~[];
+
+            // TODO: Handle outputs
+
+            let inputs = do ins.map |&(c, in)| {
+
+                constraints.push(copy *c);
+
+                let inty = ty::arg {
+                    mode: ast::expl(ast::by_val),
+                    ty: expr_ty(bcx, in)
+                };
+
+                
+                unpack_result!(bcx, {
+                    callee::trans_arg_expr(bcx, inty, in, &mut cleanups,
+                                           None, callee::DontAutorefArg)
+                })
+
+            };
+
+            for cleanups.each |c| {
+                revoke_clean(bcx, *c);
+            }
+
+            let mut constraints = str::connect(constraints, ",");
+
+            // Add the clobbers
+            if *clobs != ~"" {
+                if constraints == ~"" {
+                    constraints += *clobs;
+                } else {
+                    constraints += ~"," + *clobs;
+                }
+            } else {
+                constraints += *clobs;
+            }
+
+            io::println(fmt!("Inputs: %?\nConstraints: %?\n", ins, constraints));
+
             do str::as_c_str(*asm) |a| {
-                do str::as_c_str(*cons) |c| {
-                    InlineAsmCall(bcx, a, c, volatile, alignstack,
+                do str::as_c_str(constraints) |c| {
+                    InlineAsmCall(bcx, a, c, inputs, volatile, alignstack,
                                   lib::llvm::AD_ATT);
                 }
             }
