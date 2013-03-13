@@ -172,9 +172,13 @@ pub impl protocol_ {
     }
 }
 
-pub impl protocol {
-    fn add_state_poly(&self, +name: ~str, ident: ast::ident, dir: direction,
-                      +generics: ast::Generics) -> state {
+pub impl protocol_ {
+    fn add_state_poly(@mut self,
+                      +name: ~str,
+                      ident: ast::ident,
+                      dir: direction,
+                      +generics: ast::Generics)
+                   -> state {
         let messages = @mut ~[];
 
         let state = @state_ {
@@ -185,7 +189,7 @@ pub impl protocol {
             dir: dir,
             generics: generics,
             messages: messages,
-            proto: *self
+            proto: self
         };
 
         self.states.push(state);

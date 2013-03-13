@@ -72,8 +72,8 @@ pub fn get_base_type(inference_context: @mut InferCtxt,
                   -> Option<t> {
     let resolved_type;
     match resolve_type(inference_context,
-                     original_type,
-                     resolve_ivar) {
+                       original_type,
+                       resolve_ivar) {
         Ok(resulting_type) if !type_is_ty_var(resulting_type) => {
             resolved_type = resulting_type;
         }
@@ -87,15 +87,6 @@ pub fn get_base_type(inference_context: @mut InferCtxt,
     }
 
     match get(resolved_type).sty {
-        ty_box(base_mutability_and_type) |
-        ty_uniq(base_mutability_and_type) |
-        ty_ptr(base_mutability_and_type) |
-        ty_rptr(_, base_mutability_and_type) => {
-            debug!("(getting base type) recurring");
-            get_base_type(inference_context, span,
-                          base_mutability_and_type.ty)
-        }
-
         ty_enum(*) | ty_trait(*) | ty_struct(*) => {
             debug!("(getting base type) found base type");
             Some(resolved_type)
@@ -104,7 +95,8 @@ pub fn get_base_type(inference_context: @mut InferCtxt,
         ty_nil | ty_bot | ty_bool | ty_int(*) | ty_uint(*) | ty_float(*) |
         ty_estr(*) | ty_evec(*) | ty_bare_fn(*) | ty_closure(*) | ty_tup(*) |
         ty_infer(*) | ty_param(*) | ty_self | ty_type | ty_opaque_box |
-        ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) | ty_err => {
+        ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) | ty_err | ty_box(_) |
+        ty_uniq(_) | ty_ptr(_) | ty_rptr(_, _) => {
             debug!("(getting base type) no base type; found %?",
                    get(original_type).sty);
             None
