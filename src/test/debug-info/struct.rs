@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-// compile-flags:-g
-// debugger:break 32
+// compile-flags:-Z extra-debug-info
+// debugger:set print pretty off
+// debugger:break 29
 // debugger:run
 // debugger:print pair
-// check:$1 = {
-// check:x = 1,
-// check:y = 2,
-// check:}
+// check:$1 = {x = 1, y = 2}
 // debugger:print pair.x
 // check:$2 = 1
 // debugger:print pair.y
@@ -29,5 +26,5 @@ struct Pair {
 
 fn main() {
     let pair = Pair { x: 1, y: 2 };
-    debug!("x = %d, y = %d", pair.x, pair.y);
+    let _z = ();
 }
