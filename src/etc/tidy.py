@@ -5,7 +5,7 @@ import sys, fileinput, subprocess, re
 from licenseck import *
 
 err=0
-cols=78
+cols=100
 
 # Be careful to support Python 2.4, 2.6, and 3.x here!
 config_proc=subprocess.Popen([ "git", "config", "core.autocrlf" ],
