@@ -46,7 +46,6 @@ pub mod visit;
 pub mod fold;
 pub mod util {
     pub mod interner;
-    pub mod testing;
 }
 
 

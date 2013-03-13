@@ -117,7 +117,7 @@ pub fn tok_str(++t: token) -> ~str {
 pub fn buf_str(toks: ~[token], szs: ~[int], left: uint, right: uint,
                lim: uint) -> ~str {
     let n = vec::len(toks);
-    fail_unless!((n == vec::len(szs)));
+    fail_unless!(n == vec::len(szs));
     let mut i = left;
     let mut L = lim;
     let mut s = ~"[";

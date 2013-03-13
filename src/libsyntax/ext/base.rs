@@ -509,7 +509,6 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 #[cfg(test)]
 mod test {
     use super::MapChain;
-    use util::testing::check_equal;
     use core::hashmap::linear::LinearMap;
 
     #[test] fn testenv () {
@@ -517,23 +516,23 @@ mod test {
         a.insert (@~"abc",@15);
         let m = MapChain::new(~a);
         m.insert (@~"def",@16);
-        // FIXME: #4492 (ICE)  check_equal(m.find(&@~"abc"),Some(@15));
-        //  ....               check_equal(m.find(&@~"def"),Some(@16));
-        check_equal(*(m.find(&@~"abc").get()),15);
-        check_equal(*(m.find(&@~"def").get()),16);
+        // FIXME: #4492 (ICE)  assert_eq!(m.find(&@~"abc"),Some(@15));
+        //  ....               assert_eq!(m.find(&@~"def"),Some(@16));
+        assert_eq!(*(m.find(&@~"abc").get()),15);
+        assert_eq!(*(m.find(&@~"def").get()),16);
         let n = m.push_frame();
         // old bindings are still present:
-        check_equal(*(n.find(&@~"abc").get()),15);
-        check_equal(*(n.find(&@~"def").get()),16);
+        assert_eq!(*(n.find(&@~"abc").get()),15);
+        assert_eq!(*(n.find(&@~"def").get()),16);
         n.insert (@~"def",@17);
         // n shows the new binding
-        check_equal(*(n.find(&@~"abc").get()),15);
-        check_equal(*(n.find(&@~"def").get()),17);
+        assert_eq!(*(n.find(&@~"abc").get()),15);
+        assert_eq!(*(n.find(&@~"def").get()),17);
         // ... but m still has the old ones
-        // FIXME: #4492: check_equal(m.find(&@~"abc"),Some(@15));
-        // FIXME: #4492: check_equal(m.find(&@~"def"),Some(@16));
-        check_equal(*(m.find(&@~"abc").get()),15);
-        check_equal(*(m.find(&@~"def").get()),16);
+        // FIXME: #4492: assert_eq!(m.find(&@~"abc"),Some(@15));
+        // FIXME: #4492: assert_eq!(m.find(&@~"def"),Some(@16));
+        assert_eq!(*(m.find(&@~"abc").get()),15);
+        assert_eq!(*(m.find(&@~"def").get()),16);
     }
 }
 

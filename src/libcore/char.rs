@@ -288,16 +288,16 @@ fn test_is_whitespace() {
 
 #[test]
 fn test_to_digit() {
-    fail_unless!(to_digit('0', 10u) == Some(0u));
-    fail_unless!(to_digit('1', 2u) == Some(1u));
-    fail_unless!(to_digit('2', 3u) == Some(2u));
-    fail_unless!(to_digit('9', 10u) == Some(9u));
-    fail_unless!(to_digit('a', 16u) == Some(10u));
-    fail_unless!(to_digit('A', 16u) == Some(10u));
-    fail_unless!(to_digit('b', 16u) == Some(11u));
-    fail_unless!(to_digit('B', 16u) == Some(11u));
-    fail_unless!(to_digit('z', 36u) == Some(35u));
-    fail_unless!(to_digit('Z', 36u) == Some(35u));
+    assert_eq!(to_digit('0', 10u), Some(0u));
+    assert_eq!(to_digit('1', 2u), Some(1u));
+    assert_eq!(to_digit('2', 3u), Some(2u));
+    assert_eq!(to_digit('9', 10u), Some(9u));
+    assert_eq!(to_digit('a', 16u), Some(10u));
+    assert_eq!(to_digit('A', 16u), Some(10u));
+    assert_eq!(to_digit('b', 16u), Some(11u));
+    assert_eq!(to_digit('B', 16u), Some(11u));
+    assert_eq!(to_digit('z', 36u), Some(35u));
+    assert_eq!(to_digit('Z', 36u), Some(35u));
 
     fail_unless!(to_digit(' ', 10u).is_none());
     fail_unless!(to_digit('$', 36u).is_none());
@@ -321,28 +321,28 @@ fn test_is_digit() {
 
 #[test]
 fn test_escape_default() {
-    fail_unless!(escape_default('\n') == ~"\\n");
-    fail_unless!(escape_default('\r') == ~"\\r");
-    fail_unless!(escape_default('\'') == ~"\\'");
-    fail_unless!(escape_default('"') == ~"\\\"");
-    fail_unless!(escape_default(' ') == ~" ");
-    fail_unless!(escape_default('a') == ~"a");
-    fail_unless!(escape_default('~') == ~"~");
-    fail_unless!(escape_default('\x00') == ~"\\x00");
-    fail_unless!(escape_default('\x1f') == ~"\\x1f");
-    fail_unless!(escape_default('\x7f') == ~"\\x7f");
-    fail_unless!(escape_default('\xff') == ~"\\xff");
-    fail_unless!(escape_default('\u011b') == ~"\\u011b");
-    fail_unless!(escape_default('\U0001d4b6') == ~"\\U0001d4b6");
+    assert_eq!(escape_default('\n'), ~"\\n");
+    assert_eq!(escape_default('\r'), ~"\\r");
+    assert_eq!(escape_default('\''), ~"\\'");
+    assert_eq!(escape_default('"'), ~"\\\"");
+    assert_eq!(escape_default(' '), ~" ");
+    assert_eq!(escape_default('a'), ~"a");
+    assert_eq!(escape_default('~'), ~"~");
+    assert_eq!(escape_default('\x00'), ~"\\x00");
+    assert_eq!(escape_default('\x1f'), ~"\\x1f");
+    assert_eq!(escape_default('\x7f'), ~"\\x7f");
+    assert_eq!(escape_default('\xff'), ~"\\xff");
+    assert_eq!(escape_default('\u011b'), ~"\\u011b");
+    assert_eq!(escape_default('\U0001d4b6'), ~"\\U0001d4b6");
 }
 
 
 #[test]
 fn test_escape_unicode() {
-    fail_unless!(escape_unicode('\x00') == ~"\\x00");
-    fail_unless!(escape_unicode('\n') == ~"\\x0a");
-    fail_unless!(escape_unicode(' ') == ~"\\x20");
-    fail_unless!(escape_unicode('a') == ~"\\x61");
-    fail_unless!(escape_unicode('\u011b') == ~"\\u011b");
-    fail_unless!(escape_unicode('\U0001d4b6') == ~"\\U0001d4b6");
+    assert_eq!(escape_unicode('\x00'), ~"\\x00");
+    assert_eq!(escape_unicode('\n'), ~"\\x0a");
+    assert_eq!(escape_unicode(' '), ~"\\x20");
+    assert_eq!(escape_unicode('a'), ~"\\x61");
+    assert_eq!(escape_unicode('\u011b'), ~"\\u011b");
+    assert_eq!(escape_unicode('\U0001d4b6'), ~"\\U0001d4b6");
 }

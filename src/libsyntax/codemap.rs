@@ -208,7 +208,8 @@ pub enum ExpnInfo {
 
 pub type FileName = ~str;
 
-pub struct FileLines {
+pub struct FileLines
+{
     file: @FileMap,
     lines: ~[uint]
 }
@@ -509,17 +510,16 @@ priv impl CodeMap {
 #[cfg(test)]
 mod test {
     use super::*;
-    use util::testing::check_equal;
 
     #[test]
     fn t1 () {
         let cm = CodeMap::new();
         let fm = cm.new_filemap(~"blork.rs",@~"first line.\nsecond line");
         fm.next_line(BytePos(0));
-        check_equal(&fm.get_line(0),&~"first line.");
+        assert_eq!(&fm.get_line(0),&~"first line.");
         // TESTING BROKEN BEHAVIOR:
         fm.next_line(BytePos(10));
-        check_equal(&fm.get_line(1),&~".");
+        assert_eq!(&fm.get_line(1),&~".");
     }
 
     #[test]
