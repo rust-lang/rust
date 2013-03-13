@@ -873,6 +873,7 @@ pub fn add_comment(bcx: block, text: &str) {
 }
 
 pub fn InlineAsmCall(cx: block, asm: *c_char, cons: *c_char,
+                     inputs: &[ValueRef],
                      volatile: bool, alignstack: bool,
                      dia: AsmDialect) -> ValueRef {
     unsafe {
@@ -883,11 +884,15 @@ pub fn InlineAsmCall(cx: block, asm: *c_char, cons: *c_char,
         let alignstack = if alignstack { lib::llvm::True }
                          else          { lib::llvm::False };
 
-        let llfty = T_fn(~[], T_void());
+        let argtys = do inputs.map |v| {
+            io::println(fmt!("ARG TYPE: %?", val_str(cx.ccx().tn, *v)));
+            val_ty(*v)
+        };
+        let llfty = T_fn(argtys, T_void());
         let v = llvm::LLVMInlineAsm(llfty, asm, cons, volatile,
                                     alignstack, dia as c_uint);
 
-        Call(cx, v, ~[])
+        Call(cx, v, inputs)
     }
 }
 
