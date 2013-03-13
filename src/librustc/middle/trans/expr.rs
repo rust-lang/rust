@@ -561,17 +561,32 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
                              clobs, volatile, alignstack) => {
             let mut constraints = ~[];
             let mut cleanups = ~[];
+            let mut aoutputs = ~[];
 
             let outputs = do outs.map |&(c, out)| {
                 constraints.push(copy *c);
 
-                let outty = ty::arg {
+                let aoutty = ty::arg {
                     mode: ast::expl(ast::by_val),
                     ty: expr_ty(bcx, out)
                 };
+                aoutputs.push(unpack_result!(bcx, {
+                    callee::trans_arg_expr(bcx, aoutty, out, &mut cleanups,
+                                           None, callee::DontAutorefArg)
+                    }));
+
+                let e = match out.node {
+                    ast::expr_addr_of(_, e) => e,
+                    _ => fail!(~"Expression must be addr of")
+                };
+
+                let outty = ty::arg {
+                    mode: ast::expl(ast::by_val),
+                    ty: expr_ty(bcx, e)
+                };
 
                 unpack_result!(bcx, {
-                    callee::trans_arg_expr(bcx, outty, out, &mut cleanups,
+                    callee::trans_arg_expr(bcx, outty, e, &mut cleanups,
                                            None, callee::DontAutorefArg)
                 })
 
@@ -627,7 +642,7 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
             };
 
             // TODO: Handle >1 outputs
-            let op = PointerCast(bcx, output, T_ptr(val_ty(output)));
+            let op = PointerCast(bcx, aoutputs[0], T_ptr(val_ty(output)));
             Store(bcx, r, op);
 
             return bcx;
