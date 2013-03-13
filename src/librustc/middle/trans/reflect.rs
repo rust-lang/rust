@@ -96,14 +96,14 @@ pub impl Reflector {
         }
         let bool_ty = ty::mk_bool(tcx);
         let scratch = scratch_datum(bcx, bool_ty, false);
-        // XXX: Should not be vstore_box!
+        // XXX: Should not be BoxTraitStore!
         let bcx = callee::trans_call_inner(
             self.bcx, None, mth_ty, bool_ty,
             |bcx| meth::trans_trait_callee_from_llval(bcx,
                                                       mth_ty,
                                                       mth_idx,
                                                       v,
-                                                      ty::vstore_box,
+                                                      ty::BoxTraitStore,
                                                       ast::sty_region(
                                                         ast::m_imm)),
             ArgVals(args), SaveIn(scratch.val), DontAutorefArg);

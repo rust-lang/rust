@@ -29,7 +29,7 @@ impl<A:Copy + Serializable> Serializable for F<A> {
     }
 }
 
-impl Serializer for io::Writer {
+impl Serializer for @io::Writer {
 }
 
 pub fn main() {

@@ -138,7 +138,7 @@ condition! {
     bad_parse: () -> ();
 }
 
-fn take_nonempty_prefix(rdr: io::Reader,
+fn take_nonempty_prefix(rdr: @io::Reader,
                         ch: char,
                         pred: &fn(char) -> bool) -> (~str, char) {
     let mut buf = ~"";
@@ -154,7 +154,7 @@ fn take_nonempty_prefix(rdr: io::Reader,
     (buf, ch)
 }
 
-fn take_num(rdr: io::Reader, ch: char) -> (uint, char) {
+fn take_num(rdr: @io::Reader, ch: char) -> (uint, char) {
     let (s, ch) = take_nonempty_prefix(rdr, ch, char::is_digit);
     match uint::from_str(s) {
         None => { bad_parse::cond.raise(()); (0, ch) },
@@ -162,7 +162,7 @@ fn take_num(rdr: io::Reader, ch: char) -> (uint, char) {
     }
 }
 
-fn take_ident(rdr: io::Reader, ch: char) -> (Identifier, char) {
+fn take_ident(rdr: @io::Reader, ch: char) -> (Identifier, char) {
     let (s,ch) = take_nonempty_prefix(rdr, ch, char::is_alphanumeric);
     if s.all(char::is_digit) {
         match uint::from_str(s) {
@@ -180,8 +180,7 @@ fn expect(ch: char, c: char) {
     }
 }
 
-fn parse_reader(rdr: io::Reader) -> Version {
-
+fn parse_reader(rdr: @io::Reader) -> Version {
     let (major, ch) = take_num(rdr, rdr.read_char());
     expect(ch, '.');
     let (minor, ch) = take_num(rdr, rdr.read_char());

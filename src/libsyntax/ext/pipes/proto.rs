@@ -96,7 +96,7 @@ pub impl state_ {
     }
 
     /// Returns the type that is used for the messages.
-    fn to_ty(&self, cx: ext_ctxt) -> @ast::Ty {
+    fn to_ty(&self, cx: @ext_ctxt) -> @ast::Ty {
         cx.ty_path_ast_builder
             (path(~[cx.ident_of(self.name)],self.span).add_tys(
                 cx.ty_vars(&self.generics.ty_params)))
@@ -172,9 +172,13 @@ pub impl protocol_ {
     }
 }
 
-pub impl protocol {
-    fn add_state_poly(&self, +name: ~str, ident: ast::ident, dir: direction,
-                      +generics: ast::Generics) -> state {
+pub impl protocol_ {
+    fn add_state_poly(@mut self,
+                      +name: ~str,
+                      ident: ast::ident,
+                      dir: direction,
+                      +generics: ast::Generics)
+                   -> state {
         let messages = @mut ~[];
 
         let state = @state_ {
@@ -185,7 +189,7 @@ pub impl protocol {
             dir: dir,
             generics: generics,
             messages: messages,
-            proto: *self
+            proto: self
         };
 
         self.states.push(state);

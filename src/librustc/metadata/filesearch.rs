@@ -37,7 +37,8 @@ pub trait FileSearch {
 
 pub fn mk_filesearch(maybe_sysroot: Option<Path>,
                      target_triple: &str,
-                     +addl_lib_search_paths: ~[Path]) -> FileSearch {
+                     +addl_lib_search_paths: ~[Path])
+                  -> @FileSearch {
     struct FileSearchImpl {
         sysroot: Path,
         addl_lib_search_paths: ~[Path],
@@ -78,7 +79,7 @@ pub fn mk_filesearch(maybe_sysroot: Option<Path>,
     } as @FileSearch
 }
 
-pub fn search<T:Copy>(filesearch: FileSearch, pick: pick<T>) -> Option<T> {
+pub fn search<T:Copy>(filesearch: @FileSearch, pick: pick<T>) -> Option<T> {
     let mut rslt = None;
     for filesearch.lib_search_paths().each |lib_search_path| {
         debug!("searching %s", lib_search_path.to_str());

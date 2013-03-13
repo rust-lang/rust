@@ -140,7 +140,9 @@ pub fn fixup_substs(vcx: &VtableContext, location_info: &LocationInfo,
                     is_early: bool) -> Option<ty::substs> {
     let tcx = vcx.tcx();
     // use a dummy type just to package up the substs that need fixing up
-    let t = ty::mk_trait(tcx, id, substs, ty::vstore_slice(ty::re_static));
+    let t = ty::mk_trait(tcx,
+                         id, substs,
+                         ty::RegionTraitStore(ty::re_static));
     do fixup_ty(vcx, location_info, t, is_early).map |t_f| {
         match ty::get(*t_f).sty {
           ty::ty_trait(_, ref substs_f, _) => (/*bad*/copy *substs_f),
@@ -167,9 +169,9 @@ pub fn lookup_vtable(vcx: &VtableContext,
     let _i = indenter();
 
     let tcx = vcx.tcx();
-    let (trait_id, trait_substs, trait_vstore) = match ty::get(trait_ty).sty {
-        ty::ty_trait(did, ref substs, vstore) =>
-            (did, (/*bad*/copy *substs), vstore),
+    let (trait_id, trait_substs, trait_store) = match ty::get(trait_ty).sty {
+        ty::ty_trait(did, ref substs, store) =>
+            (did, (/*bad*/copy *substs), store),
         _ => tcx.sess.impossible_case(location_info.span,
                                       "lookup_vtable: \
                                        don't know how to handle a non-trait")
@@ -196,12 +198,19 @@ pub fn lookup_vtable(vcx: &VtableContext,
                        vcx.infcx.ty_to_str(ity));
 
                 match ty::get(ity).sty {
-                    ty::ty_trait(idid, _, _) => {
+                    ty::ty_trait(idid, ref isubsts, _) => {
                         if trait_id == idid {
                             debug!("(checking vtable) @0 \
                                     relating ty to trait \
                                     ty with did %?",
                                    idid);
+
+                            // Convert `ity` so that it has the right vstore.
+                            let ity = ty::mk_trait(vcx.tcx(),
+                                                   idid,
+                                                   copy *isubsts,
+                                                   trait_store);
+
                             relate_trait_tys(vcx, location_info,
                                              trait_ty, ity);
                             let vtable = vtable_param(n, n_bound);
@@ -261,8 +270,9 @@ pub fn lookup_vtable(vcx: &VtableContext,
                         // it's the same trait as trait_ty, we need to
                         // unify it with trait_ty in order to get all
                         // the ty vars sorted out.
-                        for vec::each(ty::impl_traits(tcx, im.did,
-                                                      trait_vstore)) |of_ty| {
+                        for vec::each(ty::impl_traits(tcx,
+                                                      im.did,
+                                                      trait_store)) |of_ty| {
                             match ty::get(*of_ty).sty {
                                 ty::ty_trait(id, _, _) => {
                                     // Not the trait we're looking for
@@ -381,7 +391,7 @@ pub fn lookup_vtable(vcx: &VtableContext,
                                               /*bad*/copy substs_f.tps,
                                               trait_tps,
                                               im.did,
-                                              trait_vstore);
+                                              trait_store);
                             let subres = lookup_vtables(
                                 vcx, location_info, im_bs, &substs_f,
                                 is_early);
@@ -455,11 +465,11 @@ pub fn connect_trait_tps(vcx: &VtableContext,
                          impl_tys: ~[ty::t],
                          trait_tys: ~[ty::t],
                          impl_did: ast::def_id,
-                         vstore: ty::vstore) {
+                         store: ty::TraitStore) {
     let tcx = vcx.tcx();
 
     // XXX: This should work for multiple traits.
-    let ity = ty::impl_traits(tcx, impl_did, vstore)[0];
+    let ity = ty::impl_traits(tcx, impl_did, store)[0];
     let trait_ty = ty::subst_tps(tcx, impl_tys, None, ity);
     debug!("(connect trait tps) trait type is %?, impl did is %?",
            ty::get(trait_ty).sty, impl_did);
@@ -557,17 +567,18 @@ pub fn early_resolve_expr(ex: @ast::expr,
       ast::expr_cast(src, _) => {
           let target_ty = fcx.expr_ty(ex);
           match ty::get(target_ty).sty {
-              ty::ty_trait(_, _, vstore) => {
+              ty::ty_trait(_, _, store) => {
                   // Look up vtables for the type we're casting to,
                   // passing in the source and target type.  The source
                   // must be a pointer type suitable to the object sigil,
                   // e.g.: `@x as @Trait`, `&x as &Trait` or `~x as ~Trait`
                   let ty = structurally_resolved_type(fcx, ex.span,
                                                       fcx.expr_ty(src));
-                  match (&ty::get(ty).sty, vstore) {
-                      (&ty::ty_box(mt), ty::vstore_box) |
-                      (&ty::ty_uniq(mt), ty::vstore_uniq) |
-                      (&ty::ty_rptr(_, mt), ty::vstore_slice(*)) => {
+                  match (&ty::get(ty).sty, store) {
+                      (&ty::ty_box(mt), ty::BoxTraitStore) |
+                      // XXX: Bare trait store is deprecated.
+                      (&ty::ty_uniq(mt), ty::UniqTraitStore) |
+                      (&ty::ty_rptr(_, mt), ty::RegionTraitStore(*)) => {
                           let location_info =
                               &location_info_for_expr(ex);
                           let vcx = VtableContext {
@@ -604,9 +615,9 @@ pub fn early_resolve_expr(ex: @ast::expr,
 
                           // Now, if this is &trait, we need to link the
                           // regions.
-                          match (&ty::get(ty).sty, vstore) {
+                          match (&ty::get(ty).sty, store) {
                               (&ty::ty_rptr(ra, _),
-                               ty::vstore_slice(rb)) => {
+                               ty::RegionTraitStore(rb)) => {
                                   infer::mk_subr(fcx.infcx(),
                                                  false,
                                                  ex.span,
@@ -617,7 +628,14 @@ pub fn early_resolve_expr(ex: @ast::expr,
                           }
                       }
 
-                      (_, ty::vstore_box(*)) => {
+                      (_, ty::BareTraitStore) => {
+                          fcx.ccx.tcx.sess.span_err(
+                              ex.span,
+                              ~"a sigil (`@`, `~`, or `&`) must be specified \
+                                when casting to a trait");
+                      }
+
+                      (_, ty::BoxTraitStore) => {
                           fcx.ccx.tcx.sess.span_err(
                               ex.span,
                               fmt!("can only cast an @-pointer \
@@ -625,7 +643,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
                                    ty::ty_sort_str(fcx.tcx(), ty)));
                       }
 
-                      (_, ty::vstore_uniq(*)) => {
+                      (_, ty::UniqTraitStore) => {
                           fcx.ccx.tcx.sess.span_err(
                               ex.span,
                               fmt!("can only cast an ~-pointer \
@@ -633,18 +651,12 @@ pub fn early_resolve_expr(ex: @ast::expr,
                                    ty::ty_sort_str(fcx.tcx(), ty)));
                       }
 
-                      (_, ty::vstore_slice(*)) => {
+                      (_, ty::RegionTraitStore(_)) => {
                           fcx.ccx.tcx.sess.span_err(
                               ex.span,
                               fmt!("can only cast an &-pointer \
                                     to an &-object, not a %s",
                                    ty::ty_sort_str(fcx.tcx(), ty)));
-                      }
-
-                      (_, ty::vstore_fixed(*)) => {
-                          fcx.tcx().sess.span_bug(
-                              ex.span,
-                              fmt!("trait with fixed vstore"));
                       }
                   }
               }

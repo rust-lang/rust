@@ -41,7 +41,7 @@ trait EscapedCharWriter {
     fn write_escaped_char(&self, ch: char);
 }
 
-impl EscapedCharWriter for Writer {
+impl EscapedCharWriter for @Writer {
     fn write_escaped_char(&self, ch: char) {
         match ch {
             '\t' => self.write_str("\\t"),

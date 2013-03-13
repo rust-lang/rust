@@ -20,10 +20,10 @@ impl<'self> get_ctxt<'self> for has_ctxt<'self> {
     fn get_ctxt() -> &self/ctxt { self.c }
 }
 
-fn make_gc() -> get_ctxt  {
+fn make_gc() -> @get_ctxt  {
     let ctxt = ctxt { v: 22u };
     let hc = has_ctxt { c: &ctxt }; //~ ERROR illegal borrow
-    return @hc as get_ctxt;
+    return @hc as @get_ctxt;
 }
 
 fn main() {

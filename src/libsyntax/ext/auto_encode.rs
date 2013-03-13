@@ -110,7 +110,7 @@ mod syntax {
 }
 
 pub fn expand_auto_encode(
-    cx: ext_ctxt,
+    cx: @ext_ctxt,
     span: span,
     _mitem: @ast::meta_item,
     in_items: ~[@ast::item]
@@ -165,7 +165,7 @@ pub fn expand_auto_encode(
 }
 
 pub fn expand_auto_decode(
-    cx: ext_ctxt,
+    cx: @ext_ctxt,
     span: span,
     _mitem: @ast::meta_item,
     in_items: ~[@ast::item]
@@ -219,7 +219,7 @@ pub fn expand_auto_decode(
     }
 }
 
-priv impl ext_ctxt {
+priv impl @ext_ctxt {
     fn bind_path(
         &self,
         span: span,
@@ -426,7 +426,7 @@ priv impl ext_ctxt {
 }
 
 fn mk_impl(
-    cx: ext_ctxt,
+    cx: @ext_ctxt,
     span: span,
     ident: ast::ident,
     ty_param: ast::TyParam,
@@ -499,7 +499,7 @@ fn mk_impl(
 }
 
 fn mk_ser_impl(
-    cx: ext_ctxt,
+    cx: @ext_ctxt,
     span: span,
     ident: ast::ident,
     generics: &ast::Generics,
@@ -543,7 +543,7 @@ fn mk_ser_impl(
 }
 
 fn mk_deser_impl(
-    cx: ext_ctxt,
+    cx: @ext_ctxt,
     span: span,
     ident: ast::ident,
     generics: &ast::Generics,
@@ -587,7 +587,7 @@ fn mk_deser_impl(
 }
 
 fn mk_ser_method(
-    cx: ext_ctxt,
+    cx: @ext_ctxt,
     span: span,
     +ser_body: ast::blk
 ) -> @ast::method {
@@ -647,7 +647,7 @@ fn mk_ser_method(
 }
 
 fn mk_deser_method(
-    cx: ext_ctxt,
+    cx: @ext_ctxt,
     span: span,
     ty: @ast::Ty,
     +deser_body: ast::blk
@@ -701,7 +701,7 @@ fn mk_deser_method(
 }
 
 fn mk_struct_ser_impl(
-    cx: ext_ctxt,
+    cx: @ext_ctxt,
     span: span,
     ident: ast::ident,
     fields: &[@ast::struct_field],
@@ -762,7 +762,7 @@ fn mk_struct_ser_impl(
 }
 
 fn mk_struct_deser_impl(
-    cx: ext_ctxt,
+    cx: @ext_ctxt,
     span: span,
     ident: ast::ident,
     fields: ~[@ast::struct_field],
@@ -866,7 +866,7 @@ fn mk_struct_fields(fields: &[@ast::struct_field]) -> ~[field] {
 }
 
 fn mk_enum_ser_impl(
-    cx: ext_ctxt,
+    cx: @ext_ctxt,
     span: span,
     ident: ast::ident,
     +enum_def: ast::enum_def,
@@ -883,7 +883,7 @@ fn mk_enum_ser_impl(
 }
 
 fn mk_enum_deser_impl(
-    cx: ext_ctxt,
+    cx: @ext_ctxt,
     span: span,
     ident: ast::ident,
     +enum_def: ast::enum_def,
@@ -900,7 +900,7 @@ fn mk_enum_deser_impl(
 }
 
 fn ser_variant(
-    cx: ext_ctxt,
+    cx: @ext_ctxt,
     span: span,
     v_name: ast::ident,
     v_idx: uint,
@@ -982,7 +982,7 @@ fn ser_variant(
 }
 
 fn mk_enum_ser_body(
-    cx: ext_ctxt,
+    cx: @ext_ctxt,
     span: span,
     name: ast::ident,
     +variants: ~[ast::variant]
@@ -1032,7 +1032,7 @@ fn mk_enum_ser_body(
 }
 
 fn mk_enum_deser_variant_nary(
-    cx: ext_ctxt,
+    cx: @ext_ctxt,
     span: span,
     name: ast::ident,
     args: ~[ast::variant_arg]
@@ -1069,7 +1069,7 @@ fn mk_enum_deser_variant_nary(
 }
 
 fn mk_enum_deser_body(
-    ext_cx: ext_ctxt,
+    ext_cx: @ext_ctxt,
     span: span,
     name: ast::ident,
     variants: ~[ast::variant]

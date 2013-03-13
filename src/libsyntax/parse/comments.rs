@@ -256,7 +256,7 @@ fn read_block_comment(rdr: @mut StringReader,
         while level > 0 {
             debug!("=== block comment level %d", level);
             if is_eof(rdr) {
-                (rdr as reader).fatal(~"unterminated block comment");
+                (rdr as @reader).fatal(~"unterminated block comment");
             }
             if rdr.curr == '\n' {
                 trim_whitespace_prefix_and_push_line(&mut lines, curr_line,
@@ -319,9 +319,11 @@ pub struct lit {
     pos: BytePos
 }
 
-pub fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
+pub fn gather_comments_and_literals(span_diagnostic:
+                                    @diagnostic::span_handler,
                                     +path: ~str,
-                                    srdr: io::Reader) -> (~[cmnt], ~[lit]) {
+                                    srdr: @io::Reader)
+                                 -> (~[cmnt], ~[lit]) {
     let src = @str::from_bytes(srdr.read_whole_stream());
     let itr = parse::token::mk_fake_ident_interner();
     let cm = CodeMap::new();
