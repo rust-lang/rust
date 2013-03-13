@@ -1264,7 +1264,7 @@ pub fn trans_block_cleanups_(bcx: block,
         bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0;
     if bcx.unreachable && !no_lpads { return bcx; }
     let mut bcx = bcx;
-    for vec::rev_each(cleanups) |cu| {
+    for cleanups.each_reverse |cu| {
         match *cu {
             clean(cfn, cleanup_type) | clean_temp(_, cfn, cleanup_type) => {
                 // Some types don't need to be cleaned up during

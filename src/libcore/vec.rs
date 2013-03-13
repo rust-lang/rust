@@ -1005,7 +1005,7 @@ pub pure fn foldl<T, U>(z: T, v: &[U], p: &fn(t: T, u: &U) -> T) -> T {
  */
 pub pure fn foldr<T, U: Copy>(v: &[T], z: U, p: &fn(t: &T, u: U) -> U) -> U {
     let mut accum = z;
-    for rev_each(v) |elt| {
+    for v.each_reverse |elt| {
         accum = p(elt, accum);
     }
     accum
@@ -1411,8 +1411,8 @@ pub pure fn eachi<T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pub pure fn rev_each<T>(v: &'r [T], blk: &fn(v: &'r T) -> bool) {
-    rev_eachi(v, |_i, v| blk(v))
+pub pure fn each_reverse<T>(v: &'r [T], blk: &fn(v: &'r T) -> bool) {
+    eachi_reverse(v, |_i, v| blk(v))
 }
 
 /**
@@ -1421,7 +1421,7 @@ pub pure fn rev_each<T>(v: &'r [T], blk: &fn(v: &'r T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pub pure fn rev_eachi<T>(v: &'r [T], blk: &fn(i: uint, v: &'r T) -> bool) {
+pub pure fn eachi_reverse<T>(v: &'r [T], blk: &fn(i: uint, v: &'r T) -> bool) {
     let mut i = v.len();
     while i > 0 {
         i -= 1;
@@ -1736,6 +1736,8 @@ pub trait ImmutableVector<T> {
     pure fn initn(&self, n: uint) -> &'self [T];
     pure fn last(&self) -> &'self T;
     pure fn last_opt(&self) -> Option<&'self T>;
+    pure fn each_reverse(&self, blk: &fn(&T) -> bool);
+    pure fn eachi_reverse(&self, blk: &fn(uint, &T) -> bool);
     pure fn foldr<U: Copy>(&self, z: U, p: &fn(t: &T, u: U) -> U) -> U;
     pure fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U];
     pure fn mapi<U>(&self, f: &fn(uint, t: &T) -> U) -> ~[U];
@@ -1784,6 +1786,18 @@ impl<T> ImmutableVector<T> for &'self [T] {
     /// Returns the last element of a `v`, failing if the vector is empty.
     #[inline]
     pure fn last_opt(&self) -> Option<&'self T> { last_opt(*self) }
+
+    /// Iterates over a vector's elements in reverse.
+    #[inline]
+    pure fn each_reverse(&self, blk: &fn(&T) -> bool) {
+        each_reverse(*self, blk)
+    }
+
+    /// Iterates over a vector's elements and indices in reverse.
+    #[inline]
+    pure fn eachi_reverse(&self, blk: &fn(uint, &T) -> bool) {
+        eachi_reverse(*self, blk)
+    }
 
     /// Reduce a vector from right to left
     #[inline]
@@ -3131,16 +3145,17 @@ mod tests {
     }
 
     #[test]
-    fn test_reach_empty() {
-        for rev_each::<int>(~[]) |_v| {
+    fn test_each_reverse_empty() {
+        let v: ~[int] = ~[];
+        for v.each_reverse |_v| {
             fail!(); // should never execute
         }
     }
 
     #[test]
-    fn test_reach_nonempty() {
+    fn test_each_reverse_nonempty() {
         let mut i = 0;
-        for rev_each(~[1, 2, 3]) |v| {
+        for each_reverse(~[1, 2, 3]) |v| {
             if i == 0 { fail_unless!(*v == 3); }
             i += *v
         }
@@ -3148,14 +3163,22 @@ mod tests {
     }
 
     #[test]
-    fn test_reachi() {
+    fn test_eachi_reverse() {
         let mut i = 0;
-        for rev_eachi(~[0, 1, 2]) |j, v| {
+        for eachi_reverse(~[0, 1, 2]) |j, v| {
             if i == 0 { fail_unless!(*v == 2); }
             fail_unless!(j == *v as uint);
             i += *v;
         }
         fail_unless!(i == 3);
+    }
+
+    #[test]
+    fn test_eachi_reverse_empty() {
+        let v: ~[int] = ~[];
+        for v.eachi_reverse |_i, _v| {
+            fail!(); // should never execute
+        }
     }
 
     #[test]
