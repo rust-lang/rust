@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo { fn f() -> int; }
-trait Bar { fn g() -> int; }
-trait Baz { fn h() -> int; }
+trait Foo { fn f(&self) -> int; }
+trait Bar { fn g(&self) -> int; }
+trait Baz { fn h(&self) -> int; }
 
 trait Quux: Foo + Bar + Baz { }
 

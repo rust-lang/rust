@@ -9,15 +9,15 @@
 // except according to those terms.
 
 trait Deserializer {
-    fn read_int() -> int;
+    fn read_int(&self) -> int;
 }
 
 trait Deserializable<D:Deserializer> {
-    static fn deserialize(d: &D) -> Self;
+    static fn deserialize(&self, d: &D) -> Self;
 }
 
 impl<D:Deserializer> Deserializable<D> for int {
-    static fn deserialize(d: &D) -> int {
+    static fn deserialize(&self, d: &D) -> int {
         return d.read_int();
     }
 }
@@ -25,7 +25,7 @@ impl<D:Deserializer> Deserializable<D> for int {
 struct FromThinAir { dummy: () }
 
 impl Deserializer for FromThinAir {
-    fn read_int() -> int { 22 }
+    fn read_int(&self) -> int { 22 }
 }
 
 pub fn main() {

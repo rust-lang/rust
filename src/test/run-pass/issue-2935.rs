@@ -13,11 +13,11 @@
 type t = bool;
 
 trait it {
-    fn f();
+    fn f(&self);
 }
 
 impl it for t {
-    fn f() { }
+    fn f(&self) { }
 }
 
 pub fn main() {

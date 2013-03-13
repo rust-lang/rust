@@ -9,8 +9,8 @@
 // except according to those terms.
 
 trait box_trait<T> {
-    fn get() -> T;
-    fn set(t: T);
+    fn get(&self) -> T;
+    fn set(&self, t: T);
 }
 
 struct box<T> {
@@ -20,8 +20,8 @@ struct box<T> {
 struct box_impl<T>(box<T>);
 
 impl<T:Copy> box_trait<T> for box_impl<T> {
-    fn get() -> T { return self.f; }
-    fn set(t: T) { self.f = t; }
+    fn get(&self) -> T { return self.f; }
+    fn set(&self, t: T) { self.f = t; }
 }
 
 fn set_box_trait<T>(b: @box_trait<@const T>, v: @const T) {

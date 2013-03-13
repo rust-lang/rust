@@ -10,8 +10,8 @@
 
 #[allow(default_methods)]
 trait Canvas {
-    fn add_point(point: &int);
-    fn add_points(shapes: &[int]) {
+    fn add_point(&self, point: &int);
+    fn add_points(&self, shapes: &[int]) {
         for shapes.each |pt| {
             self.add_point(pt)
         }

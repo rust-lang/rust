@@ -9,11 +9,11 @@
 // except according to those terms.
 
 trait x {
-    fn use_x<T>();
+    fn use_x<T>(&self);
 }
 struct y(());
 impl x for y { 
-    fn use_x<T>() {
+    fn use_x<T>(&self) {
         struct foo { //~ ERROR quux
             i: ()
         }

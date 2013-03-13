@@ -15,7 +15,7 @@ pub fn main() {
   }
 
   pub impl b {
-    fn do_stuff() -> int { return 37; }
+    fn do_stuff(&self) -> int { return 37; }
   }
 
     fn b(i:int) -> b {

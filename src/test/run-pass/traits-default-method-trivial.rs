@@ -11,16 +11,16 @@
 #[allow(default_methods)];
 
 trait Cat {
-    fn meow() -> bool;
-    fn scratch() -> bool;
-    fn purr() -> bool { true }
+    fn meow(&self) -> bool;
+    fn scratch(&self) -> bool;
+    fn purr(&self) -> bool { true }
 }
 
 impl Cat for int {
-    fn meow() -> bool {
+    fn meow(&self) -> bool {
         self.scratch()
     }
-    fn scratch() -> bool {
+    fn scratch(&self) -> bool {
         self.purr()
     }
 }

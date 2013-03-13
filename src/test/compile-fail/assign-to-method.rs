@@ -16,7 +16,7 @@ struct cat {
 
 pub impl cat {
 
-  fn speak() { self.meows += 1u; }
+  fn speak(&self) { self.meows += 1u; }
 }
 
 fn cat(in_x : uint, in_y : int) -> cat {

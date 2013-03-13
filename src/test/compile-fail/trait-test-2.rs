@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait bar { fn dup() -> Self; fn blah<X>(); }
-impl bar for int { fn dup() -> int { self } fn blah<X>() {} }
-impl bar for uint { fn dup() -> uint { self } fn blah<X>() {} }
+trait bar { fn dup(&self) -> Self; fn blah<X>(); }
+impl bar for int { fn dup(&self) -> int { self } fn blah<X>() {} }
+impl bar for uint { fn dup(&self) -> uint { self } fn blah<X>() {} }
 
 fn main() {
     10i.dup::<int>(); //~ ERROR does not take type parameters

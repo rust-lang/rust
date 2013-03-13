@@ -14,7 +14,7 @@
 
 struct an_enum(&'self int);
 trait a_trait {
-    fn foo() -> &'self int;
+    fn foo(&self) -> &'self int;
 }
 struct a_class { x:&'self int }
 

@@ -11,7 +11,7 @@
 trait A { }
 
 impl A for int {
-    fn foo() { } //~ ERROR method `foo` is not a member of trait `A`
+    fn foo(&self) { } //~ ERROR method `foo` is not a member of trait `A`
 }
 
 fn main() { }

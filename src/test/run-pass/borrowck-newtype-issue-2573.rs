@@ -15,11 +15,11 @@ struct baz_ {baz: int}
 type baz = @mut baz_;
 
 trait frob {
-    fn frob();
+    fn frob(&self);
 }
 
 impl frob for foo {
-    fn frob() {
+    fn frob(&self) {
         really_impure(self.bar);
     }
 }

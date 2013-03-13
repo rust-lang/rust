@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait foo { fn foo(); }
+trait foo { fn foo(&self); }
 
-impl int for uint { fn foo() {} } //~ ERROR trait
+impl int for uint { fn foo(&self) {} } //~ ERROR trait
 
 fn main() {}

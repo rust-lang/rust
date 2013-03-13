@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo { fn f() -> int; }
-trait Bar : Foo { fn g() -> int; }
+trait Foo { fn f(&self) -> int; }
+trait Bar : Foo { fn g(&self) -> int; }
 
 struct A { x: int }
 
-impl Foo for A { fn f() -> int { 10 } }
-impl Bar for A { fn g() -> int { 20 } }
+impl Foo for A { fn f(&self) -> int { 10 } }
+impl Bar for A { fn g(&self) -> int { 20 } }
 
 // Call a function on Foo, given a T: Bar
 fn gg<T:Bar>(a: &T) -> int {

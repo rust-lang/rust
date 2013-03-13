@@ -11,23 +11,23 @@
 // xfail-fast
 
 trait to_str {
-    fn to_str() -> ~str;
+    fn to_str(&self) -> ~str;
 }
 impl to_str for int {
-    fn to_str() -> ~str { int::to_str(self) }
+    fn to_str(&self) -> ~str { int::to_str(self) }
 }
 impl to_str for ~str {
-    fn to_str() -> ~str { copy self }
+    fn to_str(&self) -> ~str { copy self }
 }
 impl to_str for () {
-    fn to_str() -> ~str { ~"()" }
+    fn to_str(&self) -> ~str { ~"()" }
 }
 
 trait map<T> {
-    fn map<U:Copy>(f: &fn(&T) -> U) -> ~[U];
+    fn map<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U];
 }
 impl<T> map<T> for ~[T] {
-    fn map<U:Copy>(f: &fn(&T) -> U) -> ~[U] {
+    fn map<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U] {
         let mut r = ~[];
         for self.each |x| { r += ~[f(x)]; }
         r

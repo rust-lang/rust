@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait repeat<A> { fn get() -> A; }
+trait repeat<A> { fn get(&self) -> A; }
 
 impl<A:Copy> repeat<A> for @A {
-    fn get() -> A { *self }
+    fn get(&self) -> A { *self }
 }
 
 fn repeater<A:Copy>(v: @A) -> @repeat<A> {

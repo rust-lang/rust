@@ -137,25 +137,25 @@ mod test_methods {
 
     impl Fooable for Foo {
         #[cfg(bogus)]
-        static fn what() { }
+        static fn what(&self) { }
 
-        static fn what() { }
+        static fn what(&self) { }
 
         #[cfg(bogus)]
-        fn the() { }
+        fn the(&self) { }
 
-        fn the() { }
+        fn the(&self) { }
     }
 
     trait Fooable {
         #[cfg(bogus)]
-        static fn what();
+        static fn what(&self);
 
-        static fn what();
+        static fn what(&self);
 
         #[cfg(bogus)]
-        fn the();
+        fn the(&self);
 
-        fn the();
+        fn the(&self);
     }
 }

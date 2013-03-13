@@ -13,11 +13,11 @@ struct Foo {
 }
 
 trait Stuff {
-    fn printme();
+    fn printme(self);
 }
 
 impl Stuff for &self/Foo {
-    fn printme() {
+    fn printme(self) {
         io::println(fmt!("%d", self.x));
     }
 }

@@ -17,15 +17,15 @@ extern mod core;
 use core::{str, int, vec};
 
 trait to_str {
-    fn to_str() -> ~str;
+    fn to_str(&self) -> ~str;
 }
 
 impl to_str for int {
-    fn to_str() -> ~str { int::to_str(self) }
+    fn to_str(&self) -> ~str { int::to_str(self) }
 }
 
 impl<T:to_str> to_str for ~[T] {
-    fn to_str() -> ~str {
+    fn to_str(&self) -> ~str {
         ~"[" + str::connect(vec::map(self, |e| e.to_str() ), ~", ") + ~"]"
     }
 }

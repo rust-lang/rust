@@ -16,11 +16,11 @@ pub mod name_pool {
     pub type name_pool = ();
 
     pub trait add {
-        fn add(s: ~str);
+        fn add(&self, s: ~str);
     }
 
     impl add for name_pool {
-        fn add(s: ~str) {
+        fn add(&self, s: ~str) {
         }
     }
 }
@@ -31,11 +31,11 @@ pub mod rust {
     pub type rt = @();
 
     pub trait cx {
-        fn cx();
+        fn cx(&self);
     }
 
     impl cx for rt {
-        fn cx() {
+        fn cx(&self) {
         }
     }
 }

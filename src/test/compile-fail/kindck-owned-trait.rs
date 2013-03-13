@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait foo { fn foo(); }
+trait foo { fn foo(&self); }
 
 fn to_foo<T:Copy + foo>(t: T) -> @foo {
     @t as @foo //~ ERROR value may contain borrowed pointers; use `&static` bound

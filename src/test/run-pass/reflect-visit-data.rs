@@ -19,7 +19,7 @@ use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
 
 /// Trait for visitor that wishes to reflect on data.
 trait movable_ptr {
-    fn move_ptr(adjustment: &fn(*c_void) -> *c_void);
+    fn move_ptr(&self, adjustment: &fn(*c_void) -> *c_void);
 }
 
 /// Helper function for alignment calculation.
@@ -33,26 +33,26 @@ struct ptr_visit_adaptor<V>(Inner<V>);
 pub impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
 
     #[inline(always)]
-    fn bump(sz: uint) {
+    fn bump(&self, sz: uint) {
       do self.inner.move_ptr() |p| {
             ((p as uint) + sz) as *c_void
       };
     }
 
     #[inline(always)]
-    fn align(a: uint) {
+    fn align(&self, a: uint) {
       do self.inner.move_ptr() |p| {
             align(p as uint, a) as *c_void
       };
     }
 
     #[inline(always)]
-    fn align_to<T>() {
+    fn align_to<T>(&self) {
         self.align(sys::min_align_of::<T>());
     }
 
     #[inline(always)]
-    fn bump_past<T>() {
+    fn bump_past<T>(&self) {
         self.bump(sys::size_of::<T>());
     }
 
@@ -479,13 +479,13 @@ struct Stuff {
 }
 
 pub impl my_visitor {
-    fn get<T>(f: &fn(T)) {
+    fn get<T>(&self, f: &fn(T)) {
         unsafe {
             f(*(self.ptr1 as *T));
         }
     }
 
-    fn visit_inner(inner: *TyDesc) -> bool {
+    fn visit_inner(&self, inner: *TyDesc) -> bool {
         unsafe {
             let u = my_visitor(*self);
             let v = ptr_visit_adaptor::<my_visitor>(Inner {inner: u});
@@ -498,7 +498,7 @@ pub impl my_visitor {
 struct Inner<V> { inner: V }
 
 impl movable_ptr for my_visitor {
-    fn move_ptr(adjustment: &fn(*c_void) -> *c_void) {
+    fn move_ptr(&self, adjustment: &fn(*c_void) -> *c_void) {
         self.ptr1 = adjustment(self.ptr1);
         self.ptr2 = adjustment(self.ptr2);
     }

@@ -9,11 +9,11 @@
 // except according to those terms.
 
 trait deref {
-    fn get() -> int;
+    fn get(self) -> int;
 }
 
 impl deref for &'self int {
-    fn get() -> int {
+    fn get(self) -> int {
         *self
     }
 }

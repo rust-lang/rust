@@ -9,11 +9,11 @@
 // except according to those terms.
 
 trait Foo {
-    fn foo();
+    fn foo(self);
 }
 
 impl Foo for int {
-    fn foo() {
+    fn foo(self) {
         io::println("Hello world!");
     }
 }

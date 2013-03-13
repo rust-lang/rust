@@ -11,7 +11,7 @@
 // xfail-test
 
 trait A<T> {
-    fn g(x: T) -> T { x }
+    fn g(&self, x: T) -> T { x }
 }
 
 impl A<int> for int { }

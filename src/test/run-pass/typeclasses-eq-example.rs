@@ -11,13 +11,13 @@
 // Example from lkuper's intern talk, August 2012.
 
 trait Equal {
-    fn isEq(a: Self) -> bool;
+    fn isEq(&self, a: Self) -> bool;
 }
 
 enum Color { cyan, magenta, yellow, black }
 
 impl Equal for Color {
-    fn isEq(a: Color) -> bool {
+    fn isEq(&self, a: Color) -> bool {
         match (self, a) {
           (cyan, cyan)       => { true  }
           (magenta, magenta) => { true  }
@@ -34,7 +34,7 @@ enum ColorTree {
 }
 
 impl Equal for ColorTree {
-    fn isEq(a: ColorTree) -> bool {
+    fn isEq(&self, a: ColorTree) -> bool {
         match (self, a) {
           (leaf(x), leaf(y)) => { x.isEq(y) }
           (branch(l1, r1), branch(l2, r2)) => { 

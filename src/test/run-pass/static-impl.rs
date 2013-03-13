@@ -11,42 +11,42 @@
 // xfail-fast
 
 pub trait plus {
-    fn plus() -> int;
+    fn plus(&self) -> int;
 }
 
 mod a {
     use plus;
-    impl plus for uint { fn plus() -> int { self as int + 20 } }
+    impl plus for uint { fn plus(&self) -> int { self as int + 20 } }
 }
 
 mod b {
     use plus;
-    impl plus for ~str { fn plus() -> int { 200 } }
+    impl plus for ~str { fn plus(&self) -> int { 200 } }
 }
 
 trait uint_utils {
-    fn str() -> ~str;
-    fn multi(f: &fn(uint));
+    fn str(self) -> ~str;
+    fn multi(self, f: &fn(uint));
 }
 
 impl uint_utils for uint {
-    fn str() -> ~str { uint::to_str(self) }
-    fn multi(f: &fn(uint)) {
+    fn str(self) -> ~str { uint::to_str(self) }
+    fn multi(self, f: &fn(uint)) {
         let mut c = 0u;
         while c < self { f(c); c += 1u; }
     }
 }
 
 trait vec_utils<T> {
-    fn length_() -> uint;
-    fn iter_(f: &fn(&T));
-    fn map_<U:Copy>(f: &fn(&T) -> U) -> ~[U];
+    fn length_(&self, ) -> uint;
+    fn iter_(&self, f: &fn(&T));
+    fn map_<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U];
 }
 
 impl<T> vec_utils<T> for ~[T] {
-    fn length_() -> uint { vec::len(self) }
-    fn iter_(f: &fn(&T)) { for self.each |x| { f(x); } }
-    fn map_<U:Copy>(f: &fn(&T) -> U) -> ~[U] {
+    fn length_(&self) -> uint { vec::len(self) }
+    fn iter_(&self, f: &fn(&T)) { for self.each |x| { f(x); } }
+    fn map_<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U] {
         let mut r = ~[];
         for self.each |elt| { r += ~[f(elt)]; }
         r

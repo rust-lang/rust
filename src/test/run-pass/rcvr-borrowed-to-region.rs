@@ -9,12 +9,12 @@
 // except according to those terms.
 
 trait get {
-    fn get() -> int;
+    fn get(self) -> int;
 }
 
 // Note: impl on a slice
 impl get for &'self int {
-    fn get() -> int {
+    fn get(self) -> int {
         return *self;
     }
 }

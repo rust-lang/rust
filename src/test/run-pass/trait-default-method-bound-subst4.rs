@@ -11,7 +11,7 @@
 #[allow(default_methods)];
 
 trait A<T> {
-    fn g(x: uint) -> uint { x }
+    fn g(&self, x: uint) -> uint { x }
 }
 
 impl<T> A<T> for int { }

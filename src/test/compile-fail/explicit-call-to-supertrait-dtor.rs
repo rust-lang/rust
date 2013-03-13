@@ -13,7 +13,7 @@ struct Foo {
 }
 
 trait Bar : Drop {
-    fn blah();
+    fn blah(&self);
 }
 
 impl Drop for Foo {
@@ -23,7 +23,7 @@ impl Drop for Foo {
 }
 
 impl Bar for Foo {
-    fn blah() {
+    fn blah(&self) {
         self.finalize();    //~ ERROR explicit call to destructor
     }
 }

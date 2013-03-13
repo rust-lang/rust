@@ -12,17 +12,17 @@
 // issue 2258
 
 trait to_opt {
-    fn to_option() -> Option<Self>;
+    fn to_option(&self) -> Option<Self>;
 }
 
 impl to_opt for uint {
-    fn to_option() -> Option<uint> {
+    fn to_option(&self) -> Option<uint> {
         Some(self)
     }
 }
 
 impl<T:Copy> to_opt for Option<T> {
-    fn to_option() -> Option<Option<T>> {
+    fn to_option(&self) -> Option<Option<T>> {
         Some(self)
     }
 }

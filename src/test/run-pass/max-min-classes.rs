@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait Product {
-    fn product() -> int;
+    fn product(&self) -> int;
 }
 
 struct Foo {
@@ -18,13 +18,13 @@ struct Foo {
 }
 
 pub impl Foo {
-    fn sum() -> int {
+    fn sum(&self) -> int {
         self.x + self.y
     }
 }
 
 impl Product for Foo {
-    fn product() -> int {
+    fn product(&self) -> int {
         self.x * self.y
     }
 }
