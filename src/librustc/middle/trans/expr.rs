@@ -604,7 +604,7 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
                     mode: ast::expl(ast::by_val),
                     ty: expr_ty(bcx, in)
                 };
-                
+
                 unpack_result!(bcx, {
                     callee::trans_arg_expr(bcx, inty, in, &mut cleanups,
                                            None, callee::DontAutorefArg)
@@ -647,7 +647,8 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
             };
 
             if outputs.len() == 1 {
-                let op = PointerCast(bcx, aoutputs[0], T_ptr(val_ty(outputs[0])));
+                let op = PointerCast(bcx, aoutputs[0],
+                                     T_ptr(val_ty(outputs[0])));
                 Store(bcx, r, op);
             } else {
                 for aoutputs.eachi |i, o| {

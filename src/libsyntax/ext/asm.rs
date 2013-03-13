@@ -163,7 +163,7 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
     MRExpr(@ast::expr {
         id: cx.next_id(),
         callee_id: cx.next_id(),
-        node: ast::expr_inline_asm(@asm, inputs, outputs, 
+        node: ast::expr_inline_asm(@asm, inputs, outputs,
                                    @cons, volatile, alignstack),
         span: sp
     })
