@@ -1640,8 +1640,8 @@ enum ReadKind {
     PartiallyMovedValue
 }
 
-pub impl @Liveness {
-    fn check_ret(&self, id: node_id, sp: span, _fk: &visit::fn_kind,
+pub impl Liveness {
+    fn check_ret(@self, id: node_id, sp: span, _fk: &visit::fn_kind,
                  entry_ln: LiveNode) {
         if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
             // if no_ret_var is live, then we fall off the end of the
@@ -1661,10 +1661,9 @@ pub impl @Liveness {
         }
     }
 
-    fn check_move_from_var(&self, ln: LiveNode,
+    fn check_move_from_var(@self, ln: LiveNode,
                            var: Variable,
-                           move_expr: @expr)
-    {
+                           move_expr: @expr) {
         /*!
          *
          * Checks whether `var` is live on entry to any of the
@@ -1686,7 +1685,7 @@ pub impl @Liveness {
         }
     }
 
-    fn consider_last_use(&self, expr: @expr, ln: LiveNode, var: Variable) {
+    fn consider_last_use(@self, expr: @expr, ln: LiveNode, var: Variable) {
         debug!("consider_last_use(expr.id=%?, ln=%s, var=%s)",
                expr.id, ln.to_str(), var.to_str());
 
@@ -1696,7 +1695,7 @@ pub impl @Liveness {
        }
     }
 
-    fn check_lvalue(&self, expr: @expr, vt: vt<@Liveness>) {
+    fn check_lvalue(@self, expr: @expr, vt: vt<@Liveness>) {
         match expr.node {
           expr_path(_) => {
             match self.tcx.def_map.get(&expr.id) {
@@ -1724,18 +1723,18 @@ pub impl @Liveness {
           _ => {
             // For other kinds of lvalues, no checks are required,
             // and any embedded expressions are actually rvalues
-            visit::visit_expr(expr, *self, vt);
+            visit::visit_expr(expr, self, vt);
           }
        }
     }
 
-    fn check_for_reassignments_in_pat(&self, pat: @pat) {
+    fn check_for_reassignments_in_pat(@self, pat: @pat) {
         do self.pat_bindings(pat) |ln, var, sp| {
             self.check_for_reassignment(ln, var, sp);
         }
     }
 
-    fn check_for_reassignment(&self, ln: LiveNode, var: Variable,
+    fn check_for_reassignment(@self, ln: LiveNode, var: Variable,
                               orig_span: span) {
         match self.assigned_on_exit(ln, var) {
           Some(ExprNode(span)) => {
@@ -1756,10 +1755,9 @@ pub impl @Liveness {
         }
     }
 
-    fn report_illegal_move(&self, lnk: LiveNodeKind,
+    fn report_illegal_move(@self, lnk: LiveNodeKind,
                            var: Variable,
-                           move_expr: @expr)
-    {
+                           move_expr: @expr) {
         // the only time that it is possible to have a moved variable
         // used by ExitNode would be arguments or fields in a ctor.
         // we give a slightly different error message in those cases.
@@ -1822,11 +1820,10 @@ pub impl @Liveness {
         };
     }
 
-    fn report_move_location(&self, move_expr: @expr,
+    fn report_move_location(@self, move_expr: @expr,
                             var: Variable,
                             expr_descr: &str,
-                            pronoun: &str)
-    {
+                            pronoun: &str) {
         let move_expr_ty = ty::expr_ty(self.tcx, move_expr);
         let name = self.ir.variable_name(var);
         self.tcx.sess.span_note(
@@ -1837,7 +1834,7 @@ pub impl @Liveness {
                  ty_to_str(self.tcx, move_expr_ty)));
     }
 
-    fn report_illegal_read(&self, chk_span: span,
+    fn report_illegal_read(@self, chk_span: span,
                            lnk: LiveNodeKind,
                            var: Variable,
                            rk: ReadKind) {
@@ -1868,12 +1865,12 @@ pub impl @Liveness {
         }
     }
 
-    fn should_warn(&self, var: Variable) -> Option<@~str> {
+    fn should_warn(@self, var: Variable) -> Option<@~str> {
         let name = self.ir.variable_name(var);
         if name[0] == ('_' as u8) { None } else { Some(name) }
     }
 
-    fn warn_about_unused_args(&self, decl: &fn_decl, entry_ln: LiveNode) {
+    fn warn_about_unused_args(@self, decl: &fn_decl, entry_ln: LiveNode) {
         for decl.inputs.each |arg| {
             do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
                     |_bm, p_id, sp, _n| {
@@ -1883,7 +1880,7 @@ pub impl @Liveness {
         }
     }
 
-    fn warn_about_unused_or_dead_vars_in_pat(&self, pat: @pat) {
+    fn warn_about_unused_or_dead_vars_in_pat(@self, pat: @pat) {
         do self.pat_bindings(pat) |ln, var, sp| {
             if !self.warn_about_unused(sp, ln, var) {
                 self.warn_about_dead_assign(sp, ln, var);
@@ -1891,7 +1888,7 @@ pub impl @Liveness {
         }
     }
 
-    fn warn_about_unused(&self, sp: span, ln: LiveNode, var: Variable)
+    fn warn_about_unused(@self, sp: span, ln: LiveNode, var: Variable)
                         -> bool {
         if !self.used_on_entry(ln, var) {
             for self.should_warn(var).each |name| {
@@ -1921,7 +1918,7 @@ pub impl @Liveness {
         return false;
     }
 
-    fn warn_about_dead_assign(&self, sp: span, ln: LiveNode, var: Variable) {
+    fn warn_about_dead_assign(@self, sp: span, ln: LiveNode, var: Variable) {
         if self.live_on_exit(ln, var).is_none() {
             for self.should_warn(var).each |name| {
                 // FIXME(#3266)--make liveness warnings lintable

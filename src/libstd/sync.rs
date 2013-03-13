@@ -99,7 +99,7 @@ fn new_sem_and_signal(count: int, num_condvars: uint)
 }
 
 #[doc(hidden)]
-pub impl<Q:Owned> &self/Sem<Q> {
+pub impl<Q:Owned> Sem<Q> {
     fn acquire(&self) {
         let mut waiter_nobe = None;
         unsafe {
@@ -135,26 +135,26 @@ pub impl<Q:Owned> &self/Sem<Q> {
 }
 // FIXME(#3154) move both copies of this into Sem<Q>, and unify the 2 structs
 #[doc(hidden)]
-pub impl &self/Sem<()> {
+pub impl Sem<()> {
     fn access<U>(&self, blk: &fn() -> U) -> U {
         let mut release = None;
         unsafe {
             do task::unkillable {
                 self.acquire();
-                release = Some(SemRelease(*self));
+                release = Some(SemRelease(self));
             }
         }
         blk()
     }
 }
 #[doc(hidden)]
-pub impl &self/Sem<~[Waitqueue]> {
+pub impl Sem<~[Waitqueue]> {
     fn access<U>(&self, blk: &fn() -> U) -> U {
         let mut release = None;
         unsafe {
             do task::unkillable {
                 self.acquire();
-                release = Some(SemAndSignalRelease(*self));
+                release = Some(SemAndSignalRelease(self));
             }
         }
         blk()

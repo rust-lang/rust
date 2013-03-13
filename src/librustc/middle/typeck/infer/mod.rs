@@ -542,23 +542,23 @@ struct Snapshot {
     region_vars_snapshot: uint,
 }
 
-pub impl @mut InferCtxt {
-    fn combine_fields(&self, a_is_expected: bool,
+pub impl InferCtxt {
+    fn combine_fields(@mut self, a_is_expected: bool,
                       span: span) -> CombineFields {
-        CombineFields {infcx: *self,
+        CombineFields {infcx: self,
                        a_is_expected: a_is_expected,
                        span: span}
     }
 
-    fn sub(&self, a_is_expected: bool, span: span) -> Sub {
+    fn sub(@mut self, a_is_expected: bool, span: span) -> Sub {
         Sub(self.combine_fields(a_is_expected, span))
     }
 
-    fn in_snapshot(&self) -> bool {
+    fn in_snapshot(@mut self) -> bool {
         self.region_vars.in_snapshot()
     }
 
-    fn start_snapshot(&self) -> Snapshot {
+    fn start_snapshot(@mut self) -> Snapshot {
         Snapshot {
             ty_var_bindings_len:
                 self.ty_var_bindings.bindings.len(),
@@ -571,7 +571,7 @@ pub impl @mut InferCtxt {
         }
     }
 
-    fn rollback_to(&self, snapshot: &Snapshot) {
+    fn rollback_to(@mut self, snapshot: &Snapshot) {
         debug!("rollback!");
         rollback_to(&mut self.ty_var_bindings, snapshot.ty_var_bindings_len);
 
@@ -584,7 +584,7 @@ pub impl @mut InferCtxt {
     }
 
     /// Execute `f` and commit the bindings if successful
-    fn commit<T,E>(&self, f: &fn() -> Result<T,E>) -> Result<T,E> {
+    fn commit<T,E>(@mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
         fail_unless!(!self.in_snapshot());
 
         debug!("commit()");
@@ -599,7 +599,7 @@ pub impl @mut InferCtxt {
     }
 
     /// Execute `f`, unroll bindings on failure
-    fn try<T,E>(&self, f: &fn() -> Result<T,E>) -> Result<T,E> {
+    fn try<T,E>(@mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
         debug!("try()");
         do indent {
             let snapshot = self.start_snapshot();
@@ -613,7 +613,7 @@ pub impl @mut InferCtxt {
     }
 
     /// Execute `f` then unroll any bindings it creates
-    fn probe<T,E>(&self, f: &fn() -> Result<T,E>) -> Result<T,E> {
+    fn probe<T,E>(@mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
         debug!("probe()");
         do indent {
             let snapshot = self.start_snapshot();
@@ -634,8 +634,8 @@ fn next_simple_var<V:Copy,T:Copy>(
     return id;
 }
 
-pub impl @mut InferCtxt {
-    fn next_ty_var_id(&self) -> TyVid {
+pub impl InferCtxt {
+    fn next_ty_var_id(@mut self) -> TyVid {
         let id = self.ty_var_counter;
         self.ty_var_counter += 1;
         let vals = self.ty_var_bindings.vals;
@@ -643,37 +643,37 @@ pub impl @mut InferCtxt {
         return TyVid(id);
     }
 
-    fn next_ty_var(&self) -> ty::t {
+    fn next_ty_var(@mut self) -> ty::t {
         ty::mk_var(self.tcx, self.next_ty_var_id())
     }
 
-    fn next_ty_vars(&self, n: uint) -> ~[ty::t] {
+    fn next_ty_vars(@mut self, n: uint) -> ~[ty::t] {
         vec::from_fn(n, |_i| self.next_ty_var())
     }
 
-    fn next_int_var_id(&self) -> IntVid {
+    fn next_int_var_id(@mut self) -> IntVid {
         IntVid(next_simple_var(&mut self.int_var_counter,
                                &mut self.int_var_bindings))
     }
 
-    fn next_int_var(&self) -> ty::t {
+    fn next_int_var(@mut self) -> ty::t {
         ty::mk_int_var(self.tcx, self.next_int_var_id())
     }
 
-    fn next_float_var_id(&self) -> FloatVid {
+    fn next_float_var_id(@mut self) -> FloatVid {
         FloatVid(next_simple_var(&mut self.float_var_counter,
                                  &mut self.float_var_bindings))
     }
 
-    fn next_float_var(&self) -> ty::t {
+    fn next_float_var(@mut self) -> ty::t {
         ty::mk_float_var(self.tcx, self.next_float_var_id())
     }
 
-    fn next_region_var_nb(&self, span: span) -> ty::Region {
+    fn next_region_var_nb(@mut self, span: span) -> ty::Region {
         ty::re_infer(ty::ReVar(self.region_vars.new_region_var(span)))
     }
 
-    fn next_region_var_with_lb(&self, span: span,
+    fn next_region_var_with_lb(@mut self, span: span,
                                lb_region: ty::Region) -> ty::Region {
         let region_var = self.next_region_var_nb(span);
 
@@ -685,28 +685,28 @@ pub impl @mut InferCtxt {
         return region_var;
     }
 
-    fn next_region_var(&self, span: span, scope_id: ast::node_id)
+    fn next_region_var(@mut self, span: span, scope_id: ast::node_id)
                       -> ty::Region {
         self.next_region_var_with_lb(span, ty::re_scope(scope_id))
     }
 
-    fn resolve_regions(&self) {
+    fn resolve_regions(@mut self) {
         self.region_vars.resolve_regions();
     }
 
-    fn ty_to_str(&self, t: ty::t) -> ~str {
+    fn ty_to_str(@mut self, t: ty::t) -> ~str {
         ty_to_str(self.tcx,
                   self.resolve_type_vars_if_possible(t))
     }
 
-    fn resolve_type_vars_if_possible(&self, typ: ty::t) -> ty::t {
-        match resolve_type(*self, typ, resolve_nested_tvar | resolve_ivar) {
+    fn resolve_type_vars_if_possible(@mut self, typ: ty::t) -> ty::t {
+        match resolve_type(self, typ, resolve_nested_tvar | resolve_ivar) {
           result::Ok(new_type) => new_type,
           result::Err(_) => typ
         }
     }
 
-    fn type_error_message(&self, sp: span, mk_msg: &fn(~str) -> ~str,
+    fn type_error_message(@mut self, sp: span, mk_msg: &fn(~str) -> ~str,
                           actual_ty: ty::t, err: Option<&ty::type_err>) {
         let actual_ty = self.resolve_type_vars_if_possible(actual_ty);
 
@@ -725,7 +725,7 @@ pub impl @mut InferCtxt {
         }
     }
 
-    fn report_mismatched_types(&self, sp: span, e: ty::t, a: ty::t,
+    fn report_mismatched_types(@mut self, sp: span, e: ty::t, a: ty::t,
                                err: &ty::type_err) {
         let resolved_expected =
             self.resolve_type_vars_if_possible(e);
@@ -743,7 +743,7 @@ pub impl @mut InferCtxt {
         self.type_error_message(sp, mk_msg, a, Some(err));
     }
 
-    fn replace_bound_regions_with_fresh_regions(&self,
+    fn replace_bound_regions_with_fresh_regions(@mut self,
             span: span,
             fsig: &ty::FnSig)
          -> (ty::FnSig, isr_alist) {
@@ -763,7 +763,7 @@ pub impl @mut InferCtxt {
     }
 
     fn fold_regions_in_sig(
-        &self,
+        @mut self,
         fn_sig: &ty::FnSig,
         fldr: &fn(r: ty::Region, in_fn: bool) -> ty::Region) -> ty::FnSig
     {
