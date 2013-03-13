@@ -386,6 +386,10 @@ ifeq ($(CFG_GDB),)
 CTEST_DISABLE_debuginfo = "no gdb found"
 endif
 
+ifeq ($(CFG_OSTYPE),apple-darwin)
+CTEST_DISABLE_debuginfo = "gdb on darwing needs root"
+endif
+
 define DEF_CTEST_VARS
 
 # All the per-stage build rules you might want to call from the
