@@ -45,13 +45,13 @@ pub trait Program {
     fn get_id(&mut self) -> pid_t;
 
     /// Returns an io::writer that can be used to write to stdin
-    fn input(&mut self) -> io::Writer;
+    fn input(&mut self) -> @io::Writer;
 
     /// Returns an io::reader that can be used to read from stdout
-    fn output(&mut self) -> io::Reader;
+    fn output(&mut self) -> @io::Reader;
 
     /// Returns an io::reader that can be used to read from stderr
-    fn err(&mut self) -> io::Reader;
+    fn err(&mut self) -> @io::Reader;
 
     /// Closes the handle to the child processes standard input
     fn close_input(&mut self);
@@ -207,7 +207,7 @@ pub fn run_program(prog: &str, args: &[~str]) -> int {
  *
  * A class with a <program> field
  */
-pub fn start_program(prog: &str, args: &[~str]) -> Program {
+pub fn start_program(prog: &str, args: &[~str]) -> @Program {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
@@ -274,13 +274,13 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
 
     impl Program for ProgRes {
         fn get_id(&mut self) -> pid_t { return self.r.pid; }
-        fn input(&mut self) -> io::Writer {
+        fn input(&mut self) -> @io::Writer {
             io::fd_writer(self.r.in_fd, false)
         }
-        fn output(&mut self) -> io::Reader {
+        fn output(&mut self) -> @io::Reader {
             io::FILE_reader(self.r.out_file, false)
         }
-        fn err(&mut self) -> io::Reader {
+        fn err(&mut self) -> @io::Reader {
             io::FILE_reader(self.r.err_file, false)
         }
         fn close_input(&mut self) { close_repr_input(&mut self.r); }

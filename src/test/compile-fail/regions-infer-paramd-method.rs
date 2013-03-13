@@ -18,7 +18,7 @@ trait foo<'self> {
 }
 
 struct with_foo<'self> {
-    f: foo<'self>
+    f: @foo<'self>
 }
 
 trait set_foo_foo {

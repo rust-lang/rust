@@ -24,7 +24,7 @@ impl<T:Copy> box_trait<T> for box_impl<T> {
     fn set(t: T) { self.f = t; }
 }
 
-fn set_box_trait<T>(b: box_trait<@const T>, v: @const T) {
+fn set_box_trait<T>(b: @box_trait<@const T>, v: @const T) {
     b.set(v);
 }
 
@@ -34,7 +34,7 @@ fn set_box_impl<T>(b: box_impl<@const T>, v: @const T) {
 
 fn main() {
     let b = box_impl::<@int>(box::<@int> {f: @3});
-    set_box_trait(@b as box_trait::<@int>, @mut 5);
+    set_box_trait(@b as @box_trait::<@int>, @mut 5);
     //~^ ERROR values differ in mutability
     set_box_impl(b, @mut 5);
     //~^ ERROR values differ in mutability

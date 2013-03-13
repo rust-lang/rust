@@ -20,6 +20,7 @@ pub mod linear {
     use hash::Hash;
     use iter;
     use option::{None, Option, Some};
+    use rand::RngUtil;
     use rand;
     use uint;
     use vec;

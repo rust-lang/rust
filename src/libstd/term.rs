@@ -36,10 +36,10 @@ pub const color_bright_magenta: u8 = 13u8;
 pub const color_bright_cyan: u8 = 14u8;
 pub const color_bright_white: u8 = 15u8;
 
-pub fn esc(writer: io::Writer) { writer.write(~[0x1bu8, '[' as u8]); }
+pub fn esc(writer: @io::Writer) { writer.write(~[0x1bu8, '[' as u8]); }
 
 /// Reset the foreground and background colors to default
-pub fn reset(writer: io::Writer) {
+pub fn reset(writer: @io::Writer) {
     esc(writer);
     writer.write(~['0' as u8, 'm' as u8]);
 }
@@ -59,7 +59,7 @@ pub fn color_supported() -> bool {
         };
 }
 
-pub fn set_color(writer: io::Writer, first_char: u8, color: u8) {
+pub fn set_color(writer: @io::Writer, first_char: u8, color: u8) {
     fail_unless!((color < 16u8));
     esc(writer);
     let mut color = color;
@@ -68,12 +68,12 @@ pub fn set_color(writer: io::Writer, first_char: u8, color: u8) {
 }
 
 /// Set the foreground color
-pub fn fg(writer: io::Writer, color: u8) {
+pub fn fg(writer: @io::Writer, color: u8) {
     return set_color(writer, '3' as u8, color);
 }
 
 /// Set the background color
-pub fn bg(writer: io::Writer, color: u8) {
+pub fn bg(writer: @io::Writer, color: u8) {
     return set_color(writer, '4' as u8, color);
 }
 

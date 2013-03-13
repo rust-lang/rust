@@ -81,8 +81,10 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
 
                     match intrinsic_item.node {
                       ast::item_trait(*) => {
-                        let ty = ty::mk_trait(ccx.tcx, def_id, substs,
-                                              ty::vstore_box);
+                        let ty = ty::mk_trait(ccx.tcx,
+                                              def_id,
+                                              substs,
+                                              ty::BareTraitStore);
                         ccx.tcx.intrinsic_defs.insert
                             (intrinsic_item.ident, (def_id, ty));
                       }
@@ -893,7 +895,10 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
       }
       ast::item_trait(ref generics, _, _) => {
         let (bounds, substs) = mk_substs(ccx, generics, rp);
-        let t = ty::mk_trait(tcx, local_def(it.id), substs, ty::vstore_box);
+        let t = ty::mk_trait(tcx,
+                             local_def(it.id),
+                             substs,
+                             ty::BareTraitStore);
         let tpt = ty_param_bounds_and_ty {
             bounds: bounds,
             region_param: rp,

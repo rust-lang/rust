@@ -706,6 +706,7 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
 mod test_treemap {
     use core::prelude::*;
     use super::*;
+    use core::rand::RngUtil;
     use core::rand;
 
     #[test]

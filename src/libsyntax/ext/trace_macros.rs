@@ -17,8 +17,10 @@ use ext::base;
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
 
-pub fn expand_trace_macros(cx: ext_ctxt, sp: span,
-                           tt: &[ast::token_tree]) -> base::MacResult {
+pub fn expand_trace_macros(cx: @ext_ctxt,
+                           sp: span,
+                           tt: &[ast::token_tree])
+                        -> base::MacResult {
     let sess = cx.parse_sess();
     let cfg = cx.cfg();
     let tt_rdr = new_tt_reader(
@@ -27,7 +29,7 @@ pub fn expand_trace_macros(cx: ext_ctxt, sp: span,
         None,
         vec::from_slice(tt)
     );
-    let rdr = tt_rdr as reader;
+    let rdr = tt_rdr as @reader;
     let rust_parser = Parser(
         sess,
         copy cfg,
