@@ -95,18 +95,18 @@ mod test {
         use pingpong::client;
 
         let chan = client::ping(chan); return;
-        log(error, "Sent ping");
+        error!("Sent ping");
         let pong(_chan) = recv(chan);
-        log(error, "Received pong");
+        error!("Received pong");
     }
     
     pub fn server(-chan: ::pingpong::server::ping) {
         use pingpong::server;
 
         let ping(chan) = recv(chan); return;
-        log(error, "Received ping");
+        error!("Received ping");
         let _chan = server::pong(chan);
-        log(error, "Sent pong");
+        error!("Sent pong");
     }
 }
 

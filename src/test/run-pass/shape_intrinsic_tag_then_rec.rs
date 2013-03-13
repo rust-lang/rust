@@ -39,6 +39,6 @@ pub fn main() {
     let p_: Path_ = Path_ { global: true, idents: ~[~"hi"], types: ~[t] };
     let p: path = Spanned { data: p_, span: sp };
     let x = X { sp: sp, path: p };
-    log(error, copy x.path);
-    log(error, copy x);
+    error!(copy x.path);
+    error!(copy x);
 }

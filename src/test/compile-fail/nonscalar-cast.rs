@@ -15,5 +15,5 @@ struct foo {
 }
 
 fn main() {
-    log(debug, foo{ x: 1 } as int);
+    debug!(foo{ x: 1 } as int);
 }

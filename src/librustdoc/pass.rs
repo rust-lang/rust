@@ -31,7 +31,7 @@ pub fn run_passes(
 ) -> doc::Doc {
     let mut passno = 0;
     do vec::foldl(doc, passes) |doc, pass| {
-        log(debug, fmt!("pass #%d", passno));
+        debug!("pass #%d", passno);
         passno += 1;
         do time(copy pass.name) {
             (pass.f)(srv.clone(), copy doc)

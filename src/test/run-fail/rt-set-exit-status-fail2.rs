@@ -30,7 +30,7 @@ fn r(x:int) -> r {
 }
 
 fn main() {
-    log(error, ~"whatever");
+    error!(~"whatever");
     do task::spawn {
       let i = r(5);
     };

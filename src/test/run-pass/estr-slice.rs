@@ -14,8 +14,8 @@ pub fn main() {
     let v = &"hello";
     let mut y : &str = &"there";
 
-    log(debug, x);
-    log(debug, y);
+    debug!(x);
+    debug!(y);
 
     fail_unless!(x[0] == 'h' as u8);
     fail_unless!(x[4] == 'o' as u8);
@@ -30,7 +30,7 @@ pub fn main() {
     let c = &"cccc";
     let cc = &"ccccc";
 
-    log(debug, a);
+    debug!(a);
 
     fail_unless!(a < b);
     fail_unless!(a <= b);
@@ -38,7 +38,7 @@ pub fn main() {
     fail_unless!(b >= a);
     fail_unless!(b > a);
 
-    log(debug, b);
+    debug!(b);
 
     fail_unless!(a < c);
     fail_unless!(a <= c);
@@ -46,7 +46,7 @@ pub fn main() {
     fail_unless!(c >= a);
     fail_unless!(c > a);
 
-    log(debug, c);
+    debug!(c);
 
     fail_unless!(c < cc);
     fail_unless!(c <= cc);
@@ -54,5 +54,5 @@ pub fn main() {
     fail_unless!(cc >= c);
     fail_unless!(cc > c);
 
-    log(debug, cc);
+    debug!(cc);
 }

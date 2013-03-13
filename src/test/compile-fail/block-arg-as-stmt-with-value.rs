@@ -18,6 +18,6 @@ fn compute1() -> float {
 
 fn main() {
     let x = compute1();
-    log(debug, x);
+    debug!(x);
     fail_unless!((x == -4f));
 }

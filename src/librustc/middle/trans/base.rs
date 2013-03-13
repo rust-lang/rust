@@ -803,12 +803,12 @@ pub fn invoke(bcx: block, llfn: ValueRef, +llargs: ~[ValueRef]) -> block {
     let _icx = bcx.insn_ctxt("invoke_");
     if bcx.unreachable { return bcx; }
     if need_invoke(bcx) {
-        log(debug, ~"invoking");
+        debug!("invoking");
         let normal_bcx = sub_block(bcx, ~"normal return");
         Invoke(bcx, llfn, llargs, normal_bcx.llbb, get_landing_pad(bcx));
         return normal_bcx;
     } else {
-        log(debug, ~"calling");
+        debug!("calling");
         Call(bcx, llfn, llargs);
         return bcx;
     }
@@ -1487,7 +1487,7 @@ pub fn alloc_ty(bcx: block, t: ty::t) -> ValueRef {
     let _icx = bcx.insn_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let llty = type_of::type_of(ccx, t);
-    if ty::type_has_params(t) { log(error, ty_to_str(ccx.tcx, t)); }
+    if ty::type_has_params(t) { error!("%s", ty_to_str(ccx.tcx, t)); }
     fail_unless!(!ty::type_has_params(t));
     let val = alloca(bcx, llty);
     return val;

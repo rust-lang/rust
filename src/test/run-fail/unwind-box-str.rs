@@ -17,5 +17,5 @@ fn failfn() {
 fn main() {
     let x = @~"hi";
     failfn();
-    log(error, x);
+    error!(x);
 }

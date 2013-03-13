@@ -18,4 +18,4 @@ fn foo<T>(o: myoption<T>) -> int {
 
 enum myoption<T> { none, some(T), }
 
-pub fn main() { log(debug, 5); }
+pub fn main() { debug!(5); }

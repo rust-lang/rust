@@ -10,7 +10,7 @@
 
 fn test_stack_assign() {
     let s: ~str = ~"a";
-    log(debug, copy s);
+    debug!(copy s);
     let t: ~str = ~"a";
     fail_unless!((s == t));
     let u: ~str = ~"b";
@@ -27,7 +27,7 @@ fn test_heap_assign() {
     fail_unless!((s != u));
 }
 
-fn test_heap_log() { let s = ~"a big ol' string"; log(debug, s); }
+fn test_heap_log() { let s = ~"a big ol' string"; debug!(s); }
 
 fn test_stack_add() {
     fail_unless!((~"a" + ~"b" == ~"ab"));
@@ -49,7 +49,7 @@ fn test_append() {
 
     let mut s = ~"a";
     s += ~"b";
-    log(debug, copy s);
+    debug!(copy s);
     fail_unless!((s == ~"ab"));
 
     let mut s = ~"c";

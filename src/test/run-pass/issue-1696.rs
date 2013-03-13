@@ -16,5 +16,5 @@ use std::oldmap::HashMap;
 pub fn main() {
     let m = HashMap();
     m.insert(str::to_bytes(~"foo"), str::to_bytes(~"bar"));
-    log(error, m);
+    error!(m);
 }

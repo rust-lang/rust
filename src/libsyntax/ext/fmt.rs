@@ -37,8 +37,7 @@ pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
         expr_to_str(cx, args[0],
                     ~"first argument to fmt! must be a string literal.");
     let fmtspan = args[0].span;
-    debug!("Format string:");
-    log(debug, fmt);
+    debug!("Format string: %s", fmt);
     fn parse_fmt_err_(cx: ext_ctxt, sp: span, msg: &str) -> ! {
         cx.span_fatal(sp, msg);
     }
@@ -223,7 +222,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     }
     fn log_conv(c: Conv) {
         match c.param {
-          Some(p) => { log(debug, ~"param: " + p.to_str()); }
+          Some(p) => { debug!("param: %s", p.to_str()); }
           _ => debug!("param: none")
         }
         for c.flags.each |f| {
@@ -236,18 +235,18 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
             }
         }
         match c.width {
-          CountIs(i) => log(
-              debug, ~"width: count is " + i.to_str()),
-          CountIsParam(i) => log(
-              debug, ~"width: count is param " + i.to_str()),
+          CountIs(i) =>
+              debug!("width: count is %s", i.to_str()),
+          CountIsParam(i) =>
+              debug!("width: count is param %s", i.to_str()),
           CountIsNextParam => debug!("width: count is next param"),
           CountImplied => debug!("width: count is implied")
         }
         match c.precision {
-          CountIs(i) => log(
-              debug, ~"prec: count is " + i.to_str()),
-          CountIsParam(i) => log(
-              debug, ~"prec: count is param " + i.to_str()),
+          CountIs(i) =>
+              debug!("prec: count is %s", i.to_str()),
+          CountIsParam(i) =>
+              debug!("prec: count is param %s", i.to_str()),
           CountIsNextParam => debug!("prec: count is next param"),
           CountImplied => debug!("prec: count is implied")
         }

@@ -13,7 +13,7 @@
 
 fn f() {
     let v = ~[1i];
-    log(debug, v.some_field_name); //type error
+    debug!(v.some_field_name); //type error
 }
 
 fn main() { }

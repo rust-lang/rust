@@ -21,8 +21,8 @@ fn test_generic<T>(expected: @T, eq: compare<T>) {
 
 fn test_box() {
     fn compare_box(b1: @bool, b2: @bool) -> bool {
-        log(debug, *b1);
-        log(debug, *b2);
+        debug!(*b1);
+        debug!(*b2);
         return *b1 == *b2;
     }
     test_generic::<bool>(@true, compare_box);

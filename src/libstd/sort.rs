@@ -721,7 +721,7 @@ mod test_qsort3 {
         quick_sort3::<int>(v1);
         let mut i = 0;
         while i < len {
-            log(debug, v2[i]);
+            debug!(v2[i]);
             fail_unless!((v2[i] == v1[i]));
             i += 1;
         }
@@ -768,7 +768,7 @@ mod test_qsort {
         quick_sort::<int>(v1, leual);
         let mut i = 0u;
         while i < len {
-            log(debug, v2[i]);
+            debug!(v2[i]);
             fail_unless!((v2[i] == v1[i]));
             i += 1;
         }
@@ -834,7 +834,7 @@ mod tests {
         let v3 = merge_sort::<int>(v1, f);
         let mut i = 0u;
         while i < len {
-            log(debug, v3[i]);
+            debug!(v3[i]);
             fail_unless!((v3[i] == v2[i]));
             i += 1;
         }
@@ -918,7 +918,7 @@ mod test_tim_sort {
         tim_sort::<int>(v1);
         let mut i = 0u;
         while i < len {
-            log(debug, v2[i]);
+            debug!(v2[i]);
             fail_unless!((v2[i] == v1[i]));
             i += 1u;
         }

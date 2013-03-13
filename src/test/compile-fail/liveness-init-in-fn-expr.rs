@@ -13,5 +13,5 @@ fn main() {
         let i: int;
         i //~ ERROR use of possibly uninitialized variable: `i`
     };
-    log(error, f());
+    error!(f());
 }

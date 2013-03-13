@@ -14,9 +14,9 @@
 // -*- rust -*-
 pub fn main() {
     let mut sum: int = 0;
-    do first_ten |i| { debug!("main"); log(debug, i); sum = sum + i; }
+    do first_ten |i| { debug!("main"); debug!(i); sum = sum + i; }
     debug!("sum");
-    log(debug, sum);
+    debug!(sum);
     fail_unless!((sum == 45));
 }
 

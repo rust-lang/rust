@@ -208,8 +208,8 @@ pub fn env() -> ~[(~str,~str)] {
             let mut result = ~[];
             ptr::array_each(environ, |e| {
                 let env_pair = str::raw::from_c_str(e);
-                log(debug, fmt!("get_env_pairs: %s",
-                                env_pair));
+                debug!("get_env_pairs: %s",
+                       env_pair);
                 result.push(env_pair);
             });
             result
@@ -219,9 +219,8 @@ pub fn env() -> ~[(~str,~str)] {
             let mut pairs = ~[];
             for input.each |p| {
                 let vs = str::splitn_char(*p, '=', 1);
-                log(debug,
-                    fmt!("splitting: len: %u",
-                    vs.len()));
+                debug!("splitting: len: %u",
+                    vs.len());
                 fail_unless!(vs.len() == 2);
                 pairs.push((copy vs[0], copy vs[1]));
             }
@@ -682,10 +681,10 @@ pub fn list_dir(p: &Path) -> ~[~str] {
             let input = p.to_str();
             let mut strings = ~[];
             let input_ptr = ::cast::transmute(&input[0]);
-            log(debug, "os::list_dir -- BEFORE OPENDIR");
+            debug!("os::list_dir -- BEFORE OPENDIR");
             let dir_ptr = opendir(input_ptr);
             if (dir_ptr as uint != 0) {
-        log(debug, "os::list_dir -- opendir() SUCCESS");
+        debug!("os::list_dir -- opendir() SUCCESS");
                 let mut entry_ptr = readdir(dir_ptr);
                 while (entry_ptr as uint != 0) {
                     strings.push(
@@ -697,11 +696,11 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                 closedir(dir_ptr);
             }
             else {
-        log(debug, "os::list_dir -- opendir() FAILURE");
+        debug!("os::list_dir -- opendir() FAILURE");
             }
-            log(debug,
-                fmt!("os::list_dir -- AFTER -- #: %?",
-                     strings.len()));
+            debug!(
+                "os::list_dir -- AFTER -- #: %?",
+                     strings.len());
             strings
         }
         #[cfg(windows)]
@@ -1258,7 +1257,6 @@ pub mod consts {
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]
 mod tests {
-    use debug;
     use libc::{c_int, c_void, size_t};
     use libc;
     use option::{None, Option, Some};
@@ -1274,7 +1272,7 @@ mod tests {
 
     #[test]
     pub fn last_os_error() {
-        log(debug, os::last_os_error());
+        debug!(os::last_os_error());
     }
 
     #[test]
@@ -1320,7 +1318,7 @@ mod tests {
         while i < 100 { s += ~"aaaaaaaaaa"; i += 1; }
         let n = make_rand_name();
         setenv(n, s);
-        log(debug, copy s);
+        debug!(copy s);
         fail_unless!(getenv(n) == option::Some(s));
     }
 
@@ -1329,7 +1327,7 @@ mod tests {
         let path = os::self_exe_path();
         fail_unless!(path.is_some());
         let path = path.get();
-        log(debug, copy path);
+        debug!(copy path);
 
         // Hard to test this function
         fail_unless!(path.is_absolute);
@@ -1342,7 +1340,7 @@ mod tests {
         fail_unless!(vec::len(e) > 0u);
         for vec::each(e) |p| {
             let (n, v) = copy *p;
-            log(debug, copy n);
+            debug!(copy n);
             let v2 = getenv(n);
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
@@ -1367,10 +1365,10 @@ mod tests {
     fn test() {
         fail_unless!((!Path("test-path").is_absolute));
 
-        log(debug, ~"Current working directory: " + getcwd().to_str());
+        debug!(~"Current working directory: " + getcwd().to_str());
 
-        log(debug, make_absolute(&Path("test-path")));
-        log(debug, make_absolute(&Path("/usr/bin")));
+        debug!(make_absolute(&Path("test-path")));
+        debug!(make_absolute(&Path("/usr/bin")));
     }
 
     #[test]
@@ -1433,7 +1431,7 @@ mod tests {
         fail_unless!((vec::len(dirs) > 0u));
 
         for vec::each(dirs) |dir| {
-            log(debug, copy *dir);
+            debug!(copy *dir);
         }
     }
 

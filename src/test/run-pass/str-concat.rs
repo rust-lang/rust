@@ -16,6 +16,6 @@ pub fn main() {
     let a: ~str = ~"hello";
     let b: ~str = ~"world";
     let s: ~str = a + b;
-    log(debug, copy s);
+    debug!(copy s);
     fail_unless!((s[9] == 'd' as u8));
 }

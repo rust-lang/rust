@@ -494,7 +494,6 @@ pub fn random() -> uint {
 
 #[cfg(test)]
 pub mod tests {
-    use debug;
     use option::{None, Option, Some};
     use rand;
 
@@ -563,7 +562,7 @@ pub mod tests {
         let r = rand::Rng();
         let a = r.gen_float();
         let b = r.gen_float();
-        log(debug, (a, b));
+        debug!((a, b));
     }
 
     #[test]
@@ -576,9 +575,9 @@ pub mod tests {
     #[test]
     pub fn gen_str() {
         let r = rand::Rng();
-        log(debug, r.gen_str(10u));
-        log(debug, r.gen_str(10u));
-        log(debug, r.gen_str(10u));
+        debug!(r.gen_str(10u));
+        debug!(r.gen_str(10u));
+        debug!(r.gen_str(10u));
         fail_unless!(r.gen_str(0u).len() == 0u);
         fail_unless!(r.gen_str(10u).len() == 10u);
         fail_unless!(r.gen_str(16u).len() == 16u);

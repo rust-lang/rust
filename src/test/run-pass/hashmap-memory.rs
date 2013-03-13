@@ -57,7 +57,7 @@ mod map_reduce {
                 ctrl.send(find_reducer(str::to_bytes(key), cc));
                 error!("receiving");
                 c = pp.recv();
-                log(error, c);
+                error!(c);
                 im.insert(key, c);
               }
             }

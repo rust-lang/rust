@@ -14,7 +14,7 @@ pub fn main() {
 
     // Statement form does not require parentheses:
     for vec::each(v) |i| {
-        log(info, *i);
+        info!("%?", *i);
     }
 
     // Usable at all:

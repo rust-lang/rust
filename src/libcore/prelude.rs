@@ -82,18 +82,3 @@ pub use u64;
 pub use u8;
 pub use uint;
 pub use vec;
-
-/*
- * Export the log levels as global constants. Higher levels mean
- * more-verbosity. Error is the bottom level, default logging level is
- * warn-and-below.
- */
-
-/// The error log level
-pub const error : u32 = 1_u32;
-/// The warning log level
-pub const warn : u32 = 2_u32;
-/// The info log level
-pub const info : u32 = 3_u32;
-/// The debug log level
-pub const debug : u32 = 4_u32;
