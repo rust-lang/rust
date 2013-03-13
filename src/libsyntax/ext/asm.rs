@@ -75,6 +75,13 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
                     let out = p.parse_expr();
                     p.expect(&token::RPAREN);
 
+                    let out = @ast::expr {
+                        id: cx.next_id(),
+                        callee_id: cx.next_id(),
+                        span: out.span,
+                        node: ast::expr_addr_of(ast::m_mutbl, out)
+                    };
+
                     outputs.push((constraint, out));
                 }
             }
