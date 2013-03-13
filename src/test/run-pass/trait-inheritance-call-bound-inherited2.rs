@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo { fn f() -> int; }
-trait Bar : Foo { fn g() -> int; }
-trait Baz : Bar { fn h() -> int; }
+trait Foo { fn f(&self) -> int; }
+trait Bar : Foo { fn g(&self) -> int; }
+trait Baz : Bar { fn h(&self) -> int; }
 
 struct A { x: int }
 
-impl Foo for A { fn f() -> int { 10 } }
-impl Bar for A { fn g() -> int { 20 } }
-impl Baz for A { fn h() -> int { 30 } }
+impl Foo for A { fn f(&self) -> int { 10 } }
+impl Bar for A { fn g(&self) -> int { 20 } }
+impl Baz for A { fn h(&self) -> int { 30 } }
 
 // Call a function on Foo, given a T: Baz,
 // which is inherited via Bar

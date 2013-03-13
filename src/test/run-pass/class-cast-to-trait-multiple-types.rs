@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait noisy {
-  fn speak() -> int;
+  fn speak(&self) -> int;
 }
 
 struct dog {
@@ -19,7 +19,7 @@ struct dog {
 }
 
 pub impl dog {
-    priv fn bark() -> int {
+    priv fn bark(&self) -> int {
       debug!("Woof %u %d", *self.barks, *self.volume);
       *self.barks += 1u;
       if *self.barks % 3u == 0u {
@@ -34,7 +34,7 @@ pub impl dog {
 }
 
 impl noisy for dog {
-  fn speak() -> int { self.bark() }
+  fn speak(&self) -> int { self.bark() }
 }
 
 fn dog() -> dog {
@@ -52,15 +52,15 @@ struct cat {
 }
 
 impl noisy for cat {
-  fn speak() -> int { self.meow() as int }
+  fn speak(&self) -> int { self.meow() as int }
 }
 
 pub impl cat {
-  fn meow_count() -> uint { *self.meows }
+  fn meow_count(&self) -> uint { *self.meows }
 }
 
 priv impl cat {
-    fn meow() -> uint {
+    fn meow(&self) -> uint {
       debug!("Meow");
       *self.meows += 1u;
       if *self.meows % 5u == 0u {

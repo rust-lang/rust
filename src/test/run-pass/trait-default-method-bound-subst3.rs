@@ -11,7 +11,7 @@
 #[allow(default_methods)];
 
 trait A {
-    fn g<T>(x: T, y: T) -> (T, T) { (x, y) }
+    fn g<T>(&self, x: T, y: T) -> (T, T) { (x, y) }
 }
 
 impl A for int { }

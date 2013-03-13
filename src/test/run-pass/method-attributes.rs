@@ -13,20 +13,20 @@
 #[frobable]
 trait frobable {
     #[frob_attr]
-    fn frob();
+    fn frob(&self);
     #[defrob_attr]
-    fn defrob();
+    fn defrob(&self);
 }
 
 #[int_frobable]
 impl frobable for int {
     #[frob_attr1]
-    fn frob() {
+    fn frob(&self) {
         #[frob_attr2];
     }
 
     #[defrob_attr1]
-    fn defrob() {
+    fn defrob(&self) {
         #[defrob_attr2];
     }
 }

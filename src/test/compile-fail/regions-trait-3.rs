@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait get_ctxt {
-    fn get_ctxt() -> &self/uint;
+    fn get_ctxt(&self) -> &self/uint;
 }
 
 fn make_gc1(gc: @get_ctxt/&a) -> @get_ctxt/&b  {
@@ -21,7 +21,7 @@ struct Foo {
 }
 
 impl get_ctxt/&self for Foo/&self {
-    fn get_ctxt() -> &self/uint { self.r }
+    fn get_ctxt(&self) -> &self/uint { self.r }
 }
 
 fn make_gc2(foo: Foo/&a) -> @get_ctxt/&b  {

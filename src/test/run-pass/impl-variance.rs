@@ -9,11 +9,11 @@
 // except according to those terms.
 
 trait foo {
-    fn foo() -> uint;
+    fn foo(&self) -> uint;
 }
 
 impl<T> foo for ~[const T] {
-    fn foo() -> uint { vec::len(self) }
+    fn foo(&self) -> uint { vec::len(self) }
 }
 
 pub fn main() {

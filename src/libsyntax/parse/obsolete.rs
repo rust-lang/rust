@@ -56,6 +56,7 @@ pub enum ObsoleteSyntax {
     ObsoleteBareFnType,
     ObsoleteNewtypeEnum,
     ObsoleteMode,
+    ObsoleteImplicitSelf,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -180,6 +181,11 @@ pub impl Parser {
             ObsoleteMode => (
                 "obsolete argument mode",
                 "replace `-` or `++` mode with `+`"
+            ),
+            ObsoleteImplicitSelf => (
+                "implicit self",
+                "use an explicit `self` declaration or declare the method as \
+                 static"
             ),
         };
 

@@ -10,7 +10,7 @@
 
 
 pub trait Foo {
-    fn f() -> int;
+    fn f(&self) -> int;
 }
 
 pub struct A {
@@ -18,5 +18,5 @@ pub struct A {
 }
 
 impl Foo for A {
-    fn f() -> int { 10 }
+    fn f(&self) -> int { 10 }
 }

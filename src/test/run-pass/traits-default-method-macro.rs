@@ -11,7 +11,7 @@
 #[allow(default_methods)];
 
 trait Foo {
-    fn bar() -> ~str {
+    fn bar(&self) -> ~str {
         fmt!("test")
     }
 }

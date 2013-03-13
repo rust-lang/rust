@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait Foo<T> {
-    fn get() -> T;
+    fn get(&self) -> T;
 }
 
 struct S {
@@ -17,7 +17,7 @@ struct S {
 }
 
 impl Foo<int> for S {
-    fn get() -> int {
+    fn get(&self) -> int {
         self.x
     }
 }

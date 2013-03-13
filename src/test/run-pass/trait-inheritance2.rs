@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo { fn f() -> int; }
-trait Bar { fn g() -> int; }
-trait Baz { fn h() -> int; }
+trait Foo { fn f(&self) -> int; }
+trait Bar { fn g(&self) -> int; }
+trait Baz { fn h(&self) -> int; }
 
 trait Quux: Foo + Bar + Baz { }
 
 struct A { x: int }
 
-impl Foo for A { fn f() -> int { 10 } }
-impl Bar for A { fn g() -> int { 20 } }
-impl Baz for A { fn h() -> int { 30 } }
+impl Foo for A { fn f(&self) -> int { 10 } }
+impl Bar for A { fn g(&self) -> int { 20 } }
+impl Baz for A { fn h(&self) -> int { 30 } }
 impl Quux for A;
 
 fn f<T:Quux + Foo + Bar + Baz>(a: &T) {

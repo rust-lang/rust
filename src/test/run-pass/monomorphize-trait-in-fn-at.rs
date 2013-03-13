@@ -17,11 +17,11 @@ fn mk_nil<C:ty_ops>(cx: C) -> uint {
 }
 
 trait ty_ops {
-    fn mk() -> uint;
+    fn mk(&self) -> uint;
 }
 
 impl ty_ops for () {
-    fn mk() -> uint { 22u }
+    fn mk(&self) -> uint { 22u }
 }
 
 pub fn main() {

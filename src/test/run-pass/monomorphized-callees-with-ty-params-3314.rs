@@ -14,17 +14,17 @@ trait Serializer {
 }
 
 trait Serializable {
-    fn serialize<S:Serializer>(s: S);
+    fn serialize<S:Serializer>(&self, s: S);
 }
 
 impl Serializable for int {
-    fn serialize<S:Serializer>(_s: S) { }
+    fn serialize<S:Serializer>(&self, _s: S) { }
 }
 
 struct F<A> { a: A }
 
 impl<A:Copy + Serializable> Serializable for F<A> {
-    fn serialize<S:Serializer>(s: S) {
+    fn serialize<S:Serializer>(&self, s: S) {
         self.a.serialize(s);
     }
 }

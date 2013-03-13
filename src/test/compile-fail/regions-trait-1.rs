@@ -12,7 +12,7 @@ struct ctxt { v: uint }
 
 trait get_ctxt {
     // Here the `&` is bound in the method definition:
-    fn get_ctxt() -> &ctxt;
+    fn get_ctxt(&self) -> &ctxt;
 }
 
 struct has_ctxt { c: &'self ctxt }
@@ -21,7 +21,7 @@ impl get_ctxt for has_ctxt<'self> {
 
     // Here an error occurs because we used `&self` but
     // the definition used `&`:
-    fn get_ctxt() -> &'self ctxt { //~ ERROR method `get_ctxt` has an incompatible type
+    fn get_ctxt(&self) -> &'self ctxt { //~ ERROR method `get_ctxt` has an incompatible type
         self.c
     }
 

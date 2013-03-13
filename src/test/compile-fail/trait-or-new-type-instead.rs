@@ -10,7 +10,7 @@
 
 // error-pattern: implement a trait or new type instead
 pub impl <T> Option<T> {
-    fn foo() { }
+    fn foo(&self) { }
 }
 
 fn main() { }

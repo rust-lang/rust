@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub trait Add<RHS,Result> {
-    pure fn add(rhs: &RHS) -> Result;
+    pure fn add(&self, rhs: &RHS) -> Result;
 }
 
 trait MyNum : Add<Self,Self> { }
@@ -17,7 +17,7 @@ trait MyNum : Add<Self,Self> { }
 struct MyInt { val: int }
 
 impl Add<MyInt, MyInt> for MyInt {
-    pure fn add(other: &MyInt) -> MyInt { mi(self.val + other.val) }
+    pure fn add(&self, other: &MyInt) -> MyInt { mi(self.val + other.val) }
 }
 
 impl MyNum for MyInt;

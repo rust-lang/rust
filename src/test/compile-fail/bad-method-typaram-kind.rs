@@ -13,11 +13,11 @@ fn foo<T>() {
 }
 
 trait bar {
-    fn bar<T:Copy>();
+    fn bar<T:Copy>(&self);
 }
 
 impl bar for uint {
-    fn bar<T:Copy>() {
+    fn bar<T:Copy>(&self) {
     }
 }
 

@@ -11,7 +11,7 @@
 extern mod std;
 
 trait SipHash {
-    fn reset();
+    fn reset(&self);
 }
 
 fn siphash(k0 : u64) -> SipHash {
@@ -20,7 +20,7 @@ fn siphash(k0 : u64) -> SipHash {
     }
 
     impl SipHash for SipState {
-        fn reset() {
+        fn reset(&self) {
            self.v0 = k0 ^ 0x736f6d6570736575; //~ ERROR attempted dynamic environment-capture
            //~^ ERROR unresolved name: `k0`.
         }

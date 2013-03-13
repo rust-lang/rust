@@ -19,12 +19,12 @@ struct c<'self> {
 }
 
 trait set_f<'self> {
-    fn set_f_ok(b: @b<'self>);
-    fn set_f_bad(b: @b);
+    fn set_f_ok(&self, b: @b<'self>);
+    fn set_f_bad(&self, b: @b);
 }
 
 impl<'self> set_f<'self> for c<'self> {
-    fn set_f_ok(b: @b<'self>) {
+    fn set_f_ok(&self, b: @b<'self>) {
         self.f = b;
     }
 

@@ -15,11 +15,11 @@ fn failfn() {
 }
 
 trait i {
-    fn foo();
+    fn foo(&self);
 }
 
 impl i for ~int {
-    fn foo() { }
+    fn foo(&self) { }
 }
 
 fn main() {

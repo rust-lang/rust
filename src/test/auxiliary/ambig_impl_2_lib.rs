@@ -9,6 +9,6 @@
 // except according to those terms.
 
 trait me {
-    fn me() -> uint;
+    fn me(&self) -> uint;
 }
-impl me for uint { fn me() -> uint { self } }
+impl me for uint { fn me(&self) -> uint { self } }

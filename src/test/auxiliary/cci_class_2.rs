@@ -17,7 +17,7 @@ pub mod kitties {
     }
 
     pub impl cat {
-        fn speak() {}
+        fn speak(&self) {}
     }
 
     pub fn cat(in_x : uint, in_y : int) -> cat {

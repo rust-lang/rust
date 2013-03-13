@@ -11,7 +11,7 @@
 #[allow(default_methods)];
 
 trait A {
-    fn g() -> int { 10 }
+    fn g(&self) -> int { 10 }
 }
 
 impl A for int { }

@@ -9,15 +9,15 @@
 // except according to those terms.
 
 trait TraitA {
-    fn method_a() -> int;
+    fn method_a(&self) -> int;
 }
 
 trait TraitB {
-    fn gimme_an_a<A:TraitA>(a: A) -> int;
+    fn gimme_an_a<A:TraitA>(&self, a: A) -> int;
 }
 
 impl TraitB for int {
-    fn gimme_an_a<A:TraitA>(a: A) -> int {
+    fn gimme_an_a<A:TraitA>(&self, a: A) -> int {
         a.method_a() + self
     }
 }

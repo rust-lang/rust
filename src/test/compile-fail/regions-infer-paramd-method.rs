@@ -12,9 +12,9 @@
 // refers to self.
 
 trait foo<'self> {
-    fn self_int() -> &'self int;
+    fn self_int(&self) -> &'self int;
 
-    fn any_int() -> &int;
+    fn any_int(&self) -> &int;
 }
 
 struct with_foo<'self> {
@@ -34,7 +34,7 @@ impl<'self> set_foo_foo for with_foo<'self> {
 // Bar is not region parameterized.
 
 trait bar {
-    fn any_int() -> &int;
+    fn any_int(&self) -> &int;
 }
 
 struct with_bar {

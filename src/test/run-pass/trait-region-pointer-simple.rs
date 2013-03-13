@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait Foo {
-    fn f() -> int;
+    fn f(&self) -> int;
 }
 
 struct A {
@@ -17,7 +17,7 @@ struct A {
 }
 
 impl Foo for A {
-    fn f() -> int {
+    fn f(&self) -> int {
         io::println(~"Today's number is " + self.x.to_str());
         return self.x;
     }

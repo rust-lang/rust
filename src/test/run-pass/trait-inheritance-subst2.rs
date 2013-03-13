@@ -9,11 +9,11 @@
 // except according to those terms.
 
 trait Panda<T> {
-    fn chomp(bamboo: &T) -> T;
+    fn chomp(&self, bamboo: &T) -> T;
 }
 
 trait Add<RHS,Result>: Panda<RHS> {
-    fn add(rhs: &RHS) -> Result;
+    fn add(&self, rhs: &RHS) -> Result;
 }
 
 trait MyNum : Add<Self,Self> { }
@@ -21,13 +21,13 @@ trait MyNum : Add<Self,Self> { }
 struct MyInt { val: int }
 
 impl Panda<MyInt> for MyInt {
-    fn chomp(bamboo: &MyInt) -> MyInt {
+    fn chomp(&self, bamboo: &MyInt) -> MyInt {
         mi(self.val + bamboo.val)
     }
 }
 
 impl Add<MyInt, MyInt> for MyInt {
-    fn add(other: &MyInt) -> MyInt { self.chomp(other) }
+    fn add(&self, other: &MyInt) -> MyInt { self.chomp(other) }
 }
 
 impl MyNum for MyInt;

@@ -9,11 +9,11 @@
 // except according to those terms.
 
 trait Foo {
-    fn foo();
+    fn foo(&self);
 }
 
 trait Bar : Foo {
-    fn bar();
+    fn bar(&self);
 }
 
 pub fn main() {}

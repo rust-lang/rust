@@ -13,7 +13,7 @@ struct c1<T> {
 }
 
 pub impl<T:Copy> c1<T> {
-    fn f1(x: int) {
+    fn f1(&self, x: int) {
     }
 }
 
@@ -24,7 +24,7 @@ fn c1<T:Copy>(x: T) -> c1<T> {
 }
 
 pub impl<T:Copy> c1<T> {
-    fn f2(x: int) {
+    fn f2(&self, x: int) {
     }
 }
 

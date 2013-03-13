@@ -13,11 +13,11 @@ struct Clam<'self> {
 }
 
 trait get_chowder<'self> {
-    fn get_chowder() -> &'self int;
+    fn get_chowder(&self) -> &'self int;
 }
 
 impl<'self> get_chowder<'self> for Clam<'self> {
-    fn get_chowder() -> &'self int { return self.chowder; }
+    fn get_chowder(&self) -> &'self int { return self.chowder; }
 }
 
 pub fn main() {

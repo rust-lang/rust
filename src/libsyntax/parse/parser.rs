@@ -78,7 +78,7 @@ use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
 use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
 use parse::obsolete::{ObsoleteAssertion, ObsoletePostFnTySigil};
 use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
-use parse::obsolete::{ObsoleteMode};
+use parse::obsolete::{ObsoleteMode, ObsoleteImplicitSelf};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -470,6 +470,10 @@ pub impl Parser {
             };
             // XXX: Wrong. Shouldn't allow both static and self_ty
             let self_ty = if is_static { static_sty } else { self_ty };
+
+            if self_ty.node == sty_by_ref {
+                self.obsolete(self_ty.span, ObsoleteImplicitSelf);
+            }
 
             let hi = p.last_span.hi;
             debug!("parse_trait_methods(): trait method signature ends in \
@@ -2980,6 +2984,10 @@ pub impl Parser {
         };
         // XXX: interaction between staticness, self_ty is broken now
         let self_ty = if is_static { static_sty} else { self_ty };
+
+        if self_ty.node == sty_by_ref {
+            self.obsolete(self_ty.span, ObsoleteImplicitSelf);
+        }
 
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
         let hi = body.span.hi;

@@ -9,10 +9,10 @@
 // except according to those terms.
 
 trait foo {
-    fn bar(x: uint) -> Self;
+    fn bar(&self, x: uint) -> Self;
 }
 impl foo for int {
-    fn bar() -> int {
+    fn bar(&self) -> int {
         //~^ ERROR method `bar` has 0 parameters but the trait has 1
         self
     }

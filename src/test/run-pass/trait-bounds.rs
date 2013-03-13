@@ -9,22 +9,22 @@
 // except according to those terms.
 
 trait connection {
-    fn read() -> int;
+    fn read(&self) -> int;
 }
 
 trait connection_factory<C:connection> {
-    fn create() -> C;
+    fn create(&self) -> C;
 }
 
 type my_connection = ();
 type my_connection_factory = ();
 
 impl connection for () {
-    fn read() -> int { 43 }
+    fn read(&self) -> int { 43 }
 }
 
 impl connection_factory<my_connection> for my_connection_factory {
-    fn create() -> my_connection { () }
+    fn create(&self) -> my_connection { () }
 }
 
 pub fn main() {

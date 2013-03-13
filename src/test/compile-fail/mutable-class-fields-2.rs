@@ -16,7 +16,7 @@ struct cat {
 }
 
 pub impl cat {
-  fn eat() {
+  fn eat(&self) {
     self.how_hungry -= 5;
   }
 
