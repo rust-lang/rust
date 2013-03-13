@@ -2258,7 +2258,6 @@ pub mod test {
     use core::cmp::Eq;
     use core::option::None;
     use parse;
-    use util::testing::check_equal;
 
     fn string_check<T:Eq> (given : &T, expected: &T) {
         if !(given == expected) {
@@ -2279,7 +2278,7 @@ pub mod test {
             cf: ast::return_val
         };
         let generics = ast_util::empty_generics();
-        check_equal (&fun_to_str(&decl, abba_ident, None, &generics, mock_interner),
+        assert_eq!(&fun_to_str(&decl, abba_ident, None, &generics, mock_interner),
                      &~"fn abba()");
     }
 
@@ -2299,7 +2298,7 @@ pub mod test {
         });
 
         let varstr = variant_to_str(var,mock_interner);
-        check_equal(&varstr,&~"pub principal_skinner");
+        assert_eq!(&varstr,&~"pub principal_skinner");
     }
 }
 
