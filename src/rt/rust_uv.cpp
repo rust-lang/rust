@@ -479,6 +479,34 @@ extern "C" struct sockaddr_in6
 rust_uv_ip6_addr(const char* ip, int port) {
     return uv_ip6_addr(ip, port);
 }
+
+extern "C" struct sockaddr_in*
+rust_uv_ip4_addrp(const char* ip, int port) {
+  struct sockaddr_in addr = uv_ip4_addr(ip, port);
+  struct sockaddr_in *addrp = (sockaddr_in*)malloc(sizeof(struct sockaddr_in));
+  assert(addrp);
+  memcpy(addrp, &addr, sizeof(struct sockaddr_in));
+  return addrp;
+}
+extern "C" struct sockaddr_in6*
+rust_uv_ip6_addrp(const char* ip, int port) {
+  struct sockaddr_in6 addr = uv_ip6_addr(ip, port);
+  struct sockaddr_in6 *addrp = (sockaddr_in6*)malloc(sizeof(struct sockaddr_in6));
+  assert(addrp);
+  memcpy(addrp, &addr, sizeof(struct sockaddr_in6));
+  return addrp;
+}
+
+extern "C" void
+rust_uv_free_ip4_addr(sockaddr_in *addrp) {
+  free(addrp);
+}
+
+extern "C" void
+rust_uv_free_ip6_addr(sockaddr_in6 *addrp) {
+  free(addrp);
+}
+
 extern "C" int
 rust_uv_ip4_name(struct sockaddr_in* src, char* dst, size_t size) {
     return uv_ip4_name(src, dst, size);
@@ -562,4 +590,24 @@ rust_uv_idle_start(uv_idle_t* idle, uv_idle_cb cb) {
 extern "C" int
 rust_uv_idle_stop(uv_idle_t* idle) {
   return uv_idle_stop(idle);
+}
+
+extern "C" size_t
+rust_uv_handle_size(uintptr_t type) {
+  return uv_handle_size((uv_handle_type)type);
+}
+
+extern "C" size_t
+rust_uv_req_size(uintptr_t type) {
+  return uv_req_size((uv_req_type)type);
+}
+
+extern "C" uintptr_t
+rust_uv_handle_type_max() {
+  return UV_HANDLE_TYPE_MAX;
+}
+
+extern "C" uintptr_t
+rust_uv_req_type_max() {
+  return UV_REQ_TYPE_MAX;
 }

@@ -44,21 +44,28 @@ use cast::{transmute, transmute_mut_region};
 use ptr::null;
 use sys::size_of;
 use super::uvll;
+use super::uvll::*;
 use super::io::{IpAddr, Ipv4, Ipv6};
+use unstable::finally::Finally;
 
 #[cfg(test)] use unstable::run_in_bare_thread;
 #[cfg(test)] use super::thread::Thread;
 #[cfg(test)] use cell::Cell;
 
-fn ip4_to_uv_ip4(addr: IpAddr) -> uvll::sockaddr_in {
+fn ip4_as_uv_ip4(addr: IpAddr, f: &fn(*sockaddr_in)) {
     match addr {
         Ipv4(a, b, c, d, p) => {
             unsafe {
-                uvll::ip4_addr(fmt!("%u.%u.%u.%u",
-                                    a as uint,
-                                    b as uint,
-                                    c as uint,
-                                    d as uint), p as int)
+                let addr = malloc_ip4_addr(fmt!("%u.%u.%u.%u",
+                                                a as uint,
+                                                b as uint,
+                                                c as uint,
+                                                d as uint), p as int);
+                do (|| {
+                    f(addr);
+                }).finally {
+                    free_ip4_addr(addr);
+                }
             }
         }
         Ipv6 => fail!()
@@ -301,7 +308,7 @@ pub impl StreamWatcher {
                 data.close_cb.swap_unwrap()();
             }
             drop_watcher_data(&mut stream_watcher);
-            unsafe { free(handle as *c_void) }
+            unsafe { free_handle(handle as *c_void) }
         }
     }
 }
@@ -330,8 +337,7 @@ impl Callback for ConnectionCallback { }
 pub impl TcpWatcher {
     static fn new(loop_: &mut Loop) -> TcpWatcher {
         unsafe {
-            let size = size_of::<uvll::uv_tcp_t>() as size_t;
-            let handle = malloc(size) as *uvll::uv_tcp_t;
+            let handle = malloc_handle(UV_TCP);
             fail_unless!(handle.is_not_null());
             fail_unless!(0 == uvll::tcp_init(loop_.native_handle(), handle));
             let mut watcher = NativeHandle::from_native_handle(handle);
@@ -343,12 +349,13 @@ pub impl TcpWatcher {
     fn bind(&mut self, address: IpAddr) {
         match address {
             Ipv4(*) => {
-                let addr = ip4_to_uv_ip4(address);
-                let result = unsafe {
-                    uvll::tcp_bind(self.native_handle(), &addr)
-                };
-                // XXX: bind is likely to fail. need real error handling
-                fail_unless!(result == 0);
+                do ip4_as_uv_ip4(address) |addr| {
+                    let result = unsafe {
+                        uvll::tcp_bind(self.native_handle(), addr)
+                    };
+                    // XXX: bind is likely to fail. need real error handling
+                    fail_unless!(result == 0);
+                }
             }
             _ => fail!()
         }
@@ -363,11 +370,12 @@ pub impl TcpWatcher {
             let connect_handle = connect_watcher.native_handle();
             match address {
                 Ipv4(*) => {
-                    let addr = ip4_to_uv_ip4(address);
-                    rtdebug!("connect_t: %x", connect_handle as uint);
-                    fail_unless!(0 == uvll::tcp_connect(connect_handle,
-                                                        self.native_handle(),
-                                                        &addr, connect_cb));
+                    do ip4_as_uv_ip4(address) |addr| {
+                        rtdebug!("connect_t: %x", connect_handle as uint);
+                        fail_unless!(0 == uvll::tcp_connect(connect_handle,
+                                                            self.native_handle(),
+                                                            addr, connect_cb));
+                    }
                 }
                 _ => fail!()
             }
@@ -443,7 +451,7 @@ impl ConnectRequest {
 
     static fn new() -> ConnectRequest {
         let connect_handle = unsafe {
-            malloc(size_of::<uvll::uv_connect_t>() as size_t)
+            malloc_req(UV_CONNECT)
         };
         fail_unless!(connect_handle.is_not_null());
         let connect_handle = connect_handle as *uvll::uv_connect_t;
@@ -460,7 +468,7 @@ impl ConnectRequest {
     }
 
     fn delete(self) {
-        unsafe { free(self.native_handle() as *c_void) }
+        unsafe { free_req(self.native_handle() as *c_void) }
     }
 }
 
@@ -482,7 +490,7 @@ impl WriteRequest {
 
     static fn new() -> WriteRequest {
         let write_handle = unsafe {
-            malloc(size_of::<uvll::uv_write_t>() as size_t)
+            malloc_req(UV_WRITE)
         };
         fail_unless!(write_handle.is_not_null());
         let write_handle = write_handle as *uvll::uv_write_t;
@@ -498,7 +506,7 @@ impl WriteRequest {
     }
 
     fn delete(self) {
-        unsafe { free(self.native_handle() as *c_void) }
+        unsafe { free_req(self.native_handle() as *c_void) }
     }
 }
 

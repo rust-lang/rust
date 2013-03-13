@@ -930,8 +930,6 @@ pub unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
                       addr_ptr: *sockaddr_in,
                       after_connect_cb: *u8)
 -> libc::c_int {
-    log(debug, fmt!("b4 foreign tcp_connect--addr port: %u cb: %u",
-                    (*addr_ptr).sin_port as uint, after_connect_cb as uint));
     return rustrt::rust_uv_tcp_connect(connect_ptr, tcp_handle_ptr,
                                     after_connect_cb, addr_ptr);
 }
@@ -1021,22 +1019,8 @@ pub unsafe fn async_send(async_handle: *uv_async_t) {
 pub unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
     let out_buf = uv_buf_t { base: ptr::null(), len: 0 as libc::size_t };
     let out_buf_ptr = ptr::addr_of(&out_buf);
-    log(debug, fmt!("buf_init - input %u len %u out_buf: %u",
-                     input as uint,
-                     len as uint,
-                     out_buf_ptr as uint));
-    // yuck :/
     rustrt::rust_uv_buf_init(out_buf_ptr, input, len as size_t);
-    //let result = rustrt::rust_uv_buf_init_2(input, len as size_t);
-    log(debug, ~"after rust_uv_buf_init");
-    let res_base = get_base_from_buf(out_buf);
-    let res_len = get_len_from_buf(out_buf);
-    //let res_base = get_base_from_buf(result);
-    log(debug, fmt!("buf_init - result %u len %u",
-                     res_base as uint,
-                     res_len as uint));
     return out_buf;
-    //return result;
 }
 pub unsafe fn ip4_addr(ip: &str, port: int)
 -> sockaddr_in {
@@ -1078,8 +1062,6 @@ pub unsafe fn ip6_name(src: &sockaddr_in6) -> ~str {
                        0u8,0u8,0u8,0u8,0u8,0u8];
     do vec::as_imm_buf(dst) |dst_buf, size| {
         let src_unsafe_ptr = to_unsafe_ptr(src);
-        log(debug, fmt!("val of src *sockaddr_in6: %? sockaddr_in6: %?",
-                        src_unsafe_ptr, src));
         let result = rustrt::rust_uv_ip6_name(src_unsafe_ptr,
                                               dst_buf, size as libc::size_t);
         match result {
