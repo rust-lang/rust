@@ -818,6 +818,33 @@ rust_dec_kernel_live_count() {
     task->kernel->dec_live_count();
 }
 
+#ifndef _WIN32
+#include <sys/types.h>
+#include <dirent.h>
+
+extern "C" DIR*
+rust_opendir(char *dirname) {
+    return opendir(dirname);
+}
+
+extern "C" dirent*
+rust_readdir(DIR *dirp) {
+    return readdir(dirp);
+}
+
+#else
+
+extern "C" void
+rust_opendir() {
+}
+
+extern "C" void
+rust_readdir() {
+}
+
+#endif
+
+
 //
 // Local Variables:
 // mode: C++

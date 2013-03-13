@@ -1385,47 +1385,29 @@ pub mod funcs {
             use libc::types::common::posix88::{DIR, dirent_t};
             use libc::types::os::arch::c95::{c_char, c_int, c_long};
 
-            pub extern {
-                // default bindings for opendir and readdir in
-                // non-macos unix
-                #[cfg(target_os = "linux")]
-                #[cfg(target_os = "android")]
-                #[cfg(target_os = "freebsd")]
-                unsafe fn opendir(dirname: *c_char) -> *DIR;
-                #[cfg(target_os = "linux")]
-                #[cfg(target_os = "android")]
-                #[cfg(target_os = "freebsd")]
-                unsafe fn readdir(dirp: *DIR) -> *dirent_t;
+            // NOTE: On OS X opendir and readdir have two versions,
+            // one for 32-bit kernelspace and one for 64.
+            // We should be linking to the 64-bit ones, called
+            // opendir$INODE64, etc. but for some reason rustc
+            // doesn't link it correctly on i686, so we're going
+            // through a C function that mysteriously does work.
+            pub unsafe fn opendir(dirname: *c_char) -> *DIR {
+                rust_opendir(dirname)
+            }
+            pub unsafe fn readdir(dirp: *DIR) -> *dirent_t {
+                rust_readdir(dirp)
+            }
 
+            extern {
+                unsafe fn rust_opendir(dirname: *c_char) -> *DIR;
+                unsafe fn rust_readdir(dirp: *DIR) -> *dirent_t;
+            }
+
+            pub extern {
                 unsafe fn closedir(dirp: *DIR) -> c_int;
                 unsafe fn rewinddir(dirp: *DIR);
                 unsafe fn seekdir(dirp: *DIR, loc: c_long);
                 unsafe fn telldir(dirp: *DIR) -> c_long;
-            }
-
-            #[cfg(target_word_size = "64")]
-            pub extern {
-                // on OSX (particularly when running with a
-                // 64bit kernel), we have an issue where there
-                // are separate bindings for opendir and readdir,
-                // which we have to explicitly link, as below.
-                #[cfg(target_os = "macos")]
-                #[link_name = "opendir$INODE64"]
-                unsafe fn opendir(dirname: *c_char) -> *DIR;
-                #[cfg(target_os = "macos")]
-                #[link_name = "readdir$INODE64"]
-                unsafe fn readdir(dirp: *DIR) -> *dirent_t;
-            }
-            #[cfg(target_word_size = "32")]
-            pub extern {
-                // on OSX (particularly when running with a
-                // 64bit kernel), we have an issue where there
-                // are separate bindings for opendir and readdir,
-                // which we have to explicitly link, as below.
-                #[cfg(target_os = "macos")]
-                unsafe fn opendir(dirname: *c_char) -> *DIR;
-                #[cfg(target_os = "macos")]
-                unsafe fn readdir(dirp: *DIR) -> *dirent_t;
             }
         }
 

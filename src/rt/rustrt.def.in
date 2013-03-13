@@ -194,3 +194,5 @@ rust_dec_kernel_live_count
 rust_get_exchange_count_ptr
 rust_get_sched_tls_key
 swap_registers
+rust_readdir
+rust_opendir
