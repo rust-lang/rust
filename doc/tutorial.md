@@ -744,7 +744,7 @@ unit, `()`, as the empty tuple if you like).
 ~~~~
 let mytup: (int, int, float) = (10, 20, 30.0);
 match mytup {
-  (a, b, c) => log(info, a + b + (c as int))
+  (a, b, c) => info!(a + b + (c as int))
 }
 ~~~~
 
@@ -760,7 +760,7 @@ For example:
 struct MyTup(int, int, float);
 let mytup: MyTup = MyTup(10, 20, 30.0);
 match mytup {
-  MyTup(a, b, c) => log(info, a + b + (c as int))
+  MyTup(a, b, c) => info!(a + b + (c as int))
 }
 ~~~~
 

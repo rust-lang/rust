@@ -11,8 +11,8 @@
 extern mod std;
 
 fn test(actual: ~str, expected: ~str) {
-    log(debug, copy actual);
-    log(debug, copy expected);
+    debug!(copy actual);
+    debug!(copy expected);
     fail_unless!((actual == expected));
 }
 

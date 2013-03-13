@@ -11,8 +11,8 @@
 
 
 fn x(s: ~str, n: int) {
-    log(debug, s);
-    log(debug, n);
+    debug!(s);
+    debug!(n);
 }
 
 pub fn main() {

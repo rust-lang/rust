@@ -16,7 +16,7 @@ pub fn main() {
     let mut i = 20;
     let mut expected_len = 1u;
     while i > 0 {
-        log(error, str::len(a));
+        error!(str::len(a));
         fail_unless!((str::len(a) == expected_len));
         a = a + a; // FIXME(#3387)---can't write a += a
         i -= 1;

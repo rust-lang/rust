@@ -2437,7 +2437,6 @@ impl OwnedStr for ~str {
 mod tests {
     use char;
     use option::Some;
-    use debug;
     use libc::c_char;
     use libc;
     use ptr;
@@ -2523,7 +2522,7 @@ mod tests {
     #[test]
     fn test_split_char() {
         fn t(s: &str, c: char, u: &[~str]) {
-            log(debug, ~"split_byte: " + s);
+            debug!(~"split_byte: " + s);
             let v = split_char(s, c);
             debug!("split_byte to: %?", v);
             fail_unless!(vec::all2(v, u, |a,b| a == b));
@@ -2552,7 +2551,7 @@ mod tests {
     #[test]
     fn test_splitn_char() {
         fn t(s: &str, c: char, n: uint, u: &[~str]) {
-            log(debug, ~"splitn_byte: " + s);
+            debug!(~"splitn_byte: " + s);
             let v = splitn_char(s, c, n);
             debug!("split_byte to: %?", v);
             debug!("comparing vs. %?", u);
@@ -3192,8 +3191,8 @@ mod tests {
         while i < n1 {
             let a: u8 = s1[i];
             let b: u8 = s2[i];
-            log(debug, a);
-            log(debug, b);
+            debug!(a);
+            debug!(b);
             fail_unless!((a == b));
             i += 1u;
         }

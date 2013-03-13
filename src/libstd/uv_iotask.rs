@@ -132,10 +132,10 @@ fn run_loop(iotask_ch: &Chan<IoTask>) {
         };
         iotask_ch.send(iotask);
 
-        log(debug, ~"about to run uv loop");
+        debug!("about to run uv loop");
         // enter the loop... this blocks until the loop is done..
         ll::run(loop_ptr);
-        log(debug, ~"uv loop ended");
+        debug!("uv loop ended");
         ll::loop_delete(loop_ptr);
     }
 }
@@ -158,8 +158,8 @@ fn send_msg(iotask: &IoTask,
 extern fn wake_up_cb(async_handle: *ll::uv_async_t,
                     status: int) {
 
-    log(debug, fmt!("wake_up_cb extern.. handle: %? status: %?",
-                     async_handle, status));
+    debug!("wake_up_cb extern.. handle: %? status: %?",
+                     async_handle, status);
 
     unsafe {
         let loop_ptr = ll::get_loop_for_uv_handle(async_handle);
@@ -178,13 +178,13 @@ extern fn wake_up_cb(async_handle: *ll::uv_async_t,
 
 fn begin_teardown(data: *IoTaskLoopData) {
     unsafe {
-        log(debug, ~"iotask begin_teardown() called, close async_handle");
+        debug!("iotask begin_teardown() called, close async_handle");
         let async_handle = (*data).async_handle;
         ll::close(async_handle as *c_void, tear_down_close_cb);
     }
 }
 extern fn tear_down_walk_cb(handle: *libc::c_void, arg: *libc::c_void) {
-    log(debug, ~"IN TEARDOWN WALK CB");
+    debug!("IN TEARDOWN WALK CB");
     // pretty much, if we still have an active handle and it is *not*
     // the async handle that facilities global loop communication, we
     // want to barf out and fail
@@ -194,7 +194,7 @@ extern fn tear_down_walk_cb(handle: *libc::c_void, arg: *libc::c_void) {
 extern fn tear_down_close_cb(handle: *ll::uv_async_t) {
     unsafe {
         let loop_ptr = ll::get_loop_for_uv_handle(handle);
-        log(debug, ~"in tear_down_close_cb");
+        debug!("in tear_down_close_cb");
         ll::walk(loop_ptr, tear_down_walk_cb, handle as *libc::c_void);
     }
 }
@@ -202,7 +202,7 @@ extern fn tear_down_close_cb(handle: *ll::uv_async_t) {
 #[cfg(test)]
 extern fn async_close_cb(handle: *ll::uv_async_t) {
     unsafe {
-        log(debug, fmt!("async_close_cb handle %?", handle));
+        debug!("async_close_cb handle %?", handle);
         let exit_ch = &(*(ll::get_data_for_uv_handle(handle)
                         as *AhData)).exit_ch;
         let exit_ch = exit_ch.clone();
@@ -213,8 +213,7 @@ extern fn async_close_cb(handle: *ll::uv_async_t) {
 #[cfg(test)]
 extern fn async_handle_cb(handle: *ll::uv_async_t, status: libc::c_int) {
     unsafe {
-        log(debug,
-            fmt!("async_handle_cb handle %? status %?",handle,status));
+        debug!("async_handle_cb handle %? status %?",handle,status);
         ll::close(handle, async_close_cb);
     }
 }
@@ -269,15 +268,15 @@ unsafe fn spawn_test_loop(exit_ch: ~Chan<()>) -> IoTask {
 #[cfg(test)]
 extern fn lifetime_handle_close(handle: *libc::c_void) {
     unsafe {
-        log(debug, fmt!("lifetime_handle_close ptr %?", handle));
+        debug!("lifetime_handle_close ptr %?", handle);
     }
 }
 
 #[cfg(test)]
 extern fn lifetime_async_callback(handle: *libc::c_void,
                                  status: libc::c_int) {
-    log(debug, fmt!("lifetime_handle_close ptr %? status %?",
-                    handle, status));
+    debug!("lifetime_handle_close ptr %? status %?",
+                    handle, status);
 }
 
 #[test]
@@ -311,9 +310,9 @@ fn test_uv_iotask_async() {
             debug!("waiting");
             work_exit_po.recv();
         };
-        log(debug, ~"sending teardown_loop msg..");
+        debug!(~"sending teardown_loop msg..");
         exit(iotask);
         exit_po.recv();
-        log(debug, ~"after recv on exit_po.. exiting..");
+        debug!(~"after recv on exit_po.. exiting..");
     }
 }

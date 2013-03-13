@@ -12,7 +12,7 @@ fn main() {
     let y: ~int = ~42;
     let mut x: ~int;
     loop {
-        log(debug, y);
+        debug!(y);
         loop {
             loop {
                 loop {

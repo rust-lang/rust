@@ -16,7 +16,7 @@ extern mod std;
 fn test1() {
     let mut s: ~str = ~"hello";
     s += ~"world";
-    log(debug, copy s);
+    debug!(copy s);
     fail_unless!((s[9] == 'd' as u8));
 }
 
@@ -26,8 +26,8 @@ fn test2() {
     let ff: ~str = ~"abc";
     let a: ~str = ff + ~"ABC" + ff;
     let b: ~str = ~"ABC" + ff + ~"ABC";
-    log(debug, copy a);
-    log(debug, copy b);
+    debug!(copy a);
+    debug!(copy b);
     fail_unless!((a == ~"abcABCabc"));
     fail_unless!((b == ~"ABCabcABC"));
 }

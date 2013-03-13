@@ -19,6 +19,6 @@ pub fn main() {
     match y {
         int_wrapper_ctor(zz) => { z = zz; }
     }
-    log(debug, *z);
+    debug!(*z);
 }
 

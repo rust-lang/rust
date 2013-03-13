@@ -11,7 +11,7 @@
 // error-pattern:whatever
 
 fn main() {
-    log(error, ~"whatever");
+    error!(~"whatever");
     // 101 is the code the runtime uses on task failure and the value
     // compiletest expects run-fail tests to return.
     os::set_exit_status(101);

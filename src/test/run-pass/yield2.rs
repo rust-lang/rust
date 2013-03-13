@@ -11,5 +11,5 @@
 
 pub fn main() {
     let mut i: int = 0;
-    while i < 100 { i = i + 1; log(error, i); task::yield(); }
+    while i < 100 { i = i + 1; error!(i); task::yield(); }
 }

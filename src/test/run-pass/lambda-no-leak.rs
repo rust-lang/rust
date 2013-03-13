@@ -12,6 +12,6 @@
 fn force(f: @fn()) { f() }
 pub fn main() {
     let x = 7;
-    let _f: @fn() = || log(error, x);
-    force(|| log(error, x));
+    let _f: @fn() = || error!(x);
+    force(|| error!(x));
 }

@@ -47,7 +47,7 @@ fn test_loop() {
     let mut i = 20;
     let mut expected_len = 1u;
     while i > 0 {
-        log(error, vec::len(a));
+        error!(vec::len(a));
         fail_unless!((vec::len(a) == expected_len));
         a = a + a; // FIXME(#3387)---can't write a += a
         i -= 1;

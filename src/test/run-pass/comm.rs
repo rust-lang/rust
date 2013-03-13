@@ -16,7 +16,7 @@ pub fn main() {
     let t = task::spawn(|| child(&ch) );
     let y = p.recv();
     error!("received");
-    log(error, y);
+    error!(y);
     fail_unless!((y == 10));
 }
 

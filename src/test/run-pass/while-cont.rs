@@ -13,7 +13,7 @@ pub fn main() {
     let mut i = 1;
     while i > 0 {
         fail_unless!((i > 0));
-        log(debug, i);
+        debug!(i);
         i -= 1;
         loop;
     }

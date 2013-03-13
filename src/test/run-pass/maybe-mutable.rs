@@ -20,7 +20,7 @@ fn len(v: ~[const int]) -> uint {
 
 pub fn main() {
     let v0 = ~[1, 2, 3, 4, 5];
-    log(debug, len(v0));
+    debug!(len(v0));
     let mut v1 = ~[1, 2, 3, 4, 5];
-    log(debug, len(v1));
+    debug!(len(v1));
 }

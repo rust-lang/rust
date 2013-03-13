@@ -806,10 +806,10 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
     let dbg_cx = (/*bad*/copy cx.dbg_cx).get();
 
     debug!("~~");
-    log(debug, fcx.id);
+    debug!("%?", fcx.id);
 
     let sp = fcx.span.get();
-    log(debug, cx.sess.codemap.span_to_str(sp));
+    debug!("%s", cx.sess.codemap.span_to_str(sp));
 
     let (ident, ret_ty, id) = match cx.tcx.items.get(&fcx.id) {
       ast_map::node_item(item, _) => {
@@ -841,8 +841,8 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
                               sort of node")
     };
 
-    log(debug, ident);
-    log(debug, id);
+    debug!("%?", ident);
+    debug!("%?", id);
 
     let cache = get_cache(cx);
     match cached_metadata::<@Metadata<SubProgramMetadata>>(

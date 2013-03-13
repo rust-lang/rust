@@ -39,6 +39,6 @@ fn main() {
         cast::forget(i1);
         let x = @r(i1p);
         failfn();
-        log(error, x);
+        error!(x);
     }
 }

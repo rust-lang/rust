@@ -17,5 +17,5 @@ pub fn main() {
         Some(num) => num as u32
     };
     fail_unless!(f == 1234u32);
-    log(error, f)
+    error!(f)
 }

@@ -212,7 +212,7 @@ do drop
 else enum extern
 false fn for
 if impl
-let log loop
+let loop
 match mod mut
 priv pub pure
 ref return
@@ -805,21 +805,20 @@ Use declarations support a number of "convenience" notations:
 An example of `use` declarations:
 
 ~~~~
-use foo = core::info;
 use core::float::sin;
 use core::str::{slice, to_upper};
 use core::option::Some;
 
 fn main() {
-    // Equivalent to 'log(core::info, core::float::sin(1.0));'
-    log(foo, sin(1.0));
+    // Equivalent to 'info!(core::float::sin(1.0));'
+    info!(sin(1.0));
 
-    // Equivalent to 'log(core::info, core::option::Some(1.0));'
-    log(info, Some(1.0));
+    // Equivalent to 'info!(core::option::Some(1.0));'
+    info!(Some(1.0));
 
-    // Equivalent to 'log(core::info,
-    //                    core::str::to_upper(core::str::slice("foo", 0, 1)));'
-    log(info, to_upper(slice("foo", 0, 1)));
+    // Equivalent to
+    // 'info!(core::str::to_upper(core::str::slice("foo", 0, 1)));'
+    info!(to_upper(slice("foo", 0, 1)));
 }
 ~~~~
 
@@ -990,7 +989,7 @@ output slot type would normally be. For example:
 
 ~~~~
 fn my_err(s: &str) -> ! {
-    log(info, s);
+    info!(s);
     fail!();
 }
 ~~~~
@@ -2397,58 +2396,6 @@ fn max(a: int, b: int) -> int {
 }
 ~~~~
 
-### Log expressions
-
-~~~~~~~~{.ebnf .gram}
-log_expr : "log" '(' level ',' expr ')' ;
-~~~~~~~~
-
-Evaluating a `log` expression may, depending on runtime configuration, cause a
-value to be appended to an internal diagnostic logging buffer provided by the
-runtime or emitted to a system console. Log expressions are enabled or
-disabled dynamically at run-time on a per-task and per-item basis. See
-[logging system](#logging-system).
-
-Each `log` expression must be provided with a *level* argument in
-addition to the value to log. The logging level is a `u32` value, where
-lower levels indicate more-urgent levels of logging. By default, the lowest
-four logging levels (`1_u32 ... 4_u32`) are predefined as the constants
-`error`, `warn`, `info` and `debug` in the `core` library.
-
-Additionally, the macros `error!`, `warn!`, `info!` and `debug!` are defined
-in the default syntax-extension namespace. These expand into calls to the
-logging facility composed with calls to the `fmt!` string formatting
-syntax-extension.
-
-The following examples all produce the same output, logged at the `error`
-logging level:
-
-~~~~
-# let filename = "bulbasaur";
-
-// Full version, logging a value.
-log(core::error, ~"file not found: " + filename);
-
-// Log-level abbreviated, since core::* is used by default.
-log(error, ~"file not found: " + filename);
-
-// Formatting the message using a format-string and fmt!
-log(error, fmt!("file not found: %s", filename));
-
-// Using the error! macro, that expands to the previous call.
-error!("file not found: %s", filename);
-~~~~
-
-A `log` expression is *not evaluated* when logging at the specified logging-level, module or task is disabled at runtime.
-This makes inactive `log` expressions very cheap;
-they should be used extensively in Rust code, as diagnostic aids,
-as they add little overhead beyond a single integer-compare and branch at runtime.
-
-Logging is presently implemented as a language built-in feature,
-as it makes use of compiler-provided, per-module data tables and flags.
-In the future, logging will move into a library, and will no longer be a core expression type.
-It is therefore recommended to use the macro forms of logging (`error!`, `debug!`, etc.) to minimize disruption in code that uses logging.
-
 
 # Type system
 
@@ -3149,7 +3096,7 @@ communication facilities.
 
 The runtime contains a system for directing [logging
 expressions](#log-expressions) to a logging console and/or internal logging
-buffers. Logging expressions can be enabled per module.
+buffers. Logging can be enabled per module.
 
 Logging output is enabled by setting the `RUST_LOG` environment
 variable.  `RUST_LOG` accepts a logging specification made up of a

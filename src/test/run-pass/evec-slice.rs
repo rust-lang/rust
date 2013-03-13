@@ -20,7 +20,7 @@ pub fn main() {
     let c : &[int] = &[2,2,2,2,3];
     let cc : &[int] = &[2,2,2,2,2,2];
 
-    log(debug, a);
+    debug!(a);
 
     fail_unless!(a < b);
     fail_unless!(a <= b);
@@ -28,7 +28,7 @@ pub fn main() {
     fail_unless!(b >= a);
     fail_unless!(b > a);
 
-    log(debug, b);
+    debug!(b);
 
     fail_unless!(b < c);
     fail_unless!(b <= c);
@@ -42,7 +42,7 @@ pub fn main() {
     fail_unless!(c >= a);
     fail_unless!(c > a);
 
-    log(debug, c);
+    debug!(c);
 
     fail_unless!(a < cc);
     fail_unless!(a <= cc);
@@ -50,5 +50,5 @@ pub fn main() {
     fail_unless!(cc >= a);
     fail_unless!(cc > a);
 
-    log(debug, cc);
+    debug!(cc);
 }

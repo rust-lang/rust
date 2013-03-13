@@ -26,8 +26,8 @@ fn general() {
     a ^= b;
     b ^= a;
     a = a ^ b;
-    log(debug, a);
-    log(debug, b);
+    debug!(a);
+    debug!(b);
     fail_unless!((b == 1));
     fail_unless!((a == 2));
     fail_unless!((!0xf0 & 0xff == 0xf));
