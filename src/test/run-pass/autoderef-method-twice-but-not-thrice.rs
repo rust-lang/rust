@@ -9,11 +9,11 @@
 // except according to those terms.
 
 trait double {
-    fn double(self) -> uint;
+    fn double(@self) -> uint;
 }
 
-impl double for @@uint {
-    fn double(self) -> uint { **self * 2u }
+impl double for @uint {
+    fn double(@self) -> uint { **self * 2u }
 }
 
 pub fn main() {
