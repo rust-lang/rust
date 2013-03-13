@@ -215,31 +215,31 @@ CFG_LDPATH_i686-apple-darwin :=
 CFG_RUN_i686-apple-darwin=$(2)
 CFG_RUN_TARG_i686-apple-darwin=$(call CFG_RUN_i686-apple-darwin,,$(2))
 
-# arm-unknown-android configuration
-CC_arm-unknown-android=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-gcc
-CXX_arm-unknown-android=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-g++
-CPP_arm-unknown-android=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-gcc -E
-AR_arm-unknown-android=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-ar
-CFG_LIB_NAME_arm-unknown-android=lib$(1).so
-CFG_LIB_GLOB_arm-unknown-android=lib$(1)-*.so
-CFG_LIB_DSYM_GLOB_arm-unknown-android=lib$(1)-*.dylib.dSYM
-CFG_GCCISH_CFLAGS_arm-unknown-android := -Wall -g -fPIC -D__arm__ -DANDROID -D__ANDROID__
-CFG_GCCISH_CXXFLAGS_arm-unknown-android := -fno-rtti
-CFG_GCCISH_LINK_FLAGS_arm-unknown-android := -shared -fPIC -ldl -g -lm -lsupc++ -lgnustl_shared
-CFG_GCCISH_DEF_FLAG_arm-unknown-android := -Wl,--export-dynamic,--dynamic-list=
-CFG_GCCISH_PRE_LIB_FLAGS_arm-unknown-android := -Wl,-whole-archive
-CFG_GCCISH_POST_LIB_FLAGS_arm-unknown-android := -Wl,-no-whole-archive -Wl,-znoexecstack
-CFG_DEF_SUFFIX_arm-unknown-android := .android.def
-CFG_INSTALL_NAME_arm-unknown-android =
-CFG_LIBUV_LINK_FLAGS_arm-unknown-android =
-CFG_EXE_SUFFIX_arm-unknown-android :=
-CFG_WINDOWSY_arm-unknown-android :=
-CFG_UNIXY_arm-unknown-android := 1
-CFG_PATH_MUNGE_arm-unknown-android := true
-CFG_LDPATH_arm-unknown-android :=
-CFG_RUN_arm-unknown-android=
-CFG_RUN_TARG_arm-unknown-android=
-RUSTC_FLAGS_arm-unknown-android :=--android-cross-path=$(CFG_ANDROID_CROSS_PATH)
+# arm-linux-androideabi configuration
+CC_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-gcc
+CXX_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-g++
+CPP_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-gcc
+AR_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-ar
+CFG_LIB_NAME_arm-linux-androideabi=lib$(1).so
+CFG_LIB_GLOB_arm-linux-androideabi=lib$(1)-*.so
+CFG_LIB_DSYM_GLOB_arm-linux-androideabi=lib$(1)-*.dylib.dSYM
+CFG_GCCISH_CFLAGS_arm-linux-androideabi := -Wall -g -fPIC -D__arm__ -DANDROID -D__ANDROID__
+CFG_GCCISH_CXXFLAGS_arm-linux-androideabi := -fno-rtti
+CFG_GCCISH_LINK_FLAGS_arm-linux-androideabi := -shared -fPIC -ldl -g -lm -lsupc++ -lgnustl_shared
+CFG_GCCISH_DEF_FLAG_arm-linux-androideabi := -Wl,--export-dynamic,--dynamic-list=
+CFG_GCCISH_PRE_LIB_FLAGS_arm-linux-androideabi := -Wl,-whole-archive
+CFG_GCCISH_POST_LIB_FLAGS_arm-linux-androideabi := -Wl,-no-whole-archive -Wl,-znoexecstack
+CFG_DEF_SUFFIX_arm-linux-androideabi := .android.def
+CFG_INSTALL_NAME_arm-linux-androideabi =
+CFG_LIBUV_LINK_FLAGS_arm-linux-androideabi =
+CFG_EXE_SUFFIX_arm-linux-androideabi :=
+CFG_WINDOWSY_arm-linux-androideabi :=
+CFG_UNIXY_arm-linux-androideabi := 1
+CFG_PATH_MUNGE_arm-linux-androideabi := true
+CFG_LDPATH_arm-linux-androideabi :=
+CFG_RUN_arm-linux-androideabi=
+CFG_RUN_TARG_arm-linux-androideabi=
+RUSTC_FLAGS_arm-linux-androideabi :=--android-cross-path=$(CFG_ANDROID_CROSS_PATH)
 
 # i686-pc-mingw32 configuration
 CC_i686-pc-mingw32=$(CC)
@@ -267,14 +267,14 @@ CFG_RUN_i686-pc-mingw32=PATH="$(CFG_LDPATH_i686-pc-mingw32):$(1)" $(2)
 CFG_RUN_TARG_i686-pc-mingw32=$(call CFG_RUN_i686-pc-mingw32,$(HLIB$(1)_H_$(CFG_BUILD_TRIPLE)),$(2))
 
 # i586-mingw32msvc configuration
-CC_i586-mingw32msvc=$(CC)
-CXX_i586-mingw32msvc=$(CXX)
-CPP_i586-mingw32msvc=$(CPP)
-AR_i586-mingw32msvc=$(AR)
+CC_i586-mingw32msvc=$(CFG_MINGW32_CROSS_PATH)/bin/i586-mingw32msvc-gcc
+CXX_i586-mingw32msvc=$(CFG_MINGW32_CROSS_PATH)/bin/i586-mingw32msvc-g++
+CPP_i586-mingw32msvc=$(CFG_MINGW32_CROSS_PATH)/bin/i586-mingw32msvc-cpp
+AR_i586-mingw32msvc=$(CFG_MINGW32_CROSS_PATH)/bin/i586-mingw32msvc-ar
 CFG_LIB_NAME_i586-mingw32msvc=$(1).dll
 CFG_LIB_GLOB_i586-mingw32msvc=$(1)-*.dll
 CFG_LIB_DSYM_GLOB_i586-mingw32msvc=$(1)-*.dylib.dSYM
-CFG_GCCISH_CFLAGS_i586-mingw32msvc := -Wall -Werror -g -march=586 -m32
+CFG_GCCISH_CFLAGS_i586-mingw32msvc := -Wall -Werror -g -march=i586 -m32
 CFG_GCCISH_CXXFLAGS_i586-mingw32msvc := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_i586-mingw32msvc := -shared -g -m32
 CFG_GCCISH_DEF_FLAG_i586-mingw32msvc :=
@@ -282,7 +282,7 @@ CFG_GCCISH_PRE_LIB_FLAGS_i586-mingw32msvc :=
 CFG_GCCISH_POST_LIB_FLAGS_i586-mingw32msvc :=
 CFG_DEF_SUFFIX_i586-mingw32msvc := .mingw32.def
 CFG_INSTALL_NAME_i586-mingw32msvc =
-CFG_LIBUV_LINK_FLAGS_i586-mingw32msvc := -lWs2_32 -lpsapi -liphlpapi
+CFG_LIBUV_LINK_FLAGS_i586-mingw32msvc := -L$(CFG_MINGW32_CROSS_PATH)/i586-mingw32msvc/lib -lws2_32 -lpsapi -liphlpapi
 CFG_EXE_SUFFIX_i586-mingw32msvc := .exe
 CFG_WINDOWSY_i586-mingw32msvc := 1
 CFG_UNIXY_i586-mingw32msvc :=
@@ -342,7 +342,7 @@ define CFG_MAKE_TOOLCHAIN
         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)        \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
 
-  ifneq ($(1),arm-unknown-android)
+  ifneq ($(1),arm-linux-androideabi)
 
   # We're using llvm-mc as our assembler because it supports
   # .cfi pseudo-ops on mac
@@ -356,7 +356,7 @@ define CFG_MAKE_TOOLCHAIN
 
   # For the Android cross, use the Android assembler
   # XXX: We should be able to use the LLVM assembler
-  CFG_ASSEMBLE_$(1)=$$(CXX_$(1)) $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
+  CFG_ASSEMBLE_$(1)=$$(CPP_$(1)) $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
 
   endif
 
