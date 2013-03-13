@@ -456,7 +456,7 @@ impl<T:to_bytes::IterBytes> to_bytes::IterBytes for inferable<T> {
 #[auto_encode]
 #[auto_decode]
 #[deriving_eq]
-pub enum rmode { by_ref, by_val, by_copy }
+pub enum rmode { by_ref, by_copy }
 
 impl to_bytes::IterBytes for rmode {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {

@@ -8,19 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn borrow(_v: &int) {}
+// Test a call to a function that takes/returns a u64.
 
-fn borrow_from_arg_imm_ref(&&v: ~int) {
-    borrow(v);
-}
-
-fn borrow_from_arg_mut_ref(v: &mut ~int) {
-    borrow(*v);
-}
-
-fn borrow_from_arg_copy(+v: ~int) {
-    borrow(v);
+pub extern {
+    pub fn rust_dbg_extern_identity_u64(v: u64) -> u64;
 }
 
 pub fn main() {
+    unsafe {
+        fail_unless!(22_u64 == rust_dbg_extern_identity_u64(22_u64));
+    }
 }
+

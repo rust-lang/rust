@@ -434,18 +434,18 @@ rust_tzset() {
 }
 
 extern "C" CDECL void
-rust_gmtime(int64_t *sec, int32_t *nsec, rust_tm *timeptr) {
+rust_gmtime(int64_t sec, int32_t nsec, rust_tm *timeptr) {
     tm tm;
-    time_t s = *sec;
+    time_t s = sec;
     GMTIME(&s, &tm);
 
-    tm_to_rust_tm(&tm, timeptr, 0, "UTC", *nsec);
+    tm_to_rust_tm(&tm, timeptr, 0, "UTC", nsec);
 }
 
 extern "C" CDECL void
-rust_localtime(int64_t *sec, int32_t *nsec, rust_tm *timeptr) {
+rust_localtime(int64_t sec, int32_t nsec, rust_tm *timeptr) {
     tm tm;
-    time_t s = *sec;
+    time_t s = sec;
     LOCALTIME(&s, &tm);
 
 #if defined(__WIN32__)
@@ -457,7 +457,7 @@ rust_localtime(int64_t *sec, int32_t *nsec, rust_tm *timeptr) {
     const char *zone = tm.tm_zone;
 #endif
 
-    tm_to_rust_tm(&tm, timeptr, gmtoff, zone, *nsec);
+    tm_to_rust_tm(&tm, timeptr, gmtoff, zone, nsec);
 }
 
 extern "C" CDECL void
@@ -843,6 +843,38 @@ rust_readdir() {
 }
 
 #endif
+
+// These functions are used in the unit tests for C ABI calls.
+
+extern "C" CDECL uint32_t
+rust_dbg_extern_identity_u32(uint32_t u) {
+    return u;
+}
+
+extern "C" CDECL uint64_t
+rust_dbg_extern_identity_u64(uint64_t u) {
+    return u;
+}
+
+struct TwoU64s {
+    uint64_t one;
+    uint64_t two;
+};
+
+extern "C" CDECL TwoU64s
+rust_dbg_extern_identity_TwoU64s(TwoU64s u) {
+    return u;
+}
+
+extern "C" CDECL double
+rust_dbg_extern_identity_double(double u) {
+    return u;
+}
+
+extern "C" CDECL char
+rust_dbg_extern_identity_u8(char u) {
+    return u;
+}
 
 
 //

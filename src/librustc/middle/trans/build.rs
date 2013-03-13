@@ -885,7 +885,7 @@ pub fn InlineAsmCall(cx: block, asm: *c_char, cons: *c_char,
 
         let llfty = T_fn(~[], T_void());
         let v = llvm::LLVMInlineAsm(llfty, asm, cons, volatile,
-                                    alignstack, dia);
+                                    alignstack, dia as c_uint);
 
         Call(cx, v, ~[])
     }

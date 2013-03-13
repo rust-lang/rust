@@ -54,7 +54,7 @@ use core::vec::raw::to_ptr;
 use core::vec;
 use std::oldmap::{HashMap, Set};
 use syntax::ast::ident;
-use syntax::ast_map::path;
+use syntax::ast_map::{path, path_elt};
 use syntax::codemap::span;
 use syntax::parse::token::ident_interner;
 use syntax::{ast, ast_map};
@@ -590,7 +590,7 @@ pub struct block_ {
     fcx: fn_ctxt
 }
 
-pub fn block_(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
+pub fn block_(llbb: BasicBlockRef, parent: Option<block>, +kind: block_kind,
               is_lpad: bool, node_info: Option<NodeInfo>, fcx: fn_ctxt)
     -> block_ {
 
@@ -608,7 +608,7 @@ pub fn block_(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
 
 pub type block = @mut block_;
 
-pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
+pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>, +kind: block_kind,
             is_lpad: bool, node_info: Option<NodeInfo>, fcx: fn_ctxt)
     -> block {
     @mut block_(llbb, parent, kind, is_lpad, node_info, fcx)
@@ -1320,9 +1320,9 @@ pub fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
     return build::And(cx, bumped, build::Not(cx, mask));
 }
 
-pub fn path_str(sess: session::Session, p: &path) -> ~str {
+pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
     let mut r = ~"", first = true;
-    for vec::each(*p) |e| {
+    for p.each |e| {
         match *e {
             ast_map::path_name(s) | ast_map::path_mod(s) => {
                 if first { first = false; }

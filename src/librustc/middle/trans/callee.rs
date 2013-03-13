@@ -720,14 +720,6 @@ pub fn trans_arg_expr(bcx: block,
                         val = arg_datum.to_ref_llval(bcx);
                     }
 
-                    ast::by_val => {
-                        // NB: avoid running the take glue.
-
-                        fail_unless!(!bcx.ccx().maps.moves_map.contains_key(
-                            &arg_expr.id));
-                        val = arg_datum.to_value_llval(bcx);
-                    }
-
                     ast::by_copy => {
                         debug!("by copy arg with type %s, storing to scratch",
                                bcx.ty_to_str(arg_datum.ty));
@@ -757,7 +749,7 @@ pub fn trans_arg_expr(bcx: block,
 
         if formal_ty.ty != arg_datum.ty {
             // this could happen due to e.g. subtyping
-            let llformal_ty = type_of::type_of_explicit_arg(ccx, formal_ty);
+            let llformal_ty = type_of::type_of_explicit_arg(ccx, &formal_ty);
             debug!("casting actual type (%s) to match formal (%s)",
                    bcx.val_str(val), bcx.llty_str(llformal_ty));
             val = PointerCast(bcx, val, llformal_ty);

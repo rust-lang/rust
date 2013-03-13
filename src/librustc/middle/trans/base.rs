@@ -1682,12 +1682,6 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
 
                 add_clean(bcx, llarg, arg_ty.ty);
             }
-            ast::by_val => {
-                // always by value, also not owned, so don't add a cleanup:
-                let alloc = alloc_ty(bcx, arg_ty.ty);
-                Store(bcx, raw_llarg, alloc);
-                llarg = alloc;
-            }
         }
 
         bcx = _match::bind_irrefutable_pat(bcx,
@@ -1812,7 +1806,7 @@ pub fn trans_fn(ccx: @CrateContext,
     debug!("trans_fn(ty_self=%?)", ty_self);
     let _icx = ccx.insn_ctxt("trans_fn");
     ccx.stats.n_fns += 1;
-    let the_path_str = path_str(ccx.sess, &path);
+    let the_path_str = path_str(ccx.sess, path);
     trans_closure(ccx, path, decl, body, llfndecl, ty_self,
                   param_substs, id, impl_id,
                   |fcx| {

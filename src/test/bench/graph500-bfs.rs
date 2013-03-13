@@ -100,7 +100,7 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
     }
 }
 
-fn gen_search_keys(graph: graph, n: uint) -> ~[node_id] {
+fn gen_search_keys(graph: &[~[node_id]], n: uint) -> ~[node_id] {
     let keys = oldmap::HashMap::<node_id, ()>();
     let r = rand::Rng();
 

@@ -78,6 +78,7 @@ pub enum lint {
     deprecated_self,
     deprecated_mutable_fields,
     deprecated_drop,
+    foreign_mode,
 
     managed_heap_memory,
     owned_heap_memory,
@@ -179,6 +180,13 @@ pub fn get_lint_dict() -> LintDict {
          @LintSpec {
             lint: deprecated_mode,
             desc: "warn about deprecated uses of modes",
+            default: warn
+         }),
+
+        (@~"foreign_mode",
+         @LintSpec {
+            lint: foreign_mode,
+            desc: "warn about deprecated uses of modes in foreign fns",
             default: warn
          }),
 
@@ -753,6 +761,20 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
 
     fn check_foreign_fn(cx: ty::ctxt, fn_id: ast::node_id,
                         decl: &ast::fn_decl) {
+        // warn about `&&` mode on foreign functions, both because it is
+        // deprecated and because its semantics have changed recently:
+        for decl.inputs.eachi |i, arg| {
+            match ty::resolved_mode(cx, arg.mode) {
+                ast::by_copy => {}
+                ast::by_ref => {
+                    cx.sess.span_lint(
+                        foreign_mode, fn_id, fn_id, arg.ty.span,
+                        fmt!("foreign function uses `&&` mode \
+                              on argument %u", i));
+                }
+            }
+        }
+
         let tys = vec::map(decl.inputs, |a| a.ty );
         for vec::each(vec::append_one(tys, decl.output)) |ty| {
             match ty.node {
@@ -785,7 +807,7 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
       if attr::foreign_abi(it.attrs) !=
             either::Right(ast::foreign_abi_rust_intrinsic) => {
         for nmod.items.each |ni| {
-            match /*bad*/copy ni.node {
+            match ni.node {
               ast::foreign_item_fn(ref decl, _, _) => {
                 check_foreign_fn(cx, it.id, decl);
               }

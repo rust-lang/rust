@@ -8,19 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn borrow(_v: &int) {}
+// Test a foreign function that accepts and returns a struct
+// by value.
 
-fn borrow_from_arg_imm_ref(&&v: ~int) {
-    borrow(v);
+// xfail-test --- broken on 32-bit ABIs! (#5347)
+
+#[deriving_eq]
+struct TwoU64s {
+    one: u64, two: u64
 }
 
-fn borrow_from_arg_mut_ref(v: &mut ~int) {
-    borrow(*v);
-}
-
-fn borrow_from_arg_copy(+v: ~int) {
-    borrow(v);
+pub extern {
+    pub fn rust_dbg_extern_identity_TwoU64s(v: TwoU64s) -> TwoU64s;
 }
 
 pub fn main() {
+    unsafe {
+        let x = TwoU64s {one: 22, two: 23};
+        let y = rust_dbg_extern_identity_TwoU64s(x);
+        fail_unless!(x == y);
+    }
 }
+

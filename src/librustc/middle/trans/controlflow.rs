@@ -192,7 +192,7 @@ pub fn trans_log(log_ex: @ast::expr,
         bcx.fcx.path.filtered(|e|
             match *e { path_mod(_) => true, _ => false }
         ));
-    let modname = path_str(ccx.sess, &modpath);
+    let modname = path_str(ccx.sess, modpath);
 
     let global = if ccx.module_data.contains_key(&modname) {
         ccx.module_data.get(&modname)
