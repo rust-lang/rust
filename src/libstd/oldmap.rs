@@ -73,7 +73,7 @@ pub mod chained {
         FoundAfter(@Entry<K,V>, @Entry<K,V>)
     }
 
-    priv impl<K:Eq + IterBytes + Hash,V> T<K, V> {
+    priv impl<K:Eq + IterBytes + Hash,V> HashMap_<K, V> {
         pure fn search_rem(&self, k: &K, h: uint, idx: uint,
                            e_root: @Entry<K,V>) -> SearchResult<K,V> {
             let mut e0 = e_root;
@@ -120,7 +120,7 @@ pub mod chained {
             }
         }
 
-        fn rehash(&self) {
+        fn rehash(@self) {
             let n_old_chains = self.chains.len();
             let n_new_chains: uint = uint::next_power_of_two(n_old_chains+1u);
             let mut new_chains = chains(n_new_chains);
@@ -133,7 +133,7 @@ pub mod chained {
         }
     }
 
-    pub impl<K:Eq + IterBytes + Hash,V> T<K, V> {
+    pub impl<K:Eq + IterBytes + Hash,V> HashMap_<K, V> {
         pure fn each_entry(&self, blk: &fn(@Entry<K,V>) -> bool) {
             // n.b. we can't use vec::iter() here because self.chains
             // is stored in a mutable location.
@@ -153,22 +153,20 @@ pub mod chained {
                 i += 1u;
             }
         }
-    }
 
-    impl<K:Eq + IterBytes + Hash,V> Container for T<K, V> {
-        pure fn len(&self) -> uint { self.count }
-        pure fn is_empty(&self) -> bool { self.count == 0 }
-    }
-
-    impl<K:Eq + IterBytes + Hash,V> Mutable for T<K, V> {
-        fn clear(&mut self) {
+        fn clear(@self) {
             self.count = 0u;
             self.chains = chains(initial_capacity);
         }
     }
 
-    pub impl<K:Eq + IterBytes + Hash,V> T<K, V> {
-        pure fn contains_key(&self, k: &K) -> bool {
+    impl<K:Eq + IterBytes + Hash,V> Container for HashMap_<K, V> {
+        pure fn len(&self) -> uint { self.count }
+        pure fn is_empty(&self) -> bool { self.count == 0 }
+    }
+
+    pub impl<K:Eq + IterBytes + Hash,V> HashMap_<K, V> {
+        pure fn contains_key(@self, k: &K) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(k, hash) {
               NotFound => false,
@@ -176,7 +174,7 @@ pub mod chained {
             }
         }
 
-        fn insert(&self, k: K, v: V) -> bool {
+        fn insert(@self, k: K, v: V) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(&k, hash) {
               NotFound => {
@@ -220,7 +218,7 @@ pub mod chained {
             }
         }
 
-        fn remove(&self, k: &K) -> bool {
+        fn remove(@self, k: &K) -> bool {
             match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
               NotFound => false,
               FoundFirst(idx, entry) => {
@@ -236,22 +234,22 @@ pub mod chained {
             }
         }
 
-        pure fn each(&self, blk: &fn(key: &K, value: &V) -> bool) {
+        pure fn each(@self, blk: &fn(key: &K, value: &V) -> bool) {
             for self.each_entry |entry| {
                 if !blk(&entry.key, &entry.value) { break; }
             }
         }
 
-        pure fn each_key(&self, blk: &fn(key: &K) -> bool) {
+        pure fn each_key(@self, blk: &fn(key: &K) -> bool) {
             self.each(|k, _v| blk(k))
         }
 
-        pure fn each_value(&self, blk: &fn(value: &V) -> bool) {
+        pure fn each_value(@self, blk: &fn(value: &V) -> bool) {
             self.each(|_k, v| blk(v))
         }
     }
 
-    pub impl<K:Eq + IterBytes + Hash + Copy,V:Copy> T<K, V> {
+    pub impl<K:Eq + IterBytes + Hash + Copy,V:Copy> HashMap_<K, V> {
         pure fn find(&self, k: &K) -> Option<V> {
             match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
               NotFound => None,
@@ -260,7 +258,7 @@ pub mod chained {
             }
         }
 
-        fn update_with_key(&self, key: K, newval: V, ff: &fn(K, V, V) -> V)
+        fn update_with_key(@self, key: K, newval: V, ff: &fn(K, V, V) -> V)
                         -> bool {
 /*
             match self.find(key) {
@@ -312,7 +310,7 @@ pub mod chained {
             }
         }
 
-        fn update(&self, key: K, newval: V, ff: &fn(V, V) -> V) -> bool {
+        fn update(@self, key: K, newval: V, ff: &fn(V, V) -> V) -> bool {
             return self.update_with_key(key, newval, |_k, v, v1| ff(v,v1));
         }
 
@@ -325,7 +323,8 @@ pub mod chained {
         }
     }
 
-    pub impl<K:Eq + IterBytes + Hash + Copy + ToStr,V:ToStr + Copy> T<K, V> {
+    pub impl<K:Eq + IterBytes + Hash + Copy + ToStr,V:ToStr + Copy>
+            HashMap_<K, V> {
         fn to_writer(&self, wr: @io::Writer) {
             if self.count == 0u {
                 wr.write_str(~"{}");
@@ -348,7 +347,7 @@ pub mod chained {
     }
 
     impl<K:Eq + IterBytes + Hash + Copy + ToStr,V:ToStr + Copy> ToStr
-            for T<K, V> {
+            for HashMap_<K, V> {
         pure fn to_str(&self) -> ~str {
             unsafe {
                 // Meh -- this should be safe
@@ -357,7 +356,8 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq + IterBytes + Hash + Copy,V:Copy> ops::Index<K, V> for T<K, V> {
+    impl<K:Eq + IterBytes + Hash + Copy,V:Copy> ops::Index<K, V>
+            for HashMap_<K, V> {
         pure fn index(&self, k: K) -> V {
             self.get(&k)
         }
