@@ -27,8 +27,11 @@ use print;
 
 use core::io;
 
-pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
-                         arg: ~[ast::token_tree]) -> base::MacResult {
+pub fn add_new_extension(cx: @ext_ctxt,
+                         sp: span,
+                         name: ident,
+                         arg: ~[ast::token_tree])
+                      -> base::MacResult {
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
         spanned { node: copy m, span: dummy_sp() }
@@ -54,8 +57,10 @@ pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
     // Parse the macro_rules! invocation (`none` is for no interpolations):
     let arg_reader = new_tt_reader(copy cx.parse_sess().span_diagnostic,
                                    cx.parse_sess().interner, None, copy arg);
-    let argument_map = parse_or_else(cx.parse_sess(), cx.cfg(),
-                                     arg_reader as reader, argument_gram);
+    let argument_map = parse_or_else(cx.parse_sess(),
+                                     cx.cfg(),
+                                     arg_reader as @reader,
+                                     argument_gram);
 
     // Extract the arguments:
     let lhses = match argument_map.get(&lhs_nm) {
@@ -69,7 +74,7 @@ pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
     };
 
     // Given `lhses` and `rhses`, this is the new macro we create
-    fn generic_extension(cx: ext_ctxt, sp: span, name: ident,
+    fn generic_extension(cx: @ext_ctxt, sp: span, name: ident,
                          arg: &[ast::token_tree],
                          lhses: ~[@named_match], rhses: ~[@named_match])
     -> MacResult {
@@ -98,7 +103,7 @@ pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                     itr,
                     None,
                     vec::from_slice(arg)
-                ) as reader;
+                ) as @reader;
                 match parse(cx.parse_sess(), cx.cfg(), arg_rdr, (*mtcs)) {
                   success(named_matches) => {
                     let rhs = match rhses[i] {
@@ -118,8 +123,9 @@ pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                     // rhs has holes ( `$id` and `$(...)` that need filled)
                     let trncbr = new_tt_reader(s_d, itr, Some(named_matches),
                                                rhs);
-                    let p = @Parser(cx.parse_sess(), cx.cfg(),
-                                    trncbr as reader);
+                    let p = @Parser(cx.parse_sess(),
+                                    cx.cfg(),
+                                    trncbr as @reader);
 
                     // Let the context choose how to interpret the result.
                     // Weird, but useful for X-macros.
@@ -140,7 +146,7 @@ pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
         cx.span_fatal(best_fail_spot, best_fail_msg);
     }
 
-    let exp: @fn(ext_ctxt, span, &[ast::token_tree]) -> MacResult =
+    let exp: @fn(@ext_ctxt, span, &[ast::token_tree]) -> MacResult =
         |cx, sp, arg| generic_extension(cx, sp, name, arg, lhses, rhses);
 
     return MRDef(MacroDef{

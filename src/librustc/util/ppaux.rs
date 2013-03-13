@@ -237,6 +237,15 @@ pub fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
     }
 }
 
+pub fn trait_store_to_str(cx: ctxt, s: ty::TraitStore) -> ~str {
+    match s {
+      ty::BareTraitStore => ~"",
+      ty::UniqTraitStore => ~"~",
+      ty::BoxTraitStore => ~"@",
+      ty::RegionTraitStore(r) => region_to_str_adorned(cx, "&", r, "")
+    }
+}
+
 pub fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
     match vs {
       ty::vstore_fixed(_) => {
@@ -441,11 +450,11 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         let base = ast_map::path_to_str(path, cx.sess.intr());
         parameterized(cx, base, substs.self_r, substs.tps)
       }
-      ty_trait(did, ref substs, vs) => {
+      ty_trait(did, ref substs, s) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
         let ty = parameterized(cx, base, substs.self_r, substs.tps);
-        fmt!("%s%s", vstore_to_str(cx, vs), ty)
+        fmt!("%s%s", trait_store_to_str(cx, s), ty)
       }
       ty_evec(mt, vs) => {
         vstore_ty_to_str(cx, fmt!("%s", mt_to_str(cx, mt)), vs)

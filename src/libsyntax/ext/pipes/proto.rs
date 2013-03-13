@@ -96,7 +96,7 @@ pub impl state_ {
     }
 
     /// Returns the type that is used for the messages.
-    fn to_ty(&self, cx: ext_ctxt) -> @ast::Ty {
+    fn to_ty(&self, cx: @ext_ctxt) -> @ast::Ty {
         cx.ty_path_ast_builder
             (path(~[cx.ident_of(self.name)],self.span).add_tys(
                 cx.ty_vars(&self.generics.ty_params)))

@@ -825,7 +825,8 @@ pub impl Liveness {
         }
     }
 
-    fn write_vars(&self, wr: io::Writer,
+    fn write_vars(&self,
+                  wr: @io::Writer,
                   ln: LiveNode,
                   test: &fn(uint) -> LiveNode) {
         let node_base_idx = self.idx(ln, Variable(0));

@@ -15,7 +15,7 @@ use core::hashmap::linear::LinearMap;
 
 fn main() {
     let x: @Map<~str, ~str> = @LinearMap::new::<~str, ~str>() as
-        Map::<~str, ~str>;
+        @Map::<~str, ~str>;
     let y: @Map<uint, ~str> = @x;
     //~^ ERROR mismatched types: expected `@core::container::Map<uint,~str>`
 }

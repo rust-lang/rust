@@ -45,18 +45,18 @@ pub impl Junction {
     }
 }
 
-type ExpandDerivingStructDefFn = &self/fn(ext_ctxt,
+type ExpandDerivingStructDefFn = &self/fn(@ext_ctxt,
                                           span,
                                           x: &struct_def,
                                           ident,
                                           y: &Generics) -> @item;
-type ExpandDerivingEnumDefFn = &self/fn(ext_ctxt,
+type ExpandDerivingEnumDefFn = &self/fn(@ext_ctxt,
                                         span,
                                         x: &enum_def,
                                         ident,
                                         y: &Generics) -> @item;
 
-pub fn expand_meta_deriving(cx: ext_ctxt,
+pub fn expand_meta_deriving(cx: @ext_ctxt,
                             _span: span,
                             mitem: @meta_item,
                             in_items: ~[@item])
@@ -98,7 +98,7 @@ pub fn expand_meta_deriving(cx: ext_ctxt,
     }
 }
 
-pub fn expand_deriving_eq(cx: ext_ctxt,
+pub fn expand_deriving_eq(cx: @ext_ctxt,
                           span: span,
                           _mitem: @meta_item,
                           in_items: ~[@item])
@@ -110,7 +110,7 @@ pub fn expand_deriving_eq(cx: ext_ctxt,
                     expand_deriving_eq_enum_def)
 }
 
-pub fn expand_deriving_iter_bytes(cx: ext_ctxt,
+pub fn expand_deriving_iter_bytes(cx: @ext_ctxt,
                                   span: span,
                                   _mitem: @meta_item,
                                   in_items: ~[@item])
@@ -122,7 +122,7 @@ pub fn expand_deriving_iter_bytes(cx: ext_ctxt,
                     expand_deriving_iter_bytes_enum_def)
 }
 
-pub fn expand_deriving_clone(cx: ext_ctxt,
+pub fn expand_deriving_clone(cx: @ext_ctxt,
                              span: span,
                              _: @meta_item,
                              in_items: ~[@item])
@@ -134,7 +134,7 @@ pub fn expand_deriving_clone(cx: ext_ctxt,
                     expand_deriving_clone_enum_def)
 }
 
-fn expand_deriving(cx: ext_ctxt,
+fn expand_deriving(cx: @ext_ctxt,
                    span: span,
                    in_items: ~[@item],
                    expand_deriving_struct_def: ExpandDerivingStructDefFn,
@@ -164,7 +164,7 @@ fn expand_deriving(cx: ext_ctxt,
     result
 }
 
-fn create_impl_item(cx: ext_ctxt, span: span, +item: item_) -> @item {
+fn create_impl_item(cx: @ext_ctxt, span: span, +item: item_) -> @item {
     @ast::item {
         ident: clownshoes_extensions,
         attrs: ~[],
@@ -177,7 +177,7 @@ fn create_impl_item(cx: ext_ctxt, span: span, +item: item_) -> @item {
 
 /// Creates a method from the given expression, the signature of which
 /// conforms to the `eq` or `ne` method.
-fn create_eq_method(cx: ext_ctxt,
+fn create_eq_method(cx: @ext_ctxt,
                     span: span,
                     method_ident: ident,
                     type_ident: ident,
@@ -236,7 +236,7 @@ fn create_eq_method(cx: ext_ctxt,
     }
 }
 
-fn create_self_type_with_params(cx: ext_ctxt,
+fn create_self_type_with_params(cx: @ext_ctxt,
                                 span: span,
                                 type_ident: ident,
                                 generics: &Generics)
@@ -258,7 +258,7 @@ fn create_self_type_with_params(cx: ext_ctxt,
     @ast::Ty { id: cx.next_id(), node: self_type, span: span }
 }
 
-fn create_derived_impl(cx: ext_ctxt,
+fn create_derived_impl(cx: @ext_ctxt,
                        span: span,
                        type_ident: ident,
                        generics: &Generics,
@@ -320,7 +320,7 @@ fn create_derived_impl(cx: ext_ctxt,
     return create_impl_item(cx, span, impl_item);
 }
 
-fn create_derived_eq_impl(cx: ext_ctxt,
+fn create_derived_eq_impl(cx: @ext_ctxt,
                           span: span,
                           type_ident: ident,
                           generics: &Generics,
@@ -336,7 +336,7 @@ fn create_derived_eq_impl(cx: ext_ctxt,
     create_derived_impl(cx, span, type_ident, generics, methods, trait_path)
 }
 
-fn create_derived_iter_bytes_impl(cx: ext_ctxt,
+fn create_derived_iter_bytes_impl(cx: @ext_ctxt,
                                   span: span,
                                   type_ident: ident,
                                   generics: &Generics,
@@ -351,7 +351,7 @@ fn create_derived_iter_bytes_impl(cx: ext_ctxt,
     create_derived_impl(cx, span, type_ident, generics, methods, trait_path)
 }
 
-fn create_derived_clone_impl(cx: ext_ctxt,
+fn create_derived_clone_impl(cx: @ext_ctxt,
                              span: span,
                              type_ident: ident,
                              generics: &Generics,
@@ -368,7 +368,7 @@ fn create_derived_clone_impl(cx: ext_ctxt,
 
 // Creates a method from the given set of statements conforming to the
 // signature of the `iter_bytes` method.
-fn create_iter_bytes_method(cx: ext_ctxt,
+fn create_iter_bytes_method(cx: @ext_ctxt,
                             span: span,
                             +statements: ~[@stmt])
                          -> @method {
@@ -417,7 +417,7 @@ fn create_iter_bytes_method(cx: ext_ctxt,
 
 // Creates a method from the given expression conforming to the signature of
 // the `clone` method.
-fn create_clone_method(cx: ext_ctxt,
+fn create_clone_method(cx: @ext_ctxt,
                        span: span,
                        +type_ident: ast::ident,
                        generics: &Generics,
@@ -467,7 +467,7 @@ fn create_clone_method(cx: ext_ctxt,
     }
 }
 
-fn create_subpatterns(cx: ext_ctxt,
+fn create_subpatterns(cx: @ext_ctxt,
                       span: span,
                       prefix: ~str,
                       n: uint)
@@ -496,7 +496,7 @@ fn is_struct_tuple(struct_def: &struct_def) -> bool {
     })
 }
 
-fn create_enum_variant_pattern(cx: ext_ctxt,
+fn create_enum_variant_pattern(cx: @ext_ctxt,
                                span: span,
                                variant: &variant,
                                prefix: ~str)
@@ -542,7 +542,7 @@ fn create_enum_variant_pattern(cx: ext_ctxt,
     }
 }
 
-fn call_substructure_eq_method(cx: ext_ctxt,
+fn call_substructure_eq_method(cx: @ext_ctxt,
                                span: span,
                                self_field: @expr,
                                other_field_ref: @expr,
@@ -571,7 +571,7 @@ fn call_substructure_eq_method(cx: ext_ctxt,
     };
 }
 
-fn finish_eq_chain_expr(cx: ext_ctxt,
+fn finish_eq_chain_expr(cx: @ext_ctxt,
                         span: span,
                         chain_expr: Option<@expr>,
                         junction: Junction)
@@ -587,7 +587,7 @@ fn finish_eq_chain_expr(cx: ext_ctxt,
     }
 }
 
-fn call_substructure_iter_bytes_method(cx: ext_ctxt,
+fn call_substructure_iter_bytes_method(cx: @ext_ctxt,
                                        span: span,
                                        self_field: @expr)
                                     -> @stmt {
@@ -612,7 +612,7 @@ fn call_substructure_iter_bytes_method(cx: ext_ctxt,
     build::mk_stmt(cx, span, self_call)
 }
 
-fn call_substructure_clone_method(cx: ext_ctxt,
+fn call_substructure_clone_method(cx: @ext_ctxt,
                                   span: span,
                                   self_field: @expr)
                                -> @expr {
@@ -622,7 +622,7 @@ fn call_substructure_clone_method(cx: ext_ctxt,
     build::mk_call_(cx, span, self_method, ~[])
 }
 
-fn variant_arg_count(cx: ext_ctxt, span: span, variant: &variant) -> uint {
+fn variant_arg_count(cx: @ext_ctxt, span: span, variant: &variant) -> uint {
     match variant.node.kind {
         tuple_variant_kind(ref args) => args.len(),
         struct_variant_kind(ref struct_def) => struct_def.fields.len(),
@@ -632,7 +632,7 @@ fn variant_arg_count(cx: ext_ctxt, span: span, variant: &variant) -> uint {
     }
 }
 
-fn expand_deriving_eq_struct_def(cx: ext_ctxt,
+fn expand_deriving_eq_struct_def(cx: @ext_ctxt,
                                  span: span,
                                  struct_def: &struct_def,
                                  type_ident: ident,
@@ -672,7 +672,7 @@ fn expand_deriving_eq_struct_def(cx: ext_ctxt,
                                   ne_method);
 }
 
-fn expand_deriving_eq_enum_def(cx: ext_ctxt,
+fn expand_deriving_eq_enum_def(cx: @ext_ctxt,
                                span: span,
                                enum_definition: &enum_def,
                                type_ident: ident,
@@ -705,7 +705,7 @@ fn expand_deriving_eq_enum_def(cx: ext_ctxt,
                                   ne_method);
 }
 
-fn expand_deriving_iter_bytes_struct_def(cx: ext_ctxt,
+fn expand_deriving_iter_bytes_struct_def(cx: @ext_ctxt,
                                          span: span,
                                          struct_def: &struct_def,
                                          type_ident: ident,
@@ -724,7 +724,7 @@ fn expand_deriving_iter_bytes_struct_def(cx: ext_ctxt,
                                           method);
 }
 
-fn expand_deriving_iter_bytes_enum_def(cx: ext_ctxt,
+fn expand_deriving_iter_bytes_enum_def(cx: @ext_ctxt,
                                        span: span,
                                        enum_definition: &enum_def,
                                        type_ident: ident,
@@ -743,7 +743,7 @@ fn expand_deriving_iter_bytes_enum_def(cx: ext_ctxt,
                                           method);
 }
 
-fn expand_deriving_clone_struct_def(cx: ext_ctxt,
+fn expand_deriving_clone_struct_def(cx: @ext_ctxt,
                                     span: span,
                                     struct_def: &struct_def,
                                     type_ident: ident,
@@ -768,7 +768,7 @@ fn expand_deriving_clone_struct_def(cx: ext_ctxt,
     create_derived_clone_impl(cx, span, type_ident, generics, method)
 }
 
-fn expand_deriving_clone_enum_def(cx: ext_ctxt,
+fn expand_deriving_clone_enum_def(cx: @ext_ctxt,
                                   span: span,
                                   enum_definition: &enum_def,
                                   type_ident: ident,
@@ -785,7 +785,7 @@ fn expand_deriving_clone_enum_def(cx: ext_ctxt,
     create_derived_clone_impl(cx, span, type_ident, generics, method)
 }
 
-fn expand_deriving_eq_struct_method(cx: ext_ctxt,
+fn expand_deriving_eq_struct_method(cx: @ext_ctxt,
                                     span: span,
                                     struct_def: &struct_def,
                                     method_ident: ident,
@@ -841,7 +841,7 @@ fn expand_deriving_eq_struct_method(cx: ext_ctxt,
                             body);
 }
 
-fn expand_deriving_iter_bytes_struct_method(cx: ext_ctxt,
+fn expand_deriving_iter_bytes_struct_method(cx: @ext_ctxt,
                                             span: span,
                                             struct_def: &struct_def)
                                          -> @method {
@@ -875,7 +875,7 @@ fn expand_deriving_iter_bytes_struct_method(cx: ext_ctxt,
     return create_iter_bytes_method(cx, span, statements);
 }
 
-fn expand_deriving_clone_struct_method(cx: ext_ctxt,
+fn expand_deriving_clone_struct_method(cx: @ext_ctxt,
                                        span: span,
                                        struct_def: &struct_def,
                                        type_ident: ident,
@@ -918,7 +918,7 @@ fn expand_deriving_clone_struct_method(cx: ext_ctxt,
     create_clone_method(cx, span, type_ident, generics, struct_literal)
 }
 
-fn expand_deriving_clone_tuple_struct_method(cx: ext_ctxt,
+fn expand_deriving_clone_tuple_struct_method(cx: @ext_ctxt,
                                              span: span,
                                              struct_def: &struct_def,
                                              type_ident: ident,
@@ -962,7 +962,7 @@ fn expand_deriving_clone_tuple_struct_method(cx: ext_ctxt,
     create_clone_method(cx, span, type_ident, generics, self_match_expr)
 }
 
-fn expand_deriving_eq_enum_method(cx: ext_ctxt,
+fn expand_deriving_eq_enum_method(cx: @ext_ctxt,
                                   span: span,
                                   enum_definition: &enum_def,
                                   method_ident: ident,
@@ -1096,7 +1096,7 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
                             self_match_expr);
 }
 
-fn expand_deriving_eq_struct_tuple_method(cx: ext_ctxt,
+fn expand_deriving_eq_struct_tuple_method(cx: @ext_ctxt,
                                           span: span,
                                           struct_def: &struct_def,
                                           method_ident: ident,
@@ -1155,7 +1155,7 @@ fn expand_deriving_eq_struct_tuple_method(cx: ext_ctxt,
         type_ident, generics, self_match_expr)
 }
 
-fn expand_enum_or_struct_match(cx: ext_ctxt,
+fn expand_enum_or_struct_match(cx: @ext_ctxt,
                                span: span,
                                arms: ~[ ast::arm ])
                             -> @expr {
@@ -1166,7 +1166,7 @@ fn expand_enum_or_struct_match(cx: ext_ctxt,
     build::mk_expr(cx, span, self_match_expr)
 }
 
-fn expand_deriving_iter_bytes_enum_method(cx: ext_ctxt,
+fn expand_deriving_iter_bytes_enum_method(cx: @ext_ctxt,
                                           span: span,
                                           enum_definition: &enum_def)
                                        -> @method {
@@ -1221,7 +1221,7 @@ fn expand_deriving_iter_bytes_enum_method(cx: ext_ctxt,
     create_iter_bytes_method(cx, span, ~[ self_match_stmt ])
 }
 
-fn expand_deriving_clone_enum_method(cx: ext_ctxt,
+fn expand_deriving_clone_enum_method(cx: @ext_ctxt,
                                      span: span,
                                      enum_definition: &enum_def,
                                      type_ident: ident,

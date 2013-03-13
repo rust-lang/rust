@@ -214,8 +214,8 @@ struct ParsedItemsAndViewItems {
 
 pub fn Parser(sess: @mut ParseSess,
               +cfg: ast::crate_cfg,
-              +rdr: reader) -> Parser {
-
+              +rdr: @reader)
+           -> Parser {
     let tok0 = copy rdr.next_token();
     let interner = rdr.interner();
 
@@ -253,7 +253,7 @@ pub struct Parser {
     tokens_consumed: @mut uint,
     restriction: @mut restriction,
     quote_depth: @mut uint, // not (yet) related to the quasiquoter
-    reader: reader,
+    reader: @reader,
     interner: @token::ident_interner,
     keywords: HashMap<~str, ()>,
     strict_keywords: HashMap<~str, ()>,
@@ -3403,7 +3403,7 @@ pub impl Parser {
         let prefix = Path(self.sess.cm.span_to_filename(*self.span));
         let prefix = prefix.dir_path();
         let mod_path = Path(".").push_many(*self.mod_path_stack);
-        let default_path = self.sess.interner.get(id) + ~".rs";
+        let default_path = *self.sess.interner.get(id) + ~".rs";
         let file_path = match ::attr::first_attr_value_str_by_name(
             outer_attrs, ~"path") {
             Some(d) => {

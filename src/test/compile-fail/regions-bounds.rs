@@ -22,7 +22,7 @@ fn a_fn1(e: an_enum<'a>) -> an_enum<'b> {
     return e; //~ ERROR mismatched types: expected `an_enum/&b` but found `an_enum/&a`
 }
 
-fn a_fn2(e: a_trait<'a>) -> a_trait<'b> {
+fn a_fn2(e: @a_trait<'a>) -> @a_trait<'b> {
     return e; //~ ERROR mismatched types: expected `@a_trait/&b` but found `@a_trait/&a`
 }
 

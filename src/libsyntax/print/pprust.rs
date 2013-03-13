@@ -76,7 +76,7 @@ pub fn end(s: @ps) {
     pp::end(s.s);
 }
 
-pub fn rust_printer(writer: io::Writer, intr: @ident_interner) -> @ps {
+pub fn rust_printer(writer: @io::Writer, intr: @ident_interner) -> @ps {
     return @ps {
         s: pp::mk_printer(writer, default_columns),
         cm: None::<@CodeMap>,
@@ -100,10 +100,15 @@ pub const default_columns: uint = 78u;
 // Requires you to pass an input filename and reader so that
 // it can scan the input text for comments and literals to
 // copy forward.
-pub fn print_crate(cm: @CodeMap, intr: @ident_interner,
-                   span_diagnostic: diagnostic::span_handler,
-                   crate: @ast::crate, filename: ~str, in: io::Reader,
-                   out: io::Writer, ann: pp_ann, is_expanded: bool) {
+pub fn print_crate(cm: @CodeMap,
+                   intr: @ident_interner,
+                   span_diagnostic: @diagnostic::span_handler,
+                   crate: @ast::crate,
+                   filename: ~str,
+                   in: @io::Reader,
+                   out: @io::Writer,
+                   ann: pp_ann,
+                   is_expanded: bool) {
     let (cmnts, lits) = comments::gather_comments_and_literals(
         span_diagnostic,
         copy filename,

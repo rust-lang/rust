@@ -48,7 +48,7 @@ pub mod obsolete;
 pub struct ParseSess {
     cm: @codemap::CodeMap,
     next_id: node_id,
-    span_diagnostic: span_handler,
+    span_diagnostic: @span_handler,
     interner: @ident_interner,
 }
 
@@ -62,8 +62,9 @@ pub fn new_parse_sess(demitter: Option<Emitter>) -> @mut ParseSess {
     }
 }
 
-pub fn new_parse_sess_special_handler(sh: span_handler, cm: @codemap::CodeMap)
-    -> @mut ParseSess {
+pub fn new_parse_sess_special_handler(sh: @span_handler,
+                                      cm: @codemap::CodeMap)
+                                   -> @mut ParseSess {
     @mut ParseSess {
         cm: cm,
         next_id: 1,
@@ -201,20 +202,19 @@ pub fn next_node_id(sess: @mut ParseSess) -> node_id {
     return rv;
 }
 
-pub fn new_parser_from_source_str(
-    sess: @mut ParseSess,
-    +cfg: ast::crate_cfg,
-    +name: ~str,
-    +ss: codemap::FileSubstr,
-    source: @~str
-) -> Parser {
+pub fn new_parser_from_source_str(sess: @mut ParseSess,
+                                  +cfg: ast::crate_cfg,
+                                  +name: ~str,
+                                  +ss: codemap::FileSubstr,
+                                  source: @~str)
+                               -> Parser {
     let filemap = sess.cm.new_filemap_w_substr(name, ss, source);
     let srdr = lexer::new_string_reader(
         copy sess.span_diagnostic,
         filemap,
         sess.interner
     );
-    Parser(sess, cfg, srdr as reader)
+    Parser(sess, cfg, srdr as @reader)
 }
 
 /// Read the entire source file, return a parser
@@ -227,12 +227,10 @@ pub fn new_parser_result_from_file(
     match io::read_whole_file_str(path) {
         Ok(src) => {
             let filemap = sess.cm.new_filemap(path.to_str(), @src);
-            let srdr = lexer::new_string_reader(
-                copy sess.span_diagnostic,
-                filemap,
-                sess.interner
-            );
-            Ok(Parser(sess, cfg, srdr as reader))
+            let srdr = lexer::new_string_reader(copy sess.span_diagnostic,
+                                                filemap,
+                                                sess.interner);
+            Ok(Parser(sess, cfg, srdr as @reader))
 
         }
         Err(e) => Err(e)
@@ -281,7 +279,7 @@ pub fn new_parser_from_tts(
         None,
         tts
     );
-    Parser(sess, cfg, trdr as reader)
+    Parser(sess, cfg, trdr as @reader)
 }
 
 // abort if necessary

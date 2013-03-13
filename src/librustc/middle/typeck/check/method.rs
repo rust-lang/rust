@@ -111,20 +111,26 @@ pub enum CheckTraitsFlag {
     CheckTraitsAndInherentMethods,
 }
 
-pub fn lookup(
-    fcx: @mut FnCtxt,
+#[deriving_eq]
+pub enum AutoderefReceiverFlag {
+    AutoderefReceiver,
+    DontAutoderefReceiver,
+}
 
-    // In a call `a.b::<X, Y, ...>(...)`:
-    expr: @ast::expr,                   // The expression `a.b`.
-    self_expr: @ast::expr,              // The expression `a`.
-    callee_id: node_id,                 // Where to store the type of `a.b`
-    m_name: ast::ident,                 // The ident `b`.
-    self_ty: ty::t,                     // The type of `a`.
-    supplied_tps: &[ty::t],             // The list of types X, Y, ... .
-    deref_args: check::DerefArgs,       // Whether we autopointer first.
-    check_traits: CheckTraitsFlag)      // Whether we check traits only.
-    -> Option<method_map_entry>
-{
+pub fn lookup(
+        fcx: @mut FnCtxt,
+
+        // In a call `a.b::<X, Y, ...>(...)`:
+        expr: @ast::expr,                   // The expression `a.b`.
+        self_expr: @ast::expr,              // The expression `a`.
+        callee_id: node_id,                 // Where to store `a.b`'s type
+        m_name: ast::ident,                 // The ident `b`.
+        self_ty: ty::t,                     // The type of `a`.
+        supplied_tps: &[ty::t],             // The list of types X, Y, ... .
+        deref_args: check::DerefArgs,       // Whether we autopointer first.
+        check_traits: CheckTraitsFlag,      // Whether we check traits only.
+        autoderef_receiver: AutoderefReceiverFlag)
+     -> Option<method_map_entry> {
     let lcx = LookupContext {
         fcx: fcx,
         expr: expr,
@@ -137,6 +143,7 @@ pub fn lookup(
         extension_candidates: @mut ~[],
         deref_args: deref_args,
         check_traits: check_traits,
+        autoderef_receiver: autoderef_receiver,
     };
     let mme = lcx.do_lookup(self_ty);
     debug!("method lookup for %s yielded %?",
@@ -156,6 +163,7 @@ pub struct LookupContext {
     extension_candidates: @mut ~[Candidate],
     deref_args: check::DerefArgs,
     check_traits: CheckTraitsFlag,
+    autoderef_receiver: AutoderefReceiverFlag,
 }
 
 /**
@@ -232,6 +240,12 @@ pub impl LookupContext/&self {
                 }
             }
 
+            // Don't autoderef if we aren't supposed to.
+            if self.autoderef_receiver == DontAutoderefReceiver {
+                break;
+            }
+
+            // Otherwise, perform autoderef.
             match self.deref(self_ty, &mut enum_dids) {
                 None => { break; }
                 Some(ty) => {
@@ -288,9 +302,9 @@ pub impl LookupContext/&self {
                 ty_param(p) => {
                     self.push_inherent_candidates_from_param(self_ty, p);
                 }
-                ty_trait(did, ref substs, vstore) => {
+                ty_trait(did, ref substs, store) => {
                     self.push_inherent_candidates_from_trait(
-                        self_ty, did, substs, vstore);
+                        self_ty, did, substs, store);
                     self.push_inherent_impl_candidates_for_type(did);
                 }
                 ty_self => {
@@ -490,7 +504,7 @@ pub impl LookupContext/&self {
                                            self_ty: ty::t,
                                            did: def_id,
                                            substs: &ty::substs,
-                                           vstore: ty::vstore) {
+                                           store: ty::TraitStore) {
         debug!("push_inherent_candidates_from_trait(did=%s, substs=%s)",
                self.did_to_str(did),
                substs_to_str(self.tcx(), substs));
@@ -539,7 +553,7 @@ pub impl LookupContext/&self {
             explicit_self: method.self_ty,
             num_method_tps: method.tps.len(),
             self_mode: get_mode_from_self_type(method.self_ty),
-            origin: method_trait(did, index, vstore)
+            origin: method_trait(did, index, store)
         });
     }
 

@@ -70,13 +70,14 @@ struct ListenerFn {
 struct ReadyCtx {
     sess: session::Session,
     crate: @ast::crate,
-    ext_cx: ext_ctxt,
+    ext_cx: @ext_ctxt,
     path: ~[ast::ident],
     fns: ~[ListenerFn]
 }
 
-fn fold_mod(_ctx: @mut ReadyCtx, m: &ast::_mod,
-            fold: fold::ast_fold) -> ast::_mod {
+fn fold_mod(_ctx: @mut ReadyCtx,
+            m: &ast::_mod,
+            fold: @fold::ast_fold) -> ast::_mod {
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
             attrs: do item.attrs.filtered |attr| {
@@ -94,9 +95,9 @@ fn fold_mod(_ctx: @mut ReadyCtx, m: &ast::_mod,
     }, fold)
 }
 
-fn fold_item(ctx: @mut ReadyCtx, item: @ast::item,
-             fold: fold::ast_fold) -> Option<@ast::item> {
-
+fn fold_item(ctx: @mut ReadyCtx,
+             item: @ast::item,
+             fold: @fold::ast_fold) -> Option<@ast::item> {
     ctx.path.push(item.ident);
 
     let attrs = attr::find_attrs_by_name(item.attrs, ~"pkg_do");
