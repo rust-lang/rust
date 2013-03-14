@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait c lam<A:Copy> {
+trait clam<A:Copy> {
   fn chowder(&self, y: A);
 }
 struct foo<A> {
@@ -33,6 +33,6 @@ fn f<A:Copy>(x: @clam<A>, a: A) {
 pub fn main() {
 
   let c = foo(42);
-  let d: @clam<int> = @c as @clam::<int>;
+  let d: @clam<int> = @c as @clam<int>;
   f(d, c.x);
 }

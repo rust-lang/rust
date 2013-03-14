@@ -1,3 +1,6 @@
+// xfail-test
+// xfail'd because to_foo() doesn't work.
+
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -15,7 +18,7 @@ trait foo {
     fn foo(&self, i: &'self int) -> int;
 }
 
-impl<T:Copy> foo<'self> for T {
+impl<T:Copy> foo for T {
     fn foo(&self, i: &'self int) -> int {*i}
 }
 

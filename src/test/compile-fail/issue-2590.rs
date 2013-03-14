@@ -13,11 +13,11 @@ struct parser {
 }
 
 trait parse {
-    fn parse() -> ~[int];
+    fn parse(&self) -> ~[int];
 }
 
 impl parse for parser {
-    fn parse() -> ~[int] {
+    fn parse(&self) -> ~[int] {
         self.tokens //~ ERROR moving out of immutable field
     }
 }

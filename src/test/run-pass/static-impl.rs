@@ -16,7 +16,7 @@ pub trait plus {
 
 mod a {
     use plus;
-    impl plus for uint { fn plus(&self) -> int { self as int + 20 } }
+    impl plus for uint { fn plus(&self) -> int { *self as int + 20 } }
 }
 
 mod b {
@@ -25,15 +25,15 @@ mod b {
 }
 
 trait uint_utils {
-    fn str(self) -> ~str;
-    fn multi(self, f: &fn(uint));
+    fn str(&self) -> ~str;
+    fn multi(&self, f: &fn(uint));
 }
 
 impl uint_utils for uint {
-    fn str(self) -> ~str { uint::to_str(self) }
-    fn multi(self, f: &fn(uint)) {
+    fn str(&self) -> ~str { uint::to_str(*self) }
+    fn multi(&self, f: &fn(uint)) {
         let mut c = 0u;
-        while c < self { f(c); c += 1u; }
+        while c < *self { f(c); c += 1u; }
     }
 }
 
@@ -44,7 +44,7 @@ trait vec_utils<T> {
 }
 
 impl<T> vec_utils<T> for ~[T] {
-    fn length_(&self) -> uint { vec::len(self) }
+    fn length_(&self) -> uint { vec::len(*self) }
     fn iter_(&self, f: &fn(&T)) { for self.each |x| { f(x); } }
     fn map_<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U] {
         let mut r = ~[];

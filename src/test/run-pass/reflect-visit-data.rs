@@ -487,7 +487,7 @@ pub impl my_visitor {
 
     fn visit_inner(&self, inner: *TyDesc) -> bool {
         unsafe {
-            let u = my_visitor(*self);
+            let u = my_visitor(**self);
             let v = ptr_visit_adaptor::<my_visitor>(Inner {inner: u});
             visit_tydesc(inner, @v as @TyVisitor);
             true

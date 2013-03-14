@@ -28,9 +28,9 @@ trait option_monad<A> {
 
 impl<A> option_monad<A> for Option<A> {
     fn bind<B>(&self, f: &fn(&A) -> Option<B>) -> Option<B> {
-        match self {
-          Some(ref a) => { f(a) }
-          None => { None }
+        match *self {
+            Some(ref a) => { f(a) }
+            None => { None }
         }
     }
 }

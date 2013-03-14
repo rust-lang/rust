@@ -1,3 +1,6 @@
+// xfail-test
+// xfail'd due to problems with by value self.
+
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -12,9 +15,9 @@
 // refers to self.
 
 trait foo<'self> {
-    fn self_int(&self) -> &'self int;
+    fn self_int(self) -> &'self int;
 
-    fn any_int(&self) -> &int;
+    fn any_int(self) -> &int;
 }
 
 struct with_foo<'self> {

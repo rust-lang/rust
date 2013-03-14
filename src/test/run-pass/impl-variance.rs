@@ -13,7 +13,7 @@ trait foo {
 }
 
 impl<T> foo for ~[const T] {
-    fn foo(&self) -> uint { vec::len(self) }
+    fn foo(&self) -> uint { vec::len(*self) }
 }
 
 pub fn main() {

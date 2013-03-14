@@ -17,13 +17,13 @@ trait to_opt {
 
 impl to_opt for uint {
     fn to_option(&self) -> Option<uint> {
-        Some(self)
+        Some(*self)
     }
 }
 
 impl<T:Copy> to_opt for Option<T> {
     fn to_option(&self) -> Option<Option<T>> {
-        Some(self)
+        Some(*self)
     }
 }
 

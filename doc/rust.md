@@ -1181,8 +1181,8 @@ Traits are implemented for specific types through separate [implementations](#im
 # type BoundingBox = int;
 
 trait Shape {
-    fn draw(Surface);
-    fn bounding_box() -> BoundingBox;
+    fn draw(&self, Surface);
+    fn bounding_box(&self) -> BoundingBox;
 }
 ~~~~
 
@@ -1195,9 +1195,9 @@ These appear after the trait name, using the same syntax used in [generic functi
 
 ~~~~
 trait Seq<T> {
-   fn len() -> uint;
-   fn elt_at(n: uint) -> T;
-   fn iter(&fn(T));
+   fn len(&self) -> uint;
+   fn elt_at(&self, n: uint) -> T;
+   fn iter(&self, &fn(T));
 }
 ~~~~
 
@@ -1209,7 +1209,7 @@ For example:
 
 ~~~~
 # type Surface = int;
-# trait Shape { fn draw(Surface); }
+# trait Shape { fn draw(&self, Surface); }
 
 fn draw_twice<T: Shape>(surface: Surface, sh: T) {
     sh.draw(surface);
@@ -1271,8 +1271,8 @@ methods of the supertrait may be called on values of subtrait-bound type paramet
 Refering to the previous example of `trait Circle : Shape`:
 
 ~~~
-# trait Shape { fn area() -> float; }
-# trait Circle : Shape { fn radius() -> float; }
+# trait Shape { fn area(&self) -> float; }
+# trait Circle : Shape { fn radius(&self) -> float; }
 fn radius_times_area<T: Circle>(c: T) -> float {
     // `c` is both a Circle and a Shape
     c.radius() * c.area()
@@ -1282,10 +1282,10 @@ fn radius_times_area<T: Circle>(c: T) -> float {
 Likewise, supertrait methods may also be called on trait objects.
 
 ~~~ {.xfail-test}
-# trait Shape { fn area() -> float; }
-# trait Circle : Shape { fn radius() -> float; }
-# impl Shape for int { fn area() -> float { 0.0 } }
-# impl Circle for int { fn radius() -> float { 0.0 } }
+# trait Shape { fn area(&self) -> float; }
+# trait Circle : Shape { fn radius(&self) -> float; }
+# impl Shape for int { fn area(&self) -> float { 0.0 } }
+# impl Circle for int { fn radius(&self) -> float { 0.0 } }
 # let mycircle = 0;
 
 let mycircle: Circle = @mycircle as @Circle;
@@ -1302,7 +1302,7 @@ Implementations are defined with the keyword `impl`.
 # struct Point {x: float, y: float};
 # type Surface = int;
 # struct BoundingBox {x: float, y: float, width: float, height: float};
-# trait Shape { fn draw(Surface); fn bounding_box() -> BoundingBox; }
+# trait Shape { fn draw(&self, Surface); fn bounding_box(&self) -> BoundingBox; }
 # fn do_draw_circle(s: Surface, c: Circle) { }
 
 struct Circle {
@@ -1311,8 +1311,8 @@ struct Circle {
 }
 
 impl Shape for Circle {
-    fn draw(s: Surface) { do_draw_circle(s, self); }
-    fn bounding_box() -> BoundingBox {
+    fn draw(&self, s: Surface) { do_draw_circle(s, *self); }
+    fn bounding_box(&self) -> BoundingBox {
         let r = self.radius;
         BoundingBox{x: self.center.x - r, y: self.center.y - r,
          width: 2.0 * r, height: 2.0 * r}
@@ -2678,11 +2678,11 @@ An example of an object type:
 
 ~~~~~~~~
 trait Printable {
-  fn to_str() -> ~str;
+  fn to_str(&self) -> ~str;
 }
 
 impl Printable for int {
-  fn to_str() -> ~str { int::to_str(self) }
+  fn to_str(&self) -> ~str { int::to_str(*self) }
 }
 
 fn print(a: @Printable) {
@@ -2721,11 +2721,11 @@ example, in:
 
 ~~~~~~~~
 trait Printable {
-  fn make_string() -> ~str;
+  fn make_string(&self) -> ~str;
 }
 
 impl Printable for ~str {
-  fn make_string() -> ~str { copy self }
+  fn make_string(&self) -> ~str { copy *self }
 }
 ~~~~~~~~
 

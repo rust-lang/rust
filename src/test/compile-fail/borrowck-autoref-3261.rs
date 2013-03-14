@@ -10,8 +10,8 @@
 
 struct X(Either<(uint,uint),extern fn()>);
 
-pub impl &'self X {
-    fn with(self, blk: &fn(x: &Either<(uint,uint),extern fn()>)) {
+pub impl X {
+    fn with(&self, blk: &fn(x: &Either<(uint,uint),extern fn()>)) {
         blk(&**self)
     }
 }

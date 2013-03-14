@@ -10,22 +10,22 @@
 
 struct ctxt { v: uint }
 
-trait get_ctxt<'self> {
+trait get_ctxt {
     fn get_ctxt(&self) -> &'self ctxt;
 }
 
 struct has_ctxt<'self> { c: &'self ctxt }
 
-impl<'self> get_ctxt<'self> for has_ctxt<'self> {
+impl<'self> get_ctxt for has_ctxt<'self> {
     fn get_ctxt(&self) -> &self/ctxt { self.c }
 }
 
 fn make_gc() -> @get_ctxt  {
     let ctxt = ctxt { v: 22u };
-    let hc = has_ctxt { c: &ctxt }; //~ ERROR illegal borrow
+    let hc = has_ctxt { c: &ctxt };
     return @hc as @get_ctxt;
 }
 
 fn main() {
-    make_gc().get_ctxt().v;
+    make_gc().get_ctxt().v; //~ ERROR illegal borrow
 }

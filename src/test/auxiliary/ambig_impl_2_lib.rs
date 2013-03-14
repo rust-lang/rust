@@ -11,4 +11,4 @@
 trait me {
     fn me(&self) -> uint;
 }
-impl me for uint { fn me(&self) -> uint { self } }
+impl me for uint { fn me(&self) -> uint { *self } }

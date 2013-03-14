@@ -49,7 +49,7 @@ priv impl cat {
     }
 }
 
-fn cat(&self, in_x : uint, in_y : int, in_name: ~str) -> cat {
+fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
     cat {
         meows: in_x,
         how_hungry: in_y,

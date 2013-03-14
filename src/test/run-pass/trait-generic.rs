@@ -14,10 +14,10 @@ trait to_str {
     fn to_str(&self) -> ~str;
 }
 impl to_str for int {
-    fn to_str(&self) -> ~str { int::to_str(self) }
+    fn to_str(&self) -> ~str { int::to_str(*self) }
 }
 impl to_str for ~str {
-    fn to_str(&self) -> ~str { copy self }
+    fn to_str(&self) -> ~str { copy *self }
 }
 impl to_str for () {
     fn to_str(&self) -> ~str { ~"()" }
