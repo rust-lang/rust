@@ -62,7 +62,7 @@ fn is_visible(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
                 match item.node {
                     ast::item_impl(_, Some(_), _, _) => {
                         // This is a trait implementation, make it visible
-                        // NOTE: This is not quite right since this could be an impl
+                        // NB: This is not quite right since this could be an impl
                         // of a private trait. We can't know that without running
                         // resolve though.
                         true

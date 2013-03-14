@@ -10,6 +10,8 @@
 
 use core::prelude::*;
 
+use abi::AbiSet;
+use abi;
 use ast::{RegionTyParamBound, TraitTyParamBound, required, provided};
 use ast;
 use ast_util;
@@ -185,7 +187,8 @@ pub fn fun_to_str(decl: &ast::fn_decl, name: ast::ident,
                   generics: &ast::Generics, intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
-        print_fn(s, decl, None, name, generics, opt_self_ty, ast::inherited);
+        print_fn(s, decl, None, AbiSet::Rust(),
+                 name, generics, opt_self_ty, ast::inherited);
         end(s); // Close the head box
         end(s); // Close the outer box
         eof(s.s);
@@ -402,7 +405,7 @@ pub fn print_type(s: @ps, &&ty: @ast::Ty) {
         pclose(s);
       }
       ast::ty_bare_fn(f) => {
-          print_ty_fn(s, Some(f.abi), None, None,
+          print_ty_fn(s, Some(f.abis), None, None,
                       f.purity, ast::Many, &f.decl, None,
                       None, None);
       }
@@ -441,7 +444,8 @@ pub fn print_foreign_item(s: @ps, item: @ast::foreign_item) {
     print_outer_attributes(s, item.attrs);
     match item.node {
       ast::foreign_item_fn(ref decl, purity, ref generics) => {
-        print_fn(s, decl, Some(purity), item.ident, generics, None,
+        print_fn(s, decl, Some(purity), AbiSet::Rust(),
+                 item.ident, generics, None,
                  ast::inherited);
         end(s); // end head-ibox
         word(s.s, ~";");
@@ -480,11 +484,12 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
         end(s); // end the outer cbox
 
       }
-      ast::item_fn(ref decl, purity, ref typarams, ref body) => {
+      ast::item_fn(ref decl, purity, abi, ref typarams, ref body) => {
         print_fn(
             s,
             decl,
             Some(purity),
+            abi,
             item.ident,
             typarams,
             None,
@@ -503,8 +508,7 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
       }
       ast::item_foreign_mod(ref nmod) => {
         head(s, visibility_qualified(item.vis, ~"extern"));
-        print_string(s, *s.intr.get(nmod.abi));
-        nbsp(s);
+        word_nbsp(s, nmod.abis.to_str());
         match nmod.sort {
             ast::named => {
                 word_nbsp(s, ~"mod");
@@ -815,7 +819,7 @@ pub fn print_method(s: @ps, meth: @ast::method) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, meth.span.lo);
     print_outer_attributes(s, meth.attrs);
-    print_fn(s, &meth.decl, Some(meth.purity),
+    print_fn(s, &meth.decl, Some(meth.purity), AbiSet::Rust(),
              meth.ident, &meth.generics, Some(meth.self_ty.node),
              meth.vis);
     word(s.s, ~" ");
@@ -1664,12 +1668,13 @@ pub fn print_self_ty(s: @ps, self_ty: ast::self_ty_) -> bool {
 pub fn print_fn(s: @ps,
                 decl: &ast::fn_decl,
                 purity: Option<ast::purity>,
+                abis: AbiSet,
                 name: ast::ident,
                 generics: &ast::Generics,
                 opt_self_ty: Option<ast::self_ty_>,
                 vis: ast::visibility) {
     head(s, ~"");
-    print_fn_header_info(s, opt_self_ty, purity, ast::Many, None, vis);
+    print_fn_header_info(s, opt_self_ty, purity, abis, ast::Many, None, vis);
     nbsp(s);
     print_ident(s, name);
     print_generics(s, generics);
@@ -1918,7 +1923,7 @@ pub fn print_arg(s: @ps, input: ast::arg) {
 }
 
 pub fn print_ty_fn(s: @ps,
-                   opt_abi: Option<ast::Abi>,
+                   opt_abis: Option<AbiSet>,
                    opt_sigil: Option<ast::Sigil>,
                    opt_region: Option<@ast::Lifetime>,
                    purity: ast::purity,
@@ -1930,7 +1935,7 @@ pub fn print_ty_fn(s: @ps,
 
     // Duplicates the logic in `print_fn_header_info()`.  This is because that
     // function prints the sigil in the wrong place.  That should be fixed.
-    print_opt_abi(s, opt_abi);
+    print_extern_opt_abis(s, opt_abis);
     print_opt_sigil(s, opt_sigil);
     print_opt_lifetime(s, opt_region);
     print_purity(s, purity);
@@ -2168,9 +2173,12 @@ pub fn print_opt_purity(s: @ps, opt_purity: Option<ast::purity>) {
     }
 }
 
-pub fn print_opt_abi(s: @ps, opt_abi: Option<ast::Abi>) {
-    match opt_abi {
-        Some(ast::RustAbi) => { word_nbsp(s, ~"extern"); }
+pub fn print_extern_opt_abis(s: @ps, opt_abis: Option<AbiSet>) {
+    match opt_abis {
+        Some(abis) => {
+            word_nbsp(s, ~"extern");
+            word_nbsp(s, abis.to_str());
+        }
         None => {}
     };
 }
@@ -2187,11 +2195,23 @@ pub fn print_opt_sigil(s: @ps, opt_sigil: Option<ast::Sigil>) {
 pub fn print_fn_header_info(s: @ps,
                             opt_sty: Option<ast::self_ty_>,
                             opt_purity: Option<ast::purity>,
+                            abis: AbiSet,
                             onceness: ast::Onceness,
                             opt_sigil: Option<ast::Sigil>,
                             vis: ast::visibility) {
     word(s.s, visibility_qualified(vis, ~""));
-    print_opt_purity(s, opt_purity);
+
+    if abis != AbiSet::Rust() {
+        word_nbsp(s, ~"extern");
+        word_nbsp(s, abis.to_str());
+
+        if opt_purity != Some(ast::extern_fn) {
+            print_opt_purity(s, opt_purity);
+        }
+    } else {
+        print_opt_purity(s, opt_purity);
+    }
+
     print_onceness(s, onceness);
     word(s.s, ~"fn");
     print_opt_sigil(s, opt_sigil);

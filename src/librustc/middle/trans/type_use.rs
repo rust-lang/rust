@@ -102,7 +102,7 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                                      fn_id_loc))
     };
     match map_node {
-      ast_map::node_item(@ast::item { node: item_fn(_, _, _, ref body),
+      ast_map::node_item(@ast::item { node: item_fn(_, _, _, _, ref body),
                                       _ }, _) |
       ast_map::node_method(@ast::method {body: ref body, _}, _, _) => {
         handle_body(cx, body);
@@ -121,7 +121,7 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                                  abi,
                                  _,
                                  _) => {
-        if abi == foreign_abi_rust_intrinsic {
+        if abi.is_intrinsic() {
             let flags = match *cx.ccx.sess.str_of(i.ident) {
                 ~"size_of"  | ~"pref_align_of"    | ~"min_align_of" |
                 ~"init"     | ~"reinterpret_cast" |

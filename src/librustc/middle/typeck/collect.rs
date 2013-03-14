@@ -47,6 +47,7 @@ use util::common::{indenter, pluralize};
 use util::ppaux;
 
 use core::vec;
+use syntax::abi::AbiSet;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
 use syntax::ast;
 use syntax::ast_map;
@@ -698,7 +699,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
             tcx,
             astconv::ty_of_bare_fn(
                 ccx, &type_rscope(rp),
-                ast::impure_fn, ast::RustAbi,
+                ast::impure_fn, AbiSet::Rust(),
                 &ast_util::dtor_dec()));
         write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
         tcx.tcache.insert(local_def(dtor.node.id),
@@ -763,7 +764,7 @@ pub fn ty_of_method(ccx: &CrateCtxt,
         ident: m.ident,
         tps: ty_param_bounds(ccx, &m.generics),
         fty: astconv::ty_of_bare_fn(ccx, &rscope, m.purity,
-                                    ast::RustAbi, &m.decl),
+                                    AbiSet::Rust(), &m.decl),
         self_ty: m.self_ty.node,
         vis: m.vis,
         def_id: local_def(m.id)
@@ -783,7 +784,7 @@ pub fn ty_of_ty_method(self: &CrateCtxt,
         ident: m.ident,
         tps: ty_param_bounds(self, &m.generics),
         fty: astconv::ty_of_bare_fn(self, &rscope, m.purity,
-                                    ast::RustAbi, &m.decl),
+                                    AbiSet::Rust(), &m.decl),
         // assume public, because this is only invoked on trait methods
         self_ty: m.self_ty.node,
         vis: ast::public,
@@ -836,10 +837,10 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }
-      ast::item_fn(ref decl, purity, ref generics, _) => {
+      ast::item_fn(ref decl, purity, abi, ref generics, _) => {
         let bounds = ty_param_bounds(ccx, generics);
-        let tofd = astconv::ty_of_bare_fn(ccx, &empty_rscope, purity,
-                                          ast::RustAbi, decl);
+        let tofd = astconv::ty_of_bare_fn(
+            ccx, &empty_rscope, purity, abi, decl);
         let tpt = ty_param_bounds_and_ty {
             bounds: bounds,
             region_param: None,
@@ -1011,7 +1012,7 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
     let t_fn = ty::mk_bare_fn(
         ccx.tcx,
         ty::BareFnTy {
-            abi: ast::RustAbi,
+            abis: AbiSet::Rust(),
             purity: ast::unsafe_fn,
             sig: ty::FnSig {inputs: input_tys, output: output_ty}
         });
