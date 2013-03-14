@@ -11,6 +11,7 @@
 pub mod clone;
 pub mod eq;
 pub mod iter_bytes;
+pub mod total_ord;
 
 use core::prelude::*;
 
@@ -72,6 +73,8 @@ pub fn expand_meta_deriving(cx: @ext_ctxt,
                             ~"IterBytes" =>
                                 iter_bytes::expand_deriving_iter_bytes(cx,
                                     titem.span, titem, in_items),
+                            ~"TotalOrd" => total_ord::expand(cx, titem.span,
+                                titem, in_items),
                             tname => {
                                 cx.span_err(titem.span, fmt!("unknown \
                                     `deriving` trait: `%s`", tname));
