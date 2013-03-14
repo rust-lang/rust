@@ -183,8 +183,7 @@ pub impl Scheduler {
 
         let blocked_task = self.current_task.swap_unwrap();
         let f_fake_region = unsafe {
-            transmute::<&fn(&mut Scheduler, ~Task),
-                        &fn(&mut Scheduler, ~Task)>(f)
+            transmute::<&fn(&mut Scheduler, ~Task), &fn(&mut Scheduler, ~Task)>(f)
         };
         let f_opaque = HackAroundBorrowCk::from_fn(f_fake_region);
         self.enqueue_cleanup_job(GiveTask(blocked_task, f_opaque));
@@ -233,8 +232,7 @@ pub impl Scheduler {
         Context::swap(task_context, scheduler_context);
     }
 
-    priv fn swap_in_task_from_running_task(&mut self,
-                                           running_task: &mut Task) {
+    priv fn swap_in_task_from_running_task(&mut self, running_task: &mut Task) {
         let running_task_context = &mut running_task.saved_context;
         let next_context = &self.current_task.get_ref().saved_context;
         Context::swap(running_task_context, next_context);
@@ -344,8 +342,7 @@ impl ThreadLocalScheduler {
     fn put_scheduler(&mut self, scheduler: ~Scheduler) {
         unsafe {
             let key = match self { &ThreadLocalScheduler(key) => key };
-            let value: *mut c_void =
-                transmute::<~Scheduler, *mut c_void>(scheduler);
+            let value: *mut c_void = transmute::<~Scheduler, *mut c_void>(scheduler);
             tls::set(key, value);
         }
     }
@@ -357,8 +354,9 @@ impl ThreadLocalScheduler {
             fail_unless!(value.is_not_null());
             {
                 let value_ptr = &mut value;
-                let sched: &mut ~Scheduler =
-                    transmute::<&mut *mut c_void, &mut ~Scheduler>(value_ptr);
+                let sched: &mut ~Scheduler = {
+                    transmute::<&mut *mut c_void, &mut ~Scheduler>(value_ptr)
+                };
                 let sched: &mut Scheduler = &mut **sched;
                 return sched;
             }

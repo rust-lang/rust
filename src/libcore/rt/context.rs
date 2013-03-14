@@ -54,8 +54,7 @@ pub impl Context {
         // which we will then modify to call the given function when restored
         let mut regs = new_regs();
         unsafe {
-            swap_registers(transmute_mut_region(&mut *regs),
-                           transmute_region(&*regs))
+            swap_registers(transmute_mut_region(&mut *regs), transmute_region(&*regs))
         };
 
         initialize_call_frame(&mut *regs, fp, argp, sp);
@@ -107,8 +106,7 @@ fn new_regs() -> ~Registers {
 }
 
 #[cfg(target_arch = "x86")]
-fn initialize_call_frame(regs: &mut Registers,
-                         fptr: *c_void, arg: *c_void, sp: *mut uint) {
+fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
 
     let sp = align_down(sp);
     let sp = mut_offset(sp, -4);
@@ -131,8 +129,7 @@ type Registers = [uint * 22];
 fn new_regs() -> ~Registers { ~[0, .. 22] }
 
 #[cfg(target_arch = "x86_64")]
-fn initialize_call_frame(regs: &mut Registers,
-                         fptr: *c_void, arg: *c_void, sp: *mut uint) {
+fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
 
     // Redefinitions from regs.h
     const RUSTRT_ARG0: uint = 3;
@@ -166,8 +163,7 @@ type Registers = [uint * 32];
 fn new_regs() -> ~Registers { ~[0, .. 32] }
 
 #[cfg(target_arch = "arm")]
-fn initialize_call_frame(regs: &mut Registers,
-                         fptr: *c_void, arg: *c_void, sp: *mut uint) {
+fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
     let sp = mut_offset(sp, -1);
 
     // The final return address. 0 indicates the bottom of the stack
@@ -185,8 +181,7 @@ type Registers = [uint * 32];
 fn new_regs() -> ~Registers { ~[0, .. 32] }
 
 #[cfg(target_arch = "mips")]
-fn initialize_call_frame(regs: &mut Registers,
-                         fptr: *c_void, arg: *c_void, sp: *mut uint) {
+fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
     let sp = mut_offset(sp, -1);
 
     // The final return address. 0 indicates the bottom of the stack
