@@ -35,6 +35,9 @@ pub trait Map<K, V>: Mutable {
     /// Visit all values
     pure fn each_value(&self, f: &fn(&V) -> bool);
 
+    /// Iterate over the map and mutate the contained values
+    fn mutate_values(&mut self, f: &fn(&K, &mut V) -> bool);
+
     /// Return the value corresponding to the key in the map
     pure fn find(&self, key: &K) -> Option<&self/V>;
 
