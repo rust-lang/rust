@@ -34,6 +34,8 @@ mod rtio;
 pub mod uvll;
 mod uvio;
 mod uv;
+#[path = "io/mod.rs"]
+mod io;
 // FIXME #5248: The import in `sched` doesn't resolve unless this is pub!
 pub mod thread_local_storage;
 mod work_queue;
