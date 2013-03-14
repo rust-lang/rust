@@ -325,6 +325,19 @@ pub mod linear {
             self.each(|&(_, v)| blk(v))
         }
 
+        /// Iterate over the map and mutate the contained values
+        fn mutate_values(&mut self, blk: &fn(&'self K,
+                              &'self mut V) -> bool) {
+            for uint::range(0, self.buckets.len()) |i| {
+                match self.buckets[i] {
+                  Some(Bucket{key: ref key, value: ref mut value, _}) => {
+                    if !blk(key, value) { return }
+                  }
+                  None => ()
+                }
+            }
+        }
+
         /// Return the value corresponding to the key in the map
         pure fn find(&self, k: &K) -> Option<&self/V> {
             match self.bucket_for_key(k) {

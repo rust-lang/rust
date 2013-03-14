@@ -81,6 +81,10 @@ impl<T> Map<int, T> for cat<T> {
         for self.each |&(_, v)| { if !f(v) { break; } loop;};
     }
 
+    fn mutate_values(&mut self, f: &fn(&int, &mut T) -> bool) {
+        fail!(~"nope")
+    }
+
     fn insert(&mut self, k: int, _: T) -> bool {
         self.meows += k;
         true
