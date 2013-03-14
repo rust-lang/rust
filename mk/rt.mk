@@ -132,7 +132,7 @@ rt/$(1)/%.o: rt/%.S  $$(MKFILE_DEPS) \
 
 rt/$(1)/arch/$$(HOST_$(1))/libmorestack.a: $$(MORESTACK_OBJ_$(1))
 	@$$(call E, link: $$@)
-	$$(Q)ar rcs $$@ $$<
+	$$(Q)$(AR_$(1)) rcs $$@ $$<
 
 rt/$(1)/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)) $$(MKFILE_DEPS) \
                         $$(RUNTIME_DEF_$(1)) \
