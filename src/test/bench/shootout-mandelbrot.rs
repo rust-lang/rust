@@ -110,7 +110,7 @@ impl io::Writer for Devnull {
 
 fn writer(path: ~str, pport: comm::Port<Line>, size: uint)
 {
-    let cout: io::Writer = match path {
+    let cout: @io::Writer = match path {
         ~"" => {
             @Devnull as @io::Writer
         }
