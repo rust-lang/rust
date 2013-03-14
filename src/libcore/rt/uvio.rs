@@ -12,13 +12,11 @@ use option::*;
 use result::*;
 
 use super::uv::*;
-use super::io::*;
+use super::rtio::*;
 use ops::Drop;
 use cell::{Cell, empty_cell};
 use cast::transmute;
-use super::StreamObject;
 use super::sched::Scheduler;
-use super::IoFactoryObject;
 
 #[cfg(test)] use super::sched::Task;
 #[cfg(test)] use unstable::run_in_bare_thread;
