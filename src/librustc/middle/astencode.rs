@@ -1203,8 +1203,8 @@ impl fake_ext_ctxt for fake_session {
 }
 
 #[cfg(test)]
-fn mk_ctxt() -> fake_ext_ctxt {
-    @parse::new_parse_sess(None) as fake_ext_ctxt
+fn mk_ctxt() -> @fake_ext_ctxt {
+    @parse::new_parse_sess(None) as @fake_ext_ctxt
 }
 
 #[cfg(test)]
