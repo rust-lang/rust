@@ -20,7 +20,7 @@ use option::{None, Option, Some};
 use vec;
 
 /// A function used to initialize the elements of a sequence
-pub type InitOp<T> = &self/fn(uint) -> T;
+pub type InitOp<T> = &'self fn(uint) -> T;
 
 pub trait BaseIter<A> {
     pure fn each(&self, blk: &fn(v: &A) -> bool);

@@ -201,7 +201,7 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    fn alloc_pod<T>(&self, op: &fn() -> T) -> &self/T {
+    fn alloc_pod<T>(&self, op: &fn() -> T) -> &'self T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
             let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
@@ -246,7 +246,7 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    fn alloc_nonpod<T>(&self, op: &fn() -> T) -> &self/T {
+    fn alloc_nonpod<T>(&self, op: &fn() -> T) -> &'self T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
             let (ty_ptr, ptr) =
@@ -268,7 +268,7 @@ pub impl Arena {
 
     // The external interface
     #[inline(always)]
-    fn alloc<T>(&self, op: &fn() -> T) -> &self/T {
+    fn alloc<T>(&self, op: &fn() -> T) -> &'self T {
         unsafe {
             if !rusti::needs_drop::<T>() {
                 self.alloc_pod(op)

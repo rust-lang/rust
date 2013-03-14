@@ -50,10 +50,10 @@ impl<T:Ord> Mutable for PriorityQueue<T> {
 
 pub impl <T:Ord> PriorityQueue<T> {
     /// Returns the greatest item in the queue - fails if empty
-    pure fn top(&self) -> &self/T { &self.data[0] }
+    pure fn top(&self) -> &'self T { &self.data[0] }
 
     /// Returns the greatest item in the queue - None if empty
-    pure fn maybe_top(&self) -> Option<&self/T> {
+    pure fn maybe_top(&self) -> Option<&'self T> {
         if self.is_empty() { None } else { Some(self.top()) }
     }
 

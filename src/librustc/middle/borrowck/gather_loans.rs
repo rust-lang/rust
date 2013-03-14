@@ -514,7 +514,7 @@ pub impl GatherLoanCtxt {
         // consumes one mut pointer and returns a narrower one:
         //
         //     struct Foo { f: int }
-        //     fn foo(p: &v/mut Foo) -> &v/mut int { &mut p.f }
+        //     fn foo(p: &'v mut Foo) -> &'v mut int { &mut p.f }
         //
         // I think this should work fine but there is more subtlety to it than
         // I at first imagined. Unfortunately it's a very important use case,

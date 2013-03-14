@@ -96,7 +96,7 @@ pub impl LanguageItems {
         }
     }
 
-    static pub fn item_name(&self, index: uint) -> &static/str {
+    static pub fn item_name(&self, index: uint) -> &'static str {
         match index {
             0  => "const",
             1  => "copy",
@@ -257,7 +257,7 @@ pub impl LanguageItems {
 
 fn LanguageItemCollector(crate: @crate,
                          session: Session,
-                         items: &r/mut LanguageItems)
+                         items: &'r mut LanguageItems)
                       -> LanguageItemCollector/&r {
     let item_refs = HashMap();
 
@@ -312,7 +312,7 @@ fn LanguageItemCollector(crate: @crate,
 }
 
 struct LanguageItemCollector {
-    items: &self/mut LanguageItems,
+    items: &'self mut LanguageItems,
 
     crate: @crate,
     session: Session,

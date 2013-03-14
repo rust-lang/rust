@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(s: &r/uint) -> bool {
+fn foo(s: &'r uint) -> bool {
     match s {
         &3 => true,
         _ => false

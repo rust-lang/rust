@@ -122,7 +122,7 @@ pub pure fn get<T:Copy>(opt: Option<T>) -> T {
 }
 
 #[inline(always)]
-pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
+pub pure fn get_ref<T>(opt: &'r Option<T>) -> &'r T {
     /*!
     Gets an immutable reference to the value inside an option.
 
@@ -143,7 +143,7 @@ pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
     }
 }
 
-pub pure fn get_mut_ref<T>(opt: &r/mut Option<T>) -> &r/mut T {
+pub pure fn get_mut_ref<T>(opt: &'r mut Option<T>) -> &'r mut T {
     /*!
     Gets a mutable reference to the value inside an option.
 
@@ -165,7 +165,7 @@ pub pure fn get_mut_ref<T>(opt: &r/mut Option<T>) -> &r/mut T {
 }
 
 #[inline(always)]
-pub pure fn map<T, U>(opt: &r/Option<T>, f: &fn(x: &r/T) -> U) -> Option<U> {
+pub pure fn map<T, U>(opt: &'r Option<T>, f: &fn(x: &'r T) -> U) -> Option<U> {
     //! Maps a `some` value by reference from one type to another
 
     match *opt { Some(ref x) => Some(f(x)), None => None }
@@ -256,8 +256,8 @@ pub pure fn get_or_default<T:Copy>(opt: Option<T>, def: T) -> T {
 }
 
 #[inline(always)]
-pub pure fn map_default<T, U>(opt: &r/Option<T>, def: U,
-                              f: &fn(&r/T) -> U) -> U {
+pub pure fn map_default<T, U>(opt: &'r Option<T>, def: U,
+                              f: &fn(&'r T) -> U) -> U {
     //! Applies a function to the contained value or returns a default
 
     match *opt { None => def, Some(ref t) => f(t) }
@@ -313,7 +313,7 @@ pub pure fn expect<T>(opt: Option<T>, reason: &str) -> T {
 impl<T> BaseIter<T> for Option<T> {
     /// Performs an operation on the contained value by reference
     #[inline(always)]
-    pure fn each(&self, f: &fn(x: &self/T) -> bool) {
+    pure fn each(&self, f: &fn(x: &'self T) -> bool) {
         match *self { None => (), Some(ref t) => { f(t); } }
     }
 
@@ -350,7 +350,7 @@ pub impl<T> Option<T> {
 
     /// Maps a `some` value from one type to another by reference
     #[inline(always)]
-    pure fn map<U>(&self, f: &fn(&self/T) -> U) -> Option<U> { map(self, f) }
+    pure fn map<U>(&self, f: &fn(&'self T) -> U) -> Option<U> { map(self, f) }
 
     /// As `map`, but consumes the option and gives `f` ownership to avoid
     /// copying.
@@ -361,7 +361,7 @@ pub impl<T> Option<T> {
 
     /// Applies a function to the contained value or returns a default
     #[inline(always)]
-    pure fn map_default<U>(&self, def: U, f: &fn(&self/T) -> U) -> U {
+    pure fn map_default<U>(&self, def: U, f: &fn(&'self T) -> U) -> U {
         map_default(self, def, f)
     }
 
@@ -403,7 +403,7 @@ pub impl<T> Option<T> {
     case explicitly.
      */
     #[inline(always)]
-    pure fn get_ref(&self) -> &self/T { get_ref(self) }
+    pure fn get_ref(&self) -> &'self T { get_ref(self) }
 
     /**
     Gets a mutable reference to the value inside an option.
@@ -420,7 +420,7 @@ pub impl<T> Option<T> {
     case explicitly.
      */
     #[inline(always)]
-    pure fn get_mut_ref(&mut self) -> &self/mut T { get_mut_ref(self) }
+    pure fn get_mut_ref(&mut self) -> &'self mut T { get_mut_ref(self) }
 
     /**
      * Gets the value out of an option without copying.

@@ -748,7 +748,7 @@ pub fn from_str(s: &str) -> Result<Json, Error> {
 
 pub struct Decoder {
     priv json: Json,
-    priv mut stack: ~[&self/Json],
+    priv mut stack: ~[&'self Json],
 }
 
 pub fn Decoder(json: Json) -> Decoder {
@@ -756,12 +756,12 @@ pub fn Decoder(json: Json) -> Decoder {
 }
 
 priv impl Decoder/&self {
-    fn peek(&self) -> &self/Json {
+    fn peek(&self) -> &'self Json {
         if self.stack.len() == 0 { self.stack.push(&self.json); }
         self.stack[self.stack.len() - 1]
     }
 
-    fn pop(&self) -> &self/Json {
+    fn pop(&self) -> &'self Json {
         if self.stack.len() == 0 { self.stack.push(&self.json); }
         self.stack.pop()
     }

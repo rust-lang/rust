@@ -14,7 +14,7 @@ fn with<T>(f: &fn(x: &int) -> T) -> T {
     f(&20)
 }
 
-fn has_one(x: &a/int) -> int {
+fn has_one(x: &'a int) -> int {
     do with |y| { takes_two(x, y) }
 }
 
