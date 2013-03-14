@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait A { fn foo(); }
-trait B { fn foo(); }
+trait A { fn foo(&self); }
+trait B { fn foo(&self); }
 
 fn foo<T:A + B>(t: T) {
     t.foo(); //~ ERROR multiple applicable methods in scope

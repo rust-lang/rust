@@ -13,7 +13,7 @@ trait Send {
 }
 
 fn f<T:Send>(t: T) {
-    t.f(&self);
+    t.f();
 }
 
 pub fn main() {

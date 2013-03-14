@@ -25,7 +25,7 @@ mod kitty {
         fn get_name(&self) -> ~str { copy self.name }
     }
 
-    pub fn cat(&self, in_name: ~str) -> cat {
+    pub fn cat(in_name: ~str) -> cat {
         cat {
             name: in_name,
             meows: 0u

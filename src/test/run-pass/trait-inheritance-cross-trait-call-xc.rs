@@ -16,11 +16,11 @@ extern mod aux(name = "trait_inheritance_cross_trait_call_xc_aux");
 use aux::Foo;
 
 trait Bar : Foo {
-    fn g() -> int;
+    fn g(&self) -> int;
 }
 
 impl Bar for aux::A {
-    fn g() -> int { self.f() }
+    fn g(&self) -> int { self.f() }
 }
 
 pub fn main() {

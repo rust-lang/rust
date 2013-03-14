@@ -18,7 +18,7 @@ enum Color { cyan, magenta, yellow, black }
 
 impl Equal for Color {
     fn isEq(&self, a: Color) -> bool {
-        match (self, a) {
+        match (*self, a) {
           (cyan, cyan)       => { true  }
           (magenta, magenta) => { true  }
           (yellow, yellow)   => { true  }
@@ -35,7 +35,7 @@ enum ColorTree {
 
 impl Equal for ColorTree {
     fn isEq(&self, a: ColorTree) -> bool {
-        match (self, a) {
+        match (*self, a) {
           (leaf(x), leaf(y)) => { x.isEq(y) }
           (branch(l1, r1), branch(l2, r2)) => { 
             (*l1).isEq(*l2) && (*r1).isEq(*r2)

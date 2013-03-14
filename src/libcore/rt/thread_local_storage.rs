@@ -10,7 +10,7 @@
 
 use libc::{c_void};
 #[cfg(unix)]
-use libc::{c_uint, c_int};
+use libc::{c_uint, c_ulong, c_int};
 #[cfg(unix)]
 use ptr::null;
 #[cfg(windows)]
@@ -34,7 +34,12 @@ pub unsafe fn get(key: Key) -> *mut c_void {
     unsafe { pthread_getspecific(key) }
 }
 
-#[cfg(unix)]
+#[cfg(target_os="macos")]
+#[allow(non_camel_case_types)] // foreign type
+type pthread_key_t = c_ulong;
+
+#[cfg(target_os="linux")]
+#[cfg(target_os="freebsd")]
 #[allow(non_camel_case_types)] // foreign type
 type pthread_key_t = c_uint;
 

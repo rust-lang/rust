@@ -24,7 +24,7 @@ trait modify_in_box_rec {
 
 impl modify_in_box_rec for int {
     pure fn modify_in_box_rec(&self, sum: @mut S) {
-        sum.f = self; //~ ERROR assigning to mutable field prohibited in pure context
+        sum.f = *self; //~ ERROR assigning to mutable field prohibited in pure context
     }
 }
 
