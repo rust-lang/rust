@@ -253,7 +253,7 @@ pub mod rt;
 // A curious inner-module that's not exported that contains the binding
 // 'core' so that macro-expanded references to core::error and such
 // can be resolved within libcore.
-#[doc(hidden)] // FIXME #3538
+#[doc(hidden)]
 pub mod core {
     #[cfg(stage0)]
     pub const error : u32 = 1_u32;
