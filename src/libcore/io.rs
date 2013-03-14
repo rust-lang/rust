@@ -593,7 +593,7 @@ pub struct BytesReader {
     mut pos: uint
 }
 
-impl Reader for BytesReader/&self {
+impl Reader for BytesReader<'self> {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         let count = uint::min(len, self.bytes.len() - self.pos);
 

@@ -57,6 +57,7 @@ pub enum ObsoleteSyntax {
     ObsoleteNewtypeEnum,
     ObsoleteMode,
     ObsoleteImplicitSelf,
+    ObsoleteLifetimeNotation,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -186,6 +187,11 @@ pub impl Parser {
                 "implicit self",
                 "use an explicit `self` declaration or declare the method as \
                  static"
+            ),
+            ObsoleteLifetimeNotation => (
+                "`/` lifetime notation",
+                "instead of `&foo/bar`, write `&'foo bar`; instead of \
+                 `bar/&foo`, write `&bar<'foo>"
             ),
         };
 

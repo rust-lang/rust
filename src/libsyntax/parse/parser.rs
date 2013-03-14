@@ -79,6 +79,7 @@ use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
 use parse::obsolete::{ObsoleteAssertion, ObsoletePostFnTySigil};
 use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
 use parse::obsolete::{ObsoleteMode, ObsoleteImplicitSelf};
+use parse::obsolete::{ObsoleteLifetimeNotation};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -686,6 +687,7 @@ pub impl Parser {
                     self.token_is_closure_keyword(&self.look_ahead(2u))
                 {
                     let lifetime = @self.parse_lifetime();
+                    self.obsolete(*self.last_span, ObsoleteLifetimeNotation);
                     return self.parse_ty_closure(sigil, Some(lifetime));
                 } else if self.token_is_closure_keyword(&copy *self.token) {
                     return self.parse_ty_closure(sigil, None);
@@ -963,6 +965,7 @@ pub impl Parser {
             // Also accept the (obsolete) syntax `foo/`
             token::IDENT(*) => {
                 if self.look_ahead(1u) == token::BINOP(token::SLASH) {
+                    self.obsolete(*self.last_span, ObsoleteLifetimeNotation);
                     Some(@self.parse_lifetime())
                 } else {
                     None
@@ -997,6 +1000,7 @@ pub impl Parser {
                 let span = copy self.span;
                 self.bump();
                 self.expect(&token::BINOP(token::SLASH));
+                self.obsolete(*self.last_span, ObsoleteLifetimeNotation);
                 return ast::Lifetime {
                     id: self.get_id(),
                     span: *span,
@@ -3653,6 +3657,7 @@ pub impl Parser {
 
     fn parse_region_param(&self) {
         if self.eat(&token::BINOP(token::SLASH)) {
+            self.obsolete(*self.last_span, ObsoleteLifetimeNotation);
             self.expect(&token::BINOP(token::AND));
         }
     }

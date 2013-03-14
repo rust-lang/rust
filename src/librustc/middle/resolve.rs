@@ -210,7 +210,7 @@ pub impl<T> ResolveResult<T> {
     }
 }
 
-pub enum TypeParameters/& {
+pub enum TypeParameters<'self> {
     NoTypeParameters,                  //< No type parameters.
     HasTypeParameters(&'self Generics,  //< Type parameters.
                       node_id,         //< ID of the enclosing item
