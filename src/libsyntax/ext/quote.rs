@@ -392,6 +392,12 @@ fn mk_token(cx: @ext_ctxt, sp: span, tok: token::Token) -> @ast::expr {
                                     build::mk_lit(cx, sp, ast::lit_bool(b))]);
         }
 
+        LIFETIME(ident) => {
+            return build::mk_call(cx, sp,
+                                  ids_ext(cx, ~[~"LIFETIME"]),
+                                  ~[mk_ident(cx, sp, ident)]);
+        }
+
         DOC_COMMENT(ident) => {
             return build::mk_call(cx, sp,
                                   ids_ext(cx, ~[~"DOC_COMMENT"]),

@@ -157,7 +157,7 @@ pub struct LookupContext {
     self_expr: @ast::expr,
     callee_id: node_id,
     m_name: ast::ident,
-    supplied_tps: &self/[ty::t],
+    supplied_tps: &'self [ty::t],
     impl_dups: HashMap<def_id, ()>,
     inherent_candidates: @mut ~[Candidate],
     extension_candidates: @mut ~[Candidate],

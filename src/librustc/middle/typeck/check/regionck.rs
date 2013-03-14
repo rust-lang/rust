@@ -18,7 +18,7 @@ know whether a given type will be a region pointer or not until this
 phase.
 
 In particular, we ensure that, if the type of an expression or
-variable is `&r/T`, then the expression or variable must occur within
+variable is `&'r T`, then the expression or variable must occur within
 the region scope `r`.  Note that in some cases `r` may still be a
 region variable, so this gives us a chance to influence the value for
 `r` that we infer to ensure we choose a value large enough to enclose
@@ -500,7 +500,7 @@ pub mod guarantor {
      *
      *     struct Foo { i: int }
      *     struct Bar { foo: Foo  }
-     *     fn get_i(x: &a/Bar) -> &a/int {
+     *     fn get_i(x: &'a Bar) -> &'a int {
      *        let foo = &x.foo; // Lifetime L1
      *        &foo.i            // Lifetime L2
      *     }

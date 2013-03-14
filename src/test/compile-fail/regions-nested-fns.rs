@@ -10,17 +10,17 @@
 
 fn ignore<T>(t: T) {}
 
-fn nested(x: &x/int) {
+fn nested(x: &'x int) {
     let y = 3;
     let mut ay = &y; //~ ERROR cannot infer an appropriate lifetime
 
-    ignore(|z: &z/int| {
+    ignore(|z: &'z int| {
         ay = x;
         ay = &y;  //~ ERROR cannot infer an appropriate lifetime
         ay = z;
     });
 
-    ignore(|z: &z/int| -> &z/int {
+    ignore(|z: &'z int| -> &'z int {
         if false { return x; }  //~ ERROR mismatched types
         if false { return ay; }
         return z;

@@ -27,8 +27,8 @@ use core::task;
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
 pub struct Condvar {
     is_mutex: bool,
-    failed: &self/mut bool,
-    cond: &self/sync::Condvar/&self
+    failed: &'self mut bool,
+    cond: &'self sync::Condvar/&self
 }
 
 pub impl Condvar/&self {
@@ -95,7 +95,7 @@ pub fn ARC<T:Const + Owned>(data: T) -> ARC<T> {
  * Access the underlying data in an atomically reference counted
  * wrapper.
  */
-pub fn get<T:Const + Owned>(rc: &a/ARC<T>) -> &a/T {
+pub fn get<T:Const + Owned>(rc: &'a ARC<T>) -> &'a T {
     unsafe { get_shared_immutable_state(&rc.x) }
 }
 
@@ -193,7 +193,7 @@ pub impl<T:Owned> MutexARC<T> {
     #[inline(always)]
     unsafe fn access_cond<U>(
         &self,
-        blk: &fn(x: &x/mut T, c: &c/Condvar) -> U) -> U
+        blk: &fn(x: &'x mut T, c: &'c Condvar) -> U) -> U
     {
         unsafe {
             let state = get_shared_mutable_state(&self.x);
@@ -239,7 +239,7 @@ impl Drop for PoisonOnFail {
     }
 }
 
-fn PoisonOnFail(failed: &r/mut bool) -> PoisonOnFail {
+fn PoisonOnFail(failed: &'r mut bool) -> PoisonOnFail {
     PoisonOnFail {
         failed: ptr::to_mut_unsafe_ptr(failed)
     }
@@ -313,7 +313,7 @@ pub impl<T:Const + Owned> RWARC<T> {
     }
     /// As write(), but with a condvar, as sync::rwlock.write_cond().
     #[inline(always)]
-    fn write_cond<U>(&self, blk: &fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
+    fn write_cond<U>(&self, blk: &fn(x: &'x mut T, c: &'c Condvar) -> U) -> U {
         unsafe {
             let state = get_shared_mutable_state(&self.x);
             do (*borrow_rwlock(state)).write_cond |cond| {
@@ -436,7 +436,7 @@ pub impl<T:Const + Owned> RWWriteMode/&self<T> {
         }
     }
     /// Access the pre-downgrade RWARC in write mode with a condvar.
-    fn write_cond<U>(&self, blk: &fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
+    fn write_cond<U>(&self, blk: &fn(x: &'x mut T, c: &'c Condvar) -> U) -> U {
         match *self {
             RWWriteMode {
                 data: ref data,

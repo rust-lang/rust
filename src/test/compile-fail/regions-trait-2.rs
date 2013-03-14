@@ -17,7 +17,7 @@ trait get_ctxt {
 struct has_ctxt<'self> { c: &'self ctxt }
 
 impl<'self> get_ctxt for has_ctxt<'self> {
-    fn get_ctxt(&self) -> &self/ctxt { self.c }
+    fn get_ctxt(&self) -> &'self ctxt { self.c }
 }
 
 fn make_gc() -> @get_ctxt  {

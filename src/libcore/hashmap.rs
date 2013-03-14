@@ -185,7 +185,7 @@ pub mod linear {
         }
 
         #[inline(always)]
-        pure fn value_for_bucket(&self, idx: uint) -> &self/V {
+        pure fn value_for_bucket(&self, idx: uint) -> &'self V {
             match self.buckets[idx] {
                 Some(ref bkt) => &bkt.value,
                 None => fail!(~"LinearMap::find: internal logic error"),
@@ -270,10 +270,10 @@ pub mod linear {
     }
 
     impl<K:Hash + IterBytes + Eq,V>
-        BaseIter<(&self/K, &self/V)> for LinearMap<K, V>
+        BaseIter<(&'self K, &'self V)> for LinearMap<K, V>
     {
         /// Visit all key-value pairs
-        pure fn each(&self, blk: &fn(&(&self/K, &self/V)) -> bool) {
+        pure fn each(&self, blk: &fn(&(&'self K, &'self V)) -> bool) {
             for uint::range(0, self.buckets.len()) |i| {
                 let mut broke = false;
                 do self.buckets[i].map |bucket| {
@@ -339,7 +339,7 @@ pub mod linear {
         }
 
         /// Return the value corresponding to the key in the map
-        pure fn find(&self, k: &K) -> Option<&self/V> {
+        pure fn find(&self, k: &K) -> Option<&'self V> {
             match self.bucket_for_key(k) {
                 FoundEntry(idx) => Some(self.value_for_bucket(idx)),
                 TableFull | FoundHole(_) => None,
@@ -412,7 +412,7 @@ pub mod linear {
 
         /// Return the value corresponding to the key in the map, or insert
         /// and return the value if it doesn't exist.
-        fn find_or_insert(&mut self, k: K, v: V) -> &self/V {
+        fn find_or_insert(&mut self, k: K, v: V) -> &'self V {
             if self.size >= self.resize_at {
                 // n.b.: We could also do this after searching, so
                 // that we do not resize if this call to insert is
@@ -442,7 +442,7 @@ pub mod linear {
 
         /// Return the value corresponding to the key in the map, or create,
         /// insert, and return a new value if it doesn't exist.
-        fn find_or_insert_with(&mut self, k: K, f: &fn(&K) -> V) -> &self/V {
+        fn find_or_insert_with(&mut self, k: K, f: &fn(&K) -> V) -> &'self V {
             if self.size >= self.resize_at {
                 // n.b.: We could also do this after searching, so
                 // that we do not resize if this call to insert is
@@ -487,7 +487,7 @@ pub mod linear {
             }
         }
 
-        pure fn get(&self, k: &K) -> &self/V {
+        pure fn get(&self, k: &K) -> &'self V {
             match self.find(k) {
                 Some(v) => v,
                 None => fail!(fmt!("No entry found for key: %?", k)),
@@ -509,7 +509,7 @@ pub mod linear {
         /// Return the value corresponding to the key in the map, using
         /// equivalence
         pure fn find_equiv<Q:Hash + IterBytes + Equiv<K>>(&self, k: &Q)
-                                                       -> Option<&self/V> {
+                                                       -> Option<&'self V> {
             match self.bucket_for_key_equiv(k) {
                 FoundEntry(idx) => Some(self.value_for_bucket(idx)),
                 TableFull | FoundHole(_) => None,

@@ -39,7 +39,7 @@ pub trait Map<K, V>: Mutable {
     fn mutate_values(&mut self, f: &fn(&K, &mut V) -> bool);
 
     /// Return the value corresponding to the key in the map
-    pure fn find(&self, key: &K) -> Option<&self/V>;
+    pure fn find(&self, key: &K) -> Option<&'self V>;
 
     /// Insert a key-value pair into the map. An existing value for a
     /// key is replaced by the new value. Return true if the key did

@@ -49,7 +49,7 @@ pub mod rustrt {
 // hierarchically it may.
 
 pub enum TestName {
-    StaticTestName(&static/str),
+    StaticTestName(&'static str),
     DynTestName(~str)
 }
 impl ToStr for TestName {

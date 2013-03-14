@@ -10,7 +10,7 @@
 
 fn foopy() {}
 
-const f: &'static fn() = foopy; //~ ERROR mismatched types: expected `&static/fn()`
+const f: &'static fn() = foopy; //~ ERROR mismatched types: expected `&'static fn()`
 
 fn main () {
     f();

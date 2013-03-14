@@ -217,46 +217,46 @@ pub pure fn build_sized_opt<A>(size: Option<uint>,
 // Accessors
 
 /// Returns the first element of a vector
-pub pure fn head<T>(v: &r/[T]) -> &r/T {
+pub pure fn head<T>(v: &'r [T]) -> &'r T {
     if v.len() == 0 { fail!(~"head: empty vector") }
     &v[0]
 }
 
 /// Returns `Some(x)` where `x` is the first element of the slice `v`,
 /// or `None` if the vector is empty.
-pub pure fn head_opt<T>(v: &r/[T]) -> Option<&r/T> {
+pub pure fn head_opt<T>(v: &'r [T]) -> Option<&'r T> {
     if v.len() == 0 { None } else { Some(&v[0]) }
 }
 
 /// Returns a vector containing all but the first element of a slice
-pub pure fn tail<T>(v: &r/[T]) -> &r/[T] { slice(v, 1, v.len()) }
+pub pure fn tail<T>(v: &'r [T]) -> &'r [T] { slice(v, 1, v.len()) }
 
 /// Returns a vector containing all but the first `n` elements of a slice
-pub pure fn tailn<T>(v: &r/[T], n: uint) -> &r/[T] { slice(v, n, v.len()) }
+pub pure fn tailn<T>(v: &'r [T], n: uint) -> &'r [T] { slice(v, n, v.len()) }
 
 /// Returns a vector containing all but the last element of a slice
-pub pure fn init<T>(v: &r/[T]) -> &r/[T] { slice(v, 0, v.len() - 1) }
+pub pure fn init<T>(v: &'r [T]) -> &'r [T] { slice(v, 0, v.len() - 1) }
 
 /// Returns a vector containing all but the last `n' elements of a slice
-pub pure fn initn<T>(v: &r/[T], n: uint) -> &r/[T] {
+pub pure fn initn<T>(v: &'r [T], n: uint) -> &'r [T] {
     slice(v, 0, v.len() - n)
 }
 
 /// Returns the last element of the slice `v`, failing if the slice is empty.
-pub pure fn last<T>(v: &r/[T]) -> &r/T {
+pub pure fn last<T>(v: &'r [T]) -> &'r T {
     if v.len() == 0 { fail!(~"last: empty vector") }
     &v[v.len() - 1]
 }
 
 /// Returns `Some(x)` where `x` is the last element of the slice `v`, or
 /// `None` if the vector is empty.
-pub pure fn last_opt<T>(v: &r/[T]) -> Option<&r/T> {
+pub pure fn last_opt<T>(v: &'r [T]) -> Option<&'r T> {
     if v.len() == 0 { None } else { Some(&v[v.len() - 1]) }
 }
 
 /// Return a slice that points into another slice.
 #[inline(always)]
-pub pure fn slice<T>(v: &r/[T], start: uint, end: uint) -> &r/[T] {
+pub pure fn slice<T>(v: &'r [T], start: uint, end: uint) -> &'r [T] {
     fail_unless!(start <= end);
     fail_unless!(end <= len(v));
     do as_imm_buf(v) |p, _len| {
@@ -270,10 +270,10 @@ pub pure fn slice<T>(v: &r/[T], start: uint, end: uint) -> &r/[T] {
 
 /// Return a slice that points into another slice.
 #[inline(always)]
-pub pure fn mut_slice<T>(v: &r/mut [T],
+pub pure fn mut_slice<T>(v: &'r mut [T],
                          start: uint,
                          end: uint)
-                      -> &r/mut [T] {
+                      -> &'r mut [T] {
     fail_unless!(start <= end);
     fail_unless!(end <= v.len());
     do as_mut_buf(v) |p, _len| {
@@ -287,10 +287,10 @@ pub pure fn mut_slice<T>(v: &r/mut [T],
 
 /// Return a slice that points into another slice.
 #[inline(always)]
-pub pure fn const_slice<T>(v: &r/[const T],
+pub pure fn const_slice<T>(v: &'r [const T],
                            start: uint,
                            end: uint)
-                        -> &r/[const T] {
+                        -> &'r [const T] {
     fail_unless!(start <= end);
     fail_unless!(end <= len(v));
     do as_const_buf(v) |p, _len| {
@@ -1334,7 +1334,7 @@ pub pure fn reversed<T:Copy>(v: &[const T]) -> ~[T] {
  * ~~~
  */
 #[inline(always)]
-pub pure fn each<T>(v: &r/[T], f: &fn(&r/T) -> bool) {
+pub pure fn each<T>(v: &'r [T], f: &fn(&'r T) -> bool) {
     //             ^^^^
     // NB---this CANNOT be &[const T]!  The reason
     // is that you are passing it to `f()` using
@@ -1389,7 +1389,7 @@ pub pure fn each_const<T>(v: &[const T], f: &fn(elem: &const T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pub pure fn eachi<T>(v: &r/[T], f: &fn(uint, v: &r/T) -> bool) {
+pub pure fn eachi<T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) {
     let mut i = 0;
     for each(v) |p| {
         if !f(i, p) { return; }
@@ -1403,7 +1403,7 @@ pub pure fn eachi<T>(v: &r/[T], f: &fn(uint, v: &r/T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pub pure fn rev_each<T>(v: &r/[T], blk: &fn(v: &r/T) -> bool) {
+pub pure fn rev_each<T>(v: &'r [T], blk: &fn(v: &'r T) -> bool) {
     rev_eachi(v, |_i, v| blk(v))
 }
 
@@ -1413,7 +1413,7 @@ pub pure fn rev_each<T>(v: &r/[T], blk: &fn(v: &r/T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pub pure fn rev_eachi<T>(v: &r/[T], blk: &fn(i: uint, v: &r/T) -> bool) {
+pub pure fn rev_eachi<T>(v: &'r [T], blk: &fn(i: uint, v: &'r T) -> bool) {
     let mut i = v.len();
     while i > 0 {
         i -= 1;
@@ -1555,11 +1555,11 @@ pure fn eq<T:Eq>(a: &[T], b: &[T]) -> bool {
 }
 
 #[cfg(notest)]
-impl<T:Eq> Eq for &self/[T] {
+impl<T:Eq> Eq for &'self [T] {
     #[inline(always)]
-    pure fn eq(&self, other: & &self/[T]) -> bool { eq((*self), (*other)) }
+    pure fn eq(&self, other: & &'self [T]) -> bool { eq((*self), (*other)) }
     #[inline(always)]
-    pure fn ne(&self, other: & &self/[T]) -> bool { !(*self).eq(other) }
+    pure fn ne(&self, other: & &'self [T]) -> bool { !(*self).eq(other) }
 }
 
 
@@ -1604,7 +1604,7 @@ pure fn cmp<T: TotalOrd>(a: &[T], b: &[T]) -> Ordering {
 #[cfg(notest)]
 impl<T: TotalOrd> TotalOrd for &'self [T] {
     #[inline(always)]
-    pure fn cmp(&self, other: & &self/[T]) -> Ordering { cmp(*self, *other) }
+    pure fn cmp(&self, other: & &'self [T]) -> Ordering { cmp(*self, *other) }
 }
 
 #[cfg(notest)]
@@ -1639,15 +1639,15 @@ pure fn ge<T:Ord>(a: &[T], b: &[T]) -> bool { !lt(a, b) }
 pure fn gt<T:Ord>(a: &[T], b: &[T]) -> bool { lt(b, a)  }
 
 #[cfg(notest)]
-impl<T:Ord> Ord for &self/[T] {
+impl<T:Ord> Ord for &'self [T] {
     #[inline(always)]
-    pure fn lt(&self, other: & &self/[T]) -> bool { lt((*self), (*other)) }
+    pure fn lt(&self, other: & &'self [T]) -> bool { lt((*self), (*other)) }
     #[inline(always)]
-    pure fn le(&self, other: & &self/[T]) -> bool { le((*self), (*other)) }
+    pure fn le(&self, other: & &'self [T]) -> bool { le((*self), (*other)) }
     #[inline(always)]
-    pure fn ge(&self, other: & &self/[T]) -> bool { ge((*self), (*other)) }
+    pure fn ge(&self, other: & &'self [T]) -> bool { ge((*self), (*other)) }
     #[inline(always)]
-    pure fn gt(&self, other: & &self/[T]) -> bool { gt((*self), (*other)) }
+    pure fn gt(&self, other: & &'self [T]) -> bool { gt((*self), (*other)) }
 }
 
 #[cfg(notest)]
@@ -1680,15 +1680,15 @@ pub mod traits {
     use ops::Add;
     use vec::append;
 
-    impl<T:Copy> Add<&self/[const T],~[T]> for ~[T] {
+    impl<T:Copy> Add<&'self [const T],~[T]> for ~[T] {
         #[inline(always)]
-        pure fn add(&self, rhs: & &self/[const T]) -> ~[T] {
+        pure fn add(&self, rhs: & &'self [const T]) -> ~[T] {
             append(copy *self, (*rhs))
         }
     }
 }
 
-impl<T> Container for &self/[const T] {
+impl<T> Container for &'self [const T] {
     /// Returns true if a vector contains no elements
     #[inline]
     pure fn is_empty(&self) -> bool { is_empty(*self) }
@@ -1712,15 +1712,15 @@ impl<T: Copy> CopyableVector<T> for &'self [const T] {
 }
 
 pub trait ImmutableVector<T> {
-    pure fn view(&self, start: uint, end: uint) -> &self/[T];
-    pure fn head(&self) -> &self/T;
-    pure fn head_opt(&self) -> Option<&self/T>;
-    pure fn tail(&self) -> &self/[T];
-    pure fn tailn(&self, n: uint) -> &self/[T];
-    pure fn init(&self) -> &self/[T];
-    pure fn initn(&self, n: uint) -> &self/[T];
-    pure fn last(&self) -> &self/T;
-    pure fn last_opt(&self) -> Option<&self/T>;
+    pure fn view(&self, start: uint, end: uint) -> &'self [T];
+    pure fn head(&self) -> &'self T;
+    pure fn head_opt(&self) -> Option<&'self T>;
+    pure fn tail(&self) -> &'self [T];
+    pure fn tailn(&self, n: uint) -> &'self [T];
+    pure fn init(&self) -> &'self [T];
+    pure fn initn(&self, n: uint) -> &'self [T];
+    pure fn last(&self) -> &'self T;
+    pure fn last_opt(&self) -> Option<&'self T>;
     pure fn foldr<U: Copy>(&self, z: U, p: &fn(t: &T, u: U) -> U) -> U;
     pure fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U];
     pure fn mapi<U>(&self, f: &fn(uint, t: &T) -> U) -> ~[U];
@@ -1731,44 +1731,44 @@ pub trait ImmutableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<T> ImmutableVector<T> for &self/[T] {
+impl<T> ImmutableVector<T> for &'self [T] {
     /// Return a slice that points into another slice.
     #[inline]
-    pure fn view(&self, start: uint, end: uint) -> &self/[T] {
+    pure fn view(&self, start: uint, end: uint) -> &'self [T] {
         slice(*self, start, end)
     }
 
     /// Returns the first element of a vector, failing if the vector is empty.
     #[inline]
-    pure fn head(&self) -> &self/T { head(*self) }
+    pure fn head(&self) -> &'self T { head(*self) }
 
     /// Returns the first element of a vector
     #[inline]
-    pure fn head_opt(&self) -> Option<&self/T> { head_opt(*self) }
+    pure fn head_opt(&self) -> Option<&'self T> { head_opt(*self) }
 
     /// Returns all but the first element of a vector
     #[inline]
-    pure fn tail(&self) -> &self/[T] { tail(*self) }
+    pure fn tail(&self) -> &'self [T] { tail(*self) }
 
     /// Returns all but the first `n' elements of a vector
     #[inline]
-    pure fn tailn(&self, n: uint) -> &self/[T] { tailn(*self, n) }
+    pure fn tailn(&self, n: uint) -> &'self [T] { tailn(*self, n) }
 
     /// Returns all but the last elemnt of a vector
     #[inline]
-    pure fn init(&self) -> &self/[T] { init(*self) }
+    pure fn init(&self) -> &'self [T] { init(*self) }
 
     /// Returns all but the last `n' elemnts of a vector
     #[inline]
-    pure fn initn(&self, n: uint) -> &self/[T] { initn(*self, n) }
+    pure fn initn(&self, n: uint) -> &'self [T] { initn(*self, n) }
 
     /// Returns the last element of a `v`, failing if the vector is empty.
     #[inline]
-    pure fn last(&self) -> &self/T { last(*self) }
+    pure fn last(&self) -> &'self T { last(*self) }
 
     /// Returns the last element of a `v`, failing if the vector is empty.
     #[inline]
-    pure fn last_opt(&self) -> Option<&self/T> { last_opt(*self) }
+    pure fn last_opt(&self) -> Option<&'self T> { last_opt(*self) }
 
     /// Reduce a vector from right to left
     #[inline]
@@ -1834,7 +1834,7 @@ pub trait ImmutableEqVector<T:Eq> {
     pure fn rposition_elem(&self, t: &T) -> Option<uint>;
 }
 
-impl<T:Eq> ImmutableEqVector<T> for &self/[T] {
+impl<T:Eq> ImmutableEqVector<T> for &'self [T] {
     /**
      * Find the first index matching some predicate
      *
@@ -1879,7 +1879,7 @@ pub trait ImmutableCopyableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<T:Copy> ImmutableCopyableVector<T> for &self/[T] {
+impl<T:Copy> ImmutableCopyableVector<T> for &'self [T] {
     /**
      * Construct a new vector from the elements of a vector for which some
      * predicate holds.
@@ -2139,7 +2139,7 @@ pub mod raw {
                                     len: uint,
                                     f: &fn(v: &[T]) -> U) -> U {
         let pair = (p, len * sys::nonzero_size_of::<T>());
-        let v : *(&blk/[T]) =
+        let v : *(&'blk [T]) =
             ::cast::reinterpret_cast(&addr_of(&pair));
         f(*v)
     }
@@ -2153,7 +2153,7 @@ pub mod raw {
                                         len: uint,
                                         f: &fn(v: &mut [T]) -> U) -> U {
         let pair = (p, len * sys::nonzero_size_of::<T>());
-        let v : *(&blk/mut [T]) =
+        let v : *(&'blk mut [T]) =
             ::cast::reinterpret_cast(&addr_of(&pair));
         f(*v)
     }
@@ -2327,7 +2327,7 @@ impl<A> iter::MutableIter<A> for @mut [A] {
     }
 }
 
-impl<A> iter::ExtendedIter<A> for &self/[A] {
+impl<A> iter::ExtendedIter<A> for &'self [A] {
     pub pure fn eachi(&self, blk: &fn(uint, v: &A) -> bool) {
         iter::eachi(self, blk)
     }
@@ -2404,7 +2404,7 @@ impl<A> iter::ExtendedIter<A> for @[A] {
     }
 }
 
-impl<A:Eq> iter::EqIter<A> for &self/[A] {
+impl<A:Eq> iter::EqIter<A> for &'self [A] {
     pub pure fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
     pub pure fn count(&self, x: &A) -> uint { iter::count(self, x) }
 }
@@ -2421,7 +2421,7 @@ impl<A:Eq> iter::EqIter<A> for @[A] {
     pub pure fn count(&self, x: &A) -> uint { iter::count(self, x) }
 }
 
-impl<A:Copy> iter::CopyableIter<A> for &self/[A] {
+impl<A:Copy> iter::CopyableIter<A> for &'self [A] {
     pure fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
@@ -2453,7 +2453,7 @@ impl<A:Copy> iter::CopyableIter<A> for @[A] {
     }
 }
 
-impl<A:Copy + Ord> iter::CopyableOrderedIter<A> for &self/[A] {
+impl<A:Copy + Ord> iter::CopyableOrderedIter<A> for &'self [A] {
     pure fn min(&self) -> A { iter::min(self) }
     pure fn max(&self) -> A { iter::max(self) }
 }
@@ -2470,7 +2470,7 @@ impl<A:Copy + Ord> iter::CopyableOrderedIter<A> for @[A] {
     pure fn max(&self) -> A { iter::max(self) }
 }
 
-impl<A:Copy> iter::CopyableNonstrictIter<A> for &self/[A] {
+impl<A:Copy> iter::CopyableNonstrictIter<A> for &'self [A] {
     pure fn each_val(&const self, f: &fn(A) -> bool) {
         let mut i = 0;
         while i < self.len() {

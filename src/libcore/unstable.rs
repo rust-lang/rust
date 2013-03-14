@@ -173,7 +173,7 @@ pub unsafe fn get_shared_mutable_state<T:Owned>(
 }
 #[inline(always)]
 pub unsafe fn get_shared_immutable_state<T:Owned>(
-        rc: &a/SharedMutableState<T>) -> &a/T {
+        rc: &'a SharedMutableState<T>) -> &'a T {
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
         fail_unless!(ptr.count > 0);

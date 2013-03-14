@@ -13,7 +13,7 @@ struct point {
     y: int,
 }
 
-fn x_coord(p: &r/point) -> &r/int {
+fn x_coord(p: &'r point) -> &'r int {
     return &p.x;
 }
 
