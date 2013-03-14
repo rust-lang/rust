@@ -9,7 +9,7 @@
 // except according to those terms.
 
 const a: [u8 * 3] = ['h' as u8, 'i' as u8, 0 as u8];
-const c: &static/[u8 * 3] = &a;
+const c: &'static [u8 * 3] = &a;
 const b: *u8 = c as *u8;
 
 fn main() {

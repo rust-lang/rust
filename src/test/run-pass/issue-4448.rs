@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let (port, chan) = comm::stream::<&static/str>();
+    let (port, chan) = comm::stream::<&'static str>();
 
     do task::spawn {
         fail_unless!(port.recv() == "hello, world");

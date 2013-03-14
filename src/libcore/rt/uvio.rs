@@ -69,7 +69,7 @@ impl EventLoop for UvEventLoop {
         }
     }
 
-    fn io(&mut self) -> Option<&self/mut IoFactoryObject> {
+    fn io(&mut self) -> Option<&'self mut IoFactoryObject> {
         Some(&mut self.uvio)
     }
 }
@@ -91,7 +91,7 @@ fn test_callback_run_once() {
 pub struct UvIoFactory(Loop);
 
 pub impl UvIoFactory {
-    fn uv_loop(&mut self) -> &self/mut Loop {
+    fn uv_loop(&mut self) -> &'self mut Loop {
         match self { &UvIoFactory(ref mut ptr) => ptr }
     }
 }

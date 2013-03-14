@@ -12,7 +12,7 @@ fn ignore<T>(_t: T) {}
 
 fn nested() {
     let y = 3;
-    ignore(|z: &z/int| -> &z/int {
+    ignore(|z: &'z int| -> &'z int {
         if false { &y } else { z } //~ ERROR illegal borrow
     });
 }

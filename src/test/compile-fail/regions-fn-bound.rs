@@ -11,7 +11,7 @@
 fn of<T>() -> @fn(T) { fail!(); }
 fn subtype<T>(x: @fn(T)) { fail!(); }
 
-fn test_fn<T>(_x: &x/T, _y: &y/T, _z: &z/T) {
+fn test_fn<T>(_x: &'x T, _y: &'y T, _z: &'z T) {
     // Here, x, y, and z are free.  Other letters
     // are bound.  Note that the arrangement
     // subtype::<T1>(of::<T2>()) will typecheck

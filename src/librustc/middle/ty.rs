@@ -448,13 +448,13 @@ pub enum Region {
 #[auto_encode]
 #[auto_decode]
 pub enum bound_region {
-    /// The self region for structs, impls (&T in a type defn or &self/T)
+    /// The self region for structs, impls (&T in a type defn or &'self T)
     br_self,
 
     /// An anonymous region parameter for a given fn (&T)
     br_anon(uint),
 
-    /// Named region parameters for functions (a in &a/T)
+    /// Named region parameters for functions (a in &'a T)
     br_named(ast::ident),
 
     /// Fresh bound identifiers created during GLB computations.

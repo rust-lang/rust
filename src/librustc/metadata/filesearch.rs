@@ -21,7 +21,7 @@ use core::result::Result;
 use core::result;
 use core::str;
 
-pub type pick<T> = &self/fn(path: &Path) -> Option<T>;
+pub type pick<T> = &'self fn(path: &Path) -> Option<T>;
 
 pub fn pick_file(file: Path, path: &Path) -> Option<Path> {
     if path.file_path() == file { option::Some(copy *path) }

@@ -438,7 +438,7 @@ pub fn join_variance(++variance1: region_variance,
 /// particular site to yield the final variance of the reference.
 ///
 /// Example: if we are checking function arguments then the ambient
-/// variance is contravariant.  If we then find a `&r/T` pointer, `r`
+/// variance is contravariant.  If we then find a `&'r T` pointer, `r`
 /// appears in a co-variant position.  This implies that this
 /// occurrence of `r` is contra-variant with respect to the current
 /// item, and hence the function returns `rv_contravariant`.
@@ -517,9 +517,9 @@ pub impl DetermineRpCtxt {
     // concrete.
     //
     // 1. impl foo for &int { ... }
-    // 2. impl foo for &self/int { ... }
-    // 3. impl foo for bar { fn m(@self) -> &self/int { ... } }
-    // 4. impl foo for bar { fn m(&self) -> &self/int { ... } }
+    // 2. impl foo for &'self int { ... }
+    // 3. impl foo for bar { fn m(@self) -> &'self int { ... } }
+    // 4. impl foo for bar { fn m(&self) -> &'self int { ... } }
     // 5. impl foo for bar { fn m(&self) -> &int { ... } }
     //
     // In case 1, the anonymous region is being referenced,
@@ -644,9 +644,9 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
     // impl etc.  So we can ignore it and its components.
     if cx.item_id == 0 { return; }
 
-    // if this type directly references a region pointer like &r/ty,
-    // add to the worklist/set.  Note that &r/ty is contravariant with
-    // respect to &r, because &r/ty can be used whereever a *smaller*
+    // if this type directly references a region pointer like &'r ty,
+    // add to the worklist/set.  Note that &'r ty is contravariant with
+    // respect to &r, because &'r ty can be used whereever a *smaller*
     // region is expected (and hence is a supertype of those
     // locations)
     let sess = cx.sess;

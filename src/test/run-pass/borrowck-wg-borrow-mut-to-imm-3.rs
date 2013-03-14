@@ -1,5 +1,5 @@
 struct Wizard {
-    spells: ~[&static/str]
+    spells: ~[&'static str]
 }
 
 pub impl Wizard {

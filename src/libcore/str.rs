@@ -279,7 +279,7 @@ pub fn shift_char(s: &mut ~str) -> char {
  * If the string does not contain any characters
  */
 #[inline]
-pub fn view_shift_char(s: &a/str) -> (char, &a/str) {
+pub fn view_shift_char(s: &'a str) -> (char, &'a str) {
     let CharRange {ch, next} = char_range_at(s, 0u);
     let next_s = unsafe { raw::view_bytes(s, next, len(s)) };
     return (ch, next_s);
@@ -429,7 +429,7 @@ pub pure fn slice(s: &str, begin: uint, end: uint) -> ~str {
  * Fails when `begin` and `end` do not point to valid characters or beyond
  * the last character of the string
  */
-pub pure fn view(s: &a/str, begin: uint, end: uint) -> &a/str {
+pub pure fn view(s: &'a str, begin: uint, end: uint) -> &'a str {
     fail_unless!(is_char_boundary(s, begin));
     fail_unless!(is_char_boundary(s, end));
     unsafe { raw::view_bytes(s, begin, end) }
@@ -530,7 +530,7 @@ pure fn split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
 }
 
 // See Issue #1932 for why this is a naive search
-pure fn iter_matches(s: &a/str, sep: &b/str, f: &fn(uint, uint)) {
+pure fn iter_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
     let sep_len = len(sep), l = len(s);
     fail_unless!(sep_len > 0u);
     let mut i = 0u, match_start = 0u, match_i = 0u;
@@ -557,7 +557,7 @@ pure fn iter_matches(s: &a/str, sep: &b/str, f: &fn(uint, uint)) {
     }
 }
 
-pure fn iter_between_matches(s: &a/str, sep: &b/str, f: &fn(uint, uint)) {
+pure fn iter_between_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
     let mut last_end = 0u;
     do iter_matches(s, sep) |from, to| {
         f(last_end, from);
@@ -575,7 +575,7 @@ pure fn iter_between_matches(s: &a/str, sep: &b/str, f: &fn(uint, uint)) {
  * fail_unless!(["", "XXX", "YYY", ""] == split_str(".XXX.YYY.", "."))
  * ~~~
  */
-pub pure fn split_str(s: &a/str, sep: &b/str) -> ~[~str] {
+pub pure fn split_str(s: &'a str, sep: &'b str) -> ~[~str] {
     let mut result = ~[];
     do iter_between_matches(s, sep) |from, to| {
         unsafe { result.push(raw::slice_bytes(s, from, to)); }
@@ -583,7 +583,7 @@ pub pure fn split_str(s: &a/str, sep: &b/str) -> ~[~str] {
     result
 }
 
-pub pure fn split_str_nonempty(s: &a/str, sep: &b/str) -> ~[~str] {
+pub pure fn split_str_nonempty(s: &'a str, sep: &'b str) -> ~[~str] {
     let mut result = ~[];
     do iter_between_matches(s, sep) |from, to| {
         if to > from {
@@ -792,7 +792,7 @@ pure fn cmp(a: &str, b: &str) -> Ordering {
 
 #[cfg(notest)]
 impl TotalOrd for &'self str {
-    pure fn cmp(&self, other: & &self/str) -> Ordering { cmp(*self, *other) }
+    pure fn cmp(&self, other: & &'self str) -> Ordering { cmp(*self, *other) }
 }
 
 #[cfg(notest)]
@@ -837,13 +837,13 @@ pure fn gt(a: &str, b: &str) -> bool {
 }
 
 #[cfg(notest)]
-impl Eq for &self/str {
+impl Eq for &'self str {
     #[inline(always)]
-    pure fn eq(&self, other: & &self/str) -> bool {
+    pure fn eq(&self, other: & &'self str) -> bool {
         eq_slice((*self), (*other))
     }
     #[inline(always)]
-    pure fn ne(&self, other: & &self/str) -> bool { !(*self).eq(other) }
+    pure fn ne(&self, other: & &'self str) -> bool { !(*self).eq(other) }
 }
 
 #[cfg(notest)]
@@ -879,15 +879,15 @@ impl Ord for ~str {
 }
 
 #[cfg(notest)]
-impl Ord for &self/str {
+impl Ord for &'self str {
     #[inline(always)]
-    pure fn lt(&self, other: & &self/str) -> bool { lt((*self), (*other)) }
+    pure fn lt(&self, other: & &'self str) -> bool { lt((*self), (*other)) }
     #[inline(always)]
-    pure fn le(&self, other: & &self/str) -> bool { le((*self), (*other)) }
+    pure fn le(&self, other: & &'self str) -> bool { le((*self), (*other)) }
     #[inline(always)]
-    pure fn ge(&self, other: & &self/str) -> bool { ge((*self), (*other)) }
+    pure fn ge(&self, other: & &'self str) -> bool { ge((*self), (*other)) }
     #[inline(always)]
-    pure fn gt(&self, other: & &self/str) -> bool { gt((*self), (*other)) }
+    pure fn gt(&self, other: & &'self str) -> bool { gt((*self), (*other)) }
 }
 
 #[cfg(notest)]
@@ -1348,7 +1348,7 @@ pub pure fn rfind_between(s: &str, start: uint, end: uint,
 }
 
 // Utility used by various searching functions
-pure fn match_at(haystack: &a/str, needle: &b/str, at: uint) -> bool {
+pure fn match_at(haystack: &'a str, needle: &'b str, at: uint) -> bool {
     let mut i = at;
     for each(needle) |c| { if haystack[i] != c { return false; } i += 1u; }
     return true;
@@ -1367,7 +1367,7 @@ pure fn match_at(haystack: &a/str, needle: &b/str, at: uint) -> bool {
  * An `option` containing the byte index of the first matching substring
  * or `none` if there is no match
  */
-pub pure fn find_str(haystack: &a/str, needle: &b/str) -> Option<uint> {
+pub pure fn find_str(haystack: &'a str, needle: &'b str) -> Option<uint> {
     find_str_between(haystack, needle, 0u, len(haystack))
 }
 
@@ -1390,7 +1390,7 @@ pub pure fn find_str(haystack: &a/str, needle: &b/str) -> Option<uint> {
  *
  * `start` must be less than or equal to `len(s)`
  */
-pub pure fn find_str_from(haystack: &a/str, needle: &b/str, start: uint)
+pub pure fn find_str_from(haystack: &'a str, needle: &'b str, start: uint)
   -> Option<uint> {
     find_str_between(haystack, needle, start, len(haystack))
 }
@@ -1415,7 +1415,7 @@ pub pure fn find_str_from(haystack: &a/str, needle: &b/str, start: uint)
  * `start` must be less than or equal to `end` and `end` must be less than
  * or equal to `len(s)`.
  */
-pub pure fn find_str_between(haystack: &a/str, needle: &b/str, start: uint,
+pub pure fn find_str_between(haystack: &'a str, needle: &'b str, start: uint,
                          end:uint)
   -> Option<uint> {
     // See Issue #1932 for why this is a naive search
@@ -1441,7 +1441,7 @@ pub pure fn find_str_between(haystack: &a/str, needle: &b/str, start: uint,
  * * haystack - The string to look in
  * * needle - The string to look for
  */
-pub pure fn contains(haystack: &a/str, needle: &b/str) -> bool {
+pub pure fn contains(haystack: &'a str, needle: &'b str) -> bool {
     find_str(haystack, needle).is_some()
 }
 
@@ -1465,7 +1465,7 @@ pub pure fn contains_char(haystack: &str, needle: char) -> bool {
  * * haystack - The string to look in
  * * needle - The string to look for
  */
-pub pure fn starts_with(haystack: &a/str, needle: &b/str) -> bool {
+pub pure fn starts_with(haystack: &'a str, needle: &'b str) -> bool {
     let haystack_len = len(haystack), needle_len = len(needle);
     if needle_len == 0u { true }
     else if needle_len > haystack_len { false }
@@ -1480,7 +1480,7 @@ pub pure fn starts_with(haystack: &a/str, needle: &b/str) -> bool {
  * * haystack - The string to look in
  * * needle - The string to look for
  */
-pub pure fn ends_with(haystack: &a/str, needle: &b/str) -> bool {
+pub pure fn ends_with(haystack: &'a str, needle: &'b str) -> bool {
     let haystack_len = len(haystack), needle_len = len(needle);
     if needle_len == 0u { true }
     else if needle_len > haystack_len { false }
@@ -1662,7 +1662,7 @@ pub pure fn count_chars(s: &str, start: uint, end: uint) -> uint {
 }
 
 /// Counts the number of bytes taken by the `n` in `s` starting from `start`.
-pub pure fn count_bytes(s: &b/str, start: uint, n: uint) -> uint {
+pub pure fn count_bytes(s: &'b str, start: uint, n: uint) -> uint {
     fail_unless!(is_char_boundary(s, start));
     let mut end = start, cnt = n;
     let l = len(s);
@@ -1905,7 +1905,7 @@ pub pure fn as_bytes<T>(s: &const ~str, f: &fn(&~[u8]) -> T) -> T {
  *
  * The byte slice does not include the null terminator.
  */
-pub pure fn as_bytes_slice(s: &a/str) -> &a/[u8] {
+pub pure fn as_bytes_slice(s: &'a str) -> &'a [u8] {
     unsafe {
         let (ptr, len): (*u8, uint) = ::cast::reinterpret_cast(&s);
         let outgoing_tuple: (*u8, uint) = (ptr, len - 1);
@@ -2233,9 +2233,9 @@ pub mod traits {
     use ops::Add;
     use str::append;
 
-    impl Add<&self/str,~str> for ~str {
+    impl Add<&'self str,~str> for ~str {
         #[inline(always)]
-        pure fn add(&self, rhs: & &self/str) -> ~str {
+        pure fn add(&self, rhs: & &'self str) -> ~str {
             append(copy *self, (*rhs))
         }
     }
@@ -2247,7 +2247,7 @@ pub mod traits {}
 pub trait StrSlice {
     pure fn all(&self, it: &fn(char) -> bool) -> bool;
     pure fn any(&self, it: &fn(char) -> bool) -> bool;
-    pure fn contains(&self, needle: &a/str) -> bool;
+    pure fn contains(&self, needle: &'a str) -> bool;
     pure fn contains_char(&self, needle: char) -> bool;
     pure fn each(&self, it: &fn(u8) -> bool);
     pure fn eachi(&self, it: &fn(uint, u8) -> bool);
@@ -2261,8 +2261,8 @@ pub trait StrSlice {
     pure fn slice(&self, begin: uint, end: uint) -> ~str;
     pure fn split(&self, sepfn: &fn(char) -> bool) -> ~[~str];
     pure fn split_char(&self, sep: char) -> ~[~str];
-    pure fn split_str(&self, sep: &a/str) -> ~[~str];
-    pure fn starts_with(&self, needle: &a/str) -> bool;
+    pure fn split_str(&self, sep: &'a str) -> ~[~str];
+    pure fn starts_with(&self, needle: &'a str) -> bool;
     pure fn substr(&self, begin: uint, n: uint) -> ~str;
     pure fn to_lower(&self) -> ~str;
     pure fn to_upper(&self) -> ~str;
@@ -2278,7 +2278,7 @@ pub trait StrSlice {
 }
 
 /// Extension methods for strings
-impl StrSlice for &self/str {
+impl StrSlice for &'self str {
     /**
      * Return true if a predicate matches all characters or if the string
      * contains no characters
@@ -2293,7 +2293,7 @@ impl StrSlice for &self/str {
     pure fn any(&self, it: &fn(char) -> bool) -> bool { any(*self, it) }
     /// Returns true if one string contains another
     #[inline]
-    pure fn contains(&self, needle: &a/str) -> bool {
+    pure fn contains(&self, needle: &'a str) -> bool {
         contains(*self, needle)
     }
     /// Returns true if a string contains a char
@@ -2366,10 +2366,10 @@ impl StrSlice for &self/str {
      * string
      */
     #[inline]
-    pure fn split_str(&self, sep: &a/str) -> ~[~str] { split_str(*self, sep) }
+    pure fn split_str(&self, sep: &'a str) -> ~[~str] { split_str(*self, sep) }
     /// Returns true if one string starts with another
     #[inline]
-    pure fn starts_with(&self, needle: &a/str) -> bool {
+    pure fn starts_with(&self, needle: &'a str) -> bool {
         starts_with(*self, needle)
     }
     /**
@@ -2612,8 +2612,8 @@ mod tests {
 
     #[test]
     fn test_split_str() {
-        fn t(s: &str, sep: &a/str, i: int, k: &str) {
-            fn borrow(x: &a/str) -> &a/str { x }
+        fn t(s: &str, sep: &'a str, i: int, k: &str) {
+            fn borrow(x: &'a str) -> &'a str { x }
             let v = split_str(s, sep);
             fail_unless!(borrow(v[i]) == k);
         }

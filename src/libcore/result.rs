@@ -53,7 +53,7 @@ pub pure fn get<T:Copy,U>(res: &Result<T, U>) -> T {
  * If the result is an error
  */
 #[inline(always)]
-pub pure fn get_ref<T, U>(res: &a/Result<T, U>) -> &a/T {
+pub pure fn get_ref<T, U>(res: &'a Result<T, U>) -> &'a T {
     match *res {
         Ok(ref t) => t,
         Err(ref the_err) => unsafe {
@@ -229,7 +229,7 @@ pub pure fn map_err<T:Copy,E,F:Copy>(res: &Result<T, E>, op: &fn(&E) -> F)
 
 pub impl<T, E> Result<T, E> {
     #[inline(always)]
-    pure fn get_ref(&self) -> &self/T { get_ref(self) }
+    pure fn get_ref(&self) -> &'self T { get_ref(self) }
 
     #[inline(always)]
     pure fn is_ok(&self) -> bool { is_ok(self) }

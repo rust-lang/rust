@@ -11,7 +11,7 @@
 // xfail-test
 fn id<T>(t: T) -> T { t }
 
-fn f<T>(v: &r/T) -> &r/fn()->T { id::<&r/fn()->T>(|| *v) } //~ ERROR ???
+fn f<T>(v: &'r T) -> &'r fn()->T { id::<&'r fn()->T>(|| *v) } //~ ERROR ???
 
 fn main() {
     let v = &5;

@@ -617,7 +617,7 @@ pub impl Datum {
         // using `to_ref_llval()`).
 
         // Convert to ref, yielding lltype *T.  Then create a Rust
-        // type &static/T (which translates to *T).  Construct new
+        // type &'static T (which translates to *T).  Construct new
         // result (which will be by-value).  Note that it is not
         // significant *which* region we pick here.
         let llval = self.to_ref_llval(bcx);

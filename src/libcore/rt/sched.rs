@@ -265,12 +265,12 @@ pub impl Scheduler {
         }
     }
 
-    // XXX: Hack. This should return &self/mut but I don't know how to
+    // XXX: Hack. This should return &'self mut but I don't know how to
     // make the borrowcheck happy
     fn task_from_last_cleanup_job(&mut self) -> &mut Task {
         fail_unless!(!self.cleanup_jobs.is_empty());
-        let last_job: &self/mut CleanupJob = &mut self.cleanup_jobs[0];
-        let last_task: &self/Task = match last_job {
+        let last_job: &'self mut CleanupJob = &mut self.cleanup_jobs[0];
+        let last_task: &'self Task = match last_job {
             &RescheduleTask(~ref task) => task,
             &RecycleTask(~ref task) => task,
             &GiveTask(~ref task, _) => task,
@@ -356,7 +356,7 @@ impl ThreadLocalScheduler {
         }
     }
 
-    fn get_scheduler(&mut self) -> &self/mut Scheduler {
+    fn get_scheduler(&mut self) -> &'self mut Scheduler {
         unsafe {
             let key = match self { &ThreadLocalScheduler(key) => key };
             let mut value: *mut c_void = tls::get(key);

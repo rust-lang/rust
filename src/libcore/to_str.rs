@@ -32,7 +32,7 @@ impl ToStr for ~str {
     #[inline(always)]
     pure fn to_str(&self) -> ~str { copy *self }
 }
-impl ToStr for &self/str {
+impl ToStr for &'self str {
     #[inline(always)]
     pure fn to_str(&self) -> ~str { ::str::from_slice(*self) }
 }
@@ -72,7 +72,7 @@ impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
     }
 }
 
-impl<A:ToStr> ToStr for &self/[A] {
+impl<A:ToStr> ToStr for &'self [A] {
     #[inline(always)]
     pure fn to_str(&self) -> ~str {
         unsafe {
