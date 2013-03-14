@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // xfail-test
-fn foo() -> &a/int {
+fn foo() -> &'a int {
     return &x;
 }
 const x: int = 5;

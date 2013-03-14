@@ -12,7 +12,7 @@ extern fn foo() {}
 
 const x: *u8 = foo;
 const y: *libc::c_void = x as *libc::c_void;
-const a: &static/int = &10;
+const a: &'static int = &10;
 const b: *int = a as *int;
 
 fn main() {

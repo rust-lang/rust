@@ -327,7 +327,7 @@ pub type BindingsMap = HashMap<ident, BindingInfo>;
 
 pub struct ArmData {
     bodycx: block,
-    arm: &self/ast::arm,
+    arm: &'self ast::arm,
     bindings_map: BindingsMap
 }
 
@@ -391,7 +391,7 @@ pub fn expand_nested_bindings(bcx: block, m: &[@Match/&r],
     }
 }
 
-pub type enter_pat = &self/fn(@ast::pat) -> Option<~[@ast::pat]>;
+pub type enter_pat = &'self fn(@ast::pat) -> Option<~[@ast::pat]>;
 
 pub fn assert_is_binding_or_wild(bcx: block, p: @ast::pat) {
     if !pat_is_binding_or_wild(bcx.tcx().def_map, p) {

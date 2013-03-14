@@ -16,7 +16,7 @@ use core::util;
 use core::vec::{len, push};
 use core::vec;
 
-type Le<T> = &self/pure fn(v1: &T, v2: &T) -> bool;
+type Le<T> = &'self pure fn(v1: &T, v2: &T) -> bool;
 
 /**
  * Merge sort. Returns a new vector containing the sorted list.
@@ -168,7 +168,7 @@ pub trait Sort {
     fn qsort(self);
 }
 
-impl<T:Copy + Ord + Eq> Sort for &self/mut [T] {
+impl<T:Copy + Ord + Eq> Sort for &'self mut [T] {
     fn qsort(self) { quick_sort3(self); }
 }
 
@@ -868,7 +868,7 @@ mod tests {
     #[test]
     pub fn test_merge_sort_stability() {
         // tjc: funny that we have to use parens
-        pure fn ile(x: &(&static/str), y: &(&static/str)) -> bool
+        pure fn ile(x: &(&'static str), y: &(&'static str)) -> bool
         {
             unsafe // to_lower is not pure...
             {
@@ -1172,7 +1172,7 @@ mod big_tests {
 
     struct LVal {
         val: uint,
-        key: &self/fn(@uint),
+        key: &'self fn(@uint),
     }
 
     impl Drop for LVal/&self {
@@ -1190,16 +1190,16 @@ mod big_tests {
     }
 
     impl Ord for LVal/&self {
-        pure fn lt(&self, other: &a/LVal/&self) -> bool {
+        pure fn lt(&self, other: &'a LVal/&self) -> bool {
             (*self).val < other.val
         }
-        pure fn le(&self, other: &a/LVal/&self) -> bool {
+        pure fn le(&self, other: &'a LVal/&self) -> bool {
             (*self).val <= other.val
         }
-        pure fn gt(&self, other: &a/LVal/&self) -> bool {
+        pure fn gt(&self, other: &'a LVal/&self) -> bool {
             (*self).val > other.val
         }
-        pure fn ge(&self, other: &a/LVal/&self) -> bool {
+        pure fn ge(&self, other: &'a LVal/&self) -> bool {
             (*self).val >= other.val
         }
     }

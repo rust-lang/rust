@@ -64,7 +64,7 @@ pub impl BorrowckCtxt {
 }
 
 struct PreserveCtxt {
-    bccx: &self/BorrowckCtxt,
+    bccx: &'self BorrowckCtxt,
 
     // the region scope for which we must preserve the memory
     scope_region: ty::Region,

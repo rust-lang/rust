@@ -12,7 +12,7 @@
 // aux-build:cci_const.rs
 
 extern mod cci_const;
-const foo: &static/str = cci_const::foopy;
+const foo: &'static str = cci_const::foopy;
 const a: uint = cci_const::uint_val;
 const b: uint = cci_const::uint_expr + 5;
 

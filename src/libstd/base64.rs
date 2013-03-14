@@ -16,7 +16,7 @@ pub trait ToBase64 {
     pure fn to_base64(&self) -> ~str;
 }
 
-impl ToBase64 for &self/[u8] {
+impl ToBase64 for &'self [u8] {
     pure fn to_base64(&self) -> ~str {
         let chars = str::chars(
           ~"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -69,7 +69,7 @@ impl ToBase64 for &self/[u8] {
     }
 }
 
-impl ToBase64 for &self/str {
+impl ToBase64 for &'self str {
     pure fn to_base64(&self) -> ~str {
         str::to_bytes(*self).to_base64()
     }

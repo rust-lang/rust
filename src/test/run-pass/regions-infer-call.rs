@@ -10,7 +10,7 @@
 
 fn takes_two(x: &int, y: &int) -> int { *x + *y }
 
-fn has_two(x: &a/int, y: &b/int) -> int {
+fn has_two(x: &'a int, y: &'b int) -> int {
     takes_two(x, y)
 }
 

@@ -11,6 +11,6 @@
 pub extern fn bar() {
 }
 
-pub const foopy: &static/str = "hi there";
+pub const foopy: &'static str = "hi there";
 pub const uint_val: uint = 12;
 pub const uint_expr: uint = (1 << uint_val) - 1;

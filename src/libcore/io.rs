@@ -589,7 +589,7 @@ pub fn file_reader(path: &Path) -> Result<@Reader, ~str> {
 
 // Byte readers
 pub struct BytesReader {
-    bytes: &self/[u8],
+    bytes: &'self [u8],
     mut pos: uint
 }
 

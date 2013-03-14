@@ -165,7 +165,7 @@ pub impl Sem<~[Waitqueue]> {
 #[doc(hidden)]
 type SemRelease = SemReleaseGeneric/&self<()>;
 type SemAndSignalRelease = SemReleaseGeneric/&self<~[Waitqueue]>;
-struct SemReleaseGeneric<Q> { sem: &self/Sem<Q> }
+struct SemReleaseGeneric<Q> { sem: &'self Sem<Q> }
 
 impl<Q:Owned> Drop for SemReleaseGeneric/&self<Q> {
     fn finalize(&self) {
@@ -173,13 +173,13 @@ impl<Q:Owned> Drop for SemReleaseGeneric/&self<Q> {
     }
 }
 
-fn SemRelease(sem: &r/Sem<()>) -> SemRelease/&r {
+fn SemRelease(sem: &'r Sem<()>) -> SemRelease/&r {
     SemReleaseGeneric {
         sem: sem
     }
 }
 
-fn SemAndSignalRelease(sem: &r/Sem<~[Waitqueue]>)
+fn SemAndSignalRelease(sem: &'r Sem<~[Waitqueue]>)
     -> SemAndSignalRelease/&r {
     SemReleaseGeneric {
         sem: sem
@@ -187,7 +187,7 @@ fn SemAndSignalRelease(sem: &r/Sem<~[Waitqueue]>)
 }
 
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
-pub struct Condvar { priv sem: &self/Sem<~[Waitqueue]> }
+pub struct Condvar { priv sem: &'self Sem<~[Waitqueue]> }
 
 impl Drop for Condvar/&self { fn finalize(&self) {} }
 
@@ -258,7 +258,7 @@ pub impl Condvar/&self {
         // mutex during unwinding. As long as the wrapper (mutex, etc) is
         // bounded in when it gets released, this shouldn't hang forever.
         struct SemAndSignalReacquire {
-            sem: &self/Sem<~[Waitqueue]>,
+            sem: &'self Sem<~[Waitqueue]>,
         }
 
         impl Drop for SemAndSignalReacquire/&self {
@@ -272,7 +272,7 @@ pub impl Condvar/&self {
             }
         }
 
-        fn SemAndSignalReacquire(sem: &r/Sem<~[Waitqueue]>)
+        fn SemAndSignalReacquire(sem: &'r Sem<~[Waitqueue]>)
             -> SemAndSignalReacquire/&r {
             SemAndSignalReacquire {
                 sem: sem
@@ -610,7 +610,7 @@ pub impl RWlock {
 // FIXME(#3588) should go inside of read()
 #[doc(hidden)]
 struct RWlockReleaseRead {
-    lock: &self/RWlock,
+    lock: &'self RWlock,
 }
 
 impl Drop for RWlockReleaseRead/&self {
@@ -635,7 +635,7 @@ impl Drop for RWlockReleaseRead/&self {
     }
 }
 
-fn RWlockReleaseRead(lock: &r/RWlock) -> RWlockReleaseRead/&r {
+fn RWlockReleaseRead(lock: &'r RWlock) -> RWlockReleaseRead/&r {
     RWlockReleaseRead {
         lock: lock
     }
@@ -644,7 +644,7 @@ fn RWlockReleaseRead(lock: &r/RWlock) -> RWlockReleaseRead/&r {
 // FIXME(#3588) should go inside of downgrade()
 #[doc(hidden)]
 struct RWlockReleaseDowngrade {
-    lock: &self/RWlock,
+    lock: &'self RWlock,
 }
 
 impl Drop for RWlockReleaseDowngrade/&self {
@@ -677,18 +677,18 @@ impl Drop for RWlockReleaseDowngrade/&self {
     }
 }
 
-fn RWlockReleaseDowngrade(lock: &r/RWlock) -> RWlockReleaseDowngrade/&r {
+fn RWlockReleaseDowngrade(lock: &'r RWlock) -> RWlockReleaseDowngrade/&r {
     RWlockReleaseDowngrade {
         lock: lock
     }
 }
 
 /// The "write permission" token used for rwlock.write_downgrade().
-pub struct RWlockWriteMode { priv lock: &self/RWlock }
+pub struct RWlockWriteMode { priv lock: &'self RWlock }
 impl Drop for RWlockWriteMode/&self { fn finalize(&self) {} }
 
 /// The "read permission" token used for rwlock.write_downgrade().
-pub struct RWlockReadMode  { priv lock: &self/RWlock }
+pub struct RWlockReadMode  { priv lock: &'self RWlock }
 impl Drop for RWlockReadMode/&self { fn finalize(&self) {} }
 
 pub impl RWlockWriteMode/&self {

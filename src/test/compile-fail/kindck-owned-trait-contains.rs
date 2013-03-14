@@ -21,10 +21,10 @@ fn repeater<A:Copy>(v: @A) -> @repeat<A> {
 
 fn main() {
     // Error results because the type of is inferred to be
-    // @repeat<&blk/int> where blk is the lifetime of the block below.
+    // @repeat<&'blk int> where blk is the lifetime of the block below.
 
     let y = { //~ ERROR reference is not valid
-        let x: &blk/int = &3;
+        let x: &'blk int = &3;
         repeater(@x)
     };
     fail_unless!(3 == *(y.get())); //~ ERROR reference is not valid

@@ -1045,9 +1045,9 @@ mod biguint_tests {
         fail_unless!(BigUint::new(~[0, 0, -1]).to_uint() == uint::max_value);
     }
 
-    const sum_triples: &static/[(&static/[BigDigit],
-                                 &static/[BigDigit],
-                                 &static/[BigDigit])] = &[
+    const sum_triples: &'static [(&'static [BigDigit],
+                                 &'static [BigDigit],
+                                 &'static [BigDigit])] = &[
         (&[],          &[],       &[]),
         (&[],          &[ 1],     &[ 1]),
         (&[ 1],        &[ 1],     &[ 2]),
@@ -1085,9 +1085,9 @@ mod biguint_tests {
         }
     }
 
-    const mul_triples: &static/[(&static/[BigDigit],
-                                 &static/[BigDigit],
-                                 &static/[BigDigit])] = &[
+    const mul_triples: &'static [(&'static [BigDigit],
+                                 &'static [BigDigit],
+                                 &'static [BigDigit])] = &[
         (&[],               &[],               &[]),
         (&[],               &[ 1],             &[]),
         (&[ 2],             &[],               &[]),
@@ -1111,10 +1111,10 @@ mod biguint_tests {
         (&[ 0,  0,  1],     &[ 0,  0,  0,  1], &[0, 0,  0,  0,  0,  1])
     ];
 
-    const divmod_quadruples: &static/[(&static/[BigDigit],
-                                       &static/[BigDigit],
-                                       &static/[BigDigit],
-                                       &static/[BigDigit])]
+    const divmod_quadruples: &'static [(&'static [BigDigit],
+                                       &'static [BigDigit],
+                                       &'static [BigDigit],
+                                       &'static [BigDigit])]
         = &[
             (&[ 1],        &[ 2], &[],               &[1]),
             (&[ 1,  1],    &[ 2], &[-1/2+1],         &[1]),
@@ -1399,9 +1399,9 @@ mod bigint_tests {
         ).to_uint() == 0);
     }
 
-    const sum_triples: &static/[(&static/[BigDigit],
-                                 &static/[BigDigit],
-                                 &static/[BigDigit])] = &[
+    const sum_triples: &'static [(&'static [BigDigit],
+                                 &'static [BigDigit],
+                                 &'static [BigDigit])] = &[
         (&[],          &[],       &[]),
         (&[],          &[ 1],     &[ 1]),
         (&[ 1],        &[ 1],     &[ 2]),
@@ -1451,9 +1451,9 @@ mod bigint_tests {
         }
     }
 
-    const mul_triples: &static/[(&static/[BigDigit],
-                                 &static/[BigDigit],
-                                 &static/[BigDigit])] = &[
+    const mul_triples: &'static [(&'static [BigDigit],
+                                 &'static [BigDigit],
+                                 &'static [BigDigit])] = &[
         (&[],               &[],               &[]),
         (&[],               &[ 1],             &[]),
         (&[ 2],             &[],               &[]),
@@ -1477,10 +1477,10 @@ mod bigint_tests {
         (&[ 0,  0,  1],     &[ 0,  0,  0,  1], &[0, 0,  0,  0,  0,  1])
     ];
 
-    const divmod_quadruples: &static/[(&static/[BigDigit],
-                                       &static/[BigDigit],
-                                       &static/[BigDigit],
-                                       &static/[BigDigit])]
+    const divmod_quadruples: &'static [(&'static [BigDigit],
+                                       &'static [BigDigit],
+                                       &'static [BigDigit],
+                                       &'static [BigDigit])]
         = &[
             (&[ 1],        &[ 2], &[],               &[1]),
             (&[ 1,  1],    &[ 2], &[-1/2+1],         &[1]),

@@ -41,10 +41,10 @@ pub impl<T> Deque<T> {
               elts: vec::from_fn(initial_capacity, |_| None)}
     }
 
-    fn peek_front(&self) -> &self/T { get(self.elts, self.lo) }
-    fn peek_back(&self) -> &self/T { get(self.elts, self.hi - 1u) }
+    fn peek_front(&self) -> &'self T { get(self.elts, self.lo) }
+    fn peek_back(&self) -> &'self T { get(self.elts, self.hi - 1u) }
 
-    fn get(&self, i: int) -> &self/T {
+    fn get(&self, i: int) -> &'self T {
         let idx = (self.lo + (i as uint)) % self.elts.len();
         get(self.elts, idx)
     }
@@ -107,7 +107,7 @@ fn grow<T>(nelts: uint, lo: uint, elts: &mut [Option<T>]) -> ~[Option<T>] {
     rv
 }
 
-fn get<T>(elts: &r/[Option<T>], i: uint) -> &r/T {
+fn get<T>(elts: &'r [Option<T>], i: uint) -> &'r T {
     match elts[i] { Some(ref t) => t, _ => fail!() }
 }
 
