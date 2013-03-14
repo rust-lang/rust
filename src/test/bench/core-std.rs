@@ -17,6 +17,7 @@ use std::oldmap;
 use std::oldmap::{Map, HashMap};
 
 use core::io::{Reader, ReaderUtil};
+use core::rand::RngUtil;
 
 macro_rules! bench (
     ($id:ident) => (maybe_run_test(argv, stringify!($id).to_owned(), $id))
