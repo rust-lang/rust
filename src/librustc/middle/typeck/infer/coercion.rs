@@ -66,9 +66,9 @@ we may want to adjust precisely when coercions occur.
 
 use core::prelude::*;
 
-use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowFn};
-use middle::ty::{AutoDerefRef, AutoRef};
-use middle::ty::{vstore_slice, vstore_box, vstore_uniq};
+use middle::ty::{TyVar, AutoPtr, AutoBorrowVec, AutoBorrowFn};
+use middle::ty::{AutoAdjustment, AutoDerefRef, AutoRef};
+use middle::ty::{vstore_slice, vstore_box, vstore_uniq, vstore_fixed};
 use middle::ty::{mt};
 use middle::ty;
 use middle::typeck::infer::{CoerceResult, resolve_type};
@@ -76,9 +76,10 @@ use middle::typeck::infer::combine::CombineFields;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::resolve::try_resolve_tvar_shallow;
-use util::common::indenter;
+use util::common::{indent, indenter};
 
-use syntax::ast::m_imm;
+use syntax::abi::AbiSet;
+use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 
 // Note: Coerce is not actually a combiner, in that it does not
@@ -334,8 +335,18 @@ pub impl Coerce {
                                        b: ty::t,
                                        sty_b: &ty::sty) -> CoerceResult
     {
+        /*!
+         *
+         * Attempts to coerce from a bare Rust function (`extern
+         * "rust" fn`) into a closure.
+         */
+
         debug!("coerce_from_bare_fn(a=%s, b=%s)",
                a.inf_str(self.infcx), b.inf_str(self.infcx));
+
+        if !fn_ty_a.abis.is_rust() {
+            return self.subtype(a, b);
+        }
 
         let fn_ty_b = match *sty_b {
             ty::ty_closure(ref f) => {copy *f}
@@ -344,8 +355,6 @@ pub impl Coerce {
             }
         };
 
-        // for now, bare fn and closures have the same
-        // representation
         let adj = @ty::AutoAddEnv(fn_ty_b.region, fn_ty_b.sigil);
         let a_closure = ty::mk_closure(
             self.infcx.tcx,

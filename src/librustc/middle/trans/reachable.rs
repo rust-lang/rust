@@ -108,7 +108,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
               }
           }
       }
-      item_fn(_, _, ref generics, ref blk) => {
+      item_fn(_, _, _, ref generics, ref blk) => {
         if generics.ty_params.len() > 0u ||
            attr::find_inline_attr(item.attrs) != attr::ia_none {
             traverse_inline_body(cx, blk);

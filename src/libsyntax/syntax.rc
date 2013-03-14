@@ -39,6 +39,7 @@ pub mod opt_vec;
 pub mod attr;
 pub mod diagnostic;
 pub mod codemap;
+pub mod abi;
 pub mod ast;
 pub mod ast_util;
 pub mod ast_map;

@@ -303,27 +303,6 @@ pub fn find_linkage_metas(attrs: &[ast::attribute]) -> ~[@ast::meta_item] {
     }
 }
 
-pub fn foreign_abi(attrs: &[ast::attribute])
-                -> Either<~str, ast::foreign_abi> {
-    return match attr::first_attr_value_str_by_name(attrs, ~"abi") {
-        None => {
-            Right(ast::foreign_abi_cdecl)
-        }
-        Some(@~"rust-intrinsic") => {
-            Right(ast::foreign_abi_rust_intrinsic)
-        }
-        Some(@~"cdecl") => {
-            Right(ast::foreign_abi_cdecl)
-        }
-        Some(@~"stdcall") => {
-            Right(ast::foreign_abi_stdcall)
-        }
-        Some(t) => {
-            Left(~"unsupported abi: " + *t)
-        }
-    };
-}
-
 #[deriving(Eq)]
 pub enum inline_attr {
     ia_none,

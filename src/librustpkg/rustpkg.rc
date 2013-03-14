@@ -185,7 +185,7 @@ impl PackageScript {
         // the build API.
         for crate.node.module.items.each |i| {
             match i.node {
-                ast::item_fn(_, _, _, _) => {
+                ast::item_fn(*) => {
                     custom = true;
 
                     break;

@@ -23,6 +23,7 @@ use util::common::indent;
 use util::ppaux::mt_to_str;
 
 use std::list;
+use syntax::abi::AbiSet;
 use syntax::ast;
 use syntax::ast::{Many, Once, extern_fn, m_const, impure_fn};
 use syntax::ast::{pure_fn, unsafe_fn};
@@ -210,7 +211,7 @@ impl Combine for Lub {
         super_sigils(self, p1, p2)
     }
 
-    fn abis(&self, p1: ast::Abi, p2: ast::Abi) -> cres<ast::Abi> {
+    fn abis(&self, p1: AbiSet, p2: AbiSet) -> cres<AbiSet> {
         super_abis(self, p1, p2)
     }
 

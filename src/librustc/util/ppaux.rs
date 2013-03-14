@@ -30,6 +30,7 @@ use syntax::print::pprust;
 use syntax::print::pprust::mode_to_str;
 use syntax::{ast, ast_util};
 use syntax::ast_map;
+use syntax::abi::AbiSet;
 
 use core::str;
 use core::vec;
@@ -302,15 +303,14 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     }
     fn bare_fn_to_str(cx: ctxt,
                       purity: ast::purity,
-                      abi: ast::Abi,
+                      abis: AbiSet,
                       ident: Option<ast::ident>,
                       sig: &ty::FnSig) -> ~str
     {
         let mut s = ~"extern ";
 
-        match abi {
-            ast::RustAbi => {}
-        }
+        s.push_str(abis.to_str());
+        s.push_char(' ');
 
         match purity {
             ast::impure_fn => {}
@@ -386,7 +386,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     fn method_to_str(cx: ctxt, m: method) -> ~str {
         bare_fn_to_str(cx,
                        m.fty.purity,
-                       m.fty.abi,
+                       m.fty.abis,
                        Some(m.ident),
                        &m.fty.sig) + ~";"
     }
@@ -429,7 +429,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
           closure_to_str(cx, f)
       }
       ty_bare_fn(ref f) => {
-          bare_fn_to_str(cx, f.purity, f.abi, None, &f.sig)
+          bare_fn_to_str(cx, f.purity, f.abis, None, &f.sig)
       }
       ty_infer(infer_ty) => infer_ty.to_str(),
       ty_err => ~"[type error]",
