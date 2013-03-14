@@ -30,7 +30,7 @@ macro_rules! rtdebug (
 )
 
 mod sched;
-mod io;
+mod rtio;
 pub mod uvll;
 mod uvio;
 mod uv;

@@ -45,7 +45,7 @@ use ptr::null;
 use sys::size_of;
 use super::uvll;
 use super::uvll::*;
-use super::io::{IpAddr, Ipv4, Ipv6};
+use super::rtio::{IpAddr, Ipv4, Ipv6};
 use unstable::finally::Finally;
 
 #[cfg(test)] use unstable::run_in_bare_thread;

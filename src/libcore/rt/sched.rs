@@ -16,7 +16,7 @@ use ptr::mut_null;
 
 use super::work_queue::WorkQueue;
 use super::stack::{StackPool, StackSegment};
-use super::io::{EventLoop, EventLoopObject};
+use super::rtio::{EventLoop, EventLoopObject};
 use super::context::Context;
 use tls = super::thread_local_storage;
 
