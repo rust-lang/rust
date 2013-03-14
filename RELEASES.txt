@@ -10,7 +10,8 @@ Version 0.6 (March 2013)
       * Remove `static` keyword
       * Static method syntax
       * `as Trait`
-      * `copy` removed?
+      * `copy` removed, replaced with `Clone`?
+      * `std::map` removed, replaced with `core::hashmap`
 
    * Syntax changes
       * The self type parameter in traits is now spelled `Self`
@@ -38,7 +39,8 @@ Version 0.6 (March 2013)
       * Trait implementations no longer support visibility modifiers
 
    * Semantic changes
-      * Linear types move by default, eliminating the `move` keyword
+      * Types with owned pointers or custom destructors move by default,
+        eliminating the `move` keyword
       * All foreign functions are considered unsafe
       * &mut is now unaliasable
       * Writes to borrowed @mut pointers are prevented dynamically
@@ -57,16 +59,19 @@ Version 0.6 (March 2013)
         improve inference and eliminate unsoundness
 
    * Libraries
-      * Lots of effort to organize the container API's around `core::container`
-      * `core::send_map` renamed to `core::hashmap`
       * Added big integers to `std::bigint`
       * Removed `core::oldcomm` module
       * Added pipe-based `core::comm` module
-      * Reimplemented `std::treemap`
       * Numeric traits have been reorganized under `core::num`
-      * `core::dvec` removed. Use `@mut ~[T]` or other language types
       * `vec::slice` finally returns a slice
       * `debug!` and friends don't require a format string, e.g. `debug!(Foo)`
+      * Containers reorganized around traits in `core::container`
+      * `core::dvec` removed, `~[T]` is a drop-in replacement
+      * `core::send_map` renamed to `core::hashmap`
+      * `std::treemap` reimplemented as an owned balanced tree
+      * `std::deque` and `std::smallintmap` reimplemented as owned containers
+      * `core::trie` added as a fast ordered map for integer keys
+      * Set types added to `core::hashmap`, `core::trie` and `std::treemap`
 
    * Tools
       * Replaced the 'cargo' package manager with 'rustpkg'
