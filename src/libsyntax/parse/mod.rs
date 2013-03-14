@@ -300,7 +300,7 @@ mod test {
     use core::str;
     use util::testing::*;
 
-    #[test] fn to_json_str (val: Encodable<std::json::Encoder>) -> ~str {
+    #[test] fn to_json_str (val: @Encodable<std::json::Encoder>) -> ~str {
         do io::with_str_writer |writer| {
             val.encode(~std::json::Encoder(writer));
         }
