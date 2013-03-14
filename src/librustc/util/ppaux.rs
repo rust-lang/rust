@@ -132,21 +132,21 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
 }
 
 pub fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
-    bound_region_to_str_adorned(cx, "&", br, "")
+    bound_region_to_str_space(cx, "&", br)
 }
 
-pub fn bound_region_to_str_adorned(cx: ctxt, prefix: &str,
-                                   br: bound_region, sep: &str) -> ~str {
-    if cx.sess.verbose() { return fmt!("%s%?%s", prefix, br, sep); }
+pub fn bound_region_to_str_space(cx: ctxt,
+                                 prefix: &str,
+                                 br: bound_region)
+                              -> ~str {
+    if cx.sess.verbose() { return fmt!("%s%? ", prefix, br); }
 
     match br {
-      br_named(id)         => fmt!("%s%s%s", prefix, *cx.sess.str_of(id),
-                                   sep),
-      br_self              => fmt!("%sself%s", prefix, sep),
+      br_named(id)         => fmt!("%s'%s ", prefix, *cx.sess.str_of(id)),
+      br_self              => fmt!("%s'self ", prefix),
       br_anon(_)           => prefix.to_str(),
       br_fresh(_)          => prefix.to_str(),
-      br_cap_avoid(_, br)  => bound_region_to_str_adorned(cx, prefix,
-                                                          *br, sep)
+      br_cap_avoid(_, br)  => bound_region_to_str_space(cx, prefix, *br)
     }
 }
 
@@ -194,13 +194,12 @@ pub fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
 // you should use `explain_region()` or, better yet,
 // `note_and_explain_region()`
 pub fn region_to_str(cx: ctxt, region: Region) -> ~str {
-    region_to_str_adorned(cx, "&", region, "")
+    region_to_str_space(cx, "&", region)
 }
 
-pub fn region_to_str_adorned(cx: ctxt, prefix: &str,
-                             region: Region, sep: &str) -> ~str {
+pub fn region_to_str_space(cx: ctxt, prefix: &str, region: Region) -> ~str {
     if cx.sess.verbose() {
-        return fmt!("%s%?%s", prefix, region, sep);
+        return fmt!("%s%? ", prefix, region);
     }
 
     // These printouts are concise.  They do not contain all the information
@@ -209,13 +208,13 @@ pub fn region_to_str_adorned(cx: ctxt, prefix: &str,
     // `explain_region()` or `note_and_explain_region()`.
     match region {
         re_scope(_) => prefix.to_str(),
-        re_bound(br) => bound_region_to_str_adorned(cx, prefix, br, sep),
-        re_free(_, br) => bound_region_to_str_adorned(cx, prefix, br, sep),
+        re_bound(br) => bound_region_to_str_space(cx, prefix, br),
+        re_free(_, br) => bound_region_to_str_space(cx, prefix, br),
         re_infer(ReSkolemized(_, br)) => {
-            bound_region_to_str_adorned(cx, prefix, br, sep)
+            bound_region_to_str_space(cx, prefix, br)
         }
         re_infer(ReVar(_)) => prefix.to_str(),
-        re_static => fmt!("%sstatic%s", prefix, sep)
+        re_static => fmt!("%s'static ", prefix)
     }
 }
 
@@ -233,7 +232,7 @@ pub fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
       ty::vstore_fixed(n) => fmt!("%u", n),
       ty::vstore_uniq => ~"~",
       ty::vstore_box => ~"@",
-      ty::vstore_slice(r) => region_to_str_adorned(cx, "&", r, "/")
+      ty::vstore_slice(r) => region_to_str_space(cx, "&", r)
     }
 }
 
@@ -242,7 +241,7 @@ pub fn trait_store_to_str(cx: ctxt, s: ty::TraitStore) -> ~str {
       ty::BareTraitStore => ~"",
       ty::UniqTraitStore => ~"~",
       ty::BoxTraitStore => ~"@",
-      ty::RegionTraitStore(r) => region_to_str_adorned(cx, "&", r, "")
+      ty::RegionTraitStore(r) => region_to_str_space(cx, "&", r)
     }
 }
 
@@ -252,7 +251,7 @@ pub fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
         fmt!("[%s * %s]", ty, vstore_to_str(cx, vs))
       }
       ty::vstore_slice(_) => {
-        fmt!("%s/%s", vstore_to_str(cx, vs), ty)
+        fmt!("%s %s", vstore_to_str(cx, vs), ty)
       }
       _ => fmt!("%s[%s]", vstore_to_str(cx, vs), ty)
     }
@@ -344,7 +343,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
             (ast::OwnedSigil, ty::re_static) => {}
 
             (_, region) => {
-                s.push_str(region_to_str_adorned(cx, "", region, "/"));
+                s.push_str(region_to_str_space(cx, "", region));
             }
         }
 
@@ -418,7 +417,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_uniq(tm) => ~"~" + mt_to_str(cx, tm),
       ty_ptr(tm) => ~"*" + mt_to_str(cx, tm),
       ty_rptr(r, tm) => {
-        region_to_str_adorned(cx, ~"&", r, ~"/") + mt_to_str(cx, tm)
+        region_to_str_space(cx, ~"&", r) + mt_to_str(cx, tm)
       }
       ty_unboxed_vec(tm) => { ~"unboxed_vec<" + mt_to_str(cx, tm) + ~">" }
       ty_type => ~"type",
