@@ -157,10 +157,8 @@ pub impl IdleWatcher {
         };
 
         extern fn idle_cb(handle: *uvll::uv_idle_t, status: c_int) {
-            let idle_watcher: IdleWatcher =
-                NativeHandle::from_native_handle(handle);
-            let cb: &IdleCallback =
-                borrow_callback_from_watcher(&idle_watcher);
+            let idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
+            let cb: &IdleCallback = borrow_callback_from_watcher(&idle_watcher);
             let status = status_to_maybe_uv_error(handle, status);
             (*cb)(idle_watcher, status);
         }
@@ -175,9 +173,7 @@ pub impl IdleWatcher {
 
         extern fn close_cb(handle: *uvll::uv_idle_t) {
             let mut idle_watcher = NativeHandle::from_native_handle(handle);
-            drop_watcher_callback::<uvll::uv_idle_t,
-                                    IdleWatcher,
-                                    IdleCallback>(&mut idle_watcher);
+            drop_watcher_callback::<uvll::uv_idle_t, IdleWatcher, IdleCallback>(&mut idle_watcher);
             unsafe { uvll::idle_delete(handle) };
         }
     }
@@ -220,21 +216,17 @@ pub impl StreamWatcher {
         let handle = self.native_handle();
         unsafe { uvll::read_start(handle, alloc_cb, read_cb); }
 
-        extern fn alloc_cb(stream: *uvll::uv_stream_t,
-                           suggested_size: size_t) -> Buf {
-            let mut stream_watcher: StreamWatcher =
-                NativeHandle::from_native_handle(stream);
+        extern fn alloc_cb(stream: *uvll::uv_stream_t, suggested_size: size_t) -> Buf {
+            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
             let data = get_watcher_data(&mut stream_watcher);
             let alloc_cb = data.alloc_cb.get_ref();
             return (*alloc_cb)(suggested_size as uint);
         }
 
-        extern fn read_cb(stream: *uvll::uv_stream_t,
-                          nread: ssize_t, ++buf: Buf) {
+        extern fn read_cb(stream: *uvll::uv_stream_t, nread: ssize_t, ++buf: Buf) {
             rtdebug!("buf addr: %x", buf.base as uint);
             rtdebug!("buf len: %d", buf.len as int);
-            let mut stream_watcher: StreamWatcher =
-                NativeHandle::from_native_handle(stream);
+            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
             let data = get_watcher_data(&mut stream_watcher);
             let cb = data.read_cb.get_ref();
             let status = status_to_maybe_uv_error(stream, nread as c_int);
@@ -270,14 +262,11 @@ pub impl StreamWatcher {
         let _v = vec_from_uv_buf(buf);
 
         extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
-            let write_request: WriteRequest =
-                NativeHandle::from_native_handle(req);
+            let write_request: WriteRequest = NativeHandle::from_native_handle(req);
             let mut stream_watcher = write_request.stream();
             write_request.delete();
-            let cb = get_watcher_data(&mut stream_watcher)
-                .write_cb.swap_unwrap();
-            let status = status_to_maybe_uv_error(
-                stream_watcher.native_handle(), status);
+            let cb = get_watcher_data(&mut stream_watcher).write_cb.swap_unwrap();
+            let status = status_to_maybe_uv_error(stream_watcher.native_handle(), status);
             cb(stream_watcher, status);
         }
     }
@@ -301,8 +290,7 @@ pub impl StreamWatcher {
         unsafe { uvll::close(self.native_handle(), close_cb); }
 
         extern fn close_cb(handle: *uvll::uv_stream_t) {
-            let mut stream_watcher: StreamWatcher =
-                NativeHandle::from_native_handle(handle);
+            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
             {
                 let mut data = get_watcher_data(&mut stream_watcher);
                 data.close_cb.swap_unwrap()();
@@ -382,16 +370,14 @@ pub impl TcpWatcher {
 
             extern fn connect_cb(req: *uvll::uv_connect_t, status: c_int) {
                 rtdebug!("connect_t: %x", req as uint);
-                let connect_request: ConnectRequest =
-                    NativeHandle::from_native_handle(req);
+                let connect_request: ConnectRequest = NativeHandle::from_native_handle(req);
                 let mut stream_watcher = connect_request.stream();
                 connect_request.delete();
                 let cb: ConnectionCallback = {
                     let data = get_watcher_data(&mut stream_watcher);
                     data.connect_cb.swap_unwrap()
                 };
-                let status = status_to_maybe_uv_error(
-                    stream_watcher.native_handle(), status);
+                let status = status_to_maybe_uv_error(stream_watcher.native_handle(), status);
                 cb(stream_watcher, status);
             }
         }
@@ -412,19 +398,15 @@ pub impl TcpWatcher {
 
         extern fn connection_cb(handle: *uvll::uv_stream_t, status: c_int) {
             rtdebug!("connection_cb");
-            let mut stream_watcher: StreamWatcher =
-                NativeHandle::from_native_handle(handle);
-            let cb = get_watcher_data(&mut stream_watcher)
-                .connect_cb.swap_unwrap();
-            let status = status_to_maybe_uv_error(
-                stream_watcher.native_handle(), status);
+            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
+            let cb = get_watcher_data(&mut stream_watcher).connect_cb.swap_unwrap();
+            let status = status_to_maybe_uv_error(stream_watcher.native_handle(), status);
             cb(stream_watcher, status);
         }
     }
 
     fn as_stream(&self) -> StreamWatcher {
-        NativeHandle::from_native_handle(
-            self.native_handle() as *uvll::uv_stream_t)
+        NativeHandle::from_native_handle(self.native_handle() as *uvll::uv_stream_t)
     }
 }
 
@@ -460,9 +442,7 @@ impl ConnectRequest {
 
     fn stream(&self) -> StreamWatcher {
         unsafe {
-            let stream_handle =
-                uvll::get_stream_handle_from_connect_req(
-                    self.native_handle());
+            let stream_handle = uvll::get_stream_handle_from_connect_req(self.native_handle());
             NativeHandle::from_native_handle(stream_handle)
         }
     }
@@ -499,8 +479,7 @@ impl WriteRequest {
 
     fn stream(&self) -> StreamWatcher {
         unsafe {
-            let stream_handle =
-                uvll::get_stream_handle_from_write_req(self.native_handle());
+            let stream_handle = uvll::get_stream_handle_from_write_req(self.native_handle());
             NativeHandle::from_native_handle(stream_handle)
         }
     }
@@ -609,8 +588,7 @@ fn drop_watcher_callback<H, W: Watcher + NativeHandle<*H>, CB: Callback>(
             // Take ownership of the callback and drop it
             let _cb = transmute::<*c_void, ~CB>(handle_data);
             // Make sure the pointer is zeroed
-            uvll::set_data_for_uv_handle(
-                watcher.native_handle(), null::<()>());
+            uvll::set_data_for_uv_handle(watcher.native_handle(), null::<()>());
         }
     }
 }
