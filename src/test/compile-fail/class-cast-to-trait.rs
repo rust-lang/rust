@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait noisy {
-  fn speak();
+  fn speak(&self);
 }
 
 struct cat {
@@ -21,7 +21,7 @@ struct cat {
 
 pub impl cat {
 
-  fn eat() -> bool {
+  fn eat(&self) -> bool {
     if self.how_hungry > 0 {
         error!("OM NOM NOM");
         self.how_hungry -= 2;
@@ -35,12 +35,12 @@ pub impl cat {
 }
 
 impl noisy for cat {
-  fn speak() { self.meow(); }
+  fn speak(&self) { self.meow(); }
 
 }
 
 priv impl cat {
-    fn meow() {
+    fn meow(&self) {
       error!("Meow");
       self.meows += 1;
       if self.meows % 5 == 0 {
@@ -58,6 +58,6 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 }
 
 fn main() {
-  let nyan : noisy  = @cat(0, 2, ~"nyan") as @noisy;
+  let nyan : @noisy  = @cat(0, 2, ~"nyan") as @noisy;
   nyan.eat(); //~ ERROR type `@noisy` does not implement any method in scope named `eat`
 }

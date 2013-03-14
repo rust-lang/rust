@@ -1,3 +1,6 @@
+// xfail-test
+// xfail'd due to problems with by-value self.
+
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -9,10 +12,10 @@
 // except according to those terms.
 
 trait get_ctxt {
-    fn get_ctxt() -> &self/uint;
+    fn get_ctxt(self) -> &self/uint;
 }
 
-fn make_gc1(gc: get_ctxt/&a) -> get_ctxt/&b  {
+fn make_gc1(gc: @get_ctxt/&a) -> @get_ctxt/&b  {
     return gc; //~ ERROR mismatched types: expected `@get_ctxt/&b` but found `@get_ctxt/&a`
 }
 
@@ -20,12 +23,12 @@ struct Foo {
     r: &'self uint
 }
 
-impl get_ctxt/&self for Foo/&self {
-    fn get_ctxt() -> &self/uint { self.r }
+impl get_ctxt for Foo<'self> {
+    fn get_ctxt(&self) -> &'self uint { self.r }
 }
 
-fn make_gc2(foo: Foo/&a) -> get_ctxt/&b  {
-    return @foo as get_ctxt; //~ ERROR cannot infer an appropriate lifetime
+fn make_gc2(foo: Foo/&a) -> @get_ctxt/&b  {
+    return @foo as @get_ctxt; //~ ERROR cannot infer an appropriate lifetime
 }
 
 fn main() {

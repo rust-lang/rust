@@ -9,9 +9,9 @@
 // except according to those terms.
 
 mod traits {
-    pub trait Foo { fn f() -> int; }
+    pub trait Foo { fn f(&self) -> int; }
 
-    impl Foo for int { fn f() -> int { 10 } }
+    impl Foo for int { fn f(&self) -> int { 10 } }
 }
 
 trait Quux: traits::Foo { }

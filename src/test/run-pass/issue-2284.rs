@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait Send {
-    fn f();
+    fn f(&self);
 }
 
 fn f<T:Send>(t: T) {

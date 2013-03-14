@@ -8,20 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait repeat<A> { fn get() -> A; }
+trait repeat<A> { fn get(&self) -> A; }
 
 impl<A:Copy> repeat<A> for @A {
-    fn get() -> A { *self }
+    fn get(&self) -> A { **self }
 }
 
-fn repeater<A:Copy>(v: @A) -> repeat<A> {
+fn repeater<A:Copy>(v: @A) -> @repeat<A> {
     // Note: owned kind is not necessary as A appears in the trait type
-    @v as repeat::<A> // No
+    @v as @repeat<A> // No
 }
 
 fn main() {
     // Error results because the type of is inferred to be
-    // repeat<&blk/int> where blk is the lifetime of the block below.
+    // @repeat<&blk/int> where blk is the lifetime of the block below.
 
     let y = { //~ ERROR reference is not valid
         let x: &blk/int = &3;

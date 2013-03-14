@@ -75,7 +75,6 @@ pub enum lint {
     non_camel_case_types,
     type_limits,
     default_methods,
-    deprecated_self,
     deprecated_mutable_fields,
     deprecated_drop,
     foreign_mode,
@@ -244,13 +243,6 @@ pub fn get_lint_dict() -> LintDict {
             lint: default_methods,
             desc: "allow default methods",
             default: deny
-         }),
-
-        (@~"deprecated_self",
-         @LintSpec {
-            lint: deprecated_self,
-            desc: "warn about deprecated uses of `self`",
-            default: warn
          }),
 
         (@~"deprecated_mutable_fields",
@@ -497,7 +489,6 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_deprecated_modes(cx, i);
     check_item_type_limits(cx, i);
     check_item_default_methods(cx, i);
-    check_item_deprecated_self(cx, i);
     check_item_deprecated_mutable_fields(cx, i);
     check_item_deprecated_drop(cx, i);
 }
@@ -671,46 +662,6 @@ fn check_item_default_methods(cx: ty::ctxt, item: @ast::item) {
                             ~"default methods are experimental");
                     }
                 }
-            }
-        }
-        _ => {}
-    }
-}
-
-fn check_item_deprecated_self(cx: ty::ctxt, item: @ast::item) {
-    fn maybe_warn(cx: ty::ctxt,
-                  item: @ast::item,
-                  self_ty: ast::self_ty) {
-        match self_ty.node {
-            ast::sty_by_ref => {
-                cx.sess.span_lint(
-                    deprecated_self,
-                    item.id,
-                    item.id,
-                    self_ty.span,
-                    ~"this method form is deprecated; use an explicit `self` \
-                      parameter or mark the method as static");
-            }
-            _ => {}
-        }
-    }
-
-    match /*bad*/copy item.node {
-        ast::item_trait(_, _, methods) => {
-            for methods.each |method| {
-                match /*bad*/copy *method {
-                    ast::required(ty_method) => {
-                        maybe_warn(cx, item, ty_method.self_ty);
-                    }
-                    ast::provided(method) => {
-                        maybe_warn(cx, item, method.self_ty);
-                    }
-                }
-            }
-        }
-        ast::item_impl(_, _, _, methods) => {
-            for methods.each |method| {
-                maybe_warn(cx, item, method.self_ty);
             }
         }
         _ => {}

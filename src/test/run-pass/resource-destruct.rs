@@ -19,7 +19,7 @@ impl Drop for shrinky_pointer {
 }
 
 pub impl shrinky_pointer {
-  fn look_at() -> int { return **(self.i); }
+  fn look_at(&self) -> int { return **(self.i); }
 }
 
 fn shrinky_pointer(i: @@mut int) -> shrinky_pointer {

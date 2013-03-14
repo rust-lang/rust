@@ -42,7 +42,7 @@ use syntax::{ast, ast_util};
 use syntax::{attr, ast_map};
 use syntax::parse::token::special_idents;
 
-fn abi_info(arch: session::arch) -> cabi::ABIInfo {
+fn abi_info(arch: session::arch) -> @cabi::ABIInfo {
     return match arch {
         arch_x86_64 => x86_64_abi_info(),
         arch_arm => cabi_arm::abi_info(),
@@ -312,7 +312,7 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
         let lname = link_name(ccx, foreign_item);
         let llbasefn = base_fn(ccx, *lname, tys, cc);
         // Name the shim function
-        let shim_name = lname + ~"__c_stack_shim";
+        let shim_name = *lname + ~"__c_stack_shim";
         return build_shim_fn_(ccx, shim_name, llbasefn, tys, cc,
                            build_args, build_ret);
     }

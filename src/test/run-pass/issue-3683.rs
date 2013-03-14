@@ -11,14 +11,14 @@
 #[allow(default_methods)];
 
 trait Foo {
-    fn a() -> int;
-    fn b() -> int {
+    fn a(&self) -> int;
+    fn b(&self) -> int {
         self.a() + 2
     }
 }
 
 impl Foo for int {
-    fn a() -> int {
+    fn a(&self) -> int {
         3
     }
 }

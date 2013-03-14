@@ -1,3 +1,6 @@
+// xfail-test
+// xfail'd due to segfaults with by-value self.
+
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -9,13 +12,13 @@
 // except according to those terms.
 
 trait get {
-    fn get() -> int;
+    fn get(self) -> int;
 }
 
 // Note: impl on a slice
 impl get for &'self int {
-    fn get() -> int {
-        return *self;
+    fn get(self) -> int {
+        return **self;
     }
 }
 

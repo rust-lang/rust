@@ -78,7 +78,7 @@ use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
 use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
 use parse::obsolete::{ObsoleteAssertion, ObsoletePostFnTySigil};
 use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
-use parse::obsolete::{ObsoleteMode};
+use parse::obsolete::{ObsoleteMode, ObsoleteImplicitSelf};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -215,8 +215,8 @@ struct ParsedItemsAndViewItems {
 
 pub fn Parser(sess: @mut ParseSess,
               +cfg: ast::crate_cfg,
-              +rdr: reader) -> Parser {
-
+              +rdr: @reader)
+           -> Parser {
     let tok0 = copy rdr.next_token();
     let interner = rdr.interner();
 
@@ -254,7 +254,7 @@ pub struct Parser {
     tokens_consumed: @mut uint,
     restriction: @mut restriction,
     quote_depth: @mut uint, // not (yet) related to the quasiquoter
-    reader: reader,
+    reader: @reader,
     interner: @token::ident_interner,
     keywords: HashMap<~str, ()>,
     strict_keywords: HashMap<~str, ()>,
@@ -469,7 +469,11 @@ pub impl Parser {
                 either::Left(p.parse_arg_general(false))
             };
             // XXX: Wrong. Shouldn't allow both static and self_ty
-            let self_ty = if is_static { static_sty } else { self_ty };
+            let self_ty = if is_static || self_ty.node == sty_by_ref {
+                static_sty
+            } else {
+                self_ty
+            };
 
             let hi = p.last_span.hi;
             debug!("parse_trait_methods(): trait method signature ends in \
@@ -2979,7 +2983,11 @@ pub impl Parser {
             p.parse_arg()
         };
         // XXX: interaction between staticness, self_ty is broken now
-        let self_ty = if is_static { static_sty} else { self_ty };
+        let self_ty = if is_static || self_ty.node == sty_by_ref {
+            static_sty
+        } else {
+            self_ty
+        };
 
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
         let hi = body.span.hi;
@@ -3407,7 +3415,7 @@ pub impl Parser {
         let prefix = Path(self.sess.cm.span_to_filename(*self.span));
         let prefix = prefix.dir_path();
         let mod_path = Path(".").push_many(*self.mod_path_stack);
-        let default_path = self.sess.interner.get(id) + ~".rs";
+        let default_path = *self.sess.interner.get(id) + ~".rs";
         let file_path = match ::attr::first_attr_value_str_by_name(
             outer_attrs, ~"path") {
             Some(d) => {

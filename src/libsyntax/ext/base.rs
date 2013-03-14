@@ -36,7 +36,7 @@ pub struct MacroDef {
     ext: SyntaxExtension
 }
 
-pub type ItemDecorator = @fn(ext_ctxt,
+pub type ItemDecorator = @fn(@ext_ctxt,
                              span,
                              @ast::meta_item,
                              ~[@ast::item])
@@ -47,7 +47,7 @@ pub struct SyntaxExpanderTT {
     span: Option<span>
 }
 
-pub type SyntaxExpanderTTFun = @fn(ext_ctxt,
+pub type SyntaxExpanderTTFun = @fn(@ext_ctxt,
                                    span,
                                    &[ast::token_tree])
                                 -> MacResult;
@@ -57,7 +57,7 @@ pub struct SyntaxExpanderTTItem {
     span: Option<span>
 }
 
-pub type SyntaxExpanderTTItemFun = @fn(ext_ctxt,
+pub type SyntaxExpanderTTItemFun = @fn(@ext_ctxt,
                                        span,
                                        ast::ident,
                                        ~[ast::token_tree])
@@ -238,8 +238,8 @@ pub trait ext_ctxt {
     fn ident_of(@mut self, st: ~str) -> ast::ident;
 }
 
-pub fn mk_ctxt(parse_sess: @mut parse::ParseSess,
-               +cfg: ast::crate_cfg) -> ext_ctxt {
+pub fn mk_ctxt(parse_sess: @mut parse::ParseSess, +cfg: ast::crate_cfg)
+            -> @ext_ctxt {
     struct CtxtRepr {
         parse_sess: @mut parse::ParseSess,
         cfg: ast::crate_cfg,
@@ -333,7 +333,7 @@ pub fn mk_ctxt(parse_sess: @mut parse::ParseSess,
     ((imp) as @ext_ctxt)
 }
 
-pub fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, err_msg: ~str) -> ~str {
+pub fn expr_to_str(cx: @ext_ctxt, expr: @ast::expr, err_msg: ~str) -> ~str {
     match expr.node {
       ast::expr_lit(l) => match l.node {
         ast::lit_str(s) => copy *s,
@@ -343,7 +343,7 @@ pub fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, err_msg: ~str) -> ~str {
     }
 }
 
-pub fn expr_to_ident(cx: ext_ctxt,
+pub fn expr_to_ident(cx: @ext_ctxt,
                      expr: @ast::expr,
                      err_msg: ~str) -> ast::ident {
     match expr.node {
@@ -357,14 +357,14 @@ pub fn expr_to_ident(cx: ext_ctxt,
     }
 }
 
-pub fn check_zero_tts(cx: ext_ctxt, sp: span, tts: &[ast::token_tree],
+pub fn check_zero_tts(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree],
                       name: &str) {
     if tts.len() != 0 {
         cx.span_fatal(sp, fmt!("%s takes no arguments", name));
     }
 }
 
-pub fn get_single_str_from_tts(cx: ext_ctxt,
+pub fn get_single_str_from_tts(cx: @ext_ctxt,
                                sp: span,
                                tts: &[ast::token_tree],
                                name: &str) -> ~str {
@@ -379,7 +379,7 @@ pub fn get_single_str_from_tts(cx: ext_ctxt,
     }
 }
 
-pub fn get_exprs_from_tts(cx: ext_ctxt, tts: &[ast::token_tree])
+pub fn get_exprs_from_tts(cx: @ext_ctxt, tts: &[ast::token_tree])
                        -> ~[@ast::expr] {
     let p = parse::new_parser_from_tts(cx.parse_sess(),
                                        cx.cfg(),

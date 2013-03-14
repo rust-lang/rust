@@ -14,10 +14,10 @@
 type t1 = uint;
 
 trait foo {
-    fn foo();
+    fn foo(&self);
 }
 
 impl foo for ~str {
-    fn foo() {}
+    fn foo(&self) {}
 }
 

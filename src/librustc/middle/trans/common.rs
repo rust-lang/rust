@@ -677,28 +677,28 @@ pub fn block_parent(cx: block) -> block {
 
 // Accessors
 
-pub impl block {
-    pure fn ccx(&self) -> @CrateContext { *self.fcx.ccx }
-    pure fn tcx(&self) -> ty::ctxt { self.fcx.ccx.tcx }
-    pure fn sess(&self) -> Session { self.fcx.ccx.sess }
+pub impl block_ {
+    pure fn ccx(@mut self) -> @CrateContext { *self.fcx.ccx }
+    pure fn tcx(@mut self) -> ty::ctxt { self.fcx.ccx.tcx }
+    pure fn sess(@mut self) -> Session { self.fcx.ccx.sess }
 
-    fn node_id_to_str(&self, id: ast::node_id) -> ~str {
+    fn node_id_to_str(@mut self, id: ast::node_id) -> ~str {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
     }
 
-    fn expr_to_str(&self, e: @ast::expr) -> ~str {
+    fn expr_to_str(@mut self, e: @ast::expr) -> ~str {
         expr_repr(self.tcx(), e)
     }
 
-    fn expr_is_lval(&self, e: @ast::expr) -> bool {
+    fn expr_is_lval(@mut self, e: @ast::expr) -> bool {
         ty::expr_is_lval(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    fn expr_kind(&self, e: @ast::expr) -> ty::ExprKind {
+    fn expr_kind(@mut self, e: @ast::expr) -> ty::ExprKind {
         ty::expr_kind(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    fn def(&self, nid: ast::node_id) -> ast::def {
+    fn def(@mut self, nid: ast::node_id) -> ast::def {
         match self.tcx().def_map.find(&nid) {
             Some(v) => v,
             None => {
@@ -708,18 +708,18 @@ pub impl block {
         }
     }
 
-    fn val_str(&self, val: ValueRef) -> @str {
+    fn val_str(@mut self, val: ValueRef) -> @str {
         val_str(self.ccx().tn, val)
     }
 
-    fn llty_str(&self, llty: TypeRef) -> @str {
+    fn llty_str(@mut self, llty: TypeRef) -> @str {
         ty_str(self.ccx().tn, llty)
     }
 
-    fn ty_to_str(&self, t: ty::t) -> ~str {
+    fn ty_to_str(@mut self, t: ty::t) -> ~str {
         ty_to_str(self.tcx(), t)
     }
-    fn to_str(&self) -> ~str {
+    fn to_str(@mut self) -> ~str {
         match self.node_info {
           Some(node_info) => {
             fmt!("[block %d]", node_info.id)
@@ -1033,17 +1033,22 @@ pub fn T_captured_tydescs(cx: @CrateContext, n: uint) -> TypeRef {
     return T_struct(vec::from_elem::<TypeRef>(n, T_ptr(cx.tydesc_type)));
 }
 
-pub fn T_opaque_trait(cx: @CrateContext, vstore: ty::vstore) -> TypeRef {
-    match vstore {
-        ty::vstore_box => {
+pub fn T_opaque_trait(cx: @CrateContext, store: ty::TraitStore) -> TypeRef {
+    match store {
+        ty::BoxTraitStore => {
             T_struct(~[T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)])
         }
-        ty::vstore_uniq => {
+        ty::UniqTraitStore => {
             T_struct(~[T_ptr(cx.tydesc_type),
                        T_unique_ptr(T_unique(cx, T_i8())),
                        T_ptr(cx.tydesc_type)])
         }
-        _ => T_struct(~[T_ptr(cx.tydesc_type), T_ptr(T_i8())])
+        ty::RegionTraitStore(_) => {
+            T_struct(~[T_ptr(cx.tydesc_type), T_ptr(T_i8())])
+        }
+        ty::BareTraitStore => {
+            cx.sess.bug(~"can't make T_opaque_trait with bare trait store")
+        }
     }
 }
 

@@ -1265,6 +1265,7 @@ mod tests {
     use os::{remove_file, setenv};
     use os;
     use path::Path;
+    use rand::RngUtil;
     use rand;
     use run;
     use str;
@@ -1282,7 +1283,7 @@ mod tests {
     }
 
     fn make_rand_name() -> ~str {
-        let rng: rand::Rng = rand::Rng();
+        let rng: @rand::Rng = rand::Rng();
         let n = ~"TEST" + rng.gen_str(10u);
         fail_unless!(getenv(n).is_none());
         n

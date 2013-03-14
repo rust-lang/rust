@@ -227,6 +227,14 @@ impl Combine for Lub {
         super_vstores(self, vk, a, b)
     }
 
+    fn trait_stores(&self,
+                    vk: ty::terr_vstore_kind,
+                    a: ty::TraitStore,
+                    b: ty::TraitStore)
+                 -> cres<ty::TraitStore> {
+        super_trait_stores(self, vk, a, b)
+    }
+
     fn modes(&self, a: ast::mode, b: ast::mode) -> cres<ast::mode> {
         super_modes(self, a, b)
     }

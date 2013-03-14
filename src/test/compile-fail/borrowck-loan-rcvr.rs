@@ -11,18 +11,18 @@
 struct point { x: int, y: int }
 
 trait methods {
-    fn impurem();
-    fn blockm(f: &fn());
-    pure fn purem();
+    fn impurem(&self);
+    fn blockm(&self, f: &fn());
+    pure fn purem(&self);
 }
 
 impl methods for point {
-    fn impurem() {
+    fn impurem(&self) {
     }
 
-    fn blockm(f: &fn()) { f() }
+    fn blockm(&self, f: &fn()) { f() }
 
-    pure fn purem() {
+    pure fn purem(&self) {
     }
 }
 

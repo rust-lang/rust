@@ -12,11 +12,11 @@
 // methods. Not testing supertrait methods
 
 trait Foo {
-    fn f() -> int;
+    fn f(&self) -> int;
 }
 
 trait Bar : Foo {
-    fn g() -> int;
+    fn g(&self) -> int;
 }
 
 struct A {
@@ -24,11 +24,11 @@ struct A {
 }
 
 impl Foo for A {
-    fn f() -> int { 10 }
+    fn f(&self) -> int { 10 }
 }
 
 impl Bar for A {
-    fn g() -> int { 20 }
+    fn g(&self) -> int { 20 }
 }
 
 pub fn main() {

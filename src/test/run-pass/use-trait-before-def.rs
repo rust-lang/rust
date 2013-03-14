@@ -10,6 +10,6 @@
 
 // Issue #1761
 
-impl foo for int { fn foo() -> int { 10 } }
-trait foo { fn foo() -> int; }
+impl foo for int { fn foo(&self) -> int { 10 } }
+trait foo { fn foo(&self) -> int; }
 pub fn main() {}

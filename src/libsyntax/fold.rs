@@ -48,26 +48,26 @@ pub trait ast_fold {
 
 pub struct AstFoldFns {
     //unlike the others, item_ is non-trivial
-    fold_crate: @fn(&crate_, span, ast_fold) -> (crate_, span),
-    fold_view_item: @fn(view_item_, ast_fold) -> view_item_,
-    fold_foreign_item: @fn(@foreign_item, ast_fold) -> @foreign_item,
-    fold_item: @fn(@item, ast_fold) -> Option<@item>,
-    fold_struct_field: @fn(@struct_field, ast_fold) -> @struct_field,
-    fold_item_underscore: @fn(&item_, ast_fold) -> item_,
-    fold_method: @fn(@method, ast_fold) -> @method,
-    fold_block: @fn(&blk_, span, ast_fold) -> (blk_, span),
-    fold_stmt: @fn(&stmt_, span, ast_fold) -> (stmt_, span),
-    fold_arm: @fn(&arm, ast_fold) -> arm,
-    fold_pat: @fn(&pat_, span, ast_fold) -> (pat_, span),
-    fold_decl: @fn(&decl_, span, ast_fold) -> (decl_, span),
-    fold_expr: @fn(&expr_, span, ast_fold) -> (expr_, span),
-    fold_ty: @fn(&ty_, span, ast_fold) -> (ty_, span),
-    fold_mod: @fn(&_mod, ast_fold) -> _mod,
-    fold_foreign_mod: @fn(&foreign_mod, ast_fold) -> foreign_mod,
-    fold_variant: @fn(&variant_, span, ast_fold) -> (variant_, span),
-    fold_ident: @fn(ident, ast_fold) -> ident,
-    fold_path: @fn(@path, ast_fold) -> path,
-    fold_local: @fn(&local_, span, ast_fold) -> (local_, span),
+    fold_crate: @fn(&crate_, span, @ast_fold) -> (crate_, span),
+    fold_view_item: @fn(view_item_, @ast_fold) -> view_item_,
+    fold_foreign_item: @fn(@foreign_item, @ast_fold) -> @foreign_item,
+    fold_item: @fn(@item, @ast_fold) -> Option<@item>,
+    fold_struct_field: @fn(@struct_field, @ast_fold) -> @struct_field,
+    fold_item_underscore: @fn(&item_, @ast_fold) -> item_,
+    fold_method: @fn(@method, @ast_fold) -> @method,
+    fold_block: @fn(&blk_, span, @ast_fold) -> (blk_, span),
+    fold_stmt: @fn(&stmt_, span, @ast_fold) -> (stmt_, span),
+    fold_arm: @fn(&arm, @ast_fold) -> arm,
+    fold_pat: @fn(&pat_, span, @ast_fold) -> (pat_, span),
+    fold_decl: @fn(&decl_, span, @ast_fold) -> (decl_, span),
+    fold_expr: @fn(&expr_, span, @ast_fold) -> (expr_, span),
+    fold_ty: @fn(&ty_, span, @ast_fold) -> (ty_, span),
+    fold_mod: @fn(&_mod, @ast_fold) -> _mod,
+    fold_foreign_mod: @fn(&foreign_mod, @ast_fold) -> foreign_mod,
+    fold_variant: @fn(&variant_, span, @ast_fold) -> (variant_, span),
+    fold_ident: @fn(ident, @ast_fold) -> ident,
+    fold_path: @fn(@path, @ast_fold) -> path,
+    fold_local: @fn(&local_, span, @ast_fold) -> (local_, span),
     map_exprs: @fn(@fn(@expr) -> @expr, &[@expr]) -> ~[@expr],
     new_id: @fn(node_id) -> node_id,
     new_span: @fn(span) -> span
@@ -436,8 +436,8 @@ fn noop_fold_decl(d: &decl_, fld: @ast_fold) -> decl_ {
     }
 }
 
-pub fn wrap<T>(f: @fn(&T, ast_fold) -> T)
-            -> @fn(&T, span, ast_fold) -> (T, span) {
+pub fn wrap<T>(f: @fn(&T, @ast_fold) -> T)
+            -> @fn(&T, span, @ast_fold) -> (T, span) {
     let result: @fn(&T, span, @ast_fold) -> (T, span) = |x, s, fld| {
         (f(x, fld), s)
     };
@@ -879,13 +879,13 @@ impl ast_fold for AstFoldFns {
     }
 }
 
-pub impl ast_fold {
+pub impl @ast_fold {
     fn fold_attributes(&self, attrs: ~[attribute]) -> ~[attribute] {
         attrs.map(|x| fold_attribute_(*x, *self))
     }
 }
 
-pub fn make_fold(afp: ast_fold_fns) -> ast_fold {
+pub fn make_fold(afp: ast_fold_fns) -> @ast_fold {
     afp as @ast_fold
 }
 

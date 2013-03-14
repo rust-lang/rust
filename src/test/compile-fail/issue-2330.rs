@@ -11,12 +11,12 @@
 enum chan { }
 
 trait channel<T> {
-    fn send(v: T);
+    fn send(&self, v: T);
 }
 
 // `chan` is not a trait, it's an enum
 impl chan for int { //~ ERROR can only implement trait types
-    fn send(v: int) { fail!() }
+    fn send(&self, v: int) { fail!() }
 }
 
 fn main() {

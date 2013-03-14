@@ -23,7 +23,7 @@ use super::rt::rust_task;
 pub trait LocalData { }
 impl<T:Durable> LocalData for @T { }
 
-impl Eq for LocalData {
+impl Eq for @LocalData {
     pure fn eq(&self, other: &@LocalData) -> bool {
         unsafe {
             let ptr_a: (uint, uint) = cast::reinterpret_cast(&(*self));
@@ -36,7 +36,7 @@ impl Eq for LocalData {
 
 // If TLS is used heavily in future, this could be made more efficient with a
 // proper map.
-type TaskLocalElement = (*libc::c_void, *libc::c_void, LocalData);
+type TaskLocalElement = (*libc::c_void, *libc::c_void, @LocalData);
 // Has to be a pointer at outermost layer; the foreign call returns void *.
 type TaskLocalMap = @mut ~[Option<TaskLocalElement>];
 

@@ -1135,7 +1135,7 @@ can sometimes make code awkward and parenthesis-filled.
 ~~~
 # struct Point { x: float, y: float }
 # enum Shape { Rectangle(Point, Point) }
-# impl Shape { fn area() -> int { 0 } }
+# impl Shape { fn area(&self) -> int { 0 } }
 let start = @Point { x: 10f, y: 20f };
 let end = ~Point { x: (*start).x + 100f, y: (*start).y + 100f };
 let rect = &Rectangle(*start, *end);
@@ -1149,7 +1149,7 @@ dot), so in most cases, explicitly dereferencing the receiver is not necessary.
 ~~~
 # struct Point { x: float, y: float }
 # enum Shape { Rectangle(Point, Point) }
-# impl Shape { fn area() -> int { 0 } }
+# impl Shape { fn area(&self) -> int { 0 } }
 let start = @Point { x: 10f, y: 20f };
 let end = ~Point { x: start.x + 100f, y: start.y + 100f };
 let rect = &Rectangle(*start, *end);

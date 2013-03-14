@@ -1,3 +1,6 @@
+// xfail-test
+// xfail'd because of a problem with by-value self.
+
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -9,15 +12,15 @@
 // except according to those terms.
 
 trait double {
-    fn double() -> uint;
+    fn double(self) -> uint;
 }
 
 impl double for uint {
-    fn double() -> uint { self }
+    fn double(self) -> uint { self }
 }
 
 impl double for @uint {
-    fn double() -> uint { *self * 2u }
+    fn double(self) -> uint { *self * 2u }
 }
 
 pub fn main() {

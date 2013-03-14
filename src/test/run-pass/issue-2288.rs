@@ -9,14 +9,14 @@
 // except according to those terms.
 
 trait clam<A:Copy> {
-  fn chowder(y: A);
+  fn chowder(&self, y: A);
 }
 struct foo<A> {
   x: A,
 }
 
 impl<A:Copy> clam<A> for foo<A> {
-  fn chowder(y: A) {
+  fn chowder(&self, y: A) {
   }
 }
 
@@ -26,13 +26,13 @@ fn foo<A:Copy>(b: A) -> foo<A> {
     }
 }
 
-fn f<A:Copy>(x: clam<A>, a: A) {
+fn f<A:Copy>(x: @clam<A>, a: A) {
   x.chowder(a);
 }
 
 pub fn main() {
 
   let c = foo(42);
-  let d: clam<int> = @c as clam::<int>;
+  let d: @clam<int> = @c as @clam<int>;
   f(d, c.x);
 }

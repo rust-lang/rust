@@ -13,8 +13,8 @@ struct cat {
 }
 
 priv impl cat {
-    fn sleep() { loop{} }
-    fn meow() {
+    fn sleep(&self) { loop{} }
+    fn meow(&self) {
       error!("Meow");
       meows += 1u; //~ ERROR unresolved name
       sleep();     //~ ERROR unresolved name

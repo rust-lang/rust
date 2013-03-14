@@ -11,11 +11,11 @@
 extern mod std;
 
 trait methods {
-    fn to_bytes() -> ~[u8];
+    fn to_bytes(&self) -> ~[u8];
 }
 
 impl methods for () {
-    fn to_bytes() -> ~[u8] {
+    fn to_bytes(&self) -> ~[u8] {
         vec::from_elem(0, 0)
     }
 }

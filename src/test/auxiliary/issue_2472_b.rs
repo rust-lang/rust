@@ -12,13 +12,13 @@
 pub struct S(());
 
 pub impl S {
-    fn foo() { }
+    fn foo(&self) { }
 }
 
 pub trait T {
-    fn bar();
+    fn bar(&self);
 }
 
 impl T for S {
-    fn bar() { }
+    fn bar(&self) { }
 }

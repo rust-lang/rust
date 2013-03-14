@@ -13,20 +13,20 @@
 // it.
 
 trait iterable<A> {
-    fn iterate(blk: &fn(x: &A) -> bool);
+    fn iterate(&self, blk: &fn(x: &A) -> bool);
 }
 
 impl<A> iterable<A> for &self/[A] {
-    fn iterate(f: &fn(x: &A) -> bool) {
-        for vec::each(self) |e| {
+    fn iterate(&self, f: &fn(x: &A) -> bool) {
+        for vec::each(*self) |e| {
             if !f(e) { break; }
         }
     }
 }
 
 impl<A> iterable<A> for ~[A] {
-    fn iterate(f: &fn(x: &A) -> bool) {
-        for vec::each(self) |e| {
+    fn iterate(&self, f: &fn(x: &A) -> bool) {
+        for vec::each(*self) |e| {
             if !f(e) { break; }
         }
     }

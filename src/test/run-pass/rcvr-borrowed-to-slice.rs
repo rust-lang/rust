@@ -9,12 +9,12 @@
 // except according to those terms.
 
 trait sum {
-    fn sum() -> int;
+    fn sum(self) -> int;
 }
 
 // Note: impl on a slice
 impl sum for &'self [int] {
-    fn sum() -> int {
+    fn sum(self) -> int {
         let mut sum = 0;
         for vec::each(self) |e| { sum += *e; }
         return sum;

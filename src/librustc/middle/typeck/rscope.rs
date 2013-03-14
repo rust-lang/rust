@@ -125,7 +125,8 @@ pub struct binding_rscope {
 
 pub fn in_binding_rscope<RS:region_scope + Copy + Durable>(self: &RS)
     -> binding_rscope {
-    let base = @(copy *self) as @region_scope;
+    let base = @copy *self;
+    let base = base as @region_scope;
     binding_rscope { base: base, anon_bindings: @mut 0 }
 }
 impl region_scope for binding_rscope {

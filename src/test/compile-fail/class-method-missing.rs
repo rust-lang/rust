@@ -10,7 +10,7 @@
 
 // error-pattern:missing method `eat`
 trait animal {
-  fn eat();
+  fn eat(&self);
 }
 
 struct cat {

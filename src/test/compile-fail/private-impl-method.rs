@@ -14,7 +14,7 @@ mod a {
     }
 
     pub impl Foo {
-        priv fn foo() {}
+        priv fn foo(&self) {}
     }
 }
 

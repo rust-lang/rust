@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait bar<T> {
-    fn get_bar() -> T;
+    fn get_bar(&self) -> T;
 }
 
 fn foo<T, U: bar<T>>(b: U) -> T {
@@ -21,7 +21,7 @@ struct cbar {
 }
 
 impl bar<int> for cbar {
-    fn get_bar() -> int {
+    fn get_bar(&self) -> int {
         self.x
     }
 }

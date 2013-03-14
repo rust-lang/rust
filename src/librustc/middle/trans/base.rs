@@ -802,13 +802,36 @@ pub fn trans_external_path(ccx: @CrateContext, did: ast::def_id, t: ty::t)
 pub fn invoke(bcx: block, llfn: ValueRef, +llargs: ~[ValueRef]) -> block {
     let _icx = bcx.insn_ctxt("invoke_");
     if bcx.unreachable { return bcx; }
+
+    match bcx.node_info {
+        None => error!("invoke at ???"),
+        Some(node_info) => {
+            error!("invoke at %s",
+                   bcx.sess().codemap.span_to_str(node_info.span));
+        }
+    }
+
     if need_invoke(bcx) {
-        debug!("invoking");
+        unsafe {
+            debug!("invoking %x at %x",
+                   ::core::cast::transmute(llfn),
+                   ::core::cast::transmute(bcx.llbb));
+            for llargs.each |&llarg| {
+                debug!("arg: %x", ::core::cast::transmute(llarg));
+            }
+        }
         let normal_bcx = sub_block(bcx, ~"normal return");
         Invoke(bcx, llfn, llargs, normal_bcx.llbb, get_landing_pad(bcx));
         return normal_bcx;
     } else {
-        debug!("calling");
+        unsafe {
+            debug!("calling %x at %x",
+                   ::core::cast::transmute(llfn),
+                   ::core::cast::transmute(bcx.llbb));
+            for llargs.each |&llarg| {
+                debug!("arg: %x", ::core::cast::transmute(llarg));
+            }
+        }
         Call(bcx, llfn, llargs);
         return bcx;
     }

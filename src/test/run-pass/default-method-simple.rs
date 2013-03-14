@@ -11,11 +11,11 @@
 #[allow(default_methods)];
 
 trait Foo {
-    fn f() {
+    fn f(&self) {
         io::println("Hello!");
         self.g();
     }
-    fn g();
+    fn g(&self);
 }
 
 struct A {
@@ -23,7 +23,7 @@ struct A {
 }
 
 impl Foo for A {
-    fn g() {
+    fn g(&self) {
         io::println("Goodbye!");
     }
 }

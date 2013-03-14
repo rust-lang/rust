@@ -4290,8 +4290,41 @@ pub impl Resolver {
                     }
                 }
 
-                pat_ident(_, path, _) | pat_enum(path, _) => {
-                    // These two must be enum variants or structs.
+                pat_ident(binding_mode, path, _) => {
+                    // This must be an enum variant, struct, or constant.
+                    match self.resolve_path(path, ValueNS, false, visitor) {
+                        Some(def @ def_variant(*)) |
+                                Some(def @ def_struct(*)) => {
+                            self.record_def(pattern.id, def);
+                        }
+                        Some(def @ def_const(*)) => {
+                            self.enforce_default_binding_mode(
+                                pattern,
+                                binding_mode,
+                                "a constant");
+                            self.record_def(pattern.id, def);
+                        }
+                        Some(_) => {
+                            self.session.span_err(
+                                path.span,
+                                fmt!("not an enum variant or constant: %s",
+                                     *self.session.str_of(
+                                         *path.idents.last())));
+                        }
+                        None => {
+                            self.session.span_err(path.span,
+                                                  ~"unresolved enum variant");
+                        }
+                    }
+
+                    // Check the types in the path pattern.
+                    for path.types.each |ty| {
+                        self.resolve_type(*ty, visitor);
+                    }
+                }
+
+                pat_enum(path, _) => {
+                    // This must be an enum variant or struct.
                     match self.resolve_path(path, ValueNS, false, visitor) {
                         Some(def @ def_variant(*)) |
                                 Some(def @ def_struct(*)) => {
@@ -4300,13 +4333,14 @@ pub impl Resolver {
                         Some(_) => {
                             self.session.span_err(
                                 path.span,
-                                fmt!("not an enum variant: %s",
+                                fmt!("not an enum variant or struct: %s",
                                      *self.session.str_of(
                                          *path.idents.last())));
                         }
                         None => {
                             self.session.span_err(path.span,
-                                                  ~"unresolved enum variant");
+                                                  ~"unresolved enum variant \
+                                                    or struct");
                         }
                     }
 

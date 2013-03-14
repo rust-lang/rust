@@ -14,7 +14,7 @@ struct foo<A> {
 }
 
 pub impl<A:Copy> foo<A> {
-   fn bar<B,C:clam<A>>(c: C) -> B {
+   fn bar<B,C:clam<A>>(&self, c: C) -> B {
      fail!();
    }
 }
