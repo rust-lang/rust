@@ -33,7 +33,7 @@ are represented as `ty_param()` instances.
 use core::prelude::*;
 
 use metadata::csearch;
-use middle::ty::InstantiatedTraitRef;
+use middle::ty::{InstantiatedTraitRef, arg};
 use middle::ty::{substs, ty_param_bounds_and_ty, ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::astconv::{AstConv, ty_of_arg};
@@ -48,6 +48,7 @@ use util::common::{indenter, pluralize};
 use util::ppaux;
 
 use core::vec;
+use syntax::abi::AbiSet;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
 use syntax::ast;
 use syntax::ast_map;
@@ -707,7 +708,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
                 ccx,
                 &type_rscope(region_parameterization),
                 ast::impure_fn,
-                ast::RustAbi,
+                AbiSet::Rust(),
                 &opt_vec::Empty,
                 &ast_util::dtor_dec()));
         write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
@@ -776,7 +777,7 @@ pub fn ty_of_method(ccx: &CrateCtxt,
         fty: astconv::ty_of_bare_fn(ccx,
                                     &rscope,
                                     m.purity,
-                                    ast::RustAbi,
+                                    AbiSet::Rust(),
                                     &method_generics.lifetimes,
                                     &m.decl),
         self_ty: m.self_ty.node,
@@ -798,7 +799,7 @@ pub fn ty_of_ty_method(self: &CrateCtxt,
         fty: astconv::ty_of_bare_fn(self,
                                     &rscope,
                                     m.purity,
-                                    ast::RustAbi,
+                                    AbiSet::Rust(),
                                     &m.generics.lifetimes,
                                     &m.decl),
         // assume public, because this is only invoked on trait methods
@@ -859,12 +860,12 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }
-      ast::item_fn(ref decl, purity, ref generics, _) => {
+      ast::item_fn(ref decl, purity, abi, ref generics, _) => {
         let bounds = ty_param_bounds(ccx, generics);
         let tofd = astconv::ty_of_bare_fn(ccx,
                                           &empty_rscope,
                                           purity,
-                                          ast::RustAbi,
+                                          AbiSet::Rust(),
                                           &generics.lifetimes,
                                           decl);
         let tpt = ty_param_bounds_and_ty {
@@ -1040,7 +1041,7 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
     let t_fn = ty::mk_bare_fn(
         ccx.tcx,
         ty::BareFnTy {
-            abi: ast::RustAbi,
+            abis: AbiSet::Rust(),
             purity: ast::unsafe_fn,
             sig: ty::FnSig {bound_lifetime_names: opt_vec::Empty,
                             inputs: input_tys,

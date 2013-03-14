@@ -293,7 +293,7 @@ fn check_main_fn_ty(ccx: @mut CrateCtxt,
             match tcx.items.find(&main_id) {
                 Some(&ast_map::node_item(it,_)) => {
                     match it.node {
-                        ast::item_fn(_, _, ref ps, _)
+                        ast::item_fn(_, _, _, ref ps, _)
                         if ps.is_parameterized() => {
                             tcx.sess.span_err(
                                 main_span,

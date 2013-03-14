@@ -118,7 +118,8 @@ use core::result;
 use core::str;
 use core::vec;
 use std::list::Nil;
-use syntax::ast::{provided, required};
+use syntax::abi::AbiSet;
+use syntax::ast::{provided, required, ty_i};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::local_def;
@@ -567,7 +568,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
                             enum_definition.variants,
                             it.id);
       }
-      ast::item_fn(ref decl, _, _, ref body) => {
+      ast::item_fn(ref decl, _, _, _, ref body) => {
         check_bare_fn(ccx, decl, body, it.id, None);
       }
       ast::item_impl(ref generics, _, ty, ref ms) => {
@@ -603,8 +604,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
         check_bounds_are_used(ccx, t.span, &generics.ty_params, tpt_ty);
       }
       ast::item_foreign_mod(ref m) => {
-        if syntax::attr::foreign_abi(it.attrs) ==
-            either::Right(ast::foreign_abi_rust_intrinsic) {
+        if m.abis.is_intrinsic() {
             for m.items.each |item| {
                 check_intrinsic_type(ccx, *item);
             }
@@ -1144,6 +1144,19 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                fcx.infcx().ty_to_str(in_fty));
 
         let formal_tys;
+
+        // FIXME(#3678) For now, do not permit calls to C abi functions.
+        match structure_of(fcx, sp, in_fty) {
+            ty::ty_bare_fn(ty::BareFnTy {abis, _}) => {
+                if !abis.is_rust() {
+                    tcx.sess.span_err(
+                        sp,
+                        fmt!("Calls to C ABI functions are not (yet) \
+                              supported; be patient, dear user"));
+                }
+            }
+            _ => {}
+        }
 
         // This is subtle: we expect `fty` to be a function type, which
         // normally introduce a level of binding.  In this case, we want to
@@ -3672,7 +3685,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
     };
     let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
         purity: ast::unsafe_fn,
-        abi: ast::RustAbi,
+        abis: AbiSet::Rust(),
         sig: FnSig {bound_lifetime_names: opt_vec::Empty,
                     inputs: inputs,
                     output: output}

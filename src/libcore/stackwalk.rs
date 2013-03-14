@@ -94,7 +94,7 @@ pub mod rustrt {
 
 pub mod rusti {
     #[abi = "rust-intrinsic"]
-    pub extern {
+    pub extern "rust-intrinsic" {
         pub fn frame_address(f: &once fn(x: *u8));
     }
 }

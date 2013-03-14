@@ -64,6 +64,7 @@ use middle::typeck::rscope::RegionParamNames;
 
 use core::result;
 use core::vec;
+use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
 use syntax::codemap::span;
 use syntax::opt_vec::OptVec;
@@ -348,7 +349,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
       }
       ast::ty_bare_fn(ref bf) => {
           ty::mk_bare_fn(tcx, ty_of_bare_fn(self, rscope, bf.purity,
-                                            bf.abi, &bf.lifetimes, &bf.decl))
+                                            bf.abis, &bf.lifetimes, &bf.decl))
       }
       ast::ty_closure(ref f) => {
           let fn_decl = ty_of_closure(self,
@@ -543,7 +544,7 @@ pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
     self: &AC,
     rscope: &RS,
     purity: ast::purity,
-    abi: ast::Abi,
+    abi: AbiSet,
     lifetimes: &OptVec<ast::Lifetime>,
     decl: &ast::fn_decl) -> ty::BareFnTy
 {
@@ -562,7 +563,7 @@ pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
 
     ty::BareFnTy {
         purity: purity,
-        abi: abi,
+        abis: abi,
         sig: ty::FnSig {bound_lifetime_names: bound_lifetime_names,
                         inputs: input_tys,
                         output: output_ty}

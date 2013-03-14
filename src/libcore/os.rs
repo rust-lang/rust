@@ -942,7 +942,7 @@ pub fn errno() -> uint {
 
     #[link_name = "kernel32"]
     #[abi = "stdcall"]
-    extern {
+    extern "stdcall" {
         unsafe fn GetLastError() -> DWORD;
     }
 
@@ -1004,7 +1004,7 @@ pub fn last_os_error() -> ~str {
 
         #[link_name = "kernel32"]
         #[abi = "stdcall"]
-        extern {
+        extern "stdcall" {
             unsafe fn FormatMessageA(flags: DWORD, lpSrc: LPVOID,
                                      msgId: DWORD, langId: DWORD,
                                      buf: LPSTR, nsize: DWORD,
@@ -1118,7 +1118,7 @@ type LPCWSTR = *u16;
 #[cfg(windows)]
 #[link_name="kernel32"]
 #[abi="stdcall"]
-extern {
+extern "stdcall" {
     fn GetCommandLineW() -> LPCWSTR;
     fn LocalFree(ptr: *c_void);
 }
@@ -1126,7 +1126,7 @@ extern {
 #[cfg(windows)]
 #[link_name="shell32"]
 #[abi="stdcall"]
-extern {
+extern "stdcall" {
     fn CommandLineToArgvW(lpCmdLine: LPCWSTR, pNumArgs: *mut c_int) -> **u16;
 }
 

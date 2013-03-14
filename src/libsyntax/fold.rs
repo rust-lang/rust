@@ -236,10 +236,11 @@ fn noop_fold_struct_field(sf: @struct_field, fld: @ast_fold)
 pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
     match *i {
         item_const(t, e) => item_const(fld.fold_ty(t), fld.fold_expr(e)),
-        item_fn(ref decl, purity, ref generics, ref body) => {
+        item_fn(ref decl, purity, abi, ref generics, ref body) => {
             item_fn(
                 fold_fn_decl(decl, fld),
                 purity,
+                abi,
                 fold_generics(generics, fld),
                 fld.fold_block(body)
             )
@@ -612,7 +613,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
             ty_bare_fn(@TyBareFn {
                 lifetimes: f.lifetimes,
                 purity: f.purity,
-                abi: f.abi,
+                abis: f.abis,
                 decl: fold_fn_decl(&f.decl, fld)
             })
         }
@@ -639,7 +640,7 @@ pub fn noop_fold_mod(m: &_mod, fld: @ast_fold) -> _mod {
 fn noop_fold_foreign_mod(nm: &foreign_mod, fld: @ast_fold) -> foreign_mod {
     ast::foreign_mod {
         sort: nm.sort,
-        abi: nm.abi,
+        abis: nm.abis,
         view_items: vec::map(nm.view_items, |x| fld.fold_view_item(*x)),
         items: vec::map(nm.items, |x| fld.fold_foreign_item(*x)),
     }

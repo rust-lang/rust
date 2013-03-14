@@ -15,8 +15,8 @@ extern mod std;
 use std::cmp::FuzzyEq;
 
 mod rusti {
-    #[abi = "rust-intrinsic"]  
-    pub extern {
+    #[abi = "rust-intrinsic"]
+    pub extern "rust-intrinsic" {
         fn sqrtf32(x: f32) -> f32;
         fn sqrtf64(x: f64) -> f64;
         fn powif32(a: f32, x: i32) -> f32;
