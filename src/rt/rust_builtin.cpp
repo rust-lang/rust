@@ -321,7 +321,7 @@ get_time(int64_t *sec, int32_t *nsec) {
     ul.HighPart = fileTime.dwHighDateTime;
     uint64_t ns_since_1601 = ul.QuadPart / 10;
 
-    const uint64_t NANOSECONDS_FROM_1601_TO_1970 = 11644473600000000u;
+    const uint64_t NANOSECONDS_FROM_1601_TO_1970 = 11644473600000000ull;
     uint64_t ns_since_1970 = ns_since_1601 - NANOSECONDS_FROM_1601_TO_1970;
     *sec = ns_since_1970 / 1000000;
     *nsec = (ns_since_1970 % 1000000) * 1000;
