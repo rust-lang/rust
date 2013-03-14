@@ -46,7 +46,7 @@
  *   type foo/& = ...;
  *   type bar = fn(&foo, &a.foo)
  * The fully expanded version of type bar is:
- *   type bar = fn(&foo/&, &a.foo/&a)
+ *   type bar = fn(&'foo &, &a.foo/&a)
  * Note that the self region for the `foo` defaulted to `&` in the first
  * case but `&a` in the second.  Basically, defaults that appear inside
  * an rptr (`&r.T`) use the region `r` that appears in the rptr.

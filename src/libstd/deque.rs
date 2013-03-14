@@ -49,17 +49,17 @@ pub impl<T> Deque<T> {
     /// Return a reference to the first element in the deque
     ///
     /// Fails if the deque is empty
-    fn peek_front(&self) -> &self/T { get(self.elts, self.lo) }
+    fn peek_front(&self) -> &'self T { get(self.elts, self.lo) }
 
     /// Return a reference to the last element in the deque
     ///
     /// Fails if the deque is empty
-    fn peek_back(&self) -> &self/T { get(self.elts, self.hi - 1u) }
+    fn peek_back(&self) -> &'self T { get(self.elts, self.hi - 1u) }
 
     /// Retrieve an element in the deque by index
     ///
     /// Fails if there is no element with the given index
-    fn get(&self, i: int) -> &self/T {
+    fn get(&self, i: int) -> &'self T {
         let idx = (self.lo + (i as uint)) % self.elts.len();
         get(self.elts, idx)
     }
@@ -130,7 +130,7 @@ fn grow<T>(nelts: uint, lo: uint, elts: &mut [Option<T>]) -> ~[Option<T>] {
     rv
 }
 
-fn get<T>(elts: &r/[Option<T>], i: uint) -> &r/T {
+fn get<T>(elts: &'r [Option<T>], i: uint) -> &'r T {
     match elts[i] { Some(ref t) => t, _ => fail!() }
 }
 

@@ -15,7 +15,7 @@ fn foo(cond: bool) {
     let mut x; //~ ERROR foo
 
     if cond {
-        x = &blk/[1,2,3];
+        x = &'blk [1,2,3];
     }
 }
 

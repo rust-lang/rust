@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn vec_peek<T>(v: &r/[T]) -> &r/[T] {
+fn vec_peek<T>(v: &'r [T]) -> &'r [T] {
 // This doesn't work, and should.
 //    v.slice(1, 5)
     vec::slice(v, 1, 5)

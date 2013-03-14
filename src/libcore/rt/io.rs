@@ -22,7 +22,7 @@ pub trait EventLoop {
     fn run(&mut self);
     fn callback(&mut self, ~fn());
     /// The asynchronous I/O services. Not all event loops may provide one
-    fn io(&mut self) -> Option<&self/mut IoFactoryObject>;
+    fn io(&mut self) -> Option<&'self mut IoFactoryObject>;
 }
 
 pub trait IoFactory {

@@ -15,7 +15,7 @@ struct Foo {
 }
 
 pub impl Foo<'self> {
-    fn get_s(&self) -> &self/str {
+    fn get_s(&self) -> &'self str {
         self.s
     }
 }

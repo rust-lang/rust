@@ -22,9 +22,9 @@ pub struct SmallIntMap<T> {
     priv v: ~[Option<T>],
 }
 
-impl<V> BaseIter<(uint, &self/V)> for SmallIntMap<V> {
+impl<V> BaseIter<(uint, &'self V)> for SmallIntMap<V> {
     /// Visit all key-value pairs in order
-    pure fn each(&self, it: &fn(&(uint, &self/V)) -> bool) {
+    pure fn each(&self, it: &fn(&(uint, &'self V)) -> bool) {
         for uint::range(0, self.v.len()) |i| {
             match self.v[i] {
               Some(ref elt) => if !it(&(i, elt)) { break },
@@ -36,9 +36,9 @@ impl<V> BaseIter<(uint, &self/V)> for SmallIntMap<V> {
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
-impl<V> ReverseIter<(uint, &self/V)> for SmallIntMap<V> {
+impl<V> ReverseIter<(uint, &'self V)> for SmallIntMap<V> {
     /// Visit all key-value pairs in reverse order
-    pure fn each_reverse(&self, it: &fn(&(uint, &self/V)) -> bool) {
+    pure fn each_reverse(&self, it: &fn(&(uint, &'self V)) -> bool) {
         for uint::range_rev(self.v.len(), 0) |i| {
             match self.v[i - 1] {
               Some(ref elt) => if !it(&(i - 1, elt)) { break },
@@ -96,7 +96,7 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
     }
 
     /// Iterate over the map and mutate the contained values
-    pure fn find(&self, key: &uint) -> Option<&self/V> {
+    pure fn find(&self, key: &uint) -> Option<&'self V> {
         if *key < self.v.len() {
             match self.v[*key] {
               Some(ref value) => Some(value),
@@ -136,7 +136,7 @@ pub impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap
     static pure fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
 
-    pure fn get(&self, key: &uint) -> &self/V {
+    pure fn get(&self, key: &uint) -> &'self V {
         self.find(key).expect("key not present")
     }
 }

@@ -520,7 +520,7 @@ pub fn get_base_and_len(bcx: block,
 
 pub type val_and_ty_fn = @fn(block, ValueRef, ty::t) -> Result;
 
-pub type iter_vec_block = &self/fn(block, ValueRef, ty::t) -> block;
+pub type iter_vec_block = &'self fn(block, ValueRef, ty::t) -> block;
 
 pub fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
                     fill: ValueRef, f: iter_vec_block) -> block {

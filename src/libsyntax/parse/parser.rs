@@ -708,7 +708,7 @@ pub impl Parser {
     }
 
     fn parse_borrowed_pointee(&self) -> ty_ {
-        // look for `&'lt` or `&foo/` and interpret `foo` as the region name:
+        // look for `&'lt` or `&'foo ` and interpret `foo` as the region name:
         let opt_lifetime = self.parse_opt_lifetime();
 
         if self.token_is_closure_keyword(&copy *self.token) {

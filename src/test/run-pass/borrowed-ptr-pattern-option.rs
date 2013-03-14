@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn select(x: &r/Option<int>, y: &r/Option<int>) -> &r/Option<int> {
+fn select(x: &'r Option<int>, y: &'r Option<int>) -> &'r Option<int> {
     match (x, y) {
         (&None, &None) => x,
         (&Some(_), _) => x,

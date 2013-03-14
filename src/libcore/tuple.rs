@@ -47,19 +47,19 @@ impl<T:Copy,U:Copy> CopyableTuple<T, U> for (T, U) {
 }
 
 pub trait ImmutableTuple<T, U> {
-    pure fn first_ref(&self) -> &self/T;
-    pure fn second_ref(&self) -> &self/U;
+    pure fn first_ref(&self) -> &'self T;
+    pure fn second_ref(&self) -> &'self U;
 }
 
 impl<T, U> ImmutableTuple<T, U> for (T, U) {
     #[inline(always)]
-    pure fn first_ref(&self) -> &self/T {
+    pure fn first_ref(&self) -> &'self T {
         match *self {
             (ref t, _) => t,
         }
     }
     #[inline(always)]
-    pure fn second_ref(&self) -> &self/U {
+    pure fn second_ref(&self) -> &'self U {
         match *self {
             (_, ref u) => u,
         }
@@ -71,7 +71,7 @@ pub trait ExtendedTupleOps<A,B> {
     fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C];
 }
 
-impl<A:Copy,B:Copy> ExtendedTupleOps<A,B> for (&self/[A], &self/[B]) {
+impl<A:Copy,B:Copy> ExtendedTupleOps<A,B> for (&'self [A], &'self [B]) {
     #[inline(always)]
     fn zip(&self) -> ~[(A, B)] {
         match *self {

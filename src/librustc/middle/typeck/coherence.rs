@@ -550,8 +550,8 @@ pub impl CoherenceChecker {
     }
 
     fn can_unify_universally_quantified(&self,
-                                        a: &a/UniversalQuantificationResult,
-                                        b: &a/UniversalQuantificationResult)
+                                        a: &'a UniversalQuantificationResult,
+                                        b: &'a UniversalQuantificationResult)
                                      -> bool {
         let mut might_unify = true;
         let _ = do self.inference_context.probe {

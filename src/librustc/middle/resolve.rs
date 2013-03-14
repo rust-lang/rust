@@ -212,7 +212,7 @@ pub impl<T> ResolveResult<T> {
 
 pub enum TypeParameters/& {
     NoTypeParameters,                  //< No type parameters.
-    HasTypeParameters(&self/Generics,  //< Type parameters.
+    HasTypeParameters(&'self Generics,  //< Type parameters.
                       node_id,         //< ID of the enclosing item
 
                       // The index to start numbering the type parameters at.

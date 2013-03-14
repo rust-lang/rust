@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn borrow<T>(x: &r/T) -> &r/T {x}
+fn borrow<T>(x: &'r T) -> &'r T {x}
 
 struct Rec { f: @int }
 

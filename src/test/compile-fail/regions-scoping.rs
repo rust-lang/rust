@@ -17,7 +17,7 @@ fn nested<'x>(x: &'x int) {  // (1)
          z: &fn<'z>(x: &'x int, // Refers to `x` at (1)
                     y: &'y int, // Refers to `y` at (2)
                     z: &'z int) -> &'z int| // A fresh region `z` (3)
-                 -> &x/int {
+                 -> &'x int {
             if false { return z(x, y, x); }
 
             if false { return z(x, y, y); }
@@ -40,9 +40,9 @@ fn nested<'x>(x: &'x int) {  // (1)
         // anymore but rather borrowck. Therefore, it doesn't end up
         // getting printed out since compilation fails after typeck.
         //
-        // let f: &x/int = foo(&z, &z, |_x, _y, z| z ); // ERROR mismatched types: expected `&x/int` but found
+        // let f: &'x int = foo(&z, &z, |_x, _y, z| z ); // ERROR mismatched types: expected `&'x int` but found
 
-        foo(x, &z, |x, _y, _z| x); //~ ERROR mismatched types: expected `&z/int` but found `&x/int`
+        foo(x, &z, |x, _y, _z| x); //~ ERROR mismatched types: expected `&'z int` but found `&'x int`
 
         // Note: originally I had foo(x, &z, ...) here, but in that
         // case the region inferencer deduced that this was valid if
