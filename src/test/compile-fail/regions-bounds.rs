@@ -16,11 +16,11 @@ struct an_enum(&'self int);
 struct a_class { x:&'self int }
 
 fn a_fn1(e: an_enum<'a>) -> an_enum<'b> {
-    return e; //~ ERROR mismatched types: expected `an_enum/&b` but found `an_enum/&a`
+    return e; //~ ERROR mismatched types: expected `an_enum/&'b ` but found `an_enum/&'a `
 }
 
 fn a_fn3(e: a_class<'a>) -> a_class<'b> {
-    return e; //~ ERROR mismatched types: expected `a_class/&b` but found `a_class/&a`
+    return e; //~ ERROR mismatched types: expected `a_class/&'b ` but found `a_class/&'a `
 }
 
 fn a_fn4(e: int<'a>) -> int<'b> {

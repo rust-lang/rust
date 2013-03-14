@@ -163,8 +163,8 @@ pub impl Sem<~[Waitqueue]> {
 
 // FIXME(#3588) should go inside of access()
 #[doc(hidden)]
-type SemRelease = SemReleaseGeneric/&self<()>;
-type SemAndSignalRelease = SemReleaseGeneric/&self<~[Waitqueue]>;
+type SemRelease = SemReleaseGeneric<'self, ()>;
+type SemAndSignalRelease = SemReleaseGeneric<'self, ~[Waitqueue]>;
 struct SemReleaseGeneric<Q> { sem: &'self Sem<Q> }
 
 impl<Q:Owned> Drop for SemReleaseGeneric/&self<Q> {
