@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/**
-Clonable types are copied with the clone method
-*/
+/// Clonable types are copied with the clone method
 pub trait Clone {
+    /// Perform a deep copy of the object, returning a new independent clone.
+    ///
+    /// A shallow copy can be performed instead if it is indistinguishable
+    /// from a deep copy, as it is for persistent (immutable) data structures.
     fn clone(&self) -> Self;
 }
 
