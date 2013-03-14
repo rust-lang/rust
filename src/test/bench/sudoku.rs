@@ -39,7 +39,7 @@ type grid = ~[~[u8]];
 pub enum grid_t { grid_ctor(grid), }
 
 // read a sudoku problem from file f
-pub fn read_grid(f: io::Reader) -> grid_t {
+pub fn read_grid(f: @io::Reader) -> grid_t {
     fail_unless!(f.read_line() == ~"9,9"); /* assert first line is exactly "9,9" */
 
     let mut g = vec::from_fn(10u, {|_i|
@@ -127,7 +127,7 @@ pub fn solve_grid(g: grid_t) {
     }
 }
 
-pub fn write_grid(f: io::Writer, g: grid_t) {
+pub fn write_grid(f: @io::Writer, g: grid_t) {
     for u8::range(0u8, 9u8) |row| {
         f.write_str(fmt!("%u", (*g)[row][0] as uint));
         for u8::range(1u8, 9u8) |col| {

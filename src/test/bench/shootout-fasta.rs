@@ -57,7 +57,11 @@ fn select_random(r: u32, genelist: ~[AminoAcids]) -> char {
     return bisect(copy genelist, 0, vec::len::<AminoAcids>(genelist) - 1, r);
 }
 
-fn make_random_fasta(wr: io::Writer, id: ~str, desc: ~str, genelist: ~[AminoAcids], n: int) {
+fn make_random_fasta(wr: @io::Writer,
+                     id: ~str,
+                     desc: ~str,
+                     genelist: ~[AminoAcids],
+                     n: int) {
     wr.write_line(~">" + id + ~" " + desc);
     let rng = @mut MyRandom {last: rand::Rng().next()};
     let mut op: ~str = ~"";
@@ -72,7 +76,7 @@ fn make_random_fasta(wr: io::Writer, id: ~str, desc: ~str, genelist: ~[AminoAcid
     if str::len(op) > 0u { wr.write_line(op); }
 }
 
-fn make_repeat_fasta(wr: io::Writer, id: ~str, desc: ~str, s: ~str, n: int) {
+fn make_repeat_fasta(wr: @io::Writer, id: ~str, desc: ~str, s: ~str, n: int) {
     unsafe {
         wr.write_line(~">" + id + ~" " + desc);
         let mut op: ~str = ~"";

@@ -1,5 +1,7 @@
 // Perlin noise benchmark from https://gist.github.com/1170424
 
+use core::rand::RngUtil;
+
 struct Vec2 {
     x: f32,
     y: f32,
@@ -8,7 +10,7 @@ struct Vec2 {
 fn lerp(a: f32, b: f32, v: f32) -> f32  { a * (1.0 - v) + b * v }
 fn smooth(v: f32) -> f32                { v * v * (3.0 - 2.0 * v) }
 
-fn random_gradient(r: rand::Rng) -> Vec2 {
+fn random_gradient(r: @rand::Rng) -> Vec2 {
     let v = r.gen_float() * float::consts::pi * 2.0;
     Vec2{
         x: float::cos(v) as f32,

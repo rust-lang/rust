@@ -29,6 +29,7 @@ use std::deque::Deque;
 use std::par;
 use core::io::WriterUtil;
 use core::int::abs;
+use core::rand::RngUtil;
 
 type node_id = i64;
 type graph = ~[~[node_id]];
@@ -37,7 +38,7 @@ type bfs_result = ~[node_id];
 fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
     let r = rand::xorshift();
 
-    fn choose_edge(i: node_id, j: node_id, scale: uint, r: rand::Rng)
+    fn choose_edge(i: node_id, j: node_id, scale: uint, r: @rand::Rng)
         -> (node_id, node_id) {
 
         let A = 0.57;
