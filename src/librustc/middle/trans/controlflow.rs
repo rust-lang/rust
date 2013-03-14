@@ -30,7 +30,6 @@ use syntax::ast::ident;
 use syntax::ast_map::path_mod;
 use syntax::ast_util;
 use syntax::codemap::span;
-use syntax::print::pprust::expr_to_str;
 
 pub fn trans_block(bcx: block, b: &ast::blk, dest: expr::Dest) -> block {
     let _icx = bcx.insn_ctxt("trans_block");

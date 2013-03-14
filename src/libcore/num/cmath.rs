@@ -10,10 +10,6 @@
 
 #[doc(hidden)]; // FIXME #3538
 
-use libc::c_int;
-use libc::c_float;
-use libc::c_double;
-
 // function names are almost identical to C's libmath, a few have been
 // renamed, grep for "rename:"
 

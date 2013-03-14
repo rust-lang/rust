@@ -1706,7 +1706,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let expr_t = structurally_resolved_type(fcx, expr.span,
                                                 fcx.expr_ty(base));
         let (base_t, derefs) = do_autoderef(fcx, expr.span, expr_t);
-        let n_tys = tys.len();
 
         match structure_of(fcx, expr.span, base_t) {
             ty::ty_struct(base_id, ref substs) => {
