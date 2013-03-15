@@ -72,7 +72,7 @@ pure fn lt<K: Ord + TotalOrd, V>(a: &TreeMap<K, V>,
         }
     };
 
-    return a_len < b_len;
+    a_len < b_len
 }
 
 impl<K: Ord + TotalOrd, V> Ord for TreeMap<K, V> {
@@ -694,22 +694,13 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
 
                 skew(save);
 
-                match save.right {
-                  Some(ref mut right) => {
+                for save.right.each_mut |right| {
                     skew(right);
-                    match right.right {
-                      Some(ref mut x) => { skew(x) },
-                      None => ()
-                    }
-                  }
-                  None => ()
+                    for right.right.each_mut |x| { skew(x) }
                 }
 
                 split(save);
-                match save.right {
-                  Some(ref mut x) => { split(x) },
-                  None => ()
-                }
+                for save.right.each_mut |x| { split(x) }
             }
 
             return removed;
@@ -718,7 +709,7 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
     }
 
     *node = None;
-    return true;
+    true
 }
 
 #[cfg(test)]
