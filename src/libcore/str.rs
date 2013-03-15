@@ -1769,7 +1769,7 @@ pub pure fn char_range_at(s: &str, i: uint) -> CharRange {
     return CharRange {ch: val as char, next: i};
 }
 
-/// Pluck a character out of a string
+/// Plucks the `n`th character from the beginning of a string
 pub pure fn char_at(s: &str, i: uint) -> char {
     return char_range_at(s, i).ch;
 }
@@ -1797,6 +1797,11 @@ pure fn char_range_at_reverse(ss: &str, start: uint) -> CharRange {
 
     let ch = char_at(ss, prev);
     return CharRange {ch:ch, next:prev};
+}
+
+/// Plucks the `n`th character from the end of a string
+pub pure fn char_at_reverse(s: &str, i: uint) -> char {
+    char_range_at_reverse(s, i).ch
 }
 
 /**
@@ -2274,6 +2279,7 @@ pub trait StrSlice {
     pure fn to_owned(&self) -> ~str;
     pure fn to_managed(&self) -> @str;
     pure fn char_at(&self, i: uint) -> char;
+    pure fn char_at_reverse(&self, i: uint) -> char;
     fn to_bytes(&self) -> ~[u8];
 }
 
@@ -2418,6 +2424,11 @@ impl StrSlice for &'self str {
 
     #[inline]
     pure fn char_at(&self, i: uint) -> char { char_at(*self, i) }
+
+    #[inline]
+    pure fn char_at_reverse(&self, i: uint) -> char {
+        char_at_reverse(*self, i)
+    }
 
     fn to_bytes(&self) -> ~[u8] { to_bytes(*self) }
 }
@@ -3423,6 +3434,28 @@ mod tests {
             fail_unless!(from_utf16(u) == s);
             fail_unless!(from_utf16(to_utf16(s)) == s);
             fail_unless!(to_utf16(from_utf16(u)) == u);
+        }
+    }
+
+    #[test]
+    fn test_char_at() {
+        let s = ~"ศไทย中华Việt Nam";
+        let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
+        let mut pos = 0;
+        for v.each |ch| {
+            fail_unless!(s.char_at(pos) == *ch);
+            pos += from_char(*ch).len();
+        }
+    }
+
+    #[test]
+    fn test_char_at_reverse() {
+        let s = ~"ศไทย中华Việt Nam";
+        let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
+        let mut pos = s.len();
+        for v.each_reverse |ch| {
+            fail_unless!(s.char_at_reverse(pos) == *ch);
+            pos -= from_char(*ch).len();
         }
     }
 
