@@ -429,8 +429,9 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
 
   LLVMRustInitializeTargets();
 
-  int argc = 2;
-  const char* argv[] = {"rustc", "-arm-enable-ehabi"};
+  int argc = 3;
+  const char* argv[] = {"rustc", "-arm-enable-ehabi",
+      "-arm-enable-ehabi-descriptors"};
   cl::ParseCommandLineOptions(argc, argv);
 
   TargetOptions Options;
