@@ -323,9 +323,23 @@ pub fn compile_rest(sess: Session, cfg: ast::crate_cfg,
 
     };
 
-    time(time_passes, ~"LLVM passes", ||
-        link::write::run_passes(sess, llmod,
+    // NOTE: Android hack
+    if sess.targ_cfg.arch == session::arch_arm &&
+            (sess.opts.output_type == link::output_type_object ||
+             sess.opts.output_type == link::output_type_exe) {
+        let output_type = link::output_type_assembly;
+        let obj_filename = outputs.obj_filename.with_filetype("s");
+
+        time(time_passes, ~"LLVM passes", ||
+            link::write::run_passes(sess, llmod, output_type,
+                            &obj_filename));
+
+        link::write::run_ndk(sess, &obj_filename, &outputs.obj_filename);
+    } else {
+        time(time_passes, ~"LLVM passes", ||
+            link::write::run_passes(sess, llmod, sess.opts.output_type,
                                 &outputs.obj_filename));
+    }
 
     let stop_after_codegen =
         sess.opts.output_type != link::output_type_exe ||
