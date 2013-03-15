@@ -2273,6 +2273,7 @@ pub trait StrSlice {
     pure fn to_owned(&self) -> ~str;
     pure fn to_managed(&self) -> @str;
     pure fn char_at(&self, i: uint) -> char;
+    fn to_bytes(&self) -> ~[u8];
 }
 
 /// Extension methods for strings
@@ -2416,6 +2417,8 @@ impl StrSlice for &self/str {
 
     #[inline]
     pure fn char_at(&self, i: uint) -> char { char_at(*self, i) }
+
+    fn to_bytes(&self) -> ~[u8] { to_bytes(*self) }
 }
 
 pub trait OwnedStr {
