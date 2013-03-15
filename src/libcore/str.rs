@@ -2263,6 +2263,7 @@ pub trait StrSlice {
     pure fn is_whitespace(&self) -> bool;
     pure fn is_alphanumeric(&self) -> bool;
     pure fn len(&self) -> uint;
+    pure fn char_len(&self) -> uint;
     pure fn slice(&self, begin: uint, end: uint) -> ~str;
     pure fn split(&self, sepfn: &fn(char) -> bool) -> ~[~str];
     pure fn split_char(&self, sep: char) -> ~[~str];
@@ -2343,9 +2344,12 @@ impl StrSlice for &'self str {
      */
     #[inline]
     pure fn is_alphanumeric(&self) -> bool { is_alphanumeric(*self) }
-    #[inline]
     /// Returns the size in bytes not counting the null terminator
+    #[inline]
     pure fn len(&self) -> uint { len(*self) }
+    /// Returns the number of characters that a string holds
+    #[inline]
+    pure fn char_len(&self) -> uint { char_len(*self) }
     /**
      * Returns a slice of the given string from the byte range
      * [`begin`..`end`)
