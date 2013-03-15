@@ -498,6 +498,42 @@ impl NativeHandle<*uvll::uv_write_t> for WriteRequest {
     }
 }
 
+type FsCallback = ~fn(FsRequest, Option<UvError>);
+impl Callback for FsCallback { }
+
+pub struct FsRequest(*uvll::uv_fs_t);
+
+impl Request for FsRequest;
+
+impl FsRequest {
+    static fn new() -> FsRequest {
+        let fs_req = unsafe { malloc_req(UV_FS) };
+        fail_unless!(fs_req.is_not_null());
+        let fs_req = fs_req as *uvll::uv_write_t;
+        uvll::set_data_for_uv_req(fs_req, null::<()>());
+        Native(fs_req)
+    }
+
+    fn delete(self) {
+        unsafe { free_req(self.native_handle() as *c_void) }
+    }
+
+    fn open(&mut self, loop_: &EventLoop, cb: FsCallback) {
+    }
+
+    fn close(&mut self, loop_: &EventLoop, cb: FsCallback) {
+    }
+}
+
+impl NativeHandle<*uvll::uv_fs_t> for FsRequest {
+    static fn from_native_handle(handle: *uvll:: uv_fs_t) -> FsRequest {
+        FsRequest(handle)
+    }
+    fn native_handle(&self) -> *uvll::uv_fs_t {
+        match self { &FsRequest(ptr) => ptr }
+    }
+}
+
 // XXX: Need to define the error constants like EOF so they can be
 // compared to the UvError type
 
