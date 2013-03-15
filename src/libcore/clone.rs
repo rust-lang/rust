@@ -20,6 +20,11 @@ impl Clone for () {
     fn clone(&self) -> () { () }
 }
 
+impl<T:Clone> Clone for ~T {
+    #[inline(always)]
+    fn clone(&self) -> ~T { ~(**self).clone() }
+}
+
 macro_rules! clone_impl(
     ($t:ty) => {
         impl Clone for $t {
