@@ -13,9 +13,9 @@
 // -*- rust -*-
 type compare<T> = @fn(~T, ~T) -> bool;
 
-fn test_generic<T:Copy>(expected: ~T, eq: compare<T>) {
+fn test_generic<T:Copy+Clone>(expected: ~T, eq: compare<T>) {
     let actual: ~T = match true {
-        true => { copy expected },
+        true => { expected.clone() },
         _ => fail!(~"wat")
     };
     fail_unless!((eq(expected, actual)));

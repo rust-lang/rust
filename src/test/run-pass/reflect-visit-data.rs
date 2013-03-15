@@ -647,10 +647,10 @@ pub fn main() {
         let v = @v as @TyVisitor;
         visit_tydesc(td, v);
 
-        for (copy u.vals).each |s| {
+        for (u.vals.clone()).each |s| {
             io::println(fmt!("val: %s", *s));
         }
-        error!("%?", copy u.vals);
+        error!("%?", u.vals.clone());
         fail_unless!(u.vals == ~[
             ~"1", ~"2", ~"3", ~"true", ~"false", ~"5", ~"4", ~"3", ~"12"
         ]);

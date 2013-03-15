@@ -20,9 +20,9 @@ fn iter<T>(v: ~[T], it: &fn(&T) -> bool) {
     }
 }
 
-fn find_pos<T:Eq + Copy>(n: T, h: ~[T]) -> Option<uint> {
+fn find_pos<T:Eq + Copy + Clone>(n: T, h: ~[T]) -> Option<uint> {
     let mut i = 0u;
-    for iter(copy h) |e| {
+    for iter(h.clone()) |e| {
         if *e == n { return Some(i); }
         i += 1u;
     }
@@ -31,8 +31,8 @@ fn find_pos<T:Eq + Copy>(n: T, h: ~[T]) -> Option<uint> {
 
 fn bail_deep(x: ~[~[bool]]) {
     let mut seen = false;
-    for iter(copy x) |x| {
-        for iter(copy *x) |x| {
+    for iter(x.clone()) |x| {
+        for iter(x.clone()) |x| {
             fail_unless!(!seen);
             if *x { seen = true; return; }
         }

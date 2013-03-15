@@ -10,7 +10,7 @@
 
 fn test_stack_assign() {
     let s: ~str = ~"a";
-    debug!(copy s);
+    debug!(s.clone());
     let t: ~str = ~"a";
     fail_unless!((s == t));
     let u: ~str = ~"b";
@@ -49,7 +49,7 @@ fn test_append() {
 
     let mut s = ~"a";
     s += ~"b";
-    debug!(copy s);
+    debug!(s.clone());
     fail_unless!((s == ~"ab"));
 
     let mut s = ~"c";

@@ -43,7 +43,7 @@ pub fn main() {
     fail_unless!(transform(Some(10)) == Some(~"11"));
     fail_unless!(transform(None) == None);
     fail_unless!((~[~"hi"])
-        .bind(|x| ~[copy *x, *x + ~"!"] )
-        .bind(|x| ~[copy *x, *x + ~"?"] ) ==
+        .bind(|x| ~[x.clone(), *x + ~"!"] )
+        .bind(|x| ~[x.clone(), *x + ~"?"] ) ==
         ~[~"hi", ~"hi?", ~"hi!", ~"hi!?"]);
 }
