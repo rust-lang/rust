@@ -1357,7 +1357,7 @@ pub pure fn each<T>(v: &r/[T], f: &fn(&r/T) -> bool) {
 /// a vector with mutable contents and you would like
 /// to mutate the contents as you iterate.
 #[inline(always)]
-pub fn each_mut<T>(v: &mut [T], f: &fn(elem: &mut T) -> bool) {
+pub fn each_mut<T>(v: &'r mut [T], f: &fn(elem: &'r mut T) -> bool) {
     let mut i = 0;
     let n = v.len();
     while i < n {
@@ -2280,11 +2280,9 @@ pub mod bytes {
 // ___________________________________________________________________________
 // ITERATION TRAIT METHODS
 
-impl<A> iter::BaseIter<A> for &self/[A] {
+impl<A> iter::BaseIter<A> for &'self [A] {
     #[inline(always)]
-    pub pure fn each(&self, blk: &fn(v: &'self A) -> bool) {
-        each(*self, blk)
-    }
+    pure fn each(&self, blk: &fn(v: &'self A) -> bool) { each(*self, blk) }
     #[inline(always)]
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
@@ -2303,6 +2301,29 @@ impl<A> iter::BaseIter<A> for @[A] {
     pure fn each(&self, blk: &fn(v: &'self A) -> bool) { each(*self, blk) }
     #[inline(always)]
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+}
+
+impl<A> iter::MutableIter<A> for &'self mut [A] {
+    #[inline(always)]
+    fn each_mut(&mut self, blk: &fn(v: &'self mut A) -> bool) {
+        each_mut(*self, blk)
+    }
+}
+
+// FIXME(#4148): This should be redundant
+impl<A> iter::MutableIter<A> for ~[A] {
+    #[inline(always)]
+    fn each_mut(&mut self, blk: &fn(v: &'self mut A) -> bool) {
+        each_mut(*self, blk)
+    }
+}
+
+// FIXME(#4148): This should be redundant
+impl<A> iter::MutableIter<A> for @mut [A] {
+    #[inline(always)]
+    fn each_mut(&mut self, blk: &fn(v: &mut A) -> bool) {
+        each_mut(*self, blk)
+    }
 }
 
 impl<A> iter::ExtendedIter<A> for &self/[A] {
