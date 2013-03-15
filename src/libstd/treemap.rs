@@ -988,8 +988,6 @@ mod test_treemap {
         let m = m;
         let mut a = m.iter();
 
-        // FIXME: #4492 (ICE): iter.get() == Some((&x1, &y1))
-
         fail_unless!(map_next(&mut a).unwrap() == (&x1, &y1));
         fail_unless!(map_next(&mut a).unwrap() == (&x2, &y2));
         fail_unless!(map_next(&mut a).unwrap() == (&x3, &y3));
