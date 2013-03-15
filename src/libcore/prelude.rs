@@ -43,6 +43,10 @@ pub use vec::{CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
 pub use vec::{OwnedVector, OwnedCopyableVector};
 
+/* Reexported runtime types */
+pub use comm::{stream, Port, Chan, GenericChan, GenericSmartChan, GenericPort, Peekable};
+pub use task::spawn;
+
 /* Reexported modules */
 
 pub use at_vec;
