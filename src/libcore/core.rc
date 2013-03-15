@@ -56,6 +56,7 @@ Implicitly, all crates behave as if they included the following prologue:
 
 // On Linux, link to the runtime with -lrt.
 #[cfg(target_os = "linux")]
+#[doc(hidden)]
 pub mod linkhack {
     #[link_args="-lrustrt -lrt"]
     #[link_args = "-lpthread"]
@@ -252,7 +253,7 @@ pub mod rt;
 // A curious inner-module that's not exported that contains the binding
 // 'core' so that macro-expanded references to core::error and such
 // can be resolved within libcore.
-#[doc(hidden)] // FIXME #3538
+#[doc(hidden)]
 pub mod core {
     #[cfg(stage0)]
     pub const error : u32 = 1_u32;
