@@ -433,10 +433,10 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   Options.EnableSegmentedStacks = EnableSegmentedStacks;
 
   std::string Err;
-  const Target *TheTarget = TargetRegistry::lookupTarget(triple, Err);
+  std::string Trip(Triple::normalize(triple));
   std::string FeaturesStr;
-  std::string Trip(triple);
   std::string CPUStr("generic");
+  const Target *TheTarget = TargetRegistry::lookupTarget(Trip, Err);
   TargetMachine *Target =
     TheTarget->createTargetMachine(Trip, CPUStr, FeaturesStr,
 				   Options, Reloc::PIC_,
