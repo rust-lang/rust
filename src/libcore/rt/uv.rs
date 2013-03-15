@@ -659,7 +659,7 @@ fn install_watcher_data<H, W: Watcher + NativeHandle<*H>>(watcher: &mut W) {
 }
 
 fn get_watcher_data<H, W: Watcher + NativeHandle<*H>>(
-    watcher: &r/mut W) -> &r/mut WatcherData {
+    watcher: &'r mut W) -> &'r mut WatcherData {
 
     unsafe {
         let data = uvll::get_data_for_uv_handle(watcher.native_handle());

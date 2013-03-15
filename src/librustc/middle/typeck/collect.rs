@@ -438,7 +438,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
 
     // Replace any references to the self region in the self type with
     // a free region.  So, for example, if the impl type is
-    // "&self/str", then this would replace the self type with a free
+    // "&'self str", then this would replace the self type with a free
     // region `self`.
     let dummy_self_r = ty::re_free(cm.body_id, ty::br_self);
     let self_ty = replace_bound_self(tcx, self_ty, dummy_self_r);
@@ -601,7 +601,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
 pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
                                  span: span,
                                  generics: &ast::Generics,
-                                 thing: &static/str) {
+                                 thing: &'static str) {
     for generics.ty_params.each |ty_param| {
         if ty_param.bounds.len() > 0 {
             ccx.tcx.sess.span_err(

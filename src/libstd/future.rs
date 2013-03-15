@@ -55,7 +55,7 @@ pub impl<A:Copy> Future<A> {
 
 pub impl<A> Future<A> {
 
-    pure fn get_ref(&self) -> &self/A {
+    pure fn get_ref(&self) -> &'self A {
         /*!
         * Executes the future's closure and then returns a borrowed
         * pointer to the result.  The borrowed pointer lasts as long as

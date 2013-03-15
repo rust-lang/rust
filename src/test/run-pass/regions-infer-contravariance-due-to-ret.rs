@@ -12,7 +12,7 @@ struct boxed_int {
     f: &'self int,
 }
 
-fn max(bi: &r/boxed_int, f: &r/int) -> int {
+fn max(bi: &'r boxed_int, f: &'r int) -> int {
     if *bi.f > *f {*bi.f} else {*f}
 }
 

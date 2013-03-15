@@ -88,7 +88,7 @@ impl<K: Ord + TotalOrd, V> Ord for TreeMap<K, V> {
 
 impl<'self, K: TotalOrd, V> BaseIter<(&'self K, &'self V)> for TreeMap<K, V> {
     /// Visit all key-value pairs in order
-    pure fn each(&self, f: &fn(&(&self/K, &self/V)) -> bool) {
+    pure fn each(&self, f: &fn(&(&'self K, &'self V)) -> bool) {
         each(&self.root, f)
     }
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
@@ -99,7 +99,7 @@ impl<'self, K: TotalOrd, V>
     for TreeMap<K, V>
 {
     /// Visit all key-value pairs in reverse order
-    pure fn each_reverse(&self, f: &fn(&(&self/K, &self/V)) -> bool) {
+    pure fn each_reverse(&self, f: &fn(&(&'self K, &'self V)) -> bool) {
         each_reverse(&self.root, f);
     }
 }
@@ -140,8 +140,8 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
     }
 
     /// Return the value corresponding to the key in the map
-    pure fn find(&self, key: &K) -> Option<&self/V> {
-        let mut current: &self/Option<~TreeNode<K, V>> = &self.root;
+    pure fn find(&self, key: &K) -> Option<&'self V> {
+        let mut current: &'self Option<~TreeNode<K, V>> = &self.root;
         loop {
             match *current {
               Some(ref r) => {
@@ -197,15 +197,15 @@ pub impl<K: TotalOrd, V> TreeMap<K, V> {
 
 /// Lazy forward iterator over a map
 pub struct TreeMapIterator<K, V> {
-    priv stack: ~[&self/~TreeNode<K, V>],
-    priv node: &self/Option<~TreeNode<K, V>>
+    priv stack: ~[&'self ~TreeNode<K, V>],
+    priv node: &'self Option<~TreeNode<K, V>>
 }
 
 /// Advance the iterator to the next node (in order) and return a
 /// tuple with a reference to the key and value. If there are no
 /// more nodes, return `None`.
 pub fn map_next<K, V>(iter: &mut TreeMapIterator/&r<K, V>)
-                        -> Option<(&r/K, &r/V)> {
+                        -> Option<(&'r K, &'r V)> {
     while !iter.stack.is_empty() || iter.node.is_some() {
         match *iter.node {
           Some(ref x) => {
@@ -224,7 +224,7 @@ pub fn map_next<K, V>(iter: &mut TreeMapIterator/&r<K, V>)
 
 /// Advance the iterator through the map
 pub fn map_advance<K, V>(iter: &mut TreeMapIterator/&r<K, V>,
-                         f: &fn((&r/K, &r/V)) -> bool) {
+                         f: &fn((&'r K, &'r V)) -> bool) {
     loop {
         match map_next(iter) {
           Some(x) => {
@@ -519,14 +519,14 @@ pub struct TreeSetIterator<T> {
 /// Advance the iterator to the next node (in order). If this iterator is
 /// finished, does nothing.
 #[inline(always)]
-pub fn set_next<T>(iter: &mut TreeSetIterator/&r<T>) -> Option<&r/T> {
+pub fn set_next<T>(iter: &mut TreeSetIterator/&r<T>) -> Option<&'r T> {
     do map_next(&mut iter.iter).map |&(value, _)| { value }
 }
 
 /// Advance the iterator through the set
 #[inline(always)]
 pub fn set_advance<T>(iter: &mut TreeSetIterator/&r<T>,
-                      f: &fn(&r/T) -> bool) {
+                      f: &fn(&'r T) -> bool) {
     do map_advance(&mut iter.iter) |(k, _)| { f(k) }
 }
 
@@ -547,16 +547,16 @@ pub impl<K: TotalOrd, V> TreeNode<K, V> {
     }
 }
 
-pure fn each<K: TotalOrd, V>(node: &r/Option<~TreeNode<K, V>>,
-                             f: &fn(&(&r/K, &r/V)) -> bool) {
+pure fn each<K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
+                             f: &fn(&(&'r K, &'r V)) -> bool) {
     for node.each |x| {
         each(&x.left, f);
         if f(&(&x.key, &x.value)) { each(&x.right, f) }
     }
 }
 
-pure fn each_reverse<K: TotalOrd, V>(node: &r/Option<~TreeNode<K, V>>,
-                                     f: &fn(&(&r/K, &r/V)) -> bool) {
+pure fn each_reverse<K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
+                                     f: &fn(&(&'r K, &'r V)) -> bool) {
     for node.each |x| {
         each_reverse(&x.right, f);
         if f(&(&x.key, &x.value)) { each_reverse(&x.left, f) }

@@ -59,17 +59,17 @@ pub unsafe fn transmute<L, G>(thing: L) -> G {
 
 /// Coerce an immutable reference to be mutable.
 #[inline(always)]
-pub unsafe fn transmute_mut<T>(ptr: &a/T) -> &a/mut T { transmute(ptr) }
+pub unsafe fn transmute_mut<T>(ptr: &'a T) -> &'a mut T { transmute(ptr) }
 
 /// Coerce a mutable reference to be immutable.
 #[inline(always)]
-pub unsafe fn transmute_immut<T>(ptr: &a/mut T) -> &a/T {
+pub unsafe fn transmute_immut<T>(ptr: &'a mut T) -> &'a T {
     transmute(ptr)
 }
 
 /// Coerce a borrowed pointer to have an arbitrary associated region.
 #[inline(always)]
-pub unsafe fn transmute_region<T>(ptr: &a/T) -> &b/T { transmute(ptr) }
+pub unsafe fn transmute_region<T>(ptr: &'a T) -> &'b T { transmute(ptr) }
 
 /// Coerce an immutable reference to be mutable.
 #[inline(always)]
@@ -85,19 +85,19 @@ pub unsafe fn transmute_immut_unsafe<T>(ptr: *const T) -> *T {
 
 /// Coerce a borrowed mutable pointer to have an arbitrary associated region.
 #[inline(always)]
-pub unsafe fn transmute_mut_region<T>(ptr: &a/mut T) -> &b/mut T {
+pub unsafe fn transmute_mut_region<T>(ptr: &'a mut T) -> &'b mut T {
     transmute(ptr)
 }
 
 /// Transforms lifetime of the second pointer to match the first.
 #[inline(always)]
-pub unsafe fn copy_lifetime<S,T>(_ptr: &a/S, ptr: &T) -> &a/T {
+pub unsafe fn copy_lifetime<S,T>(_ptr: &'a S, ptr: &T) -> &'a T {
     transmute_region(ptr)
 }
 
 /// Transforms lifetime of the second pointer to match the first.
 #[inline(always)]
-pub unsafe fn copy_lifetime_vec<S,T>(_ptr: &a/[S], ptr: &T) -> &a/T {
+pub unsafe fn copy_lifetime_vec<S,T>(_ptr: &'a [S], ptr: &T) -> &'a T {
     transmute_region(ptr)
 }
 

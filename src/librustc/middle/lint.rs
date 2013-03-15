@@ -90,7 +90,7 @@ pub enum lint {
     // dead_assignment
 }
 
-pub fn level_to_str(lv: level) -> &static/str {
+pub fn level_to_str(lv: level) -> &'static str {
     match lv {
       allow => "allow",
       warn => "warn",
@@ -106,7 +106,7 @@ pub enum level {
 
 struct LintSpec {
     lint: lint,
-    desc: &static/str,
+    desc: &'static str,
     default: level
 }
 
@@ -881,14 +881,14 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
             !ident.contains_char('_')
     }
 
-    fn ident_without_trailing_underscores(ident: &r/str) -> &r/str {
+    fn ident_without_trailing_underscores(ident: &'r str) -> &'r str {
         match str::rfind(ident, |c| c != '_') {
             Some(idx) => str::view(ident, 0, idx + 1),
             None => ident, // all underscores
         }
     }
 
-    fn ident_without_leading_underscores(ident: &r/str) -> &r/str {
+    fn ident_without_leading_underscores(ident: &'r str) -> &'r str {
         match str::find(ident, |c| c != '_') {
             Some(idx) => str::view(ident, idx, ident.len()),
             None => ident // all underscores

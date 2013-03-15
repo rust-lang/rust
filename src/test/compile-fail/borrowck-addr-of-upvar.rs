@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: @int) -> @fn() -> &static/int {
-    let result: @fn() -> &static/int = || &*x;  //~ ERROR illegal borrow
+fn foo(x: @int) -> @fn() -> &'static int {
+    let result: @fn() -> &'static int = || &*x;  //~ ERROR illegal borrow
     result
 }
 
