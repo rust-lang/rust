@@ -140,7 +140,7 @@ impl cmp::Eq for span {
 
 impl<S:Encoder> Encodable<S> for span {
     /* Note #1972 -- spans are encoded but not decoded */
-    fn encode(&self, _s: &S) { }
+    fn encode(&self, _s: &S) { _s.emit_nil() }
 }
 
 impl<D:Decoder> Decodable<D> for span {
