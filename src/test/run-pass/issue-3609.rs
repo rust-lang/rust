@@ -19,7 +19,7 @@ fn foo(name: ~str, samples_chan: Chan<Msg>) {
                 for uint::range(0, buffer.len())
                     |i| {error!("%?: %f", i, buffer[i])}
             };
-        samples_chan.send(GetSamples(copy name, callback));
+        samples_chan.send(GetSamples(name.clone(), callback));
     };
 }
 

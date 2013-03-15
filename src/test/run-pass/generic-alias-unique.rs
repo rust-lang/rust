@@ -14,7 +14,7 @@ fn id<T:Copy + Owned>(t: T) -> T { return t; }
 
 pub fn main() {
     let expected = ~100;
-    let actual = id::<~int>(copy expected);
+    let actual = id::<~int>(expected.clone());
     debug!(*actual);
     fail_unless!((*expected == *actual));
 }

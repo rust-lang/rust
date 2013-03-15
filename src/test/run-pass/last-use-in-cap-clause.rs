@@ -14,7 +14,7 @@ struct A { a: ~int }
 
 fn foo() -> @fn() -> int {
     let k = ~22;
-    let _u = A {a: copy k};
+    let _u = A {a: k.clone()};
     let result: @fn() -> int = || 22;
     result
 }
