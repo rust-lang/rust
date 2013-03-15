@@ -46,7 +46,7 @@ use ops::Add;
 use kinds::Copy;
 use util;
 use num::Zero;
-use iter::BaseIter;
+use iter::{BaseIter, MutableIter};
 
 #[cfg(test)] use ptr;
 #[cfg(test)] use str;
@@ -320,6 +320,13 @@ impl<T> BaseIter<T> for Option<T> {
     #[inline(always)]
     pure fn size_hint(&self) -> Option<uint> {
         if self.is_some() { Some(1) } else { Some(0) }
+    }
+}
+
+impl<T> MutableIter<T> for Option<T> {
+    #[inline(always)]
+    fn each_mut(&mut self, f: &fn(&'self mut T) -> bool) {
+        match *self { None => (), Some(ref mut t) => { f(t); } }
     }
 }
 
