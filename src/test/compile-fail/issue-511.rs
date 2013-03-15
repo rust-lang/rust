@@ -17,5 +17,5 @@ fn f<T:Eq>(o: &mut Option<T>) {
 
 fn main() {
     f::<int>(&mut option::None);
-    //~^ ERROR illegal borrow: creating mutable alias to static item
+    //~^ ERROR cannot borrow
 }

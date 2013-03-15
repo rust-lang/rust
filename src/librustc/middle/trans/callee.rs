@@ -39,7 +39,6 @@ use middle::trans::monomorphize;
 use middle::trans::type_of;
 use middle::ty;
 use middle::typeck;
-use util::common::indenter;
 use util::ppaux::Repr;
 
 use syntax::ast;
@@ -689,7 +688,6 @@ pub fn trans_arg_expr(bcx: block,
            self_mode,
            arg_expr.repr(bcx.tcx()),
            ret_flag.map(|v| bcx.val_str(*v)));
-    let _indenter = indenter();
 
     // translate the arg expr to a datum
     let arg_datumblock = match ret_flag {

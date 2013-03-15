@@ -19,7 +19,7 @@ use io::Writer;
 use option::{None, Option, Some};
 use str;
 
-pub type Cb<'self> = &'self fn(buf: &const [u8]) -> bool;
+pub type Cb<'self> = &'self fn(buf: &[u8]) -> bool;
 
 /**
  * A trait to implement in order to make a type hashable;

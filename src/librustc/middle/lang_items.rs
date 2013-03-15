@@ -252,10 +252,9 @@ pub impl LanguageItems {
     }
 }
 
-fn LanguageItemCollector<'r>(crate: @crate,
-                             session: Session,
-                             items: &'r mut LanguageItems)
-                          -> LanguageItemCollector<'r> {
+fn LanguageItemCollector(crate: @crate,
+                         session: Session)
+                      -> LanguageItemCollector {
     let mut item_refs = HashMap::new();
 
     item_refs.insert(@~"const", ConstTraitLangItem as uint);
@@ -303,13 +302,13 @@ fn LanguageItemCollector<'r>(crate: @crate,
     LanguageItemCollector {
         crate: crate,
         session: session,
-        items: items,
+        items: LanguageItems::new(),
         item_refs: item_refs
     }
 }
 
-struct LanguageItemCollector<'self> {
-    items: &'self mut LanguageItems,
+struct LanguageItemCollector {
+    items: LanguageItems,
 
     crate: @crate,
     session: Session,
@@ -317,8 +316,8 @@ struct LanguageItemCollector<'self> {
     item_refs: HashMap<@~str, uint>,
 }
 
-pub impl<'self> LanguageItemCollector<'self> {
-    fn match_and_collect_meta_item(&self, item_def_id: def_id,
+pub impl LanguageItemCollector {
+    fn match_and_collect_meta_item(&mut self, item_def_id: def_id,
                                    meta_item: @meta_item) {
         match meta_item.node {
             meta_name_value(key, literal) => {
@@ -333,7 +332,7 @@ pub impl<'self> LanguageItemCollector<'self> {
         }
     }
 
-    fn collect_item(&self, item_index: uint, item_def_id: def_id) {
+    fn collect_item(&mut self, item_index: uint, item_def_id: def_id) {
         // Check for duplicates.
         match self.items.items[item_index] {
             Some(original_def_id) if original_def_id != item_def_id => {
@@ -349,34 +348,37 @@ pub impl<'self> LanguageItemCollector<'self> {
         self.items.items[item_index] = Some(item_def_id);
     }
 
-    fn match_and_collect_item(&self,
+    fn match_and_collect_item(&mut self,
                               item_def_id: def_id, key: @~str, value: @~str) {
         if *key != ~"lang" {
             return;    // Didn't match.
         }
 
-        match self.item_refs.find(&value) {
+        let item_index = self.item_refs.find(&value).map(|x| **x);
+        // prevent borrow checker from considering   ^~~~~~~~~~~
+        // self to be borrowed (annoying)
+
+        match item_index {
+            Some(item_index) => {
+                self.collect_item(item_index, item_def_id);
+            }
             None => {
                 // Didn't match.
-            }
-            Some(&item_index) => {
-                self.collect_item(item_index, item_def_id)
+                return;
             }
         }
     }
 
-    fn collect_local_language_items(&self) {
-        unsafe {
-            let this: *LanguageItemCollector<'self> = transmute(self);
-            visit_crate(self.crate, (), mk_simple_visitor(@SimpleVisitor {
-                visit_item: |item| {
-                    for item.attrs.each |attribute| {
-                        unsafe {
-                            (*this).match_and_collect_meta_item(
-                                local_def(item.id),
-                                attribute.node.value
-                            );
-                        }
+    fn collect_local_language_items(&mut self) {
+        let this = ptr::addr_of(&self);
+        visit_crate(self.crate, (), mk_simple_visitor(@SimpleVisitor {
+            visit_item: |item| {
+                for item.attrs.each |attribute| {
+                    unsafe {
+                        (*this).match_and_collect_meta_item(
+                            local_def(item.id),
+                            attribute.node.value
+                        );
                     }
                 },
                 .. *default_simple_visitor()
@@ -384,7 +386,7 @@ pub impl<'self> LanguageItemCollector<'self> {
         }
     }
 
-    fn collect_external_language_items(&self) {
+    fn collect_external_language_items(&mut self) {
         let crate_store = self.session.cstore;
         do iter_crate_data(crate_store) |crate_number, _crate_metadata| {
             for each_lang_item(crate_store, crate_number)
@@ -408,7 +410,7 @@ pub impl<'self> LanguageItemCollector<'self> {
         }
     }
 
-    fn collect(&self) {
+    fn collect(&mut self) {
         self.collect_local_language_items();
         self.collect_external_language_items();
         self.check_completeness();
@@ -418,9 +420,9 @@ pub impl<'self> LanguageItemCollector<'self> {
 pub fn collect_language_items(crate: @crate,
                               session: Session)
                            -> LanguageItems {
-    let mut items = LanguageItems::new();
-    let collector = LanguageItemCollector(crate, session, &mut items);
+    let mut collector = LanguageItemCollector(crate, session);
     collector.collect();
-    copy items
+    let LanguageItemCollector { items, _ } = collector;
+    items
 }
 

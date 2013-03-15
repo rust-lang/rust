@@ -13,7 +13,6 @@ struct point { x: int, y: int }
 trait methods {
     fn impurem(&self);
     fn blockm(&self, f: &fn());
-    fn purem(&self);
 }
 
 impl methods for point {
@@ -21,9 +20,6 @@ impl methods for point {
     }
 
     fn blockm(&self, f: &fn()) { f() }
-
-    fn purem(&self) {
-    }
 }
 
 fn a() {
@@ -31,12 +27,11 @@ fn a() {
 
     // Here: it's ok to call even though receiver is mutable, because we
     // can loan it out.
-    p.purem();
     p.impurem();
 
     // But in this case we do not honor the loan:
-    do p.blockm { //~ NOTE loan of mutable local variable granted here
-        p.x = 10; //~ ERROR assigning to mutable field prohibited due to outstanding loan
+    do p.blockm {
+        p.x = 10; //~ ERROR cannot assign
     }
 }
 
@@ -45,20 +40,21 @@ fn b() {
 
     // Here I create an outstanding loan and check that we get conflicts:
 
-    let l = &mut p; //~ NOTE prior loan as mutable granted here
-    //~^ NOTE prior loan as mutable granted here
-
-    p.purem(); //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
-    p.impurem(); //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
+    let l = &mut p;
+    p.impurem(); //~ ERROR cannot borrow
 
     l.x += 1;
 }
 
 fn c() {
-    // Loaning @mut as & is considered legal due to dynamic checks:
+    // Loaning @mut as & is considered legal due to dynamic checks...
     let q = @mut point {x: 3, y: 4};
-    q.purem();
     q.impurem();
+
+    // ...but we still detect errors statically when we can.
+    do q.blockm {
+        q.x = 10; //~ ERROR cannot assign
+    }
 }
 
 fn main() {

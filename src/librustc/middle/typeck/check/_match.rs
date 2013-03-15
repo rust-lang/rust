@@ -118,8 +118,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
 
             // Assign the pattern the type of the *enum*, not the variant.
             let enum_tpt = ty::lookup_item_type(tcx, enm);
-            instantiate_path(pcx.fcx, path, enum_tpt, pat.span, pat.id,
-                             pcx.block_region);
+            instantiate_path(pcx.fcx, path, enum_tpt, pat.span, pat.id);
 
             // check that the type of the value being matched is a subtype
             // of the type of the pattern:
@@ -159,8 +158,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
             } else {
                 ctor_tpt
             };
-            instantiate_path(pcx.fcx, path, struct_tpt, pat.span, pat.id,
-                             pcx.block_region);
+            instantiate_path(pcx.fcx, path, struct_tpt, pat.span, pat.id);
 
             // Check that the type of the value being matched is a subtype of
             // the type of the pattern.

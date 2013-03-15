@@ -65,6 +65,9 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
           Some(&ast_map::node_block(ref blk)) => {
             explain_span(cx, "block", blk.span)
           }
+          Some(&ast_map::node_callee_scope(expr)) => {
+              explain_span(cx, "callee", expr.span)
+          }
           Some(&ast_map::node_expr(expr)) => {
             match expr.node {
               ast::expr_call(*) => explain_span(cx, "call", expr.span),
@@ -112,6 +115,8 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
       }
 
       re_static => { (~"the static lifetime", None) }
+
+      re_empty => { (~"the empty lifetime", None) }
 
       // I believe these cases should not occur (except when debugging,
       // perhaps)
@@ -212,7 +217,8 @@ pub fn region_to_str_space(cx: ctxt, prefix: &str, region: Region) -> ~str {
             bound_region_to_str_space(cx, prefix, br)
         }
         re_infer(ReVar(_)) => prefix.to_str(),
-        re_static => fmt!("%s'static ", prefix)
+        re_static => fmt!("%s'static ", prefix),
+        re_empty => fmt!("%s'<empty> ", prefix)
     }
 }
 
@@ -737,6 +743,15 @@ impl Repr for ty::TraitStore {
 impl Repr for ty::vstore {
     fn repr(&self, tcx: ctxt) -> ~str {
         vstore_to_str(tcx, *self)
+    }
+}
+
+impl Repr for ast_map::path_elt {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        match *self {
+            ast_map::path_mod(id) => id.repr(tcx),
+            ast_map::path_name(id) => id.repr(tcx)
+        }
     }
 }
 

@@ -215,16 +215,16 @@ pub struct Bitv {
     nbits: uint
 }
 
-priv impl Bitv {
+fn die() -> ! {
+    fail!(~"Tried to do operation on bit vectors with different sizes");
+}
 
-    fn die(&self) -> ! {
-        fail!(~"Tried to do operation on bit vectors with different sizes");
-    }
+priv impl Bitv {
 
     #[inline(always)]
     fn do_op(&mut self, op: Op, other: &Bitv) -> bool {
         if self.nbits != other.nbits {
-            self.die();
+            die();
         }
         match self.rep {
           Small(ref mut s) => match other.rep {
@@ -234,10 +234,10 @@ priv impl Bitv {
               Assign     => s.become(*s1,     self.nbits),
               Difference => s.difference(*s1, self.nbits)
             },
-            Big(_) => self.die()
+            Big(_) => die()
           },
           Big(ref mut s) => match other.rep {
-            Small(_) => self.die(),
+            Small(_) => die(),
             Big(ref s1) => match op {
               Union      => s.union(*s1,      self.nbits),
               Intersect  => s.intersect(*s1,  self.nbits),

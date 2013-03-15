@@ -524,8 +524,8 @@ pub impl Datum {
          * case, we will call this function, which will stash a copy
          * away until we exit the scope `scope_id`. */
 
-        debug!("root(scope_id=%?, freezes=%?, self=%?)",
-               root_info.scope, root_info.freezes, self.to_str(bcx.ccx()));
+        debug!("root(root_info=%?, self=%?)",
+               root_info, self.to_str(bcx.ccx()));
 
         if bcx.sess().trace() {
             trans_trace(
@@ -539,7 +539,8 @@ pub impl Datum {
         add_root_cleanup(bcx, root_info, scratch.val, scratch.ty);
 
         // If we need to freeze the box, do that now.
-        if root_info.freezes {
+        if root_info.freeze.is_some() {
+            // NOTE distinguish the two kinds of freezing here
             callee::trans_lang_call(
                 bcx,
                 bcx.tcx().lang_items.borrow_as_imm_fn(),

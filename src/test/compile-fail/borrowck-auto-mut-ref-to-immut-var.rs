@@ -14,18 +14,14 @@ struct Foo {
     x: int
 }
 
-trait Stuff {
-    fn printme(self);
-}
-
-impl<'self> Stuff for &'self mut Foo {
-    fn printme(self) {
+pub impl Foo {
+    fn printme(&mut self) {
         io::println(fmt!("%d", self.x));
     }
 }
 
 fn main() {
     let x = Foo { x: 3 };
-    x.printme();    //~ ERROR illegal borrow
+    x.printme();    //~ ERROR cannot borrow
 }
 

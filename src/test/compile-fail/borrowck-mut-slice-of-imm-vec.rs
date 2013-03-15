@@ -14,5 +14,5 @@ fn write(v: &mut [int]) {
 
 fn main() {
     let v = ~[1, 2, 3];
-    write(v); //~ ERROR illegal borrow
+    write(v); //~ ERROR cannot borrow
 }

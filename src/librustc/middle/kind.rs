@@ -10,7 +10,6 @@
 
 use middle::freevars::freevar_entry;
 use middle::freevars;
-use middle::liveness;
 use middle::pat_util;
 use middle::ty;
 use middle::typeck;
@@ -56,19 +55,16 @@ pub static try_adding: &'static str = "Try adding a move";
 pub struct Context {
     tcx: ty::ctxt,
     method_map: typeck::method_map,
-    last_use_map: liveness::last_use_map,
-    current_item: node_id,
+    current_item: node_id
 }
 
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
-                   last_use_map: liveness::last_use_map,
                    crate: @crate) {
     let ctx = Context {
         tcx: tcx,
         method_map: method_map,
-        last_use_map: last_use_map,
-        current_item: -1,
+        current_item: -1
     };
     let visit = visit::mk_vt(@visit::Visitor {
         visit_arm: check_arm,

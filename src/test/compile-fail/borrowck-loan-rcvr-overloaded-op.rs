@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Point { 
+struct Point {
     x: int,
     y: int,
 }
@@ -38,10 +38,10 @@ fn b() {
 
     // Here I create an outstanding loan and check that we get conflicts:
 
-    let q = &mut p; //~ NOTE prior loan as mutable granted here
+    let q = &mut p;
 
     p + 3;  // ok for pure fns
-    p.times(3); //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
+    p.times(3); //~ ERROR cannot borrow `p`
 
     q.x += 1;
 }

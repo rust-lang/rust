@@ -12,23 +12,24 @@ fn process<T>(_t: T) {}
 
 fn match_const_opt_by_mut_ref(v: &const Option<int>) {
     match *v {
-      Some(ref mut i) => process(i), //~ ERROR illegal borrow
+      Some(ref mut i) => process(i), //~ ERROR cannot borrow
+        //~^ ERROR unsafe borrow of aliasable, const value
       None => ()
     }
 }
 
 fn match_const_opt_by_const_ref(v: &const Option<int>) {
     match *v {
-      Some(ref const i) => process(i), //~ ERROR illegal borrow unless pure
-      //~^ NOTE impure due to
+      Some(ref const i) => process(i),
+        //~^ ERROR unsafe borrow of aliasable, const value
       None => ()
     }
 }
 
 fn match_const_opt_by_imm_ref(v: &const Option<int>) {
     match *v {
-      Some(ref i) => process(i), //~ ERROR illegal borrow unless pure
-      //~^ NOTE impure due to
+      Some(ref i) => process(i), //~ ERROR cannot borrow
+        //~^ ERROR unsafe borrow of aliasable, const value
       None => ()
     }
 }

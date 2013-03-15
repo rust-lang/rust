@@ -391,14 +391,16 @@ pub fn get_tydesc_simple(ccx: @CrateContext, t: ty::t) -> ValueRef {
 
 pub fn get_tydesc(ccx: @CrateContext, t: ty::t) -> @mut tydesc_info {
     match ccx.tydescs.find(&t) {
-      Some(&inf) => inf,
-      _ => {
-        ccx.stats.n_static_tydescs += 1u;
-        let inf = glue::declare_tydesc(ccx, t);
-        ccx.tydescs.insert(t, inf);
-        inf
-      }
+        Some(&inf) => {
+            return inf;
+        }
+        _ => { }
     }
+
+    ccx.stats.n_static_tydescs += 1u;
+    let inf = glue::declare_tydesc(ccx, t);
+    ccx.tydescs.insert(t, inf);
+    return inf;
 }
 
 pub fn set_optimize_for_size(f: ValueRef) {
@@ -888,18 +890,18 @@ pub fn need_invoke(bcx: block) -> bool {
         let current = &mut *cur;
         let kind = &mut *current.kind;
         match *kind {
-          block_scope(ref mut inf) => {
-            for vec::each((*inf).cleanups) |cleanup| {
-                match *cleanup {
-                  clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) => {
-                    if cleanup_type == normal_exit_and_unwind {
-                        return true;
+            block_scope(ref mut inf) => {
+                for vec::each((*inf).cleanups) |cleanup| {
+                    match *cleanup {
+                        clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) => {
+                            if cleanup_type == normal_exit_and_unwind {
+                                return true;
+                            }
+                        }
                     }
-                  }
                 }
             }
-          }
-          _ => ()
+            _ => ()
         }
         cur = match current.parent {
           Some(next) => next,
@@ -1011,12 +1013,12 @@ pub fn add_root_cleanup(bcx: block,
                              ty=%s)",
            bcx.to_str(),
            root_info.scope,
-           root_info.freezes,
+           root_info.freeze,
            val_str(bcx.ccx().tn, root_loc),
            ppaux::ty_to_str(bcx.ccx().tcx, ty));
 
     let bcx_scope = find_bcx_for_scope(bcx, root_info.scope);
-    if root_info.freezes {
+    if root_info.freeze.is_some() {
         add_clean_frozen_root(bcx_scope, root_loc, ty);
     } else {
         add_clean_temp_mem(bcx_scope, root_loc, ty);
@@ -1029,6 +1031,12 @@ pub fn add_root_cleanup(bcx: block,
               Some(NodeInfo { id, _ }) if id == scope_id => {
                 return bcx_sid
               }
+
+              // NOTE This is messier than it ought to be and not really right
+              Some(NodeInfo { callee_id: Some(id), _ }) if id == scope_id => {
+                return bcx_sid
+              }
+
               _ => {
                 match bcx_sid.parent {
                   None => bcx.tcx().sess.bug(
@@ -2484,37 +2492,40 @@ pub fn get_dtor_symbol(ccx: @CrateContext,
                        id: ast::node_id,
                        substs: Option<@param_substs>)
                     -> ~str {
-  let t = ty::node_id_to_type(ccx.tcx, id);
-  match ccx.item_symbols.find(&id) {
-     Some(s) => (/*bad*/copy *s),
-     None if substs.is_none() => {
-       let s = mangle_exported_name(
-           ccx,
-           vec::append(path, ~[path_name((ccx.names)(~"dtor"))]),
-           t);
-       // XXX: Bad copy, use `@str`?
-       ccx.item_symbols.insert(id, copy s);
-       s
-     }
-     None   => {
-       // Monomorphizing, so just make a symbol, don't add
-       // this to item_symbols
-       match substs {
-         Some(ss) => {
-           let mono_ty = ty::subst_tps(ccx.tcx, ss.tys, ss.self_ty, t);
-           mangle_exported_name(
-               ccx,
-               vec::append(path,
-                           ~[path_name((ccx.names)(~"dtor"))]),
-               mono_ty)
-         }
-         None => {
-             ccx.sess.bug(fmt!("get_dtor_symbol: not monomorphizing and \
-               couldn't find a symbol for dtor %?", path));
-         }
-       }
-     }
-  }
+    let t = ty::node_id_to_type(ccx.tcx, id);
+    match ccx.item_symbols.find(&id) {
+        Some(s) => {
+            return /*bad*/copy *s;
+        }
+        None => { }
+    }
+
+    return if substs.is_none() {
+        let s = mangle_exported_name(
+            ccx,
+            vec::append(path, ~[path_name((ccx.names)(~"dtor"))]),
+            t);
+        // XXX: Bad copy, use `@str`?
+        ccx.item_symbols.insert(id, copy s);
+        s
+    } else {
+        // Monomorphizing, so just make a symbol, don't add
+        // this to item_symbols
+        match substs {
+            Some(ss) => {
+                let mono_ty = ty::subst_tps(ccx.tcx, ss.tys, ss.self_ty, t);
+                mangle_exported_name(
+                    ccx,
+                    vec::append(path,
+                                ~[path_name((ccx.names)(~"dtor"))]),
+                    mono_ty)
+            }
+            None => {
+                ccx.sess.bug(fmt!("get_dtor_symbol: not monomorphizing and \
+                                   couldn't find a symbol for dtor %?", path));
+            }
+        }
+    };
 }
 
 pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {

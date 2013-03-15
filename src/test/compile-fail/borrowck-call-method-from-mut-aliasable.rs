@@ -27,13 +27,15 @@ fn a(x: &mut Foo) {
 fn b(x: &Foo) {
     x.f();
     x.g();
-    x.h(); //~ ERROR illegal borrow
+    x.h(); //~ ERROR cannot borrow
 }
 
 fn c(x: &const Foo) {
-    x.f(); //~ ERROR illegal borrow unless pure
+    x.f(); //~ ERROR cannot borrow
+    //~^ ERROR unsafe borrow
     x.g();
-    x.h(); //~ ERROR illegal borrow
+    x.h(); //~ ERROR cannot borrow
+    //~^ ERROR unsafe borrow
 }
 
 fn main() {

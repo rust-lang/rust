@@ -574,13 +574,17 @@ pub trait get_node_info {
 
 impl get_node_info for @ast::expr {
     fn info(&self) -> Option<NodeInfo> {
-        Some(NodeInfo { id: self.id, span: self.span })
+        Some(NodeInfo {id: self.id,
+                       callee_id: Some(self.callee_id),
+                       span: self.span})
     }
 }
 
 impl get_node_info for ast::blk {
     fn info(&self) -> Option<NodeInfo> {
-        Some(NodeInfo { id: self.node.id, span: self.span })
+        Some(NodeInfo {id: self.node.id,
+                       callee_id: None,
+                       span: self.span})
     }
 }
 
@@ -592,6 +596,7 @@ impl get_node_info for Option<@ast::expr> {
 
 pub struct NodeInfo {
     id: ast::node_id,
+    callee_id: Option<ast::node_id>,
     span: span
 }
 

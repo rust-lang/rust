@@ -304,7 +304,7 @@ pub impl Scheduler {
         unsafe {
             let last_task = transmute::<Option<&Task>, Option<&mut Task>>(last_task);
             let last_task_context = match last_task {
-                Some(ref t) => Some(&mut t.saved_context), None => None
+                Some(t) => Some(&mut t.saved_context), None => None
             };
             let next_task_context = match self.current_task {
                 Some(ref mut t) => Some(&mut t.saved_context), None => None
