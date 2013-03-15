@@ -572,7 +572,7 @@ mod tests {
     #[test] #[should_fail] #[ignore(cfg(windows))]
     pub fn test_rw_arc_poison_wr() {
         let arc = ~RWARC(1);
-        let arc2 = ~arc.clone();
+        let arc2 = (*arc).clone();
         do task::try || {
             do arc2.write |one| {
                 fail_unless!(*one == 2);
@@ -585,7 +585,7 @@ mod tests {
     #[test] #[should_fail] #[ignore(cfg(windows))]
     pub fn test_rw_arc_poison_ww() {
         let arc = ~RWARC(1);
-        let arc2 = ~arc.clone();
+        let arc2 = (*arc).clone();
         do task::try || {
             do arc2.write |one| {
                 fail_unless!(*one == 2);
@@ -598,7 +598,7 @@ mod tests {
     #[test] #[should_fail] #[ignore(cfg(windows))]
     pub fn test_rw_arc_poison_dw() {
         let arc = ~RWARC(1);
-        let arc2 = ~arc.clone();
+        let arc2 = (*arc).clone();
         do task::try || {
             do arc2.write_downgrade |write_mode| {
                 do (&write_mode).write |one| {
@@ -613,7 +613,7 @@ mod tests {
     #[test] #[ignore(cfg(windows))]
     pub fn test_rw_arc_no_poison_rr() {
         let arc = ~RWARC(1);
-        let arc2 = ~arc.clone();
+        let arc2 = (*arc).clone();
         do task::try || {
             do arc2.read |one| {
                 fail_unless!(*one == 2);
@@ -626,7 +626,7 @@ mod tests {
     #[test] #[ignore(cfg(windows))]
     pub fn test_rw_arc_no_poison_rw() {
         let arc = ~RWARC(1);
-        let arc2 = ~arc.clone();
+        let arc2 = (*arc).clone();
         do task::try || {
             do arc2.read |one| {
                 fail_unless!(*one == 2);
@@ -639,7 +639,7 @@ mod tests {
     #[test] #[ignore(cfg(windows))]
     pub fn test_rw_arc_no_poison_dr() {
         let arc = ~RWARC(1);
-        let arc2 = ~arc.clone();
+        let arc2 = (*arc).clone();
         do task::try || {
             do arc2.write_downgrade |write_mode| {
                 let read_mode = arc2.downgrade(write_mode);
@@ -655,7 +655,7 @@ mod tests {
     #[test]
     pub fn test_rw_arc() {
         let arc = ~RWARC(0);
-        let arc2 = ~arc.clone();
+        let arc2 = (*arc).clone();
         let (p,c) = comm::stream();
 
         do task::spawn || {
@@ -673,7 +673,7 @@ mod tests {
         // Readers try to catch the writer in the act
         let mut children = ~[];
         for 5.times {
-            let arc3 = ~arc.clone();
+            let arc3 = (*arc).clone();
             do task::task().future_result(|+r| children.push(r)).spawn
                 || {
                 do arc3.read |num| {
@@ -704,7 +704,7 @@ mod tests {
         for 10.times {
             let ((rp1,rc1),(rp2,rc2)) = (comm::stream(),comm::stream());
             reader_convos.push((rc1, rp2));
-            let arcn = ~arc.clone();
+            let arcn = (*arc).clone();
             do task::spawn || {
                 rp1.recv(); // wait for downgrader to give go-ahead
                 do arcn.read |state| {
@@ -715,7 +715,7 @@ mod tests {
         }
 
         // Writer task
-        let arc2 = ~arc.clone();
+        let arc2 = (*arc).clone();
         let ((wp1,wc1),(wp2,wc2)) = (comm::stream(),comm::stream());
         do task::spawn || {
             wp1.recv();
