@@ -246,7 +246,7 @@ pub impl FileMap {
         // the new charpos must be > the last one (or it's the first one).
         let lines = &mut *self.lines;
         assert!((lines.len() == 0) || (lines[lines.len() - 1] < pos));
-        self.lines.push(pos);
+        lines.push(pos);
     }
 
     // get a line from the list of pre-computed line-beginnings
@@ -308,7 +308,7 @@ pub impl CodeMap {
             multibyte_chars: @mut ~[],
         };
 
-        self.files.push(filemap);
+        files.push(filemap);
 
         return filemap;
     }

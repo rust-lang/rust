@@ -31,5 +31,5 @@ fn main() {
     // mutability check will fail, because the
     // type of r has been inferred to be
     // fn(@const int) -> @const int
-    *r(@mut 3) = 4; //~ ERROR assigning to dereference of const @ pointer
+    *r(@mut 3) = 4; //~ ERROR cannot assign to const dereference of @ pointer
 }

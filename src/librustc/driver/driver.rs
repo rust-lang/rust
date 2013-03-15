@@ -263,7 +263,7 @@ pub fn compile_rest(sess: Session,
              middle::check_loop::check_crate(ty_cx, crate));
 
         let middle::moves::MoveMaps {moves_map, variable_moves_map,
-                                     capture_map} =
+                                     moved_variables_set, capture_map} =
             time(time_passes, ~"compute moves", ||
                  middle::moves::compute_moves(ty_cx, method_map, crate));
 
@@ -271,20 +271,19 @@ pub fn compile_rest(sess: Session,
              middle::check_match::check_crate(ty_cx, method_map,
                                               moves_map, crate));
 
-        let last_use_map =
-            time(time_passes, ~"liveness checking", ||
-                 middle::liveness::check_crate(ty_cx, method_map,
-                                               variable_moves_map,
-                                               capture_map, crate));
+        time(time_passes, ~"liveness checking", ||
+             middle::liveness::check_crate(ty_cx, method_map,
+                                           variable_moves_map,
+                                           capture_map, crate));
 
-        let (root_map, mutbl_map, write_guard_map) =
+        let (root_map, write_guard_map) =
             time(time_passes, ~"borrow checking", ||
                  middle::borrowck::check_crate(ty_cx, method_map,
-                                               moves_map, capture_map,
-                                               crate));
+                                               moves_map, moved_variables_set,
+                                               capture_map, crate));
 
         time(time_passes, ~"kind checking", ||
-             kind::check_crate(ty_cx, method_map, last_use_map, crate));
+             kind::check_crate(ty_cx, method_map, crate));
 
         time(time_passes, ~"lint checking", ||
              lint::check_crate(ty_cx, crate));
@@ -292,9 +291,7 @@ pub fn compile_rest(sess: Session,
         if upto == cu_no_trans { return (crate, Some(ty_cx)); }
 
         let maps = astencode::Maps {
-            mutbl_map: mutbl_map,
             root_map: root_map,
-            last_use_map: last_use_map,
             method_map: method_map,
             vtable_map: vtable_map,
             write_guard_map: write_guard_map,

@@ -44,6 +44,11 @@ pub fn trans_impl(ccx: @CrateContext, path: path, name: ast::ident,
                   methods: &[@ast::method], generics: &ast::Generics,
                   self_ty: Option<ty::t>, id: ast::node_id) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
+    let tcx = ccx.tcx;
+
+    debug!("trans_impl(path=%s, name=%s, self_ty=%s, id=%?)",
+           path.repr(tcx), name.repr(tcx), self_ty.repr(tcx), id);
+
     if !generics.ty_params.is_empty() { return; }
     let sub_path = vec::append_one(path, path_name(name));
     for vec::each(methods) |method| {

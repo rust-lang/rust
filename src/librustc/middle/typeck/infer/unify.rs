@@ -23,7 +23,7 @@ pub enum VarValue<V, T> {
 }
 
 pub struct ValsAndBindings<V, T> {
-    vals: @mut SmallIntMap<VarValue<V, T>>,
+    vals: SmallIntMap<VarValue<V, T>>,
     bindings: ~[(V, VarValue<V, T>)],
 }
 
@@ -60,26 +60,25 @@ pub impl InferCtxt {
             vid: V) -> Node<V, T>
         {
             let vid_u = vid.to_uint();
-            match vb.vals.find(&vid_u) {
+            let var_val = match vb.vals.find(&vid_u) {
+                Some(&var_val) => var_val,
                 None => {
                     tcx.sess.bug(fmt!(
                         "failed lookup of vid `%u`", vid_u));
                 }
-                Some(var_val) => {
-                    match *var_val {
-                        Redirect(vid) => {
-                            let node: Node<V,T> = helper(tcx, vb, vid);
-                            if node.root != vid {
-                                // Path compression
-                                vb.vals.insert(vid.to_uint(),
-                                               Redirect(node.root));
-                            }
-                            node
-                        }
-                        Root(ref pt, rk) => {
-                            Node {root: vid, possible_types: *pt, rank: rk}
-                        }
+            };
+            match var_val {
+                Redirect(vid) => {
+                    let node: Node<V,T> = helper(tcx, vb, vid);
+                    if node.root != vid {
+                        // Path compression
+                        vb.vals.insert(vid.to_uint(),
+                                       Redirect(node.root));
                     }
+                    node
+                }
+                Root(pt, rk) => {
+                    Node {root: vid, possible_types: pt, rank: rk}
                 }
             }
         }
@@ -99,8 +98,8 @@ pub impl InferCtxt {
 
         { // FIXME(#4903)---borrow checker is not flow sensitive
             let vb = UnifyVid::appropriate_vals_and_bindings(self);
-            let old_v = vb.vals.get(&vid.to_uint());
-            vb.bindings.push((vid, *old_v));
+            let old_v = { *vb.vals.get(&vid.to_uint()) }; // FIXME(#4903)
+            vb.bindings.push((vid, old_v));
             vb.vals.insert(vid.to_uint(), new_v);
         }
     }

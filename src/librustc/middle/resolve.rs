@@ -971,7 +971,7 @@ pub impl Resolver {
                 module_.children.insert(name, child);
                 return (child, new_parent);
             }
-            Some(child) => {
+            Some(&child) => {
                 // Enforce the duplicate checking mode:
                 //
                 // * If we're requesting duplicate module checking, check that
@@ -1033,7 +1033,7 @@ pub impl Resolver {
                                   *self.session.str_of(name)));
                     }
                 }
-                return (*child, new_parent);
+                return (child, new_parent);
             }
         }
     }
@@ -1864,7 +1864,7 @@ pub impl Resolver {
                        *self.session.str_of(target));
 
                 match module_.import_resolutions.find(&target) {
-                    Some(resolution) => {
+                    Some(&resolution) => {
                         debug!("(building import directive) bumping \
                                 reference");
                         resolution.outstanding_references += 1;
@@ -2395,7 +2395,7 @@ pub impl Resolver {
                         (*ident, new_import_resolution);
                 }
                 None => { /* continue ... */ }
-                Some(dest_import_resolution) => {
+                Some(&dest_import_resolution) => {
                     // Merge the two import resolutions at a finer-grained
                     // level.
 
@@ -2433,8 +2433,8 @@ pub impl Resolver {
                     module_.import_resolutions.insert
                         (*ident, dest_import_resolution);
                 }
-                Some(existing_import_resolution) => {
-                    dest_import_resolution = *existing_import_resolution;
+                Some(&existing_import_resolution) => {
+                    dest_import_resolution = existing_import_resolution;
                 }
             }
 

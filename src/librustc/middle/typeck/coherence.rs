@@ -393,7 +393,7 @@ pub impl CoherenceChecker {
 
             let pmm = self.crate_context.tcx.provided_methods;
             match pmm.find(&local_def(impl_id)) {
-                Some(mis) => {
+                Some(&mis) => {
                     // If the trait already has an entry in the
                     // provided_methods_map, we just need to add this
                     // method to that entry.
@@ -426,8 +426,8 @@ pub impl CoherenceChecker {
                 self.crate_context.coherence_info.inherent_methods
                     .insert(base_def_id, implementation_list);
             }
-            Some(existing_implementation_list) => {
-                implementation_list = *existing_implementation_list;
+            Some(&existing_implementation_list) => {
+                implementation_list = existing_implementation_list;
             }
         }
 
@@ -443,8 +443,8 @@ pub impl CoherenceChecker {
                 self.crate_context.coherence_info.extension_methods
                     .insert(trait_id, implementation_list);
             }
-            Some(existing_implementation_list) => {
-                implementation_list = *existing_implementation_list;
+            Some(&existing_implementation_list) => {
+                implementation_list = existing_implementation_list;
             }
         }
 
@@ -507,7 +507,7 @@ pub impl CoherenceChecker {
                 m.insert(self_t, the_impl);
                 self.crate_context.tcx.trait_impls.insert(trait_t, m);
             }
-            Some(m) => {
+            Some(&m) => {
                 m.insert(self_t, the_impl);
             }
         }

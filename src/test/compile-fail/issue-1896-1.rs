@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that we require managed closures to be rooted when borrowed.
+
 struct boxedFn<'self> { theFn: &'self fn() -> uint }
 
 fn createClosure (closedUint: uint) -> boxedFn {
     let theFn: @fn() -> uint = || closedUint;
-    boxedFn {theFn: theFn} //~ ERROR illegal borrow
+    boxedFn {theFn: theFn} //~ ERROR cannot root
 }
 
 fn main () {

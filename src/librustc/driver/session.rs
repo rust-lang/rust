@@ -173,15 +173,19 @@ pub type Session = @Session_;
 
 pub impl Session_ {
     fn span_fatal(@self, sp: span, msg: ~str) -> ! {
+        debug!("span_fatal invoked: %s", msg);
         self.span_diagnostic.span_fatal(sp, msg)
     }
     fn fatal(@self, msg: ~str) -> ! {
+        debug!("fatal invoked: %s", msg);
         self.span_diagnostic.handler().fatal(msg)
     }
     fn span_err(@self, sp: span, msg: ~str) {
+        debug!("span_err invoked: %s", msg);
         self.span_diagnostic.span_err(sp, msg)
     }
     fn err(@self, msg: ~str) {
+        debug!("err invoked: %s", msg);
         self.span_diagnostic.handler().err(msg)
     }
     fn has_errors(@self) -> bool {
@@ -191,15 +195,19 @@ pub impl Session_ {
         self.span_diagnostic.handler().abort_if_errors()
     }
     fn span_warn(@self, sp: span, msg: ~str) {
+        debug!("span_warn invoked: %s", msg);
         self.span_diagnostic.span_warn(sp, msg)
     }
     fn warn(@self, msg: ~str) {
+        debug!("warn invoked: %s", msg);
         self.span_diagnostic.handler().warn(msg)
     }
     fn span_note(@self, sp: span, msg: ~str) {
+        debug!("span_note invoked: %s", msg);
         self.span_diagnostic.span_note(sp, msg)
     }
     fn note(@self, msg: ~str) {
+        debug!("note invoked: %s", msg);
         self.span_diagnostic.handler().note(msg)
     }
     fn span_bug(@self, sp: span, msg: ~str) -> ! {

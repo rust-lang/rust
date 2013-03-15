@@ -1114,7 +1114,8 @@ pub fn compare_values(cx: block,
 pub fn store_non_ref_bindings(bcx: block,
                               data: &ArmData,
                               opt_temp_cleanups: Option<&mut ~[ValueRef]>)
-                           -> block {
+    -> block
+{
     /*!
      *
      * For each copy/move binding, copy the value from the value
@@ -1125,6 +1126,7 @@ pub fn store_non_ref_bindings(bcx: block,
      */
 
     let mut bcx = bcx;
+    let mut opt_temp_cleanups = opt_temp_cleanups;
     for data.bindings_map.each_value |&binding_info| {
         match binding_info.trmode {
             TrByValue(is_move, lldest) => {
@@ -1139,9 +1141,10 @@ pub fn store_non_ref_bindings(bcx: block,
                     }
                 };
 
-                for opt_temp_cleanups.each |temp_cleanups| {
+                do opt_temp_cleanups.mutate |temp_cleanups| {
                     add_clean_temp_mem(bcx, lldest, binding_info.ty);
                     temp_cleanups.push(lldest);
+                    temp_cleanups
                 }
             }
             TrByRef | TrByImplicitRef => {}

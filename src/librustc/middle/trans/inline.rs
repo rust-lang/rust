@@ -29,26 +29,33 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
     -> ast::def_id {
     let _icx = ccx.insn_ctxt("maybe_instantiate_inline");
     match ccx.external.find(&fn_id) {
-      Some(&Some(node_id)) => {
-        // Already inline
-        debug!("maybe_instantiate_inline(%s): already inline as node id %d",
-               ty::item_path_str(ccx.tcx, fn_id), node_id);
-        local_def(node_id)
-      }
-      Some(&None) => fn_id, // Not inlinable
-      None => { // Not seen yet
-        match csearch::maybe_get_item_ast(
+        Some(&Some(node_id)) => {
+            // Already inline
+            debug!("maybe_instantiate_inline(%s): already inline as node id %d",
+                   ty::item_path_str(ccx.tcx, fn_id), node_id);
+            return local_def(node_id);
+        }
+        Some(&None) => {
+            return fn_id; // Not inlinable
+        }
+        None => {
+            // Not seen yet
+        }
+    }
+
+    let csearch_result =
+        csearch::maybe_get_item_ast(
             ccx.tcx, fn_id,
             |a,b,c,d| {
                 astencode::decode_inlined_item(a, b, ccx.maps,
                                                /*bad*/ copy c, d)
-            }) {
-
-          csearch::not_found => {
+            });
+    return match csearch_result {
+        csearch::not_found => {
             ccx.external.insert(fn_id, None);
             fn_id
-          }
-          csearch::found(ast::ii_item(item)) => {
+        }
+        csearch::found(ast::ii_item(item)) => {
             ccx.external.insert(fn_id, Some(item.id));
             ccx.stats.n_inlines += 1;
             if translate { trans_item(ccx, item); }
@@ -122,8 +129,6 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
               ccx.external.insert(fn_id, Some((*dtor).node.id));
               local_def((*dtor).node.id)
           }
-        }
-      }
-    }
+    };
 }
 

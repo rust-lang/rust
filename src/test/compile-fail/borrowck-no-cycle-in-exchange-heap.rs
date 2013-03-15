@@ -19,9 +19,9 @@ enum cycle {
 fn main() {
     let mut x = ~node(node_ {a: ~empty});
     // Create a cycle!
-    match *x { //~ NOTE loan of mutable local variable granted here
+    match *x {
       node(ref mut y) => {
-        y.a = x; //~ ERROR moving out of mutable local variable prohibited due to outstanding loan
+        y.a = x; //~ ERROR cannot move out of
       }
       empty => {}
     };

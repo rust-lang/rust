@@ -137,6 +137,9 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       ast_map::node_local(*) => {
           ccx.tcx.sess.bug(~"Can't monomorphize a local")
       }
+      ast_map::node_callee_scope(*) => {
+          ccx.tcx.sess.bug(~"Can't monomorphize a callee-scope")
+      }
       ast_map::node_struct_ctor(_, i, pt) => (pt, i.ident, i.span)
     };
 
@@ -279,6 +282,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       ast_map::node_trait_method(*) |
       ast_map::node_arg(*) |
       ast_map::node_block(*) |
+      ast_map::node_callee_scope(*) |
       ast_map::node_local(*) => {
         ccx.tcx.sess.bug(fmt!("Can't monomorphize a %?", map_node))
       }

@@ -1,10 +1,10 @@
 trait Reverser {
-    fn reverse(&self);
+    fn reverse(self);
 }
 
 impl<'self> Reverser for &'self mut [uint] {
-    fn reverse(&self) {
-        vec::reverse(*self);
+    fn reverse(self) {
+        vec::reverse(self);
     }
 }
 

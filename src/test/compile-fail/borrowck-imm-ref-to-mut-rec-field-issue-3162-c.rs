@@ -10,9 +10,9 @@
 
 fn main() {
     let mut _a = 3;
-    let _b = &mut _a; //~ NOTE loan of mutable local variable granted here
+    let _b = &mut _a;
     {
         let _c = &*_b;
-        _a = 4; //~ ERROR assigning to mutable local variable prohibited
+        _a = 4; //~ ERROR cannot assign to `_a`
     }
 }

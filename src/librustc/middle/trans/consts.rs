@@ -195,18 +195,19 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
             match adj.autoref {
                 None => { }
                 Some(ref autoref) => {
-                    assert!(autoref.region == ty::re_static);
-                    assert!(autoref.mutbl != ast::m_mutbl);
                     // Don't copy data to do a deref+ref.
                     let llptr = match maybe_ptr {
                         Some(ptr) => ptr,
                         None => const_addr_of(cx, llconst)
                     };
-                    match autoref.kind {
-                        ty::AutoPtr => {
+                    match *autoref {
+                        ty::AutoUnsafe(m) |
+                        ty::AutoPtr(ty::re_static, m) => {
+                            assert!(m != ast::m_mutbl);
                             llconst = llptr;
                         }
-                        ty::AutoBorrowVec => {
+                        ty::AutoBorrowVec(ty::re_static, m) => {
+                            assert!(m != ast::m_mutbl);
                             let size = machine::llsize_of(cx,
                                                           val_ty(llconst));
                             assert!(abi::slice_elt_base == 0);

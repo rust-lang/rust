@@ -19,6 +19,7 @@ fn with<'a, R>(f: &fn(x: &'a int) -> R) -> R {
 fn return_it<'a>() -> &'a int {
     with(|o| o) //~ ERROR mismatched types
         //~^ ERROR reference is not valid outside of its lifetime
+        //~^^ ERROR reference is not valid outside of its lifetime
 }
 
 fn main() {
