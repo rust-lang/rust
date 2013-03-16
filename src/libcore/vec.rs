@@ -15,6 +15,7 @@
 use container::{Container, Mutable};
 use cast;
 use cmp::{Eq, Equiv, Ord, TotalOrd, Ordering, Less, Equal, Greater};
+use clone::Clone;
 use iter::BaseIter;
 use iter;
 use kinds::Copy;
@@ -2498,6 +2499,18 @@ impl<A:Copy> iter::CopyableNonstrictIter<A> for @[A] {
             if !f(copy self[i]) { break; }
             i += 1;
         }
+    }
+}
+
+impl<A:Clone> Clone for ~[A] {
+    #[inline]
+    fn clone(&self) -> ~[A] {
+        let mut dolly = ~[];
+        vec::reserve(&mut dolly, self.len());
+        for self.each |item| {
+            dolly.push(item.clone());
+        }
+        return dolly;
     }
 }
 

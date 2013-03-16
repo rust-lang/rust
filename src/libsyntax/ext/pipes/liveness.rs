@@ -63,7 +63,7 @@ pub fn analyze(proto: protocol, _cx: @ext_ctxt) {
         debug!("colive iteration %?", i);
         let mut new_colive = ~[];
         for colive.eachi |i, this_colive| {
-            let mut result = ~this_colive.clone();
+            let mut result = this_colive.clone();
             let this = proto.get_state_by_id(i);
             for this_colive.ones |j| {
                 let next = proto.get_state_by_id(j);

@@ -11,7 +11,7 @@
 fn foo(x: Option<~int>, b: bool) -> int {
     match x {
       None => { 1 }
-      Some(copy x) if b => { *x }
+      Some(ref x) if b => { *x.clone() }
       Some(_) => { 0 }
     }
 }

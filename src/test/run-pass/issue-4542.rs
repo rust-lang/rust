@@ -11,7 +11,7 @@
 // xfail-test
 pub fn main() {
     for os::args().each |arg| {
-        match copy *arg {
+        match arg.clone() {
             s => { }
         }
     }

@@ -9,8 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-use core::to_str::*;
-
 struct cat {
     priv meows : uint,
 
@@ -53,7 +51,12 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 }
 
 impl ToStr for cat {
-  pure fn to_str(&self) -> ~str { copy self.name }
+    pure fn to_str(&self) -> ~str {
+        // FIXME #5384: this unsafe block is to work around purity
+        unsafe {
+            self.name.clone()
+        }
+    }
 }
 
 fn print_out(thing: @ToStr, expected: ~str) {
