@@ -469,4 +469,26 @@ mod tests {
             n -= 1;
         }
     }
+
+    #[test]
+    fn test_sane_chunk() {
+        let x = 1;
+        let y = 1 << (uint::bits - 1);
+
+        let mut trie = TrieSet::new();
+
+        fail_unless!(trie.insert(x));
+        fail_unless!(trie.insert(y));
+
+        fail_unless!(trie.len() == 2);
+
+        let expected = [x, y];
+
+        let mut i = 0;
+
+        for trie.each |x| {
+            fail_unless!(expected[i] == *x);
+            i += 1;
+        }
+    }
 }
