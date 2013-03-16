@@ -137,6 +137,7 @@ impl<T> Map<uint, T> for TrieMap<T> {
 }
 
 impl<T> TrieMap<T> {
+    /// Create an empty TrieMap
     #[inline(always)]
     static pure fn new() -> TrieMap<T> {
         TrieMap{root: TrieNode::new(), length: 0}
@@ -191,6 +192,12 @@ impl Mutable for TrieSet {
 }
 
 impl TrieSet {
+    /// Create an empty TrieSet
+    #[inline(always)]
+    static pure fn new() -> TrieSet {
+        TrieSet{map: TrieMap::new()}
+    }
+
     /// Return true if the set contains a value
     #[inline(always)]
     pure fn contains(&self, value: &uint) -> bool {
