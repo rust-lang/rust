@@ -142,7 +142,7 @@ fn fold_block(
     ast::blk_ {
         view_items: /*bad*/copy b.view_items,
         stmts: vec::map(filtered_stmts, |x| fld.fold_stmt(*x)),
-        expr: option::map(&b.expr, |x| fld.fold_expr(*x)),
+        expr: b.expr.map(|x| fld.fold_expr(*x)),
         id: b.id,
         rules: b.rules,
     }

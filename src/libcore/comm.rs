@@ -15,8 +15,7 @@ Message passing
 use cast;
 use either::{Either, Left, Right};
 use kinds::Owned;
-use option;
-use option::{Option, Some, None, unwrap};
+use option::{Option, Some, None};
 use uint;
 use unstable;
 use vec;
@@ -126,7 +125,7 @@ fn chan_send<T:Owned>(self: &Chan<T>, x: T) {
     let mut endp = None;
     endp <-> self.endp;
     self.endp = Some(
-        streamp::client::data(unwrap(endp), x))
+        streamp::client::data(endp.unwrap(), x))
 }
 
 impl<T: Owned> GenericSmartChan<T> for Chan<T> {
@@ -139,7 +138,7 @@ impl<T: Owned> GenericSmartChan<T> for Chan<T> {
 fn chan_try_send<T:Owned>(self: &Chan<T>, x: T) -> bool {
     let mut endp = None;
     endp <-> self.endp;
-    match streamp::client::try_data(unwrap(endp), x) {
+    match streamp::client::try_data(endp.unwrap(), x) {
         Some(next) => {
             self.endp = Some(next);
             true
@@ -165,7 +164,7 @@ impl<T: Owned> GenericPort<T> for Port<T> {
 fn port_recv<T:Owned>(self: &Port<T>) -> T {
     let mut endp = None;
     endp <-> self.endp;
-    let streamp::data(x, endp) = recv(unwrap(endp));
+    let streamp::data(x, endp) = recv(endp.unwrap());
     self.endp = Some(endp);
     x
 }
@@ -174,7 +173,7 @@ fn port_recv<T:Owned>(self: &Port<T>) -> T {
 fn port_try_recv<T:Owned>(self: &Port<T>) -> Option<T> {
     let mut endp = None;
     endp <-> self.endp;
-    match try_recv(unwrap(endp)) {
+    match try_recv(endp.unwrap()) {
         Some(streamp::data(x, endp)) => {
             self.endp = Some(endp);
             Some(x)
@@ -312,7 +311,7 @@ fn shared_chan_send<T:Owned>(self: &SharedChan<T>, x: T) {
     do self.with_imm |chan| {
         let mut x = None;
         x <-> xx;
-        chan.send(option::unwrap(x))
+        chan.send(x.unwrap())
     }
 }
 
@@ -326,7 +325,7 @@ fn shared_chan_try_send<T:Owned>(self: &SharedChan<T>, x: T) -> bool {
     do self.with_imm |chan| {
         let mut x = None;
         x <-> xx;
-        chan.try_send(option::unwrap(x))
+        chan.try_send(x.unwrap())
     }
 }
 
@@ -409,7 +408,7 @@ pub fn try_recv_one<T: Owned> (port: PortOne<T>) -> Option<T> {
 
     if message.is_none() { None }
     else {
-        let oneshot::send(message) = option::unwrap(message);
+        let oneshot::send(message) = message.unwrap();
         Some(message)
     }
 }

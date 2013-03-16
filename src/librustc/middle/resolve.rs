@@ -75,7 +75,6 @@ use syntax::visit::{visit_foreign_item, visit_item, visit_method_helper};
 use syntax::visit::{visit_mod, visit_ty, vt};
 use syntax::opt_vec::OptVec;
 
-use core::option::{Some, get, is_some, is_none};
 use core::str::{connect, each_split_str};
 use core::hashmap::linear::{LinearMap, LinearSet};
 
@@ -2490,7 +2489,7 @@ pub impl Resolver {
 
             debug!("(resolving glob import) writing module resolution \
                     %? into `%s`",
-                   is_none(&mut target_import_resolution.type_target),
+                   target_import_resolution.type_target.is_none(),
                    self.module_to_str(module_));
 
             // Here we merge two import resolutions.
@@ -5163,7 +5162,7 @@ pub impl Resolver {
             if this.main_fns.len() >= 1u {
                 let mut i = 1u;
                 while i < this.main_fns.len() {
-                    let (_, dup_main_span) = option::unwrap(this.main_fns[i]);
+                    let (_, dup_main_span) = this.main_fns[i].unwrap();
                     this.session.span_err(
                         dup_main_span,
                         ~"multiple 'main' functions");

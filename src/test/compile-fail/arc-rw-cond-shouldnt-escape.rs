@@ -17,5 +17,5 @@ fn main() {
     do x.write_cond |_one, cond| {
         y = Some(cond);
     }
-    option::unwrap(y).wait();
+    y.unwrap().wait();
 }

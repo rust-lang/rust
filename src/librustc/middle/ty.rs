@@ -30,7 +30,6 @@ use util::common::{indenter};
 use core::cast;
 use core::cmp;
 use core::ops;
-use core::option;
 use core::ptr::to_unsafe_ptr;
 use core::result::Result;
 use core::result;
@@ -3632,11 +3631,10 @@ pub fn impl_traits(cx: ctxt, id: ast::def_id, store: TraitStore) -> ~[t] {
                         _},
                     _)) => {
 
-               do option::map_default(&opt_trait, ~[]) |trait_ref| {
-                       ~[storeify(cx,
-                                  node_id_to_type(cx, trait_ref.ref_id),
-                                  store)]
-                   }
+               do opt_trait.map_default(~[]) |trait_ref| {
+                   ~[storeify(cx, node_id_to_type(cx, trait_ref.ref_id),
+                              store)]
+               }
            }
            _ => ~[]
         }

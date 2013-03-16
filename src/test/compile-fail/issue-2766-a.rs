@@ -22,7 +22,7 @@ pub mod stream {
                 //~^ ERROR use of undeclared type name
                 //~^^ ERROR attempt to use a type argument out of scope
                 //~^^^ ERROR use of undeclared type name
-                    option::unwrap(pipes::recv(pipe))
+                    pipes::recv(pipe).unwrap()
                 }
                 recv
             }

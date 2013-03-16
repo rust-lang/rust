@@ -87,8 +87,7 @@ use cell::Cell;
 use either::{Either, Left, Right};
 use kinds::Owned;
 use libc;
-use option;
-use option::{None, Option, Some, unwrap};
+use option::{None, Option, Some};
 use unstable::intrinsics;
 use ptr;
 use task;
@@ -465,7 +464,7 @@ pub fn try_recv<T:Owned,Tbuffer:Owned>(p: RecvPacketBuffered<T, Tbuffer>)
         let mut payload = None;
         payload <-> p.payload;
         p.header.state = Empty;
-        return Some(option::unwrap(payload))
+        return Some(payload.unwrap())
       },
       Terminated => return None,
       _ => {}
@@ -523,7 +522,7 @@ pub fn try_recv<T:Owned,Tbuffer:Owned>(p: RecvPacketBuffered<T, Tbuffer>)
                 }
             }
             p.header.state = Empty;
-            return Some(option::unwrap(payload))
+            return Some(payload.unwrap())
           }
           Terminated => {
             // This assert detects when we've accidentally unsafely
@@ -777,7 +776,7 @@ impl<T:Owned,Tbuffer:Owned> ::ops::Drop for SendPacketBuffered<T,Tbuffer> {
         if self.p != None {
             let mut p = None;
             p <-> self.p;
-            sender_terminate(option::unwrap(p))
+            sender_terminate(p.unwrap())
         }
         //unsafe { error!("send_drop: %?",
         //                if self.buffer == none {
@@ -802,7 +801,7 @@ pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
     fn unwrap(&self) -> *Packet<T> {
         let mut p = None;
         p <-> self.p;
-        option::unwrap(p)
+        p.unwrap()
     }
 
     fn header(&self) -> *PacketHeader {
@@ -821,7 +820,7 @@ pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
         //error!("send reuse_buffer");
         let mut tmp = None;
         tmp <-> self.buffer;
-        option::unwrap(tmp)
+        tmp.unwrap()
     }
 }
 
@@ -847,7 +846,7 @@ impl<T:Owned,Tbuffer:Owned> ::ops::Drop for RecvPacketBuffered<T,Tbuffer> {
         if self.p != None {
             let mut p = None;
             p <-> self.p;
-            receiver_terminate(option::unwrap(p))
+            receiver_terminate(p.unwrap())
         }
         //unsafe { error!("recv_drop: %?",
         //                if self.buffer == none {
@@ -860,14 +859,14 @@ pub impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
     fn unwrap(&self) -> *Packet<T> {
         let mut p = None;
         p <-> self.p;
-        option::unwrap(p)
+        p.unwrap()
     }
 
     fn reuse_buffer(&self) -> BufferResource<Tbuffer> {
         //error!("recv reuse_buffer");
         let mut tmp = None;
         tmp <-> self.buffer;
-        option::unwrap(tmp)
+        tmp.unwrap()
     }
 }
 
