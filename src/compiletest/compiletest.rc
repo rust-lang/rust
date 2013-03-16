@@ -61,7 +61,8 @@ pub fn parse_config(args: ~[~str]) -> config {
           getopts::optopt(~"runtool"), getopts::optopt(~"rustcflags"),
           getopts::optflag(~"verbose"),
           getopts::optopt(~"logfile"),
-          getopts::optflag(~"jit")];
+          getopts::optflag(~"jit"),
+          getopts::optflag(~"newrt")];
 
     fail_unless!(!args.is_empty());
     let args_ = vec::tail(args);
@@ -95,6 +96,7 @@ pub fn parse_config(args: ~[~str]) -> config {
         runtool: getopts::opt_maybe_str(matches, ~"runtool"),
         rustcflags: getopts::opt_maybe_str(matches, ~"rustcflags"),
         jit: getopts::opt_present(matches, ~"jit"),
+        newrt: getopts::opt_present(matches, ~"newrt"),
         verbose: getopts::opt_present(matches, ~"verbose")
     }
 }
@@ -114,6 +116,7 @@ pub fn log_config(config: config) {
     logv(c, fmt!("runtool: %s", opt_str(config.runtool)));
     logv(c, fmt!("rustcflags: %s", opt_str(config.rustcflags)));
     logv(c, fmt!("jit: %b", config.jit));
+    logv(c, fmt!("newrt: %b", config.newrt));
     logv(c, fmt!("verbose: %b", config.verbose));
     logv(c, fmt!("\n"));
 }

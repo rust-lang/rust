@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use libc::c_char;
 
 // Some basic logging
 macro_rules! rtdebug_ (
@@ -44,3 +45,33 @@ mod stack;
 mod context;
 mod thread;
 pub mod env;
+
+pub fn initialize() {
+    unsafe { rust_initialize_global_state(); }
+    extern {
+        fn rust_initialize_global_state();
+    }
+}
+
+pub fn start(main: *u8, _argc: int, _argv: *c_char, _crate_map: *u8) -> int {
+    use self::sched::{Scheduler, Task};
+    use self::uvio::UvEventLoop;
+
+    // XXX: Would rather do this lazily in Scheduler
+    initialize();
+
+    let loop_ = ~UvEventLoop::new();
+    let mut sched = ~Scheduler::new(loop_);
+    let main_task = ~do Task::new(&mut sched.stack_pool) {
+        // XXX: Can't call a C function pointer from Rust yet
+        unsafe { rust_call_nullary_fn(main) };
+    };
+    sched.task_queue.push_back(main_task);
+    sched.run();
+    return 0;
+
+    extern {
+        fn rust_call_nullary_fn(f: *u8);
+    }
+}
+
