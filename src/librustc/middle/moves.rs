@@ -558,10 +558,10 @@ pub impl VisitContext {
                 self.use_expr(base, Read, visitor);
             }
 
+            expr_inline_asm(*) |
             expr_break(*) |
             expr_again(*) |
-            expr_lit(*)   |
-            expr_inline_asm(*) => {}
+            expr_lit(*) => {}
 
             expr_loop(ref blk, _) => {
                 self.consume_block(blk, visitor);
