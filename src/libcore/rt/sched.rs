@@ -71,6 +71,13 @@ enum CleanupJob {
 pub impl Scheduler {
 
     static fn new(event_loop: ~EventLoopObject) -> Scheduler {
+
+        // Lazily initialize the global state, currently the scheduler TLS key
+        unsafe { rust_initialize_global_state(); }
+        extern {
+            fn rust_initialize_global_state();
+        }
+
         Scheduler {
             event_loop: event_loop,
             task_queue: WorkQueue::new(),

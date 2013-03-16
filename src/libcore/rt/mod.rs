@@ -46,19 +46,9 @@ mod context;
 mod thread;
 pub mod env;
 
-pub fn initialize() {
-    unsafe { rust_initialize_global_state(); }
-    extern {
-        fn rust_initialize_global_state();
-    }
-}
-
 pub fn start(main: *u8, _argc: int, _argv: *c_char, _crate_map: *u8) -> int {
     use self::sched::{Scheduler, Task};
     use self::uvio::UvEventLoop;
-
-    // XXX: Would rather do this lazily in Scheduler
-    initialize();
 
     let loop_ = ~UvEventLoop::new();
     let mut sched = ~Scheduler::new(loop_);

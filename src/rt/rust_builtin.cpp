@@ -889,7 +889,6 @@ rust_call_nullary_fn(nullary_fn f) {
     f();
 }
 
-
 #ifndef _WIN32
 pthread_key_t sched_key;
 #else
@@ -901,16 +900,26 @@ rust_get_sched_tls_key() {
     return &sched_key;
 }
 
+// Initialize the global state required by the new scheduler
 extern "C" CDECL void
 rust_initialize_global_state() {
 
+    static lock_and_signal init_lock;
+    static bool initialized = false;
+
+    scoped_lock with(init_lock);
+
+    if (!initialized) {
+
 #ifndef _WIN32
-    assert(!pthread_key_create(&sched_key, NULL));
+        assert(!pthread_key_create(&sched_key, NULL));
 #else
-    sched_key = TlsAlloc();
-    assert(sched_key != TLS_OUT_OF_INDEXES);
+        sched_key = TlsAlloc();
+        assert(sched_key != TLS_OUT_OF_INDEXES);
 #endif
 
+        initialized = true;
+    }
 }
 
 //
