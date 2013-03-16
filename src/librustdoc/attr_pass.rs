@@ -27,7 +27,6 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use core::option;
 use core::vec;
 use syntax::ast;
 use syntax::ast_map;
@@ -71,8 +70,7 @@ fn fold_crate(
     doc::CrateDoc {
         topmod: doc::ModDoc {
             item: doc::ItemDoc {
-                name: option::get_or_default(copy attrs.name,
-                                             doc.topmod.name()),
+                name: (copy attrs.name).get_or_default(doc.topmod.name()),
                 .. copy doc.topmod.item
             },
             .. copy doc.topmod
@@ -166,10 +164,10 @@ fn fold_enum(
                         ast_map::node_item(@ast::item {
                             node: ast::item_enum(ref enum_definition, _), _
                         }, _) => {
-                            let ast_variant = option::get(
+                            let ast_variant =
                                 vec::find(enum_definition.variants, |v| {
                                     to_str(v.node.name) == variant.name
-                                }));
+                                }).get();
 
                             attr_parser::parse_desc(
                                 copy ast_variant.node.attrs)

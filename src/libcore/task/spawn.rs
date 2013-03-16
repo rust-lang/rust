@@ -75,7 +75,6 @@
 use cast;
 use cell::Cell;
 use container::Map;
-use option;
 use comm::{Chan, GenericChan, GenericPort, Port, stream};
 use prelude::*;
 use unstable;
@@ -194,7 +193,7 @@ fn each_ancestor(list:        &mut AncestorList,
         if coalesce_this.is_some() {
             // Needed coalesce. Our next ancestor becomes our old
             // ancestor's next ancestor. ("next = old_next->next;")
-            *list = option::unwrap(coalesce_this);
+            *list = coalesce_this.unwrap();
         } else {
             // No coalesce; restore from tmp. ("next = old_next;")
             *list = tmp_list;
@@ -290,7 +289,7 @@ fn each_ancestor(list:        &mut AncestorList,
         fn with_parent_tg<U>(parent_group: &mut Option<TaskGroupArc>,
                              blk: &fn(TaskGroupInner) -> U) -> U {
             // If this trips, more likely the problem is 'blk' failed inside.
-            let tmp_arc = option::swap_unwrap(&mut *parent_group);
+            let tmp_arc = parent_group.swap_unwrap();
             let result = do access_group(&tmp_arc) |tg_opt| { blk(tg_opt) };
             *parent_group = Some(tmp_arc);
             result
@@ -374,7 +373,7 @@ fn enlist_in_taskgroup(state: TaskGroupInner, me: *rust_task,
     let newstate = util::replace(&mut *state, None);
     // If 'None', the group was failing. Can't enlist.
     if newstate.is_some() {
-        let group = option::unwrap(newstate);
+        let group = newstate.unwrap();
         taskset_insert(if is_member { &mut group.members }
                        else         { &mut group.descendants }, me);
         *state = Some(group);
@@ -390,7 +389,7 @@ fn leave_taskgroup(state: TaskGroupInner, me: *rust_task,
     let newstate = util::replace(&mut *state, None);
     // If 'None', already failing and we've already gotten a kill signal.
     if newstate.is_some() {
-        let group = option::unwrap(newstate);
+        let group = newstate.unwrap();
         taskset_remove(if is_member { &mut group.members }
                        else         { &mut group.descendants }, me);
         *state = Some(group);
@@ -414,7 +413,7 @@ fn kill_taskgroup(state: TaskGroupInner, me: *rust_task, is_main: bool) {
         // That's ok; only one task needs to do the dirty work. (Might also
         // see 'None' if Somebody already failed and we got a kill signal.)
         if newstate.is_some() {
-            let group = option::unwrap(newstate);
+            let group = newstate.unwrap();
             for taskset_each(&group.members) |sibling| {
                 // Skip self - killing ourself won't do much good.
                 if sibling != me {
@@ -519,7 +518,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
         //    None               { ancestor_list(None) }
         let tmp = util::replace(&mut **ancestors, None);
         if tmp.is_some() {
-            let ancestor_arc = option::unwrap(tmp);
+            let ancestor_arc = tmp.unwrap();
             let result = ancestor_arc.clone();
             **ancestors = Some(ancestor_arc);
             AncestorList(Some(result))
@@ -549,7 +548,7 @@ pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
             let mut notify_chan = if opts.notify_chan.is_none() {
                 None
             } else {
-                Some(option::swap_unwrap(&mut opts.notify_chan))
+                Some(opts.notify_chan.swap_unwrap())
             };
 
             let child_wrapper = make_child_wrapper(new_task, child_tg,

@@ -22,7 +22,6 @@ use fold::*;
 use parse;
 use parse::{parser, parse_item_from_source_str, new_parser_from_tts};
 
-use core::option;
 use core::vec;
 
 pub fn expand_expr(extsbox: @mut SyntaxEnv,
@@ -294,8 +293,7 @@ pub fn expand_item_mac(+extsbox: @mut SyntaxEnv,
         MRExpr(_) => cx.span_fatal(pth.span,
                                     ~"expr macro in item position: "
                                     + *extname),
-        MRAny(_, item_maker, _) =>
-            option::chain(item_maker(), |i| {fld.fold_item(i)}),
+        MRAny(_, item_maker, _) => item_maker().chain(|i| {fld.fold_item(i)}),
         MRDef(ref mdef) => {
             extsbox.insert(@/*bad*/ copy mdef.name, @SE((*mdef).ext));
             None

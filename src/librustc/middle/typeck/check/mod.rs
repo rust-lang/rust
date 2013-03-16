@@ -113,7 +113,6 @@ use util::ppaux;
 
 use core::either;
 use core::hashmap::linear::LinearMap;
-use core::option;
 use core::ptr;
 use core::result::{Result, Ok, Err};
 use core::result;
@@ -319,7 +318,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
     debug!("check_fn(arg_tys=%?, ret_ty=%?, self_info.self_ty=%?)",
            arg_tys.map(|a| ppaux::ty_to_str(tcx, *a)),
            ppaux::ty_to_str(tcx, ret_ty),
-           option::map(&self_info, |s| ppaux::ty_to_str(tcx, s.self_ty)));
+           self_info.map(|s| ppaux::ty_to_str(tcx, s.self_ty)));
 
     // ______________________________________________________________________
     // Create the function context.  This is either derived from scratch or,

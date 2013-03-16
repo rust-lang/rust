@@ -207,8 +207,7 @@ fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) {
 
 fn field_mutability(d: ebml::Doc) -> ast::struct_mutability {
     // Use maybe_get_doc in case it's a method
-    option::map_default(
-        &reader::maybe_get_doc(d, tag_struct_mut),
+    reader::maybe_get_doc(d, tag_struct_mut).map_default(
         ast::struct_immutable,
         |d| {
             match reader::doc_as_u8(*d) as char {
@@ -219,7 +218,7 @@ fn field_mutability(d: ebml::Doc) -> ast::struct_mutability {
 }
 
 fn variant_disr_val(d: ebml::Doc) -> Option<int> {
-    do option::chain(reader::maybe_get_doc(d, tag_disr_val)) |val_doc| {
+    do reader::maybe_get_doc(d, tag_disr_val).chain |val_doc| {
         int::parse_bytes(reader::doc_data(val_doc), 10u)
     }
 }

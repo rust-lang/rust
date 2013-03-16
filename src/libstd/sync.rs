@@ -15,7 +15,6 @@
  * in std.
  */
 
-use core::option;
 use core::prelude::*;
 use core::unstable::{Exclusive, exclusive};
 use core::ptr;
@@ -119,7 +118,7 @@ pub impl<Q:Owned> Sem<Q> {
         /* for 1000.times { task::yield(); } */
         // Need to wait outside the exclusive.
         if waiter_nobe.is_some() {
-            let _ = comm::recv_one(option::unwrap(waiter_nobe));
+            let _ = comm::recv_one(waiter_nobe.unwrap());
         }
     }
     fn release(&self) {
@@ -235,7 +234,7 @@ pub impl Condvar<'self> {
                             signal_waitqueue(&state.waiters);
                         }
                         // Enqueue ourself to be woken up by a signaller.
-                        let SignalEnd = option::swap_unwrap(&mut SignalEnd);
+                        let SignalEnd = SignalEnd.swap_unwrap();
                         state.blocked[condvar_id].tail.send(SignalEnd);
                     } else {
                         out_of_bounds = Some(vec::len(state.blocked));
@@ -255,7 +254,7 @@ pub impl Condvar<'self> {
             // Unconditionally "block". (Might not actually block if a
             // signaller already sent -- I mean 'unconditionally' in contrast
             // with acquire().)
-            let _ = comm::recv_one(option::swap_unwrap(&mut WaitEnd));
+            let _ = comm::recv_one(WaitEnd.swap_unwrap());
         }
 
         // This is needed for a failing condition variable to reacquire the
@@ -327,7 +326,7 @@ pub impl Condvar<'self> {
             }
         }
         do check_cvar_bounds(out_of_bounds, condvar_id, "cond.signal_on()") {
-            let queue = option::swap_unwrap(&mut queue);
+            let queue = queue.swap_unwrap();
             broadcast_waitqueue(&queue)
         }
     }
@@ -1352,7 +1351,7 @@ mod tests {
         do x.write_downgrade |xwrite| {
             let mut xopt = Some(xwrite);
             do y.write_downgrade |_ywrite| {
-                y.downgrade(option::swap_unwrap(&mut xopt));
+                y.downgrade(xopt.swap_unwrap());
                 error!("oops, y.downgrade(x) should have failed!");
             }
         }
