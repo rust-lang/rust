@@ -2259,7 +2259,7 @@ pub mod test {
             cf: ast::return_val
         };
         let generics = ast_util::empty_generics();
-        check_equal (&fun_to_str(&decl, abba_ident, &generics, mock_interner),
+        check_equal (&fun_to_str(&decl, abba_ident, None, &generics, mock_interner),
                      &~"fn abba()");
     }
 
