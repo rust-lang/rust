@@ -14,16 +14,20 @@
 
 #include "rust_globals.h"
 
+// Avoiding 'bool' type here since I'm not sure it has a standard size
+typedef uint8_t rust_bool;
+
 struct rust_env {
     size_t num_sched_threads;
     size_t min_stack_size;
     size_t max_stack_size;
     char* logspec;
-    bool detailed_leaks;
+    rust_bool detailed_leaks;
     char* rust_seed;
-    bool poison_on_free;
+    rust_bool poison_on_free;
     int argc;
     char **argv;
+    rust_bool debug_mem;
 };
 
 rust_env* load_env(int argc, char **argv);
