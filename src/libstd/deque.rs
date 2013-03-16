@@ -22,13 +22,17 @@ pub struct Deque<T> {
 }
 
 impl<T> Container for Deque<T> {
+    /// Return the number of elements in the deque
     pure fn len(&self) -> uint { self.nelts }
+
+    /// Return true if the deque contains no elements
     pure fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl<T> Mutable for Deque<T> {
+    /// Clear the deque, removing all values.
     fn clear(&mut self) {
-        for vec::each_mut(self.elts) |x| { *x = None }
+        for self.elts.each_mut |x| { *x = None }
         self.nelts = 0;
         self.lo = 0;
         self.hi = 0;
@@ -36,19 +40,33 @@ impl<T> Mutable for Deque<T> {
 }
 
 pub impl<T> Deque<T> {
+    /// Create an empty Deque
     static pure fn new() -> Deque<T> {
         Deque{nelts: 0, lo: 0, hi: 0,
               elts: vec::from_fn(initial_capacity, |_| None)}
     }
 
+    /// Return a reference to the first element in the deque
+    ///
+    /// Fails if the deque is empty
     fn peek_front(&self) -> &self/T { get(self.elts, self.lo) }
+
+    /// Return a reference to the last element in the deque
+    ///
+    /// Fails if the deque is empty
     fn peek_back(&self) -> &self/T { get(self.elts, self.hi - 1u) }
 
+    /// Retrieve an element in the deque by index
+    ///
+    /// Fails if there is no element with the given index
     fn get(&self, i: int) -> &self/T {
         let idx = (self.lo + (i as uint)) % self.elts.len();
         get(self.elts, idx)
     }
 
+    /// Remove and return the first element in the deque
+    ///
+    /// Fails if the deque is empty
     fn pop_front(&mut self) -> T {
         let mut result = self.elts[self.lo].swap_unwrap();
         self.lo = (self.lo + 1u) % self.elts.len();
@@ -56,6 +74,9 @@ pub impl<T> Deque<T> {
         result
     }
 
+    /// Remove and return the last element in the deque
+    ///
+    /// Fails if the deque is empty
     fn pop_back(&mut self) -> T {
         if self.hi == 0u {
             self.hi = self.elts.len() - 1u;
@@ -66,6 +87,7 @@ pub impl<T> Deque<T> {
         result
     }
 
+    /// Prepend an element to the deque
     fn add_front(&mut self, t: T) {
         let oldlo = self.lo;
         if self.lo == 0u {
@@ -80,6 +102,7 @@ pub impl<T> Deque<T> {
         self.nelts += 1u;
     }
 
+    /// Append an element to the deque
     fn add_back(&mut self, t: T) {
         if self.lo == self.hi && self.nelts != 0u {
             self.elts = grow(self.nelts, self.lo, self.elts);
