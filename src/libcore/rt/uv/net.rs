@@ -8,49 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Bindings to libuv.
-
-UV types consist of the event loop (Loop), Watchers, Requests and
-Callbacks.
-
-Watchers and Requests encapsulate pointers to uv *handles*, which have
-subtyping relationships with each other.  This subtyping is reflected
-in the bindings with explicit or implicit coercions. For example, an
-upcast from TcpWatcher to StreamWatcher is done with
-`tcp_watcher.as_stream()`. In other cases a callback on a specific
-type of watcher will be passed a watcher of a supertype.
-
-Currently all use of Request types (connect/write requests) are
-encapsulated in the bindings and don't need to be dealt with by the
-caller.
-
-# Safety note
-
-Due to the complex lifecycle of uv handles, as well as compiler bugs,
-this module is not memory safe and requires explicit memory management,
-via `close` and `delete` methods.
-
-*/
-
-use option::*;
-use str::raw::from_c_str;
-use to_str::ToStr;
-use vec;
-use ptr;
-use libc::{c_void, c_int, size_t, malloc, free, ssize_t};
+use prelude::*;
+use libc::{size_t, ssize_t, c_int, c_void};
 use cast::{transmute, transmute_mut_region};
-use ptr::null;
-use sys::size_of;
-use super::uvll;
-use super::uvll::*;
-use super::rtio::{IpAddr, Ipv4, Ipv6};
-use unstable::finally::Finally;
+use super::super::uvll;
+use super::super::uvll::*;
+use super::{Loop, Watcher, Request, UvError, Buf, Callback, NativeHandle, NullCallback,
+            loop_from_watcher, status_to_maybe_uv_error,
+            install_watcher_data, get_watcher_data, drop_watcher_data,
+            vec_to_uv_buf, vec_from_uv_buf};
+use super::super::rtio::{IpAddr, Ipv4, Ipv6};
 
-#[cfg(test)] use unstable::run_in_bare_thread;
-#[cfg(test)] use super::thread::Thread;
-#[cfg(test)] use cell::Cell;
+#[cfg(test)]
+use unstable::run_in_bare_thread;
+#[cfg(test)]
+use super::super::thread::Thread;
+#[cfg(test)]
+use cell::Cell;
 
 fn ip4_as_uv_ip4(addr: IpAddr, f: &fn(*sockaddr_in)) {
     match addr {
@@ -72,122 +46,6 @@ fn ip4_as_uv_ip4(addr: IpAddr, f: &fn(*sockaddr_in)) {
     }
 }
 
-/// A trait for callbacks to implement. Provides a little extra type safety
-/// for generic, unsafe interop functions like `set_watcher_callback`.
-trait Callback { }
-
-type NullCallback = ~fn();
-impl Callback for NullCallback { }
-
-/// A type that wraps a native handle
-trait NativeHandle<T> {
-    static pub fn from_native_handle(T) -> Self;
-    pub fn native_handle(&self) -> T;
-}
-
-/// XXX: Loop(*handle) is buggy with destructors. Normal structs
-/// with dtors may not be destructured, but tuple structs can,
-/// but the results are not correct.
-pub struct Loop {
-    handle: *uvll::uv_loop_t
-}
-
-pub impl Loop {
-    static fn new() -> Loop {
-        let handle = unsafe { uvll::loop_new() };
-        fail_unless!(handle.is_not_null());
-        NativeHandle::from_native_handle(handle)
-    }
-
-    fn run(&mut self) {
-        unsafe { uvll::run(self.native_handle()) };
-    }
-
-    fn close(&mut self) {
-        unsafe { uvll::loop_delete(self.native_handle()) };
-    }
-}
-
-impl NativeHandle<*uvll::uv_loop_t> for Loop {
-    static fn from_native_handle(handle: *uvll::uv_loop_t) -> Loop {
-        Loop { handle: handle }
-    }
-    fn native_handle(&self) -> *uvll::uv_loop_t {
-        self.handle
-    }
-}
-
-/// The trait implemented by uv 'watchers' (handles). Watchers are
-/// non-owning wrappers around the uv handles and are not completely
-/// safe - there may be multiple instances for a single underlying
-/// handle.  Watchers are generally created, then `start`ed, `stop`ed
-/// and `close`ed, but due to their complex life cycle may not be
-/// entirely memory safe if used in unanticipated patterns.
-trait Watcher {
-    fn event_loop(&self) -> Loop;
-}
-
-pub struct IdleWatcher(*uvll::uv_idle_t);
-
-impl Watcher for IdleWatcher {
-    fn event_loop(&self) -> Loop {
-        loop_from_watcher(self)
-    }
-}
-
-type IdleCallback = ~fn(IdleWatcher, Option<UvError>);
-impl Callback for IdleCallback { }
-
-pub impl IdleWatcher {
-    static fn new(loop_: &mut Loop) -> IdleWatcher {
-        unsafe {
-            let handle = uvll::idle_new();
-            fail_unless!(handle.is_not_null());
-            fail_unless!(0 == uvll::idle_init(loop_.native_handle(), handle));
-            uvll::set_data_for_uv_handle(handle, null::<()>());
-            NativeHandle::from_native_handle(handle)
-        }
-    }
-
-    fn start(&mut self, cb: IdleCallback) {
-
-        set_watcher_callback(self, cb);
-        unsafe {
-            fail_unless!(0 == uvll::idle_start(self.native_handle(), idle_cb))
-        };
-
-        extern fn idle_cb(handle: *uvll::uv_idle_t, status: c_int) {
-            let idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
-            let cb: &IdleCallback = borrow_callback_from_watcher(&idle_watcher);
-            let status = status_to_maybe_uv_error(handle, status);
-            (*cb)(idle_watcher, status);
-        }
-    }
-
-    fn stop(&mut self) {
-        unsafe { fail_unless!(0 == uvll::idle_stop(self.native_handle())); }
-    }
-
-    fn close(self) {
-        unsafe { uvll::close(self.native_handle(), close_cb) };
-
-        extern fn close_cb(handle: *uvll::uv_idle_t) {
-            let mut idle_watcher = NativeHandle::from_native_handle(handle);
-            drop_watcher_callback::<uvll::uv_idle_t, IdleWatcher, IdleCallback>(&mut idle_watcher);
-            unsafe { uvll::idle_delete(handle) };
-        }
-    }
-}
-
-impl NativeHandle<*uvll::uv_idle_t> for IdleWatcher {
-    static fn from_native_handle(handle: *uvll::uv_idle_t) -> IdleWatcher {
-        IdleWatcher(handle)
-    }
-    fn native_handle(&self) -> *uvll::uv_idle_t {
-        match self { &IdleWatcher(ptr) => ptr }
-    }
-}
-
 // uv_stream t is the parent class of uv_tcp_t, uv_pipe_t, uv_tty_t
 // and uv_file_t
 pub struct StreamWatcher(*uvll::uv_stream_t);
@@ -198,7 +56,7 @@ impl Watcher for StreamWatcher {
     }
 }
 
-type ReadCallback = ~fn(StreamWatcher, int, Buf, Option<UvError>);
+pub type ReadCallback = ~fn(StreamWatcher, int, Buf, Option<UvError>);
 impl Callback for ReadCallback { }
 
 // XXX: The uv alloc callback also has a *uv_handle_t arg
@@ -319,7 +177,7 @@ impl Watcher for TcpWatcher {
     }
 }
 
-type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
+pub type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
 impl Callback for ConnectionCallback { }
 
 pub impl TcpWatcher {
@@ -419,9 +277,7 @@ impl NativeHandle<*uvll::uv_tcp_t> for TcpWatcher {
     }
 }
 
-trait Request { }
-
-type ConnectCallback = ~fn(ConnectRequest, Option<UvError>);
+pub type ConnectCallback = ~fn(ConnectRequest, Option<UvError>);
 impl Callback for ConnectCallback { }
 
 // uv_connect_t is a subclass of uv_req_t
@@ -466,7 +322,7 @@ pub struct WriteRequest(*uvll::uv_write_t);
 
 impl Request for WriteRequest { }
 
-impl WriteRequest {
+pub impl WriteRequest {
 
     static fn new() -> WriteRequest {
         let write_handle = unsafe {
@@ -498,320 +354,6 @@ impl NativeHandle<*uvll::uv_write_t> for WriteRequest {
     }
 }
 
-type FsCallback = ~fn(FsRequest, Option<UvError>);
-impl Callback for FsCallback { }
-
-pub struct FsRequest(*uvll::uv_fs_t);
-
-impl Request for FsRequest;
-
-impl FsRequest {
-    static fn new() -> FsRequest {
-        let fs_req = unsafe { malloc_req(UV_FS) };
-        fail_unless!(fs_req.is_not_null());
-        let fs_req = fs_req as *uvll::uv_write_t;
-        uvll::set_data_for_uv_req(fs_req, null::<()>());
-        Native(fs_req)
-    }
-
-    fn delete(self) {
-        unsafe { free_req(self.native_handle() as *c_void) }
-    }
-
-    fn open(&mut self, loop_: &EventLoop, cb: FsCallback) {
-    }
-
-    fn close(&mut self, loop_: &EventLoop, cb: FsCallback) {
-    }
-}
-
-impl NativeHandle<*uvll::uv_fs_t> for FsRequest {
-    static fn from_native_handle(handle: *uvll:: uv_fs_t) -> FsRequest {
-        FsRequest(handle)
-    }
-    fn native_handle(&self) -> *uvll::uv_fs_t {
-        match self { &FsRequest(ptr) => ptr }
-    }
-}
-
-// XXX: Need to define the error constants like EOF so they can be
-// compared to the UvError type
-
-struct UvError(uvll::uv_err_t);
-
-impl UvError {
-
-    pure fn name(&self) -> ~str {
-        unsafe {
-            let inner = match self { &UvError(ref a) => a };
-            let name_str = uvll::err_name(inner);
-            fail_unless!(name_str.is_not_null());
-            from_c_str(name_str)
-        }
-    }
-
-    pure fn desc(&self) -> ~str {
-        unsafe {
-            let inner = match self { &UvError(ref a) => a };
-            let desc_str = uvll::strerror(inner);
-            fail_unless!(desc_str.is_not_null());
-            from_c_str(desc_str)
-        }
-    }
-}
-
-impl ToStr for UvError {
-    pure fn to_str(&self) -> ~str {
-        fmt!("%s: %s", self.name(), self.desc())
-    }
-}
-
-#[test]
-fn error_smoke_test() {
-    let err = uvll::uv_err_t { code: 1, sys_errno_: 1 };
-    let err: UvError = UvError(err);
-    fail_unless!(err.to_str() == ~"EOF: end of file");
-}
-
-
-/// Given a uv handle, convert a callback status to a UvError
-// XXX: Follow the pattern below by parameterizing over T: Watcher, not T
-fn status_to_maybe_uv_error<T>(handle: *T, status: c_int) -> Option<UvError> {
-    if status != -1 {
-        None
-    } else {
-        unsafe {
-            rtdebug!("handle: %x", handle as uint);
-            let loop_ = uvll::get_loop_for_uv_handle(handle);
-            rtdebug!("loop: %x", loop_ as uint);
-            let err = uvll::last_error(loop_);
-            Some(UvError(err))
-        }
-    }
-}
-
-/// Get the uv event loop from a Watcher
-pub fn loop_from_watcher<H, W: Watcher + NativeHandle<*H>>(
-    watcher: &W) -> Loop {
-
-    let handle = watcher.native_handle();
-    let loop_ = unsafe { uvll::get_loop_for_uv_handle(handle) };
-    NativeHandle::from_native_handle(loop_)
-}
-
-/// Set the custom data on a handle to a callback Note: This is only
-/// suitable for watchers that make just one type of callback.  For
-/// others use WatcherData
-fn set_watcher_callback<H, W: Watcher + NativeHandle<*H>, CB: Callback>(
-    watcher: &mut W, cb: CB) {
-
-    drop_watcher_callback::<H, W, CB>(watcher);
-    // XXX: Boxing the callback so it fits into a
-    // pointer. Unfortunate extra allocation
-    let boxed_cb = ~cb;
-    let data = unsafe { transmute::<~CB, *c_void>(boxed_cb) };
-    unsafe { uvll::set_data_for_uv_handle(watcher.native_handle(), data) };
-}
-
-/// Delete a callback from a handle's custom data
-fn drop_watcher_callback<H, W: Watcher + NativeHandle<*H>, CB: Callback>(
-    watcher: &mut W) {
-
-    unsafe {
-        let handle = watcher.native_handle();
-        let handle_data: *c_void = uvll::get_data_for_uv_handle(handle);
-        if handle_data.is_not_null() {
-            // Take ownership of the callback and drop it
-            let _cb = transmute::<*c_void, ~CB>(handle_data);
-            // Make sure the pointer is zeroed
-            uvll::set_data_for_uv_handle(watcher.native_handle(), null::<()>());
-        }
-    }
-}
-
-/// Take a pointer to the callback installed as custom data
-fn borrow_callback_from_watcher<H, W: Watcher + NativeHandle<*H>,
-                                CB: Callback>(watcher: &W) -> &CB {
-
-    unsafe {
-        let handle = watcher.native_handle();
-        let handle_data: *c_void = uvll::get_data_for_uv_handle(handle);
-        fail_unless!(handle_data.is_not_null());
-        let cb = transmute::<&*c_void, &~CB>(&handle_data);
-        return &**cb;
-    }
-}
-
-/// Take ownership of the callback installed as custom data
-fn take_callback_from_watcher<H, W: Watcher + NativeHandle<*H>, CB: Callback>(
-    watcher: &mut W) -> CB {
-
-    unsafe {
-        let handle = watcher.native_handle();
-        let handle_data: *c_void = uvll::get_data_for_uv_handle(handle);
-        fail_unless!(handle_data.is_not_null());
-        uvll::set_data_for_uv_handle(handle, null::<()>());
-        let cb: ~CB = transmute::<*c_void, ~CB>(handle_data);
-        let cb = match cb { ~cb => cb };
-        return cb;
-    }
-}
-
-/// Callbacks used by StreamWatchers, set as custom data on the foreign handle
-struct WatcherData {
-    read_cb: Option<ReadCallback>,
-    write_cb: Option<ConnectionCallback>,
-    connect_cb: Option<ConnectionCallback>,
-    close_cb: Option<NullCallback>,
-    alloc_cb: Option<AllocCallback>
-}
-
-fn install_watcher_data<H, W: Watcher + NativeHandle<*H>>(watcher: &mut W) {
-    unsafe {
-        let data = ~WatcherData {
-            read_cb: None,
-            write_cb: None,
-            connect_cb: None,
-            close_cb: None,
-            alloc_cb: None
-        };
-        let data = transmute::<~WatcherData, *c_void>(data);
-        uvll::set_data_for_uv_handle(watcher.native_handle(), data);
-    }
-}
-
-fn get_watcher_data<H, W: Watcher + NativeHandle<*H>>(
-    watcher: &r/mut W) -> &r/mut WatcherData {
-
-    unsafe {
-        let data = uvll::get_data_for_uv_handle(watcher.native_handle());
-        let data = transmute::<&*c_void, &mut ~WatcherData>(&data);
-        return &mut **data;
-    }
-}
-
-fn drop_watcher_data<H, W: Watcher + NativeHandle<*H>>(watcher: &mut W) {
-    unsafe {
-        let data = uvll::get_data_for_uv_handle(watcher.native_handle());
-        let _data = transmute::<*c_void, ~WatcherData>(data);
-        uvll::set_data_for_uv_handle(watcher.native_handle(), null::<()>());
-    }
-}
-
-#[test]
-fn test_slice_to_uv_buf() {
-    let slice = [0, .. 20];
-    let buf = slice_to_uv_buf(slice);
-
-    fail_unless!(buf.len == 20);
-
-    unsafe {
-        let base = transmute::<*u8, *mut u8>(buf.base);
-        (*base) = 1;
-        (*ptr::mut_offset(base, 1)) = 2;
-    }
-
-    fail_unless!(slice[0] == 1);
-    fail_unless!(slice[1] == 2);
-}
-
-/// The uv buffer type
-pub type Buf = uvll::uv_buf_t;
-
-/// Borrow a slice to a Buf
-pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
-    let data = unsafe { vec::raw::to_ptr(v) };
-    unsafe { uvll::buf_init(data, v.len()) }
-}
-
-// XXX: Do these conversions without copying
-
-/// Transmute an owned vector to a Buf
-fn vec_to_uv_buf(v: ~[u8]) -> Buf {
-    let data = unsafe { malloc(v.len() as size_t) } as *u8;
-    fail_unless!(data.is_not_null());
-    do vec::as_imm_buf(v) |b, l| {
-        let data = data as *mut u8;
-        unsafe { ptr::copy_memory(data, b, l) }
-    }
-    let buf = unsafe { uvll::buf_init(data, v.len()) };
-    return buf;
-}
-
-/// Transmute a Buf that was once a ~[u8] back to ~[u8]
-fn vec_from_uv_buf(buf: Buf) -> Option<~[u8]> {
-    if !(buf.len == 0 && buf.base.is_null()) {
-        let v = unsafe { vec::from_buf(buf.base, buf.len as uint) };
-        unsafe { free(buf.base as *c_void) };
-        return Some(v);
-    } else {
-        // No buffer
-        return None;
-    }
-}
-
-#[test]
-fn loop_smoke_test() {
-    do run_in_bare_thread {
-        let mut loop_ = Loop::new();
-        loop_.run();
-        loop_.close();
-    }
-}
-
-#[test]
-#[ignore(reason = "valgrind - loop destroyed before watcher?")]
-fn idle_new_then_close() {
-    do run_in_bare_thread {
-        let mut loop_ = Loop::new();
-        let mut idle_watcher = { IdleWatcher::new(&mut loop_) };
-        idle_watcher.close();
-    }
-}
-
-#[test]
-fn idle_smoke_test() {
-    do run_in_bare_thread {
-        let mut loop_ = Loop::new();
-        let mut idle_watcher = { IdleWatcher::new(&mut loop_) };
-        let mut count = 10;
-        let count_ptr: *mut int = &mut count;
-        do idle_watcher.start |idle_watcher, status| {
-            let mut idle_watcher = idle_watcher;
-            fail_unless!(status.is_none());
-            if unsafe { *count_ptr == 10 } {
-                idle_watcher.stop();
-                idle_watcher.close();
-            } else {
-                unsafe { *count_ptr = *count_ptr + 1; }
-            }
-        }
-        loop_.run();
-        loop_.close();
-        fail_unless!(count == 10);
-    }
-}
-
-#[test]
-fn idle_start_stop_start() {
-    do run_in_bare_thread {
-        let mut loop_ = Loop::new();
-        let mut idle_watcher = { IdleWatcher::new(&mut loop_) };
-        do idle_watcher.start |idle_watcher, status| {
-            let mut idle_watcher = idle_watcher;
-            fail_unless!(status.is_none());
-            idle_watcher.stop();
-            do idle_watcher.start |idle_watcher, status| {
-                fail_unless!(status.is_none());
-                let mut idle_watcher = idle_watcher;
-                idle_watcher.stop();
-                idle_watcher.close();
-            }
-        }
-        loop_.run();
-        loop_.close();
-    }
-}
 
 #[test]
 #[ignore(reason = "ffi struct issues")]
