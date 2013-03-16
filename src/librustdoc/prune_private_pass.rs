@@ -59,7 +59,19 @@ fn is_visible(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
     do astsrv::exec(srv) |ctxt| {
         match ctxt.ast_map.get(&id) {
             ast_map::node_item(item, _) => {
-                item.vis == ast::public
+                match item.node {
+                    ast::item_impl(_, Some(_), _, _) => {
+                        // This is a trait implementation, make it visible
+                        // NOTE: This is not quite right since this could be an impl
+                        // of a private trait. We can't know that without running
+                        // resolve though.
+                        true
+                    }
+                    _ => {
+                        // Otherwise just look at the visibility
+                        item.vis == ast::public
+                    }
+                }
             }
             _ => util::unreachable()
         }
@@ -70,6 +82,16 @@ fn is_visible(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
 fn should_prune_items_without_pub_modifier() {
     let doc = test::mk_doc(~"mod a { }");
     fail_unless!(vec::is_empty(doc.cratemod().mods()));
+}
+
+#[test]
+fn unless_they_are_trait_impls() {
+    let doc = test::mk_doc(
+        ~" \
+          trait Foo { } \
+          impl Foo for int { } \
+          ");
+    fail_unless!(!doc.cratemod().impls().is_empty());
 }
 
 #[cfg(test)]
