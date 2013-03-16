@@ -1403,7 +1403,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
           }
         }
       }
-      ast::expr_inline_asm(a, c, v, _) => {
+      ast::expr_inline_asm(a, in, out, c, v, _) => {
         if v {
             word(s.s, ~"__volatile__ asm!");
         } else {
@@ -1411,7 +1411,23 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         }
         popen(s);
         print_string(s, *a);
-        word_space(s, ~",");
+        word_space(s, ~":");
+        for out.each |&(co, o)| {
+            print_string(s, *co);
+            popen(s);
+            print_expr(s, o);
+            pclose(s);
+            word_space(s, ~",");
+        }
+        word_space(s, ~":");
+        for in.each |&(co, o)| {
+            print_string(s, *co);
+            popen(s);
+            print_expr(s, o);
+            pclose(s);
+            word_space(s, ~",");
+        }
+        word_space(s, ~":");
         print_string(s, *c);
         pclose(s);
       }

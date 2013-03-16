@@ -1347,7 +1347,15 @@ pub impl Liveness {
             self.propagate_through_expr(e, succ)
           }
 
-          expr_inline_asm(*) |
+          expr_inline_asm(_, ins, outs, _, _, _) =>{
+            let succ = do ins.foldr(succ) |&(_, expr), succ| {
+                self.propagate_through_expr(expr, succ)
+            };
+            do outs.foldr(succ) |&(_, expr), succ| {
+                self.propagate_through_expr(expr, succ)
+            }
+          }
+
           expr_lit(*) => {
             succ
           }
@@ -1613,6 +1621,20 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
         visit::visit_expr(expr, self, vt);
       }
 
+      expr_inline_asm(_, ins, outs, _, _, _) => {
+        for ins.each |&(_, in)| {
+          (vt.visit_expr)(in, self, vt);
+        }
+
+        // Output operands must be lvalues
+        for outs.each |&(_, out)| {
+          self.check_lvalue(out, vt);
+          (vt.visit_expr)(out, self, vt);
+        }
+
+        visit::visit_expr(expr, self, vt);
+      }
+
       // no correctness conditions related to liveness
       expr_call(*) | expr_method_call(*) | expr_if(*) | expr_match(*) |
       expr_while(*) | expr_loop(*) | expr_index(*) | expr_field(*) |
@@ -1621,7 +1643,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
       expr_cast(*) | expr_unary(*) | expr_ret(*) | expr_break(*) |
       expr_again(*) | expr_lit(_) | expr_block(*) | expr_swap(*) |
       expr_mac(*) | expr_addr_of(*) | expr_struct(*) | expr_repeat(*) |
-      expr_paren(*) | expr_inline_asm(*) => {
+      expr_paren(*) => {
         visit::visit_expr(expr, self, vt);
       }
     }
