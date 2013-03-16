@@ -137,6 +137,7 @@ impl<T> Map<uint, T> for TrieMap<T> {
 }
 
 impl<T> TrieMap<T> {
+    /// Create an empty TrieMap
     #[inline(always)]
     static pure fn new() -> TrieMap<T> {
         TrieMap{root: TrieNode::new(), length: 0}
@@ -191,6 +192,12 @@ impl Mutable for TrieSet {
 }
 
 impl TrieSet {
+    /// Create an empty TrieSet
+    #[inline(always)]
+    static pure fn new() -> TrieSet {
+        TrieSet{map: TrieMap::new()}
+    }
+
     /// Return true if the set contains a value
     #[inline(always)]
     pure fn contains(&self, value: &uint) -> bool {
@@ -265,8 +272,8 @@ impl<T> TrieNode<T> {
 // if this was done via a trait, the key could be generic
 #[inline(always)]
 pure fn chunk(n: uint, idx: uint) -> uint {
-    let real_idx = uint::bytes - 1 - idx;
-    (n >> (SHIFT * real_idx)) & MASK
+    let sh = uint::bits - (SHIFT * (idx + 1));
+    (n >> sh) & MASK
 }
 
 fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
@@ -460,6 +467,28 @@ mod tests {
             fail_unless!(k == n);
             fail_unless!(*v == n / 2);
             n -= 1;
+        }
+    }
+
+    #[test]
+    fn test_sane_chunk() {
+        let x = 1;
+        let y = 1 << (uint::bits - 1);
+
+        let mut trie = TrieSet::new();
+
+        fail_unless!(trie.insert(x));
+        fail_unless!(trie.insert(y));
+
+        fail_unless!(trie.len() == 2);
+
+        let expected = [x, y];
+
+        let mut i = 0;
+
+        for trie.each |x| {
+            fail_unless!(expected[i] == *x);
+            i += 1;
         }
     }
 }
