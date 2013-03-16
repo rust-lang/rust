@@ -62,8 +62,8 @@ impl<T> BaseIter<(int, &'self T)> for cat<T> {
 }
 
 impl<T> Container for cat<T> {
-    pure fn len(&self) -> uint { self.meows as uint }
-    pure fn is_empty(&self) -> bool { self.meows == 0 }
+    pure fn len(&const self) -> uint { self.meows as uint }
+    pure fn is_empty(&const self) -> bool { self.meows == 0 }
 }
 
 impl<T> Mutable for cat<T> {

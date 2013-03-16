@@ -290,10 +290,10 @@ pub mod linear {
 
     impl<K:Hash + IterBytes + Eq,V> Container for LinearMap<K, V> {
         /// Return the number of elements in the map
-        pure fn len(&self) -> uint { self.size }
+        pure fn len(&const self) -> uint { self.size }
 
         /// Return true if the map contains no elements
-        pure fn is_empty(&self) -> bool { self.len() == 0 }
+        pure fn is_empty(&const self) -> bool { self.len() == 0 }
     }
 
     impl<K:Hash + IterBytes + Eq,V> Mutable for LinearMap<K, V> {
@@ -555,10 +555,10 @@ pub mod linear {
 
     impl<T:Hash + IterBytes + Eq> Container for LinearSet<T> {
         /// Return the number of elements in the set
-        pure fn len(&self) -> uint { self.map.len() }
+        pure fn len(&const self) -> uint { self.map.len() }
 
         /// Return true if the set contains no elements
-        pure fn is_empty(&self) -> bool { self.map.is_empty() }
+        pure fn is_empty(&const self) -> bool { self.map.is_empty() }
     }
 
     impl<T:Hash + IterBytes + Eq> Mutable for LinearSet<T> {

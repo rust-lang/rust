@@ -279,9 +279,10 @@ pub fn is_bol(s: @ps) -> bool {
 }
 
 pub fn in_cbox(s: @ps) -> bool {
-    let len = s.boxes.len();
+    let boxes = &*s.boxes;
+    let len = boxes.len();
     if len == 0u { return false; }
-    return s.boxes[len - 1u] == pp::consistent;
+    return boxes[len - 1u] == pp::consistent;
 }
 
 pub fn hardbreak_if_not_bol(s: @ps) { if !is_bol(s) { hardbreak(s.s); } }

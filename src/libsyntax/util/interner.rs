@@ -41,14 +41,18 @@ pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
             None => (),
         }
 
-        let new_idx = self.vect.len();
+        let vect = &*self.vect;
+        let new_idx = vect.len();
         self.map.insert(val, new_idx);
         self.vect.push(val);
         new_idx
     }
 
     fn gensym(&self, val: T) -> uint {
-        let new_idx = self.vect.len();
+        let new_idx = {
+            let vect = &*self.vect;
+            vect.len()
+        };
         // leave out of .map to avoid colliding
         self.vect.push(val);
         new_idx
@@ -59,7 +63,7 @@ pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
     // where we first check a pred and then rely on it, ceasing to fail is ok.
     pure fn get(&self, idx: uint) -> T { self.vect[idx] }
 
-    fn len(&self) -> uint { self.vect.len() }
+    fn len(&self) -> uint { let vect = &*self.vect; vect.len() }
 }
 
 #[test]

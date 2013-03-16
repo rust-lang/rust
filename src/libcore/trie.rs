@@ -50,11 +50,11 @@ impl<T> ReverseIter<(uint, &'self T)> for TrieMap<T> {
 impl<T> Container for TrieMap<T> {
     /// Return the number of elements in the map
     #[inline(always)]
-    pure fn len(&self) -> uint { self.length }
+    pure fn len(&const self) -> uint { self.length }
 
     /// Return true if the map contains no elements
     #[inline(always)]
-    pure fn is_empty(&self) -> bool { self.len() == 0 }
+    pure fn is_empty(&const self) -> bool { self.len() == 0 }
 }
 
 impl<T> Mutable for TrieMap<T> {
@@ -178,11 +178,11 @@ impl ReverseIter<uint> for TrieSet {
 impl Container for TrieSet {
     /// Return the number of elements in the set
     #[inline(always)]
-    pure fn len(&self) -> uint { self.map.len() }
+    pure fn len(&const self) -> uint { self.map.len() }
 
     /// Return true if the set contains no elements
     #[inline(always)]
-    pure fn is_empty(&self) -> bool { self.map.is_empty() }
+    pure fn is_empty(&const self) -> bool { self.map.is_empty() }
 }
 
 impl Mutable for TrieSet {

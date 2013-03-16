@@ -46,8 +46,7 @@ pub fn unwrap<T>(m: Mut<T>) -> T {
 pub impl<T> Data<T> {
     fn borrow_mut<R>(&self, op: &fn(t: &mut T) -> R) -> R {
         match self.mode {
-            Immutable => fail!(fmt!("%? currently immutable",
-                                   self.value)),
+            Immutable => fail!(~"currently immutable"),
             ReadOnly | Mutable => {}
         }
 
@@ -62,8 +61,7 @@ pub impl<T> Data<T> {
 
     fn borrow_imm<R>(&self, op: &fn(t: &T) -> R) -> R {
         match self.mode {
-          Mutable => fail!(fmt!("%? currently mutable",
-                               self.value)),
+          Mutable => fail!(~"currently mutable"),
           ReadOnly | Immutable => {}
         }
 

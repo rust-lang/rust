@@ -223,8 +223,8 @@ pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
 }
 
 pub trait Ptr<T> {
-    pure fn is_null(&self) -> bool;
-    pure fn is_not_null(&self) -> bool;
+    pure fn is_null(&const self) -> bool;
+    pure fn is_not_null(&const self) -> bool;
     pure fn offset(&self, count: uint) -> Self;
 }
 
@@ -232,11 +232,11 @@ pub trait Ptr<T> {
 impl<T> Ptr<T> for *T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline(always)]
-    pure fn is_null(&self) -> bool { is_null(*self) }
+    pure fn is_null(&const self) -> bool { is_null(*self) }
 
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline(always)]
-    pure fn is_not_null(&self) -> bool { is_not_null(*self) }
+    pure fn is_not_null(&const self) -> bool { is_not_null(*self) }
 
     /// Calculates the offset from a pointer.
     #[inline(always)]
@@ -247,11 +247,11 @@ impl<T> Ptr<T> for *T {
 impl<T> Ptr<T> for *mut T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline(always)]
-    pure fn is_null(&self) -> bool { is_null(*self) }
+    pure fn is_null(&const self) -> bool { is_null(*self) }
 
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline(always)]
-    pure fn is_not_null(&self) -> bool { is_not_null(*self) }
+    pure fn is_not_null(&const self) -> bool { is_not_null(*self) }
 
     /// Calculates the offset from a mutable pointer.
     #[inline(always)]

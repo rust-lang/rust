@@ -499,7 +499,7 @@ impl TyVisitor for ReprVisitor {
     }
 
     fn visit_enum_variant_field(&self, i: uint, inner: *TyDesc) -> bool {
-        match self.var_stk[self.var_stk.len() - 1] {
+        match self.var_stk[vec::uniq_len(&const self.var_stk) - 1] {
             Degenerate | TagMatch => {
                 if i != 0 {
                     self.writer.write_str(", ");
@@ -517,7 +517,7 @@ impl TyVisitor for ReprVisitor {
                                 _disr_val: int,
                                 n_fields: uint,
                                 _name: &str) -> bool {
-        match self.var_stk[self.var_stk.len() - 1] {
+        match self.var_stk[vec::uniq_len(&const self.var_stk) - 1] {
             Degenerate | TagMatch => {
                 if n_fields > 0 {
                     self.writer.write_char(')');

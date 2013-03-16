@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use cast;
 use either::{Either, Left, Right};
 use kinds::Owned;
 use option;
 use option::{Option, Some, None, unwrap};
+use uint;
 use unstable;
 use vec;
 
@@ -283,8 +285,12 @@ impl<T: Owned> Peekable<T> for PortSet<T> {
 pure fn port_set_peek<T:Owned>(self: &PortSet<T>) -> bool {
     // It'd be nice to use self.port.each, but that version isn't
     // pure.
-    for vec::each(self.ports) |p| {
-        if p.peek() { return true }
+    for uint::range(0, vec::uniq_len(&const self.ports)) |i| {
+        // XXX: Botch pending demuting.
+        unsafe {
+            let port: &Port<T> = cast::transmute(&mut self.ports[i]);
+            if port.peek() { return true }
+        }
     }
     false
 }

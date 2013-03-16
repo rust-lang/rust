@@ -818,18 +818,21 @@ pub fn determine_rp_in_crate(sess: Session,
     // C).  For each dependent item D, we combine the variance of C
     // with the ambient variance where the reference occurred and then
     // update the region-parameterization of D to reflect the result.
-    while cx.worklist.len() != 0 {
-        let c_id = cx.worklist.pop();
-        let c_variance = cx.region_paramd_items.get(&c_id);
-        debug!("popped %d from worklist", c_id);
-        match cx.dep_map.find(&c_id) {
-          None => {}
-          Some(deps) => {
-            for deps.each |dep| {
-                let v = add_variance(dep.ambient_variance, c_variance);
-                cx.add_rp(dep.id, v);
+    {
+        let cx = &mut *cx;
+        while cx.worklist.len() != 0 {
+            let c_id = cx.worklist.pop();
+            let c_variance = cx.region_paramd_items.get(&c_id);
+            debug!("popped %d from worklist", c_id);
+            match cx.dep_map.find(&c_id) {
+              None => {}
+              Some(deps) => {
+                for deps.each |dep| {
+                    let v = add_variance(dep.ambient_variance, c_variance);
+                    cx.add_rp(dep.id, v);
+                }
+              }
             }
-          }
         }
     }
 

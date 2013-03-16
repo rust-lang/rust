@@ -79,6 +79,8 @@ fn warn_if_multiple_versions(e: @mut Env,
                              crate_cache: @mut ~[cache_entry]) {
     use core::either::*;
 
+    let crate_cache = &mut *crate_cache;
+
     if crate_cache.len() != 0u {
         let name = loader::crate_name_from_metas(
             *crate_cache[crate_cache.len() - 1].metas

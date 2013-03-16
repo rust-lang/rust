@@ -14,10 +14,10 @@ use option::Option;
 
 pub trait Container {
     /// Return the number of elements in the container
-    pure fn len(&self) -> uint;
+    pure fn len(&const self) -> uint;
 
     /// Return true if the container contains no elements
-    pure fn is_empty(&self) -> bool;
+    pure fn is_empty(&const self) -> bool;
 }
 
 pub trait Mutable: Container {

@@ -271,6 +271,7 @@ pub impl CheckLoanCtxt {
             None => return,
             Some(loans) => loans
         };
+        let new_loans: &mut ~[Loan] = new_loans;
 
         debug!("new_loans has length %?", new_loans.len());
 
