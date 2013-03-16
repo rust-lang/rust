@@ -186,12 +186,14 @@ pub fn trans_log(log_ex: @ast::expr,
        return expr::trans_into(bcx, lvl, expr::Ignore);
     }
 
-    let modpath = vec::append(
-        ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name.to_owned()))],
-        bcx.fcx.path.filtered(|e|
-            match *e { path_mod(_) => true, _ => false }
-        ));
-    let modname = path_str(ccx.sess, modpath);
+    let (modpath, modname) = {
+        let path = &mut bcx.fcx.path;
+        let modpath = vec::append(
+            ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name.to_owned()))],
+            path.filtered(|e| match *e { path_mod(_) => true, _ => false }));
+        let modname = path_str(ccx.sess, modpath);
+        (modpath, modname)
+    };
 
     let global = if ccx.module_data.contains_key(&modname) {
         ccx.module_data.get(&modname)

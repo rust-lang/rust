@@ -849,21 +849,24 @@ pub impl Liveness {
                     _ => self.tcx.sess.span_bug(sp, ~"Label on break/loop \
                                                     doesn't refer to a loop")
                 },
-            None =>
+            None => {
                 // Vanilla 'break' or 'loop', so use the enclosing
                 // loop scope
-                if self.loop_scope.len() == 0 {
+                let loop_scope = &mut *self.loop_scope;
+                if loop_scope.len() == 0 {
                     self.tcx.sess.span_bug(sp, ~"break outside loop");
                 }
                 else {
                     // FIXME(#5275): this shouldn't have to be a method...
                     self.last_loop_scope()
                 }
+            }
         }
     }
 
     fn last_loop_scope(&self) -> node_id {
-        *self.loop_scope.last()
+        let loop_scope = &mut *self.loop_scope;
+        *loop_scope.last()
     }
 
     fn ln_str(&self, ln: LiveNode) -> ~str {

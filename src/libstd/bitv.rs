@@ -700,8 +700,8 @@ impl cmp::Eq for BitvSet {
 }
 
 impl Container for BitvSet {
-    pure fn len(&self) -> uint { self.size }
-    pure fn is_empty(&self) -> bool { self.size == 0 }
+    pure fn len(&const self) -> uint { self.size }
+    pure fn is_empty(&const self) -> bool { self.size == 0 }
 }
 
 impl Mutable for BitvSet {

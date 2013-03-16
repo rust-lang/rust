@@ -854,7 +854,9 @@ pub fn need_invoke(bcx: block) -> bool {
     // Walk the scopes to look for cleanups
     let mut cur = bcx;
     loop {
-        match *cur.kind {
+        let current = &mut *cur;
+        let kind = &mut *current.kind;
+        match *kind {
           block_scope(ref mut inf) => {
             for vec::each((*inf).cleanups) |cleanup| {
                 match *cleanup {
@@ -868,7 +870,7 @@ pub fn need_invoke(bcx: block) -> bool {
           }
           _ => ()
         }
-        cur = match cur.parent {
+        cur = match current.parent {
           Some(next) => next,
           None => return false
         }

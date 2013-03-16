@@ -452,9 +452,10 @@ pub impl Printer {
         self.pending_indentation += amount;
     }
     fn get_top(&mut self) -> print_stack_elt {
-        let n = self.print_stack.len();
+        let print_stack = &mut *self.print_stack;
+        let n = print_stack.len();
         if n != 0u {
-            self.print_stack[n - 1u]
+            print_stack[n - 1u]
         } else {
             print_stack_elt {
                 offset: 0,
@@ -496,7 +497,8 @@ pub impl Printer {
           }
           END => {
             debug!("print END -> pop END");
-            fail_unless!((self.print_stack.len() != 0u));
+            let print_stack = &*self.print_stack;
+            fail_unless!((print_stack.len() != 0u));
             self.print_stack.pop();
           }
           BREAK(b) => {

@@ -129,9 +129,12 @@ fn req_loans_in_expr(ex: @ast::expr,
            ex.id, pprust::expr_to_str(ex, tcx.sess.intr()));
 
     // If this expression is borrowed, have to ensure it remains valid:
-    if !self.ignore_adjustments.contains(&ex.id) {
-        for tcx.adjustments.find(&ex.id).each |adjustments| {
-            self.guarantee_adjustments(ex, *adjustments);
+    {
+        let mut this = &mut *self;
+        if !this.ignore_adjustments.contains(&ex.id) {
+            for tcx.adjustments.find(&ex.id).each |adjustments| {
+                this.guarantee_adjustments(ex, *adjustments);
+            }
         }
     }
 
@@ -288,9 +291,9 @@ fn req_loans_in_expr(ex: @ast::expr,
 }
 
 pub impl GatherLoanCtxt {
-    fn tcx(@mut self) -> ty::ctxt { self.bccx.tcx }
+    fn tcx(&mut self) -> ty::ctxt { self.bccx.tcx }
 
-    fn guarantee_adjustments(@mut self,
+    fn guarantee_adjustments(&mut self,
                              expr: @ast::expr,
                              adjustment: &ty::AutoAdjustment) {
         debug!("guarantee_adjustments(expr=%s, adjustment=%?)",
@@ -348,7 +351,7 @@ pub impl GatherLoanCtxt {
     // out loans, which will be added to the `req_loan_map`.  This can
     // also entail "rooting" GC'd pointers, which means ensuring
     // dynamically that they are not freed.
-    fn guarantee_valid(@mut self,
+    fn guarantee_valid(&mut self,
                        cmt: cmt,
                        req_mutbl: ast::mutability,
                        scope_r: ty::Region)
@@ -465,7 +468,7 @@ pub impl GatherLoanCtxt {
     // has type `@mut{f:int}`, this check might fail because `&x.f`
     // reqires an immutable pointer, but `f` lives in (aliased)
     // mutable memory.
-    fn check_mutbl(@mut self,
+    fn check_mutbl(&mut self,
                    loan_kind: LoanKind,
                    cmt: cmt)
                 -> bckres<PreserveCondition> {
@@ -498,7 +501,7 @@ pub impl GatherLoanCtxt {
         }
     }
 
-    fn add_loans(@mut self,
+    fn add_loans(&mut self,
                  cmt: cmt,
                  loan_kind: LoanKind,
                  scope_r: ty::Region,
@@ -563,7 +566,7 @@ pub impl GatherLoanCtxt {
         }
     }
 
-    fn add_loans_to_scope_id(@mut self,
+    fn add_loans_to_scope_id(&mut self,
                              scope_id: ast::node_id,
                              +loans: ~[Loan]) {
         debug!("adding %u loans to scope_id %?: %s",

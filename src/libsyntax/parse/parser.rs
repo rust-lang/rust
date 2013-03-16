@@ -412,7 +412,8 @@ pub impl Parser {
 
     fn parse_purity(&self) -> purity {
         if self.eat_keyword(&~"pure") {
-            return pure_fn;
+            // NB: We parse this as impure for bootstrapping purposes.
+            return impure_fn;
         } else if self.eat_keyword(&~"unsafe") {
             return unsafe_fn;
         } else {
@@ -2668,7 +2669,8 @@ pub impl Parser {
 
     fn parse_optional_purity(&self) -> ast::purity {
         if self.eat_keyword(&~"pure") {
-            ast::pure_fn
+            // NB: We parse this as impure for bootstrapping purposes.
+            ast::impure_fn
         } else if self.eat_keyword(&~"unsafe") {
             ast::unsafe_fn
         } else {
@@ -3418,7 +3420,8 @@ pub impl Parser {
 
         let prefix = Path(self.sess.cm.span_to_filename(*self.span));
         let prefix = prefix.dir_path();
-        let mod_path = Path(".").push_many(*self.mod_path_stack);
+        let mod_path_stack = &*self.mod_path_stack;
+        let mod_path = Path(".").push_many(*mod_path_stack);
         let default_path = *self.sess.interner.get(id) + ~".rs";
         let file_path = match ::attr::first_attr_value_str_by_name(
             outer_attrs, ~"path") {
@@ -3505,7 +3508,8 @@ pub impl Parser {
         if self.eat_keyword(&~"fn") { impure_fn }
         else if self.eat_keyword(&~"pure") {
             self.expect_keyword(&~"fn");
-            pure_fn
+            // NB: We parse this as impure for bootstrapping purposes.
+            impure_fn
         } else if self.eat_keyword(&~"unsafe") {
             self.expect_keyword(&~"fn");
             unsafe_fn
@@ -3894,8 +3898,9 @@ pub impl Parser {
                                           maybe_append(attrs, extra_attrs)));
         } else if items_allowed && self.eat_keyword(&~"pure") {
             // PURE FUNCTION ITEM
+            // NB: We parse this as impure for bootstrapping purposes.
             self.expect_keyword(&~"fn");
-            let (ident, item_, extra_attrs) = self.parse_item_fn(pure_fn);
+            let (ident, item_, extra_attrs) = self.parse_item_fn(impure_fn);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));

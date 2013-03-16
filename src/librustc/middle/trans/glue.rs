@@ -234,18 +234,21 @@ pub fn lazily_emit_simplified_tydesc_glue(ccx: @CrateContext,
     if simpl != ti.ty {
         let simpl_ti = get_tydesc(ccx, simpl);
         lazily_emit_tydesc_glue(ccx, field, simpl_ti);
-        if field == abi::tydesc_field_take_glue {
-            ti.take_glue =
-                simpl_ti.take_glue.map(|v| cast_glue(ccx, ti, *v));
-        } else if field == abi::tydesc_field_drop_glue {
-            ti.drop_glue =
-                simpl_ti.drop_glue.map(|v| cast_glue(ccx, ti, *v));
-        } else if field == abi::tydesc_field_free_glue {
-            ti.free_glue =
-                simpl_ti.free_glue.map(|v| cast_glue(ccx, ti, *v));
-        } else if field == abi::tydesc_field_visit_glue {
-            ti.visit_glue =
-                simpl_ti.visit_glue.map(|v| cast_glue(ccx, ti, *v));
+        {
+            let simpl_ti = &mut *simpl_ti;
+            if field == abi::tydesc_field_take_glue {
+                ti.take_glue =
+                    simpl_ti.take_glue.map(|v| cast_glue(ccx, ti, *v));
+            } else if field == abi::tydesc_field_drop_glue {
+                ti.drop_glue =
+                    simpl_ti.drop_glue.map(|v| cast_glue(ccx, ti, *v));
+            } else if field == abi::tydesc_field_free_glue {
+                ti.free_glue =
+                    simpl_ti.free_glue.map(|v| cast_glue(ccx, ti, *v));
+            } else if field == abi::tydesc_field_visit_glue {
+                ti.visit_glue =
+                    simpl_ti.visit_glue.map(|v| cast_glue(ccx, ti, *v));
+            }
         }
         return true;
     }

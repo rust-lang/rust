@@ -142,7 +142,7 @@ fn fold_item(cx: @mut TestCtxt, &&i: @ast::item, fld: @fold::ast_fold)
           -> Option<@ast::item> {
     cx.path.push(i.ident);
     debug!("current path: %s",
-           ast_util::path_name_i(cx.path, cx.sess.parse_sess.interner));
+           ast_util::path_name_i(copy cx.path, cx.sess.parse_sess.interner));
 
     if is_test_fn(i) || is_bench_fn(i) {
         match i.node {
@@ -162,7 +162,7 @@ fn fold_item(cx: @mut TestCtxt, &&i: @ast::item, fld: @fold::ast_fold)
                 should_fail: should_fail(i)
             };
             cx.testfns.push(test);
-            debug!("have %u test/bench functions", cx.testfns.len());
+            // debug!("have %u test/bench functions", cx.testfns.len());
           }
         }
     }

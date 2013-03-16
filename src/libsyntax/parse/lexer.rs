@@ -811,7 +811,7 @@ pub mod test {
             sp:span {lo:BytePos(21),hi:BytePos(23),expn_info: None}};
         check_equal (tok1,tok2);
         // the 'main' id is already read:
-        check_equal (string_reader.last_pos,BytePos(28));
+        check_equal (copy string_reader.last_pos,BytePos(28));
         // read another token:
         let tok3 = string_reader.next_token();
         let tok4 = TokenAndSpan{
@@ -819,7 +819,7 @@ pub mod test {
             sp:span {lo:BytePos(24),hi:BytePos(28),expn_info: None}};
         check_equal (tok3,tok4);
         // the lparen is already read:
-        check_equal (string_reader.last_pos,BytePos(29))
+        check_equal (copy string_reader.last_pos,BytePos(29))
     }
 
     // check that the given reader produces the desired stream

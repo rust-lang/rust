@@ -91,7 +91,7 @@ pub fn sha1() -> @Sha1 {
     }
     fn process_msg_block(st: &mut Sha1State) {
         fail_unless!((vec::len(st.h) == digest_buf_len));
-        fail_unless!((vec::len(*st.work_buf) == work_buf_len));
+        fail_unless!((vec::uniq_len(st.work_buf) == work_buf_len));
         let mut t: int; // Loop counter
         let mut w = st.work_buf;
 

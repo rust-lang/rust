@@ -252,8 +252,8 @@ pub impl FileMap {
     // about what ends a line between this file and parse.rs
     fn next_line(&self, +pos: BytePos) {
         // the new charpos must be > the last one (or it's the first one).
-        fail_unless!((self.lines.len() == 0)
-                || (self.lines[self.lines.len() - 1] < pos));
+        let lines = &mut *self.lines;
+        fail_unless!((lines.len() == 0) || (lines[lines.len() - 1] < pos));
         self.lines.push(pos);
     }
 
@@ -302,11 +302,12 @@ pub impl CodeMap {
         +substr: FileSubstr,
         src: @~str
     ) -> @FileMap {
-        let start_pos = if self.files.len() == 0 {
+        let files = &mut *self.files;
+        let start_pos = if files.len() == 0 {
             0
         } else {
-            let last_start = self.files.last().start_pos.to_uint();
-            let last_len = self.files.last().src.len();
+            let last_start = files.last().start_pos.to_uint();
+            let last_len = files.last().src.len();
             last_start + last_len
         };
 
@@ -364,7 +365,8 @@ pub impl CodeMap {
     }
 
     pub fn span_to_str(&self, sp: span) -> ~str {
-        if self.files.len() == 0 && sp == dummy_sp() {
+        let files = &mut *self.files;
+        if files.len() == 0 && sp == dummy_sp() {
             return ~"no-location";
         }
 
@@ -409,7 +411,8 @@ pub impl CodeMap {
 priv impl CodeMap {
 
     fn lookup_filemap_idx(&self, +pos: BytePos) -> uint {
-        let len = self.files.len();
+        let files = &*self.files;
+        let len = files.len();
         let mut a = 0u;
         let mut b = len;
         while b - a > 1u {
@@ -433,10 +436,11 @@ priv impl CodeMap {
         let idx = self.lookup_filemap_idx(pos);
         let f = self.files[idx];
         let mut a = 0u;
-        let mut b = f.lines.len();
+        let lines = &*f.lines;
+        let mut b = lines.len();
         while b - a > 1u {
             let m = (a + b) / 2u;
-            if f.lines[m] > pos { b = m; } else { a = m; }
+            if lines[m] > pos { b = m; } else { a = m; }
         }
         return FileMapAndLine {fm: f, line: a};
     }

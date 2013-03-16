@@ -845,7 +845,8 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
     let dbg_cx = (/*bad*/copy cx.dbg_cx).get();
 
     debug!("~~");
-    debug!("%?", fcx.id);
+
+    let fcx = &mut *fcx;
 
     let sp = fcx.span.get();
     debug!("%s", cx.sess.codemap.span_to_str(sp));

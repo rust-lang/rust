@@ -50,18 +50,19 @@ impl<V> ReverseIter<(uint, &'self V)> for SmallIntMap<V> {
 
 impl<V> Container for SmallIntMap<V> {
     /// Return the number of elements in the map
-    pure fn len(&self) -> uint {
+    pure fn len(&const self) -> uint {
         let mut sz = 0;
-        for self.v.each |item| {
-            if item.is_some() {
-                sz += 1;
+        for uint::range(0, vec::uniq_len(&const self.v)) |i| {
+            match self.v[i] {
+                Some(_) => sz += 1,
+                None => {}
             }
         }
         sz
     }
 
     /// Return true if the map contains no elements
-    pure fn is_empty(&self) -> bool { self.len() == 0 }
+    pure fn is_empty(&const self) -> bool { self.len() == 0 }
 }
 
 impl<V> Mutable for SmallIntMap<V> {
