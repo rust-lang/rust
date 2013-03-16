@@ -876,6 +876,11 @@ rust_dbg_extern_identity_u8(char u) {
     return u;
 }
 
+extern "C" rust_env*
+rust_get_rt_env() {
+    rust_task *task = rust_get_current_task();
+    return task->kernel->env;
+}
 
 //
 // Local Variables:
