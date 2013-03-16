@@ -185,18 +185,19 @@ pub fn metas_in_cfg(cfg: ast::crate_cfg,
     // Pull the inner meta_items from the #[cfg(meta_item, ...)]  attributes,
     // so we can match against them. This is the list of configurations for
     // which the item is valid
-    let cfg_metas =
-        vec::concat(
-            vec::filter_map(cfg_metas, |i| attr::get_meta_item_list(i)));
+    let cfg_metas = vec::filter_map(cfg_metas, |i| attr::get_meta_item_list(i));
 
-    let has_cfg_metas = vec::len(cfg_metas) > 0u;
-    if !has_cfg_metas { return true; }
+    if cfg_metas.all(|c| c.is_empty()) { return true; }
 
-    for cfg_metas.each |cfg_mi| {
-        if attr::contains(cfg, *cfg_mi) { return true; }
-    }
-
-    return false;
+    cfg_metas.any(|cfg_meta| {
+        cfg_meta.all(|cfg_mi| {
+            match cfg_mi.node {
+                ast::meta_list(s, ref it) if *s == ~"not"
+                    => it.all(|mi| !attr::contains(cfg, *mi)),
+                _ => attr::contains(cfg, *cfg_mi)
+            }
+        })
+    })
 }
 
 
