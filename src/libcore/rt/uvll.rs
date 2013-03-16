@@ -53,6 +53,7 @@ pub type uv_write_t = c_void;
 pub type uv_async_t = c_void;
 pub type uv_timer_t = c_void;
 pub type uv_stream_t = c_void;
+pub type uv_fs_t = c_void;
 
 pub type uv_idle_cb = *u8;
 

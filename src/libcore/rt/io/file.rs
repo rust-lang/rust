@@ -16,13 +16,13 @@ use super::Stream;
 pub struct FileStream;
 
 pub impl FileStream {
-    static fn new(path: Path) -> FileStream {
+    static fn new(_path: Path) -> FileStream {
         fail!()
     }
 }
 
 impl Stream for FileStream {
-    fn read(&mut self, buf: &mut [u8]) -> uint {
+    fn read(&mut self, _buf: &mut [u8]) -> uint {
         fail!()
     }
 
@@ -30,7 +30,7 @@ impl Stream for FileStream {
         fail!()
     }
 
-    fn write(&mut self, v: &const [u8]) {
+    fn write(&mut self, _v: &const [u8]) {
         fail!()
     }
 }

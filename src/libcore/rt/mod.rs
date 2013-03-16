@@ -33,6 +33,7 @@ mod sched;
 mod rtio;
 pub mod uvll;
 mod uvio;
+#[path = "uv/mod.rs"]
 mod uv;
 #[path = "io/mod.rs"]
 mod io;
