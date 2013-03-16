@@ -457,7 +457,7 @@ pub struct Module {
     kind: ModuleKind,
 
     children: @HashMap<ident,@mut NameBindings>,
-    imports: ~[@ImportDirective],
+    imports: @mut ~[@ImportDirective],
 
     // The anonymous children of this node. Anonymous children are pseudo-
     // modules that are implicitly created around items contained within
@@ -495,7 +495,7 @@ pub fn Module(parent_link: ParentLink,
         def_id: def_id,
         kind: kind,
         children: @HashMap(),
-        imports: ~[],
+        imports: @mut ~[],
         anonymous_children: @HashMap(),
         import_resolutions: @HashMap(),
         glob_count: 0,
@@ -505,7 +505,8 @@ pub fn Module(parent_link: ParentLink,
 
 pub impl Module {
     fn all_imports_resolved(&self) -> bool {
-        return self.imports.len() == self.resolved_import_count;
+        let imports = &mut *self.imports;
+        return imports.len() == self.resolved_import_count;
     }
 }
 
@@ -647,6 +648,7 @@ pub impl NameBindings {
                             None => {
                                 match (*type_def).module_def {
                                     Some(module_def) => {
+                                        let module_def = &mut *module_def;
                                         module_def.def_id.map(|def_id|
                                             def_mod(*def_id))
                                     }
@@ -1978,10 +1980,11 @@ pub impl Resolver {
             return;
         }
 
-        let import_count = module.imports.len();
+        let imports = &mut *module.imports;
+        let import_count = imports.len();
         while module.resolved_import_count < import_count {
             let import_index = module.resolved_import_count;
-            let import_directive = module.imports[import_index];
+            let import_directive = imports[import_index];
             match self.resolve_import_for_module(module, import_directive) {
                 Failed => {
                     // We presumably emitted an error. Continue.
@@ -2288,7 +2291,8 @@ pub impl Resolver {
             (None, None) => { return Failed; }
             // If it's private, it's also unresolved.
             (Some(t), None) | (None, Some(t)) => {
-                match t.bindings.type_def {
+                let bindings = &mut *t.bindings;
+                match bindings.type_def {
                     Some(ref type_def) => {
                         if type_def.privacy == Private {
                             return Failed;
@@ -2296,7 +2300,7 @@ pub impl Resolver {
                     }
                     _ => ()
                 }
-                match t.bindings.value_def {
+                match bindings.value_def {
                     Some(ref value_def) => {
                         if value_def.privacy == Private {
                             return Failed;
@@ -2483,7 +2487,7 @@ pub impl Resolver {
 
             debug!("(resolving glob import) writing module resolution \
                     %? into `%s`",
-                   is_none(&target_import_resolution.type_target),
+                   is_none(&mut target_import_resolution.type_target),
                    self.module_to_str(module_));
 
             // Here we merge two import resolutions.
@@ -2551,7 +2555,7 @@ pub impl Resolver {
                    *self.session.str_of(ident),
                    self.module_to_str(containing_module),
                    self.module_to_str(module_),
-                   dest_import_resolution.privacy);
+                   copy dest_import_resolution.privacy);
 
             // Merge the child item into the import resolution.
             if (*name_bindings).defined_in_public_namespace(ValueNS) {
@@ -2864,7 +2868,8 @@ pub impl Resolver {
             module_, name, TypeNS, DontSearchThroughModules);
         match resolve_result {
             Success(target) => {
-                match target.bindings.type_def {
+                let bindings = &mut *target.bindings;
+                match bindings.type_def {
                     Some(ref type_def) => {
                         match (*type_def).module_def {
                             None => {
@@ -3061,10 +3066,10 @@ pub impl Resolver {
 
     fn report_unresolved_imports(@mut self, module_: @mut Module) {
         let index = module_.resolved_import_count;
-        let import_count = module_.imports.len();
+        let imports: &mut ~[@ImportDirective] = &mut *module_.imports;
+        let import_count = imports.len();
         if index != import_count {
-            self.session.span_err(module_.imports[index].span,
-                                  ~"unresolved import");
+            self.session.span_err(imports[index].span, ~"unresolved import");
         }
 
         // Descend into children and anonymous children.
@@ -4253,10 +4258,10 @@ pub impl Resolver {
 
                             match bindings_list {
                                 Some(bindings_list)
-                                if !bindings_list.contains_key(&ident)
-                                    => {
-                                    let last_rib = self.value_ribs[
-                                            self.value_ribs.len() - 1];
+                                if !bindings_list.contains_key(&ident) => {
+                                    let this = &mut *self;
+                                    let last_rib = this.value_ribs[
+                                            this.value_ribs.len() - 1];
                                     last_rib.bindings.insert(ident,
                                                              dl_def(def));
                                     bindings_list.insert(ident, pat_id);
@@ -4275,8 +4280,9 @@ pub impl Resolver {
                                   // Not bound in the same pattern: do nothing
                                 }
                                 None => {
-                                    let last_rib = self.value_ribs[
-                                            self.value_ribs.len() - 1];
+                                    let this = &mut *self;
+                                    let last_rib = this.value_ribs[
+                                            this.value_ribs.len() - 1];
                                     last_rib.bindings.insert(ident,
                                                              dl_def(def));
                                 }
@@ -4723,14 +4729,16 @@ pub impl Resolver {
     }
 
     fn find_best_match_for_name(@mut self, name: &str) -> Option<~str> {
+        let this = &mut *self;
+
         let mut maybes: ~[~str] = ~[];
         let mut values: ~[uint] = ~[];
 
-        let mut j = self.value_ribs.len();
+        let mut j = this.value_ribs.len();
         while j != 0 {
             j -= 1;
-            for self.value_ribs[j].bindings.each_entry |e| {
-                vec::push(&mut maybes, copy *self.session.str_of(e.key));
+            for this.value_ribs[j].bindings.each_entry |e| {
+                vec::push(&mut maybes, copy *this.session.str_of(e.key));
                 vec::push(&mut values, uint::max_value);
             }
         }
@@ -4758,12 +4766,14 @@ pub impl Resolver {
     }
 
     fn name_exists_in_scope_struct(@mut self, name: &str) -> bool {
-        let mut i = self.type_ribs.len();
+        let this = &mut *self;
+
+        let mut i = this.type_ribs.len();
         while i != 0 {
           i -= 1;
-          match self.type_ribs[i].kind {
+          match this.type_ribs[i].kind {
             MethodRibKind(node_id, _) =>
-              for self.crate.node.module.items.each |item| {
+              for this.crate.node.module.items.each |item| {
                 if item.id == node_id {
                   match item.node {
                     item_struct(class_def, _) => {
@@ -4771,7 +4781,7 @@ pub impl Resolver {
                         match field.node.kind {
                           unnamed_field => {},
                           named_field(ident, _, _) => {
-                              if str::eq_slice(*self.session.str_of(ident),
+                              if str::eq_slice(*this.session.str_of(ident),
                                                name) {
                                 return true
                               }
@@ -4877,8 +4887,9 @@ pub impl Resolver {
 
             expr_loop(_, Some(label)) => {
                 do self.with_label_rib {
+                    let this = &mut *self;
                     let def_like = dl_def(def_label(expr.id));
-                    let rib = self.label_ribs[self.label_ribs.len() - 1];
+                    let rib = this.label_ribs[this.label_ribs.len() - 1];
                     rib.bindings.insert(label, def_like);
 
                     visit_expr(expr, (), visitor);
@@ -5144,21 +5155,21 @@ pub impl Resolver {
     // be sure that there is only one main function
     //
     fn check_duplicate_main(@mut self) {
-        if self.attr_main_fn.is_none() {
-            if self.main_fns.len() >= 1u {
+        let this = &mut *self;
+        if this.attr_main_fn.is_none() {
+            if this.main_fns.len() >= 1u {
                 let mut i = 1u;
-                while i < self.main_fns.len() {
-                    let (_, dup_main_span) =
-                            option::unwrap(self.main_fns[i]);
-                    self.session.span_err(
+                while i < this.main_fns.len() {
+                    let (_, dup_main_span) = option::unwrap(this.main_fns[i]);
+                    this.session.span_err(
                         dup_main_span,
                         ~"multiple 'main' functions");
                     i += 1;
                 }
-                *self.session.main_fn = self.main_fns[0];
+                *this.session.main_fn = this.main_fns[0];
             }
         } else {
-            *self.session.main_fn = self.attr_main_fn;
+            *this.session.main_fn = this.attr_main_fn;
         }
     }
 

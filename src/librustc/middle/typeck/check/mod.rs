@@ -1696,7 +1696,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(expr.id, fty);
 
         let inherited_purity =
-            ty::determine_inherited_purity(fcx.purity, purity,
+            ty::determine_inherited_purity(copy fcx.purity, purity,
                                            fn_ty.sigil);
 
         // We inherit the same self info as the enclosing scope,

@@ -156,7 +156,10 @@ pub impl protocol_ {
         ~"proto://" + self.name
     }
 
-    fn num_states(&mut self) -> uint { self.states.len() }
+    fn num_states(&mut self) -> uint {
+        let states = &mut *self.states;
+        states.len()
+    }
 
     fn has_ty_params(&mut self) -> bool {
         for self.states.each |s| {
@@ -180,9 +183,10 @@ pub impl protocol_ {
                       +generics: ast::Generics)
                    -> state {
         let messages = @mut ~[];
+        let states = &*self.states;
 
         let state = @state_ {
-            id: self.states.len(),
+            id: states.len(),
             name: name,
             ident: ident,
             span: self.span,

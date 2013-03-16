@@ -757,12 +757,16 @@ pub fn Decoder(json: Json) -> Decoder {
 
 priv impl Decoder/&self {
     fn peek(&self) -> &'self Json {
-        if self.stack.len() == 0 { self.stack.push(&self.json); }
-        self.stack[self.stack.len() - 1]
+        if vec::uniq_len(&const self.stack) == 0 {
+            self.stack.push(&self.json);
+        }
+        self.stack[vec::uniq_len(&const self.stack) - 1]
     }
 
     fn pop(&self) -> &'self Json {
-        if self.stack.len() == 0 { self.stack.push(&self.json); }
+        if vec::uniq_len(&const self.stack) == 0 {
+            self.stack.push(&self.json);
+        }
         self.stack.pop()
     }
 }

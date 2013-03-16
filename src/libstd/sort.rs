@@ -68,9 +68,14 @@ fn part<T>(arr: &mut [T], left: uint,
     let mut storage_index: uint = left;
     let mut i: uint = left;
     while i < right {
-        if compare_func(&arr[i], &arr[right]) {
-            arr[i] <-> arr[storage_index];
-            storage_index += 1;
+        // XXX: Unsafe because borrow check doesn't handle this right
+        unsafe {
+            let a: &T = cast::transmute(&mut arr[i]);
+            let b: &T = cast::transmute(&mut arr[right]);
+            if compare_func(a, b) {
+                arr[i] <-> arr[storage_index];
+                storage_index += 1;
+            }
         }
         i += 1;
     }
@@ -451,7 +456,10 @@ impl<T:Copy + Ord> MergeState<T> {
                 base2: uint, len2: uint) {
         fail_unless!(len1 != 0 && len2 != 0 && base1+len1 == base2);
 
-        let mut tmp = vec::slice(array, base1, base1+len1).to_vec();
+        let mut tmp = ~[];
+        for uint::range(base1, base1+len1) |i| {
+            tmp.push(array[i]);
+        }
 
         let mut c1 = 0;
         let mut c2 = base2;
@@ -554,7 +562,10 @@ impl<T:Copy + Ord> MergeState<T> {
                 base2: uint, len2: uint) {
         fail_unless!(len1 != 1 && len2 != 0 && base1 + len1 == base2);
 
-        let mut tmp = vec::slice(array, base2, base2+len2).to_vec();
+        let mut tmp = ~[];
+        for uint::range(base2, base2+len2) |i| {
+            tmp.push(array[i]);
+        }
 
         let mut c1 = base1 + len1 - 1;
         let mut c2 = len2 - 1;
@@ -702,7 +713,11 @@ fn copy_vec<T:Copy>(dest: &mut [T], s1: uint,
                     from: &[const T], s2: uint, len: uint) {
     fail_unless!(s1+len <= dest.len() && s2+len <= from.len());
 
-    let slice = vec::slice(from, s2, s2+len).to_vec();
+    let mut slice = ~[];
+    for uint::range(s2, s2+len) |i| {
+        slice.push(from[i]);
+    }
+
     for slice.eachi |i, v| {
         dest[s1+i] = *v;
     }
@@ -721,7 +736,7 @@ mod test_qsort3 {
         quick_sort3::<int>(v1);
         let mut i = 0;
         while i < len {
-            debug!(v2[i]);
+            // debug!(v2[i]);
             fail_unless!((v2[i] == v1[i]));
             i += 1;
         }
@@ -768,7 +783,7 @@ mod test_qsort {
         quick_sort::<int>(v1, leual);
         let mut i = 0u;
         while i < len {
-            debug!(v2[i]);
+            // debug!(v2[i]);
             fail_unless!((v2[i] == v1[i]));
             i += 1;
         }
@@ -919,7 +934,7 @@ mod test_tim_sort {
         tim_sort::<int>(v1);
         let mut i = 0u;
         while i < len {
-            debug!(v2[i]);
+            // debug!(v2[i]);
             fail_unless!((v2[i] == v1[i]));
             i += 1u;
         }

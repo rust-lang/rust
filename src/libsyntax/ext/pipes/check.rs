@@ -41,7 +41,8 @@ impl proto::visitor<(), (), ()> for @ext_ctxt {
     fn visit_proto(&self, _proto: protocol, _states: &[()]) { }
 
     fn visit_state(&self, state: state, _m: &[()]) {
-        if state.messages.len() == 0 {
+        let messages = &*state.messages;
+        if messages.len() == 0 {
             self.span_warn(
                 state.span, // use a real span!
                 fmt!("state %s contains no messages, \

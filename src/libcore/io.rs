@@ -1116,7 +1116,7 @@ pub struct BytesWriter {
 impl Writer for BytesWriter {
     fn write(&self, v: &[const u8]) {
         let v_len = v.len();
-        let bytes_len = self.bytes.len();
+        let bytes_len = vec::uniq_len(&const self.bytes);
 
         let count = uint::max(bytes_len, self.pos + v_len);
         vec::reserve(&mut self.bytes, count);
@@ -1131,7 +1131,7 @@ impl Writer for BytesWriter {
     }
     fn seek(&self, offset: int, whence: SeekStyle) {
         let pos = self.pos;
-        let len = self.bytes.len();
+        let len = vec::uniq_len(&const self.bytes);
         self.pos = seek_in_buf(offset, pos, len, whence);
     }
     fn tell(&self) -> uint { self.pos }

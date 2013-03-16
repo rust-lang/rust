@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use cast::transmute;
 use option;
 use prelude::*;
 
@@ -15,9 +16,19 @@ use prelude::*;
 ///
 /// Similar to a mutable option type, but friendlier.
 
-#[deriving_eq]
 pub struct Cell<T> {
     mut value: Option<T>
+}
+
+impl<T:cmp::Eq> cmp::Eq for Cell<T> {
+    pure fn eq(&self, other: &Cell<T>) -> bool {
+        unsafe {
+            let frozen_self: &Option<T> = transmute(&mut self.value);
+            let frozen_other: &Option<T> = transmute(&mut other.value);
+            frozen_self == frozen_other
+        }
+    }
+    pure fn ne(&self, other: &Cell<T>) -> bool { !self.eq(other) }
 }
 
 /// Creates a new full cell with the given value.

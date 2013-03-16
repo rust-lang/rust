@@ -1,3 +1,5 @@
+// xfail-test
+
 fn foo(v: &[const uint]) -> ~[uint] {
     v.to_vec()
 }

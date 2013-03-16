@@ -486,12 +486,12 @@ For example, we could write a subroutine like this:
 
 ~~~
 struct Point {x: float, y: float}
-fn get_x(p: &r/Point) -> &r/float { &p.x }
+fn get_x(p: &'r Point) -> &'r float { &p.x }
 ~~~
 
 Here, the function `get_x()` returns a pointer into the structure it
-was given. The type of the parameter (`&r/Point`) and return type
-(`&r/float`) both use a new syntactic form that we have not seen so
+was given. The type of the parameter (`&'r Point`) and return type
+(`&'r float`) both use a new syntactic form that we have not seen so
 far.  Here the identifier `r` names the lifetime of the pointer
 explicitly. So in effect, this function declares that it takes a
 pointer with lifetime `r` and returns a pointer with that same
@@ -572,8 +572,8 @@ function:
 #     Rectangle(Point, Size)  // upper-left, dimensions
 # }
 # fn compute_area(shape: &Shape) -> float { 0f }
-fn select<T>(shape: &r/Shape, threshold: float,
-             a: &r/T, b: &r/T) -> &r/T {
+fn select<T>(shape: &'r Shape, threshold: float,
+             a: &'r T, b: &'r T) -> &'r T {
     if compute_area(shape) > threshold {a} else {b}
 }
 ~~~
@@ -593,17 +593,17 @@ example:
 # }
 # fn compute_area(shape: &Shape) -> float { 0f }
 # fn select<T>(shape: &Shape, threshold: float,
-#              a: &r/T, b: &r/T) -> &r/T {
+#              a: &'r T, b: &'r T) -> &'r T {
 #     if compute_area(shape) > threshold {a} else {b}
 # }
-                                                  // -+ r
-fn select_based_on_unit_circle<T>(                //  |-+ B
-    threshold: float, a: &r/T, b: &r/T) -> &r/T { //  | |
-                                                  //  | |
-    let shape = Circle(Point {x: 0., y: 0.}, 1.); //  | |
-    select(&shape, threshold, a, b)               //  | |
-}                                                 //  |-+
-                                                  // -+
+                                                     // -+ r
+fn select_based_on_unit_circle<T>(                   //  |-+ B
+    threshold: float, a: &'r T, b: &'r T) -> &'r T { //  | |
+                                                     //  | |
+    let shape = Circle(Point {x: 0., y: 0.}, 1.);    //  | |
+    select(&shape, threshold, a, b)                  //  | |
+}                                                    //  |-+
+                                                     // -+
 ~~~
 
 In this call to `select()`, the lifetime of the first parameter shape
@@ -629,8 +629,8 @@ returned. Here is how the new `select()` might look:
 #     Rectangle(Point, Size)  // upper-left, dimensions
 # }
 # fn compute_area(shape: &Shape) -> float { 0f }
-fn select<T>(shape: &tmp/Shape, threshold: float,
-             a: &r/T, b: &r/T) -> &r/T {
+fn select<T>(shape: &'tmp Shape, threshold: float,
+             a: &'r T, b: &'r T) -> &'r T {
     if compute_area(shape) > threshold {a} else {b}
 }
 ~~~
@@ -649,7 +649,7 @@ concise to just omit the named lifetime for `shape` altogether:
 # }
 # fn compute_area(shape: &Shape) -> float { 0f }
 fn select<T>(shape: &Shape, threshold: float,
-             a: &r/T, b: &r/T) -> &r/T {
+             a: &'r T, b: &'r T) -> &'r T {
     if compute_area(shape) > threshold {a} else {b}
 }
 ~~~

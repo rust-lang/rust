@@ -185,7 +185,11 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
 
 pub fn type_needs(cx: Context, use_: uint, ty: ty::t) {
     // Optimization -- don't descend type if all params already have this use
-    for uint::range(0, cx.uses.len()) |i| {
+    let len = {
+        let uses = &*cx.uses;
+        uses.len()
+    };
+    for uint::range(0, len) |i| {
         if cx.uses[i] & use_ != use_ {
             type_needs_inner(cx, use_, ty, @Nil);
             return;

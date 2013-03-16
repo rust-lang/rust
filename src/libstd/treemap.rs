@@ -106,10 +106,10 @@ impl<'self, K: TotalOrd, V>
 
 impl<K: TotalOrd, V> Container for TreeMap<K, V> {
     /// Return the number of elements in the map
-    pure fn len(&self) -> uint { self.length }
+    pure fn len(&const self) -> uint { self.length }
 
     /// Return true if the map contains no elements
-    pure fn is_empty(&self) -> bool { self.root.is_none() }
+    pure fn is_empty(&const self) -> bool { self.root.is_none() }
 }
 
 impl<K: TotalOrd, V> Mutable for TreeMap<K, V> {
@@ -276,11 +276,11 @@ impl<T: Ord + TotalOrd> Ord for TreeSet<T> {
 impl<T: TotalOrd> Container for TreeSet<T> {
     /// Return the number of elements in the set
     #[inline(always)]
-    pure fn len(&self) -> uint { self.map.len() }
+    pure fn len(&const self) -> uint { self.map.len() }
 
     /// Return true if the set contains no elements
     #[inline(always)]
-    pure fn is_empty(&self) -> bool { self.map.is_empty() }
+    pure fn is_empty(&const self) -> bool { self.map.is_empty() }
 }
 
 impl<T: TotalOrd> Mutable for TreeSet<T> {

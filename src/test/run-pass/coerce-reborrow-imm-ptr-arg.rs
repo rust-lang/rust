@@ -10,8 +10,4 @@ fn negate_imm(y: &int) -> int {
     negate(y)
 }
 
-fn negate_const(y: &const int) -> int {
-    negate(y)
-}
-
 pub fn main() {}

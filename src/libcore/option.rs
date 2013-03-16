@@ -228,14 +228,14 @@ pub pure fn while_some<T>(x: Option<T>, blk: &fn(v: T) -> Option<T>) {
 }
 
 #[inline(always)]
-pub pure fn is_none<T>(opt: &Option<T>) -> bool {
+pub pure fn is_none<T>(opt: &const Option<T>) -> bool {
     //! Returns true if the option equals `none`
 
     match *opt { None => true, Some(_) => false }
 }
 
 #[inline(always)]
-pub pure fn is_some<T>(opt: &Option<T>) -> bool {
+pub pure fn is_some<T>(opt: &const Option<T>) -> bool {
     //! Returns true if the option contains some value
 
     !is_none(opt)
@@ -333,11 +333,11 @@ impl<T> MutableIter<T> for Option<T> {
 pub impl<T> Option<T> {
     /// Returns true if the option equals `none`
     #[inline(always)]
-    pure fn is_none(&self) -> bool { is_none(self) }
+    pure fn is_none(&const self) -> bool { is_none(self) }
 
     /// Returns true if the option contains some value
     #[inline(always)]
-    pure fn is_some(&self) -> bool { is_some(self) }
+    pure fn is_some(&const self) -> bool { is_some(self) }
 
     /**
      * Update an optional value by optionally running its content by reference
