@@ -17,7 +17,7 @@ impl to_str for int {
     fn to_str(&self) -> ~str { int::to_str(*self) }
 }
 impl to_str for ~str {
-    fn to_str(&self) -> ~str { copy *self }
+    fn to_str(&self) -> ~str { self.clone() }
 }
 impl to_str for () {
     fn to_str(&self) -> ~str { ~"()" }

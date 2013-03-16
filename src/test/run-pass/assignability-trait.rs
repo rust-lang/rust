@@ -43,7 +43,7 @@ pub fn main() {
     // Call a method
     for x.iterate() |y| { fail_unless!(x[*y] == *y); }
     // Call a parameterized function
-    fail_unless!(length(copy x) == vec::len(x));
+    fail_unless!(length(x.clone()) == vec::len(x));
     // Call a parameterized function, with type arguments that require
     // a borrow
     fail_unless!(length::<int, &[int]>(x) == vec::len(x));

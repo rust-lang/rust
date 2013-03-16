@@ -20,6 +20,7 @@
 use at_vec;
 use cast;
 use char;
+use clone::Clone;
 use cmp::{Equiv, TotalOrd, Ordering, Less, Equal, Greater};
 use libc;
 use option::{None, Option, Some};
@@ -2433,6 +2434,13 @@ impl OwnedStr for ~str {
 
     fn push_char(&mut self, c: char) {
         push_char(self, c);
+    }
+}
+
+impl Clone for ~str {
+    #[inline(always)]
+    fn clone(&self) -> ~str {
+        self.to_str()  // hilarious
     }
 }
 

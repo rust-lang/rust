@@ -27,6 +27,6 @@ pub fn main() {
     let v = ~[~"123", ~"abc"];
     node.content = ~[~"123", ~"abc"];
     print_str_vector(v);
-    print_str_vector(copy node.content);
+    print_str_vector(node.content.clone());
 
 }

@@ -10,7 +10,7 @@
 
 pub fn main() {
     let mut a = ~[~10];
-    let b = copy a;
+    let b = a.clone();
 
     fail_unless!(*a[0] == 10);
     fail_unless!(*b[0] == 10);
