@@ -214,7 +214,7 @@ false fn for
 if impl
 let loop
 match mod mut
-priv pub pure
+priv pub
 ref return
 self static struct super
 true trait type
@@ -936,7 +936,6 @@ Specifically, the following operations are considered unsafe:
 
   - Dereferencing a [raw pointer](#pointer-types).
   - Casting a [raw pointer](#pointer-types) to a safe pointer type.
-  - Breaking the [purity-checking rules](#pure-functions) in a `pure` function.
   - Calling an unsafe function.
 
 ##### Unsafe blocks
@@ -945,42 +944,6 @@ A block of code can also be prefixed with the `unsafe` keyword, to permit a sequ
 This facility exists because the static semantics of Rust are a necessary approximation of the dynamic semantics.
 When a programmer has sufficient conviction that a sequence of unsafe operations is actually safe, they can encapsulate that sequence (taken as a whole) within an `unsafe` block. The compiler will consider uses of such code "safe", to the surrounding context.
 
-
-#### Pure functions
-
-A pure function declaration is identical to a function declaration, except that
-it is declared with the additional keyword `pure`. In addition, the typechecker
-checks the body of a pure function with a restricted set of typechecking rules.
-A pure function may only modify data owned by its own stack frame.
-So, a pure function may modify a local variable allocated on the stack, but not a mutable reference that it takes as an argument.
-A pure function may only call other pure functions, not general functions.
-
-An example of a pure function:
-
-~~~~
-pure fn lt_42(x: int) -> bool {
-    return (x < 42);
-}
-~~~~
-
-Pure functions may call other pure functions:
-
-~~~~{.xfail-test}
-pure fn pure_length<T>(ls: List<T>) -> uint { ... }
-
-pure fn nonempty_list<T>(ls: List<T>) -> bool { pure_length(ls) > 0u }
-~~~~
-
-These purity-checking rules approximate the concept of referential transparency:
-that a call-expression could be rewritten with the literal-expression of its return value, without changing the meaning of the program.
-Since they are an approximation, sometimes these rules are *too* restrictive.
-Rust allows programmers to violate these rules using [`unsafe` blocks](#unsafe-blocks), which we already saw.
-As with any `unsafe` block, those that violate static purity carry transfer the burden of safety-proof from the compiler to the programmer.
-Programmers should exercise caution when breaking such rules.
-
-For more details on purity, see [the borrowed pointer tutorial][borrow].
-
-[borrow]: tutorial-borrowed-ptr.html
 
 #### Diverging functions
 
@@ -1246,10 +1209,10 @@ For example:
 
 ~~~~
 trait Num {
-    static pure fn from_int(n: int) -> Self;
+    static fn from_int(n: int) -> Self;
 }
 impl Num for float {
-    static pure fn from_int(n: int) -> float { n as float }
+    static fn from_int(n: int) -> float { n as float }
 }
 let x: float = Num::from_int(42);
 ~~~~
@@ -2643,7 +2606,7 @@ Raw pointers (`*`)
 ### Function types
 
 The function type-constructor `fn` forms new function types. A function type
-consists of a set of function-type modifiers (`pure`, `unsafe`, `extern`, etc.),
+consists of a set of function-type modifiers (`unsafe`, `extern`, etc.),
 a sequence of input slots and an output slot.
 
 An example of a `fn` type:

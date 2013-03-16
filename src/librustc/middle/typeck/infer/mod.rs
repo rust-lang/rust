@@ -559,15 +559,16 @@ pub impl InferCtxt {
     }
 
     fn start_snapshot(@mut self) -> Snapshot {
+        let this = &mut *self;
         Snapshot {
             ty_var_bindings_len:
-                self.ty_var_bindings.bindings.len(),
+                this.ty_var_bindings.bindings.len(),
             int_var_bindings_len:
-                self.int_var_bindings.bindings.len(),
+                this.int_var_bindings.bindings.len(),
             float_var_bindings_len:
-                self.float_var_bindings.bindings.len(),
+                this.float_var_bindings.bindings.len(),
             region_vars_snapshot:
-                self.region_vars.start_snapshot(),
+                this.region_vars.start_snapshot(),
         }
     }
 

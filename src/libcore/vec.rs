@@ -118,6 +118,14 @@ pub pure fn len<T>(v: &[const T]) -> uint {
     as_const_buf(v, |_p, len| len)
 }
 
+// A botch to tide us over until core and std are fully demuted.
+pub pure fn uniq_len<T>(v: &const ~[T]) -> uint {
+    unsafe {
+        let v: &~[T] = ::cast::transmute(v);
+        as_const_buf(*v, |_p, len| len)
+    }
+}
+
 /**
  * Creates and initializes an immutable vector.
  *
@@ -1691,11 +1699,11 @@ pub mod traits {
 impl<T> Container for &'self [const T] {
     /// Returns true if a vector contains no elements
     #[inline]
-    pure fn is_empty(&self) -> bool { is_empty(*self) }
+    pure fn is_empty(&const self) -> bool { is_empty(*self) }
 
     /// Returns the length of a vector
     #[inline]
-    pure fn len(&self) -> uint { len(*self) }
+    pure fn len(&const self) -> uint { len(*self) }
 }
 
 pub trait CopyableVector<T> {
@@ -1707,7 +1715,14 @@ impl<T: Copy> CopyableVector<T> for &'self [const T] {
     /// Returns a copy of the elements from [`start`..`end`) from `v`.
     #[inline]
     pure fn slice(&self, start: uint, end: uint) -> ~[T] {
-        slice(*self, start, end).to_vec()
+        // XXX: Purity workaround for stage0.
+        unsafe {
+            let mut result = ~[];
+            for uint::range(start, end) |i| {
+                result.push(copy self[i]);
+            }
+            result
+        }
     }
 }
 
@@ -2484,7 +2499,7 @@ impl<A:Copy> iter::CopyableNonstrictIter<A> for &'self [A] {
 impl<A:Copy> iter::CopyableNonstrictIter<A> for ~[A] {
     pure fn each_val(&const self, f: &fn(A) -> bool) {
         let mut i = 0;
-        while i < self.len() {
+        while i < uniq_len(self) {
             if !f(copy self[i]) { break; }
             i += 1;
         }

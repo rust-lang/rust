@@ -39,7 +39,6 @@ pub fn main() {
     (&"test").test_imm();
 
     // XXX: Other types of mutable vecs don't currently exist
-    (@mut [1]).test_imm();
 
     ([1]).test_const();
     (~[1]).test_const();
@@ -49,8 +48,6 @@ pub fn main() {
     (~"test").test_const();
     (@"test").test_const();
     (&"test").test_const();
-
-    (@mut [1]).test_const();
 
     // NB: We don't do this double autoreffing for &mut self because that would
     // allow creating a mutable pointer to a temporary, which would be a source

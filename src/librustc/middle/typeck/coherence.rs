@@ -466,14 +466,13 @@ pub impl CoherenceChecker {
         }
     }
 
-    fn iter_impls_of_trait(&self, trait_def_id: def_id,
-                           f: &fn(@Impl)) {
-
+    fn iter_impls_of_trait(&self, trait_def_id: def_id, f: &fn(@Impl)) {
         let coherence_info = &mut self.crate_context.coherence_info;
         let extension_methods = &coherence_info.extension_methods;
 
         match extension_methods.find(&trait_def_id) {
             Some(impls) => {
+                let impls: &mut ~[@Impl] = impls;
                 for uint::range(0, impls.len()) |i| {
                     f(impls[i]);
                 }

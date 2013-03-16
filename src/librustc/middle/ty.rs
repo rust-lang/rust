@@ -2184,7 +2184,7 @@ pub fn type_moves_by_default(cx: ctxt, ty: t) -> bool {
 
 // True if instantiating an instance of `r_ty` requires an instance of `r_ty`.
 pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
-    fn type_requires(cx: ctxt, seen: @mut ~[def_id],
+    fn type_requires(cx: ctxt, seen: &mut ~[def_id],
                      r_ty: t, ty: t) -> bool {
         debug!("type_requires(%s, %s)?",
                ::util::ppaux::ty_to_str(cx, r_ty),
@@ -2202,7 +2202,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
         return r;
     }
 
-    fn subtypes_require(cx: ctxt, seen: @mut ~[def_id],
+    fn subtypes_require(cx: ctxt, seen: &mut ~[def_id],
                         r_ty: t, ty: t) -> bool {
         debug!("subtypes_require(%s, %s)?",
                ::util::ppaux::ty_to_str(cx, r_ty),

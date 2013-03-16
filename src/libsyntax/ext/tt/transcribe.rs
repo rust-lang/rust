@@ -106,8 +106,9 @@ pub pure fn dup_tt_reader(r: @mut TtReader) -> @mut TtReader {
 }
 
 
-pure fn lookup_cur_matched_by_matched(r: @mut TtReader,
-                                      start: @named_match) -> @named_match {
+pure fn lookup_cur_matched_by_matched(r: &mut TtReader,
+                                      start: @named_match)
+                                   -> @named_match {
     pure fn red(+ad: @named_match, idx: &uint) -> @named_match {
         match *ad {
           matched_nonterminal(_) => {
@@ -117,18 +118,20 @@ pure fn lookup_cur_matched_by_matched(r: @mut TtReader,
           matched_seq(ref ads, _) => ads[*idx]
         }
     }
-    vec::foldl(start, r.repeat_idx, red)
+    let r = &mut *r;
+    let repeat_idx = &r.repeat_idx;
+    vec::foldl(start, *repeat_idx, red)
 }
 
-fn lookup_cur_matched(r: @mut TtReader, name: ident) -> @named_match {
+fn lookup_cur_matched(r: &mut TtReader, name: ident) -> @named_match {
     lookup_cur_matched_by_matched(r, r.interpolations.get(&name))
 }
 enum lis {
     lis_unconstrained, lis_constraint(uint, ident), lis_contradiction(~str)
 }
 
-fn lockstep_iter_size(t: token_tree, r: @mut TtReader) -> lis {
-    fn lis_merge(lhs: lis, rhs: lis, r: @mut TtReader) -> lis {
+fn lockstep_iter_size(t: token_tree, r: &mut TtReader) -> lis {
+    fn lis_merge(lhs: lis, rhs: lis, r: &mut TtReader) -> lis {
         match lhs {
           lis_unconstrained => copy rhs,
           lis_contradiction(_) => copy lhs,
@@ -148,8 +151,10 @@ fn lockstep_iter_size(t: token_tree, r: @mut TtReader) -> lis {
     }
     match t {
       tt_delim(ref tts) | tt_seq(_, ref tts, _, _) => {
-        vec::foldl(lis_unconstrained, (*tts), |lis, tt|
-            lis_merge(lis, lockstep_iter_size(*tt, r), r))
+        vec::foldl(lis_unconstrained, (*tts), |lis, tt| {
+            let lis2 = lockstep_iter_size(*tt, r);
+            lis_merge(lis, lis2, r)
+        })
       }
       tt_tok(*) => lis_unconstrained,
       tt_nonterminal(_, name) => match *lookup_cur_matched(r, name) {
@@ -160,12 +165,20 @@ fn lockstep_iter_size(t: token_tree, r: @mut TtReader) -> lis {
 }
 
 
-pub fn tt_next_token(r: @mut TtReader) -> TokenAndSpan {
+pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
     let ret_val = TokenAndSpan {
         tok: copy r.cur_tok,
         sp: r.cur_span,
     };
-    while r.cur.idx >= r.cur.readme.len() {
+    loop {
+        {
+            let cur = &mut *r.cur;
+            let readme = &mut *cur.readme;
+            if cur.idx < readme.len() {
+                break;
+            }
+        }
+
         /* done with this set; pop or repeat? */
         if ! r.cur.dotdotdoted
             || { *r.repeat_idx.last() == *r.repeat_len.last() - 1 } {

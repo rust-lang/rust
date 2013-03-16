@@ -96,6 +96,7 @@ pub fn iter_crate_data(cstore: @mut CStore,
 }
 
 pub fn add_used_crate_file(cstore: @mut CStore, lib: &Path) {
+    let cstore = &mut *cstore;
     if !vec::contains(cstore.used_crate_files, lib) {
         cstore.used_crate_files.push(copy *lib);
     }
@@ -108,6 +109,7 @@ pub fn get_used_crate_files(cstore: @mut CStore) -> ~[Path] {
 pub fn add_used_library(cstore: @mut CStore, lib: @~str) -> bool {
     fail_unless!(*lib != ~"");
 
+    let cstore = &mut *cstore;
     if cstore.used_libraries.contains(&*lib) { return false; }
     cstore.used_libraries.push(/*bad*/ copy *lib);
     true

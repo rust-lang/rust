@@ -23,10 +23,10 @@ pub struct Deque<T> {
 
 impl<T> Container for Deque<T> {
     /// Return the number of elements in the deque
-    pure fn len(&self) -> uint { self.nelts }
+    pure fn len(&const self) -> uint { self.nelts }
 
     /// Return true if the deque contains no elements
-    pure fn is_empty(&self) -> bool { self.len() == 0 }
+    pure fn is_empty(&const self) -> bool { self.len() == 0 }
 }
 
 impl<T> Mutable for Deque<T> {

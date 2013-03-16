@@ -101,7 +101,7 @@ pub mod chained {
         }
 
         pure fn search_tbl(&self, k: &K, h: uint) -> SearchResult<K,V> {
-            let idx = h % vec::len(self.chains);
+            let idx = h % vec::uniq_len(&const self.chains);
             match copy self.chains[idx] {
               None => {
                 debug!("search_tbl: none, comp %u, hash %u, idx %u",
@@ -121,7 +121,7 @@ pub mod chained {
         }
 
         fn rehash(@self) {
-            let n_old_chains = self.chains.len();
+            let n_old_chains = vec::uniq_len(&const self.chains);
             let n_new_chains: uint = uint::next_power_of_two(n_old_chains+1u);
             let mut new_chains = chains(n_new_chains);
             for self.each_entry |entry| {
@@ -137,7 +137,7 @@ pub mod chained {
         pure fn each_entry(&self, blk: &fn(@Entry<K,V>) -> bool) {
             // n.b. we can't use vec::iter() here because self.chains
             // is stored in a mutable location.
-            let mut i = 0u, n = self.chains.len();
+            let mut i = 0u, n = vec::uniq_len(&const self.chains);
             while i < n {
                 let mut chain = self.chains[i];
                 loop {
@@ -161,8 +161,8 @@ pub mod chained {
     }
 
     impl<K:Eq + IterBytes + Hash,V> Container for HashMap_<K, V> {
-        pure fn len(&self) -> uint { self.count }
-        pure fn is_empty(&self) -> bool { self.count == 0 }
+        pure fn len(&const self) -> uint { self.count }
+        pure fn is_empty(&const self) -> bool { self.count == 0 }
     }
 
     pub impl<K:Eq + IterBytes + Hash,V> HashMap_<K, V> {
@@ -179,7 +179,7 @@ pub mod chained {
             match self.search_tbl(&k, hash) {
               NotFound => {
                 self.count += 1u;
-                let idx = hash % vec::len(self.chains);
+                let idx = hash % vec::uniq_len(&const self.chains);
                 let old_chain = self.chains[idx];
                 self.chains[idx] = Some(@Entry {
                     hash: hash,
@@ -188,7 +188,7 @@ pub mod chained {
                     next: old_chain});
 
                 // consider rehashing if more 3/4 full
-                let nchains = vec::len(self.chains);
+                let nchains = vec::uniq_len(&const self.chains);
                 let load = util::Rational {
                     num: (self.count + 1u) as int,
                     den: nchains as int,
@@ -271,7 +271,7 @@ pub mod chained {
             match self.search_tbl(&key, hash) {
               NotFound => {
                 self.count += 1u;
-                let idx = hash % vec::len(self.chains);
+                let idx = hash % vec::uniq_len(&const self.chains);
                 let old_chain = self.chains[idx];
                 self.chains[idx] = Some(@Entry {
                     hash: hash,
@@ -280,7 +280,7 @@ pub mod chained {
                     next: old_chain});
 
                 // consider rehashing if more 3/4 full
-                let nchains = vec::len(self.chains);
+                let nchains = vec::uniq_len(&const self.chains);
                 let load = util::Rational {
                     num: (self.count + 1u) as int,
                     den: nchains as int,

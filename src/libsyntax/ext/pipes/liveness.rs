@@ -91,7 +91,7 @@ pub fn analyze(proto: protocol, _cx: @ext_ctxt) {
         let states = str::connect(self_live.map(|s| copy s.name), ~" ");
 
         debug!("protocol %s is unbounded due to loops involving: %s",
-               proto.name, states);
+               copy proto.name, states);
 
         // Someday this will be configurable with a warning
         //cx.span_warn(empty_span(),
@@ -103,7 +103,7 @@ pub fn analyze(proto: protocol, _cx: @ext_ctxt) {
         proto.bounded = Some(false);
     }
     else {
-        debug!("protocol %s is bounded. yay!", proto.name);
+        debug!("protocol %s is bounded. yay!", copy proto.name);
         proto.bounded = Some(true);
     }
 }

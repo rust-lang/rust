@@ -37,10 +37,10 @@ impl<T:Ord> BaseIter<T> for PriorityQueue<T> {
 
 impl<T:Ord> Container for PriorityQueue<T> {
     /// Returns the length of the queue
-    pure fn len(&self) -> uint { self.data.len() }
+    pure fn len(&const self) -> uint { vec::uniq_len(&const self.data) }
 
     /// Returns true if a queue contains no elements
-    pure fn is_empty(&self) -> bool { self.data.is_empty() }
+    pure fn is_empty(&const self) -> bool { self.len() == 0 }
 }
 
 impl<T:Ord> Mutable for PriorityQueue<T> {
