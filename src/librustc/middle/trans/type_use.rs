@@ -350,7 +350,12 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
       }
 
       expr_inline_asm(_, ref ins, ref outs, _, _, _) => {
-          // XXX Do something, maybe?
+        for ins.each |&(_, in)| {
+          node_type_needs(cx, use_repr, in.id);
+        }
+        for outs.each |&(_, out)| {
+          node_type_needs(cx, use_repr, out.id);
+        }
       }
 
       expr_paren(e) => mark_for_expr(cx, e),
