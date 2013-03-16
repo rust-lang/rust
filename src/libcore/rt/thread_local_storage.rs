@@ -40,6 +40,7 @@ type pthread_key_t = c_ulong;
 
 #[cfg(target_os="linux")]
 #[cfg(target_os="freebsd")]
+#[cfg(target_os="android")]
 #[allow(non_camel_case_types)] // foreign type
 type pthread_key_t = c_uint;
 
