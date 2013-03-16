@@ -22,7 +22,7 @@ mod kitty {
     }
 
     pub impl cat {
-        fn get_name(&self) -> ~str { copy self.name }
+        fn get_name(&self) -> ~str { self.name.clone() }
     }
 
     pub fn cat(in_name: ~str) -> cat {

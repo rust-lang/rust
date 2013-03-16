@@ -13,7 +13,7 @@
 fn switcher(x: Option<@int>) {
     let mut x = x;
     match x {
-      Some(@y) => { copy y; x = None; }
+      Some(@y) => { y.clone(); x = None; }
       None => { }
     }
 }

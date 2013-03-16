@@ -15,6 +15,6 @@ pub fn main() {
         vec::map2(~[1, 2, 3, 4, 5],
                   ~[true, false, false, true, true],
                   |i, b| if *b { -(*i) } else { *i } );
-    error!(copy v);
+    error!(v.clone());
     fail_unless!((v == ~[-1, 2, 3, -4, -5]));
 }

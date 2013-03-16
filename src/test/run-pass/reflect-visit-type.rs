@@ -150,7 +150,7 @@ pub fn main() {
     visit_ty::<i16>(vv);
     visit_ty::<~[int]>(vv);
 
-    for (copy v.types).each {|s|
+    for (v.types.clone()).each {|s|
         io::println(fmt!("type: %s", s));
     }
     fail_unless!(v.types == ["bool", "int", "i8", "i16",

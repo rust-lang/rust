@@ -68,11 +68,11 @@ unsafe fn global_data_clone_create_<T:Owned + Clone>(
         match value {
             None => {
                 let value = create();
-                clone_value = Some(value.clone());
+                clone_value = Some((*value).clone());
                 Some(value)
             }
             Some(value) => {
-                clone_value = Some(value.clone());
+                clone_value = Some((*value).clone());
                 Some(value)
             }
         }
@@ -193,7 +193,7 @@ fn get_global_state() -> Exclusive<GlobalState> {
             // Successfully installed the global pointer
 
             // Take a handle to return
-            let clone = state.clone();
+            let clone = (*state).clone();
 
             // Install a runtime exit function to destroy the global object
             do at_exit {

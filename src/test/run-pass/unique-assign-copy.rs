@@ -12,7 +12,7 @@ pub fn main() {
     let mut i = ~1;
     // Should be a copy
     let mut j;
-    j = copy i;
+    j = i.clone();
     *i = 2;
     *j = 3;
     fail_unless!(*i == 2);

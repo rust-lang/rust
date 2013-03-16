@@ -15,6 +15,6 @@ struct A { a: ~int }
 pub fn main() {
     fn invoke(f: @fn()) { f(); }
     let k = ~22;
-    let _u = A {a: copy k};
-    invoke(|| error!(copy k) )
+    let _u = A {a: k.clone()};
+    invoke(|| error!(k.clone()) )
 }

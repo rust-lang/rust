@@ -38,8 +38,8 @@ mod map_reduce {
     fn start_mappers(ctrl: SharedChan<ctrl_proto>, inputs: ~[~str]) {
         for inputs.each |i| {
             let ctrl = ctrl.clone();
-            let i = copy *i;
-            task::spawn(|| map_task(ctrl.clone(), copy i) );
+            let i = i.clone();
+            task::spawn(|| map_task(ctrl.clone(), i.clone()) );
         }
     }
 
@@ -79,7 +79,7 @@ mod map_reduce {
 
         reducers = oldmap::HashMap();
 
-        start_mappers(ctrl_chan, copy inputs);
+        start_mappers(ctrl_chan, inputs.clone());
 
         let mut num_mappers = vec::len(inputs) as int;
 
