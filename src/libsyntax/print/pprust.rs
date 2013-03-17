@@ -181,10 +181,11 @@ pub fn path_to_str(&&p: @ast::path, intr: @ident_interner) -> ~str {
 }
 
 pub fn fun_to_str(decl: &ast::fn_decl, name: ast::ident,
+                  opt_self_ty: Option<ast::self_ty_>,
                   generics: &ast::Generics, intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
-        print_fn(s, decl, None, name, generics, None, ast::inherited);
+        print_fn(s, decl, None, name, generics, opt_self_ty, ast::inherited);
         end(s); // Close the head box
         end(s); // Close the outer box
         eof(s.s);
@@ -2274,7 +2275,7 @@ pub mod test {
             cf: ast::return_val
         };
         let generics = ast_util::empty_generics();
-        check_equal (&fun_to_str(&decl, abba_ident, &generics, mock_interner),
+        check_equal (&fun_to_str(&decl, abba_ident, None, &generics, mock_interner),
                      &~"fn abba()");
     }
 
