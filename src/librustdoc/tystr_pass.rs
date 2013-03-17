@@ -259,9 +259,9 @@ fn get_method_sig(
 
 #[test]
 fn should_add_trait_method_sigs() {
-    let doc = test::mk_doc(~"trait i { fn a<T>() -> int; }");
+    let doc = test::mk_doc(~"trait i { fn a<T>(&mut self) -> int; }");
     fail_unless!(doc.cratemod().traits()[0].methods[0].sig
-        == Some(~"fn a<T>() -> int"));
+        == Some(~"fn a<T>(&mut self) -> int"));
 }
 
 fn fold_impl(
@@ -318,9 +318,9 @@ fn should_add_impl_self_ty() {
 
 #[test]
 fn should_add_impl_method_sigs() {
-    let doc = test::mk_doc(~"impl int { fn a<T>() -> int { fail!() } }");
+    let doc = test::mk_doc(~"impl int { fn a<T>(&self) -> int { fail!() } }");
     fail_unless!(doc.cratemod().impls()[0].methods[0].sig
-        == Some(~"fn a<T>() -> int"));
+        == Some(~"fn a<T>(&self) -> int"));
 }
 
 fn fold_type(

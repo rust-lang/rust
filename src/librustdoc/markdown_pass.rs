@@ -734,8 +734,8 @@ fn should_write_trait_method_header() {
 #[test]
 fn should_write_trait_method_signature() {
     let markdown = test::render(
-        ~"trait i { fn a(); }");
-    fail_unless!(str::contains(markdown, ~"\n    fn a()"));
+        ~"trait i { fn a(&self); }");
+    fail_unless!(str::contains(markdown, ~"\n    fn a(&self)"));
 }
 
 fn write_impl(ctxt: &Ctxt, doc: doc::ImplDoc) {
@@ -773,8 +773,8 @@ fn should_write_impl_method_header() {
 #[test]
 fn should_write_impl_method_signature() {
     let markdown = test::render(
-        ~"impl int { fn a() { } }");
-    fail_unless!(str::contains(markdown, ~"\n    fn a()"));
+        ~"impl int { fn a(&mut self) { } }");
+    fail_unless!(str::contains(markdown, ~"\n    fn a(&mut self)"));
 }
 
 fn write_type(
