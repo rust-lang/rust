@@ -12,9 +12,9 @@
 
 extern mod std;
 
-use std::bitv;
 use core::io::{ReaderUtil, WriterUtil};
 use core::io;
+use core::unstable::intrinsics::cttz16;
 
 // Computes a single solution to a given 9x9 sudoku
 //
@@ -35,146 +35,241 @@ use core::io;
 // internal type of sudoku grids
 type grid = ~[~[u8]];
 
-// exported type of sudoku grids
-pub enum grid_t { grid_ctor(grid), }
-
-// read a sudoku problem from file f
-pub fn read_grid(f: @io::Reader) -> grid_t {
-    fail_unless!(f.read_line() == ~"9,9"); /* assert first line is exactly "9,9" */
-
-    let mut g = vec::from_fn(10u, {|_i|
-        vec::from_elem(10u, 0 as u8)
-    });
-    while !f.eof() {
-        let comps = str::split_char(str::trim(f.read_line()), ',');
-        if vec::len(comps) >= 3u {
-            let row     = uint::from_str(comps[0]).get() as u8;
-            let col     = uint::from_str(comps[1]).get() as u8;
-            g[row][col] = uint::from_str(comps[2]).get() as u8;
-        }
-    }
-    return grid_ctor(g);
+struct Sudoku {
+    grid: grid
 }
 
-// solve sudoku grid
-pub fn solve_grid(g: grid_t) {
-    fn next_color(mut g: grid, row: u8, col: u8, start_color: u8) -> bool {
+pub impl Sudoku {
+    static pub fn new(g: grid) -> Sudoku {
+        return Sudoku { grid: g }
+    }
+
+    static pub fn from_vec(vec: &[[u8 * 9] * 9]) -> Sudoku {
+        let mut g = do vec::from_fn(9u) |i| {
+            do vec::from_fn(9u) |j| { vec[i][j] }
+        };
+        return Sudoku::new(g)
+    }
+
+    pub fn equal(&self, other: &Sudoku) -> bool {
+        for u8::range(0u8, 9u8) |row| {
+            for u8::range(0u8, 9u8) |col| {
+                if self.grid[row][col] != other.grid[row][col] {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    static pub fn read(reader: @io::Reader) -> Sudoku {
+        fail_unless!(reader.read_line() == ~"9,9"); /* assert first line is exactly "9,9" */
+
+        let mut g = vec::from_fn(10u, { |_i| ~[0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] });
+        while !reader.eof() {
+            let comps = str::split_char(str::trim(reader.read_line()), ',');
+            if vec::len(comps) == 3u {
+                let row     = uint::from_str(comps[0]).get() as u8;
+                let col     = uint::from_str(comps[1]).get() as u8;
+                g[row][col] = uint::from_str(comps[2]).get() as u8;
+            }
+            else {
+                fail!(~"Invalid sudoku file");
+            }
+        }
+        return Sudoku::new(g)
+    }
+
+    pub fn write(&self, writer: @io::Writer) {
+        for u8::range(0u8, 9u8) |row| {
+            writer.write_str(fmt!("%u", self.grid[row][0] as uint));
+            for u8::range(1u8, 9u8) |col| {
+                writer.write_str(fmt!(" %u", self.grid[row][col] as uint));
+            }
+            writer.write_char('\n');
+         }
+    }
+
+    // solve sudoku grid
+    pub fn solve(&mut self) {
+        let mut work: ~[(u8, u8)] = ~[]; /* queue of uncolored fields */
+        for u8::range(0u8, 9u8) |row| {
+            for u8::range(0u8, 9u8) |col| {
+                let color = self.grid[row][col];
+                if color == 0u8 { work += ~[(row, col)]; }
+            }
+        }
+
+        let mut ptr = 0u;
+        let end = vec::len(work);
+        while (ptr < end) {
+            let (row, col) = work[ptr];
+            // is there another color to try?
+            if self.next_color(row, col, self.grid[row][col] + (1 as u8)) {
+                //  yes: advance work list
+                ptr = ptr + 1u;
+            } else {
+                // no: redo this field aft recoloring pred; unless there is none
+                if ptr == 0u { fail!(~"No solution found for this sudoku"); }
+                ptr = ptr - 1u;
+            }
+        }
+    }
+
+    fn next_color(&mut self, row: u8, col: u8, start_color: u8) -> bool {
         if start_color < 10u8 {
             // colors not yet used
-            let mut avail = bitv::Bitv::new(10u, false);
-            for u8::range(start_color, 10u8) |color| {
-                avail.set(color as uint, true);
-            }
+            let mut avail = ~Colors::new(start_color);
 
             // drop colors already in use in neighbourhood
-            drop_colors(copy g, copy avail, row, col);
+            self.drop_colors(avail, row, col);
 
             // find first remaining color that is available
-            for uint::range(1u, 10u) |i| {
-                if avail.get(i) {
-                    g[row][col] = i as u8;
-                    return true;
-                }
-            };
+            let next = avail.next();
+            self.grid[row][col] = next;
+            return 0u8 != next;
         }
-        g[row][col] = 0u8;
+        self.grid[row][col] = 0u8;
         return false;
     }
 
     // find colors available in neighbourhood of (row, col)
-    fn drop_colors(g: grid, avail: bitv::Bitv, row: u8, col: u8) {
-        fn drop_color(g: grid, mut colors: bitv::Bitv, row: u8, col: u8) {
-            let color = g[row][col];
-            if color != 0u8 { colors.set(color as uint, false); }
-        }
-
-        let it = |a,b| drop_color(copy g, copy avail, a, b);
-
+    fn drop_colors(&mut self, avail: &mut Colors, row: u8, col: u8) {
         for u8::range(0u8, 9u8) |idx| {
-            it(idx, col); /* check same column fields */
-            it(row, idx); /* check same row fields */
+            avail.remove(self.grid[idx][col]); /* check same column fields */
+            avail.remove(self.grid[row][idx]); /* check same row fields */
         }
 
         // check same block fields
         let row0 = (row / 3u8) * 3u8;
         let col0 = (col / 3u8) * 3u8;
         for u8::range(row0, row0 + 3u8) |alt_row| {
-            for u8::range(col0, col0 + 3u8) |alt_col| { it(alt_row, alt_col); }
-        }
-    }
-
-    let mut work: ~[(u8, u8)] = ~[]; /* queue of uncolored fields */
-    for u8::range(0u8, 9u8) |row| {
-        for u8::range(0u8, 9u8) |col| {
-            let color = (*g)[row][col];
-            if color == 0u8 { work += ~[(row, col)]; }
-        }
-    }
-
-    let mut ptr = 0u;
-    let end = vec::len(work);
-    while (ptr < end) {
-        let (row, col) = work[ptr];
-        // is there another color to try?
-        if next_color(copy *g, row, col, (*g)[row][col] + (1 as u8)) {
-            //  yes: advance work list
-            ptr = ptr + 1u;
-        } else {
-            // no: redo this field aft recoloring pred; unless there is none
-            if ptr == 0u { fail!(~"No solution found for this sudoku"); }
-            ptr = ptr - 1u;
+            for u8::range(col0, col0 + 3u8) |alt_col| { avail.remove(self.grid[alt_row][alt_col]); }
         }
     }
 }
 
-pub fn write_grid(f: @io::Writer, g: grid_t) {
-    for u8::range(0u8, 9u8) |row| {
-        f.write_str(fmt!("%u", (*g)[row][0] as uint));
-        for u8::range(1u8, 9u8) |col| {
-            f.write_str(fmt!(" %u", (*g)[row][col] as uint));
+// Stores available colors as simple bitfield, bit 0 is always unset
+struct Colors(u16);
+
+const heads: u16 = (1u16 << 10) - 1; /* bits 9..0 */
+
+impl Colors {
+    static fn new(start_color: u8) -> Colors {
+        // Sets bits 9..start_color
+        let tails = !0u16 << start_color;
+        return Colors(heads & tails);
+    }
+
+    fn next(&self) -> u8 {
+        let val = **self & heads;
+        if (0u16 == val) {
+            return 0u8;
         }
-        f.write_char('\n');
-     }
+        else
+        {
+            return cttz16(val as i16) as u8;
+        }
+    }
+
+    fn remove(&mut self, color: u8) {
+        if color != 0u8 {
+            let val  = **self;
+            let mask = !(1u16 << color);
+            *self    = Colors(val & mask);
+        }
+    }
+}
+
+const default_sudoku: [[u8 * 9] * 9] = [
+         /* 0    1    2    3    4    5    6    7    8    */
+  /* 0 */  [0u8, 4u8, 0u8, 6u8, 0u8, 0u8, 0u8, 3u8, 2u8],
+  /* 1 */  [0u8, 0u8, 8u8, 0u8, 2u8, 0u8, 0u8, 0u8, 0u8],
+  /* 2 */  [7u8, 0u8, 0u8, 8u8, 0u8, 0u8, 0u8, 0u8, 0u8],
+  /* 3 */  [0u8, 0u8, 0u8, 5u8, 0u8, 0u8, 0u8, 0u8, 0u8],
+  /* 4 */  [0u8, 5u8, 0u8, 0u8, 0u8, 3u8, 6u8, 0u8, 0u8],
+  /* 5 */  [6u8, 8u8, 0u8, 0u8, 0u8, 0u8, 0u8, 9u8, 0u8],
+  /* 6 */  [0u8, 9u8, 5u8, 0u8, 0u8, 6u8, 0u8, 7u8, 0u8],
+  /* 7 */  [0u8, 0u8, 0u8, 0u8, 4u8, 0u8, 0u8, 6u8, 0u8],
+  /* 8 */  [4u8, 0u8, 0u8, 0u8, 0u8, 7u8, 2u8, 0u8, 3u8]
+];
+
+#[cfg(test)]
+const default_solution: [[u8 * 9] * 9] = [
+         /* 0    1    2    3    4    5    6    7    8    */
+  /* 0 */  [1u8, 4u8, 9u8, 6u8, 7u8, 5u8, 8u8, 3u8, 2u8],
+  /* 1 */  [5u8, 3u8, 8u8, 1u8, 2u8, 9u8, 7u8, 4u8, 6u8],
+  /* 2 */  [7u8, 2u8, 6u8, 8u8, 3u8, 4u8, 1u8, 5u8, 9u8],
+  /* 3 */  [9u8, 1u8, 4u8, 5u8, 6u8, 8u8, 3u8, 2u8, 7u8],
+  /* 4 */  [2u8, 5u8, 7u8, 4u8, 9u8, 3u8, 6u8, 1u8, 8u8],
+  /* 5 */  [6u8, 8u8, 3u8, 7u8, 1u8, 2u8, 5u8, 9u8, 4u8],
+  /* 6 */  [3u8, 9u8, 5u8, 2u8, 8u8, 6u8, 4u8, 7u8, 1u8],
+  /* 7 */  [8u8, 7u8, 2u8, 3u8, 4u8, 1u8, 9u8, 6u8, 5u8],
+  /* 8 */  [4u8, 6u8, 1u8, 9u8, 5u8, 7u8, 2u8, 8u8, 3u8]
+];
+
+#[test]
+fn colors_new_works() {
+    fail_unless!(*Colors::new(1) == 1022u16);
+    fail_unless!(*Colors::new(2) == 1020u16);
+    fail_unless!(*Colors::new(3) == 1016u16);
+    fail_unless!(*Colors::new(4) == 1008u16);
+    fail_unless!(*Colors::new(5) == 992u16);
+    fail_unless!(*Colors::new(6) == 960u16);
+    fail_unless!(*Colors::new(7) == 896u16);
+    fail_unless!(*Colors::new(8) == 768u16);
+    fail_unless!(*Colors::new(9) == 512u16);
+}
+
+#[test]
+fn colors_next_works() {
+    fail_unless!(Colors(0).next() == 0u8);
+    fail_unless!(Colors(2).next() == 1u8);
+    fail_unless!(Colors(4).next() == 2u8);
+    fail_unless!(Colors(8).next() == 3u8);
+    fail_unless!(Colors(16).next() == 4u8);
+    fail_unless!(Colors(32).next() == 5u8);
+    fail_unless!(Colors(64).next() == 6u8);
+    fail_unless!(Colors(128).next() == 7u8);
+    fail_unless!(Colors(256).next() == 8u8);
+    fail_unless!(Colors(512).next() == 9u8);
+    fail_unless!(Colors(1024).next() == 0u8);
+}
+
+#[test]
+fn colors_remove_works() {
+    // GIVEN
+    let mut colors = Colors::new(1);
+
+    // WHEN
+    colors.remove(1);
+
+    // THEN
+    fail_unless!(colors.next() == 2u8);
+}
+
+#[test]
+fn check_default_sudoku_solution() {
+    // GIVEN
+    let mut sudoku = Sudoku::from_vec(&default_sudoku);
+    let solution   = Sudoku::from_vec(&default_solution);
+
+    // WHEN
+    sudoku.solve();
+
+    // THEN
+    fail_unless!(sudoku.equal(&solution));
 }
 
 fn main() {
-    let args = os::args();
-    let grid = if vec::len(args) == 1u {
-        // FIXME create sudoku inline since nested vec consts dont work yet
-        // (#3733)
-        let mut g = vec::from_fn(10u, |_i| {
-            vec::from_elem(10u, 0 as u8)
-        });
-        g[0][1] = 4u8;
-        g[0][3] = 6u8;
-        g[0][7] = 3u8;
-        g[0][8] = 2u8;
-        g[1][2] = 8u8;
-        g[1][4] = 2u8;
-        g[2][0] = 7u8;
-        g[2][3] = 8u8;
-        g[3][3] = 5u8;
-        g[4][1] = 5u8;
-        g[4][5] = 3u8;
-        g[4][6] = 6u8;
-        g[5][0] = 6u8;
-        g[5][1] = 8u8;
-        g[5][7] = 9u8;
-        g[6][1] = 9u8;
-        g[6][2] = 5u8;
-        g[6][5] = 6u8;
-        g[6][7] = 7u8;
-        g[7][4] = 4u8;
-        g[7][7] = 6u8;
-        g[8][0] = 4u8;
-        g[8][5] = 7u8;
-        g[8][6] = 2u8;
-        g[8][8] = 3u8;
-        grid_ctor(g)
+    let args        = os::args();
+    let use_default = vec::len(args) == 1u;
+    let mut sudoku = if use_default {
+        Sudoku::from_vec(&default_sudoku)
     } else {
-        read_grid(io::stdin())
+        Sudoku::read(io::stdin())
     };
-    solve_grid(copy grid);
-    write_grid(io::stdout(), grid);
+    sudoku.solve();
+    sudoku.write(io::stdout());
 }
 
