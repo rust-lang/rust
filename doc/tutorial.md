@@ -853,170 +853,184 @@ as in this example that unpacks the first value from a tuple and returns it.
 fn first((value, _): (int, float)) -> int { value }
 ~~~
 
-# Boxes and pointers
+# Destructors
 
-Many modern languages have a so-called "uniform representation" for
-aggregate types like structs and enums, so as to represent these types
-as pointers to heap memory by default. In contrast, Rust, like C and
-C++, represents such types directly. Another way to say this is that
-aggregate data in Rust are *unboxed*. This means that if you `let x =
-Point { x: 1f, y: 1f };`, you are creating a struct on the stack. If you
-then copy it into a data structure, you copy the entire struct, not
-just a pointer.
+C-style resource management requires the programmer to match every allocation
+with a free, which means manually tracking the responsibility for cleaning up
+(the owner). Correctness is left to the programmer, and it's easy to get wrong.
 
-For small structs like `Point`, this is usually more efficient than
-allocating memory and indirecting through a pointer. But for big structs, or
-those with mutable fields, it can be useful to have a single copy on
-the stack or on the heap, and refer to that through a pointer.
-
-Whenever memory is allocated on the heap, the program needs a strategy to
-dispose of the memory when no longer needed. Most languages, such as Java or
-Python, use *garbage collection* for this, a strategy in which the program
-periodically searches for allocations that are no longer reachable in order
-to dispose of them. Other languages, such as C, use *manual memory
-management*, which relies on the programmer to specify when memory should be
-reclaimed.
-
-Rust is in a different position. It differs from the garbage-collected
-environments in that allows the programmer to choose the disposal
-strategy on an object-by-object basis. Not only does this have benefits for
-performance, but we will later see that this model has benefits for
-concurrency as well, by making it possible for the Rust compiler to detect
-data races at compile time. Rust also differs from the manually managed
-languages in that it is *safe*—it uses a [pointer lifetime
-analysis][borrow] to ensure that manual memory management cannot cause memory
-errors at runtime.
-
-[borrow]: tutorial-borrowed-ptr.html
-
-The cornerstone of Rust's memory management is the concept of a *smart
-pointer*—a pointer type that indicates the lifetime of the object it points
-to. This solution is familiar to C++ programmers; Rust differs from C++,
-however, in that a small set of smart pointers are built into the language.
-The safe pointer types are `@T`, for *managed* boxes allocated on the *local
-heap*, `~T`, for *uniquely-owned* boxes allocated on the *exchange
-heap*, and `&T`, for *borrowed* pointers, which may point to any memory, and
-whose lifetimes are governed by the call stack.
-
-All pointer types can be dereferenced with the `*` unary operator.
-
-> ***Note***: You may also hear managed boxes referred to as 'shared
-> boxes' or 'shared pointers', and owned boxes as 'unique boxes/pointers'.
-> Borrowed pointers are sometimes called 'region pointers'. The preferred
-> terminology is what we present here.
-
-## Managed boxes
-
-Managed boxes are pointers to heap-allocated, garbage-collected
-memory. Applying the unary `@` operator to an expression creates a
-managed box. The resulting box contains the result of the
-expression. Copying a managed box, as happens during assignment, only
-copies a pointer, never the contents of the box.
+The following code demonstrates manual memory management, in order to contrast
+it with Rust's resource management. Rust enforces safety, so the `unsafe`
+keyword is used to explicitly wrap the unsafe code. The keyword is a promise to
+the compiler that unsafety does not leak outside of the unsafe block, and is
+used to create safe concepts on top of low-level code.
 
 ~~~~
-let x: @int = @10; // New box
-let y = x; // Copy of a pointer to the same box
+use core::libc::funcs::c95::stdlib::{calloc, free};
+use core::libc::types::os::arch::c95::size_t;
 
-// x and y both refer to the same allocation. When both go out of scope
-// then the allocation will be freed.
+fn main() {
+    unsafe {
+        let a = calloc(1, int::bytes as size_t);
+
+        let d;
+
+        {
+            let b = calloc(1, int::bytes as size_t);
+
+            let c = calloc(1, int::bytes as size_t);
+            d = c; // move ownership to d
+
+            free(b);
+        }
+
+        free(d);
+        free(a);
+    }
+}
 ~~~~
 
-A _managed_ type is either of the form `@T` for some type `T`, or any
-type that contains managed boxes or other managed types.
+Rust uses destructors to handle the release of resources like memory
+allocations, files and sockets. An object will only be destroyed when there is
+no longer any way to access it, which prevents dynamic failures from an attempt
+to use a freed resource. When a task fails, the stack unwinds and the
+destructors of all objects owned by that task are called.
 
-~~~
-// A linked list node
-struct Node {
-    next: MaybeNode,
-    prev: MaybeNode,
-    payload: int
+The unsafe code from above can be contained behind a safe API that prevents
+memory leaks or use-after-free:
+
+~~~~
+use core::libc::funcs::c95::stdlib::{calloc, free};
+use core::libc::types::common::c95::c_void;
+use core::libc::types::os::arch::c95::size_t;
+
+struct Blob { priv ptr: *c_void }
+
+impl Blob {
+    static fn new() -> Blob {
+        unsafe { Blob{ptr: calloc(1, int::bytes as size_t)} }
+    }
 }
 
-enum MaybeNode {
-    SomeNode(@mut Node),
-    NoNode
+impl Drop for Blob {
+    fn finalize(&self) {
+        unsafe { free(self.ptr); }
+    }
 }
 
-let node1 = @mut Node { next: NoNode, prev: NoNode, payload: 1 };
-let node2 = @mut Node { next: NoNode, prev: NoNode, payload: 2 };
-let node3 = @mut Node { next: NoNode, prev: NoNode, payload: 3 };
+fn main() {
+    let a = Blob::new();
 
-// Link the three list nodes together
-node1.next = SomeNode(node2);
-node2.prev = SomeNode(node1);
-node2.next = SomeNode(node3);
-node3.prev = SomeNode(node2);
-~~~
+    let d;
 
-Managed boxes never cross task boundaries. This has several benefits for
-performance:
+    {
+        let b = Blob::new();
 
-* The Rust garbage collector does not need to stop multiple threads in order
-  to collect garbage.
+        let c = Blob::new();
+        d = c; // move ownership to d
 
-* You can separate your application into "real-time" tasks that do not use
-  the garbage collector and "non-real-time" tasks that do, and the real-time
-  tasks will not be interrupted by the non-real-time tasks.
+        // b is destroyed here
+    }
 
-C++ programmers will recognize `@T` as similar to `std::shared_ptr<T>`.
+    // d is destroyed here
+    // a is destroyed here
+}
+~~~~
 
-> ***Note:*** Currently, the Rust compiler generates code to reclaim
-> managed boxes through reference counting and a cycle collector, but
-> we will switch to a tracing garbage collector eventually.
+This pattern is common enough that Rust includes dynamically allocated memory
+as first-class types (`~` and `@`). Non-memory resources like files are cleaned
+up with custom destructors.
+
+~~~~
+fn main() {
+    let a = ~0;
+
+    let d;
+
+    {
+        let b = ~0;
+
+        let c = ~0;
+        d = c; // move ownership to d
+
+        // b is destroyed here
+    }
+
+    // d is destroyed here
+    // a is destroyed here
+}
+~~~~
+
+# Ownership
+
+Rust formalizes the concept of object ownership to delegate management of an
+object's lifetime to either a variable or a task-local garbage collector. An
+object's owner is responsible for managing the lifetime of the object by
+calling the destructor, and the owner determines whether the object is mutable.
+
+Ownership is recursive, so mutability is inherited recursively and a destructor
+destroys the contained tree of owned objects. Variables are top-level owners
+and destroy the contained object when they go out of scope. A box managed by
+the garbage collector starts a new ownership tree, and the destructor is called
+when it is collected.
+
+If an object doesn't contain garbage-collected boxes, it consists of a single
+ownership tree and is given the `Owned` trait which allows it to be sent
+between tasks.
+
+# Boxes
+
+Many modern languages represent values as as pointers to heap memory by
+default. In contrast, Rust, like C and C++, represents such types directly.
+Another way to say this is that aggregate data in Rust are *unboxed*. This
+means that if you `let x = Point { x: 1f, y: 1f };`, you are creating a struct
+on the stack. If you then copy it into a data structure, you copy the entire
+struct, not just a pointer.
+
+For small structs like `Point`, this is usually more efficient than allocating
+memory and indirecting through a pointer. But for big structs, or mutable
+state, it can be useful to have a single copy on the stack or on the heap, and
+refer to that through a pointer.
 
 ## Owned boxes
 
-In contrast with managed boxes, owned boxes have a single owning
-memory slot and thus two owned boxes may not refer to the same
-memory. All owned boxes across all tasks are allocated on a single
-_exchange heap_, where their uniquely-owned nature allows tasks to
-exchange them efficiently.
+An owned box (`~`) is a uniquely owned allocation on the heap. An owned box
+inherits the mutability and lifetime of the owner as it would if there was no
+box. The purpose of an owned box is to add a layer of indirection in order to
+create recursive data structures or cheaply pass around an object larger than a
+pointer.
 
-Because owned boxes are uniquely owned, copying them requires allocating
-a new owned box and duplicating the contents.
-Instead, owned boxes are _moved_ by default, transferring ownership,
-and deinitializing the previously owning variable.
-Any attempt to access a variable after the value has been moved out
-will result in a compile error.
+## Managed boxes
+
+A managed box (`@`) is a heap allocation with the lifetime managed by a
+task-local garbage collector. It will be destroyed at some point after there
+are no references left to the box, no later than the end of the task. Managed
+boxes lack an owner, so they start a new ownership tree and don't inherit
+mutability. They do own the contained object, and mutability is defined by the
+type of the shared box (`@` or `@mut`). An object containing a managed box is
+not `Owned`, and can't be sent between tasks.
+
+# Move semantics
+
+Rust uses a shallow copy for parameter passing, assignment and returning values
+from functions. A shallow copy is considered a move of ownership if the
+ownership tree of the copied value includes an owned box or a type with a
+custom destructor. After a value has been moved, it can no longer be used from
+the source location and will not be destroyed there.
 
 ~~~~
-let x = ~10;
-// Move x to y, deinitializing x
-let y = x;
+let x = ~5;
+let y = x.clone(); // y is a newly allocated box
+let z = x; // no new memory allocated, x can no longer be used
 ~~~~
 
-If you really want to copy an owned box you must say so explicitly.
+# Borrowed pointers
 
-~~~~
-let x = ~10;
-let y = copy x;
-
-let z = *x + *y;
-fail_unless!(z == 20);
-~~~~
-
-When they do not contain any managed boxes, owned boxes can be sent
-to other tasks. The sending task will give up ownership of the box
-and won't be able to access it afterwards. The receiving task will
-become the sole owner of the box. This prevents *data races*—errors
-that could otherwise result from multiple tasks working on the same
-data without synchronization.
-
-When an owned pointer goes out of scope or is overwritten, the object
-it points to is immediately freed. Effective use of owned boxes can
-therefore be an efficient alternative to garbage collection.
-
-C++ programmers will recognize `~T` as similar to `std::unique_ptr<T>`
-(or `std::auto_ptr<T>` in C++03 and below).
-
-## Borrowed pointers
-
-Rust borrowed pointers are a general purpose reference/pointer type,
-similar to the C++ reference type, but guaranteed to point to valid
-memory. In contrast with owned pointers, where the holder of an owned
-pointer is the owner of the pointed-to memory, borrowed pointers never
-imply ownership. Pointers may be borrowed from any type, in which case
-the pointer is guaranteed not to outlive the value it points to.
+Rust's borrowed pointers are a general purpose reference type. In contrast with
+owned pointers, where the holder of an owned pointer is the owner of the
+pointed-to memory, borrowed pointers never imply ownership. A pointer can be
+borrowed to any object, and the compiler verifies that it cannot outlive the
+lifetime of the object.
 
 As an example, consider a simple struct type, `Point`:
 
@@ -1099,7 +1113,23 @@ For a more in-depth explanation of borrowed pointers, read the
 
 [borrowtut]: tutorial-borrowed-ptr.html
 
-## Dereferencing pointers
+## Freezing
+
+Borrowing an immutable pointer to an object freezes it and prevents mutation.
+`Owned` objects have freezing enforced statically at compile-time. Mutable
+managed boxes handle freezing dynamically when any of their contents are
+borrowed, and the task will fail if an attempt to modify them is made while
+they are frozen.
+
+~~~~
+let mut x = 5;
+{
+    let y = &x; // x is now frozen, it cannot be modified
+}
+// x is now unfrozen again
+~~~~
+
+# Dereferencing pointers
 
 Rust uses the unary star operator (`*`) to access the contents of a
 box or pointer, similarly to C.
