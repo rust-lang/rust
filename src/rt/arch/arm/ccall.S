@@ -5,23 +5,18 @@
 
 .globl __morestack
 .hidden __morestack
+.type __morestack, %function
 __morestack:
-	mov r3, sp
+	.fnstart
+	.save {r4, fp, lr}
+	push {r4, fp, lr}
+    .movsp r4
+	mov r4, sp
 	mov sp, r2
-	
-	str r3, [sp]
-	str lr, [sp, #-4]
-	
-	sub sp, #8
-	
+	mov fp, sp
 	blx r1
-
-	add sp, #8
-	
-	ldr lr, [sp, #-4]
-	ldr r3, [sp] 
-	
-	mov sp, r3
+	mov sp, r4
+	pop {r4, fp, lr}
 	mov pc, lr
-	
+	.fnend
 
