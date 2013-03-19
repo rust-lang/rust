@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -153,13 +153,13 @@ pub fn syntax_expander_table() -> SyntaxEnv {
                                 ext::deriving::expand_meta_deriving)));
     syntax_expanders.insert(@~"deriving_eq",
                             @SE(ItemDecorator(
-                                ext::deriving::expand_deriving_eq)));
+                                ext::deriving::eq::expand_deriving_eq)));
     syntax_expanders.insert(@~"deriving_iter_bytes",
                             @SE(ItemDecorator(
-                                ext::deriving::expand_deriving_iter_bytes)));
+                                ext::deriving::iter_bytes::expand_deriving_iter_bytes)));
     syntax_expanders.insert(@~"deriving_clone",
                             @SE(ItemDecorator(
-                                ext::deriving::expand_deriving_clone)));
+                                ext::deriving::clone::expand_deriving_clone)));
 
     // Quasi-quoting expanders
     syntax_expanders.insert(@~"quote_tokens",
