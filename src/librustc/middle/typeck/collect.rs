@@ -134,8 +134,8 @@ impl AstConv for CrateCtxt {
               Some(&ast_map::node_item(item, _)) => {
                 ty_of_item(self, item)
               }
-              Some(&ast_map::node_foreign_item(foreign_item, _, _, _)) => {
-                ty_of_foreign_item(self, foreign_item)
+              Some(&ast_map::node_foreign_item(foreign_item, abis, _, _)) => {
+                ty_of_foreign_item(self, foreign_item, abis)
               }
               ref x => {
                 self.tcx.sess.bug(fmt!("unexpected sort of item \
@@ -932,7 +932,20 @@ pub fn convert_foreign(ccx: &CrateCtxt, i: @ast::foreign_item) {
     // As above, this call populates the type table with the converted
     // type of the foreign item. We simply write it into the node type
     // table.
-    let tpt = ty_of_foreign_item(ccx, i);
+
+    // For reasons I cannot fully articulate, I do so hate the AST
+    // map, and I regard each time that I use it as a personal and
+    // moral failing, but at the moment it seems like the only
+    // convenient way to extract the ABI. - ndm
+    let abis = match ccx.tcx.items.find(&i.id) {
+        Some(&ast_map::node_foreign_item(_, abis, _, _)) => abis,
+        ref x => {
+            ccx.tcx.sess.bug(fmt!("unexpected sort of item \
+                                   in get_item_ty(): %?", (*x)));
+        }
+    };
+
+    let tpt = ty_of_foreign_item(ccx, i, abis);
     write_ty_to_tcx(ccx.tcx, i.id, tpt.ty);
     ccx.tcx.tcache.insert(local_def(i.id), tpt);
 }
@@ -1103,14 +1116,17 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
     }
 }
 
-pub fn ty_of_foreign_item(ccx: &CrateCtxt, it: @ast::foreign_item)
-    -> ty::ty_param_bounds_and_ty {
+pub fn ty_of_foreign_item(ccx: &CrateCtxt,
+                          it: @ast::foreign_item,
+                          abis: AbiSet) -> ty::ty_param_bounds_and_ty
+{
     match it.node {
         ast::foreign_item_fn(ref fn_decl, _, ref generics) => {
             ty_of_foreign_fn_decl(ccx,
                                   fn_decl,
                                   local_def(it.id),
-                                  generics)
+                                  generics,
+                                  abis)
         }
         ast::foreign_item_const(t) => {
             ty::ty_param_bounds_and_ty {
@@ -1197,7 +1213,8 @@ pub fn ty_generics(ccx: &CrateCtxt,
 pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
                              decl: &ast::fn_decl,
                              def_id: ast::def_id,
-                             ast_generics: &ast::Generics)
+                             ast_generics: &ast::Generics,
+                             abis: AbiSet)
                           -> ty::ty_param_bounds_and_ty {
     let ty_generics = ty_generics(ccx, None, ast_generics, 0);
     let region_param_names = RegionParamNames::from_generics(ast_generics);
@@ -1208,7 +1225,7 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
     let t_fn = ty::mk_bare_fn(
         ccx.tcx,
         ty::BareFnTy {
-            abis: AbiSet::Rust(),
+            abis: abis,
             purity: ast::unsafe_fn,
             sig: ty::FnSig {bound_lifetime_names: opt_vec::Empty,
                             inputs: input_tys,
