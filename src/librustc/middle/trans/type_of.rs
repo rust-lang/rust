@@ -144,7 +144,7 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
             T_struct(adt::sizing_fields_of(cx, repr))
         }
 
-        ty::ty_self | ty::ty_infer(*) | ty::ty_param(*) | ty::ty_err(*) => {
+        ty::ty_self(_) | ty::ty_infer(*) | ty::ty_param(*) | ty::ty_err(*) => {
             cx.tcx.sess.bug(
                 fmt!("fictitious type %? in sizing_type_of()",
                      ty::get(t).sty))
@@ -251,7 +251,7 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
                                               did,
                                               /*bad*/ copy substs.tps))
       }
-      ty::ty_self => cx.tcx.sess.unimpl(~"type_of: ty_self"),
+      ty::ty_self(*) => cx.tcx.sess.unimpl(~"type_of: ty_self"),
       ty::ty_infer(*) => cx.tcx.sess.bug(~"type_of with ty_infer"),
       ty::ty_param(*) => cx.tcx.sess.bug(~"type_of with ty_param"),
       ty::ty_err(*) => cx.tcx.sess.bug(~"type_of with ty_err")

@@ -48,7 +48,7 @@ pub fn replace_bound_regions_in_fn_sig(
                 _}, _}) => {
         let region = ty::re_bound(ty::br_self);
         let ty = ty::mk_rptr(tcx, region,
-                             ty::mt { ty: ty::mk_self(tcx), mutbl: m });
+                             ty::mt { ty: ty::mk_nil(tcx), mutbl: m });
         all_tys.push(ty);
       }
       _ => {}

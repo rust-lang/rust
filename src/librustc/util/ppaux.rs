@@ -443,7 +443,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                    str::from_bytes(~[('a' as u8) + (id as u8)]))
           }
       }
-      ty_self => ~"self",
+      ty_self(*) => ~"self",
       ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
