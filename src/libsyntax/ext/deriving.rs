@@ -220,7 +220,7 @@ fn create_eq_method(cx: @ext_ctxt,
     let body_block = build::mk_simple_block(cx, span, body);
 
     // Create the method.
-    let self_ty = spanned { node: sty_region(m_imm), span: span };
+    let self_ty = spanned { node: sty_region(None, m_imm), span: span };
     @ast::method {
         ident: method_ident,
         attrs: ~[],
@@ -398,7 +398,7 @@ fn create_iter_bytes_method(cx: @ext_ctxt,
     let body_block = build::mk_block_(cx, span, statements);
 
     // Create the method.
-    let self_ty = spanned { node: sty_region(m_imm), span: span };
+    let self_ty = spanned { node: sty_region(None, m_imm), span: span };
     let method_ident = cx.ident_of(~"iter_bytes");
     @ast::method {
         ident: method_ident,
@@ -448,7 +448,7 @@ fn create_clone_method(cx: @ext_ctxt,
     let body_block = build::mk_simple_block(cx, span, expr);
 
     // Create the self type and method identifier.
-    let self_ty = spanned { node: sty_region(m_imm), span: span };
+    let self_ty = spanned { node: sty_region(None, m_imm), span: span };
     let method_ident = cx.ident_of(~"clone");
 
     // Create the method.

@@ -1001,18 +1001,18 @@ impl to_bytes::IterBytes for ret_style {
 #[auto_decode]
 #[deriving_eq]
 pub enum self_ty_ {
-    sty_static,                         // no self: static method
-    sty_by_ref,                         // old by-reference self: ``
-    sty_value,                          // by-value self: `self`
-    sty_region(mutability),             // by-region self: `&self`
-    sty_box(mutability),                // by-managed-pointer self: `@self`
-    sty_uniq(mutability)                // by-unique-pointer self: `~self`
+    sty_static,                                // no self
+    sty_by_ref,                                // ``
+    sty_value,                                 // `self`
+    sty_region(Option<@Lifetime>, mutability), // `&'lt self`
+    sty_box(mutability),                       // `@self`
+    sty_uniq(mutability)                       // `~self`
 }
 
 impl self_ty_ {
     fn is_borrowed(&self) -> bool {
         match *self {
-            sty_region(_) => true,
+            sty_region(*) => true,
             _ => false
         }
     }
