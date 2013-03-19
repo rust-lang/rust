@@ -144,8 +144,7 @@ pub mod method;
 pub struct SelfInfo {
     self_ty: ty::t,
     self_id: ast::node_id,
-    def_id: ast::def_id,
-    explicit_self: ast::self_ty
+    span: span
 }
 
 /// Fields that are part of a `FnCtxt` which are inherited by
@@ -339,25 +338,6 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         }
     };
 
-    // Update the SelfInfo to contain an accurate self type (taking
-    // into account explicit self).
-    let self_info = do self_info.chain_ref |self_info| {
-        // If the self type is sty_static, we don't have a self ty.
-        if self_info.explicit_self.node == ast::sty_static {
-            None
-        } else  {
-            let in_scope_regions = fcx.in_scope_regions;
-            let self_region = in_scope_regions.find(ty::br_self);
-            let ty = method::transform_self_type_for_method(
-                fcx.tcx(),
-                self_region,
-                self_info.self_ty,
-                self_info.explicit_self.node,
-                TransformTypeNormally);
-            Some(SelfInfo { self_ty: ty,.. *self_info })
-        }
-    };
-
     gather_locals(fcx, decl, body, arg_tys, self_info);
     check_block(fcx, body);
 
@@ -495,20 +475,25 @@ pub fn check_fn(ccx: @mut CrateCtxt,
 
 pub fn check_method(ccx: @mut CrateCtxt,
                     method: @ast::method,
-                    self_ty: ty::t,
-                    self_impl_def_id: ast::def_id) {
-    let self_info = SelfInfo {
-        self_ty: self_ty,
-        self_id: method.self_id,
-        def_id: self_impl_def_id,
-        explicit_self: method.self_ty
+                    self_ty: ty::t)
+{
+    let self_info = if method.self_ty.node == ast::sty_static {None} else {
+        let ty = method::transform_self_type_for_method(
+            ccx.tcx,
+            Some(ty::re_bound(ty::br_self)),
+            self_ty,
+            method.self_ty.node,
+            TransformTypeNormally);
+        Some(SelfInfo {self_ty: ty, self_id: method.self_id,
+                       span: method.self_ty.span})
     };
+
     check_bare_fn(
         ccx,
         &method.decl,
         &method.body,
         method.id,
-        Some(self_info)
+        self_info
     );
 }
 
@@ -545,11 +530,7 @@ pub fn check_struct(ccx: @mut CrateCtxt,
         let class_t = SelfInfo {
             self_ty: self_ty,
             self_id: dtor.node.self_id,
-            def_id: local_def(id),
-            explicit_self: spanned {
-                node: ast::sty_by_ref,
-                span: codemap::dummy_sp()
-            }
+            span: dtor.span,
         };
         // typecheck the dtor
         let dtor_dec = ast_util::dtor_dec();
@@ -589,7 +570,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
                *ccx.tcx.sess.str_of(it.ident), it.id, rp);
         let self_ty = ccx.to_ty(&rscope::type_rscope(rp), ty);
         for ms.each |m| {
-            check_method(ccx, *m, self_ty, local_def(it.id));
+            check_method(ccx, *m, self_ty);
         }
       }
       ast::item_trait(_, _, ref trait_methods) => {
@@ -601,7 +582,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
               }
               provided(m) => {
                 let self_ty = ty::mk_self(ccx.tcx, local_def(it.id));
-                check_method(ccx, m, self_ty, local_def(it.id));
+                check_method(ccx, m, self_ty);
               }
             }
         }
