@@ -589,7 +589,7 @@ pub fn trans_trait_callee(bcx: block,
     let llpair = self_datum.to_ref_llval(bcx);
 
     let llpair = match explicit_self {
-        ast::sty_region(_) => Load(bcx, llpair),
+        ast::sty_region(*) => Load(bcx, llpair),
         ast::sty_static | ast::sty_by_ref | ast::sty_value |
         ast::sty_box(_) | ast::sty_uniq(_) => llpair
     };
@@ -658,7 +658,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
             bcx.tcx().sess.bug(~"methods with by-value self should not be \
                                called on objects");
         }
-        ast::sty_region(_) => {
+        ast::sty_region(*) => {
             // As before, we need to pass a pointer to a pointer to the
             // payload.
             match store {

@@ -966,6 +966,13 @@ pub impl Parser {
         }
     }
 
+    fn token_is_lifetime(&self, tok: &token::Token) -> bool {
+        match *tok {
+            token::LIFETIME(_) => true,
+            _ => false
+        }
+    }
+
     fn parse_lifetime(&self) -> ast::Lifetime {
         /*!
          *
@@ -1031,6 +1038,11 @@ pub impl Parser {
                 }
             }
         }
+    }
+
+    fn token_is_mutability(&self, tok: &token::Token) -> bool {
+        self.token_is_keyword(&~"mut", tok) ||
+        self.token_is_keyword(&~"const", tok)
     }
 
     fn parse_mutability(&self) -> mutability {
@@ -2837,6 +2849,55 @@ pub impl Parser {
             }
         }
 
+        fn maybe_parse_borrowed_self_ty(
+            self: &Parser
+        ) -> ast::self_ty_ {
+            // The following things are possible to see here:
+            //
+            //     fn(&self)
+            //     fn(&mut self)
+            //     fn(&'lt self)
+            //     fn(&'lt mut self)
+            //
+            // We already know that the current token is `&`.
+
+            if (
+                self.token_is_keyword(&~"self", &self.look_ahead(1)))
+            {
+                self.bump();
+                self.expect_self_ident();
+                sty_region(None, m_imm)
+            } else if (
+                self.token_is_mutability(&self.look_ahead(1)) &&
+                self.token_is_keyword(&~"self", &self.look_ahead(2)))
+            {
+                self.bump();
+                let mutability = self.parse_mutability();
+                self.expect_self_ident();
+                sty_region(None, mutability)
+            } else if (
+                self.token_is_lifetime(&self.look_ahead(1)) &&
+                self.token_is_keyword(&~"self", &self.look_ahead(2)))
+            {
+                self.bump();
+                let lifetime = @self.parse_lifetime();
+                self.expect_self_ident();
+                sty_region(Some(lifetime), m_imm)
+            } else if (
+                self.token_is_lifetime(&self.look_ahead(1)) &&
+                self.token_is_mutability(&self.look_ahead(2)) &&
+                self.token_is_keyword(&~"self", &self.look_ahead(3)))
+            {
+                self.bump();
+                let lifetime = @self.parse_lifetime();
+                let mutability = self.parse_mutability();
+                self.expect_self_ident();
+                sty_region(Some(lifetime), mutability)
+            } else {
+                sty_by_ref
+            }
+        }
+
         self.expect(&token::LPAREN);
 
         // A bit of complexity and lookahead is needed here in order to to be
@@ -2844,7 +2905,7 @@ pub impl Parser {
         let lo = self.span.lo;
         let self_ty = match *self.token {
           token::BINOP(token::AND) => {
-            maybe_parse_self_ty(sty_region, self)
+            maybe_parse_borrowed_self_ty(self)
           }
           token::AT => {
             maybe_parse_self_ty(sty_box, self)

@@ -406,32 +406,47 @@ fn encode_self_type(ebml_w: writer::Encoder, self_type: ast::self_ty_) {
     ebml_w.start_tag(tag_item_trait_method_self_ty);
 
     // Encode the base self type.
-    let ch;
     match self_type {
-        sty_static =>       { ch = 's' as u8; }
-        sty_by_ref =>       { ch = 'r' as u8; }
-        sty_value =>        { ch = 'v' as u8; }
-        sty_region(_) =>    { ch = '&' as u8; }
-        sty_box(_) =>       { ch = '@' as u8; }
-        sty_uniq(_) =>      { ch = '~' as u8; }
-    }
-    ebml_w.writer.write(&[ ch ]);
-
-    // Encode mutability.
-    match self_type {
-        sty_static | sty_by_ref | sty_value => { /* No-op. */ }
-        sty_region(m_imm) | sty_box(m_imm) | sty_uniq(m_imm) => {
-            ebml_w.writer.write(&[ 'i' as u8 ]);
+        sty_static => {
+            ebml_w.writer.write(&[ 's' as u8 ]);
         }
-        sty_region(m_mutbl) | sty_box(m_mutbl) | sty_uniq(m_mutbl) => {
-            ebml_w.writer.write(&[ 'm' as u8 ]);
+        sty_by_ref => {
+            ebml_w.writer.write(&[ 'r' as u8 ]);
         }
-        sty_region(m_const) | sty_box(m_const) | sty_uniq(m_const) => {
-            ebml_w.writer.write(&[ 'c' as u8 ]);
+        sty_value => {
+            ebml_w.writer.write(&[ 'v' as u8 ]);
+        }
+        sty_region(_, m) => {
+            // FIXME(#4846) encode custom lifetime
+            ebml_w.writer.write(&[ '&' as u8 ]);
+            encode_mutability(ebml_w, m);
+        }
+        sty_box(m) => {
+            ebml_w.writer.write(&[ '@' as u8 ]);
+            encode_mutability(ebml_w, m);
+        }
+        sty_uniq(m) => {
+            ebml_w.writer.write(&[ '~' as u8 ]);
+            encode_mutability(ebml_w, m);
         }
     }
 
     ebml_w.end_tag();
+
+    fn encode_mutability(ebml_w: writer::Encoder,
+                         m: ast::mutability) {
+        match m {
+            m_imm => {
+                ebml_w.writer.write(&[ 'i' as u8 ]);
+            }
+            m_mutbl => {
+                ebml_w.writer.write(&[ 'm' as u8 ]);
+            }
+            m_const => {
+                ebml_w.writer.write(&[ 'c' as u8 ]);
+            }
+        }
+    }
 }
 
 fn encode_method_sort(ebml_w: writer::Encoder, sort: char) {

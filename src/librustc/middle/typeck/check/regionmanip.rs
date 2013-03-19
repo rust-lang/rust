@@ -30,8 +30,9 @@ pub fn replace_bound_regions_in_fn_sig(
     isr: isr_alist,
     self_info: Option<SelfInfo>,
     fn_sig: &ty::FnSig,
-    mapf: &fn(ty::bound_region) -> ty::Region) ->
-    (isr_alist, Option<SelfInfo>, ty::FnSig) {
+    mapf: &fn(ty::bound_region) -> ty::Region)
+    -> (isr_alist, Option<SelfInfo>, ty::FnSig)
+{
     // Take self_info apart; the self_ty part is the only one we want
     // to update here.
     let self_ty = self_info.map(|s| s.self_ty);
@@ -41,8 +42,10 @@ pub fn replace_bound_regions_in_fn_sig(
 
     match self_info {
       Some(SelfInfo {
-            explicit_self: codemap::spanned { node: ast::sty_region(m),
-                                          _}, _}) => {
+            explicit_self: codemap::spanned {
+                node: ast::sty_region(_, m),
+                // FIXME(#4846) ------^ Use this lifetime instead of self
+                _}, _}) => {
         let region = ty::re_bound(ty::br_self);
         let ty = ty::mk_rptr(tcx, region,
                              ty::mt { ty: ty::mk_self(tcx), mutbl: m });
@@ -50,7 +53,6 @@ pub fn replace_bound_regions_in_fn_sig(
       }
       _ => {}
     }
-
 
     for self_ty.each |t| { all_tys.push(*t) }
 

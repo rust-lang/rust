@@ -1647,17 +1647,20 @@ pub fn print_pat(s: @ps, &&pat: @ast::pat, refutable: bool) {
 // Returns whether it printed anything
 pub fn print_self_ty(s: @ps, self_ty: ast::self_ty_) -> bool {
     match self_ty {
-      ast::sty_static | ast::sty_by_ref => { return false; }
-      ast::sty_value => { word(s.s, ~"self"); }
-      ast::sty_region(m) => {
-        word(s.s, ~"&"); print_mutability(s, m); word(s.s, ~"self");
-      }
-      ast::sty_box(m) => {
-        word(s.s, ~"@"); print_mutability(s, m); word(s.s, ~"self");
-      }
-      ast::sty_uniq(m) => {
-        word(s.s, ~"~"); print_mutability(s, m); word(s.s, ~"self");
-      }
+        ast::sty_static | ast::sty_by_ref => { return false; }
+        ast::sty_value => { word(s.s, ~"self"); }
+        ast::sty_region(lt, m) => {
+            word(s.s, ~"&");
+            print_opt_lifetime(s, lt);
+            print_mutability(s, m);
+            word(s.s, ~"self");
+        }
+        ast::sty_box(m) => {
+            word(s.s, ~"@"); print_mutability(s, m); word(s.s, ~"self");
+        }
+        ast::sty_uniq(m) => {
+            word(s.s, ~"~"); print_mutability(s, m); word(s.s, ~"self");
+        }
     }
     return true;
 }
