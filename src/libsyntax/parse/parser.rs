@@ -642,9 +642,9 @@ pub impl Parser {
                 self.obsolete(*self.last_span, ObsoleteMutVector);
             }
 
-            // Parse the `* e` in `[ int * e ]`
+            // Parse the `, ..e` in `[ int, ..e ]`
             // where `e` is a const expression
-            let t = match self.maybe_parse_fixed_vstore_with_star() {
+            let t = match self.maybe_parse_fixed_vstore() {
                 None => ty_vec(mt),
                 Some(suffix) => ty_fixed_length_vec(mt, suffix)
             };
@@ -815,8 +815,14 @@ pub impl Parser {
         })
     }
 
-    fn maybe_parse_fixed_vstore_with_star(&self) -> Option<@ast::expr> {
+    fn maybe_parse_fixed_vstore(&self) -> Option<@ast::expr> {
         if self.eat(&token::BINOP(token::STAR)) {
+            // XXX: Obsolete; remove after snapshot.
+            Some(self.parse_expr())
+        } else if *self.token == token::COMMA &&
+                self.look_ahead(1) == token::DOTDOT {
+            self.bump();
+            self.bump();
             Some(self.parse_expr())
         } else {
             None

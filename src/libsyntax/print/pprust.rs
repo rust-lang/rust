@@ -424,7 +424,7 @@ pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
             ast::m_imm => ()
         }
         print_type(s, mt.ty);
-        word(s.s, ~" * ");
+        word(s.s, ~", ..");
         print_expr(s, v);
         word(s.s, ~"]");
       }
