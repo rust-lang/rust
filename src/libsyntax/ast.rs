@@ -185,7 +185,7 @@ pub enum def {
                       /* trait */  Option<def_id>,
                       purity),
     def_self(node_id, bool /* is_implicit */),
-    def_self_ty(node_id),
+    def_self_ty(/* trait id */ node_id),
     def_mod(def_id),
     def_foreign_mod(def_id),
     def_const(def_id),

@@ -183,9 +183,6 @@ pub struct FnCtxt {
     // with any nested functions that capture the environment
     // (and with any functions whose environment is being captured).
 
-    // Refers to whichever `self` is in scope, even this FnCtxt is
-    // for a nested closure that captures `self`
-    self_info: Option<SelfInfo>,
     ret_ty: ty::t,
     // Used by loop bodies that return from the outer function
     indirect_ret_ty: Option<ty::t>,
@@ -236,7 +233,6 @@ pub fn blank_fn_ctxt(ccx: @mut CrateCtxt,
 // It's kind of a kludge to manufacture a fake function context
 // and statement context, but we might as well do write the code only once
     @mut FnCtxt {
-        self_info: None,
         ret_ty: rty,
         indirect_ret_ty: None,
         purity: ast::pure_fn,
@@ -332,7 +328,6 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         };
 
         @mut FnCtxt {
-            self_info: self_info,
             ret_ty: ret_ty,
             indirect_ret_ty: indirect_ret_ty,
             purity: purity,
@@ -605,7 +600,8 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
                 // bodies to check.
               }
               provided(m) => {
-                check_method(ccx, m, ty::mk_self(ccx.tcx), local_def(it.id));
+                let self_ty = ty::mk_self(ccx.tcx, local_def(it.id));
+                check_method(ccx, m, self_ty, local_def(it.id));
               }
             }
         }
@@ -1699,9 +1695,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             ty::determine_inherited_purity(copy fcx.purity, purity,
                                            fn_ty.sigil);
 
-        // We inherit the same self info as the enclosing scope,
-        // since the function we're checking might capture `self`
-        check_fn(fcx.ccx, fcx.self_info, inherited_purity,
+        check_fn(fcx.ccx, None, inherited_purity,
                  &fn_ty.sig, decl, body, fn_kind,
                  fcx.in_scope_regions, fcx.inh);
     }

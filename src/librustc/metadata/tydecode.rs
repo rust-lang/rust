@@ -289,7 +289,8 @@ fn parse_ty(st: @mut PState, conv: conv_did) -> ty::t {
         return ty::mk_param(st.tcx, parse_int(st) as uint, did);
       }
       's' => {
-        return ty::mk_self(st.tcx);
+        let did = parse_def(st, TypeParameter, conv);
+        return ty::mk_self(st.tcx, did);
       }
       '@' => return ty::mk_box(st.tcx, parse_mt(st, conv)),
       '~' => return ty::mk_uniq(st.tcx, parse_mt(st, conv)),
