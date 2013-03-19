@@ -13,7 +13,7 @@
 #[cfg(fooA, not(bar))] // fooA AND !bar
 fn foo1() -> int { 1 }
 
-#[cfg(not(fooA, bar))] // !(fooA AND bar)
+#[cfg(not(fooA, bar))] // !fooA AND !bar
 fn foo2() -> int { 2 }
 
 #[cfg(fooC)]
