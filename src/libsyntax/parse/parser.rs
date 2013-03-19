@@ -3477,7 +3477,12 @@ pub impl Parser {
     fn parse_item_foreign_const(&self, vis: ast::visibility,
                                 +attrs: ~[attribute]) -> @foreign_item {
         let lo = self.span.lo;
-        self.expect_keyword(&~"const");
+
+        // XXX: Obsolete; remove after snap.
+        if !self.eat_keyword(&~"const") {
+            self.expect_keyword(&~"static");
+        }
+
         let ident = self.parse_ident();
         self.expect(&token::COLON);
         let ty = self.parse_ty(false);
@@ -3506,7 +3511,7 @@ pub impl Parser {
 
     fn parse_foreign_item(&self, +attrs: ~[attribute]) -> @foreign_item {
         let vis = self.parse_visibility();
-        if self.is_keyword(&~"const") {
+        if self.is_keyword(&~"const") || self.is_keyword(&~"static") {
             self.parse_item_foreign_const(vis, attrs)
         } else {
             self.parse_item_foreign_fn(attrs)
@@ -3864,13 +3869,18 @@ pub impl Parser {
             visibility = inherited;
         }
 
-        if items_allowed && self.eat_keyword(&~"const") {
+        if items_allowed &&
+                (self.is_keyword(&~"const") ||
+                (self.is_keyword(&~"static") &&
+                    !self.token_is_keyword(&~"fn", &self.look_ahead(1)))) {
             // CONST ITEM
+            self.bump();
             let (ident, item_, extra_attrs) = self.parse_item_const();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if foreign_items_allowed && self.is_keyword(&~"const") {
+        } else if foreign_items_allowed &&
+                (self.is_keyword(&~"const") || self.is_keyword(&~"static")) {
             // FOREIGN CONST ITEM
             let item = self.parse_item_foreign_const(visibility, attrs);
             return iovi_foreign_item(item);
