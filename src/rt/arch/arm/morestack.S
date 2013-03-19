@@ -15,14 +15,19 @@
 
 // r4 and r5 are scratch registers for __morestack due to llvm
 // ARMFrameLowering::adjustForSegmentedStacks() implementation.
-    .align 2
-    .type __morestack,%function
+ .type __morestack,%function
 __morestack:
+	.fnstart
+	// Save frame pointer and return address
+	.save {r4, r5}
+	.save {lr}
+	.save {r6, fp, lr}
+    push {r6, fp, lr}
 
-    // Save frame pointer and return address
-    push {fp, lr}
-    
-    mov fp, sp
+	.movsp r6
+	mov r6, sp
+	.setfp fp, sp, #4
+	add fp, sp, #4
 
     // Save argument registers of the original function
     push {r0, r1, r2, r3, lr}
@@ -47,20 +52,20 @@ __morestack:
     mov pc, r4         // Call the original function
 
     // Switch back to rust stack
-    mov sp, fp
+    mov sp, r6
 
     // Save return value
-    push {r0, r1}
+	mov r4, r0
+	mov r5, r1
 
     // Remove the new allocated stack
     bl upcall_del_stack@plt
 
     // Restore return value
-    pop {r0, r1}
-
+	mov r0, r4
+	mov r1, r5
+	
     // Return
-    pop {fp, lr}
+    pop {r6, fp, lr}
     mov pc, lr
-.endofmorestack:
-    .size   __morestack, .endofmorestack-__morestack
-   
+    .fnend
