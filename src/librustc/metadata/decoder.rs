@@ -146,6 +146,7 @@ fn item_family(item: ebml::Doc) -> Family {
 
 fn item_visibility(item: ebml::Doc) -> ast::visibility {
     let visibility = reader::get_doc(item, tag_items_data_item_visibility);
+    debug!("item visibility for %?", item_family(item));
     match reader::doc_as_u8(visibility) as char {
         'y' => ast::public,
         'n' => ast::private,
