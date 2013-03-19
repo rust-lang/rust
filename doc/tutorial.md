@@ -579,20 +579,29 @@ Structs are quite similar to C structs and are even laid out the same way in
 memory (so you can read from a Rust struct in C, and vice-versa). Use the dot
 operator to access struct fields, as in `mypoint.x`.
 
+~~~~
+struct Point {
+    x: float,
+    y: float
+}
+~~~~
+
 Inherited mutability means that any field of a struct may be mutable, if the
 struct is in a mutable slot (or a field of a struct in a mutable slot, and
 so forth).
 
-~~~~
-struct Stack {
-    content: ~[int],
-    head: uint
-}
-~~~~
-
-With a value (say, `mystack`) of such a type in a mutable location, you can do
-`mystack.head += 1`. But in an immutable location, such an assignment to a
+With a value (say, `mypoint`) of such a type in a mutable location, you can do
+`mypoint.y += 1.0`. But in an immutable location, such an assignment to a
 struct without inherited mutability would result in a type error.
+
+~~~~ {.xfail-test}
+# struct Point { x: float, y: float }
+let mut mypoint = Point { x: 1.0, y: 1.0 };
+let origin = Point { x: 0.0, y: 0.0 };
+
+mypoint.y += 1.0; // mypoint is mutable, and its fields as well
+origin.y += 1.0; // ERROR: assigning to immutable field
+~~~~
 
 `match` patterns destructure structs. The basic syntax is
 `Name { fieldname: pattern, ... }`:
