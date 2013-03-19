@@ -1311,19 +1311,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // Extract the function signature from `in_fty`.
         let fn_sty = structure_of(fcx, f.span, fn_ty);
 
-        // FIXME(#3678) For now, do not permit calls to C abi functions.
-        match fn_sty {
-            ty::ty_bare_fn(ty::BareFnTy {abis, _}) => {
-                if !abis.is_rust() {
-                    fcx.tcx().sess.span_err(
-                        call_expr.span,
-                        fmt!("Calls to C ABI functions are not (yet) \
-                              supported; be patient, dear user"));
-                }
-            }
-            _ => {}
-        }
-
         let fn_sig = match fn_sty {
             ty::ty_bare_fn(ty::BareFnTy {sig: sig, _}) |
             ty::ty_closure(ty::ClosureTy {sig: sig, _}) => sig,
@@ -3607,7 +3594,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
     };
     let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
         purity: ast::unsafe_fn,
-        abis: AbiSet::Rust(),
+        abis: AbiSet::Intrinsic(),
         sig: FnSig {bound_lifetime_names: opt_vec::Empty,
                     inputs: inputs,
                     output: output}
