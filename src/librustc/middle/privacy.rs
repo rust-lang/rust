@@ -22,15 +22,19 @@ use middle::typeck::{method_super};
 use middle::typeck::{method_static, method_trait};
 
 use core::util::ignore;
-use syntax::ast::{def_variant, expr_field, expr_method_call, expr_struct};
-use syntax::ast::{expr_unary, ident, item_struct, item_enum, item_impl};
-use syntax::ast::{item_trait, local_crate, node_id, pat_struct, private};
-use syntax::ast::{provided, public, required};
+use syntax::ast::{decl_item, def, def_fn, def_id, def_static_method};
+use syntax::ast::{def_variant, expr_field, expr_method_call, expr_path};
+use syntax::ast::{expr_struct, expr_unary, ident, inherited, item_enum};
+use syntax::ast::{item_foreign_mod, item_fn, item_impl, item_struct};
+use syntax::ast::{item_trait, local_crate, node_id, pat_struct, path};
+use syntax::ast::{private, provided, public, required, stmt_decl, visibility};
 use syntax::ast;
-use syntax::ast_map::{node_item, node_method};
+use syntax::ast_map::{node_foreign_item, node_item, node_method};
+use syntax::ast_map::{node_trait_method};
 use syntax::ast_map;
 use syntax::ast_util::{Private, Public, is_local};
 use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
+use syntax::attr;
 use syntax::codemap::span;
 use syntax::visit;
 
@@ -39,18 +43,37 @@ pub fn check_crate(tcx: ty::ctxt,
                    crate: @ast::crate) {
     let privileged_items = @mut ~[];
 
-    // Adds structs that are privileged to this scope.
+    // Adds an item to its scope.
+    let add_privileged_item: @fn(@ast::item, &mut uint) = |item, count| {
+        match item.node {
+            item_struct(*) | item_trait(*) | item_enum(*) |
+            item_fn(*) => {
+                privileged_items.push(item.id);
+                *count += 1;
+            }
+            item_impl(_, _, _, ref methods) => {
+                for methods.each |method| {
+                    privileged_items.push(method.id);
+                    *count += 1;
+                }
+                privileged_items.push(item.id);
+                *count += 1;
+            }
+            item_foreign_mod(ref foreign_mod) => {
+                for foreign_mod.items.each |foreign_item| {
+                    privileged_items.push(foreign_item.id);
+                    *count += 1;
+                }
+            }
+            _ => {}
+        }
+    };
+
+    // Adds items that are privileged to this scope.
     let add_privileged_items: @fn(&[@ast::item]) -> uint = |items| {
         let mut count = 0;
-        for items.each |item| {
-            match item.node {
-                item_struct(*) | item_trait(*) | item_impl(*)
-                | item_enum(*) => {
-                    privileged_items.push(item.id);
-                    count += 1;
-                }
-                _ => {}
-            }
+        for items.each |&item| {
+            add_privileged_item(item, &mut count);
         }
         count
     };
@@ -84,6 +107,128 @@ pub fn check_crate(tcx: ty::ctxt,
         }
     };
 
+    // Returns the ID of the container (impl or trait) that a crate-local
+    // method belongs to.
+    let local_method_container_id:
+            @fn(span: span, method_id: node_id) -> def_id =
+            |span, method_id| {
+        match tcx.items.find(&method_id) {
+            Some(node_method(_, impl_id, _)) => impl_id,
+            Some(node_trait_method(_, trait_id, _)) => trait_id,
+            Some(_) => {
+                tcx.sess.span_bug(span,
+                                  fmt!("method was a %s?!",
+                                       ast_map::node_id_to_str(
+                                            tcx.items,
+                                            method_id,
+                                            tcx.sess.parse_sess.interner)));
+            }
+            None => {
+                tcx.sess.span_bug(span, ~"method not found in \
+                                          AST map?!");
+            }
+        }
+    };
+
+    // Returns true if a crate-local method is private and false otherwise.
+    let method_is_private: @fn(span: span, method_id: node_id) -> bool =
+            |span, method_id| {
+        let check = |vis: visibility, container_id: def_id| {
+            let mut is_private = false;
+            if vis == private {
+                is_private = true;
+            } else if vis == public {
+                is_private = false;
+            } else {
+                // Look up the enclosing impl.
+                if container_id.crate != local_crate {
+                    tcx.sess.span_bug(span,
+                                      ~"local method isn't in local \
+                                        impl?!");
+                }
+
+                match tcx.items.find(&container_id.node) {
+                    Some(node_item(item, _)) => {
+                        match item.node {
+                            item_impl(_, None, _, _)
+                                    if item.vis != public => {
+                                is_private = true;
+                            }
+                            _ => {}
+                        }
+                    }
+                    Some(_) => {
+                        tcx.sess.span_bug(span, ~"impl wasn't an item?!");
+                    }
+                    None => {
+                        tcx.sess.span_bug(span, ~"impl wasn't in AST map?!");
+                    }
+                }
+            }
+
+            is_private
+        };
+
+        match tcx.items.find(&method_id) {
+            Some(node_method(method, impl_id, _)) => {
+                check(method.vis, impl_id)
+            }
+            Some(node_trait_method(trait_method, trait_id, _)) => {
+                match *trait_method {
+                    required(_) => check(public, trait_id),
+                    provided(method) => check(method.vis, trait_id),
+                }
+            }
+            Some(_) => {
+                tcx.sess.span_bug(span,
+                                  fmt!("method_is_private: method was a %s?!",
+                                       ast_map::node_id_to_str(
+                                            tcx.items,
+                                            method_id,
+                                            tcx.sess.parse_sess.interner)));
+            }
+            None => {
+                tcx.sess.span_bug(span, ~"method not found in \
+                                          AST map?!");
+            }
+        }
+    };
+
+    // Returns true if the given local item is private and false otherwise.
+    let local_item_is_private: @fn(span: span, item_id: node_id) -> bool =
+            |span, item_id| {
+        let mut f: &fn(node_id) -> bool = |_| false;
+        f = |item_id| {
+            match tcx.items.find(&item_id) {
+                Some(node_item(item, _)) => item.vis != public,
+                Some(node_foreign_item(_, _, vis, _)) => vis != public,
+                Some(node_method(method, impl_did, _)) => {
+                    match method.vis {
+                        private => true,
+                        public => false,
+                        inherited => f(impl_did.node)
+                    }
+                }
+                Some(node_trait_method(_, trait_did, _)) => f(trait_did.node),
+                Some(_) => {
+                    tcx.sess.span_bug(span,
+                                      fmt!("local_item_is_private: item was \
+                                            a %s?!",
+                                           ast_map::node_id_to_str(
+                                                tcx.items,
+                                                item_id,
+                                                tcx.sess
+                                                   .parse_sess
+                                                   .interner)));
+                }
+                None => {
+                    tcx.sess.span_bug(span, ~"item not found in AST map?!");
+                }
+            }
+        };
+        f(item_id)
+    };
+
     // Checks that a private field is in scope.
     let check_field: @fn(span: span, id: ast::def_id, ident: ast::ident) =
             |span, id, ident| {
@@ -99,6 +244,68 @@ pub fn check_crate(tcx: ty::ctxt,
         }
     };
 
+    // Given the ID of a method, checks to ensure it's in scope.
+    let check_method_common: @fn(span: span,
+                                 method_id: def_id,
+                                 name: &ident) =
+            |span, method_id, name| {
+        if method_id.crate == local_crate {
+            let is_private = method_is_private(span, method_id.node);
+            let container_id = local_method_container_id(span,
+                                                         method_id.node);
+            if is_private &&
+                    (container_id.crate != local_crate ||
+                     !privileged_items.contains(&(container_id.node))) {
+                tcx.sess.span_err(span,
+                                  fmt!("method `%s` is private",
+                                       *tcx.sess
+                                           .parse_sess
+                                           .interner
+                                           .get(*name)));
+            }
+        } else {
+            let visibility =
+                csearch::get_method_visibility(tcx.sess.cstore,
+                                               method_id);
+            if visibility != public {
+                tcx.sess.span_err(span,
+                                  fmt!("method `%s` is private",
+                                       *tcx.sess.parse_sess.interner
+                                           .get(*name)));
+            }
+        }
+    };
+
+    // Checks that a private path is in scope.
+    let check_path: @fn(span: span, def: def, path: @path) =
+            |span, def, path| {
+        debug!("checking path");
+        match def {
+            def_static_method(method_id, _, _) => {
+                debug!("found static method def, checking it");
+                check_method_common(span, method_id, path.idents.last())
+            }
+            def_fn(def_id, _) => {
+                if def_id.crate == local_crate {
+                    if local_item_is_private(span, def_id.node) &&
+                            !privileged_items.contains(&def_id.node) {
+                        tcx.sess.span_err(span,
+                                          fmt!("function `%s` is private",
+                                               *tcx.sess
+                                                   .parse_sess
+                                                   .interner
+                                                   .get(copy *path
+                                                             .idents
+                                                             .last())));
+                    }
+                } else {
+                    // XXX: Check privacy in external crates.
+                }
+            }
+            _ => {}
+        }
+    };
+
     // Checks that a private method is in scope.
     let check_method: @fn(span: span,
                           origin: &method_origin,
@@ -106,79 +313,7 @@ pub fn check_crate(tcx: ty::ctxt,
             |span, origin, ident| {
         match *origin {
             method_static(method_id) => {
-                if method_id.crate == local_crate {
-                    match tcx.items.find(&method_id.node) {
-                        Some(node_method(method, impl_id, _)) => {
-                            let mut is_private = false;
-                            if method.vis == private {
-                                is_private = true;
-                            } else if method.vis == public {
-                                is_private = false;
-                            } else {
-                                // Look up the enclosing impl.
-                                if impl_id.crate != local_crate {
-                                    tcx.sess.span_bug(span,
-                                                      ~"local method isn't \
-                                                        in local impl?!");
-                                }
-
-                                match tcx.items.find(&impl_id.node) {
-                                    Some(node_item(item, _)) => {
-                                        match item.node {
-                                            item_impl(_, None, _, _)
-                                                    if item.vis != public => {
-                                                is_private = true;
-                                            }
-                                            _ => {}
-                                        }
-                                    }
-                                    Some(_) => {
-                                        tcx.sess.span_bug(span,
-                                                          ~"impl wasn't an \
-                                                            item?!");
-                                    }
-                                    None => {
-                                        tcx.sess.span_bug(span,
-                                                          ~"impl wasn't in \
-                                                            AST map?!");
-                                    }
-                                }
-                            }
-
-                            if is_private &&
-                                    (impl_id.crate != local_crate ||
-                                     !privileged_items
-                                     .contains(&(impl_id.node))) {
-                                tcx.sess.span_err(span,
-                                                  fmt!("method `%s` is \
-                                                        private",
-                                                       *tcx.sess
-                                                           .parse_sess
-                                                           .interner
-                                                           .get(method
-                                                                .ident)));
-                            }
-                        }
-                        Some(_) => {
-                            tcx.sess.span_bug(span, ~"method wasn't \
-                                                      actually a method?!");
-                        }
-                        None => {
-                            tcx.sess.span_bug(span, ~"method not found in \
-                                                      AST map?!");
-                        }
-                    }
-                } else {
-                    let visibility =
-                        csearch::get_method_visibility(tcx.sess.cstore,
-                                                       method_id);
-                    if visibility != public {
-                        tcx.sess.span_err(span,
-                                          fmt!("method `%s` is private",
-                                               *tcx.sess.parse_sess.interner
-                                                   .get(ident)));
-                    }
-                }
+                check_method_common(span, method_id, &ident)
             }
             method_param(method_param {
                 trait_id: trait_id,
@@ -257,6 +392,37 @@ pub fn check_crate(tcx: ty::ctxt,
                 ignore(privileged_items.pop());
             }
         },
+        visit_item: |item, method_map, visitor| {
+            // Do not check privacy inside items with the resolve_unexported
+            // attribute. This is used for the test runner.
+            if !attr::contains_name(attr::attr_metas(/*bad*/copy item.attrs),
+                                    ~"!resolve_unexported") {
+                visit::visit_item(item, method_map, visitor);
+            }
+        },
+        visit_block: |block, method_map, visitor| {
+            // Gather up all the privileged items.
+            let mut n_added = 0;
+            for block.node.stmts.each |stmt| {
+                match stmt.node {
+                    stmt_decl(decl, _) => {
+                        match decl.node {
+                            decl_item(item) => {
+                                add_privileged_item(item, &mut n_added);
+                            }
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            visit::visit_block(block, method_map, visitor);
+
+            for n_added.times {
+                ignore(privileged_items.pop());
+            }
+        },
         visit_expr: |expr, method_map: &method_map, visitor| {
             match expr.node {
                 expr_field(base, ident, _) => {
@@ -309,6 +475,9 @@ pub fn check_crate(tcx: ty::ctxt,
                         }
                         _ => {}
                     }
+                }
+                expr_path(path) => {
+                    check_path(expr.span, tcx.def_map.get(&expr.id), path);
                 }
                 expr_struct(_, ref fields, _) => {
                     match ty::get(ty::expr_ty(tcx, expr)).sty {

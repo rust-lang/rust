@@ -74,7 +74,7 @@ fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
           ast_map::node_foreign_item(@ast::foreign_item {
             ident: ident,
             node: ast::foreign_item_fn(ref decl, _, ref tys), _
-          }, _, _) => {
+          }, _, _, _) => {
             Some(pprust::fun_to_str(decl, ident, None, tys,
                                     extract::interner()))
           }

@@ -2428,7 +2428,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
             exprt = true;
             register_method(ccx, id, pth, m)
           }
-          ast_map::node_foreign_item(ni, _, pth) => {
+          ast_map::node_foreign_item(ni, _, _, pth) => {
             exprt = true;
             match ni.node {
                 ast::foreign_item_fn(*) => {

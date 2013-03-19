@@ -1083,7 +1083,7 @@ fn abi_of_foreign_fn(ccx: @CrateContext, i: @ast::foreign_item)
     -> ast::foreign_abi {
     match attr::first_attr_value_str_by_name(i.attrs, ~"abi") {
       None => match ccx.tcx.items.get(&i.id) {
-        ast_map::node_foreign_item(_, abi, _) => abi,
+        ast_map::node_foreign_item(_, abi, _, _) => abi,
         // ??
         _ => fail!(~"abi_of_foreign_fn: not foreign")
       },

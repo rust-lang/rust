@@ -116,7 +116,7 @@ fn parse_item_attrs<T:Owned>(
     do astsrv::exec(srv) |ctxt| {
         let attrs = match ctxt.ast_map.get(&id) {
           ast_map::node_item(item, _) => copy item.attrs,
-          ast_map::node_foreign_item(item, _, _) => copy item.attrs,
+          ast_map::node_foreign_item(item, _, _, _) => copy item.attrs,
           _ => fail!(~"parse_item_attrs: not an item")
         };
         parse_attrs(attrs)
