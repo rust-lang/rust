@@ -41,6 +41,9 @@ rust_thread::start() {
 #if defined(__WIN32__)
    thread = CreateThread(NULL, stack_sz, rust_thread_start, this, 0, NULL);
 #else
+   if (stack_sz < PTHREAD_STACK_MIN) {
+      stack_sz = PTHREAD_STACK_MIN;
+   }
    pthread_attr_t attr;
    CHECKED(pthread_attr_init(&attr));
    CHECKED(pthread_attr_setstacksize(&attr, stack_sz));
