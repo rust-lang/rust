@@ -456,6 +456,11 @@ pub fn core_macros() -> ~str {
             if !$cond {
                 ::core::sys::fail_assert(stringify!($cond), file!(), line!())
             }
+        };
+        ($cond:expr, $msg:expr) => {
+            if !$cond {
+                ::core::sys::fail_assert($msg, file!(), line!())
+            }
         }
     )
 
