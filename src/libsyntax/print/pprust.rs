@@ -425,7 +425,7 @@ pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
         }
         print_type(s, mt.ty);
         word(s.s, ~" * ");
-        word(s.s, fmt!("%u", v));
+        print_expr(s, v);
         word(s.s, ~"]");
       }
       ast::ty_mac(_) => {
