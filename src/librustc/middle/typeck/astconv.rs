@@ -54,6 +54,7 @@
 
 use core::prelude::*;
 
+use middle::const_eval;
 use middle::ty::{arg, field, substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
@@ -412,9 +413,29 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
           }
         }
       }
-      ast::ty_fixed_length_vec(a_mt, u) => {
-        ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, a_mt),
-                    ty::vstore_fixed(u))
+      ast::ty_fixed_length_vec(a_mt, e) => {
+        match const_eval::eval_const_expr_partial(tcx, e) {
+          Ok(ref r) => {
+            match *r {
+              const_eval::const_int(i) =>
+                ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, a_mt),
+                            ty::vstore_fixed(i as uint)),
+              const_eval::const_uint(i) =>
+                ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, a_mt),
+                            ty::vstore_fixed(i as uint)),
+              _ => {
+                tcx.sess.span_fatal(
+                    ast_ty.span, ~"expected constant expr for vector length");
+              }
+            }
+          }
+          Err(ref r) => {
+            tcx.sess.span_fatal(
+                ast_ty.span,
+                fmt!("expected constant expr for vector length: %s",
+                     *r));
+          }
+        }
       }
       ast::ty_infer => {
         // ty_infer should only appear as the type of arguments or return
