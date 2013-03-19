@@ -246,7 +246,10 @@ pub fn visit_ty<E>(t: @Ty, e: E, v: vt<E>) {
             (v.visit_ty)(f.decl.output, e, v);
         },
         ty_path(p, _) => visit_path(p, e, v),
-        ty_fixed_length_vec(ref mt, _) => (v.visit_ty)(mt.ty, e, v),
+        ty_fixed_length_vec(ref mt, ex) => {
+            (v.visit_ty)(mt.ty, e, v);
+            (v.visit_expr)(ex, e, v);
+        },
         ty_nil | ty_bot | ty_mac(_) | ty_infer => ()
     }
 }
