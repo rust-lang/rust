@@ -283,8 +283,8 @@ pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
     let visit = mk_visitor();
     (visit.visit_block)(blk, wbcx, visit);
     for self_info.each |self_info| {
-        if self_info.explicit_self.node == ast::sty_static { break; }
-        resolve_type_vars_for_node(wbcx, self_info.explicit_self.span,
+        resolve_type_vars_for_node(wbcx,
+                                   self_info.span,
                                    self_info.self_id);
     }
     for decl.inputs.each |arg| {
