@@ -64,6 +64,8 @@ pub mod ext {
     pub mod expand;
 
     pub mod quote;
+
+    #[path = "deriving/mod.rs"]
     pub mod deriving;
 
     pub mod build;
