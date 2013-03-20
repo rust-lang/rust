@@ -70,7 +70,7 @@ enum CleanupJob {
 
 pub impl Scheduler {
 
-    static fn new(event_loop: ~EventLoopObject) -> Scheduler {
+    static pub fn new(event_loop: ~EventLoopObject) -> Scheduler {
         Scheduler {
             event_loop: event_loop,
             task_queue: WorkQueue::new(),
@@ -296,7 +296,7 @@ pub struct Task {
 }
 
 impl Task {
-    static fn new(stack_pool: &mut StackPool, start: ~fn()) -> Task {
+    static pub fn new(stack_pool: &mut StackPool, start: ~fn()) -> Task {
         // XXX: Putting main into a ~ so it's a thin pointer and can
         // be passed to the spawn function.  Another unfortunate
         // allocation
