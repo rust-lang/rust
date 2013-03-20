@@ -386,6 +386,10 @@ pub fn main() {
         stmts: ~""
     };
 
+    io::println("WARNING: The Rust REPL is experimental and may be");
+    io::println("unstable. If you encounter problems, please use the");
+    io::println("compiler instead.");
+
     unsafe {
         do rl::complete |line, suggest| {
             if line.starts_with(":") {
