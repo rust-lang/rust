@@ -582,7 +582,7 @@ pub fn variant_visibility_to_privacy(visibility: visibility,
     }
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Privacy {
     Private,
     Public

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// The compiler code necessary to implement the #[deriving_eq] and
-/// #[deriving_iter_bytes] extensions.
+/// The compiler code necessary to implement the #[deriving(Eq)] and
+/// #[deriving(IterBytes)] extensions.
 
 use core::prelude::*;
 
