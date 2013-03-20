@@ -120,7 +120,7 @@ pub enum item_or_view_item {
 
 enum view_item_parse_mode {
     VIEW_ITEMS_AND_ITEMS_ALLOWED,
-    VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED,
+    FOREIGN_ITEMS_ALLOWED,
     IMPORTS_AND_ITEMS_ALLOWED
 }
 
@@ -3535,7 +3535,7 @@ pub impl Parser {
             items: _,
             foreign_items: foreign_items
         } = self.parse_items_and_view_items(first_item_attrs,
-                                         VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED,
+                                            FOREIGN_ITEMS_ALLOWED,
                                             true);
 
         let mut items: ~[@foreign_item] = foreign_items;
@@ -3885,12 +3885,14 @@ pub impl Parser {
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if foreign_items_allowed &&
+        }
+        if foreign_items_allowed &&
                 (self.is_keyword(&~"const") || self.is_keyword(&~"static")) {
             // FOREIGN CONST ITEM
             let item = self.parse_item_foreign_const(visibility, attrs);
             return iovi_foreign_item(item);
-        } else if items_allowed &&
+        }
+        if items_allowed &&
             // FUNCTION ITEM (not sure about lookahead condition...)
             self.is_keyword(&~"fn") &&
             !self.fn_expr_lookahead(self.look_ahead(1u)) {
@@ -3899,7 +3901,8 @@ pub impl Parser {
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if items_allowed && self.eat_keyword(&~"pure") {
+        }
+        if items_allowed && self.eat_keyword(&~"pure") {
             // PURE FUNCTION ITEM
             // NB: We parse this as impure for bootstrapping purposes.
             self.expect_keyword(&~"fn");
@@ -3907,13 +3910,15 @@ pub impl Parser {
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if foreign_items_allowed &&
+        }
+        if foreign_items_allowed &&
             (self.is_keyword(&~"fn") || self.is_keyword(&~"pure") ||
              self.is_keyword(&~"unsafe")) {
             // FOREIGN FUNCTION ITEM (no items allowed)
                 let item = self.parse_item_foreign_fn(attrs);
                 return iovi_foreign_item(item);
-        } else if items_allowed && self.is_keyword(&~"unsafe")
+        }
+        if items_allowed && self.is_keyword(&~"unsafe")
             && self.look_ahead(1u) != token::LBRACE {
             // UNSAFE FUNCTION ITEM (where items are allowed)
             self.bump();
@@ -3922,7 +3927,8 @@ pub impl Parser {
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if self.eat_keyword(&~"extern") {
+        }
+        if self.eat_keyword(&~"extern") {
             if items_allowed && self.eat_keyword(&~"fn") {
                 // EXTERN FUNCTION ITEM
                 let (ident, item_, extra_attrs) =
@@ -3932,47 +3938,62 @@ pub impl Parser {
                                               maybe_append(attrs,
                                                            extra_attrs)));
             }
-            // EXTERN MODULE ITEM
-            return self.parse_item_foreign_mod(lo, visibility, attrs,
-                                               items_allowed);
-        } else if items_allowed && self.eat_keyword(&~"mod") {
+            if !foreign_items_allowed {
+                // EXTERN MODULE ITEM
+                return self.parse_item_foreign_mod(lo, visibility, attrs,
+                                                   items_allowed);
+            }
+        }
+        if items_allowed && !foreign_items_allowed &&
+                self.eat_keyword(&~"mod") {
             // MODULE ITEM
             let (ident, item_, extra_attrs) = self.parse_item_mod(attrs);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if items_allowed && self.eat_keyword(&~"type") {
+        }
+        if items_allowed && !foreign_items_allowed &&
+                self.eat_keyword(&~"type") {
             // TYPE ITEM
             let (ident, item_, extra_attrs) = self.parse_item_type();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if items_allowed && self.eat_keyword(&~"enum") {
+        }
+        if items_allowed && !foreign_items_allowed &&
+                self.eat_keyword(&~"enum") {
             // ENUM ITEM
             let (ident, item_, extra_attrs) = self.parse_item_enum();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if items_allowed && self.eat_keyword(&~"trait") {
+        }
+        if items_allowed && !foreign_items_allowed &&
+                self.eat_keyword(&~"trait") {
             // TRAIT ITEM
             let (ident, item_, extra_attrs) = self.parse_item_trait();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if items_allowed && self.eat_keyword(&~"impl") {
+        }
+        if items_allowed && !foreign_items_allowed &&
+                self.eat_keyword(&~"impl") {
             // IMPL ITEM
             let (ident, item_, extra_attrs) =
                 self.parse_item_impl(visibility);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if items_allowed && self.eat_keyword(&~"struct") {
+        }
+        if items_allowed && !foreign_items_allowed &&
+                self.eat_keyword(&~"struct") {
             // STRUCT ITEM
             let (ident, item_, extra_attrs) = self.parse_item_struct();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if self.eat_keyword(&~"use") {
+        }
+        if !foreign_items_allowed && self.eat_keyword(&~"use") {
             // USE ITEM
             let view_item = self.parse_use();
             self.expect(&token::SEMI);
@@ -3982,7 +4003,8 @@ pub impl Parser {
                 vis: visibility,
                 span: mk_sp(lo, self.last_span.hi)
             });
-        } else if macros_allowed && !self.is_any_keyword(&copy *self.token)
+        }
+        if macros_allowed && !self.is_any_keyword(&copy *self.token)
                 && self.look_ahead(1) == token::NOT
                 && (is_plain_ident(&self.look_ahead(2))
                     || self.look_ahead(2) == token::LPAREN
@@ -4025,16 +4047,16 @@ pub impl Parser {
             let item_ = item_mac(m);
             return iovi_item(self.mk_item(lo, self.last_span.hi, id, item_,
                                           visibility, attrs));
-        } else {
-            // FAILURE TO PARSE ITEM
-            if visibility != inherited {
-                let mut s = ~"unmatched visibility `";
-                s += if visibility == public { ~"pub" } else { ~"priv" };
-                s += ~"`";
-                self.span_fatal(*self.last_span, s);
-            }
-            return iovi_none;
-        };
+        }
+
+        // FAILURE TO PARSE ITEM
+        if visibility != inherited {
+            let mut s = ~"unmatched visibility `";
+            s += if visibility == public { ~"pub" } else { ~"priv" };
+            s += ~"`";
+            self.span_fatal(*self.last_span, s);
+        }
+        return iovi_none;
     }
 
     fn parse_item(&self, +attrs: ~[attribute]) -> Option<@ast::item> {
@@ -4201,17 +4223,17 @@ pub impl Parser {
 
         let items_allowed = match mode {
             VIEW_ITEMS_AND_ITEMS_ALLOWED | IMPORTS_AND_ITEMS_ALLOWED => true,
-            VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED => false
+            FOREIGN_ITEMS_ALLOWED => false
         };
 
         let restricted_to_imports = match mode {
             IMPORTS_AND_ITEMS_ALLOWED => true,
             VIEW_ITEMS_AND_ITEMS_ALLOWED |
-            VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED => false
+            FOREIGN_ITEMS_ALLOWED => false
         };
 
         let foreign_items_allowed = match mode {
-            VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED => true,
+            FOREIGN_ITEMS_ALLOWED => true,
             VIEW_ITEMS_AND_ITEMS_ALLOWED | IMPORTS_AND_ITEMS_ALLOWED => false
         };
 

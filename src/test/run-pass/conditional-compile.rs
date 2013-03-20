@@ -121,13 +121,6 @@ mod test_foreign_items {
 mod test_use_statements {
     #[cfg(bogus)]
     use flippity_foo;
-
-    pub mod rustrt {
-        pub extern {
-            #[cfg(bogus)]
-            use flippity_foo;
-        }
-    }
 }
 
 mod test_methods {
