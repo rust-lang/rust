@@ -1,5 +1,4 @@
-// -*- rust -*-
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct NonCopyable(());
 
-extern mod std;
-
-enum bar { t1((), Option<~[int]>), t2, }
-
-// n.b. my change changes this error message, but I think it's right -- tjc
-fn foo(t: bar) -> int { match t { t1(_, Some(x)) => { return x * 3; } _ => { fail!(); } } } //~ ERROR binary operation * cannot be applied to
-
-fn main() { }
+fn main() {
+    let z = NonCopyable{ p: () }; //~ ERROR structure has no field named `p`
+}
