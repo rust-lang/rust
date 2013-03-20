@@ -27,10 +27,10 @@ use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
 use syntax;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum os { os_win32, os_macos, os_linux, os_android, os_freebsd, }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum arch { arch_x86, arch_x86_64, arch_arm, arch_mips, }
 
 pub enum crate_type { bin_crate, lib_crate, unknown_crate, }
@@ -104,7 +104,7 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ]
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum OptLevel {
     No, // -O0
     Less, // -O1

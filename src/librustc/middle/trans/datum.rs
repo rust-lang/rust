@@ -110,7 +110,7 @@ use core::uint;
 use syntax::ast;
 use syntax::parse::token::special_idents;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum CopyAction {
     INIT,
     DROP_EXISTING
@@ -171,7 +171,7 @@ impl to_bytes::IterBytes for DatumMode {
 }
 
 /// See `Datum cleanup styles` section at the head of this module.
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum DatumCleanup {
     RevokeClean,
     ZeroMem
