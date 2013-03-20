@@ -165,7 +165,7 @@ pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
                                   Div<T,T>+Neg<T>+Modulo<T,T>+Mul<T,T>>(
         num: &T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~[u8], bool) {
-    if radix as int <  2 {
+    if (radix as int) < 2 {
         fail!(fmt!("to_str_bytes_common: radix %? to low, \
                    must lie in the range [2, 36]", radix));
     } else if radix as int > 36 {
@@ -455,10 +455,10 @@ pub pure fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
         _ if special && radix >= DIGIT_I_RADIX // first digit of 'inf'
           => fail!(fmt!("from_str_bytes_common: radix %? incompatible with \
                         special values 'inf' and 'NaN'", radix)),
-        _ if radix as int < 2
+        _ if (radix as int) < 2
           => fail!(fmt!("from_str_bytes_common: radix %? to low, \
                         must lie in the range [2, 36]", radix)),
-        _ if radix as int > 36
+        _ if (radix as int) > 36
           => fail!(fmt!("from_str_bytes_common: radix %? to high, \
                         must lie in the range [2, 36]", radix)),
         _ => ()

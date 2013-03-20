@@ -986,7 +986,7 @@ pub trait WriterUtil {
 
 impl<T:Writer> WriterUtil for T {
     fn write_char(&self, ch: char) {
-        if ch as uint < 128u {
+        if (ch as uint) < 128u {
             self.write(&[ch as u8]);
         } else {
             self.write_str(str::from_char(ch));
