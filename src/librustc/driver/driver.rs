@@ -446,10 +446,10 @@ pub fn get_os(triple: &str) -> Option<session::os> {
             Some(session::os_win32)
         } else if str::contains(triple, ~"darwin") {
             Some(session::os_macos)
-        } else if str::contains(triple, ~"linux") {
-            Some(session::os_linux)
         } else if str::contains(triple, ~"android") {
             Some(session::os_android)
+        } else if str::contains(triple, ~"linux") {
+            Some(session::os_linux)
         } else if str::contains(triple, ~"freebsd") {
             Some(session::os_freebsd)
         } else { None }

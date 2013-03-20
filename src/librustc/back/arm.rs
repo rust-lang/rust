@@ -65,7 +65,7 @@ pub fn get_target_strs(target_os: session::os) -> target_strs::t {
           session::os_macos => ~"arm-apple-darwin",
           session::os_win32 => ~"arm-pc-mingw32",
           session::os_linux => ~"arm-unknown-linux",
-          session::os_android => ~"arm-unknown-android",
+          session::os_android => ~"arm-linux-androideabi",
           session::os_freebsd => ~"arm-unknown-freebsd"
         },
 
