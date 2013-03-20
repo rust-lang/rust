@@ -139,7 +139,7 @@ impl AstConv for CrateCtxt {
               Some(ast_map::node_item(item, _)) => {
                 ty_of_item(self, item)
               }
-              Some(ast_map::node_foreign_item(foreign_item, _, _)) => {
+              Some(ast_map::node_foreign_item(foreign_item, _, _, _)) => {
                 ty_of_foreign_item(self, foreign_item)
               }
               ref x => {

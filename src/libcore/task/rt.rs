@@ -30,7 +30,7 @@ pub type rust_task = libc::c_void;
 #[allow(non_camel_case_types)] // runtime type
 pub type rust_closure = libc::c_void;
 
-extern {
+pub extern {
     #[rust_stack]
     fn rust_task_yield(task: *rust_task) -> bool;
 
