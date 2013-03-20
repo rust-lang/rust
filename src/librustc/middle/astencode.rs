@@ -639,14 +639,14 @@ fn encode_vtable_origin(ecx: @e::EncodeContext,
                       ebml_w: writer::Encoder,
                       vtable_origin: typeck::vtable_origin) {
     do ebml_w.emit_enum(~"vtable_origin") {
-        match /*bad*/copy vtable_origin {
-          typeck::vtable_static(def_id, tys, vtable_res) => {
+        match vtable_origin {
+          typeck::vtable_static(def_id, ref tys, vtable_res) => {
             do ebml_w.emit_enum_variant(~"vtable_static", 0u, 3u) {
                 do ebml_w.emit_enum_variant_arg(0u) {
                     ebml_w.emit_def_id(def_id)
                 }
                 do ebml_w.emit_enum_variant_arg(1u) {
-                    ebml_w.emit_tys(ecx, /*bad*/copy tys);
+                    ebml_w.emit_tys(ecx, /*bad*/copy *tys);
                 }
                 do ebml_w.emit_enum_variant_arg(2u) {
                     encode_vtable_res(ecx, ebml_w, vtable_res);

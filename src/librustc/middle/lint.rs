@@ -360,8 +360,8 @@ pub impl Context {
             let metas =
                 attr::attr_metas(attr::find_attrs_by_name(attrs, level_name));
             for metas.each |meta| {
-                match /*bad*/copy meta.node {
-                  ast::meta_list(_, metas) => {
+                match meta.node {
+                  ast::meta_list(_, ref metas) => {
                     for metas.each |meta| {
                         match meta.node {
                           ast::meta_word(ref lintname) => {
@@ -653,8 +653,8 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
 }
 
 fn check_item_default_methods(cx: ty::ctxt, item: @ast::item) {
-    match /*bad*/copy item.node {
-        ast::item_trait(_, _, methods) => {
+    match item.node {
+        ast::item_trait(_, _, ref methods) => {
             for methods.each |method| {
                 match *method {
                     ast::required(*) => {}

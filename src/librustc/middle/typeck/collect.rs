@@ -228,9 +228,9 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                             trait_ty: ty::t) {
     fn store_methods<T>(ccx: &CrateCtxt,
                         id: ast::node_id,
-                        stuff: ~[T],
+                        stuff: &[T],
                         f: &fn(v: &T) -> ty::method) {
-        ty::store_trait_methods(ccx.tcx, id, @vec::map(stuff, f));
+        ty::store_trait_methods(ccx.tcx, id, @stuff.map(f));
     }
 
     fn make_static_method_ty(ccx: &CrateCtxt,
@@ -285,7 +285,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                 node: ast::item_trait(ref generics, _, ref ms),
                 _
             }, _) => {
-        store_methods::<ast::trait_method>(ccx, id, (/*bad*/copy *ms), |m| {
+        store_methods::<ast::trait_method>(ccx, id, *ms, |m| {
             let def_id;
             match *m {
                 ast::required(ref ty_method) => {
@@ -502,7 +502,7 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
                                    rp: Option<ty::region_variance>,
                                    selfty: ty::t,
                                    a_trait_ty: @ast::trait_ref,
-                                   impl_ms: ~[ConvertedMethod]) {
+                                   impl_ms: &[ConvertedMethod]) {
 
     let tcx = ccx.tcx;
     let (did, tpt) = instantiate_trait_ref(ccx, a_trait_ty, rp);
@@ -643,8 +643,7 @@ pub fn convert(ccx: &CrateCtxt, it: @ast::item) {
         // XXX: Bad copy of `ms` below.
         let cms = convert_methods(ccx, *ms, rp, i_bounds);
         for trait_ref.each |t| {
-            check_methods_against_trait(ccx, generics, rp, selfty,
-                                        *t, /*bad*/copy cms);
+            check_methods_against_trait(ccx, generics, rp, selfty, *t, cms);
         }
       }
       ast::item_trait(ref generics, ref supertraits, ref trait_methods) => {
@@ -656,7 +655,7 @@ pub fn convert(ccx: &CrateCtxt, it: @ast::item) {
         ensure_supertraits(ccx, it.id, it.span, rp, *supertraits);
 
         let (_, provided_methods) =
-            split_trait_methods(/*bad*/copy *trait_methods);
+            split_trait_methods(*trait_methods);
         let (bounds, _) = mk_substs(ccx, generics, rp);
         let _ = convert_methods(ccx, provided_methods, rp, bounds);
       }

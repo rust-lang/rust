@@ -132,15 +132,12 @@ pub fn build_configuration(sess: Session, +argv0: ~str, input: input) ->
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-fn parse_cfgspecs(cfgspecs: ~[~str],
+fn parse_cfgspecs(+cfgspecs: ~[~str],
                   demitter: diagnostic::Emitter) -> ast::crate_cfg {
-    let mut meta = ~[];
-    for cfgspecs.each |s| {
+    do vec::map_consume(cfgspecs) |s| {
         let sess = parse::new_parse_sess(Some(demitter));
-        let m = parse::parse_meta_from_source_str(~"cfgspec", @/*bad*/ copy *s, ~[], sess);
-        meta.push(m)
+        parse::parse_meta_from_source_str(~"cfgspec", @s, ~[], sess)
     }
-    return meta;
 }
 
 pub enum input {
@@ -580,9 +577,9 @@ pub fn build_session_options(+binary: ~str,
     let debug_map = session::debugging_opts_map();
     for debug_flags.each |debug_flag| {
         let mut this_bit = 0u;
-        for debug_map.each |pair| {
-            let (name, _, bit) = /*bad*/copy *pair;
-            if name == *debug_flag { this_bit = bit; break; }
+        for debug_map.each |tuple| {
+            let (name, bit) = match *tuple { (ref a, _, b) => (a, b) };
+            if name == debug_flag { this_bit = bit; break; }
         }
         if this_bit == 0u {
             early_error(demitter, fmt!("unknown debug flag: %s", *debug_flag))
@@ -647,7 +644,7 @@ pub fn build_session_options(+binary: ~str,
     let target =
         match target_opt {
             None => host_triple(),
-            Some(ref s) => (/*bad*/copy *s)
+            Some(s) => s
         };
 
     let addl_lib_search_paths =

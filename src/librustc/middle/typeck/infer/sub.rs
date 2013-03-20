@@ -69,7 +69,7 @@ impl Combine for Sub {
         }
     }
 
-    fn mts(&self, a: ty::mt, b: ty::mt) -> cres<ty::mt> {
+    fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
         debug!("mts(%s <: %s)", a.inf_str(self.infcx), b.inf_str(self.infcx));
 
         if a.mutbl != b.mutbl && b.mutbl != m_const {
@@ -80,11 +80,11 @@ impl Combine for Sub {
           m_mutbl => {
             // If supertype is mut, subtype must match exactly
             // (i.e., invariant if mut):
-            eq_tys(self, a.ty, b.ty).then(|| Ok(a) )
+            eq_tys(self, a.ty, b.ty).then(|| Ok(copy *a) )
           }
           m_imm | m_const => {
             // Otherwise we can be covariant:
-            self.tys(a.ty, b.ty).chain(|_t| Ok(a) )
+            self.tys(a.ty, b.ty).chain(|_t| Ok(copy *a) )
           }
         }
     }

@@ -645,7 +645,7 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
     debug!("encoding info for item at %s",
            ecx.tcx.sess.codemap.span_to_str(item.span));
 
-    match /*bad*/copy item.node {
+    match item.node {
       item_const(_, _) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
@@ -1196,10 +1196,10 @@ fn synthesize_crate_attrs(ecx: @EncodeContext,
             if *attr::get_attr_name(attr) != ~"link" {
                 /*bad*/copy *attr
             } else {
-                match /*bad*/copy attr.node.value.node {
-                  meta_list(_, l) => {
+                match attr.node.value.node {
+                  meta_list(_, ref l) => {
                     found_link_attr = true;;
-                    synthesize_link_attr(ecx, l)
+                    synthesize_link_attr(ecx, /*bad*/copy *l)
                   }
                   _ => /*bad*/copy *attr
                 }

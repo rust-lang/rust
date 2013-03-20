@@ -98,7 +98,7 @@ fn traverse_public_mod(cx: ctx, mod_id: node_id, m: &_mod) {
 fn traverse_public_item(cx: ctx, item: @item) {
     if cx.rmap.contains_key(&item.id) { return; }
     cx.rmap.insert(item.id, ());
-    match /*bad*/copy item.node {
+    match item.node {
       item_mod(ref m) => traverse_public_mod(cx, item.id, m),
       item_foreign_mod(ref nm) => {
           if !traverse_exports(cx, item.id) {

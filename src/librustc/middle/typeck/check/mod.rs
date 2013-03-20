@@ -577,18 +577,18 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
            ty::item_path_str(ccx.tcx, local_def(it.id)));
     let _indenter = indenter();
 
-    match /*bad*/copy it.node {
+    match it.node {
       ast::item_const(_, e) => check_const(ccx, it.span, e, it.id),
       ast::item_enum(ref enum_definition, _) => {
         check_enum_variants(ccx,
                             it.span,
-                            /*bad*/copy (*enum_definition).variants,
+                            enum_definition.variants,
                             it.id);
       }
       ast::item_fn(ref decl, _, _, ref body) => {
         check_bare_fn(ccx, decl, body, it.id, None);
       }
-      ast::item_impl(_, _, ty, ms) => {
+      ast::item_impl(_, _, ty, ref ms) => {
         let rp = ccx.tcx.region_paramd_items.find(&it.id);
         debug!("item_impl %s with id %d rp %?",
                *ccx.tcx.sess.str_of(it.ident), it.id, rp);
@@ -617,7 +617,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
         let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);
         check_bounds_are_used(ccx, t.span, &generics.ty_params, tpt_ty);
       }
-      ast::item_foreign_mod(m) => {
+      ast::item_foreign_mod(ref m) => {
         if syntax::attr::foreign_abi(it.attrs) ==
             either::Right(ast::foreign_abi_rust_intrinsic) {
             for m.items.each |item| {
@@ -1157,7 +1157,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         call_expr_id: ast::node_id,
         in_fty: ty::t,
         callee_expr: @ast::expr,
-        args: ~[@ast::expr],
+        args: &[@ast::expr],
         sugar: ast::CallSugar,
         deref_args: DerefArgs) -> (ty::t, bool)
     {
@@ -1309,7 +1309,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                             call_expr_id: ast::node_id,
                             fn_ty: ty::t,
                             expr: @ast::expr,
-                            +args: ~[@ast::expr],
+                            args: &[@ast::expr],
                             bot: bool,
                             sugar: ast::CallSugar) -> bool
     {
@@ -1331,14 +1331,14 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                   sp: span,
                   call_expr_id: ast::node_id,
                   f: @ast::expr,
-                  +args: ~[@ast::expr],
+                  args: &[@ast::expr],
                   sugar: ast::CallSugar)
                -> bool {
         // Index expressions need to be handled separately, to inform them
         // that they appear in call position.
-        let mut bot = match /*bad*/copy f.node {
-            ast::expr_field(base, field, tys) => {
-                check_field(fcx, f, true, base, field, tys)
+        let mut bot = match f.node {
+            ast::expr_field(base, field, ref tys) => {
+                check_field(fcx, f, true, base, field, *tys)
             }
             _ => check_expr(fcx, f)
         };
@@ -1358,8 +1358,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                          expr: @ast::expr,
                          rcvr: @ast::expr,
                          method_name: ast::ident,
-                         +args: ~[@ast::expr],
-                         tps: ~[@ast::Ty],
+                         args: &[@ast::expr],
+                         tps: &[@ast::Ty],
                          sugar: ast::CallSugar)
                       -> bool {
         let bot = check_expr(fcx, rcvr);
@@ -1594,7 +1594,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
     fn check_user_unop(fcx: @mut FnCtxt,
                        op_str: ~str,
-                       mname: ~str,
+                       +mname: ~str,
                        ex: @ast::expr,
                        rhs_expr: @ast::expr,
                        rhs_t: ty::t)
@@ -1603,7 +1603,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                ex,
                                rhs_expr,
                                rhs_t,
-                               fcx.tcx().sess.ident_of(/*bad*/ copy mname),
+                               fcx.tcx().sess.ident_of(mname),
                                ~[],
                                DontDerefArgs,
                                DontAutoderefReceiver) {
@@ -1713,7 +1713,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                    is_callee: bool,
                    base: @ast::expr,
                    field: ast::ident,
-                   tys: ~[@ast::Ty])
+                   tys: &[@ast::Ty])
                 -> bool {
         let tcx = fcx.ccx.tcx;
         let bot = check_expr(fcx, base);
@@ -1791,8 +1791,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                       span: span,
                                       class_id: ast::def_id,
                                       substitutions: &ty::substs,
-                                      field_types: ~[ty::field_ty],
-                                      ast_fields: ~[ast::field],
+                                      field_types: &[ty::field_ty],
+                                      ast_fields: &[ast::field],
                                       check_completeness: bool)
                                    -> bool {
         let tcx = fcx.ccx.tcx;
@@ -1870,7 +1870,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                 id: ast::node_id,
                                 span: codemap::span,
                                 class_id: ast::def_id,
-                                fields: ~[ast::field],
+                                fields: &[ast::field],
                                 base_expr: Option<@ast::expr>)
                              -> bool {
         let mut bot = false;
@@ -1955,7 +1955,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                  span: codemap::span,
                                  enum_id: ast::def_id,
                                  variant_id: ast::def_id,
-                                 fields: ~[ast::field])
+                                 fields: &[ast::field])
                               -> bool {
         let mut bot = false;
         let tcx = fcx.ccx.tcx;
@@ -2147,14 +2147,14 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     let tcx = fcx.ccx.tcx;
     let id = expr.id;
     let mut bot = false;
-    match /*bad*/copy expr.node {
+    match expr.node {
       ast::expr_vstore(ev, vst) => {
-        let typ = match /*bad*/copy ev.node {
+        let typ = match ev.node {
           ast::expr_lit(@codemap::spanned { node: ast::lit_str(s), _ }) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, str::len(*s), vst);
             ty::mk_estr(tcx, tt)
           }
-          ast::expr_vec(args, mutbl) => {
+          ast::expr_vec(ref args, mutbl) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, args.len(), vst);
             let mutability;
             match vst {
@@ -2317,7 +2317,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let region_lb = ty::re_scope(expr.id);
         instantiate_path(fcx, pth, tpt, expr.span, expr.id, region_lb);
       }
-      ast::expr_inline_asm(_, ins, outs, _, _, _) => {
+      ast::expr_inline_asm(_, ref ins, ref outs, _, _, _) => {
           fcx.require_unsafe(expr.span, ~"use of inline assembly");
 
           for ins.each |&(_, in)| {
@@ -2389,7 +2389,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         bot = !may_break(tcx, expr.id, body);
       }
       ast::expr_match(discrim, ref arms) => {
-        bot = _match::check_match(fcx, expr, discrim, (/*bad*/copy *arms));
+        bot = _match::check_match(fcx, expr, discrim, *arms);
       }
       ast::expr_fn_block(ref decl, ref body) => {
         check_expr_fn(fcx, expr, None,
@@ -2441,11 +2441,11 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             };
         fcx.write_ty(id, typ);
       }
-      ast::expr_call(f, args, sugar) => {
-        bot = check_call(fcx, expr.span, expr.id, f, args, sugar);
+      ast::expr_call(f, ref args, sugar) => {
+        bot = check_call(fcx, expr.span, expr.id, f, *args, sugar);
       }
-      ast::expr_method_call(rcvr, ident, tps, args, sugar) => {
-        bot = check_method_call(fcx, expr, rcvr, ident, args, tps, sugar);
+      ast::expr_method_call(rcvr, ident, ref tps, ref args, sugar) => {
+        bot = check_method_call(fcx, expr, rcvr, ident, *args, *tps, sugar);
       }
       ast::expr_cast(e, t) => {
         bot = check_expr(fcx, e);
@@ -2528,7 +2528,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
         fcx.write_ty(id, t_1);
       }
-      ast::expr_vec(args, mutbl) => {
+      ast::expr_vec(ref args, mutbl) => {
         let t: ty::t = fcx.infcx().next_ty_var();
         for args.each |e| { bot |= check_expr_has_type(fcx, *e, t); }
         let typ = ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutbl},
@@ -2544,7 +2544,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                             ty::vstore_fixed(count));
         fcx.write_ty(id, t);
       }
-      ast::expr_tup(elts) => {
+      ast::expr_tup(ref elts) => {
         let flds = unpack_expected(fcx, expected, |sty| {
             match *sty { ty::ty_tup(ref flds) => Some(copy *flds), _ => None }
         });
@@ -2560,11 +2560,11 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         match tcx.def_map.find(&id) {
             Some(ast::def_struct(type_def_id)) => {
                 check_struct_constructor(fcx, id, expr.span, type_def_id,
-                                         (/*bad*/copy *fields), base_expr);
+                                         *fields, base_expr);
             }
             Some(ast::def_variant(enum_id, variant_id)) => {
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
-                                          variant_id, (/*bad*/copy *fields));
+                                          variant_id, *fields);
             }
             _ => {
                 tcx.sess.span_bug(path.span, ~"structure constructor does \
@@ -2572,8 +2572,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
         }
       }
-      ast::expr_field(base, field, tys) => {
-        bot = check_field(fcx, expr, false, base, field, tys);
+      ast::expr_field(base, field, ref tys) => {
+        bot = check_field(fcx, expr, false, base, field, *tys);
       }
       ast::expr_index(base, idx) => {
           bot |= check_expr(fcx, base);
@@ -2678,8 +2678,8 @@ pub fn check_stmt(fcx: @mut FnCtxt, stmt: @ast::stmt) -> bool {
     match stmt.node {
       ast::stmt_decl(decl, id) => {
         node_id = id;
-        match /*bad*/copy decl.node {
-          ast::decl_local(ls) => for ls.each |l| {
+        match decl.node {
+          ast::decl_local(ref ls) => for ls.each |l| {
             bot |= check_decl_local(fcx, *l);
           },
           ast::decl_item(_) => {/* ignore for now */ }
@@ -2803,11 +2803,11 @@ pub fn check_instantiable(tcx: ty::ctxt,
 
 pub fn check_enum_variants(ccx: @mut CrateCtxt,
                            sp: span,
-                           +vs: ~[ast::variant],
+                           vs: &[ast::variant],
                            id: ast::node_id) {
     fn do_check(ccx: @mut CrateCtxt,
                 sp: span,
-                vs: ~[ast::variant],
+                vs: &[ast::variant],
                 id: ast::node_id,
                 disr_vals: &mut ~[int],
                 disr_val: &mut int,
@@ -2867,7 +2867,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                     arg_tys = None;
                     do_check(ccx,
                              sp,
-                             /*bad*/copy vs,
+                             vs,
                              id,
                              &mut *disr_vals,
                              &mut *disr_val,

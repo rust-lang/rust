@@ -43,7 +43,7 @@ impl InferStr for FnSig {
 
 impl InferStr for ty::mt {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
-        mt_to_str(cx.tcx, *self)
+        mt_to_str(cx.tcx, self)
     }
 }
 

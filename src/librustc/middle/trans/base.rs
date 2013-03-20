@@ -638,7 +638,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
     }
 
     let mut cx = cx;
-    match /*bad*/copy ty::get(t).sty {
+    match ty::get(t).sty {
       ty::ty_struct(*) => {
           let repr = adt::represent_type(cx.ccx(), t);
           do expr::with_field_tys(cx.tcx(), t, None) |discr, field_tys| {
@@ -653,9 +653,9 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         let (base, len) = tvec::get_base_and_len(cx, av, t);
         cx = tvec::iter_vec_raw(cx, base, t, len, f);
       }
-      ty::ty_tup(args) => {
+      ty::ty_tup(ref args) => {
           let repr = adt::represent_type(cx.ccx(), t);
-          for vec::eachi(args) |i, arg| {
+          for args.eachi |i, arg| {
               let llfld_a = adt::trans_field_ptr(cx, repr, av, 0, i);
               cx = f(cx, llfld_a, *arg);
           }
@@ -756,9 +756,9 @@ pub fn cast_shift_rhs(op: ast::binop,
 pub fn fail_if_zero(cx: block, span: span, divmod: ast::binop,
                     rhs: ValueRef, rhs_t: ty::t) -> block {
     let text = if divmod == ast::div {
-        ~"divide by zero"
+        @~"divide by zero"
     } else {
-        ~"modulo zero"
+        @~"modulo zero"
     };
     let is_zero = match ty::get(rhs_t).sty {
       ty::ty_int(t) => {
@@ -775,7 +775,7 @@ pub fn fail_if_zero(cx: block, span: span, divmod: ast::binop,
       }
     };
     do with_cond(cx, is_zero) |bcx| {
-        controlflow::trans_fail(bcx, Some(span), @/*bad*/copy text)
+        controlflow::trans_fail(bcx, Some(span), text)
     }
 }
 
@@ -914,7 +914,7 @@ pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
     let mut cached = None, pad_bcx = bcx; // Guaranteed to be set below
     do in_lpad_scope_cx(bcx) |inf| {
         // If there is a valid landing pad still around, use it
-        match copy inf.landing_pad {
+        match inf.landing_pad {
           Some(target) => cached = Some(target),
           None => {
             pad_bcx = lpad_block(bcx, ~"unwind");
@@ -944,7 +944,7 @@ pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
 
     // We store the retval in a function-central alloca, so that calls to
     // Resume can find it.
-    match copy bcx.fcx.personality {
+    match bcx.fcx.personality {
       Some(addr) => Store(pad_bcx, llretval, addr),
       None => {
         let addr = alloca(pad_bcx, val_ty(llretval));
@@ -1143,9 +1143,9 @@ pub fn trans_stmt(cx: block, s: ast::stmt) -> block {
             bcx = expr::trans_into(cx, e, expr::Ignore);
         }
         ast::stmt_decl(d, _) => {
-            match /*bad*/copy d.node {
-                ast::decl_local(locals) => {
-                    for vec::each(locals) |local| {
+            match d.node {
+                ast::decl_local(ref locals) => {
+                    for locals.each |local| {
                         bcx = init_local(bcx, *local);
                         if cx.sess().opts.extra_debuginfo {
                             debuginfo::create_local_var(bcx, *local);
@@ -1390,9 +1390,9 @@ pub fn block_locals(b: &ast::blk, it: &fn(@ast::local)) {
     for vec::each(b.node.stmts) |s| {
         match s.node {
           ast::stmt_decl(d, _) => {
-            match /*bad*/copy d.node {
-              ast::decl_local(locals) => {
-                for vec::each(locals) |local| {
+            match d.node {
+              ast::decl_local(ref locals) => {
+                for locals.each |local| {
                     it(*local);
                 }
               }
@@ -1771,7 +1771,7 @@ pub fn trans_closure(ccx: @CrateContext,
     let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, id, impl_id, param_substs,
                                   Some(body.span));
     let raw_llargs = create_llargs_for_fn_args(fcx, ty_self,
-                                               /*bad*/copy decl.inputs);
+                                               decl.inputs);
 
     // Set GC for function.
     if ccx.sess.opts.gc {
@@ -1871,8 +1871,8 @@ pub fn trans_enum_variant(ccx: @CrateContext,
                                param_substs, None);
     let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
     let ty_param_substs = match param_substs {
-      Some(ref substs) => /*bad*/copy substs.tys,
-      None => ~[]
+        Some(ref substs) => { copy substs.tys }
+        None => ~[]
     };
     let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, variant.node.id));
@@ -1932,8 +1932,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
                                param_substs,
                                None);
 
-    // XXX: Bad copy.
-    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, copy fn_args);
+    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
 
     let bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
@@ -1942,7 +1941,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
 
     // XXX is there a better way to reconstruct the ty::t?
     let ty_param_substs = match param_substs {
-        Some(ref substs) => /*bad*/copy substs.tys,
+        Some(ref substs) => { copy substs.tys }
         None => ~[]
     };
     let ctor_ty = ty::subst_tps(ccx.tcx, ty_param_substs, None,
@@ -2022,7 +2021,7 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: ast::enum_def,
         match variant.node.kind {
             ast::tuple_variant_kind(ref args) if args.len() > 0 => {
                 let llfn = get_item_val(ccx, variant.node.id);
-                trans_enum_variant(ccx, id, *variant, /*bad*/copy *args,
+                trans_enum_variant(ccx, id, *variant, *args,
                                    disr_val, None, llfn);
             }
             ast::tuple_variant_kind(_) => {
@@ -2051,7 +2050,7 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
         // tjc: ?
         _ => fail!(~"trans_item"),
     };
-    match /*bad*/copy item.node {
+    match item.node {
       ast::item_fn(ref decl, purity, ref generics, ref body) => {
         if purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
@@ -2096,11 +2095,11 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
       ast::item_foreign_mod(ref foreign_mod) => {
         let abi = match attr::foreign_abi(item.attrs) {
             Right(abi_) => abi_,
-            Left(ref msg) => ccx.sess.span_fatal(item.span, /*bad*/copy *msg)
+            Left(msg) => ccx.sess.span_fatal(item.span, msg)
         };
         foreign::trans_foreign_mod(ccx, foreign_mod, abi);
       }
-      ast::item_struct(struct_def, generics) => {
+      ast::item_struct(struct_def, ref generics) => {
         if !generics.is_type_parameterized() {
             trans_struct_def(ccx, struct_def, path, item.id);
         }
@@ -2124,7 +2123,7 @@ pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def,
         // otherwise this is a unit-like struct.
         Some(ctor_id) if struct_def.fields.len() > 0 => {
             let llfndecl = get_item_val(ccx, ctor_id);
-            trans_tuple_struct(ccx, /*bad*/copy struct_def.fields,
+            trans_tuple_struct(ccx, struct_def.fields,
                                ctor_id, None, llfndecl);
         }
         Some(_) | None => {}
@@ -2405,7 +2404,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                                                  i.id,
                                                  i.attrs)
                 };
-                set_inline_hint_if_appr(/*bad*/copy i.attrs, llfn);
+                set_inline_hint_if_appr(i.attrs, llfn);
                 llfn
               }
               _ => fail!(~"get_item_val: weird result in table")
@@ -2479,8 +2478,8 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
 
           ast_map::node_variant(ref v, enm, pth) => {
             let llfn;
-            match /*bad*/copy (*v).node.kind {
-                ast::tuple_variant_kind(args) => {
+            match v.node.kind {
+                ast::tuple_variant_kind(ref args) => {
                     fail_unless!(args.len() != 0u);
                     let pth = vec::append(/*bad*/copy *pth,
                                           ~[path_name(enm.ident),
@@ -2543,7 +2542,7 @@ pub fn register_method(ccx: @CrateContext,
     let pth = vec::append(/*bad*/copy *pth, ~[path_name((ccx.names)(~"meth")),
                                   path_name(m.ident)]);
     let llfn = register_fn_full(ccx, m.span, pth, id, m.attrs, mty);
-    set_inline_hint_if_appr(/*bad*/copy m.attrs, llfn);
+    set_inline_hint_if_appr(m.attrs, llfn);
     llfn
 }
 
@@ -3013,8 +3012,8 @@ pub fn trans_crate(sess: session::Session,
             llvm::LLVMModuleCreateWithNameInContext
                 (buf, llvm::LLVMGetGlobalContext())
         });
-        let data_layout = /*bad*/copy sess.targ_cfg.target_strs.data_layout;
-        let targ_triple = /*bad*/copy sess.targ_cfg.target_strs.target_triple;
+        let data_layout: &str = sess.targ_cfg.target_strs.data_layout;
+        let targ_triple: &str = sess.targ_cfg.target_strs.target_triple;
         let _: () =
             str::as_c_str(data_layout,
                         |buf| llvm::LLVMSetDataLayout(llmod, buf));
@@ -3022,8 +3021,7 @@ pub fn trans_crate(sess: session::Session,
             str::as_c_str(targ_triple,
                         |buf| llvm::LLVMSetTarget(llmod, buf));
         let targ_cfg = sess.targ_cfg;
-        let td = mk_target_data(
-            /*bad*/copy sess.targ_cfg.target_strs.data_layout);
+        let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);
         let tn = mk_type_names();
         let intrinsics = declare_intrinsics(llmod);
         if sess.opts.extra_debuginfo {

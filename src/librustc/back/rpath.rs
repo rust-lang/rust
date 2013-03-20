@@ -45,8 +45,8 @@ pub fn get_rpath_flags(sess: session::Session, out_filename: &Path)
     // where rustrt is and we know every rust program needs it
     let libs = vec::append_one(libs, get_sysroot_absolute_rt_lib(sess));
 
-    let target_triple = /*bad*/copy sess.opts.target_triple;
-    let rpaths = get_rpaths(os, &sysroot, output, libs, target_triple);
+    let rpaths = get_rpaths(os, &sysroot, output, libs,
+                            sess.opts.target_triple);
     rpaths_to_flags(rpaths)
 }
 
@@ -140,8 +140,8 @@ pub fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
     let abs2 = abs2.normalize();
     debug!("finding relative path from %s to %s",
            abs1.to_str(), abs2.to_str());
-    let split1 = /*bad*/copy abs1.components;
-    let split2 = /*bad*/copy abs2.components;
+    let split1: &[~str] = abs1.components;
+    let split2: &[~str] = abs2.components;
     let len1 = vec::len(split1);
     let len2 = vec::len(split2);
     fail_unless!(len1 > 0);

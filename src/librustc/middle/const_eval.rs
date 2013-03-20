@@ -81,7 +81,7 @@ pub fn classify(e: @expr,
       Some(x) => x,
       None => {
         let cn =
-            match /*bad*/copy e.node {
+            match e.node {
               ast::expr_lit(lit) => {
                 match lit.node {
                   ast::lit_str(*) |
@@ -101,9 +101,9 @@ pub fn classify(e: @expr,
                      classify(b, def_map, tcx))
               }
 
-              ast::expr_tup(es) |
-              ast::expr_vec(es, ast::m_imm) => {
-                join_all(vec::map(es, |e| classify(*e, def_map, tcx)))
+              ast::expr_tup(ref es) |
+              ast::expr_vec(ref es, ast::m_imm) => {
+                join_all(vec::map(*es, |e| classify(*e, def_map, tcx)))
               }
 
               ast::expr_vstore(e, vstore) => {
