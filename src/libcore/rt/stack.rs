@@ -37,8 +37,7 @@ pub impl StackSegment {
 pub struct StackPool(());
 
 impl StackPool {
-
-    static fn new() -> StackPool { StackPool(()) }
+    static pub fn new() -> StackPool { StackPool(()) }
 
     fn take_segment(&self, min_size: uint) -> StackSegment {
         StackSegment::new(min_size)

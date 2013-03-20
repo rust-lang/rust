@@ -3762,7 +3762,7 @@ pub fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
             vec::append_one(/*bad*/copy *path, item_elt)
           }
 
-          ast_map::node_foreign_item(nitem, _, path) => {
+          ast_map::node_foreign_item(nitem, _, _, path) => {
             vec::append_one(/*bad*/copy *path,
                             ast_map::path_name(nitem.ident))
           }
