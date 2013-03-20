@@ -320,12 +320,12 @@ pub fn trans_static_method_callee(bcx: block,
     let vtbls = resolve_vtables_in_fn_ctxt(
         bcx.fcx, ccx.maps.vtable_map.get(&callee_id));
 
-    match /*bad*/copy vtbls[bound_index] {
-        typeck::vtable_static(impl_did, rcvr_substs, rcvr_origins) => {
+    match vtbls[bound_index] {
+        typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
 
             let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
             let callee_substs = combine_impl_and_methods_tps(
-                bcx, mth_id, impl_did, callee_id, rcvr_substs);
+                bcx, mth_id, impl_did, callee_id, *rcvr_substs);
             let callee_origins = combine_impl_and_methods_origins(
                 bcx, mth_id, impl_did, callee_id, rcvr_origins);
 
@@ -347,7 +347,7 @@ pub fn trans_static_method_callee(bcx: block,
     }
 }
 
-pub fn method_from_methods(ms: ~[@ast::method], name: ast::ident)
+pub fn method_from_methods(ms: &[@ast::method], name: ast::ident)
     -> Option<ast::def_id> {
     ms.find(|m| m.ident == name).map(|m| ast_util::local_def(m.id))
 }
@@ -360,7 +360,7 @@ pub fn method_with_name(ccx: @CrateContext, impl_id: ast::def_id,
                 node: ast::item_impl(_, _, _, ref ms),
                 _
             }, _) => {
-            method_from_methods(/*bad*/copy *ms, name).get()
+            method_from_methods(*ms, name).get()
           }
           _ => fail!(~"method_with_name")
         }
@@ -376,7 +376,7 @@ pub fn method_with_name_or_default(ccx: @CrateContext, impl_id: ast::def_id,
           ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref ms), _
           }, _) => {
-              let did = method_from_methods(/*bad*/copy *ms, name);
+              let did = method_from_methods(*ms, name);
               if did.is_some() {
                   return did.get();
               } else {
@@ -440,7 +440,7 @@ pub fn trans_monomorphized_callee(bcx: block,
                                -> Callee {
     let _icx = bcx.insn_ctxt("impl::trans_monomorphized_callee");
     return match vtbl {
-      typeck::vtable_static(impl_did, rcvr_substs, rcvr_origins) => {
+      typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
           let ccx = bcx.ccx();
           let mname = ty::trait_methods(ccx.tcx, trait_id)[n_method].ident;
           let mth_id = method_with_name_or_default(
@@ -453,7 +453,7 @@ pub fn trans_monomorphized_callee(bcx: block,
           // create a concatenated set of substitutions which includes
           // those from the impl and those from the method:
           let callee_substs = combine_impl_and_methods_tps(
-              bcx, mth_id, impl_did, callee_id, rcvr_substs);
+              bcx, mth_id, impl_did, callee_id, *rcvr_substs);
           let callee_origins = combine_impl_and_methods_origins(
               bcx, mth_id, impl_did, callee_id, rcvr_origins);
 
@@ -490,7 +490,7 @@ pub fn combine_impl_and_methods_tps(bcx: block,
                                     mth_did: ast::def_id,
                                     impl_did: ast::def_id,
                                     callee_id: ast::node_id,
-                                    +rcvr_substs: ~[ty::t])
+                                    rcvr_substs: &[ty::t])
                                  -> ~[ty::t] {
     /*!
     *
@@ -514,7 +514,7 @@ pub fn combine_impl_and_methods_tps(bcx: block,
     let node_substs = node_id_type_params(bcx, callee_id);
     debug!("rcvr_substs=%?", rcvr_substs.map(|t| bcx.ty_to_str(*t)));
     let ty_substs
-        = vec::append(rcvr_substs,
+        = vec::append(rcvr_substs.to_vec(),
                       vec::tailn(node_substs,
                                  node_substs.len() - n_m_tps));
     debug!("n_m_tps=%?", n_m_tps);

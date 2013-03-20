@@ -218,7 +218,7 @@ pub fn region_to_str_space(cx: ctxt, prefix: &str, region: Region) -> ~str {
     }
 }
 
-pub fn mt_to_str(cx: ctxt, m: mt) -> ~str {
+pub fn mt_to_str(cx: ctxt, m: &mt) -> ~str {
     let mstr = match m.mutbl {
       ast::m_mutbl => "mut ",
       ast::m_imm => "",
@@ -391,7 +391,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                        &m.fty.sig) + ~";"
     }
     fn field_to_str(cx: ctxt, f: field) -> ~str {
-        return *cx.sess.str_of(f.ident) + ~": " + mt_to_str(cx, f.mt);
+        return *cx.sess.str_of(f.ident) + ~": " + mt_to_str(cx, &f.mt);
     }
 
     // if there is an id, print that instead of the structural type:
@@ -402,7 +402,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     }*/
 
     // pretty print the structural type representation:
-    return match /*bad*/copy ty::get(typ).sty {
+    return match ty::get(typ).sty {
       ty_nil => ~"()",
       ty_bot => ~"!",
       ty_bool => ~"bool",
@@ -413,15 +413,15 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_uint(t) => ast_util::uint_ty_to_str(t),
       ty_float(ast::ty_f) => ~"float",
       ty_float(t) => ast_util::float_ty_to_str(t),
-      ty_box(tm) => ~"@" + mt_to_str(cx, tm),
-      ty_uniq(tm) => ~"~" + mt_to_str(cx, tm),
-      ty_ptr(tm) => ~"*" + mt_to_str(cx, tm),
-      ty_rptr(r, tm) => {
+      ty_box(ref tm) => ~"@" + mt_to_str(cx, tm),
+      ty_uniq(ref tm) => ~"~" + mt_to_str(cx, tm),
+      ty_ptr(ref tm) => ~"*" + mt_to_str(cx, tm),
+      ty_rptr(r, ref tm) => {
         region_to_str_space(cx, ~"&", r) + mt_to_str(cx, tm)
       }
-      ty_unboxed_vec(tm) => { ~"unboxed_vec<" + mt_to_str(cx, tm) + ~">" }
+      ty_unboxed_vec(ref tm) => { ~"unboxed_vec<" + mt_to_str(cx, tm) + ~">" }
       ty_type => ~"type",
-      ty_tup(elems) => {
+      ty_tup(ref elems) => {
         let strs = elems.map(|elem| ty_to_str(cx, *elem));
         ~"(" + str::connect(strs, ~",") + ~")"
       }
@@ -455,7 +455,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         let ty = parameterized(cx, base, substs.self_r, substs.tps);
         fmt!("%s%s", trait_store_to_str(cx, s), ty)
       }
-      ty_evec(mt, vs) => {
+      ty_evec(ref mt, vs) => {
         vstore_ty_to_str(cx, fmt!("%s", mt_to_str(cx, mt)), vs)
       }
       ty_estr(vs) => fmt!("%s%s", vstore_to_str(cx, vs), ~"str"),

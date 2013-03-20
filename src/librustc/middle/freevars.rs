@@ -56,7 +56,7 @@ fn collect_freevars(def_map: resolve::DefMap, blk: &ast::blk)
                     Some(df) => {
                       let mut def = df;
                       while i < depth {
-                        match copy def {
+                        match def {
                           ast::def_upvar(_, inner, _, _) => { def = *inner; }
                           _ => break
                         }

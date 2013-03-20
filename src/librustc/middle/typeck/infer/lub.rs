@@ -47,7 +47,7 @@ impl Combine for Lub {
     fn lub(&self) -> Lub { Lub(**self) }
     fn glb(&self) -> Glb { Glb(**self) }
 
-    fn mts(&self, a: ty::mt, b: ty::mt) -> cres<ty::mt> {
+    fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
         let tcx = self.infcx.tcx;
 
         debug!("%s.mts(%s, %s)",

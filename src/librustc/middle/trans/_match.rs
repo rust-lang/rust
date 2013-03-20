@@ -501,12 +501,13 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
     let tcx = bcx.tcx();
     let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, tcx.def_map, m, col, val) |p| {
-        match /*bad*/copy p.node {
-            ast::pat_enum(_, subpats) => {
+        match p.node {
+            ast::pat_enum(_, ref subpats) => {
                 if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
-                    Some(option::get_or_default(subpats,
-                                             vec::from_elem(variant_size,
-                                                            dummy)))
+                    match *subpats {
+                        None => Some(vec::from_elem(variant_size, dummy)),
+                        _ => copy *subpats
+                    }
                 } else {
                     None
                 }
@@ -534,7 +535,7 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
             ast::pat_range(l1, l2) => {
                 if opt_eq(tcx, &range(l1, l2), opt) {Some(~[])} else {None}
             }
-            ast::pat_struct(_, field_pats, _) => {
+            ast::pat_struct(_, ref field_pats, _) => {
                 if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
                     // Look up the struct variant ID.
                     let struct_id;
@@ -565,14 +566,14 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
                     None
                 }
             }
-            ast::pat_vec(before, slice, after) => {
+            ast::pat_vec(ref before, slice, ref after) => {
                 match slice {
-                    Some(_) => {
+                    Some(slice) => {
                         let n = before.len() + after.len();
                         let i = before.len();
                         if opt_eq(tcx, &vec_len_ge(n, i), opt) {
-                            Some(vec::concat(
-                                &[before, ~[slice.get()], after]))
+                            Some(vec::append_one(copy *before, slice) +
+                                    *after)
                         } else {
                             None
                         }
@@ -580,7 +581,7 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
                     None => {
                         let n = before.len();
                         if opt_eq(tcx, &vec_len_eq(n), opt) {
-                            Some(copy before)
+                            Some(copy *before)
                         } else {
                             None
                         }
@@ -611,10 +612,10 @@ pub fn enter_rec_or_struct(bcx: block,
 
     let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
-        match /*bad*/copy p.node {
-            ast::pat_struct(_, fpats, _) => {
+        match p.node {
+            ast::pat_struct(_, ref fpats, _) => {
                 let mut pats = ~[];
-                for vec::each(fields) |fname| {
+                for fields.each |fname| {
                     match fpats.find(|p| p.ident == *fname) {
                         None => pats.push(dummy),
                         Some(pat) => pats.push(pat.pat)
@@ -642,8 +643,8 @@ pub fn enter_tup(bcx: block, dm: DefMap, m: &[@Match/&r],
 
     let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
-        match /*bad*/copy p.node {
-            ast::pat_tup(elts) => {
+        match p.node {
+            ast::pat_tup(/*bad*/copy elts) => {
                 Some(elts)
             }
             _ => {
@@ -670,8 +671,8 @@ pub fn enter_tuple_struct(bcx: block,
 
     let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
-        match /*bad*/copy p.node {
-            ast::pat_enum(_, Some(elts)) => Some(elts),
+        match p.node {
+            ast::pat_enum(_, Some(/*bad*/copy elts)) => Some(elts),
             _ => {
                 assert_is_binding_or_wild(bcx, p);
                 Some(vec::from_elem(n_elts, dummy))
@@ -774,7 +775,7 @@ pub fn get_options(bcx: block, m: &[@Match], col: uint) -> ~[Opt] {
     let mut found = ~[];
     for m.each |br| {
         let cur = br.pats[col];
-        match /*bad*/copy cur.node {
+        match cur.node {
             ast::pat_lit(l) => {
                 add_to_set(ccx.tcx, &mut found, lit(ExprLit(l)));
             }
@@ -811,7 +812,7 @@ pub fn get_options(bcx: block, m: &[@Match], col: uint) -> ~[Opt] {
             ast::pat_range(l1, l2) => {
                 add_to_set(ccx.tcx, &mut found, range(l1, l2));
             }
-            ast::pat_vec(before, slice, after) => {
+            ast::pat_vec(ref before, slice, ref after) => {
                 let opt = match slice {
                     None => vec_len_eq(before.len()),
                     Some(_) => vec_len_ge(before.len() + after.len(),
@@ -902,10 +903,10 @@ pub fn collect_record_or_struct_fields(bcx: block,
                                     -> ~[ast::ident] {
     let mut fields: ~[ast::ident] = ~[];
     for vec::each(m) |br| {
-        match /*bad*/copy br.pats[col].node {
-          ast::pat_struct(_, fs, _) => {
+        match br.pats[col].node {
+          ast::pat_struct(_, ref fs, _) => {
             match ty::get(node_id_type(bcx, br.pats[col].id)).sty {
-              ty::ty_struct(*) => extend(&mut fields, fs),
+              ty::ty_struct(*) => extend(&mut fields, *fs),
               _ => ()
             }
           }
@@ -1300,8 +1301,8 @@ pub fn compile_submatch(bcx: block,
     if any_tup_pat(m, col) {
         let tup_ty = node_id_type(bcx, pat_id);
         let tup_repr = adt::represent_type(bcx.ccx(), tup_ty);
-        let n_tup_elts = match /*bad*/copy ty::get(tup_ty).sty {
-          ty::ty_tup(elts) => elts.len(),
+        let n_tup_elts = match ty::get(tup_ty).sty {
+          ty::ty_tup(ref elts) => elts.len(),
           _ => ccx.sess.bug(~"non-tuple type in tuple pattern")
         };
         let tup_vals = do vec::from_fn(n_tup_elts) |i| {
@@ -1701,8 +1702,8 @@ pub fn bind_irrefutable_pat(bcx: block,
     let mut bcx = bcx;
 
     // Necessary since bind_irrefutable_pat is called outside trans_match
-    match /*bad*/copy pat.node {
-        ast::pat_ident(_, _,inner) => {
+    match pat.node {
+        ast::pat_ident(_, _, ref inner) => {
             if pat_is_variant_or_struct(bcx.tcx().def_map, pat) {
                 return bcx;
             }
@@ -1740,7 +1741,7 @@ pub fn bind_irrefutable_pat(bcx: block,
                     bcx, *inner_pat, val, true, binding_mode);
             }
         }
-        ast::pat_enum(_, sub_pats) => {
+        ast::pat_enum(_, ref sub_pats) => {
             match bcx.tcx().def_map.find(&pat.id) {
                 Some(ast::def_variant(enum_id, var_id)) => {
                     let repr = adt::represent_node(bcx, pat.id);
@@ -1762,14 +1763,14 @@ pub fn bind_irrefutable_pat(bcx: block,
                     }
                 }
                 Some(ast::def_struct(*)) => {
-                    match sub_pats {
+                    match *sub_pats {
                         None => {
                             // This is a unit-like struct. Nothing to do here.
                         }
-                        Some(elems) => {
+                        Some(ref elems) => {
                             // This is the tuple struct case.
                             let repr = adt::represent_node(bcx, pat.id);
-                            for vec::eachi(elems) |i, elem| {
+                            for elems.eachi |i, elem| {
                                 let fldptr = adt::trans_field_ptr(bcx, repr,
                                                             val, 0, i);
                                 bcx = bind_irrefutable_pat(bcx,
@@ -1786,12 +1787,12 @@ pub fn bind_irrefutable_pat(bcx: block,
                 }
             }
         }
-        ast::pat_struct(_, fields, _) => {
+        ast::pat_struct(_, ref fields, _) => {
             let tcx = bcx.tcx();
             let pat_ty = node_id_type(bcx, pat.id);
             let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
             do expr::with_field_tys(tcx, pat_ty, None) |discr, field_tys| {
-                for vec::each(fields) |f| {
+                for fields.each |f| {
                     let ix = ty::field_idx_strict(tcx, f.ident, field_tys);
                     let fldptr = adt::trans_field_ptr(bcx, pat_repr, val,
                                                 discr, ix);
@@ -1803,9 +1804,9 @@ pub fn bind_irrefutable_pat(bcx: block,
                 }
             }
         }
-        ast::pat_tup(elems) => {
+        ast::pat_tup(ref elems) => {
             let repr = adt::represent_node(bcx, pat.id);
-            for vec::eachi(elems) |i, elem| {
+            for elems.eachi |i, elem| {
                 let fldptr = adt::trans_field_ptr(bcx, repr, val, 0, i);
                 bcx = bind_irrefutable_pat(bcx,
                                            *elem,

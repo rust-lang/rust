@@ -212,7 +212,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
     self: &AC, rscope: &RS, &&ast_ty: @ast::Ty) -> ty::t {
 
     fn ast_mt_to_mt<AC:AstConv, RS:region_scope + Copy + Durable>(
-        self: &AC, rscope: &RS, mt: ast::mt) -> ty::mt {
+        self: &AC, rscope: &RS, mt: &ast::mt) -> ty::mt {
 
         ty::mt {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl}
     }
@@ -223,14 +223,14 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
     fn mk_pointer<AC:AstConv,RS:region_scope + Copy + Durable>(
         self: &AC,
         rscope: &RS,
-        a_seq_ty: ast::mt,
+        a_seq_ty: &ast::mt,
         vst: ty::vstore,
         constr: &fn(ty::mt) -> ty::t) -> ty::t
     {
         let tcx = self.tcx();
 
         match a_seq_ty.ty.node {
-            ast::ty_vec(mt) => {
+            ast::ty_vec(ref mt) => {
                 let mut mt = ast_mt_to_mt(self, rscope, mt);
                 if a_seq_ty.mutbl == ast::m_mutbl ||
                         a_seq_ty.mutbl == ast::m_const {
@@ -318,34 +318,34 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
     }
 
     tcx.ast_ty_to_ty_cache.insert(ast_ty.id, ty::atttce_unresolved);
-    let typ = match /*bad*/copy ast_ty.node {
+    let typ = match ast_ty.node {
       ast::ty_nil => ty::mk_nil(tcx),
       ast::ty_bot => ty::mk_bot(tcx),
-      ast::ty_box(mt) => {
+      ast::ty_box(ref mt) => {
         mk_pointer(self, rscope, mt, ty::vstore_box,
                    |tmt| ty::mk_box(tcx, tmt))
       }
-      ast::ty_uniq(mt) => {
+      ast::ty_uniq(ref mt) => {
         mk_pointer(self, rscope, mt, ty::vstore_uniq,
                    |tmt| ty::mk_uniq(tcx, tmt))
       }
-      ast::ty_vec(mt) => {
+      ast::ty_vec(ref mt) => {
         tcx.sess.span_err(ast_ty.span,
                           ~"bare `[]` is not a type");
         // return /something/ so they can at least get more errors
         ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, mt),
                     ty::vstore_uniq)
       }
-      ast::ty_ptr(mt) => {
+      ast::ty_ptr(ref mt) => {
         ty::mk_ptr(tcx, ast_mt_to_mt(self, rscope, mt))
       }
-      ast::ty_rptr(region, mt) => {
+      ast::ty_rptr(region, ref mt) => {
         let r = ast_region_to_region(self, rscope, ast_ty.span, region);
         mk_pointer(self, rscope, mt, ty::vstore_slice(r),
                    |tmt| ty::mk_rptr(tcx, r, tmt))
       }
-      ast::ty_tup(fields) => {
-        let flds = vec::map(fields, |t| ast_ty_to_ty(self, rscope, *t));
+      ast::ty_tup(ref fields) => {
+        let flds = fields.map(|t| ast_ty_to_ty(self, rscope, *t));
         ty::mk_tup(tcx, flds)
       }
       ast::ty_bare_fn(ref bf) => {
@@ -413,7 +413,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
           }
         }
       }
-      ast::ty_fixed_length_vec(a_mt, e) => {
+      ast::ty_fixed_length_vec(ref a_mt, e) => {
         match const_eval::eval_const_expr_partial(tcx, e) {
           Ok(ref r) => {
             match *r {

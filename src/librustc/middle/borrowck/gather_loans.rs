@@ -139,7 +139,7 @@ fn req_loans_in_expr(ex: @ast::expr,
     }
 
     // Special checks for various kinds of expressions:
-    match /*bad*/copy ex.node {
+    match ex.node {
       ast::expr_addr_of(mutbl, base) => {
         let base_cmt = self.bccx.cat_expr(base);
 
@@ -150,10 +150,10 @@ fn req_loans_in_expr(ex: @ast::expr,
         visit::visit_expr(ex, self, vt);
       }
 
-      ast::expr_call(f, args, _) => {
+      ast::expr_call(f, ref args, _) => {
         let arg_tys = ty::ty_fn_args(ty::expr_ty(self.tcx(), f));
         let scope_r = ty::re_scope(ex.id);
-        for vec::each2(args, arg_tys) |arg, arg_ty| {
+        for vec::each2(*args, arg_tys) |arg, arg_ty| {
             match ty::resolved_mode(self.tcx(), arg_ty.mode) {
                 ast::by_ref => {
                     let arg_cmt = self.bccx.cat_expr(*arg);
@@ -165,11 +165,11 @@ fn req_loans_in_expr(ex: @ast::expr,
         visit::visit_expr(ex, self, vt);
       }
 
-      ast::expr_method_call(rcvr, _, _, args, _) => {
+      ast::expr_method_call(rcvr, _, _, ref args, _) => {
         let arg_tys = ty::ty_fn_args(ty::node_id_to_type(self.tcx(),
                                                          ex.callee_id));
         let scope_r = ty::re_scope(ex.id);
-        for vec::each2(args, arg_tys) |arg, arg_ty| {
+        for vec::each2(*args, arg_tys) |arg, arg_ty| {
             match ty::resolved_mode(self.tcx(), arg_ty.mode) {
                 ast::by_ref => {
                     let arg_cmt = self.bccx.cat_expr(*arg);

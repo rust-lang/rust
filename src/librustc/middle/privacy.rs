@@ -544,8 +544,8 @@ pub fn check_crate(tcx: ty::ctxt,
             visit::visit_expr(expr, method_map, visitor);
         },
         visit_pat: |pattern, method_map, visitor| {
-            match /*bad*/copy pattern.node {
-                pat_struct(_, fields, _) => {
+            match pattern.node {
+                pat_struct(_, ref fields, _) => {
                     match ty::get(ty::pat_ty(tcx, pattern)).sty {
                         ty_struct(id, _) => {
                             if id.crate != local_crate ||

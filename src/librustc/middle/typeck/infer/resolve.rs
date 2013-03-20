@@ -150,7 +150,7 @@ pub impl ResolveState {
             return typ;
         }
 
-        match /*bad*/ copy ty::get(typ).sty {
+        match ty::get(typ).sty {
             ty::ty_infer(TyVar(vid)) => {
                 self.resolve_ty_var(vid)
             }

@@ -610,7 +610,7 @@ pub impl CoherenceChecker {
     fn check_privileged_scopes(self, crate: @crate) {
         visit_crate(*crate, (), mk_vt(@Visitor {
             visit_item: |item, _context, visitor| {
-                match /*bad*/copy item.node {
+                match item.node {
                     item_mod(ref module_) => {
                         // Then visit the module items.
                         visit_mod(module_, item.span, item.id, (), visitor);
@@ -738,8 +738,8 @@ pub impl CoherenceChecker {
             }
         }
 
-        match /*bad*/copy item.node {
-            item_impl(_, trait_refs, _, ast_methods) => {
+        match item.node {
+            item_impl(_, ref trait_refs, _, ref ast_methods) => {
                 let mut methods = ~[];
                 for ast_methods.each |ast_method| {
                     methods.push(method_to_MethodInfo(*ast_method));
