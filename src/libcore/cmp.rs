@@ -37,7 +37,7 @@ pub trait Eq {
     pure fn ne(&self, other: &Self) -> bool;
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Ordering { Less, Equal, Greater }
 
 /// Trait for types that form a total order

@@ -20,7 +20,7 @@ use option::{None, Option, Some};
 use str;
 use to_str::ToStr;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct WindowsPath {
     host: Option<~str>,
     device: Option<~str>,
@@ -32,7 +32,7 @@ pub pure fn WindowsPath(s: &str) -> WindowsPath {
     GenericPath::from_str(s)
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct PosixPath {
     is_absolute: bool,
     components: ~[~str],

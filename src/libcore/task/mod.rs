@@ -50,13 +50,13 @@ pub mod rt;
 pub mod spawn;
 
 /// A handle to a scheduler
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Scheduler {
     SchedulerHandle(sched_id)
 }
 
 /// A handle to a task
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Task {
     TaskHandle(task_id)
 }
@@ -88,7 +88,7 @@ impl Eq for TaskResult {
 }
 
 /// Scheduler modes
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum SchedMode {
     /// Run task on the default scheduler
     DefaultScheduler,
