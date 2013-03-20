@@ -369,6 +369,7 @@ fn mk_tests(cx: &TestCtxt) -> @ast::item {
 
 #[cfg(stage1)]
 #[cfg(stage2)]
+#[cfg(stage3)]
 fn mk_tests(cx: &TestCtxt) -> @ast::item {
 
     let ext_cx = cx.ext_cx;
