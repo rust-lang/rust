@@ -630,7 +630,7 @@ pub pure fn with_str_reader<T>(s: &str, f: &fn(@Reader) -> T) -> T {
 pub enum FileFlag { Append, Create, Truncate, NoFlag, }
 
 // What type of writer are we?
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum WriterType { Screen, File }
 
 // FIXME (#2004): Seekable really should be orthogonal.
