@@ -10,8 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving_eq]
-#[deriving_iter_bytes]
+#[deriving(Eq)]
+#[deriving(IterBytes)]
 struct Foo<T> {
     x: int,
     y: T,

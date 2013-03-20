@@ -1,6 +1,6 @@
 // error-pattern:expected: 15, given: 14
 
-#[deriving_eq]
+#[deriving(Eq)]
 struct Point { x : int }
 
 fn main() {
