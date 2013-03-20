@@ -221,6 +221,7 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
         }
     }
     fn log_conv(c: &Conv) {
+        debug!("Building conversion:");
         match c.param {
           Some(p) => { debug!("param: %s", p.to_str()); }
           _ => debug!("param: none")
@@ -268,49 +269,59 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
           TyPoly => debug!("type: poly")
         }
     }
+
+    /* Translate each piece (portion of the fmt expression) into a ~str
+       expression to be concatenated below */
     let fmt_sp = args[0].span;
     let mut n = 0u;
-    let mut piece_exprs = ~[];
     let nargs = args.len();
-    for pieces.each |pc| {
-        match *pc {
-          PieceString(ref s) => {
-            piece_exprs.push(mk_uniq_str(cx, fmt_sp, copy *s))
-          }
-          PieceConv(ref conv) => {
-            n += 1u;
-            if n >= nargs {
-                cx.span_fatal(sp,
-                              ~"not enough arguments to fmt! " +
+    let pieces = do vec::map_consume(pieces) |pc| {
+        match pc {
+            PieceString(s) => mk_uniq_str(cx, fmt_sp, s),
+            PieceConv(ref conv) => {
+                n += 1u;
+                if n >= nargs {
+                    cx.span_fatal(sp,
+                                  ~"not enough arguments to fmt! " +
                                   ~"for the given format string");
+                }
+                log_conv(conv);
+                make_new_conv(cx, fmt_sp, conv, args[n])
             }
-            debug!("Building conversion:");
-            log_conv(conv);
-            let arg_expr = args[n];
-            let c_expr = make_new_conv(
-                cx,
-                fmt_sp,
-                conv,
-                arg_expr
-            );
-            piece_exprs.push(c_expr);
-          }
         }
-    }
+    };
     let expected_nargs = n + 1u; // n conversions + the fmt string
-
     if expected_nargs < nargs {
         cx.span_fatal
             (sp, fmt!("too many arguments to fmt!. found %u, expected %u",
                            nargs, expected_nargs));
     }
 
-    let arg_vec = mk_fixed_vec_e(cx, fmt_sp, piece_exprs);
-    return mk_call_global(cx,
-                          fmt_sp,
-                          ~[cx.parse_sess().interner.intern(@~"str"),
-                            cx.parse_sess().interner.intern(@~"concat")],
-                          ~[arg_vec]);
+    /* Concatenate all of the strings together with str::push_str. This
+       involves storing the first piece into a local variable, and then
+       pushing each other piece onto the local. The local is contained in its
+       own block to not conflict with other names as much as possible */
+    let ident = cx.parse_sess().interner.intern(@~"__fmtbuf");
+    let buf = || mk_path(cx, fmt_sp, ~[ident]);
+    let str_ident = cx.parse_sess().interner.intern(@~"str");
+    let push_ident = cx.parse_sess().interner.intern(@~"push_str");
+
+    let mut first = true;
+    let stms = do vec::map_consume(pieces) |pc| {
+        if first {
+            first = false;
+            mk_local(cx, fmt_sp, true, ident, pc)
+        } else {
+            let call = mk_call_global(cx,
+                                      fmt_sp,
+                                      ~[str_ident, push_ident],
+                                      ~[mk_mut_addr_of(cx, fmt_sp, buf()),
+                                        pc]);
+            mk_stmt(cx, fmt_sp, call)
+        }
+    };
+
+    return mk_block(cx, fmt_sp, ~[], stms, Some(buf()));
 }
 //
 // Local Variables:
