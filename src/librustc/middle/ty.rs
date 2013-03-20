@@ -522,7 +522,8 @@ pub enum sty {
     ty_tup(~[t]),
 
     ty_param(param_ty), // type parameter
-    ty_self, // special, implicit `self` type parameter
+    ty_self(def_id), /* special, implicit `self` type parameter;
+                      * def_id is the id of the trait */
 
     ty_infer(InferTy), // something used only during inference/typeck
     ty_err, // Also only used during inference/typeck, to represent
@@ -897,7 +898,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       &ty_err => flags |= has_ty_err as uint,
       &ty_param(_) => flags |= has_params as uint,
       &ty_infer(_) => flags |= needs_infer as uint,
-      &ty_self => flags |= has_self as uint,
+      &ty_self(_) => flags |= has_self as uint,
       &ty_enum(_, ref substs) | &ty_struct(_, ref substs) |
       &ty_trait(_, ref substs, _) => {
         flags |= sflags(substs);
@@ -1082,7 +1083,7 @@ pub fn mk_float_var(cx: ctxt, v: FloatVid) -> t { mk_infer(cx, FloatVar(v)) }
 
 pub fn mk_infer(cx: ctxt, +it: InferTy) -> t { mk_t(cx, ty_infer(it)) }
 
-pub fn mk_self(cx: ctxt) -> t { mk_t(cx, ty_self) }
+pub fn mk_self(cx: ctxt, did: ast::def_id) -> t { mk_t(cx, ty_self(did)) }
 
 pub fn mk_param(cx: ctxt, n: uint, k: def_id) -> t {
     mk_t(cx, ty_param(param_ty { idx: n, def_id: k }))
@@ -1163,7 +1164,7 @@ pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
     if !f(ty) { return; }
     match get(ty).sty {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_estr(_) | ty_type | ty_opaque_box | ty_self |
+      ty_estr(_) | ty_type | ty_opaque_box | ty_self(_) |
       ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) | ty_err => {
       }
       ty_box(ref tm) | ty_evec(ref tm, _) | ty_unboxed_vec(ref tm) |
@@ -1250,7 +1251,7 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
         }
         ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
         ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) | ty_err |
-        ty_opaque_box | ty_infer(_) | ty_param(*) | ty_self => {
+        ty_opaque_box | ty_infer(_) | ty_param(*) | ty_self(_) => {
             /*bad*/copy *sty
         }
     }
@@ -1362,7 +1363,7 @@ pub fn subst_tps(cx: ctxt, tps: &[t], self_ty_opt: Option<t>, typ: t) -> t {
     if self_ty_opt.is_none() && !tbox_has_flag(tb, has_params) { return typ; }
     match tb.sty {
         ty_param(p) => tps[p.idx],
-        ty_self => {
+        ty_self(_) => {
             match self_ty_opt {
                 None => cx.sess.bug(~"ty_self unexpected here"),
                 Some(self_ty) => {
@@ -1424,7 +1425,7 @@ pub fn subst(cx: ctxt,
         if !tbox_has_flag(tb, needs_subst) { return typ; }
         match tb.sty {
           ty_param(p) => substs.tps[p.idx],
-          ty_self => substs.self_ty.get(),
+          ty_self(_) => substs.self_ty.get(),
           _ => {
             fold_regions_and_ty(
                 cx, typ,
@@ -2002,7 +2003,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                     cx, cx.ty_param_bounds.get(&p.def_id.node))
             }
 
-            ty_self => {
+            ty_self(_) => {
                 // Currently, self is not bounded, so we must assume the
                 // worst.  But in the future we should examine the super
                 // traits.
@@ -2159,7 +2160,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                     v.args.foldl(0, |s, a| *s + type_size(cx, *a))))
           }
 
-          ty_param(_) | ty_self => {
+          ty_param(_) | ty_self(_) => {
             1
           }
 
@@ -2220,7 +2221,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           ty_infer(_) |
           ty_err |
           ty_param(_) |
-          ty_self |
+          ty_self(_) |
           ty_type |
           ty_opaque_box |
           ty_opaque_closure_ptr(_) |
@@ -2655,7 +2656,7 @@ impl to_bytes::IterBytes for sty {
           ty_bare_fn(ref ft) =>
           to_bytes::iter_bytes_2(&12u8, ft, lsb0, f),
 
-          ty_self => 13u8.iter_bytes(lsb0, f),
+          ty_self(ref did) => to_bytes::iter_bytes_2(&13u8, did, lsb0, f),
 
           ty_infer(ref v) =>
           to_bytes::iter_bytes_2(&14u8, v, lsb0, f),
@@ -3341,7 +3342,7 @@ pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_infer(IntVar(_)) => ~"integral variable",
       ty_infer(FloatVar(_)) => ~"floating-point variable",
       ty_param(_) => ~"type parameter",
-      ty_self => ~"self",
+      ty_self(_) => ~"self",
       ty_err => ~"type error"
     }
 }

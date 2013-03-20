@@ -40,18 +40,8 @@ pub fn replace_bound_regions_in_fn_sig(
 
     let mut all_tys = ty::tys_in_fn_sig(fn_sig);
 
-    match self_info {
-      Some(SelfInfo {
-            explicit_self: codemap::spanned {
-                node: ast::sty_region(_, m),
-                // FIXME(#4846) ------^ Use this lifetime instead of self
-                _}, _}) => {
-        let region = ty::re_bound(ty::br_self);
-        let ty = ty::mk_rptr(tcx, region,
-                             ty::mt { ty: ty::mk_self(tcx), mutbl: m });
-        all_tys.push(ty);
-      }
-      _ => {}
+    for self_info.each |self_info| {
+        all_tys.push(self_info.self_ty);
     }
 
     for self_ty.each |t| { all_tys.push(*t) }
