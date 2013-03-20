@@ -28,7 +28,7 @@ use syntax::print::pprust;
 pub fn check_match(fcx: @mut FnCtxt,
                    expr: @ast::expr,
                    discrim: @ast::expr,
-                   arms: ~[ast::arm]) -> bool {
+                   arms: &[ast::arm]) -> bool {
     let tcx = fcx.ccx.tcx;
     let mut bot;
 
@@ -74,7 +74,7 @@ pub struct pat_ctxt {
 }
 
 pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
-                         +subpats: Option<~[@ast::pat]>, expected: ty::t) {
+                         subpats: &Option<~[@ast::pat]>, expected: ty::t) {
 
     // Typecheck the path.
     let fcx = pcx.fcx;
@@ -162,7 +162,7 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
 
     // Count the number of subpatterns.
     let subpats_len;
-    match subpats {
+    match *subpats {
         None => subpats_len = arg_len,
         Some(ref subpats) => subpats_len = subpats.len()
     }
@@ -207,7 +207,7 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
 pub fn check_struct_pat_fields(pcx: pat_ctxt,
                                span: span,
                                path: @ast::path,
-                               fields: ~[ast::field_pat],
+                               fields: &[ast::field_pat],
                                class_fields: ~[ty::field_ty],
                                class_id: ast::def_id,
                                substitutions: &ty::substs,
@@ -258,7 +258,7 @@ pub fn check_struct_pat_fields(pcx: pat_ctxt,
 
 pub fn check_struct_pat(pcx: pat_ctxt, pat_id: ast::node_id, span: span,
                         expected: ty::t, path: @ast::path,
-                        +fields: ~[ast::field_pat], etc: bool,
+                        fields: &[ast::field_pat], etc: bool,
                         class_id: ast::def_id, substitutions: &ty::substs) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
@@ -299,7 +299,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: pat_ctxt,
                                           span: span,
                                           expected: ty::t,
                                           path: @ast::path,
-                                          +fields: ~[ast::field_pat],
+                                          fields: &[ast::field_pat],
                                           etc: bool,
                                           enum_id: ast::def_id,
                                           substitutions: &ty::substs) {
@@ -336,7 +336,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    match /*bad*/copy pat.node {
+    match pat.node {
       ast::pat_wild => {
         fcx.write_ty(pat.id, expected);
       }
@@ -409,22 +409,22 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
       }
       ast::pat_ident(_, path, _) => {
-        check_pat_variant(pcx, pat, path, Some(~[]), expected);
+        check_pat_variant(pcx, pat, path, &Some(~[]), expected);
       }
-      ast::pat_enum(path, subpats) => {
+      ast::pat_enum(path, ref subpats) => {
         check_pat_variant(pcx, pat, path, subpats, expected);
       }
-      ast::pat_struct(path, fields, etc) => {
+      ast::pat_struct(path, ref fields, etc) => {
         // Grab the class data that we care about.
         let structure = structure_of(fcx, pat.span, expected);
         match structure {
             ty::ty_struct(cid, ref substs) => {
                 check_struct_pat(pcx, pat.id, pat.span, expected, path,
-                                 fields, etc, cid, substs);
+                                 *fields, etc, cid, substs);
             }
             ty::ty_enum(eid, ref substs) => {
                 check_struct_like_enum_variant_pat(
-                    pcx, pat.id, pat.span, expected, path, fields, etc, eid,
+                    pcx, pat.id, pat.span, expected, path, *fields, etc, eid,
                     substs);
             }
             _ => {
@@ -439,9 +439,10 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         // Finally, write in the type.
         fcx.write_ty(pat.id, expected);
       }
-      ast::pat_tup(elts) => {
-        let ex_elts = match structure_of(fcx, pat.span, expected) {
-          ty::ty_tup(elts) => elts,
+      ast::pat_tup(ref elts) => {
+        let s = structure_of(fcx, pat.span, expected);
+        let ex_elts = match s {
+          ty::ty_tup(ref elts) => elts,
           _ => {
             tcx.sess.span_fatal
                 (pat.span,
@@ -449,12 +450,12 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                       fcx.infcx().ty_to_str(expected)));
           }
         };
-        let e_count = vec::len(elts);
-        if e_count != vec::len(ex_elts) {
+        let e_count = elts.len();
+        if e_count != ex_elts.len() {
             tcx.sess.span_fatal
                 (pat.span, fmt!("mismatched types: expected a tuple \
                       with %u fields, found one with %u \
-                      fields", vec::len(ex_elts), e_count));
+                      fields", ex_elts.len(), e_count));
         }
         let mut i = 0u;
         for elts.each |elt| {
@@ -509,7 +510,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           }
         }
       }
-      ast::pat_vec(before, slice, after) => {
+      ast::pat_vec(ref before, slice, ref after) => {
         let default_region_var =
             fcx.infcx().next_region_var_with_lb(
                 pat.span, pcx.block_region

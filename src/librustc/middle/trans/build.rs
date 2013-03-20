@@ -70,10 +70,9 @@ pub fn count_insn(cx: block, category: &str) {
         let mut s = ~".";
         i = 0u;
         while i < len {
-            let e = /*bad*/copy v[i];
-            i = mm.get(&e);
+            i = mm.get(&v[i]);
             s += ~"/";
-            s += e;
+            s += v[i];
             i += 1u;
         }
 

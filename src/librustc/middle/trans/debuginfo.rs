@@ -520,7 +520,7 @@ fn create_struct(cx: @CrateContext, t: ty::t, fields: ~[ty::field],
     return mdval;
 }
 
-fn create_tuple(cx: @CrateContext, t: ty::t, elements: ~[ty::t], span: span)
+fn create_tuple(cx: @CrateContext, t: ty::t, elements: &[ty::t], span: span)
     -> @Metadata<TyDescMetadata> {
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
@@ -648,46 +648,46 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span)
     }*/
 
     let sty = copy ty::get(t).sty;
-    match copy sty {
+    match sty {
         ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_int(_) | ty::ty_uint(_)
         | ty::ty_float(_) => create_basic_type(cx, t, span),
         ty::ty_estr(_vstore) => {
             cx.sess.span_bug(span, ~"debuginfo for estr NYI")
         },
-        ty::ty_enum(_did, _substs) => {
+        ty::ty_enum(_did, ref _substs) => {
             cx.sess.span_bug(span, ~"debuginfo for enum NYI")
         }
-        ty::ty_box(_mt) => {
+        ty::ty_box(ref _mt) => {
             cx.sess.span_bug(span, ~"debuginfo for box NYI")
         },
-        ty::ty_uniq(_mt) => {
+        ty::ty_uniq(ref _mt) => {
             cx.sess.span_bug(span, ~"debuginfo for uniq NYI")
         },
-        ty::ty_evec(_mt, _vstore) => {
+        ty::ty_evec(ref _mt, ref _vstore) => {
             cx.sess.span_bug(span, ~"debuginfo for evec NYI")
         },
-        ty::ty_ptr(mt) => {
+        ty::ty_ptr(ref mt) => {
             let pointee = create_ty(cx, mt.ty, span);
             create_pointer_type(cx, t, span, pointee)
         },
-        ty::ty_rptr(_region, _mt) => {
+        ty::ty_rptr(ref _region, ref _mt) => {
             cx.sess.span_bug(span, ~"debuginfo for rptr NYI")
         },
-        ty::ty_bare_fn(_barefnty) => {
+        ty::ty_bare_fn(ref _barefnty) => {
             cx.sess.span_bug(span, ~"debuginfo for bare_fn NYI")
         },
-        ty::ty_closure(_closurety) => {
+        ty::ty_closure(ref _closurety) => {
             cx.sess.span_bug(span, ~"debuginfo for closure NYI")
         },
-        ty::ty_trait(_did, _substs, _vstore) => {
+        ty::ty_trait(_did, ref _substs, ref _vstore) => {
             cx.sess.span_bug(span, ~"debuginfo for trait NYI")
         },
-        ty::ty_struct(did, substs) => {
-            let fields = ty::struct_fields(cx.tcx, did, &substs);
+        ty::ty_struct(did, ref substs) => {
+            let fields = ty::struct_fields(cx.tcx, did, substs);
             create_struct(cx, t, fields, span)
         },
-        ty::ty_tup(elements) => {
-            create_tuple(cx, t, elements, span)
+        ty::ty_tup(ref elements) => {
+            create_tuple(cx, t, *elements, span)
         },
         _ => cx.sess.bug(~"debuginfo: unexpected type in create_ty")
     }
@@ -853,8 +853,8 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
 
     let (ident, ret_ty, id) = match cx.tcx.items.get(&fcx.id) {
       ast_map::node_item(item, _) => {
-        match /*bad*/copy item.node {
-          ast::item_fn(decl, _, _, _) => {
+        match item.node {
+          ast::item_fn(ref decl, _, _, _) => {
             (item.ident, decl.output, item.id)
           }
           _ => fcx.ccx.sess.span_bug(item.span, ~"create_function: item \
@@ -865,8 +865,8 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
           (method.ident, method.decl.output, method.id)
       }
       ast_map::node_expr(expr) => {
-        match /*bad*/copy expr.node {
-          ast::expr_fn_block(decl, _) => {
+        match expr.node {
+          ast::expr_fn_block(ref decl, _) => {
             ((dbg_cx.names)(~"fn"), decl.output, expr.id)
           }
           _ => fcx.ccx.sess.span_bug(expr.span,

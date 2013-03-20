@@ -361,7 +361,7 @@ pub fn write_content(bcx: block,
            bcx.expr_to_str(vstore_expr));
     let _indenter = indenter();
 
-    match /*bad*/copy content_expr.node {
+    match content_expr.node {
         ast::expr_lit(@codemap::spanned { node: ast::lit_str(s), _ }) => {
             match dest {
                 Ignore => {
@@ -376,7 +376,7 @@ pub fn write_content(bcx: block,
                 }
             }
         }
-        ast::expr_vec(elements, _) => {
+        ast::expr_vec(ref elements, _) => {
             match dest {
                 Ignore => {
                     for elements.each |element| {
@@ -467,11 +467,11 @@ pub fn vec_types(bcx: block, vec_ty: ty::t) -> VecTypes {
 pub fn elements_required(bcx: block, content_expr: @ast::expr) -> uint {
     //! Figure out the number of elements we need to store this content
 
-    match /*bad*/copy content_expr.node {
+    match content_expr.node {
         ast::expr_lit(@codemap::spanned { node: ast::lit_str(s), _ }) => {
             s.len() + 1
         },
-        ast::expr_vec(es, _) => es.len(),
+        ast::expr_vec(ref es, _) => es.len(),
         ast::expr_repeat(_, count_expr, _) => {
             ty::eval_repeat_count(bcx.tcx(), count_expr)
         }
