@@ -1204,7 +1204,7 @@ mod test {
     use std::serialize::Encoder;
 
     // just adding the ones I want to test, for now:
-    #[deriving_eq]
+    #[deriving(Eq)]
     pub enum call {
         CallToEmitEnum(~str),
         CallToEmitEnumVariant(~str, uint, uint),
