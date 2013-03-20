@@ -15,7 +15,7 @@ use core::option::*;
 use core::prelude::*;
 use core::vec;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum List<T> {
     Cons(T, @List<T>),
     Nil,

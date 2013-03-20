@@ -19,7 +19,7 @@ use core::str;
 use core::to_str::ToStr;
 use core::uint;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Identifier {
     Numeric(uint),
     AlphaNumeric(~str)
@@ -60,7 +60,7 @@ impl ToStr for Identifier {
 }
 
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct Version {
     major: uint,
     minor: uint,

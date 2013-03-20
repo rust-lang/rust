@@ -188,13 +188,13 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
     either::Left(test_opts)
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct BenchSamples {
     ns_iter_samples: ~[f64],
     mb_s: uint
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum TestResult { TrOk, TrFailed, TrIgnored, TrBench(BenchSamples) }
 
 struct ConsoleTestState {
