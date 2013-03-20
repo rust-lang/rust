@@ -867,6 +867,9 @@ impl Ctx {
 }
 
 pub fn main() {
+    io::println("WARNING: The Rust package manager is experimental and may");
+    io::println("be unstable.");
+
     let args = os::args();
     let opts = ~[getopts::optflag(~"h"), getopts::optflag(~"help"),
                  getopts::optflag(~"j"), getopts::optflag(~"json"),
