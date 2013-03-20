@@ -76,7 +76,7 @@ fn traverse_def_id(cx: ctx, did: def_id) {
     match n {
       ast_map::node_item(item, _) => traverse_public_item(cx, item),
       ast_map::node_method(_, impl_id, _) => traverse_def_id(cx, impl_id),
-      ast_map::node_foreign_item(item, _, _) => {
+      ast_map::node_foreign_item(item, _, _, _) => {
         cx.rmap.insert(item.id, ());
       }
       ast_map::node_variant(ref v, _, _) => {

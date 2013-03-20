@@ -118,7 +118,9 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
       }
       ast_map::node_foreign_item(i@@foreign_item { node: foreign_item_fn(*),
                                                    _ },
-                                 abi, _) => {
+                                 abi,
+                                 _,
+                                 _) => {
         if abi == foreign_abi_rust_intrinsic {
             let flags = match *cx.ccx.sess.str_of(i.ident) {
                 ~"size_of"  | ~"pref_align_of"    | ~"min_align_of" |

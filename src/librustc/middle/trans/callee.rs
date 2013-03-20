@@ -266,6 +266,7 @@ pub fn trans_fn_ref_with_vtables(
         match map_node {
             ast_map::node_foreign_item(_,
                                        ast::foreign_abi_rust_intrinsic,
+                                       _,
                                        _) => {
                 must_monomorphise = true;
             }
