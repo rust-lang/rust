@@ -804,9 +804,9 @@ pub fn invoke(bcx: block, llfn: ValueRef, +llargs: ~[ValueRef]) -> block {
     if bcx.unreachable { return bcx; }
 
     match bcx.node_info {
-        None => error!("invoke at ???"),
+        None => debug!("invoke at ???"),
         Some(node_info) => {
-            error!("invoke at %s",
+            debug!("invoke at %s",
                    bcx.sess().codemap.span_to_str(node_info.span));
         }
     }
@@ -1512,7 +1512,7 @@ pub fn alloc_ty(bcx: block, t: ty::t) -> ValueRef {
     let _icx = bcx.insn_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let llty = type_of::type_of(ccx, t);
-    if ty::type_has_params(t) { error!("%s", ty_to_str(ccx.tcx, t)); }
+    if ty::type_has_params(t) { debug!("%s", ty_to_str(ccx.tcx, t)); }
     fail_unless!(!ty::type_has_params(t));
     let val = alloca(bcx, llty);
     return val;
