@@ -324,7 +324,7 @@ pub impl BigUint {
         if s_len < o_len { return -1; }
         if s_len > o_len { return  1;  }
 
-        for vec::rev_eachi(self.data) |i, elm| {
+        for self.data.eachi_reverse |i, elm| {
             match (*elm, other.data[i]) {
                 (l, r) if l < r => return -1,
                 (l, r) if l > r => return  1,
@@ -387,7 +387,7 @@ pub impl BigUint {
             let bn = *b.data.last();
             let mut d = ~[];
             let mut carry = 0;
-            for vec::rev_each(an) |elt| {
+            for an.each_reverse |elt| {
                 let ai = BigDigit::to_uint(carry, *elt);
                 let di = ai / (bn as uint);
                 fail_unless!(di < BigDigit::base);
@@ -499,7 +499,7 @@ pub impl BigUint {
 
         let mut borrow = 0;
         let mut shifted = ~[];
-        for vec::rev_each(self.data) |elem| {
+        for self.data.each_reverse |elem| {
             shifted = ~[(*elem >> n_bits) | borrow] + shifted;
             borrow = *elem << (uint::bits - n_bits);
         }

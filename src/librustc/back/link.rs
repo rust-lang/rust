@@ -656,7 +656,7 @@ pub fn get_symbol_hash(ccx: @CrateContext, t: ty::t) -> @str {
 // gas doesn't!
 pub fn sanitize(s: &str) -> ~str {
     let mut result = ~"";
-    for str::chars_each(s) |c| {
+    for str::each_char(s) |c| {
         match c {
           '@' => result += ~"_sbox_",
           '~' => result += ~"_ubox_",
