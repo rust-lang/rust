@@ -819,8 +819,8 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
           'M' => fmt!("%02d", tm.tm_min as int),
           'm' => fmt!("%02d", tm.tm_mon as int + 1),
           'n' => ~"\n",
-          'P' => if tm.tm_hour as int < 12 { ~"am" } else { ~"pm" },
-          'p' => if tm.tm_hour as int < 12 { ~"AM" } else { ~"PM" },
+          'P' => if (tm.tm_hour as int) < 12 { ~"am" } else { ~"pm" },
+          'p' => if (tm.tm_hour as int) < 12 { ~"AM" } else { ~"PM" },
           'R' => {
             fmt!("%s:%s",
                 parse_type('H', tm),

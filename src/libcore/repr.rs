@@ -242,7 +242,7 @@ pub impl ReprVisitor {
         let (sz, al) = unsafe { ((*inner).size, (*inner).align) };
         self.writer.write_char('[');
         let mut first = true;
-        while p as uint < end as uint {
+        while (p as uint) < (end as uint) {
             if first {
                 first = false;
             } else {

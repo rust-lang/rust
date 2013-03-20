@@ -849,11 +849,7 @@ pub fn link_binary(sess: Session,
     do cstore::iter_crate_data(cstore) |crate_num, _| {
         let link_args = csearch::get_link_args_for_crate(cstore, crate_num);
         do vec::consume(link_args) |_, link_arg| {
-            // Linker arguments that don't begin with - are likely file names,
-            // so they should not be necessary.
-            if link_arg.starts_with("-") {
-              cc_args.push(link_arg);
-            }
+            cc_args.push(link_arg);
         }
     }
 

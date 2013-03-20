@@ -370,10 +370,6 @@ pub fn print_opt_lifetime(s: @ps, lifetime: Option<@ast::Lifetime>) {
 }
 
 pub fn print_type(s: @ps, &&ty: @ast::Ty) {
-    print_type_ex(s, ty, false);
-}
-
-pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
     maybe_print_comment(s, ty.span.lo);
     ibox(s, 0u);
     match ty.node {
@@ -415,7 +411,7 @@ pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
                       f.purity, f.onceness, &f.decl, None,
                       None, None);
       }
-      ast::ty_path(path, _) => print_path(s, path, print_colons),
+      ast::ty_path(path, _) => print_path(s, path, false),
       ast::ty_fixed_length_vec(ref mt, v) => {
         word(s.s, ~"[");
         match mt.mutbl {
@@ -1211,7 +1207,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         print_expr(s, expr);
         space(s.s);
         word_space(s, ~"as");
-        print_type_ex(s, ty, true);
+        print_type(s, ty);
       }
       ast::expr_if(test, ref blk, elseopt) => {
         print_if(s, test, blk, elseopt, false);
