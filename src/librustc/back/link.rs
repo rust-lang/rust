@@ -167,15 +167,18 @@ pub mod write {
     use back::link::{output_type_assembly, output_type_bitcode};
     use back::link::{output_type_exe, output_type_llvm_assembly};
     use back::link::{output_type_object};
+    use back::link::output_type;
     use driver::session::Session;
     use driver::session;
     use lib::llvm::llvm;
     use lib::llvm::{False, True, ModuleRef, mk_pass_manager, mk_target_data};
     use lib;
 
+    use core::prelude::*;
     use core::libc::{c_char, c_int, c_uint};
     use core::path::Path;
     use core::str;
+    use core::run;
 
     pub fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
         if ot == output_type_assembly || ot == output_type_object ||
@@ -185,7 +188,8 @@ pub mod write {
         return false;
     }
 
-    pub fn run_passes(sess: Session, llmod: ModuleRef, output: &Path) {
+    pub fn run_passes(sess: Session, llmod: ModuleRef,
+            output_type: output_type, output: &Path) {
         unsafe {
             let opts = sess.opts;
             if sess.time_llvm_passes() { llvm::LLVMRustEnableTimePasses(); }
@@ -201,7 +205,7 @@ pub mod write {
 
 
             if opts.save_temps {
-                match opts.output_type {
+                match output_type {
                   output_type_bitcode => {
                     if opts.optimize != session::No {
                         let filename = output.with_filetype("no-opt.bc");
@@ -262,7 +266,7 @@ pub mod write {
                 llvm::LLVMPassManagerBuilderDispose(MPMB);
             }
             if !sess.no_verify() { llvm::LLVMAddVerifierPass(pm.llpm); }
-            if is_object_or_assembly_or_exe(opts.output_type) || opts.jit {
+            if is_object_or_assembly_or_exe(output_type) || opts.jit {
                 let LLVMOptNone       = 0 as c_int; // -O0
                 let LLVMOptLess       = 1 as c_int; // -O1
                 let LLVMOptDefault    = 2 as c_int; // -O2, -Os
@@ -290,8 +294,8 @@ pub mod write {
                 }
 
                 let mut FileType;
-                if opts.output_type == output_type_object ||
-                       opts.output_type == output_type_exe {
+                if output_type == output_type_object ||
+                       output_type == output_type_exe {
                    FileType = lib::llvm::ObjectFile;
                 } else { FileType = lib::llvm::AssemblyFile; }
                 // Write optimized bitcode if --save-temps was on.
@@ -307,7 +311,7 @@ pub mod write {
                     pm = mk_pass_manager();
                     // Save the assembly file if -S is used
 
-                    if opts.output_type == output_type_assembly {
+                    if output_type == output_type_assembly {
                         let _: () = str::as_c_str(
                             sess.targ_cfg.target_strs.target_triple,
                             |buf_t| {
@@ -328,8 +332,8 @@ pub mod write {
 
                     // Save the object file for -c or --save-temps alone
                     // This .o is needed when an exe is built
-                    if opts.output_type == output_type_object ||
-                           opts.output_type == output_type_exe {
+                    if output_type == output_type_object ||
+                           output_type == output_type_exe {
                         let _: () = str::as_c_str(
                             sess.targ_cfg.target_strs.target_triple,
                             |buf_t| {
@@ -375,7 +379,7 @@ pub mod write {
                 return;
             }
 
-            if opts.output_type == output_type_llvm_assembly {
+            if output_type == output_type_llvm_assembly {
                 // Given options "-S --emit-llvm": output LLVM assembly
                 str::as_c_str(output.to_str(), |buf_o| {
                     llvm::LLVMRustAddPrintModulePass(pm.llpm, llmod, buf_o)});
@@ -389,6 +393,34 @@ pub mod write {
 
             llvm::LLVMDisposeModule(llmod);
             if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
+        }
+    }
+
+    pub fn run_ndk(sess: Session, assembly: &Path, object: &Path) {
+        let cc_prog: ~str = match &sess.opts.android_cross_path {
+            &Some(copy path) => {
+                fmt!("%s/bin/arm-linux-androideabi-gcc", path)
+            }
+            &None => {
+                sess.fatal(~"need Android NDK path for building \
+                             (--android-cross-path)")
+            }
+        };
+        let mut cc_args = ~[];
+        cc_args.push(~"-c");
+        cc_args.push(~"-o");
+        cc_args.push(object.to_str());
+        cc_args.push(assembly.to_str());
+
+        let prog = run::program_output(cc_prog, cc_args);
+
+        if prog.status != 0 {
+            sess.err(fmt!("building with `%s` failed with code %d",
+                        cc_prog, prog.status));
+            sess.note(fmt!("%s arguments: %s",
+                        cc_prog, str::connect(cc_args, ~" ")));
+            sess.note(prog.err + prog.out);
+            sess.abort_if_errors();
         }
     }
 }

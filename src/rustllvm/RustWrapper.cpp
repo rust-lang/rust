@@ -27,6 +27,7 @@
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/Assembly/Parser.h"
 #include "llvm/Assembly/PrintModulePass.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
@@ -427,6 +428,11 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
 			bool EnableSegmentedStacks) {
 
   LLVMRustInitializeTargets();
+
+  int argc = 3;
+  const char* argv[] = {"rustc", "-arm-enable-ehabi",
+      "-arm-enable-ehabi-descriptors"};
+  cl::ParseCommandLineOptions(argc, argv);
 
   TargetOptions Options;
   Options.NoFramePointerElim = true;
