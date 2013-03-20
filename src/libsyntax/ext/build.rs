@@ -108,6 +108,9 @@ pub fn mk_access(cx: @ext_ctxt, sp: span, +p: ~[ast::ident], m: ast::ident)
 pub fn mk_addr_of(cx: @ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
     return mk_expr(cx, sp, ast::expr_addr_of(ast::m_imm, e));
 }
+pub fn mk_mut_addr_of(cx: @ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
+    return mk_expr(cx, sp, ast::expr_addr_of(ast::m_mutbl, e));
+}
 pub fn mk_call_(cx: @ext_ctxt, sp: span, fn_expr: @ast::expr,
                 +args: ~[@ast::expr]) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_call(fn_expr, args, ast::NoSugar))
