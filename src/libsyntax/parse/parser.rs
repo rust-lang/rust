@@ -581,7 +581,9 @@ pub impl Parser {
         }
     }
 
-    fn parse_ty(&self, colons_before_params: bool) -> @Ty {
+    // Useless second parameter for compatibility with quasiquote macros.
+    // Bleh!
+    fn parse_ty(&self, _: bool) -> @Ty {
         maybe_whole!(self, nt_ty);
 
         let lo = self.span.lo;
@@ -661,7 +663,7 @@ pub impl Parser {
             result
         } else if *self.token == token::MOD_SEP
             || is_ident_or_path(&*self.token) {
-            let path = self.parse_path_with_tps(colons_before_params);
+            let path = self.parse_path_with_tps(false);
             ty_path(path, self.get_id())
         } else {
             self.fatal(~"expected type");
