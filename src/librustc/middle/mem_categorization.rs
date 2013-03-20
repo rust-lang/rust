@@ -1106,7 +1106,7 @@ pub fn field_mutbl(tcx: ty::ctxt,
                    node_id: ast::node_id)
                 -> Option<ast::mutability> {
     // Need to refactor so that struct/enum fields can be treated uniformly.
-    match /*bad*/copy ty::get(base_ty).sty {
+    match ty::get(base_ty).sty {
       ty::ty_struct(did, _) => {
         for ty::lookup_struct_fields(tcx, did).each |fld| {
             if fld.ident == f_name {

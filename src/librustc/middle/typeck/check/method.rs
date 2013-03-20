@@ -1051,7 +1051,7 @@ pub impl LookupContext/&self {
 
             let mut j = i + 1;
             while j < candidates.len() {
-                let candidate_b = /*bad*/copy candidates[j];
+                let candidate_b = &candidates[j];
                 debug!("attempting to merge %? and %?",
                        candidate_a, candidate_b);
                 let candidates_same = match (&candidate_a.origin,

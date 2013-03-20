@@ -792,7 +792,7 @@ pub fn emit_tydescs(ccx: @CrateContext) {
         // tydesc type. Then we'll recast each function to its real type when
         // calling it.
         let take_glue =
-            match copy ti.take_glue {
+            match ti.take_glue {
               None => { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               Some(v) => {
                 unsafe {
@@ -802,7 +802,7 @@ pub fn emit_tydescs(ccx: @CrateContext) {
               }
             };
         let drop_glue =
-            match copy ti.drop_glue {
+            match ti.drop_glue {
               None => { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               Some(v) => {
                 unsafe {
@@ -812,7 +812,7 @@ pub fn emit_tydescs(ccx: @CrateContext) {
               }
             };
         let free_glue =
-            match copy ti.free_glue {
+            match ti.free_glue {
               None => { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               Some(v) => {
                 unsafe {
@@ -822,7 +822,7 @@ pub fn emit_tydescs(ccx: @CrateContext) {
               }
             };
         let visit_glue =
-            match copy ti.visit_glue {
+            match ti.visit_glue {
               None => { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               Some(v) => {
                 unsafe {

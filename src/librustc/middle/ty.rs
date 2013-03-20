@@ -1161,20 +1161,20 @@ pub fn walk_ty(ty: t, f: &fn(t)) {
 
 pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
     if !f(ty) { return; }
-    match /*bad*/copy get(ty).sty {
+    match get(ty).sty {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_estr(_) | ty_type | ty_opaque_box | ty_self |
       ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) | ty_err => {
       }
-      ty_box(tm) | ty_evec(tm, _) | ty_unboxed_vec(tm) |
-      ty_ptr(tm) | ty_rptr(_, tm) => {
+      ty_box(ref tm) | ty_evec(ref tm, _) | ty_unboxed_vec(ref tm) |
+      ty_ptr(ref tm) | ty_rptr(_, ref tm) | ty_uniq(ref tm) => {
         maybe_walk_ty(tm.ty, f);
       }
       ty_enum(_, ref substs) | ty_struct(_, ref substs) |
       ty_trait(_, ref substs, _) => {
         for (*substs).tps.each |subty| { maybe_walk_ty(*subty, f); }
       }
-      ty_tup(ts) => { for ts.each |tt| { maybe_walk_ty(*tt, f); } }
+      ty_tup(ref ts) => { for ts.each |tt| { maybe_walk_ty(*tt, f); } }
       ty_bare_fn(ref ft) => {
         for ft.sig.inputs.each |a| { maybe_walk_ty(a.ty, f); }
         maybe_walk_ty(ft.sig.output, f);
@@ -1183,7 +1183,6 @@ pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
         for ft.sig.inputs.each |a| { maybe_walk_ty(a.ty, f); }
         maybe_walk_ty(ft.sig.output, f);
       }
-      ty_uniq(tm) => { maybe_walk_ty(tm.ty, f); }
     }
 }
 
@@ -1209,20 +1208,20 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
                 tps: substs.tps.map(|t| fldop(*t))}
     }
 
-    match /*bad*/copy *sty {
-        ty_box(tm) => {
+    match *sty {
+        ty_box(ref tm) => {
             ty_box(mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
-        ty_uniq(tm) => {
+        ty_uniq(ref tm) => {
             ty_uniq(mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
-        ty_ptr(tm) => {
+        ty_ptr(ref tm) => {
             ty_ptr(mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
-        ty_unboxed_vec(tm) => {
+        ty_unboxed_vec(ref tm) => {
             ty_unboxed_vec(mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
-        ty_evec(tm, vst) => {
+        ty_evec(ref tm, vst) => {
             ty_evec(mt {ty: fldop(tm.ty), mutbl: tm.mutbl}, vst)
         }
         ty_enum(tid, ref substs) => {
@@ -1231,8 +1230,8 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
         ty_trait(did, ref substs, st) => {
             ty_trait(did, fold_substs(substs, fldop), st)
         }
-        ty_tup(ts) => {
-            let new_ts = vec::map(ts, |tt| fldop(*tt));
+        ty_tup(ref ts) => {
+            let new_ts = ts.map(|tt| fldop(*tt));
             ty_tup(new_ts)
         }
         ty_bare_fn(ref f) => {
@@ -1243,7 +1242,7 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
             let sig = fold_sig(&f.sig, fldop);
             ty_closure(ClosureTy {sig: sig, ..copy *f})
         }
-        ty_rptr(r, tm) => {
+        ty_rptr(r, ref tm) => {
             ty_rptr(r, mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
         ty_struct(did, ref substs) => {
@@ -1510,8 +1509,8 @@ pub fn sequence_element_type(cx: ctxt, ty: t) -> t {
 }
 
 pub fn get_element_type(ty: t, i: uint) -> t {
-    match /*bad*/copy get(ty).sty {
-      ty_tup(ts) => return ts[i],
+    match get(ty).sty {
+      ty_tup(ref ts) => return ts[i],
       _ => fail!(~"get_element_type called on invalid type")
     }
 }
@@ -2118,7 +2117,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
     /// gives a rough estimate of how much space it takes to represent
     /// an instance of `ty`.  Used for the mode transition.
     fn type_size(cx: ctxt, ty: t) -> uint {
-        match /*bad*/copy get(ty).sty {
+        match get(ty).sty {
           ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
           ty_ptr(_) | ty_box(_) | ty_uniq(_) | ty_estr(vstore_uniq) |
           ty_trait(*) | ty_rptr(*) | ty_evec(_, vstore_uniq) |
@@ -2146,7 +2145,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
           }
 
-          ty_tup(tys) => {
+          ty_tup(ref tys) => {
             tys.foldl(0, |s, t| *s + type_size(cx, *t))
           }
 
@@ -2208,7 +2207,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                ::util::ppaux::ty_to_str(cx, r_ty),
                ::util::ppaux::ty_to_str(cx, ty));
 
-        let r = match /*bad*/copy get(ty).sty {
+        let r = match get(ty).sty {
           ty_nil |
           ty_bot |
           ty_bool |
@@ -2229,9 +2228,9 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           ty_unboxed_vec(_) => {
             false
           }
-          ty_box(mt) |
-          ty_uniq(mt) |
-          ty_rptr(_, mt) => {
+          ty_box(ref mt) |
+          ty_uniq(ref mt) |
+          ty_rptr(_, ref mt) => {
             return type_requires(cx, seen, r_ty, mt.ty);
           }
 
@@ -2255,8 +2254,8 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             r
           }
 
-          ty_tup(ts) => {
-            vec::any(ts, |t| type_requires(cx, seen, r_ty, *t))
+          ty_tup(ref ts) => {
+            ts.any(|t| type_requires(cx, seen, r_ty, *t))
           }
 
           ty_enum(ref did, _) if vec::contains(*seen, did) => {
@@ -2297,7 +2296,7 @@ pub fn type_structurally_contains(cx: ctxt,
     debug!("type_structurally_contains: %s",
            ::util::ppaux::ty_to_str(cx, ty));
     if test(sty) { return true; }
-    match /*bad*/copy *sty {
+    match *sty {
       ty_enum(did, ref substs) => {
         for vec::each(*enum_variants(cx, did)) |variant| {
             for variant.args.each |aty| {
@@ -2315,13 +2314,13 @@ pub fn type_structurally_contains(cx: ctxt,
         return false;
       }
 
-      ty_tup(ts) => {
+      ty_tup(ref ts) => {
         for ts.each |tt| {
             if type_structurally_contains(cx, *tt, test) { return true; }
         }
         return false;
       }
-      ty_evec(mt, vstore_fixed(_)) => {
+      ty_evec(ref mt, vstore_fixed(_)) => {
         return type_structurally_contains(cx, mt.ty, test);
       }
       _ => return false
@@ -2375,7 +2374,7 @@ pub fn type_is_signed(ty: t) -> bool {
 // that the cycle collector might care about.
 pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
     let mut result = true;
-    match /*bad*/copy get(ty).sty {
+    match get(ty).sty {
       // Scalar types
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_type | ty_ptr(_) | ty_bare_fn(_) => result = true,
@@ -2395,11 +2394,11 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
             if !type_is_pod(cx, tup_ty) { result = false; }
         }
       }
-      ty_tup(elts) => {
+      ty_tup(ref elts) => {
         for elts.each |elt| { if !type_is_pod(cx, *elt) { result = false; } }
       }
       ty_estr(vstore_fixed(_)) => result = true,
-      ty_evec(mt, vstore_fixed(_)) | ty_unboxed_vec(mt) => {
+      ty_evec(ref mt, vstore_fixed(_)) | ty_unboxed_vec(ref mt) => {
         result = type_is_pod(cx, mt.ty);
       }
       ty_param(_) => result = false,
@@ -3007,8 +3006,8 @@ pub fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
             // trait itself.  This ought to be harmonized.
             let trt_bounds =
                 ty::lookup_item_type(tcx, trt_id).bounds;
-            let mth = /*bad*/copy ty::trait_methods(tcx, trt_id)[n_mth];
-            @(vec::append(/*bad*/copy *trt_bounds, *mth.tps))
+            @(vec::append(/*bad*/copy *trt_bounds,
+                          *ty::trait_methods(tcx, trt_id)[n_mth].tps))
           }
         }
     }
@@ -3528,7 +3527,7 @@ pub fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
                         node: item_trait(_, _, ref ms),
                         _
                     }, _)) =>
-                match ast_util::split_trait_methods((/*bad*/copy *ms)) {
+                match ast_util::split_trait_methods(*ms) {
                    (_, p) => p.map(|method| method.ident)
                 },
             _ => cx.sess.bug(fmt!("provided_trait_methods: %? is not a trait",
@@ -3830,9 +3829,8 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                     node: ast::item_enum(ref enum_definition, _),
                     _
                 }, _) => {
-            let variants = /*bad*/copy (*enum_definition).variants;
             let mut disr_val = -1;
-            @vec::map(variants, |variant| {
+            @vec::map(enum_definition.variants, |variant| {
                 match variant.node.kind {
                     ast::tuple_variant_kind(ref args) => {
                         let ctor_ty = node_id_to_type(cx, variant.node.id);
@@ -3945,7 +3943,7 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
        Some(ast_map::node_item(i,_)) => {
          match i.node {
             ast::item_struct(struct_def, _) => {
-               struct_field_tys(/*bad*/copy struct_def.fields)
+               struct_field_tys(struct_def.fields)
             }
             _ => cx.sess.bug(~"struct ID bound to non-struct")
          }
@@ -3953,7 +3951,7 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
        Some(ast_map::node_variant(ref variant, _, _)) => {
           match (*variant).node.kind {
             ast::struct_variant_kind(struct_def) => {
-              struct_field_tys(/*bad*/copy struct_def.fields)
+              struct_field_tys(struct_def.fields)
             }
             _ => {
               cx.sess.bug(~"struct ID bound to enum variant that isn't \
@@ -3993,7 +3991,7 @@ pure fn is_public(f: field_ty) -> bool {
     }
 }
 
-fn struct_field_tys(fields: ~[@struct_field]) -> ~[field_ty] {
+fn struct_field_tys(fields: &[@struct_field]) -> ~[field_ty] {
     do fields.map |field| {
         match field.node.kind {
             named_field(ident, mutability, visibility) => {

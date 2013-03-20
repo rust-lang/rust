@@ -242,7 +242,7 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
 fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
     unsafe {
         let _icx = cx.insn_ctxt("const_expr");
-        return match /*bad*/copy e.node {
+        return match e.node {
           ast::expr_lit(lit) => consts::const_lit(cx, e, *lit),
           ast::expr_binary(b, e1, e2) => {
             let te1 = const_expr(cx, e1);
@@ -438,7 +438,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
           ast::expr_addr_of(ast::m_imm, sub) => {
               const_addr_of(cx, const_expr(cx, sub))
           }
-          ast::expr_tup(es) => {
+          ast::expr_tup(ref es) => {
               let ety = ty::expr_ty(cx.tcx, e);
               let repr = adt::represent_type(cx, ety);
               adt::trans_const(cx, repr, 0, es.map(|e| const_expr(cx, *e)))
@@ -460,24 +460,24 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                   adt::trans_const(cx, repr, discr, cs)
               }
           }
-          ast::expr_vec(es, ast::m_imm) => {
-            let (v, _, _) = const_vec(cx, e, es);
+          ast::expr_vec(ref es, ast::m_imm) => {
+            let (v, _, _) = const_vec(cx, e, *es);
             v
           }
           ast::expr_vstore(e, ast::expr_vstore_fixed(_)) => {
             const_expr(cx, e)
           }
           ast::expr_vstore(sub, ast::expr_vstore_slice) => {
-            match /*bad*/copy sub.node {
-              ast::expr_lit(lit) => {
+            match sub.node {
+              ast::expr_lit(ref lit) => {
                 match lit.node {
                   ast::lit_str(*) => { const_expr(cx, sub) }
                   _ => { cx.sess.span_bug(e.span,
                                           ~"bad const-slice lit") }
                 }
               }
-              ast::expr_vec(es, ast::m_imm) => {
-                let (cv, sz, llunitty) = const_vec(cx, e, es);
+              ast::expr_vec(ref es, ast::m_imm) => {
+                let (cv, sz, llunitty) = const_vec(cx, e, *es);
                 let llty = val_ty(cv);
                 let gv = do str::as_c_str("const") |name| {
                     llvm::LLVMAddGlobal(cx.llmod, llty, name)
@@ -525,7 +525,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                 }
             }
           }
-          ast::expr_call(callee, args, _) => {
+          ast::expr_call(callee, ref args, _) => {
               match cx.tcx.def_map.find(&callee.id) {
                   Some(ast::def_struct(_)) => {
                       let ety = ty::expr_ty(cx.tcx, e);

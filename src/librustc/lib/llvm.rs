@@ -1647,7 +1647,7 @@ pub struct TargetData {
     dtor: @target_data_res
 }
 
-pub fn mk_target_data(string_rep: ~str) -> TargetData {
+pub fn mk_target_data(string_rep: &str) -> TargetData {
     let lltd =
         str::as_c_str(string_rep, |buf| unsafe {
             llvm::LLVMCreateTargetData(buf)

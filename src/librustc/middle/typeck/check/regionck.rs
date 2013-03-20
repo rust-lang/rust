@@ -192,7 +192,7 @@ pub fn visit_expr(expr: @ast::expr, &&rcx: @mut Rcx, v: rvt) {
         }
     }
 
-    match /*bad*/copy expr.node {
+    match expr.node {
         ast::expr_path(*) => {
             // Avoid checking the use of local variables, as we
             // already check their definitions.  The def'n always
@@ -207,7 +207,7 @@ pub fn visit_expr(expr: @ast::expr, &&rcx: @mut Rcx, v: rvt) {
             }
         }
 
-        ast::expr_call(callee, args, _) => {
+        ast::expr_call(callee, ref args, _) => {
             // Check for a.b() where b is a method.  Ensure that
             // any types in the callee are valid for the entire
             // method call.
@@ -236,7 +236,7 @@ pub fn visit_expr(expr: @ast::expr, &&rcx: @mut Rcx, v: rvt) {
             }
         }
 
-        ast::expr_method_call(rcvr, _, _, args, _) => {
+        ast::expr_method_call(rcvr, _, _, ref args, _) => {
             // Check for a.b() where b is a method.  Ensure that
             // any types in the callee are valid for the entire
             // method call.

@@ -1080,7 +1080,7 @@ pub impl Resolver {
         let sp = item.span;
         let privacy = visibility_to_privacy(item.vis);
 
-        match /*bad*/copy item.node {
+        match item.node {
             item_mod(ref module_) => {
                 let (name_bindings, new_parent) =
                     self.add_child(ident, parent, ForbidDuplicateModules, sp);
@@ -1099,7 +1099,7 @@ pub impl Resolver {
                 visit_mod(module_, sp, item.id, new_parent, visitor);
             }
 
-            item_foreign_mod(fm) => {
+            item_foreign_mod(ref fm) => {
                 let new_parent = match fm.sort {
                     named => {
                         let (name_bindings, new_parent) =
@@ -1196,7 +1196,7 @@ pub impl Resolver {
                 visit_item(item, new_parent, visitor);
             }
 
-            item_impl(_, trait_ref_opt, ty, methods) => {
+            item_impl(_, trait_ref_opt, ty, ref methods) => {
                 // If this implements an anonymous trait and it has static
                 // methods, then add all the static methods within to a new
                 // module, if the type was defined within this module.
@@ -1401,8 +1401,8 @@ pub impl Resolver {
                                          parent: ReducedGraphParent,
                                          &&_visitor: vt<ReducedGraphParent>) {
         let privacy = visibility_to_privacy(view_item.vis);
-        match /*bad*/copy view_item.node {
-            view_item_use(view_paths) => {
+        match view_item.node {
+            view_item_use(ref view_paths) => {
                 for view_paths.each |view_path| {
                     // Extract and intern the module part of the path. For
                     // globs and lists, the path is found directly in the AST;
@@ -1571,7 +1571,7 @@ pub impl Resolver {
                            new_parent: ReducedGraphParent) {
         match def {
           def_mod(def_id) | def_foreign_mod(def_id) => {
-            match copy child_name_bindings.type_def {
+            match child_name_bindings.type_def {
               Some(TypeNsDef { module_def: Some(copy module_def), _ }) => {
                 debug!("(building reduced graph for external crate) \
                         already created module");
@@ -1790,7 +1790,7 @@ pub impl Resolver {
                                     // Process the static methods. First,
                                     // create the module.
                                     let type_module;
-                                    match copy child_name_bindings.type_def {
+                                    match child_name_bindings.type_def {
                                         Some(TypeNsDef {
                                             module_def: Some(copy module_def),
                                             _
@@ -2008,10 +2008,13 @@ pub impl Resolver {
     }
 
     fn idents_to_str(@mut self, idents: &[ident]) -> ~str {
-        let ident_strs = do idents.map |ident| {
-            /*bad*/ copy *self.session.str_of(*ident)
+        let mut first = true;
+        let mut result = ~"";
+        for idents.each |ident| {
+            if first { first = false; } else { result += "::" };
+            result += *self.session.str_of(*ident);
         };
-        str::connect(ident_strs, "::")
+        return result;
     }
 
     fn import_directive_subclass_to_str(@mut self,
@@ -2511,22 +2514,22 @@ pub impl Resolver {
                     // Merge the two import resolutions at a finer-grained
                     // level.
 
-                    match copy target_import_resolution.value_target {
+                    match target_import_resolution.value_target {
                         None => {
                             // Continue.
                         }
-                        Some(value_target) => {
+                        Some(copy value_target) => {
                             dest_import_resolution.value_target =
-                                Some(copy value_target);
+                                Some(value_target);
                         }
                     }
-                    match copy target_import_resolution.type_target {
+                    match target_import_resolution.type_target {
                         None => {
                             // Continue.
                         }
-                        Some(type_target) => {
+                        Some(copy type_target) => {
                             dest_import_resolution.type_target =
-                                Some(copy type_target);
+                                Some(type_target);
                         }
                     }
                 }
@@ -3149,7 +3152,7 @@ pub impl Resolver {
         let mut exports2 = ~[];
 
         self.add_exports_for_module(&mut exports2, module_);
-        match copy module_.def_id {
+        match /*bad*/copy module_.def_id {
             Some(def_id) => {
                 self.export_map2.insert(def_id.node, exports2);
                 debug!("(computing exports) writing exports for %d (some)",
@@ -3448,12 +3451,12 @@ pub impl Resolver {
         // Items with the !resolve_unexported attribute are X-ray contexts.
         // This is used to allow the test runner to run unexported tests.
         let orig_xray_flag = self.xray_context;
-        if contains_name(attr_metas(/*bad*/copy item.attrs),
+        if contains_name(attr_metas(item.attrs),
                          ~"!resolve_unexported") {
             self.xray_context = Xray;
         }
 
-        match /*bad*/copy item.node {
+        match item.node {
 
             // enum item: resolve all the variants' discrs,
             // then resolve the ty params
@@ -3578,7 +3581,7 @@ pub impl Resolver {
                 self.type_ribs.pop();
             }
 
-            item_struct(struct_def, ref generics) => {
+            item_struct(ref struct_def, ref generics) => {
                 self.resolve_struct(item.id,
                                     generics,
                                     struct_def.fields,
@@ -3593,7 +3596,7 @@ pub impl Resolver {
                 }
             }
 
-            item_foreign_mod(foreign_module) => {
+            item_foreign_mod(ref foreign_module) => {
                 do self.with_scope(Some(item.ident)) {
                     for foreign_module.items.each |foreign_item| {
                         match foreign_item.node {
@@ -3639,7 +3642,7 @@ pub impl Resolver {
                 }
 
                 self.resolve_function(OpaqueFunctionRibKind,
-                                      Some(@/*bad*/copy *fn_decl),
+                                      Some(fn_decl),
                                       HasTypeParameters
                                         (generics,
                                          item.id,
@@ -3721,7 +3724,7 @@ pub impl Resolver {
 
     fn resolve_function(@mut self,
                         rib_kind: RibKind,
-                        optional_declaration: Option<@fn_decl>,
+                        optional_declaration: Option<&fn_decl>,
                         type_parameters: TypeParameters,
                         block: &blk,
                         self_binding: SelfBinding,
@@ -3868,7 +3871,7 @@ pub impl Resolver {
         };
 
         self.resolve_function(rib_kind,
-                              Some(@/*bad*/copy method.decl),
+                              Some(&method.decl),
                               type_parameters,
                               &method.body,
                               self_binding,
@@ -4133,7 +4136,7 @@ pub impl Resolver {
                     }
                 }
 
-                match copy result_def {
+                match result_def {
                     Some(def) => {
                         // Write the result into the def map.
                         debug!("(resolving type) writing resolution for `%s` \
@@ -4681,7 +4684,7 @@ pub impl Resolver {
             }
         }
 
-        match copy search_result {
+        match search_result {
             Some(dl_def(def)) => {
                 debug!("(resolving path in local ribs) resolved `%s` to \
                         local: %?",
@@ -4823,7 +4826,7 @@ pub impl Resolver {
                     }
                     None => {
                         let wrong_name = self.idents_to_str(
-                            /*bad*/copy path.idents);
+                            path.idents);
                         if self.name_exists_in_scope_struct(wrong_name) {
                             self.session.span_err(expr.span,
                                         fmt!("unresolved name: `%s`. \
@@ -4855,7 +4858,7 @@ pub impl Resolver {
 
             expr_fn_block(ref fn_decl, ref block) => {
                 self.resolve_function(FunctionRibKind(expr.id, block.node.id),
-                                      Some(@/*bad*/copy *fn_decl),
+                                      Some(fn_decl),
                                       NoTypeParameters,
                                       block,
                                       NoSelfBinding,
@@ -5007,7 +5010,7 @@ pub impl Resolver {
         let mut search_module = self.current_module;
         loop {
             // Look for the current trait.
-            match copy self.current_trait_refs {
+            match /*bad*/copy self.current_trait_refs {
                 Some(trait_def_ids) => {
                     for trait_def_ids.each |trait_def_id| {
                         self.add_trait_info_if_containing_method(
