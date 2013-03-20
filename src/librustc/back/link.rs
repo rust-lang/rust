@@ -194,8 +194,7 @@ pub mod write {
             let opts = sess.opts;
             if sess.time_llvm_passes() { llvm::LLVMRustEnableTimePasses(); }
             let mut pm = mk_pass_manager();
-            let td = mk_target_data(
-                /*bad*/copy sess.targ_cfg.target_strs.data_layout);
+            let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);
             llvm::LLVMAddTargetData(td.lltd, pm.llpm);
             // FIXME (#2812): run the linter here also, once there are llvm-c
             // bindings for it.
@@ -866,8 +865,9 @@ pub fn link_binary(sess: Session,
     // to be found at compile time so it is still entirely up to outside
     // forces to make sure that library can be found at runtime.
 
-    let addl_paths = /*bad*/copy sess.opts.addl_lib_search_paths;
-    for addl_paths.each |path| { cc_args.push(~"-L" + path.to_str()); }
+    for sess.opts.addl_lib_search_paths.each |path| {
+        cc_args.push(~"-L" + path.to_str());
+    }
 
     // The names of the extern libraries
     let used_libs = cstore::get_used_libraries(cstore);

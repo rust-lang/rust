@@ -75,7 +75,7 @@ pub impl Reflector {
         PointerCast(bcx, static_ti.tydesc, T_ptr(self.tydesc_ty))
     }
 
-    fn c_mt(&mut self, mt: ty::mt) -> ~[ValueRef] {
+    fn c_mt(&mut self, mt: &ty::mt) -> ~[ValueRef] {
         ~[self.c_uint(mt.mutbl as uint),
           self.c_tydesc(mt.ty)]
     }
@@ -151,7 +151,7 @@ pub impl Reflector {
         debug!("reflect::visit_ty %s",
                ty_to_str(bcx.ccx().tcx, t));
 
-        match /*bad*/copy ty::get(t).sty {
+        match ty::get(t).sty {
           ty::ty_bot => self.leaf(~"bot"),
           ty::ty_nil => self.leaf(~"nil"),
           ty::ty_bool => self.leaf(~"bool"),
@@ -170,7 +170,7 @@ pub impl Reflector {
           ty::ty_float(ast::ty_f32) => self.leaf(~"f32"),
           ty::ty_float(ast::ty_f64) => self.leaf(~"f64"),
 
-          ty::ty_unboxed_vec(mt) => {
+          ty::ty_unboxed_vec(ref mt) => {
               let values = self.c_mt(mt);
               self.visit(~"vec", values)
           }
@@ -179,30 +179,30 @@ pub impl Reflector {
               let (name, extra) = self.vstore_name_and_extra(t, vst);
               self.visit(~"estr_" + name, extra)
           }
-          ty::ty_evec(mt, vst) => {
+          ty::ty_evec(ref mt, vst) => {
               let (name, extra) = self.vstore_name_and_extra(t, vst);
               let extra = extra + self.c_mt(mt);
               self.visit(~"evec_" + name, extra)
           }
-          ty::ty_box(mt) => {
+          ty::ty_box(ref mt) => {
               let extra = self.c_mt(mt);
               self.visit(~"box", extra)
           }
-          ty::ty_uniq(mt) => {
+          ty::ty_uniq(ref mt) => {
               let extra = self.c_mt(mt);
               self.visit(~"uniq", extra)
           }
-          ty::ty_ptr(mt) => {
+          ty::ty_ptr(ref mt) => {
               let extra = self.c_mt(mt);
               self.visit(~"ptr", extra)
           }
-          ty::ty_rptr(_, mt) => {
+          ty::ty_rptr(_, ref mt) => {
               let extra = self.c_mt(mt);
               self.visit(~"rptr", extra)
           }
 
-          ty::ty_tup(tys) => {
-              let extra = ~[self.c_uint(vec::len(tys))]
+          ty::ty_tup(ref tys) => {
+              let extra = ~[self.c_uint(tys.len())]
                   + self.c_size_and_align(t);
               do self.bracketed(~"tup", extra) |this| {
                   for tys.eachi |i, t| {
@@ -254,7 +254,7 @@ pub impl Reflector {
                       let extra = ~[this.c_uint(i),
                                     this.c_slice(
                                         bcx.ccx().sess.str_of(field.ident))]
-                          + this.c_mt(field.mt);
+                          + this.c_mt(&field.mt);
                       this.visit(~"class_field", extra);
                   }
               }
@@ -293,7 +293,7 @@ pub impl Reflector {
           ty::ty_trait(_, _, _) => self.leaf(~"trait"),
           ty::ty_infer(_) => self.leaf(~"infer"),
           ty::ty_err => self.leaf(~"err"),
-          ty::ty_param(p) => {
+          ty::ty_param(ref p) => {
               let extra = ~[self.c_uint(p.idx)];
               self.visit(~"param", extra)
           }

@@ -142,8 +142,8 @@ fn visit_crate(e: @mut Env, c: ast::crate) {
 }
 
 fn visit_view_item(e: @mut Env, i: @ast::view_item) {
-    match /*bad*/copy i.node {
-      ast::view_item_extern_mod(ident, meta_items, id) => {
+    match i.node {
+      ast::view_item_extern_mod(ident, /*bad*/copy meta_items, id) => {
         debug!("resolving extern mod stmt. ident: %?, meta: %?",
                ident, meta_items);
         let cnum = resolve_crate(e, ident, meta_items, @~"", i.span);
@@ -154,8 +154,8 @@ fn visit_view_item(e: @mut Env, i: @ast::view_item) {
 }
 
 fn visit_item(e: @mut Env, i: @ast::item) {
-    match /*bad*/copy i.node {
-      ast::item_foreign_mod(fm) => {
+    match i.node {
+      ast::item_foreign_mod(ref fm) => {
         match attr::foreign_abi(i.attrs) {
           either::Right(abi) => {
             if abi != ast::foreign_abi_cdecl &&

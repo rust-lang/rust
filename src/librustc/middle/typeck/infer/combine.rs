@@ -82,7 +82,7 @@ pub trait Combine {
     fn lub(&self) -> Lub;
     fn glb(&self) -> Glb;
 
-    fn mts(&self, a: ty::mt, b: ty::mt) -> cres<ty::mt>;
+    fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt>;
     fn contratys(&self, a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tys(&self, a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tps(&self, as_: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]>;
@@ -305,7 +305,7 @@ pub fn super_flds<C:Combine>(
     self: &C, a: ty::field, b: ty::field) -> cres<ty::field> {
 
     if a.ident == b.ident {
-        self.mts(a.mt, b.mt)
+        self.mts(&a.mt, &b.mt)
             .chain(|mt| Ok(ty::field {ident: a.ident, mt: mt}) )
             .chain_err(|e| Err(ty::terr_in_field(@e, a.ident)) )
     } else {
@@ -419,8 +419,8 @@ pub fn super_fn_sigs<C:Combine>(
     self: &C, a_f: &ty::FnSig, b_f: &ty::FnSig) -> cres<ty::FnSig>
 {
     fn argvecs<C:Combine>(self: &C,
-                          +a_args: ~[ty::arg],
-                          +b_args: ~[ty::arg]) -> cres<~[ty::arg]>
+                          a_args: &[ty::arg],
+                          b_args: &[ty::arg]) -> cres<~[ty::arg]>
     {
         if vec::same_length(a_args, b_args) {
             map_vec2(a_args, b_args, |a, b| self.args(*a, *b))
@@ -429,7 +429,7 @@ pub fn super_fn_sigs<C:Combine>(
         }
     }
 
-    do argvecs(self, /*bad*/copy a_f.inputs, /*bad*/copy b_f.inputs)
+    do argvecs(self, a_f.inputs, b_f.inputs)
             .chain |inputs| {
         do self.tys(a_f.output, b_f.output).chain |output| {
             Ok(FnSig {inputs: /*bad*/copy inputs, output: output})
@@ -509,7 +509,7 @@ pub fn super_tys<C:Combine>(
         }
       }
 
-      (ty::ty_param(a_p), ty::ty_param(b_p)) if a_p.idx == b_p.idx => {
+      (ty::ty_param(ref a_p), ty::ty_param(ref b_p)) if a_p.idx == b_p.idx => {
         Ok(a)
       }
 
@@ -538,31 +538,31 @@ pub fn super_tys<C:Combine>(
         }
       }
 
-      (ty::ty_box(a_mt), ty::ty_box(b_mt)) => {
+      (ty::ty_box(ref a_mt), ty::ty_box(ref b_mt)) => {
         do self.mts(a_mt, b_mt).chain |mt| {
             Ok(ty::mk_box(tcx, mt))
         }
       }
 
-      (ty::ty_uniq(a_mt), ty::ty_uniq(b_mt)) => {
+      (ty::ty_uniq(ref a_mt), ty::ty_uniq(ref b_mt)) => {
         do self.mts(a_mt, b_mt).chain |mt| {
             Ok(ty::mk_uniq(tcx, mt))
         }
       }
 
-      (ty::ty_ptr(a_mt), ty::ty_ptr(b_mt)) => {
+      (ty::ty_ptr(ref a_mt), ty::ty_ptr(ref b_mt)) => {
         do self.mts(a_mt, b_mt).chain |mt| {
             Ok(ty::mk_ptr(tcx, mt))
         }
       }
 
-      (ty::ty_rptr(a_r, a_mt), ty::ty_rptr(b_r, b_mt)) => {
+      (ty::ty_rptr(a_r, ref a_mt), ty::ty_rptr(b_r, ref b_mt)) => {
           let r = if_ok!(self.contraregions(a_r, b_r));
           let mt = if_ok!(self.mts(a_mt, b_mt));
           Ok(ty::mk_rptr(tcx, r, mt))
       }
 
-      (ty::ty_evec(a_mt, vs_a), ty::ty_evec(b_mt, vs_b)) => {
+      (ty::ty_evec(ref a_mt, vs_a), ty::ty_evec(ref b_mt, vs_b)) => {
         do self.mts(a_mt, b_mt).chain |mt| {
             do self.vstores(ty::terr_vec, vs_a, vs_b).chain |vs| {
                 Ok(ty::mk_evec(tcx, mt, vs))
@@ -576,9 +576,9 @@ pub fn super_tys<C:Combine>(
         }
       }
 
-      (ty::ty_tup(as_), ty::ty_tup(bs)) => {
-        if vec::same_length(as_, bs) {
-            map_vec2(as_, bs, |a, b| self.tys(*a, *b) )
+      (ty::ty_tup(ref as_), ty::ty_tup(ref bs)) => {
+        if as_.len() == bs.len() {
+            map_vec2(*as_, *bs, |a, b| self.tys(*a, *b) )
                 .chain(|ts| Ok(ty::mk_tup(tcx, ts)) )
         } else {
             Err(ty::terr_tuple_size(

@@ -243,8 +243,8 @@ pub fn is_useful(cx: @MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
               }
               ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
                 let max_len = do m.foldr(0) |r, max_len| {
-                  match /*bad*/copy r[0].node {
-                    pat_vec(before, _, after) => {
+                  match r[0].node {
+                    pat_vec(ref before, _, ref after) => {
                       uint::max(before.len() + after.len(), max_len)
                     }
                     _ => max_len
@@ -299,7 +299,7 @@ pub fn is_useful_specialized(cx: @MatchCheckCtxt,
 
 pub fn pat_ctor_id(cx: @MatchCheckCtxt, p: @pat) -> Option<ctor> {
     let pat = raw_pat(p);
-    match /*bad*/copy pat.node {
+    match pat.node {
       pat_wild => { None }
       pat_ident(_, _, _) | pat_enum(_, _) => {
         match cx.tcx.def_map.find(&pat.id) {
@@ -324,7 +324,7 @@ pub fn pat_ctor_id(cx: @MatchCheckCtxt, p: @pat) -> Option<ctor> {
       pat_box(_) | pat_uniq(_) | pat_tup(_) | pat_region(*) => {
         Some(single)
       }
-      pat_vec(before, slice, after) => {
+      pat_vec(ref before, slice, ref after) => {
         match slice {
           Some(_) => None,
           None => Some(vec(before.len() + after.len()))
@@ -448,8 +448,8 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
 }
 
 pub fn ctor_arity(cx: @MatchCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
-    match /*bad*/copy ty::get(ty).sty {
-      ty::ty_tup(fs) => fs.len(),
+    match ty::get(ty).sty {
+      ty::ty_tup(ref fs) => fs.len(),
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) => 1u,
       ty::ty_enum(eid, _) => {
           let id = match ctor { variant(id) => id,
@@ -704,7 +704,7 @@ pub fn is_refutable(cx: @MatchCheckCtxt, pat: &pat) -> bool {
       _ => ()
     }
 
-    match /*bad*/copy pat.node {
+    match pat.node {
       pat_box(sub) | pat_uniq(sub) | pat_region(sub) |
       pat_ident(_, _, Some(sub)) => {
         is_refutable(cx, sub)
@@ -715,13 +715,13 @@ pub fn is_refutable(cx: @MatchCheckCtxt, pat: &pat) -> bool {
         false
       }
       pat_lit(_) | pat_range(_, _) => { true }
-      pat_struct(_, fields, _) => {
+      pat_struct(_, ref fields, _) => {
         fields.any(|f| is_refutable(cx, f.pat))
       }
-      pat_tup(elts) => {
+      pat_tup(ref elts) => {
         elts.any(|elt| is_refutable(cx, *elt))
       }
-      pat_enum(_, Some(args)) => {
+      pat_enum(_, Some(ref args)) => {
         args.any(|a| is_refutable(cx, *a))
       }
       pat_enum(_,_) => { false }

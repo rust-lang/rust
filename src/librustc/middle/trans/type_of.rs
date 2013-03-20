@@ -176,7 +176,7 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
     }
 
     // XXX: This is a terrible terrible copy.
-    let llty = match /*bad*/copy ty::get(t).sty {
+    let llty = match ty::get(t).sty {
       ty::ty_nil | ty::ty_bot => T_nil(),
       ty::ty_bool => T_bool(),
       ty::ty_int(t) => T_int_ty(cx, t),
@@ -199,22 +199,22 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
       ty::ty_estr(ty::vstore_box) => {
         T_box_ptr(T_box(cx, T_vec(cx, T_i8())))
       }
-      ty::ty_evec(mt, ty::vstore_box) => {
+      ty::ty_evec(ref mt, ty::vstore_box) => {
         T_box_ptr(T_box(cx, T_vec(cx, type_of(cx, mt.ty))))
       }
-      ty::ty_box(mt) => T_box_ptr(T_box(cx, type_of(cx, mt.ty))),
+      ty::ty_box(ref mt) => T_box_ptr(T_box(cx, type_of(cx, mt.ty))),
       ty::ty_opaque_box => T_box_ptr(T_box(cx, T_i8())),
-      ty::ty_uniq(mt) => T_unique_ptr(T_unique(cx, type_of(cx, mt.ty))),
-      ty::ty_evec(mt, ty::vstore_uniq) => {
+      ty::ty_uniq(ref mt) => T_unique_ptr(T_unique(cx, type_of(cx, mt.ty))),
+      ty::ty_evec(ref mt, ty::vstore_uniq) => {
         T_unique_ptr(T_unique(cx, T_vec(cx, type_of(cx, mt.ty))))
       }
-      ty::ty_unboxed_vec(mt) => {
+      ty::ty_unboxed_vec(ref mt) => {
         T_vec(cx, type_of(cx, mt.ty))
       }
-      ty::ty_ptr(mt) => T_ptr(type_of(cx, mt.ty)),
-      ty::ty_rptr(_, mt) => T_ptr(type_of(cx, mt.ty)),
+      ty::ty_ptr(ref mt) => T_ptr(type_of(cx, mt.ty)),
+      ty::ty_rptr(_, ref mt) => T_ptr(type_of(cx, mt.ty)),
 
-      ty::ty_evec(mt, ty::vstore_slice(_)) => {
+      ty::ty_evec(ref mt, ty::vstore_slice(_)) => {
         T_struct(~[T_ptr(type_of(cx, mt.ty)),
                    T_uint_ty(cx, ast::ty_u)])
       }
@@ -228,7 +228,7 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
         T_array(T_i8(), n + 1u /* +1 for trailing null */)
       }
 
-      ty::ty_evec(mt, ty::vstore_fixed(n)) => {
+      ty::ty_evec(ref mt, ty::vstore_fixed(n)) => {
         T_array(type_of(cx, mt.ty), n)
       }
 

@@ -383,7 +383,7 @@ pub impl IrMaps {
     }
 
     fn variable_name(&mut self, var: Variable) -> @~str {
-        match copy self.var_kinds[*var] {
+        match self.var_kinds[*var] {
             Local(LocalInfo {ident: nm, _}) |
             Arg(_, nm, _) => self.tcx.sess.str_of(nm),
             ImplicitRet => @~"<implicit-ret>"
@@ -1065,8 +1065,8 @@ pub impl Liveness {
 
     fn propagate_through_decl(&self, decl: @decl, succ: LiveNode)
                              -> LiveNode {
-        match /*bad*/copy decl.node {
-          decl_local(locals) => {
+        match decl.node {
+          decl_local(ref locals) => {
             do locals.foldr(succ) |local, succ| {
                 self.propagate_through_local(*local, succ)
             }
@@ -1097,7 +1097,7 @@ pub impl Liveness {
         self.define_bindings_in_pat(local.node.pat, succ)
     }
 
-    fn propagate_through_exprs(&self, exprs: ~[@expr],
+    fn propagate_through_exprs(&self, exprs: &[@expr],
                                succ: LiveNode) -> LiveNode {
         do exprs.foldr(succ) |expr, succ| {
             self.propagate_through_expr(*expr, succ)
@@ -1116,7 +1116,7 @@ pub impl Liveness {
         debug!("propagate_through_expr: %s",
              expr_to_str(expr, self.tcx.sess.intr()));
 
-        match /*bad*/copy expr.node {
+        match expr.node {
           // Interesting cases with control flow or which gen/kill
 
           expr_path(_) => {
@@ -1283,8 +1283,8 @@ pub impl Liveness {
             self.propagate_through_expr(expr, succ)
           }
 
-          expr_vec(exprs, _) => {
-            self.propagate_through_exprs(exprs, succ)
+          expr_vec(ref exprs, _) => {
+            self.propagate_through_exprs(*exprs, succ)
           }
 
           expr_repeat(element, count, _) => {
@@ -1299,29 +1299,29 @@ pub impl Liveness {
             }
           }
 
-          expr_call(f, args, _) => {
+          expr_call(f, ref args, _) => {
             // calling a fn with bot return type means that the fn
             // will fail, and hence the successors can be ignored
             let t_ret = ty::ty_fn_ret(ty::expr_ty(self.tcx, f));
             let succ = if ty::type_is_bot(t_ret) {self.s.exit_ln}
                        else {succ};
-            let succ = self.propagate_through_exprs(args, succ);
+            let succ = self.propagate_through_exprs(*args, succ);
             self.propagate_through_expr(f, succ)
           }
 
-          expr_method_call(rcvr, _, _, args, _) => {
+          expr_method_call(rcvr, _, _, ref args, _) => {
             // calling a method with bot return type means that the method
             // will fail, and hence the successors can be ignored
             let t_ret = ty::ty_fn_ret(ty::node_id_to_type(self.tcx,
                                                           expr.callee_id));
             let succ = if ty::type_is_bot(t_ret) {self.s.exit_ln}
                        else {succ};
-            let succ = self.propagate_through_exprs(args, succ);
+            let succ = self.propagate_through_exprs(*args, succ);
             self.propagate_through_expr(rcvr, succ)
           }
 
-          expr_tup(exprs) => {
-            self.propagate_through_exprs(exprs, succ)
+          expr_tup(ref exprs) => {
+            self.propagate_through_exprs(*exprs, succ)
           }
 
           expr_binary(op, l, r) if ast_util::lazy_binop(op) => {
@@ -1350,7 +1350,7 @@ pub impl Liveness {
             self.propagate_through_expr(e, succ)
           }
 
-          expr_inline_asm(_, ins, outs, _, _, _) =>{
+          expr_inline_asm(_, ref ins, ref outs, _, _, _) =>{
             let succ = do ins.foldr(succ) |&(_, expr), succ| {
                 self.propagate_through_expr(expr, succ)
             };
@@ -1579,7 +1579,7 @@ fn check_arm(arm: &arm, &&self: @Liveness, vt: vt<@Liveness>) {
 }
 
 fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
-    match /*bad*/copy expr.node {
+    match expr.node {
       expr_path(_) => {
         for self.variable_from_def_map(expr.id, expr.span).each |var| {
             let ln = self.live_node(expr.id, expr.span);
@@ -1624,7 +1624,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
         visit::visit_expr(expr, self, vt);
       }
 
-      expr_inline_asm(_, ins, outs, _, _, _) => {
+      expr_inline_asm(_, ref ins, ref outs, _, _, _) => {
         for ins.each |&(_, in)| {
           (vt.visit_expr)(in, self, vt);
         }

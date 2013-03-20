@@ -1291,14 +1291,14 @@ pub type mono_id = @mono_id_;
 
 impl to_bytes::IterBytes for mono_param_id {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        match /*bad*/copy *self {
-          mono_precise(t, mids) =>
-          to_bytes::iter_bytes_3(&0u8, &ty::type_id(t), &mids, lsb0, f),
+        match *self {
+            mono_precise(t, ref mids) =>
+                to_bytes::iter_bytes_3(&0u8, &ty::type_id(t), mids, lsb0, f),
 
-          mono_any => 1u8.iter_bytes(lsb0, f),
+            mono_any => 1u8.iter_bytes(lsb0, f),
 
-          mono_repr(ref a, ref b, ref c, ref d) =>
-          to_bytes::iter_bytes_5(&2u8, a, b, c, d, lsb0, f)
+            mono_repr(ref a, ref b, ref c, ref d) =>
+                to_bytes::iter_bytes_5(&2u8, a, b, c, d, lsb0, f)
         }
     }
 }
@@ -1340,7 +1340,7 @@ pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
 }
 
 pub fn monomorphize_type(bcx: block, t: ty::t) -> ty::t {
-    match /*bad*/copy bcx.fcx.param_substs {
+    match bcx.fcx.param_substs {
         Some(substs) => {
             ty::subst_tps(bcx.tcx(), substs.tys, substs.self_ty, t)
         }
@@ -1367,7 +1367,7 @@ pub fn expr_ty_adjusted(bcx: block, ex: @ast::expr) -> ty::t {
 pub fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
     let tcx = bcx.tcx();
     let params = ty::node_id_to_type_params(tcx, id);
-    match /*bad*/copy bcx.fcx.param_substs {
+    match bcx.fcx.param_substs {
       Some(substs) => {
         do vec::map(params) |t| {
             ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
@@ -1396,7 +1396,7 @@ pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, +vt: typeck::vtable_origin)
     let tcx = fcx.ccx.tcx;
     match vt {
         typeck::vtable_static(trait_id, tys, sub) => {
-            let tys = match /*bad*/copy fcx.param_substs {
+            let tys = match fcx.param_substs {
                 Some(substs) => {
                     do vec::map(tys) |t| {
                         ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
