@@ -307,12 +307,9 @@ pub impl LookupContext/&self {
                         self_ty, did, substs, store);
                     self.push_inherent_impl_candidates_for_type(did);
                 }
-                ty_self => {
+                ty_self(self_did) => {
                     // Call is of the form "self.foo()" and appears in one
                     // of a trait's default method implementations.
-                    let self_did = self.fcx.self_info.expect(
-                        ~"self_impl_def_id is undefined (`self` may not \
-                          be in scope here").def_id;
                     let substs = substs {
                         self_r: None,
                         self_ty: None,
@@ -932,7 +929,7 @@ pub impl LookupContext/&self {
             ty_bare_fn(*) | ty_box(*) | ty_uniq(*) | ty_rptr(*) |
             ty_infer(IntVar(_)) |
             ty_infer(FloatVar(_)) |
-            ty_self | ty_param(*) | ty_nil | ty_bot | ty_bool |
+            ty_self(_) | ty_param(*) | ty_nil | ty_bot | ty_bool |
             ty_int(*) | ty_uint(*) |
             ty_float(*) | ty_enum(*) | ty_ptr(*) | ty_struct(*) | ty_tup(*) |
             ty_estr(*) | ty_evec(*) | ty_trait(*) | ty_closure(*) => {
