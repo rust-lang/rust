@@ -64,7 +64,7 @@ use middle::typeck::{CrateCtxt, write_substs_to_tcx, write_ty_to_tcx};
 
 use core::result;
 use core::vec;
-use syntax::ast;
+use syntax::{ast, ast_util};
 use syntax::codemap::span;
 use syntax::print::pprust::{lifetime_to_str, path_to_str};
 use syntax::parse::token::special_idents;
@@ -400,12 +400,13 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
             check_path_args(tcx, path, NO_TPS | NO_REGIONS);
             ty::mk_param(tcx, n, id)
           }
-          ast::def_self_ty(_) => {
+          ast::def_self_ty(id) => {
             // n.b.: resolve guarantees that the self type only appears in a
             // trait, which we rely upon in various places when creating
             // substs
             check_path_args(tcx, path, NO_TPS | NO_REGIONS);
-            ty::mk_self(tcx)
+            let did = ast_util::local_def(id);
+            ty::mk_self(tcx, did)
           }
           _ => {
             tcx.sess.span_fatal(ast_ty.span,
