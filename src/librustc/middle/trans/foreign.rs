@@ -26,6 +26,7 @@ use middle::trans::cabi_mips::*;
 use middle::trans::build::*;
 use middle::trans::callee::*;
 use middle::trans::common::*;
+use middle::trans::controlflow;
 use middle::trans::datum::*;
 use middle::trans::expr::{Dest, Ignore};
 use middle::trans::machine::llsize_of;
@@ -120,7 +121,7 @@ fn shim_types(ccx: @CrateContext, id: ast::node_id) -> ShimTypes {
         llsig: llsig,
         ret_def: ret_def,
         bundle_ty: bundle_ty,
-        shim_fn_ty: T_fn(~[T_ptr(bundle_ty)], T_void()),
+        shim_fn_ty: T_fn(~[T_ptr(bundle_ty)], T_bool()),
         fn_ty: fn_ty
     }
 }
@@ -394,7 +395,7 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
         fn build_ret(bcx: block, _tys: &ShimTypes,
                      _llargbundle: ValueRef) {
             let _icx = bcx.insn_ctxt("foreign::wrap::build_ret");
-            RetVoid(bcx);
+            Ret(bcx, C_bool(true));
         }
     }
 }
@@ -596,6 +597,9 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             Store(bcx,
                   C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)),
                   fcx.llretptr);
+        }
+        ~"set_retcode_fail" => {
+            Store(bcx, C_bool(false), controlflow::get_llretcode(bcx));
         }
         ~"visit_tydesc" => {
             let td = get_param(decl, first_real_arg);

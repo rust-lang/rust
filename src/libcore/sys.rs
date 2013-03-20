@@ -37,9 +37,20 @@ pub struct Closure {
     env: *(),
 }
 
+pub mod rustrt {
+    use libc::{c_char, size_t};
+
+    pub extern {
+        #[rust_stack]
+        unsafe fn rust_upcall_fail(unwind: bool, expr: *c_char,
+                                   file: *c_char, line: size_t);
+    }
+}
+
+#[cfg(stage0)]
 pub mod rusti {
     #[abi = "rust-intrinsic"]
-    pub extern {
+    extern {
         fn get_tydesc<T>() -> *();
         fn size_of<T>() -> uint;
         fn pref_align_of<T>() -> uint;
@@ -47,14 +58,17 @@ pub mod rusti {
     }
 }
 
-pub mod rustrt {
-    use libc::{c_char, size_t};
-
-    pub extern {
-        #[rust_stack]
-        unsafe fn rust_upcall_fail(expr: *c_char,
-                                   file: *c_char,
-                                   line: size_t);
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+pub mod rusti {
+    #[abi = "rust-intrinsic"]
+    extern {
+        fn get_tydesc<T>() -> *();
+        fn size_of<T>() -> uint;
+        fn pref_align_of<T>() -> uint;
+        fn min_align_of<T>() -> uint;
+        fn set_retcode_fail();
     }
 }
 
@@ -134,7 +148,17 @@ pub pure fn log_str<T>(t: &T) -> ~str {
     }
 }
 
+
+#[cfg(return_unwind)]
+const do_throw:bool = false;
+
+#[cfg(stage0)]
+#[cfg(throw_unwind)]
+const do_throw:bool = true;
+
 /** Initiate task failure */
+#[cfg(stage0)]
+#[cfg(throw_unwind)]
 pub pure fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
     do str::as_buf(msg) |msg_buf, _msg_len| {
         do str::as_buf(file) |file_buf, _file_len| {
@@ -147,19 +171,48 @@ pub pure fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
     }
 }
 
+
 // FIXME #4427: Temporary until rt::rt_fail_ goes away
+#[cfg(stage0)]
+#[cfg(throw_unwind)]
 pub pure fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     unsafe {
         gc::cleanup_stack_for_failure();
-        rustrt::rust_upcall_fail(msg, file, line);
+        rustrt::rust_upcall_fail(do_throw, msg, file, line);
         cast::transmute(())
     }
 }
+
 
 pub pure fn fail_assert(msg: &str, file: &str, line: uint) -> ! {
     unsafe {
         let (msg, file) = (msg.to_owned(), file.to_owned());
         begin_unwind(~"assertion failed: " + msg, file, line)
+    }
+}
+
+/** Initiate task failure */
+#[cfg(return_unwind)]
+pub pure fn begin_unwind(msg: ~str, file: ~str, line: uint) {
+    do str::as_buf(msg) |msg_buf, _msg_len| {
+        do str::as_buf(file) |file_buf, _file_len| {
+            unsafe {
+                let msg_buf = cast::transmute(msg_buf);
+                let file_buf = cast::transmute(file_buf);
+                begin_unwind_(msg_buf, file_buf, line as libc::size_t)
+            }
+        }
+    }
+}
+
+
+// FIXME #4427: Temporary until rt::rt_fail_ goes away
+#[cfg(return_unwind)]
+pub pure fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) {
+    unsafe {
+        gc::cleanup_stack_for_failure();
+        rustrt::rust_upcall_fail(do_throw, msg, file, line);
+        rusti::set_retcode_fail();
     }
 }
 

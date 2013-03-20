@@ -822,7 +822,16 @@ pub fn invoke(bcx: block, llfn: ValueRef, +llargs: ~[ValueRef]) -> block {
         }
         let normal_bcx = sub_block(bcx, ~"normal return");
         Invoke(bcx, llfn, llargs, normal_bcx.llbb, get_landing_pad(bcx));
-        return normal_bcx;
+        normal_bcx
+    } else if bcx.fcx.ccx.sess.return_unwind() {
+        debug!("calling with return-unwind check");
+        let v = Call(bcx, llfn, llargs);
+        do with_cond(bcx, Not(bcx, v)) |bcx| {
+            Store(bcx, C_bool(false), controlflow::get_llretcode(bcx));
+            cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
+            Unreachable(bcx);
+            bcx
+        }
     } else {
         unsafe {
             debug!("calling %x at %x",
@@ -833,12 +842,12 @@ pub fn invoke(bcx: block, llfn: ValueRef, +llargs: ~[ValueRef]) -> block {
             }
         }
         Call(bcx, llfn, llargs);
-        return bcx;
+        bcx
     }
 }
 
 pub fn need_invoke(bcx: block) -> bool {
-    if (bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0) {
+    if (bcx.ccx().sess.no_landing_pads()) {
         return false;
     }
 
@@ -1260,8 +1269,7 @@ pub fn trans_block_cleanups_(bcx: block,
     let _icx = bcx.insn_ctxt("trans_block_cleanups");
     // NB: Don't short-circuit even if this block is unreachable because
     // GC-based cleanup needs to the see that the roots are live.
-    let no_lpads =
-        bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0;
+    let no_lpads = bcx.ccx().sess.no_landing_pads();
     if bcx.unreachable && !no_lpads { return bcx; }
     let mut bcx = bcx;
     for vec::rev_each(cleanups) |cu| {
@@ -1526,7 +1534,7 @@ pub fn alloca_maybe_zeroed(cx: block, t: TypeRef, zero: bool) -> ValueRef {
     let _icx = cx.insn_ctxt("alloca");
     if cx.unreachable {
         unsafe {
-            return llvm::LLVMGetUndef(t);
+            return llvm::LLVMGetUndef(T_ptr(t));
         }
     }
     let initcx = base::raw_block(cx.fcx, false, cx.fcx.llstaticallocas);
@@ -1539,7 +1547,7 @@ pub fn arrayalloca(cx: block, t: TypeRef, v: ValueRef) -> ValueRef {
     let _icx = cx.insn_ctxt("arrayalloca");
     if cx.unreachable {
         unsafe {
-            return llvm::LLVMGetUndef(t);
+            return llvm::LLVMGetUndef(T_ptr(t));
         }
     }
     return ArrayAlloca(
@@ -1585,6 +1593,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           llstaticallocas: llbbs.sa,
           llloadenv: None,
           llreturn: llbbs.rt,
+          llretcode: None,
           llself: None,
           personality: None,
           loop_ret: None,
@@ -1731,7 +1740,10 @@ pub fn finish_fn(fcx: fn_ctxt, lltop: BasicBlockRef) {
     let _icx = fcx.insn_ctxt("finish_fn");
     tie_up_header_blocks(fcx, lltop);
     let ret_cx = raw_block(fcx, false, fcx.llreturn);
-    RetVoid(ret_cx);
+    match fcx.llretcode {
+        None => Ret(ret_cx, C_bool(true)),
+        Some(addr) => Ret(ret_cx, Load(ret_cx, addr))
+    }
 }
 
 pub fn tie_up_header_blocks(fcx: fn_ctxt, lltop: BasicBlockRef) {
@@ -2227,7 +2239,19 @@ pub fn create_main_wrapper(ccx: @CrateContext,
         let lloutputarg = unsafe { llvm::LLVMGetParam(llfdecl, 0 as c_uint) };
         let llenvarg = unsafe { llvm::LLVMGetParam(llfdecl, 1 as c_uint) };
         let mut args = ~[lloutputarg, llenvarg];
-        Call(bcx, main_llfn, args);
+
+        let bcx = if bcx.fcx.ccx.sess.return_unwind() {
+            let v = Call(bcx, main_llfn, args);
+            do with_cond(bcx, Not(bcx, v)) |bcx| {
+                Store(bcx, C_bool(false), controlflow::get_llretcode(bcx));
+                cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
+                Unreachable(bcx);
+                bcx
+            }
+        } else {
+            Call(bcx, main_llfn, args);
+            bcx
+        };
 
         build_return(bcx);
         finish_fn(fcx, lltop);
@@ -2462,13 +2486,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
             let class_ty = ty::lookup_item_type(tcx, parent_id).ty;
             // This code shouldn't be reached if the class is generic
             fail_unless!(!ty::type_has_params(class_ty));
-            let lldty = unsafe {
-                T_fn(~[
-                    T_ptr(type_of(ccx, ty::mk_nil(tcx))),
-                    T_ptr(type_of(ccx, class_ty))
-                ],
-                llvm::LLVMVoidType())
-            };
+            let lldty = type_of_dtor(ccx, class_ty);
             let s = get_dtor_symbol(ccx, /*bad*/copy *pt, dt.node.id, None);
 
             /* Make the declaration for the dtor */
@@ -3034,7 +3052,7 @@ pub fn trans_crate(sess: session::Session,
         let task_type = T_task(targ_cfg);
         let taskptr_type = T_ptr(task_type);
         lib::llvm::associate_type(tn, @"taskptr", taskptr_type);
-        let tydesc_type = T_tydesc(targ_cfg);
+        let tydesc_type = T_tydesc(sess);
         lib::llvm::associate_type(tn, @"tydesc", tydesc_type);
         let crate_map = decl_crate_map(sess, link_meta, llmod);
         let dbg_cx = if sess.opts.debuginfo {

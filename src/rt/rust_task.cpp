@@ -78,13 +78,17 @@ rust_task::delete_this()
 }
 
 // All failure goes through me. Put your breakpoints here!
+// (Note: this function is extern "C" so it has a nice symbol
+//  you can break on in gdb; rust code does not call this directly,
+//  but rather calls one of the upcalls.)
 extern "C" void
-rust_task_fail(rust_task *task,
+rust_task_fail(bool do_throw,
+               rust_task *task,
                char const *expr,
                char const *file,
                size_t line) {
     assert(task != NULL);
-    task->begin_failure(expr, file, line);
+    task->begin_failure(do_throw, expr, file, line);
 }
 
 struct spawn_args {
@@ -154,20 +158,22 @@ extern "C" CDECL void upcall_exchange_free(void *ptr);
 void task_start_wrapper(spawn_args *a)
 {
     rust_task *task = a->task;
+    bool ok = true;
 
-    bool threw_exception = false;
     try {
         // The first argument is the return pointer; as the task fn
         // must have void return type, we can safely pass 0.
-        a->f(0, a->envptr, a->argptr);
+        ok = a->f(0, a->envptr, a->argptr);
     } catch (rust_task *ex) {
-        assert(ex == task && "Expected this task to be thrown for unwinding");
-        threw_exception = true;
+        assert(ex == task &&
+               "Expected this task to be thrown for unwinding");
+        ok = false;
+    }
 
+    if (!ok) {
         if (task->c_stack) {
             task->return_c_stack();
         }
-
         // Since we call glue code below we need to make sure we
         // have the stack limit set up correctly
         task->reset_stack_limit();
@@ -185,9 +191,8 @@ void task_start_wrapper(spawn_args *a)
     }
 
     // The cleanup work needs lots of stack
-    cleanup_args ca = {a, threw_exception};
+    cleanup_args ca = {a, !ok};
     task->call_on_c_stack(&ca, (void*)cleanup_task);
-
     task->ctx.next->swap(task->ctx);
 }
 
@@ -309,17 +314,19 @@ void rust_task::kill_inner() {
 void
 rust_task::fail() {
     // See note in ::kill() regarding who should call this.
-    fail(NULL, NULL, 0);
+    fail(false, NULL, NULL, 0);
 }
 
 void
-rust_task::fail(char const *expr, char const *file, size_t line) {
-    rust_task_fail(this, expr, file, line);
+rust_task::fail(bool do_throw, char const *expr,
+                char const *file, size_t line) {
+    rust_task_fail(do_throw, this, expr, file, line);
 }
 
 // Called only by rust_task_fail
 void
-rust_task::begin_failure(char const *expr, char const *file, size_t line) {
+rust_task::begin_failure(bool do_throw, char const *expr,
+                         char const *file, size_t line) {
 
     if (expr) {
         LOG_ERR(this, task, "task failed at '%s', %s:%" PRIdPTR,
@@ -329,13 +336,16 @@ rust_task::begin_failure(char const *expr, char const *file, size_t line) {
     DLOG(sched_loop, task, "task %s @0x%" PRIxPTR " failing", name, this);
     backtrace();
     unwinding = true;
+
+    if (do_throw) {
 #ifndef __WIN32__
-    throw this;
+        throw this;
 #else
-    die();
-    // FIXME (#908): Need unwinding on windows. This will end up aborting
-    fail_sched_loop();
+        die();
+        // FIXME (#908): Need unwinding on windows. This will end up aborting
+        fail_sched_loop();
 #endif
+    }
 }
 
 void rust_task::fail_sched_loop() {
@@ -528,11 +538,11 @@ rust_task::new_stack(size_t requested_sz) {
     // arbitrarily selected as 2x the maximum stack size.
     if (!unwinding && used_stack > max_stack) {
         LOG_ERR(this, task, "task %" PRIxPTR " ran out of stack", this);
-        fail();
+        abort();
     } else if (unwinding && used_stack > max_stack * 2) {
         LOG_ERR(this, task,
                 "task %" PRIxPTR " ran out of stack during unwinding", this);
-        fail();
+        abort();
     }
 
     size_t sz = rust_stk_sz + RED_ZONE_SIZE;

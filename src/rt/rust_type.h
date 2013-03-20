@@ -21,7 +21,8 @@ struct rust_opaque_box;
 // - the main function: has a NULL environment, but uses the void* arg
 // - unique closures of type fn~(): have a non-NULL environment, but
 //   no arguments (and hence the final void*) is harmless
-typedef void (*CDECL spawn_fn)(void*, rust_opaque_box*, void *);
+// - return type indicates success or failure; false = fail
+typedef bool (*CDECL spawn_fn)(void*, rust_opaque_box*, void *);
 
 struct type_desc;
 

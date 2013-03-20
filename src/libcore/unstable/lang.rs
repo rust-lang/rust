@@ -27,7 +27,7 @@ pub const FROZEN_BIT: uint = 0x80000000;
 pub const FROZEN_BIT: uint = 0x8000000000000000;
 
 pub mod rustrt {
-    use libc::{c_char, uintptr_t};
+    use libc::{c_char, uintptr_t, size_t};
 
     pub extern {
         #[rust_stack]
@@ -38,11 +38,22 @@ pub mod rustrt {
     }
 }
 
+#[rt(fail_)]
 #[lang="fail_"]
+#[cfg(return_unwind)]
+pub fn fail_(expr: *c_char, file: *c_char, line: size_t) {
+    sys::begin_unwind_(expr, file, line);
+}
+
+#[lang="fail_"]
+#[cfg(stage0)]
+#[cfg(throw_unwind)]
 pub fn fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
     sys::begin_unwind_(expr, file, line);
 }
 
+
+#[rt(fail_bounds_check)]
 #[lang="fail_bounds_check"]
 pub unsafe fn fail_bounds_check(file: *c_char, line: size_t,
                                 index: size_t, len: size_t) {

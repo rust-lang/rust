@@ -323,10 +323,24 @@ pub fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
     return bcx;
 }
 
+
+pub fn get_llretcode(bcx: block) -> ValueRef {
+    match bcx.fcx.llretcode {
+        None => {
+            let initcx = raw_block(bcx.fcx, false,
+                                   bcx.fcx.llstaticallocas);
+            let v = Alloca(initcx, T_bool());
+            Store(initcx, C_bool(true), v);
+            bcx.fcx.llretcode = Some(v);
+            v
+        }
+        Some(v) => v
+    }
+}
+
 pub fn trans_fail_expr(bcx: block,
-                       sp_opt: Option<span>,
-                       fail_expr: Option<@ast::expr>)
-                    -> block {
+                   sp_opt: Option<span>,
+                   fail_expr: Option<@ast::expr>) -> block {
     let _icx = bcx.insn_ctxt("trans_fail_expr");
     let mut bcx = bcx;
     match fail_expr {
@@ -379,10 +393,21 @@ fn trans_fail_value(bcx: block,
     let V_str = PointerCast(bcx, V_fail_str, T_ptr(T_i8()));
     let V_filename = PointerCast(bcx, V_filename, T_ptr(T_i8()));
     let args = ~[V_str, V_filename, C_int(ccx, V_line)];
-    let bcx = callee::trans_lang_call(
-        bcx, bcx.tcx().lang_items.fail_fn(), args, expr::Ignore);
-    Unreachable(bcx);
-    return bcx;
+
+    if bcx.sess().return_unwind() {
+        let bcx = callee::trans_lang_call(
+            bcx, bcx.tcx().lang_items.fail_fn(), args, expr::Ignore);
+        Store(bcx, C_bool(false), get_llretcode(bcx));
+        cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
+        Unreachable(bcx);
+        return bcx;
+
+    } else {
+        let bcx = callee::trans_lang_call(
+            bcx, bcx.tcx().lang_items.fail_fn(), args, expr::Ignore);
+        Unreachable(bcx);
+        return bcx;
+    }
 }
 
 pub fn trans_fail_bounds_check(bcx: block, sp: span,

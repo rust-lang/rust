@@ -196,7 +196,8 @@ struct task_notification {
 };
 
 extern "C" void
-rust_task_fail(rust_task *task,
+rust_task_fail(bool do_throw,
+               rust_task *task,
                char const *expr,
                char const *file,
                size_t line);
@@ -279,7 +280,8 @@ private:
 
     bool must_fail_from_being_killed_inner();
     // Called by rust_task_fail to unwind on failure
-    void begin_failure(char const *expr,
+    void begin_failure(bool do_throw,
+                       char const *expr,
                        char const *file,
                        size_t line);
 
@@ -287,7 +289,8 @@ private:
     friend void cleanup_task(cleanup_args *a);
     friend void reset_stack_limit_on_c_stack(reset_args *a);
     friend void new_stack_slow(new_stack_args *a);
-    friend void rust_task_fail(rust_task *task,
+    friend void rust_task_fail(bool do_throw,
+                               rust_task *task,
                                char const *expr,
                                char const *file,
                                size_t line);
@@ -343,7 +346,8 @@ public:
 
     // Fail self, assuming caller-on-stack is this task.
     void fail();
-    void fail(char const *expr, char const *file, size_t line);
+    void fail(bool do_throw,
+              char const *expr, char const *file, size_t line);
 
     // Propagate failure to the entire rust runtime.
     void fail_sched_loop();
