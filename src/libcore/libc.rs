@@ -1221,9 +1221,8 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub mod fcntl {
+            use libc::types::os::arch::c95::{c_int, c_char};
             pub extern {
-                use libc::types::os::arch::c95::{c_int, c_char};
-
                 #[link_name = "_open"]
                 unsafe fn open(path: *c_char, oflag: c_int, mode: c_int)
                             -> c_int;
@@ -1562,11 +1561,11 @@ pub mod funcs {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     pub mod bsd44 {
+        use libc::types::common::c95::{c_void};
+        use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
+
         #[abi = "cdecl"]
         pub extern {
-            use libc::types::common::c95::{c_void};
-            use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
-
             unsafe fn sysctl(name: *c_int, namelen: c_uint,
                       oldp: *mut c_void, oldlenp: *mut size_t,
                       newp: *c_void, newlen: size_t) -> c_int;

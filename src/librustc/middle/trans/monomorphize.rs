@@ -94,7 +94,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       ast_map::node_item(i, pt) => (pt, i.ident, i.span),
       ast_map::node_variant(ref v, enm, pt) => (pt, (*v).node.name, enm.span),
       ast_map::node_method(m, _, pt) => (pt, m.ident, m.span),
-      ast_map::node_foreign_item(i, ast::foreign_abi_rust_intrinsic, pt)
+      ast_map::node_foreign_item(i, ast::foreign_abi_rust_intrinsic, _, pt)
       => (pt, i.ident, i.span),
       ast_map::node_foreign_item(*) => {
         // Foreign externs don't have to be monomorphized.
@@ -181,7 +181,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       ast_map::node_item(*) => {
           ccx.tcx.sess.bug(~"Can't monomorphize this kind of item")
       }
-      ast_map::node_foreign_item(i, _, _) => {
+      ast_map::node_foreign_item(i, _, _, _) => {
           let d = mk_lldecl();
           foreign::trans_intrinsic(ccx, d, i, pt, psubsts.get(),
                                 ref_id);

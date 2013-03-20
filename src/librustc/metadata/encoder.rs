@@ -896,6 +896,7 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
                 encode_family(ebml_w, purity_fn_family(mty.fty.purity));
                 encode_self_type(ebml_w, mty.self_ty);
                 encode_method_sort(ebml_w, 'r');
+                encode_visibility(ebml_w, ast::public);
                 ebml_w.end_tag();
               }
               provided(m) => {
@@ -911,6 +912,7 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
                 encode_family(ebml_w, purity_fn_family(mty.fty.purity));
                 encode_self_type(ebml_w, mty.self_ty);
                 encode_method_sort(ebml_w, 'p');
+                encode_visibility(ebml_w, m.vis);
                 ebml_w.end_tag();
               }
             }
@@ -945,6 +947,11 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
             let mut m_path = vec::append(~[], path); // :-(
             m_path += [ast_map::path_name(item.ident)];
             encode_path(ecx, ebml_w, m_path, ast_map::path_name(ty_m.ident));
+
+            // For now, use the item visibility until trait methods can have
+            // real visibility in the AST.
+            encode_visibility(ebml_w, item.vis);
+
             ebml_w.end_tag();
         }
 
@@ -1033,7 +1040,7 @@ fn encode_info_for_items(ecx: @EncodeContext, ebml_w: writer::Encoder,
             |ni, cx, v| {
                 visit::visit_foreign_item(ni, cx, v);
                 match ecx.tcx.items.get(&ni.id) {
-                    ast_map::node_foreign_item(_, abi, pt) => {
+                    ast_map::node_foreign_item(_, abi, _, pt) => {
                         encode_info_for_foreign_item(ecx, ebml_w, ni,
                                                      index, /*bad*/copy *pt,
                                                      abi);

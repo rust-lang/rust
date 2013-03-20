@@ -87,7 +87,7 @@ pub fn path_elt_to_str(pe: path_elt, itr: @ident_interner) -> ~str {
 
 pub enum ast_node {
     node_item(@item, @path),
-    node_foreign_item(@foreign_item, foreign_abi, @path),
+    node_foreign_item(@foreign_item, foreign_abi, visibility, @path),
     node_trait_method(@trait_method, def_id /* trait did */,
                       @path /* path to the trait */),
     node_method(@method, def_id /* impl did */, @path /* path to the impl */),
@@ -170,7 +170,9 @@ pub fn map_decoded_item(diag: @span_handler,
     match ii {
       ii_item(*) | ii_dtor(*) => { /* fallthrough */ }
       ii_foreign(i) => {
-        cx.map.insert(i.id, node_foreign_item(i, foreign_abi_rust_intrinsic,
+        cx.map.insert(i.id, node_foreign_item(i,
+                                              foreign_abi_rust_intrinsic,
+                                              i.vis,    // Wrong but OK
                                               @path));
       }
       ii_method(impl_did, m) => {
@@ -277,10 +279,18 @@ pub fn map_item(i: @item, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
                 Right(abi) => abi
             };
             for nm.items.each |nitem| {
+                // Compute the visibility for this native item.
+                let visibility = match nitem.vis {
+                    public => public,
+                    private => private,
+                    inherited => i.vis
+                };
+
                 cx.map.insert(nitem.id,
                     node_foreign_item(
                         *nitem,
                         abi,
+                        visibility,
                         // FIXME (#2543)
                         if nm.sort == ast::named {
                             extend(cx, i.ident)
@@ -380,7 +390,7 @@ pub fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
         };
         fmt!("%s %s (id=%?)", item_str, path_str, id)
       }
-      Some(node_foreign_item(item, abi, path)) => {
+      Some(node_foreign_item(item, abi, _, path)) => {
         fmt!("foreign item %s with abi %? (id=%?)",
              path_ident_to_str(*path, item.ident, itr), abi, id)
       }

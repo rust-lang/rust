@@ -424,7 +424,7 @@ pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
             ast::m_imm => ()
         }
         print_type(s, mt.ty);
-        word(s.s, ~" * ");
+        word(s.s, ~", ..");
         print_expr(s, v);
         word(s.s, ~"]");
       }
@@ -452,7 +452,7 @@ pub fn print_foreign_item(s: @ps, item: @ast::foreign_item) {
         end(s); // end the outer fn box
       }
       ast::foreign_item_const(t) => {
-        head(s, ~"const");
+        head(s, ~"static");
         print_ident(s, item.ident);
         word_space(s, ~":");
         print_type(s, t);
@@ -471,7 +471,7 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
     (s.ann.pre)(ann_node);
     match /*bad*/ copy item.node {
       ast::item_const(ty, expr) => {
-        head(s, visibility_qualified(item.vis, ~"const"));
+        head(s, visibility_qualified(item.vis, ~"static"));
         print_ident(s, item.ident);
         word_space(s, ~":");
         print_type(s, ty);
