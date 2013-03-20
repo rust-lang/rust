@@ -60,7 +60,7 @@ use syntax::{ast, ast_util, visit};
  * process.
  */
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum lint {
     ctypes,
     unused_imports,
@@ -99,7 +99,7 @@ pub fn level_to_str(lv: level) -> &'static str {
     }
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum level {
     allow, warn, deny, forbid
 }

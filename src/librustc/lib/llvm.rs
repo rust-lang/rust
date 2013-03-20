@@ -127,7 +127,7 @@ pub enum RealPredicate {
 
 // enum for the LLVM TypeKind type - must stay in sync with the def of
 // LLVMTypeKind in llvm/include/llvm-c/Core.h
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum TypeKind {
     Void      = 0,
     Half      = 1,

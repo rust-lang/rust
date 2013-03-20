@@ -54,13 +54,13 @@ use syntax;
 
 // Note: after typeck, you should use resolved_mode() to convert this mode
 // into an rmode, which will take into account the results of mode inference.
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct arg {
     mode: ast::mode,
     ty: t
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct field {
     ident: ast::ident,
     mt: mt
@@ -84,7 +84,7 @@ pub struct mt {
 
 #[auto_encode]
 #[auto_decode]
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum vstore {
     vstore_fixed(uint),
     vstore_uniq,
@@ -94,7 +94,7 @@ pub enum vstore {
 
 #[auto_encode]
 #[auto_decode]
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum TraitStore {
     BareTraitStore,             // a plain trait without a sigil
     BoxTraitStore,              // @Trait
@@ -111,7 +111,7 @@ pub struct field_ty {
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct creader_cache_key {
     cnum: int,
     pos: uint,
@@ -131,7 +131,7 @@ struct intern_key {
     o_def_id: Option<ast::def_id>
 }
 
-// NB: Do not replace this with #[deriving_eq]. The automatically-derived
+// NB: Do not replace this with #[deriving(Eq)]. The automatically-derived
 // implementation will not recurse through sty and you will get stack
 // exhaustion.
 impl cmp::Eq for intern_key {
@@ -359,14 +359,14 @@ pub pure fn type_has_regions(t: t) -> bool {
 pub pure fn type_def_id(t: t) -> Option<ast::def_id> { get(t).o_def_id }
 pub pure fn type_id(t: t) -> uint { get(t).id }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct BareFnTy {
     purity: ast::purity,
     abi: Abi,
     sig: FnSig
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct ClosureTy {
     purity: ast::purity,
     sigil: ast::Sigil,
@@ -381,7 +381,7 @@ pub struct ClosureTy {
  *
  * - `inputs` is the list of arguments and their modes.
  * - `output` is the return type. */
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct FnSig {
     inputs: ~[arg],
     output: t
@@ -400,7 +400,7 @@ impl to_bytes::IterBytes for ClosureTy {
     }
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct param_ty {
     idx: uint,
     def_id: def_id
@@ -489,7 +489,7 @@ type opt_region = Option<Region>;
  * - `self_ty` is the type to which `self` should be remapped, if any.  The
  *   `self` type is rather funny in that it can only appear on traits and is
  *   always substituted away to the implementing type for a trait. */
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct substs {
     self_r: opt_region,
     self_ty: Option<ty::t>,
@@ -498,7 +498,7 @@ pub struct substs {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in libsyntax/ast.rs as well.
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum sty {
     ty_nil,
     ty_bot,
@@ -535,7 +535,7 @@ pub enum sty {
     ty_unboxed_vec(mt),
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum IntVarValue {
     IntType(ast::int_ty),
     UintType(ast::uint_ty),
@@ -592,23 +592,23 @@ pub enum param_bound {
     bound_trait(t),
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct TyVid(uint);
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct IntVid(uint);
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct FloatVid(uint);
 
-#[deriving_eq]
+#[deriving(Eq)]
 #[auto_encode]
 #[auto_decode]
 pub struct RegionVid {
     id: uint
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum InferTy {
     TyVar(TyVid),
     IntVar(IntVid),
