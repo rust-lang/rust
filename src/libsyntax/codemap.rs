@@ -266,7 +266,7 @@ pub impl FileMap {
                 Some(e) => e,
                 None => str::len(*self.src)
             };
-            str::slice(*self.src, begin, end)
+            str::slice_DBG_BRWD(*self.src, begin, end).to_owned()
         }
     }
 
@@ -395,8 +395,8 @@ pub impl CodeMap {
         let begin = self.lookup_byte_offset(sp.lo);
         let end = self.lookup_byte_offset(sp.hi);
         fail_unless!(begin.fm.start_pos == end.fm.start_pos);
-        return str::slice(*begin.fm.src,
-                          begin.pos.to_uint(), end.pos.to_uint());
+        return str::slice_DBG_BRWD(*begin.fm.src,
+                          begin.pos.to_uint(), end.pos.to_uint()).to_owned();
     }
 
     pub fn get_filemap(&self, filename: ~str) -> @FileMap {

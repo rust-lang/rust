@@ -806,7 +806,7 @@ An example of `use` declarations:
 
 ~~~~
 use core::float::sin;
-use core::str::{slice, to_upper};
+use core::str::{slice_DBG_BRWD, to_upper};
 use core::option::Some;
 
 fn main() {
@@ -817,8 +817,8 @@ fn main() {
     info!(Some(1.0));
 
     // Equivalent to
-    // 'info!(core::str::to_upper(core::str::slice("foo", 0, 1)));'
-    info!(to_upper(slice("foo", 0, 1)));
+    // 'info!(core::str::to_upper(core::str::slice_DBG_BRWD("foo", 0, 1)));'
+    info!(to_upper(slice_DBG_BRWD("foo", 0, 1)));
 }
 ~~~~
 
@@ -2668,7 +2668,7 @@ Within the body of an item that has type parameter declarations, the names of it
 fn map<A: Copy, B: Copy>(f: &fn(A) -> B, xs: &[A]) -> ~[B] {
    if xs.len() == 0 { return ~[]; }
    let first: B = f(xs[0]);
-   let rest: ~[B] = map(f, xs.slice(1, xs.len()));
+   let rest: ~[B] = map(f, xs.slice_V_DBG_BRWD(1, xs.len()));
    return ~[first] + rest;
 }
 ~~~~~~~

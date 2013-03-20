@@ -398,8 +398,8 @@ mod tests {
                 let mut left = len;
                 while left > 0u {
                     let take = (left + 1u) / 2u;
-                    sh.input_str(str::slice(t.input, len - left,
-                                 take + len - left));
+                    sh.input_str(str::slice_DBG_BRWD(t.input, len - left,
+                                 take + len - left).to_owned());
                     left = left - take;
                 }
                 let out = sh.result();

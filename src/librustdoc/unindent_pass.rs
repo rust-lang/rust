@@ -84,7 +84,7 @@ fn unindent(s: &str) -> ~str {
                 copy *line
             } else {
                 fail_unless!(str::len(*line) >= min_indent);
-                str::slice(*line, min_indent, str::len(*line))
+                str::slice_DBG_BRWD(*line, min_indent, str::len(*line)).to_owned()
             }
         };
         str::connect(unindented, ~"\n")
