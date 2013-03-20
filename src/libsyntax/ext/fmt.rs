@@ -65,7 +65,7 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
     // Produces an AST expression that represents a RT::conv record,
     // which tells the RT::conv* functions how to perform the conversion
 
-    fn make_rt_conv_expr(cx: @ext_ctxt, sp: span, cnv: Conv) -> @ast::expr {
+    fn make_rt_conv_expr(cx: @ext_ctxt, sp: span, cnv: &Conv) -> @ast::expr {
         fn make_flags(cx: @ext_ctxt, sp: span, flags: ~[Flag]) -> @ast::expr {
             let mut tmp_expr = make_rt_path_expr(cx, sp, @~"flag_none");
             for flags.each |f| {
@@ -139,7 +139,7 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
         make_conv_struct(cx, sp, rt_conv_flags, rt_conv_width,
                          rt_conv_precision, rt_conv_ty)
     }
-    fn make_conv_call(cx: @ext_ctxt, sp: span, conv_type: ~str, cnv: Conv,
+    fn make_conv_call(cx: @ext_ctxt, sp: span, conv_type: ~str, cnv: &Conv,
                       arg: @ast::expr) -> @ast::expr {
         let fname = ~"conv_" + conv_type;
         let path = make_path_vec(cx, @fname);
@@ -148,11 +148,11 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
         return mk_call_global(cx, arg.span, path, args);
     }
 
-    fn make_new_conv(cx: @ext_ctxt, sp: span, cnv: Conv, arg: @ast::expr) ->
+    fn make_new_conv(cx: @ext_ctxt, sp: span, cnv: &Conv, arg: @ast::expr) ->
        @ast::expr {
         // FIXME: Move validation code into core::extfmt (Issue #2249)
 
-        fn is_signed_type(cnv: Conv) -> bool {
+        fn is_signed_type(cnv: &Conv) -> bool {
             match cnv.ty {
               TyInt(s) => match s {
                 Signed => return true,
@@ -220,7 +220,7 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
                        mk_addr_of(cx, sp, arg))
         }
     }
-    fn log_conv(c: Conv) {
+    fn log_conv(c: &Conv) {
         match c.param {
           Some(p) => { debug!("param: %s", p.to_str()); }
           _ => debug!("param: none")
@@ -285,12 +285,12 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
                                   ~"for the given format string");
             }
             debug!("Building conversion:");
-            log_conv(/*bad*/ copy *conv);
+            log_conv(conv);
             let arg_expr = args[n];
             let c_expr = make_new_conv(
                 cx,
                 fmt_sp,
-                /*bad*/ copy *conv,
+                conv,
                 arg_expr
             );
             piece_exprs.push(c_expr);

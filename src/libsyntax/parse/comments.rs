@@ -220,7 +220,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
         if col < len {
             s1 = str::slice(s, col, len);
         } else { s1 = ~""; }
-    } else { s1 = /*bad*/ copy s; }
+    } else { s1 = s; }
     debug!("pushing line: %s", s1);
     lines.push(s1);
 }
@@ -357,8 +357,8 @@ pub fn gather_comments_and_literals(span_diagnostic:
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
         if token::is_lit(&tok) {
             let s = get_str_from(rdr, bstart);
-            literals.push(lit {lit: /*bad*/ copy s, pos: sp.lo});
             debug!("tok lit: %s", s);
+            literals.push(lit {lit: s, pos: sp.lo});
         } else {
             debug!("tok: %s", token::to_str(rdr.interner, &tok));
         }

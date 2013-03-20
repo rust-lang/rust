@@ -1438,7 +1438,7 @@ pub impl Parser {
                     let (s, z) = p.parse_sep_and_zerok();
                     tt_seq(
                         mk_sp(sp.lo ,p.span.hi),
-                        /*bad*/ copy seq.node,
+                        seq.node,
                         s,
                         z
                     )
@@ -1855,7 +1855,7 @@ pub impl Parser {
         // Turn on the restriction to stop at | or || so we can parse
         // them as the lambda arguments
         let e = self.parse_expr_res(RESTRICT_NO_BAR_OR_DOUBLEBAR_OP);
-        match /*bad*/ copy e.node {
+        match e.node {
             expr_call(f, args, NoSugar) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
@@ -2129,7 +2129,7 @@ pub impl Parser {
         let lo = self.span.lo;
         let mut hi = self.span.hi;
         let mut pat;
-        match copy *self.token {
+        match *self.token {
           token::UNDERSCORE => { self.bump(); pat = pat_wild; }
           token::AT => {
             self.bump();
@@ -2237,7 +2237,7 @@ pub impl Parser {
             self.expect(&token::RBRACKET);
             pat = ast::pat_vec(before, slice, after);
           }
-          copy tok => {
+          tok => {
             if !is_ident_or_path(&tok)
                 || self.is_keyword(&~"true")
                 || self.is_keyword(&~"false")
@@ -3341,6 +3341,7 @@ pub impl Parser {
                                             VIEW_ITEMS_AND_ITEMS_ALLOWED,
                                             true);
         let mut items: ~[@item] = starting_items;
+        let attrs_remaining_len = attrs_remaining.len();
 
         // looks like this code depends on the invariant that
         // outer attributes can't occur on view items (or macros
@@ -3349,7 +3350,7 @@ pub impl Parser {
         while *self.token != term {
             let mut attrs = self.parse_outer_attributes();
             if first {
-                attrs = vec::append(/*bad*/ copy attrs_remaining, attrs);
+                attrs = attrs_remaining + attrs;
                 first = false;
             }
             debug!("parse_mod_items: parse_item_or_view_item(attrs=%?)",
@@ -3378,7 +3379,7 @@ pub impl Parser {
             debug!("parse_mod_items: attrs=%?", attrs);
         }
 
-        if first && attrs_remaining.len() > 0u {
+        if first && attrs_remaining_len > 0u {
             // We parsed attributes for the first item but didn't find it
             self.fatal(~"expected item");
         }
