@@ -1,6 +1,6 @@
 type task_id = int;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Task {
     TaskHandle(task_id)
 }

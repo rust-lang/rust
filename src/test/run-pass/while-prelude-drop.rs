@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#[deriving_eq]
+#[deriving(Eq)]
 enum t { a, b(~str), }
 
 fn make(i: int) -> t {

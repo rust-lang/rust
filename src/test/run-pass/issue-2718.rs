@@ -20,7 +20,7 @@ pub mod pipes {
         payload: Option<T>
     }
 
-    #[deriving_eq]
+    #[deriving(Eq)]
     pub enum state {
         empty,
         full,
