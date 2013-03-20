@@ -19,18 +19,18 @@ use core::vec;
 
 pub type AstId = int;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct Doc {
     pages: ~[Page]
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Page {
     CratePage(CrateDoc),
     ItemPage(ItemTag)
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Implementation {
     Required,
     Provided,
@@ -40,7 +40,7 @@ pub enum Implementation {
  * Most rustdocs can be parsed into 'sections' according to their markdown
  * headers
  */
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct Section {
     header: ~str,
     body: ~str
@@ -49,12 +49,12 @@ pub struct Section {
 // FIXME (#2596): We currently give topmod the name of the crate.  There
 // would probably be fewer special cases if the crate had its own name
 // and topmod's name was the empty string.
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct CrateDoc {
     topmod: ModDoc
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum ItemTag {
     ModTag(ModDoc),
     NmodTag(NmodDoc),
@@ -67,7 +67,7 @@ pub enum ItemTag {
     StructTag(StructDoc)
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct ItemDoc {
     id: AstId,
     name: ~str,
@@ -79,20 +79,20 @@ pub struct ItemDoc {
     reexport: bool
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct SimpleItemDoc {
     item: ItemDoc,
     sig: Option<~str>
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct ModDoc {
     item: ItemDoc,
     items: ~[ItemTag],
     index: Option<Index>
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct NmodDoc {
     item: ItemDoc,
     fns: ~[FnDoc],
@@ -103,26 +103,26 @@ pub type ConstDoc = SimpleItemDoc;
 
 pub type FnDoc = SimpleItemDoc;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct EnumDoc {
     item: ItemDoc,
     variants: ~[VariantDoc]
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct VariantDoc {
     name: ~str,
     desc: Option<~str>,
     sig: Option<~str>
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct TraitDoc {
     item: ItemDoc,
     methods: ~[MethodDoc]
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct MethodDoc {
     name: ~str,
     brief: Option<~str>,
@@ -132,7 +132,7 @@ pub struct MethodDoc {
     implementation: Implementation,
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct ImplDoc {
     item: ItemDoc,
     trait_types: ~[~str],
@@ -142,14 +142,14 @@ pub struct ImplDoc {
 
 pub type TyDoc = SimpleItemDoc;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct StructDoc {
     item: ItemDoc,
     fields: ~[~str],
     sig: Option<~str>
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct Index {
     entries: ~[IndexEntry]
 }
@@ -164,7 +164,7 @@ pub struct Index {
  * * brief - The brief description
  * * link - A format-specific string representing the link target
  */
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct IndexEntry {
     kind: ~str,
     name: ~str,
