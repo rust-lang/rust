@@ -208,11 +208,11 @@ actual:\n\
                         testfile: &Path, src: ~str) -> ProcRes {
         compose_and_run_compiler(
             config, props, testfile,
-            make_typecheck_args(config, testfile),
+            make_typecheck_args(config, props, testfile),
             Some(src))
     }
 
-    fn make_typecheck_args(config: config, testfile: &Path) -> ProcArgs {
+    fn make_typecheck_args(config: config, props: TestProps, testfile: &Path) -> ProcArgs {
         let prog = config.rustc_path;
         let mut args = ~[~"-",
                          ~"--no-trans", ~"--lib",
@@ -220,6 +220,7 @@ actual:\n\
                          ~"-L",
                          aux_output_dir_name(config, testfile).to_str()];
         args += split_maybe_args(config.rustcflags);
+        args += split_maybe_args(props.compile_flags);
         return ProcArgs {prog: prog.to_str(), args: args};
     }
 }
