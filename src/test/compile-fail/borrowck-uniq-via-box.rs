@@ -50,18 +50,6 @@ fn box_imm_recs(v: @Outer) {
     borrow(v.f.g.h); // OK
 }
 
-fn box_const(v: @const ~int) {
-    borrow(*v); //~ ERROR illegal borrow unless pure
-}
-
-fn box_const_rec(v: @const Rec) {
-    borrow(v.f); //~ ERROR illegal borrow unless pure
-}
-
-fn box_const_recs(v: @const Outer) {
-    borrow(v.f.g.h); //~ ERROR illegal borrow unless pure
-}
-
 fn main() {
 }
 
