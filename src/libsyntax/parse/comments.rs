@@ -70,10 +70,10 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
     /// remove whitespace-only lines from the start/end of lines
     fn vertical_trim(lines: ~[~str]) -> ~[~str] {
         let mut i = 0u, j = lines.len();
-        while i < j && lines[i].trim_DBGBRWD().is_empty() {
+        while i < j && lines[i].trim().is_empty() {
             i += 1u;
         }
-        while j > i && lines[j - 1u].trim_DBGBRWD().is_empty() {
+        while j > i && lines[j - 1u].trim().is_empty() {
             j -= 1u;
         }
         return lines.slice(i, j).to_owned();
@@ -84,7 +84,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 
         let mut i = max.get_or_default(uint::max_value);
         for lines.each |line| {
-            if line.trim_DBGBRWD().is_empty() {
+            if line.trim().is_empty() {
                 loop;
             }
             for line.each_chari |j, c| {
@@ -110,8 +110,8 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 
     if comment.starts_with(~"//") {
         // FIXME #5475:
-        // return comment.slice(3u, comment.len()).trim_DBGBRWD().to_owned();
-        let r = comment.slice(3u, comment.len()); return r.trim_DBGBRWD().to_owned();
+        // return comment.slice(3u, comment.len()).trim().to_owned();
+        let r = comment.slice(3u, comment.len()); return r.trim().to_owned();
 
     }
 

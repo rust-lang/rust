@@ -1851,5 +1851,5 @@ fn trans_assign_op(bcx: block,
 
 // NOTE: Mode neccessary here?
 fn shorten(+x: ~str) -> ~str {
-    if x.len() > 60 { x.substr_DBGBRWD(0, 60).to_owned() } else { x }
+    if x.len() > 60 { x.substr(0, 60).to_owned() } else { x }
 }

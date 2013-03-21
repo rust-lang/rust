@@ -313,7 +313,7 @@ pub fn unshift_char(s: &mut ~str, ch: char) {
  * * chars_to_trim - A vector of chars
  *
  */
-pub pure fn trim_left_chars_DBGBRWD(s: &'a str, chars_to_trim: &[char]) -> &'a str {
+pub pure fn trim_left_chars(s: &'a str, chars_to_trim: &[char]) -> &'a str {
     if chars_to_trim.is_empty() { return s; }
 
     match find(s, |c| !chars_to_trim.contains(&c)) {
@@ -331,7 +331,7 @@ pub pure fn trim_left_chars_DBGBRWD(s: &'a str, chars_to_trim: &[char]) -> &'a s
  * * chars_to_trim - A vector of chars
  *
  */
-pub pure fn trim_right_chars_DBGBRWD(s: &'a str, chars_to_trim: &[char]) -> &'a str {
+pub pure fn trim_right_chars(s: &'a str, chars_to_trim: &[char]) -> &'a str {
     if chars_to_trim.is_empty() { return s; }
 
     match rfind(s, |c| !chars_to_trim.contains(&c)) {
@@ -352,12 +352,12 @@ pub pure fn trim_right_chars_DBGBRWD(s: &'a str, chars_to_trim: &[char]) -> &'a 
  * * chars_to_trim - A vector of chars
  *
  */
-pub pure fn trim_chars_DBGBRWD(s: &'a str, chars_to_trim: &[char]) -> &'a str {
-    trim_left_chars_DBGBRWD(trim_right_chars_DBGBRWD(s, chars_to_trim), chars_to_trim)
+pub pure fn trim_chars(s: &'a str, chars_to_trim: &[char]) -> &'a str {
+    trim_left_chars(trim_right_chars(s, chars_to_trim), chars_to_trim)
 }
 
 /// Returns a string with leading whitespace removed
-pub pure fn trim_left_DBGBRWD(s: &'a str) -> &'a str {
+pub pure fn trim_left(s: &'a str) -> &'a str {
     match find(s, |c| !char::is_whitespace(c)) {
       None => "",
       Some(first) => unsafe { raw::slice_bytes(s, first, len(s)) }
@@ -365,7 +365,7 @@ pub pure fn trim_left_DBGBRWD(s: &'a str) -> &'a str {
 }
 
 /// Returns a string with trailing whitespace removed
-pub pure fn trim_right_DBGBRWD(s: &'a str) -> &'a str {
+pub pure fn trim_right(s: &'a str) -> &'a str {
     match rfind(s, |c| !char::is_whitespace(c)) {
       None => "",
       Some(last) => {
@@ -376,7 +376,7 @@ pub pure fn trim_right_DBGBRWD(s: &'a str) -> &'a str {
 }
 
 /// Returns a string with leading and trailing whitespace removed
-pub pure fn trim_DBGBRWD(s: &'a str) -> &'a str { trim_left_DBGBRWD(trim_right_DBGBRWD(s)) }
+pub pure fn trim(s: &'a str) -> &'a str { trim_left(trim_right(s)) }
 
 /*
 Section: Transforming strings
@@ -421,7 +421,7 @@ pub pure fn chars(s: &str) -> ~[char] {
  * Returns a string containing `n` characters starting at byte offset
  * `begin`.
  */
-pub pure fn substr_DBGBRWD(s: &'a str, begin: uint, n: uint) -> &'a str {
+pub pure fn substr(s: &'a str, begin: uint, n: uint) -> &'a str {
     slice(s, begin, begin + count_bytes(s, begin, n))
 }
 
@@ -2275,17 +2275,17 @@ pub trait StrSlice {
     pure fn split_char(&self, sep: char) -> ~[~str];
     pure fn split_str(&self, sep: &'a str) -> ~[~str];
     pure fn starts_with(&self, needle: &'a str) -> bool;
-    pure fn substr_DBGBRWD(&self, begin: uint, n: uint) -> &'self str;
+    pure fn substr(&self, begin: uint, n: uint) -> &'self str;
     pure fn to_lower(&self) -> ~str;
     pure fn to_upper(&self) -> ~str;
     pure fn escape_default(&self) -> ~str;
     pure fn escape_unicode(&self) -> ~str;
-    pure fn trim_DBGBRWD(&self) -> &'self str;
-    pure fn trim_left_DBGBRWD(&self) -> &'self str;
-    pure fn trim_right_DBGBRWD(&self) -> &'self str;
-    pure fn trim_chars_DBGBRWD(&self, chars_to_trim: &[char]) -> &'self str;
-    pure fn trim_left_chars_DBGBRWD(&self, chars_to_trim: &[char]) -> &'self str;
-    pure fn trim_right_chars_DBGBRWD(&self, chars_to_trim: &[char]) -> &'self str;
+    pure fn trim(&self) -> &'self str;
+    pure fn trim_left(&self) -> &'self str;
+    pure fn trim_right(&self) -> &'self str;
+    pure fn trim_chars(&self, chars_to_trim: &[char]) -> &'self str;
+    pure fn trim_left_chars(&self, chars_to_trim: &[char]) -> &'self str;
+    pure fn trim_right_chars(&self, chars_to_trim: &[char]) -> &'self str;
     pure fn to_owned(&self) -> ~str;
     pure fn to_managed(&self) -> @str;
     pure fn char_at(&self, i: uint) -> char;
@@ -2419,8 +2419,8 @@ impl StrSlice for &'self str {
      * `begin`.
      */
     #[inline]
-    pure fn substr_DBGBRWD(&self, begin: uint, n: uint) -> &'self str {
-        substr_DBGBRWD(*self, begin, n)
+    pure fn substr(&self, begin: uint, n: uint) -> &'self str {
+        substr(*self, begin, n)
     }
     /// Convert a string to lowercase
     #[inline]
@@ -2437,25 +2437,25 @@ impl StrSlice for &'self str {
 
     /// Returns a string with leading and trailing whitespace removed
     #[inline]
-    pure fn trim_DBGBRWD(&self) -> &'self str { trim_DBGBRWD(*self) }
+    pure fn trim(&self) -> &'self str { trim(*self) }
     /// Returns a string with leading whitespace removed
     #[inline]
-    pure fn trim_left_DBGBRWD(&self) -> &'self str { trim_left_DBGBRWD(*self) }
+    pure fn trim_left(&self) -> &'self str { trim_left(*self) }
     /// Returns a string with trailing whitespace removed
     #[inline]
-    pure fn trim_right_DBGBRWD(&self) -> &'self str { trim_right_DBGBRWD(*self) }
+    pure fn trim_right(&self) -> &'self str { trim_right(*self) }
 
     #[inline]
-    pure fn trim_chars_DBGBRWD(&self, chars_to_trim: &[char]) -> &'self str {
-        trim_chars_DBGBRWD(*self, chars_to_trim)
+    pure fn trim_chars(&self, chars_to_trim: &[char]) -> &'self str {
+        trim_chars(*self, chars_to_trim)
     }
     #[inline]
-    pure fn trim_left_chars_DBGBRWD(&self, chars_to_trim: &[char]) -> &'self str {
-        trim_left_chars_DBGBRWD(*self, chars_to_trim)
+    pure fn trim_left_chars(&self, chars_to_trim: &[char]) -> &'self str {
+        trim_left_chars(*self, chars_to_trim)
     }
     #[inline]
-    pure fn trim_right_chars_DBGBRWD(&self, chars_to_trim: &[char]) -> &'self str {
-        trim_right_chars_DBGBRWD(*self, chars_to_trim)
+    pure fn trim_right_chars(&self, chars_to_trim: &[char]) -> &'self str {
+        trim_right_chars(*self, chars_to_trim)
     }
 
 
@@ -2817,11 +2817,11 @@ mod tests {
     #[test]
     fn test_substr() {
         fn t(a: &str, b: &str, start: int) {
-            fail_unless!(substr_DBGBRWD(a, start as uint, len(b)) == b);
+            fail_unless!(substr(a, start as uint, len(b)) == b);
         }
         t("hello", "llo", 2);
         t("hello", "el", 1);
-        fail_unless!("ะเทศไท" == substr_DBGBRWD("ประเทศไทย中华Việt Nam", 6u, 6u));
+        fail_unless!("ะเทศไท" == substr("ประเทศไทย中华Việt Nam", 6u, 6u));
     }
 
     #[test]
@@ -3054,62 +3054,62 @@ mod tests {
 
     #[test]
     fn test_trim_left_chars() {
-        fail_unless!(trim_left_chars_DBGBRWD(" *** foo *** ", ~[]) ==
+        fail_unless!(trim_left_chars(" *** foo *** ", ~[]) ==
                      " *** foo *** ");
-        fail_unless!(trim_left_chars_DBGBRWD(" *** foo *** ", ~['*', ' ']) ==
+        fail_unless!(trim_left_chars(" *** foo *** ", ~['*', ' ']) ==
                      "foo *** ");
-        fail_unless!(trim_left_chars_DBGBRWD(" ***  *** ", ~['*', ' ']) == "");
-        fail_unless!(trim_left_chars_DBGBRWD("foo *** ", ~['*', ' ']) ==
+        fail_unless!(trim_left_chars(" ***  *** ", ~['*', ' ']) == "");
+        fail_unless!(trim_left_chars("foo *** ", ~['*', ' ']) ==
                      "foo *** ");
     }
 
     #[test]
     fn test_trim_right_chars() {
-        fail_unless!(trim_right_chars_DBGBRWD(" *** foo *** ", ~[]) ==
+        fail_unless!(trim_right_chars(" *** foo *** ", ~[]) ==
                      " *** foo *** ");
-        fail_unless!(trim_right_chars_DBGBRWD(" *** foo *** ", ~['*', ' ']) ==
+        fail_unless!(trim_right_chars(" *** foo *** ", ~['*', ' ']) ==
                      " *** foo");
-        fail_unless!(trim_right_chars_DBGBRWD(" ***  *** ", ~['*', ' ']) == "");
-        fail_unless!(trim_right_chars_DBGBRWD(" *** foo", ~['*', ' ']) ==
+        fail_unless!(trim_right_chars(" ***  *** ", ~['*', ' ']) == "");
+        fail_unless!(trim_right_chars(" *** foo", ~['*', ' ']) ==
                      " *** foo");
     }
 
     #[test]
     fn test_trim_chars() {
-        fail_unless!(trim_chars_DBGBRWD(" *** foo *** ", ~[]) == " *** foo *** ");
-        fail_unless!(trim_chars_DBGBRWD(" *** foo *** ", ~['*', ' ']) == "foo");
-        fail_unless!(trim_chars_DBGBRWD(" ***  *** ", ~['*', ' ']) == "");
-        fail_unless!(trim_chars_DBGBRWD("foo", ~['*', ' ']) == "foo");
+        fail_unless!(trim_chars(" *** foo *** ", ~[]) == " *** foo *** ");
+        fail_unless!(trim_chars(" *** foo *** ", ~['*', ' ']) == "foo");
+        fail_unless!(trim_chars(" ***  *** ", ~['*', ' ']) == "");
+        fail_unless!(trim_chars("foo", ~['*', ' ']) == "foo");
     }
 
     #[test]
     fn test_trim_left() {
-        fail_unless!((trim_left_DBGBRWD("") == ""));
-        fail_unless!((trim_left_DBGBRWD("a") == "a"));
-        fail_unless!((trim_left_DBGBRWD("    ") == ""));
-        fail_unless!((trim_left_DBGBRWD("     blah") == "blah"));
-        fail_unless!((trim_left_DBGBRWD("   \u3000  wut") == "wut"));
-        fail_unless!((trim_left_DBGBRWD("hey ") == "hey "));
+        fail_unless!((trim_left("") == ""));
+        fail_unless!((trim_left("a") == "a"));
+        fail_unless!((trim_left("    ") == ""));
+        fail_unless!((trim_left("     blah") == "blah"));
+        fail_unless!((trim_left("   \u3000  wut") == "wut"));
+        fail_unless!((trim_left("hey ") == "hey "));
     }
 
     #[test]
     fn test_trim_right() {
-        fail_unless!((trim_right_DBGBRWD("") == ""));
-        fail_unless!((trim_right_DBGBRWD("a") == "a"));
-        fail_unless!((trim_right_DBGBRWD("    ") == ""));
-        fail_unless!((trim_right_DBGBRWD("blah     ") == "blah"));
-        fail_unless!((trim_right_DBGBRWD("wut   \u3000  ") == "wut"));
-        fail_unless!((trim_right_DBGBRWD(" hey") == " hey"));
+        fail_unless!((trim_right("") == ""));
+        fail_unless!((trim_right("a") == "a"));
+        fail_unless!((trim_right("    ") == ""));
+        fail_unless!((trim_right("blah     ") == "blah"));
+        fail_unless!((trim_right("wut   \u3000  ") == "wut"));
+        fail_unless!((trim_right(" hey") == " hey"));
     }
 
     #[test]
     fn test_trim() {
-        fail_unless!((trim_DBGBRWD("") == ""));
-        fail_unless!((trim_DBGBRWD("a") == "a"));
-        fail_unless!((trim_DBGBRWD("    ") == ""));
-        fail_unless!((trim_DBGBRWD("    blah     ") == "blah"));
-        fail_unless!((trim_DBGBRWD("\nwut   \u3000  ") == "wut"));
-        fail_unless!((trim_DBGBRWD(" hey dude ") == "hey dude"));
+        fail_unless!((trim("") == ""));
+        fail_unless!((trim("a") == "a"));
+        fail_unless!((trim("    ") == ""));
+        fail_unless!((trim("    blah     ") == "blah"));
+        fail_unless!((trim("\nwut   \u3000  ") == "wut"));
+        fail_unless!((trim(" hey dude ") == "hey dude"));
     }
 
     #[test]

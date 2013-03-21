@@ -223,7 +223,7 @@ pub fn parse(s: &str) -> Option<Version> {
     if ! str::is_ascii(s) {
         return None;
     }
-    let s = s.trim_DBGBRWD();
+    let s = s.trim();
     let mut bad = false;
     do bad_parse::cond.trap(|_| { debug!("bad"); bad = true }).in {
         do io::with_str_reader(s) |rdr| {

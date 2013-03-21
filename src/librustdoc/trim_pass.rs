@@ -21,7 +21,7 @@ use text_pass;
 use core::str;
 
 pub fn mk_pass() -> Pass {
-    text_pass::mk_pass(~"trim", |s| s.trim_DBGBRWD().to_owned() )
+    text_pass::mk_pass(~"trim", |s| s.trim().to_owned() )
 }
 
 #[test]

@@ -325,7 +325,7 @@ pub mod ct {
             'o' as u8 => TyOctal,
             'f' as u8 => TyFloat,
             '?' as u8 => TyPoly,
-            _ => err(~"unknown type in conversion: " + s.substr_DBGBRWD(i, 1))
+            _ => err(~"unknown type in conversion: " + s.substr(i, 1))
         };
 
         Parsed::new(t, i + 1)
@@ -537,7 +537,7 @@ pub mod rt {
         let mut unpadded = match cv.precision {
           CountImplied => s.to_owned(),
           CountIs(max) => if (max as uint) < str::char_len(s) {
-            str::substr_DBGBRWD(s, 0, max as uint).to_owned()
+            str::substr(s, 0, max as uint).to_owned()
           } else {
             s.to_owned()
           }
