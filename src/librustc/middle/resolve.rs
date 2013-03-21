@@ -77,6 +77,7 @@ use syntax::opt_vec::OptVec;
 
 use core::option::{Some, get, is_some, is_none};
 use core::str::{connect, split_str};
+use core::hashmap::linear::LinearMap;
 use std::oldmap::HashMap;
 
 // Definition mapping
@@ -456,7 +457,7 @@ pub struct Module {
     def_id: Option<def_id>,
     kind: ModuleKind,
 
-    children: @HashMap<ident,@mut NameBindings>,
+    children: @mut LinearMap<ident, @mut NameBindings>,
     imports: @mut ~[@ImportDirective],
 
     // The anonymous children of this node. Anonymous children are pseudo-
@@ -494,7 +495,7 @@ pub fn Module(parent_link: ParentLink,
         parent_link: parent_link,
         def_id: def_id,
         kind: kind,
-        children: @HashMap(),
+        children: @mut LinearMap::new(),
         imports: @mut ~[],
         anonymous_children: @HashMap(),
         import_resolutions: @HashMap(),
@@ -1024,7 +1025,7 @@ pub impl Resolver {
                                   *self.session.str_of(name)));
                     }
                 }
-                return (child, new_parent);
+                return (*child, new_parent);
             }
         }
     }
@@ -1614,7 +1615,7 @@ pub impl Resolver {
                         let name_bindings = parent_module.children.get(
                             &ident);
                         resolution.type_target =
-                            Some(Target(parent_module, name_bindings));
+                            Some(Target(parent_module, *name_bindings));
                       }
                     }
 
@@ -2165,13 +2166,13 @@ pub impl Resolver {
                 // Continue.
             }
             Some(child_name_bindings) => {
-                if (*child_name_bindings).defined_in_namespace(ValueNS) {
+                if child_name_bindings.defined_in_namespace(ValueNS) {
                     value_result = BoundResult(containing_module,
-                                               child_name_bindings);
+                                               *child_name_bindings);
                 }
-                if (*child_name_bindings).defined_in_namespace(TypeNS) {
+                if child_name_bindings.defined_in_namespace(TypeNS) {
                     type_result = BoundResult(containing_module,
-                                              child_name_bindings);
+                                              *child_name_bindings);
                 }
             }
         }
@@ -2352,9 +2353,9 @@ pub impl Resolver {
                 // Continue.
             }
             Some(child_name_bindings) => {
-                if (*child_name_bindings).defined_in_namespace(TypeNS) {
+                if child_name_bindings.defined_in_namespace(TypeNS) {
                     module_result = BoundResult(containing_module,
-                                                child_name_bindings);
+                                                *child_name_bindings);
                 }
             }
         }
@@ -2534,16 +2535,16 @@ pub impl Resolver {
         }
 
         // Add all children from the containing module.
-        for containing_module.children.each |&ident, &name_bindings| {
+        for containing_module.children.each |&(ident, name_bindings)| {
             let mut dest_import_resolution;
-            match module_.import_resolutions.find(&ident) {
+            match module_.import_resolutions.find(ident) {
                 None => {
                     // Create a new import resolution from this child.
                     dest_import_resolution = @mut ImportResolution(privacy,
                                                                    span,
                                                                    state);
                     module_.import_resolutions.insert
-                        (ident, dest_import_resolution);
+                        (*ident, dest_import_resolution);
                 }
                 Some(existing_import_resolution) => {
                     dest_import_resolution = existing_import_resolution;
@@ -2552,21 +2553,21 @@ pub impl Resolver {
 
             debug!("(resolving glob import) writing resolution `%s` in `%s` \
                     to `%s`, privacy=%?",
-                   *self.session.str_of(ident),
+                   *self.session.str_of(*ident),
                    self.module_to_str(containing_module),
                    self.module_to_str(module_),
                    copy dest_import_resolution.privacy);
 
             // Merge the child item into the import resolution.
-            if (*name_bindings).defined_in_public_namespace(ValueNS) {
+            if name_bindings.defined_in_public_namespace(ValueNS) {
                 debug!("(resolving glob import) ... for value target");
                 dest_import_resolution.value_target =
-                    Some(Target(containing_module, name_bindings));
+                    Some(Target(containing_module, *name_bindings));
             }
-            if (*name_bindings).defined_in_public_namespace(TypeNS) {
+            if name_bindings.defined_in_public_namespace(TypeNS) {
                 debug!("(resolving glob import) ... for type target");
                 dest_import_resolution.type_target =
-                    Some(Target(containing_module, name_bindings));
+                    Some(Target(containing_module, *name_bindings));
             }
         }
 
@@ -2760,8 +2761,8 @@ pub impl Resolver {
 
         match module_.children.find(&name) {
             Some(name_bindings)
-                    if (*name_bindings).defined_in_namespace(namespace) => {
-                return Success(Target(module_, name_bindings));
+                    if name_bindings.defined_in_namespace(namespace) => {
+                return Success(Target(module_, *name_bindings));
             }
             Some(_) | None => { /* Not found; continue. */ }
         }
@@ -3005,10 +3006,9 @@ pub impl Resolver {
         // First, check the direct children of the module.
         match module_.children.find(&name) {
             Some(name_bindings)
-                    if (*name_bindings).defined_in_namespace(namespace) => {
-
+                    if name_bindings.defined_in_namespace(namespace) => {
                 debug!("(resolving name in module) found node as child");
-                return Success(Target(module_, name_bindings));
+                return Success(Target(module_, *name_bindings));
             }
             Some(_) | None => {
                 // Continue.
@@ -3190,7 +3190,7 @@ pub impl Resolver {
     fn add_exports_for_module(@mut self,
                               exports2: &mut ~[Export2],
                               module_: @mut Module) {
-        for module_.children.each |ident, namebindings| {
+        for module_.children.each |&(ident, namebindings)| {
             debug!("(computing exports) maybe export '%s'",
                    *self.session.str_of(*ident));
             self.add_exports_of_namebindings(&mut *exports2,
