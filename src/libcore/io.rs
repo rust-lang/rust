@@ -21,7 +21,9 @@ use libc;
 use libc::{c_int, c_long, c_uint, c_void, size_t, ssize_t};
 use libc::consts::os::posix88::*;
 use os;
-use prelude::*;
+use cast;
+use path::Path;
+use ops::Drop;
 use ptr;
 use result;
 use str;
@@ -75,6 +77,7 @@ pub trait Reader {
 
 #[cfg(stage1)]
 #[cfg(stage2)]
+#[cfg(stage3)]
 impl Reader for @Reader {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         self.read(bytes, len)
@@ -657,6 +660,7 @@ pub trait Writer {
 
 #[cfg(stage1)]
 #[cfg(stage2)]
+#[cfg(stage3)]
 impl Writer for @Writer {
     fn write(&self, v: &[const u8]) { self.write(v) }
     fn seek(&self, a: int, b: SeekStyle) { self.seek(a, b) }
