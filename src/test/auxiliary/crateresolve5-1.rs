@@ -25,4 +25,11 @@ pub enum e {
 
 pub fn nominal() -> e { e_val }
 
+pub pure fn nominal_eq(e1: e, e2: e) -> bool { true }
+
+impl Eq for e {
+    pure fn eq(&self, other: &e) -> bool { nominal_eq(*self, *other) }
+    pure fn ne(&self, other: &e) -> bool { !nominal_eq(*self, *other) }
+}
+
 pub fn f() -> int { 10 }

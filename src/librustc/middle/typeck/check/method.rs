@@ -194,6 +194,10 @@ pub enum TransformTypeFlag {
 
 pub impl LookupContext/&self {
     fn do_lookup(&self, self_ty: ty::t) -> Option<method_map_entry> {
+        let mut self_ty = structurally_resolved_type(self.fcx,
+                                                     self.self_expr.span,
+                                                     self_ty);
+
         debug!("do_lookup(self_ty=%s, expr=%s, self_expr=%s)",
                self.ty_to_str(self_ty),
                expr_repr(self.tcx(), self.expr),
