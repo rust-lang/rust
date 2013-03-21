@@ -350,6 +350,7 @@ struct BufferResource<T> {
 
 }
 
+#[unsafe_destructor]
 impl<T> ::ops::Drop for BufferResource<T> {
     fn finalize(&self) {
         unsafe {
@@ -445,16 +446,17 @@ pub fn try_recv<T:Owned,Tbuffer:Owned>(p: RecvPacketBuffered<T, Tbuffer>)
     let p_ = p.unwrap();
     let p = unsafe { &*p_ };
 
+    #[unsafe_destructor]
     struct DropState {
         p: &'self PacketHeader,
 
         drop {
-            if task::failing() {
-                self.p.state = Terminated;
-                let old_task = swap_task(&mut self.p.blocked_task,
-                                         ptr::null());
-                if !old_task.is_null() {
-                    unsafe {
+            unsafe {
+                if task::failing() {
+                    self.p.state = Terminated;
+                    let old_task = swap_task(&mut self.p.blocked_task,
+                                             ptr::null());
+                    if !old_task.is_null() {
                         rustrt::rust_task_deref(old_task);
                     }
                 }
@@ -773,6 +775,7 @@ pub struct SendPacketBuffered<T, Tbuffer> {
     mut buffer: Option<BufferResource<Tbuffer>>,
 }
 
+#[unsafe_destructor]
 impl<T:Owned,Tbuffer:Owned> ::ops::Drop for SendPacketBuffered<T,Tbuffer> {
     fn finalize(&self) {
         //if self.p != none {
@@ -842,6 +845,7 @@ pub struct RecvPacketBuffered<T, Tbuffer> {
     mut buffer: Option<BufferResource<Tbuffer>>,
 }
 
+#[unsafe_destructor]
 impl<T:Owned,Tbuffer:Owned> ::ops::Drop for RecvPacketBuffered<T,Tbuffer> {
     fn finalize(&self) {
         //if self.p != none {

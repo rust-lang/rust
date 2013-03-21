@@ -13,9 +13,12 @@ struct defer {
     b: &'self mut bool,
 }
 
+#[unsafe_destructor]
 impl Drop for defer/&self {
     fn finalize(&self) {
-        *(self.b) = true;
+        unsafe {
+            *(self.b) = true;
+        }
     }
 }
 

@@ -16,10 +16,13 @@ struct foo {
 
 }
 
+#[unsafe_destructor]
 impl Drop for foo {
     fn finalize(&self) {
-        io::println("Goodbye, World!");
-        *self.x += 1;
+        unsafe {
+            io::println("Goodbye, World!");
+            *self.x += 1;
+        }
     }
 }
 
