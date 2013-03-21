@@ -67,9 +67,11 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         must_cast = true;
     }
 
-    debug!("monomorphic_fn(fn_id=%? (%s), real_substs=%?, substs=%?, \
-           hash_id = %?",
+    debug!("monomorphic_fn(fn_id=%? (%s), vtables=%?, \
+            real_substs=%?, substs=%?, \
+            hash_id = %?",
            fn_id, ty::item_path_str(ccx.tcx, fn_id),
+           vtables,
            real_substs.map(|s| ty_to_str(ccx.tcx, *s)),
            substs.map(|s| ty_to_str(ccx.tcx, *s)), hash_id);
 
