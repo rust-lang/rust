@@ -243,7 +243,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
                 let mut names;
                 let mut i_arg = None;
                 if cur[1] == '-' as u8 {
-                    let tail = str::slice(cur, 2, curlen);
+                    let tail = str::slice(cur, 2, curlen).to_owned();
                     let tail_eq = str::splitn_char(tail, '=', 1);
                     if tail_eq.len() <= 1 {
                         names = ~[Long(tail)];
@@ -279,7 +279,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
                                   No => false
                                 };
                             if arg_follows && j < curlen {
-                                i_arg = Some(cur.slice(j, curlen));
+                                i_arg = Some(cur.slice(j, curlen).to_owned());
                                 break;
                             } else {
                                 last_valid_opt_id = None;

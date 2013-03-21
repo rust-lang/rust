@@ -177,7 +177,7 @@ pub fn get_str_from(rdr: @mut StringReader, start: BytePos) -> ~str {
         // I'm pretty skeptical about this subtraction. What if there's a
         // multi-byte character before the mark?
         return str::slice(*rdr.src, start.to_uint() - 1u,
-                          byte_offset(rdr).to_uint() - 1u);
+                          byte_offset(rdr).to_uint() - 1u).to_owned();
     }
 }
 

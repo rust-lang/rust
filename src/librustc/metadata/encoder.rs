@@ -1239,7 +1239,7 @@ fn encode_crate_deps(ecx: @EncodeContext,
         }
 
         // mut -> immutable hack for vec::map
-        deps.slice(0, deps.len())
+        deps.slice(0, deps.len()).to_owned()
     }
 
     // We're just going to write a list of crate 'name-hash-version's, with

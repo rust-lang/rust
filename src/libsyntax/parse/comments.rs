@@ -76,7 +76,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         while j > i && lines[j - 1u].trim().is_empty() {
             j -= 1u;
         }
-        return lines.slice(i, j);
+        return lines.slice(i, j).to_owned();
     }
 
     // drop leftmost columns that contain only values in chars
@@ -103,7 +103,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
             if i > chars.len() {
                 ~""
             } else {
-                str::from_chars(chars.slice(i, chars.len()))
+                str::from_chars(chars.slice(i, chars.len()).to_owned())
             }
         };
     }
@@ -113,7 +113,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
     }
 
     if comment.starts_with(~"/*") {
-        let lines = str::lines_any(comment.slice(3u, comment.len() - 2u));
+        let lines = str::lines_any(comment.slice(3u, comment.len() - 2u).to_owned());
         let lines = vertical_trim(lines);
         let lines = block_trim(lines, ~"\t ", None);
         let lines = block_trim(lines, ~"*", Some(1u));
@@ -218,7 +218,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
     let col = col.to_uint();
     if all_whitespace(s, 0u, uint::min(len, col)) {
         if col < len {
-            s1 = str::slice(s, col, len);
+            s1 = str::slice(s, col, len).to_owned();
         } else { s1 = ~""; }
     } else { s1 = s; }
     debug!("pushing line: %s", s1);

@@ -303,7 +303,7 @@ fn read_all(rd: io::Reader) -> ~str {
         let mut bytes = [0, ..4096];
         while !rd.eof() {
             let nread = rd.read(bytes, bytes.len());
-            wr.write(bytes.view(0, nread));
+            wr.write(bytes.slice(0, nread));
         }
     });
     str::from_bytes(buf)
@@ -404,7 +404,7 @@ pub fn readclose(fd: c_int) -> ~str {
             let mut bytes = [0, ..4096];
             while !reader.eof() {
                 let nread = reader.read(bytes, bytes.len());
-                writer.write(bytes.view(0, nread));
+                writer.write(bytes.slice(0, nread));
             }
         });
         os::fclose(file);

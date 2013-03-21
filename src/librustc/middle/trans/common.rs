@@ -1430,7 +1430,7 @@ pub fn find_vtable(tcx: ty::ctxt, ps: &param_substs,
 
     // Vtables are stored in a flat array, finding the right one is
     // somewhat awkward
-    let first_n_bounds = ps.bounds.view(0, n_param);
+    let first_n_bounds = ps.bounds.slice(0, n_param);
     let vtables_to_skip =
         ty::count_traits_and_supertraits(tcx, first_n_bounds);
     let vtable_off = vtables_to_skip + n_bound;

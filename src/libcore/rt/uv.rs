@@ -878,7 +878,7 @@ fn listen() {
                 if status.is_none() {
                     rtdebug!("got %d bytes", nread);
                     let buf = buf.unwrap();
-                    for buf.view(0, nread as uint).each |byte| {
+                    for buf.slice(0, nread as uint).each |byte| {
                         fail_unless!(*byte == count as u8);
                         rtdebug!("%u", *byte as uint);
                         count += 1;

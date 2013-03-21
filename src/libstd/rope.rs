@@ -1295,7 +1295,7 @@ mod tests {
                       node::Leaf(x) => {
                         *str += str::slice(
                             *x.content, x.byte_offset,
-                            x.byte_offset + x.byte_len);
+                            x.byte_offset + x.byte_len).to_owned();
                       }
                       node::Concat(ref x) => {
                         aux(str, x.left);
