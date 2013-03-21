@@ -10,6 +10,8 @@
 
 use core::prelude::*;
 
+use metadata::csearch;
+use middle::astencode;
 use middle::resolve;
 use middle::ty;
 use middle;
@@ -18,6 +20,8 @@ use core::float;
 use core::vec;
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
+
+use std::oldmap::HashMap;
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -187,7 +191,24 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
             Some(_) => None
         }
     } else {
-        None
+        let maps = astencode::Maps {
+            mutbl_map: HashMap(),
+            root_map: HashMap(),
+            last_use_map: HashMap(),
+            method_map: HashMap(),
+            vtable_map: HashMap(),
+            write_guard_map: HashMap(),
+            moves_map: HashMap(),
+            capture_map: HashMap()
+        };
+        match csearch::maybe_get_item_ast(tcx, def_id,
+            |a, b, c, d| astencode::decode_inlined_item(a, b, maps, /*bar*/ copy c, d)) {
+            csearch::found(ast::ii_item(item)) => match item.node {
+                item_const(_, const_expr) => Some(const_expr),
+                _ => None
+            },
+            _ => None
+        }
     }
 }
 
