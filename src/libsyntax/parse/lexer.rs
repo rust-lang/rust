@@ -262,7 +262,7 @@ fn consume_whitespace_and_comments(rdr: @mut StringReader)
 }
 
 pub pure fn is_line_non_doc_comment(s: &str) -> bool {
-    s.trim_right().all(|ch| ch == '/')
+    s.trim_right_DBGBRWD().all(|ch| ch == '/')
 }
 
 // PRECONDITION: rdr.curr is not whitespace

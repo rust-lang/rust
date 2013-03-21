@@ -198,7 +198,7 @@ pub use path::WindowsPath;
 pub use path::PosixPath;
 
 pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
-pub use str::{StrSlice, Trimmable};
+pub use str::{StrSlice};
 pub use container::{Container, Mutable};
 pub use vec::{CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableCopyableVector};

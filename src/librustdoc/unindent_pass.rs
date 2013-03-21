@@ -78,7 +78,7 @@ fn unindent(s: &str) -> ~str {
     };
 
     if !lines.is_empty() {
-        let unindented = ~[lines.head().trim()]
+        let unindented = ~[lines.head().trim_DBGBRWD().to_owned()]
             + do lines.tail().map |line| {
             if str::is_whitespace(*line) {
                 copy *line

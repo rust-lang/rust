@@ -311,7 +311,7 @@ mod test {
             let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
             let doc = (desc_to_brief_pass::mk_pass().f)(srv.clone(), doc);
             let doc = (sectionalize_pass::mk_pass().f)(srv.clone(), doc);
-            (mk_pass(~"", |s| str::trim(s) ).f)(srv.clone(), doc)
+            (mk_pass(~"", |s| str::trim_DBGBRWD(s).to_owned() ).f)(srv.clone(), doc)
         }
     }
 }

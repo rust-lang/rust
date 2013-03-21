@@ -268,7 +268,7 @@ fn run_debuginfo_test(config: config, props: TestProps, testfile: &Path) {
         // output (in order)
         let mut i = 0u;
         for str::lines(ProcRes.stdout).each |line| {
-            if props.check_lines[i].trim() == line.trim() {
+            if props.check_lines[i].trim_DBGBRWD() == line.trim_DBGBRWD() {
                 i += 1u;
             }
             if i == num_check_lines {

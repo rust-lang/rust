@@ -28,18 +28,6 @@ impl ToStr for () {
     #[inline(always)]
     pure fn to_str(&self) -> ~str { ~"()" }
 }
-impl ToStr for ~str {
-    #[inline(always)]
-    pure fn to_str(&self) -> ~str { copy *self }
-}
-impl ToStr for &'self str {
-    #[inline(always)]
-    pure fn to_str(&self) -> ~str { ::str::from_slice(*self) }
-}
-impl ToStr for @str {
-    #[inline(always)]
-    pure fn to_str(&self) -> ~str { ::str::from_slice(*self) }
-}
 
 // FIXME #4898: impl for one-tuples
 
