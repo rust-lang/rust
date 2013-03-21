@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-test
-
 struct Point {
     x: float,
     y: float,
