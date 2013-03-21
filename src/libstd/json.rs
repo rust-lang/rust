@@ -1278,20 +1278,6 @@ mod tests {
         fail_unless!(a == b);
     }
 
-    // two fns copied from libsyntax/util/testing.rs.
-    // Should they be in their own crate?
-    pub pure fn check_equal_ptr<T:cmp::Eq> (given : &T, expected: &T) {
-        if !((given == expected) && (expected == given )) {
-            fail!(fmt!("given %?, expected %?",given,expected));
-        }
-    }
-
-    pub pure fn check_equal<T:cmp::Eq> (given : T, expected: T) {
-        if !((given == expected) && (expected == given )) {
-            fail!(fmt!("given %?, expected %?",given,expected));
-        }
-    }
-
     #[test]
     fn test_write_enum () {
         let bw = @io::BytesWriter();
@@ -1309,7 +1295,7 @@ mod tests {
                 }
             }
         }
-        check_equal(str::from_bytes(bw.bytes), ~"[\"frog\",[\"Henry\",349]]");
+        assert_eq!(str::from_bytes(bw.bytes), ~"[\"frog\",[\"Henry\",349]]");
     }
 
     #[test]
@@ -1324,7 +1310,7 @@ mod tests {
                 }
             }
         }
-        check_equal(str::from_bytes(bw.bytes), ~"\"jodhpurs\"");
+        assert_eq!(str::from_bytes(bw.bytes), ~"\"jodhpurs\"");
     }
 
     #[test]
@@ -1336,7 +1322,7 @@ mod tests {
             do encoder.emit_enum_variant (~"None",37,1242) {
             }
         }
-        check_equal(str::from_bytes(bw.bytes), ~"null");
+        assert_eq!(str::from_bytes(bw.bytes), ~"null");
     }
 
     #[test]

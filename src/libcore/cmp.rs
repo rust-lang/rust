@@ -172,10 +172,10 @@ pub pure fn max<T:Ord>(v1: T, v2: T) -> T {
 mod test {
     #[test]
     fn test_int() {
-        fail_unless!(5.cmp(&10) == Less);
-        fail_unless!(10.cmp(&5) == Greater);
-        fail_unless!(5.cmp(&5) == Equal);
-        fail_unless!((-5).cmp(&12) == Less);
-        fail_unless!(12.cmp(-5) == Greater);
+        assert_eq!(5.cmp(&10), Less);
+        assert_eq!(10.cmp(&5), Greater);
+        assert_eq!(5.cmp(&5), Equal);
+        assert_eq!((-5).cmp(&12), Less);
+        assert_eq!(12.cmp(-5), Greater);
     }
 }
