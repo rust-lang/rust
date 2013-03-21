@@ -250,6 +250,13 @@ pub struct param_substs {
     self_ty: Option<ty::t>
 }
 
+pub impl param_substs {
+    fn validate(&self) {
+        for self.tys.each |t| { fail_unless!(!ty::type_needs_infer(*t)); }
+        for self.self_ty.each |t| { fail_unless!(!ty::type_needs_infer(*t)); }
+    }
+}
+
 pub fn param_substs_to_str(tcx: ty::ctxt, substs: &param_substs) -> ~str {
     fmt!("param_substs {tys:%?, vtables:%?, bounds:%?}",
          substs.tys.map(|t| ty_to_str(tcx, *t)),
@@ -1372,6 +1379,13 @@ pub fn expr_ty_adjusted(bcx: block, ex: @ast::expr) -> ty::t {
 pub fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
     let tcx = bcx.tcx();
     let params = ty::node_id_to_type_params(tcx, id);
+
+    if !params.all(|t| !ty::type_needs_infer(*t)) {
+        bcx.sess().bug(
+            fmt!("Type parameters for node %d include inference types: %s",
+                 id, str::connect(params.map(|t| bcx.ty_to_str(*t)), ",")));
+    }
+
     match bcx.fcx.param_substs {
       Some(substs) => {
         do vec::map(params) |t| {

@@ -486,13 +486,12 @@ pub fn connect_trait_tps(vcx: &VtableContext,
     }
 }
 
-pub fn insert_vtables(ccx: @mut CrateCtxt,
+pub fn insert_vtables(fcx: @mut FnCtxt,
                       callee_id: ast::node_id,
                       vtables: vtable_res) {
     debug!("insert_vtables(callee_id=%d, vtables=%?)",
-           callee_id, vtables.map(|v| v.to_str(ccx.tcx)));
-    let vtable_map = ccx.vtable_map;
-    vtable_map.insert(callee_id, vtables);
+           callee_id, vtables.map(|v| v.to_str(fcx.tcx())));
+    fcx.inh.vtable_map.insert(callee_id, vtables);
 }
 
 pub fn location_info_for_expr(expr: @ast::expr) -> LocationInfo {
@@ -529,8 +528,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
                 let vtbls = lookup_vtables(&vcx, &location_info_for_expr(ex),
                                            item_ty.bounds, substs, is_early);
                 if !is_early {
-                    let vtable_map = cx.vtable_map;
-                    vtable_map.insert(ex.id, vtbls);
+                    insert_vtables(fcx, ex.id, vtbls);
                 }
             }
           }
@@ -543,10 +541,10 @@ pub fn early_resolve_expr(ex: @ast::expr,
       }
 
       // Must resolve bounds on methods with bounded params
-      ast::expr_field(*) | ast::expr_binary(*) |
+      ast::expr_binary(*) |
       ast::expr_unary(*) | ast::expr_assign_op(*) |
       ast::expr_index(*) | ast::expr_method_call(*) => {
-        match ty::method_call_bounds(cx.tcx, cx.method_map, ex.id) {
+        match ty::method_call_bounds(cx.tcx, fcx.inh.method_map, ex.id) {
           Some(bounds) => {
             if has_trait_bounds(/*bad*/copy *bounds) {
                 let callee_id = match ex.node {
@@ -559,7 +557,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
                 let vtbls = lookup_vtables(&vcx, &location_info_for_expr(ex),
                                            bounds, &substs, is_early);
                 if !is_early {
-                    insert_vtables(cx, callee_id, vtbls);
+                    insert_vtables(fcx, callee_id, vtbls);
                 }
             }
           }
@@ -599,10 +597,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
                                   // vtable (that is: "ex has vtable
                                   // <vtable>")
                                   if !is_early {
-                                      let vtable_map =
-                                          cx.vtable_map;
-                                      vtable_map.insert(ex.id,
-                                                        @~[vtable]);
+                                      insert_vtables(fcx, ex.id, @~[vtable]);
                                   }
                               }
                               None => {
