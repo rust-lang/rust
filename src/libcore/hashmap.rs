@@ -656,6 +656,11 @@ pub mod linear {
         fn reserve_at_least(&mut self, n: uint) {
             self.map.reserve_at_least(n)
         }
+
+        /// Consumes all of the elements in the set, emptying it out
+        fn consume(&mut self, f: &fn(T)) {
+            self.map.consume(|k, _| f(k))
+        }
     }
 
     #[test]
