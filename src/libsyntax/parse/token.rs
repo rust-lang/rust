@@ -18,9 +18,9 @@ use util::interner;
 
 use core::cast;
 use core::char;
+use core::hashmap::linear::LinearSet;
 use core::str;
 use core::task;
-use std::oldmap::HashMap;
 
 #[auto_encode]
 #[auto_decode]
@@ -458,35 +458,33 @@ pub fn mk_fake_ident_interner() -> @ident_interner {
  * appear as identifiers at all. Reserved keywords are not used anywhere in
  * the language and may not appear as identifiers.
  */
-pub fn keyword_table() -> HashMap<~str, ()> {
-    let keywords = HashMap();
-    for temporary_keyword_table().each_key |&word| {
-        keywords.insert(word, ());
-    }
-    for strict_keyword_table().each_key |&word| {
-        keywords.insert(word, ());
-    }
-    for reserved_keyword_table().each_key |&word| {
-        keywords.insert(word, ());
-    }
-    keywords
+pub fn keyword_table() -> LinearSet<~str> {
+    let mut keywords = LinearSet::new();
+    let mut tmp = temporary_keyword_table();
+    let mut strict = strict_keyword_table();
+    let mut reserved = reserved_keyword_table();
+
+    do tmp.consume |word|      { keywords.insert(word); }
+    do strict.consume |word|   { keywords.insert(word); }
+    do reserved.consume |word| { keywords.insert(word); }
+    return keywords;
 }
 
 /// Keywords that may be used as identifiers
-pub fn temporary_keyword_table() -> HashMap<~str, ()> {
-    let words = HashMap();
+pub fn temporary_keyword_table() -> LinearSet<~str> {
+    let mut words = LinearSet::new();
     let keys = ~[
         ~"self", ~"static",
     ];
-    for keys.each |word| {
-        words.insert(copy *word, ());
+    do vec::consume(keys) |_, s| {
+        words.insert(s);
     }
-    words
+    return words;
 }
 
 /// Full keywords. May not appear anywhere else.
-pub fn strict_keyword_table() -> HashMap<~str, ()> {
-    let words = HashMap();
+pub fn strict_keyword_table() -> LinearSet<~str> {
+    let mut words = LinearSet::new();
     let keys = ~[
         ~"as",
         ~"break",
@@ -505,21 +503,21 @@ pub fn strict_keyword_table() -> HashMap<~str, ()> {
         ~"unsafe", ~"use",
         ~"while"
     ];
-    for keys.each |word| {
-        words.insert(copy *word, ());
+    do vec::consume(keys) |_, w| {
+        words.insert(w);
     }
-    words
+    return words;
 }
 
-pub fn reserved_keyword_table() -> HashMap<~str, ()> {
-    let words = HashMap();
+pub fn reserved_keyword_table() -> LinearSet<~str> {
+    let mut words = LinearSet::new();
     let keys = ~[
         ~"be"
     ];
-    for keys.each |word| {
-        words.insert(copy *word, ());
+    do vec::consume(keys) |_, s| {
+        words.insert(s);
     }
-    words
+    return words;
 }
 
 
