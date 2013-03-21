@@ -364,14 +364,14 @@ pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
 
             // only resize buf if we actually remove digits
             if i < buf_max_i {
-                buf = buf.slice(0, i + 1);
+                buf = buf.slice(0, i + 1).to_owned();
             }
         }
     } // If exact and trailing '.', just cut that
     else {
         let max_i = buf.len() - 1;
         if buf[max_i] == '.' as u8 {
-            buf = buf.slice(0, max_i);
+            buf = buf.slice(0, max_i).to_owned();
         }
     }
 
@@ -606,7 +606,7 @@ pub pure fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
         // parse remaining bytes as decimal integer,
         // skipping the exponent char
         let exp: Option<int> = from_str_bytes_common(
-            buf.view(i+1, len), 10, true, false, false, ExpNone, false);
+            buf.slice(i+1, len), 10, true, false, false, ExpNone, false);
 
         match exp {
             Some(exp_pow) => {

@@ -171,7 +171,7 @@ fn first_sentence_(s: &str) -> ~str {
     };
     match idx {
         Some(idx) if idx > 2u => {
-            str::from_slice(str::view(s, 0, idx - 1))
+            str::from_slice(str::slice(s, 0, idx - 1))
         }
         _ => {
             if str::ends_with(s, ~".") {

@@ -164,7 +164,7 @@ pub mod ct {
     pub fn parse_fmt_string(s: &str, err: ErrorFn) -> ~[Piece] {
         fn push_slice(ps: &mut ~[Piece], s: &str, from: uint, to: uint) {
             if to > from {
-                ps.push(PieceString(s.slice(from, to)));
+                ps.push(PieceString(s.slice(from, to).to_owned()));
             }
         }
 

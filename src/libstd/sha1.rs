@@ -399,7 +399,7 @@ mod tests {
                 while left > 0u {
                     let take = (left + 1u) / 2u;
                     sh.input_str(str::slice(t.input, len - left,
-                                 take + len - left));
+                                 take + len - left).to_owned());
                     left = left - take;
                 }
                 let out = sh.result();

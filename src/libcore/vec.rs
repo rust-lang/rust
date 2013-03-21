@@ -1707,27 +1707,29 @@ impl<T> Container for &'self [const T] {
 }
 
 pub trait CopyableVector<T> {
-    pure fn slice(&self, start: uint, end: uint) -> ~[T];
+    pure fn to_owned(&self) -> ~[T];
 }
 
 /// Extension methods for vectors
 impl<T: Copy> CopyableVector<T> for &'self [const T] {
-    /// Returns a copy of the elements from [`start`..`end`) from `v`.
+    /// Returns a copy of `v`.
     #[inline]
-    pure fn slice(&self, start: uint, end: uint) -> ~[T] {
-        // XXX: Purity workaround for stage0.
+    pure fn to_owned(&self) -> ~[T] {
+        let mut result = ~[];
+        // FIXME: #4568
         unsafe {
-            let mut result = ~[];
-            for uint::range(start, end) |i| {
-                result.push(copy self[i]);
+            reserve(&mut result, self.len());
+            for self.each |e| {
+                result.push(copy *e);
             }
-            result
         }
+        result
+
     }
 }
 
 pub trait ImmutableVector<T> {
-    pure fn view(&self, start: uint, end: uint) -> &'self [T];
+    pure fn slice(&self, start: uint, end: uint) -> &'self [T];
     pure fn head(&self) -> &'self T;
     pure fn head_opt(&self) -> Option<&'self T>;
     pure fn tail(&self) -> &'self [T];
@@ -1751,7 +1753,7 @@ pub trait ImmutableVector<T> {
 impl<T> ImmutableVector<T> for &'self [T] {
     /// Return a slice that points into another slice.
     #[inline]
-    pure fn view(&self, start: uint, end: uint) -> &'self [T] {
+    pure fn slice(&self, start: uint, end: uint) -> &'self [T] {
         slice(*self, start, end)
     }
 
@@ -3613,9 +3615,9 @@ mod tests {
     }
 
     #[test]
-    fn test_view() {
+    fn test_slice_2() {
         let v = ~[1, 2, 3, 4, 5];
-        let v = v.view(1u, 3u);
+        let v = v.slice(1u, 3u);
         fail_unless!(v.len() == 2u);
         fail_unless!(v[0] == 2);
         fail_unless!(v[1] == 3);
