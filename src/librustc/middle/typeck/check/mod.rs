@@ -1127,6 +1127,16 @@ pub fn break_here() {
     debug!("break here!");
 }
 
+/// Invariant:
+/// If an expression has any sub-expressions that result in a type error,
+/// inspecting that expression's type with `ty::type_is_error` will return
+/// true. Likewise, if an expression is known to diverge, inspecting its
+/// type with `ty::type_is_bot` will return true (n.b.: since Rust is
+/// strict, _|_ can appear in the type of an expression that does not,
+/// itself, diverge: for example, fn() -> _|_.)
+/// Note that inspecting a type's structure *directly* may expose the fact
+/// that there are actually multiple representations for both `ty_err` and
+/// `ty_bot`, so avoid that when err and bot need to be handled differently.
 pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                expr: @ast::expr,
                                expected: Option<ty::t>,
