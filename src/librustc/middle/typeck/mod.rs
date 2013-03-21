@@ -51,7 +51,6 @@ independently:
 use core::prelude::*;
 
 use middle::resolve;
-use middle::ty::{ty_param_substs_and_ty, vstore_uniq};
 use middle::ty;
 use util::common::time;
 use util::ppaux;

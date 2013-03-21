@@ -32,7 +32,6 @@ use core::prelude::*;
 use middle::freevars::get_freevars;
 use middle::pat_util::{pat_bindings, pat_is_binding};
 use middle::ty::{encl_region, re_scope};
-use middle::ty::{vstore_box, vstore_fixed, vstore_slice};
 use middle::ty;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::check::lookup_def;
