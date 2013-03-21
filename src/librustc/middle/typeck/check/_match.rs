@@ -28,12 +28,11 @@ use syntax::print::pprust;
 pub fn check_match(fcx: @mut FnCtxt,
                    expr: @ast::expr,
                    discrim: @ast::expr,
-                   arms: &[ast::arm]) -> bool {
+                   arms: &[ast::arm]) {
     let tcx = fcx.ccx.tcx;
-    let mut bot;
 
     let pattern_ty = fcx.infcx().next_ty_var();
-    bot = check_expr_has_type(fcx, discrim, pattern_ty);
+    check_expr_has_type(fcx, discrim, pattern_ty);
 
     // Typecheck the patterns first, so that we get types for all the
     // bindings.
@@ -51,19 +50,46 @@ pub fn check_match(fcx: @mut FnCtxt,
     // Now typecheck the blocks.
     let mut result_ty = fcx.infcx().next_ty_var();
     let mut arm_non_bot = false;
+    let mut saw_err = false;
     for arms.each |arm| {
+        let mut guard_err = false;
+        let mut guard_bot = false;
         match arm.guard {
-          Some(e) => { check_expr_has_type(fcx, e, ty::mk_bool(tcx)); },
+          Some(e) => {
+              check_expr_has_type(fcx, e, ty::mk_bool(tcx));
+              let e_ty = fcx.expr_ty(e);
+              if ty::type_is_error(e_ty) {
+                  guard_err = true;
+              }
+              else if ty::type_is_bot(e_ty) {
+                  guard_bot = true;
+              }
+          },
           None => ()
         }
-        if !check_block(fcx, &arm.body) { arm_non_bot = true; }
+        check_block(fcx, &arm.body);
         let bty = fcx.node_ty(arm.body.node.id);
+        saw_err = saw_err || ty::type_is_error(bty);
+        if guard_err {
+            fcx.write_error(arm.body.node.id);
+            saw_err = true;
+        }
+        else if guard_bot {
+            fcx.write_bot(arm.body.node.id);
+        }
+        else if !ty::type_is_bot(bty) {
+            arm_non_bot = true; // If the match *may* evaluate to a non-_|_
+                                // expr, the whole thing is non-_|_
+        }
         demand::suptype(fcx, arm.body.span, result_ty, bty);
     }
-    bot |= !arm_non_bot;
-    if !arm_non_bot { result_ty = ty::mk_bot(tcx); }
+    if saw_err {
+        result_ty = ty::mk_err(tcx);
+    }
+    else if !arm_non_bot {
+        result_ty = ty::mk_bot(tcx);
+    }
     fcx.write_ty(expr.id, result_ty);
-    return bot;
 }
 
 pub struct pat_ctxt {
