@@ -408,19 +408,7 @@ pub pure fn chars(s: &str) -> ~[char] {
  * `begin`.
  */
 pub pure fn substr(s: &str, begin: uint, n: uint) -> ~str {
-    slice_DBG_UNIQ(s, begin, begin + count_bytes(s, begin, n))
-}
-
-/**
- * Returns a slice of the given string from the byte range [`begin`..`end`)
- *
- * Fails when `begin` and `end` do not point to valid characters or
- * beyond the last character of the string
- */
-pub pure fn slice_DBG_UNIQ(s: &str, begin: uint, end: uint) -> ~str {
-    fail_unless!(is_char_boundary(s, begin));
-    fail_unless!(is_char_boundary(s, end));
-    unsafe { raw::slice_DBG_UNIQ_bytes(s, begin, end) }
+    slice_DBG_BRWD(s, begin, begin + count_bytes(s, begin, n)).to_owned()
 }
 
 /**
@@ -2287,7 +2275,6 @@ pub trait StrSlice {
     pure fn is_alphanumeric(&self) -> bool;
     pure fn len(&self) -> uint;
     pure fn char_len(&self) -> uint;
-    pure fn slice_DBG_UNIQ(&self, begin: uint, end: uint) -> ~str;
     pure fn slice_DBG_BRWD(&self, begin: uint, end: uint) -> &'self str;
     pure fn split(&self, sepfn: &fn(char) -> bool) -> ~[~str];
     pure fn split_char(&self, sep: char) -> ~[~str];
@@ -2403,17 +2390,6 @@ impl StrSlice for &'self str {
      * beyond the last character of the string
      */
     #[inline]
-    pure fn slice_DBG_UNIQ(&self, begin: uint, end: uint) -> ~str {
-        slice_DBG_UNIQ(*self, begin, end)
-    }
-    /**
-     * Returns a slice of the given string from the byte range
-     * [`begin`..`end`)
-     *
-     * Fails when `begin` and `end` do not point to valid characters or
-     * beyond the last character of the string
-     */
-    #[inline]
     pure fn slice_DBG_BRWD(&self, begin: uint, end: uint) -> &'self str {
         slice_DBG_BRWD(*self, begin, end)
     }
@@ -2472,7 +2448,7 @@ impl StrSlice for &'self str {
     pure fn trim_right(&self) -> ~str { trim_right(*self) }
 
     #[inline]
-    pure fn to_owned(&self) -> ~str { self.slice_DBG_UNIQ(0, self.len()) }
+    pure fn to_owned(&self) -> ~str { from_slice(*self) }
 
     #[inline]
     pure fn to_managed(&self) -> @str {
@@ -2903,25 +2879,24 @@ mod tests {
 
     #[test]
     fn test_unsafe_slice() {
-        unsafe {
-            fail_unless!(~"ab" == raw::slice_DBG_UNIQ_bytes(~"abc", 0, 2));
-            fail_unless!(~"bc" == raw::slice_DBG_UNIQ_bytes(~"abc", 1, 3));
-            fail_unless!(~"" == raw::slice_DBG_UNIQ_bytes(~"abc", 1, 1));
-            fn a_million_letter_a() -> ~str {
-                let mut i = 0;
-                let mut rs = ~"";
-                while i < 100000 { push_str(&mut rs, ~"aaaaaaaaaa"); i += 1; }
-                rs
-            }
-            fn half_a_million_letter_a() -> ~str {
-                let mut i = 0;
-                let mut rs = ~"";
-                while i < 100000 { push_str(&mut rs, ~"aaaaa"); i += 1; }
-                rs
-            }
-            fail_unless!(half_a_million_letter_a() ==
-                raw::slice_DBG_UNIQ_bytes(a_million_letter_a(), 0u, 500000));
+        fail_unless!("ab" == unsafe {raw::slice_DBG_BRWD_bytes("abc", 0, 2)});
+        fail_unless!("bc" == unsafe {raw::slice_DBG_BRWD_bytes("abc", 1, 3)});
+        fail_unless!("" == unsafe {raw::slice_DBG_BRWD_bytes("abc", 1, 1)});
+        fn a_million_letter_a() -> ~str {
+            let mut i = 0;
+            let mut rs = ~"";
+            while i < 100000 { push_str(&mut rs, "aaaaaaaaaa"); i += 1; }
+            rs
         }
+        fn half_a_million_letter_a() -> ~str {
+            let mut i = 0;
+            let mut rs = ~"";
+            while i < 100000 { push_str(&mut rs, "aaaaa"); i += 1; }
+            rs
+        }
+        let letters = a_million_letter_a();
+        fail_unless!(half_a_million_letter_a() ==
+            unsafe {raw::slice_DBG_BRWD_bytes(letters, 0u, 500000)}.to_owned());
     }
 
     #[test]
@@ -3001,22 +2976,22 @@ mod tests {
 
     #[test]
     fn test_slice() {
-        fail_unless!(~"ab" == slice_DBG_UNIQ(~"abc", 0, 2));
-        fail_unless!(~"bc" == slice_DBG_UNIQ(~"abc", 1, 3));
-        fail_unless!(~"" == slice_DBG_UNIQ(~"abc", 1, 1));
-        fail_unless!(~"\u65e5" == slice_DBG_UNIQ(~"\u65e5\u672c", 0, 3));
+        fail_unless!("ab" == slice_DBG_BRWD("abc", 0, 2));
+        fail_unless!("bc" == slice_DBG_BRWD("abc", 1, 3));
+        fail_unless!("" == slice_DBG_BRWD("abc", 1, 1));
+        fail_unless!("\u65e5" == slice_DBG_BRWD("\u65e5\u672c", 0, 3));
 
-        let data = ~"ประเทศไทย中华";
-        fail_unless!(~"ป" == slice_DBG_UNIQ(data, 0, 3));
-        fail_unless!(~"ร" == slice_DBG_UNIQ(data, 3, 6));
-        fail_unless!(~"" == slice_DBG_UNIQ(data, 3, 3));
-        fail_unless!(~"华" == slice_DBG_UNIQ(data, 30, 33));
+        let data = "ประเทศไทย中华";
+        fail_unless!("ป" == slice_DBG_BRWD(data, 0, 3));
+        fail_unless!("ร" == slice_DBG_BRWD(data, 3, 6));
+        fail_unless!("" == slice_DBG_BRWD(data, 3, 3));
+        fail_unless!("华" == slice_DBG_BRWD(data, 30, 33));
 
         fn a_million_letter_X() -> ~str {
             let mut i = 0;
             let mut rs = ~"";
             while i < 100000 {
-                push_str(&mut rs, ~"华华华华华华华华华华");
+                push_str(&mut rs, "华华华华华华华华华华");
                 i += 1;
             }
             rs
@@ -3024,27 +2999,28 @@ mod tests {
         fn half_a_million_letter_X() -> ~str {
             let mut i = 0;
             let mut rs = ~"";
-            while i < 100000 { push_str(&mut rs, ~"华华华华华"); i += 1; }
+            while i < 100000 { push_str(&mut rs, "华华华华华"); i += 1; }
             rs
         }
+        let letters = a_million_letter_X();
         fail_unless!(half_a_million_letter_X() ==
-            slice_DBG_UNIQ(a_million_letter_X(), 0u, 3u * 500000u));
+            slice_DBG_BRWD(letters, 0u, 3u * 500000u).to_owned());
     }
 
     #[test]
     fn test_slice_2() {
-        let ss = ~"中华Việt Nam";
+        let ss = "中华Việt Nam";
 
-        fail_unless!(~"华" == slice_DBG_UNIQ(ss, 3u, 6u));
-        fail_unless!(~"Việt Nam" == slice_DBG_UNIQ(ss, 6u, 16u));
+        fail_unless!("华" == slice_DBG_BRWD(ss, 3u, 6u));
+        fail_unless!("Việt Nam" == slice_DBG_BRWD(ss, 6u, 16u));
 
-        fail_unless!(~"ab" == slice_DBG_UNIQ(~"abc", 0u, 2u));
-        fail_unless!(~"bc" == slice_DBG_UNIQ(~"abc", 1u, 3u));
-        fail_unless!(~"" == slice_DBG_UNIQ(~"abc", 1u, 1u));
+        fail_unless!("ab" == slice_DBG_BRWD("abc", 0u, 2u));
+        fail_unless!("bc" == slice_DBG_BRWD("abc", 1u, 3u));
+        fail_unless!("" == slice_DBG_BRWD("abc", 1u, 1u));
 
-        fail_unless!(~"中" == slice_DBG_UNIQ(ss, 0u, 3u));
-        fail_unless!(~"华V" == slice_DBG_UNIQ(ss, 3u, 7u));
-        fail_unless!(~"" == slice_DBG_UNIQ(ss, 3u, 3u));
+        fail_unless!("中" == slice_DBG_BRWD(ss, 0u, 3u));
+        fail_unless!("华V" == slice_DBG_BRWD(ss, 3u, 7u));
+        fail_unless!("" == slice_DBG_BRWD(ss, 3u, 3u));
         /*0: 中
           3: 华
           6: V
@@ -3061,7 +3037,7 @@ mod tests {
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_slice_fail() {
-        slice_DBG_UNIQ(~"中华Việt Nam", 0u, 2u);
+        slice_DBG_BRWD("中华Việt Nam", 0u, 2u);
     }
 
     #[test]
