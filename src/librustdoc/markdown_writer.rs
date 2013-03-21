@@ -157,7 +157,7 @@ fn readclose(fd: libc::c_int) -> ~str {
             let mut bytes = [0, ..4096];
             while !reader.eof() {
                 let nread = reader.read(bytes, bytes.len());
-                writer.write(bytes.slice_V_DBG_BRWD(0, nread).to_owned());
+                writer.write(bytes.slice(0, nread).to_owned());
             }
         });
         os::fclose(file);

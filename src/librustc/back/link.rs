@@ -771,7 +771,7 @@ pub fn link_binary(sess: Session,
     fn unlib(config: @session::config, +stem: ~str) -> ~str {
         if stem.starts_with("lib") &&
             config.os != session::os_win32 {
-            stem.slice_DBG_BRWD(3, stem.len()).to_owned()
+            stem.slice(3, stem.len()).to_owned()
         } else {
             stem
         }

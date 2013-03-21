@@ -1729,7 +1729,7 @@ impl<T: Copy> CopyableVector<T> for &'self [const T] {
 }
 
 pub trait ImmutableVector<T> {
-    pure fn slice_V_DBG_BRWD(&self, start: uint, end: uint) -> &'self [T];
+    pure fn slice(&self, start: uint, end: uint) -> &'self [T];
     pure fn head(&self) -> &'self T;
     pure fn head_opt(&self) -> Option<&'self T>;
     pure fn tail(&self) -> &'self [T];
@@ -1753,7 +1753,7 @@ pub trait ImmutableVector<T> {
 impl<T> ImmutableVector<T> for &'self [T] {
     /// Return a slice that points into another slice.
     #[inline]
-    pure fn slice_V_DBG_BRWD(&self, start: uint, end: uint) -> &'self [T] {
+    pure fn slice(&self, start: uint, end: uint) -> &'self [T] {
         slice(*self, start, end)
     }
 
@@ -3615,9 +3615,9 @@ mod tests {
     }
 
     #[test]
-    fn test_slice_V_DBG_BRWD() {
+    fn test_slice_2() {
         let v = ~[1, 2, 3, 4, 5];
-        let v = v.slice_V_DBG_BRWD(1u, 3u);
+        let v = v.slice(1u, 3u);
         fail_unless!(v.len() == 2u);
         fail_unless!(v[0] == 2);
         fail_unless!(v[1] == 3);

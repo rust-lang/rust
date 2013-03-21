@@ -1293,7 +1293,7 @@ mod tests {
                 unsafe {
                     match (*node) {
                       node::Leaf(x) => {
-                        *str += str::slice_DBG_BRWD(
+                        *str += str::slice(
                             *x.content, x.byte_offset,
                             x.byte_offset + x.byte_len).to_owned();
                       }
