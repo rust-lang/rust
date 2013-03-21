@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! A double-ended queue implemented as a circular buffer
+
 use core::container::{Container, Mutable};
 use core::prelude::*;
 use core::vec;
