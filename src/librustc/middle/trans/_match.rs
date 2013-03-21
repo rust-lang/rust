@@ -502,6 +502,16 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
     let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, tcx.def_map, m, col, val) |p| {
         match p.node {
+            ast::pat_enum(*) |
+            ast::pat_ident(_, _, None) if pat_is_const(tcx.def_map, p) => {
+                let const_def = tcx.def_map.get(&p.id);
+                let const_def_id = ast_util::def_id_of_def(const_def);
+                if opt_eq(tcx, &lit(ConstLit(const_def_id)), opt) {
+                    Some(~[])
+                } else {
+                    None
+                }
+            }
             ast::pat_enum(_, ref subpats) => {
                 if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
                     match *subpats {
@@ -515,15 +525,6 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
             ast::pat_ident(_, _, None)
                     if pat_is_variant_or_struct(tcx.def_map, p) => {
                 if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
-                    Some(~[])
-                } else {
-                    None
-                }
-            }
-            ast::pat_ident(_, _, None) if pat_is_const(tcx.def_map, p) => {
-                let const_def = tcx.def_map.get(&p.id);
-                let const_def_id = ast_util::def_id_of_def(const_def);
-                if opt_eq(tcx, &lit(ConstLit(const_def_id)), opt) {
                     Some(~[])
                 } else {
                     None
@@ -805,6 +806,10 @@ pub fn get_options(bcx: block, m: &[@Match], col: uint) -> ~[Opt] {
                     Some(ast::def_variant(*)) => {
                         add_to_set(ccx.tcx, &mut found,
                                    variant_opt(bcx, cur.id));
+                    }
+                    Some(ast::def_const(const_did)) => {
+                        add_to_set(ccx.tcx, &mut found,
+                                   lit(ConstLit(const_did)));
                     }
                     _ => {}
                 }
@@ -1781,6 +1786,9 @@ pub fn bind_irrefutable_pat(bcx: block,
                             }
                         }
                     }
+                }
+                Some(ast::def_const(*)) => {
+                    bcx = bind_irrefutable_pat(bcx, pat, val, make_copy, binding_mode);
                 }
                 _ => {
                     // Nothing to do here.
