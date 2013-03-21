@@ -17,7 +17,7 @@ fn vec_peek<T>(v: &'r [T]) -> Option< (&'r T, &'r [T]) > {
         let vec_len = v.len();
         let head = &v[0];
         // note: this *shouldn't* be an illegal borrow! See #3888
-        let tail = v.view(1, vec_len); //~ ERROR illegal borrow: borrowed value does not live long enough
+        let tail = v.slice(1, vec_len); //~ ERROR illegal borrow: borrowed value does not live long enough
         Some( (head, tail) )
     }
 }

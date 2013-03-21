@@ -410,7 +410,7 @@ impl GenericPath for PosixPath {
           None => None,
           Some(ref f) => {
             match str::rfind_char(*f, '.') {
-              Some(p) => Some(f.slice(0, p)),
+              Some(p) => Some(f.slice(0, p).to_owned()),
               None => Some(copy *f)
             }
           }
@@ -422,7 +422,7 @@ impl GenericPath for PosixPath {
           None => None,
           Some(ref f) => {
             match str::rfind_char(*f, '.') {
-              Some(p) if p < f.len() => Some(f.slice(p, f.len())),
+              Some(p) if p < f.len() => Some(f.slice(p, f.len()).to_owned()),
               _ => None
             }
           }
@@ -622,7 +622,7 @@ impl GenericPath for WindowsPath {
           None => None,
           Some(ref f) => {
             match str::rfind_char(*f, '.') {
-              Some(p) => Some(f.slice(0, p)),
+              Some(p) => Some(f.slice(0, p).to_owned()),
               None => Some(copy *f)
             }
           }
@@ -634,7 +634,7 @@ impl GenericPath for WindowsPath {
           None => None,
           Some(ref f) => {
             match str::rfind_char(*f, '.') {
-              Some(p) if p < f.len() => Some(f.slice(p, f.len())),
+              Some(p) if p < f.len() => Some(f.slice(p, f.len()).to_owned()),
               _ => None
             }
           }
@@ -842,8 +842,8 @@ pub mod windows {
             let mut i = 2;
             while i < s.len() {
                 if is_sep(s[i]) {
-                    let pre = s.slice(2, i);
-                    let mut rest = s.slice(i, s.len());
+                    let pre = s.slice(2, i).to_owned();
+                    let mut rest = s.slice(i, s.len()).to_owned();
                     return Some((pre, rest));
                 }
                 i += 1;
@@ -860,9 +860,9 @@ pub mod windows {
                 let rest = if s.len() == 2 {
                     ~""
                 } else {
-                    s.slice(2, s.len())
+                    s.slice(2, s.len()).to_owned()
                 };
-                return Some((s.slice(0,1), rest));
+                return Some((s.slice(0,1).to_owned(), rest));
             }
             None
         }

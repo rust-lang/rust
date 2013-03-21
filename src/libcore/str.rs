@@ -50,7 +50,7 @@ pub pure fn from_bytes(vv: &[const u8]) -> ~str {
 
 /// Copy a slice into a new unique str
 pub pure fn from_slice(s: &str) -> ~str {
-    unsafe { raw::slice_bytes(s, 0, len(s)) }
+    unsafe { raw::slice_bytes_unique(s, 0, len(s)) }
 }
 
 /**
@@ -265,7 +265,7 @@ pub fn pop_char(s: &mut ~str) -> char {
  */
 pub fn shift_char(s: &mut ~str) -> char {
     let CharRange {ch, next} = char_range_at(*s, 0u);
-    *s = unsafe { raw::slice_bytes(*s, next, len(*s)) };
+    *s = unsafe { raw::slice_bytes_unique(*s, next, len(*s)) };
     return ch;
 }
 
@@ -279,9 +279,9 @@ pub fn shift_char(s: &mut ~str) -> char {
  * If the string does not contain any characters
  */
 #[inline]
-pub fn view_shift_char(s: &'a str) -> (char, &'a str) {
+pub fn slice_shift_char(s: &'a str) -> (char, &'a str) {
     let CharRange {ch, next} = char_range_at(s, 0u);
-    let next_s = unsafe { raw::view_bytes(s, next, len(s)) };
+    let next_s = unsafe { raw::slice_bytes(s, next, len(s)) };
     return (ch, next_s);
 }
 
@@ -304,7 +304,7 @@ pub pure fn trim_left_chars(s: &str, chars_to_trim: &[char]) -> ~str {
 
     match find(s, |c| !chars_to_trim.contains(&c)) {
       None => ~"",
-      Some(first) => unsafe { raw::slice_bytes(s, first, s.len()) }
+      Some(first) => unsafe { raw::slice_bytes_unique(s, first, s.len()) }
     }
 }
 
@@ -324,7 +324,7 @@ pub pure fn trim_right_chars(s: &str, chars_to_trim: &[char]) -> ~str {
       None => ~"",
       Some(last) => {
         let next = char_range_at(s, last).next;
-        unsafe { raw::slice_bytes(s, 0u, next) }
+        unsafe { raw::slice_bytes_unique(s, 0u, next) }
       }
     }
 }
@@ -346,7 +346,7 @@ pub pure fn trim_chars(s: &str, chars_to_trim: &[char]) -> ~str {
 pub pure fn trim_left(s: &str) -> ~str {
     match find(s, |c| !char::is_whitespace(c)) {
       None => ~"",
-      Some(first) => unsafe { raw::slice_bytes(s, first, len(s)) }
+      Some(first) => unsafe { raw::slice_bytes_unique(s, first, len(s)) }
     }
 }
 
@@ -356,7 +356,7 @@ pub pure fn trim_right(s: &str) -> ~str {
       None => ~"",
       Some(last) => {
         let next = char_range_at(s, last).next;
-        unsafe { raw::slice_bytes(s, 0u, next) }
+        unsafe { raw::slice_bytes_unique(s, 0u, next) }
       }
     }
 }
@@ -408,31 +408,19 @@ pub pure fn chars(s: &str) -> ~[char] {
  * `begin`.
  */
 pub pure fn substr(s: &str, begin: uint, n: uint) -> ~str {
-    slice(s, begin, begin + count_bytes(s, begin, n))
+    slice(s, begin, begin + count_bytes(s, begin, n)).to_owned()
 }
 
 /**
  * Returns a slice of the given string from the byte range [`begin`..`end`)
  *
- * Fails when `begin` and `end` do not point to valid characters or
- * beyond the last character of the string
- */
-pub pure fn slice(s: &str, begin: uint, end: uint) -> ~str {
-    fail_unless!(is_char_boundary(s, begin));
-    fail_unless!(is_char_boundary(s, end));
-    unsafe { raw::slice_bytes(s, begin, end) }
-}
-
-/**
- * Returns a view of the given string from the byte range [`begin`..`end`)
- *
  * Fails when `begin` and `end` do not point to valid characters or beyond
  * the last character of the string
  */
-pub pure fn view(s: &'a str, begin: uint, end: uint) -> &'a str {
+pub pure fn slice(s: &'a str, begin: uint, end: uint) -> &'a str {
     fail_unless!(is_char_boundary(s, begin));
     fail_unless!(is_char_boundary(s, end));
-    unsafe { raw::view_bytes(s, begin, end) }
+    unsafe { raw::slice_bytes(s, begin, end) }
 }
 
 /// Splits a string into substrings at each occurrence of a given character
@@ -465,7 +453,7 @@ pure fn split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool)
             if s[i] == b {
                 if allow_empty || start < i {
                     unsafe {
-                        result.push(raw::slice_bytes(s, start, i));
+                        result.push(raw::slice_bytes_unique(s, start, i));
                     }
                 }
                 start = i + 1u;
@@ -474,7 +462,7 @@ pure fn split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool)
             i += 1u;
         }
         if allow_empty || start < l {
-            unsafe { result.push(raw::slice_bytes(s, start, l) ) };
+            unsafe { result.push(raw::slice_bytes_unique(s, start, l) ) };
         }
         result
     } else {
@@ -513,7 +501,7 @@ pure fn split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
         if sepfn(ch) {
             if allow_empty || start < i {
                 unsafe {
-                    result.push(raw::slice_bytes(s, start, i));
+                    result.push(raw::slice_bytes_unique(s, start, i));
                 }
             }
             start = next;
@@ -523,7 +511,7 @@ pure fn split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
     }
     if allow_empty || start < l {
         unsafe {
-            result.push(raw::slice_bytes(s, start, l));
+            result.push(raw::slice_bytes_unique(s, start, l));
         }
     }
     result
@@ -578,7 +566,7 @@ pure fn iter_between_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
 pub pure fn split_str(s: &'a str, sep: &'b str) -> ~[~str] {
     let mut result = ~[];
     do iter_between_matches(s, sep) |from, to| {
-        unsafe { result.push(raw::slice_bytes(s, from, to)); }
+        unsafe { result.push(raw::slice_bytes_unique(s, from, to)); }
     }
     result
 }
@@ -587,7 +575,7 @@ pub pure fn split_str_nonempty(s: &'a str, sep: &'b str) -> ~[~str] {
     let mut result = ~[];
     do iter_between_matches(s, sep) |from, to| {
         if to > from {
-            unsafe { result.push(raw::slice_bytes(s, from, to)); }
+            unsafe { result.push(raw::slice_bytes_unique(s, from, to)); }
         }
     }
     result
@@ -721,7 +709,7 @@ pub pure fn replace(s: &str, from: &str, to: &str) -> ~str {
         } else {
             unsafe { push_str(&mut result, to); }
         }
-        unsafe { push_str(&mut result, raw::slice_bytes(s, start, end)); }
+        unsafe { push_str(&mut result, raw::slice_bytes_unique(s, start, end)); }
     }
     result
 }
@@ -2135,7 +2123,7 @@ pub mod raw {
      * If begin is greater than end.
      * If end is greater than the length of the string.
      */
-    pub unsafe fn slice_bytes(s: &str, begin: uint, end: uint) -> ~str {
+    pub unsafe fn slice_bytes_unique(s: &str, begin: uint, end: uint) -> ~str {
         do as_buf(s) |sbuf, n| {
             fail_unless!((begin <= end));
             fail_unless!((end <= n));
@@ -2155,7 +2143,7 @@ pub mod raw {
     }
 
     /**
-     * Takes a bytewise (not UTF-8) view from a string.
+     * Takes a bytewise (not UTF-8) slice from a string.
      *
      * Returns the substring from [`begin`..`end`).
      *
@@ -2165,7 +2153,7 @@ pub mod raw {
      * If end is greater than the length of the string.
      */
     #[inline]
-    pub unsafe fn view_bytes(s: &str, begin: uint, end: uint) -> &str {
+    pub unsafe fn slice_bytes(s: &str, begin: uint, end: uint) -> &str {
         do as_buf(s) |sbuf, n| {
              fail_unless!((begin <= end));
              fail_unless!((end <= n));
@@ -2207,7 +2195,7 @@ pub mod raw {
         let len = len(*s);
         fail_unless!((len > 0u));
         let b = s[0];
-        *s = unsafe { raw::slice_bytes(*s, 1u, len) };
+        *s = unsafe { raw::slice_bytes_unique(*s, 1u, len) };
         return b;
     }
 
@@ -2287,7 +2275,7 @@ pub trait StrSlice {
     pure fn is_alphanumeric(&self) -> bool;
     pure fn len(&self) -> uint;
     pure fn char_len(&self) -> uint;
-    pure fn slice(&self, begin: uint, end: uint) -> ~str;
+    pure fn slice(&self, begin: uint, end: uint) -> &'self str;
     pure fn split(&self, sepfn: &fn(char) -> bool) -> ~[~str];
     pure fn split_char(&self, sep: char) -> ~[~str];
     pure fn split_str(&self, sep: &'a str) -> ~[~str];
@@ -2402,7 +2390,7 @@ impl StrSlice for &'self str {
      * beyond the last character of the string
      */
     #[inline]
-    pure fn slice(&self, begin: uint, end: uint) -> ~str {
+    pure fn slice(&self, begin: uint, end: uint) -> &'self str {
         slice(*self, begin, end)
     }
     /// Splits a string into substrings using a character function
@@ -2460,7 +2448,7 @@ impl StrSlice for &'self str {
     pure fn trim_right(&self) -> ~str { trim_right(*self) }
 
     #[inline]
-    pure fn to_owned(&self) -> ~str { self.slice(0, self.len()) }
+    pure fn to_owned(&self) -> ~str { from_slice(*self) }
 
     #[inline]
     pure fn to_managed(&self) -> @str {
@@ -2523,8 +2511,8 @@ mod tests {
 
     #[test]
     fn test_eq_slice() {
-        fail_unless!((eq_slice(view("foobar", 0, 3), "foo")));
-        fail_unless!((eq_slice(view("barfoo", 3, 6), "foo")));
+        fail_unless!((eq_slice(slice("foobar", 0, 3), "foo")));
+        fail_unless!((eq_slice(slice("barfoo", 3, 6), "foo")));
         fail_unless!((!eq_slice("foo1", "foo2")));
     }
 
@@ -2891,25 +2879,24 @@ mod tests {
 
     #[test]
     fn test_unsafe_slice() {
-        unsafe {
-            fail_unless!(~"ab" == raw::slice_bytes(~"abc", 0, 2));
-            fail_unless!(~"bc" == raw::slice_bytes(~"abc", 1, 3));
-            fail_unless!(~"" == raw::slice_bytes(~"abc", 1, 1));
-            fn a_million_letter_a() -> ~str {
-                let mut i = 0;
-                let mut rs = ~"";
-                while i < 100000 { push_str(&mut rs, ~"aaaaaaaaaa"); i += 1; }
-                rs
-            }
-            fn half_a_million_letter_a() -> ~str {
-                let mut i = 0;
-                let mut rs = ~"";
-                while i < 100000 { push_str(&mut rs, ~"aaaaa"); i += 1; }
-                rs
-            }
-            fail_unless!(half_a_million_letter_a() ==
-                raw::slice_bytes(a_million_letter_a(), 0u, 500000));
+        fail_unless!("ab" == unsafe {raw::slice_bytes("abc", 0, 2)});
+        fail_unless!("bc" == unsafe {raw::slice_bytes("abc", 1, 3)});
+        fail_unless!("" == unsafe {raw::slice_bytes("abc", 1, 1)});
+        fn a_million_letter_a() -> ~str {
+            let mut i = 0;
+            let mut rs = ~"";
+            while i < 100000 { push_str(&mut rs, "aaaaaaaaaa"); i += 1; }
+            rs
         }
+        fn half_a_million_letter_a() -> ~str {
+            let mut i = 0;
+            let mut rs = ~"";
+            while i < 100000 { push_str(&mut rs, "aaaaa"); i += 1; }
+            rs
+        }
+        let letters = a_million_letter_a();
+        fail_unless!(half_a_million_letter_a() ==
+            unsafe {raw::slice_bytes(letters, 0u, 500000)}.to_owned());
     }
 
     #[test]
@@ -2989,22 +2976,22 @@ mod tests {
 
     #[test]
     fn test_slice() {
-        fail_unless!(~"ab" == slice(~"abc", 0, 2));
-        fail_unless!(~"bc" == slice(~"abc", 1, 3));
-        fail_unless!(~"" == slice(~"abc", 1, 1));
-        fail_unless!(~"\u65e5" == slice(~"\u65e5\u672c", 0, 3));
+        fail_unless!("ab" == slice("abc", 0, 2));
+        fail_unless!("bc" == slice("abc", 1, 3));
+        fail_unless!("" == slice("abc", 1, 1));
+        fail_unless!("\u65e5" == slice("\u65e5\u672c", 0, 3));
 
-        let data = ~"ประเทศไทย中华";
-        fail_unless!(~"ป" == slice(data, 0, 3));
-        fail_unless!(~"ร" == slice(data, 3, 6));
-        fail_unless!(~"" == slice(data, 3, 3));
-        fail_unless!(~"华" == slice(data, 30, 33));
+        let data = "ประเทศไทย中华";
+        fail_unless!("ป" == slice(data, 0, 3));
+        fail_unless!("ร" == slice(data, 3, 6));
+        fail_unless!("" == slice(data, 3, 3));
+        fail_unless!("华" == slice(data, 30, 33));
 
         fn a_million_letter_X() -> ~str {
             let mut i = 0;
             let mut rs = ~"";
             while i < 100000 {
-                push_str(&mut rs, ~"华华华华华华华华华华");
+                push_str(&mut rs, "华华华华华华华华华华");
                 i += 1;
             }
             rs
@@ -3012,27 +2999,28 @@ mod tests {
         fn half_a_million_letter_X() -> ~str {
             let mut i = 0;
             let mut rs = ~"";
-            while i < 100000 { push_str(&mut rs, ~"华华华华华"); i += 1; }
+            while i < 100000 { push_str(&mut rs, "华华华华华"); i += 1; }
             rs
         }
+        let letters = a_million_letter_X();
         fail_unless!(half_a_million_letter_X() ==
-            slice(a_million_letter_X(), 0u, 3u * 500000u));
+            slice(letters, 0u, 3u * 500000u).to_owned());
     }
 
     #[test]
     fn test_slice_2() {
-        let ss = ~"中华Việt Nam";
+        let ss = "中华Việt Nam";
 
-        fail_unless!(~"华" == slice(ss, 3u, 6u));
-        fail_unless!(~"Việt Nam" == slice(ss, 6u, 16u));
+        fail_unless!("华" == slice(ss, 3u, 6u));
+        fail_unless!("Việt Nam" == slice(ss, 6u, 16u));
 
-        fail_unless!(~"ab" == slice(~"abc", 0u, 2u));
-        fail_unless!(~"bc" == slice(~"abc", 1u, 3u));
-        fail_unless!(~"" == slice(~"abc", 1u, 1u));
+        fail_unless!("ab" == slice("abc", 0u, 2u));
+        fail_unless!("bc" == slice("abc", 1u, 3u));
+        fail_unless!("" == slice("abc", 1u, 1u));
 
-        fail_unless!(~"中" == slice(ss, 0u, 3u));
-        fail_unless!(~"华V" == slice(ss, 3u, 7u));
-        fail_unless!(~"" == slice(ss, 3u, 3u));
+        fail_unless!("中" == slice(ss, 0u, 3u));
+        fail_unless!("华V" == slice(ss, 3u, 7u));
+        fail_unless!("" == slice(ss, 3u, 3u));
         /*0: 中
           3: 华
           6: V
@@ -3049,7 +3037,7 @@ mod tests {
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_slice_fail() {
-        slice(~"中华Việt Nam", 0u, 2u);
+        slice("中华Việt Nam", 0u, 2u);
     }
 
     #[test]
@@ -3645,7 +3633,7 @@ mod tests {
     #[test]
     fn test_to_managed() {
         fail_unless!((~"abc").to_managed() == @"abc");
-        fail_unless!(view("abcdef", 1, 5).to_managed() == @"bcde");
+        fail_unless!(slice("abcdef", 1, 5).to_managed() == @"bcde");
     }
 
     #[test]

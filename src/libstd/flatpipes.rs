@@ -571,7 +571,7 @@ pub mod bytepipes {
         fn try_recv(&self, count: uint) -> Option<~[u8]> {
             if vec::uniq_len(&const self.buf) >= count {
                 let mut bytes = ::core::util::replace(&mut self.buf, ~[]);
-                self.buf = bytes.slice(count, bytes.len());
+                self.buf = bytes.slice(count, bytes.len()).to_owned();
                 bytes.truncate(count);
                 return Some(bytes);
             } else if vec::uniq_len(&const self.buf) > 0 {

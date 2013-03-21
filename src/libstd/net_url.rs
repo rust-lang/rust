@@ -317,10 +317,10 @@ pure fn split_char_first(s: &str, c: char) -> (~str, ~str) {
         }
     }
     if index+mat == len {
-        return (str::slice(s, 0, index), ~"");
+        return (str::slice(s, 0, index).to_owned(), ~"");
     } else {
-        return (str::slice(s, 0, index),
-             str::slice(s, index + mat, str::len(s)));
+        return (str::slice(s, 0, index).to_owned(),
+             str::slice(s, index + mat, str::len(s)).to_owned());
     }
 }
 
@@ -386,8 +386,8 @@ pub pure fn get_scheme(rawurl: &str) -> Result<(~str, ~str), ~str> {
             if i == 0 {
                 return Err(~"url: Scheme cannot be empty.");
             } else {
-                return Ok((rawurl.slice(0,i),
-                                rawurl.slice(i+1,str::len(rawurl))));
+                return Ok((rawurl.slice(0,i).to_owned(),
+                                rawurl.slice(i+1,str::len(rawurl)).to_owned()));
             }
           }
           _ => {
@@ -489,7 +489,7 @@ pure fn get_authority(rawurl: &str) ->
               }
               Ip6Host => {
                 if colon_count > 7 {
-                    host = str::slice(rawurl, begin, i);
+                    host = str::slice(rawurl, begin, i).to_owned();
                     pos = i;
                     st = InPort;
                 }
@@ -506,13 +506,13 @@ pure fn get_authority(rawurl: &str) ->
             colon_count = 0; // reset count
             match st {
               Start => {
-                let user = str::slice(rawurl, begin, i);
+                let user = str::slice(rawurl, begin, i).to_owned();
                 userinfo = Some(UserInfo::new(user, None));
                 st = InHost;
               }
               PassHostPort => {
-                let user = str::slice(rawurl, begin, pos);
-                let pass = str::slice(rawurl, pos+1, i);
+                let user = str::slice(rawurl, begin, pos).to_owned();
+                let pass = str::slice(rawurl, pos+1, i).to_owned();
                 userinfo = Some(UserInfo::new(user, Some(pass)));
                 st = InHost;
               }
@@ -543,31 +543,31 @@ pure fn get_authority(rawurl: &str) ->
     match st {
       Start => {
         if host_is_end_plus_one() {
-            host = str::slice(rawurl, begin, end+1);
+            host = str::slice(rawurl, begin, end+1).to_owned();
         } else {
-            host = str::slice(rawurl, begin, end);
+            host = str::slice(rawurl, begin, end).to_owned();
         }
       }
       PassHostPort | Ip6Port => {
         if in != Digit {
             return Err(~"Non-digit characters in port.");
         }
-        host = str::slice(rawurl, begin, pos);
-        port = Some(str::slice(rawurl, pos+1, end));
+        host = str::slice(rawurl, begin, pos).to_owned();
+        port = Some(str::slice(rawurl, pos+1, end).to_owned());
       }
       Ip6Host | InHost => {
-        host = str::slice(rawurl, begin, end);
+        host = str::slice(rawurl, begin, end).to_owned();
       }
       InPort => {
         if in != Digit {
             return Err(~"Non-digit characters in port.");
         }
-        port = Some(str::slice(rawurl, pos+1, end));
+        port = Some(str::slice(rawurl, pos+1, end).to_owned());
       }
     }
 
     let rest = if host_is_end_plus_one() { ~"" }
-    else { str::slice(rawurl, end, len) };
+    else { str::slice(rawurl, end, len).to_owned() };
     return Ok((userinfo, host, port, rest));
 }
 
@@ -599,8 +599,8 @@ pure fn get_path(rawurl: &str, authority: bool) ->
         }
     }
 
-    return Ok((decode_component(str::slice(rawurl, 0, end)),
-                    str::slice(rawurl, end, len)));
+    return Ok((decode_component(str::slice(rawurl, 0, end).to_owned()),
+                    str::slice(rawurl, end, len).to_owned()));
 }
 
 // returns the parsed query and the fragment, if present
@@ -610,14 +610,14 @@ pure fn get_query_fragment(rawurl: &str) ->
         if str::starts_with(rawurl, ~"#") {
             let f = decode_component(str::slice(rawurl,
                                                 1,
-                                                str::len(rawurl)));
+                                                str::len(rawurl)).to_owned());
             return Ok((~[], Some(f)));
         } else {
             return Ok((~[], None));
         }
     }
     let (q, r) = split_char_first(str::slice(rawurl, 1,
-                                             str::len(rawurl)), '#');
+                                             str::len(rawurl)).to_owned(), '#');
     let f = if str::len(r) != 0 {
         Some(decode_component(r)) } else { None };
     return Ok((query_from_str(q), f));

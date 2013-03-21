@@ -831,7 +831,7 @@ priv impl BitvSet {
                         f: &fn(uint, uint, uint) -> bool) {
         let min = uint::min(self.bitv.storage.len(),
                             other.bitv.storage.len());
-        for self.bitv.storage.view(0, min).eachi |i, &w| {
+        for self.bitv.storage.slice(0, min).eachi |i, &w| {
             if !f(i * uint::bits, w, other.bitv.storage[i]) {
                 return;
             }
@@ -852,12 +852,12 @@ priv impl BitvSet {
         let min = uint::min(len1, len2);
 
         /* only one of these loops will execute and that's the point */
-        for self.bitv.storage.view(min, len1).eachi |i, &w| {
+        for self.bitv.storage.slice(min, len1).eachi |i, &w| {
             if !f(true, (i + min) * uint::bits, w) {
                 return;
             }
         }
-        for other.bitv.storage.view(min, len2).eachi |i, &w| {
+        for other.bitv.storage.slice(min, len2).eachi |i, &w| {
             if !f(false, (i + min) * uint::bits, w) {
                 return;
             }
