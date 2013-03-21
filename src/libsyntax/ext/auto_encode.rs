@@ -1202,7 +1202,6 @@ fn mk_enum_deser_body(
 mod test {
     use std::serialize::Encodable;
     use std::serialize::Encoder;
-    use util::testing::*;
 
     // just adding the ones I want to test, for now:
     #[deriving_eq]
@@ -1321,7 +1320,7 @@ mod test {
     }
 
     #[test] fn encode_enum_test () {
-        check_equal (to_call_log(Book(34,44)),
+        assert_eq!(to_call_log(Book(34,44)),
                      ~[CallToEmitEnum (~"Written"),
                        CallToEmitEnumVariant (~"Book",0,2),
                        CallToEmitEnumVariantArg (0),
