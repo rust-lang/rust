@@ -1204,9 +1204,11 @@ pub fn read_whole_file(file: &Path) -> Result<~[u8], ~str> {
 // fsync related
 
 pub mod fsync {
-    use prelude::*;
     use io::{FILERes, FdRes, fd_t};
+    use kinds::Copy;
     use libc;
+    use ops::Drop;
+    use option::{None, Option, Some};
     use os;
 
     pub enum Level {

@@ -230,8 +230,6 @@ pub mod types {
                 pub type uintptr_t = uint;
             }
             pub mod posix88 {
-                use prelude::*;
-
                 pub type off_t = i32;
                 pub type dev_t = u64;
                 pub type ino_t = u32;
