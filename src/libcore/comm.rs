@@ -110,6 +110,7 @@ pub fn stream<T:Owned>() -> (Port<T>, Chan<T>) {
 // required.
 #[cfg(stage1)]
 #[cfg(stage2)]
+#[cfg(stage3)]
 pub impl<T: Owned> Chan<T> {
     fn send(&self, x: T) { chan_send(self, x) }
     fn try_send(&self, x: T) -> bool { chan_try_send(self, x) }
@@ -149,6 +150,7 @@ fn chan_try_send<T:Owned>(self: &Chan<T>, x: T) -> bool {
 // Use an inherent impl so that imports are not required:
 #[cfg(stage1)]
 #[cfg(stage2)]
+#[cfg(stage3)]
 pub impl<T: Owned> Port<T> {
     fn recv(&self) -> T { port_recv(self) }
     fn try_recv(&self) -> Option<T> { port_try_recv(self) }
@@ -226,6 +228,7 @@ pub fn PortSet<T: Owned>() -> PortSet<T>{
 // Use an inherent impl so that imports are not required:
 #[cfg(stage1)]
 #[cfg(stage2)]
+#[cfg(stage3)]
 pub impl<T:Owned> PortSet<T> {
     fn recv(&self) -> T { port_set_recv(self) }
     fn try_recv(&self) -> Option<T> { port_set_try_recv(self) }
@@ -301,6 +304,7 @@ pub type SharedChan<T> = unstable::Exclusive<Chan<T>>;
 
 #[cfg(stage1)]
 #[cfg(stage2)]
+#[cfg(stage3)]
 pub impl<T: Owned> SharedChan<T> {
     fn send(&self, x: T) { shared_chan_send(self, x) }
     fn try_send(&self, x: T) -> bool { shared_chan_try_send(self, x) }

@@ -127,7 +127,7 @@ fn write_page(ctxt: &Ctxt, page: &doc::Page) {
         write_item_no_header(ctxt, doc);
       }
     }
-    ctxt.w.write_done();
+    ctxt.w.put_done();
 }
 
 #[test]
@@ -146,8 +146,8 @@ fn should_request_new_writer_for_each_page() {
 }
 
 fn write_title(ctxt: &Ctxt, page: doc::Page) {
-    ctxt.w.write_line(fmt!("%% %s", make_title(page)));
-    ctxt.w.write_line(~"");
+    ctxt.w.put_line(fmt!("%% %s", make_title(page)));
+    ctxt.w.put_line(~"");
 }
 
 fn make_title(page: doc::Page) -> ~str {
@@ -198,8 +198,8 @@ fn write_header(ctxt: &Ctxt, lvl: Hlvl, doc: doc::ItemTag) {
 
 fn write_header_(ctxt: &Ctxt, lvl: Hlvl, title: ~str) {
     let hashes = str::from_chars(vec::from_elem(lvl as uint, '#'));
-    ctxt.w.write_line(fmt!("%s %s", hashes, title));
-    ctxt.w.write_line(~"");
+    ctxt.w.put_line(fmt!("%s %s", hashes, title));
+    ctxt.w.put_line(~"");
 }
 
 pub fn header_kind(doc: doc::ItemTag) -> ~str {
@@ -332,8 +332,8 @@ fn write_desc(
 ) {
     match desc {
         Some(desc) => {
-            ctxt.w.write_line(desc);
-            ctxt.w.write_line(~"");
+            ctxt.w.put_line(desc);
+            ctxt.w.put_line(~"");
         }
         None => ()
     }
@@ -347,8 +347,8 @@ fn write_sections(ctxt: &Ctxt, sections: &[doc::Section]) {
 
 fn write_section(ctxt: &Ctxt, section: doc::Section) {
     write_header_(ctxt, H4, copy section.header);
-    ctxt.w.write_line(copy section.body);
-    ctxt.w.write_line(~"");
+    ctxt.w.put_line(copy section.body);
+    ctxt.w.put_line(~"");
 }
 
 #[test]
@@ -398,7 +398,7 @@ fn write_item_(ctxt: &Ctxt, doc: doc::ItemTag, write_header: bool) {
       doc::TraitTag(TraitDoc) => write_trait(ctxt, TraitDoc),
       doc::ImplTag(ImplDoc) => write_impl(ctxt, ImplDoc),
       doc::TyTag(TyDoc) => write_type(ctxt, TyDoc),
-      doc::StructTag(StructDoc) => write_struct(ctxt, StructDoc),
+      doc::StructTag(StructDoc) => put_struct(ctxt, StructDoc),
     }
 }
 
@@ -428,13 +428,13 @@ fn write_index(ctxt: &Ctxt, index: doc::Index) {
         let header = header_text_(entry.kind, entry.name);
         let id = copy entry.link;
         if entry.brief.is_some() {
-            ctxt.w.write_line(fmt!("* [%s](%s) - %s",
+            ctxt.w.put_line(fmt!("* [%s](%s) - %s",
                                    header, id, (&entry.brief).get()));
         } else {
-            ctxt.w.write_line(fmt!("* [%s](%s)", header, id));
+            ctxt.w.put_line(fmt!("* [%s](%s)", header, id));
         }
     }
-    ctxt.w.write_line(~"");
+    ctxt.w.put_line(~"");
 }
 
 #[test]
@@ -526,8 +526,8 @@ fn write_fnlike(
 fn write_sig(ctxt: &Ctxt, sig: Option<~str>) {
     match sig {
       Some(sig) => {
-        ctxt.w.write_line(code_block_indent(sig));
-        ctxt.w.write_line(~"");
+        ctxt.w.put_line(code_block_indent(sig));
+        ctxt.w.put_line(~"");
       }
       None => fail!(~"unimplemented")
     }
@@ -641,7 +641,7 @@ fn write_variants(
         write_variant(ctxt, copy *variant);
     }
 
-    ctxt.w.write_line(~"");
+    ctxt.w.put_line(~"");
 }
 
 fn write_variant(ctxt: &Ctxt, doc: doc::VariantDoc) {
@@ -649,10 +649,10 @@ fn write_variant(ctxt: &Ctxt, doc: doc::VariantDoc) {
     let sig = (&doc.sig).get();
     match copy doc.desc {
       Some(desc) => {
-        ctxt.w.write_line(fmt!("* `%s` - %s", sig, desc));
+        ctxt.w.put_line(fmt!("* `%s` - %s", sig, desc));
       }
       None => {
-        ctxt.w.write_line(fmt!("* `%s`", sig));
+        ctxt.w.put_line(fmt!("* `%s`", sig));
       }
     }
 }
@@ -804,7 +804,7 @@ fn should_write_type_signature() {
     fail_unless!(str::contains(markdown, ~"\n\n    type t = int\n\n"));
 }
 
-fn write_struct(
+fn put_struct(
     ctxt: &Ctxt,
     doc: doc::StructDoc
 ) {
@@ -813,7 +813,7 @@ fn write_struct(
 }
 
 #[test]
-fn should_write_struct_header() {
+fn should_put_struct_header() {
     let markdown = test::render(~"struct S { field: () }");
     fail_unless!(str::contains(markdown, ~"## Struct `S`\n\n"));
 }

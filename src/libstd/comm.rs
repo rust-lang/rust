@@ -28,6 +28,7 @@ pub struct DuplexStream<T, U> {
 // Allow these methods to be used without import:
 #[cfg(stage1)]
 #[cfg(stage2)]
+#[cfg(stage3)]
 pub impl<T:Owned,U:Owned> DuplexStream<T, U> {
     fn send(&self, x: T) {
         self.chan.send(x)
