@@ -4333,23 +4333,24 @@ pub impl Resolver {
                 }
 
                 pat_enum(path, _) => {
-                    // This must be an enum variant or struct.
+                    // This must be an enum variant, struct or const.
                     match self.resolve_path(path, ValueNS, false, visitor) {
                         Some(def @ def_variant(*)) |
-                                Some(def @ def_struct(*)) => {
+                        Some(def @ def_struct(*))  |
+                        Some(def @ def_const(*)) => {
                             self.record_def(pattern.id, def);
                         }
                         Some(_) => {
                             self.session.span_err(
                                 path.span,
-                                fmt!("not an enum variant or struct: %s",
+                                fmt!("not an enum variant, struct or const: %s",
                                      *self.session.str_of(
                                          *path.idents.last())));
                         }
                         None => {
                             self.session.span_err(path.span,
-                                                  ~"unresolved enum variant \
-                                                    or struct");
+                                                  ~"unresolved enum variant, \
+                                                    struct or const");
                         }
                     }
 
