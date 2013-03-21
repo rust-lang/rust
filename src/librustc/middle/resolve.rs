@@ -478,7 +478,7 @@ pub struct Module {
     anonymous_children: @HashMap<node_id,@mut Module>,
 
     // The status of resolving each import in this module.
-    import_resolutions: @HashMap<ident,@mut ImportResolution>,
+    import_resolutions: @mut LinearMap<ident, @mut ImportResolution>,
 
     // The number of unresolved globs that this module exports.
     glob_count: uint,
@@ -498,7 +498,7 @@ pub fn Module(parent_link: ParentLink,
         children: @mut LinearMap::new(),
         imports: @mut ~[],
         anonymous_children: @HashMap(),
-        import_resolutions: @HashMap(),
+        import_resolutions: @mut LinearMap::new(),
         glob_count: 0,
         resolved_import_count: 0
     }
@@ -2242,11 +2242,11 @@ pub impl Resolver {
                         // The name is an import which has been fully
                         // resolved. We can, therefore, just follow it.
                         if value_result.is_unknown() {
-                            value_result = get_binding(import_resolution,
+                            value_result = get_binding(*import_resolution,
                                                        ValueNS);
                         }
                         if type_result.is_unknown() {
-                            type_result = get_binding(import_resolution,
+                            type_result = get_binding(*import_resolution,
                                                       TypeNS);
                         }
                     }
@@ -2484,7 +2484,7 @@ pub impl Resolver {
 
         // Add all resolved imports from the containing module.
         for containing_module.import_resolutions.each
-                |&ident, &target_import_resolution| {
+                |&(ident, target_import_resolution)| {
 
             debug!("(resolving glob import) writing module resolution \
                     %? into `%s`",
@@ -2492,7 +2492,7 @@ pub impl Resolver {
                    self.module_to_str(module_));
 
             // Here we merge two import resolutions.
-            match module_.import_resolutions.find(&ident) {
+            match module_.import_resolutions.find(ident) {
                 None if target_import_resolution.privacy == Public => {
                     // Simple: just copy the old import resolution.
                     let new_import_resolution =
@@ -2505,7 +2505,7 @@ pub impl Resolver {
                         copy target_import_resolution.type_target;
 
                     module_.import_resolutions.insert
-                        (ident, new_import_resolution);
+                        (*ident, new_import_resolution);
                 }
                 None => { /* continue ... */ }
                 Some(dest_import_resolution) => {
@@ -2547,7 +2547,7 @@ pub impl Resolver {
                         (*ident, dest_import_resolution);
                 }
                 Some(existing_import_resolution) => {
-                    dest_import_resolution = existing_import_resolution;
+                    dest_import_resolution = *existing_import_resolution;
                 }
             }
 
@@ -3205,7 +3205,7 @@ pub impl Resolver {
                                              false);
         }
 
-        for module_.import_resolutions.each |ident, importresolution| {
+        for module_.import_resolutions.each |&(ident, importresolution)| {
             if importresolution.privacy != Public {
                 debug!("(computing exports) not reexporting private `%s`",
                        *self.session.str_of(*ident));
@@ -5308,9 +5308,9 @@ pub impl Resolver {
         }
 
         debug!("Import resolutions:");
-        for module_.import_resolutions.each |&name, &import_resolution| {
+        for module_.import_resolutions.each |&(name, import_resolution)| {
             let mut value_repr;
-            match (*import_resolution).target_for_namespace(ValueNS) {
+            match import_resolution.target_for_namespace(ValueNS) {
                 None => { value_repr = ~""; }
                 Some(_) => {
                     value_repr = ~" value:?";
@@ -5319,7 +5319,7 @@ pub impl Resolver {
             }
 
             let mut type_repr;
-            match (*import_resolution).target_for_namespace(TypeNS) {
+            match import_resolution.target_for_namespace(TypeNS) {
                 None => { type_repr = ~""; }
                 Some(_) => {
                     type_repr = ~" type:?";
@@ -5327,7 +5327,7 @@ pub impl Resolver {
                 }
             }
 
-            debug!("* %s:%s%s", *self.session.str_of(name),
+            debug!("* %s:%s%s", *self.session.str_of(*name),
                    value_repr, type_repr);
         }
     }
