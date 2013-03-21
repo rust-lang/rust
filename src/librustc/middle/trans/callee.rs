@@ -228,6 +228,8 @@ pub fn trans_fn_ref_with_vtables(
            vtables);
     let _indenter = indenter();
 
+    fail_unless!(type_params.all(|t| !ty::type_needs_infer(*t)));
+
     // Polytype of the function item (may have type params)
     let fn_tpt = ty::lookup_item_type(tcx, def_id);
 

@@ -104,6 +104,7 @@ use middle::typeck::rscope::{RegionError};
 use middle::typeck::rscope::{in_binding_rscope, region_scope, type_rscope};
 use middle::typeck::rscope;
 use middle::typeck::{isr_alist, lookup_def_ccx, method_map_entry};
+use middle::typeck::{method_map, vtable_map};
 use middle::typeck::{method_origin, method_self, method_trait, no_params};
 use middle::typeck::{require_same_types};
 use util::common::{block_query, indenter, loop_query};
@@ -160,9 +161,13 @@ pub struct SelfInfo {
 pub struct inherited {
     infcx: @mut infer::InferCtxt,
     locals: HashMap<ast::node_id, ty::t>,
+
+    // Temporary tables:
     node_types: HashMap<ast::node_id, ty::t>,
     node_type_substs: HashMap<ast::node_id, ty::substs>,
-    adjustments: HashMap<ast::node_id, @ty::AutoAdjustment>
+    adjustments: HashMap<ast::node_id, @ty::AutoAdjustment>,
+    method_map: method_map,
+    vtable_map: vtable_map,
 }
 
 pub enum FnKind {
@@ -220,7 +225,9 @@ pub fn blank_inherited(ccx: @mut CrateCtxt) -> @inherited {
         locals: HashMap(),
         node_types: oldmap::HashMap(),
         node_type_substs: oldmap::HashMap(),
-        adjustments: oldmap::HashMap()
+        adjustments: oldmap::HashMap(),
+        method_map: oldmap::HashMap(),
+        vtable_map: oldmap::HashMap(),
     }
 }
 
@@ -1357,7 +1364,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                              CheckTraitsAndInherentMethods,
                              AutoderefReceiver) {
             Some(ref entry) => {
-                let method_map = fcx.ccx.method_map;
+                let method_map = fcx.inh.method_map;
                 method_map.insert(expr.id, (*entry));
             }
             None => {
@@ -1429,7 +1436,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                              deref_args, CheckTraitsOnly, autoderef_receiver) {
             Some(ref origin) => {
                 let method_ty = fcx.node_ty(op_ex.callee_id);
-                let method_map = fcx.ccx.method_map;
+                let method_map = fcx.inh.method_map;
                 method_map.insert(op_ex.id, *origin);
                 check_call_inner(fcx, op_ex.span,
                                  op_ex.id, method_ty,

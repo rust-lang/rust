@@ -21,7 +21,8 @@ use middle::typeck::check::{FnCtxt, SelfInfo};
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::{resolve_type};
 use middle::typeck::infer;
-use middle::typeck::method_map_entry;
+use middle::typeck::{method_map_entry};
+use middle::typeck::{vtable_origin, vtable_static, vtable_param};
 use middle::typeck::{vtable_param, write_substs_to_tcx};
 use middle::typeck::{write_ty_to_tcx};
 use util::ppaux;
@@ -51,21 +52,60 @@ fn resolve_type_vars_in_type(fcx: @mut FnCtxt, sp: span, typ: ty::t)
     }
 }
 
+fn resolve_type_vars_in_types(fcx: @mut FnCtxt, sp: span, tys: &[ty::t])
+                          -> ~[ty::t] {
+    tys.map(|t| {
+        match resolve_type_vars_in_type(fcx, sp, *t) {
+            Some(t1) => t1,
+            None => ty::mk_err(fcx.ccx.tcx)
+        }
+    })
+}
+
 fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
     // Resolve any method map entry
-    match fcx.ccx.method_map.find(&id) {
+    match fcx.inh.method_map.find(&id) {
         None => {}
         Some(ref mme) => {
             for resolve_type_vars_in_type(fcx, sp, mme.self_arg.ty).each |t| {
                 let method_map = fcx.ccx.method_map;
-                method_map.insert(id,
-                                  method_map_entry {
-                                    self_arg: arg {
-                                        mode: mme.self_arg.mode,
-                                        ty: *t
-                                    },
-                                    .. *mme
-                                  });
+                let new_entry = method_map_entry {
+                    self_arg: arg {mode: mme.self_arg.mode, ty: *t },
+                    ..*mme
+                };
+                debug!("writeback::resolve_method_map_entry(id=%?, \
+                        new_entry=%?)",
+                       id, new_entry);
+                method_map.insert(id, new_entry);
+            }
+        }
+    }
+}
+
+fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
+    // Resolve any method map entry
+    match fcx.inh.vtable_map.find(&id) {
+        None => {}
+        Some(origins) => {
+            let r_origins = @origins.map(|o| resolve_origin(fcx, sp, o));
+            let vtable_map = fcx.ccx.vtable_map;
+            vtable_map.insert(id, r_origins);
+            debug!("writeback::resolve_vtable_map_entry(id=%d, vtables=%?)",
+                   id, r_origins.map(|v| v.to_str(fcx.tcx())));
+        }
+    }
+
+    fn resolve_origin(fcx: @mut FnCtxt,
+                      sp: span,
+                      origin: &vtable_origin) -> vtable_origin {
+        match origin {
+            &vtable_static(def_id, ref tys, origins) => {
+                let r_tys = resolve_type_vars_in_types(fcx, sp, *tys);
+                let r_origins = @origins.map(|o| resolve_origin(fcx, sp, o));
+                vtable_static(def_id, r_tys, r_origins)
+            }
+            &vtable_param(n, b) => {
+                vtable_param(n, b)
             }
         }
     }
@@ -185,6 +225,8 @@ fn visit_expr(e: @ast::expr, &&wbcx: @mut WbCtxt, v: wb_vt) {
     resolve_type_vars_for_node(wbcx, e.span, e.id);
     resolve_method_map_entry(wbcx.fcx, e.span, e.id);
     resolve_method_map_entry(wbcx.fcx, e.span, e.callee_id);
+    resolve_vtable_map_entry(wbcx.fcx, e.span, e.id);
+    resolve_vtable_map_entry(wbcx.fcx, e.span, e.callee_id);
     match e.node {
       ast::expr_fn_block(ref decl, _) => {
           for vec::each(decl.inputs) |input| {

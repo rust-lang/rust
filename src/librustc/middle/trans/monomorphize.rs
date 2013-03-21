@@ -47,6 +47,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                       impl_did_opt: Option<ast::def_id>,
                       ref_id: Option<ast::node_id>) ->
                       (ValueRef, bool) {
+    fail_unless!(real_substs.all(|t| !ty::type_needs_infer(*t)));
     let _icx = ccx.insn_ctxt("monomorphic_fn");
     let mut must_cast = false;
     let substs = vec::map(real_substs, |t| {

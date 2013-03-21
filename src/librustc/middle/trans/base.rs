@@ -1581,6 +1581,8 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
                         param_substs: Option<@param_substs>,
                         sp: Option<span>) -> fn_ctxt
 {
+    for param_substs.each |p| { p.validate(); }
+
     debug!("new_fn_ctxt_w_id(path=%s, id=%?, impl_id=%?, \
             param_substs=%s",
            path_str(ccx.sess, path),
