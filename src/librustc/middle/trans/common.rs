@@ -257,6 +257,11 @@ pub fn param_substs_to_str(tcx: ty::ctxt, substs: &param_substs) -> ~str {
          substs.bounds.map(|b| ty::param_bounds_to_str(tcx, *b)))
 }
 
+pub fn opt_param_substs_to_str(tcx: ty::ctxt,
+                               substs: &Option<@param_substs>) -> ~str {
+    substs.map_default(~"None", |&ps| param_substs_to_str(tcx, ps))
+}
+
 // Function context.  Every LLVM function we create will have one of
 // these.
 pub struct fn_ctxt_ {
@@ -1423,7 +1428,7 @@ pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, +vt: typeck::vtable_origin)
 }
 
 pub fn find_vtable(tcx: ty::ctxt, ps: &param_substs,
-               n_param: uint, n_bound: uint)
+                   n_param: uint, n_bound: uint)
     -> typeck::vtable_origin {
     debug!("find_vtable_in_fn_ctxt(n_param=%u, n_bound=%u, ps=%?)",
            n_param, n_bound, param_substs_to_str(tcx, ps));

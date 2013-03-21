@@ -217,7 +217,7 @@ pub fn trans_fn_ref_with_vtables(
     // - `type_params`: values for each of the fn/method's type parameters
     // - `vtables`: values for each bound on each of the type parameters
 
-    let _icx = bcx.insn_ctxt("trans_fn_with_vtables");
+    let _icx = bcx.insn_ctxt("trans_fn_ref_with_vtables");
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
 
