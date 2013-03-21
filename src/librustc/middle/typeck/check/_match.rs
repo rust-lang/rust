@@ -366,6 +366,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
         fcx.write_ty(pat.id, b_ty);
       }
+      ast::pat_enum(*) |
       ast::pat_ident(*) if pat_is_const(tcx.def_map, pat) => {
         let const_did = ast_util::def_id_of_def(tcx.def_map.get(&pat.id));
         let const_tpt = ty::lookup_item_type(tcx, const_did);
