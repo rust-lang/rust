@@ -56,7 +56,7 @@ use syntax::visit::{visit_mod};
 use util::ppaux::ty_to_str;
 
 use core::result::Ok;
-use core::hashmap::linear::LinearSet;
+use core::hashmap::linear::{LinearMap, LinearSet};
 use core::uint;
 use std::oldmap::HashMap;
 
@@ -142,18 +142,17 @@ pub fn method_to_MethodInfo(ast_method: @method) -> @MethodInfo {
 pub struct CoherenceInfo {
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
-    inherent_methods: HashMap<def_id,@mut ~[@Impl]>,
+    inherent_methods: @mut LinearMap<def_id, @mut ~[@Impl]>,
 
     // Contains implementations of methods associated with a trait. For these,
     // the associated trait must be imported at the call site.
-    extension_methods: HashMap<def_id,@mut ~[@Impl]>,
-
+    extension_methods: @mut LinearMap<def_id, @mut ~[@Impl]>,
 }
 
 pub fn CoherenceInfo() -> CoherenceInfo {
     CoherenceInfo {
-        inherent_methods: HashMap(),
-        extension_methods: HashMap(),
+        inherent_methods: @mut LinearMap::new(),
+        extension_methods: @mut LinearMap::new(),
     }
 }
 
@@ -380,7 +379,7 @@ pub impl CoherenceChecker {
                     .insert(base_def_id, implementation_list);
             }
             Some(existing_implementation_list) => {
-                implementation_list = existing_implementation_list;
+                implementation_list = *existing_implementation_list;
             }
         }
 
@@ -397,7 +396,7 @@ pub impl CoherenceChecker {
                     .insert(trait_id, implementation_list);
             }
             Some(existing_implementation_list) => {
-                implementation_list = existing_implementation_list;
+                implementation_list = *existing_implementation_list;
             }
         }
 
@@ -472,7 +471,7 @@ pub impl CoherenceChecker {
 
         match extension_methods.find(&trait_def_id) {
             Some(impls) => {
-                let impls: &mut ~[@Impl] = impls;
+                let impls: &mut ~[@Impl] = *impls;
                 for uint::range(0, impls.len()) |i| {
                     f(impls[i]);
                 }
