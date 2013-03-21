@@ -339,7 +339,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
     };
 
     gather_locals(fcx, decl, body, arg_tys, self_info);
-    check_block(fcx, body);
+    check_block_with_expected(fcx, body, Some(ret_ty));
 
     // We unify the tail expr's type with the
     // function result type, if there is a tail expr.
@@ -741,6 +741,9 @@ pub impl FnCtxt {
     fn write_bot(&self, node_id: ast::node_id) {
         self.write_ty(node_id, ty::mk_bot(self.tcx()));
     }
+    fn write_error(@mut self, node_id: ast::node_id) {
+        self.write_ty(node_id, ty::mk_err(self.tcx()));
+    }
 
     fn to_ty(&self, ast_t: @ast::Ty) -> ty::t {
         ast_ty_to_ty(self, self, ast_t)
@@ -889,6 +892,10 @@ pub impl FnCtxt {
                                       e: ty::t,
                                       a: ty::t,
                                       err: &ty::type_err) {
+        // Derived error
+        if ty::type_is_error(e) || ty::type_is_error(a) {
+            return;
+        }
         match self.fn_kind {
             ForLoop(_) if !ty::type_is_bool(e) && !ty::type_is_nil(a) =>
                     self.tcx().sess.span_err(sp, fmt!("A for-loop body must \
@@ -1003,7 +1010,7 @@ pub fn valid_range_bounds(ccx: @mut CrateCtxt,
 
 pub fn check_expr_has_type(
     fcx: @mut FnCtxt, expr: @ast::expr,
-    expected: ty::t) -> bool {
+    expected: ty::t) {
     do check_expr_with_unifier(fcx, expr, Some(expected)) {
         demand::suptype(fcx, expr.span, expected, fcx.expr_ty(expr));
     }
@@ -1011,7 +1018,7 @@ pub fn check_expr_has_type(
 
 pub fn check_expr_coercable_to_type(
     fcx: @mut FnCtxt, expr: @ast::expr,
-    expected: ty::t) -> bool {
+    expected: ty::t) {
     do check_expr_with_unifier(fcx, expr, Some(expected)) {
         demand::coerce(fcx, expr.span, expected, expr)
     }
@@ -1019,17 +1026,17 @@ pub fn check_expr_coercable_to_type(
 
 pub fn check_expr_with_hint(
     fcx: @mut FnCtxt, expr: @ast::expr,
-    expected: ty::t) -> bool {
+    expected: ty::t) {
     check_expr_with_unifier(fcx, expr, Some(expected), || ())
 }
 
 pub fn check_expr_with_opt_hint(
     fcx: @mut FnCtxt, expr: @ast::expr,
-    expected: Option<ty::t>) -> bool {
+    expected: Option<ty::t>)  {
     check_expr_with_unifier(fcx, expr, expected, || ())
 }
 
-pub fn check_expr(fcx: @mut FnCtxt, expr: @ast::expr) -> bool {
+pub fn check_expr(fcx: @mut FnCtxt, expr: @ast::expr)  {
     check_expr_with_unifier(fcx, expr, None, || ())
 }
 
@@ -1120,10 +1127,20 @@ pub fn break_here() {
     debug!("break here!");
 }
 
+/// Invariant:
+/// If an expression has any sub-expressions that result in a type error,
+/// inspecting that expression's type with `ty::type_is_error` will return
+/// true. Likewise, if an expression is known to diverge, inspecting its
+/// type with `ty::type_is_bot` will return true (n.b.: since Rust is
+/// strict, _|_ can appear in the type of an expression that does not,
+/// itself, diverge: for example, fn() -> _|_.)
+/// Note that inspecting a type's structure *directly* may expose the fact
+/// that there are actually multiple representations for both `ty_err` and
+/// `ty_bot`, so avoid that when err and bot need to be handled differently.
 pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                expr: @ast::expr,
                                expected: Option<ty::t>,
-                               unifier: &fn()) -> bool {
+                               unifier: &fn()) {
     debug!(">> typechecking %s", fcx.expr_to_str(expr));
 
     // A generic function to factor out common logic from call and
@@ -1136,10 +1153,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         callee_expr: @ast::expr,
         args: &[@ast::expr],
         sugar: ast::CallSugar,
-        deref_args: DerefArgs) -> (ty::t, bool)
+        deref_args: DerefArgs) -> ty::t
     {
         let tcx = fcx.ccx.tcx;
-        let mut bot = false;
 
         // Replace all region parameters in the arguments and return
         // type with fresh region variables.
@@ -1163,8 +1179,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                             sp, call_expr_id));
 
                 let supplied_arg_count = args.len();
-
-                bot |= ty::type_is_bot(sig.output);
 
                 // Grab the argument types, supplying fresh type variables
                 // if the wrong number of arguments were supplied
@@ -1246,6 +1260,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         DoDerefArgs => {
                             match ty::get(formal_ty).sty {
                                 ty::ty_rptr(_, mt) => formal_ty = mt.ty,
+                                ty::ty_err => (),
                                 _ => {
                                     fcx.ccx.tcx.sess.span_bug(arg.span,
                                                               ~"no ref");
@@ -1255,28 +1270,26 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         DontDerefArgs => {}
                     }
 
-                    // mismatch error happens in here
-                    bot |= check_expr_coercable_to_type(
+                    check_expr_coercable_to_type(
                         fcx, *arg, formal_ty);
 
                 }
             }
         }
 
-        (ret_ty, bot)
+        ret_ty
     }
 
     // A generic function for checking assignment expressions
     fn check_assignment(fcx: @mut FnCtxt,
                         lhs: @ast::expr,
                         rhs: @ast::expr,
-                        id: ast::node_id)
-                     -> bool {
-        let mut bot = check_expr(fcx, lhs);
+                        id: ast::node_id) {
+        check_expr(fcx, lhs);
         let lhs_type = fcx.expr_ty(lhs);
-        bot |= check_expr_has_type(fcx, rhs, lhs_type);
+        check_expr_has_type(fcx, rhs, lhs_type);
         fcx.write_ty(id, ty::mk_nil(fcx.ccx.tcx));
-        return bot;
+        // The callee checks for bot / err, we don't need to
     }
 
     // A generic function for doing all of the checking for call or
@@ -1287,20 +1300,16 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                             fn_ty: ty::t,
                             expr: @ast::expr,
                             args: &[@ast::expr],
-                            bot: bool,
-                            sugar: ast::CallSugar) -> bool
+                            sugar: ast::CallSugar)
     {
-        let mut bot = bot;
 
         // Call the generic checker.
-        let (ret_ty, b) = check_call_inner(fcx, sp, call_expr_id,
+        let ret_ty = check_call_inner(fcx, sp, call_expr_id,
                                            fn_ty, expr, args, sugar,
                                            DontDerefArgs);
-        bot |= b;
-
         // Pull the return type out of the type of the function.
         fcx.write_ty(call_expr_id, ret_ty);
-        return bot;
+        // Callee checks for bot and err, no need for that
     }
 
     // A generic function for doing all of the checking for call expressions
@@ -1309,13 +1318,12 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                   call_expr_id: ast::node_id,
                   f: @ast::expr,
                   args: &[@ast::expr],
-                  sugar: ast::CallSugar)
-               -> bool {
+                  sugar: ast::CallSugar) {
         // Index expressions need to be handled separately, to inform them
         // that they appear in call position.
-        let mut bot = match f.node {
-            ast::expr_field(base, field, ref tys) => {
-                check_field(fcx, f, true, base, field, *tys)
+        match f.node {
+            ast::expr_field(ref base, ref field, ref tys) => {
+                check_field(fcx, f, true, *base, *field, *tys)
             }
             _ => check_expr(fcx, f)
         };
@@ -1326,7 +1334,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                              fcx.expr_ty(f),
                              f,
                              args,
-                             bot,
                              sugar)
     }
 
@@ -1337,9 +1344,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                          method_name: ast::ident,
                          args: &[@ast::expr],
                          tps: &[@ast::Ty],
-                         sugar: ast::CallSugar)
-                      -> bool {
-        let bot = check_expr(fcx, rcvr);
+                         sugar: ast::CallSugar) {
+        check_expr(fcx, rcvr);
+        // no need to check for bot/err -- callee does that
         let expr_t = structurally_resolved_type(fcx,
                                                 expr.span,
                                                 fcx.expr_ty(rcvr));
@@ -1371,8 +1378,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                   None);
 
                 // Add error type for the result
-                fcx.write_ty(expr.id, ty::mk_err(fcx.ccx.tcx));
-                fcx.write_ty(expr.callee_id, ty::mk_err(fcx.ccx.tcx));
+                fcx.write_error(expr.id);
+                fcx.write_error(expr.callee_id);
             }
         }
 
@@ -1382,23 +1389,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                              fcx.node_ty(expr.callee_id),
                              expr,
                              args,
-                             bot,
                              sugar)
-    }
-
-    // A generic function for checking for or for-each loops
-    fn check_for(fcx: @mut FnCtxt,
-                 local: @ast::local,
-                 element_ty: ty::t,
-                 body: &ast::blk,
-                 node_id: ast::node_id)
-              -> bool {
-        let local_ty = fcx.local_ty(local.span, local.node.id);
-        demand::suptype(fcx, local.span, local_ty, element_ty);
-        let bot = check_decl_local(fcx, local);
-        check_block_no_value(fcx, body);
-        fcx.write_nil(node_id);
-        return bot;
     }
 
     // A generic function for checking the then and else in an if
@@ -1407,25 +1398,24 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                        thn: &ast::blk,
                        elsopt: Option<@ast::expr>,
                        id: ast::node_id,
-                       _sp: span)
-                    -> bool {
-        let (if_t, if_bot) =
+                       _sp: span) {
+        let if_t =
             match elsopt {
                 Some(els) => {
                     let if_t = fcx.infcx().next_ty_var();
-                    let thn_bot = check_block(fcx, thn);
+                    check_block(fcx, thn);
                     let thn_t = fcx.node_ty(thn.node.id);
                     demand::suptype(fcx, thn.span, if_t, thn_t);
-                    let els_bot = check_expr_has_type(fcx, els, if_t);
-                    (if_t, thn_bot & els_bot)
+                    check_expr_has_type(fcx, els, if_t);
+                    if_t
                 }
                 None => {
                     check_block_no_value(fcx, thn);
-                    (ty::mk_nil(fcx.ccx.tcx), false)
+                    ty::mk_nil(fcx.ccx.tcx)
                 }
             };
+
         fcx.write_ty(id, if_t);
-        return if_bot;
     }
 
     fn lookup_op_method(fcx: @mut FnCtxt,
@@ -1435,32 +1425,34 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         opname: ast::ident,
                         +args: ~[@ast::expr],
                         +deref_args: DerefArgs,
-                        +autoderef_receiver: AutoderefReceiverFlag)
-                     -> Option<(ty::t, bool)> {
-        match method::lookup(fcx,
-                             op_ex,
-                             self_ex,
-                             op_ex.callee_id,
-                             opname,
-                             self_t,
-                             ~[],
-                             deref_args,
-                             CheckTraitsOnly,
-                             autoderef_receiver) {
-          Some(ref origin) => {
-              let method_ty = fcx.node_ty(op_ex.callee_id);
-              let method_map = fcx.ccx.method_map;
-              method_map.insert(op_ex.id, *origin);
-              Some(check_call_inner(fcx,
-                                    op_ex.span,
-                                    op_ex.id,
-                                    method_ty,
-                                    op_ex,
-                                    args,
-                                    ast::NoSugar,
-                                    deref_args))
-          }
-          _ => None
+                        +autoderef_receiver: AutoderefReceiverFlag,
+                        unbound_method: &fn(),
+                        _expected_result: Option<ty::t>
+                       )
+                     -> ty::t {
+        match method::lookup(fcx, op_ex, self_ex,
+                             op_ex.callee_id, opname, self_t, ~[],
+                             deref_args, CheckTraitsOnly, autoderef_receiver) {
+            Some(ref origin) => {
+                let method_ty = fcx.node_ty(op_ex.callee_id);
+                let method_map = fcx.ccx.method_map;
+                method_map.insert(op_ex.id, *origin);
+                check_call_inner(fcx, op_ex.span,
+                                 op_ex.id, method_ty,
+                                 op_ex, args,
+                                 ast::NoSugar, deref_args)
+            }
+            _ => {
+                let tcx = fcx.tcx();
+                unbound_method();
+                // Check the args anyway
+                // so we get all the error messages
+                let expected_ty = ty::mk_err(tcx);
+                check_call_inner(fcx, op_ex.span, op_ex.id,
+                                 expected_ty, op_ex, args,
+                                 ast::NoSugar, deref_args);
+                ty::mk_err(tcx)
+            }
         }
     }
 
@@ -1469,27 +1461,30 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                    expr: @ast::expr,
                    op: ast::binop,
                    lhs: @ast::expr,
-                   rhs: @ast::expr)
-                -> bool {
+                   rhs: @ast::expr,
+                   // Used only in the error case
+                   expected_result: Option<ty::t>
+                  ) {
         let tcx = fcx.ccx.tcx;
 
-        let lhs_bot = check_expr(fcx, lhs);
-        let lhs_t = fcx.expr_ty(lhs);
-        let lhs_t = structurally_resolved_type(fcx, lhs.span, lhs_t);
+        check_expr(fcx, lhs);
+        // Callee does bot / err checking
+        let lhs_t = structurally_resolved_type(fcx, lhs.span,
+                                               fcx.expr_ty(lhs));
 
         if ty::type_is_integral(lhs_t) && ast_util::is_shift_binop(op) {
             // Shift is a special case: rhs can be any integral type
-            let rhs_bot = check_expr(fcx, rhs);
+            check_expr(fcx, rhs);
             let rhs_t = fcx.expr_ty(rhs);
             require_integral(fcx, rhs.span, rhs_t);
             fcx.write_ty(expr.id, lhs_t);
-            return lhs_bot | rhs_bot;
+            return;
         }
 
         if ty::is_binopable(tcx, lhs_t, op) {
             let tvar = fcx.infcx().next_ty_var();
             demand::suptype(fcx, expr.span, tvar, lhs_t);
-            let rhs_bot = check_expr_has_type(fcx, rhs, tvar);
+            check_expr_has_type(fcx, rhs, tvar);
 
             let result_t = match op {
                 ast::eq | ast::ne | ast::lt | ast::le | ast::ge |
@@ -1502,23 +1497,28 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             };
 
             fcx.write_ty(expr.id, result_t);
-            return {
-                if !ast_util::lazy_binop(op) { lhs_bot | rhs_bot }
-                else { lhs_bot }
-            };
+            return;
         }
 
-        // A hack, but this prevents multiple errors for the same code
-        // (since check_user_binop calls structurally_resolve_type)
-        let (result, rhs_bot) =
-           match ty::deref(fcx.tcx(), lhs_t, false).map(
-                      |tt| structurally_resolved_type(fcx,
-                                                      expr.span, tt.ty)) {
-                Some(t) if ty::get(t).sty == ty::ty_err => (t, false),
-                _ => check_user_binop(fcx, expr, lhs, lhs_t, op, rhs)
-           };
-        fcx.write_ty(expr.id, result);
-        return lhs_bot | rhs_bot;
+        if op == ast::or || op == ast::and {
+            // This is an error; one of the operands must have the wrong
+            // type
+            fcx.write_error(expr.id);
+            fcx.write_error(rhs.id);
+            fcx.type_error_message(expr.span, |actual| {
+                fmt!("binary operation %s cannot be applied \
+                      to type `%s`",
+                     ast_util::binop_to_str(op), actual)},
+                                   lhs_t, None)
+
+        }
+
+        let result_t = check_user_binop(fcx, expr, lhs, lhs_t, op, rhs,
+                                       expected_result);
+        fcx.write_ty(expr.id, result_t);
+        if ty::type_is_error(result_t) {
+            fcx.write_ty(rhs.id, result_t);
+        }
     }
 
     fn check_user_binop(fcx: @mut FnCtxt,
@@ -1526,32 +1526,26 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         lhs_expr: @ast::expr,
                         lhs_resolved_t: ty::t,
                         op: ast::binop,
-                        rhs: @ast::expr)
-                     -> (ty::t, bool) {
+                        rhs: @ast::expr,
+                       expected_result: Option<ty::t>) -> ty::t {
         let tcx = fcx.ccx.tcx;
         match ast_util::binop_to_method_name(op) {
-          Some(ref name) => {
-            match lookup_op_method(fcx,
-                                   ex,
-                                   lhs_expr,
-                                   lhs_resolved_t,
-                                   fcx.tcx().sess.ident_of(copy *name),
-                                   ~[rhs],
-                                   DoDerefArgs,
-                                   DontAutoderefReceiver) {
-              Some(pair) => return pair,
-              _ => ()
+            Some(ref name) => {
+                let if_op_unbound = || {
+                    fcx.type_error_message(ex.span, |actual| {
+                        fmt!("binary operation %s cannot be applied \
+                              to type `%s`",
+                             ast_util::binop_to_str(op), actual)},
+                            lhs_resolved_t, None)
+                };
+                return lookup_op_method(fcx, ex, lhs_expr, lhs_resolved_t,
+                                       fcx.tcx().sess.ident_of(copy *name),
+                                       ~[rhs], DoDerefArgs, DontAutoderefReceiver, if_op_unbound,
+                                       expected_result);
             }
-          }
-          _ => ()
-        }
+            None => ()
+        };
         check_expr(fcx, rhs);
-        fcx.type_error_message(ex.span,
-           |actual| {
-               fmt!("binary operation %s cannot be applied to type `%s`",
-                    ast_util::binop_to_str(op), actual)
-           },
-           lhs_resolved_t, None);
 
         // If the or operator is used it might be that the user forgot to
         // supply the do keyword.  Let's be more helpful in that situation.
@@ -1566,7 +1560,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
         }
 
-        (lhs_resolved_t, false)
+        ty::mk_err(tcx)
     }
 
     fn check_user_unop(fcx: @mut FnCtxt,
@@ -1574,25 +1568,19 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                        +mname: ~str,
                        ex: @ast::expr,
                        rhs_expr: @ast::expr,
-                       rhs_t: ty::t)
+                       rhs_t: ty::t,
+                       expected_t: Option<ty::t>)
                     -> ty::t {
-        match lookup_op_method(fcx,
-                               ex,
-                               rhs_expr,
-                               rhs_t,
-                               fcx.tcx().sess.ident_of(mname),
-                               ~[],
-                               DontDerefArgs,
-                               DontAutoderefReceiver) {
-          Some((ret_ty, _)) => ret_ty,
-          _ => {
-              fcx.type_error_message(ex.span, |actual| {
-                  fmt!("cannot apply unary operator `%s` to type `%s`",
-                              op_str, actual)
-              }, rhs_t, None);
-              rhs_t
-          }
-        }
+       lookup_op_method(
+            fcx, ex, rhs_expr, rhs_t,
+            fcx.tcx().sess.ident_of(mname), ~[],
+            DontDerefArgs, DontAutoderefReceiver,
+            || {
+                fcx.type_error_message(ex.span, |actual| {
+                    fmt!("cannot apply unary operator `%s` to type `%s`",
+                         op_str, actual)
+                }, rhs_t, None);
+            }, expected_t)
     }
 
     // Resolves `expected` by a single level if it is a variable and passes it
@@ -1632,6 +1620,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // block syntax lambdas; that is, lambdas without explicit
         // sigils.
         let expected_sty = unpack_expected(fcx, expected, |x| Some(copy *x));
+        let mut error_happened = false;
         let (expected_tys,
              expected_purity,
              expected_sigil,
@@ -1646,6 +1635,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     (Some(sig), cenv.purity, cenv.sigil, cenv.onceness)
                 }
                 _ => {
+                    // Not an error! Means we're inferring the closure type
                     (None, ast::impure_fn, ast::BorrowedSigil, ast::Many)
                 }
             }
@@ -1664,7 +1654,22 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             sigil, purity, expected_onceness,
             None, decl, expected_tys, expr.span);
 
-        let fty = ty::mk_closure(tcx, copy fn_ty);
+        let mut fty_sig;
+        let fty = if error_happened {
+            fty_sig = FnSig {
+                inputs: fn_ty.sig.inputs.map(|an_arg| {
+                    arg { mode: an_arg.mode,
+                         ty: ty::mk_err(tcx)
+                        }}),
+                output: ty::mk_err(tcx)
+            };
+            ty::mk_err(tcx)
+        }
+        else {
+            let fn_ty_copy = copy fn_ty;
+            fty_sig = copy fn_ty.sig;
+            ty::mk_closure(tcx, fn_ty_copy)
+        };
 
         debug!("check_expr_fn_with_unifier %s fty=%s",
                fcx.expr_to_str(expr),
@@ -1674,11 +1679,10 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         let inherited_purity =
             ty::determine_inherited_purity(copy fcx.purity, purity,
-                                           fn_ty.sigil);
+                                           sigil);
 
-        check_fn(fcx.ccx, None, inherited_purity,
-                 &fn_ty.sig, decl, body, fn_kind,
-                 fcx.in_scope_regions, fcx.inh);
+        check_fn(fcx.ccx, None, inherited_purity, &fty_sig,
+                 decl, body, fn_kind, fcx.in_scope_regions, fcx.inh);
     }
 
 
@@ -1688,10 +1692,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                    is_callee: bool,
                    base: @ast::expr,
                    field: ast::ident,
-                   tys: &[@ast::Ty])
-                -> bool {
+                   tys: &[@ast::Ty]) {
         let tcx = fcx.ccx.tcx;
-        let bot = check_expr(fcx, base);
+        let mut bot = check_expr(fcx, base);
         let expr_t = structurally_resolved_type(fcx, expr.span,
                                                 fcx.expr_ty(base));
         let (base_t, derefs) = do_autoderef(fcx, expr.span, expr_t);
@@ -1743,7 +1746,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         ~"attempted to take value of method \
                           (try writing an anonymous function)");
                     // Add error type for the result
-                    fcx.write_ty(expr.id, ty::mk_err(tcx));
+                    fcx.write_error(expr.id);
                 }
             }
             None => {
@@ -1755,25 +1758,21 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                   },
                   expr_t, None);
                 // Add error type for the result
-                fcx.write_ty(expr.id, ty::mk_err(tcx));
+                fcx.write_error(expr.id);
             }
         }
 
-        return bot;
     }
 
     fn check_struct_or_variant_fields(fcx: @mut FnCtxt,
                                       span: span,
                                       class_id: ast::def_id,
-                                      substitutions: &ty::substs,
+                                      node_id: ast::node_id,
+                                      +substitutions: ty::substs,
                                       field_types: &[ty::field_ty],
                                       ast_fields: &[ast::field],
-                                      check_completeness: bool)
-                                   -> bool {
+                                      check_completeness: bool)  {
         let tcx = fcx.ccx.tcx;
-        let mut bot = false;
-
-        debug!("%? %?", ast_fields.len(), field_types.len());
 
         let class_field_map = HashMap();
         let mut fields_found = 0;
@@ -1782,38 +1781,49 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             class_field_map.insert(field.ident, (field.id, false));
         }
 
+        let mut error_happened = false;
+
         // Typecheck each field.
         for ast_fields.each |field| {
+            let mut expected_field_type = ty::mk_err(tcx);
+
             match class_field_map.find(&field.node.ident) {
                 None => {
                     tcx.sess.span_err(
                         field.span,
                         fmt!("structure has no field named `%s`",
                              *tcx.sess.str_of(field.node.ident)));
+                    error_happened = true;
                 }
                 Some((_, true)) => {
                     tcx.sess.span_err(
                         field.span,
                         fmt!("field `%s` specified more than once",
                              *tcx.sess.str_of(field.node.ident)));
+                    error_happened = true;
                 }
                 Some((field_id, false)) => {
-                    let expected_field_type =
+                    expected_field_type =
                         ty::lookup_field_type(
-                            tcx, class_id, field_id, substitutions);
-                    bot |=
-                        check_expr_coercable_to_type(
-                            fcx,
-                            field.node.expr,
-                            expected_field_type);
+                            tcx, class_id, field_id, &substitutions);
                     class_field_map.insert(
                         field.node.ident, (field_id, true));
                     fields_found += 1;
                 }
             }
+            // Make sure to give a type to the field even if there's
+            // an error, so we can continue typechecking
+            check_expr_coercable_to_type(
+                    fcx,
+                    field.node.expr,
+                    expected_field_type);
         }
 
-        if check_completeness {
+        if error_happened {
+            fcx.write_error(node_id);
+        }
+
+        if check_completeness && !error_happened {
             // Make sure the programmer specified all the fields.
             fail_unless!(fields_found <= field_types.len());
             if fields_found < field_types.len() {
@@ -1835,10 +1845,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                            ~"s"
                                        },
                                        str::connect(missing_fields, ~", ")));
-            }
+             }
         }
 
-        return bot;
+        if !error_happened {
+            fcx.write_ty(node_id, ty::mk_struct(fcx.ccx.tcx,
+                                class_id, substitutions));
+        }
     }
 
     fn check_struct_constructor(fcx: @mut FnCtxt,
@@ -1846,9 +1859,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                 span: codemap::span,
                                 class_id: ast::def_id,
                                 fields: &[ast::field],
-                                base_expr: Option<@ast::expr>)
-                             -> bool {
-        let mut bot = false;
+                                base_expr: Option<@ast::expr>) {
         let tcx = fcx.ccx.tcx;
 
         // Look up the number of type parameters and the raw type, and
@@ -1900,29 +1911,35 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             tps: type_parameters
         };
 
-        let struct_type = ty::subst(tcx, &substitutions, raw_type);
+        let mut struct_type = ty::subst(tcx, &substitutions, raw_type);
 
         // Look up and check the fields.
         let class_fields = ty::lookup_struct_fields(tcx, class_id);
-        bot = check_struct_or_variant_fields(fcx,
-                                             span,
-                                             class_id,
-                                             &substitutions,
-                                             class_fields,
-                                             fields,
-                                             base_expr.is_none()) || bot;
+        check_struct_or_variant_fields(fcx,
+                                           span,
+                                           class_id,
+                                           id,
+                                           substitutions,
+                                           class_fields,
+                                           fields,
+                                           base_expr.is_none());
+        if ty::type_is_error(fcx.node_ty(id)) {
+            struct_type = ty::mk_err(tcx);
+        }
 
         // Check the base expression if necessary.
         match base_expr {
             None => {}
             Some(base_expr) => {
-                bot = check_expr_has_type(fcx, base_expr, struct_type) || bot
+                check_expr_has_type(fcx, base_expr, struct_type);
+                if ty::type_is_bot(fcx.node_ty(base_expr.id)) {
+                    struct_type = ty::mk_bot(tcx);
+                }
             }
         }
 
         // Write in the resulting type.
         fcx.write_ty(id, struct_type);
-        return bot;
     }
 
     fn check_struct_enum_variant(fcx: @mut FnCtxt,
@@ -1930,9 +1947,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                  span: codemap::span,
                                  enum_id: ast::def_id,
                                  variant_id: ast::def_id,
-                                 fields: &[ast::field])
-                              -> bool {
-        let mut bot = false;
+                                 fields: &[ast::field]) {
         let tcx = fcx.ccx.tcx;
 
         // Look up the number of type parameters and the raw type, and
@@ -1988,17 +2003,15 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         // Look up and check the enum variant fields.
         let variant_fields = ty::lookup_struct_fields(tcx, variant_id);
-        bot = check_struct_or_variant_fields(fcx,
-                                             span,
-                                             variant_id,
-                                             &substitutions,
-                                             variant_fields,
-                                             fields,
-                                             true) || bot;
-
-        // Write in the resulting type.
+        check_struct_or_variant_fields(fcx,
+                                       span,
+                                       variant_id,
+                                       id,
+                                       substitutions,
+                                       variant_fields,
+                                       fields,
+                                       true);
         fcx.write_ty(id, enum_type);
-        return bot;
     }
 
     fn check_loop_body(fcx: @mut FnCtxt,
@@ -2046,15 +2059,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                             fty.sig.output,
                             None);
                         err_happened = true;
-
-                        // Kind of a hack: create a function type with
-                        // the result replaced with ty_err, to
-                        // suppress derived errors.
-                        let t = ty::replace_closure_return_type(
-                            tcx, ty::mk_closure(tcx, copy *fty),
-                            ty::mk_err(tcx));
-                        fcx.write_ty(expr.id, ty::mk_err(tcx));
-                        t
+                        fcx.write_error(expr.id);
+                        ty::mk_err(tcx)
                     }
                 }
             }
@@ -2070,7 +2076,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                             },
                             expected_t, None);
                         let err_ty = ty::mk_err(tcx);
-                        fcx.write_ty(expr.id, err_ty);
+                        fcx.write_error(expr.id);
                         err_happened = true;
                         err_ty
                     }
@@ -2110,7 +2116,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let block_ty = structurally_resolved_type(
             fcx, expr.span, fcx.node_ty(loop_body.id));
         if err_happened {
-            fcx.write_ty(expr.id, ty::mk_err(fcx.tcx()));
+            fcx.write_error(expr.id);
+            fcx.write_error(loop_body.id);
         } else {
             let loop_body_ty =
                 ty::replace_closure_return_type(
@@ -2121,17 +2128,18 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
     let tcx = fcx.ccx.tcx;
     let id = expr.id;
-    let mut bot = false;
     match expr.node {
       ast::expr_vstore(ev, vst) => {
         let typ = match ev.node {
           ast::expr_lit(@codemap::spanned { node: ast::lit_str(s), _ }) => {
-            let tt = ast_expr_vstore_to_vstore(fcx, ev, str::len(*s), vst);
+            let tt = ast_expr_vstore_to_vstore(fcx, ev, s.len(), vst);
             ty::mk_estr(tcx, tt)
           }
           ast::expr_vec(ref args, mutbl) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, args.len(), vst);
             let mutability;
+            let mut any_error = false;
+            let mut any_bot = false;
             match vst {
                 ast::expr_vstore_mut_box | ast::expr_vstore_mut_slice => {
                     mutability = ast::m_mutbl
@@ -2139,16 +2147,42 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 _ => mutability = mutbl
             }
             let t: ty::t = fcx.infcx().next_ty_var();
-            for args.each |e| { bot |= check_expr_has_type(fcx, *e, t); }
-            ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutability}, tt)
+            for args.each |e| {
+                check_expr_has_type(fcx, *e, t);
+                let arg_t = fcx.expr_ty(*e);
+                if ty::type_is_error(arg_t) {
+                    any_error = true;
+                }
+                else if ty::type_is_bot(arg_t) {
+                    any_bot = true;
+                }
+            }
+            if any_error {
+                ty::mk_err(tcx)
+            }
+            else if any_bot {
+                ty::mk_bot(tcx)
+            }
+            else {
+                ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutability}, tt)
+            }
           }
           ast::expr_repeat(element, count_expr, mutbl) => {
             let count = ty::eval_repeat_count(tcx, count_expr);
             check_expr_with_hint(fcx, count_expr, ty::mk_uint(tcx));
             let tt = ast_expr_vstore_to_vstore(fcx, ev, count, vst);
             let t: ty::t = fcx.infcx().next_ty_var();
-            bot |= check_expr_has_type(fcx, element, t);
-            ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutbl}, tt)
+            check_expr_has_type(fcx, element, t);
+            let arg_t = fcx.expr_ty(element);
+            if ty::type_is_error(arg_t) {
+                ty::mk_err(tcx)
+            }
+            else if ty::type_is_bot(arg_t) {
+                ty::mk_bot(tcx)
+            }
+            else {
+                ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutbl}, tt)
+            }
           }
           _ =>
             tcx.sess.span_bug(expr.span, ~"vstore modifier on non-sequence")
@@ -2162,10 +2196,20 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(id, typ);
       }
       ast::expr_binary(op, lhs, rhs) => {
-        bot |= check_binop(fcx, expr, op, lhs, rhs);
+        check_binop(fcx, expr, op, lhs, rhs, expected);
+        let lhs_ty = fcx.expr_ty(lhs);
+        let rhs_ty = fcx.expr_ty(rhs);
+        if ty::type_is_error(lhs_ty) ||
+            ty::type_is_error(rhs_ty) {
+            fcx.write_error(id);
+        }
+        else if ty::type_is_bot(lhs_ty) ||
+          (ty::type_is_bot(rhs_ty) && !ast_util::lazy_binop(op)) {
+            fcx.write_bot(id);
+        }
       }
       ast::expr_assign_op(op, lhs, rhs) => {
-        bot |= check_binop(fcx, expr, op, lhs, rhs);
+        check_binop(fcx, expr, op, lhs, rhs, expected);
         let lhs_t = fcx.expr_ty(lhs);
         let result_t = fcx.expr_ty(expr);
         demand::suptype(fcx, expr.span, result_t, lhs_t);
@@ -2173,7 +2217,10 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // Overwrite result of check_binop...this preserves existing behavior
         // but seems quite dubious with regard to user-defined methods
         // and so forth. - Niko
-        fcx.write_nil(expr.id);
+        if !ty::type_is_error(result_t)
+            && !ty::type_is_bot(result_t) {
+            fcx.write_nil(expr.id);
+        }
       }
       ast::expr_unary(unop, oprnd) => {
         let exp_inner = do unpack_expected(fcx, expected) |sty| {
@@ -2186,75 +2233,82 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
               ast::deref => None
             }
         };
-        bot = check_expr_with_opt_hint(fcx, oprnd, exp_inner);
+        check_expr_with_opt_hint(fcx, oprnd, exp_inner);
         let mut oprnd_t = fcx.expr_ty(oprnd);
-        match unop {
-          ast::box(mutbl) => {
-            oprnd_t = ty::mk_box(tcx, ty::mt {ty: oprnd_t, mutbl: mutbl});
-          }
-          ast::uniq(mutbl) => {
-            oprnd_t = ty::mk_uniq(tcx, ty::mt {ty: oprnd_t, mutbl: mutbl});
-          }
-          ast::deref => {
-            let sty = structure_of(fcx, expr.span, oprnd_t);
-
-            match sty {
-              // deref'ing an unsafe pointer requires that we be in an unsafe
-              // context
-              ty::ty_ptr(*) => {
-                fcx.require_unsafe(
-                    expr.span,
-                    ~"dereference of unsafe pointer");
-              }
-              _ => { /*ok*/ }
-            }
-
-            let operand_ty = ty::deref_sty(tcx, &sty, true);
-
-            match operand_ty {
-              Some(mt) => {
-                  oprnd_t = mt.ty
-              }
-              None => {
-                match sty {
-                  ty::ty_enum(*) => {
-                    tcx.sess.span_err(
-                        expr.span,
-                        ~"can only dereference enums \
-                         with a single variant which has a \
-                         single argument");
-                  }
-                  ty::ty_struct(*) => {
-                    tcx.sess.span_err(
-                        expr.span,
-                        ~"can only dereference structs with one anonymous \
-                          field");
-                  }
-                  _ => {
-                      fcx.type_error_message(expr.span, |actual| {
-                          fmt!("type %s cannot be dereferenced", actual)
-                      }, oprnd_t, None);
-                  }
+        if !ty::type_is_error(oprnd_t) &&
+              !ty::type_is_bot(oprnd_t) {
+            match unop {
+                ast::box(mutbl) => {
+                    oprnd_t = ty::mk_box(tcx,
+                                         ty::mt {ty: oprnd_t, mutbl: mutbl});
                 }
-              }
+                ast::uniq(mutbl) => {
+                    oprnd_t = ty::mk_uniq(tcx,
+                                          ty::mt {ty: oprnd_t, mutbl: mutbl});
+                }
+                ast::deref => {
+                    let sty = structure_of(fcx, expr.span, oprnd_t);
+                    match sty {
+                        // deref'ing an unsafe pointer requires that we be in
+                        // an unsafe context
+                        ty::ty_ptr(*) => {
+                            fcx.require_unsafe(
+                                expr.span,
+                                ~"dereference of unsafe pointer");
+                        }
+                        _ => { /*ok*/ }
+                    }
+                    let operand_ty = ty::deref_sty(tcx, &sty, true);
+                    match operand_ty {
+                        Some(mt) => {
+                            oprnd_t = mt.ty
+                        }
+                        None => {
+                            match sty {
+                                ty::ty_enum(*) => {
+                                    tcx.sess.span_err(
+                                        expr.span,
+                                        ~"can only dereference enums \
+                                          with a single variant which has a \
+                                          single argument");
+                                }
+                                ty::ty_struct(*) => {
+                                    tcx.sess.span_err(
+                                        expr.span,
+                                        ~"can only dereference structs with \
+                                          one anonymous field");
+                                }
+                                _ => {
+                                    fcx.type_error_message(expr.span,
+                                        |actual| {
+                                            fmt!("type %s cannot be \
+                                                  dereferenced", actual)
+                                    }, oprnd_t, None);
+                                }
+                            }
+                        }
+                    }
+                }
+                ast::not => {
+                    oprnd_t = structurally_resolved_type(fcx, oprnd.span,
+                                                         oprnd_t);
+                    if !(ty::type_is_integral(oprnd_t) ||
+                         ty::get(oprnd_t).sty == ty::ty_bool) {
+                        oprnd_t = check_user_unop(fcx,
+                            ~"!", ~"not", expr, oprnd, oprnd_t,
+                                                  expected);
+                    }
+                }
+                ast::neg => {
+                    oprnd_t = structurally_resolved_type(fcx, oprnd.span,
+                                                         oprnd_t);
+                    if !(ty::type_is_integral(oprnd_t) ||
+                         ty::type_is_fp(oprnd_t)) {
+                        oprnd_t = check_user_unop(fcx,
+                            ~"-", ~"neg", expr, oprnd, oprnd_t, expected);
+                    }
+                }
             }
-          }
-          ast::not => {
-            oprnd_t = structurally_resolved_type(fcx, oprnd.span, oprnd_t);
-            if !(ty::type_is_integral(oprnd_t) ||
-                 ty::get(oprnd_t).sty == ty::ty_bool) {
-                oprnd_t = check_user_unop(fcx, ~"!", ~"not", expr,
-                                         oprnd, oprnd_t);
-            }
-          }
-          ast::neg => {
-            oprnd_t = structurally_resolved_type(fcx, oprnd.span, oprnd_t);
-            if !(ty::type_is_integral(oprnd_t) ||
-                 ty::type_is_fp(oprnd_t)) {
-                oprnd_t = check_user_unop(fcx, ~"-", ~"neg", expr,
-                                         oprnd, oprnd_t);
-            }
-          }
         }
         fcx.write_ty(id, oprnd_t);
       }
@@ -2263,7 +2317,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
               fcx, expected,
               |sty| match *sty { ty::ty_rptr(_, ref mt) => Some(mt.ty),
                                  _ => None });
-        bot = check_expr_with_opt_hint(fcx, oprnd, hint);
+        check_expr_with_opt_hint(fcx, oprnd, hint);
 
         // Note: at this point, we cannot say what the best lifetime
         // is to use for resulting pointer.  We want to use the
@@ -2282,7 +2336,14 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let region = fcx.infcx().next_region_var(expr.span, expr.id);
 
         let tm = ty::mt { ty: fcx.expr_ty(oprnd), mutbl: mutbl };
-        let oprnd_t = ty::mk_rptr(tcx, region, tm);
+        let oprnd_t = if ty::type_is_error(tm.ty) {
+            ty::mk_err(tcx)
+        } else if ty::type_is_bot(tm.ty) {
+            ty::mk_bot(tcx)
+        }
+        else {
+            ty::mk_rptr(tcx, region, tm)
+        };
         fcx.write_ty(id, oprnd_t);
       }
       ast::expr_path(pth) => {
@@ -2304,10 +2365,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
           fcx.write_nil(id);
       }
       ast::expr_mac(_) => tcx.sess.bug(~"unexpanded macro"),
-      ast::expr_break(_) => { fcx.write_bot(id); bot = true; }
-      ast::expr_again(_) => { fcx.write_bot(id); bot = true; }
+      ast::expr_break(_) => { fcx.write_bot(id); }
+      ast::expr_again(_) => { fcx.write_bot(id); }
       ast::expr_ret(expr_opt) => {
-        bot = true;
         let ret_ty = match fcx.indirect_ret_ty {
           Some(t) =>  t, None => fcx.ret_ty
         };
@@ -2328,43 +2388,124 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_bot(id);
       }
       ast::expr_log(_, lv, e) => {
-        bot = check_expr_has_type(fcx, lv,
+        check_expr_has_type(fcx, lv,
                                   ty::mk_mach_uint(tcx, ast::ty_u32));
 
         // Note: this does not always execute, so do not propagate bot:
         check_expr(fcx, e);
-        fcx.write_nil(id);
+        if ty::type_is_error(fcx.expr_ty(e)) {
+            fcx.write_error(id);
+        }
+        else {
+            fcx.write_nil(id);
+        }
       }
       ast::expr_copy(a) => {
-        bot = check_expr_with_opt_hint(fcx, a, expected);
+        check_expr_with_opt_hint(fcx, a, expected);
         fcx.write_ty(id, fcx.expr_ty(a));
       }
       ast::expr_paren(a) => {
-        bot = check_expr_with_opt_hint(fcx, a, expected);
+        check_expr_with_opt_hint(fcx, a, expected);
         fcx.write_ty(id, fcx.expr_ty(a));
       }
       ast::expr_assign(lhs, rhs) => {
-        bot = check_assignment(fcx, lhs, rhs, id);
+        check_assignment(fcx, lhs, rhs, id);
+        let lhs_ty = fcx.expr_ty(lhs);
+        let rhs_ty = fcx.expr_ty(rhs);
+        if ty::type_is_error(lhs_ty) || ty::type_is_error(rhs_ty) {
+            fcx.write_error(id);
+        }
+        else if ty::type_is_bot(lhs_ty) || ty::type_is_bot(rhs_ty) {
+            fcx.write_bot(id);
+        }
+        else {
+            fcx.write_nil(id);
+        }
       }
       ast::expr_swap(lhs, rhs) => {
-        bot = check_assignment(fcx, lhs, rhs, id);
+        check_assignment(fcx, lhs, rhs, id);
+        let lhs_ty = fcx.expr_ty(lhs);
+        let rhs_ty = fcx.expr_ty(rhs);
+        if ty::type_is_error(lhs_ty) || ty::type_is_error(rhs_ty) {
+            fcx.write_error(id);
+        }
+        else if ty::type_is_bot(lhs_ty) || ty::type_is_bot(rhs_ty) {
+            fcx.write_bot(id);
+        }
+        else {
+            fcx.write_nil(id);
+        }
       }
       ast::expr_if(cond, ref thn, elsopt) => {
-        bot = check_expr_has_type(fcx, cond, ty::mk_bool(tcx));
-        bot |= check_then_else(fcx, thn, elsopt, id, expr.span);
+        check_expr_has_type(fcx, cond, ty::mk_bool(tcx));
+        check_then_else(fcx, thn, elsopt, id, expr.span);
+        let cond_ty = fcx.expr_ty(cond);
+        let then_ty = fcx.node_ty(thn.node.id);
+        let else_is_bot = elsopt.map_default(false, |els| {
+              ty::type_is_bot(fcx.expr_ty(*els))});
+        if ty::type_is_error(cond_ty) || ty::type_is_error(then_ty) {
+            fcx.write_error(id);
+        }
+        else if elsopt.map_default(false, |els| {
+            ty::type_is_error(fcx.expr_ty(*els)) }) {
+            fcx.write_error(id);
+        }
+        else if ty::type_is_bot(cond_ty) ||
+            (ty::type_is_bot(then_ty) && else_is_bot) {
+            fcx.write_bot(id);
+        }
+          // Other cases were handled by check_then_else
       }
       ast::expr_while(cond, ref body) => {
-        bot = check_expr_has_type(fcx, cond, ty::mk_bool(tcx));
+        check_expr_has_type(fcx, cond, ty::mk_bool(tcx));
         check_block_no_value(fcx, body);
-        fcx.write_ty(id, ty::mk_nil(tcx));
+        let cond_ty = fcx.expr_ty(cond);
+        let body_ty = fcx.node_ty(body.node.id);
+        if ty::type_is_error(cond_ty) || ty::type_is_error(body_ty) {
+            fcx.write_error(id);
+        }
+        else if ty::type_is_bot(cond_ty) {
+            fcx.write_bot(id);
+        }
+        else {
+            fcx.write_nil(id);
+        }
       }
       ast::expr_loop(ref body, _) => {
-        check_block_no_value(fcx, body);
-        fcx.write_ty(id, ty::mk_nil(tcx));
-        bot = !may_break(tcx, expr.id, body);
+        check_block_no_value(fcx, (body));
+        if !may_break(tcx, expr.id, body) {
+            fcx.write_bot(id);
+        }
+        else {
+            fcx.write_nil(id);
+        }
       }
       ast::expr_match(discrim, ref arms) => {
-        bot = _match::check_match(fcx, expr, discrim, *arms);
+        _match::check_match(fcx, expr, discrim, *arms);
+        let discrim_ty = fcx.expr_ty(discrim);
+        let arm_tys = arms.map(|a| fcx.node_ty(a.body.node.id));
+        if ty::type_is_error(discrim_ty) ||
+            arm_tys.any(|t| ty::type_is_error(*t)) {
+            fcx.write_error(id);
+        }
+        // keep in mind that `all` returns true in the empty vec case,
+        // which is what we want
+        else if ty::type_is_bot(discrim_ty) ||
+            arm_tys.all(|t| ty::type_is_bot(*t)) {
+            fcx.write_bot(id);
+        }
+        else {
+            // Find the first non-_|_ arm.
+            // We know there's at least one because we already checked
+            // for n=0 as well as all arms being _|_ in the previous
+            // `if`.
+            for arm_tys.each() |arm_ty| {
+                if !ty::type_is_bot(*arm_ty) {
+                    fcx.write_ty(id, *arm_ty);
+                    break;
+                }
+            }
+        }
       }
       ast::expr_fn_block(ref decl, ref body) => {
         check_expr_fn(fcx, expr, None,
@@ -2407,105 +2548,144 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(expr.id, fcx.node_ty(b.id));
       }
       ast::expr_block(ref b) => {
-        // If this is an unchecked block, turn off purity-checking
-        bot = check_block_with_expected(fcx, b, expected);
-        let typ =
-            match b.node.expr {
-              Some(expr) => fcx.expr_ty(expr),
-              None => ty::mk_nil(tcx)
-            };
-        fcx.write_ty(id, typ);
+        check_block_with_expected(fcx, b, expected);
+        fcx.write_ty(id, fcx.node_ty(b.node.id));
       }
       ast::expr_call(f, ref args, sugar) => {
-        bot = check_call(fcx, expr.span, expr.id, f, *args, sugar);
+          check_call(fcx, expr.span, expr.id, f, *args, sugar);
+          let f_ty = fcx.expr_ty(f);
+          let (args_bot, args_err) = args.foldl((false, false),
+             |&(rest_bot, rest_err), a| {
+                 // is this not working?
+                 let a_ty = fcx.expr_ty(*a);
+                 (rest_bot || ty::type_is_bot(a_ty),
+                  rest_err || ty::type_is_error(a_ty))});
+          if ty::type_is_error(f_ty) || args_err {
+              fcx.write_error(id);
+          }
+          else if ty::type_is_bot(f_ty) || args_bot {
+              fcx.write_bot(id);
+          }
       }
       ast::expr_method_call(rcvr, ident, ref tps, ref args, sugar) => {
-        bot = check_method_call(fcx, expr, rcvr, ident, *args, *tps, sugar);
+        check_method_call(fcx, expr, rcvr, ident, *args, *tps, sugar);
+        let f_ty = fcx.expr_ty(rcvr);
+        let arg_tys = args.map(|a| fcx.expr_ty(*a));
+        let (args_bot, args_err) = arg_tys.foldl((false, false),
+             |&(rest_bot, rest_err), a| {
+              (rest_bot || ty::type_is_bot(*a),
+               rest_err || ty::type_is_error(*a))});
+        if ty::type_is_error(f_ty) || args_err {
+            fcx.write_error(id);
+        }
+        else if ty::type_is_bot(f_ty) || args_bot {
+            fcx.write_bot(id);
+        }
       }
       ast::expr_cast(e, t) => {
-        bot = check_expr(fcx, e);
+        check_expr(fcx, e);
         let t_1 = fcx.to_ty(t);
         let t_e = fcx.expr_ty(e);
 
         debug!("t_1=%s", fcx.infcx().ty_to_str(t_1));
         debug!("t_e=%s", fcx.infcx().ty_to_str(t_e));
 
-        match ty::get(t_1).sty {
-          // This will be looked up later on
-          ty::ty_trait(*) => (),
-
-          _ => {
-            if ty::type_is_nil(t_e) {
-                fcx.type_error_message(expr.span, |actual| {
-                    fmt!("cast from nil: `%s` as `%s`", actual,
-                         fcx.infcx().ty_to_str(t_1))
-                }, t_e, None);
-            } else if ty::type_is_nil(t_1) {
-                fcx.type_error_message(expr.span, |actual| {
-                    fmt!("cast to nil: `%s` as `%s`", actual,
-                         fcx.infcx().ty_to_str(t_1))
-                }, t_e, None);
-            }
-
-            let t_1_is_scalar = type_is_scalar(fcx, expr.span, t_1);
-            if type_is_c_like_enum(fcx,expr.span,t_e) && t_1_is_scalar {
-                /* this case is allowed */
-            } else if type_is_region_ptr(fcx, expr.span, t_e) &&
-                      type_is_unsafe_ptr(fcx, expr.span, t_1) {
-
-                fn is_vec(t: ty::t) -> bool {
-                    match ty::get(t).sty {
-                      ty::ty_evec(_,_) => true,
-                      _ => false
-                    }
-                }
-                fn types_compatible(fcx: @mut FnCtxt, sp: span, t1: ty::t,
-                                    t2: ty::t) -> bool {
-                    if !is_vec(t1) {
-                        false
-                    } else {
-                        let el = ty::sequence_element_type(fcx.tcx(), t1);
-                        infer::mk_eqty(fcx.infcx(), false, sp, el, t2).is_ok()
-                    }
-                }
-
-                // Due to the limitations of LLVM global constants,
-                // region pointers end up pointing at copies of
-                // vector elements instead of the original values.
-                // To allow unsafe pointers to work correctly, we
-                // need to special-case obtaining an unsafe pointer
-                // from a region pointer to a vector.
-
-                /* this cast is only allowed from &[T] to *T or
-                   &T to *T. */
-                let te = structurally_resolved_type(fcx, e.span, t_e);
-                match (&ty::get(te).sty, &ty::get(t_1).sty) {
-                  (&ty::ty_rptr(_, mt1), &ty::ty_ptr(mt2))
-                    if types_compatible(fcx, e.span, mt1.ty, mt2.ty) => {
-                      /* this case is allowed */
-                  }
-                  _ => {
-                    demand::coerce(fcx, e.span, t_1, e);
-                  }
-                }
-            } else if !(type_is_scalar(fcx,expr.span,t_e) && t_1_is_scalar) {
-                /*
-                If more type combinations should be supported than are
-                supported here, then file an enhancement issue and record the
-                issue number in this comment.
-                */
-                fcx.type_error_message(expr.span, |actual| {
-                    fmt!("non-scalar cast: `%s` as `%s`", actual,
-                         fcx.infcx().ty_to_str(t_1))
-                }, t_e, None);
-            }
-          }
+        if ty::type_is_error(t_e) {
+            fcx.write_error(id);
         }
-        fcx.write_ty(id, t_1);
+        else if ty::type_is_bot(t_e) {
+            fcx.write_bot(id);
+        }
+        else {
+            match ty::get(t_1).sty {
+                // This will be looked up later on
+                ty::ty_trait(*) => (),
+
+                _ => {
+                    if ty::type_is_nil(t_e) {
+                        fcx.type_error_message(expr.span, |actual| {
+                            fmt!("cast from nil: `%s` as `%s`", actual,
+                                 fcx.infcx().ty_to_str(t_1))
+                        }, t_e, None);
+                    } else if ty::type_is_nil(t_1) {
+                        fcx.type_error_message(expr.span, |actual| {
+                            fmt!("cast to nil: `%s` as `%s`", actual,
+                                 fcx.infcx().ty_to_str(t_1))
+                        }, t_e, None);
+                    }
+
+                    let t_1_is_scalar = type_is_scalar(fcx, expr.span, t_1);
+                    if type_is_c_like_enum(fcx,expr.span,t_e)
+                        && t_1_is_scalar {
+                        /* this case is allowed */
+                    } else if type_is_region_ptr(fcx, expr.span, t_e) &&
+                        type_is_unsafe_ptr(fcx, expr.span, t_1) {
+
+                        fn is_vec(t: ty::t) -> bool {
+                            match ty::get(t).sty {
+                                ty::ty_evec(_,_) => true,
+                                _ => false
+                            }
+                        }
+                        fn types_compatible(fcx: @mut FnCtxt, sp: span,
+                                            t1: ty::t, t2: ty::t) -> bool {
+                            if !is_vec(t1) {
+                                false
+                            } else {
+                                let el = ty::sequence_element_type(fcx.tcx(),
+                                                                   t1);
+                                infer::mk_eqty(fcx.infcx(), false,
+                                               sp, el, t2).is_ok()
+                            }
+                        }
+
+                        // Due to the limitations of LLVM global constants,
+                        // region pointers end up pointing at copies of
+                        // vector elements instead of the original values.
+                        // To allow unsafe pointers to work correctly, we
+                        // need to special-case obtaining an unsafe pointer
+                        // from a region pointer to a vector.
+
+                        /* this cast is only allowed from &[T] to *T or
+                        &T to *T. */
+                        let te = structurally_resolved_type(fcx, e.span, t_e);
+                        match (&ty::get(te).sty, &ty::get(t_1).sty) {
+                            (&ty::ty_rptr(_, mt1), &ty::ty_ptr(mt2))
+                            if types_compatible(fcx, e.span,
+                                                mt1.ty, mt2.ty) => {
+                                /* this case is allowed */
+                            }
+                            _ => {
+                                demand::coerce(fcx, e.span, t_1, e);
+                            }
+                        }
+                    } else if !(type_is_scalar(fcx,expr.span,t_e)
+                                && t_1_is_scalar) {
+                        /*
+                        If more type combinations should be supported than are
+                        supported here, then file an enhancement issue and
+                        record the issue number in this comment.
+                        */
+                        fcx.type_error_message(expr.span, |actual| {
+                            fmt!("non-scalar cast: `%s` as `%s`", actual,
+                                 fcx.infcx().ty_to_str(t_1))
+                        }, t_e, None);
+                    }
+                }
+            }
+            fcx.write_ty(id, t_1);
+        }
       }
       ast::expr_vec(ref args, mutbl) => {
         let t: ty::t = fcx.infcx().next_ty_var();
-        for args.each |e| { bot |= check_expr_has_type(fcx, *e, t); }
+        let mut arg_is_bot = false;
+        let mut arg_is_err = false;
+        for args.each |e| {
+            check_expr_has_type(fcx, *e, t);
+            let arg_t = fcx.expr_ty(*e);
+            arg_is_bot |= ty::type_is_bot(arg_t);
+            arg_is_err |= ty::type_is_error(arg_t);
+        }
         let typ = ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutbl},
                               ty::vstore_fixed(args.len()));
         fcx.write_ty(id, typ);
@@ -2514,21 +2694,43 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let count = ty::eval_repeat_count(tcx, count_expr);
         check_expr_with_hint(fcx, count_expr, ty::mk_uint(tcx));
         let t: ty::t = fcx.infcx().next_ty_var();
-        bot |= check_expr_has_type(fcx, element, t);
-        let t = ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutbl},
-                            ty::vstore_fixed(count));
-        fcx.write_ty(id, t);
+        check_expr_has_type(fcx, element, t);
+        let element_ty = fcx.expr_ty(element);
+        if ty::type_is_error(element_ty) {
+            fcx.write_error(id);
+        }
+        else if ty::type_is_bot(element_ty) {
+            fcx.write_bot(id);
+        }
+        else {
+            let t = ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutbl},
+                                ty::vstore_fixed(count));
+            fcx.write_ty(id, t);
+        }
       }
       ast::expr_tup(ref elts) => {
         let flds = unpack_expected(fcx, expected, |sty| {
             match *sty { ty::ty_tup(ref flds) => Some(copy *flds), _ => None }
         });
+        let mut bot_field = false;
+        let mut err_field = false;
         let elt_ts = do elts.mapi |i, e| {
             check_expr_with_opt_hint(fcx, *e, flds.map(|fs| fs[i]));
-            fcx.expr_ty(*e)
+            let t = fcx.expr_ty(*e);
+            err_field = err_field || ty::type_is_error(t);
+            bot_field = bot_field || ty::type_is_bot(t);
+            t
         };
-        let typ = ty::mk_tup(tcx, elt_ts);
-        fcx.write_ty(id, typ);
+        if bot_field {
+            fcx.write_bot(id);
+        }
+        else if err_field {
+            fcx.write_error(id);
+        }
+        else {
+            let typ = ty::mk_tup(tcx, elt_ts);
+            fcx.write_ty(id, typ);
+        }
       }
       ast::expr_struct(path, ref fields, base_expr) => {
         // Resolve the path.
@@ -2548,48 +2750,57 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
       }
       ast::expr_field(base, field, ref tys) => {
-        bot = check_field(fcx, expr, false, base, field, *tys);
+          check_field(fcx, expr, false, base, field, * tys);
+          let base_t = fcx.expr_ty(base);
+          if ty::type_is_error(base_t) {
+              fcx.write_error(id);
+          }
+          else if ty::type_is_bot(base_t) {
+              fcx.write_bot(id);
+          }
+          // Otherwise, type already got written
       }
       ast::expr_index(base, idx) => {
-          bot |= check_expr(fcx, base);
+          check_expr(fcx, base);
+          check_expr(fcx, idx);
           let raw_base_t = fcx.expr_ty(base);
-          let (base_t, derefs) = do_autoderef(fcx, expr.span, raw_base_t);
-          bot |= check_expr(fcx, idx);
           let idx_t = fcx.expr_ty(idx);
-          let base_sty = structure_of(fcx, expr.span, base_t);
-          match ty::index_sty(tcx, &base_sty) {
-              Some(mt) => {
-                  require_integral(fcx, idx.span, idx_t);
-                  fcx.write_ty(id, mt.ty);
-                  fcx.write_autoderef_adjustment(base.id, derefs);
-              }
-              None => {
-                  let resolved = structurally_resolved_type(fcx, expr.span,
-                                                            raw_base_t);
-                  match lookup_op_method(fcx,
-                                         expr,
-                                         base,
-                                         resolved,
-                                         tcx.sess.ident_of(~"index"),
-                                         ~[idx],
-                                         DontDerefArgs,
-                                         AutoderefReceiver) {
-                      Some((ret_ty, _)) => fcx.write_ty(id, ret_ty),
-                      _ => {
-                          fcx.type_error_message(expr.span, |actual|
-                              fmt!("cannot index a value of type `%s`",
-                                   actual), base_t, None);
-                          fcx.write_ty(id, ty::mk_err(tcx));
-                          return true;
-                      }
+          if ty::type_is_error(raw_base_t)
+              || ty::type_is_bot(raw_base_t) {
+              fcx.write_ty(id, raw_base_t);
+          }
+          else if ty::type_is_error(idx_t)
+              || ty::type_is_bot(idx_t) {
+              fcx.write_ty(id, idx_t);
+          }
+          else {
+              let (base_t, derefs) = do_autoderef(fcx, expr.span, raw_base_t);
+              let base_sty = structure_of(fcx, expr.span, base_t);
+              match ty::index_sty(tcx, &base_sty) {
+                  Some(mt) => {
+                      require_integral(fcx, idx.span, idx_t);
+                      fcx.write_ty(id, mt.ty);
+                      fcx.write_autoderef_adjustment(base.id, derefs);
+                  }
+                  None => {
+                      let resolved = structurally_resolved_type(fcx,
+                          expr.span, raw_base_t);
+                      let ret_ty = lookup_op_method(fcx, expr, base, resolved,
+                                             tcx.sess.ident_of(~"index"),
+                                             ~[idx], DontDerefArgs, AutoderefReceiver,
+                        || {
+                            fcx.type_error_message(expr.span, |actual|
+                                fmt!("cannot index a value \
+                                      of type `%s`", actual), base_t, None);
+                        }, expected);
+                      fcx.write_ty(id, ret_ty);
                   }
               }
           }
-      }
+       }
     }
-    if bot { fcx.write_bot(expr.id); }
 
-    debug!("type of expr %s is...",
+    debug!("type of expr(%d) %s is...", expr.id,
            syntax::print::pprust::expr_to_str(expr, tcx.sess.intr()));
     debug!("... %s, expected is %s",
            ppaux::ty_to_str(tcx, fcx.expr_ty(expr)),
@@ -2599,9 +2810,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
            });
 
     unifier();
-
-    debug!("<< bot=%b", bot);
-    return bot;
 }
 
 pub fn require_integral(fcx: @mut FnCtxt, sp: span, t: ty::t) {
@@ -2616,13 +2824,12 @@ pub fn require_integral(fcx: @mut FnCtxt, sp: span, t: ty::t) {
 pub fn check_decl_initializer(fcx: @mut FnCtxt,
                               nid: ast::node_id,
                               init: @ast::expr)
-                           -> bool {
+                            {
     let local_ty = fcx.local_ty(init.span, nid);
-    return check_expr_coercable_to_type(fcx, init, local_ty);
+    check_expr_coercable_to_type(fcx, init, local_ty)
 }
 
-pub fn check_decl_local(fcx: @mut FnCtxt, local: @ast::local) -> bool {
-    let mut bot = false;
+pub fn check_decl_local(fcx: @mut FnCtxt, local: @ast::local)  {
     let tcx = fcx.ccx.tcx;
 
     let t = fcx.local_ty(local.span, local.node.id);
@@ -2630,7 +2837,11 @@ pub fn check_decl_local(fcx: @mut FnCtxt, local: @ast::local) -> bool {
 
     match local.node.init {
         Some(init) => {
-            bot = check_decl_initializer(fcx, local.node.id, init);
+            check_decl_initializer(fcx, local.node.id, init);
+            let init_ty = fcx.expr_ty(init);
+            if ty::type_is_error(init_ty) || ty::type_is_bot(init_ty) {
+                fcx.write_ty(local.node.id, init_ty);
+            }
         }
         _ => {}
     }
@@ -2644,64 +2855,92 @@ pub fn check_decl_local(fcx: @mut FnCtxt, local: @ast::local) -> bool {
         block_region: region,
     };
     _match::check_pat(pcx, local.node.pat, t);
-    return bot;
+    let pat_ty = fcx.node_ty(local.node.pat.id);
+    if ty::type_is_error(pat_ty) || ty::type_is_bot(pat_ty) {
+        fcx.write_ty(local.node.id, pat_ty);
+    }
 }
 
-pub fn check_stmt(fcx: @mut FnCtxt, stmt: @ast::stmt) -> bool {
+pub fn check_stmt(fcx: @mut FnCtxt, stmt: @ast::stmt)  {
     let mut node_id;
-    let mut bot = false;
+    let mut saw_bot = false;
+    let mut saw_err = false;
     match stmt.node {
       ast::stmt_decl(decl, id) => {
         node_id = id;
         match decl.node {
           ast::decl_local(ref ls) => for ls.each |l| {
-            bot |= check_decl_local(fcx, *l);
+              check_decl_local(fcx, *l);
+              let l_t = fcx.node_ty(l.node.id);
+              saw_bot = saw_bot || ty::type_is_bot(l_t);
+              saw_err = saw_err || ty::type_is_error(l_t);
           },
           ast::decl_item(_) => {/* ignore for now */ }
         }
       }
       ast::stmt_expr(expr, id) => {
         node_id = id;
-        bot = check_expr_has_type(fcx, expr, ty::mk_nil(fcx.ccx.tcx));
+        // Check with expected type of ()
+        check_expr_has_type(fcx, expr, ty::mk_nil(fcx.ccx.tcx));
+        let expr_ty = fcx.expr_ty(expr);
+        saw_bot = saw_bot || ty::type_is_bot(expr_ty);
+        saw_err = saw_err || ty::type_is_error(expr_ty);
       }
       ast::stmt_semi(expr, id) => {
         node_id = id;
-        bot = check_expr(fcx, expr);
+        check_expr(fcx, expr);
+        let expr_ty = fcx.expr_ty(expr);
+        saw_bot |= ty::type_is_bot(expr_ty);
+        saw_err |= ty::type_is_error(expr_ty);
       }
       ast::stmt_mac(*) => fcx.ccx.tcx.sess.bug(~"unexpanded macro")
     }
-    fcx.write_nil(node_id);
-    return bot;
+    if saw_bot {
+        fcx.write_bot(node_id);
+    }
+    else if saw_err {
+        fcx.write_error(node_id);
+    }
+    else {
+        fcx.write_nil(node_id)
+    }
 }
 
-pub fn check_block_no_value(fcx: @mut FnCtxt, blk: &ast::blk) -> bool {
-    let bot = check_block(fcx, blk);
-    if !bot {
-        let blkty = fcx.node_ty(blk.node.id);
+pub fn check_block_no_value(fcx: @mut FnCtxt, blk: &ast::blk)  {
+    check_block_with_expected(fcx, blk, Some(ty::mk_nil(fcx.ccx.tcx)));
+    let blkty = fcx.node_ty(blk.node.id);
+    if ty::type_is_error(blkty) {
+        fcx.write_error(blk.node.id);
+    }
+    else if ty::type_is_bot(blkty) {
+        fcx.write_bot(blk.node.id);
+    }
+    else {
         let nilty = ty::mk_nil(fcx.ccx.tcx);
         demand::suptype(fcx, blk.span, nilty, blkty);
     }
-    return bot;
 }
 
-pub fn check_block(fcx0: @mut FnCtxt, blk: &ast::blk) -> bool {
+pub fn check_block(fcx0: @mut FnCtxt, blk: &ast::blk)  {
     check_block_with_expected(fcx0, blk, None)
 }
 
 pub fn check_block_with_expected(fcx0: @mut FnCtxt,
                                  blk: &ast::blk,
-                                 expected: Option<ty::t>)
-                              -> bool {
+                                 expected: Option<ty::t>) {
     let fcx = match blk.node.rules {
       ast::unsafe_blk => @mut FnCtxt {purity: ast::unsafe_fn,.. copy *fcx0},
       ast::default_blk => fcx0
     };
     do fcx.with_region_lb(blk.node.id) {
-        let mut bot = false;
         let mut warned = false;
+        let mut last_was_bot = false;
+        let mut any_bot = false;
+        let mut any_err = false;
         for blk.node.stmts.each |s| {
-            if bot && !warned &&
-                match s.node {
+            check_stmt(fcx, *s);
+            let s_ty = fcx.node_ty(ast_util::stmt_id(**s));
+            if last_was_bot && !warned && match s.node {
                   ast::stmt_decl(@codemap::spanned { node: ast::decl_local(_),
                                                  _}, _) |
                   ast::stmt_expr(_, _) | ast::stmt_semi(_, _) => {
@@ -2712,23 +2951,37 @@ pub fn check_block_with_expected(fcx0: @mut FnCtxt,
                 fcx.ccx.tcx.sess.span_warn(s.span, ~"unreachable statement");
                 warned = true;
             }
-            bot |= check_stmt(fcx, *s);
+            if ty::type_is_bot(s_ty) {
+                last_was_bot = true;
+            }
+            any_bot = any_bot || ty::type_is_bot(s_ty);
+            any_err = any_err || ty::type_is_error(s_ty);
         }
         match blk.node.expr {
-          None => fcx.write_nil(blk.node.id),
+            None => if any_err {
+                fcx.write_error(blk.node.id);
+            }
+            else if any_bot {
+                fcx.write_bot(blk.node.id);
+            }
+            else  {
+                fcx.write_nil(blk.node.id);
+            },
           Some(e) => {
-            if bot && !warned {
+            if any_bot && !warned {
                 fcx.ccx.tcx.sess.span_warn(e.span, ~"unreachable expression");
             }
-            bot |= check_expr_with_opt_hint(fcx, e, expected);
-            let ety = fcx.expr_ty(e);
-            fcx.write_ty(blk.node.id, ety);
+            check_expr_with_opt_hint(fcx, e, expected);
+              let ety = fcx.expr_ty(e);
+              fcx.write_ty(blk.node.id, ety);
+              if any_err {
+                  fcx.write_error(blk.node.id);
+              }
+              else if any_bot {
+                  fcx.write_bot(blk.node.id);
+              }
           }
-        }
-        if bot {
-            fcx.write_bot(blk.node.id);
-        }
-        bot
+        };
     }
 }
 
@@ -3030,12 +3283,13 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
 pub fn structurally_resolved_type(fcx: @mut FnCtxt, sp: span, tp: ty::t)
                                -> ty::t {
     match infer::resolve_type(fcx.infcx(), tp, force_tvar) {
-        Ok(t_s) if !ty::type_is_ty_var(t_s) => return t_s,
+        Ok(t_s) if !ty::type_is_ty_var(t_s) => t_s,
         _ => {
             fcx.type_error_message(sp, |_actual| {
                 ~"the type of this value must be known in this context"
             }, tp, None);
-            return ty::mk_err(fcx.tcx());
+            demand::suptype(fcx, sp, ty::mk_err(fcx.tcx()), tp);
+            tp
         }
     }
 }

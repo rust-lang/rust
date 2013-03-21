@@ -310,6 +310,7 @@ enum tbox_flag {
     needs_infer = 4,
     has_regions = 8,
     has_ty_err = 16,
+    has_ty_bot = 32,
 
     // a meta-flag: subst may be required if the type has parameters, a self
     // type, or references bound regions
@@ -354,9 +355,6 @@ pub pure fn type_needs_infer(t: t) -> bool {
 }
 pub pure fn type_has_regions(t: t) -> bool {
     tbox_has_flag(get(t), has_regions)
-}
-pub pure fn type_contains_err(t: t) -> bool {
-    tbox_has_flag(get(t), has_ty_err)
 }
 pub pure fn type_def_id(t: t) -> Option<ast::def_id> { get(t).o_def_id }
 pub pure fn type_id(t: t) -> uint { get(t).id }
@@ -892,9 +890,17 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
         flags |= rflags(r);
         flags |= get(mt.ty).flags;
       }
-      &ty_nil | &ty_bot | &ty_bool | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
+      &ty_nil | &ty_bool | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
       &ty_estr(_) | &ty_type | &ty_opaque_closure_ptr(_) |
       &ty_opaque_box => (),
+      // You might think that we could just return ty_err for
+      // any type containing ty_err as a component, and get
+      // rid of the has_ty_err flag -- likewise for ty_bot (with
+      // the exception of function types that return bot).
+      // But doing so caused sporadic memory corruption, and
+      // neither I (tjc) nor nmatsakis could figure out why,
+      // so we're doing it this way.
+      &ty_bot => flags |= has_ty_bot as uint,
       &ty_err => flags |= has_ty_err as uint,
       &ty_param(_) => flags |= has_params as uint,
       &ty_infer(_) => flags |= needs_infer as uint,
@@ -914,12 +920,16 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       &ty_tup(ref ts) => for ts.each |tt| { flags |= get(*tt).flags; },
       &ty_bare_fn(ref f) => {
         for f.sig.inputs.each |a| { flags |= get(a.ty).flags; }
-        flags |= get(f.sig.output).flags;
+         flags |= get(f.sig.output).flags;
+         // T -> _|_ is *not* _|_ !
+         flags &= !(has_ty_bot as uint);
       }
       &ty_closure(ref f) => {
         flags |= rflags(f.region);
         for f.sig.inputs.each |a| { flags |= get(a.ty).flags; }
         flags |= get(f.sig.output).flags;
+        // T -> _|_ is *not* _|_ !
+        flags &= !(has_ty_bot as uint);
       }
     }
 
@@ -1465,7 +1475,13 @@ pub fn subst_substs(cx: ctxt, sup: &substs, sub: &substs) -> substs {
 
 pub fn type_is_nil(ty: t) -> bool { get(ty).sty == ty_nil }
 
-pub fn type_is_bot(ty: t) -> bool { get(ty).sty == ty_bot }
+pub fn type_is_bot(ty: t) -> bool {
+    (get(ty).flags & (has_ty_bot as uint)) != 0
+}
+
+pub fn type_is_error(ty: t) -> bool {
+    (get(ty).flags & (has_ty_err as uint)) != 0
+}
 
 pub fn type_is_ty_var(ty: t) -> bool {
     match get(ty).sty {
