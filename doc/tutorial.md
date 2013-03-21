@@ -1363,11 +1363,11 @@ let crayon_names = crayons.map(|v| crayon_to_str(*v));
 let favorite_crayon_name = crayon_names[0];
 
 // Remove whitespace from before and after the string
-let new_favorite_crayon_name = favorite_crayon_name.trim();
+let new_favorite_crayon_name = favorite_crayon_name.trim_DBGBRWD();
 
 if favorite_crayon_name.len() > 5 {
    // Create a substring
-   println(favorite_crayon_name.substr(0, 5));
+   println(favorite_crayon_name.substr_DBGBRWD(0, 5));
 }
 ~~~
 

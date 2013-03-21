@@ -543,7 +543,7 @@ pub fn build_session_options(+binary: ~str,
     let lint_dict = lint::get_lint_dict();
     for lint_levels.each |level| {
         let level_name = lint::level_to_str(*level);
-        let level_short = level_name.substr(0,1).to_upper();
+        let level_short = level_name.substr_DBGBRWD(0,1).to_upper();
         let flags = vec::append(getopts::opt_strs(matches, level_short),
                                 getopts::opt_strs(matches, level_name));
         for flags.each |lint_name| {
