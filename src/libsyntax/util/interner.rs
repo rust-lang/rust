@@ -77,32 +77,32 @@ pub fn i1 () {
 pub fn i2 () {
     let i : Interner<@~str> = Interner::new();
     // first one is zero:
-    fail_unless!(i.intern (@~"dog") == 0);
+    assert_eq!(i.intern (@~"dog"), 0);
     // re-use gets the same entry:
-    fail_unless!(i.intern (@~"dog") == 0);
+    assert_eq!(i.intern (@~"dog"), 0);
     // different string gets a different #:
-    fail_unless!(i.intern (@~"cat") == 1);
-    fail_unless!(i.intern (@~"cat") == 1);
+    assert_eq!(i.intern (@~"cat"), 1);
+    assert_eq!(i.intern (@~"cat"), 1);
     // dog is still at zero
-    fail_unless!(i.intern (@~"dog") == 0);
+    assert_eq!(i.intern (@~"dog"), 0);
     // gensym gets 3
-    fail_unless!(i.gensym (@~"zebra" ) == 2);
+    assert_eq!(i.gensym (@~"zebra" ), 2);
     // gensym of same string gets new number :
-    fail_unless!(i.gensym (@~"zebra" ) == 3);
+    assert_eq!(i.gensym (@~"zebra" ), 3);
     // gensym of *existing* string gets new number:
-    fail_unless!(i.gensym (@~"dog") == 4);
-    fail_unless!(i.get(0) == @~"dog");
-    fail_unless!(i.get(1) == @~"cat");
-    fail_unless!(i.get(2) == @~"zebra");
-    fail_unless!(i.get(3) == @~"zebra");
-    fail_unless!(i.get(4) == @~"dog");
+    assert_eq!(i.gensym (@~"dog"), 4);
+    assert_eq!(i.get(0), @~"dog");
+    assert_eq!(i.get(1), @~"cat");
+    assert_eq!(i.get(2), @~"zebra");
+    assert_eq!(i.get(3), @~"zebra");
+    assert_eq!(i.get(4), @~"dog");
 }
 
 #[test]
 pub fn i3 () {
     let i : Interner<@~str> = Interner::prefill([@~"Alan",@~"Bob",@~"Carol"]);
-    fail_unless!(i.get(0) == @~"Alan");
-    fail_unless!(i.get(1) == @~"Bob");
-    fail_unless!(i.get(2) == @~"Carol");
-    fail_unless!(i.intern(@~"Bob") == 1);
+    assert_eq!(i.get(0), @~"Alan");
+    assert_eq!(i.get(1), @~"Bob");
+    assert_eq!(i.get(2), @~"Carol");
+    assert_eq!(i.intern(@~"Bob"), 1);
 }

@@ -779,7 +779,6 @@ pub mod test {
     use core::option::None;
     use diagnostic;
     use parse::token;
-    use util::testing::{check_equal, check_equal_ptr};
 
     // represents a testing reader (incl. both reader and interner)
     struct Env {
@@ -809,17 +808,17 @@ pub mod test {
         let tok2 = TokenAndSpan{
             tok:token::IDENT(id, false),
             sp:span {lo:BytePos(21),hi:BytePos(23),expn_info: None}};
-        check_equal (tok1,tok2);
+        assert_eq!(tok1,tok2);
         // the 'main' id is already read:
-        check_equal (copy string_reader.last_pos,BytePos(28));
+        assert_eq!(copy string_reader.last_pos,BytePos(28));
         // read another token:
         let tok3 = string_reader.next_token();
         let tok4 = TokenAndSpan{
             tok:token::IDENT(ident_interner.intern (@~"main"), false),
             sp:span {lo:BytePos(24),hi:BytePos(28),expn_info: None}};
-        check_equal (tok3,tok4);
+        assert_eq!(tok3,tok4);
         // the lparen is already read:
-        check_equal (copy string_reader.last_pos,BytePos(29))
+        assert_eq!(copy string_reader.last_pos,BytePos(29))
     }
 
     // check that the given reader produces the desired stream
@@ -828,7 +827,7 @@ pub mod test {
         for expected.each |expected_tok| {
             let TokenAndSpan {tok:actual_tok, sp: _} =
                 env.string_reader.next_token();
-            check_equal(&actual_tok,expected_tok);
+            assert_eq!(&actual_tok,expected_tok);
         }
     }
 
@@ -872,21 +871,21 @@ pub mod test {
         let env = setup(~"'a'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
-        fail_unless!(tok == token::LIT_INT('a' as i64, ast::ty_char));
+        assert_eq!(tok,token::LIT_INT('a' as i64, ast::ty_char));
     }
 
     #[test] fn character_space() {
         let env = setup(~"' '");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
-        fail_unless!(tok == token::LIT_INT(' ' as i64, ast::ty_char));
+        assert_eq!(tok, token::LIT_INT(' ' as i64, ast::ty_char));
     }
 
     #[test] fn character_escaped() {
         let env = setup(~"'\n'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
-        fail_unless!(tok == token::LIT_INT('\n' as i64, ast::ty_char));
+        assert_eq!(tok, token::LIT_INT('\n' as i64, ast::ty_char));
     }
 
     #[test] fn lifetime_name() {
@@ -894,7 +893,7 @@ pub mod test {
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         let id = env.interner.intern(@~"abc");
-        fail_unless!(tok == token::LIFETIME(id));
+        assert_eq!(tok, token::LIFETIME(id));
     }
 }
 

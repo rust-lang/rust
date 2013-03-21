@@ -313,7 +313,6 @@ mod test {
     use std;
     use core::io;
     use core::option::None;
-    use util::testing::*;
 
     #[test] fn to_json_str<E : Encodable<std::json::Encoder>>(val: @E) -> ~str {
         do io::with_str_writer |writer| {
@@ -327,7 +326,7 @@ mod test {
             @~"fn foo (x : int) { x; }",
             ~[],
             new_parse_sess(None));
-        check_equal(to_json_str(@tts),
+        assert_eq!(to_json_str(@tts),
                     ~"[[\"tt_tok\",[null,[\"IDENT\",[\"fn\",false]]]],\
                       [\"tt_tok\",[null,[\"IDENT\",[\"foo\",false]]]],\
                       [\"tt_delim\",[[[\"tt_tok\",[null,[\"LPAREN\",[]]]],\
@@ -347,7 +346,7 @@ mod test {
             @~"fn foo (x : int) { x; }",
             ~[],~[],
             new_parse_sess(None));
-        check_equal(ast1,ast2);
+        assert_eq!(ast1,ast2);
     }
 }
 
