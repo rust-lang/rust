@@ -241,7 +241,7 @@ pub fn lookup_vtable(vcx: &VtableContext,
                     // Nothing found. Continue.
                 }
                 Some(implementations) => {
-                    let implementations: &mut ~[@Impl] = implementations;
+                    let implementations: &mut ~[@Impl] = *implementations;
                     // implementations is the list of all impls in scope for
                     // trait_ty. (Usually, there's just one.)
                     for uint::range(0, implementations.len()) |i| {
