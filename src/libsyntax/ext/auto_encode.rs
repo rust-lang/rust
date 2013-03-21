@@ -416,6 +416,16 @@ priv impl @ext_ctxt {
         self.expr(span, ast::expr_call(expr, args, ast::NoSugar))
     }
 
+    fn expr_method_call(
+        &self,
+        span: span,
+        expr: @ast::expr,
+        ident: ast::ident,
+        +args: ~[@ast::expr]
+    ) -> @ast::expr {
+        self.expr(span, ast::expr_method_call(expr, ident, ~[], args, ast::NoSugar))
+    }
+
     fn lambda_expr(&self, expr: @ast::expr) -> @ast::expr {
         self.lambda(self.expr_blk(expr))
     }
@@ -712,30 +722,24 @@ fn mk_struct_ser_impl(
     let fields = do mk_struct_fields(fields).mapi |idx, field| {
         // ast for `|| self.$(name).encode(__s)`
         let expr_lambda = cx.lambda_expr(
-            cx.expr_call(
+            cx.expr_method_call(
                 span,
                 cx.expr_field(
                     span,
-                    cx.expr_field(
-                        span,
-                        cx.expr_var(span, ~"self"),
-                        field.ident
-                    ),
-                    cx.ident_of(~"encode")
+                    cx.expr_var(span, ~"self"),
+                    field.ident
                 ),
+                cx.ident_of(~"encode"),
                 ~[cx.expr_var(span, ~"__s")]
             )
         );
 
         // ast for `__s.emit_field($(name), $(idx), $(expr_lambda))`
         cx.stmt(
-            cx.expr_call(
+            cx.expr_method_call(
                 span,
-                cx.expr_field(
-                    span,
-                    cx.expr_var(span, ~"__s"),
-                    cx.ident_of(~"emit_field")
-                ),
+                cx.expr_var(span, ~"__s"),
+                cx.ident_of(~"emit_field"),
                 ~[
                     cx.lit_str(span, @cx.str_of(field.ident)),
                     cx.lit_uint(span, idx),
@@ -746,13 +750,10 @@ fn mk_struct_ser_impl(
     };
 
     // ast for `__s.emit_struct($(name), || $(fields))`
-    let ser_body = cx.expr_call(
+    let ser_body = cx.expr_method_call(
         span,
-        cx.expr_field(
-            span,
-            cx.expr_var(span, ~"__s"),
-            cx.ident_of(~"emit_struct")
-        ),
+        cx.expr_var(span, ~"__s"),
+        cx.ident_of(~"emit_struct"),
         ~[
             cx.lit_str(span, @cx.str_of(ident)),
             cx.lit_uint(span, vec::len(fields)),
@@ -788,13 +789,10 @@ fn mk_struct_deser_impl(
         );
 
         // ast for `__d.read_field($(name), $(idx), $(expr_lambda))`
-        let expr: @ast::expr = cx.expr_call(
+        let expr: @ast::expr = cx.expr_method_call(
             span,
-            cx.expr_field(
-                span,
-                cx.expr_var(span, ~"__d"),
-                cx.ident_of(~"read_field")
-            ),
+            cx.expr_var(span, ~"__d"),
+            cx.ident_of(~"read_field"),
             ~[
                 cx.lit_str(span, @cx.str_of(field.ident)),
                 cx.lit_uint(span, idx),
@@ -813,13 +811,10 @@ fn mk_struct_deser_impl(
     };
 
     // ast for `read_struct($(name), || $(fields))`
-    let body = cx.expr_call(
+    let body = cx.expr_method_call(
         span,
-        cx.expr_field(
-            span,
-            cx.expr_var(span, ~"__d"),
-            cx.ident_of(~"read_struct")
-        ),
+        cx.expr_var(span, ~"__d"),
+        cx.ident_of(~"read_struct"),
         ~[
             cx.lit_str(span, @cx.str_of(ident)),
             cx.lit_uint(span, vec::len(fields)),
@@ -943,13 +938,10 @@ fn ser_variant(
 
         // ast for `|| $(v).encode(__s)`
         let expr_encode = cx.lambda_expr(
-             cx.expr_call(
+             cx.expr_method_call(
                 span,
-                cx.expr_field(
-                    span,
-                    cx.expr_path(span, ~[names[a_idx]]),
-                    cx.ident_of(~"encode")
-                ),
+                 cx.expr_path(span, ~[names[a_idx]]),
+                 cx.ident_of(~"encode"),
                 ~[cx.expr_var(span, ~"__s")]
             )
         );
@@ -965,13 +957,10 @@ fn ser_variant(
     };
 
     // ast for `__s.emit_enum_variant($(name), $(idx), $(sz), $(lambda))`
-    let body = cx.expr_call(
+    let body = cx.expr_method_call(
         span,
-        cx.expr_field(
-            span,
-            cx.expr_var(span, ~"__s"),
-            cx.ident_of(~"emit_enum_variant")
-        ),
+        cx.expr_var(span, ~"__s"),
+        cx.ident_of(~"emit_enum_variant"),
         ~[
             cx.lit_str(span, @cx.str_of(v_name)),
             cx.lit_uint(span, v_idx),
@@ -1019,13 +1008,10 @@ fn mk_enum_ser_body(
     );
 
     // ast for `__s.emit_enum($(name), || $(match_expr))`
-    cx.expr_call(
+    cx.expr_method_call(
         span,
-        cx.expr_field(
-            span,
-            cx.expr_var(span, ~"__s"),
-            cx.ident_of(~"emit_enum")
-        ),
+        cx.expr_var(span, ~"__s"),
+        cx.ident_of(~"emit_enum"),
         ~[
             cx.lit_str(span, @cx.str_of(name)),
             cx.lambda_expr(match_expr),
@@ -1055,13 +1041,10 @@ fn mk_enum_deser_variant_nary(
         );
 
         // ast for `__d.read_enum_variant_arg($(a_idx), $(expr_lambda))`
-        cx.expr_call(
+        cx.expr_method_call(
             span,
-            cx.expr_field(
-                span,
-                cx.expr_var(span, ~"__d"),
-                cx.ident_of(~"read_enum_variant_arg")
-            ),
+            cx.expr_var(span, ~"__d"),
+            cx.ident_of(~"read_enum_variant_arg"),
             ~[cx.lit_uint(span, idx), expr_lambda]
         )
     };
@@ -1171,25 +1154,19 @@ fn mk_enum_deser_body(
 
     // ast for `__d.read_enum_variant($(expr_lambda))`
     let expr_lambda = ext_cx.lambda_expr(
-        ext_cx.expr_call(
+        ext_cx.expr_method_call(
             span,
-            ext_cx.expr_field(
-                span,
-                ext_cx.expr_var(span, ~"__d"),
-                ext_cx.ident_of(~"read_enum_variant")
-            ),
+            ext_cx.expr_var(span, ~"__d"),
+            ext_cx.ident_of(~"read_enum_variant"),
             ~[expr_lambda]
         )
     );
 
     // ast for `__d.read_enum($(e_name), $(expr_lambda))`
-    ext_cx.expr_call(
+    ext_cx.expr_method_call(
         span,
-        ext_cx.expr_field(
-            span,
-            ext_cx.expr_var(span, ~"__d"),
-            ext_cx.ident_of(~"read_enum")
-        ),
+        ext_cx.expr_var(span, ~"__d"),
+        ext_cx.ident_of(~"read_enum"),
         ~[
             ext_cx.lit_str(span, @ext_cx.str_of(name)),
             expr_lambda
