@@ -84,6 +84,7 @@ struct Guard<T, U> {
     cond: &'self Condition/&self<T, U>
 }
 
+#[unsafe_destructor]
 impl<T, U> Drop for Guard/&self<T, U> {
     fn finalize(&self) {
         unsafe {
