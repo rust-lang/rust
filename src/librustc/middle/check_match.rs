@@ -528,6 +528,25 @@ pub fn specialize(cx: @MatchCheckCtxt,
             }
             pat_enum(_, args) => {
                 match cx.tcx.def_map.get(&pat_id) {
+                    def_const(did) => {
+                        let const_expr =
+                            lookup_const_by_id(cx.tcx, did).get();
+                        let e_v = eval_const_expr(cx.tcx, const_expr);
+                        let match_ = match ctor_id {
+                            val(ref v) => compare_const_vals(e_v, (*v)) == 0,
+                            range(ref c_lo, ref c_hi) => {
+                                compare_const_vals((*c_lo), e_v) >= 0 &&
+                                    compare_const_vals((*c_hi), e_v) <= 0
+                            }
+                            single => true,
+                            _ => fail!(~"type error")
+                        };
+                        if match_ {
+                            Some(vec::from_slice(r.tail()))
+                        } else {
+                            None
+                        }
+                    }
                     def_variant(_, id) if variant(id) == ctor_id => {
                         let args = match args {
                             Some(args) => args,

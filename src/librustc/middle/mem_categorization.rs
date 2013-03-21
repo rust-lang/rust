@@ -916,6 +916,11 @@ pub impl mem_categorization_ctxt {
                         self.cat_pattern(cmt_field, *subpat, op);
                     }
                 }
+                Some(ast::def_const(*)) => {
+                    for subpats.each |subpat| {
+                        self.cat_pattern(cmt, *subpat, op);
+                    }
+                }
                 _ => {
                     self.tcx.sess.span_bug(
                         pat.span,
