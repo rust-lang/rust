@@ -16,6 +16,16 @@ use syntax::visit;
 
 use core::str;
 use std::oldmap::HashMap;
+use std;
+
+pub fn time<T>(do_it: bool, what: ~str, thunk: &fn() -> T) -> T {
+    if !do_it { return thunk(); }
+    let start = std::time::precise_time_s();
+    let rv = thunk();
+    let end = std::time::precise_time_s();
+    io::println(fmt!("time: %3.3f s\t%s", end - start, what));
+    rv
+}
 
 pub fn indent<R>(op: &fn() -> R) -> R {
     // Use in conjunction with the log post-processor like `src/etc/indenter`

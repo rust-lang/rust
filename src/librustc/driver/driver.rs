@@ -21,6 +21,7 @@ use metadata::{creader, cstore, filesearch};
 use metadata;
 use middle::{trans, freevars, kind, ty, typeck, lint, astencode};
 use middle;
+use util::common::time;
 use util::ppaux;
 
 use core::int;
@@ -32,7 +33,6 @@ use core::vec;
 use std::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
 use std::getopts::{opt_present};
 use std::getopts;
-use std;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap;
@@ -162,16 +162,6 @@ pub fn parse_input(sess: Session, +cfg: ast::crate_cfg, input: input)
             anon_src(), @(/*bad*/copy *src), cfg, sess.parse_sess)
       }
     }
-}
-
-pub fn time<T>(do_it: bool, what: ~str, thunk: &fn() -> T) -> T {
-    if !do_it { return thunk(); }
-    let start = std::time::precise_time_s();
-    let rv = thunk();
-    let end = std::time::precise_time_s();
-    io::stdout().write_str(fmt!("time: %3.3f s\t%s\n",
-                                end - start, what));
-    rv
 }
 
 #[deriving_eq]
