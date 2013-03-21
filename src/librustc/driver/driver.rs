@@ -244,11 +244,9 @@ pub fn compile_rest(sess: Session, cfg: ast::crate_cfg,
         let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
                                 region_map, rp_set, lang_items, crate);
 
-        let (method_map, vtable_map) =
-            time(time_passes, ~"typechecking", ||
-                 typeck::check_crate(ty_cx,
-                                     trait_map,
-                                     crate));
+        // passes are timed inside typeck
+        let (method_map, vtable_map) = typeck::check_crate(
+            ty_cx, trait_map, crate);
 
         // These next two const passes can probably be merged
         time(time_passes, ~"const marking", ||
