@@ -231,6 +231,7 @@ pub mod rt;
 // can be resolved within libcore.
 #[doc(hidden)]
 pub mod core {
+    pub use clone;
     pub use cmp;
     pub use condition;
     pub use option;
