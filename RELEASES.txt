@@ -55,7 +55,7 @@ Version 0.6 (March 2013)
       * Method visibility is inherited from the implementation declaration
       * Structural records have been removed
       * Many more types can be used in static items, including enums
-        `static-lifetime pointers and vectors
+        'static-lifetime pointers and vectors
       * Pattern matching over vectors improved and expanded
       * Typechecking of closure types has been overhauled to
         improve inference and eliminate unsoundness
