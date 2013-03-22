@@ -110,7 +110,7 @@ pub trait Encodable<S:Encoder> {
 }
 
 pub trait Decodable<D:Decoder> {
-    static fn decode(&self, d: &D) -> Self;
+    fn decode(d: &D) -> Self;
 }
 
 impl<S:Encoder> Encodable<S> for uint {
@@ -118,7 +118,7 @@ impl<S:Encoder> Encodable<S> for uint {
 }
 
 impl<D:Decoder> Decodable<D> for uint {
-    static fn decode(&self, d: &D) -> uint {
+    fn decode(d: &D) -> uint {
         d.read_uint()
     }
 }
@@ -128,7 +128,7 @@ impl<S:Encoder> Encodable<S> for u8 {
 }
 
 impl<D:Decoder> Decodable<D> for u8 {
-    static fn decode(&self, d: &D) -> u8 {
+    fn decode(d: &D) -> u8 {
         d.read_u8()
     }
 }
@@ -138,7 +138,7 @@ impl<S:Encoder> Encodable<S> for u16 {
 }
 
 impl<D:Decoder> Decodable<D> for u16 {
-    static fn decode(&self, d: &D) -> u16 {
+    fn decode(d: &D) -> u16 {
         d.read_u16()
     }
 }
@@ -148,7 +148,7 @@ impl<S:Encoder> Encodable<S> for u32 {
 }
 
 impl<D:Decoder> Decodable<D> for u32 {
-    static fn decode(&self, d: &D) -> u32 {
+    fn decode(d: &D) -> u32 {
         d.read_u32()
     }
 }
@@ -158,7 +158,7 @@ impl<S:Encoder> Encodable<S> for u64 {
 }
 
 impl<D:Decoder> Decodable<D> for u64 {
-    static fn decode(&self, d: &D) -> u64 {
+    fn decode(d: &D) -> u64 {
         d.read_u64()
     }
 }
@@ -168,7 +168,7 @@ impl<S:Encoder> Encodable<S> for int {
 }
 
 impl<D:Decoder> Decodable<D> for int {
-    static fn decode(&self, d: &D) -> int {
+    fn decode(d: &D) -> int {
         d.read_int()
     }
 }
@@ -178,7 +178,7 @@ impl<S:Encoder> Encodable<S> for i8 {
 }
 
 impl<D:Decoder> Decodable<D> for i8 {
-    static fn decode(&self, d: &D) -> i8 {
+    fn decode(d: &D) -> i8 {
         d.read_i8()
     }
 }
@@ -188,7 +188,7 @@ impl<S:Encoder> Encodable<S> for i16 {
 }
 
 impl<D:Decoder> Decodable<D> for i16 {
-    static fn decode(&self, d: &D) -> i16 {
+    fn decode(d: &D) -> i16 {
         d.read_i16()
     }
 }
@@ -198,7 +198,7 @@ impl<S:Encoder> Encodable<S> for i32 {
 }
 
 impl<D:Decoder> Decodable<D> for i32 {
-    static fn decode(&self, d: &D) -> i32 {
+    fn decode(d: &D) -> i32 {
         d.read_i32()
     }
 }
@@ -208,7 +208,7 @@ impl<S:Encoder> Encodable<S> for i64 {
 }
 
 impl<D:Decoder> Decodable<D> for i64 {
-    static fn decode(&self, d: &D) -> i64 {
+    fn decode(d: &D) -> i64 {
         d.read_i64()
     }
 }
@@ -222,7 +222,7 @@ impl<S:Encoder> Encodable<S> for ~str {
 }
 
 impl<D:Decoder> Decodable<D> for ~str {
-    static fn decode(&self, d: &D) -> ~str {
+    fn decode(d: &D) -> ~str {
         d.read_owned_str()
     }
 }
@@ -232,7 +232,7 @@ impl<S:Encoder> Encodable<S> for @str {
 }
 
 impl<D:Decoder> Decodable<D> for @str {
-    static fn decode(&self, d: &D) -> @str {
+    fn decode(d: &D) -> @str {
         d.read_managed_str()
     }
 }
@@ -242,7 +242,7 @@ impl<S:Encoder> Encodable<S> for float {
 }
 
 impl<D:Decoder> Decodable<D> for float {
-    static fn decode(&self, d: &D) -> float {
+    fn decode(d: &D) -> float {
         d.read_float()
     }
 }
@@ -252,7 +252,7 @@ impl<S:Encoder> Encodable<S> for f32 {
 }
 
 impl<D:Decoder> Decodable<D> for f32 {
-    static fn decode(&self, d: &D) -> f32 {
+    fn decode(d: &D) -> f32 {
         d.read_f32() }
 }
 
@@ -261,7 +261,7 @@ impl<S:Encoder> Encodable<S> for f64 {
 }
 
 impl<D:Decoder> Decodable<D> for f64 {
-    static fn decode(&self, d: &D) -> f64 {
+    fn decode(d: &D) -> f64 {
         d.read_f64()
     }
 }
@@ -271,7 +271,7 @@ impl<S:Encoder> Encodable<S> for bool {
 }
 
 impl<D:Decoder> Decodable<D> for bool {
-    static fn decode(&self, d: &D) -> bool {
+    fn decode(d: &D) -> bool {
         d.read_bool()
     }
 }
@@ -281,7 +281,7 @@ impl<S:Encoder> Encodable<S> for () {
 }
 
 impl<D:Decoder> Decodable<D> for () {
-    static fn decode(&self, d: &D) -> () {
+    fn decode(d: &D) -> () {
         d.read_nil()
     }
 }
@@ -299,7 +299,7 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for ~T {
 }
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~T {
-    static fn decode(&self, d: &D) -> ~T {
+    fn decode(d: &D) -> ~T {
         d.read_owned(|| ~Decodable::decode(d))
     }
 }
@@ -311,7 +311,7 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for @T {
 }
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for @T {
-    static fn decode(&self, d: &D) -> @T {
+    fn decode(d: &D) -> @T {
         d.read_managed(|| @Decodable::decode(d))
     }
 }
@@ -337,7 +337,7 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for ~[T] {
 }
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~[T] {
-    static fn decode(&self, d: &D) -> ~[T] {
+    fn decode(d: &D) -> ~[T] {
         do d.read_owned_vec |len| {
             do vec::from_fn(len) |i| {
                 d.read_vec_elt(i, || Decodable::decode(d))
@@ -357,7 +357,7 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for @[T] {
 }
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for @[T] {
-    static fn decode(&self, d: &D) -> @[T] {
+    fn decode(d: &D) -> @[T] {
         do d.read_managed_vec |len| {
             do at_vec::from_fn(len) |i| {
                 d.read_vec_elt(i, || Decodable::decode(d))
@@ -382,7 +382,7 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for Option<T> {
 }
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for Option<T> {
-    static fn decode(&self, d: &D) -> Option<T> {
+    fn decode(d: &D) -> Option<T> {
         do d.read_enum(~"option") {
             do d.read_enum_variant |i| {
                 match i {
@@ -410,7 +410,7 @@ impl<S:Encoder,T0:Encodable<S>,T1:Encodable<S>> Encodable<S> for (T0, T1) {
 }
 
 impl<D:Decoder,T0:Decodable<D>,T1:Decodable<D>> Decodable<D> for (T0, T1) {
-    static fn decode(&self, d: &D) -> (T0, T1) {
+    fn decode(d: &D) -> (T0, T1) {
         do d.read_tup(2) {
             (
                 d.read_tup_elt(0, || Decodable::decode(d)),
@@ -445,7 +445,7 @@ impl<
     T1: Decodable<D>,
     T2: Decodable<D>
 > Decodable<D> for (T0, T1, T2) {
-    static fn decode(&self, d: &D) -> (T0, T1, T2) {
+    fn decode(d: &D) -> (T0, T1, T2) {
         do d.read_tup(3) {
             (
                 d.read_tup_elt(0, || Decodable::decode(d)),
@@ -484,7 +484,7 @@ impl<
     T2: Decodable<D>,
     T3: Decodable<D>
 > Decodable<D> for (T0, T1, T2, T3) {
-    static fn decode(&self, d: &D) -> (T0, T1, T2, T3) {
+    fn decode(d: &D) -> (T0, T1, T2, T3) {
         do d.read_tup(4) {
             (
                 d.read_tup_elt(0, || Decodable::decode(d)),
@@ -527,7 +527,7 @@ impl<
     T3: Decodable<D>,
     T4: Decodable<D>
 > Decodable<D> for (T0, T1, T2, T3, T4) {
-    static fn decode(&self, d: &D)
+    fn decode(d: &D)
       -> (T0, T1, T2, T3, T4) {
         do d.read_tup(5) {
             (

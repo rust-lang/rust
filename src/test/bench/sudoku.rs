@@ -40,11 +40,11 @@ struct Sudoku {
 }
 
 pub impl Sudoku {
-    static pub fn new(g: grid) -> Sudoku {
+    pub fn new(g: grid) -> Sudoku {
         return Sudoku { grid: g }
     }
 
-    static pub fn from_vec(vec: &[[u8 * 9] * 9]) -> Sudoku {
+    pub fn from_vec(vec: &[[u8 * 9] * 9]) -> Sudoku {
         let mut g = do vec::from_fn(9u) |i| {
             do vec::from_fn(9u) |j| { vec[i][j] }
         };
@@ -62,7 +62,7 @@ pub impl Sudoku {
         return true;
     }
 
-    static pub fn read(reader: @io::Reader) -> Sudoku {
+    pub fn read(reader: @io::Reader) -> Sudoku {
         fail_unless!(reader.read_line() == ~"9,9"); /* assert first line is exactly "9,9" */
 
         let mut g = vec::from_fn(10u, { |_i| ~[0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] });
@@ -156,7 +156,7 @@ struct Colors(u16);
 const heads: u16 = (1u16 << 10) - 1; /* bits 9..0 */
 
 impl Colors {
-    static fn new(start_color: u8) -> Colors {
+    fn new(start_color: u8) -> Colors {
         // Sets bits 9..start_color
         let tails = !0u16 << start_color;
         return Colors(heads & tails);

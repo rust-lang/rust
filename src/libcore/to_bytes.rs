@@ -43,12 +43,12 @@ pub trait IterBytes {
      * left-to-right in declaration order, regardless of
      * underlying memory endianness.
      */
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb);
+    fn iter_bytes(&self, lsb0: bool, f: Cb);
 }
 
 impl IterBytes for bool {
     #[inline(always)]
-    pure fn iter_bytes(&self, _lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, _lsb0: bool, f: Cb) {
         f([
             *self as u8
         ]);
@@ -57,7 +57,7 @@ impl IterBytes for bool {
 
 impl IterBytes for u8 {
     #[inline(always)]
-    pure fn iter_bytes(&self, _lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, _lsb0: bool, f: Cb) {
         f([
             *self
         ]);
@@ -66,7 +66,7 @@ impl IterBytes for u8 {
 
 impl IterBytes for u16 {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         if lsb0 {
             f([
                 *self as u8,
@@ -83,7 +83,7 @@ impl IterBytes for u16 {
 
 impl IterBytes for u32 {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         if lsb0 {
             f([
                 *self as u8,
@@ -104,7 +104,7 @@ impl IterBytes for u32 {
 
 impl IterBytes for u64 {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         if lsb0 {
             f([
                 *self as u8,
@@ -133,35 +133,35 @@ impl IterBytes for u64 {
 
 impl IterBytes for i8 {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }
 
 impl IterBytes for i16 {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         (*self as u16).iter_bytes(lsb0, f)
     }
 }
 
 impl IterBytes for i32 {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         (*self as u32).iter_bytes(lsb0, f)
     }
 }
 
 impl IterBytes for i64 {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         (*self as u64).iter_bytes(lsb0, f)
     }
 }
 
 impl IterBytes for char {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         (*self as u32).iter_bytes(lsb0, f)
     }
 }
@@ -172,7 +172,7 @@ pub mod x32 {
 
     impl IterBytes for uint {
         #[inline(always)]
-        pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+        fn iter_bytes(&self, lsb0: bool, f: Cb) {
             (*self as u32).iter_bytes(lsb0, f)
         }
     }
@@ -184,7 +184,7 @@ pub mod x64 {
 
     impl IterBytes for uint {
         #[inline(always)]
-        pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+        fn iter_bytes(&self, lsb0: bool, f: Cb) {
             (*self as u64).iter_bytes(lsb0, f)
         }
     }
@@ -192,14 +192,14 @@ pub mod x64 {
 
 impl IterBytes for int {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         (*self as uint).iter_bytes(lsb0, f)
     }
 }
 
 impl<A:IterBytes> IterBytes for &'self [A] {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         for (*self).each |elt| {
             do elt.iter_bytes(lsb0) |bytes| {
                 f(bytes)
@@ -210,7 +210,7 @@ impl<A:IterBytes> IterBytes for &'self [A] {
 
 impl<A:IterBytes,B:IterBytes> IterBytes for (A,B) {
   #[inline(always)]
-  pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+  fn iter_bytes(&self, lsb0: bool, f: Cb) {
     match *self {
       (ref a, ref b) => {
         iter_bytes_2(a, b, lsb0, f);
@@ -221,7 +221,7 @@ impl<A:IterBytes,B:IterBytes> IterBytes for (A,B) {
 
 impl<A:IterBytes,B:IterBytes,C:IterBytes> IterBytes for (A,B,C) {
   #[inline(always)]
-  pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+  fn iter_bytes(&self, lsb0: bool, f: Cb) {
     match *self {
       (ref a, ref b, ref c) => {
         iter_bytes_3(a, b, c, lsb0, f);
@@ -231,25 +231,25 @@ impl<A:IterBytes,B:IterBytes,C:IterBytes> IterBytes for (A,B,C) {
 }
 
 // Move this to vec, probably.
-pure fn borrow<A>(a: &'x [A]) -> &'x [A] {
+fn borrow<A>(a: &'x [A]) -> &'x [A] {
     a
 }
 
 impl<A:IterBytes> IterBytes for ~[A] {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         borrow(*self).iter_bytes(lsb0, f)
     }
 }
 
 impl<A:IterBytes> IterBytes for @[A] {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         borrow(*self).iter_bytes(lsb0, f)
     }
 }
 
-pub pure fn iter_bytes_2<A:IterBytes,B:IterBytes>(a: &A, b: &B,
+pub fn iter_bytes_2<A:IterBytes,B:IterBytes>(a: &A, b: &B,
                                             lsb0: bool, z: Cb) {
     let mut flag = true;
     a.iter_bytes(lsb0, |bytes| {flag = z(bytes); flag});
@@ -257,7 +257,7 @@ pub pure fn iter_bytes_2<A:IterBytes,B:IterBytes>(a: &A, b: &B,
     b.iter_bytes(lsb0, |bytes| {flag = z(bytes); flag});
 }
 
-pub pure fn iter_bytes_3<A: IterBytes,
+pub fn iter_bytes_3<A: IterBytes,
                 B: IterBytes,
                 C: IterBytes>(a: &A, b: &B, c: &C,
                               lsb0: bool, z: Cb) {
@@ -269,7 +269,7 @@ pub pure fn iter_bytes_3<A: IterBytes,
     c.iter_bytes(lsb0, |bytes| {flag = z(bytes); flag});
 }
 
-pub pure fn iter_bytes_4<A: IterBytes,
+pub fn iter_bytes_4<A: IterBytes,
                 B: IterBytes,
                 C: IterBytes,
                 D: IterBytes>(a: &A, b: &B, c: &C,
@@ -285,7 +285,7 @@ pub pure fn iter_bytes_4<A: IterBytes,
     d.iter_bytes(lsb0, |bytes| {flag = z(bytes); flag});
 }
 
-pub pure fn iter_bytes_5<A: IterBytes,
+pub fn iter_bytes_5<A: IterBytes,
                 B: IterBytes,
                 C: IterBytes,
                 D: IterBytes,
@@ -304,7 +304,7 @@ pub pure fn iter_bytes_5<A: IterBytes,
     e.iter_bytes(lsb0, |bytes| {flag = z(bytes); flag});
 }
 
-pub pure fn iter_bytes_6<A: IterBytes,
+pub fn iter_bytes_6<A: IterBytes,
                 B: IterBytes,
                 C: IterBytes,
                 D: IterBytes,
@@ -326,7 +326,7 @@ pub pure fn iter_bytes_6<A: IterBytes,
     f.iter_bytes(lsb0, |bytes| {flag = z(bytes); flag});
 }
 
-pub pure fn iter_bytes_7<A: IterBytes,
+pub fn iter_bytes_7<A: IterBytes,
                 B: IterBytes,
                 C: IterBytes,
                 D: IterBytes,
@@ -354,7 +354,7 @@ pub pure fn iter_bytes_7<A: IterBytes,
 
 impl IterBytes for &'self str {
     #[inline(always)]
-    pure fn iter_bytes(&self, _lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, _lsb0: bool, f: Cb) {
         do str::byte_slice(*self) |bytes| {
             f(bytes);
         }
@@ -363,7 +363,7 @@ impl IterBytes for &'self str {
 
 impl IterBytes for ~str {
     #[inline(always)]
-    pure fn iter_bytes(&self, _lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, _lsb0: bool, f: Cb) {
         do str::byte_slice(*self) |bytes| {
             f(bytes);
         }
@@ -372,7 +372,7 @@ impl IterBytes for ~str {
 
 impl IterBytes for @str {
     #[inline(always)]
-    pure fn iter_bytes(&self, _lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, _lsb0: bool, f: Cb) {
         do str::byte_slice(*self) |bytes| {
             f(bytes);
         }
@@ -381,7 +381,7 @@ impl IterBytes for @str {
 
 impl<A:IterBytes> IterBytes for Option<A> {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         match *self {
           Some(ref a) => iter_bytes_2(&0u8, a, lsb0, f),
           None => 1u8.iter_bytes(lsb0, f)
@@ -391,21 +391,21 @@ impl<A:IterBytes> IterBytes for Option<A> {
 
 impl<A:IterBytes> IterBytes for &'self A {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         (**self).iter_bytes(lsb0, f);
     }
 }
 
 impl<A:IterBytes> IterBytes for @A {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         (**self).iter_bytes(lsb0, f);
     }
 }
 
 impl<A:IterBytes> IterBytes for ~A {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         (**self).iter_bytes(lsb0, f);
     }
 }
@@ -414,7 +414,7 @@ impl<A:IterBytes> IterBytes for ~A {
 // to the target; it just gives you the pointer-bytes.
 impl<A> IterBytes for *const A {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) {
         (*self as uint).iter_bytes(lsb0, f);
     }
 }

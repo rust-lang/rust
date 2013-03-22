@@ -872,7 +872,7 @@ pub fn get_item_attrs(cdata: cmd,
     }
 }
 
-pure fn struct_field_family_to_visibility(family: Family) -> ast::visibility {
+fn struct_field_family_to_visibility(family: Family) -> ast::visibility {
     match family {
       PublicField => ast::public,
       PrivateField => ast::private,

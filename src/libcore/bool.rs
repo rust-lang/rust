@@ -17,39 +17,39 @@ use from_str::FromStr;
 #[cfg(notest)] use cmp;
 
 /// Negation / inverse
-pub pure fn not(v: bool) -> bool { !v }
+pub fn not(v: bool) -> bool { !v }
 
 /// Conjunction
-pub pure fn and(a: bool, b: bool) -> bool { a && b }
+pub fn and(a: bool, b: bool) -> bool { a && b }
 
 /// Disjunction
-pub pure fn or(a: bool, b: bool) -> bool { a || b }
+pub fn or(a: bool, b: bool) -> bool { a || b }
 
 /**
  * Exclusive or
  *
  * Identical to `or(and(a, not(b)), and(not(a), b))`
  */
-pub pure fn xor(a: bool, b: bool) -> bool { (a && !b) || (!a && b) }
+pub fn xor(a: bool, b: bool) -> bool { (a && !b) || (!a && b) }
 
 /// Implication in the logic, i.e. from `a` follows `b`
-pub pure fn implies(a: bool, b: bool) -> bool { !a || b }
+pub fn implies(a: bool, b: bool) -> bool { !a || b }
 
 /// true if truth values `a` and `b` are indistinguishable in the logic
-pub pure fn eq(a: bool, b: bool) -> bool { a == b }
+pub fn eq(a: bool, b: bool) -> bool { a == b }
 
 /// true if truth values `a` and `b` are distinguishable in the logic
-pub pure fn ne(a: bool, b: bool) -> bool { a != b }
+pub fn ne(a: bool, b: bool) -> bool { a != b }
 
 /// true if `v` represents truth in the logic
-pub pure fn is_true(v: bool) -> bool { v }
+pub fn is_true(v: bool) -> bool { v }
 
 /// true if `v` represents falsehood in the logic
-pub pure fn is_false(v: bool) -> bool { !v }
+pub fn is_false(v: bool) -> bool { !v }
 
 /// Parse logic value from `s`
 impl FromStr for bool {
-    static pure fn from_str(s: &str) -> Option<bool> {
+    fn from_str(s: &str) -> Option<bool> {
         if s == "true" {
             Some(true)
         } else if s == "false" {
@@ -61,7 +61,7 @@ impl FromStr for bool {
 }
 
 /// Convert `v` into a string
-pub pure fn to_str(v: bool) -> ~str { if v { ~"true" } else { ~"false" } }
+pub fn to_str(v: bool) -> ~str { if v { ~"true" } else { ~"false" } }
 
 /**
  * Iterates over all truth values by passing them to `blk` in an unspecified
@@ -73,12 +73,12 @@ pub fn all_values(blk: &fn(v: bool)) {
 }
 
 /// converts truth value to an 8 bit byte
-pub pure fn to_bit(v: bool) -> u8 { if v { 1u8 } else { 0u8 } }
+pub fn to_bit(v: bool) -> u8 { if v { 1u8 } else { 0u8 } }
 
 #[cfg(notest)]
 impl cmp::Eq for bool {
-    pure fn eq(&self, other: &bool) -> bool { (*self) == (*other) }
-    pure fn ne(&self, other: &bool) -> bool { (*self) != (*other) }
+    fn eq(&self, other: &bool) -> bool { (*self) == (*other) }
+    fn ne(&self, other: &bool) -> bool { (*self) != (*other) }
 }
 
 #[test]

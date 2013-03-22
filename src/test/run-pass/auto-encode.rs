@@ -60,7 +60,7 @@ enum Expr {
 }
 
 impl cmp::Eq for Expr {
-    pure fn eq(&self, other: &Expr) -> bool {
+    fn eq(&self, other: &Expr) -> bool {
         match *self {
             Val(e0a) => {
                 match *other {
@@ -82,18 +82,18 @@ impl cmp::Eq for Expr {
             }
         }
     }
-    pure fn ne(&self, other: &Expr) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &Expr) -> bool { !(*self).eq(other) }
 }
 
 impl cmp::Eq for Point {
-    pure fn eq(&self, other: &Point) -> bool {
+    fn eq(&self, other: &Point) -> bool {
         self.x == other.x && self.y == other.y
     }
-    pure fn ne(&self, other: &Point) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &Point) -> bool { !(*self).eq(other) }
 }
 
 impl<T:cmp::Eq> cmp::Eq for Quark<T> {
-    pure fn eq(&self, other: &Quark<T>) -> bool {
+    fn eq(&self, other: &Quark<T>) -> bool {
         match *self {
             Top(ref q) => {
                 match *other {
@@ -109,14 +109,14 @@ impl<T:cmp::Eq> cmp::Eq for Quark<T> {
             },
         }
     }
-    pure fn ne(&self, other: &Quark<T>) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &Quark<T>) -> bool { !(*self).eq(other) }
 }
 
 impl cmp::Eq for CLike {
-    pure fn eq(&self, other: &CLike) -> bool {
+    fn eq(&self, other: &CLike) -> bool {
         (*self) as int == *other as int
     }
-    pure fn ne(&self, other: &CLike) -> bool { !self.eq(other) }
+    fn ne(&self, other: &CLike) -> bool { !self.eq(other) }
 }
 
 #[auto_encode]

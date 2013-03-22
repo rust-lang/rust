@@ -16,10 +16,10 @@ use core::iter::BaseIter;
 enum cat_type { tuxedo, tabby, tortoiseshell }
 
 impl cmp::Eq for cat_type {
-    pure fn eq(&self, other: &cat_type) -> bool {
+    fn eq(&self, other: &cat_type) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    pure fn ne(&self, other: &cat_type) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &cat_type) -> bool { !(*self).eq(other) }
 }
 
 // Very silly -- this just returns the value of the name field
@@ -50,7 +50,7 @@ pub impl<T> cat<T> {
 }
 
 impl<T> BaseIter<(int, &'self T)> for cat<T> {
-    pure fn each(&self, f: &fn(&(int, &'self T)) -> bool) {
+    fn each(&self, f: &fn(&(int, &'self T)) -> bool) {
         let mut n = int::abs(self.meows);
         while n > 0 {
             if !f(&(n, &self.name)) { break; }
@@ -58,12 +58,12 @@ impl<T> BaseIter<(int, &'self T)> for cat<T> {
         }
     }
 
-    pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 impl<T> Container for cat<T> {
-    pure fn len(&const self) -> uint { self.meows as uint }
-    pure fn is_empty(&const self) -> bool { self.meows == 0 }
+    fn len(&const self) -> uint { self.meows as uint }
+    fn is_empty(&const self) -> bool { self.meows == 0 }
 }
 
 impl<T> Mutable for cat<T> {
@@ -71,13 +71,13 @@ impl<T> Mutable for cat<T> {
 }
 
 impl<T> Map<int, T> for cat<T> {
-    pure fn contains_key(&self, k: &int) -> bool { *k <= self.meows }
+    fn contains_key(&self, k: &int) -> bool { *k <= self.meows }
 
-    pure fn each_key(&self, f: &fn(v: &int) -> bool) {
+    fn each_key(&self, f: &fn(v: &int) -> bool) {
         for self.each |&(k, _)| { if !f(&k) { break; } loop;};
     }
 
-    pure fn each_value(&self, f: &fn(v: &T) -> bool) {
+    fn each_value(&self, f: &fn(v: &T) -> bool) {
         for self.each |&(_, v)| { if !f(v) { break; } loop;};
     }
 
@@ -90,7 +90,7 @@ impl<T> Map<int, T> for cat<T> {
         true
     }
 
-    pure fn find(&self, k: &int) -> Option<&'self T> {
+    fn find(&self, k: &int) -> Option<&'self T> {
         if *k <= self.meows {
             Some(&self.name)
         } else {
@@ -108,14 +108,14 @@ impl<T> Map<int, T> for cat<T> {
 }
 
 pub impl<T> cat<T> {
-    pure fn get(&self, k: &int) -> &'self T {
+    fn get(&self, k: &int) -> &'self T {
         match self.find(k) {
           Some(v) => { v }
           None    => { fail!(~"epic fail"); }
         }
     }
 
-    static pure fn new(in_x: int, in_y: int, in_name: T) -> cat<T> {
+    fn new(in_x: int, in_y: int, in_name: T) -> cat<T> {
         cat{meows: in_x, how_hungry: in_y, name: in_name }
     }
 }

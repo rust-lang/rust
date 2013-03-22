@@ -28,13 +28,13 @@ pub const min_value: T = (-1 as T) << (bits - 1);
 pub const max_value: T = min_value - 1 as T;
 
 #[inline(always)]
-pub pure fn add(x: T, y: T) -> T { x + y }
+pub fn add(x: T, y: T) -> T { x + y }
 #[inline(always)]
-pub pure fn sub(x: T, y: T) -> T { x - y }
+pub fn sub(x: T, y: T) -> T { x - y }
 #[inline(always)]
-pub pure fn mul(x: T, y: T) -> T { x * y }
+pub fn mul(x: T, y: T) -> T { x * y }
 #[inline(always)]
-pub pure fn div(x: T, y: T) -> T { x / y }
+pub fn div(x: T, y: T) -> T { x / y }
 
 /**
  * Returns the remainder of y / x.
@@ -57,29 +57,29 @@ pub pure fn div(x: T, y: T) -> T { x / y }
  *
  */
 #[inline(always)]
-pub pure fn rem(x: T, y: T) -> T { x % y }
+pub fn rem(x: T, y: T) -> T { x % y }
 
 #[inline(always)]
-pub pure fn lt(x: T, y: T) -> bool { x < y }
+pub fn lt(x: T, y: T) -> bool { x < y }
 #[inline(always)]
-pub pure fn le(x: T, y: T) -> bool { x <= y }
+pub fn le(x: T, y: T) -> bool { x <= y }
 #[inline(always)]
-pub pure fn eq(x: T, y: T) -> bool { x == y }
+pub fn eq(x: T, y: T) -> bool { x == y }
 #[inline(always)]
-pub pure fn ne(x: T, y: T) -> bool { x != y }
+pub fn ne(x: T, y: T) -> bool { x != y }
 #[inline(always)]
-pub pure fn ge(x: T, y: T) -> bool { x >= y }
+pub fn ge(x: T, y: T) -> bool { x >= y }
 #[inline(always)]
-pub pure fn gt(x: T, y: T) -> bool { x > y }
+pub fn gt(x: T, y: T) -> bool { x > y }
 
 #[inline(always)]
-pub pure fn is_positive(x: T) -> bool { x > 0 as T }
+pub fn is_positive(x: T) -> bool { x > 0 as T }
 #[inline(always)]
-pub pure fn is_negative(x: T) -> bool { x < 0 as T }
+pub fn is_negative(x: T) -> bool { x < 0 as T }
 #[inline(always)]
-pub pure fn is_nonpositive(x: T) -> bool { x <= 0 as T }
+pub fn is_nonpositive(x: T) -> bool { x <= 0 as T }
 #[inline(always)]
-pub pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
+pub fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 
 /**
  * Iterate over the range [`lo`..`hi`)
@@ -100,7 +100,7 @@ pub pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
  */
 #[inline(always)]
 /// Iterate over the range [`start`,`start`+`step`..`stop`)
-pub pure fn range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) {
+pub fn range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) {
     let mut i = start;
     if step == 0 {
         fail!(~"range_step called with step == 0");
@@ -119,116 +119,116 @@ pub pure fn range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) {
 
 #[inline(always)]
 /// Iterate over the range [`lo`..`hi`)
-pub pure fn range(lo: T, hi: T, it: &fn(T) -> bool) {
+pub fn range(lo: T, hi: T, it: &fn(T) -> bool) {
     range_step(lo, hi, 1 as T, it);
 }
 
 #[inline(always)]
 /// Iterate over the range [`hi`..`lo`)
-pub pure fn range_rev(hi: T, lo: T, it: &fn(T) -> bool) {
+pub fn range_rev(hi: T, lo: T, it: &fn(T) -> bool) {
     range_step(hi, lo, -1 as T, it);
 }
 
 /// Computes the bitwise complement
 #[inline(always)]
-pub pure fn compl(i: T) -> T {
+pub fn compl(i: T) -> T {
     -1 as T ^ i
 }
 
 /// Computes the absolute value
 #[inline(always)]
-pub pure fn abs(i: T) -> T {
+pub fn abs(i: T) -> T {
     if is_negative(i) { -i } else { i }
 }
 
 #[cfg(notest)]
 impl Ord for T {
     #[inline(always)]
-    pure fn lt(&self, other: &T) -> bool { return (*self) < (*other); }
+    fn lt(&self, other: &T) -> bool { return (*self) < (*other); }
     #[inline(always)]
-    pure fn le(&self, other: &T) -> bool { return (*self) <= (*other); }
+    fn le(&self, other: &T) -> bool { return (*self) <= (*other); }
     #[inline(always)]
-    pure fn ge(&self, other: &T) -> bool { return (*self) >= (*other); }
+    fn ge(&self, other: &T) -> bool { return (*self) >= (*other); }
     #[inline(always)]
-    pure fn gt(&self, other: &T) -> bool { return (*self) > (*other); }
+    fn gt(&self, other: &T) -> bool { return (*self) > (*other); }
 }
 
 #[cfg(notest)]
 impl Eq for T {
     #[inline(always)]
-    pure fn eq(&self, other: &T) -> bool { return (*self) == (*other); }
+    fn eq(&self, other: &T) -> bool { return (*self) == (*other); }
     #[inline(always)]
-    pure fn ne(&self, other: &T) -> bool { return (*self) != (*other); }
+    fn ne(&self, other: &T) -> bool { return (*self) != (*other); }
 }
 
 impl num::Zero for T {
     #[inline(always)]
-    static pure fn zero() -> T { 0 }
+    fn zero() -> T { 0 }
 }
 
 impl num::One for T {
     #[inline(always)]
-    static pure fn one() -> T { 1 }
+    fn one() -> T { 1 }
 }
 
 #[cfg(notest)]
 impl ops::Add<T,T> for T {
-    pure fn add(&self, other: &T) -> T { *self + *other }
+    fn add(&self, other: &T) -> T { *self + *other }
 }
 #[cfg(notest)]
 impl ops::Sub<T,T> for T {
-    pure fn sub(&self, other: &T) -> T { *self - *other }
+    fn sub(&self, other: &T) -> T { *self - *other }
 }
 #[cfg(notest)]
 impl ops::Mul<T,T> for T {
-    pure fn mul(&self, other: &T) -> T { *self * *other }
+    fn mul(&self, other: &T) -> T { *self * *other }
 }
 #[cfg(notest)]
 impl ops::Div<T,T> for T {
-    pure fn div(&self, other: &T) -> T { *self / *other }
+    fn div(&self, other: &T) -> T { *self / *other }
 }
 #[cfg(notest)]
 impl ops::Modulo<T,T> for T {
-    pure fn modulo(&self, other: &T) -> T { *self % *other }
+    fn modulo(&self, other: &T) -> T { *self % *other }
 }
 #[cfg(notest)]
 impl ops::Neg<T> for T {
-    pure fn neg(&self) -> T { -*self }
+    fn neg(&self) -> T { -*self }
 }
 
 // String conversion functions and impl str -> num
 
 /// Parse a string as a number in base 10.
 #[inline(always)]
-pub pure fn from_str(s: &str) -> Option<T> {
+pub fn from_str(s: &str) -> Option<T> {
     strconv::from_str_common(s, 10u, true, false, false,
                          strconv::ExpNone, false)
 }
 
 /// Parse a string as a number in the given base.
 #[inline(always)]
-pub pure fn from_str_radix(s: &str, radix: uint) -> Option<T> {
+pub fn from_str_radix(s: &str, radix: uint) -> Option<T> {
     strconv::from_str_common(s, radix, true, false, false,
                          strconv::ExpNone, false)
 }
 
 /// Parse a byte slice as a number in the given base.
 #[inline(always)]
-pub pure fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
+pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
     strconv::from_str_bytes_common(buf, radix, true, false, false,
                                strconv::ExpNone, false)
 }
 
 impl FromStr for T {
     #[inline(always)]
-    static pure fn from_str(s: &str) -> Option<T> {
+    fn from_str(s: &str) -> Option<T> {
         from_str(s)
     }
 }
 
 impl FromStrRadix for T {
     #[inline(always)]
-    static pure fn from_str_radix(&self, s: &str, radix: uint) -> Option<T> {
+    fn from_str_radix(s: &str, radix: uint) -> Option<T> {
         from_str_radix(s, radix)
     }
 }
@@ -237,7 +237,7 @@ impl FromStrRadix for T {
 
 /// Convert to a string as a byte slice in a given base.
 #[inline(always)]
-pub pure fn to_str_bytes<U>(n: T, radix: uint, f: &fn(v: &[u8]) -> U) -> U {
+pub fn to_str_bytes<U>(n: T, radix: uint, f: &fn(v: &[u8]) -> U) -> U {
     let (buf, _) = strconv::to_str_bytes_common(&n, radix, false,
                             strconv::SignNeg, strconv::DigAll);
     f(buf)
@@ -245,7 +245,7 @@ pub pure fn to_str_bytes<U>(n: T, radix: uint, f: &fn(v: &[u8]) -> U) -> U {
 
 /// Convert to a string in base 10.
 #[inline(always)]
-pub pure fn to_str(num: T) -> ~str {
+pub fn to_str(num: T) -> ~str {
     let (buf, _) = strconv::to_str_common(&num, 10u, false,
                                       strconv::SignNeg, strconv::DigAll);
     buf
@@ -253,7 +253,7 @@ pub pure fn to_str(num: T) -> ~str {
 
 /// Convert to a string in a given base.
 #[inline(always)]
-pub pure fn to_str_radix(num: T, radix: uint) -> ~str {
+pub fn to_str_radix(num: T, radix: uint) -> ~str {
     let (buf, _) = strconv::to_str_common(&num, radix, false,
                                       strconv::SignNeg, strconv::DigAll);
     buf
@@ -261,14 +261,14 @@ pub pure fn to_str_radix(num: T, radix: uint) -> ~str {
 
 impl ToStr for T {
     #[inline(always)]
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         to_str(*self)
     }
 }
 
 impl ToStrRadix for T {
     #[inline(always)]
-    pure fn to_str_radix(&self, radix: uint) -> ~str {
+    fn to_str_radix(&self, radix: uint) -> ~str {
         to_str_radix(*self, radix)
     }
 }

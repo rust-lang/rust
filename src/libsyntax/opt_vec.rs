@@ -61,18 +61,18 @@ impl<T> OptVec<T> {
         }
     }
 
-    pure fn get(&self, i: uint) -> &'self T {
+    fn get(&self, i: uint) -> &'self T {
         match *self {
             Empty => fail!(fmt!("Invalid index %u", i)),
             Vec(ref v) => &v[i]
         }
     }
 
-    pure fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    pure fn len(&self) -> uint {
+    fn len(&self) -> uint {
         match *self {
             Empty => 0,
             Vec(ref v) => v.len()
@@ -105,7 +105,7 @@ impl<T:Copy> OptVec<T> {
 }
 
 impl<A:Eq> Eq for OptVec<A> {
-    pure fn eq(&self, other: &OptVec<A>) -> bool {
+    fn eq(&self, other: &OptVec<A>) -> bool {
         // Note: cannot use #[deriving(Eq)] here because
         // (Empty, Vec(~[])) ought to be equal.
         match (self, other) {
@@ -116,51 +116,51 @@ impl<A:Eq> Eq for OptVec<A> {
         }
     }
 
-    pure fn ne(&self, other: &OptVec<A>) -> bool {
+    fn ne(&self, other: &OptVec<A>) -> bool {
         !self.eq(other)
     }
 }
 
 impl<A> BaseIter<A> for OptVec<A> {
-    pure fn each(&self, blk: &fn(v: &A) -> bool) {
+    fn each(&self, blk: &fn(v: &A) -> bool) {
         match *self {
             Empty => {}
             Vec(ref v) => v.each(blk)
         }
     }
 
-    pure fn size_hint(&self) -> Option<uint> {
+    fn size_hint(&self) -> Option<uint> {
         Some(self.len())
     }
 }
 
 impl<A> iter::ExtendedIter<A> for OptVec<A> {
     #[inline(always)]
-    pure fn eachi(&self, blk: &fn(+v: uint, v: &A) -> bool) {
+    fn eachi(&self, blk: &fn(+v: uint, v: &A) -> bool) {
         iter::eachi(self, blk)
     }
     #[inline(always)]
-    pure fn all(&self, blk: &fn(&A) -> bool) -> bool {
+    fn all(&self, blk: &fn(&A) -> bool) -> bool {
         iter::all(self, blk)
     }
     #[inline(always)]
-    pure fn any(&self, blk: &fn(&A) -> bool) -> bool {
+    fn any(&self, blk: &fn(&A) -> bool) -> bool {
         iter::any(self, blk)
     }
     #[inline(always)]
-    pure fn foldl<B>(&self, +b0: B, blk: &fn(&B, &A) -> B) -> B {
+    fn foldl<B>(&self, +b0: B, blk: &fn(&B, &A) -> B) -> B {
         iter::foldl(self, b0, blk)
     }
     #[inline(always)]
-    pure fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
+    fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
         iter::position(self, f)
     }
     #[inline(always)]
-    pure fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
+    fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
         iter::map_to_vec(self, op)
     }
     #[inline(always)]
-    pure fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
+    fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
         -> ~[B] {
         iter::flat_map_to_vec(self, op)
     }
@@ -169,27 +169,27 @@ impl<A> iter::ExtendedIter<A> for OptVec<A> {
 
 impl<A: Eq> iter::EqIter<A> for OptVec<A> {
     #[inline(always)]
-    pure fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
+    fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
     #[inline(always)]
-    pure fn count(&self, x: &A) -> uint { iter::count(self, x) }
+    fn count(&self, x: &A) -> uint { iter::count(self, x) }
 }
 
 impl<A: Copy> iter::CopyableIter<A> for OptVec<A> {
     #[inline(always)]
-    pure fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
+    fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
     #[inline(always)]
-    pure fn to_vec(&self) -> ~[A] { iter::to_vec(self) }
+    fn to_vec(&self) -> ~[A] { iter::to_vec(self) }
     #[inline(always)]
-    pure fn find(&self, f: &fn(&A) -> bool) -> Option<A> {
+    fn find(&self, f: &fn(&A) -> bool) -> Option<A> {
         iter::find(self, f)
     }
 }
 
 impl<A: Copy+Ord> iter::CopyableOrderedIter<A> for OptVec<A> {
     #[inline(always)]
-    pure fn min(&self) -> A { iter::min(self) }
+    fn min(&self) -> A { iter::min(self) }
     #[inline(always)]
-    pure fn max(&self) -> A { iter::max(self) }
+    fn max(&self) -> A { iter::max(self) }
 }

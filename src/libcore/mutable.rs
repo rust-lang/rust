@@ -55,7 +55,7 @@ pub impl<T> Data<T> {
         }
     }
 
-    pure fn borrow_const<R>(&self, op: &fn(t: &const T) -> R) -> R {
+    fn borrow_const<R>(&self, op: &fn(t: &const T) -> R) -> R {
         op(&const self.value)
     }
 

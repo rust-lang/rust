@@ -12,18 +12,18 @@
 // and also references them to create the &self pointer
 
 trait MyIter {
-    pure fn test_imm(&self);
-    pure fn test_const(&const self);
+    fn test_imm(&self);
+    fn test_const(&const self);
 }
 
 impl MyIter for &'self [int] {
-    pure fn test_imm(&self) { fail_unless!(self[0] == 1) }
-    pure fn test_const(&const self) { fail_unless!(self[0] == 1) }
+    fn test_imm(&self) { fail_unless!(self[0] == 1) }
+    fn test_const(&const self) { fail_unless!(self[0] == 1) }
 }
 
 impl MyIter for &'self str {
-    pure fn test_imm(&self) { fail_unless!(*self == "test") }
-    pure fn test_const(&const self) { fail_unless!(*self == "test") }
+    fn test_imm(&self) { fail_unless!(*self == "test") }
+    fn test_const(&const self) { fail_unless!(*self == "test") }
 }
 
 pub fn main() {

@@ -678,9 +678,9 @@ pub fn block_parent(cx: block) -> block {
 // Accessors
 
 pub impl block_ {
-    pure fn ccx(@mut self) -> @CrateContext { *self.fcx.ccx }
-    pure fn tcx(@mut self) -> ty::ctxt { self.fcx.ccx.tcx }
-    pure fn sess(@mut self) -> Session { self.fcx.ccx.sess }
+    fn ccx(@mut self) -> @CrateContext { *self.fcx.ccx }
+    fn tcx(@mut self) -> ty::ctxt { self.fcx.ccx.tcx }
+    fn sess(@mut self) -> Session { self.fcx.ccx.sess }
 
     fn node_id_to_str(@mut self, id: ast::node_id) -> ~str {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
@@ -1290,7 +1290,7 @@ pub struct mono_id_ {
 pub type mono_id = @mono_id_;
 
 impl to_bytes::IterBytes for mono_param_id {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
             mono_precise(t, ref mids) =>
                 to_bytes::iter_bytes_3(&0u8, &ty::type_id(t), mids, lsb0, f),
@@ -1304,7 +1304,7 @@ impl to_bytes::IterBytes for mono_param_id {
 }
 
 impl to_bytes::IterBytes for mono_id_ {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.def, &self.params, lsb0, f);
     }
 }

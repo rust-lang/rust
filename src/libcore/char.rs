@@ -61,7 +61,7 @@ pub use is_XID_continue = unicode::derived_property::XID_Continue;
  * in terms of the Unicode General Category 'Ll'
  */
 #[inline(always)]
-pub pure fn is_lowercase(c: char) -> bool {
+pub fn is_lowercase(c: char) -> bool {
     return unicode::general_category::Ll(c);
 }
 
@@ -70,7 +70,7 @@ pub pure fn is_lowercase(c: char) -> bool {
  * in terms of the Unicode General Category 'Lu'.
  */
 #[inline(always)]
-pub pure fn is_uppercase(c: char) -> bool {
+pub fn is_uppercase(c: char) -> bool {
     return unicode::general_category::Lu(c);
 }
 
@@ -80,7 +80,7 @@ pub pure fn is_uppercase(c: char) -> bool {
  * additional 'Cc'-category control codes in the range [0x09, 0x0d]
  */
 #[inline(always)]
-pub pure fn is_whitespace(c: char) -> bool {
+pub fn is_whitespace(c: char) -> bool {
     return ('\x09' <= c && c <= '\x0d')
         || unicode::general_category::Zs(c)
         || unicode::general_category::Zl(c)
@@ -93,7 +93,7 @@ pub pure fn is_whitespace(c: char) -> bool {
  * and the Derived Core Property 'Alphabetic'.
  */
 #[inline(always)]
-pub pure fn is_alphanumeric(c: char) -> bool {
+pub fn is_alphanumeric(c: char) -> bool {
     return unicode::derived_property::Alphabetic(c) ||
         unicode::general_category::Nd(c) ||
         unicode::general_category::Nl(c) ||
@@ -102,13 +102,13 @@ pub pure fn is_alphanumeric(c: char) -> bool {
 
 /// Indicates whether the character is an ASCII character
 #[inline(always)]
-pub pure fn is_ascii(c: char) -> bool {
+pub fn is_ascii(c: char) -> bool {
    c - ('\x7F' & c) == '\x00'
 }
 
 /// Indicates whether the character is numeric (Nd, Nl, or No)
 #[inline(always)]
-pub pure fn is_digit(c: char) -> bool {
+pub fn is_digit(c: char) -> bool {
     return unicode::general_category::Nd(c) ||
         unicode::general_category::Nl(c) ||
         unicode::general_category::No(c);
@@ -127,7 +127,7 @@ pub pure fn is_digit(c: char) -> bool {
  * Note: This just wraps `to_digit()`.
  */
 #[inline(always)]
-pub pure fn is_digit_radix(c: char, radix: uint) -> bool {
+pub fn is_digit_radix(c: char, radix: uint) -> bool {
     match to_digit(c, radix) {
         Some(_) => true,
         None    => false
@@ -148,7 +148,7 @@ pub pure fn is_digit_radix(c: char, radix: uint) -> bool {
  * Fails if given a `radix` outside the range `[0..36]`.
  */
 #[inline]
-pub pure fn to_digit(c: char, radix: uint) -> Option<uint> {
+pub fn to_digit(c: char, radix: uint) -> Option<uint> {
     if radix > 36 {
         fail!(fmt!("to_digit: radix %? is to high (maximum 36)", radix));
     }
@@ -171,7 +171,7 @@ pub pure fn to_digit(c: char, radix: uint) -> Option<uint> {
  * Fails if given an `radix` > 36.
  */
 #[inline]
-pub pure fn from_digit(num: uint, radix: uint) -> Option<char> {
+pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     if radix > 36 {
         fail!(fmt!("from_digit: radix %? is to high (maximum 36)", num));
     }
@@ -195,7 +195,7 @@ pub pure fn from_digit(num: uint, radix: uint) -> Option<char> {
  *   - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
  *   - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
  */
-pub pure fn escape_unicode(c: char) -> ~str {
+pub fn escape_unicode(c: char) -> ~str {
     let s = u32::to_str_radix(c as u32, 16u);
     let (c, pad) = (if c <= '\xff' { ('x', 2u) }
                     else if c <= '\uffff' { ('u', 4u) }
@@ -223,7 +223,7 @@ pub pure fn escape_unicode(c: char) -> ~str {
  *   - Any other chars in the range [0x20,0x7e] are not escaped.
  *   - Any other chars are given hex unicode escapes; see `escape_unicode`.
  */
-pub pure fn escape_default(c: char) -> ~str {
+pub fn escape_default(c: char) -> ~str {
     match c {
       '\t' => ~"\\t",
       '\r' => ~"\\r",
@@ -244,7 +244,7 @@ pub pure fn escape_default(c: char) -> ~str {
  * -1 if a < b, 0 if a == b, +1 if a > b
  */
 #[inline(always)]
-pub pure fn cmp(a: char, b: char) -> int {
+pub fn cmp(a: char, b: char) -> int {
     return  if b > a { -1 }
     else if b < a { 1 }
     else { 0 }
@@ -252,8 +252,8 @@ pub pure fn cmp(a: char, b: char) -> int {
 
 #[cfg(notest)]
 impl Eq for char {
-    pure fn eq(&self, other: &char) -> bool { (*self) == (*other) }
-    pure fn ne(&self, other: &char) -> bool { (*self) != (*other) }
+    fn eq(&self, other: &char) -> bool { (*self) == (*other) }
+    fn ne(&self, other: &char) -> bool { (*self) != (*other) }
 }
 
 #[test]

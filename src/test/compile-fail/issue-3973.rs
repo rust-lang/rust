@@ -16,11 +16,11 @@ struct Point {
 }
 
 impl ToStr for Point { //~ ERROR implements a method not defined in the trait
-    static fn new(x: float, y: float) -> Point {
+    fn new(x: float, y: float) -> Point {
         Point { x: x, y: y }
     }
 
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         fmt!("(%f, %f)", self.x, self.y)
     }
 }

@@ -34,7 +34,7 @@ macro_rules! delegate(
             ),*
         ) -> $rv:ty = $bound_name:path
     ) => (
-        pub pure fn $name($( $arg : $arg_ty ),*) -> $rv {
+        pub fn $name($( $arg : $arg_ty ),*) -> $rv {
             unsafe {
                 $bound_name($( $arg ),*)
             }
@@ -136,49 +136,49 @@ pub const infinity: f64 = 1.0_f64/0.0_f64;
 pub const neg_infinity: f64 = -1.0_f64/0.0_f64;
 
 #[inline(always)]
-pub pure fn is_NaN(f: f64) -> bool { f != f }
+pub fn is_NaN(f: f64) -> bool { f != f }
 
 #[inline(always)]
-pub pure fn add(x: f64, y: f64) -> f64 { return x + y; }
+pub fn add(x: f64, y: f64) -> f64 { return x + y; }
 
 #[inline(always)]
-pub pure fn sub(x: f64, y: f64) -> f64 { return x - y; }
+pub fn sub(x: f64, y: f64) -> f64 { return x - y; }
 
 #[inline(always)]
-pub pure fn mul(x: f64, y: f64) -> f64 { return x * y; }
+pub fn mul(x: f64, y: f64) -> f64 { return x * y; }
 
 #[inline(always)]
-pub pure fn div(x: f64, y: f64) -> f64 { return x / y; }
+pub fn div(x: f64, y: f64) -> f64 { return x / y; }
 
 #[inline(always)]
-pub pure fn rem(x: f64, y: f64) -> f64 { return x % y; }
+pub fn rem(x: f64, y: f64) -> f64 { return x % y; }
 
 #[inline(always)]
-pub pure fn lt(x: f64, y: f64) -> bool { return x < y; }
+pub fn lt(x: f64, y: f64) -> bool { return x < y; }
 
 #[inline(always)]
-pub pure fn le(x: f64, y: f64) -> bool { return x <= y; }
+pub fn le(x: f64, y: f64) -> bool { return x <= y; }
 
 #[inline(always)]
-pub pure fn eq(x: f64, y: f64) -> bool { return x == y; }
+pub fn eq(x: f64, y: f64) -> bool { return x == y; }
 
 #[inline(always)]
-pub pure fn ne(x: f64, y: f64) -> bool { return x != y; }
+pub fn ne(x: f64, y: f64) -> bool { return x != y; }
 
 #[inline(always)]
-pub pure fn ge(x: f64, y: f64) -> bool { return x >= y; }
+pub fn ge(x: f64, y: f64) -> bool { return x >= y; }
 
 #[inline(always)]
-pub pure fn gt(x: f64, y: f64) -> bool { return x > y; }
+pub fn gt(x: f64, y: f64) -> bool { return x > y; }
 
 /// Returns true if `x` is a positive number, including +0.0f640 and +Infinity
 #[inline(always)]
-pub pure fn is_positive(x: f64) -> bool
+pub fn is_positive(x: f64) -> bool
     { return x > 0.0f64 || (1.0f64/x) == infinity; }
 
 /// Returns true if `x` is a negative number, including -0.0f640 and -Infinity
 #[inline(always)]
-pub pure fn is_negative(x: f64) -> bool
+pub fn is_negative(x: f64) -> bool
     { return x < 0.0f64 || (1.0f64/x) == neg_infinity; }
 
 /**
@@ -187,7 +187,7 @@ pub pure fn is_negative(x: f64) -> bool
  * This is the same as `f64::is_negative`.
  */
 #[inline(always)]
-pub pure fn is_nonpositive(x: f64) -> bool {
+pub fn is_nonpositive(x: f64) -> bool {
   return x < 0.0f64 || (1.0f64/x) == neg_infinity;
 }
 
@@ -197,31 +197,31 @@ pub pure fn is_nonpositive(x: f64) -> bool {
  * This is the same as `f64::positive`.
  */
 #[inline(always)]
-pub pure fn is_nonnegative(x: f64) -> bool {
+pub fn is_nonnegative(x: f64) -> bool {
   return x > 0.0f64 || (1.0f64/x) == infinity;
 }
 
 /// Returns true if `x` is a zero number (positive or negative zero)
 #[inline(always)]
-pub pure fn is_zero(x: f64) -> bool {
+pub fn is_zero(x: f64) -> bool {
     return x == 0.0f64 || x == -0.0f64;
 }
 
 /// Returns true if `x`is an infinite number
 #[inline(always)]
-pub pure fn is_infinite(x: f64) -> bool {
+pub fn is_infinite(x: f64) -> bool {
     return x == infinity || x == neg_infinity;
 }
 
 /// Returns true if `x` is a finite number
 #[inline(always)]
-pub pure fn is_finite(x: f64) -> bool {
+pub fn is_finite(x: f64) -> bool {
     return !(is_NaN(x) || is_infinite(x));
 }
 
 /// Returns `x` rounded down
 #[inline(always)]
-pub pure fn floor(x: f64) -> f64 { unsafe { floorf64(x) } }
+pub fn floor(x: f64) -> f64 { unsafe { floorf64(x) } }
 
 // FIXME (#1999): add is_normal, is_subnormal, and fpclassify
 
@@ -270,33 +270,33 @@ pub mod consts {
 }
 
 #[inline(always)]
-pub pure fn signbit(x: f64) -> int {
+pub fn signbit(x: f64) -> int {
     if is_negative(x) { return 1; } else { return 0; }
 }
 
 #[inline(always)]
-pub pure fn logarithm(n: f64, b: f64) -> f64 {
+pub fn logarithm(n: f64, b: f64) -> f64 {
     return log2(n) / log2(b);
 }
 
 #[cfg(notest)]
 impl cmp::Eq for f64 {
     #[inline(always)]
-    pure fn eq(&self, other: &f64) -> bool { (*self) == (*other) }
+    fn eq(&self, other: &f64) -> bool { (*self) == (*other) }
     #[inline(always)]
-    pure fn ne(&self, other: &f64) -> bool { (*self) != (*other) }
+    fn ne(&self, other: &f64) -> bool { (*self) != (*other) }
 }
 
 #[cfg(notest)]
 impl cmp::Ord for f64 {
     #[inline(always)]
-    pure fn lt(&self, other: &f64) -> bool { (*self) < (*other) }
+    fn lt(&self, other: &f64) -> bool { (*self) < (*other) }
     #[inline(always)]
-    pure fn le(&self, other: &f64) -> bool { (*self) <= (*other) }
+    fn le(&self, other: &f64) -> bool { (*self) <= (*other) }
     #[inline(always)]
-    pure fn ge(&self, other: &f64) -> bool { (*self) >= (*other) }
+    fn ge(&self, other: &f64) -> bool { (*self) >= (*other) }
     #[inline(always)]
-    pure fn gt(&self, other: &f64) -> bool { (*self) > (*other) }
+    fn gt(&self, other: &f64) -> bool { (*self) > (*other) }
 }
 
 impl NumCast for f64 {
@@ -304,63 +304,63 @@ impl NumCast for f64 {
      * Cast `n` to an `f64`
      */
     #[inline(always)]
-    static pure fn from<N:NumCast>(n: N) -> f64 { n.to_f64() }
+    fn from<N:NumCast>(n: N) -> f64 { n.to_f64() }
 
-    #[inline(always)] pure fn to_u8(&self)    -> u8    { *self as u8    }
-    #[inline(always)] pure fn to_u16(&self)   -> u16   { *self as u16   }
-    #[inline(always)] pure fn to_u32(&self)   -> u32   { *self as u32   }
-    #[inline(always)] pure fn to_u64(&self)   -> u64   { *self as u64   }
-    #[inline(always)] pure fn to_uint(&self)  -> uint  { *self as uint  }
+    #[inline(always)] fn to_u8(&self)    -> u8    { *self as u8    }
+    #[inline(always)] fn to_u16(&self)   -> u16   { *self as u16   }
+    #[inline(always)] fn to_u32(&self)   -> u32   { *self as u32   }
+    #[inline(always)] fn to_u64(&self)   -> u64   { *self as u64   }
+    #[inline(always)] fn to_uint(&self)  -> uint  { *self as uint  }
 
-    #[inline(always)] pure fn to_i8(&self)    -> i8    { *self as i8    }
-    #[inline(always)] pure fn to_i16(&self)   -> i16   { *self as i16   }
-    #[inline(always)] pure fn to_i32(&self)   -> i32   { *self as i32   }
-    #[inline(always)] pure fn to_i64(&self)   -> i64   { *self as i64   }
-    #[inline(always)] pure fn to_int(&self)   -> int   { *self as int   }
+    #[inline(always)] fn to_i8(&self)    -> i8    { *self as i8    }
+    #[inline(always)] fn to_i16(&self)   -> i16   { *self as i16   }
+    #[inline(always)] fn to_i32(&self)   -> i32   { *self as i32   }
+    #[inline(always)] fn to_i64(&self)   -> i64   { *self as i64   }
+    #[inline(always)] fn to_int(&self)   -> int   { *self as int   }
 
-    #[inline(always)] pure fn to_f32(&self)   -> f32   { *self as f32   }
-    #[inline(always)] pure fn to_f64(&self)   -> f64   { *self          }
-    #[inline(always)] pure fn to_float(&self) -> float { *self as float }
+    #[inline(always)] fn to_f32(&self)   -> f32   { *self as f32   }
+    #[inline(always)] fn to_f64(&self)   -> f64   { *self          }
+    #[inline(always)] fn to_float(&self) -> float { *self as float }
 }
 
 impl num::Zero for f64 {
     #[inline(always)]
-    static pure fn zero() -> f64 { 0.0 }
+    fn zero() -> f64 { 0.0 }
 }
 
 impl num::One for f64 {
     #[inline(always)]
-    static pure fn one() -> f64 { 1.0 }
+    fn one() -> f64 { 1.0 }
 }
 
 #[cfg(notest)]
 impl ops::Add<f64,f64> for f64 {
-    pure fn add(&self, other: &f64) -> f64 { *self + *other }
+    fn add(&self, other: &f64) -> f64 { *self + *other }
 }
 #[cfg(notest)]
 impl ops::Sub<f64,f64> for f64 {
-    pure fn sub(&self, other: &f64) -> f64 { *self - *other }
+    fn sub(&self, other: &f64) -> f64 { *self - *other }
 }
 #[cfg(notest)]
 impl ops::Mul<f64,f64> for f64 {
-    pure fn mul(&self, other: &f64) -> f64 { *self * *other }
+    fn mul(&self, other: &f64) -> f64 { *self * *other }
 }
 #[cfg(notest)]
 impl ops::Div<f64,f64> for f64 {
-    pure fn div(&self, other: &f64) -> f64 { *self / *other }
+    fn div(&self, other: &f64) -> f64 { *self / *other }
 }
 #[cfg(notest)]
 impl ops::Modulo<f64,f64> for f64 {
-    pure fn modulo(&self, other: &f64) -> f64 { *self % *other }
+    fn modulo(&self, other: &f64) -> f64 { *self % *other }
 }
 #[cfg(notest)]
 impl ops::Neg<f64> for f64 {
-    pure fn neg(&self) -> f64 { -*self }
+    fn neg(&self) -> f64 { -*self }
 }
 
 impl num::Round for f64 {
     #[inline(always)]
-    pure fn round(&self, mode: num::RoundMode) -> f64 {
+    fn round(&self, mode: num::RoundMode) -> f64 {
         match mode {
             num::RoundDown                           => floor(*self),
             num::RoundUp                             => ceil(*self),
@@ -372,11 +372,11 @@ impl num::Round for f64 {
     }
 
     #[inline(always)]
-    pure fn floor(&self) -> f64 { floor(*self) }
+    fn floor(&self) -> f64 { floor(*self) }
     #[inline(always)]
-    pure fn ceil(&self) -> f64 { ceil(*self) }
+    fn ceil(&self) -> f64 { ceil(*self) }
     #[inline(always)]
-    pure fn fract(&self) -> f64 {
+    fn fract(&self) -> f64 {
         if is_negative(*self) {
             (*self) - ceil(*self)
         } else {
@@ -397,7 +397,7 @@ impl num::Round for f64 {
  * * num - The float value
  */
 #[inline(always)]
-pub pure fn to_str(num: f64) -> ~str {
+pub fn to_str(num: f64) -> ~str {
     let (r, _) = strconv::to_str_common(
         &num, 10u, true, strconv::SignNeg, strconv::DigAll);
     r
@@ -411,7 +411,7 @@ pub pure fn to_str(num: f64) -> ~str {
  * * num - The float value
  */
 #[inline(always)]
-pub pure fn to_str_hex(num: f64) -> ~str {
+pub fn to_str_hex(num: f64) -> ~str {
     let (r, _) = strconv::to_str_common(
         &num, 16u, true, strconv::SignNeg, strconv::DigAll);
     r
@@ -432,7 +432,7 @@ pub pure fn to_str_hex(num: f64) -> ~str {
  * are expected, use `to_str_radix_special()` instead.
  */
 #[inline(always)]
-pub pure fn to_str_radix(num: f64, rdx: uint) -> ~str {
+pub fn to_str_radix(num: f64, rdx: uint) -> ~str {
     let (r, special) = strconv::to_str_common(
         &num, rdx, true, strconv::SignNeg, strconv::DigAll);
     if special { fail!(~"number has a special value, \
@@ -450,7 +450,7 @@ pub pure fn to_str_radix(num: f64, rdx: uint) -> ~str {
  * * radix - The base to use
  */
 #[inline(always)]
-pub pure fn to_str_radix_special(num: f64, rdx: uint) -> (~str, bool) {
+pub fn to_str_radix_special(num: f64, rdx: uint) -> (~str, bool) {
     strconv::to_str_common(&num, rdx, true,
                            strconv::SignNeg, strconv::DigAll)
 }
@@ -465,7 +465,7 @@ pub pure fn to_str_radix_special(num: f64, rdx: uint) -> (~str, bool) {
  * * digits - The number of significant digits
  */
 #[inline(always)]
-pub pure fn to_str_exact(num: f64, dig: uint) -> ~str {
+pub fn to_str_exact(num: f64, dig: uint) -> ~str {
     let (r, _) = strconv::to_str_common(
         &num, 10u, true, strconv::SignNeg, strconv::DigExact(dig));
     r
@@ -481,7 +481,7 @@ pub pure fn to_str_exact(num: f64, dig: uint) -> ~str {
  * * digits - The number of significant digits
  */
 #[inline(always)]
-pub pure fn to_str_digits(num: f64, dig: uint) -> ~str {
+pub fn to_str_digits(num: f64, dig: uint) -> ~str {
     let (r, _) = strconv::to_str_common(
         &num, 10u, true, strconv::SignNeg, strconv::DigMax(dig));
     r
@@ -489,12 +489,12 @@ pub pure fn to_str_digits(num: f64, dig: uint) -> ~str {
 
 impl to_str::ToStr for f64 {
     #[inline(always)]
-    pure fn to_str(&self) -> ~str { to_str_digits(*self, 8) }
+    fn to_str(&self) -> ~str { to_str_digits(*self, 8) }
 }
 
 impl num::ToStrRadix for f64 {
     #[inline(always)]
-    pure fn to_str_radix(&self, rdx: uint) -> ~str {
+    fn to_str_radix(&self, rdx: uint) -> ~str {
         to_str_radix(*self, rdx)
     }
 }
@@ -527,7 +527,7 @@ impl num::ToStrRadix for f64 {
  * `Some(n)` where `n` is the floating-point number represented by `num`.
  */
 #[inline(always)]
-pub pure fn from_str(num: &str) -> Option<f64> {
+pub fn from_str(num: &str) -> Option<f64> {
     strconv::from_str_common(num, 10u, true, true, true,
                              strconv::ExpDec, false)
 }
@@ -560,7 +560,7 @@ pub pure fn from_str(num: &str) -> Option<f64> {
  * `Some(n)` where `n` is the floating-point number represented by `[num]`.
  */
 #[inline(always)]
-pub pure fn from_str_hex(num: &str) -> Option<f64> {
+pub fn from_str_hex(num: &str) -> Option<f64> {
     strconv::from_str_common(num, 16u, true, true, true,
                              strconv::ExpBin, false)
 }
@@ -585,19 +585,19 @@ pub pure fn from_str_hex(num: &str) -> Option<f64> {
  * `Some(n)` where `n` is the floating-point number represented by `num`.
  */
 #[inline(always)]
-pub pure fn from_str_radix(num: &str, rdx: uint) -> Option<f64> {
+pub fn from_str_radix(num: &str, rdx: uint) -> Option<f64> {
     strconv::from_str_common(num, rdx, true, true, false,
                              strconv::ExpNone, false)
 }
 
 impl from_str::FromStr for f64 {
     #[inline(always)]
-    static pure fn from_str(val: &str) -> Option<f64> { from_str(val) }
+    fn from_str(val: &str) -> Option<f64> { from_str(val) }
 }
 
 impl num::FromStrRadix for f64 {
     #[inline(always)]
-    static pure fn from_str_radix(val: &str, rdx: uint) -> Option<f64> {
+    fn from_str_radix(val: &str, rdx: uint) -> Option<f64> {
         from_str_radix(val, rdx)
     }
 }
