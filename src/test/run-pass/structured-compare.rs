@@ -13,10 +13,10 @@
 enum foo { large, small, }
 
 impl cmp::Eq for foo {
-    pure fn eq(&self, other: &foo) -> bool {
+    fn eq(&self, other: &foo) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    pure fn ne(&self, other: &foo) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &foo) -> bool { !(*self).eq(other) }
 }
 
 pub fn main() {
