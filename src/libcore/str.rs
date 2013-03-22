@@ -29,6 +29,7 @@ use str;
 use u8;
 use uint;
 use vec;
+use to_str::ToStr;
 
 #[cfg(notest)] use cmp::{Eq, Ord};
 
@@ -51,6 +52,19 @@ pub pure fn from_bytes(vv: &[const u8]) -> ~str {
 /// Copy a slice into a new unique str
 pub pure fn from_slice(s: &str) -> ~str {
     unsafe { raw::slice_bytes_unique(s, 0, len(s)) }
+}
+
+impl ToStr for ~str {
+    #[inline(always)]
+    pure fn to_str(&self) -> ~str { copy *self }
+}
+impl ToStr for &'self str {
+    #[inline(always)]
+    pure fn to_str(&self) -> ~str { ::str::from_slice(*self) }
+}
+impl ToStr for @str {
+    #[inline(always)]
+    pure fn to_str(&self) -> ~str { ::str::from_slice(*self) }
 }
 
 /**
@@ -299,12 +313,12 @@ pub fn unshift_char(s: &mut ~str, ch: char) {
  * * chars_to_trim - A vector of chars
  *
  */
-pub pure fn trim_left_chars(s: &str, chars_to_trim: &[char]) -> ~str {
-    if chars_to_trim.is_empty() { return from_slice(s); }
+pub pure fn trim_left_chars(s: &'a str, chars_to_trim: &[char]) -> &'a str {
+    if chars_to_trim.is_empty() { return s; }
 
     match find(s, |c| !chars_to_trim.contains(&c)) {
-      None => ~"",
-      Some(first) => unsafe { raw::slice_bytes_unique(s, first, s.len()) }
+      None => "",
+      Some(first) => unsafe { raw::slice_bytes(s, first, s.len()) }
     }
 }
 
@@ -317,14 +331,14 @@ pub pure fn trim_left_chars(s: &str, chars_to_trim: &[char]) -> ~str {
  * * chars_to_trim - A vector of chars
  *
  */
-pub pure fn trim_right_chars(s: &str, chars_to_trim: &[char]) -> ~str {
-    if chars_to_trim.is_empty() { return str::from_slice(s); }
+pub pure fn trim_right_chars(s: &'a str, chars_to_trim: &[char]) -> &'a str {
+    if chars_to_trim.is_empty() { return s; }
 
     match rfind(s, |c| !chars_to_trim.contains(&c)) {
-      None => ~"",
+      None => "",
       Some(last) => {
         let next = char_range_at(s, last).next;
-        unsafe { raw::slice_bytes_unique(s, 0u, next) }
+        unsafe { raw::slice_bytes(s, 0u, next) }
       }
     }
 }
@@ -338,31 +352,31 @@ pub pure fn trim_right_chars(s: &str, chars_to_trim: &[char]) -> ~str {
  * * chars_to_trim - A vector of chars
  *
  */
-pub pure fn trim_chars(s: &str, chars_to_trim: &[char]) -> ~str {
+pub pure fn trim_chars(s: &'a str, chars_to_trim: &[char]) -> &'a str {
     trim_left_chars(trim_right_chars(s, chars_to_trim), chars_to_trim)
 }
 
 /// Returns a string with leading whitespace removed
-pub pure fn trim_left(s: &str) -> ~str {
+pub pure fn trim_left(s: &'a str) -> &'a str {
     match find(s, |c| !char::is_whitespace(c)) {
-      None => ~"",
-      Some(first) => unsafe { raw::slice_bytes_unique(s, first, len(s)) }
+      None => "",
+      Some(first) => unsafe { raw::slice_bytes(s, first, len(s)) }
     }
 }
 
 /// Returns a string with trailing whitespace removed
-pub pure fn trim_right(s: &str) -> ~str {
+pub pure fn trim_right(s: &'a str) -> &'a str {
     match rfind(s, |c| !char::is_whitespace(c)) {
-      None => ~"",
+      None => "",
       Some(last) => {
         let next = char_range_at(s, last).next;
-        unsafe { raw::slice_bytes_unique(s, 0u, next) }
+        unsafe { raw::slice_bytes(s, 0u, next) }
       }
     }
 }
 
 /// Returns a string with leading and trailing whitespace removed
-pub pure fn trim(s: &str) -> ~str { trim_left(trim_right(s)) }
+pub pure fn trim(s: &'a str) -> &'a str { trim_left(trim_right(s)) }
 
 /*
 Section: Transforming strings
@@ -407,8 +421,8 @@ pub pure fn chars(s: &str) -> ~[char] {
  * Returns a string containing `n` characters starting at byte offset
  * `begin`.
  */
-pub pure fn substr(s: &str, begin: uint, n: uint) -> ~str {
-    slice(s, begin, begin + count_bytes(s, begin, n)).to_owned()
+pub pure fn substr(s: &'a str, begin: uint, n: uint) -> &'a str {
+    slice(s, begin, begin + count_bytes(s, begin, n))
 }
 
 /**
@@ -2221,25 +2235,6 @@ pub mod raw {
 
 }
 
-pub trait Trimmable {
-    pure fn trim(&self) -> Self;
-    pure fn trim_left(&self) -> Self;
-    pure fn trim_right(&self) -> Self;
-}
-
-/// Extension methods for strings
-impl Trimmable for ~str {
-    /// Returns a string with leading and trailing whitespace removed
-    #[inline]
-    pure fn trim(&self) -> ~str { trim(*self) }
-    /// Returns a string with leading whitespace removed
-    #[inline]
-    pure fn trim_left(&self) -> ~str { trim_left(*self) }
-    /// Returns a string with trailing whitespace removed
-    #[inline]
-    pure fn trim_right(&self) -> ~str { trim_right(*self) }
-}
-
 #[cfg(notest)]
 pub mod traits {
     use ops::Add;
@@ -2280,14 +2275,17 @@ pub trait StrSlice {
     pure fn split_char(&self, sep: char) -> ~[~str];
     pure fn split_str(&self, sep: &'a str) -> ~[~str];
     pure fn starts_with(&self, needle: &'a str) -> bool;
-    pure fn substr(&self, begin: uint, n: uint) -> ~str;
+    pure fn substr(&self, begin: uint, n: uint) -> &'self str;
     pure fn to_lower(&self) -> ~str;
     pure fn to_upper(&self) -> ~str;
     pure fn escape_default(&self) -> ~str;
     pure fn escape_unicode(&self) -> ~str;
-    pure fn trim(&self) -> ~str;
-    pure fn trim_left(&self) -> ~str;
-    pure fn trim_right(&self) -> ~str;
+    pure fn trim(&self) -> &'self str;
+    pure fn trim_left(&self) -> &'self str;
+    pure fn trim_right(&self) -> &'self str;
+    pure fn trim_chars(&self, chars_to_trim: &[char]) -> &'self str;
+    pure fn trim_left_chars(&self, chars_to_trim: &[char]) -> &'self str;
+    pure fn trim_right_chars(&self, chars_to_trim: &[char]) -> &'self str;
     pure fn to_owned(&self) -> ~str;
     pure fn to_managed(&self) -> @str;
     pure fn char_at(&self, i: uint) -> char;
@@ -2421,7 +2419,7 @@ impl StrSlice for &'self str {
      * `begin`.
      */
     #[inline]
-    pure fn substr(&self, begin: uint, n: uint) -> ~str {
+    pure fn substr(&self, begin: uint, n: uint) -> &'self str {
         substr(*self, begin, n)
     }
     /// Convert a string to lowercase
@@ -2439,13 +2437,27 @@ impl StrSlice for &'self str {
 
     /// Returns a string with leading and trailing whitespace removed
     #[inline]
-    pure fn trim(&self) -> ~str { trim(*self) }
+    pure fn trim(&self) -> &'self str { trim(*self) }
     /// Returns a string with leading whitespace removed
     #[inline]
-    pure fn trim_left(&self) -> ~str { trim_left(*self) }
+    pure fn trim_left(&self) -> &'self str { trim_left(*self) }
     /// Returns a string with trailing whitespace removed
     #[inline]
-    pure fn trim_right(&self) -> ~str { trim_right(*self) }
+    pure fn trim_right(&self) -> &'self str { trim_right(*self) }
+
+    #[inline]
+    pure fn trim_chars(&self, chars_to_trim: &[char]) -> &'self str {
+        trim_chars(*self, chars_to_trim)
+    }
+    #[inline]
+    pure fn trim_left_chars(&self, chars_to_trim: &[char]) -> &'self str {
+        trim_left_chars(*self, chars_to_trim)
+    }
+    #[inline]
+    pure fn trim_right_chars(&self, chars_to_trim: &[char]) -> &'self str {
+        trim_right_chars(*self, chars_to_trim)
+    }
+
 
     #[inline]
     pure fn to_owned(&self) -> ~str { from_slice(*self) }
@@ -2805,11 +2817,11 @@ mod tests {
     #[test]
     fn test_substr() {
         fn t(a: &str, b: &str, start: int) {
-            fail_unless!(substr(a, start as uint, len(b)) == b.to_str());
+            fail_unless!(substr(a, start as uint, len(b)) == b);
         }
-        t(~"hello", ~"llo", 2);
-        t(~"hello", ~"el", 1);
-        fail_unless!(~"ะเทศไท" == substr(~"ประเทศไทย中华Việt Nam", 6u, 6u));
+        t("hello", "llo", 2);
+        t("hello", "el", 1);
+        fail_unless!("ะเทศไท" == substr("ประเทศไทย中华Việt Nam", 6u, 6u));
     }
 
     #[test]
@@ -3042,62 +3054,62 @@ mod tests {
 
     #[test]
     fn test_trim_left_chars() {
-        fail_unless!(trim_left_chars(~" *** foo *** ", ~[]) ==
-                     ~" *** foo *** ");
-        fail_unless!(trim_left_chars(~" *** foo *** ", ~['*', ' ']) ==
-                     ~"foo *** ");
-        fail_unless!(trim_left_chars(~" ***  *** ", ~['*', ' ']) == ~"");
-        fail_unless!(trim_left_chars(~"foo *** ", ~['*', ' ']) ==
-                     ~"foo *** ");
+        fail_unless!(trim_left_chars(" *** foo *** ", ~[]) ==
+                     " *** foo *** ");
+        fail_unless!(trim_left_chars(" *** foo *** ", ~['*', ' ']) ==
+                     "foo *** ");
+        fail_unless!(trim_left_chars(" ***  *** ", ~['*', ' ']) == "");
+        fail_unless!(trim_left_chars("foo *** ", ~['*', ' ']) ==
+                     "foo *** ");
     }
 
     #[test]
     fn test_trim_right_chars() {
-        fail_unless!(trim_right_chars(~" *** foo *** ", ~[]) ==
-                     ~" *** foo *** ");
-        fail_unless!(trim_right_chars(~" *** foo *** ", ~['*', ' ']) ==
-                     ~" *** foo");
-        fail_unless!(trim_right_chars(~" ***  *** ", ~['*', ' ']) == ~"");
-        fail_unless!(trim_right_chars(~" *** foo", ~['*', ' ']) ==
-                     ~" *** foo");
+        fail_unless!(trim_right_chars(" *** foo *** ", ~[]) ==
+                     " *** foo *** ");
+        fail_unless!(trim_right_chars(" *** foo *** ", ~['*', ' ']) ==
+                     " *** foo");
+        fail_unless!(trim_right_chars(" ***  *** ", ~['*', ' ']) == "");
+        fail_unless!(trim_right_chars(" *** foo", ~['*', ' ']) ==
+                     " *** foo");
     }
 
     #[test]
     fn test_trim_chars() {
-        fail_unless!(trim_chars(~" *** foo *** ", ~[]) == ~" *** foo *** ");
-        fail_unless!(trim_chars(~" *** foo *** ", ~['*', ' ']) == ~"foo");
-        fail_unless!(trim_chars(~" ***  *** ", ~['*', ' ']) == ~"");
-        fail_unless!(trim_chars(~"foo", ~['*', ' ']) == ~"foo");
+        fail_unless!(trim_chars(" *** foo *** ", ~[]) == " *** foo *** ");
+        fail_unless!(trim_chars(" *** foo *** ", ~['*', ' ']) == "foo");
+        fail_unless!(trim_chars(" ***  *** ", ~['*', ' ']) == "");
+        fail_unless!(trim_chars("foo", ~['*', ' ']) == "foo");
     }
 
     #[test]
     fn test_trim_left() {
-        fail_unless!((trim_left(~"") == ~""));
-        fail_unless!((trim_left(~"a") == ~"a"));
-        fail_unless!((trim_left(~"    ") == ~""));
-        fail_unless!((trim_left(~"     blah") == ~"blah"));
-        fail_unless!((trim_left(~"   \u3000  wut") == ~"wut"));
-        fail_unless!((trim_left(~"hey ") == ~"hey "));
+        fail_unless!((trim_left("") == ""));
+        fail_unless!((trim_left("a") == "a"));
+        fail_unless!((trim_left("    ") == ""));
+        fail_unless!((trim_left("     blah") == "blah"));
+        fail_unless!((trim_left("   \u3000  wut") == "wut"));
+        fail_unless!((trim_left("hey ") == "hey "));
     }
 
     #[test]
     fn test_trim_right() {
-        fail_unless!((trim_right(~"") == ~""));
-        fail_unless!((trim_right(~"a") == ~"a"));
-        fail_unless!((trim_right(~"    ") == ~""));
-        fail_unless!((trim_right(~"blah     ") == ~"blah"));
-        fail_unless!((trim_right(~"wut   \u3000  ") == ~"wut"));
-        fail_unless!((trim_right(~" hey") == ~" hey"));
+        fail_unless!((trim_right("") == ""));
+        fail_unless!((trim_right("a") == "a"));
+        fail_unless!((trim_right("    ") == ""));
+        fail_unless!((trim_right("blah     ") == "blah"));
+        fail_unless!((trim_right("wut   \u3000  ") == "wut"));
+        fail_unless!((trim_right(" hey") == " hey"));
     }
 
     #[test]
     fn test_trim() {
-        fail_unless!((trim(~"") == ~""));
-        fail_unless!((trim(~"a") == ~"a"));
-        fail_unless!((trim(~"    ") == ~""));
-        fail_unless!((trim(~"    blah     ") == ~"blah"));
-        fail_unless!((trim(~"\nwut   \u3000  ") == ~"wut"));
-        fail_unless!((trim(~" hey dude ") == ~"hey dude"));
+        fail_unless!((trim("") == ""));
+        fail_unless!((trim("a") == "a"));
+        fail_unless!((trim("    ") == ""));
+        fail_unless!((trim("    blah     ") == "blah"));
+        fail_unless!((trim("\nwut   \u3000  ") == "wut"));
+        fail_unless!((trim(" hey dude ") == "hey dude"));
     }
 
     #[test]

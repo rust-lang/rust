@@ -109,7 +109,10 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
     }
 
     if comment.starts_with(~"//") {
-        return comment.slice(3u, comment.len()).trim();
+        // FIXME #5475:
+        // return comment.slice(3u, comment.len()).trim().to_owned();
+        let r = comment.slice(3u, comment.len()); return r.trim().to_owned();
+
     }
 
     if comment.starts_with(~"/*") {
