@@ -38,7 +38,7 @@ pub mod rustrt {
 
 /// Returns the number of elements the vector can hold without reallocating
 #[inline(always)]
-pub pure fn capacity<T>(v: @[const T]) -> uint {
+pub fn capacity<T>(v: @[const T]) -> uint {
     unsafe {
         let repr: **raw::VecRepr =
             ::cast::reinterpret_cast(&addr_of(&v));
@@ -59,8 +59,7 @@ pub pure fn capacity<T>(v: @[const T]) -> uint {
  *             onto the vector being constructed.
  */
 #[inline(always)]
-pub pure fn build_sized<A>(size: uint,
-                           builder: &fn(push: &pure fn(v: A))) -> @[A] {
+pub fn build_sized<A>(size: uint, builder: &fn(push: &fn(v: A))) -> @[A] {
     let mut vec: @[const A] = @[];
     unsafe { raw::reserve(&mut vec, size); }
     builder(|+x| unsafe { raw::push(&mut vec, x) });
@@ -78,7 +77,7 @@ pub pure fn build_sized<A>(size: uint,
  *             onto the vector being constructed.
  */
 #[inline(always)]
-pub pure fn build<A>(builder: &fn(push: &pure fn(v: A))) -> @[A] {
+pub fn build<A>(builder: &fn(push: &fn(v: A))) -> @[A] {
     build_sized(4, builder)
 }
 
@@ -95,14 +94,15 @@ pub pure fn build<A>(builder: &fn(push: &pure fn(v: A))) -> @[A] {
  *             onto the vector being constructed.
  */
 #[inline(always)]
-pub pure fn build_sized_opt<A>(size: Option<uint>,
-                               builder: &fn(push: &pure fn(v: A))) -> @[A] {
+pub fn build_sized_opt<A>(size: Option<uint>,
+                          builder: &fn(push: &fn(v: A)))
+                       -> @[A] {
     build_sized(size.get_or_default(4), builder)
 }
 
 // Appending
 #[inline(always)]
-pub pure fn append<T:Copy>(lhs: @[T], rhs: &[const T]) -> @[T] {
+pub fn append<T:Copy>(lhs: @[T], rhs: &[const T]) -> @[T] {
     do build_sized(lhs.len() + rhs.len()) |push| {
         for vec::each(lhs) |x| { push(*x); }
         for uint::range(0, rhs.len()) |i| { push(rhs[i]); }
@@ -111,7 +111,7 @@ pub pure fn append<T:Copy>(lhs: @[T], rhs: &[const T]) -> @[T] {
 
 
 /// Apply a function to each element of a vector and return the results
-pub pure fn map<T, U>(v: &[T], f: &fn(x: &T) -> U) -> @[U] {
+pub fn map<T, U>(v: &[T], f: &fn(x: &T) -> U) -> @[U] {
     do build_sized(v.len()) |push| {
         for vec::each(v) |elem| {
             push(f(elem));
@@ -125,7 +125,7 @@ pub pure fn map<T, U>(v: &[T], f: &fn(x: &T) -> U) -> @[U] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
-pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> @[T] {
+pub fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> @[T] {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(op(i)); i += 1u; }
@@ -138,7 +138,7 @@ pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> @[T] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value `t`.
  */
-pub pure fn from_elem<T:Copy>(n_elts: uint, t: T) -> @[T] {
+pub fn from_elem<T:Copy>(n_elts: uint, t: T) -> @[T] {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(copy t); i += 1u; }
@@ -176,7 +176,7 @@ pub mod traits {
 
     impl<T:Copy> Add<&'self [const T],@[T]> for @[T] {
         #[inline(always)]
-        pure fn add(&self, rhs: & &'self [const T]) -> @[T] {
+        fn add(&self, rhs: & &'self [const T]) -> @[T] {
             append(*self, (*rhs))
         }
     }

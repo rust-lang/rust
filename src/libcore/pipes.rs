@@ -111,10 +111,10 @@ enum State {
 }
 
 impl Eq for State {
-    pure fn eq(&self, other: &State) -> bool {
+    fn eq(&self, other: &State) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    pure fn ne(&self, other: &State) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &State) -> bool { !(*self).eq(other) }
 }
 
 pub struct BufferHeader {
@@ -551,7 +551,7 @@ pub fn try_recv<T:Owned,Tbuffer:Owned>(p: RecvPacketBuffered<T, Tbuffer>)
 }
 
 /// Returns true if messages are available.
-pub pure fn peek<T:Owned,Tb:Owned>(p: &RecvPacketBuffered<T, Tb>) -> bool {
+pub fn peek<T:Owned,Tb:Owned>(p: &RecvPacketBuffered<T, Tb>) -> bool {
     match unsafe {(*p.header()).state} {
       Empty | Terminated => false,
       Blocked => fail!(~"peeking on blocked packet"),
@@ -723,11 +723,11 @@ pub fn select2<A:Owned,Ab:Owned,B:Owned,Bb:Owned>(
 
 #[doc(hidden)]
 pub trait Selectable {
-    pure fn header(&self) -> *PacketHeader;
+    fn header(&self) -> *PacketHeader;
 }
 
 impl Selectable for *PacketHeader {
-    pure fn header(&self) -> *PacketHeader { *self }
+    fn header(&self) -> *PacketHeader { *self }
 }
 
 /// Returns the index of an endpoint that is ready to receive.
@@ -812,7 +812,7 @@ pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
         option::unwrap(p)
     }
 
-    pure fn header(&self) -> *PacketHeader {
+    fn header(&self) -> *PacketHeader {
         match self.p {
           Some(packet) => unsafe {
             let packet = &*packet;
@@ -879,7 +879,7 @@ pub impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
 }
 
 impl<T:Owned,Tbuffer:Owned> Selectable for RecvPacketBuffered<T, Tbuffer> {
-    pure fn header(&self) -> *PacketHeader {
+    fn header(&self) -> *PacketHeader {
         match self.p {
           Some(packet) => unsafe {
             let packet = &*packet;

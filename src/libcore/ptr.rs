@@ -51,11 +51,11 @@ pub mod rusti {
 
 /// Get an unsafe pointer to a value
 #[inline(always)]
-pub pure fn addr_of<T>(val: &T) -> *T { unsafe { rusti::addr_of(*val) } }
+pub fn addr_of<T>(val: &T) -> *T { unsafe { rusti::addr_of(*val) } }
 
 /// Calculate the offset from a pointer
 #[inline(always)]
-pub pure fn offset<T>(ptr: *T, count: uint) -> *T {
+pub fn offset<T>(ptr: *T, count: uint) -> *T {
     unsafe {
         (ptr as uint + count * sys::size_of::<T>()) as *T
     }
@@ -63,7 +63,7 @@ pub pure fn offset<T>(ptr: *T, count: uint) -> *T {
 
 /// Calculate the offset from a const pointer
 #[inline(always)]
-pub pure fn const_offset<T>(ptr: *const T, count: uint) -> *const T {
+pub fn const_offset<T>(ptr: *const T, count: uint) -> *const T {
     unsafe {
         (ptr as uint + count * sys::size_of::<T>()) as *T
     }
@@ -71,7 +71,7 @@ pub pure fn const_offset<T>(ptr: *const T, count: uint) -> *const T {
 
 /// Calculate the offset from a mut pointer
 #[inline(always)]
-pub pure fn mut_offset<T>(ptr: *mut T, count: uint) -> *mut T {
+pub fn mut_offset<T>(ptr: *mut T, count: uint) -> *mut T {
     (ptr as uint + count * sys::size_of::<T>()) as *mut T
 }
 
@@ -93,19 +93,19 @@ pub unsafe fn position<T>(buf: *T, f: &fn(&T) -> bool) -> uint {
 
 /// Create an unsafe null pointer
 #[inline(always)]
-pub pure fn null<T>() -> *T { unsafe { cast::reinterpret_cast(&0u) } }
+pub fn null<T>() -> *T { unsafe { cast::reinterpret_cast(&0u) } }
 
 /// Create an unsafe mutable null pointer
 #[inline(always)]
-pub pure fn mut_null<T>() -> *mut T { unsafe { cast::reinterpret_cast(&0u) } }
+pub fn mut_null<T>() -> *mut T { unsafe { cast::reinterpret_cast(&0u) } }
 
 /// Returns true if the pointer is equal to the null pointer.
 #[inline(always)]
-pub pure fn is_null<T>(ptr: *const T) -> bool { ptr == null() }
+pub fn is_null<T>(ptr: *const T) -> bool { ptr == null() }
 
 /// Returns true if the pointer is not equal to the null pointer.
 #[inline(always)]
-pub pure fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
+pub fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
 
 /**
  * Copies data from one location to another
@@ -138,7 +138,7 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: int, count: uint) {
   reinterpret_cast.
 */
 #[inline(always)]
-pub pure fn to_unsafe_ptr<T>(thing: &T) -> *T {
+pub fn to_unsafe_ptr<T>(thing: &T) -> *T {
     unsafe { cast::reinterpret_cast(&thing) }
 }
 
@@ -148,7 +148,7 @@ pub pure fn to_unsafe_ptr<T>(thing: &T) -> *T {
   reinterpret_cast.
 */
 #[inline(always)]
-pub pure fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
+pub fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
     unsafe { cast::reinterpret_cast(&thing) }
 }
 
@@ -158,7 +158,7 @@ pub pure fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
   reinterpret_cast.
 */
 #[inline(always)]
-pub pure fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
+pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
     unsafe { cast::reinterpret_cast(&thing) }
 }
 
@@ -170,7 +170,7 @@ pub pure fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
   (I couldn't think of a cutesy name for this one.)
 */
 #[inline(always)]
-pub pure fn to_uint<T>(thing: &T) -> uint {
+pub fn to_uint<T>(thing: &T) -> uint {
     unsafe {
         cast::reinterpret_cast(&thing)
     }
@@ -178,7 +178,7 @@ pub pure fn to_uint<T>(thing: &T) -> uint {
 
 /// Determine if two borrowed pointers point to the same thing.
 #[inline(always)]
-pub pure fn ref_eq<T>(thing: &'a T, other: &'b T) -> bool {
+pub fn ref_eq<T>(thing: &'a T, other: &'b T) -> bool {
     to_uint(thing) == to_uint(other)
 }
 
@@ -223,46 +223,46 @@ pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
 }
 
 pub trait Ptr<T> {
-    pure fn is_null(&const self) -> bool;
-    pure fn is_not_null(&const self) -> bool;
-    pure fn offset(&self, count: uint) -> Self;
+    fn is_null(&const self) -> bool;
+    fn is_not_null(&const self) -> bool;
+    fn offset(&self, count: uint) -> Self;
 }
 
 /// Extension methods for immutable pointers
 impl<T> Ptr<T> for *T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline(always)]
-    pure fn is_null(&const self) -> bool { is_null(*self) }
+    fn is_null(&const self) -> bool { is_null(*self) }
 
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline(always)]
-    pure fn is_not_null(&const self) -> bool { is_not_null(*self) }
+    fn is_not_null(&const self) -> bool { is_not_null(*self) }
 
     /// Calculates the offset from a pointer.
     #[inline(always)]
-    pure fn offset(&self, count: uint) -> *T { offset(*self, count) }
+    fn offset(&self, count: uint) -> *T { offset(*self, count) }
 }
 
 /// Extension methods for mutable pointers
 impl<T> Ptr<T> for *mut T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline(always)]
-    pure fn is_null(&const self) -> bool { is_null(*self) }
+    fn is_null(&const self) -> bool { is_null(*self) }
 
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline(always)]
-    pure fn is_not_null(&const self) -> bool { is_not_null(*self) }
+    fn is_not_null(&const self) -> bool { is_not_null(*self) }
 
     /// Calculates the offset from a mutable pointer.
     #[inline(always)]
-    pure fn offset(&self, count: uint) -> *mut T { mut_offset(*self, count) }
+    fn offset(&self, count: uint) -> *mut T { mut_offset(*self, count) }
 }
 
 // Equality for pointers
 #[cfg(notest)]
 impl<T> Eq for *const T {
     #[inline(always)]
-    pure fn eq(&self, other: &*const T) -> bool {
+    fn eq(&self, other: &*const T) -> bool {
         unsafe {
             let a: uint = cast::reinterpret_cast(&(*self));
             let b: uint = cast::reinterpret_cast(&(*other));
@@ -270,14 +270,14 @@ impl<T> Eq for *const T {
         }
     }
     #[inline(always)]
-    pure fn ne(&self, other: &*const T) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &*const T) -> bool { !(*self).eq(other) }
 }
 
 // Comparison for pointers
 #[cfg(notest)]
 impl<T> Ord for *const T {
     #[inline(always)]
-    pure fn lt(&self, other: &*const T) -> bool {
+    fn lt(&self, other: &*const T) -> bool {
         unsafe {
             let a: uint = cast::reinterpret_cast(&(*self));
             let b: uint = cast::reinterpret_cast(&(*other));
@@ -285,7 +285,7 @@ impl<T> Ord for *const T {
         }
     }
     #[inline(always)]
-    pure fn le(&self, other: &*const T) -> bool {
+    fn le(&self, other: &*const T) -> bool {
         unsafe {
             let a: uint = cast::reinterpret_cast(&(*self));
             let b: uint = cast::reinterpret_cast(&(*other));
@@ -293,7 +293,7 @@ impl<T> Ord for *const T {
         }
     }
     #[inline(always)]
-    pure fn ge(&self, other: &*const T) -> bool {
+    fn ge(&self, other: &*const T) -> bool {
         unsafe {
             let a: uint = cast::reinterpret_cast(&(*self));
             let b: uint = cast::reinterpret_cast(&(*other));
@@ -301,7 +301,7 @@ impl<T> Ord for *const T {
         }
     }
     #[inline(always)]
-    pure fn gt(&self, other: &*const T) -> bool {
+    fn gt(&self, other: &*const T) -> bool {
         unsafe {
             let a: uint = cast::reinterpret_cast(&(*self));
             let b: uint = cast::reinterpret_cast(&(*other));
@@ -314,11 +314,11 @@ impl<T> Ord for *const T {
 #[cfg(notest)]
 impl<T:Eq> Eq for &'self const T {
     #[inline(always)]
-    pure fn eq(&self, other: & &'self const T) -> bool {
+    fn eq(&self, other: & &'self const T) -> bool {
         return *(*self) == *(*other);
     }
     #[inline(always)]
-    pure fn ne(&self, other: & &'self const T) -> bool {
+    fn ne(&self, other: & &'self const T) -> bool {
         return *(*self) != *(*other);
     }
 }
@@ -327,19 +327,19 @@ impl<T:Eq> Eq for &'self const T {
 #[cfg(notest)]
 impl<T:Ord> Ord for &'self const T {
     #[inline(always)]
-    pure fn lt(&self, other: & &'self const T) -> bool {
+    fn lt(&self, other: & &'self const T) -> bool {
         *(*self) < *(*other)
     }
     #[inline(always)]
-    pure fn le(&self, other: & &'self const T) -> bool {
+    fn le(&self, other: & &'self const T) -> bool {
         *(*self) <= *(*other)
     }
     #[inline(always)]
-    pure fn ge(&self, other: & &'self const T) -> bool {
+    fn ge(&self, other: & &'self const T) -> bool {
         *(*self) >= *(*other)
     }
     #[inline(always)]
-    pure fn gt(&self, other: & &'self const T) -> bool {
+    fn gt(&self, other: & &'self const T) -> bool {
         *(*self) > *(*other)
     }
 }

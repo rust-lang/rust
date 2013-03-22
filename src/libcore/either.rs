@@ -87,7 +87,7 @@ pub fn partition<T, U>(eithers: ~[Either<T, U>])
 }
 
 #[inline(always)]
-pub pure fn flip<T, U>(eith: Either<T, U>) -> Either<U, T> {
+pub fn flip<T, U>(eith: Either<T, U>) -> Either<U, T> {
     //! Flips between left and right of a given either
 
     match eith {
@@ -97,7 +97,7 @@ pub pure fn flip<T, U>(eith: Either<T, U>) -> Either<U, T> {
 }
 
 #[inline(always)]
-pub pure fn to_result<T, U>(eith: Either<T, U>)
+pub fn to_result<T, U>(eith: Either<T, U>)
     -> Result<U, T> {
     /*!
      * Converts either::t to a result::t
@@ -113,21 +113,21 @@ pub pure fn to_result<T, U>(eith: Either<T, U>)
 }
 
 #[inline(always)]
-pub pure fn is_left<T, U>(eith: &Either<T, U>) -> bool {
+pub fn is_left<T, U>(eith: &Either<T, U>) -> bool {
     //! Checks whether the given value is a left
 
     match *eith { Left(_) => true, _ => false }
 }
 
 #[inline(always)]
-pub pure fn is_right<T, U>(eith: &Either<T, U>) -> bool {
+pub fn is_right<T, U>(eith: &Either<T, U>) -> bool {
     //! Checks whether the given value is a right
 
     match *eith { Right(_) => true, _ => false }
 }
 
 #[inline(always)]
-pub pure fn unwrap_left<T,U>(eith: Either<T,U>) -> T {
+pub fn unwrap_left<T,U>(eith: Either<T,U>) -> T {
     //! Retrieves the value in the left branch. Fails if the either is Right.
 
     match eith {
@@ -137,7 +137,7 @@ pub pure fn unwrap_left<T,U>(eith: Either<T,U>) -> T {
 }
 
 #[inline(always)]
-pub pure fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
+pub fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
     //! Retrieves the value in the right branch. Fails if the either is Left.
 
     match eith {

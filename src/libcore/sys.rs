@@ -60,15 +60,15 @@ pub mod rustrt {
 
 /// Compares contents of two pointers using the default method.
 /// Equivalent to `*x1 == *x2`.  Useful for hashtables.
-pub pure fn shape_eq<T:Eq>(x1: &T, x2: &T) -> bool {
+pub fn shape_eq<T:Eq>(x1: &T, x2: &T) -> bool {
     *x1 == *x2
 }
 
-pub pure fn shape_lt<T:Ord>(x1: &T, x2: &T) -> bool {
+pub fn shape_lt<T:Ord>(x1: &T, x2: &T) -> bool {
     *x1 < *x2
 }
 
-pub pure fn shape_le<T:Ord>(x1: &T, x2: &T) -> bool {
+pub fn shape_le<T:Ord>(x1: &T, x2: &T) -> bool {
     *x1 <= *x2
 }
 
@@ -79,13 +79,13 @@ pub pure fn shape_le<T:Ord>(x1: &T, x2: &T) -> bool {
  * performing dark magick.
  */
 #[inline(always)]
-pub pure fn get_type_desc<T>() -> *TypeDesc {
+pub fn get_type_desc<T>() -> *TypeDesc {
     unsafe { rusti::get_tydesc::<T>() as *TypeDesc }
 }
 
 /// Returns the size of a type
 #[inline(always)]
-pub pure fn size_of<T>() -> uint {
+pub fn size_of<T>() -> uint {
     unsafe { rusti::size_of::<T>() }
 }
 
@@ -95,7 +95,7 @@ pub pure fn size_of<T>() -> uint {
  * Useful for building structures containing variable-length arrays.
  */
 #[inline(always)]
-pub pure fn nonzero_size_of<T>() -> uint {
+pub fn nonzero_size_of<T>() -> uint {
     let s = size_of::<T>();
     if s == 0 { 1 } else { s }
 }
@@ -107,26 +107,26 @@ pub pure fn nonzero_size_of<T>() -> uint {
  * than the preferred alignment.
  */
 #[inline(always)]
-pub pure fn min_align_of<T>() -> uint {
+pub fn min_align_of<T>() -> uint {
     unsafe { rusti::min_align_of::<T>() }
 }
 
 /// Returns the preferred alignment of a type
 #[inline(always)]
-pub pure fn pref_align_of<T>() -> uint {
+pub fn pref_align_of<T>() -> uint {
     unsafe { rusti::pref_align_of::<T>() }
 }
 
 /// Returns the refcount of a shared box (as just before calling this)
 #[inline(always)]
-pub pure fn refcount<T>(t: @T) -> uint {
+pub fn refcount<T>(t: @T) -> uint {
     unsafe {
         let ref_ptr: *uint = cast::reinterpret_cast(&t);
         *ref_ptr - 1
     }
 }
 
-pub pure fn log_str<T>(t: &T) -> ~str {
+pub fn log_str<T>(t: &T) -> ~str {
     unsafe {
         do io::with_str_writer |wr| {
             repr::write_repr(wr, t)
@@ -135,7 +135,7 @@ pub pure fn log_str<T>(t: &T) -> ~str {
 }
 
 /** Initiate task failure */
-pub pure fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
+pub fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
     do str::as_buf(msg) |msg_buf, _msg_len| {
         do str::as_buf(file) |file_buf, _file_len| {
             unsafe {
@@ -148,7 +148,7 @@ pub pure fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
 }
 
 // FIXME #4427: Temporary until rt::rt_fail_ goes away
-pub pure fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
+pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     unsafe {
         gc::cleanup_stack_for_failure();
         rustrt::rust_upcall_fail(msg, file, line);
@@ -156,7 +156,7 @@ pub pure fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     }
 }
 
-pub pure fn fail_assert(msg: &str, file: &str, line: uint) -> ! {
+pub fn fail_assert(msg: &str, file: &str, line: uint) -> ! {
     unsafe {
         let (msg, file) = (msg.to_owned(), file.to_owned());
         begin_unwind(~"assertion failed: " + msg, file, line)

@@ -33,8 +33,8 @@ and `Eq` to overload the `==` and `!=` operators.
 */
 #[lang="eq"]
 pub trait Eq {
-    pure fn eq(&self, other: &Self) -> bool;
-    pure fn ne(&self, other: &Self) -> bool;
+    fn eq(&self, other: &Self) -> bool;
+    fn ne(&self, other: &Self) -> bool;
 }
 
 #[deriving(Eq)]
@@ -42,11 +42,11 @@ pub enum Ordering { Less, Equal, Greater }
 
 /// Trait for types that form a total order
 pub trait TotalOrd {
-    pure fn cmp(&self, other: &Self) -> Ordering;
+    fn cmp(&self, other: &Self) -> Ordering;
 }
 
 #[inline(always)]
-pure fn icmp<T: Ord>(a: &T, b: &T) -> Ordering {
+fn icmp<T: Ord>(a: &T, b: &T) -> Ordering {
     if *a < *b { Less }
     else if *a > *b { Greater }
     else { Equal }
@@ -54,52 +54,52 @@ pure fn icmp<T: Ord>(a: &T, b: &T) -> Ordering {
 
 impl TotalOrd for u8 {
     #[inline(always)]
-    pure fn cmp(&self, other: &u8) -> Ordering { icmp(self, other) }
+    fn cmp(&self, other: &u8) -> Ordering { icmp(self, other) }
 }
 
 impl TotalOrd for u16 {
     #[inline(always)]
-    pure fn cmp(&self, other: &u16) -> Ordering { icmp(self, other) }
+    fn cmp(&self, other: &u16) -> Ordering { icmp(self, other) }
 }
 
 impl TotalOrd for u32 {
     #[inline(always)]
-    pure fn cmp(&self, other: &u32) -> Ordering { icmp(self, other) }
+    fn cmp(&self, other: &u32) -> Ordering { icmp(self, other) }
 }
 
 impl TotalOrd for u64 {
     #[inline(always)]
-    pure fn cmp(&self, other: &u64) -> Ordering { icmp(self, other) }
+    fn cmp(&self, other: &u64) -> Ordering { icmp(self, other) }
 }
 
 impl TotalOrd for i8 {
     #[inline(always)]
-    pure fn cmp(&self, other: &i8) -> Ordering { icmp(self, other) }
+    fn cmp(&self, other: &i8) -> Ordering { icmp(self, other) }
 }
 
 impl TotalOrd for i16 {
     #[inline(always)]
-    pure fn cmp(&self, other: &i16) -> Ordering { icmp(self, other) }
+    fn cmp(&self, other: &i16) -> Ordering { icmp(self, other) }
 }
 
 impl TotalOrd for i32 {
     #[inline(always)]
-    pure fn cmp(&self, other: &i32) -> Ordering { icmp(self, other) }
+    fn cmp(&self, other: &i32) -> Ordering { icmp(self, other) }
 }
 
 impl TotalOrd for i64 {
     #[inline(always)]
-    pure fn cmp(&self, other: &i64) -> Ordering { icmp(self, other) }
+    fn cmp(&self, other: &i64) -> Ordering { icmp(self, other) }
 }
 
 impl TotalOrd for int {
     #[inline(always)]
-    pure fn cmp(&self, other: &int) -> Ordering { icmp(self, other) }
+    fn cmp(&self, other: &int) -> Ordering { icmp(self, other) }
 }
 
 impl TotalOrd for uint {
     #[inline(always)]
-    pure fn cmp(&self, other: &uint) -> Ordering { icmp(self, other) }
+    fn cmp(&self, other: &uint) -> Ordering { icmp(self, other) }
 }
 
 /**
@@ -114,39 +114,39 @@ impl TotalOrd for uint {
 */
 #[lang="ord"]
 pub trait Ord {
-    pure fn lt(&self, other: &Self) -> bool;
-    pure fn le(&self, other: &Self) -> bool;
-    pure fn ge(&self, other: &Self) -> bool;
-    pure fn gt(&self, other: &Self) -> bool;
+    fn lt(&self, other: &Self) -> bool;
+    fn le(&self, other: &Self) -> bool;
+    fn ge(&self, other: &Self) -> bool;
+    fn gt(&self, other: &Self) -> bool;
 }
 
 #[inline(always)]
-pub pure fn lt<T:Ord>(v1: &T, v2: &T) -> bool {
+pub fn lt<T:Ord>(v1: &T, v2: &T) -> bool {
     (*v1).lt(v2)
 }
 
 #[inline(always)]
-pub pure fn le<T:Ord>(v1: &T, v2: &T) -> bool {
+pub fn le<T:Ord>(v1: &T, v2: &T) -> bool {
     (*v1).le(v2)
 }
 
 #[inline(always)]
-pub pure fn eq<T:Eq>(v1: &T, v2: &T) -> bool {
+pub fn eq<T:Eq>(v1: &T, v2: &T) -> bool {
     (*v1).eq(v2)
 }
 
 #[inline(always)]
-pub pure fn ne<T:Eq>(v1: &T, v2: &T) -> bool {
+pub fn ne<T:Eq>(v1: &T, v2: &T) -> bool {
     (*v1).ne(v2)
 }
 
 #[inline(always)]
-pub pure fn ge<T:Ord>(v1: &T, v2: &T) -> bool {
+pub fn ge<T:Ord>(v1: &T, v2: &T) -> bool {
     (*v1).ge(v2)
 }
 
 #[inline(always)]
-pub pure fn gt<T:Ord>(v1: &T, v2: &T) -> bool {
+pub fn gt<T:Ord>(v1: &T, v2: &T) -> bool {
     (*v1).gt(v2)
 }
 
@@ -155,16 +155,16 @@ pub pure fn gt<T:Ord>(v1: &T, v2: &T) -> bool {
 /// container types; e.g. it is often desirable to be able to use `&str`
 /// values to look up entries in a container with `~str` keys.
 pub trait Equiv<T> {
-    pure fn equiv(&self, other: &T) -> bool;
+    fn equiv(&self, other: &T) -> bool;
 }
 
 #[inline(always)]
-pub pure fn min<T:Ord>(v1: T, v2: T) -> T {
+pub fn min<T:Ord>(v1: T, v2: T) -> T {
     if v1 < v2 { v1 } else { v2 }
 }
 
 #[inline(always)]
-pub pure fn max<T:Ord>(v1: T, v2: T) -> T {
+pub fn max<T:Ord>(v1: T, v2: T) -> T {
     if v1 > v2 { v1 } else { v2 }
 }
 

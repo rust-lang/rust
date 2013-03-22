@@ -518,7 +518,7 @@ struct UvError(uvll::uv_err_t);
 
 impl UvError {
 
-    pure fn name(&self) -> ~str {
+    fn name(&self) -> ~str {
         unsafe {
             let inner = match self { &UvError(ref a) => a };
             let name_str = uvll::err_name(inner);
@@ -527,7 +527,7 @@ impl UvError {
         }
     }
 
-    pure fn desc(&self) -> ~str {
+    fn desc(&self) -> ~str {
         unsafe {
             let inner = match self { &UvError(ref a) => a };
             let desc_str = uvll::strerror(inner);
@@ -538,7 +538,7 @@ impl UvError {
 }
 
 impl ToStr for UvError {
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         fmt!("%s: %s", self.name(), self.desc())
     }
 }
