@@ -161,12 +161,15 @@ pub struct TrieSet {
 
 impl BaseIter<uint> for TrieSet {
     /// Visit all values in order
+    #[inline(always)]
     fn each(&self, f: &fn(&uint) -> bool) { self.map.each_key(f) }
+    #[inline(always)]
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 impl ReverseIter<uint> for TrieSet {
     /// Visit all values in reverse order
+    #[inline(always)]
     fn each_reverse(&self, f: &fn(&uint) -> bool) {
         self.map.each_key_reverse(f)
     }
