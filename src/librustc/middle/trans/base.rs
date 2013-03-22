@@ -88,11 +88,14 @@ pub struct icx_popper {
     ccx: @CrateContext,
 }
 
+#[unsafe_destructor]
 impl Drop for icx_popper {
     fn finalize(&self) {
-      if self.ccx.sess.count_llvm_insns() {
-          self.ccx.stats.llvm_insn_ctxt.pop();
-      }
+        unsafe {
+            if self.ccx.sess.count_llvm_insns() {
+                self.ccx.stats.llvm_insn_ctxt.pop();
+            }
+        }
     }
 }
 

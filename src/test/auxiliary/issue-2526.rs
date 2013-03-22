@@ -19,6 +19,7 @@ struct arc_destruct<T> {
   _data: int,
 }
 
+#[unsafe_destructor]
 impl<T:Const> Drop for arc_destruct<T> {
     fn finalize(&self) {}
 }

@@ -155,6 +155,7 @@ pub mod pipes {
         p: Option<*packet<T>>,
     }
 
+    #[unsafe_destructor]
     impl<T:Owned> Drop for send_packet<T> {
         fn finalize(&self) {
             unsafe {
@@ -187,6 +188,7 @@ pub mod pipes {
         p: Option<*packet<T>>,
     }
 
+    #[unsafe_destructor]
     impl<T:Owned> Drop for recv_packet<T> {
         fn finalize(&self) {
             unsafe {

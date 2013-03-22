@@ -1190,6 +1190,7 @@ mod big_tests {
         key: &'self fn(@uint),
     }
 
+    #[unsafe_destructor]
     impl Drop for LVal/&self {
         fn finalize(&self) {
             let x = unsafe { task::local_data::local_data_get(self.key) };
