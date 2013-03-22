@@ -16,7 +16,7 @@ use core::util;
 use core::vec::{len, push};
 use core::vec;
 
-type Le<T> = &'self pure fn(v1: &T, v2: &T) -> bool;
+type Le<T> = &'self fn(v1: &T, v2: &T) -> bool;
 
 /**
  * Merge sort. Returns a new vector containing the sorted list.
@@ -24,7 +24,7 @@ type Le<T> = &'self pure fn(v1: &T, v2: &T) -> bool;
  * Has worst case O(n log n) performance, best case O(n), but
  * is not space efficient. This is a stable sort.
  */
-pub pure fn merge_sort<T:Copy>(v: &[const T], le: Le<T>) -> ~[T] {
+pub fn merge_sort<T:Copy>(v: &[const T], le: Le<T>) -> ~[T] {
     type Slice = (uint, uint);
 
     unsafe {return merge_sort_(v, (0u, len(v)), le);}
@@ -259,7 +259,7 @@ fn reverse_slice<T>(v: &mut [T], start: uint, end:uint) {
     }
 }
 
-pure fn min_run_length(n: uint) -> uint {
+fn min_run_length(n: uint) -> uint {
     let mut n = n;
     let mut r = 0;   // becomes 1 if any 1 bits are shifted off
 
@@ -290,7 +290,7 @@ fn count_run_ascending<T:Copy + Ord>(array: &mut [T]) -> uint {
     return run;
 }
 
-pure fn gallop_left<T:Copy + Ord>(key: &const T, array: &[const T],
+fn gallop_left<T:Copy + Ord>(key: &const T, array: &[const T],
                             hint: uint) -> uint {
     let size = array.len();
     fail_unless!(size != 0 && hint < size);
@@ -339,7 +339,7 @@ pure fn gallop_left<T:Copy + Ord>(key: &const T, array: &[const T],
     return ofs;
 }
 
-pure fn gallop_right<T:Copy + Ord>(key: &const T, array: &[const T],
+fn gallop_right<T:Copy + Ord>(key: &const T, array: &[const T],
                             hint: uint) -> uint {
     let size = array.len();
     fail_unless!(size != 0 && hint < size);
@@ -779,7 +779,7 @@ mod test_qsort {
 
     pub fn check_sort(v1: &mut [int], v2: &mut [int]) {
         let len = vec::len::<int>(v1);
-        pure fn leual(a: &int, b: &int) -> bool { *a <= *b }
+        fn leual(a: &int, b: &int) -> bool { *a <= *b }
         quick_sort::<int>(v1, leual);
         let mut i = 0u;
         while i < len {
@@ -844,7 +844,7 @@ mod tests {
 
     pub fn check_sort(v1: &[int], v2: &[int]) {
         let len = vec::len::<int>(v1);
-        pub pure fn le(a: &int, b: &int) -> bool { *a <= *b }
+        pub fn le(a: &int, b: &int) -> bool { *a <= *b }
         let f = le;
         let v3 = merge_sort::<int>(v1, f);
         let mut i = 0u;
@@ -874,7 +874,7 @@ mod tests {
 
     #[test]
     pub fn test_merge_sort_mutable() {
-        pub pure fn le(a: &int, b: &int) -> bool { *a <= *b }
+        pub fn le(a: &int, b: &int) -> bool { *a <= *b }
         let mut v1 = ~[3, 2, 1];
         let v2 = merge_sort(v1, le);
         fail_unless!(v2 == ~[1, 2, 3]);
@@ -883,7 +883,7 @@ mod tests {
     #[test]
     pub fn test_merge_sort_stability() {
         // tjc: funny that we have to use parens
-        pure fn ile(x: &(&'static str), y: &(&'static str)) -> bool
+        fn ile(x: &(&'static str), y: &(&'static str)) -> bool
         {
             unsafe // to_lower is not pure...
             {
@@ -917,16 +917,16 @@ mod test_tim_sort {
     }
 
     impl Ord for CVal {
-        pure fn lt(&self, other: &CVal) -> bool {
+        fn lt(&self, other: &CVal) -> bool {
             unsafe {
                 let rng = rand::Rng();
                 if rng.gen_float() > 0.995 { fail!(~"It's happening!!!"); }
             }
             (*self).val < other.val
         }
-        pure fn le(&self, other: &CVal) -> bool { (*self).val <= other.val }
-        pure fn gt(&self, other: &CVal) -> bool { (*self).val > other.val }
-        pure fn ge(&self, other: &CVal) -> bool { (*self).val >= other.val }
+        fn le(&self, other: &CVal) -> bool { (*self).val <= other.val }
+        fn gt(&self, other: &CVal) -> bool { (*self).val > other.val }
+        fn ge(&self, other: &CVal) -> bool { (*self).val >= other.val }
     }
 
     fn check_sort(v1: &mut [int], v2: &mut [int]) {
@@ -982,10 +982,10 @@ mod test_tim_sort {
     struct DVal { val: uint }
 
     impl Ord for DVal {
-        pure fn lt(&self, _x: &DVal) -> bool { true }
-        pure fn le(&self, _x: &DVal) -> bool { true }
-        pure fn gt(&self, _x: &DVal) -> bool { true }
-        pure fn ge(&self, _x: &DVal) -> bool { true }
+        fn lt(&self, _x: &DVal) -> bool { true }
+        fn le(&self, _x: &DVal) -> bool { true }
+        fn gt(&self, _x: &DVal) -> bool { true }
+        fn ge(&self, _x: &DVal) -> bool { true }
     }
 
     #[test]
@@ -1206,16 +1206,16 @@ mod big_tests {
     }
 
     impl Ord for LVal/&self {
-        pure fn lt(&self, other: &'a LVal/&self) -> bool {
+        fn lt(&self, other: &'a LVal/&self) -> bool {
             (*self).val < other.val
         }
-        pure fn le(&self, other: &'a LVal/&self) -> bool {
+        fn le(&self, other: &'a LVal/&self) -> bool {
             (*self).val <= other.val
         }
-        pure fn gt(&self, other: &'a LVal/&self) -> bool {
+        fn gt(&self, other: &'a LVal/&self) -> bool {
             (*self).val > other.val
         }
-        pure fn ge(&self, other: &'a LVal/&self) -> bool {
+        fn ge(&self, other: &'a LVal/&self) -> bool {
             (*self).val >= other.val
         }
     }

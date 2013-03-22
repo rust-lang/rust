@@ -11,9 +11,9 @@
 pub fn main() {
     enum x { foo }
     impl ::core::cmp::Eq for x {
-        pure fn eq(&self, other: &x) -> bool {
+        fn eq(&self, other: &x) -> bool {
             (*self) as int == (*other) as int
         }
-        pure fn ne(&self, other: &x) -> bool { !(*self).eq(other) }
+        fn ne(&self, other: &x) -> bool { !(*self).eq(other) }
     }
 }

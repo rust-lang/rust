@@ -15,7 +15,7 @@
 enum colour { red(int, int), green, }
 
 impl cmp::Eq for colour {
-    pure fn eq(&self, other: &colour) -> bool {
+    fn eq(&self, other: &colour) -> bool {
         match *self {
             red(a0, b0) => {
                 match (*other) {
@@ -31,7 +31,7 @@ impl cmp::Eq for colour {
             }
         }
     }
-    pure fn ne(&self, other: &colour) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &colour) -> bool { !(*self).eq(other) }
 }
 
 fn f() { let x = red(1, 2); let y = green; fail_unless!((x != y)); }

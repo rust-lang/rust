@@ -19,7 +19,7 @@ mod inst {
     pub const bits: uint = ::uint::bits;
 
     /// Returns `base` raised to the power of `exponent`
-    pub pure fn pow(base: int, exponent: uint) -> int {
+    pub fn pow(base: int, exponent: uint) -> int {
         if exponent == 0u {
             //Not mathemtically true if ~[base == 0]
             return 1;
@@ -63,23 +63,23 @@ impl NumCast for int {
      * Cast `n` to a `int`
      */
     #[inline(always)]
-    static pure fn from<N:NumCast>(n: N) -> int { n.to_int() }
+    fn from<N:NumCast>(n: N) -> int { n.to_int() }
 
-    #[inline(always)] pure fn to_u8(&self)    -> u8    { *self as u8    }
-    #[inline(always)] pure fn to_u16(&self)   -> u16   { *self as u16   }
-    #[inline(always)] pure fn to_u32(&self)   -> u32   { *self as u32   }
-    #[inline(always)] pure fn to_u64(&self)   -> u64   { *self as u64   }
-    #[inline(always)] pure fn to_uint(&self)  -> uint  { *self as uint  }
+    #[inline(always)] fn to_u8(&self)    -> u8    { *self as u8    }
+    #[inline(always)] fn to_u16(&self)   -> u16   { *self as u16   }
+    #[inline(always)] fn to_u32(&self)   -> u32   { *self as u32   }
+    #[inline(always)] fn to_u64(&self)   -> u64   { *self as u64   }
+    #[inline(always)] fn to_uint(&self)  -> uint  { *self as uint  }
 
-    #[inline(always)] pure fn to_i8(&self)    -> i8    { *self as i8    }
-    #[inline(always)] pure fn to_i16(&self)   -> i16   { *self as i16   }
-    #[inline(always)] pure fn to_i32(&self)   -> i32   { *self as i32   }
-    #[inline(always)] pure fn to_i64(&self)   -> i64   { *self as i64   }
-    #[inline(always)] pure fn to_int(&self)   -> int   { *self          }
+    #[inline(always)] fn to_i8(&self)    -> i8    { *self as i8    }
+    #[inline(always)] fn to_i16(&self)   -> i16   { *self as i16   }
+    #[inline(always)] fn to_i32(&self)   -> i32   { *self as i32   }
+    #[inline(always)] fn to_i64(&self)   -> i64   { *self as i64   }
+    #[inline(always)] fn to_int(&self)   -> int   { *self          }
 
-    #[inline(always)] pure fn to_f32(&self)   -> f32   { *self as f32   }
-    #[inline(always)] pure fn to_f64(&self)   -> f64   { *self as f64   }
-    #[inline(always)] pure fn to_float(&self) -> float { *self as float }
+    #[inline(always)] fn to_f32(&self)   -> f32   { *self as f32   }
+    #[inline(always)] fn to_f64(&self)   -> f64   { *self as f64   }
+    #[inline(always)] fn to_float(&self) -> float { *self as float }
 }
 
 #[test]

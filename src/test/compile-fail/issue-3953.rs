@@ -25,8 +25,8 @@ struct Lol(int);
 impl Hahaha for Lol { }
 
 impl Eq for Lol {
-    pure fn eq(&self, other: &Lol) -> bool { **self != **other }
-    pure fn ne(&self, other: &Lol) -> bool { **self == **other }
+    fn eq(&self, other: &Lol) -> bool { **self != **other }
+    fn ne(&self, other: &Lol) -> bool { **self == **other }
 }
 
 fn main() {

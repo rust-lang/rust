@@ -45,8 +45,8 @@ fn run(
     writer_factory: WriterFactory
 ) -> doc::Doc {
 
-    pure fn mods_last(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {
-        pure fn is_mod(item: &doc::ItemTag) -> bool {
+    fn mods_last(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {
+        fn is_mod(item: &doc::ItemTag) -> bool {
             match *item {
               doc::ModTag(_) => true,
               _ => false

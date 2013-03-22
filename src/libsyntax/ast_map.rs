@@ -33,7 +33,7 @@ pub enum path_elt {
 }
 
 impl cmp::Eq for path_elt {
-    pure fn eq(&self, other: &path_elt) -> bool {
+    fn eq(&self, other: &path_elt) -> bool {
         match (*self) {
             path_mod(e0a) => {
                 match (*other) {
@@ -49,7 +49,7 @@ impl cmp::Eq for path_elt {
             }
         }
     }
-    pure fn ne(&self, other: &path_elt) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &path_elt) -> bool { !(*self).eq(other) }
 }
 
 pub type path = ~[path_elt];

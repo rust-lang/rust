@@ -121,7 +121,7 @@ pub struct creader_cache_key {
 type creader_cache = HashMap<creader_cache_key, t>;
 
 impl to_bytes::IterBytes for creader_cache_key {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_3(&self.cnum, &self.pos, &self.len, lsb0, f);
     }
 }
@@ -135,18 +135,18 @@ struct intern_key {
 // implementation will not recurse through sty and you will get stack
 // exhaustion.
 impl cmp::Eq for intern_key {
-    pure fn eq(&self, other: &intern_key) -> bool {
+    fn eq(&self, other: &intern_key) -> bool {
         unsafe {
             *self.sty == *other.sty && self.o_def_id == other.o_def_id
         }
     }
-    pure fn ne(&self, other: &intern_key) -> bool {
+    fn ne(&self, other: &intern_key) -> bool {
         !self.eq(other)
     }
 }
 
 impl to_bytes::IterBytes for intern_key {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         unsafe {
             to_bytes::iter_bytes_2(&*self.sty, &self.o_def_id, lsb0, f);
         }
@@ -165,7 +165,7 @@ pub type opt_region_variance = Option<region_variance>;
 pub enum region_variance { rv_covariant, rv_invariant, rv_contravariant }
 
 impl cmp::Eq for region_variance {
-    pure fn eq(&self, other: &region_variance) -> bool {
+    fn eq(&self, other: &region_variance) -> bool {
         match ((*self), (*other)) {
             (rv_covariant, rv_covariant) => true,
             (rv_invariant, rv_invariant) => true,
@@ -175,7 +175,7 @@ impl cmp::Eq for region_variance {
             (rv_contravariant, _) => false
         }
     }
-    pure fn ne(&self, other: &region_variance) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &region_variance) -> bool { !(*self).eq(other) }
 }
 
 #[auto_encode]
@@ -334,7 +334,7 @@ struct t_box_ {
 enum t_opaque {}
 pub type t = *t_opaque;
 
-pub pure fn get(t: t) -> t_box {
+pub fn get(t: t) -> t_box {
     unsafe {
         let t2 = cast::reinterpret_cast::<t, t_box>(&t);
         let t3 = t2;
@@ -343,21 +343,21 @@ pub pure fn get(t: t) -> t_box {
     }
 }
 
-pub pure fn tbox_has_flag(tb: t_box, flag: tbox_flag) -> bool {
+pub fn tbox_has_flag(tb: t_box, flag: tbox_flag) -> bool {
     (tb.flags & (flag as uint)) != 0u
 }
-pub pure fn type_has_params(t: t) -> bool {
+pub fn type_has_params(t: t) -> bool {
     tbox_has_flag(get(t), has_params)
 }
-pub pure fn type_has_self(t: t) -> bool { tbox_has_flag(get(t), has_self) }
-pub pure fn type_needs_infer(t: t) -> bool {
+pub fn type_has_self(t: t) -> bool { tbox_has_flag(get(t), has_self) }
+pub fn type_needs_infer(t: t) -> bool {
     tbox_has_flag(get(t), needs_infer)
 }
-pub pure fn type_has_regions(t: t) -> bool {
+pub fn type_has_regions(t: t) -> bool {
     tbox_has_flag(get(t), has_regions)
 }
-pub pure fn type_def_id(t: t) -> Option<ast::def_id> { get(t).o_def_id }
-pub pure fn type_id(t: t) -> uint { get(t).id }
+pub fn type_def_id(t: t) -> Option<ast::def_id> { get(t).o_def_id }
+pub fn type_id(t: t) -> uint { get(t).id }
 
 #[deriving(Eq)]
 pub struct BareFnTy {
@@ -388,13 +388,13 @@ pub struct FnSig {
 }
 
 impl to_bytes::IterBytes for BareFnTy {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_3(&self.purity, &self.abi, &self.sig, lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for ClosureTy {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_5(&self.purity, &self.sigil, &self.onceness,
                                &self.region, &self.sig, lsb0, f)
     }
@@ -407,7 +407,7 @@ pub struct param_ty {
 }
 
 impl to_bytes::IterBytes for param_ty {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.idx, &self.def_id, lsb0, f)
     }
 }
@@ -616,7 +616,7 @@ pub enum InferTy {
 }
 
 impl to_bytes::IterBytes for InferTy {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           TyVar(ref tv) => to_bytes::iter_bytes_2(&0u8, tv, lsb0, f),
           IntVar(ref iv) => to_bytes::iter_bytes_2(&1u8, iv, lsb0, f),
@@ -633,7 +633,7 @@ pub enum InferRegion {
 }
 
 impl to_bytes::IterBytes for InferRegion {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
             ReVar(ref rv) => to_bytes::iter_bytes_2(&0u8, rv, lsb0, f),
             ReSkolemized(ref v, _) => to_bytes::iter_bytes_2(&1u8, v, lsb0, f)
@@ -642,7 +642,7 @@ impl to_bytes::IterBytes for InferRegion {
 }
 
 impl cmp::Eq for InferRegion {
-    pure fn eq(&self, other: &InferRegion) -> bool {
+    fn eq(&self, other: &InferRegion) -> bool {
         match ((*self), *other) {
             (ReVar(rva), ReVar(rvb)) => {
                 rva == rvb
@@ -653,13 +653,13 @@ impl cmp::Eq for InferRegion {
             _ => false
         }
     }
-    pure fn ne(&self, other: &InferRegion) -> bool {
+    fn ne(&self, other: &InferRegion) -> bool {
         !((*self) == (*other))
     }
 }
 
 impl to_bytes::IterBytes for param_bound {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           bound_copy => 0u8.iter_bytes(lsb0, f),
           bound_durable => 1u8.iter_bytes(lsb0, f),
@@ -672,50 +672,50 @@ impl to_bytes::IterBytes for param_bound {
 }
 
 pub trait Vid {
-    pure fn to_uint(&self) -> uint;
+    fn to_uint(&self) -> uint;
 }
 
 impl Vid for TyVid {
-    pure fn to_uint(&self) -> uint { **self }
+    fn to_uint(&self) -> uint { **self }
 }
 
 impl ToStr for TyVid {
-    pure fn to_str(&self) -> ~str { fmt!("<V%u>", self.to_uint()) }
+    fn to_str(&self) -> ~str { fmt!("<V%u>", self.to_uint()) }
 }
 
 impl Vid for IntVid {
-    pure fn to_uint(&self) -> uint { **self }
+    fn to_uint(&self) -> uint { **self }
 }
 
 impl ToStr for IntVid {
-    pure fn to_str(&self) -> ~str { fmt!("<VI%u>", self.to_uint()) }
+    fn to_str(&self) -> ~str { fmt!("<VI%u>", self.to_uint()) }
 }
 
 impl Vid for FloatVid {
-    pure fn to_uint(&self) -> uint { **self }
+    fn to_uint(&self) -> uint { **self }
 }
 
 impl ToStr for FloatVid {
-    pure fn to_str(&self) -> ~str { fmt!("<VF%u>", self.to_uint()) }
+    fn to_str(&self) -> ~str { fmt!("<VF%u>", self.to_uint()) }
 }
 
 impl Vid for RegionVid {
-    pure fn to_uint(&self) -> uint { self.id }
+    fn to_uint(&self) -> uint { self.id }
 }
 
 impl ToStr for RegionVid {
-    pure fn to_str(&self) -> ~str { fmt!("%?", self.id) }
+    fn to_str(&self) -> ~str { fmt!("%?", self.id) }
 }
 
 impl ToStr for FnSig {
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         // grr, without tcx not much we can do.
         return ~"(...)";
     }
 }
 
 impl ToStr for InferTy {
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         match *self {
             TyVar(ref v) => v.to_str(),
             IntVar(ref v) => v.to_str(),
@@ -725,7 +725,7 @@ impl ToStr for InferTy {
 }
 
 impl ToStr for IntVarValue {
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         match *self {
             IntType(ref v) => v.to_str(),
             UintType(ref v) => v.to_str(),
@@ -734,25 +734,25 @@ impl ToStr for IntVarValue {
 }
 
 impl to_bytes::IterBytes for TyVid {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for IntVid {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for FloatVid {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for RegionVid {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
@@ -1112,7 +1112,7 @@ pub fn mk_with_id(cx: ctxt, base: t, def_id: ast::def_id) -> t {
 }
 
 // Converts s to its machine type equivalent
-pub pure fn mach_sty(cfg: @session::config, t: t) -> sty {
+pub fn mach_sty(cfg: @session::config, t: t) -> sty {
     match get(t).sty {
       ty_int(ast::ty_i) => ty_int(cfg.int_type),
       ty_uint(ast::ty_u) => ty_uint(cfg.uint_type),
@@ -1532,14 +1532,14 @@ pub fn get_element_type(ty: t, i: uint) -> t {
     }
 }
 
-pub pure fn type_is_box(ty: t) -> bool {
+pub fn type_is_box(ty: t) -> bool {
     match get(ty).sty {
       ty_box(_) => return true,
       _ => return false
     }
 }
 
-pub pure fn type_is_boxed(ty: t) -> bool {
+pub fn type_is_boxed(ty: t) -> bool {
     match get(ty).sty {
       ty_box(_) | ty_opaque_box |
       ty_evec(_, vstore_box) | ty_estr(vstore_box) => true,
@@ -1547,35 +1547,35 @@ pub pure fn type_is_boxed(ty: t) -> bool {
     }
 }
 
-pub pure fn type_is_region_ptr(ty: t) -> bool {
+pub fn type_is_region_ptr(ty: t) -> bool {
     match get(ty).sty {
       ty_rptr(_, _) => true,
       _ => false
     }
 }
 
-pub pure fn type_is_slice(ty: t) -> bool {
+pub fn type_is_slice(ty: t) -> bool {
     match get(ty).sty {
       ty_evec(_, vstore_slice(_)) | ty_estr(vstore_slice(_)) => true,
       _ => return false
     }
 }
 
-pub pure fn type_is_unique_box(ty: t) -> bool {
+pub fn type_is_unique_box(ty: t) -> bool {
     match get(ty).sty {
       ty_uniq(_) => return true,
       _ => return false
     }
 }
 
-pub pure fn type_is_unsafe_ptr(ty: t) -> bool {
+pub fn type_is_unsafe_ptr(ty: t) -> bool {
     match get(ty).sty {
       ty_ptr(_) => return true,
       _ => return false
     }
 }
 
-pub pure fn type_is_vec(ty: t) -> bool {
+pub fn type_is_vec(ty: t) -> bool {
     return match get(ty).sty {
           ty_evec(_, _) | ty_unboxed_vec(_) => true,
           ty_estr(_) => true,
@@ -1583,7 +1583,7 @@ pub pure fn type_is_vec(ty: t) -> bool {
         };
 }
 
-pub pure fn type_is_unique(ty: t) -> bool {
+pub fn type_is_unique(ty: t) -> bool {
     match get(ty).sty {
         ty_uniq(_) |
         ty_evec(_, vstore_uniq) |
@@ -1598,7 +1598,7 @@ pub pure fn type_is_unique(ty: t) -> bool {
  (A ty_ptr is scalar because it represents a non-managed pointer, so its
  contents are abstract to rustc.)
 */
-pub pure fn type_is_scalar(ty: t) -> bool {
+pub fn type_is_scalar(ty: t) -> bool {
     match get(ty).sty {
       ty_nil | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_infer(IntVar(_)) | ty_infer(FloatVar(_)) | ty_type |
@@ -1720,7 +1720,7 @@ pub impl TypeContents {
         !self.intersects(TypeContents::noncopyable(cx))
     }
 
-    static fn noncopyable(_cx: ctxt) -> TypeContents {
+    fn noncopyable(_cx: ctxt) -> TypeContents {
         TC_DTOR + TC_BORROWED_MUT + TC_ONCE_CLOSURE + TC_OWNED_CLOSURE +
             TC_EMPTY_ENUM
     }
@@ -1729,7 +1729,7 @@ pub impl TypeContents {
         !self.intersects(TypeContents::nondurable(cx))
     }
 
-    static fn nondurable(_cx: ctxt) -> TypeContents {
+    fn nondurable(_cx: ctxt) -> TypeContents {
         TC_BORROWED_POINTER
     }
 
@@ -1737,7 +1737,7 @@ pub impl TypeContents {
         !self.intersects(TypeContents::nonowned(cx))
     }
 
-    static fn nonowned(_cx: ctxt) -> TypeContents {
+    fn nonowned(_cx: ctxt) -> TypeContents {
         TC_MANAGED + TC_BORROWED_POINTER
     }
 
@@ -1749,7 +1749,7 @@ pub impl TypeContents {
         !self.intersects(TypeContents::nonconst(cx))
     }
 
-    static fn nonconst(_cx: ctxt) -> TypeContents {
+    fn nonconst(_cx: ctxt) -> TypeContents {
         TC_MUTABLE
     }
 
@@ -1757,7 +1757,7 @@ pub impl TypeContents {
         self.intersects(TypeContents::nonimplicitly_copyable(cx))
     }
 
-    static fn nonimplicitly_copyable(cx: ctxt) -> TypeContents {
+    fn nonimplicitly_copyable(cx: ctxt) -> TypeContents {
         let base = TypeContents::noncopyable(cx) + TC_OWNED_POINTER;
         if cx.vecs_implicitly_copyable {base} else {base + TC_OWNED_VEC}
     }
@@ -1766,7 +1766,7 @@ pub impl TypeContents {
         !self.intersects(TypeContents::nondefault_mode(cx))
     }
 
-    static fn nondefault_mode(cx: ctxt) -> TypeContents {
+    fn nondefault_mode(cx: ctxt) -> TypeContents {
         let tc = TypeContents::nonimplicitly_copyable(cx);
         tc + TC_BIG + TC_OWNED_VEC // disregard cx.vecs_implicitly_copyable
     }
@@ -1776,26 +1776,26 @@ pub impl TypeContents {
         self.intersects(tc)
     }
 
-    static fn owned(&self, _cx: ctxt) -> TypeContents {
+    fn owned(_cx: ctxt) -> TypeContents {
         //! Any kind of owned contents.
         TC_OWNED_CLOSURE + TC_OWNED_POINTER + TC_OWNED_VEC
     }
 }
 
 impl ops::Add<TypeContents,TypeContents> for TypeContents {
-    pure fn add(&self, other: &TypeContents) -> TypeContents {
+    fn add(&self, other: &TypeContents) -> TypeContents {
         TypeContents {bits: self.bits | other.bits}
     }
 }
 
 impl ops::Sub<TypeContents,TypeContents> for TypeContents {
-    pure fn sub(&self, other: &TypeContents) -> TypeContents {
+    fn sub(&self, other: &TypeContents) -> TypeContents {
         TypeContents {bits: self.bits & !other.bits}
     }
 }
 
 impl ToStr for TypeContents {
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         fmt!("TypeContents(%s)", u32::to_str_radix(self.bits, 2))
     }
 }
@@ -2534,7 +2534,7 @@ pub fn index_sty(cx: ctxt, sty: &sty) -> Option<mt> {
 }
 
 impl to_bytes::IterBytes for bound_region {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           ty::br_self => 0u8.iter_bytes(lsb0, f),
 
@@ -2554,7 +2554,7 @@ impl to_bytes::IterBytes for bound_region {
 }
 
 impl to_bytes::IterBytes for Region {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           re_bound(ref br) =>
           to_bytes::iter_bytes_2(&0u8, br, lsb0, f),
@@ -2574,7 +2574,7 @@ impl to_bytes::IterBytes for Region {
 }
 
 impl to_bytes::IterBytes for vstore {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           vstore_fixed(ref u) =>
           to_bytes::iter_bytes_2(&0u8, u, lsb0, f),
@@ -2589,7 +2589,7 @@ impl to_bytes::IterBytes for vstore {
 }
 
 impl to_bytes::IterBytes for TraitStore {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           BareTraitStore => 0u8.iter_bytes(lsb0, f),
           UniqTraitStore => 1u8.iter_bytes(lsb0, f),
@@ -2600,7 +2600,7 @@ impl to_bytes::IterBytes for TraitStore {
 }
 
 impl to_bytes::IterBytes for substs {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_3(&self.self_r,
                                  &self.self_ty,
                                  &self.tps, lsb0, f)
@@ -2608,28 +2608,28 @@ impl to_bytes::IterBytes for substs {
 }
 
 impl to_bytes::IterBytes for mt {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_2(&self.ty,
                                  &self.mutbl, lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for field {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_2(&self.ident,
                                  &self.mt, lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for arg {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.mode,
                                &self.ty, lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for FnSig {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.inputs,
                                &self.output,
                                lsb0, f);
@@ -2637,7 +2637,7 @@ impl to_bytes::IterBytes for FnSig {
 }
 
 impl to_bytes::IterBytes for sty {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           ty_nil => 0u8.iter_bytes(lsb0, f),
           ty_bool => 1u8.iter_bytes(lsb0, f),
@@ -2768,7 +2768,7 @@ pub fn ty_fn_purity(fty: t) -> ast::purity {
     }
 }
 
-pub pure fn ty_fn_ret(fty: t) -> t {
+pub fn ty_fn_ret(fty: t) -> t {
     match get(fty).sty {
         ty_bare_fn(ref f) => f.sig.output,
         ty_closure(ref f) => f.sig.output,
@@ -2786,7 +2786,7 @@ pub fn is_fn_ty(fty: t) -> bool {
     }
 }
 
-pub pure fn ty_vstore(ty: t) -> vstore {
+pub fn ty_vstore(ty: t) -> vstore {
     match get(ty).sty {
         ty_evec(_, vstore) => vstore,
         ty_estr(vstore) => vstore,
@@ -3716,13 +3716,13 @@ pub enum DtorKind {
 }
 
 pub impl DtorKind {
-    pure fn is_not_present(&const self) -> bool {
+    fn is_not_present(&const self) -> bool {
         match *self {
             NoDtor => true,
             _ => false
         }
     }
-    pure fn is_present(&const self) -> bool {
+    fn is_present(&const self) -> bool {
         !self.is_not_present()
     }
 }
@@ -4000,7 +4000,7 @@ pub fn lookup_struct_field(cx: ctxt,
     }
 }
 
-pure fn is_public(f: field_ty) -> bool {
+fn is_public(f: field_ty) -> bool {
     // XXX: This is wrong.
     match f.vis {
         public | inherited => true,
@@ -4260,7 +4260,7 @@ pub fn eval_repeat_count(tcx: ctxt, count_expr: @ast::expr) -> uint {
 }
 
 // Determine what purity to check a nested function under
-pub pure fn determine_inherited_purity(parent_purity: ast::purity,
+pub fn determine_inherited_purity(parent_purity: ast::purity,
                                        child_purity: ast::purity,
                                        child_sigil: ast::Sigil)
                                     -> ast::purity {
@@ -4364,14 +4364,14 @@ pub fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
 }
 
 impl cmp::Eq for mt {
-    pure fn eq(&self, other: &mt) -> bool {
+    fn eq(&self, other: &mt) -> bool {
         (*self).ty == (*other).ty && (*self).mutbl == (*other).mutbl
     }
-    pure fn ne(&self, other: &mt) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &mt) -> bool { !(*self).eq(other) }
 }
 
 impl cmp::Eq for Region {
-    pure fn eq(&self, other: &Region) -> bool {
+    fn eq(&self, other: &Region) -> bool {
         match (*self) {
             re_bound(e0a) => {
                 match (*other) {
@@ -4405,11 +4405,11 @@ impl cmp::Eq for Region {
             }
         }
     }
-    pure fn ne(&self, other: &Region) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &Region) -> bool { !(*self).eq(other) }
 }
 
 impl cmp::Eq for bound_region {
-    pure fn eq(&self, other: &bound_region) -> bool {
+    fn eq(&self, other: &bound_region) -> bool {
         match (*self) {
             br_self => {
                 match (*other) {
@@ -4443,11 +4443,11 @@ impl cmp::Eq for bound_region {
             }
         }
     }
-    pure fn ne(&self, other: &bound_region) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &bound_region) -> bool { !(*self).eq(other) }
 }
 
 impl cmp::Eq for param_bound {
-    pure fn eq(&self, other: &param_bound) -> bool {
+    fn eq(&self, other: &param_bound) -> bool {
         match (*self) {
             bound_copy => {
                 match (*other) {
@@ -4481,7 +4481,7 @@ impl cmp::Eq for param_bound {
             }
         }
     }
-    pure fn ne(&self, other: &param_bound) -> bool { !self.eq(other) }
+    fn ne(&self, other: &param_bound) -> bool { !self.eq(other) }
 }
 
 // Local Variables:

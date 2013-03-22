@@ -35,8 +35,8 @@ pub struct Node<V, T> {
 }
 
 pub trait UnifyVid<T> {
-    static fn appropriate_vals_and_bindings(&self, infcx: &'v mut InferCtxt)
-        -> &'v mut ValsAndBindings<Self, T>;
+    fn appropriate_vals_and_bindings(infcx: &'v mut InferCtxt)
+                                  -> &'v mut ValsAndBindings<Self, T>;
 }
 
 pub impl InferCtxt {
@@ -144,7 +144,7 @@ pub impl InferCtxt {
 // doesn't have a subtyping relationship we need to worry about.
 
 pub trait SimplyUnifiable {
-    static fn to_type_err(&self, expected_found<Self>) -> ty::type_err;
+    fn to_type_err(expected_found<Self>) -> ty::type_err;
 }
 
 pub fn mk_err<T:SimplyUnifiable>(+a_is_expected: bool,
@@ -235,36 +235,34 @@ pub impl InferCtxt {
 // ______________________________________________________________________
 
 impl UnifyVid<Bounds<ty::t>> for ty::TyVid {
-    static fn appropriate_vals_and_bindings(&self, infcx: &'v mut InferCtxt)
+    fn appropriate_vals_and_bindings(infcx: &'v mut InferCtxt)
         -> &'v mut ValsAndBindings<ty::TyVid, Bounds<ty::t>> {
         return &mut infcx.ty_var_bindings;
     }
 }
 
 impl UnifyVid<Option<IntVarValue>> for ty::IntVid {
-    static fn appropriate_vals_and_bindings(&self, infcx: &'v mut InferCtxt)
+    fn appropriate_vals_and_bindings(infcx: &'v mut InferCtxt)
         -> &'v mut ValsAndBindings<ty::IntVid, Option<IntVarValue>> {
         return &mut infcx.int_var_bindings;
     }
 }
 
 impl SimplyUnifiable for IntVarValue {
-    static fn to_type_err(&self, err: expected_found<IntVarValue>)
-        -> ty::type_err {
+    fn to_type_err(err: expected_found<IntVarValue>) -> ty::type_err {
         return ty::terr_int_mismatch(err);
     }
 }
 
 impl UnifyVid<Option<ast::float_ty>> for ty::FloatVid {
-    static fn appropriate_vals_and_bindings(&self, infcx: &'v mut InferCtxt)
+    fn appropriate_vals_and_bindings(infcx: &'v mut InferCtxt)
         -> &'v mut ValsAndBindings<ty::FloatVid, Option<ast::float_ty>> {
         return &mut infcx.float_var_bindings;
     }
 }
 
 impl SimplyUnifiable for ast::float_ty {
-    static fn to_type_err(&self, err: expected_found<ast::float_ty>)
-        -> ty::type_err {
+    fn to_type_err(err: expected_found<ast::float_ty>) -> ty::type_err {
         return ty::terr_float_mismatch(err);
     }
 }

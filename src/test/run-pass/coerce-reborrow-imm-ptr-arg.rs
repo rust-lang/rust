@@ -1,4 +1,4 @@
-pure fn negate(x: &int) -> int {
+fn negate(x: &int) -> int {
     -*x
 }
 

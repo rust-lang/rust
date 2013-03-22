@@ -51,27 +51,27 @@ pub struct Timespec { sec: i64, nsec: i32 }
  * nsec: 800_000_000_i32 }`.
  */
 pub impl Timespec {
-    static pure fn new(sec: i64, nsec: i32) -> Timespec {
+    fn new(sec: i64, nsec: i32) -> Timespec {
         fail_unless!(nsec >= 0 && nsec < NSEC_PER_SEC);
         Timespec { sec: sec, nsec: nsec }
     }
 }
 
 impl Eq for Timespec {
-    pure fn eq(&self, other: &Timespec) -> bool {
+    fn eq(&self, other: &Timespec) -> bool {
         self.sec == other.sec && self.nsec == other.nsec
     }
-    pure fn ne(&self, other: &Timespec) -> bool { !self.eq(other) }
+    fn ne(&self, other: &Timespec) -> bool { !self.eq(other) }
 }
 
 impl Ord for Timespec {
-    pure fn lt(&self, other: &Timespec) -> bool {
+    fn lt(&self, other: &Timespec) -> bool {
         self.sec < other.sec ||
             (self.sec == other.sec && self.nsec < other.nsec)
     }
-    pure fn le(&self, other: &Timespec) -> bool { !other.lt(self) }
-    pure fn ge(&self, other: &Timespec) -> bool { !self.lt(other) }
-    pure fn gt(&self, other: &Timespec) -> bool { !self.le(other) }
+    fn le(&self, other: &Timespec) -> bool { !other.lt(self) }
+    fn ge(&self, other: &Timespec) -> bool { !self.lt(other) }
+    fn gt(&self, other: &Timespec) -> bool { !self.le(other) }
 }
 
 /**
@@ -133,7 +133,7 @@ pub struct Tm {
 }
 
 impl Eq for Tm {
-    pure fn eq(&self, other: &Tm) -> bool {
+    fn eq(&self, other: &Tm) -> bool {
         self.tm_sec == (*other).tm_sec &&
         self.tm_min == (*other).tm_min &&
         self.tm_hour == (*other).tm_hour &&
@@ -147,10 +147,10 @@ impl Eq for Tm {
         self.tm_zone == (*other).tm_zone &&
         self.tm_nsec == (*other).tm_nsec
     }
-    pure fn ne(&self, other: &Tm) -> bool { !self.eq(other) }
+    fn ne(&self, other: &Tm) -> bool { !self.eq(other) }
 }
 
-pub pure fn empty_tm() -> Tm {
+pub fn empty_tm() -> Tm {
     Tm {
         tm_sec: 0_i32,
         tm_min: 0_i32,
@@ -198,14 +198,14 @@ pub fn now() -> Tm {
 }
 
 /// Parses the time from the string according to the format string.
-pub pure fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
+pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     // unsafe only because do_strptime is annoying to make pure
     // (it does IO with a str_reader)
     unsafe {do_strptime(s, format)}
 }
 
 /// Formats the time according to the format string.
-pub pure fn strftime(format: &str, tm: &Tm) -> ~str {
+pub fn strftime(format: &str, tm: &Tm) -> ~str {
     // unsafe only because do_strftime is annoying to make pure
     // (it does IO with a str_reader)
     unsafe { do_strftime(format, tm) }
@@ -239,10 +239,10 @@ pub impl Tm {
      * Return a string of the current time in the form
      * "Thu Jan  1 00:00:00 1970".
      */
-    pure fn ctime(&self) -> ~str { self.strftime(~"%c") }
+    fn ctime(&self) -> ~str { self.strftime(~"%c") }
 
     /// Formats the time according to the format string.
-    pure fn strftime(&self, format: &str) -> ~str {
+    fn strftime(&self, format: &str) -> ~str {
         strftime(format, self)
     }
 
@@ -252,7 +252,7 @@ pub impl Tm {
      * local: "Thu, 22 Mar 2012 07:53:18 PST"
      * utc:   "Thu, 22 Mar 2012 14:53:18 UTC"
      */
-    pure fn rfc822(&self) -> ~str {
+    fn rfc822(&self) -> ~str {
         if self.tm_gmtoff == 0_i32 {
             self.strftime(~"%a, %d %b %Y %T GMT")
         } else {
@@ -266,7 +266,7 @@ pub impl Tm {
      * local: "Thu, 22 Mar 2012 07:53:18 -0700"
      * utc:   "Thu, 22 Mar 2012 14:53:18 -0000"
      */
-    pure fn rfc822z(&self) -> ~str {
+    fn rfc822z(&self) -> ~str {
         self.strftime(~"%a, %d %b %Y %T %z")
     }
 
@@ -276,7 +276,7 @@ pub impl Tm {
      * local: "2012-02-22T07:53:18-07:00"
      * utc:   "2012-02-22T14:53:18Z"
      */
-    pure fn rfc3339(&self) -> ~str {
+    fn rfc3339(&self) -> ~str {
         if self.tm_gmtoff == 0_i32 {
             self.strftime(~"%Y-%m-%dT%H:%M:%SZ")
         } else {

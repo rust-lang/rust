@@ -25,8 +25,8 @@ fn vec_equal<T>(v: ~[T],
     return true;
 }
 
-pure fn builtin_equal<T>(&&a: T, &&b: T) -> bool { return a == b; }
-pure fn builtin_equal_int(&&a: int, &&b: int) -> bool { return a == b; }
+fn builtin_equal<T>(&&a: T, &&b: T) -> bool { return a == b; }
+fn builtin_equal_int(&&a: int, &&b: int) -> bool { return a == b; }
 
 fn main() {
     fail_unless!((builtin_equal(5, 5)));

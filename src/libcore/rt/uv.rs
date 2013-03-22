@@ -74,7 +74,7 @@ impl Callback for NullCallback { }
 
 /// A type that wraps a native handle
 trait NativeHandle<T> {
-    static pub fn from_native_handle(T) -> Self;
+    pub fn from_native_handle(T) -> Self;
     pub fn native_handle(&self) -> T;
 }
 
@@ -86,7 +86,7 @@ pub struct Loop {
 }
 
 pub impl Loop {
-    static fn new() -> Loop {
+    fn new() -> Loop {
         let handle = unsafe { uvll::loop_new() };
         fail_unless!(handle.is_not_null());
         NativeHandle::from_native_handle(handle)
@@ -102,7 +102,7 @@ pub impl Loop {
 }
 
 impl NativeHandle<*uvll::uv_loop_t> for Loop {
-    static fn from_native_handle(handle: *uvll::uv_loop_t) -> Loop {
+    fn from_native_handle(handle: *uvll::uv_loop_t) -> Loop {
         Loop { handle: handle }
     }
     fn native_handle(&self) -> *uvll::uv_loop_t {
@@ -132,7 +132,7 @@ type IdleCallback = ~fn(IdleWatcher, Option<UvError>);
 impl Callback for IdleCallback { }
 
 pub impl IdleWatcher {
-    static fn new(loop_: &mut Loop) -> IdleWatcher {
+    fn new(loop_: &mut Loop) -> IdleWatcher {
         unsafe {
             let handle = uvll::idle_new();
             fail_unless!(handle.is_not_null());
@@ -177,7 +177,7 @@ pub impl IdleWatcher {
 }
 
 impl NativeHandle<*uvll::uv_idle_t> for IdleWatcher {
-    static fn from_native_handle(handle: *uvll::uv_idle_t) -> IdleWatcher {
+    fn from_native_handle(handle: *uvll::uv_idle_t) -> IdleWatcher {
         IdleWatcher(handle)
     }
     fn native_handle(&self) -> *uvll::uv_idle_t {
@@ -307,7 +307,7 @@ pub impl StreamWatcher {
 }
 
 impl NativeHandle<*uvll::uv_stream_t> for StreamWatcher {
-    static fn from_native_handle(
+    fn from_native_handle(
         handle: *uvll::uv_stream_t) -> StreamWatcher {
         StreamWatcher(handle)
     }
@@ -328,7 +328,7 @@ type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
 impl Callback for ConnectionCallback { }
 
 pub impl TcpWatcher {
-    static fn new(loop_: &mut Loop) -> TcpWatcher {
+    fn new(loop_: &mut Loop) -> TcpWatcher {
         unsafe {
             let size = size_of::<uvll::uv_tcp_t>() as size_t;
             let handle = malloc(size) as *uvll::uv_tcp_t;
@@ -421,7 +421,7 @@ pub impl TcpWatcher {
 }
 
 impl NativeHandle<*uvll::uv_tcp_t> for TcpWatcher {
-    static fn from_native_handle(handle: *uvll::uv_tcp_t) -> TcpWatcher {
+    fn from_native_handle(handle: *uvll::uv_tcp_t) -> TcpWatcher {
         TcpWatcher(handle)
     }
     fn native_handle(&self) -> *uvll::uv_tcp_t {
@@ -441,7 +441,7 @@ impl Request for ConnectRequest { }
 
 impl ConnectRequest {
 
-    static fn new() -> ConnectRequest {
+    fn new() -> ConnectRequest {
         let connect_handle = unsafe {
             malloc(size_of::<uvll::uv_connect_t>() as size_t)
         };
@@ -465,7 +465,7 @@ impl ConnectRequest {
 }
 
 impl NativeHandle<*uvll::uv_connect_t> for ConnectRequest {
-    static fn from_native_handle(
+    fn from_native_handle(
         handle: *uvll:: uv_connect_t) -> ConnectRequest {
         ConnectRequest(handle)
     }
@@ -480,7 +480,7 @@ impl Request for WriteRequest { }
 
 impl WriteRequest {
 
-    static fn new() -> WriteRequest {
+    fn new() -> WriteRequest {
         let write_handle = unsafe {
             malloc(size_of::<uvll::uv_write_t>() as size_t)
         };
@@ -503,7 +503,7 @@ impl WriteRequest {
 }
 
 impl NativeHandle<*uvll::uv_write_t> for WriteRequest {
-    static fn from_native_handle(handle: *uvll:: uv_write_t) -> WriteRequest {
+    fn from_native_handle(handle: *uvll:: uv_write_t) -> WriteRequest {
         WriteRequest(handle)
     }
     fn native_handle(&self) -> *uvll::uv_write_t {
@@ -518,7 +518,7 @@ struct UvError(uvll::uv_err_t);
 
 impl UvError {
 
-    pure fn name(&self) -> ~str {
+    fn name(&self) -> ~str {
         unsafe {
             let inner = match self { &UvError(ref a) => a };
             let name_str = uvll::err_name(inner);
@@ -527,7 +527,7 @@ impl UvError {
         }
     }
 
-    pure fn desc(&self) -> ~str {
+    fn desc(&self) -> ~str {
         unsafe {
             let inner = match self { &UvError(ref a) => a };
             let desc_str = uvll::strerror(inner);
@@ -538,7 +538,7 @@ impl UvError {
 }
 
 impl ToStr for UvError {
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         fmt!("%s: %s", self.name(), self.desc())
     }
 }

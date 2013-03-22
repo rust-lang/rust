@@ -53,16 +53,16 @@ pub mod BigDigit {
     priv const hi_mask: uint = (-1 as uint) << bits;
     priv const lo_mask: uint = (-1 as uint) >> bits;
 
-    priv pure fn get_hi(n: uint) -> BigDigit { (n >> bits) as BigDigit }
-    priv pure fn get_lo(n: uint) -> BigDigit { (n & lo_mask) as BigDigit }
+    priv fn get_hi(n: uint) -> BigDigit { (n >> bits) as BigDigit }
+    priv fn get_lo(n: uint) -> BigDigit { (n & lo_mask) as BigDigit }
 
     /// Split one machine sized unsigned integer into two BigDigits.
-    pub pure fn from_uint(n: uint) -> (BigDigit, BigDigit) {
+    pub fn from_uint(n: uint) -> (BigDigit, BigDigit) {
         (get_hi(n), get_lo(n))
     }
 
     /// Join two BigDigits into one machine sized unsigned integer
-    pub pure fn to_uint(hi: BigDigit, lo: BigDigit) -> uint {
+    pub fn to_uint(hi: BigDigit, lo: BigDigit) -> uint {
         (lo as uint) | ((hi as uint) << bits)
     }
 }
@@ -78,29 +78,29 @@ pub struct BigUint {
 }
 
 impl Eq for BigUint {
-    pure fn eq(&self, other: &BigUint) -> bool { self.cmp(other) == 0 }
-    pure fn ne(&self, other: &BigUint) -> bool { self.cmp(other) != 0 }
+    fn eq(&self, other: &BigUint) -> bool { self.cmp(other) == 0 }
+    fn ne(&self, other: &BigUint) -> bool { self.cmp(other) != 0 }
 }
 
 impl Ord for BigUint {
-    pure fn lt(&self, other: &BigUint) -> bool { self.cmp(other) <  0 }
-    pure fn le(&self, other: &BigUint) -> bool { self.cmp(other) <= 0 }
-    pure fn ge(&self, other: &BigUint) -> bool { self.cmp(other) >= 0 }
-    pure fn gt(&self, other: &BigUint) -> bool { self.cmp(other) >  0 }
+    fn lt(&self, other: &BigUint) -> bool { self.cmp(other) <  0 }
+    fn le(&self, other: &BigUint) -> bool { self.cmp(other) <= 0 }
+    fn ge(&self, other: &BigUint) -> bool { self.cmp(other) >= 0 }
+    fn gt(&self, other: &BigUint) -> bool { self.cmp(other) >  0 }
 }
 
 impl ToStr for BigUint {
-    pure fn to_str(&self) -> ~str { self.to_str_radix(10) }
+    fn to_str(&self) -> ~str { self.to_str_radix(10) }
 }
 
 impl from_str::FromStr for BigUint {
-    static pure fn from_str(s: &str) -> Option<BigUint> {
+    fn from_str(s: &str) -> Option<BigUint> {
         BigUint::from_str_radix(s, 10)
     }
 }
 
 impl Shl<uint, BigUint> for BigUint {
-    pure fn shl(&self, rhs: &uint) -> BigUint {
+    fn shl(&self, rhs: &uint) -> BigUint {
         let n_unit = *rhs / BigDigit::bits;
         let n_bits = *rhs % BigDigit::bits;
         return self.shl_unit(n_unit).shl_bits(n_bits);
@@ -108,7 +108,7 @@ impl Shl<uint, BigUint> for BigUint {
 }
 
 impl Shr<uint, BigUint> for BigUint {
-    pure fn shr(&self, rhs: &uint) -> BigUint {
+    fn shr(&self, rhs: &uint) -> BigUint {
         let n_unit = *rhs / BigDigit::bits;
         let n_bits = *rhs % BigDigit::bits;
         return self.shr_unit(n_unit).shr_bits(n_bits);
@@ -116,15 +116,15 @@ impl Shr<uint, BigUint> for BigUint {
 }
 
 impl Zero for BigUint {
-    static pure fn zero() -> BigUint { BigUint::new(~[]) }
+    fn zero() -> BigUint { BigUint::new(~[]) }
 }
 
 impl One for BigUint {
-    static pub pure fn one() -> BigUint { BigUint::new(~[1]) }
+    pub fn one() -> BigUint { BigUint::new(~[1]) }
 }
 
 impl Add<BigUint, BigUint> for BigUint {
-    pure fn add(&self, other: &BigUint) -> BigUint {
+    fn add(&self, other: &BigUint) -> BigUint {
         let new_len = uint::max(self.data.len(), other.data.len());
 
         let mut carry = 0;
@@ -143,7 +143,7 @@ impl Add<BigUint, BigUint> for BigUint {
 }
 
 impl Sub<BigUint, BigUint> for BigUint {
-    pure fn sub(&self, other: &BigUint) -> BigUint {
+    fn sub(&self, other: &BigUint) -> BigUint {
         let new_len = uint::max(self.data.len(), other.data.len());
 
         let mut borrow = 0;
@@ -168,7 +168,7 @@ impl Sub<BigUint, BigUint> for BigUint {
 }
 
 impl Mul<BigUint, BigUint> for BigUint {
-    pure fn mul(&self, other: &BigUint) -> BigUint {
+    fn mul(&self, other: &BigUint) -> BigUint {
         if self.is_zero() || other.is_zero() { return Zero::zero(); }
 
         let s_len = self.data.len(), o_len = other.data.len();
@@ -200,7 +200,7 @@ impl Mul<BigUint, BigUint> for BigUint {
 
         return ll + mm.shl_unit(half_len) + hh.shl_unit(half_len * 2);
 
-        pure fn mul_digit(a: &BigUint, n: BigDigit) -> BigUint {
+        fn mul_digit(a: &BigUint, n: BigDigit) -> BigUint {
             if n == 0 { return Zero::zero(); }
             if n == 1 { return copy *a; }
 
@@ -216,14 +216,14 @@ impl Mul<BigUint, BigUint> for BigUint {
             return BigUint::new(prod + [carry]);
         }
 
-        pure fn cut_at(a: &BigUint, n: uint) -> (BigUint, BigUint) {
+        fn cut_at(a: &BigUint, n: uint) -> (BigUint, BigUint) {
             let mid = uint::min(a.data.len(), n);
             return (BigUint::from_slice(vec::slice(a.data, mid,
                                                    a.data.len())),
                     BigUint::from_slice(vec::slice(a.data, 0, mid)));
         }
 
-        pure fn sub_sign(a: BigUint, b: BigUint) -> (int, BigUint) {
+        fn sub_sign(a: BigUint, b: BigUint) -> (int, BigUint) {
             match a.cmp(&b) {
                 s if s < 0 => (s, b - a),
                 s if s > 0 => (s, a - b),
@@ -234,36 +234,36 @@ impl Mul<BigUint, BigUint> for BigUint {
 }
 
 impl Div<BigUint, BigUint> for BigUint {
-    pure fn div(&self, other: &BigUint) -> BigUint {
+    fn div(&self, other: &BigUint) -> BigUint {
         let (d, _) = self.divmod(other);
         return d;
     }
 }
 
 impl Modulo<BigUint, BigUint> for BigUint {
-    pure fn modulo(&self, other: &BigUint) -> BigUint {
+    fn modulo(&self, other: &BigUint) -> BigUint {
         let (_, m) = self.divmod(other);
         return m;
     }
 }
 
 impl Neg<BigUint> for BigUint {
-    pure fn neg(&self) -> BigUint { fail!() }
+    fn neg(&self) -> BigUint { fail!() }
 }
 
 impl IntConvertible for BigUint {
-    pure fn to_int(&self) -> int {
+    fn to_int(&self) -> int {
         uint::min(self.to_uint(), int::max_value as uint) as int
     }
 
-    static pure fn from_int(n: int) -> BigUint {
+    fn from_int(n: int) -> BigUint {
         if (n < 0) { Zero::zero() } else { BigUint::from_uint(n as uint) }
     }
 }
 
 pub impl BigUint {
     /// Creates and initializes an BigUint.
-    static pub pure fn new(v: ~[BigDigit]) -> BigUint {
+    pub fn new(v: ~[BigDigit]) -> BigUint {
         // omit trailing zeros
         let new_len = v.rposition(|n| *n != 0).map_default(0, |p| *p + 1);
 
@@ -274,7 +274,7 @@ pub impl BigUint {
     }
 
     /// Creates and initializes an BigUint.
-    static pub pure fn from_uint(n: uint) -> BigUint {
+    pub fn from_uint(n: uint) -> BigUint {
         match BigDigit::from_uint(n) {
             (0,  0)  => Zero::zero(),
             (0,  n0) => BigUint::new(~[n0]),
@@ -283,18 +283,18 @@ pub impl BigUint {
     }
 
     /// Creates and initializes an BigUint.
-    static pub pure fn from_slice(slice: &[BigDigit]) -> BigUint {
+    pub fn from_slice(slice: &[BigDigit]) -> BigUint {
         return BigUint::new(vec::from_slice(slice));
     }
 
     /// Creates and initializes an BigUint.
-    static pub pure fn from_str_radix(s: &str, radix: uint)
+    pub fn from_str_radix(s: &str, radix: uint)
         -> Option<BigUint> {
         BigUint::parse_bytes(str::to_bytes(s), radix)
     }
 
     /// Creates and initializes an BigUint.
-    static pub pure fn parse_bytes(buf: &[u8], radix: uint)
+    pub fn parse_bytes(buf: &[u8], radix: uint)
         -> Option<BigUint> {
         let (base, unit_len) = get_radix_base(radix);
         let base_num: BigUint = BigUint::from_uint(base);
@@ -316,10 +316,10 @@ pub impl BigUint {
         }
     }
 
-    pure fn abs(&self) -> BigUint { copy *self }
+    fn abs(&self) -> BigUint { copy *self }
 
     /// Compare two BigUint value.
-    pure fn cmp(&self, other: &BigUint) -> int {
+    fn cmp(&self, other: &BigUint) -> int {
         let s_len = self.data.len(), o_len = other.data.len();
         if s_len < o_len { return -1; }
         if s_len > o_len { return  1;  }
@@ -334,7 +334,7 @@ pub impl BigUint {
         return 0;
     }
 
-    pure fn divmod(&self, other: &BigUint) -> (BigUint, BigUint) {
+    fn divmod(&self, other: &BigUint) -> (BigUint, BigUint) {
         if other.is_zero() { fail!() }
         if self.is_zero() { return (Zero::zero(), Zero::zero()); }
         if *other == One::one() { return (copy *self, Zero::zero()); }
@@ -355,7 +355,7 @@ pub impl BigUint {
         let (d, m) = divmod_inner(self << shift, other << shift);
         return (d, m >> shift);
 
-        pure fn divmod_inner(a: BigUint, b: BigUint) -> (BigUint, BigUint) {
+        fn divmod_inner(a: BigUint, b: BigUint) -> (BigUint, BigUint) {
             let mut r = a;
             let mut d = Zero::zero::<BigUint>();
             let mut n = 1;
@@ -377,7 +377,7 @@ pub impl BigUint {
             return (d, r);
         }
 
-        pure fn div_estimate(a: &BigUint, b: &BigUint, n: uint)
+        fn div_estimate(a: &BigUint, b: &BigUint, n: uint)
             -> (BigUint, BigUint, BigUint) {
             if a.data.len() < n {
                 return (Zero::zero(), Zero::zero(), copy *a);
@@ -405,26 +405,26 @@ pub impl BigUint {
         }
     }
 
-    pure fn quot(&self, other: &BigUint) -> BigUint {
+    fn quot(&self, other: &BigUint) -> BigUint {
         let (q, _) = self.quotrem(other);
         return q;
     }
-    pure fn rem(&self, other: &BigUint) -> BigUint {
+    fn rem(&self, other: &BigUint) -> BigUint {
         let (_, r) = self.quotrem(other);
         return r;
     }
-    pure fn quotrem(&self, other: &BigUint) -> (BigUint, BigUint) {
+    fn quotrem(&self, other: &BigUint) -> (BigUint, BigUint) {
         self.divmod(other)
     }
 
-    pure fn is_zero(&self) -> bool { self.data.is_empty() }
-    pure fn is_not_zero(&self) -> bool { !self.data.is_empty() }
-    pure fn is_positive(&self) -> bool { self.is_not_zero() }
-    pure fn is_negative(&self) -> bool { false }
-    pure fn is_nonpositive(&self) -> bool { self.is_zero() }
-    pure fn is_nonnegative(&self) -> bool { true }
+    fn is_zero(&self) -> bool { self.data.is_empty() }
+    fn is_not_zero(&self) -> bool { !self.data.is_empty() }
+    fn is_positive(&self) -> bool { self.is_not_zero() }
+    fn is_negative(&self) -> bool { false }
+    fn is_nonpositive(&self) -> bool { self.is_zero() }
+    fn is_nonnegative(&self) -> bool { true }
 
-    pure fn to_uint(&self) -> uint {
+    fn to_uint(&self) -> uint {
         match self.data.len() {
             0 => 0,
             1 => self.data[0] as uint,
@@ -433,7 +433,7 @@ pub impl BigUint {
         }
     }
 
-    pure fn to_str_radix(&self, radix: uint) -> ~str {
+    fn to_str_radix(&self, radix: uint) -> ~str {
         fail_unless!(1 < radix && radix <= 16);
         let (base, max_len) = get_radix_base(radix);
         if base == BigDigit::base {
@@ -441,7 +441,7 @@ pub impl BigUint {
         }
         return fill_concat(convert_base(copy *self, base), radix, max_len);
 
-        pure fn convert_base(n: BigUint, base: uint) -> ~[BigDigit] {
+        fn convert_base(n: BigUint, base: uint) -> ~[BigDigit] {
             let divider    = BigUint::from_uint(base);
             let mut result = ~[];
             let mut r      = n;
@@ -456,7 +456,7 @@ pub impl BigUint {
             return result;
         }
 
-        pure fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
+        fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
             if v.is_empty() { return ~"0" }
             let s = str::concat(vec::reversed(v).map(|n| {
                 let s = uint::to_str_radix(*n as uint, radix);
@@ -466,13 +466,13 @@ pub impl BigUint {
         }
     }
 
-    priv pure fn shl_unit(self, n_unit: uint) -> BigUint {
+    priv fn shl_unit(self, n_unit: uint) -> BigUint {
         if n_unit == 0 || self.is_zero() { return self; }
 
         return BigUint::new(vec::from_elem(n_unit, 0) + self.data);
     }
 
-    priv pure fn shl_bits(self, n_bits: uint) -> BigUint {
+    priv fn shl_bits(self, n_bits: uint) -> BigUint {
         if n_bits == 0 || self.is_zero() { return self; }
 
         let mut carry = 0;
@@ -487,7 +487,7 @@ pub impl BigUint {
         return BigUint::new(shifted + [carry]);
     }
 
-    priv pure fn shr_unit(self, n_unit: uint) -> BigUint {
+    priv fn shr_unit(self, n_unit: uint) -> BigUint {
         if n_unit == 0 { return self; }
         if self.data.len() < n_unit { return Zero::zero(); }
         return BigUint::from_slice(
@@ -495,7 +495,7 @@ pub impl BigUint {
         );
     }
 
-    priv pure fn shr_bits(self, n_bits: uint) -> BigUint {
+    priv fn shr_bits(self, n_bits: uint) -> BigUint {
         if n_bits == 0 || self.data.is_empty() { return self; }
 
         let mut borrow = 0;
@@ -509,7 +509,7 @@ pub impl BigUint {
 }
 
 #[cfg(target_arch = "x86_64")]
-priv pure fn get_radix_base(radix: uint) -> (uint, uint) {
+priv fn get_radix_base(radix: uint) -> (uint, uint) {
     fail_unless!(1 < radix && radix <= 16);
     match radix {
         2  => (4294967296, 32),
@@ -534,7 +534,7 @@ priv pure fn get_radix_base(radix: uint) -> (uint, uint) {
 #[cfg(target_arch = "arm")]
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "mips")]
-priv pure fn get_radix_base(radix: uint) -> (uint, uint) {
+priv fn get_radix_base(radix: uint) -> (uint, uint) {
     fail_unless!(1 < radix && radix <= 16);
     match radix {
         2  => (65536, 16),
@@ -560,20 +560,20 @@ priv pure fn get_radix_base(radix: uint) -> (uint, uint) {
 pub enum Sign { Minus, Zero, Plus }
 
 impl Eq for Sign {
-    pure fn eq(&self, other: &Sign) -> bool { self.cmp(other) == 0 }
-    pure fn ne(&self, other: &Sign) -> bool { self.cmp(other) != 0 }
+    fn eq(&self, other: &Sign) -> bool { self.cmp(other) == 0 }
+    fn ne(&self, other: &Sign) -> bool { self.cmp(other) != 0 }
 }
 
 impl Ord for Sign {
-    pure fn lt(&self, other: &Sign) -> bool { self.cmp(other) <  0 }
-    pure fn le(&self, other: &Sign) -> bool { self.cmp(other) <= 0 }
-    pure fn ge(&self, other: &Sign) -> bool { self.cmp(other) >= 0 }
-    pure fn gt(&self, other: &Sign) -> bool { self.cmp(other) >  0 }
+    fn lt(&self, other: &Sign) -> bool { self.cmp(other) <  0 }
+    fn le(&self, other: &Sign) -> bool { self.cmp(other) <= 0 }
+    fn ge(&self, other: &Sign) -> bool { self.cmp(other) >= 0 }
+    fn gt(&self, other: &Sign) -> bool { self.cmp(other) >  0 }
 }
 
 pub impl Sign {
     /// Compare two Sign.
-    pure fn cmp(&self, other: &Sign) -> int {
+    fn cmp(&self, other: &Sign) -> int {
         match (*self, *other) {
           (Minus, Minus) | (Zero,  Zero) | (Plus, Plus) =>  0,
           (Minus, Zero)  | (Minus, Plus) | (Zero, Plus) => -1,
@@ -582,7 +582,7 @@ pub impl Sign {
     }
 
     /// Negate Sign value.
-    pure fn neg(&self) -> Sign {
+    fn neg(&self) -> Sign {
         match *self {
           Minus => Plus,
           Zero  => Zero,
@@ -598,53 +598,53 @@ pub struct BigInt {
 }
 
 impl Eq for BigInt {
-    pure fn eq(&self, other: &BigInt) -> bool { self.cmp(other) == 0 }
-    pure fn ne(&self, other: &BigInt) -> bool { self.cmp(other) != 0 }
+    fn eq(&self, other: &BigInt) -> bool { self.cmp(other) == 0 }
+    fn ne(&self, other: &BigInt) -> bool { self.cmp(other) != 0 }
 }
 
 impl Ord for BigInt {
-    pure fn lt(&self, other: &BigInt) -> bool { self.cmp(other) <  0 }
-    pure fn le(&self, other: &BigInt) -> bool { self.cmp(other) <= 0 }
-    pure fn ge(&self, other: &BigInt) -> bool { self.cmp(other) >= 0 }
-    pure fn gt(&self, other: &BigInt) -> bool { self.cmp(other) >  0 }
+    fn lt(&self, other: &BigInt) -> bool { self.cmp(other) <  0 }
+    fn le(&self, other: &BigInt) -> bool { self.cmp(other) <= 0 }
+    fn ge(&self, other: &BigInt) -> bool { self.cmp(other) >= 0 }
+    fn gt(&self, other: &BigInt) -> bool { self.cmp(other) >  0 }
 }
 
 impl ToStr for BigInt {
-    pure fn to_str(&self) -> ~str { self.to_str_radix(10) }
+    fn to_str(&self) -> ~str { self.to_str_radix(10) }
 }
 
 impl from_str::FromStr for BigInt {
-    static pure fn from_str(s: &str) -> Option<BigInt> {
+    fn from_str(s: &str) -> Option<BigInt> {
         BigInt::from_str_radix(s, 10)
     }
 }
 
 impl Shl<uint, BigInt> for BigInt {
-    pure fn shl(&self, rhs: &uint) -> BigInt {
+    fn shl(&self, rhs: &uint) -> BigInt {
         BigInt::from_biguint(self.sign, self.data << *rhs)
     }
 }
 
 impl Shr<uint, BigInt> for BigInt {
-    pure fn shr(&self, rhs: &uint) -> BigInt {
+    fn shr(&self, rhs: &uint) -> BigInt {
         BigInt::from_biguint(self.sign, self.data >> *rhs)
     }
 }
 
 impl Zero for BigInt {
-    static pub pure fn zero() -> BigInt {
+    pub fn zero() -> BigInt {
         BigInt::from_biguint(Zero, Zero::zero())
     }
 }
 
 impl One for BigInt {
-    static pub pure fn one() -> BigInt {
+    pub fn one() -> BigInt {
         BigInt::from_biguint(Plus, One::one())
     }
 }
 
 impl Add<BigInt, BigInt> for BigInt {
-    pure fn add(&self, other: &BigInt) -> BigInt {
+    fn add(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
             (Zero, _)      => copy *other,
             (_,    Zero)   => copy *self,
@@ -658,7 +658,7 @@ impl Add<BigInt, BigInt> for BigInt {
 }
 
 impl Sub<BigInt, BigInt> for BigInt {
-    pure fn sub(&self, other: &BigInt) -> BigInt {
+    fn sub(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
             (Zero, _)    => -other,
             (_,    Zero) => copy *self,
@@ -678,7 +678,7 @@ impl Sub<BigInt, BigInt> for BigInt {
 }
 
 impl Mul<BigInt, BigInt> for BigInt {
-    pure fn mul(&self, other: &BigInt) -> BigInt {
+    fn mul(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
             (Zero, _)     | (_,     Zero)  => Zero::zero(),
             (Plus, Plus)  | (Minus, Minus) => {
@@ -692,27 +692,27 @@ impl Mul<BigInt, BigInt> for BigInt {
 }
 
 impl Div<BigInt, BigInt> for BigInt {
-    pure fn div(&self, other: &BigInt) -> BigInt {
+    fn div(&self, other: &BigInt) -> BigInt {
         let (d, _) = self.divmod(other);
         return d;
     }
 }
 
 impl Modulo<BigInt, BigInt> for BigInt {
-    pure fn modulo(&self, other: &BigInt) -> BigInt {
+    fn modulo(&self, other: &BigInt) -> BigInt {
         let (_, m) = self.divmod(other);
         return m;
     }
 }
 
 impl Neg<BigInt> for BigInt {
-    pure fn neg(&self) -> BigInt {
+    fn neg(&self) -> BigInt {
         BigInt::from_biguint(self.sign.neg(), copy self.data)
     }
 }
 
 impl IntConvertible for BigInt {
-    pure fn to_int(&self) -> int {
+    fn to_int(&self) -> int {
         match self.sign {
             Plus  => uint::min(self.to_uint(), int::max_value as uint) as int,
             Zero  => 0,
@@ -721,7 +721,7 @@ impl IntConvertible for BigInt {
         }
     }
 
-    static pure fn from_int(n: int) -> BigInt {
+    fn from_int(n: int) -> BigInt {
         if n > 0 {
            return BigInt::from_biguint(Plus,  BigUint::from_uint(n as uint));
         }
@@ -736,12 +736,12 @@ impl IntConvertible for BigInt {
 
 pub impl BigInt {
     /// Creates and initializes an BigInt.
-    static pub pure fn new(sign: Sign, v: ~[BigDigit]) -> BigInt {
+    pub fn new(sign: Sign, v: ~[BigDigit]) -> BigInt {
         BigInt::from_biguint(sign, BigUint::new(v))
     }
 
     /// Creates and initializes an BigInt.
-    static pub pure fn from_biguint(sign: Sign, data: BigUint) -> BigInt {
+    pub fn from_biguint(sign: Sign, data: BigUint) -> BigInt {
         if sign == Zero || data.is_zero() {
             return BigInt { sign: Zero, data: Zero::zero() };
         }
@@ -749,24 +749,24 @@ pub impl BigInt {
     }
 
     /// Creates and initializes an BigInt.
-    static pub pure fn from_uint(n: uint) -> BigInt {
+    pub fn from_uint(n: uint) -> BigInt {
         if n == 0 { return Zero::zero(); }
         return BigInt::from_biguint(Plus, BigUint::from_uint(n));
     }
 
     /// Creates and initializes an BigInt.
-    static pub pure fn from_slice(sign: Sign, slice: &[BigDigit]) -> BigInt {
+    pub fn from_slice(sign: Sign, slice: &[BigDigit]) -> BigInt {
         BigInt::from_biguint(sign, BigUint::from_slice(slice))
     }
 
     /// Creates and initializes an BigInt.
-    static pub pure fn from_str_radix(s: &str, radix: uint)
+    pub fn from_str_radix(s: &str, radix: uint)
         -> Option<BigInt> {
         BigInt::parse_bytes(str::to_bytes(s), radix)
     }
 
     /// Creates and initializes an BigInt.
-    static pub pure fn parse_bytes(buf: &[u8], radix: uint)
+    pub fn parse_bytes(buf: &[u8], radix: uint)
         -> Option<BigInt> {
         if buf.is_empty() { return None; }
         let mut sign  = Plus;
@@ -779,11 +779,11 @@ pub impl BigInt {
             .map(|bu| BigInt::from_biguint(sign, *bu));
     }
 
-    pure fn abs(&self) -> BigInt {
+    fn abs(&self) -> BigInt {
         BigInt::from_biguint(Plus, copy self.data)
     }
 
-    pure fn cmp(&self, other: &BigInt) -> int {
+    fn cmp(&self, other: &BigInt) -> int {
         let ss = self.sign, os = other.sign;
         if ss < os { return -1; }
         if ss > os { return  1; }
@@ -796,7 +796,7 @@ pub impl BigInt {
         }
     }
 
-    pure fn divmod(&self, other: &BigInt) -> (BigInt, BigInt) {
+    fn divmod(&self, other: &BigInt) -> (BigInt, BigInt) {
         // m.sign == other.sign
         let (d_ui, m_ui) = self.data.divmod(&other.data);
         let d = BigInt::from_biguint(Plus, d_ui),
@@ -818,16 +818,16 @@ pub impl BigInt {
         }
     }
 
-    pure fn quot(&self, other: &BigInt) -> BigInt {
+    fn quot(&self, other: &BigInt) -> BigInt {
         let (q, _) = self.quotrem(other);
         return q;
     }
-    pure fn rem(&self, other: &BigInt) -> BigInt {
+    fn rem(&self, other: &BigInt) -> BigInt {
         let (_, r) = self.quotrem(other);
         return r;
     }
 
-    pure fn quotrem(&self, other: &BigInt) -> (BigInt, BigInt) {
+    fn quotrem(&self, other: &BigInt) -> (BigInt, BigInt) {
         // r.sign == self.sign
         let (q_ui, r_ui) = self.data.quotrem(&other.data);
         let q = BigInt::from_biguint(Plus, q_ui);
@@ -841,14 +841,14 @@ pub impl BigInt {
         }
     }
 
-    pure fn is_zero(&self) -> bool { self.sign == Zero }
-    pure fn is_not_zero(&self) -> bool { self.sign != Zero }
-    pure fn is_positive(&self) -> bool { self.sign == Plus }
-    pure fn is_negative(&self) -> bool { self.sign == Minus }
-    pure fn is_nonpositive(&self) -> bool { self.sign != Plus }
-    pure fn is_nonnegative(&self) -> bool { self.sign != Minus }
+    fn is_zero(&self) -> bool { self.sign == Zero }
+    fn is_not_zero(&self) -> bool { self.sign != Zero }
+    fn is_positive(&self) -> bool { self.sign == Plus }
+    fn is_negative(&self) -> bool { self.sign == Minus }
+    fn is_nonpositive(&self) -> bool { self.sign != Plus }
+    fn is_nonnegative(&self) -> bool { self.sign != Minus }
 
-    pure fn to_uint(&self) -> uint {
+    fn to_uint(&self) -> uint {
         match self.sign {
             Plus  => self.data.to_uint(),
             Zero  => 0,
@@ -856,7 +856,7 @@ pub impl BigInt {
         }
     }
 
-    pure fn to_str_radix(&self, radix: uint) -> ~str {
+    fn to_str_radix(&self, radix: uint) -> ~str {
         match self.sign {
             Plus  => self.data.to_str_radix(radix),
             Zero  => ~"0",

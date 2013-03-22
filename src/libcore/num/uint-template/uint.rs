@@ -45,7 +45,7 @@ pub mod inst {
     *
     * The smallest integer `q` such that `x/y <= q`.
     */
-    pub pure fn div_ceil(x: uint, y: uint) -> uint {
+    pub fn div_ceil(x: uint, y: uint) -> uint {
         let div = x / y;
         if x % y == 0u { div }
         else { div + 1u }
@@ -63,7 +63,7 @@ pub mod inst {
     *
     * The integer `q` closest to `x/y`.
     */
-    pub pure fn div_round(x: uint, y: uint) -> uint {
+    pub fn div_round(x: uint, y: uint) -> uint {
         let div = x / y;
         if x % y * 2u  < y { div }
         else { div + 1u }
@@ -84,7 +84,7 @@ pub mod inst {
     * The smallest integer `q` such that `x/y <= q`. This
     * is either `x/y` or `x/y + 1`.
     */
-    pub pure fn div_floor(x: uint, y: uint) -> uint { return x / y; }
+    pub fn div_floor(x: uint, y: uint) -> uint { return x / y; }
 
     /**
     * Iterate over the range [`lo`..`hi`), or stop when requested
@@ -101,7 +101,7 @@ pub mod inst {
     * `true` If execution proceeded correctly, `false` if it was interrupted,
     * that is if `it` returned `false` at any point.
     */
-    pub pure fn iterate(lo: uint, hi: uint, it: &fn(uint) -> bool) -> bool {
+    pub fn iterate(lo: uint, hi: uint, it: &fn(uint) -> bool) -> bool {
         let mut i = lo;
         while i < hi {
             if (!it(i)) { return false; }
@@ -122,7 +122,7 @@ pub mod inst {
         * use with integer literals of inferred integer-type as
         * the self-value (eg. `for 100.times { ... }`).
         */
-        pure fn times(&self, it: &fn() -> bool) {
+        fn times(&self, it: &fn() -> bool) {
             let mut i = *self;
             while i > 0 {
                 if !it() { break }
@@ -133,7 +133,7 @@ pub mod inst {
 
     /// Returns the smallest power of 2 greater than or equal to `n`
     #[inline(always)]
-    pub pure fn next_power_of_two(n: uint) -> uint {
+    pub fn next_power_of_two(n: uint) -> uint {
         let halfbits: uint = sys::size_of::<uint>() * 4u;
         let mut tmp: uint = n - 1u;
         let mut shift: uint = 1u;
@@ -215,23 +215,23 @@ impl NumCast for uint {
      * Cast `n` to a `uint`
      */
     #[inline(always)]
-    static pure fn from<N:NumCast>(n: N) -> uint { n.to_uint() }
+    fn from<N:NumCast>(n: N) -> uint { n.to_uint() }
 
-    #[inline(always)] pure fn to_u8(&self)    -> u8    { *self as u8    }
-    #[inline(always)] pure fn to_u16(&self)   -> u16   { *self as u16   }
-    #[inline(always)] pure fn to_u32(&self)   -> u32   { *self as u32   }
-    #[inline(always)] pure fn to_u64(&self)   -> u64   { *self as u64   }
-    #[inline(always)] pure fn to_uint(&self)  -> uint  { *self          }
+    #[inline(always)] fn to_u8(&self)    -> u8    { *self as u8    }
+    #[inline(always)] fn to_u16(&self)   -> u16   { *self as u16   }
+    #[inline(always)] fn to_u32(&self)   -> u32   { *self as u32   }
+    #[inline(always)] fn to_u64(&self)   -> u64   { *self as u64   }
+    #[inline(always)] fn to_uint(&self)  -> uint  { *self          }
 
-    #[inline(always)] pure fn to_i8(&self)    -> i8    { *self as i8    }
-    #[inline(always)] pure fn to_i16(&self)   -> i16   { *self as i16   }
-    #[inline(always)] pure fn to_i32(&self)   -> i32   { *self as i32   }
-    #[inline(always)] pure fn to_i64(&self)   -> i64   { *self as i64   }
-    #[inline(always)] pure fn to_int(&self)   -> int   { *self as int   }
+    #[inline(always)] fn to_i8(&self)    -> i8    { *self as i8    }
+    #[inline(always)] fn to_i16(&self)   -> i16   { *self as i16   }
+    #[inline(always)] fn to_i32(&self)   -> i32   { *self as i32   }
+    #[inline(always)] fn to_i64(&self)   -> i64   { *self as i64   }
+    #[inline(always)] fn to_int(&self)   -> int   { *self as int   }
 
-    #[inline(always)] pure fn to_f32(&self)   -> f32   { *self as f32   }
-    #[inline(always)] pure fn to_f64(&self)   -> f64   { *self as f64   }
-    #[inline(always)] pure fn to_float(&self) -> float { *self as float }
+    #[inline(always)] fn to_f32(&self)   -> f32   { *self as f32   }
+    #[inline(always)] fn to_f64(&self)   -> f64   { *self as f64   }
+    #[inline(always)] fn to_float(&self) -> float { *self as float }
 }
 
 #[test]

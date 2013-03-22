@@ -95,11 +95,11 @@ pub fn common_exprs() -> ~[ast::expr] {
     ]
 }
 
-pub pure fn safe_to_steal_expr(e: @ast::expr, tm: test_mode) -> bool {
+pub fn safe_to_steal_expr(e: @ast::expr, tm: test_mode) -> bool {
     safe_to_use_expr(*e, tm)
 }
 
-pub pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
+pub fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
     match tm {
       tm_converge => {
         match e.node {

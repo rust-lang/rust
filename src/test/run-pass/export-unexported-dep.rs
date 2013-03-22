@@ -16,10 +16,10 @@ mod foo {
     enum t { t1, t2, }
 
     impl cmp::Eq for t {
-        pure fn eq(&self, other: &t) -> bool {
+        fn eq(&self, other: &t) -> bool {
             ((*self) as uint) == ((*other) as uint)
         }
-        pure fn ne(&self, other: &t) -> bool { !(*self).eq(other) }
+        fn ne(&self, other: &t) -> bool { !(*self).eq(other) }
     }
 
     pub fn f() -> t { return t1; }

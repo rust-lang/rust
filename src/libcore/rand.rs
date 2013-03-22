@@ -22,95 +22,95 @@ use libc::size_t;
 
 /// A type that can be randomly generated using an RNG
 pub trait Rand {
-    static fn rand(rng: @rand::Rng) -> Self;
+    fn rand(rng: @rand::Rng) -> Self;
 }
 
 impl Rand for int {
-    static fn rand(rng: @rand::Rng) -> int {
+    fn rand(rng: @rand::Rng) -> int {
         rng.gen_int()
     }
 }
 
 impl Rand for i8 {
-    static fn rand(rng: @rand::Rng) -> i8 {
+    fn rand(rng: @rand::Rng) -> i8 {
         rng.gen_i8()
     }
 }
 
 impl Rand for i16 {
-    static fn rand(rng: @rand::Rng) -> i16 {
+    fn rand(rng: @rand::Rng) -> i16 {
         rng.gen_i16()
     }
 }
 
 impl Rand for i32 {
-    static fn rand(rng: @rand::Rng) -> i32 {
+    fn rand(rng: @rand::Rng) -> i32 {
         rng.gen_i32()
     }
 }
 
 impl Rand for i64 {
-    static fn rand(rng: @rand::Rng) -> i64 {
+    fn rand(rng: @rand::Rng) -> i64 {
         rng.gen_i64()
     }
 }
 
 impl Rand for u8 {
-    static fn rand(rng: @rand::Rng) -> u8 {
+    fn rand(rng: @rand::Rng) -> u8 {
         rng.gen_u8()
     }
 }
 
 impl Rand for u16 {
-    static fn rand(rng: @rand::Rng) -> u16 {
+    fn rand(rng: @rand::Rng) -> u16 {
         rng.gen_u16()
     }
 }
 
 impl Rand for u32 {
-    static fn rand(rng: @rand::Rng) -> u32 {
+    fn rand(rng: @rand::Rng) -> u32 {
         rng.gen_u32()
     }
 }
 
 impl Rand for u64 {
-    static fn rand(rng: @rand::Rng) -> u64 {
+    fn rand(rng: @rand::Rng) -> u64 {
         rng.gen_u64()
     }
 }
 
 impl Rand for float {
-    static fn rand(rng: @rand::Rng) -> float {
+    fn rand(rng: @rand::Rng) -> float {
         rng.gen_float()
     }
 }
 
 impl Rand for f32 {
-    static fn rand(rng: @rand::Rng) -> f32 {
+    fn rand(rng: @rand::Rng) -> f32 {
         rng.gen_f32()
     }
 }
 
 impl Rand for f64 {
-    static fn rand(rng: @rand::Rng) -> f64 {
+    fn rand(rng: @rand::Rng) -> f64 {
         rng.gen_f64()
     }
 }
 
 impl Rand for char {
-    static fn rand(rng: @rand::Rng) -> char {
+    fn rand(rng: @rand::Rng) -> char {
         rng.gen_char()
     }
 }
 
 impl Rand for bool {
-    static fn rand(rng: @rand::Rng) -> bool {
+    fn rand(rng: @rand::Rng) -> bool {
         rng.gen_bool()
     }
 }
 
 impl<T:Rand> Rand for Option<T> {
-    static fn rand(rng: @rand::Rng) -> Option<T> {
+    fn rand(rng: @rand::Rng) -> Option<T> {
         if rng.gen_bool() {
             Some(Rand::rand(rng))
         } else {
@@ -527,12 +527,12 @@ impl Rng for XorShiftState {
     }
 }
 
-pub pure fn xorshift() -> @Rng {
+pub fn xorshift() -> @Rng {
     // constants taken from http://en.wikipedia.org/wiki/Xorshift
     seeded_xorshift(123456789u32, 362436069u32, 521288629u32, 88675123u32)
 }
 
-pub pure fn seeded_xorshift(x: u32, y: u32, z: u32, w: u32) -> @Rng {
+pub fn seeded_xorshift(x: u32, y: u32, z: u32, w: u32) -> @Rng {
     @XorShiftState { x: x, y: y, z: z, w: w } as @Rng
 }
 

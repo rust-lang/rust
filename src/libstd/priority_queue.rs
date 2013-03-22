@@ -31,16 +31,16 @@ impl<T:Ord> BaseIter<T> for PriorityQueue<T> {
     /// Visit all values in the underlying vector.
     ///
     /// The values are **not** visited in order.
-    pure fn each(&self, f: &fn(&T) -> bool) { self.data.each(f) }
-    pure fn size_hint(&self) -> Option<uint> { self.data.size_hint() }
+    fn each(&self, f: &fn(&T) -> bool) { self.data.each(f) }
+    fn size_hint(&self) -> Option<uint> { self.data.size_hint() }
 }
 
 impl<T:Ord> Container for PriorityQueue<T> {
     /// Returns the length of the queue
-    pure fn len(&const self) -> uint { vec::uniq_len(&const self.data) }
+    fn len(&const self) -> uint { vec::uniq_len(&const self.data) }
 
     /// Returns true if a queue contains no elements
-    pure fn is_empty(&const self) -> bool { self.len() == 0 }
+    fn is_empty(&const self) -> bool { self.len() == 0 }
 }
 
 impl<T:Ord> Mutable for PriorityQueue<T> {
@@ -50,15 +50,15 @@ impl<T:Ord> Mutable for PriorityQueue<T> {
 
 pub impl <T:Ord> PriorityQueue<T> {
     /// Returns the greatest item in the queue - fails if empty
-    pure fn top(&self) -> &'self T { &self.data[0] }
+    fn top(&self) -> &'self T { &self.data[0] }
 
     /// Returns the greatest item in the queue - None if empty
-    pure fn maybe_top(&self) -> Option<&'self T> {
+    fn maybe_top(&self) -> Option<&'self T> {
         if self.is_empty() { None } else { Some(self.top()) }
     }
 
     /// Returns the number of elements the queue can hold without reallocating
-    pure fn capacity(&self) -> uint { vec::capacity(&self.data) }
+    fn capacity(&self) -> uint { vec::capacity(&self.data) }
 
     fn reserve(&mut self, n: uint) { vec::reserve(&mut self.data, n) }
 
@@ -102,11 +102,11 @@ pub impl <T:Ord> PriorityQueue<T> {
     }
 
     /// Consume the PriorityQueue and return the underlying vector
-    pure fn to_vec(self) -> ~[T] { let PriorityQueue{data: v} = self; v }
+    fn to_vec(self) -> ~[T] { let PriorityQueue{data: v} = self; v }
 
     /// Consume the PriorityQueue and return a vector in sorted
     /// (ascending) order
-    pure fn to_sorted_vec(self) -> ~[T] {
+    fn to_sorted_vec(self) -> ~[T] {
         let mut q = self;
         let mut end = q.len();
         while end > 1 {
@@ -118,10 +118,10 @@ pub impl <T:Ord> PriorityQueue<T> {
     }
 
     /// Create an empty PriorityQueue
-    static pure fn new() -> PriorityQueue<T> { PriorityQueue{data: ~[],} }
+    fn new() -> PriorityQueue<T> { PriorityQueue{data: ~[],} }
 
     /// Create a PriorityQueue from a vector (heapify)
-    static pure fn from_vec(xs: ~[T]) -> PriorityQueue<T> {
+    fn from_vec(xs: ~[T]) -> PriorityQueue<T> {
         let mut q = PriorityQueue{data: xs,};
         let mut n = q.len() / 2;
         while n > 0 {

@@ -123,7 +123,7 @@ pub fn Arena() -> Arena {
 }
 
 #[inline(always)]
-pure fn round_up_to(base: uint, align: uint) -> uint {
+fn round_up_to(base: uint, align: uint) -> uint {
     (base + (align - 1)) & !(align - 1)
 }
 

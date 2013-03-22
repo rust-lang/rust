@@ -646,11 +646,11 @@ impl Reader for BytesReader<'self> {
     fn tell(&self) -> uint { self.pos }
 }
 
-pub pure fn with_bytes_reader<t>(bytes: &[u8], f: &fn(@Reader) -> t) -> t {
+pub fn with_bytes_reader<t>(bytes: &[u8], f: &fn(@Reader) -> t) -> t {
     f(@BytesReader { bytes: bytes, pos: 0u } as @Reader)
 }
 
-pub pure fn with_str_reader<T>(s: &str, f: &fn(@Reader) -> T) -> T {
+pub fn with_str_reader<T>(s: &str, f: &fn(@Reader) -> T) -> T {
     str::byte_slice(s, |bytes| with_bytes_reader(bytes, f))
 }
 
@@ -1165,18 +1165,18 @@ impl Writer for BytesWriter {
     fn get_type(&self) -> WriterType { File }
 }
 
-pub pure fn BytesWriter() -> BytesWriter {
+pub fn BytesWriter() -> BytesWriter {
     BytesWriter { bytes: ~[], mut pos: 0u }
 }
 
-pub pure fn with_bytes_writer(f: &fn(@Writer)) -> ~[u8] {
+pub fn with_bytes_writer(f: &fn(@Writer)) -> ~[u8] {
     let wr = @BytesWriter();
     f(wr as @Writer);
     let @BytesWriter{bytes, _} = wr;
     return bytes;
 }
 
-pub pure fn with_str_writer(f: &fn(@Writer)) -> ~str {
+pub fn with_str_writer(f: &fn(@Writer)) -> ~str {
     let mut v = with_bytes_writer(f);
 
     // FIXME (#3758): This should not be needed.
