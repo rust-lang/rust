@@ -80,6 +80,7 @@ use parse::obsolete::{ObsoleteAssertion, ObsoletePostFnTySigil};
 use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
 use parse::obsolete::{ObsoleteMode, ObsoleteImplicitSelf};
 use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
+use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -413,7 +414,7 @@ pub impl Parser {
 
     fn parse_purity(&self) -> purity {
         if self.eat_keyword(&~"pure") {
-            // NB: We parse this as impure for bootstrapping purposes.
+            self.obsolete(*self.last_span, ObsoletePurity);
             return impure_fn;
         } else if self.eat_keyword(&~"unsafe") {
             return unsafe_fn;
@@ -2684,7 +2685,7 @@ pub impl Parser {
 
     fn parse_optional_purity(&self) -> ast::purity {
         if self.eat_keyword(&~"pure") {
-            // NB: We parse this as impure for bootstrapping purposes.
+            self.obsolete(*self.last_span, ObsoletePurity);
             ast::impure_fn
         } else if self.eat_keyword(&~"unsafe") {
             ast::unsafe_fn
@@ -3341,8 +3342,14 @@ pub impl Parser {
         else if self.eat_keyword(&~"priv") { private }
         else { inherited }
     }
+
     fn parse_staticness(&self) -> bool {
-        self.eat_keyword(&~"static")
+        if self.eat_keyword(&~"static") {
+            self.obsolete(*self.last_span, ObsoleteStaticMethod);
+            true
+        } else {
+            false
+        }
     }
 
     // given a termination token and a vector of already-parsed
@@ -3580,6 +3587,7 @@ pub impl Parser {
     fn parse_fn_purity(&self) -> purity {
         if self.eat_keyword(&~"fn") { impure_fn }
         else if self.eat_keyword(&~"pure") {
+            self.obsolete(*self.last_span, ObsoletePurity);
             self.expect_keyword(&~"fn");
             // NB: We parse this as impure for bootstrapping purposes.
             impure_fn
@@ -3979,7 +3987,7 @@ pub impl Parser {
         }
         if items_allowed && self.eat_keyword(&~"pure") {
             // PURE FUNCTION ITEM
-            // NB: We parse this as impure for bootstrapping purposes.
+            self.obsolete(*self.last_span, ObsoletePurity);
             self.expect_keyword(&~"fn");
             let (ident, item_, extra_attrs) = self.parse_item_fn(impure_fn);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,

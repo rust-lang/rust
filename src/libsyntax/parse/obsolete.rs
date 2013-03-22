@@ -59,6 +59,8 @@ pub enum ObsoleteSyntax {
     ObsoleteImplicitSelf,
     ObsoleteLifetimeNotation,
     ObsoleteConstManagedPointer,
+    ObsoletePurity,
+    ObsoleteStaticMethod,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -197,6 +199,14 @@ pub impl Parser {
             ObsoleteConstManagedPointer => (
                 "const `@` pointer",
                 "instead of `@const Foo`, write `@Foo`"
+            ),
+            ObsoletePurity => (
+                "pure function",
+                "remove `pure`"
+            ),
+            ObsoleteStaticMethod => (
+                "`static` notation",
+                "`static` is superfluous; remove it"
             ),
         };
 
