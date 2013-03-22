@@ -51,7 +51,7 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 }
 
 impl ToStr for cat {
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         // FIXME #5384: this unsafe block is to work around purity
         unsafe {
             self.name.clone()

@@ -111,8 +111,7 @@ impl AsciiArt
 // Allows AsciiArt to be converted to a string using the libcore ToStr trait.
 // Note that the %s fmt! specifier will not call this automatically.
 impl ToStr for AsciiArt {
-    pure fn to_str(&self) -> ~str
-    {
+    fn to_str(&self) -> ~str {
         // Convert each line into a string.
         let lines = do self.lines.map |line| {str::from_chars(*line)};
 
