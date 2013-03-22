@@ -910,6 +910,7 @@ pub impl Parser {
                 && self.look_ahead(1u) == token::BINOP(token::AND)
             {
                 self.bump(); self.bump();
+                self.obsolete(*self.last_span, ObsoleteLifetimeNotation);
                 match *self.token {
                     token::IDENT(sid, _) => {
                         let span = copy self.span;

@@ -47,14 +47,14 @@ enum UsageSource {
     UsgStr(&'self str)
 }
 
-struct Command {
+struct Command<'self> {
     cmd: &'self str,
-    action: Action/&self,
+    action: Action<'self>,
     usage_line: &'self str,
-    usage_full: UsageSource/&self
+    usage_full: UsageSource<'self>,
 }
 
-static commands: &'static [Command/&static] = &[
+static commands: &'static [Command<'static>] = &[
     Command{
         cmd: "build",
         action: Exec("rustc"),
