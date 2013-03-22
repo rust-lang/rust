@@ -173,12 +173,12 @@ pub mod icu {
     }
 }
 
-pub pure fn is_XID_start(c: char) -> bool {
+pub fn is_XID_start(c: char) -> bool {
     return icu::libicu::u_hasBinaryProperty(c, icu::UCHAR_XID_START)
         == icu::TRUE;
 }
 
-pub pure fn is_XID_continue(c: char) -> bool {
+pub fn is_XID_continue(c: char) -> bool {
     return icu::libicu::u_hasBinaryProperty(c, icu::UCHAR_XID_START)
         == icu::TRUE;
 }
@@ -188,7 +188,7 @@ Function: is_digit
 
 Returns true if a character is a digit.
 */
-pub pure fn is_digit(c: char) -> bool {
+pub fn is_digit(c: char) -> bool {
     return icu::libicu::u_isdigit(c) == icu::TRUE;
 }
 
@@ -197,7 +197,7 @@ Function: is_lower
 
 Returns true if a character is a lowercase letter.
 */
-pub pure fn is_lower(c: char) -> bool {
+pub fn is_lower(c: char) -> bool {
     return icu::libicu::u_islower(c) == icu::TRUE;
 }
 
@@ -206,7 +206,7 @@ Function: is_space
 
 Returns true if a character is space.
 */
-pub pure fn is_space(c: char) -> bool {
+pub fn is_space(c: char) -> bool {
     return icu::libicu::u_isspace(c) == icu::TRUE;
 }
 
@@ -215,7 +215,7 @@ Function: is_upper
 
 Returns true if a character is an uppercase letter.
 */
-pub pure fn is_upper(c: char) -> bool {
+pub fn is_upper(c: char) -> bool {
     return icu::libicu::u_isupper(c) == icu::TRUE;
 }
 

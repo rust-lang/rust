@@ -53,7 +53,7 @@ pub enum TestName {
     DynTestName(~str)
 }
 impl ToStr for TestName {
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         match self {
             &StaticTestName(s) => s.to_str(),
             &DynTestName(s) => s.to_str()
@@ -536,7 +536,7 @@ pub fn filter_tests(
     };
 
     // Sort the tests alphabetically
-    pure fn lteq(t1: &TestDescAndFn, t2: &TestDescAndFn) -> bool {
+    fn lteq(t1: &TestDescAndFn, t2: &TestDescAndFn) -> bool {
         str::le(t1.desc.name.to_str(), t2.desc.name.to_str())
     }
     sort::quick_sort(filtered, lteq);

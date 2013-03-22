@@ -106,7 +106,7 @@ struct WorkKey {
 
 impl to_bytes::IterBytes for WorkKey {
     #[inline(always)]
-    pure fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         let mut flag = true;
         self.kind.iter_bytes(lsb0, |bytes| {flag = f(bytes); flag});
         if !flag { return; }
@@ -115,18 +115,18 @@ impl to_bytes::IterBytes for WorkKey {
 }
 
 impl cmp::Ord for WorkKey {
-    pure fn lt(&self, other: &WorkKey) -> bool {
+    fn lt(&self, other: &WorkKey) -> bool {
         self.kind < other.kind ||
             (self.kind == other.kind &&
              self.name < other.name)
     }
-    pure fn le(&self, other: &WorkKey) -> bool {
+    fn le(&self, other: &WorkKey) -> bool {
         self.lt(other) || self.eq(other)
     }
-    pure fn ge(&self, other: &WorkKey) -> bool {
+    fn ge(&self, other: &WorkKey) -> bool {
         self.gt(other) || self.eq(other)
     }
-    pure fn gt(&self, other: &WorkKey) -> bool {
+    fn gt(&self, other: &WorkKey) -> bool {
         ! self.le(other)
     }
 }
