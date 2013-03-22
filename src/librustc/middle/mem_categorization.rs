@@ -305,13 +305,13 @@ pub struct mem_categorization_ctxt {
 }
 
 impl ToStr for MutabilityCategory {
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         fmt!("%?", *self)
     }
 }
 
 pub impl MutabilityCategory {
-    static fn from_mutbl(&self, m: ast::mutability) -> MutabilityCategory {
+    fn from_mutbl(m: ast::mutability) -> MutabilityCategory {
         match m {
             m_imm => McImmutable,
             m_const => McReadOnly,

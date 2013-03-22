@@ -27,7 +27,7 @@ pub enum Identifier {
 
 impl cmp::Ord for Identifier {
     #[inline(always)]
-    pure fn lt(&self, other: &Identifier) -> bool {
+    fn lt(&self, other: &Identifier) -> bool {
         match (self, other) {
             (&Numeric(a), &Numeric(b)) => a < b,
             (&Numeric(_), _) => true,
@@ -36,22 +36,22 @@ impl cmp::Ord for Identifier {
         }
     }
     #[inline(always)]
-    pure fn le(&self, other: &Identifier) -> bool {
+    fn le(&self, other: &Identifier) -> bool {
         ! (other < self)
     }
     #[inline(always)]
-    pure fn gt(&self, other: &Identifier) -> bool {
+    fn gt(&self, other: &Identifier) -> bool {
         other < self
     }
     #[inline(always)]
-    pure fn ge(&self, other: &Identifier) -> bool {
+    fn ge(&self, other: &Identifier) -> bool {
         ! (self < other)
     }
 }
 
 impl ToStr for Identifier {
     #[inline(always)]
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         match self {
             &Numeric(n) => n.to_str(),
             &AlphaNumeric(ref s) => s.to_str()
@@ -71,7 +71,7 @@ pub struct Version {
 
 impl ToStr for Version {
     #[inline(always)]
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         let s = fmt!("%u.%u.%u", self.major, self.minor, self.patch);
         let s = if self.pre.is_empty() {
             s
@@ -88,7 +88,7 @@ impl ToStr for Version {
 
 impl cmp::Ord for Version {
     #[inline(always)]
-    pure fn lt(&self, other: &Version) -> bool {
+    fn lt(&self, other: &Version) -> bool {
 
         self.major < other.major ||
 
@@ -121,15 +121,15 @@ impl cmp::Ord for Version {
     }
 
     #[inline(always)]
-    pure fn le(&self, other: &Version) -> bool {
+    fn le(&self, other: &Version) -> bool {
         ! (other < self)
     }
     #[inline(always)]
-    pure fn gt(&self, other: &Version) -> bool {
+    fn gt(&self, other: &Version) -> bool {
         other < self
     }
     #[inline(always)]
-    pure fn ge(&self, other: &Version) -> bool {
+    fn ge(&self, other: &Version) -> bool {
         ! (self < other)
     }
 }

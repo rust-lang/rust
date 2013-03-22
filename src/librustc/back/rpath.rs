@@ -20,7 +20,7 @@ use core::util;
 use core::vec;
 use core::hashmap::linear::LinearSet;
 
-pure fn not_win32(os: session::os) -> bool {
+fn not_win32(os: session::os) -> bool {
   match os {
       session::os_win32 => false,
       _ => true

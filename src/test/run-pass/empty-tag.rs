@@ -11,10 +11,10 @@
 enum chan { chan_t, }
 
 impl cmp::Eq for chan {
-    pure fn eq(&self, other: &chan) -> bool {
+    fn eq(&self, other: &chan) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    pure fn ne(&self, other: &chan) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &chan) -> bool { !(*self).eq(other) }
 }
 
 fn wrapper3(i: chan) {

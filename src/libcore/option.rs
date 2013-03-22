@@ -59,7 +59,7 @@ pub enum Option<T> {
 }
 
 impl<T:Ord> Ord for Option<T> {
-    pure fn lt(&self, other: &Option<T>) -> bool {
+    fn lt(&self, other: &Option<T>) -> bool {
         match (self, other) {
             (&None, &None) => false,
             (&None, &Some(_)) => true,
@@ -68,7 +68,7 @@ impl<T:Ord> Ord for Option<T> {
         }
     }
 
-    pure fn le(&self, other: &Option<T>) -> bool {
+    fn le(&self, other: &Option<T>) -> bool {
         match (self, other) {
             (&None, &None) => true,
             (&None, &Some(_)) => true,
@@ -77,18 +77,18 @@ impl<T:Ord> Ord for Option<T> {
         }
     }
 
-    pure fn ge(&self, other: &Option<T>) -> bool {
+    fn ge(&self, other: &Option<T>) -> bool {
         ! (self < other)
     }
 
-    pure fn gt(&self, other: &Option<T>) -> bool {
+    fn gt(&self, other: &Option<T>) -> bool {
         ! (self <= other)
     }
 }
 
 impl<T: Copy + Add<T,T>> Add<Option<T>, Option<T>> for Option<T> {
     #[inline(always)]
-    pure fn add(&self, other: &Option<T>) -> Option<T> {
+    fn add(&self, other: &Option<T>) -> Option<T> {
         match (*self, *other) {
             (None, None) => None,
             (_, None) => *self,
@@ -99,7 +99,7 @@ impl<T: Copy + Add<T,T>> Add<Option<T>, Option<T>> for Option<T> {
 }
 
 #[inline(always)]
-pub pure fn get<T:Copy>(opt: Option<T>) -> T {
+pub fn get<T:Copy>(opt: Option<T>) -> T {
     /*!
     Gets the value out of an option
 
@@ -122,7 +122,7 @@ pub pure fn get<T:Copy>(opt: Option<T>) -> T {
 }
 
 #[inline(always)]
-pub pure fn get_ref<T>(opt: &'r Option<T>) -> &'r T {
+pub fn get_ref<T>(opt: &'r Option<T>) -> &'r T {
     /*!
     Gets an immutable reference to the value inside an option.
 
@@ -143,7 +143,7 @@ pub pure fn get_ref<T>(opt: &'r Option<T>) -> &'r T {
     }
 }
 
-pub pure fn get_mut_ref<T>(opt: &'r mut Option<T>) -> &'r mut T {
+pub fn get_mut_ref<T>(opt: &'r mut Option<T>) -> &'r mut T {
     /*!
     Gets a mutable reference to the value inside an option.
 
@@ -165,14 +165,14 @@ pub pure fn get_mut_ref<T>(opt: &'r mut Option<T>) -> &'r mut T {
 }
 
 #[inline(always)]
-pub pure fn map<T, U>(opt: &'r Option<T>, f: &fn(x: &'r T) -> U) -> Option<U> {
+pub fn map<T, U>(opt: &'r Option<T>, f: &fn(x: &'r T) -> U) -> Option<U> {
     //! Maps a `some` value by reference from one type to another
 
     match *opt { Some(ref x) => Some(f(x)), None => None }
 }
 
 #[inline(always)]
-pub pure fn map_consume<T, U>(opt: Option<T>,
+pub fn map_consume<T, U>(opt: Option<T>,
                               f: &fn(v: T) -> U) -> Option<U> {
     /*!
      * As `map`, but consumes the option and gives `f` ownership to avoid
@@ -182,7 +182,7 @@ pub pure fn map_consume<T, U>(opt: Option<T>,
 }
 
 #[inline(always)]
-pub pure fn chain<T, U>(opt: Option<T>,
+pub fn chain<T, U>(opt: Option<T>,
                         f: &fn(t: T) -> Option<U>) -> Option<U> {
     /*!
      * Update an optional value by optionally running its content through a
@@ -196,7 +196,7 @@ pub pure fn chain<T, U>(opt: Option<T>,
 }
 
 #[inline(always)]
-pub pure fn chain_ref<T, U>(opt: &Option<T>,
+pub fn chain_ref<T, U>(opt: &Option<T>,
                             f: &fn(x: &T) -> Option<U>) -> Option<U> {
     /*!
      * Update an optional value by optionally running its content by reference
@@ -207,7 +207,7 @@ pub pure fn chain_ref<T, U>(opt: &Option<T>,
 }
 
 #[inline(always)]
-pub pure fn or<T>(opta: Option<T>, optb: Option<T>) -> Option<T> {
+pub fn or<T>(opta: Option<T>, optb: Option<T>) -> Option<T> {
     /*!
      * Returns the leftmost Some() value, or None if both are None.
      */
@@ -218,7 +218,7 @@ pub pure fn or<T>(opta: Option<T>, optb: Option<T>) -> Option<T> {
 }
 
 #[inline(always)]
-pub pure fn while_some<T>(x: Option<T>, blk: &fn(v: T) -> Option<T>) {
+pub fn while_some<T>(x: Option<T>, blk: &fn(v: T) -> Option<T>) {
     //! Applies a function zero or more times until the result is none.
 
     let mut opt = x;
@@ -228,35 +228,35 @@ pub pure fn while_some<T>(x: Option<T>, blk: &fn(v: T) -> Option<T>) {
 }
 
 #[inline(always)]
-pub pure fn is_none<T>(opt: &const Option<T>) -> bool {
+pub fn is_none<T>(opt: &const Option<T>) -> bool {
     //! Returns true if the option equals `none`
 
     match *opt { None => true, Some(_) => false }
 }
 
 #[inline(always)]
-pub pure fn is_some<T>(opt: &const Option<T>) -> bool {
+pub fn is_some<T>(opt: &const Option<T>) -> bool {
     //! Returns true if the option contains some value
 
     !is_none(opt)
 }
 
 #[inline(always)]
-pub pure fn get_or_zero<T:Copy + Zero>(opt: Option<T>) -> T {
+pub fn get_or_zero<T:Copy + Zero>(opt: Option<T>) -> T {
     //! Returns the contained value or zero (for this type)
 
     match opt { Some(copy x) => x, None => Zero::zero() }
 }
 
 #[inline(always)]
-pub pure fn get_or_default<T:Copy>(opt: Option<T>, def: T) -> T {
+pub fn get_or_default<T:Copy>(opt: Option<T>, def: T) -> T {
     //! Returns the contained value or a default
 
     match opt { Some(copy x) => x, None => def }
 }
 
 #[inline(always)]
-pub pure fn map_default<T, U>(opt: &'r Option<T>, def: U,
+pub fn map_default<T, U>(opt: &'r Option<T>, def: U,
                               f: &fn(&'r T) -> U) -> U {
     //! Applies a function to the contained value or returns a default
 
@@ -264,7 +264,7 @@ pub pure fn map_default<T, U>(opt: &'r Option<T>, def: U,
 }
 
 #[inline(always)]
-pub pure fn unwrap<T>(opt: Option<T>) -> T {
+pub fn unwrap<T>(opt: Option<T>) -> T {
     /*!
     Moves a value out of an option type and returns it.
 
@@ -302,7 +302,7 @@ pub fn swap_unwrap<T>(opt: &mut Option<T>) -> T {
 }
 
 #[inline(always)]
-pub pure fn expect<T>(opt: Option<T>, reason: &str) -> T {
+pub fn expect<T>(opt: Option<T>, reason: &str) -> T {
     //! As unwrap, but with a specified failure message.
     match opt {
         Some(val) => val,
@@ -313,12 +313,12 @@ pub pure fn expect<T>(opt: Option<T>, reason: &str) -> T {
 impl<T> BaseIter<T> for Option<T> {
     /// Performs an operation on the contained value by reference
     #[inline(always)]
-    pure fn each(&self, f: &fn(x: &'self T) -> bool) {
+    fn each(&self, f: &fn(x: &'self T) -> bool) {
         match *self { None => (), Some(ref t) => { f(t); } }
     }
 
     #[inline(always)]
-    pure fn size_hint(&self) -> Option<uint> {
+    fn size_hint(&self) -> Option<uint> {
         if self.is_some() { Some(1) } else { Some(0) }
     }
 }
@@ -333,42 +333,42 @@ impl<T> MutableIter<T> for Option<T> {
 pub impl<T> Option<T> {
     /// Returns true if the option equals `none`
     #[inline(always)]
-    pure fn is_none(&const self) -> bool { is_none(self) }
+    fn is_none(&const self) -> bool { is_none(self) }
 
     /// Returns true if the option contains some value
     #[inline(always)]
-    pure fn is_some(&const self) -> bool { is_some(self) }
+    fn is_some(&const self) -> bool { is_some(self) }
 
     /**
      * Update an optional value by optionally running its content by reference
      * through a function that returns an option.
      */
     #[inline(always)]
-    pure fn chain_ref<U>(&self, f: &fn(x: &T) -> Option<U>) -> Option<U> {
+    fn chain_ref<U>(&self, f: &fn(x: &T) -> Option<U>) -> Option<U> {
         chain_ref(self, f)
     }
 
     /// Maps a `some` value from one type to another by reference
     #[inline(always)]
-    pure fn map<U>(&self, f: &fn(&'self T) -> U) -> Option<U> { map(self, f) }
+    fn map<U>(&self, f: &fn(&'self T) -> U) -> Option<U> { map(self, f) }
 
     /// As `map`, but consumes the option and gives `f` ownership to avoid
     /// copying.
     #[inline(always)]
-    pure fn map_consume<U>(self, f: &fn(v: T) -> U) -> Option<U> {
+    fn map_consume<U>(self, f: &fn(v: T) -> U) -> Option<U> {
         map_consume(self, f)
     }
 
     /// Applies a function to the contained value or returns a default
     #[inline(always)]
-    pure fn map_default<U>(&self, def: U, f: &fn(&'self T) -> U) -> U {
+    fn map_default<U>(&self, def: U, f: &fn(&'self T) -> U) -> U {
         map_default(self, def, f)
     }
 
     /// As `map_default`, but consumes the option and gives `f`
     /// ownership to avoid copying.
     #[inline(always)]
-    pure fn map_consume_default<U>(self, def: U, f: &fn(v: T) -> U) -> U {
+    fn map_consume_default<U>(self, def: U, f: &fn(v: T) -> U) -> U {
         match self { None => def, Some(v) => f(v) }
     }
 
@@ -403,7 +403,7 @@ pub impl<T> Option<T> {
     case explicitly.
      */
     #[inline(always)]
-    pure fn get_ref(&self) -> &'self T { get_ref(self) }
+    fn get_ref(&self) -> &'self T { get_ref(self) }
 
     /**
     Gets a mutable reference to the value inside an option.
@@ -420,7 +420,7 @@ pub impl<T> Option<T> {
     case explicitly.
      */
     #[inline(always)]
-    pure fn get_mut_ref(&mut self) -> &'self mut T { get_mut_ref(self) }
+    fn get_mut_ref(&mut self) -> &'self mut T { get_mut_ref(self) }
 
     /**
      * Gets the value out of an option without copying.
@@ -430,7 +430,7 @@ pub impl<T> Option<T> {
      * Fails if the value equals `none`
      */
     #[inline(always)]
-    pure fn unwrap(self) -> T { unwrap(self) }
+    fn unwrap(self) -> T { unwrap(self) }
 
     /**
      * The option dance. Moves a value out of an option type and returns it,
@@ -452,7 +452,7 @@ pub impl<T> Option<T> {
      * Fails if the value equals `none`
      */
     #[inline(always)]
-    pure fn expect(self, reason: &str) -> T { expect(self, reason) }
+    fn expect(self, reason: &str) -> T { expect(self, reason) }
 }
 
 pub impl<T:Copy> Option<T> {
@@ -471,21 +471,21 @@ pub impl<T:Copy> Option<T> {
     case explicitly.
     */
     #[inline(always)]
-    pure fn get(self) -> T { get(self) }
+    fn get(self) -> T { get(self) }
 
     #[inline(always)]
-    pure fn get_or_default(self, def: T) -> T { get_or_default(self, def) }
+    fn get_or_default(self, def: T) -> T { get_or_default(self, def) }
 
     /// Applies a function zero or more times until the result is none.
     #[inline(always)]
-    pure fn while_some(self, blk: &fn(v: T) -> Option<T>) {
+    fn while_some(self, blk: &fn(v: T) -> Option<T>) {
         while_some(self, blk)
     }
 }
 
 pub impl<T:Copy + Zero> Option<T> {
     #[inline(always)]
-    pure fn get_or_zero(self) -> T { get_or_zero(self) }
+    fn get_or_zero(self) -> T { get_or_zero(self) }
 }
 
 #[test]

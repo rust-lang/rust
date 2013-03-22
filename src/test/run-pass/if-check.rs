@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pure fn even(x: uint) -> bool {
+fn even(x: uint) -> bool {
     if x < 2u {
         return false;
     } else if x == 2u { return true; } else { return even(x - 2u); }

@@ -17,36 +17,36 @@ use core::float;
 pub const FUZZY_EPSILON: float = 1.0e-6;
 
 pub trait FuzzyEq<Eps> {
-    pure fn fuzzy_eq(&self, other: &Self) -> bool;
-    pure fn fuzzy_eq_eps(&self, other: &Self, epsilon: &Eps) -> bool;
+    fn fuzzy_eq(&self, other: &Self) -> bool;
+    fn fuzzy_eq_eps(&self, other: &Self, epsilon: &Eps) -> bool;
 }
 
 impl FuzzyEq<float> for float {
-    pure fn fuzzy_eq(&self, other: &float) -> bool {
+    fn fuzzy_eq(&self, other: &float) -> bool {
         self.fuzzy_eq_eps(other, &FUZZY_EPSILON)
     }
 
-    pure fn fuzzy_eq_eps(&self, other: &float, epsilon: &float) -> bool {
+    fn fuzzy_eq_eps(&self, other: &float, epsilon: &float) -> bool {
         float::abs(*self - *other) < *epsilon
     }
 }
 
 impl FuzzyEq<f32> for f32 {
-    pure fn fuzzy_eq(&self, other: &f32) -> bool {
+    fn fuzzy_eq(&self, other: &f32) -> bool {
         self.fuzzy_eq_eps(other, &(FUZZY_EPSILON as f32))
     }
 
-    pure fn fuzzy_eq_eps(&self, other: &f32, epsilon: &f32) -> bool {
+    fn fuzzy_eq_eps(&self, other: &f32, epsilon: &f32) -> bool {
         f32::abs(*self - *other) < *epsilon
     }
 }
 
 impl FuzzyEq<f64> for f64 {
-    pure fn fuzzy_eq(&self, other: &f64) -> bool {
+    fn fuzzy_eq(&self, other: &f64) -> bool {
         self.fuzzy_eq_eps(other, &(FUZZY_EPSILON as f64))
     }
 
-    pure fn fuzzy_eq_eps(&self, other: &f64, epsilon: &f64) -> bool {
+    fn fuzzy_eq_eps(&self, other: &f64, epsilon: &f64) -> bool {
         f64::abs(*self - *other) < *epsilon
     }
 }
@@ -71,11 +71,11 @@ mod test_complex{
     struct Complex { r: float, i: float }
 
     impl FuzzyEq<float> for Complex {
-        pure fn fuzzy_eq(&self, other: &Complex) -> bool {
+        fn fuzzy_eq(&self, other: &Complex) -> bool {
             self.fuzzy_eq_eps(other, &FUZZY_EPSILON)
         }
 
-        pure fn fuzzy_eq_eps(&self, other: &Complex,
+        fn fuzzy_eq_eps(&self, other: &Complex,
                              epsilon: &float) -> bool {
             self.r.fuzzy_eq_eps(&other.r, epsilon) &&
             self.i.fuzzy_eq_eps(&other.i, epsilon)

@@ -151,7 +151,7 @@ pub enum NamespaceResult {
 }
 
 pub impl NamespaceResult {
-    pure fn is_unknown(&self) -> bool {
+    fn is_unknown(&self) -> bool {
         match *self {
             UnknownResult => true,
             _ => false

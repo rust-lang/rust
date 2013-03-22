@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pure fn f(f: &fn()) {
+fn f(f: &fn()) {
 }
 
-pure fn g() {
+fn g() {
     // `f || { }` is considered pure, so `do f { }` should be too
     do f { }
 }

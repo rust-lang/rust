@@ -29,10 +29,10 @@ pub enum OutputFormat {
 }
 
 impl cmp::Eq for OutputFormat {
-    pure fn eq(&self, other: &OutputFormat) -> bool {
+    fn eq(&self, other: &OutputFormat) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    pure fn ne(&self, other: &OutputFormat) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &OutputFormat) -> bool { !(*self).eq(other) }
 }
 
 /// How to organize the output
@@ -44,10 +44,10 @@ pub enum OutputStyle {
 }
 
 impl cmp::Eq for OutputStyle {
-    pure fn eq(&self, other: &OutputStyle) -> bool {
+    fn eq(&self, other: &OutputStyle) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    pure fn ne(&self, other: &OutputStyle) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &OutputStyle) -> bool { !(*self).eq(other) }
 }
 
 /// The configuration for a rustdoc session

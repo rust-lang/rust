@@ -218,8 +218,8 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
     return t;
 }
 
-pub pure fn cast_glue(ccx: @CrateContext, ti: @mut tydesc_info, v: ValueRef)
-                   -> ValueRef {
+pub fn cast_glue(ccx: @CrateContext, ti: @mut tydesc_info, v: ValueRef)
+              -> ValueRef {
     unsafe {
         let llfnty = type_of_glue_fn(ccx, ti.ty);
         llvm::LLVMConstPointerCast(v, T_ptr(llfnty))

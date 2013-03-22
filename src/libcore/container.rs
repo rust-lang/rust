@@ -14,10 +14,10 @@ use option::Option;
 
 pub trait Container {
     /// Return the number of elements in the container
-    pure fn len(&const self) -> uint;
+    fn len(&const self) -> uint;
 
     /// Return true if the container contains no elements
-    pure fn is_empty(&const self) -> bool;
+    fn is_empty(&const self) -> bool;
 }
 
 pub trait Mutable: Container {
@@ -27,19 +27,19 @@ pub trait Mutable: Container {
 
 pub trait Map<K, V>: Mutable {
     /// Return true if the map contains a value for the specified key
-    pure fn contains_key(&self, key: &K) -> bool;
+    fn contains_key(&self, key: &K) -> bool;
 
     /// Visit all keys
-    pure fn each_key(&self, f: &fn(&K) -> bool);
+    fn each_key(&self, f: &fn(&K) -> bool);
 
     /// Visit all values
-    pure fn each_value(&self, f: &fn(&V) -> bool);
+    fn each_value(&self, f: &fn(&V) -> bool);
 
     /// Iterate over the map and mutate the contained values
     fn mutate_values(&mut self, f: &fn(&K, &mut V) -> bool);
 
     /// Return the value corresponding to the key in the map
-    pure fn find(&self, key: &K) -> Option<&'self V>;
+    fn find(&self, key: &K) -> Option<&'self V>;
 
     /// Insert a key-value pair into the map. An existing value for a
     /// key is replaced by the new value. Return true if the key did
@@ -53,7 +53,7 @@ pub trait Map<K, V>: Mutable {
 
 pub trait Set<T>: Mutable {
     /// Return true if the set contains a value
-    pure fn contains(&self, value: &T) -> bool;
+    fn contains(&self, value: &T) -> bool;
 
     /// Add a value to the set. Return true if the value was not already
     /// present in the set.
@@ -65,23 +65,23 @@ pub trait Set<T>: Mutable {
 
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
-    pure fn is_disjoint(&self, other: &Self) -> bool;
+    fn is_disjoint(&self, other: &Self) -> bool;
 
     /// Return true if the set is a subset of another
-    pure fn is_subset(&self, other: &Self) -> bool;
+    fn is_subset(&self, other: &Self) -> bool;
 
     /// Return true if the set is a superset of another
-    pure fn is_superset(&self, other: &Self) -> bool;
+    fn is_superset(&self, other: &Self) -> bool;
 
     /// Visit the values representing the difference
-    pure fn difference(&self, other: &Self, f: &fn(&T) -> bool);
+    fn difference(&self, other: &Self, f: &fn(&T) -> bool);
 
     /// Visit the values representing the symmetric difference
-    pure fn symmetric_difference(&self, other: &Self, f: &fn(&T) -> bool);
+    fn symmetric_difference(&self, other: &Self, f: &fn(&T) -> bool);
 
     /// Visit the values representing the intersection
-    pure fn intersection(&self, other: &Self, f: &fn(&T) -> bool);
+    fn intersection(&self, other: &Self, f: &fn(&T) -> bool);
 
     /// Visit the values representing the union
-    pure fn union(&self, other: &Self, f: &fn(&T) -> bool);
+    fn union(&self, other: &Self, f: &fn(&T) -> bool);
 }

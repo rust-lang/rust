@@ -35,10 +35,10 @@ pub enum cmnt_style {
 }
 
 impl cmp::Eq for cmnt_style {
-    pure fn eq(&self, other: &cmnt_style) -> bool {
+    fn eq(&self, other: &cmnt_style) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    pure fn ne(&self, other: &cmnt_style) -> bool {
+    fn ne(&self, other: &cmnt_style) -> bool {
         ((*self) as uint) != ((*other) as uint)
     }
 }

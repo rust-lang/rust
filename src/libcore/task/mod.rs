@@ -78,13 +78,13 @@ pub enum TaskResult {
 }
 
 impl Eq for TaskResult {
-    pure fn eq(&self, other: &TaskResult) -> bool {
+    fn eq(&self, other: &TaskResult) -> bool {
         match ((*self), (*other)) {
             (Success, Success) | (Failure, Failure) => true,
             (Success, _) | (Failure, _) => false
         }
     }
-    pure fn ne(&self, other: &TaskResult) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &TaskResult) -> bool { !(*self).eq(other) }
 }
 
 /// Scheduler modes

@@ -69,7 +69,7 @@ pub mod reader {
     // ebml reading
 
     impl ops::Index<uint,Doc> for Doc {
-        pure fn index(&self, tag: uint) -> Doc {
+        fn index(&self, tag: uint) -> Doc {
             unsafe {
                 get_doc(*self, tag)
             }

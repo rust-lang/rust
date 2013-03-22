@@ -31,7 +31,7 @@ pub mod util {
         den: int,
     }
 
-    pub pure fn rational_leq(x: Rational, y: Rational) -> bool {
+    pub fn rational_leq(x: Rational, y: Rational) -> bool {
         // NB: Uses the fact that rationals have positive denominators WLOG:
 
         x.num * y.den <= y.num * x.den
@@ -74,7 +74,7 @@ pub mod chained {
     }
 
     priv impl<K:Eq + IterBytes + Hash,V> HashMap_<K, V> {
-        pure fn search_rem(&self, k: &K, h: uint, idx: uint,
+        fn search_rem(&self, k: &K, h: uint, idx: uint,
                            e_root: @Entry<K,V>) -> SearchResult<K,V> {
             let mut e0 = e_root;
             let mut comp = 1u;   // for logging
@@ -100,7 +100,7 @@ pub mod chained {
             };
         }
 
-        pure fn search_tbl(&self, k: &K, h: uint) -> SearchResult<K,V> {
+        fn search_tbl(&self, k: &K, h: uint) -> SearchResult<K,V> {
             let idx = h % vec::uniq_len(&const self.chains);
             match copy self.chains[idx] {
               None => {
@@ -134,7 +134,7 @@ pub mod chained {
     }
 
     pub impl<K:Eq + IterBytes + Hash,V> HashMap_<K, V> {
-        pure fn each_entry(&self, blk: &fn(@Entry<K,V>) -> bool) {
+        fn each_entry(&self, blk: &fn(@Entry<K,V>) -> bool) {
             // n.b. we can't use vec::iter() here because self.chains
             // is stored in a mutable location.
             let mut i = 0u, n = vec::uniq_len(&const self.chains);
@@ -161,12 +161,12 @@ pub mod chained {
     }
 
     impl<K:Eq + IterBytes + Hash,V> Container for HashMap_<K, V> {
-        pure fn len(&const self) -> uint { self.count }
-        pure fn is_empty(&const self) -> bool { self.count == 0 }
+        fn len(&const self) -> uint { self.count }
+        fn is_empty(&const self) -> bool { self.count == 0 }
     }
 
     pub impl<K:Eq + IterBytes + Hash,V> HashMap_<K, V> {
-        pure fn contains_key(@self, k: &K) -> bool {
+        fn contains_key(@self, k: &K) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(k, hash) {
               NotFound => false,
@@ -234,23 +234,23 @@ pub mod chained {
             }
         }
 
-        pure fn each(@self, blk: &fn(key: &K, value: &V) -> bool) {
+        fn each(@self, blk: &fn(key: &K, value: &V) -> bool) {
             for self.each_entry |entry| {
                 if !blk(&entry.key, &entry.value) { break; }
             }
         }
 
-        pure fn each_key(@self, blk: &fn(key: &K) -> bool) {
+        fn each_key(@self, blk: &fn(key: &K) -> bool) {
             self.each(|k, _v| blk(k))
         }
 
-        pure fn each_value(@self, blk: &fn(value: &V) -> bool) {
+        fn each_value(@self, blk: &fn(value: &V) -> bool) {
             self.each(|_k, v| blk(v))
         }
     }
 
     pub impl<K:Eq + IterBytes + Hash + Copy,V:Copy> HashMap_<K, V> {
-        pure fn find(&self, k: &K) -> Option<V> {
+        fn find(&self, k: &K) -> Option<V> {
             match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
               NotFound => None,
               FoundFirst(_, entry) => Some(entry.value),
@@ -314,7 +314,7 @@ pub mod chained {
             return self.update_with_key(key, newval, |_k, v, v1| ff(v,v1));
         }
 
-        pure fn get(&self, k: &K) -> V {
+        fn get(&self, k: &K) -> V {
             let opt_v = self.find(k);
             if opt_v.is_none() {
                 fail!(fmt!("Key not found in table: %?", k));
@@ -348,7 +348,7 @@ pub mod chained {
 
     impl<K:Eq + IterBytes + Hash + Copy + ToStr,V:ToStr + Copy> ToStr
             for HashMap_<K, V> {
-        pure fn to_str(&self) -> ~str {
+        fn to_str(&self) -> ~str {
             unsafe {
                 // Meh -- this should be safe
                 do io::with_str_writer |wr| { self.to_writer(wr) }
@@ -358,7 +358,7 @@ pub mod chained {
 
     impl<K:Eq + IterBytes + Hash + Copy,V:Copy> ops::Index<K, V>
             for HashMap_<K, V> {
-        pure fn index(&self, k: K) -> V {
+        fn index(&self, k: K) -> V {
             self.get(&k)
         }
     }
@@ -391,7 +391,7 @@ pub fn set_add<K:Eq + IterBytes + Hash + Const + Copy>(set: Set<K>, key: K)
 }
 
 /// Convert a set into a vector.
-pub pure fn vec_from_set<T:Eq + IterBytes + Hash + Copy>(s: Set<T>) -> ~[T] {
+pub fn vec_from_set<T:Eq + IterBytes + Hash + Copy>(s: Set<T>) -> ~[T] {
     do vec::build_sized(s.len()) |push| {
         for s.each_key() |&k| {
             push(k);
@@ -422,8 +422,8 @@ mod tests {
     #[test]
     fn test_simple() {
         debug!("*** starting test_simple");
-        pure fn eq_uint(x: &uint, y: &uint) -> bool { *x == *y }
-        pure fn uint_id(x: &uint) -> uint { *x }
+        fn eq_uint(x: &uint, y: &uint) -> bool { *x == *y }
+        fn uint_id(x: &uint) -> uint { *x }
         debug!("uint -> uint");
         let hm_uu: HashMap<uint, uint> =
             HashMap::<uint, uint>();
@@ -491,8 +491,8 @@ mod tests {
     fn test_growth() {
         debug!("*** starting test_growth");
         let num_to_insert: uint = 64u;
-        pure fn eq_uint(x: &uint, y: &uint) -> bool { *x == *y }
-        pure fn uint_id(x: &uint) -> uint { *x }
+        fn eq_uint(x: &uint, y: &uint) -> bool { *x == *y }
+        fn uint_id(x: &uint) -> uint { *x }
         debug!("uint -> uint");
         let hm_uu: HashMap<uint, uint> =
             HashMap::<uint, uint>();

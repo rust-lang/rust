@@ -140,7 +140,7 @@ pub mod ct {
     }
 
     pub impl<T> Parsed<T> {
-        static pure fn new(&self, val: T, next: uint) -> Parsed<T> {
+        fn new(val: T, next: uint) -> Parsed<T> {
             Parsed {val: val, next: next}
         }
     }
@@ -705,7 +705,7 @@ pub mod rt {
         ty: Ty,
     }
 
-    pub pure fn conv_int(cv: Conv, i: int) -> ~str {
+    pub fn conv_int(cv: Conv, i: int) -> ~str {
         let radix = 10;
         let prec = get_int_precision(cv);
         let mut s : ~str = int_to_str_prec(i, radix, prec);
@@ -718,7 +718,7 @@ pub mod rt {
         }
         return unsafe { pad(cv, s, PadSigned) };
     }
-    pub pure fn conv_uint(cv: Conv, u: uint) -> ~str {
+    pub fn conv_uint(cv: Conv, u: uint) -> ~str {
         let prec = get_int_precision(cv);
         let mut rs =
             match cv.ty {
@@ -730,17 +730,17 @@ pub mod rt {
             };
         return unsafe { pad(cv, rs, PadUnsigned) };
     }
-    pub pure fn conv_bool(cv: Conv, b: bool) -> ~str {
+    pub fn conv_bool(cv: Conv, b: bool) -> ~str {
         let s = if b { ~"true" } else { ~"false" };
         // run the boolean conversion through the string conversion logic,
         // giving it the same rules for precision, etc.
         return conv_str(cv, s);
     }
-    pub pure fn conv_char(cv: Conv, c: char) -> ~str {
+    pub fn conv_char(cv: Conv, c: char) -> ~str {
         let mut s = str::from_char(c);
         return unsafe { pad(cv, s, PadNozero) };
     }
-    pub pure fn conv_str(cv: Conv, s: &str) -> ~str {
+    pub fn conv_str(cv: Conv, s: &str) -> ~str {
         // For strings, precision is the maximum characters
         // displayed
         let mut unpadded = match cv.precision {
@@ -753,7 +753,7 @@ pub mod rt {
         };
         return unsafe { pad(cv, unpadded, PadNozero) };
     }
-    pub pure fn conv_float(cv: Conv, f: float) -> ~str {
+    pub fn conv_float(cv: Conv, f: float) -> ~str {
         let (to_str, digits) = match cv.precision {
               CountIs(c) => (float::to_str_exact, c as uint),
               CountImplied => (float::to_str_digits, 6u)
@@ -768,14 +768,14 @@ pub mod rt {
         }
         return unsafe { pad(cv, s, PadFloat) };
     }
-    pub pure fn conv_poly<T>(cv: Conv, v: &T) -> ~str {
+    pub fn conv_poly<T>(cv: Conv, v: &T) -> ~str {
         let s = sys::log_str(v);
         return conv_str(cv, s);
     }
 
     // Convert an int to string with minimum number of digits. If precision is
     // 0 and num is 0 then the result is the empty string.
-    pub pure fn int_to_str_prec(num: int, radix: uint, prec: uint) -> ~str {
+    pub fn int_to_str_prec(num: int, radix: uint, prec: uint) -> ~str {
         return if num < 0 {
                 ~"-" + uint_to_str_prec(-num as uint, radix, prec)
             } else { uint_to_str_prec(num as uint, radix, prec) };
@@ -784,7 +784,7 @@ pub mod rt {
     // Convert a uint to string with a minimum number of digits.  If precision
     // is 0 and num is 0 then the result is the empty string. Could move this
     // to uint: but it doesn't seem all that useful.
-    pub pure fn uint_to_str_prec(num: uint, radix: uint,
+    pub fn uint_to_str_prec(num: uint, radix: uint,
                                  prec: uint) -> ~str {
         return if prec == 0u && num == 0u {
                 ~""
@@ -798,7 +798,7 @@ pub mod rt {
                 } else { s }
             };
     }
-    pub pure fn get_int_precision(cv: Conv) -> uint {
+    pub fn get_int_precision(cv: Conv) -> uint {
         return match cv.precision {
               CountIs(c) => c as uint,
               CountImplied => 1u
@@ -828,7 +828,7 @@ pub mod rt {
           PadFloat    => (true, true),
           PadUnsigned => (true, false)
         };
-        pure fn have_precision(cv: Conv) -> bool {
+        fn have_precision(cv: Conv) -> bool {
             return match cv.precision { CountImplied => false, _ => true };
         }
         let zero_padding = {
@@ -858,7 +858,7 @@ pub mod rt {
         }
         return padstr + s;
     }
-    pub pure fn have_flag(flags: u32, f: u32) -> bool {
+    pub fn have_flag(flags: u32, f: u32) -> bool {
         flags & f != 0
     }
 }

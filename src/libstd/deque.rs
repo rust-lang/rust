@@ -25,10 +25,10 @@ pub struct Deque<T> {
 
 impl<T> Container for Deque<T> {
     /// Return the number of elements in the deque
-    pure fn len(&const self) -> uint { self.nelts }
+    fn len(&const self) -> uint { self.nelts }
 
     /// Return true if the deque contains no elements
-    pure fn is_empty(&const self) -> bool { self.len() == 0 }
+    fn is_empty(&const self) -> bool { self.len() == 0 }
 }
 
 impl<T> Mutable for Deque<T> {
@@ -43,7 +43,7 @@ impl<T> Mutable for Deque<T> {
 
 pub impl<T> Deque<T> {
     /// Create an empty Deque
-    static pure fn new() -> Deque<T> {
+    fn new() -> Deque<T> {
         Deque{nelts: 0, lo: 0, hi: 0,
               elts: vec::from_fn(initial_capacity, |_| None)}
     }

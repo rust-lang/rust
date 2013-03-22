@@ -18,24 +18,24 @@ pub struct MyInt {
 }
 
 impl Add<MyInt, MyInt> for MyInt {
-    pure fn add(&self, other: &MyInt) -> MyInt { mi(self.val + other.val) }
+    fn add(&self, other: &MyInt) -> MyInt { mi(self.val + other.val) }
 }
 
 impl Sub<MyInt, MyInt> for MyInt {
-    pure fn sub(&self, other: &MyInt) -> MyInt { mi(self.val - other.val) }
+    fn sub(&self, other: &MyInt) -> MyInt { mi(self.val - other.val) }
 }
 
 impl Mul<MyInt, MyInt> for MyInt {
-    pure fn mul(&self, other: &MyInt) -> MyInt { mi(self.val * other.val) }
+    fn mul(&self, other: &MyInt) -> MyInt { mi(self.val * other.val) }
 }
 
 impl Eq for MyInt {
-    pure fn eq(&self, other: &MyInt) -> bool { self.val == other.val }
+    fn eq(&self, other: &MyInt) -> bool { self.val == other.val }
 
-    pure fn ne(&self, other: &MyInt) -> bool { !self.eq(other) }
+    fn ne(&self, other: &MyInt) -> bool { !self.eq(other) }
 }
 
 impl MyNum for MyInt;
 
-pure fn mi(v: int) -> MyInt { MyInt { val: v } }
+fn mi(v: int) -> MyInt { MyInt { val: v } }
 

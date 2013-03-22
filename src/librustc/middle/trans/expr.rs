@@ -175,7 +175,7 @@ pub impl Dest {
 }
 
 impl cmp::Eq for Dest {
-    pure fn eq(&self, other: &Dest) -> bool {
+    fn eq(&self, other: &Dest) -> bool {
         match ((*self), (*other)) {
             (SaveIn(e0a), SaveIn(e0b)) => e0a == e0b,
             (Ignore, Ignore) => true,
@@ -183,7 +183,7 @@ impl cmp::Eq for Dest {
             (Ignore, _) => false,
         }
     }
-    pure fn ne(&self, other: &Dest) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &Dest) -> bool { !(*self).eq(other) }
 }
 
 fn drop_and_cancel_clean(bcx: block, dat: Datum) -> block {
@@ -1695,7 +1695,7 @@ pub enum cast_kind {
 }
 
 impl cmp::Eq for cast_kind {
-    pure fn eq(&self, other: &cast_kind) -> bool {
+    fn eq(&self, other: &cast_kind) -> bool {
         match ((*self), (*other)) {
             (cast_pointer, cast_pointer) => true,
             (cast_integral, cast_integral) => true,
@@ -1709,7 +1709,7 @@ impl cmp::Eq for cast_kind {
             (cast_other, _) => false,
         }
     }
-    pure fn ne(&self, other: &cast_kind) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &cast_kind) -> bool { !(*self).eq(other) }
 }
 
 pub fn cast_type_kind(t: ty::t) -> cast_kind {

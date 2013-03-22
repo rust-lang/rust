@@ -21,7 +21,7 @@ use util::NominalOp;
 
 use std::sort;
 
-pub type ItemLtEqOp = @pure fn(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;
+pub type ItemLtEqOp = @fn(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;
 
 type ItemLtEq = NominalOp<ItemLtEqOp>;
 
@@ -59,7 +59,7 @@ fn fold_mod(
 
 #[test]
 fn test() {
-    pure fn name_lteq(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {
+    fn name_lteq(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {
         (*item1).name() <= (*item2).name()
     }
 
@@ -76,7 +76,7 @@ fn test() {
 
 #[test]
 fn should_be_stable() {
-    pure fn always_eq(_item1: &doc::ItemTag, _item2: &doc::ItemTag) -> bool {
+    fn always_eq(_item1: &doc::ItemTag, _item2: &doc::ItemTag) -> bool {
         true
     }
 
