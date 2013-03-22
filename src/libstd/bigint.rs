@@ -458,10 +458,11 @@ pub impl BigUint {
 
         pure fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
             if v.is_empty() { return ~"0" }
-            str::trim_left_chars(str::concat(vec::reversed(v).map(|n| {
+            let s = str::concat(vec::reversed(v).map(|n| {
                 let s = uint::to_str_radix(*n as uint, radix);
                 str::from_chars(vec::from_elem(l - s.len(), '0')) + s
-            })), ['0'])
+            }));
+            str::trim_left_chars(s, ['0']).to_owned()
         }
     }
 

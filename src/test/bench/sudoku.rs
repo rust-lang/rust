@@ -67,7 +67,8 @@ pub impl Sudoku {
 
         let mut g = vec::from_fn(10u, { |_i| ~[0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] });
         while !reader.eof() {
-            let comps = str::split_char(str::trim(reader.read_line()), ',');
+            let line = reader.read_line();
+            let comps = str::split_char(line.trim(), ',');
             if vec::len(comps) == 3u {
                 let row     = uint::from_str(comps[0]).get() as u8;
                 let col     = uint::from_str(comps[1]).get() as u8;
