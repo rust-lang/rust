@@ -1085,15 +1085,6 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
             ast::def_const(did) => {
                 let const_ty = expr_ty(bcx, ref_expr);
 
-                #[cfg(stage0)]
-                fn get_did(_ccx: @CrateContext, did: ast::def_id)
-                    -> ast::def_id {
-                    did
-                }
-
-                #[cfg(stage1)]
-                #[cfg(stage2)]
-                #[cfg(stage3)]
                 fn get_did(ccx: @CrateContext, did: ast::def_id)
                     -> ast::def_id {
                     if did.crate != ast::local_crate {
@@ -1103,24 +1094,6 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                     }
                 }
 
-                #[cfg(stage0)]
-                fn get_val(bcx: block, did: ast::def_id, const_ty: ty::t)
-                    -> ValueRef {
-                    let ccx = bcx.ccx();
-                    if did.crate == ast::local_crate {
-                        // The LLVM global has the type of its initializer,
-                        // which may not be equal to the enum's type for
-                        // non-C-like enums.
-                        PointerCast(bcx, base::get_item_val(ccx, did.node),
-                                    T_ptr(type_of(bcx.ccx(), const_ty)))
-                    } else {
-                        base::trans_external_path(ccx, did, const_ty)
-                    }
-                }
-
-                #[cfg(stage1)]
-                #[cfg(stage2)]
-                #[cfg(stage3)]
                 fn get_val(bcx: block, did: ast::def_id, const_ty: ty::t)
                     -> ValueRef {
                     // The LLVM global has the type of its initializer,
