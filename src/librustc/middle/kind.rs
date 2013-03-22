@@ -22,6 +22,7 @@ use core::str;
 use core::vec;
 use std::oldmap::HashMap;
 use syntax::ast::*;
+use syntax::attr::attrs_contains_name;
 use syntax::codemap::{span, spanned};
 use syntax::print::pprust::expr_to_str;
 use syntax::{visit, ast_util};
@@ -55,6 +56,8 @@ use syntax::{visit, ast_util};
 // primitives in the stdlib are explicitly annotated to only take sendable
 // types.
 
+use core::hashmap::linear::LinearSet;
+
 pub const try_adding: &'static str = "Try adding a move";
 
 pub type rval_map = HashMap<node_id, ()>;
@@ -63,7 +66,7 @@ pub struct Context {
     tcx: ty::ctxt,
     method_map: typeck::method_map,
     last_use_map: liveness::last_use_map,
-    current_item: node_id
+    current_item: node_id,
 }
 
 pub fn check_crate(tcx: ty::ctxt,
@@ -74,16 +77,15 @@ pub fn check_crate(tcx: ty::ctxt,
         tcx: tcx,
         method_map: method_map,
         last_use_map: last_use_map,
-        current_item: -1
+        current_item: -1,
     };
     let visit = visit::mk_vt(@visit::Visitor {
         visit_arm: check_arm,
         visit_expr: check_expr,
         visit_fn: check_fn,
         visit_ty: check_ty,
-        visit_item: |i, cx, v| {
-            visit::visit_item(i, Context { current_item: i.id,.. cx }, v);
-        },
+        visit_item: check_item,
+        visit_block: check_block,
         .. *visit::default_visitor()
     });
     visit::visit_crate(*crate, ctx, visit);
@@ -91,6 +93,93 @@ pub fn check_crate(tcx: ty::ctxt,
 }
 
 type check_fn = @fn(Context, @freevar_entry);
+
+fn check_struct_safe_for_destructor(cx: Context,
+                                    span: span,
+                                    struct_did: def_id) {
+    let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
+    if struct_tpt.bounds.len() == 0 {
+        let struct_ty = ty::mk_struct(cx.tcx, struct_did, ty::substs {
+            self_r: None,
+            self_ty: None,
+            tps: ~[]
+        });
+        if !ty::type_is_owned(cx.tcx, struct_ty) {
+            cx.tcx.sess.span_err(span,
+                                 ~"cannot implement a destructor on a struct \
+                                   that is not Owned");
+            cx.tcx.sess.span_note(span,
+                                  ~"use \"#[unsafe_destructor]\" on the \
+                                    implementation to force the compiler to \
+                                    allow this");
+        }
+    } else {
+        cx.tcx.sess.span_err(span,
+                             ~"cannot implement a destructor on a struct \
+                               with type parameters");
+        cx.tcx.sess.span_note(span,
+                              ~"use \"#[unsafe_destructor]\" on the \
+                                implementation to force the compiler to \
+                                allow this");
+    }
+}
+
+fn check_block(block: &blk, cx: Context, visitor: visit::vt<Context>) {
+    visit::visit_block(block, cx, visitor);
+}
+
+fn check_item(item: @item, cx: Context, visitor: visit::vt<Context>) {
+    // If this is a destructor, check kinds.
+    if !attrs_contains_name(item.attrs, "unsafe_destructor") {
+        match item.node {
+            item_impl(_, Some(trait_ref), self_type, _) => {
+                match cx.tcx.def_map.find(&trait_ref.ref_id) {
+                    None => cx.tcx.sess.bug(~"trait ref not in def map!"),
+                    Some(trait_def) => {
+                        let trait_def_id = ast_util::def_id_of_def(trait_def);
+                        if cx.tcx.lang_items.drop_trait() == trait_def_id {
+                            // Yes, it's a destructor.
+                            match self_type.node {
+                                ty_path(_, path_node_id) => {
+                                    let struct_def = cx.tcx.def_map.get(
+                                        &path_node_id);
+                                    let struct_did =
+                                        ast_util::def_id_of_def(struct_def);
+                                    check_struct_safe_for_destructor(
+                                        cx,
+                                        self_type.span,
+                                        struct_did);
+                                }
+                                _ => {
+                                    cx.tcx.sess.span_bug(self_type.span,
+                                                         ~"the self type for \
+                                                           the Drop trait \
+                                                           impl is not a \
+                                                           path");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            item_struct(struct_def, _) => {
+                match struct_def.dtor {
+                    None => {}
+                    Some(ref dtor) => {
+                        let struct_did = def_id { crate: 0, node: item.id };
+                        check_struct_safe_for_destructor(cx,
+                                                         dtor.span,
+                                                         struct_did);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let cx = Context { current_item: item.id, ..cx };
+    visit::visit_item(item, cx, visitor);
+}
 
 // Yields the appropriate function to check the kind of closed over
 // variables. `id` is the node_id for some expression that creates the

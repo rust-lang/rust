@@ -167,9 +167,12 @@ type SemRelease = SemReleaseGeneric<'self, ()>;
 type SemAndSignalRelease = SemReleaseGeneric<'self, ~[Waitqueue]>;
 struct SemReleaseGeneric<Q> { sem: &'self Sem<Q> }
 
+#[unsafe_destructor]
 impl<Q:Owned> Drop for SemReleaseGeneric/&self<Q> {
     fn finalize(&self) {
-        self.sem.release();
+        unsafe {
+            self.sem.release();
+        }
     }
 }
 
@@ -189,6 +192,7 @@ fn SemAndSignalRelease(sem: &'r Sem<~[Waitqueue]>)
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
 pub struct Condvar { priv sem: &'self Sem<~[Waitqueue]> }
 
+#[unsafe_destructor]
 impl Drop for Condvar/&self { fn finalize(&self) {} }
 
 pub impl Condvar/&self {
@@ -261,6 +265,7 @@ pub impl Condvar/&self {
             sem: &'self Sem<~[Waitqueue]>,
         }
 
+        #[unsafe_destructor]
         impl Drop for SemAndSignalReacquire/&self {
             fn finalize(&self) {
                 unsafe {
@@ -613,6 +618,7 @@ struct RWlockReleaseRead {
     lock: &'self RWlock,
 }
 
+#[unsafe_destructor]
 impl Drop for RWlockReleaseRead/&self {
     fn finalize(&self) {
         unsafe {
@@ -643,10 +649,12 @@ fn RWlockReleaseRead(lock: &'r RWlock) -> RWlockReleaseRead/&r {
 
 // FIXME(#3588) should go inside of downgrade()
 #[doc(hidden)]
+#[unsafe_destructor]
 struct RWlockReleaseDowngrade {
     lock: &'self RWlock,
 }
 
+#[unsafe_destructor]
 impl Drop for RWlockReleaseDowngrade/&self {
     fn finalize(&self) {
         unsafe {
@@ -685,10 +693,12 @@ fn RWlockReleaseDowngrade(lock: &'r RWlock) -> RWlockReleaseDowngrade/&r {
 
 /// The "write permission" token used for rwlock.write_downgrade().
 pub struct RWlockWriteMode { priv lock: &'self RWlock }
+#[unsafe_destructor]
 impl Drop for RWlockWriteMode/&self { fn finalize(&self) {} }
 
 /// The "read permission" token used for rwlock.write_downgrade().
 pub struct RWlockReadMode  { priv lock: &'self RWlock }
+#[unsafe_destructor]
 impl Drop for RWlockReadMode/&self { fn finalize(&self) {} }
 
 pub impl RWlockWriteMode/&self {
