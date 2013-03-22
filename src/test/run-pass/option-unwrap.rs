@@ -13,10 +13,13 @@ struct dtor {
 
 }
 
+#[unsafe_destructor]
 impl Drop for dtor {
     fn finalize(&self) {
         // abuse access to shared mutable state to write this code
-        *self.x -= 1;
+        unsafe {
+            *self.x -= 1;
+        }
     }
 }
 

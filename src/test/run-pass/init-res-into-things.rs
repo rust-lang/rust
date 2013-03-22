@@ -17,9 +17,12 @@ struct r {
 
 struct Box { x: r }
 
+#[unsafe_destructor]
 impl Drop for r {
     fn finalize(&self) {
-        *(self.i) = *(self.i) + 1;
+        unsafe {
+            *(self.i) = *(self.i) + 1;
+        }
     }
 }
 

@@ -79,7 +79,7 @@ use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
 use parse::obsolete::{ObsoleteAssertion, ObsoletePostFnTySigil};
 use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
 use parse::obsolete::{ObsoleteMode, ObsoleteImplicitSelf};
-use parse::obsolete::{ObsoleteLifetimeNotation};
+use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -268,6 +268,7 @@ pub struct Parser {
 
 }
 
+#[unsafe_destructor]
 impl Drop for Parser {
     /* do not copy the parser; its state is tied to outside state */
     fn finalize(&self) {}
@@ -708,6 +709,9 @@ pub impl Parser {
 
         if mt.mutbl != m_imm && sigil == OwnedSigil {
             self.obsolete(*self.last_span, ObsoleteMutOwnedPointer);
+        }
+        if mt.mutbl == m_const && sigil == ManagedSigil {
+            self.obsolete(*self.last_span, ObsoleteConstManagedPointer);
         }
 
         ctor(mt)
@@ -1635,6 +1639,10 @@ pub impl Parser {
           token::AT => {
             self.bump();
             let m = self.parse_mutability();
+            if m == m_const {
+                self.obsolete(*self.last_span, ObsoleteConstManagedPointer);
+            }
+
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
             // HACK: turn @[...] into a @-evec

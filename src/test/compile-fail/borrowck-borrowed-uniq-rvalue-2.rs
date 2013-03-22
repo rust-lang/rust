@@ -12,9 +12,12 @@ struct defer {
     x: &'self [&'self str],
 }
 
+#[unsafe_destructor]
 impl Drop for defer<'self> {
     fn finalize(&self) {
-        error!("%?", self.x);
+        unsafe {
+            error!("%?", self.x);
+        }
     }
 }
 

@@ -16,9 +16,12 @@ struct finish<T> {
   arg: Arg<T>
 }
 
+#[unsafe_destructor]
 impl<T:Copy> Drop for finish<T> {
     fn finalize(&self) {
-        (self.arg.fin)(self.arg.val);
+        unsafe {
+            (self.arg.fin)(self.arg.val);
+        }
     }
 }
 

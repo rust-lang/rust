@@ -1230,15 +1230,17 @@ pub mod fsync {
         arg: Arg<t>,
     }
 
+    #[unsafe_destructor]
     impl<T:Copy> Drop for Res<T> {
         fn finalize(&self) {
-          match self.arg.opt_level {
-            None => (),
-            Some(level) => {
-              // fail hard if not succesful
-              fail_unless!(((self.arg.fsync_fn)(self.arg.val, level) != -1));
+            match self.arg.opt_level {
+                None => (),
+                Some(level) => {
+                  // fail hard if not succesful
+                  fail_unless!(((self.arg.fsync_fn)(self.arg.val, level)
+                    != -1));
+                }
             }
-          }
         }
     }
 
