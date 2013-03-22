@@ -96,7 +96,7 @@ use task;
 use vec;
 
 #[doc(hidden)]
-const SPIN_COUNT: uint = 0;
+static SPIN_COUNT: uint = 0;
 
 macro_rules! move_it (
     { $x:expr } => ( unsafe { let y = *ptr::addr_of(&($x)); y } )

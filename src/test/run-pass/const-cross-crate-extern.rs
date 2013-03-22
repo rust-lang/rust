@@ -13,7 +13,7 @@
 
 extern mod cci_const;
 use cci_const::bar;
-const foo: *u8 = bar;
+static foo: *u8 = bar;
 
 fn main() {
     fail_unless!(foo == cci_const::bar);

@@ -45,7 +45,7 @@ fn test() {
         ~"mod imod { } \
          extern mod inmod {
          } \
-         const iconst: int = 0; \
+         static iconst: int = 0; \
          fn ifn() { } \
          enum ienum { ivar } \
          trait itrait { fn a(); } \

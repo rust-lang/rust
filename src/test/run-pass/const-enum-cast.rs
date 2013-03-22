@@ -12,10 +12,10 @@ enum A { A1, A2 }
 enum B { B1=0, B2=2 }
 
 fn main () {
-    const c1: int = A2 as int;
-    const c2: int = B2 as int;
-    const c3: float = A2 as float;
-    const c4: float = B2 as float;
+    static c1: int = A2 as int;
+    static c2: int = B2 as int;
+    static c3: float = A2 as float;
+    static c4: float = B2 as float;
     let a1 = A2 as int;
     let a2 = B2 as int;
     let a3 = A2 as float;

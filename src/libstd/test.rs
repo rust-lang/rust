@@ -477,10 +477,10 @@ fn run_tests(opts: &TestOpts,
 
 // Windows tends to dislike being overloaded with threads.
 #[cfg(windows)]
-const sched_overcommit : uint = 1;
+static sched_overcommit : uint = 1;
 
 #[cfg(unix)]
-const sched_overcommit : uint = 4u;
+static sched_overcommit : uint = 4u;
 
 fn get_concurrency() -> uint {
     unsafe {

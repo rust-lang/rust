@@ -23,11 +23,11 @@ use prelude::*;
 
 pub use cmp::{min, max};
 
-pub const bits : uint = inst::bits;
-pub const bytes : uint = (inst::bits / 8);
+pub static bits : uint = inst::bits;
+pub static bytes : uint = (inst::bits / 8);
 
-pub const min_value: T = 0 as T;
-pub const max_value: T = 0 as T - 1 as T;
+pub static min_value: T = 0 as T;
+pub static max_value: T = 0 as T - 1 as T;
 
 #[inline(always)]
 pub fn add(x: T, y: T) -> T { x + y }

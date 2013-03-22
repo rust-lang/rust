@@ -12,11 +12,11 @@ enum Foo {
     Bar = 0xDEADBEE
 }
 
-const X: Foo = Bar;
+static X: Foo = Bar;
 
 pub fn main() {
     fail_unless!(((X as uint) == 0xDEADBEE));
     fail_unless!(((Y as uint) == 0xDEADBEE));
 }
 
-const Y: Foo = Bar;
+static Y: Foo = Bar;

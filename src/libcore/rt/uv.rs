@@ -396,7 +396,7 @@ pub impl TcpWatcher {
         data.connect_cb = Some(cb);
 
         unsafe {
-            const BACKLOG: c_int = 128; // XXX should be configurable
+            static BACKLOG: c_int = 128; // XXX should be configurable
             // XXX: This can probably fail
             fail_unless!(0 == uvll::listen(self.native_handle(),
                                            BACKLOG, connection_cb));
@@ -848,7 +848,7 @@ fn connect_read() {
 #[ignore(reason = "ffi struct issues")]
 fn listen() {
     do run_in_bare_thread() {
-        const MAX: int = 10;
+        static MAX: int = 10;
         let mut loop_ = Loop::new();
         let mut server_tcp_watcher = { TcpWatcher::new(&mut loop_) };
         let addr = Ipv4(127, 0, 0, 1, 2925);

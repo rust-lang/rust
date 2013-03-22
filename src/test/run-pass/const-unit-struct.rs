@@ -10,7 +10,7 @@
 
 struct Foo;
 
-const X: Foo = Foo;
+static X: Foo = Foo;
 
 pub fn main() {
     match X {

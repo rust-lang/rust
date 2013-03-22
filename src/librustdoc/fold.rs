@@ -378,7 +378,7 @@ fn default_fold_should_produce_same_doc() {
 
 #[test]
 fn default_fold_should_produce_same_consts() {
-    let source = ~"const a: int = 0;";
+    let source = ~"static a: int = 0;";
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());

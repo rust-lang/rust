@@ -58,7 +58,7 @@ use syntax::{visit, ast_util};
 
 use core::hashmap::linear::LinearSet;
 
-pub const try_adding: &'static str = "Try adding a move";
+pub static try_adding: &'static str = "Try adding a move";
 
 pub type rval_map = HashMap<node_id, ()>;
 

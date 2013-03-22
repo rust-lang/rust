@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const a: *u8 = 0 as *u8;
+static a: *u8 = 0 as *u8;
 
 fn main() {
     fail_unless!(a == ptr::null());

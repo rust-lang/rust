@@ -211,11 +211,11 @@ unsafe fn find_segment_for_frame(fp: *Word, segment: *StackSegment)
 
 type Memory = uint;
 
-const task_local_heap: Memory = 1;
-const exchange_heap:   Memory = 2;
-const stack:           Memory = 4;
+static task_local_heap: Memory = 1;
+static exchange_heap:   Memory = 2;
+static stack:           Memory = 4;
 
-const need_cleanup:    Memory = exchange_heap | stack;
+static need_cleanup:    Memory = exchange_heap | stack;
 
 // Walks stack, searching for roots of the requested type, and passes
 // each root to the visitor.

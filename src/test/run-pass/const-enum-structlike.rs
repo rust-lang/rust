@@ -13,7 +13,7 @@ enum E {
     S1 { u: uint }
 }
 
-const C: E = S1 { u: 23 };
+static C: E = S1 { u: 23 };
 
 fn main() {
     match C {

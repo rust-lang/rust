@@ -179,7 +179,7 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
             llconst = C_struct(~[llconst, C_null(T_opaque_box_ptr(cx))])
         }
         Some(@ty::AutoAddEnv(ref r, ref s)) => {
-            cx.sess.span_bug(e.span, fmt!("unexpected const function: \
+            cx.sess.span_bug(e.span, fmt!("unexpected static function: \
                                            region %? sigil %?", *r, *s))
         }
         Some(@ty::AutoDerefRef(ref adj)) => {

@@ -121,7 +121,7 @@ fn fold_const(
 
 #[test]
 fn should_add_const_types() {
-    let doc = test::mk_doc(~"const a: bool = true;");
+    let doc = test::mk_doc(~"static a: bool = true;");
     fail_unless!(doc.cratemod().consts()[0].sig == Some(~"bool"));
 }
 

@@ -636,14 +636,14 @@ pub mod node {
      *
      * This is not a strict value
      */
-    pub const hint_max_leaf_char_len: uint = 256u;
+    pub static hint_max_leaf_char_len: uint = 256u;
 
     /**
      * The maximal height that _should_ be permitted in a tree.
      *
      * This is not a strict value
      */
-    pub const hint_max_node_height:   uint = 16u;
+    pub static hint_max_node_height:   uint = 16u;
 
     /**
      * Adopt a string as a node.
