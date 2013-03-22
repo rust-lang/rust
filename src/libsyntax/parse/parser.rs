@@ -81,6 +81,7 @@ use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
 use parse::obsolete::{ObsoleteMode, ObsoleteImplicitSelf};
 use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
 use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
+use parse::obsolete::{ObsoleteConstItem};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -3563,7 +3564,9 @@ pub impl Parser {
         let lo = self.span.lo;
 
         // XXX: Obsolete; remove after snap.
-        if !self.eat_keyword(&~"const") {
+        if self.eat_keyword(&~"const") {
+            self.obsolete(*self.last_span, ObsoleteConstItem);
+        } else {
             self.expect_keyword(&~"static");
         }
 
@@ -3959,6 +3962,9 @@ pub impl Parser {
                 (self.is_keyword(&~"static") &&
                     !self.token_is_keyword(&~"fn", &self.look_ahead(1)))) {
             // CONST ITEM
+            if self.is_keyword(&~"const") {
+                self.obsolete(*self.span, ObsoleteConstItem);
+            }
             self.bump();
             let (ident, item_, extra_attrs) = self.parse_item_const();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
