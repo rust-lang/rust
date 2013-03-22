@@ -305,7 +305,7 @@ pub struct mem_categorization_ctxt {
 }
 
 impl ToStr for MutabilityCategory {
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         fmt!("%?", *self)
     }
 }

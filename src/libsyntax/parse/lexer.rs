@@ -32,7 +32,7 @@ pub trait reader {
     fn next_token(@mut self) -> TokenAndSpan;
     fn fatal(@mut self, ~str) -> !;
     fn span_diag(@mut self) -> @span_handler;
-    pure fn interner(@mut self) -> @token::ident_interner;
+    fn interner(@mut self) -> @token::ident_interner;
     fn peek(@mut self) -> TokenAndSpan;
     fn dup(@mut self) -> @reader;
 }
@@ -122,7 +122,7 @@ impl reader for StringReader {
         self.span_diagnostic.span_fatal(copy self.peek_span, m)
     }
     fn span_diag(@mut self) -> @span_handler { self.span_diagnostic }
-    pure fn interner(@mut self) -> @token::ident_interner { self.interner }
+    fn interner(@mut self) -> @token::ident_interner { self.interner }
     fn peek(@mut self) -> TokenAndSpan {
         TokenAndSpan {
             tok: copy self.peek_tok,
@@ -139,7 +139,7 @@ impl reader for TtReader {
         self.sp_diag.span_fatal(copy self.cur_span, m);
     }
     fn span_diag(@mut self) -> @span_handler { self.sp_diag }
-    pure fn interner(@mut self) -> @token::ident_interner { self.interner }
+    fn interner(@mut self) -> @token::ident_interner { self.interner }
     fn peek(@mut self) -> TokenAndSpan {
         TokenAndSpan {
             tok: copy self.cur_tok,
@@ -261,7 +261,7 @@ fn consume_whitespace_and_comments(rdr: @mut StringReader)
     return consume_any_line_comment(rdr);
 }
 
-pub pure fn is_line_non_doc_comment(s: &str) -> bool {
+pub fn is_line_non_doc_comment(s: &str) -> bool {
     s.trim_right().all(|ch| ch == '/')
 }
 
@@ -313,7 +313,7 @@ fn consume_any_line_comment(rdr: @mut StringReader)
     return None;
 }
 
-pub pure fn is_block_non_doc_comment(s: &str) -> bool {
+pub fn is_block_non_doc_comment(s: &str) -> bool {
     fail_unless!(s.len() >= 1u);
     str::all_between(s, 1u, s.len() - 1u, |ch| ch == '*')
 }

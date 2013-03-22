@@ -534,7 +534,7 @@ fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
 }
 
 fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
-    pure fn is_valid<T:cmp::Ord>(binop: ast::binop, v: T,
+    fn is_valid<T:cmp::Ord>(binop: ast::binop, v: T,
             min: T, max: T) -> bool {
         match binop {
             ast::lt => v <= max,
@@ -546,7 +546,7 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
         }
     }
 
-    pure fn rev_binop(binop: ast::binop) -> ast::binop {
+    fn rev_binop(binop: ast::binop) -> ast::binop {
         match binop {
             ast::lt => ast::gt,
             ast::le => ast::ge,
@@ -556,7 +556,7 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
         }
     }
 
-    pure fn int_ty_range(int_ty: ast::int_ty) -> (i64, i64) {
+    fn int_ty_range(int_ty: ast::int_ty) -> (i64, i64) {
         match int_ty {
             ast::ty_i =>    (int::min_value as i64, int::max_value as i64),
             ast::ty_char => (u32::min_value as i64, u32::max_value as i64),
@@ -567,7 +567,7 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
         }
     }
 
-    pure fn uint_ty_range(uint_ty: ast::uint_ty) -> (u64, u64) {
+    fn uint_ty_range(uint_ty: ast::uint_ty) -> (u64, u64) {
         match uint_ty {
             ast::ty_u =>   (uint::min_value as u64, uint::max_value as u64),
             ast::ty_u8 =>  (u8::min_value   as u64, u8::max_value   as u64),
@@ -622,7 +622,7 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
         }
     }
 
-    pure fn is_comparison(binop: ast::binop) -> bool {
+    fn is_comparison(binop: ast::binop) -> bool {
         match binop {
             ast::eq | ast::lt | ast::le |
             ast::ne | ast::ge | ast::gt => true,

@@ -158,14 +158,14 @@ pub impl DatumMode {
 }
 
 impl cmp::Eq for DatumMode {
-    pure fn eq(&self, other: &DatumMode) -> bool {
+    fn eq(&self, other: &DatumMode) -> bool {
         (*self) as uint == (*other as uint)
     }
-    pure fn ne(&self, other: &DatumMode) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &DatumMode) -> bool { !(*self).eq(other) }
 }
 
 impl to_bytes::IterBytes for DatumMode {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f)
     }
 }

@@ -89,11 +89,11 @@ pub fn desugar_doc_attr(attr: &ast::attribute) -> ast::attribute {
 
 /* Accessors */
 
-pub pure fn get_attr_name(attr: &ast::attribute) -> @~str {
+pub fn get_attr_name(attr: &ast::attribute) -> @~str {
     get_meta_item_name(attr.node.value)
 }
 
-pub pure fn get_meta_item_name(meta: @ast::meta_item) -> @~str {
+pub fn get_meta_item_name(meta: @ast::meta_item) -> @~str {
     match meta.node {
         ast::meta_word(n) => n,
         ast::meta_name_value(n, _) => n,
@@ -333,10 +333,10 @@ pub enum inline_attr {
 }
 
 impl cmp::Eq for inline_attr {
-    pure fn eq(&self, other: &inline_attr) -> bool {
+    fn eq(&self, other: &inline_attr) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    pure fn ne(&self, other: &inline_attr) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &inline_attr) -> bool { !(*self).eq(other) }
 }
 
 /// True if something like #[inline] is found in the list of attrs.
