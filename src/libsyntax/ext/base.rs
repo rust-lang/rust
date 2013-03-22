@@ -153,13 +153,13 @@ pub fn syntax_expander_table() -> SyntaxEnv {
                                 ext::deriving::expand_meta_deriving)));
     syntax_expanders.insert(@~"deriving_eq",
                             @SE(ItemDecorator(
-                                ext::deriving::eq::expand_deriving_eq)));
+                                ext::deriving::eq::expand_deriving_obsolete)));
     syntax_expanders.insert(@~"deriving_iter_bytes",
                             @SE(ItemDecorator(
-                                ext::deriving::iter_bytes::expand_deriving_iter_bytes)));
+                                ext::deriving::iter_bytes::expand_deriving_obsolete)));
     syntax_expanders.insert(@~"deriving_clone",
                             @SE(ItemDecorator(
-                                ext::deriving::clone::expand_deriving_clone)));
+                                ext::deriving::clone::expand_deriving_obsolete)));
 
     // Quasi-quoting expanders
     syntax_expanders.insert(@~"quote_tokens",

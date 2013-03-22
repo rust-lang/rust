@@ -1,4 +1,4 @@
-#[deriving_eq]
+#[deriving(Eq)]
 enum S {
     X { x: int, y: int },
     Y

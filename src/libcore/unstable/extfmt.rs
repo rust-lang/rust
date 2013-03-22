@@ -97,13 +97,13 @@ pub mod ct {
     use prelude::*;
     use str;
 
-    #[deriving_eq]
+    #[deriving(Eq)]
     pub enum Signedness { Signed, Unsigned, }
 
-    #[deriving_eq]
+    #[deriving(Eq)]
     pub enum Caseness { CaseUpper, CaseLower, }
 
-    #[deriving_eq]
+    #[deriving(Eq)]
     pub enum Ty {
         TyBool,
         TyStr,
@@ -116,7 +116,7 @@ pub mod ct {
         TyPoly,
     }
 
-    #[deriving_eq]
+    #[deriving(Eq)]
     pub enum Flag {
         FlagLeftJustify,
         FlagLeftZeroPad,
@@ -125,7 +125,7 @@ pub mod ct {
         FlagAlternate,
     }
 
-    #[deriving_eq]
+    #[deriving(Eq)]
     pub enum Count {
         CountIs(uint),
         CountIsParam(uint),
@@ -133,7 +133,7 @@ pub mod ct {
         CountImplied,
     }
 
-    #[deriving_eq]
+    #[deriving(Eq)]
     struct Parsed<T> {
         val: T,
         next: uint
@@ -146,7 +146,7 @@ pub mod ct {
     }
 
     // A formatted conversion from an expression to a string
-    #[deriving_eq]
+    #[deriving(Eq)]
     pub struct Conv {
         param: Option<uint>,
         flags: ~[Flag],
@@ -156,7 +156,7 @@ pub mod ct {
     }
 
     // A fragment of the output sequence
-    #[deriving_eq]
+    #[deriving(Eq)]
     pub enum Piece { PieceString(~str), PieceConv(Conv), }
 
     pub type ErrorFn = @fn(&str) -> !;
@@ -596,7 +596,7 @@ pub mod rt {
             };
     }
 
-    #[deriving_eq]
+    #[deriving(Eq)]
     pub enum PadMode { PadSigned, PadUnsigned, PadNozero, PadFloat }
 
     pub fn pad(cv: Conv, s: ~str, mode: PadMode) -> ~str {

@@ -20,7 +20,7 @@ use option::{None, Option, Some};
 use vec;
 
 /// The result type
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Result<T, U> {
     /// Contains the successful result value
     Ok(T),

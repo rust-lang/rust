@@ -161,7 +161,7 @@ pub fn parse_input(sess: Session, +cfg: ast::crate_cfg, input: input)
     }
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum compile_upto {
     cu_parse,
     cu_expand,

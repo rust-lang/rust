@@ -60,7 +60,7 @@ use syntax::ast;
 use syntax::codemap::span;
 use syntax::print::pprust;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum categorization {
     cat_rvalue,                     // result of eval'ing some misc expr
     cat_special(special_kind),      //
@@ -75,7 +75,7 @@ pub enum categorization {
 }
 
 // different kinds of pointers:
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum ptr_kind {
     uniq_ptr,
     gc_ptr(ast::mutability),
@@ -85,7 +85,7 @@ pub enum ptr_kind {
 
 // I am coining the term "components" to mean "pieces of a data
 // structure accessible without a dereference":
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum comp_kind {
     comp_tuple,                  // elt in a tuple
     comp_anon_field,             // anonymous field (in e.g.
@@ -98,7 +98,7 @@ pub enum comp_kind {
 }
 
 // different kinds of expressions we might evaluate
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum special_kind {
     sk_method,
     sk_static_item,
@@ -106,7 +106,7 @@ pub enum special_kind {
     sk_heap_upvar
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum MutabilityCategory {
     McImmutable, // Immutable.
     McReadOnly,  // Read-only (`const`)
@@ -119,7 +119,7 @@ pub enum MutabilityCategory {
 // which the value is stored.
 //
 // note: cmt stands for "categorized mutable type".
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct cmt_ {
     id: ast::node_id,          // id of expr/pat producing this value
     span: span,                // span of same expr/pat
@@ -134,7 +134,7 @@ pub type cmt = @cmt_;
 // a loan path is like a category, but it exists only when the data is
 // interior to the stack frame.  loan paths are used as the key to a
 // map indicating what is borrowed at any point in time.
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum loan_path {
     lp_local(ast::node_id),
     lp_arg(ast::node_id),

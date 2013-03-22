@@ -96,7 +96,7 @@ use core::mutable::Mut;
 *
 */
 
-#[deriving_eq]
+#[deriving(Eq)]
 #[auto_encode]
 #[auto_decode]
 struct WorkKey {
