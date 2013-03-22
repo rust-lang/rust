@@ -6,15 +6,16 @@ Version 0.6 (March 2013)
    * TODO:
       * Ord/Cmp
       * Lifetime changes
-      * Implicit self
       * Remove `static` keyword
       * Static method syntax
       * `as Trait`
       * `copy` removed, replaced with `Clone`?
-      * `std::map` removed, replaced with `core::hashmap`
+      * More details for "Name resolution continues to be tweaked"?
 
    * Syntax changes
       * The self type parameter in traits is now spelled `Self`
+      * The `self` parameter in trait and impl methods must now be explicitly
+        named (for example: `fn f(&self) { }`). Implicit self is deprecated.
       * Replaced the `Durable` trait with the `'static` lifetime
       * The old closure type syntax with the trailing sigil has been
         removed in favor of the more consistent leading sigil
@@ -23,7 +24,7 @@ Version 0.6 (March 2013)
       * Traits are implemented with `impl Trait for Type`
         instead of `impl Type: Trait`
       * The `export` keyword has finally been removed
-      * The `move` keyword has been removed (linear types move by default)
+      * The `move` keyword has been removed (see "Semantic changes")
       * The interior mutability qualifier on vectors, `[mut T]`, has been
         removed. Use `&mut [T]`, etc.
       * `mut` is no longer valid in `~mut T`. Use inherited mutability
@@ -37,6 +38,7 @@ Version 0.6 (March 2013)
         function modules. Use extern blocks: `extern { ... }`
       * Newtype enums removed. Used tuple-structs.
       * Trait implementations no longer support visibility modifiers
+      * Pattern matching over vectors improved and expanded
 
    * Semantic changes
       * Types with owned pointers or custom destructors move by default,
@@ -49,12 +51,9 @@ Version 0.6 (March 2013)
       * The default type of an inferred closure is &fn instead of @fn
       * Name resolution continues to be tweaked
       * Method visibility is inherited from the implementation declaration
-
-   * Other language changes
       * Structural records have been removed
-      * Many more types can be used in constants, including enums
+      * Many more types can be used in constants, including enums,
         `static lifetime pointers and vectors
-      * Pattern matching over vectors improved and expanded
       * Typechecking of closure types has been overhauled to
         improve inference and eliminate unsoundness
 
@@ -68,6 +67,7 @@ Version 0.6 (March 2013)
       * Containers reorganized around traits in `core::container`
       * `core::dvec` removed, `~[T]` is a drop-in replacement
       * `core::send_map` renamed to `core::hashmap`
+      * `std::map` removed; replaced with `core::hashmap`
       * `std::treemap` reimplemented as an owned balanced tree
       * `std::deque` and `std::smallintmap` reimplemented as owned containers
       * `core::trie` added as a fast ordered map for integer keys
@@ -76,14 +76,14 @@ Version 0.6 (March 2013)
    * Tools
       * Replaced the 'cargo' package manager with 'rustpkg'
       * Added all-purpose 'rust' tool
-      * `rustc --test` now supports a benchmarks with the `#[bench]` attribute
+      * `rustc --test` now supports benchmarks with the `#[bench]` attribute
       * rustc now attempts to offer spelling suggestions
 
    * Misc
       * Improved support for ARM and Android
       * Preliminary MIPS backend
       * Improved foreign function ABI implementation for x86, x86_64
-      * Various and memory usage improvements
+      * Various memory usage improvements
       * Rust code may be embedded in foreign code under limited circumstances
 
 Version 0.5 (December 2012)
