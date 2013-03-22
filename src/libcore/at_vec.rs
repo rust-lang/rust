@@ -291,7 +291,7 @@ pub fn test() {
         }
     }
 
-    fail_unless!(seq_range(10, 15) == @[10, 11, 12, 13, 14]);
+    assert_eq!(seq_range(10, 15), @[10, 11, 12, 13, 14]);
     fail_unless!(from_fn(5, |x| x+1) == @[1, 2, 3, 4, 5]);
     fail_unless!(from_elem(5, 3.14) == @[3.14, 3.14, 3.14, 3.14, 3.14]);
 }
