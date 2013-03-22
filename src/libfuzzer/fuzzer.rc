@@ -39,7 +39,7 @@ use syntax::parse;
 use syntax::print::pprust;
 use syntax::diagnostic;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum test_mode { tm_converge, tm_run, }
 
 pub struct Context { mode: test_mode } // + rng

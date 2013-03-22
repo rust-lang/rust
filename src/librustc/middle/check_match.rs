@@ -183,7 +183,7 @@ pub type matrix = ~[~[@pat]];
 
 pub enum useful { useful(ty::t, ctor), useful_, not_useful }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum ctor {
     single,
     variant(def_id),

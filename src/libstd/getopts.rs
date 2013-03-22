@@ -86,20 +86,20 @@ use core::option::{Some, None};
 use core::str;
 use core::vec;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Name {
     Long(~str),
     Short(char),
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum HasArg { Yes, No, Maybe, }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Occur { Req, Optional, Multi, }
 
 /// A description of a possible option
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct Opt {
     name: Name,
     hasarg: HasArg,
@@ -146,14 +146,14 @@ pub fn optmulti(name: &str) -> Opt {
     return Opt {name: mkname(name), hasarg: Yes, occur: Multi};
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 enum Optval { Val(~str), Given, }
 
 /**
  * The result of checking command line arguments. Contains a vector
  * of matches and a vector of free strings.
  */
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct Matches {
     opts: ~[Opt],
     vals: ~[~[Optval]],
@@ -179,7 +179,7 @@ fn find_opt(opts: &[Opt], nm: Name) -> Option<uint> {
  * The type returned when the command line does not conform to the
  * expected format. Pass this value to <fail_str> to get an error message.
  */
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Fail_ {
     ArgumentMissing(~str),
     UnrecognizedOption(~str),
@@ -446,7 +446,7 @@ pub fn opt_default(mm: &Matches, nm: &str, def: &str) -> Option<~str> {
                            _      => Some::<~str>(str::from_slice(def)) }
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum FailType {
     ArgumentMissing_,
     UnrecognizedOption_,
@@ -469,7 +469,7 @@ pub mod groups {
     /** one group of options, e.g., both -h and --help, along with
      * their shared description and properties
      */
-    #[deriving_eq]
+    #[deriving(Eq)]
     pub struct OptGroup {
         short_name: ~str,
         long_name: ~str,

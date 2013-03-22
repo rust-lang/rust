@@ -66,7 +66,7 @@ use core::vec;
  * line (which it can't) and so naturally place the content on its own line to
  * avoid combining it with other lines and making matters even worse.
  */
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum breaks { consistent, inconsistent, }
 
 pub struct break_t {

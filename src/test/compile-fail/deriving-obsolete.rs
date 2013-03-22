@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[deriving_clone] //~ ERROR `#[deriving_clone]` is obsolete; use `#[deriving(Clone)]` instead
+#[deriving_eq] //~ ERROR `#[deriving_eq]` is obsolete; use `#[deriving(Eq)]` instead
+#[deriving_iter_bytes]
+//~^ ERROR `#[deriving_iter_bytes]` is obsolete; use `#[deriving(IterBytes)]` instead
+struct Foo;
 
-#[deriving(Eq)]
-enum t { a, b(~str), }
-
-fn make(i: int) -> t {
-    if i > 10 { return a; }
-    let mut s = ~"hello";
-    // Ensure s is non-const.
-
-    s += ~"there";
-    return b(s);
-}
-
-pub fn main() {
-    let mut i = 0;
-
-
-    // The auto slot for the result of make(i) should not leak.
-    while make(i) != a { i += 1; }
-}
+pub fn main() { }

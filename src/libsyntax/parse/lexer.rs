@@ -37,7 +37,7 @@ pub trait reader {
     fn dup(@mut self) -> @reader;
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct TokenAndSpan {tok: token::Token, sp: span}
 
 pub struct StringReader {

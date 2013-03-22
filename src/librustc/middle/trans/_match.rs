@@ -1037,7 +1037,7 @@ pub fn pick_col(m: &[@Match]) -> uint {
     return best_col;
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum branch_kind { no_branch, single, switch, compare, compare_vec_len, }
 
 // Compiles a comparison between two things.

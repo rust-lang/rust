@@ -1175,10 +1175,10 @@ priv impl RegionVarBindings {
 
 // ______________________________________________________________________
 
-#[deriving_eq]
+#[deriving(Eq)]
 enum Direction { Incoming = 0, Outgoing = 1 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 enum Classification { Expanding, Contracting }
 
 enum GraphNodeValue { NoValue, Value(Region), ErrorValue }

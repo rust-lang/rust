@@ -121,7 +121,7 @@ impl cmp::Eq for CLike {
 
 #[auto_encode]
 #[auto_decode]
-#[deriving_eq]
+#[deriving(Eq)]
 struct Spanned<T> {
     lo: uint,
     hi: uint,

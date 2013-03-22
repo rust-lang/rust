@@ -38,7 +38,7 @@ use syntax::ast_map::{path, path_mod, path_name};
 use syntax::attr;
 use syntax::print::pprust;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum output_type {
     output_type_none,
     output_type_bitcode,

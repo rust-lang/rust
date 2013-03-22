@@ -122,7 +122,7 @@ pub struct Export2 {
     reexport: bool,     // Whether this is a reexport.
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum PatternBindingMode {
     RefutableMode,
     LocalIrrefutableMode,
@@ -166,7 +166,7 @@ pub enum NameDefinition {
 
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Mutability {
     Mutable,
     Immutable
@@ -179,7 +179,7 @@ pub enum SelfBinding {
 
 pub type ResolveVisitor = vt<()>;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum ImportDirectiveNS {
     TypeNSOnly,
     AnyNS
@@ -271,7 +271,7 @@ pub enum MethodSort {
 // FIXME #4947: The X-ray flag is kind of questionable in the first
 // place. It might be better to introduce an expr_xray_path instead.
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum XrayFlag {
     NoXray,     //< Private items cannot be accessed.
     Xray        //< Private items can be accessed.
@@ -292,13 +292,13 @@ pub enum ModulePrefixResult {
     PrefixFound(@mut Module, uint)
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum AllowCapturingSelfFlag {
     AllowCapturingSelf,         //< The "self" definition can be captured.
     DontAllowCapturingSelf,     //< The "self" definition cannot be captured.
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 enum NameSearchType {
     SearchItemsAndPublicImports,    //< Search items and public imports.
     SearchItemsAndAllImports,       //< Search items and all imports.
@@ -312,7 +312,7 @@ pub enum BareIdentifierPatternResolution {
 
 // Specifies how duplicates should be handled when adding a child item if
 // another item exists with the same name in some namespace.
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum DuplicateCheckingMode {
     ForbidDuplicateModules,
     ForbidDuplicateTypes,

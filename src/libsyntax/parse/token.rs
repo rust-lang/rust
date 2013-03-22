@@ -24,7 +24,7 @@ use std::oldmap::HashMap;
 
 #[auto_encode]
 #[auto_decode]
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum binop {
     PLUS,
     MINUS,
@@ -40,7 +40,7 @@ pub enum binop {
 
 #[auto_encode]
 #[auto_decode]
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Token {
     /* Expression-operator symbols. */
     EQ,
@@ -103,7 +103,7 @@ pub enum Token {
 
 #[auto_encode]
 #[auto_decode]
-#[deriving_eq]
+#[deriving(Eq)]
 /// For interpolation during macro expansion.
 pub enum nonterminal {
     nt_item(@ast::item),

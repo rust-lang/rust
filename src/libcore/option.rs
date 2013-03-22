@@ -52,7 +52,7 @@ use iter::{BaseIter, MutableIter};
 #[cfg(test)] use str;
 
 /// The option type
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Option<T> {
     None,
     Some(T),

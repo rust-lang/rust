@@ -30,7 +30,7 @@ use core::str;
 use core::to_bytes;
 
 /// The specific types of unsupported syntax
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum ObsoleteSyntax {
     ObsoleteLowerCaseKindBounds,
     ObsoleteLet,
