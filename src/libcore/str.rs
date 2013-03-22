@@ -599,7 +599,7 @@ pub pure fn split_str_nonempty(s: &'a str, sep: &'b str) -> ~[~str] {
 pub fn levdistance(s: &str, t: &str) -> uint {
 
     let slen = s.len();
-    let tlen = s.len();
+    let tlen = t.len();
 
     if slen == 0 { return tlen; }
     if tlen == 0 { return slen; }
@@ -611,7 +611,7 @@ pub fn levdistance(s: &str, t: &str) -> uint {
         let mut current = i;
         dcol[0] = current + 1;
 
-        for s.each_chari |j, tc| {
+        for t.each_chari |j, tc| {
 
             let mut next = dcol[j + 1];
 
