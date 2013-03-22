@@ -352,24 +352,6 @@ fn path_node_global(+ids: ~[ast::ident]) -> @ast::path {
                  types: ~[] }
 }
 
-#[cfg(stage0)]
-fn mk_tests(cx: &TestCtxt) -> @ast::item {
-
-    let ext_cx = cx.ext_cx;
-
-    // The vector of test_descs for this crate
-    let test_descs = mk_test_descs(cx);
-
-    (quote_item!(
-        pub const tests : &static/[self::std::test::TestDescAndFn] =
-            $test_descs
-        ;
-    )).get()
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 fn mk_tests(cx: &TestCtxt) -> @ast::item {
 
     let ext_cx = cx.ext_cx;

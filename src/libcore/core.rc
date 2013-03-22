@@ -212,34 +212,10 @@ pub use to_str::ToStr;
 pub use clone::Clone;
 
 
-/*
- * Export the log levels as global constants. Higher levels mean
- * more-verbosity. Error is the bottom level, default logging level is
- * warn-and-below.
- */
-/// The error log level
-#[cfg(stage0)]
-pub const error : u32 = 1_u32;
-/// The warning log level
-#[cfg(stage0)]
-pub const warn : u32 = 2_u32;
-/// The info log level
-#[cfg(stage0)]
-pub const info : u32 = 3_u32;
-/// The debug log level
-#[cfg(stage0)]
-pub const debug : u32 = 4_u32;
-
-
 /* Unsupported interfaces */
 
 // Private APIs
 pub mod unstable;
-// NOTE: Remove after snapshot
-#[cfg(stage0)]
-pub mod private {
-    pub use super::unstable::extfmt;
-}
 
 /* For internal use, not exported */
 
@@ -255,15 +231,6 @@ pub mod rt;
 // can be resolved within libcore.
 #[doc(hidden)]
 pub mod core {
-    #[cfg(stage0)]
-    pub const error : u32 = 1_u32;
-    #[cfg(stage0)]
-    pub const warn : u32 = 2_u32;
-    #[cfg(stage0)]
-    pub const info : u32 = 3_u32;
-    #[cfg(stage0)]
-    pub const debug : u32 = 4_u32;
-
     pub use cmp;
     pub use condition;
     pub use option;
