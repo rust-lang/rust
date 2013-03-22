@@ -20,8 +20,6 @@ use util::ppaux::region_to_str;
 use util::ppaux;
 
 use std::list::Cons;
-use syntax::ast;
-use syntax::codemap;
 
 // Helper functions related to manipulating region types.
 
