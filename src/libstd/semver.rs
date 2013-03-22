@@ -228,7 +228,7 @@ pub fn parse(s: &str) -> Option<Version> {
     do bad_parse::cond.trap(|_| { debug!("bad"); bad = true }).in {
         do io::with_str_reader(s) |rdr| {
             let v = parse_reader(rdr);
-            if bad || v.to_str() != s {
+            if bad || v.to_str() != s.to_owned() {
                 None
             } else {
                 Some(v)

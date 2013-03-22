@@ -537,7 +537,7 @@ pub mod rt {
         let mut unpadded = match cv.precision {
           CountImplied => s.to_owned(),
           CountIs(max) => if (max as uint) < str::char_len(s) {
-            str::substr(s, 0, max as uint)
+            str::substr(s, 0, max as uint).to_owned()
           } else {
             s.to_owned()
           }
