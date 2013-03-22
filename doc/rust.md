@@ -91,11 +91,10 @@ This EBNF dialect should hopefully be familiar to many readers.
 
 ## Unicode productions
 
-A small number of productions in Rust's grammar permit Unicode codepoints
-outside the ASCII range; these productions are defined in terms of character
-properties given by the Unicode standard, rather than ASCII-range
-codepoints. These are given in the section [Special Unicode
-Productions](#special-unicode-productions).
+A few productions in Rust's grammar permit Unicode codepoints outside the ASCII range.
+We define these productions in terms of character properties specified in the Unicode standard,
+rather than in terms of ASCII-range codepoints.
+The section [Special Unicode Productions](#special-unicode-productions) lists these productions.
 
 ## String table productions
 
@@ -222,8 +221,8 @@ unsafe use
 while
 ~~~~~~~~
 
-Any of these have special meaning in their respective grammars, and are
-excluded from the `ident` rule.
+Each of these keywords has special meaning in its grammar,
+and all of them are excluded from the `ident` rule.
 
 ### Literals
 
@@ -486,16 +485,18 @@ transcriber : '(' transcriber * ')' | '[' transcriber * ']'
 
 ~~~~~~~~
 
-User-defined syntax extensions are called "macros", and they can be defined
-with the `macro_rules!` syntax extension. User-defined macros can currently
-be invoked as expressions, statements, or items.
+User-defined syntax extensions are called "macros",
+and the `macro_rules` syntax extension defines them.
+Currently, user-defined macros can expand to expressions, statements, or items.
 
-(A `sep_token` is any token other than `*` and `+`. A `non_special_token` is
-any token other than a delimiter or `$`.)
+(A `sep_token` is any token other than `*` and `+`.
+A `non_special_token` is any token other than a delimiter or `$`.)
 
-Macro invocations are looked up by name, and each macro rule is tried in turn;
-the first successful match is transcribed. The matching and transcription
-processes are closely related, and will be described together:
+The macro expander looks up macro invocations by name,
+and tries each macro rule in turn.
+It transcribes the first successful match.
+Matching and transcription are closely related to each other,
+and we will describe them together.
 
 ### Macro By Example
 
@@ -548,11 +549,9 @@ This requirement most often affects name-designator pairs when they occur at the
 ## Syntax extensions useful for the macro author
 
 * `log_syntax!` : print out the arguments at compile time
-* `trace_macros!` : supply `true` or `false` to enable or disable printing of the macro expansion process.
+* `trace_macros!` : supply `true` or `false` to enable or disable macro expansion logging
 * `stringify!` : turn the identifier argument into a string literal
 * `concat_idents!` : create a new identifier by concatenating the arguments
-
-
 
 # Crates and source files
 
@@ -785,22 +784,19 @@ path_glob : ident [ "::" path_glob ] ?
 ~~~~~~~~
 
 A _use declaration_ creates one or more local name bindings synonymous
-with some other [path](#paths). Usually a `use` declaration is used to
-shorten the path required to refer to a module item.
+with some other [path](#paths).
+Usually a `use` declaration is used to shorten the path required to refer to a module item.
 
-*Note*: unlike many languages, Rust's `use` declarations do *not* declare
-linkage-dependency with external crates. Linkage dependencies are
-independently declared with
-[`extern mod` declarations](#extern-mod-declarations).
+*Note*: Unlike in many languages,
+`use` declarations in Rust do *not* declare linkage dependency with external crates.
+Rather, [`extern mod` declarations](#extern-mod-declarations) declare linkage dependencies.
 
-Use declarations support a number of "convenience" notations:
+Use declarations support a number of convenient shortcuts:
 
-  * Rebinding the target name as a new local name, using the
-    syntax `use x = p::q::r;`.
-  * Simultaneously binding a list of paths differing only in final element,
+  * Rebinding the target name as a new local name, using the syntax `use x = p::q::r;`.
+  * Simultaneously binding a list of paths differing only in their final element,
     using the glob-like brace syntax `use a::b::{c,d,e,f};`
-  * Binding all paths matching a given prefix,
-    using the glob-like asterisk syntax `use a::b::*;`
+  * Binding all paths matching a given prefix, using the asterisk wildcard syntax `use a::b::*;`
 
 An example of `use` declarations:
 
@@ -825,9 +821,10 @@ fn main() {
 Like items, `use` declarations are private to the containing module, by default.
 Also like items, a `use` declaration can be public, if qualified by the `pub` keyword.
 Such a `use` declaration serves to _re-export_ a name.
-A public `use` declaration can therefore be used to _redirect_ some public name to a different target definition,
+A public `use` declaration can therefore _redirect_ some public name to a different target definition:
 even a definition with a private canonical path, inside a different module.
-If a sequence of such redirections form a cycle or cannot be unambiguously resolved, they represent a compile-time error.
+If a sequence of such redirections form a cycle or cannot be resolved unambiguously,
+they represent a compile-time error.
 
 An example of re-exporting:
 ~~~~
@@ -844,8 +841,8 @@ mod quux {
 
 In this example, the module `quux` re-exports all of the public names defined in `foo`.
 
-Also note that the paths contained in `use` items are relative to the crate root; so, in the previous
-example, the use refers to `quux::foo::*`, and not simply to `foo::*`.
+Also note that the paths contained in `use` items are relative to the crate root.
+So, in the previous example, the `use` refers to `quux::foo::*`, and not simply to `foo::*`.
 
 ### Functions
 
@@ -994,27 +991,27 @@ Thus the return type on `f` only needs to reflect the `if` branch of the conditi
 
 #### Extern functions
 
-Extern functions are part of Rust's foreign function interface, providing
-the opposite functionality to [foreign modules](#foreign-modules). Whereas
-foreign modules allow Rust code to call foreign code, extern functions with
-bodies defined in Rust code _can be called by foreign code_. They are defined the
-same as any other Rust function, except that they are prepended with the
-`extern` keyword.
+Extern functions are part of Rust's foreign function interface,
+providing the opposite functionality to [foreign modules](#foreign-modules).
+Whereas foreign modules allow Rust code to call foreign code,
+extern functions with bodies defined in Rust code _can be called by foreign code_.
+They are defined in the same way as any other Rust function,
+except that they have the `extern` modifier.
 
 ~~~
 extern fn new_vec() -> ~[int] { ~[] }
 ~~~
 
-Extern functions may not be called from Rust code, but their value
-may be taken as a raw `u8` pointer.
+Extern functions may not be called from Rust code,
+but Rust code may take their value as a raw `u8` pointer.
 
 ~~~
 # extern fn new_vec() -> ~[int] { ~[] }
 let fptr: *u8 = new_vec;
 ~~~
 
-The primary motivation of extern functions is to create callbacks
-for foreign functions that expect to receive function pointers.
+The primary motivation for extern functions is
+to create callbacks for foreign functions that expect to receive function pointers.
 
 ### Type definitions
 
@@ -1052,7 +1049,7 @@ let p = Point(10, 11);
 let px: int = match p { Point(x, _) => x };
 ~~~~
 
-A _unit-like struct_ is a structure without any fields, defined by leaving off the fields list entirely.
+A _unit-like struct_ is a structure without any fields, defined by leaving off the list of fields entirely.
 Such types will have a single value, just like the [unit value `()`](#unit-and-boolean-literals) of the unit type.
 For example:
 
@@ -1484,23 +1481,25 @@ Any slots introduced by a slot declaration are visible from the point of declara
 ### Expression statements
 
 An _expression statement_ is one that evaluates an [expression](#expressions)
-and drops its result. The purpose of an expression statement is often to cause
-the side effects of the expression's evaluation.
+and ignores its result.
+The type of an expression statement `e;` is always `()`, regardless of the type of `e`.
+As a rule, an expression statement's purpose is to trigger the effects of evaluating its expression.
 
 ## Expressions
 
-An expression plays the dual roles of causing side effects and producing a
-*value*. Expressions are said to *evaluate to* a value, and the side effects
-are caused during *evaluation*. Many expressions contain sub-expressions as
-operands; the definition of each kind of expression dictates whether or not,
-and in which order, it will evaluate its sub-expressions, and how the
-expression's value derives from the value of its sub-expressions.
+An expression may have two roles: it always produces a *value*, and it may have *effects*
+(otherwise known as "side effects").
+An expression *evaluates to* a value, and has effects during *evaluation*.
+Many expressions contain sub-expressions (operands).
+The meaning of each kind of expression dictates several things:
+  * Whether or not to evaluate the sub-expressions when evaluating the expression
+  * The order in which to evaluate the sub-expressions
+  * How to combine the sub-expressions' values to obtain the value of the expression.
 
-In this way, the structure of execution -- both the overall sequence of
-observable side effects and the final produced value -- is dictated by the
-structure of expressions. Blocks themselves are expressions, so the nesting
-sequence of block, statement, expression, and block can repeatedly nest to an
-arbitrary depth.
+In this way, the structure of expressions dictates the structure of execution.
+Blocks are just another kind of expression,
+so blocks, statements, expressions, and blocks again can recursively nest inside each other
+to an arbitrary depth.
 
 #### Lvalues, rvalues and temporaries
 
@@ -1579,11 +1578,11 @@ A _structure expression_ consists of the [path](#paths) of a [structure item](#s
 followed by a brace-enclosed list of one or more comma-separated name-value pairs,
 providing the field values of a new instance of the structure.
 A field name can be any identifier, and is separated from its value expression by a colon.
-To indicate that a field is mutable, the `mut` keyword is written before its name.
+The location denoted by a structure field is mutable if and only if the enclosing structure is mutable.
 
 A _tuple structure expression_ consists of the [path](#paths) of a [structure item](#structures),
 followed by a parenthesized list of one or more comma-separated expressions
-(in other words, the path of a structured item followed by a tuple expression).
+(in other words, the path of a structure item followed by a tuple expression).
 The structure item must be a tuple structure item.
 
 A _unit-like structure expression_ consists only of the [path](#paths) of a [structure item](#structures).
@@ -1597,7 +1596,7 @@ The following are examples of structure expressions:
 # struct Cookie; fn some_fn<T>(t: T) {}
 Point {x: 10f, y: 20f};
 TuplePoint(10f, 20f);
-let u = game::User {name: "Joe", age: 35u, score: 100_000};
+let u = game::User {name: "Joe", age: 35, score: 100_000};
 some_fn::<Cookie>(Cookie);
 ~~~~
 
@@ -1605,8 +1604,10 @@ A structure expression forms a new value of the named structure type.
 Note that for a given *unit-like* structure type, this will always be the same value.
 
 A structure expression can terminate with the syntax `..` followed by an expression to denote a functional update.
-The expression following `..` (the base) must be of the same structure type as the new structure type being formed.
-A new structure will be created, of the same type as the base expression, with the given values for the fields that were explicitly specified,
+The expression following `..` (the base) must have the same structure type as the new structure type being formed.
+The entire expression denotes the result of allocating a new structure
+(with the same type as the base expression)
+with the given values for the fields that were explicitly specified
 and the values in the base record for all other fields.
 
 ~~~~
@@ -1758,36 +1759,35 @@ The default meaning of the operators on standard types is given here.
 
 #### Bitwise operators
 
-Bitwise operators are, like the [arithmetic operators](#arithmetic-operators),
-syntactic sugar for calls to built-in traits.
+Like the [arithmetic operators](#arithmetic-operators), bitwise operators
+are syntactic sugar for calls to methods of built-in traits.
 This means that bitwise operators can be overridden for user-defined types.
 The default meaning of the operators on standard types is given here.
 
 `&`
   : And.
-    Calls the `bitand` method on the `core::ops::BitAnd` trait.
+    Calls the `bitand` method of the `core::ops::BitAnd` trait.
 `|`
   : Inclusive or.
-    Calls the `bitor` method on the `core::ops::BitOr` trait.
+    Calls the `bitor` method of the `core::ops::BitOr` trait.
 `^`
   : Exclusive or.
-    Calls the `bitxor` method on the `core::ops::BitXor` trait.
+    Calls the `bitxor` method of the `core::ops::BitXor` trait.
 `<<`
   : Logical left shift.
-    Calls the `shl` method on the `core::ops::Shl` trait.
+    Calls the `shl` method of the `core::ops::Shl` trait.
 `>>`
   : Logical right shift.
-    Calls the `shr` method on the `core::ops::Shr` trait.
+    Calls the `shr` method of the `core::ops::Shr` trait.
 
 #### Lazy boolean operators
 
-The operators `||` and `&&` may be applied to operands of boolean
-type. The first performs the 'or' operation, and the second the 'and'
-operation. They differ from `|` and `&` in that the right-hand operand
-is only evaluated when the left-hand operand does not already
-determine the outcome of the expression. That is, `||` only evaluates
-its right-hand operand when the left-hand operand evaluates to `false`,
-and `&&` only when it evaluates to `true`.
+The operators `||` and `&&` may be applied to operands of boolean type.
+The `||` operator denotes logical 'or', and the `&&` operator denotes logical 'and'.
+They differ from `|` and `&` in that the right-hand operand is only evaluated
+when the left-hand operand does not already determine the result of the expression.
+That is, `||` only evaluates its right-hand operand
+when the left-hand operand evaluates to `false`, and `&&` only when it evaluates to `true`.
 
 #### Comparison operators
 
@@ -1937,6 +1937,9 @@ let x = (2 + 3) * 4;
 copy_expr : "copy" expr ;
 ~~~~~~~~
 
+> **Note:** `copy` expressions are deprecated. It's preferable to use
+> the `Clone` trait and `clone()` method.
+
 A _unary copy expression_ consists of the unary `copy` operator applied to
 some argument expression.
 
@@ -2013,27 +2016,29 @@ ident_list : [ ident [ ',' ident ]* ] ? ;
 lambda_expr : '|' ident_list '|' expr ;
 ~~~~~~~~
 
-A _lambda expression_ (a.k.a. "anonymous function expression") defines a function and denotes it as a value,
+A _lambda expression_ (sometimes called an "anonymous function expression") defines a function and denotes it as a value,
 in a single expression.
-Lambda expressions are written by prepending a list of identifiers, surrounded by pipe symbols (`|`),
-to an expression.
+A lambda expression is a pipe-symbol-delimited (`|`) list of identifiers followed by an expression.
 
-A lambda expression denotes a function mapping parameters to the expression to the right of the `ident_list`.
-The identifiers in the `ident_list` are the parameters to the function, with types inferred from context.
+A lambda expression denotes a function that maps a list of parameters (`ident_list`)
+onto the expression that follows the `ident_list`.
+The identifiers in the `ident_list` are the parameters to the function.
+These parameters' types need not be specified, as the compiler infers them from context.
 
 Lambda expressions are most useful when passing functions as arguments to other functions,
-as an abbreviation for defining and capturing a separate fucntion.
+as an abbreviation for defining and capturing a separate function.
 
 Significantly, lambda expressions _capture their environment_,
 which regular [function definitions](#functions) do not.
+The exact type of capture depends on the [function type](#function-types) inferred for the lambda expression.
+In the simplest and least-expensive form (analogous to a ```&fn() { }``` expression),
+the lambda expression captures its environment by reference,
+effectively borrowing pointers to all outer variables mentioned inside the function.
+Alternately, the compiler may infer that a lambda expression should copy or move values (depending on their type.)
+from the environment into the lambda expression's captured environment.
 
-The exact type of capture depends on the [function type](#function-types) inferred for the lambda expression;
-in the simplest and least-expensive form, the environment is captured by reference,
-effectively borrowing pointers to all outer variables referenced inside the function.
-Other forms of capture include making copies of captured variables,
-and moving values from the environment into the lambda expression's captured environment.
-
-An example of a lambda expression:
+In this example, we define a function `ten_times` that takes a higher-order function argument,
+and call it with a lambda expression as an argument.
 
 ~~~~
 fn ten_times(f: &fn(int)) {
@@ -2428,12 +2433,12 @@ type `float` may not be equal to the largest *supported* floating-point type.
 
 The types `char` and `str` hold textual data.
 
-A value of type `char` is a Unicode character, represented as a 32-bit
-unsigned word holding a UCS-4 codepoint.
+A value of type `char` is a Unicode character,
+represented as a 32-bit unsigned word holding a UCS-4 codepoint.
 
-A value of type `str` is a Unicode string, represented as a vector of 8-bit
-unsigned bytes holding a sequence of UTF-8 codepoints.
-Since `str` is of indefinite size, it is not a _first class_ type,
+A value of type `str` is a Unicode string,
+represented as a vector of 8-bit unsigned bytes holding a sequence of UTF-8 codepoints.
+Since `str` is of unknown size, it is not a _first class_ type,
 but can only be instantiated through a pointer type,
 such as `&str`, `@str` or `~str`.
 
@@ -2465,15 +2470,17 @@ fail_unless!(b != "world");
 
 ### Vector types
 
-The vector type-constructor represents a homogeneous array of values of a given type.
+The vector type constructor represents a homogeneous array of values of a given type.
 A vector has a fixed size.
-A vector type can be accompanied by _definite_ size, written with a trailing asterisk and integer literal, such as `[int * 10]`.
-Such a definite-sized vector can be treated as a first class type since its size is known statically.
+A vector type can be annotated with a _definite_ size,
+written with a trailing asterisk and integer literal, such as `[int * 10]`.
+Such a definite-sized vector type is a first-class type, since its size is known statically.
 A vector without such a size is said to be of _indefinite_ size,
-and is therefore not a _first class_ type,
-can only be instantiated through a pointer type,
+and is therefore not a _first-class_ type.
+An indefinite-size vector can only be instantiated through a pointer type,
 such as `&[T]`, `@[T]` or `~[T]`.
-The kind of a vector type depends on the kind of its member type, as with other simple structural types.
+The kind of a vector type depends on the kind of its element type,
+as with other simple structural types.
 
 An example of a vector type and its use:
 
@@ -2483,7 +2490,8 @@ let i: int = v[2];
 fail_unless!(i == 3);
 ~~~~
 
-All accessible elements of a vector are always initialized, and access to a vector is always bounds-checked.
+All in-bounds elements of a vector are always initialized,
+and access to a vector is always bounds-checked.
 
 
 ### Structure types
@@ -2605,9 +2613,9 @@ Raw pointers (`*`)
 
 ### Function types
 
-The function type-constructor `fn` forms new function types. A function type
-consists of a set of function-type modifiers (`unsafe`, `extern`, etc.),
-a sequence of input slots and an output slot.
+The function type constructor `fn` forms new function types.
+A function type consists of a possibly-empty set of function-type modifiers
+(such as `unsafe` or `extern`), a sequence of input types and an output type.
 
 An example of a `fn` type:
 
@@ -2916,24 +2924,28 @@ fn main() {
 
 ## Tasks
 
-An executing Rust program consists of a tree of tasks. A Rust _task_
-consists of an entry function, a stack, a set of outgoing communication
-channels and incoming communication ports, and ownership of some portion of
-the heap of a single operating-system process.
+An executing Rust program consists of a tree of tasks.
+A Rust _task_ consists of an entry function, a stack,
+a set of outgoing communication channels and incoming communication ports,
+and ownership of some portion of the heap of a single operating-system process.
+(We expect that many programs will not use channels and ports directly,
+but will instead use higher-level abstractions provided in standard libraries,
+such as pipes.)
 
-Multiple Rust tasks may coexist in a single operating-system process. The
-runtime scheduler maps tasks to a certain number of operating-system threads;
-by default a number of threads is used based on the number of concurrent
-physical CPUs detected at startup, but this can be changed dynamically at
-runtime. When the number of tasks exceeds the number of threads -- which is
-quite possible -- the tasks are multiplexed onto the threads ^[This is an M:N
-scheduler, which is known to give suboptimal results for CPU-bound concurrency
-problems. In such cases, running with the same number of threads as tasks can
-give better results. The M:N scheduling in Rust exists to support very large
-numbers of tasks in contexts where threads are too resource-intensive to use
-in a similar volume. The cost of threads varies substantially per operating
-system, and is sometimes quite low, so this flexibility is not always worth
-exploiting.]
+Multiple Rust tasks may coexist in a single operating-system process.
+The runtime scheduler maps tasks to a certain number of operating-system threads.
+By default, the scheduler chooses the number of threads based on
+the number of concurrent physical CPUs detected at startup.
+It's also possible to override this choice at runtime.
+When the number of tasks exceeds the number of threads -- which is likely --
+the scheduler multiplexes the tasks onto threads.^[
+This is an M:N scheduler,
+which is known to give suboptimal results for CPU-bound concurrency problems.
+In such cases, running with the same number of threads and tasks can yield better results.
+Rust has M:N scheduling in order to support very large numbers of tasks
+in contexts where threads are too resource-intensive to use in large number.
+The cost of threads varies substantially per operating system, and is sometimes quite low,
+so this flexibility is not always worth exploiting.]
 
 
 ### Communication between tasks
@@ -3024,16 +3036,15 @@ communication and logging.
 
 ### Memory allocation
 
-The runtime memory-management system is based on a _service-provider
-interface_, through which the runtime requests blocks of memory from its
-environment and releases them back to its environment when they are no longer
-in use. The default implementation of the service-provider interface consists
-of the C runtime functions `malloc` and `free`.
+The runtime memory-management system is based on a _service-provider interface_,
+through which the runtime requests blocks of memory from its environment
+and releases them back to its environment when they are no longer needed.
+The default implementation of the service-provider interface
+consists of the C runtime functions `malloc` and `free`.
 
-The runtime memory-management system in turn supplies Rust tasks with
-facilities for allocating, extending and releasing stacks, as well as
-allocating and freeing boxed values.
-
+The runtime memory-management system, in turn, supplies Rust tasks
+with facilities for allocating, extending and releasing stacks,
+as well as allocating and freeing heap data.
 
 ### Built in types
 
