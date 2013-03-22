@@ -488,7 +488,7 @@ pub fn temporary_keyword_table() -> HashMap<~str, ()> {
 pub fn strict_keyword_table() -> HashMap<~str, ()> {
     let words = HashMap();
     let keys = ~[
-        ~"as", ~"assert",
+        ~"as",
         ~"break",
         ~"const", ~"copy",
         ~"do", ~"drop",

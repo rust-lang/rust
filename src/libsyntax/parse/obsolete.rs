@@ -51,7 +51,6 @@ pub enum ObsoleteSyntax {
     ObsoleteTraitImplVisibility,
     ObsoleteRecordType,
     ObsoleteRecordPattern,
-    ObsoleteAssertion,
     ObsoletePostFnTySigil,
     ObsoleteBareFnType,
     ObsoleteNewtypeEnum,
@@ -164,10 +163,6 @@ pub impl Parser {
             ObsoleteRecordPattern => (
                 "structural record pattern",
                 "use a structure instead"
-            ),
-            ObsoleteAssertion => (
-                "assertion",
-                "use `fail_unless!()` instead"
             ),
             ObsoletePostFnTySigil => (
                 "fn sigil in postfix position",
