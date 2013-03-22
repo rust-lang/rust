@@ -358,11 +358,11 @@ impl PageUtils for ~[Page] {
 }
 
 pub trait Item {
-    pure fn item(&self) -> ItemDoc;
+    fn item(&self) -> ItemDoc;
 }
 
 impl Item for ItemTag {
-    pure fn item(&self) -> ItemDoc {
+    fn item(&self) -> ItemDoc {
         match self {
           &doc::ModTag(ref doc) => copy doc.item,
           &doc::NmodTag(ref doc) => copy doc.item,
@@ -378,64 +378,64 @@ impl Item for ItemTag {
 }
 
 impl Item for SimpleItemDoc {
-    pure fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl Item for ModDoc {
-    pure fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl Item for NmodDoc {
-    pure fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl Item for EnumDoc {
-    pure fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl Item for TraitDoc {
-    pure fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl Item for ImplDoc {
-    pure fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl Item for StructDoc {
-    pure fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc { copy self.item }
 }
 
 pub trait ItemUtils {
-    pure fn id(&self) -> AstId;
-    pure fn name(&self) -> ~str;
-    pure fn path(&self) -> ~[~str];
-    pure fn brief(&self) -> Option<~str>;
-    pure fn desc(&self) -> Option<~str>;
-    pure fn sections(&self) -> ~[Section];
+    fn id(&self) -> AstId;
+    fn name(&self) -> ~str;
+    fn path(&self) -> ~[~str];
+    fn brief(&self) -> Option<~str>;
+    fn desc(&self) -> Option<~str>;
+    fn sections(&self) -> ~[Section];
 }
 
 impl<A:Item> ItemUtils for A {
-    pure fn id(&self) -> AstId {
+    fn id(&self) -> AstId {
         self.item().id
     }
 
-    pure fn name(&self) -> ~str {
+    fn name(&self) -> ~str {
         copy self.item().name
     }
 
-    pure fn path(&self) -> ~[~str] {
+    fn path(&self) -> ~[~str] {
         copy self.item().path
     }
 
-    pure fn brief(&self) -> Option<~str> {
+    fn brief(&self) -> Option<~str> {
         copy self.item().brief
     }
 
-    pure fn desc(&self) -> Option<~str> {
+    fn desc(&self) -> Option<~str> {
         copy self.item().desc
     }
 
-    pure fn sections(&self) -> ~[Section] {
+    fn sections(&self) -> ~[Section] {
         copy self.item().sections
     }
 }

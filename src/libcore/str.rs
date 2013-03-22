@@ -525,7 +525,7 @@ pub fn split_no_trailing(s: &str, sepfn: &fn(char) -> bool) -> ~[~str] {
     split_inner(s, sepfn, len(s), true, false)
 }
 
-pure fn split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
+fn split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
                allow_empty: bool, allow_trailing_empty: bool) -> ~[~str] {
     let l = len(s);
     let mut result = ~[], i = 0u, start = 0u, done = 0u;
