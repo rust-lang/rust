@@ -40,6 +40,7 @@ pub mod rustrt {
 /// A record specifying a time value in seconds and nanoseconds.
 #[auto_encode]
 #[auto_decode]
+#[deriving(Eq)]
 pub struct Timespec { sec: i64, nsec: i32 }
 
 /*
@@ -55,13 +56,6 @@ pub impl Timespec {
         fail_unless!(nsec >= 0 && nsec < NSEC_PER_SEC);
         Timespec { sec: sec, nsec: nsec }
     }
-}
-
-impl Eq for Timespec {
-    fn eq(&self, other: &Timespec) -> bool {
-        self.sec == other.sec && self.nsec == other.nsec
-    }
-    fn ne(&self, other: &Timespec) -> bool { !self.eq(other) }
 }
 
 impl Ord for Timespec {
@@ -117,6 +111,7 @@ pub fn tzset() {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving(Eq)]
 pub struct Tm {
     tm_sec: i32, // seconds after the minute ~[0-60]
     tm_min: i32, // minutes after the hour ~[0-59]
@@ -130,24 +125,6 @@ pub struct Tm {
     tm_gmtoff: i32, // offset from UTC in seconds
     tm_zone: ~str, // timezone abbreviation
     tm_nsec: i32, // nanoseconds
-}
-
-impl Eq for Tm {
-    fn eq(&self, other: &Tm) -> bool {
-        self.tm_sec == (*other).tm_sec &&
-        self.tm_min == (*other).tm_min &&
-        self.tm_hour == (*other).tm_hour &&
-        self.tm_mday == (*other).tm_mday &&
-        self.tm_mon == (*other).tm_mon &&
-        self.tm_year == (*other).tm_year &&
-        self.tm_wday == (*other).tm_wday &&
-        self.tm_yday == (*other).tm_yday &&
-        self.tm_isdst == (*other).tm_isdst &&
-        self.tm_gmtoff == (*other).tm_gmtoff &&
-        self.tm_zone == (*other).tm_zone &&
-        self.tm_nsec == (*other).tm_nsec
-    }
-    fn ne(&self, other: &Tm) -> bool { !self.eq(other) }
 }
 
 pub fn empty_tm() -> Tm {
