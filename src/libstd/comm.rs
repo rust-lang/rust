@@ -39,7 +39,7 @@ pub impl<T:Owned,U:Owned> DuplexStream<T, U> {
     fn try_recv(&self) -> Option<U> {
         self.port.try_recv()
     }
-    pure fn peek(&self) -> bool {
+    fn peek(&self) -> bool {
         self.port.peek()
     }
 }
@@ -67,13 +67,13 @@ impl<T:Owned,U:Owned> GenericPort<U> for DuplexStream<T, U> {
 }
 
 impl<T:Owned,U:Owned> Peekable<U> for DuplexStream<T, U> {
-    pure fn peek(&self) -> bool {
+    fn peek(&self) -> bool {
         self.port.peek()
     }
 }
 
 impl<T:Owned,U:Owned> Selectable for DuplexStream<T, U> {
-    pure fn header(&self) -> *pipes::PacketHeader {
+    fn header(&self) -> *pipes::PacketHeader {
         self.port.header()
     }
 }
