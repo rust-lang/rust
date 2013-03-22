@@ -112,7 +112,7 @@ pub impl <T:Ord> PriorityQueue<T> {
         while end > 1 {
             end -= 1;
             q.data[end] <-> q.data[0];
-            unsafe { q.siftdown_range(0, end) } // purity-checking workaround
+            q.siftdown_range(0, end)
         }
         q.to_vec()
     }
@@ -126,7 +126,7 @@ pub impl <T:Ord> PriorityQueue<T> {
         let mut n = q.len() / 2;
         while n > 0 {
             n -= 1;
-            unsafe { q.siftdown(n) }; // purity-checking workaround
+            q.siftdown(n)
         }
         q
     }

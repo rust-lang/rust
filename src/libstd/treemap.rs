@@ -43,11 +43,9 @@ impl<K: Eq + TotalOrd, V: Eq> Eq for TreeMap<K, V> {
             let mut x = self.iter();
             let mut y = other.iter();
             for self.len().times {
-                unsafe { // unsafe as a purity workaround
-                    if map_next(&mut x).unwrap() !=
-                       map_next(&mut y).unwrap() {
-                        return false
-                    }
+                if map_next(&mut x).unwrap() !=
+                   map_next(&mut y).unwrap() {
+                    return false
                 }
             }
             true
@@ -64,12 +62,10 @@ fn lt<K: Ord + TotalOrd, V>(a: &TreeMap<K, V>,
 
     let (a_len, b_len) = (a.len(), b.len());
     for uint::min(a_len, b_len).times {
-        unsafe { // purity workaround
-            let (key_a,_) = map_next(&mut x).unwrap();
-            let (key_b,_) = map_next(&mut y).unwrap();
-            if *key_a < *key_b { return true; }
-            if *key_a > *key_b { return false; }
-        }
+        let (key_a,_) = map_next(&mut x).unwrap();
+        let (key_b,_) = map_next(&mut y).unwrap();
+        if *key_a < *key_b { return true; }
+        if *key_a > *key_b { return false; }
     };
 
     a_len < b_len
@@ -311,17 +307,15 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     fn is_disjoint(&self, other: &TreeSet<T>) -> bool {
         let mut x = self.iter();
         let mut y = other.iter();
-        unsafe { // purity workaround
-            let mut a = set_next(&mut x);
-            let mut b = set_next(&mut y);
-            while a.is_some() && b.is_some() {
-                let a1 = a.unwrap();
-                let b1 = b.unwrap();
-                match a1.cmp(b1) {
-                  Less => a = set_next(&mut x),
-                  Greater => b = set_next(&mut y),
-                  Equal => return false
-                }
+        let mut a = set_next(&mut x);
+        let mut b = set_next(&mut y);
+        while a.is_some() && b.is_some() {
+            let a1 = a.unwrap();
+            let b1 = b.unwrap();
+            match a1.cmp(b1) {
+              Less => a = set_next(&mut x),
+              Greater => b = set_next(&mut y),
+              Equal => return false
             }
         }
         true
@@ -337,25 +331,23 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     fn is_superset(&self, other: &TreeSet<T>) -> bool {
         let mut x = self.iter();
         let mut y = other.iter();
-        unsafe { // purity workaround
-            let mut a = set_next(&mut x);
-            let mut b = set_next(&mut y);
-            while b.is_some() {
-                if a.is_none() {
-                    return false
-                }
-
-                let a1 = a.unwrap();
-                let b1 = b.unwrap();
-
-                match a1.cmp(b1) {
-                  Less => (),
-                  Greater => return false,
-                  Equal => b = set_next(&mut y),
-                }
-
-                a = set_next(&mut x);
+        let mut a = set_next(&mut x);
+        let mut b = set_next(&mut y);
+        while b.is_some() {
+            if a.is_none() {
+                return false
             }
+
+            let a1 = a.unwrap();
+            let b1 = b.unwrap();
+
+            match a1.cmp(b1) {
+              Less => (),
+              Greater => return false,
+              Equal => b = set_next(&mut y),
+            }
+
+            a = set_next(&mut x);
         }
         true
     }
@@ -365,29 +357,27 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
         let mut x = self.iter();
         let mut y = other.iter();
 
-        unsafe { // purity workaround
-            let mut a = set_next(&mut x);
-            let mut b = set_next(&mut y);
+        let mut a = set_next(&mut x);
+        let mut b = set_next(&mut y);
 
-            while a.is_some() {
-                if b.is_none() {
-                    return do a.while_some() |a1| {
-                        if f(a1) { set_next(&mut x) } else { None }
-                    }
+        while a.is_some() {
+            if b.is_none() {
+                return do a.while_some() |a1| {
+                    if f(a1) { set_next(&mut x) } else { None }
                 }
+            }
 
-                let a1 = a.unwrap();
-                let b1 = b.unwrap();
+            let a1 = a.unwrap();
+            let b1 = b.unwrap();
 
-                let cmp = a1.cmp(b1);
+            let cmp = a1.cmp(b1);
 
-                if cmp == Less {
-                    if !f(a1) { return }
-                    a = set_next(&mut x);
-                } else {
-                    if cmp == Equal { a = set_next(&mut x) }
-                    b = set_next(&mut y);
-                }
+            if cmp == Less {
+                if !f(a1) { return }
+                a = set_next(&mut x);
+            } else {
+                if cmp == Equal { a = set_next(&mut x) }
+                b = set_next(&mut y);
             }
         }
     }
@@ -398,37 +388,35 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
         let mut x = self.iter();
         let mut y = other.iter();
 
-        unsafe { // purity workaround
-            let mut a = set_next(&mut x);
-            let mut b = set_next(&mut y);
+        let mut a = set_next(&mut x);
+        let mut b = set_next(&mut y);
 
-            while a.is_some() {
-                if b.is_none() {
-                    return do a.while_some() |a1| {
-                        if f(a1) { set_next(&mut x) } else { None }
-                    }
+        while a.is_some() {
+            if b.is_none() {
+                return do a.while_some() |a1| {
+                    if f(a1) { set_next(&mut x) } else { None }
                 }
+            }
 
-                let a1 = a.unwrap();
-                let b1 = b.unwrap();
+            let a1 = a.unwrap();
+            let b1 = b.unwrap();
 
-                let cmp = a1.cmp(b1);
+            let cmp = a1.cmp(b1);
 
-                if cmp == Less {
-                    if !f(a1) { return }
-                    a = set_next(&mut x);
+            if cmp == Less {
+                if !f(a1) { return }
+                a = set_next(&mut x);
+            } else {
+                if cmp == Greater {
+                    if !f(b1) { return }
                 } else {
-                    if cmp == Greater {
-                        if !f(b1) { return }
-                    } else {
-                        a = set_next(&mut x);
-                    }
-                    b = set_next(&mut y);
+                    a = set_next(&mut x);
                 }
+                b = set_next(&mut y);
             }
-            do b.while_some |b1| {
-                if f(b1) { set_next(&mut y) } else { None }
-            }
+        }
+        do b.while_some |b1| {
+            if f(b1) { set_next(&mut y) } else { None }
         }
     }
 
@@ -437,24 +425,22 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
         let mut x = self.iter();
         let mut y = other.iter();
 
-        unsafe { // purity workaround
-            let mut a = set_next(&mut x);
-            let mut b = set_next(&mut y);
+        let mut a = set_next(&mut x);
+        let mut b = set_next(&mut y);
 
-            while a.is_some() && b.is_some() {
-                let a1 = a.unwrap();
-                let b1 = b.unwrap();
+        while a.is_some() && b.is_some() {
+            let a1 = a.unwrap();
+            let b1 = b.unwrap();
 
-                let cmp = a1.cmp(b1);
+            let cmp = a1.cmp(b1);
 
-                if cmp == Less {
-                    a = set_next(&mut x);
-                } else {
-                    if cmp == Equal {
-                        if !f(a1) { return }
-                    }
-                    b = set_next(&mut y);
+            if cmp == Less {
+                a = set_next(&mut x);
+            } else {
+                if cmp == Equal {
+                    if !f(a1) { return }
                 }
+                b = set_next(&mut y);
             }
         }
     }
@@ -464,36 +450,34 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
         let mut x = self.iter();
         let mut y = other.iter();
 
-        unsafe { // purity workaround
-            let mut a = set_next(&mut x);
-            let mut b = set_next(&mut y);
+        let mut a = set_next(&mut x);
+        let mut b = set_next(&mut y);
 
-            while a.is_some() {
-                if b.is_none() {
-                    return do a.while_some() |a1| {
-                        if f(a1) { set_next(&mut x) } else { None }
-                    }
+        while a.is_some() {
+            if b.is_none() {
+                return do a.while_some() |a1| {
+                    if f(a1) { set_next(&mut x) } else { None }
                 }
+            }
 
-                let a1 = a.unwrap();
-                let b1 = b.unwrap();
+            let a1 = a.unwrap();
+            let b1 = b.unwrap();
 
-                let cmp = a1.cmp(b1);
+            let cmp = a1.cmp(b1);
 
-                if cmp == Greater {
-                    if !f(b1) { return }
+            if cmp == Greater {
+                if !f(b1) { return }
+                b = set_next(&mut y);
+            } else {
+                if !f(a1) { return }
+                if cmp == Equal {
                     b = set_next(&mut y);
-                } else {
-                    if !f(a1) { return }
-                    if cmp == Equal {
-                        b = set_next(&mut y);
-                    }
-                    a = set_next(&mut x);
                 }
+                a = set_next(&mut x);
             }
-            do b.while_some |b1| {
-                if f(b1) { set_next(&mut y) } else { None }
-            }
+        }
+        do b.while_some |b1| {
+            if f(b1) { set_next(&mut y) } else { None }
         }
     }
 }
