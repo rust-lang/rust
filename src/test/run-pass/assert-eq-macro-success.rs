@@ -1,4 +1,4 @@
-#[deriving_eq]
+#[deriving(Eq)]
 struct Point { x : int }
 
 fn main() {

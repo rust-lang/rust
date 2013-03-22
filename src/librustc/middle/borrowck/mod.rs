@@ -340,7 +340,7 @@ pub type root_map = HashMap<root_map_key, RootInfo>;
 // if you have an expression `x.f` and x has type ~@T, we could add an
 // entry {id:x, derefs:0} to refer to `x` itself, `{id:x, derefs:1}`
 // to refer to the deref of the unique pointer, and so on.
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct root_map_key {
     id: ast::node_id,
     derefs: uint
@@ -355,7 +355,7 @@ pub type mutbl_map = HashMap<ast::node_id, ()>;
 pub type write_guard_map = HashMap<root_map_key, ()>;
 
 // Errors that can occur
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum bckerr_code {
     err_mut_uniq,
     err_mut_variant,
@@ -367,7 +367,7 @@ pub enum bckerr_code {
 
 // Combination of an error code and the categorization of the expression
 // that caused it
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct bckerr {
     cmt: cmt,
     code: bckerr_code
@@ -382,7 +382,7 @@ pub enum MoveError {
 // shorthand for something that fails with `bckerr` or succeeds with `T`
 pub type bckres<T> = Result<T, bckerr>;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum LoanKind {
     TotalFreeze,   // Entire path is frozen   (borrowed as &T)
     PartialFreeze, // Some subpath is frozen  (borrowed as &T)

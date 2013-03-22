@@ -253,15 +253,15 @@ mod tests {
         fail_unless!(*deq.get(3) == d);
     }
 
-    #[deriving_eq]
+    #[deriving(Eq)]
     enum Taggy { One(int), Two(int, int), Three(int, int, int), }
 
-    #[deriving_eq]
+    #[deriving(Eq)]
     enum Taggypar<T> {
         Onepar(int), Twopar(int, int), Threepar(int, int, int),
     }
 
-    #[deriving_eq]
+    #[deriving(Eq)]
     struct RecCy {
         x: int,
         y: int,

@@ -39,6 +39,16 @@ pub fn expand_deriving_iter_bytes(cx: @ext_ctxt,
                     expand_deriving_iter_bytes_enum_def)
 }
 
+pub fn expand_deriving_obsolete(cx: @ext_ctxt,
+                                span: span,
+                                _mitem: @meta_item,
+                                in_items: ~[@item])
+                             -> ~[@item] {
+    cx.span_err(span, ~"`#[deriving_iter_bytes]` is obsolete; use `#[deriving(IterBytes)]` \
+                        instead");
+    in_items
+}
+
 fn create_derived_iter_bytes_impl(cx: @ext_ctxt,
                                   span: span,
                                   type_ident: ident,

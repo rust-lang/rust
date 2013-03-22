@@ -335,14 +335,14 @@ pub fn warn_not_to_commit(ccx: @CrateContext, msg: &str) {
 }
 
 // Heap selectors. Indicate which heap something should go on.
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum heap {
     heap_managed,
     heap_managed_unique,
     heap_exchange,
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum cleantype {
     normal_exit_only,
     normal_exit_and_unwind
@@ -1270,7 +1270,7 @@ pub fn is_undef(val: ValueRef) -> bool {
 }
 
 // Used to identify cached monomorphized functions and vtables
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum mono_param_id {
     mono_precise(ty::t, Option<~[mono_id]>),
     mono_any,
@@ -1280,7 +1280,7 @@ pub enum mono_param_id {
               datum::DatumMode),
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct mono_id_ {
     def: ast::def_id,
     params: ~[mono_param_id],

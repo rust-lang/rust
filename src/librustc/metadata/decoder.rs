@@ -93,7 +93,7 @@ fn lookup_item(item_id: int, data: @~[u8]) -> ebml::Doc {
     }
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 enum Family {
     Const,                 // c
     Fn,                    // f

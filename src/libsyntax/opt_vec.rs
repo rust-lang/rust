@@ -106,7 +106,7 @@ impl<T:Copy> OptVec<T> {
 
 impl<A:Eq> Eq for OptVec<A> {
     pure fn eq(&self, other: &OptVec<A>) -> bool {
-        // Note: cannot use #[deriving_eq] here because
+        // Note: cannot use #[deriving(Eq)] here because
         // (Empty, Vec(~[])) ought to be equal.
         match (self, other) {
             (&Empty, &Empty) => true,

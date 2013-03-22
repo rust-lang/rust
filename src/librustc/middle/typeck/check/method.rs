@@ -105,13 +105,13 @@ use syntax::ast::{m_const, m_mutbl, m_imm};
 use syntax::ast;
 use syntax::ast_map;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum CheckTraitsFlag {
     CheckTraitsOnly,
     CheckTraitsAndInherentMethods,
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum AutoderefReceiverFlag {
     AutoderefReceiver,
     DontAutoderefReceiver,

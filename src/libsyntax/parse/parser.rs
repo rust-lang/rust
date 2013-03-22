@@ -93,7 +93,7 @@ use core::either;
 use core::vec;
 use std::oldmap::HashMap;
 
-#[deriving_eq]
+#[deriving(Eq)]
 enum restriction {
     UNRESTRICTED,
     RESTRICT_STMT_EXPR,

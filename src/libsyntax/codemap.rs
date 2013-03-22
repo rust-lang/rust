@@ -128,7 +128,7 @@ pub struct span {
 
 #[auto_encode]
 #[auto_decode]
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct spanned<T> { node: T, span: span }
 
 impl cmp::Eq for span {

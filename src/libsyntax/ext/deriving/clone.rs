@@ -39,6 +39,15 @@ pub fn expand_deriving_clone(cx: @ext_ctxt,
                     expand_deriving_clone_enum_def)
 }
 
+pub fn expand_deriving_obsolete(cx: @ext_ctxt,
+                                span: span,
+                                _mitem: @meta_item,
+                                in_items: ~[@item])
+                             -> ~[@item] {
+    cx.span_err(span, ~"`#[deriving_clone]` is obsolete; use `#[deriving(Clone)]` instead");
+    in_items
+}
+
 fn create_derived_clone_impl(cx: @ext_ctxt,
                              span: span,
                              type_ident: ident,

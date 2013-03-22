@@ -240,7 +240,7 @@ pub fn process_crate(crate: @ast::crate,
 
 // FIXME (#33): this doesn't handle big integer/float literals correctly
 // (nor does the rest of our literal handling).
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum const_val {
     const_float(f64),
     const_int(i64),
