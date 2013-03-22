@@ -191,7 +191,7 @@ impl Mutable for TrieSet {
     fn clear(&mut self) { self.map.clear() }
 }
 
-impl TrieSet {
+pub impl TrieSet {
     /// Create an empty TrieSet
     #[inline(always)]
     fn new() -> TrieSet {
@@ -303,7 +303,6 @@ fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
         added = insert(&mut x.count, &mut x.children[chunk(key, idx)], key,
                        value, idx + 1);
         Internal(x)
-
       }
       Nothing => {
         *count += 1;
