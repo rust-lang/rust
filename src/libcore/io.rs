@@ -99,8 +99,8 @@ pub trait ReaderUtil {
     /// Read len bytes into a new vec.
     fn read_bytes(&self, len: uint) -> ~[u8];
 
-    /// Read up until a specified character (which is not returned) or EOF.
-    fn read_until(&self, c: char) -> ~str;
+    /// Read up until a specified character (which is optionally included) or EOF.
+    fn read_until(&self, c: char, include: bool) -> ~str;
 
     /// Read up until the first '\n' char (which is not returned), or EOF.
     fn read_line(&self) -> ~str;
@@ -125,6 +125,9 @@ pub trait ReaderUtil {
 
     /// Iterate over every line until the iterator breaks or EOF.
     fn each_line(&self, it: &fn(&str) -> bool);
+
+    /// Read all the lines of the file into a vector.
+    fn read_lines(&self) -> ~[~str];
 
     /// Read n (between 1 and 8) little-endian unsigned integer bytes.
     fn read_le_uint_n(&self, nbytes: uint) -> u64;
@@ -219,11 +222,14 @@ impl<T:Reader> ReaderUtil for T {
         bytes
     }
 
-    fn read_until(&self, c: char) -> ~str {
+    fn read_until(&self, c: char, include: bool) -> ~str {
         let mut bytes = ~[];
         loop {
             let ch = self.read_byte();
             if ch == -1 || ch == c as int {
+                if include && ch == c as int {
+                    bytes.push(ch as u8);
+                }
                 break;
             }
             bytes.push(ch as u8);
@@ -232,7 +238,7 @@ impl<T:Reader> ReaderUtil for T {
     }
 
     fn read_line(&self) -> ~str {
-        self.read_until('\n')
+        self.read_until('\n', false)
     }
 
     fn read_chars(&self, n: uint) -> ~[char] {
@@ -306,7 +312,7 @@ impl<T:Reader> ReaderUtil for T {
     }
 
     fn read_c_str(&self) -> ~str {
-        self.read_until(0 as char)
+        self.read_until(0 as char, false)
     }
 
     fn read_whole_stream(&self) -> ~[u8] {
@@ -329,7 +335,29 @@ impl<T:Reader> ReaderUtil for T {
 
     fn each_line(&self, it: &fn(s: &str) -> bool) {
         while !self.eof() {
-            if !it(self.read_line()) { break; }
+            // include the \n, so that we can distinguish an entirely empty
+            // line read after "...\n", and the trailing empty line in
+            // "...\n\n".
+            let mut line = self.read_until('\n', true);
+
+            // blank line at the end of the reader is ignored
+            if self.eof() && line.is_empty() { break; }
+
+            // trim the \n, so that each_line is consistent with read_line
+            let n = str::len(line);
+            if line[n-1] == '\n' as u8 {
+                unsafe { str::raw::set_len(&mut line, n-1); }
+            }
+
+            if !it(line) { break; }
+        }
+    }
+
+    fn read_lines(&self) -> ~[~str] {
+        do vec::build |push| {
+            for self.each_line |line| {
+                push(str::from_slice(line));
+            }
         }
     }
 
@@ -1332,6 +1360,21 @@ mod tests {
         do io::with_str_reader(~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤") |inp| {
             let line = inp.read_line();
             fail_unless!(line == ~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤");
+        }
+    }
+
+    #[test]
+    fn test_read_lines() {
+        do io::with_str_reader(~"a\nb\nc\n") |inp| {
+            fail_unless!(inp.read_lines() == ~[~"a", ~"b", ~"c"]);
+        }
+
+        do io::with_str_reader(~"a\nb\nc") |inp| {
+            fail_unless!(inp.read_lines() == ~[~"a", ~"b", ~"c"]);
+        }
+
+        do io::with_str_reader(~"") |inp| {
+            fail_unless!(inp.read_lines().is_empty());
         }
     }
 

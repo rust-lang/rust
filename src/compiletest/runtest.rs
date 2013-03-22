@@ -267,7 +267,7 @@ fn run_debuginfo_test(config: config, props: TestProps, testfile: &Path) {
         // check if each line in props.check_lines appears in the
         // output (in order)
         let mut i = 0u;
-        for str::lines(ProcRes.stdout).each |line| {
+        for str::lines_each(ProcRes.stdout) |line| {
             if props.check_lines[i].trim() == line.trim() {
                 i += 1u;
             }
@@ -297,8 +297,8 @@ fn check_error_patterns(props: TestProps,
     let mut next_err_idx = 0u;
     let mut next_err_pat = props.error_patterns[next_err_idx];
     let mut done = false;
-    for str::split_char(ProcRes.stderr, '\n').each |line| {
-        if str::contains(*line, next_err_pat) {
+    for str::lines_each(ProcRes.stderr) |line| {
+        if str::contains(line, next_err_pat) {
             debug!("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
             if next_err_idx == vec::len(props.error_patterns) {
@@ -347,15 +347,15 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for str::split_char(ProcRes.stderr, '\n').each |line| {
+    for str::lines_each(ProcRes.stderr) |line| {
         let mut was_expected = false;
         for vec::eachi(expected_errors) |i, ee| {
             if !found_flags[i] {
                 debug!("prefix=%s ee.kind=%s ee.msg=%s line=%s",
-                       prefixes[i], ee.kind, ee.msg, *line);
-                if (str::starts_with(*line, prefixes[i]) &&
-                    str::contains(*line, ee.kind) &&
-                    str::contains(*line, ee.msg)) {
+                       prefixes[i], ee.kind, ee.msg, line);
+                if (str::starts_with(line, prefixes[i]) &&
+                    str::contains(line, ee.kind) &&
+                    str::contains(line, ee.msg)) {
                     found_flags[i] = true;
                     was_expected = true;
                     break;
@@ -364,13 +364,13 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         }
 
         // ignore this msg which gets printed at the end
-        if str::contains(*line, ~"aborting due to") {
+        if str::contains(line, ~"aborting due to") {
             was_expected = true;
         }
 
-        if !was_expected && is_compiler_error_or_warning(*line) {
+        if !was_expected && is_compiler_error_or_warning(str::from_slice(line)) {
             fatal_ProcRes(fmt!("unexpected compiler error or warning: '%s'",
-                               *line),
+                               line),
                           ProcRes);
         }
     }
