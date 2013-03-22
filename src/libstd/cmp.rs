@@ -14,7 +14,7 @@ use core::f32;
 use core::f64;
 use core::float;
 
-pub const FUZZY_EPSILON: float = 1.0e-6;
+pub static FUZZY_EPSILON: float = 1.0e-6;
 
 pub trait FuzzyEq<Eps> {
     fn fuzzy_eq(&self, other: &Self) -> bool;

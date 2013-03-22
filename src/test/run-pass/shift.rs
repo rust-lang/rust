@@ -54,28 +54,28 @@ fn test_expr() {
 }
 
 fn test_const() {
-    const r1_1: uint = 10u >> 2u8;
-    const r2_1: uint = 10u << 4u8;
+    static r1_1: uint = 10u >> 2u8;
+    static r2_1: uint = 10u << 4u8;
     fail_unless!(r1_1 == 2 as uint);
     fail_unless!(r2_1 == 160 as uint);
 
-    const r1_2: u8 = 10u8 >> 2u;
-    const r2_2: u8 = 10u8 << 4u;
+    static r1_2: u8 = 10u8 >> 2u;
+    static r2_2: u8 = 10u8 << 4u;
     fail_unless!(r1_2 == 2 as u8);
     fail_unless!(r2_2 == 160 as u8);
 
-    const r1_3: int = 10 >> 2i8;
-    const r2_3: int = 10 << 4i8;
+    static r1_3: int = 10 >> 2i8;
+    static r2_3: int = 10 << 4i8;
     fail_unless!(r1_3 == 2 as int);
     fail_unless!(r2_3 == 160 as int);
 
-    const r1_4: i8 = 10i8 >> 2;
-    const r2_4: i8 = 10i8 << 4;
+    static r1_4: i8 = 10i8 >> 2;
+    static r2_4: i8 = 10i8 << 4;
     fail_unless!(r1_4 == 2 as i8);
     fail_unless!(r2_4 == 160 as i8);
 
-    const r1_5: uint = 10u >> 2i8;
-    const r2_5: uint = 10u << 4i8;
+    static r1_5: uint = 10u >> 2i8;
+    static r2_5: uint = 10u << 4i8;
     fail_unless!(r1_5 == 2 as uint);
     fail_unless!(r2_5 == 160 as uint);
 }

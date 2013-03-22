@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const C: &'static int = &1000;
-const D: int = *C;
+static C: &'static int = &1000;
+static D: int = *C;
 struct S(&'static int);
-const E: &'static S = &S(C);
-const F: int = ***E;
+static E: &'static S = &S(C);
+static F: int = ***E;
 
 pub fn main() {
     fail_unless!(D == 1000);

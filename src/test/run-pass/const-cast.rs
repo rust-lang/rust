@@ -10,10 +10,10 @@
 
 extern fn foo() {}
 
-const x: *u8 = foo;
-const y: *libc::c_void = x as *libc::c_void;
-const a: &'static int = &10;
-const b: *int = a as *int;
+static x: *u8 = foo;
+static y: *libc::c_void = x as *libc::c_void;
+static a: &'static int = &10;
+static b: *int = a as *int;
 
 fn main() {
     fail_unless!(x as *libc::c_void == y);

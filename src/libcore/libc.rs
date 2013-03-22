@@ -732,52 +732,52 @@ pub mod consts {
     #[cfg(target_os = "win32")]
     pub mod os {
         pub mod c95 {
-            pub const EXIT_FAILURE : int = 1;
-            pub const EXIT_SUCCESS : int = 0;
-            pub const RAND_MAX : int = 32767;
-            pub const EOF : int = -1;
-            pub const SEEK_SET : int = 0;
-            pub const SEEK_CUR : int = 1;
-            pub const SEEK_END : int = 2;
-            pub const _IOFBF : int = 0;
-            pub const _IONBF : int = 4;
-            pub const _IOLBF : int = 64;
-            pub const BUFSIZ : uint = 512_u;
-            pub const FOPEN_MAX : uint = 20_u;
-            pub const FILENAME_MAX : uint = 260_u;
-            pub const L_tmpnam : uint = 16_u;
-            pub const TMP_MAX : uint = 32767_u;
+            pub static EXIT_FAILURE : int = 1;
+            pub static EXIT_SUCCESS : int = 0;
+            pub static RAND_MAX : int = 32767;
+            pub static EOF : int = -1;
+            pub static SEEK_SET : int = 0;
+            pub static SEEK_CUR : int = 1;
+            pub static SEEK_END : int = 2;
+            pub static _IOFBF : int = 0;
+            pub static _IONBF : int = 4;
+            pub static _IOLBF : int = 64;
+            pub static BUFSIZ : uint = 512_u;
+            pub static FOPEN_MAX : uint = 20_u;
+            pub static FILENAME_MAX : uint = 260_u;
+            pub static L_tmpnam : uint = 16_u;
+            pub static TMP_MAX : uint = 32767_u;
         }
         pub mod c99 {
         }
         pub mod posix88 {
-            pub const O_RDONLY : int = 0;
-            pub const O_WRONLY : int = 1;
-            pub const O_RDWR : int = 2;
-            pub const O_APPEND : int = 8;
-            pub const O_CREAT : int = 256;
-            pub const O_EXCL : int = 1024;
-            pub const O_TRUNC : int = 512;
-            pub const S_IFIFO : int = 4096;
-            pub const S_IFCHR : int = 8192;
-            pub const S_IFBLK : int = 12288;
-            pub const S_IFDIR : int = 16384;
-            pub const S_IFREG : int = 32768;
-            pub const S_IFMT : int = 61440;
-            pub const S_IEXEC : int = 64;
-            pub const S_IWRITE : int = 128;
-            pub const S_IREAD : int = 256;
-            pub const S_IRWXU : int = 448;
-            pub const S_IXUSR : int = 64;
-            pub const S_IWUSR : int = 128;
-            pub const S_IRUSR : int = 256;
-            pub const F_OK : int = 0;
-            pub const R_OK : int = 4;
-            pub const W_OK : int = 2;
-            pub const X_OK : int = 1;
-            pub const STDIN_FILENO : int = 0;
-            pub const STDOUT_FILENO : int = 1;
-            pub const STDERR_FILENO : int = 2;
+            pub static O_RDONLY : int = 0;
+            pub static O_WRONLY : int = 1;
+            pub static O_RDWR : int = 2;
+            pub static O_APPEND : int = 8;
+            pub static O_CREAT : int = 256;
+            pub static O_EXCL : int = 1024;
+            pub static O_TRUNC : int = 512;
+            pub static S_IFIFO : int = 4096;
+            pub static S_IFCHR : int = 8192;
+            pub static S_IFBLK : int = 12288;
+            pub static S_IFDIR : int = 16384;
+            pub static S_IFREG : int = 32768;
+            pub static S_IFMT : int = 61440;
+            pub static S_IEXEC : int = 64;
+            pub static S_IWRITE : int = 128;
+            pub static S_IREAD : int = 256;
+            pub static S_IRWXU : int = 448;
+            pub static S_IXUSR : int = 64;
+            pub static S_IWUSR : int = 128;
+            pub static S_IRUSR : int = 256;
+            pub static F_OK : int = 0;
+            pub static R_OK : int = 4;
+            pub static W_OK : int = 2;
+            pub static X_OK : int = 1;
+            pub static STDIN_FILENO : int = 0;
+            pub static STDOUT_FILENO : int = 1;
+            pub static STDERR_FILENO : int = 2;
         }
         pub mod posix01 {
         }
@@ -786,13 +786,13 @@ pub mod consts {
         pub mod bsd44 {
         }
         pub mod extra {
-            pub const O_TEXT : int = 16384;
-            pub const O_BINARY : int = 32768;
-            pub const O_NOINHERIT: int = 128;
+            pub static O_TEXT : int = 16384;
+            pub static O_BINARY : int = 32768;
+            pub static O_NOINHERIT: int = 128;
 
-            pub const ERROR_SUCCESS : int = 0;
-            pub const ERROR_INSUFFICIENT_BUFFER : int = 122;
-            pub const INVALID_HANDLE_VALUE: int = -1;
+            pub static ERROR_SUCCESS : int = 0;
+            pub static ERROR_INSUFFICIENT_BUFFER : int = 122;
+            pub static INVALID_HANDLE_VALUE: int = -1;
         }
     }
 
@@ -801,56 +801,56 @@ pub mod consts {
     #[cfg(target_os = "android")]
     pub mod os {
         pub mod c95 {
-            pub const EXIT_FAILURE : int = 1;
-            pub const EXIT_SUCCESS : int = 0;
-            pub const RAND_MAX : int = 2147483647;
-            pub const EOF : int = -1;
-            pub const SEEK_SET : int = 0;
-            pub const SEEK_CUR : int = 1;
-            pub const SEEK_END : int = 2;
-            pub const _IOFBF : int = 0;
-            pub const _IONBF : int = 2;
-            pub const _IOLBF : int = 1;
-            pub const BUFSIZ : uint = 8192_u;
-            pub const FOPEN_MAX : uint = 16_u;
-            pub const FILENAME_MAX : uint = 4096_u;
-            pub const L_tmpnam : uint = 20_u;
-            pub const TMP_MAX : uint = 238328_u;
+            pub static EXIT_FAILURE : int = 1;
+            pub static EXIT_SUCCESS : int = 0;
+            pub static RAND_MAX : int = 2147483647;
+            pub static EOF : int = -1;
+            pub static SEEK_SET : int = 0;
+            pub static SEEK_CUR : int = 1;
+            pub static SEEK_END : int = 2;
+            pub static _IOFBF : int = 0;
+            pub static _IONBF : int = 2;
+            pub static _IOLBF : int = 1;
+            pub static BUFSIZ : uint = 8192_u;
+            pub static FOPEN_MAX : uint = 16_u;
+            pub static FILENAME_MAX : uint = 4096_u;
+            pub static L_tmpnam : uint = 20_u;
+            pub static TMP_MAX : uint = 238328_u;
         }
         pub mod c99 {
         }
         pub mod posix88 {
-            pub const O_RDONLY : int = 0;
-            pub const O_WRONLY : int = 1;
-            pub const O_RDWR : int = 2;
-            pub const O_APPEND : int = 1024;
-            pub const O_CREAT : int = 64;
-            pub const O_EXCL : int = 128;
-            pub const O_TRUNC : int = 512;
-            pub const S_IFIFO : int = 4096;
-            pub const S_IFCHR : int = 8192;
-            pub const S_IFBLK : int = 24576;
-            pub const S_IFDIR : int = 16384;
-            pub const S_IFREG : int = 32768;
-            pub const S_IFMT : int = 61440;
-            pub const S_IEXEC : int = 64;
-            pub const S_IWRITE : int = 128;
-            pub const S_IREAD : int = 256;
-            pub const S_IRWXU : int = 448;
-            pub const S_IXUSR : int = 64;
-            pub const S_IWUSR : int = 128;
-            pub const S_IRUSR : int = 256;
-            pub const F_OK : int = 0;
-            pub const R_OK : int = 4;
-            pub const W_OK : int = 2;
-            pub const X_OK : int = 1;
-            pub const STDIN_FILENO : int = 0;
-            pub const STDOUT_FILENO : int = 1;
-            pub const STDERR_FILENO : int = 2;
-            pub const F_LOCK : int = 1;
-            pub const F_TEST : int = 3;
-            pub const F_TLOCK : int = 2;
-            pub const F_ULOCK : int = 0;
+            pub static O_RDONLY : int = 0;
+            pub static O_WRONLY : int = 1;
+            pub static O_RDWR : int = 2;
+            pub static O_APPEND : int = 1024;
+            pub static O_CREAT : int = 64;
+            pub static O_EXCL : int = 128;
+            pub static O_TRUNC : int = 512;
+            pub static S_IFIFO : int = 4096;
+            pub static S_IFCHR : int = 8192;
+            pub static S_IFBLK : int = 24576;
+            pub static S_IFDIR : int = 16384;
+            pub static S_IFREG : int = 32768;
+            pub static S_IFMT : int = 61440;
+            pub static S_IEXEC : int = 64;
+            pub static S_IWRITE : int = 128;
+            pub static S_IREAD : int = 256;
+            pub static S_IRWXU : int = 448;
+            pub static S_IXUSR : int = 64;
+            pub static S_IWUSR : int = 128;
+            pub static S_IRUSR : int = 256;
+            pub static F_OK : int = 0;
+            pub static R_OK : int = 4;
+            pub static W_OK : int = 2;
+            pub static X_OK : int = 1;
+            pub static STDIN_FILENO : int = 0;
+            pub static STDOUT_FILENO : int = 1;
+            pub static STDERR_FILENO : int = 2;
+            pub static F_LOCK : int = 1;
+            pub static F_TEST : int = 3;
+            pub static F_TLOCK : int = 2;
+            pub static F_ULOCK : int = 0;
         }
         pub mod posix01 {
         }
@@ -859,65 +859,65 @@ pub mod consts {
         pub mod bsd44 {
         }
         pub mod extra {
-            pub const O_RSYNC : int = 1052672;
-            pub const O_DSYNC : int = 4096;
-            pub const O_SYNC : int = 1052672;
+            pub static O_RSYNC : int = 1052672;
+            pub static O_DSYNC : int = 4096;
+            pub static O_SYNC : int = 1052672;
         }
     }
 
     #[cfg(target_os = "freebsd")]
     pub mod os {
         pub mod c95 {
-            pub const EXIT_FAILURE : int = 1;
-            pub const EXIT_SUCCESS : int = 0;
-            pub const RAND_MAX : int = 2147483647;
-            pub const EOF : int = -1;
-            pub const SEEK_SET : int = 0;
-            pub const SEEK_CUR : int = 1;
-            pub const SEEK_END : int = 2;
-            pub const _IOFBF : int = 0;
-            pub const _IONBF : int = 2;
-            pub const _IOLBF : int = 1;
-            pub const BUFSIZ : uint = 1024_u;
-            pub const FOPEN_MAX : uint = 20_u;
-            pub const FILENAME_MAX : uint = 1024_u;
-            pub const L_tmpnam : uint = 1024_u;
-            pub const TMP_MAX : uint = 308915776_u;
+            pub static EXIT_FAILURE : int = 1;
+            pub static EXIT_SUCCESS : int = 0;
+            pub static RAND_MAX : int = 2147483647;
+            pub static EOF : int = -1;
+            pub static SEEK_SET : int = 0;
+            pub static SEEK_CUR : int = 1;
+            pub static SEEK_END : int = 2;
+            pub static _IOFBF : int = 0;
+            pub static _IONBF : int = 2;
+            pub static _IOLBF : int = 1;
+            pub static BUFSIZ : uint = 1024_u;
+            pub static FOPEN_MAX : uint = 20_u;
+            pub static FILENAME_MAX : uint = 1024_u;
+            pub static L_tmpnam : uint = 1024_u;
+            pub static TMP_MAX : uint = 308915776_u;
         }
         pub mod c99 {
         }
         pub mod posix88 {
-            pub const O_RDONLY : int = 0;
-            pub const O_WRONLY : int = 1;
-            pub const O_RDWR : int = 2;
-            pub const O_APPEND : int = 8;
-            pub const O_CREAT : int = 512;
-            pub const O_EXCL : int = 2048;
-            pub const O_TRUNC : int = 1024;
-            pub const S_IFIFO : int = 4096;
-            pub const S_IFCHR : int = 8192;
-            pub const S_IFBLK : int = 24576;
-            pub const S_IFDIR : int = 16384;
-            pub const S_IFREG : int = 32768;
-            pub const S_IFMT : int = 61440;
-            pub const S_IEXEC : int = 64;
-            pub const S_IWRITE : int = 128;
-            pub const S_IREAD : int = 256;
-            pub const S_IRWXU : int = 448;
-            pub const S_IXUSR : int = 64;
-            pub const S_IWUSR : int = 128;
-            pub const S_IRUSR : int = 256;
-            pub const F_OK : int = 0;
-            pub const R_OK : int = 4;
-            pub const W_OK : int = 2;
-            pub const X_OK : int = 1;
-            pub const STDIN_FILENO : int = 0;
-            pub const STDOUT_FILENO : int = 1;
-            pub const STDERR_FILENO : int = 2;
-            pub const F_LOCK : int = 1;
-            pub const F_TEST : int = 3;
-            pub const F_TLOCK : int = 2;
-            pub const F_ULOCK : int = 0;
+            pub static O_RDONLY : int = 0;
+            pub static O_WRONLY : int = 1;
+            pub static O_RDWR : int = 2;
+            pub static O_APPEND : int = 8;
+            pub static O_CREAT : int = 512;
+            pub static O_EXCL : int = 2048;
+            pub static O_TRUNC : int = 1024;
+            pub static S_IFIFO : int = 4096;
+            pub static S_IFCHR : int = 8192;
+            pub static S_IFBLK : int = 24576;
+            pub static S_IFDIR : int = 16384;
+            pub static S_IFREG : int = 32768;
+            pub static S_IFMT : int = 61440;
+            pub static S_IEXEC : int = 64;
+            pub static S_IWRITE : int = 128;
+            pub static S_IREAD : int = 256;
+            pub static S_IRWXU : int = 448;
+            pub static S_IXUSR : int = 64;
+            pub static S_IWUSR : int = 128;
+            pub static S_IRUSR : int = 256;
+            pub static F_OK : int = 0;
+            pub static R_OK : int = 4;
+            pub static W_OK : int = 2;
+            pub static X_OK : int = 1;
+            pub static STDIN_FILENO : int = 0;
+            pub static STDOUT_FILENO : int = 1;
+            pub static STDERR_FILENO : int = 2;
+            pub static F_LOCK : int = 1;
+            pub static F_TEST : int = 3;
+            pub static F_TLOCK : int = 2;
+            pub static F_ULOCK : int = 0;
         }
         pub mod posix01 {
         }
@@ -926,66 +926,66 @@ pub mod consts {
         pub mod bsd44 {
         }
         pub mod extra {
-            pub const O_SYNC : int = 128;
-            pub const CTL_KERN: int = 1;
-            pub const KERN_PROC: int = 14;
-            pub const KERN_PROC_PATHNAME: int = 12;
+            pub static O_SYNC : int = 128;
+            pub static CTL_KERN: int = 1;
+            pub static KERN_PROC: int = 14;
+            pub static KERN_PROC_PATHNAME: int = 12;
         }
     }
 
     #[cfg(target_os = "macos")]
     pub mod os {
         pub mod c95 {
-            pub const EXIT_FAILURE : int = 1;
-            pub const EXIT_SUCCESS : int = 0;
-            pub const RAND_MAX : int = 2147483647;
-            pub const EOF : int = -1;
-            pub const SEEK_SET : int = 0;
-            pub const SEEK_CUR : int = 1;
-            pub const SEEK_END : int = 2;
-            pub const _IOFBF : int = 0;
-            pub const _IONBF : int = 2;
-            pub const _IOLBF : int = 1;
-            pub const BUFSIZ : uint = 1024_u;
-            pub const FOPEN_MAX : uint = 20_u;
-            pub const FILENAME_MAX : uint = 1024_u;
-            pub const L_tmpnam : uint = 1024_u;
-            pub const TMP_MAX : uint = 308915776_u;
+            pub static EXIT_FAILURE : int = 1;
+            pub static EXIT_SUCCESS : int = 0;
+            pub static RAND_MAX : int = 2147483647;
+            pub static EOF : int = -1;
+            pub static SEEK_SET : int = 0;
+            pub static SEEK_CUR : int = 1;
+            pub static SEEK_END : int = 2;
+            pub static _IOFBF : int = 0;
+            pub static _IONBF : int = 2;
+            pub static _IOLBF : int = 1;
+            pub static BUFSIZ : uint = 1024_u;
+            pub static FOPEN_MAX : uint = 20_u;
+            pub static FILENAME_MAX : uint = 1024_u;
+            pub static L_tmpnam : uint = 1024_u;
+            pub static TMP_MAX : uint = 308915776_u;
         }
         pub mod c99 {
         }
         pub mod posix88 {
-            pub const O_RDONLY : int = 0;
-            pub const O_WRONLY : int = 1;
-            pub const O_RDWR : int = 2;
-            pub const O_APPEND : int = 8;
-            pub const O_CREAT : int = 512;
-            pub const O_EXCL : int = 2048;
-            pub const O_TRUNC : int = 1024;
-            pub const S_IFIFO : int = 4096;
-            pub const S_IFCHR : int = 8192;
-            pub const S_IFBLK : int = 24576;
-            pub const S_IFDIR : int = 16384;
-            pub const S_IFREG : int = 32768;
-            pub const S_IFMT : int = 61440;
-            pub const S_IEXEC : int = 64;
-            pub const S_IWRITE : int = 128;
-            pub const S_IREAD : int = 256;
-            pub const S_IRWXU : int = 448;
-            pub const S_IXUSR : int = 64;
-            pub const S_IWUSR : int = 128;
-            pub const S_IRUSR : int = 256;
-            pub const F_OK : int = 0;
-            pub const R_OK : int = 4;
-            pub const W_OK : int = 2;
-            pub const X_OK : int = 1;
-            pub const STDIN_FILENO : int = 0;
-            pub const STDOUT_FILENO : int = 1;
-            pub const STDERR_FILENO : int = 2;
-            pub const F_LOCK : int = 1;
-            pub const F_TEST : int = 3;
-            pub const F_TLOCK : int = 2;
-            pub const F_ULOCK : int = 0;
+            pub static O_RDONLY : int = 0;
+            pub static O_WRONLY : int = 1;
+            pub static O_RDWR : int = 2;
+            pub static O_APPEND : int = 8;
+            pub static O_CREAT : int = 512;
+            pub static O_EXCL : int = 2048;
+            pub static O_TRUNC : int = 1024;
+            pub static S_IFIFO : int = 4096;
+            pub static S_IFCHR : int = 8192;
+            pub static S_IFBLK : int = 24576;
+            pub static S_IFDIR : int = 16384;
+            pub static S_IFREG : int = 32768;
+            pub static S_IFMT : int = 61440;
+            pub static S_IEXEC : int = 64;
+            pub static S_IWRITE : int = 128;
+            pub static S_IREAD : int = 256;
+            pub static S_IRWXU : int = 448;
+            pub static S_IXUSR : int = 64;
+            pub static S_IWUSR : int = 128;
+            pub static S_IRUSR : int = 256;
+            pub static F_OK : int = 0;
+            pub static R_OK : int = 4;
+            pub static W_OK : int = 2;
+            pub static X_OK : int = 1;
+            pub static STDIN_FILENO : int = 0;
+            pub static STDOUT_FILENO : int = 1;
+            pub static STDERR_FILENO : int = 2;
+            pub static F_LOCK : int = 1;
+            pub static F_TEST : int = 3;
+            pub static F_TLOCK : int = 2;
+            pub static F_ULOCK : int = 0;
         }
         pub mod posix01 {
         }
@@ -994,9 +994,9 @@ pub mod consts {
         pub mod bsd44 {
         }
         pub mod extra {
-            pub const O_DSYNC : int = 4194304;
-            pub const O_SYNC : int = 128;
-            pub const F_FULLFSYNC : int = 51;
+            pub static O_DSYNC : int = 4194304;
+            pub static O_SYNC : int = 128;
+            pub static F_FULLFSYNC : int = 51;
         }
     }
 }

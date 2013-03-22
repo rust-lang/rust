@@ -65,8 +65,8 @@ pub mod rustrt {
     }
 }
 
-pub const TMPBUF_SZ : uint = 1000u;
-const BUF_BYTES : uint = 2048u;
+pub static TMPBUF_SZ : uint = 1000u;
+static BUF_BYTES : uint = 2048u;
 
 pub fn getcwd() -> Path {
     let buf = [0 as libc::c_char, ..BUF_BYTES];
@@ -1013,8 +1013,8 @@ pub fn last_os_error() -> ~str {
                                      args: *c_void) -> DWORD;
         }
 
-        const FORMAT_MESSAGE_FROM_SYSTEM: DWORD = 0x00001000;
-        const FORMAT_MESSAGE_IGNORE_INSERTS: DWORD = 0x00000200;
+        static FORMAT_MESSAGE_FROM_SYSTEM: DWORD = 0x00001000;
+        static FORMAT_MESSAGE_IGNORE_INSERTS: DWORD = 0x00000200;
 
         let mut buf = [0 as c_char, ..TMPBUF_SZ];
 
@@ -1170,11 +1170,11 @@ pub mod consts {
     pub use os::consts::windows::*;
 
     pub mod unix {
-        pub const FAMILY: &'static str = "unix";
+        pub static FAMILY: &'static str = "unix";
     }
 
     pub mod windows {
-        pub const FAMILY: &'static str = "windows";
+        pub static FAMILY: &'static str = "windows";
     }
 
     #[cfg(target_os = "macos")]
@@ -1193,38 +1193,38 @@ pub mod consts {
     pub use os::consts::win32::*;
 
     pub mod macos {
-        pub const SYSNAME: &'static str = "macos";
-        pub const DLL_PREFIX: &'static str = "lib";
-        pub const DLL_SUFFIX: &'static str = ".dylib";
-        pub const EXE_SUFFIX: &'static str = "";
+        pub static SYSNAME: &'static str = "macos";
+        pub static DLL_PREFIX: &'static str = "lib";
+        pub static DLL_SUFFIX: &'static str = ".dylib";
+        pub static EXE_SUFFIX: &'static str = "";
     }
 
     pub mod freebsd {
-        pub const SYSNAME: &'static str = "freebsd";
-        pub const DLL_PREFIX: &'static str = "lib";
-        pub const DLL_SUFFIX: &'static str = ".so";
-        pub const EXE_SUFFIX: &'static str = "";
+        pub static SYSNAME: &'static str = "freebsd";
+        pub static DLL_PREFIX: &'static str = "lib";
+        pub static DLL_SUFFIX: &'static str = ".so";
+        pub static EXE_SUFFIX: &'static str = "";
     }
 
     pub mod linux {
-        pub const SYSNAME: &'static str = "linux";
-        pub const DLL_PREFIX: &'static str = "lib";
-        pub const DLL_SUFFIX: &'static str = ".so";
-        pub const EXE_SUFFIX: &'static str = "";
+        pub static SYSNAME: &'static str = "linux";
+        pub static DLL_PREFIX: &'static str = "lib";
+        pub static DLL_SUFFIX: &'static str = ".so";
+        pub static EXE_SUFFIX: &'static str = "";
     }
 
     pub mod android {
-        pub const SYSNAME: &'static str = "android";
-        pub const DLL_PREFIX: &'static str = "lib";
-        pub const DLL_SUFFIX: &'static str = ".so";
-        pub const EXE_SUFFIX: &'static str = "";
+        pub static SYSNAME: &'static str = "android";
+        pub static DLL_PREFIX: &'static str = "lib";
+        pub static DLL_SUFFIX: &'static str = ".so";
+        pub static EXE_SUFFIX: &'static str = "";
     }
 
     pub mod win32 {
-        pub const SYSNAME: &'static str = "win32";
-        pub const DLL_PREFIX: &'static str = "";
-        pub const DLL_SUFFIX: &'static str = ".dll";
-        pub const EXE_SUFFIX: &'static str = ".exe";
+        pub static SYSNAME: &'static str = "win32";
+        pub static DLL_PREFIX: &'static str = "";
+        pub static DLL_SUFFIX: &'static str = ".dll";
+        pub static EXE_SUFFIX: &'static str = ".exe";
     }
 
 
@@ -1241,16 +1241,16 @@ pub mod consts {
     use os::consts::mips::*;
 
     pub mod x86 {
-        pub const ARCH: &'static str = "x86";
+        pub static ARCH: &'static str = "x86";
     }
     pub mod x86_64 {
-        pub const ARCH: &'static str = "x86_64";
+        pub static ARCH: &'static str = "x86_64";
     }
     pub mod arm {
-        pub const ARCH: &'static str = "arm";
+        pub static ARCH: &'static str = "arm";
     }
     pub mod mips {
-        pub const ARCH: &'static str = "mips";
+        pub static ARCH: &'static str = "mips";
     }
 }
 

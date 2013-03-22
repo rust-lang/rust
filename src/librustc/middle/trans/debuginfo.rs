@@ -29,32 +29,32 @@ use syntax::codemap::{span, CharPos};
 use syntax::parse::token::ident_interner;
 use syntax::{ast, codemap, ast_util, ast_map};
 
-const LLVMDebugVersion: int = (9 << 16);
+static LLVMDebugVersion: int = (9 << 16);
 
-const DW_LANG_RUST: int = 0x9000;
-const DW_VIRTUALITY_none: int = 0;
+static DW_LANG_RUST: int = 0x9000;
+static DW_VIRTUALITY_none: int = 0;
 
-const CompileUnitTag: int = 17;
-const FileDescriptorTag: int = 41;
-const SubprogramTag: int = 46;
-const SubroutineTag: int = 21;
-const BasicTypeDescriptorTag: int = 36;
-const AutoVariableTag: int = 256;
-const ArgVariableTag: int = 257;
-const ReturnVariableTag: int = 258;
-const LexicalBlockTag: int = 11;
-const PointerTypeTag: int = 15;
-const StructureTypeTag: int = 19;
-const MemberTag: int = 13;
-const ArrayTypeTag: int = 1;
-const SubrangeTag: int = 33;
+static CompileUnitTag: int = 17;
+static FileDescriptorTag: int = 41;
+static SubprogramTag: int = 46;
+static SubroutineTag: int = 21;
+static BasicTypeDescriptorTag: int = 36;
+static AutoVariableTag: int = 256;
+static ArgVariableTag: int = 257;
+static ReturnVariableTag: int = 258;
+static LexicalBlockTag: int = 11;
+static PointerTypeTag: int = 15;
+static StructureTypeTag: int = 19;
+static MemberTag: int = 13;
+static ArrayTypeTag: int = 1;
+static SubrangeTag: int = 33;
 
-const DW_ATE_boolean: int = 0x02;
-const DW_ATE_float: int = 0x04;
-const DW_ATE_signed: int = 0x05;
-const DW_ATE_signed_char: int = 0x06;
-const DW_ATE_unsigned: int = 0x07;
-const DW_ATE_unsigned_char: int = 0x08;
+static DW_ATE_boolean: int = 0x02;
+static DW_ATE_float: int = 0x04;
+static DW_ATE_signed: int = 0x05;
+static DW_ATE_signed_char: int = 0x06;
+static DW_ATE_unsigned: int = 0x07;
+static DW_ATE_unsigned_char: int = 0x08;
 
 fn llstr(s: &str) -> ValueRef {
     do str::as_c_str(s) |sbuf| {

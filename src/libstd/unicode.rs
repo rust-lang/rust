@@ -15,147 +15,147 @@ pub mod icu {
     pub type UProperty = int;
     pub type UChar32 = char;
 
-    pub const TRUE : u8 = 1u8;
-    pub const FALSE : u8 = 1u8;
+    pub static TRUE : u8 = 1u8;
+    pub static FALSE : u8 = 1u8;
 
-    pub const UCHAR_ALPHABETIC : UProperty = 0;
-    pub const UCHAR_BINARY_START : UProperty = 0; // = UCHAR_ALPHABETIC
-    pub const UCHAR_ASCII_HEX_DIGIT : UProperty = 1;
-    pub const UCHAR_BIDI_CONTROL : UProperty = 2;
+    pub static UCHAR_ALPHABETIC : UProperty = 0;
+    pub static UCHAR_BINARY_START : UProperty = 0; // = UCHAR_ALPHABETIC
+    pub static UCHAR_ASCII_HEX_DIGIT : UProperty = 1;
+    pub static UCHAR_BIDI_CONTROL : UProperty = 2;
 
-    pub const UCHAR_BIDI_MIRRORED : UProperty = 3;
-    pub const UCHAR_DASH : UProperty = 4;
-    pub const UCHAR_DEFAULT_IGNORABLE_CODE_POINT : UProperty = 5;
-    pub const UCHAR_DEPRECATED : UProperty = 6;
+    pub static UCHAR_BIDI_MIRRORED : UProperty = 3;
+    pub static UCHAR_DASH : UProperty = 4;
+    pub static UCHAR_DEFAULT_IGNORABLE_CODE_POINT : UProperty = 5;
+    pub static UCHAR_DEPRECATED : UProperty = 6;
 
-    pub const UCHAR_DIACRITIC : UProperty = 7;
-    pub const UCHAR_EXTENDER : UProperty = 8;
-    pub const UCHAR_FULL_COMPOSITION_EXCLUSION : UProperty = 9;
-    pub const UCHAR_GRAPHEME_BASE : UProperty = 10;
+    pub static UCHAR_DIACRITIC : UProperty = 7;
+    pub static UCHAR_EXTENDER : UProperty = 8;
+    pub static UCHAR_FULL_COMPOSITION_EXCLUSION : UProperty = 9;
+    pub static UCHAR_GRAPHEME_BASE : UProperty = 10;
 
-    pub const UCHAR_GRAPHEME_EXTEND : UProperty = 11;
-    pub const UCHAR_GRAPHEME_LINK : UProperty = 12;
-    pub const UCHAR_HEX_DIGIT : UProperty = 13;
-    pub const UCHAR_HYPHEN : UProperty = 14;
+    pub static UCHAR_GRAPHEME_EXTEND : UProperty = 11;
+    pub static UCHAR_GRAPHEME_LINK : UProperty = 12;
+    pub static UCHAR_HEX_DIGIT : UProperty = 13;
+    pub static UCHAR_HYPHEN : UProperty = 14;
 
-    pub const UCHAR_ID_CONTINUE : UProperty = 15;
-    pub const UCHAR_ID_START : UProperty = 16;
-    pub const UCHAR_IDEOGRAPHIC : UProperty = 17;
-    pub const UCHAR_IDS_BINARY_OPERATOR : UProperty = 18;
+    pub static UCHAR_ID_CONTINUE : UProperty = 15;
+    pub static UCHAR_ID_START : UProperty = 16;
+    pub static UCHAR_IDEOGRAPHIC : UProperty = 17;
+    pub static UCHAR_IDS_BINARY_OPERATOR : UProperty = 18;
 
-    pub const UCHAR_IDS_TRINARY_OPERATOR : UProperty = 19;
-    pub const UCHAR_JOIN_CONTROL : UProperty = 20;
-    pub const UCHAR_LOGICAL_ORDER_EXCEPTION : UProperty = 21;
-    pub const UCHAR_LOWERCASE : UProperty = 22;
+    pub static UCHAR_IDS_TRINARY_OPERATOR : UProperty = 19;
+    pub static UCHAR_JOIN_CONTROL : UProperty = 20;
+    pub static UCHAR_LOGICAL_ORDER_EXCEPTION : UProperty = 21;
+    pub static UCHAR_LOWERCASE : UProperty = 22;
 
-    pub const UCHAR_MATH : UProperty = 23;
-    pub const UCHAR_NONCHARACTER_CODE_POINT : UProperty = 24;
-    pub const UCHAR_QUOTATION_MARK : UProperty = 25;
-    pub const UCHAR_RADICAL : UProperty = 26;
+    pub static UCHAR_MATH : UProperty = 23;
+    pub static UCHAR_NONCHARACTER_CODE_POINT : UProperty = 24;
+    pub static UCHAR_QUOTATION_MARK : UProperty = 25;
+    pub static UCHAR_RADICAL : UProperty = 26;
 
-    pub const UCHAR_SOFT_DOTTED : UProperty = 27;
-    pub const UCHAR_TERMINAL_PUNCTUATION : UProperty = 28;
-    pub const UCHAR_UNIFIED_IDEOGRAPH : UProperty = 29;
-    pub const UCHAR_UPPERCASE : UProperty = 30;
+    pub static UCHAR_SOFT_DOTTED : UProperty = 27;
+    pub static UCHAR_TERMINAL_PUNCTUATION : UProperty = 28;
+    pub static UCHAR_UNIFIED_IDEOGRAPH : UProperty = 29;
+    pub static UCHAR_UPPERCASE : UProperty = 30;
 
-    pub const UCHAR_WHITE_SPACE : UProperty = 31;
-    pub const UCHAR_XID_CONTINUE : UProperty = 32;
-    pub const UCHAR_XID_START : UProperty = 33;
-    pub const UCHAR_CASE_SENSITIVE : UProperty = 34;
+    pub static UCHAR_WHITE_SPACE : UProperty = 31;
+    pub static UCHAR_XID_CONTINUE : UProperty = 32;
+    pub static UCHAR_XID_START : UProperty = 33;
+    pub static UCHAR_CASE_SENSITIVE : UProperty = 34;
 
-    pub const UCHAR_S_TERM : UProperty = 35;
-    pub const UCHAR_VARIATION_SELECTOR : UProperty = 36;
-    pub const UCHAR_NFD_INERT : UProperty = 37;
-    pub const UCHAR_NFKD_INERT : UProperty = 38;
+    pub static UCHAR_S_TERM : UProperty = 35;
+    pub static UCHAR_VARIATION_SELECTOR : UProperty = 36;
+    pub static UCHAR_NFD_INERT : UProperty = 37;
+    pub static UCHAR_NFKD_INERT : UProperty = 38;
 
-    pub const UCHAR_NFC_INERT : UProperty = 39;
-    pub const UCHAR_NFKC_INERT : UProperty = 40;
-    pub const UCHAR_SEGMENT_STARTER : UProperty = 41;
-    pub const UCHAR_PATTERN_SYNTAX : UProperty = 42;
+    pub static UCHAR_NFC_INERT : UProperty = 39;
+    pub static UCHAR_NFKC_INERT : UProperty = 40;
+    pub static UCHAR_SEGMENT_STARTER : UProperty = 41;
+    pub static UCHAR_PATTERN_SYNTAX : UProperty = 42;
 
-    pub const UCHAR_PATTERN_WHITE_SPACE : UProperty = 43;
-    pub const UCHAR_POSIX_ALNUM : UProperty = 44;
-    pub const UCHAR_POSIX_BLANK : UProperty = 45;
-    pub const UCHAR_POSIX_GRAPH : UProperty = 46;
+    pub static UCHAR_PATTERN_WHITE_SPACE : UProperty = 43;
+    pub static UCHAR_POSIX_ALNUM : UProperty = 44;
+    pub static UCHAR_POSIX_BLANK : UProperty = 45;
+    pub static UCHAR_POSIX_GRAPH : UProperty = 46;
 
-    pub const UCHAR_POSIX_PRINT : UProperty = 47;
-    pub const UCHAR_POSIX_XDIGIT : UProperty = 48;
-    pub const UCHAR_CASED : UProperty = 49;
-    pub const UCHAR_CASE_IGNORABLE : UProperty = 50;
+    pub static UCHAR_POSIX_PRINT : UProperty = 47;
+    pub static UCHAR_POSIX_XDIGIT : UProperty = 48;
+    pub static UCHAR_CASED : UProperty = 49;
+    pub static UCHAR_CASE_IGNORABLE : UProperty = 50;
 
-    pub const UCHAR_CHANGES_WHEN_LOWERCASED : UProperty = 51;
-    pub const UCHAR_CHANGES_WHEN_UPPERCASED : UProperty = 52;
-    pub const UCHAR_CHANGES_WHEN_TITLECASED : UProperty = 53;
-    pub const UCHAR_CHANGES_WHEN_CASEFOLDED : UProperty = 54;
+    pub static UCHAR_CHANGES_WHEN_LOWERCASED : UProperty = 51;
+    pub static UCHAR_CHANGES_WHEN_UPPERCASED : UProperty = 52;
+    pub static UCHAR_CHANGES_WHEN_TITLECASED : UProperty = 53;
+    pub static UCHAR_CHANGES_WHEN_CASEFOLDED : UProperty = 54;
 
-    pub const UCHAR_CHANGES_WHEN_CASEMAPPED : UProperty = 55;
-    pub const UCHAR_CHANGES_WHEN_NFKC_CASEFOLDED : UProperty = 56;
-    pub const UCHAR_BINARY_LIMIT : UProperty = 57;
-    pub const UCHAR_BIDI_CLASS : UProperty = 0x1000;
+    pub static UCHAR_CHANGES_WHEN_CASEMAPPED : UProperty = 55;
+    pub static UCHAR_CHANGES_WHEN_NFKC_CASEFOLDED : UProperty = 56;
+    pub static UCHAR_BINARY_LIMIT : UProperty = 57;
+    pub static UCHAR_BIDI_CLASS : UProperty = 0x1000;
 
-    pub const UCHAR_INT_START : UProperty = 0x1000; // UCHAR_BIDI_CLASS
-    pub const UCHAR_BLOCK : UProperty = 0x1001;
-    pub const UCHAR_CANONICAL_COMBINING_CLASS : UProperty = 0x1002;
-    pub const UCHAR_DECOMPOSITION_TYPE : UProperty = 0x1003;
+    pub static UCHAR_INT_START : UProperty = 0x1000; // UCHAR_BIDI_CLASS
+    pub static UCHAR_BLOCK : UProperty = 0x1001;
+    pub static UCHAR_CANONICAL_COMBINING_CLASS : UProperty = 0x1002;
+    pub static UCHAR_DECOMPOSITION_TYPE : UProperty = 0x1003;
 
-    pub const UCHAR_EAST_ASIAN_WIDTH : UProperty = 0x1004;
-    pub const UCHAR_GENERAL_CATEGORY : UProperty = 0x1005;
-    pub const UCHAR_JOINING_GROUP : UProperty = 0x1006;
-    pub const UCHAR_JOINING_TYPE : UProperty = 0x1007;
+    pub static UCHAR_EAST_ASIAN_WIDTH : UProperty = 0x1004;
+    pub static UCHAR_GENERAL_CATEGORY : UProperty = 0x1005;
+    pub static UCHAR_JOINING_GROUP : UProperty = 0x1006;
+    pub static UCHAR_JOINING_TYPE : UProperty = 0x1007;
 
-    pub const UCHAR_LINE_BREAK : UProperty = 0x1008;
-    pub const UCHAR_NUMERIC_TYPE : UProperty = 0x1009;
-    pub const UCHAR_SCRIPT : UProperty = 0x100A;
-    pub const UCHAR_HANGUL_SYLLABLE_TYPE : UProperty = 0x100B;
+    pub static UCHAR_LINE_BREAK : UProperty = 0x1008;
+    pub static UCHAR_NUMERIC_TYPE : UProperty = 0x1009;
+    pub static UCHAR_SCRIPT : UProperty = 0x100A;
+    pub static UCHAR_HANGUL_SYLLABLE_TYPE : UProperty = 0x100B;
 
-    pub const UCHAR_NFD_QUICK_CHECK : UProperty = 0x100C;
-    pub const UCHAR_NFKD_QUICK_CHECK : UProperty = 0x100D;
-    pub const UCHAR_NFC_QUICK_CHECK : UProperty = 0x100E;
-    pub const UCHAR_NFKC_QUICK_CHECK : UProperty = 0x100F;
+    pub static UCHAR_NFD_QUICK_CHECK : UProperty = 0x100C;
+    pub static UCHAR_NFKD_QUICK_CHECK : UProperty = 0x100D;
+    pub static UCHAR_NFC_QUICK_CHECK : UProperty = 0x100E;
+    pub static UCHAR_NFKC_QUICK_CHECK : UProperty = 0x100F;
 
-    pub const UCHAR_LEAD_CANONICAL_COMBINING_CLASS : UProperty = 0x1010;
-    pub const UCHAR_TRAIL_CANONICAL_COMBINING_CLASS : UProperty = 0x1011;
-    pub const UCHAR_GRAPHEME_CLUSTER_BREAK : UProperty = 0x1012;
-    pub const UCHAR_SENTENCE_BREAK : UProperty = 0x1013;
+    pub static UCHAR_LEAD_CANONICAL_COMBINING_CLASS : UProperty = 0x1010;
+    pub static UCHAR_TRAIL_CANONICAL_COMBINING_CLASS : UProperty = 0x1011;
+    pub static UCHAR_GRAPHEME_CLUSTER_BREAK : UProperty = 0x1012;
+    pub static UCHAR_SENTENCE_BREAK : UProperty = 0x1013;
 
-    pub const UCHAR_WORD_BREAK : UProperty = 0x1014;
-    pub const UCHAR_INT_LIMIT : UProperty = 0x1015;
+    pub static UCHAR_WORD_BREAK : UProperty = 0x1014;
+    pub static UCHAR_INT_LIMIT : UProperty = 0x1015;
 
-    pub const UCHAR_GENERAL_CATEGORY_MASK : UProperty = 0x2000;
-    pub const UCHAR_MASK_START : UProperty = 0x2000;
+    pub static UCHAR_GENERAL_CATEGORY_MASK : UProperty = 0x2000;
+    pub static UCHAR_MASK_START : UProperty = 0x2000;
     // = UCHAR_GENERAL_CATEGORY_MASK
-    pub const UCHAR_MASK_LIMIT : UProperty = 0x2001;
+    pub static UCHAR_MASK_LIMIT : UProperty = 0x2001;
 
-    pub const UCHAR_NUMERIC_VALUE : UProperty = 0x3000;
-    pub const UCHAR_DOUBLE_START : UProperty = 0x3000;
+    pub static UCHAR_NUMERIC_VALUE : UProperty = 0x3000;
+    pub static UCHAR_DOUBLE_START : UProperty = 0x3000;
     // = UCHAR_NUMERIC_VALUE
-    pub const UCHAR_DOUBLE_LIMIT : UProperty = 0x3001;
+    pub static UCHAR_DOUBLE_LIMIT : UProperty = 0x3001;
 
-    pub const UCHAR_AGE : UProperty = 0x4000;
-    pub const UCHAR_STRING_START : UProperty = 0x4000; // = UCHAR_AGE
-    pub const UCHAR_BIDI_MIRRORING_GLYPH : UProperty = 0x4001;
-    pub const UCHAR_CASE_FOLDING : UProperty = 0x4002;
+    pub static UCHAR_AGE : UProperty = 0x4000;
+    pub static UCHAR_STRING_START : UProperty = 0x4000; // = UCHAR_AGE
+    pub static UCHAR_BIDI_MIRRORING_GLYPH : UProperty = 0x4001;
+    pub static UCHAR_CASE_FOLDING : UProperty = 0x4002;
 
-    pub const UCHAR_ISO_COMMENT : UProperty = 0x4003;
-    pub const UCHAR_LOWERCASE_MAPPING : UProperty = 0x4004;
-    pub const UCHAR_NAME : UProperty = 0x4005;
-    pub const UCHAR_SIMPLE_CASE_FOLDING : UProperty = 0x4006;
+    pub static UCHAR_ISO_COMMENT : UProperty = 0x4003;
+    pub static UCHAR_LOWERCASE_MAPPING : UProperty = 0x4004;
+    pub static UCHAR_NAME : UProperty = 0x4005;
+    pub static UCHAR_SIMPLE_CASE_FOLDING : UProperty = 0x4006;
 
-    pub const UCHAR_SIMPLE_LOWERCASE_MAPPING : UProperty = 0x4007;
-    pub const UCHAR_SIMPLE_TITLECASE_MAPPING : UProperty = 0x4008;
-    pub const UCHAR_SIMPLE_UPPERCASE_MAPPING : UProperty = 0x4009;
-    pub const UCHAR_TITLECASE_MAPPING : UProperty = 0x400A;
+    pub static UCHAR_SIMPLE_LOWERCASE_MAPPING : UProperty = 0x4007;
+    pub static UCHAR_SIMPLE_TITLECASE_MAPPING : UProperty = 0x4008;
+    pub static UCHAR_SIMPLE_UPPERCASE_MAPPING : UProperty = 0x4009;
+    pub static UCHAR_TITLECASE_MAPPING : UProperty = 0x400A;
 
-    pub const UCHAR_UNICODE_1_NAME : UProperty = 0x400B;
-    pub const UCHAR_UPPERCASE_MAPPING : UProperty = 0x400C;
-    pub const UCHAR_STRING_LIMIT : UProperty = 0x400D;
+    pub static UCHAR_UNICODE_1_NAME : UProperty = 0x400B;
+    pub static UCHAR_UPPERCASE_MAPPING : UProperty = 0x400C;
+    pub static UCHAR_STRING_LIMIT : UProperty = 0x400D;
 
-    pub const UCHAR_SCRIPT_EXTENSIONS : UProperty = 0x7000;
-    pub const UCHAR_OTHER_PROPERTY_START : UProperty = 0x7000;
+    pub static UCHAR_SCRIPT_EXTENSIONS : UProperty = 0x7000;
+    pub static UCHAR_OTHER_PROPERTY_START : UProperty = 0x7000;
     // = UCHAR_SCRIPT_EXTENSIONS;
-    pub const UCHAR_OTHER_PROPERTY_LIMIT : UProperty = 0x7001;
+    pub static UCHAR_OTHER_PROPERTY_LIMIT : UProperty = 0x7001;
 
-    pub const UCHAR_INVALID_CODE : UProperty = -1;
+    pub static UCHAR_INVALID_CODE : UProperty = -1;
 
     pub mod libicu {
         #[link_name = "icuuc"]

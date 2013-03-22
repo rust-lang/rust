@@ -112,10 +112,10 @@ fn initialize_call_frame(regs: &mut Registers,
                          fptr: *c_void, arg: *c_void, sp: *mut uint) {
 
     // Redefinitions from regs.h
-    const RUSTRT_ARG0: uint = 3;
-    const RUSTRT_RSP: uint = 1;
-    const RUSTRT_IP: uint = 8;
-    const RUSTRT_RBP: uint = 2;
+    static RUSTRT_ARG0: uint = 3;
+    static RUSTRT_RSP: uint = 1;
+    static RUSTRT_IP: uint = 8;
+    static RUSTRT_RBP: uint = 2;
 
     let sp = align_down(sp);
     let sp = mut_offset(sp, -1);

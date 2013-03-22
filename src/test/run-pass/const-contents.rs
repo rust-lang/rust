@@ -10,12 +10,12 @@
 
 // Issue #570
 
-const lsl : int = 1 << 2;
-const add : int = 1 + 2;
-const addf : float = 1.0f + 2.0f;
-const not : int = !0;
-const notb : bool = !true;
-const neg : int = -(1);
+static lsl : int = 1 << 2;
+static add : int = 1 + 2;
+static addf : float = 1.0f + 2.0f;
+static not : int = !0;
+static notb : bool = !true;
+static neg : int = -(1);
 
 pub fn main() {
     fail_unless!((lsl == 4));

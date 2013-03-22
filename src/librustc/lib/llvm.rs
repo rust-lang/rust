@@ -20,8 +20,8 @@ use std::oldmap::HashMap;
 pub type Opcode = u32;
 pub type Bool = c_uint;
 
-pub const True: Bool = 1 as Bool;
-pub const False: Bool = 0 as Bool;
+pub static True: Bool = 1 as Bool;
+pub static False: Bool = 0 as Bool;
 
 // Consts for the LLVM CallConv type, pre-cast to uint.
 

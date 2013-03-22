@@ -113,27 +113,27 @@ delegate!(fn yn(i: c_int, n: c_double) -> c_double =
 // These are not defined inside consts:: for consistency with
 // the integer types
 
-pub const radix: uint = 2u;
+pub static radix: uint = 2u;
 
-pub const mantissa_digits: uint = 53u;
-pub const digits: uint = 15u;
+pub static mantissa_digits: uint = 53u;
+pub static digits: uint = 15u;
 
-pub const epsilon: f64 = 2.2204460492503131e-16_f64;
+pub static epsilon: f64 = 2.2204460492503131e-16_f64;
 
-pub const min_value: f64 = 2.2250738585072014e-308_f64;
-pub const max_value: f64 = 1.7976931348623157e+308_f64;
+pub static min_value: f64 = 2.2250738585072014e-308_f64;
+pub static max_value: f64 = 1.7976931348623157e+308_f64;
 
-pub const min_exp: int = -1021;
-pub const max_exp: int = 1024;
+pub static min_exp: int = -1021;
+pub static max_exp: int = 1024;
 
-pub const min_10_exp: int = -307;
-pub const max_10_exp: int = 308;
+pub static min_10_exp: int = -307;
+pub static max_10_exp: int = 308;
 
-pub const NaN: f64 = 0.0_f64/0.0_f64;
+pub static NaN: f64 = 0.0_f64/0.0_f64;
 
-pub const infinity: f64 = 1.0_f64/0.0_f64;
+pub static infinity: f64 = 1.0_f64/0.0_f64;
 
-pub const neg_infinity: f64 = -1.0_f64/0.0_f64;
+pub static neg_infinity: f64 = -1.0_f64/0.0_f64;
 
 #[inline(always)]
 pub fn is_NaN(f: f64) -> bool { f != f }
@@ -230,43 +230,43 @@ pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
     // constants from cmath.
     /// Archimedes' constant
-    pub const pi: f64 = 3.14159265358979323846264338327950288_f64;
+    pub static pi: f64 = 3.14159265358979323846264338327950288_f64;
 
     /// pi/2.0
-    pub const frac_pi_2: f64 = 1.57079632679489661923132169163975144_f64;
+    pub static frac_pi_2: f64 = 1.57079632679489661923132169163975144_f64;
 
     /// pi/4.0
-    pub const frac_pi_4: f64 = 0.785398163397448309615660845819875721_f64;
+    pub static frac_pi_4: f64 = 0.785398163397448309615660845819875721_f64;
 
     /// 1.0/pi
-    pub const frac_1_pi: f64 = 0.318309886183790671537767526745028724_f64;
+    pub static frac_1_pi: f64 = 0.318309886183790671537767526745028724_f64;
 
     /// 2.0/pi
-    pub const frac_2_pi: f64 = 0.636619772367581343075535053490057448_f64;
+    pub static frac_2_pi: f64 = 0.636619772367581343075535053490057448_f64;
 
     /// 2.0/sqrt(pi)
-    pub const frac_2_sqrtpi: f64 = 1.12837916709551257389615890312154517_f64;
+    pub static frac_2_sqrtpi: f64 = 1.12837916709551257389615890312154517_f64;
 
     /// sqrt(2.0)
-    pub const sqrt2: f64 = 1.41421356237309504880168872420969808_f64;
+    pub static sqrt2: f64 = 1.41421356237309504880168872420969808_f64;
 
     /// 1.0/sqrt(2.0)
-    pub const frac_1_sqrt2: f64 = 0.707106781186547524400844362104849039_f64;
+    pub static frac_1_sqrt2: f64 = 0.707106781186547524400844362104849039_f64;
 
     /// Euler's number
-    pub const e: f64 = 2.71828182845904523536028747135266250_f64;
+    pub static e: f64 = 2.71828182845904523536028747135266250_f64;
 
     /// log2(e)
-    pub const log2_e: f64 = 1.44269504088896340735992468100189214_f64;
+    pub static log2_e: f64 = 1.44269504088896340735992468100189214_f64;
 
     /// log10(e)
-    pub const log10_e: f64 = 0.434294481903251827651128918916605082_f64;
+    pub static log10_e: f64 = 0.434294481903251827651128918916605082_f64;
 
     /// ln(2.0)
-    pub const ln_2: f64 = 0.693147180559945309417232121458176568_f64;
+    pub static ln_2: f64 = 0.693147180559945309417232121458176568_f64;
 
     /// ln(10.0)
-    pub const ln_10: f64 = 2.30258509299404568401799145468436421_f64;
+    pub static ln_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
 #[inline(always)]

@@ -14,9 +14,9 @@ use prelude::*;
 
 // FIXME: #3469: need to manually update TrieNode when SHIFT changes
 // FIXME: #5244: need to manually update the TrieNode constructor
-const SHIFT: uint = 4;
-const SIZE: uint = 1 << SHIFT;
-const MASK: uint = SIZE - 1;
+static SHIFT: uint = 4;
+static SIZE: uint = 1 << SHIFT;
+static MASK: uint = SIZE - 1;
 
 enum Child<T> {
     Internal(~TrieNode<T>),

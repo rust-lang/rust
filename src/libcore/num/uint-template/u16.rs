@@ -16,7 +16,7 @@ mod inst {
     pub type T = u16;
     #[allow(non_camel_case_types)]
     pub type T_SIGNED = i16;
-    pub const bits: uint = 16;
+    pub static bits: uint = 16;
 }
 
 impl NumCast for u16 {
