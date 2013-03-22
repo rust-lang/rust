@@ -60,6 +60,7 @@ pub enum ObsoleteSyntax {
     ObsoleteConstManagedPointer,
     ObsoletePurity,
     ObsoleteStaticMethod,
+    ObsoleteConstItem,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -202,6 +203,11 @@ pub impl Parser {
             ObsoleteStaticMethod => (
                 "`static` notation",
                 "`static` is superfluous; remove it"
+            ),
+            ObsoleteConstItem => (
+                "`const` item",
+                "`const` items are now `static` items; replace `const` with \
+                 `static`"
             ),
         };
 
