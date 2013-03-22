@@ -1720,7 +1720,7 @@ pub impl TypeContents {
         !self.intersects(TypeContents::noncopyable(cx))
     }
 
-    static fn noncopyable(_cx: ctxt) -> TypeContents {
+    fn noncopyable(_cx: ctxt) -> TypeContents {
         TC_DTOR + TC_BORROWED_MUT + TC_ONCE_CLOSURE + TC_OWNED_CLOSURE +
             TC_EMPTY_ENUM
     }
@@ -1729,7 +1729,7 @@ pub impl TypeContents {
         !self.intersects(TypeContents::nondurable(cx))
     }
 
-    static fn nondurable(_cx: ctxt) -> TypeContents {
+    fn nondurable(_cx: ctxt) -> TypeContents {
         TC_BORROWED_POINTER
     }
 
@@ -1737,7 +1737,7 @@ pub impl TypeContents {
         !self.intersects(TypeContents::nonowned(cx))
     }
 
-    static fn nonowned(_cx: ctxt) -> TypeContents {
+    fn nonowned(_cx: ctxt) -> TypeContents {
         TC_MANAGED + TC_BORROWED_POINTER
     }
 
@@ -1749,7 +1749,7 @@ pub impl TypeContents {
         !self.intersects(TypeContents::nonconst(cx))
     }
 
-    static fn nonconst(_cx: ctxt) -> TypeContents {
+    fn nonconst(_cx: ctxt) -> TypeContents {
         TC_MUTABLE
     }
 
@@ -1757,7 +1757,7 @@ pub impl TypeContents {
         self.intersects(TypeContents::nonimplicitly_copyable(cx))
     }
 
-    static fn nonimplicitly_copyable(cx: ctxt) -> TypeContents {
+    fn nonimplicitly_copyable(cx: ctxt) -> TypeContents {
         let base = TypeContents::noncopyable(cx) + TC_OWNED_POINTER;
         if cx.vecs_implicitly_copyable {base} else {base + TC_OWNED_VEC}
     }
@@ -1766,7 +1766,7 @@ pub impl TypeContents {
         !self.intersects(TypeContents::nondefault_mode(cx))
     }
 
-    static fn nondefault_mode(cx: ctxt) -> TypeContents {
+    fn nondefault_mode(cx: ctxt) -> TypeContents {
         let tc = TypeContents::nonimplicitly_copyable(cx);
         tc + TC_BIG + TC_OWNED_VEC // disregard cx.vecs_implicitly_copyable
     }
@@ -1776,7 +1776,7 @@ pub impl TypeContents {
         self.intersects(tc)
     }
 
-    static fn owned(&self, _cx: ctxt) -> TypeContents {
+    fn owned(_cx: ctxt) -> TypeContents {
         //! Any kind of owned contents.
         TC_OWNED_CLOSURE + TC_OWNED_POINTER + TC_OWNED_VEC
     }

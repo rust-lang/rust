@@ -304,7 +304,7 @@ impl NumCast for f64 {
      * Cast `n` to an `f64`
      */
     #[inline(always)]
-    static pure fn from<N:NumCast>(n: N) -> f64 { n.to_f64() }
+    pure fn from<N:NumCast>(n: N) -> f64 { n.to_f64() }
 
     #[inline(always)] pure fn to_u8(&self)    -> u8    { *self as u8    }
     #[inline(always)] pure fn to_u16(&self)   -> u16   { *self as u16   }
@@ -325,12 +325,12 @@ impl NumCast for f64 {
 
 impl num::Zero for f64 {
     #[inline(always)]
-    static pure fn zero() -> f64 { 0.0 }
+    pure fn zero() -> f64 { 0.0 }
 }
 
 impl num::One for f64 {
     #[inline(always)]
-    static pure fn one() -> f64 { 1.0 }
+    pure fn one() -> f64 { 1.0 }
 }
 
 #[cfg(notest)]
@@ -592,12 +592,12 @@ pub pure fn from_str_radix(num: &str, rdx: uint) -> Option<f64> {
 
 impl from_str::FromStr for f64 {
     #[inline(always)]
-    static pure fn from_str(val: &str) -> Option<f64> { from_str(val) }
+    pure fn from_str(val: &str) -> Option<f64> { from_str(val) }
 }
 
 impl num::FromStrRadix for f64 {
     #[inline(always)]
-    static pure fn from_str_radix(val: &str, rdx: uint) -> Option<f64> {
+    pure fn from_str_radix(val: &str, rdx: uint) -> Option<f64> {
         from_str_radix(val, rdx)
     }
 }

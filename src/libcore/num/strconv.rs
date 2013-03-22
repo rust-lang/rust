@@ -66,10 +66,10 @@ pure fn is_neg_zero<T:Eq+One+Zero+NumStrConv+Div<T,T>>(num: &T) -> bool {
 }
 
 pub trait NumStrConv {
-    static pure fn NaN()      -> Option<Self>;
-    static pure fn inf()      -> Option<Self>;
-    static pure fn neg_inf()  -> Option<Self>;
-    static pure fn neg_zero() -> Option<Self>;
+    pure fn NaN()      -> Option<Self>;
+    pure fn inf()      -> Option<Self>;
+    pure fn neg_inf()  -> Option<Self>;
+    pure fn neg_zero() -> Option<Self>;
 
     pure fn round_to_zero(&self)   -> Self;
     pure fn fractional_part(&self) -> Self;
@@ -78,13 +78,13 @@ pub trait NumStrConv {
 macro_rules! impl_NumStrConv_Floating (($t:ty) => (
     impl NumStrConv for $t {
         #[inline(always)]
-        static pure fn NaN()      -> Option<$t> { Some( 0.0 / 0.0) }
+        pure fn NaN()      -> Option<$t> { Some( 0.0 / 0.0) }
         #[inline(always)]
-        static pure fn inf()      -> Option<$t> { Some( 1.0 / 0.0) }
+        pure fn inf()      -> Option<$t> { Some( 1.0 / 0.0) }
         #[inline(always)]
-        static pure fn neg_inf()  -> Option<$t> { Some(-1.0 / 0.0) }
+        pure fn neg_inf()  -> Option<$t> { Some(-1.0 / 0.0) }
         #[inline(always)]
-        static pure fn neg_zero() -> Option<$t> { Some(-0.0      ) }
+        pure fn neg_zero() -> Option<$t> { Some(-0.0      ) }
 
         #[inline(always)]
         pure fn round_to_zero(&self) -> $t {
@@ -102,10 +102,10 @@ macro_rules! impl_NumStrConv_Floating (($t:ty) => (
 
 macro_rules! impl_NumStrConv_Integer (($t:ty) => (
     impl NumStrConv for $t {
-        #[inline(always)] static pure fn NaN()      -> Option<$t> { None }
-        #[inline(always)] static pure fn inf()      -> Option<$t> { None }
-        #[inline(always)] static pure fn neg_inf()  -> Option<$t> { None }
-        #[inline(always)] static pure fn neg_zero() -> Option<$t> { None }
+        #[inline(always)] pure fn NaN()      -> Option<$t> { None }
+        #[inline(always)] pure fn inf()      -> Option<$t> { None }
+        #[inline(always)] pure fn neg_inf()  -> Option<$t> { None }
+        #[inline(always)] pure fn neg_zero() -> Option<$t> { None }
 
         #[inline(always)] pure fn round_to_zero(&self)   -> $t { *self }
         #[inline(always)] pure fn fractional_part(&self) -> $t {     0 }

@@ -43,7 +43,7 @@ impl<T> Mutable for Deque<T> {
 
 pub impl<T> Deque<T> {
     /// Create an empty Deque
-    static pure fn new() -> Deque<T> {
+    pure fn new() -> Deque<T> {
         Deque{nelts: 0, lo: 0, hi: 0,
               elts: vec::from_fn(initial_capacity, |_| None)}
     }
