@@ -25,7 +25,7 @@ pub mod linear {
     use uint;
     use vec;
 
-    const INITIAL_CAPACITY: uint = 32u; // 2^5
+    static INITIAL_CAPACITY: uint = 32u; // 2^5
 
     struct Bucket<K,V> {
         hash: uint,

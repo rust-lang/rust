@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const A: [u8 * 1] = ['h' as u8];
-const B: u8 = (&A)[0];
-const C: &'static &'static &'static &'static [u8 * 1] = & & & &A;
-const D: u8 = (&C)[0];
+static A: [u8 * 1] = ['h' as u8];
+static B: u8 = (&A)[0];
+static C: &'static &'static &'static &'static [u8 * 1] = & & & &A;
+static D: u8 = (&C)[0];
 
 pub fn main() {
     fail_unless!(B == A[0]);

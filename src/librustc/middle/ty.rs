@@ -1801,43 +1801,43 @@ impl ToStr for TypeContents {
 }
 
 /// Constant for a type containing nothing of interest.
-const TC_NONE: TypeContents =             TypeContents{bits:0b0000_00000000};
+static TC_NONE: TypeContents =             TypeContents{bits:0b0000_00000000};
 
 /// Contains a borrowed value with a lifetime other than static
-const TC_BORROWED_POINTER: TypeContents = TypeContents{bits:0b0000_00000001};
+static TC_BORROWED_POINTER: TypeContents = TypeContents{bits:0b0000_00000001};
 
 /// Contains an owned pointer (~T) but not slice of some kind
-const TC_OWNED_POINTER: TypeContents =    TypeContents{bits:0b000000000010};
+static TC_OWNED_POINTER: TypeContents =    TypeContents{bits:0b000000000010};
 
 /// Contains an owned vector ~[] or owned string ~str
-const TC_OWNED_VEC: TypeContents =        TypeContents{bits:0b000000000100};
+static TC_OWNED_VEC: TypeContents =        TypeContents{bits:0b000000000100};
 
 /// Contains a ~fn() or a ~Trait, which is non-copyable.
-const TC_OWNED_CLOSURE: TypeContents =    TypeContents{bits:0b000000001000};
+static TC_OWNED_CLOSURE: TypeContents =    TypeContents{bits:0b000000001000};
 
 /// Type with a destructor
-const TC_DTOR: TypeContents =             TypeContents{bits:0b000000010000};
+static TC_DTOR: TypeContents =             TypeContents{bits:0b000000010000};
 
 /// Contains a managed value
-const TC_MANAGED: TypeContents =          TypeContents{bits:0b000000100000};
+static TC_MANAGED: TypeContents =          TypeContents{bits:0b000000100000};
 
 /// &mut with any region
-const TC_BORROWED_MUT: TypeContents =     TypeContents{bits:0b000001000000};
+static TC_BORROWED_MUT: TypeContents =     TypeContents{bits:0b000001000000};
 
 /// Mutable content, whether owned or by ref
-const TC_MUTABLE: TypeContents =          TypeContents{bits:0b000010000000};
+static TC_MUTABLE: TypeContents =          TypeContents{bits:0b000010000000};
 
 /// Mutable content, whether owned or by ref
-const TC_ONCE_CLOSURE: TypeContents =     TypeContents{bits:0b000100000000};
+static TC_ONCE_CLOSURE: TypeContents =     TypeContents{bits:0b000100000000};
 
 /// Something we estimate to be "big"
-const TC_BIG: TypeContents =              TypeContents{bits:0b001000000000};
+static TC_BIG: TypeContents =              TypeContents{bits:0b001000000000};
 
 /// An enum with no variants.
-const TC_EMPTY_ENUM: TypeContents =       TypeContents{bits:0b010000000000};
+static TC_EMPTY_ENUM: TypeContents =       TypeContents{bits:0b010000000000};
 
 /// All possible contents.
-const TC_ALL: TypeContents =              TypeContents{bits:0b011111111111};
+static TC_ALL: TypeContents =              TypeContents{bits:0b011111111111};
 
 pub fn type_is_copyable(cx: ctxt, t: ty::t) -> bool {
     type_contents(cx, t).is_copy(cx)
@@ -4076,21 +4076,21 @@ fn struct_item_fields(cx:ctxt,
 }
 
 pub fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
-    const tycat_other: int = 0;
-    const tycat_bool: int = 1;
-    const tycat_int: int = 2;
-    const tycat_float: int = 3;
-    const tycat_struct: int = 4;
-    const tycat_bot: int = 5;
+    static tycat_other: int = 0;
+    static tycat_bool: int = 1;
+    static tycat_int: int = 2;
+    static tycat_float: int = 3;
+    static tycat_struct: int = 4;
+    static tycat_bot: int = 5;
 
-    const opcat_add: int = 0;
-    const opcat_sub: int = 1;
-    const opcat_mult: int = 2;
-    const opcat_shift: int = 3;
-    const opcat_rel: int = 4;
-    const opcat_eq: int = 5;
-    const opcat_bit: int = 6;
-    const opcat_logic: int = 7;
+    static opcat_add: int = 0;
+    static opcat_sub: int = 1;
+    static opcat_mult: int = 2;
+    static opcat_shift: int = 3;
+    static opcat_rel: int = 4;
+    static opcat_eq: int = 5;
+    static opcat_bit: int = 6;
+    static opcat_logic: int = 7;
 
     fn opcat(op: ast::binop) -> int {
         match op {
@@ -4126,8 +4126,8 @@ pub fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
         }
     }
 
-    const t: bool = true;
-    const f: bool = false;
+    static t: bool = true;
+    static f: bool = false;
 
     let tbl = ~[
     /*.          add,     shift,   bit

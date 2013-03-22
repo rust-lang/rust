@@ -51,7 +51,7 @@ pub mod chained {
     use core::uint;
     use core::vec;
 
-    const initial_capacity: uint = 32u; // 2^5
+    static initial_capacity: uint = 32u; // 2^5
 
     struct Entry<K, V> {
         hash: uint,

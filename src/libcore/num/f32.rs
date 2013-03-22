@@ -102,11 +102,11 @@ delegate!(fn trunc(n: c_float) -> c_float = cmath::c_float_utils::trunc)
 // These are not defined inside consts:: for consistency with
 // the integer types
 
-pub const NaN: f32 = 0.0_f32/0.0_f32;
+pub static NaN: f32 = 0.0_f32/0.0_f32;
 
-pub const infinity: f32 = 1.0_f32/0.0_f32;
+pub static infinity: f32 = 1.0_f32/0.0_f32;
 
-pub const neg_infinity: f32 = -1.0_f32/0.0_f32;
+pub static neg_infinity: f32 = -1.0_f32/0.0_f32;
 
 #[inline(always)]
 pub fn is_NaN(f: f32) -> bool { f != f }
@@ -206,45 +206,45 @@ pub fn is_finite(x: f32) -> bool {
 /* Module: consts */
 pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
-    // constants from cmath.
-    /// Archimedes' constant
-    pub const pi: f32 = 3.14159265358979323846264338327950288_f32;
+    // staticants from cmath.
+    /// Archimedes' staticant
+    pub static pi: f32 = 3.14159265358979323846264338327950288_f32;
 
     /// pi/2.0
-    pub const frac_pi_2: f32 = 1.57079632679489661923132169163975144_f32;
+    pub static frac_pi_2: f32 = 1.57079632679489661923132169163975144_f32;
 
     /// pi/4.0
-    pub const frac_pi_4: f32 = 0.785398163397448309615660845819875721_f32;
+    pub static frac_pi_4: f32 = 0.785398163397448309615660845819875721_f32;
 
     /// 1.0/pi
-    pub const frac_1_pi: f32 = 0.318309886183790671537767526745028724_f32;
+    pub static frac_1_pi: f32 = 0.318309886183790671537767526745028724_f32;
 
     /// 2.0/pi
-    pub const frac_2_pi: f32 = 0.636619772367581343075535053490057448_f32;
+    pub static frac_2_pi: f32 = 0.636619772367581343075535053490057448_f32;
 
     /// 2.0/sqrt(pi)
-    pub const frac_2_sqrtpi: f32 = 1.12837916709551257389615890312154517_f32;
+    pub static frac_2_sqrtpi: f32 = 1.12837916709551257389615890312154517_f32;
 
     /// sqrt(2.0)
-    pub const sqrt2: f32 = 1.41421356237309504880168872420969808_f32;
+    pub static sqrt2: f32 = 1.41421356237309504880168872420969808_f32;
 
     /// 1.0/sqrt(2.0)
-    pub const frac_1_sqrt2: f32 = 0.707106781186547524400844362104849039_f32;
+    pub static frac_1_sqrt2: f32 = 0.707106781186547524400844362104849039_f32;
 
     /// Euler's number
-    pub const e: f32 = 2.71828182845904523536028747135266250_f32;
+    pub static e: f32 = 2.71828182845904523536028747135266250_f32;
 
     /// log2(e)
-    pub const log2_e: f32 = 1.44269504088896340735992468100189214_f32;
+    pub static log2_e: f32 = 1.44269504088896340735992468100189214_f32;
 
     /// log10(e)
-    pub const log10_e: f32 = 0.434294481903251827651128918916605082_f32;
+    pub static log10_e: f32 = 0.434294481903251827651128918916605082_f32;
 
     /// ln(2.0)
-    pub const ln_2: f32 = 0.693147180559945309417232121458176568_f32;
+    pub static ln_2: f32 = 0.693147180559945309417232121458176568_f32;
 
     /// ln(10.0)
-    pub const ln_10: f32 = 2.30258509299404568401799145468436421_f32;
+    pub static ln_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
 
 #[inline(always)]

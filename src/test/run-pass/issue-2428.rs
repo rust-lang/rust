@@ -10,7 +10,7 @@
 
 pub fn main() {
     let foo = 100;
-    const quux: int = 5;
+    static quux: int = 5;
 
     enum Stuff {
         Bar = quux

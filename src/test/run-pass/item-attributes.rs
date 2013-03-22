@@ -29,7 +29,7 @@ mod test_first_item_in_file_mod {}
 
 mod test_single_attr_outer {
     #[attr = "val"]
-    pub const x: int = 10;
+    pub static x: int = 10;
 
     #[attr = "val"]
     pub fn f() { }
@@ -47,7 +47,7 @@ mod test_single_attr_outer {
 mod test_multi_attr_outer {
     #[attr1 = "val"]
     #[attr2 = "val"]
-    pub const x: int = 10;
+    pub static x: int = 10;
 
     #[attr1 = "val"]
     #[attr2 = "val"]
@@ -72,7 +72,7 @@ mod test_multi_attr_outer {
 mod test_stmt_single_attr_outer {
     pub fn f() {
         #[attr = "val"]
-        const x: int = 10;
+        static x: int = 10;
 
         #[attr = "val"]
         fn f() { }
@@ -95,7 +95,7 @@ mod test_stmt_multi_attr_outer {
 
         #[attr1 = "val"]
         #[attr2 = "val"]
-        const x: int = 10;
+        static x: int = 10;
 
         #[attr1 = "val"]
         #[attr2 = "val"]

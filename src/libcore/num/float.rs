@@ -41,54 +41,54 @@ pub use f64::{modf, pow, round, sinh, tanh, tgamma, trunc};
 pub use f64::signbit;
 pub use f64::{j0, j1, jn, y0, y1, yn};
 
-pub const NaN: float = 0.0/0.0;
+pub static NaN: float = 0.0/0.0;
 
-pub const infinity: float = 1.0/0.0;
+pub static infinity: float = 1.0/0.0;
 
-pub const neg_infinity: float = -1.0/0.0;
+pub static neg_infinity: float = -1.0/0.0;
 
 /* Module: consts */
 pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
-    // constants from cmath.
-    /// Archimedes' constant
-    pub const pi: float = 3.14159265358979323846264338327950288;
+    // staticants from cmath.
+    /// Archimedes' staticant
+    pub static pi: float = 3.14159265358979323846264338327950288;
 
     /// pi/2.0
-    pub const frac_pi_2: float = 1.57079632679489661923132169163975144;
+    pub static frac_pi_2: float = 1.57079632679489661923132169163975144;
 
     /// pi/4.0
-    pub const frac_pi_4: float = 0.785398163397448309615660845819875721;
+    pub static frac_pi_4: float = 0.785398163397448309615660845819875721;
 
     /// 1.0/pi
-    pub const frac_1_pi: float = 0.318309886183790671537767526745028724;
+    pub static frac_1_pi: float = 0.318309886183790671537767526745028724;
 
     /// 2.0/pi
-    pub const frac_2_pi: float = 0.636619772367581343075535053490057448;
+    pub static frac_2_pi: float = 0.636619772367581343075535053490057448;
 
     /// 2.0/sqrt(pi)
-    pub const frac_2_sqrtpi: float = 1.12837916709551257389615890312154517;
+    pub static frac_2_sqrtpi: float = 1.12837916709551257389615890312154517;
 
     /// sqrt(2.0)
-    pub const sqrt2: float = 1.41421356237309504880168872420969808;
+    pub static sqrt2: float = 1.41421356237309504880168872420969808;
 
     /// 1.0/sqrt(2.0)
-    pub const frac_1_sqrt2: float = 0.707106781186547524400844362104849039;
+    pub static frac_1_sqrt2: float = 0.707106781186547524400844362104849039;
 
     /// Euler's number
-    pub const e: float = 2.71828182845904523536028747135266250;
+    pub static e: float = 2.71828182845904523536028747135266250;
 
     /// log2(e)
-    pub const log2_e: float = 1.44269504088896340735992468100189214;
+    pub static log2_e: float = 1.44269504088896340735992468100189214;
 
     /// log10(e)
-    pub const log10_e: float = 0.434294481903251827651128918916605082;
+    pub static log10_e: float = 0.434294481903251827651128918916605082;
 
     /// ln(2.0)
-    pub const ln_2: float = 0.693147180559945309417232121458176568;
+    pub static ln_2: float = 0.693147180559945309417232121458176568;
 
     /// ln(10.0)
-    pub const ln_10: float = 2.30258509299404568401799145468436421;
+    pub static ln_10: float = 2.30258509299404568401799145468436421;
 }
 
 /*

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 enum E { V, VV(int) }
-const C: E = V;
+static C: E = V;
 
 fn f(a: &E) {
     match *a {

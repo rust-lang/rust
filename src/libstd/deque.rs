@@ -14,7 +14,7 @@ use core::container::{Container, Mutable};
 use core::prelude::*;
 use core::vec;
 
-const initial_capacity: uint = 32u; // 2^5
+static initial_capacity: uint = 32u; // 2^5
 
 pub struct Deque<T> {
     priv nelts: uint,

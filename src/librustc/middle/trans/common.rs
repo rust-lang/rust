@@ -76,8 +76,8 @@ pub type addrspace = c_uint;
 //    0 is ignored by the GC, and is used for all non-GC'd pointers.
 //    1 is for opaque GC'd boxes.
 //    >= 2 are for specific types (e.g. resources).
-pub const default_addrspace: addrspace = 0;
-pub const gc_box_addrspace: addrspace = 1;
+pub static default_addrspace: addrspace = 0;
+pub static gc_box_addrspace: addrspace = 1;
 
 pub type addrspace_gen = @fn() -> addrspace;
 pub fn new_addrspace_gen() -> addrspace_gen {
@@ -615,7 +615,7 @@ pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>, +kind: block_kind,
 }
 
 // First two args are retptr, env
-pub const first_real_arg: uint = 2u;
+pub static first_real_arg: uint = 2u;
 
 pub struct Result {
     bcx: block,

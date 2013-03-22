@@ -282,7 +282,7 @@ pub impl Scheduler {
     }
 }
 
-const TASK_MIN_STACK_SIZE: uint = 10000000; // XXX: Too much stack
+static TASK_MIN_STACK_SIZE: uint = 10000000; // XXX: Too much stack
 
 pub struct Task {
     /// The task entry point, saved here for later destruction
@@ -481,7 +481,7 @@ fn test_swap_tasks() {
 #[bench] #[test] #[ignore(reason = "long test")]
 fn test_run_a_lot_of_tasks_queued() {
     do run_in_bare_thread {
-        const MAX: int = 1000000;
+        static MAX: int = 1000000;
         let mut count = 0;
         let count_ptr: *mut int = &mut count;
 
@@ -514,7 +514,7 @@ fn test_run_a_lot_of_tasks_queued() {
 #[bench] #[test] #[ignore(reason = "too much stack allocation")]
 fn test_run_a_lot_of_tasks_direct() {
     do run_in_bare_thread {
-        const MAX: int = 100000;
+        static MAX: int = 100000;
         let mut count = 0;
         let count_ptr: *mut int = &mut count;
 

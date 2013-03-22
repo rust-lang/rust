@@ -545,7 +545,7 @@ pub mod writer {
 
     // Set to true to generate more debugging in EBML code.
     // Totally lame approach.
-    const debug: bool = false;
+    static debug: bool = false;
 
     priv impl Encoder {
         // used internally to emit things like the vector length and so on

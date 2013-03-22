@@ -159,7 +159,7 @@ impl Drop for GlobalState {
 
 fn get_global_state() -> Exclusive<GlobalState> {
 
-    const POISON: int = -1;
+    static POISON: int = -1;
 
     // FIXME #4728: Doing atomic_cxchg to initialize the global state
     // lazily, which wouldn't be necessary with a runtime written
