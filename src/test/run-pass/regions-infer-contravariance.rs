@@ -20,7 +20,7 @@ fn with(bi: &'r boxed_int) {
     // Here, the upcast is allowed because the `boxed_int` type is
     // contravariant with respect to `&r`.  See also
     // compile-fail/regions-infer-invariance-due-to-mutability.rs
-    let bi: &'blk boxed_int/&blk = bi;
+    let bi: &'blk boxed_int<'blk> = bi;
     fail_unless!(*get(bi) == 22);
 }
 

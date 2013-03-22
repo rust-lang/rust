@@ -16,15 +16,15 @@ struct covariant {
     f: @fn(x: &'self int) -> int
 }
 
-fn to_same_lifetime(bi: covariant/&r) {
-    let bj: covariant/&r = bi;
+fn to_same_lifetime<'r>(bi: covariant<'r>) {
+    let bj: covariant<'r> = bi;
 }
 
-fn to_shorter_lifetime(bi: covariant/&r) {
-    let bj: covariant/&blk = bi; //~ ERROR mismatched types
+fn to_shorter_lifetime<'r>(bi: covariant<'r>) {
+    let bj: covariant<'blk> = bi; //~ ERROR mismatched types
 }
 
-fn to_longer_lifetime(bi: covariant/&r) -> covariant/&static {
+fn to_longer_lifetime<'r>(bi: covariant<'r>) -> covariant<'static> {
     bi
 }
 

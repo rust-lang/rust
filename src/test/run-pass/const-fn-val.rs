@@ -14,7 +14,7 @@ fn foo() -> int {
 
 struct Bar { f: &'self fn() -> int }
 
-static b : Bar/&static = Bar { f: foo };
+static b : Bar<'static> = Bar { f: foo };
 
 pub fn main() {
     fail_unless!((b.f)() == 0xca7f000d);

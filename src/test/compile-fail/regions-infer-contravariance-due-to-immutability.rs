@@ -20,7 +20,7 @@ fn to_shorter_lifetime(bi: contravariant<'r>) {
     let bj: contravariant<'blk> = bi;
 }
 
-fn to_longer_lifetime(bi: contravariant<'r>) -> contravariant/&static {
+fn to_longer_lifetime(bi: contravariant<'r>) -> contravariant<'static> {
     bi //~ ERROR mismatched types
 }
 
