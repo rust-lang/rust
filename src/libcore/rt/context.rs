@@ -184,7 +184,7 @@ fn align_down(sp: *mut uint) -> *mut uint {
 
 // XXX: ptr::offset is positive ints only
 #[inline(always)]
-pub pure fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
+pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
     use core::sys::size_of;
     unsafe {
         (ptr as int + count * (size_of::<T>() as int)) as *mut T

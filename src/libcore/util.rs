@@ -18,11 +18,11 @@ use prelude::*;
 
 /// The identity function.
 #[inline(always)]
-pub pure fn id<T>(x: T) -> T { x }
+pub fn id<T>(x: T) -> T { x }
 
 /// Ignores a value.
 #[inline(always)]
-pub pure fn ignore<T>(_x: T) { }
+pub fn ignore<T>(_x: T) { }
 
 /// Sets `*ptr` to `new_value`, invokes `op()`, and then restores the
 /// original value of `*ptr`.

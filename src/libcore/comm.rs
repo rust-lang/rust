@@ -50,7 +50,7 @@ pub trait GenericPort<T> {
 /// Ports that can `peek`
 pub trait Peekable<T> {
     /// Returns true if a message is available
-    pure fn peek(&self) -> bool;
+    fn peek(&self) -> bool;
 }
 
 /// Returns the index of an endpoint that is ready to receive.
@@ -148,7 +148,7 @@ fn chan_try_send<T:Owned>(self: &Chan<T>, x: T) -> bool {
 pub impl<T: Owned> Port<T> {
     fn recv(&self) -> T { port_recv(self) }
     fn try_recv(&self) -> Option<T> { port_try_recv(self) }
-    pure fn peek(&self) -> bool { port_peek(self) }
+    fn peek(&self) -> bool { port_peek(self) }
 }
 
 impl<T: Owned> GenericPort<T> for Port<T> {
@@ -180,11 +180,11 @@ fn port_try_recv<T:Owned>(self: &Port<T>) -> Option<T> {
 }
 
 impl<T: Owned> Peekable<T> for Port<T> {
-    pure fn peek(&self) -> bool { port_peek(self) }
+    fn peek(&self) -> bool { port_peek(self) }
 }
 
 #[inline(always)]
-pure fn port_peek<T:Owned>(self: &Port<T>) -> bool {
+fn port_peek<T:Owned>(self: &Port<T>) -> bool {
     unsafe {
         let mut endp = None;
         endp <-> self.endp;
@@ -198,7 +198,7 @@ pure fn port_peek<T:Owned>(self: &Port<T>) -> bool {
 }
 
 impl<T: Owned> Selectable for Port<T> {
-    pure fn header(&self) -> *PacketHeader {
+    fn header(&self) -> *PacketHeader {
         unsafe {
             match self.endp {
               Some(ref endp) => endp.header(),
@@ -223,7 +223,7 @@ pub fn PortSet<T: Owned>() -> PortSet<T>{
 pub impl<T:Owned> PortSet<T> {
     fn recv(&self) -> T { port_set_recv(self) }
     fn try_recv(&self) -> Option<T> { port_set_try_recv(self) }
-    pure fn peek(&self) -> bool { port_set_peek(self) }
+    fn peek(&self) -> bool { port_set_peek(self) }
 }
 
 pub impl<T: Owned> PortSet<T> {
@@ -272,11 +272,11 @@ fn port_set_try_recv<T:Owned>(self: &PortSet<T>) -> Option<T> {
 }
 
 impl<T: Owned> Peekable<T> for PortSet<T> {
-    pure fn peek(&self) -> bool { port_set_peek(self) }
+    fn peek(&self) -> bool { port_set_peek(self) }
 }
 
 #[inline(always)]
-pure fn port_set_peek<T:Owned>(self: &PortSet<T>) -> bool {
+fn port_set_peek<T:Owned>(self: &PortSet<T>) -> bool {
     // It'd be nice to use self.port.each, but that version isn't
     // pure.
     for uint::range(0, vec::uniq_len(&const self.ports)) |i| {
