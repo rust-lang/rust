@@ -76,7 +76,7 @@ use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
 use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
 use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
-use parse::obsolete::{ObsoleteAssertion, ObsoletePostFnTySigil};
+use parse::obsolete::{ObsoletePostFnTySigil};
 use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
 use parse::obsolete::{ObsoleteMode, ObsoleteImplicitSelf};
 use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
@@ -1217,10 +1217,6 @@ pub impl Parser {
             ex = expr_log(ast::log_other, lvl, e);
             hi = self.span.hi;
             self.expect(&token::RPAREN);
-        } else if self.eat_keyword(&~"assert") {
-            let e = self.parse_expr();
-            ex = expr_copy(e);  // whatever
-            self.obsolete(*self.last_span, ObsoleteAssertion);
         } else if self.eat_keyword(&~"return") {
             if can_begin_expr(&*self.token) {
                 let e = self.parse_expr();
