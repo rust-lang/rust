@@ -1755,7 +1755,7 @@ pub fn print_bounds(s: @ps, bounds: @OptVec<ast::TyParamBound>) {
 
             match *bound {
                 TraitTyParamBound(ty) => print_type(s, ty),
-                RegionTyParamBound => word(s.s, ~"&static"),
+                RegionTyParamBound => word(s.s, ~"'static"),
             }
         }
     }

@@ -376,7 +376,7 @@ pub fn check_bounds(cx: Context,
 
             ty::bound_durable => {
                 if !kind.is_durable(cx.tcx) {
-                    missing.push("&static");
+                    missing.push("'static");
                 }
             }
 
@@ -467,7 +467,7 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
         match ty::get(ty).sty {
           ty::ty_param(*) => {
             tcx.sess.span_err(sp, ~"value may contain borrowed \
-                                    pointers; use `&static` bound");
+                                    pointers; use `'static` bound");
           }
           _ => {
             tcx.sess.span_err(sp, ~"value may contain borrowed \
