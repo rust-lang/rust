@@ -41,12 +41,12 @@ impl<T> Finally<T> for &'self fn() -> T {
     }
 }
 
-struct Finallyalizer {
+struct Finallyalizer<'self> {
     dtor: &'self fn()
 }
 
 #[unsafe_destructor]
-impl Drop for Finallyalizer/&self {
+impl<'self> Drop for Finallyalizer<'self> {
     fn finalize(&self) {
         (self.dtor)();
     }

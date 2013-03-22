@@ -1191,7 +1191,7 @@ mod big_tests {
     }
 
     #[unsafe_destructor]
-    impl Drop for LVal/&self {
+    impl<'self> Drop for LVal<'self> {
         fn finalize(&self) {
             let x = unsafe { task::local_data::local_data_get(self.key) };
             match x {
@@ -1205,17 +1205,17 @@ mod big_tests {
         }
     }
 
-    impl Ord for LVal/&self {
-        fn lt(&self, other: &'a LVal/&self) -> bool {
+    impl<'self> Ord for LVal<'self> {
+        fn lt(&self, other: &'a LVal<'self>) -> bool {
             (*self).val < other.val
         }
-        fn le(&self, other: &'a LVal/&self) -> bool {
+        fn le(&self, other: &'a LVal<'self>) -> bool {
             (*self).val <= other.val
         }
-        fn gt(&self, other: &'a LVal/&self) -> bool {
+        fn gt(&self, other: &'a LVal<'self>) -> bool {
             (*self).val > other.val
         }
-        fn ge(&self, other: &'a LVal/&self) -> bool {
+        fn ge(&self, other: &'a LVal<'self>) -> bool {
             (*self).val >= other.val
         }
     }
