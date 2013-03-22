@@ -282,7 +282,7 @@ pub fn trans_static_method_callee(bcx: block,
     // When we translate a static fn defined in a trait like:
     //
     //   trait<T1...Tn> Trait {
-    //       static fn foo<M1...Mn>(...) {...}
+    //       fn foo<M1...Mn>(...) {...}
     //   }
     //
     // this winds up being translated as something like:

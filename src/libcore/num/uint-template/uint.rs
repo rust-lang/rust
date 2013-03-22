@@ -215,7 +215,7 @@ impl NumCast for uint {
      * Cast `n` to a `uint`
      */
     #[inline(always)]
-    static pure fn from<N:NumCast>(n: N) -> uint { n.to_uint() }
+    pure fn from<N:NumCast>(n: N) -> uint { n.to_uint() }
 
     #[inline(always)] pure fn to_u8(&self)    -> u8    { *self as u8    }
     #[inline(always)] pure fn to_u16(&self)   -> u16   { *self as u16   }

@@ -126,7 +126,7 @@ pub fn concat<T>(lists: @mut DList<@mut DList<T>>) -> @mut DList<T> {
 }
 
 priv impl<T> DList<T> {
-    static pure fn new_link(data: T) -> DListLink<T> {
+    pure fn new_link(data: T) -> DListLink<T> {
         Some(@mut DListNode {
             data: data,
             linked: true,

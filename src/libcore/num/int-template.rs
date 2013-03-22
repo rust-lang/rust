@@ -163,12 +163,12 @@ impl Eq for T {
 
 impl num::Zero for T {
     #[inline(always)]
-    static pure fn zero() -> T { 0 }
+    pure fn zero() -> T { 0 }
 }
 
 impl num::One for T {
     #[inline(always)]
-    static pure fn one() -> T { 1 }
+    pure fn one() -> T { 1 }
 }
 
 #[cfg(notest)]
@@ -221,14 +221,14 @@ pub pure fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
 
 impl FromStr for T {
     #[inline(always)]
-    static pure fn from_str(s: &str) -> Option<T> {
+    pure fn from_str(s: &str) -> Option<T> {
         from_str(s)
     }
 }
 
 impl FromStrRadix for T {
     #[inline(always)]
-    static pure fn from_str_radix(&self, s: &str, radix: uint) -> Option<T> {
+    pure fn from_str_radix(s: &str, radix: uint) -> Option<T> {
         from_str_radix(s, radix)
     }
 }

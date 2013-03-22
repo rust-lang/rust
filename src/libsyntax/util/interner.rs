@@ -22,14 +22,14 @@ pub struct Interner<T> {
 
 // when traits can extend traits, we should extend index<uint,T> to get []
 pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
-    static fn new() -> Interner<T> {
+    fn new() -> Interner<T> {
         Interner {
             map: @mut LinearMap::new(),
             vect: @mut ~[],
         }
     }
 
-    static fn prefill(init: &[T]) -> Interner<T> {
+    fn prefill(init: &[T]) -> Interner<T> {
         let rv = Interner::new();
         for init.each() |v| { rv.intern(*v); }
         rv

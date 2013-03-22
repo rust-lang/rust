@@ -15,7 +15,7 @@
 use core::num::NumCast::from;
 
 trait Num {
-    static fn from_int(i: int) -> Self;
+    fn from_int(i: int) -> Self;
     fn gt(&self, other: &Self) -> bool;
 }
 

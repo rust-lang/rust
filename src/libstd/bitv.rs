@@ -27,7 +27,7 @@ fn small_mask(nbits: uint) -> uint {
 }
 
 pub impl SmallBitv {
-    static fn new(bits: uint) -> SmallBitv {
+    fn new(bits: uint) -> SmallBitv {
         SmallBitv {bits: bits}
     }
 
@@ -124,7 +124,7 @@ fn big_mask(nbits: uint, elem: uint) -> uint {
 }
 
 pub impl BigBitv {
-    static fn new(storage: ~[uint]) -> BigBitv {
+    fn new(storage: ~[uint]) -> BigBitv {
         BigBitv {storage: storage}
     }
 
@@ -256,7 +256,7 @@ priv impl Bitv {
 }
 
 pub impl Bitv {
-    static fn new(nbits: uint, init: bool) -> Bitv {
+    fn new(nbits: uint, init: bool) -> Bitv {
         let rep = if nbits <= uint::bits {
             Small(~SmallBitv::new(if init {!0} else {0}))
         }
@@ -592,12 +592,12 @@ pub struct BitvSet {
 
 pub impl BitvSet {
     /// Creates a new bit vector set with initially no contents
-    static fn new() -> BitvSet {
+    fn new() -> BitvSet {
         BitvSet{ size: 0, bitv: BigBitv::new(~[0]) }
     }
 
     /// Creates a new bit vector set from the given bit vector
-    static fn from_bitv(bitv: Bitv) -> BitvSet {
+    fn from_bitv(bitv: Bitv) -> BitvSet {
         let mut size = 0;
         for bitv.ones |_| {
             size += 1;

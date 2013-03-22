@@ -10,7 +10,7 @@
 
 
 trait foo {
-    static fn bar();
+    fn bar();
 }
 
 impl foo for int {

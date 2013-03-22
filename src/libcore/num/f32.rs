@@ -277,12 +277,12 @@ impl cmp::Ord for f32 {
 
 impl num::Zero for f32 {
     #[inline(always)]
-    static pure fn zero() -> f32 { 0.0 }
+    pure fn zero() -> f32 { 0.0 }
 }
 
 impl num::One for f32 {
     #[inline(always)]
-    static pure fn one() -> f32 { 1.0 }
+    pure fn one() -> f32 { 1.0 }
 }
 
 impl NumCast for f32 {
@@ -290,7 +290,7 @@ impl NumCast for f32 {
      * Cast `n` to an `f32`
      */
     #[inline(always)]
-    static pure fn from<N:NumCast>(n: N) -> f32 { n.to_f32() }
+    pure fn from<N:NumCast>(n: N) -> f32 { n.to_f32() }
 
     #[inline(always)] pure fn to_u8(&self)    -> u8    { *self as u8    }
     #[inline(always)] pure fn to_u16(&self)   -> u16   { *self as u16   }
@@ -568,12 +568,12 @@ pub pure fn from_str_radix(num: &str, rdx: uint) -> Option<f32> {
 
 impl from_str::FromStr for f32 {
     #[inline(always)]
-    static pure fn from_str(val: &str) -> Option<f32> { from_str(val) }
+    pure fn from_str(val: &str) -> Option<f32> { from_str(val) }
 }
 
 impl num::FromStrRadix for f32 {
     #[inline(always)]
-    static pure fn from_str_radix(val: &str, rdx: uint) -> Option<f32> {
+    pure fn from_str_radix(val: &str, rdx: uint) -> Option<f32> {
         from_str_radix(val, rdx)
     }
 }

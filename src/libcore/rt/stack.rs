@@ -15,7 +15,7 @@ pub struct StackSegment {
 }
 
 pub impl StackSegment {
-    static fn new(size: uint) -> StackSegment {
+    fn new(size: uint) -> StackSegment {
         // Crate a block of uninitialized values
         let mut stack = vec::with_capacity(size);
         unsafe {
@@ -37,7 +37,7 @@ pub impl StackSegment {
 pub struct StackPool(());
 
 impl StackPool {
-    static pub fn new() -> StackPool { StackPool(()) }
+    pub fn new() -> StackPool { StackPool(()) }
 
     fn take_segment(&self, min_size: uint) -> StackSegment {
         StackSegment::new(min_size)

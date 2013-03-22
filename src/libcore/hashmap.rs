@@ -373,7 +373,7 @@ pub mod linear {
 
     pub impl<K:Hash + IterBytes + Eq,V> LinearMap<K, V> {
         /// Create an empty LinearMap
-        static fn new() -> LinearMap<K, V> {
+        fn new() -> LinearMap<K, V> {
             linear_map_with_capacity(INITIAL_CAPACITY)
         }
 
@@ -639,7 +639,7 @@ pub mod linear {
 
     pub impl <T:Hash + IterBytes + Eq> LinearSet<T> {
         /// Create an empty LinearSet
-        static fn new() -> LinearSet<T> { LinearSet{map: LinearMap::new()} }
+        fn new() -> LinearSet<T> { LinearSet{map: LinearMap::new()} }
 
         /// Reserve space for at least `n` elements in the hash table.
         fn reserve_at_least(&mut self, n: uint) {

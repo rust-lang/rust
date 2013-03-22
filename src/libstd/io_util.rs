@@ -17,7 +17,7 @@ pub struct BufReader {
 }
 
 pub impl BufReader {
-    static pub fn new(v: ~[u8]) -> BufReader {
+    pub fn new(v: ~[u8]) -> BufReader {
         BufReader {
             buf: v,
             pos: 0

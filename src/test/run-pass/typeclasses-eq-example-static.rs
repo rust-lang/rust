@@ -12,13 +12,13 @@
 // methods!
 
 trait Equal {
-    static fn isEq(a: Self, b: Self) -> bool;
+    fn isEq(a: Self, b: Self) -> bool;
 }
 
 enum Color { cyan, magenta, yellow, black }
 
 impl Equal for Color {
-    static fn isEq(a: Color, b: Color) -> bool {
+    fn isEq(a: Color, b: Color) -> bool {
         match (a, b) {
           (cyan, cyan)       => { true  }
           (magenta, magenta) => { true  }
@@ -35,7 +35,7 @@ enum ColorTree {
 }
 
 impl Equal for ColorTree {
-    static fn isEq(a: ColorTree, b: ColorTree) -> bool {
+    fn isEq(a: ColorTree, b: ColorTree) -> bool {
         match (a, b) {
           (leaf(x), leaf(y)) => { Equal::isEq(x, y) }
           (branch(l1, r1), branch(l2, r2)) => { 

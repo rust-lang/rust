@@ -82,7 +82,7 @@ pub struct LanguageItems {
 }
 
 pub impl LanguageItems {
-    static pub fn new(&self) -> LanguageItems {
+    pub fn new() -> LanguageItems {
         LanguageItems {
             items: [ None, ..35 ]
         }
@@ -96,7 +96,7 @@ pub impl LanguageItems {
         }
     }
 
-    static pub fn item_name(&self, index: uint) -> &'static str {
+    pub fn item_name(index: uint) -> &'static str {
         match index {
             0  => "const",
             1  => "copy",

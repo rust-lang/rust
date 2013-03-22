@@ -13,7 +13,7 @@ struct Foo {
 }
 
 pub impl Foo {
-    static fn new() -> Foo {
+    fn new() -> Foo {
         Foo { x: 3 }
     }
 }

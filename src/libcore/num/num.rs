@@ -18,15 +18,15 @@ pub mod strconv;
 
 pub trait IntConvertible {
     pure fn to_int(&self) -> int;
-    static pure fn from_int(n: int) -> Self;
+    pure fn from_int(n: int) -> Self;
 }
 
 pub trait Zero {
-    static pure fn zero() -> Self;
+    pure fn zero() -> Self;
 }
 
 pub trait One {
-    static pure fn one() -> Self;
+    pure fn one() -> Self;
 }
 
 pub pure fn abs<T:Ord + Zero + Neg<T>>(v: T) -> T {
@@ -67,7 +67,7 @@ pub pure fn cast<T:NumCast,U:NumCast>(n: T) -> U {
  * An interface for generic numeric type casts
  */
 pub trait NumCast {
-    static pure fn from<T:NumCast>(n: T) -> Self;
+    pure fn from<T:NumCast>(n: T) -> Self;
 
     pure fn to_u8(&self) -> u8;
     pure fn to_u16(&self) -> u16;
@@ -91,7 +91,7 @@ pub trait ToStrRadix {
 }
 
 pub trait FromStrRadix {
-    static pub pure fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
+    pub pure fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
 }
 
 // Generic math functions:

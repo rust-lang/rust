@@ -51,27 +51,23 @@ use util::common::indenter;
 use std::list;
 
 pub trait LatticeValue {
-    static fn sub(&self, cf: &CombineFields, a: &Self, b: &Self) -> ures;
-    static fn lub(&self, cf: &CombineFields, a: &Self, b: &Self)
-                 -> cres<Self>;
-    static fn glb(&self, cf: &CombineFields, a: &Self, b: &Self)
-                 -> cres<Self>;
+    fn sub(cf: &CombineFields, a: &Self, b: &Self) -> ures;
+    fn lub(cf: &CombineFields, a: &Self, b: &Self) -> cres<Self>;
+    fn glb(cf: &CombineFields, a: &Self, b: &Self) -> cres<Self>;
 }
 
 pub type LatticeOp<T> = &'self fn(cf: &CombineFields, a: &T, b: &T) -> cres<T>;
 
 impl LatticeValue for ty::t {
-    static fn sub(&self, cf: &CombineFields, a: &ty::t, b: &ty::t) -> ures {
+    fn sub(cf: &CombineFields, a: &ty::t, b: &ty::t) -> ures {
         Sub(*cf).tys(*a, *b).to_ures()
     }
 
-    static fn lub(&self, cf: &CombineFields, a: &ty::t, b: &ty::t)
-                 -> cres<ty::t> {
+    fn lub(cf: &CombineFields, a: &ty::t, b: &ty::t) -> cres<ty::t> {
         Lub(*cf).tys(*a, *b)
     }
 
-    static fn glb(&self, cf: &CombineFields, a: &ty::t, b: &ty::t)
-                 -> cres<ty::t> {
+    fn glb(cf: &CombineFields, a: &ty::t, b: &ty::t) -> cres<ty::t> {
         Glb(*cf).tys(*a, *b)
     }
 }

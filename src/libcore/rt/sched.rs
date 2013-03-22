@@ -50,11 +50,11 @@ pub struct Scheduler {
 // complaining
 type UnsafeTaskReceiver = sys::Closure;
 trait HackAroundBorrowCk {
-    static fn from_fn(&fn(&mut Scheduler, ~Task)) -> Self;
+    fn from_fn(&fn(&mut Scheduler, ~Task)) -> Self;
     fn to_fn(self) -> &fn(&mut Scheduler, ~Task);
 }
 impl HackAroundBorrowCk for UnsafeTaskReceiver {
-    static fn from_fn(f: &fn(&mut Scheduler, ~Task)) -> UnsafeTaskReceiver {
+    fn from_fn(f: &fn(&mut Scheduler, ~Task)) -> UnsafeTaskReceiver {
         unsafe { transmute(f) }
     }
     fn to_fn(self) -> &fn(&mut Scheduler, ~Task) {
@@ -70,7 +70,7 @@ enum CleanupJob {
 
 pub impl Scheduler {
 
-    static pub fn new(event_loop: ~EventLoopObject) -> Scheduler {
+    pub fn new(event_loop: ~EventLoopObject) -> Scheduler {
         Scheduler {
             event_loop: event_loop,
             task_queue: WorkQueue::new(),
@@ -114,7 +114,7 @@ pub impl Scheduler {
         return tlsched.take_scheduler();
     }
 
-    static fn local(f: &fn(&mut Scheduler)) {
+    fn local(f: &fn(&mut Scheduler)) {
         let mut tlsched = ThreadLocalScheduler::new();
         f(tlsched.get_scheduler());
     }
@@ -296,7 +296,7 @@ pub struct Task {
 }
 
 impl Task {
-    static pub fn new(stack_pool: &mut StackPool, start: ~fn()) -> Task {
+    pub fn new(stack_pool: &mut StackPool, start: ~fn()) -> Task {
         // XXX: Putting main into a ~ so it's a thin pointer and can
         // be passed to the spawn function.  Another unfortunate
         // allocation
@@ -337,7 +337,7 @@ impl Task {
 struct ThreadLocalScheduler(tls::Key);
 
 impl ThreadLocalScheduler {
-    static fn new() -> ThreadLocalScheduler {
+    fn new() -> ThreadLocalScheduler {
         unsafe {
             // NB: This assumes that the TLS key has been created prior.
             // Currently done in rust_start.

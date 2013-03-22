@@ -314,7 +314,7 @@ impl<T,F:Flattener<T>,C:ByteChan> GenericChan<T> for FlatChan<T, F, C> {
 }
 
 pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P> {
-    static fn new(u: U, p: P) -> FlatPort<T, U, P> {
+    fn new(u: U, p: P) -> FlatPort<T, U, P> {
         FlatPort {
             unflattener: u,
             byte_port: p
@@ -323,7 +323,7 @@ pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P> {
 }
 
 pub impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C> {
-    static fn new(f: F, c: C) -> FlatChan<T, F, C> {
+    fn new(f: F, c: C) -> FlatChan<T, F, C> {
         FlatChan {
             flattener: f,
             byte_chan: c
@@ -376,7 +376,7 @@ pub mod flatteners {
     }
 
     pub impl<T:Copy + Owned> PodUnflattener<T> {
-        static fn new() -> PodUnflattener<T> {
+        fn new() -> PodUnflattener<T> {
             PodUnflattener {
                 bogus: ()
             }
@@ -384,7 +384,7 @@ pub mod flatteners {
     }
 
     pub impl<T:Copy + Owned> PodFlattener<T> {
-        static fn new() -> PodFlattener<T> {
+        fn new() -> PodFlattener<T> {
             PodFlattener {
                 bogus: ()
             }
@@ -419,7 +419,7 @@ pub mod flatteners {
     }
 
     pub impl<D:Decoder,T:Decodable<D>> DeserializingUnflattener<D, T> {
-        static fn new(deserialize_buffer: DeserializeBuffer<T>)
+        fn new(deserialize_buffer: DeserializeBuffer<T>)
                    -> DeserializingUnflattener<D, T> {
             DeserializingUnflattener {
                 deserialize_buffer: deserialize_buffer
@@ -428,7 +428,7 @@ pub mod flatteners {
     }
 
     pub impl<S:Encoder,T:Encodable<S>> SerializingFlattener<S, T> {
-        static fn new(serialize_value: SerializeValue<T>)
+        fn new(serialize_value: SerializeValue<T>)
                    -> SerializingFlattener<S, T> {
             SerializingFlattener {
                 serialize_value: serialize_value
@@ -459,15 +459,15 @@ pub mod flatteners {
     }
 
     pub trait FromReader {
-        static fn from_reader(r: @Reader) -> Self;
+        fn from_reader(r: @Reader) -> Self;
     }
 
     pub trait FromWriter {
-        static fn from_writer(w: @Writer) -> Self;
+        fn from_writer(w: @Writer) -> Self;
     }
 
     impl FromReader for json::Decoder/&self {
-        static fn from_reader(r: @Reader) -> json::Decoder/&self {
+        fn from_reader(r: @Reader) -> json::Decoder/&self {
             match json::from_reader(r) {
                 Ok(json) => {
                     json::Decoder(json)
@@ -478,13 +478,13 @@ pub mod flatteners {
     }
 
     impl FromWriter for json::Encoder {
-        static fn from_writer(w: @Writer) -> json::Encoder {
+        fn from_writer(w: @Writer) -> json::Encoder {
             json::Encoder(w)
         }
     }
 
     impl FromReader for ebml::reader::Decoder {
-        static fn from_reader(r: @Reader) -> ebml::reader::Decoder {
+        fn from_reader(r: @Reader) -> ebml::reader::Decoder {
             let buf = @r.read_whole_stream();
             let doc = ebml::reader::Doc(buf);
             ebml::reader::Decoder(doc)
@@ -492,7 +492,7 @@ pub mod flatteners {
     }
 
     impl FromWriter for ebml::writer::Encoder {
-        static fn from_writer(w: @Writer) -> ebml::writer::Encoder {
+        fn from_writer(w: @Writer) -> ebml::writer::Encoder {
             ebml::writer::Encoder(w)
         }
     }
@@ -543,7 +543,7 @@ pub mod bytepipes {
     }
 
     pub impl<R:Reader> ReaderBytePort<R> {
-        static fn new(r: R) -> ReaderBytePort<R> {
+        fn new(r: R) -> ReaderBytePort<R> {
             ReaderBytePort {
                 reader: r
             }
@@ -551,7 +551,7 @@ pub mod bytepipes {
     }
 
     pub impl<W:Writer> WriterByteChan<W> {
-        static fn new(w: W) -> WriterByteChan<W> {
+        fn new(w: W) -> WriterByteChan<W> {
             WriterByteChan {
                 writer: w
             }
@@ -606,7 +606,7 @@ pub mod bytepipes {
     }
 
     pub impl PipeBytePort {
-        static fn new(p: Port<~[u8]>) -> PipeBytePort {
+        fn new(p: Port<~[u8]>) -> PipeBytePort {
             PipeBytePort {
                 port: p,
                 buf: ~[]
@@ -615,7 +615,7 @@ pub mod bytepipes {
     }
 
     pub impl PipeByteChan {
-        static fn new(c: Chan<~[u8]>) -> PipeByteChan {
+        fn new(c: Chan<~[u8]>) -> PipeByteChan {
             PipeByteChan {
                 chan: c
             }

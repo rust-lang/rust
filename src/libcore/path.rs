@@ -43,7 +43,7 @@ pub pure fn PosixPath(s: &str) -> PosixPath {
 }
 
 pub trait GenericPath {
-    static pure fn from_str(&str) -> Self;
+    pure fn from_str(&str) -> Self;
 
     pure fn dirname(&self) -> ~str;
     pure fn filename(&self) -> Option<~str>;
@@ -380,7 +380,7 @@ impl ToStr for PosixPath {
 // PosixPath and WindowsPath, most of their methods are common.
 impl GenericPath for PosixPath {
 
-    static pure fn from_str(s: &str) -> PosixPath {
+    pure fn from_str(s: &str) -> PosixPath {
         let mut components = str::split_nonempty(s, |c| c == '/');
         let is_absolute = (s.len() != 0 && s[0] == '/' as u8);
         return PosixPath { is_absolute: is_absolute,
@@ -563,7 +563,7 @@ impl ToStr for WindowsPath {
 
 impl GenericPath for WindowsPath {
 
-    static pure fn from_str(s: &str) -> WindowsPath {
+    pure fn from_str(s: &str) -> WindowsPath {
         let host;
         let device;
         let rest;

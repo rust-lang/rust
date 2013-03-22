@@ -176,7 +176,7 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
 
 pub impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Create an empty TreeMap
-    static pure fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
+    pure fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
     /// Visit all keys in reverse order
     pure fn each_key_reverse(&self, f: &fn(&K) -> bool) {
@@ -501,7 +501,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
 pub impl <T: TotalOrd> TreeSet<T> {
     /// Create an empty TreeSet
     #[inline(always)]
-    static pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
+    pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
 
     /// Get a lazy iterator over the values in the set.
     /// Requires that it be frozen (immutable).
@@ -542,7 +542,7 @@ struct TreeNode<K, V> {
 
 pub impl<K: TotalOrd, V> TreeNode<K, V> {
     #[inline(always)]
-    static pure fn new(key: K, value: V) -> TreeNode<K, V> {
+    pure fn new(key: K, value: V) -> TreeNode<K, V> {
         TreeNode{key: key, value: value, left: None, right: None, level: 1}
     }
 }

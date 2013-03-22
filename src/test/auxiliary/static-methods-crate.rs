@@ -14,17 +14,17 @@
 #[crate_type = "lib"];
 
 pub trait read {
-    static fn readMaybe(s: ~str) -> Option<Self>;
+    fn readMaybe(s: ~str) -> Option<Self>;
 }
 
 impl read for int {
-    static fn readMaybe(s: ~str) -> Option<int> {
+    fn readMaybe(s: ~str) -> Option<int> {
         int::from_str(s)
     }
 }
 
 impl read for bool {
-    static fn readMaybe(s: ~str) -> Option<bool> {
+    fn readMaybe(s: ~str) -> Option<bool> {
         match s {
           ~"true" => Some(true),
           ~"false" => Some(false),

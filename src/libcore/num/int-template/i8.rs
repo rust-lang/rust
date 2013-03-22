@@ -22,7 +22,7 @@ impl NumCast for i8 {
      * Cast `n` to a `i8`
      */
     #[inline(always)]
-    static pure fn from<N:NumCast>(n: N) -> i8 { n.to_i8() }
+    pure fn from<N:NumCast>(n: N) -> i8 { n.to_i8() }
 
     #[inline(always)] pure fn to_u8(&self)    -> u8    { *self as u8    }
     #[inline(always)] pure fn to_u16(&self)   -> u16   { *self as u16   }

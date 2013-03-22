@@ -140,7 +140,7 @@ pub mod ct {
     }
 
     pub impl<T> Parsed<T> {
-        static pure fn new(&self, val: T, next: uint) -> Parsed<T> {
+        pure fn new(val: T, next: uint) -> Parsed<T> {
             Parsed {val: val, next: next}
         }
     }

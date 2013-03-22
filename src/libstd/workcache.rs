@@ -132,7 +132,7 @@ impl cmp::Ord for WorkKey {
 }
 
 pub impl WorkKey {
-    static fn new(kind: &str, name: &str) -> WorkKey {
+    fn new(kind: &str, name: &str) -> WorkKey {
     WorkKey { kind: kind.to_owned(), name: name.to_owned() }
     }
 }
@@ -151,7 +151,7 @@ impl<S:Encoder> Encodable<S> for WorkMap {
 }
 
 impl<D:Decoder> Decodable<D> for WorkMap {
-    static fn decode(&self, d: &D) -> WorkMap {
+    fn decode(d: &D) -> WorkMap {
         let v : ~[(WorkKey,~str)] = Decodable::decode(d);
         let mut w = LinearMap::new();
         for v.each |&(k, v)| {
@@ -258,7 +258,7 @@ fn digest_file(path: &Path) -> ~str {
 
 pub impl Context {
 
-    static fn new(db: @Mut<Database>,
+    fn new(db: @Mut<Database>,
                   lg: @Mut<Logger>,
                   cfg: @json::Object) -> Context {
         Context{db: db, logger: lg, cfg: cfg, freshness: LinearMap::new()}
@@ -367,7 +367,7 @@ impl TPrep for @Mut<Prep> {
 pub impl<T:Owned +
          Encodable<json::Encoder> +
          Decodable<json::Decoder/&static>> Work<T> { // FIXME(#5121)
-    static fn new(p: @Mut<Prep>, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
+    fn new(p: @Mut<Prep>, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
         Work { prep: p, res: Some(e) }
     }
 }

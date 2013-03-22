@@ -1,7 +1,7 @@
 mod a {
     pub struct S;
     impl S {
-        static fn new() -> S { S }
+        fn new() -> S { S }
     }
 }
 

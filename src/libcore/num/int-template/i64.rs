@@ -22,7 +22,7 @@ impl NumCast for i64 {
      * Cast `n` to a `i64`
      */
     #[inline(always)]
-    static pure fn from<N:NumCast>(n: N) -> i64 { n.to_i64() }
+    pure fn from<N:NumCast>(n: N) -> i64 { n.to_i64() }
 
     #[inline(always)] pure fn to_u8(&self)    -> u8    { *self as u8    }
     #[inline(always)] pure fn to_u16(&self)   -> u16   { *self as u16   }

@@ -115,7 +115,7 @@ pub impl<T> cat<T> {
         }
     }
 
-    static pure fn new(in_x: int, in_y: int, in_name: T) -> cat<T> {
+    pure fn new(in_x: int, in_y: int, in_name: T) -> cat<T> {
         cat{meows: in_x, how_hungry: in_y, name: in_name }
     }
 }

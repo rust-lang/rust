@@ -75,7 +75,7 @@ impl<S:Encoder> Encodable<S> for ident {
 }
 
 impl<D:Decoder> Decodable<D> for ident {
-    static fn decode(d: &D) -> ident {
+    fn decode(d: &D) -> ident {
         let intr = match unsafe {
             task::local_data::local_data_get(interner_key!())
         } {

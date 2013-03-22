@@ -24,7 +24,7 @@ impl NumCast for u64 {
      * Cast `n` to a `u64`
      */
     #[inline(always)]
-    static pure fn from<N:NumCast>(n: N) -> u64 { n.to_u64() }
+    pure fn from<N:NumCast>(n: N) -> u64 { n.to_u64() }
 
     #[inline(always)] pure fn to_u8(&self)    -> u8    { *self as u8    }
     #[inline(always)] pure fn to_u16(&self)   -> u16   { *self as u16   }

@@ -49,7 +49,7 @@ pub pure fn is_false(v: bool) -> bool { !v }
 
 /// Parse logic value from `s`
 impl FromStr for bool {
-    static pure fn from_str(s: &str) -> Option<bool> {
+    pure fn from_str(s: &str) -> Option<bool> {
         if s == "true" {
             Some(true)
         } else if s == "false" {

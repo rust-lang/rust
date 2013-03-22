@@ -1,9 +1,9 @@
 pub trait Number: NumConv {
-    static pure fn from<T:Number>(n: T) -> Self;
+    pure fn from<T:Number>(n: T) -> Self;
 }
 
 impl Number for float {
-    static pure fn from<T:Number>(n: T) -> float { n.to_float() }
+    pure fn from<T:Number>(n: T) -> float { n.to_float() }
 }
 
 pub trait NumConv {

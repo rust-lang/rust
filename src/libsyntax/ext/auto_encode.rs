@@ -32,7 +32,7 @@ impl<S:std::serialize::Encoder> Encodable<S> for Node {
 }
 
 impl<D:Decoder> Decodable for node_id {
-    static fn decode(d: &D) -> Node {
+    fn decode(d: &D) -> Node {
         do d.read_struct("Node", 1) {
             Node {
                 id: d.read_field(~"x", 0, || decode(d))
@@ -66,7 +66,7 @@ would yield functions like:
         D: Decoder,
         T: Decodable<D>
     > spanned<T>: Decodable<D> {
-        static fn decode(d: &D) -> spanned<T> {
+        fn decode(d: &D) -> spanned<T> {
             do d.read_rec {
                 {
                     node: d.read_field(~"node", 0, || decode(d)),

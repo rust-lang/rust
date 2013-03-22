@@ -29,14 +29,14 @@ pub struct UvEventLoop {
 }
 
 pub impl UvEventLoop {
-    static fn new() -> UvEventLoop {
+    fn new() -> UvEventLoop {
         UvEventLoop {
             uvio: UvIoFactory(Loop::new())
         }
     }
 
     /// A convenience constructor
-    static fn new_scheduler() -> Scheduler {
+    fn new_scheduler() -> Scheduler {
         Scheduler::new(~UvEventLoop::new())
     }
 }
@@ -221,7 +221,7 @@ impl TcpListener for UvTcpListener {
 pub struct UvStream(StreamWatcher);
 
 impl UvStream {
-    static fn new(watcher: StreamWatcher) -> UvStream {
+    fn new(watcher: StreamWatcher) -> UvStream {
         UvStream(watcher)
     }
 
