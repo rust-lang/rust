@@ -136,15 +136,13 @@ impl<T> Map<uint, T> for TrieMap<T> {
     }
 }
 
-impl<T> TrieMap<T> {
+pub impl<T> TrieMap<T> {
     /// Create an empty TrieMap
     #[inline(always)]
     static pure fn new() -> TrieMap<T> {
         TrieMap{root: TrieNode::new(), length: 0}
     }
-}
 
-impl<T> TrieMap<T> {
     /// Visit all keys in reverse order
     #[inline(always)]
     pure fn each_key_reverse(&self, f: &fn(&uint) -> bool) {
