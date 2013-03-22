@@ -12,7 +12,7 @@ struct pair<A,B> {
     a: A, b: B
 }
 
-fn f<A:Copy + &static>(a: A, b: u16) -> @fn() -> (A, u16) {
+fn f<A:Copy + 'static>(a: A, b: u16) -> @fn() -> (A, u16) {
     let result: @fn() -> (A, u16) = || (a, b);
     result
 }

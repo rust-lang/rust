@@ -2704,49 +2704,52 @@ pub impl Parser {
 
         let mut result = opt_vec::Empty;
         loop {
-            if self.eat(&token::BINOP(token::AND)) {
-                if self.eat_keyword(&~"static") {
-                    result.push(RegionTyParamBound);
-                } else {
-                    self.span_err(*self.span,
-                                  ~"`&static` is the only permissible \
-                                    region bound here");
+            match *self.token {
+                token::LIFETIME(lifetime) => {
+                    if str::eq_slice(*self.id_to_str(lifetime), "static") {
+                        result.push(RegionTyParamBound);
+                    } else {
+                        self.span_err(*self.span,
+                                      ~"`'static` is the only permissible \
+                                        region bound here");
+                    }
+                    self.bump();
                 }
-            } else if is_ident(&*self.token) {
-                let maybe_bound = match *self.token {
-                    token::IDENT(copy sid, _) => {
-                        match *self.id_to_str(sid) {
-                            ~"send" |
-                            ~"copy" |
-                            ~"const" |
-                            ~"owned" => {
-                                self.obsolete(
-                                    *self.span,
-                                    ObsoleteLowerCaseKindBounds);
+                token::IDENT(*) => {
+                    let maybe_bound = match *self.token {
+                        token::IDENT(copy sid, _) => {
+                            match *self.id_to_str(sid) {
+                                ~"send" |
+                                ~"copy" |
+                                ~"const" |
+                                ~"owned" => {
+                                    self.obsolete(
+                                        *self.span,
+                                        ObsoleteLowerCaseKindBounds);
 
-                                // Bogus value, but doesn't matter, since
-                                // is an error
-                                Some(TraitTyParamBound(
-                                    self.mk_ty_path(sid)))
+                                    // Bogus value, but doesn't matter, since
+                                    // is an error
+                                    Some(TraitTyParamBound(
+                                        self.mk_ty_path(sid)))
+                                }
+                                _ => None
                             }
-                            _ => None
+                        }
+                        _ => fail!()
+                    };
+
+                    match maybe_bound {
+                        Some(bound) => {
+                            self.bump();
+                            result.push(bound);
+                        }
+                        None => {
+                            let ty = self.parse_ty(false);
+                            result.push(TraitTyParamBound(ty));
                         }
                     }
-                    _ => fail!()
-                };
-
-                match maybe_bound {
-                    Some(bound) => {
-                        self.bump();
-                        result.push(bound);
-                    }
-                    None => {
-                        let ty = self.parse_ty(false);
-                        result.push(TraitTyParamBound(ty));
-                    }
                 }
-            } else {
-                break;
+                _ => break,
             }
 
             if self.eat(&token::BINOP(token::PLUS)) {
