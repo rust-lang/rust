@@ -89,8 +89,8 @@ pub trait Buildable<A> {
      *             as an argument a function that will push an element
      *             onto the sequence being constructed.
      */
-     static pure fn build_sized(size: uint,
-                                builder: &fn(push: &pure fn(A))) -> Self;
+     pure fn build_sized(size: uint,
+                         builder: &fn(push: &pure fn(A))) -> Self;
 }
 
 #[inline(always)]

@@ -139,7 +139,7 @@ impl<T> Map<uint, T> for TrieMap<T> {
 pub impl<T> TrieMap<T> {
     /// Create an empty TrieMap
     #[inline(always)]
-    static pure fn new() -> TrieMap<T> {
+    pure fn new() -> TrieMap<T> {
         TrieMap{root: TrieNode::new(), length: 0}
     }
 
@@ -192,7 +192,7 @@ impl Mutable for TrieSet {
 impl TrieSet {
     /// Create an empty TrieSet
     #[inline(always)]
-    static pure fn new() -> TrieSet {
+    pure fn new() -> TrieSet {
         TrieSet{map: TrieMap::new()}
     }
 
@@ -220,7 +220,7 @@ struct TrieNode<T> {
 
 impl<T> TrieNode<T> {
     #[inline(always)]
-    static pure fn new() -> TrieNode<T> {
+    pure fn new() -> TrieNode<T> {
         // FIXME: #5244: [Nothing, ..SIZE] should be possible without Copy
         TrieNode{count: 0,
                  children: [Nothing, Nothing, Nothing, Nothing,

@@ -63,7 +63,7 @@ impl NumCast for int {
      * Cast `n` to a `int`
      */
     #[inline(always)]
-    static pure fn from<N:NumCast>(n: N) -> int { n.to_int() }
+    pure fn from<N:NumCast>(n: N) -> int { n.to_int() }
 
     #[inline(always)] pure fn to_u8(&self)    -> u8    { *self as u8    }
     #[inline(always)] pure fn to_u16(&self)   -> u16   { *self as u16   }

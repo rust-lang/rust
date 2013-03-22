@@ -118,10 +118,10 @@ pub impl <T:Ord> PriorityQueue<T> {
     }
 
     /// Create an empty PriorityQueue
-    static pure fn new() -> PriorityQueue<T> { PriorityQueue{data: ~[],} }
+    pure fn new() -> PriorityQueue<T> { PriorityQueue{data: ~[],} }
 
     /// Create a PriorityQueue from a vector (heapify)
-    static pure fn from_vec(xs: ~[T]) -> PriorityQueue<T> {
+    pure fn from_vec(xs: ~[T]) -> PriorityQueue<T> {
         let mut q = PriorityQueue{data: xs,};
         let mut n = q.len() / 2;
         while n > 0 {

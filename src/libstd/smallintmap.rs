@@ -135,7 +135,7 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
 
 pub impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap
-    static pure fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
+    pure fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
 
     pure fn get(&self, key: &uint) -> &'self V {
         self.find(key).expect("key not present")

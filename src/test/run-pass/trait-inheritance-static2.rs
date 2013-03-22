@@ -11,7 +11,7 @@
 trait MyEq { }
 
 trait MyNum {
-    static fn from_int(int) -> Self;
+    fn from_int(int) -> Self;
 }
 
 pub trait NumExt: MyEq + MyNum { }
@@ -21,7 +21,7 @@ struct S { v: int }
 impl MyEq for S { }
 
 impl MyNum for S {
-    static fn from_int(i: int) -> S {
+    fn from_int(i: int) -> S {
         S {
             v: i
         }
