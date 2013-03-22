@@ -168,7 +168,7 @@ type SemAndSignalRelease = SemReleaseGeneric<'self, ~[Waitqueue]>;
 struct SemReleaseGeneric<Q> { sem: &'self Sem<Q> }
 
 #[unsafe_destructor]
-impl<Q:Owned> Drop for SemReleaseGeneric/&self<Q> {
+impl<Q:Owned> Drop for SemReleaseGeneric<'self, Q> {
     fn finalize(&self) {
         unsafe {
             self.sem.release();
@@ -176,26 +176,26 @@ impl<Q:Owned> Drop for SemReleaseGeneric/&self<Q> {
     }
 }
 
-fn SemRelease(sem: &'r Sem<()>) -> SemRelease/&r {
+fn SemRelease(sem: &'r Sem<()>) -> SemRelease<'r> {
     SemReleaseGeneric {
         sem: sem
     }
 }
 
 fn SemAndSignalRelease(sem: &'r Sem<~[Waitqueue]>)
-    -> SemAndSignalRelease/&r {
+                    -> SemAndSignalRelease<'r> {
     SemReleaseGeneric {
         sem: sem
     }
 }
 
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
-pub struct Condvar { priv sem: &'self Sem<~[Waitqueue]> }
+pub struct Condvar<'self> { priv sem: &'self Sem<~[Waitqueue]> }
 
 #[unsafe_destructor]
-impl Drop for Condvar/&self { fn finalize(&self) {} }
+impl<'self> Drop for Condvar<'self> { fn finalize(&self) {} }
 
-pub impl Condvar/&self {
+pub impl Condvar<'self> {
     /**
      * Atomically drop the associated lock, and block until a signal is sent.
      *
@@ -266,7 +266,7 @@ pub impl Condvar/&self {
         }
 
         #[unsafe_destructor]
-        impl Drop for SemAndSignalReacquire/&self {
+        impl<'self> Drop for SemAndSignalReacquire<'self> {
             fn finalize(&self) {
                 unsafe {
                     // Needs to succeed, instead of itself dying.
@@ -278,7 +278,7 @@ pub impl Condvar/&self {
         }
 
         fn SemAndSignalReacquire(sem: &'r Sem<~[Waitqueue]>)
-            -> SemAndSignalReacquire/&r {
+                              -> SemAndSignalReacquire<'r> {
             SemAndSignalReacquire {
                 sem: sem
             }
@@ -586,7 +586,9 @@ pub impl RWlock {
     }
 
     /// To be called inside of the write_downgrade block.
-    fn downgrade(&self, token: RWlockWriteMode/&a) -> RWlockReadMode/&a {
+    fn downgrade<'a>(&self,
+                     token: RWlockWriteMode<'a>)
+                  -> RWlockReadMode<'a> {
         if !ptr::ref_eq(self, token.lock) {
             fail!(~"Can't downgrade() with a different rwlock's write_mode!");
         }
@@ -619,7 +621,7 @@ struct RWlockReleaseRead {
 }
 
 #[unsafe_destructor]
-impl Drop for RWlockReleaseRead/&self {
+impl<'self> Drop for RWlockReleaseRead<'self> {
     fn finalize(&self) {
         unsafe {
             do task::unkillable {
@@ -641,7 +643,7 @@ impl Drop for RWlockReleaseRead/&self {
     }
 }
 
-fn RWlockReleaseRead(lock: &'r RWlock) -> RWlockReleaseRead/&r {
+fn RWlockReleaseRead<'r>(lock: &'r RWlock) -> RWlockReleaseRead<'r> {
     RWlockReleaseRead {
         lock: lock
     }
@@ -655,7 +657,7 @@ struct RWlockReleaseDowngrade {
 }
 
 #[unsafe_destructor]
-impl Drop for RWlockReleaseDowngrade/&self {
+impl<'self> Drop for RWlockReleaseDowngrade<'self> {
     fn finalize(&self) {
         unsafe {
             do task::unkillable {
@@ -685,23 +687,24 @@ impl Drop for RWlockReleaseDowngrade/&self {
     }
 }
 
-fn RWlockReleaseDowngrade(lock: &'r RWlock) -> RWlockReleaseDowngrade/&r {
+fn RWlockReleaseDowngrade<'r>(lock: &'r RWlock)
+                           -> RWlockReleaseDowngrade<'r> {
     RWlockReleaseDowngrade {
         lock: lock
     }
 }
 
 /// The "write permission" token used for rwlock.write_downgrade().
-pub struct RWlockWriteMode { priv lock: &'self RWlock }
+pub struct RWlockWriteMode<'self> { priv lock: &'self RWlock }
 #[unsafe_destructor]
-impl Drop for RWlockWriteMode/&self { fn finalize(&self) {} }
+impl<'self> Drop for RWlockWriteMode<'self> { fn finalize(&self) {} }
 
 /// The "read permission" token used for rwlock.write_downgrade().
 pub struct RWlockReadMode  { priv lock: &'self RWlock }
 #[unsafe_destructor]
-impl Drop for RWlockReadMode/&self { fn finalize(&self) {} }
+impl<'self> Drop for RWlockReadMode<'self> { fn finalize(&self) {} }
 
-pub impl RWlockWriteMode/&self {
+pub impl<'self> RWlockWriteMode<'self> {
     /// Access the pre-downgrade rwlock in write mode.
     fn write<U>(&self, blk: &fn() -> U) -> U { blk() }
     /// Access the pre-downgrade rwlock in write mode with a condvar.
@@ -710,7 +713,7 @@ pub impl RWlockWriteMode/&self {
     }
 }
 
-pub impl RWlockReadMode/&self {
+pub impl<'self> RWlockReadMode<'self> {
     /// Access the post-downgrade rwlock in read mode.
     fn read<U>(&self, blk: &fn() -> U) -> U { blk() }
 }

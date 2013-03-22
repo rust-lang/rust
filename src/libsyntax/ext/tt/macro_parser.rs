@@ -109,7 +109,7 @@ pub fn is_some(&&mpu: matcher_pos_up) -> bool {
 }
 
 pub struct MatcherPos {
-    elts: ~[ast::matcher], // maybe should be /&? Need to understand regions.
+    elts: ~[ast::matcher], // maybe should be <'>? Need to understand regions.
     sep: Option<Token>,
     idx: uint,
     up: matcher_pos_up, // mutable for swapping only

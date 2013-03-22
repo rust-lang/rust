@@ -234,9 +234,8 @@ fn json_encode<T:Encodable<json::Encoder>>(t: &T) -> ~str {
     }
 }
 
-fn json_decode<T:Decodable<json::Decoder/&static>>( // FIXME(#5121)
-    s: &str) -> T
-{
+// FIXME(#5121)
+fn json_decode<T:Decodable<json::Decoder<'static>>>(s: &str) -> T {
     do io::with_str_reader(s) |rdr| {
         let j = result::unwrap(json::from_reader(rdr));
         Decodable::decode(&json::Decoder(j))
@@ -266,7 +265,7 @@ pub impl Context {
 
     fn prep<T:Owned +
               Encodable<json::Encoder> +
-              Decodable<json::Decoder/&static>>( // FIXME(#5121)
+              Decodable<json::Decoder<'static>>>( // FIXME(#5121)
                   @self,
                   fn_name:&str,
                   blk: &fn(@Mut<Prep>)->Work<T>) -> Work<T> {
@@ -284,7 +283,7 @@ trait TPrep {
     fn all_fresh(&self, cat:&str, map:&WorkMap) -> bool;
     fn exec<T:Owned +
               Encodable<json::Encoder> +
-              Decodable<json::Decoder/&static>>( // FIXME(#5121)
+              Decodable<json::Decoder<'static>>>( // FIXME(#5121)
         &self, blk: ~fn(&Exec) -> T) -> Work<T>;
 }
 
@@ -325,7 +324,7 @@ impl TPrep for @Mut<Prep> {
 
     fn exec<T:Owned +
               Encodable<json::Encoder> +
-              Decodable<json::Decoder/&static>>( // FIXME(#5121)
+              Decodable<json::Decoder<'static>>>( // FIXME(#5121)
             &self, blk: ~fn(&Exec) -> T) -> Work<T> {
         let mut bo = Some(blk);
 
@@ -366,7 +365,7 @@ impl TPrep for @Mut<Prep> {
 
 pub impl<T:Owned +
          Encodable<json::Encoder> +
-         Decodable<json::Decoder/&static>> Work<T> { // FIXME(#5121)
+         Decodable<json::Decoder<'static>>> Work<T> { // FIXME(#5121)
     fn new(p: @Mut<Prep>, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
         Work { prep: p, res: Some(e) }
     }
@@ -375,7 +374,7 @@ pub impl<T:Owned +
 // FIXME (#3724): movable self. This should be in impl Work.
 fn unwrap<T:Owned +
             Encodable<json::Encoder> +
-            Decodable<json::Decoder/&static>>( // FIXME(#5121)
+            Decodable<json::Decoder<'static>>>( // FIXME(#5121)
         w: Work<T>) -> T {
     let mut ww = w;
     let mut s = None;

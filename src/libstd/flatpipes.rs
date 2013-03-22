@@ -466,8 +466,8 @@ pub mod flatteners {
         fn from_writer(w: @Writer) -> Self;
     }
 
-    impl FromReader for json::Decoder/&self {
-        fn from_reader(r: @Reader) -> json::Decoder/&self {
+    impl FromReader for json::Decoder<'self> {
+        fn from_reader(r: @Reader) -> json::Decoder<'self> {
             match json::from_reader(r) {
                 Ok(json) => {
                     json::Decoder(json)

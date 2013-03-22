@@ -186,7 +186,7 @@ pub impl<K: TotalOrd, V> TreeMap<K, V> {
 
     /// Get a lazy iterator over the key-value pairs in the map.
     /// Requires that it be frozen (immutable).
-    fn iter(&self) -> TreeMapIterator/&self<K, V> {
+    fn iter(&self) -> TreeMapIterator<'self, K, V> {
         TreeMapIterator{stack: ~[], node: &self.root}
     }
 }
@@ -200,8 +200,8 @@ pub struct TreeMapIterator<K, V> {
 /// Advance the iterator to the next node (in order) and return a
 /// tuple with a reference to the key and value. If there are no
 /// more nodes, return `None`.
-pub fn map_next<K, V>(iter: &mut TreeMapIterator/&r<K, V>)
-                        -> Option<(&'r K, &'r V)> {
+pub fn map_next<'r, K, V>(iter: &mut TreeMapIterator<'r, K, V>)
+                       -> Option<(&'r K, &'r V)> {
     while !iter.stack.is_empty() || iter.node.is_some() {
         match *iter.node {
           Some(ref x) => {
@@ -219,8 +219,8 @@ pub fn map_next<K, V>(iter: &mut TreeMapIterator/&r<K, V>)
 }
 
 /// Advance the iterator through the map
-pub fn map_advance<K, V>(iter: &mut TreeMapIterator/&r<K, V>,
-                         f: &fn((&'r K, &'r V)) -> bool) {
+pub fn map_advance<'r, K, V>(iter: &mut TreeMapIterator<'r, K, V>,
+                             f: &fn((&'r K, &'r V)) -> bool) {
     loop {
         match map_next(iter) {
           Some(x) => {
@@ -490,27 +490,27 @@ pub impl <T: TotalOrd> TreeSet<T> {
     /// Get a lazy iterator over the values in the set.
     /// Requires that it be frozen (immutable).
     #[inline(always)]
-    fn iter(&self) -> TreeSetIterator/&self<T> {
+    fn iter(&self) -> TreeSetIterator<'self, T> {
         TreeSetIterator{iter: self.map.iter()}
     }
 }
 
 /// Lazy forward iterator over a set
-pub struct TreeSetIterator<T> {
-    priv iter: TreeMapIterator/&self<T, ()>
+pub struct TreeSetIterator<'self, T> {
+    priv iter: TreeMapIterator<'self, T, ()>
 }
 
 /// Advance the iterator to the next node (in order). If this iterator is
 /// finished, does nothing.
 #[inline(always)]
-pub fn set_next<T>(iter: &mut TreeSetIterator/&r<T>) -> Option<&'r T> {
+pub fn set_next<'r, T>(iter: &mut TreeSetIterator<'r, T>) -> Option<&'r T> {
     do map_next(&mut iter.iter).map |&(value, _)| { value }
 }
 
 /// Advance the iterator through the set
 #[inline(always)]
-pub fn set_advance<T>(iter: &mut TreeSetIterator/&r<T>,
-                      f: &fn(&'r T) -> bool) {
+pub fn set_advance<'r, T>(iter: &mut TreeSetIterator<'r, T>,
+                          f: &fn(&'r T) -> bool) {
     do map_advance(&mut iter.iter) |(k, _)| { f(k) }
 }
 
