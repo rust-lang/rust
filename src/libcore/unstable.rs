@@ -118,6 +118,7 @@ struct ArcDestruct<T> {
     mut data: *libc::c_void,
 }
 
+#[unsafe_destructor]
 impl<T> Drop for ArcDestruct<T>{
     fn finalize(&self) {
         unsafe {

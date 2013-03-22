@@ -28,6 +28,7 @@ pub struct TaskPool<T> {
 
 }
 
+#[unsafe_destructor]
 impl<T> Drop for TaskPool<T> {
     fn finalize(&self) {
         for self.channels.each |channel| {

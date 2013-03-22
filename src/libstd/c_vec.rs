@@ -54,11 +54,14 @@ struct DtorRes {
   dtor: Option<@fn()>,
 }
 
+#[unsafe_destructor]
 impl Drop for DtorRes {
     fn finalize(&self) {
-        match self.dtor {
-          option::None => (),
-          option::Some(f) => f()
+        unsafe {
+            match self.dtor {
+                option::None => (),
+                option::Some(f) => f()
+            }
         }
     }
 }
