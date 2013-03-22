@@ -75,9 +75,6 @@ pub trait Reader {
     fn tell(&self) -> uint;
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 impl Reader for @Reader {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         self.read(bytes, len)
@@ -658,9 +655,6 @@ pub trait Writer {
     fn get_type(&self) -> WriterType;
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 impl Writer for @Writer {
     fn write(&self, v: &[const u8]) { self.write(v) }
     fn seek(&self, a: int, b: SeekStyle) { self.seek(a, b) }
