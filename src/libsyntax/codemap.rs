@@ -30,7 +30,7 @@ use core::uint;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 pub trait Pos {
-    static pure fn from_uint(n: uint) -> Self;
+    pure fn from_uint(n: uint) -> Self;
     pure fn to_uint(&self) -> uint;
 }
 
@@ -45,7 +45,7 @@ pub struct CharPos(uint);
 // have been unsuccessful
 
 impl Pos for BytePos {
-    static pure fn from_uint(n: uint) -> BytePos { BytePos(n) }
+    pure fn from_uint(n: uint) -> BytePos { BytePos(n) }
     pure fn to_uint(&self) -> uint { **self }
 }
 
@@ -80,7 +80,7 @@ impl to_bytes::IterBytes for BytePos {
 }
 
 impl Pos for CharPos {
-    static pure fn from_uint(n: uint) -> CharPos { CharPos(n) }
+    pure fn from_uint(n: uint) -> CharPos { CharPos(n) }
     pure fn to_uint(&self) -> uint { **self }
 }
 
@@ -144,7 +144,7 @@ impl<S:Encoder> Encodable<S> for span {
 }
 
 impl<D:Decoder> Decodable<D> for span {
-    static fn decode(_d: &D) -> span {
+    fn decode(_d: &D) -> span {
         dummy_sp()
     }
 }
@@ -286,7 +286,7 @@ pub struct CodeMap {
 }
 
 pub impl CodeMap {
-    static pub fn new() -> CodeMap {
+    pub fn new() -> CodeMap {
         CodeMap {
             files: @mut ~[],
         }

@@ -94,7 +94,7 @@ impl ToStr for BigUint {
 }
 
 impl from_str::FromStr for BigUint {
-    static pure fn from_str(s: &str) -> Option<BigUint> {
+    pure fn from_str(s: &str) -> Option<BigUint> {
         BigUint::from_str_radix(s, 10)
     }
 }
@@ -116,11 +116,11 @@ impl Shr<uint, BigUint> for BigUint {
 }
 
 impl Zero for BigUint {
-    static pure fn zero() -> BigUint { BigUint::new(~[]) }
+    pure fn zero() -> BigUint { BigUint::new(~[]) }
 }
 
 impl One for BigUint {
-    static pub pure fn one() -> BigUint { BigUint::new(~[1]) }
+    pub pure fn one() -> BigUint { BigUint::new(~[1]) }
 }
 
 impl Add<BigUint, BigUint> for BigUint {
@@ -256,14 +256,14 @@ impl IntConvertible for BigUint {
         uint::min(self.to_uint(), int::max_value as uint) as int
     }
 
-    static pure fn from_int(n: int) -> BigUint {
+    pure fn from_int(n: int) -> BigUint {
         if (n < 0) { Zero::zero() } else { BigUint::from_uint(n as uint) }
     }
 }
 
 pub impl BigUint {
     /// Creates and initializes an BigUint.
-    static pub pure fn new(v: ~[BigDigit]) -> BigUint {
+    pub pure fn new(v: ~[BigDigit]) -> BigUint {
         // omit trailing zeros
         let new_len = v.rposition(|n| *n != 0).map_default(0, |p| *p + 1);
 
@@ -274,7 +274,7 @@ pub impl BigUint {
     }
 
     /// Creates and initializes an BigUint.
-    static pub pure fn from_uint(n: uint) -> BigUint {
+    pub pure fn from_uint(n: uint) -> BigUint {
         match BigDigit::from_uint(n) {
             (0,  0)  => Zero::zero(),
             (0,  n0) => BigUint::new(~[n0]),
@@ -283,18 +283,18 @@ pub impl BigUint {
     }
 
     /// Creates and initializes an BigUint.
-    static pub pure fn from_slice(slice: &[BigDigit]) -> BigUint {
+    pub pure fn from_slice(slice: &[BigDigit]) -> BigUint {
         return BigUint::new(vec::from_slice(slice));
     }
 
     /// Creates and initializes an BigUint.
-    static pub pure fn from_str_radix(s: &str, radix: uint)
+    pub pure fn from_str_radix(s: &str, radix: uint)
         -> Option<BigUint> {
         BigUint::parse_bytes(str::to_bytes(s), radix)
     }
 
     /// Creates and initializes an BigUint.
-    static pub pure fn parse_bytes(buf: &[u8], radix: uint)
+    pub pure fn parse_bytes(buf: &[u8], radix: uint)
         -> Option<BigUint> {
         let (base, unit_len) = get_radix_base(radix);
         let base_num: BigUint = BigUint::from_uint(base);
@@ -614,7 +614,7 @@ impl ToStr for BigInt {
 }
 
 impl from_str::FromStr for BigInt {
-    static pure fn from_str(s: &str) -> Option<BigInt> {
+    pure fn from_str(s: &str) -> Option<BigInt> {
         BigInt::from_str_radix(s, 10)
     }
 }
@@ -632,13 +632,13 @@ impl Shr<uint, BigInt> for BigInt {
 }
 
 impl Zero for BigInt {
-    static pub pure fn zero() -> BigInt {
+    pub pure fn zero() -> BigInt {
         BigInt::from_biguint(Zero, Zero::zero())
     }
 }
 
 impl One for BigInt {
-    static pub pure fn one() -> BigInt {
+    pub pure fn one() -> BigInt {
         BigInt::from_biguint(Plus, One::one())
     }
 }
@@ -721,7 +721,7 @@ impl IntConvertible for BigInt {
         }
     }
 
-    static pure fn from_int(n: int) -> BigInt {
+    pure fn from_int(n: int) -> BigInt {
         if n > 0 {
            return BigInt::from_biguint(Plus,  BigUint::from_uint(n as uint));
         }
@@ -736,12 +736,12 @@ impl IntConvertible for BigInt {
 
 pub impl BigInt {
     /// Creates and initializes an BigInt.
-    static pub pure fn new(sign: Sign, v: ~[BigDigit]) -> BigInt {
+    pub pure fn new(sign: Sign, v: ~[BigDigit]) -> BigInt {
         BigInt::from_biguint(sign, BigUint::new(v))
     }
 
     /// Creates and initializes an BigInt.
-    static pub pure fn from_biguint(sign: Sign, data: BigUint) -> BigInt {
+    pub pure fn from_biguint(sign: Sign, data: BigUint) -> BigInt {
         if sign == Zero || data.is_zero() {
             return BigInt { sign: Zero, data: Zero::zero() };
         }
@@ -749,24 +749,24 @@ pub impl BigInt {
     }
 
     /// Creates and initializes an BigInt.
-    static pub pure fn from_uint(n: uint) -> BigInt {
+    pub pure fn from_uint(n: uint) -> BigInt {
         if n == 0 { return Zero::zero(); }
         return BigInt::from_biguint(Plus, BigUint::from_uint(n));
     }
 
     /// Creates and initializes an BigInt.
-    static pub pure fn from_slice(sign: Sign, slice: &[BigDigit]) -> BigInt {
+    pub pure fn from_slice(sign: Sign, slice: &[BigDigit]) -> BigInt {
         BigInt::from_biguint(sign, BigUint::from_slice(slice))
     }
 
     /// Creates and initializes an BigInt.
-    static pub pure fn from_str_radix(s: &str, radix: uint)
+    pub pure fn from_str_radix(s: &str, radix: uint)
         -> Option<BigInt> {
         BigInt::parse_bytes(str::to_bytes(s), radix)
     }
 
     /// Creates and initializes an BigInt.
-    static pub pure fn parse_bytes(buf: &[u8], radix: uint)
+    pub pure fn parse_bytes(buf: &[u8], radix: uint)
         -> Option<BigInt> {
         if buf.is_empty() { return None; }
         let mut sign  = Plus;

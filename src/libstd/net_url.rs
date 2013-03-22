@@ -45,7 +45,7 @@ struct UserInfo {
 pub type Query = ~[(~str, ~str)];
 
 pub impl Url {
-    static pure fn new(
+    pure fn new(
         scheme: ~str,
         user: Option<UserInfo>,
         host: ~str,
@@ -67,7 +67,7 @@ pub impl Url {
 }
 
 pub impl UserInfo {
-    static pure fn new(user: ~str, pass: Option<~str>) -> UserInfo {
+    pure fn new(user: ~str, pass: Option<~str>) -> UserInfo {
         UserInfo { user: user, pass: pass }
     }
 }
@@ -666,7 +666,7 @@ pub pure fn from_str(rawurl: &str) -> Result<Url, ~str> {
 }
 
 impl FromStr for Url {
-    static pure fn from_str(s: &str) -> Option<Url> {
+    pure fn from_str(s: &str) -> Option<Url> {
         match from_str(s) {
             Ok(url) => Some(url),
             Err(_) => None

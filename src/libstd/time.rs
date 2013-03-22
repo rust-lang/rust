@@ -51,7 +51,7 @@ pub struct Timespec { sec: i64, nsec: i32 }
  * nsec: 800_000_000_i32 }`.
  */
 pub impl Timespec {
-    static pure fn new(sec: i64, nsec: i32) -> Timespec {
+    pure fn new(sec: i64, nsec: i32) -> Timespec {
         fail_unless!(nsec >= 0 && nsec < NSEC_PER_SEC);
         Timespec { sec: sec, nsec: nsec }
     }

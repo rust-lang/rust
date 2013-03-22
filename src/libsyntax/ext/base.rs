@@ -439,7 +439,7 @@ pub enum MapChain<K,V> {
 impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 
     // Constructor. I don't think we need a zero-arg one.
-    static fn new(+init: ~LinearMap<K,@V>) -> @mut MapChain<K,V> {
+    fn new(+init: ~LinearMap<K,@V>) -> @mut MapChain<K,V> {
         @mut BaseMapChain(init)
     }
 

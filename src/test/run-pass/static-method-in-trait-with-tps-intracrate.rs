@@ -13,11 +13,11 @@ trait Deserializer {
 }
 
 trait Deserializable<D:Deserializer> {
-    static fn deserialize(&self, d: &D) -> Self;
+    fn deserialize(d: &D) -> Self;
 }
 
 impl<D:Deserializer> Deserializable<D> for int {
-    static fn deserialize(&self, d: &D) -> int {
+    fn deserialize(d: &D) -> int {
         return d.read_int();
     }
 }

@@ -17,7 +17,7 @@ trait BikeMethods {
 }
 
 impl BikeMethods for Bike {
-    static fn woops(&const self) -> ~str { ~"foo" }
+    fn woops(&const self) -> ~str { ~"foo" }
     //~^ ERROR method `woops` is declared as static in its impl, but not in its trait
 }
 

@@ -304,12 +304,12 @@ pub pure fn from_str_radix(num: &str, radix: uint) -> Option<float> {
 
 impl from_str::FromStr for float {
     #[inline(always)]
-    static pure fn from_str(val: &str) -> Option<float> { from_str(val) }
+    pure fn from_str(val: &str) -> Option<float> { from_str(val) }
 }
 
 impl num::FromStrRadix for float {
     #[inline(always)]
-    static pure fn from_str_radix(val: &str, radix: uint) -> Option<float> {
+    pure fn from_str_radix(val: &str, radix: uint) -> Option<float> {
         from_str_radix(val, radix)
     }
 }
@@ -408,12 +408,12 @@ impl Ord for float {
 
 impl num::Zero for float {
     #[inline(always)]
-    static pure fn zero() -> float { 0.0 }
+    pure fn zero() -> float { 0.0 }
 }
 
 impl num::One for float {
     #[inline(always)]
-    static pure fn one() -> float { 1.0 }
+    pure fn one() -> float { 1.0 }
 }
 
 impl NumCast for float {
@@ -421,7 +421,7 @@ impl NumCast for float {
      * Cast `n` to a `float`
      */
     #[inline(always)]
-    static pure fn from<N:NumCast>(n: N) -> float { n.to_float() }
+    pure fn from<N:NumCast>(n: N) -> float { n.to_float() }
 
     #[inline(always)] pure fn to_u8(&self)    -> u8    { *self as u8    }
     #[inline(always)] pure fn to_u16(&self)   -> u16   { *self as u16   }
