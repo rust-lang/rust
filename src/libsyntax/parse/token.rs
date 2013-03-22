@@ -118,7 +118,7 @@ pub enum nonterminal {
     nt_matchers(~[ast::matcher])
 }
 
-pub pure fn binop_to_str(o: binop) -> ~str {
+pub fn binop_to_str(o: binop) -> ~str {
     match o {
       PLUS => ~"+",
       MINUS => ~"-",
@@ -228,7 +228,7 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
     }
 }
 
-pub pure fn can_begin_expr(t: &Token) -> bool {
+pub fn can_begin_expr(t: &Token) -> bool {
     match *t {
       LPAREN => true,
       LBRACE => true,
@@ -286,22 +286,22 @@ pub fn is_lit(t: &Token) -> bool {
     }
 }
 
-pub pure fn is_ident(t: &Token) -> bool {
+pub fn is_ident(t: &Token) -> bool {
     match *t { IDENT(_, _) => true, _ => false }
 }
 
-pub pure fn is_ident_or_path(t: &Token) -> bool {
+pub fn is_ident_or_path(t: &Token) -> bool {
     match *t {
       IDENT(_, _) | INTERPOLATED(nt_path(*)) => true,
       _ => false
     }
 }
 
-pub pure fn is_plain_ident(t: &Token) -> bool {
+pub fn is_plain_ident(t: &Token) -> bool {
     match *t { IDENT(_, false) => true, _ => false }
 }
 
-pub pure fn is_bar(t: &Token) -> bool {
+pub fn is_bar(t: &Token) -> bool {
     match *t { BINOP(OR) | OROR => true, _ => false }
 }
 
@@ -366,7 +366,7 @@ pub impl ident_interner {
     fn gensym(&self, val: @~str) -> ast::ident {
         ast::ident { repr: self.interner.gensym(val) }
     }
-    pure fn get(&self, idx: ast::ident) -> @~str {
+    fn get(&self, idx: ast::ident) -> @~str {
         self.interner.get(idx.repr)
     }
     fn len(&self) -> uint {

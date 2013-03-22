@@ -2214,7 +2214,7 @@ pub fn opt_sigil_to_str(opt_p: Option<ast::Sigil>) -> ~str {
     }
 }
 
-pub pure fn purity_to_str(p: ast::purity) -> ~str {
+pub fn purity_to_str(p: ast::purity) -> ~str {
     match p {
       ast::impure_fn => ~"impure",
       ast::unsafe_fn => ~"unsafe",
@@ -2223,7 +2223,7 @@ pub pure fn purity_to_str(p: ast::purity) -> ~str {
     }
 }
 
-pub pure fn onceness_to_str(o: ast::Onceness) -> ~str {
+pub fn onceness_to_str(o: ast::Onceness) -> ~str {
     match o {
         ast::Once => ~"once",
         ast::Many => ~"many"

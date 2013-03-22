@@ -141,13 +141,13 @@ struct Variable(uint);
 struct LiveNode(uint);
 
 impl cmp::Eq for Variable {
-    pure fn eq(&self, other: &Variable) -> bool { *(*self) == *(*other) }
-    pure fn ne(&self, other: &Variable) -> bool { *(*self) != *(*other) }
+    fn eq(&self, other: &Variable) -> bool { *(*self) == *(*other) }
+    fn ne(&self, other: &Variable) -> bool { *(*self) != *(*other) }
 }
 
 impl cmp::Eq for LiveNode {
-    pure fn eq(&self, other: &LiveNode) -> bool { *(*self) == *(*other) }
-    pure fn ne(&self, other: &LiveNode) -> bool { *(*self) != *(*other) }
+    fn eq(&self, other: &LiveNode) -> bool { *(*self) == *(*other) }
+    fn ne(&self, other: &LiveNode) -> bool { *(*self) != *(*other) }
 }
 
 enum LiveNodeKind {
@@ -158,7 +158,7 @@ enum LiveNodeKind {
 }
 
 impl cmp::Eq for LiveNodeKind {
-    pure fn eq(&self, other: &LiveNodeKind) -> bool {
+    fn eq(&self, other: &LiveNodeKind) -> bool {
         match (*self) {
             FreeVarNode(e0a) => {
                 match (*other) {
@@ -186,7 +186,7 @@ impl cmp::Eq for LiveNodeKind {
             }
         }
     }
-    pure fn ne(&self, other: &LiveNodeKind) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &LiveNodeKind) -> bool { !(*self).eq(other) }
 }
 
 fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
@@ -224,11 +224,11 @@ pub fn check_crate(tcx: ty::ctxt,
 }
 
 impl to_str::ToStr for LiveNode {
-    pure fn to_str(&self) -> ~str { fmt!("ln(%u)", **self) }
+    fn to_str(&self) -> ~str { fmt!("ln(%u)", **self) }
 }
 
 impl to_str::ToStr for Variable {
-    pure fn to_str(&self) -> ~str { fmt!("v(%u)", **self) }
+    fn to_str(&self) -> ~str { fmt!("v(%u)", **self) }
 }
 
 // ______________________________________________________________________
@@ -254,7 +254,7 @@ impl to_str::ToStr for Variable {
 // assignment.  And so forth.
 
 pub impl LiveNode {
-    pure fn is_valid(&self) -> bool { **self != uint::max_value }
+    fn is_valid(&self) -> bool { **self != uint::max_value }
 }
 
 fn invalid_node() -> LiveNode { LiveNode(uint::max_value) }

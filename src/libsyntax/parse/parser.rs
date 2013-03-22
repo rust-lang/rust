@@ -196,8 +196,8 @@ macro_rules! maybe_whole (
 )
 
 
-pure fn maybe_append(+lhs: ~[attribute], rhs: Option<~[attribute]>)
-                  -> ~[attribute] {
+fn maybe_append(+lhs: ~[attribute], rhs: Option<~[attribute]>)
+             -> ~[attribute] {
     match rhs {
         None => lhs,
         Some(ref attrs) => vec::append(lhs, (*attrs))
@@ -331,7 +331,7 @@ pub impl Parser {
     }
     fn get_id(&self) -> node_id { next_node_id(self.sess) }
 
-    pure fn id_to_str(&self, id: ident) -> @~str {
+    fn id_to_str(&self, id: ident) -> @~str {
         self.sess.interner.get(id)
     }
 

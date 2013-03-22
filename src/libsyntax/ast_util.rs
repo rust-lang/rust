@@ -24,22 +24,21 @@ use core::str;
 use core::to_bytes;
 use core::vec;
 
-pub pure fn path_name_i(idents: &[ident], intr: @token::ident_interner)
-                     -> ~str {
+pub fn path_name_i(idents: &[ident], intr: @token::ident_interner) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
     str::connect(idents.map(|i| copy *intr.get(*i)), ~"::")
 }
 
 
-pub pure fn path_to_ident(p: @path) -> ident { copy *p.idents.last() }
+pub fn path_to_ident(p: @path) -> ident { copy *p.idents.last() }
 
-pub pure fn local_def(id: node_id) -> def_id {
+pub fn local_def(id: node_id) -> def_id {
     ast::def_id { crate: local_crate, node: id }
 }
 
-pub pure fn is_local(did: ast::def_id) -> bool { did.crate == local_crate }
+pub fn is_local(did: ast::def_id) -> bool { did.crate == local_crate }
 
-pub pure fn stmt_id(s: stmt) -> node_id {
+pub fn stmt_id(s: stmt) -> node_id {
     match s.node {
       stmt_decl(_, id) => id,
       stmt_expr(_, id) => id,
@@ -57,7 +56,7 @@ pub fn variant_def_ids(d: def) -> (def_id, def_id) {
     }
 }
 
-pub pure fn def_id_of_def(d: def) -> def_id {
+pub fn def_id_of_def(d: def) -> def_id {
     match d {
       def_fn(id, _) | def_static_method(id, _, _) | def_mod(id) |
       def_foreign_mod(id) | def_const(id) |
@@ -75,7 +74,7 @@ pub pure fn def_id_of_def(d: def) -> def_id {
     }
 }
 
-pub pure fn binop_to_str(op: binop) -> ~str {
+pub fn binop_to_str(op: binop) -> ~str {
     match op {
       add => return ~"+",
       subtract => return ~"-",
@@ -98,7 +97,7 @@ pub pure fn binop_to_str(op: binop) -> ~str {
     }
 }
 
-pub pure fn binop_to_method_name(op: binop) -> Option<~str> {
+pub fn binop_to_method_name(op: binop) -> Option<~str> {
     match op {
       add => return Some(~"add"),
       subtract => return Some(~"sub"),
@@ -120,7 +119,7 @@ pub pure fn binop_to_method_name(op: binop) -> Option<~str> {
     }
 }
 
-pub pure fn lazy_binop(b: binop) -> bool {
+pub fn lazy_binop(b: binop) -> bool {
     match b {
       and => true,
       or => true,
@@ -128,7 +127,7 @@ pub pure fn lazy_binop(b: binop) -> bool {
     }
 }
 
-pub pure fn is_shift_binop(b: binop) -> bool {
+pub fn is_shift_binop(b: binop) -> bool {
     match b {
       shl => true,
       shr => true,
@@ -136,7 +135,7 @@ pub pure fn is_shift_binop(b: binop) -> bool {
     }
 }
 
-pub pure fn unop_to_str(op: unop) -> ~str {
+pub fn unop_to_str(op: unop) -> ~str {
     match op {
       box(mt) => if mt == m_mutbl { ~"@mut " } else { ~"@" },
       uniq(mt) => if mt == m_mutbl { ~"~mut " } else { ~"~" },
@@ -146,11 +145,11 @@ pub pure fn unop_to_str(op: unop) -> ~str {
     }
 }
 
-pub pure fn is_path(e: @expr) -> bool {
+pub fn is_path(e: @expr) -> bool {
     return match e.node { expr_path(_) => true, _ => false };
 }
 
-pub pure fn int_ty_to_str(t: int_ty) -> ~str {
+pub fn int_ty_to_str(t: int_ty) -> ~str {
     match t {
       ty_char => ~"u8", // ???
       ty_i => ~"",
@@ -161,7 +160,7 @@ pub pure fn int_ty_to_str(t: int_ty) -> ~str {
     }
 }
 
-pub pure fn int_ty_max(t: int_ty) -> u64 {
+pub fn int_ty_max(t: int_ty) -> u64 {
     match t {
       ty_i8 => 0x80u64,
       ty_i16 => 0x8000u64,
@@ -170,7 +169,7 @@ pub pure fn int_ty_max(t: int_ty) -> u64 {
     }
 }
 
-pub pure fn uint_ty_to_str(t: uint_ty) -> ~str {
+pub fn uint_ty_to_str(t: uint_ty) -> ~str {
     match t {
       ty_u => ~"u",
       ty_u8 => ~"u8",
@@ -180,7 +179,7 @@ pub pure fn uint_ty_to_str(t: uint_ty) -> ~str {
     }
 }
 
-pub pure fn uint_ty_max(t: uint_ty) -> u64 {
+pub fn uint_ty_max(t: uint_ty) -> u64 {
     match t {
       ty_u8 => 0xffu64,
       ty_u16 => 0xffffu64,
@@ -189,18 +188,18 @@ pub pure fn uint_ty_max(t: uint_ty) -> u64 {
     }
 }
 
-pub pure fn float_ty_to_str(t: float_ty) -> ~str {
+pub fn float_ty_to_str(t: float_ty) -> ~str {
     match t { ty_f => ~"f", ty_f32 => ~"f32", ty_f64 => ~"f64" }
 }
 
-pub pure fn is_call_expr(e: @expr) -> bool {
+pub fn is_call_expr(e: @expr) -> bool {
     match e.node { expr_call(_, _, _) => true, _ => false }
 }
 
 // This makes def_id hashable
 impl to_bytes::IterBytes for def_id {
     #[inline(always)]
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.crate, &self.node, lsb0, f);
     }
 }
@@ -238,14 +237,14 @@ pub fn ident_to_pat(id: node_id, s: span, +i: ident) -> @pat {
                 span: s }
 }
 
-pub pure fn is_unguarded(a: &arm) -> bool {
+pub fn is_unguarded(a: &arm) -> bool {
     match a.guard {
       None => true,
       _    => false
     }
 }
 
-pub pure fn unguarded_pat(a: &arm) -> Option<~[@pat]> {
+pub fn unguarded_pat(a: &arm) -> Option<~[@pat]> {
     if is_unguarded(a) { Some(/* FIXME (#2543) */ copy a.pats) } else { None }
 }
 
@@ -290,7 +289,7 @@ pub fn split_trait_methods(trait_methods: &[trait_method])
     (reqd, provd)
 }
 
-pub pure fn struct_field_visibility(field: ast::struct_field) -> visibility {
+pub fn struct_field_visibility(field: ast::struct_field) -> visibility {
     match field.node.kind {
         ast::named_field(_, _, visibility) => visibility,
         ast::unnamed_field => ast::public
@@ -509,7 +508,7 @@ pub fn compute_id_range_for_inlined_item(item: inlined_item) -> id_range {
     compute_id_range(|f| visit_ids_for_inlined_item(item, f))
 }
 
-pub pure fn is_item_impl(item: @ast::item) -> bool {
+pub fn is_item_impl(item: @ast::item) -> bool {
     match item.node {
        item_impl(*) => true,
        _            => false
