@@ -468,11 +468,10 @@ overwritten for the duration of the borrow.  In fact, the compiler
 would accept the example we gave earlier. The example is safe because
 the shape pointer has type `&Shape`, which means "borrowed pointer to
 immutable memory containing a `shape`". If, however, the type of that
-pointer were `&const Shape` or `&mut Shape`, then the ref binding
-would be ill-typed. Just as with unique boxes, the compiler will
-permit `ref` bindings into data owned by the stack frame even if the
-data are mutable, but otherwise it requires that the data reside in
-immutable memory.
+pointer were `&mut Shape`, then the ref binding would be ill-typed.
+Just as with unique boxes, the compiler will permit `ref` bindings
+into data owned by the stack frame even if the data are mutable,
+but otherwise it requires that the data reside in immutable memory.
 
 # Returning borrowed pointers
 
