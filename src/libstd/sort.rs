@@ -177,9 +177,9 @@ impl<T:Copy + Ord + Eq> Sort for &'self mut [T] {
     fn qsort(self) { quick_sort3(self); }
 }
 
-const MIN_MERGE: uint = 64;
-const MIN_GALLOP: uint = 7;
-const INITIAL_TMP_STORAGE: uint = 128;
+static MIN_MERGE: uint = 64;
+static MIN_GALLOP: uint = 7;
+static INITIAL_TMP_STORAGE: uint = 128;
 
 pub fn tim_sort<T:Copy + Ord>(array: &mut [T]) {
     let size = array.len();

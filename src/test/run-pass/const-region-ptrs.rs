@@ -11,9 +11,9 @@
 
 struct Pair { a: int, b: &'self int }
 
-const x: &'static int = &10;
+static x: &'static int = &10;
 
-const y: &'static Pair<'static> = &Pair {a: 15, b: x};
+static y: &'static Pair<'static> = &Pair {a: 15, b: x};
 
 pub fn main() {
     io::println(fmt!("x = %?", *x));

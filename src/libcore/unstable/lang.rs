@@ -22,9 +22,9 @@ use cast::transmute;
 pub type rust_task = c_void;
 
 #[cfg(target_word_size = "32")]
-pub const FROZEN_BIT: uint = 0x80000000;
+pub static FROZEN_BIT: uint = 0x80000000;
 #[cfg(target_word_size = "64")]
-pub const FROZEN_BIT: uint = 0x8000000000000000;
+pub static FROZEN_BIT: uint = 0x8000000000000000;
 
 pub mod rustrt {
     use libc::{c_char, uintptr_t};

@@ -139,7 +139,7 @@ pub struct print_stack_elt {
     pbreak: print_stack_break
 }
 
-pub const size_infinity: int = 0xffff;
+pub static size_infinity: int = 0xffff;
 
 pub fn mk_printer(out: @io::Writer, linewidth: uint) -> @mut Printer {
     // Yes 3, it makes the ring buffers big enough to never

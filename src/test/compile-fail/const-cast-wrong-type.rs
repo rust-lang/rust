@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const a: [u8 * 3] = ['h' as u8, 'i' as u8, 0 as u8];
-const b: *i8 = &a as *i8; //~ ERROR mismatched types
+static a: [u8 * 3] = ['h' as u8, 'i' as u8, 0 as u8];
+static b: *i8 = &a as *i8; //~ ERROR mismatched types
 
 fn main() {
 }

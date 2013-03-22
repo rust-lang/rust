@@ -17,7 +17,7 @@ use core::prelude::*;
 use core::result::{Result, Ok, Err};
 use core::str;
 
-const NSEC_PER_SEC: i32 = 1_000_000_000_i32;
+static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
 
 pub mod rustrt {
     use super::Tm;
@@ -900,8 +900,8 @@ mod tests {
     use core::vec;
 
     pub fn test_get_time() {
-        const some_recent_date: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
-        const some_future_date: i64 = 1577836800i64; // 2020-01-01T00:00:00Z
+        static some_recent_date: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
+        static some_future_date: i64 = 1577836800i64; // 2020-01-01T00:00:00Z
 
         let tv1 = get_time();
         debug!("tv1=%? sec + %? nsec", tv1.sec as uint, tv1.nsec as uint);

@@ -54,7 +54,7 @@ struct Command {
     usage_full: UsageSource/&self
 }
 
-const commands: &'static [Command/&static] = &[
+static commands: &'static [Command/&static] = &[
     Command{
         cmd: "build",
         action: Exec("rustc"),
@@ -199,7 +199,7 @@ fn do_command(command: &Command, args: &[~str]) -> ValidUsage {
 }
 
 fn usage() {
-    const indent: uint = 8;
+    static indent: uint = 8;
 
     io::print(
         "The rust tool is a convenience for managing rust source code.\n\

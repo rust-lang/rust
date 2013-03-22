@@ -9,7 +9,7 @@
 // except according to those terms.
 
 enum E { V, VV(int) }
-const C: E = V;
+static C: E = V;
 
 pub impl E {
     fn method(&self) {

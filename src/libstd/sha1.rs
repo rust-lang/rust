@@ -53,13 +53,13 @@ trait Sha1 {
 }
 
 // Some unexported constants
-const digest_buf_len: uint = 5u;
-const msg_block_len: uint = 64u;
-const work_buf_len: uint = 80u;
-const k0: u32 = 0x5A827999u32;
-const k1: u32 = 0x6ED9EBA1u32;
-const k2: u32 = 0x8F1BBCDCu32;
-const k3: u32 = 0xCA62C1D6u32;
+static digest_buf_len: uint = 5u;
+static msg_block_len: uint = 64u;
+static work_buf_len: uint = 80u;
+static k0: u32 = 0x5A827999u32;
+static k1: u32 = 0x6ED9EBA1u32;
+static k2: u32 = 0x8F1BBCDCu32;
+static k3: u32 = 0xCA62C1D6u32;
 
 
 /// Construct a `sha` object

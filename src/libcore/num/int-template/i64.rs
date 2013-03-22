@@ -14,7 +14,7 @@ use num::NumCast;
 
 mod inst {
     pub type T = i64;
-    pub const bits: uint = ::u64::bits;
+    pub static bits: uint = ::u64::bits;
 }
 
 impl NumCast for i64 {

@@ -12,9 +12,9 @@
 // aux-build:cci_const.rs
 
 extern mod cci_const;
-const foo: &'static str = cci_const::foopy;
-const a: uint = cci_const::uint_val;
-const b: uint = cci_const::uint_expr + 5;
+static foo: &'static str = cci_const::foopy;
+static a: uint = cci_const::uint_val;
+static b: uint = cci_const::uint_expr + 5;
 
 fn main() {
     fail_unless!(a == 12);

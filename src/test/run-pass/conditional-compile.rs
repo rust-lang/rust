@@ -15,9 +15,9 @@
 use flippity;
 
 #[cfg(bogus)]
-const b: bool = false;
+static b: bool = false;
 
-const b: bool = true;
+static b: bool = true;
 
 mod rustrt {
     #[cfg(bogus)]
@@ -102,8 +102,8 @@ fn test_in_fn_ctxt() {
     f();
 
     #[cfg(bogus)]
-    const i: int = 0;
-    const i: int = 1;
+    static i: int = 0;
+    static i: int = 1;
     fail_unless!((i == 1));
 }
 

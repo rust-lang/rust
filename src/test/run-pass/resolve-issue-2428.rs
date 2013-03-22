@@ -10,6 +10,6 @@
 
 // xfail-test
 
-const foo: int = 4 >> 1;
+static foo: int = 4 >> 1;
 enum bs { thing = foo }
 pub fn main() { fail_unless!((thing as int == foo)); }

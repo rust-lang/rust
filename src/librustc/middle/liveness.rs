@@ -653,9 +653,9 @@ struct Specials {
     no_ret_var: Variable
 }
 
-const ACC_READ: uint = 1u;
-const ACC_WRITE: uint = 2u;
-const ACC_USE: uint = 4u;
+static ACC_READ: uint = 1u;
+static ACC_WRITE: uint = 2u;
+static ACC_USE: uint = 4u;
 
 type LiveNodeMap = HashMap<node_id, LiveNode>;
 

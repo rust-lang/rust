@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // error-pattern: recursive constant
-const a: int = b;
-const b: int = a;
+static a: int = b;
+static b: int = a;
 
 fn main() {
 }

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const a: int = 1;
-const b: int = a + 2;
+static a: int = 1;
+static b: int = a + 2;
 
 pub fn main() {
     fail_unless!(b == 3);
