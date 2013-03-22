@@ -12,7 +12,6 @@
 
 use prelude::*;
 
-// FIXME: #3469: need to manually update TrieNode when SHIFT changes
 // FIXME: #5244: need to manually update the TrieNode constructor
 const SHIFT: uint = 4;
 const SIZE: uint = 1 << SHIFT;
@@ -215,7 +214,7 @@ impl TrieSet {
 
 struct TrieNode<T> {
     count: uint,
-    children: [Child<T> * 16] // FIXME: #3469: can't use the SIZE constant yet
+    children: [Child<T> * SIZE]
 }
 
 impl<T> TrieNode<T> {
