@@ -437,28 +437,37 @@ pub pure fn slice(s: &'a str, begin: uint, end: uint) -> &'a str {
     unsafe { raw::slice_bytes(s, begin, end) }
 }
 
-/// Splits a string into substrings at each occurrence of a given character
+/// Splits a string into substrings at each occurrence of a given
+/// character.
 pub pure fn split_char(s: &str, sep: char) -> ~[~str] {
-    split_char_inner(s, sep, len(s), true)
+    split_char_inner(s, sep, len(s), true, true)
 }
 
 /**
  * Splits a string into substrings at each occurrence of a given
- * character up to 'count' times
+ * character up to 'count' times.
  *
  * The byte must be a valid UTF-8/ASCII byte
  */
 pub pure fn splitn_char(s: &str, sep: char, count: uint) -> ~[~str] {
-    split_char_inner(s, sep, count, true)
+    split_char_inner(s, sep, count, true, true)
 }
 
 /// Like `split_char`, but omits empty strings from the returned vector
 pub pure fn split_char_nonempty(s: &str, sep: char) -> ~[~str] {
-    split_char_inner(s, sep, len(s), false)
+    split_char_inner(s, sep, len(s), false, false)
 }
 
-pure fn split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool)
-    -> ~[~str] {
+/**
+ * Like `split_char`, but a trailing empty string is omitted
+ * (e.g. `split_char_no_trailing("A B ",' ') == ~[~"A",~"B"]`)
+ */
+pub pure fn split_char_no_trailing(s: &str, sep: char) -> ~[~str] {
+    split_char_inner(s, sep, len(s), true, false)
+}
+
+pure fn split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool,
+                         allow_trailing_empty: bool) -> ~[~str] {
     if sep < 128u as char {
         let b = sep as u8, l = len(s);
         let mut result = ~[], done = 0u;
@@ -475,19 +484,20 @@ pure fn split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool)
             }
             i += 1u;
         }
-        if allow_empty || start < l {
+        // only push a non-empty trailing substring
+        if allow_trailing_empty || start < l {
             unsafe { result.push(raw::slice_bytes_unique(s, start, l) ) };
         }
         result
     } else {
-        splitn(s, |cur| cur == sep, count)
+        split_inner(s, |cur| cur == sep, count, allow_empty, allow_trailing_empty)
     }
 }
 
 
 /// Splits a string into substrings using a character function
 pub pure fn split(s: &str, sepfn: &fn(char) -> bool) -> ~[~str] {
-    split_inner(s, sepfn, len(s), true)
+    split_inner(s, sepfn, len(s), true, true)
 }
 
 /**
@@ -498,16 +508,25 @@ pub pure fn splitn(s: &str,
                    sepfn: &fn(char) -> bool,
                    count: uint)
                 -> ~[~str] {
-    split_inner(s, sepfn, count, true)
+    split_inner(s, sepfn, count, true, true)
 }
 
 /// Like `split`, but omits empty strings from the returned vector
 pub pure fn split_nonempty(s: &str, sepfn: &fn(char) -> bool) -> ~[~str] {
-    split_inner(s, sepfn, len(s), false)
+    split_inner(s, sepfn, len(s), false, false)
+}
+
+
+/**
+ * Like `split`, but a trailing empty string is omitted
+ * (e.g. `split_no_trailing("A B ",' ') == ~[~"A",~"B"]`)
+ */
+pub pure fn split_no_trailing(s: &str, sepfn: &fn(char) -> bool) -> ~[~str] {
+    split_inner(s, sepfn, len(s), true, false)
 }
 
 pure fn split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
-               allow_empty: bool) -> ~[~str] {
+               allow_empty: bool, allow_trailing_empty: bool) -> ~[~str] {
     let l = len(s);
     let mut result = ~[], i = 0u, start = 0u, done = 0u;
     while i < l && done < count {
@@ -523,7 +542,7 @@ pure fn split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
         }
         i = next;
     }
-    if allow_empty || start < l {
+    if allow_trailing_empty || start < l {
         unsafe {
             result.push(raw::slice_bytes_unique(s, start, l));
         }
@@ -630,9 +649,11 @@ pub fn levdistance(s: &str, t: &str) -> uint {
 }
 
 /**
- * Splits a string into a vector of the substrings separated by LF ('\n')
+ * Splits a string into a vector of the substrings separated by LF ('\n').
  */
-pub pure fn lines(s: &str) -> ~[~str] { split_char(s, '\n') }
+pub pure fn lines(s: &str) -> ~[~str] {
+    split_char_no_trailing(s, '\n')
+}
 
 /**
  * Splits a string into a vector of the substrings separated by LF ('\n')
@@ -651,7 +672,7 @@ pub pure fn lines_any(s: &str) -> ~[~str] {
 
 /// Splits a string into a vector of the substrings separated by whitespace
 pub pure fn words(s: &str) -> ~[~str] {
-    split_nonempty(s, |c| char::is_whitespace(c))
+    split_nonempty(s, char::is_whitespace)
 }
 
 /** Split a string into a vector of substrings,
@@ -2670,6 +2691,35 @@ mod tests {
     }
 
     #[test]
+    fn test_split_char_no_trailing() {
+     fn t(s: &str, c: char, u: &[~str]) {
+            debug!(~"split_byte: " + s);
+            let v = split_char_no_trailing(s, c);
+            debug!("split_byte to: %?", v);
+            fail_unless!(vec::all2(v, u, |a,b| a == b));
+        }
+        t(~"abc.hello.there", '.', ~[~"abc", ~"hello", ~"there"]);
+        t(~".hello.there", '.', ~[~"", ~"hello", ~"there"]);
+        t(~"...hello.there.", '.', ~[~"", ~"", ~"", ~"hello", ~"there"]);
+
+        fail_unless!(~[~"", ~"", ~"", ~"hello", ~"there"]
+                     == split_char_no_trailing(~"...hello.there.", '.'));
+
+        fail_unless!(~[] == split_char_no_trailing(~"", 'z'));
+        fail_unless!(~[~""] == split_char_no_trailing(~"z", 'z'));
+        fail_unless!(~[~"ok"] == split_char_no_trailing(~"ok", 'z'));
+    }
+
+    #[test]
+    fn test_split_char_no_trailing_2() {
+        let data = ~"ประเทศไทย中华Việt Nam";
+        fail_unless!(~[~"ประเทศไทย中华", ~"iệt Nam"]
+                     == split_char_no_trailing(data, 'V'));
+        fail_unless!(~[~"ประเ", ~"ศไ", ~"ย中华Việt Nam"]
+                     == split_char_no_trailing(data, 'ท'));
+    }
+
+    #[test]
     fn test_split_str() {
         fn t(s: &str, sep: &'a str, i: int, k: &str) {
             fn borrow(x: &'a str) -> &'a str { x }
@@ -2723,27 +2773,44 @@ mod tests {
     }
 
     #[test]
+    fn test_split_no_trailing() {
+        let data = ~"ประเทศไทย中华Việt Nam";
+        fail_unless!(~[~"ประเทศไทย中", ~"Việt Nam"]
+                     == split_no_trailing (data, |cc| cc == '华'));
+
+        fail_unless!(~[~"", ~"", ~"XXX", ~"YYY"]
+                     == split_no_trailing(~"zzXXXzYYYz", char::is_lowercase));
+
+        fail_unless!(~[~"zz", ~"", ~"", ~"z", ~"", ~"", ~"z"]
+                     == split_no_trailing(~"zzXXXzYYYz", char::is_uppercase));
+
+        fail_unless!(~[~""] == split_no_trailing(~"z", |cc| cc == 'z'));
+        fail_unless!(~[] == split_no_trailing(~"", |cc| cc == 'z'));
+        fail_unless!(~[~"ok"] == split_no_trailing(~"ok", |cc| cc == 'z'));
+    }
+
+    #[test]
     fn test_lines() {
         let lf = ~"\nMary had a little lamb\nLittle lamb\n";
         let crlf = ~"\r\nMary had a little lamb\r\nLittle lamb\r\n";
 
-        fail_unless!(~[~"", ~"Mary had a little lamb", ~"Little lamb", ~""]
+        fail_unless!(~[~"", ~"Mary had a little lamb", ~"Little lamb"]
                      == lines(lf));
 
-        fail_unless!(~[~"", ~"Mary had a little lamb", ~"Little lamb", ~""]
+        fail_unless!(~[~"", ~"Mary had a little lamb", ~"Little lamb"]
                      == lines_any(lf));
 
         fail_unless!(~[~"\r", ~"Mary had a little lamb\r",
-                       ~"Little lamb\r", ~""]
+                       ~"Little lamb\r"]
             == lines(crlf));
 
-        fail_unless!(~[~"", ~"Mary had a little lamb", ~"Little lamb", ~""]
+        fail_unless!(~[~"", ~"Mary had a little lamb", ~"Little lamb"]
             == lines_any(crlf));
 
-        fail_unless!(~[~""] == lines    (~""));
-        fail_unless!(~[~""] == lines_any(~""));
-        fail_unless!(~[~"",~""] == lines    (~"\n"));
-        fail_unless!(~[~"",~""] == lines_any(~"\n"));
+        fail_unless!(~[] == lines    (~""));
+        fail_unless!(~[] == lines_any(~""));
+        fail_unless!(~[~""] == lines    (~"\n"));
+        fail_unless!(~[~""] == lines_any(~"\n"));
         fail_unless!(~[~"banana"] == lines    (~"banana"));
         fail_unless!(~[~"banana"] == lines_any(~"banana"));
     }
@@ -3359,7 +3426,6 @@ mod tests {
                 0 => fail_unless!("" == x),
                 1 => fail_unless!("Mary had a little lamb" == x),
                 2 => fail_unless!("Little lamb" == x),
-                3 => fail_unless!("" == x),
                 _ => ()
             }
             ii += 1;
