@@ -1,4 +1,4 @@
-fn f<T:&static>(_: T) {}
+fn f<T:'static>(_: T) {}
 
 fn main() {
     let x = @3;
