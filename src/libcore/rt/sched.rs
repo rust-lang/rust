@@ -311,7 +311,7 @@ impl Task {
         };
     }
 
-    static priv fn build_start_wrapper(start: ~fn()) -> ~fn() {
+    priv fn build_start_wrapper(start: ~fn()) -> ~fn() {
         // XXX: The old code didn't have this extra allocation
         let wrapper: ~fn() = || {
             start();

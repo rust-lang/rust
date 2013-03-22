@@ -57,7 +57,7 @@ struct PackageScript {
 }
 
 impl PackageScript {
-    static fn parse(parent: &Path) -> Result<PackageScript, ~str> {
+    fn parse(parent: &Path) -> Result<PackageScript, ~str> {
         let script = parent.push(~"pkg.rs");
 
         if !os::path_exists(&script) {
