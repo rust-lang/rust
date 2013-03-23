@@ -17,7 +17,6 @@ use middle;
 
 use core::float;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
 
@@ -194,7 +193,7 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
             mutbl_map: @mut LinearSet::new(),
             root_map: @mut LinearMap::new(),
             last_use_map: @mut LinearMap::new(),
-            method_map: HashMap(),
+            method_map: @mut LinearMap::new(),
             vtable_map: @mut LinearMap::new(),
             write_guard_map: @mut LinearSet::new(),
             moves_map: @mut LinearSet::new(),

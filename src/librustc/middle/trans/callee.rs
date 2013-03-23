@@ -82,9 +82,12 @@ pub fn trans(bcx: block, expr: @ast::expr) -> Callee {
         }
         ast::expr_field(base, _, _) => {
             match bcx.ccx().maps.method_map.find(&expr.id) {
-                Some(ref origin) => { // An impl method
+                Some(origin) => { // An impl method
+                    // FIXME(#5562): removing this copy causes a segfault
+                    //               before stage2
+                    let origin = /*bad*/ copy *origin;
                     return meth::trans_method_callee(bcx, expr.id,
-                                                     base, (*origin));
+                                                     base, origin);
                 }
                 None => {} // not a method, just a field
             }
@@ -343,11 +346,14 @@ pub fn trans_method_call(in_cx: block,
         expr_ty(in_cx, call_ex),
         |cx| {
             match cx.ccx().maps.method_map.find(&call_ex.id) {
-                Some(ref origin) => {
+                Some(origin) => {
+                    // FIXME(#5562): removing this copy causes a segfault
+                    //               before stage2
+                    let origin = /*bad*/ copy *origin;
                     meth::trans_method_callee(cx,
                                               call_ex.callee_id,
                                               rcvr,
-                                              (*origin))
+                                              origin)
                 }
                 None => {
                     cx.tcx().sess.span_bug(call_ex.span,

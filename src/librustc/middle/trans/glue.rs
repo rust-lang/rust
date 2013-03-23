@@ -402,7 +402,7 @@ pub fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     let mut bcx = bcx;
     let ty_visitor_name = special_idents::ty_visitor;
     fail_unless!(bcx.ccx().tcx.intrinsic_defs.contains_key(&ty_visitor_name));
-    let (trait_id, ty) = bcx.ccx().tcx.intrinsic_defs.get(&ty_visitor_name);
+    let (trait_id, ty) = *bcx.ccx().tcx.intrinsic_defs.get(&ty_visitor_name);
     let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), ty)));
     bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, trait_id);
     build_return(bcx);

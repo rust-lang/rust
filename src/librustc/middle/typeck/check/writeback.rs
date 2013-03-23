@@ -66,7 +66,7 @@ fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
     // Resolve any method map entry
     match fcx.inh.method_map.find(&id) {
         None => {}
-        Some(ref mme) => {
+        Some(mme) => {
             for resolve_type_vars_in_type(fcx, sp, mme.self_arg.ty).each |t| {
                 let method_map = fcx.ccx.method_map;
                 let new_entry = method_map_entry {
