@@ -14,6 +14,6 @@
 fn main() {
 
     static FOO: int = 2;
-    let _v: [int * FOO*3];
+    let _v: [int, ..FOO*3];
 
 }

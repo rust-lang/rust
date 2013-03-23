@@ -223,7 +223,7 @@ pub impl TrieSet {
 
 struct TrieNode<T> {
     count: uint,
-    children: [Child<T> * SIZE]
+    children: [Child<T>, ..SIZE]
 }
 
 impl<T> TrieNode<T> {

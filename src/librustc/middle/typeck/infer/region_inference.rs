@@ -1201,11 +1201,11 @@ struct GraphNode {
     span: span,
     classification: Classification,
     value: GraphNodeValue,
-    head_edge: [uint * 2],
+    head_edge: [uint, ..2],
 }
 
 struct GraphEdge {
-    next_edge: [uint * 2],
+    next_edge: [uint, ..2],
     constraint: Constraint,
     span: span,
 }

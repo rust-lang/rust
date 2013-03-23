@@ -132,10 +132,12 @@ impl_NumStrConv_Integer!(u64)
 
 
 // Special value strings as [u8] consts.
-static inf_buf:          [u8*3] = ['i' as u8, 'n' as u8, 'f' as u8];
-static positive_inf_buf: [u8*4] = ['+' as u8, 'i' as u8, 'n' as u8, 'f' as u8];
-static negative_inf_buf: [u8*4] = ['-' as u8, 'i' as u8, 'n' as u8, 'f' as u8];
-static nan_buf:          [u8*3] = ['N' as u8, 'a' as u8, 'N' as u8];
+static inf_buf:          [u8, ..3] = ['i' as u8, 'n' as u8, 'f' as u8];
+static positive_inf_buf: [u8, ..4] = ['+' as u8, 'i' as u8, 'n' as u8,
+                                      'f' as u8];
+static negative_inf_buf: [u8, ..4] = ['-' as u8, 'i' as u8, 'n' as u8,
+                                      'f' as u8];
+static nan_buf:          [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
 
 /**
  * Converts a number to its string representation as a byte vector.

@@ -24,8 +24,8 @@ fn gradient(orig: Vec2, grad: Vec2, p: Vec2) -> f32 {
 }
 
 struct Noise2DContext {
-    rgradients: [Vec2 * 256],
-    permutations: [int * 256],
+    rgradients: [Vec2, ..256],
+    permutations: [int, ..256],
 }
 
 fn Noise2DContext() -> ~Noise2DContext {
@@ -50,7 +50,7 @@ pub impl Noise2DContext {
     }
 
     #[inline(always)]
-    fn get_gradients(&self, gradients: &mut [Vec2 * 4], origins: &mut [Vec2 * 4], x: f32, y: f32) {
+    fn get_gradients(&self, gradients: &mut [Vec2, ..4], origins: &mut [Vec2, ..4], x: f32, y: f32) {
         let x0f = f32::floor(x);
         let y0f = f32::floor(y);
         let x0 = x0f as int;
