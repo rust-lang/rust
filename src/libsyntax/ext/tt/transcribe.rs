@@ -20,7 +20,6 @@ use parse::lexer::TokenAndSpan;
 
 use core::option;
 use core::vec;
-use std;
 
 /* FIXME #2811: figure out how to have a uniquely linked stack, and change to
    `~` */

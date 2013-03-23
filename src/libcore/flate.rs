@@ -17,10 +17,10 @@ Simple compression
 use libc;
 use libc::{c_void, size_t, c_int};
 use ptr;
-use rand::RngUtil;
 use vec;
 
 #[cfg(test)] use rand;
+#[cfg(test)] use rand::RngUtil;
 
 pub mod rustrt {
     use libc::{c_int, c_void, size_t};

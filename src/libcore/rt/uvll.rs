@@ -32,7 +32,6 @@
 use libc::{size_t, c_int, c_uint, c_void, c_char, uintptr_t};
 use libc::{malloc, free};
 use prelude::*;
-use ptr::to_unsafe_ptr;
 
 pub struct uv_err_t {
     code: c_int,
