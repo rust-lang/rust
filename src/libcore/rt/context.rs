@@ -102,7 +102,7 @@ fn initialize_call_frame(regs: &mut Registers,
 }
 
 #[cfg(target_arch = "x86_64")]
-type Registers = [uint * 22];
+type Registers = [uint, ..22];
 
 #[cfg(target_arch = "x86_64")]
 fn new_regs() -> ~Registers { ~[0, .. 22] }
@@ -137,7 +137,7 @@ fn initialize_call_frame(regs: &mut Registers,
 }
 
 #[cfg(target_arch = "arm")]
-type Registers = [uint * 32];
+type Registers = [uint, ..32];
 
 #[cfg(target_arch = "arm")]
 fn new_regs() -> ~Registers { ~[0, .. 32] }
@@ -156,7 +156,7 @@ fn initialize_call_frame(regs: &mut Registers,
 }
 
 #[cfg(target_arch = "mips")]
-type Registers = [uint * 32];
+type Registers = [uint, ..32];
 
 #[cfg(target_arch = "mips")]
 fn new_regs() -> ~Registers { ~[0, .. 32] }
