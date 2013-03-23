@@ -101,7 +101,7 @@ fn chanmb(i: uint, size: uint, depth: uint) -> Line
 struct Devnull();
 
 impl io::Writer for Devnull {
-    fn write(&self, _b: &[const u8]) {}
+    fn write(&self, _b: &const [u8]) {}
     fn seek(&self, _i: int, _s: io::SeekStyle) {}
     fn tell(&self) -> uint {0_u}
     fn flush(&self) -> int {0}

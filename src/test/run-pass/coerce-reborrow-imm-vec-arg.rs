@@ -14,7 +14,7 @@ fn sum_imm(y: &[int]) -> int {
     sum(y)
 }
 
-fn sum_const(y: &[const int]) -> int {
+fn sum_const(y: &const [int]) -> int {
     sum(y)
 }
 

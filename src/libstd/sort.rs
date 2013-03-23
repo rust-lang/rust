@@ -24,12 +24,12 @@ type Le<T> = &'self fn(v1: &T, v2: &T) -> bool;
  * Has worst case O(n log n) performance, best case O(n), but
  * is not space efficient. This is a stable sort.
  */
-pub fn merge_sort<T:Copy>(v: &[const T], le: Le<T>) -> ~[T] {
+pub fn merge_sort<T:Copy>(v: &const [T], le: Le<T>) -> ~[T] {
     type Slice = (uint, uint);
 
     unsafe {return merge_sort_(v, (0u, len(v)), le);}
 
-    fn merge_sort_<T:Copy>(v: &[const T], slice: Slice, le: Le<T>)
+    fn merge_sort_<T:Copy>(v: &const [T], slice: Slice, le: Le<T>)
         -> ~[T] {
         let begin = slice.first();
         let end = slice.second();
@@ -290,8 +290,10 @@ fn count_run_ascending<T:Copy + Ord>(array: &mut [T]) -> uint {
     return run;
 }
 
-fn gallop_left<T:Copy + Ord>(key: &const T, array: &[const T],
-                            hint: uint) -> uint {
+fn gallop_left<T:Copy + Ord>(key: &const T,
+                             array: &const [T],
+                             hint: uint)
+                          -> uint {
     let size = array.len();
     fail_unless!(size != 0 && hint < size);
 
@@ -339,8 +341,10 @@ fn gallop_left<T:Copy + Ord>(key: &const T, array: &[const T],
     return ofs;
 }
 
-fn gallop_right<T:Copy + Ord>(key: &const T, array: &[const T],
-                            hint: uint) -> uint {
+fn gallop_right<T:Copy + Ord>(key: &const T,
+                              array: &const [T],
+                              hint: uint)
+                           -> uint {
     let size = array.len();
     fail_unless!(size != 0 && hint < size);
 
@@ -709,8 +713,11 @@ impl<T:Copy + Ord> MergeState<T> {
 }
 
 #[inline(always)]
-fn copy_vec<T:Copy>(dest: &mut [T], s1: uint,
-                    from: &[const T], s2: uint, len: uint) {
+fn copy_vec<T:Copy>(dest: &mut [T],
+                    s1: uint,
+                    from: &const [T],
+                    s2: uint,
+                    len: uint) {
     fail_unless!(s1+len <= dest.len() && s2+len <= from.len());
 
     let mut slice = ~[];
@@ -1022,7 +1029,7 @@ mod big_tests {
         tabulate_managed(low, high);
     }
 
-    fn multiplyVec<T:Copy>(arr: &[const T], num: uint) -> ~[T] {
+    fn multiplyVec<T:Copy>(arr: &const [T], num: uint) -> ~[T] {
         let size = arr.len();
         let res = do vec::from_fn(num) |i| {
             arr[i % size]
@@ -1038,7 +1045,7 @@ mod big_tests {
     }
 
     fn tabulate_unique(lo: uint, hi: uint) {
-        fn isSorted<T:Ord>(arr: &[const T]) {
+        fn isSorted<T:Ord>(arr: &const [T]) {
             for uint::range(0, arr.len()-1) |i| {
                 if arr[i] > arr[i+1] {
                     fail!(~"Array not sorted");
@@ -1110,7 +1117,7 @@ mod big_tests {
     }
 
     fn tabulate_managed(lo: uint, hi: uint) {
-        fn isSorted<T:Ord>(arr: &[const @T]) {
+        fn isSorted<T:Ord>(arr: &const [@T]) {
             for uint::range(0, arr.len()-1) |i| {
                 if arr[i] > arr[i+1] {
                     fail!(~"Array not sorted");
