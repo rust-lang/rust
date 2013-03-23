@@ -394,7 +394,7 @@ copying.
 #     Circle(Point, float),   // origin, radius
 #     Rectangle(Point, Size)  // upper-left, dimensions
 # }
-# const tau: float = 6.28f;
+# static tau: float = 6.28f;
 fn compute_area(shape: &Shape) -> float {
     match *shape {
         Circle(_, radius) => 0.5 * tau * radius * radius,
