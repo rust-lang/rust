@@ -38,12 +38,12 @@ struct MemoryRegion { priv opaque: () }
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
 struct Registers {
-    data: [u32 * 16]
+    data: [u32, ..16]
 }
 
 #[cfg(target_arch="mips")]
 struct Registers {
-    data: [u32 * 32]
+    data: [u32, ..32]
 }
 
 #[cfg(target_arch="x86")]
@@ -52,12 +52,12 @@ struct Registers {
 struct Context {
     regs: Registers,
     next: *Context,
-    pad: [u32 * 3]
+    pad: [u32, ..3]
 }
 
 #[cfg(target_arch="x86_64")]
 struct Registers {
-    data: [u64 * 22]
+    data: [u64, ..22]
 }
 
 #[cfg(target_arch="x86_64")]
@@ -80,7 +80,7 @@ struct Task {
     // Public fields
     refcount: intptr_t,                 // 0
     id: TaskID,                         // 4
-    pad: [u32 * 2],                     // 8
+    pad: [u32, ..2],                    // 8
     ctx: Context,                       // 16
     stack_segment: *StackSegment,       // 96
     runtime_sp: uintptr_t,              // 100

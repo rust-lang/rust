@@ -194,7 +194,7 @@ pub mod tests {
 
     #[test]
     pub fn nonzero_size_of_basic() {
-        type Z = [i8 * 0];
+        type Z = [i8, ..0];
         fail_unless!(size_of::<Z>() == 0u);
         fail_unless!(nonzero_size_of::<Z>() == 1u);
         fail_unless!(nonzero_size_of::<uint>() == size_of::<uint>());

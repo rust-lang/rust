@@ -342,7 +342,7 @@ pub mod types {
                     st_mtime_nsec: c_long,
                     st_ctime: time_t,
                     st_ctime_nsec: c_long,
-                    __unused: [c_long * 3],
+                    __unused: [c_long, ..3],
                 }
             }
             pub mod posix08 {
@@ -430,7 +430,7 @@ pub mod types {
                     st_lspare: int32_t,
                     st_birthtime: time_t,
                     st_birthtime_nsec: c_long,
-                    __unused: [uint8_t * 2],
+                    __unused: [uint8_t, ..2],
                 }
             }
             pub mod posix08 {
@@ -631,7 +631,7 @@ pub mod types {
                     st_flags: uint32_t,
                     st_gen: uint32_t,
                     st_lspare: int32_t,
-                    st_qspare: [int64_t * 2],
+                    st_qspare: [int64_t, ..2],
                 }
             }
             pub mod posix08 {
@@ -712,7 +712,7 @@ pub mod types {
                     st_flags: uint32_t,
                     st_gen: uint32_t,
                     st_lspare: int32_t,
-                    st_qspare: [int64_t * 2],
+                    st_qspare: [int64_t, ..2],
                 }
             }
             pub mod posix08 {

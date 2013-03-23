@@ -1920,12 +1920,12 @@ static max_five_b: uint = 67108864u;
 static tag_six_b: uint = 252u;
 
 // Constants used for converting strs to floats
-pub static inf_buf: [u8*3] = ['i' as u8, 'n' as u8, 'f' as u8];
-pub static positive_inf_buf: [u8*4] = ['+' as u8, 'i' as u8,
-                                       'n' as u8, 'f' as u8];
-pub static negative_inf_buf: [u8*4] = ['-' as u8, 'i' as u8,
-                                       'n' as u8, 'f' as u8];
-pub static nan_buf: [u8*3] = ['N' as u8, 'a' as u8, 'N' as u8];
+pub static inf_buf: [u8, ..3] = ['i' as u8, 'n' as u8, 'f' as u8];
+pub static positive_inf_buf: [u8, ..4] = ['+' as u8, 'i' as u8,
+                                          'n' as u8, 'f' as u8];
+pub static negative_inf_buf: [u8, ..4] = ['-' as u8, 'i' as u8,
+                                          'n' as u8, 'f' as u8];
+pub static nan_buf: [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
 
 /**
  * Work with the byte buffer of a string.
