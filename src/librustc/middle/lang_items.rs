@@ -78,7 +78,7 @@ pub enum LangItem {
 }
 
 pub struct LanguageItems {
-    items: [ Option<def_id> * 35 ]
+    items: [Option<def_id>, ..35]
 }
 
 pub impl LanguageItems {
