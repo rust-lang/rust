@@ -549,11 +549,11 @@ use util::ppaux::note_and_explain_region;
 
 use core::cell::{Cell, empty_cell};
 use core::cmp;
+use core::hashmap::linear::{LinearMap, LinearSet};
 use core::result::{Err, Ok, Result};
 use core::to_bytes;
 use core::uint;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::codemap::span;
 
 enum Constraint {
@@ -619,15 +619,19 @@ enum UndoLogEntry {
     Snapshot,
     AddVar(RegionVid),
     AddConstraint(Constraint),
-    AddCombination(CombineMap, TwoRegions)
+    AddCombination(CombineMapType, TwoRegions)
 }
 
-type CombineMap = HashMap<TwoRegions, RegionVid>;
+enum CombineMapType {
+    Lub, Glb
+}
+
+type CombineMap = LinearMap<TwoRegions, RegionVid>;
 
 pub struct RegionVarBindings {
     tcx: ty::ctxt,
     var_spans: ~[span],
-    constraints: HashMap<Constraint, span>,
+    constraints: LinearMap<Constraint, span>,
     lubs: CombineMap,
     glbs: CombineMap,
     skolemization_count: uint,
@@ -654,20 +658,13 @@ pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
         tcx: tcx,
         var_spans: ~[],
         values: empty_cell(),
-        constraints: HashMap(),
-        lubs: CombineMap(),
-        glbs: CombineMap(),
+        constraints: LinearMap::new(),
+        lubs: LinearMap::new(),
+        glbs: LinearMap::new(),
         skolemization_count: 0,
         bound_count: 0,
         undo_log: ~[]
     }
-}
-
-// Note: takes two regions but doesn't care which is `a` and which is
-// `b`!  Not obvious that this is the most efficient way to go about
-// it.
-fn CombineMap() -> CombineMap {
-    return HashMap();
 }
 
 pub impl RegionVarBindings {
@@ -706,8 +703,11 @@ pub impl RegionVarBindings {
               AddConstraint(ref constraint) => {
                 self.constraints.remove(constraint);
               }
-              AddCombination(map, ref regions) => {
-                map.remove(regions);
+              AddCombination(Glb, ref regions) => {
+                self.glbs.remove(regions);
+              }
+              AddCombination(Lub, ref regions) => {
+                self.lubs.remove(regions);
               }
             }
         }
@@ -825,7 +825,7 @@ pub impl RegionVarBindings {
 
           (re_infer(ReVar(*)), _) | (_, re_infer(ReVar(*))) => {
             self.combine_vars(
-                self.lubs, a, b, span,
+                Lub, a, b, span,
                 |this, old_r, new_r| this.make_subregion(span, old_r, new_r))
           }
 
@@ -852,7 +852,7 @@ pub impl RegionVarBindings {
 
           (re_infer(ReVar(*)), _) | (_, re_infer(ReVar(*))) => {
             self.combine_vars(
-                self.glbs, a, b, span,
+                Glb, a, b, span,
                 |this, old_r, new_r| this.make_subregion(span, new_r, old_r))
           }
 
@@ -905,7 +905,7 @@ pub impl RegionVarBindings {
     }
 
     fn combine_vars(&mut self,
-                    combines: CombineMap,
+                    t: CombineMapType,
                     a: Region,
                     b: Region,
                     span: span,
@@ -914,21 +914,35 @@ pub impl RegionVarBindings {
                                 new_r: Region) -> cres<()>)
                  -> cres<Region> {
         let vars = TwoRegions { a: a, b: b };
-        match combines.find(&vars) {
-          Some(c) => Ok(re_infer(ReVar(c))),
-          None => {
-            let c = self.new_region_var(span);
-            combines.insert(vars, c);
-            if self.in_snapshot() {
-                self.undo_log.push(AddCombination(combines, vars));
-            }
-            do relate(self, a, re_infer(ReVar(c))).then {
-                do relate(self, b, re_infer(ReVar(c))).then {
-                    debug!("combine_vars() c=%?", c);
-                    Ok(re_infer(ReVar(c)))
+        let c;
+        {
+            // FIXME (#3850): shouldn't need a scope, nor should this need to be
+            //                done twice to get the maps out
+            {
+                let combines = match t {
+                    Glb => &self.glbs, Lub => &self.lubs
+                };
+                match combines.find(&vars) {
+                  Some(&c) => return Ok(re_infer(ReVar(c))),
+                  None => ()
                 }
             }
-          }
+            c = self.new_region_var(span);
+            {
+                let combines = match t {
+                    Glb => &mut self.glbs, Lub => &mut self.lubs
+                };
+                combines.insert(vars, c);
+            }
+        }
+        if self.in_snapshot() {
+            self.undo_log.push(AddCombination(t, vars));
+        }
+        do relate(self, a, re_infer(ReVar(c))).then {
+            do relate(self, b, re_infer(ReVar(c))).then {
+                debug!("combine_vars() c=%?", c);
+                Ok(re_infer(ReVar(c)))
+            }
         }
     }
 
@@ -1206,11 +1220,7 @@ struct SpannedRegion {
     span: span,
 }
 
-type TwoRegionsMap = HashMap<TwoRegions, ()>;
-
-fn TwoRegionsMap() -> TwoRegionsMap {
-    return HashMap();
-}
+type TwoRegionsMap = LinearSet<TwoRegions>;
 
 pub impl RegionVarBindings {
     fn infer_variable_values(&mut self) -> ~[GraphNodeValue] {
@@ -1239,7 +1249,7 @@ pub impl RegionVarBindings {
 
         // It would be nice to write this using map():
         let mut edges = vec::with_capacity(num_edges);
-        for self.constraints.each |constraint, span| {
+        for self.constraints.each |&(constraint, span)| {
             edges.push(GraphEdge {
                 next_edge: [uint::max_value, uint::max_value],
                 constraint: *constraint,
@@ -1439,7 +1449,7 @@ pub impl RegionVarBindings {
         &mut self,
         graph: &Graph) -> ~[GraphNodeValue]
     {
-        let dup_map = TwoRegionsMap();
+        let mut dup_map = LinearSet::new();
         graph.nodes.mapi(|idx, node| {
             match node.value {
                 Value(_) => {
@@ -1478,11 +1488,11 @@ pub impl RegionVarBindings {
                     match node.classification {
                         Expanding => {
                             self.report_error_for_expanding_node(
-                                graph, dup_map, node_vid);
+                                graph, &mut dup_map, node_vid);
                         }
                         Contracting => {
                             self.report_error_for_contracting_node(
-                                graph, dup_map, node_vid);
+                                graph, &mut dup_map, node_vid);
                         }
                     }
                 }
@@ -1494,17 +1504,17 @@ pub impl RegionVarBindings {
 
     // Used to suppress reporting the same basic error over and over
     fn is_reported(&mut self,
-                   dup_map: TwoRegionsMap,
+                   dup_map: &mut TwoRegionsMap,
                    r_a: Region,
                    r_b: Region)
                 -> bool {
         let key = TwoRegions { a: r_a, b: r_b };
-        !dup_map.insert(key, ())
+        !dup_map.insert(key)
     }
 
     fn report_error_for_expanding_node(&mut self,
                                        graph: &Graph,
-                                       dup_map: TwoRegionsMap,
+                                       dup_map: &mut TwoRegionsMap,
                                        node_idx: RegionVid) {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
@@ -1557,7 +1567,7 @@ pub impl RegionVarBindings {
 
     fn report_error_for_contracting_node(&mut self,
                                          graph: &Graph,
-                                         dup_map: TwoRegionsMap,
+                                         dup_map: &mut TwoRegionsMap,
                                          node_idx: RegionVid) {
         // Errors in contracting nodes result from two upper-bounds
         // that have no intersection.
@@ -1614,9 +1624,9 @@ pub impl RegionVarBindings {
                                 orig_node_idx: RegionVid,
                                 dir: Direction)
                              -> ~[SpannedRegion] {
-        let set = HashMap();
+        let mut set = LinearSet::new();
         let mut stack = ~[orig_node_idx];
-        set.insert(orig_node_idx.to_uint(), ());
+        set.insert(orig_node_idx.to_uint());
         let mut result = ~[];
         while !vec::is_empty(stack) {
             let node_idx = stack.pop();
@@ -1627,7 +1637,7 @@ pub impl RegionVarBindings {
                       Incoming => from_vid,
                       Outgoing => to_vid
                     };
-                    if set.insert(vid.to_uint(), ()) {
+                    if set.insert(vid.to_uint()) {
                         stack.push(vid);
                     }
                   }

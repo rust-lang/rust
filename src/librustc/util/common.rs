@@ -14,8 +14,8 @@ use syntax::ast;
 use syntax::codemap::{span};
 use syntax::visit;
 
+use core::hashmap::linear::LinearSet;
 use core::str;
-use std::oldmap::HashMap;
 use std;
 
 pub fn time<T>(do_it: bool, what: ~str, thunk: &fn() -> T) -> T {
@@ -54,8 +54,6 @@ pub fn indenter() -> _indenter {
     debug!(">>");
     _indenter(())
 }
-
-pub type flag = HashMap<~str, ()>;
 
 pub fn field_expr(f: ast::field) -> @ast::expr { return f.node.expr; }
 
@@ -116,7 +114,7 @@ pub fn pluralize(n: uint, +s: ~str) -> ~str {
 }
 
 // A set of node IDs (used to keep track of which node IDs are for statements)
-pub type stmt_set = HashMap<ast::node_id, ()>;
+pub type stmt_set = @mut LinearSet<ast::node_id>;
 
 //
 // Local Variables:

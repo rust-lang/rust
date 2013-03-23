@@ -55,7 +55,7 @@ pub fn expr_is_non_moving_lvalue(cx: @MatchCheckCtxt, expr: @expr) -> bool {
         return false;
     }
 
-    !cx.moves_map.contains_key(&expr.id)
+    !cx.moves_map.contains(&expr.id)
 }
 
 pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
@@ -303,8 +303,8 @@ pub fn pat_ctor_id(cx: @MatchCheckCtxt, p: @pat) -> Option<ctor> {
       pat_wild => { None }
       pat_ident(_, _, _) | pat_enum(_, _) => {
         match cx.tcx.def_map.find(&pat.id) {
-          Some(def_variant(_, id)) => Some(variant(id)),
-          Some(def_const(did)) => {
+          Some(&def_variant(_, id)) => Some(variant(id)),
+          Some(&def_const(did)) => {
             let const_expr = lookup_const_by_id(cx.tcx, did).get();
             Some(val(eval_const_expr(cx.tcx, const_expr)))
           }
@@ -317,7 +317,7 @@ pub fn pat_ctor_id(cx: @MatchCheckCtxt, p: @pat) -> Option<ctor> {
       }
       pat_struct(*) => {
         match cx.tcx.def_map.find(&pat.id) {
-          Some(def_variant(_, id)) => Some(variant(id)),
+          Some(&def_variant(_, id)) => Some(variant(id)),
           _ => Some(single)
         }
       }
@@ -339,7 +339,7 @@ pub fn is_wild(cx: @MatchCheckCtxt, p: @pat) -> bool {
       pat_wild => { true }
       pat_ident(_, _, _) => {
         match cx.tcx.def_map.find(&pat.id) {
-          Some(def_variant(_, _)) | Some(def_const(*)) => { false }
+          Some(&def_variant(_, _)) | Some(&def_const(*)) => { false }
           _ => { true }
         }
       }
@@ -490,14 +490,14 @@ pub fn specialize(cx: @MatchCheckCtxt,
             }
             pat_ident(_, _, _) => {
                 match cx.tcx.def_map.find(&pat_id) {
-                    Some(def_variant(_, id)) => {
+                    Some(&def_variant(_, id)) => {
                         if variant(id) == ctor_id {
                             Some(vec::from_slice(r.tail()))
                         } else {
                             None
                         }
                     }
-                    Some(def_const(did)) => {
+                    Some(&def_const(did)) => {
                         let const_expr =
                             lookup_const_by_id(cx.tcx, did).get();
                         let e_v = eval_const_expr(cx.tcx, const_expr);
@@ -527,7 +527,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                 }
             }
             pat_enum(_, args) => {
-                match cx.tcx.def_map.get(&pat_id) {
+                match *cx.tcx.def_map.get(&pat_id) {
                     def_const(did) => {
                         let const_expr =
                             lookup_const_by_id(cx.tcx, did).get();
@@ -569,7 +569,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
             }
             pat_struct(_, ref flds, _) => {
                 // Is this a struct or an enum variant?
-                match cx.tcx.def_map.get(&pat_id) {
+                match *cx.tcx.def_map.get(&pat_id) {
                     def_variant(_, variant_id) => {
                         if variant(variant_id) == ctor_id {
                             // FIXME #4731: Is this right? --pcw
@@ -714,12 +714,12 @@ pub fn check_fn(cx: @MatchCheckCtxt,
 
 pub fn is_refutable(cx: @MatchCheckCtxt, pat: &pat) -> bool {
     match cx.tcx.def_map.find(&pat.id) {
-      Some(def_variant(enum_id, _)) => {
+      Some(&def_variant(enum_id, _)) => {
         if vec::len(*ty::enum_variants(cx.tcx, enum_id)) != 1u {
             return true;
         }
       }
-      Some(def_const(*)) => return true,
+      Some(&def_const(*)) => return true,
       _ => ()
     }
 
@@ -766,7 +766,7 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
                     by_ref_span = Some(span);
                 }
                 bind_infer => {
-                    if cx.moves_map.contains_key(&id) {
+                    if cx.moves_map.contains(&id) {
                         any_by_move = true;
                     }
                 }
@@ -806,7 +806,7 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
             if pat_is_binding(def_map, p) {
                 match p.node {
                     pat_ident(_, _, sub) => {
-                        if cx.moves_map.contains_key(&p.id) {
+                        if cx.moves_map.contains(&p.id) {
                             check_move(p, sub);
                         }
                     }
@@ -832,7 +832,7 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
                                 behind_bad_pointer);
 
                         if behind_bad_pointer &&
-                            cx.moves_map.contains_key(&pat.id)
+                            cx.moves_map.contains(&pat.id)
                         {
                             cx.tcx.sess.span_err(
                                 pat.span,

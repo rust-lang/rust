@@ -216,8 +216,8 @@ use middle::typeck::check::{DerefArgs, DoDerefArgs, DontDerefArgs};
 use util::ppaux;
 use util::common::indenter;
 
+use core::hashmap::linear::{LinearSet, LinearMap};
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast::*;
 use syntax::ast_util;
 use syntax::visit;
@@ -242,14 +242,14 @@ pub struct CaptureVar {
     mode: CaptureMode // How variable is being accessed
 }
 
-pub type CaptureMap = HashMap<node_id, @[CaptureVar]>;
+pub type CaptureMap = @mut LinearMap<node_id, @[CaptureVar]>;
 
-pub type MovesMap = HashMap<node_id, ()>;
+pub type MovesMap = @mut LinearSet<node_id>;
 
 /**
  * For each variable which will be moved, links to the
  * expression */
-pub type VariableMovesMap = HashMap<node_id, @expr>;
+pub type VariableMovesMap = @mut LinearMap<node_id, @expr>;
 
 /** See the section Output on the module comment for explanation. */
 pub struct MoveMaps {
@@ -260,7 +260,7 @@ pub struct MoveMaps {
 
 struct VisitContext {
     tcx: ty::ctxt,
-    method_map: HashMap<node_id,method_map_entry>,
+    method_map: method_map,
     move_maps: MoveMaps
 }
 
@@ -282,9 +282,9 @@ pub fn compute_moves(tcx: ty::ctxt,
         tcx: tcx,
         method_map: method_map,
         move_maps: MoveMaps {
-            moves_map: HashMap(),
-            variable_moves_map: HashMap(),
-            capture_map: HashMap()
+            moves_map: @mut LinearSet::new(),
+            variable_moves_map: @mut LinearMap::new(),
+            capture_map: @mut LinearMap::new()
         }
     };
     visit::visit_crate(*crate, visit_cx, visitor);
@@ -402,7 +402,7 @@ pub impl VisitContext {
                expr_mode);
 
         match expr_mode {
-            MoveInWhole => { self.move_maps.moves_map.insert(expr.id, ()); }
+            MoveInWhole => { self.move_maps.moves_map.insert(expr.id); }
             MoveInPart(_) | Read => {}
         }
 
@@ -410,7 +410,7 @@ pub impl VisitContext {
         // those adjustments is to take a reference, then it's only
         // reading the underlying expression, not moving it.
         let comp_mode = match self.tcx.adjustments.find(&expr.id) {
-            Some(@ty::AutoDerefRef(
+            Some(&@ty::AutoDerefRef(
                 ty::AutoDerefRef {
                     autoref: Some(_), _})) => Read,
             _ => expr_mode.component_mode(expr)
@@ -725,7 +725,7 @@ pub impl VisitContext {
             };
 
             match mode {
-                MoveInWhole => { self.move_maps.moves_map.insert(id, ()); }
+                MoveInWhole => { self.move_maps.moves_map.insert(id); }
                 MoveInPart(_) | Read => {}
             }
         }
@@ -795,7 +795,7 @@ pub impl VisitContext {
             for arm.pats.each |pat| {
                 let mut found = false;
                 do pat_bindings(self.tcx.def_map, *pat) |_, node_id, _, _| {
-                    if moves_map.contains_key(&node_id) {
+                    if moves_map.contains(&node_id) {
                         found = true;
                     }
                 }
