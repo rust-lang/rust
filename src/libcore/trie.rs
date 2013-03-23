@@ -12,7 +12,6 @@
 
 use prelude::*;
 
-// FIXME: #3469: need to manually update TrieNode when SHIFT changes
 // FIXME: #5244: need to manually update the TrieNode constructor
 const SHIFT: uint = 4;
 const SIZE: uint = 1 << SHIFT;
@@ -162,12 +161,15 @@ pub struct TrieSet {
 
 impl BaseIter<uint> for TrieSet {
     /// Visit all values in order
+    #[inline(always)]
     fn each(&self, f: &fn(&uint) -> bool) { self.map.each_key(f) }
+    #[inline(always)]
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 impl ReverseIter<uint> for TrieSet {
     /// Visit all values in reverse order
+    #[inline(always)]
     fn each_reverse(&self, f: &fn(&uint) -> bool) {
         self.map.each_key_reverse(f)
     }
@@ -189,7 +191,7 @@ impl Mutable for TrieSet {
     fn clear(&mut self) { self.map.clear() }
 }
 
-impl TrieSet {
+pub impl TrieSet {
     /// Create an empty TrieSet
     #[inline(always)]
     fn new() -> TrieSet {
@@ -215,7 +217,7 @@ impl TrieSet {
 
 struct TrieNode<T> {
     count: uint,
-    children: [Child<T> * 16] // FIXME: #3469: can't use the SIZE constant yet
+    children: [Child<T> * SIZE]
 }
 
 impl<T> TrieNode<T> {
@@ -301,7 +303,6 @@ fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
         added = insert(&mut x.count, &mut x.children[chunk(key, idx)], key,
                        value, idx + 1);
         Internal(x)
-
       }
       Nothing => {
         *count += 1;
