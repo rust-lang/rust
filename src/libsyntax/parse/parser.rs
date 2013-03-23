@@ -81,7 +81,7 @@ use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
 use parse::obsolete::{ObsoleteMode, ObsoleteImplicitSelf};
 use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
 use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
-use parse::obsolete::{ObsoleteConstItem};
+use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -825,7 +825,7 @@ pub impl Parser {
 
     fn maybe_parse_fixed_vstore(&self) -> Option<@ast::expr> {
         if self.eat(&token::BINOP(token::STAR)) {
-            // XXX: Obsolete; remove after snapshot.
+            self.obsolete(*self.last_span, ObsoleteFixedLengthVectorType);
             Some(self.parse_expr())
         } else if *self.token == token::COMMA &&
                 self.look_ahead(1) == token::DOTDOT {
