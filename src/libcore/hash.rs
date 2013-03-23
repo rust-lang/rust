@@ -65,7 +65,7 @@ impl<A:Hash> HashUtil for A {
 
 /// Streaming hash-functions should implement this.
 pub trait Streaming {
-    fn input(&self, (&[const u8]));
+    fn input(&self, (&const [u8]));
     // These can be refactored some when we have default methods.
     fn result_bytes(&self) -> ~[u8];
     fn result_str(&self) -> ~str;
@@ -221,7 +221,7 @@ impl io::Writer for SipState {
 
     // Methods for io::writer
     #[inline(always)]
-    fn write(&self, msg: &[const u8]) {
+    fn write(&self, msg: &const [u8]) {
 
         let length = msg.len();
         self.length += length;
@@ -299,7 +299,7 @@ impl io::Writer for SipState {
 impl Streaming for SipState {
 
     #[inline(always)]
-    fn input(&self, buf: &[const u8]) {
+    fn input(&self, buf: &const [u8]) {
         self.write(buf);
     }
 
