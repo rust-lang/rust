@@ -139,7 +139,7 @@ fn add_pkg_module(ctx: @mut ReadyCtx, m: ast::_mod) -> ast::_mod {
     let item = quote_item! (
         mod __pkg {
             extern mod rustpkg (vers="0.6");
-            const listeners : &[rustpkg::Listener] = $listeners;
+            static listeners : &[rustpkg::Listener] = $listeners;
             #[main]
             fn main() {
                 rustpkg::run(listeners);

@@ -749,7 +749,7 @@ pub fn Decoder(json: Json) -> Decoder {
     Decoder { json: json, stack: ~[] }
 }
 
-priv impl Decoder/&self {
+priv impl Decoder<'self> {
     fn peek(&self) -> &'self Json {
         if vec::uniq_len(&const self.stack) == 0 {
             self.stack.push(&self.json);
@@ -765,7 +765,7 @@ priv impl Decoder/&self {
     }
 }
 
-impl serialize::Decoder for Decoder/&self {
+impl serialize::Decoder for Decoder<'self> {
     fn read_nil(&self) -> () {
         debug!("read_nil");
         match *self.pop() {

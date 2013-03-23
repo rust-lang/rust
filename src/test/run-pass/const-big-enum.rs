@@ -14,7 +14,7 @@ enum Foo {
     Quux(u64, u16)
 }
 
-const X: Foo = Baz;
+static X: Foo = Baz;
 
 pub fn main() {
     match X {
@@ -34,5 +34,5 @@ pub fn main() {
     }
 }
 
-const Y: Foo = Bar(2654435769);
-const Z: Foo = Quux(0x123456789abcdef0, 0x1234);
+static Y: Foo = Bar(2654435769);
+static Z: Foo = Quux(0x123456789abcdef0, 0x1234);

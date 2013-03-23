@@ -62,23 +62,23 @@ use syntax::ast;
 
 use core::vec;
 
-pub const resolve_nested_tvar: uint = 0b0000000001;
-pub const resolve_rvar: uint        = 0b0000000010;
-pub const resolve_ivar: uint        = 0b0000000100;
-pub const resolve_fvar: uint        = 0b0000001000;
-pub const resolve_fnvar: uint       = 0b0000010000;
-pub const resolve_all: uint         = 0b0000011111;
-pub const force_tvar: uint          = 0b0000100000;
-pub const force_rvar: uint          = 0b0001000000;
-pub const force_ivar: uint          = 0b0010000000;
-pub const force_fvar: uint          = 0b0100000000;
-pub const force_fnvar: uint         = 0b1000000000;
-pub const force_all: uint           = 0b1111100000;
+pub static resolve_nested_tvar: uint = 0b0000000001;
+pub static resolve_rvar: uint        = 0b0000000010;
+pub static resolve_ivar: uint        = 0b0000000100;
+pub static resolve_fvar: uint        = 0b0000001000;
+pub static resolve_fnvar: uint       = 0b0000010000;
+pub static resolve_all: uint         = 0b0000011111;
+pub static force_tvar: uint          = 0b0000100000;
+pub static force_rvar: uint          = 0b0001000000;
+pub static force_ivar: uint          = 0b0010000000;
+pub static force_fvar: uint          = 0b0100000000;
+pub static force_fnvar: uint         = 0b1000000000;
+pub static force_all: uint           = 0b1111100000;
 
-pub const not_regions: uint         = !(force_rvar | resolve_rvar);
+pub static not_regions: uint         = !(force_rvar | resolve_rvar);
 
-pub const try_resolve_tvar_shallow: uint = 0;
-pub const resolve_and_force_all_but_regions: uint =
+pub static try_resolve_tvar_shallow: uint = 0;
+pub static resolve_and_force_all_but_regions: uint =
     (resolve_all | force_all) & not_regions;
 
 pub struct ResolveState {

@@ -16,13 +16,13 @@ use parse::token::Token;
 use core::prelude::*;
 
 /// Unary operators have higher precedence than binary
-pub const unop_prec: uint = 100u;
+pub static unop_prec: uint = 100u;
 
 /**
  * Precedence of the `as` operator, which is a binary operator
  * but is not represented in the precedence table.
  */
-pub const as_prec: uint = 11u;
+pub static as_prec: uint = 11u;
 
 /**
  * Maps a token to a record specifying the corresponding binary

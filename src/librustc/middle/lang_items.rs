@@ -255,10 +255,10 @@ pub impl LanguageItems {
     }
 }
 
-fn LanguageItemCollector(crate: @crate,
-                         session: Session,
-                         items: &'r mut LanguageItems)
-                      -> LanguageItemCollector/&r {
+fn LanguageItemCollector<'r>(crate: @crate,
+                             session: Session,
+                             items: &'r mut LanguageItems)
+                          -> LanguageItemCollector<'r> {
     let item_refs = HashMap();
 
     item_refs.insert(@~"const", ConstTraitLangItem as uint);
@@ -320,7 +320,7 @@ struct LanguageItemCollector {
     item_refs: HashMap<@~str, uint>,
 }
 
-pub impl LanguageItemCollector/&self {
+pub impl<'self> LanguageItemCollector<'self> {
     fn match_and_collect_meta_item(&self, item_def_id: def_id,
                                    meta_item: @meta_item) {
         match meta_item.node {

@@ -10,8 +10,8 @@
 
 extern fn foopy() {}
 
-const f: *u8 = foopy;
-const s: S = S { f: foopy };
+static f: *u8 = foopy;
+static s: S = S { f: foopy };
 
 struct S {
     f: *u8

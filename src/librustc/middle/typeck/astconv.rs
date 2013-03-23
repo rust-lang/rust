@@ -202,8 +202,8 @@ pub fn ast_path_to_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
     ty_param_substs_and_ty { substs: substs, ty: ty }
 }
 
-pub const NO_REGIONS: uint = 1;
-pub const NO_TPS: uint = 2;
+pub static NO_REGIONS: uint = 1;
+pub static NO_TPS: uint = 2;
 
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type. `getter` is a function that returns the type

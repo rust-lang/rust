@@ -16,9 +16,9 @@ use ptr;
 
 pub mod raw {
 
-    pub const RC_EXCHANGE_UNIQUE : uint = (-1) as uint;
-    pub const RC_MANAGED_UNIQUE : uint = (-2) as uint;
-    pub const RC_IMMORTAL : uint = 0x77777777;
+    pub static RC_EXCHANGE_UNIQUE : uint = (-1) as uint;
+    pub static RC_MANAGED_UNIQUE : uint = (-2) as uint;
+    pub static RC_IMMORTAL : uint = 0x77777777;
 
     use intrinsic::TyDesc;
 

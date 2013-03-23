@@ -132,8 +132,8 @@ pub struct def_id {
     node: node_id,
 }
 
-pub const local_crate: crate_num = 0;
-pub const crate_node_id: node_id = 0;
+pub static local_crate: crate_num = 0;
+pub static crate_node_id: node_id = 0;
 
 #[auto_encode]
 #[auto_decode]

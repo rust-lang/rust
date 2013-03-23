@@ -313,7 +313,7 @@ impl RngUtil for @Rng {
         let u1 = self.next() as f64;
         let u2 = self.next() as f64;
         let u3 = self.next() as f64;
-        const scale : f64 = (u32::max_value as f64) + 1.0f64;
+        static scale : f64 = (u32::max_value as f64) + 1.0f64;
         return ((u1 / scale + u2) / scale + u3) / scale;
     }
 

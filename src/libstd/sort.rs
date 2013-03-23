@@ -177,9 +177,9 @@ impl<T:Copy + Ord + Eq> Sort for &'self mut [T] {
     fn qsort(self) { quick_sort3(self); }
 }
 
-const MIN_MERGE: uint = 64;
-const MIN_GALLOP: uint = 7;
-const INITIAL_TMP_STORAGE: uint = 128;
+static MIN_MERGE: uint = 64;
+static MIN_GALLOP: uint = 7;
+static INITIAL_TMP_STORAGE: uint = 128;
 
 pub fn tim_sort<T:Copy + Ord>(array: &mut [T]) {
     let size = array.len();
@@ -1191,7 +1191,7 @@ mod big_tests {
     }
 
     #[unsafe_destructor]
-    impl Drop for LVal/&self {
+    impl<'self> Drop for LVal<'self> {
         fn finalize(&self) {
             let x = unsafe { task::local_data::local_data_get(self.key) };
             match x {
@@ -1205,17 +1205,17 @@ mod big_tests {
         }
     }
 
-    impl Ord for LVal/&self {
-        fn lt(&self, other: &'a LVal/&self) -> bool {
+    impl<'self> Ord for LVal<'self> {
+        fn lt(&self, other: &'a LVal<'self>) -> bool {
             (*self).val < other.val
         }
-        fn le(&self, other: &'a LVal/&self) -> bool {
+        fn le(&self, other: &'a LVal<'self>) -> bool {
             (*self).val <= other.val
         }
-        fn gt(&self, other: &'a LVal/&self) -> bool {
+        fn gt(&self, other: &'a LVal<'self>) -> bool {
             (*self).val > other.val
         }
-        fn ge(&self, other: &'a LVal/&self) -> bool {
+        fn ge(&self, other: &'a LVal<'self>) -> bool {
             (*self).val >= other.val
         }
     }

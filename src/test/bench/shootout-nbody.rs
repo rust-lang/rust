@@ -167,10 +167,10 @@ pub mod NBodySystem {
 pub mod Body {
     use Body;
 
-    pub const PI: float = 3.141592653589793;
-    pub const SOLAR_MASS: float = 39.478417604357432;
+    pub static PI: float = 3.141592653589793;
+    pub static SOLAR_MASS: float = 39.478417604357432;
     // was 4 * PI * PI originally
-    pub const DAYS_PER_YEAR: float = 365.24;
+    pub static DAYS_PER_YEAR: float = 365.24;
 
     pub struct Props {
         x: float,

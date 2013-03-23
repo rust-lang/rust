@@ -153,7 +153,7 @@ pub impl Sudoku {
 // Stores available colors as simple bitfield, bit 0 is always unset
 struct Colors(u16);
 
-const heads: u16 = (1u16 << 10) - 1; /* bits 9..0 */
+static heads: u16 = (1u16 << 10) - 1; /* bits 9..0 */
 
 impl Colors {
     fn new(start_color: u8) -> Colors {
@@ -182,7 +182,7 @@ impl Colors {
     }
 }
 
-const default_sudoku: [[u8 * 9] * 9] = [
+static default_sudoku: [[u8 * 9] * 9] = [
          /* 0    1    2    3    4    5    6    7    8    */
   /* 0 */  [0u8, 4u8, 0u8, 6u8, 0u8, 0u8, 0u8, 3u8, 2u8],
   /* 1 */  [0u8, 0u8, 8u8, 0u8, 2u8, 0u8, 0u8, 0u8, 0u8],
@@ -196,7 +196,7 @@ const default_sudoku: [[u8 * 9] * 9] = [
 ];
 
 #[cfg(test)]
-const default_solution: [[u8 * 9] * 9] = [
+static default_solution: [[u8 * 9] * 9] = [
          /* 0    1    2    3    4    5    6    7    8    */
   /* 0 */  [1u8, 4u8, 9u8, 6u8, 7u8, 5u8, 8u8, 3u8, 2u8],
   /* 1 */  [5u8, 3u8, 8u8, 1u8, 2u8, 9u8, 7u8, 4u8, 6u8],

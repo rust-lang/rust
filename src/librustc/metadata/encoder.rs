@@ -1313,7 +1313,7 @@ fn encode_hash(ebml_w: writer::Encoder, hash: &str) {
 }
 
 // NB: Increment this as you change the metadata encoding version.
-pub const metadata_encoding_version : &'static [u8] =
+pub static metadata_encoding_version : &'static [u8] =
     &[0x72, //'r' as u8,
       0x75, //'u' as u8,
       0x73, //'s' as u8,

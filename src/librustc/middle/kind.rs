@@ -58,7 +58,7 @@ use syntax::{visit, ast_util};
 
 use core::hashmap::linear::LinearSet;
 
-pub const try_adding: &'static str = "Try adding a move";
+pub static try_adding: &'static str = "Try adding a move";
 
 pub type rval_map = HashMap<node_id, ()>;
 
@@ -481,7 +481,7 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
 }
 
 /// This is rather subtle.  When we are casting a value to a
-/// instantiated trait like `a as trait/&r`, regionck already ensures
+/// instantiated trait like `a as trait<'r>`, regionck already ensures
 /// that any borrowed pointers that appear in the type of `a` are
 /// bounded by `&r`.  However, it is possible that there are *type
 /// parameters* in the type of `a`, and those *type parameters* may

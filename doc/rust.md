@@ -206,7 +206,7 @@ The keywords are the following strings:
 ~~~~~~~~ {.keyword}
 as
 break
-const copy
+copy
 do drop
 else enum extern
 false fn for
@@ -1099,7 +1099,7 @@ const_item : "const" ident ':' type '=' expr ';' ;
 
 A *constant* is a named value stored in read-only memory in a crate.
 The value bound to a constant is evaluated at compile time.
-Constants are declared with the `const` keyword.
+Constants are declared with the `static` keyword.
 A constant item must have an expression giving its definition.
 The definition expression of a constant is limited to expression forms that can be evaluated at compile time.
 
@@ -1108,18 +1108,18 @@ The derived types are borrowed pointers, static arrays, tuples, and structs.
 Borrowed pointers must be have the `'static` lifetime.
 
 ~~~~
-const bit1: uint = 1 << 0;
-const bit2: uint = 1 << 1;
+static bit1: uint = 1 << 0;
+static bit2: uint = 1 << 1;
 
-const bits: [uint * 2] = [bit1, bit2];
-const string: &'static str = "bitstring";
+static bits: [uint, ..2] = [bit1, bit2];
+static string: &'static str = "bitstring";
 
 struct BitsNStrings {
-    mybits: [uint *2],
+    mybits: [uint, ..2],
     mystring: &'self str
 }
 
-const bits_n_strings: BitsNStrings<'static> = BitsNStrings {
+static bits_n_strings: BitsNStrings<'static> = BitsNStrings {
     mybits: bits,
     mystring: string
 };
@@ -1206,10 +1206,10 @@ For example:
 
 ~~~~
 trait Num {
-    static fn from_int(n: int) -> Self;
+    fn from_int(n: int) -> Self;
 }
 impl Num for float {
-    static fn from_int(n: int) -> float { n as float }
+    fn from_int(n: int) -> float { n as float }
 }
 let x: float = Num::from_int(42);
 ~~~~

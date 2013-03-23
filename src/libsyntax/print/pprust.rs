@@ -92,10 +92,10 @@ pub fn rust_printer(writer: @io::Writer, intr: @ident_interner) -> @ps {
     };
 }
 
-pub const indent_unit: uint = 4u;
-pub const match_indent_unit: uint = 2u;
+pub static indent_unit: uint = 4u;
+pub static match_indent_unit: uint = 2u;
 
-pub const default_columns: uint = 78u;
+pub static default_columns: uint = 78u;
 
 // Requires you to pass an input filename and reader so that
 // it can scan the input text for comments and literals to

@@ -16,7 +16,7 @@ pub use self::inst::pow;
 
 mod inst {
     pub type T = int;
-    pub const bits: uint = ::uint::bits;
+    pub static bits: uint = ::uint::bits;
 
     /// Returns `base` raised to the power of `exponent`
     pub fn pow(base: int, exponent: uint) -> int {

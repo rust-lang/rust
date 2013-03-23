@@ -44,14 +44,14 @@ pub mod BigDigit {
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "arm")]
     #[cfg(target_arch = "mips")]
-    pub const bits: uint = 16;
+    pub static bits: uint = 16;
 
     #[cfg(target_arch = "x86_64")]
-    pub const bits: uint = 32;
+    pub static bits: uint = 32;
 
-    pub const base: uint = 1 << bits;
-    priv const hi_mask: uint = (-1 as uint) << bits;
-    priv const lo_mask: uint = (-1 as uint) >> bits;
+    pub static base: uint = 1 << bits;
+    priv static hi_mask: uint = (-1 as uint) << bits;
+    priv static lo_mask: uint = (-1 as uint) >> bits;
 
     priv fn get_hi(n: uint) -> BigDigit { (n >> bits) as BigDigit }
     priv fn get_lo(n: uint) -> BigDigit { (n & lo_mask) as BigDigit }
@@ -1046,9 +1046,9 @@ mod biguint_tests {
         fail_unless!(BigUint::new(~[0, 0, -1]).to_uint() == uint::max_value);
     }
 
-    const sum_triples: &'static [(&'static [BigDigit],
-                                 &'static [BigDigit],
-                                 &'static [BigDigit])] = &[
+    static sum_triples: &'static [(&'static [BigDigit],
+                                   &'static [BigDigit],
+                                   &'static [BigDigit])] = &[
         (&[],          &[],       &[]),
         (&[],          &[ 1],     &[ 1]),
         (&[ 1],        &[ 1],     &[ 2]),
@@ -1086,9 +1086,9 @@ mod biguint_tests {
         }
     }
 
-    const mul_triples: &'static [(&'static [BigDigit],
-                                 &'static [BigDigit],
-                                 &'static [BigDigit])] = &[
+    static mul_triples: &'static [(&'static [BigDigit],
+                                   &'static [BigDigit],
+                                   &'static [BigDigit])] = &[
         (&[],               &[],               &[]),
         (&[],               &[ 1],             &[]),
         (&[ 2],             &[],               &[]),
@@ -1112,10 +1112,10 @@ mod biguint_tests {
         (&[ 0,  0,  1],     &[ 0,  0,  0,  1], &[0, 0,  0,  0,  0,  1])
     ];
 
-    const divmod_quadruples: &'static [(&'static [BigDigit],
-                                       &'static [BigDigit],
-                                       &'static [BigDigit],
-                                       &'static [BigDigit])]
+    static divmod_quadruples: &'static [(&'static [BigDigit],
+                                         &'static [BigDigit],
+                                         &'static [BigDigit],
+                                         &'static [BigDigit])]
         = &[
             (&[ 1],        &[ 2], &[],               &[1]),
             (&[ 1,  1],    &[ 2], &[-1/2+1],         &[1]),
@@ -1400,9 +1400,9 @@ mod bigint_tests {
         ).to_uint() == 0);
     }
 
-    const sum_triples: &'static [(&'static [BigDigit],
-                                 &'static [BigDigit],
-                                 &'static [BigDigit])] = &[
+    static sum_triples: &'static [(&'static [BigDigit],
+                                   &'static [BigDigit],
+                                   &'static [BigDigit])] = &[
         (&[],          &[],       &[]),
         (&[],          &[ 1],     &[ 1]),
         (&[ 1],        &[ 1],     &[ 2]),
@@ -1452,9 +1452,9 @@ mod bigint_tests {
         }
     }
 
-    const mul_triples: &'static [(&'static [BigDigit],
-                                 &'static [BigDigit],
-                                 &'static [BigDigit])] = &[
+    static mul_triples: &'static [(&'static [BigDigit],
+                                   &'static [BigDigit],
+                                   &'static [BigDigit])] = &[
         (&[],               &[],               &[]),
         (&[],               &[ 1],             &[]),
         (&[ 2],             &[],               &[]),
@@ -1478,10 +1478,10 @@ mod bigint_tests {
         (&[ 0,  0,  1],     &[ 0,  0,  0,  1], &[0, 0,  0,  0,  0,  1])
     ];
 
-    const divmod_quadruples: &'static [(&'static [BigDigit],
-                                       &'static [BigDigit],
-                                       &'static [BigDigit],
-                                       &'static [BigDigit])]
+    static divmod_quadruples: &'static [(&'static [BigDigit],
+                                         &'static [BigDigit],
+                                         &'static [BigDigit],
+                                         &'static [BigDigit])]
         = &[
             (&[ 1],        &[ 2], &[],               &[1]),
             (&[ 1,  1],    &[ 2], &[-1/2+1],         &[1]),

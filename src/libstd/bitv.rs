@@ -877,7 +877,7 @@ mod tests {
     use core::vec;
     use core::rand;
 
-    const bench_bits : uint = 1 << 14;
+    static bench_bits : uint = 1 << 14;
 
     #[test]
     pub fn test_to_str() {
