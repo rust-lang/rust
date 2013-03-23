@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:fail
+// xfail-test - issue #5512, fails but exits with 0
 
-extern mod std;
-use std::oldmap;
-use std::oldmap::HashMap;
+// error-pattern:fail
 
 fn main() {
     let count = @mut 0u;
-    let map = oldmap::HashMap();
+    let mut map = core::hashmap::linear::LinearMap::new();
     let mut arr = ~[];
     for uint::range(0u, 10u) |i| {
         arr += ~[@~"key stuff"];
