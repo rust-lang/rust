@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use option::*;
-use comm::{GenericPort, GenericChan};
-
 pub mod file;
 
 // FIXME #5370 Strongly want this to be StreamError(&mut Stream)

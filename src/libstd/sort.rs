@@ -725,8 +725,6 @@ fn copy_vec<T:Copy>(dest: &mut [T], s1: uint,
 
 #[cfg(test)]
 mod test_qsort3 {
-    use core::prelude::*;
-
     use sort::*;
 
     use core::vec;
@@ -770,8 +768,6 @@ mod test_qsort3 {
 
 #[cfg(test)]
 mod test_qsort {
-    use core::prelude::*;
-
     use sort::*;
 
     use core::int;

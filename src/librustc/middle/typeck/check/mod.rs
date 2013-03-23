@@ -1328,7 +1328,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                   sugar: ast::CallSugar) {
         // Index expressions need to be handled separately, to inform them
         // that they appear in call position.
-        let mut bot = check_expr(fcx, f);
+        let mut _bot = check_expr(fcx, f);
         check_call_or_method(fcx,
                              sp,
                              call_expr_id,

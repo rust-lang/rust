@@ -60,7 +60,6 @@ use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::rscope::{in_binding_rscope};
 use middle::typeck::rscope::{region_scope, type_rscope, RegionError};
-use middle::typeck::{CrateCtxt};
 
 use core::result;
 use core::vec;
