@@ -81,7 +81,7 @@ fn run_rfail_test(config: config, props: TestProps, testfile: &Path) {
     };
 
     // The value our Makefile configures valgrind to return on failure
-    const valgrind_err: int = 100;
+    static valgrind_err: int = 100;
     if ProcRes.status == valgrind_err {
         fatal_ProcRes(~"run-fail test isn't valgrind-clean!", ProcRes);
     }
@@ -92,7 +92,7 @@ fn run_rfail_test(config: config, props: TestProps, testfile: &Path) {
 
 fn check_correct_failure_status(ProcRes: ProcRes) {
     // The value the rust runtime returns on failure
-    const rust_err: int = 101;
+    static rust_err: int = 101;
     if ProcRes.status != rust_err {
         fatal_ProcRes(
             fmt!("failure produced the wrong error code: %d",

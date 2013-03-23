@@ -483,12 +483,12 @@ pub mod rt {
     use vec;
     use option::{Some, None, Option};
 
-    pub const flag_none : u32 = 0u32;
-    pub const flag_left_justify   : u32 = 0b00000000000001u32;
-    pub const flag_left_zero_pad  : u32 = 0b00000000000010u32;
-    pub const flag_space_for_sign : u32 = 0b00000000000100u32;
-    pub const flag_sign_always    : u32 = 0b00000000001000u32;
-    pub const flag_alternate      : u32 = 0b00000000010000u32;
+    pub static flag_none : u32 = 0u32;
+    pub static flag_left_justify   : u32 = 0b00000000000001u32;
+    pub static flag_left_zero_pad  : u32 = 0b00000000000010u32;
+    pub static flag_space_for_sign : u32 = 0b00000000000100u32;
+    pub static flag_sign_always    : u32 = 0b00000000001000u32;
+    pub static flag_alternate      : u32 = 0b00000000010000u32;
 
     pub enum Count { CountIs(uint), CountImplied, }
 
@@ -501,7 +501,7 @@ pub mod rt {
         ty: Ty,
     }
 
-    pub pure fn conv_int(cv: Conv, i: int, buf: &mut ~str) {
+    pub fn conv_int(cv: Conv, i: int, buf: &mut ~str) {
         let radix = 10;
         let prec = get_int_precision(cv);
         let mut s : ~str = uint_to_str_prec(int::abs(i) as uint, radix, prec);
@@ -517,7 +517,7 @@ pub mod rt {
         } else { Some('-') };
         unsafe { pad(cv, s, head, PadSigned, buf) };
     }
-    pub pure fn conv_uint(cv: Conv, u: uint, buf: &mut ~str) {
+    pub fn conv_uint(cv: Conv, u: uint, buf: &mut ~str) {
         let prec = get_int_precision(cv);
         let mut rs =
             match cv.ty {
@@ -529,16 +529,16 @@ pub mod rt {
             };
         unsafe { pad(cv, rs, None, PadUnsigned, buf) };
     }
-    pub pure fn conv_bool(cv: Conv, b: bool, buf: &mut ~str) {
+    pub fn conv_bool(cv: Conv, b: bool, buf: &mut ~str) {
         let s = if b { "true" } else { "false" };
         // run the boolean conversion through the string conversion logic,
         // giving it the same rules for precision, etc.
         conv_str(cv, s, buf);
     }
-    pub pure fn conv_char(cv: Conv, c: char, buf: &mut ~str) {
+    pub fn conv_char(cv: Conv, c: char, buf: &mut ~str) {
         unsafe { pad(cv, "", Some(c), PadNozero, buf) };
     }
-    pub pure fn conv_str(cv: Conv, s: &str, buf: &mut ~str) {
+    pub fn conv_str(cv: Conv, s: &str, buf: &mut ~str) {
         // For strings, precision is the maximum characters
         // displayed
         let mut unpadded = match cv.precision {
@@ -551,7 +551,7 @@ pub mod rt {
         };
         unsafe { pad(cv, unpadded, None, PadNozero, buf) };
     }
-    pub pure fn conv_float(cv: Conv, f: float, buf: &mut ~str) {
+    pub fn conv_float(cv: Conv, f: float, buf: &mut ~str) {
         let (to_str, digits) = match cv.precision {
               CountIs(c) => (float::to_str_exact, c as uint),
               CountImplied => (float::to_str_digits, 6u)
@@ -568,7 +568,7 @@ pub mod rt {
         } else { None };
         unsafe { pad(cv, s, head, PadFloat, buf) };
     }
-    pub pure fn conv_poly<T>(cv: Conv, v: &T, buf: &mut ~str) {
+    pub fn conv_poly<T>(cv: Conv, v: &T, buf: &mut ~str) {
         let s = sys::log_str(v);
         conv_str(cv, s, buf);
     }
@@ -576,8 +576,7 @@ pub mod rt {
     // Convert a uint to string with a minimum number of digits.  If precision
     // is 0 and num is 0 then the result is the empty string. Could move this
     // to uint: but it doesn't seem all that useful.
-    pub pure fn uint_to_str_prec(num: uint, radix: uint,
-                                 prec: uint) -> ~str {
+    pub fn uint_to_str_prec(num: uint, radix: uint, prec: uint) -> ~str {
         return if prec == 0u && num == 0u {
                 ~""
             } else {
@@ -590,7 +589,7 @@ pub mod rt {
                 } else { s }
             };
     }
-    pub pure fn get_int_precision(cv: Conv) -> uint {
+    pub fn get_int_precision(cv: Conv) -> uint {
         return match cv.precision {
               CountIs(c) => c as uint,
               CountImplied => 1u
@@ -637,7 +636,7 @@ pub mod rt {
           PadFloat    => (true, true),
           PadUnsigned => (true, false)
         };
-        pure fn have_precision(cv: Conv) -> bool {
+        fn have_precision(cv: Conv) -> bool {
             return match cv.precision { CountImplied => false, _ => true };
         }
         let zero_padding = {
@@ -672,7 +671,7 @@ pub mod rt {
         buf.push_str(s);
     }
     #[inline(always)]
-    pub pure fn have_flag(flags: u32, f: u32) -> bool {
+    pub fn have_flag(flags: u32, f: u32) -> bool {
         flags & f != 0
     }
 }
