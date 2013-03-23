@@ -254,7 +254,7 @@ pub trait ByteChan {
     fn send(&self, val: ~[u8]);
 }
 
-static CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
+static CONTINUE: [u8, ..4] = [0xAA, 0xBB, 0xCC, 0xDD];
 
 impl<T,U:Unflattener<T>,P:BytePort> GenericPort<T> for FlatPort<T, U, P> {
     fn recv(&self) -> T {
@@ -921,7 +921,7 @@ mod test {
         }
 
         fn test_try_recv_none3<P:BytePort>(loader: PortLoader<P>) {
-            static CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
+            static CONTINUE: [u8, ..4] = [0xAA, 0xBB, 0xCC, 0xDD];
             // The control word is followed by garbage
             let bytes = CONTINUE.to_vec() + ~[0];
             let port = loader(bytes);
@@ -940,7 +940,7 @@ mod test {
 
         fn test_try_recv_none4<P:BytePort>(+loader: PortLoader<P>) {
             fail_unless!(do task::try || {
-                static CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
+                static CONTINUE: [u8, ..4] = [0xAA, 0xBB, 0xCC, 0xDD];
                 // The control word is followed by a valid length,
                 // then undeserializable garbage
                 let len_bytes = do io::u64_to_be_bytes(

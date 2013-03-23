@@ -14,7 +14,7 @@ struct A {
 
 struct B {
     v1: int,
-    v2: [int * 3],
+    v2: [int, ..3],
     v3: ~[int],
     v4: C,
     v5: ~C,

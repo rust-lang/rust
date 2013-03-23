@@ -215,7 +215,9 @@ impl TrieSet {
 
 struct TrieNode<T> {
     count: uint,
-    children: [Child<T> * 16] // FIXME: #3469: can't use the SIZE constant yet
+
+    // FIXME: #3469: can't use the SIZE constant yet
+    children: [Child<T>, ..16]
 }
 
 impl<T> TrieNode<T> {
