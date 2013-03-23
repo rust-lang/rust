@@ -61,6 +61,7 @@ pub enum ObsoleteSyntax {
     ObsoletePurity,
     ObsoleteStaticMethod,
     ObsoleteConstItem,
+    ObsoleteFixedLengthVectorType,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -208,6 +209,10 @@ pub impl Parser {
                 "`const` item",
                 "`const` items are now `static` items; replace `const` with \
                  `static`"
+            ),
+            ObsoleteFixedLengthVectorType => (
+                "fixed-length vector notation",
+                "instead of `[T * N]`, write `[T, ..N]`"
             ),
         };
 
