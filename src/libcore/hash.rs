@@ -162,7 +162,7 @@ struct SipState {
     mut v1: u64,
     mut v2: u64,
     mut v3: u64,
-    mut tail: [u8 * 8], // unprocessed bytes
+    mut tail: [u8, ..8], // unprocessed bytes
     mut ntail: uint,  // how many bytes in tail are valid
 }
 
@@ -369,7 +369,7 @@ impl Streaming for SipState {
 
 #[test]
 pub fn test_siphash() {
-    let vecs : [[u8 * 8] * 64] = [
+    let vecs : [[u8, ..8], ..64] = [
         [ 0x31, 0x0e, 0x0e, 0xdd, 0x47, 0xdb, 0x6f, 0x72, ],
         [ 0xfd, 0x67, 0xdc, 0x93, 0xc5, 0x39, 0xf8, 0x74, ],
         [ 0x5a, 0x4f, 0xa9, 0xd9, 0x09, 0x80, 0x6c, 0x0d, ],
@@ -443,7 +443,7 @@ pub fn test_siphash() {
     let stream_inc = &State(k0,k1);
     let stream_full = &State(k0,k1);
 
-    fn to_hex_str(r:  &[u8 * 8]) -> ~str {
+    fn to_hex_str(r:  &[u8, ..8]) -> ~str {
         let mut s = ~"";
         for vec::each(*r) |b| {
             s += uint::to_str_radix(*b as uint, 16u);

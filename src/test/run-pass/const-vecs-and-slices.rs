@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static x : [int * 4] = [1,2,3,4];
+static x : [int, ..4] = [1,2,3,4];
 static y : &'static [int] = &[1,2,3,4];
 
 pub fn main() {

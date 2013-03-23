@@ -2636,7 +2636,7 @@ mod tests {
 
     #[test]
     fn test_len_divzero() {
-        type Z = [i8 * 0];
+        type Z = [i8, ..0];
         let v0 : &[Z] = &[];
         let v1 : &[Z] = &[[]];
         let v2 : &[Z] = &[[], []];

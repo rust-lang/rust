@@ -251,7 +251,7 @@ pub struct Parser {
     token: @mut token::Token,
     span: @mut span,
     last_span: @mut span,
-    buffer: @mut [TokenAndSpan * 4],
+    buffer: @mut [TokenAndSpan, ..4],
     buffer_start: @mut int,
     buffer_end: @mut int,
     tokens_consumed: @mut uint,
