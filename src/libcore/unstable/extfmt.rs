@@ -687,12 +687,12 @@ pub mod rt {
     use uint;
     use vec;
 
-    pub const flag_none : u32 = 0u32;
-    pub const flag_left_justify   : u32 = 0b00000000000001u32;
-    pub const flag_left_zero_pad  : u32 = 0b00000000000010u32;
-    pub const flag_space_for_sign : u32 = 0b00000000000100u32;
-    pub const flag_sign_always    : u32 = 0b00000000001000u32;
-    pub const flag_alternate      : u32 = 0b00000000010000u32;
+    pub static flag_none : u32 = 0u32;
+    pub static flag_left_justify   : u32 = 0b00000000000001u32;
+    pub static flag_left_zero_pad  : u32 = 0b00000000000010u32;
+    pub static flag_space_for_sign : u32 = 0b00000000000100u32;
+    pub static flag_sign_always    : u32 = 0b00000000001000u32;
+    pub static flag_alternate      : u32 = 0b00000000010000u32;
 
     pub enum Count { CountIs(uint), CountImplied, }
 

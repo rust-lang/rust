@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // xfail-test
-const generations: uint = 1024+256+128+49;
+static generations: uint = 1024+256+128+49;
 
 fn child_no(x: uint) -> ~fn() {
      || {

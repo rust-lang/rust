@@ -10,6 +10,6 @@
 
 
 
-const i: int = 10;
+static i: int = 10;
 
 pub fn main() { debug!("%i", i); }

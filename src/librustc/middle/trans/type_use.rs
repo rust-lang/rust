@@ -47,9 +47,9 @@ use syntax::ast_util;
 use syntax::visit;
 
 pub type type_uses = uint; // Bitmask
-pub const use_repr: uint = 1u;   /* Dependency on size/alignment/mode and
-                                    take/drop glue */
-pub const use_tydesc: uint = 2u; /* Takes the tydesc, or compares */
+pub static use_repr: uint = 1u;   /* Dependency on size/alignment/mode and
+                                     take/drop glue */
+pub static use_tydesc: uint = 2u; /* Takes the tydesc, or compares */
 
 pub struct Context {
     ccx: @CrateContext,

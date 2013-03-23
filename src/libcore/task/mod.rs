@@ -1160,7 +1160,7 @@ fn test_child_doesnt_ref_parent() {
     // climbing the task tree to dereference each ancestor. (See #1789)
     // (well, it would if the constant were 8000+ - I lowered it to be more
     // valgrind-friendly. try this at home, instead..!)
-    const generations: uint = 16;
+    static generations: uint = 16;
     fn child_no(x: uint) -> ~fn() {
         return || {
             if x < generations {

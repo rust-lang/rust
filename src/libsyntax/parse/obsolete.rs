@@ -51,7 +51,6 @@ pub enum ObsoleteSyntax {
     ObsoleteTraitImplVisibility,
     ObsoleteRecordType,
     ObsoleteRecordPattern,
-    ObsoleteAssertion,
     ObsoletePostFnTySigil,
     ObsoleteBareFnType,
     ObsoleteNewtypeEnum,
@@ -59,6 +58,9 @@ pub enum ObsoleteSyntax {
     ObsoleteImplicitSelf,
     ObsoleteLifetimeNotation,
     ObsoleteConstManagedPointer,
+    ObsoletePurity,
+    ObsoleteStaticMethod,
+    ObsoleteConstItem,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -163,10 +165,6 @@ pub impl Parser {
                 "structural record pattern",
                 "use a structure instead"
             ),
-            ObsoleteAssertion => (
-                "assertion",
-                "use `fail_unless!()` instead"
-            ),
             ObsoletePostFnTySigil => (
                 "fn sigil in postfix position",
                 "Rather than `fn@`, `fn~`, or `fn&`, \
@@ -197,6 +195,19 @@ pub impl Parser {
             ObsoleteConstManagedPointer => (
                 "const `@` pointer",
                 "instead of `@const Foo`, write `@Foo`"
+            ),
+            ObsoletePurity => (
+                "pure function",
+                "remove `pure`"
+            ),
+            ObsoleteStaticMethod => (
+                "`static` notation",
+                "`static` is superfluous; remove it"
+            ),
+            ObsoleteConstItem => (
+                "`const` item",
+                "`const` items are now `static` items; replace `const` with \
+                 `static`"
             ),
         };
 

@@ -12,5 +12,5 @@
 
 use T = self::inst::T;
 
-pub const bits: uint = inst::bits;
+pub static bits: uint = inst::bits;
 pub fn min(x: T, y: T) -> T { if x < y { x } else { y } }

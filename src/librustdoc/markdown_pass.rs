@@ -594,7 +594,7 @@ fn write_const(
 
 #[test]
 fn should_write_const_header() {
-    let markdown = test::render(~"const a: bool = true;");
+    let markdown = test::render(~"static a: bool = true;");
     fail_unless!(str::contains(markdown, ~"## Const `a`\n\n"));
 }
 
@@ -602,7 +602,7 @@ fn should_write_const_header() {
 fn should_write_const_description() {
     let markdown = test::render(
         ~"#[doc = \"b\"]\
-         const a: bool = true;");
+         static a: bool = true;");
     fail_unless!(str::contains(markdown, ~"\n\nb\n\n"));
 }
 

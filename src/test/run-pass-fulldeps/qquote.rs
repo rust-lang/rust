@@ -63,8 +63,8 @@ fn main() {
     let ty = quote_ty!(int);
     check_pp(ext_cx, ty, pprust::print_type, ~"int");
 
-    let item = quote_item!(const x : int = 10;).get();
-    check_pp(ext_cx, item, pprust::print_item, ~"const x: int = 10;");
+    let item = quote_item!(static x : int = 10;).get();
+    check_pp(ext_cx, item, pprust::print_item, ~"static x: int = 10;");
 
     let stmt = quote_stmt!(let x = 20;);
     check_pp(ext_cx, *stmt, pprust::print_stmt, ~"let x = 20;");

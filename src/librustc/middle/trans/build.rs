@@ -178,7 +178,7 @@ pub fn IndirectBr(cx: block, Addr: ValueRef, NumDests: uint) {
 // lot more efficient) than doing str::as_c_str("", ...) every time.
 pub fn noname() -> *libc::c_char {
     unsafe {
-        const cnull: uint = 0u;
+        static cnull: uint = 0u;
         return cast::reinterpret_cast(&ptr::addr_of(&cnull));
     }
 }

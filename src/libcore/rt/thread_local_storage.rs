@@ -56,7 +56,7 @@ pub type Key = DWORD;
 
 #[cfg(windows)]
 pub unsafe fn create(key: &mut Key) {
-    const TLS_OUT_OF_INDEXES: DWORD = 0xFFFFFFFF;
+    static TLS_OUT_OF_INDEXES: DWORD = 0xFFFFFFFF;
     *key = unsafe { TlsAlloc() };
     fail_unless!(*key != TLS_OUT_OF_INDEXES);
 }

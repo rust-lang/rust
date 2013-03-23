@@ -1907,26 +1907,26 @@ pub fn any_between(s: &str, start: uint, end: uint,
 }
 
 // UTF-8 tags and ranges
-const tag_cont_u8: u8 = 128u8;
-const tag_cont: uint = 128u;
-const max_one_b: uint = 128u;
-const tag_two_b: uint = 192u;
-const max_two_b: uint = 2048u;
-const tag_three_b: uint = 224u;
-const max_three_b: uint = 65536u;
-const tag_four_b: uint = 240u;
-const max_four_b: uint = 2097152u;
-const tag_five_b: uint = 248u;
-const max_five_b: uint = 67108864u;
-const tag_six_b: uint = 252u;
+static tag_cont_u8: u8 = 128u8;
+static tag_cont: uint = 128u;
+static max_one_b: uint = 128u;
+static tag_two_b: uint = 192u;
+static max_two_b: uint = 2048u;
+static tag_three_b: uint = 224u;
+static max_three_b: uint = 65536u;
+static tag_four_b: uint = 240u;
+static max_four_b: uint = 2097152u;
+static tag_five_b: uint = 248u;
+static max_five_b: uint = 67108864u;
+static tag_six_b: uint = 252u;
 
 // Constants used for converting strs to floats
-pub const inf_buf: [u8*3] = ['i' as u8, 'n' as u8, 'f' as u8];
-pub const positive_inf_buf: [u8*4] = ['+' as u8, 'i' as u8,
-                                      'n' as u8, 'f' as u8];
-pub const negative_inf_buf: [u8*4] = ['-' as u8, 'i' as u8,
-                                      'n' as u8, 'f' as u8];
-pub const nan_buf: [u8*3] = ['N' as u8, 'a' as u8, 'N' as u8];
+pub static inf_buf: [u8*3] = ['i' as u8, 'n' as u8, 'f' as u8];
+pub static positive_inf_buf: [u8*4] = ['+' as u8, 'i' as u8,
+                                       'n' as u8, 'f' as u8];
+pub static negative_inf_buf: [u8*4] = ['-' as u8, 'i' as u8,
+                                       'n' as u8, 'f' as u8];
+pub static nan_buf: [u8*3] = ['N' as u8, 'a' as u8, 'N' as u8];
 
 /**
  * Work with the byte buffer of a string.

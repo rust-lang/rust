@@ -127,8 +127,7 @@ fn extract(desc: Option<~str>) -> Option<~str> {
 }
 
 fn parse_desc(desc: ~str) -> Option<~str> {
-
-    const max_brief_len: uint = 120u;
+    static max_brief_len: uint = 120u;
 
     match first_sentence(copy desc) {
       Some(first_sentence) => {
