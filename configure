@@ -136,9 +136,17 @@ validate_opt () {
                 isArgValid=1
             fi
         done
-        if test $isArgValid -eq 0
+        if [ "$arg" = "--help" ]
         then
-            err "Option '$arg' is not recognized"
+            echo ""
+            echo "No more help available for Configure options,"
+            echo "check the Wiki or join our IRC channel"
+            break
+        else
+            if test $isArgValid -eq 0
+            then
+                err "Option '$arg' is not recognized"
+            fi
         fi
     done
 }
@@ -266,13 +274,42 @@ case $CFG_OSTYPE in
     MINGW32*)
         CFG_OSTYPE=pc-mingw32
         ;;
+# Thad's Cygwin identifers below
 
+#   Vista 32 bit
+    CYGWIN_NT-6.0)
+        CFG_OSTYPE=pc-mingw32
+        CFG_CPUTYPE=i686
+        ;;
+
+#   Vista 64 bit
+    CYGWIN_NT-6.0-WOW64)
+        CFG_OSTYPE=w64-mingw32
+        CFG_CPUTYPE=x86_64
+        ;;
+
+#   Win 7 32 bit
+    CYGWIN_NT-6.1)
+        CFG_OSTYPE=pc-mingw32
+        CFG_CPUTYPE=i686
+        ;;
+
+#   Win 7 64 bit
+    CYGWIN_NT-6.1-WOW64)
+        CFG_OSTYPE=w64-mingw32
+        CFG_CPUTYPE=x86_64
+        ;;
+
+# We do not detect other OS such as XP/2003 using 64 bit using uname.
+# If we want to in the future, we will need to use Cygwin - Chuck's csih helper in /usr/lib/csih/winProductName.exe or alternative.
     *)
         err "unknown OS type: $CFG_OSTYPE"
         ;;
 esac
 
 
+if [ -z "$CFG_CPUTYPE" ]
+then
 case $CFG_CPUTYPE in
 
     i386 | i486 | i686 | i786 | x86)
@@ -290,6 +327,7 @@ case $CFG_CPUTYPE in
     *)
         err "unknown CPU type: $CFG_CPUTYPE"
 esac
+fi
 
 # Detect 64 bit linux systems with 32 bit userland and force 32 bit compilation
 if [ $CFG_OSTYPE = unknown-linux-gnu -a $CFG_CPUTYPE = x86_64 ]
