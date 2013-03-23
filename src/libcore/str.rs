@@ -56,15 +56,15 @@ pub fn from_slice(s: &str) -> ~str {
 
 impl ToStr for ~str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { copy *self }
+    fn to_str(&self) -> ~str { from_slice(*self) }
 }
 impl ToStr for &'self str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { ::str::from_slice(*self) }
+    fn to_str(&self) -> ~str { from_slice(*self) }
 }
 impl ToStr for @str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { ::str::from_slice(*self) }
+    fn to_str(&self) -> ~str { from_slice(*self) }
 }
 
 /**
@@ -383,7 +383,7 @@ Section: Transforming strings
 */
 
 /**
- * Converts a string to a vector of bytes
+ * Converts a string to a unique vector of bytes
  *
  * The result vector is not null-terminated.
  */
@@ -403,14 +403,11 @@ pub fn byte_slice<T>(s: &str, f: &fn(v: &[u8]) -> T) -> T {
     }
 }
 
-/// Convert a string to a vector of characters
-pub fn chars(s: &str) -> ~[char] {
-    let mut buf = ~[], i = 0;
-    let len = len(s);
-    while i < len {
-        let CharRange {ch, next} = char_range_at(s, i);
-        unsafe { buf.push(ch); }
-        i = next;
+/// Convert a string to a unique vector of characters
+pub fn to_chars(s: &str) -> ~[char] {
+    let mut buf = ~[];
+    for each_char(s) |c| {
+        buf.push(c);
     }
     buf
 }
@@ -418,7 +415,7 @@ pub fn chars(s: &str) -> ~[char] {
 /**
  * Take a substring of another.
  *
- * Returns a string containing `n` characters starting at byte offset
+ * Returns a slice pointing at `n` characters starting from byte offset
  * `begin`.
  */
 pub fn substr(s: &'a str, begin: uint, n: uint) -> &'a str {
@@ -437,10 +434,17 @@ pub fn slice(s: &'a str, begin: uint, end: uint) -> &'a str {
     unsafe { raw::slice_bytes(s, begin, end) }
 }
 
-/// Splits a string into substrings at each occurrence of a given
-/// character.
-pub fn split_char(s: &str, sep: char) -> ~[~str] {
-    split_char_inner(s, sep, len(s), true, true)
+/// Splits a string into substrings at each occurrence of a given character
+pub fn each_split_char(s: &str, sep: char, it: &fn(&str) -> bool) {
+    each_split_char_inner(s, sep, len(s), true, true, it)
+}
+
+/**
+ * Like `split_char`, but a trailing empty string is omitted
+ * (e.g. `split_char_no_trailing("A B ",' ') == ~[~"A",~"B"]`)
+ */
+pub fn each_split_char_no_trailing(s: &str, sep: char, it: &fn(&str) -> bool) {
+    each_split_char_inner(s, sep, len(s), true, false, it)
 }
 
 /**
@@ -449,35 +453,25 @@ pub fn split_char(s: &str, sep: char) -> ~[~str] {
  *
  * The byte must be a valid UTF-8/ASCII byte
  */
-pub fn splitn_char(s: &str, sep: char, count: uint) -> ~[~str] {
-    split_char_inner(s, sep, count, true, true)
+pub fn each_splitn_char(s: &str, sep: char, count: uint, it: &fn(&str) -> bool) {
+    each_split_char_inner(s, sep, count, true, true, it)
 }
 
 /// Like `split_char`, but omits empty strings from the returned vector
-pub fn split_char_nonempty(s: &str, sep: char) -> ~[~str] {
-    split_char_inner(s, sep, len(s), false, false)
+pub fn each_split_char_nonempty(s: &str, sep: char, it: &fn(&str) -> bool) {
+    each_split_char_inner(s, sep, len(s), false, false, it)
 }
 
-/**
- * Like `split_char`, but a trailing empty string is omitted
- * (e.g. `split_char_no_trailing("A B ",' ') == ~[~"A",~"B"]`)
- */
-pub fn split_char_no_trailing(s: &str, sep: char) -> ~[~str] {
-    split_char_inner(s, sep, len(s), true, false)
-}
-
-fn split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool,
-                    allow_trailing_empty: bool) -> ~[~str] {
+fn each_split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool,
+                         allow_trailing_empty: bool), it: &fn(&str) -> bool) {
     if sep < 128u as char {
         let b = sep as u8, l = len(s);
-        let mut result = ~[], done = 0u;
+        let mut done = 0u;
         let mut i = 0u, start = 0u;
         while i < l && done < count {
             if s[i] == b {
                 if allow_empty || start < i {
-                    unsafe {
-                        result.push(raw::slice_bytes_unique(s, start, i));
-                    }
+                    if !it( unsafe{ raw::slice_bytes(s, start, i) } ) { return; }
                 }
                 start = i + 1u;
                 done += 1u;
@@ -486,56 +480,48 @@ fn split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool,
         }
         // only push a non-empty trailing substring
         if allow_trailing_empty || start < l {
-            unsafe { result.push(raw::slice_bytes_unique(s, start, l) ) };
+            if !it( unsafe{ raw::slice_bytes(s, start, l) } ) { return; }
         }
-        result
     } else {
-        split_inner(s, |cur| cur == sep, count, allow_empty, allow_trailing_empty)
+        each_split_inner(s, |cur| cur == sep, count, allow_empty, allow_trailing_empty, it)
     }
 }
 
-
 /// Splits a string into substrings using a character function
-pub fn split(s: &str, sepfn: &fn(char) -> bool) -> ~[~str] {
-    split_inner(s, sepfn, len(s), true, true)
+pub fn each_split(s: &str, sepfn: &fn(char) -> bool, it: &fn(&str) -> bool) {
+    each_split_inner(s, sepfn, len(s), true, true, it)
+}
+
+/**
+ * Like `split`, but a trailing empty string is omitted
+ * (e.g. `split_no_trailing("A B ",' ') == ~[~"A",~"B"]`)
+ */
+pub fn each_split_no_trailing(s: &str, sepfn: &fn(char) -> bool, it: &fn(&str) -> bool) {
+    each_split_inner(s, sepfn, len(s), true, false, it)
 }
 
 /**
  * Splits a string into substrings using a character function, cutting at
  * most `count` times.
  */
-pub fn splitn(s: &str,
-                   sepfn: &fn(char) -> bool,
-                   count: uint)
-                -> ~[~str] {
-    split_inner(s, sepfn, count, true, true)
+pub fn each_splitn(s: &str, sepfn: &fn(char) -> bool, count: uint, it: &fn(&str) -> bool) {
+    each_split_inner(s, sepfn, count, true, true, it)
 }
 
 /// Like `split`, but omits empty strings from the returned vector
-pub fn split_nonempty(s: &str, sepfn: &fn(char) -> bool) -> ~[~str] {
-    split_inner(s, sepfn, len(s), false, false)
+pub fn each_split_nonempty(s: &str, sepfn: &fn(char) -> bool, it: &fn(&str) -> bool) {
+    each_split_inner(s, sepfn, len(s), false, false, it)
 }
 
-
-/**
- * Like `split`, but a trailing empty string is omitted
- * (e.g. `split_no_trailing("A B ",' ') == ~[~"A",~"B"]`)
- */
-pub fn split_no_trailing(s: &str, sepfn: &fn(char) -> bool) -> ~[~str] {
-    split_inner(s, sepfn, len(s), true, false)
-}
-
-fn split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
-               allow_empty: bool, allow_trailing_empty: bool) -> ~[~str] {
+pure fn each_split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
+               allow_empty: bool, allow_trailing_empty: bool), it: &fn(&str) -> bool) {
     let l = len(s);
-    let mut result = ~[], i = 0u, start = 0u, done = 0u;
+    let mut i = 0u, start = 0u, done = 0u;
     while i < l && done < count {
         let CharRange {ch, next} = char_range_at(s, i);
         if sepfn(ch) {
             if allow_empty || start < i {
-                unsafe {
-                    result.push(raw::slice_bytes_unique(s, start, i));
-                }
+                if !it( unsafe{ raw::slice_bytes(s, start, i) } ) { return; }
             }
             start = next;
             done += 1u;
@@ -543,11 +529,8 @@ fn split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
         i = next;
     }
     if allow_trailing_empty || start < l {
-        unsafe {
-            result.push(raw::slice_bytes_unique(s, start, l));
-        }
+        if !it( unsafe{ raw::slice_bytes(s, start, l) } ) { return;  }
     }
-    result
 }
 
 // See Issue #1932 for why this is a naive search
@@ -596,22 +579,18 @@ fn iter_between_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
  * fail_unless!(["", "XXX", "YYY", ""] == split_str(".XXX.YYY.", "."))
  * ~~~
  */
-pub fn split_str(s: &'a str, sep: &'b str) -> ~[~str] {
-    let mut result = ~[];
+pub fn each_split_str(s: &'a str, sep: &'b str, it: &fn(&str) -> bool) {
     do iter_between_matches(s, sep) |from, to| {
-        unsafe { result.push(raw::slice_bytes_unique(s, from, to)); }
+        if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return; }
     }
-    result
 }
 
-pub fn split_str_nonempty(s: &'a str, sep: &'b str) -> ~[~str] {
-    let mut result = ~[];
+pub fn each_split_str_nonempty(s: &'a str, sep: &'b str, it: &fn(&str) -> bool) {
     do iter_between_matches(s, sep) |from, to| {
         if to > from {
-            unsafe { result.push(raw::slice_bytes_unique(s, from, to)); }
+            if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return; }
         }
     }
-    result
 }
 
 /// Levenshtein Distance between two strings
@@ -651,34 +630,32 @@ pub fn levdistance(s: &str, t: &str) -> uint {
 /**
  * Splits a string into a vector of the substrings separated by LF ('\n').
  */
-pub fn lines(s: &str) -> ~[~str] {
-    split_char_no_trailing(s, '\n')
-}
+pub fn each_line(s: &str, it: &fn(&str) -> bool) { each_split_char(s, '\n', it) }
 
 /**
  * Splits a string into a vector of the substrings separated by LF ('\n')
  * and/or CR LF ("\r\n")
  */
-pub fn lines_any(s: &str) -> ~[~str] {
-    vec::map(lines(s), |s| {
-        let l = len(*s);
-        let mut cp = copy *s;
+pub fn each_line_any(s: &str, it: &fn(&str) -> bool) {
+    for each_line(s) |s| {
+        let l = s.len();
         if l > 0u && s[l - 1u] == '\r' as u8 {
-            unsafe { raw::set_len(&mut cp, l - 1u); }
+            if !it( unsafe { raw::slice_bytes(s, 0, l - 1) } ) { return; }
+        } else {
+            if !it( s ) { return; }
         }
-        cp
-    })
+    }
 }
 
 /// Splits a string into a vector of the substrings separated by whitespace
-pub fn words(s: &str) -> ~[~str] {
-    split_nonempty(s, char::is_whitespace)
+pub fn each_word(s: &str, it: &fn(&str) -> bool) {
+    each_split_nonempty(s, |c| char::is_whitespace(c), it)
 }
 
 /** Split a string into a vector of substrings,
- *  each of which is less than a limit
+ *  each of which is less bytes long than a limit
  */
-pub fn split_within(ss: &str, lim: uint) -> ~[~str] {
+pub fn each_split_within(ss: &str, lim: uint, it: &fn(&str) -> bool) {
     let words = str::words(ss);
 
     // empty?
@@ -705,6 +682,22 @@ pub fn split_within(ss: &str, lim: uint) -> ~[~str] {
     if row != ~"" { rows.push(row); }
 
     rows
+    // NOTE: Finish change here
+
+    let mut last_slice_i = 0, last_word_i = 0, word_start = true;
+    for each_chari(s) |i, c| {
+        if (i - last_slice_i) <= lim {
+            if char::is_whitespace(c) {
+
+            } else {
+
+            }
+        } else {
+
+        }
+
+
+    }
 }
 
 
@@ -997,10 +990,17 @@ pub fn eachi_reverse(s: &str, it: &fn(uint, u8) -> bool) {
     }
 }
 
-/// Iterates over the chars in a string
+
+/// Iterate over each char of a string, without allocating
 #[inline(always)]
 pub fn each_char(s: &str, it: &fn(char) -> bool) {
-    each_chari(s, |_i, c| it(c))
+    let mut i = 0;
+    let len = len(s);
+    while i < len {
+        let CharRange {ch, next} = char_range_at(s, i);
+        if !it(ch) { return; }
+        i = next;
+    }
 }
 
 /// Iterates over the chars in a string, with indices
@@ -1038,31 +1038,34 @@ pub fn each_chari_reverse(s: &str, it: &fn(uint, char) -> bool) {
     }
 }
 
-/// Apply a function to each substring after splitting by character
+/////////////////////////////////////////////////////////////////////////////////////////////////
+// NOTE: Remove afterwards
+/* /// Apply a function to each substring after splitting by character
 pub fn split_char_each(ss: &str, cc: char, ff: &fn(v: &str) -> bool) {
     vec::each(split_char(ss, cc), |s| ff(*s))
 }
 
-/**
+**
  * Apply a function to each substring after splitting by character, up to
  * `count` times
- */
+ *
 pub fn splitn_char_each(ss: &str, sep: char, count: uint,
                          ff: &fn(v: &str) -> bool) {
     vec::each(splitn_char(ss, sep, count), |s| ff(*s))
 }
 
-/// Apply a function to each word
+/ Apply a function to each word
 pub fn words_each(ss: &str, ff: &fn(v: &str) -> bool) {
     vec::each(words(ss), |s| ff(*s))
 }
 
-/**
+**
  * Apply a function to each line (by '\n')
- */
+ *
 pub fn lines_each(ss: &str, ff: &fn(v: &str) -> bool) {
     vec::each(lines(ss), |s| ff(*s))
-}
+} */
+/////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 Section: Searching
@@ -2511,7 +2514,7 @@ impl OwnedStr for ~str {
 impl Clone for ~str {
     #[inline(always)]
     fn clone(&self) -> ~str {
-        self.to_str()  // hilarious
+        from_slice(*self)
     }
 }
 
