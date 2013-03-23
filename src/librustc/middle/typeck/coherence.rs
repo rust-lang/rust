@@ -104,6 +104,32 @@ pub fn get_base_type(inference_context: @mut InferCtxt,
     }
 }
 
+pub fn type_is_defined_in_local_crate(original_type: t) -> bool {
+    /*!
+     *
+     * For coherence, when we have `impl Trait for Type`, we need to
+     * guarantee that `Type` is "local" to the
+     * crate.  For our purposes, this means that it must contain
+     * some nominal type defined in this crate.
+     */
+
+    let mut found_nominal = false;
+    do ty::walk_ty(original_type) |t| {
+        match get(t).sty {
+            ty_enum(def_id, _) |
+            ty_trait(def_id, _, _) |
+            ty_struct(def_id, _) => {
+                if def_id.crate == ast::local_crate {
+                    found_nominal = true;
+                }
+            }
+
+            _ => { }
+        }
+    }
+    return found_nominal;
+}
+
 // Returns the def ID of the base type, if there is one.
 pub fn get_base_type_def_id(inference_context: @mut InferCtxt,
                             span: span,
@@ -161,8 +187,7 @@ pub fn CoherenceChecker(crate_context: @mut CrateCtxt) -> CoherenceChecker {
         crate_context: crate_context,
         inference_context: new_infer_ctxt(crate_context.tcx),
 
-        base_type_def_ids: HashMap(),
-        privileged_implementations: HashMap()
+        base_type_def_ids: HashMap()
     }
 }
 
@@ -174,11 +199,6 @@ pub struct CoherenceChecker {
     // definition ID.
 
     base_type_def_ids: HashMap<def_id,def_id>,
-
-    // A set of implementations in privileged scopes; i.e. those
-    // implementations that are defined in the same scope as their base types.
-
-    privileged_implementations: HashMap<node_id,()>,
 }
 
 pub impl CoherenceChecker {
@@ -615,27 +635,11 @@ pub impl CoherenceChecker {
                         visit_mod(module_, item.span, item.id, (), visitor);
                     }
                     item_impl(_, opt_trait, _, _) => {
-                        let mut ok = false;
-                        match self.base_type_def_ids.find(
-                            &local_def(item.id)) {
-
-                            None => {
-                                // Nothing to do.
-                            }
-                            Some(base_type_def_id) => {
-                                // Check to see whether the implementation is
-                                // in the same crate as its base type.
-
-                                if base_type_def_id.crate == local_crate {
-                                    // Record that this implementation is OK.
-                                    self.privileged_implementations.insert
-                                        (item.id, ());
-                                    ok = true;
-                                }
-                            }
-                        }
-
-                        if !ok {
+                        // `for_ty` is `Type` in `impl Trait for Type`
+                        let for_ty =
+                            ty::node_id_to_type(self.crate_context.tcx,
+                                                item.id);
+                        if !type_is_defined_in_local_crate(for_ty) {
                             // This implementation is not in scope of its base
                             // type. This still might be OK if the trait is
                             // defined in the same crate.
@@ -655,25 +659,24 @@ pub impl CoherenceChecker {
                                                       implement a trait or \
                                                       new type instead");
                                 }
-                                _ => ()
-                          }
 
-                          for opt_trait.each |trait_ref| {
-                                // This is OK if and only if the trait was
-                                // defined in this crate.
+                                Some(trait_ref) => {
+                                    // This is OK if and only if the trait was
+                                    // defined in this crate.
 
-                                let trait_def_id =
-                                    self.trait_ref_to_trait_def_id(
-                                        *trait_ref);
+                                    let trait_def_id =
+                                        self.trait_ref_to_trait_def_id(
+                                            trait_ref);
 
-                                if trait_def_id.crate != local_crate {
-                                    let session = self.crate_context.tcx.sess;
-                                    session.span_err(item.span,
-                                                     ~"cannot provide an \
-                                                       extension \
-                                                       implementation for a \
-                                                       trait not defined in \
-                                                       this crate");
+                                    if trait_def_id.crate != local_crate {
+                                        let session = self.crate_context.tcx.sess;
+                                        session.span_err(item.span,
+                                                         ~"cannot provide an \
+                                                           extension \
+                                                           implementation for a \
+                                                           trait not defined in \
+                                                           this crate");
+                                    }
                                 }
                             }
                         }
