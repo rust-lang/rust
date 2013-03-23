@@ -1930,7 +1930,6 @@ pub fn print_ty_fn(s: @ps,
 
     // Duplicates the logic in `print_fn_header_info()`.  This is because that
     // function prints the sigil in the wrong place.  That should be fixed.
-    print_self_ty_if_static(s, opt_self_ty);
     print_opt_abi(s, opt_abi);
     print_opt_sigil(s, opt_sigil);
     print_opt_lifetime(s, opt_region);
@@ -2159,14 +2158,6 @@ pub fn next_comment(s: @ps) -> Option<comments::cmnt> {
     }
 }
 
-pub fn print_self_ty_if_static(s: @ps,
-                               opt_self_ty: Option<ast::self_ty_>) {
-    match opt_self_ty {
-        Some(ast::sty_static) => { word(s.s, ~"static "); }
-        _ => {}
-    }
-}
-
 pub fn print_opt_purity(s: @ps, opt_purity: Option<ast::purity>) {
     match opt_purity {
         Some(ast::impure_fn) => { }
@@ -2199,7 +2190,6 @@ pub fn print_fn_header_info(s: @ps,
                             onceness: ast::Onceness,
                             opt_sigil: Option<ast::Sigil>,
                             vis: ast::visibility) {
-    print_self_ty_if_static(s, opt_sty);
     word(s.s, visibility_qualified(vis, ~""));
     print_opt_purity(s, opt_purity);
     print_onceness(s, onceness);
