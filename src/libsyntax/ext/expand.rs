@@ -464,6 +464,19 @@ pub fn core_macros() -> ~str {
         }
     )
 
+    macro_rules! assert(
+        ($cond:expr) => {
+            if !$cond {
+                ::core::sys::fail_assert(stringify!($cond), file!(), line!())
+            }
+        };
+        ($cond:expr, $msg:expr) => {
+            if !$cond {
+                ::core::sys::fail_assert($msg, file!(), line!())
+            }
+        }
+    )
+
     macro_rules! assert_eq (
         ($given:expr , $expected:expr) =>
         ({let given_val = $given;
