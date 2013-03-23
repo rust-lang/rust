@@ -130,7 +130,7 @@ pub impl LoanContext {
           }
           cat_local(local_id) | cat_arg(local_id) | cat_self(local_id) => {
               // FIXME(#4903)
-            let local_scope_id = self.bccx.tcx.region_map.get(&local_id);
+            let local_scope_id = *self.bccx.tcx.region_map.get(&local_id);
             self.issue_loan(cmt, ty::re_scope(local_scope_id), loan_kind,
                             owns_lent_data)
           }

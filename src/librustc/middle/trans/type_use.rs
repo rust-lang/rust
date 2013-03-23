@@ -27,6 +27,7 @@
 // much information, but have the disadvantage of being very
 // invasive.)
 
+use core::prelude::*;
 
 use middle::freevars;
 use middle::trans::common::*;
@@ -59,7 +60,7 @@ pub struct Context {
 pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
     -> ~[type_uses] {
     match ccx.type_use_cache.find(&fn_id) {
-      Some(uses) => return uses,
+      Some(uses) => return /*bad*/ copy *uses,
       None => ()
     }
 
@@ -295,7 +296,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
       }
       expr_path(_) => {
         for cx.ccx.tcx.node_type_substs.find(&e.id).each |ts| {
-            let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get(&e.id));
+            let id = ast_util::def_id_of_def(*cx.ccx.tcx.def_map.get(&e.id));
             let uses_for_ts = type_uses_for(cx.ccx, id, ts.len());
             for vec::each2(uses_for_ts, *ts) |uses, subst| {
                 type_needs(cx, *uses, *subst)

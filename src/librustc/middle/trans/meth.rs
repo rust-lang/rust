@@ -323,7 +323,7 @@ pub fn trans_static_method_callee(bcx: block,
             name=%s", method_id, callee_id, *ccx.sess.str_of(mname));
 
     let vtbls = resolve_vtables_in_fn_ctxt(
-        bcx.fcx, ccx.maps.vtable_map.get(&callee_id));
+        bcx.fcx, *ccx.maps.vtable_map.get(&callee_id));
 
     match vtbls[bound_index] {
         typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
@@ -764,7 +764,7 @@ pub fn get_vtable(ccx: @CrateContext,
     // XXX: Bad copy.
     let hash_id = vtable_id(ccx, copy origin);
     match ccx.vtables.find(&hash_id) {
-      Some(val) => val,
+      Some(&val) => val,
       None => match origin {
         typeck::vtable_static(id, substs, sub_vtables) => {
             make_impl_vtable(ccx, id, substs, sub_vtables)

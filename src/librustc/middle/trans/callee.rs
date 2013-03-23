@@ -700,7 +700,7 @@ pub fn trans_arg_expr(bcx: block,
         match autoref_arg {
             DoAutorefArg => {
                 fail_unless!(!
-                    bcx.ccx().maps.moves_map.contains_key(&arg_expr.id));
+                    bcx.ccx().maps.moves_map.contains(&arg_expr.id));
                 val = arg_datum.to_ref_llval(bcx);
             }
             DontAutorefArg => {
