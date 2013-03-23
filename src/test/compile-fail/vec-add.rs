@@ -14,7 +14,7 @@
 // the right hand side in all cases. We are getting compiler errors
 // about this now, so I'm xfailing the test for now. -eholk
 
-fn add(i: ~[int], mut m: ~[int], c: ~[const int]) {
+fn add(i: ~[int], mut m: ~[int]) {
 
     // Check that:
     //  (1) vectors of any two mutabilities can be added
@@ -36,10 +36,6 @@ fn add(i: ~[int], mut m: ~[int], c: ~[const int]) {
        m + m,
        m);
 
-   add(i + c,
-       m + c,
-       c);
-
    add(m + ~[3], //~ ERROR mismatched types
        m + ~[3],
        m + ~[3]);
@@ -48,12 +44,6 @@ fn add(i: ~[int], mut m: ~[int], c: ~[const int]) {
        i + ~[3], //~ ERROR mismatched types
        i + ~[3]);
 
-   add(c + ~[3], //~ ERROR mismatched types
-                //~^ ERROR binary operation + cannot be applied
-       c + ~[3], //~ ERROR binary operation + cannot be applied
-                //~^ mismatched types
-       ~[3]);
-
    add(m + ~[3], //~ ERROR mismatched types
        m + ~[3],
        m + ~[3]);
@@ -61,12 +51,6 @@ fn add(i: ~[int], mut m: ~[int], c: ~[const int]) {
    add(i + ~[3],
        i + ~[3], //~ ERROR mismatched types
        i + ~[3]);
-
-   add(c + ~[3], //~ ERROR binary operation + cannot be applied
-                    //~^ mismatched types
-       c + ~[3], //~ ERROR binary operation + cannot be applied
-                    //~^ mismatched types
-       ~[3]);
 
    add(m + i, //~ ERROR mismatched types
        m + i,
@@ -76,12 +60,6 @@ fn add(i: ~[int], mut m: ~[int], c: ~[const int]) {
        i + i, //~ ERROR mismatched types
        i + i);
 
-   add(c + i, //~ ERROR binary operation + cannot be applied
-              //~^ ERROR mismatched types
-       c + i, //~ ERROR binary operation + cannot be applied
-              //~^ ERROR mismatched types
-       i);
-
    add(m + m, //~ ERROR mismatched types
        m + m,
        m + m);
@@ -89,26 +67,6 @@ fn add(i: ~[int], mut m: ~[int], c: ~[const int]) {
    add(i + m,
        i + m, //~ ERROR mismatched types
        i + m);
-
-   add(c + m, //~ ERROR binary operation + cannot be applied
-              //~^ ERROR mismatched types
-       c + m, //~ ERROR binary operation + cannot be applied
-              //~^ ERROR mismatched types
-       m);
-
-   add(m + c, //~ ERROR mismatched types
-       m + c,
-       m + c);
-
-   add(i + c,
-       i + c, //~ ERROR mismatched types
-       i + c);
-
-   add(c + c, //~ ERROR binary operation + cannot be applied
-              //~^ ERROR mismatched types
-       c + c, //~ ERROR binary operation + cannot be applied
-              //~^ ERROR mismatched types
-       c);
 }
 
 fn main() {

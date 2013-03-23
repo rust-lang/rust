@@ -667,7 +667,7 @@ pub enum WriterType { Screen, File }
 pub trait Writer {
 
     /// Write all of the given bytes.
-    fn write(&self, v: &[const u8]);
+    fn write(&self, v: &const [u8]);
 
     /// Move the current position within the stream. The second parameter
     /// determines the position that the first parameter is relative to.
@@ -684,7 +684,7 @@ pub trait Writer {
 }
 
 impl Writer for @Writer {
-    fn write(&self, v: &[const u8]) { self.write(v) }
+    fn write(&self, v: &const [u8]) { self.write(v) }
     fn seek(&self, a: int, b: SeekStyle) { self.seek(a, b) }
     fn tell(&self) -> uint { self.tell() }
     fn flush(&self) -> int { self.flush() }
@@ -692,7 +692,7 @@ impl Writer for @Writer {
 }
 
 impl<W:Writer,C> Writer for Wrapper<W, C> {
-    fn write(&self, bs: &[const u8]) { self.base.write(bs); }
+    fn write(&self, bs: &const [u8]) { self.base.write(bs); }
     fn seek(&self, off: int, style: SeekStyle) { self.base.seek(off, style); }
     fn tell(&self) -> uint { self.base.tell() }
     fn flush(&self) -> int { self.base.flush() }
@@ -700,7 +700,7 @@ impl<W:Writer,C> Writer for Wrapper<W, C> {
 }
 
 impl Writer for *libc::FILE {
-    fn write(&self, v: &[const u8]) {
+    fn write(&self, v: &const [u8]) {
         unsafe {
             do vec::as_const_buf(v) |vbuf, len| {
                 let nout = libc::fwrite(vbuf as *c_void,
@@ -750,7 +750,7 @@ pub fn FILE_writer(f: *libc::FILE, cleanup: bool) -> @Writer {
 }
 
 impl Writer for fd_t {
-    fn write(&self, v: &[const u8]) {
+    fn write(&self, v: &const [u8]) {
         unsafe {
             let mut count = 0u;
             do vec::as_const_buf(v) |vbuf, len| {
@@ -907,8 +907,10 @@ pub fn u64_to_be_bytes<T>(n: u64, size: uint,
     }
 }
 
-pub fn u64_from_be_bytes(data: &[const u8],
-                         start: uint, size: uint) -> u64 {
+pub fn u64_from_be_bytes(data: &const [u8],
+                         start: uint,
+                         size: uint)
+                      -> u64 {
     let mut sz = size;
     fail_unless!((sz <= 8u));
     let mut val = 0_u64;
@@ -1140,7 +1142,7 @@ pub struct BytesWriter {
 }
 
 impl Writer for BytesWriter {
-    fn write(&self, v: &[const u8]) {
+    fn write(&self, v: &const [u8]) {
         let v_len = v.len();
         let bytes_len = vec::uniq_len(&const self.bytes);
 
