@@ -72,8 +72,7 @@ use core::int;
 use core::io;
 use core::libc::{c_uint, c_ulonglong};
 use core::uint;
-use std::oldmap::HashMap;
-use std::{oldmap, time, list};
+use std::{time, list};
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt_to_str, path_mod, path_name};
 use syntax::ast_util::{def_id_of_def, local_def, path_to_ident};
@@ -170,7 +169,10 @@ pub fn get_extern_fn(externs: ExternMap,
                      name: @str,
                      cc: lib::llvm::CallConv,
                      ty: TypeRef) -> ValueRef {
-    if externs.contains_key(&name) { return externs.get(&name); }
+    match externs.find(&name) {
+        Some(n) => return copy *n,
+        None => ()
+    }
     let f = decl_fn(llmod, name, cc, ty);
     externs.insert(name, f);
     return f;
@@ -178,8 +180,11 @@ pub fn get_extern_fn(externs: ExternMap,
 
 pub fn get_extern_const(externs: ExternMap, llmod: ModuleRef,
                         name: @str, ty: TypeRef) -> ValueRef {
+    match externs.find(&name) {
+        Some(n) => return copy *n,
+        None => ()
+    }
     unsafe {
-        if externs.contains_key(&name) { return externs.get(&name); }
         let c = str::as_c_str(name, |buf| {
             llvm::LLVMAddGlobal(llmod, ty, buf)
         });
@@ -3061,7 +3066,7 @@ pub fn trans_crate(sess: session::Session,
               llmod: llmod,
               td: td,
               tn: tn,
-              externs: HashMap(),
+              externs: @mut LinearMap::new(),
               intrinsics: intrinsics,
               item_vals: @mut LinearMap::new(),
               exp_map2: emap2,
@@ -3082,8 +3087,8 @@ pub fn trans_crate(sess: session::Session,
               const_globals: @mut LinearMap::new(),
               const_values: @mut LinearMap::new(),
               module_data: @mut LinearMap::new(),
-              lltypes: ty::new_ty_hash(),
-              llsizingtypes: ty::new_ty_hash(),
+              lltypes: @mut LinearMap::new(),
+              llsizingtypes: @mut LinearMap::new(),
               adt_reprs: @mut LinearMap::new(),
               names: new_namegen(sess.parse_sess.interner),
               next_addrspace: new_addrspace_gen(),

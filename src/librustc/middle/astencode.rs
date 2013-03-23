@@ -856,7 +856,9 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         do ebml_w.tag(c::tag_table_node_type_subst) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                ebml_w.emit_tys(ecx, /*bad*/copy *tys)
+                // FIXME(#5562): removing this copy causes a segfault
+                //               before stage2
+                ebml_w.emit_tys(ecx, /*bad*/copy **tys)
             }
         }
     }
@@ -922,7 +924,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         }
     }
 
-    for maps.method_map.find(&id).each |mme| {
+    for maps.method_map.find(&id).each |&mme| {
         do ebml_w.tag(c::tag_table_method_map) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {

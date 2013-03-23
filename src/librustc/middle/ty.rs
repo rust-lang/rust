@@ -38,8 +38,6 @@ use core::to_bytes;
 use core::uint;
 use core::vec;
 use core::hashmap::linear::{LinearMap, LinearSet};
-use std::oldmap::HashMap;
-use std::oldmap;
 use std::smallintmap::SmallIntMap;
 use syntax::ast::*;
 use syntax::ast_util::{is_local, local_def};
@@ -265,16 +263,16 @@ struct ctxt_ {
     // of this node.  This only applies to nodes that refer to entities
     // parameterized by type parameters, such as generic fns, types, or
     // other items.
-    node_type_substs: HashMap<node_id, ~[t]>,
+    node_type_substs: @mut LinearMap<node_id, ~[t]>,
 
     items: ast_map::map,
-    intrinsic_defs: HashMap<ast::ident, (ast::def_id, t)>,
+    intrinsic_defs: @mut LinearMap<ast::ident, (ast::def_id, t)>,
     freevars: freevars::freevar_map,
     tcache: type_cache,
     rcache: creader_cache,
     ccache: constness_cache,
-    short_names_cache: HashMap<t, @~str>,
-    needs_unwind_cleanup_cache: HashMap<t, bool>,
+    short_names_cache: @mut LinearMap<t, @~str>,
+    needs_unwind_cleanup_cache: @mut LinearMap<t, bool>,
     tc_cache: @mut LinearMap<uint, TypeContents>,
     ast_ty_to_ty_cache: @mut LinearMap<node_id, ast_ty_to_ty_cache_entry>,
     enum_var_cache: @mut LinearMap<def_id, @~[VariantInfo]>,
@@ -282,7 +280,7 @@ struct ctxt_ {
     ty_param_bounds: @mut LinearMap<ast::node_id, param_bounds>,
     inferred_modes: @mut LinearMap<ast::node_id, ast::mode>,
     adjustments: @mut LinearMap<ast::node_id, @AutoAdjustment>,
-    normalized_cache: HashMap<t, t>,
+    normalized_cache: @mut LinearMap<t, t>,
     lang_items: middle::lang_items::LanguageItems,
     // A mapping from an implementation ID to the method info and trait
     // method ID of the provided (a.k.a. default) methods in the traits that
@@ -788,8 +786,8 @@ fn mk_rcache() -> creader_cache {
     return @mut LinearMap::new();
 }
 
-pub fn new_ty_hash<V:Copy>() -> oldmap::HashMap<t, V> {
-    oldmap::HashMap()
+pub fn new_ty_hash<V:Copy>() -> @mut LinearMap<t, V> {
+    @mut LinearMap::new()
 }
 
 pub fn mk_ctxt(s: session::Session,
@@ -826,9 +824,9 @@ pub fn mk_ctxt(s: session::Session,
         region_map: region_map,
         region_paramd_items: region_paramd_items,
         node_types: @mut SmallIntMap::new(),
-        node_type_substs: oldmap::HashMap(),
+        node_type_substs: @mut LinearMap::new(),
         items: amap,
-        intrinsic_defs: oldmap::HashMap(),
+        intrinsic_defs: @mut LinearMap::new(),
         freevars: freevars,
         tcache: @mut LinearMap::new(),
         rcache: mk_rcache(),
@@ -1621,25 +1619,24 @@ pub fn type_needs_drop(cx: ctxt, ty: t) -> bool {
 // cleanups.
 pub fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
     match cx.needs_unwind_cleanup_cache.find(&ty) {
-      Some(result) => return result,
+      Some(&result) => return result,
       None => ()
     }
 
-    let tycache = new_ty_hash();
+    let mut tycache = LinearSet::new();
     let needs_unwind_cleanup =
-        type_needs_unwind_cleanup_(cx, ty, tycache, false);
+        type_needs_unwind_cleanup_(cx, ty, &mut tycache, false);
     cx.needs_unwind_cleanup_cache.insert(ty, needs_unwind_cleanup);
     return needs_unwind_cleanup;
 }
 
 fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
-                              tycache: oldmap::HashMap<t, ()>,
+                              tycache: &mut LinearSet<t>,
                               encountered_box: bool) -> bool {
 
     // Prevent infinite recursion
-    match tycache.find(&ty) {
-      Some(_) => return false,
-      None => { tycache.insert(ty, ()); }
+    if !tycache.insert(ty) {
+        return false;
     }
 
     let mut encountered_box = encountered_box;
@@ -2724,7 +2721,7 @@ pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
 pub fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> ~[t] {
     match cx.node_type_substs.find(&id) {
       None => return ~[],
-      Some(ts) => return ts
+      Some(ts) => return /*bad*/ copy *ts
     }
 }
 
@@ -4164,7 +4161,7 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
     }
 
     match cx.normalized_cache.find(&t) {
-      Some(t) => return t,
+      Some(&t) => return t,
       None => ()
     }
 

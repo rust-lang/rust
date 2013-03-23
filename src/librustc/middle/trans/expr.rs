@@ -1647,7 +1647,7 @@ fn trans_overloaded_op(bcx: block,
                        dest: Dest,
                        +autoref_arg: AutorefArg) -> block
 {
-    let origin = bcx.ccx().maps.method_map.get(&expr.id);
+    let origin = *bcx.ccx().maps.method_map.get(&expr.id);
     let fty = node_id_type(bcx, expr.callee_id);
     return callee::trans_call_inner(
         bcx, expr.info(), fty,

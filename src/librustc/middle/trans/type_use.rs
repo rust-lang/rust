@@ -250,8 +250,11 @@ pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
         match mth.origin {
           typeck::method_static(did) => {
             for cx.ccx.tcx.node_type_substs.find(&callee_id).each |ts| {
+                // FIXME(#5562): removing this copy causes a segfault
+                //               before stage2
+                let ts = /*bad*/ copy **ts;
                 let type_uses = type_uses_for(cx.ccx, did, ts.len());
-                for vec::each2(type_uses, *ts) |uses, subst| {
+                for vec::each2(type_uses, ts) |uses, subst| {
                     type_needs(cx, *uses, *subst)
                 }
             }
@@ -296,9 +299,11 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
       }
       expr_path(_) => {
         for cx.ccx.tcx.node_type_substs.find(&e.id).each |ts| {
+            // FIXME(#5562): removing this copy causes a segfault before stage2
+            let ts = copy **ts;
             let id = ast_util::def_id_of_def(*cx.ccx.tcx.def_map.get(&e.id));
             let uses_for_ts = type_uses_for(cx.ccx, id, ts.len());
-            for vec::each2(uses_for_ts, *ts) |uses, subst| {
+            for vec::each2(uses_for_ts, ts) |uses, subst| {
                 type_needs(cx, *uses, *subst)
             }
         }

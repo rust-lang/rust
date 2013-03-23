@@ -52,7 +52,6 @@ use core::str;
 use core::to_bytes;
 use core::vec::raw::to_ptr;
 use core::vec;
-use std::oldmap::{HashMap, Set};
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt};
 use syntax::codemap::span;
@@ -156,7 +155,7 @@ pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
     }
 }
 
-pub type ExternMap = HashMap<@str, ValueRef>;
+pub type ExternMap = @mut LinearMap<@str, ValueRef>;
 
 // Crate context.  Every crate we compile has one of these.
 pub struct CrateContext {
@@ -203,8 +202,8 @@ pub struct CrateContext {
      // Cache of emitted const values
      const_values: @mut LinearMap<ast::node_id, ValueRef>,
      module_data: @mut LinearMap<~str, ValueRef>,
-     lltypes: HashMap<ty::t, TypeRef>,
-     llsizingtypes: HashMap<ty::t, TypeRef>,
+     lltypes: @mut LinearMap<ty::t, TypeRef>,
+     llsizingtypes: @mut LinearMap<ty::t, TypeRef>,
      adt_reprs: @mut LinearMap<ty::t, @adt::Repr>,
      names: namegen,
      next_addrspace: addrspace_gen,

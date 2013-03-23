@@ -101,8 +101,10 @@ pub fn type_of_non_gc_box(cx: @CrateContext, t: ty::t) -> TypeRef {
 //     behavior.
 
 pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
-    if cx.llsizingtypes.contains_key(&t) {
-        return cx.llsizingtypes.get(&t);
+    match cx.llsizingtypes.find(&t) {
+        // FIXME(#5562): removing this copy causes a segfault in stage1 core
+        Some(t) => return /*bad*/ copy *t,
+        None => ()
     }
 
     let llsizingty = match ty::get(t).sty {
@@ -161,7 +163,11 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
     debug!("type_of %?: %?", t, ty::get(t));
 
     // Check the cache.
-    if cx.lltypes.contains_key(&t) { return cx.lltypes.get(&t); }
+    match cx.lltypes.find(&t) {
+        // FIXME(#5562): removing this copy causes a segfault in stage1 core
+        Some(t) => return /*bad*/ copy *t,
+        None => ()
+    }
 
     // Replace any typedef'd types with their equivalent non-typedef
     // type. This ensures that all LLVM nominal types that contain

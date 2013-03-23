@@ -60,7 +60,6 @@ use core::result;
 use core::vec;
 use std::list::{List, Nil, Cons};
 use std::list;
-use std::oldmap::HashMap;
 use syntax::codemap::{span, spanned, respan};
 use syntax::print::pprust::*;
 use syntax::{ast, ast_util, ast_map};
@@ -130,7 +129,7 @@ pub struct method_map_entry {
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type method_map = HashMap<ast::node_id, method_map_entry>;
+pub type method_map = @mut LinearMap<ast::node_id, method_map_entry>;
 
 // Resolutions for bounds of all parameters, left to right, for a given path.
 pub type vtable_res = @~[vtable_origin];
@@ -343,7 +342,7 @@ pub fn check_crate(tcx: ty::ctxt,
     let time_passes = tcx.sess.time_passes();
     let ccx = @mut CrateCtxt {
         trait_map: trait_map,
-        method_map: HashMap(),
+        method_map: @mut LinearMap::new(),
         vtable_map: @mut LinearMap::new(),
         coherence_info: @coherence::CoherenceInfo(),
         tcx: tcx
