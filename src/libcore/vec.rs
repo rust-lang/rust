@@ -47,12 +47,12 @@ pub mod rustrt {
 }
 
 /// Returns true if a vector contains no elements
-pub fn is_empty<T>(v: &[const T]) -> bool {
+pub fn is_empty<T>(v: &const [T]) -> bool {
     as_const_buf(v, |_p, len| len == 0u)
 }
 
 /// Returns true if two vectors have the same length
-pub fn same_length<T, U>(xs: &[const T], ys: &[const U]) -> bool {
+pub fn same_length<T, U>(xs: &const [T], ys: &const [U]) -> bool {
     xs.len() == ys.len()
 }
 
@@ -114,7 +114,7 @@ pub fn capacity<T>(v: &const ~[T]) -> uint {
 
 /// Returns the length of a vector
 #[inline(always)]
-pub fn len<T>(v: &[const T]) -> uint {
+pub fn len<T>(v: &const [T]) -> uint {
     as_const_buf(v, |_p, len| len)
 }
 
@@ -292,8 +292,8 @@ pub fn mut_slice<T>(v: &'r mut [T], start: uint, end: uint) -> &'r mut [T] {
 
 /// Return a slice that points into another slice.
 #[inline(always)]
-pub fn const_slice<T>(v: &'r [const T], start: uint, end: uint)
-                   -> &'r [const T] {
+pub fn const_slice<T>(v: &'r const [T], start: uint, end: uint)
+                   -> &'r const [T] {
     fail_unless!(start <= end);
     fail_unless!(end <= len(v));
     do as_const_buf(v) |p, _len| {
@@ -624,7 +624,7 @@ fn push_slow<T>(v: &mut ~[T], initval: T) {
 }
 
 #[inline(always)]
-pub fn push_all<T:Copy>(v: &mut ~[T], rhs: &[const T]) {
+pub fn push_all<T:Copy>(v: &mut ~[T], rhs: &const [T]) {
     let new_len = v.len() + rhs.len();
     reserve(&mut *v, new_len);
 
@@ -708,7 +708,7 @@ pub fn dedup<T:Eq>(v: &mut ~[T]) {
 
 // Appending
 #[inline(always)]
-pub fn append<T:Copy>(lhs: ~[T], rhs: &[const T]) -> ~[T] {
+pub fn append<T:Copy>(lhs: ~[T], rhs: &const [T]) -> ~[T] {
     let mut v = lhs;
     unsafe {
         v.push_all(rhs);
@@ -1242,7 +1242,7 @@ pub fn unzip<T,U>(v: ~[(T, U)]) -> (~[T], ~[U]) {
 /**
  * Convert two vectors to a vector of pairs, by reference. As zip().
  */
-pub fn zip_slice<T:Copy,U:Copy>(v: &[const T], u: &[const U])
+pub fn zip_slice<T:Copy,U:Copy>(v: &const [T], u: &const [U])
         -> ~[(T, U)] {
     let mut zipped = ~[];
     let sz = len(v);
@@ -1293,7 +1293,7 @@ pub fn reverse<T>(v: &mut [T]) {
 }
 
 /// Returns a vector with the order of elements reversed
-pub fn reversed<T:Copy>(v: &[const T]) -> ~[T] {
+pub fn reversed<T:Copy>(v: &const [T]) -> ~[T] {
     let mut rs: ~[T] = ~[];
     let mut i = len::<T>(v);
     if i == 0 { return (rs); } else { i -= 1; }
@@ -1345,7 +1345,7 @@ pub fn reversed<T:Copy>(v: &[const T]) -> ~[T] {
 #[inline(always)]
 pub fn each<T>(v: &'r [T], f: &fn(&'r T) -> bool) {
     //             ^^^^
-    // NB---this CANNOT be &[const T]!  The reason
+    // NB---this CANNOT be &const [T]!  The reason
     // is that you are passing it to `f()` using
     // an immutable.
 
@@ -1381,7 +1381,7 @@ pub fn each_mut<T>(v: &'r mut [T], f: &fn(elem: &'r mut T) -> bool) {
 /// Like `each()`, but for the case where you have a vector that *may or may
 /// not* have mutable contents.
 #[inline(always)]
-pub fn each_const<T>(v: &[const T], f: &fn(elem: &const T) -> bool) {
+pub fn each_const<T>(v: &const [T], f: &fn(elem: &const T) -> bool) {
     let mut i = 0;
     let n = v.len();
     while i < n {
@@ -1508,7 +1508,7 @@ pub fn as_imm_buf<T,U>(s: &[T],
                        /* NB---this CANNOT be const, see below */
                        f: &fn(*T, uint) -> U) -> U {
 
-    // NB---Do not change the type of s to `&[const T]`.  This is
+    // NB---Do not change the type of s to `&const [T]`.  This is
     // unsound.  The reason is that we are going to create immutable pointers
     // into `s` and pass them to `f()`, but in fact they are potentially
     // pointing at *mutable memory*.  Use `as_const_buf` or `as_mut_buf`
@@ -1524,7 +1524,7 @@ pub fn as_imm_buf<T,U>(s: &[T],
 
 /// Similar to `as_imm_buf` but passing a `*const T`
 #[inline(always)]
-pub fn as_const_buf<T,U>(s: &[const T], f: &fn(*const T, uint) -> U) -> U {
+pub fn as_const_buf<T,U>(s: &const [T], f: &fn(*const T, uint) -> U) -> U {
     unsafe {
         let v : *(*const T,uint) =
             ::cast::reinterpret_cast(&addr_of(&s));
@@ -1685,15 +1685,15 @@ pub mod traits {
     use ops::Add;
     use vec::append;
 
-    impl<T:Copy> Add<&'self [const T],~[T]> for ~[T] {
+    impl<T:Copy> Add<&'self const [T],~[T]> for ~[T] {
         #[inline(always)]
-        fn add(&self, rhs: & &'self [const T]) -> ~[T] {
+        fn add(&self, rhs: & &'self const [T]) -> ~[T] {
             append(copy *self, (*rhs))
         }
     }
 }
 
-impl<T> Container for &'self [const T] {
+impl<T> Container for &'self const [T] {
     /// Returns true if a vector contains no elements
     #[inline]
     fn is_empty(&const self) -> bool { is_empty(*self) }
@@ -1708,7 +1708,7 @@ pub trait CopyableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<T: Copy> CopyableVector<T> for &'self [const T] {
+impl<T: Copy> CopyableVector<T> for &'self const [T] {
     /// Returns a copy of `v`.
     #[inline]
     fn to_owned(&self) -> ~[T] {
@@ -2041,14 +2041,14 @@ impl<T> Mutable for ~[T] {
 }
 
 pub trait OwnedCopyableVector<T:Copy> {
-    fn push_all(&mut self, rhs: &[const T]);
+    fn push_all(&mut self, rhs: &const [T]);
     fn grow(&mut self, n: uint, initval: &T);
     fn grow_set(&mut self, index: uint, initval: &T, val: T);
 }
 
 impl<T:Copy> OwnedCopyableVector<T> for ~[T] {
     #[inline]
-    fn push_all(&mut self, rhs: &[const T]) {
+    fn push_all(&mut self, rhs: &const [T]) {
         push_all(self, rhs);
     }
 
@@ -2146,7 +2146,7 @@ pub mod raw {
 
     /** see `to_ptr()` */
     #[inline(always)]
-    pub unsafe fn to_const_ptr<T>(v: &[const T]) -> *const T {
+    pub unsafe fn to_const_ptr<T>(v: &const [T]) -> *const T {
         let repr: **SliceRepr = ::cast::transmute(&v);
         ::cast::reinterpret_cast(&addr_of(&((**repr).data)))
     }
@@ -2190,7 +2190,7 @@ pub mod raw {
      * Unchecked vector indexing.
      */
     #[inline(always)]
-    pub unsafe fn get<T:Copy>(v: &[const T], i: uint) -> T {
+    pub unsafe fn get<T:Copy>(v: &const [T], i: uint) -> T {
         as_const_buf(v, |p, _len| *ptr::const_offset(p, i))
     }
 
@@ -2234,7 +2234,7 @@ pub mod raw {
       * may overlap.
       */
     #[inline(always)]
-    pub unsafe fn copy_memory<T>(dst: &mut [T], src: &[const T],
+    pub unsafe fn copy_memory<T>(dst: &mut [T], src: &const [T],
                                  count: uint) {
         fail_unless!(dst.len() >= count);
         fail_unless!(src.len() >= count);
@@ -2300,7 +2300,7 @@ pub mod bytes {
       * may overlap.
       */
     #[inline(always)]
-    pub fn copy_memory(dst: &mut [u8], src: &[const u8], count: uint) {
+    pub fn copy_memory(dst: &mut [u8], src: &const [u8], count: uint) {
         // Bound checks are done at vec::raw::copy_memory.
         unsafe { vec::raw::copy_memory(dst, src, count) }
     }

@@ -972,7 +972,7 @@ impl io::Reader for TcpSocketBuf {
 
 /// Implementation of `io::Reader` trait for a buffered `net::tcp::TcpSocket`
 impl io::Writer for TcpSocketBuf {
-    pub fn write(&self, data: &[const u8]) {
+    pub fn write(&self, data: &const [u8]) {
         unsafe {
             let socket_data_ptr =
                 ptr::addr_of(&(*((*(self.data)).sock).socket_data));
