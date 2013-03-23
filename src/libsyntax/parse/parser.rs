@@ -1176,7 +1176,7 @@ pub impl Parser {
         } else if *self.token == token::LBRACKET {
             self.bump();
             let mutbl = self.parse_mutability();
-            if mutbl == m_mutbl {   // `m_const` too after snapshot
+            if mutbl == m_mutbl || mutbl == m_const {
                 self.obsolete(*self.last_span, ObsoleteMutVector);
             }
 
