@@ -24,7 +24,6 @@
 #[allow(non_camel_case_types)];
 #[allow(deprecated_mode)];
 #[warn(deprecated_pattern)];
-#[deny(deprecated_self)];
 
 #[no_core];
 

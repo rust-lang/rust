@@ -24,7 +24,6 @@ use managed;
 use ptr;
 use reflect;
 use reflect::{MovePtr, MovePtrAdaptor, align};
-use str;
 use sys;
 use to_str::ToStr;
 use vec::UnboxedVecRepr;
