@@ -14,7 +14,6 @@
 extern mod std;
 
 use core::io::{WriterUtil};
-use std::oldmap::*;
 
 #[cfg(test)]
 fn check_strs(actual: &str, expected: &str) -> bool
@@ -30,7 +29,7 @@ fn check_strs(actual: &str, expected: &str) -> bool
 #[test]
 fn tester()
 {
-    let table = HashMap();
+    let mut table = core::hashmap::linear::LinearMap();
     table.insert(@~"one", 1);
     table.insert(@~"two", 2);
     fail_unless!(check_strs(table.to_str(), ~"xxx"));   // not sure what expected should be

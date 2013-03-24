@@ -11,8 +11,7 @@
 // except according to those terms.
 
 extern mod std;
-use core::io::WriterUtil;
-use std::oldmap::HashMap;
+use core::hashmap::linear::LinearMap;
 use std::json;
 
 enum object {
@@ -59,19 +58,20 @@ fn add_interface(store: int, managed_ip: ~str, data: std::json::Json) -> (~str, 
     }
 }
 
-fn add_interfaces(store: int, managed_ip: ~str, device: std::oldmap::HashMap<~str, std::json::Json>) -> ~[(~str, object)]
+fn add_interfaces(store: int, managed_ip: ~str, device: LinearMap<~str, std::json::Json>) -> ~[(~str, object)]
 {
-    match device[~"interfaces"]
+    match device.get(&~"interfaces")
     {
-        std::json::List(interfaces) =>
+        &std::json::List(ref interfaces) =>
         {
-          do vec::map(interfaces) |interface| {
+          do interfaces.map |interface| {
                 add_interface(store, copy managed_ip, copy *interface)
           }
         }
         _ =>
         {
-            error!("Expected list for %s interfaces but found %?", managed_ip, device[~"interfaces"]);
+            error!("Expected list for %s interfaces but found %?", managed_ip,
+                   device.get(&~"interfaces"));
             ~[]
         }
     }

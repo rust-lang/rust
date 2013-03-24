@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+use core::hashmap::linear::LinearMap;
 
 pub fn main() {
-    let x = std::oldmap::HashMap();
+    let mut x = LinearMap::new();
     x.insert((@"abc", 0), 0);
 }

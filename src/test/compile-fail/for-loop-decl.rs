@@ -10,11 +10,11 @@
 
 // error-pattern: mismatched types
 extern mod std;
-use std::oldmap::HashMap;
 use std::bitv;
+use core::hashmap::linear::LinearMap;
 
 struct FnInfo {
-    vars: HashMap<uint, VarInfo>
+    vars: LinearMap<uint, VarInfo>
 }
 
 struct VarInfo {
@@ -27,7 +27,7 @@ fn bitv_to_str(enclosing: FnInfo, v: ~bitv::Bitv) -> str {
 
     // error is that the value type in the hash map is var_info, not a box
     for enclosing.vars.each_value |val| {
-        if v.get(val) { s += "foo"; }
+        if *v.get(val) { s += "foo"; }
     }
     return s;
 }
