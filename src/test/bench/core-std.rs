@@ -13,7 +13,6 @@
 extern mod std;
 
 use std::time::precise_time_s;
-use std::oldmap;
 
 use core::io::{Reader, ReaderUtil};
 use core::rand::RngUtil;
