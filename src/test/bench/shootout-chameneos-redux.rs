@@ -11,8 +11,6 @@
 // chameneos
 
 extern mod std;
-use std::oldmap;
-use std::oldmap::HashMap;
 use std::sort;
 use core::cell::Cell;
 use core::comm::*;

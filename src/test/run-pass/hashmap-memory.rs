@@ -16,17 +16,10 @@
    This originally came from the word-count benchmark.
 */
 
-extern mod std;
-
-use std::oldmap;
-use std::oldmap::HashMap;
-use core::comm::*;
-
 pub fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 
 mod map_reduce {
-    use std::oldmap;
-    use std::oldmap::HashMap;
+    use core::hashmap::linear::LinearMap;
     use core::comm::*;
 
     pub type putter = @fn(~str, ~str);
@@ -44,23 +37,20 @@ mod map_reduce {
     }
 
     fn map_task(ctrl: SharedChan<ctrl_proto>, input: ~str) {
-        let intermediates = oldmap::HashMap();
+        let intermediates = @mut LinearMap::new();
 
-        fn emit(im: oldmap::HashMap<~str, int>, ctrl: SharedChan<ctrl_proto>, key: ~str,
-                val: ~str) {
-            let mut c;
-            match im.find(&key) {
-              Some(_c) => { c = _c }
-              None => {
-                  let (pp, cc) = stream();
-                error!("sending find_reducer");
-                ctrl.send(find_reducer(str::to_bytes(key), cc));
-                error!("receiving");
-                c = pp.recv();
-                error!(c);
-                im.insert(key, c);
-              }
+        fn emit(im: &mut LinearMap<~str, int>, ctrl: SharedChan<ctrl_proto>, key: ~str,
+                _val: ~str) {
+            if im.contains_key(&key) {
+                return;
             }
+            let (pp, cc) = stream();
+            error!("sending find_reducer");
+            ctrl.send(find_reducer(str::to_bytes(key), cc));
+            error!("receiving");
+            let c = pp.recv();
+            error!(c);
+            im.insert(key, c);
         }
 
         let ctrl_clone = ctrl.clone();
@@ -75,9 +65,9 @@ mod map_reduce {
         // This task becomes the master control task. It spawns others
         // to do the rest.
 
-        let mut reducers: oldmap::HashMap<~str, int>;
+        let mut reducers: LinearMap<~str, int>;
 
-        reducers = oldmap::HashMap();
+        reducers = LinearMap::new();
 
         start_mappers(ctrl_chan, inputs.clone());
 
@@ -89,7 +79,7 @@ mod map_reduce {
               find_reducer(k, cc) => {
                 let mut c;
                 match reducers.find(&str::from_bytes(k)) {
-                  Some(_c) => { c = _c; }
+                  Some(&_c) => { c = _c; }
                   None => { c = 0; }
                 }
                 cc.send(c);

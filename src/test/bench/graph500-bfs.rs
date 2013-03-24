@@ -22,11 +22,9 @@ An implementation of the Graph500 Breadth First Search problem in Rust.
 extern mod std;
 use std::arc;
 use std::time;
-use std::oldmap;
-use std::oldmap::Map;
-use std::oldmap::HashMap;
 use std::deque::Deque;
 use std::par;
+use core::hashmap::linear::{LinearMap, LinearSet};
 use core::io::WriterUtil;
 use core::int::abs;
 use core::rand::RngUtil;
@@ -82,27 +80,31 @@ fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
 }
 
 fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
-    let graph = do vec::from_fn(N) |_i| {
-        oldmap::HashMap::<node_id, ()>()
+    let mut graph = do vec::from_fn(N) |_i| {
+        LinearSet::new()
     };
 
     do vec::each(edges) |e| {
         match *e {
             (i, j) => {
-                oldmap::set_add(graph[i], j);
-                oldmap::set_add(graph[j], i);
+                graph[i].insert(j);
+                graph[j].insert(i);
             }
         }
         true
     }
 
-    do graph.map() |v| {
-        oldmap::vec_from_set(*v)
+    do vec::map_consume(graph) |mut v| {
+        let mut vec = ~[];
+        do v.consume |i| {
+            vec.push(i);
+        }
+        vec
     }
 }
 
 fn gen_search_keys(graph: &[~[node_id]], n: uint) -> ~[node_id] {
-    let keys = oldmap::HashMap::<node_id, ()>();
+    let mut keys = LinearSet::new();
     let r = rand::Rng();
 
     while keys.len() < n {
@@ -111,10 +113,14 @@ fn gen_search_keys(graph: &[~[node_id]], n: uint) -> ~[node_id] {
         if graph[k].len() > 0u && vec::any(graph[k], |i| {
             *i != k as node_id
         }) {
-            oldmap::set_add(keys, k as node_id);
+            keys.insert(k as node_id);
         }
     }
-    oldmap::vec_from_set(keys)
+    let mut vec = ~[];
+    do keys.consume |i| {
+        vec.push(i);
+    }
+    return vec;
 }
 
 /**

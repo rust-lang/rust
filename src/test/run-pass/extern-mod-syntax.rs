@@ -11,7 +11,7 @@
 // except according to those terms.
 
 extern mod std;
-use std::oldmap::HashMap;
+use std::json::Object;
 
 pub fn main() {
     io::println("Hello world!");
