@@ -268,7 +268,7 @@ pub fn trans_fn_ref_with_vtables(
             ccx.tcx.items.find(&def_id.node),
             || fmt!("local item should be in ast map"));
 
-        match map_node {
+        match *map_node {
             ast_map::node_foreign_item(_,
                                        ast::foreign_abi_rust_intrinsic,
                                        _,

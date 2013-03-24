@@ -98,7 +98,7 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
         return uses;
     }
     let map_node = match ccx.tcx.items.find(&fn_id_loc.node) {
-        Some(ref x) => (/*bad*/copy *x),
+        Some(x) => (/*bad*/copy *x),
         None    => ccx.sess.bug(fmt!("type_uses_for: unbound item ID %?",
                                      fn_id_loc))
     };

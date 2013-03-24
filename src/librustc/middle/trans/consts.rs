@@ -158,7 +158,7 @@ pub fn get_const_val(cx: @CrateContext, def_id: ast::def_id) -> ValueRef {
         if !ast_util::is_local(def_id) {
             def_id = inline::maybe_instantiate_inline(cx, def_id, true);
         }
-        match cx.tcx.items.get(&def_id.node) {
+        match *cx.tcx.items.get(&def_id.node) {
             ast_map::node_item(@ast::item {
                 node: ast::item_const(_, subexpr), _
             }, _) => {

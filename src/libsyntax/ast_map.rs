@@ -23,9 +23,9 @@ use print::pprust;
 use visit;
 
 use core::cmp;
+use core::hashmap::linear::LinearMap;
 use core::str;
 use core::vec;
-use std;
 
 pub enum path_elt {
     path_mod(ident),
@@ -104,10 +104,10 @@ pub enum ast_node {
     node_struct_ctor(@struct_def, @item, @path),
 }
 
-pub type map = std::oldmap::HashMap<node_id, ast_node>;
+pub type map = @mut LinearMap<node_id, ast_node>;
 
 pub struct Ctx {
-    map: @map,
+    map: map,
     path: path,
     local_id: uint,
     diag: @span_handler,
@@ -134,13 +134,13 @@ pub fn mk_ast_map_visitor() -> vt {
 
 pub fn map_crate(diag: @span_handler, c: crate) -> map {
     let cx = @mut Ctx {
-        map: @std::oldmap::HashMap(),
+        map: @mut LinearMap::new(),
         path: ~[],
         local_id: 0u,
         diag: diag,
     };
     visit::visit_crate(c, cx, mk_ast_map_visitor());
-    *cx.map
+    cx.map
 }
 
 // Used for items loaded from external crate that are being inlined into this
@@ -157,7 +157,7 @@ pub fn map_decoded_item(diag: @span_handler,
     // even if we did I think it only needs an ordering between local
     // variables that are simultaneously in scope).
     let cx = @mut Ctx {
-        map: @map,
+        map: map,
         path: copy path,
         local_id: 0,
         diag: diag,
@@ -374,7 +374,7 @@ pub fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
       None => {
         fmt!("unknown node (id=%d)", id)
       }
-      Some(node_item(item, path)) => {
+      Some(&node_item(item, path)) => {
         let path_str = path_ident_to_str(*path, item.ident, itr);
         let item_str = match item.node {
           item_const(*) => ~"const",
@@ -390,43 +390,43 @@ pub fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
         };
         fmt!("%s %s (id=%?)", item_str, path_str, id)
       }
-      Some(node_foreign_item(item, abi, _, path)) => {
+      Some(&node_foreign_item(item, abi, _, path)) => {
         fmt!("foreign item %s with abi %? (id=%?)",
              path_ident_to_str(*path, item.ident, itr), abi, id)
       }
-      Some(node_method(m, _, path)) => {
+      Some(&node_method(m, _, path)) => {
         fmt!("method %s in %s (id=%?)",
              *itr.get(m.ident), path_to_str(*path, itr), id)
       }
-      Some(node_trait_method(ref tm, _, path)) => {
+      Some(&node_trait_method(ref tm, _, path)) => {
         let m = ast_util::trait_method_to_ty_method(&**tm);
         fmt!("method %s in %s (id=%?)",
              *itr.get(m.ident), path_to_str(*path, itr), id)
       }
-      Some(node_variant(ref variant, _, path)) => {
+      Some(&node_variant(ref variant, _, path)) => {
         fmt!("variant %s in %s (id=%?)",
              *itr.get(variant.node.name), path_to_str(*path, itr), id)
       }
-      Some(node_expr(expr)) => {
+      Some(&node_expr(expr)) => {
         fmt!("expr %s (id=%?)", pprust::expr_to_str(expr, itr), id)
       }
-      Some(node_stmt(stmt)) => {
+      Some(&node_stmt(stmt)) => {
         fmt!("stmt %s (id=%?)",
              pprust::stmt_to_str(*stmt, itr), id)
       }
-      Some(node_arg(_, _)) => { // add more info here
+      Some(&node_arg(_, _)) => { // add more info here
         fmt!("arg (id=%?)", id)
       }
-      Some(node_local(_)) => { // add more info here
+      Some(&node_local(_)) => { // add more info here
         fmt!("local (id=%?)", id)
       }
-      Some(node_dtor(*)) => { // add more info here
+      Some(&node_dtor(*)) => { // add more info here
         fmt!("node_dtor (id=%?)", id)
       }
-      Some(node_block(_)) => {
+      Some(&node_block(_)) => {
         fmt!("block")
       }
-      Some(node_struct_ctor(*)) => {
+      Some(&node_struct_ctor(*)) => {
         fmt!("struct_ctor")
       }
     }
@@ -436,7 +436,7 @@ pub fn node_item_query<Result>(items: map, id: node_id,
                                query: &fn(@item) -> Result,
                                +error_msg: ~str) -> Result {
     match items.find(&id) {
-        Some(node_item(it, _)) => query(it),
+        Some(&node_item(it, _)) => query(it),
         _ => fail!(error_msg)
     }
 }

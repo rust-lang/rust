@@ -93,7 +93,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         (may have attempted to monomorphize an item defined in a different \
         crate?)", fn_id));
     // Get the path so that we can create a symbol
-    let (pt, name, span) = match map_node {
+    let (pt, name, span) = match *map_node {
       ast_map::node_item(i, pt) => (pt, i.ident, i.span),
       ast_map::node_variant(ref v, enm, pt) => (pt, (*v).node.name, enm.span),
       ast_map::node_method(m, _, pt) => (pt, m.ident, m.span),
@@ -172,7 +172,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         self_ty: impl_ty_opt
     });
 
-    let lldecl = match map_node {
+    let lldecl = match *map_node {
       ast_map::node_item(i@@ast::item {
                 // XXX: Bad copy.
                 node: ast::item_fn(ref decl, _, _, ref body),

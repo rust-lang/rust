@@ -2065,7 +2065,7 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: ast::enum_def,
 
 pub fn trans_item(ccx: @CrateContext, item: ast::item) {
     let _icx = ccx.insn_ctxt("trans_item");
-    let path = match ccx.tcx.items.get(&item.id) {
+    let path = match *ccx.tcx.items.get(&item.id) {
         ast_map::node_item(_, p) => p,
         // tjc: ?
         _ => fail!(~"trans_item"),
@@ -2336,13 +2336,12 @@ pub fn fill_fn_pair(bcx: block, pair: ValueRef, llfn: ValueRef,
 }
 
 pub fn item_path(ccx: @CrateContext, i: @ast::item) -> path {
-    vec::append(
-        /*bad*/copy *match ccx.tcx.items.get(&i.id) {
-            ast_map::node_item(_, p) => p,
-                // separate map for paths?
-            _ => fail!(~"item_path")
-        },
-        ~[path_name(i.ident)])
+    let base = match *ccx.tcx.items.get(&i.id) {
+        ast_map::node_item(_, p) => p,
+            // separate map for paths?
+        _ => fail!(~"item_path")
+    };
+    vec::append(/*bad*/copy *base, ~[path_name(i.ident)])
 }
 
 /* If there's already a symbol for the dtor with <id> and substs <substs>,
@@ -2393,7 +2392,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
       None => {
 
         let mut exprt = false;
-        let val = match ccx.tcx.items.get(&id) {
+        let val = match *ccx.tcx.items.get(&id) {
           ast_map::node_item(i, pth) => {
             let my_path = vec::append(/*bad*/copy *pth,
                                       ~[path_name(i.ident)]);

@@ -801,7 +801,7 @@ pub impl CoherenceChecker {
     fn span_of_impl(&self, implementation: @Impl) -> span {
         fail_unless!(implementation.did.crate == local_crate);
         match self.crate_context.tcx.items.find(&implementation.did.node) {
-            Some(node_item(item, _)) => {
+            Some(&node_item(item, _)) => {
                 return item.span;
             }
             _ => {
@@ -1003,7 +1003,7 @@ pub impl CoherenceChecker {
                     // Destructors only work on nominal types.
                     if impl_info.did.crate == ast::local_crate {
                         match tcx.items.find(&impl_info.did.node) {
-                            Some(ast_map::node_item(@ref item, _)) => {
+                            Some(&ast_map::node_item(@ref item, _)) => {
                                 tcx.sess.span_err((*item).span,
                                                   ~"the Drop trait may only \
                                                     be implemented on \
