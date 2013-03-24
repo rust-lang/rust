@@ -2547,7 +2547,6 @@ impl<A:Clone> Clone for ~[A] {
 #[cfg(test)]
 mod tests {
     use option::{None, Option, Some};
-    use option;
     use sys;
     use vec::*;
     use cmp::*;

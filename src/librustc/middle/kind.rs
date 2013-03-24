@@ -56,8 +56,6 @@ use syntax::{visit, ast_util};
 // primitives in the stdlib are explicitly annotated to only take sendable
 // types.
 
-use core::hashmap::linear::LinearSet;
-
 pub static try_adding: &'static str = "Try adding a move";
 
 pub type rval_map = HashMap<node_id, ()>;

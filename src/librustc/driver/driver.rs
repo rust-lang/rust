@@ -25,7 +25,6 @@ use util::common::time;
 use util::ppaux;
 
 use core::int;
-use core::io::WriterUtil;
 use core::io;
 use core::os;
 use core::str;
