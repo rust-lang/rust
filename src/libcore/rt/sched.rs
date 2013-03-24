@@ -16,7 +16,7 @@ use ptr::mut_null;
 
 use super::work_queue::WorkQueue;
 use super::stack::{StackPool, StackSegment};
-use super::io::{EventLoop, EventLoopObject};
+use super::rtio::{EventLoop, EventLoopObject};
 use super::context::Context;
 use tls = super::thread_local_storage;
 
@@ -70,7 +70,14 @@ enum CleanupJob {
 
 pub impl Scheduler {
 
-    pub fn new(event_loop: ~EventLoopObject) -> Scheduler {
+    fn new(event_loop: ~EventLoopObject) -> Scheduler {
+
+        // Lazily initialize the global state, currently the scheduler TLS key
+        unsafe { rust_initialize_global_state(); }
+        extern {
+            fn rust_initialize_global_state();
+        }
+
         Scheduler {
             event_loop: event_loop,
             task_queue: WorkQueue::new(),
@@ -183,8 +190,7 @@ pub impl Scheduler {
 
         let blocked_task = self.current_task.swap_unwrap();
         let f_fake_region = unsafe {
-            transmute::<&fn(&mut Scheduler, ~Task),
-                        &fn(&mut Scheduler, ~Task)>(f)
+            transmute::<&fn(&mut Scheduler, ~Task), &fn(&mut Scheduler, ~Task)>(f)
         };
         let f_opaque = HackAroundBorrowCk::from_fn(f_fake_region);
         self.enqueue_cleanup_job(GiveTask(blocked_task, f_opaque));
@@ -233,8 +239,7 @@ pub impl Scheduler {
         Context::swap(task_context, scheduler_context);
     }
 
-    priv fn swap_in_task_from_running_task(&mut self,
-                                           running_task: &mut Task) {
+    priv fn swap_in_task_from_running_task(&mut self, running_task: &mut Task) {
         let running_task_context = &mut running_task.saved_context;
         let next_context = &self.current_task.get_ref().saved_context;
         Context::swap(running_task_context, next_context);
@@ -285,8 +290,6 @@ pub impl Scheduler {
 static TASK_MIN_STACK_SIZE: uint = 10000000; // XXX: Too much stack
 
 pub struct Task {
-    /// The task entry point, saved here for later destruction
-    priv start: ~~fn(),
     /// The segment of stack on which the task is currently running or,
     /// if the task is blocked, on which the task will resume execution
     priv current_stack_segment: StackSegment,
@@ -295,17 +298,13 @@ pub struct Task {
     priv saved_context: Context,
 }
 
-impl Task {
-    pub fn new(stack_pool: &mut StackPool, start: ~fn()) -> Task {
-        // XXX: Putting main into a ~ so it's a thin pointer and can
-        // be passed to the spawn function.  Another unfortunate
-        // allocation
-        let start = ~Task::build_start_wrapper(start);
+pub impl Task {
+    fn new(stack_pool: &mut StackPool, start: ~fn()) -> Task {
+        let start = Task::build_start_wrapper(start);
         let mut stack = stack_pool.take_segment(TASK_MIN_STACK_SIZE);
         // NB: Context holds a pointer to that ~fn
-        let initial_context = Context::new(&*start, &mut stack);
+        let initial_context = Context::new(start, &mut stack);
         return Task {
-            start: start,
             current_stack_segment: stack,
             saved_context: initial_context,
         };
@@ -350,8 +349,7 @@ impl ThreadLocalScheduler {
     fn put_scheduler(&mut self, scheduler: ~Scheduler) {
         unsafe {
             let key = match self { &ThreadLocalScheduler(key) => key };
-            let value: *mut c_void =
-                transmute::<~Scheduler, *mut c_void>(scheduler);
+            let value: *mut c_void = transmute::<~Scheduler, *mut c_void>(scheduler);
             tls::set(key, value);
         }
     }
@@ -363,8 +361,9 @@ impl ThreadLocalScheduler {
             fail_unless!(value.is_not_null());
             {
                 let value_ptr = &mut value;
-                let sched: &mut ~Scheduler =
-                    transmute::<&mut *mut c_void, &mut ~Scheduler>(value_ptr);
+                let sched: &mut ~Scheduler = {
+                    transmute::<&mut *mut c_void, &mut ~Scheduler>(value_ptr)
+                };
                 let sched: &mut Scheduler = &mut **sched;
                 return sched;
             }

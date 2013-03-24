@@ -32,10 +32,10 @@
 
 #[allow(non_camel_case_types)]; // C types
 
-use libc::size_t;
-use libc::c_void;
-use prelude::*;
-use ptr::to_unsafe_ptr;
+use core::libc::size_t;
+use core::libc::c_void;
+use core::prelude::*;
+use core::ptr::to_unsafe_ptr;
 
 pub type uv_handle_t = c_void;
 pub type uv_loop_t = c_void;
@@ -357,7 +357,7 @@ pub struct uv_getaddrinfo_t {
 
 pub mod uv_ll_struct_stubgen {
 
-    use ptr;
+    use core::ptr;
 
     use super::{
         uv_async_t,
@@ -930,8 +930,6 @@ pub unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
                       addr_ptr: *sockaddr_in,
                       after_connect_cb: *u8)
 -> libc::c_int {
-    debug!("b4 foreign tcp_connect--addr port: %u cb: %u",
-                    (*addr_ptr).sin_port as uint, after_connect_cb as uint);
     return rustrt::rust_uv_tcp_connect(connect_ptr, tcp_handle_ptr,
                                     after_connect_cb, addr_ptr);
 }
@@ -1021,22 +1019,8 @@ pub unsafe fn async_send(async_handle: *uv_async_t) {
 pub unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
     let out_buf = uv_buf_t { base: ptr::null(), len: 0 as libc::size_t };
     let out_buf_ptr = ptr::addr_of(&out_buf);
-    debug!("buf_init - input %u len %u out_buf: %u",
-                     input as uint,
-                     len as uint,
-                     out_buf_ptr as uint);
-    // yuck :/
     rustrt::rust_uv_buf_init(out_buf_ptr, input, len as size_t);
-    //let result = rustrt::rust_uv_buf_init_2(input, len as size_t);
-    debug!("after rust_uv_buf_init");
-    let res_base = get_base_from_buf(out_buf);
-    let res_len = get_len_from_buf(out_buf);
-    //let res_base = get_base_from_buf(result);
-    debug!("buf_init - result %u len %u",
-                     res_base as uint,
-                     res_len as uint);
     return out_buf;
-    //return result;
 }
 pub unsafe fn ip4_addr(ip: &str, port: int)
 -> sockaddr_in {
@@ -1078,8 +1062,6 @@ pub unsafe fn ip6_name(src: &sockaddr_in6) -> ~str {
                        0u8,0u8,0u8,0u8,0u8,0u8];
     do vec::as_imm_buf(dst) |dst_buf, size| {
         let src_unsafe_ptr = to_unsafe_ptr(src);
-        debug!("val of src *sockaddr_in6: %? sockaddr_in6: %?",
-                        src_unsafe_ptr, src);
         let result = rustrt::rust_uv_ip6_name(src_unsafe_ptr,
                                               dst_buf, size as libc::size_t);
         match result {
@@ -1240,9 +1222,9 @@ pub unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
 
 #[cfg(test)]
 pub mod test {
-    use prelude::*;
+    use core::prelude::*;
+    use core::comm::{SharedChan, stream, GenericChan, GenericPort};
     use super::*;
-    use comm::{SharedChan, stream, GenericChan, GenericPort};
 
     enum tcp_read_data {
         tcp_read_eof,
@@ -1265,7 +1247,7 @@ pub mod test {
                          suggested_size: libc::size_t)
         -> uv_buf_t {
         unsafe {
-            debug!("on_alloc_cb!");
+            debug!(~"on_alloc_cb!");
             let char_ptr = malloc_buf_base_of(suggested_size);
             debug!("on_alloc_cb h: %? char_ptr: %u sugsize: %u",
                              handle,
@@ -1298,15 +1280,15 @@ pub mod test {
             }
             else if (nread == -1) {
                 // err .. possibly EOF
-                debug!("read: eof!");
+                debug!(~"read: eof!");
             }
             else {
                 // nread == 0 .. do nothing, just free buf as below
-                debug!("read: do nothing!");
+                debug!(~"read: do nothing!");
             }
             // when we're done
             free_base_of_buf(buf);
-            debug!("CLIENT exiting on_read_cb");
+            debug!(~"CLIENT exiting on_read_cb");
         }
     }
 
@@ -1321,8 +1303,7 @@ pub mod test {
                 "CLIENT on_write_complete_cb: tcp:%d write_handle:%d",
                 stream as int, write_req as int);
             let result = read_start(stream, on_alloc_cb, on_read_cb);
-            debug!(
-                "CLIENT ending on_write_complete_cb .. status: %d",
+            debug!("CLIENT ending on_write_complete_cb .. status: %d",
                      result as int);
         }
     }
@@ -1335,7 +1316,7 @@ pub mod test {
             let stream =
                 get_stream_handle_from_connect_req(connect_req_ptr);
             if (status == 0i32) {
-                debug!("on_connect_cb: in status=0 if..");
+                debug!(~"on_connect_cb: in status=0 if..");
                 let client_data = get_data_for_req(
                     connect_req_ptr as *libc::c_void)
                     as *request_wrapper;
@@ -1353,10 +1334,10 @@ pub mod test {
                 let test_loop = get_loop_for_uv_handle(
                     stream as *libc::c_void);
                 let err_msg = get_last_err_info(test_loop);
-                debug!("%?", err_msg);
+                debug!(err_msg);
                 fail_unless!(false);
             }
-            debug!("finishing on_connect_cb");
+            debug!(~"finishing on_connect_cb");
         }
     }
 
@@ -1396,9 +1377,9 @@ pub mod test {
             let tcp_init_result = tcp_init(
                 test_loop as *libc::c_void, tcp_handle_ptr);
             if (tcp_init_result == 0i32) {
-                debug!("sucessful tcp_init_result");
+                debug!(~"sucessful tcp_init_result");
 
-                debug!("building addr...");
+                debug!(~"building addr...");
                 let addr = ip4_addr(ip, port);
                 // FIXME ref #2064
                 let addr_ptr = ptr::addr_of(&addr);
@@ -1420,17 +1401,17 @@ pub mod test {
                     set_data_for_uv_handle(
                         tcp_handle_ptr as *libc::c_void,
                         ptr::addr_of(&client_data) as *libc::c_void);
-                    debug!("before run tcp req loop");
+                    debug!(~"before run tcp req loop");
                     run(test_loop);
-                    debug!("after run tcp req loop");
+                    debug!(~"after run tcp req loop");
                 }
                 else {
-                   debug!("tcp_connect() failure");
+                   debug!(~"tcp_connect() failure");
                    fail_unless!(false);
                 }
             }
             else {
-                debug!("tcp_init() failure");
+                debug!(~"tcp_init() failure");
                 fail_unless!(false);
             }
             loop_delete(test_loop);
@@ -1446,8 +1427,7 @@ pub mod test {
 
     extern fn client_stream_after_close_cb(handle: *libc::c_void) {
         unsafe {
-            debug!(
-                "SERVER: closed client stream, now closing server stream");
+            debug!(~"SERVER: closed client stream, now closing server stream");
             let client_data = get_data_for_uv_handle(
                 handle) as
                 *tcp_server_data;
@@ -1460,7 +1440,7 @@ pub mod test {
         unsafe {
             let client_stream_ptr =
                 get_stream_handle_from_write_req(req);
-            debug!("SERVER: resp sent... closing client stream");
+            debug!(~"SERVER: resp sent... closing client stream");
             close(client_stream_ptr as *libc::c_void,
                           client_stream_after_close_cb)
         }
@@ -1491,8 +1471,8 @@ pub mod test {
                 let server_kill_msg = copy (*client_data).server_kill_msg;
                 let write_req = (*client_data).server_write_req;
                 if str::contains(request_str, server_kill_msg) {
-                    debug!("SERVER: client req contains kill_msg!");
-                    debug!("SERVER: sending response to client");
+                    debug!(~"SERVER: client req contains kill_msg!");
+                    debug!(~"SERVER: sending response to client");
                     read_stop(client_stream_ptr);
                     let server_chan = (*client_data).server_chan.clone();
                     server_chan.send(request_str);
@@ -1504,28 +1484,28 @@ pub mod test {
                     debug!("SERVER: resp write result: %d",
                                 write_result as int);
                     if (write_result != 0i32) {
-                        debug!("bad result for server resp write()");
-                        debug!("%s", get_last_err_info(
+                        debug!(~"bad result for server resp write()");
+                        debug!(get_last_err_info(
                             get_loop_for_uv_handle(client_stream_ptr
                                 as *libc::c_void)));
                         fail_unless!(false);
                     }
                 }
                 else {
-                    debug!("SERVER: client req !contain kill_msg!");
+                    debug!(~"SERVER: client req !contain kill_msg!");
                 }
             }
             else if (nread == -1) {
                 // err .. possibly EOF
-                debug!("read: eof!");
+                debug!(~"read: eof!");
             }
             else {
                 // nread == 0 .. do nothing, just free buf as below
-                debug!("read: do nothing!");
+                debug!(~"read: do nothing!");
             }
             // when we're done
             free_base_of_buf(buf);
-            debug!("SERVER exiting on_read_cb");
+            debug!(~"SERVER exiting on_read_cb");
         }
     }
 
@@ -1533,7 +1513,7 @@ pub mod test {
                                     *uv_stream_t,
                                   status: libc::c_int) {
         unsafe {
-            debug!("client connecting!");
+            debug!(~"client connecting!");
             let test_loop = get_loop_for_uv_handle(
                                    server_stream_ptr as *libc::c_void);
             if status != 0i32 {
@@ -1551,7 +1531,7 @@ pub mod test {
                 client_stream_ptr as *libc::c_void,
                 server_data as *libc::c_void);
             if (client_init_result == 0i32) {
-                debug!("successfully initialized client stream");
+                debug!(~"successfully initialized client stream");
                 let accept_result = accept(server_stream_ptr as
                                                      *libc::c_void,
                                                    client_stream_ptr as
@@ -1563,7 +1543,7 @@ pub mod test {
                                                          on_alloc_cb,
                                                          on_server_read_cb);
                     if (read_result == 0i32) {
-                        debug!("successful server read start");
+                        debug!(~"successful server read start");
                     }
                     else {
                         debug!("server_connection_cb: bad read:%d",
@@ -1674,7 +1654,7 @@ pub mod test {
                 let bind_result = tcp_bind(tcp_server_ptr,
                                                    server_addr_ptr);
                 if (bind_result == 0i32) {
-                    debug!("successful uv_tcp_bind, listening");
+                    debug!(~"successful uv_tcp_bind, listening");
 
                     // uv_listen()
                     let listen_result = listen(tcp_server_ptr as
@@ -1694,7 +1674,7 @@ pub mod test {
                             async_send(continue_async_handle_ptr);
                             // uv_run()
                             run(test_loop);
-                            debug!("server uv::run() has returned");
+                            debug!(~"server uv::run() has returned");
                         }
                         else {
                             debug!("uv_async_init failure: %d",
@@ -1751,9 +1731,9 @@ pub mod test {
             };
 
             // block until the server up is.. possibly a race?
-            debug!("before receiving on server continue_port");
+            debug!(~"before receiving on server continue_port");
             continue_port.recv();
-            debug!("received on continue port, set up tcp client");
+            debug!(~"received on continue port, set up tcp client");
 
             let kill_server_msg_copy = copy kill_server_msg;
             do task::spawn_sched(task::ManualThreads(1u)) {
@@ -1808,7 +1788,7 @@ pub mod test {
                 let output = fmt!(
                     "STRUCT_SIZE FAILURE: %s -- actual: %u expected: %u",
                     t_name, rust_size, foreign_size as uint);
-                debug!("%s", output);
+                debug!(output);
             }
             fail_unless!(sizes_match);
         }
