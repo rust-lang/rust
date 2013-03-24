@@ -201,19 +201,19 @@ struct ConsoleTestState {
     out: @io::Writer,
     log_out: Option<@io::Writer>,
     use_color: bool,
-    mut total: uint,
-    mut passed: uint,
-    mut failed: uint,
-    mut ignored: uint,
-    mut benchmarked: uint,
-    mut failures: ~[TestDesc]
+    total: uint,
+    passed: uint,
+    failed: uint,
+    ignored: uint,
+    benchmarked: uint,
+    failures: ~[TestDesc]
 }
 
 // A simple console test runner
 pub fn run_tests_console(opts: &TestOpts,
                          tests: ~[TestDescAndFn]) -> bool {
 
-    fn callback(event: &TestEvent, st: @ConsoleTestState) {
+    fn callback(event: &TestEvent, st: &mut ConsoleTestState) {
         debug!("callback(event=%?)", event);
         match *event {
           TeFiltered(ref filtered_tests) => {
@@ -268,16 +268,16 @@ pub fn run_tests_console(opts: &TestOpts,
         None => None
     };
 
-    let st = @ConsoleTestState {
+    let st = @mut ConsoleTestState {
         out: io::stdout(),
         log_out: log_out,
         use_color: use_color(),
-        mut total: 0u,
-        mut passed: 0u,
-        mut failed: 0u,
-        mut ignored: 0u,
-        mut benchmarked: 0u,
-        mut failures: ~[]
+        total: 0u,
+        passed: 0u,
+        failed: 0u,
+        ignored: 0u,
+        benchmarked: 0u,
+        failures: ~[]
     };
 
     run_tests(opts, tests, |x| callback(&x, st));
@@ -290,15 +290,18 @@ pub fn run_tests_console(opts: &TestOpts,
         print_failures(st);
     }
 
-    st.out.write_str(fmt!("\nresult: "));
-    if success {
-        // There's no parallelism at this point so it's safe to use color
-        write_ok(st.out, true);
-    } else {
-        write_failed(st.out, true);
+    {
+      let st: &mut ConsoleTestState = st;
+      st.out.write_str(fmt!("\nresult: "));
+      if success {
+          // There's no parallelism at this point so it's safe to use color
+          write_ok(st.out, true);
+      } else {
+          write_failed(st.out, true);
+      }
+      st.out.write_str(fmt!(". %u passed; %u failed; %u ignored\n\n",
+                            st.passed, st.failed, st.ignored));
     }
-    st.out.write_str(fmt!(". %u passed; %u failed; %u ignored\n\n",
-                          st.passed, st.failed, st.ignored));
 
     return success;
 
@@ -356,7 +359,7 @@ pub fn run_tests_console(opts: &TestOpts,
     }
 }
 
-fn print_failures(st: @ConsoleTestState) {
+fn print_failures(st: &ConsoleTestState) {
     st.out.write_line(~"\nfailures:");
     let mut failures = ~[];
     for uint::range(0, vec::uniq_len(&const st.failures)) |i| {
@@ -390,12 +393,12 @@ fn should_sort_failures_before_printing_them() {
             out: wr,
             log_out: option::None,
             use_color: false,
-            mut total: 0u,
-            mut passed: 0u,
-            mut failed: 0u,
-            mut ignored: 0u,
-            mut benchmarked: 0u,
-            mut failures: ~[test_b, test_a]
+            total: 0u,
+            passed: 0u,
+            failed: 0u,
+            ignored: 0u,
+            benchmarked: 0u,
+            failures: ~[test_b, test_a]
         };
 
         print_failures(st);

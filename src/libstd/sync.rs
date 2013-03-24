@@ -72,7 +72,7 @@ fn broadcast_waitqueue(q: &Waitqueue) -> uint {
 // The building-block used to make semaphores, mutexes, and rwlocks.
 #[doc(hidden)]
 struct SemInner<Q> {
-    mut count: int,
+    count: int,
     waiters:   Waitqueue,
     // Can be either unit or another waitqueue. Some sems shouldn't come with
     // a condition variable attached, others should.
@@ -729,7 +729,6 @@ mod tests {
 
     use core::cast;
     use core::cell::Cell;
-    use core::option;
     use core::ptr;
     use core::result;
     use core::task;
