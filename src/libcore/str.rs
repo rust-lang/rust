@@ -463,7 +463,7 @@ pub fn each_split_char_nonempty(s: &str, sep: char, it: &fn(&str) -> bool) {
 }
 
 fn each_split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool,
-                         allow_trailing_empty: bool), it: &fn(&str) -> bool) {
+                         allow_trailing_empty: bool, it: &fn(&str) -> bool) {
     if sep < 128u as char {
         let b = sep as u8, l = len(s);
         let mut done = 0u;
@@ -513,8 +513,8 @@ pub fn each_split_nonempty(s: &str, sepfn: &fn(char) -> bool, it: &fn(&str) -> b
     each_split_inner(s, sepfn, len(s), false, false, it)
 }
 
-pure fn each_split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
-               allow_empty: bool, allow_trailing_empty: bool), it: &fn(&str) -> bool) {
+fn each_split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
+               allow_empty: bool, allow_trailing_empty: bool, it: &fn(&str) -> bool) {
     let l = len(s);
     let mut i = 0u, start = 0u, done = 0u;
     while i < l && done < count {
@@ -534,7 +534,7 @@ pure fn each_split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
 }
 
 // See Issue #1932 for why this is a naive search
-fn iter_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
+fn iter_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint) -> bool) {
     let sep_len = len(sep), l = len(s);
     fail_unless!(sep_len > 0u);
     let mut i = 0u, match_start = 0u, match_i = 0u;
@@ -545,7 +545,7 @@ fn iter_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
             match_i += 1u;
             // Found a match
             if match_i == sep_len {
-                f(match_start, i + 1u);
+                if !f(match_start, i + 1u) { return; }
                 match_i = 0u;
             }
             i += 1u;
@@ -561,10 +561,10 @@ fn iter_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
     }
 }
 
-fn iter_between_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
+fn iter_between_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint) -> bool) {
     let mut last_end = 0u;
-    do iter_matches(s, sep) |from, to| {
-        f(last_end, from);
+    for iter_matches(s, sep) |from, to| {
+        if !f(last_end, from) { return; }
         last_end = to;
     }
     f(last_end, len(s));
@@ -580,13 +580,13 @@ fn iter_between_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
  * ~~~
  */
 pub fn each_split_str(s: &'a str, sep: &'b str, it: &fn(&str) -> bool) {
-    do iter_between_matches(s, sep) |from, to| {
+    for iter_between_matches(s, sep) |from, to| {
         if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return; }
     }
 }
 
 pub fn each_split_str_nonempty(s: &'a str, sep: &'b str, it: &fn(&str) -> bool) {
-    do iter_between_matches(s, sep) |from, to| {
+    for iter_between_matches(s, sep) |from, to| {
         if to > from {
             if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return; }
         }
@@ -630,7 +630,7 @@ pub fn levdistance(s: &str, t: &str) -> uint {
 /**
  * Splits a string into a vector of the substrings separated by LF ('\n').
  */
-pub fn each_line(s: &str, it: &fn(&str) -> bool) { each_split_char(s, '\n', it) }
+pub fn each_line(s: &str, it: &fn(&str) -> bool) { each_split_char_no_trailing(s, '\n', it) }
 
 /**
  * Splits a string into a vector of the substrings separated by LF ('\n')
@@ -656,51 +656,55 @@ pub fn each_word(s: &str, it: &fn(&str) -> bool) {
  *  each of which is less bytes long than a limit
  */
 pub fn each_split_within(ss: &str, lim: uint, it: &fn(&str) -> bool) {
-    let words = str::words(ss);
-
-    // empty?
-    if words == ~[] { return ~[]; }
-
-    let mut rows : ~[~str] = ~[];
-    let mut row  : ~str    = ~"";
-
-    for words.each |wptr| {
-        let word = copy *wptr;
-
-        // if adding this word to the row would go over the limit,
-        // then start a new row
-        if row.len() + word.len() + 1 > lim {
-            rows.push(copy row); // save previous row
-            row = word;    // start a new one
-        } else {
-            if row.len() > 0 { row += ~" " } // separate words
-            row += word;  // append to this row
-        }
+    // Just for fun, let's write this as an automaton
+    enum SplitWithinState {
+        A, // Leading whitespace, initial state
+        B, // Words
+        C, // Internal and trailing whitespace
     }
+    enum Whitespace { Ws, Cr }
+    enum LengthLimit { UnderLim, OverLim }
 
-    // save the last row
-    if row != ~"" { rows.push(row); }
+    let mut slice_start = 0;
+    let mut last_start = 0;
+    let mut last_end = 0;
+    let mut state = A;
 
-    rows
-    // NOTE: Finish change here
+    let mut cont = true;
+    let slice = || { cont = it(ss.slice(slice_start, last_end)) };
 
-    let mut last_slice_i = 0, last_word_i = 0, word_start = true;
-    for each_chari(s) |i, c| {
-        if (i - last_slice_i) <= lim {
-            if char::is_whitespace(c) {
+    let machine = |i: uint, c: char| {
+        let whitespace = if char::is_whitespace(c)       { Ws }       else { Cr };
+        let limit      = if (i - slice_start + 1) <= lim { UnderLim } else { OverLim };
 
-            } else {
+        state = match (state, whitespace, limit) {
+            (A, Ws, _)        => { A }
+            (A, Cr, _)        => { slice_start = i; last_start = i; B }
 
-            }
-        } else {
+            (B, Cr, UnderLim) => { B }
+            (B, Cr, OverLim)  if (i - last_start + 1) > lim
+                              => { fail!(~"word longer than limit!") }
+            (B, Cr, OverLim)  => { slice(); slice_start = last_start; B }
+            (B, Ws, UnderLim) => { last_end = i; C }
+            (B, Ws, OverLim)  => { last_end = i; slice(); A }
 
-        }
+            (C, Cr, UnderLim) => { last_start = i; B }
+            (C, Cr, OverLim)  => { slice(); slice_start = i; last_start = i; last_end = i; B }
+            (C, Ws, OverLim)  => { slice(); A }
+            (C, Ws, UnderLim) => { C }
+        };
+        cont
+    };
 
+    str::each_chari(ss, machine);
 
+    // Let the automaton 'run out'
+    let mut fake_i = ss.len();
+    while cont && match state { B | C => true, A => false } {
+        machine(fake_i, ' ');
+        fake_i += 1;
     }
 }
-
-
 
 /// Convert a string to lowercase. ASCII only
 pub fn to_lower(s: &str) -> ~str {
@@ -731,7 +735,7 @@ pub fn to_upper(s: &str) -> ~str {
  */
 pub fn replace(s: &str, from: &str, to: &str) -> ~str {
     let mut result = ~"", first = true;
-    do iter_between_matches(s, from) |start, end| {
+    for iter_between_matches(s, from) |start, end| {
         if first {
             first = false;
         } else {
@@ -2286,9 +2290,9 @@ pub trait StrSlice {
     fn len(&self) -> uint;
     fn char_len(&self) -> uint;
     fn slice(&self, begin: uint, end: uint) -> &'self str;
-    fn split(&self, sepfn: &fn(char) -> bool) -> ~[~str];
-    fn split_char(&self, sep: char) -> ~[~str];
-    fn split_str(&self, sep: &'a str) -> ~[~str];
+    fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&str) -> bool);
+    fn each_split_char(&self, sep: char, it: &fn(&str) -> bool);
+    fn each_split_str(&self, sep: &'a str, it: &fn(&str) -> bool);
     fn starts_with(&self, needle: &'a str) -> bool;
     fn substr(&self, begin: uint, n: uint) -> &'self str;
     fn to_lower(&self) -> ~str;
@@ -2408,20 +2412,24 @@ impl StrSlice for &'self str {
     }
     /// Splits a string into substrings using a character function
     #[inline]
-    fn split(&self, sepfn: &fn(char) -> bool) -> ~[~str] {
-        split(*self, sepfn)
+    fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&str) -> bool) {
+        each_split(*self, sepfn, it)
     }
     /**
      * Splits a string into substrings at each occurrence of a given character
      */
     #[inline]
-    fn split_char(&self, sep: char) -> ~[~str] { split_char(*self, sep) }
+    fn each_split_char(&self, sep: char, it: &fn(&str) -> bool) {
+        each_split_char(*self, sep, it)
+    }
     /**
      * Splits a string into a vector of the substrings separated by a given
      * string
      */
     #[inline]
-    fn split_str(&self, sep: &'a str) -> ~[~str] { split_str(*self, sep) }
+    fn each_split_str(&self, sep: &'a str, it: &fn(&str) -> bool)  {
+        each_split_str(*self, sep, it)
+    }
     /// Returns true if one string starts with another
     #[inline]
     fn starts_with(&self, needle: &'a str) -> bool {
