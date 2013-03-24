@@ -101,7 +101,7 @@ impl Drop for Arena {
 }
 
 fn chunk(size: uint, is_pod: bool) -> Chunk {
-    let mut v: @[const u8] = @[];
+    let mut v: @[u8] = @[];
     unsafe { at_vec::raw::reserve(&mut v, size); }
     Chunk {
         data: unsafe { cast::transmute(v) },
