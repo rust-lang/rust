@@ -197,7 +197,9 @@ pub mod v4 {
         }
     }
     pub fn parse_to_ipv4_rep(ip: &str) -> result::Result<Ipv4Rep, ~str> {
-        let parts = vec::map(str::split_char(ip, '.'), |s| {
+        let mut parts = ~[];
+        for str::each_split_char(ip, '.') |s| { parts.push(s.to_owned()) }
+        let parts = vec::map(parts, |s| {
             match uint::from_str(*s) {
               Some(n) if n <= 255 => n,
               _ => 256
