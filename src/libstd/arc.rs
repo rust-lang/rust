@@ -259,7 +259,7 @@ struct RWARCInner<T> { lock: RWlock, failed: bool, data: T }
  */
 struct RWARC<T> {
     x: SharedMutableState<RWARCInner<T>>,
-    mut cant_nest: ()
+    cant_nest: ()
 }
 
 /// Create a reader/writer ARC with the supplied data.
