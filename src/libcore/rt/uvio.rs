@@ -12,13 +12,11 @@ use option::*;
 use result::*;
 
 use super::uv::*;
-use super::io::*;
+use super::rtio::*;
 use ops::Drop;
 use cell::{Cell, empty_cell};
 use cast::transmute;
-use super::StreamObject;
 use super::sched::Scheduler;
-use super::IoFactoryObject;
 
 #[cfg(test)] use super::sched::Task;
 #[cfg(test)] use unstable::run_in_bare_thread;
@@ -189,12 +187,9 @@ impl TcpListener for UvTcpListener {
                 do server_tcp_watcher.listen |server_stream_watcher, status| {
                     let maybe_stream = if status.is_none() {
                         let mut server_stream_watcher = server_stream_watcher;
-                        let mut loop_ =
-                            loop_from_watcher(&server_stream_watcher);
-                        let mut client_tcp_watcher =
-                            TcpWatcher::new(&mut loop_);
-                        let mut client_tcp_watcher =
-                            client_tcp_watcher.as_stream();
+                        let mut loop_ = loop_from_watcher(&server_stream_watcher);
+                        let mut client_tcp_watcher = TcpWatcher::new(&mut loop_);
+                        let mut client_tcp_watcher = client_tcp_watcher.as_stream();
                         // XXX: Need's to be surfaced in interface
                         server_stream_watcher.accept(client_tcp_watcher);
                         Some(~UvStream::new(client_tcp_watcher))
@@ -425,8 +420,7 @@ fn test_read_and_block() {
                         // Yield to the other task in hopes that it
                         // will trigger a read callback while we are
                         // not ready for it
-                        do scheduler.block_running_task_and_then
-                            |scheduler, task| {
+                        do scheduler.block_running_task_and_then |scheduler, task| {
                             scheduler.task_queue.push_back(task);
                         }
                     }
