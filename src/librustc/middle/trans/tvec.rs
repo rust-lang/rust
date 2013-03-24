@@ -427,8 +427,8 @@ pub fn write_content(bcx: block,
 
                     let loop_counter = {
                         // i = 0
-                        let i = alloca(loop_bcx, T_i64());
-                        Store(loop_bcx, C_i64(0), i);
+                        let i = alloca(loop_bcx, bcx.ccx().int_type);
+                        Store(loop_bcx, C_uint(bcx.ccx(), 0), i);
 
                         Br(loop_bcx, cond_bcx.llbb);
                         i
@@ -436,10 +436,8 @@ pub fn write_content(bcx: block,
 
                     { // i < count
                         let lhs = Load(cond_bcx, loop_counter);
-                        let rhs = C_integral(T_i64(), count as u64, lib::llvm::False);
-                        let cmp_lr = ICmp(cond_bcx, lib::llvm::IntULT, lhs, rhs);
-                        let zext = ZExt(cond_bcx, cmp_lr, T_i8());
-                        let cond_val = ICmp(cond_bcx, lib::llvm::IntNE, zext, C_u8(0));
+                        let rhs = C_uint(bcx.ccx(), count);
+                        let cond_val = ICmp(cond_bcx, lib::llvm::IntULT, lhs, rhs);
 
                         CondBr(cond_bcx, cond_val, set_bcx.llbb, next_bcx.llbb);
                     }
@@ -454,7 +452,7 @@ pub fn write_content(bcx: block,
 
                     { // i += 1
                         let i = Load(inc_bcx, loop_counter);
-                        let plusone = Add(inc_bcx, i, C_i64(1));
+                        let plusone = Add(inc_bcx, i, C_uint(bcx.ccx(), 1));
                         Store(inc_bcx, plusone, loop_counter);
 
                         Br(inc_bcx, cond_bcx.llbb);
