@@ -3538,7 +3538,7 @@ pub fn store_trait_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
 pub fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
     if is_local(id) {
         match cx.items.find(&id.node) {
-            Some(ast_map::node_item(@ast::item {
+            Some(&ast_map::node_item(@ast::item {
                         node: item_trait(_, _, ref ms),
                         _
                     }, _)) =>
@@ -3627,7 +3627,7 @@ pub fn impl_traits(cx: ctxt, id: ast::def_id, store: TraitStore) -> ~[t] {
     if id.crate == ast::local_crate {
         debug!("(impl_traits) searching for trait impl %?", id);
         match cx.items.find(&id.node) {
-           Some(ast_map::node_item(@ast::item {
+           Some(&ast_map::node_item(@ast::item {
                         node: ast::item_impl(_, opt_trait, _, _),
                         _},
                     _)) => {
@@ -3663,7 +3663,7 @@ fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
     }
 
     match cx.items.find(&struct_did.node) {
-        Some(ast_map::node_item(item, _)) => {
+        Some(&ast_map::node_item(item, _)) => {
             match item.node {
                 ast::item_struct(struct_def, _) => {
                     struct_def.ctor_id.map(|ctor_id|
@@ -3735,7 +3735,7 @@ pub fn ty_dtor(cx: ctxt, struct_id: def_id) -> DtorKind {
 
     if is_local(struct_id) {
        match cx.items.find(&struct_id.node) {
-           Some(ast_map::node_item(@ast::item {
+           Some(&ast_map::node_item(@ast::item {
                node: ast::item_struct(@ast::struct_def { dtor: Some(ref dtor),
                                                          _ },
                                       _),
@@ -3762,8 +3762,12 @@ pub fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
     if id.crate != ast::local_crate {
         csearch::get_item_path(cx, id)
     } else {
-        let node = cx.items.get(&id.node);
-        match node {
+        // FIXME (#5521): uncomment this code and don't have a catch-all at the
+        //                end of the match statement. Favor explicitly listing
+        //                each variant.
+        // let node = cx.items.get(&id.node);
+        // match *node {
+        match *cx.items.get(&id.node) {
           ast_map::node_item(item, path) => {
             let item_elt = match item.node {
               item_mod(_) | item_foreign_mod(_) => {
@@ -3805,9 +3809,7 @@ pub fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
             vec::append_one(/*bad*/copy *path, ast_map::path_name(item.ident))
           }
 
-          ast_map::node_stmt(*) | ast_map::node_expr(*) |
-          ast_map::node_arg(*) | ast_map::node_local(*) |
-          ast_map::node_block(*) => {
+          ref node => {
             cx.sess.bug(fmt!("cannot find item_path for node %?", node));
           }
         }
@@ -3839,7 +3841,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
           call eval_const_expr, it should never get called twice for the same
           expr, since check_enum_variants also updates the enum_var_cache
          */
-        match cx.items.get(&id.node) {
+        match *cx.items.get(&id.node) {
           ast_map::node_item(@ast::item {
                     node: ast::item_enum(ref enum_definition, _),
                     _
@@ -3955,7 +3957,7 @@ pub fn lookup_field_type(tcx: ctxt,
 pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
   if did.crate == ast::local_crate {
     match cx.items.find(&did.node) {
-       Some(ast_map::node_item(i,_)) => {
+       Some(&ast_map::node_item(i,_)) => {
          match i.node {
             ast::item_struct(struct_def, _) => {
                struct_field_tys(struct_def.fields)
@@ -3963,7 +3965,7 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
             _ => cx.sess.bug(~"struct ID bound to non-struct")
          }
        }
-       Some(ast_map::node_variant(ref variant, _, _)) => {
+       Some(&ast_map::node_variant(ref variant, _, _)) => {
           match (*variant).node.kind {
             ast::struct_variant_kind(struct_def) => {
               struct_field_tys(struct_def.fields)

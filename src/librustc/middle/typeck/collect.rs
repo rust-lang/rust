@@ -137,10 +137,10 @@ impl AstConv for CrateCtxt {
             csearch::get_type(self.tcx, id)
         } else {
             match self.tcx.items.find(&id.node) {
-              Some(ast_map::node_item(item, _)) => {
+              Some(&ast_map::node_item(item, _)) => {
                 ty_of_item(self, item)
               }
-              Some(ast_map::node_foreign_item(foreign_item, _, _, _)) => {
+              Some(&ast_map::node_foreign_item(foreign_item, _, _, _)) => {
                 ty_of_foreign_item(self, foreign_item)
               }
               ref x => {
@@ -281,7 +281,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 
     let tcx = ccx.tcx;
     let region_paramd = tcx.region_paramd_items.find(&id).map_consume(|x| *x);
-    match tcx.items.get(&id) {
+    match *tcx.items.get(&id) {
       ast_map::node_item(@ast::item {
                 node: ast::item_trait(ref generics, _, ref ms),
                 _
@@ -516,7 +516,7 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
         // the methods within the trait with bogus results. (See issue #3903.)
 
         match tcx.items.find(&did.node) {
-            Some(ast_map::node_item(item, _)) => {
+            Some(&ast_map::node_item(item, _)) => {
                 let tpt = ty_of_item(ccx, item);
                 ensure_trait_methods(ccx, did.node, tpt.ty);
             }

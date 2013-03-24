@@ -1026,7 +1026,7 @@ fn encode_info_for_items(ecx: @EncodeContext, ebml_w: writer::Encoder,
             let ebml_w = copy ebml_w;
             |i, cx, v| {
                 visit::visit_item(i, cx, v);
-                match ecx.tcx.items.get(&i.id) {
+                match *ecx.tcx.items.get(&i.id) {
                     ast_map::node_item(_, pt) => {
                         encode_info_for_item(ecx, ebml_w, i,
                                              index, *pt);
@@ -1039,7 +1039,7 @@ fn encode_info_for_items(ecx: @EncodeContext, ebml_w: writer::Encoder,
             let ebml_w = copy ebml_w;
             |ni, cx, v| {
                 visit::visit_foreign_item(ni, cx, v);
-                match ecx.tcx.items.get(&ni.id) {
+                match *ecx.tcx.items.get(&ni.id) {
                     ast_map::node_foreign_item(_, abi, _, pt) => {
                         encode_info_for_foreign_item(ecx, ebml_w, ni,
                                                      index, /*bad*/copy *pt,
