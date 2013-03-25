@@ -58,13 +58,15 @@ use middle::const_eval;
 use middle::ty::{arg, field, substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
-use middle::typeck::rscope::{in_binding_rscope};
+use middle::typeck::rscope::{in_binding_rscope, in_binding_rscope_ext};
 use middle::typeck::rscope::{region_scope, type_rscope, RegionError};
+use middle::typeck::rscope::{RegionParamNames};
 
 use core::result;
 use core::vec;
 use syntax::{ast, ast_util};
 use syntax::codemap::span;
+use syntax::opt_vec::OptVec;
 use syntax::print::pprust::{lifetime_to_str, path_to_str};
 use syntax::parse::token::special_idents;
 use util::common::indenter;
@@ -348,9 +350,15 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
                                             bf.abi, &bf.decl))
       }
       ast::ty_closure(ref f) => {
-          let fn_decl = ty_of_closure(self, rscope, f.sigil,
-                                      f.purity, f.onceness,
-                                      f.region, &f.decl, None,
+          let fn_decl = ty_of_closure(self,
+                                      rscope,
+                                      f.sigil,
+                                      f.purity,
+                                      f.onceness,
+                                      f.region,
+                                      &f.decl,
+                                      None,
+                                      &f.lifetimes,
                                       ast_ty.span);
           ty::mk_closure(tcx, fn_decl)
       }
@@ -507,11 +515,38 @@ pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
         abi: ast::Abi,
         decl: &ast::fn_decl)
      -> ty::BareFnTy {
-    debug!("ty_of_fn_decl");
+    debug!("ty_of_bare_fn");
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
     let rb = in_binding_rscope(rscope);
+
+    let input_tys = decl.inputs.map(|a| ty_of_arg(self, &rb, *a, None));
+    let output_ty = match decl.output.node {
+        ast::ty_infer => self.ty_infer(decl.output.span),
+        _ => ast_ty_to_ty(self, &rb, decl.output)
+    };
+
+    ty::BareFnTy {
+        purity: purity,
+        abi: abi,
+        sig: ty::FnSig {inputs: input_tys, output: output_ty}
+    }
+}
+
+pub fn ty_of_bare_fn_ext<AC:AstConv,RS:region_scope + Copy + Durable>(
+        self: &AC,
+        rscope: &RS,
+        purity: ast::purity,
+        abi: ast::Abi,
+        decl: &ast::fn_decl,
+        +region_param_names: RegionParamNames)
+     -> ty::BareFnTy {
+    debug!("ty_of_bare_fn_ext");
+
+    // new region names that appear inside of the fn decl are bound to
+    // that function type
+    let rb = in_binding_rscope_ext(rscope, region_param_names);
 
     let input_tys = decl.inputs.map(|a| ty_of_arg(self, &rb, *a, None));
     let output_ty = match decl.output.node {
@@ -535,6 +570,7 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
         opt_lifetime: Option<@ast::Lifetime>,
         decl: &ast::fn_decl,
         expected_tys: Option<ty::FnSig>,
+        lifetimes: &OptVec<ast::Lifetime>,
         span: span)
      -> ty::ClosureTy {
     debug!("ty_of_fn_decl");
@@ -563,7 +599,8 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
-    let rb = in_binding_rscope(rscope);
+    let region_param_names = RegionParamNames::from_lifetimes(lifetimes);
+    let rb = in_binding_rscope_ext(rscope, region_param_names);
 
     let input_tys = do decl.inputs.mapi |i, a| {
         let expected_arg_ty = do expected_tys.chain_ref |e| {

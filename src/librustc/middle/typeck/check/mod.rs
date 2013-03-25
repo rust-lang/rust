@@ -100,7 +100,7 @@ use middle::typeck::CrateCtxt;
 use middle::typeck::infer::{resolve_type, force_tvar, mk_eqty};
 use middle::typeck::infer;
 use middle::typeck::rscope::{binding_rscope, bound_self_region};
-use middle::typeck::rscope::{RegionError};
+use middle::typeck::rscope::{RegionError, RegionParameterization};
 use middle::typeck::rscope::{in_binding_rscope, region_scope, type_rscope};
 use middle::typeck::rscope;
 use middle::typeck::{isr_alist, lookup_def_ccx, method_map_entry};
@@ -126,10 +126,11 @@ use syntax::ast_util::{Private, Public, is_local, local_def};
 use syntax::ast_util;
 use syntax::codemap::{span, spanned, respan};
 use syntax::codemap;
+use syntax::opt_vec::OptVec;
+use syntax::opt_vec;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust;
 use syntax::visit;
-use syntax::opt_vec::OptVec;
 use syntax;
 
 pub mod _match;
@@ -570,10 +571,12 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
       ast::item_fn(ref decl, _, _, ref body) => {
         check_bare_fn(ccx, decl, body, it.id, None);
       }
-      ast::item_impl(_, _, ty, ref ms) => {
+      ast::item_impl(ref generics, _, ty, ref ms) => {
         let rp = ccx.tcx.region_paramd_items.find(&it.id).map_consume(|x| *x);
         debug!("item_impl %s with id %d rp %?",
                *ccx.tcx.sess.str_of(it.ident), it.id, rp);
+        let rp = RegionParameterization::from_variance_and_generics(
+            rp, generics);
         let self_ty = ccx.to_ty(&rscope::type_rscope(rp), ty);
         for ms.each |m| {
             check_method(ccx, *m, self_ty);
@@ -1069,9 +1072,13 @@ pub fn impl_self_ty(vcx: &VtableContext,
                   node: ast::item_impl(ref ts, _, st, _),
                   _
               }, _)) => {
+            let region_parameterization =
+                RegionParameterization::from_variance_and_generics(
+                    region_param,
+                    ts);
             (ts.ty_params.len(),
              region_param,
-             vcx.ccx.to_ty(&rscope::type_rscope(region_param), st))
+             vcx.ccx.to_ty(&rscope::type_rscope(region_parameterization), st))
           }
           Some(&ast_map::node_item(@ast::item {
                   node: ast::item_struct(_, ref ts),
@@ -1654,10 +1661,16 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         };
 
         // construct the function type
-        let mut fn_ty = astconv::ty_of_closure(
-            fcx, fcx,
-            sigil, purity, expected_onceness,
-            None, decl, expected_tys, expr.span);
+        let mut fn_ty = astconv::ty_of_closure(fcx,
+                                               fcx,
+                                               sigil,
+                                               purity,
+                                               expected_onceness,
+                                               None,
+                                               decl,
+                                               expected_tys,
+                                               &opt_vec::Empty,
+                                               expr.span);
 
         let mut fty_sig;
         let fty = if error_happened {
