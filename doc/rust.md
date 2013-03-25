@@ -617,8 +617,8 @@ each of which may have some number of [attributes](#attributes) attached to it.
 ## Items
 
 ~~~~~~~~ {.ebnf .gram}
-item : mod_item | fn_item | type_item | enum_item
-     | const_item | trait_item | impl_item | foreign_mod_item ;
+item : mod_item | fn_item | type_item | struct_item | enum_item
+     | static_item | trait_item | impl_item | foreign_mod_item ;
 ~~~~~~~~
 
 An _item_ is a component of a crate; some module items can be defined in crate
@@ -627,7 +627,7 @@ crate by a nested set of [modules](#modules). Every crate has a single
 "outermost" anonymous module; all further items within the crate have
 [paths](#paths) within the module tree of the crate.
 
-Items are entirely determined at compile-time, remain constant during
+Items are entirely determined at compile-time, generally remain fixed during
 execution, and may reside in read-only memory.
 
 There are several kinds of item:
@@ -637,7 +637,7 @@ There are several kinds of item:
   * [type definitions](#type-definitions)
   * [structures](#structures)
   * [enumerations](#enumerations)
-  * [constants](#constants)
+  * [static items](#static-items)
   * [traits](#traits)
   * [implementations](#implementations)
 
@@ -1091,21 +1091,23 @@ a = Cat{ name: ~"Spotty", weight: 2.7 };
 In this example, `Cat` is a _struct-like enum variant_,
 whereas `Dog` is simply called an enum variant.
 
-### Constants
+### Static items
 
 ~~~~~~~~ {.ebnf .gram}
-const_item : "const" ident ':' type '=' expr ';' ;
+static_item : "static" ident ':' type '=' expr ';' ;
 ~~~~~~~~
 
-A *constant* is a named value stored in read-only memory in a crate.
-The value bound to a constant is evaluated at compile time.
-Constants are declared with the `static` keyword.
-A constant item must have an expression giving its definition.
-The definition expression of a constant is limited to expression forms that can be evaluated at compile time.
+A *static item* is a named _constant value_ stored in the global data section of a crate.
+Immutable static items are stored in the read-only data section.
+The constant value bound to a static item is, like all constant values, evaluated at compile time.
+Static items have the `static` lifetime, which outlives all other lifetimes in a Rust program.
+Static items are declared with the `static` keyword.
+A static item must have a _constant expression_ giving its definition.
 
-Constants must be explicitly typed. The type may be ```bool```, ```char```, a number, or a type derived from those primitive types.
-The derived types are borrowed pointers, static arrays, tuples, and structs.
-Borrowed pointers must be have the `'static` lifetime.
+Static items must be explicitly typed.
+The type may be ```bool```, ```char```, a number, or a type derived from those primitive types.
+The derived types are borrowed pointers with the `'static` lifetime,
+fixed-size arrays, tuples, and structs.
 
 ~~~~
 static bit1: uint = 1 << 0;
@@ -1456,7 +1458,7 @@ The declared names may denote new slots or new items.
 
 An _item declaration statement_ has a syntactic form identical to an
 [item](#items) declaration within a module. Declaring an item -- a function,
-enumeration, type, constant, trait, implementation or module -- locally
+enumeration, structure, type, static, trait, implementation or module -- locally
 within a statement block is simply a way of restricting its scope to a narrow
 region containing all of its uses; it is otherwise identical in meaning to
 declaring the item outside the statement block.
