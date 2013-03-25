@@ -11,6 +11,22 @@
 #ifndef RUST_GLOBALS_H
 #define RUST_GLOBALS_H
 
+#if defined(__cplusplus)
+#define INLINE inline
+#elif defined(_MSC_VER) || defined(__GNUC__)
+#define INLINE __inline__
+#else
+#define INLINE inline
+#endif
+
+#if defined(__GNUC__)
+#define ALWAYS_INLINE __attribute((always_inline)) INLINE
+#elif defined(_MSC_VER)
+#define ALWAYS_INLINE __forceinline
+#else
+#define ALWAYS_INLINE INLINE
+#endif
+
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS 1
 #endif
