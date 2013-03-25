@@ -8,13 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! A mutable, nullable memory location
+
 use cast::transmute;
 use option;
 use prelude::*;
 
-/// A dynamic, mutable location.
-///
-/// Similar to a mutable option type, but friendlier.
+/*
+A dynamic, mutable location.
+
+Similar to a mutable option type, but friendlier.
+*/
 
 pub struct Cell<T> {
     mut value: Option<T>
