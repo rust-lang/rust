@@ -414,6 +414,11 @@ pub fn write_content(bcx: block,
                         return bcx;
                     }
 
+                    // Some cleanup would be required in the case in which failure happens
+                    // during a copy. But given that copy constructors are not overridable,
+                    // this can only happen as a result of OOM. So we just skip out on the
+                    // cleanup since things would *probably* be broken at that point anyways.
+
                     let elem = unpack_datum!(bcx, {
                         expr::trans_to_datum(bcx, element)
                     });
