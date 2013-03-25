@@ -35,8 +35,8 @@ pub struct Node<V, T> {
 }
 
 pub trait UnifyVid<T> {
-    fn appropriate_vals_and_bindings(infcx: &'v mut InferCtxt)
-                                  -> &'v mut ValsAndBindings<Self, T>;
+    fn appropriate_vals_and_bindings<'v>(infcx: &'v mut InferCtxt)
+                                      -> &'v mut ValsAndBindings<Self, T>;
 }
 
 pub impl InferCtxt {
@@ -235,14 +235,14 @@ pub impl InferCtxt {
 // ______________________________________________________________________
 
 impl UnifyVid<Bounds<ty::t>> for ty::TyVid {
-    fn appropriate_vals_and_bindings(infcx: &'v mut InferCtxt)
+    fn appropriate_vals_and_bindings<'v>(infcx: &'v mut InferCtxt)
         -> &'v mut ValsAndBindings<ty::TyVid, Bounds<ty::t>> {
         return &mut infcx.ty_var_bindings;
     }
 }
 
 impl UnifyVid<Option<IntVarValue>> for ty::IntVid {
-    fn appropriate_vals_and_bindings(infcx: &'v mut InferCtxt)
+    fn appropriate_vals_and_bindings<'v>(infcx: &'v mut InferCtxt)
         -> &'v mut ValsAndBindings<ty::IntVid, Option<IntVarValue>> {
         return &mut infcx.int_var_bindings;
     }
@@ -255,7 +255,7 @@ impl SimplyUnifiable for IntVarValue {
 }
 
 impl UnifyVid<Option<ast::float_ty>> for ty::FloatVid {
-    fn appropriate_vals_and_bindings(infcx: &'v mut InferCtxt)
+    fn appropriate_vals_and_bindings<'v>(infcx: &'v mut InferCtxt)
         -> &'v mut ValsAndBindings<ty::FloatVid, Option<ast::float_ty>> {
         return &mut infcx.float_var_bindings;
     }

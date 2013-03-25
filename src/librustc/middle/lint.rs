@@ -889,14 +889,14 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
             !ident.contains_char('_')
     }
 
-    fn ident_without_trailing_underscores(ident: &'r str) -> &'r str {
+    fn ident_without_trailing_underscores<'r>(ident: &'r str) -> &'r str {
         match str::rfind(ident, |c| c != '_') {
             Some(idx) => str::slice(ident, 0, idx + 1),
             None => ident, // all underscores
         }
     }
 
-    fn ident_without_leading_underscores(ident: &'r str) -> &'r str {
+    fn ident_without_leading_underscores<'r>(ident: &'r str) -> &'r str {
         match str::find(ident, |c| c != '_') {
             Some(idx) => str::slice(ident, idx, ident.len()),
             None => ident // all underscores

@@ -278,9 +278,8 @@ pub mod linear {
         }
     }
 
-    impl<K:Hash + IterBytes + Eq,V>
-        BaseIter<(&'self K, &'self V)> for LinearMap<K, V>
-    {
+    impl<'self,K:Hash + IterBytes + Eq,V>
+            BaseIter<(&'self K, &'self V)> for LinearMap<K, V> {
         /// Visit all key-value pairs
         fn each(&self, blk: &fn(&(&'self K, &'self V)) -> bool) {
             for uint::range(0, self.buckets.len()) |i| {
@@ -315,7 +314,7 @@ pub mod linear {
         }
     }
 
-    impl<K:Hash + IterBytes + Eq,V> Map<K, V> for LinearMap<K, V> {
+    impl<'self,K:Hash + IterBytes + Eq,V> Map<K, V> for LinearMap<K, V> {
         /// Return true if the map contains a value for the specified key
         fn contains_key(&self, k: &K) -> bool {
             match self.bucket_for_key(k) {

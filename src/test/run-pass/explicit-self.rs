@@ -28,13 +28,13 @@ fn compute_area(shape: &shape) -> float {
 
 pub impl shape {
     // self is in the implicit self region
-    fn select<T>(&self, threshold: float,
-                 a: &'r T, b: &'r T) -> &'r T {
+    fn select<'r, T>(&self, threshold: float,
+                     a: &'r T, b: &'r T) -> &'r T {
         if compute_area(self) > threshold {a} else {b}
     }
 }
 
-fn select_based_on_unit_circle<T>(
+fn select_based_on_unit_circle<'r, T>(
     threshold: float, a: &'r T, b: &'r T) -> &'r T {
 
     let shape = &circle(Point{x: 0.0, y: 0.0}, 1.0);

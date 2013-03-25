@@ -44,7 +44,7 @@ use task::rt;
  *
  * These two cases aside, the interface is safe.
  */
-pub type LocalDataKey<T> = &'self fn(v: @T);
+pub type LocalDataKey<'self,T> = &'self fn(v: @T);
 
 /**
  * Remove a task-local data value from the table, returning the

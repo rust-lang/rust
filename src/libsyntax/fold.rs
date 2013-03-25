@@ -609,7 +609,8 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
                 purity: f.purity,
                 region: f.region,
                 onceness: f.onceness,
-                decl: fold_fn_decl(&f.decl, fld)
+                decl: fold_fn_decl(&f.decl, fld),
+                lifetimes: f.lifetimes,
             })
         }
         ty_bare_fn(ref f) => {

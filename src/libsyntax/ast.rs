@@ -892,6 +892,7 @@ impl to_bytes::IterBytes for Onceness {
 pub struct TyClosure {
     sigil: Sigil,
     region: Option<@Lifetime>,
+    lifetimes: OptVec<Lifetime>,
     purity: purity,
     onceness: Onceness,
     decl: fn_decl

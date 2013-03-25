@@ -12,7 +12,7 @@
 //
 // You can upcast to a *larger region* but not a smaller one.
 
-struct covariant {
+struct covariant<'self> {
     f: @fn(x: &'self int) -> int
 }
 

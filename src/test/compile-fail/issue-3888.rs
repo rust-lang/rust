@@ -10,7 +10,7 @@
 
 // n.b. This should be a run-pass test, but for now I'm testing
 // that we don't see an "unknown scope" error.
-fn vec_peek<T>(v: &'r [T]) -> Option< (&'r T, &'r [T]) > {
+fn vec_peek<'r, T>(v: &'r [T]) -> Option< (&'r T, &'r [T]) > {
     if v.len() == 0 {
         None
     } else {

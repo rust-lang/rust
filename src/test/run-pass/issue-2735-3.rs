@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // This test should behave exactly like issue-2735-2
-struct defer {
+struct defer<'self> {
     b: &'self mut bool,
 }
 
@@ -22,7 +22,7 @@ impl<'self> Drop for defer<'self> {
     }
 }
 
-fn defer(b: &'r mut bool) -> defer<'r> {
+fn defer<'r>(b: &'r mut bool) -> defer<'r> {
     defer {
         b: b
     }

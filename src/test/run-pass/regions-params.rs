@@ -10,7 +10,7 @@
 
 // xfail-fast
 
-fn region_identity(x: &'r uint) -> &'r uint { x }
+fn region_identity<'r>(x: &'r uint) -> &'r uint { x }
 
 fn apply<T>(t: T, f: &fn(T) -> T) -> T { f(t) }
 

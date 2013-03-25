@@ -439,7 +439,7 @@ pub fn try_recv<T:Owned,Tbuffer:Owned>(p: RecvPacketBuffered<T, Tbuffer>)
     let p = unsafe { &*p_ };
 
     #[unsafe_destructor]
-    struct DropState {
+    struct DropState<'self> {
         p: &'self PacketHeader,
 
         drop {

@@ -2,7 +2,7 @@ trait Reverser {
     fn reverse(&self);
 }
 
-impl Reverser for &'self mut [uint] {
+impl<'self> Reverser for &'self mut [uint] {
     fn reverse(&self) {
         vec::reverse(*self);
     }

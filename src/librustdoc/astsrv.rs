@@ -36,7 +36,7 @@ pub struct Ctxt {
     ast_map: ast_map::map
 }
 
-type SrvOwner<T> = &'self fn(srv: Srv) -> T;
+type SrvOwner<'self,T> = &'self fn(srv: Srv) -> T;
 pub type CtxtHandler<T> = ~fn(ctxt: Ctxt) -> T;
 type Parser = ~fn(Session, s: ~str) -> @ast::crate;
 

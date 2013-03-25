@@ -1116,7 +1116,7 @@ static bit2: uint = 1 << 1;
 static bits: [uint, ..2] = [bit1, bit2];
 static string: &'static str = "bitstring";
 
-struct BitsNStrings {
+struct BitsNStrings<'self> {
     mybits: [uint, ..2],
     mystring: &'self str
 }

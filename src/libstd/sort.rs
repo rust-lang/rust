@@ -16,7 +16,7 @@ use core::util;
 use core::vec::{len, push};
 use core::vec;
 
-type Le<T> = &'self fn(v1: &T, v2: &T) -> bool;
+type Le<'self, T> = &'self fn(v1: &T, v2: &T) -> bool;
 
 /**
  * Merge sort. Returns a new vector containing the sorted list.
@@ -173,7 +173,7 @@ pub trait Sort {
     fn qsort(self);
 }
 
-impl<T:Copy + Ord + Eq> Sort for &'self mut [T] {
+impl<'self, T:Copy + Ord + Eq> Sort for &'self mut [T] {
     fn qsort(self) { quick_sort3(self); }
 }
 
@@ -1188,7 +1188,7 @@ mod big_tests {
         }
     }
 
-    struct LVal {
+    struct LVal<'self> {
         val: uint,
         key: &'self fn(@uint),
     }
@@ -1209,16 +1209,16 @@ mod big_tests {
     }
 
     impl<'self> Ord for LVal<'self> {
-        fn lt(&self, other: &'a LVal<'self>) -> bool {
+        fn lt<'a>(&self, other: &'a LVal<'self>) -> bool {
             (*self).val < other.val
         }
-        fn le(&self, other: &'a LVal<'self>) -> bool {
+        fn le<'a>(&self, other: &'a LVal<'self>) -> bool {
             (*self).val <= other.val
         }
-        fn gt(&self, other: &'a LVal<'self>) -> bool {
+        fn gt<'a>(&self, other: &'a LVal<'self>) -> bool {
             (*self).val > other.val
         }
-        fn ge(&self, other: &'a LVal<'self>) -> bool {
+        fn ge<'a>(&self, other: &'a LVal<'self>) -> bool {
             (*self).val >= other.val
         }
     }

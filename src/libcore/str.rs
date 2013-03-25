@@ -58,7 +58,7 @@ impl ToStr for ~str {
     #[inline(always)]
     fn to_str(&self) -> ~str { from_slice(*self) }
 }
-impl ToStr for &'self str {
+impl<'self> ToStr for &'self str {
     #[inline(always)]
     fn to_str(&self) -> ~str { from_slice(*self) }
 }
@@ -293,7 +293,7 @@ pub fn shift_char(s: &mut ~str) -> char {
  * If the string does not contain any characters
  */
 #[inline]
-pub fn slice_shift_char(s: &'a str) -> (char, &'a str) {
+pub fn slice_shift_char<'a>(s: &'a str) -> (char, &'a str) {
     let CharRange {ch, next} = char_range_at(s, 0u);
     let next_s = unsafe { raw::slice_bytes(s, next, len(s)) };
     return (ch, next_s);
@@ -313,7 +313,7 @@ pub fn unshift_char(s: &mut ~str, ch: char) {
  * * chars_to_trim - A vector of chars
  *
  */
-pub fn trim_left_chars(s: &'a str, chars_to_trim: &[char]) -> &'a str {
+pub fn trim_left_chars<'a>(s: &'a str, chars_to_trim: &[char]) -> &'a str {
     if chars_to_trim.is_empty() { return s; }
 
     match find(s, |c| !chars_to_trim.contains(&c)) {
@@ -331,7 +331,7 @@ pub fn trim_left_chars(s: &'a str, chars_to_trim: &[char]) -> &'a str {
  * * chars_to_trim - A vector of chars
  *
  */
-pub fn trim_right_chars(s: &'a str, chars_to_trim: &[char]) -> &'a str {
+pub fn trim_right_chars<'a>(s: &'a str, chars_to_trim: &[char]) -> &'a str {
     if chars_to_trim.is_empty() { return s; }
 
     match rfind(s, |c| !chars_to_trim.contains(&c)) {
@@ -352,12 +352,12 @@ pub fn trim_right_chars(s: &'a str, chars_to_trim: &[char]) -> &'a str {
  * * chars_to_trim - A vector of chars
  *
  */
-pub fn trim_chars(s: &'a str, chars_to_trim: &[char]) -> &'a str {
+pub fn trim_chars<'a>(s: &'a str, chars_to_trim: &[char]) -> &'a str {
     trim_left_chars(trim_right_chars(s, chars_to_trim), chars_to_trim)
 }
 
 /// Returns a string with leading whitespace removed
-pub fn trim_left(s: &'a str) -> &'a str {
+pub fn trim_left<'a>(s: &'a str) -> &'a str {
     match find(s, |c| !char::is_whitespace(c)) {
       None => "",
       Some(first) => unsafe { raw::slice_bytes(s, first, len(s)) }
@@ -365,7 +365,7 @@ pub fn trim_left(s: &'a str) -> &'a str {
 }
 
 /// Returns a string with trailing whitespace removed
-pub fn trim_right(s: &'a str) -> &'a str {
+pub fn trim_right<'a>(s: &'a str) -> &'a str {
     match rfind(s, |c| !char::is_whitespace(c)) {
       None => "",
       Some(last) => {
@@ -376,7 +376,7 @@ pub fn trim_right(s: &'a str) -> &'a str {
 }
 
 /// Returns a string with leading and trailing whitespace removed
-pub fn trim(s: &'a str) -> &'a str { trim_left(trim_right(s)) }
+pub fn trim<'a>(s: &'a str) -> &'a str { trim_left(trim_right(s)) }
 
 /*
 Section: Transforming strings
@@ -418,7 +418,7 @@ pub fn to_chars(s: &str) -> ~[char] {
  * Returns a slice pointing at `n` characters starting from byte offset
  * `begin`.
  */
-pub fn substr(s: &'a str, begin: uint, n: uint) -> &'a str {
+pub fn substr<'a>(s: &'a str, begin: uint, n: uint) -> &'a str {
     slice(s, begin, begin + count_bytes(s, begin, n))
 }
 
@@ -428,7 +428,7 @@ pub fn substr(s: &'a str, begin: uint, n: uint) -> &'a str {
  * Fails when `begin` and `end` do not point to valid characters or beyond
  * the last character of the string
  */
-pub fn slice(s: &'a str, begin: uint, end: uint) -> &'a str {
+pub fn slice<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
     fail_unless!(is_char_boundary(s, begin));
     fail_unless!(is_char_boundary(s, end));
     unsafe { raw::slice_bytes(s, begin, end) }
@@ -528,7 +528,7 @@ fn each_split_inner(s: &'a str, sepfn: &fn(cc: char) -> bool, count: uint,
 }
 
 // See Issue #1932 for why this is a naive search
-fn iter_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint) -> bool) {
+fn iter_matches<'a,'b>(s: &'a str, sep: &'b str, f: &fn(uint, uint) -> bool) {
     let sep_len = len(sep), l = len(s);
     fail_unless!(sep_len > 0u);
     let mut i = 0u, match_start = 0u, match_i = 0u;
@@ -555,7 +555,9 @@ fn iter_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint) -> bool) {
     }
 }
 
-fn iter_between_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint) -> bool) {
+fn iter_between_matches<'a,'b>(s: &'a str,
+                               sep: &'b str,
+                               f: &fn(uint, uint) -> bool) {
     let mut last_end = 0u;
     for iter_matches(s, sep) |from, to| {
         if !f(last_end, from) { return; }
@@ -575,13 +577,17 @@ fn iter_between_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint) -> bool) {
  * fail_unless!(v == ["", "XXX", "YYY", ""]);
  * ~~~
  */
-pub fn each_split_str(s: &'a str, sep: &'b str, it: &fn(&'a str) -> bool) {
+pub fn each_split_str<'a,'b>(s: &'a str,
+                             sep: &'b str,
+                             it: &fn(&'a str) -> bool) {
     for iter_between_matches(s, sep) |from, to| {
         if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return; }
     }
 }
 
-pub fn each_split_str_nonempty(s: &'a str, sep: &'b str, it: &fn(&'a str) -> bool) {
+pub fn each_split_str_nonempty<'a,'b>(s: &'a str,
+                                      sep: &'b str,
+                                      it: &fn(&'a str) -> bool) {
     for iter_between_matches(s, sep) |from, to| {
         if to > from {
             if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return; }
@@ -823,7 +829,7 @@ fn cmp(a: &str, b: &str) -> Ordering {
 }
 
 #[cfg(notest)]
-impl TotalOrd for &'self str {
+impl<'self> TotalOrd for &'self str {
     fn cmp(&self, other: & &'self str) -> Ordering { cmp(*self, *other) }
 }
 
@@ -869,7 +875,7 @@ fn gt(a: &str, b: &str) -> bool {
 }
 
 #[cfg(notest)]
-impl Eq for &'self str {
+impl<'self> Eq for &'self str {
     #[inline(always)]
     fn eq(&self, other: & &'self str) -> bool {
         eq_slice((*self), (*other))
@@ -911,7 +917,7 @@ impl Ord for ~str {
 }
 
 #[cfg(notest)]
-impl Ord for &'self str {
+impl<'self> Ord for &'self str {
     #[inline(always)]
     fn lt(&self, other: & &'self str) -> bool { lt((*self), (*other)) }
     #[inline(always)]
@@ -935,7 +941,7 @@ impl Ord for @str {
 }
 
 #[cfg(notest)]
-impl Equiv<~str> for &'self str {
+impl<'self> Equiv<~str> for &'self str {
     #[inline(always)]
     fn equiv(&self, other: &~str) -> bool { eq_slice(*self, *other) }
 }
@@ -1370,7 +1376,7 @@ pub fn rfind_between(s: &str, start: uint, end: uint, f: &fn(char) -> bool) -> O
 }
 
 // Utility used by various searching functions
-fn match_at(haystack: &'a str, needle: &'b str, at: uint) -> bool {
+fn match_at<'a,'b>(haystack: &'a str, needle: &'b str, at: uint) -> bool {
     let mut i = at;
     for each(needle) |c| { if haystack[i] != c { return false; } i += 1u; }
     return true;
@@ -1389,7 +1395,7 @@ fn match_at(haystack: &'a str, needle: &'b str, at: uint) -> bool {
  * An `option` containing the byte index of the first matching substring
  * or `none` if there is no match
  */
-pub fn find_str(haystack: &'a str, needle: &'b str) -> Option<uint> {
+pub fn find_str<'a,'b>(haystack: &'a str, needle: &'b str) -> Option<uint> {
     find_str_between(haystack, needle, 0u, len(haystack))
 }
 
@@ -1412,7 +1418,10 @@ pub fn find_str(haystack: &'a str, needle: &'b str) -> Option<uint> {
  *
  * `start` must be less than or equal to `len(s)`
  */
-pub fn find_str_from(haystack: &'a str, needle: &'b str, start: uint) -> Option<uint> {
+pub fn find_str_from<'a,'b>(haystack: &'a str,
+                            needle: &'b str,
+                            start: uint)
+                         -> Option<uint> {
     find_str_between(haystack, needle, start, len(haystack))
 }
 
@@ -1436,8 +1445,11 @@ pub fn find_str_from(haystack: &'a str, needle: &'b str, start: uint) -> Option<
  * `start` must be less than or equal to `end` and `end` must be less than
  * or equal to `len(s)`.
  */
-pub fn find_str_between(haystack: &'a str, needle: &'b str, start: uint, end:uint)
-        -> Option<uint> {
+pub fn find_str_between<'a,'b>(haystack: &'a str,
+                               needle: &'b str,
+                               start: uint,
+                               end:uint)
+                            -> Option<uint> {
     // See Issue #1932 for why this is a naive search
     fail_unless!(end <= len(haystack));
     let needle_len = len(needle);
@@ -1461,7 +1473,7 @@ pub fn find_str_between(haystack: &'a str, needle: &'b str, start: uint, end:uin
  * * haystack - The string to look in
  * * needle - The string to look for
  */
-pub fn contains(haystack: &'a str, needle: &'b str) -> bool {
+pub fn contains<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
     find_str(haystack, needle).is_some()
 }
 
@@ -1485,7 +1497,7 @@ pub fn contains_char(haystack: &str, needle: char) -> bool {
  * * haystack - The string to look in
  * * needle - The string to look for
  */
-pub fn starts_with(haystack: &'a str, needle: &'b str) -> bool {
+pub fn starts_with<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
     let haystack_len = len(haystack), needle_len = len(needle);
     if needle_len == 0u { true }
     else if needle_len > haystack_len { false }
@@ -1500,7 +1512,7 @@ pub fn starts_with(haystack: &'a str, needle: &'b str) -> bool {
  * * haystack - The string to look in
  * * needle - The string to look for
  */
-pub fn ends_with(haystack: &'a str, needle: &'b str) -> bool {
+pub fn ends_with<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
     let haystack_len = len(haystack), needle_len = len(needle);
     if needle_len == 0u { true }
     else if needle_len > haystack_len { false }
@@ -1681,7 +1693,7 @@ pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
 }
 
 /// Counts the number of bytes taken by the `n` in `s` starting from `start`.
-pub fn count_bytes(s: &'b str, start: uint, n: uint) -> uint {
+pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
     fail_unless!(is_char_boundary(s, start));
     let mut end = start, cnt = n;
     let l = len(s);
@@ -1921,7 +1933,7 @@ pub fn as_bytes<T>(s: &const ~str, f: &fn(&~[u8]) -> T) -> T {
  *
  * The byte slice does not include the null terminator.
  */
-pub fn as_bytes_slice(s: &'a str) -> &'a [u8] {
+pub fn as_bytes_slice<'a>(s: &'a str) -> &'a [u8] {
     unsafe {
         let (ptr, len): (*u8, uint) = ::cast::reinterpret_cast(&s);
         let outgoing_tuple: (*u8, uint) = (ptr, len - 1);
@@ -2229,7 +2241,7 @@ pub mod traits {
     use ops::Add;
     use str::append;
 
-    impl Add<&'self str,~str> for ~str {
+    impl<'self> Add<&'self str,~str> for ~str {
         #[inline(always)]
         fn add(&self, rhs: & &'self str) -> ~str {
             append(copy *self, (*rhs))
@@ -2243,7 +2255,7 @@ pub mod traits {}
 pub trait StrSlice<'self> {
     fn all(&self, it: &fn(char) -> bool) -> bool;
     fn any(&self, it: &fn(char) -> bool) -> bool;
-    fn contains(&self, needle: &'a str) -> bool;
+    fn contains<'a>(&self, needle: &'a str) -> bool;
     fn contains_char(&self, needle: char) -> bool;
     fn each(&self, it: &fn(u8) -> bool);
     fn eachi(&self, it: &fn(uint, u8) -> bool);
@@ -2262,8 +2274,8 @@ pub trait StrSlice<'self> {
     fn slice(&self, begin: uint, end: uint) -> &'self str;
     fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&'self str) -> bool);
     fn each_split_char(&self, sep: char, it: &fn(&'self str) -> bool);
-    fn each_split_str(&self, sep: &'a str, it: &fn(&'self str) -> bool);
-    fn starts_with(&self, needle: &'a str) -> bool;
+    fn each_split_str<'a>(&self, sep: &'a str, it: &fn(&'self str) -> bool);
+    fn starts_with<'a>(&self, needle: &'a str) -> bool;
     fn substr(&self, begin: uint, n: uint) -> &'self str;
     fn to_lower(&self) -> ~str;
     fn to_upper(&self) -> ~str;
@@ -2283,7 +2295,7 @@ pub trait StrSlice<'self> {
 }
 
 /// Extension methods for strings
-impl StrSlice<'self> for &'self str {
+impl<'self> StrSlice<'self> for &'self str {
     /**
      * Return true if a predicate matches all characters or if the string
      * contains no characters
@@ -2298,7 +2310,7 @@ impl StrSlice<'self> for &'self str {
     fn any(&self, it: &fn(char) -> bool) -> bool { any(*self, it) }
     /// Returns true if one string contains another
     #[inline]
-    fn contains(&self, needle: &'a str) -> bool {
+    fn contains<'a>(&self, needle: &'a str) -> bool {
         contains(*self, needle)
     }
     /// Returns true if a string contains a char
@@ -2397,12 +2409,12 @@ impl StrSlice<'self> for &'self str {
      * string
      */
     #[inline]
-    fn each_split_str(&self, sep: &'a str, it: &fn(&'self str) -> bool)  {
+    fn each_split_str<'a>(&self, sep: &'a str, it: &fn(&'self str) -> bool) {
         each_split_str(*self, sep, it)
     }
     /// Returns true if one string starts with another
     #[inline]
-    fn starts_with(&self, needle: &'a str) -> bool {
+    fn starts_with<'a>(&self, needle: &'a str) -> bool {
         starts_with(*self, needle)
     }
     /**
@@ -2710,7 +2722,7 @@ mod tests {
 
     #[test]
     fn test_split_str() {
-        fn t(s: &str, sep: &'a str, u: &[~str]) {
+        fn t<'a>(s: &str, sep: &'a str, u: &[~str]) {
             let mut v = ~[];
             for each_split_str(s, sep) |s| { v.push(s.to_owned()) }
             fail_unless!(vec::all2(v, u, |a,b| a == b));

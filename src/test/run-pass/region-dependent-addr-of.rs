@@ -25,54 +25,54 @@ struct C {
     f: int
 }
 
-fn get_v1(a: &'v A) -> &'v int {
+fn get_v1<'v>(a: &'v A) -> &'v int {
     // Region inferencer must deduce that &v < L2 < L1
     let foo = &a.value; // L1
     &foo.v1             // L2
 }
 
-fn get_v2(a: &'v A, i: uint) -> &'v int {
+fn get_v2<'v>(a: &'v A, i: uint) -> &'v int {
     let foo = &a.value;
     &foo.v2[i]
 }
 
-fn get_v3(a: &'v A, i: uint) -> &'v int {
+fn get_v3<'v>(a: &'v A, i: uint) -> &'v int {
     let foo = &a.value;
     &foo.v3[i]
 }
 
-fn get_v4(a: &'v A, i: uint) -> &'v int {
+fn get_v4<'v>(a: &'v A, i: uint) -> &'v int {
     let foo = &a.value;
     &foo.v4.f
 }
 
-fn get_v5(a: &'v A, i: uint) -> &'v int {
+fn get_v5<'v>(a: &'v A, i: uint) -> &'v int {
     let foo = &a.value;
     &foo.v5.f
 }
 
-fn get_v6_a(a: &'v A, i: uint) -> &'v int {
+fn get_v6_a<'v>(a: &'v A, i: uint) -> &'v int {
     match a.value.v6 {
         Some(ref v) => &v.f,
         None => fail!()
     }
 }
 
-fn get_v6_b(a: &'v A, i: uint) -> &'v int {
+fn get_v6_b<'v>(a: &'v A, i: uint) -> &'v int {
     match *a {
         A { value: B { v6: Some(ref v), _ } } => &v.f,
         _ => fail!()
     }
 }
 
-fn get_v6_c(a: &'v A, i: uint) -> &'v int {
+fn get_v6_c<'v>(a: &'v A, i: uint) -> &'v int {
     match a {
         &A { value: B { v6: Some(ref v), _ } } => &v.f,
         _ => fail!()
     }
 }
 
-fn get_v5_ref(a: &'v A, i: uint) -> &'v int {
+fn get_v5_ref<'v>(a: &'v A, i: uint) -> &'v int {
     match &a.value {
         &B {v5: ~C {f: ref v}, _} => v
     }

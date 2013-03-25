@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct thing<Q> {
+struct thing<'self, Q> {
     x: &'self Q
 }
 

@@ -321,7 +321,7 @@ pub fn install_watcher_data<H, W: Watcher + NativeHandle<*H>>(watcher: &mut W) {
     }
 }
 
-pub fn get_watcher_data<H, W: Watcher + NativeHandle<*H>>(
+pub fn get_watcher_data<'r, H, W: Watcher + NativeHandle<*H>>(
     watcher: &'r mut W) -> &'r mut WatcherData {
 
     unsafe {

@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum ast {
+enum ast<'self> {
     num(uint),
     add(&'self ast<'self>, &'self ast<'self>)
 }
 
-fn mk_add_ok(x: &'r ast<'r>, y: &'r ast<'r>) -> ast<'r> {
+fn mk_add_ok<'r>(x: &'r ast<'r>, y: &'r ast<'r>) -> ast<'r> {
     add(x, y)
 }
 

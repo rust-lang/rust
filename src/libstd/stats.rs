@@ -30,7 +30,7 @@ pub trait Stats {
     fn median_abs_dev_pct(self) -> f64;
 }
 
-impl Stats for &'self [f64] {
+impl<'self> Stats for &'self [f64] {
     fn sum(self) -> f64 {
         vec::foldl(0.0, self, |p,q| p + *q)
     }

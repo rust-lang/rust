@@ -16,12 +16,12 @@ trait MyIter {
     fn test_const(&const self);
 }
 
-impl MyIter for &'self [int] {
+impl<'self> MyIter for &'self [int] {
     fn test_imm(&self) { fail_unless!(self[0] == 1) }
     fn test_const(&const self) { fail_unless!(self[0] == 1) }
 }
 
-impl MyIter for &'self str {
+impl<'self> MyIter for &'self str {
     fn test_imm(&self) { fail_unless!(*self == "test") }
     fn test_const(&const self) { fail_unless!(*self == "test") }
 }
