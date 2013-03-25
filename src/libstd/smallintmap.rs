@@ -108,6 +108,18 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
         }
     }
 
+    /// Return a mutable reference to the value corresponding to the key
+    fn find_mut(&mut self, key: &uint) -> Option<&'self mut V> {
+        if *key < self.v.len() {
+            match self.v[*key] {
+              Some(ref mut value) => Some(value),
+              None => None
+            }
+        } else {
+            None
+        }
+    }
+
     /// Insert a key-value pair into the map. An existing value for a
     /// key is replaced by the new value. Return true if the key did
     /// not already exist in the map.
@@ -139,18 +151,6 @@ pub impl<V> SmallIntMap<V> {
 
     fn get(&self, key: &uint) -> &'self V {
         self.find(key).expect("key not present")
-    }
-
-    /// Return a mutable reference to the value corresponding to the key
-    fn find_mut(&mut self, key: &uint) -> Option<&'self mut V> {
-        if *key < self.v.len() {
-            match self.v[*key] {
-              Some(ref mut value) => Some(value),
-              None => None
-            }
-        } else {
-            None
-        }
     }
 }
 
