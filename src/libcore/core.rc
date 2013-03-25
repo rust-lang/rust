@@ -10,7 +10,7 @@
 
 /*!
 
-The Rust core library
+# The Rust core library
 
 The Rust core library provides runtime features required by the language,
 including the task scheduler and memory allocators, as well as library
@@ -18,19 +18,31 @@ support for Rust built-in types, platform abstractions, and other commonly
 used features.
 
 `core` includes modules corresponding to each of the integer types, each of
-the floating point types, the `bool` type, tuples, characters, strings,
-vectors (`vec`), managed boxes (`managed`), owned boxes (`owned`), and unsafe
-and borrowed pointers (`ptr`).  Additionally, `core` provides task management
-and creation (`task`), communication primitives (`comm` and `pipes`), platform
-abstractions (`os` and `path`), basic I/O abstractions (`io`), common traits
-(`cmp`, `num`, `to_str`), and complete bindings to the C standard library
-(`libc`).
+the floating point types, the `bool` type, tuples, characters, strings
+(`str`), vectors (`vec`), managed boxes (`managed`), owned boxes (`owned`),
+and unsafe and borrowed pointers (`ptr`).  Additionally, `core` provides
+pervasive types (`option` and `result`), task creation and communication
+primitives (`task`, `comm`), platform abstractions (`os` and `path`), basic
+I/O abstractions (`io`), common traits (`kinds`, `ops`, `cmp`, `num`,
+`to_str`), and complete bindings to the C standard library (`libc`).
 
-`core` is linked to all crates by default and its contents imported.
-Implicitly, all crates behave as if they included the following prologue:
+# Core injection and the Rust prelude
+
+`core` is imported at the topmost level of every crate by default, as
+if the first line of each crate was
 
     extern mod core;
-    use core::*;
+
+This means that the contents of core can be accessed from from any context
+with the `core::` path prefix, as in `use core::vec`, `use core::task::spawn`,
+etc.
+
+Additionally, `core` contains a `prelude` module that reexports many of the
+most common core modules, types and traits. The contents of the prelude are
+imported inte every *module* by default.  Implicitly, all modules behave as if
+they contained the following prologue:
+
+    use core::prelude::*;
 
 */
 
