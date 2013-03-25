@@ -143,12 +143,16 @@ fn pandoc_header_id(header: &str) -> ~str {
         let s = str::replace(s, ~":", ~"");
         let s = str::replace(s, ~"&", ~"");
         let s = str::replace(s, ~"^", ~"");
+        let s = str::replace(s, ~",", ~"");
+        let s = str::replace(s, ~"'", ~"");
+        let s = str::replace(s, ~"+", ~"");
         return s;
     }
     fn replace_with_hyphens(s: &str) -> ~str {
         // Collapse sequences of whitespace to a single dash
         // XXX: Hacky implementation here that only covers
         // one or two spaces.
+        let s = str::trim(s);
         let s = str::replace(s, ~"  ", ~"-");
         let s = str::replace(s, ~" ", ~"-");
         return s;
@@ -170,6 +174,17 @@ fn should_remove_punctuation_from_headers() {
         == ~"impl-of-numnum-for-int");
     fail_unless!(pandoc_header_id(~"impl for & condvar")
         == ~"impl-for-condvar");
+    fail_unless!(pandoc_header_id(~"impl of Select<T, U> for (Left, Right)")
+                 == ~"impl-of-selectt-u-for-left-right");
+    fail_unless!(pandoc_header_id(~"impl of Condition<'self, T, U>")
+                 == ~"impl-of-conditionself-t-u");
+    fail_unless!(pandoc_header_id(~"impl of Condition<T: Copy + Clone>")
+                 == ~"impl-of-conditiont-copy-clone");
+}
+
+#[test]
+fn should_trim_whitespace_after_removing_punctuation() {
+    fail_unless!(pandoc_header_id("impl foo for ()") == ~"impl-foo-for");
 }
 
 #[test]
