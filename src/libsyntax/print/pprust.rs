@@ -180,12 +180,12 @@ pub fn path_to_str(&&p: @ast::path, intr: @ident_interner) -> ~str {
     to_str(p, |a,b| print_path(a, b, false), intr)
 }
 
-pub fn fun_to_str(decl: &ast::fn_decl, name: ast::ident,
+pub fn fun_to_str(decl: &ast::fn_decl, purity: ast::purity, name: ast::ident,
                   opt_self_ty: Option<ast::self_ty_>,
                   generics: &ast::Generics, intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
-        print_fn(s, decl, None, name, generics, opt_self_ty, ast::inherited);
+        print_fn(s, decl, purity, name, generics, opt_self_ty, ast::inherited);
         end(s); // Close the head box
         end(s); // Close the outer box
         eof(s.s);
@@ -441,7 +441,7 @@ pub fn print_foreign_item(s: @ps, item: @ast::foreign_item) {
     print_outer_attributes(s, item.attrs);
     match item.node {
       ast::foreign_item_fn(ref decl, purity, ref generics) => {
-        print_fn(s, decl, Some(purity), item.ident, generics, None,
+        print_fn(s, decl, purity, item.ident, generics, None,
                  ast::inherited);
         end(s); // end head-ibox
         word(s.s, ~";");
@@ -484,7 +484,7 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
         print_fn(
             s,
             decl,
-            Some(purity),
+            purity,
             item.ident,
             typarams,
             None,
@@ -815,7 +815,7 @@ pub fn print_method(s: @ps, meth: @ast::method) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, meth.span.lo);
     print_outer_attributes(s, meth.attrs);
-    print_fn(s, &meth.decl, Some(meth.purity),
+    print_fn(s, &meth.decl, meth.purity,
              meth.ident, &meth.generics, Some(meth.self_ty.node),
              meth.vis);
     word(s.s, ~" ");
@@ -1663,7 +1663,7 @@ pub fn print_self_ty(s: @ps, self_ty: ast::self_ty_) -> bool {
 
 pub fn print_fn(s: @ps,
                 decl: &ast::fn_decl,
-                purity: Option<ast::purity>,
+                purity: ast::purity,
                 name: ast::ident,
                 generics: &ast::Generics,
                 opt_self_ty: Option<ast::self_ty_>,
@@ -2158,16 +2158,6 @@ pub fn next_comment(s: @ps) -> Option<comments::cmnt> {
     }
 }
 
-pub fn print_opt_purity(s: @ps, opt_purity: Option<ast::purity>) {
-    match opt_purity {
-        Some(ast::impure_fn) => { }
-        Some(purity) => {
-            word_nbsp(s, purity_to_str(purity));
-        }
-        None => {}
-    }
-}
-
 pub fn print_opt_abi(s: @ps, opt_abi: Option<ast::Abi>) {
     match opt_abi {
         Some(ast::RustAbi) => { word_nbsp(s, ~"extern"); }
@@ -2186,12 +2176,12 @@ pub fn print_opt_sigil(s: @ps, opt_sigil: Option<ast::Sigil>) {
 
 pub fn print_fn_header_info(s: @ps,
                             opt_sty: Option<ast::self_ty_>,
-                            opt_purity: Option<ast::purity>,
+                            purity: ast::purity,
                             onceness: ast::Onceness,
                             opt_sigil: Option<ast::Sigil>,
                             vis: ast::visibility) {
     word(s.s, visibility_qualified(vis, ~""));
-    print_opt_purity(s, opt_purity);
+    print_purity(s, purity);
     print_onceness(s, onceness);
     word(s.s, ~"fn");
     print_opt_sigil(s, opt_sigil);
@@ -2264,8 +2254,9 @@ pub mod test {
             cf: ast::return_val
         };
         let generics = ast_util::empty_generics();
-        assert_eq!(&fun_to_str(&decl, abba_ident, None, &generics, mock_interner),
-                     &~"fn abba()");
+        assert_eq!(&fun_to_str(&decl, ast::impure_fn, abba_ident,
+                               None, &generics, mock_interner),
+                   &~"fn abba()");
     }
 
     #[test]
