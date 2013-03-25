@@ -111,6 +111,12 @@ impl<T> Map<uint, T> for TrieMap<T> {
         }
     }
 
+    /// Return a mutable reference to the value corresponding to the key
+    #[inline(always)]
+    fn find_mut(&mut self, key: &uint) -> Option<&'self mut T> {
+        find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
+    }
+
     /// Insert a key-value pair into the map. An existing value for a
     /// key is replaced by the new value. Return true if the key did
     /// not already exist in the map.
@@ -152,12 +158,6 @@ pub impl<T> TrieMap<T> {
     #[inline(always)]
     fn each_value_reverse(&self, f: &fn(&T) -> bool) {
         self.each_reverse(|&(_, v)| f(v))
-    }
-
-    /// Return a mutable reference to the value corresponding to the key
-    #[inline(always)]
-    fn find_mut(&mut self, key: &uint) -> Option<&'self mut T> {
-        find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
     }
 }
 

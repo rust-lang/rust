@@ -355,6 +355,17 @@ pub mod linear {
             }
         }
 
+        /// Return a mutable reference to the value corresponding to the key
+        fn find_mut(&mut self, k: &K) -> Option<&'self mut V> {
+            let idx = match self.bucket_for_key(k) {
+                FoundEntry(idx) => idx,
+                TableFull | FoundHole(_) => return None
+            };
+            unsafe {  // FIXME(#4903)---requires flow-sensitive borrow checker
+                Some(::cast::transmute_mut_region(self.mut_value_for_bucket(idx)))
+            }
+        }
+
         /// Insert a key-value pair into the map. An existing value for a
         /// key is replaced by the new value. Return true if the key did
         /// not already exist in the map.
@@ -417,17 +428,6 @@ pub mod linear {
             self.insert_internal(hash, k, v);
 
             old_value
-        }
-
-        /// Return a mutable reference to the value corresponding to the key
-        fn find_mut(&mut self, k: &K) -> Option<&'self mut V> {
-            let idx = match self.bucket_for_key(k) {
-                FoundEntry(idx) => idx,
-                TableFull | FoundHole(_) => return None
-            };
-            unsafe {  // FIXME(#4903)---requires flow-sensitive borrow checker
-                Some(::cast::transmute_mut_region(self.mut_value_for_bucket(idx)))
-            }
         }
 
         /// Return the value corresponding to the key in the map, or insert

@@ -152,6 +152,12 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
         }
     }
 
+    /// Return a mutable reference to the value corresponding to the key
+    #[inline(always)]
+    fn find_mut(&mut self, key: &K) -> Option<&'self mut V> {
+        find_mut(&mut self.root, key)
+    }
+
     /// Insert a key-value pair into the map. An existing value for a
     /// key is replaced by the new value. Return true if the key did
     /// not already exist in the map.
@@ -188,12 +194,6 @@ pub impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Requires that it be frozen (immutable).
     fn iter(&self) -> TreeMapIterator<'self, K, V> {
         TreeMapIterator{stack: ~[], node: &self.root}
-    }
-
-    /// Return a mutable reference to the value corresponding to the key
-    #[inline(always)]
-    fn find_mut(&mut self, key: &K) -> Option<&'self mut V> {
-        find_mut(&mut self.root, key)
     }
 }
 
