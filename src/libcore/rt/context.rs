@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use option::*;
 use super::stack::StackSegment;
 use libc::c_void;
 use cast::{transmute, transmute_mut_unsafe,
@@ -16,17 +17,30 @@ use cast::{transmute, transmute_mut_unsafe,
 // XXX: Registers is boxed so that it is 16-byte aligned, for storing
 // SSE regs.  It would be marginally better not to do this. In C++ we
 // use an attribute on a struct.
-pub struct Context(~Registers);
+// XXX: It would be nice to define regs as `~Option<Registers>` since
+// the registers are sometimes empty, but the discriminant would
+// then misalign the regs again.
+pub struct Context {
+    /// The context entry point, saved here for later destruction
+    start: Option<~~fn()>,
+    /// Hold the registers while the task or scheduler is suspended
+    regs: ~Registers
+}
 
 pub impl Context {
     fn empty() -> Context {
-        Context(new_regs())
+        Context {
+            start: None,
+            regs: new_regs()
+        }
     }
 
     /// Create a new context that will resume execution by running ~fn()
-    /// # Safety Note
-    /// The `start` closure must remain valid for the life of the Task
-    fn new(start: &~fn(), stack: &mut StackSegment) -> Context {
+    fn new(start: ~fn(), stack: &mut StackSegment) -> Context {
+        // XXX: Putting main into a ~ so it's a thin pointer and can
+        // be passed to the spawn function.  Another unfortunate
+        // allocation
+        let start = ~start;
 
         // The C-ABI function that is the task entry point
         extern fn task_start_wrapper(f: &~fn()) { (*f)() }
@@ -40,21 +54,29 @@ pub impl Context {
         // which we will then modify to call the given function when restored
         let mut regs = new_regs();
         unsafe {
-            swap_registers(transmute_mut_region(&mut *regs),
-                           transmute_region(&*regs))
+            swap_registers(transmute_mut_region(&mut *regs), transmute_region(&*regs))
         };
 
         initialize_call_frame(&mut *regs, fp, argp, sp);
 
-        return Context(regs);
+        return Context {
+            start: Some(start),
+            regs: regs
+        }
     }
 
+    /* Switch contexts
+
+    Suspend the current execution context and resume another by
+    saving the registers values of the executing thread to a Context
+    then loading the registers from a previously saved Context.
+    */
     fn swap(out_context: &mut Context, in_context: &Context) {
         let out_regs: &mut Registers = match out_context {
-            &Context(~ref mut r) => r
+            &Context { regs: ~ref mut r, _ } => r
         };
         let in_regs: &Registers = match in_context {
-            &Context(~ref r) => r
+            &Context { regs: ~ref r, _ } => r
         };
 
         unsafe { swap_registers(out_regs, in_regs) };
@@ -84,11 +106,10 @@ fn new_regs() -> ~Registers {
 }
 
 #[cfg(target_arch = "x86")]
-fn initialize_call_frame(regs: &mut Registers,
-                         fptr: *c_void, arg: *c_void, sp: *mut uint) {
+fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
 
     let sp = align_down(sp);
-    let sp = mut_offset(sp, -4); // XXX: -4 words? Needs this be done at all?
+    let sp = mut_offset(sp, -4);
 
     unsafe { *sp = arg as uint; }
     let sp = mut_offset(sp, -1);
@@ -108,8 +129,7 @@ type Registers = [uint * 22];
 fn new_regs() -> ~Registers { ~[0, .. 22] }
 
 #[cfg(target_arch = "x86_64")]
-fn initialize_call_frame(regs: &mut Registers,
-                         fptr: *c_void, arg: *c_void, sp: *mut uint) {
+fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
 
     // Redefinitions from regs.h
     static RUSTRT_ARG0: uint = 3;
@@ -143,8 +163,7 @@ type Registers = [uint * 32];
 fn new_regs() -> ~Registers { ~[0, .. 32] }
 
 #[cfg(target_arch = "arm")]
-fn initialize_call_frame(regs: &mut Registers,
-                         fptr: *c_void, arg: *c_void, sp: *mut uint) {
+fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
     let sp = mut_offset(sp, -1);
 
     // The final return address. 0 indicates the bottom of the stack
@@ -162,8 +181,7 @@ type Registers = [uint * 32];
 fn new_regs() -> ~Registers { ~[0, .. 32] }
 
 #[cfg(target_arch = "mips")]
-fn initialize_call_frame(regs: &mut Registers,
-                         fptr: *c_void, arg: *c_void, sp: *mut uint) {
+fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
     let sp = mut_offset(sp, -1);
 
     // The final return address. 0 indicates the bottom of the stack

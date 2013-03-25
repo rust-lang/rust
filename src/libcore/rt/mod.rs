@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use libc::c_char;
 
 // Some basic logging
 macro_rules! rtdebug_ (
@@ -15,16 +16,10 @@ macro_rules! rtdebug_ (
         dumb_println(fmt!( $($arg),+ ));
 
         fn dumb_println(s: &str) {
-            use str::as_c_str;
-            use libc::c_char;
-
-            extern {
-                fn printf(s: *c_char);
-            }
-
-            do as_c_str(s.to_str() + "\n") |s| {
-                unsafe { printf(s); }
-            }
+            use io::WriterUtil;
+            let dbg = ::libc::STDERR_FILENO as ::io::fd_t;
+            dbg.write_str(s);
+            dbg.write_str("\n");
         }
 
     } )
@@ -36,9 +31,13 @@ macro_rules! rtdebug (
 )
 
 mod sched;
-mod io;
+mod rtio;
+pub mod uvll;
 mod uvio;
+#[path = "uv/mod.rs"]
 mod uv;
+#[path = "io/mod.rs"]
+mod io;
 // FIXME #5248: The import in `sched` doesn't resolve unless this is pub!
 pub mod thread_local_storage;
 mod work_queue;
@@ -46,3 +45,23 @@ mod stack;
 mod context;
 mod thread;
 pub mod env;
+
+pub fn start(main: *u8, _argc: int, _argv: *c_char, _crate_map: *u8) -> int {
+    use self::sched::{Scheduler, Task};
+    use self::uvio::UvEventLoop;
+
+    let loop_ = ~UvEventLoop::new();
+    let mut sched = ~Scheduler::new(loop_);
+    let main_task = ~do Task::new(&mut sched.stack_pool) {
+        // XXX: Can't call a C function pointer from Rust yet
+        unsafe { rust_call_nullary_fn(main) };
+    };
+    sched.task_queue.push_back(main_task);
+    sched.run();
+    return 0;
+
+    extern {
+        fn rust_call_nullary_fn(f: *u8);
+    }
+}
+

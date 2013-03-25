@@ -33,6 +33,6 @@
  * facilities.
  */
 
-pub use ll = core::unstable::uvll;
+pub use ll = super::uv_ll;
 pub use iotask = uv_iotask;
 pub use global_loop = uv_global_loop;
