@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A radix trie for storing integers in sorted order
+//! An ordered map and set for integer keys implemented as a radix trie
 
 use prelude::*;
 
