@@ -166,12 +166,15 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
 
     // Create a set of parameter types shared among all the variants.
     for variants.each |variant| {
+        let region_parameterization =
+            RegionParameterization::from_variance_and_generics(rp, generics);
+
         // Nullary enum constructors get turned into constants; n-ary enum
         // constructors get turned into functions.
         let result_ty;
         match variant.node.kind {
             ast::tuple_variant_kind(ref args) if args.len() > 0 => {
-                let rs = type_rscope(rp);
+                let rs = type_rscope(region_parameterization);
                 let input_tys = args.map(|va| ccx.to_ty(&rs, va.ty));
                 result_ty = Some(ty::mk_ctor_fn(tcx, input_tys, enum_ty));
             }
@@ -301,7 +304,8 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                 ccx,
                 &ty_m,
                 region_paramd,
-                def_id
+                def_id,
+                generics
             );
             if ty_m.self_ty.node == ast::sty_static {
                 make_static_method_ty(ccx, &ty_m, region_paramd,
@@ -319,13 +323,14 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
                           id: ast::node_id,
                           sp: codemap::span,
                           rp: Option<ty::region_variance>,
-                          trait_refs: &[@ast::trait_ref]) {
+                          trait_refs: &[@ast::trait_ref],
+                          generics: &ast::Generics) {
     let tcx = ccx.tcx;
     if tcx.supertraits.contains_key(&local_def(id)) { return; }
 
     let mut instantiated = ~[];
     for trait_refs.each |trait_ref| {
-        let (did, tpt) = instantiate_trait_ref(ccx, *trait_ref, rp);
+        let (did, tpt) = instantiate_trait_ref(ccx, *trait_ref, rp, generics);
         if instantiated.any(|other_trait: &InstantiatedTraitRef|
                             { other_trait.def_id == did }) {
             // This means a trait inherited from the same supertrait more
@@ -506,7 +511,7 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
                                    impl_ms: &[ConvertedMethod]) {
 
     let tcx = ccx.tcx;
-    let (did, tpt) = instantiate_trait_ref(ccx, a_trait_ty, rp);
+    let (did, tpt) = instantiate_trait_ref(ccx, a_trait_ty, rp, generics);
 
     if did.crate == ast::local_crate {
         // NB: This is subtle. We need to do this on the type of the trait
@@ -553,8 +558,11 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
 pub fn convert_field(ccx: &CrateCtxt,
                      rp: Option<ty::region_variance>,
                      bounds: @~[ty::param_bounds],
-                     v: @ast::struct_field) {
-    let tt = ccx.to_ty(&type_rscope(rp), v.node.ty);
+                     v: @ast::struct_field,
+                     generics: &ast::Generics) {
+    let region_parameterization =
+        RegionParameterization::from_variance_and_generics(rp, generics);
+    let tt = ccx.to_ty(&type_rscope(region_parameterization), v.node.ty);
     write_ty_to_tcx(ccx.tcx, v.node.id, tt);
     /* add the field to the tcache */
     ccx.tcx.tcache.insert(local_def(v.node.id),
@@ -575,13 +583,14 @@ pub struct ConvertedMethod {
 pub fn convert_methods(ccx: &CrateCtxt,
                        ms: &[@ast::method],
                        rp: Option<ty::region_variance>,
-                       rcvr_bounds: @~[ty::param_bounds])
+                       rcvr_bounds: @~[ty::param_bounds],
+                       rcvr_generics: &ast::Generics)
                     -> ~[ConvertedMethod] {
 
     let tcx = ccx.tcx;
     do vec::map(ms) |m| {
         let bounds = ty_param_bounds(ccx, &m.generics);
-        let mty = ty_of_method(ccx, *m, rp);
+        let mty = ty_of_method(ccx, *m, rp, rcvr_generics, &m.generics);
         let fty = ty::mk_bare_fn(tcx, copy mty.fty);
         tcx.tcache.insert(
             local_def(m.id),
@@ -633,7 +642,9 @@ pub fn convert(ccx: &CrateCtxt, it: @ast::item) {
       }
       ast::item_impl(ref generics, trait_ref, selfty, ref ms) => {
         let i_bounds = ty_param_bounds(ccx, generics);
-        let selfty = ccx.to_ty(&type_rscope(rp), selfty);
+        let region_parameterization =
+            RegionParameterization::from_variance_and_generics(rp, generics);
+        let selfty = ccx.to_ty(&type_rscope(region_parameterization), selfty);
         write_ty_to_tcx(tcx, it.id, selfty);
         tcx.tcache.insert(local_def(it.id),
                           ty_param_bounds_and_ty {
@@ -642,7 +653,7 @@ pub fn convert(ccx: &CrateCtxt, it: @ast::item) {
                             ty: selfty});
 
         // XXX: Bad copy of `ms` below.
-        let cms = convert_methods(ccx, *ms, rp, i_bounds);
+        let cms = convert_methods(ccx, *ms, rp, i_bounds, generics);
         for trait_ref.each |t| {
             check_methods_against_trait(ccx, generics, rp, selfty, *t, cms);
         }
@@ -653,12 +664,12 @@ pub fn convert(ccx: &CrateCtxt, it: @ast::item) {
                it.id, ppaux::ty_to_str(tcx, tpt.ty));
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         ensure_trait_methods(ccx, it.id, tpt.ty);
-        ensure_supertraits(ccx, it.id, it.span, rp, *supertraits);
+        ensure_supertraits(ccx, it.id, it.span, rp, *supertraits, generics);
 
         let (_, provided_methods) =
             split_trait_methods(*trait_methods);
         let (bounds, _) = mk_substs(ccx, generics, rp);
-        let _ = convert_methods(ccx, provided_methods, rp, bounds);
+        let _ = convert_methods(ccx, provided_methods, rp, bounds, generics);
       }
       ast::item_struct(struct_def, ref generics) => {
         ensure_no_ty_param_bounds(ccx, it.span, generics, "structure");
@@ -694,12 +705,17 @@ pub fn convert_struct(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
 
     for struct_def.dtor.each |dtor| {
+        let region_parameterization =
+            RegionParameterization::from_variance_and_generics(rp, generics);
+
         // Write the dtor type
         let t_dtor = ty::mk_bare_fn(
             tcx,
             astconv::ty_of_bare_fn(
-                ccx, &type_rscope(rp),
-                ast::impure_fn, ast::RustAbi,
+                ccx,
+                &type_rscope(region_parameterization),
+                ast::impure_fn,
+                ast::RustAbi,
                 &ast_util::dtor_dec()));
         write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
         tcx.tcache.insert(local_def(dtor.node.id),
@@ -711,7 +727,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
 
     // Write the type of each of the members
     for struct_def.fields.each |f| {
-       convert_field(ccx, rp, tpt.bounds, *f);
+       convert_field(ccx, rp, tpt.bounds, *f, generics);
     }
     let (_, substs) = mk_substs(ccx, generics, rp);
     let selfty = ty::mk_struct(tcx, local_def(id), substs);
@@ -754,17 +770,23 @@ pub fn convert_foreign(ccx: &CrateCtxt, i: @ast::foreign_item) {
 
 pub fn ty_of_method(ccx: &CrateCtxt,
                     m: @ast::method,
-                    rp: Option<ty::region_variance>) -> ty::method {
-    let rscope = MethodRscope {
-        self_ty: m.self_ty.node,
-        region_parameterization: rp
-    };
-
+                    rp: Option<ty::region_variance>,
+                    rcvr_generics: &ast::Generics,
+                    method_generics: &ast::Generics)
+                 -> ty::method {
+    let rscope = MethodRscope::new(m.self_ty.node,
+                                   rp,
+                                   rcvr_generics,
+                                   method_generics);
     ty::method {
         ident: m.ident,
         tps: ty_param_bounds(ccx, &m.generics),
-        fty: astconv::ty_of_bare_fn(ccx, &rscope, m.purity,
-                                    ast::RustAbi, &m.decl),
+        fty: astconv::ty_of_bare_fn_ext(ccx,
+                                        &rscope,
+                                        m.purity,
+                                        ast::RustAbi,
+                                        &m.decl,
+                                        rscope.region_param_names()),
         self_ty: m.self_ty.node,
         vis: m.vis,
         def_id: local_def(m.id)
@@ -774,17 +796,19 @@ pub fn ty_of_method(ccx: &CrateCtxt,
 pub fn ty_of_ty_method(self: &CrateCtxt,
                        m: &ast::ty_method,
                        rp: Option<ty::region_variance>,
-                       id: ast::def_id) -> ty::method {
-    let rscope = MethodRscope {
-        self_ty: m.self_ty.node,
-        region_parameterization: rp
-    };
-
+                       id: ast::def_id,
+                       generics: &ast::Generics)
+                    -> ty::method {
+    let rscope = MethodRscope::new(m.self_ty.node, rp, generics, &m.generics);
     ty::method {
         ident: m.ident,
         tps: ty_param_bounds(self, &m.generics),
-        fty: astconv::ty_of_bare_fn(self, &rscope, m.purity,
-                                    ast::RustAbi, &m.decl),
+        fty: astconv::ty_of_bare_fn_ext(self,
+                                        &rscope,
+                                        m.purity,
+                                        ast::RustAbi,
+                                        &m.decl,
+                                        rscope.region_param_names()),
         // assume public, because this is only invoked on trait methods
         self_ty: m.self_ty.node,
         vis: ast::public,
@@ -797,12 +821,16 @@ pub fn ty_of_ty_method(self: &CrateCtxt,
   it's bound to a valid trait type. Returns the def_id for the defining
   trait. Fails if the type is a type other than an trait type.
  */
-pub fn instantiate_trait_ref(ccx: &CrateCtxt, t: @ast::trait_ref,
-                             rp: Option<ty::region_variance>)
+pub fn instantiate_trait_ref(ccx: &CrateCtxt,
+                             t: @ast::trait_ref,
+                             rp: Option<ty::region_variance>,
+                             generics: &ast::Generics)
     -> (ast::def_id, ty_param_substs_and_ty) {
 
     let sp = t.path.span, err = ~"can only implement trait types",
         sess = ccx.tcx.sess;
+
+    let rp = RegionParameterization::from_variance_and_generics(rp, generics);
 
     let rscope = type_rscope(rp);
 
@@ -841,8 +869,13 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
       }
       ast::item_fn(ref decl, purity, ref generics, _) => {
         let bounds = ty_param_bounds(ccx, generics);
-        let tofd = astconv::ty_of_bare_fn(ccx, &empty_rscope, purity,
-                                          ast::RustAbi, decl);
+        let region_param_names = RegionParamNames::from_generics(generics);
+        let tofd = astconv::ty_of_bare_fn_ext(ccx,
+                                              &empty_rscope,
+                                              purity,
+                                              ast::RustAbi,
+                                              decl,
+                                              region_param_names);
         let tpt = ty_param_bounds_and_ty {
             bounds: bounds,
             region_param: None,
@@ -862,9 +895,11 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
         }
 
         let rp = tcx.region_paramd_items.find(&it.id).map_consume(|x| *x);
+        let region_parameterization =
+            RegionParameterization::from_variance_and_generics(rp, generics);
         let tpt = {
             let ty = {
-                let t0 = ccx.to_ty(&type_rscope(rp), t);
+                let t0 = ccx.to_ty(&type_rscope(region_parameterization), t);
                 // Do not associate a def id with a named, parameterized type
                 // like "foo<X>".  This is because otherwise ty_to_str will
                 // print the name as merely "foo", as it has no way to
@@ -1007,7 +1042,8 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
                              generics: &ast::Generics)
                           -> ty::ty_param_bounds_and_ty {
     let bounds = ty_param_bounds(ccx, generics);
-    let rb = in_binding_rscope(&empty_rscope);
+    let region_param_names = RegionParamNames::from_generics(generics);
+    let rb = in_binding_rscope_ext(&empty_rscope, region_param_names);
     let input_tys = decl.inputs.map(|a| ty_of_arg(ccx, &rb, *a, None) );
     let output_ty = ast_ty_to_ty(ccx, &rb, decl.output);
 
