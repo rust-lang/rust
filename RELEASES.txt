@@ -1,7 +1,7 @@
 Version 0.6 (March 2013)
 ---------------------------
 
-   * ~??? changes, numerous bugfixes
+   * ~2000 changes, numerous bugfixes
 
    * TODO:
       * Ord/Cmp
@@ -39,6 +39,8 @@ Version 0.6 (March 2013)
       * Newtype enums removed. Used tuple-structs.
       * Trait implementations no longer support visibility modifiers
       * Pattern matching over vectors improved and expanded
+      * `const` renamed to `static` to correspond to lifetime name,
+        and make room for future `static mut` unsafe mutable globals.
 
    * Semantic changes
       * Types with owned pointers or custom destructors move by default,
@@ -52,8 +54,9 @@ Version 0.6 (March 2013)
       * Name resolution continues to be tweaked
       * Method visibility is inherited from the implementation declaration
       * Structural records have been removed
-      * Many more types can be used in constants, including enums,
-        `static lifetime pointers and vectors
+      * Many more types can be used in static items, including enums
+        'static-lifetime pointers and vectors
+      * Pattern matching over vectors improved and expanded
       * Typechecking of closure types has been overhauled to
         improve inference and eliminate unsoundness
 
@@ -85,6 +88,7 @@ Version 0.6 (March 2013)
       * Improved foreign function ABI implementation for x86, x86_64
       * Various memory usage improvements
       * Rust code may be embedded in foreign code under limited circumstances
+      * Inline assembler supported by new asm!() syntax extension.
 
 Version 0.5 (December 2012)
 ---------------------------
