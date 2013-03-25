@@ -145,7 +145,7 @@ fn req_loans_in_expr(ex: @ast::expr,
 
         // make sure that the thing we are pointing out stays valid
         // for the lifetime `scope_r` of the resulting ptr:
-        let scope_r = ty_region(tcx.ty(ex));
+        let scope_r = ty_region(tcx, ex.span, tcx.ty(ex));
         self.guarantee_valid(base_cmt, mutbl, scope_r);
         visit::visit_expr(ex, self, vt);
       }
@@ -599,7 +599,8 @@ pub impl GatherLoanCtxt {
                     // find the region of the resulting pointer (note that
                     // the type of such a pattern will *always* be a
                     // region pointer)
-                    let scope_r = ty_region(self.tcx().ty(pat));
+                    let scope_r = ty_region(self.tcx(), pat.span,
+                                            self.tcx().ty(pat));
 
                     // if the scope of the region ptr turns out to be
                     // specific to this arm, wrap the categorization with
