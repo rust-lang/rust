@@ -1617,7 +1617,7 @@ pub mod funcs {
             use libc::types::os::arch::extra::{HANDLE};
 
             #[abi = "stdcall"]
-            pub extern {
+            pub extern "stdcall" {
                 unsafe fn GetEnvironmentVariableW(n: LPCWSTR,
                                                   v: LPWSTR,
                                                   nsize: DWORD)

@@ -39,7 +39,7 @@ pub struct Closure {
 
 pub mod rusti {
     #[abi = "rust-intrinsic"]
-    pub extern {
+    pub extern "rust-intrinsic" {
         fn get_tydesc<T>() -> *();
         fn size_of<T>() -> uint;
         fn pref_align_of<T>() -> uint;

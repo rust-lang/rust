@@ -156,12 +156,8 @@ fn visit_view_item(e: @mut Env, i: @ast::view_item) {
 fn visit_item(e: @mut Env, i: @ast::item) {
     match i.node {
       ast::item_foreign_mod(ref fm) => {
-        match attr::foreign_abi(i.attrs) {
-          either::Right(abi) => {
-            if abi != ast::foreign_abi_cdecl &&
-               abi != ast::foreign_abi_stdcall { return; }
-          }
-          either::Left(ref msg) => e.diag.span_fatal(i.span, (*msg))
+        if fm.abis.is_rust() || fm.abis.is_intrinsic() {
+            return;
         }
 
         let cstore = e.cstore;

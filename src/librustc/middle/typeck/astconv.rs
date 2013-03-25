@@ -64,6 +64,7 @@ use middle::typeck::{CrateCtxt, write_substs_to_tcx, write_ty_to_tcx};
 
 use core::result;
 use core::vec;
+use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
 use syntax::codemap::span;
 use syntax::print::pprust::{lifetime_to_str, path_to_str};
@@ -350,7 +351,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
       }
       ast::ty_bare_fn(ref bf) => {
           ty::mk_bare_fn(tcx, ty_of_bare_fn(self, rscope, bf.purity,
-                                            bf.abi, &bf.decl))
+                                            bf.abis, &bf.decl))
       }
       ast::ty_closure(ref f) => {
           let fn_decl = ty_of_closure(self, rscope, f.sigil,
@@ -509,7 +510,7 @@ pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
         self: &AC,
         rscope: &RS,
         purity: ast::purity,
-        abi: ast::Abi,
+        abi: AbiSet,
         decl: &ast::fn_decl)
      -> ty::BareFnTy {
     debug!("ty_of_fn_decl");
@@ -526,7 +527,7 @@ pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
 
     ty::BareFnTy {
         purity: purity,
-        abi: abi,
+        abis: abi,
         sig: ty::FnSig {inputs: input_tys, output: output_ty}
     }
 }

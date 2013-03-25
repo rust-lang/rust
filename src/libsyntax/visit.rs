@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use abi::AbiSet;
 use ast::*;
 use ast;
 use ast_util;
@@ -29,10 +30,18 @@ use opt_vec::OptVec;
 pub enum vt<E> { mk_vt(visitor<E>), }
 
 pub enum fn_kind<'self> {
-    fk_item_fn(ident, &'self Generics, purity),   // fn foo()
-    fk_method(ident, &'self Generics, &'self method),   // fn foo(&self)
-    fk_anon(ast::Sigil),                    // fn@(x, y) { ... }
-    fk_fn_block,                            // |x, y| ...
+    // fn foo() or extern "Abi" fn foo()
+    fk_item_fn(ident, &'self Generics, purity, AbiSet),
+
+    // fn foo(&self)
+    fk_method(ident, &'self Generics, &'self method),
+
+    // fn@(x, y) { ... }
+    fk_anon(ast::Sigil),
+
+    // |x, y| ...
+    fk_fn_block,
+
     fk_dtor( // class destructor
         &'self Generics,
         &'self [attribute],
@@ -43,8 +52,8 @@ pub enum fn_kind<'self> {
 
 pub fn name_of_fn(fk: &fn_kind) -> ident {
     match *fk {
-      fk_item_fn(name, _, _) | fk_method(name, _, _) => {
-          /* FIXME (#2543) */ copy name
+      fk_item_fn(name, _, _, _) | fk_method(name, _, _) => {
+          name
       }
       fk_anon(*) | fk_fn_block(*) => parse::token::special_idents::anon,
       fk_dtor(*)                  => parse::token::special_idents::dtor
@@ -53,7 +62,7 @@ pub fn name_of_fn(fk: &fn_kind) -> ident {
 
 pub fn generics_of_fn(fk: &fn_kind) -> Generics {
     match *fk {
-        fk_item_fn(_, generics, _) |
+        fk_item_fn(_, generics, _, _) |
         fk_method(_, generics, _) |
         fk_dtor(generics, _, _, _) => {
             copy *generics
@@ -144,12 +153,13 @@ pub fn visit_item<E>(i: @item, e: E, v: vt<E>) {
             (v.visit_ty)(t, e, v);
             (v.visit_expr)(ex, e, v);
         }
-        item_fn(ref decl, purity, ref generics, ref body) => {
+        item_fn(ref decl, purity, abi, ref generics, ref body) => {
             (v.visit_fn)(
                 &fk_item_fn(
-                    /* FIXME (#2543) */ copy i.ident,
+                    i.ident,
                     generics,
-                    purity
+                    purity,
+                    abi
                 ),
                 decl,
                 body,

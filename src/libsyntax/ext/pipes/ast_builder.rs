@@ -15,6 +15,7 @@
 
 use core::prelude::*;
 
+use abi::AbiSet;
 use ast::{ident, node_id};
 use ast;
 use ast_util;
@@ -272,6 +273,7 @@ impl ext_ctxt_ast_builder for @ext_ctxt {
                   dummy_sp(),
                   ast::item_fn(self.fn_decl(inputs, output),
                                ast::impure_fn,
+                               AbiSet::Rust(),
                                generics,
                                body))
     }

@@ -218,6 +218,7 @@ fn get_metadata_section(os: os,
                     let minsz = uint::min(vlen, csz);
                     let mut version_ok = false;
                     do vec::raw::buf_as_slice(cvbuf, minsz) |buf0| {
+                        debug!("buf0=%?", buf0);
                         version_ok = (buf0 ==
                                       encoder::metadata_encoding_version);
                     }

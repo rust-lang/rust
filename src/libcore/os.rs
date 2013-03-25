@@ -944,7 +944,7 @@ pub fn errno() -> uint {
 
     #[link_name = "kernel32"]
     #[abi = "stdcall"]
-    extern {
+    extern "stdcall" {
         unsafe fn GetLastError() -> DWORD;
     }
 
@@ -1006,7 +1006,7 @@ pub fn last_os_error() -> ~str {
 
         #[link_name = "kernel32"]
         #[abi = "stdcall"]
-        extern {
+        extern "stdcall" {
             unsafe fn FormatMessageA(flags: DWORD, lpSrc: LPVOID,
                                      msgId: DWORD, langId: DWORD,
                                      buf: LPSTR, nsize: DWORD,

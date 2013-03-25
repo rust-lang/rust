@@ -48,6 +48,7 @@ use syntax::codemap::span;
 use syntax::codemap;
 use syntax::print::pprust;
 use syntax::{ast, ast_map};
+use syntax::abi::AbiSet;
 use syntax;
 
 // Data types
@@ -362,7 +363,7 @@ pub fn type_id(t: t) -> uint { get(t).id }
 #[deriving(Eq)]
 pub struct BareFnTy {
     purity: ast::purity,
-    abi: Abi,
+    abis: AbiSet,
     sig: FnSig
 }
 
@@ -389,7 +390,7 @@ pub struct FnSig {
 
 impl to_bytes::IterBytes for BareFnTy {
     fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_3(&self.purity, &self.abi, &self.sig, lsb0, f)
+        to_bytes::iter_bytes_3(&self.purity, &self.abis, &self.sig, lsb0, f)
     }
 }
 
@@ -555,7 +556,7 @@ pub enum type_err {
     terr_mismatch,
     terr_purity_mismatch(expected_found<purity>),
     terr_onceness_mismatch(expected_found<Onceness>),
-    terr_abi_mismatch(expected_found<ast::Abi>),
+    terr_abi_mismatch(expected_found<AbiSet>),
     terr_mutability,
     terr_sigil_mismatch(expected_found<ast::Sigil>),
     terr_box_mutability,
@@ -1065,7 +1066,7 @@ pub fn mk_ctor_fn(cx: ctxt, input_tys: &[ty::t], output: ty::t) -> t {
     mk_bare_fn(cx,
                BareFnTy {
                    purity: ast::pure_fn,
-                   abi: ast::RustAbi,
+                   abis: AbiSet::Rust(),
                    sig: FnSig {inputs: input_args,
                                output: output}})
 }
@@ -1247,7 +1248,7 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
         }
         ty_bare_fn(ref f) => {
             let sig = fold_sig(&f.sig, fldop);
-            ty_bare_fn(BareFnTy {sig: sig, abi: f.abi, purity: f.purity})
+            ty_bare_fn(BareFnTy {sig: sig, abis: f.abis, purity: f.purity})
         }
         ty_closure(ref f) => {
             let sig = fold_sig(&f.sig, fldop);

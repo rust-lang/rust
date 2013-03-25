@@ -465,7 +465,7 @@ pub fn id_visitor(vfn: @fn(node_id)) -> visit::vt<()> {
                     vfn(self_id);
                     vfn(parent_id.node);
                 }
-                visit::fk_item_fn(_, generics, _) => {
+                visit::fk_item_fn(_, generics, _, _) => {
                     visit_generics(generics);
                 }
                 visit::fk_method(_, generics, m) => {

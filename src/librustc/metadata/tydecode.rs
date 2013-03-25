@@ -21,6 +21,8 @@ use middle::ty;
 use core::str;
 use core::uint;
 use core::vec;
+use syntax::abi::AbiSet;
+use syntax::abi;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::codemap::{respan, dummy_sp};
@@ -74,6 +76,20 @@ fn next_byte(st: @mut PState) -> u8 {
     return b;
 }
 
+fn scan<R>(st: &mut PState, is_last: &fn(char) -> bool,
+           op: &fn(&[u8]) -> R) -> R
+{
+    let start_pos = st.pos;
+    debug!("scan: '%c' (start)", st.data[st.pos] as char);
+    while !is_last(st.data[st.pos] as char) {
+        st.pos += 1;
+        debug!("scan: '%c'", st.data[st.pos] as char);
+    }
+    let end_pos = st.pos;
+    st.pos += 1;
+    return op(st.data.slice(start_pos, end_pos));
+}
+
 pub fn parse_ident(st: @mut PState, last: char) -> ast::ident {
     fn is_last(b: char, c: char) -> bool { return c == b; }
     return parse_ident_(st, |a| is_last(last, a) );
@@ -81,10 +97,7 @@ pub fn parse_ident(st: @mut PState, last: char) -> ast::ident {
 
 fn parse_ident_(st: @mut PState, is_last: @fn(char) -> bool) ->
    ast::ident {
-    let mut rslt = ~"";
-    while !is_last(peek(st)) {
-        rslt += str::from_byte(next_byte(st));
-    }
+    let rslt = scan(st, is_last, str::from_bytes);
     return st.tcx.sess.ident_of(rslt);
 }
 
@@ -415,11 +428,17 @@ fn parse_purity(c: char) -> purity {
     }
 }
 
-fn parse_abi(c: char) -> Abi {
-    match c {
-      'r' => ast::RustAbi,
-      _ => fail!(fmt!("parse_abi: bad ABI '%c'", c))
+fn parse_abi_set(st: @mut PState) -> AbiSet {
+    fail_unless!(next(st) == '[');
+    let mut abis = AbiSet::empty();
+    while peek(st) != ']' {
+        // FIXME(#5422) str API should not force this copy
+        let abi_str = scan(st, |c| c == ',', str::from_bytes);
+        let abi = abi::lookup(abi_str).expect(abi_str);
+        abis.add(abi);
     }
+    fail_unless!(next(st) == ']');
+    return abis;
 }
 
 fn parse_onceness(c: char) -> ast::Onceness {
@@ -460,11 +479,11 @@ fn parse_closure_ty(st: @mut PState, conv: conv_did) -> ty::ClosureTy {
 
 fn parse_bare_fn_ty(st: @mut PState, conv: conv_did) -> ty::BareFnTy {
     let purity = parse_purity(next(st));
-    let abi = parse_abi(next(st));
+    let abi = parse_abi_set(st);
     let sig = parse_sig(st, conv);
     ty::BareFnTy {
         purity: purity,
-        abi: abi,
+        abis: abi,
         sig: sig
     }
 }

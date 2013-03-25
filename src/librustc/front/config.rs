@@ -92,7 +92,7 @@ fn fold_foreign_mod(
         nm.view_items.filter_mapped(|a| filter_view_item(cx, *a));
     ast::foreign_mod {
         sort: nm.sort,
-        abi: nm.abi,
+        abis: nm.abis,
         view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(*x)),
         items: filtered_items
     }

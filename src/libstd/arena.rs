@@ -48,7 +48,7 @@ use core::vec;
 
 pub mod rusti {
     #[abi = "rust-intrinsic"]
-    pub extern {
+    pub extern "rust-intrinsic" {
         fn move_val_init<T>(dst: &mut T, +src: T);
         fn needs_drop<T>() -> bool;
     }
