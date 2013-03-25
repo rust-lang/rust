@@ -277,6 +277,7 @@ fn impldoc_from_impl(
 ) -> doc::ImplDoc {
     doc::ImplDoc {
         item: itemdoc,
+        bounds_str: None,
         trait_types: ~[],
         self_ty: None,
         methods: do vec::map(methods) |method| {
