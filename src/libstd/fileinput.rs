@@ -9,7 +9,7 @@
 // except according to those terms.
 
 /*!
-A convience device for iterating through the lines in a series of
+A library for iterating through the lines in a series of
 files. Very similar to [the Python module of the same
 name](http://docs.python.org/3.3/library/fileinput.html).
 
@@ -47,8 +47,9 @@ or a program that numbers lines after concatenating two files
                                    line));
     }
 
-The 2 `_vec` functions take a vec of file names (and empty means
-read from `stdin`), the other 2 use the command line arguments.
+The two `input_vec*` functions take a vec of file names (where empty
+means read from `stdin`), the other two functions use the command line
+arguments.
 
 # Advanced
 
@@ -56,22 +57,25 @@ For more complicated uses (e.g. if one needs to pause iteration and
 resume it later), a `FileInput` instance can be constructed via the
 `from_vec`, `from_vec_raw` and `from_args` functions.
 
-Once created, the `lines_each` and `lines_each_state` methods
-allow one to iterate on the lines (the latter provides more
-information about the position within the iteration to the caller.
+Once created, the `each_line` (from the `core::io::ReaderUtil` trait)
+and `each_line_state` methods allow one to iterate on the lines; the
+latter provides more information about the position within the
+iteration to the caller.
 
 It is possible (and safe) to skip lines and files using the
-`read_line` and `next_file` methods.
+`read_line` and `next_file` methods. Also, `FileInput` implements
+`core::io::Reader`, and the state will be updated correctly while
+using any of those methods.
 
-E.g. the following (pointless) program reads until an empty line,
-pauses for user input, skips the current file and then numbers the
-remaining lines (where the numbers are from the start of the file,
-rather than the total line count).
+E.g. the following program reads until an empty line, pauses for user
+input, skips the current file and then numbers the remaining lines
+(where the numbers are from the start of each file, rather than the
+total line count).
 
-    let mut in = FileInput::from_vec(pathify([~"a.txt", ~"b.txt", ~"c.txt"],
+    let in = FileInput::from_vec(pathify([~"a.txt", ~"b.txt", ~"c.txt"],
                                              true));
 
-    for in.lines_each |line| {
+    for in.each_line |line| {
         if line.is_empty() {
             break
         }
@@ -83,20 +87,23 @@ rather than the total line count).
     if io::stdin().read_line() == ~"yes" {
         in.next_file(); // skip!
 
-        for in.lines_each_state |line, state| {
+        for in.each_line_state |line, state| {
            io::println(fmt!("%u: %s", state.line_num_file,
                                       line))
         }
     }
 */
 
+#[allow(deprecated_mutable_fields)];
+
 use core::prelude::*;
 use core::io::ReaderUtil;
 
 /**
-A summary of the internal state of a FileInput object. `line_num` and
-`line_num_file` represent the number of lines read in total and in the
-current file respectively.
+A summary of the internal state of a `FileInput` object. `line_num`
+and `line_num_file` represent the number of lines read in total and in
+the current file respectively. `current_path` is `None` if the current
+file is `stdin`.
 */
 pub struct FileInputState {
     current_path: Option<Path>,
@@ -114,18 +121,32 @@ impl FileInputState {
     }
 }
 
-priv struct FileInput {
+struct FileInput_ {
     /**
     `Some(path)` is the file represented by `path`, `None` is
     `stdin`. Consumed as the files are read.
     */
-    files: ~[Option<Path>],
+    priv files: ~[Option<Path>],
     /**
     The current file: `Some(r)` for an open file, `None` before
     starting and after reading everything.
     */
-    current_reader: Option<@io::Reader>,
-    state: FileInputState
+    priv current_reader: Option<@io::Reader>,
+    priv state: FileInputState,
+
+    /**
+    Used to keep track of whether we need to insert the newline at the
+    end of a file that is missing it, which is needed to separate the
+    last and first lines.
+    */
+    priv previous_was_newline: bool
+}
+
+// XXX: remove this when Reader has &mut self. Should be removable via
+// "self.fi." -> "self." and renaming FileInput_. Documentation above
+// will likely have to be updated to use `let mut in = ...`.
+pub struct FileInput  {
+    priv mut fi: FileInput_
 }
 
 impl FileInput {
@@ -134,7 +155,7 @@ impl FileInput {
     vec means lines are read from `stdin` (use `from_vec_raw` to stop
     this behaviour). Any occurence of `None` represents `stdin`.
     */
-    static pure fn from_vec(files: ~[Option<Path>]) -> FileInput {
+    pub fn from_vec(files: ~[Option<Path>]) -> FileInput {
         FileInput::from_vec_raw(
             if files.is_empty() {
                 ~[None]
@@ -147,31 +168,35 @@ impl FileInput {
     Identical to `from_vec`, but an empty `files` vec stays
     empty. (`None` is `stdin`.)
     */
-    static pure fn from_vec_raw(files: ~[Option<Path>])
+    pub fn from_vec_raw(files: ~[Option<Path>])
                                          -> FileInput {
-        FileInput {
-            files: files,
-            current_reader: None,
-            state: FileInputState {
-                current_path: None,
-                line_num: 0,
-                line_num_file: 0
+        FileInput{
+            fi: FileInput_ {
+                files: files,
+                current_reader: None,
+                state: FileInputState {
+                    current_path: None,
+                    line_num: 0,
+                    line_num_file: 0
+                },
+                // there was no previous unended line
+                previous_was_newline: true
             }
         }
     }
 
     /**
     Create a `FileInput` object from the command line
-    arguments. `-` represents `stdin`.
+    arguments. `"-"` represents `stdin`.
     */
-    static fn from_args() -> FileInput {
+    pub fn from_args() -> FileInput {
         let args = os::args(),
             pathed = pathify(args.tail(), true);
         FileInput::from_vec(pathed)
     }
 
     priv fn current_file_eof(&self) -> bool {
-        match self.current_reader {
+        match self.fi.current_reader {
             None => false,
             Some(r) => r.eof()
         }
@@ -180,89 +205,48 @@ impl FileInput {
     /**
     Skip to the next file in the queue. Can `fail` when opening
     a file.
+
+    Returns `false` if there is no more files, and `true` when it
+    successfully opens the next file.
     */
-    pub fn next_file(&mut self) {
+
+    pub fn next_file(&self) -> bool {
         // No more files
-        if self.files.is_empty() {
-            self.current_reader = None;
-            return;
+
+        // Compiler whines about "illegal borrow unless pure" for
+        // files.is_empty()
+        if unsafe { self.fi.files.is_empty() } {
+            self.fi.current_reader = None;
+            return false;
         }
 
-        let path_option = self.files.shift(),
+        let path_option = self.fi.files.shift(),
             file = match path_option {
                 None => io::stdin(),
                 Some(ref path) => io::file_reader(path).get()
             };
 
-        self.current_reader = Some(file);
-        self.state.current_path = path_option;
-        self.state.line_num_file = 0;
+        self.fi.current_reader = Some(file);
+        self.fi.state.current_path = path_option;
+        self.fi.state.line_num_file = 0;
+        true
     }
 
     /**
     Attempt to open the next file if there is none currently open,
     or if the current one is EOF'd.
+
+    Returns `true` if it had to move to the next file and did
+    so successfully.
     */
-    priv fn next_file_if_eof(&mut self) {
-        match self.current_reader {
+    priv fn next_file_if_eof(&self) -> bool {
+        match self.fi.current_reader {
             None => self.next_file(),
             Some(r) => {
                 if r.eof() {
                     self.next_file()
-                }
-            }
-        }
-    }
-
-    /**
-    Read a single line. Returns `None` if there are no remaining lines
-    in any remaining file. (Automatically opens files as required, see
-    `next_file` for details.)
-
-    (Name to avoid conflicting with `core::io::ReaderUtil::read_line`.)
-    */
-    pub fn next_line(&mut self) -> Option<~str> {
-        loop {
-            // iterate until there is a file that can be read from
-            self.next_file_if_eof();
-            match self.current_reader {
-                None => {
-                    // no file has any content
-                    return None;
-                },
-                Some(r) => {
-                    let l = r.read_line();
-
-                    // at the end of this file, and we read nothing, so
-                    // go to the next file
-                    if r.eof() && l.is_empty() {
-                        loop;
-                    }
-                    self.state.line_num += 1;
-                    self.state.line_num_file += 1;
-                    return Some(l);
-                }
-            }
-        }
-    }
-
-    /**
-    Call `f` on the lines in the files in succession, stopping if
-    it ever returns `false`.
-
-    State is preserved across calls.
-
-    (The name is to avoid conflict with
-    `core::io::ReaderUtil::each_line`.)
-    */
-    pub fn lines_each(&mut self, f: &fn(~str) -> bool) {
-        loop {
-            match self.next_line() {
-                None => break,
-                Some(line) => {
-                    if !f(line) {
-                        break;
-                    }
+                } else {
+                    false
                 }
             }
         }
@@ -273,17 +257,91 @@ impl FileInput {
     (line numbers and file names, see documentation for
     `FileInputState`). Otherwise identical to `lines_each`.
     */
-    pub fn lines_each_state(&mut self,
-                            f: &fn(~str, &FileInputState) -> bool) {
+    pub fn each_line_state(&self,
+                            f: &fn(&str, FileInputState) -> bool) {
+         self.each_line(|line| f(line, copy self.fi.state));
+    }
+
+
+    /**
+    Retrieve the current `FileInputState` information.
+    */
+    pub fn state(&self) -> FileInputState {
+        copy self.fi.state
+    }
+}
+
+impl io::Reader for FileInput {
+    fn read_byte(&self) -> int {
         loop {
-            match self.next_line() {
-                None => break,
-                Some(line) => {
-                    if !f(line, &self.state) {
-                        break;
+            let stepped = self.next_file_if_eof();
+
+            // if we moved to the next file, and the previous
+            // character wasn't \n, then there is an unfinished line
+            // from the previous file. This library models
+            // line-by-line processing and the trailing line of the
+            // previous file and the leading of the current file
+            // should be considered different, so we need to insert a
+            // fake line separator
+            if stepped && !self.fi.previous_was_newline {
+                self.fi.state.line_num += 1;
+                self.fi.state.line_num_file += 1;
+                self.fi.previous_was_newline = true;
+                return '\n' as int;
+            }
+
+            match self.fi.current_reader {
+                None => return -1,
+                Some(r) => {
+                    let b = r.read_byte();
+
+                    if b < 0 {
+                        loop;
                     }
+
+                    if b == '\n' as int {
+                        self.fi.state.line_num += 1;
+                        self.fi.state.line_num_file += 1;
+                        self.fi.previous_was_newline = true;
+                    } else {
+                        self.fi.previous_was_newline = false;
+                    }
+
+                    return b;
                 }
             }
+        }
+    }
+    fn read(&self, buf: &mut [u8], len: uint) -> uint {
+        let mut count = 0;
+        while count < len {
+            let b = self.read_byte();
+            if b < 0 { break }
+
+            buf[count] = b as u8;
+            count += 1;
+        }
+
+        count
+    }
+    fn eof(&self) -> bool {
+        // we've run out of files, and current_reader is either None or eof.
+
+        // compiler whines about illegal borrows for files.is_empty()
+        (unsafe { self.fi.files.is_empty() }) &&
+            match self.fi.current_reader { None => true, Some(r) => r.eof() }
+
+    }
+    fn seek(&self, offset: int, whence: io::SeekStyle) {
+        match self.fi.current_reader {
+            None => {},
+            Some(r) => r.seek(offset, whence)
+        }
+    }
+    fn tell(&self) -> uint {
+        match self.fi.current_reader {
+            None => 0,
+            Some(r) => r.tell()
         }
     }
 }
@@ -291,7 +349,7 @@ impl FileInput {
 /**
 Convert a list of strings to an appropriate form for a `FileInput`
 instance. `stdin_hyphen` controls whether `-` represents `stdin` or
-not.
+a literal `-`.
 */
 // XXX: stupid, unclear name
 pub fn pathify(vec: &[~str], stdin_hyphen : bool) -> ~[Option<Path>] {
@@ -310,9 +368,9 @@ reading from `stdin`).
 
 Fails when attempting to read from a file that can't be opened.
 */
-pub fn input(f: &fn(~str) -> bool) {
+pub fn input(f: &fn(&str) -> bool) {
     let mut i = FileInput::from_args();
-    i.lines_each(f);
+    i.each_line(f);
 }
 
 /**
@@ -322,31 +380,31 @@ provided at each call.
 
 Fails when attempting to read from a file that can't be opened.
 */
-pub fn input_state(f: &fn(~str, &FileInputState) -> bool) {
+pub fn input_state(f: &fn(&str, FileInputState) -> bool) {
     let mut i = FileInput::from_args();
-    i.lines_each_state(f);
+    i.each_line_state(f);
 }
 
 /**
-Iterate over a vec of files (an empty vec implies just `stdin`).
+Iterate over a vector of files (an empty vector implies just `stdin`).
 
 Fails when attempting to read from a file that can't be opened.
 */
-pub fn input_vec(files: ~[Option<Path>], f: &fn(~str) -> bool) {
+pub fn input_vec(files: ~[Option<Path>], f: &fn(&str) -> bool) {
     let mut i = FileInput::from_vec(files);
-    i.lines_each(f);
+    i.each_line(f);
 }
 
 /**
-Iterate over a vec of files (an empty vec implies just `stdin`) with
-the current state of the iteration provided at each call.
+Iterate over a vector of files (an empty vector implies just `stdin`)
+with the current state of the iteration provided at each call.
 
 Fails when attempting to read from a file that can't be opened.
 */
 pub fn input_vec_state(files: ~[Option<Path>],
-                       f: &fn(~str, &FileInputState) -> bool) {
+                       f: &fn(&str, FileInputState) -> bool) {
     let mut i = FileInput::from_vec(files);
-    i.lines_each_state(f);
+    i.each_line_state(f);
 }
 
 #[cfg(test)]
@@ -371,11 +429,61 @@ mod test {
             paths = ~[Some(Path("some/path")),
                       Some(Path("some/other/path"))];
 
-        fail_unless!(pathify(strs, true) == paths);
-        fail_unless!(pathify(strs, false) == paths);
+        assert_eq!(pathify(strs, true), copy paths);
+        assert_eq!(pathify(strs, false), paths);
 
-        fail_unless!(pathify([~"-"], true) == ~[None]);
-        fail_unless!(pathify([~"-"], false) == ~[Some(Path("-"))]);
+        assert_eq!(pathify([~"-"], true), ~[None]);
+        assert_eq!(pathify([~"-"], false), ~[Some(Path("-"))]);
+    }
+
+    #[test]
+    fn test_fileinput_read_byte() {
+        let filenames = pathify(vec::from_fn(
+            3,
+            |i| fmt!("tmp/lib-fileinput-test-fileinput-read-byte-%u.tmp", i)), true);
+
+        // 3 files containing 0\n, 1\n, and 2\n respectively
+        for filenames.eachi |i, &filename| {
+            make_file(filename.get_ref(), ~[fmt!("%u", i)]);
+        }
+
+        let fi = FileInput::from_vec(copy filenames);
+
+        for "012".each_chari |line, c| {
+            assert_eq!(fi.read_byte(), c as int);
+            assert_eq!(fi.state().line_num, line);
+            assert_eq!(fi.state().line_num_file, 0);
+            assert_eq!(fi.read_byte(), '\n' as int);
+            assert_eq!(fi.state().line_num, line + 1);
+            assert_eq!(fi.state().line_num_file, 1);
+
+            assert_eq!(copy fi.state().current_path, copy filenames[line]);
+        }
+
+        assert_eq!(fi.read_byte(), -1);
+        fail_unless!(fi.eof());
+        assert_eq!(fi.state().line_num, 3)
+
+    }
+
+    #[test]
+    fn test_fileinput_read() {
+        let filenames = pathify(vec::from_fn(
+            3,
+            |i| fmt!("tmp/lib-fileinput-test-fileinput-read-%u.tmp", i)), true);
+
+        // 3 files containing 1\n, 2\n, and 3\n respectively
+        for filenames.eachi |i, &filename| {
+            make_file(filename.get_ref(), ~[fmt!("%u", i)]);
+        }
+
+        let fi = FileInput::from_vec(filenames);
+        let mut buf : ~[u8] = vec::from_elem(6, 0u8);
+        let count = fi.read(buf, 10);
+        assert_eq!(count, 6);
+        assert_eq!(buf, "0\n1\n2\n".to_bytes());
+        fail_unless!(fi.eof())
+        assert_eq!(fi.state().line_num, 3);
     }
 
     #[test]
@@ -388,47 +496,84 @@ mod test {
         for filenames.eachi |i, &filename| {
             let contents =
                 vec::from_fn(3, |j| fmt!("%u %u", i, j));
-            make_file(&filename.get(), contents);
+            make_file(filename.get_ref(), contents);
             all_lines.push_all(contents);
         }
 
         let mut read_lines = ~[];
         for input_vec(filenames) |line| {
-            read_lines.push(line);
+            read_lines.push(line.to_owned());
         }
-        fail_unless!(read_lines == all_lines);
+        assert_eq!(read_lines, all_lines);
     }
 
     #[test]
     fn test_input_vec_state() {
         let filenames = pathify(vec::from_fn(
             3,
-            |i|
-            fmt!("tmp/lib-fileinput-test-input-vec-state-%u.tmp", i)),true);
+            |i| fmt!("tmp/lib-fileinput-test-input-vec-state-%u.tmp", i)),true);
 
         for filenames.eachi |i, &filename| {
             let contents =
                 vec::from_fn(3, |j| fmt!("%u %u", i, j + 1));
-            make_file(&filename.get(), contents);
+            make_file(filename.get_ref(), contents);
         }
 
         for input_vec_state(filenames) |line, state| {
             let nums = str::split_char(line, ' ');
-
             let file_num = uint::from_str(nums[0]).get();
             let line_num = uint::from_str(nums[1]).get();
-
-            fail_unless!(line_num == state.line_num_file);
-            fail_unless!(file_num * 3 + line_num == state.line_num);
+            assert_eq!(line_num, state.line_num_file);
+            assert_eq!(file_num * 3 + line_num, state.line_num);
         }
     }
+
+    #[test]
+    fn test_empty_files() {
+        let filenames = pathify(vec::from_fn(
+            3,
+            |i| fmt!("tmp/lib-fileinput-test-next-file-%u.tmp", i)),true);
+
+        make_file(filenames[0].get_ref(), ~[~"1", ~"2"]);
+        make_file(filenames[1].get_ref(), ~[]);
+        make_file(filenames[2].get_ref(), ~[~"3", ~"4"]);
+
+        let mut count = 0;
+        for input_vec_state(copy filenames) |line, state| {
+            let expected_path = match line {
+                "1" | "2" => copy filenames[0],
+                "3" | "4" => copy filenames[2],
+                _ => fail!(~"unexpected line")
+            };
+            assert_eq!(copy state.current_path, expected_path);
+            count += 1;
+        }
+        assert_eq!(count, 4);
+    }
+
+    #[test]
+    fn test_no_trailing_newline() {
+        let f1 = Some(Path("tmp/lib-fileinput-test-no-trailing-newline-1.tmp")),
+            f2 = Some(Path("tmp/lib-fileinput-test-no-trailing-newline-2.tmp"));
+
+        let wr = io::file_writer(f1.get_ref(), [io::Create, io::Truncate]).get();
+        wr.write_str("1\n2");
+        let wr = io::file_writer(f2.get_ref(), [io::Create, io::Truncate]).get();
+        wr.write_str("3\n4");
+
+        let mut lines = ~[];
+        for input_vec(~[f1, f2]) |line| {
+            lines.push(line.to_owned());
+        }
+        assert_eq!(lines, ~[~"1", ~"2", ~"3", ~"4"]);
+    }
+
 
     #[test]
     fn test_next_file() {
         let filenames = pathify(vec::from_fn(
             3,
-            |i|
-            fmt!("tmp/lib-fileinput-test-next-file-%u.tmp", i)),true);
+            |i| fmt!("tmp/lib-fileinput-test-next-file-%u.tmp", i)),true);
 
         for filenames.eachi |i, &filename| {
             let contents =
@@ -439,19 +584,19 @@ mod test {
         let mut in = FileInput::from_vec(filenames);
 
         // read once from 0
-        fail_unless!(in.next_line() == Some(~"0 1"));
+        assert_eq!(in.read_line(), ~"0 1");
         in.next_file(); // skip the rest of 1
 
         // read all lines from 1 (but don't read any from 2),
         for uint::range(1, 4) |i| {
-            fail_unless!(in.next_line() == Some(fmt!("1 %u", i)));
+            assert_eq!(in.read_line(), fmt!("1 %u", i));
         }
         // 1 is finished, but 2 hasn't been started yet, so this will
         // just "skip" to the beginning of 2 (Python's fileinput does
         // the same)
         in.next_file();
 
-        fail_unless!(in.next_line() == Some(~"2 1"));
+        assert_eq!(in.read_line(), ~"2 1");
     }
 
     #[test]
