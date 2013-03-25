@@ -118,6 +118,7 @@
 #include "rust_stack.h"
 #include "rust_type.h"
 #include "rust_sched_loop.h"
+#include "sp.h"
 
 // The amount of extra space at the end of each stack segment, available
 // to the rt, compiler and dynamic linker for running small functions
@@ -419,15 +420,6 @@ template <typename T> struct task_owned {
     }
 };
 
-// This stuff is on the stack-switching fast path
-
-// Records the pointer to the end of the Rust stack in a platform-
-// specific location in the thread control block
-extern "C" CDECL void      record_sp_limit(void *limit);
-extern "C" CDECL uintptr_t get_sp_limit();
-// Gets a pointer to the vicinity of the current stack pointer
-extern "C" uintptr_t       get_sp();
-
 // This is the function that switches between the C and the Rust stack by
 // calling another function with a single void* argument while changing the
 // stack pointer. It has a funny name because gdb doesn't normally like to
@@ -599,9 +591,6 @@ rust_task::prev_stack() {
     stk = stk->prev;
     record_stack_limit();
 }
-
-extern "C" CDECL void
-record_sp_limit(void *limit);
 
 // The LLVM-generated segmented-stack function prolog compares the amount of
 // stack needed for each frame to the end-of-stack pointer stored in the
