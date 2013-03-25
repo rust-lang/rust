@@ -14,13 +14,13 @@ use ops::Drop;
 #[allow(non_camel_case_types)] // runtime type
 type raw_thread = libc::c_void;
 
-struct Thread {
+pub struct Thread {
     main: ~fn(),
     raw_thread: *raw_thread
 }
 
-impl Thread {
-    pub fn start(main: ~fn()) -> Thread {
+pub impl Thread {
+    fn start(main: ~fn()) -> Thread {
         fn substart(main: &fn()) -> *raw_thread {
             unsafe { rust_raw_thread_start(&main) }
         }

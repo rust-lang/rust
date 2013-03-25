@@ -484,9 +484,17 @@ fn compile_test_(config: config, props: TestProps,
 
 fn exec_compiled_test(config: config, props: TestProps,
                       testfile: &Path) -> ProcRes {
+
+    // If testing the new runtime then set the RUST_NEWRT env var
+    let env = if config.newrt {
+        props.exec_env + ~[(~"RUST_NEWRT", ~"1")]
+    } else {
+        props.exec_env
+    };
+
     compose_and_run(config, testfile,
                     make_run_args(config, props, testfile),
-                    props.exec_env,
+                    env,
                     config.run_lib_path, None)
 }
 
