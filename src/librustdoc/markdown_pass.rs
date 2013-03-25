@@ -436,6 +436,8 @@ fn write_index(ctxt: &Ctxt, index: doc::Index) {
         return;
     }
 
+    ctxt.w.put_line(~"<div class='index'>");
+
     for index.entries.each |entry| {
         let header = header_text_(entry.kind, entry.name);
         let id = copy entry.link;
@@ -446,6 +448,7 @@ fn write_index(ctxt: &Ctxt, index: doc::Index) {
             ctxt.w.put_line(fmt!("* [%s](%s)", header, id));
         }
     }
+    ctxt.w.put_line(~"</div>");
     ctxt.w.put_line(~"");
 }
 
