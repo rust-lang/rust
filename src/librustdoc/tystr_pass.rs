@@ -69,13 +69,13 @@ fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
         match ctxt.ast_map.get(&fn_id) {
           ast_map::node_item(@ast::item {
             ident: ident,
-            node: ast::item_fn(ref decl, _, ref tys, _), _
+            node: ast::item_fn(ref decl, purity, ref tys, _), _
           }, _) |
           ast_map::node_foreign_item(@ast::foreign_item {
             ident: ident,
-            node: ast::foreign_item_fn(ref decl, _, ref tys), _
+            node: ast::foreign_item_fn(ref decl, purity, ref tys), _
           }, _, _, _) => {
-            Some(pprust::fun_to_str(decl, ident, None, tys,
+            Some(pprust::fun_to_str(decl, purity, ident, None, tys,
                                     extract::interner()))
           }
           _ => fail!(~"get_fn_sig: fn_id not bound to a fn item")
@@ -214,6 +214,7 @@ fn get_method_sig(
                     ast::required(ty_m) => {
                       Some(pprust::fun_to_str(
                           &ty_m.decl,
+                          ty_m.purity,
                           ty_m.ident,
                           Some(ty_m.self_ty.node),
                           &ty_m.generics,
@@ -223,6 +224,7 @@ fn get_method_sig(
                     ast::provided(m) => {
                       Some(pprust::fun_to_str(
                           &m.decl,
+                          m.purity,
                           m.ident,
                           Some(m.self_ty.node),
                           &m.generics,
@@ -243,6 +245,7 @@ fn get_method_sig(
                 Some(method) => {
                     Some(pprust::fun_to_str(
                         &method.decl,
+                        method.purity,
                         method.ident,
                         Some(method.self_ty.node),
                         &method.generics,
