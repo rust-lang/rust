@@ -56,6 +56,7 @@ struct r {
   _l: @nillist,
 }
 
+#[unsafe_destructor]
 impl Drop for r {
     fn finalize(&self) {}
 }

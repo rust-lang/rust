@@ -452,6 +452,21 @@
 }
 
 {
+   race-or-something-ask-pcwalton-0
+   Memcheck:Value4
+   fun:*task_start_wrapper*
+   ...
+}
+
+{
+   race-or-something-ask-pcwalton-1
+   Memcheck:Value4
+   ...
+   fun:*build_start_wrapper*
+   ...
+}
+
+{
    lock_and_signal-probably-threadsafe-access-outside-of-lock
    Helgrind:Race
    fun:_ZN15lock_and_signal27lock_held_by_current_threadEv

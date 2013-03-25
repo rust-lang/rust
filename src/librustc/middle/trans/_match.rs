@@ -331,9 +331,9 @@ pub struct ArmData {
     bindings_map: BindingsMap
 }
 
-pub struct Match {
+pub struct Match<'self> {
     pats: ~[@ast::pat],
-    data: @ArmData/&self
+    data: @ArmData<'self>
 }
 
 pub fn match_to_str(bcx: block, m: &Match) -> ~str {
@@ -359,9 +359,11 @@ pub fn has_nested_bindings(m: &[@Match], col: uint) -> bool {
     return false;
 }
 
-pub fn expand_nested_bindings(bcx: block, m: &[@Match/&r],
-                              col: uint, val: ValueRef)
-                           -> ~[@Match/&r] {
+pub fn expand_nested_bindings<'r>(bcx: block,
+                                  m: &[@Match<'r>],
+                                  col: uint,
+                                  val: ValueRef)
+                              -> ~[@Match<'r>] {
     debug!("expand_nested_bindings(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -402,9 +404,13 @@ pub fn assert_is_binding_or_wild(bcx: block, p: @ast::pat) {
     }
 }
 
-pub fn enter_match(bcx: block, dm: DefMap, m: &[@Match/&r],
-                   col: uint, val: ValueRef, e: enter_pat)
-                -> ~[@Match/&r] {
+pub fn enter_match<'r>(bcx: block,
+                       dm: DefMap,
+                       m: &[@Match<'r>],
+                       col: uint,
+                       val: ValueRef,
+                       e: enter_pat)
+                    -> ~[@Match<'r>] {
     debug!("enter_match(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -445,9 +451,12 @@ pub fn enter_match(bcx: block, dm: DefMap, m: &[@Match/&r],
     return result;
 }
 
-pub fn enter_default(bcx: block, dm: DefMap, m: &[@Match/&r],
-                     col: uint, val: ValueRef)
-                  -> ~[@Match/&r] {
+pub fn enter_default<'r>(bcx: block,
+                         dm: DefMap,
+                         m: &[@Match<'r>],
+                         col: uint,
+                         val: ValueRef)
+                      -> ~[@Match<'r>] {
     debug!("enter_default(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -488,9 +497,13 @@ pub fn enter_default(bcx: block, dm: DefMap, m: &[@Match/&r],
 // <nmatsakis> so all patterns must either be records (resp. tuples) or
 //             wildcards
 
-pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
-                 variant_size: uint, val: ValueRef)
-              -> ~[@Match/&r] {
+pub fn enter_opt<'r>(bcx: block,
+                     m: &[@Match<'r>],
+                     opt: &Opt,
+                     col: uint,
+                     variant_size: uint,
+                     val: ValueRef)
+                  -> ~[@Match<'r>] {
     debug!("enter_opt(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -502,6 +515,16 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
     let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, tcx.def_map, m, col, val) |p| {
         match p.node {
+            ast::pat_enum(*) |
+            ast::pat_ident(_, _, None) if pat_is_const(tcx.def_map, p) => {
+                let const_def = tcx.def_map.get(&p.id);
+                let const_def_id = ast_util::def_id_of_def(const_def);
+                if opt_eq(tcx, &lit(ConstLit(const_def_id)), opt) {
+                    Some(~[])
+                } else {
+                    None
+                }
+            }
             ast::pat_enum(_, ref subpats) => {
                 if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
                     match *subpats {
@@ -515,15 +538,6 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
             ast::pat_ident(_, _, None)
                     if pat_is_variant_or_struct(tcx.def_map, p) => {
                 if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
-                    Some(~[])
-                } else {
-                    None
-                }
-            }
-            ast::pat_ident(_, _, None) if pat_is_const(tcx.def_map, p) => {
-                let const_def = tcx.def_map.get(&p.id);
-                let const_def_id = ast_util::def_id_of_def(const_def);
-                if opt_eq(tcx, &lit(ConstLit(const_def_id)), opt) {
                     Some(~[])
                 } else {
                     None
@@ -598,11 +612,11 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
 
 pub fn enter_rec_or_struct(bcx: block,
                            dm: DefMap,
-                           m: &[@Match/&r],
+                           m: &[@Match<'r>],
                            col: uint,
                            fields: &[ast::ident],
                            val: ValueRef)
-                        -> ~[@Match/&r] {
+                        -> ~[@Match<'r>] {
     debug!("enter_rec_or_struct(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -631,9 +645,13 @@ pub fn enter_rec_or_struct(bcx: block,
     }
 }
 
-pub fn enter_tup(bcx: block, dm: DefMap, m: &[@Match/&r],
-                 col: uint, val: ValueRef, n_elts: uint)
-              -> ~[@Match/&r] {
+pub fn enter_tup<'r>(bcx: block,
+                     dm: DefMap,
+                     m: &[@Match<'r>],
+                     col: uint,
+                     val: ValueRef,
+                     n_elts: uint)
+                  -> ~[@Match<'r>] {
     debug!("enter_tup(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -655,13 +673,13 @@ pub fn enter_tup(bcx: block, dm: DefMap, m: &[@Match/&r],
     }
 }
 
-pub fn enter_tuple_struct(bcx: block,
-                          dm: DefMap,
-                          m: &[@Match/&r],
-                          col: uint,
-                          val: ValueRef,
-                          n_elts: uint)
-                       -> ~[@Match/&r] {
+pub fn enter_tuple_struct<'r>(bcx: block,
+                              dm: DefMap,
+                              m: &[@Match<'r>],
+                              col: uint,
+                              val: ValueRef,
+                              n_elts: uint)
+                          -> ~[@Match<'r>] {
     debug!("enter_tuple_struct(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -681,12 +699,12 @@ pub fn enter_tuple_struct(bcx: block,
     }
 }
 
-pub fn enter_box(bcx: block,
-                 dm: DefMap,
-                 m: &[@Match/&r],
-                 col: uint,
-                 val: ValueRef)
-              -> ~[@Match/&r] {
+pub fn enter_box<'r>(bcx: block,
+                     dm: DefMap,
+                     m: &[@Match<'r>],
+                     col: uint,
+                     val: ValueRef)
+                 -> ~[@Match<'r>] {
     debug!("enter_box(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -708,12 +726,12 @@ pub fn enter_box(bcx: block,
     }
 }
 
-pub fn enter_uniq(bcx: block,
-                  dm: DefMap,
-                  m: &[@Match/&r],
-                  col: uint,
-                  val: ValueRef)
-               -> ~[@Match/&r] {
+pub fn enter_uniq<'r>(bcx: block,
+                      dm: DefMap,
+                      m: &[@Match<'r>],
+                      col: uint,
+                      val: ValueRef)
+                  -> ~[@Match<'r>] {
     debug!("enter_uniq(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -735,12 +753,12 @@ pub fn enter_uniq(bcx: block,
     }
 }
 
-pub fn enter_region(bcx: block,
-                    dm: DefMap,
-                    m: &[@Match/&r],
-                    col: uint,
-                    val: ValueRef)
-                 -> ~[@Match/&r] {
+pub fn enter_region<'r>(bcx: block,
+                        dm: DefMap,
+                        m: &[@Match<'r>],
+                        col: uint,
+                        val: ValueRef)
+                    -> ~[@Match<'r>] {
     debug!("enter_region(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -805,6 +823,10 @@ pub fn get_options(bcx: block, m: &[@Match], col: uint) -> ~[Opt] {
                     Some(ast::def_variant(*)) => {
                         add_to_set(ccx.tcx, &mut found,
                                    variant_opt(bcx, cur.id));
+                    }
+                    Some(ast::def_const(const_did)) => {
+                        add_to_set(ccx.tcx, &mut found,
+                                   lit(ConstLit(const_did)));
                     }
                     _ => {}
                 }
@@ -1032,7 +1054,7 @@ pub fn pick_col(m: &[@Match]) -> uint {
     return best_col;
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum branch_kind { no_branch, single, switch, compare, compare_vec_len, }
 
 // Compiles a comparison between two things.
@@ -1781,6 +1803,9 @@ pub fn bind_irrefutable_pat(bcx: block,
                             }
                         }
                     }
+                }
+                Some(ast::def_const(*)) => {
+                    bcx = bind_irrefutable_pat(bcx, pat, val, make_copy, binding_mode);
                 }
                 _ => {
                     // Nothing to do here.

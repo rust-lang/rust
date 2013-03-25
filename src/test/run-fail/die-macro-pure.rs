@@ -1,6 +1,6 @@
 // error-pattern:test
 
-pure fn f() {
+fn f() {
     fail!(~"test");
 }
 

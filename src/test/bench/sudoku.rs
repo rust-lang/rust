@@ -40,11 +40,11 @@ struct Sudoku {
 }
 
 pub impl Sudoku {
-    static pub fn new(g: grid) -> Sudoku {
+    pub fn new(g: grid) -> Sudoku {
         return Sudoku { grid: g }
     }
 
-    static pub fn from_vec(vec: &[[u8 * 9] * 9]) -> Sudoku {
+    pub fn from_vec(vec: &[[u8 * 9] * 9]) -> Sudoku {
         let mut g = do vec::from_fn(9u) |i| {
             do vec::from_fn(9u) |j| { vec[i][j] }
         };
@@ -62,12 +62,13 @@ pub impl Sudoku {
         return true;
     }
 
-    static pub fn read(reader: @io::Reader) -> Sudoku {
+    pub fn read(reader: @io::Reader) -> Sudoku {
         fail_unless!(reader.read_line() == ~"9,9"); /* assert first line is exactly "9,9" */
 
         let mut g = vec::from_fn(10u, { |_i| ~[0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] });
         while !reader.eof() {
-            let comps = str::split_char(str::trim(reader.read_line()), ',');
+            let line = reader.read_line();
+            let comps = str::split_char(line.trim(), ',');
             if vec::len(comps) == 3u {
                 let row     = uint::from_str(comps[0]).get() as u8;
                 let col     = uint::from_str(comps[1]).get() as u8;
@@ -152,10 +153,10 @@ pub impl Sudoku {
 // Stores available colors as simple bitfield, bit 0 is always unset
 struct Colors(u16);
 
-const heads: u16 = (1u16 << 10) - 1; /* bits 9..0 */
+static heads: u16 = (1u16 << 10) - 1; /* bits 9..0 */
 
 impl Colors {
-    static fn new(start_color: u8) -> Colors {
+    fn new(start_color: u8) -> Colors {
         // Sets bits 9..start_color
         let tails = !0u16 << start_color;
         return Colors(heads & tails);
@@ -181,7 +182,7 @@ impl Colors {
     }
 }
 
-const default_sudoku: [[u8 * 9] * 9] = [
+static default_sudoku: [[u8 * 9] * 9] = [
          /* 0    1    2    3    4    5    6    7    8    */
   /* 0 */  [0u8, 4u8, 0u8, 6u8, 0u8, 0u8, 0u8, 3u8, 2u8],
   /* 1 */  [0u8, 0u8, 8u8, 0u8, 2u8, 0u8, 0u8, 0u8, 0u8],
@@ -195,7 +196,7 @@ const default_sudoku: [[u8 * 9] * 9] = [
 ];
 
 #[cfg(test)]
-const default_solution: [[u8 * 9] * 9] = [
+static default_solution: [[u8 * 9] * 9] = [
          /* 0    1    2    3    4    5    6    7    8    */
   /* 0 */  [1u8, 4u8, 9u8, 6u8, 7u8, 5u8, 8u8, 3u8, 2u8],
   /* 1 */  [5u8, 3u8, 8u8, 1u8, 2u8, 9u8, 7u8, 4u8, 6u8],

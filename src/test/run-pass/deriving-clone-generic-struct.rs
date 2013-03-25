@@ -1,4 +1,4 @@
-#[deriving_clone]
+#[deriving(Clone)]
 struct S<T> {
     foo: (),
     bar: (),

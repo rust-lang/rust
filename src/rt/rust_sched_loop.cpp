@@ -19,7 +19,7 @@ pthread_key_t rust_sched_loop::task_key;
 DWORD rust_sched_loop::task_key;
 #endif
 
-const size_t C_STACK_SIZE = 1024*1024;
+const size_t C_STACK_SIZE = 2*1024*1024;
 
 bool rust_sched_loop::tls_initialized = false;
 

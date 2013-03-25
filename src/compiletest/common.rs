@@ -10,7 +10,7 @@
 
 use core::prelude::*;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum mode {
     mode_compile_fail,
     mode_run_fail,

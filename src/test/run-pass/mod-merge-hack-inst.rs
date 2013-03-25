@@ -12,5 +12,5 @@
 
 mod inst {
     pub type T = i32;
-    pub const bits: uint = 32;
+    pub static bits: uint = 32;
 }

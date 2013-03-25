@@ -25,13 +25,13 @@ use core::ptr;
 use core::task;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
-pub struct Condvar {
+pub struct Condvar<'self> {
     is_mutex: bool,
     failed: &'self mut bool,
-    cond: &'self sync::Condvar/&self
+    cond: &'self sync::Condvar<'self>
 }
 
-pub impl Condvar/&self {
+pub impl<'self> Condvar<'self> {
     /// Atomically exit the associated ARC and block until a signal is sent.
     #[inline(always)]
     fn wait(&self) { self.wait_on(0) }
@@ -375,7 +375,7 @@ pub impl<T:Const + Owned> RWARC<T> {
     }
 
     /// To be called inside of the write_downgrade block.
-    fn downgrade(&self, token: RWWriteMode/&a<T>) -> RWReadMode/&a<T> {
+    fn downgrade(&self, token: RWWriteMode<'a, T>) -> RWReadMode<'a, T> {
         // The rwlock should assert that the token belongs to us for us.
         let state = unsafe { get_shared_immutable_state(&self.x) };
         let RWWriteMode {
@@ -420,7 +420,7 @@ pub struct RWReadMode<'self, T> {
     token: sync::RWlockReadMode<'self>,
 }
 
-pub impl<T:Const + Owned> RWWriteMode/&self<T> {
+pub impl<T:Const + Owned> RWWriteMode<'self, T> {
     /// Access the pre-downgrade RWARC in write mode.
     fn write<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
         match *self {
@@ -458,7 +458,7 @@ pub impl<T:Const + Owned> RWWriteMode/&self<T> {
     }
 }
 
-pub impl<T:Const + Owned> RWReadMode/&self<T> {
+pub impl<T:Const + Owned> RWReadMode<'self, T> {
     /// Access the post-downgrade rwlock in read mode.
     fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
         match *self {

@@ -35,6 +35,7 @@ pub struct Future<A> {
 
 // FIXME(#2829) -- futures should not be copyable, because they close
 // over ~fn's that have pipes and so forth within!
+#[unsafe_destructor]
 impl<A> Drop for Future<A> {
     fn finalize(&self) {}
 }
@@ -55,7 +56,7 @@ pub impl<A:Copy> Future<A> {
 
 pub impl<A> Future<A> {
 
-    pure fn get_ref(&self) -> &'self A {
+    fn get_ref(&self) -> &'self A {
         /*!
         * Executes the future's closure and then returns a borrowed
         * pointer to the result.  The borrowed pointer lasts as long as

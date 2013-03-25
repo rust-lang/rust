@@ -68,7 +68,7 @@ pub mod rustrt {
 
 // This probably belongs somewhere else. Needs to be kept in sync with
 // changes to glue...
-const tydesc_drop_glue_index: size_t = 3 as size_t;
+static tydesc_drop_glue_index: size_t = 3 as size_t;
 
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
@@ -88,6 +88,7 @@ pub struct Arena {
     priv mut chunks: @List<Chunk>,
 }
 
+#[unsafe_destructor]
 impl Drop for Arena {
     fn finalize(&self) {
         unsafe {
@@ -122,7 +123,7 @@ pub fn Arena() -> Arena {
 }
 
 #[inline(always)]
-pure fn round_up_to(base: uint, align: uint) -> uint {
+fn round_up_to(base: uint, align: uint) -> uint {
     (base + (align - 1)) & !(align - 1)
 }
 

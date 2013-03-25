@@ -12,13 +12,13 @@ struct font {
     fontbuf: &'self ~[u8],
 }
 
-pub impl font/&self {
+pub impl<'self> font<'self> {
     fn buf(&self) -> &'self ~[u8] {
         self.fontbuf
     }
 }
 
-fn font(fontbuf: &'r ~[u8]) -> font/&r {
+fn font(fontbuf: &'r ~[u8]) -> font<'r> {
     font {
         fontbuf: fontbuf
     }

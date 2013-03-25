@@ -20,15 +20,18 @@ struct notify {
     ch: Chan<bool>, v: @mut bool,
 }
 
+#[unsafe_destructor]
 impl Drop for notify {
     fn finalize(&self) {
-        error!("notify: task=%? v=%x unwinding=%b b=%b",
-               task::get_task(),
-               ptr::addr_of(&(*(self.v))) as uint,
-               task::failing(),
-               *(self.v));
-        let b = *(self.v);
-        self.ch.send(b);
+        unsafe {
+            error!("notify: task=%? v=%x unwinding=%b b=%b",
+                   task::get_task(),
+                   ptr::addr_of(&(*(self.v))) as uint,
+                   task::failing(),
+                   *(self.v));
+            let b = *(self.v);
+            self.ch.send(b);
+        }
     }
 }
 

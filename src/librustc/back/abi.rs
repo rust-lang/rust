@@ -11,64 +11,64 @@
 
 
 
-pub const rc_base_field_refcnt: uint = 0u;
+pub static rc_base_field_refcnt: uint = 0u;
 
-pub const task_field_refcnt: uint = 0u;
+pub static task_field_refcnt: uint = 0u;
 
-pub const task_field_stk: uint = 2u;
+pub static task_field_stk: uint = 2u;
 
-pub const task_field_runtime_sp: uint = 3u;
+pub static task_field_runtime_sp: uint = 3u;
 
-pub const task_field_rust_sp: uint = 4u;
+pub static task_field_rust_sp: uint = 4u;
 
-pub const task_field_gc_alloc_chain: uint = 5u;
+pub static task_field_gc_alloc_chain: uint = 5u;
 
-pub const task_field_dom: uint = 6u;
+pub static task_field_dom: uint = 6u;
 
-pub const n_visible_task_fields: uint = 7u;
+pub static n_visible_task_fields: uint = 7u;
 
-pub const dom_field_interrupt_flag: uint = 1u;
+pub static dom_field_interrupt_flag: uint = 1u;
 
-pub const frame_glue_fns_field_mark: uint = 0u;
+pub static frame_glue_fns_field_mark: uint = 0u;
 
-pub const frame_glue_fns_field_drop: uint = 1u;
+pub static frame_glue_fns_field_drop: uint = 1u;
 
-pub const frame_glue_fns_field_reloc: uint = 2u;
+pub static frame_glue_fns_field_reloc: uint = 2u;
 
-pub const box_field_refcnt: uint = 0u;
-pub const box_field_tydesc: uint = 1u;
-pub const box_field_prev: uint = 2u;
-pub const box_field_next: uint = 3u;
-pub const box_field_body: uint = 4u;
+pub static box_field_refcnt: uint = 0u;
+pub static box_field_tydesc: uint = 1u;
+pub static box_field_prev: uint = 2u;
+pub static box_field_next: uint = 3u;
+pub static box_field_body: uint = 4u;
 
-pub const general_code_alignment: uint = 16u;
+pub static general_code_alignment: uint = 16u;
 
-pub const tydesc_field_size: uint = 0u;
-pub const tydesc_field_align: uint = 1u;
-pub const tydesc_field_take_glue: uint = 2u;
-pub const tydesc_field_drop_glue: uint = 3u;
-pub const tydesc_field_free_glue: uint = 4u;
-pub const tydesc_field_visit_glue: uint = 5u;
-pub const tydesc_field_shape: uint = 6u;
-pub const tydesc_field_shape_tables: uint = 7u;
-pub const n_tydesc_fields: uint = 8u;
+pub static tydesc_field_size: uint = 0u;
+pub static tydesc_field_align: uint = 1u;
+pub static tydesc_field_take_glue: uint = 2u;
+pub static tydesc_field_drop_glue: uint = 3u;
+pub static tydesc_field_free_glue: uint = 4u;
+pub static tydesc_field_visit_glue: uint = 5u;
+pub static tydesc_field_shape: uint = 6u;
+pub static tydesc_field_shape_tables: uint = 7u;
+pub static n_tydesc_fields: uint = 8u;
 
 // The two halves of a closure: code and environment.
-pub const fn_field_code: uint = 0u;
-pub const fn_field_box: uint = 1u;
+pub static fn_field_code: uint = 0u;
+pub static fn_field_box: uint = 1u;
 
-pub const vec_elt_fill: uint = 0u;
+pub static vec_elt_fill: uint = 0u;
 
-pub const vec_elt_alloc: uint = 1u;
+pub static vec_elt_alloc: uint = 1u;
 
-pub const vec_elt_elems: uint = 2u;
+pub static vec_elt_elems: uint = 2u;
 
-pub const slice_elt_base: uint = 0u;
-pub const slice_elt_len: uint = 1u;
+pub static slice_elt_base: uint = 0u;
+pub static slice_elt_len: uint = 1u;
 
-pub const worst_case_glue_call_args: uint = 7u;
+pub static worst_case_glue_call_args: uint = 7u;
 
-pub const abi_version: uint = 1u;
+pub static abi_version: uint = 1u;
 
 pub fn memcpy_glue_name() -> ~str { return ~"rust_memcpy_glue"; }
 

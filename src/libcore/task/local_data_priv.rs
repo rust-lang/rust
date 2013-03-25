@@ -24,14 +24,14 @@ pub trait LocalData { }
 impl<T:Durable> LocalData for @T { }
 
 impl Eq for @LocalData {
-    pure fn eq(&self, other: &@LocalData) -> bool {
+    fn eq(&self, other: &@LocalData) -> bool {
         unsafe {
             let ptr_a: (uint, uint) = cast::reinterpret_cast(&(*self));
             let ptr_b: (uint, uint) = cast::reinterpret_cast(other);
             return ptr_a == ptr_b;
         }
     }
-    pure fn ne(&self, other: &@LocalData) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &@LocalData) -> bool { !(*self).eq(other) }
 }
 
 // If TLS is used heavily in future, this could be made more efficient with a

@@ -254,7 +254,7 @@ pub trait ByteChan {
     fn send(&self, val: ~[u8]);
 }
 
-const CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
+static CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
 
 impl<T,U:Unflattener<T>,P:BytePort> GenericPort<T> for FlatPort<T, U, P> {
     fn recv(&self) -> T {
@@ -314,7 +314,7 @@ impl<T,F:Flattener<T>,C:ByteChan> GenericChan<T> for FlatChan<T, F, C> {
 }
 
 pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P> {
-    static fn new(u: U, p: P) -> FlatPort<T, U, P> {
+    fn new(u: U, p: P) -> FlatPort<T, U, P> {
         FlatPort {
             unflattener: u,
             byte_port: p
@@ -323,7 +323,7 @@ pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P> {
 }
 
 pub impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C> {
-    static fn new(f: F, c: C) -> FlatChan<T, F, C> {
+    fn new(f: F, c: C) -> FlatChan<T, F, C> {
         FlatChan {
             flattener: f,
             byte_chan: c
@@ -376,7 +376,7 @@ pub mod flatteners {
     }
 
     pub impl<T:Copy + Owned> PodUnflattener<T> {
-        static fn new() -> PodUnflattener<T> {
+        fn new() -> PodUnflattener<T> {
             PodUnflattener {
                 bogus: ()
             }
@@ -384,7 +384,7 @@ pub mod flatteners {
     }
 
     pub impl<T:Copy + Owned> PodFlattener<T> {
-        static fn new() -> PodFlattener<T> {
+        fn new() -> PodFlattener<T> {
             PodFlattener {
                 bogus: ()
             }
@@ -419,7 +419,7 @@ pub mod flatteners {
     }
 
     pub impl<D:Decoder,T:Decodable<D>> DeserializingUnflattener<D, T> {
-        static fn new(deserialize_buffer: DeserializeBuffer<T>)
+        fn new(deserialize_buffer: DeserializeBuffer<T>)
                    -> DeserializingUnflattener<D, T> {
             DeserializingUnflattener {
                 deserialize_buffer: deserialize_buffer
@@ -428,7 +428,7 @@ pub mod flatteners {
     }
 
     pub impl<S:Encoder,T:Encodable<S>> SerializingFlattener<S, T> {
-        static fn new(serialize_value: SerializeValue<T>)
+        fn new(serialize_value: SerializeValue<T>)
                    -> SerializingFlattener<S, T> {
             SerializingFlattener {
                 serialize_value: serialize_value
@@ -459,15 +459,15 @@ pub mod flatteners {
     }
 
     pub trait FromReader {
-        static fn from_reader(r: @Reader) -> Self;
+        fn from_reader(r: @Reader) -> Self;
     }
 
     pub trait FromWriter {
-        static fn from_writer(w: @Writer) -> Self;
+        fn from_writer(w: @Writer) -> Self;
     }
 
-    impl FromReader for json::Decoder/&self {
-        static fn from_reader(r: @Reader) -> json::Decoder/&self {
+    impl FromReader for json::Decoder<'self> {
+        fn from_reader(r: @Reader) -> json::Decoder<'self> {
             match json::from_reader(r) {
                 Ok(json) => {
                     json::Decoder(json)
@@ -478,13 +478,13 @@ pub mod flatteners {
     }
 
     impl FromWriter for json::Encoder {
-        static fn from_writer(w: @Writer) -> json::Encoder {
+        fn from_writer(w: @Writer) -> json::Encoder {
             json::Encoder(w)
         }
     }
 
     impl FromReader for ebml::reader::Decoder {
-        static fn from_reader(r: @Reader) -> ebml::reader::Decoder {
+        fn from_reader(r: @Reader) -> ebml::reader::Decoder {
             let buf = @r.read_whole_stream();
             let doc = ebml::reader::Doc(buf);
             ebml::reader::Decoder(doc)
@@ -492,7 +492,7 @@ pub mod flatteners {
     }
 
     impl FromWriter for ebml::writer::Encoder {
-        static fn from_writer(w: @Writer) -> ebml::writer::Encoder {
+        fn from_writer(w: @Writer) -> ebml::writer::Encoder {
             ebml::writer::Encoder(w)
         }
     }
@@ -543,7 +543,7 @@ pub mod bytepipes {
     }
 
     pub impl<R:Reader> ReaderBytePort<R> {
-        static fn new(r: R) -> ReaderBytePort<R> {
+        fn new(r: R) -> ReaderBytePort<R> {
             ReaderBytePort {
                 reader: r
             }
@@ -551,7 +551,7 @@ pub mod bytepipes {
     }
 
     pub impl<W:Writer> WriterByteChan<W> {
-        static fn new(w: W) -> WriterByteChan<W> {
+        fn new(w: W) -> WriterByteChan<W> {
             WriterByteChan {
                 writer: w
             }
@@ -571,7 +571,7 @@ pub mod bytepipes {
         fn try_recv(&self, count: uint) -> Option<~[u8]> {
             if vec::uniq_len(&const self.buf) >= count {
                 let mut bytes = ::core::util::replace(&mut self.buf, ~[]);
-                self.buf = bytes.slice(count, bytes.len());
+                self.buf = bytes.slice(count, bytes.len()).to_owned();
                 bytes.truncate(count);
                 return Some(bytes);
             } else if vec::uniq_len(&const self.buf) > 0 {
@@ -606,7 +606,7 @@ pub mod bytepipes {
     }
 
     pub impl PipeBytePort {
-        static fn new(p: Port<~[u8]>) -> PipeBytePort {
+        fn new(p: Port<~[u8]>) -> PipeBytePort {
             PipeBytePort {
                 port: p,
                 buf: ~[]
@@ -615,7 +615,7 @@ pub mod bytepipes {
     }
 
     pub impl PipeByteChan {
-        static fn new(c: Chan<~[u8]>) -> PipeByteChan {
+        fn new(c: Chan<~[u8]>) -> PipeByteChan {
             PipeByteChan {
                 chan: c
             }
@@ -921,7 +921,7 @@ mod test {
         }
 
         fn test_try_recv_none3<P:BytePort>(loader: PortLoader<P>) {
-            const CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
+            static CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
             // The control word is followed by garbage
             let bytes = CONTINUE.to_vec() + ~[0];
             let port = loader(bytes);
@@ -940,7 +940,7 @@ mod test {
 
         fn test_try_recv_none4<P:BytePort>(+loader: PortLoader<P>) {
             fail_unless!(do task::try || {
-                const CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
+                static CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
                 // The control word is followed by a valid length,
                 // then undeserializable garbage
                 let len_bytes = do io::u64_to_be_bytes(

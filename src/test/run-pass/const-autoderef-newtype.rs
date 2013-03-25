@@ -9,8 +9,8 @@
 // except according to those terms.
 
 struct S(&'static [int]);
-const C0: S = S([3]);
-const C1: int = C0[0];
+static C0: S = S([3]);
+static C1: int = C0[0];
 
 pub fn main() {
     fail_unless!(C1 == 3);

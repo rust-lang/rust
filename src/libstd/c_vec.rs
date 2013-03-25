@@ -54,11 +54,14 @@ struct DtorRes {
   dtor: Option<@fn()>,
 }
 
+#[unsafe_destructor]
 impl Drop for DtorRes {
     fn finalize(&self) {
-        match self.dtor {
-          option::None => (),
-          option::Some(f) => f()
+        unsafe {
+            match self.dtor {
+                option::None => (),
+                option::Some(f) => f()
+            }
         }
     }
 }
@@ -138,7 +141,7 @@ pub fn set<T:Copy>(t: CVec<T>, ofs: uint, v: T) {
  */
 
 /// Returns the length of the vector
-pub pure fn len<T>(t: CVec<T>) -> uint { t.len }
+pub fn len<T>(t: CVec<T>) -> uint { t.len }
 
 /// Returns a pointer to the first element of the vector
 pub unsafe fn ptr<T>(t: CVec<T>) -> *mut T { t.base }

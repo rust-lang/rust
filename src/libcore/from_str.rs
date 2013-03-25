@@ -13,5 +13,5 @@
 use option::Option;
 
 pub trait FromStr {
-    static pure fn from_str(s: &str) -> Option<Self>;
+    fn from_str(s: &str) -> Option<Self>;
 }

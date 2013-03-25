@@ -28,6 +28,7 @@ use util::ppaux::{expr_repr, ty_to_str};
 
 use core::libc::c_uint;
 use syntax::{ast, ast_util, codemap, ast_map};
+use util::ppaux::ty_to_str;
 
 pub fn const_lit(cx: @CrateContext, e: @ast::expr, lit: ast::lit)
     -> ValueRef {
@@ -45,7 +46,8 @@ pub fn const_lit(cx: @CrateContext, e: @ast::expr, lit: ast::lit)
             C_integral(T_uint_ty(cx, t), i as u64, False)
           }
           _ => cx.sess.span_bug(lit.span,
-                                ~"integer literal doesn't have a type")
+                   fmt!("integer literal has type %s (expected int or uint)",
+                        ty_to_str(cx.tcx, lit_int_ty)))
         }
       }
       ast::lit_float(fs, t) => C_floating(/*bad*/copy *fs, T_float_ty(cx, t)),
@@ -177,7 +179,7 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
             llconst = C_struct(~[llconst, C_null(T_opaque_box_ptr(cx))])
         }
         Some(@ty::AutoAddEnv(ref r, ref s)) => {
-            cx.sess.span_bug(e.span, fmt!("unexpected const function: \
+            cx.sess.span_bug(e.span, fmt!("unexpected static function: \
                                            region %? sigil %?", *r, *s))
         }
         Some(@ty::AutoDerefRef(ref adj)) => {

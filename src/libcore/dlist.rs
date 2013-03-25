@@ -42,7 +42,7 @@ pub struct DList<T> {
 }
 
 priv impl<T> DListNode<T> {
-    pure fn assert_links(@mut self) {
+    fn assert_links(@mut self) {
         match self.next {
             Some(neighbour) => match neighbour.prev {
               Some(me) => if !managed::mut_ptr_eq(self, me) {
@@ -66,24 +66,24 @@ priv impl<T> DListNode<T> {
 
 pub impl<T> DListNode<T> {
     /// Get the next node in the list, if there is one.
-    pure fn next_link(@mut self) -> DListLink<T> {
+    fn next_link(@mut self) -> DListLink<T> {
         self.assert_links();
         self.next
     }
     /// Get the next node in the list, failing if there isn't one.
-    pure fn next_node(@mut self) -> @mut DListNode<T> {
+    fn next_node(@mut self) -> @mut DListNode<T> {
         match self.next_link() {
             Some(nobe) => nobe,
             None       => fail!(~"This dlist node has no next neighbour.")
         }
     }
     /// Get the previous node in the list, if there is one.
-    pure fn prev_link(@mut self) -> DListLink<T> {
+    fn prev_link(@mut self) -> DListLink<T> {
         self.assert_links();
         self.prev
     }
     /// Get the previous node in the list, failing if there isn't one.
-    pure fn prev_node(@mut self) -> @mut DListNode<T> {
+    fn prev_node(@mut self) -> @mut DListNode<T> {
         match self.prev_link() {
             Some(nobe) => nobe,
             None       => fail!(~"This dlist node has no previous neighbour.")
@@ -92,17 +92,17 @@ pub impl<T> DListNode<T> {
 }
 
 /// Creates a new dlist node with the given data.
-pub pure fn new_dlist_node<T>(data: T) -> @mut DListNode<T> {
+pub fn new_dlist_node<T>(data: T) -> @mut DListNode<T> {
     @mut DListNode { data: data, linked: false, prev: None, next: None }
 }
 
 /// Creates a new, empty dlist.
-pub pure fn DList<T>() -> @mut DList<T> {
+pub fn DList<T>() -> @mut DList<T> {
     @mut DList { size: 0, hd: None, tl: None }
 }
 
 /// Creates a new dlist with a single element
-pub pure fn from_elem<T>(data: T) -> @mut DList<T> {
+pub fn from_elem<T>(data: T) -> @mut DList<T> {
     let list = DList();
     unsafe { list.push(data); }
     list
@@ -126,7 +126,7 @@ pub fn concat<T>(lists: @mut DList<@mut DList<T>>) -> @mut DList<T> {
 }
 
 priv impl<T> DList<T> {
-    static pure fn new_link(data: T) -> DListLink<T> {
+    fn new_link(data: T) -> DListLink<T> {
         Some(@mut DListNode {
             data: data,
             linked: true,
@@ -134,7 +134,7 @@ priv impl<T> DList<T> {
             next: None
         })
     }
-    pure fn assert_mine(@mut self, nobe: @mut DListNode<T>) {
+    fn assert_mine(@mut self, nobe: @mut DListNode<T>) {
         // These asserts could be stronger if we had node-root back-pointers,
         // but those wouldn't allow for O(1) append.
         if self.size == 0 {
@@ -212,9 +212,9 @@ priv impl<T> DList<T> {
 
 pub impl<T> DList<T> {
     /// Get the size of the list. O(1).
-    pure fn len(@mut self) -> uint { self.size }
+    fn len(@mut self) -> uint { self.size }
     /// Returns true if the list is empty. O(1).
-    pure fn is_empty(@mut self) -> bool { self.len() == 0 }
+    fn is_empty(@mut self) -> bool { self.len() == 0 }
 
     /// Add data to the head of the list. O(1).
     fn push_head(@mut self, data: T) {
@@ -316,12 +316,12 @@ pub impl<T> DList<T> {
         tl
     }
     /// Get the node at the list's head. O(1).
-    pure fn peek_n(@mut self) -> DListLink<T> { self.hd }
+    fn peek_n(@mut self) -> DListLink<T> { self.hd }
     /// Get the node at the list's tail. O(1).
-    pure fn peek_tail_n(@mut self) -> DListLink<T> { self.tl }
+    fn peek_tail_n(@mut self) -> DListLink<T> { self.tl }
 
     /// Get the node at the list's head, failing if empty. O(1).
-    pure fn head_n(@mut self) -> @mut DListNode<T> {
+    fn head_n(@mut self) -> @mut DListNode<T> {
         match self.hd {
             Some(nobe) => nobe,
             None       => fail!(
@@ -329,7 +329,7 @@ pub impl<T> DList<T> {
         }
     }
     /// Get the node at the list's tail, failing if empty. O(1).
-    pure fn tail_n(@mut self) -> @mut DListNode<T> {
+    fn tail_n(@mut self) -> @mut DListNode<T> {
         match self.tl {
             Some(nobe) => nobe,
             None       => fail!(
@@ -399,7 +399,7 @@ pub impl<T> DList<T> {
     }
 
     /// Iterate over nodes.
-    pure fn each_node(@mut self, f: &fn(@mut DListNode<T>) -> bool) {
+    fn each_node(@mut self, f: &fn(@mut DListNode<T>) -> bool) {
         let mut link = self.peek_n();
         while link.is_some() {
             let nobe = link.get();
@@ -471,23 +471,23 @@ pub impl<T:Copy> DList<T> {
     }
 
     /// Get data at the list's head. O(1).
-    pure fn peek(@mut self) -> Option<T> {
+    fn peek(@mut self) -> Option<T> {
         self.peek_n().map(|nobe| nobe.data)
     }
 
     /// Get data at the list's tail. O(1).
-    pure fn peek_tail(@mut self) -> Option<T> {
+    fn peek_tail(@mut self) -> Option<T> {
         self.peek_tail_n().map (|nobe| nobe.data)
     }
 
     /// Get data at the list's head, failing if empty. O(1).
-    pure fn head(@mut self) -> T { self.head_n().data }
+    fn head(@mut self) -> T { self.head_n().data }
 
     /// Get data at the list's tail, failing if empty. O(1).
-    pure fn tail(@mut self) -> T { self.tail_n().data }
+    fn tail(@mut self) -> T { self.tail_n().data }
 
     /// Get the elements of the list as a vector. O(n).
-    pure fn to_vec(@mut self) -> ~[T] {
+    fn to_vec(@mut self) -> ~[T] {
         let mut v = vec::with_capacity(self.size);
         unsafe {
             // Take this out of the unchecked when iter's functions are pure
@@ -507,7 +507,7 @@ impl<T> BaseIter<T> for @mut DList<T> {
     * allow for e.g. breadth-first search with in-place enqueues), but
     * removing the current node is forbidden.
     */
-    pure fn each(&self, f: &fn(v: &T) -> bool) {
+    fn each(&self, f: &fn(v: &T) -> bool) {
         let mut link = self.peek_n();
         while option::is_some(&link) {
             let nobe = option::get(link);
@@ -536,7 +536,7 @@ impl<T> BaseIter<T> for @mut DList<T> {
     }
 
     #[inline(always)]
-    pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 #[cfg(test)]
@@ -555,15 +555,15 @@ mod tests {
         let ab = from_vec(~[a,b]);
         let cd = from_vec(~[c,d]);
         let abcd = concat(concat(from_vec(~[ab,cd])));
-        abcd.assert_consistent(); fail_unless!(abcd.len() == 8);
-        abcd.assert_consistent(); fail_unless!(abcd.pop().get() == 1);
-        abcd.assert_consistent(); fail_unless!(abcd.pop().get() == 2);
-        abcd.assert_consistent(); fail_unless!(abcd.pop().get() == 3);
-        abcd.assert_consistent(); fail_unless!(abcd.pop().get() == 4);
-        abcd.assert_consistent(); fail_unless!(abcd.pop().get() == 5);
-        abcd.assert_consistent(); fail_unless!(abcd.pop().get() == 6);
-        abcd.assert_consistent(); fail_unless!(abcd.pop().get() == 7);
-        abcd.assert_consistent(); fail_unless!(abcd.pop().get() == 8);
+        abcd.assert_consistent(); assert_eq!(abcd.len(), 8);
+        abcd.assert_consistent(); assert_eq!(abcd.pop().get(), 1);
+        abcd.assert_consistent(); assert_eq!(abcd.pop().get(), 2);
+        abcd.assert_consistent(); assert_eq!(abcd.pop().get(), 3);
+        abcd.assert_consistent(); assert_eq!(abcd.pop().get(), 4);
+        abcd.assert_consistent(); assert_eq!(abcd.pop().get(), 5);
+        abcd.assert_consistent(); assert_eq!(abcd.pop().get(), 6);
+        abcd.assert_consistent(); assert_eq!(abcd.pop().get(), 7);
+        abcd.assert_consistent(); assert_eq!(abcd.pop().get(), 8);
         abcd.assert_consistent(); fail_unless!(abcd.is_empty());
     }
     #[test]
@@ -571,15 +571,15 @@ mod tests {
         let a = from_vec(~[1,2,3]);
         let b = from_vec(~[4,5,6]);
         a.append(b);
-        fail_unless!(a.len() == 6);
-        fail_unless!(b.len() == 0);
+        assert_eq!(a.len(), 6);
+        assert_eq!(b.len(), 0);
         b.assert_consistent();
-        a.assert_consistent(); fail_unless!(a.pop().get() == 1);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 2);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 3);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 4);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 5);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 6);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 1);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 2);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 3);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 4);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 5);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 6);
         a.assert_consistent(); fail_unless!(a.is_empty());
     }
     #[test]
@@ -587,12 +587,12 @@ mod tests {
         let a = from_vec(~[1,2,3]);
         let b = DList::<int>();
         a.append(b);
-        fail_unless!(a.len() == 3);
-        fail_unless!(b.len() == 0);
+        assert_eq!(a.len(), 3);
+        assert_eq!(b.len(), 0);
         b.assert_consistent();
-        a.assert_consistent(); fail_unless!(a.pop().get() == 1);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 2);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 3);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 1);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 2);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 3);
         a.assert_consistent(); fail_unless!(a.is_empty());
     }
     #[test]
@@ -600,12 +600,12 @@ mod tests {
         let a = DList::<int>();
         let b = from_vec(~[4,5,6]);
         a.append(b);
-        fail_unless!(a.len() == 3);
-        fail_unless!(b.len() == 0);
+        assert_eq!(a.len(), 3);
+        assert_eq!(b.len(), 0);
         b.assert_consistent();
-        a.assert_consistent(); fail_unless!(a.pop().get() == 4);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 5);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 6);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 4);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 5);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 6);
         a.assert_consistent(); fail_unless!(a.is_empty());
     }
     #[test]
@@ -613,8 +613,8 @@ mod tests {
         let a = DList::<int>();
         let b = DList::<int>();
         a.append(b);
-        fail_unless!(a.len() == 0);
-        fail_unless!(b.len() == 0);
+        assert_eq!(a.len(), 0);
+        assert_eq!(b.len(), 0);
         b.assert_consistent();
         a.assert_consistent();
     }
@@ -637,34 +637,34 @@ mod tests {
         let a = from_vec(~[1,2,3]);
         let b = from_vec(~[4,5,6]);
         b.prepend(a);
-        fail_unless!(a.len() == 0);
-        fail_unless!(b.len() == 6);
+        assert_eq!(a.len(), 0);
+        assert_eq!(b.len(), 6);
         a.assert_consistent();
-        b.assert_consistent(); fail_unless!(b.pop().get() == 1);
-        b.assert_consistent(); fail_unless!(b.pop().get() == 2);
-        b.assert_consistent(); fail_unless!(b.pop().get() == 3);
-        b.assert_consistent(); fail_unless!(b.pop().get() == 4);
-        b.assert_consistent(); fail_unless!(b.pop().get() == 5);
-        b.assert_consistent(); fail_unless!(b.pop().get() == 6);
+        b.assert_consistent(); assert_eq!(b.pop().get(), 1);
+        b.assert_consistent(); assert_eq!(b.pop().get(), 2);
+        b.assert_consistent(); assert_eq!(b.pop().get(), 3);
+        b.assert_consistent(); assert_eq!(b.pop().get(), 4);
+        b.assert_consistent(); assert_eq!(b.pop().get(), 5);
+        b.assert_consistent(); assert_eq!(b.pop().get(), 6);
         b.assert_consistent(); fail_unless!(b.is_empty());
     }
     #[test]
     pub fn test_dlist_reverse() {
         let a = from_vec(~[5,4,3,2,1]);
         a.reverse();
-        fail_unless!(a.len() == 5);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 1);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 2);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 3);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 4);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 5);
+        assert_eq!(a.len(), 5);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 1);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 2);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 3);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 4);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 5);
         a.assert_consistent(); fail_unless!(a.is_empty());
     }
     #[test]
     pub fn test_dlist_reverse_empty() {
         let a = DList::<int>();
         a.reverse();
-        fail_unless!(a.len() == 0);
+        assert_eq!(a.len(), 0);
         a.assert_consistent();
     }
     #[test]
@@ -675,20 +675,20 @@ mod tests {
                 a.insert_before(3, nobe);
             }
         }
-        fail_unless!(a.len() == 6);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 1);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 2);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 3);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 4);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 3);
-        a.assert_consistent(); fail_unless!(a.pop().get() == 5);
+        assert_eq!(a.len(), 6);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 1);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 2);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 3);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 4);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 3);
+        a.assert_consistent(); assert_eq!(a.pop().get(), 5);
         a.assert_consistent(); fail_unless!(a.is_empty());
     }
     #[test]
     pub fn test_dlist_clear() {
         let a = from_vec(~[5,4,3,2,1]);
         a.clear();
-        fail_unless!(a.len() == 0);
+        assert_eq!(a.len(), 0);
         a.assert_consistent();
     }
     #[test]
@@ -701,33 +701,33 @@ mod tests {
     #[test]
     pub fn test_dlist_head_tail() {
         let l = from_vec(~[1,2,3]);
-        fail_unless!(l.head() == 1);
-        fail_unless!(l.tail() == 3);
-        fail_unless!(l.len() == 3);
+        assert_eq!(l.head(), 1);
+        assert_eq!(l.tail(), 3);
+        assert_eq!(l.len(), 3);
     }
     #[test]
     pub fn test_dlist_pop() {
         let l = from_vec(~[1,2,3]);
-        fail_unless!(l.pop().get() == 1);
-        fail_unless!(l.tail() == 3);
-        fail_unless!(l.head() == 2);
-        fail_unless!(l.pop().get() == 2);
-        fail_unless!(l.tail() == 3);
-        fail_unless!(l.head() == 3);
-        fail_unless!(l.pop().get() == 3);
+        assert_eq!(l.pop().get(), 1);
+        assert_eq!(l.tail(), 3);
+        assert_eq!(l.head(), 2);
+        assert_eq!(l.pop().get(), 2);
+        assert_eq!(l.tail(), 3);
+        assert_eq!(l.head(), 3);
+        assert_eq!(l.pop().get(), 3);
         fail_unless!(l.is_empty());
         fail_unless!(l.pop().is_none());
     }
     #[test]
     pub fn test_dlist_pop_tail() {
         let l = from_vec(~[1,2,3]);
-        fail_unless!(l.pop_tail().get() == 3);
-        fail_unless!(l.tail() == 2);
-        fail_unless!(l.head() == 1);
-        fail_unless!(l.pop_tail().get() == 2);
-        fail_unless!(l.tail() == 1);
-        fail_unless!(l.head() == 1);
-        fail_unless!(l.pop_tail().get() == 1);
+        assert_eq!(l.pop_tail().get(), 3);
+        assert_eq!(l.tail(), 2);
+        assert_eq!(l.head(), 1);
+        assert_eq!(l.pop_tail().get(), 2);
+        assert_eq!(l.tail(), 1);
+        assert_eq!(l.head(), 1);
+        assert_eq!(l.pop_tail().get(), 1);
         fail_unless!(l.is_empty());
         fail_unless!(l.pop_tail().is_none());
     }
@@ -735,34 +735,34 @@ mod tests {
     pub fn test_dlist_push() {
         let l = DList::<int>();
         l.push(1);
-        fail_unless!(l.head() == 1);
-        fail_unless!(l.tail() == 1);
+        assert_eq!(l.head(), 1);
+        assert_eq!(l.tail(), 1);
         l.push(2);
-        fail_unless!(l.head() == 1);
-        fail_unless!(l.tail() == 2);
+        assert_eq!(l.head(), 1);
+        assert_eq!(l.tail(), 2);
         l.push(3);
-        fail_unless!(l.head() == 1);
-        fail_unless!(l.tail() == 3);
-        fail_unless!(l.len() == 3);
+        assert_eq!(l.head(), 1);
+        assert_eq!(l.tail(), 3);
+        assert_eq!(l.len(), 3);
     }
     #[test]
     pub fn test_dlist_push_head() {
         let l = DList::<int>();
         l.push_head(3);
-        fail_unless!(l.head() == 3);
-        fail_unless!(l.tail() == 3);
+        assert_eq!(l.head(), 3);
+        assert_eq!(l.tail(), 3);
         l.push_head(2);
-        fail_unless!(l.head() == 2);
-        fail_unless!(l.tail() == 3);
+        assert_eq!(l.head(), 2);
+        assert_eq!(l.tail(), 3);
         l.push_head(1);
-        fail_unless!(l.head() == 1);
-        fail_unless!(l.tail() == 3);
-        fail_unless!(l.len() == 3);
+        assert_eq!(l.head(), 1);
+        assert_eq!(l.tail(), 3);
+        assert_eq!(l.len(), 3);
     }
     #[test]
     pub fn test_dlist_foldl() {
         let l = from_vec(vec::from_fn(101, |x|x));
-        fail_unless!(iter::foldl(&l, 0, |accum,elem| *accum+*elem) == 5050);
+        assert_eq!(iter::foldl(&l, 0, |accum,elem| *accum+*elem), 5050);
     }
     #[test]
     pub fn test_dlist_break_early() {
@@ -772,7 +772,7 @@ mod tests {
             x += 1;
             if (*i == 3) { break; }
         }
-        fail_unless!(x == 3);
+        assert_eq!(x, 3);
     }
     #[test]
     pub fn test_dlist_remove_head() {
@@ -780,13 +780,13 @@ mod tests {
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let _two = l.push_n(2);
         l.assert_consistent(); let _three = l.push_n(3);
-        l.assert_consistent(); fail_unless!(l.len() == 3);
+        l.assert_consistent(); assert_eq!(l.len(), 3);
         l.assert_consistent(); l.remove(one);
-        l.assert_consistent(); fail_unless!(l.len() == 2);
-        l.assert_consistent(); fail_unless!(l.head() == 2);
-        l.assert_consistent(); fail_unless!(l.tail() == 3);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 2);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 3);
+        l.assert_consistent(); assert_eq!(l.len(), 2);
+        l.assert_consistent(); assert_eq!(l.head(), 2);
+        l.assert_consistent(); assert_eq!(l.tail(), 3);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 2);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 3);
         l.assert_consistent(); fail_unless!(l.is_empty());
     }
     #[test]
@@ -795,13 +795,13 @@ mod tests {
         l.assert_consistent(); let _one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); let _three = l.push_n(3);
-        l.assert_consistent(); fail_unless!(l.len() == 3);
+        l.assert_consistent(); assert_eq!(l.len(), 3);
         l.assert_consistent(); l.remove(two);
-        l.assert_consistent(); fail_unless!(l.len() == 2);
-        l.assert_consistent(); fail_unless!(l.head() == 1);
-        l.assert_consistent(); fail_unless!(l.tail() == 3);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 1);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 3);
+        l.assert_consistent(); assert_eq!(l.len(), 2);
+        l.assert_consistent(); assert_eq!(l.head(), 1);
+        l.assert_consistent(); assert_eq!(l.tail(), 3);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 1);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 3);
         l.assert_consistent(); fail_unless!(l.is_empty());
     }
     #[test]
@@ -810,13 +810,13 @@ mod tests {
         l.assert_consistent(); let _one = l.push_n(1);
         l.assert_consistent(); let _two = l.push_n(2);
         l.assert_consistent(); let three = l.push_n(3);
-        l.assert_consistent(); fail_unless!(l.len() == 3);
+        l.assert_consistent(); assert_eq!(l.len(), 3);
         l.assert_consistent(); l.remove(three);
-        l.assert_consistent(); fail_unless!(l.len() == 2);
-        l.assert_consistent(); fail_unless!(l.head() == 1);
-        l.assert_consistent(); fail_unless!(l.tail() == 2);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 1);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 2);
+        l.assert_consistent(); assert_eq!(l.len(), 2);
+        l.assert_consistent(); assert_eq!(l.head(), 1);
+        l.assert_consistent(); assert_eq!(l.tail(), 2);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 1);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 2);
         l.assert_consistent(); fail_unless!(l.is_empty());
     }
     #[test]
@@ -825,14 +825,14 @@ mod tests {
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); let _three = l.push_n(3);
-        l.assert_consistent(); fail_unless!(l.len() == 3);
+        l.assert_consistent(); assert_eq!(l.len(), 3);
         l.assert_consistent(); l.remove(one);
         l.assert_consistent(); l.remove(two);
         // and through and through, the vorpal blade went snicker-snack
-        l.assert_consistent(); fail_unless!(l.len() == 1);
-        l.assert_consistent(); fail_unless!(l.head() == 3);
-        l.assert_consistent(); fail_unless!(l.tail() == 3);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 3);
+        l.assert_consistent(); assert_eq!(l.len(), 1);
+        l.assert_consistent(); assert_eq!(l.head(), 3);
+        l.assert_consistent(); assert_eq!(l.tail(), 3);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 3);
         l.assert_consistent(); fail_unless!(l.is_empty());
     }
     #[test]
@@ -841,13 +841,13 @@ mod tests {
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let _two = l.push_n(2);
         l.assert_consistent(); let three = l.push_n(3);
-        l.assert_consistent(); fail_unless!(l.len() == 3);
+        l.assert_consistent(); assert_eq!(l.len(), 3);
         l.assert_consistent(); l.remove(one);
         l.assert_consistent(); l.remove(three);
-        l.assert_consistent(); fail_unless!(l.len() == 1);
-        l.assert_consistent(); fail_unless!(l.head() == 2);
-        l.assert_consistent(); fail_unless!(l.tail() == 2);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 2);
+        l.assert_consistent(); assert_eq!(l.len(), 1);
+        l.assert_consistent(); assert_eq!(l.head(), 2);
+        l.assert_consistent(); assert_eq!(l.tail(), 2);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 2);
         l.assert_consistent(); fail_unless!(l.is_empty());
     }
     #[test]
@@ -856,13 +856,13 @@ mod tests {
         l.assert_consistent(); let _one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); let three = l.push_n(3);
-        l.assert_consistent(); fail_unless!(l.len() == 3);
+        l.assert_consistent(); assert_eq!(l.len(), 3);
         l.assert_consistent(); l.remove(two);
         l.assert_consistent(); l.remove(three);
-        l.assert_consistent(); fail_unless!(l.len() == 1);
-        l.assert_consistent(); fail_unless!(l.head() == 1);
-        l.assert_consistent(); fail_unless!(l.tail() == 1);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 1);
+        l.assert_consistent(); assert_eq!(l.len(), 1);
+        l.assert_consistent(); assert_eq!(l.head(), 1);
+        l.assert_consistent(); assert_eq!(l.tail(), 1);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 1);
         l.assert_consistent(); fail_unless!(l.is_empty());
     }
     #[test]
@@ -871,7 +871,7 @@ mod tests {
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); let three = l.push_n(3);
-        l.assert_consistent(); fail_unless!(l.len() == 3);
+        l.assert_consistent(); assert_eq!(l.len(), 3);
         l.assert_consistent(); l.remove(two);
         l.assert_consistent(); l.remove(three);
         l.assert_consistent(); l.remove(one); // Twenty-three is number one!
@@ -884,14 +884,14 @@ mod tests {
         l.assert_consistent(); let _one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); let three = new_dlist_node(3);
-        l.assert_consistent(); fail_unless!(l.len() == 2);
+        l.assert_consistent(); assert_eq!(l.len(), 2);
         l.assert_consistent(); l.insert_n_before(three, two);
-        l.assert_consistent(); fail_unless!(l.len() == 3);
-        l.assert_consistent(); fail_unless!(l.head() == 1);
-        l.assert_consistent(); fail_unless!(l.tail() == 2);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 1);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 3);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 2);
+        l.assert_consistent(); assert_eq!(l.len(), 3);
+        l.assert_consistent(); assert_eq!(l.head(), 1);
+        l.assert_consistent(); assert_eq!(l.tail(), 2);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 1);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 3);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 2);
         l.assert_consistent(); fail_unless!(l.is_empty());
     }
     #[test]
@@ -900,14 +900,14 @@ mod tests {
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let _two = l.push_n(2);
         l.assert_consistent(); let three = new_dlist_node(3);
-        l.assert_consistent(); fail_unless!(l.len() == 2);
+        l.assert_consistent(); assert_eq!(l.len(), 2);
         l.assert_consistent(); l.insert_n_after(three, one);
-        l.assert_consistent(); fail_unless!(l.len() == 3);
-        l.assert_consistent(); fail_unless!(l.head() == 1);
-        l.assert_consistent(); fail_unless!(l.tail() == 2);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 1);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 3);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 2);
+        l.assert_consistent(); assert_eq!(l.len(), 3);
+        l.assert_consistent(); assert_eq!(l.head(), 1);
+        l.assert_consistent(); assert_eq!(l.tail(), 2);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 1);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 3);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 2);
         l.assert_consistent(); fail_unless!(l.is_empty());
     }
     #[test]
@@ -915,14 +915,14 @@ mod tests {
         let l = DList::<int>();
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let _two = l.push_n(2);
-        l.assert_consistent(); fail_unless!(l.len() == 2);
+        l.assert_consistent(); assert_eq!(l.len(), 2);
         l.assert_consistent(); l.insert_before(3, one);
-        l.assert_consistent(); fail_unless!(l.len() == 3);
-        l.assert_consistent(); fail_unless!(l.head() == 3);
-        l.assert_consistent(); fail_unless!(l.tail() == 2);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 3);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 1);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 2);
+        l.assert_consistent(); assert_eq!(l.len(), 3);
+        l.assert_consistent(); assert_eq!(l.head(), 3);
+        l.assert_consistent(); assert_eq!(l.tail(), 2);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 3);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 1);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 2);
         l.assert_consistent(); fail_unless!(l.is_empty());
     }
     #[test]
@@ -930,14 +930,14 @@ mod tests {
         let l = DList::<int>();
         l.assert_consistent(); let _one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
-        l.assert_consistent(); fail_unless!(l.len() == 2);
+        l.assert_consistent(); assert_eq!(l.len(), 2);
         l.assert_consistent(); l.insert_after(3, two);
-        l.assert_consistent(); fail_unless!(l.len() == 3);
-        l.assert_consistent(); fail_unless!(l.head() == 1);
-        l.assert_consistent(); fail_unless!(l.tail() == 3);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 1);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 2);
-        l.assert_consistent(); fail_unless!(l.pop().get() == 3);
+        l.assert_consistent(); assert_eq!(l.len(), 3);
+        l.assert_consistent(); assert_eq!(l.head(), 1);
+        l.assert_consistent(); assert_eq!(l.tail(), 3);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 1);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 2);
+        l.assert_consistent(); assert_eq!(l.pop().get(), 3);
         l.assert_consistent(); fail_unless!(l.is_empty());
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]

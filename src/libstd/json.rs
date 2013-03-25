@@ -14,19 +14,13 @@
 
 //! json serialization
 
+use core::prelude::*;
+use core::io::{WriterUtil, ReaderUtil};
+use core::hashmap::linear::LinearMap;
+
 use serialize::Encodable;
 use serialize;
 use sort::Sort;
-
-use core::char;
-use core::cmp::{Eq, Ord};
-use core::float;
-use core::io::{WriterUtil, ReaderUtil};
-use core::io;
-use core::prelude::*;
-use core::hashmap::linear::LinearMap;
-use core::str;
-use core::to_str;
 
 /// Represents a json value
 pub enum Json {
@@ -49,7 +43,7 @@ pub struct Error {
 
 fn escape_str(s: &str) -> ~str {
     let mut escaped = ~"\"";
-    for str::chars_each(s) |c| {
+    for str::each_char(s) |c| {
         match c {
           '"' => escaped += ~"\\\"",
           '\\' => escaped += ~"\\\\",
@@ -351,7 +345,7 @@ pub fn to_writer(wr: @io::Writer, json: &Json) {
 }
 
 /// Encodes a json value into a string
-pub pure fn to_str(json: &Json) -> ~str {
+pub fn to_str(json: &Json) -> ~str {
     unsafe {
         // ugh, should be safe
         io::with_str_writer(|wr| to_writer(wr, json))
@@ -755,7 +749,7 @@ pub fn Decoder(json: Json) -> Decoder {
     Decoder { json: json, stack: ~[] }
 }
 
-priv impl Decoder/&self {
+priv impl Decoder<'self> {
     fn peek(&self) -> &'self Json {
         if vec::uniq_len(&const self.stack) == 0 {
             self.stack.push(&self.json);
@@ -771,7 +765,7 @@ priv impl Decoder/&self {
     }
 }
 
-impl serialize::Decoder for Decoder/&self {
+impl serialize::Decoder for Decoder<'self> {
     fn read_nil(&self) -> () {
         debug!("read_nil");
         match *self.pop() {
@@ -953,7 +947,7 @@ impl serialize::Decoder for Decoder/&self {
 }
 
 impl Eq for Json {
-    pure fn eq(&self, other: &Json) -> bool {
+    fn eq(&self, other: &Json) -> bool {
         match (self) {
             &Number(f0) =>
                 match other { &Number(f1) => f0 == f1, _ => false },
@@ -986,12 +980,12 @@ impl Eq for Json {
             }
         }
     }
-    pure fn ne(&self, other: &Json) -> bool { !self.eq(other) }
+    fn ne(&self, other: &Json) -> bool { !self.eq(other) }
 }
 
 /// Test if two json values are less than one another
 impl Ord for Json {
-    pure fn lt(&self, other: &Json) -> bool {
+    fn lt(&self, other: &Json) -> bool {
         match (*self) {
             Number(f0) => {
                 match *other {
@@ -1061,18 +1055,18 @@ impl Ord for Json {
             }
         }
     }
-    pure fn le(&self, other: &Json) -> bool { !(*other).lt(&(*self)) }
-    pure fn ge(&self, other: &Json) -> bool { !(*self).lt(other) }
-    pure fn gt(&self, other: &Json) -> bool { (*other).lt(&(*self))  }
+    fn le(&self, other: &Json) -> bool { !(*other).lt(&(*self)) }
+    fn ge(&self, other: &Json) -> bool { !(*self).lt(other) }
+    fn gt(&self, other: &Json) -> bool { (*other).lt(&(*self))  }
 }
 
 impl Eq for Error {
-    pure fn eq(&self, other: &Error) -> bool {
+    fn eq(&self, other: &Error) -> bool {
         (*self).line == other.line &&
         (*self).col == other.col &&
         (*self).msg == other.msg
     }
-    pure fn ne(&self, other: &Error) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &Error) -> bool { !(*self).eq(other) }
 }
 
 trait ToJson { fn to_json(&self) -> Json; }
@@ -1197,11 +1191,11 @@ impl<A:ToJson> ToJson for Option<A> {
 }
 
 impl to_str::ToStr for Json {
-    pure fn to_str(&self) -> ~str { to_str(self) }
+    fn to_str(&self) -> ~str { to_str(self) }
 }
 
 impl to_str::ToStr for Error {
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         fmt!("%u:%u: %s", self.line, self.col, *self.msg)
     }
 }
@@ -1284,20 +1278,6 @@ mod tests {
         fail_unless!(a == b);
     }
 
-    // two fns copied from libsyntax/util/testing.rs.
-    // Should they be in their own crate?
-    pub pure fn check_equal_ptr<T:cmp::Eq> (given : &T, expected: &T) {
-        if !((given == expected) && (expected == given )) {
-            fail!(fmt!("given %?, expected %?",given,expected));
-        }
-    }
-
-    pub pure fn check_equal<T:cmp::Eq> (given : T, expected: T) {
-        if !((given == expected) && (expected == given )) {
-            fail!(fmt!("given %?, expected %?",given,expected));
-        }
-    }
-
     #[test]
     fn test_write_enum () {
         let bw = @io::BytesWriter();
@@ -1315,7 +1295,7 @@ mod tests {
                 }
             }
         }
-        check_equal(str::from_bytes(bw.bytes), ~"[\"frog\",[\"Henry\",349]]");
+        assert_eq!(str::from_bytes(bw.bytes), ~"[\"frog\",[\"Henry\",349]]");
     }
 
     #[test]
@@ -1330,7 +1310,7 @@ mod tests {
                 }
             }
         }
-        check_equal(str::from_bytes(bw.bytes), ~"\"jodhpurs\"");
+        assert_eq!(str::from_bytes(bw.bytes), ~"\"jodhpurs\"");
     }
 
     #[test]
@@ -1342,7 +1322,7 @@ mod tests {
             do encoder.emit_enum_variant (~"None",37,1242) {
             }
         }
-        check_equal(str::from_bytes(bw.bytes), ~"null");
+        assert_eq!(str::from_bytes(bw.bytes), ~"null");
     }
 
     #[test]

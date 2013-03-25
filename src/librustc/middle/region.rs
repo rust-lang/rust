@@ -389,7 +389,7 @@ pub fn resolve_crate(sess: Session,
 
 pub type region_paramd_items = HashMap<ast::node_id, region_variance>;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct region_dep {
     ambient_variance: region_variance,
     id: ast::node_id

@@ -88,7 +88,7 @@ mod test {
     }
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 struct p {
   x: int,
   y: int,

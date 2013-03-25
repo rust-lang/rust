@@ -79,7 +79,7 @@ pub fn new_tt_reader(sp_diag: @span_handler,
     return r;
 }
 
-pure fn dup_tt_frame(f: @mut TtFrame) -> @mut TtFrame {
+fn dup_tt_frame(f: @mut TtFrame) -> @mut TtFrame {
     @mut TtFrame {
         readme: @mut (copy *f.readme),
         idx: f.idx,
@@ -92,7 +92,7 @@ pure fn dup_tt_frame(f: @mut TtFrame) -> @mut TtFrame {
     }
 }
 
-pub pure fn dup_tt_reader(r: @mut TtReader) -> @mut TtReader {
+pub fn dup_tt_reader(r: @mut TtReader) -> @mut TtReader {
     @mut TtReader {
         sp_diag: r.sp_diag,
         interner: r.interner,
@@ -106,10 +106,10 @@ pub pure fn dup_tt_reader(r: @mut TtReader) -> @mut TtReader {
 }
 
 
-pure fn lookup_cur_matched_by_matched(r: &mut TtReader,
+fn lookup_cur_matched_by_matched(r: &mut TtReader,
                                       start: @named_match)
                                    -> @named_match {
-    pure fn red(+ad: @named_match, idx: &uint) -> @named_match {
+    fn red(+ad: @named_match, idx: &uint) -> @named_match {
         match *ad {
           matched_nonterminal(_) => {
             // end of the line; duplicate henceforth

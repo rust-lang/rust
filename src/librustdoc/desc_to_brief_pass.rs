@@ -127,8 +127,7 @@ fn extract(desc: Option<~str>) -> Option<~str> {
 }
 
 fn parse_desc(desc: ~str) -> Option<~str> {
-
-    const max_brief_len: uint = 120u;
+    static max_brief_len: uint = 120u;
 
     match first_sentence(copy desc) {
       Some(first_sentence) => {
@@ -171,7 +170,7 @@ fn first_sentence_(s: &str) -> ~str {
     };
     match idx {
         Some(idx) if idx > 2u => {
-            str::from_slice(str::view(s, 0, idx - 1))
+            str::from_slice(str::slice(s, 0, idx - 1))
         }
         _ => {
             if str::ends_with(s, ~".") {

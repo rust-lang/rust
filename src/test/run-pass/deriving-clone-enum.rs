@@ -1,4 +1,4 @@
-#[deriving_clone]
+#[deriving(Clone)]
 enum E {
     A,
     B(()),

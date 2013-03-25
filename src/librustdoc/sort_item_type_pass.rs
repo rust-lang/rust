@@ -15,8 +15,8 @@ use pass::Pass;
 use sort_pass;
 
 pub fn mk_pass() -> Pass {
-    pure fn by_score(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {
-        pure fn score(item: &doc::ItemTag) -> int {
+    fn by_score(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {
+        fn score(item: &doc::ItemTag) -> int {
             match *item {
               doc::ConstTag(_) => 0,
               doc::TyTag(_) => 1,
@@ -45,7 +45,7 @@ fn test() {
         ~"mod imod { } \
          extern mod inmod {
          } \
-         const iconst: int = 0; \
+         static iconst: int = 0; \
          fn ifn() { } \
          enum ienum { ivar } \
          trait itrait { fn a(); } \

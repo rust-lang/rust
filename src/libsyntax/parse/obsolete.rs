@@ -30,7 +30,7 @@ use core::str;
 use core::to_bytes;
 
 /// The specific types of unsupported syntax
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum ObsoleteSyntax {
     ObsoleteLowerCaseKindBounds,
     ObsoleteLet,
@@ -51,18 +51,21 @@ pub enum ObsoleteSyntax {
     ObsoleteTraitImplVisibility,
     ObsoleteRecordType,
     ObsoleteRecordPattern,
-    ObsoleteAssertion,
     ObsoletePostFnTySigil,
     ObsoleteBareFnType,
     ObsoleteNewtypeEnum,
     ObsoleteMode,
     ObsoleteImplicitSelf,
     ObsoleteLifetimeNotation,
+    ObsoleteConstManagedPointer,
+    ObsoletePurity,
+    ObsoleteStaticMethod,
+    ObsoleteConstItem,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
     #[inline(always)]
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f);
     }
 }
@@ -162,10 +165,6 @@ pub impl Parser {
                 "structural record pattern",
                 "use a structure instead"
             ),
-            ObsoleteAssertion => (
-                "assertion",
-                "use `fail_unless!()` instead"
-            ),
             ObsoletePostFnTySigil => (
                 "fn sigil in postfix position",
                 "Rather than `fn@`, `fn~`, or `fn&`, \
@@ -192,6 +191,23 @@ pub impl Parser {
                 "`/` lifetime notation",
                 "instead of `&foo/bar`, write `&'foo bar`; instead of \
                  `bar/&foo`, write `&bar<'foo>"
+            ),
+            ObsoleteConstManagedPointer => (
+                "const `@` pointer",
+                "instead of `@const Foo`, write `@Foo`"
+            ),
+            ObsoletePurity => (
+                "pure function",
+                "remove `pure`"
+            ),
+            ObsoleteStaticMethod => (
+                "`static` notation",
+                "`static` is superfluous; remove it"
+            ),
+            ObsoleteConstItem => (
+                "`const` item",
+                "`const` items are now `static` items; replace `const` with \
+                 `static`"
             ),
         };
 

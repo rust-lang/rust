@@ -15,20 +15,20 @@
 #[cfg(notest)]
 impl<T:Eq> Eq for ~T {
     #[inline(always)]
-    pure fn eq(&self, other: &~T) -> bool { *(*self) == *(*other) }
+    fn eq(&self, other: &~T) -> bool { *(*self) == *(*other) }
     #[inline(always)]
-    pure fn ne(&self, other: &~T) -> bool { *(*self) != *(*other) }
+    fn ne(&self, other: &~T) -> bool { *(*self) != *(*other) }
 }
 
 #[cfg(notest)]
 impl<T:Ord> Ord for ~T {
     #[inline(always)]
-    pure fn lt(&self, other: &~T) -> bool { *(*self) < *(*other) }
+    fn lt(&self, other: &~T) -> bool { *(*self) < *(*other) }
     #[inline(always)]
-    pure fn le(&self, other: &~T) -> bool { *(*self) <= *(*other) }
+    fn le(&self, other: &~T) -> bool { *(*self) <= *(*other) }
     #[inline(always)]
-    pure fn ge(&self, other: &~T) -> bool { *(*self) >= *(*other) }
+    fn ge(&self, other: &~T) -> bool { *(*self) >= *(*other) }
     #[inline(always)]
-    pure fn gt(&self, other: &~T) -> bool { *(*self) > *(*other) }
+    fn gt(&self, other: &~T) -> bool { *(*self) > *(*other) }
 }
 

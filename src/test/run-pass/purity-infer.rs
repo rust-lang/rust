@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-fn something(f: &pure fn()) { f(); }
+fn something(f: &fn()) { f(); }
 pub fn main() {
     something(|| error!("hi!") );
 }

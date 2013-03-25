@@ -50,11 +50,11 @@ pub struct Scheduler {
 // complaining
 type UnsafeTaskReceiver = sys::Closure;
 trait HackAroundBorrowCk {
-    static fn from_fn(&fn(&mut Scheduler, ~Task)) -> Self;
+    fn from_fn(&fn(&mut Scheduler, ~Task)) -> Self;
     fn to_fn(self) -> &fn(&mut Scheduler, ~Task);
 }
 impl HackAroundBorrowCk for UnsafeTaskReceiver {
-    static fn from_fn(f: &fn(&mut Scheduler, ~Task)) -> UnsafeTaskReceiver {
+    fn from_fn(f: &fn(&mut Scheduler, ~Task)) -> UnsafeTaskReceiver {
         unsafe { transmute(f) }
     }
     fn to_fn(self) -> &fn(&mut Scheduler, ~Task) {
@@ -70,7 +70,7 @@ enum CleanupJob {
 
 pub impl Scheduler {
 
-    static pub fn new(event_loop: ~EventLoopObject) -> Scheduler {
+    pub fn new(event_loop: ~EventLoopObject) -> Scheduler {
         Scheduler {
             event_loop: event_loop,
             task_queue: WorkQueue::new(),
@@ -114,7 +114,7 @@ pub impl Scheduler {
         return tlsched.take_scheduler();
     }
 
-    static fn local(f: &fn(&mut Scheduler)) {
+    fn local(f: &fn(&mut Scheduler)) {
         let mut tlsched = ThreadLocalScheduler::new();
         f(tlsched.get_scheduler());
     }
@@ -282,7 +282,7 @@ pub impl Scheduler {
     }
 }
 
-const TASK_MIN_STACK_SIZE: uint = 10000000; // XXX: Too much stack
+static TASK_MIN_STACK_SIZE: uint = 10000000; // XXX: Too much stack
 
 pub struct Task {
     /// The task entry point, saved here for later destruction
@@ -296,7 +296,7 @@ pub struct Task {
 }
 
 impl Task {
-    static pub fn new(stack_pool: &mut StackPool, start: ~fn()) -> Task {
+    pub fn new(stack_pool: &mut StackPool, start: ~fn()) -> Task {
         // XXX: Putting main into a ~ so it's a thin pointer and can
         // be passed to the spawn function.  Another unfortunate
         // allocation
@@ -311,7 +311,7 @@ impl Task {
         };
     }
 
-    static priv fn build_start_wrapper(start: ~fn()) -> ~fn() {
+    priv fn build_start_wrapper(start: ~fn()) -> ~fn() {
         // XXX: The old code didn't have this extra allocation
         let wrapper: ~fn() = || {
             start();
@@ -337,7 +337,7 @@ impl Task {
 struct ThreadLocalScheduler(tls::Key);
 
 impl ThreadLocalScheduler {
-    static fn new() -> ThreadLocalScheduler {
+    fn new() -> ThreadLocalScheduler {
         unsafe {
             // NB: This assumes that the TLS key has been created prior.
             // Currently done in rust_start.
@@ -481,7 +481,7 @@ fn test_swap_tasks() {
 #[bench] #[test] #[ignore(reason = "long test")]
 fn test_run_a_lot_of_tasks_queued() {
     do run_in_bare_thread {
-        const MAX: int = 1000000;
+        static MAX: int = 1000000;
         let mut count = 0;
         let count_ptr: *mut int = &mut count;
 
@@ -514,7 +514,7 @@ fn test_run_a_lot_of_tasks_queued() {
 #[bench] #[test] #[ignore(reason = "too much stack allocation")]
 fn test_run_a_lot_of_tasks_direct() {
     do run_in_bare_thread {
-        const MAX: int = 100000;
+        static MAX: int = 100000;
         let mut count = 0;
         let count_ptr: *mut int = &mut count;
 

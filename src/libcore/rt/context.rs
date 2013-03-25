@@ -19,14 +19,14 @@ use cast::{transmute, transmute_mut_unsafe,
 pub struct Context(~Registers);
 
 pub impl Context {
-    static fn empty() -> Context {
+    fn empty() -> Context {
         Context(new_regs())
     }
 
     /// Create a new context that will resume execution by running ~fn()
     /// # Safety Note
     /// The `start` closure must remain valid for the life of the Task
-    static fn new(start: &~fn(), stack: &mut StackSegment) -> Context {
+    fn new(start: &~fn(), stack: &mut StackSegment) -> Context {
 
         // The C-ABI function that is the task entry point
         extern fn task_start_wrapper(f: &~fn()) { (*f)() }
@@ -49,7 +49,7 @@ pub impl Context {
         return Context(regs);
     }
 
-    static fn swap(out_context: &mut Context, in_context: &Context) {
+    fn swap(out_context: &mut Context, in_context: &Context) {
         let out_regs: &mut Registers = match out_context {
             &Context(~ref mut r) => r
         };
@@ -112,10 +112,10 @@ fn initialize_call_frame(regs: &mut Registers,
                          fptr: *c_void, arg: *c_void, sp: *mut uint) {
 
     // Redefinitions from regs.h
-    const RUSTRT_ARG0: uint = 3;
-    const RUSTRT_RSP: uint = 1;
-    const RUSTRT_IP: uint = 8;
-    const RUSTRT_RBP: uint = 2;
+    static RUSTRT_ARG0: uint = 3;
+    static RUSTRT_RSP: uint = 1;
+    static RUSTRT_IP: uint = 8;
+    static RUSTRT_RBP: uint = 2;
 
     let sp = align_down(sp);
     let sp = mut_offset(sp, -1);
@@ -184,7 +184,7 @@ fn align_down(sp: *mut uint) -> *mut uint {
 
 // XXX: ptr::offset is positive ints only
 #[inline(always)]
-pub pure fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
+pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
     use core::sys::size_of;
     unsafe {
         (ptr as int + count * (size_of::<T>() as int)) as *mut T

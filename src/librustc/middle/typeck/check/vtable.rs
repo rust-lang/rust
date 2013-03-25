@@ -28,7 +28,7 @@ use core::result::{Result, Ok, Err};
 use core::result;
 use core::uint;
 use core::vec;
-use std::oldmap::HashMap;
+use core::hashmap::linear::LinearSet;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
@@ -234,14 +234,14 @@ pub fn lookup_vtable(vcx: &VtableContext,
         _ => {
             let mut found = ~[];
 
-            let mut impls_seen = HashMap();
+            let mut impls_seen = LinearSet::new();
 
             match vcx.ccx.coherence_info.extension_methods.find(&trait_id) {
                 None => {
                     // Nothing found. Continue.
                 }
                 Some(implementations) => {
-                    let implementations: &mut ~[@Impl] = implementations;
+                    let implementations: &mut ~[@Impl] = *implementations;
                     // implementations is the list of all impls in scope for
                     // trait_ty. (Usually, there's just one.)
                     for uint::range(0, implementations.len()) |i| {
@@ -250,10 +250,10 @@ pub fn lookup_vtable(vcx: &VtableContext,
                         // im is one specific impl of trait_ty.
 
                         // First, ensure we haven't processed this impl yet.
-                        if impls_seen.contains_key(&im.did) {
+                        if impls_seen.contains(&im.did) {
                             loop;
                         }
-                        impls_seen.insert(im.did, ());
+                        impls_seen.insert(im.did);
 
                         // ty::impl_traits gives us the list of all
                         // traits that im implements. Again, usually

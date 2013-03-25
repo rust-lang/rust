@@ -9,9 +9,9 @@
 // except according to those terms.
 
 enum E { V1(int), V0 }
-const C: &'static [E] = &[V0, V1(0xDEADBEE)];
-const C0: E = C[0];
-const C1: E = C[1];
+static C: &'static [E] = &[V0, V1(0xDEADBEE)];
+static C0: E = C[0];
+static C1: E = C[1];
 
 pub fn main() {
     match C0 { 

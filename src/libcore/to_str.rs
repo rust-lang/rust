@@ -17,35 +17,23 @@ The `ToStr` trait for converting to strings
 use str;
 
 pub trait ToStr {
-    pure fn to_str(&self) -> ~str;
+    fn to_str(&self) -> ~str;
 }
 
 impl ToStr for bool {
     #[inline(always)]
-    pure fn to_str(&self) -> ~str { ::bool::to_str(*self) }
+    fn to_str(&self) -> ~str { ::bool::to_str(*self) }
 }
 impl ToStr for () {
     #[inline(always)]
-    pure fn to_str(&self) -> ~str { ~"()" }
-}
-impl ToStr for ~str {
-    #[inline(always)]
-    pure fn to_str(&self) -> ~str { copy *self }
-}
-impl ToStr for &'self str {
-    #[inline(always)]
-    pure fn to_str(&self) -> ~str { ::str::from_slice(*self) }
-}
-impl ToStr for @str {
-    #[inline(always)]
-    pure fn to_str(&self) -> ~str { ::str::from_slice(*self) }
+    fn to_str(&self) -> ~str { ~"()" }
 }
 
 // FIXME #4898: impl for one-tuples
 
 impl<A:ToStr,B:ToStr> ToStr for (A, B) {
     #[inline(always)]
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         // FIXME(#4760): this causes an llvm assertion
         //let &(ref a, ref b) = self;
         match *self {
@@ -57,7 +45,7 @@ impl<A:ToStr,B:ToStr> ToStr for (A, B) {
 }
 impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
     #[inline(always)]
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         // FIXME(#4760): this causes an llvm assertion
         //let &(ref a, ref b, ref c) = self;
         match *self {
@@ -74,7 +62,7 @@ impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
 
 impl<A:ToStr> ToStr for &'self [A] {
     #[inline(always)]
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         unsafe {
             // FIXME #4568
             // Bleh -- not really unsafe
@@ -95,7 +83,7 @@ impl<A:ToStr> ToStr for &'self [A] {
 
 impl<A:ToStr> ToStr for ~[A] {
     #[inline(always)]
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         unsafe {
             // FIXME #4568
             // Bleh -- not really unsafe
@@ -116,7 +104,7 @@ impl<A:ToStr> ToStr for ~[A] {
 
 impl<A:ToStr> ToStr for @[A] {
     #[inline(always)]
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         unsafe {
             // FIXME #4568
             // Bleh -- not really unsafe

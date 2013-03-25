@@ -16,30 +16,30 @@ use vec;
 #[cfg(notest)] use cmp::{Eq, Ord};
 
 pub trait CopyableTuple<T, U> {
-    pure fn first(&self) -> T;
-    pure fn second(&self) -> U;
-    pure fn swap(&self) -> (U, T);
+    fn first(&self) -> T;
+    fn second(&self) -> U;
+    fn swap(&self) -> (U, T);
 }
 
 impl<T:Copy,U:Copy> CopyableTuple<T, U> for (T, U) {
 
     /// Return the first element of self
     #[inline(always)]
-    pure fn first(&self) -> T {
+    fn first(&self) -> T {
         let (t, _) = *self;
         return t;
     }
 
     /// Return the second element of self
     #[inline(always)]
-    pure fn second(&self) -> U {
+    fn second(&self) -> U {
         let (_, u) = *self;
         return u;
     }
 
     /// Return the results of swapping the two elements of self
     #[inline(always)]
-    pure fn swap(&self) -> (U, T) {
+    fn swap(&self) -> (U, T) {
         let (t, u) = *self;
         return (u, t);
     }
@@ -47,19 +47,19 @@ impl<T:Copy,U:Copy> CopyableTuple<T, U> for (T, U) {
 }
 
 pub trait ImmutableTuple<T, U> {
-    pure fn first_ref(&self) -> &'self T;
-    pure fn second_ref(&self) -> &'self U;
+    fn first_ref(&self) -> &'self T;
+    fn second_ref(&self) -> &'self U;
 }
 
 impl<T, U> ImmutableTuple<T, U> for (T, U) {
     #[inline(always)]
-    pure fn first_ref(&self) -> &'self T {
+    fn first_ref(&self) -> &'self T {
         match *self {
             (ref t, _) => t,
         }
     }
     #[inline(always)]
-    pure fn second_ref(&self) -> &'self U {
+    fn second_ref(&self) -> &'self U {
         match *self {
             (_, ref u) => u,
         }
@@ -117,7 +117,7 @@ impl<A:Copy,B:Copy> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
 #[cfg(notest)]
 impl<A:Eq,B:Eq> Eq for (A, B) {
     #[inline(always)]
-    pure fn eq(&self, other: &(A, B)) -> bool {
+    fn eq(&self, other: &(A, B)) -> bool {
         match (*self) {
             (ref self_a, ref self_b) => match other {
                 &(ref other_a, ref other_b) => {
@@ -127,13 +127,13 @@ impl<A:Eq,B:Eq> Eq for (A, B) {
         }
     }
     #[inline(always)]
-    pure fn ne(&self, other: &(A, B)) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &(A, B)) -> bool { !(*self).eq(other) }
 }
 
 #[cfg(notest)]
 impl<A:Ord,B:Ord> Ord for (A, B) {
     #[inline(always)]
-    pure fn lt(&self, other: &(A, B)) -> bool {
+    fn lt(&self, other: &(A, B)) -> bool {
         match (*self) {
             (ref self_a, ref self_b) => {
                 match (*other) {
@@ -148,17 +148,17 @@ impl<A:Ord,B:Ord> Ord for (A, B) {
         }
     }
     #[inline(always)]
-    pure fn le(&self, other: &(A, B)) -> bool { !(*other).lt(&(*self)) }
+    fn le(&self, other: &(A, B)) -> bool { !(*other).lt(&(*self)) }
     #[inline(always)]
-    pure fn ge(&self, other: &(A, B)) -> bool { !(*self).lt(other) }
+    fn ge(&self, other: &(A, B)) -> bool { !(*self).lt(other) }
     #[inline(always)]
-    pure fn gt(&self, other: &(A, B)) -> bool { (*other).lt(&(*self))  }
+    fn gt(&self, other: &(A, B)) -> bool { (*other).lt(&(*self))  }
 }
 
 #[cfg(notest)]
 impl<A:Eq,B:Eq,C:Eq> Eq for (A, B, C) {
     #[inline(always)]
-    pure fn eq(&self, other: &(A, B, C)) -> bool {
+    fn eq(&self, other: &(A, B, C)) -> bool {
         match (*self) {
             (ref self_a, ref self_b, ref self_c) => match other {
                 &(ref other_a, ref other_b, ref other_c) => {
@@ -169,13 +169,13 @@ impl<A:Eq,B:Eq,C:Eq> Eq for (A, B, C) {
         }
     }
     #[inline(always)]
-    pure fn ne(&self, other: &(A, B, C)) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &(A, B, C)) -> bool { !(*self).eq(other) }
 }
 
 #[cfg(notest)]
 impl<A:Ord,B:Ord,C:Ord> Ord for (A, B, C) {
     #[inline(always)]
-    pure fn lt(&self, other: &(A, B, C)) -> bool {
+    fn lt(&self, other: &(A, B, C)) -> bool {
         match (*self) {
             (ref self_a, ref self_b, ref self_c) => {
                 match (*other) {
@@ -192,11 +192,11 @@ impl<A:Ord,B:Ord,C:Ord> Ord for (A, B, C) {
         }
     }
     #[inline(always)]
-    pure fn le(&self, other: &(A, B, C)) -> bool { !(*other).lt(&(*self)) }
+    fn le(&self, other: &(A, B, C)) -> bool { !(*other).lt(&(*self)) }
     #[inline(always)]
-    pure fn ge(&self, other: &(A, B, C)) -> bool { !(*self).lt(other) }
+    fn ge(&self, other: &(A, B, C)) -> bool { !(*self).lt(other) }
     #[inline(always)]
-    pure fn gt(&self, other: &(A, B, C)) -> bool { (*other).lt(&(*self))  }
+    fn gt(&self, other: &(A, B, C)) -> bool { (*other).lt(&(*self))  }
 }
 
 #[test]

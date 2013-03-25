@@ -160,7 +160,7 @@ pub fn mk_handler(emitter: Option<Emitter>) -> @handler {
     @mut HandlerT { err_count: 0, emit: emit } as @handler
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum level {
     fatal,
     error,

@@ -13,7 +13,6 @@ fn main() {
         a: int,
         w: B,
         x: @B,
-        y: @const B,
         z: @mut B
     }
     struct B {
@@ -23,7 +22,6 @@ fn main() {
         a: 1,
         w: B {a: 1},
         x: @B {a: 1},
-        y: @const B {a: 1},
         z: @mut B {a: 1}
     };
 
@@ -37,6 +35,5 @@ fn main() {
     // in these cases we pass through a box, so the mut
     // of the box is dominant
     p.x.a = 2;     //~ ERROR assigning to immutable field
-    p.y.a = 2;     //~ ERROR assigning to const field
     p.z.a = 2;
 }

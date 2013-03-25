@@ -46,7 +46,6 @@ pub mod visit;
 pub mod fold;
 pub mod util {
     pub mod interner;
-    pub mod testing;
 }
 
 
@@ -64,6 +63,8 @@ pub mod ext {
     pub mod expand;
 
     pub mod quote;
+
+    #[path = "deriving/mod.rs"]
     pub mod deriving;
 
     pub mod build;

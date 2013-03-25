@@ -286,7 +286,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     compile_input(sess, cfg, input, &odir, &ofile);
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum monitor_msg {
     fatal,
     done,

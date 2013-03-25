@@ -47,7 +47,7 @@ struct RH {
     sub: &[RH]
 }
 
-const EMPTY_SOURCE_STR: &str = "/* Hello, world! */";
+static EMPTY_SOURCE_STR: &str = "/* Hello, world! */";
 
 fn setup_env(test_name: &str, source_string: &str) -> Env {
     let messages = @DVec();
