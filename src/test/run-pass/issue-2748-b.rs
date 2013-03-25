@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn thing(x: &'r [int]) -> &'r [int] { x }
+fn thing<'r>(x: &'r [int]) -> &'r [int] { x }
+
 pub fn main() {
     let x = &[1,2,3];
     let y = x;

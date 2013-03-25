@@ -49,7 +49,7 @@ pub impl<T> cat<T> {
     }
 }
 
-impl<T> BaseIter<(int, &'self T)> for cat<T> {
+impl<'self,T> BaseIter<(int, &'self T)> for cat<T> {
     fn each(&self, f: &fn(&(int, &'self T)) -> bool) {
         let mut n = int::abs(self.meows);
         while n > 0 {

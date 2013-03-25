@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum roption {
+enum roption<'self> {
     a, b(&'self uint)
 }
 
-fn mk(cond: bool, ptr: &'r uint) -> roption<'r> {
+fn mk<'r>(cond: bool, ptr: &'r uint) -> roption<'r> {
     if cond {a} else {b(ptr)}
 }
 

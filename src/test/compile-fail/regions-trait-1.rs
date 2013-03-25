@@ -15,9 +15,9 @@ trait get_ctxt {
     fn get_ctxt(&self) -> &ctxt;
 }
 
-struct has_ctxt { c: &'self ctxt }
+struct has_ctxt<'self> { c: &'self ctxt }
 
-impl get_ctxt for has_ctxt<'self> {
+impl<'self> get_ctxt for has_ctxt<'self> {
 
     // Here an error occurs because we used `&self` but
     // the definition used `&`:

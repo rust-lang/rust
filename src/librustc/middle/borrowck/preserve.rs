@@ -63,7 +63,7 @@ pub impl BorrowckCtxt {
     }
 }
 
-struct PreserveCtxt {
+struct PreserveCtxt<'self> {
     bccx: &'self BorrowckCtxt,
 
     // the region scope for which we must preserve the memory

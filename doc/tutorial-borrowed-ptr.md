@@ -485,7 +485,7 @@ For example, we could write a subroutine like this:
 
 ~~~
 struct Point {x: float, y: float}
-fn get_x(p: &'r Point) -> &'r float { &p.x }
+fn get_x<'r>(p: &'r Point) -> &'r float { &p.x }
 ~~~
 
 Here, the function `get_x()` returns a pointer into the structure it
@@ -571,8 +571,8 @@ function:
 #     Rectangle(Point, Size)  // upper-left, dimensions
 # }
 # fn compute_area(shape: &Shape) -> float { 0f }
-fn select<T>(shape: &'r Shape, threshold: float,
-             a: &'r T, b: &'r T) -> &'r T {
+fn select<'r, T>(shape: &'r Shape, threshold: float,
+                 a: &'r T, b: &'r T) -> &'r T {
     if compute_area(shape) > threshold {a} else {b}
 }
 ~~~
@@ -591,12 +591,12 @@ example:
 #     Rectangle(Point, Size)  // upper-left, dimensions
 # }
 # fn compute_area(shape: &Shape) -> float { 0f }
-# fn select<T>(shape: &Shape, threshold: float,
-#              a: &'r T, b: &'r T) -> &'r T {
+# fn select<'r, T>(shape: &Shape, threshold: float,
+#                  a: &'r T, b: &'r T) -> &'r T {
 #     if compute_area(shape) > threshold {a} else {b}
 # }
                                                      // -+ r
-fn select_based_on_unit_circle<T>(                   //  |-+ B
+fn select_based_on_unit_circle<'r, T>(               //  |-+ B
     threshold: float, a: &'r T, b: &'r T) -> &'r T { //  | |
                                                      //  | |
     let shape = Circle(Point {x: 0., y: 0.}, 1.);    //  | |
@@ -628,8 +628,8 @@ returned. Here is how the new `select()` might look:
 #     Rectangle(Point, Size)  // upper-left, dimensions
 # }
 # fn compute_area(shape: &Shape) -> float { 0f }
-fn select<T>(shape: &'tmp Shape, threshold: float,
-             a: &'r T, b: &'r T) -> &'r T {
+fn select<'r, 'tmp, T>(shape: &'tmp Shape, threshold: float,
+                       a: &'r T, b: &'r T) -> &'r T {
     if compute_area(shape) > threshold {a} else {b}
 }
 ~~~
@@ -647,8 +647,8 @@ concise to just omit the named lifetime for `shape` altogether:
 #     Rectangle(Point, Size)  // upper-left, dimensions
 # }
 # fn compute_area(shape: &Shape) -> float { 0f }
-fn select<T>(shape: &Shape, threshold: float,
-             a: &'r T, b: &'r T) -> &'r T {
+fn select<'r, T>(shape: &Shape, threshold: float,
+                 a: &'r T, b: &'r T) -> &'r T {
     if compute_area(shape) > threshold {a} else {b}
 }
 ~~~

@@ -10,15 +10,15 @@
 
 enum yes0<'lt> {
     // This will eventually be legal (and in fact the only way):
-    X3(&'lt uint) //~ ERROR Illegal lifetime 'lt: only 'self is allowed allowed as part of a type declaration
+    X3(&'lt uint) //~ ERROR Illegal lifetime 'lt: this lifetime must be declared
 }
 
-enum yes1 {
+enum yes1<'self> {
     X4(&'self uint)
 }
 
 enum yes2 {
-    X5(&'foo uint) //~ ERROR Illegal lifetime 'foo: only 'self is allowed allowed as part of a type declaration
+    X5(&'foo uint) //~ ERROR Illegal lifetime 'foo: this lifetime must be declared
 }
 
 fn main() {}

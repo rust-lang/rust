@@ -71,7 +71,7 @@ pub trait ExtendedTupleOps<A,B> {
     fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C];
 }
 
-impl<A:Copy,B:Copy> ExtendedTupleOps<A,B> for (&'self [A], &'self [B]) {
+impl<'self,A:Copy,B:Copy> ExtendedTupleOps<A,B> for (&'self [A], &'self [B]) {
     #[inline(always)]
     fn zip(&self) -> ~[(A, B)] {
         match *self {

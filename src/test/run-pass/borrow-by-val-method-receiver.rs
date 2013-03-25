@@ -12,7 +12,7 @@ trait Foo {
     fn foo(self);
 }
 
-impl Foo for &'self [int] {
+impl<'self> Foo for &'self [int] {
     fn foo(self) {}
 }
 

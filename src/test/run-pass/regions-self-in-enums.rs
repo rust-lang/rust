@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum int_wrapper {
+enum int_wrapper<'self> {
     int_wrapper_ctor(&'self int)
 }
 

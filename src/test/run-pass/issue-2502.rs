@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct font {
+struct font<'self> {
     fontbuf: &'self ~[u8],
 }
 
@@ -18,7 +18,7 @@ pub impl<'self> font<'self> {
     }
 }
 
-fn font(fontbuf: &'r ~[u8]) -> font<'r> {
+fn font<'r>(fontbuf: &'r ~[u8]) -> font<'r> {
     font {
         fontbuf: fontbuf
     }

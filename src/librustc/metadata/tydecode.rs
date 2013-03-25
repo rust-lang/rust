@@ -49,7 +49,8 @@ pub enum DefIdSource {
     // Identifies a type parameter (`fn foo<X>() { ... }`).
     TypeParameter
 }
-type conv_did = &'self fn(source: DefIdSource, ast::def_id) -> ast::def_id;
+type conv_did<'self> =
+    &'self fn(source: DefIdSource, ast::def_id) -> ast::def_id;
 
 pub struct PState {
     data: @~[u8],

@@ -10,11 +10,11 @@
 
 struct arena(());
 
-struct Bcx {
+struct Bcx<'self> {
     fcx: &'self Fcx<'self>
 }
 
-struct Fcx {
+struct Fcx<'self> {
     arena: &'self arena,
     ccx: &'self Ccx
 }
@@ -23,14 +23,14 @@ struct Ccx {
     x: int
 }
 
-fn alloc(_bcx : &'a arena) -> &'a Bcx<'a> {
+fn alloc<'a>(_bcx : &'a arena) -> &'a Bcx<'a> {
     unsafe {
         return cast::reinterpret_cast(
             &libc::malloc(sys::size_of::<Bcx<'blk>>() as libc::size_t));
     }
 }
 
-fn h(bcx : &'a Bcx<'a>) -> &'a Bcx<'a> {
+fn h<'a>(bcx : &'a Bcx<'a>) -> &'a Bcx<'a> {
     return alloc(bcx.fcx.arena);
 }
 

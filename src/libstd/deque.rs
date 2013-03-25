@@ -132,7 +132,7 @@ fn grow<T>(nelts: uint, lo: uint, elts: &mut [Option<T>]) -> ~[Option<T>] {
     rv
 }
 
-fn get<T>(elts: &'r [Option<T>], i: uint) -> &'r T {
+fn get<'r, T>(elts: &'r [Option<T>], i: uint) -> &'r T {
     match elts[i] { Some(ref t) => t, _ => fail!() }
 }
 

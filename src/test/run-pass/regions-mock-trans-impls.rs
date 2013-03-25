@@ -16,11 +16,11 @@ use core::sys;
 use core::cast;
 use std::arena::Arena;
 
-struct Bcx {
+struct Bcx<'self> {
     fcx: &'self Fcx<'self>
 }
 
-struct Fcx {
+struct Fcx<'self> {
     arena: &'self Arena,
     ccx: &'self Ccx
 }
@@ -29,7 +29,7 @@ struct Ccx {
     x: int
 }
 
-fn h(bcx : &'r Bcx<'r>) -> &'r Bcx<'r> {
+fn h<'r>(bcx : &'r Bcx<'r>) -> &'r Bcx<'r> {
     return bcx.fcx.arena.alloc(|| Bcx { fcx: bcx.fcx });
 }
 

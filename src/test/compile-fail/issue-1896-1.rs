@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct boxedFn { theFn: &'self fn() -> uint }
+struct boxedFn<'self> { theFn: &'self fn() -> uint }
 
 fn createClosure (closedUint: uint) -> boxedFn {
     let theFn: @fn() -> uint = || closedUint;

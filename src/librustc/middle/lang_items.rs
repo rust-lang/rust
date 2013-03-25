@@ -311,7 +311,7 @@ fn LanguageItemCollector<'r>(crate: @crate,
     }
 }
 
-struct LanguageItemCollector {
+struct LanguageItemCollector<'self> {
     items: &'self mut LanguageItems,
 
     crate: @crate,

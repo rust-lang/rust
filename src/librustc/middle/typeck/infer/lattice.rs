@@ -56,7 +56,8 @@ pub trait LatticeValue {
     fn glb(cf: &CombineFields, a: &Self, b: &Self) -> cres<Self>;
 }
 
-pub type LatticeOp<T> = &'self fn(cf: &CombineFields, a: &T, b: &T) -> cres<T>;
+pub type LatticeOp<'self, T> =
+    &'self fn(cf: &CombineFields, a: &T, b: &T) -> cres<T>;
 
 impl LatticeValue for ty::t {
     fn sub(cf: &CombineFields, a: &ty::t, b: &ty::t) -> ures {
@@ -374,7 +375,7 @@ pub fn super_lattice_tys<L:LatticeDir + TyLatticeDir + Combine>(
     }
 }
 
-pub type LatticeDirOp<T> = &'self fn(a: &T, b: &T) -> cres<T>;
+pub type LatticeDirOp<'self, T> = &'self fn(a: &T, b: &T) -> cres<T>;
 
 pub enum LatticeVarResult<V,T> {
     VarResult(V),

@@ -8,19 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct contravariant {
+struct contravariant<'self> {
     f: &'self int
 }
 
-fn to_same_lifetime(bi: contravariant<'r>) {
+fn to_same_lifetime<'r>(bi: contravariant<'r>) {
     let bj: contravariant<'r> = bi;
 }
 
-fn to_shorter_lifetime(bi: contravariant<'r>) {
+fn to_shorter_lifetime<'r>(bi: contravariant<'r>) {
     let bj: contravariant<'blk> = bi;
 }
 
-fn to_longer_lifetime(bi: contravariant<'r>) -> contravariant<'static> {
+fn to_longer_lifetime<'r>(bi: contravariant<'r>) -> contravariant<'static> {
     bi //~ ERROR mismatched types
 }
 

@@ -122,7 +122,7 @@ pub fn get<T:Copy>(opt: Option<T>) -> T {
 }
 
 #[inline(always)]
-pub fn get_ref<T>(opt: &'r Option<T>) -> &'r T {
+pub fn get_ref<'r,T>(opt: &'r Option<T>) -> &'r T {
     /*!
     Gets an immutable reference to the value inside an option.
 
@@ -143,7 +143,7 @@ pub fn get_ref<T>(opt: &'r Option<T>) -> &'r T {
     }
 }
 
-pub fn get_mut_ref<T>(opt: &'r mut Option<T>) -> &'r mut T {
+pub fn get_mut_ref<'r,T>(opt: &'r mut Option<T>) -> &'r mut T {
     /*!
     Gets a mutable reference to the value inside an option.
 
@@ -165,7 +165,7 @@ pub fn get_mut_ref<T>(opt: &'r mut Option<T>) -> &'r mut T {
 }
 
 #[inline(always)]
-pub fn map<T, U>(opt: &'r Option<T>, f: &fn(x: &'r T) -> U) -> Option<U> {
+pub fn map<'r, T, U>(opt: &'r Option<T>, f: &fn(x: &'r T) -> U) -> Option<U> {
     //! Maps a `some` value by reference from one type to another
 
     match *opt { Some(ref x) => Some(f(x)), None => None }
@@ -256,8 +256,10 @@ pub fn get_or_default<T:Copy>(opt: Option<T>, def: T) -> T {
 }
 
 #[inline(always)]
-pub fn map_default<T, U>(opt: &'r Option<T>, def: U,
-                              f: &fn(&'r T) -> U) -> U {
+pub fn map_default<'r, T, U>(opt: &'r Option<T>,
+                             def: U,
+                             f: &fn(&'r T) -> U)
+                          -> U {
     //! Applies a function to the contained value or returns a default
 
     match *opt { None => def, Some(ref t) => f(t) }
