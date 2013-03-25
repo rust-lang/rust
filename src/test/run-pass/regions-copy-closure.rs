@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct closure_box {
+struct closure_box<'self> {
     cl: &'self fn(),
 }
 

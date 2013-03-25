@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct parameterized1 {
+struct parameterized1<'self> {
     g: &'self fn()
 }
 

@@ -53,7 +53,7 @@ pub fn get<T:Copy,U>(res: &Result<T, U>) -> T {
  * If the result is an error
  */
 #[inline(always)]
-pub fn get_ref<T, U>(res: &'a Result<T, U>) -> &'a T {
+pub fn get_ref<'a, T, U>(res: &'a Result<T, U>) -> &'a T {
     match *res {
         Ok(ref t) => t,
         Err(ref the_err) => unsafe {

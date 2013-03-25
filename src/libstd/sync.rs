@@ -162,12 +162,12 @@ pub impl Sem<~[Waitqueue]> {
 
 // FIXME(#3588) should go inside of access()
 #[doc(hidden)]
-type SemRelease = SemReleaseGeneric<'self, ()>;
-type SemAndSignalRelease = SemReleaseGeneric<'self, ~[Waitqueue]>;
-struct SemReleaseGeneric<Q> { sem: &'self Sem<Q> }
+type SemRelease<'self> = SemReleaseGeneric<'self, ()>;
+type SemAndSignalRelease<'self> = SemReleaseGeneric<'self, ~[Waitqueue]>;
+struct SemReleaseGeneric<'self, Q> { sem: &'self Sem<Q> }
 
 #[unsafe_destructor]
-impl<Q:Owned> Drop for SemReleaseGeneric<'self, Q> {
+impl<'self, Q:Owned> Drop for SemReleaseGeneric<'self, Q> {
     fn finalize(&self) {
         unsafe {
             self.sem.release();
@@ -175,14 +175,14 @@ impl<Q:Owned> Drop for SemReleaseGeneric<'self, Q> {
     }
 }
 
-fn SemRelease(sem: &'r Sem<()>) -> SemRelease<'r> {
+fn SemRelease<'r>(sem: &'r Sem<()>) -> SemRelease<'r> {
     SemReleaseGeneric {
         sem: sem
     }
 }
 
-fn SemAndSignalRelease(sem: &'r Sem<~[Waitqueue]>)
-                    -> SemAndSignalRelease<'r> {
+fn SemAndSignalRelease<'r>(sem: &'r Sem<~[Waitqueue]>)
+                        -> SemAndSignalRelease<'r> {
     SemReleaseGeneric {
         sem: sem
     }
@@ -194,7 +194,7 @@ pub struct Condvar<'self> { priv sem: &'self Sem<~[Waitqueue]> }
 #[unsafe_destructor]
 impl<'self> Drop for Condvar<'self> { fn finalize(&self) {} }
 
-pub impl Condvar<'self> {
+pub impl<'self> Condvar<'self> {
     /**
      * Atomically drop the associated lock, and block until a signal is sent.
      *
@@ -260,7 +260,7 @@ pub impl Condvar<'self> {
         // This is needed for a failing condition variable to reacquire the
         // mutex during unwinding. As long as the wrapper (mutex, etc) is
         // bounded in when it gets released, this shouldn't hang forever.
-        struct SemAndSignalReacquire {
+        struct SemAndSignalReacquire<'self> {
             sem: &'self Sem<~[Waitqueue]>,
         }
 
@@ -276,8 +276,8 @@ pub impl Condvar<'self> {
             }
         }
 
-        fn SemAndSignalReacquire(sem: &'r Sem<~[Waitqueue]>)
-                              -> SemAndSignalReacquire<'r> {
+        fn SemAndSignalReacquire<'r>(sem: &'r Sem<~[Waitqueue]>)
+                                  -> SemAndSignalReacquire<'r> {
             SemAndSignalReacquire {
                 sem: sem
             }
@@ -615,7 +615,7 @@ pub impl RWlock {
 
 // FIXME(#3588) should go inside of read()
 #[doc(hidden)]
-struct RWlockReleaseRead {
+struct RWlockReleaseRead<'self> {
     lock: &'self RWlock,
 }
 
@@ -651,7 +651,7 @@ fn RWlockReleaseRead<'r>(lock: &'r RWlock) -> RWlockReleaseRead<'r> {
 // FIXME(#3588) should go inside of downgrade()
 #[doc(hidden)]
 #[unsafe_destructor]
-struct RWlockReleaseDowngrade {
+struct RWlockReleaseDowngrade<'self> {
     lock: &'self RWlock,
 }
 
@@ -699,7 +699,7 @@ pub struct RWlockWriteMode<'self> { priv lock: &'self RWlock }
 impl<'self> Drop for RWlockWriteMode<'self> { fn finalize(&self) {} }
 
 /// The "read permission" token used for rwlock.write_downgrade().
-pub struct RWlockReadMode  { priv lock: &'self RWlock }
+pub struct RWlockReadMode<'self> { priv lock: &'self RWlock }
 #[unsafe_destructor]
 impl<'self> Drop for RWlockReadMode<'self> { fn finalize(&self) {} }
 

@@ -178,7 +178,7 @@ pub fn to_uint<T>(thing: &T) -> uint {
 
 /// Determine if two borrowed pointers point to the same thing.
 #[inline(always)]
-pub fn ref_eq<T>(thing: &'a T, other: &'b T) -> bool {
+pub fn ref_eq<'a,'b,T>(thing: &'a T, other: &'b T) -> bool {
     to_uint(thing) == to_uint(other)
 }
 
@@ -312,7 +312,7 @@ impl<T> Ord for *const T {
 
 // Equality for region pointers
 #[cfg(notest)]
-impl<T:Eq> Eq for &'self const T {
+impl<'self,T:Eq> Eq for &'self const T {
     #[inline(always)]
     fn eq(&self, other: & &'self const T) -> bool {
         return *(*self) == *(*other);
@@ -325,7 +325,7 @@ impl<T:Eq> Eq for &'self const T {
 
 // Comparison for region pointers
 #[cfg(notest)]
-impl<T:Ord> Ord for &'self const T {
+impl<'self,T:Ord> Ord for &'self const T {
     #[inline(always)]
     fn lt(&self, other: & &'self const T) -> bool {
         *(*self) < *(*other)

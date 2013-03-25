@@ -12,15 +12,11 @@ struct invariant<'self> {
     f: @fn() -> @mut &'self int
 }
 
-fn to_same_lifetime(bi: invariant<'r>) {
+fn to_same_lifetime<'r>(bi: invariant<'r>) {
     let bj: invariant<'r> = bi;
 }
 
-fn to_shorter_lifetime(bi: invariant<'r>) {
-    let bj: invariant<'blk> = bi; //~ ERROR mismatched types
-}
-
-fn to_longer_lifetime(bi: invariant<'r>) -> invariant<'static> {
+fn to_longer_lifetime<'r>(bi: invariant<'r>) -> invariant<'static> {
     bi //~ ERROR mismatched types
 }
 

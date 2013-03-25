@@ -19,7 +19,7 @@ use io::Writer;
 use option::{None, Option, Some};
 use str;
 
-pub type Cb = &'self fn(buf: &const [u8]) -> bool;
+pub type Cb<'self> = &'self fn(buf: &const [u8]) -> bool;
 
 /**
  * A trait to implement in order to make a type hashable;
@@ -197,7 +197,7 @@ impl IterBytes for int {
     }
 }
 
-impl<A:IterBytes> IterBytes for &'self [A] {
+impl<'self,A:IterBytes> IterBytes for &'self [A] {
     #[inline(always)]
     fn iter_bytes(&self, lsb0: bool, f: Cb) {
         for (*self).each |elt| {
@@ -231,7 +231,7 @@ impl<A:IterBytes,B:IterBytes,C:IterBytes> IterBytes for (A,B,C) {
 }
 
 // Move this to vec, probably.
-fn borrow<A>(a: &'x [A]) -> &'x [A] {
+fn borrow<'x,A>(a: &'x [A]) -> &'x [A] {
     a
 }
 
@@ -352,7 +352,7 @@ pub fn iter_bytes_7<A: IterBytes,
     g.iter_bytes(lsb0, |bytes| {flag = z(bytes); flag});
 }
 
-impl IterBytes for &'self str {
+impl<'self> IterBytes for &'self str {
     #[inline(always)]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) {
         do str::byte_slice(*self) |bytes| {
@@ -389,7 +389,7 @@ impl<A:IterBytes> IterBytes for Option<A> {
     }
 }
 
-impl<A:IterBytes> IterBytes for &'self A {
+impl<'self,A:IterBytes> IterBytes for &'self A {
     #[inline(always)]
     fn iter_bytes(&self, lsb0: bool, f: Cb) {
         (**self).iter_bytes(lsb0, f);

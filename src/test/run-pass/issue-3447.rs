@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct list<T> {
+struct list<'self, T> {
     element: &'self T,
     next: Option<@mut list<'self, T>>
 }

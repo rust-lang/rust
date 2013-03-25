@@ -24,7 +24,7 @@ static CHARS: [char * 64] = [
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'
 ];
 
-impl ToBase64 for &'self [u8] {
+impl<'self> ToBase64 for &'self [u8] {
     fn to_base64(&self) -> ~str {
         let mut s = ~"";
         unsafe {
@@ -73,7 +73,7 @@ impl ToBase64 for &'self [u8] {
     }
 }
 
-impl ToBase64 for &'self str {
+impl<'self> ToBase64 for &'self str {
     fn to_base64(&self) -> ~str {
         str::to_bytes(*self).to_base64()
     }

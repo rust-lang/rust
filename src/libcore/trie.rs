@@ -28,7 +28,7 @@ pub struct TrieMap<T> {
     priv length: uint
 }
 
-impl<T> BaseIter<(uint, &'self T)> for TrieMap<T> {
+impl<'self,T> BaseIter<(uint, &'self T)> for TrieMap<T> {
     /// Visit all key-value pairs in order
     #[inline(always)]
     fn each(&self, f: &fn(&(uint, &'self T)) -> bool) {
@@ -38,7 +38,7 @@ impl<T> BaseIter<(uint, &'self T)> for TrieMap<T> {
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
-impl<T> ReverseIter<(uint, &'self T)> for TrieMap<T> {
+impl<'self,T> ReverseIter<(uint, &'self T)> for TrieMap<T> {
     /// Visit all key-value pairs in reverse order
     #[inline(always)]
     fn each_reverse(&self, f: &fn(&(uint, &'self T)) -> bool) {
@@ -282,7 +282,8 @@ fn chunk(n: uint, idx: uint) -> uint {
     (n >> sh) & MASK
 }
 
-fn find_mut<T>(child: &'r mut Child<T>, key: uint, idx: uint) -> Option<&'r mut T> {
+fn find_mut<'r, T>(child: &'r mut Child<T>, key: uint, idx: uint)
+                -> Option<&'r mut T> {
     unsafe { // FIXME(#4903)---requires flow-sensitive borrow checker
         (match *child {
             External(_, ref value) => Some(cast::transmute_mut(value)),

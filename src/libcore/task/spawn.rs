@@ -122,7 +122,7 @@ struct TaskGroupData {
 }
 type TaskGroupArc = unstable::Exclusive<Option<TaskGroupData>>;
 
-type TaskGroupInner = &'self mut Option<TaskGroupData>;
+type TaskGroupInner<'self> = &'self mut Option<TaskGroupData>;
 
 // A taskgroup is 'dead' when nothing can cause it to fail; only members can.
 fn taskgroup_is_dead(tg: &TaskGroupData) -> bool {

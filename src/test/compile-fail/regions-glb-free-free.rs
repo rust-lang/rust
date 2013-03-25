@@ -18,11 +18,11 @@ mod argparse {
         value: uint
     }
 
-    pub fn flag(name: &'r str, desc: &'r str) -> Flag<'r> {
+    pub fn flag<'r>(name: &'r str, desc: &'r str) -> Flag<'r> {
         Flag { name: name, desc: desc, max_count: 1, value: 0 }
     }
 
-    pub impl Flag<'self> {
+    pub impl<'self> Flag<'self> {
         fn set_desc(self, s: &str) -> Flag<'self> {
             Flag { //~ ERROR cannot infer an appropriate lifetime
                 name: self.name,

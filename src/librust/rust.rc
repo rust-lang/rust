@@ -37,12 +37,12 @@ impl ValidUsage {
     }
 }
 
-enum Action {
+enum Action<'self> {
     Exec(&'self str),
     Call(&'self fn(args: &[~str]) -> ValidUsage)
 }
 
-enum UsageSource {
+enum UsageSource<'self> {
     UsgExec(&'self str),
     UsgStr(&'self str)
 }

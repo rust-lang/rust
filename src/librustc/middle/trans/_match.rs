@@ -325,7 +325,7 @@ pub struct BindingInfo {
 
 pub type BindingsMap = LinearMap<ident, BindingInfo>;
 
-pub struct ArmData {
+pub struct ArmData<'self> {
     bodycx: block,
     arm: &'self ast::arm,
     bindings_map: BindingsMap
@@ -393,7 +393,7 @@ pub fn expand_nested_bindings<'r>(bcx: block,
     }
 }
 
-pub type enter_pat = &'self fn(@ast::pat) -> Option<~[@ast::pat]>;
+pub type enter_pat<'self> = &'self fn(@ast::pat) -> Option<~[@ast::pat]>;
 
 pub fn assert_is_binding_or_wild(bcx: block, p: @ast::pat) {
     if !pat_is_binding_or_wild(bcx.tcx().def_map, p) {
@@ -610,13 +610,13 @@ pub fn enter_opt<'r>(bcx: block,
     }
 }
 
-pub fn enter_rec_or_struct(bcx: block,
-                           dm: DefMap,
-                           m: &[@Match<'r>],
-                           col: uint,
-                           fields: &[ast::ident],
-                           val: ValueRef)
-                        -> ~[@Match<'r>] {
+pub fn enter_rec_or_struct<'r>(bcx: block,
+                               dm: DefMap,
+                               m: &[@Match<'r>],
+                               col: uint,
+                               fields: &[ast::ident],
+                               val: ValueRef)
+                            -> ~[@Match<'r>] {
     debug!("enter_rec_or_struct(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),

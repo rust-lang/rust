@@ -9,12 +9,12 @@
 // except according to those terms.
 
 #[legacy_mode]
-struct Foo {
+struct Foo<'self> {
     s: &'self str,
     u: ~()
 }
 
-pub impl Foo<'self> {
+pub impl<'self> Foo<'self> {
     fn get_s(&self) -> &'self str {
         self.s
     }

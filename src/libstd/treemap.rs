@@ -198,7 +198,7 @@ pub impl<K: TotalOrd, V> TreeMap<K, V> {
 }
 
 /// Lazy forward iterator over a map
-pub struct TreeMapIterator<K, V> {
+pub struct TreeMapIterator<'self, K, V> {
     priv stack: ~[&'self ~TreeNode<K, V>],
     priv node: &'self Option<~TreeNode<K, V>>
 }
@@ -537,24 +537,25 @@ pub impl<K: TotalOrd, V> TreeNode<K, V> {
     }
 }
 
-fn each<K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
-                             f: &fn(&(&'r K, &'r V)) -> bool) {
+fn each<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
+                            f: &fn(&(&'r K, &'r V)) -> bool) {
     for node.each |x| {
         each(&x.left, f);
         if f(&(&x.key, &x.value)) { each(&x.right, f) }
     }
 }
 
-fn each_reverse<K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
-                                     f: &fn(&(&'r K, &'r V)) -> bool) {
+fn each_reverse<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
+                                    f: &fn(&(&'r K, &'r V)) -> bool) {
     for node.each |x| {
         each_reverse(&x.right, f);
         if f(&(&x.key, &x.value)) { each_reverse(&x.left, f) }
     }
 }
 
-fn mutate_values<K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
-                                 f: &fn(&'r K, &'r mut V) -> bool) -> bool {
+fn mutate_values<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
+                                     f: &fn(&'r K, &'r mut V) -> bool)
+                                  -> bool {
     match *node {
       Some(~TreeNode{key: ref key, value: ref mut value, left: ref mut left,
                      right: ref mut right, _}) => {
@@ -590,7 +591,9 @@ fn split<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
     }
 }
 
-fn find_mut<K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>, key: &K) -> Option<&'r mut V> {
+fn find_mut<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
+                                key: &K)
+                             -> Option<&'r mut V> {
     match *node {
       Some(ref mut x) => {
         match key.cmp(&x.key) {

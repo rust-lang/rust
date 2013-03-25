@@ -616,12 +616,12 @@ pub fn file_reader(path: &Path) -> Result<@Reader, ~str> {
 
 
 // Byte readers
-pub struct BytesReader {
+pub struct BytesReader<'self> {
     bytes: &'self [u8],
     mut pos: uint
 }
 
-impl Reader for BytesReader<'self> {
+impl<'self> Reader for BytesReader<'self> {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         let count = uint::min(len, self.bytes.len() - self.pos);
 

@@ -13,7 +13,7 @@ enum ast<'self> {
     add(&'self ast<'self>, &'self ast<'self>)
 }
 
-fn mk_add_bad2(x: &'a ast<'a>, y: &'a ast<'a>, z: &ast) -> ast {
+fn mk_add_bad2<'a>(x: &'a ast<'a>, y: &'a ast<'a>, z: &ast) -> ast {
     add(x, y)
          //~^ ERROR cannot infer an appropriate lifetime
 }

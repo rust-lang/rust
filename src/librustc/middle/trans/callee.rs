@@ -560,7 +560,7 @@ pub fn trans_call_inner(
 }
 
 
-pub enum CallArgs {
+pub enum CallArgs<'self> {
     ArgExprs(&'self [@ast::expr]),
     ArgVals(&'self [ValueRef])
 }

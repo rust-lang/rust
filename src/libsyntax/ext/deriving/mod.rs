@@ -34,16 +34,18 @@ pub mod clone;
 pub mod eq;
 pub mod iter_bytes;
 
-type ExpandDerivingStructDefFn = &'self fn(@ext_ctxt,
-                                          span,
-                                          x: &struct_def,
-                                          ident,
-                                          y: &Generics) -> @item;
-type ExpandDerivingEnumDefFn = &'self fn(@ext_ctxt,
-                                        span,
-                                        x: &enum_def,
-                                        ident,
-                                        y: &Generics) -> @item;
+type ExpandDerivingStructDefFn<'self> = &'self fn(@ext_ctxt,
+                                                  span,
+                                                  x: &struct_def,
+                                                  ident,
+                                                  y: &Generics)
+                                               -> @item;
+type ExpandDerivingEnumDefFn<'self> = &'self fn(@ext_ctxt,
+                                                span,
+                                                x: &enum_def,
+                                                ident,
+                                                y: &Generics)
+                                             -> @item;
 
 pub fn expand_meta_deriving(cx: @ext_ctxt,
                             _span: span,

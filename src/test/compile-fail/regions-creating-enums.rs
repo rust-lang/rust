@@ -10,7 +10,7 @@
 
 #[legacy_modes];
 
-enum ast {
+enum ast<'self> {
     num(uint),
     add(&'self ast<'self>, &'self ast<'self>)
 }

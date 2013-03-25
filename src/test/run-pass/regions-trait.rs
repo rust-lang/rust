@@ -10,13 +10,13 @@
 
 struct Ctxt { v: uint }
 
-trait get_ctxt {
+trait get_ctxt<'self> {
     fn get_ctxt(&self) -> &'self Ctxt;
 }
 
-struct HasCtxt { c: &'self Ctxt }
+struct HasCtxt<'self> { c: &'self Ctxt }
 
-impl get_ctxt for HasCtxt<'self> {
+impl<'self> get_ctxt for HasCtxt<'self> {
     fn get_ctxt(&self) -> &'self Ctxt {
         self.c
     }

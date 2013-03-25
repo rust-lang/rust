@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // This test should behave exactly like issue-2735-3
-struct defer {
+struct defer<'self> {
     b: &'self mut bool,
 }
 

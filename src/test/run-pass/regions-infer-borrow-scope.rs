@@ -10,7 +10,7 @@
 
 struct Point {x: int, y: int}
 
-fn x_coord(p: &'r Point) -> &'r int {
+fn x_coord<'r>(p: &'r Point) -> &'r int {
     return &p.x;
 }
 

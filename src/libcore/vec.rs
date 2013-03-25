@@ -225,46 +225,46 @@ pub fn build_sized_opt<A>(size: Option<uint>,
 // Accessors
 
 /// Returns the first element of a vector
-pub fn head<T>(v: &'r [T]) -> &'r T {
+pub fn head<'r,T>(v: &'r [T]) -> &'r T {
     if v.len() == 0 { fail!(~"head: empty vector") }
     &v[0]
 }
 
 /// Returns `Some(x)` where `x` is the first element of the slice `v`,
 /// or `None` if the vector is empty.
-pub fn head_opt<T>(v: &'r [T]) -> Option<&'r T> {
+pub fn head_opt<'r,T>(v: &'r [T]) -> Option<&'r T> {
     if v.len() == 0 { None } else { Some(&v[0]) }
 }
 
 /// Returns a vector containing all but the first element of a slice
-pub fn tail<T>(v: &'r [T]) -> &'r [T] { slice(v, 1, v.len()) }
+pub fn tail<'r,T>(v: &'r [T]) -> &'r [T] { slice(v, 1, v.len()) }
 
 /// Returns a vector containing all but the first `n` elements of a slice
-pub fn tailn<T>(v: &'r [T], n: uint) -> &'r [T] { slice(v, n, v.len()) }
+pub fn tailn<'r,T>(v: &'r [T], n: uint) -> &'r [T] { slice(v, n, v.len()) }
 
 /// Returns a vector containing all but the last element of a slice
-pub fn init<T>(v: &'r [T]) -> &'r [T] { slice(v, 0, v.len() - 1) }
+pub fn init<'r,T>(v: &'r [T]) -> &'r [T] { slice(v, 0, v.len() - 1) }
 
 /// Returns a vector containing all but the last `n' elements of a slice
-pub fn initn<T>(v: &'r [T], n: uint) -> &'r [T] {
+pub fn initn<'r,T>(v: &'r [T], n: uint) -> &'r [T] {
     slice(v, 0, v.len() - n)
 }
 
 /// Returns the last element of the slice `v`, failing if the slice is empty.
-pub fn last<T>(v: &'r [T]) -> &'r T {
+pub fn last<'r,T>(v: &'r [T]) -> &'r T {
     if v.len() == 0 { fail!(~"last: empty vector") }
     &v[v.len() - 1]
 }
 
 /// Returns `Some(x)` where `x` is the last element of the slice `v`, or
 /// `None` if the vector is empty.
-pub fn last_opt<T>(v: &'r [T]) -> Option<&'r T> {
+pub fn last_opt<'r,T>(v: &'r [T]) -> Option<&'r T> {
     if v.len() == 0 { None } else { Some(&v[v.len() - 1]) }
 }
 
 /// Return a slice that points into another slice.
 #[inline(always)]
-pub fn slice<T>(v: &'r [T], start: uint, end: uint) -> &'r [T] {
+pub fn slice<'r,T>(v: &'r [T], start: uint, end: uint) -> &'r [T] {
     fail_unless!(start <= end);
     fail_unless!(end <= len(v));
     do as_imm_buf(v) |p, _len| {
@@ -278,7 +278,8 @@ pub fn slice<T>(v: &'r [T], start: uint, end: uint) -> &'r [T] {
 
 /// Return a slice that points into another slice.
 #[inline(always)]
-pub fn mut_slice<T>(v: &'r mut [T], start: uint, end: uint) -> &'r mut [T] {
+pub fn mut_slice<'r,T>(v: &'r mut [T], start: uint, end: uint)
+                    -> &'r mut [T] {
     fail_unless!(start <= end);
     fail_unless!(end <= v.len());
     do as_mut_buf(v) |p, _len| {
@@ -292,8 +293,8 @@ pub fn mut_slice<T>(v: &'r mut [T], start: uint, end: uint) -> &'r mut [T] {
 
 /// Return a slice that points into another slice.
 #[inline(always)]
-pub fn const_slice<T>(v: &'r const [T], start: uint, end: uint)
-                   -> &'r const [T] {
+pub fn const_slice<'r,T>(v: &'r const [T], start: uint, end: uint)
+                      -> &'r const [T] {
     fail_unless!(start <= end);
     fail_unless!(end <= len(v));
     do as_const_buf(v) |p, _len| {
@@ -1343,7 +1344,7 @@ pub fn reversed<T:Copy>(v: &const [T]) -> ~[T] {
  * ~~~
  */
 #[inline(always)]
-pub fn each<T>(v: &'r [T], f: &fn(&'r T) -> bool) {
+pub fn each<'r,T>(v: &'r [T], f: &fn(&'r T) -> bool) {
     //             ^^^^
     // NB---this CANNOT be &const [T]!  The reason
     // is that you are passing it to `f()` using
@@ -1367,7 +1368,7 @@ pub fn each<T>(v: &'r [T], f: &fn(&'r T) -> bool) {
 /// a vector with mutable contents and you would like
 /// to mutate the contents as you iterate.
 #[inline(always)]
-pub fn each_mut<T>(v: &'r mut [T], f: &fn(elem: &'r mut T) -> bool) {
+pub fn each_mut<'r,T>(v: &'r mut [T], f: &fn(elem: &'r mut T) -> bool) {
     let mut i = 0;
     let n = v.len();
     while i < n {
@@ -1398,7 +1399,7 @@ pub fn each_const<T>(v: &const [T], f: &fn(elem: &const T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pub fn eachi<T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) {
+pub fn eachi<'r,T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) {
     let mut i = 0;
     for each(v) |p| {
         if !f(i, p) { return; }
@@ -1412,7 +1413,7 @@ pub fn eachi<T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pub fn each_reverse<T>(v: &'r [T], blk: &fn(v: &'r T) -> bool) {
+pub fn each_reverse<'r,T>(v: &'r [T], blk: &fn(v: &'r T) -> bool) {
     eachi_reverse(v, |_i, v| blk(v))
 }
 
@@ -1422,7 +1423,7 @@ pub fn each_reverse<T>(v: &'r [T], blk: &fn(v: &'r T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pub fn eachi_reverse<T>(v: &'r [T], blk: &fn(i: uint, v: &'r T) -> bool) {
+pub fn eachi_reverse<'r,T>(v: &'r [T], blk: &fn(i: uint, v: &'r T) -> bool) {
     let mut i = v.len();
     while i > 0 {
         i -= 1;
@@ -1560,7 +1561,7 @@ fn eq<T:Eq>(a: &[T], b: &[T]) -> bool {
 }
 
 #[cfg(notest)]
-impl<T:Eq> Eq for &'self [T] {
+impl<'self,T:Eq> Eq for &'self [T] {
     #[inline(always)]
     fn eq(&self, other: & &'self [T]) -> bool { eq((*self), (*other)) }
     #[inline(always)]
@@ -1585,7 +1586,7 @@ impl<T:Eq> Eq for @[T] {
 }
 
 #[cfg(notest)]
-impl<T:Eq> Equiv<~[T]> for &'self [T] {
+impl<'self,T:Eq> Equiv<~[T]> for &'self [T] {
     #[inline(always)]
     fn equiv(&self, other: &~[T]) -> bool { eq(*self, *other) }
 }
@@ -1607,7 +1608,7 @@ fn cmp<T: TotalOrd>(a: &[T], b: &[T]) -> Ordering {
 }
 
 #[cfg(notest)]
-impl<T: TotalOrd> TotalOrd for &'self [T] {
+impl<'self,T:TotalOrd> TotalOrd for &'self [T] {
     #[inline(always)]
     fn cmp(&self, other: & &'self [T]) -> Ordering { cmp(*self, *other) }
 }
@@ -1644,7 +1645,7 @@ fn ge<T:Ord>(a: &[T], b: &[T]) -> bool { !lt(a, b) }
 fn gt<T:Ord>(a: &[T], b: &[T]) -> bool { lt(b, a)  }
 
 #[cfg(notest)]
-impl<T:Ord> Ord for &'self [T] {
+impl<'self,T:Ord> Ord for &'self [T] {
     #[inline(always)]
     fn lt(&self, other: & &'self [T]) -> bool { lt((*self), (*other)) }
     #[inline(always)]
@@ -1685,7 +1686,7 @@ pub mod traits {
     use ops::Add;
     use vec::append;
 
-    impl<T:Copy> Add<&'self const [T],~[T]> for ~[T] {
+    impl<'self,T:Copy> Add<&'self const [T],~[T]> for ~[T] {
         #[inline(always)]
         fn add(&self, rhs: & &'self const [T]) -> ~[T] {
             append(copy *self, (*rhs))
@@ -1693,7 +1694,7 @@ pub mod traits {
     }
 }
 
-impl<T> Container for &'self const [T] {
+impl<'self,T> Container for &'self const [T] {
     /// Returns true if a vector contains no elements
     #[inline]
     fn is_empty(&const self) -> bool { is_empty(*self) }
@@ -1708,7 +1709,7 @@ pub trait CopyableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<T: Copy> CopyableVector<T> for &'self const [T] {
+impl<'self,T:Copy> CopyableVector<T> for &'self const [T] {
     /// Returns a copy of `v`.
     #[inline]
     fn to_owned(&self) -> ~[T] {
@@ -1747,7 +1748,7 @@ pub trait ImmutableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<T> ImmutableVector<T> for &'self [T] {
+impl<'self,T> ImmutableVector<T> for &'self [T] {
     /// Return a slice that points into another slice.
     #[inline]
     fn slice(&self, start: uint, end: uint) -> &'self [T] {
@@ -1862,7 +1863,7 @@ pub trait ImmutableEqVector<T:Eq> {
     fn rposition_elem(&self, t: &T) -> Option<uint>;
 }
 
-impl<T:Eq> ImmutableEqVector<T> for &'self [T] {
+impl<'self,T:Eq> ImmutableEqVector<T> for &'self [T] {
     /**
      * Find the first index matching some predicate
      *
@@ -1907,7 +1908,7 @@ pub trait ImmutableCopyableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<T:Copy> ImmutableCopyableVector<T> for &'self [T] {
+impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
     /**
      * Construct a new vector from the elements of a vector for which some
      * predicate holds.
@@ -2309,7 +2310,7 @@ pub mod bytes {
 // ___________________________________________________________________________
 // ITERATION TRAIT METHODS
 
-impl<A> iter::BaseIter<A> for &'self [A] {
+impl<'self,A> iter::BaseIter<A> for &'self [A] {
     #[inline(always)]
     fn each(&self, blk: &fn(v: &'self A) -> bool) { each(*self, blk) }
     #[inline(always)]
@@ -2332,7 +2333,7 @@ impl<A> iter::BaseIter<A> for @[A] {
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
-impl<A> iter::MutableIter<A> for &'self mut [A] {
+impl<'self,A> iter::MutableIter<A> for &'self mut [A] {
     #[inline(always)]
     fn each_mut(&mut self, blk: &fn(v: &'self mut A) -> bool) {
         each_mut(*self, blk)
@@ -2355,7 +2356,7 @@ impl<A> iter::MutableIter<A> for @mut [A] {
     }
 }
 
-impl<A> iter::ExtendedIter<A> for &'self [A] {
+impl<'self,A> iter::ExtendedIter<A> for &'self [A] {
     pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) {
         iter::eachi(self, blk)
     }
@@ -2432,7 +2433,7 @@ impl<A> iter::ExtendedIter<A> for @[A] {
     }
 }
 
-impl<A:Eq> iter::EqIter<A> for &'self [A] {
+impl<'self,A:Eq> iter::EqIter<A> for &'self [A] {
     pub fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
     pub fn count(&self, x: &A) -> uint { iter::count(self, x) }
 }
@@ -2449,7 +2450,7 @@ impl<A:Eq> iter::EqIter<A> for @[A] {
     pub fn count(&self, x: &A) -> uint { iter::count(self, x) }
 }
 
-impl<A:Copy> iter::CopyableIter<A> for &'self [A] {
+impl<'self,A:Copy> iter::CopyableIter<A> for &'self [A] {
     fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
@@ -2481,7 +2482,7 @@ impl<A:Copy> iter::CopyableIter<A> for @[A] {
     }
 }
 
-impl<A:Copy + Ord> iter::CopyableOrderedIter<A> for &'self [A] {
+impl<'self,A:Copy + Ord> iter::CopyableOrderedIter<A> for &'self [A] {
     fn min(&self) -> A { iter::min(self) }
     fn max(&self) -> A { iter::max(self) }
 }
@@ -2498,7 +2499,7 @@ impl<A:Copy + Ord> iter::CopyableOrderedIter<A> for @[A] {
     fn max(&self) -> A { iter::max(self) }
 }
 
-impl<A:Copy> iter::CopyableNonstrictIter<A> for &'self [A] {
+impl<'self,A:Copy> iter::CopyableNonstrictIter<A> for &'self [A] {
     fn each_val(&const self, f: &fn(A) -> bool) {
         let mut i = 0;
         while i < self.len() {

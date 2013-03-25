@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn ignore<T>(_t: T) {}
+fn ignore(_f: &fn<'z>(&'z int) -> &'z int) {}
 
 fn nested() {
     let y = 3;
-    ignore(|z: &'z int| -> &'z int {
+    ignore(|z| {
         if false { &y } else { z } //~ ERROR illegal borrow
     });
 }

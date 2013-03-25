@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn view<T>(x: &'r [T]) -> &'r [T] {x}
+fn view<'r, T>(x: &'r [T]) -> &'r [T] {x}
 
 pub fn main() {
     let v = ~[1, 2, 3];

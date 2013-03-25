@@ -362,10 +362,11 @@ pub impl Parser {
 
         let purity = self.parse_purity();
         self.expect_keyword(&~"fn");
+        let (decl, _) = self.parse_ty_fn_decl();
         return ty_bare_fn(@TyBareFn {
             abi: RustAbi,
             purity: purity,
-            decl: self.parse_ty_fn_decl()
+            decl: decl
         });
     }
 
@@ -400,12 +401,15 @@ pub impl Parser {
                           ObsoletePostFnTySigil);
         }
 
+        let (decl, lifetimes) = self.parse_ty_fn_decl();
+
         return ty_closure(@TyClosure {
             sigil: sigil,
             region: region,
             purity: purity,
             onceness: onceness,
-            decl: self.parse_ty_fn_decl()
+            decl: decl,
+            lifetimes: lifetimes,
         });
 
         fn parse_onceness(self: &Parser) -> Onceness {
@@ -424,7 +428,7 @@ pub impl Parser {
         }
     }
 
-    fn parse_ty_fn_decl(&self) -> fn_decl {
+    fn parse_ty_fn_decl(&self) -> (fn_decl, OptVec<ast::Lifetime>) {
         /*
 
         (fn) <'lt> (S) -> T
@@ -435,10 +439,14 @@ pub impl Parser {
            Lifetimes
 
         */
-        if self.eat(&token::LT) {
-            let _lifetimes = self.parse_lifetimes();
+        let lifetimes = if self.eat(&token::LT) {
+            let lifetimes = self.parse_lifetimes();
             self.expect_gt();
-        }
+            lifetimes
+        } else {
+            opt_vec::Empty
+        };
+
         let inputs = self.parse_unspanned_seq(
             &token::LPAREN,
             &token::RPAREN,
@@ -446,7 +454,12 @@ pub impl Parser {
             |p| p.parse_arg_general(false)
         );
         let (ret_style, ret_ty) = self.parse_ret_ty();
-        ast::fn_decl { inputs: inputs, output: ret_ty, cf: ret_style }
+        let decl = ast::fn_decl {
+            inputs: inputs,
+            output: ret_ty,
+            cf: ret_style
+        };
+        (decl, lifetimes)
     }
 
     fn parse_trait_methods(&self) -> ~[trait_method] {

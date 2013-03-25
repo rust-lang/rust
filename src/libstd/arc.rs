@@ -95,7 +95,7 @@ pub fn ARC<T:Const + Owned>(data: T) -> ARC<T> {
  * Access the underlying data in an atomically reference counted
  * wrapper.
  */
-pub fn get<T:Const + Owned>(rc: &'a ARC<T>) -> &'a T {
+pub fn get<'a, T:Const + Owned>(rc: &'a ARC<T>) -> &'a T {
     unsafe { get_shared_immutable_state(&rc.x) }
 }
 
@@ -191,7 +191,7 @@ pub impl<T:Owned> MutexARC<T> {
 
     /// As access(), but with a condvar, as sync::mutex.lock_cond().
     #[inline(always)]
-    unsafe fn access_cond<U>(
+    unsafe fn access_cond<'x, 'c, U>(
         &self,
         blk: &fn(x: &'x mut T, c: &'c Condvar) -> U) -> U
     {
@@ -239,7 +239,7 @@ impl Drop for PoisonOnFail {
     }
 }
 
-fn PoisonOnFail(failed: &'r mut bool) -> PoisonOnFail {
+fn PoisonOnFail<'r>(failed: &'r mut bool) -> PoisonOnFail {
     PoisonOnFail {
         failed: ptr::to_mut_unsafe_ptr(failed)
     }
@@ -313,7 +313,9 @@ pub impl<T:Const + Owned> RWARC<T> {
     }
     /// As write(), but with a condvar, as sync::rwlock.write_cond().
     #[inline(always)]
-    fn write_cond<U>(&self, blk: &fn(x: &'x mut T, c: &'c Condvar) -> U) -> U {
+    fn write_cond<'x, 'c, U>(&self,
+                             blk: &fn(x: &'x mut T, c: &'c Condvar) -> U)
+                          -> U {
         unsafe {
             let state = get_shared_mutable_state(&self.x);
             do (*borrow_rwlock(state)).write_cond |cond| {
@@ -375,7 +377,7 @@ pub impl<T:Const + Owned> RWARC<T> {
     }
 
     /// To be called inside of the write_downgrade block.
-    fn downgrade(&self, token: RWWriteMode<'a, T>) -> RWReadMode<'a, T> {
+    fn downgrade<'a>(&self, token: RWWriteMode<'a, T>) -> RWReadMode<'a, T> {
         // The rwlock should assert that the token belongs to us for us.
         let state = unsafe { get_shared_immutable_state(&self.x) };
         let RWWriteMode {
@@ -420,7 +422,7 @@ pub struct RWReadMode<'self, T> {
     token: sync::RWlockReadMode<'self>,
 }
 
-pub impl<T:Const + Owned> RWWriteMode<'self, T> {
+pub impl<'self, T:Const + Owned> RWWriteMode<'self, T> {
     /// Access the pre-downgrade RWARC in write mode.
     fn write<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
         match *self {
@@ -436,7 +438,9 @@ pub impl<T:Const + Owned> RWWriteMode<'self, T> {
         }
     }
     /// Access the pre-downgrade RWARC in write mode with a condvar.
-    fn write_cond<U>(&self, blk: &fn(x: &'x mut T, c: &'c Condvar) -> U) -> U {
+    fn write_cond<'x, 'c, U>(&self,
+                             blk: &fn(x: &'x mut T, c: &'c Condvar) -> U)
+                          -> U {
         match *self {
             RWWriteMode {
                 data: ref data,
@@ -458,7 +462,7 @@ pub impl<T:Const + Owned> RWWriteMode<'self, T> {
     }
 }
 
-pub impl<T:Const + Owned> RWReadMode<'self, T> {
+pub impl<'self, T:Const + Owned> RWReadMode<'self, T> {
     /// Access the post-downgrade rwlock in read mode.
     fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
         match *self {

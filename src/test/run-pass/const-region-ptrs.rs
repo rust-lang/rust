@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-struct Pair { a: int, b: &'self int }
+struct Pair<'self> { a: int, b: &'self int }
 
 static x: &'static int = &10;
 

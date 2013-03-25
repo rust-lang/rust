@@ -69,7 +69,7 @@ impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
     }
 }
 
-impl<A:ToStr> ToStr for &'self [A] {
+impl<'self,A:ToStr> ToStr for &'self [A] {
     #[inline(always)]
     fn to_str(&self) -> ~str {
         unsafe {

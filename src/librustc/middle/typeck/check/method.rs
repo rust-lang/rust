@@ -152,7 +152,7 @@ pub fn lookup(
     return mme;
 }
 
-pub struct LookupContext {
+pub struct LookupContext<'self> {
     fcx: @mut FnCtxt,
     expr: @ast::expr,
     self_expr: @ast::expr,
