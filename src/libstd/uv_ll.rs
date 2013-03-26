@@ -375,10 +375,14 @@ pub mod uv_ll_struct_stubgen {
     #[cfg(target_os = "freebsd")]
     use super::{
         uv_async_t_32bit_unix_riders,
-        uv_tcp_t_32bit_unix_riders,
         uv_timer_t_32bit_unix_riders,
         uv_write_t_32bit_unix_riders,
     };
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
+    #[cfg(target_os = "freebsd")]
+    use super::uv_tcp_t_32bit_unix_riders;
 
     pub fn gen_stub_uv_tcp_t() -> uv_tcp_t {
         return gen_stub_os();

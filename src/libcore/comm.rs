@@ -429,7 +429,7 @@ pub fn try_send_one<T: Owned>(chan: ChanOne<T>, data: T)
 
 #[cfg(test)]
 pub mod test {
-    use either::{Either, Left, Right};
+    use either::Right;
     use super::{Chan, Port, oneshot, recv_one, stream};
 
     #[test]

@@ -12,7 +12,7 @@ use core::prelude::*;
 
 use ast::*;
 use ast;
-use ast_util::{inlined_item_utils, path_to_ident, stmt_id};
+use ast_util::{inlined_item_utils, stmt_id};
 use ast_util;
 use attr;
 use codemap;

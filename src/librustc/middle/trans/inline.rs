@@ -14,14 +14,14 @@ use metadata::csearch;
 use middle::astencode;
 use middle::trans::base::{get_insn_ctxt};
 use middle::trans::base::{impl_owned_self, impl_self, no_self};
-use middle::trans::base::{trans_item, get_item_val, self_arg, trans_fn};
+use middle::trans::base::{trans_item, get_item_val, trans_fn};
 use middle::trans::common::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
 use core::vec;
 use syntax::ast;
-use syntax::ast_map::{path, path_mod, path_name};
+use syntax::ast_map::path_name;
 use syntax::ast_util::local_def;
 
 // `translate` will be true if this function is allowed to translate the

@@ -958,9 +958,9 @@ pub mod rt {
 
 #[cfg(test)]
 pub mod test {
-    use either::{Either, Left, Right};
+    use either::Right;
     use comm::{Chan, Port, oneshot, recv_one, stream, Select2,
-               GenericPort, GenericChan, Peekable};
+               GenericChan, Peekable};
 
     #[test]
     pub fn test_select2() {

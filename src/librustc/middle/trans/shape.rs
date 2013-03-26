@@ -13,7 +13,7 @@
 
 
 use lib::llvm::llvm;
-use lib::llvm::{True, False, ModuleRef, TypeRef, ValueRef};
+use lib::llvm::{True, ModuleRef, ValueRef};
 use middle::trans::common::*;
 use middle::trans;
 

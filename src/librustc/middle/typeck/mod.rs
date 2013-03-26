@@ -58,11 +58,11 @@ use util::ppaux;
 use core::hashmap::linear::LinearMap;
 use core::result;
 use core::vec;
-use std::list::{List, Nil, Cons};
+use std::list::List;
 use std::list;
-use syntax::codemap::{span, spanned, respan};
+use syntax::codemap::span;
 use syntax::print::pprust::*;
-use syntax::{ast, ast_util, ast_map};
+use syntax::{ast, ast_map};
 
 #[path = "check/mod.rs"]
 pub mod check;

@@ -20,7 +20,7 @@ use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter};
 use metadata::tyencode;
 use middle::freevars::freevar_entry;
-use middle::typeck::{method_origin, method_map_entry, vtable_res};
+use middle::typeck::{method_origin, method_map_entry};
 use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;

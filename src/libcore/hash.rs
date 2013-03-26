@@ -20,7 +20,7 @@
  */
 
 use io;
-use io::{Writer, WriterUtil};
+use io::Writer;
 use to_bytes::IterBytes;
 use uint;
 use vec;

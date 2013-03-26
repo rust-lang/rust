@@ -9,8 +9,6 @@
 // except according to those terms.
 
 use prelude::*;
-use super::super::sched::*;
-use super::super::rtio::*;
 use super::Stream;
 
 pub struct FileStream;

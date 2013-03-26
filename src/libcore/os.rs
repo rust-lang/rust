@@ -29,7 +29,7 @@
 use cast;
 use io;
 use libc;
-use libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t};
+use libc::{c_char, c_void, c_int, size_t};
 use libc::{mode_t, pid_t, FILE};
 use option;
 use option::{Some, None};
@@ -397,7 +397,7 @@ pub fn pipe() -> Pipe {
         // first, as in rust_run_program.
         let mut fds = Pipe {in: 0 as c_int,
                     out: 0 as c_int };
-        let res = libc::pipe(&mut fds.in, 1024 as c_uint,
+        let res = libc::pipe(&mut fds.in, 1024 as ::libc::c_uint,
                              (libc::O_BINARY | libc::O_NOINHERIT) as c_int);
         fail_unless!((res == 0 as c_int));
         fail_unless!((fds.in != -1 as c_int && fds.in != 0 as c_int));
@@ -431,7 +431,7 @@ pub fn self_exe_path() -> Option<Path> {
                            KERN_PROC as c_int,
                            KERN_PROC_PATHNAME as c_int, -1 as c_int];
                 let mut sz = sz;
-                sysctl(vec::raw::to_ptr(mib), vec::len(mib) as c_uint,
+                sysctl(vec::raw::to_ptr(mib), vec::len(mib) as ::libc::c_uint,
                        buf as *mut c_void, &mut sz, ptr::null(),
                        0u as size_t) == (0 as c_int)
             }
@@ -670,7 +670,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
         #[cfg(target_os = "freebsd")]
         #[cfg(target_os = "macos")]
         unsafe fn get_list(p: &Path) -> ~[~str] {
-            use libc::{DIR, dirent_t};
+            use libc::{dirent_t};
             use libc::{opendir, readdir, closedir};
             extern mod rustrt {
                 unsafe fn rust_list_dir_val(ptr: *dirent_t)
@@ -1257,7 +1257,7 @@ pub mod consts {
 mod tests {
     use libc::{c_int, c_void, size_t};
     use libc;
-    use option::{None, Option, Some};
+    use option::Some;
     use option;
     use os::{as_c_charp, env, getcwd, getenv, make_absolute, real_args};
     use os::{remove_file, setenv};

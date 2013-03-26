@@ -28,7 +28,7 @@ use syntax::ast_util::def_id_of_def;
 use syntax::attr;
 use syntax::codemap;
 use syntax::print::pprust::expr_to_str;
-use syntax::{visit, ast_util, ast_map};
+use syntax::{visit, ast_map};
 
 pub type map = @LinearSet<node_id>;
 

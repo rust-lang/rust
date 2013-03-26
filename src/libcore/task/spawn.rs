@@ -75,7 +75,7 @@
 use cast;
 use cell::Cell;
 use container::Map;
-use comm::{Chan, GenericChan, GenericPort, Port, stream};
+use comm::{Chan, GenericChan};
 use prelude::*;
 use unstable;
 use ptr;
@@ -86,9 +86,11 @@ use task::rt;
 use task::{Failure, ManualThreads, PlatformThread, SchedOpts, SingleThreaded};
 use task::{Success, TaskOpts, TaskResult, ThreadPerCore, ThreadPerTask};
 use task::{ExistingScheduler, SchedulerHandle};
-use task::{default_task_opts, unkillable};
+use task::unkillable;
 use uint;
 use util;
+
+#[cfg(test)] use task::default_task_opts;
 
 macro_rules! move_it (
     { $x:expr } => ( unsafe { let y = *ptr::addr_of(&($x)); y } )

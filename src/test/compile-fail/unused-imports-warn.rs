@@ -19,7 +19,7 @@ use core::util::*;              // shouldn't get errors for not using
 
 // Should get errors for both 'Some' and 'None'
 use core::option::{Some, None}; //~ ERROR unused import
-                                //^~ ERROR unused import
+                                //~^ ERROR unused import
 
 use core::io::ReaderUtil;       //~ ERROR unused import
 // Be sure that if we just bring some methods into scope that they're also
@@ -28,7 +28,7 @@ use core::io::WriterUtil;
 
 // Make sure this import is warned about when at least one of its imported names
 // is unused
-use core::vec::{filter, map};         //~ ERROR unused import
+use core::vec::{filter, map};   //~ ERROR unused import
 
 mod foo {
     pub struct Point{x: int, y: int}

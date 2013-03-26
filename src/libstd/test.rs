@@ -26,7 +26,7 @@ use core::either::Either;
 use core::either;
 use core::io::WriterUtil;
 use core::io;
-use core::comm::{stream, Chan, Port, SharedChan};
+use core::comm::{stream, SharedChan};
 use core::option;
 use core::prelude::*;
 use core::result;

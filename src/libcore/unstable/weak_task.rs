@@ -27,7 +27,9 @@ use unstable::at_exit::at_exit;
 use unstable::finally::Finally;
 use unstable::global::global_data_clone_create;
 use task::rt::{task_id, get_task_id};
-use task::{Task, task, spawn};
+use task::task;
+
+#[cfg(test)] use task::spawn;
 
 type ShutdownMsg = ();
 

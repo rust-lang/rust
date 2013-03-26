@@ -68,7 +68,7 @@ use util::common::indent;
 
 use core::result::{iter_vec2, map_vec2};
 use core::vec;
-use syntax::ast::{Onceness, purity, ret_style};
+use syntax::ast::{Onceness, purity};
 use syntax::ast;
 use syntax::opt_vec;
 use syntax::codemap::span;

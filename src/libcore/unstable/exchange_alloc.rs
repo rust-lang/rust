@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use sys::{TypeDesc, size_of};
-use libc::{c_void, size_t, uintptr_t};
+use libc::{c_void, size_t};
 use c_malloc = libc::malloc;
 use c_free = libc::free;
 use managed::raw::{BoxHeaderRepr, BoxRepr};

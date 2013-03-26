@@ -23,7 +23,7 @@ use libc::c_void;
 use managed;
 use ptr;
 use reflect;
-use reflect::{MovePtr, MovePtrAdaptor, align};
+use reflect::{MovePtr, align};
 use sys;
 use to_str::ToStr;
 use vec::UnboxedVecRepr;

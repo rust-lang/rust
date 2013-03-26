@@ -22,7 +22,7 @@ use metadata::decoder;
 use metadata::tydecode::{parse_ty_data, parse_def_id, parse_bounds_data};
 use middle::{ty, resolve};
 
-use core::hash::{Hash, HashUtil};
+use core::hash::HashUtil;
 use core::int;
 use core::io::WriterUtil;
 use core::io;

@@ -23,7 +23,7 @@
 
 use core::cast;
 use core::cell::Cell;
-use core::comm::{oneshot, ChanOne, PortOne, send_one, recv_one};
+use core::comm::{oneshot, PortOne, send_one};
 use core::pipes::recv;
 use core::prelude::*;
 use core::task;

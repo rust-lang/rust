@@ -11,9 +11,9 @@
 use core::{ptr, vec, uint};
 use core::option::*;
 use core::libc::c_uint;
-use lib::llvm::{llvm, TypeRef, ValueRef, Integer, Pointer, Float, Double};
+use lib::llvm::{llvm, TypeRef, Integer, Pointer, Float, Double};
 use lib::llvm::{Struct, Array, Attribute};
-use lib::llvm::{StructRetAttribute, ByValAttribute};
+use lib::llvm::{StructRetAttribute};
 use middle::trans::common::*;
 use middle::trans::cabi::*;
 

@@ -9,9 +9,9 @@
 // except according to those terms.
 
 //! An interface for numeric types
-use cmp::{Ord, Eq};
-use ops::{Add, Div, Modulo, Mul, Neg, Sub};
-use option::{None, Option, Some};
+use cmp::Ord;
+use ops::{Div, Mul, Neg};
+use option::Option;
 use kinds::Copy;
 
 pub mod strconv;

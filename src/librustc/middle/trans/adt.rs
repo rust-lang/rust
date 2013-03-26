@@ -54,7 +54,7 @@ use core::libc::c_ulonglong;
 use core::option::{Option, Some, None};
 use core::vec;
 
-use lib::llvm::{ValueRef, TypeRef, True, False};
+use lib::llvm::{ValueRef, TypeRef, True};
 use middle::trans::_match;
 use middle::trans::build::*;
 use middle::trans::common::*;

@@ -13,16 +13,16 @@
 
 use ast::node_id;
 use ast;
-use codemap::{span, CodeMap, FileMap, CharPos, BytePos};
+use codemap::{span, CodeMap};
 use codemap;
 use diagnostic::{span_handler, mk_span_handler, mk_handler, Emitter};
 use parse::attr::parser_attr;
-use parse::lexer::{reader, StringReader};
+use parse::lexer::reader;
 use parse::parser::Parser;
 use parse::token::{ident_interner, mk_ident_interner};
 
 use core::io;
-use core::option::{None, Option, Some};
+use core::option::{None, Option};
 use core::path::Path;
 use core::result::{Err, Ok, Result};
 

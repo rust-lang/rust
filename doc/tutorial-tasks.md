@@ -188,7 +188,7 @@ spawns the child task.
 
 ~~~~
 # use core::task::spawn;
-# use core::comm::{stream, Port, Chan};
+# use core::comm::stream;
 # fn some_expensive_computation() -> int { 42 }
 # let (port, chan) = stream();
 do spawn || {
@@ -208,7 +208,7 @@ computation, then waits for the child's result to arrive on the
 port:
 
 ~~~~
-# use core::comm::{stream, Port, Chan};
+# use core::comm::{stream};
 # fn some_other_expensive_computation() {}
 # let (port, chan) = stream::<int>();
 # chan.send(0);
@@ -277,7 +277,7 @@ might look like the example below.
 
 ~~~
 # use core::task::spawn;
-# use core::comm::{stream, Port, Chan};
+# use core::comm::stream;
 
 // Create a vector of ports, one for each child task
 let ports = do vec::from_fn(3) |init_val| {
