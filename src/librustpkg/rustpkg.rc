@@ -270,14 +270,11 @@ impl Ctx {
         fn sep_name_vers(in: ~str) -> (Option<~str>, Option<~str>) {
             let mut name = None;
             let mut vers = None;
-            let parts = str::split_char(in, '@');
 
-            if parts.len() >= 1 {
-                name = Some(parts[0]);
-
-                if parts.len() >= 2 {
-                    vers = Some(parts[1]);
-                }
+            for str::each_split_char(in, '@') |s| {
+                if      name.is_none() { name = Some(s.to_owned()); }
+                else if vers.is_none() { vers = Some(s.to_owned()); }
+                else                   { break;               }
             }
 
             (name, vers)
@@ -733,8 +730,12 @@ impl Ctx {
 
         for package.bins.each |&bin| {
             let path = Path(bin);
-            let name = str::split_char(path.file_path().to_str(), '-')[0];
-            let out = bin_dir.push(name);
+            let mut name = None;
+            for str::each_split_char(path.file_path().to_str(), '-') |s| {
+                name = Some(s.to_owned());
+                break;
+            }
+            let out = bin_dir.push(name.unwrap());
 
             util::link_exe(&path, &out);
             util::note(fmt!("linked %s", out.to_str()));
@@ -847,8 +848,12 @@ impl Ctx {
 
         for package.bins.each |&bin| {
             let path = Path(bin);
-            let name = str::split_char(path.file_path().to_str(), '-')[0];
-            let out = bin_dir.push(name);
+            let mut name = None;
+            for str::each_split_char(path.file_path().to_str(), '-') |s| {
+                name = Some(s.to_owned());
+                break;
+            }
+            let out = bin_dir.push(name.unwrap());
 
             if os::path_exists(&out) {
                 if os::remove_file(&out) {

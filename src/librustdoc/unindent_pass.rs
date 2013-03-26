@@ -33,7 +33,8 @@ pub fn mk_pass() -> Pass {
 }
 
 fn unindent(s: &str) -> ~str {
-    let lines = str::lines_any(s);
+    let mut lines = ~[];
+    for str::each_line_any(s) |line| { lines.push(line.to_owned()); }
     let mut saw_first_line = false;
     let mut saw_second_line = false;
     let min_indent = do vec::foldl(uint::max_value, lines)
