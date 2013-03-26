@@ -17,7 +17,7 @@ use ast::{item_enum, item_impl, item_struct, Generics};
 use ast::{m_imm, meta_item, method};
 use ast::{named_field, or, pat, pat_ident, pat_wild, public, pure_fn};
 use ast::{stmt, struct_def, struct_variant_kind};
-use ast::{sty_by_ref, sty_region, tuple_variant_kind, ty_nil, TyParam};
+use ast::{sty_region, tuple_variant_kind, ty_nil, TyParam};
 use ast::{TyParamBound, ty_path, ty_rptr, unnamed_field, variant};
 use ext::base::ext_ctxt;
 use ext::build;

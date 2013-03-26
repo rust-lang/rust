@@ -737,20 +737,7 @@ pub impl VisitContext {
                     receiver_expr: @expr,
                     visitor: vt<VisitContext>)
     {
-        let callee_mode = match self.method_map.find(&expr_id) {
-            Some(ref method_map_entry) => {
-                match method_map_entry.explicit_self {
-                    sty_by_ref => by_ref,
-                    _ => by_copy
-                }
-            }
-            None => {
-                self.tcx.sess.span_bug(
-                    span,
-                    ~"no method map entry");
-            }
-        };
-        self.use_fn_arg(callee_mode, receiver_expr, visitor);
+        self.use_fn_arg(by_copy, receiver_expr, visitor);
     }
 
     fn use_fn_args(&self,

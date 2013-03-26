@@ -596,7 +596,7 @@ pub fn trans_trait_callee(bcx: block,
 
     let llpair = match explicit_self {
         ast::sty_region(*) => Load(bcx, llpair),
-        ast::sty_static | ast::sty_by_ref | ast::sty_value |
+        ast::sty_static | ast::sty_value |
         ast::sty_box(_) | ast::sty_uniq(_) => llpair
     };
 
@@ -644,21 +644,6 @@ pub fn trans_trait_callee_from_llval(bcx: block,
     match explicit_self {
         ast::sty_static => {
             bcx.tcx().sess.bug(~"shouldn't see static method here");
-        }
-        ast::sty_by_ref => {
-            // We need to pass a pointer to a pointer to the payload.
-            match store {
-                ty::BoxTraitStore |
-                ty::BareTraitStore |
-                ty::UniqTraitStore => {
-                    llself = GEPi(bcx, llbox, [0u, abi::box_field_body]);
-                }
-                ty::RegionTraitStore(_) => {
-                    llself = llbox;
-                }
-            }
-
-            self_mode = ast::by_ref;
         }
         ast::sty_value => {
             bcx.tcx().sess.bug(~"methods with by-value self should not be \

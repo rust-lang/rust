@@ -180,21 +180,6 @@ fn req_loans_in_expr(ex: @ast::expr,
             }
         }
 
-        match self.bccx.method_map.find(&ex.id) {
-            Some(ref method_map_entry) => {
-                match (*method_map_entry).explicit_self {
-                    ast::sty_by_ref => {
-                        let rcvr_cmt = self.bccx.cat_expr(rcvr);
-                        self.guarantee_valid(rcvr_cmt, m_imm, scope_r);
-                    }
-                    _ => {} // Nothing to do.
-                }
-            }
-            None => {
-                self.tcx().sess.span_bug(ex.span, ~"no method map entry");
-            }
-        }
-
         visit::visit_expr(ex, self, vt);
       }
 
