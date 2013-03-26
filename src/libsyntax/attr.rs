@@ -19,7 +19,6 @@ use codemap::BytePos;
 use diagnostic::span_handler;
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
 
-use core::cmp;
 use core::either::Either;
 use core::vec;
 use core::hashmap::linear::LinearSet;
@@ -325,18 +324,12 @@ pub fn foreign_abi(attrs: &[ast::attribute])
     };
 }
 
+#[deriving(Eq)]
 pub enum inline_attr {
     ia_none,
     ia_hint,
     ia_always,
     ia_never,
-}
-
-impl cmp::Eq for inline_attr {
-    fn eq(&self, other: &inline_attr) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    fn ne(&self, other: &inline_attr) -> bool { !(*self).eq(other) }
 }
 
 /// True if something like #[inline] is found in the list of attrs.
