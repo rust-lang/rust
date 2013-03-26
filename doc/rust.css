@@ -102,3 +102,8 @@ td {
     list-style: none;
     padding-left: 0px;
 }
+
+/* Adjust list alignment so rustdoc indexes don't align with blockquotes */
+div.index ul {
+    padding-left: 1em;
+}

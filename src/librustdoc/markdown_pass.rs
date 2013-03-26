@@ -249,6 +249,11 @@ pub fn header_name(doc: doc::ItemTag) -> ~str {
       }
       &doc::ImplTag(ref doc) => {
         fail_unless!(doc.self_ty.is_some());
+          let bounds = if (&doc.bounds_str).is_some() {
+              fmt!(" where %s", (&doc.bounds_str).get())
+          } else {
+              ~""
+          };
         let self_ty = (&doc.self_ty).get();
         let mut trait_part = ~"";
         for doc.trait_types.eachi |i, trait_type| {
@@ -259,7 +264,7 @@ pub fn header_name(doc: doc::ItemTag) -> ~str {
             }
             trait_part += *trait_type;
         }
-        fmt!("%s for %s", trait_part, self_ty)
+        fmt!("%s for %s%s", trait_part, self_ty, bounds)
       }
       _ => {
         doc.name()
@@ -271,11 +276,18 @@ pub fn header_text(doc: doc::ItemTag) -> ~str {
     match &doc {
       &doc::ImplTag(ref ImplDoc) => {
         let header_kind = header_kind(copy doc);
+          let bounds = if (&ImplDoc.bounds_str).is_some() {
+              fmt!(" where `%s`", (&ImplDoc.bounds_str).get())
+          } else {
+              ~""
+          };
         let desc = if ImplDoc.trait_types.is_empty() {
-            fmt!("for `%s`", (&ImplDoc.self_ty).get())
+            fmt!("for `%s`%s", (&ImplDoc.self_ty).get(), bounds)
         } else {
-            fmt!("of `%s` for `%s`", ImplDoc.trait_types[0],
-                 (&ImplDoc.self_ty).get())
+            fmt!("of `%s` for `%s`%s",
+                 ImplDoc.trait_types[0],
+                 (&ImplDoc.self_ty).get(),
+                 bounds)
         };
         return fmt!("%s %s", header_kind, desc);
       }
@@ -424,6 +436,9 @@ fn write_index(ctxt: &Ctxt, index: doc::Index) {
         return;
     }
 
+    ctxt.w.put_line(~"<div class='index'>");
+    ctxt.w.put_line(~"");
+
     for index.entries.each |entry| {
         let header = header_text_(entry.kind, entry.name);
         let id = copy entry.link;
@@ -434,6 +449,8 @@ fn write_index(ctxt: &Ctxt, index: doc::Index) {
             ctxt.w.put_line(fmt!("* [%s](%s)", header, id));
         }
     }
+    ctxt.w.put_line(~"");
+    ctxt.w.put_line(~"</div>");
     ctxt.w.put_line(~"");
 }
 
@@ -747,6 +764,12 @@ fn write_impl(ctxt: &Ctxt, doc: doc::ImplDoc) {
 fn should_write_impl_header() {
     let markdown = test::render(~"impl int { fn a() { } }");
     fail_unless!(str::contains(markdown, ~"## Implementation for `int`"));
+}
+
+#[test]
+fn should_write_impl_header_with_bounds() {
+    let markdown = test::render(~"impl <T> int<T> { }");
+    fail_unless!(str::contains(markdown, ~"## Implementation for `int<T>` where `<T>`"));
 }
 
 #[test]
