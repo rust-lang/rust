@@ -551,9 +551,11 @@ fn write_sig(ctxt: &Ctxt, sig: Option<~str>) {
 }
 
 fn code_block_indent(s: ~str) -> ~str {
-    let lines = str::lines_any(s);
-    let indented = vec::map(lines, |line| fmt!("    %s", *line) );
-    str::connect(indented, ~"\n")
+    let mut indented = ~[];
+    for str::each_line_any(s) |line| {
+        indented.push(fmt!("    %s", line));
+    }
+    str::connect(indented, "\n")
 }
 
 #[test]

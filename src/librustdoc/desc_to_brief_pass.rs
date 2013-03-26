@@ -183,7 +183,8 @@ fn first_sentence_(s: &str) -> ~str {
 }
 
 fn paragraphs(s: &str) -> ~[~str] {
-    let lines = str::lines_any(s);
+    let mut lines = ~[];
+    for str::each_line_any(s) |line| { lines.push(line.to_owned()); }
     let mut whitespace_lines = 0;
     let mut accum = ~"";
     let paras = do vec::foldl(~[], lines) |paras, line| {

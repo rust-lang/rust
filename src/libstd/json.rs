@@ -806,7 +806,8 @@ impl serialize::Decoder for Decoder<'self> {
     }
 
     fn read_char(&self) -> char {
-        let v = str::chars(self.read_owned_str());
+        let mut v = ~[];
+        for str::each_char(self.read_owned_str()) |c| { v.push(c) }
         if v.len() != 1 { fail!(~"string must have one character") }
         v[0]
     }

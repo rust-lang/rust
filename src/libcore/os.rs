@@ -218,7 +218,8 @@ pub fn env() -> ~[(~str,~str)] {
         fn env_convert(input: ~[~str]) -> ~[(~str, ~str)] {
             let mut pairs = ~[];
             for input.each |p| {
-                let vs = str::splitn_char(*p, '=', 1);
+                let mut vs = ~[];
+                for str::each_splitn_char(*p, '=', 1) |s| { vs.push(s.to_owned()) }
                 debug!("splitting: len: %u",
                     vs.len());
                 fail_unless!(vs.len() == 2);

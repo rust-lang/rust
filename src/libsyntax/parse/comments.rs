@@ -99,7 +99,8 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         }
 
         return do lines.map |line| {
-            let chars = str::chars(*line);
+            let mut chars = ~[];
+            for str::each_char(*line) |c| { chars.push(c) }
             if i > chars.len() {
                 ~""
             } else {
@@ -116,7 +117,10 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
     }
 
     if comment.starts_with(~"/*") {
-        let lines = str::lines_any(comment.slice(3u, comment.len() - 2u).to_owned());
+        let mut lines = ~[];
+        for str::each_line_any(comment.slice(3u, comment.len() - 2u)) |line| {
+            lines.push(line.to_owned())
+        }
         let lines = vertical_trim(lines);
         let lines = block_trim(lines, ~"\t ", None);
         let lines = block_trim(lines, ~"*", Some(1u));
