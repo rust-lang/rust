@@ -98,6 +98,8 @@ impl<T> Map<int, T> for cat<T> {
         }
     }
 
+    fn find_mut(&mut self, k: &int) -> Option<&'self mut T> { fail!() }
+
     fn remove(&mut self, k: &int) -> bool {
         if self.find(k).is_some() {
             self.meows -= *k; true

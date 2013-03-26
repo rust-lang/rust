@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A radix trie for storing integers in sorted order
+//! An ordered map and set for integer keys implemented as a radix trie
 
 use prelude::*;
 
@@ -90,7 +90,7 @@ impl<T> Map<uint, T> for TrieMap<T> {
         self.root.mutate_values(f);
     }
 
-    /// Return the value corresponding to the key in the map
+    /// Return a reference to the value corresponding to the key
     #[inline(hint)]
     fn find(&self, key: &uint) -> Option<&'self T> {
         let mut node: &'self TrieNode<T> = &self.root;
@@ -109,6 +109,12 @@ impl<T> Map<uint, T> for TrieMap<T> {
             }
             idx += 1;
         }
+    }
+
+    /// Return a mutable reference to the value corresponding to the key
+    #[inline(always)]
+    fn find_mut(&mut self, key: &uint) -> Option<&'self mut T> {
+        find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
     }
 
     /// Insert a key-value pair into the map. An existing value for a
@@ -276,6 +282,17 @@ fn chunk(n: uint, idx: uint) -> uint {
     (n >> sh) & MASK
 }
 
+fn find_mut<T>(child: &'r mut Child<T>, key: uint, idx: uint) -> Option<&'r mut T> {
+    unsafe { // FIXME(#4903)---requires flow-sensitive borrow checker
+        (match *child {
+            External(_, ref value) => Some(cast::transmute_mut(value)),
+            Internal(ref x) => find_mut(cast::transmute_mut(&x.children[chunk(key, idx)]),
+                                        key, idx + 1),
+            Nothing => None
+        }).map_consume(|x| cast::transmute_mut_region(x))
+    }
+}
+
 fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
              idx: uint) -> bool {
     let mut tmp = Nothing;
@@ -357,7 +374,21 @@ pub fn check_integrity<T>(trie: &TrieNode<T>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::option::{Some, None};
     use uint;
+
+    #[test]
+    fn test_find_mut() {
+        let mut m = TrieMap::new();
+        fail_unless!(m.insert(1, 12));
+        fail_unless!(m.insert(2, 8));
+        fail_unless!(m.insert(5, 14));
+        let new = 100;
+        match m.find_mut(&5) {
+            None => fail!(), Some(x) => *x = new
+        }
+        assert_eq!(m.find(&5), Some(&new));
+    }
 
     #[test]
     fn test_step() {
