@@ -42,7 +42,6 @@ use ptr;
 use libc::{c_void, c_int, size_t, malloc, free, ssize_t};
 use cast::{transmute, transmute_mut_region};
 use ptr::null;
-use sys::size_of;
 use super::uvll;
 use super::uvll::*;
 use unstable::finally::Finally;

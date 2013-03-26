@@ -124,12 +124,12 @@ pub fn check_expr(sess: Session,
                               items without type parameters");
             }
             match def_map.find(&e.id) {
-              Some(def_const(_)) |
-              Some(def_fn(_, _)) |
-              Some(def_variant(_, _)) |
-              Some(def_struct(_)) => { }
+              Some(&def_const(_)) |
+              Some(&def_fn(_, _)) |
+              Some(&def_variant(_, _)) |
+              Some(&def_struct(_)) => { }
 
-              Some(def) => {
+              Some(&def) => {
                 debug!("(checking const) found bad def: %?", def);
                 sess.span_err(
                     e.span,
@@ -143,8 +143,8 @@ pub fn check_expr(sess: Session,
           }
           expr_call(callee, _, NoSugar) => {
             match def_map.find(&callee.id) {
-                Some(def_struct(*)) => {}    // OK.
-                Some(def_variant(*)) => {}    // OK.
+                Some(&def_struct(*)) => {}    // OK.
+                Some(&def_variant(*)) => {}    // OK.
                 _ => {
                     sess.span_err(
                         e.span,
@@ -238,9 +238,9 @@ pub fn check_item_recursion(sess: Session,
         match e.node {
           expr_path(*) => {
             match env.def_map.find(&e.id) {
-              Some(def_const(def_id)) => {
+              Some(&def_const(def_id)) => {
                 if ast_util::is_local(def_id) {
-                  match env.ast_map.get(&def_id.node) {
+                  match *env.ast_map.get(&def_id.node) {
                     ast_map::node_item(it, _) => {
                       (v.visit_item)(it, env, v);
                     }

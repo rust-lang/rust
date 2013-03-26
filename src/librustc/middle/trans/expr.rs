@@ -150,7 +150,7 @@ use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn,
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
-use std::oldmap::HashMap;
+use core::hashmap::linear::LinearMap;
 use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
 use syntax::codemap;
@@ -198,14 +198,14 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         None => {
             trans_to_datum_unadjusted(bcx, expr)
         }
-        Some(@AutoAddEnv(*)) => {
+        Some(&@AutoAddEnv(*)) => {
             let mut bcx = bcx;
             let mut datum = unpack_datum!(bcx, {
                 trans_to_datum_unadjusted(bcx, expr)
             });
             add_env(bcx, expr, datum)
         }
-        Some(@AutoDerefRef(ref adj)) => {
+        Some(&@AutoDerefRef(ref adj)) => {
             let mut bcx = bcx;
             let mut datum = unpack_datum!(bcx, {
                 trans_to_datum_unadjusted(bcx, expr)
@@ -925,7 +925,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     // at the end of the scope with id `scope_id`:
     let root_key = root_map_key { id: expr.id, derefs: 0u };
     for bcx.ccx().maps.root_map.find(&root_key).each |&root_info| {
-        bcx = unrooted_datum.root(bcx, root_info);
+        bcx = unrooted_datum.root(bcx, *root_info);
     }
 
     return DatumBlock {bcx: bcx, datum: unrooted_datum};
@@ -1131,7 +1131,7 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
             // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
             match bcx.fcx.llupvars.find(&nid) {
-                Some(val) => {
+                Some(&val) => {
                     Datum {
                         val: val,
                         ty: local_ty,
@@ -1146,10 +1146,10 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
             }
         }
         ast::def_arg(nid, _, _) => {
-            take_local(bcx, *bcx.fcx.llargs, nid)
+            take_local(bcx, bcx.fcx.llargs, nid)
         }
         ast::def_local(nid, _) | ast::def_binding(nid, _) => {
-            take_local(bcx, *bcx.fcx.lllocals, nid)
+            take_local(bcx, bcx.fcx.lllocals, nid)
         }
         ast::def_self(nid, _) => {
             let self_info: ValSelfData = match bcx.fcx.llself {
@@ -1181,11 +1181,11 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
     };
 
     fn take_local(bcx: block,
-                  table: HashMap<ast::node_id, local_val>,
+                  table: &LinearMap<ast::node_id, local_val>,
                   nid: ast::node_id) -> Datum {
         let (v, mode) = match table.find(&nid) {
-            Some(local_mem(v)) => (v, ByRef),
-            Some(local_imm(v)) => (v, ByValue),
+            Some(&local_mem(v)) => (v, ByRef),
+            Some(&local_imm(v)) => (v, ByValue),
             None => {
                 bcx.sess().bug(fmt!(
                     "trans_local_var: no llval for local/arg %? found", nid));
@@ -1227,7 +1227,7 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
                         ty_to_str(tcx, ty)));
                 }
                 Some(node_id) => {
-                    match tcx.def_map.get(&node_id) {
+                    match *tcx.def_map.get(&node_id) {
                         ast::def_variant(enum_id, variant_id) => {
                             let variant_info = ty::enum_variant_with_id(
                                 tcx, enum_id, variant_id);
@@ -1647,7 +1647,7 @@ fn trans_overloaded_op(bcx: block,
                        dest: Dest,
                        +autoref_arg: AutorefArg) -> block
 {
-    let origin = bcx.ccx().maps.method_map.get(&expr.id);
+    let origin = *bcx.ccx().maps.method_map.get(&expr.id);
     let fty = node_id_type(bcx, expr.callee_id);
     return callee::trans_call_inner(
         bcx, expr.info(), fty,

@@ -113,8 +113,8 @@ pub fn check_crate(tcx: ty::ctxt,
             @fn(span: span, method_id: node_id) -> def_id =
             |span, method_id| {
         match tcx.items.find(&method_id) {
-            Some(node_method(_, impl_id, _)) => impl_id,
-            Some(node_trait_method(_, trait_id, _)) => trait_id,
+            Some(&node_method(_, impl_id, _)) => impl_id,
+            Some(&node_trait_method(_, trait_id, _)) => trait_id,
             Some(_) => {
                 tcx.sess.span_bug(span,
                                   fmt!("method was a %s?!",
@@ -148,7 +148,7 @@ pub fn check_crate(tcx: ty::ctxt,
                 }
 
                 match tcx.items.find(&container_id.node) {
-                    Some(node_item(item, _)) => {
+                    Some(&node_item(item, _)) => {
                         match item.node {
                             item_impl(_, None, _, _)
                                     if item.vis != public => {
@@ -170,10 +170,10 @@ pub fn check_crate(tcx: ty::ctxt,
         };
 
         match tcx.items.find(&method_id) {
-            Some(node_method(method, impl_id, _)) => {
+            Some(&node_method(method, impl_id, _)) => {
                 check(method.vis, impl_id)
             }
-            Some(node_trait_method(trait_method, trait_id, _)) => {
+            Some(&node_trait_method(trait_method, trait_id, _)) => {
                 match *trait_method {
                     required(_) => check(public, trait_id),
                     provided(method) => check(method.vis, trait_id),
@@ -200,16 +200,16 @@ pub fn check_crate(tcx: ty::ctxt,
         let mut f: &fn(node_id) -> bool = |_| false;
         f = |item_id| {
             match tcx.items.find(&item_id) {
-                Some(node_item(item, _)) => item.vis != public,
-                Some(node_foreign_item(_, _, vis, _)) => vis != public,
-                Some(node_method(method, impl_did, _)) => {
+                Some(&node_item(item, _)) => item.vis != public,
+                Some(&node_foreign_item(_, _, vis, _)) => vis != public,
+                Some(&node_method(method, impl_did, _)) => {
                     match method.vis {
                         private => true,
                         public => false,
                         inherited => f(impl_did.node)
                     }
                 }
-                Some(node_trait_method(_, trait_did, _)) => f(trait_did.node),
+                Some(&node_trait_method(_, trait_did, _)) => f(trait_did.node),
                 Some(_) => {
                     tcx.sess.span_bug(span,
                                       fmt!("local_item_is_private: item was \
@@ -332,7 +332,7 @@ pub fn check_crate(tcx: ty::ctxt,
             method_super(trait_id, method_num) => {
                 if trait_id.crate == local_crate {
                     match tcx.items.find(&trait_id.node) {
-                        Some(node_item(item, _)) => {
+                        Some(&node_item(item, _)) => {
                             match item.node {
                                 item_trait(_, _, ref methods) => {
                                     if method_num >= (*methods).len() {
@@ -484,7 +484,7 @@ pub fn check_crate(tcx: ty::ctxt,
                     }
                 }
                 expr_path(path) => {
-                    check_path(expr.span, tcx.def_map.get(&expr.id), path);
+                    check_path(expr.span, *tcx.def_map.get(&expr.id), path);
                 }
                 expr_struct(_, ref fields, _) => {
                     match ty::get(ty::expr_ty(tcx, expr)).sty {
@@ -502,7 +502,7 @@ pub fn check_crate(tcx: ty::ctxt,
                         ty_enum(id, _) => {
                             if id.crate != local_crate ||
                                     !privileged_items.contains(&(id.node)) {
-                                match tcx.def_map.get(&expr.id) {
+                                match *tcx.def_map.get(&expr.id) {
                                     def_variant(_, variant_id) => {
                                         for (*fields).each |field| {
                                                 debug!("(privacy checking) \
@@ -570,7 +570,7 @@ pub fn check_crate(tcx: ty::ctxt,
                                     !privileged_items.contains(
                                         &enum_id.node) {
                                 match tcx.def_map.find(&pattern.id) {
-                                    Some(def_variant(_, variant_id)) => {
+                                    Some(&def_variant(_, variant_id)) => {
                                         for fields.each |field| {
                                             debug!("(privacy checking) \
                                                     checking field in \

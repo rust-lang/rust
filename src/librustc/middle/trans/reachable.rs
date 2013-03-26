@@ -21,7 +21,7 @@ use middle::ty;
 use middle::typeck;
 
 use core::prelude::*;
-use std::oldmap::HashMap;
+use core::hashmap::linear::LinearSet;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_util::def_id_of_def;
@@ -30,27 +30,29 @@ use syntax::codemap;
 use syntax::print::pprust::expr_to_str;
 use syntax::{visit, ast_util, ast_map};
 
-pub type map = HashMap<node_id, ()>;
+pub type map = @LinearSet<node_id>;
 
 struct ctx {
     exp_map2: resolve::ExportMap2,
     tcx: ty::ctxt,
     method_map: typeck::method_map,
-    rmap: map
+    rmap: &'self mut LinearSet<node_id>,
 }
 
 pub fn find_reachable(crate_mod: &_mod, exp_map2: resolve::ExportMap2,
                       tcx: ty::ctxt, method_map: typeck::method_map) -> map {
-    let rmap = HashMap();
-    let cx = ctx {
-        exp_map2: exp_map2,
-        tcx: tcx,
-        method_map: method_map,
-        rmap: rmap
-    };
-    traverse_public_mod(cx, ast::crate_node_id, crate_mod);
-    traverse_all_resources_and_impls(cx, crate_mod);
-    rmap
+    let mut rmap = LinearSet::new();
+    {
+        let cx = ctx {
+            exp_map2: exp_map2,
+            tcx: tcx,
+            method_map: method_map,
+            rmap: &mut rmap
+        };
+        traverse_public_mod(cx, ast::crate_node_id, crate_mod);
+        traverse_all_resources_and_impls(cx, crate_mod);
+    }
+    return @rmap;
 }
 
 fn traverse_exports(cx: ctx, mod_id: node_id) -> bool {
@@ -69,20 +71,17 @@ fn traverse_exports(cx: ctx, mod_id: node_id) -> bool {
 
 fn traverse_def_id(cx: ctx, did: def_id) {
     if did.crate != local_crate { return; }
-    let n = match cx.tcx.items.find(&did.node) {
-        None => return, // This can happen for self, for example
-        Some(ref n) => (/*bad*/copy *n)
-    };
-    match n {
-      ast_map::node_item(item, _) => traverse_public_item(cx, item),
-      ast_map::node_method(_, impl_id, _) => traverse_def_id(cx, impl_id),
-      ast_map::node_foreign_item(item, _, _, _) => {
-        cx.rmap.insert(item.id, ());
-      }
-      ast_map::node_variant(ref v, _, _) => {
-        cx.rmap.insert((*v).node.id, ());
-      }
-      _ => ()
+    match cx.tcx.items.find(&did.node) {
+        None => (), // This can happen for self, for example
+        Some(&ast_map::node_item(item, _)) => traverse_public_item(cx, item),
+        Some(&ast_map::node_method(_, impl_id, _)) => traverse_def_id(cx, impl_id),
+        Some(&ast_map::node_foreign_item(item, _, _, _)) => {
+            cx.rmap.insert(item.id);
+        }
+        Some(&ast_map::node_variant(ref v, _, _)) => {
+            cx.rmap.insert(v.node.id);
+        }
+        _ => ()
     }
 }
 
@@ -96,14 +95,16 @@ fn traverse_public_mod(cx: ctx, mod_id: node_id, m: &_mod) {
 }
 
 fn traverse_public_item(cx: ctx, item: @item) {
-    if cx.rmap.contains_key(&item.id) { return; }
-    cx.rmap.insert(item.id, ());
+    // XXX: it shouldn't be necessary to do this
+    let rmap: &mut LinearSet<node_id> = cx.rmap;
+    if rmap.contains(&item.id) { return; }
+    rmap.insert(item.id);
     match item.node {
       item_mod(ref m) => traverse_public_mod(cx, item.id, m),
       item_foreign_mod(ref nm) => {
           if !traverse_exports(cx, item.id) {
               for nm.items.each |item| {
-                  cx.rmap.insert(item.id, ());
+                  cx.rmap.insert(item.id);
               }
           }
       }
@@ -119,17 +120,17 @@ fn traverse_public_item(cx: ctx, item: @item) {
                 m.generics.ty_params.len() > 0u ||
                 attr::find_inline_attr(m.attrs) != attr::ia_none
             {
-                cx.rmap.insert(m.id, ());
+                cx.rmap.insert(m.id);
                 traverse_inline_body(cx, &m.body);
             }
         }
       }
       item_struct(ref struct_def, ref generics) => {
         for struct_def.ctor_id.each |&ctor_id| {
-            cx.rmap.insert(ctor_id, ());
+            cx.rmap.insert(ctor_id);
         }
         for struct_def.dtor.each |dtor| {
-            cx.rmap.insert(dtor.node.id, ());
+            cx.rmap.insert(dtor.node.id);
             if generics.ty_params.len() > 0u ||
                 attr::find_inline_attr(dtor.node.attrs) != attr::ia_none
             {
@@ -151,17 +152,19 @@ fn mk_ty_visitor() -> visit::vt<ctx> {
                                   ..*visit::default_visitor()})
 }
 
-fn traverse_ty(ty: @Ty, cx: ctx, v: visit::vt<ctx>) {
-    if cx.rmap.contains_key(&ty.id) { return; }
-    cx.rmap.insert(ty.id, ());
+fn traverse_ty(ty: @Ty, cx: ctx<'a>, v: visit::vt<ctx<'a>>) {
+    // XXX: it shouldn't be necessary to do this
+    let rmap: &mut LinearSet<node_id> = cx.rmap;
+    if rmap.contains(&ty.id) { return; }
+    rmap.insert(ty.id);
 
     match ty.node {
       ty_path(p, p_id) => {
         match cx.tcx.def_map.find(&p_id) {
           // Kind of a hack to check this here, but I'm not sure what else
           // to do
-          Some(def_prim_ty(_)) => { /* do nothing */ }
-          Some(d) => traverse_def_id(cx, def_id_of_def(d)),
+          Some(&def_prim_ty(_)) => { /* do nothing */ }
+          Some(&d) => traverse_def_id(cx, def_id_of_def(d)),
           None    => { /* do nothing -- but should we fail here? */ }
         }
         for p.types.each |t| {
@@ -173,11 +176,11 @@ fn traverse_ty(ty: @Ty, cx: ctx, v: visit::vt<ctx>) {
 }
 
 fn traverse_inline_body(cx: ctx, body: &blk) {
-    fn traverse_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
+    fn traverse_expr(e: @expr, cx: ctx<'a>, v: visit::vt<ctx<'a>>) {
         match e.node {
           expr_path(_) => {
             match cx.tcx.def_map.find(&e.id) {
-                Some(d) => {
+                Some(&d) => {
                   traverse_def_id(cx, def_id_of_def(d));
                 }
                 None      => cx.tcx.sess.span_bug(e.span, fmt!("Unbound node \
@@ -187,7 +190,7 @@ fn traverse_inline_body(cx: ctx, body: &blk) {
           }
           expr_field(_, _, _) => {
             match cx.method_map.find(&e.id) {
-              Some(typeck::method_map_entry {
+              Some(&typeck::method_map_entry {
                   origin: typeck::method_static(did),
                   _
                 }) => {
@@ -198,7 +201,7 @@ fn traverse_inline_body(cx: ctx, body: &blk) {
           }
           expr_method_call(*) => {
             match cx.method_map.find(&e.id) {
-              Some(typeck::method_map_entry {
+              Some(&typeck::method_map_entry {
                   origin: typeck::method_static(did),
                   _
                 }) => {

@@ -112,13 +112,13 @@ use middle::moves;
 use util::ppaux::ty_to_str;
 
 use core::cmp;
+use core::hashmap::linear::LinearMap;
 use core::io::WriterUtil;
 use core::io;
 use core::ptr;
 use core::to_str;
 use core::uint;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast::*;
 use syntax::codemap::span;
 use syntax::parse::token::special_idents;
@@ -135,7 +135,7 @@ use syntax::{visit, ast_util};
 //
 // Very subtle (#2633): borrowck will remove entries from this table
 // if it detects an outstanding loan (that is, the addr is taken).
-pub type last_use_map = HashMap<node_id, @mut ~[node_id]>;
+pub type last_use_map = @mut LinearMap<node_id, @mut ~[node_id]>;
 
 struct Variable(uint);
 struct LiveNode(uint);
@@ -212,7 +212,7 @@ pub fn check_crate(tcx: ty::ctxt,
         .. *visit::default_visitor()
     });
 
-    let last_use_map = HashMap();
+    let last_use_map = @mut LinearMap::new();
     let initial_maps = @mut IrMaps(tcx,
                                    method_map,
                                    variable_moves_map,
@@ -304,9 +304,9 @@ struct IrMaps {
 
     num_live_nodes: uint,
     num_vars: uint,
-    live_node_map: HashMap<node_id, LiveNode>,
-    variable_map: HashMap<node_id, Variable>,
-    capture_info_map: HashMap<node_id, @~[CaptureInfo]>,
+    live_node_map: LinearMap<node_id, LiveNode>,
+    variable_map: LinearMap<node_id, Variable>,
+    capture_info_map: LinearMap<node_id, @~[CaptureInfo]>,
     var_kinds: ~[VarKind],
     lnks: ~[LiveNodeKind],
 }
@@ -325,9 +325,9 @@ fn IrMaps(tcx: ty::ctxt,
         last_use_map: last_use_map,
         num_live_nodes: 0,
         num_vars: 0,
-        live_node_map: HashMap(),
-        variable_map: HashMap(),
-        capture_info_map: HashMap(),
+        live_node_map: LinearMap::new(),
+        variable_map: LinearMap::new(),
+        capture_info_map: LinearMap::new(),
         var_kinds: ~[],
         lnks: ~[]
     }
@@ -374,7 +374,7 @@ pub impl IrMaps {
 
     fn variable(&mut self, node_id: node_id, span: span) -> Variable {
         match self.variable_map.find(&node_id) {
-          Some(var) => var,
+          Some(&var) => var,
           None => {
             self.tcx.sess.span_bug(
                 span, fmt!("No variable registered for id %d", node_id));
@@ -396,7 +396,7 @@ pub impl IrMaps {
 
     fn captures(&mut self, expr: @expr) -> @~[CaptureInfo] {
         match self.capture_info_map.find(&expr.id) {
-          Some(caps) => caps,
+          Some(&caps) => caps,
           None => {
             self.tcx.sess.span_bug(expr.span, ~"no registered caps");
           }
@@ -416,7 +416,7 @@ pub impl IrMaps {
           Local(LocalInfo {id: id, kind: FromLetWithInitializer, _}) |
           Local(LocalInfo {id: id, kind: FromMatch(_), _}) => {
             let v = match self.last_use_map.find(&expr_id) {
-              Some(v) => v,
+              Some(&v) => v,
               None => {
                 let v = @mut ~[];
                 self.last_use_map.insert(expr_id, v);
@@ -562,7 +562,7 @@ fn visit_expr(expr: @expr, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       expr_path(_) => {
-        let def = self.tcx.def_map.get(&expr.id);
+        let def = *self.tcx.def_map.get(&expr.id);
         debug!("expr %d: path that leads to %?", expr.id, def);
         if relevant_def(def).is_some() {
             self.add_live_node_for_node(expr.id, ExprNode(expr.span));
@@ -657,7 +657,7 @@ static ACC_READ: uint = 1u;
 static ACC_WRITE: uint = 2u;
 static ACC_USE: uint = 4u;
 
-type LiveNodeMap = HashMap<node_id, LiveNode>;
+type LiveNodeMap = @mut LinearMap<node_id, LiveNode>;
 
 struct Liveness {
     tcx: ty::ctxt,
@@ -684,15 +684,16 @@ fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
         users: @mut vec::from_elem(ir.num_live_nodes * ir.num_vars,
                                    invalid_users()),
         loop_scope: @mut ~[],
-        break_ln: HashMap(),
-        cont_ln: HashMap()
+        break_ln: @mut LinearMap::new(),
+        cont_ln: @mut LinearMap::new()
     }
 }
 
 pub impl Liveness {
     fn live_node(&self, node_id: node_id, span: span) -> LiveNode {
-        match self.ir.live_node_map.find(&node_id) {
-          Some(ln) => ln,
+        let ir: &mut IrMaps = self.ir;
+        match ir.live_node_map.find(&node_id) {
+          Some(&ln) => ln,
           None => {
             // This must be a mismatch between the ir_map construction
             // above and the propagation code below; the two sets of
@@ -708,7 +709,7 @@ pub impl Liveness {
     fn variable_from_path(&self, expr: @expr) -> Option<Variable> {
         match expr.node {
           expr_path(_) => {
-            let def = self.tcx.def_map.get(&expr.id);
+            let def = *self.tcx.def_map.get(&expr.id);
             relevant_def(def).map(
                 |rdef| self.variable(*rdef, expr.span)
             )
@@ -724,7 +725,7 @@ pub impl Liveness {
     fn variable_from_def_map(&self, node_id: node_id,
                              span: span) -> Option<Variable> {
         match self.tcx.def_map.find(&node_id) {
-          Some(def) => {
+          Some(&def) => {
             relevant_def(def).map(
                 |rdef| self.variable(*rdef, span)
             )
@@ -845,7 +846,7 @@ pub impl Liveness {
             Some(_) => // Refers to a labeled loop. Use the results of resolve
                       // to find with one
                 match self.tcx.def_map.find(&id) {
-                    Some(def_label(loop_id)) => loop_id,
+                    Some(&def_label(loop_id)) => loop_id,
                     _ => self.tcx.sess.span_bug(sp, ~"Label on break/loop \
                                                     doesn't refer to a loop")
                 },
@@ -1226,7 +1227,7 @@ pub impl Liveness {
               // look it up in the break loop nodes table
 
               match self.break_ln.find(&sc) {
-                  Some(b) => b,
+                  Some(&b) => b,
                   None => self.tcx.sess.span_bug(expr.span,
                                 ~"Break to unknown label")
               }
@@ -1240,7 +1241,7 @@ pub impl Liveness {
               // look it up in the continue loop nodes table
 
               match self.cont_ln.find(&sc) {
-                  Some(b) => b,
+                  Some(&b) => b,
                   None => self.tcx.sess.span_bug(expr.span,
                                 ~"Loop to unknown label")
               }
@@ -1448,7 +1449,7 @@ pub impl Liveness {
 
     fn access_path(&self, expr: @expr, succ: LiveNode, acc: uint)
                   -> LiveNode {
-        let def = self.tcx.def_map.get(&expr.id);
+        let def = *self.tcx.def_map.get(&expr.id);
         match relevant_def(def) {
           Some(nid) => {
             let ln = self.live_node(expr.id, expr.span);
@@ -1587,7 +1588,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
 
             match self.ir.variable_moves_map.find(&expr.id) {
                 None => {}
-                Some(entire_expr) => {
+                Some(&entire_expr) => {
                     debug!("(checking expr) is a move: `%s`",
                            expr_to_str(expr, self.tcx.sess.intr()));
                     self.check_move_from_var(ln, *var, entire_expr);
@@ -1723,7 +1724,7 @@ pub impl Liveness {
     fn check_lvalue(@self, expr: @expr, vt: vt<@Liveness>) {
         match expr.node {
           expr_path(_) => {
-            match self.tcx.def_map.get(&expr.id) {
+            match *self.tcx.def_map.get(&expr.id) {
               def_local(nid, false) => {
                 // Assignment to an immutable variable or argument:
                 // only legal if there is no later assignment.

@@ -1202,7 +1202,6 @@ mod tests {
 
     use core::result;
     use core::hashmap::linear::LinearMap;
-    use core::cmp;
 
 
     fn mk_object(items: &[(~str, Json)]) -> Json {

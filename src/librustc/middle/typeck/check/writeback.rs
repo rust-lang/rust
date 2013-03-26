@@ -66,7 +66,7 @@ fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
     // Resolve any method map entry
     match fcx.inh.method_map.find(&id) {
         None => {}
-        Some(ref mme) => {
+        Some(mme) => {
             for resolve_type_vars_in_type(fcx, sp, mme.self_arg.ty).each |t| {
                 let method_map = fcx.ccx.method_map;
                 let new_entry = method_map_entry {
@@ -119,7 +119,7 @@ fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::node_id)
     match fcx.inh.adjustments.find(&id) {
         None => (),
 
-        Some(@ty::AutoAddEnv(r, s)) => {
+        Some(&@ty::AutoAddEnv(r, s)) => {
             match resolve_region(fcx.infcx(), r, resolve_all | force_all) {
                 Err(e) => {
                     // This should not, I think, happen:
@@ -135,7 +135,7 @@ fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::node_id)
             }
         }
 
-        Some(@ty::AutoDerefRef(adj)) => {
+        Some(&@ty::AutoDerefRef(adj)) => {
             let resolved_autoref = match adj.autoref {
                 Some(ref autoref) => {
                     match resolve_region(fcx.infcx(), autoref.region,
@@ -176,18 +176,15 @@ fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::node_id)
         debug!("resolve_type_vars_for_node(id=%d, n_ty=%s, t=%s)",
                id, ppaux::ty_to_str(tcx, n_ty), ppaux::ty_to_str(tcx, t));
         write_ty_to_tcx(tcx, id, t);
-        match fcx.opt_node_ty_substs(id) {
-          Some(ref substs) => {
-            let mut new_tps = ~[];
-            for (*substs).tps.each |subst| {
-                match resolve_type_vars_in_type(fcx, sp, *subst) {
-                  Some(t) => new_tps.push(t),
-                  None => { wbcx.success = false; return None; }
-                }
-            }
-            write_substs_to_tcx(tcx, id, new_tps);
+        for fcx.opt_node_ty_substs(id) |substs| {
+          let mut new_tps = ~[];
+          for substs.tps.each |subst| {
+              match resolve_type_vars_in_type(fcx, sp, *subst) {
+                Some(t) => new_tps.push(t),
+                None => { wbcx.success = false; return None; }
+              }
           }
-          None => ()
+          write_substs_to_tcx(tcx, id, new_tps);
         }
         return Some(t);
       }

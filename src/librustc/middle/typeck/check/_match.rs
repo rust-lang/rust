@@ -18,8 +18,8 @@ use middle::typeck::check::{instantiate_path, lookup_def};
 use middle::typeck::check::{structure_of, valid_range_bounds};
 use middle::typeck::require_same_types;
 
+use core::hashmap::linear::{LinearMap, LinearSet};
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
@@ -228,7 +228,7 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
 /// `class_fields` describes the type of each field of the struct.
 /// `class_id` is the ID of the struct.
 /// `substitutions` are the type substitutions applied to this struct type
-/// (e.g. K,V in HashMap<K,V>).
+/// (e.g. K,V in LinearMap<K,V>).
 /// `etc` is true if the pattern said '...' and false otherwise.
 pub fn check_struct_pat_fields(pcx: pat_ctxt,
                                span: span,
@@ -241,23 +241,23 @@ pub fn check_struct_pat_fields(pcx: pat_ctxt,
     let tcx = pcx.fcx.ccx.tcx;
 
     // Index the class fields.
-    let field_map = HashMap();
+    let mut field_map = LinearMap::new();
     for class_fields.eachi |i, class_field| {
         field_map.insert(class_field.ident, i);
     }
 
     // Typecheck each field.
-    let found_fields = HashMap();
+    let mut found_fields = LinearSet::new();
     for fields.each |field| {
         match field_map.find(&field.ident) {
-            Some(index) => {
+            Some(&index) => {
                 let class_field = class_fields[index];
                 let field_type = ty::lookup_field_type(tcx,
                                                        class_id,
                                                        class_field.id,
                                                        substitutions);
                 check_pat(pcx, field.pat, field_type);
-                found_fields.insert(index, ());
+                found_fields.insert(index);
             }
             None => {
                 let name = pprust::path_to_str(path, tcx.sess.intr());
@@ -272,7 +272,7 @@ pub fn check_struct_pat_fields(pcx: pat_ctxt,
     // Report an error if not all the fields were specified.
     if !etc {
         for class_fields.eachi |i, field| {
-            if found_fields.contains_key(&i) {
+            if found_fields.contains(&i) {
                 loop;
             }
             tcx.sess.span_err(span,
@@ -293,11 +293,11 @@ pub fn check_struct_pat(pcx: pat_ctxt, pat_id: ast::node_id, span: span,
 
     // Check to ensure that the struct is the one specified.
     match tcx.def_map.find(&pat_id) {
-        Some(ast::def_struct(supplied_def_id))
+        Some(&ast::def_struct(supplied_def_id))
                 if supplied_def_id == class_id => {
             // OK.
         }
-        Some(ast::def_struct(*)) | Some(ast::def_variant(*)) => {
+        Some(&ast::def_struct(*)) | Some(&ast::def_variant(*)) => {
             let name = pprust::path_to_str(path, tcx.sess.intr());
             tcx.sess.span_err(span,
                               fmt!("mismatched types: expected `%s` but \
@@ -334,7 +334,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: pat_ctxt,
 
     // Find the variant that was specified.
     match tcx.def_map.find(&pat_id) {
-        Some(ast::def_variant(found_enum_id, variant_id))
+        Some(&ast::def_variant(found_enum_id, variant_id))
                 if found_enum_id == enum_id => {
             // Get the struct fields from this struct-like enum variant.
             let class_fields = ty::lookup_struct_fields(tcx, variant_id);
@@ -342,7 +342,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: pat_ctxt,
             check_struct_pat_fields(pcx, span, path, fields, class_fields,
                                     variant_id, substitutions, etc);
         }
-        Some(ast::def_struct(*)) | Some(ast::def_variant(*)) => {
+        Some(&ast::def_struct(*)) | Some(&ast::def_variant(*)) => {
             let name = pprust::path_to_str(path, tcx.sess.intr());
             tcx.sess.span_err(span,
                               fmt!("mismatched types: expected `%s` but \
@@ -394,7 +394,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
       }
       ast::pat_enum(*) |
       ast::pat_ident(*) if pat_is_const(tcx.def_map, pat) => {
-        let const_did = ast_util::def_id_of_def(tcx.def_map.get(&pat.id));
+        let const_did = ast_util::def_id_of_def(*tcx.def_map.get(&pat.id));
         let const_tpt = ty::lookup_item_type(tcx, const_did);
         demand::suptype(fcx, pat.span, expected, const_tpt.ty);
         fcx.write_ty(pat.id, const_tpt.ty);
@@ -421,7 +421,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           }
         }
 
-        let canon_id = pcx.map.get(&ast_util::path_to_ident(name));
+        let canon_id = *pcx.map.get(&ast_util::path_to_ident(name));
         if canon_id != pat.id {
             let ct = fcx.local_ty(pat.span, canon_id);
             demand::eqtype(fcx, pat.span, ct, typ);

@@ -18,9 +18,6 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux::{ty_to_str, tys_to_str};
 
-use core::str;
-use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast::*;
 use syntax::attr::attrs_contains_name;
 use syntax::codemap::{span, spanned};
@@ -57,8 +54,6 @@ use syntax::{visit, ast_util};
 // types.
 
 pub static try_adding: &'static str = "Try adding a move";
-
-pub type rval_map = HashMap<node_id, ()>;
 
 pub struct Context {
     tcx: ty::ctxt,
@@ -133,13 +128,13 @@ fn check_item(item: @item, cx: Context, visitor: visit::vt<Context>) {
             item_impl(_, Some(trait_ref), self_type, _) => {
                 match cx.tcx.def_map.find(&trait_ref.ref_id) {
                     None => cx.tcx.sess.bug(~"trait ref not in def map!"),
-                    Some(trait_def) => {
+                    Some(&trait_def) => {
                         let trait_def_id = ast_util::def_id_of_def(trait_def);
                         if cx.tcx.lang_items.drop_trait() == trait_def_id {
                             // Yes, it's a destructor.
                             match self_type.node {
                                 ty_path(_, path_node_id) => {
-                                    let struct_def = cx.tcx.def_map.get(
+                                    let struct_def = *cx.tcx.def_map.get(
                                         &path_node_id);
                                     let struct_did =
                                         ast_util::def_id_of_def(struct_def);
@@ -279,9 +274,11 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
         _ => e.id
     };
     for cx.tcx.node_type_substs.find(&type_parameter_id).each |ts| {
+        // FIXME(#5562): removing this copy causes a segfault before stage2
+        let ts = /*bad*/ copy **ts;
         let bounds = match e.node {
           expr_path(_) => {
-            let did = ast_util::def_id_of_def(cx.tcx.def_map.get(&e.id));
+            let did = ast_util::def_id_of_def(*cx.tcx.def_map.get(&e.id));
             ty::lookup_item_type(cx.tcx, did).bounds
           }
           _ => {
@@ -294,15 +291,15 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
                 ~"non path/method call expr has type substs??")
           }
         };
-        if vec::len(*ts) != vec::len(*bounds) {
+        if ts.len() != bounds.len() {
             // Fail earlier to make debugging easier
             fail!(fmt!("internal error: in kind::check_expr, length \
                        mismatch between actual and declared bounds: actual = \
                         %s (%u tys), declared = %? (%u tys)",
-                      tys_to_str(cx.tcx, *ts), ts.len(),
-                      *bounds, (*bounds).len()));
+                      tys_to_str(cx.tcx, ts), ts.len(),
+                      *bounds, bounds.len()));
         }
-        for vec::each2(*ts, *bounds) |ty, bound| {
+        for vec::each2(ts, *bounds) |ty, bound| {
             check_bounds(cx, type_parameter_id, e.span, *ty, *bound)
         }
     }
@@ -340,9 +337,11 @@ fn check_ty(aty: @Ty, cx: Context, v: visit::vt<Context>) {
     match aty.node {
       ty_path(_, id) => {
         for cx.tcx.node_type_substs.find(&id).each |ts| {
-            let did = ast_util::def_id_of_def(cx.tcx.def_map.get(&id));
+            // FIXME(#5562): removing this copy causes a segfault before stage2
+            let ts = /*bad*/ copy **ts;
+            let did = ast_util::def_id_of_def(*cx.tcx.def_map.get(&id));
             let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
-            for vec::each2(*ts, *bounds) |ty, bound| {
+            for vec::each2(ts, *bounds) |ty, bound| {
                 check_bounds(cx, aty.id, aty.span, *ty, *bound)
             }
         }
@@ -405,7 +404,7 @@ pub fn check_bounds(cx: Context,
 fn is_nullary_variant(cx: Context, ex: @expr) -> bool {
     match ex.node {
       expr_path(_) => {
-        match cx.tcx.def_map.get(&ex.id) {
+        match *cx.tcx.def_map.get(&ex.id) {
           def_variant(edid, vdid) => {
             vec::len(ty::enum_variant_with_id(cx.tcx, edid, vdid).args) == 0u
           }

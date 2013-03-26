@@ -19,11 +19,8 @@ use parse::parser::Parser;
 use parse::token::{Token, EOF, to_str, nonterminal};
 use parse::token;
 
-use core::option::{Option, Some, None};
-use core::str;
-use core::uint;
-use core::vec;
-use std::oldmap::HashMap;
+use core::hashmap::linear::LinearMap;
+use core::prelude::*;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it
@@ -189,9 +186,9 @@ pub enum named_match {
 pub type earley_item = ~MatcherPos;
 
 pub fn nameize(p_s: @mut ParseSess, ms: ~[matcher], res: ~[@named_match])
-            -> HashMap<ident,@named_match> {
+            -> LinearMap<ident,@named_match> {
     fn n_rec(p_s: @mut ParseSess, m: matcher, res: ~[@named_match],
-             ret_val: HashMap<ident, @named_match>) {
+             ret_val: &mut LinearMap<ident, @named_match>) {
         match m {
           codemap::spanned {node: match_tok(_), _} => (),
           codemap::spanned {node: match_seq(ref more_ms, _, _, _, _), _} => {
@@ -210,13 +207,13 @@ pub fn nameize(p_s: @mut ParseSess, ms: ~[matcher], res: ~[@named_match])
           }
         }
     }
-    let ret_val = HashMap();
-    for ms.each() |m| { n_rec(p_s, *m, res, ret_val) }
+    let mut ret_val = LinearMap::new();
+    for ms.each() |m| { n_rec(p_s, *m, res, &mut ret_val) }
     return ret_val;
 }
 
 pub enum parse_result {
-    success(HashMap<ident, @named_match>),
+    success(LinearMap<ident, @named_match>),
     failure(codemap::span, ~str),
     error(codemap::span, ~str)
 }
@@ -226,11 +223,11 @@ pub fn parse_or_else(
     +cfg: ast::crate_cfg,
     rdr: @reader,
     ms: ~[matcher]
-) -> HashMap<ident, @named_match> {
+) -> LinearMap<ident, @named_match> {
     match parse(sess, cfg, rdr, ms) {
       success(m) => m,
-      failure(sp, ref str) => sess.span_diagnostic.span_fatal(sp, (*str)),
-      error(sp, ref str) => sess.span_diagnostic.span_fatal(sp, (*str))
+      failure(sp, str) => sess.span_diagnostic.span_fatal(sp, str),
+      error(sp, str) => sess.span_diagnostic.span_fatal(sp, str)
     }
 }
 

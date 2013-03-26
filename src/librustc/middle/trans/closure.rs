@@ -411,7 +411,7 @@ pub fn trans_expr_fn(bcx: block,
 
     let Result {bcx: bcx, val: closure} = match sigil {
         ast::BorrowedSigil | ast::ManagedSigil | ast::OwnedSigil => {
-            let cap_vars = ccx.maps.capture_map.get(&user_id);
+            let cap_vars = *ccx.maps.capture_map.get(&user_id);
             let ret_handle = match is_loop_body {Some(x) => x,
                                                  None => None};
             let ClosureResult {llbox, cdata_ty, bcx}

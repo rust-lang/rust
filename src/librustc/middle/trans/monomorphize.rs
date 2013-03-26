@@ -77,7 +77,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
            substs.map(|s| ty_to_str(ccx.tcx, *s)), hash_id);
 
     match ccx.monomorphized.find(&hash_id) {
-      Some(val) => {
+      Some(&val) => {
         debug!("leaving monomorphic fn %s",
                ty::item_path_str(ccx.tcx, fn_id));
         return (val, must_cast);
@@ -93,7 +93,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         (may have attempted to monomorphize an item defined in a different \
         crate?)", fn_id));
     // Get the path so that we can create a symbol
-    let (pt, name, span) = match map_node {
+    let (pt, name, span) = match *map_node {
       ast_map::node_item(i, pt) => (pt, i.ident, i.span),
       ast_map::node_variant(ref v, enm, pt) => (pt, (*v).node.name, enm.span),
       ast_map::node_method(m, _, pt) => (pt, m.ident, m.span),
@@ -142,7 +142,9 @@ pub fn monomorphic_fn(ccx: @CrateContext,
 
     ccx.stats.n_monos += 1;
 
-    let depth = option::get_or_default(ccx.monomorphizing.find(&fn_id), 0u);
+    let depth = match ccx.monomorphizing.find(&fn_id) {
+        Some(&d) => d, None => 0
+    };
     // Random cut-off -- code that needs to instantiate the same function
     // recursively more than thirty times can probably safely be assumed to be
     // causing an infinite expansion.
@@ -170,7 +172,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         self_ty: impl_ty_opt
     });
 
-    let lldecl = match map_node {
+    let lldecl = match *map_node {
       ast_map::node_item(i@@ast::item {
                 // XXX: Bad copy.
                 node: ast::item_fn(ref decl, _, _, ref body),

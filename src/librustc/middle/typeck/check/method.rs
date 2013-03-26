@@ -95,10 +95,10 @@ use middle::typeck::{method_self, method_static, method_trait, method_super};
 use util::common::indenter;
 use util::ppaux::expr_repr;
 
+use core::hashmap::linear::LinearSet;
 use core::result;
 use core::uint;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast::{def_id, sty_by_ref, sty_value, sty_region, sty_box};
 use syntax::ast::{sty_uniq, sty_static, node_id, by_copy, by_ref};
 use syntax::ast::{m_const, m_mutbl, m_imm};
@@ -131,6 +131,7 @@ pub fn lookup(
         check_traits: CheckTraitsFlag,      // Whether we check traits only.
         autoderef_receiver: AutoderefReceiverFlag)
      -> Option<method_map_entry> {
+    let mut impl_dups = LinearSet::new();
     let lcx = LookupContext {
         fcx: fcx,
         expr: expr,
@@ -138,7 +139,7 @@ pub fn lookup(
         callee_id: callee_id,
         m_name: m_name,
         supplied_tps: supplied_tps,
-        impl_dups: HashMap(),
+        impl_dups: &mut impl_dups,
         inherent_candidates: @mut ~[],
         extension_candidates: @mut ~[],
         deref_args: deref_args,
@@ -158,7 +159,7 @@ pub struct LookupContext {
     callee_id: node_id,
     m_name: ast::ident,
     supplied_tps: &'self [ty::t],
-    impl_dups: HashMap<def_id, ()>,
+    impl_dups: &'self mut LinearSet<def_id>,
     inherent_candidates: @mut ~[Candidate],
     extension_candidates: @mut ~[Candidate],
     deref_args: check::DerefArgs,
@@ -344,8 +345,8 @@ pub impl<'self> LookupContext<'self> {
         // If the method being called is associated with a trait, then
         // find all the impls of that trait.  Each of those are
         // candidates.
-        let opt_applicable_traits = self.fcx.ccx.trait_map.find(
-            &self.expr.id);
+        let trait_map: &mut resolve::TraitMap = &mut self.fcx.ccx.trait_map;
+        let opt_applicable_traits = trait_map.find(&self.expr.id);
         for opt_applicable_traits.each |applicable_traits| {
             for applicable_traits.each |trait_did| {
                 let coherence_info = self.fcx.ccx.coherence_info;
@@ -362,7 +363,7 @@ pub impl<'self> LookupContext<'self> {
 
                 // Look for default methods.
                 match self.tcx().provided_methods.find(trait_did) {
-                    Some(methods) => {
+                    Some(&methods) => {
                         self.push_candidates_from_provided_methods(
                             self.extension_candidates, self_ty, *trait_did,
                             methods);
@@ -384,7 +385,7 @@ pub impl<'self> LookupContext<'self> {
         let mut next_bound_idx = 0; // count only trait bounds
         let bounds = tcx.ty_param_bounds.get(&param_ty.def_id.node);
 
-        for vec::each(*bounds) |bound| {
+        for bounds.each |bound| {
             let bound_trait_ty = match *bound {
                 ty::bound_trait(bound_t) => bound_t,
 
@@ -639,7 +640,7 @@ pub impl<'self> LookupContext<'self> {
 
     fn push_candidates_from_impl(&self, candidates: &mut ~[Candidate],
                                  impl_info: &resolve::Impl) {
-        if !self.impl_dups.insert(impl_info.did, ()) {
+        if !self.impl_dups.insert(impl_info.did) {
             return; // already visited
         }
 
@@ -1195,7 +1196,7 @@ pub impl<'self> LookupContext<'self> {
         match candidate.origin {
             method_static(method_id) | method_self(method_id, _)
                 | method_super(method_id, _) => {
-                bad = self.tcx().destructors.contains_key(&method_id);
+                bad = self.tcx().destructors.contains(&method_id);
             }
             method_param(method_param { trait_id: trait_id, _ }) |
             method_trait(trait_id, _, _) => {
@@ -1256,7 +1257,7 @@ pub impl<'self> LookupContext<'self> {
     fn report_static_candidate(&self, idx: uint, did: def_id) {
         let span = if did.crate == ast::local_crate {
             match self.tcx().items.find(&did.node) {
-              Some(ast_map::node_method(m, _, _)) => m.span,
+              Some(&ast_map::node_method(m, _, _)) => m.span,
               _ => fail!(fmt!("report_static_candidate: bad item %?", did))
             }
         } else {
