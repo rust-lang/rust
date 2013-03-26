@@ -17,7 +17,7 @@ use result;
 use vec;
 
 /// The either type
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum Either<T, U> {
     Left(T),
     Right(U)

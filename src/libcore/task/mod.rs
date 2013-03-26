@@ -72,19 +72,10 @@ pub enum Task {
  * If you wish for this result's delivery to block until all linked and/or
  * children tasks complete, recommend using a result future.
  */
+#[deriving(Eq)]
 pub enum TaskResult {
     Success,
     Failure,
-}
-
-impl Eq for TaskResult {
-    fn eq(&self, other: &TaskResult) -> bool {
-        match ((*self), (*other)) {
-            (Success, Success) | (Failure, Failure) => true,
-            (Success, _) | (Failure, _) => false
-        }
-    }
-    fn ne(&self, other: &TaskResult) -> bool { !(*self).eq(other) }
 }
 
 /// Scheduler modes

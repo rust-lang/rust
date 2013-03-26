@@ -557,12 +557,8 @@ priv fn get_radix_base(radix: uint) -> (uint, uint) {
 }
 
 /// A Sign is a BigInt's composing element.
+#[deriving(Eq)]
 pub enum Sign { Minus, Zero, Plus }
-
-impl Eq for Sign {
-    fn eq(&self, other: &Sign) -> bool { self.cmp(other) == 0 }
-    fn ne(&self, other: &Sign) -> bool { self.cmp(other) != 0 }
-}
 
 impl Ord for Sign {
     fn lt(&self, other: &Sign) -> bool { self.cmp(other) <  0 }
