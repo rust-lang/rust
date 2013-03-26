@@ -274,17 +274,20 @@ fn fold_impl(
 
     let srv = fold.ctxt.clone();
 
-    let (trait_types, self_ty) = {
+    let (bounds, trait_types, self_ty) = {
         let doc = copy doc;
         do astsrv::exec(srv) |ctxt| {
             match ctxt.ast_map.get(&doc.id()) {
                 ast_map::node_item(@ast::item {
-                    node: ast::item_impl(_, opt_trait_type, self_ty, _), _
+                    node: ast::item_impl(ref generics, opt_trait_type, self_ty, _), _
                 }, _) => {
+                    let bounds = pprust::generics_to_str(generics, extract::interner());
+                    let bounds = if bounds.is_empty() { None } else { Some(bounds) };
                     let trait_types = opt_trait_type.map_default(~[], |p| {
                         ~[pprust::path_to_str(p.path, extract::interner())]
                     });
-                    (trait_types,
+                    (bounds,
+                     trait_types,
                      Some(pprust::ty_to_str(
                          self_ty, extract::interner())))
                 }
@@ -294,11 +297,18 @@ fn fold_impl(
     };
 
     doc::ImplDoc {
+        bounds_str: bounds,
         trait_types: trait_types,
         self_ty: self_ty,
         methods: merge_methods(fold.ctxt.clone(), doc.id(), copy doc.methods),
         .. doc
     }
+}
+
+#[test]
+fn should_add_impl_bounds() {
+    let doc = test::mk_doc(~"impl<T, U: Copy, V: Copy + Clone> Option<T, U, V> { }");
+    fail_unless!(doc.cratemod().impls()[0].bounds_str == Some(~"<T, U: Copy, V: Copy + Clone>"));
 }
 
 #[test]
