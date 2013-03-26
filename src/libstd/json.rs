@@ -35,6 +35,7 @@ pub enum Json {
 pub type List = ~[Json];
 pub type Object = LinearMap<~str, Json>;
 
+#[deriving(Eq)]
 pub struct Error {
     line: uint,
     col: uint,
@@ -1058,15 +1059,6 @@ impl Ord for Json {
     fn le(&self, other: &Json) -> bool { !(*other).lt(&(*self)) }
     fn ge(&self, other: &Json) -> bool { !(*self).lt(other) }
     fn gt(&self, other: &Json) -> bool { (*other).lt(&(*self))  }
-}
-
-impl Eq for Error {
-    fn eq(&self, other: &Error) -> bool {
-        (*self).line == other.line &&
-        (*self).col == other.col &&
-        (*self).msg == other.msg
-    }
-    fn ne(&self, other: &Error) -> bool { !(*self).eq(other) }
 }
 
 trait ToJson { fn to_json(&self) -> Json; }
