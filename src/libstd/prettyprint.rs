@@ -182,4 +182,18 @@ impl serialize::Encoder for Serializer {
         if idx > 0u { self.wr.write_str(~", "); }
         f();
     }
+
+    fn emit_option(&self, f: &fn()) {
+        f();
+    }
+
+    fn emit_option_none(&self) {
+        self.wr.write_str("None");
+    }
+
+    fn emit_option_some(&self, f: &fn()) {
+        self.wr.write_str("Some(");
+        f();
+        self.wr.write_char(')');
+    }
 }

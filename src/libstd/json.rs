@@ -120,24 +120,11 @@ impl serialize::Encoder for Encoder {
     }
 
     fn emit_enum_variant(&self, name: &str, _id: uint, cnt: uint, f: &fn()) {
-        // encoding of enums is special-cased for Option. Specifically:
-        // Some(34) => 34
-        // None => null
-
-        // other enums are encoded as strings or vectors:
+        // enums are encoded as strings or vectors:
         // Bunny => "Bunny"
         // Kangaroo(34,"William") => ["Kangaroo",[34,"William"]]
 
-        // FIXME #4872: this would be more precise and less frightening
-        // with fully-qualified option names. To get that information,
-        // we'd have to change the expansion of auto-encode to pass
-        // those along.
-
-        if name == ~"Some" {
-            f();
-        } else if name == ~"None" {
-            self.wr.write_str(~"null");
-        } else if cnt == 0 {
+        if cnt == 0 {
             self.wr.write_str(escape_str(name));
         } else {
             self.wr.write_char('[');
@@ -193,6 +180,10 @@ impl serialize::Encoder for Encoder {
     fn emit_tup_elt(&self, idx: uint, f: &fn()) {
         self.emit_vec_elt(idx, f)
     }
+
+    fn emit_option(&self, f: &fn()) { f(); }
+    fn emit_option_none(&self) { self.emit_nil(); }
+    fn emit_option_some(&self, f: &fn()) { f(); }
 }
 
 pub struct PrettyEncoder {
@@ -245,11 +236,7 @@ impl serialize::Encoder for PrettyEncoder {
 
     fn emit_enum(&self, _name: &str, f: &fn()) { f() }
     fn emit_enum_variant(&self, name: &str, _id: uint, cnt: uint, f: &fn()) {
-        if name == ~"Some" {
-            f();
-        } else if name == ~"None" {
-            self.emit_nil();
-        } else if cnt == 0 {
+        if cnt == 0 {
             self.wr.write_str(escape_str(name));
         } else {
             self.wr.write_char('[');
@@ -335,6 +322,10 @@ impl serialize::Encoder for PrettyEncoder {
     fn emit_tup_elt(&self, idx: uint, f: &fn()) {
         self.emit_vec_elt(idx, f)
     }
+
+    fn emit_option(&self, f: &fn()) { f(); }
+    fn emit_option_none(&self) { self.emit_nil(); }
+    fn emit_option_some(&self, f: &fn()) { f(); }
 }
 
 impl<S:serialize::Encoder> serialize::Encodable<S> for Json {
@@ -964,6 +955,13 @@ impl<'self> serialize::Decoder for Decoder<'self> {
                 f()
             }
             _ => fail!(~"not a list")
+        }
+    }
+
+    fn read_option<T>(&self, f: &fn() -> T) -> Option<T> {
+        match *self.peek() {
+            Null => { self.pop(); None }
+            _ => Some(f()),
         }
     }
 }
