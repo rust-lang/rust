@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[doc(hidden)];
+
 use libc::c_char;
 
 // Some basic logging
