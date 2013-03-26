@@ -616,8 +616,9 @@ pub mod guarantor {
         // mk_subr should never fail.
         let rptr_ty = rcx.resolve_node_type(id);
         if !ty::type_is_error(rptr_ty) {
-            debug!("rptr_ty=%s", ty_to_str(rcx.fcx.ccx.tcx, rptr_ty));
-            let r = ty::ty_region(rptr_ty);
+            let tcx = rcx.fcx.ccx.tcx;
+            debug!("rptr_ty=%s", ty_to_str(tcx, rptr_ty));
+            let r = ty::ty_region(tcx, span, rptr_ty);
             infallibly_mk_subr(rcx, true, span, r, bound);
         }
     }
@@ -890,7 +891,7 @@ pub mod guarantor {
             ast::pat_region(p) => {
                 let rptr_ty = rcx.resolve_node_type(pat.id);
                 if !ty::type_is_error(rptr_ty) {
-                    let r = ty::ty_region(rptr_ty);
+                    let r = ty::ty_region(rcx.fcx.tcx(), pat.span, rptr_ty);
                     link_ref_bindings_in_pat(rcx, p, Some(r));
                 }
             }

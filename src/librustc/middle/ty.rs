@@ -2794,13 +2794,18 @@ pub fn ty_vstore(ty: t) -> vstore {
     }
 }
 
-pub fn ty_region(ty: t) -> Region {
+pub fn ty_region(tcx: ctxt,
+                 span: span,
+                 ty: t) -> Region {
     match get(ty).sty {
-      ty_rptr(r, _) => r,
-      ty_evec(_, vstore_slice(r)) => r,
-      ty_estr(vstore_slice(r)) => r,
-      ref s => fail!(fmt!("ty_region() invoked on in appropriate ty: %?",
-          (*s)))
+        ty_rptr(r, _) => r,
+        ty_evec(_, vstore_slice(r)) => r,
+        ty_estr(vstore_slice(r)) => r,
+        ref s => {
+            tcx.sess.span_bug(
+                span,
+                fmt!("ty_region() invoked on in appropriate ty: %?", s));
+        }
     }
 }
 
