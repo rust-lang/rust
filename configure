@@ -574,6 +574,7 @@ fi
 CFG_PREFIX=${CFG_PREFIX%/}
 CFG_HOST_TRIPLES="$(echo $CFG_HOST_TRIPLES | tr ',' ' ')"
 CFG_TARGET_TRIPLES="$(echo $CFG_TARGET_TRIPLES | tr ',' ' ')"
+CFG_SUPPORTED_TARGET_TRIPLES="$(grep ^CC_*=* $CFG_SRC_DIR/mk/platform.mk | sed 's,^[^_]*_,,' | sed 's/\([^=]*\).*/\1/' | xargs)"
 
 # copy host-triples to target-triples so that hosts are a subset of targets
 V_TEMP=""
@@ -586,8 +587,22 @@ CFG_TARGET_TRIPLES=$V_TEMP
 # check target-specific tool-chains
 for i in $CFG_TARGET_TRIPLES
 do
+    L_CHECK=false
+    for j in $CFG_SUPPORTED_TARGET_TRIPLES
+    do
+        if [ $i = $j ]
+        then
+            L_CHECK=true
+        fi
+    done
+
+    if [ $L_CHECK = false ]
+    then
+        err "unsupported target triples \"$i\" found"
+    fi
+
     case $i in
-        arm-unknown-android)
+        arm-linux-androideabi)
 
             if [ ! -f $CFG_ANDROID_CROSS_PATH/bin/arm-linux-androideabi-gcc ]
             then
