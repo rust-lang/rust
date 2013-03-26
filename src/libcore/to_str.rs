@@ -29,7 +29,16 @@ impl ToStr for () {
     fn to_str(&self) -> ~str { ~"()" }
 }
 
-// FIXME #4898: impl for one-tuples
+impl<A:ToStr> ToStr for (A,) {
+    #[inline(always)]
+    fn to_str(&self) -> ~str {
+        match *self {
+            (ref a,) => {
+                ~"(" + a.to_str() + ~", " + ~")"
+            }
+        }
+    }
+}
 
 impl<A:ToStr,B:ToStr> ToStr for (A, B) {
     #[inline(always)]
