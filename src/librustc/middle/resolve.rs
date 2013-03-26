@@ -4741,8 +4741,8 @@ pub impl Resolver {
         let mut j = this.value_ribs.len();
         while j != 0 {
             j -= 1;
-            for this.value_ribs[j].bindings.each_entry |e| {
-                vec::push(&mut maybes, copy *this.session.str_of(e.key));
+            for this.value_ribs[j].bindings.each_key |&k| {
+                vec::push(&mut maybes, copy *this.session.str_of(k));
                 vec::push(&mut values, uint::max_value);
             }
         }
