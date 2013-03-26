@@ -37,12 +37,12 @@ pub enum SignFormat {
 }
 
 #[inline(always)]
-pure fn is_NaN<T:Eq>(num: &T) -> bool {
+fn is_NaN<T:Eq>(num: &T) -> bool {
     *num != *num
 }
 
 #[inline(always)]
-pure fn is_inf<T:Eq+NumStrConv>(num: &T) -> bool {
+fn is_inf<T:Eq+NumStrConv>(num: &T) -> bool {
     match NumStrConv::inf() {
         None    => false,
         Some(n) => *num == n
@@ -50,7 +50,7 @@ pure fn is_inf<T:Eq+NumStrConv>(num: &T) -> bool {
 }
 
 #[inline(always)]
-pure fn is_neg_inf<T:Eq+NumStrConv>(num: &T) -> bool {
+fn is_neg_inf<T:Eq+NumStrConv>(num: &T) -> bool {
     match NumStrConv::neg_inf() {
         None    => false,
         Some(n) => *num == n
@@ -58,7 +58,7 @@ pure fn is_neg_inf<T:Eq+NumStrConv>(num: &T) -> bool {
 }
 
 #[inline(always)]
-pure fn is_neg_zero<T:Eq+One+Zero+NumStrConv+Div<T,T>>(num: &T) -> bool {
+fn is_neg_zero<T:Eq+One+Zero+NumStrConv+Div<T,T>>(num: &T) -> bool {
     let _0: T = Zero::zero();
     let _1: T = One::one();
 
@@ -66,35 +66,35 @@ pure fn is_neg_zero<T:Eq+One+Zero+NumStrConv+Div<T,T>>(num: &T) -> bool {
 }
 
 pub trait NumStrConv {
-    static pure fn NaN()      -> Option<Self>;
-    static pure fn inf()      -> Option<Self>;
-    static pure fn neg_inf()  -> Option<Self>;
-    static pure fn neg_zero() -> Option<Self>;
+    fn NaN()      -> Option<Self>;
+    fn inf()      -> Option<Self>;
+    fn neg_inf()  -> Option<Self>;
+    fn neg_zero() -> Option<Self>;
 
-    pure fn round_to_zero(&self)   -> Self;
-    pure fn fractional_part(&self) -> Self;
+    fn round_to_zero(&self)   -> Self;
+    fn fractional_part(&self) -> Self;
 }
 
 macro_rules! impl_NumStrConv_Floating (($t:ty) => (
     impl NumStrConv for $t {
         #[inline(always)]
-        static pure fn NaN()      -> Option<$t> { Some( 0.0 / 0.0) }
+        fn NaN()      -> Option<$t> { Some( 0.0 / 0.0) }
         #[inline(always)]
-        static pure fn inf()      -> Option<$t> { Some( 1.0 / 0.0) }
+        fn inf()      -> Option<$t> { Some( 1.0 / 0.0) }
         #[inline(always)]
-        static pure fn neg_inf()  -> Option<$t> { Some(-1.0 / 0.0) }
+        fn neg_inf()  -> Option<$t> { Some(-1.0 / 0.0) }
         #[inline(always)]
-        static pure fn neg_zero() -> Option<$t> { Some(-0.0      ) }
+        fn neg_zero() -> Option<$t> { Some(-0.0      ) }
 
         #[inline(always)]
-        pure fn round_to_zero(&self) -> $t {
+        fn round_to_zero(&self) -> $t {
             ( if *self < 0.0 { f64::ceil(*self as f64)  }
               else           { f64::floor(*self as f64) }
             ) as $t
         }
 
         #[inline(always)]
-        pure fn fractional_part(&self) -> $t {
+        fn fractional_part(&self) -> $t {
             *self - self.round_to_zero()
         }
     }
@@ -102,13 +102,13 @@ macro_rules! impl_NumStrConv_Floating (($t:ty) => (
 
 macro_rules! impl_NumStrConv_Integer (($t:ty) => (
     impl NumStrConv for $t {
-        #[inline(always)] static pure fn NaN()      -> Option<$t> { None }
-        #[inline(always)] static pure fn inf()      -> Option<$t> { None }
-        #[inline(always)] static pure fn neg_inf()  -> Option<$t> { None }
-        #[inline(always)] static pure fn neg_zero() -> Option<$t> { None }
+        #[inline(always)] fn NaN()      -> Option<$t> { None }
+        #[inline(always)] fn inf()      -> Option<$t> { None }
+        #[inline(always)] fn neg_inf()  -> Option<$t> { None }
+        #[inline(always)] fn neg_zero() -> Option<$t> { None }
 
-        #[inline(always)] pure fn round_to_zero(&self)   -> $t { *self }
-        #[inline(always)] pure fn fractional_part(&self) -> $t {     0 }
+        #[inline(always)] fn round_to_zero(&self)   -> $t { *self }
+        #[inline(always)] fn fractional_part(&self) -> $t {     0 }
     }
 ))
 
@@ -161,11 +161,11 @@ impl_NumStrConv_Integer!(u64)
  * # Failure
  * - Fails if `radix` < 2 or `radix` > 36.
  */
-pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
+pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
                                   Div<T,T>+Neg<T>+Modulo<T,T>+Mul<T,T>>(
         num: &T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~[u8], bool) {
-    if radix as int <  2 {
+    if (radix as int) < 2 {
         fail!(fmt!("to_str_bytes_common: radix %? to low, \
                    must lie in the range [2, 36]", radix));
     } else if radix as int > 36 {
@@ -364,14 +364,14 @@ pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
 
             // only resize buf if we actually remove digits
             if i < buf_max_i {
-                buf = buf.slice(0, i + 1);
+                buf = buf.slice(0, i + 1).to_owned();
             }
         }
     } // If exact and trailing '.', just cut that
     else {
         let max_i = buf.len() - 1;
         if buf[max_i] == '.' as u8 {
-            buf = buf.slice(0, max_i);
+            buf = buf.slice(0, max_i).to_owned();
         }
     }
 
@@ -383,7 +383,7 @@ pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
  * `to_str_bytes_common()`, for details see there.
  */
 #[inline(always)]
-pub pure fn to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
+pub fn to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
                             Div<T,T>+Neg<T>+Modulo<T,T>+Mul<T,T>>(
         num: &T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~str, bool) {
@@ -394,9 +394,9 @@ pub pure fn to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
 
 // Some constants for from_str_bytes_common's input validation,
 // they define minimum radix values for which the character is a valid digit.
-priv const DIGIT_P_RADIX: uint = ('p' as uint) - ('a' as uint) + 11u;
-priv const DIGIT_I_RADIX: uint = ('i' as uint) - ('a' as uint) + 11u;
-priv const DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
+priv static DIGIT_P_RADIX: uint = ('p' as uint) - ('a' as uint) + 11u;
+priv static DIGIT_I_RADIX: uint = ('i' as uint) - ('a' as uint) + 11u;
+priv static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
 
 /**
  * Parses a byte slice as a number. This is meant to
@@ -439,7 +439,7 @@ priv const DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  * - Could accept option to allow ignoring underscores, allowing for numbers
  *   formated like `FF_AE_FF_FF`.
  */
-pub pure fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
+pub fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
                                     Mul<T,T>+Sub<T,T>+Neg<T>+Add<T,T>+
                                     NumStrConv>(
         buf: &[u8], radix: uint, negative: bool, fractional: bool,
@@ -455,10 +455,10 @@ pub pure fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
         _ if special && radix >= DIGIT_I_RADIX // first digit of 'inf'
           => fail!(fmt!("from_str_bytes_common: radix %? incompatible with \
                         special values 'inf' and 'NaN'", radix)),
-        _ if radix as int < 2
+        _ if (radix as int) < 2
           => fail!(fmt!("from_str_bytes_common: radix %? to low, \
                         must lie in the range [2, 36]", radix)),
-        _ if radix as int > 36
+        _ if (radix as int) > 36
           => fail!(fmt!("from_str_bytes_common: radix %? to high, \
                         must lie in the range [2, 36]", radix)),
         _ => ()
@@ -606,7 +606,7 @@ pub pure fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
         // parse remaining bytes as decimal integer,
         // skipping the exponent char
         let exp: Option<int> = from_str_bytes_common(
-            buf.view(i+1, len), 10, true, false, false, ExpNone, false);
+            buf.slice(i+1, len), 10, true, false, false, ExpNone, false);
 
         match exp {
             Some(exp_pow) => {
@@ -628,7 +628,7 @@ pub pure fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
  * `from_str_bytes_common()`, for details see there.
  */
 #[inline(always)]
-pub pure fn from_str_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+Mul<T,T>+
+pub fn from_str_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+Mul<T,T>+
                               Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv>(
         buf: &str, radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool

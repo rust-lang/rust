@@ -25,7 +25,6 @@
 #[allow(non_camel_case_types)];
 #[allow(deprecated_mode)];
 #[allow(deprecated_pattern)];
-#[deny(deprecated_self)];
 
 extern mod core(vers = "0.6");
 extern mod std(vers = "0.6");
@@ -39,7 +38,7 @@ use syntax::parse;
 use syntax::print::pprust;
 use syntax::diagnostic;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum test_mode { tm_converge, tm_run, }
 
 pub struct Context { mode: test_mode } // + rng
@@ -95,11 +94,11 @@ pub fn common_exprs() -> ~[ast::expr] {
     ]
 }
 
-pub pure fn safe_to_steal_expr(e: @ast::expr, tm: test_mode) -> bool {
+pub fn safe_to_steal_expr(e: @ast::expr, tm: test_mode) -> bool {
     safe_to_use_expr(*e, tm)
 }
 
-pub pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
+pub fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
     match tm {
       tm_converge => {
         match e.node {
@@ -336,7 +335,7 @@ pub fn check_variants_T<T: Copy>(
 
 pub fn last_part(filename: ~str) -> ~str {
   let ix = option::get(str::rfind_char(filename, '/'));
-  str::slice(filename, ix + 1u, str::len(filename) - 3u)
+  str::slice(filename, ix + 1u, str::len(filename) - 3u).to_owned()
 }
 
 pub enum happiness {

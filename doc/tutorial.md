@@ -234,10 +234,10 @@ while count < 10 {
 
 Although Rust can almost always infer the types of local variables, you
 can specify a variable's type by following it with a colon, then the type
-name. Constants, on the other hand, always require a type annotation.
+name. Static items, on the other hand, always require a type annotation.
 
 ~~~~
-const monster_factor: float = 57.8;
+static monster_factor: float = 57.8;
 let monster_size = monster_factor * 10.0;
 let monster_size: int = 50;
 ~~~~
@@ -579,20 +579,29 @@ Structs are quite similar to C structs and are even laid out the same way in
 memory (so you can read from a Rust struct in C, and vice-versa). Use the dot
 operator to access struct fields, as in `mypoint.x`.
 
+~~~~
+struct Point {
+    x: float,
+    y: float
+}
+~~~~
+
 Inherited mutability means that any field of a struct may be mutable, if the
 struct is in a mutable slot (or a field of a struct in a mutable slot, and
 so forth).
 
-~~~~
-struct Stack {
-    content: ~[int],
-    head: uint
-}
-~~~~
-
-With a value (say, `mystack`) of such a type in a mutable location, you can do
-`mystack.head += 1`. But in an immutable location, such an assignment to a
+With a value (say, `mypoint`) of such a type in a mutable location, you can do
+`mypoint.y += 1.0`. But in an immutable location, such an assignment to a
 struct without inherited mutability would result in a type error.
+
+~~~~ {.xfail-test}
+# struct Point { x: float, y: float }
+let mut mypoint = Point { x: 1.0, y: 1.0 };
+let origin = Point { x: 0.0, y: 0.0 };
+
+mypoint.y += 1.0; // mypoint is mutable, and its fields as well
+origin.y += 1.0; // ERROR: assigning to immutable field
+~~~~
 
 `match` patterns destructure structs. The basic syntax is
 `Name { fieldname: pattern, ... }`:
@@ -907,7 +916,7 @@ use core::libc::types::os::arch::c95::size_t;
 struct Blob { priv ptr: *c_void }
 
 impl Blob {
-    static fn new() -> Blob {
+    fn new() -> Blob {
         unsafe { Blob{ptr: calloc(1, int::bytes as size_t)} }
     }
 }
@@ -1213,7 +1222,7 @@ pointers to vectors are also called 'slices'.
 #     Black, BlizzardBlue, Blue
 # }
 // A fixed-size stack vector
-let stack_crayons: [Crayon * 3] = [Almond, AntiqueBrass, Apricot];
+let stack_crayons: [Crayon, ..3] = [Almond, AntiqueBrass, Apricot];
 
 // A borrowed pointer to stack-allocated vector
 let stack_crayons: &[Crayon] = &[Aquamarine, Asparagus, AtomicTangerine];
@@ -1255,7 +1264,7 @@ Square brackets denote indexing into a vector:
 #               Aquamarine, Asparagus, AtomicTangerine,
 #               BananaMania, Beaver, Bittersweet };
 # fn draw_scene(c: Crayon) { }
-let crayons: [Crayon * 3] = [BananaMania, Beaver, Bittersweet];
+let crayons: [Crayon, ..3] = [BananaMania, Beaver, Bittersweet];
 match crayons[0] {
     Bittersweet => draw_scene(crayons[0]),
     _ => ()
@@ -1265,7 +1274,7 @@ match crayons[0] {
 A vector can be destructured using pattern matching:
 
 ~~~~
-let numbers: [int * 3] = [1, 2, 3];
+let numbers: [int, ..3] = [1, 2, 3];
 let score = match numbers {
     [] => 0,
     [a] => a * 10,
@@ -1759,32 +1768,25 @@ s.draw_borrowed();
 (&@~s).draw_borrowed();
 ~~~
 
-Implementations may also define _static_ methods,
-which don't have an explicit `self` argument.
-The `static` keyword distinguishes static methods from methods that have a `self`:
+Implementations may also define standalone (sometimes called "static")
+methods. The absence of a `self` paramater distinguishes such methods.
+These methods are the preferred way to define constructor functions.
 
 ~~~~ {.xfail-test}
 impl Circle {
     fn area(&self) -> float { ... }
-    static fn new(area: float) -> Circle { ... }
+    fn new(area: float) -> Circle { ... }
 }
 ~~~~
 
-> ***Note***: In the future the `static` keyword will be removed and static methods
-> will be distinguished solely by the presence or absence of the `self` argument.
-> In the current langugage instance methods may also be declared without an explicit
-> `self` argument, in which case `self` is an implicit reference.
-> That form of method is deprecated.
-
-Constructors are one common application for static methods, as in `new` above.
-To call a static method, you have to prefix it with the type name and a double colon:
+To call such a method, just prefix it with the type name and a double colon:
 
 ~~~~
 # use core::float::consts::pi;
 # use core::float::sqrt;
 struct Circle { radius: float }
 impl Circle {
-    static fn new(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
+    fn new(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
 }
 let c = Circle::new(42.5);
 ~~~~
@@ -2046,22 +2048,23 @@ second parameter of type `self`.
 In contrast, in the `impl`, `equals` takes a second parameter of
 type `int`, only using `self` as the name of the receiver.
 
-Traits can also define static methods which are called by prefixing
-the method name with the trait name.
-The compiler will use type inference to decide which implementation to call.
+Just as in type implementations, traits can define standalone (static)
+methods.  These methods are called by prefixing the method name with the trait
+name and a double colon.  The compiler uses type inference to decide which
+implementation to use.
 
 ~~~~
-trait Shape { static fn new(area: float) -> Self; }
+trait Shape { fn new(area: float) -> Self; }
 # use core::float::consts::pi;
 # use core::float::sqrt;
 struct Circle { radius: float }
 struct Square { length: float }
 
 impl Shape for Circle {
-    static fn new(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
+    fn new(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
 }
 impl Shape for Square {
-    static fn new(area: float) -> Square { Square { length: sqrt(area) } }
+    fn new(area: float) -> Square { Square { length: sqrt(area) } }
 }
 
 let area = 42.5;
@@ -2303,7 +2306,7 @@ them. The `pub` keyword modifies an item's visibility, making it
 visible outside its containing module. An expression with `::`, like
 `farm::chicken`, can name an item outside of its containing
 module. Items, such as those declared with `fn`, `struct`, `enum`,
-`type`, or `const`, are module-private by default.
+`type`, or `static`, are module-private by default.
 
 Visibility restrictions in Rust exist only at module boundaries. This
 is quite different from most object-oriented languages that also

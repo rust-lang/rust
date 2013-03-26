@@ -47,7 +47,7 @@ pub type Rope = node::Root;
  */
 
 /// Create an empty rope
-pub pure fn empty() -> Rope {
+pub fn empty() -> Rope {
    return node::Empty;
 }
 
@@ -491,7 +491,7 @@ pub mod iterator {
  *
  * Constant time.
  */
-pub pure fn height(rope: Rope) -> uint {
+pub fn height(rope: Rope) -> uint {
    match (rope) {
       node::Empty      => return 0u,
       node::Content(x) => return node::height(x)
@@ -507,7 +507,7 @@ pub pure fn height(rope: Rope) -> uint {
  *
  * Constant time.
  */
-pub pure fn char_len(rope: Rope) -> uint {
+pub fn char_len(rope: Rope) -> uint {
    match (rope) {
      node::Empty            => return 0u,
      node::Content(x)       => return node::char_len(x)
@@ -521,7 +521,7 @@ pub pure fn char_len(rope: Rope) -> uint {
  *
  * Constant time.
  */
-pub pure fn byte_len(rope: Rope) -> uint {
+pub fn byte_len(rope: Rope) -> uint {
    match (rope) {
      node::Empty            => return 0u,
      node::Content(x)       => return node::byte_len(x)
@@ -636,14 +636,14 @@ pub mod node {
      *
      * This is not a strict value
      */
-    pub const hint_max_leaf_char_len: uint = 256u;
+    pub static hint_max_leaf_char_len: uint = 256u;
 
     /**
      * The maximal height that _should_ be permitted in a tree.
      *
      * This is not a strict value
      */
-    pub const hint_max_node_height:   uint = 16u;
+    pub static hint_max_node_height:   uint = 16u;
 
     /**
      * Adopt a string as a node.
@@ -761,7 +761,7 @@ pub mod node {
         }
     }
 
-    pub pure fn byte_len(node: @Node) -> uint {
+    pub fn byte_len(node: @Node) -> uint {
         //FIXME (#2744): Could we do this without the pattern-matching?
         match (*node) {
           Leaf(y) => y.byte_len,
@@ -769,7 +769,7 @@ pub mod node {
         }
     }
 
-    pub pure fn char_len(node: @Node) -> uint {
+    pub fn char_len(node: @Node) -> uint {
         match (*node) {
           Leaf(y) => y.char_len,
           Concat(ref y) => y.char_len
@@ -1050,7 +1050,7 @@ pub mod node {
         })
     }
 
-    pub pure fn height(node: @Node) -> uint {
+    pub fn height(node: @Node) -> uint {
         match (*node) {
           Leaf(_) => 0u,
           Concat(ref x) => x.height,
@@ -1131,7 +1131,7 @@ pub mod node {
      * proportional to the height of the rope + the (bounded)
      * length of the largest leaf.
      */
-    pub pure fn char_at(node: @Node, pos: uint) -> char {
+    pub fn char_at(node: @Node, pos: uint) -> char {
         let mut node    = node;
         let mut pos     = pos;
         loop {
@@ -1295,7 +1295,7 @@ mod tests {
                       node::Leaf(x) => {
                         *str += str::slice(
                             *x.content, x.byte_offset,
-                            x.byte_offset + x.byte_len);
+                            x.byte_offset + x.byte_len).to_owned();
                       }
                       node::Concat(ref x) => {
                         aux(str, x.left);

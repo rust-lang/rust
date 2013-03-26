@@ -51,7 +51,7 @@ struct CheckLoanCtxt {
 }
 
 // if we are enforcing purity, why are we doing so?
-#[deriving_eq]
+#[deriving(Eq)]
 enum purity_cause {
     // enforcing purity because fn was declared pure:
     pc_pure_fn,
@@ -80,7 +80,7 @@ pub fn check_loans(bccx: @BorrowckCtxt,
     visit::visit_crate(*crate, clcx, vt);
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 enum assignment_type {
     at_straight_up,
     at_swap

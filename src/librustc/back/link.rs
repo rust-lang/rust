@@ -38,7 +38,7 @@ use syntax::ast_map::{path, path_mod, path_name};
 use syntax::attr;
 use syntax::print::pprust;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum output_type {
     output_type_none,
     output_type_bitcode,
@@ -656,7 +656,7 @@ pub fn get_symbol_hash(ccx: @CrateContext, t: ty::t) -> @str {
 // gas doesn't!
 pub fn sanitize(s: &str) -> ~str {
     let mut result = ~"";
-    for str::chars_each(s) |c| {
+    for str::each_char(s) |c| {
         match c {
           '@' => result += ~"_sbox_",
           '~' => result += ~"_ubox_",
@@ -771,7 +771,7 @@ pub fn link_binary(sess: Session,
     fn unlib(config: @session::config, +stem: ~str) -> ~str {
         if stem.starts_with("lib") &&
             config.os != session::os_win32 {
-            stem.slice(3, stem.len())
+            stem.slice(3, stem.len()).to_owned()
         } else {
             stem
         }
@@ -849,11 +849,7 @@ pub fn link_binary(sess: Session,
     do cstore::iter_crate_data(cstore) |crate_num, _| {
         let link_args = csearch::get_link_args_for_crate(cstore, crate_num);
         do vec::consume(link_args) |_, link_arg| {
-            // Linker arguments that don't begin with - are likely file names,
-            // so they should not be necessary.
-            if link_arg.starts_with("-") {
-              cc_args.push(link_arg);
-            }
+            cc_args.push(link_arg);
         }
     }
 

@@ -21,14 +21,14 @@ pub struct Cell<T> {
 }
 
 impl<T:cmp::Eq> cmp::Eq for Cell<T> {
-    pure fn eq(&self, other: &Cell<T>) -> bool {
+    fn eq(&self, other: &Cell<T>) -> bool {
         unsafe {
             let frozen_self: &Option<T> = transmute(&mut self.value);
             let frozen_other: &Option<T> = transmute(&mut other.value);
             frozen_self == frozen_other
         }
     }
-    pure fn ne(&self, other: &Cell<T>) -> bool { !self.eq(other) }
+    fn ne(&self, other: &Cell<T>) -> bool { !self.eq(other) }
 }
 
 /// Creates a new full cell with the given value.
@@ -36,7 +36,7 @@ pub fn Cell<T>(value: T) -> Cell<T> {
     Cell { value: Some(value) }
 }
 
-pub pure fn empty_cell<T>() -> Cell<T> {
+pub fn empty_cell<T>() -> Cell<T> {
     Cell { value: None }
 }
 
@@ -61,7 +61,7 @@ pub impl<T> Cell<T> {
     }
 
     /// Returns true if the cell is empty and false if the cell is full.
-    pure fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.value.is_none()
     }
 

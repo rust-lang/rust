@@ -3,10 +3,12 @@
 # Introduction
 
 Functions are the primary tool that programmers can use to build abstractions.
-Sometimes, however, programmers want to perform abstractions over things that are not
-runtime values. Macros provide a syntactic abstraction. For an example of how this
-can be useful, consider the following two code fragments, which both pattern-match
-on their input and return early in one case, and do nothing otherwise:
+Sometimes, however, programmers want to abstract over compile-time syntax
+rather than run-time values.
+Macros provide syntactic abstraction.
+For an example of how this can be useful, consider the following two code fragments,
+which both pattern-match on their input and both return early in one case,
+doing nothing otherwise:
 
 ~~~~
 # enum t { special_a(uint), special_b(uint) };
@@ -25,9 +27,10 @@ match input_2 {
 # }
 ~~~~
 
-This code could become tiresome if repeated many times. However, no function
-can capture its functionality to make it possible to rewrite the repetition
-away. Rust's macro system, however, can eliminate the repetition. Macros are
+This code could become tiresome if repeated many times.
+However, no function can capture its functionality to make it possible
+to abstract the repetition away.
+Rust's macro system, however, can eliminate the repetition. Macros are
 lightweight custom syntax extensions, themselves defined using the
 `macro_rules!` syntax extension. The following `early_return` macro captures
 the pattern in the above code:
@@ -37,7 +40,7 @@ the pattern in the above code:
 # fn f() -> uint {
 # let input_1 = special_a(0), input_2 = special_a(0);
 macro_rules! early_return(
-    ($inp:expr $sp:ident) => ( //invoke it like `(input_5 special_e)`
+    ($inp:expr $sp:ident) => ( // invoke it like `(input_5 special_e)`
         match $inp {
             $sp(x) => { return x; }
             _ => {}
@@ -93,10 +96,10 @@ that could be invoked like: `my_macro!(i->(( 2+2 )))`.
 
 ## Invocation location
 
-A macro invocation may take the place of (and therefore expand to) either an
-expression, an item, or a statement. The Rust parser will parse the macro
-invocation as a "placeholder" for whichever of those three nonterminals is
-appropriate for the location.
+A macro invocation may take the place of (and therefore expand to)
+an expression, an item, or a statement.
+The Rust parser will parse the macro invocation as a "placeholder"
+for whichever of those three nonterminals is appropriate for the location.
 
 At expansion time, the output of the macro will be parsed as whichever of the
 three nonterminals it stands in for. This means that a single macro might,
@@ -112,17 +115,19 @@ The right-hand side of the `=>` follows the same rules as the left-hand side,
 except that a `$` need only be followed by the name of the syntactic fragment
 to transcribe into the macro expansion; its type need not be repeated.
 
-The right-hand side must be enclosed by delimiters, which are ignored by the
-transcriber (therefore `() => ((1,2,3))` is a macro that expands to a tuple
-expression, `() => (let $x=$val)` is a macro that expands to a statement, and
-`() => (1,2,3)` is a macro that expands to a syntax error).
+The right-hand side must be enclosed by delimiters, which the transcriber ignores.
+Therefore `() => ((1,2,3))` is a macro that expands to a tuple expression,
+`() => (let $x=$val)` is a macro that expands to a statement,
+and `() => (1,2,3)` is a macro that expands to a syntax error
+(since the transcriber interprets the parentheses on the right-hand-size as delimiters,
+and `1,2,3` is not a valid Rust expression on its own).
 
 Except for permissibility of `$name` (and `$(...)*`, discussed below), the
 right-hand side of a macro definition is ordinary Rust syntax. In particular,
 macro invocations (including invocations of the macro currently being defined)
 are permitted in expression, statement, and item locations. However, nothing
 else about the code is examined or executed by the macro system; execution
-still has to wait until runtime.
+still has to wait until run-time.
 
 ## Interpolation location
 
@@ -287,7 +292,6 @@ A macro may accept multiple different input grammars. The first one to
 successfully match the actual argument to a macro invocation is the one that
 "wins".
 
-
 In the case of the example above, we want to write a recursive macro to
 process the semicolon-terminated lines, one-by-one. So, we want the following
 input patterns:
@@ -369,19 +373,19 @@ return result + val;
 # }
 ~~~~
 
-This technique is applicable in many cases where transcribing a result "all
-at once" is not possible. It resembles ordinary functional programming in some
-respects, but it is important to recognize the differences.
+This technique applies to many cases where transcribing a result all at once is not possible.
+The resulting code resembles ordinary functional programming in some respects,
+but has some important differences from functional programming.
 
 The first difference is important, but also easy to forget: the transcription
 (right-hand) side of a `macro_rules!` rule is literal syntax, which can only
 be executed at run-time. If a piece of transcription syntax does not itself
 appear inside another macro invocation, it will become part of the final
 program. If it is inside a macro invocation (for example, the recursive
-invocation of `biased_match_rec!`), it does have the opprotunity to affect
+invocation of `biased_match_rec!`), it does have the opportunity to affect
 transcription, but only through the process of attempted pattern matching.
 
-The second difference is related: the evaluation order of macros feels
+The second, related, difference is that the evaluation order of macros feels
 "backwards" compared to ordinary programming. Given an invocation
 `m1!(m2!())`, the expander first expands `m1!`, giving it as input the literal
 syntax `m2!()`. If it transcribes its argument unchanged into an appropriate

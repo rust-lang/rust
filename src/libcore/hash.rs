@@ -50,17 +50,17 @@ pub trait Hash {
      * function and require most types to only implement the
      * IterBytes trait, that feeds SipHash.
      */
-    pure fn hash_keyed(&self, k0: u64, k1: u64) -> u64;
+    fn hash_keyed(&self, k0: u64, k1: u64) -> u64;
 }
 
 // When we have default methods, won't need this.
 pub trait HashUtil {
-    pure fn hash(&self) -> u64;
+    fn hash(&self) -> u64;
 }
 
 impl<A:Hash> HashUtil for A {
     #[inline(always)]
-    pure fn hash(&self) -> u64 { self.hash_keyed(0,0) }
+    fn hash(&self) -> u64 { self.hash_keyed(0,0) }
 }
 
 /// Streaming hash-functions should implement this.
@@ -75,7 +75,7 @@ pub trait Streaming {
 
 impl<A:IterBytes> Hash for A {
     #[inline(always)]
-    pure fn hash_keyed(&self, k0: u64, k1: u64) -> u64 {
+    fn hash_keyed(&self, k0: u64, k1: u64) -> u64 {
         unsafe {
             let s = &State(k0, k1);
             for self.iter_bytes(true) |bytes| {
@@ -86,9 +86,8 @@ impl<A:IterBytes> Hash for A {
     }
 }
 
-pure fn hash_keyed_2<A: IterBytes,
-                     B: IterBytes>(a: &A, b: &B,
-                                   k0: u64, k1: u64) -> u64 {
+fn hash_keyed_2<A: IterBytes,
+                B: IterBytes>(a: &A, b: &B, k0: u64, k1: u64) -> u64 {
     unsafe {
         let s = &State(k0, k1);
         for a.iter_bytes(true) |bytes| { s.input(bytes); }
@@ -97,10 +96,9 @@ pure fn hash_keyed_2<A: IterBytes,
     }
 }
 
-pure fn hash_keyed_3<A: IterBytes,
-                     B: IterBytes,
-                     C: IterBytes>(a: &A, b: &B, c: &C,
-                                   k0: u64, k1: u64) -> u64 {
+fn hash_keyed_3<A: IterBytes,
+                B: IterBytes,
+                C: IterBytes>(a: &A, b: &B, c: &C, k0: u64, k1: u64) -> u64 {
     unsafe {
         let s = &State(k0, k1);
         for a.iter_bytes(true) |bytes| { s.input(bytes); }
@@ -110,11 +108,11 @@ pure fn hash_keyed_3<A: IterBytes,
     }
 }
 
-pure fn hash_keyed_4<A: IterBytes,
-                     B: IterBytes,
-                     C: IterBytes,
-                     D: IterBytes>(a: &A, b: &B, c: &C, d: &D,
-                                   k0: u64, k1: u64) -> u64 {
+fn hash_keyed_4<A: IterBytes,
+                B: IterBytes,
+                C: IterBytes,
+                D: IterBytes>(a: &A, b: &B, c: &C, d: &D, k0: u64, k1: u64)
+                           -> u64 {
     unsafe {
         let s = &State(k0, k1);
         for a.iter_bytes(true) |bytes| { s.input(bytes); }
@@ -125,12 +123,12 @@ pure fn hash_keyed_4<A: IterBytes,
     }
 }
 
-pure fn hash_keyed_5<A: IterBytes,
-                     B: IterBytes,
-                     C: IterBytes,
-                     D: IterBytes,
-                     E: IterBytes>(a: &A, b: &B, c: &C, d: &D, e: &E,
-                                   k0: u64, k1: u64) -> u64 {
+fn hash_keyed_5<A: IterBytes,
+                B: IterBytes,
+                C: IterBytes,
+                D: IterBytes,
+                E: IterBytes>(a: &A, b: &B, c: &C, d: &D, e: &E,
+                              k0: u64, k1: u64) -> u64 {
     unsafe {
         let s = &State(k0, k1);
         for a.iter_bytes(true) |bytes| { s.input(bytes); }

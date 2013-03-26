@@ -53,7 +53,7 @@ pub enum TestName {
     DynTestName(~str)
 }
 impl ToStr for TestName {
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         match self {
             &StaticTestName(s) => s.to_str(),
             &DynTestName(s) => s.to_str()
@@ -188,13 +188,13 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
     either::Left(test_opts)
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct BenchSamples {
     ns_iter_samples: ~[f64],
     mb_s: uint
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum TestResult { TrOk, TrFailed, TrIgnored, TrBench(BenchSamples) }
 
 struct ConsoleTestState {
@@ -477,10 +477,10 @@ fn run_tests(opts: &TestOpts,
 
 // Windows tends to dislike being overloaded with threads.
 #[cfg(windows)]
-const sched_overcommit : uint = 1;
+static sched_overcommit : uint = 1;
 
 #[cfg(unix)]
-const sched_overcommit : uint = 4u;
+static sched_overcommit : uint = 4u;
 
 fn get_concurrency() -> uint {
     unsafe {
@@ -536,7 +536,7 @@ pub fn filter_tests(
     };
 
     // Sort the tests alphabetically
-    pure fn lteq(t1: &TestDescAndFn, t2: &TestDescAndFn) -> bool {
+    fn lteq(t1: &TestDescAndFn, t2: &TestDescAndFn) -> bool {
         str::le(t1.desc.name.to_str(), t2.desc.name.to_str())
     }
     sort::quick_sort(filtered, lteq);

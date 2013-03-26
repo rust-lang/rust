@@ -464,6 +464,28 @@ pub fn core_macros() -> ~str {
         }
     )
 
+    macro_rules! assert(
+        ($cond:expr) => {
+            if !$cond {
+                ::core::sys::fail_assert(stringify!($cond), file!(), line!())
+            }
+        };
+        ($cond:expr, $msg:expr) => {
+            if !$cond {
+                ::core::sys::fail_assert($msg, file!(), line!())
+            }
+        }
+    )
+
+    macro_rules! assert_eq (
+        ($given:expr , $expected:expr) =>
+        ({let given_val = $given;
+          let expected_val = $expected;
+          // check both directions of equality....
+          if !((given_val == expected_val) && (expected_val == given_val)) {
+            fail!(fmt!(\"expected: %?, given: %?\",expected_val,given_val));
+        }}))
+
     macro_rules! condition (
 
         { $c:ident: $in:ty -> $out:ty; } => {
@@ -471,8 +493,8 @@ pub fn core_macros() -> ~str {
             mod $c {
                 fn key(_x: @::core::condition::Handler<$in,$out>) { }
 
-                pub const cond :
-                    ::core::condition::Condition/&static<$in,$out> =
+                pub static cond :
+                    ::core::condition::Condition<'static,$in,$out> =
                     ::core::condition::Condition {
                         name: stringify!($c),
                         key: key
@@ -480,6 +502,7 @@ pub fn core_macros() -> ~str {
             }
         }
     )
+
 
 }";
 }
@@ -547,7 +570,6 @@ mod test {
     use codemap;
     use codemap::spanned;
     use parse;
-    use util::testing::check_equal;
     use core::option::{None, Some};
 
     // make sure that fail! is present
@@ -634,9 +656,9 @@ mod test {
         let attr2 = make_dummy_attr (@~"bar");
         let escape_attr = make_dummy_attr (@~"macro_escape");
         let attrs1 = ~[attr1, escape_attr, attr2];
-        check_equal (contains_macro_escape (attrs1),true);
+        assert_eq!(contains_macro_escape (attrs1),true);
         let attrs2 = ~[attr1,attr2];
-        check_equal (contains_macro_escape (attrs2),false);
+        assert_eq!(contains_macro_escape (attrs2),false);
     }
 
     // make a "meta_word" outer attribute with the given name

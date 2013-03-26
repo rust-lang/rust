@@ -12,9 +12,12 @@ struct r {
   b: @mut int,
 }
 
+#[unsafe_destructor]
 impl Drop for r {
     fn finalize(&self) {
-        *(self.b) += 1;
+        unsafe {
+            *(self.b) += 1;
+        }
     }
 }
 

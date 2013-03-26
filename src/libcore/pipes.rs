@@ -82,7 +82,6 @@ bounded and unbounded protocols allows for less code duplication.
 
 */
 
-use cmp::Eq;
 use cast::{forget, reinterpret_cast, transmute};
 use cell::Cell;
 use either::{Either, Left, Right};
@@ -96,25 +95,19 @@ use task;
 use vec;
 
 #[doc(hidden)]
-const SPIN_COUNT: uint = 0;
+static SPIN_COUNT: uint = 0;
 
 macro_rules! move_it (
     { $x:expr } => ( unsafe { let y = *ptr::addr_of(&($x)); y } )
 )
 
 #[doc(hidden)]
+#[deriving(Eq)]
 enum State {
     Empty,
     Full,
     Blocked,
     Terminated
-}
-
-impl Eq for State {
-    pure fn eq(&self, other: &State) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &State) -> bool { !(*self).eq(other) }
 }
 
 pub struct BufferHeader {
@@ -350,6 +343,7 @@ struct BufferResource<T> {
 
 }
 
+#[unsafe_destructor]
 impl<T> ::ops::Drop for BufferResource<T> {
     fn finalize(&self) {
         unsafe {
@@ -445,16 +439,17 @@ pub fn try_recv<T:Owned,Tbuffer:Owned>(p: RecvPacketBuffered<T, Tbuffer>)
     let p_ = p.unwrap();
     let p = unsafe { &*p_ };
 
+    #[unsafe_destructor]
     struct DropState {
         p: &'self PacketHeader,
 
         drop {
-            if task::failing() {
-                self.p.state = Terminated;
-                let old_task = swap_task(&mut self.p.blocked_task,
-                                         ptr::null());
-                if !old_task.is_null() {
-                    unsafe {
+            unsafe {
+                if task::failing() {
+                    self.p.state = Terminated;
+                    let old_task = swap_task(&mut self.p.blocked_task,
+                                             ptr::null());
+                    if !old_task.is_null() {
                         rustrt::rust_task_deref(old_task);
                     }
                 }
@@ -549,7 +544,7 @@ pub fn try_recv<T:Owned,Tbuffer:Owned>(p: RecvPacketBuffered<T, Tbuffer>)
 }
 
 /// Returns true if messages are available.
-pub pure fn peek<T:Owned,Tb:Owned>(p: &RecvPacketBuffered<T, Tb>) -> bool {
+pub fn peek<T:Owned,Tb:Owned>(p: &RecvPacketBuffered<T, Tb>) -> bool {
     match unsafe {(*p.header()).state} {
       Empty | Terminated => false,
       Blocked => fail!(~"peeking on blocked packet"),
@@ -721,11 +716,11 @@ pub fn select2<A:Owned,Ab:Owned,B:Owned,Bb:Owned>(
 
 #[doc(hidden)]
 pub trait Selectable {
-    pure fn header(&self) -> *PacketHeader;
+    fn header(&self) -> *PacketHeader;
 }
 
 impl Selectable for *PacketHeader {
-    pure fn header(&self) -> *PacketHeader { *self }
+    fn header(&self) -> *PacketHeader { *self }
 }
 
 /// Returns the index of an endpoint that is ready to receive.
@@ -773,6 +768,7 @@ pub struct SendPacketBuffered<T, Tbuffer> {
     mut buffer: Option<BufferResource<Tbuffer>>,
 }
 
+#[unsafe_destructor]
 impl<T:Owned,Tbuffer:Owned> ::ops::Drop for SendPacketBuffered<T,Tbuffer> {
     fn finalize(&self) {
         //if self.p != none {
@@ -809,7 +805,7 @@ pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
         option::unwrap(p)
     }
 
-    pure fn header(&self) -> *PacketHeader {
+    fn header(&self) -> *PacketHeader {
         match self.p {
           Some(packet) => unsafe {
             let packet = &*packet;
@@ -842,6 +838,7 @@ pub struct RecvPacketBuffered<T, Tbuffer> {
     mut buffer: Option<BufferResource<Tbuffer>>,
 }
 
+#[unsafe_destructor]
 impl<T:Owned,Tbuffer:Owned> ::ops::Drop for RecvPacketBuffered<T,Tbuffer> {
     fn finalize(&self) {
         //if self.p != none {
@@ -875,7 +872,7 @@ pub impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
 }
 
 impl<T:Owned,Tbuffer:Owned> Selectable for RecvPacketBuffered<T, Tbuffer> {
-    pure fn header(&self) -> *PacketHeader {
+    fn header(&self) -> *PacketHeader {
         match self.p {
           Some(packet) => unsafe {
             let packet = &*packet;

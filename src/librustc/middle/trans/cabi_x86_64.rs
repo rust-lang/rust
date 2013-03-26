@@ -41,10 +41,10 @@ enum x86_64_reg_class {
 }
 
 impl cmp::Eq for x86_64_reg_class {
-    pure fn eq(&self, other: &x86_64_reg_class) -> bool {
+    fn eq(&self, other: &x86_64_reg_class) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    pure fn ne(&self, other: &x86_64_reg_class) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &x86_64_reg_class) -> bool { !(*self).eq(other) }
 }
 
 fn is_sse(++c: x86_64_reg_class) -> bool {

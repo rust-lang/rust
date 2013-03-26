@@ -10,7 +10,7 @@
 
 // Issue #358
 
-const toplevel_mod: int = -1;
+static toplevel_mod: int = -1;
 
 pub fn main() {
     fail_unless!(toplevel_mod == -1);

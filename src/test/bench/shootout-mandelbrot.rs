@@ -33,7 +33,7 @@ struct cmplx {
 }
 
 impl ops::Mul<cmplx,cmplx> for cmplx {
-    pure fn mul(&self, x: &cmplx) -> cmplx {
+    fn mul(&self, x: &cmplx) -> cmplx {
         cmplx {
             re: self.re*(*x).re - self.im*(*x).im,
             im: self.re*(*x).im + self.im*(*x).re
@@ -42,7 +42,7 @@ impl ops::Mul<cmplx,cmplx> for cmplx {
 }
 
 impl ops::Add<cmplx,cmplx> for cmplx {
-    pure fn add(&self, x: &cmplx) -> cmplx {
+    fn add(&self, x: &cmplx) -> cmplx {
         cmplx {
             re: self.re + (*x).re,
             im: self.im + (*x).im
@@ -52,7 +52,7 @@ impl ops::Add<cmplx,cmplx> for cmplx {
 
 struct Line {i: uint, b: ~[u8]}
 
-pure fn cabs(x: cmplx) -> f64
+fn cabs(x: cmplx) -> f64
 {
     x.re*x.re + x.im*x.im
 }

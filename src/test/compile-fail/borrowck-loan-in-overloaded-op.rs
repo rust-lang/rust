@@ -13,7 +13,7 @@
 struct foo(~uint);
 
 impl Add<foo, foo> for foo {
-    pure fn add(f: &foo) -> foo {
+    fn add(f: &foo) -> foo {
         foo(~(**self + **(*f)))
     }
 }

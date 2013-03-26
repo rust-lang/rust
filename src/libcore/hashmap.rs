@@ -24,8 +24,9 @@ pub mod linear {
     use rand;
     use uint;
     use vec;
+    use util::unreachable;
 
-    const INITIAL_CAPACITY: uint = 32u; // 2^5
+    static INITIAL_CAPACITY: uint = 32u; // 2^5
 
     struct Bucket<K,V> {
         hash: uint,
@@ -48,7 +49,7 @@ pub mod linear {
     }
 
     #[inline(always)]
-    pure fn resize_at(capacity: uint) -> uint {
+    fn resize_at(capacity: uint) -> uint {
         ((capacity as float) * 3. / 4.) as uint
     }
 
@@ -59,7 +60,7 @@ pub mod linear {
                                           initial_capacity)
     }
 
-    pure fn linear_map_with_capacity_and_keys<K:Eq + Hash,V>(
+    fn linear_map_with_capacity_and_keys<K:Eq + Hash,V>(
         k0: u64, k1: u64,
         initial_capacity: uint) -> LinearMap<K, V> {
         LinearMap {
@@ -72,21 +73,21 @@ pub mod linear {
 
     priv impl<K:Hash + IterBytes + Eq,V> LinearMap<K, V> {
         #[inline(always)]
-        pure fn to_bucket(&self, h: uint) -> uint {
+        fn to_bucket(&self, h: uint) -> uint {
             // A good hash function with entropy spread over all of the
             // bits is assumed. SipHash is more than good enough.
             h % self.buckets.len()
         }
 
         #[inline(always)]
-        pure fn next_bucket(&self, idx: uint, len_buckets: uint) -> uint {
+        fn next_bucket(&self, idx: uint, len_buckets: uint) -> uint {
             let n = (idx + 1) % len_buckets;
             debug!("next_bucket(%?, %?) = %?", idx, len_buckets, n);
             n
         }
 
         #[inline(always)]
-        pure fn bucket_sequence(&self, hash: uint,
+        fn bucket_sequence(&self, hash: uint,
                                 op: &fn(uint) -> bool) -> uint {
             let start_idx = self.to_bucket(hash);
             let len_buckets = self.buckets.len();
@@ -103,24 +104,24 @@ pub mod linear {
         }
 
         #[inline(always)]
-        pure fn bucket_for_key(&self, k: &K) -> SearchResult {
+        fn bucket_for_key(&self, k: &K) -> SearchResult {
             let hash = k.hash_keyed(self.k0, self.k1) as uint;
             self.bucket_for_key_with_hash(hash, k)
         }
 
         #[inline(always)]
-        pure fn bucket_for_key_equiv<Q:Hash + IterBytes + Equiv<K>>(
-                &self,
-                k: &Q)
-             -> SearchResult {
+        fn bucket_for_key_equiv<Q:Hash + IterBytes + Equiv<K>>(&self,
+                                                               k: &Q)
+                                                            -> SearchResult {
             let hash = k.hash_keyed(self.k0, self.k1) as uint;
             self.bucket_for_key_with_hash_equiv(hash, k)
         }
 
         #[inline(always)]
-        pure fn bucket_for_key_with_hash(&self,
-                                         hash: uint,
-                                         k: &K) -> SearchResult {
+        fn bucket_for_key_with_hash(&self,
+                                    hash: uint,
+                                    k: &K)
+                                 -> SearchResult {
             let _ = for self.bucket_sequence(hash) |i| {
                 match self.buckets[i] {
                     Some(ref bkt) => if bkt.hash == hash && *k == bkt.key {
@@ -133,10 +134,10 @@ pub mod linear {
         }
 
         #[inline(always)]
-        pure fn bucket_for_key_with_hash_equiv<Q:Equiv<K>>(&self,
-                                                           hash: uint,
-                                                           k: &Q)
-                                                        -> SearchResult {
+        fn bucket_for_key_with_hash_equiv<Q:Equiv<K>>(&self,
+                                                      hash: uint,
+                                                      k: &Q)
+                                                   -> SearchResult {
             let _ = for self.bucket_sequence(hash) |i| {
                 match self.buckets[i] {
                     Some(ref bkt) => {
@@ -185,10 +186,18 @@ pub mod linear {
         }
 
         #[inline(always)]
-        pure fn value_for_bucket(&self, idx: uint) -> &'self V {
+        fn value_for_bucket(&self, idx: uint) -> &'self V {
             match self.buckets[idx] {
                 Some(ref bkt) => &bkt.value,
                 None => fail!(~"LinearMap::find: internal logic error"),
+            }
+        }
+
+        #[inline(always)]
+        fn mut_value_for_bucket(&mut self, idx: uint) -> &'self mut V {
+            match self.buckets[idx] {
+                Some(ref mut bkt) => &mut bkt.value,
+                None => unreachable()
             }
         }
 
@@ -273,7 +282,7 @@ pub mod linear {
         BaseIter<(&'self K, &'self V)> for LinearMap<K, V>
     {
         /// Visit all key-value pairs
-        pure fn each(&self, blk: &fn(&(&'self K, &'self V)) -> bool) {
+        fn each(&self, blk: &fn(&(&'self K, &'self V)) -> bool) {
             for uint::range(0, self.buckets.len()) |i| {
                 let mut broke = false;
                 do self.buckets[i].map |bucket| {
@@ -284,16 +293,16 @@ pub mod linear {
                 if broke { break; }
             }
         }
-        pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+        fn size_hint(&self) -> Option<uint> { Some(self.len()) }
     }
 
 
     impl<K:Hash + IterBytes + Eq,V> Container for LinearMap<K, V> {
         /// Return the number of elements in the map
-        pure fn len(&const self) -> uint { self.size }
+        fn len(&const self) -> uint { self.size }
 
         /// Return true if the map contains no elements
-        pure fn is_empty(&const self) -> bool { self.len() == 0 }
+        fn is_empty(&const self) -> bool { self.len() == 0 }
     }
 
     impl<K:Hash + IterBytes + Eq,V> Mutable for LinearMap<K, V> {
@@ -308,7 +317,7 @@ pub mod linear {
 
     impl<K:Hash + IterBytes + Eq,V> Map<K, V> for LinearMap<K, V> {
         /// Return true if the map contains a value for the specified key
-        pure fn contains_key(&self, k: &K) -> bool {
+        fn contains_key(&self, k: &K) -> bool {
             match self.bucket_for_key(k) {
                 FoundEntry(_) => {true}
                 TableFull | FoundHole(_) => {false}
@@ -316,12 +325,12 @@ pub mod linear {
         }
 
         /// Visit all keys
-        pure fn each_key(&self, blk: &fn(k: &K) -> bool) {
+        fn each_key(&self, blk: &fn(k: &K) -> bool) {
             self.each(|&(k, _)| blk(k))
         }
 
         /// Visit all values
-        pure fn each_value(&self, blk: &fn(v: &V) -> bool) {
+        fn each_value(&self, blk: &fn(v: &V) -> bool) {
             self.each(|&(_, v)| blk(v))
         }
 
@@ -338,11 +347,22 @@ pub mod linear {
             }
         }
 
-        /// Return the value corresponding to the key in the map
-        pure fn find(&self, k: &K) -> Option<&'self V> {
+        /// Return a reference to the value corresponding to the key
+        fn find(&self, k: &K) -> Option<&'self V> {
             match self.bucket_for_key(k) {
                 FoundEntry(idx) => Some(self.value_for_bucket(idx)),
                 TableFull | FoundHole(_) => None,
+            }
+        }
+
+        /// Return a mutable reference to the value corresponding to the key
+        fn find_mut(&mut self, k: &K) -> Option<&'self mut V> {
+            let idx = match self.bucket_for_key(k) {
+                FoundEntry(idx) => idx,
+                TableFull | FoundHole(_) => return None
+            };
+            unsafe {  // FIXME(#4903)---requires flow-sensitive borrow checker
+                Some(::cast::transmute_mut_region(self.mut_value_for_bucket(idx)))
             }
         }
 
@@ -373,7 +393,7 @@ pub mod linear {
 
     pub impl<K:Hash + IterBytes + Eq,V> LinearMap<K, V> {
         /// Create an empty LinearMap
-        static fn new() -> LinearMap<K, V> {
+        fn new() -> LinearMap<K, V> {
             linear_map_with_capacity(INITIAL_CAPACITY)
         }
 
@@ -487,7 +507,7 @@ pub mod linear {
             }
         }
 
-        pure fn get(&self, k: &K) -> &'self V {
+        fn get(&self, k: &K) -> &'self V {
             match self.find(k) {
                 Some(v) => v,
                 None => fail!(fmt!("No entry found for key: %?", k)),
@@ -496,10 +516,8 @@ pub mod linear {
 
         /// Return true if the map contains a value for the specified key,
         /// using equivalence
-        pure fn contains_key_equiv<Q:Hash + IterBytes + Equiv<K>>(
-                &self,
-                key: &Q)
-             -> bool {
+        fn contains_key_equiv<Q:Hash + IterBytes + Equiv<K>>(&self, key: &Q)
+                                                          -> bool {
             match self.bucket_for_key_equiv(key) {
                 FoundEntry(_) => {true}
                 TableFull | FoundHole(_) => {false}
@@ -508,8 +526,8 @@ pub mod linear {
 
         /// Return the value corresponding to the key in the map, using
         /// equivalence
-        pure fn find_equiv<Q:Hash + IterBytes + Equiv<K>>(&self, k: &Q)
-                                                       -> Option<&'self V> {
+        fn find_equiv<Q:Hash + IterBytes + Equiv<K>>(&self, k: &Q)
+                                                  -> Option<&'self V> {
             match self.bucket_for_key_equiv(k) {
                 FoundEntry(idx) => Some(self.value_for_bucket(idx)),
                 TableFull | FoundHole(_) => None,
@@ -518,7 +536,7 @@ pub mod linear {
     }
 
     impl<K:Hash + IterBytes + Eq,V:Eq> Eq for LinearMap<K, V> {
-        pure fn eq(&self, other: &LinearMap<K, V>) -> bool {
+        fn eq(&self, other: &LinearMap<K, V>) -> bool {
             if self.len() != other.len() { return false; }
 
             for self.each |&(key, value)| {
@@ -531,7 +549,7 @@ pub mod linear {
             true
         }
 
-        pure fn ne(&self, other: &LinearMap<K, V>) -> bool { !self.eq(other) }
+        fn ne(&self, other: &LinearMap<K, V>) -> bool { !self.eq(other) }
     }
 
     pub struct LinearSet<T> {
@@ -540,25 +558,21 @@ pub mod linear {
 
     impl<T:Hash + IterBytes + Eq> BaseIter<T> for LinearSet<T> {
         /// Visit all values in order
-        pure fn each(&self, f: &fn(&T) -> bool) { self.map.each_key(f) }
-        pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+        fn each(&self, f: &fn(&T) -> bool) { self.map.each_key(f) }
+        fn size_hint(&self) -> Option<uint> { Some(self.len()) }
     }
 
     impl<T:Hash + IterBytes + Eq> Eq for LinearSet<T> {
-        pure fn eq(&self, other: &LinearSet<T>) -> bool {
-            self.map == other.map
-        }
-        pure fn ne(&self, other: &LinearSet<T>) -> bool {
-            self.map != other.map
-        }
+        fn eq(&self, other: &LinearSet<T>) -> bool { self.map == other.map }
+        fn ne(&self, other: &LinearSet<T>) -> bool { self.map != other.map }
     }
 
     impl<T:Hash + IterBytes + Eq> Container for LinearSet<T> {
         /// Return the number of elements in the set
-        pure fn len(&const self) -> uint { self.map.len() }
+        fn len(&const self) -> uint { self.map.len() }
 
         /// Return true if the set contains no elements
-        pure fn is_empty(&const self) -> bool { self.map.is_empty() }
+        fn is_empty(&const self) -> bool { self.map.is_empty() }
     }
 
     impl<T:Hash + IterBytes + Eq> Mutable for LinearSet<T> {
@@ -568,9 +582,7 @@ pub mod linear {
 
     impl<T:Hash + IterBytes + Eq> Set<T> for LinearSet<T> {
         /// Return true if the set contains a value
-        pure fn contains(&self, value: &T) -> bool {
-            self.map.contains_key(value)
-        }
+        fn contains(&self, value: &T) -> bool { self.map.contains_key(value) }
 
         /// Add a value to the set. Return true if the value was not already
         /// present in the set.
@@ -582,22 +594,22 @@ pub mod linear {
 
         /// Return true if the set has no elements in common with `other`.
         /// This is equivalent to checking for an empty intersection.
-        pure fn is_disjoint(&self, other: &LinearSet<T>) -> bool {
+        fn is_disjoint(&self, other: &LinearSet<T>) -> bool {
             iter::all(self, |v| !other.contains(v))
         }
 
         /// Return true if the set is a subset of another
-        pure fn is_subset(&self, other: &LinearSet<T>) -> bool {
+        fn is_subset(&self, other: &LinearSet<T>) -> bool {
             iter::all(self, |v| other.contains(v))
         }
 
         /// Return true if the set is a superset of another
-        pure fn is_superset(&self, other: &LinearSet<T>) -> bool {
+        fn is_superset(&self, other: &LinearSet<T>) -> bool {
             other.is_subset(self)
         }
 
         /// Visit the values representing the difference
-        pure fn difference(&self, other: &LinearSet<T>, f: &fn(&T) -> bool) {
+        fn difference(&self, other: &LinearSet<T>, f: &fn(&T) -> bool) {
             for self.each |v| {
                 if !other.contains(v) {
                     if !f(v) { return }
@@ -606,16 +618,15 @@ pub mod linear {
         }
 
         /// Visit the values representing the symmetric difference
-        pure fn symmetric_difference(&self, other: &LinearSet<T>,
-                                     f: &fn(&T) -> bool) {
+        fn symmetric_difference(&self,
+                                other: &LinearSet<T>,
+                                f: &fn(&T) -> bool) {
             self.difference(other, f);
             other.difference(self, f);
         }
 
         /// Visit the values representing the intersection
-        pure fn intersection(&self,
-                             other: &LinearSet<T>,
-                             f: &fn(&T) -> bool) {
+        fn intersection(&self, other: &LinearSet<T>, f: &fn(&T) -> bool) {
             for self.each |v| {
                 if other.contains(v) {
                     if !f(v) { return }
@@ -624,7 +635,7 @@ pub mod linear {
         }
 
         /// Visit the values representing the union
-        pure fn union(&self, other: &LinearSet<T>, f: &fn(&T) -> bool) {
+        fn union(&self, other: &LinearSet<T>, f: &fn(&T) -> bool) {
             for self.each |v| {
                 if !f(v) { return }
             }
@@ -639,7 +650,7 @@ pub mod linear {
 
     pub impl <T:Hash + IterBytes + Eq> LinearSet<T> {
         /// Create an empty LinearSet
-        static fn new() -> LinearSet<T> { LinearSet{map: LinearMap::new()} }
+        fn new() -> LinearSet<T> { LinearSet{map: LinearMap::new()} }
 
         /// Reserve space for at least `n` elements in the hash table.
         fn reserve_at_least(&mut self, n: uint) {
@@ -662,6 +673,19 @@ pub mod linear {
             fail_unless!(m.insert(2, 4));
             fail_unless!(*m.get(&1) == 2);
             fail_unless!(*m.get(&2) == 4);
+        }
+
+        #[test]
+        fn test_find_mut() {
+            let mut m = LinearMap::new();
+            fail_unless!(m.insert(1, 12));
+            fail_unless!(m.insert(2, 8));
+            fail_unless!(m.insert(5, 14));
+            let new = 100;
+            match m.find_mut(&5) {
+                None => fail!(), Some(x) => *x = new
+            }
+            assert_eq!(m.find(&5), Some(&new));
         }
 
         #[test]

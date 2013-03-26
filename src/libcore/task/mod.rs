@@ -50,13 +50,13 @@ pub mod rt;
 pub mod spawn;
 
 /// A handle to a scheduler
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Scheduler {
     SchedulerHandle(sched_id)
 }
 
 /// A handle to a task
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Task {
     TaskHandle(task_id)
 }
@@ -72,23 +72,14 @@ pub enum Task {
  * If you wish for this result's delivery to block until all linked and/or
  * children tasks complete, recommend using a result future.
  */
+#[deriving(Eq)]
 pub enum TaskResult {
     Success,
     Failure,
 }
 
-impl Eq for TaskResult {
-    pure fn eq(&self, other: &TaskResult) -> bool {
-        match ((*self), (*other)) {
-            (Success, Success) | (Failure, Failure) => true,
-            (Success, _) | (Failure, _) => false
-        }
-    }
-    pure fn ne(&self, other: &TaskResult) -> bool { !(*self).eq(other) }
-}
-
 /// Scheduler modes
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum SchedMode {
     /// Run task on the default scheduler
     DefaultScheduler,
@@ -1160,7 +1151,7 @@ fn test_child_doesnt_ref_parent() {
     // climbing the task tree to dereference each ancestor. (See #1789)
     // (well, it would if the constant were 8000+ - I lowered it to be more
     // valgrind-friendly. try this at home, instead..!)
-    const generations: uint = 16;
+    static generations: uint = 16;
     fn child_no(x: uint) -> ~fn() {
         return || {
             if x < generations {

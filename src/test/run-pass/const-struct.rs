@@ -12,17 +12,17 @@
 struct foo { a: int, b: int, c: int }
 
 impl cmp::Eq for foo {
-    pure fn eq(&self, other: &foo) -> bool {
+    fn eq(&self, other: &foo) -> bool {
         (*self).a == (*other).a &&
         (*self).b == (*other).b &&
         (*self).c == (*other).c
     }
-    pure fn ne(&self, other: &foo) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &foo) -> bool { !(*self).eq(other) }
 }
 
-const x : foo = foo { a:1, b:2, c: 3 };
-const y : foo = foo { b:2, c:3, a: 1 };
-const z : &'static foo = &foo { a: 10, b: 22, c: 12 };
+static x : foo = foo { a:1, b:2, c: 3 };
+static y : foo = foo { b:2, c:3, a: 1 };
+static z : &'static foo = &foo { a: 10, b: 22, c: 12 };
 
 pub fn main() {
     fail_unless!(x.b == 2);

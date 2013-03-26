@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-fast
+// aux-build:cci_const.rs
+
+extern mod cci_const;
+
 fn main() {
-    fn f(&&v: @const int) {
-        *v = 1 //~ ERROR assigning to dereference of const @ pointer
+    let x = cci_const::uint_val;
+    match x {
+        cci_const::uint_val => {}
+        _ => {}
     }
-
-    let v = @0;
-
-    f(v);
 }

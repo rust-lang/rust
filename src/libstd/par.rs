@@ -22,10 +22,10 @@ use future_spawn = future::spawn;
  * The maximum number of tasks this module will spawn for a single
  * operation.
  */
-const max_tasks : uint = 32u;
+static max_tasks : uint = 32u;
 
 /// The minimum number of elements each task will process.
-const min_granularity : uint = 1024u;
+static min_granularity : uint = 1024u;
 
 /**
  * An internal helper to map a function over a large vector and

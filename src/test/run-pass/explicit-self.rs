@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-const tau: float = 2.0*3.14159265358979323;
+static tau: float = 2.0*3.14159265358979323;
 
 struct Point {x: float, y: float}
 struct Size {w: float, h: float}

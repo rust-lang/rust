@@ -12,7 +12,7 @@
 
 fn main() {
 
-    const FOO: int = 2;
+    static FOO: int = 2;
     let _v = [0, ..FOO*3*2/2];
 
 }

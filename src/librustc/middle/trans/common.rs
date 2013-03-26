@@ -76,8 +76,8 @@ pub type addrspace = c_uint;
 //    0 is ignored by the GC, and is used for all non-GC'd pointers.
 //    1 is for opaque GC'd boxes.
 //    >= 2 are for specific types (e.g. resources).
-pub const default_addrspace: addrspace = 0;
-pub const gc_box_addrspace: addrspace = 1;
+pub static default_addrspace: addrspace = 0;
+pub static gc_box_addrspace: addrspace = 1;
 
 pub type addrspace_gen = @fn() -> addrspace;
 pub fn new_addrspace_gen() -> addrspace_gen {
@@ -335,14 +335,14 @@ pub fn warn_not_to_commit(ccx: @CrateContext, msg: &str) {
 }
 
 // Heap selectors. Indicate which heap something should go on.
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum heap {
     heap_managed,
     heap_managed_unique,
     heap_exchange,
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum cleantype {
     normal_exit_only,
     normal_exit_and_unwind
@@ -615,7 +615,7 @@ pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>, +kind: block_kind,
 }
 
 // First two args are retptr, env
-pub const first_real_arg: uint = 2u;
+pub static first_real_arg: uint = 2u;
 
 pub struct Result {
     bcx: block,
@@ -678,9 +678,9 @@ pub fn block_parent(cx: block) -> block {
 // Accessors
 
 pub impl block_ {
-    pure fn ccx(@mut self) -> @CrateContext { *self.fcx.ccx }
-    pure fn tcx(@mut self) -> ty::ctxt { self.fcx.ccx.tcx }
-    pure fn sess(@mut self) -> Session { self.fcx.ccx.sess }
+    fn ccx(@mut self) -> @CrateContext { *self.fcx.ccx }
+    fn tcx(@mut self) -> ty::ctxt { self.fcx.ccx.tcx }
+    fn sess(@mut self) -> Session { self.fcx.ccx.sess }
 
     fn node_id_to_str(@mut self, id: ast::node_id) -> ~str {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
@@ -1270,7 +1270,7 @@ pub fn is_undef(val: ValueRef) -> bool {
 }
 
 // Used to identify cached monomorphized functions and vtables
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum mono_param_id {
     mono_precise(ty::t, Option<~[mono_id]>),
     mono_any,
@@ -1280,7 +1280,7 @@ pub enum mono_param_id {
               datum::DatumMode),
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct mono_id_ {
     def: ast::def_id,
     params: ~[mono_param_id],
@@ -1290,7 +1290,7 @@ pub struct mono_id_ {
 pub type mono_id = @mono_id_;
 
 impl to_bytes::IterBytes for mono_param_id {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
             mono_precise(t, ref mids) =>
                 to_bytes::iter_bytes_3(&0u8, &ty::type_id(t), mids, lsb0, f),
@@ -1304,7 +1304,7 @@ impl to_bytes::IterBytes for mono_param_id {
 }
 
 impl to_bytes::IterBytes for mono_id_ {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.def, &self.params, lsb0, f);
     }
 }
@@ -1430,7 +1430,7 @@ pub fn find_vtable(tcx: ty::ctxt, ps: &param_substs,
 
     // Vtables are stored in a flat array, finding the right one is
     // somewhat awkward
-    let first_n_bounds = ps.bounds.view(0, n_param);
+    let first_n_bounds = ps.bounds.slice(0, n_param);
     let vtables_to_skip =
         ty::count_traits_and_supertraits(tcx, first_n_bounds);
     let vtable_off = vtables_to_skip + n_bound;

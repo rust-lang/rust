@@ -15,7 +15,7 @@ pub struct WorkQueue<T> {
 }
 
 pub impl<T> WorkQueue<T> {
-    static fn new() -> WorkQueue<T> {
+    fn new() -> WorkQueue<T> {
         WorkQueue {
             queue: ~[]
         }

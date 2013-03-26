@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait MyNum {
-    static fn from_int(int) -> Self;
+    fn from_int(int) -> Self;
 }
 
 pub trait NumExt: MyNum { }
@@ -17,7 +17,7 @@ pub trait NumExt: MyNum { }
 struct S { v: int }
 
 impl MyNum for S {
-    static fn from_int(i: int) -> S {
+    fn from_int(i: int) -> S {
         S {
             v: i
         }

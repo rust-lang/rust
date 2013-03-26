@@ -76,10 +76,12 @@ use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
 use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
 use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
-use parse::obsolete::{ObsoleteAssertion, ObsoletePostFnTySigil};
+use parse::obsolete::{ObsoletePostFnTySigil};
 use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
 use parse::obsolete::{ObsoleteMode, ObsoleteImplicitSelf};
-use parse::obsolete::{ObsoleteLifetimeNotation};
+use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
+use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
+use parse::obsolete::{ObsoleteConstItem};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -93,7 +95,7 @@ use core::either;
 use core::vec;
 use std::oldmap::HashMap;
 
-#[deriving_eq]
+#[deriving(Eq)]
 enum restriction {
     UNRESTRICTED,
     RESTRICT_STMT_EXPR,
@@ -196,8 +198,8 @@ macro_rules! maybe_whole (
 )
 
 
-pure fn maybe_append(+lhs: ~[attribute], rhs: Option<~[attribute]>)
-                  -> ~[attribute] {
+fn maybe_append(+lhs: ~[attribute], rhs: Option<~[attribute]>)
+             -> ~[attribute] {
     match rhs {
         None => lhs,
         Some(ref attrs) => vec::append(lhs, (*attrs))
@@ -268,6 +270,7 @@ pub struct Parser {
 
 }
 
+#[unsafe_destructor]
 impl Drop for Parser {
     /* do not copy the parser; its state is tied to outside state */
     fn finalize(&self) {}
@@ -330,7 +333,7 @@ pub impl Parser {
     }
     fn get_id(&self) -> node_id { next_node_id(self.sess) }
 
-    pure fn id_to_str(&self, id: ident) -> @~str {
+    fn id_to_str(&self, id: ident) -> @~str {
         self.sess.interner.get(id)
     }
 
@@ -412,7 +415,7 @@ pub impl Parser {
 
     fn parse_purity(&self) -> purity {
         if self.eat_keyword(&~"pure") {
-            // NB: We parse this as impure for bootstrapping purposes.
+            self.obsolete(*self.last_span, ObsoletePurity);
             return impure_fn;
         } else if self.eat_keyword(&~"unsafe") {
             return unsafe_fn;
@@ -581,7 +584,9 @@ pub impl Parser {
         }
     }
 
-    fn parse_ty(&self, colons_before_params: bool) -> @Ty {
+    // Useless second parameter for compatibility with quasiquote macros.
+    // Bleh!
+    fn parse_ty(&self, _: bool) -> @Ty {
         maybe_whole!(self, nt_ty);
 
         let lo = self.span.lo;
@@ -661,7 +666,7 @@ pub impl Parser {
             result
         } else if *self.token == token::MOD_SEP
             || is_ident_or_path(&*self.token) {
-            let path = self.parse_path_with_tps(colons_before_params);
+            let path = self.parse_path_with_tps(false);
             ty_path(path, self.get_id())
         } else {
             self.fatal(~"expected type");
@@ -706,6 +711,9 @@ pub impl Parser {
 
         if mt.mutbl != m_imm && sigil == OwnedSigil {
             self.obsolete(*self.last_span, ObsoleteMutOwnedPointer);
+        }
+        if mt.mutbl == m_const && sigil == ManagedSigil {
+            self.obsolete(*self.last_span, ObsoleteConstManagedPointer);
         }
 
         ctor(mt)
@@ -902,6 +910,7 @@ pub impl Parser {
                 && self.look_ahead(1u) == token::BINOP(token::AND)
             {
                 self.bump(); self.bump();
+                self.obsolete(*self.last_span, ObsoleteLifetimeNotation);
                 match *self.token {
                     token::IDENT(sid, _) => {
                         let span = copy self.span;
@@ -1210,10 +1219,6 @@ pub impl Parser {
             ex = expr_log(ast::log_other, lvl, e);
             hi = self.span.hi;
             self.expect(&token::RPAREN);
-        } else if self.eat_keyword(&~"assert") {
-            let e = self.parse_expr();
-            ex = expr_copy(e);  // whatever
-            self.obsolete(*self.last_span, ObsoleteAssertion);
         } else if self.eat_keyword(&~"return") {
             if can_begin_expr(&*self.token) {
                 let e = self.parse_expr();
@@ -1633,6 +1638,10 @@ pub impl Parser {
           token::AT => {
             self.bump();
             let m = self.parse_mutability();
+            if m == m_const {
+                self.obsolete(*self.last_span, ObsoleteConstManagedPointer);
+            }
+
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
             // HACK: turn @[...] into a @-evec
@@ -2674,7 +2683,7 @@ pub impl Parser {
 
     fn parse_optional_purity(&self) -> ast::purity {
         if self.eat_keyword(&~"pure") {
-            // NB: We parse this as impure for bootstrapping purposes.
+            self.obsolete(*self.last_span, ObsoletePurity);
             ast::impure_fn
         } else if self.eat_keyword(&~"unsafe") {
             ast::unsafe_fn
@@ -2694,49 +2703,52 @@ pub impl Parser {
 
         let mut result = opt_vec::Empty;
         loop {
-            if self.eat(&token::BINOP(token::AND)) {
-                if self.eat_keyword(&~"static") {
-                    result.push(RegionTyParamBound);
-                } else {
-                    self.span_err(*self.span,
-                                  ~"`&static` is the only permissible \
-                                    region bound here");
+            match *self.token {
+                token::LIFETIME(lifetime) => {
+                    if str::eq_slice(*self.id_to_str(lifetime), "static") {
+                        result.push(RegionTyParamBound);
+                    } else {
+                        self.span_err(*self.span,
+                                      ~"`'static` is the only permissible \
+                                        region bound here");
+                    }
+                    self.bump();
                 }
-            } else if is_ident(&*self.token) {
-                let maybe_bound = match *self.token {
-                    token::IDENT(copy sid, _) => {
-                        match *self.id_to_str(sid) {
-                            ~"send" |
-                            ~"copy" |
-                            ~"const" |
-                            ~"owned" => {
-                                self.obsolete(
-                                    *self.span,
-                                    ObsoleteLowerCaseKindBounds);
+                token::IDENT(*) => {
+                    let maybe_bound = match *self.token {
+                        token::IDENT(copy sid, _) => {
+                            match *self.id_to_str(sid) {
+                                ~"send" |
+                                ~"copy" |
+                                ~"const" |
+                                ~"owned" => {
+                                    self.obsolete(
+                                        *self.span,
+                                        ObsoleteLowerCaseKindBounds);
 
-                                // Bogus value, but doesn't matter, since
-                                // is an error
-                                Some(TraitTyParamBound(
-                                    self.mk_ty_path(sid)))
+                                    // Bogus value, but doesn't matter, since
+                                    // is an error
+                                    Some(TraitTyParamBound(
+                                        self.mk_ty_path(sid)))
+                                }
+                                _ => None
                             }
-                            _ => None
+                        }
+                        _ => fail!()
+                    };
+
+                    match maybe_bound {
+                        Some(bound) => {
+                            self.bump();
+                            result.push(bound);
+                        }
+                        None => {
+                            let ty = self.parse_ty(false);
+                            result.push(TraitTyParamBound(ty));
                         }
                     }
-                    _ => fail!()
-                };
-
-                match maybe_bound {
-                    Some(bound) => {
-                        self.bump();
-                        result.push(bound);
-                    }
-                    None => {
-                        let ty = self.parse_ty(false);
-                        result.push(TraitTyParamBound(ty));
-                    }
                 }
-            } else {
-                break;
+                _ => break,
             }
 
             if self.eat(&token::BINOP(token::PLUS)) {
@@ -3328,8 +3340,14 @@ pub impl Parser {
         else if self.eat_keyword(&~"priv") { private }
         else { inherited }
     }
+
     fn parse_staticness(&self) -> bool {
-        self.eat_keyword(&~"static")
+        if self.eat_keyword(&~"static") {
+            self.obsolete(*self.last_span, ObsoleteStaticMethod);
+            true
+        } else {
+            false
+        }
     }
 
     // given a termination token and a vector of already-parsed
@@ -3547,7 +3565,9 @@ pub impl Parser {
         let lo = self.span.lo;
 
         // XXX: Obsolete; remove after snap.
-        if !self.eat_keyword(&~"const") {
+        if self.eat_keyword(&~"const") {
+            self.obsolete(*self.last_span, ObsoleteConstItem);
+        } else {
             self.expect_keyword(&~"static");
         }
 
@@ -3567,6 +3587,7 @@ pub impl Parser {
     fn parse_fn_purity(&self) -> purity {
         if self.eat_keyword(&~"fn") { impure_fn }
         else if self.eat_keyword(&~"pure") {
+            self.obsolete(*self.last_span, ObsoletePurity);
             self.expect_keyword(&~"fn");
             // NB: We parse this as impure for bootstrapping purposes.
             impure_fn
@@ -3942,6 +3963,9 @@ pub impl Parser {
                 (self.is_keyword(&~"static") &&
                     !self.token_is_keyword(&~"fn", &self.look_ahead(1)))) {
             // CONST ITEM
+            if self.is_keyword(&~"const") {
+                self.obsolete(*self.span, ObsoleteConstItem);
+            }
             self.bump();
             let (ident, item_, extra_attrs) = self.parse_item_const();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
@@ -3966,7 +3990,7 @@ pub impl Parser {
         }
         if items_allowed && self.eat_keyword(&~"pure") {
             // PURE FUNCTION ITEM
-            // NB: We parse this as impure for bootstrapping purposes.
+            self.obsolete(*self.last_span, ObsoletePurity);
             self.expect_keyword(&~"fn");
             let (ident, item_, extra_attrs) = self.parse_item_fn(impure_fn);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,

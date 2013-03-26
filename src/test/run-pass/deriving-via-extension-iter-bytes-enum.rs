@@ -10,13 +10,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving_iter_bytes]
+#[deriving(IterBytes)]
 enum Foo {
     Bar(int, char),
     Baz(char, int)
 }
 
-#[deriving_iter_bytes]
+#[deriving(IterBytes)]
 enum A {
     B,
     C,

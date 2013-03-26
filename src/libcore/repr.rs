@@ -24,7 +24,6 @@ use managed;
 use ptr;
 use reflect;
 use reflect::{MovePtr, MovePtrAdaptor, align};
-use str;
 use sys;
 use to_str::ToStr;
 use vec::UnboxedVecRepr;
@@ -218,7 +217,7 @@ pub impl ReprVisitor {
 
     fn write_escaped_slice(&self, slice: &str) {
         self.writer.write_char('"');
-        for str::chars_each(slice) |ch| {
+        for slice.each_char |ch| {
             self.writer.write_escaped_char(ch);
         }
         self.writer.write_char('"');
@@ -242,7 +241,7 @@ pub impl ReprVisitor {
         let (sz, al) = unsafe { ((*inner).size, (*inner).align) };
         self.writer.write_char('[');
         let mut first = true;
-        while p as uint < end as uint {
+        while (p as uint) < (end as uint) {
             if first {
                 first = false;
             } else {

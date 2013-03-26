@@ -10,5 +10,5 @@
 
 // error-pattern:expected `~str` but found `int`
 
-const i: str = 10i;
+static i: ~str = 10i;
 fn main() { debug!(i); }

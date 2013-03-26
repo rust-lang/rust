@@ -19,18 +19,18 @@ use core::vec;
 
 pub type AstId = int;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct Doc {
     pages: ~[Page]
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Page {
     CratePage(CrateDoc),
     ItemPage(ItemTag)
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum Implementation {
     Required,
     Provided,
@@ -40,7 +40,7 @@ pub enum Implementation {
  * Most rustdocs can be parsed into 'sections' according to their markdown
  * headers
  */
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct Section {
     header: ~str,
     body: ~str
@@ -49,12 +49,12 @@ pub struct Section {
 // FIXME (#2596): We currently give topmod the name of the crate.  There
 // would probably be fewer special cases if the crate had its own name
 // and topmod's name was the empty string.
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct CrateDoc {
     topmod: ModDoc
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum ItemTag {
     ModTag(ModDoc),
     NmodTag(NmodDoc),
@@ -67,7 +67,7 @@ pub enum ItemTag {
     StructTag(StructDoc)
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct ItemDoc {
     id: AstId,
     name: ~str,
@@ -79,20 +79,20 @@ pub struct ItemDoc {
     reexport: bool
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct SimpleItemDoc {
     item: ItemDoc,
     sig: Option<~str>
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct ModDoc {
     item: ItemDoc,
     items: ~[ItemTag],
     index: Option<Index>
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct NmodDoc {
     item: ItemDoc,
     fns: ~[FnDoc],
@@ -103,26 +103,26 @@ pub type ConstDoc = SimpleItemDoc;
 
 pub type FnDoc = SimpleItemDoc;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct EnumDoc {
     item: ItemDoc,
     variants: ~[VariantDoc]
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct VariantDoc {
     name: ~str,
     desc: Option<~str>,
     sig: Option<~str>
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct TraitDoc {
     item: ItemDoc,
     methods: ~[MethodDoc]
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct MethodDoc {
     name: ~str,
     brief: Option<~str>,
@@ -132,7 +132,7 @@ pub struct MethodDoc {
     implementation: Implementation,
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct ImplDoc {
     item: ItemDoc,
     trait_types: ~[~str],
@@ -142,14 +142,14 @@ pub struct ImplDoc {
 
 pub type TyDoc = SimpleItemDoc;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct StructDoc {
     item: ItemDoc,
     fields: ~[~str],
     sig: Option<~str>
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct Index {
     entries: ~[IndexEntry]
 }
@@ -164,7 +164,7 @@ pub struct Index {
  * * brief - The brief description
  * * link - A format-specific string representing the link target
  */
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct IndexEntry {
     kind: ~str,
     name: ~str,
@@ -358,11 +358,11 @@ impl PageUtils for ~[Page] {
 }
 
 pub trait Item {
-    pure fn item(&self) -> ItemDoc;
+    fn item(&self) -> ItemDoc;
 }
 
 impl Item for ItemTag {
-    pure fn item(&self) -> ItemDoc {
+    fn item(&self) -> ItemDoc {
         match self {
           &doc::ModTag(ref doc) => copy doc.item,
           &doc::NmodTag(ref doc) => copy doc.item,
@@ -378,64 +378,64 @@ impl Item for ItemTag {
 }
 
 impl Item for SimpleItemDoc {
-    pure fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl Item for ModDoc {
-    pure fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl Item for NmodDoc {
-    pure fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl Item for EnumDoc {
-    pure fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl Item for TraitDoc {
-    pure fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl Item for ImplDoc {
-    pure fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl Item for StructDoc {
-    pure fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc { copy self.item }
 }
 
 pub trait ItemUtils {
-    pure fn id(&self) -> AstId;
-    pure fn name(&self) -> ~str;
-    pure fn path(&self) -> ~[~str];
-    pure fn brief(&self) -> Option<~str>;
-    pure fn desc(&self) -> Option<~str>;
-    pure fn sections(&self) -> ~[Section];
+    fn id(&self) -> AstId;
+    fn name(&self) -> ~str;
+    fn path(&self) -> ~[~str];
+    fn brief(&self) -> Option<~str>;
+    fn desc(&self) -> Option<~str>;
+    fn sections(&self) -> ~[Section];
 }
 
 impl<A:Item> ItemUtils for A {
-    pure fn id(&self) -> AstId {
+    fn id(&self) -> AstId {
         self.item().id
     }
 
-    pure fn name(&self) -> ~str {
+    fn name(&self) -> ~str {
         copy self.item().name
     }
 
-    pure fn path(&self) -> ~[~str] {
+    fn path(&self) -> ~[~str] {
         copy self.item().path
     }
 
-    pure fn brief(&self) -> Option<~str> {
+    fn brief(&self) -> Option<~str> {
         copy self.item().brief
     }
 
-    pure fn desc(&self) -> Option<~str> {
+    fn desc(&self) -> Option<~str> {
         copy self.item().desc
     }
 
-    pure fn sections(&self) -> ~[Section] {
+    fn sections(&self) -> ~[Section] {
         copy self.item().sections
     }
 }

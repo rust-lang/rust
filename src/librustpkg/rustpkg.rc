@@ -20,7 +20,6 @@
 #[no_core];
 #[allow(vecs_implicitly_copyable,
         non_implicitly_copyable_typarams)];
-#[deny(deprecated_self)];
 
 extern mod core(vers = "0.6");
 extern mod std(vers = "0.6");
@@ -57,7 +56,7 @@ struct PackageScript {
 }
 
 impl PackageScript {
-    static fn parse(parent: &Path) -> Result<PackageScript, ~str> {
+    fn parse(parent: &Path) -> Result<PackageScript, ~str> {
         let script = parent.push(~"pkg.rs");
 
         if !os::path_exists(&script) {
@@ -867,6 +866,9 @@ impl Ctx {
 }
 
 pub fn main() {
+    io::println("WARNING: The Rust package manager is experimental and may");
+    io::println("be unstable.");
+
     let args = os::args();
     let opts = ~[getopts::optflag(~"h"), getopts::optflag(~"help"),
                  getopts::optflag(~"j"), getopts::optflag(~"json"),

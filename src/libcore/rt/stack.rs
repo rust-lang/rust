@@ -15,7 +15,7 @@ pub struct StackSegment {
 }
 
 pub impl StackSegment {
-    static fn new(size: uint) -> StackSegment {
+    fn new(size: uint) -> StackSegment {
         // Crate a block of uninitialized values
         let mut stack = vec::with_capacity(size);
         unsafe {
@@ -27,6 +27,7 @@ pub impl StackSegment {
         }
     }
 
+    /// Point one word beyond the high end of the allocated stack
     fn end(&self) -> *uint {
         unsafe {
             vec::raw::to_ptr(self.buf).offset(self.buf.len()) as *uint
@@ -37,7 +38,7 @@ pub impl StackSegment {
 pub struct StackPool(());
 
 impl StackPool {
-    static pub fn new() -> StackPool { StackPool(()) }
+    pub fn new() -> StackPool { StackPool(()) }
 
     fn take_segment(&self, min_size: uint) -> StackSegment {
         StackSegment::new(min_size)

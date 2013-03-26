@@ -32,7 +32,7 @@ impl<S:std::serialize::Encoder> Encodable<S> for Node {
 }
 
 impl<D:Decoder> Decodable for node_id {
-    static fn decode(d: &D) -> Node {
+    fn decode(d: &D) -> Node {
         do d.read_struct("Node", 1) {
             Node {
                 id: d.read_field(~"x", 0, || decode(d))
@@ -66,7 +66,7 @@ would yield functions like:
         D: Decoder,
         T: Decodable<D>
     > spanned<T>: Decodable<D> {
-        static fn decode(d: &D) -> spanned<T> {
+        fn decode(d: &D) -> spanned<T> {
             do d.read_rec {
                 {
                     node: d.read_field(~"node", 0, || decode(d)),
@@ -1202,10 +1202,9 @@ fn mk_enum_deser_body(
 mod test {
     use std::serialize::Encodable;
     use std::serialize::Encoder;
-    use util::testing::*;
 
     // just adding the ones I want to test, for now:
-    #[deriving_eq]
+    #[deriving(Eq)]
     pub enum call {
         CallToEmitEnum(~str),
         CallToEmitEnumVariant(~str, uint, uint),
@@ -1321,7 +1320,7 @@ mod test {
     }
 
     #[test] fn encode_enum_test () {
-        check_equal (to_call_log(Book(34,44)),
+        assert_eq!(to_call_log(Book(34,44)),
                      ~[CallToEmitEnum (~"Written"),
                        CallToEmitEnumVariant (~"Book",0,2),
                        CallToEmitEnumVariantArg (0),

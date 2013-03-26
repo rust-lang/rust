@@ -17,6 +17,7 @@ fn main() {
       _x: Port<()>,
     }
 
+    #[unsafe_destructor]
     impl Drop for foo {
         fn finalize(&self) {}
     }

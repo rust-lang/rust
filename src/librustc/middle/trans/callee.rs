@@ -492,12 +492,14 @@ pub fn trans_call_inner(
             }
         };
 
-        let args_res = trans_args(bcx, llenv, args, fn_expr_ty,
-                                  dest, ret_flag, autoref_arg);
-        bcx = args_res.bcx;
-        let mut llargs = /*bad*/copy args_res.args;
+        let llretslot = trans_ret_slot(bcx, fn_expr_ty, dest);
 
-        let llretslot = args_res.retslot;
+        let mut llargs = ~[];
+        llargs.push(llretslot);
+        llargs.push(llenv);
+        bcx = trans_args(bcx, args, fn_expr_ty,
+                         ret_flag, autoref_arg, &mut llargs);
+
 
         // Now that the arguments have finished evaluating, we need to revoke
         // the cleanup for the self argument, if it exists
@@ -555,30 +557,12 @@ pub enum CallArgs {
     ArgVals(&'self [ValueRef])
 }
 
-pub struct Args {
-    bcx: block,
-    args: ~[ValueRef],
-    retslot: ValueRef
-}
-
-pub fn trans_args(cx: block,
-                  llenv: ValueRef,
-                  +args: CallArgs,
-                  fn_ty: ty::t,
-                  dest: expr::Dest,
-                  ret_flag: Option<ValueRef>,
-                  +autoref_arg: AutorefArg) -> Args {
-    let _icx = cx.insn_ctxt("trans_args");
-    let mut temp_cleanups = ~[];
-    let arg_tys = ty::ty_fn_args(fn_ty);
-    let mut llargs: ~[ValueRef] = ~[];
-
-    let mut bcx = cx;
-
+pub fn trans_ret_slot(+bcx: block,
+                      +fn_ty: ty::t,
+                      +dest: expr::Dest) -> ValueRef
+{
     let retty = ty::ty_fn_ret(fn_ty);
-
-    // Arg 0: Output pointer.
-    let llretslot = match dest {
+    match dest {
         expr::SaveIn(dst) => dst,
         expr::Ignore => {
             if ty::type_is_nil(retty) {
@@ -589,13 +573,21 @@ pub fn trans_args(cx: block,
                 alloc_ty(bcx, retty)
             }
         }
-    };
-    llargs.push(llretslot);
+    }
+}
 
-    // Arg 1: Env (closure-bindings / self value)
-    llargs.push(llenv);
+pub fn trans_args(+cx: block,
+                  +args: CallArgs,
+                  +fn_ty: ty::t,
+                  +ret_flag: Option<ValueRef>,
+                  +autoref_arg: AutorefArg,
+                  +llargs: &mut ~[ValueRef]) -> block
+{
+    let _icx = cx.insn_ctxt("trans_args");
+    let mut temp_cleanups = ~[];
+    let arg_tys = ty::ty_fn_args(fn_ty);
 
-    // ... then explicit args.
+    let mut bcx = cx;
 
     // First we figure out the caller's view of the types of the arguments.
     // This will be needed if this is a generic call, because the callee has
@@ -624,7 +616,7 @@ pub fn trans_args(cx: block,
         revoke_clean(bcx, *c)
     }
 
-    Args { bcx: bcx, args: llargs, retslot: llretslot }
+    return bcx;
 }
 
 pub enum AutorefArg {

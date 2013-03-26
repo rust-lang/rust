@@ -18,7 +18,7 @@ fn f<T:Copy + MyNum>(x: T, y: T) -> (T, T, T) {
     return (x + y, x - y, x * y);
 }
 
-pure fn mi(v: int) -> MyInt { MyInt { val: v } }
+fn mi(v: int) -> MyInt { MyInt { val: v } }
 
 pub fn main() {
     let (x, y) = (mi(3), mi(5));

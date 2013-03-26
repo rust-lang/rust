@@ -93,7 +93,7 @@ fn lookup_item(item_id: int, data: @~[u8]) -> ebml::Doc {
     }
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 enum Family {
     Const,                 // c
     Fn,                    // f
@@ -145,13 +145,16 @@ fn item_family(item: ebml::Doc) -> Family {
 }
 
 fn item_visibility(item: ebml::Doc) -> ast::visibility {
-    let visibility = reader::get_doc(item, tag_items_data_item_visibility);
-    debug!("item visibility for %?", item_family(item));
-    match reader::doc_as_u8(visibility) as char {
-        'y' => ast::public,
-        'n' => ast::private,
-        'i' => ast::inherited,
-        _ => fail!(~"unknown visibility character"),
+    match reader::maybe_get_doc(item, tag_items_data_item_visibility) {
+        None => ast::public,
+        Some(visibility_doc) => {
+            match reader::doc_as_u8(visibility_doc) as char {
+                'y' => ast::public,
+                'n' => ast::private,
+                'i' => ast::inherited,
+                _ => fail!(~"unknown visibility character")
+            }
+        }
     }
 }
 
@@ -869,7 +872,7 @@ pub fn get_item_attrs(cdata: cmd,
     }
 }
 
-pure fn struct_field_family_to_visibility(family: Family) -> ast::visibility {
+fn struct_field_family_to_visibility(family: Family) -> ast::visibility {
     match family {
       PublicField => ast::public,
       PrivateField => ast::private,
@@ -909,8 +912,8 @@ pub fn get_struct_fields(intr: @ident_interner, cdata: cmd, id: ast::node_id)
     result
 }
 
-pub fn get_method_visibility(cdata: cmd, id: ast::node_id)
-                          -> ast::visibility {
+pub fn get_item_visibility(cdata: cmd, id: ast::node_id)
+                        -> ast::visibility {
     item_visibility(lookup_item(id, cdata.data))
 }
 

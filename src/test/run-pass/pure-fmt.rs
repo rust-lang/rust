@@ -13,7 +13,7 @@
 struct Big { b: @~str, c: uint, d: int, e: char,
             f: float, g: bool }
 
-pure fn foo() {
+fn foo() {
     let a = Big {
         b: @~"hi",
         c: 0,

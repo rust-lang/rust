@@ -26,8 +26,8 @@ fn choice<T:copy>(r : rand::rng, v : ~[const T]) -> T {
 fn likelihood(r : rand::rng, k : uint, n : uint) -> bool { under(r, n) < k }
 
 
-const iters : uint = 1000u;
-const vlen  : uint = 100u;
+static iters : uint = 1000u;
+static vlen  : uint = 100u;
 
 enum maybe_pointy {
     none,

@@ -92,10 +92,10 @@ pub fn rust_printer(writer: @io::Writer, intr: @ident_interner) -> @ps {
     };
 }
 
-pub const indent_unit: uint = 4u;
-pub const match_indent_unit: uint = 2u;
+pub static indent_unit: uint = 4u;
+pub static match_indent_unit: uint = 2u;
 
-pub const default_columns: uint = 78u;
+pub static default_columns: uint = 78u;
 
 // Requires you to pass an input filename and reader so that
 // it can scan the input text for comments and literals to
@@ -180,12 +180,12 @@ pub fn path_to_str(&&p: @ast::path, intr: @ident_interner) -> ~str {
     to_str(p, |a,b| print_path(a, b, false), intr)
 }
 
-pub fn fun_to_str(decl: &ast::fn_decl, name: ast::ident,
+pub fn fun_to_str(decl: &ast::fn_decl, purity: ast::purity, name: ast::ident,
                   opt_self_ty: Option<ast::self_ty_>,
                   generics: &ast::Generics, intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
-        print_fn(s, decl, None, name, generics, opt_self_ty, ast::inherited);
+        print_fn(s, decl, purity, name, generics, opt_self_ty, ast::inherited);
         end(s); // Close the head box
         end(s); // Close the outer box
         eof(s.s);
@@ -370,10 +370,6 @@ pub fn print_opt_lifetime(s: @ps, lifetime: Option<@ast::Lifetime>) {
 }
 
 pub fn print_type(s: @ps, &&ty: @ast::Ty) {
-    print_type_ex(s, ty, false);
-}
-
-pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
     maybe_print_comment(s, ty.span.lo);
     ibox(s, 0u);
     match ty.node {
@@ -415,7 +411,7 @@ pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
                       f.purity, f.onceness, &f.decl, None,
                       None, None);
       }
-      ast::ty_path(path, _) => print_path(s, path, print_colons),
+      ast::ty_path(path, _) => print_path(s, path, false),
       ast::ty_fixed_length_vec(ref mt, v) => {
         word(s.s, ~"[");
         match mt.mutbl {
@@ -445,7 +441,7 @@ pub fn print_foreign_item(s: @ps, item: @ast::foreign_item) {
     print_outer_attributes(s, item.attrs);
     match item.node {
       ast::foreign_item_fn(ref decl, purity, ref generics) => {
-        print_fn(s, decl, Some(purity), item.ident, generics, None,
+        print_fn(s, decl, purity, item.ident, generics, None,
                  ast::inherited);
         end(s); // end head-ibox
         word(s.s, ~";");
@@ -488,7 +484,7 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
         print_fn(
             s,
             decl,
-            Some(purity),
+            purity,
             item.ident,
             typarams,
             None,
@@ -819,7 +815,7 @@ pub fn print_method(s: @ps, meth: @ast::method) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, meth.span.lo);
     print_outer_attributes(s, meth.attrs);
-    print_fn(s, &meth.decl, Some(meth.purity),
+    print_fn(s, &meth.decl, meth.purity,
              meth.ident, &meth.generics, Some(meth.self_ty.node),
              meth.vis);
     word(s.s, ~" ");
@@ -1211,7 +1207,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         print_expr(s, expr);
         space(s.s);
         word_space(s, ~"as");
-        print_type_ex(s, ty, true);
+        print_type(s, ty);
       }
       ast::expr_if(test, ref blk, elseopt) => {
         print_if(s, test, blk, elseopt, false);
@@ -1667,7 +1663,7 @@ pub fn print_self_ty(s: @ps, self_ty: ast::self_ty_) -> bool {
 
 pub fn print_fn(s: @ps,
                 decl: &ast::fn_decl,
-                purity: Option<ast::purity>,
+                purity: ast::purity,
                 name: ast::ident,
                 generics: &ast::Generics,
                 opt_self_ty: Option<ast::self_ty_>,
@@ -1759,7 +1755,7 @@ pub fn print_bounds(s: @ps, bounds: @OptVec<ast::TyParamBound>) {
 
             match *bound {
                 TraitTyParamBound(ty) => print_type(s, ty),
-                RegionTyParamBound => word(s.s, ~"&static"),
+                RegionTyParamBound => word(s.s, ~"'static"),
             }
         }
     }
@@ -1934,7 +1930,6 @@ pub fn print_ty_fn(s: @ps,
 
     // Duplicates the logic in `print_fn_header_info()`.  This is because that
     // function prints the sigil in the wrong place.  That should be fixed.
-    print_self_ty_if_static(s, opt_self_ty);
     print_opt_abi(s, opt_abi);
     print_opt_sigil(s, opt_sigil);
     print_opt_lifetime(s, opt_region);
@@ -2163,24 +2158,6 @@ pub fn next_comment(s: @ps) -> Option<comments::cmnt> {
     }
 }
 
-pub fn print_self_ty_if_static(s: @ps,
-                               opt_self_ty: Option<ast::self_ty_>) {
-    match opt_self_ty {
-        Some(ast::sty_static) => { word(s.s, ~"static "); }
-        _ => {}
-    }
-}
-
-pub fn print_opt_purity(s: @ps, opt_purity: Option<ast::purity>) {
-    match opt_purity {
-        Some(ast::impure_fn) => { }
-        Some(purity) => {
-            word_nbsp(s, purity_to_str(purity));
-        }
-        None => {}
-    }
-}
-
 pub fn print_opt_abi(s: @ps, opt_abi: Option<ast::Abi>) {
     match opt_abi {
         Some(ast::RustAbi) => { word_nbsp(s, ~"extern"); }
@@ -2199,13 +2176,12 @@ pub fn print_opt_sigil(s: @ps, opt_sigil: Option<ast::Sigil>) {
 
 pub fn print_fn_header_info(s: @ps,
                             opt_sty: Option<ast::self_ty_>,
-                            opt_purity: Option<ast::purity>,
+                            purity: ast::purity,
                             onceness: ast::Onceness,
                             opt_sigil: Option<ast::Sigil>,
                             vis: ast::visibility) {
-    print_self_ty_if_static(s, opt_sty);
     word(s.s, visibility_qualified(vis, ~""));
-    print_opt_purity(s, opt_purity);
+    print_purity(s, purity);
     print_onceness(s, onceness);
     word(s.s, ~"fn");
     print_opt_sigil(s, opt_sigil);
@@ -2218,7 +2194,7 @@ pub fn opt_sigil_to_str(opt_p: Option<ast::Sigil>) -> ~str {
     }
 }
 
-pub pure fn purity_to_str(p: ast::purity) -> ~str {
+pub fn purity_to_str(p: ast::purity) -> ~str {
     match p {
       ast::impure_fn => ~"impure",
       ast::unsafe_fn => ~"unsafe",
@@ -2227,7 +2203,7 @@ pub pure fn purity_to_str(p: ast::purity) -> ~str {
     }
 }
 
-pub pure fn onceness_to_str(o: ast::Onceness) -> ~str {
+pub fn onceness_to_str(o: ast::Onceness) -> ~str {
     match o {
         ast::Once => ~"once",
         ast::Many => ~"many"
@@ -2258,7 +2234,6 @@ pub mod test {
     use core::cmp::Eq;
     use core::option::None;
     use parse;
-    use util::testing::check_equal;
 
     fn string_check<T:Eq> (given : &T, expected: &T) {
         if !(given == expected) {
@@ -2279,8 +2254,9 @@ pub mod test {
             cf: ast::return_val
         };
         let generics = ast_util::empty_generics();
-        check_equal (&fun_to_str(&decl, abba_ident, None, &generics, mock_interner),
-                     &~"fn abba()");
+        assert_eq!(&fun_to_str(&decl, ast::impure_fn, abba_ident,
+                               None, &generics, mock_interner),
+                   &~"fn abba()");
     }
 
     #[test]
@@ -2299,7 +2275,7 @@ pub mod test {
         });
 
         let varstr = variant_to_str(var,mock_interner);
-        check_equal(&varstr,&~"pub principal_skinner");
+        assert_eq!(&varstr,&~"pub principal_skinner");
     }
 }
 

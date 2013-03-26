@@ -88,11 +88,14 @@ pub struct icx_popper {
     ccx: @CrateContext,
 }
 
+#[unsafe_destructor]
 impl Drop for icx_popper {
     fn finalize(&self) {
-      if self.ccx.sess.count_llvm_insns() {
-          self.ccx.stats.llvm_insn_ctxt.pop();
-      }
+        unsafe {
+            if self.ccx.sess.count_llvm_insns() {
+                self.ccx.stats.llvm_insn_ctxt.pop();
+            }
+        }
     }
 }
 
@@ -804,9 +807,9 @@ pub fn invoke(bcx: block, llfn: ValueRef, +llargs: ~[ValueRef]) -> block {
     if bcx.unreachable { return bcx; }
 
     match bcx.node_info {
-        None => error!("invoke at ???"),
+        None => debug!("invoke at ???"),
         Some(node_info) => {
-            error!("invoke at %s",
+            debug!("invoke at %s",
                    bcx.sess().codemap.span_to_str(node_info.span));
         }
     }
@@ -1264,7 +1267,7 @@ pub fn trans_block_cleanups_(bcx: block,
         bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0;
     if bcx.unreachable && !no_lpads { return bcx; }
     let mut bcx = bcx;
-    for vec::rev_each(cleanups) |cu| {
+    for cleanups.each_reverse |cu| {
         match *cu {
             clean(cfn, cleanup_type) | clean_temp(_, cfn, cleanup_type) => {
                 // Some types don't need to be cleaned up during
@@ -1512,7 +1515,7 @@ pub fn alloc_ty(bcx: block, t: ty::t) -> ValueRef {
     let _icx = bcx.insn_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let llty = type_of::type_of(ccx, t);
-    if ty::type_has_params(t) { error!("%s", ty_to_str(ccx.tcx, t)); }
+    if ty::type_has_params(t) { debug!("%s", ty_to_str(ccx.tcx, t)); }
     fail_unless!(!ty::type_has_params(t));
     let val = alloca(bcx, llty);
     return val;
