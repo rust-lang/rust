@@ -108,7 +108,7 @@ pub impl<'self> PreserveCtxt<'self> {
                 // Maybe if we pass in the parent instead here,
                 // we can prevent the "scope not found" error
                 debug!("scope_region thing: %? ", cmt.id);
-                ty::re_scope(self.tcx().region_map.get(&cmt.id))
+                ty::re_scope(*self.tcx().region_map.get(&cmt.id))
             };
 
             self.compare_scope(cmt, scope_region)
@@ -128,14 +128,14 @@ pub impl<'self> PreserveCtxt<'self> {
                     cmt.span,
                     ~"preserve() called with local and !root_managed_data");
             }
-            let local_scope_id = self.tcx().region_map.get(&local_id);
+            let local_scope_id = *self.tcx().region_map.get(&local_id);
             self.compare_scope(cmt, ty::re_scope(local_scope_id))
           }
           cat_binding(local_id) => {
             // Bindings are these kind of weird implicit pointers (cc
             // #2329).  We require (in gather_loans) that they be
             // rooted in an immutable location.
-            let local_scope_id = self.tcx().region_map.get(&local_id);
+            let local_scope_id = *self.tcx().region_map.get(&local_id);
             self.compare_scope(cmt, ty::re_scope(local_scope_id))
           }
           cat_arg(local_id) => {
@@ -143,11 +143,11 @@ pub impl<'self> PreserveCtxt<'self> {
             // modes).  In that case, the caller guarantees stability
             // for at least the scope of the fn.  This is basically a
             // deref of a region ptr.
-            let local_scope_id = self.tcx().region_map.get(&local_id);
+            let local_scope_id = *self.tcx().region_map.get(&local_id);
             self.compare_scope(cmt, ty::re_scope(local_scope_id))
           }
           cat_self(local_id) => {
-            let local_scope_id = self.tcx().region_map.get(&local_id);
+            let local_scope_id = *self.tcx().region_map.get(&local_id);
             self.compare_scope(cmt, ty::re_scope(local_scope_id))
           }
           cat_comp(cmt_base, comp_field(*)) |
@@ -371,7 +371,7 @@ pub impl<'self> PreserveCtxt<'self> {
                 // scope_id;`. Though that would potentially re-introduce
                 // the ICE. See #3511 for more details.
                 let scope_to_use = if
-                    self.bccx.stmt_map.contains_key(&scope_id) {
+                    self.bccx.stmt_map.contains(&scope_id) {
                     // Root it in its parent scope, b/c
                     // trans won't introduce a new scope for the
                     // stmt

@@ -71,7 +71,6 @@ pub mod bitv;
 pub mod deque;
 pub mod fun_treemap;
 pub mod list;
-pub mod oldmap;
 pub mod priority_queue;
 pub mod rope;
 pub mod smallintmap;

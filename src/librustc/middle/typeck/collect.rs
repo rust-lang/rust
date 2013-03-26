@@ -137,10 +137,10 @@ impl AstConv for CrateCtxt {
             csearch::get_type(self.tcx, id)
         } else {
             match self.tcx.items.find(&id.node) {
-              Some(ast_map::node_item(item, _)) => {
+              Some(&ast_map::node_item(item, _)) => {
                 ty_of_item(self, item)
               }
-              Some(ast_map::node_foreign_item(foreign_item, _, _, _)) => {
+              Some(&ast_map::node_foreign_item(foreign_item, _, _, _)) => {
                 ty_of_foreign_item(self, foreign_item)
               }
               ref x => {
@@ -280,8 +280,8 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 
 
     let tcx = ccx.tcx;
-    let region_paramd = tcx.region_paramd_items.find(&id);
-    match tcx.items.get(&id) {
+    let region_paramd = tcx.region_paramd_items.find(&id).map_consume(|x| *x);
+    match *tcx.items.get(&id) {
       ast_map::node_item(@ast::item {
                 node: ast::item_trait(ref generics, _, ref ms),
                 _
@@ -516,7 +516,7 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
         // the methods within the trait with bogus results. (See issue #3903.)
 
         match tcx.items.find(&did.node) {
-            Some(ast_map::node_item(item, _)) => {
+            Some(&ast_map::node_item(item, _)) => {
                 let tpt = ty_of_item(ccx, item);
                 ensure_trait_methods(ccx, did.node, tpt.ty);
             }
@@ -615,7 +615,7 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
 
 pub fn convert(ccx: &CrateCtxt, it: @ast::item) {
     let tcx = ccx.tcx;
-    let rp = tcx.region_paramd_items.find(&it.id);
+    let rp = tcx.region_paramd_items.find(&it.id).map_consume(|x| *x);
     debug!("convert: item %s with id %d rp %?",
            *tcx.sess.str_of(it.ident), it.id, rp);
     match it.node {
@@ -828,10 +828,10 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
     match tcx.tcache.find(&def_id) {
-      Some(tpt) => return tpt,
+      Some(&tpt) => return tpt,
       _ => {}
     }
-    let rp = tcx.region_paramd_items.find(&it.id);
+    let rp = tcx.region_paramd_items.find(&it.id).map_consume(|x| *x);
     match it.node {
       ast::item_const(t, _) => {
         let typ = ccx.to_ty(&empty_rscope, t);
@@ -857,11 +857,11 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
       }
       ast::item_ty(t, ref generics) => {
         match tcx.tcache.find(&local_def(it.id)) {
-          Some(tpt) => return tpt,
+          Some(&tpt) => return tpt,
           None => { }
         }
 
-        let rp = tcx.region_paramd_items.find(&it.id);
+        let rp = tcx.region_paramd_items.find(&it.id).map_consume(|x| *x);
         let tpt = {
             let ty = {
                 let t0 = ccx.to_ty(&type_rscope(rp), t);
@@ -991,7 +991,7 @@ pub fn ty_param_bounds(ccx: &CrateCtxt,
                     -> @~[ty::param_bounds] {
     @do generics.ty_params.map_to_vec |param| {
         match ccx.tcx.ty_param_bounds.find(&param.id) {
-          Some(bs) => bs,
+          Some(&bs) => bs,
           None => {
             let bounds = compute_bounds(ccx, param.bounds);
             ccx.tcx.ty_param_bounds.insert(param.id, bounds);

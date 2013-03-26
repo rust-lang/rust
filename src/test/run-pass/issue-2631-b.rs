@@ -12,14 +12,13 @@
 // aux-build:issue-2631-a.rs
 
 extern mod req;
-extern mod std;
 
 use req::*;
-use std::oldmap::HashMap;
+use core::hashmap::linear::LinearMap;
 
 pub fn main() {
   let v = ~[@~"hi"];
-  let m: req::header_map = HashMap();
+  let mut m: req::header_map = LinearMap::new();
   m.insert(~"METHOD", @mut v);
-  request::<int>(m);
+  request::<int>(&m);
 }

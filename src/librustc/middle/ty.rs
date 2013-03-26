@@ -37,9 +37,7 @@ use core::result;
 use core::to_bytes;
 use core::uint;
 use core::vec;
-use core::hashmap::linear::LinearMap;
-use std::oldmap::HashMap;
-use std::oldmap;
+use core::hashmap::linear::{LinearMap, LinearSet};
 use std::smallintmap::SmallIntMap;
 use syntax::ast::*;
 use syntax::ast_util::{is_local, local_def};
@@ -118,7 +116,7 @@ pub struct creader_cache_key {
     len: uint
 }
 
-type creader_cache = HashMap<creader_cache_key, t>;
+type creader_cache = @mut LinearMap<creader_cache_key, t>;
 
 impl to_bytes::IterBytes for creader_cache_key {
     fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
@@ -222,7 +220,7 @@ pub enum AutoRefKind {
 // This is a map from ID of each implementation to the method info and trait
 // method ID of each of the default methods belonging to the trait that that
 // implementation implements.
-pub type ProvidedMethodsMap = HashMap<def_id,@mut ~[@ProvidedMethodInfo]>;
+pub type ProvidedMethodsMap = @mut LinearMap<def_id,@mut ~[@ProvidedMethodInfo]>;
 
 // Stores the method info and definition ID of the associated trait method for
 // each instantiation of each provided method.
@@ -245,7 +243,7 @@ pub type ctxt = @ctxt_;
 
 struct ctxt_ {
     diag: @syntax::diagnostic::span_handler,
-    interner: HashMap<intern_key, t_box>,
+    interner: @mut LinearMap<intern_key, t_box>,
     next_id: @mut uint,
     vecs_implicitly_copyable: bool,
     legacy_modes: bool,
@@ -265,43 +263,43 @@ struct ctxt_ {
     // of this node.  This only applies to nodes that refer to entities
     // parameterized by type parameters, such as generic fns, types, or
     // other items.
-    node_type_substs: HashMap<node_id, ~[t]>,
+    node_type_substs: @mut LinearMap<node_id, ~[t]>,
 
     items: ast_map::map,
-    intrinsic_defs: HashMap<ast::ident, (ast::def_id, t)>,
+    intrinsic_defs: @mut LinearMap<ast::ident, (ast::def_id, t)>,
     freevars: freevars::freevar_map,
     tcache: type_cache,
     rcache: creader_cache,
     ccache: constness_cache,
-    short_names_cache: HashMap<t, @~str>,
-    needs_unwind_cleanup_cache: HashMap<t, bool>,
+    short_names_cache: @mut LinearMap<t, @~str>,
+    needs_unwind_cleanup_cache: @mut LinearMap<t, bool>,
     tc_cache: @mut LinearMap<uint, TypeContents>,
-    ast_ty_to_ty_cache: HashMap<node_id, ast_ty_to_ty_cache_entry>,
-    enum_var_cache: HashMap<def_id, @~[VariantInfo]>,
-    trait_method_cache: HashMap<def_id, @~[method]>,
-    ty_param_bounds: HashMap<ast::node_id, param_bounds>,
-    inferred_modes: HashMap<ast::node_id, ast::mode>,
-    adjustments: HashMap<ast::node_id, @AutoAdjustment>,
-    normalized_cache: HashMap<t, t>,
+    ast_ty_to_ty_cache: @mut LinearMap<node_id, ast_ty_to_ty_cache_entry>,
+    enum_var_cache: @mut LinearMap<def_id, @~[VariantInfo]>,
+    trait_method_cache: @mut LinearMap<def_id, @~[method]>,
+    ty_param_bounds: @mut LinearMap<ast::node_id, param_bounds>,
+    inferred_modes: @mut LinearMap<ast::node_id, ast::mode>,
+    adjustments: @mut LinearMap<ast::node_id, @AutoAdjustment>,
+    normalized_cache: @mut LinearMap<t, t>,
     lang_items: middle::lang_items::LanguageItems,
     // A mapping from an implementation ID to the method info and trait
     // method ID of the provided (a.k.a. default) methods in the traits that
     // that implementation implements.
     provided_methods: ProvidedMethodsMap,
-    provided_method_sources: HashMap<ast::def_id, ProvidedMethodSource>,
-    supertraits: HashMap<ast::def_id, @~[InstantiatedTraitRef]>,
+    provided_method_sources: @mut LinearMap<ast::def_id, ProvidedMethodSource>,
+    supertraits: @mut LinearMap<ast::def_id, @~[InstantiatedTraitRef]>,
 
     // A mapping from the def ID of an enum or struct type to the def ID
     // of the method that implements its destructor. If the type is not
     // present in this map, it does not have a destructor. This map is
     // populated during the coherence phase of typechecking.
-    destructor_for_type: HashMap<ast::def_id, ast::def_id>,
+    destructor_for_type: @mut LinearMap<ast::def_id, ast::def_id>,
 
     // A method will be in this list if and only if it is a destructor.
-    destructors: HashMap<ast::def_id, ()>,
+    destructors: @mut LinearSet<ast::def_id>,
 
     // Maps a trait onto a mapping from self-ty to impl
-    trait_impls: HashMap<ast::def_id, HashMap<t, @Impl>>
+    trait_impls: @mut LinearMap<ast::def_id, @mut LinearMap<t, @Impl>>
 }
 
 enum tbox_flag {
@@ -778,18 +776,18 @@ pub struct ty_param_substs_and_ty {
     ty: ty::t
 }
 
-type type_cache = HashMap<ast::def_id, ty_param_bounds_and_ty>;
+type type_cache = @mut LinearMap<ast::def_id, ty_param_bounds_and_ty>;
 
-type constness_cache = HashMap<ast::def_id, const_eval::constness>;
+type constness_cache = @mut LinearMap<ast::def_id, const_eval::constness>;
 
 pub type node_type_table = @mut SmallIntMap<t>;
 
 fn mk_rcache() -> creader_cache {
-    return oldmap::HashMap();
+    return @mut LinearMap::new();
 }
 
-pub fn new_ty_hash<V:Copy>() -> oldmap::HashMap<t, V> {
-    oldmap::HashMap()
+pub fn new_ty_hash<V:Copy>() -> @mut LinearMap<t, V> {
+    @mut LinearMap::new()
 }
 
 pub fn mk_ctxt(s: session::Session,
@@ -811,13 +809,12 @@ pub fn mk_ctxt(s: session::Session,
         }
     }
 
-    let interner = oldmap::HashMap();
     let vecs_implicitly_copyable =
         get_lint_level(s.lint_settings.default_settings,
                        lint::vecs_implicitly_copyable) == allow;
     @ctxt_ {
         diag: s.diagnostic(),
-        interner: interner,
+        interner: @mut LinearMap::new(),
         next_id: @mut 0,
         vecs_implicitly_copyable: vecs_implicitly_copyable,
         legacy_modes: legacy_modes,
@@ -827,30 +824,30 @@ pub fn mk_ctxt(s: session::Session,
         region_map: region_map,
         region_paramd_items: region_paramd_items,
         node_types: @mut SmallIntMap::new(),
-        node_type_substs: oldmap::HashMap(),
+        node_type_substs: @mut LinearMap::new(),
         items: amap,
-        intrinsic_defs: oldmap::HashMap(),
+        intrinsic_defs: @mut LinearMap::new(),
         freevars: freevars,
-        tcache: HashMap(),
+        tcache: @mut LinearMap::new(),
         rcache: mk_rcache(),
-        ccache: HashMap(),
+        ccache: @mut LinearMap::new(),
         short_names_cache: new_ty_hash(),
         needs_unwind_cleanup_cache: new_ty_hash(),
         tc_cache: @mut LinearMap::new(),
-        ast_ty_to_ty_cache: HashMap(),
-        enum_var_cache: HashMap(),
-        trait_method_cache: HashMap(),
-        ty_param_bounds: HashMap(),
-        inferred_modes: HashMap(),
-        adjustments: HashMap(),
+        ast_ty_to_ty_cache: @mut LinearMap::new(),
+        enum_var_cache: @mut LinearMap::new(),
+        trait_method_cache: @mut LinearMap::new(),
+        ty_param_bounds: @mut LinearMap::new(),
+        inferred_modes: @mut LinearMap::new(),
+        adjustments: @mut LinearMap::new(),
         normalized_cache: new_ty_hash(),
         lang_items: lang_items,
-        provided_methods: HashMap(),
-        provided_method_sources: HashMap(),
-        supertraits: HashMap(),
-        destructor_for_type: HashMap(),
-        destructors: HashMap(),
-        trait_impls: HashMap()
+        provided_methods: @mut LinearMap::new(),
+        provided_method_sources: @mut LinearMap::new(),
+        supertraits: @mut LinearMap::new(),
+        destructor_for_type: @mut LinearMap::new(),
+        destructors: @mut LinearSet::new(),
+        trait_impls: @mut LinearMap::new()
      }
 }
 
@@ -863,7 +860,7 @@ fn mk_t(cx: ctxt, +st: sty) -> t { mk_t_with_id(cx, st, None) }
 fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
     let key = intern_key { sty: to_unsafe_ptr(&st), o_def_id: o_def_id };
     match cx.interner.find(&key) {
-      Some(t) => unsafe { return cast::reinterpret_cast(&t); },
+      Some(&t) => unsafe { return cast::reinterpret_cast(&t); },
       _ => ()
     }
 
@@ -1161,7 +1158,7 @@ pub fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
 // with id `id`.
 pub fn encl_region(cx: ctxt, id: ast::node_id) -> ty::Region {
     match cx.region_map.find(&id) {
-      Some(encl_scope) => ty::re_scope(encl_scope),
+      Some(&encl_scope) => ty::re_scope(encl_scope),
       None => ty::re_static
     }
 }
@@ -1622,25 +1619,24 @@ pub fn type_needs_drop(cx: ctxt, ty: t) -> bool {
 // cleanups.
 pub fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
     match cx.needs_unwind_cleanup_cache.find(&ty) {
-      Some(result) => return result,
+      Some(&result) => return result,
       None => ()
     }
 
-    let tycache = new_ty_hash();
+    let mut tycache = LinearSet::new();
     let needs_unwind_cleanup =
-        type_needs_unwind_cleanup_(cx, ty, tycache, false);
+        type_needs_unwind_cleanup_(cx, ty, &mut tycache, false);
     cx.needs_unwind_cleanup_cache.insert(ty, needs_unwind_cleanup);
     return needs_unwind_cleanup;
 }
 
 fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
-                              tycache: oldmap::HashMap<t, ()>,
+                              tycache: &mut LinearSet<t>,
                               encountered_box: bool) -> bool {
 
     // Prevent infinite recursion
-    match tycache.find(&ty) {
-      Some(_) => return false,
-      None => { tycache.insert(ty, ()); }
+    if !tycache.insert(ty) {
+        return false;
     }
 
     let mut encountered_box = encountered_box;
@@ -2016,7 +2012,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 fail_unless!(p.def_id.crate == ast::local_crate);
 
                 param_bounds_to_contents(
-                    cx, cx.ty_param_bounds.get(&p.def_id.node))
+                    cx, *cx.ty_param_bounds.get(&p.def_id.node))
             }
 
             ty_self(_) => {
@@ -2711,10 +2707,6 @@ impl to_bytes::IterBytes for sty {
     }
 }
 
-pub fn br_hashmap<V:Copy>() -> HashMap<bound_region, V> {
-    oldmap::HashMap()
-}
-
 pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
     //io::println(fmt!("%?/%?", id, cx.node_types.len()));
     match cx.node_types.find(&(id as uint)) {
@@ -2729,7 +2721,7 @@ pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
 pub fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> ~[t] {
     match cx.node_type_substs.find(&id) {
       None => return ~[],
-      Some(ts) => return ts
+      Some(ts) => return /*bad*/ copy *ts
     }
 }
 
@@ -2882,7 +2874,7 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
     return match cx.adjustments.find(&expr.id) {
         None => unadjusted_ty,
 
-        Some(@AutoAddEnv(r, s)) => {
+        Some(&@AutoAddEnv(r, s)) => {
             match ty::get(unadjusted_ty).sty {
                 ty::ty_bare_fn(ref b) => {
                     ty::mk_closure(
@@ -2900,7 +2892,7 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
             }
         }
 
-        Some(@AutoDerefRef(ref adj)) => {
+        Some(&@AutoDerefRef(ref adj)) => {
             let mut adjusted_ty = unadjusted_ty;
 
             for uint::range(0, adj.autoderefs) |i| {
@@ -3037,7 +3029,7 @@ pub fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
 
 pub fn resolve_expr(tcx: ctxt, expr: @ast::expr) -> ast::def {
     match tcx.def_map.find(&expr.id) {
-        Some(def) => def,
+        Some(&def) => def,
         None => {
             tcx.sess.span_bug(expr.span, fmt!(
                 "No def-map entry for expr %?", expr.id));
@@ -3270,19 +3262,20 @@ pub fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
 
 // Maintains a little union-set tree for inferred modes.  `canon()` returns
 // the current head value for `m0`.
-fn canon<T:Copy + cmp::Eq>(tbl: HashMap<ast::node_id, ast::inferable<T>>,
+fn canon<T:Copy + cmp::Eq>(tbl: &mut LinearMap<ast::node_id, ast::inferable<T>>,
                          +m0: ast::inferable<T>) -> ast::inferable<T> {
     match m0 {
-      ast::infer(id) => match tbl.find(&id) {
-        None => m0,
-        Some(ref m1) => {
-            let cm1 = canon(tbl, (*m1));
+        ast::infer(id) => {
+            let m1 = match tbl.find(&id) {
+                None => return m0,
+                Some(&m1) => m1
+            };
+            let cm1 = canon(tbl, m1);
             // path compression:
-            if cm1 != (*m1) { tbl.insert(id, cm1); }
+            if cm1 != m1 { tbl.insert(id, cm1); }
             cm1
-        }
-      },
-      _ => m0
+        },
+        _ => m0
     }
 }
 
@@ -3545,7 +3538,7 @@ pub fn store_trait_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
 pub fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
     if is_local(id) {
         match cx.items.find(&id.node) {
-            Some(ast_map::node_item(@ast::item {
+            Some(&ast_map::node_item(@ast::item {
                         node: item_trait(_, _, ref ms),
                         _
                     }, _)) =>
@@ -3565,7 +3558,7 @@ pub fn trait_supertraits(cx: ctxt,
                       -> @~[InstantiatedTraitRef] {
     // Check the cache.
     match cx.supertraits.find(&id) {
-        Some(instantiated_trait_info) => { return instantiated_trait_info; }
+        Some(&instantiated_trait_info) => { return instantiated_trait_info; }
         None => {}  // Continue.
     }
 
@@ -3598,7 +3591,7 @@ pub fn trait_supertraits(cx: ctxt,
 pub fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
     match cx.trait_method_cache.find(&id) {
       // Local traits are supposed to have been added explicitly.
-      Some(ms) => ms,
+      Some(&ms) => ms,
       _ => {
         // If the lookup in trait_method_cache fails, assume that the trait
         // method we're trying to look up is in a different crate, and look
@@ -3634,7 +3627,7 @@ pub fn impl_traits(cx: ctxt, id: ast::def_id, store: TraitStore) -> ~[t] {
     if id.crate == ast::local_crate {
         debug!("(impl_traits) searching for trait impl %?", id);
         match cx.items.find(&id.node) {
-           Some(ast_map::node_item(@ast::item {
+           Some(&ast_map::node_item(@ast::item {
                         node: ast::item_impl(_, opt_trait, _, _),
                         _},
                     _)) => {
@@ -3670,7 +3663,7 @@ fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
     }
 
     match cx.items.find(&struct_did.node) {
-        Some(ast_map::node_item(item, _)) => {
+        Some(&ast_map::node_item(item, _)) => {
             match item.node {
                 ast::item_struct(struct_def, _) => {
                     struct_def.ctor_id.map(|ctor_id|
@@ -3736,13 +3729,13 @@ pub impl DtorKind {
    Otherwise return none. */
 pub fn ty_dtor(cx: ctxt, struct_id: def_id) -> DtorKind {
     match cx.destructor_for_type.find(&struct_id) {
-        Some(method_def_id) => return TraitDtor(method_def_id),
+        Some(&method_def_id) => return TraitDtor(method_def_id),
         None => {}  // Continue.
     }
 
     if is_local(struct_id) {
        match cx.items.find(&struct_id.node) {
-           Some(ast_map::node_item(@ast::item {
+           Some(&ast_map::node_item(@ast::item {
                node: ast::item_struct(@ast::struct_def { dtor: Some(ref dtor),
                                                          _ },
                                       _),
@@ -3769,8 +3762,12 @@ pub fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
     if id.crate != ast::local_crate {
         csearch::get_item_path(cx, id)
     } else {
-        let node = cx.items.get(&id.node);
-        match node {
+        // FIXME (#5521): uncomment this code and don't have a catch-all at the
+        //                end of the match statement. Favor explicitly listing
+        //                each variant.
+        // let node = cx.items.get(&id.node);
+        // match *node {
+        match *cx.items.get(&id.node) {
           ast_map::node_item(item, path) => {
             let item_elt = match item.node {
               item_mod(_) | item_foreign_mod(_) => {
@@ -3812,9 +3809,7 @@ pub fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
             vec::append_one(/*bad*/copy *path, ast_map::path_name(item.ident))
           }
 
-          ast_map::node_stmt(*) | ast_map::node_expr(*) |
-          ast_map::node_arg(*) | ast_map::node_local(*) |
-          ast_map::node_block(*) => {
+          ref node => {
             cx.sess.bug(fmt!("cannot find item_path for node %?", node));
           }
         }
@@ -3834,7 +3829,7 @@ pub fn type_is_empty(cx: ctxt, t: t) -> bool {
 
 pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
     match cx.enum_var_cache.find(&id) {
-      Some(variants) => return variants,
+      Some(&variants) => return variants,
       _ => { /* fallthrough */ }
     }
 
@@ -3846,7 +3841,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
           call eval_const_expr, it should never get called twice for the same
           expr, since check_enum_variants also updates the enum_var_cache
          */
-        match cx.items.get(&id.node) {
+        match *cx.items.get(&id.node) {
           ast_map::node_item(@ast::item {
                     node: ast::item_enum(ref enum_definition, _),
                     _
@@ -3920,7 +3915,7 @@ pub fn lookup_item_type(cx: ctxt,
                         did: ast::def_id)
                      -> ty_param_bounds_and_ty {
     match cx.tcache.find(&did) {
-      Some(tpt) => {
+      Some(&tpt) => {
         // The item is in this crate. The caller should have added it to the
         // type cache already
         return tpt;
@@ -3962,7 +3957,7 @@ pub fn lookup_field_type(tcx: ctxt,
 pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
   if did.crate == ast::local_crate {
     match cx.items.find(&did.node) {
-       Some(ast_map::node_item(i,_)) => {
+       Some(&ast_map::node_item(i,_)) => {
          match i.node {
             ast::item_struct(struct_def, _) => {
                struct_field_tys(struct_def.fields)
@@ -3970,7 +3965,7 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
             _ => cx.sess.bug(~"struct ID bound to non-struct")
          }
        }
-       Some(ast_map::node_variant(ref variant, _, _)) => {
+       Some(&ast_map::node_variant(ref variant, _, _)) => {
           match (*variant).node.kind {
             ast::struct_variant_kind(struct_def) => {
               struct_field_tys(struct_def.fields)
@@ -4168,7 +4163,7 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
     }
 
     match cx.normalized_cache.find(&t) {
-      Some(t) => return t,
+      Some(&t) => return t,
       None => ()
     }
 
@@ -4299,7 +4294,7 @@ pub fn iter_bound_traits_and_supertraits(tcx: ctxt,
             }
         };
 
-        let mut supertrait_map = HashMap();
+        let mut supertrait_map = LinearMap::new();
         let mut seen_def_ids = ~[];
         let mut i = 0;
         let trait_ty_id = ty_to_def_id(bound_trait_ty).expect(

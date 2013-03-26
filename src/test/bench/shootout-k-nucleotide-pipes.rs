@@ -14,15 +14,14 @@
 #[legacy_modes];
 
 extern mod std;
-use std::oldmap;
-use std::oldmap::HashMap;
 use std::sort;
+use core::hashmap::linear::LinearMap;
 use core::io::ReaderUtil;
 use core::comm::{stream, Port, Chan};
 use core::cmp::Ord;
 
 // given a map, print a sorted version of it
-fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {
+fn sort_and_fmt(mm: &LinearMap<~[u8], uint>, total: uint) -> ~str {
    fn pct(xx: uint, yy: uint) -> float {
       return (xx as float) * 100f / (yy as float);
    }
@@ -49,7 +48,7 @@ fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {
    let mut pairs = ~[];
 
    // map -> [(k,%)]
-   for mm.each |&key, &val| {
+   for mm.each |&(&key, &val)| {
       pairs.push((key, pct(val, total)));
    }
 
@@ -68,17 +67,21 @@ fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {
 }
 
 // given a map, search for the frequency of a pattern
-fn find(mm: HashMap<~[u8], uint>, key: ~str) -> uint {
+fn find(mm: &LinearMap<~[u8], uint>, key: ~str) -> uint {
    match mm.find(&str::to_bytes(str::to_lower(key))) {
       option::None      => { return 0u; }
-      option::Some(num) => { return num; }
+      option::Some(&num) => { return num; }
    }
 }
 
 // given a map, increment the counter for a key
-fn update_freq(mm: HashMap<~[u8], uint>, key: &[u8]) {
+fn update_freq(mm: &mut LinearMap<~[u8], uint>, key: &[u8]) {
     let key = vec::slice(key, 0, key.len()).to_vec();
-    mm.update(key, 1, |v,v1| { v+v1 });
+    let newval = match mm.pop(&key) {
+        Some(v) => v + 1,
+        None => 1
+    };
+    mm.insert(key, newval);
 }
 
 // given a ~[u8], for each window call a function
@@ -100,7 +103,7 @@ fn windows_with_carry(bb: &[u8], nn: uint,
 fn make_sequence_processor(sz: uint, from_parent: comm::Port<~[u8]>,
                            to_parent: comm::Chan<~str>) {
 
-   let freqs: HashMap<~[u8], uint> = oldmap::HashMap();
+   let mut freqs: LinearMap<~[u8], uint> = LinearMap::new();
    let mut carry: ~[u8] = ~[];
    let mut total: uint = 0u;
 
@@ -112,19 +115,19 @@ fn make_sequence_processor(sz: uint, from_parent: comm::Port<~[u8]>,
       if line == ~[] { break; }
 
        carry = windows_with_carry(carry + line, sz, |window| {
-         update_freq(freqs, window);
+         update_freq(&mut freqs, window);
          total += 1u;
       });
    }
 
    let buffer = match sz {
-       1u => { sort_and_fmt(freqs, total) }
-       2u => { sort_and_fmt(freqs, total) }
-       3u => { fmt!("%u\t%s", find(freqs, ~"GGT"), ~"GGT") }
-       4u => { fmt!("%u\t%s", find(freqs, ~"GGTA"), ~"GGTA") }
-       6u => { fmt!("%u\t%s", find(freqs, ~"GGTATT"), ~"GGTATT") }
-      12u => { fmt!("%u\t%s", find(freqs, ~"GGTATTTTAATT"), ~"GGTATTTTAATT") }
-      18u => { fmt!("%u\t%s", find(freqs, ~"GGTATTTTAATTTATAGT"), ~"GGTATTTTAATTTATAGT") }
+       1u => { sort_and_fmt(&freqs, total) }
+       2u => { sort_and_fmt(&freqs, total) }
+       3u => { fmt!("%u\t%s", find(&freqs, ~"GGT"), ~"GGT") }
+       4u => { fmt!("%u\t%s", find(&freqs, ~"GGTA"), ~"GGTA") }
+       6u => { fmt!("%u\t%s", find(&freqs, ~"GGTATT"), ~"GGTATT") }
+      12u => { fmt!("%u\t%s", find(&freqs, ~"GGTATTTTAATT"), ~"GGTATTTTAATT") }
+      18u => { fmt!("%u\t%s", find(&freqs, ~"GGTATTTTAATTTATAGT"), ~"GGTATTTTAATTTATAGT") }
         _ => { ~"" }
    };
 

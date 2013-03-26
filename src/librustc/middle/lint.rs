@@ -15,6 +15,7 @@ use driver::session;
 use middle::ty;
 use util::ppaux::{ty_to_str};
 
+use core::hashmap::linear::LinearMap;
 use core::char;
 use core::cmp;
 use core::either;
@@ -30,8 +31,6 @@ use core::u32;
 use core::u64;
 use core::uint;
 use core::vec;
-use std::oldmap::{Map, HashMap};
-use std::oldmap;
 use std::smallintmap::SmallIntMap;
 use syntax::attr;
 use syntax::codemap::span;
@@ -110,7 +109,7 @@ struct LintSpec {
     default: level
 }
 
-pub type LintDict = HashMap<@~str, @LintSpec>;
+pub type LintDict = @LinearMap<~str, LintSpec>;
 
 /*
   Pass names should not contain a '-', as the compiler normalizes
@@ -118,142 +117,142 @@ pub type LintDict = HashMap<@~str, @LintSpec>;
  */
 pub fn get_lint_dict() -> LintDict {
     let v = ~[
-        (@~"ctypes",
-         @LintSpec {
+        (~"ctypes",
+         LintSpec {
             lint: ctypes,
             desc: "proper use of core::libc types in foreign modules",
             default: warn
          }),
 
-        (@~"unused_imports",
-         @LintSpec {
+        (~"unused_imports",
+         LintSpec {
             lint: unused_imports,
             desc: "imports that are never used",
             default: warn
          }),
 
-        (@~"while_true",
-         @LintSpec {
+        (~"while_true",
+         LintSpec {
             lint: while_true,
             desc: "suggest using loop { } instead of while(true) { }",
             default: warn
          }),
 
-        (@~"path_statement",
-         @LintSpec {
+        (~"path_statement",
+         LintSpec {
             lint: path_statement,
             desc: "path statements with no effect",
             default: warn
          }),
 
-        (@~"unrecognized_lint",
-         @LintSpec {
+        (~"unrecognized_lint",
+         LintSpec {
             lint: unrecognized_lint,
             desc: "unrecognized lint attribute",
             default: warn
          }),
 
-        (@~"non_implicitly_copyable_typarams",
-         @LintSpec {
+        (~"non_implicitly_copyable_typarams",
+         LintSpec {
             lint: non_implicitly_copyable_typarams,
             desc: "passing non implicitly copyable types as copy type params",
             default: warn
          }),
 
-        (@~"vecs_implicitly_copyable",
-         @LintSpec {
+        (~"vecs_implicitly_copyable",
+         LintSpec {
             lint: vecs_implicitly_copyable,
             desc: "make vecs and strs not implicitly copyable \
                   (only checked at top level)",
             default: warn
          }),
 
-        (@~"implicit_copies",
-         @LintSpec {
+        (~"implicit_copies",
+         LintSpec {
             lint: implicit_copies,
             desc: "implicit copies of non implicitly copyable data",
             default: warn
          }),
 
-        (@~"deprecated_mode",
-         @LintSpec {
+        (~"deprecated_mode",
+         LintSpec {
             lint: deprecated_mode,
             desc: "warn about deprecated uses of modes",
             default: warn
          }),
 
-        (@~"foreign_mode",
-         @LintSpec {
+        (~"foreign_mode",
+         LintSpec {
             lint: foreign_mode,
             desc: "warn about deprecated uses of modes in foreign fns",
             default: warn
          }),
 
-        (@~"deprecated_pattern",
-         @LintSpec {
+        (~"deprecated_pattern",
+         LintSpec {
             lint: deprecated_pattern,
             desc: "warn about deprecated uses of pattern bindings",
             default: allow
          }),
 
-        (@~"non_camel_case_types",
-         @LintSpec {
+        (~"non_camel_case_types",
+         LintSpec {
             lint: non_camel_case_types,
             desc: "types, variants and traits should have camel case names",
             default: allow
          }),
 
-        (@~"managed_heap_memory",
-         @LintSpec {
+        (~"managed_heap_memory",
+         LintSpec {
             lint: managed_heap_memory,
             desc: "use of managed (@ type) heap memory",
             default: allow
          }),
 
-        (@~"owned_heap_memory",
-         @LintSpec {
+        (~"owned_heap_memory",
+         LintSpec {
             lint: owned_heap_memory,
             desc: "use of owned (~ type) heap memory",
             default: allow
          }),
 
-        (@~"heap_memory",
-         @LintSpec {
+        (~"heap_memory",
+         LintSpec {
             lint: heap_memory,
             desc: "use of any (~ type or @ type) heap memory",
             default: allow
          }),
 
-        (@~"legacy modes",
-         @LintSpec {
+        (~"legacy modes",
+         LintSpec {
             lint: legacy_modes,
             desc: "allow legacy modes",
             default: forbid
          }),
 
-        (@~"type_limits",
-         @LintSpec {
+        (~"type_limits",
+         LintSpec {
             lint: type_limits,
             desc: "comparisons made useless by limits of the types involved",
             default: warn
          }),
 
-        (@~"default_methods",
-         @LintSpec {
+        (~"default_methods",
+         LintSpec {
             lint: default_methods,
             desc: "allow default methods",
             default: deny
          }),
 
-        (@~"deprecated_mutable_fields",
-         @LintSpec {
+        (~"deprecated_mutable_fields",
+         LintSpec {
             lint: deprecated_mutable_fields,
             desc: "deprecated mutable fields in structures",
             default: deny
         }),
 
-        (@~"deprecated_drop",
-         @LintSpec {
+        (~"deprecated_drop",
+         LintSpec {
             lint: deprecated_drop,
             desc: "deprecated \"drop\" notation for the destructor",
             default: deny
@@ -275,12 +274,16 @@ pub fn get_lint_dict() -> LintDict {
          }),
         */
     ];
-    oldmap::hash_from_vec(v)
+    let mut map = LinearMap::new();
+    do vec::consume(v) |_, (k, v)| {
+        map.insert(k, v);
+    }
+    return @map;
 }
 
 // This is a highly not-optimal set of data structure decisions.
 type LintModes = @mut SmallIntMap<level>;
-type LintModeMap = HashMap<ast::node_id, LintModes>;
+type LintModeMap = @mut LinearMap<ast::node_id, LintModes>;
 
 // settings_map maps node ids of items with non-default lint settings
 // to their settings; default_settings contains the settings for everything
@@ -293,7 +296,7 @@ pub struct LintSettings {
 pub fn mk_lint_settings() -> LintSettings {
     LintSettings {
         default_settings: @mut SmallIntMap::new(),
-        settings_map: HashMap()
+        settings_map: @mut LinearMap::new()
     }
 }
 
@@ -310,7 +313,7 @@ pub fn get_lint_settings_level(settings: LintSettings,
                                item_id: ast::node_id)
                             -> level {
     match settings.settings_map.find(&item_id) {
-      Some(modes) => get_lint_level(modes, lint_mode),
+      Some(&modes) => get_lint_level(modes, lint_mode),
       None => get_lint_level(settings.default_settings, lint_mode)
     }
 }
@@ -392,7 +395,7 @@ pub impl Context {
                 (ref meta, level, lintname) => (meta, level, lintname)
             };
 
-            match self.dict.find(&lintname) {
+            match self.dict.find(lintname) {
               None => {
                 self.span_lint(
                     new_ctxt.get_level(unrecognized_lint),
@@ -735,7 +738,7 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
         for vec::each(vec::append_one(tys, decl.output)) |ty| {
             match ty.node {
               ast::ty_path(_, id) => {
-                match cx.def_map.get(&id) {
+                match *cx.def_map.get(&id) {
                   ast::def_prim_ty(ast::ty_int(ast::ty_i)) => {
                     cx.sess.span_lint(
                         ctypes, id, fn_id,

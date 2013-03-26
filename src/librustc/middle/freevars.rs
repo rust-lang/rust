@@ -12,13 +12,12 @@
 // A pass that annotates for each loops and functions with the free
 // variables that they contain.
 
+use core::prelude::*;
+
 use middle::resolve;
 use middle::ty;
 
-use core::int;
-use core::option::*;
-use core::vec;
-use std::oldmap::*;
+use core::hashmap::linear::LinearMap;
 use syntax::codemap::span;
 use syntax::{ast, ast_util, visit};
 
@@ -31,7 +30,7 @@ pub struct freevar_entry {
     span: span     //< First span where it is accessed (there can be multiple)
 }
 pub type freevar_info = @~[@freevar_entry];
-pub type freevar_map = HashMap<ast::node_id, freevar_info>;
+pub type freevar_map = @mut LinearMap<ast::node_id, freevar_info>;
 
 // Searches through part of the AST for all references to locals or
 // upvars in this frame and returns the list of definition IDs thus found.
@@ -40,7 +39,7 @@ pub type freevar_map = HashMap<ast::node_id, freevar_info>;
 // in order to start the search.
 fn collect_freevars(def_map: resolve::DefMap, blk: &ast::blk)
     -> freevar_info {
-    let seen = HashMap();
+    let seen = @mut LinearMap::new();
     let refs = @mut ~[];
 
     fn ignore_item(_i: @ast::item, &&_depth: int, _v: visit::vt<int>) { }
@@ -53,7 +52,7 @@ fn collect_freevars(def_map: resolve::DefMap, blk: &ast::blk)
                   let mut i = 0;
                   match def_map.find(&expr.id) {
                     None => fail!(~"path not found"),
-                    Some(df) => {
+                    Some(&df) => {
                       let mut def = df;
                       while i < depth {
                         match def {
@@ -93,7 +92,7 @@ fn collect_freevars(def_map: resolve::DefMap, blk: &ast::blk)
 // one pass. This could be improved upon if it turns out to matter.
 pub fn annotate_freevars(def_map: resolve::DefMap, crate: @ast::crate) ->
    freevar_map {
-    let freevars = HashMap();
+    let freevars = @mut LinearMap::new();
 
     let walk_fn: @fn(&visit::fn_kind,
                      &ast::fn_decl,
@@ -116,7 +115,7 @@ pub fn annotate_freevars(def_map: resolve::DefMap, crate: @ast::crate) ->
 pub fn get_freevars(tcx: ty::ctxt, fid: ast::node_id) -> freevar_info {
     match tcx.freevars.find(&fid) {
       None => fail!(~"get_freevars: "+int::to_str(fid)+~" has no freevars"),
-      Some(d) => return d
+      Some(&d) => return d
     }
 }
 

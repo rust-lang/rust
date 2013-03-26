@@ -60,7 +60,6 @@ use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::rscope::{in_binding_rscope};
 use middle::typeck::rscope::{region_scope, type_rscope, RegionError};
-use middle::typeck::{CrateCtxt};
 
 use core::result;
 use core::vec;
@@ -236,11 +235,11 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
             }
             ast::ty_path(path, id) if a_seq_ty.mutbl == ast::m_imm => {
                 match tcx.def_map.find(&id) {
-                    Some(ast::def_prim_ty(ast::ty_str)) => {
+                    Some(&ast::def_prim_ty(ast::ty_str)) => {
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                         return ty::mk_estr(tcx, vst);
                     }
-                    Some(ast::def_ty(type_def_id)) => {
+                    Some(&ast::def_ty(type_def_id)) => {
                         let result = ast_path_to_substs_and_ty(
                             self, rscope,
                             type_def_id, path);
@@ -304,8 +303,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
     let tcx = self.tcx();
 
     match tcx.ast_ty_to_ty_cache.find(&ast_ty.id) {
-      Some(ty::atttce_resolved(ty)) => return ty,
-      Some(ty::atttce_unresolved) => {
+      Some(&ty::atttce_resolved(ty)) => return ty,
+      Some(&ty::atttce_unresolved) => {
         tcx.sess.span_fatal(ast_ty.span, ~"illegal recursive type; \
                                           insert an enum in the cycle, \
                                           if this is desired");
@@ -360,7 +359,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
           None => tcx.sess.span_fatal(
               ast_ty.span, fmt!("unbound path %s",
                                 path_to_str(path, tcx.sess.intr()))),
-          Some(d) => d
+          Some(&d) => d
         };
         match a_def {
           ast::def_ty(did) | ast::def_struct(did) => {

@@ -306,7 +306,7 @@ pub fn trans_static_method_callee(bcx: block,
     };
 
     let mname = if method_id.crate == ast::local_crate {
-        match bcx.tcx().items.get(&method_id.node) {
+        match *bcx.tcx().items.get(&method_id.node) {
             ast_map::node_trait_method(trait_method, _, _) => {
                 ast_util::trait_method_to_ty_method(trait_method).ident
             }
@@ -323,7 +323,7 @@ pub fn trans_static_method_callee(bcx: block,
             name=%s", method_id, callee_id, *ccx.sess.str_of(mname));
 
     let vtbls = resolve_vtables_in_fn_ctxt(
-        bcx.fcx, ccx.maps.vtable_map.get(&callee_id));
+        bcx.fcx, *ccx.maps.vtable_map.get(&callee_id));
 
     match vtbls[bound_index] {
         typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
@@ -361,7 +361,7 @@ pub fn method_from_methods(ms: &[@ast::method], name: ast::ident)
 pub fn method_with_name(ccx: @CrateContext, impl_id: ast::def_id,
                         name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
-        match ccx.tcx.items.get(&impl_id.node) {
+        match *ccx.tcx.items.get(&impl_id.node) {
           ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref ms),
                 _
@@ -378,7 +378,7 @@ pub fn method_with_name(ccx: @CrateContext, impl_id: ast::def_id,
 pub fn method_with_name_or_default(ccx: @CrateContext, impl_id: ast::def_id,
                                    name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
-        match ccx.tcx.items.get(&impl_id.node) {
+        match *ccx.tcx.items.get(&impl_id.node) {
           ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref ms), _
           }, _) => {
@@ -414,7 +414,7 @@ pub fn method_ty_param_count(ccx: @CrateContext, m_id: ast::def_id,
     debug!("method_ty_param_count: m_id: %?, i_id: %?", m_id, i_id);
     if m_id.crate == ast::local_crate {
         match ccx.tcx.items.find(&m_id.node) {
-            Some(ast_map::node_method(m, _, _)) => m.generics.ty_params.len(),
+            Some(&ast_map::node_method(m, _, _)) => m.generics.ty_params.len(),
             None => {
                 match ccx.tcx.provided_method_sources.find(&m_id) {
                     Some(source) => {
@@ -424,7 +424,7 @@ pub fn method_ty_param_count(ccx: @CrateContext, m_id: ast::def_id,
                     None => fail!()
                 }
             }
-            Some(ast_map::node_trait_method(@ast::provided(@ref m),
+            Some(&ast_map::node_trait_method(@ast::provided(@ref m),
                                             _, _)) => {
                 m.generics.ty_params.len()
             }
@@ -764,7 +764,7 @@ pub fn get_vtable(ccx: @CrateContext,
     // XXX: Bad copy.
     let hash_id = vtable_id(ccx, copy origin);
     match ccx.vtables.find(&hash_id) {
-      Some(val) => val,
+      Some(&val) => val,
       None => match origin {
         typeck::vtable_static(id, substs, sub_vtables) => {
             make_impl_vtable(ccx, id, substs, sub_vtables)

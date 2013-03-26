@@ -64,10 +64,10 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
     return match region {
       re_scope(node_id) => {
         match cx.items.find(&node_id) {
-          Some(ast_map::node_block(ref blk)) => {
+          Some(&ast_map::node_block(ref blk)) => {
             explain_span(cx, "block", blk.span)
           }
-          Some(ast_map::node_expr(expr)) => {
+          Some(&ast_map::node_expr(expr)) => {
             match expr.node {
               ast::expr_call(*) => explain_span(cx, "call", expr.span),
               ast::expr_method_call(*) => {
@@ -77,10 +77,10 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
               _ => explain_span(cx, "expression", expr.span)
             }
           }
-          Some(ast_map::node_stmt(stmt)) => {
+          Some(&ast_map::node_stmt(stmt)) => {
               explain_span(cx, "statement", stmt.span)
           }
-          Some(ast_map::node_item(it, _)) if (match it.node {
+          Some(&ast_map::node_item(it, _)) if (match it.node {
                 ast::item_fn(*) => true, _ => false}) => {
               explain_span(cx, "function body", it.span)
           }
@@ -102,7 +102,7 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
         };
 
         match cx.items.find(&id) {
-          Some(ast_map::node_block(ref blk)) => {
+          Some(&ast_map::node_block(ref blk)) => {
             let (msg, opt_span) = explain_span(cx, "block", blk.span);
             (fmt!("%s %s", prefix, msg), opt_span)
           }
@@ -152,11 +152,11 @@ pub fn bound_region_to_str_space(cx: ctxt,
 
 pub fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
     match cx.items.find(&node_id) {
-      Some(ast_map::node_block(ref blk)) => {
+      Some(&ast_map::node_block(ref blk)) => {
         fmt!("<block at %s>",
              cx.sess.codemap.span_to_str(blk.span))
       }
-      Some(ast_map::node_expr(expr)) => {
+      Some(&ast_map::node_expr(expr)) => {
         match expr.node {
           ast::expr_call(*) => {
             fmt!("<call at %s>",

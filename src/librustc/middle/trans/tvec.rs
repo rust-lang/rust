@@ -28,7 +28,6 @@ use util::common::indenter;
 use util::ppaux::ty_to_str;
 
 use core::option::None;
-use core::uint;
 use core::vec;
 use syntax::ast;
 use syntax::codemap;

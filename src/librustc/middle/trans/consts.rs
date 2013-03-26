@@ -110,7 +110,7 @@ fn const_addr_of(cx: @CrateContext, cv: ValueRef) -> ValueRef {
 
 fn const_deref_ptr(cx: @CrateContext, v: ValueRef) -> ValueRef {
     let v = match cx.const_globals.find(&(v as int)) {
-        Some(v) => v,
+        Some(&v) => v,
         None => v
     };
     unsafe {
@@ -158,7 +158,7 @@ pub fn get_const_val(cx: @CrateContext, def_id: ast::def_id) -> ValueRef {
         if !ast_util::is_local(def_id) {
             def_id = inline::maybe_instantiate_inline(cx, def_id, true);
         }
-        match cx.tcx.items.get(&def_id.node) {
+        match *cx.tcx.items.get(&def_id.node) {
             ast_map::node_item(@ast::item {
                 node: ast::item_const(_, subexpr), _
             }, _) => {
@@ -167,7 +167,7 @@ pub fn get_const_val(cx: @CrateContext, def_id: ast::def_id) -> ValueRef {
             _ => cx.tcx.sess.bug(~"expected a const to be an item")
         }
     }
-    cx.const_values.get(&def_id.node)
+    *cx.const_values.get(&def_id.node)
 }
 
 pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
@@ -175,14 +175,14 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
     let ety = ty::expr_ty(cx.tcx, e);
     match cx.tcx.adjustments.find(&e.id) {
         None => { }
-        Some(@ty::AutoAddEnv(ty::re_static, ast::BorrowedSigil)) => {
+        Some(&@ty::AutoAddEnv(ty::re_static, ast::BorrowedSigil)) => {
             llconst = C_struct(~[llconst, C_null(T_opaque_box_ptr(cx))])
         }
-        Some(@ty::AutoAddEnv(ref r, ref s)) => {
+        Some(&@ty::AutoAddEnv(ref r, ref s)) => {
             cx.sess.span_bug(e.span, fmt!("unexpected static function: \
                                            region %? sigil %?", *r, *s))
         }
-        Some(@ty::AutoDerefRef(ref adj)) => {
+        Some(&@ty::AutoDerefRef(ref adj)) => {
             let mut ty = ety;
             let mut maybe_ptr = None;
             for adj.autoderefs.times {
@@ -496,7 +496,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
           ast::expr_path(pth) => {
             fail_unless!(pth.types.len() == 0);
             match cx.tcx.def_map.find(&e.id) {
-                Some(ast::def_fn(def_id, _purity)) => {
+                Some(&ast::def_fn(def_id, _purity)) => {
                     if !ast_util::is_local(def_id) {
                         let ty = csearch::get_type(cx.tcx, def_id).ty;
                         base::trans_external_path(cx, def_id, ty)
@@ -505,10 +505,10 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                         base::get_item_val(cx, def_id.node)
                     }
                 }
-                Some(ast::def_const(def_id)) => {
+                Some(&ast::def_const(def_id)) => {
                     get_const_val(cx, def_id)
                 }
-                Some(ast::def_variant(enum_did, variant_did)) => {
+                Some(&ast::def_variant(enum_did, variant_did)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
                     let repr = adt::represent_type(cx, ety);
                     let vinfo = ty::enum_variant_with_id(cx.tcx,
@@ -516,7 +516,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                                                          variant_did);
                     adt::trans_const(cx, repr, vinfo.disr_val, [])
                 }
-                Some(ast::def_struct(_)) => {
+                Some(&ast::def_struct(_)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
                     let llty = type_of::type_of(cx, ety);
                     C_null(llty)
@@ -529,13 +529,13 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
           }
           ast::expr_call(callee, ref args, _) => {
               match cx.tcx.def_map.find(&callee.id) {
-                  Some(ast::def_struct(_)) => {
+                  Some(&ast::def_struct(_)) => {
                       let ety = ty::expr_ty(cx.tcx, e);
                       let repr = adt::represent_type(cx, ety);
                       adt::trans_const(cx, repr, 0,
                                        args.map(|a| const_expr(cx, *a)))
                   }
-                  Some(ast::def_variant(enum_did, variant_did)) => {
+                  Some(&ast::def_variant(enum_did, variant_did)) => {
                       let ety = ty::expr_ty(cx.tcx, e);
                       let repr = adt::represent_type(cx, ety);
                       let vinfo = ty::enum_variant_with_id(cx.tcx,
@@ -561,7 +561,7 @@ pub fn trans_const(ccx: @CrateContext, _e: @ast::expr, id: ast::node_id) {
         let g = base::get_item_val(ccx, id);
         // At this point, get_item_val has already translated the
         // constant's initializer to determine its LLVM type.
-        let v = ccx.const_values.get(&id);
+        let v = *ccx.const_values.get(&id);
         llvm::LLVMSetInitializer(g, v);
         llvm::LLVMSetGlobalConstant(g, True);
     }

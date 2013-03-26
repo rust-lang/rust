@@ -337,7 +337,7 @@ fn parse_ty(st: @mut PState, conv: conv_did) -> ty::t {
                                          pos: pos,
                                          len: len };
         match st.tcx.rcache.find(&key) {
-          Some(tt) => return tt,
+          Some(&tt) => return tt,
           None => {
             let ps = @mut PState {pos: pos ,.. copy *st};
             let tt = parse_ty(ps, conv);

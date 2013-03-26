@@ -92,8 +92,8 @@ use opt_vec::OptVec;
 
 use core::either::{Either, Left, Right};
 use core::either;
+use core::hashmap::linear::LinearSet;
 use core::vec;
-use std::oldmap::HashMap;
 
 #[deriving(Eq)]
 enum restriction {
@@ -240,7 +240,7 @@ pub fn Parser(sess: @mut ParseSess,
         keywords: token::keyword_table(),
         strict_keywords: token::strict_keyword_table(),
         reserved_keywords: token::reserved_keyword_table(),
-        obsolete_set: HashMap(),
+        obsolete_set: @mut LinearSet::new(),
         mod_path_stack: @mut ~[],
     }
 }
@@ -259,12 +259,12 @@ pub struct Parser {
     quote_depth: @mut uint, // not (yet) related to the quasiquoter
     reader: @reader,
     interner: @token::ident_interner,
-    keywords: HashMap<~str, ()>,
-    strict_keywords: HashMap<~str, ()>,
-    reserved_keywords: HashMap<~str, ()>,
+    keywords: LinearSet<~str>,
+    strict_keywords: LinearSet<~str>,
+    reserved_keywords: LinearSet<~str>,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
-    obsolete_set: HashMap<ObsoleteSyntax, ()>,
+    obsolete_set: @mut LinearSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
     mod_path_stack: @mut ~[~str],
 

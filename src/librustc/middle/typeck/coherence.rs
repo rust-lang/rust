@@ -58,7 +58,6 @@ use util::ppaux::ty_to_str;
 use core::result::Ok;
 use core::hashmap::linear::{LinearMap, LinearSet};
 use core::uint;
-use std::oldmap::HashMap;
 
 pub struct UniversalQuantificationResult {
     monotype: t,
@@ -187,7 +186,7 @@ pub fn CoherenceChecker(crate_context: @mut CrateCtxt) -> CoherenceChecker {
         crate_context: crate_context,
         inference_context: new_infer_ctxt(crate_context.tcx),
 
-        base_type_def_ids: HashMap()
+        base_type_def_ids: @mut LinearMap::new(),
     }
 }
 
@@ -198,7 +197,7 @@ pub struct CoherenceChecker {
     // A mapping from implementations to the corresponding base type
     // definition ID.
 
-    base_type_def_ids: HashMap<def_id,def_id>,
+    base_type_def_ids: @mut LinearMap<def_id,def_id>,
 }
 
 pub impl CoherenceChecker {
@@ -475,7 +474,7 @@ pub impl CoherenceChecker {
                ty_to_str(self.crate_context.tcx, self_t));
         match self.crate_context.tcx.trait_impls.find(&trait_t) {
             None => {
-                let m = HashMap();
+                let m = @mut LinearMap::new();
                 m.insert(self_t, the_impl);
                 self.crate_context.tcx.trait_impls.insert(trait_t, m);
             }
@@ -505,14 +504,14 @@ pub impl CoherenceChecker {
             f: &fn(x: &ty::method) -> bool) {
         // Make a list of all the names of the provided methods.
         // XXX: This is horrible.
-        let provided_method_idents = HashMap();
+        let mut provided_method_idents = LinearSet::new();
         let tcx = self.crate_context.tcx;
         for ty::provided_trait_methods(tcx, trait_did).each |ident| {
-            provided_method_idents.insert(*ident, ());
+            provided_method_idents.insert(*ident);
         }
 
         for ty::trait_methods(tcx, trait_did).each |method| {
-            if provided_method_idents.contains_key(&method.ident) {
+            if provided_method_idents.contains(&method.ident) {
                 if !f(method) {
                     break;
                 }
@@ -622,7 +621,7 @@ pub impl CoherenceChecker {
 
     fn get_self_type_for_implementation(&self, implementation: @Impl)
                                      -> ty_param_bounds_and_ty {
-        return self.crate_context.tcx.tcache.get(&implementation.did);
+        return *self.crate_context.tcx.tcache.get(&implementation.did);
     }
 
     // Privileged scope checking
@@ -694,7 +693,7 @@ pub impl CoherenceChecker {
 
     fn trait_ref_to_trait_def_id(&self, trait_ref: @trait_ref) -> def_id {
         let def_map = self.crate_context.tcx.def_map;
-        let trait_def = def_map.get(&trait_ref.ref_id);
+        let trait_def = *def_map.get(&trait_ref.ref_id);
         let trait_id = def_id_of_def(trait_def);
         return trait_id;
     }
@@ -773,7 +772,7 @@ pub impl CoherenceChecker {
                                     has no provided methods", trait_did.node);
                             /* fall through */
                         }
-                        Some(all_provided) => {
+                        Some(&all_provided) => {
                             debug!("(creating impl) trait with node_id `%d` \
                                     has provided methods", trait_did.node);
                             // Add all provided methods.
@@ -802,7 +801,7 @@ pub impl CoherenceChecker {
     fn span_of_impl(&self, implementation: @Impl) -> span {
         fail_unless!(implementation.did.crate == local_crate);
         match self.crate_context.tcx.items.find(&implementation.did.node) {
-            Some(node_item(item, _)) => {
+            Some(&node_item(item, _)) => {
                 return item.span;
             }
             _ => {
@@ -815,7 +814,7 @@ pub impl CoherenceChecker {
 
     // External crate handling
 
-    fn add_impls_for_module(&self, impls_seen: HashMap<def_id,()>,
+    fn add_impls_for_module(&self, impls_seen: &mut LinearSet<def_id>,
                             crate_store: @mut CStore,
                             module_def_id: def_id) {
         let implementations = get_impls_for_mod(crate_store,
@@ -828,16 +827,11 @@ pub impl CoherenceChecker {
 
             // Make sure we don't visit the same implementation
             // multiple times.
-            match impls_seen.find(&implementation.did) {
-                None => {
-                    // Good. Continue.
-                    impls_seen.insert(implementation.did, ());
-                }
-                Some(_) => {
-                    // Skip this one.
-                    loop;
-                }
+            if !impls_seen.insert(implementation.did) {
+                // Skip this one.
+                loop;
             }
+            // Good. Continue.
 
             let self_type = lookup_item_type(self.crate_context.tcx,
                                              implementation.did);
@@ -939,11 +933,11 @@ pub impl CoherenceChecker {
     // Adds implementations and traits from external crates to the coherence
     // info.
     fn add_external_crates(&self) {
-        let impls_seen = HashMap();
+        let mut impls_seen = LinearSet::new();
 
         let crate_store = self.crate_context.tcx.sess.cstore;
         do iter_crate_data(crate_store) |crate_number, _crate_metadata| {
-            self.add_impls_for_module(impls_seen,
+            self.add_impls_for_module(&mut impls_seen,
                                       crate_store,
                                       def_id { crate: crate_number,
                                                node: 0 });
@@ -951,7 +945,7 @@ pub impl CoherenceChecker {
             for each_path(crate_store, crate_number) |_p, def_like| {
                 match def_like {
                     dl_def(def_mod(def_id)) => {
-                        self.add_impls_for_module(impls_seen,
+                        self.add_impls_for_module(&mut impls_seen,
                                                   crate_store,
                                                   def_id);
                     }
@@ -1003,13 +997,13 @@ pub impl CoherenceChecker {
                 ty::ty_struct(type_def_id, _) => {
                     tcx.destructor_for_type.insert(type_def_id,
                                                    method_def_id);
-                    tcx.destructors.insert(method_def_id, ());
+                    tcx.destructors.insert(method_def_id);
                 }
                 _ => {
                     // Destructors only work on nominal types.
                     if impl_info.did.crate == ast::local_crate {
                         match tcx.items.find(&impl_info.did.node) {
-                            Some(ast_map::node_item(@ref item, _)) => {
+                            Some(&ast_map::node_item(@ref item, _)) => {
                                 tcx.sess.span_err((*item).span,
                                                   ~"the Drop trait may only \
                                                     be implemented on \
