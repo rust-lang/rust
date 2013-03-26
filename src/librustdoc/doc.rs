@@ -135,6 +135,7 @@ pub struct MethodDoc {
 #[deriving(Eq)]
 pub struct ImplDoc {
     item: ItemDoc,
+    bounds_str: Option<~str>,
     trait_types: ~[~str],
     self_ty: Option<~str>,
     methods: ~[MethodDoc]
