@@ -135,7 +135,7 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
         mutate_values(&mut self.root, f);
     }
 
-    /// Return the value corresponding to the key in the map
+    /// Return a reference to the value corresponding to the key
     fn find(&self, key: &K) -> Option<&'self V> {
         let mut current: &'self Option<~TreeNode<K, V>> = &self.root;
         loop {
@@ -150,6 +150,12 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
               None => return None
             }
         }
+    }
+
+    /// Return a mutable reference to the value corresponding to the key
+    #[inline(always)]
+    fn find_mut(&mut self, key: &K) -> Option<&'self mut V> {
+        find_mut(&mut self.root, key)
     }
 
     /// Insert a key-value pair into the map. An existing value for a
@@ -584,8 +590,20 @@ fn split<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
     }
 }
 
-fn insert<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>, key: K,
-                          value: V) -> bool {
+fn find_mut<K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>, key: &K) -> Option<&'r mut V> {
+    match *node {
+      Some(ref mut x) => {
+        match key.cmp(&x.key) {
+          Less => find_mut(&mut x.left, key),
+          Greater => find_mut(&mut x.right, key),
+          Equal => Some(&mut x.value),
+        }
+      }
+      None => None
+    }
+}
+
+fn insert<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>, key: K, value: V) -> bool {
     match *node {
       Some(ref mut save) => {
         match key.cmp(&save.key) {
@@ -714,6 +732,19 @@ mod test_treemap {
         fail_unless!(m.insert(5, 3));
         fail_unless!(m.insert(9, 3));
         fail_unless!(m.find(&2) == None);
+    }
+
+    #[test]
+    fn test_find_mut() {
+        let mut m = TreeMap::new();
+        fail_unless!(m.insert(1, 12));
+        fail_unless!(m.insert(2, 8));
+        fail_unless!(m.insert(5, 14));
+        let new = 100;
+        match m.find_mut(&5) {
+          None => fail!(), Some(x) => *x = new
+        }
+        assert_eq!(m.find(&5), Some(&new));
     }
 
     #[test]
