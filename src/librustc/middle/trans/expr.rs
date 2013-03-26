@@ -160,6 +160,7 @@ use syntax::codemap;
 // These are passed around by the code generating functions to track the
 // destination of a computation's value.
 
+#[deriving(Eq)]
 pub enum Dest {
     SaveIn(ValueRef),
     Ignore,
@@ -172,18 +173,6 @@ pub impl Dest {
             Ignore => ~"Ignore"
         }
     }
-}
-
-impl cmp::Eq for Dest {
-    fn eq(&self, other: &Dest) -> bool {
-        match ((*self), (*other)) {
-            (SaveIn(e0a), SaveIn(e0b)) => e0a == e0b,
-            (Ignore, Ignore) => true,
-            (SaveIn(*), _) => false,
-            (Ignore, _) => false,
-        }
-    }
-    fn ne(&self, other: &Dest) -> bool { !(*self).eq(other) }
 }
 
 fn drop_and_cancel_clean(bcx: block, dat: Datum) -> block {
@@ -1682,30 +1671,13 @@ fn float_cast(bcx: block, lldsttype: TypeRef, llsrctype: TypeRef,
     } else { llsrc };
 }
 
+#[deriving(Eq)]
 pub enum cast_kind {
     cast_pointer,
     cast_integral,
     cast_float,
     cast_enum,
     cast_other,
-}
-
-impl cmp::Eq for cast_kind {
-    fn eq(&self, other: &cast_kind) -> bool {
-        match ((*self), (*other)) {
-            (cast_pointer, cast_pointer) => true,
-            (cast_integral, cast_integral) => true,
-            (cast_float, cast_float) => true,
-            (cast_enum, cast_enum) => true,
-            (cast_other, cast_other) => true,
-            (cast_pointer, _) => false,
-            (cast_integral, _) => false,
-            (cast_float, _) => false,
-            (cast_enum, _) => false,
-            (cast_other, _) => false,
-        }
-    }
-    fn ne(&self, other: &cast_kind) -> bool { !(*self).eq(other) }
 }
 
 pub fn cast_type_kind(t: ty::t) -> cast_kind {

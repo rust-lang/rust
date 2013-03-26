@@ -111,7 +111,6 @@ use middle::typeck;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
-use core::cmp;
 use core::hashmap::linear::LinearMap;
 use core::io::WriterUtil;
 use core::io;
@@ -137,56 +136,17 @@ use syntax::{visit, ast_util};
 // if it detects an outstanding loan (that is, the addr is taken).
 pub type last_use_map = @mut LinearMap<node_id, @mut ~[node_id]>;
 
+#[deriving(Eq)]
 struct Variable(uint);
+#[deriving(Eq)]
 struct LiveNode(uint);
 
-impl cmp::Eq for Variable {
-    fn eq(&self, other: &Variable) -> bool { *(*self) == *(*other) }
-    fn ne(&self, other: &Variable) -> bool { *(*self) != *(*other) }
-}
-
-impl cmp::Eq for LiveNode {
-    fn eq(&self, other: &LiveNode) -> bool { *(*self) == *(*other) }
-    fn ne(&self, other: &LiveNode) -> bool { *(*self) != *(*other) }
-}
-
+#[deriving(Eq)]
 enum LiveNodeKind {
     FreeVarNode(span),
     ExprNode(span),
     VarDefNode(span),
     ExitNode
-}
-
-impl cmp::Eq for LiveNodeKind {
-    fn eq(&self, other: &LiveNodeKind) -> bool {
-        match (*self) {
-            FreeVarNode(e0a) => {
-                match (*other) {
-                    FreeVarNode(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ExprNode(e0a) => {
-                match (*other) {
-                    ExprNode(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            VarDefNode(e0a) => {
-                match (*other) {
-                    VarDefNode(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ExitNode => {
-                match (*other) {
-                    ExitNode => true,
-                    _ => false
-                }
-            }
-        }
-    }
-    fn ne(&self, other: &LiveNodeKind) -> bool { !(*self).eq(other) }
 }
 
 fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
