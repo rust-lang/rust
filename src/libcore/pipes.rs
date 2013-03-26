@@ -82,7 +82,6 @@ bounded and unbounded protocols allows for less code duplication.
 
 */
 
-use cmp::Eq;
 use cast::{forget, reinterpret_cast, transmute};
 use cell::Cell;
 use either::{Either, Left, Right};
@@ -103,18 +102,12 @@ macro_rules! move_it (
 )
 
 #[doc(hidden)]
+#[deriving(Eq)]
 enum State {
     Empty,
     Full,
     Blocked,
     Terminated
-}
-
-impl Eq for State {
-    fn eq(&self, other: &State) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    fn ne(&self, other: &State) -> bool { !(*self).eq(other) }
 }
 
 pub struct BufferHeader {
