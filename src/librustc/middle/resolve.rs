@@ -1425,7 +1425,6 @@ pub impl Resolver {
 
                     // Build up the import directives.
                     let module_ = self.get_module_from_parent(parent);
-                    let state = @mut ImportState();
                     match view_path.node {
                         view_path_simple(binding, full_path, _, _) => {
                             let source_ident = *full_path.idents.last();
@@ -1435,19 +1434,17 @@ pub impl Resolver {
                                                         module_,
                                                         module_path,
                                                         subclass,
-                                                        view_path.span,
-                                                        state);
+                                                        view_path.span);
                         }
                         view_path_list(_, ref source_idents, _) => {
-                            for (*source_idents).each |source_ident| {
+                            for source_idents.each |source_ident| {
                                 let name = source_ident.node.name;
                                 let subclass = @SingleImport(name, name);
                                 self.build_import_directive(privacy,
                                                             module_,
                                                             copy module_path,
                                                             subclass,
-                                                            view_path.span,
-                                                            state);
+                                                            source_ident.span);
                             }
                         }
                         view_path_glob(_, _) => {
@@ -1455,8 +1452,7 @@ pub impl Resolver {
                                                         module_,
                                                         module_path,
                                                         @GlobImport,
-                                                        view_path.span,
-                                                        state);
+                                                        view_path.span);
                         }
                     }
                 }
@@ -1842,8 +1838,7 @@ pub impl Resolver {
                               module_: @mut Module,
                               +module_path: ~[ident],
                               subclass: @ImportDirectiveSubclass,
-                              span: span,
-                              state: @mut ImportState) {
+                              span: span) {
         let directive = @ImportDirective(privacy, module_path,
                                          subclass, span);
         module_.imports.push(directive);
@@ -1867,6 +1862,7 @@ pub impl Resolver {
                     }
                     None => {
                         debug!("(building import directive) creating new");
+                        let state = @mut ImportState();
                         let resolution = @mut ImportResolution(privacy,
                                                                span,
                                                                state);
