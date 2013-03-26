@@ -136,9 +136,17 @@ validate_opt () {
                 isArgValid=1
             fi
         done
-        if test $isArgValid -eq 0
+        if [ "$arg" = "--help" ]
         then
-            err "Option '$arg' is not recognized"
+            echo ""
+            echo "No more help available for Configure options,"
+            echo "check the Wiki or join our IRC channel"
+            break
+        else
+            if test $isArgValid -eq 0
+            then
+                err "Option '$arg' is not recognized"
+            fi
         fi
     done
 }
@@ -266,13 +274,42 @@ case $CFG_OSTYPE in
     MINGW32*)
         CFG_OSTYPE=pc-mingw32
         ;;
+# Thad's Cygwin identifers below
 
+#   Vista 32 bit
+    CYGWIN_NT-6.0)
+        CFG_OSTYPE=pc-mingw32
+        CFG_CPUTYPE=i686
+        ;;
+
+#   Vista 64 bit
+    CYGWIN_NT-6.0-WOW64)
+        CFG_OSTYPE=w64-mingw32
+        CFG_CPUTYPE=x86_64
+        ;;
+
+#   Win 7 32 bit
+    CYGWIN_NT-6.1)
+        CFG_OSTYPE=pc-mingw32
+        CFG_CPUTYPE=i686
+        ;;
+
+#   Win 7 64 bit
+    CYGWIN_NT-6.1-WOW64)
+        CFG_OSTYPE=w64-mingw32
+        CFG_CPUTYPE=x86_64
+        ;;
+
+# We do not detect other OS such as XP/2003 using 64 bit using uname.
+# If we want to in the future, we will need to use Cygwin - Chuck's csih helper in /usr/lib/csih/winProductName.exe or alternative.
     *)
         err "unknown OS type: $CFG_OSTYPE"
         ;;
 esac
 
 
+if [ -z "$CFG_CPUTYPE" ]
+then
 case $CFG_CPUTYPE in
 
     i386 | i486 | i686 | i786 | x86)
@@ -290,6 +327,7 @@ case $CFG_CPUTYPE in
     *)
         err "unknown CPU type: $CFG_CPUTYPE"
 esac
+fi
 
 # Detect 64 bit linux systems with 32 bit userland and force 32 bit compilation
 if [ $CFG_OSTYPE = unknown-linux-gnu -a $CFG_CPUTYPE = x86_64 ]
@@ -406,12 +444,13 @@ fi
 
 if [ ! -z "$CFG_PANDOC" ]
 then
-    PANDOC_VER_LINE=$(pandoc --version | grep '^pandoc ')
-    PANDOC_VER=${PANDOC_VER_LINE#pandoc }
-    PV_MAJOR_MINOR=${PANDOC_VER%.[0-9]*}
-    PV_MAJOR=${PV_MAJOR_MINOR%%[.][0-9]*}
-    PV_MINOR=${PV_MAJOR_MINOR#[0-9]*[.]}
-    PV_MINOR=${PV_MINOR%%[.][0-9]*}
+    PV_MAJOR_MINOR=$(pandoc --version | grep '^pandoc ' |
+        # extract the first 2 version fields, ignore everything else
+        sed 's/pandoc \([0-9]*\)\.\([0-9]*\).*/\1 \2/')
+
+    # these patterns are shell globs, *not* regexps
+    PV_MAJOR=${PV_MAJOR_MINOR% *}
+    PV_MINOR=${PV_MAJOR_MINOR#* }
     if [ "$PV_MAJOR" -lt "1" ] || [ "$PV_MINOR" -lt "8" ]
     then
 		step_msg "pandoc $PV_MAJOR.$PV_MINOR is too old. disabling"
@@ -519,7 +558,7 @@ then
                       | cut -d ' ' -f 2)
 
     case $CFG_CLANG_VERSION in
-        (3.0svn | 3.0 | 3.1* | 3.2* | 4.0* | 4.1* | 4.2*)
+        (3.0svn | 3.0 | 3.1* | 3.2* | 3.3* | 4.0* | 4.1* | 4.2*)
         step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
         CFG_C_COMPILER="clang"
         ;;
@@ -536,6 +575,7 @@ fi
 CFG_PREFIX=${CFG_PREFIX%/}
 CFG_HOST_TRIPLES="$(echo $CFG_HOST_TRIPLES | tr ',' ' ')"
 CFG_TARGET_TRIPLES="$(echo $CFG_TARGET_TRIPLES | tr ',' ' ')"
+CFG_SUPPORTED_TARGET_TRIPLES="$(grep ^CC_*=* $CFG_SRC_DIR/mk/platform.mk | sed 's,^[^_]*_,,' | sed 's/\([^=]*\).*/\1/' | xargs)"
 
 # copy host-triples to target-triples so that hosts are a subset of targets
 V_TEMP=""
@@ -548,8 +588,22 @@ CFG_TARGET_TRIPLES=$V_TEMP
 # check target-specific tool-chains
 for i in $CFG_TARGET_TRIPLES
 do
+    L_CHECK=false
+    for j in $CFG_SUPPORTED_TARGET_TRIPLES
+    do
+        if [ $i = $j ]
+        then
+            L_CHECK=true
+        fi
+    done
+
+    if [ $L_CHECK = false ]
+    then
+        err "unsupported target triples \"$i\" found"
+    fi
+
     case $i in
-        arm-unknown-android)
+        arm-linux-androideabi)
 
             if [ ! -f $CFG_ANDROID_CROSS_PATH/bin/arm-linux-androideabi-gcc ]
             then

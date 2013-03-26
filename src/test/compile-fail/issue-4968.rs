@@ -10,7 +10,7 @@
 
 // Regression test for issue #4968
 
-const A: (int,int) = (4,2);
+static A: (int,int) = (4,2);
 fn main() {
     match 42 { A => () } //~ ERROR mismatched types: expected `<VI0>` but found `(int,int)` (expected integral variable but found tuple)
 }

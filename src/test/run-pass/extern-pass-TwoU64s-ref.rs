@@ -12,7 +12,7 @@
 
 // xfail-test --- broken on 32-bit ABIs! (#5347)
 
-#[deriving_eq]
+#[deriving(Eq)]
 struct TwoU64s {
     one: u64, two: u64
 }

@@ -66,7 +66,7 @@ use core::vec;
  * line (which it can't) and so naturally place the content on its own line to
  * avoid combining it with other lines and making matters even worse.
  */
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum breaks { consistent, inconsistent, }
 
 pub struct break_t {
@@ -117,7 +117,7 @@ pub fn tok_str(++t: token) -> ~str {
 pub fn buf_str(toks: ~[token], szs: ~[int], left: uint, right: uint,
                lim: uint) -> ~str {
     let n = vec::len(toks);
-    fail_unless!((n == vec::len(szs)));
+    fail_unless!(n == vec::len(szs));
     let mut i = left;
     let mut L = lim;
     let mut s = ~"[";
@@ -139,7 +139,7 @@ pub struct print_stack_elt {
     pbreak: print_stack_break
 }
 
-pub const size_infinity: int = 0xffff;
+pub static size_infinity: int = 0xffff;
 
 pub fn mk_printer(out: @io::Writer, linewidth: uint) -> @mut Printer {
     // Yes 3, it makes the ring buffers big enough to never

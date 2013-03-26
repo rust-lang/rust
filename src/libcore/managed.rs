@@ -16,9 +16,9 @@ use ptr;
 
 pub mod raw {
 
-    pub const RC_EXCHANGE_UNIQUE : uint = (-1) as uint;
-    pub const RC_MANAGED_UNIQUE : uint = (-2) as uint;
-    pub const RC_IMMORTAL : uint = 0x77777777;
+    pub static RC_EXCHANGE_UNIQUE : uint = (-1) as uint;
+    pub static RC_MANAGED_UNIQUE : uint = (-2) as uint;
+    pub static RC_IMMORTAL : uint = 0x77777777;
 
     use intrinsic::TyDesc;
 
@@ -37,35 +37,55 @@ pub mod raw {
 }
 
 #[inline(always)]
-pub pure fn ptr_eq<T>(a: @T, b: @T) -> bool {
+pub fn ptr_eq<T>(a: @T, b: @T) -> bool {
     //! Determine if two shared boxes point to the same object
     unsafe { ptr::addr_of(&(*a)) == ptr::addr_of(&(*b)) }
 }
 
 #[inline(always)]
-pub pure fn mut_ptr_eq<T>(a: @mut T, b: @mut T) -> bool {
+pub fn mut_ptr_eq<T>(a: @mut T, b: @mut T) -> bool {
     //! Determine if two mutable shared boxes point to the same object
     unsafe { ptr::addr_of(&(*a)) == ptr::addr_of(&(*b)) }
 }
 
 #[cfg(notest)]
-impl<T:Eq> Eq for @const T {
+impl<T:Eq> Eq for @T {
     #[inline(always)]
-    pure fn eq(&self, other: &@const T) -> bool { *(*self) == *(*other) }
+    fn eq(&self, other: &@T) -> bool { *(*self) == *(*other) }
     #[inline(always)]
-    pure fn ne(&self, other: &@const T) -> bool { *(*self) != *(*other) }
+    fn ne(&self, other: &@T) -> bool { *(*self) != *(*other) }
 }
 
 #[cfg(notest)]
-impl<T:Ord> Ord for @const T {
+impl<T:Eq> Eq for @mut T {
     #[inline(always)]
-    pure fn lt(&self, other: &@const T) -> bool { *(*self) < *(*other) }
+    fn eq(&self, other: &@mut T) -> bool { *(*self) == *(*other) }
     #[inline(always)]
-    pure fn le(&self, other: &@const T) -> bool { *(*self) <= *(*other) }
+    fn ne(&self, other: &@mut T) -> bool { *(*self) != *(*other) }
+}
+
+#[cfg(notest)]
+impl<T:Ord> Ord for @T {
     #[inline(always)]
-    pure fn ge(&self, other: &@const T) -> bool { *(*self) >= *(*other) }
+    fn lt(&self, other: &@T) -> bool { *(*self) < *(*other) }
     #[inline(always)]
-    pure fn gt(&self, other: &@const T) -> bool { *(*self) > *(*other) }
+    fn le(&self, other: &@T) -> bool { *(*self) <= *(*other) }
+    #[inline(always)]
+    fn ge(&self, other: &@T) -> bool { *(*self) >= *(*other) }
+    #[inline(always)]
+    fn gt(&self, other: &@T) -> bool { *(*self) > *(*other) }
+}
+
+#[cfg(notest)]
+impl<T:Ord> Ord for @mut T {
+    #[inline(always)]
+    fn lt(&self, other: &@mut T) -> bool { *(*self) < *(*other) }
+    #[inline(always)]
+    fn le(&self, other: &@mut T) -> bool { *(*self) <= *(*other) }
+    #[inline(always)]
+    fn ge(&self, other: &@mut T) -> bool { *(*self) >= *(*other) }
+    #[inline(always)]
+    fn gt(&self, other: &@mut T) -> bool { *(*self) > *(*other) }
 }
 
 #[test]

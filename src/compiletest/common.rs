@@ -10,7 +10,7 @@
 
 use core::prelude::*;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum mode {
     mode_compile_fail,
     mode_run_fail,
@@ -62,6 +62,9 @@ pub struct config {
 
     // Run tests using the JIT
     jit: bool,
+
+    // Run tests using the new runtime
+    newrt: bool,
 
     // Explain what's going on
     verbose: bool

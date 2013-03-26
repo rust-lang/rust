@@ -25,9 +25,6 @@ fn main() {
     // @mut int.
     let f: @mut int = r();
 
-    // OK.
-    let g: @const int = r();
-
     // Bad.
     let h: @int = r(); //~ ERROR (values differ in mutability)
 }

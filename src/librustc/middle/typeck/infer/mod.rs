@@ -712,7 +712,7 @@ pub impl InferCtxt {
         let actual_ty = self.resolve_type_vars_if_possible(actual_ty);
 
         // Don't report an error if actual type is ty_err.
-        if ty::type_contains_err(actual_ty) {
+        if ty::type_is_error(actual_ty) {
             return;
         }
         let error_str = err.map_default(~"", |t_err|

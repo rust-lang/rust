@@ -21,7 +21,9 @@ use libc;
 use libc::{c_int, c_long, c_uint, c_void, size_t, ssize_t};
 use libc::consts::os::posix88::*;
 use os;
-use prelude::*;
+use cast;
+use path::Path;
+use ops::Drop;
 use ptr;
 use result;
 use str;
@@ -73,8 +75,6 @@ pub trait Reader {
     fn tell(&self) -> uint;
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl Reader for @Reader {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         self.read(bytes, len)
@@ -99,8 +99,8 @@ pub trait ReaderUtil {
     /// Read len bytes into a new vec.
     fn read_bytes(&self, len: uint) -> ~[u8];
 
-    /// Read up until a specified character (which is not returned) or EOF.
-    fn read_until(&self, c: char) -> ~str;
+    /// Read up until a specified character (which is optionally included) or EOF.
+    fn read_until(&self, c: char, include: bool) -> ~str;
 
     /// Read up until the first '\n' char (which is not returned), or EOF.
     fn read_line(&self) -> ~str;
@@ -125,6 +125,9 @@ pub trait ReaderUtil {
 
     /// Iterate over every line until the iterator breaks or EOF.
     fn each_line(&self, it: &fn(&str) -> bool);
+
+    /// Read all the lines of the file into a vector.
+    fn read_lines(&self) -> ~[~str];
 
     /// Read n (between 1 and 8) little-endian unsigned integer bytes.
     fn read_le_uint_n(&self, nbytes: uint) -> u64;
@@ -219,11 +222,14 @@ impl<T:Reader> ReaderUtil for T {
         bytes
     }
 
-    fn read_until(&self, c: char) -> ~str {
+    fn read_until(&self, c: char, include: bool) -> ~str {
         let mut bytes = ~[];
         loop {
             let ch = self.read_byte();
             if ch == -1 || ch == c as int {
+                if include && ch == c as int {
+                    bytes.push(ch as u8);
+                }
                 break;
             }
             bytes.push(ch as u8);
@@ -232,7 +238,7 @@ impl<T:Reader> ReaderUtil for T {
     }
 
     fn read_line(&self) -> ~str {
-        self.read_until('\n')
+        self.read_until('\n', false)
     }
 
     fn read_chars(&self, n: uint) -> ~[char] {
@@ -306,7 +312,7 @@ impl<T:Reader> ReaderUtil for T {
     }
 
     fn read_c_str(&self) -> ~str {
-        self.read_until(0 as char)
+        self.read_until(0 as char, false)
     }
 
     fn read_whole_stream(&self) -> ~[u8] {
@@ -329,7 +335,29 @@ impl<T:Reader> ReaderUtil for T {
 
     fn each_line(&self, it: &fn(s: &str) -> bool) {
         while !self.eof() {
-            if !it(self.read_line()) { break; }
+            // include the \n, so that we can distinguish an entirely empty
+            // line read after "...\n", and the trailing empty line in
+            // "...\n\n".
+            let mut line = self.read_until('\n', true);
+
+            // blank line at the end of the reader is ignored
+            if self.eof() && line.is_empty() { break; }
+
+            // trim the \n, so that each_line is consistent with read_line
+            let n = str::len(line);
+            if line[n-1] == '\n' as u8 {
+                unsafe { str::raw::set_len(&mut line, n-1); }
+            }
+
+            if !it(line) { break; }
+        }
+    }
+
+    fn read_lines(&self) -> ~[~str] {
+        do vec::build |push| {
+            for self.each_line |line| {
+                push(str::from_slice(line));
+            }
         }
     }
 
@@ -618,11 +646,11 @@ impl Reader for BytesReader<'self> {
     fn tell(&self) -> uint { self.pos }
 }
 
-pub pure fn with_bytes_reader<t>(bytes: &[u8], f: &fn(@Reader) -> t) -> t {
+pub fn with_bytes_reader<t>(bytes: &[u8], f: &fn(@Reader) -> t) -> t {
     f(@BytesReader { bytes: bytes, pos: 0u } as @Reader)
 }
 
-pub pure fn with_str_reader<T>(s: &str, f: &fn(@Reader) -> T) -> T {
+pub fn with_str_reader<T>(s: &str, f: &fn(@Reader) -> T) -> T {
     str::byte_slice(s, |bytes| with_bytes_reader(bytes, f))
 }
 
@@ -630,7 +658,7 @@ pub pure fn with_str_reader<T>(s: &str, f: &fn(@Reader) -> T) -> T {
 pub enum FileFlag { Append, Create, Truncate, NoFlag, }
 
 // What type of writer are we?
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum WriterType { Screen, File }
 
 // FIXME (#2004): Seekable really should be orthogonal.
@@ -655,8 +683,6 @@ pub trait Writer {
     fn get_type(&self) -> WriterType;
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl Writer for @Writer {
     fn write(&self, v: &[const u8]) { self.write(v) }
     fn seek(&self, a: int, b: SeekStyle) { self.seek(a, b) }
@@ -986,7 +1012,7 @@ pub trait WriterUtil {
 
 impl<T:Writer> WriterUtil for T {
     fn write_char(&self, ch: char) {
-        if ch as uint < 128u {
+        if (ch as uint) < 128u {
             self.write(&[ch as u8]);
         } else {
             self.write_str(str::from_char(ch));
@@ -1139,18 +1165,18 @@ impl Writer for BytesWriter {
     fn get_type(&self) -> WriterType { File }
 }
 
-pub pure fn BytesWriter() -> BytesWriter {
+pub fn BytesWriter() -> BytesWriter {
     BytesWriter { bytes: ~[], mut pos: 0u }
 }
 
-pub pure fn with_bytes_writer(f: &fn(@Writer)) -> ~[u8] {
+pub fn with_bytes_writer(f: &fn(@Writer)) -> ~[u8] {
     let wr = @BytesWriter();
     f(wr as @Writer);
     let @BytesWriter{bytes, _} = wr;
     return bytes;
 }
 
-pub pure fn with_str_writer(f: &fn(@Writer)) -> ~str {
+pub fn with_str_writer(f: &fn(@Writer)) -> ~str {
     let mut v = with_bytes_writer(f);
 
     // FIXME (#3758): This should not be needed.
@@ -1200,9 +1226,11 @@ pub fn read_whole_file(file: &Path) -> Result<~[u8], ~str> {
 // fsync related
 
 pub mod fsync {
-    use prelude::*;
     use io::{FILERes, FdRes, fd_t};
+    use kinds::Copy;
     use libc;
+    use ops::Drop;
+    use option::{None, Option, Some};
     use os;
 
     pub enum Level {
@@ -1224,15 +1252,17 @@ pub mod fsync {
         arg: Arg<t>,
     }
 
+    #[unsafe_destructor]
     impl<T:Copy> Drop for Res<T> {
         fn finalize(&self) {
-          match self.arg.opt_level {
-            None => (),
-            Some(level) => {
-              // fail hard if not succesful
-              fail_unless!(((self.arg.fsync_fn)(self.arg.val, level) != -1));
+            match self.arg.opt_level {
+                None => (),
+                Some(level) => {
+                  // fail hard if not succesful
+                  fail_unless!(((self.arg.fsync_fn)(self.arg.val, level)
+                    != -1));
+                }
             }
-          }
         }
     }
 
@@ -1330,6 +1360,21 @@ mod tests {
         do io::with_str_reader(~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤") |inp| {
             let line = inp.read_line();
             fail_unless!(line == ~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤");
+        }
+    }
+
+    #[test]
+    fn test_read_lines() {
+        do io::with_str_reader(~"a\nb\nc\n") |inp| {
+            fail_unless!(inp.read_lines() == ~[~"a", ~"b", ~"c"]);
+        }
+
+        do io::with_str_reader(~"a\nb\nc") |inp| {
+            fail_unless!(inp.read_lines() == ~[~"a", ~"b", ~"c"]);
+        }
+
+        do io::with_str_reader(~"") |inp| {
+            fail_unless!(inp.read_lines().is_empty());
         }
     }
 

@@ -24,7 +24,7 @@
 use core::prelude::*;
 
 /// The base price of a muffin on a non-holiday
-const price_of_a_muffin: float = 70f;
+static price_of_a_muffin: float = 70f;
 
 struct WaitPerson {
     hair_color: ~str

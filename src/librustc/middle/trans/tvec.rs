@@ -27,6 +27,7 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
+use core::option::None;
 use core::uint;
 use core::vec;
 use syntax::ast;
@@ -413,30 +414,57 @@ pub fn write_content(bcx: block,
                         return bcx;
                     }
 
-                    let tmpdatum = unpack_datum!(bcx, {
+                    // Some cleanup would be required in the case in which failure happens
+                    // during a copy. But given that copy constructors are not overridable,
+                    // this can only happen as a result of OOM. So we just skip out on the
+                    // cleanup since things would *probably* be broken at that point anyways.
+
+                    let elem = unpack_datum!(bcx, {
                         expr::trans_to_datum(bcx, element)
                     });
 
-                    let mut temp_cleanups = ~[];
+                    let next_bcx = sub_block(bcx, ~"expr_repeat: while next");
+                    let loop_bcx = loop_scope_block(bcx, next_bcx, None, ~"expr_repeat", None);
+                    let cond_bcx = scope_block(loop_bcx, None, ~"expr_repeat: loop cond");
+                    let set_bcx = scope_block(loop_bcx, None, ~"expr_repeat: body: set");
+                    let inc_bcx = scope_block(loop_bcx, None, ~"expr_repeat: body: inc");
+                    Br(bcx, loop_bcx.llbb);
 
-                    for uint::range(0, count) |i| {
-                        let lleltptr = GEPi(bcx, lldest, [i]);
-                        if i < count - 1 {
-                            // Copy all but the last one in.
-                            bcx = tmpdatum.copy_to(bcx, INIT, lleltptr);
-                        } else {
-                            // Move the last one in.
-                            bcx = tmpdatum.move_to(bcx, INIT, lleltptr);
-                        }
-                        add_clean_temp_mem(bcx, lleltptr, vt.unit_ty);
-                        temp_cleanups.push(lleltptr);
+                    let loop_counter = {
+                        // i = 0
+                        let i = alloca(loop_bcx, bcx.ccx().int_type);
+                        Store(loop_bcx, C_uint(bcx.ccx(), 0), i);
+
+                        Br(loop_bcx, cond_bcx.llbb);
+                        i
+                    };
+
+                    { // i < count
+                        let lhs = Load(cond_bcx, loop_counter);
+                        let rhs = C_uint(bcx.ccx(), count);
+                        let cond_val = ICmp(cond_bcx, lib::llvm::IntULT, lhs, rhs);
+
+                        CondBr(cond_bcx, cond_val, set_bcx.llbb, next_bcx.llbb);
                     }
 
-                    for vec::each(temp_cleanups) |cleanup| {
-                        revoke_clean(bcx, *cleanup);
+                    { // v[i] = elem
+                        let i = Load(set_bcx, loop_counter);
+                        let lleltptr = InBoundsGEP(set_bcx, lldest, [i]);
+                        let set_bcx = elem.copy_to(set_bcx, INIT, lleltptr);
+
+                        Br(set_bcx, inc_bcx.llbb);
                     }
 
-                    return bcx;
+                    { // i += 1
+                        let i = Load(inc_bcx, loop_counter);
+                        let plusone = Add(inc_bcx, i, C_uint(bcx.ccx(), 1));
+                        Store(inc_bcx, plusone, loop_counter);
+
+                        Br(inc_bcx, cond_bcx.llbb);
+                    }
+
+                    return next_bcx;
+
                 }
             }
         }

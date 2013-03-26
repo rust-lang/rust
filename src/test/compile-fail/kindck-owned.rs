@@ -13,22 +13,22 @@ fn copy1<T:Copy>(t: T) -> @fn() -> T {
     result
 }
 
-fn copy2<T:Copy + &static>(t: T) -> @fn() -> T {
+fn copy2<T:Copy + 'static>(t: T) -> @fn() -> T {
     let result: @fn() -> T = || t;
     result
 }
 
 fn main() {
     let x = &3;
-    copy2(&x); //~ ERROR does not fulfill `&static`
+    copy2(&x); //~ ERROR does not fulfill `'static`
 
     copy2(@3);
-    copy2(@&x); //~ ERROR does not fulfill `&static`
+    copy2(@&x); //~ ERROR does not fulfill `'static`
 
     let boxed: @fn() = || {};
     copy2(boxed);
     let owned: ~fn() = || {};
     copy2(owned);    //~ ERROR does not fulfill `Copy`
     let borrowed: &fn() = || {};
-    copy2(borrowed); //~ ERROR does not fulfill `&static`
+    copy2(borrowed); //~ ERROR does not fulfill `'static`
 }

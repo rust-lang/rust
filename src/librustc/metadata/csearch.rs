@@ -229,11 +229,11 @@ pub fn struct_dtor(cstore: @mut cstore::CStore, def: ast::def_id)
     decoder::struct_dtor(cdata, def.node)
 }
 
-pub fn get_method_visibility(cstore: @mut cstore::CStore,
-                             def_id: ast::def_id)
-                          -> ast::visibility {
+pub fn get_item_visibility(cstore: @mut cstore::CStore,
+                           def_id: ast::def_id)
+                        -> ast::visibility {
     let cdata = cstore::get_crate_data(cstore, def_id.crate);
-    decoder::get_method_visibility(cdata, def_id.node)
+    decoder::get_item_visibility(cdata, def_id.node)
 }
 
 pub fn get_link_args_for_crate(cstore: @mut cstore::CStore,

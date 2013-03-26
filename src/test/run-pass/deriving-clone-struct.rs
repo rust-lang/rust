@@ -1,4 +1,4 @@
-#[deriving_clone]
+#[deriving(Clone)]
 struct S {
     _int: int,
     _i8: i8,

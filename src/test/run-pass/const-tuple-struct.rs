@@ -10,7 +10,7 @@
 
 struct Bar(int, int);
 
-const X: Bar = Bar(1, 2);
+static X: Bar = Bar(1, 2);
 
 pub fn main() {
     match X {

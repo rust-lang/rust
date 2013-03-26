@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! A double-ended queue implemented as a circular buffer
+
 use core::container::{Container, Mutable};
 use core::prelude::*;
 use core::vec;
 
-const initial_capacity: uint = 32u; // 2^5
+static initial_capacity: uint = 32u; // 2^5
 
 pub struct Deque<T> {
     priv nelts: uint,
@@ -23,10 +25,10 @@ pub struct Deque<T> {
 
 impl<T> Container for Deque<T> {
     /// Return the number of elements in the deque
-    pure fn len(&const self) -> uint { self.nelts }
+    fn len(&const self) -> uint { self.nelts }
 
     /// Return true if the deque contains no elements
-    pure fn is_empty(&const self) -> bool { self.len() == 0 }
+    fn is_empty(&const self) -> bool { self.len() == 0 }
 }
 
 impl<T> Mutable for Deque<T> {
@@ -41,7 +43,7 @@ impl<T> Mutable for Deque<T> {
 
 pub impl<T> Deque<T> {
     /// Create an empty Deque
-    static pure fn new() -> Deque<T> {
+    fn new() -> Deque<T> {
         Deque{nelts: 0, lo: 0, hi: 0,
               elts: vec::from_fn(initial_capacity, |_| None)}
     }
@@ -251,15 +253,15 @@ mod tests {
         fail_unless!(*deq.get(3) == d);
     }
 
-    #[deriving_eq]
+    #[deriving(Eq)]
     enum Taggy { One(int), Two(int, int), Three(int, int, int), }
 
-    #[deriving_eq]
+    #[deriving(Eq)]
     enum Taggypar<T> {
         Onepar(int), Twopar(int, int), Threepar(int, int, int),
     }
 
-    #[deriving_eq]
+    #[deriving(Eq)]
     struct RecCy {
         x: int,
         y: int,

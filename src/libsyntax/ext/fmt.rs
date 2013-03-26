@@ -139,19 +139,17 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
         make_conv_struct(cx, sp, rt_conv_flags, rt_conv_width,
                          rt_conv_precision, rt_conv_ty)
     }
-    fn make_conv_call(cx: @ext_ctxt, sp: span, conv_type: ~str, cnv: &Conv,
-                      arg: @ast::expr) -> @ast::expr {
+    fn make_conv_call(cx: @ext_ctxt, sp: span, conv_type: &str, cnv: &Conv,
+                      arg: @ast::expr, buf: @ast::expr) -> @ast::expr {
         let fname = ~"conv_" + conv_type;
         let path = make_path_vec(cx, @fname);
         let cnv_expr = make_rt_conv_expr(cx, sp, cnv);
-        let args = ~[cnv_expr, arg];
+        let args = ~[cnv_expr, arg, buf];
         return mk_call_global(cx, arg.span, path, args);
     }
 
-    fn make_new_conv(cx: @ext_ctxt, sp: span, cnv: &Conv, arg: @ast::expr) ->
-       @ast::expr {
-        // FIXME: Move validation code into core::extfmt (Issue #2249)
-
+    fn make_new_conv(cx: @ext_ctxt, sp: span, cnv: &Conv,
+                     arg: @ast::expr, buf: @ast::expr) -> @ast::expr {
         fn is_signed_type(cnv: &Conv) -> bool {
             match cnv.ty {
               TyInt(s) => match s {
@@ -198,29 +196,20 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
           CountIs(_) => (),
           _ => cx.span_unimpl(sp, unsupported)
         }
-        match cnv.ty {
-          TyStr => return make_conv_call(cx, arg.span, ~"str", cnv, arg),
-          TyInt(sign) => match sign {
-            Signed => return make_conv_call(cx, arg.span, ~"int", cnv, arg),
-            Unsigned => {
-                return make_conv_call(cx, arg.span, ~"uint", cnv, arg)
-            }
-          },
-          TyBool => return make_conv_call(cx, arg.span, ~"bool", cnv, arg),
-          TyChar => return make_conv_call(cx, arg.span, ~"char", cnv, arg),
-          TyHex(_) => {
-            return make_conv_call(cx, arg.span, ~"uint", cnv, arg);
-          }
-          TyBits => return make_conv_call(cx, arg.span, ~"uint", cnv, arg),
-          TyOctal => return make_conv_call(cx, arg.span, ~"uint", cnv, arg),
-          TyFloat => {
-            return make_conv_call(cx, arg.span, ~"float", cnv, arg);
-          }
-          TyPoly => return make_conv_call(cx, arg.span, ~"poly", cnv,
-                       mk_addr_of(cx, sp, arg))
-        }
+        let (name, actual_arg) = match cnv.ty {
+            TyStr => ("str", arg),
+            TyInt(Signed) => ("int", arg),
+            TyBool => ("bool", arg),
+            TyChar => ("char", arg),
+            TyBits | TyOctal | TyHex(_) | TyInt(Unsigned) => ("uint", arg),
+            TyFloat => ("float", arg),
+            TyPoly => ("poly", mk_addr_of(cx, sp, arg))
+        };
+        return make_conv_call(cx, arg.span, name, cnv, actual_arg,
+                              mk_mut_addr_of(cx, arg.span, buf));
     }
     fn log_conv(c: &Conv) {
+        debug!("Building conversion:");
         match c.param {
           Some(p) => { debug!("param: %s", p.to_str()); }
           _ => debug!("param: none")
@@ -268,49 +257,72 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
           TyPoly => debug!("type: poly")
         }
     }
+
     let fmt_sp = args[0].span;
     let mut n = 0u;
-    let mut piece_exprs = ~[];
     let nargs = args.len();
-    for pieces.each |pc| {
-        match *pc {
-          PieceString(ref s) => {
-            piece_exprs.push(mk_uniq_str(cx, fmt_sp, copy *s))
-          }
-          PieceConv(ref conv) => {
-            n += 1u;
-            if n >= nargs {
-                cx.span_fatal(sp,
-                              ~"not enough arguments to fmt! " +
-                                  ~"for the given format string");
+
+    /* 'ident' is the local buffer building up the result of fmt! */
+    let ident = cx.parse_sess().interner.intern(@~"__fmtbuf");
+    let buf = || mk_path(cx, fmt_sp, ~[ident]);
+    let str_ident = cx.parse_sess().interner.intern(@~"str");
+    let push_ident = cx.parse_sess().interner.intern(@~"push_str");
+    let mut stms = ~[];
+
+    /* Translate each piece (portion of the fmt expression) by invoking the
+       corresponding function in core::unstable::extfmt. Each function takes a
+       buffer to insert data into along with the data being formatted. */
+    do vec::consume(pieces) |i, pc| {
+        match pc {
+            /* Raw strings get appended via str::push_str */
+            PieceString(s) => {
+                let portion = mk_uniq_str(cx, fmt_sp, s);
+
+                /* If this is the first portion, then initialize the local
+                   buffer with it directly */
+                if i == 0 {
+                    stms.push(mk_local(cx, fmt_sp, true, ident, portion));
+                } else {
+                    let args = ~[mk_mut_addr_of(cx, fmt_sp, buf()), portion];
+                    let call = mk_call_global(cx,
+                                              fmt_sp,
+                                              ~[str_ident, push_ident],
+                                              args);
+                    stms.push(mk_stmt(cx, fmt_sp, call));
+                }
             }
-            debug!("Building conversion:");
-            log_conv(conv);
-            let arg_expr = args[n];
-            let c_expr = make_new_conv(
-                cx,
-                fmt_sp,
-                conv,
-                arg_expr
-            );
-            piece_exprs.push(c_expr);
-          }
+
+            /* Invoke the correct conv function in extfmt */
+            PieceConv(ref conv) => {
+                n += 1u;
+                if n >= nargs {
+                    cx.span_fatal(sp,
+                                  ~"not enough arguments to fmt! " +
+                                  ~"for the given format string");
+                }
+
+                log_conv(conv);
+                /* If the first portion is a conversion, then the local buffer
+                   must be initialized as an empty string */
+                if i == 0 {
+                    stms.push(mk_local(cx, fmt_sp, true, ident,
+                                       mk_uniq_str(cx, fmt_sp, ~"")));
+                }
+                stms.push(mk_stmt(cx, fmt_sp,
+                                  make_new_conv(cx, fmt_sp, conv,
+                                                args[n], buf())));
+            }
         }
     }
-    let expected_nargs = n + 1u; // n conversions + the fmt string
 
+    let expected_nargs = n + 1u; // n conversions + the fmt string
     if expected_nargs < nargs {
         cx.span_fatal
             (sp, fmt!("too many arguments to fmt!. found %u, expected %u",
                            nargs, expected_nargs));
     }
 
-    let arg_vec = mk_fixed_vec_e(cx, fmt_sp, piece_exprs);
-    return mk_call_global(cx,
-                          fmt_sp,
-                          ~[cx.parse_sess().interner.intern(@~"str"),
-                            cx.parse_sess().interner.intern(@~"concat")],
-                          ~[arg_vec]);
+    return mk_block(cx, fmt_sp, ~[], stms, Some(buf()));
 }
 //
 // Local Variables:

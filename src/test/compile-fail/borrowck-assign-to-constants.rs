@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const foo: int = 5;
+static foo: int = 5;
 
 fn main() {
     // assigning to various global constants

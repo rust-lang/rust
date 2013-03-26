@@ -105,13 +105,13 @@ use syntax::ast::{m_const, m_mutbl, m_imm};
 use syntax::ast;
 use syntax::ast_map;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum CheckTraitsFlag {
     CheckTraitsOnly,
     CheckTraitsAndInherentMethods,
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum AutoderefReceiverFlag {
     AutoderefReceiver,
     DontAutoderefReceiver,
@@ -192,8 +192,12 @@ pub enum TransformTypeFlag {
     TransformTypeForObject,
 }
 
-pub impl LookupContext/&self {
+pub impl<'self> LookupContext<'self> {
     fn do_lookup(&self, self_ty: ty::t) -> Option<method_map_entry> {
+        let mut self_ty = structurally_resolved_type(self.fcx,
+                                                     self.self_expr.span,
+                                                     self_ty);
+
         debug!("do_lookup(self_ty=%s, expr=%s, self_expr=%s)",
                self.ty_to_str(self_ty),
                expr_repr(self.tcx(), self.expr),

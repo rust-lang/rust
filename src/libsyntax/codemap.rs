@@ -30,8 +30,8 @@ use core::uint;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 pub trait Pos {
-    static pure fn from_uint(n: uint) -> Self;
-    pure fn to_uint(&self) -> uint;
+    fn from_uint(n: uint) -> Self;
+    fn to_uint(&self) -> uint;
 }
 
 /// A byte offset
@@ -45,71 +45,71 @@ pub struct CharPos(uint);
 // have been unsuccessful
 
 impl Pos for BytePos {
-    static pure fn from_uint(n: uint) -> BytePos { BytePos(n) }
-    pure fn to_uint(&self) -> uint { **self }
+    fn from_uint(n: uint) -> BytePos { BytePos(n) }
+    fn to_uint(&self) -> uint { **self }
 }
 
 impl cmp::Eq for BytePos {
-    pure fn eq(&self, other: &BytePos) -> bool { **self == **other }
-    pure fn ne(&self, other: &BytePos) -> bool { !(*self).eq(other) }
+    fn eq(&self, other: &BytePos) -> bool { **self == **other }
+    fn ne(&self, other: &BytePos) -> bool { !(*self).eq(other) }
 }
 
 impl cmp::Ord for BytePos {
-    pure fn lt(&self, other: &BytePos) -> bool { **self < **other }
-    pure fn le(&self, other: &BytePos) -> bool { **self <= **other }
-    pure fn ge(&self, other: &BytePos) -> bool { **self >= **other }
-    pure fn gt(&self, other: &BytePos) -> bool { **self > **other }
+    fn lt(&self, other: &BytePos) -> bool { **self < **other }
+    fn le(&self, other: &BytePos) -> bool { **self <= **other }
+    fn ge(&self, other: &BytePos) -> bool { **self >= **other }
+    fn gt(&self, other: &BytePos) -> bool { **self > **other }
 }
 
 impl Add<BytePos, BytePos> for BytePos {
-    pure fn add(&self, rhs: &BytePos) -> BytePos {
+    fn add(&self, rhs: &BytePos) -> BytePos {
         BytePos(**self + **rhs)
     }
 }
 
 impl Sub<BytePos, BytePos> for BytePos {
-    pure fn sub(&self, rhs: &BytePos) -> BytePos {
+    fn sub(&self, rhs: &BytePos) -> BytePos {
         BytePos(**self - **rhs)
     }
 }
 
 impl to_bytes::IterBytes for BytePos {
-    pure fn iter_bytes(&self, +lsb0: bool, &&f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, &&f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
     }
 }
 
 impl Pos for CharPos {
-    static pure fn from_uint(n: uint) -> CharPos { CharPos(n) }
-    pure fn to_uint(&self) -> uint { **self }
+    fn from_uint(n: uint) -> CharPos { CharPos(n) }
+    fn to_uint(&self) -> uint { **self }
 }
 
 impl cmp::Eq for CharPos {
-    pure fn eq(&self, other: &CharPos) -> bool { **self == **other }
-    pure fn ne(&self, other: &CharPos) -> bool { !(*self).eq(other) }
+    fn eq(&self, other: &CharPos) -> bool { **self == **other }
+    fn ne(&self, other: &CharPos) -> bool { !(*self).eq(other) }
 }
 
 impl cmp::Ord for CharPos {
-    pure fn lt(&self, other: &CharPos) -> bool { **self < **other }
-    pure fn le(&self, other: &CharPos) -> bool { **self <= **other }
-    pure fn ge(&self, other: &CharPos) -> bool { **self >= **other }
-    pure fn gt(&self, other: &CharPos) -> bool { **self > **other }
+    fn lt(&self, other: &CharPos) -> bool { **self < **other }
+    fn le(&self, other: &CharPos) -> bool { **self <= **other }
+    fn ge(&self, other: &CharPos) -> bool { **self >= **other }
+    fn gt(&self, other: &CharPos) -> bool { **self > **other }
 }
 
 impl to_bytes::IterBytes for CharPos {
-    pure fn iter_bytes(&self, +lsb0: bool, &&f: to_bytes::Cb) {
+    fn iter_bytes(&self, +lsb0: bool, &&f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
     }
 }
 
 impl Add<CharPos,CharPos> for CharPos {
-    pure fn add(&self, rhs: &CharPos) -> CharPos {
+    fn add(&self, rhs: &CharPos) -> CharPos {
         CharPos(**self + **rhs)
     }
 }
 
 impl Sub<CharPos,CharPos> for CharPos {
-    pure fn sub(&self, rhs: &CharPos) -> CharPos {
+    fn sub(&self, rhs: &CharPos) -> CharPos {
         CharPos(**self - **rhs)
     }
 }
@@ -128,14 +128,14 @@ pub struct span {
 
 #[auto_encode]
 #[auto_decode]
-#[deriving_eq]
+#[deriving(Eq)]
 pub struct spanned<T> { node: T, span: span }
 
 impl cmp::Eq for span {
-    pure fn eq(&self, other: &span) -> bool {
+    fn eq(&self, other: &span) -> bool {
         return (*self).lo == (*other).lo && (*self).hi == (*other).hi;
     }
-    pure fn ne(&self, other: &span) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &span) -> bool { !(*self).eq(other) }
 }
 
 impl<S:Encoder> Encodable<S> for span {
@@ -144,30 +144,30 @@ impl<S:Encoder> Encodable<S> for span {
 }
 
 impl<D:Decoder> Decodable<D> for span {
-    static fn decode(_d: &D) -> span {
+    fn decode(_d: &D) -> span {
         dummy_sp()
     }
 }
 
-pub pure fn spanned<T>(+lo: BytePos, +hi: BytePos, +t: T) -> spanned<T> {
+pub fn spanned<T>(+lo: BytePos, +hi: BytePos, +t: T) -> spanned<T> {
     respan(mk_sp(lo, hi), t)
 }
 
-pub pure fn respan<T>(sp: span, +t: T) -> spanned<T> {
+pub fn respan<T>(sp: span, +t: T) -> spanned<T> {
     spanned {node: t, span: sp}
 }
 
-pub pure fn dummy_spanned<T>(+t: T) -> spanned<T> {
+pub fn dummy_spanned<T>(+t: T) -> spanned<T> {
     respan(dummy_sp(), t)
 }
 
 /* assuming that we're not in macro expansion */
-pub pure fn mk_sp(+lo: BytePos, +hi: BytePos) -> span {
+pub fn mk_sp(+lo: BytePos, +hi: BytePos) -> span {
     span {lo: lo, hi: hi, expn_info: None}
 }
 
 // make this a const, once the compiler supports it
-pub pure fn dummy_sp() -> span { return mk_sp(BytePos(0), BytePos(0)); }
+pub fn dummy_sp() -> span { return mk_sp(BytePos(0), BytePos(0)); }
 
 
 
@@ -208,7 +208,8 @@ pub enum ExpnInfo {
 
 pub type FileName = ~str;
 
-pub struct FileLines {
+pub struct FileLines
+{
     file: @FileMap,
     lines: ~[uint]
 }
@@ -266,7 +267,7 @@ pub impl FileMap {
                 Some(e) => e,
                 None => str::len(*self.src)
             };
-            str::slice(*self.src, begin, end)
+            str::slice(*self.src, begin, end).to_owned()
         }
     }
 
@@ -285,7 +286,7 @@ pub struct CodeMap {
 }
 
 pub impl CodeMap {
-    static pub fn new() -> CodeMap {
+    pub fn new() -> CodeMap {
         CodeMap {
             files: @mut ~[],
         }
@@ -396,7 +397,7 @@ pub impl CodeMap {
         let end = self.lookup_byte_offset(sp.hi);
         fail_unless!(begin.fm.start_pos == end.fm.start_pos);
         return str::slice(*begin.fm.src,
-                          begin.pos.to_uint(), end.pos.to_uint());
+                          begin.pos.to_uint(), end.pos.to_uint()).to_owned();
     }
 
     pub fn get_filemap(&self, filename: ~str) -> @FileMap {
@@ -509,17 +510,16 @@ priv impl CodeMap {
 #[cfg(test)]
 mod test {
     use super::*;
-    use util::testing::check_equal;
 
     #[test]
     fn t1 () {
         let cm = CodeMap::new();
         let fm = cm.new_filemap(~"blork.rs",@~"first line.\nsecond line");
         fm.next_line(BytePos(0));
-        check_equal(&fm.get_line(0),&~"first line.");
+        assert_eq!(&fm.get_line(0),&~"first line.");
         // TESTING BROKEN BEHAVIOR:
         fm.next_line(BytePos(10));
-        check_equal(&fm.get_line(1),&~".");
+        assert_eq!(&fm.get_line(1),&~".");
     }
 
     #[test]

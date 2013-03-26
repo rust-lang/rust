@@ -265,8 +265,7 @@ pub fn check_crate(tcx: ty::ctxt,
             }
         } else {
             let visibility =
-                csearch::get_method_visibility(tcx.sess.cstore,
-                                               method_id);
+                csearch::get_item_visibility(tcx.sess.cstore, method_id);
             if visibility != public {
                 tcx.sess.span_err(span,
                                   fmt!("method `%s` is private",
@@ -298,8 +297,16 @@ pub fn check_crate(tcx: ty::ctxt,
                                                              .idents
                                                              .last())));
                     }
-                } else {
-                    // XXX: Check privacy in external crates.
+                } else if csearch::get_item_visibility(tcx.sess.cstore,
+                                                       def_id) != public {
+                    tcx.sess.span_err(span,
+                                      fmt!("function `%s` is private",
+                                           *tcx.sess
+                                               .parse_sess
+                                               .interner
+                                               .get(copy *path
+                                                         .idents
+                                                         .last())));
                 }
             }
             _ => {}

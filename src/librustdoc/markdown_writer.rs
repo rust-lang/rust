@@ -34,21 +34,21 @@ pub type Writer = ~fn(v: WriteInstr);
 pub type WriterFactory = ~fn(page: doc::Page) -> Writer;
 
 pub trait WriterUtils {
-    fn write_str(&self, +str: ~str);
-    fn write_line(&self, +str: ~str);
-    fn write_done(&self);
+    fn put_str(&self, +str: ~str);
+    fn put_line(&self, +str: ~str);
+    fn put_done(&self);
 }
 
 impl WriterUtils for Writer {
-    fn write_str(&self, str: ~str) {
+    fn put_str(&self, str: ~str) {
         (*self)(Write(str));
     }
 
-    fn write_line(&self, str: ~str) {
-        self.write_str(str + ~"\n");
+    fn put_line(&self, str: ~str) {
+        self.put_str(str + ~"\n");
     }
 
-    fn write_done(&self) {
+    fn put_done(&self) {
         (*self)(Done)
     }
 }
@@ -157,7 +157,7 @@ fn readclose(fd: libc::c_int) -> ~str {
             let mut bytes = [0, ..4096];
             while !reader.eof() {
                 let nread = reader.read(bytes, bytes.len());
-                writer.write(bytes.view(0, nread));
+                writer.write(bytes.slice(0, nread).to_owned());
             }
         });
         os::fclose(file);

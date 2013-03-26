@@ -9,8 +9,15 @@
 // except according to those terms.
 
 pub fn main() {
+    struct Foo { a: ~str }
+
+    let v = [ ~Foo { a: ~"Hello!" }, ..129 ];
+    let w = [ ~"Hello!", ..129 ];
     let x = [ @[true], ..512 ];
     let y = [ 0, ..1 ];
+
+    error!("%?", v);
+    error!("%?", w);
     error!("%?", x);
     error!("%?", y);
 }

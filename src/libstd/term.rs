@@ -17,24 +17,24 @@ use core::vec;
 
 // FIXME (#2807): Windows support.
 
-pub const color_black: u8 = 0u8;
-pub const color_red: u8 = 1u8;
-pub const color_green: u8 = 2u8;
-pub const color_yellow: u8 = 3u8;
-pub const color_blue: u8 = 4u8;
-pub const color_magenta: u8 = 5u8;
-pub const color_cyan: u8 = 6u8;
-pub const color_light_gray: u8 = 7u8;
-pub const color_light_grey: u8 = 7u8;
-pub const color_dark_gray: u8 = 8u8;
-pub const color_dark_grey: u8 = 8u8;
-pub const color_bright_red: u8 = 9u8;
-pub const color_bright_green: u8 = 10u8;
-pub const color_bright_yellow: u8 = 11u8;
-pub const color_bright_blue: u8 = 12u8;
-pub const color_bright_magenta: u8 = 13u8;
-pub const color_bright_cyan: u8 = 14u8;
-pub const color_bright_white: u8 = 15u8;
+pub static color_black: u8 = 0u8;
+pub static color_red: u8 = 1u8;
+pub static color_green: u8 = 2u8;
+pub static color_yellow: u8 = 3u8;
+pub static color_blue: u8 = 4u8;
+pub static color_magenta: u8 = 5u8;
+pub static color_cyan: u8 = 6u8;
+pub static color_light_gray: u8 = 7u8;
+pub static color_light_grey: u8 = 7u8;
+pub static color_dark_gray: u8 = 8u8;
+pub static color_dark_grey: u8 = 8u8;
+pub static color_bright_red: u8 = 9u8;
+pub static color_bright_green: u8 = 10u8;
+pub static color_bright_yellow: u8 = 11u8;
+pub static color_bright_blue: u8 = 12u8;
+pub static color_bright_magenta: u8 = 13u8;
+pub static color_bright_cyan: u8 = 14u8;
+pub static color_bright_white: u8 = 15u8;
 
 pub fn esc(writer: @io::Writer) { writer.write(~[0x1bu8, '[' as u8]); }
 

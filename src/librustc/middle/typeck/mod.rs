@@ -51,8 +51,8 @@ independently:
 use core::prelude::*;
 
 use middle::resolve;
-use middle::ty::{ty_param_substs_and_ty, vstore_uniq};
 use middle::ty;
+use util::common::time;
 use util::ppaux;
 
 use core::result;
@@ -329,6 +329,7 @@ pub fn check_crate(tcx: ty::ctxt,
                    trait_map: resolve::TraitMap,
                    crate: @ast::crate)
                 -> (method_map, vtable_map) {
+    let time_passes = tcx.sess.time_passes();
     let ccx = @mut CrateCtxt {
         trait_map: trait_map,
         method_map: oldmap::HashMap(),
@@ -336,10 +337,16 @@ pub fn check_crate(tcx: ty::ctxt,
         coherence_info: @coherence::CoherenceInfo(),
         tcx: tcx
     };
-    collect::collect_item_types(ccx, crate);
-    coherence::check_coherence(ccx, crate);
 
-    check::check_item_types(ccx, crate);
+    time(time_passes, ~"type collecting", ||
+        collect::collect_item_types(ccx, crate));
+
+    time(time_passes, ~"method resolution", ||
+        coherence::check_coherence(ccx, crate));
+
+    time(time_passes, ~"type checking", ||
+        check::check_item_types(ccx, crate));
+
     check_for_main_fn(ccx);
     tcx.sess.abort_if_errors();
     (ccx.method_map, ccx.vtable_map)

@@ -9,16 +9,16 @@
 // except according to those terms.
 
 /*!
- * Try to double-check that const fns have the right size (with or
+ * Try to double-check that static fns have the right size (with or
  * without dummy env ptr, as appropriate) by iterating a size-2 array.
- * If the const size differs from the runtime size, the second element
+ * If the static size differs from the runtime size, the second element
  * should be read as a null or otherwise wrong pointer and crash.
  */
 
 fn f() { }
-const bare_fns: &'static [extern fn()] = &[f, f];
+static bare_fns: &'static [extern fn()] = &[f, f];
 struct S<'self>(&'self fn());
-const closures: &'static [S<'static>] = &[S(f), S(f)];
+static closures: &'static [S<'static>] = &[S(f), S(f)];
 
 pub fn main() {
     for bare_fns.each |&bare_fn| { bare_fn() }

@@ -488,7 +488,7 @@ pub fn parameterized(cx: ctxt,
 
 pub fn ty_to_short_str(cx: ctxt, typ: t) -> ~str {
     let mut s = encoder::encoded_ty(cx, typ);
-    if str::len(s) >= 32u { s = str::slice(s, 0u, 32u); }
+    if str::len(s) >= 32u { s = str::slice(s, 0u, 32u).to_owned(); }
     return s;
 }
 

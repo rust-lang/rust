@@ -184,7 +184,7 @@ fn constdoc_from_const(itemdoc: doc::ItemDoc) -> doc::ConstDoc {
 
 #[test]
 fn should_extract_const_name_and_id() {
-    let doc = test::mk_doc(~"const a: int = 0;");
+    let doc = test::mk_doc(~"static a: int = 0;");
     fail_unless!(doc.cratemod().consts()[0].id() != 0);
     fail_unless!(doc.cratemod().consts()[0].name() == ~"a");
 }

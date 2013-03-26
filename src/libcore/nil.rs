@@ -20,25 +20,25 @@ use cmp::{Eq, Ord, TotalOrd, Ordering, Equal};
 #[cfg(notest)]
 impl Eq for () {
     #[inline(always)]
-    pure fn eq(&self, _other: &()) -> bool { true }
+    fn eq(&self, _other: &()) -> bool { true }
     #[inline(always)]
-    pure fn ne(&self, _other: &()) -> bool { false }
+    fn ne(&self, _other: &()) -> bool { false }
 }
 
 #[cfg(notest)]
 impl Ord for () {
     #[inline(always)]
-    pure fn lt(&self, _other: &()) -> bool { false }
+    fn lt(&self, _other: &()) -> bool { false }
     #[inline(always)]
-    pure fn le(&self, _other: &()) -> bool { true }
+    fn le(&self, _other: &()) -> bool { true }
     #[inline(always)]
-    pure fn ge(&self, _other: &()) -> bool { true }
+    fn ge(&self, _other: &()) -> bool { true }
     #[inline(always)]
-    pure fn gt(&self, _other: &()) -> bool { false }
+    fn gt(&self, _other: &()) -> bool { false }
 }
 
 #[cfg(notest)]
 impl TotalOrd for () {
     #[inline(always)]
-    pure fn cmp(&self, _other: &()) -> Ordering { Equal }
+    fn cmp(&self, _other: &()) -> Ordering { Equal }
 }

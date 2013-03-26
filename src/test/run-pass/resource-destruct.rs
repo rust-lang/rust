@@ -12,9 +12,12 @@ struct shrinky_pointer {
   i: @@mut int,
 }
 
+#[unsafe_destructor]
 impl Drop for shrinky_pointer {
     fn finalize(&self) {
-        error!(~"Hello!"); **(self.i) -= 1;
+        unsafe {
+            error!(~"Hello!"); **(self.i) -= 1;
+        }
     }
 }
 

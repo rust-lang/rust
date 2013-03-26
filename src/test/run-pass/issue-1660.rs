@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn main() {
-    const _x: int = 1<<2;
+    static _x: int = 1<<2;
 }

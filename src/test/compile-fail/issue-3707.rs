@@ -14,10 +14,10 @@ struct Obj {
 }
 
 pub impl Obj {
-    static pure fn boom() -> bool {
+    fn boom() -> bool {
         return 1+1 == 2
     }
-    pure fn chirp() {
+    fn chirp() {
         self.boom(); //~ ERROR wat
     }
 }

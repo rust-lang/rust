@@ -17,11 +17,11 @@ use ext::pipes::ast_builder::{append_types, ext_ctxt_ast_builder, path};
 
 use core::to_str::ToStr;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum direction { send, recv }
 
 impl ToStr for direction {
-    pure fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         match *self {
           send => ~"Send",
           recv => ~"Recv"

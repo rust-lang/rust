@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait MyEq {
-    pure fn eq(&self, other: &Self) -> bool;
+    fn eq(&self, other: &Self) -> bool;
 }
 
 struct A {
@@ -17,7 +17,7 @@ struct A {
 }
 
 impl MyEq for int {
-    pure fn eq(&self, other: &int) -> bool { *self == *other }
+    fn eq(&self, other: &int) -> bool { *self == *other }
 }
 
 impl MyEq for A;  //~ ERROR missing method

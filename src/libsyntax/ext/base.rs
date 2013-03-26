@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -153,13 +153,13 @@ pub fn syntax_expander_table() -> SyntaxEnv {
                                 ext::deriving::expand_meta_deriving)));
     syntax_expanders.insert(@~"deriving_eq",
                             @SE(ItemDecorator(
-                                ext::deriving::expand_deriving_eq)));
+                                ext::deriving::eq::expand_deriving_obsolete)));
     syntax_expanders.insert(@~"deriving_iter_bytes",
                             @SE(ItemDecorator(
-                                ext::deriving::expand_deriving_iter_bytes)));
+                                ext::deriving::iter_bytes::expand_deriving_obsolete)));
     syntax_expanders.insert(@~"deriving_clone",
                             @SE(ItemDecorator(
-                                ext::deriving::expand_deriving_clone)));
+                                ext::deriving::clone::expand_deriving_obsolete)));
 
     // Quasi-quoting expanders
     syntax_expanders.insert(@~"quote_tokens",
@@ -231,7 +231,7 @@ pub trait ext_ctxt {
     fn span_bug(@mut self, sp: span, msg: &str) -> !;
     fn bug(@mut self, msg: &str) -> !;
     fn next_id(@mut self) -> ast::node_id;
-    pure fn trace_macros(@mut self) -> bool;
+    fn trace_macros(@mut self) -> bool;
     fn set_trace_macros(@mut self, x: bool);
     /* for unhygienic identifier transformation */
     fn str_of(@mut self, id: ast::ident) -> ~str;
@@ -310,7 +310,7 @@ pub fn mk_ctxt(parse_sess: @mut parse::ParseSess, +cfg: ast::crate_cfg)
         fn next_id(@mut self) -> ast::node_id {
             return parse::next_node_id(self.parse_sess);
         }
-        pure fn trace_macros(@mut self) -> bool {
+        fn trace_macros(@mut self) -> bool {
             self.trace_mac
         }
         fn set_trace_macros(@mut self, x: bool) {
@@ -439,7 +439,7 @@ pub enum MapChain<K,V> {
 impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 
     // Constructor. I don't think we need a zero-arg one.
-    static fn new(+init: ~LinearMap<K,@V>) -> @mut MapChain<K,V> {
+    fn new(+init: ~LinearMap<K,@V>) -> @mut MapChain<K,V> {
         @mut BaseMapChain(init)
     }
 
@@ -464,7 +464,7 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 // traits just don't work anywhere...?
 //pub impl Map<Name,SyntaxExtension> for MapChain {
 
-    pure fn contains_key (&self, key: &K) -> bool {
+    fn contains_key (&self, key: &K) -> bool {
         match *self {
             BaseMapChain (ref map) => map.contains_key(key),
             ConsMapChain (ref map,ref rest) =>
@@ -475,11 +475,11 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
     // should each_key and each_value operate on shadowed
     // names? I think not.
     // delaying implementing this....
-    pure fn each_key (&self, _f: &fn (&K)->bool) {
+    fn each_key (&self, _f: &fn (&K)->bool) {
         fail!(~"unimplemented 2013-02-15T10:01");
     }
 
-    pure fn each_value (&self, _f: &fn (&V) -> bool) {
+    fn each_value (&self, _f: &fn (&V) -> bool) {
         fail!(~"unimplemented 2013-02-15T10:02");
     }
 
@@ -509,7 +509,6 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 #[cfg(test)]
 mod test {
     use super::MapChain;
-    use util::testing::check_equal;
     use core::hashmap::linear::LinearMap;
 
     #[test] fn testenv () {
@@ -517,23 +516,23 @@ mod test {
         a.insert (@~"abc",@15);
         let m = MapChain::new(~a);
         m.insert (@~"def",@16);
-        // FIXME: #4492 (ICE)  check_equal(m.find(&@~"abc"),Some(@15));
-        //  ....               check_equal(m.find(&@~"def"),Some(@16));
-        check_equal(*(m.find(&@~"abc").get()),15);
-        check_equal(*(m.find(&@~"def").get()),16);
+        // FIXME: #4492 (ICE)  assert_eq!(m.find(&@~"abc"),Some(@15));
+        //  ....               assert_eq!(m.find(&@~"def"),Some(@16));
+        assert_eq!(*(m.find(&@~"abc").get()),15);
+        assert_eq!(*(m.find(&@~"def").get()),16);
         let n = m.push_frame();
         // old bindings are still present:
-        check_equal(*(n.find(&@~"abc").get()),15);
-        check_equal(*(n.find(&@~"def").get()),16);
+        assert_eq!(*(n.find(&@~"abc").get()),15);
+        assert_eq!(*(n.find(&@~"def").get()),16);
         n.insert (@~"def",@17);
         // n shows the new binding
-        check_equal(*(n.find(&@~"abc").get()),15);
-        check_equal(*(n.find(&@~"def").get()),17);
+        assert_eq!(*(n.find(&@~"abc").get()),15);
+        assert_eq!(*(n.find(&@~"def").get()),17);
         // ... but m still has the old ones
-        // FIXME: #4492: check_equal(m.find(&@~"abc"),Some(@15));
-        // FIXME: #4492: check_equal(m.find(&@~"def"),Some(@16));
-        check_equal(*(m.find(&@~"abc").get()),15);
-        check_equal(*(m.find(&@~"def").get()),16);
+        // FIXME: #4492: assert_eq!(m.find(&@~"abc"),Some(@15));
+        // FIXME: #4492: assert_eq!(m.find(&@~"def"),Some(@16));
+        assert_eq!(*(m.find(&@~"abc").get()),15);
+        assert_eq!(*(m.find(&@~"def").get()),16);
     }
 }
 

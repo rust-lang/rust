@@ -15,6 +15,7 @@ struct complainer {
   c: @int,
 }
 
+#[unsafe_destructor]
 impl Drop for complainer {
     fn finalize(&self) {}
 }

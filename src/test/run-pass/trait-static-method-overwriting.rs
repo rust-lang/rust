@@ -12,7 +12,7 @@
 
 mod base {
     pub trait HasNew<T> {
-        static pure fn new() -> T;
+        fn new() -> T;
     }
 
     pub struct Foo {
@@ -20,7 +20,7 @@ mod base {
     }
 
     impl ::base::HasNew<Foo> for Foo {
-        static pure fn new() -> Foo {
+        fn new() -> Foo {
 			unsafe { io::println("Foo"); }
             Foo { dummy: () }
         }
@@ -31,7 +31,7 @@ mod base {
     }
 
     impl ::base::HasNew<Bar> for Bar {
-        static pure fn new() -> Bar {
+        fn new() -> Bar {
 			unsafe { io::println("Bar"); }
             Bar { dummy: () }
         }

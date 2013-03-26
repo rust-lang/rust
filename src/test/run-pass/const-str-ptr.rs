@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const a: [u8 * 3] = ['h' as u8, 'i' as u8, 0 as u8];
-const c: &'static [u8 * 3] = &a;
-const b: *u8 = c as *u8;
+static a: [u8 * 3] = ['h' as u8, 'i' as u8, 0 as u8];
+static c: &'static [u8 * 3] = &a;
+static b: *u8 = c as *u8;
 
 fn main() {
     let foo = &a as *u8;

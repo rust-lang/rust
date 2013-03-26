@@ -35,8 +35,6 @@ pub mod extfmt;
 #[path = "unstable/lang.rs"]
 #[cfg(notest)]
 pub mod lang;
-#[path = "unstable/uvll.rs"]
-pub mod uvll;
 
 mod rustrt {
     use unstable::{raw_thread, rust_little_lock};
@@ -118,6 +116,7 @@ struct ArcDestruct<T> {
     mut data: *libc::c_void,
 }
 
+#[unsafe_destructor]
 impl<T> Drop for ArcDestruct<T>{
     fn finalize(&self) {
         unsafe {

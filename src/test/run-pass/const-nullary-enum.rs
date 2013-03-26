@@ -14,7 +14,7 @@ enum Foo {
     Boo,
 }
 
-const X: Foo = Bar;
+static X: Foo = Bar;
 
 pub fn main() {
     match X {
@@ -27,4 +27,4 @@ pub fn main() {
     }
 }
 
-const Y: Foo = Baz;
+static Y: Foo = Baz;

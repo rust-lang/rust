@@ -32,7 +32,6 @@ use core::prelude::*;
 use middle::freevars::get_freevars;
 use middle::pat_util::{pat_bindings, pat_is_binding};
 use middle::ty::{encl_region, re_scope};
-use middle::ty::{vstore_box, vstore_fixed, vstore_slice};
 use middle::ty;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::check::lookup_def;
@@ -150,7 +149,7 @@ pub fn visit_local(l: @ast::local, &&rcx: @mut Rcx, v: rvt) {
     // Note: we do this here rather than in visit_pat because we do
     // not wish to constrain the regions in *patterns* in quite the
     // same way.  `visit_node()` guarantees that the region encloses
-    // the node in question, which ultimately constraints the regions
+    // the node in question, which ultimately constrains the regions
     // in patterns to enclose the match expression as a whole.  But we
     // want them to enclose the *arm*.  However, regions in patterns
     // must either derive from the discriminant or a ref pattern: in
@@ -616,7 +615,7 @@ pub mod guarantor {
         // expressions, both of which always yield a region variable, so
         // mk_subr should never fail.
         let rptr_ty = rcx.resolve_node_type(id);
-        if !ty::type_contains_err(rptr_ty) {
+        if !ty::type_is_error(rptr_ty) {
             debug!("rptr_ty=%s", ty_to_str(rcx.fcx.ccx.tcx, rptr_ty));
             let r = ty::ty_region(rptr_ty);
             infallibly_mk_subr(rcx, true, span, r, bound);
@@ -890,7 +889,7 @@ pub mod guarantor {
             }
             ast::pat_region(p) => {
                 let rptr_ty = rcx.resolve_node_type(pat.id);
-                if !ty::type_contains_err(rptr_ty) {
+                if !ty::type_is_error(rptr_ty) {
                     let r = ty::ty_region(rptr_ty);
                     link_ref_bindings_in_pat(rcx, p, Some(r));
                 }
@@ -899,7 +898,7 @@ pub mod guarantor {
             ast::pat_range(*) => {}
             ast::pat_vec(ref before, ref slice, ref after) => {
                 let vec_ty = rcx.resolve_node_type(pat.id);
-                if !ty::type_contains_err(vec_ty) {
+                if !ty::type_is_error(vec_ty) {
                     let vstore = ty::ty_vstore(vec_ty);
                     let guarantor1 = match vstore {
                         ty::vstore_fixed(_) | ty::vstore_uniq => guarantor,

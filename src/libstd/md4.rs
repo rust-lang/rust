@@ -19,7 +19,7 @@ struct Quad {
     d: u32
 }
 
-pub pure fn md4(msg: &[u8]) -> Quad {
+pub fn md4(msg: &[u8]) -> Quad {
     // subtle: if orig_len is merely uint, then the code below
     // which performs shifts by 32 bits or more has undefined
     // results.
@@ -45,7 +45,7 @@ pub pure fn md4(msg: &[u8]) -> Quad {
     let mut c = 0x98badcfeu32;
     let mut d = 0x10325476u32;
 
-    pure fn rot(r: int, x: u32) -> u32 {
+    fn rot(r: int, x: u32) -> u32 {
         let r = r as u32;
         (x << r) | (x >> (32u32 - r))
     }
@@ -103,9 +103,9 @@ pub pure fn md4(msg: &[u8]) -> Quad {
     return Quad {a: a, b: b, c: c, d: d};
 }
 
-pub pure fn md4_str(msg: &[u8]) -> ~str {
+pub fn md4_str(msg: &[u8]) -> ~str {
     let Quad {a, b, c, d} = md4(msg);
-    pure fn app(a: u32, b: u32, c: u32, d: u32, f: &fn(u32)) {
+    fn app(a: u32, b: u32, c: u32, d: u32, f: &fn(u32)) {
         f(a); f(b); f(c); f(d);
     }
     let mut result = ~"";
@@ -121,7 +121,7 @@ pub pure fn md4_str(msg: &[u8]) -> ~str {
     result
 }
 
-pub pure fn md4_text(msg: &str) -> ~str { md4_str(str::to_bytes(msg)) }
+pub fn md4_text(msg: &str) -> ~str { md4_str(str::to_bytes(msg)) }
 
 #[test]
 fn test_md4() {

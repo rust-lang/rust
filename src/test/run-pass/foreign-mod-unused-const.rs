@@ -11,7 +11,7 @@
 mod foo {
     #[nolink]
     pub extern {
-        pub const errno: int;
+        pub static errno: int;
     }
 }
 

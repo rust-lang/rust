@@ -112,7 +112,7 @@ pub fn add_new_extension(cx: @ext_ctxt,
                             match (*tt) {
                                 // cut off delimiters; don't parse 'em
                                 tt_delim(ref tts) => {
-                                    (*tts).slice(1u,(*tts).len()-1u)
+                                    (*tts).slice(1u,(*tts).len()-1u).to_owned()
                                 }
                                 _ => cx.span_fatal(
                                     sp, ~"macro rhs must be delimited")

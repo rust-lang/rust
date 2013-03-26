@@ -78,13 +78,13 @@ fn unindent(s: &str) -> ~str {
     };
 
     if !lines.is_empty() {
-        let unindented = ~[lines.head().trim()]
+        let unindented = ~[lines.head().trim().to_owned()]
             + do lines.tail().map |line| {
             if str::is_whitespace(*line) {
                 copy *line
             } else {
                 fail_unless!(str::len(*line) >= min_indent);
-                str::slice(*line, min_indent, str::len(*line))
+                str::slice(*line, min_indent, str::len(*line)).to_owned()
             }
         };
         str::connect(unindented, ~"\n")
