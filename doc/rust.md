@@ -1671,6 +1671,10 @@ vec_elems : [expr [',' expr]*] | [expr ',' ".." expr]
 A [_vector_](#vector-types) _expression_ is written by enclosing zero or
 more comma-separated expressions of uniform type in square brackets.
 
+In the `[expr ',' ".." expr]` form, the expression after the `".."`
+must be a constant expression that can be evaluated at compile time, such
+as a [literal](#literals) or a [static item](#static-items).
+
 ~~~~
 [1, 2, 3, 4];
 ["a", "b", "c", "d"];
@@ -2156,6 +2160,19 @@ do f |j| {
 }
 ~~~~
 
+In this example, both calls to the (binary) function `k` are equivalent:
+
+~~~~
+# fn k(x:int, f: &fn(int)) { }
+# fn l(i: int) { }
+
+k(3, |j| l(j));
+
+do k(3) |j| {
+   l(j);
+}
+~~~~
+
 
 ### For expressions
 
@@ -2184,7 +2201,7 @@ and early boolean-valued returns from the `block` function,
 such that the meaning of `break` and `loop` is preserved in a primitive loop
 when rewritten as a `for` loop controlled by a higher order function.
 
-An example a for loop:
+An example of a for loop over the contents of a vector:
 
 ~~~~
 # type foo = int;
@@ -2198,6 +2215,14 @@ for v.each |e| {
 }
 ~~~~
 
+An example of a for loop over a series of integers:
+
+~~~~
+# fn bar(b:uint) { }
+for uint::range(0, 256) |i| {
+    bar(i);
+}
+~~~~
 
 ### If expressions
 
@@ -2474,6 +2499,7 @@ fail_unless!(b != "world");
 
 The vector type constructor represents a homogeneous array of values of a given type.
 A vector has a fixed size.
+(Operations like `vec::push` operate solely on owned vectors.)
 A vector type can be annotated with a _definite_ size,
 written with a trailing asterisk and integer literal, such as `[int * 10]`.
 Such a definite-sized vector type is a first-class type, since its size is known statically.
@@ -2483,6 +2509,10 @@ An indefinite-size vector can only be instantiated through a pointer type,
 such as `&[T]`, `@[T]` or `~[T]`.
 The kind of a vector type depends on the kind of its element type,
 as with other simple structural types.
+
+Expressions producing vectors of definite size cannot be evaluated in a
+context expecting a vector of indefinite size; one must copy the
+definite-sized vector contents into a distinct vector of indefinite size.
 
 An example of a vector type and its use:
 
