@@ -1020,22 +1020,21 @@ pub fn each_chari(s: &str, it: &fn(uint, char) -> bool) {
 /// Iterates over the chars in a string in reverse
 #[inline(always)]
 pub fn each_char_reverse(s: &str, it: &fn(char) -> bool) {
-    let mut pos = 0;
-    let len = s.char_len();
-    while pos > 0 {
-        let CharRange {ch, next} = char_range_at_reverse(s, pos);
-        pos = next;
-        if !it(ch) { break; }
-    }
+    each_chari_reverse(s, |_, c| it(c))
 }
 
 // Iterates over the chars in a string in reverse, with indices
 #[inline(always)]
 pub fn each_chari_reverse(s: &str, it: &fn(uint, char) -> bool) {
+    let mut pos = s.len();
     let mut ch_pos = s.char_len();
-    for s.each_char_reverse |ch| {
+    while pos > 0 {
+        let CharRange {ch, next} = char_range_at_reverse(s, pos);
+        pos = next;
         ch_pos -= 1;
+
         if !it(ch_pos, ch) { break; }
+
     }
 }
 
@@ -3661,10 +3660,10 @@ mod tests {
     fn test_each_char_reverse() {
         let s = ~"ศไทย中华Việt Nam";
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
-        let mut pos = 0;
+        let mut pos = v.len();
         for s.each_char_reverse |ch| {
+            pos -= 1;
             fail_unless!(ch == v[pos]);
-            pos += 1;
         }
     }
 

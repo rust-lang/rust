@@ -51,7 +51,6 @@ Implicitly, all crates behave as if they included the following prologue:
 #[warn(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 #[allow(deprecated_mutable_fields)];
-#[deny(deprecated_self)];
 #[allow(deprecated_drop)];
 
 // On Linux, link to the runtime with -lrt.
