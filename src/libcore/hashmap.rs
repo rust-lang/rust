@@ -24,6 +24,7 @@ pub mod linear {
     use rand;
     use uint;
     use vec;
+    use util::unreachable;
 
     static INITIAL_CAPACITY: uint = 32u; // 2^5
 
@@ -192,6 +193,14 @@ pub mod linear {
             }
         }
 
+        #[inline(always)]
+        fn mut_value_for_bucket(&mut self, idx: uint) -> &'self mut V {
+            match self.buckets[idx] {
+                Some(ref mut bkt) => &mut bkt.value,
+                None => unreachable()
+            }
+        }
+
         /// Inserts the key value pair into the buckets.
         /// Assumes that there will be a bucket.
         /// True if there was no previous entry with that key
@@ -338,11 +347,22 @@ pub mod linear {
             }
         }
 
-        /// Return the value corresponding to the key in the map
+        /// Return a reference to the value corresponding to the key
         fn find(&self, k: &K) -> Option<&'self V> {
             match self.bucket_for_key(k) {
                 FoundEntry(idx) => Some(self.value_for_bucket(idx)),
                 TableFull | FoundHole(_) => None,
+            }
+        }
+
+        /// Return a mutable reference to the value corresponding to the key
+        fn find_mut(&mut self, k: &K) -> Option<&'self mut V> {
+            let idx = match self.bucket_for_key(k) {
+                FoundEntry(idx) => idx,
+                TableFull | FoundHole(_) => return None
+            };
+            unsafe {  // FIXME(#4903)---requires flow-sensitive borrow checker
+                Some(::cast::transmute_mut_region(self.mut_value_for_bucket(idx)))
             }
         }
 
@@ -653,6 +673,19 @@ pub mod linear {
             fail_unless!(m.insert(2, 4));
             fail_unless!(*m.get(&1) == 2);
             fail_unless!(*m.get(&2) == 4);
+        }
+
+        #[test]
+        fn test_find_mut() {
+            let mut m = LinearMap::new();
+            fail_unless!(m.insert(1, 12));
+            fail_unless!(m.insert(2, 8));
+            fail_unless!(m.insert(5, 14));
+            let new = 100;
+            match m.find_mut(&5) {
+                None => fail!(), Some(x) => *x = new
+            }
+            assert_eq!(m.find(&5), Some(&new));
         }
 
         #[test]

@@ -86,7 +86,7 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
         self.each(|&(_, v)| blk(v))
     }
 
-    /// Visit all key-value pairs in order
+    /// Iterate over the map and mutate the contained values
     fn mutate_values(&mut self, it: &fn(&uint, &'self mut V) -> bool) {
         for uint::range(0, self.v.len()) |i| {
             match self.v[i] {
@@ -96,11 +96,23 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
         }
     }
 
-    /// Iterate over the map and mutate the contained values
+    /// Return a reference to the value corresponding to the key
     fn find(&self, key: &uint) -> Option<&'self V> {
         if *key < self.v.len() {
             match self.v[*key] {
               Some(ref value) => Some(value),
+              None => None
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Return a mutable reference to the value corresponding to the key
+    fn find_mut(&mut self, key: &uint) -> Option<&'self mut V> {
+        if *key < self.v.len() {
+            match self.v[*key] {
+              Some(ref mut value) => Some(value),
               None => None
             }
         } else {
@@ -160,6 +172,20 @@ pub impl<V:Copy> SmallIntMap<V> {
 #[cfg(test)]
 mod tests {
     use super::SmallIntMap;
+    use core::prelude::*;
+
+    #[test]
+    fn test_find_mut() {
+        let mut m = SmallIntMap::new();
+        fail_unless!(m.insert(1, 12));
+        fail_unless!(m.insert(2, 8));
+        fail_unless!(m.insert(5, 14));
+        let new = 100;
+        match m.find_mut(&5) {
+            None => fail!(), Some(x) => *x = new
+        }
+        assert_eq!(m.find(&5), Some(&new));
+    }
 
     #[test]
     fn test_len() {
