@@ -2240,7 +2240,7 @@ pub mod traits {
 #[cfg(test)]
 pub mod traits {}
 
-pub trait StrSlice {
+pub trait StrSlice<'self> {
     fn all(&self, it: &fn(char) -> bool) -> bool;
     fn any(&self, it: &fn(char) -> bool) -> bool;
     fn contains(&self, needle: &'a str) -> bool;
@@ -2260,9 +2260,9 @@ pub trait StrSlice {
     fn len(&self) -> uint;
     fn char_len(&self) -> uint;
     fn slice(&self, begin: uint, end: uint) -> &'self str;
-    fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&str) -> bool);
-    fn each_split_char(&self, sep: char, it: &fn(&str) -> bool);
-    fn each_split_str(&self, sep: &'a str, it: &fn(&str) -> bool);
+    fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&'self str) -> bool);
+    fn each_split_char(&self, sep: char, it: &fn(&'self str) -> bool);
+    fn each_split_str(&self, sep: &'a str, it: &fn(&'self str) -> bool);
     fn starts_with(&self, needle: &'a str) -> bool;
     fn substr(&self, begin: uint, n: uint) -> &'self str;
     fn to_lower(&self) -> ~str;
@@ -2283,7 +2283,7 @@ pub trait StrSlice {
 }
 
 /// Extension methods for strings
-impl StrSlice for &'self str {
+impl StrSlice<'self> for &'self str {
     /**
      * Return true if a predicate matches all characters or if the string
      * contains no characters
@@ -2382,14 +2382,14 @@ impl StrSlice for &'self str {
     }
     /// Splits a string into substrings using a character function
     #[inline]
-    fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&str) -> bool) {
+    fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&'self str) -> bool) {
         each_split(*self, sepfn, it)
     }
     /**
      * Splits a string into substrings at each occurrence of a given character
      */
     #[inline]
-    fn each_split_char(&self, sep: char, it: &fn(&str) -> bool) {
+    fn each_split_char(&self, sep: char, it: &fn(&'self str) -> bool) {
         each_split_char(*self, sep, it)
     }
     /**
@@ -2397,7 +2397,7 @@ impl StrSlice for &'self str {
      * string
      */
     #[inline]
-    fn each_split_str(&self, sep: &'a str, it: &fn(&str) -> bool)  {
+    fn each_split_str(&self, sep: &'a str, it: &fn(&'self str) -> bool)  {
         each_split_str(*self, sep, it)
     }
     /// Returns true if one string starts with another
