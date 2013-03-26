@@ -615,7 +615,7 @@ pub mod guarantor {
         // expressions, both of which always yield a region variable, so
         // mk_subr should never fail.
         let rptr_ty = rcx.resolve_node_type(id);
-        if !ty::type_is_error(rptr_ty) {
+        if !ty::type_is_error(rptr_ty) && !ty::type_is_bot(rptr_ty) {
             let tcx = rcx.fcx.ccx.tcx;
             debug!("rptr_ty=%s", ty_to_str(tcx, rptr_ty));
             let r = ty::ty_region(tcx, span, rptr_ty);

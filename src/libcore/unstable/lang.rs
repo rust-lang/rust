@@ -99,8 +99,12 @@ pub unsafe fn borrow_as_imm(a: *u8) {
 #[lang="return_to_mut"]
 #[inline(always)]
 pub unsafe fn return_to_mut(a: *u8) {
-    let a: *mut BoxRepr = transmute(a);
-    (*a).header.ref_count &= !FROZEN_BIT;
+    // Sometimes the box is null, if it is conditionally frozen.
+    // See e.g. #4904.
+    if !a.is_null() {
+        let a: *mut BoxRepr = transmute(a);
+        (*a).header.ref_count &= !FROZEN_BIT;
+    }
 }
 
 #[lang="check_not_borrowed"]
