@@ -399,8 +399,20 @@ pub mod reader {
             debug!("read_tup_elt(idx=%u)", idx);
             f()
         }
-    }
 
+        fn read_option<T>(&self, f: &fn() -> T) -> Option<T> {
+            debug!("read_option()");
+            do self.read_enum("Option") || {
+                do self.read_enum_variant |idx| {
+                    match idx {
+                        0 => None,
+                        1 => Some(f()),
+                        _ => fail!(),
+                    }
+                }
+            }
+        }
+    }
 }
 
 pub mod writer {
@@ -666,9 +678,19 @@ pub mod writer {
 
         fn emit_tup(&self, _len: uint, f: &fn()) { f() }
         fn emit_tup_elt(&self, _idx: uint, f: &fn()) { f() }
-    }
 
+        fn emit_option(&self, f: &fn()) {
+            self.emit_enum("Option", f);
+        }
+        fn emit_option_none(&self) {
+            self.emit_enum_variant("None", 0, 0, || ())
+        }
+        fn emit_option_some(&self, f: &fn()) {
+            self.emit_enum_variant("Some", 1, 1, f)
+        }
+    }
 }
+
 // ___________________________________________________________________________
 // Testing
 

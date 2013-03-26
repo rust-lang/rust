@@ -1177,6 +1177,7 @@ fn mk_enum_deser_body(
 
 #[cfg(test)]
 mod test {
+    use core::option::{None, Some};
     use std::serialize::Encodable;
     use std::serialize::Encoder;
 
@@ -1190,6 +1191,9 @@ mod test {
         CallToEmitNil,
         CallToEmitStruct(~str,uint),
         CallToEmitField(~str,uint),
+        CallToEmitOption,
+        CallToEmitOptionNone,
+        CallToEmitOptionSome,
         // all of the ones I was too lazy to handle:
         CallToOther
     }
@@ -1281,6 +1285,18 @@ mod test {
         fn emit_tup_elt(&self, +_idx: uint, f: &fn()) {
             self.add_unknown_to_log(); f();
         }
+
+        fn emit_option(&self, f: &fn()) {
+            self.add_to_log(CallToEmitOption);
+            f();
+        }
+        fn emit_option_none(&self) {
+            self.add_to_log(CallToEmitOptionNone);
+        }
+        fn emit_option_some(&self, f: &fn()) {
+            self.add_to_log(CallToEmitOptionSome);
+            f();
+        }
     }
 
 
@@ -1296,13 +1312,58 @@ mod test {
         Magazine(~str)
     }
 
-    #[test] fn encode_enum_test () {
-        assert_eq!(to_call_log(Book(34,44)),
-                     ~[CallToEmitEnum (~"Written"),
-                       CallToEmitEnumVariant (~"Book",0,2),
-                       CallToEmitEnumVariantArg (0),
-                       CallToEmitUint (34),
-                       CallToEmitEnumVariantArg (1),
-                       CallToEmitUint (44)]);
-        }
+    #[test]
+    fn test_encode_enum() {
+        assert_eq!(
+            to_call_log(Book(34,44)),
+            ~[
+                CallToEmitEnum(~"Written"),
+                CallToEmitEnumVariant(~"Book",0,2),
+                CallToEmitEnumVariantArg(0),
+                CallToEmitUint(34),
+                CallToEmitEnumVariantArg(1),
+                CallToEmitUint(44),
+            ]
+        );
+    }
+
+    pub struct BPos(uint);
+
+    #[auto_encode]
+    pub struct HasPos { pos : BPos }
+
+    #[test]
+    fn test_encode_newtype() {
+        assert_eq!(
+            to_call_log(HasPos { pos:BPos(48) }),
+            ~[
+                CallToEmitStruct(~"HasPos",1),
+                CallToEmitField(~"pos",0),
+                CallToEmitUint(48),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_encode_option() {
+        let mut v = None;
+
+        assert_eq!(
+            to_call_log(v),
+            ~[
+                CallToEmitOption,
+                CallToEmitOptionNone,
+            ]
+        );
+
+        v = Some(54u);
+        assert_eq!(
+            to_call_log(v),
+            ~[
+                CallToEmitOption,
+                CallToEmitOptionSome,
+                CallToEmitUint(54)
+            ]
+        );
+    }
 }
