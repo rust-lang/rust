@@ -17,8 +17,8 @@ pub fn main() {
 
     fail_unless!((str::len(s) == 10u));
     fail_unless!((str::char_len(s) == 4u));
-    fail_unless!((vec::len(str::chars(s)) == 4u));
-    fail_unless!((str::from_chars(str::chars(s)) == s));
+    fail_unless!((vec::len(str::to_chars(s)) == 4u));
+    fail_unless!((str::from_chars(str::to_chars(s)) == s));
     fail_unless!((str::char_at(s, 0u) == 'e'));
     fail_unless!((str::char_at(s, 1u) == 'é'));
 

@@ -337,7 +337,8 @@ fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str)
     -> Option<Repl> {
     if line.starts_with(~":") {
         let full = line.substr(1, line.len() - 1);
-        let split = str::words(full);
+        let mut split = ~[];
+        for str::each_word(full) |word| { split.push(word.to_owned()) }
         let len = split.len();
 
         if len > 0 {

@@ -267,7 +267,7 @@ fn run_debuginfo_test(config: config, props: TestProps, testfile: &Path) {
         // check if each line in props.check_lines appears in the
         // output (in order)
         let mut i = 0u;
-        for str::lines_each(ProcRes.stdout) |line| {
+        for str::each_line(ProcRes.stdout) |line| {
             if props.check_lines[i].trim() == line.trim() {
                 i += 1u;
             }
@@ -297,7 +297,7 @@ fn check_error_patterns(props: TestProps,
     let mut next_err_idx = 0u;
     let mut next_err_pat = props.error_patterns[next_err_idx];
     let mut done = false;
-    for str::lines_each(ProcRes.stderr) |line| {
+    for str::each_line(ProcRes.stderr) |line| {
         if str::contains(line, next_err_pat) {
             debug!("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
@@ -347,7 +347,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for str::lines_each(ProcRes.stderr) |line| {
+    for str::each_line(ProcRes.stderr) |line| {
         let mut was_expected = false;
         for vec::eachi(expected_errors) |i, ee| {
             if !found_flags[i] {
@@ -596,8 +596,12 @@ fn split_maybe_args(argstr: Option<~str>) -> ~[~str] {
     }
 
     match argstr {
-      Some(s) => rm_whitespace(str::split_char(s, ' ')),
-      None => ~[]
+        Some(s) => {
+            let mut ss = ~[];
+            for str::each_split_char(s, ' ') |s| { ss.push(s.to_owned()) }
+            rm_whitespace(ss)
+        }
+        None => ~[]
     }
 }
 
