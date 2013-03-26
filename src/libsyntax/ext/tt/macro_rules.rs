@@ -22,7 +22,7 @@ use ext::tt::macro_parser::{parse, parse_or_else, success, failure};
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
 use parse::token::special_idents;
-use parse::token::{FAT_ARROW, SEMI, LBRACE, RBRACE, nt_matchers, nt_tt};
+use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt};
 use print;
 
 use core::io;

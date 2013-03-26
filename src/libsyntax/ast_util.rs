@@ -13,7 +13,7 @@ use core::prelude::*;
 use ast::*;
 use ast;
 use ast_util;
-use codemap::{span, BytePos, dummy_sp, spanned};
+use codemap::{span, dummy_sp, spanned};
 use parse::token;
 use visit;
 use opt_vec;

@@ -23,13 +23,13 @@
 use core::prelude::*;
 
 use driver::session::Session;
-use metadata::csearch::{each_lang_item, get_item_attrs};
-use metadata::cstore::{iter_crate_data};
-use syntax::ast::{crate, def_fn, def_id, def_ty, lit_str, meta_item};
+use metadata::csearch::each_lang_item;
+use metadata::cstore::iter_crate_data;
+use syntax::ast::{crate, def_id, lit_str, meta_item};
 use syntax::ast::{meta_list, meta_name_value, meta_word};
-use syntax::ast_util::{local_def};
+use syntax::ast_util::local_def;
 use syntax::visit::{default_simple_visitor, mk_simple_visitor, SimpleVisitor};
-use syntax::visit::{visit_crate, visit_item};
+use syntax::visit::visit_crate;
 
 use core::hashmap::linear::LinearMap;
 use core::ptr;

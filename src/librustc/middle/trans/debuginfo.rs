@@ -24,7 +24,7 @@ use core::hashmap::linear::LinearMap;
 use core::libc;
 use core::option;
 use core::sys;
-use syntax::codemap::{span, CharPos};
+use syntax::codemap::span;
 use syntax::parse::token::ident_interner;
 use syntax::{ast, codemap, ast_util, ast_map};
 

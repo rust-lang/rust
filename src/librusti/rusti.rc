@@ -29,9 +29,9 @@ extern mod rustc(vers = "0.6");
 extern mod syntax(vers = "0.6");
 
 use core::*;
-use core::io::{ReaderUtil, WriterUtil};
+use core::io::WriterUtil;
 use rustc::driver::{driver, session};
-use syntax::{ast, ast_util, codemap, diagnostic, fold, parse, print, visit};
+use syntax::{ast, diagnostic};
 use syntax::ast_util::*;
 use syntax::parse::token;
 use syntax::print::{pp, pprust};

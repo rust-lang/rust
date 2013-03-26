@@ -11,14 +11,14 @@
 use core::prelude::*;
 
 use middle::ty::{FnSig, Vid};
-use middle::ty::{IntVarValue, IntType, UintType};
+use middle::ty::IntVarValue;
 use middle::ty;
 use middle::typeck::infer::{Bound, Bounds};
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::unify::{Redirect, Root, VarValue};
 use util::ppaux::{mt_to_str, ty_to_str};
 
-use syntax::{ast, ast_util};
+use syntax::ast;
 
 use core::uint;
 use core::str;

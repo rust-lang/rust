@@ -11,11 +11,8 @@
 
 use driver::session;
 use middle::trans::base;
-use middle::trans::common::{T_fn, T_i1, T_i8, T_i32,
-                               T_int, T_nil,
-                               T_opaque_vec, T_ptr, T_unique_ptr,
-                               T_size_t, T_void, T_vec2};
-use lib::llvm::{TypeNames, ModuleRef, ValueRef, TypeRef};
+use middle::trans::common::{T_fn, T_i8, T_i32, T_int, T_ptr, T_void};
+use lib::llvm::{ModuleRef, ValueRef, TypeRef};
 
 pub struct Upcalls {
     trace: ValueRef,

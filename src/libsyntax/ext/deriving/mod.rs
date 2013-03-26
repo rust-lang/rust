@@ -14,17 +14,17 @@
 use core::prelude::*;
 
 use ast;
-use ast::{TraitTyParamBound, Ty, and, bind_by_ref, binop, deref, enum_def};
-use ast::{expr, expr_match, ident, impure_fn, item, item_};
+use ast::{TraitTyParamBound, Ty, bind_by_ref, deref, enum_def};
+use ast::{expr, expr_match, ident, item, item_};
 use ast::{item_enum, item_impl, item_struct, Generics};
 use ast::{m_imm, meta_item, method};
-use ast::{named_field, or, pat, pat_ident, pat_wild, public, pure_fn};
-use ast::{stmt, struct_def, struct_variant_kind};
-use ast::{sty_region, tuple_variant_kind, ty_nil, TyParam};
-use ast::{TyParamBound, ty_path, ty_rptr, unnamed_field, variant};
+use ast::{named_field, pat, pat_ident, public};
+use ast::{struct_def, struct_variant_kind};
+use ast::{tuple_variant_kind};
+use ast::{ty_path, unnamed_field, variant};
 use ext::base::ext_ctxt;
 use ext::build;
-use codemap::{span, spanned};
+use codemap::span;
 use parse::token::special_idents::clownshoes_extensions;
 use opt_vec;
 

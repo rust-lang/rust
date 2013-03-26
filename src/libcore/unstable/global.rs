@@ -28,7 +28,7 @@ avoid hitting the mutex.
 use cast::{transmute, reinterpret_cast};
 use clone::Clone;
 use kinds::Owned;
-use libc::{c_void, uintptr_t};
+use libc::{c_void};
 use option::{Option, Some, None};
 use ops::Drop;
 use unstable::{Exclusive, exclusive};

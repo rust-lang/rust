@@ -15,12 +15,12 @@
 
 use core::prelude::*;
 
-use ast::{ident, node_id};
+use ast::ident;
 use ast;
 use ast_util;
 use codemap::{span, respan, dummy_sp, spanned};
 use codemap;
-use ext::base::{ext_ctxt, mk_ctxt};
+use ext::base::ext_ctxt;
 use ext::quote::rt::*;
 use opt_vec;
 use opt_vec::OptVec;

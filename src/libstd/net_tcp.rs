@@ -24,7 +24,7 @@ use core::io::{Reader, ReaderUtil, Writer};
 use core::io;
 use core::libc::size_t;
 use core::libc;
-use core::comm::{stream, Chan, Port, SharedChan};
+use core::comm::{stream, Port, SharedChan};
 use core::prelude::*;
 use core::ptr;
 use core::result::{Result};
@@ -1449,7 +1449,7 @@ pub mod test {
     use uv;
 
     use core::io;
-    use core::comm::{stream, Chan, Port, SharedChan};
+    use core::comm::{stream, SharedChan};
     use core::prelude::*;
     use core::result;
     use core::str;

@@ -231,14 +231,14 @@ use middle::region;
 use middle::ty;
 use middle::typeck;
 use middle::moves;
-use util::common::{indenter, stmt_set};
+use util::common::stmt_set;
 use util::ppaux::note_and_explain_region;
 
 use core::hashmap::linear::{LinearSet, LinearMap};
 use core::io;
 use core::result::{Result, Ok, Err};
 use core::to_bytes;
-use syntax::ast::{mutability, m_mutbl, m_imm, m_const};
+use syntax::ast::{mutability, m_imm};
 use syntax::ast;
 use syntax::codemap::span;
 

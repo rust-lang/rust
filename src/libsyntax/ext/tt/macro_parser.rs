@@ -19,8 +19,8 @@ use parse::parser::Parser;
 use parse::token::{Token, EOF, to_str, nonterminal};
 use parse::token;
 
-use core::hashmap::linear::LinearMap;
 use core::prelude::*;
+use core::hashmap::linear::LinearMap;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it
