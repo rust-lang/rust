@@ -50,7 +50,7 @@ use syntax::ast::{named_field, ne, neg, node_id, pat, pat_enum, pat_ident};
 use syntax::ast::{path, pat_box, pat_lit, pat_range, pat_struct};
 use syntax::ast::{pat_tup, pat_uniq, pat_wild, prim_ty, private, provided};
 use syntax::ast::{public, required, rem, self_ty_, shl, shr, stmt_decl};
-use syntax::ast::{struct_dtor, struct_field, struct_variant_kind, sty_by_ref};
+use syntax::ast::{struct_dtor, struct_field, struct_variant_kind};
 use syntax::ast::{sty_static, subtract, trait_ref, tuple_variant_kind, Ty};
 use syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
 use syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, TyParam, ty_path};
@@ -3792,7 +3792,6 @@ pub impl Resolver {
         // we only have self ty if it is a non static method
         let self_binding = match method.self_ty.node {
           sty_static => { NoSelfBinding }
-          sty_by_ref => { HasSelfBinding(method.self_id, true) }
           _ => { HasSelfBinding(method.self_id, false) }
         };
 
