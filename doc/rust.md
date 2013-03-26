@@ -1672,10 +1672,8 @@ A [_vector_](#vector-types) _expression_ is written by enclosing zero or
 more comma-separated expressions of uniform type in square brackets.
 
 In the `[expr ',' ".." expr]` form, the expression after the `".."`
-must be an expression form that can be evaluated at compile time, such
-as a [literal](#literals) or a [constant](#constants).
-
-<!--- TODO: elaborate the actual subgrammar for constant expressions -->
+must be a constant expression that can be evaluated at compile time, such
+as a [literal](#literals) or a [static item](#static-items).
 
 ~~~~
 [1, 2, 3, 4];
