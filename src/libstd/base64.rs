@@ -16,12 +16,16 @@ pub trait ToBase64 {
     fn to_base64(&self) -> ~str;
 }
 
+static CHARS: [char * 64] = [
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+    'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'
+];
+
 impl ToBase64 for &'self [u8] {
     fn to_base64(&self) -> ~str {
-        let chars = str::chars(
-          ~"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-        );
-
         let mut s = ~"";
         unsafe {
             let len = self.len();
@@ -35,10 +39,10 @@ impl ToBase64 for &'self [u8] {
                         (self[i + 2u] as uint);
 
                 // This 24-bit number gets separated into four 6-bit numbers.
-                str::push_char(&mut s, chars[(n >> 18u) & 63u]);
-                str::push_char(&mut s, chars[(n >> 12u) & 63u]);
-                str::push_char(&mut s, chars[(n >> 6u) & 63u]);
-                str::push_char(&mut s, chars[n & 63u]);
+                str::push_char(&mut s, CHARS[(n >> 18u) & 63u]);
+                str::push_char(&mut s, CHARS[(n >> 12u) & 63u]);
+                str::push_char(&mut s, CHARS[(n >> 6u) & 63u]);
+                str::push_char(&mut s, CHARS[n & 63u]);
 
                 i += 3u;
             }
@@ -49,17 +53,17 @@ impl ToBase64 for &'self [u8] {
               0 => (),
               1 => {
                 let n = (self[i] as uint) << 16u;
-                str::push_char(&mut s, chars[(n >> 18u) & 63u]);
-                str::push_char(&mut s, chars[(n >> 12u) & 63u]);
+                str::push_char(&mut s, CHARS[(n >> 18u) & 63u]);
+                str::push_char(&mut s, CHARS[(n >> 12u) & 63u]);
                 str::push_char(&mut s, '=');
                 str::push_char(&mut s, '=');
               }
               2 => {
                 let n = (self[i] as uint) << 16u |
                     (self[i + 1u] as uint) << 8u;
-                str::push_char(&mut s, chars[(n >> 18u) & 63u]);
-                str::push_char(&mut s, chars[(n >> 12u) & 63u]);
-                str::push_char(&mut s, chars[(n >> 6u) & 63u]);
+                str::push_char(&mut s, CHARS[(n >> 18u) & 63u]);
+                str::push_char(&mut s, CHARS[(n >> 12u) & 63u]);
+                str::push_char(&mut s, CHARS[(n >> 6u) & 63u]);
                 str::push_char(&mut s, '=');
               }
               _ => fail!(~"Algebra is broken, please alert the math police")

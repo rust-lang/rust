@@ -76,7 +76,7 @@ use syntax::visit::{visit_mod, visit_ty, vt};
 use syntax::opt_vec::OptVec;
 
 use core::option::{Some, get, is_some, is_none};
-use core::str::{connect, split_str};
+use core::str::{connect, each_split_str};
 use core::hashmap::linear::LinearMap;
 use std::oldmap::HashMap;
 
@@ -1696,7 +1696,8 @@ pub impl Resolver {
                         entry: %s (%?)",
                     path_string, def_like);
 
-            let mut pieces = split_str(path_string, ~"::");
+            let mut pieces = ~[];
+            for each_split_str(path_string, "::") |s| { pieces.push(s.to_owned()) }
             let final_ident_str = pieces.pop();
             let final_ident = self.session.ident_of(final_ident_str);
 

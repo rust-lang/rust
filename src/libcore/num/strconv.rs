@@ -130,6 +130,13 @@ impl_NumStrConv_Integer!(u16)
 impl_NumStrConv_Integer!(u32)
 impl_NumStrConv_Integer!(u64)
 
+
+// Special value strings as [u8] consts.
+static inf_buf:          [u8*3] = ['i' as u8, 'n' as u8, 'f' as u8];
+static positive_inf_buf: [u8*4] = ['+' as u8, 'i' as u8, 'n' as u8, 'f' as u8];
+static negative_inf_buf: [u8*4] = ['-' as u8, 'i' as u8, 'n' as u8, 'f' as u8];
+static nan_buf:          [u8*3] = ['N' as u8, 'a' as u8, 'N' as u8];
+
 /**
  * Converts a number to its string representation as a byte vector.
  * This is meant to be a common base implementation for all numeric string
@@ -479,15 +486,15 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
     }
 
     if special {
-        if buf == str::inf_buf || buf == str::positive_inf_buf {
+        if buf == inf_buf || buf == positive_inf_buf {
             return NumStrConv::inf();
-        } else if buf == str::negative_inf_buf {
+        } else if buf == negative_inf_buf {
             if negative {
                 return NumStrConv::neg_inf();
             } else {
                 return None;
             }
-        } else if buf == str::nan_buf {
+        } else if buf == nan_buf {
             return NumStrConv::NaN();
         }
     }
