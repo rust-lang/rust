@@ -244,7 +244,8 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
                 let mut i_arg = None;
                 if cur[1] == '-' as u8 {
                     let tail = str::slice(cur, 2, curlen).to_owned();
-                    let tail_eq = str::splitn_char(tail, '=', 1);
+                    let mut tail_eq = ~[];
+                    for str::each_splitn_char(tail, '=', 1) |s| { tail_eq.push(s.to_owned()) }
                     if tail_eq.len() <= 1 {
                         names = ~[Long(tail)];
                     } else {
@@ -601,7 +602,7 @@ pub mod groups {
             row += match short_name.len() {
                 0 => ~"",
                 1 => ~"-" + short_name + " ",
-                _ => fail!(~"the short name should only be 1 char long"),
+                _ => fail!(~"the short name should only be 1 ascii char long"),
             };
 
             // long option
@@ -617,6 +618,7 @@ pub mod groups {
                 Maybe => ~"[" + hint + ~"]",
             };
 
+            // FIXME: #5516
             // here we just need to indent the start of the description
             let rowlen = row.len();
             row += if rowlen < 24 {
@@ -625,8 +627,22 @@ pub mod groups {
                 desc_sep
             };
 
+            // Normalize desc to contain words seperated by one space character
+            let mut desc_normalized_whitespace = ~"";
+            for str::each_word(desc) |word| {
+                desc_normalized_whitespace.push_str(word);
+                desc_normalized_whitespace.push_char(' ');
+            }
+
+            // FIXME: #5516
+            let mut desc_rows = ~[];
+            for str::each_split_within(desc_normalized_whitespace, 54) |substr| {
+                desc_rows.push(substr.to_owned());
+            }
+
+            // FIXME: #5516
             // wrapped description
-            row += str::connect(str::split_within(desc, 54), desc_sep);
+            row += str::connect(desc_rows, desc_sep);
 
             row
         });

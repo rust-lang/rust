@@ -104,8 +104,8 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
     if desc.is_none() {
         return (None, ~[]);
     }
-
-    let lines = str::lines((copy desc).get());
+    let mut lines = ~[];
+    for str::each_line_any(*desc.get_ref()) |line| { lines.push(line.to_owned()); }
 
     let mut new_desc = None::<~str>;
     let mut current_section = None;

@@ -56,15 +56,15 @@ pub fn from_slice(s: &str) -> ~str {
 
 impl ToStr for ~str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { copy *self }
+    fn to_str(&self) -> ~str { from_slice(*self) }
 }
 impl ToStr for &'self str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { ::str::from_slice(*self) }
+    fn to_str(&self) -> ~str { from_slice(*self) }
 }
 impl ToStr for @str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { ::str::from_slice(*self) }
+    fn to_str(&self) -> ~str { from_slice(*self) }
 }
 
 /**
@@ -186,6 +186,7 @@ pub fn push_str_no_overallocate(lhs: &mut ~str, rhs: &str) {
         raw::set_len(lhs, llen + rlen);
     }
 }
+
 /// Appends a string slice to the back of a string
 #[inline(always)]
 pub fn push_str(lhs: &mut ~str, rhs: &str) {
@@ -213,7 +214,6 @@ pub fn append(lhs: ~str, rhs: &str) -> ~str {
     }
     v
 }
-
 
 /// Concatenate a vector of strings
 pub fn concat(v: &[~str]) -> ~str {
@@ -383,7 +383,7 @@ Section: Transforming strings
 */
 
 /**
- * Converts a string to a vector of bytes
+ * Converts a string to a unique vector of bytes
  *
  * The result vector is not null-terminated.
  */
@@ -403,14 +403,11 @@ pub fn byte_slice<T>(s: &str, f: &fn(v: &[u8]) -> T) -> T {
     }
 }
 
-/// Convert a string to a vector of characters
-pub fn chars(s: &str) -> ~[char] {
-    let mut buf = ~[], i = 0;
-    let len = len(s);
-    while i < len {
-        let CharRange {ch, next} = char_range_at(s, i);
-        unsafe { buf.push(ch); }
-        i = next;
+/// Convert a string to a unique vector of characters
+pub fn to_chars(s: &str) -> ~[char] {
+    let mut buf = ~[];
+    for each_char(s) |c| {
+        buf.push(c);
     }
     buf
 }
@@ -418,7 +415,7 @@ pub fn chars(s: &str) -> ~[char] {
 /**
  * Take a substring of another.
  *
- * Returns a string containing `n` characters starting at byte offset
+ * Returns a slice pointing at `n` characters starting from byte offset
  * `begin`.
  */
 pub fn substr(s: &'a str, begin: uint, n: uint) -> &'a str {
@@ -437,105 +434,88 @@ pub fn slice(s: &'a str, begin: uint, end: uint) -> &'a str {
     unsafe { raw::slice_bytes(s, begin, end) }
 }
 
-/// Splits a string into substrings at each occurrence of a given
-/// character.
-pub fn split_char(s: &str, sep: char) -> ~[~str] {
-    split_char_inner(s, sep, len(s), true, true)
+/// Splits a string into substrings at each occurrence of a given character
+pub fn each_split_char(s: &'a str, sep: char, it: &fn(&'a str) -> bool) {
+    each_split_char_inner(s, sep, len(s), true, true, it)
+}
+
+/// Like `each_split_char`, but a trailing empty string is omitted
+pub fn each_split_char_no_trailing(s: &'a str, sep: char, it: &fn(&'a str) -> bool) {
+    each_split_char_inner(s, sep, len(s), true, false, it)
 }
 
 /**
  * Splits a string into substrings at each occurrence of a given
  * character up to 'count' times.
  *
- * The byte must be a valid UTF-8/ASCII byte
+ * The character must be a valid UTF-8/ASCII character
  */
-pub fn splitn_char(s: &str, sep: char, count: uint) -> ~[~str] {
-    split_char_inner(s, sep, count, true, true)
+pub fn each_splitn_char(s: &'a str, sep: char, count: uint, it: &fn(&'a str) -> bool) {
+    each_split_char_inner(s, sep, count, true, true, it)
 }
 
-/// Like `split_char`, but omits empty strings from the returned vector
-pub fn split_char_nonempty(s: &str, sep: char) -> ~[~str] {
-    split_char_inner(s, sep, len(s), false, false)
+/// Like `each_split_char`, but omits empty strings
+pub fn each_split_char_nonempty(s: &'a str, sep: char, it: &fn(&'a str) -> bool) {
+    each_split_char_inner(s, sep, len(s), false, false, it)
 }
 
-/**
- * Like `split_char`, but a trailing empty string is omitted
- * (e.g. `split_char_no_trailing("A B ",' ') == ~[~"A",~"B"]`)
- */
-pub fn split_char_no_trailing(s: &str, sep: char) -> ~[~str] {
-    split_char_inner(s, sep, len(s), true, false)
-}
-
-fn split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool,
-                    allow_trailing_empty: bool) -> ~[~str] {
+fn each_split_char_inner(s: &'a str, sep: char, count: uint, allow_empty: bool,
+                         allow_trailing_empty: bool, it: &fn(&'a str) -> bool) {
     if sep < 128u as char {
         let b = sep as u8, l = len(s);
-        let mut result = ~[], done = 0u;
+        let mut done = 0u;
         let mut i = 0u, start = 0u;
         while i < l && done < count {
             if s[i] == b {
                 if allow_empty || start < i {
-                    unsafe {
-                        result.push(raw::slice_bytes_unique(s, start, i));
-                    }
+                    if !it( unsafe{ raw::slice_bytes(s, start, i) } ) { return; }
                 }
                 start = i + 1u;
                 done += 1u;
             }
             i += 1u;
         }
-        // only push a non-empty trailing substring
+        // only slice a non-empty trailing substring
         if allow_trailing_empty || start < l {
-            unsafe { result.push(raw::slice_bytes_unique(s, start, l) ) };
+            if !it( unsafe{ raw::slice_bytes(s, start, l) } ) { return; }
         }
-        result
     } else {
-        split_inner(s, |cur| cur == sep, count, allow_empty, allow_trailing_empty)
+        each_split_inner(s, |cur| cur == sep, count, allow_empty, allow_trailing_empty, it)
     }
 }
 
-
 /// Splits a string into substrings using a character function
-pub fn split(s: &str, sepfn: &fn(char) -> bool) -> ~[~str] {
-    split_inner(s, sepfn, len(s), true, true)
+pub fn each_split(s: &'a str, sepfn: &fn(char) -> bool, it: &fn(&'a str) -> bool) {
+    each_split_inner(s, sepfn, len(s), true, true, it)
+}
+
+/// Like `each_split`, but a trailing empty string is omitted
+pub fn each_split_no_trailing(s: &'a str, sepfn: &fn(char) -> bool, it: &fn(&'a str) -> bool) {
+    each_split_inner(s, sepfn, len(s), true, false, it)
 }
 
 /**
  * Splits a string into substrings using a character function, cutting at
  * most `count` times.
  */
-pub fn splitn(s: &str,
-                   sepfn: &fn(char) -> bool,
-                   count: uint)
-                -> ~[~str] {
-    split_inner(s, sepfn, count, true, true)
+pub fn each_splitn(s: &'a str, sepfn: &fn(char) -> bool, count: uint, it: &fn(&'a str) -> bool) {
+    each_split_inner(s, sepfn, count, true, true, it)
 }
 
-/// Like `split`, but omits empty strings from the returned vector
-pub fn split_nonempty(s: &str, sepfn: &fn(char) -> bool) -> ~[~str] {
-    split_inner(s, sepfn, len(s), false, false)
+/// Like `each_split`, but omits empty strings
+pub fn each_split_nonempty(s: &'a str, sepfn: &fn(char) -> bool, it: &fn(&'a str) -> bool) {
+    each_split_inner(s, sepfn, len(s), false, false, it)
 }
 
-
-/**
- * Like `split`, but a trailing empty string is omitted
- * (e.g. `split_no_trailing("A B ",' ') == ~[~"A",~"B"]`)
- */
-pub fn split_no_trailing(s: &str, sepfn: &fn(char) -> bool) -> ~[~str] {
-    split_inner(s, sepfn, len(s), true, false)
-}
-
-fn split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
-               allow_empty: bool, allow_trailing_empty: bool) -> ~[~str] {
+fn each_split_inner(s: &'a str, sepfn: &fn(cc: char) -> bool, count: uint,
+                    allow_empty: bool, allow_trailing_empty: bool, it: &fn(&'a str) -> bool) {
     let l = len(s);
-    let mut result = ~[], i = 0u, start = 0u, done = 0u;
+    let mut i = 0u, start = 0u, done = 0u;
     while i < l && done < count {
         let CharRange {ch, next} = char_range_at(s, i);
         if sepfn(ch) {
             if allow_empty || start < i {
-                unsafe {
-                    result.push(raw::slice_bytes_unique(s, start, i));
-                }
+                if !it( unsafe{ raw::slice_bytes(s, start, i) } ) { return; }
             }
             start = next;
             done += 1u;
@@ -543,15 +523,12 @@ fn split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
         i = next;
     }
     if allow_trailing_empty || start < l {
-        unsafe {
-            result.push(raw::slice_bytes_unique(s, start, l));
-        }
+        if !it( unsafe{ raw::slice_bytes(s, start, l) } ) { return;  }
     }
-    result
 }
 
 // See Issue #1932 for why this is a naive search
-fn iter_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
+fn iter_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint) -> bool) {
     let sep_len = len(sep), l = len(s);
     fail_unless!(sep_len > 0u);
     let mut i = 0u, match_start = 0u, match_i = 0u;
@@ -562,7 +539,7 @@ fn iter_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
             match_i += 1u;
             // Found a match
             if match_i == sep_len {
-                f(match_start, i + 1u);
+                if !f(match_start, i + 1u) { return; }
                 match_i = 0u;
             }
             i += 1u;
@@ -578,10 +555,10 @@ fn iter_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
     }
 }
 
-fn iter_between_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
+fn iter_between_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint) -> bool) {
     let mut last_end = 0u;
-    do iter_matches(s, sep) |from, to| {
-        f(last_end, from);
+    for iter_matches(s, sep) |from, to| {
+        if !f(last_end, from) { return; }
         last_end = to;
     }
     f(last_end, len(s));
@@ -593,25 +570,23 @@ fn iter_between_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
  * # Example
  *
  * ~~~
- * fail_unless!(["", "XXX", "YYY", ""] == split_str(".XXX.YYY.", "."))
+ * let mut v = ~[];
+ * for each_split_str(".XXX.YYY.", ".") |subs| { v.push(subs); }
+ * fail_unless!(v == ["", "XXX", "YYY", ""]);
  * ~~~
  */
-pub fn split_str(s: &'a str, sep: &'b str) -> ~[~str] {
-    let mut result = ~[];
-    do iter_between_matches(s, sep) |from, to| {
-        unsafe { result.push(raw::slice_bytes_unique(s, from, to)); }
+pub fn each_split_str(s: &'a str, sep: &'b str, it: &fn(&'a str) -> bool) {
+    for iter_between_matches(s, sep) |from, to| {
+        if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return; }
     }
-    result
 }
 
-pub fn split_str_nonempty(s: &'a str, sep: &'b str) -> ~[~str] {
-    let mut result = ~[];
-    do iter_between_matches(s, sep) |from, to| {
+pub fn each_split_str_nonempty(s: &'a str, sep: &'b str, it: &fn(&'a str) -> bool) {
+    for iter_between_matches(s, sep) |from, to| {
         if to > from {
-            unsafe { result.push(raw::slice_bytes_unique(s, from, to)); }
+            if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return; }
         }
     }
-    result
 }
 
 /// Levenshtein Distance between two strings
@@ -649,65 +624,99 @@ pub fn levdistance(s: &str, t: &str) -> uint {
 }
 
 /**
- * Splits a string into a vector of the substrings separated by LF ('\n').
+ * Splits a string into substrings separated by LF ('\n').
  */
-pub fn lines(s: &str) -> ~[~str] {
-    split_char_no_trailing(s, '\n')
+pub fn each_line(s: &'a str, it: &fn(&'a str) -> bool) {
+    each_split_char_no_trailing(s, '\n', it)
 }
 
 /**
- * Splits a string into a vector of the substrings separated by LF ('\n')
+ * Splits a string into substrings separated by LF ('\n')
  * and/or CR LF ("\r\n")
  */
-pub fn lines_any(s: &str) -> ~[~str] {
-    vec::map(lines(s), |s| {
-        let l = len(*s);
-        let mut cp = copy *s;
+pub fn each_line_any(s: &'a str, it: &fn(&'a str) -> bool) {
+    for each_line(s) |s| {
+        let l = s.len();
         if l > 0u && s[l - 1u] == '\r' as u8 {
-            unsafe { raw::set_len(&mut cp, l - 1u); }
-        }
-        cp
-    })
-}
-
-/// Splits a string into a vector of the substrings separated by whitespace
-pub fn words(s: &str) -> ~[~str] {
-    split_nonempty(s, char::is_whitespace)
-}
-
-/** Split a string into a vector of substrings,
- *  each of which is less than a limit
- */
-pub fn split_within(ss: &str, lim: uint) -> ~[~str] {
-    let words = str::words(ss);
-
-    // empty?
-    if words == ~[] { return ~[]; }
-
-    let mut rows : ~[~str] = ~[];
-    let mut row  : ~str    = ~"";
-
-    for words.each |wptr| {
-        let word = copy *wptr;
-
-        // if adding this word to the row would go over the limit,
-        // then start a new row
-        if row.len() + word.len() + 1 > lim {
-            rows.push(copy row); // save previous row
-            row = word;    // start a new one
+            if !it( unsafe { raw::slice_bytes(s, 0, l - 1) } ) { return; }
         } else {
-            if row.len() > 0 { row += ~" " } // separate words
-            row += word;  // append to this row
+            if !it( s ) { return; }
         }
     }
-
-    // save the last row
-    if row != ~"" { rows.push(row); }
-
-    rows
 }
 
+/// Splits a string into substrings separated by whitespace
+pub fn each_word(s: &'a str, it: &fn(&'a str) -> bool) {
+    each_split_nonempty(s, char::is_whitespace, it)
+}
 
+/** Splits a string into substrings with possibly internal whitespace,
+ *  each of them at most `lim` bytes long. The substrings have leading and trailing
+ *  whitespace removed, and are only cut at whitespace boundaries.
+ *
+ *  #Failure:
+ *
+ *  Fails during iteration if the string contains a non-whitespace
+ *  sequence longer than the limit.
+ */
+pub fn each_split_within(ss: &'a str, lim: uint, it: &fn(&'a str) -> bool) {
+    // Just for fun, let's write this as an state machine:
+
+    enum SplitWithinState {
+        A,  // leading whitespace, initial state
+        B,  // words
+        C,  // internal and trailing whitespace
+    }
+    enum Whitespace {
+        Ws, // current char is whitespace
+        Cr  // current char is not whitespace
+    }
+    enum LengthLimit {
+        UnderLim, // current char makes current substring still fit in limit
+        OverLim   // current char makes current substring no longer fit in limit
+    }
+
+    let mut slice_start = 0;
+    let mut last_start = 0;
+    let mut last_end = 0;
+    let mut state = A;
+
+    let mut cont = true;
+    let slice: &fn() = || { cont = it(slice(ss, slice_start, last_end)) };
+
+    let machine: &fn(uint, char) -> bool = |i, c| {
+        let whitespace = if char::is_whitespace(c)       { Ws }       else { Cr };
+        let limit      = if (i - slice_start + 1) <= lim { UnderLim } else { OverLim };
+
+        state = match (state, whitespace, limit) {
+            (A, Ws, _)        => { A }
+            (A, Cr, _)        => { slice_start = i; last_start = i; B }
+
+            (B, Cr, UnderLim) => { B }
+            (B, Cr, OverLim)  if (i - last_start + 1) > lim
+                              => { fail!(~"word longer than limit!") }
+            (B, Cr, OverLim)  => { slice(); slice_start = last_start; B }
+            (B, Ws, UnderLim) => { last_end = i; C }
+            (B, Ws, OverLim)  => { last_end = i; slice(); A }
+
+            (C, Cr, UnderLim) => { last_start = i; B }
+            (C, Cr, OverLim)  => { slice(); slice_start = i; last_start = i; last_end = i; B }
+            (C, Ws, OverLim)  => { slice(); A }
+            (C, Ws, UnderLim) => { C }
+        };
+
+        cont
+    };
+
+    str::each_chari(ss, machine);
+
+    // Let the automaton 'run out' by supplying trailing whitespace
+    let mut fake_i = ss.len();
+    while cont && match state { B | C => true, A => false } {
+        machine(fake_i, ' ');
+        fake_i += 1;
+    }
+}
 
 /// Convert a string to lowercase. ASCII only
 pub fn to_lower(s: &str) -> ~str {
@@ -738,7 +747,7 @@ pub fn to_upper(s: &str) -> ~str {
  */
 pub fn replace(s: &str, from: &str, to: &str) -> ~str {
     let mut result = ~"", first = true;
-    do iter_between_matches(s, from) |start, end| {
+    for iter_between_matches(s, from) |start, end| {
         if first {
             first = false;
         } else {
@@ -997,10 +1006,16 @@ pub fn eachi_reverse(s: &str, it: &fn(uint, u8) -> bool) {
     }
 }
 
-/// Iterates over the chars in a string
+/// Iterate over each char of a string, without allocating
 #[inline(always)]
 pub fn each_char(s: &str, it: &fn(char) -> bool) {
-    each_chari(s, |_i, c| it(c))
+    let mut i = 0;
+    let len = len(s);
+    while i < len {
+        let CharRange {ch, next} = char_range_at(s, i);
+        if !it(ch) { return; }
+        i = next;
+    }
 }
 
 /// Iterates over the chars in a string, with indices
@@ -1036,32 +1051,6 @@ pub fn each_chari_reverse(s: &str, it: &fn(uint, char) -> bool) {
         if !it(ch_pos, ch) { break; }
 
     }
-}
-
-/// Apply a function to each substring after splitting by character
-pub fn split_char_each(ss: &str, cc: char, ff: &fn(v: &str) -> bool) {
-    vec::each(split_char(ss, cc), |s| ff(*s))
-}
-
-/**
- * Apply a function to each substring after splitting by character, up to
- * `count` times
- */
-pub fn splitn_char_each(ss: &str, sep: char, count: uint,
-                         ff: &fn(v: &str) -> bool) {
-    vec::each(splitn_char(ss, sep, count), |s| ff(*s))
-}
-
-/// Apply a function to each word
-pub fn words_each(ss: &str, ff: &fn(v: &str) -> bool) {
-    vec::each(words(ss), |s| ff(*s))
-}
-
-/**
- * Apply a function to each line (by '\n')
- */
-pub fn lines_each(ss: &str, ff: &fn(v: &str) -> bool) {
-    vec::each(lines(ss), |s| ff(*s))
 }
 
 /*
@@ -1209,8 +1198,7 @@ pub fn rfind_char_from(s: &str, c: char, start: uint) -> Option<uint> {
  * or equal to `len(s)`. `start` must be the index of a character boundary,
  * as defined by `is_char_boundary`.
  */
-pub fn rfind_char_between(s: &str, c: char, start: uint, end: uint)
-    -> Option<uint> {
+pub fn rfind_char_between(s: &str, c: char, start: uint, end: uint) -> Option<uint> {
     if c < 128u as char {
         fail_unless!(start >= end);
         fail_unless!(start <= len(s));
@@ -1291,11 +1279,7 @@ pub fn find_from(s: &str, start: uint, f: &fn(char)
  * or equal to `len(s)`. `start` must be the index of a character
  * boundary, as defined by `is_char_boundary`.
  */
-pub fn find_between(s: &str,
-                         start: uint,
-                         end: uint,
-                         f: &fn(char) -> bool)
-                      -> Option<uint> {
+pub fn find_between(s: &str, start: uint, end: uint, f: &fn(char) -> bool) -> Option<uint> {
     fail_unless!(start <= end);
     fail_unless!(end <= len(s));
     fail_unless!(is_char_boundary(s, start));
@@ -1346,8 +1330,7 @@ pub fn rfind(s: &str, f: &fn(char) -> bool) -> Option<uint> {
  * `start` must be less than or equal to `len(s)', `start` must be the
  * index of a character boundary, as defined by `is_char_boundary`
  */
-pub fn rfind_from(s: &str, start: uint, f: &fn(char) -> bool)
-    -> Option<uint> {
+pub fn rfind_from(s: &str, start: uint, f: &fn(char) -> bool) -> Option<uint> {
     rfind_between(s, start, 0u, f)
 }
 
@@ -1373,9 +1356,7 @@ pub fn rfind_from(s: &str, start: uint, f: &fn(char) -> bool)
  * than or equal to `len(s)`. `start` must be the index of a character
  * boundary, as defined by `is_char_boundary`
  */
-pub fn rfind_between(s: &str, start: uint, end: uint,
-                          f: &fn(char) -> bool)
-    -> Option<uint> {
+pub fn rfind_between(s: &str, start: uint, end: uint, f: &fn(char) -> bool) -> Option<uint> {
     fail_unless!(start >= end);
     fail_unless!(start <= len(s));
     fail_unless!(is_char_boundary(s, start));
@@ -1431,8 +1412,7 @@ pub fn find_str(haystack: &'a str, needle: &'b str) -> Option<uint> {
  *
  * `start` must be less than or equal to `len(s)`
  */
-pub fn find_str_from(haystack: &'a str, needle: &'b str, start: uint)
-  -> Option<uint> {
+pub fn find_str_from(haystack: &'a str, needle: &'b str, start: uint) -> Option<uint> {
     find_str_between(haystack, needle, start, len(haystack))
 }
 
@@ -1456,9 +1436,8 @@ pub fn find_str_from(haystack: &'a str, needle: &'b str, start: uint)
  * `start` must be less than or equal to `end` and `end` must be less than
  * or equal to `len(s)`.
  */
-pub fn find_str_between(haystack: &'a str, needle: &'b str, start: uint,
-                         end:uint)
-  -> Option<uint> {
+pub fn find_str_between(haystack: &'a str, needle: &'b str, start: uint, end:uint)
+        -> Option<uint> {
     // See Issue #1932 for why this is a naive search
     fail_unless!(end <= len(haystack));
     let needle_len = len(needle);
@@ -1660,7 +1639,6 @@ pub fn utf16_chars(v: &[u16], f: &fn(char)) {
         }
     }
 }
-
 
 pub fn from_utf16(v: &[u16]) -> ~str {
     let mut buf = ~"";
@@ -1919,14 +1897,6 @@ static tag_five_b: uint = 248u;
 static max_five_b: uint = 67108864u;
 static tag_six_b: uint = 252u;
 
-// Constants used for converting strs to floats
-pub static inf_buf: [u8*3] = ['i' as u8, 'n' as u8, 'f' as u8];
-pub static positive_inf_buf: [u8*4] = ['+' as u8, 'i' as u8,
-                                       'n' as u8, 'f' as u8];
-pub static negative_inf_buf: [u8*4] = ['-' as u8, 'i' as u8,
-                                       'n' as u8, 'f' as u8];
-pub static nan_buf: [u8*3] = ['N' as u8, 'a' as u8, 'N' as u8];
-
 /**
  * Work with the byte buffer of a string.
  *
@@ -1985,7 +1955,6 @@ pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
         }
     }
 }
-
 
 /**
  * Work with the byte buffer and length of a slice.
@@ -2271,7 +2240,7 @@ pub mod traits {
 #[cfg(test)]
 pub mod traits {}
 
-pub trait StrSlice {
+pub trait StrSlice<'self> {
     fn all(&self, it: &fn(char) -> bool) -> bool;
     fn any(&self, it: &fn(char) -> bool) -> bool;
     fn contains(&self, needle: &'a str) -> bool;
@@ -2291,9 +2260,9 @@ pub trait StrSlice {
     fn len(&self) -> uint;
     fn char_len(&self) -> uint;
     fn slice(&self, begin: uint, end: uint) -> &'self str;
-    fn split(&self, sepfn: &fn(char) -> bool) -> ~[~str];
-    fn split_char(&self, sep: char) -> ~[~str];
-    fn split_str(&self, sep: &'a str) -> ~[~str];
+    fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&'self str) -> bool);
+    fn each_split_char(&self, sep: char, it: &fn(&'self str) -> bool);
+    fn each_split_str(&self, sep: &'a str, it: &fn(&'self str) -> bool);
     fn starts_with(&self, needle: &'a str) -> bool;
     fn substr(&self, begin: uint, n: uint) -> &'self str;
     fn to_lower(&self) -> ~str;
@@ -2314,7 +2283,7 @@ pub trait StrSlice {
 }
 
 /// Extension methods for strings
-impl StrSlice for &'self str {
+impl StrSlice<'self> for &'self str {
     /**
      * Return true if a predicate matches all characters or if the string
      * contains no characters
@@ -2413,20 +2382,24 @@ impl StrSlice for &'self str {
     }
     /// Splits a string into substrings using a character function
     #[inline]
-    fn split(&self, sepfn: &fn(char) -> bool) -> ~[~str] {
-        split(*self, sepfn)
+    fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&'self str) -> bool) {
+        each_split(*self, sepfn, it)
     }
     /**
      * Splits a string into substrings at each occurrence of a given character
      */
     #[inline]
-    fn split_char(&self, sep: char) -> ~[~str] { split_char(*self, sep) }
+    fn each_split_char(&self, sep: char, it: &fn(&'self str) -> bool) {
+        each_split_char(*self, sep, it)
+    }
     /**
      * Splits a string into a vector of the substrings separated by a given
      * string
      */
     #[inline]
-    fn split_str(&self, sep: &'a str) -> ~[~str] { split_str(*self, sep) }
+    fn each_split_str(&self, sep: &'a str, it: &fn(&'self str) -> bool)  {
+        each_split_str(*self, sep, it)
+    }
     /// Returns true if one string starts with another
     #[inline]
     fn starts_with(&self, needle: &'a str) -> bool {
@@ -2519,7 +2492,7 @@ impl OwnedStr for ~str {
 impl Clone for ~str {
     #[inline(always)]
     fn clone(&self) -> ~str {
-        self.to_str()  // hilarious
+        from_slice(*self)
     }
 }
 
@@ -2613,7 +2586,8 @@ mod tests {
     fn test_split_char() {
         fn t(s: &str, c: char, u: &[~str]) {
             debug!(~"split_byte: " + s);
-            let v = split_char(s, c);
+            let mut v = ~[];
+            for each_split_char(s, c) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
             fail_unless!(vec::all2(v, u, |a,b| a == b));
         }
@@ -2621,28 +2595,31 @@ mod tests {
         t(~".hello.there", '.', ~[~"", ~"hello", ~"there"]);
         t(~"...hello.there.", '.', ~[~"", ~"", ~"", ~"hello", ~"there", ~""]);
 
-        fail_unless!(~[~"", ~"", ~"", ~"hello", ~"there", ~""]
-                     == split_char(~"...hello.there.", '.'));
-
-        fail_unless!(~[~""] == split_char(~"", 'z'));
-        fail_unless!(~[~"",~""] == split_char(~"z", 'z'));
-        fail_unless!(~[~"ok"] == split_char(~"ok", 'z'));
+        t(~"", 'z', ~[~""]);
+        t(~"z", 'z', ~[~"",~""]);
+        t(~"ok", 'z', ~[~"ok"]);
     }
 
     #[test]
     fn test_split_char_2() {
+        fn t(s: &str, c: char, u: &[~str]) {
+            debug!(~"split_byte: " + s);
+            let mut v = ~[];
+            for each_split_char(s, c) |s| { v.push(s.to_owned()) }
+            debug!("split_byte to: %?", v);
+            fail_unless!(vec::all2(v, u, |a,b| a == b));
+        }
         let data = ~"ประเทศไทย中华Việt Nam";
-        fail_unless!(~[~"ประเทศไทย中华", ~"iệt Nam"]
-                     == split_char(data, 'V'));
-        fail_unless!(~[~"ประเ", ~"ศไ", ~"ย中华Việt Nam"]
-                     == split_char(data, 'ท'));
+        t(data, 'V', ~[~"ประเทศไทย中华", ~"iệt Nam"]);
+        t(data, 'ท', ~[~"ประเ", ~"ศไ", ~"ย中华Việt Nam"]);
     }
 
     #[test]
     fn test_splitn_char() {
         fn t(s: &str, c: char, n: uint, u: &[~str]) {
             debug!(~"splitn_byte: " + s);
-            let v = splitn_char(s, c, n);
+            let mut v = ~[];
+            for each_splitn_char(s, c, n) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
             debug!("comparing vs. %?", u);
             fail_unless!(vec::all2(v, u, |a,b| a == b));
@@ -2654,46 +2631,56 @@ mod tests {
         t(~".hello.there", '.', 0u, ~[~".hello.there"]);
         t(~".hello.there", '.', 1u, ~[~"", ~"hello.there"]);
         t(~"...hello.there.", '.', 3u, ~[~"", ~"", ~"", ~"hello.there."]);
-        t(~"...hello.there.", '.', 5u,
-          ~[~"", ~"", ~"", ~"hello", ~"there", ~""]);
+        t(~"...hello.there.", '.', 5u, ~[~"", ~"", ~"", ~"hello", ~"there", ~""]);
 
-        fail_unless!(~[~""] == splitn_char(~"", 'z', 5u));
-        fail_unless!(~[~"",~""] == splitn_char(~"z", 'z', 5u));
-        fail_unless!(~[~"ok"] == splitn_char(~"ok", 'z', 5u));
-        fail_unless!(~[~"z"] == splitn_char(~"z", 'z', 0u));
-        fail_unless!(~[~"w.x.y"] == splitn_char(~"w.x.y", '.', 0u));
-        fail_unless!(~[~"w",~"x.y"] == splitn_char(~"w.x.y", '.', 1u));
+        t(~"", 'z', 5u, ~[~""]);
+        t(~"z", 'z', 5u, ~[~"",~""]);
+        t(~"ok", 'z', 5u, ~[~"ok"]);
+        t(~"z", 'z', 0u, ~[~"z"]);
+        t(~"w.x.y", '.', 0u, ~[~"w.x.y"]);
+        t(~"w.x.y", '.', 1u, ~[~"w",~"x.y"]);
     }
 
     #[test]
     fn test_splitn_char_2 () {
-        let data = ~"ประเทศไทย中华Việt Nam";
-        fail_unless!(~[~"ประเทศไทย中", ~"Việt Nam"]
-                     == splitn_char(data, '华', 1u));
+        fn t(s: &str, c: char, n: uint, u: &[~str]) {
+            debug!(~"splitn_byte: " + s);
+            let mut v = ~[];
+            for each_splitn_char(s, c, n) |s| { v.push(s.to_owned()) }
+            debug!("split_byte to: %?", v);
+            debug!("comparing vs. %?", u);
+            fail_unless!(vec::all2(v, u, |a,b| a == b));
+        }
 
-        fail_unless!(~[~"", ~"", ~"XXX", ~"YYYzWWWz"]
-                     == splitn_char(~"zzXXXzYYYzWWWz", 'z', 3u));
-        fail_unless!(~[~"",~""] == splitn_char(~"z", 'z', 5u));
-        fail_unless!(~[~""] == splitn_char(~"", 'z', 5u));
-        fail_unless!(~[~"ok"] == splitn_char(~"ok", 'z', 5u));
+        t(~"ประเทศไทย中华Việt Nam", '华', 1u, ~[~"ประเทศไทย中", ~"Việt Nam"]);
+        t(~"zzXXXzYYYzWWWz", 'z', 3u, ~[~"", ~"", ~"XXX", ~"YYYzWWWz"]);
+        t(~"z", 'z', 5u, ~[~"",~""]);
+        t(~"", 'z', 5u, ~[~""]);
+        t(~"ok", 'z', 5u, ~[~"ok"]);
     }
 
 
     #[test]
     fn test_splitn_char_3() {
+        fn t(s: &str, c: char, n: uint, u: &[~str]) {
+            debug!(~"splitn_byte: " + s);
+            let mut v = ~[];
+            for each_splitn_char(s, c, n) |s| { v.push(s.to_owned()) }
+            debug!("split_byte to: %?", v);
+            debug!("comparing vs. %?", u);
+            fail_unless!(vec::all2(v, u, |a,b| a == b));
+        }
         let data = ~"ประเทศไทย中华Việt Nam";
-        fail_unless!(~[~"ประเทศไทย中华", ~"iệt Nam"]
-                     == splitn_char(data, 'V', 1u));
-        fail_unless!(~[~"ประเ", ~"ศไทย中华Việt Nam"]
-                     == splitn_char(data, 'ท', 1u));
-
+        t(data, 'V', 1u, ~[~"ประเทศไทย中华", ~"iệt Nam"]);
+        t(data, 'ท', 1u, ~[~"ประเ", ~"ศไทย中华Việt Nam"]);
     }
 
     #[test]
     fn test_split_char_no_trailing() {
-     fn t(s: &str, c: char, u: &[~str]) {
+        fn t(s: &str, c: char, u: &[~str]) {
             debug!(~"split_byte: " + s);
-            let v = split_char_no_trailing(s, c);
+            let mut v = ~[];
+            for each_split_char_no_trailing(s, c) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
             fail_unless!(vec::all2(v, u, |a,b| a == b));
         }
@@ -2701,91 +2688,80 @@ mod tests {
         t(~".hello.there", '.', ~[~"", ~"hello", ~"there"]);
         t(~"...hello.there.", '.', ~[~"", ~"", ~"", ~"hello", ~"there"]);
 
-        fail_unless!(~[~"", ~"", ~"", ~"hello", ~"there"]
-                     == split_char_no_trailing(~"...hello.there.", '.'));
-
-        fail_unless!(~[] == split_char_no_trailing(~"", 'z'));
-        fail_unless!(~[~""] == split_char_no_trailing(~"z", 'z'));
-        fail_unless!(~[~"ok"] == split_char_no_trailing(~"ok", 'z'));
+        t(~"...hello.there.", '.', ~[~"", ~"", ~"", ~"hello", ~"there"]);
+        t(~"", 'z', ~[]);
+        t(~"z", 'z', ~[~""]);
+        t(~"ok", 'z', ~[~"ok"]);
     }
 
     #[test]
     fn test_split_char_no_trailing_2() {
+        fn t(s: &str, c: char, u: &[~str]) {
+            debug!(~"split_byte: " + s);
+            let mut v = ~[];
+            for each_split_char_no_trailing(s, c) |s| { v.push(s.to_owned()) }
+            debug!("split_byte to: %?", v);
+            fail_unless!(vec::all2(v, u, |a,b| a == b));
+        }
         let data = ~"ประเทศไทย中华Việt Nam";
-        fail_unless!(~[~"ประเทศไทย中华", ~"iệt Nam"]
-                     == split_char_no_trailing(data, 'V'));
-        fail_unless!(~[~"ประเ", ~"ศไ", ~"ย中华Việt Nam"]
-                     == split_char_no_trailing(data, 'ท'));
+        t(data, 'V', ~[~"ประเทศไทย中华", ~"iệt Nam"]);
+        t(data, 'ท', ~[~"ประเ", ~"ศไ", ~"ย中华Việt Nam"]);
     }
 
     #[test]
     fn test_split_str() {
-        fn t(s: &str, sep: &'a str, i: int, k: &str) {
-            fn borrow(x: &'a str) -> &'a str { x }
-            let v = split_str(s, sep);
-            fail_unless!(borrow(v[i]) == k);
+        fn t(s: &str, sep: &'a str, u: &[~str]) {
+            let mut v = ~[];
+            for each_split_str(s, sep) |s| { v.push(s.to_owned()) }
+            fail_unless!(vec::all2(v, u, |a,b| a == b));
         }
-
-        t(~"--1233345--", ~"12345", 0, ~"--1233345--");
-        t(~"abc::hello::there", ~"::", 0, ~"abc");
-        t(~"abc::hello::there", ~"::", 1, ~"hello");
-        t(~"abc::hello::there", ~"::", 2, ~"there");
-        t(~"::hello::there", ~"::", 0, ~"");
-        t(~"hello::there::", ~"::", 2, ~"");
-        t(~"::hello::there::", ~"::", 3, ~"");
-
-        let data = ~"ประเทศไทย中华Việt Nam";
-        fail_unless!(~[~"ประเทศไทย", ~"Việt Nam"]
-                     == split_str (data, ~"中华"));
-
-        fail_unless!(~[~"", ~"XXX", ~"YYY", ~""]
-                     == split_str(~"zzXXXzzYYYzz", ~"zz"));
-
-        fail_unless!(~[~"zz", ~"zYYYz"] == split_str(~"zzXXXzYYYz", ~"XXX"));
-
-
-        fail_unless!(~[~"", ~"XXX", ~"YYY", ~""] ==
-                     split_str(~".XXX.YYY.", ~"."));
-        fail_unless!(~[~""] == split_str(~"", ~"."));
-        fail_unless!(~[~"",~""] == split_str(~"zz", ~"zz"));
-        fail_unless!(~[~"ok"] == split_str(~"ok", ~"z"));
-        fail_unless!(~[~"",~"z"] == split_str(~"zzz", ~"zz"));
-        fail_unless!(~[~"",~"",~"z"] == split_str(~"zzzzz", ~"zz"));
+        t(~"--1233345--", ~"12345", ~[~"--1233345--"]);
+        t(~"abc::hello::there", ~"::", ~[~"abc", ~"hello", ~"there"]);
+        t(~"::hello::there", ~"::", ~[~"", ~"hello", ~"there"]);
+        t(~"hello::there::", ~"::", ~[~"hello", ~"there", ~""]);
+        t(~"::hello::there::", ~"::", ~[~"", ~"hello", ~"there", ~""]);
+        t(~"ประเทศไทย中华Việt Nam", ~"中华", ~[~"ประเทศไทย", ~"Việt Nam"]);
+        t(~"zzXXXzzYYYzz", ~"zz", ~[~"", ~"XXX", ~"YYY", ~""]);
+        t(~"zzXXXzYYYz", ~"XXX", ~[~"zz", ~"zYYYz"]);
+        t(~".XXX.YYY.", ~".", ~[~"", ~"XXX", ~"YYY", ~""]);
+        t(~"", ~".", ~[~""]);
+        t(~"zz", ~"zz", ~[~"",~""]);
+        t(~"ok", ~"z", ~[~"ok"]);
+        t(~"zzz", ~"zz", ~[~"",~"z"]);
+        t(~"zzzzz", ~"zz", ~[~"",~"",~"z"]);
     }
 
 
     #[test]
     fn test_split() {
-        let data = ~"ประเทศไทย中华Việt Nam";
-        fail_unless!(~[~"ประเทศไทย中", ~"Việt Nam"]
-                     == split (data, |cc| cc == '华'));
+        fn t(s: &str, sepf: &fn(char) -> bool, u: &[~str]) {
+            let mut v = ~[];
+            for each_split(s, sepf) |s| { v.push(s.to_owned()) }
+            fail_unless!(vec::all2(v, u, |a,b| a == b));
+        }
 
-        fail_unless!(~[~"", ~"", ~"XXX", ~"YYY", ~""]
-                     == split(~"zzXXXzYYYz", char::is_lowercase));
-
-        fail_unless!(~[~"zz", ~"", ~"", ~"z", ~"", ~"", ~"z"]
-                     == split(~"zzXXXzYYYz", char::is_uppercase));
-
-        fail_unless!(~[~"",~""] == split(~"z", |cc| cc == 'z'));
-        fail_unless!(~[~""] == split(~"", |cc| cc == 'z'));
-        fail_unless!(~[~"ok"] == split(~"ok", |cc| cc == 'z'));
+        t(~"ประเทศไทย中华Việt Nam", |cc| cc == '华', ~[~"ประเทศไทย中", ~"Việt Nam"]);
+        t(~"zzXXXzYYYz", char::is_lowercase, ~[~"", ~"", ~"XXX", ~"YYY", ~""]);
+        t(~"zzXXXzYYYz", char::is_uppercase, ~[~"zz", ~"", ~"", ~"z", ~"", ~"", ~"z"]);
+        t(~"z", |cc| cc == 'z', ~[~"",~""]);
+        t(~"", |cc| cc == 'z', ~[~""]);
+        t(~"ok", |cc| cc == 'z', ~[~"ok"]);
     }
 
     #[test]
     fn test_split_no_trailing() {
-        let data = ~"ประเทศไทย中华Việt Nam";
-        fail_unless!(~[~"ประเทศไทย中", ~"Việt Nam"]
-                     == split_no_trailing (data, |cc| cc == '华'));
+        fn t(s: &str, sepf: &fn(char) -> bool, u: &[~str]) {
+            let mut v = ~[];
+            for each_split_no_trailing(s, sepf) |s| { v.push(s.to_owned()) }
+            fail_unless!(vec::all2(v, u, |a,b| a == b));
+        }
 
-        fail_unless!(~[~"", ~"", ~"XXX", ~"YYY"]
-                     == split_no_trailing(~"zzXXXzYYYz", char::is_lowercase));
-
-        fail_unless!(~[~"zz", ~"", ~"", ~"z", ~"", ~"", ~"z"]
-                     == split_no_trailing(~"zzXXXzYYYz", char::is_uppercase));
-
-        fail_unless!(~[~""] == split_no_trailing(~"z", |cc| cc == 'z'));
-        fail_unless!(~[] == split_no_trailing(~"", |cc| cc == 'z'));
-        fail_unless!(~[~"ok"] == split_no_trailing(~"ok", |cc| cc == 'z'));
+        t(~"ประเทศไทย中华Việt Nam", |cc| cc == '华', ~[~"ประเทศไทย中", ~"Việt Nam"]);
+        t(~"zzXXXzYYYz", char::is_lowercase, ~[~"", ~"", ~"XXX", ~"YYY"]);
+        t(~"zzXXXzYYYz", char::is_uppercase, ~[~"zz", ~"", ~"", ~"z", ~"", ~"", ~"z"]);
+        t(~"z", |cc| cc == 'z', ~[~""]);
+        t(~"", |cc| cc == 'z', ~[]);
+        t(~"ok", |cc| cc == 'z', ~[~"ok"]);
     }
 
     #[test]
@@ -2793,49 +2769,50 @@ mod tests {
         let lf = ~"\nMary had a little lamb\nLittle lamb\n";
         let crlf = ~"\r\nMary had a little lamb\r\nLittle lamb\r\n";
 
-        fail_unless!(~[~"", ~"Mary had a little lamb", ~"Little lamb"]
-                     == lines(lf));
+        fn t(s: &str, f: &fn(&str, &fn(&str) -> bool), u: &[~str]) {
+            let mut v = ~[];
+            for f(s) |s| { v.push(s.to_owned()) }
+            fail_unless!(vec::all2(v, u, |a,b| a == b));
+        }
 
-        fail_unless!(~[~"", ~"Mary had a little lamb", ~"Little lamb"]
-                     == lines_any(lf));
-
-        fail_unless!(~[~"\r", ~"Mary had a little lamb\r",
-                       ~"Little lamb\r"]
-            == lines(crlf));
-
-        fail_unless!(~[~"", ~"Mary had a little lamb", ~"Little lamb"]
-            == lines_any(crlf));
-
-        fail_unless!(~[] == lines    (~""));
-        fail_unless!(~[] == lines_any(~""));
-        fail_unless!(~[~""] == lines    (~"\n"));
-        fail_unless!(~[~""] == lines_any(~"\n"));
-        fail_unless!(~[~"banana"] == lines    (~"banana"));
-        fail_unless!(~[~"banana"] == lines_any(~"banana"));
+        t(lf, each_line ,~[~"", ~"Mary had a little lamb", ~"Little lamb"]);
+        t(lf, each_line_any, ~[~"", ~"Mary had a little lamb", ~"Little lamb"]);
+        t(crlf, each_line, ~[~"\r", ~"Mary had a little lamb\r", ~"Little lamb\r"]);
+        t(crlf, each_line_any, ~[~"", ~"Mary had a little lamb", ~"Little lamb"]);
+        t(~"", each_line, ~[]);
+        t(~"", each_line_any, ~[]);
+        t(~"\n", each_line, ~[~""]);
+        t(~"\n", each_line_any, ~[~""]);
+        t(~"banana", each_line, ~[~"banana"]);
+        t(~"banana", each_line_any, ~[~"banana"]);
     }
 
     #[test]
     fn test_words () {
+        fn t(s: &str, f: &fn(&str, &fn(&str) -> bool), u: &[~str]) {
+            let mut v = ~[];
+            for f(s) |s| { v.push(s.to_owned()) }
+            fail_unless!(vec::all2(v, u, |a,b| a == b));
+        }
         let data = ~"\nMary had a little lamb\nLittle lamb\n";
-        fail_unless!(~[
-            ~"Mary",~"had",~"a",~"little",~"lamb",~"Little",~"lamb"]
-            == words(data));
 
-        fail_unless!(~[~"ok"] == words(~"ok"));
-        fail_unless!(~[] == words(~""));
+        t(data, each_word, ~[~"Mary",~"had",~"a",~"little",~"lamb",~"Little",~"lamb"]);
+        t(~"ok", each_word, ~[~"ok"]);
+        t(~"", each_word, ~[]);
     }
 
     #[test]
     fn test_split_within() {
-        fail_unless!(split_within(~"", 0) == ~[]);
-        fail_unless!(split_within(~"", 15) == ~[]);
-        fail_unless!(split_within(~"hello", 15) == ~[~"hello"]);
-
-        let data = ~"\nMary had a little lamb\nLittle lamb\n";
-        error!("~~~~ %?", split_within(data, 15));
-        fail_unless!(split_within(data, 15) == ~[~"Mary had a",
-                                                 ~"little lamb",
-                                                 ~"Little lamb"]);
+        fn t(s: &str, i: uint, u: &[~str]) {
+            let mut v = ~[];
+            for each_split_within(s, i) |s| { v.push(s.to_owned()) }
+            fail_unless!(vec::all2(v, u, |a,b| a == b));
+        }
+        t(~"", 0, ~[]);
+        t(~"", 15, ~[]);
+        t(~"hello", 15, ~[~"hello"]);
+        t(~"\nMary had a little lamb\nLittle lamb\n", 15,
+            ~[~"Mary had a", ~"little lamb", ~"Little lamb"]);
     }
 
     #[test]
@@ -3365,7 +3342,7 @@ mod tests {
 
         let mut ii = 0;
 
-        for split_char_each(data, ' ') |xx| {
+        for each_split_char(data, ' ') |xx| {
             match ii {
               0 => fail_unless!("\nMary" == xx),
               1 => fail_unless!("had"    == xx),
@@ -3383,7 +3360,7 @@ mod tests {
 
         let mut ii = 0;
 
-        for splitn_char_each(data, ' ', 2u) |xx| {
+        for each_splitn_char(data, ' ', 2u) |xx| {
             match ii {
               0 => fail_unless!("\nMary" == xx),
               1 => fail_unless!("had"    == xx),
@@ -3400,7 +3377,7 @@ mod tests {
 
         let mut ii = 0;
 
-        for words_each(data) |ww| {
+        for each_word(data) |ww| {
             match ii {
               0 => fail_unless!("Mary"   == ww),
               1 => fail_unless!("had"    == ww),
@@ -3411,7 +3388,7 @@ mod tests {
             ii += 1;
         }
 
-        words_each(~"", |_x| fail!()); // should not fail
+        each_word(~"", |_x| fail!()); // should not fail
     }
 
     #[test]
@@ -3420,7 +3397,7 @@ mod tests {
 
         let mut ii = 0;
 
-        for lines_each(lf) |x| {
+        for each_line(lf) |x| {
             match ii {
                 0 => fail_unless!("" == x),
                 1 => fail_unless!("Mary had a little lamb" == x),
@@ -3464,7 +3441,7 @@ mod tests {
         let ss = ~"ศไทย中华Việt Nam";
         fail_unless!(~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a',
                        'm']
-            == chars(ss));
+            == to_chars(ss));
     }
 
     #[test]

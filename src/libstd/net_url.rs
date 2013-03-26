@@ -344,8 +344,8 @@ fn userinfo_to_str(userinfo: &UserInfo) -> ~str {
 fn query_from_str(rawquery: &str) -> Query {
     let mut query: Query = ~[];
     if str::len(rawquery) != 0 {
-        for str::split_char(rawquery, '&').each |p| {
-            let (k, v) = split_char_first(*p, '=');
+        for str::each_split_char(rawquery, '&') |p| {
+            let (k, v) = split_char_first(p, '=');
             // FIXME(#3722): unsafe only because decode_inner does (string) IO
             unsafe {query.push((decode_component(k), decode_component(v)));}
         };

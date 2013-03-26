@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // rust - central access to other rust tools
-// FIXME #2238 Make commands run and test emit proper file endings on winds
+// FIXME #2238 Make commands run and test emit proper file endings on windows
 // FIXME #2238 Make run only accept source that emits an executable
 
 #[link(name = "rust",
@@ -29,10 +29,12 @@ enum ValidUsage {
 }
 
 impl ValidUsage {
-    fn is_valid(&self) -> bool { match *self {
-        Valid   => true,
-        Invalid => false
-    }}
+    fn is_valid(&self) -> bool {
+        match *self {
+            Valid   => true,
+            Invalid => false
+        }
+    }
 }
 
 enum Action {
@@ -128,7 +130,9 @@ fn cmd_help(args: &[~str]) -> ValidUsage {
                 match command.usage_full {
                     UsgStr(msg)          => io::println(fmt!("%s\n", msg)),
                     UsgExec(commandline) => {
-                        let words = str::words(commandline);
+                        let mut words = ~[];
+                        for str::each_word(commandline) |word| { words.push(word.to_owned()) }
+                        let words = words;
                         let (prog, args) = (words.head(), words.tail());
                         run::run_program(*prog, args);
                     }
@@ -184,7 +188,9 @@ fn do_command(command: &Command, args: &[~str]) -> ValidUsage {
     match command.action {
         Call(f) => f(args),
         Exec(commandline) => {
-            let words = str::words(commandline);
+            let mut words = ~[];
+            for str::each_word(commandline) |word| { words.push(word.to_owned()) }
+            let words = words;
             let (prog, prog_args) = (words.head(), words.tail());
             let exitstatus = run::run_program(
                 *prog,

@@ -44,10 +44,10 @@ pub fn is_cmd(cmd: ~str) -> bool {
 }
 
 pub fn parse_name(id: ~str) -> result::Result<~str, ~str> {
-    let parts = str::split_char(id, '.');
+    let mut last_part = None;
 
-    for parts.each |&part| {
-        for str::chars(part).each |&char| {
+    for str::each_split_char(id, '.') |part| {
+        for str::each_char(part) |char| {
             if char::is_whitespace(char) {
                 return result::Err(
                     ~"could not parse id: contains whitespace");
@@ -56,9 +56,11 @@ pub fn parse_name(id: ~str) -> result::Result<~str, ~str> {
                     ~"could not parse id: should be all lowercase");
             }
         }
+        last_part = Some(part.to_owned());
     }
+    if last_part.is_none() { return result::Err(~"could not parse id: is empty"); }
 
-    result::Ok(copy *parts.last())
+    result::Ok(last_part.unwrap())
 }
 
 struct ListenerFn {
