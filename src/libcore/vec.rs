@@ -172,12 +172,12 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
 /**
  * Builds a vector by calling a provided function with an argument
  * function that pushes an element to the back of a vector.
- * This version takes an initial size for the vector.
+ * This version takes an initial capacity for the vector.
  *
  * # Arguments
  *
  * * size - An initial size of the vector to reserve
- * * builder - A function that will construct the vector. It recieves
+ * * builder - A function that will construct the vector. It receives
  *             as an argument a function that will push an element
  *             onto the vector being constructed.
  */
@@ -194,7 +194,7 @@ pub fn build_sized<A>(size: uint, builder: &fn(push: &fn(v: A))) -> ~[A] {
  *
  * # Arguments
  *
- * * builder - A function that will construct the vector. It recieves
+ * * builder - A function that will construct the vector. It receives
  *             as an argument a function that will push an element
  *             onto the vector being constructed.
  */
