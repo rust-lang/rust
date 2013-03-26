@@ -3050,8 +3050,6 @@ pub impl Parser {
         let attrs = self.parse_outer_attributes();
         let lo = self.span.lo;
 
-        let static_sty = spanned(lo, self.span.hi, sty_static);
-
         let visa = self.parse_visibility();
         let pur = self.parse_fn_purity();
         let ident = self.parse_ident();
