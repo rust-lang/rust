@@ -182,7 +182,7 @@ fn with_dirp<T>(d: &Option<~str>,
  *
  * # Return value
  *
- * The process id
+ * The process's exit code
  */
 pub fn run_program(prog: &str, args: &[~str]) -> int {
     let pid = spawn_process(prog, args, &None, &None,
