@@ -186,6 +186,7 @@ pub fn push_str_no_overallocate(lhs: &mut ~str, rhs: &str) {
         raw::set_len(lhs, llen + rlen);
     }
 }
+
 /// Appends a string slice to the back of a string
 #[inline(always)]
 pub fn push_str(lhs: &mut ~str, rhs: &str) {
@@ -213,7 +214,6 @@ pub fn append(lhs: ~str, rhs: &str) -> ~str {
     }
     v
 }
-
 
 /// Concatenate a vector of strings
 pub fn concat(v: &[~str]) -> ~str {
@@ -435,15 +435,12 @@ pub fn slice(s: &'a str, begin: uint, end: uint) -> &'a str {
 }
 
 /// Splits a string into substrings at each occurrence of a given character
-pub fn each_split_char(s: &str, sep: char, it: &fn(&str) -> bool) {
+pub fn each_split_char(s: &'a str, sep: char, it: &fn(&'a str) -> bool) {
     each_split_char_inner(s, sep, len(s), true, true, it)
 }
 
-/**
- * Like `split_char`, but a trailing empty string is omitted
- * (e.g. `split_char_no_trailing("A B ",' ') == ~[~"A",~"B"]`)
- */
-pub fn each_split_char_no_trailing(s: &str, sep: char, it: &fn(&str) -> bool) {
+/// Like `each_split_char`, but a trailing empty string is omitted
+pub fn each_split_char_no_trailing(s: &'a str, sep: char, it: &fn(&'a str) -> bool) {
     each_split_char_inner(s, sep, len(s), true, false, it)
 }
 
@@ -451,19 +448,19 @@ pub fn each_split_char_no_trailing(s: &str, sep: char, it: &fn(&str) -> bool) {
  * Splits a string into substrings at each occurrence of a given
  * character up to 'count' times.
  *
- * The byte must be a valid UTF-8/ASCII byte
+ * The character must be a valid UTF-8/ASCII character
  */
-pub fn each_splitn_char(s: &str, sep: char, count: uint, it: &fn(&str) -> bool) {
+pub fn each_splitn_char(s: &'a str, sep: char, count: uint, it: &fn(&'a str) -> bool) {
     each_split_char_inner(s, sep, count, true, true, it)
 }
 
-/// Like `split_char`, but omits empty strings from the returned vector
-pub fn each_split_char_nonempty(s: &str, sep: char, it: &fn(&str) -> bool) {
+/// Like `each_split_char`, but omits empty strings
+pub fn each_split_char_nonempty(s: &'a str, sep: char, it: &fn(&'a str) -> bool) {
     each_split_char_inner(s, sep, len(s), false, false, it)
 }
 
-fn each_split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool,
-                         allow_trailing_empty: bool, it: &fn(&str) -> bool) {
+fn each_split_char_inner(s: &'a str, sep: char, count: uint, allow_empty: bool,
+                         allow_trailing_empty: bool, it: &fn(&'a str) -> bool) {
     if sep < 128u as char {
         let b = sep as u8, l = len(s);
         let mut done = 0u;
@@ -478,7 +475,7 @@ fn each_split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool,
             }
             i += 1u;
         }
-        // only push a non-empty trailing substring
+        // only slice a non-empty trailing substring
         if allow_trailing_empty || start < l {
             if !it( unsafe{ raw::slice_bytes(s, start, l) } ) { return; }
         }
@@ -488,15 +485,12 @@ fn each_split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool,
 }
 
 /// Splits a string into substrings using a character function
-pub fn each_split(s: &str, sepfn: &fn(char) -> bool, it: &fn(&str) -> bool) {
+pub fn each_split(s: &'a str, sepfn: &fn(char) -> bool, it: &fn(&'a str) -> bool) {
     each_split_inner(s, sepfn, len(s), true, true, it)
 }
 
-/**
- * Like `split`, but a trailing empty string is omitted
- * (e.g. `split_no_trailing("A B ",' ') == ~[~"A",~"B"]`)
- */
-pub fn each_split_no_trailing(s: &str, sepfn: &fn(char) -> bool, it: &fn(&str) -> bool) {
+/// Like `each_split`, but a trailing empty string is omitted
+pub fn each_split_no_trailing(s: &'a str, sepfn: &fn(char) -> bool, it: &fn(&'a str) -> bool) {
     each_split_inner(s, sepfn, len(s), true, false, it)
 }
 
@@ -504,17 +498,17 @@ pub fn each_split_no_trailing(s: &str, sepfn: &fn(char) -> bool, it: &fn(&str) -
  * Splits a string into substrings using a character function, cutting at
  * most `count` times.
  */
-pub fn each_splitn(s: &str, sepfn: &fn(char) -> bool, count: uint, it: &fn(&str) -> bool) {
+pub fn each_splitn(s: &'a str, sepfn: &fn(char) -> bool, count: uint, it: &fn(&'a str) -> bool) {
     each_split_inner(s, sepfn, count, true, true, it)
 }
 
-/// Like `split`, but omits empty strings from the returned vector
-pub fn each_split_nonempty(s: &str, sepfn: &fn(char) -> bool, it: &fn(&str) -> bool) {
+/// Like `each_split`, but omits empty strings
+pub fn each_split_nonempty(s: &'a str, sepfn: &fn(char) -> bool, it: &fn(&'a str) -> bool) {
     each_split_inner(s, sepfn, len(s), false, false, it)
 }
 
-fn each_split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
-               allow_empty: bool, allow_trailing_empty: bool, it: &fn(&str) -> bool) {
+fn each_split_inner(s: &'a str, sepfn: &fn(cc: char) -> bool, count: uint,
+                    allow_empty: bool, allow_trailing_empty: bool, it: &fn(&'a str) -> bool) {
     let l = len(s);
     let mut i = 0u, start = 0u, done = 0u;
     while i < l && done < count {
@@ -576,16 +570,18 @@ fn iter_between_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint) -> bool) {
  * # Example
  *
  * ~~~
- * fail_unless!(["", "XXX", "YYY", ""] == split_str(".XXX.YYY.", "."))
+ * let mut v = ~[];
+ * for each_split_str(".XXX.YYY.", ".") |subs| { v.push(subs); }
+ * fail_unless!(v == ["", "XXX", "YYY", ""]);
  * ~~~
  */
-pub fn each_split_str(s: &'a str, sep: &'b str, it: &fn(&str) -> bool) {
+pub fn each_split_str(s: &'a str, sep: &'b str, it: &fn(&'a str) -> bool) {
     for iter_between_matches(s, sep) |from, to| {
         if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return; }
     }
 }
 
-pub fn each_split_str_nonempty(s: &'a str, sep: &'b str, it: &fn(&str) -> bool) {
+pub fn each_split_str_nonempty(s: &'a str, sep: &'b str, it: &fn(&'a str) -> bool) {
     for iter_between_matches(s, sep) |from, to| {
         if to > from {
             if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return; }
@@ -628,15 +624,17 @@ pub fn levdistance(s: &str, t: &str) -> uint {
 }
 
 /**
- * Splits a string into a vector of the substrings separated by LF ('\n').
+ * Splits a string into substrings separated by LF ('\n').
  */
-pub fn each_line(s: &str, it: &fn(&str) -> bool) { each_split_char_no_trailing(s, '\n', it) }
+pub fn each_line(s: &'a str, it: &fn(&'a str) -> bool) {
+    each_split_char_no_trailing(s, '\n', it)
+}
 
 /**
- * Splits a string into a vector of the substrings separated by LF ('\n')
+ * Splits a string into substrings separated by LF ('\n')
  * and/or CR LF ("\r\n")
  */
-pub fn each_line_any(s: &str, it: &fn(&str) -> bool) {
+pub fn each_line_any(s: &'a str, it: &fn(&'a str) -> bool) {
     for each_line(s) |s| {
         let l = s.len();
         if l > 0u && s[l - 1u] == '\r' as u8 {
@@ -647,23 +645,36 @@ pub fn each_line_any(s: &str, it: &fn(&str) -> bool) {
     }
 }
 
-/// Splits a string into a vector of the substrings separated by whitespace
-pub fn each_word(s: &str, it: &fn(&str) -> bool) {
-    each_split_nonempty(s, |c| char::is_whitespace(c), it)
+/// Splits a string into substrings separated by whitespace
+pub fn each_word(s: &'a str, it: &fn(&'a str) -> bool) {
+    each_split_nonempty(s, char::is_whitespace, it)
 }
 
-/** Split a string into a vector of substrings,
- *  each of which is less bytes long than a limit
+/** Splits a string into substrings with possibly internal whitespace,
+ *  each of them at most `lim` bytes long. The substrings have leading and trailing
+ *  whitespace removed, and are only cut at whitespace boundaries.
+ *
+ *  #Failure:
+ *
+ *  Fails during iteration if the string contains a non-whitespace
+ *  sequence longer than the limit.
  */
-pub fn each_split_within(ss: &str, lim: uint, it: &fn(&str) -> bool) {
-    // Just for fun, let's write this as an automaton
+pub fn each_split_within(ss: &'a str, lim: uint, it: &fn(&'a str) -> bool) {
+    // Just for fun, let's write this as an state machine:
+
     enum SplitWithinState {
-        A, // Leading whitespace, initial state
-        B, // Words
-        C, // Internal and trailing whitespace
+        A,  // leading whitespace, initial state
+        B,  // words
+        C,  // internal and trailing whitespace
     }
-    enum Whitespace { Ws, Cr }
-    enum LengthLimit { UnderLim, OverLim }
+    enum Whitespace {
+        Ws, // current char is whitespace
+        Cr  // current char is not whitespace
+    }
+    enum LengthLimit {
+        UnderLim, // current char makes current substring still fit in limit
+        OverLim   // current char makes current substring no longer fit in limit
+    }
 
     let mut slice_start = 0;
     let mut last_start = 0;
@@ -671,9 +682,9 @@ pub fn each_split_within(ss: &str, lim: uint, it: &fn(&str) -> bool) {
     let mut state = A;
 
     let mut cont = true;
-    let slice = || { cont = it(ss.slice(slice_start, last_end)) };
+    let slice: &fn() = || { cont = it(slice(ss, slice_start, last_end)) };
 
-    let machine = |i: uint, c: char| {
+    let machine: &fn(uint, char) -> bool = |i, c| {
         let whitespace = if char::is_whitespace(c)       { Ws }       else { Cr };
         let limit      = if (i - slice_start + 1) <= lim { UnderLim } else { OverLim };
 
@@ -693,12 +704,13 @@ pub fn each_split_within(ss: &str, lim: uint, it: &fn(&str) -> bool) {
             (C, Ws, OverLim)  => { slice(); A }
             (C, Ws, UnderLim) => { C }
         };
+
         cont
     };
 
     str::each_chari(ss, machine);
 
-    // Let the automaton 'run out'
+    // Let the automaton 'run out' by supplying trailing whitespace
     let mut fake_i = ss.len();
     while cont && match state { B | C => true, A => false } {
         machine(fake_i, ' ');
@@ -1186,8 +1198,7 @@ pub fn rfind_char_from(s: &str, c: char, start: uint) -> Option<uint> {
  * or equal to `len(s)`. `start` must be the index of a character boundary,
  * as defined by `is_char_boundary`.
  */
-pub fn rfind_char_between(s: &str, c: char, start: uint, end: uint)
-    -> Option<uint> {
+pub fn rfind_char_between(s: &str, c: char, start: uint, end: uint) -> Option<uint> {
     if c < 128u as char {
         fail_unless!(start >= end);
         fail_unless!(start <= len(s));
@@ -1268,11 +1279,7 @@ pub fn find_from(s: &str, start: uint, f: &fn(char)
  * or equal to `len(s)`. `start` must be the index of a character
  * boundary, as defined by `is_char_boundary`.
  */
-pub fn find_between(s: &str,
-                         start: uint,
-                         end: uint,
-                         f: &fn(char) -> bool)
-                      -> Option<uint> {
+pub fn find_between(s: &str, start: uint, end: uint, f: &fn(char) -> bool) -> Option<uint> {
     fail_unless!(start <= end);
     fail_unless!(end <= len(s));
     fail_unless!(is_char_boundary(s, start));
@@ -1323,8 +1330,7 @@ pub fn rfind(s: &str, f: &fn(char) -> bool) -> Option<uint> {
  * `start` must be less than or equal to `len(s)', `start` must be the
  * index of a character boundary, as defined by `is_char_boundary`
  */
-pub fn rfind_from(s: &str, start: uint, f: &fn(char) -> bool)
-    -> Option<uint> {
+pub fn rfind_from(s: &str, start: uint, f: &fn(char) -> bool) -> Option<uint> {
     rfind_between(s, start, 0u, f)
 }
 
@@ -1350,9 +1356,7 @@ pub fn rfind_from(s: &str, start: uint, f: &fn(char) -> bool)
  * than or equal to `len(s)`. `start` must be the index of a character
  * boundary, as defined by `is_char_boundary`
  */
-pub fn rfind_between(s: &str, start: uint, end: uint,
-                          f: &fn(char) -> bool)
-    -> Option<uint> {
+pub fn rfind_between(s: &str, start: uint, end: uint, f: &fn(char) -> bool) -> Option<uint> {
     fail_unless!(start >= end);
     fail_unless!(start <= len(s));
     fail_unless!(is_char_boundary(s, start));
@@ -1408,8 +1412,7 @@ pub fn find_str(haystack: &'a str, needle: &'b str) -> Option<uint> {
  *
  * `start` must be less than or equal to `len(s)`
  */
-pub fn find_str_from(haystack: &'a str, needle: &'b str, start: uint)
-  -> Option<uint> {
+pub fn find_str_from(haystack: &'a str, needle: &'b str, start: uint) -> Option<uint> {
     find_str_between(haystack, needle, start, len(haystack))
 }
 
@@ -1433,9 +1436,8 @@ pub fn find_str_from(haystack: &'a str, needle: &'b str, start: uint)
  * `start` must be less than or equal to `end` and `end` must be less than
  * or equal to `len(s)`.
  */
-pub fn find_str_between(haystack: &'a str, needle: &'b str, start: uint,
-                         end:uint)
-  -> Option<uint> {
+pub fn find_str_between(haystack: &'a str, needle: &'b str, start: uint, end:uint)
+        -> Option<uint> {
     // See Issue #1932 for why this is a naive search
     fail_unless!(end <= len(haystack));
     let needle_len = len(needle);
@@ -1637,7 +1639,6 @@ pub fn utf16_chars(v: &[u16], f: &fn(char)) {
         }
     }
 }
-
 
 pub fn from_utf16(v: &[u16]) -> ~str {
     let mut buf = ~"";
@@ -1954,7 +1955,6 @@ pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
         }
     }
 }
-
 
 /**
  * Work with the byte buffer and length of a slice.
