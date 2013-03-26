@@ -44,7 +44,7 @@ Section: Creating a string
  *
  * Fails if invalid UTF-8
  */
-pub fn from_bytes(vv: &[const u8]) -> ~str {
+pub fn from_bytes(vv: &const [u8]) -> ~str {
     fail_unless!(is_utf8(vv));
     return unsafe { raw::from_bytes(vv) };
 }
@@ -1573,7 +1573,7 @@ Section: Misc
 */
 
 /// Determines if a vector of bytes contains valid UTF-8
-pub fn is_utf8(v: &[const u8]) -> bool {
+pub fn is_utf8(v: &const [u8]) -> bool {
     let mut i = 0u;
     let total = vec::len::<u8>(v);
     while i < total {
@@ -1920,12 +1920,12 @@ static max_five_b: uint = 67108864u;
 static tag_six_b: uint = 252u;
 
 // Constants used for converting strs to floats
-pub static inf_buf: [u8*3] = ['i' as u8, 'n' as u8, 'f' as u8];
-pub static positive_inf_buf: [u8*4] = ['+' as u8, 'i' as u8,
-                                       'n' as u8, 'f' as u8];
-pub static negative_inf_buf: [u8*4] = ['-' as u8, 'i' as u8,
-                                       'n' as u8, 'f' as u8];
-pub static nan_buf: [u8*3] = ['N' as u8, 'a' as u8, 'N' as u8];
+pub static inf_buf: [u8, ..3] = ['i' as u8, 'n' as u8, 'f' as u8];
+pub static positive_inf_buf: [u8, ..4] = ['+' as u8, 'i' as u8,
+                                          'n' as u8, 'f' as u8];
+pub static negative_inf_buf: [u8, ..4] = ['-' as u8, 'i' as u8,
+                                          'n' as u8, 'f' as u8];
+pub static nan_buf: [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
 
 /**
  * Work with the byte buffer of a string.
@@ -2130,7 +2130,7 @@ pub mod raw {
     }
 
     /// Converts a vector of bytes to a string.
-    pub unsafe fn from_bytes(v: &[const u8]) -> ~str {
+    pub unsafe fn from_bytes(v: &const [u8]) -> ~str {
         do vec::as_const_buf(v) |buf, len| {
             from_buf_len(buf, len)
         }

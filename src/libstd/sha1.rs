@@ -35,7 +35,7 @@ use core::vec;
 /// The SHA-1 interface
 trait Sha1 {
     /// Provide message input as bytes
-    fn input(&mut self, &[const u8]);
+    fn input(&mut self, &const [u8]);
     /// Provide message input as string
     fn input_str(&mut self, &str);
     /**
@@ -73,7 +73,7 @@ pub fn sha1() -> @Sha1 {
           computed: bool,
           work_buf: @mut ~[u32]};
 
-    fn add_input(st: &mut Sha1State, msg: &[const u8]) {
+    fn add_input(st: &mut Sha1State, msg: &const [u8]) {
         fail_unless!((!st.computed));
         for vec::each_const(msg) |element| {
             st.msg_block[st.msg_block_idx] = *element;
@@ -241,7 +241,7 @@ pub fn sha1() -> @Sha1 {
             self.h[4] = 0xC3D2E1F0u32;
             self.computed = false;
         }
-        fn input(&mut self, msg: &[const u8]) { add_input(self, msg); }
+        fn input(&mut self, msg: &const [u8]) { add_input(self, msg); }
         fn input_str(&mut self, msg: &str) {
             let bs = str::to_bytes(msg);
             add_input(self, bs);
