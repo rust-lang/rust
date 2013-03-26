@@ -142,6 +142,7 @@ pub enum vtable_origin {
       vtable_res is the vtable itself
      */
     vtable_static(ast::def_id, ~[ty::t], vtable_res),
+
     /*
       Dynamic vtable, comes from a parameter that has a bound on it:
       fn foo<T:quux,baz,bar>(a: T) -- a's vtable would have a
@@ -184,6 +185,7 @@ pub struct CrateCtxt {
 // Functions that write types into the node type table
 pub fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t) {
     debug!("write_ty_to_tcx(%d, %s)", node_id, ppaux::ty_to_str(tcx, ty));
+    fail_unless!(!ty::type_needs_infer(ty));
     tcx.node_types.insert(node_id as uint, ty);
 }
 pub fn write_substs_to_tcx(tcx: ty::ctxt,
@@ -192,7 +194,16 @@ pub fn write_substs_to_tcx(tcx: ty::ctxt,
     if substs.len() > 0u {
         debug!("write_substs_to_tcx(%d, %?)", node_id,
                substs.map(|t| ppaux::ty_to_str(tcx, *t)));
+        fail_unless!(substs.all(|t| !ty::type_needs_infer(*t)));
         tcx.node_type_substs.insert(node_id, substs);
+    }
+}
+pub fn write_tpt_to_tcx(tcx: ty::ctxt,
+                        node_id: ast::node_id,
+                        tpt: &ty::ty_param_substs_and_ty) {
+    write_ty_to_tcx(tcx, node_id, tpt.ty);
+    if !tpt.substs.tps.is_empty() {
+        write_substs_to_tcx(tcx, node_id, copy tpt.substs.tps);
     }
 }
 

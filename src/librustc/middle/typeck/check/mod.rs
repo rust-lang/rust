@@ -104,6 +104,7 @@ use middle::typeck::rscope::{RegionError};
 use middle::typeck::rscope::{in_binding_rscope, region_scope, type_rscope};
 use middle::typeck::rscope;
 use middle::typeck::{isr_alist, lookup_def_ccx, method_map_entry};
+use middle::typeck::{method_map, vtable_map};
 use middle::typeck::{method_origin, method_self, method_trait, no_params};
 use middle::typeck::{require_same_types};
 use util::common::{block_query, indenter, loop_query};
@@ -160,9 +161,13 @@ pub struct SelfInfo {
 pub struct inherited {
     infcx: @mut infer::InferCtxt,
     locals: HashMap<ast::node_id, ty::t>,
+
+    // Temporary tables:
     node_types: HashMap<ast::node_id, ty::t>,
     node_type_substs: HashMap<ast::node_id, ty::substs>,
-    adjustments: HashMap<ast::node_id, @ty::AutoAdjustment>
+    adjustments: HashMap<ast::node_id, @ty::AutoAdjustment>,
+    method_map: method_map,
+    vtable_map: vtable_map,
 }
 
 pub enum FnKind {
@@ -220,7 +225,9 @@ pub fn blank_inherited(ccx: @mut CrateCtxt) -> @inherited {
         locals: HashMap(),
         node_types: oldmap::HashMap(),
         node_type_substs: oldmap::HashMap(),
-        adjustments: oldmap::HashMap()
+        adjustments: oldmap::HashMap(),
+        method_map: oldmap::HashMap(),
+        vtable_map: oldmap::HashMap(),
     }
 }
 
@@ -1321,13 +1328,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                   sugar: ast::CallSugar) {
         // Index expressions need to be handled separately, to inform them
         // that they appear in call position.
-        match f.node {
-            ast::expr_field(ref base, ref field, ref tys) => {
-                check_field(fcx, f, true, *base, *field, *tys)
-            }
-            _ => check_expr(fcx, f)
-        };
-
+        let mut bot = check_expr(fcx, f);
         check_call_or_method(fcx,
                              sp,
                              call_expr_id,
@@ -1363,7 +1364,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                              CheckTraitsAndInherentMethods,
                              AutoderefReceiver) {
             Some(ref entry) => {
-                let method_map = fcx.ccx.method_map;
+                let method_map = fcx.inh.method_map;
                 method_map.insert(expr.id, (*entry));
             }
             None => {
@@ -1435,7 +1436,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                              deref_args, CheckTraitsOnly, autoderef_receiver) {
             Some(ref origin) => {
                 let method_ty = fcx.node_ty(op_ex.callee_id);
-                let method_map = fcx.ccx.method_map;
+                let method_map = fcx.inh.method_map;
                 method_map.insert(op_ex.id, *origin);
                 check_call_inner(fcx, op_ex.span,
                                  op_ex.id, method_ty,
@@ -1689,7 +1690,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     // Check field access expressions
     fn check_field(fcx: @mut FnCtxt,
                    expr: @ast::expr,
-                   is_callee: bool,
                    base: @ast::expr,
                    field: ast::ident,
                    tys: &[@ast::Ty]) {
@@ -1723,7 +1723,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
 
         let tps = vec::map(tys, |ty| fcx.to_ty(*ty));
-
         match method::lookup(fcx,
                              expr,
                              base,
@@ -1734,34 +1733,30 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                              DontDerefArgs,
                              CheckTraitsAndInherentMethods,
                              AutoderefReceiver) {
-            Some(ref entry) => {
-                let method_map = fcx.ccx.method_map;
-                method_map.insert(expr.id, (*entry));
-
-                // If we have resolved to a method but this is not in
-                // a callee position, error
-                if !is_callee {
-                    tcx.sess.span_err(
-                        expr.span,
-                        ~"attempted to take value of method \
-                          (try writing an anonymous function)");
-                    // Add error type for the result
-                    fcx.write_error(expr.id);
-                }
+            Some(_) => {
+                fcx.type_error_message(
+                    expr.span,
+                    |actual| {
+                        fmt!("attempted to take value of method `%s` on type `%s` \
+                              (try writing an anonymous function)",
+                             *tcx.sess.str_of(field), actual)
+                    },
+                    expr_t, None);
             }
+
             None => {
-                fcx.type_error_message(expr.span,
-                  |actual| {
-                      fmt!("attempted access of field `%s` on type `%s`, but \
-                            no field or method with that name was found",
-                           *tcx.sess.str_of(field), actual)
-                  },
-                  expr_t, None);
-                // Add error type for the result
-                fcx.write_error(expr.id);
+                fcx.type_error_message(
+                    expr.span,
+                    |actual| {
+                        fmt!("attempted access of field `%s` on type `%s`, \
+                              but no field with that name was found",
+                             *tcx.sess.str_of(field), actual)
+                    },
+                    expr_t, None);
             }
         }
 
+        fcx.write_error(expr.id);
     }
 
     fn check_struct_or_variant_fields(fcx: @mut FnCtxt,
@@ -2750,15 +2745,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
       }
       ast::expr_field(base, field, ref tys) => {
-          check_field(fcx, expr, false, base, field, * tys);
-          let base_t = fcx.expr_ty(base);
-          if ty::type_is_error(base_t) {
-              fcx.write_error(id);
-          }
-          else if ty::type_is_bot(base_t) {
-              fcx.write_bot(id);
-          }
-          // Otherwise, type already got written
+        check_field(fcx, expr, base, field, *tys);
       }
       ast::expr_index(base, idx) => {
           check_expr(fcx, base);

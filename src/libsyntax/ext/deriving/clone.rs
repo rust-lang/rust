@@ -120,8 +120,9 @@ fn call_substructure_clone_method(cx: @ext_ctxt,
                                -> @expr {
     // Call the substructure method.
     let clone_ident = cx.ident_of(~"clone");
-    let self_method = build::mk_access_(cx, span, self_field, clone_ident);
-    build::mk_call_(cx, span, self_method, ~[])
+    build::mk_method_call(cx, span,
+                          self_field, clone_ident,
+                          ~[])
 }
 
 fn expand_deriving_clone_struct_def(cx: @ext_ctxt,

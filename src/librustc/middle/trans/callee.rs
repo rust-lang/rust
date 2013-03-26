@@ -217,7 +217,7 @@ pub fn trans_fn_ref_with_vtables(
     // - `type_params`: values for each of the fn/method's type parameters
     // - `vtables`: values for each bound on each of the type parameters
 
-    let _icx = bcx.insn_ctxt("trans_fn_with_vtables");
+    let _icx = bcx.insn_ctxt("trans_fn_ref_with_vtables");
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
 
@@ -227,6 +227,8 @@ pub fn trans_fn_ref_with_vtables(
            type_params.map(|t| bcx.ty_to_str(*t)),
            vtables);
     let _indenter = indenter();
+
+    fail_unless!(type_params.all(|t| !ty::type_needs_infer(*t)));
 
     // Polytype of the function item (may have type params)
     let fn_tpt = ty::lookup_item_type(tcx, def_id);
