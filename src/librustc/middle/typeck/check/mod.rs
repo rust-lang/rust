@@ -1549,7 +1549,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
        lookup_op_method(
             fcx, ex, rhs_expr, rhs_t,
             fcx.tcx().sess.ident_of(mname), ~[],
-            DontDerefArgs, DontAutoderefReceiver,
+            DoDerefArgs, DontAutoderefReceiver,
             || {
                 fcx.type_error_message(ex.span, |actual| {
                     fmt!("cannot apply unary operator `%s` to type `%s`",
@@ -2757,7 +2757,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                           expr.span, raw_base_t);
                       let ret_ty = lookup_op_method(fcx, expr, base, resolved,
                                              tcx.sess.ident_of(~"index"),
-                                             ~[idx], DontDerefArgs, AutoderefReceiver,
+                                             ~[idx], DoDerefArgs, AutoderefReceiver,
                         || {
                             fcx.type_error_message(expr.span, |actual|
                                 fmt!("cannot index a value \
