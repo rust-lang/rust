@@ -125,14 +125,11 @@ fn call_substructure_iter_bytes_method(cx: @ext_ctxt,
 
     // Call the substructure method.
     let iter_bytes_ident = cx.ident_of(~"iter_bytes");
-    let self_method = build::mk_access_(cx,
-                                        span,
-                                        self_field,
-                                        iter_bytes_ident);
-    let self_call = build::mk_call_(cx,
-                                    span,
-                                    self_method,
-                                    ~[ lsb0_expr, f_expr ]);
+    let self_call = build::mk_method_call(cx,
+                                          span,
+                                          self_field,
+                                          iter_bytes_ident,
+                                          ~[ lsb0_expr, f_expr ]);
 
     // Create a statement out of this expression.
     build::mk_stmt(cx, span, self_call)

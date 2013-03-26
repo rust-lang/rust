@@ -42,7 +42,8 @@ use middle::typeck::astconv;
 use middle::typeck::infer;
 use middle::typeck::rscope::*;
 use middle::typeck::rscope;
-use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
+use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx,
+                     write_tpt_to_tcx};
 use util::common::{indenter, pluralize};
 use util::ppaux;
 
@@ -807,8 +808,10 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt, t: @ast::trait_ref,
 
     match lookup_def_tcx(ccx.tcx, t.path.span, t.ref_id) {
       ast::def_ty(t_id) => {
-        let tpt = astconv::ast_path_to_ty(ccx, &rscope, t_id, t.path,
-                                          t.ref_id);
+        let tpt = astconv::ast_path_to_ty(ccx, &rscope, t_id, t.path);
+
+        write_tpt_to_tcx(ccx.tcx, t.ref_id, &tpt);
+
         match ty::get(tpt.ty).sty {
            ty::ty_trait(*) => {
               (t_id, tpt)
