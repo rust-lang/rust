@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/*!
+Message passing
+*/
+
 use cast;
 use either::{Either, Left, Right};
 use kinds::Owned;

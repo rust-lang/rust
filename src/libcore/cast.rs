@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Unsafe casting functions
+
 pub mod rusti {
     #[abi = "rust-intrinsic"]
     #[link_name = "rusti"]
