@@ -284,7 +284,8 @@ pub fn build_sized_opt<A,B: Buildable<A>>(size: Option<uint>,
 
 // Functions that combine iteration and building
 
-/// Applies a function to each element of an iterable and returns the results.
+/// Applies a function to each element of an iterable and returns the results
+/// in a sequence built via `BU`.  See also `map_to_vec`.
 #[inline(always)]
 pub fn map<T,IT: BaseIter<T>,U,BU: Buildable<U>>(v: &IT, f: &fn(&T) -> U)
     -> BU {
