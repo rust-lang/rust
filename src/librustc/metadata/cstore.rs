@@ -141,24 +141,28 @@ pub fn find_extern_mod_stmt_cnum(cstore: @mut CStore,
     extern_mod_crate_map.find(&emod_id)
 }
 
-// returns hashes of crates directly used by this crate. Hashes are
-// sorted by crate name.
+// returns hashes of crates directly used by this crate. Hashes are sorted by
+// (crate name, crate version, crate hash) in lexicographic order (not semver)
 pub fn get_dep_hashes(cstore: @mut CStore) -> ~[~str] {
-    struct crate_hash { name: @~str, hash: @~str }
+    struct crate_hash { name: @~str, vers: @~str, hash: @~str }
     let mut result = ~[];
 
     let extern_mod_crate_map = cstore.extern_mod_crate_map;
     for extern_mod_crate_map.each_value |&cnum| {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
-        debug!("Add hash[%s]: %s", *cdata.name, *hash);
+        let vers = decoder::get_crate_vers(cdata.data);
+        debug!("Add hash[%s]: %s %s", *cdata.name, *vers, *hash);
         result.push(crate_hash {
             name: cdata.name,
+            vers: vers,
             hash: hash
         });
     }
 
-    let sorted = std::sort::merge_sort(result, |a, b| a.name <= b.name);
+    let sorted = do std::sort::merge_sort(result) |a, b| {
+        (a.name, a.vers, a.hash) <= (b.name, b.vers, b.hash)
+    };
 
     debug!("sorted:");
     for sorted.each |x| {
