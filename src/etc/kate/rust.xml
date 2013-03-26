@@ -18,7 +18,6 @@
 	<list name="keywords">
 		<item> as </item>
 		<item> break </item>
-		<item> const </item>
 		<item> copy </item>
 		<item> do </item>
 		<item> drop </item>
@@ -29,18 +28,17 @@
 		<item> if </item>
 		<item> impl </item>
 		<item> let </item>
-		<item> log </item>
 		<item> loop </item>
 		<item> match </item>
 		<item> mod </item>
 		<item> mut </item>
 		<item> priv </item>
 		<item> pub </item>
-		<item> pure </item>
 		<item> ref </item>
 		<item> return </item>
 		<item> static </item>
 		<item> struct </item>
+		<item> super </item>
 		<item> trait </item>
 		<item> unsafe </item>
 		<item> use </item>
