@@ -10,12 +10,12 @@
 
 use core::prelude::*;
 
+use core::hashmap::linear::LinearMap;
 use core::libc::{c_char, c_int, c_uint, c_longlong, c_ulonglong};
 use core::option;
 use core::ptr;
 use core::str;
 use core::vec;
-use std::oldmap::HashMap;
 
 pub type Opcode = u32;
 pub type Bool = c_uint;
@@ -1467,8 +1467,8 @@ pub fn SetLinkage(Global: ValueRef, Link: Linkage) {
 /* Memory-managed object interface to type handles. */
 
 pub struct TypeNames {
-    type_names: HashMap<TypeRef, @str>,
-    named_types: HashMap<@str, TypeRef>
+    type_names: @mut LinearMap<TypeRef, @str>,
+    named_types: @mut LinearMap<@str, TypeRef>
 }
 
 pub fn associate_type(tn: @TypeNames, s: @str, t: TypeRef) {
@@ -1477,17 +1477,17 @@ pub fn associate_type(tn: @TypeNames, s: @str, t: TypeRef) {
 }
 
 pub fn type_has_name(tn: @TypeNames, t: TypeRef) -> Option<@str> {
-    return tn.type_names.find(&t);
+    return tn.type_names.find(&t).map_consume(|x| *x);
 }
 
 pub fn name_has_type(tn: @TypeNames, s: @str) -> Option<TypeRef> {
-    return tn.named_types.find(&s);
+    return tn.named_types.find(&s).map_consume(|x| *x);
 }
 
 pub fn mk_type_names() -> @TypeNames {
     @TypeNames {
-        type_names: HashMap(),
-        named_types: HashMap()
+        type_names: @mut LinearMap::new(),
+        named_types: @mut LinearMap::new()
     }
 }
 

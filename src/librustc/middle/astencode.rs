@@ -856,12 +856,14 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         do ebml_w.tag(c::tag_table_node_type_subst) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                ebml_w.emit_tys(ecx, /*bad*/copy *tys)
+                // FIXME(#5562): removing this copy causes a segfault
+                //               before stage2
+                ebml_w.emit_tys(ecx, /*bad*/copy **tys)
             }
         }
     }
 
-    for tcx.freevars.find(&id).each |fv| {
+    for tcx.freevars.find(&id).each |&fv| {
         do ebml_w.tag(c::tag_table_freevars) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -873,7 +875,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
     }
 
     let lid = ast::def_id { crate: ast::local_crate, node: id };
-    for tcx.tcache.find(&lid).each |tpbt| {
+    for tcx.tcache.find(&lid).each |&tpbt| {
         do ebml_w.tag(c::tag_table_tcache) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -882,7 +884,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         }
     }
 
-    for tcx.ty_param_bounds.find(&id).each |pbs| {
+    for tcx.ty_param_bounds.find(&id).each |&pbs| {
         do ebml_w.tag(c::tag_table_param_bounds) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -905,7 +907,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
     //    }
     //}
 
-    if maps.mutbl_map.contains_key(&id) {
+    if maps.mutbl_map.contains(&id) {
         do ebml_w.tag(c::tag_table_mutbl) {
             ebml_w.id(id);
         }
@@ -915,14 +917,14 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         do ebml_w.tag(c::tag_table_last_use) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                do ebml_w.emit_from_vec(/*bad*/ copy *m) |id| {
+                do ebml_w.emit_from_vec(/*bad*/ copy **m) |id| {
                     id.encode(&ebml_w);
                 }
             }
         }
     }
 
-    for maps.method_map.find(&id).each |mme| {
+    for maps.method_map.find(&id).each |&mme| {
         do ebml_w.tag(c::tag_table_method_map) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -931,7 +933,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         }
     }
 
-    for maps.vtable_map.find(&id).each |dr| {
+    for maps.vtable_map.find(&id).each |&dr| {
         do ebml_w.tag(c::tag_table_vtable_map) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -949,13 +951,13 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         }
     }
 
-    for maps.moves_map.find(&id).each |_| {
+    if maps.moves_map.contains(&id) {
         do ebml_w.tag(c::tag_table_moves_map) {
             ebml_w.id(id);
         }
     }
 
-    for maps.capture_map.find(&id).each |cap_vars| {
+    for maps.capture_map.find(&id).each |&cap_vars| {
         do ebml_w.tag(c::tag_table_capture_map) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -1097,9 +1099,9 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                tag, id, id0);
 
         if tag == (c::tag_table_mutbl as uint) {
-            dcx.maps.mutbl_map.insert(id, ());
+            dcx.maps.mutbl_map.insert(id);
         } else if tag == (c::tag_table_moves_map as uint) {
-            dcx.maps.moves_map.insert(id, ());
+            dcx.maps.moves_map.insert(id);
         } else {
             let val_doc = entry_doc[c::tag_table_val as uint];
             let val_dsr = &reader::Decoder(val_doc);

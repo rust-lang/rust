@@ -234,10 +234,10 @@ use middle::moves;
 use util::common::{indenter, stmt_set};
 use util::ppaux::note_and_explain_region;
 
+use core::hashmap::linear::{LinearSet, LinearMap};
 use core::io;
 use core::result::{Result, Ok, Err};
 use core::to_bytes;
-use std::oldmap::{HashMap, Set};
 use syntax::ast::{mutability, m_mutbl, m_imm, m_const};
 use syntax::ast;
 use syntax::codemap::span;
@@ -260,9 +260,9 @@ pub fn check_crate(
         moves_map: moves_map,
         capture_map: capture_map,
         root_map: root_map(),
-        mutbl_map: HashMap(),
-        write_guard_map: HashMap(),
-        stmt_map: HashMap(),
+        mutbl_map: @mut LinearSet::new(),
+        write_guard_map: @mut LinearSet::new(),
+        stmt_map: @mut LinearSet::new(),
         stats: @mut BorrowStats {
             loaned_paths_same: 0,
             loaned_paths_imm: 0,
@@ -333,7 +333,7 @@ pub struct RootInfo {
 // a map mapping id's of expressions of gc'd type (@T, @[], etc) where
 // the box needs to be kept live to the id of the scope for which they
 // must stay live.
-pub type root_map = HashMap<root_map_key, RootInfo>;
+pub type root_map = @mut LinearMap<root_map_key, RootInfo>;
 
 // the keys to the root map combine the `id` of the expression with
 // the number of types that it is autodereferenced.  So, for example,
@@ -348,11 +348,11 @@ pub struct root_map_key {
 
 // set of ids of local vars / formal arguments that are modified / moved.
 // this is used in trans for optimization purposes.
-pub type mutbl_map = HashMap<ast::node_id, ()>;
+pub type mutbl_map = @mut LinearSet<ast::node_id>;
 
 // A set containing IDs of expressions of gc'd type that need to have a write
 // guard.
-pub type write_guard_map = HashMap<root_map_key, ()>;
+pub type write_guard_map = @mut LinearSet<root_map_key>;
 
 // Errors that can occur
 #[deriving(Eq)]
@@ -405,8 +405,8 @@ pub struct Loan {
 /// - `pure_map`: map from block/expr that must be pure to the error message
 ///   that should be reported if they are not pure
 pub struct ReqMaps {
-    req_loan_map: HashMap<ast::node_id, @mut ~[Loan]>,
-    pure_map: HashMap<ast::node_id, bckerr>
+    req_loan_map: LinearMap<ast::node_id, @mut ~[Loan]>,
+    pure_map: LinearMap<ast::node_id, bckerr>
 }
 
 pub fn save_and_restore<T:Copy,U>(save_and_restore_t: &mut T,
@@ -450,7 +450,7 @@ impl to_bytes::IterBytes for root_map_key {
 }
 
 pub fn root_map() -> root_map {
-    return HashMap();
+    return @mut LinearMap::new();
 }
 
 // ___________________________________________________________________________
@@ -541,7 +541,7 @@ pub impl BorrowckCtxt {
     fn add_to_mutbl_map(&self, cmt: cmt) {
         match cmt.cat {
           cat_local(id) | cat_arg(id) => {
-            self.mutbl_map.insert(id, ());
+            self.mutbl_map.insert(id);
           }
           cat_stack_upvar(cmt) => {
             self.add_to_mutbl_map(cmt);

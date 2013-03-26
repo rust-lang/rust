@@ -10,8 +10,6 @@
 
 //! Logging
 
-use libc;
-
 pub mod rustrt {
     use libc;
 
@@ -49,6 +47,7 @@ pub fn console_off() {
 pub fn log_type<T>(level: u32, object: &T) {
     use cast::transmute;
     use io;
+    use libc;
     use repr;
     use vec;
 

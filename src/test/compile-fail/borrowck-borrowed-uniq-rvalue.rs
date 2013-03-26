@@ -9,12 +9,12 @@
 // except according to those terms.
 
 //buggy.rs
-extern mod std;
-use std::oldmap::HashMap;
+
+use core::hashmap::linear::LinearMap;
 
 fn main() {
-    let buggy_map :HashMap<uint, &uint> =
-      HashMap::<uint, &uint>();
+    let mut buggy_map :LinearMap<uint, &uint> =
+      LinearMap::new::<uint, &uint>();
     buggy_map.insert(42, &*~1); //~ ERROR illegal borrow
 
     // but it is ok if we use a temporary

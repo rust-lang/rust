@@ -12,7 +12,6 @@ use core::prelude::*;
 
 use metadata::csearch;
 use middle::astencode;
-use middle::resolve;
 use middle::ty;
 use middle;
 
@@ -21,7 +20,7 @@ use core::vec;
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
 
-use std::oldmap::HashMap;
+use core::hashmap::linear::{LinearMap, LinearSet};
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -77,12 +76,11 @@ pub fn join_all(cs: &[constness]) -> constness {
 }
 
 pub fn classify(e: @expr,
-                def_map: resolve::DefMap,
                 tcx: ty::ctxt)
              -> constness {
     let did = ast_util::local_def(e.id);
     match tcx.ccache.find(&did) {
-      Some(x) => x,
+      Some(&x) => x,
       None => {
         let cn =
             match e.node {
@@ -97,23 +95,23 @@ pub fn classify(e: @expr,
               ast::expr_copy(inner) |
               ast::expr_unary(_, inner) |
               ast::expr_paren(inner) => {
-                classify(inner, def_map, tcx)
+                classify(inner, tcx)
               }
 
               ast::expr_binary(_, a, b) => {
-                join(classify(a, def_map, tcx),
-                     classify(b, def_map, tcx))
+                join(classify(a, tcx),
+                     classify(b, tcx))
               }
 
               ast::expr_tup(ref es) |
               ast::expr_vec(ref es, ast::m_imm) => {
-                join_all(vec::map(*es, |e| classify(*e, def_map, tcx)))
+                join_all(vec::map(*es, |e| classify(*e, tcx)))
               }
 
               ast::expr_vstore(e, vstore) => {
                   match vstore {
                       ast::expr_vstore_fixed(_) |
-                      ast::expr_vstore_slice => classify(e, def_map, tcx),
+                      ast::expr_vstore_slice => classify(e, tcx),
                       ast::expr_vstore_uniq |
                       ast::expr_vstore_box |
                       ast::expr_vstore_mut_box |
@@ -124,7 +122,7 @@ pub fn classify(e: @expr,
               ast::expr_struct(_, ref fs, None) => {
                 let cs = do vec::map((*fs)) |f| {
                     if f.node.mutbl == ast::m_imm {
-                        classify(f.node.expr, def_map, tcx)
+                        classify(f.node.expr, tcx)
                     } else {
                         non_const
                     }
@@ -134,7 +132,7 @@ pub fn classify(e: @expr,
 
               ast::expr_cast(base, _) => {
                 let ty = ty::expr_ty(tcx, e);
-                let base = classify(base, def_map, tcx);
+                let base = classify(base, tcx);
                 if ty::type_is_integral(ty) {
                     join(integral_const, base)
                 } else if ty::type_is_fp(ty) {
@@ -145,16 +143,16 @@ pub fn classify(e: @expr,
               }
 
               ast::expr_field(base, _, _) => {
-                classify(base, def_map, tcx)
+                classify(base, tcx)
               }
 
               ast::expr_index(base, idx) => {
-                join(classify(base, def_map, tcx),
-                     classify(idx, def_map, tcx))
+                join(classify(base, tcx),
+                     classify(idx, tcx))
               }
 
               ast::expr_addr_of(ast::m_imm, base) => {
-                classify(base, def_map, tcx)
+                classify(base, tcx)
               }
 
               // FIXME: (#3728) we can probably do something CCI-ish
@@ -173,7 +171,7 @@ pub fn classify(e: @expr,
 
 pub fn lookup_const(tcx: ty::ctxt, e: @expr) -> Option<@expr> {
     match tcx.def_map.find(&e.id) {
-        Some(ast::def_const(def_id)) => lookup_const_by_id(tcx, def_id),
+        Some(&ast::def_const(def_id)) => lookup_const_by_id(tcx, def_id),
         _ => None
     }
 }
@@ -184,7 +182,7 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
     if ast_util::is_local(def_id) {
         match tcx.items.find(&def_id.node) {
             None => None,
-            Some(ast_map::node_item(it, _)) => match it.node {
+            Some(&ast_map::node_item(it, _)) => match it.node {
                 item_const(_, const_expr) => Some(const_expr),
                 _ => None
             },
@@ -192,14 +190,14 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
         }
     } else {
         let maps = astencode::Maps {
-            mutbl_map: HashMap(),
-            root_map: HashMap(),
-            last_use_map: HashMap(),
-            method_map: HashMap(),
-            vtable_map: HashMap(),
-            write_guard_map: HashMap(),
-            moves_map: HashMap(),
-            capture_map: HashMap()
+            mutbl_map: @mut LinearSet::new(),
+            root_map: @mut LinearMap::new(),
+            last_use_map: @mut LinearMap::new(),
+            method_map: @mut LinearMap::new(),
+            vtable_map: @mut LinearMap::new(),
+            write_guard_map: @mut LinearSet::new(),
+            moves_map: @mut LinearSet::new(),
+            capture_map: @mut LinearMap::new()
         };
         match csearch::maybe_get_item_ast(tcx, def_id,
             |a, b, c, d| astencode::decode_inlined_item(a, b, maps, /*bar*/ copy c, d)) {
@@ -227,10 +225,9 @@ pub fn lookup_constness(tcx: ty::ctxt, e: @expr) -> constness {
 }
 
 pub fn process_crate(crate: @ast::crate,
-                     def_map: resolve::DefMap,
                      tcx: ty::ctxt) {
     let v = visit::mk_simple_visitor(@visit::SimpleVisitor {
-        visit_expr_post: |e| { classify(e, def_map, tcx); },
+        visit_expr_post: |e| { classify(e, tcx); },
         .. *visit::default_simple_visitor()
     });
     visit::visit_crate(*crate, (), v);

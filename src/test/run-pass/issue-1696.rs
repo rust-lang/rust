@@ -10,11 +10,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use std::oldmap::HashMap;
+use core::hashmap::linear::LinearMap;
 
 pub fn main() {
-    let m = HashMap();
+    let mut m = LinearMap::new();
     m.insert(str::to_bytes(~"foo"), str::to_bytes(~"bar"));
     error!(m);
 }

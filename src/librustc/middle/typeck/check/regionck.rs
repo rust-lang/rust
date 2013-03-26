@@ -180,7 +180,7 @@ pub fn visit_block(b: &ast::blk, &&rcx: @mut Rcx, v: rvt) {
 pub fn visit_expr(expr: @ast::expr, &&rcx: @mut Rcx, v: rvt) {
     debug!("visit_expr(e=%s)", rcx.fcx.expr_to_str(expr));
 
-    for rcx.fcx.inh.adjustments.find(&expr.id).each |adjustment| {
+    for rcx.fcx.inh.adjustments.find(&expr.id).each |&adjustment| {
         match *adjustment {
             @ty::AutoDerefRef(
                 ty::AutoDerefRef {
@@ -331,7 +331,7 @@ pub fn constrain_auto_ref(rcx: @mut Rcx, expr: @ast::expr) {
 
     let adjustment = rcx.fcx.inh.adjustments.find(&expr.id);
     let region = match adjustment {
-        Some(@ty::AutoDerefRef(
+        Some(&@ty::AutoDerefRef(
             ty::AutoDerefRef {
                 autoref: Some(ref auto_ref), _})) => {
             auto_ref.region
@@ -727,7 +727,7 @@ pub mod guarantor {
         debug!("before adjustments, cat=%?", expr_ct.cat);
 
         match rcx.fcx.inh.adjustments.find(&expr.id) {
-            Some(@ty::AutoAddEnv(*)) => {
+            Some(&@ty::AutoAddEnv(*)) => {
                 // This is basically an rvalue, not a pointer, no regions
                 // involved.
                 expr_ct.cat = ExprCategorization {
@@ -736,7 +736,7 @@ pub mod guarantor {
                 };
             }
 
-            Some(@ty::AutoDerefRef(ref adjustment)) => {
+            Some(&@ty::AutoDerefRef(ref adjustment)) => {
                 debug!("adjustment=%?", adjustment);
 
                 expr_ct = apply_autoderefs(

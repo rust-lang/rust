@@ -10,12 +10,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use std::oldmap::HashMap;
-use std::oldmap;
+use core::hashmap::linear::LinearMap;
 
 pub fn main() {
-    let buggy_map :HashMap<uint, &uint> = HashMap::<uint, &uint>();
+    let mut buggy_map: LinearMap<uint, &uint> = LinearMap::new::<uint, &uint>();
     let x = ~1;
     buggy_map.insert(42, &*x);
 }

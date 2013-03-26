@@ -55,12 +55,11 @@ use middle::ty;
 use util::common::time;
 use util::ppaux;
 
+use core::hashmap::linear::LinearMap;
 use core::result;
 use core::vec;
 use std::list::{List, Nil, Cons};
 use std::list;
-use std::oldmap::HashMap;
-use std::oldmap;
 use syntax::codemap::{span, spanned, respan};
 use syntax::print::pprust::*;
 use syntax::{ast, ast_util, ast_map};
@@ -130,7 +129,7 @@ pub struct method_map_entry {
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type method_map = HashMap<ast::node_id, method_map_entry>;
+pub type method_map = @mut LinearMap<ast::node_id, method_map_entry>;
 
 // Resolutions for bounds of all parameters, left to right, for a given path.
 pub type vtable_res = @~[vtable_origin];
@@ -171,7 +170,7 @@ pub impl vtable_origin {
     }
 }
 
-pub type vtable_map = HashMap<ast::node_id, vtable_res>;
+pub type vtable_map = @mut LinearMap<ast::node_id, vtable_res>;
 
 pub struct CrateCtxt {
     // A mapping from method call sites to traits that have that method.
@@ -209,7 +208,7 @@ pub fn write_tpt_to_tcx(tcx: ty::ctxt,
 
 pub fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
     match tcx.def_map.find(&id) {
-      Some(x) => x,
+      Some(&x) => x,
       _ => {
         tcx.sess.span_fatal(sp, ~"internal error looking up a definition")
       }
@@ -292,7 +291,7 @@ fn check_main_fn_ty(ccx: @mut CrateCtxt,
     match ty::get(main_t).sty {
         ty::ty_bare_fn(ref fn_ty) => {
             match tcx.items.find(&main_id) {
-                Some(ast_map::node_item(it,_)) => {
+                Some(&ast_map::node_item(it,_)) => {
                     match it.node {
                         ast::item_fn(_, _, ref ps, _)
                         if ps.is_parameterized() => {
@@ -337,14 +336,14 @@ fn check_for_main_fn(ccx: @mut CrateCtxt) {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
-                   trait_map: resolve::TraitMap,
+                   +trait_map: resolve::TraitMap,
                    crate: @ast::crate)
                 -> (method_map, vtable_map) {
     let time_passes = tcx.sess.time_passes();
     let ccx = @mut CrateCtxt {
         trait_map: trait_map,
-        method_map: oldmap::HashMap(),
-        vtable_map: oldmap::HashMap(),
+        method_map: @mut LinearMap::new(),
+        vtable_map: @mut LinearMap::new(),
         coherence_info: @coherence::CoherenceInfo(),
         tcx: tcx
     };

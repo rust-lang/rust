@@ -32,9 +32,8 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{expr_repr, region_to_str};
 
-use core::hashmap::linear::LinearSet;
+use core::hashmap::linear::{LinearSet, LinearMap};
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 use syntax::codemap::span;
@@ -80,7 +79,8 @@ struct GatherLoanCtxt {
 pub fn gather_loans(bccx: @BorrowckCtxt, crate: @ast::crate) -> ReqMaps {
     let glcx = @mut GatherLoanCtxt {
         bccx: bccx,
-        req_maps: ReqMaps { req_loan_map: HashMap(), pure_map: HashMap() },
+        req_maps: ReqMaps { req_loan_map: LinearMap::new(),
+                            pure_map: LinearMap::new() },
         item_ub: 0,
         root_ub: 0,
         ignore_adjustments: LinearSet::new()
@@ -90,7 +90,8 @@ pub fn gather_loans(bccx: @BorrowckCtxt, crate: @ast::crate) -> ReqMaps {
                                           visit_stmt: add_stmt_to_map,
                                           .. *visit::default_visitor()});
     visit::visit_crate(*crate, glcx, v);
-    return glcx.req_maps;
+    let @GatherLoanCtxt{req_maps, _} = glcx;
+    return req_maps;
 }
 
 fn req_loans_in_fn(fk: &visit::fn_kind,
@@ -132,7 +133,7 @@ fn req_loans_in_expr(ex: @ast::expr,
     {
         let mut this = &mut *self;
         if !this.ignore_adjustments.contains(&ex.id) {
-            for tcx.adjustments.find(&ex.id).each |adjustments| {
+            for tcx.adjustments.find(&ex.id).each |&adjustments| {
                 this.guarantee_adjustments(ex, *adjustments);
             }
         }
@@ -257,7 +258,7 @@ fn req_loans_in_expr(ex: @ast::expr,
         // (if used like `a.b(...)`), the call where it's an argument
         // (if used like `x(a.b)`), or the block (if used like `let x
         // = a.b`).
-        let scope_r = ty::re_scope(self.tcx().region_map.get(&ex.id));
+        let scope_r = ty::re_scope(*self.tcx().region_map.get(&ex.id));
         let rcvr_cmt = self.bccx.cat_expr(rcvr);
         self.guarantee_valid(rcvr_cmt, m_imm, scope_r);
         visit::visit_expr(ex, self, vt);
@@ -429,8 +430,7 @@ pub impl GatherLoanCtxt {
                             // if the scope is some block/expr in the
                             // fn, then just require that this scope
                             // be pure
-                            let pure_map = self.req_maps.pure_map;
-                            pure_map.insert(pure_id, *e);
+                            self.req_maps.pure_map.insert(pure_id, *e);
                             self.bccx.stats.req_pure_paths += 1;
 
                             debug!("requiring purity for scope %?",
@@ -575,12 +575,11 @@ pub impl GatherLoanCtxt {
         match self.req_maps.req_loan_map.find(&scope_id) {
             Some(req_loans) => {
                 req_loans.push_all(loans);
+                return;
             }
-            None => {
-                let req_loan_map = self.req_maps.req_loan_map;
-                req_loan_map.insert(scope_id, @mut loans);
-            }
+            None => {}
         }
+        self.req_maps.req_loan_map.insert(scope_id, @mut loans);
     }
 
     fn gather_pat(@mut self,
@@ -683,7 +682,7 @@ fn add_stmt_to_map(stmt: @ast::stmt,
                    vt: visit::vt<@mut GatherLoanCtxt>) {
     match stmt.node {
         ast::stmt_expr(_, id) | ast::stmt_semi(_, id) => {
-            self.bccx.stmt_map.insert(id, ());
+            self.bccx.stmt_map.insert(id);
         }
         _ => ()
     }

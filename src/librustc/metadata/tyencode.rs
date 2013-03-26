@@ -16,11 +16,11 @@ use core::prelude::*;
 use middle::ty::{Vid, param_ty};
 use middle::ty;
 
+use core::hashmap::linear::LinearMap;
 use core::io::WriterUtil;
 use core::io;
 use core::uint;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast::*;
 use syntax::diagnostic::span_handler;
 use syntax::print::pprust::*;
@@ -47,7 +47,7 @@ pub struct ty_abbrev {
 
 pub enum abbrev_ctxt {
     ac_no_abbrevs,
-    ac_use_abbrevs(HashMap<ty::t, ty_abbrev>),
+    ac_use_abbrevs(@mut LinearMap<ty::t, ty_abbrev>),
 }
 
 fn cx_uses_abbrevs(cx: @ctxt) -> bool {
@@ -61,7 +61,7 @@ pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
     match cx.abbrevs {
       ac_no_abbrevs => {
         let result_str = match cx.tcx.short_names_cache.find(&t) {
-            Some(s) => /*bad*/copy *s,
+            Some(&s) => /*bad*/copy *s,
             None => {
                 let s = do io::with_str_writer |wr| {
                     enc_sty(wr, cx, /*bad*/copy ty::get(t).sty);

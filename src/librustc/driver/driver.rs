@@ -246,7 +246,7 @@ pub fn compile_rest(sess: Session, cfg: ast::crate_cfg,
 
         // These next two const passes can probably be merged
         time(time_passes, ~"const marking", ||
-             middle::const_eval::process_crate(crate, def_map, ty_cx));
+             middle::const_eval::process_crate(crate, ty_cx));
 
         time(time_passes, ~"const checking", ||
              middle::check_const::check_crate(sess, crate, ast_map, def_map,
@@ -546,11 +546,11 @@ pub fn build_session_options(+binary: ~str,
         let flags = vec::append(getopts::opt_strs(matches, level_short),
                                 getopts::opt_strs(matches, level_name));
         for flags.each |lint_name| {
-            let lint_name = @str::replace(*lint_name, ~"-", ~"_");
+            let lint_name = str::replace(*lint_name, ~"-", ~"_");
             match lint_dict.find(&lint_name) {
               None => {
                 early_error(demitter, fmt!("unknown %s flag: %s",
-                                           level_name, *lint_name));
+                                           level_name, lint_name));
               }
               Some(lint) => {
                 lint_opts.push((lint.lint, *level));

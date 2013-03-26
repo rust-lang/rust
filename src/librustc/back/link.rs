@@ -642,7 +642,7 @@ pub fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
 
 pub fn get_symbol_hash(ccx: @CrateContext, t: ty::t) -> @str {
     match ccx.type_hashcodes.find(&t) {
-      Some(h) => h,
+      Some(&h) => h,
       None => {
         let hash = symbol_hash(ccx.tcx, ccx.symbol_hasher, t, ccx.link_meta);
         ccx.type_hashcodes.insert(t, hash);

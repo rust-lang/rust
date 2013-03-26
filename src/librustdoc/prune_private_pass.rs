@@ -57,7 +57,7 @@ fn fold_impl(
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     do astsrv::exec(fold.ctxt.clone()) |ctxt| {
-        match ctxt.ast_map.get(&doc.item.id) {
+        match *ctxt.ast_map.get(&doc.item.id) {
             ast_map::node_item(item, _) => {
                 match item.node {
                     ast::item_impl(_, None, _, ref methods) => {
@@ -136,7 +136,7 @@ fn is_visible(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
     let id = doc.id;
 
     do astsrv::exec(srv) |ctxt| {
-        match ctxt.ast_map.get(&id) {
+        match *ctxt.ast_map.get(&id) {
             ast_map::node_item(item, _) => {
                 match &item.node {
                     &ast::item_impl(*) => {

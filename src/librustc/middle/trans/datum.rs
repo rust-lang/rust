@@ -105,6 +105,7 @@ use util::common::indenter;
 use util::ppaux::ty_to_str;
 
 use core::cmp;
+use core::container::Set; // XXX: this should not be necessary
 use core::to_bytes;
 use core::uint;
 use syntax::ast;
@@ -230,7 +231,7 @@ pub impl Datum {
          * `id` is located in the move table, but copies otherwise.
          */
 
-        if bcx.ccx().maps.moves_map.contains_key(&id) {
+        if bcx.ccx().maps.moves_map.contains(&id) {
             self.move_to(bcx, action, dst)
         } else {
             self.copy_to(bcx, action, dst)
@@ -646,16 +647,15 @@ pub impl Datum {
         let key = root_map_key { id: expr_id, derefs: derefs };
         let bcx = match ccx.maps.root_map.find(&key) {
             None => bcx,
-            Some(root_info) => self.root(bcx, root_info)
+            Some(&root_info) => self.root(bcx, root_info)
         };
 
         // Perform the write guard, if necessary.
         //
         // (Note: write-guarded values are always boxes)
-        let bcx = match ccx.maps.write_guard_map.find(&key) {
-            None => bcx,
-            Some(_) => self.perform_write_guard(bcx)
-        };
+        let bcx = if ccx.maps.write_guard_map.contains(&key) {
+            self.perform_write_guard(bcx)
+        } else { bcx };
 
         match ty::get(self.ty).sty {
             ty::ty_box(_) | ty::ty_uniq(_) => {

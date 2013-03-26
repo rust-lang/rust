@@ -13,8 +13,6 @@
 extern mod std;
 
 use std::time::precise_time_s;
-use std::oldmap;
-use std::oldmap::{Map, HashMap};
 
 use core::io::{Reader, ReaderUtil};
 use core::rand::RngUtil;
@@ -29,7 +27,6 @@ fn main() {
 
     bench!(shift_push);
     bench!(read_line);
-    bench!(str_set);
     bench!(vec_plus);
     bench!(vec_append);
     bench!(vec_push_all);
@@ -69,24 +66,6 @@ fn read_line() {
         let reader = result::get(&io::file_reader(&path));
         while !reader.eof() {
             reader.read_line();
-        }
-    }
-}
-
-fn str_set() {
-    let r = rand::Rng();
-
-    let s = oldmap::HashMap();
-
-    for int::range(0, 1000) |_i| {
-        oldmap::set_add(s, r.gen_str(10));
-    }
-
-    let mut found = 0;
-    for int::range(0, 1000) |_i| {
-        match s.find(&r.gen_str(10)) {
-          Some(_) => { found += 1; }
-          None => { }
         }
     }
 }

@@ -17,6 +17,7 @@ use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
 use metadata::tyencode;
+use middle::trans::reachable;
 use middle::ty::node_id_to_type;
 use middle::ty;
 use middle;
@@ -24,6 +25,7 @@ use util::ppaux::ty_to_str;
 
 use core::flate;
 use core::hash::{Hash, HashUtil};
+use core::hashmap::linear::{LinearMap, LinearSet};
 use core::int;
 use core::io::{Writer, WriterUtil};
 use core::io;
@@ -31,9 +33,7 @@ use core::str;
 use core::to_bytes::IterBytes;
 use core::uint;
 use core::vec;
-use std::oldmap::HashMap;
 use std::serialize::Encodable;
-use std::{ebml, oldmap};
 use std;
 use syntax::ast::*;
 use syntax::ast;
@@ -49,7 +49,7 @@ use syntax;
 use writer = std::ebml::writer;
 
 // used by astencode:
-type abbrev_map = oldmap::HashMap<ty::t, tyencode::ty_abbrev>;
+type abbrev_map = @mut LinearMap<ty::t, tyencode::ty_abbrev>;
 
 pub type encode_inlined_item = @fn(ecx: @EncodeContext,
                                    ebml_w: writer::Encoder,
@@ -59,10 +59,10 @@ pub type encode_inlined_item = @fn(ecx: @EncodeContext,
 pub struct EncodeParams {
     diag: @span_handler,
     tcx: ty::ctxt,
-    reachable: HashMap<ast::node_id, ()>,
+    reachable: reachable::map,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: HashMap<ast::node_id, ~str>,
-    discrim_symbols: HashMap<ast::node_id, ~str>,
+    item_symbols: @mut LinearMap<ast::node_id, ~str>,
+    discrim_symbols: @mut LinearMap<ast::node_id, ~str>,
     link_meta: LinkMeta,
     cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item
@@ -86,10 +86,10 @@ pub struct EncodeContext {
     diag: @span_handler,
     tcx: ty::ctxt,
     stats: @mut Stats,
-    reachable: HashMap<ast::node_id, ()>,
+    reachable: reachable::map,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: HashMap<ast::node_id, ~str>,
-    discrim_symbols: HashMap<ast::node_id, ~str>,
+    item_symbols: @mut LinearMap<ast::node_id, ~str>,
+    discrim_symbols: @mut LinearMap<ast::node_id, ~str>,
     link_meta: LinkMeta,
     cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item,
@@ -97,7 +97,7 @@ pub struct EncodeContext {
 }
 
 pub fn reachable(ecx: @EncodeContext, id: node_id) -> bool {
-    ecx.reachable.contains_key(&id)
+    ecx.reachable.contains(&id)
 }
 
 fn encode_name(ecx: @EncodeContext, ebml_w: writer::Encoder, name: ident) {
@@ -188,7 +188,7 @@ fn encode_type_param_bounds(ebml_w: writer::Encoder,
                             ecx: @EncodeContext,
                             params: &OptVec<TyParam>) {
     let ty_param_bounds =
-        @params.map_to_vec(|param| ecx.tcx.ty_param_bounds.get(&param.id));
+        @params.map_to_vec(|param| *ecx.tcx.ty_param_bounds.get(&param.id));
     encode_ty_type_param_bounds(ebml_w, ecx, ty_param_bounds);
 }
 
@@ -229,7 +229,7 @@ fn encode_type(ecx: @EncodeContext, ebml_w: writer::Encoder, typ: ty::t) {
 fn encode_symbol(ecx: @EncodeContext, ebml_w: writer::Encoder, id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
     match ecx.item_symbols.find(&id) {
-        Some(ref x) => {
+        Some(x) => {
             debug!("encode_symbol(id=%?, str=%s)", id, *x);
             ebml_w.writer.write(str::to_bytes(*x));
         }
@@ -244,7 +244,7 @@ fn encode_symbol(ecx: @EncodeContext, ebml_w: writer::Encoder, id: node_id) {
 fn encode_discriminant(ecx: @EncodeContext, ebml_w: writer::Encoder,
                        id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
-    ebml_w.writer.write(str::to_bytes(ecx.discrim_symbols.get(&id)));
+    ebml_w.writer.write(str::to_bytes(*ecx.discrim_symbols.get(&id)));
     ebml_w.end_tag();
 }
 
@@ -1026,7 +1026,7 @@ fn encode_info_for_items(ecx: @EncodeContext, ebml_w: writer::Encoder,
             let ebml_w = copy ebml_w;
             |i, cx, v| {
                 visit::visit_item(i, cx, v);
-                match ecx.tcx.items.get(&i.id) {
+                match *ecx.tcx.items.get(&i.id) {
                     ast_map::node_item(_, pt) => {
                         encode_info_for_item(ecx, ebml_w, i,
                                              index, *pt);
@@ -1039,7 +1039,7 @@ fn encode_info_for_items(ecx: @EncodeContext, ebml_w: writer::Encoder,
             let ebml_w = copy ebml_w;
             |ni, cx, v| {
                 visit::visit_foreign_item(ni, cx, v);
-                match ecx.tcx.items.get(&ni.id) {
+                match *ecx.tcx.items.get(&ni.id) {
                     ast_map::node_foreign_item(_, abi, _, pt) => {
                         encode_info_for_foreign_item(ecx, ebml_w, ni,
                                                      index, /*bad*/copy *pt,
@@ -1320,7 +1320,7 @@ pub static metadata_encoding_version : &'static [u8] =
       0x74, //'t' as u8,
       0, 0, 0, 1 ];
 
-pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
+pub fn encode_metadata(+parms: EncodeParams, crate: &crate) -> ~[u8] {
     let wr = @io::BytesWriter();
     let mut stats = Stats {
         inline_bytes: 0,
@@ -1334,18 +1334,21 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
         total_bytes: 0,
         n_inlines: 0
     };
+    let EncodeParams{item_symbols, diag, tcx, reachable, reexports2,
+                     discrim_symbols, cstore, encode_inlined_item,
+                     link_meta, _} = parms;
     let ecx = @EncodeContext {
-        diag: parms.diag,
-        tcx: parms.tcx,
+        diag: diag,
+        tcx: tcx,
         stats: @mut stats,
-        reachable: parms.reachable,
-        reexports2: parms.reexports2,
-        item_symbols: parms.item_symbols,
-        discrim_symbols: parms.discrim_symbols,
-        link_meta: /*bad*/copy parms.link_meta,
-        cstore: parms.cstore,
-        encode_inlined_item: parms.encode_inlined_item,
-        type_abbrevs: ty::new_ty_hash()
+        reachable: reachable,
+        reexports2: reexports2,
+        item_symbols: item_symbols,
+        discrim_symbols: discrim_symbols,
+        link_meta: link_meta,
+        cstore: cstore,
+        encode_inlined_item: encode_inlined_item,
+        type_abbrevs: @mut LinearMap::new()
      };
 
     let ebml_w = writer::Encoder(wr as @io::Writer);
@@ -1385,7 +1388,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
 
     ecx.stats.total_bytes = wr.pos;
 
-    if (parms.tcx.sess.meta_stats()) {
+    if (tcx.sess.meta_stats()) {
 
         do wr.bytes.each |e| {
             if *e == 0 {
