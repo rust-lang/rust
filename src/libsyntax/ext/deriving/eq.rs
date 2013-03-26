@@ -147,11 +147,9 @@ fn call_substructure_eq_method(cx: @ext_ctxt,
                                junction: Junction,
                                chain_expr: &mut Option<@expr>) {
     // Call the substructure method.
-    let self_method = build::mk_access_(cx, span, self_field, method_ident);
-    let self_call = build::mk_call_(cx,
-                                    span,
-                                    self_method,
-                                    ~[ other_field_ref ]);
+    let self_call = build::mk_method_call(cx, span,
+                                          self_field, method_ident,
+                                          ~[ other_field_ref ]);
 
     // Connect to the outer expression if necessary.
     *chain_expr = match *chain_expr {

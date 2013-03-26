@@ -111,6 +111,13 @@ pub fn mk_addr_of(cx: @ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
 pub fn mk_mut_addr_of(cx: @ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
     return mk_expr(cx, sp, ast::expr_addr_of(ast::m_mutbl, e));
 }
+pub fn mk_method_call(cx: @ext_ctxt,
+                      sp: span,
+                      rcvr_expr: @ast::expr,
+                      method_ident: ast::ident,
+                      +args: ~[@ast::expr]) -> @ast::expr {
+    mk_expr(cx, sp, ast::expr_method_call(rcvr_expr, method_ident, ~[], args, ast::NoSugar))
+}
 pub fn mk_call_(cx: @ext_ctxt, sp: span, fn_expr: @ast::expr,
                 +args: ~[@ast::expr]) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_call(fn_expr, args, ast::NoSugar))

@@ -175,6 +175,9 @@ pub fn trans_method_callee(bcx: block,
                         -> Callee {
     let _icx = bcx.insn_ctxt("impl::trans_method_callee");
 
+    debug!("trans_method_callee(callee_id=%?, self=%s, mentry=%?)",
+           callee_id, bcx.expr_to_str(self), mentry);
+
     // Replace method_self with method_static here.
     let mut origin = mentry.origin;
     match origin {
@@ -217,6 +220,8 @@ pub fn trans_method_callee(bcx: block,
         typeck::method_static(*) | typeck::method_param(*) |
         typeck::method_trait(*) => {}
     }
+
+    debug!("origin=%?", origin);
 
     match origin {
         typeck::method_static(did) => {
@@ -322,6 +327,7 @@ pub fn trans_static_method_callee(bcx: block,
 
     match vtbls[bound_index] {
         typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
+            fail_unless!(rcvr_substs.all(|t| !ty::type_needs_infer(*t)));
 
             let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
             let callee_substs = combine_impl_and_methods_tps(

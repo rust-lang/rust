@@ -1579,7 +1579,17 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
                         id: ast::node_id,
                         impl_id: Option<ast::def_id>,
                         param_substs: Option<@param_substs>,
-                        sp: Option<span>) -> fn_ctxt {
+                        sp: Option<span>) -> fn_ctxt
+{
+    for param_substs.each |p| { p.validate(); }
+
+    debug!("new_fn_ctxt_w_id(path=%s, id=%?, impl_id=%?, \
+            param_substs=%s",
+           path_str(ccx.sess, path),
+           id,
+           impl_id,
+           opt_param_substs_to_str(ccx.tcx, &param_substs));
+
     let llbbs = mk_standard_basic_blocks(llfndecl);
     return @mut fn_ctxt_ {
           llfn: llfndecl,

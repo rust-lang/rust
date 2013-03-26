@@ -60,7 +60,7 @@ use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::rscope::{in_binding_rscope};
 use middle::typeck::rscope::{region_scope, type_rscope, RegionError};
-use middle::typeck::{CrateCtxt, write_substs_to_tcx, write_ty_to_tcx};
+use middle::typeck::{CrateCtxt};
 
 use core::result;
 use core::vec;
@@ -186,19 +186,15 @@ pub fn ast_path_to_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
         self: &AC,
         rscope: &RS,
         did: ast::def_id,
-        path: @ast::path,
-        path_id: ast::node_id)
-     -> ty_param_substs_and_ty {
+        path: @ast::path)
+     -> ty_param_substs_and_ty
+{
     // Look up the polytype of the item and then substitute the provided types
     // for any type/region parameters.
-    let tcx = self.tcx();
     let ty::ty_param_substs_and_ty {
         substs: substs,
         ty: ty
     } = ast_path_to_substs_and_ty(self, rscope, did, path);
-    write_ty_to_tcx(tcx, path_id, ty);
-    write_substs_to_tcx(tcx, path_id, /*bad*/copy substs.tps);
-
     ty_param_substs_and_ty { substs: substs, ty: ty }
 }
 
@@ -368,7 +364,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
         };
         match a_def {
           ast::def_ty(did) | ast::def_struct(did) => {
-            ast_path_to_ty(self, rscope, did, path, id).ty
+            ast_path_to_ty(self, rscope, did, path).ty
           }
           ast::def_prim_ty(nty) => {
             match nty {
