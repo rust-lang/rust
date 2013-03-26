@@ -41,6 +41,9 @@ Version 0.6 (March 2013)
       * Pattern matching over vectors improved and expanded
       * `const` renamed to `static` to correspond to lifetime name,
         and make room for future `static mut` unsafe mutable globals.
+      * Replaced `#[deriving_eq]` with `#[deriving(Eq)]`
+      * `Clone` implementations can be automatically generated with
+        `#[deriving(Clone)]`
 
    * Semantic changes
       * Types with owned pointers or custom destructors move by default,
