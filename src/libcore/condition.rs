@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/*! Condition handling */
+
 use prelude::*;
 use task;
 use task::local_data::{local_data_pop, local_data_set};

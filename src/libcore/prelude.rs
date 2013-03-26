@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This file is imported into every module by default.
+//! The Rust prelude. Imported into every module by default.
 
 /* Reexported core operators */
 
