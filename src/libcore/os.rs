@@ -1167,14 +1167,6 @@ pub mod consts {
     #[cfg(windows)]
     pub use os::consts::windows::*;
 
-    pub mod unix {
-        pub static FAMILY: &'static str = "unix";
-    }
-
-    pub mod windows {
-        pub static FAMILY: &'static str = "windows";
-    }
-
     #[cfg(target_os = "macos")]
     pub use os::consts::macos::*;
 
@@ -1189,6 +1181,26 @@ pub mod consts {
 
     #[cfg(target_os = "win32")]
     pub use os::consts::win32::*;
+
+    #[cfg(target_arch = "x86")]
+    pub use os::consts::x86::*;
+
+    #[cfg(target_arch = "x86_64")]
+    pub use os::consts::x86_64::*;
+
+    #[cfg(target_arch = "arm")]
+    pub use os::consts::arm::*;
+
+    #[cfg(target_arch = "mips")]
+    use os::consts::mips::*;
+
+    pub mod unix {
+        pub static FAMILY: &'static str = "unix";
+    }
+
+    pub mod windows {
+        pub static FAMILY: &'static str = "windows";
+    }
 
     pub mod macos {
         pub static SYSNAME: &'static str = "macos";
@@ -1225,18 +1237,6 @@ pub mod consts {
         pub static EXE_SUFFIX: &'static str = ".exe";
     }
 
-
-    #[cfg(target_arch = "x86")]
-    pub use os::consts::x86::*;
-
-    #[cfg(target_arch = "x86_64")]
-    pub use os::consts::x86_64::*;
-
-    #[cfg(target_arch = "arm")]
-    pub use os::consts::arm::*;
-
-    #[cfg(target_arch = "mips")]
-    use os::consts::mips::*;
 
     pub mod x86 {
         pub static ARCH: &'static str = "x86";

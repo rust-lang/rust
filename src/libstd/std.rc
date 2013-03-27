@@ -33,7 +33,7 @@ not required in or otherwise suitable for the core library.
 #[no_core];
 
 extern mod core(vers = "0.6");
-use core::*;
+use core::prelude::*;
 
 pub mod uv_ll;
 

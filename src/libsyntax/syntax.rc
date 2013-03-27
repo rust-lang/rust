@@ -26,9 +26,9 @@
 #[no_core];
 
 extern mod core(vers = "0.6");
-use core::*;
-
 extern mod std(vers = "0.6");
+
+use core::*;
 
 pub mod syntax {
     pub use ext;

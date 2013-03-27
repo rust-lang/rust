@@ -28,6 +28,10 @@ extern mod std(vers = "0.6");
 extern mod rustc(vers = "0.6");
 extern mod syntax(vers = "0.6");
 
+use config::Config;
+use doc::Item;
+use doc::ItemUtils;
+
 use core::*;
 
 pub mod pass;
@@ -58,10 +62,6 @@ pub mod sectionalize_pass;
 pub mod escape_pass;
 pub mod prune_private_pass;
 pub mod util;
-
-use doc::ItemUtils;
-use doc::Item;
-use config::Config;
 
 pub fn main() {
     let args = os::args();

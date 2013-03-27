@@ -127,6 +127,7 @@ pub enum PatternBindingMode {
     ArgumentIrrefutableMode(mode)
 }
 
+#[deriving(Eq)]
 pub enum Namespace {
     TypeNS,
     ValueNS
@@ -161,7 +162,6 @@ pub enum NameDefinition {
     NoNameDefinition,           //< The name was unbound.
     ChildNameDefinition(def),   //< The name identifies an immediate child.
     ImportNameDefinition(def)   //< The name identifies an import.
-
 }
 
 #[deriving(Eq)]
@@ -177,15 +177,9 @@ pub enum SelfBinding {
 
 pub type ResolveVisitor = vt<()>;
 
-#[deriving(Eq)]
-pub enum ImportDirectiveNS {
-    TypeNSOnly,
-    AnyNS
-}
-
 /// Contains data for specific types of import directives.
 pub enum ImportDirectiveSubclass {
-    SingleImport(ident /* target */, ident /* source */, ImportDirectiveNS),
+    SingleImport(ident /* target */, ident /* source */),
     GlobImport
 }
 
@@ -210,9 +204,9 @@ pub impl<T> ResolveResult<T> {
 }
 
 pub enum TypeParameters<'self> {
-    NoTypeParameters,                  //< No type parameters.
+    NoTypeParameters,                   //< No type parameters.
     HasTypeParameters(&'self Generics,  //< Type parameters.
-                      node_id,         //< ID of the enclosing item
+                      node_id,          //< ID of the enclosing item
 
                       // The index to start numbering the type parameters at.
                       // This is zero if this is the outermost set of type
@@ -458,6 +452,10 @@ pub struct Module {
     children: @mut LinearMap<ident, @mut NameBindings>,
     imports: @mut ~[@ImportDirective],
 
+    // The external module children of this node that were declared with
+    // `extern mod`.
+    external_module_children: @mut LinearMap<ident, @mut Module>,
+
     // The anonymous children of this node. Anonymous children are pseudo-
     // modules that are implicitly created around items contained within
     // blocks.
@@ -495,6 +493,7 @@ pub fn Module(parent_link: ParentLink,
         kind: kind,
         children: @mut LinearMap::new(),
         imports: @mut ~[],
+        external_module_children: @mut LinearMap::new(),
         anonymous_children: @mut LinearMap::new(),
         import_resolutions: @mut LinearMap::new(),
         glob_count: 0,
@@ -968,17 +967,23 @@ pub impl Resolver {
                 return (child, new_parent);
             }
             Some(child) => {
-                // Enforce the duplicate checking mode. If we're requesting
-                // duplicate module checking, check that there isn't a module
-                // in the module with the same name. If we're requesting
-                // duplicate type checking, check that there isn't a type in
-                // the module with the same name. If we're requesting
-                // duplicate value checking, check that there isn't a value in
-                // the module with the same name. If we're requesting
-                // duplicate type checking and duplicate value checking, check
-                // that there isn't a duplicate type and a duplicate value
-                // with the same name. If no duplicate checking was requested
-                // at all, do nothing.
+                // Enforce the duplicate checking mode:
+                //
+                // * If we're requesting duplicate module checking, check that
+                //   there isn't a module in the module with the same name.
+                //
+                // * If we're requesting duplicate type checking, check that
+                //   there isn't a type in the module with the same name.
+                //
+                // * If we're requesting duplicate value checking, check that
+                //   there isn't a value in the module with the same name.
+                //
+                // * If we're requesting duplicate type checking and duplicate
+                //   value checking, check that there isn't a duplicate type
+                //   and a duplicate value with the same name.
+                //
+                // * If no duplicate checking was requested at all, do
+                //   nothing.
 
                 let mut is_duplicate = false;
                 match duplicate_checking_mode {
@@ -1432,16 +1437,10 @@ pub impl Resolver {
                     let module_ = self.get_module_from_parent(parent);
                     let state = @mut ImportState();
                     match view_path.node {
-                        view_path_simple(binding, full_path, ns, _) => {
-                            let ns = match ns {
-                                module_ns => TypeNSOnly,
-                                type_value_ns => AnyNS
-                            };
-
+                        view_path_simple(binding, full_path, _, _) => {
                             let source_ident = *full_path.idents.last();
                             let subclass = @SingleImport(binding,
-                                                         source_ident,
-                                                         ns);
+                                                         source_ident);
                             self.build_import_directive(privacy,
                                                         module_,
                                                         module_path,
@@ -1452,9 +1451,7 @@ pub impl Resolver {
                         view_path_list(_, ref source_idents, _) => {
                             for (*source_idents).each |source_ident| {
                                 let name = source_ident.node.name;
-                                let subclass = @SingleImport(name,
-                                                             name,
-                                                             AnyNS);
+                                let subclass = @SingleImport(name, name);
                                 self.build_import_directive(privacy,
                                                             module_,
                                                             copy module_path,
@@ -1479,25 +1476,21 @@ pub impl Resolver {
                 match find_extern_mod_stmt_cnum(self.session.cstore,
                                                 node_id) {
                     Some(crate_id) => {
-                        let (child_name_bindings, new_parent) =
-                            self.add_child(name, parent, ForbidDuplicateTypes,
-                                           view_item.span);
-
                         let def_id = def_id { crate: crate_id, node: 0 };
                         let parent_link = ModuleParentLink
-                            (self.get_module_from_parent(new_parent), name);
-
-                        child_name_bindings.define_module(Public,
-                                                          parent_link,
+                            (self.get_module_from_parent(parent), name);
+                        let external_module = @mut Module(parent_link,
                                                           Some(def_id),
-                                                          NormalModuleKind,
-                                                          view_item.span);
-                        self.build_reduced_graph_for_external_crate
-                            (child_name_bindings.get_module());
+                                                          NormalModuleKind);
+
+                        parent.external_module_children.insert(
+                            name,
+                            external_module);
+
+                        self.build_reduced_graph_for_external_crate(
+                            external_module);
                     }
-                    None => {
-                        /* Ignore. */
-                    }
+                    None => {}  // Ignore.
                 }
             }
         }
@@ -1869,7 +1862,7 @@ pub impl Resolver {
         // the appropriate flag.
 
         match *subclass {
-            SingleImport(target, _, _) => {
+            SingleImport(target, _) => {
                 debug!("(building import directive) building import \
                         directive: privacy %? %s::%s",
                        privacy,
@@ -2020,7 +2013,7 @@ pub impl Resolver {
                                         subclass: ImportDirectiveSubclass)
                                      -> @~str {
         match subclass {
-            SingleImport(_target, source, _ns) => self.session.str_of(source),
+            SingleImport(_target, source) => self.session.str_of(source),
             GlobImport => @~"*"
         }
     }
@@ -2080,20 +2073,12 @@ pub impl Resolver {
                 // within. Attempt to resolve the import within it.
 
                 match *import_directive.subclass {
-                    SingleImport(target, source, AnyNS) => {
+                    SingleImport(target, source) => {
                         resolution_result =
                             self.resolve_single_import(module_,
                                                        containing_module,
                                                        target,
                                                        source);
-                    }
-                    SingleImport(target, source, TypeNSOnly) => {
-                        resolution_result =
-                            self.resolve_single_module_import(
-                                module_,
-                                containing_module,
-                                target,
-                                source);
                     }
                     GlobImport => {
                         let span = import_directive.span;
@@ -2137,6 +2122,19 @@ pub impl Resolver {
         }
 
         return resolution_result;
+    }
+
+    fn create_name_bindings_from_module(module: @mut Module) -> NameBindings {
+        NameBindings {
+            type_def: Some(TypeNsDef {
+                privacy: Public,
+                module_def: Some(module),
+                type_def: None,
+            }),
+            value_def: None,
+            type_span: None,
+            value_span: None,
+        }
     }
 
     fn resolve_single_import(@mut self,
@@ -2261,6 +2259,25 @@ pub impl Resolver {
             }
         }
 
+        // If we didn't find a result in the type namespace, search the
+        // external modules.
+        match type_result {
+            BoundResult(*) => {}
+            _ => {
+                match containing_module.external_module_children
+                                       .find(&source) {
+                    None => {} // Continue.
+                    Some(module) => {
+                        let name_bindings =
+                            @mut Resolver::create_name_bindings_from_module(
+                                *module);
+                        type_result = BoundResult(containing_module,
+                                                  name_bindings);
+                    }
+                }
+            }
+        }
+
         // We've successfully resolved the import. Write the results in.
         fail_unless!(module_.import_resolutions.contains_key(&target));
         let import_resolution = module_.import_resolutions.get(&target);
@@ -2332,135 +2349,9 @@ pub impl Resolver {
         return Success(());
     }
 
-    fn resolve_single_module_import(@mut self,
-                                    module_: @mut Module,
-                                    containing_module: @mut Module,
-                                    target: ident,
-                                    source: ident)
-                                 -> ResolveResult<()> {
-        debug!("(resolving single module import) resolving `%s` = `%s::%s` \
-                from `%s`",
-               *self.session.str_of(target),
-               self.module_to_str(containing_module),
-               *self.session.str_of(source),
-               self.module_to_str(module_));
-
-        // We need to resolve the module namespace for this to succeed.
-        let mut module_result = UnknownResult;
-
-        // Search for direct children of the containing module.
-        match containing_module.children.find(&source) {
-            None => {
-                // Continue.
-            }
-            Some(child_name_bindings) => {
-                if child_name_bindings.defined_in_namespace(TypeNS) {
-                    module_result = BoundResult(containing_module,
-                                                *child_name_bindings);
-                }
-            }
-        }
-
-        // Unless we managed to find a result, search imports as well.
-        match module_result {
-            BoundResult(*) => {
-                // Continue.
-            }
-            _ => {
-                // If there is an unresolved glob at this point in the
-                // containing module, bail out. We don't know enough to be
-                // able to resolve this import.
-
-                if containing_module.glob_count > 0 {
-                    debug!("(resolving single module import) unresolved \
-                            glob; bailing out");
-                    return Indeterminate;
-                }
-
-                // Now search the exported imports within the containing
-                // module.
-                match containing_module.import_resolutions.find(&source) {
-                    None => {
-                        // The containing module definitely doesn't have an
-                        // exported import with the name in question. We can
-                        // therefore accurately report that the names are
-                        // unbound.
-
-                        if module_result.is_unknown() {
-                            module_result = UnboundResult;
-                        }
-                    }
-                    Some(import_resolution)
-                            if import_resolution.outstanding_references
-                                == 0 => {
-                        // The name is an import which has been fully
-                        // resolved. We can, therefore, just follow it.
-
-                        if module_result.is_unknown() {
-                            match (*import_resolution).target_for_namespace(
-                                    TypeNS) {
-                                None => {
-                                    module_result = UnboundResult;
-                                }
-                                Some(target) => {
-                                    import_resolution.state.used = true;
-                                    module_result = BoundResult
-                                        (target.target_module,
-                                         target.bindings);
-                                }
-                            }
-                        }
-                    }
-                    Some(_) => {
-                        // The import is unresolved. Bail out.
-                        debug!("(resolving single module import) unresolved \
-                                import; bailing out");
-                        return Indeterminate;
-                    }
-                }
-            }
-        }
-
-        // We've successfully resolved the import. Write the results in.
-        fail_unless!(module_.import_resolutions.contains_key(&target));
-        let import_resolution = module_.import_resolutions.get(&target);
-
-        match module_result {
-            BoundResult(target_module, name_bindings) => {
-                debug!("(resolving single import) found module binding");
-                import_resolution.type_target =
-                    Some(Target(target_module, name_bindings));
-            }
-            UnboundResult => {
-                debug!("(resolving single import) didn't find module \
-                        binding");
-            }
-            UnknownResult => {
-                fail!(~"module result should be known at this point");
-            }
-        }
-
-        let i = import_resolution;
-        if i.type_target.is_none() {
-          // If this name wasn't found in the type namespace, it's
-          // definitely unresolved.
-          return Failed;
-        }
-
-        fail_unless!(import_resolution.outstanding_references >= 1);
-        import_resolution.outstanding_references -= 1;
-
-        debug!("(resolving single module import) successfully resolved \
-               import");
-        return Success(());
-    }
-
-
-    /**
-     * Resolves a glob import. Note that this function cannot fail; it either
-     * succeeds or bails out (as importing * from an empty module or a module
-     * that exports nothing is valid).
-     */
+    // Resolves a glob import. Note that this function cannot fail; it either
+    // succeeds or bails out (as importing * from an empty module or a module
+    // that exports nothing is valid).
     fn resolve_glob_import(@mut self,
                            privacy: Privacy,
                            module_: @mut Module,
@@ -2535,8 +2426,8 @@ pub impl Resolver {
             }
         }
 
-        // Add all children from the containing module.
-        for containing_module.children.each |&(ident, name_bindings)| {
+        let merge_import_resolution = |ident,
+                                       name_bindings: @mut NameBindings| {
             let mut dest_import_resolution;
             match module_.import_resolutions.find(ident) {
                 None => {
@@ -2563,13 +2454,26 @@ pub impl Resolver {
             if name_bindings.defined_in_public_namespace(ValueNS) {
                 debug!("(resolving glob import) ... for value target");
                 dest_import_resolution.value_target =
-                    Some(Target(containing_module, *name_bindings));
+                    Some(Target(containing_module, name_bindings));
             }
             if name_bindings.defined_in_public_namespace(TypeNS) {
                 debug!("(resolving glob import) ... for type target");
                 dest_import_resolution.type_target =
-                    Some(Target(containing_module, *name_bindings));
+                    Some(Target(containing_module, name_bindings));
             }
+        };
+
+        // Add all children from the containing module.
+        for containing_module.children.each |&(ident, name_bindings)| {
+            merge_import_resolution(ident, *name_bindings);
+        }
+
+        // Add external module children from the containing module.
+        for containing_module.external_module_children.each
+                |&(ident, module)| {
+            let name_bindings =
+                @mut Resolver::create_name_bindings_from_module(*module);
+            merge_import_resolution(ident, name_bindings);
         }
 
         debug!("(resolving glob import) successfully resolved import");
@@ -2759,7 +2663,6 @@ pub impl Resolver {
 
         // The current module node is handled specially. First, check for
         // its immediate children.
-
         match module_.children.find(&name) {
             Some(name_bindings)
                     if name_bindings.defined_in_namespace(namespace) => {
@@ -2772,7 +2675,6 @@ pub impl Resolver {
         // all its imports in the usual way; this is because chains of
         // adjacent import statements are processed as though they mutated the
         // current scope.
-
         match module_.import_resolutions.find(&name) {
             None => {
                 // Not found; continue.
@@ -2791,6 +2693,19 @@ pub impl Resolver {
                         import_resolution.state.used = true;
                         return Success(copy target);
                     }
+                }
+            }
+        }
+
+        // Search for external modules.
+        if namespace == TypeNS {
+            match module_.external_module_children.find(&name) {
+                None => {}
+                Some(module) => {
+                    let name_bindings =
+                        @mut Resolver::create_name_bindings_from_module(
+                            *module);
+                    return Success(Target(module_, name_bindings));
                 }
             }
         }
@@ -3027,7 +2942,8 @@ pub impl Resolver {
         // Check the list of resolved imports.
         match module_.import_resolutions.find(&name) {
             Some(import_resolution) => {
-                if import_resolution.outstanding_references != 0 {
+                if import_resolution.privacy == Public &&
+                        import_resolution.outstanding_references != 0 {
                     debug!("(resolving name in module) import \
                             unresolved; bailing out");
                     return Indeterminate;
@@ -3054,8 +2970,19 @@ pub impl Resolver {
                     }
                 }
             }
-            None => {
-                // Continue.
+            None => {} // Continue.
+        }
+
+        // Finally, search through external children.
+        if namespace == TypeNS {
+            match module_.external_module_children.find(&name) {
+                None => {}
+                Some(module) => {
+                    let name_bindings =
+                        @mut Resolver::create_name_bindings_from_module(
+                            *module);
+                    return Success(Target(module_, name_bindings));
+                }
             }
         }
 
@@ -4541,20 +4468,31 @@ pub impl Resolver {
                             (Some(_), _) | (None, _) => {
                                 // This can happen with external impls, due to
                                 // the imperfect way we read the metadata.
-
-                                return NoNameDefinition;
                             }
                         }
                     }
-                    None => {
-                        return NoNameDefinition;
+                    None => {}
+                }
+            }
+            Some(_) | None => {}    // Continue.
+        }
+
+        // Finally, search through external children.
+        if namespace == TypeNS {
+            match containing_module.external_module_children.find(&name) {
+                None => {}
+                Some(module) => {
+                    match module.def_id {
+                        None => {} // Continue.
+                        Some(def_id) => {
+                            return ChildNameDefinition(def_mod(def_id));
+                        }
                     }
                 }
             }
-            Some(_) | None => {
-                return NoNameDefinition;
-            }
         }
+
+        return NoNameDefinition;
     }
 
     fn intern_module_part_of_path(@mut self, path: @path) -> ~[ident] {
