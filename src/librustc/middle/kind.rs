@@ -91,7 +91,7 @@ fn check_struct_safe_for_destructor(cx: Context,
                                     span: span,
                                     struct_did: def_id) {
     let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
-    if struct_tpt.bounds.len() == 0 {
+    if struct_tpt.generics.bounds.len() == 0 {
         let struct_ty = ty::mk_struct(cx.tcx, struct_did, ty::substs {
             self_r: None,
             self_ty: None,
@@ -279,7 +279,7 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
         let bounds = match e.node {
           expr_path(_) => {
             let did = ast_util::def_id_of_def(*cx.tcx.def_map.get(&e.id));
-            ty::lookup_item_type(cx.tcx, did).bounds
+            ty::lookup_item_type(cx.tcx, did).generics.bounds
           }
           _ => {
             // Type substitutions should only occur on paths and
@@ -340,7 +340,7 @@ fn check_ty(aty: @Ty, cx: Context, v: visit::vt<Context>) {
             // FIXME(#5562): removing this copy causes a segfault before stage2
             let ts = /*bad*/ copy **ts;
             let did = ast_util::def_id_of_def(*cx.tcx.def_map.get(&id));
-            let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
+            let bounds = ty::lookup_item_type(cx.tcx, did).generics.bounds;
             for vec::each2(ts, *bounds) |ty, bound| {
                 check_bounds(cx, aty.id, aty.span, *ty, *bound)
             }

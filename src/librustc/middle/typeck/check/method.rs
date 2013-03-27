@@ -382,7 +382,7 @@ pub impl<'self> LookupContext<'self> {
         let bounds = tcx.ty_param_bounds.get(&param_ty.def_id.node);
 
         for bounds.each |bound| {
-            let bound_trait_ty = match *bound {
+            let bound_trait_ref = match *bound {
                 ty::bound_trait(bound_t) => bound_t,
 
                 ty::bound_copy | ty::bound_owned |
@@ -391,22 +391,10 @@ pub impl<'self> LookupContext<'self> {
                 }
             };
 
-
-            let bound_substs = match ty::get(bound_trait_ty).sty {
-                ty::ty_trait(_, ref substs, _) => (/*bad*/copy *substs),
-                _ => {
-                    self.bug(fmt!("add_candidates_from_param: \
-                                   non-trait bound %s",
-                                  self.ty_to_str(bound_trait_ty)));
-                }
-            };
-
-
             // Loop over the trait and all of its supertraits.
             let mut worklist = ~[];
 
-            let init_trait_ty = bound_trait_ty;
-            let init_substs = bound_substs;
+            let init_trait_ref = bound_trait_ref;
 
             // Replace any appearance of `self` with the type of the
             // generic parameter itself.  Note that this is the only
@@ -417,29 +405,26 @@ pub impl<'self> LookupContext<'self> {
             // to self are not permitted).
             let init_substs = substs {
                 self_ty: Some(rcvr_ty),
-                ..init_substs
+                ..copy bound_trait_ref.substs
             };
 
-            worklist.push((init_trait_ty, init_substs));
+            worklist.push((init_trait_ref.def_id, init_substs));
 
             let mut i = 0;
             while i < worklist.len() {
-                let (init_trait_ty, init_substs) = /*bad*/copy worklist[i];
+                let (init_trait_id, init_substs) = /*bad*/copy worklist[i];
                 i += 1;
 
-                let init_trait_id = ty::ty_to_def_id(init_trait_ty).get();
-
                 // Add all the supertraits of this trait to the worklist.
-                let supertraits = ty::trait_supertraits(tcx,
-                                                        init_trait_id);
-                for supertraits.each |supertrait| {
+                let supertraits = ty::trait_supertraits(tcx, init_trait_id);
+                for supertraits.each |supertrait_ref| {
                     debug!("adding supertrait: %?",
-                           supertrait.def_id);
+                           supertrait_ref.def_id);
 
-                    let new_substs = ty::subst_substs(
+                    let new_substs = ty::subst_in_substs(
                         tcx,
-                        &supertrait.tpt.substs,
-                        &init_substs);
+                        &init_substs,
+                        &supertrait_ref.substs);
 
                     // Again replacing the self type
                     let new_substs = substs {
@@ -447,7 +432,7 @@ pub impl<'self> LookupContext<'self> {
                         ..new_substs
                     };
 
-                    worklist.push((supertrait.tpt.ty, new_substs));
+                    worklist.push((supertrait_ref.def_id, new_substs));
                 }
 
 
@@ -1116,7 +1101,7 @@ pub impl<'self> LookupContext<'self> {
         // If they were not explicitly supplied, just construct fresh
         // type variables.
         let num_supplied_tps = self.supplied_tps.len();
-        let num_method_tps = candidate.method_ty.tps.len();
+        let num_method_tps = candidate.method_ty.generics.bounds.len();
         let m_substs = {
             if num_supplied_tps == 0u {
                 self.fcx.infcx().next_ty_vars(num_method_tps)
@@ -1210,7 +1195,7 @@ pub impl<'self> LookupContext<'self> {
                   self-type through a boxed trait");
         }
 
-        if candidate.method_ty.tps.len() > 0 {
+        if candidate.method_ty.generics.bounds.len() > 0 {
             self.tcx().sess.span_err(
                 self.expr.span,
                 ~"cannot call a generic method through a boxed trait");

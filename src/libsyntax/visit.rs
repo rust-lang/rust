@@ -147,6 +147,10 @@ pub fn visit_local<E>(loc: @local, e: E, v: vt<E>) {
     }
 }
 
+fn visit_trait_ref<E>(tref: @ast::trait_ref, e: E, v: vt<E>) {
+    visit_path(tref.path, e, v);
+}
+
 pub fn visit_item<E>(i: @item, e: E, v: vt<E>) {
     match i.node {
         item_const(t, ex) => {
@@ -189,9 +193,9 @@ pub fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         }
         item_impl(ref tps, ref traits, ty, ref methods) => {
             (v.visit_generics)(tps, e, v);
-            for traits.each |p| {
-                visit_path(p.path, e, v);
-        }
+            for traits.each |&p| {
+                visit_trait_ref(p, e, v);
+            }
             (v.visit_ty)(ty, e, v);
             for methods.each |m| {
                 visit_method_helper(*m, e, v)
@@ -327,8 +331,8 @@ pub fn visit_ty_param_bounds<E>(bounds: @OptVec<TyParamBound>,
                                 e: E, v: vt<E>) {
     for bounds.each |bound| {
         match *bound {
-            TraitTyParamBound(ty) => (v.visit_ty)(ty, e, v),
-            RegionTyParamBound => ()
+            TraitTyParamBound(ty) => visit_trait_ref(ty, e, v),
+            RegionTyParamBound => {}
         }
     }
 }

@@ -417,9 +417,9 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
     }
 
     fn visit_trait(&self) -> bool {
-        self.align_to::<TyVisitor>();
+        self.align_to::<@TyVisitor>();
         if ! self.inner.visit_trait() { return false; }
-        self.bump_past::<TyVisitor>();
+        self.bump_past::<@TyVisitor>();
         true
     }
 

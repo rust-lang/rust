@@ -139,7 +139,7 @@ pub fn get_provided_trait_methods(tcx: ty::ctxt,
     decoder::get_provided_trait_methods(cstore.intr, cdata, def.node, tcx)
 }
 
-pub fn get_supertraits(tcx: ty::ctxt, def: ast::def_id) -> ~[ty::t] {
+pub fn get_supertraits(tcx: ty::ctxt, def: ast::def_id) -> ~[@ty::TraitRef] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_supertraits(cdata, def.node, tcx)
@@ -180,6 +180,12 @@ pub fn get_type(tcx: ty::ctxt,
     decoder::get_type(cdata, def.node, tcx)
 }
 
+pub fn get_trait_def(tcx: ty::ctxt, def: ast::def_id) -> ty::TraitDef {
+    let cstore = tcx.cstore;
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_trait_def(cdata, def.node, tcx)
+}
+
 pub fn get_region_param(cstore: @mut metadata::cstore::CStore,
                         def: ast::def_id) -> Option<ty::region_variance> {
     let cdata = cstore::get_crate_data(cstore, def.crate);
@@ -204,8 +210,8 @@ pub fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
     debug!("got field data %?", the_field);
     let ty = decoder::item_type(def, the_field, tcx, cdata);
     ty::ty_param_bounds_and_ty {
-        bounds: @~[],
-        region_param: None,
+        generics: ty::Generics {bounds: @~[],
+                                region_param: None},
         ty: ty
     }
 }
@@ -213,7 +219,8 @@ pub fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
 // Given a def_id for an impl or class, return the traits it implements,
 // or the empty vector if it's not for an impl or for a class that implements
 // traits
-pub fn get_impl_traits(tcx: ty::ctxt, def: ast::def_id) -> ~[ty::t] {
+pub fn get_impl_traits(tcx: ty::ctxt,
+                       def: ast::def_id) -> ~[@ty::TraitRef] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_impl_traits(cdata, def.node, tcx)

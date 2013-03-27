@@ -11,7 +11,6 @@
 use core::prelude::*;
 
 use back::abi;
-use driver;
 use lib::llvm::llvm;
 use lib::llvm::ValueRef;
 use lib;
@@ -302,8 +301,8 @@ pub fn trans_static_method_callee(bcx: block,
     // found on the type parametesr T1...Tn to find the index of the
     // one we are interested in.
     let bound_index = {
-        let trait_polyty = ty::lookup_item_type(bcx.tcx(), trait_id);
-        ty::count_traits_and_supertraits(bcx.tcx(), *trait_polyty.bounds)
+        let trait_def = ty::lookup_trait_def(bcx.tcx(), trait_id);
+        ty::count_traits_and_supertraits(bcx.tcx(), *trait_def.generics.bounds)
     };
 
     let mname = if method_id.crate == ast::local_crate {
@@ -552,8 +551,10 @@ pub fn combine_impl_and_methods_origins(bcx: block,
     // rcvr + method bounds.
     let ccx = bcx.ccx(), tcx = bcx.tcx();
     let n_m_tps = method_ty_param_count(ccx, mth_did, impl_did);
-    let ty::ty_param_bounds_and_ty {bounds: r_m_bounds, _}
-        = ty::lookup_item_type(tcx, mth_did);
+    let ty::ty_param_bounds_and_ty {
+        generics: ty::Generics {bounds: r_m_bounds, _},
+        _
+    } = ty::lookup_item_type(tcx, mth_did);
     let n_r_m_tps = r_m_bounds.len(); // rcvr + method tps
     let m_boundss = vec::slice(*r_m_bounds, n_r_m_tps - n_m_tps, n_r_m_tps);
 
@@ -656,7 +657,6 @@ pub fn trans_trait_callee_from_llval(bcx: block,
             // payload.
             match store {
                 ty::BoxTraitStore |
-                ty::BareTraitStore |
                 ty::UniqTraitStore => {
                     llself = GEPi(bcx, llbox, [0u, abi::box_field_body]);
                 }
@@ -679,7 +679,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
 
             // Pass a pointer to the box.
             match store {
-                ty::BoxTraitStore | ty::BareTraitStore => llself = llbox,
+                ty::BoxTraitStore => llself = llbox,
                 _ => bcx.tcx().sess.bug(~"@self receiver with non-@Trait")
             }
 
@@ -785,19 +785,14 @@ pub fn make_impl_vtable(ccx: @CrateContext,
     let tcx = ccx.tcx;
 
     // XXX: This should support multiple traits.
-    let trt_id = driver::session::expect(
-        tcx.sess,
-        ty::ty_to_def_id(ty::impl_traits(tcx,
-                                         impl_id,
-                                         ty::BoxTraitStore)[0]),
-        || ~"make_impl_vtable: non-trait-type implemented");
+    let trt_id = ty::impl_trait_refs(tcx, impl_id)[0].def_id;
 
-    let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;
+    let has_tps = ty::lookup_item_type(ccx.tcx, impl_id).generics.bounds.len() > 0u;
     make_vtable(ccx, ty::trait_method_def_ids(tcx, trt_id).map(|method_def_id| {
         let im = ty::method(tcx, *method_def_id);
         let fty = ty::subst_tps(tcx, substs, None,
                                 ty::mk_bare_fn(tcx, copy im.fty));
-        if im.tps.len() > 0u || ty::type_has_self(fty) {
+        if im.generics.bounds.len() > 0u || ty::type_has_self(fty) {
             debug!("(making impl vtable) method has self or type params: %s",
                    *tcx.sess.str_of(im.ident));
             C_null(T_ptr(T_nil()))
@@ -844,7 +839,7 @@ pub fn trans_trait_cast(bcx: block,
     let v_ty = expr_ty(bcx, val);
 
     match store {
-        ty::RegionTraitStore(_) | ty::BoxTraitStore | ty::BareTraitStore => {
+        ty::RegionTraitStore(_) | ty::BoxTraitStore => {
             let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
             // Just store the pointer into the pair.
             llboxdest = PointerCast(bcx,

@@ -153,13 +153,22 @@ fn add_to_index(ecx: @EncodeContext, ebml_w: writer::Encoder, path: &[ident],
         });
 }
 
-fn encode_trait_ref(ebml_w: writer::Encoder, ecx: @EncodeContext,
-                    t: @trait_ref) {
-    ebml_w.start_tag(tag_impl_trait);
-    encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, t.ref_id));
+fn encode_trait_ref(ebml_w: writer::Encoder,
+                    ecx: @EncodeContext,
+                    trait_ref: &ty::TraitRef,
+                    tag: uint)
+{
+    let ty_str_ctxt = @tyencode::ctxt {
+        diag: ecx.diag,
+        ds: def_to_str,
+        tcx: ecx.tcx,
+        reachable: |a| reachable(ecx, a),
+        abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
+
+    ebml_w.start_tag(tag);
+    tyencode::enc_trait_ref(ebml_w.writer, ty_str_ctxt, trait_ref);
     ebml_w.end_tag();
 }
-
 
 // Item info table encoding
 fn encode_family(ebml_w: writer::Encoder, c: char) {
@@ -579,7 +588,7 @@ fn encode_method_ty_fields(ecx: @EncodeContext,
 {
     encode_def_id(ebml_w, method_ty.def_id);
     encode_name(ecx, ebml_w, method_ty.ident);
-    encode_ty_type_param_bounds(ebml_w, ecx, method_ty.tps,
+    encode_ty_type_param_bounds(ebml_w, ecx, method_ty.generics.bounds,
                                 tag_item_method_tps);
     encode_transformed_self_ty(ecx, ebml_w, method_ty.transformed_self_ty);
     encode_method_fty(ecx, ebml_w, &method_ty.fty);
@@ -872,8 +881,9 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
             ebml_w.writer.write(str::to_bytes(def_to_str(method_def_id)));
             ebml_w.end_tag();
         }
-        for opt_trait.each |associated_trait| {
-           encode_trait_ref(ebml_w, ecx, *associated_trait);
+        for opt_trait.each |ast_trait_ref| {
+            let trait_ref = ty::node_id_to_trait_ref(ecx.tcx, ast_trait_ref.ref_id);
+            encode_trait_ref(ebml_w, ecx, trait_ref, tag_item_trait_ref);
         }
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
@@ -894,14 +904,15 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
                                    &m.generics);
         }
       }
-      item_trait(ref generics, ref traits, ref ms) => {
+      item_trait(ref generics, ref super_traits, ref ms) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'I');
         encode_region_param(ecx, ebml_w, item);
         encode_type_param_bounds(ebml_w, ecx, &generics.ty_params);
-        encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
+        let trait_def = ty::lookup_trait_def(tcx, local_def(item.id));
+        encode_trait_ref(ebml_w, ecx, trait_def.trait_ref, tag_item_trait_ref);
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
         for ty::trait_method_def_ids(tcx, local_def(item.id)).each |&method_def_id| {
@@ -910,8 +921,9 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
             ebml_w.end_tag();
         }
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
-        for traits.each |associated_trait| {
-            encode_trait_ref(ebml_w, ecx, *associated_trait);
+        for super_traits.each |ast_trait_ref| {
+            let trait_ref = ty::node_id_to_trait_ref(ecx.tcx, ast_trait_ref.ref_id);
+            encode_trait_ref(ebml_w, ecx, trait_ref, tag_item_super_trait_ref);
         }
         ebml_w.end_tag();
 
@@ -940,7 +952,7 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
                                       method_ty.fty.purity));
 
                     let tpt = ty::lookup_item_type(tcx, method_def_id);
-                    encode_ty_type_param_bounds(ebml_w, ecx, tpt.bounds,
+                    encode_ty_type_param_bounds(ebml_w, ecx, tpt.generics.bounds,
                                                 tag_items_data_item_ty_param_bounds);
                     encode_type(ecx, ebml_w, tpt.ty);
                 }
