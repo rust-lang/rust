@@ -45,62 +45,31 @@ pub trait TotalOrd {
     fn cmp(&self, other: &Self) -> Ordering;
 }
 
-#[inline(always)]
-fn icmp<T: Ord>(a: &T, b: &T) -> Ordering {
-    if *a < *b { Less }
-    else if *a > *b { Greater }
-    else { Equal }
-}
+macro_rules! totalord_impl(
+    ($t:ty) => {
+        impl TotalOrd for $t {
+            #[inline(always)]
+            fn cmp(&self, other: &$t) -> Ordering {
+                if *self < *other { Less }
+                else if *self > *other { Greater }
+                else { Equal }
+            }
+        }
+    }
+)
 
-impl TotalOrd for u8 {
-    #[inline(always)]
-    fn cmp(&self, other: &u8) -> Ordering { icmp(self, other) }
-}
+totalord_impl!(u8)
+totalord_impl!(u16)
+totalord_impl!(u32)
+totalord_impl!(u64)
 
-impl TotalOrd for u16 {
-    #[inline(always)]
-    fn cmp(&self, other: &u16) -> Ordering { icmp(self, other) }
-}
+totalord_impl!(i8)
+totalord_impl!(i16)
+totalord_impl!(i32)
+totalord_impl!(i64)
 
-impl TotalOrd for u32 {
-    #[inline(always)]
-    fn cmp(&self, other: &u32) -> Ordering { icmp(self, other) }
-}
-
-impl TotalOrd for u64 {
-    #[inline(always)]
-    fn cmp(&self, other: &u64) -> Ordering { icmp(self, other) }
-}
-
-impl TotalOrd for i8 {
-    #[inline(always)]
-    fn cmp(&self, other: &i8) -> Ordering { icmp(self, other) }
-}
-
-impl TotalOrd for i16 {
-    #[inline(always)]
-    fn cmp(&self, other: &i16) -> Ordering { icmp(self, other) }
-}
-
-impl TotalOrd for i32 {
-    #[inline(always)]
-    fn cmp(&self, other: &i32) -> Ordering { icmp(self, other) }
-}
-
-impl TotalOrd for i64 {
-    #[inline(always)]
-    fn cmp(&self, other: &i64) -> Ordering { icmp(self, other) }
-}
-
-impl TotalOrd for int {
-    #[inline(always)]
-    fn cmp(&self, other: &int) -> Ordering { icmp(self, other) }
-}
-
-impl TotalOrd for uint {
-    #[inline(always)]
-    fn cmp(&self, other: &uint) -> Ordering { icmp(self, other) }
-}
+totalord_impl!(int)
+totalord_impl!(uint)
 
 /**
 * Trait for values that can be compared for a sort-order.
