@@ -2728,8 +2728,9 @@ pub impl Parser {
                     }
                     self.bump();
                 }
-                token::IDENT(*) => {
+                token::MOD_SEP | token::IDENT(*) => {
                     let maybe_bound = match *self.token {
+                        token::MOD_SEP => None,
                         token::IDENT(copy sid, _) => {
                             match *self.id_to_str(sid) {
                                 ~"send" |
@@ -2757,7 +2758,7 @@ pub impl Parser {
                             result.push(bound);
                         }
                         None => {
-                            let ty = self.parse_ty(false);
+                            let ty = self.parse_ty(true);
                             result.push(TraitTyParamBound(ty));
                         }
                     }
