@@ -10,7 +10,7 @@
 
 // Why one-tuples? Because macros.
 
-fn main() {
+pub fn main() {
     match ('c',) {
         (x,) => {
             fail_unless!(x == 'c');

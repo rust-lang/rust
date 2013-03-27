@@ -8,13 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eq)]
-struct Point { x : int }
+// xfail-test
+// aux-build:issue_3907_1.rs
+extern mod issue_3907_1;
 
-pub fn main() {
-    assert_eq!(14,14);
-    assert_eq!(~"abc",~"abc");
-    assert_eq!(~Point{x:34},~Point{x:34});
-    assert_eq!(&Point{x:34},&Point{x:34});
-    assert_eq!(@Point{x:34},@Point{x:34});
+type Foo = issue_3907_1::Foo;
+
+struct S {
+    name: int
+}
+
+impl Foo for S {
+    fn bar() { }
+}
+
+fn main() {
+    let s = S {
+        name: 0
+    };
+    s.bar();
 }

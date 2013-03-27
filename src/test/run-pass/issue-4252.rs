@@ -8,13 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eq)]
-struct Point { x : int }
+// xfail-test
 
-pub fn main() {
-    assert_eq!(14,14);
-    assert_eq!(~"abc",~"abc");
-    assert_eq!(~Point{x:34},~Point{x:34});
-    assert_eq!(&Point{x:34},&Point{x:34});
-    assert_eq!(@Point{x:34},@Point{x:34});
+trait X {
+    fn call(&self);
+}
+
+struct Y;
+
+struct Z<T> {
+    x: T
+}
+
+impl X for Y {
+    fn call(&self) {
+    }
+}
+
+impl<T: X> Drop for Z<T> {
+    fn finalize(&self) {
+        self.x.call(); // Adding this statement causes an ICE.
+    }
+}
+
+fn main() {
+    let y = Y;
+    let _z = Z{x: y};
 }

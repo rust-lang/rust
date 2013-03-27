@@ -8,27 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
 struct Thing {
     x: int
 }
 
-impl Mul<int, Thing>*/ for Thing/* { //~ ERROR Look ma, no Mul!
-    fn mul(c: &int) -> Thing {
+impl Thing {
+    fn mul(&self, c: &int) -> Thing {
         Thing {x: self.x * *c}
     }
 }
 
 fn main() {
     let u = Thing {x: 2};
-    let _v = u.mul(&3); // Works
-    let w = u * 3; // Works!!
+    let _v = u.mul(&3); // This is ok
+    let w = u * 3; //~ ERROR binary operation * cannot be applied to type `Thing`
     io::println(fmt!("%i", w.x));
-
-    /*
-    // This doesn't work though.
-    let u2 = u as @Mul<int, Thing>;
-    let w2 = u2.mul(&4);
-    io::println(fmt!("%i", w2.x));
-    */
 }

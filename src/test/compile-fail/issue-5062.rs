@@ -8,13 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eq)]
-struct Point { x : int }
-
-pub fn main() {
-    assert_eq!(14,14);
-    assert_eq!(~"abc",~"abc");
-    assert_eq!(~Point{x:34},~Point{x:34});
-    assert_eq!(&Point{x:34},&Point{x:34});
-    assert_eq!(@Point{x:34},@Point{x:34});
-}
+// xfail-test
+fn main() { fmt!("%?", None); } //~ ERROR can't resolve type variable

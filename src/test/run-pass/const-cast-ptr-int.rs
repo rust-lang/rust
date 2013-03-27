@@ -10,6 +10,6 @@
 
 static a: *u8 = 0 as *u8;
 
-fn main() {
+pub fn main() {
     fail_unless!(a == ptr::null());
 }

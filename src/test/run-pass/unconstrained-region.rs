@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eq)]
-struct Point { x : int }
-
-pub fn main() {
-    assert_eq!(14,14);
-    assert_eq!(~"abc",~"abc");
-    assert_eq!(~Point{x:34},~Point{x:34});
-    assert_eq!(&Point{x:34},&Point{x:34});
-    assert_eq!(@Point{x:34},@Point{x:34});
+// xfail-test
+// See #3283
+fn foo(blk: &fn(p: &'a fn() -> &'a fn())) {
+        let mut state = 0;
+        let statep = &mut state;
+    do blk {
+        || { *statep = 1; }
+    }
+}
+fn main() {
+    do foo |p| { p()() }
 }
