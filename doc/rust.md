@@ -830,12 +830,12 @@ An example of re-exporting:
 ~~~~
 # fn main() { }
 mod quux {
+    pub use quux::foo::*;
+
     pub mod foo {
         pub fn bar() { }
         pub fn baz() { }
     }
-
-    pub use quux::foo::*;
 }
 ~~~~
 
@@ -2008,8 +2008,8 @@ then the expression completes.
 Some examples of call expressions:
 
 ~~~~
-# fn add(x: int, y: int) -> int { 0 }
 # use core::from_str::FromStr::from_str;
+# fn add(x: int, y: int) -> int { 0 }
 
 let x: int = add(1, 2);
 let pi = from_str::<f32>("3.14");
