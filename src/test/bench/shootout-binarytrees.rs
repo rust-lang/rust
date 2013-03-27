@@ -12,7 +12,7 @@ extern mod std;
 use std::arena;
 use methods = std::arena::Arena;
 
-enum tree {
+enum tree<'self> {
     nil,
     node(&'self tree<'self>, &'self tree<'self>, int),
 }
@@ -26,9 +26,10 @@ fn item_check(t: &tree) -> int {
     }
 }
 
-fn bottom_up_tree(arena: &'r arena::Arena,
-                  item: int,
-                  depth: int) -> &'r tree<'r> {
+fn bottom_up_tree<'r>(arena: &'r arena::Arena,
+                      item: int,
+                      depth: int)
+                   -> &'r tree<'r> {
     if depth > 0 {
         return arena.alloc(
             || node(bottom_up_tree(arena, 2 * item - 1, depth - 1),

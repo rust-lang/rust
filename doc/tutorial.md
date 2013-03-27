@@ -2054,9 +2054,9 @@ name and a double colon.  The compiler uses type inference to decide which
 implementation to use.
 
 ~~~~
-trait Shape { fn new(area: float) -> Self; }
 # use core::float::consts::pi;
 # use core::float::sqrt;
+trait Shape { fn new(area: float) -> Self; }
 struct Circle { radius: float }
 struct Square { length: float }
 
@@ -2211,11 +2211,11 @@ trait Circle : Shape { fn radius(&self) -> float; }
 Now, we can implement `Circle` on a type only if we also implement `Shape`.
 
 ~~~~
+# use core::float::consts::pi;
+# use core::float::sqrt;
 # trait Shape { fn area(&self) -> float; }
 # trait Circle : Shape { fn radius(&self) -> float; }
 # struct Point { x: float, y: float }
-# use core::float::consts::pi;
-# use core::float::sqrt;
 # fn square(x: float) -> float { x * x }
 struct CircleStruct { center: Point, radius: float }
 impl Circle for CircleStruct {
@@ -2247,10 +2247,10 @@ fn radius_times_area<T: Circle>(c: T) -> float {
 Likewise, supertrait methods may also be called on trait objects.
 
 ~~~ {.xfail-test}
-# trait Shape { fn area(&self) -> float; }
-# trait Circle : Shape { fn radius(&self) -> float; }
 # use core::float::consts::pi;
 # use core::float::sqrt;
+# trait Shape { fn area(&self) -> float; }
+# trait Circle : Shape { fn radius(&self) -> float; }
 # struct Point { x: float, y: float }
 # struct CircleStruct { center: Point, radius: float }
 # impl Circle for CircleStruct { fn radius(&self) -> float { sqrt(self.area() / pi) } }

@@ -13,6 +13,8 @@
 // ensures that 'use foo:*' doesn't import non-public 'use' statements in the
 // module 'foo'
 
+use m1::*;
+
 mod foo {
     pub fn foo() {}
 }
@@ -31,7 +33,6 @@ mod a {
 mod m1 {
     fn foo() {}
 }
-use m1::*;
 
 fn main() {
     foo(); //~ ERROR: unresolved name: `foo`

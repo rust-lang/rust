@@ -17,7 +17,7 @@ struct item_ty_yes1<'self> {
 }
 
 struct item_ty_yes2 {
-    x: &'a uint //~ ERROR this lifetime must be declared
+    x: &'a uint //~ ERROR only 'self is allowed
 }
 
 fn main() {}

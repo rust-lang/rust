@@ -10,10 +10,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern mod std;
+
 use core::cmp::{Eq, Ord};
 use core::num::NumCast::from;
-
-extern mod std;
 use std::cmp::FuzzyEq;
 
 pub trait NumExt: NumCast + Eq + Ord {}
