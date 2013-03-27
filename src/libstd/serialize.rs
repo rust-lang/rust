@@ -368,12 +368,12 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for @[T] {
 
 impl<S:Encoder,T:Encodable<S>> Encodable<S> for Option<T> {
     fn encode(&self, s: &S) {
-        do s.emit_enum(~"option") {
+        do s.emit_enum(~"Option") {
             match *self {
-              None => do s.emit_enum_variant(~"none", 0u, 0u) {
+              None => do s.emit_enum_variant(~"None", 0u, 0u) {
               },
 
-              Some(ref v) => do s.emit_enum_variant(~"some", 1u, 1u) {
+              Some(ref v) => do s.emit_enum_variant(~"Some", 1u, 1u) {
                 s.emit_enum_variant_arg(0u, || v.encode(s))
               }
             }
@@ -383,7 +383,7 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for Option<T> {
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for Option<T> {
     fn decode(d: &D) -> Option<T> {
-        do d.read_enum(~"option") {
+        do d.read_enum(~"Option") {
             do d.read_enum_variant |i| {
                 match i {
                   0 => None,
