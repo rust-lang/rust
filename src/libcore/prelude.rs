@@ -24,7 +24,7 @@ pub use result::{Result, Ok, Err};
 /* Reexported types and traits */
 
 pub use clone::Clone;
-pub use cmp::{Eq, Ord, TotalOrd, Ordering, Less, Equal, Greater};
+pub use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 pub use container::{Container, Mutable, Map, Set};
 pub use hash::Hash;
 pub use iter::{BaseIter, ReverseIter, MutableIter, ExtendedIter, EqIter};

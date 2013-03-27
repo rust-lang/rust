@@ -14,7 +14,7 @@
 
 use container::{Container, Mutable};
 use cast;
-use cmp::{Eq, Equiv, Ord, TotalOrd, Ordering, Less, Equal, Greater};
+use cmp::{Eq, Equiv, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use iter::BaseIter;
 use iter;
@@ -1547,7 +1547,7 @@ pub fn as_mut_buf<T,U>(s: &mut [T], f: &fn(*mut T, uint) -> U) -> U {
 
 // Equality
 
-fn eq<T:Eq>(a: &[T], b: &[T]) -> bool {
+fn eq<T: Eq>(a: &[T], b: &[T]) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
     if a_len != b_len { return false; }
 
@@ -1556,33 +1556,61 @@ fn eq<T:Eq>(a: &[T], b: &[T]) -> bool {
         if a[i] != b[i] { return false; }
         i += 1;
     }
+    true
+}
 
+fn equals<T: TotalEq>(a: &[T], b: &[T]) -> bool {
+    let (a_len, b_len) = (a.len(), b.len());
+    if a_len != b_len { return false; }
+
+    let mut i = 0;
+    while i < a_len {
+        if !a[i].equals(&b[i]) { return false; }
+        i += 1;
+    }
     true
 }
 
 #[cfg(notest)]
 impl<'self,T:Eq> Eq for &'self [T] {
     #[inline(always)]
-    fn eq(&self, other: & &'self [T]) -> bool { eq((*self), (*other)) }
+    fn eq(&self, other: & &'self [T]) -> bool { eq(*self, *other) }
     #[inline(always)]
-    fn ne(&self, other: & &'self [T]) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: & &'self [T]) -> bool { !self.eq(other) }
 }
-
 
 #[cfg(notest)]
 impl<T:Eq> Eq for ~[T] {
     #[inline(always)]
-    fn eq(&self, other: &~[T]) -> bool { eq((*self), (*other)) }
+    fn eq(&self, other: &~[T]) -> bool { eq(*self, *other) }
     #[inline(always)]
-    fn ne(&self, other: &~[T]) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &~[T]) -> bool { !self.eq(other) }
 }
 
 #[cfg(notest)]
 impl<T:Eq> Eq for @[T] {
     #[inline(always)]
-    fn eq(&self, other: &@[T]) -> bool { eq((*self), (*other)) }
+    fn eq(&self, other: &@[T]) -> bool { eq(*self, *other) }
     #[inline(always)]
-    fn ne(&self, other: &@[T]) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &@[T]) -> bool { !self.eq(other) }
+}
+
+#[cfg(notest)]
+impl<'self,T:TotalEq> TotalEq for &'self [T] {
+    #[inline(always)]
+    fn equals(&self, other: & &'self [T]) -> bool { equals(*self, *other) }
+}
+
+#[cfg(notest)]
+impl<T:TotalEq> TotalEq for ~[T] {
+    #[inline(always)]
+    fn equals(&self, other: &~[T]) -> bool { equals(*self, *other) }
+}
+
+#[cfg(notest)]
+impl<T:TotalEq> TotalEq for @[T] {
+    #[inline(always)]
+    fn equals(&self, other: &@[T]) -> bool { equals(*self, *other) }
 }
 
 #[cfg(notest)]
