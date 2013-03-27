@@ -35,7 +35,6 @@ use middle::trans::inline;
 use middle::ty;
 use middle::typeck;
 
-use core::option;
 use core::option::{Some, None, Option};
 use core::uint;
 use core::vec;
@@ -220,7 +219,7 @@ pub fn type_needs_inner(cx: Context,
                 ty::ty_trait(_, _, _) => false,
 
               ty::ty_enum(did, ref substs) => {
-                if option::is_none(&list::find(enums_seen, |id| *id == did)) {
+                if list::find(enums_seen, |id| *id == did).is_none() {
                     let seen = @Cons(did, enums_seen);
                     for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
                         for vec::each(v.args) |aty| {

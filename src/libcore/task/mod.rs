@@ -35,7 +35,6 @@
 
 use cell::Cell;
 use cmp::Eq;
-use option;
 use result::Result;
 use comm::{stream, Chan, GenericChan, GenericPort, Port, SharedChan};
 use prelude::*;
@@ -410,7 +409,7 @@ pub impl TaskBuilder {
         do fr_task_builder.spawn || {
             ch.send(f());
         }
-        match option::unwrap(result).recv() {
+        match result.unwrap().recv() {
             Success => result::Ok(po.recv()),
             Failure => result::Err(())
         }
@@ -839,14 +838,14 @@ fn test_add_wrapper() {
 fn test_future_result() {
     let mut result = None;
     do task().future_result(|+r| { result = Some(r); }).spawn { }
-    fail_unless!(option::unwrap(result).recv() == Success);
+    fail_unless!(result.unwrap().recv() == Success);
 
     result = None;
     do task().future_result(|+r|
         { result = Some(r); }).unlinked().spawn {
         fail!();
     }
-    fail_unless!(option::unwrap(result).recv() == Failure);
+    fail_unless!(result.unwrap().recv() == Failure);
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]

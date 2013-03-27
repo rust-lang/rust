@@ -15,7 +15,7 @@ use core::io::WriterUtil;
 use std::tempfile;
 
 pub fn main() {
-    let dir = option::unwrap(tempfile::mkdtemp(&Path("."), ""));
+    let dir = tempfile::mkdtemp(&Path("."), "").unwrap();
     let path = dir.with_filename("file");
 
     {

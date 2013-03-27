@@ -32,7 +32,6 @@ use middle::ty::{FnSig};
 use middle::typeck;
 use util::ppaux::ty_to_str;
 
-use core::option;
 use core::vec;
 use syntax::ast;
 use syntax::ast_map;
@@ -194,8 +193,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       }
       ast_map::node_variant(ref v, enum_item, _) => {
         let tvs = ty::enum_variants(ccx.tcx, local_def(enum_item.id));
-        let this_tv = option::get(vec::find(*tvs, |tv| {
-            tv.id.node == fn_id.node}));
+        let this_tv = vec::find(*tvs, |tv| { tv.id.node == fn_id.node}).get();
         let d = mk_lldecl();
         set_inline_hint(d);
         match (*v).node.kind {
@@ -248,9 +246,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         set_inline_hint(d);
         base::trans_tuple_struct(ccx,
                                  /*bad*/copy struct_def.fields,
-                                 option::expect(struct_def.ctor_id,
-                                                ~"ast-mapped tuple struct \
-                                                  didn't have a ctor id"),
+                                 struct_def.ctor_id.expect(~"ast-mapped tuple struct \
+                                                             didn't have a ctor id"),
                                  psubsts,
                                  d);
         d

@@ -23,7 +23,6 @@ use iter::BaseIter;
 use kinds::Copy;
 use managed;
 use option::{None, Option, Some};
-use option;
 use vec;
 
 pub type DListLink<T> = Option<@mut DListNode<T>>;
@@ -377,7 +376,7 @@ pub impl<T> DList<T> {
 
     /// Reverse the list's elements in place. O(n).
     fn reverse(@mut self) {
-        do option::while_some(self.hd) |nobe| {
+        do self.hd.while_some |nobe| {
             let next_nobe = nobe.next;
             self.remove(nobe);
             self.make_mine(nobe);
@@ -509,8 +508,8 @@ impl<T> BaseIter<T> for @mut DList<T> {
     */
     fn each(&self, f: &fn(v: &T) -> bool) {
         let mut link = self.peek_n();
-        while option::is_some(&link) {
-            let nobe = option::get(link);
+        while link.is_some() {
+            let nobe = link.get();
             fail_unless!(nobe.linked);
 
             {

@@ -50,7 +50,7 @@ fn spawn_supervised_blocking(myname: &str, +f: ~fn()) {
     let mut res = None;
     task::task().future_result(|+r| res = Some(r)).supervised().spawn(f);
     error!("%s group waiting", myname);
-    let x = option::unwrap(res).recv();
+    let x = res.unwrap().recv();
     fail_unless!(x == task::Success);
 }
 

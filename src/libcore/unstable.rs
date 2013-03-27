@@ -12,7 +12,6 @@
 
 use cast;
 use libc;
-use option;
 use comm::{GenericChan, GenericPort};
 use prelude::*;
 use task;
@@ -165,7 +164,7 @@ pub unsafe fn get_shared_mutable_state<T:Owned>(
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
         fail_unless!(ptr.count > 0);
-        let r = cast::transmute(option::get_ref(&ptr.data));
+        let r = cast::transmute(ptr.data.get_ref());
         cast::forget(ptr);
         return r;
     }
@@ -177,7 +176,7 @@ pub unsafe fn get_shared_immutable_state<T:Owned>(
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
         fail_unless!(ptr.count > 0);
         // Cast us back into the correct region
-        let r = cast::transmute_region(option::get_ref(&ptr.data));
+        let r = cast::transmute_region(ptr.data.get_ref());
         cast::forget(ptr);
         return r;
     }

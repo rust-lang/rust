@@ -11,7 +11,6 @@
 //! A mutable, nullable memory location
 
 use cast::transmute;
-use option;
 use prelude::*;
 
 /*
@@ -53,7 +52,7 @@ pub impl<T> Cell<T> {
 
         let mut value = None;
         value <-> self.value;
-        return option::unwrap(value);
+        value.unwrap()
     }
 
     /// Returns the value, failing if the cell is full.

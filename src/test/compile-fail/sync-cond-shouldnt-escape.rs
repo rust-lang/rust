@@ -17,6 +17,6 @@ fn main() {
     let mut cond = None;
     do m.lock_cond |c| {
         cond = Some(c);
-    }   
-    option::unwrap(cond).signal();
+    }
+    cond.unwrap().signal();
 }

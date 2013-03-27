@@ -29,7 +29,7 @@ fn test00() {
     }
 
     // Try joining tasks that have already finished.
-    option::unwrap(result).recv();
+    result.unwrap().recv();
 
     debug!("Joined task.");
 }
