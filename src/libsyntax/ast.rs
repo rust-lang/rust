@@ -386,7 +386,6 @@ pub enum vstore {
 #[auto_decode]
 #[deriving(Eq)]
 pub enum expr_vstore {
-    expr_vstore_fixed(Option<uint>),   // [1,2,3,4]
     expr_vstore_uniq,                  // ~[1,2,3,4]
     expr_vstore_box,                   // @[1,2,3,4]
     expr_vstore_mut_box,               // @mut [1,2,3,4]
