@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,7 +15,7 @@ Functions for the unit type.
 */
 
 #[cfg(notest)]
-use cmp::{Eq, Ord, TotalOrd, Ordering, Equal};
+use prelude::*;
 
 #[cfg(notest)]
 impl Eq for () {
@@ -41,4 +41,10 @@ impl Ord for () {
 impl TotalOrd for () {
     #[inline(always)]
     fn cmp(&self, _other: &()) -> Ordering { Equal }
+}
+
+#[cfg(notest)]
+impl TotalEq for () {
+    #[inline(always)]
+    fn equals(&self, _other: &()) -> bool { true }
 }
