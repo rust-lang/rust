@@ -2726,6 +2726,16 @@ fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
     cx.node_type_substs.contains_key(&id)
 }
 
+pub fn ty_fn_sig(fty: t) -> FnSig {
+    match get(fty).sty {
+        ty_bare_fn(ref f) => copy f.sig,
+        ty_closure(ref f) => copy f.sig,
+        ref s => {
+            fail!(fmt!("ty_fn_sig() called on non-fn type: %?", s))
+        }
+    }
+}
+
 // Type accessors for substructures of types
 pub fn ty_fn_args(fty: t) -> ~[arg] {
     match get(fty).sty {

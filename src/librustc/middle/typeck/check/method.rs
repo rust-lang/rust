@@ -92,6 +92,7 @@ use middle::typeck::check;
 use middle::typeck::infer;
 use middle::typeck::{method_map_entry, method_origin, method_param};
 use middle::typeck::{method_self, method_static, method_trait, method_super};
+use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use util::common::indenter;
 use util::ppaux::expr_repr;
 
@@ -99,6 +100,7 @@ use core::hashmap::HashSet;
 use core::result;
 use core::uint;
 use core::vec;
+use std::list::Nil;
 use syntax::ast::{def_id, sty_value, sty_region, sty_box};
 use syntax::ast::{sty_uniq, sty_static, node_id, by_copy, by_ref};
 use syntax::ast::{m_const, m_mutbl, m_imm};
@@ -121,7 +123,7 @@ pub fn lookup(
         fcx: @mut FnCtxt,
 
         // In a call `a.b::<X, Y, ...>(...)`:
-        expr: @ast::expr,                   // The expression `a.b`.
+        expr: @ast::expr,                   // The expression `a.b(...)`.
         self_expr: @ast::expr,              // The expression `a`.
         callee_id: node_id,                 // Where to store `a.b`'s type
         m_name: ast::ident,                 // The ident `b`.
@@ -1092,9 +1094,15 @@ pub impl<'self> LookupContext<'self> {
     fn confirm_candidate(&self,
                          self_ty: ty::t,
                          candidate: &Candidate)
-        -> method_map_entry {
+        -> method_map_entry
+    {
         let tcx = self.tcx();
         let fty = self.fn_ty_from_origin(&candidate.origin);
+
+        debug!("confirm_candidate(expr=%s, candidate=%s, fty=%s)",
+               expr_repr(tcx, self.expr),
+               self.cand_to_str(candidate),
+               self.ty_to_str(fty));
 
         self.enforce_trait_instance_limitations(fty, candidate);
         self.enforce_drop_trait_limitations(candidate);
@@ -1145,7 +1153,33 @@ pub impl<'self> LookupContext<'self> {
             ../*bad*/copy candidate.rcvr_substs
         };
 
-        self.fcx.write_ty_substs(self.callee_id, fty, all_substs);
+        // Compute the method type with type parameters substituted
+        debug!("fty=%s all_substs=%s",
+               self.ty_to_str(fty),
+               ty::substs_to_str(tcx, &all_substs));
+        let fty = ty::subst(tcx, &all_substs, fty);
+        debug!("after subst, fty=%s", self.ty_to_str(fty));
+
+        // Replace any bound regions that appear in the function
+        // signature with region variables
+        let bare_fn_ty = match ty::get(fty).sty {
+            ty::ty_bare_fn(ref f) => copy *f,
+            ref s => {
+                tcx.sess.span_bug(
+                    self.expr.span,
+                    fmt!("Invoking method with non-bare-fn ty: %?", s));
+            }
+        };
+        let (_, _, fn_sig) =
+            replace_bound_regions_in_fn_sig(
+                tcx, @Nil, None, &bare_fn_ty.sig,
+                |_br| self.fcx.infcx().next_region_var(
+                    self.expr.span, self.expr.id));
+        let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {sig: fn_sig, ..bare_fn_ty});
+        debug!("after replacing bound regions, fty=%s", self.ty_to_str(fty));
+
+        self.fcx.write_ty(self.callee_id, fty);
+        self.fcx.write_substs(self.callee_id, all_substs);
         method_map_entry {
             self_arg: arg {
                 mode: ast::expl(candidate.self_mode),
