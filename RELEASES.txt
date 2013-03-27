@@ -1,21 +1,14 @@
 Version 0.6 (March 2013)
 ---------------------------
 
-   * ~2000 changes, numerous bugfixes
-
-   * TODO:
-      * Ord/Cmp
-      * Lifetime changes
-      * Remove `static` keyword
-      * Static method syntax
-      * `as Trait`
-      * `copy` removed, replaced with `Clone`?
-      * More details for "Name resolution continues to be tweaked"?
+   * ~2100 changes, numerous bugfixes
 
    * Syntax changes
       * The self type parameter in traits is now spelled `Self`
       * The `self` parameter in trait and impl methods must now be explicitly
         named (for example: `fn f(&self) { }`). Implicit self is deprecated.
+      * Static methods no longer require the `static` keyword and instead
+        are distinguished by the lack of a `self` parameter
       * Replaced the `Durable` trait with the `'static` lifetime
       * The old closure type syntax with the trailing sigil has been
         removed in favor of the more consistent leading sigil
@@ -23,6 +16,7 @@ Version 0.6 (March 2013)
       * Trait bounds are separated with `+` instead of whitespace
       * Traits are implemented with `impl Trait for Type`
         instead of `impl Type: Trait`
+      * Lifetime syntax is now `&'l foo` instead of `&l/foo`
       * The `export` keyword has finally been removed
       * The `move` keyword has been removed (see "Semantic changes")
       * The interior mutability qualifier on vectors, `[mut T]`, has been
@@ -41,9 +35,11 @@ Version 0.6 (March 2013)
       * Pattern matching over vectors improved and expanded
       * `const` renamed to `static` to correspond to lifetime name,
         and make room for future `static mut` unsafe mutable globals.
-      * Replaced `#[deriving_eq]` with `#[deriving(Eq)]`
+      * Replaced `#[deriving_eq]` with `#[deriving(Eq)]`, etc.
       * `Clone` implementations can be automatically generated with
         `#[deriving(Clone)]`
+      * Casts to traits must use a pointer sigil, e.g. `@foo as @Bar`
+        instead of `foo as Bar`.
 
    * Semantic changes
       * Types with owned pointers or custom destructors move by default,
@@ -54,7 +50,11 @@ Version 0.6 (March 2013)
       * () has size 0
       * The name of the main function can be customized using #[main]
       * The default type of an inferred closure is &fn instead of @fn
-      * Name resolution continues to be tweaked
+      * `use` statements may no longer be "chained" - they cannot import
+        identifiers imported by previous `use` statements
+      * `use` statements are crate relative, importing from the "top"
+        of the crate by default. Paths may be prefixed with `super::`
+        or `self::` to change the search behavior.
       * Method visibility is inherited from the implementation declaration
       * Structural records have been removed
       * Many more types can be used in static items, including enums
@@ -78,14 +78,15 @@ Version 0.6 (March 2013)
       * `std::deque` and `std::smallintmap` reimplemented as owned containers
       * `core::trie` added as a fast ordered map for integer keys
       * Set types added to `core::hashmap`, `core::trie` and `std::treemap`
+      * `Ord` split into `Ord` and `TotalOrd`. `Ord` is still used to
+        overload the comparison operators, whereas `TotalOrd` is used
+        by certain container types
 
-   * Tools
+   * Other
       * Replaced the 'cargo' package manager with 'rustpkg'
       * Added all-purpose 'rust' tool
       * `rustc --test` now supports benchmarks with the `#[bench]` attribute
-      * rustc now attempts to offer spelling suggestions
-
-   * Misc
+      * rustc now *attempts* to offer spelling suggestions
       * Improved support for ARM and Android
       * Preliminary MIPS backend
       * Improved foreign function ABI implementation for x86, x86_64
