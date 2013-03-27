@@ -26,7 +26,6 @@ use fold;
 use pass::Pass;
 use util::NominalOp;
 
-use core::option;
 use core::comm::*;
 use syntax::ast;
 
@@ -68,7 +67,7 @@ fn make_doc_from_pages(page_port: &PagePort) -> doc::Doc {
     loop {
         let val = page_port.recv();
         if val.is_some() {
-            pages += ~[option::unwrap(val)];
+            pages += ~[val.unwrap()];
         } else {
             break;
         }

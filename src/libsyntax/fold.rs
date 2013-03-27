@@ -15,7 +15,6 @@ use ast;
 use codemap::{span, spanned};
 use opt_vec::OptVec;
 
-use core::option;
 use core::vec;
 
 pub trait ast_fold {
@@ -298,7 +297,7 @@ pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
 
 fn fold_struct_def(struct_def: @ast::struct_def, fld: @ast_fold)
                 -> @ast::struct_def {
-    let dtor = do option::map(&struct_def.dtor) |dtor| {
+    let dtor = do struct_def.dtor.map |dtor| {
         let dtor_body = fld.fold_block(&dtor.node.body);
         let dtor_id   = fld.new_id(dtor.node.id);
         spanned {
@@ -663,7 +662,7 @@ fn noop_fold_variant(v: &variant_, fld: @ast_fold) -> variant_ {
             })
         }
         struct_variant_kind(struct_def) => {
-            let dtor = do option::map(&struct_def.dtor) |dtor| {
+            let dtor = do struct_def.dtor.map |dtor| {
                 let dtor_body = fld.fold_block(&dtor.node.body);
                 let dtor_id   = fld.new_id(dtor.node.id);
                 spanned {
@@ -679,7 +678,7 @@ fn noop_fold_variant(v: &variant_, fld: @ast_fold) -> variant_ {
                 fields: vec::map(struct_def.fields,
                                  |f| fld.fold_struct_field(*f)),
                 dtor: dtor,
-                ctor_id: option::map(&struct_def.ctor_id, |c| fld.new_id(*c))
+                ctor_id: struct_def.ctor_id.map(|c| fld.new_id(*c))
             })
         }
         enum_variant_kind(ref enum_definition) => {

@@ -14,7 +14,7 @@ pub fn main() {
     task::task().future_result(|+r| { result = Some(r); }).spawn(child);
     error!("1");
     task::yield();
-    option::unwrap(result).recv();
+    result.unwrap().recv();
 }
 
 fn child() { error!("2"); }

@@ -107,7 +107,7 @@ pub mod pipes {
               full => {
                 let mut payload = None;
                 payload <-> (*p).payload;
-                return Some(option::unwrap(payload))
+                return Some(payload.unwrap())
               }
               terminated => {
                 fail_unless!(old_state == terminated);
@@ -164,7 +164,7 @@ pub mod pipes {
                     let self_p: &mut Option<*packet<T>> =
                         cast::transmute(&self.p);
                     p <-> *self_p;
-                    sender_terminate(option::unwrap(p))
+                    sender_terminate(p.unwrap())
                 }
             }
         }
@@ -174,7 +174,7 @@ pub mod pipes {
         fn unwrap(&mut self) -> *packet<T> {
             let mut p = None;
             p <-> self.p;
-            option::unwrap(p)
+            p.unwrap()
         }
     }
 
@@ -197,7 +197,7 @@ pub mod pipes {
                     let self_p: &mut Option<*packet<T>> =
                         cast::transmute(&self.p);
                     p <-> *self_p;
-                    receiver_terminate(option::unwrap(p))
+                    receiver_terminate(p.unwrap())
                 }
             }
         }
@@ -207,7 +207,7 @@ pub mod pipes {
         fn unwrap(&mut self) -> *packet<T> {
             let mut p = None;
             p <-> self.p;
-            option::unwrap(p)
+            p.unwrap()
         }
     }
 
@@ -275,7 +275,7 @@ pub mod pingpong {
             if packet.is_none() {
                 fail!(~"sender closed the connection")
             }
-            (pingpong::liberate_pong(option::unwrap(packet)), ())
+            (pingpong::liberate_pong(packet.unwrap()), ())
         }
     }
 
@@ -290,7 +290,7 @@ pub mod pingpong {
             if packet.is_none() {
                 fail!(~"sender closed the connection")
             }
-            (pingpong::liberate_ping(option::unwrap(packet)), ())
+            (pingpong::liberate_ping(packet.unwrap()), ())
         }
 
         pub fn do_pong(+c: pong) -> ping {

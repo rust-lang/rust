@@ -26,6 +26,6 @@ fn bar(s: &str, f: &fn(Option<Foo>)) {
 
 fn main() {
     do bar(~"testing") |opt| {
-        io::println(option::unwrap(opt).get_s()); //~ ERROR illegal borrow:
+        io::println(opt.unwrap().get_s()); //~ ERROR illegal borrow:
     };
 }
