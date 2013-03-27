@@ -900,30 +900,45 @@ pub impl Parser {
         codemap::spanned { node: lit, span: mk_sp(lo, self.last_span.hi) }
     }
 
+    // parse a path into a vector of idents, whether the path starts
+    // with ::, and a span.
+    fn parse_path(&self) -> (~[ast::ident],bool,span) {
+        let lo = self.span.lo;
+        let is_global = self.eat(&token::MOD_SEP);
+        let (ids,span{lo:_,hi,expn_info}) = self.parse_path_non_global();
+        (ids,is_global,span{lo:lo,hi:hi,expn_info:expn_info})
+    }
+
+    // parse a path beginning with an identifier into a vector of idents and a span
+    fn parse_path_non_global(&self) -> (~[ast::ident],span) {
+        let lo = self.span.lo;
+        let mut ids = ~[];
+        // must be at least one to begin:
+        ids.push(self.parse_ident());
+        loop {
+            match *self.token {
+                token::MOD_SEP => {
+                    match self.look_ahead(1u) {
+                        token::IDENT(id,_) => {
+                            self.bump();
+                            ids.push(self.parse_ident());
+                        }
+                        _ => break
+                    }
+                }
+                _ => break
+            }
+        }
+        (ids, mk_sp(lo, self.last_span.hi))
+    }
+
     // parse a path that doesn't have type parameters attached
     fn parse_path_without_tps(&self)
         -> @ast::Path {
         maybe_whole!(self, nt_path);
-        let lo = self.span.lo;
-        let global = self.eat(&token::MOD_SEP);
-        let mut ids = ~[];
-        loop {
-            // if there's a ::< coming, stop processing
-            // the path.
-            let is_not_last =
-                self.look_ahead(2u) != token::LT
-                && self.look_ahead(1u) == token::MOD_SEP;
-
-            if is_not_last {
-                ids.push(self.parse_ident());
-                self.expect(&token::MOD_SEP);
-            } else {
-                ids.push(self.parse_ident());
-                break;
-            }
-        }
-        @ast::Path { span: mk_sp(lo, self.last_span.hi),
-                     global: global,
+        let (ids,is_global,sp) = self.parse_path();
+        @ast::Path { span: sp,
+                     global: is_global,
                      idents: ids,
                      rp: None,
                      types: ~[] }
