@@ -308,8 +308,6 @@ case $CFG_OSTYPE in
 esac
 
 
-if [ -z "$CFG_CPUTYPE" ]
-then
 case $CFG_CPUTYPE in
 
     i386 | i486 | i686 | i786 | x86)
@@ -327,7 +325,6 @@ case $CFG_CPUTYPE in
     *)
         err "unknown CPU type: $CFG_CPUTYPE"
 esac
-fi
 
 # Detect 64 bit linux systems with 32 bit userland and force 32 bit compilation
 if [ $CFG_OSTYPE = unknown-linux-gnu -a $CFG_CPUTYPE = x86_64 ]
