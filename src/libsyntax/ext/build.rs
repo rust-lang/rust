@@ -152,11 +152,6 @@ pub fn mk_slice_vec_e(cx: @ext_ctxt, sp: span, +exprs: ~[@ast::expr])
     mk_vstore_e(cx, sp, mk_base_vec_e(cx, sp, exprs),
                 ast::expr_vstore_slice)
 }
-pub fn mk_fixed_vec_e(cx: @ext_ctxt, sp: span, +exprs: ~[@ast::expr])
-                   -> @ast::expr {
-    mk_vstore_e(cx, sp, mk_base_vec_e(cx, sp, exprs),
-                ast::expr_vstore_fixed(None))
-}
 pub fn mk_base_str(cx: @ext_ctxt, sp: span, +s: ~str) -> @ast::expr {
     let lit = ast::lit_str(@s);
     return mk_lit(cx, sp, lit);

@@ -714,9 +714,6 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_vstore(contents, ast::expr_vstore_mut_slice) => {
             return tvec::trans_slice_vstore(bcx, expr, contents, dest);
         }
-        ast::expr_vstore(contents, ast::expr_vstore_fixed(_)) => {
-            return tvec::trans_fixed_vstore(bcx, expr, contents, dest);
-        }
         ast::expr_vec(*) | ast::expr_repeat(*) => {
             return tvec::trans_fixed_vstore(bcx, expr, expr, dest);
         }

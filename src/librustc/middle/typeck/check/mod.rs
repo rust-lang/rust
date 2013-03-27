@@ -3337,14 +3337,6 @@ pub fn ast_expr_vstore_to_vstore(fcx: @mut FnCtxt,
                                  v: ast::expr_vstore)
                               -> ty::vstore {
     match v {
-        ast::expr_vstore_fixed(None) => ty::vstore_fixed(n),
-        ast::expr_vstore_fixed(Some(u)) => {
-            if n != u {
-                let s = fmt!("fixed-size sequence mismatch: %u vs. %u",u, n);
-                fcx.ccx.tcx.sess.span_err(e.span,s);
-            }
-            ty::vstore_fixed(u)
-        }
         ast::expr_vstore_uniq => ty::vstore_uniq,
         ast::expr_vstore_box | ast::expr_vstore_mut_box => ty::vstore_box,
         ast::expr_vstore_slice | ast::expr_vstore_mut_slice => {
