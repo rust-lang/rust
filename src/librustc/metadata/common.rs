@@ -102,6 +102,7 @@ pub static tag_item_dtor: uint = 0x49u;
 pub static tag_item_trait_method_self_ty: uint = 0x4b;
 pub static tag_item_trait_method_self_ty_region: uint = 0x4c;
 
+
 // Reexports are found within module tags. Each reexport contains def_ids
 // and names.
 pub static tag_items_data_item_reexport: uint = 0x4d;
@@ -158,6 +159,9 @@ pub static tag_items_data_item_visibility: uint = 0x78;
 
 pub static tag_link_args: uint = 0x79;
 pub static tag_link_args_arg: uint = 0x7a;
+
+pub static tag_item_method_tps: uint = 0x7b;
+pub static tag_item_method_fty: uint = 0x7c;
 
 pub struct LinkMeta {
     name: @str,

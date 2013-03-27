@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:expected function or foreign function but found `*u8`
+// error-pattern:expected function but found `*u8`
 extern fn f() {
 }
 

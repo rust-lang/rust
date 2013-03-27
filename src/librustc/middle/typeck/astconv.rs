@@ -243,7 +243,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                         return ty::mk_estr(tcx, vst);
                     }
-                    Some(&ast::def_ty(type_def_id)) => {
+                    Some(&ast::def_trait(type_def_id)) => {
                         let result = ast_path_to_substs_and_ty(
                             self, rscope,
                             type_def_id, path);
@@ -271,7 +271,11 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
                                                     trait_store);
 
                             }
-                            _ => {}
+                            _ => {
+                                tcx.sess.span_bug(
+                                    a_seq_ty.ty.span,
+                                    fmt!("def_trait but not ty_trait"));
+                            }
                         }
                     }
                     _ => {}
@@ -372,7 +376,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
           Some(&d) => d
         };
         match a_def {
-          ast::def_ty(did) | ast::def_struct(did) => {
+          ast::def_trait(did) | ast::def_ty(did) | ast::def_struct(did) => {
             ast_path_to_ty(self, rscope, did, path).ty
           }
           ast::def_prim_ty(nty) => {

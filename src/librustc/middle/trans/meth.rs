@@ -174,6 +174,7 @@ pub fn trans_method_callee(bcx: block,
                            mentry: typeck::method_map_entry)
                         -> Callee {
     let _icx = bcx.insn_ctxt("impl::trans_method_callee");
+    let tcx = bcx.tcx();
 
     debug!("trans_method_callee(callee_id=%?, self=%s, mentry=%?)",
            callee_id, bcx.expr_to_str(self), mentry);
@@ -189,33 +190,33 @@ pub fn trans_method_callee(bcx: block,
 
             // Get the ID of the method we're calling.
             let method_name =
-                ty::trait_methods(bcx.tcx(), trait_id)[method_index].ident;
-            let method_id = method_with_name(bcx.ccx(), impl_def_id,
-                                             method_name);
+                ty::trait_method(tcx, trait_id, method_index).ident;
+            let method_id =
+                method_with_name(bcx.ccx(), impl_def_id, method_name);
             origin = typeck::method_static(method_id);
         }
         typeck::method_super(trait_id, method_index) => {
             // <self_ty> is the self type for this method call
             let self_ty = node_id_type(bcx, self.id);
-            let tcx = bcx.tcx();
             // <impl_id> is the ID of the implementation of
             // trait <trait_id> for type <self_ty>
             let impl_id = ty::get_impl_id(tcx, trait_id, self_ty);
             // Get the supertrait's methods
-            let supertrait_methods = ty::trait_methods(tcx, trait_id);
+            let supertrait_method_def_ids = ty::trait_method_def_ids(tcx, trait_id);
             // Make sure to fail with a readable error message if
             // there's some internal error here
-            if !(method_index < supertrait_methods.len()) {
+            if !(method_index < supertrait_method_def_ids.len()) {
                 tcx.sess.bug(~"trans_method_callee: supertrait method \
                                index is out of bounds");
             }
             // Get the method name using the method index in the origin
-            let method_name = supertrait_methods[method_index].ident;
+            let method_name =
+                ty::method(tcx, supertrait_method_def_ids[method_index]).ident;
             // Now that we know the impl ID, we can look up the method
             // ID from its name
             origin = typeck::method_static(method_with_name(bcx.ccx(),
-                                              impl_id,
-                                              method_name));
+                                                            impl_id,
+                                                            method_name));
         }
         typeck::method_static(*) | typeck::method_param(*) |
         typeck::method_trait(*) => {}
@@ -448,7 +449,7 @@ pub fn trans_monomorphized_callee(bcx: block,
     return match vtbl {
       typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
           let ccx = bcx.ccx();
-          let mname = ty::trait_methods(ccx.tcx, trait_id)[n_method].ident;
+          let mname = ty::trait_method(ccx.tcx, trait_id, n_method).ident;
           let mth_id = method_with_name_or_default(
               bcx.ccx(), impl_did, mname);
 
@@ -791,10 +792,11 @@ pub fn make_impl_vtable(ccx: @CrateContext,
         || ~"make_impl_vtable: non-trait-type implemented");
 
     let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;
-    make_vtable(ccx, vec::map(*ty::trait_methods(tcx, trt_id), |im| {
+    make_vtable(ccx, ty::trait_method_def_ids(tcx, trt_id).map(|method_def_id| {
+        let im = ty::method(tcx, *method_def_id);
         let fty = ty::subst_tps(tcx, substs, None,
                                 ty::mk_bare_fn(tcx, copy im.fty));
-        if (*im.tps).len() > 0u || ty::type_has_self(fty) {
+        if im.tps.len() > 0u || ty::type_has_self(fty) {
             debug!("(making impl vtable) method has self or type params: %s",
                    *tcx.sess.str_of(im.ident));
             C_null(T_ptr(T_nil()))

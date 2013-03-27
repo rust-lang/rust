@@ -19,7 +19,8 @@ use metadata::csearch::{ProvidedTraitMethodInfo, StaticMethodInfo};
 use metadata::csearch;
 use metadata::cstore;
 use metadata::decoder;
-use metadata::tydecode::{parse_ty_data, parse_def_id, parse_bounds_data};
+use metadata::tydecode::{parse_ty_data, parse_def_id, parse_bounds_data,
+                         parse_bare_fn_ty_data};
 use middle::{ty, resolve};
 
 use core::hash::HashUtil;
@@ -229,6 +230,12 @@ fn doc_type(doc: ebml::Doc, tcx: ty::ctxt, cdata: cmd) -> ty::t {
                   |_, did| translate_def_id(cdata, did))
 }
 
+fn doc_method_fty(doc: ebml::Doc, tcx: ty::ctxt, cdata: cmd) -> ty::BareFnTy {
+    let tp = reader::get_doc(doc, tag_item_method_fty);
+    parse_bare_fn_ty_data(tp.data, cdata.cnum, tp.start, tcx,
+                          |_, did| translate_def_id(cdata, did))
+}
+
 pub fn item_type(item_id: ast::def_id, item: ebml::Doc,
                  tcx: ty::ctxt, cdata: cmd) -> ty::t {
     let t = doc_type(item, tcx, cdata);
@@ -247,10 +254,11 @@ fn item_impl_traits(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd) -> ~[ty::t] {
     results
 }
 
-fn item_ty_param_bounds(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd)
+fn item_ty_param_bounds(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd,
+                        tag: uint)
     -> @~[ty::param_bounds] {
     let mut bounds = ~[];
-    for reader::tagged_docs(item, tag_items_data_item_ty_param_bounds) |p| {
+    for reader::tagged_docs(item, tag) |p| {
         let bd = parse_bounds_data(p.data, p.start, cdata.cnum, tcx,
                                    |_, did| translate_def_id(cdata, did));
         bounds.push(bd);
@@ -338,7 +346,8 @@ fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
             let enum_did = item_reqd_and_translated_parent_item(cnum, item);
             dl_def(ast::def_variant(enum_did, did))
         }
-        Trait | Enum => dl_def(ast::def_ty(did)),
+        Trait => dl_def(ast::def_trait(did)),
+        Enum => dl_def(ast::def_ty(did)),
         Impl => dl_impl(did),
         PublicField | PrivateField | InheritedField => dl_field,
     }
@@ -359,7 +368,7 @@ pub fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     let t = item_type(ast::def_id { crate: cdata.cnum, node: id }, item, tcx,
                       cdata);
     let tp_bounds = if family_has_type_params(item_family(item)) {
-        item_ty_param_bounds(item, tcx, cdata)
+        item_ty_param_bounds(item, tcx, cdata, tag_items_data_item_ty_param_bounds)
     } else { @~[] };
     let rp = item_ty_region_param(item);
     ty::ty_param_bounds_and_ty {
@@ -690,36 +699,46 @@ pub fn get_impls_for_mod(intr: @ident_interner,
     @result
 }
 
-/* Works for both classes and traits */
-pub fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
-                         tcx: ty::ctxt) -> @~[ty::method] {
+pub fn get_method_name_and_self_ty(
+    intr: @ident_interner,
+    cdata: cmd,
+    id: ast::node_id) -> (ast::ident, ast::self_ty_)
+{
+    let method_doc = lookup_item(id, cdata.data);
+    let name = item_name(intr, method_doc);
+    let self_ty = get_self_ty(method_doc);
+    (name, self_ty)
+}
+
+pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
+                  tcx: ty::ctxt) -> ty::method
+{
+    let method_doc = lookup_item(id, cdata.data);
+    let bounds = item_ty_param_bounds(method_doc, tcx, cdata,
+                                      tag_item_method_tps);
+    let name = item_name(intr, method_doc);
+    let def_id = item_def_id(method_doc, cdata);
+    let fty = doc_method_fty(method_doc, tcx, cdata);
+    let self_ty = get_self_ty(method_doc);
+    ty::method {
+        ident: name,
+        tps: bounds,
+        fty: fty,
+        self_ty: self_ty,
+        vis: ast::public,
+        def_id: def_id
+    }
+}
+
+pub fn get_trait_method_def_ids(cdata: cmd,
+                                id: ast::node_id) -> ~[ast::def_id] {
     let data = cdata.data;
     let item = lookup_item(id, data);
     let mut result = ~[];
     for reader::tagged_docs(item, tag_item_trait_method) |mth| {
-        let bounds = item_ty_param_bounds(mth, tcx, cdata);
-        let name = item_name(intr, mth);
-        let ty = doc_type(mth, tcx, cdata);
-        let def_id = item_def_id(mth, cdata);
-        let fty = match ty::get(ty).sty {
-            ty::ty_bare_fn(ref f) => copy *f,
-            _ => {
-                tcx.diag.handler().bug(
-                    ~"get_trait_methods: id has non-function type");
-            }
-        };
-        let self_ty = get_self_ty(mth);
-        result.push(ty::method {
-            ident: name,
-            tps: bounds,
-            fty: fty,
-            self_ty: self_ty,
-            vis: ast::public,
-            def_id: def_id
-        });
+        result.push(item_def_id(mth, cdata));
     }
-    debug!("get_trait_methods: }");
-    @result
+    result
 }
 
 pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
@@ -734,7 +753,8 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
 
         let did = item_def_id(mth, cdata);
 
-        let bounds = item_ty_param_bounds(mth, tcx, cdata);
+        let bounds = item_ty_param_bounds(mth, tcx, cdata,
+                                          tag_items_data_item_ty_param_bounds);
         let name = item_name(intr, mth);
         let ty = doc_type(mth, tcx, cdata);
 
@@ -775,26 +795,6 @@ pub fn get_supertraits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         results.push(doc_type(trait_doc, tcx, cdata));
     }
     return results;
-}
-
-// If the item in question is a trait, returns its set of methods and
-// their self types. Otherwise, returns none. This overlaps in an
-// annoying way with get_trait_methods.
-pub fn get_method_names_if_trait(intr: @ident_interner, cdata: cmd,
-                                 node_id: ast::node_id)
-                              -> Option<~[(ast::ident, ast::self_ty_)]> {
-
-    let item = lookup_item(node_id, cdata.data);
-    if item_family(item) != Trait {
-        return None;
-    }
-
-    let mut resulting_methods = ~[];
-    for reader::tagged_docs(item, tag_item_trait_method) |method| {
-        resulting_methods.push(
-            (item_name(intr, method), get_self_ty(method)));
-    }
-    return Some(resulting_methods);
 }
 
 pub fn get_type_name_if_impl(intr: @ident_interner,

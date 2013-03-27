@@ -12,7 +12,8 @@ use core::prelude::*;
 
 use driver::session;
 use driver::session::Session;
-use metadata::csearch::{each_path, get_method_names_if_trait};
+use metadata::csearch::{each_path, get_trait_method_def_ids};
+use metadata::csearch::get_method_name_and_self_ty;
 use metadata::csearch::get_static_methods_if_impl;
 use metadata::csearch::get_type_name_if_impl;
 use metadata::cstore::find_extern_mod_stmt_cnum;
@@ -31,7 +32,7 @@ use syntax::ast::{crate, decl_item, def, def_arg, def_binding};
 use syntax::ast::{def_const, def_foreign_mod, def_fn, def_id, def_label};
 use syntax::ast::{def_local, def_mod, def_prim_ty, def_region, def_self};
 use syntax::ast::{def_self_ty, def_static_method, def_struct, def_ty};
-use syntax::ast::{def_ty_param, def_typaram_binder};
+use syntax::ast::{def_ty_param, def_typaram_binder, def_trait};
 use syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
 use syntax::ast::{expr_binary, expr_break, expr_field};
 use syntax::ast::{expr_fn_block, expr_index, expr_method_call, expr_path};
@@ -1341,7 +1342,7 @@ pub impl Resolver {
                 let def_id = local_def(item.id);
                 self.trait_info.insert(def_id, method_names);
 
-                name_bindings.define_type(privacy, def_ty(def_id), sp);
+                name_bindings.define_type(privacy, def_trait(def_id), sp);
                 visit_item(item, new_parent, visitor);
             }
 
@@ -1611,36 +1612,40 @@ pub impl Resolver {
                     crate) building value %s", final_ident);
             child_name_bindings.define_value(Public, def, dummy_sp());
           }
-          def_ty(def_id) => {
-            debug!("(building reduced graph for external \
-                    crate) building type %s", final_ident);
+          def_trait(def_id) => {
+              debug!("(building reduced graph for external \
+                      crate) building type %s", final_ident);
 
-            // If this is a trait, add all the method names
-            // to the trait info.
+              // If this is a trait, add all the method names
+              // to the trait info.
 
-            match get_method_names_if_trait(self.session.cstore, def_id) {
-              None => {
-                // Nothing to do.
+              let method_def_ids = get_trait_method_def_ids(self.session.cstore,
+                                                            def_id);
+              let mut interned_method_names = HashSet::new();
+              for method_def_ids.each |&method_def_id| {
+                  let (method_name, self_ty) =
+                      get_method_name_and_self_ty(self.session.cstore,
+                                                  method_def_id);
+
+                  debug!("(building reduced graph for \
+                          external crate) ... adding \
+                          trait method '%s'",
+                         *self.session.str_of(method_name));
+
+                  // Add it to the trait info if not static.
+                  if self_ty != sty_static {
+                      interned_method_names.insert(method_name);
+                  }
               }
-              Some(method_names) => {
-                let mut interned_method_names = HashSet::new();
-                for method_names.each |method_data| {
-                    let (method_name, self_ty) = *method_data;
-                    debug!("(building reduced graph for \
-                            external crate) ... adding \
-                            trait method '%s'",
-                           *self.session.str_of(method_name));
+              self.trait_info.insert(def_id, interned_method_names);
 
-                    // Add it to the trait info if not static.
-                    if self_ty != sty_static {
-                        interned_method_names.insert(method_name);
-                    }
-                }
-                self.trait_info.insert(def_id, interned_method_names);
-              }
-            }
+              child_name_bindings.define_type(Public, def, dummy_sp());
+          }
+          def_ty(_) => {
+              debug!("(building reduced graph for external \
+                      crate) building type %s", final_ident);
 
-            child_name_bindings.define_type(Public, def, dummy_sp());
+              child_name_bindings.define_type(Public, def, dummy_sp());
           }
           def_struct(def_id) => {
             debug!("(building reduced graph for external \
@@ -4952,7 +4957,7 @@ pub impl Resolver {
                 match child_name_bindings.def_for_namespace(TypeNS) {
                     Some(def) => {
                         match def {
-                            def_ty(trait_def_id) => {
+                            def_trait(trait_def_id) => {
                                 self.add_trait_info_if_containing_method(
                                     &mut found_traits, trait_def_id, name);
                             }
@@ -4979,7 +4984,7 @@ pub impl Resolver {
                         match target.bindings.def_for_namespace(TypeNS) {
                             Some(def) => {
                                 match def {
-                                    def_ty(trait_def_id) => {
+                                    def_trait(trait_def_id) => {
                                         let added = self.
                                         add_trait_info_if_containing_method(
                                             &mut found_traits,

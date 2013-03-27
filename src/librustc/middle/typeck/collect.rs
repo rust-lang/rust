@@ -53,7 +53,6 @@ use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, split_trait_methods};
-use syntax::ast_util::{trait_method_to_ty_method};
 use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::codemap;
@@ -221,19 +220,61 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
 }
 
 pub fn ensure_trait_methods(ccx: &CrateCtxt,
-                            id: ast::node_id,
-                            trait_ty: ty::t) {
-    fn store_methods<T>(ccx: &CrateCtxt,
-                        id: ast::node_id,
-                        stuff: &[T],
-                        f: &fn(v: &T) -> ty::method) {
-        ty::store_trait_methods(ccx.tcx, id, @stuff.map(f));
+                            trait_id: ast::node_id,
+                            trait_ty: ty::t)
+{
+    let tcx = ccx.tcx;
+    let region_paramd = tcx.region_paramd_items.find(&trait_id).map(|&x| *x);
+    match *tcx.items.get(&trait_id) {
+        ast_map::node_item(@ast::item {
+            node: ast::item_trait(ref generics, _, ref ms),
+            _
+        }, _) => {
+            let trait_bounds = ty_param_bounds(ccx, generics);
+
+            // For each method, construct a suitable ty::method and
+            // store it into the `tcx.methods` table:
+            for ms.each |m| {
+                let ty_method = @match m {
+                    &ast::required(ref m) => {
+                        ty_method_of_trait_method(ccx, region_paramd, generics,
+                                                  &m.id, &m.ident, &m.self_ty,
+                                                  &m.generics, &m.purity, &m.decl)
+                    }
+
+                    &ast::provided(ref m) => {
+                        ty_method_of_trait_method(ccx, region_paramd, generics,
+                                                  &m.id, &m.ident, &m.self_ty,
+                                                  &m.generics, &m.purity, &m.decl)
+                    }
+                };
+
+                if ty_method.self_ty == ast::sty_static {
+                    make_static_method_ty(ccx, region_paramd,
+                                          ty_method, trait_ty,
+                                          trait_bounds);
+                }
+
+                tcx.methods.insert(ty_method.def_id, ty_method);
+            }
+
+            // Add an entry mapping
+            let method_def_ids = @ms.map(|m| {
+                match m {
+                    &ast::required(ref ty_method) => local_def(ty_method.id),
+                    &ast::provided(ref method) => local_def(method.id)
+                }
+            });
+
+            let trait_def_id = local_def(trait_id);
+            tcx.trait_method_def_ids.insert(trait_def_id, method_def_ids);
+        }
+        _ => { /* Ignore things that aren't traits */ }
     }
 
     fn make_static_method_ty(ccx: &CrateCtxt,
-                             am: &ast::ty_method,
                              rp: Option<ty::region_variance>,
-                             m: ty::method,
+                             m: &ty::method,
                              // Take this as an argument b/c we may check
                              // the impl before the trait.
                              trait_ty: ty::t,
@@ -267,7 +308,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                            ty::mk_bare_fn(ccx.tcx, copy m.fty));
         let bounds = @(*trait_bounds + ~[@~[ty::bound_trait(trait_ty)]]
                        + *m.tps);
-        ccx.tcx.tcache.insert(local_def(am.id),
+        ccx.tcx.tcache.insert(m.def_id,
                               ty_param_bounds_and_ty {
                                 bounds: bounds,
                                 region_param: rp,
@@ -275,40 +316,31 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
     }
 
 
-    let tcx = ccx.tcx;
-    let region_paramd = tcx.region_paramd_items.find(&id).map_consume(|x| *x);
-    match *tcx.items.get(&id) {
-      ast_map::node_item(@ast::item {
-                node: ast::item_trait(ref generics, _, ref ms),
-                _
-            }, _) => {
-        store_methods::<ast::trait_method>(ccx, id, *ms, |m| {
-            let def_id;
-            match *m {
-                ast::required(ref ty_method) => {
-                    def_id = local_def((*ty_method).id)
-                }
-                ast::provided(method) => def_id = local_def(method.id)
-            }
-
-            let trait_bounds = ty_param_bounds(ccx, generics);
-            let ty_m = trait_method_to_ty_method(m);
-            let method_ty = ty_of_ty_method(
-                ccx,
-                &ty_m,
-                region_paramd,
-                def_id,
-                generics
-            );
-            if ty_m.self_ty.node == ast::sty_static {
-                make_static_method_ty(ccx, &ty_m, region_paramd,
-                                      method_ty, trait_ty,
-                                      trait_bounds);
-            }
-            method_ty
-        });
-      }
-      _ => { /* Ignore things that aren't traits */ }
+    fn ty_method_of_trait_method(self: &CrateCtxt,
+                                 trait_rp: Option<ty::region_variance>,
+                                 trait_generics: &ast::Generics,
+                                 m_id: &ast::node_id,
+                                 m_ident: &ast::ident,
+                                 m_self_ty: &ast::self_ty,
+                                 m_generics: &ast::Generics,
+                                 m_purity: &ast::purity,
+                                 m_decl: &ast::fn_decl) -> ty::method
+    {
+        let rscope = MethodRscope::new(m_self_ty.node, trait_rp, trait_generics);
+        ty::method {
+            ident: *m_ident,
+            tps: ty_param_bounds(self, m_generics),
+            fty: astconv::ty_of_bare_fn(self,
+                                        &rscope,
+                                        *m_purity,
+                                        AbiSet::Rust(),
+                                        &m_generics.lifetimes,
+                                        m_decl),
+            // assume public, because this is only invoked on trait methods
+            self_ty: m_self_ty.node,
+            vis: ast::public,
+            def_id: local_def(*m_id)
+        }
     }
 }
 
@@ -501,8 +533,8 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
                                    rp: Option<ty::region_variance>,
                                    selfty: ty::t,
                                    a_trait_ty: @ast::trait_ref,
-                                   impl_ms: &[ConvertedMethod]) {
-
+                                   impl_ms: &[ConvertedMethod])
+{
     let tcx = ccx.tcx;
     let (did, tpt) = instantiate_trait_ref(ccx, a_trait_ty, rp, generics);
 
@@ -530,7 +562,7 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
     let trait_ms = ty::trait_methods(tcx, did);
     for impl_ms.each |impl_m| {
         match trait_ms.find(|trait_m| trait_m.ident == impl_m.mty.ident) {
-            Some(ref trait_m) => {
+            Some(trait_m) => {
                 let num_impl_tps = generics.ty_params.len();
                 compare_impl_method(
                     ccx.tcx, num_impl_tps, impl_m, trait_m,
@@ -786,29 +818,6 @@ pub fn ty_of_method(ccx: &CrateCtxt,
     }
 }
 
-pub fn ty_of_ty_method(self: &CrateCtxt,
-                       m: &ast::ty_method,
-                       rp: Option<ty::region_variance>,
-                       id: ast::def_id,
-                       generics: &ast::Generics)
-                    -> ty::method {
-    let rscope = MethodRscope::new(m.self_ty.node, rp, generics);
-    ty::method {
-        ident: m.ident,
-        tps: ty_param_bounds(self, &m.generics),
-        fty: astconv::ty_of_bare_fn(self,
-                                    &rscope,
-                                    m.purity,
-                                    AbiSet::Rust(),
-                                    &m.generics.lifetimes,
-                                    &m.decl),
-        // assume public, because this is only invoked on trait methods
-        self_ty: m.self_ty.node,
-        vis: ast::public,
-        def_id: id
-    }
-}
-
 /*
   Instantiates the path for the given trait reference, assuming that
   it's bound to a valid trait type. Returns the def_id for the defining
@@ -828,7 +837,7 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
     let rscope = type_rscope(rp);
 
     match lookup_def_tcx(ccx.tcx, t.path.span, t.ref_id) {
-      ast::def_ty(t_id) => {
+      ast::def_trait(t_id) => {
         let tpt = astconv::ast_path_to_ty(ccx, &rscope, t_id, t.path);
 
         write_tpt_to_tcx(ccx.tcx, t.ref_id, &tpt);

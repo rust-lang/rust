@@ -111,12 +111,24 @@ pub fn get_impls_for_mod(cstore: @mut cstore::CStore, def: ast::def_id,
     }
 }
 
-pub fn get_trait_methods(tcx: ty::ctxt,
-                         def: ast::def_id)
-                      -> @~[ty::method] {
-    let cstore = tcx.cstore;
+pub fn get_method(tcx: ty::ctxt,
+                  def: ast::def_id) -> ty::method
+{
+    let cdata = cstore::get_crate_data(tcx.cstore, def.crate);
+    decoder::get_method(tcx.cstore.intr, cdata, def.node, tcx)
+}
+
+pub fn get_method_name_and_self_ty(cstore: @mut cstore::CStore,
+                                   def: ast::def_id) -> (ast::ident, ast::self_ty_)
+{
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_trait_methods(cstore.intr, cdata, def.node, tcx)
+    decoder::get_method_name_and_self_ty(cstore.intr, cdata, def.node)
+}
+
+pub fn get_trait_method_def_ids(cstore: @mut cstore::CStore,
+                                def: ast::def_id) -> ~[ast::def_id] {
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_trait_method_def_ids(cdata, def.node)
 }
 
 pub fn get_provided_trait_methods(tcx: ty::ctxt,
@@ -131,13 +143,6 @@ pub fn get_supertraits(tcx: ty::ctxt, def: ast::def_id) -> ~[ty::t] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_supertraits(cdata, def.node, tcx)
-}
-
-pub fn get_method_names_if_trait(cstore: @mut cstore::CStore,
-                                 def: ast::def_id)
-                              -> Option<~[(ast::ident, ast::self_ty_)]> {
-    let cdata = cstore::get_crate_data(cstore, def.crate);
-    return decoder::get_method_names_if_trait(cstore.intr, cdata, def.node);
 }
 
 pub fn get_type_name_if_impl(cstore: @mut cstore::CStore, def: ast::def_id)
