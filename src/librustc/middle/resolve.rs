@@ -79,6 +79,7 @@ use syntax::opt_vec::OptVec;
 use core::option::Some;
 use core::str::each_split_str;
 use core::hashmap::{HashMap, HashSet};
+use core::util;
 
 // Definition mapping
 pub type DefMap = @mut HashMap<node_id,def>;
@@ -3414,7 +3415,6 @@ pub impl Resolver {
                       self_type,
                       ref methods) => {
                 self.resolve_implementation(item.id,
-                                            item.span,
                                             generics,
                                             implemented_traits,
                                             self_type,
@@ -3723,9 +3723,26 @@ pub impl Resolver {
         for type_parameters.each |type_parameter| {
             for type_parameter.bounds.each |&bound| {
                 match bound {
-                    TraitTyParamBound(ty) => self.resolve_type(ty, visitor),
+                    TraitTyParamBound(tref) => {
+                        self.resolve_trait_reference(tref, visitor)
+                    }
                     RegionTyParamBound => {}
                 }
+            }
+        }
+    }
+
+    fn resolve_trait_reference(@mut self,
+                               trait_reference: &trait_ref,
+                               visitor: ResolveVisitor) {
+        match self.resolve_path(trait_reference.path, TypeNS, true, visitor) {
+            None => {
+                self.session.span_err(trait_reference.path.span,
+                                      ~"attempt to implement an \
+                                        unknown trait");
+            }
+            Some(def) => {
+                self.record_def(trait_reference.ref_id, def);
             }
         }
     }
@@ -3797,7 +3814,6 @@ pub impl Resolver {
 
     fn resolve_implementation(@mut self,
                               id: node_id,
-                              span: span,
                               generics: &Generics,
                               opt_trait_reference: Option<@trait_ref>,
                               self_type: @Ty,
@@ -3816,25 +3832,16 @@ pub impl Resolver {
             let original_trait_refs;
             match opt_trait_reference {
                 Some(trait_reference) => {
-                    let mut new_trait_refs = ~[];
-                    match self.resolve_path(
-                        trait_reference.path, TypeNS, true, visitor) {
-                        None => {
-                            self.session.span_err(span,
-                                                  ~"attempt to implement an \
-                                                    unknown trait");
-                        }
-                        Some(def) => {
-                            self.record_def(trait_reference.ref_id, def);
+                    self.resolve_trait_reference(trait_reference, visitor);
 
-                            // Record the current trait reference.
-                            new_trait_refs.push(def_id_of_def(def));
-                        }
-                    }
                     // Record the current set of trait references.
-                    let mut old = Some(new_trait_refs);
-                    self.current_trait_refs <-> old;
-                    original_trait_refs = Some(old);
+                    let mut new_trait_refs = ~[];
+                    for self.def_map.find(&trait_reference.ref_id).each |&def| {
+                        new_trait_refs.push(def_id_of_def(*def));
+                    }
+                    original_trait_refs = Some(util::replace(
+                        &mut self.current_trait_refs,
+                        Some(new_trait_refs)));
                 }
                 None => {
                     original_trait_refs = None;

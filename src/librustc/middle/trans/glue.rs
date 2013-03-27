@@ -40,7 +40,6 @@ use core::libc::c_uint;
 use core::str;
 use std::time;
 use syntax::ast;
-use syntax::parse::token::special_idents;
 
 pub fn trans_free(cx: block, v: ValueRef) -> block {
     let _icx = cx.insn_ctxt("trans_free");
@@ -400,11 +399,9 @@ pub fn call_tydesc_glue(++cx: block, v: ValueRef, t: ty::t, field: uint)
 pub fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_visit_glue");
     let mut bcx = bcx;
-    let ty_visitor_name = special_idents::ty_visitor;
-    assert!(bcx.ccx().tcx.intrinsic_defs.contains_key(&ty_visitor_name));
-    let (trait_id, ty) = *bcx.ccx().tcx.intrinsic_defs.get(&ty_visitor_name);
-    let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), ty)));
-    bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, trait_id);
+    let (visitor_trait, object_ty) = ty::visitor_object_ty(bcx.tcx());
+    let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), object_ty)));
+    bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, visitor_trait.def_id);
     build_return(bcx);
 }
 
@@ -554,8 +551,7 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_closure(_) => {
         closure::make_closure_glue(bcx, v0, t, drop_ty)
       }
-      ty::ty_trait(_, _, ty::BoxTraitStore) |
-      ty::ty_trait(_, _, ty::BareTraitStore) => {
+      ty::ty_trait(_, _, ty::BoxTraitStore) => {
         let llbox = Load(bcx, GEPi(bcx, v0, [0u, 1u]));
         decr_refcnt_maybe_free(bcx, llbox, ty::mk_opaque_box(ccx.tcx))
       }
@@ -621,8 +617,7 @@ pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_closure(_) => {
         closure::make_closure_glue(bcx, v, t, take_ty)
       }
-      ty::ty_trait(_, _, ty::BoxTraitStore) |
-      ty::ty_trait(_, _, ty::BareTraitStore) => {
+      ty::ty_trait(_, _, ty::BoxTraitStore) => {
         let llbox = Load(bcx, GEPi(bcx, v, [0u, 1u]));
         incr_refcnt_of_boxed(bcx, llbox);
         bcx

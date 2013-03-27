@@ -610,7 +610,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
         } else {
             for m.items.each |item| {
                 let tpt = ty::lookup_item_type(ccx.tcx, local_def(item.id));
-                if !tpt.bounds.is_empty() {
+                if !tpt.generics.bounds.is_empty() {
                     ccx.tcx.sess.span_err(
                         item.span,
                         fmt!("foreign items may not have type parameters"));
@@ -627,6 +627,10 @@ impl AstConv for FnCtxt {
 
     fn get_item_ty(&self, id: ast::def_id) -> ty::ty_param_bounds_and_ty {
         ty::lookup_item_type(self.tcx(), id)
+    }
+
+    fn get_trait_def(&self, id: ast::def_id) -> @ty::TraitDef {
+        ty::lookup_trait_def(self.tcx(), id)
     }
 
     fn ty_infer(&self, _span: span) -> ty::t {
@@ -1064,7 +1068,7 @@ pub fn impl_self_ty(vcx: &VtableContext,
 
     let (n_tps, region_param, raw_ty) = {
         let ity = ty::lookup_item_type(tcx, did);
-        (vec::len(*ity.bounds), ity.region_param, ity.ty)
+        (ity.generics.bounds.len(), ity.generics.region_param, ity.ty)
     };
 
     let self_r = if region_param.is_some() {
@@ -1888,8 +1892,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
         } else {
             let item_type = ty::lookup_item_type(tcx, class_id);
-            type_parameter_count = (*item_type.bounds).len();
-            region_parameterized = item_type.region_param;
+            type_parameter_count = item_type.generics.bounds.len();
+            region_parameterized = item_type.generics.region_param;
             raw_type = item_type.ty;
         }
 
@@ -1976,8 +1980,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
         } else {
             let item_type = ty::lookup_item_type(tcx, enum_id);
-            type_parameter_count = (*item_type.bounds).len();
-            region_parameterized = item_type.region_param;
+            type_parameter_count = item_type.generics.bounds.len();
+            region_parameterized = item_type.generics.region_param;
             raw_type = item_type.ty;
         }
 
@@ -3147,8 +3151,10 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
       ast::def_fn(_, ast::extern_fn) => {
         // extern functions are just u8 pointers
         return ty_param_bounds_and_ty {
-            bounds: @~[],
-            region_param: None,
+            generics: ty::Generics {
+                bounds: @~[],
+                region_param: None
+            },
             ty: ty::mk_ptr(
                 fcx.ccx.tcx,
                 ty::mt {
@@ -3211,7 +3217,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
                         region_lb: ty::Region) {
     debug!(">>> instantiate_path");
 
-    let ty_param_count = vec::len(*tpt.bounds);
+    let ty_param_count = tpt.generics.bounds.len();
     let ty_substs_len = vec::len(pth.types);
 
     debug!("ty_param_count=%? ty_substs_len=%?",
@@ -3222,7 +3228,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
     // (if any) and otherwise using a fresh region variable
     let self_r = match pth.rp {
       Some(_) => { // user supplied a lifetime parameter...
-        match tpt.region_param {
+        match tpt.generics.region_param {
           None => { // ...but the type is not lifetime parameterized!
             fcx.ccx.tcx.sess.span_err
                 (span, ~"this item is not region-parameterized");
@@ -3235,7 +3241,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
       }
       None => { // no lifetime parameter supplied, insert default
         fcx.region_var_if_parameterized(
-            tpt.region_param, span, region_lb)
+            tpt.generics.region_param, span, region_lb)
       }
     };
 
@@ -3433,28 +3439,13 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
       }
       ~"visit_tydesc" => {
           let tydesc_name = special_idents::tydesc;
-          let ty_visitor_name = tcx.sess.ident_of(~"TyVisitor");
           assert!(tcx.intrinsic_defs.contains_key(&tydesc_name));
-          assert!(ccx.tcx.intrinsic_defs.contains_key(&ty_visitor_name));
           let (_, tydesc_ty) = *tcx.intrinsic_defs.get(&tydesc_name);
-          let (_, visitor_trait) = *tcx.intrinsic_defs.get(&ty_visitor_name);
-
-          let visitor_trait = match ty::get(visitor_trait).sty {
-            ty::ty_trait(trait_def_id, ref trait_substs, _) => {
-                ty::mk_trait(tcx,
-                             trait_def_id,
-                             copy *trait_substs,
-                             ty::BoxTraitStore)
-            }
-            _ => {
-                tcx.sess.span_bug(it.span, ~"TyVisitor wasn't a trait?!")
-            }
-          };
-
+          let (_, visitor_object_ty) = ty::visitor_object_ty(tcx);
           let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {ty: tydesc_ty,
                                                    mutbl: ast::m_imm});
           (0u, ~[arg(ast::by_copy, td_ptr),
-                 arg(ast::by_ref, visitor_trait)], ty::mk_nil(tcx))
+                 arg(ast::by_ref, visitor_object_ty)], ty::mk_nil(tcx))
       }
       ~"frame_address" => {
         let fty = ty::mk_closure(ccx.tcx, ty::ClosureTy {
@@ -3700,7 +3691,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                     output: output}
     });
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
-    let i_n_tps = (*i_ty.bounds).len();
+    let i_n_tps = i_ty.generics.bounds.len();
     if i_n_tps != n_tps {
         tcx.sess.span_err(it.span, fmt!("intrinsic has wrong number \
                                          of type parameters: found %u, \

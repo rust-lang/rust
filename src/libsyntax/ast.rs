@@ -144,7 +144,7 @@ pub static crate_node_id: node_id = 0;
 // the "special" built-in traits (see middle::lang_items) and
 // detects Copy, Send, Owned, and Const.
 pub enum TyParamBound {
-    TraitTyParamBound(@Ty),
+    TraitTyParamBound(@trait_ref),
     RegionTyParamBound
 }
 

@@ -244,10 +244,11 @@ impl Combine for Lub {
         super_args(self, a, b)
     }
 
-    fn substs(&self, did: ast::def_id,
+    fn substs(&self,
+              generics: &ty::Generics,
               as_: &ty::substs,
               bs: &ty::substs) -> cres<ty::substs> {
-        super_substs(self, did, as_, bs)
+        super_substs(self, generics, as_, bs)
     }
 
     fn tps(&self, as_: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {
@@ -257,5 +258,9 @@ impl Combine for Lub {
     fn self_tys(&self, a: Option<ty::t>, b: Option<ty::t>)
                -> cres<Option<ty::t>> {
         super_self_tys(self, a, b)
+    }
+
+    fn trait_refs(&self, a: &ty::TraitRef, b: &ty::TraitRef) -> cres<ty::TraitRef> {
+        super_trait_refs(self, a, b)
     }
 }

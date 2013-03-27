@@ -74,7 +74,9 @@ pub static tag_crate_dep_vers: uint = 0x2cu;
 pub static tag_mod_impl: uint = 0x30u;
 
 pub static tag_item_trait_method: uint = 0x31u;
-pub static tag_impl_trait: uint = 0x32u;
+
+pub static tag_item_trait_ref: uint = 0x32u;
+pub static tag_item_super_trait_ref: uint = 0x33u;
 
 // discriminator value for variants
 pub static tag_disr_val: uint = 0x34u;

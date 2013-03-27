@@ -825,8 +825,7 @@ fn check_item_heap(cx: ty::ctxt, it: @ast::item) {
       ast::item_fn(*) |
       ast::item_ty(*) |
       ast::item_enum(*) |
-      ast::item_struct(*) |
-      ast::item_trait(*) => check_type(cx, it.id, it.id, it.span,
+      ast::item_struct(*) => check_type(cx, it.id, it.id, it.span,
                                        ty::node_id_to_type(cx, it.id)),
       _ => ()
     }

@@ -135,7 +135,7 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                     ty::enum_variant_with_id(tcx, enm, var);
                 let var_tpt = ty::lookup_item_type(tcx, var);
                 vinfo.args.map(|t| {
-                    if var_tpt.bounds.len() == expected_substs.tps.len() {
+                    if var_tpt.generics.bounds.len() == expected_substs.tps.len() {
                         ty::subst(tcx, expected_substs, *t)
                     }
                     else {
