@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Core operators
+//! Traits for the built-in operators
 
 #[lang="drop"]
 pub trait Drop {
