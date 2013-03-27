@@ -467,11 +467,6 @@ fn visit_fn(fk: &visit::fn_kind,
     match *fk {
         fk_method(_, _, method) => {
             match method.self_ty.node {
-                sty_by_ref => {
-                    fn_maps.add_variable(Arg(method.self_id,
-                                             special_idents::self_,
-                                             by_ref));
-                }
                 sty_value | sty_region(*) | sty_box(_) | sty_uniq(_) => {
                     fn_maps.add_variable(Arg(method.self_id,
                                              special_idents::self_,

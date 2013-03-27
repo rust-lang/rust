@@ -436,7 +436,7 @@ pub impl VisitContext {
 
             expr_unary(deref, base) => {       // *base
                 if !self.use_overloaded_operator(
-                    expr, DontDerefArgs, base, [], visitor)
+                    expr, base, [], visitor)
                 {
                     // Moving out of *base moves out of base.
                     self.use_expr(base, comp_mode, visitor);
@@ -450,7 +450,7 @@ pub impl VisitContext {
 
             expr_index(lhs, rhs) => {          // lhs[rhs]
                 if !self.use_overloaded_operator(
-                    expr, DontDerefArgs, lhs, [rhs], visitor)
+                    expr, lhs, [rhs], visitor)
                 {
                     self.use_expr(lhs, comp_mode, visitor);
                     self.consume_expr(rhs, visitor);
@@ -579,7 +579,7 @@ pub impl VisitContext {
 
             expr_unary(_, lhs) => {
                 if !self.use_overloaded_operator(
-                    expr, DontDerefArgs, lhs, [], visitor)
+                    expr, lhs, [], visitor)
                 {
                     self.consume_expr(lhs, visitor);
                 }
@@ -587,7 +587,7 @@ pub impl VisitContext {
 
             expr_binary(_, lhs, rhs) => {
                 if !self.use_overloaded_operator(
-                    expr, DoDerefArgs, lhs, [rhs], visitor)
+                    expr, lhs, [rhs], visitor)
                 {
                     self.consume_expr(lhs, visitor);
                     self.consume_expr(rhs, visitor);
@@ -659,7 +659,6 @@ pub impl VisitContext {
 
     fn use_overloaded_operator(&self,
                                expr: @expr,
-                               deref_args: DerefArgs,
                                receiver_expr: @expr,
                                arg_exprs: &[@expr],
                                visitor: vt<VisitContext>) -> bool
@@ -670,21 +669,10 @@ pub impl VisitContext {
 
         self.use_receiver(expr.id, expr.span, receiver_expr, visitor);
 
-        // The deref_args stuff should eventually be converted into
-        // adjustments.  Moreover, it should eventually be applied
-        // consistently to all overloaded operators.  But that's not
-        // how it is today.
-        match deref_args {
-            DoDerefArgs => {
-                // we are always passing in a borrowed pointer,
-                // so it's always read mode:
-                for arg_exprs.each |arg_expr| {
-                    self.use_expr(*arg_expr, Read, visitor);
-                }
-            }
-            DontDerefArgs => {
-                self.use_fn_args(expr.callee_id, arg_exprs, visitor);
-            }
+        // for overloaded operatrs, we are always passing in a
+        // borrowed pointer, so it's always read mode:
+        for arg_exprs.each |arg_expr| {
+            self.use_expr(*arg_expr, Read, visitor);
         }
 
         return true;
@@ -737,20 +725,7 @@ pub impl VisitContext {
                     receiver_expr: @expr,
                     visitor: vt<VisitContext>)
     {
-        let callee_mode = match self.method_map.find(&expr_id) {
-            Some(ref method_map_entry) => {
-                match method_map_entry.explicit_self {
-                    sty_by_ref => by_ref,
-                    _ => by_copy
-                }
-            }
-            None => {
-                self.tcx.sess.span_bug(
-                    span,
-                    ~"no method map entry");
-            }
-        };
-        self.use_fn_arg(callee_mode, receiver_expr, visitor);
+        self.use_fn_arg(by_copy, receiver_expr, visitor);
     }
 
     fn use_fn_args(&self,
