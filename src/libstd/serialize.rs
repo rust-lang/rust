@@ -92,7 +92,15 @@ pub trait Decoder {
 
     // Compound types:
     fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T;
+
+    #[cfg(stage0)]
     fn read_enum_variant<T>(&self, f: &fn(uint) -> T) -> T;
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T;
+
     fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
     fn read_owned<T>(&self, f: &fn() -> T) -> T;

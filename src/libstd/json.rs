@@ -855,6 +855,7 @@ impl<'self> serialize::Decoder for Decoder<'self> {
         f()
     }
 
+    #[cfg(stage0)]
     fn read_enum_variant<T>(&self, f: &fn(uint) -> T) -> T {
         debug!("read_enum_variant()");
         let idx = match *self.peek() {
@@ -864,10 +865,32 @@ impl<'self> serialize::Decoder for Decoder<'self> {
         f(idx)
     }
 
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T {
+        debug!("read_enum_variant(names=%?)", names);
+        let name = match *self.peek() {
+            String(ref s) => s,
+            List([String(ref s), .. _]) => s,
+            json => fail!(fmt!("invalid variant: %?", json)),
+        };
+        let idx = match vec::position(names, |n| str::eq_slice(*n, *name)) {
+            Some(idx) => idx,
+            None => fail!(fmt!("Unknown variant name: %?", name)),
+        };
+        f(idx)
+    }
+
     fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T {
         debug!("read_enum_variant_arg(idx=%u)", idx);
-        if idx != 0 { fail!(~"unknown index") }
-        f()
+        match *self.peek() {
+            List(ref list) => {
+                self.stack.push(&list[idx + 1]);
+                f()
+            }
+            ref json => fail!(fmt!("not a list: %?", json)),
+        }
     }
 
     fn read_owned_vec<T>(&self, f: &fn(uint) -> T) -> T {
