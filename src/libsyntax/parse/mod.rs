@@ -329,25 +329,27 @@ mod test {
         assert_eq!(
             to_json_str(@tts),
             ~"[\
-                [\"tt_tok\",[null,[\"IDENT\",[\"fn\",false]]]],\
-                [\"tt_tok\",[null,[\"IDENT\",[\"foo\",false]]]],\
-                [\"tt_delim\",[\
+                [\"tt_tok\",null,[\"IDENT\",\"fn\",false]],\
+                [\"tt_tok\",null,[\"IDENT\",\"foo\",false]],\
+                [\
+                    \"tt_delim\",\
                     [\
-                        [\"tt_tok\",[null,[\"LPAREN\",[]]]],\
-                        [\"tt_tok\",[null,[\"IDENT\",[\"x\",false]]]],\
-                        [\"tt_tok\",[null,[\"COLON\",[]]]],\
-                        [\"tt_tok\",[null,[\"IDENT\",[\"int\",false]]]],\
-                        [\"tt_tok\",[null,[\"RPAREN\",[]]]]\
+                        [\"tt_tok\",null,\"LPAREN\"],\
+                        [\"tt_tok\",null,[\"IDENT\",\"x\",false]],\
+                        [\"tt_tok\",null,\"COLON\"],\
+                        [\"tt_tok\",null,[\"IDENT\",\"int\",false]],\
+                        [\"tt_tok\",null,\"RPAREN\"]\
                     ]\
-                ]],\
-                [\"tt_delim\",[\
+                ],\
+                [\
+                    \"tt_delim\",\
                     [\
-                        [\"tt_tok\",[null,[\"LBRACE\",[]]]],\
-                        [\"tt_tok\",[null,[\"IDENT\",[\"x\",false]]]],\
-                        [\"tt_tok\",[null,[\"SEMI\",[]]]],\
-                        [\"tt_tok\",[null,[\"RBRACE\",[]]]]\
+                        [\"tt_tok\",null,\"LBRACE\"],\
+                        [\"tt_tok\",null,[\"IDENT\",\"x\",false]],\
+                        [\"tt_tok\",null,\"SEMI\"],\
+                        [\"tt_tok\",null,\"RBRACE\"]\
                     ]\
-                ]]\
+                ]\
             ]"
         );
         let ast1 = new_parser_from_tts(new_parse_sess(None),~[],tts)
