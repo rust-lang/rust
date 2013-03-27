@@ -133,6 +133,11 @@ pub impl Scheduler {
         local::take()
     }
 
+    /// Just check whether there is a local scheduler
+    fn have_local() -> bool {
+        local::exists()
+    }
+
     // * Scheduler-context operations
 
     fn resume_task_from_queue(~self) -> bool {
