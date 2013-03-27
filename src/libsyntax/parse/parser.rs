@@ -1230,7 +1230,7 @@ pub impl Parser {
             let lvl = self.parse_expr();
             self.expect(&token::COMMA);
             let e = self.parse_expr();
-            ex = expr_log(ast::log_other, lvl, e);
+            ex = expr_log(lvl, e);
             hi = self.span.hi;
             self.expect(&token::RPAREN);
         } else if self.eat_keyword(&~"return") {

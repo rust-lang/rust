@@ -1386,20 +1386,14 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
           _ => ()
         }
       }
-      ast::expr_log(lvl, lexp, expr) => {
-        match lvl {
-          ast::debug => { word_nbsp(s, ~"log"); print_expr(s, expr); }
-          ast::error => { word_nbsp(s, ~"log_err"); print_expr(s, expr); }
-          ast::log_other => {
-            word_nbsp(s, ~"log");
-            popen(s);
-            print_expr(s, lexp);
-            word(s.s, ~",");
-            space_if_not_bol(s);
-            print_expr(s, expr);
-            pclose(s);
-          }
-        }
+      ast::expr_log(lexp, expr) => {
+        word(s.s, ~"__log");
+        popen(s);
+        print_expr(s, lexp);
+        word(s.s, ~",");
+        space_if_not_bol(s);
+        print_expr(s, expr);
+        pclose(s);
       }
       ast::expr_inline_asm(a, in, out, c, v, _) => {
         if v {
