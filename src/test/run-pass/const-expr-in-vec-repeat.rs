@@ -10,7 +10,7 @@
 
 // Check that constant expressions can be used in vec repeat syntax. 
 
-fn main() {
+pub fn main() {
 
     static FOO: int = 2;
     let _v = [0, ..FOO*3*2/2];

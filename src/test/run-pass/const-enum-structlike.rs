@@ -15,7 +15,7 @@ enum E {
 
 static C: E = S1 { u: 23 };
 
-fn main() {
+pub fn main() {
     match C {
         S0 { _ } => fail!(),
         S1 { u } => fail_unless!(u == 23)

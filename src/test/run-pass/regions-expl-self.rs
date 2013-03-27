@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -18,4 +18,4 @@ pub impl Foo {
     fn foo(&'a self) {}
 }
 
-fn main() {}
+pub fn main() {}
