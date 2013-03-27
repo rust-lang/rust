@@ -48,7 +48,7 @@ use syntax::ast::{item_const, item_enum, item_fn, item_foreign_mod};
 use syntax::ast::{item_impl, item_mac, item_mod, item_trait, item_ty, le};
 use syntax::ast::{local, local_crate, lt, method, mode, mul};
 use syntax::ast::{named_field, ne, neg, node_id, pat, pat_enum, pat_ident};
-use syntax::ast::{path, pat_lit, pat_range, pat_struct};
+use syntax::ast::{Path, pat_lit, pat_range, pat_struct};
 use syntax::ast::{prim_ty, private, provided};
 use syntax::ast::{public, required, rem, self_ty_, shl, shr, stmt_decl};
 use syntax::ast::{struct_dtor, struct_field, struct_variant_kind};
@@ -4368,7 +4368,7 @@ pub impl Resolver {
     /// If `check_ribs` is true, checks the local definitions first; i.e.
     /// doesn't skip straight to the containing module.
     fn resolve_path(@mut self,
-                    path: @path,
+                    path: @Path,
                     namespace: Namespace,
                     check_ribs: bool,
                     visitor: ResolveVisitor)
@@ -4493,7 +4493,7 @@ pub impl Resolver {
         return NoNameDefinition;
     }
 
-    fn intern_module_part_of_path(@mut self, path: @path) -> ~[ident] {
+    fn intern_module_part_of_path(@mut self, path: @Path) -> ~[ident] {
         let mut module_path_idents = ~[];
         for path.idents.eachi |index, ident| {
             if index == path.idents.len() - 1 {
@@ -4507,7 +4507,7 @@ pub impl Resolver {
     }
 
     fn resolve_module_relative_path(@mut self,
-                                    path: @path,
+                                    path: @Path,
                                     +xray: XrayFlag,
                                     namespace: Namespace)
                                  -> Option<def> {
@@ -4553,7 +4553,7 @@ pub impl Resolver {
     /// Invariant: This must be called only during main resolution, not during
     /// import resolution.
     fn resolve_crate_relative_path(@mut self,
-                                   path: @path,
+                                   path: @Path,
                                    +xray: XrayFlag,
                                    namespace: Namespace)
                                 -> Option<def> {

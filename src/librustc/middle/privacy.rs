@@ -26,7 +26,7 @@ use syntax::ast::{decl_item, def, def_fn, def_id, def_static_method};
 use syntax::ast::{def_variant, expr_field, expr_method_call, expr_path};
 use syntax::ast::{expr_struct, expr_unary, ident, inherited, item_enum};
 use syntax::ast::{item_foreign_mod, item_fn, item_impl, item_struct};
-use syntax::ast::{item_trait, local_crate, node_id, pat_struct, path};
+use syntax::ast::{item_trait, local_crate, node_id, pat_struct, Path};
 use syntax::ast::{private, provided, public, required, stmt_decl, visibility};
 use syntax::ast;
 use syntax::ast_map::{node_foreign_item, node_item, node_method};
@@ -276,7 +276,7 @@ pub fn check_crate(tcx: ty::ctxt,
     };
 
     // Checks that a private path is in scope.
-    let check_path: @fn(span: span, def: def, path: @path) =
+    let check_path: @fn(span: span, def: def, path: @Path) =
             |span, def, path| {
         debug!("checking path");
         match def {

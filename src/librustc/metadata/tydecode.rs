@@ -137,7 +137,7 @@ pub fn parse_arg_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
     parse_arg(st, conv)
 }
 
-fn parse_path(st: @mut PState) -> @ast::path {
+fn parse_path(st: @mut PState) -> @ast::Path {
     let mut idents: ~[ast::ident] = ~[];
     fn is_last(c: char) -> bool { return c == '(' || c == ':'; }
     idents.push(parse_ident_(st, is_last));
@@ -146,7 +146,7 @@ fn parse_path(st: @mut PState) -> @ast::path {
           ':' => { next(st); next(st); }
           c => {
             if c == '(' {
-                return @ast::path { span: dummy_sp(),
+                return @ast::Path { span: dummy_sp(),
                                     global: false,
                                     idents: idents,
                                     rp: None,
