@@ -21,11 +21,9 @@ use middle::trans::common::*;
 use middle::ty;
 
 use syntax::ast;
-use syntax::ast::*;
 
 // Take an inline assembly expression and splat it out via LLVM
-pub fn trans_inline_asm(bcx: block, asm: @~str, ins: &[(@~str, @expr)], outs: &[(@~str, @expr)],
-                        clobs: @~str, volatile: bool, alignstack: bool) -> block {
+pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     let mut bcx = bcx;
     let mut constraints = ~[];
@@ -33,7 +31,7 @@ pub fn trans_inline_asm(bcx: block, asm: @~str, ins: &[(@~str, @expr)], outs: &[
     let mut aoutputs = ~[];
 
     // Prepare the output operands
-    let outputs = do outs.map |&(c, out)| {
+    let outputs = do ia.outputs.map |&(c, out)| {
         constraints.push(copy *c);
 
         let aoutty = ty::arg {
@@ -66,7 +64,7 @@ pub fn trans_inline_asm(bcx: block, asm: @~str, ins: &[(@~str, @expr)], outs: &[
     cleanups.clear();
 
     // Now the input operands
-    let inputs = do ins.map |&(c, in)| {
+    let inputs = do ia.inputs.map |&(c, in)| {
         constraints.push(copy *c);
 
         let inty = ty::arg {
@@ -87,10 +85,10 @@ pub fn trans_inline_asm(bcx: block, asm: @~str, ins: &[(@~str, @expr)], outs: &[
     let mut constraints = str::connect(constraints, ",");
 
     // Add the clobbers to our constraints list
-    if *clobs != ~"" && constraints != ~"" {
-        constraints += ~"," + *clobs;
+    if *ia.clobbers != ~"" && constraints != ~"" {
+        constraints += ~"," + *ia.clobbers;
     } else {
-        constraints += *clobs;
+        constraints += *ia.clobbers;
     }
 
     debug!("Asm Constraints: %?", constraints);
@@ -106,10 +104,10 @@ pub fn trans_inline_asm(bcx: block, asm: @~str, ins: &[(@~str, @expr)], outs: &[
         T_struct(outputs.map(|o| val_ty(*o)))
     };
 
-    let r = do str::as_c_str(*asm) |a| {
+    let r = do str::as_c_str(*ia.asm) |a| {
         do str::as_c_str(constraints) |c| {
             // XXX: Allow selection of at&t or intel
-            InlineAsmCall(bcx, a, c, inputs, output, volatile, alignstack, lib::llvm::AD_ATT)
+            InlineAsmCall(bcx, a, c, inputs, output, ia.volatile, ia.alignstack, lib::llvm::AD_ATT)
         }
     };
 

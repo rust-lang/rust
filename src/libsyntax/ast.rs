@@ -600,10 +600,7 @@ pub enum expr_ {
     expr_ret(Option<@expr>),
     expr_log(log_level, @expr, @expr),
 
-    expr_inline_asm(@~str,              // asm
-                    ~[(@~str, @expr)],  // inputs
-                    ~[(@~str, @expr)],  // outputs
-                    @~str, bool, bool), // clobbers, volatile, align stack
+    expr_inline_asm(inline_asm),
 
     expr_mac(mac),
 
@@ -935,6 +932,18 @@ impl to_bytes::IterBytes for Ty {
     fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.span.lo, &self.span.hi, lsb0, f);
     }
+}
+
+#[auto_encode]
+#[auto_decode]
+#[deriving(Eq)]
+pub struct inline_asm {
+    asm: @~str,
+    clobbers: @~str,
+    inputs: ~[(@~str, @expr)],
+    outputs: ~[(@~str, @expr)],
+    volatile: bool,
+    alignstack: bool
 }
 
 #[auto_encode]
