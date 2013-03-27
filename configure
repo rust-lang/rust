@@ -673,14 +673,7 @@ do
   done
 done
 
-# On windows we just store the libraries in the bin directory because
-# there's no rpath
-# FIXME: Thise needs to parameterized over target triples. Do it in platform.mk
-CFG_LIBDIR=lib
-if [ "$CFG_OSTYPE" = "pc-mingw32" ]
-then
-    CFG_LIBDIR=bin
-fi
+CFG_DEFAULT_LIB_DIR="$(grep ^CFG_LIB_DIR_$CFG_BUILD_TRIPLE $CFG_SRC_DIR/mk/platform.mk | sed 's,^[^=]*=,,' )"
 
 for h in $CFG_HOST_TRIPLES
 do
@@ -692,13 +685,13 @@ do
             make_dir $h/stage$i/bin
 
             # host lib dir
-            make_dir $h/stage$i/$CFG_LIBDIR
+            make_dir $h/stage$i/$CFG_DEFAULT_LIB_DIR
 
             # target bin dir
-            make_dir $h/stage$i/$CFG_LIBDIR/rustc/$t/bin
+            make_dir $h/stage$i/$CFG_DEFAULT_LIB_DIR/rustc/$t/bin
 
             # target lib dir
-            make_dir $h/stage$i/$CFG_LIBDIR/rustc/$t/$CFG_LIBDIR
+            make_dir $h/stage$i/$CFG_DEFAULT_LIB_DIR/rustc/$t/$CFG_DEFAULT_LIB_DIR
         done
     done
 
@@ -912,7 +905,7 @@ putvar CFG_BUILD_TRIPLE
 putvar CFG_HOST_TRIPLES
 putvar CFG_TARGET_TRIPLES
 putvar CFG_C_COMPILER
-putvar CFG_LIBDIR
+putvar CFG_DEFAULT_LIB_DIR
 putvar CFG_DISABLE_MANAGE_SUBMODULES
 putvar CFG_ANDROID_CROSS_PATH
 putvar CFG_MINGW32_CROSS_PATH

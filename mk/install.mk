@@ -28,7 +28,7 @@ ISTAGE = 2
 
 PREFIX_ROOT = $(CFG_PREFIX)
 PREFIX_BIN = $(PREFIX_ROOT)/bin
-PREFIX_LIB = $(PREFIX_ROOT)/$(CFG_LIBDIR)
+PREFIX_LIB = $(PREFIX_ROOT)/$(CFG_LIB_DIR_$(CFG_BUILD_TRIPLE))
 
 define INSTALL_PREPARE_N
   # $(1) is the target triple
@@ -41,7 +41,7 @@ TL$(1)$(2) = $$(TLIB$$(ISTAGE)_T_$(1)_H_$(2))
 # PT{R,B,L} == Prefix Target {Root, Bin, Lib}
 PTR$(1)$(2) = $$(PREFIX_LIB)/rustc/$(1)
 PTB$(1)$(2) = $$(PTR$(1)$(2))/bin
-PTL$(1)$(2) = $$(PTR$(1)$(2))/$(CFG_LIBDIR)
+PTL$(1)$(2) = $$(PTR$(1)$(2))/$(CFG_LIB_DIR_$(CFG_BUILD_TRIPLE))
 
 endef
 
