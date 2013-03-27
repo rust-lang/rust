@@ -546,12 +546,6 @@ pub struct expr {
 #[auto_encode]
 #[auto_decode]
 #[deriving(Eq)]
-pub enum log_level { error, debug, log_other }
-// 0 = error, 1 = debug, 2 = log_other
-
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
 pub enum CallSugar {
     NoSugar,
     DoSugar,
@@ -598,7 +592,7 @@ pub enum expr_ {
     expr_break(Option<ident>),
     expr_again(Option<ident>),
     expr_ret(Option<@expr>),
-    expr_log(log_level, @expr, @expr),
+    expr_log(@expr, @expr),
 
     expr_inline_asm(@~str,              // asm
                     ~[(@~str, @expr)],  // inputs

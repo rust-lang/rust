@@ -2402,7 +2402,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
         fcx.write_bot(id);
       }
-      ast::expr_log(_, lv, e) => {
+      ast::expr_log(lv, e) => {
         check_expr_has_type(fcx, lv,
                                   ty::mk_mach_uint(tcx, ast::ty_u32));
 

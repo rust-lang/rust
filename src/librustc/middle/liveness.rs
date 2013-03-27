@@ -1335,7 +1335,7 @@ pub impl Liveness {
             self.propagate_through_expr(l, ln)
           }
 
-          expr_log(_, l, r) |
+          expr_log(l, r) |
           expr_index(l, r) |
           expr_binary(_, l, r) => {
             self.propagate_through_exprs(~[l, r], succ)
