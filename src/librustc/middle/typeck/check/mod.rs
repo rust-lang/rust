@@ -3211,7 +3211,7 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
 // Instantiates the given path, which must refer to an item with the given
 // number of type parameters and type.
 pub fn instantiate_path(fcx: @mut FnCtxt,
-                        pth: @ast::path,
+                        pth: @ast::Path,
                         tpt: ty_param_bounds_and_ty,
                         span: span,
                         node_id: ast::node_id,

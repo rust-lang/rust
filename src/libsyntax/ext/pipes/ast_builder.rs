@@ -34,16 +34,16 @@ mod syntax {
     pub use parse;
 }
 
-pub fn path(+ids: ~[ident], span: span) -> @ast::path {
-    @ast::path { span: span,
+pub fn path(+ids: ~[ident], span: span) -> @ast::Path {
+    @ast::Path { span: span,
                  global: false,
                  idents: ids,
                  rp: None,
                  types: ~[] }
 }
 
-pub fn path_global(+ids: ~[ident], span: span) -> @ast::path {
-    @ast::path { span: span,
+pub fn path_global(+ids: ~[ident], span: span) -> @ast::Path {
+    @ast::Path { span: span,
                  global: true,
                  idents: ids,
                  rp: None,
@@ -51,20 +51,20 @@ pub fn path_global(+ids: ~[ident], span: span) -> @ast::path {
 }
 
 pub trait append_types {
-    fn add_ty(&self, ty: @ast::Ty) -> @ast::path;
-    fn add_tys(&self, +tys: ~[@ast::Ty]) -> @ast::path;
+    fn add_ty(&self, ty: @ast::Ty) -> @ast::Path;
+    fn add_tys(&self, +tys: ~[@ast::Ty]) -> @ast::Path;
 }
 
-impl append_types for @ast::path {
-    fn add_ty(&self, ty: @ast::Ty) -> @ast::path {
-        @ast::path {
+impl append_types for @ast::Path {
+    fn add_ty(&self, ty: @ast::Ty) -> @ast::Path {
+        @ast::Path {
             types: vec::append_one(copy self.types, ty),
             .. copy **self
         }
     }
 
-    fn add_tys(&self, +tys: ~[@ast::Ty]) -> @ast::path {
-        @ast::path {
+    fn add_tys(&self, +tys: ~[@ast::Ty]) -> @ast::Path {
+        @ast::Path {
             types: vec::append(copy self.types, tys),
             .. copy **self
         }
@@ -108,7 +108,7 @@ pub trait ext_ctxt_ast_builder {
                    span: span,
                    +struct_def: ast::struct_def) -> @ast::item;
     fn struct_expr(&self,
-                   path: @ast::path,
+                   path: @ast::Path,
                    +fields: ~[ast::field]) -> @ast::expr;
     fn variant(&self,
                name: ident,
@@ -118,7 +118,7 @@ pub trait ext_ctxt_ast_builder {
                 name: ident,
                 span: span,
                 +items: ~[@ast::item]) -> @ast::item;
-    fn ty_path_ast_builder(&self, path: @ast::path) -> @ast::Ty;
+    fn ty_path_ast_builder(&self, path: @ast::Path) -> @ast::Ty;
     fn item_ty_poly(&self,
                     name: ident,
                     span: span,
@@ -328,7 +328,7 @@ impl ext_ctxt_ast_builder for @ext_ctxt {
         self.item(name, span, ast::item_struct(@struct_def, generics))
     }
 
-    fn struct_expr(&self, path: @ast::path,
+    fn struct_expr(&self, path: @ast::Path,
                    +fields: ~[ast::field]) -> @ast::expr {
         @ast::expr {
             id: self.next_id(),
@@ -397,7 +397,7 @@ impl ext_ctxt_ast_builder for @ext_ctxt {
         )
     }
 
-    fn ty_path_ast_builder(&self, path: @ast::path) -> @ast::Ty {
+    fn ty_path_ast_builder(&self, path: @ast::Path) -> @ast::Ty {
         @ast::Ty {
             id: self.next_id(),
             node: ast::ty_path(path, self.next_id()),

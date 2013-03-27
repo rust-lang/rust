@@ -897,7 +897,7 @@ pub impl Parser {
 
     // parse a path that doesn't have type parameters attached
     fn parse_path_without_tps(&self)
-        -> @ast::path {
+        -> @ast::Path {
         maybe_whole!(self, nt_path);
         let lo = self.span.lo;
         let global = self.eat(&token::MOD_SEP);
@@ -917,7 +917,7 @@ pub impl Parser {
                 break;
             }
         }
-        @ast::path { span: mk_sp(lo, self.last_span.hi),
+        @ast::Path { span: mk_sp(lo, self.last_span.hi),
                      global: global,
                      idents: ids,
                      rp: None,
@@ -927,7 +927,7 @@ pub impl Parser {
     // parse a path optionally with type parameters. If 'colons'
     // is true, then type parameters must be preceded by colons,
     // as in a::t::<t1,t2>
-    fn parse_path_with_tps(&self, colons: bool) -> @ast::path {
+    fn parse_path_with_tps(&self, colons: bool) -> @ast::Path {
         debug!("parse_path_with_tps(colons=%b)", colons);
 
         maybe_whole!(self, nt_path);
@@ -982,7 +982,7 @@ pub impl Parser {
             }
         };
 
-        @ast::path { span: mk_sp(lo, hi),
+        @ast::Path { span: mk_sp(lo, hi),
                      rp: rp,
                      types: tps,
                      .. copy *path }
@@ -4215,7 +4215,7 @@ pub impl Parser {
                 let id = self.parse_ident();
                 path.push(id);
             }
-            let path = @ast::path { span: mk_sp(lo, self.span.hi),
+            let path = @ast::Path { span: mk_sp(lo, self.span.hi),
                                     global: false,
                                     idents: path,
                                     rp: None,
@@ -4244,7 +4244,7 @@ pub impl Parser {
                         seq_sep_trailing_allowed(token::COMMA),
                         |p| p.parse_path_list_ident()
                     );
-                    let path = @ast::path { span: mk_sp(lo, self.span.hi),
+                    let path = @ast::Path { span: mk_sp(lo, self.span.hi),
                                             global: false,
                                             idents: path,
                                             rp: None,
@@ -4256,7 +4256,7 @@ pub impl Parser {
                   // foo::bar::*
                   token::BINOP(token::STAR) => {
                     self.bump();
-                    let path = @ast::path { span: mk_sp(lo, self.span.hi),
+                    let path = @ast::Path { span: mk_sp(lo, self.span.hi),
                                             global: false,
                                             idents: path,
                                             rp: None,
@@ -4272,7 +4272,7 @@ pub impl Parser {
           _ => ()
         }
         let last = path[vec::len(path) - 1u];
-        let path = @ast::path { span: mk_sp(lo, self.span.hi),
+        let path = @ast::Path { span: mk_sp(lo, self.span.hi),
                                 global: false,
                                 idents: path,
                                 rp: None,
