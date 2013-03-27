@@ -62,6 +62,8 @@ Version 0.6 (March 2013)
       * Pattern matching over vectors improved and expanded
       * Typechecking of closure types has been overhauled to
         improve inference and eliminate unsoundness
+      * Macros leave scope at the end of modules, unless that module is
+        tagged with #[macro_escape]
 
    * Libraries
       * Added big integers to `std::bigint`
