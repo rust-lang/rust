@@ -84,11 +84,18 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     let mut constraints = str::connect(constraints, ",");
 
-    // Add the clobbers to our constraints list
-    if *ia.clobbers != ~"" && constraints != ~"" {
-        constraints += ~"," + *ia.clobbers;
+    let mut clobbers = getClobbers();
+    if *ia.clobbers != ~"" && clobbers != ~"" {
+        clobbers = *ia.clobbers + ~"," + clobbers;
     } else {
-        constraints += *ia.clobbers;
+        clobbers += *ia.clobbers;
+    };
+
+    // Add the clobbers to our constraints list
+    if clobbers != ~"" && constraints != ~"" {
+        constraints += ~"," + clobbers;
+    } else {
+        constraints += clobbers;
     }
 
     debug!("Asm Constraints: %?", constraints);
@@ -130,4 +137,19 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     return bcx;
 
+}
+
+// Default per-arch clobbers
+// Basically what clang does
+
+#[cfg(target_arch = "arm")]
+#[cfg(target_arch = "mips")]
+fn getClobbers() -> ~str {
+    ~""
+}
+
+#[cfg(target_arch = "x86")]
+#[cfg(target_arch = "x86_64")]
+fn getClobbers() -> ~str {
+    ~"~{dirflag},~{fpsr},~{flags}"
 }
