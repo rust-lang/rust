@@ -558,9 +558,8 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
         ast::expr_paren(a) => {
             return trans_rvalue_stmt_unadjusted(bcx, a);
         }
-        ast::expr_inline_asm(asm, ref ins, ref outs,
-                             clobs, volatile, alignstack) => {
-            return asm::trans_inline_asm(bcx, asm, *ins, *outs, clobs, volatile, alignstack);
+        ast::expr_inline_asm(ref a) => {
+            return asm::trans_inline_asm(bcx, a);
         }
         _ => {
             bcx.tcx().sess.span_bug(

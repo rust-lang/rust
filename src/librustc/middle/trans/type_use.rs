@@ -360,11 +360,11 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
         mark_for_method_call(cx, e.id, e.callee_id);
       }
 
-      expr_inline_asm(_, ref ins, ref outs, _, _, _) => {
-        for ins.each |&(_, in)| {
+      expr_inline_asm(ref ia) => {
+        for ia.inputs.each |&(_, in)| {
           node_type_needs(cx, use_repr, in.id);
         }
-        for outs.each |&(_, out)| {
+        for ia.outputs.each |&(_, out)| {
           node_type_needs(cx, use_repr, out.id);
         }
       }
