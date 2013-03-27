@@ -827,7 +827,7 @@ impl<'self> serialize::Decoder for Decoder<'self> {
         debug!("read_owned_str");
         match *self.pop() {
             String(ref s) => copy *s,
-            _ => fail!(~"not a string")
+            ref json => fail!(fmt!("not a string: %?", *json))
         }
     }
 
@@ -835,7 +835,7 @@ impl<'self> serialize::Decoder for Decoder<'self> {
         debug!("read_managed_str");
         match *self.pop() {
             String(ref s) => s.to_managed(),
-            _ => fail!(~"not a string")
+            ref json => fail!(fmt!("not a string: %?", *json))
         }
     }
 
@@ -872,7 +872,7 @@ impl<'self> serialize::Decoder for Decoder<'self> {
         let name = match *self.peek() {
             String(ref s) => s,
             List([String(ref s), .. _]) => s,
-            json => fail!(fmt!("invalid variant: %?", json)),
+            ref json => fail!(fmt!("invalid variant: %?", *json)),
         };
         let idx = match vec::position(names, |n| str::eq_slice(*n, *name)) {
             Some(idx) => idx,
