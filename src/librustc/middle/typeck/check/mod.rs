@@ -1064,44 +1064,7 @@ pub fn impl_self_ty(vcx: &VtableContext,
                  -> ty_param_substs_and_ty {
     let tcx = vcx.tcx();
 
-    let (n_tps, region_param, raw_ty) = if did.crate == ast::local_crate {
-        let region_param = tcx.region_paramd_items.find(&did.node).
-                               map_consume(|x| *x);
-        match tcx.items.find(&did.node) {
-          Some(&ast_map::node_item(@ast::item {
-                  node: ast::item_impl(ref ts, _, st, _),
-                  _
-              }, _)) => {
-            let region_parameterization =
-                RegionParameterization::from_variance_and_generics(
-                    region_param,
-                    ts);
-            (ts.ty_params.len(),
-             region_param,
-             vcx.ccx.to_ty(&rscope::type_rscope(region_parameterization), st))
-          }
-          Some(&ast_map::node_item(@ast::item {
-                  node: ast::item_struct(_, ref ts),
-                  id: class_id,
-                  _
-              },_)) => {
-              /* If the impl is a class, the self ty is just the class ty
-                 (doing a no-op subst for the ty params; in the next step,
-                 we substitute in fresh vars for them)
-               */
-              (ts.ty_params.len(),
-               region_param,
-               ty::mk_struct(tcx, local_def(class_id),
-                      substs {
-                        self_r: rscope::bound_self_region(region_param),
-                        self_ty: None,
-                        tps: ty::ty_params_to_tys(tcx, ts)
-                      }))
-          }
-          _ => { tcx.sess.bug(~"impl_self_ty: unbound item or item that \
-               doesn't have a self_ty"); }
-        }
-    } else {
+    let (n_tps, region_param, raw_ty) = {
         let ity = ty::lookup_item_type(tcx, did);
         (vec::len(*ity.bounds), ity.region_param, ity.ty)
     };
@@ -1586,7 +1549,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
        lookup_op_method(
             fcx, ex, rhs_expr, rhs_t,
             fcx.tcx().sess.ident_of(mname), ~[],
-            DontDerefArgs, DontAutoderefReceiver,
+            DoDerefArgs, DontAutoderefReceiver,
             || {
                 fcx.type_error_message(ex.span, |actual| {
                     fmt!("cannot apply unary operator `%s` to type `%s`",
@@ -2795,7 +2758,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                           expr.span, raw_base_t);
                       let ret_ty = lookup_op_method(fcx, expr, base, resolved,
                                              tcx.sess.ident_of(~"index"),
-                                             ~[idx], DontDerefArgs, AutoderefReceiver,
+                                             ~[idx], DoDerefArgs, AutoderefReceiver,
                         || {
                             fcx.type_error_message(expr.span, |actual|
                                 fmt!("cannot index a value \

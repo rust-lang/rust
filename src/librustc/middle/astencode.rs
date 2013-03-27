@@ -342,7 +342,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
 }
 
 fn decode_ast(par_doc: ebml::Doc) -> ast::inlined_item {
-    let chi_doc = par_doc[c::tag_tree as uint];
+    let chi_doc = par_doc.get(c::tag_tree as uint);
     let d = &reader::Decoder(chi_doc);
     Decodable::decode(d)
 }
@@ -1089,9 +1089,9 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
 fn decode_side_tables(xcx: @ExtendedDecodeContext,
                       ast_doc: ebml::Doc) {
     let dcx = xcx.dcx;
-    let tbl_doc = ast_doc[c::tag_table as uint];
+    let tbl_doc = ast_doc.get(c::tag_table as uint);
     for reader::docs(tbl_doc) |tag, entry_doc| {
-        let id0 = entry_doc[c::tag_table_id as uint].as_int();
+        let id0 = entry_doc.get(c::tag_table_id as uint).as_int();
         let id = xcx.tr_id(id0);
 
         debug!(">> Side table document with tag 0x%x \
@@ -1103,7 +1103,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
         } else if tag == (c::tag_table_moves_map as uint) {
             dcx.maps.moves_map.insert(id);
         } else {
-            let val_doc = entry_doc[c::tag_table_val as uint];
+            let val_doc = entry_doc.get(c::tag_table_val as uint);
             let val_dsr = &reader::Decoder(val_doc);
             if tag == (c::tag_table_def as uint) {
                 let def = decode_def(xcx, val_doc);
@@ -1172,7 +1172,7 @@ fn encode_item_ast(ebml_w: writer::Encoder, item: @ast::item) {
 
 #[cfg(test)]
 fn decode_item_ast(par_doc: ebml::Doc) -> @ast::item {
-    let chi_doc = par_doc[c::tag_tree as uint];
+    let chi_doc = par_doc.get(c::tag_tree as uint);
     let d = &reader::Decoder(chi_doc);
     @Decodable::decode(d)
 }

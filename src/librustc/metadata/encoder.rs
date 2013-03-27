@@ -410,9 +410,6 @@ fn encode_self_type(ebml_w: writer::Encoder, self_type: ast::self_ty_) {
         sty_static => {
             ebml_w.writer.write(&[ 's' as u8 ]);
         }
-        sty_by_ref => {
-            ebml_w.writer.write(&[ 'r' as u8 ]);
-        }
         sty_value => {
             ebml_w.writer.write(&[ 'v' as u8 ]);
         }

@@ -99,7 +99,7 @@ use core::hashmap::linear::LinearSet;
 use core::result;
 use core::uint;
 use core::vec;
-use syntax::ast::{def_id, sty_by_ref, sty_value, sty_region, sty_box};
+use syntax::ast::{def_id, sty_value, sty_region, sty_box};
 use syntax::ast::{sty_uniq, sty_static, node_id, by_copy, by_ref};
 use syntax::ast::{m_const, m_mutbl, m_imm};
 use syntax::ast;
@@ -527,7 +527,7 @@ pub impl<'self> LookupContext<'self> {
             ast::sty_region(_) => {
                 return; // inapplicable
             }
-            ast::sty_by_ref | ast::sty_region(_) => vstore_slice(r)
+            ast::sty_region(_) => vstore_slice(r)
             ast::sty_box(_) => vstore_box, // XXX NDM mutability
             ast::sty_uniq(_) => vstore_uniq
         }
@@ -741,7 +741,7 @@ pub impl<'self> LookupContext<'self> {
         // shouldn't really have to be.
         let rcvr_substs = {
             match self_decl {
-                sty_static | sty_value | sty_by_ref |
+                sty_static | sty_value |
                 sty_box(_) | sty_uniq(_) => {
                     self_substs
                 }
@@ -1327,7 +1327,7 @@ pub fn transform_self_type_for_method(tcx: ty::ctxt,
         tcx.sess.bug(~"calling transform_self_type_for_method on \
                        static method");
       }
-      sty_by_ref | sty_value => {
+      sty_value => {
         impl_ty
       }
       sty_region(_, mutability) => {

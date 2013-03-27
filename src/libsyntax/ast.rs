@@ -1004,7 +1004,6 @@ impl to_bytes::IterBytes for ret_style {
 #[deriving(Eq)]
 pub enum self_ty_ {
     sty_static,                                // no self
-    sty_by_ref,                                // ``
     sty_value,                                 // `self`
     sty_region(Option<@Lifetime>, mutability), // `&'lt self`
     sty_box(mutability),                       // `@self`

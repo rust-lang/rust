@@ -630,7 +630,6 @@ fn get_self_ty(item: ebml::Doc) -> ast::self_ty_ {
     let self_ty_kind = string[0];
     match self_ty_kind as char {
         's' => { return ast::sty_static; }
-        'r' => { return ast::sty_by_ref; }
         'v' => { return ast::sty_value; }
         '@' => { return ast::sty_box(get_mutability(string[1])); }
         '~' => { return ast::sty_uniq(get_mutability(string[1])); }
