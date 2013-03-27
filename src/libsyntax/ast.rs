@@ -904,6 +904,7 @@ pub struct TyClosure {
 pub struct TyBareFn {
     purity: purity,
     abi: Abi,
+    lifetimes: OptVec<Lifetime>,
     decl: fn_decl
 }
 
