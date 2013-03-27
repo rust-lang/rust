@@ -53,6 +53,7 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
     let mut cons = ~"";
     let mut volatile = false;
     let mut alignstack = false;
+    let mut dialect = ast::asm_att;
 
     let mut state = Asm;
     loop outer: {
@@ -125,6 +126,8 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
                     volatile = true;
                 } else if option == ~"alignstack" {
                     alignstack = true;
+                } else if option == ~"intel" {
+                    dialect = ast::asm_intel;
                 }
 
                 if *p.token == token::COMMA {
@@ -169,7 +172,8 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
             inputs: inputs,
             outputs: outputs,
             volatile: volatile,
-            alignstack: alignstack
+            alignstack: alignstack,
+            dialect: dialect
         }),
         span: sp
     })

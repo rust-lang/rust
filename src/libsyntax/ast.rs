@@ -937,13 +937,22 @@ impl to_bytes::IterBytes for Ty {
 #[auto_encode]
 #[auto_decode]
 #[deriving(Eq)]
+pub enum asm_dialect {
+    asm_att,
+    asm_intel
+}
+
+#[auto_encode]
+#[auto_decode]
+#[deriving(Eq)]
 pub struct inline_asm {
     asm: @~str,
     clobbers: @~str,
     inputs: ~[(@~str, @expr)],
     outputs: ~[(@~str, @expr)],
     volatile: bool,
-    alignstack: bool
+    alignstack: bool,
+    dialect: asm_dialect
 }
 
 #[auto_encode]
