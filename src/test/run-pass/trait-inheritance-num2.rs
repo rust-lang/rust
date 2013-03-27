@@ -12,10 +12,10 @@
 
 // A more complex example of numeric extensions
 
+extern mod std;
+
 use core::cmp::{Eq, Ord};
 use core::num::NumCast::from;
-
-extern mod std;
 use std::cmp::FuzzyEq;
 
 pub trait TypeExt {}
