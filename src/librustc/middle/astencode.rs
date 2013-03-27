@@ -417,6 +417,7 @@ impl tr for ast::def {
           ast::def_variant(e_did, v_did) => {
             ast::def_variant(e_did.tr(xcx), v_did.tr(xcx))
           }
+          ast::def_trait(did) => ast::def_trait(did.tr(xcx)),
           ast::def_ty(did) => ast::def_ty(did.tr(xcx)),
           ast::def_prim_ty(p) => ast::def_prim_ty(p),
           ast::def_ty_param(did, v) => ast::def_ty_param(did.tr(xcx), v),

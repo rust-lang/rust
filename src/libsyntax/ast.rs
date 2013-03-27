@@ -194,6 +194,7 @@ pub enum def {
     def_local(node_id, bool /* is_mutbl */),
     def_variant(def_id /* enum */, def_id /* variant */),
     def_ty(def_id),
+    def_trait(def_id),
     def_prim_ty(prim_ty),
     def_ty_param(def_id, uint),
     def_binding(node_id, binding_mode),

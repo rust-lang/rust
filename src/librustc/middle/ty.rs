@@ -255,6 +255,15 @@ struct ctxt_ {
     // other items.
     node_type_substs: @mut HashMap<node_id, ~[t]>,
 
+    // Maps from a method to the method "descriptor"
+    methods: @mut HashMap<def_id, @method>,
+
+    // Maps from a trait def-id to a list of the def-ids of its methods
+    trait_method_def_ids: @mut HashMap<def_id, @~[def_id]>,
+
+    // A cache for the trait_methods() routine
+    trait_methods_cache: @mut HashMap<def_id, @~[@method]>,
+
     items: ast_map::map,
     intrinsic_defs: @mut HashMap<ast::ident, (ast::def_id, t)>,
     freevars: freevars::freevar_map,
@@ -266,7 +275,6 @@ struct ctxt_ {
     tc_cache: @mut HashMap<uint, TypeContents>,
     ast_ty_to_ty_cache: @mut HashMap<node_id, ast_ty_to_ty_cache_entry>,
     enum_var_cache: @mut HashMap<def_id, @~[VariantInfo]>,
-    trait_method_cache: @mut HashMap<def_id, @~[method]>,
     ty_param_bounds: @mut HashMap<ast::node_id, param_bounds>,
     inferred_modes: @mut HashMap<ast::node_id, ast::mode>,
     adjustments: @mut HashMap<ast::node_id, @AutoAdjustment>,
@@ -831,7 +839,9 @@ pub fn mk_ctxt(s: session::Session,
         tc_cache: @mut HashMap::new(),
         ast_ty_to_ty_cache: @mut HashMap::new(),
         enum_var_cache: @mut HashMap::new(),
-        trait_method_cache: @mut HashMap::new(),
+        methods: @mut HashMap::new(),
+        trait_method_def_ids: @mut HashMap::new(),
+        trait_methods_cache: @mut HashMap::new(),
         ty_param_bounds: @mut HashMap::new(),
         inferred_modes: @mut HashMap::new(),
         adjustments: @mut HashMap::new(),
@@ -3028,7 +3038,7 @@ pub fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
             let trt_bounds =
                 ty::lookup_item_type(tcx, trt_id).bounds;
             @(vec::append(/*bad*/copy *trt_bounds,
-                          *ty::trait_methods(tcx, trt_id)[n_mth].tps))
+                          *ty::trait_method(tcx, trt_id, n_mth).tps))
           }
         }
     }
@@ -3213,10 +3223,8 @@ pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
 
-pub fn method_idx(id: ast::ident, meths: &[method]) -> Option<uint> {
-    let mut i = 0u;
-    for meths.each |m| { if m.ident == id { return Some(i); } i += 1u; }
-    return None;
+pub fn method_idx(id: ast::ident, meths: &[@method]) -> Option<uint> {
+    vec::position(meths, |m| m.ident == id)
 }
 
 /// Returns a vector containing the indices of all type parameters that appear
@@ -3537,10 +3545,6 @@ pub fn def_has_ty_params(def: ast::def) -> bool {
     }
 }
 
-pub fn store_trait_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
-    cx.trait_method_cache.insert(ast_util::local_def(id), ms);
-}
-
 pub fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
     if is_local(id) {
         match cx.items.find(&id.node) {
@@ -3594,23 +3598,64 @@ pub fn trait_supertraits(cx: ctxt,
     return @result;
 }
 
-pub fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
-    match cx.trait_method_cache.find(&id) {
-      // Local traits are supposed to have been added explicitly.
-      Some(&ms) => ms,
-      _ => {
-        // If the lookup in trait_method_cache fails, assume that the trait
-        // method we're trying to look up is in a different crate, and look
-        // for it there.
-        assert!(id.crate != ast::local_crate);
-        let result = csearch::get_trait_methods(cx, id);
+fn lookup_locally_or_in_crate_store<V:Copy>(
+    descr: &str,
+    def_id: ast::def_id,
+    map: &mut HashMap<ast::def_id, V>,
+    load_external: &fn() -> V) -> V
+{
+    /*!
+     *
+     * Helper for looking things up in the various maps
+     * that are populated during typeck::collect (e.g.,
+     * `cx.methods`, `cx.tcache`, etc).  All of these share
+     * the pattern that if the id is local, it should have
+     * been loaded into the map by the `typeck::collect` phase.
+     * If the def-id is external, then we have to go consult
+     * the crate loading code (and cache the result for the future).
+     */
 
-        // Store the trait method in the local trait_method_cache so that
-        // future lookups succeed.
-        cx.trait_method_cache.insert(id, result);
-        result
-      }
+    match map.find(&def_id) {
+        Some(&v) => { return v; }
+        None => { }
     }
+
+    if def_id.crate == ast::local_crate {
+        fail!(fmt!("No def'n found for %? in tcx.%s",
+                   def_id, descr));
+    }
+    let v = load_external();
+    map.insert(def_id, v);
+    return v;
+}
+
+pub fn trait_method(cx: ctxt, trait_did: ast::def_id, idx: uint) -> @method {
+    let method_def_id = ty::trait_method_def_ids(cx, trait_did)[idx];
+    ty::method(cx, method_def_id)
+}
+
+pub fn trait_methods(cx: ctxt, trait_did: ast::def_id) -> @~[@method] {
+    match cx.trait_methods_cache.find(&trait_did) {
+        Some(&methods) => methods,
+        None => {
+            let def_ids = ty::trait_method_def_ids(cx, trait_did);
+            let methods = @def_ids.map(|d| ty::method(cx, *d));
+            cx.trait_methods_cache.insert(trait_did, methods);
+            methods
+        }
+    }
+}
+
+pub fn method(cx: ctxt, id: ast::def_id) -> @method {
+    lookup_locally_or_in_crate_store(
+        "methods", id, cx.methods,
+        || @csearch::get_method(cx, id))
+}
+
+pub fn trait_method_def_ids(cx: ctxt, id: ast::def_id) -> @~[def_id] {
+    lookup_locally_or_in_crate_store(
+        "methods", id, cx.trait_method_def_ids,
+        || @csearch::get_trait_method_def_ids(cx.cstore, id))
 }
 
 /*
@@ -3916,19 +3961,9 @@ pub fn enum_variant_with_id(cx: ctxt,
 pub fn lookup_item_type(cx: ctxt,
                         did: ast::def_id)
                      -> ty_param_bounds_and_ty {
-    match cx.tcache.find(&did) {
-      Some(&tpt) => {
-        // The item is in this crate. The caller should have added it to the
-        // type cache already
-        return tpt;
-      }
-      None => {
-        assert!(did.crate != ast::local_crate);
-        let tyt = csearch::get_type(cx, did);
-        cx.tcache.insert(did, tyt);
-        return tyt;
-      }
-    }
+    lookup_locally_or_in_crate_store(
+        "tcache", did, cx.tcache,
+        || csearch::get_type(cx, did))
 }
 
 // Look up a field ID, whether or not it's local
