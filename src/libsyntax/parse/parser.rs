@@ -46,7 +46,7 @@ use ast::{rem, required};
 use ast::{ret_style, return_val, self_ty, shl, shr, stmt, stmt_decl};
 use ast::{stmt_expr, stmt_semi, stmt_mac, struct_def, struct_field};
 use ast::{struct_immutable, struct_mutable, struct_variant_kind, subtract};
-use ast::{sty_box, sty_by_ref, sty_region, sty_static, sty_uniq, sty_value};
+use ast::{sty_box, sty_region, sty_static, sty_uniq, sty_value};
 use ast::{token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok};
 use ast::{tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot, ty_box};
 use ast::{ty_field, ty_fixed_length_vec, ty_closure, ty_bare_fn};
@@ -472,8 +472,6 @@ pub impl Parser {
         ) |p| {
             let attrs = p.parse_outer_attributes();
             let lo = p.span.lo;
-            let is_static = p.parse_staticness();
-            let static_sty = spanned(lo, p.span.hi, sty_static);
 
             let vis = p.parse_visibility();
             let pur = p.parse_fn_purity();
@@ -487,12 +485,6 @@ pub impl Parser {
                 // This is somewhat dubious; We don't want to allow argument
                 // names to be left off if there is a definition...
                 either::Left(p.parse_arg_general(false))
-            };
-            // XXX: Wrong. Shouldn't allow both static and self_ty
-            let self_ty = if is_static || self_ty.node == sty_by_ref {
-                static_sty
-            } else {
-                self_ty
             };
 
             let hi = p.last_span.hi;
@@ -2878,7 +2870,7 @@ pub impl Parser {
                 p.expect_self_ident();
                 cnstr(mutability)
             } else {
-                sty_by_ref
+                sty_static
             }
         }
 
@@ -2927,7 +2919,7 @@ pub impl Parser {
                 self.expect_self_ident();
                 sty_region(Some(lifetime), mutability)
             } else {
-                sty_by_ref
+                sty_static
             }
         }
 
@@ -2951,13 +2943,13 @@ pub impl Parser {
             sty_value
           }
           _ => {
-            sty_by_ref
+            sty_static
           }
         };
 
         // If we parsed a self type, expect a comma before the argument list.
         let args_or_capture_items;
-        if self_ty != sty_by_ref {
+        if self_ty != sty_static {
             match *self.token {
                 token::COMMA => {
                     self.bump();
@@ -3059,21 +3051,12 @@ pub impl Parser {
         let attrs = self.parse_outer_attributes();
         let lo = self.span.lo;
 
-        let is_static = self.parse_staticness();
-        let static_sty = spanned(lo, self.span.hi, sty_static);
-
         let visa = self.parse_visibility();
         let pur = self.parse_fn_purity();
         let ident = self.parse_ident();
         let generics = self.parse_generics();
         let (self_ty, decl) = do self.parse_fn_decl_with_self() |p| {
             p.parse_arg()
-        };
-        // XXX: interaction between staticness, self_ty is broken now
-        let self_ty = if is_static || self_ty.node == sty_by_ref {
-            static_sty
-        } else {
-            self_ty
         };
 
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);

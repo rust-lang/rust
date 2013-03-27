@@ -1648,7 +1648,7 @@ pub fn print_pat(s: @ps, &&pat: @ast::pat, refutable: bool) {
 // Returns whether it printed anything
 pub fn print_self_ty(s: @ps, self_ty: ast::self_ty_) -> bool {
     match self_ty {
-        ast::sty_static | ast::sty_by_ref => { return false; }
+        ast::sty_static => { return false; }
         ast::sty_value => { word(s.s, ~"self"); }
         ast::sty_region(lt, m) => {
             word(s.s, ~"&");
@@ -1674,7 +1674,7 @@ pub fn print_fn(s: @ps,
                 opt_self_ty: Option<ast::self_ty_>,
                 vis: ast::visibility) {
     head(s, ~"");
-    print_fn_header_info(s, opt_self_ty, purity, ast::Many, None, vis);
+    print_fn_header_info(s, purity, ast::Many, None, vis);
     nbsp(s);
     print_ident(s, name);
     print_generics(s, generics);
@@ -2181,7 +2181,6 @@ pub fn print_opt_sigil(s: @ps, opt_sigil: Option<ast::Sigil>) {
 }
 
 pub fn print_fn_header_info(s: @ps,
-                            opt_sty: Option<ast::self_ty_>,
                             purity: ast::purity,
                             onceness: ast::Onceness,
                             opt_sigil: Option<ast::Sigil>,
