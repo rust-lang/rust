@@ -17,7 +17,7 @@ struct yes1<'self> {
 }
 
 struct yes2<'self> {
-  x: &'foo uint, //~ ERROR Illegal lifetime 'foo: this lifetime must be declared
+  x: &'foo uint, //~ ERROR Illegal lifetime 'foo: only 'self is allowed
 }
 
 fn main() {}
