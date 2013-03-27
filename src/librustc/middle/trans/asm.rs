@@ -118,7 +118,6 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     let r = do str::as_c_str(*ia.asm) |a| {
         do str::as_c_str(constraints) |c| {
-            // XXX: Allow selection of at&t or intel
             InlineAsmCall(bcx, a, c, inputs, output, ia.volatile, ia.alignstack, dialect)
         }
     };
