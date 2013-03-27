@@ -324,7 +324,7 @@ pub fn commasep<IN>(s: @ps, b: breaks, elts: &[IN], op: &fn(@ps, IN)) {
 pub fn commasep_cmnt<IN>(s: @ps, b: breaks, elts: &[IN], op: &fn(@ps, IN),
                          get_span: &fn(IN) -> codemap::span) {
     box(s, 0u, b);
-    let len = vec::len::<IN>(elts);
+    let len = elts.len();
     let mut i = 0u;
     for elts.each |elt| {
         maybe_print_comment(s, get_span(*elt).hi);
@@ -2133,7 +2133,7 @@ pub fn print_comment(s: @ps, cmnt: comments::cmnt) {
     }
 }
 
-pub fn print_string(s: @ps, st: ~str) {
+pub fn print_string(s: @ps, st: &str) {
     word(s.s, ~"\"");
     word(s.s, str::escape_default(st));
     word(s.s, ~"\"");
