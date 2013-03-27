@@ -569,7 +569,7 @@ pub fn run_test(force_ignore: bool,
             task::task().unlinked().future_result(|+r| {
                 result_future = Some(r);
             }).spawn(testfn_cell.take());
-            let task_result = option::unwrap(result_future).recv();
+            let task_result = result_future.unwrap().recv();
             let test_result = calc_result(&desc,
                                           task_result == task::Success);
             monitor_ch.send((desc, test_result));

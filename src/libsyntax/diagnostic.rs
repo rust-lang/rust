@@ -15,7 +15,6 @@ use codemap;
 
 use core::io::WriterUtil;
 use core::io;
-use core::option;
 use core::str;
 use core::vec;
 
@@ -294,8 +293,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
 
 fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
     for sp.expn_info.each |ei| {
-        let ss = option::map_default(&ei.callee.span, @~"",
-                                     |span| @cm.span_to_str(*span));
+        let ss = ei.callee.span.map_default(@~"", |span| @cm.span_to_str(*span));
         print_diagnostic(*ss, note,
                          fmt!("in expansion of %s!", ei.callee.name));
         let ss = cm.span_to_str(ei.call_site);

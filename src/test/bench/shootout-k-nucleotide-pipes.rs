@@ -158,7 +158,7 @@ fn main() {
         let sz = *sz;
         let mut stream = None;
         stream <-> streams[ii];
-        let (from_child_, to_parent_) = option::unwrap(stream);
+        let (from_child_, to_parent_) = stream.unwrap();
 
         from_child.push(from_child_);
 

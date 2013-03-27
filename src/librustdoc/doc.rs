@@ -14,7 +14,6 @@ use core::prelude::*;
 
 use doc;
 
-use core::option;
 use core::vec;
 
 pub type AstId = int;
@@ -175,12 +174,12 @@ pub struct IndexEntry {
 
 pub impl Doc {
     fn CrateDoc(&self) -> CrateDoc {
-        option::get(vec::foldl(None, self.pages, |_m, page| {
+        vec::foldl(None, self.pages, |_m, page| {
             match copy *page {
               doc::CratePage(doc) => Some(doc),
               _ => None
             }
-        }))
+        }).get()
     }
 
     fn cratemod(&self) -> ModDoc {

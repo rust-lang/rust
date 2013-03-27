@@ -17,5 +17,5 @@ fn main() {
     do x.write |one| {
         y = Some(one);
     }
-    *option::unwrap(y) = 2;
+    *y.unwrap() = 2;
 }

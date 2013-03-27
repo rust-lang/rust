@@ -517,7 +517,7 @@ pub fn homedir() -> Option<Path> {
 
     #[cfg(windows)]
     fn secondary() -> Option<Path> {
-        do option::chain(getenv(~"USERPROFILE")) |p| {
+        do getenv(~"USERPROFILE").chain |p| {
             if !str::is_empty(p) {
                 Some(Path(p))
             } else {
@@ -555,19 +555,16 @@ pub fn tmpdir() -> Path {
     #[cfg(unix)]
     #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
-        option::get_or_default(getenv_nonempty("TMPDIR"),
-                            Path("/tmp"))
+        getenv_nonempty("TMPDIR").get_or_default(Path("/tmp"))
     }
 
     #[cfg(windows)]
     #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
-        option::get_or_default(
-                    option::or(getenv_nonempty("TMP"),
-                    option::or(getenv_nonempty("TEMP"),
-                    option::or(getenv_nonempty("USERPROFILE"),
-                               getenv_nonempty("WINDIR")))),
-                    Path("C:\\Windows"))
+        getenv_nonempty("TMP").or(
+            getenv_nonempty("TEMP").or(
+                getenv_nonempty("USERPROFILE").or(
+                   getenv_nonempty("WINDIR")))).get_or_default(Path("C:\\Windows"))
     }
 }
 /// Recursively walk a directory structure

@@ -19,5 +19,5 @@ fn main() {
             y = Some(cond);
         }
     }
-    option::unwrap(y).wait();
+    y.unwrap().wait();
 }

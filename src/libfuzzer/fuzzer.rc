@@ -334,8 +334,8 @@ pub fn check_variants_T<T: Copy>(
 }
 
 pub fn last_part(filename: ~str) -> ~str {
-  let ix = option::get(str::rfind_char(filename, '/'));
-  str::slice(filename, ix + 1u, str::len(filename) - 3u).to_owned()
+    let ix = str::rfind_char(filename, '/').get();
+    str::slice(filename, ix + 1u, str::len(filename) - 3u).to_owned()
 }
 
 pub enum happiness {

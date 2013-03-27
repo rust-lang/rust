@@ -13,7 +13,6 @@
 use cast;
 use cmp::Eq;
 use libc;
-use option;
 use prelude::*;
 use task::rt;
 use task::local_data::LocalDataKey;
@@ -181,6 +180,6 @@ pub unsafe fn local_modify<T:Durable>(
     // Could be more efficient by doing the lookup work, but this is easy.
     let newdata = modify_fn(local_pop(task, key));
     if newdata.is_some() {
-        local_set(task, key, option::unwrap(newdata));
+        local_set(task, key, newdata.unwrap());
     }
 }
