@@ -11,7 +11,7 @@ impl Drop for Fd {
     }
 }
 
-fn main() {
+pub fn main() {
 }
 
 
