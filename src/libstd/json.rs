@@ -119,21 +119,14 @@ impl serialize::Encoder for Encoder {
         f()
     }
 
-    fn emit_enum_variant(&self, name: &str, _id: uint, _cnt: uint, f: &fn()) {
+    fn emit_enum_variant(&self, name: &str, _id: uint, cnt: uint, f: &fn()) {
         // encoding of enums is special-cased for Option. Specifically:
         // Some(34) => 34
         // None => null
 
-        // other enums are encoded as vectors:
+        // other enums are encoded as strings or vectors:
+        // Bunny => "Bunny"
         // Kangaroo(34,"William") => ["Kangaroo",[34,"William"]]
-
-        // the default expansion for enums is more verbose than I'd like;
-        // specifically, the inner pair of brackets seems superfluous,
-        // BUT the design of the enumeration framework and the requirements
-        // of the special-case for Option mean that a first argument must
-        // be encoded "naked"--with no commas--and that the option name
-        // can't be followed by just a comma, because there might not
-        // be any elements in the tuple.
 
         // FIXME #4872: this would be more precise and less frightening
         // with fully-qualified option names. To get that information,
@@ -144,13 +137,13 @@ impl serialize::Encoder for Encoder {
             f();
         } else if name == ~"None" {
             self.wr.write_str(~"null");
+        } else if cnt == 0 {
+            self.wr.write_str(escape_str(name));
         } else {
             self.wr.write_char('[');
             self.wr.write_str(escape_str(name));
             self.wr.write_char(',');
-            self.wr.write_char('[');
             f();
-            self.wr.write_char(']');
             self.wr.write_char(']');
         }
     }
@@ -256,28 +249,19 @@ impl serialize::Encoder for PrettyEncoder {
             f();
         } else if name == ~"None" {
             self.emit_nil();
+        } else if cnt == 0 {
+            self.wr.write_str(escape_str(name));
         } else {
             self.wr.write_char('[');
             self.indent += 2;
             self.wr.write_char('\n');
             self.wr.write_str(spaces(self.indent));
             self.wr.write_str(escape_str(name));
-            if cnt == 0 {
-                self.wr.write_str(",\n");
-                self.wr.write_str(spaces(self.indent));
-                self.wr.write_str("[]\n");
-            } else {
-                self.wr.write_str(",\n");
-                self.wr.write_str(spaces(self.indent));
-                self.wr.write_str("[\n");
-                self.indent += 2;
-                f();
-                self.wr.write_char('\n');
-                self.indent -= 2;
-                self.wr.write_str(spaces(self.indent));
-                self.wr.write_str("]\n");
-            }
+            self.wr.write_str(",\n");
+            f();
+            self.wr.write_char('\n');
             self.indent -= 2;
+            self.wr.write_str(spaces(self.indent));
             self.wr.write_char(']');
         }
     }
@@ -1406,7 +1390,7 @@ mod tests {
             let encoder = Encoder(wr);
             animal.encode(&encoder);
         };
-        assert_eq!(s, ~"[\"Dog\",[]]");
+        assert_eq!(s, ~"\"Dog\"");
     }
 
     #[test]
@@ -1417,14 +1401,7 @@ mod tests {
             let encoder = PrettyEncoder(wr);
             animal.encode(&encoder);
         };
-        assert_eq!(
-            s,
-            ~"\
-            [\n  \
-                \"Dog\",\n  \
-                []\n\
-            ]"
-        );
+        assert_eq!(s, ~"\"Dog\"");
     }
 
     #[test]
@@ -1435,7 +1412,7 @@ mod tests {
             let encoder = Encoder(wr);
             animal.encode(&encoder);
         };
-        assert_eq!(s, ~"[\"Frog\",[\"Henry\",349]]");
+        assert_eq!(s, ~"[\"Frog\",\"Henry\",349]");
     }
 
     #[test]
@@ -1451,10 +1428,8 @@ mod tests {
             ~"\
             [\n  \
                 \"Frog\",\n  \
-                [\n    \
-                    \"Henry\",\n    \
-                    349\n  \
-                ]\n\
+                \"Henry\",\n  \
+                349\n\
             ]"
         );
     }
