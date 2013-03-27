@@ -65,6 +65,45 @@ they contained the following prologue:
 #[allow(deprecated_mutable_fields)];
 #[allow(deprecated_drop)];
 
+// Make core testable by not duplicating lang items. See #2912
+#[cfg(test)] extern mod realcore(name = "core", vers = "0.6");
+#[cfg(test)] pub use kinds = realcore::kinds;
+#[cfg(test)] pub use ops = realcore::ops;
+#[cfg(test)] pub use cmp = realcore::cmp;
+
+/* Reexported core operators */
+
+pub use kinds::{Const, Copy, Owned, Durable};
+pub use ops::{Drop};
+pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, Not};
+pub use ops::{BitAnd, BitOr, BitXor};
+pub use ops::{Shl, Shr, Index};
+
+
+/* Reexported types and traits */
+
+pub use option::{Option, Some, None};
+pub use result::{Result, Ok, Err};
+
+pub use path::Path;
+pub use path::GenericPath;
+pub use path::WindowsPath;
+pub use path::PosixPath;
+
+pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
+pub use str::{StrSlice};
+pub use container::{Container, Mutable};
+pub use vec::{CopyableVector, ImmutableVector};
+pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
+pub use vec::{OwnedVector, OwnedCopyableVector};
+pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
+pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
+
+pub use num::NumCast;
+pub use ptr::Ptr;
+pub use to_str::ToStr;
+pub use clone::Clone;
+
 // On Linux, link to the runtime with -lrt.
 #[cfg(target_os = "linux")]
 #[doc(hidden)]
@@ -130,12 +169,6 @@ pub mod managed;
 #[cfg(notest)] pub mod ops;
 #[cfg(notest)] pub mod cmp;
 
-// Make core testable by not duplicating lang items. See #2912
-#[cfg(test)] extern mod realcore(name = "core", vers = "0.6");
-#[cfg(test)] pub use kinds = realcore::kinds;
-#[cfg(test)] pub use ops = realcore::ops;
-#[cfg(test)] pub use cmp = realcore::cmp;
-
 
 /* Common traits */
 
@@ -189,39 +222,6 @@ pub mod condition;
 pub mod logging;
 pub mod util;
 
-/* Reexported core operators */
-
-pub use kinds::{Const, Copy, Owned, Durable};
-pub use ops::{Drop};
-pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, Not};
-pub use ops::{BitAnd, BitOr, BitXor};
-pub use ops::{Shl, Shr, Index};
-
-
-/* Reexported types and traits */
-
-pub use option::{Option, Some, None};
-pub use result::{Result, Ok, Err};
-
-pub use path::Path;
-pub use path::GenericPath;
-pub use path::WindowsPath;
-pub use path::PosixPath;
-
-pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
-pub use str::{StrSlice};
-pub use container::{Container, Mutable};
-pub use vec::{CopyableVector, ImmutableVector};
-pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
-pub use vec::{OwnedVector, OwnedCopyableVector};
-pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
-pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
-
-pub use num::NumCast;
-pub use ptr::Ptr;
-pub use to_str::ToStr;
-pub use clone::Clone;
-
 
 /* Unsupported interfaces */
 
@@ -241,7 +241,7 @@ pub mod rt;
 // 'core' so that macro-expanded references to core::error and such
 // can be resolved within libcore.
 #[doc(hidden)]
-pub mod core {
+mod core {
     pub use clone;
     pub use cmp;
     pub use condition;

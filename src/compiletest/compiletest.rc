@@ -22,12 +22,6 @@ extern mod std(vers = "0.6");
 
 use core::*;
 
-pub mod procsrv;
-pub mod util;
-pub mod header;
-pub mod runtest;
-pub mod common;
-pub mod errors;
 
 use std::getopts;
 use std::test;
@@ -42,6 +36,13 @@ use common::mode_pretty;
 use common::mode_debug_info;
 use common::mode;
 use util::logv;
+
+pub mod procsrv;
+pub mod util;
+pub mod header;
+pub mod runtest;
+pub mod common;
+pub mod errors;
 
 pub fn main() {
     let args = os::args();

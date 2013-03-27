@@ -15,12 +15,11 @@ use ptr;
 #[cfg(notest)] use cmp::{Eq, Ord};
 
 pub mod raw {
+    use intrinsic::TyDesc;
 
     pub static RC_EXCHANGE_UNIQUE : uint = (-1) as uint;
     pub static RC_MANAGED_UNIQUE : uint = (-2) as uint;
     pub static RC_IMMORTAL : uint = 0x77777777;
-
-    use intrinsic::TyDesc;
 
     pub struct BoxHeaderRepr {
         ref_count: uint,

@@ -120,6 +120,7 @@ pub enum item_or_view_item {
     iovi_view_item(@view_item)
 }
 
+#[deriving(Eq)]
 enum view_item_parse_mode {
     VIEW_ITEMS_AND_ITEMS_ALLOWED,
     FOREIGN_ITEMS_ALLOWED,
@@ -4324,48 +4325,91 @@ pub impl Parser {
             VIEW_ITEMS_AND_ITEMS_ALLOWED | IMPORTS_AND_ITEMS_ALLOWED => true,
             FOREIGN_ITEMS_ALLOWED => false
         };
-
-        let restricted_to_imports = match mode {
-            IMPORTS_AND_ITEMS_ALLOWED => true,
-            VIEW_ITEMS_AND_ITEMS_ALLOWED |
-            FOREIGN_ITEMS_ALLOWED => false
-        };
-
         let foreign_items_allowed = match mode {
             FOREIGN_ITEMS_ALLOWED => true,
             VIEW_ITEMS_AND_ITEMS_ALLOWED | IMPORTS_AND_ITEMS_ALLOWED => false
         };
 
+        // First, parse view items.
         let mut (view_items, items, foreign_items) = (~[], ~[], ~[]);
-        loop {
-            match self.parse_item_or_view_item(/*bad*/ copy attrs,
-                                               items_allowed,
-                                               foreign_items_allowed,
-                                               macros_allowed) {
-                iovi_none =>
-                    break,
-                iovi_view_item(view_item) => {
-                    if restricted_to_imports {
-                            match view_item.node {
-                                view_item_use(*) => {}
-                                view_item_extern_mod(*) =>
-                                    self.fatal(~"\"extern mod\" \
-                                                 declarations are not \
-                                                 allowed here")
-                            }
+        let mut done = false;
+        if mode != FOREIGN_ITEMS_ALLOWED {
+            let mut extern_mod_allowed = match mode {
+                VIEW_ITEMS_AND_ITEMS_ALLOWED => true,
+                IMPORTS_AND_ITEMS_ALLOWED => false,
+                FOREIGN_ITEMS_ALLOWED => {
+                    self.bug(~"couldn't get here with FOREIGN_ITEMS_ALLOWED")
+                }
+            };
+
+            loop {
+                match self.parse_item_or_view_item(/*bad*/ copy attrs,
+                                                   items_allowed,
+                                                   foreign_items_allowed,
+                                                   macros_allowed) {
+                    iovi_none => {
+                        done = true;
+                        break;
                     }
-                    view_items.push(view_item);
+                    iovi_view_item(view_item) => {
+                        match view_item.node {
+                            view_item_use(*) => {
+                                // `extern mod` must precede `use`.
+                                extern_mod_allowed = false;
+                            }
+                            view_item_extern_mod(*)
+                                    if !extern_mod_allowed => {
+                                self.span_err(view_item.span,
+                                              ~"\"extern mod\" \
+                                                declarations are not \
+                                                allowed here");
+                            }
+                            view_item_extern_mod(*) => {}
+                        }
+                        view_items.push(view_item);
+                    }
+                    iovi_item(item) => {
+                        fail_unless!(items_allowed);
+                        items.push(item);
+                        attrs = self.parse_outer_attributes();
+                        break;
+                    }
+                    iovi_foreign_item(foreign_item) => {
+                        fail_unless!(foreign_items_allowed);
+                        foreign_items.push(foreign_item);
+                        attrs = self.parse_outer_attributes();
+                        break;
+                    }
                 }
-                iovi_item(item) => {
-                    fail_unless!(items_allowed);
-                    items.push(item)
-                }
-                iovi_foreign_item(foreign_item) => {
-                    fail_unless!(foreign_items_allowed);
-                    foreign_items.push(foreign_item);
-                }
+                attrs = self.parse_outer_attributes();
             }
-            attrs = self.parse_outer_attributes();
+        }
+
+        // Next, parse items.
+        if !done {
+            loop {
+                match self.parse_item_or_view_item(/*bad*/ copy attrs,
+                                                   items_allowed,
+                                                   foreign_items_allowed,
+                                                   macros_allowed) {
+                    iovi_none => break,
+                    iovi_view_item(view_item) => {
+                        self.span_err(view_item.span,
+                                      ~"`use` and `extern mod` declarations \
+                                        must precede items");
+                        view_items.push(view_item);
+                    }
+                    iovi_item(item) => {
+                        fail_unless!(items_allowed);
+                        items.push(item)
+                    }
+                    iovi_foreign_item(foreign_item) => {
+                        fail_unless!(foreign_items_allowed);
+                        foreign_items.push(foreign_item);
+                    }
+                }
+                attrs = self.parse_outer_attributes();
+            }
         }
 
         ParsedItemsAndViewItems {
