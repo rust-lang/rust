@@ -112,7 +112,45 @@ impl<A:Copy,B:Copy> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
     }
 }
 
-// FIXME #4898: impl for one-tuples
+#[cfg(notest)]
+impl<A:Eq> Eq for (A,) {
+    #[inline(always)]
+    fn eq(&self, other: &(A,)) -> bool {
+        match (*self) {
+            (ref self_a,) => match other {
+                &(ref other_a,) => {
+                    (*self_a).eq(other_a)
+                }
+            }
+        }
+    }
+    #[inline(always)]
+    fn ne(&self, other: &(A,)) -> bool { !(*self).eq(other) }
+}
+
+#[cfg(notest)]
+impl<A:Ord> Ord for (A,) {
+    #[inline(always)]
+    fn lt(&self, other: &(A,)) -> bool {
+        match (*self) {
+            (ref self_a,) => {
+                match (*other) {
+                    (ref other_a,) => {
+                        if (*self_a).lt(other_a) { return true; }
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    #[inline(always)]
+    fn le(&self, other: &(A,)) -> bool { !other.lt(&(*self)) }
+    #[inline(always)]
+    fn ge(&self, other: &(A,)) -> bool { !self.lt(other) }
+    #[inline(always)]
+    fn gt(&self, other: &(A,)) -> bool { other.lt(&(*self))  }
+}
+
 
 #[cfg(notest)]
 impl<A:Eq,B:Eq> Eq for (A, B) {
