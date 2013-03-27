@@ -15,7 +15,7 @@ static y: *libc::c_void = x as *libc::c_void;
 static a: &'static int = &10;
 static b: *int = a as *int;
 
-fn main() {
+pub fn main() {
     fail_unless!(x as *libc::c_void == y);
     fail_unless!(a as *int == b);
 }

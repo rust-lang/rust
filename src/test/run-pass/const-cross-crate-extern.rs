@@ -15,6 +15,6 @@ extern mod cci_const;
 use cci_const::bar;
 static foo: *u8 = bar;
 
-fn main() {
+pub fn main() {
     fail_unless!(foo == cci_const::bar);
 }

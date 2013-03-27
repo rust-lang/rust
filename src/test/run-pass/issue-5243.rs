@@ -18,6 +18,6 @@ struct S<'self> {
 
 fn f<'lt>(_s: &'lt S<'lt>) {}
 
-fn main() {
+pub fn main() {
     f(& S { v: &42 });
 }

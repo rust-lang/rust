@@ -12,7 +12,7 @@ static a: [u8, ..3] = ['h' as u8, 'i' as u8, 0 as u8];
 static c: &'static [u8, ..3] = &a;
 static b: *u8 = c as *u8;
 
-fn main() {
+pub fn main() {
     let foo = &a as *u8;
     fail_unless!(unsafe { str::raw::from_bytes(a) } == ~"hi\x00");
     fail_unless!(unsafe { str::raw::from_buf(foo) } == ~"hi");

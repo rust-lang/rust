@@ -30,7 +30,7 @@ fn check_strs(actual: &str, expected: &str) -> bool
         return true;
 }
     
-fn main()
+pub fn main()
 {
  //       fail_unless!(check_strs(fmt!("%?", Text(@~"foo")), "Text(@~\"foo\")"));
  //       fail_unless!(check_strs(fmt!("%?", ETag(@~[~"foo"], @~"bar")), "ETag(@~[ ~\"foo\" ], @~\"bar\")"));

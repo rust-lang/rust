@@ -11,7 +11,7 @@
 // Check that constant expressions can be used for declaring the 
 // type of a fixed length vector.
 
-fn main() {
+pub fn main() {
 
     static FOO: int = 2;
     let _v: [int, ..FOO*3];
