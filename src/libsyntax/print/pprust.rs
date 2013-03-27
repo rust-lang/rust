@@ -14,6 +14,7 @@ use ast::{RegionTyParamBound, TraitTyParamBound, required, provided};
 use ast;
 use ast_util;
 use opt_vec::OptVec;
+use opt_vec;
 use attr;
 use codemap::{CodeMap, BytePos};
 use codemap;
@@ -402,14 +403,18 @@ pub fn print_type(s: @ps, &&ty: @ast::Ty) {
         pclose(s);
       }
       ast::ty_bare_fn(f) => {
+          let generics = ast::Generics {lifetimes: copy f.lifetimes,
+                                        ty_params: opt_vec::Empty};
           print_ty_fn(s, Some(f.abi), None, None,
                       f.purity, ast::Many, &f.decl, None,
-                      None, None);
+                      Some(&generics), None);
       }
       ast::ty_closure(f) => {
+          let generics = ast::Generics {lifetimes: copy f.lifetimes,
+                                        ty_params: opt_vec::Empty};
           print_ty_fn(s, None, Some(f.sigil), f.region,
                       f.purity, f.onceness, &f.decl, None,
-                      None, None);
+                      Some(&generics), None);
       }
       ast::ty_path(path, _) => print_path(s, path, false),
       ast::ty_fixed_length_vec(ref mt, v) => {
@@ -1923,7 +1928,8 @@ pub fn print_ty_fn(s: @ps,
                    opt_region: Option<@ast::Lifetime>,
                    purity: ast::purity,
                    onceness: ast::Onceness,
-                   decl: &ast::fn_decl, id: Option<ast::ident>,
+                   decl: &ast::fn_decl,
+                   id: Option<ast::ident>,
                    generics: Option<&ast::Generics>,
                    opt_self_ty: Option<ast::self_ty_>) {
     ibox(s, indent_unit);

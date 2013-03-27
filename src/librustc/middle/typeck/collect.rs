@@ -59,6 +59,7 @@ use syntax::codemap;
 use syntax::print::pprust::path_to_str;
 use syntax::visit;
 use syntax::opt_vec::OptVec;
+use syntax::opt_vec;
 
 pub fn collect_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
 
@@ -716,6 +717,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
                 &type_rscope(region_parameterization),
                 ast::impure_fn,
                 ast::RustAbi,
+                &opt_vec::Empty,
                 &ast_util::dtor_dec()));
         write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
         tcx.tcache.insert(local_def(dtor.node.id),
@@ -776,17 +778,16 @@ pub fn ty_of_method(ccx: &CrateCtxt,
                  -> ty::method {
     let rscope = MethodRscope::new(m.self_ty.node,
                                    rp,
-                                   rcvr_generics,
-                                   method_generics);
+                                   rcvr_generics);
     ty::method {
         ident: m.ident,
         tps: ty_param_bounds(ccx, &m.generics),
-        fty: astconv::ty_of_bare_fn_ext(ccx,
-                                        &rscope,
-                                        m.purity,
-                                        ast::RustAbi,
-                                        &m.decl,
-                                        rscope.region_param_names()),
+        fty: astconv::ty_of_bare_fn(ccx,
+                                    &rscope,
+                                    m.purity,
+                                    ast::RustAbi,
+                                    &method_generics.lifetimes,
+                                    &m.decl),
         self_ty: m.self_ty.node,
         vis: m.vis,
         def_id: local_def(m.id)
@@ -799,16 +800,16 @@ pub fn ty_of_ty_method(self: &CrateCtxt,
                        id: ast::def_id,
                        generics: &ast::Generics)
                     -> ty::method {
-    let rscope = MethodRscope::new(m.self_ty.node, rp, generics, &m.generics);
+    let rscope = MethodRscope::new(m.self_ty.node, rp, generics);
     ty::method {
         ident: m.ident,
         tps: ty_param_bounds(self, &m.generics),
-        fty: astconv::ty_of_bare_fn_ext(self,
-                                        &rscope,
-                                        m.purity,
-                                        ast::RustAbi,
-                                        &m.decl,
-                                        rscope.region_param_names()),
+        fty: astconv::ty_of_bare_fn(self,
+                                    &rscope,
+                                    m.purity,
+                                    ast::RustAbi,
+                                    &m.generics.lifetimes,
+                                    &m.decl),
         // assume public, because this is only invoked on trait methods
         self_ty: m.self_ty.node,
         vis: ast::public,
@@ -869,13 +870,12 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
       }
       ast::item_fn(ref decl, purity, ref generics, _) => {
         let bounds = ty_param_bounds(ccx, generics);
-        let region_param_names = RegionParamNames::from_generics(generics);
-        let tofd = astconv::ty_of_bare_fn_ext(ccx,
-                                              &empty_rscope,
-                                              purity,
-                                              ast::RustAbi,
-                                              decl,
-                                              region_param_names);
+        let tofd = astconv::ty_of_bare_fn(ccx,
+                                          &empty_rscope,
+                                          purity,
+                                          ast::RustAbi,
+                                          &generics.lifetimes,
+                                          decl);
         let tpt = ty_param_bounds_and_ty {
             bounds: bounds,
             region_param: None,
@@ -971,11 +971,10 @@ pub fn ty_of_foreign_item(ccx: &CrateCtxt, it: @ast::foreign_item)
                                   generics)
         }
         ast::foreign_item_const(t) => {
-            let rb = in_binding_rscope(&empty_rscope);
             ty::ty_param_bounds_and_ty {
                 bounds: @~[],
                 region_param: None,
-                ty: ast_ty_to_ty(ccx, &rb, t)
+                ty: ast_ty_to_ty(ccx, &empty_rscope, t)
             }
         }
     }
@@ -1043,7 +1042,7 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
                           -> ty::ty_param_bounds_and_ty {
     let bounds = ty_param_bounds(ccx, generics);
     let region_param_names = RegionParamNames::from_generics(generics);
-    let rb = in_binding_rscope_ext(&empty_rscope, region_param_names);
+    let rb = in_binding_rscope(&empty_rscope, region_param_names);
     let input_tys = decl.inputs.map(|a| ty_of_arg(ccx, &rb, *a, None) );
     let output_ty = ast_ty_to_ty(ccx, &rb, decl.output);
 
@@ -1052,7 +1051,9 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
         ty::BareFnTy {
             abi: ast::RustAbi,
             purity: ast::unsafe_fn,
-            sig: ty::FnSig {inputs: input_tys, output: output_ty}
+            sig: ty::FnSig {bound_lifetime_names: opt_vec::Empty,
+                            inputs: input_tys,
+                            output: output_ty}
         });
     let tpt = ty_param_bounds_and_ty {
         bounds: bounds,

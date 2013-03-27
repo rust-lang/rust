@@ -70,6 +70,7 @@ use core::result::{iter_vec2, map_vec2};
 use core::vec;
 use syntax::ast::{Onceness, purity, ret_style};
 use syntax::ast;
+use syntax::opt_vec;
 use syntax::codemap::span;
 
 pub trait Combine {
@@ -432,7 +433,9 @@ pub fn super_fn_sigs<C:Combine>(
     do argvecs(self, a_f.inputs, b_f.inputs)
             .chain |inputs| {
         do self.tys(a_f.output, b_f.output).chain |output| {
-            Ok(FnSig {inputs: /*bad*/copy inputs, output: output})
+            Ok(FnSig {bound_lifetime_names: opt_vec::Empty, // FIXME(#4846)
+                      inputs: /*bad*/copy inputs,
+                      output: output})
         }
     }
 }

@@ -615,6 +615,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
         }
         ty_bare_fn(ref f) => {
             ty_bare_fn(@TyBareFn {
+                lifetimes: f.lifetimes,
                 purity: f.purity,
                 abi: f.abi,
                 decl: fold_fn_decl(&f.decl, fld)

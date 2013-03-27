@@ -1633,7 +1633,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // sigils.
         let expected_sty = unpack_expected(fcx, expected, |x| Some(copy *x));
         let mut error_happened = false;
-        let (expected_tys,
+        let (expected_sig,
              expected_purity,
              expected_sigil,
              expected_onceness) = {
@@ -1668,13 +1668,14 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                                expected_onceness,
                                                None,
                                                decl,
-                                               expected_tys,
+                                               expected_sig,
                                                &opt_vec::Empty,
                                                expr.span);
 
         let mut fty_sig;
         let fty = if error_happened {
             fty_sig = FnSig {
+                bound_lifetime_names: opt_vec::Empty,
                 inputs: fn_ty.sig.inputs.map(|an_arg| {
                     arg { mode: an_arg.mode,
                          ty: ty::mk_err(tcx)
@@ -3492,6 +3493,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             onceness: ast::Once,
             region: ty::re_bound(ty::br_anon(0)),
             sig: ty::FnSig {
+                bound_lifetime_names: opt_vec::Empty,
                 inputs: ~[arg {mode: ast::expl(ast::by_copy),
                                ty: ty::mk_imm_ptr(
                                    ccx.tcx,
@@ -3723,7 +3725,8 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
     let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
         purity: ast::unsafe_fn,
         abi: ast::RustAbi,
-        sig: FnSig {inputs: inputs,
+        sig: FnSig {bound_lifetime_names: opt_vec::Empty,
+                    inputs: inputs,
                     output: output}
     });
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));

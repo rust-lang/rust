@@ -37,6 +37,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util::local_def;
+use syntax::opt_vec;
 use syntax::parse::token::special_idents;
 
 pub fn monomorphic_fn(ccx: @CrateContext,
@@ -282,7 +283,8 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
                 ty::BareFnTy {
                     purity: ast::impure_fn,
                     abi: ast::RustAbi,
-                    sig: FnSig {inputs: ~[],
+                    sig: FnSig {bound_lifetime_names: opt_vec::Empty,
+                                inputs: ~[],
                                 output: ty::mk_nil(tcx)}}))
         }
         ty::ty_closure(ref fty) => {
@@ -316,7 +318,8 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
                 sigil: sigil,
                 onceness: ast::Many,
                 region: ty::re_static,
-                sig: ty::FnSig {inputs: ~[],
+                sig: ty::FnSig {bound_lifetime_names: opt_vec::Empty,
+                                inputs: ~[],
                                 output: ty::mk_nil(tcx)}})
     }
 }
