@@ -3116,14 +3116,6 @@ pub impl Parser {
     //    impl<T> Foo { ... }
     //    impl<T> ToStr for ~[T] { ... }
     fn parse_item_impl(&self, visibility: ast::visibility) -> item_info {
-        fn wrap_path(p: &Parser, pt: @path) -> @Ty {
-            @Ty {
-                id: p.get_id(),
-                node: ty_path(pt, p.get_id()),
-                span: pt.span,
-            }
-        }
-
         // First, parse type parameters if necessary.
         let generics = self.parse_generics();
 
