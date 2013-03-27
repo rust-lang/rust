@@ -140,9 +140,9 @@ impl serialize::Encoder for Encoder {
         // we'd have to change the expansion of auto-encode to pass
         // those along.
 
-        if (name == ~"Some") {
+        if name == ~"Some" {
             f();
-        } else if (name == ~"None") {
+        } else if name == ~"None" {
             self.wr.write_str(~"null");
         } else {
             self.wr.write_char('[');
@@ -250,27 +250,57 @@ impl serialize::Encoder for PrettyEncoder {
     fn emit_owned(&self, f: &fn()) { f() }
     fn emit_managed(&self, f: &fn()) { f() }
 
-    fn emit_enum(&self, name: &str, f: &fn()) {
-        if name != "option" { fail!(~"only supports option enum") }
-        f()
-    }
-    fn emit_enum_variant(&self, _name: &str, id: uint, _cnt: uint, f: &fn()) {
-        if id == 0 {
+    fn emit_enum(&self, _name: &str, f: &fn()) { f() }
+    fn emit_enum_variant(&self, name: &str, _id: uint, cnt: uint, f: &fn()) {
+        if name == ~"Some" {
+            f();
+        } else if name == ~"None" {
             self.emit_nil();
         } else {
-            f()
+            self.wr.write_char('[');
+            self.indent += 2;
+            self.wr.write_char('\n');
+            self.wr.write_str(spaces(self.indent));
+            self.wr.write_str(escape_str(name));
+            if cnt == 0 {
+                self.wr.write_str(",\n");
+                self.wr.write_str(spaces(self.indent));
+                self.wr.write_str("[]\n");
+            } else {
+                self.wr.write_str(",\n");
+                self.wr.write_str(spaces(self.indent));
+                self.wr.write_str("[\n");
+                self.indent += 2;
+                f();
+                self.wr.write_char('\n');
+                self.indent -= 2;
+                self.wr.write_str(spaces(self.indent));
+                self.wr.write_str("]\n");
+            }
+            self.indent -= 2;
+            self.wr.write_char(']');
         }
     }
-    fn emit_enum_variant_arg(&self, _idx: uint, f: &fn()) {
+    fn emit_enum_variant_arg(&self, idx: uint, f: &fn()) {
+        if idx != 0 {
+            self.wr.write_str(",\n");
+        }
+        self.wr.write_str(spaces(self.indent));
         f()
     }
 
-    fn emit_borrowed_vec(&self, _len: uint, f: &fn()) {
-        self.wr.write_char('[');
-        self.indent += 2;
-        f();
-        self.indent -= 2;
-        self.wr.write_char(']');
+    fn emit_borrowed_vec(&self, len: uint, f: &fn()) {
+        if len == 0 {
+            self.wr.write_str("[]");
+        } else {
+            self.wr.write_char('[');
+            self.indent += 2;
+            f();
+            self.wr.write_char('\n');
+            self.indent -= 2;
+            self.wr.write_str(spaces(self.indent));
+            self.wr.write_char(']');
+        }
     }
     fn emit_owned_vec(&self, len: uint, f: &fn()) {
         self.emit_borrowed_vec(len, f)
@@ -292,11 +322,17 @@ impl serialize::Encoder for PrettyEncoder {
         self.wr.write_char('{');
         self.indent += 2;
         f();
+        self.wr.write_char('\n');
         self.indent -= 2;
+        self.wr.write_str(spaces(self.indent));
         self.wr.write_char('}');
     }
-    fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) {
-        self.emit_rec(f)
+    fn emit_struct(&self, _name: &str, len: uint, f: &fn()) {
+        if len == 0 {
+            self.wr.write_str("{}");
+        } else {
+            self.emit_rec(f)
+        }
     }
     fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
         if idx == 0 {
@@ -1249,11 +1285,53 @@ mod tests {
     }
 
     #[test]
+    fn test_write_list_pretty() {
+        assert_eq!(to_pretty_str(&List(~[])), ~"[]");
+        assert_eq!(
+            to_pretty_str(&List(~[Boolean(true)])),
+            ~"\
+            [\n  \
+                true\n\
+            ]"
+        );
+        assert_eq!(
+            to_pretty_str(&List(~[
+                Boolean(false),
+                Null,
+                List(~[String(~"foo\nbar"), Number(3.5f)])
+            ])),
+            ~"\
+            [\n  \
+                false,\n  \
+                null,\n  \
+                [\n    \
+                    \"foo\\nbar\",\n    \
+                    3.5\n  \
+                ]\n\
+            ]"
+        );
+    }
+
+    #[test]
     fn test_write_object() {
         assert_eq!(to_str(&mk_object(~[])), ~"{}");
         assert_eq!(
             to_str(&mk_object(~[(~"a", Boolean(true))])),
             ~"{\"a\":true}"
+        );
+        assert_eq!(
+            to_str(&mk_object(~[
+                (~"b", List(~[
+                    mk_object(~[(~"c", String(~"\x0c\r"))]),
+                    mk_object(~[(~"d", String(~""))])
+                ]))
+            ])),
+            ~"{\
+                \"b\":[\
+                    {\"c\":\"\\f\\r\"},\
+                    {\"d\":\"\"}\
+                ]\
+            }"
         );
         let a = mk_object(~[
             (~"a", Boolean(true)),
@@ -1269,23 +1347,112 @@ mod tests {
     }
 
     #[test]
-    fn test_write_enum () {
+    fn test_write_object_pretty() {
+        assert_eq!(to_pretty_str(&mk_object(~[])), ~"{\n}");
+        assert_eq!(
+            to_pretty_str(&mk_object(~[(~"a", Boolean(true))])),
+            ~"\
+            {\n  \
+                \"a\": true\n\
+            }"
+        );
+        assert_eq!(
+            to_pretty_str(&mk_object(~[
+                (~"b", List(~[
+                    mk_object(~[(~"c", String(~"\x0c\r"))]),
+                    mk_object(~[(~"d", String(~""))])
+                ]))
+            ])),
+            ~"\
+            {\n  \
+                \"b\": [\n    \
+                    {\n      \
+                        \"c\": \"\\f\\r\"\n    \
+                    },\n    \
+                    {\n      \
+                        \"d\": \"\"\n    \
+                    }\n  \
+                ]\n\
+            }"
+        );
+        let a = mk_object(~[
+            (~"a", Boolean(true)),
+            (~"b", List(~[
+                mk_object(~[(~"c", String(~"\x0c\r"))]),
+                mk_object(~[(~"d", String(~""))])
+            ]))
+        ]);
+        // We can't compare the strings directly because the object fields be
+        // printed in a different order.
+        let b = from_str(to_str(&a)).unwrap();
+        assert_eq!(a, b);
+    }
+
+    #[auto_encode]
+    enum Animal {
+        Dog,
+        Frog(~str, int)
+    }
+
+    #[test]
+    fn test_write_enum_no_args() {
+        let animal = Dog;
+
         let s = do io::with_str_writer |wr| {
-            let encoder = &Encoder(wr) as &serialize::Encoder;
-            do encoder.emit_enum(~"animal") {
-                do encoder.emit_enum_variant(~"frog",37,1242) {
-                    // name of frog:
-                    do encoder.emit_enum_variant_arg(0) {
-                        encoder.emit_owned_str(~"Henry")
-                    }
-                    // mass of frog in grams:
-                    do encoder.emit_enum_variant_arg(1) {
-                        encoder.emit_int(349);
-                    }
-                }
-            }
+            let encoder = Encoder(wr);
+            animal.encode(&encoder);
         };
-        assert_eq!(s, ~"[\"frog\",[\"Henry\",349]]");
+        assert_eq!(s, ~"[\"Dog\",[]]");
+    }
+
+    #[test]
+    fn test_write_enum_no_args_pretty() {
+        let animal = Dog;
+
+        let s = do io::with_str_writer |wr| {
+            let encoder = PrettyEncoder(wr);
+            animal.encode(&encoder);
+        };
+        assert_eq!(
+            s,
+            ~"\
+            [\n  \
+                \"Dog\",\n  \
+                []\n\
+            ]"
+        );
+    }
+
+    #[test]
+    fn test_write_enum_multiple_args() {
+        let animal = Frog(~"Henry", 349);
+
+        let s = do io::with_str_writer |wr| {
+            let encoder = Encoder(wr);
+            animal.encode(&encoder);
+        };
+        assert_eq!(s, ~"[\"Frog\",[\"Henry\",349]]");
+    }
+
+    #[test]
+    fn test_write_enum_multiple_args_pretty() {
+        let animal = Frog(~"Henry", 349);
+
+        let s = do io::with_str_writer |wr| {
+            let encoder = PrettyEncoder(wr);
+            animal.encode(&encoder);
+        };
+        assert_eq!(
+            s,
+            ~"\
+            [\n  \
+                \"Frog\",\n  \
+                [\n    \
+                    \"Henry\",\n    \
+                    349\n  \
+                ]\n\
+            ]"
+        );
     }
 
     #[test]
@@ -1299,7 +1466,27 @@ mod tests {
     }
 
     #[test]
+    fn test_write_some_pretty() {
+        let value = Some(~"jodhpurs");
+        let s = do io::with_str_writer |wr| {
+            let encoder = PrettyEncoder(wr);
+            value.encode(&encoder);
+        };
+        assert_eq!(s, ~"\"jodhpurs\"");
+    }
+
+    #[test]
     fn test_write_none() {
+        let value: Option<~str> = None;
+        let s = do io::with_str_writer |wr| {
+            let encoder = Encoder(wr);
+            value.encode(&encoder);
+        };
+        assert_eq!(s, ~"null");
+    }
+
+    #[test]
+    fn test_write_none_pretty() {
         let value: Option<~str> = None;
         let s = do io::with_str_writer |wr| {
             let encoder = Encoder(wr);
