@@ -1195,14 +1195,10 @@ impl to_str::ToStr for Error {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     use core::prelude::*;
-
-    use json::*;
-    use serialize;
-
-    use core::result;
     use core::hashmap::linear::LinearMap;
-
 
     fn mk_object(items: &[(~str, Json)]) -> Json {
         let mut d = ~LinearMap::new();
