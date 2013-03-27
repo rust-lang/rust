@@ -32,7 +32,7 @@ use syntax::{visit, ast_util, ast_map};
 
 pub type map = @LinearSet<node_id>;
 
-struct ctx {
+struct ctx<'self> {
     exp_map2: resolve::ExportMap2,
     tcx: ty::ctxt,
     method_map: typeck::method_map,
@@ -152,7 +152,7 @@ fn mk_ty_visitor() -> visit::vt<ctx> {
                                   ..*visit::default_visitor()})
 }
 
-fn traverse_ty(ty: @Ty, cx: ctx<'a>, v: visit::vt<ctx<'a>>) {
+fn traverse_ty<'a>(ty: @Ty, cx: ctx<'a>, v: visit::vt<ctx<'a>>) {
     // XXX: it shouldn't be necessary to do this
     let rmap: &mut LinearSet<node_id> = cx.rmap;
     if rmap.contains(&ty.id) { return; }
@@ -176,7 +176,7 @@ fn traverse_ty(ty: @Ty, cx: ctx<'a>, v: visit::vt<ctx<'a>>) {
 }
 
 fn traverse_inline_body(cx: ctx, body: &blk) {
-    fn traverse_expr(e: @expr, cx: ctx<'a>, v: visit::vt<ctx<'a>>) {
+    fn traverse_expr<'a>(e: @expr, cx: ctx<'a>, v: visit::vt<ctx<'a>>) {
         match e.node {
           expr_path(_) => {
             match cx.tcx.def_map.find(&e.id) {
