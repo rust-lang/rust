@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[doc(hidden)];
+
 /*! Precise garbage collector
 
 The precise GC exposes two functions, gc and
