@@ -1059,6 +1059,18 @@ fn mk_enum_deser_body(
     name: ast::ident,
     variants: ~[ast::variant]
 ) -> @ast::expr {
+    let expr_arm_names = build::mk_base_vec_e(
+        ext_cx,
+        span,
+         do variants.map |variant| {
+            build::mk_base_str(
+                ext_cx,
+                span,
+                ext_cx.str_of(variant.node.name)
+            )
+        }
+    );
+
     let mut arms = do variants.mapi |v_idx, variant| {
         let body = match variant.node.kind {
             ast::tuple_variant_kind(ref args) => {
@@ -1152,13 +1164,13 @@ fn mk_enum_deser_body(
         )
     );
 
-    // ast for `__d.read_enum_variant($(expr_lambda))`
+    // ast for `__d.read_enum_variant($expr_arm_names, $(expr_lambda))`
     let expr_lambda = ext_cx.lambda_expr(
         ext_cx.expr_method_call(
             span,
             ext_cx.expr_var(span, ~"__d"),
             ext_cx.ident_of(~"read_enum_variant"),
-            ~[expr_lambda]
+            ~[expr_arm_names, expr_lambda]
         )
     );
 
@@ -1173,7 +1185,6 @@ fn mk_enum_deser_body(
         ]
     )
 }
-
 
 #[cfg(test)]
 mod test {
