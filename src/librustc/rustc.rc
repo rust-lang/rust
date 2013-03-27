@@ -80,6 +80,7 @@ pub mod middle {
         pub mod reachable;
         pub mod machine;
         pub mod adt;
+        pub mod asm;
     }
     pub mod ty;
     pub mod resolve;
