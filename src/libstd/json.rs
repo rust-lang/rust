@@ -851,7 +851,6 @@ impl<'self> serialize::Decoder for Decoder<'self> {
 
     fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T {
         debug!("read_enum(%s)", name);
-        if name != ~"option" { fail!(~"only supports the option enum") }
         f()
     }
 
@@ -1718,6 +1717,20 @@ mod tests {
         let decoder = Decoder(from_str(~"\"jodhpurs\"").unwrap());
         let value: Option<~str> = Decodable::decode(&decoder);
         assert_eq!(value, Some(~"jodhpurs"));
+    }
+
+    #[test]
+    fn test_read_enum_no_args() {
+        let decoder = Decoder(from_str(~"\"Dog\"").unwrap());
+        let value: Animal = Decodable::decode(&decoder);
+        assert_eq!(value, Dog);
+    }
+
+    #[test]
+    fn test_read_enum_multiple_args() {
+        let decoder = Decoder(from_str(~"[\"Frog\",\"Henry\",349]").unwrap());
+        let value: Animal = Decodable::decode(&decoder);
+        assert_eq!(value, Frog(~"Henry", 349));
     }
 
     #[test]
