@@ -45,6 +45,8 @@ use syntax::codemap::span;
 use syntax::codemap;
 use syntax::print::pprust;
 use syntax::{ast, ast_map};
+use syntax::opt_vec::OptVec;
+use syntax::opt_vec;
 use syntax;
 
 // Data types
@@ -376,10 +378,12 @@ pub struct ClosureTy {
  * Signature of a function type, which I have arbitrarily
  * decided to use to refer to the input/output types.
  *
+ * - `lifetimes` is the list of region names bound in this fn.
  * - `inputs` is the list of arguments and their modes.
  * - `output` is the return type. */
 #[deriving(Eq)]
 pub struct FnSig {
+    bound_lifetime_names: OptVec<ast::ident>,
     inputs: ~[arg],
     output: t
 }
@@ -1062,7 +1066,8 @@ pub fn mk_ctor_fn(cx: ctxt, input_tys: &[ty::t], output: ty::t) -> t {
                BareFnTy {
                    purity: ast::pure_fn,
                    abi: ast::RustAbi,
-                   sig: FnSig {inputs: input_args,
+                   sig: FnSig {bound_lifetime_names: opt_vec::Empty,
+                               inputs: input_args,
                                output: output}})
 }
 
@@ -1203,6 +1208,7 @@ pub fn fold_sig(sig: &FnSig, fldop: &fn(t) -> t) -> FnSig {
     };
 
     FnSig {
+        bound_lifetime_names: copy sig.bound_lifetime_names,
         inputs: args,
         output: fldop(sig.output)
     }

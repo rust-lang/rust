@@ -363,10 +363,11 @@ pub impl Parser {
 
         let purity = self.parse_purity();
         self.expect_keyword(&~"fn");
-        let (decl, _) = self.parse_ty_fn_decl();
+        let (decl, lifetimes) = self.parse_ty_fn_decl();
         return ty_bare_fn(@TyBareFn {
             abi: RustAbi,
             purity: purity,
+            lifetimes: lifetimes,
             decl: decl
         });
     }

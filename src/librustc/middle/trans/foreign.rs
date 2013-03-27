@@ -40,6 +40,7 @@ use util::ppaux::ty_to_str;
 use syntax::codemap::span;
 use syntax::{ast, ast_util};
 use syntax::{attr, ast_map};
+use syntax::opt_vec;
 use syntax::parse::token::special_idents;
 
 fn abi_info(arch: session::arch) -> @cabi::ABIInfo {
@@ -615,7 +616,8 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 sigil: ast::BorrowedSigil,
                 onceness: ast::Many,
                 region: ty::re_bound(ty::br_anon(0)),
-                sig: FnSig {inputs: ~[arg {mode: ast::expl(ast::by_copy),
+                sig: FnSig {bound_lifetime_names: opt_vec::Empty,
+                            inputs: ~[arg {mode: ast::expl(ast::by_copy),
                                            ty: star_u8}],
                             output: ty::mk_nil(bcx.tcx())}
             });
