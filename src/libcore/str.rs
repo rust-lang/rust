@@ -435,12 +435,14 @@ pub fn slice<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
 }
 
 /// Splits a string into substrings at each occurrence of a given character
-pub fn each_split_char(s: &'a str, sep: char, it: &fn(&'a str) -> bool) {
+pub fn each_split_char<'a>(s: &'a str, sep: char, it: &fn(&'a str) -> bool) {
     each_split_char_inner(s, sep, len(s), true, true, it)
 }
 
 /// Like `each_split_char`, but a trailing empty string is omitted
-pub fn each_split_char_no_trailing(s: &'a str, sep: char, it: &fn(&'a str) -> bool) {
+pub fn each_split_char_no_trailing<'a>(s: &'a str,
+                                       sep: char,
+                                       it: &fn(&'a str) -> bool) {
     each_split_char_inner(s, sep, len(s), true, false, it)
 }
 
@@ -450,17 +452,26 @@ pub fn each_split_char_no_trailing(s: &'a str, sep: char, it: &fn(&'a str) -> bo
  *
  * The character must be a valid UTF-8/ASCII character
  */
-pub fn each_splitn_char(s: &'a str, sep: char, count: uint, it: &fn(&'a str) -> bool) {
+pub fn each_splitn_char<'a>(s: &'a str,
+                            sep: char,
+                            count: uint,
+                            it: &fn(&'a str) -> bool) {
     each_split_char_inner(s, sep, count, true, true, it)
 }
 
 /// Like `each_split_char`, but omits empty strings
-pub fn each_split_char_nonempty(s: &'a str, sep: char, it: &fn(&'a str) -> bool) {
+pub fn each_split_char_nonempty<'a>(s: &'a str,
+                                    sep: char,
+                                    it: &fn(&'a str) -> bool) {
     each_split_char_inner(s, sep, len(s), false, false, it)
 }
 
-fn each_split_char_inner(s: &'a str, sep: char, count: uint, allow_empty: bool,
-                         allow_trailing_empty: bool, it: &fn(&'a str) -> bool) {
+fn each_split_char_inner<'a>(s: &'a str,
+                             sep: char,
+                             count: uint,
+                             allow_empty: bool,
+                             allow_trailing_empty: bool,
+                             it: &fn(&'a str) -> bool) {
     if sep < 128u as char {
         let b = sep as u8, l = len(s);
         let mut done = 0u;
@@ -485,12 +496,16 @@ fn each_split_char_inner(s: &'a str, sep: char, count: uint, allow_empty: bool,
 }
 
 /// Splits a string into substrings using a character function
-pub fn each_split(s: &'a str, sepfn: &fn(char) -> bool, it: &fn(&'a str) -> bool) {
+pub fn each_split<'a>(s: &'a str,
+                      sepfn: &fn(char) -> bool,
+                      it: &fn(&'a str) -> bool) {
     each_split_inner(s, sepfn, len(s), true, true, it)
 }
 
 /// Like `each_split`, but a trailing empty string is omitted
-pub fn each_split_no_trailing(s: &'a str, sepfn: &fn(char) -> bool, it: &fn(&'a str) -> bool) {
+pub fn each_split_no_trailing<'a>(s: &'a str,
+                                  sepfn: &fn(char) -> bool,
+                                  it: &fn(&'a str) -> bool) {
     each_split_inner(s, sepfn, len(s), true, false, it)
 }
 
@@ -498,17 +513,26 @@ pub fn each_split_no_trailing(s: &'a str, sepfn: &fn(char) -> bool, it: &fn(&'a 
  * Splits a string into substrings using a character function, cutting at
  * most `count` times.
  */
-pub fn each_splitn(s: &'a str, sepfn: &fn(char) -> bool, count: uint, it: &fn(&'a str) -> bool) {
+pub fn each_splitn<'a>(s: &'a str,
+                       sepfn: &fn(char) -> bool,
+                       count: uint,
+                       it: &fn(&'a str) -> bool) {
     each_split_inner(s, sepfn, count, true, true, it)
 }
 
 /// Like `each_split`, but omits empty strings
-pub fn each_split_nonempty(s: &'a str, sepfn: &fn(char) -> bool, it: &fn(&'a str) -> bool) {
+pub fn each_split_nonempty<'a>(s: &'a str,
+                               sepfn: &fn(char) -> bool,
+                               it: &fn(&'a str) -> bool) {
     each_split_inner(s, sepfn, len(s), false, false, it)
 }
 
-fn each_split_inner(s: &'a str, sepfn: &fn(cc: char) -> bool, count: uint,
-                    allow_empty: bool, allow_trailing_empty: bool, it: &fn(&'a str) -> bool) {
+fn each_split_inner<'a>(s: &'a str,
+                        sepfn: &fn(cc: char) -> bool,
+                        count: uint,
+                        allow_empty: bool,
+                        allow_trailing_empty: bool,
+                        it: &fn(&'a str) -> bool) {
     let l = len(s);
     let mut i = 0u, start = 0u, done = 0u;
     while i < l && done < count {
@@ -632,7 +656,7 @@ pub fn levdistance(s: &str, t: &str) -> uint {
 /**
  * Splits a string into substrings separated by LF ('\n').
  */
-pub fn each_line(s: &'a str, it: &fn(&'a str) -> bool) {
+pub fn each_line<'a>(s: &'a str, it: &fn(&'a str) -> bool) {
     each_split_char_no_trailing(s, '\n', it)
 }
 
@@ -640,7 +664,7 @@ pub fn each_line(s: &'a str, it: &fn(&'a str) -> bool) {
  * Splits a string into substrings separated by LF ('\n')
  * and/or CR LF ("\r\n")
  */
-pub fn each_line_any(s: &'a str, it: &fn(&'a str) -> bool) {
+pub fn each_line_any<'a>(s: &'a str, it: &fn(&'a str) -> bool) {
     for each_line(s) |s| {
         let l = s.len();
         if l > 0u && s[l - 1u] == '\r' as u8 {
@@ -652,7 +676,7 @@ pub fn each_line_any(s: &'a str, it: &fn(&'a str) -> bool) {
 }
 
 /// Splits a string into substrings separated by whitespace
-pub fn each_word(s: &'a str, it: &fn(&'a str) -> bool) {
+pub fn each_word<'a>(s: &'a str, it: &fn(&'a str) -> bool) {
     each_split_nonempty(s, char::is_whitespace, it)
 }
 
@@ -665,7 +689,9 @@ pub fn each_word(s: &'a str, it: &fn(&'a str) -> bool) {
  *  Fails during iteration if the string contains a non-whitespace
  *  sequence longer than the limit.
  */
-pub fn each_split_within(ss: &'a str, lim: uint, it: &fn(&'a str) -> bool) {
+pub fn each_split_within<'a>(ss: &'a str,
+                             lim: uint,
+                             it: &fn(&'a str) -> bool) {
     // Just for fun, let's write this as an state machine:
 
     enum SplitWithinState {
