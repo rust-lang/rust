@@ -561,12 +561,9 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
         }
         expr_inline_asm(a) => {
             expr_inline_asm(inline_asm {
-                asm: a.asm,
-                clobbers: a.clobbers,
                 inputs: a.inputs.map(|&(c, in)| (c, fld.fold_expr(in))),
                 outputs: a.outputs.map(|&(c, out)| (c, fld.fold_expr(out))),
-                volatile: a.volatile,
-                alignstack: a.alignstack
+                .. a
             })
         }
         expr_mac(ref mac) => expr_mac(fold_mac((*mac))),

@@ -104,10 +104,15 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
         T_struct(outputs.map(|o| val_ty(*o)))
     };
 
+    let dialect = match ia.dialect {
+        ast::asm_att   => lib::llvm::AD_ATT,
+        ast::asm_intel => lib::llvm::AD_Intel
+    };
+
     let r = do str::as_c_str(*ia.asm) |a| {
         do str::as_c_str(constraints) |c| {
             // XXX: Allow selection of at&t or intel
-            InlineAsmCall(bcx, a, c, inputs, output, ia.volatile, ia.alignstack, lib::llvm::AD_ATT)
+            InlineAsmCall(bcx, a, c, inputs, output, ia.volatile, ia.alignstack, dialect)
         }
     };
 
