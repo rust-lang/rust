@@ -156,12 +156,10 @@ impl MethodRscope {
     // trait).
     pub fn new(self_ty: ast::self_ty_,
                variance: Option<ty::region_variance>,
-               rcvr_generics: &ast::Generics,
-               method_generics: &ast::Generics)
+               rcvr_generics: &ast::Generics)
             -> MethodRscope {
         let mut region_param_names =
             RegionParamNames::from_generics(rcvr_generics);
-        region_param_names.add_generics(method_generics);
         MethodRscope {
             self_ty: self_ty,
             variance: variance,
@@ -273,18 +271,7 @@ pub struct binding_rscope {
     region_param_names: RegionParamNames,
 }
 
-pub fn in_binding_rscope<RS:region_scope + Copy + Durable>(self: &RS)
-    -> binding_rscope {
-    let base = @copy *self;
-    let base = base as @region_scope;
-    binding_rscope {
-        base: base,
-        anon_bindings: @mut 0,
-        region_param_names: RegionParamNames::new()
-    }
-}
-
-pub fn in_binding_rscope_ext<RS:region_scope + Copy + Durable>(
+pub fn in_binding_rscope<RS:region_scope + Copy + Durable>(
         self: &RS,
         +region_param_names: RegionParamNames)
      -> binding_rscope {

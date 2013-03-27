@@ -24,6 +24,7 @@ use core::vec;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::codemap::{respan, dummy_sp};
+use syntax::opt_vec;
 
 // Compact string representation for ty::t values. API ty_str &
 // parse_from_str. Extra parameters are for converting to/from def_ids in the
@@ -479,7 +480,9 @@ fn parse_sig(st: @mut PState, conv: conv_did) -> ty::FnSig {
     }
     st.pos += 1u; // eat the ']'
     let ret_ty = parse_ty(st, conv);
-    ty::FnSig {inputs: inputs, output: ret_ty}
+    ty::FnSig {bound_lifetime_names: opt_vec::Empty, // FIXME(#4846)
+               inputs: inputs,
+               output: ret_ty}
 }
 
 // Rust metadata parsing

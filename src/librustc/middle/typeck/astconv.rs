@@ -58,7 +58,7 @@ use middle::const_eval;
 use middle::ty::{arg, field, substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
-use middle::typeck::rscope::{in_binding_rscope, in_binding_rscope_ext};
+use middle::typeck::rscope::{in_binding_rscope};
 use middle::typeck::rscope::{region_scope, type_rscope, RegionError};
 use middle::typeck::rscope::{RegionParamNames};
 
@@ -67,6 +67,7 @@ use core::vec;
 use syntax::{ast, ast_util};
 use syntax::codemap::span;
 use syntax::opt_vec::OptVec;
+use syntax::opt_vec;
 use syntax::print::pprust::{lifetime_to_str, path_to_str};
 use syntax::parse::token::special_idents;
 use util::common::indenter;
@@ -347,7 +348,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
       }
       ast::ty_bare_fn(ref bf) => {
           ty::mk_bare_fn(tcx, ty_of_bare_fn(self, rscope, bf.purity,
-                                            bf.abi, &bf.decl))
+                                            bf.abi, &bf.lifetimes, &bf.decl))
       }
       ast::ty_closure(ref f) => {
           let fn_decl = ty_of_closure(self,
@@ -508,18 +509,50 @@ pub fn ty_of_arg<AC:AstConv,RS:region_scope + Copy + Durable>(
     arg {mode: mode, ty: ty}
 }
 
+pub fn bound_lifetimes<AC:AstConv>(
+    self: &AC,
+    ast_lifetimes: &OptVec<ast::Lifetime>) -> OptVec<ast::ident>
+{
+    /*!
+     *
+     * Converts a list of lifetimes into a list of bound identifier
+     * names.  Does not permit special names like 'static or 'self to
+     * be bound.  Note that this function is for use in closures,
+     * methods, and fn definitions.  It is legal to bind 'self in a
+     * type.  Eventually this distinction should go away and the same
+     * rules should apply everywhere ('self would not be a special name
+     * at that point).
+     */
+
+    let special_idents = [special_idents::static, special_idents::self_];
+    let mut bound_lifetime_names = opt_vec::Empty;
+    ast_lifetimes.map_to_vec(|ast_lifetime| {
+        if special_idents.any(|&i| i == ast_lifetime.ident) {
+            self.tcx().sess.span_err(
+                ast_lifetime.span,
+                fmt!("illegal lifetime parameter name: `%s`",
+                     lifetime_to_str(ast_lifetime, self.tcx().sess.intr())));
+        } else {
+            bound_lifetime_names.push(ast_lifetime.ident);
+        }
+    });
+    bound_lifetime_names
+}
+
 pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
-        self: &AC,
-        rscope: &RS,
-        purity: ast::purity,
-        abi: ast::Abi,
-        decl: &ast::fn_decl)
-     -> ty::BareFnTy {
+    self: &AC,
+    rscope: &RS,
+    purity: ast::purity,
+    abi: ast::Abi,
+    lifetimes: &OptVec<ast::Lifetime>,
+    decl: &ast::fn_decl) -> ty::BareFnTy
+{
     debug!("ty_of_bare_fn");
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
-    let rb = in_binding_rscope(rscope);
+    let bound_lifetime_names = bound_lifetimes(self, lifetimes);
+    let rb = in_binding_rscope(rscope, RegionParamNames(copy bound_lifetime_names));
 
     let input_tys = decl.inputs.map(|a| ty_of_arg(self, &rb, *a, None));
     let output_ty = match decl.output.node {
@@ -530,34 +563,9 @@ pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
     ty::BareFnTy {
         purity: purity,
         abi: abi,
-        sig: ty::FnSig {inputs: input_tys, output: output_ty}
-    }
-}
-
-pub fn ty_of_bare_fn_ext<AC:AstConv,RS:region_scope + Copy + Durable>(
-        self: &AC,
-        rscope: &RS,
-        purity: ast::purity,
-        abi: ast::Abi,
-        decl: &ast::fn_decl,
-        +region_param_names: RegionParamNames)
-     -> ty::BareFnTy {
-    debug!("ty_of_bare_fn_ext");
-
-    // new region names that appear inside of the fn decl are bound to
-    // that function type
-    let rb = in_binding_rscope_ext(rscope, region_param_names);
-
-    let input_tys = decl.inputs.map(|a| ty_of_arg(self, &rb, *a, None));
-    let output_ty = match decl.output.node {
-        ast::ty_infer => self.ty_infer(decl.output.span),
-        _ => ast_ty_to_ty(self, &rb, decl.output)
-    };
-
-    ty::BareFnTy {
-        purity: purity,
-        abi: abi,
-        sig: ty::FnSig {inputs: input_tys, output: output_ty}
+        sig: ty::FnSig {bound_lifetime_names: bound_lifetime_names,
+                        inputs: input_tys,
+                        output: output_ty}
     }
 }
 
@@ -569,10 +577,16 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
         onceness: ast::Onceness,
         opt_lifetime: Option<@ast::Lifetime>,
         decl: &ast::fn_decl,
-        expected_tys: Option<ty::FnSig>,
+        expected_sig: Option<ty::FnSig>,
         lifetimes: &OptVec<ast::Lifetime>,
         span: span)
-     -> ty::ClosureTy {
+     -> ty::ClosureTy
+{
+    // The caller should not both provide explicit bound lifetime
+    // names and expected types.  Either we infer the bound lifetime
+    // names or they are provided, but not both.
+    fail_unless!(lifetimes.is_empty() || expected_sig.is_none());
+
     debug!("ty_of_fn_decl");
     let _i = indenter();
 
@@ -599,11 +613,11 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
-    let region_param_names = RegionParamNames::from_lifetimes(lifetimes);
-    let rb = in_binding_rscope_ext(rscope, region_param_names);
+    let bound_lifetime_names = bound_lifetimes(self, lifetimes);
+    let rb = in_binding_rscope(rscope, RegionParamNames(copy bound_lifetime_names));
 
     let input_tys = do decl.inputs.mapi |i, a| {
-        let expected_arg_ty = do expected_tys.chain_ref |e| {
+        let expected_arg_ty = do expected_sig.chain_ref |e| {
             // no guarantee that the correct number of expected args
             // were supplied
             if i < e.inputs.len() {Some(e.inputs[i])} else {None}
@@ -611,7 +625,7 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
         ty_of_arg(self, &rb, *a, expected_arg_ty)
     };
 
-    let expected_ret_ty = expected_tys.map(|e| e.output);
+    let expected_ret_ty = expected_sig.map(|e| e.output);
     let output_ty = match decl.output.node {
         ast::ty_infer if expected_ret_ty.is_some() => expected_ret_ty.get(),
         ast::ty_infer => self.ty_infer(decl.output.span),
@@ -623,7 +637,8 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
         sigil: sigil,
         onceness: onceness,
         region: bound_region,
-        sig: ty::FnSig {inputs: input_tys,
+        sig: ty::FnSig {bound_lifetime_names: bound_lifetime_names,
+                        inputs: input_tys,
                         output: output_ty}
     }
 }
