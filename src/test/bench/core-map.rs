@@ -49,19 +49,19 @@ fn descending<M: Map<uint, uint>>(map: &mut M, n_keys: uint) {
     io::println(" Descending integers:");
 
     do timed("insert") {
-        for uint::range(0, n_keys) |i| {
+        for uint::range_rev(n_keys, 0) |i| {
             map.insert(i, i + 1);
         }
     }
 
     do timed("search") {
-        for uint::range(0, n_keys) |i| {
+        for uint::range_rev(n_keys, 0) |i| {
             fail_unless!(map.find(&i).unwrap() == &(i + 1));
         }
     }
 
     do timed("remove") {
-        for uint::range(0, n_keys) |i| {
+        for uint::range_rev(n_keys, 0) |i| {
             fail_unless!(map.remove(&i));
         }
     }
