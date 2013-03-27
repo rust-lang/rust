@@ -451,6 +451,9 @@ impl TyVisitor for ReprVisitor {
     }
     fn visit_leave_tup(&self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool {
+        if _n_fields == 1 {
+            self.writer.write_char(',');
+        }
         self.writer.write_char(')');
         true
     }
@@ -591,7 +594,6 @@ fn test_repr() {
         fail_unless!(s == e);
     }
 
-
     exact_test(&10, "10");
     exact_test(&true, "true");
     exact_test(&false, "false");
@@ -608,6 +610,7 @@ fn test_repr() {
     let mut x = 10;
     exact_test(&(&mut x), "&mut 10");
 
+    exact_test(&(1,), "(1,)");
     exact_test(&(@[1,2,3,4,5,6,7,8]),
                "@[1, 2, 3, 4, 5, 6, 7, 8]");
     exact_test(&(@[1u8,2u8,3u8,4u8]),
