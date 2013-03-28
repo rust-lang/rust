@@ -106,6 +106,16 @@ pub fn parse_ty_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
     parse_ty(st, conv)
 }
 
+pub fn parse_substs_data(data: @~[u8],
+                         crate_num: int,
+                         pos: uint,
+                         tcx: ty::ctxt,
+                         conv: conv_did)
+                      -> ty::substs {
+    let st = parse_state_from_data(data, crate_num, pos, tcx);
+    parse_substs(st, conv)
+}
+
 pub fn parse_arg_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
                       conv: conv_did) -> ty::arg {
     let st = parse_state_from_data(data, crate_num, pos, tcx);
