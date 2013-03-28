@@ -785,9 +785,6 @@ pub fn print_variant(s: @ps, v: ast::variant) {
             let generics = ast_util::empty_generics();
             print_struct(s, struct_def, &generics, v.node.name, v.span);
         }
-        ast::enum_variant_kind(ref enum_definition) => {
-            print_variants(s, (*enum_definition).variants, v.span);
-        }
     }
     match v.node.disr_expr {
       Some(d) => {

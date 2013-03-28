@@ -19,7 +19,7 @@ use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
 use ast::{bind_by_copy, bitand, bitor, bitxor, blk};
 use ast::{blk_check_mode, box, by_copy, by_ref};
 use ast::{crate, crate_cfg, decl, decl_item};
-use ast::{decl_local, default_blk, deref, div, enum_def, enum_variant_kind};
+use ast::{decl_local, default_blk, deref, div, enum_def};
 use ast::{expl, expr, expr_, expr_addr_of, expr_match, expr_again};
 use ast::{expr_assign, expr_assign_op, expr_binary, expr_block};
 use ast::{expr_break, expr_call, expr_cast, expr_copy, expr_do_body};
@@ -3788,63 +3788,42 @@ pub impl Parser {
     fn parse_enum_def(&self, generics: &ast::Generics) -> enum_def {
         let mut variants = ~[];
         let mut all_nullary = true, have_disr = false;
-        let mut common_fields = None;
-
         while *self.token != token::RBRACE {
             let variant_attrs = self.parse_outer_attributes();
             let vlo = self.span.lo;
 
-            // Is this a common field declaration?
-            if self.eat_keyword(&~"struct") {
-                if common_fields.is_some() {
-                    self.fatal(~"duplicate declaration of shared fields");
-                }
-                self.expect(&token::LBRACE);
-                common_fields = Some(self.parse_struct_def());
-                loop;
-            }
-
             let vis = self.parse_visibility();
 
-            // Is this a nested enum declaration?
             let ident, needs_comma, kind;
             let mut args = ~[], disr_expr = None;
-            if self.eat_keyword(&~"enum") {
-                ident = self.parse_ident();
-                self.expect(&token::LBRACE);
-                let nested_enum_def = self.parse_enum_def(generics);
-                kind = enum_variant_kind(nested_enum_def);
-                needs_comma = false;
-            } else {
-                ident = self.parse_ident();
-                if self.eat(&token::LBRACE) {
-                    // Parse a struct variant.
-                    all_nullary = false;
-                    kind = struct_variant_kind(self.parse_struct_def());
-                } else if *self.token == token::LPAREN {
-                    all_nullary = false;
-                    let arg_tys = self.parse_unspanned_seq(
-                        &token::LPAREN,
-                        &token::RPAREN,
-                        seq_sep_trailing_disallowed(token::COMMA),
-                        |p| p.parse_ty(false)
-                    );
-                    for arg_tys.each |ty| {
-                        args.push(ast::variant_arg {
-                            ty: *ty,
-                            id: self.get_id(),
-                        });
-                    }
-                    kind = tuple_variant_kind(args);
-                } else if self.eat(&token::EQ) {
-                    have_disr = true;
-                    disr_expr = Some(self.parse_expr());
-                    kind = tuple_variant_kind(args);
-                } else {
-                    kind = tuple_variant_kind(~[]);
+            ident = self.parse_ident();
+            if self.eat(&token::LBRACE) {
+                // Parse a struct variant.
+                all_nullary = false;
+                kind = struct_variant_kind(self.parse_struct_def());
+            } else if *self.token == token::LPAREN {
+                all_nullary = false;
+                let arg_tys = self.parse_unspanned_seq(
+                    &token::LPAREN,
+                    &token::RPAREN,
+                    seq_sep_trailing_disallowed(token::COMMA),
+                    |p| p.parse_ty(false)
+                );
+                for arg_tys.each |ty| {
+                    args.push(ast::variant_arg {
+                        ty: *ty,
+                        id: self.get_id(),
+                    });
                 }
-                needs_comma = true;
+                kind = tuple_variant_kind(args);
+            } else if self.eat(&token::EQ) {
+                have_disr = true;
+                disr_expr = Some(self.parse_expr());
+                kind = tuple_variant_kind(args);
+            } else {
+                kind = tuple_variant_kind(~[]);
             }
+            needs_comma = true;
 
             let vr = ast::variant_ {
                 name: ident,
@@ -3864,7 +3843,7 @@ pub impl Parser {
                         enum");
         }
 
-        ast::enum_def { variants: variants, common: common_fields }
+        ast::enum_def { variants: variants }
     }
 
     fn parse_item_enum(&self) -> item_info {
@@ -3892,7 +3871,7 @@ pub impl Parser {
             return (
                 id,
                 item_enum(
-                    ast::enum_def { variants: ~[variant], common: None },
+                    ast::enum_def { variants: ~[variant] },
                     generics),
                 None
             );

@@ -12,7 +12,7 @@ use core::prelude::*;
 
 use ast;
 use ast::{TraitTyParamBound, Ty, and, bind_by_ref, binop, deref, enum_def};
-use ast::{enum_variant_kind, expr, expr_match, ident, impure_fn, item, item_};
+use ast::{expr, expr_match, ident, impure_fn, item, item_};
 use ast::{item_enum, item_impl, item_struct, Generics};
 use ast::{m_imm, meta_item, method};
 use ast::{named_field, or, pat, pat_ident, pat_wild, public, pure_fn};
