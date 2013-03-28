@@ -452,6 +452,8 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   Options.NoFramePointerElim = true;
   Options.EnableSegmentedStacks = EnableSegmentedStacks;
 
+  PassManager *PM = unwrap<PassManager>(PMR);
+
   std::string Err;
   std::string Trip(Triple::normalize(triple));
   std::string FeaturesStr;
@@ -461,8 +463,9 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
     TheTarget->createTargetMachine(Trip, CPUStr, FeaturesStr,
 				   Options, Reloc::PIC_,
 				   CodeModel::Default, OptLevel);
+  Target->addAnalysisPasses(*PM);
+
   bool NoVerify = false;
-  PassManager *PM = unwrap<PassManager>(PMR);
   std::string ErrorInfo;
   raw_fd_ostream OS(path, ErrorInfo,
                     raw_fd_ostream::F_Binary);
