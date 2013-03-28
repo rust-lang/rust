@@ -714,18 +714,19 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                   tcx: ty::ctxt) -> ty::method
 {
     let method_doc = lookup_item(id, cdata.data);
+    let def_id = item_def_id(method_doc, cdata);
+    let name = item_name(intr, method_doc);
     let bounds = item_ty_param_bounds(method_doc, tcx, cdata,
                                       tag_item_method_tps);
-    let name = item_name(intr, method_doc);
-    let def_id = item_def_id(method_doc, cdata);
     let fty = doc_method_fty(method_doc, tcx, cdata);
+    let vis = item_visibility(method_doc);
     let self_ty = get_self_ty(method_doc);
     ty::method {
         ident: name,
         tps: bounds,
         fty: fty,
         self_ty: self_ty,
-        vis: ast::public,
+        vis: vis,
         def_id: def_id
     }
 }
