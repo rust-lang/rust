@@ -3066,16 +3066,6 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                         ccx.tcx, local_def(v.node.id)).map(|cf|
                             ty::node_id_to_type(ccx.tcx, cf.id.node)));
                 }
-                ast::enum_variant_kind(_) => {
-                    arg_tys = None;
-                    do_check(ccx,
-                             sp,
-                             vs,
-                             id,
-                             &mut *disr_vals,
-                             &mut *disr_val,
-                             &mut *variants);
-                }
             }
 
             match arg_tys {

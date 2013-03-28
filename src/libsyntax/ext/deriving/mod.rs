@@ -15,7 +15,7 @@ use core::prelude::*;
 
 use ast;
 use ast::{TraitTyParamBound, Ty, and, bind_by_ref, binop, deref, enum_def};
-use ast::{enum_variant_kind, expr, expr_match, ident, impure_fn, item, item_};
+use ast::{expr, expr_match, ident, impure_fn, item, item_};
 use ast::{item_enum, item_impl, item_struct, Generics};
 use ast::{m_imm, meta_item, method};
 use ast::{named_field, or, pat, pat_ident, pat_wild, public, pure_fn};
@@ -283,9 +283,6 @@ pub fn create_enum_variant_pattern(cx: @ext_ctxt,
 
             build::mk_pat_struct(cx, span, matching_path, field_pats)
         }
-        enum_variant_kind(*) => {
-            cx.span_unimpl(span, ~"enum variants for `deriving`");
-        }
     }
 }
 
@@ -293,9 +290,6 @@ pub fn variant_arg_count(cx: @ext_ctxt, span: span, variant: &variant) -> uint {
     match variant.node.kind {
         tuple_variant_kind(ref args) => args.len(),
         struct_variant_kind(ref struct_def) => struct_def.fields.len(),
-        enum_variant_kind(*) => {
-            cx.span_bug(span, ~"variant_arg_count: enum variants deprecated")
-        }
     }
 }
 

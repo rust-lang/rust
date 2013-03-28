@@ -215,9 +215,6 @@ pub fn visit_enum_def<E>(enum_definition: ast::enum_def,
                 (v.visit_struct_def)(struct_def, vr.node.name, tps,
                                    vr.node.id, e, v);
             }
-            enum_variant_kind(ref enum_definition) => {
-                visit_enum_def((*enum_definition), tps, e, v);
-            }
         }
         // Visit the disr expr if it exists
         for vr.node.disr_expr.each |ex| { (v.visit_expr)(*ex, e, v) }
