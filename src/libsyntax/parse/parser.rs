@@ -3776,15 +3776,9 @@ pub impl Parser {
         })
     }
 
-    fn parse_type_decl(&self) -> (BytePos, ident) {
-        let lo = self.last_span.lo;
-        let id = self.parse_ident();
-        (lo, id)
-    }
-
     // parse type Foo = Bar;
     fn parse_item_type(&self) -> item_info {
-        let (_, ident) = self.parse_type_decl();
+        let ident = self.parse_ident();
         self.parse_region_param();
         let tps = self.parse_generics();
         self.expect(&token::EQ);
