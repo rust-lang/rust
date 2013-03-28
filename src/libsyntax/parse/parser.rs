@@ -1629,7 +1629,6 @@ pub impl Parser {
             self.bump();
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
-            self.get_id(); // see ast_util::op_expr_callee_id
             ex = expr_unary(not, e);
           }
           token::BINOP(b) => {
@@ -1638,7 +1637,6 @@ pub impl Parser {
                 self.bump();
                 let e = self.parse_prefix_expr();
                 hi = e.span.hi;
-                self.get_id(); // see ast_util::op_expr_callee_id
                 ex = expr_unary(neg, e);
               }
               token::STAR => {
@@ -1738,7 +1736,6 @@ pub impl Parser {
                         self.bump();
                         let expr = self.parse_prefix_expr();
                         let rhs = self.parse_more_binops(expr, cur_prec);
-                        self.get_id(); // see ast_util::op_expr_callee_id
                         let bin = self.mk_expr(lhs.span.lo, rhs.span.hi,
                                                expr_binary(cur_op, lhs, rhs));
                         self.parse_more_binops(bin, min_prec)
@@ -1789,7 +1786,6 @@ pub impl Parser {
                   token::SHL => aop = shl,
                   token::SHR => aop = shr
               }
-              self.get_id(); // see ast_util::op_expr_callee_id
               self.mk_expr(lo, rhs.span.hi,
                            expr_assign_op(aop, lhs, rhs))
           }
