@@ -61,7 +61,6 @@ pub mod reader {
 
     use core::int;
     use core::io;
-    use core::ops;
     use core::prelude::*;
     use core::str;
     use core::vec;
