@@ -386,7 +386,6 @@ pub enum vstore {
 #[auto_decode]
 #[deriving(Eq)]
 pub enum expr_vstore {
-    expr_vstore_fixed(Option<uint>),   // [1,2,3,4]
     expr_vstore_uniq,                  // ~[1,2,3,4]
     expr_vstore_box,                   // @[1,2,3,4]
     expr_vstore_mut_box,               // @mut [1,2,3,4]
@@ -546,12 +545,6 @@ pub struct expr {
 #[auto_encode]
 #[auto_decode]
 #[deriving(Eq)]
-pub enum log_level { error, debug, log_other }
-// 0 = error, 1 = debug, 2 = log_other
-
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
 pub enum CallSugar {
     NoSugar,
     DoSugar,
@@ -598,7 +591,7 @@ pub enum expr_ {
     expr_break(Option<ident>),
     expr_again(Option<ident>),
     expr_ret(Option<@expr>),
-    expr_log(log_level, @expr, @expr),
+    expr_log(@expr, @expr),
 
     expr_inline_asm(@~str,              // asm
                     ~[(@~str, @expr)],  // inputs

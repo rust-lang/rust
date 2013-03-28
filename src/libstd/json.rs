@@ -119,38 +119,18 @@ impl serialize::Encoder for Encoder {
         f()
     }
 
-    fn emit_enum_variant(&self, name: &str, _id: uint, _cnt: uint, f: &fn()) {
-        // encoding of enums is special-cased for Option. Specifically:
-        // Some(34) => 34
-        // None => null
-
-        // other enums are encoded as vectors:
+    fn emit_enum_variant(&self, name: &str, _id: uint, cnt: uint, f: &fn()) {
+        // enums are encoded as strings or vectors:
+        // Bunny => "Bunny"
         // Kangaroo(34,"William") => ["Kangaroo",[34,"William"]]
 
-        // the default expansion for enums is more verbose than I'd like;
-        // specifically, the inner pair of brackets seems superfluous,
-        // BUT the design of the enumeration framework and the requirements
-        // of the special-case for Option mean that a first argument must
-        // be encoded "naked"--with no commas--and that the option name
-        // can't be followed by just a comma, because there might not
-        // be any elements in the tuple.
-
-        // FIXME #4872: this would be more precise and less frightening
-        // with fully-qualified option names. To get that information,
-        // we'd have to change the expansion of auto-encode to pass
-        // those along.
-
-        if (name == ~"Some") {
-            f();
-        } else if (name == ~"None") {
-            self.wr.write_str(~"null");
+        if cnt == 0 {
+            self.wr.write_str(escape_str(name));
         } else {
             self.wr.write_char('[');
             self.wr.write_str(escape_str(name));
             self.wr.write_char(',');
-            self.wr.write_char('[');
             f();
-            self.wr.write_char(']');
             self.wr.write_char(']');
         }
     }
@@ -200,6 +180,10 @@ impl serialize::Encoder for Encoder {
     fn emit_tup_elt(&self, idx: uint, f: &fn()) {
         self.emit_vec_elt(idx, f)
     }
+
+    fn emit_option(&self, f: &fn()) { f(); }
+    fn emit_option_none(&self) { self.emit_nil(); }
+    fn emit_option_some(&self, f: &fn()) { f(); }
 }
 
 pub struct PrettyEncoder {
@@ -250,27 +234,44 @@ impl serialize::Encoder for PrettyEncoder {
     fn emit_owned(&self, f: &fn()) { f() }
     fn emit_managed(&self, f: &fn()) { f() }
 
-    fn emit_enum(&self, name: &str, f: &fn()) {
-        if name != "option" { fail!(~"only supports option enum") }
-        f()
-    }
-    fn emit_enum_variant(&self, _name: &str, id: uint, _cnt: uint, f: &fn()) {
-        if id == 0 {
-            self.emit_nil();
+    fn emit_enum(&self, _name: &str, f: &fn()) { f() }
+    fn emit_enum_variant(&self, name: &str, _id: uint, cnt: uint, f: &fn()) {
+        if cnt == 0 {
+            self.wr.write_str(escape_str(name));
         } else {
-            f()
+            self.wr.write_char('[');
+            self.indent += 2;
+            self.wr.write_char('\n');
+            self.wr.write_str(spaces(self.indent));
+            self.wr.write_str(escape_str(name));
+            self.wr.write_str(",\n");
+            f();
+            self.wr.write_char('\n');
+            self.indent -= 2;
+            self.wr.write_str(spaces(self.indent));
+            self.wr.write_char(']');
         }
     }
-    fn emit_enum_variant_arg(&self, _idx: uint, f: &fn()) {
+    fn emit_enum_variant_arg(&self, idx: uint, f: &fn()) {
+        if idx != 0 {
+            self.wr.write_str(",\n");
+        }
+        self.wr.write_str(spaces(self.indent));
         f()
     }
 
-    fn emit_borrowed_vec(&self, _len: uint, f: &fn()) {
-        self.wr.write_char('[');
-        self.indent += 2;
-        f();
-        self.indent -= 2;
-        self.wr.write_char(']');
+    fn emit_borrowed_vec(&self, len: uint, f: &fn()) {
+        if len == 0 {
+            self.wr.write_str("[]");
+        } else {
+            self.wr.write_char('[');
+            self.indent += 2;
+            f();
+            self.wr.write_char('\n');
+            self.indent -= 2;
+            self.wr.write_str(spaces(self.indent));
+            self.wr.write_char(']');
+        }
     }
     fn emit_owned_vec(&self, len: uint, f: &fn()) {
         self.emit_borrowed_vec(len, f)
@@ -292,11 +293,17 @@ impl serialize::Encoder for PrettyEncoder {
         self.wr.write_char('{');
         self.indent += 2;
         f();
+        self.wr.write_char('\n');
         self.indent -= 2;
+        self.wr.write_str(spaces(self.indent));
         self.wr.write_char('}');
     }
-    fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) {
-        self.emit_rec(f)
+    fn emit_struct(&self, _name: &str, len: uint, f: &fn()) {
+        if len == 0 {
+            self.wr.write_str("{}");
+        } else {
+            self.emit_rec(f)
+        }
     }
     fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
         if idx == 0 {
@@ -315,6 +322,10 @@ impl serialize::Encoder for PrettyEncoder {
     fn emit_tup_elt(&self, idx: uint, f: &fn()) {
         self.emit_vec_elt(idx, f)
     }
+
+    fn emit_option(&self, f: &fn()) { f(); }
+    fn emit_option_none(&self) { self.emit_nil(); }
+    fn emit_option_some(&self, f: &fn()) { f(); }
 }
 
 impl<S:serialize::Encoder> serialize::Encodable<S> for Json {
@@ -816,7 +827,7 @@ impl<'self> serialize::Decoder for Decoder<'self> {
         debug!("read_owned_str");
         match *self.pop() {
             String(ref s) => copy *s,
-            _ => fail!(~"not a string")
+            ref json => fail!(fmt!("not a string: %?", *json))
         }
     }
 
@@ -824,7 +835,7 @@ impl<'self> serialize::Decoder for Decoder<'self> {
         debug!("read_managed_str");
         match *self.pop() {
             String(ref s) => s.to_managed(),
-            _ => fail!(~"not a string")
+            ref json => fail!(fmt!("not a string: %?", *json))
         }
     }
 
@@ -840,10 +851,10 @@ impl<'self> serialize::Decoder for Decoder<'self> {
 
     fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T {
         debug!("read_enum(%s)", name);
-        if name != ~"option" { fail!(~"only supports the option enum") }
         f()
     }
 
+    #[cfg(stage0)]
     fn read_enum_variant<T>(&self, f: &fn(uint) -> T) -> T {
         debug!("read_enum_variant()");
         let idx = match *self.peek() {
@@ -853,10 +864,32 @@ impl<'self> serialize::Decoder for Decoder<'self> {
         f(idx)
     }
 
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T {
+        debug!("read_enum_variant(names=%?)", names);
+        let name = match *self.peek() {
+            String(ref s) => s,
+            List([String(ref s), .. _]) => s,
+            ref json => fail!(fmt!("invalid variant: %?", *json)),
+        };
+        let idx = match vec::position(names, |n| str::eq_slice(*n, *name)) {
+            Some(idx) => idx,
+            None => fail!(fmt!("Unknown variant name: %?", name)),
+        };
+        f(idx)
+    }
+
     fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T {
         debug!("read_enum_variant_arg(idx=%u)", idx);
-        if idx != 0 { fail!(~"unknown index") }
-        f()
+        match *self.peek() {
+            List(ref list) => {
+                self.stack.push(&list[idx + 1]);
+                f()
+            }
+            ref json => fail!(fmt!("not a list: %?", json)),
+        }
     }
 
     fn read_owned_vec<T>(&self, f: &fn(uint) -> T) -> T {
@@ -944,6 +977,13 @@ impl<'self> serialize::Decoder for Decoder<'self> {
                 f()
             }
             _ => fail!(~"not a list")
+        }
+    }
+
+    fn read_option<T>(&self, f: &fn() -> T) -> Option<T> {
+        match *self.peek() {
+            Null => { self.pop(); None }
+            _ => Some(f()),
         }
     }
 }
@@ -1195,14 +1235,12 @@ impl to_str::ToStr for Error {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     use core::prelude::*;
-
-    use json::*;
-    use serialize;
-
-    use core::result;
     use core::hashmap::linear::LinearMap;
 
+    use std::serialize::Decodable;
 
     fn mk_object(items: &[(~str, Json)]) -> Json {
         let mut d = ~LinearMap::new();
@@ -1218,45 +1256,89 @@ mod tests {
 
     #[test]
     fn test_write_null() {
-        fail_unless!(to_str(&Null) == ~"null");
+        assert_eq!(to_str(&Null), ~"null");
     }
 
     #[test]
     fn test_write_number() {
-        fail_unless!(to_str(&Number(3f)) == ~"3");
-        fail_unless!(to_str(&Number(3.1f)) == ~"3.1");
-        fail_unless!(to_str(&Number(-1.5f)) == ~"-1.5");
-        fail_unless!(to_str(&Number(0.5f)) == ~"0.5");
+        assert_eq!(to_str(&Number(3f)), ~"3");
+        assert_eq!(to_str(&Number(3.1f)), ~"3.1");
+        assert_eq!(to_str(&Number(-1.5f)), ~"-1.5");
+        assert_eq!(to_str(&Number(0.5f)), ~"0.5");
     }
 
     #[test]
     fn test_write_str() {
-        fail_unless!(to_str(&String(~"")) == ~"\"\"");
-        fail_unless!(to_str(&String(~"foo")) == ~"\"foo\"");
+        assert_eq!(to_str(&String(~"")), ~"\"\"");
+        assert_eq!(to_str(&String(~"foo")), ~"\"foo\"");
     }
 
     #[test]
     fn test_write_bool() {
-        fail_unless!(to_str(&Boolean(true)) == ~"true");
-        fail_unless!(to_str(&Boolean(false)) == ~"false");
+        assert_eq!(to_str(&Boolean(true)), ~"true");
+        assert_eq!(to_str(&Boolean(false)), ~"false");
     }
 
     #[test]
     fn test_write_list() {
-        fail_unless!(to_str(&List(~[])) == ~"[]");
-        fail_unless!(to_str(&List(~[Boolean(true)])) == ~"[true]");
-        fail_unless!(to_str(&List(~[
+        assert_eq!(to_str(&List(~[])), ~"[]");
+        assert_eq!(to_str(&List(~[Boolean(true)])), ~"[true]");
+        assert_eq!(to_str(&List(~[
             Boolean(false),
             Null,
             List(~[String(~"foo\nbar"), Number(3.5f)])
-        ])) == ~"[false,null,[\"foo\\nbar\",3.5]]");
+        ])), ~"[false,null,[\"foo\\nbar\",3.5]]");
+    }
+
+    #[test]
+    fn test_write_list_pretty() {
+        assert_eq!(to_pretty_str(&List(~[])), ~"[]");
+        assert_eq!(
+            to_pretty_str(&List(~[Boolean(true)])),
+            ~"\
+            [\n  \
+                true\n\
+            ]"
+        );
+        assert_eq!(
+            to_pretty_str(&List(~[
+                Boolean(false),
+                Null,
+                List(~[String(~"foo\nbar"), Number(3.5f)])
+            ])),
+            ~"\
+            [\n  \
+                false,\n  \
+                null,\n  \
+                [\n    \
+                    \"foo\\nbar\",\n    \
+                    3.5\n  \
+                ]\n\
+            ]"
+        );
     }
 
     #[test]
     fn test_write_object() {
-        fail_unless!(to_str(&mk_object(~[])) == ~"{}");
-        fail_unless!(to_str(&mk_object(~[(~"a", Boolean(true))]))
-            == ~"{\"a\":true}");
+        assert_eq!(to_str(&mk_object(~[])), ~"{}");
+        assert_eq!(
+            to_str(&mk_object(~[(~"a", Boolean(true))])),
+            ~"{\"a\":true}"
+        );
+        assert_eq!(
+            to_str(&mk_object(~[
+                (~"b", List(~[
+                    mk_object(~[(~"c", String(~"\x0c\r"))]),
+                    mk_object(~[(~"d", String(~""))])
+                ]))
+            ])),
+            ~"{\
+                \"b\":[\
+                    {\"c\":\"\\f\\r\"},\
+                    {\"d\":\"\"}\
+                ]\
+            }"
+        );
         let a = mk_object(~[
             (~"a", Boolean(true)),
             (~"b", List(~[
@@ -1266,248 +1348,343 @@ mod tests {
         ]);
         // We can't compare the strings directly because the object fields be
         // printed in a different order.
-        let b = result::unwrap(from_str(to_str(&a)));
-        fail_unless!(a == b);
+        let b = from_str(to_str(&a)).unwrap();
+        assert_eq!(a, b);
     }
 
     #[test]
-    fn test_write_enum () {
-        let bw = @io::BytesWriter();
-        let bww : @io::Writer = (bw as @io::Writer);
-        let encoder = (@Encoder(bww) as @serialize::Encoder);
-        do encoder.emit_enum(~"animal") {
-            do encoder.emit_enum_variant (~"frog",37,1242) {
-                // name of frog:
-                do encoder.emit_enum_variant_arg (0) {
-                    encoder.emit_owned_str(~"Henry")
-                }
-                // mass of frog in grams:
-                do encoder.emit_enum_variant_arg (1) {
-                    encoder.emit_int(349);
-                }
-            }
-        }
-        assert_eq!(str::from_bytes(bw.bytes), ~"[\"frog\",[\"Henry\",349]]");
+    fn test_write_object_pretty() {
+        assert_eq!(to_pretty_str(&mk_object(~[])), ~"{\n}");
+        assert_eq!(
+            to_pretty_str(&mk_object(~[(~"a", Boolean(true))])),
+            ~"\
+            {\n  \
+                \"a\": true\n\
+            }"
+        );
+        assert_eq!(
+            to_pretty_str(&mk_object(~[
+                (~"b", List(~[
+                    mk_object(~[(~"c", String(~"\x0c\r"))]),
+                    mk_object(~[(~"d", String(~""))])
+                ]))
+            ])),
+            ~"\
+            {\n  \
+                \"b\": [\n    \
+                    {\n      \
+                        \"c\": \"\\f\\r\"\n    \
+                    },\n    \
+                    {\n      \
+                        \"d\": \"\"\n    \
+                    }\n  \
+                ]\n\
+            }"
+        );
+        let a = mk_object(~[
+            (~"a", Boolean(true)),
+            (~"b", List(~[
+                mk_object(~[(~"c", String(~"\x0c\r"))]),
+                mk_object(~[(~"d", String(~""))])
+            ]))
+        ]);
+        // We can't compare the strings directly because the object fields be
+        // printed in a different order.
+        let b = from_str(to_str(&a)).unwrap();
+        assert_eq!(a, b);
+    }
+
+    #[auto_encode]
+    #[auto_decode]
+    #[deriving(Eq)]
+    enum Animal {
+        Dog,
+        Frog(~str, int)
     }
 
     #[test]
-    fn test_write_some () {
-        let bw = @io::BytesWriter();
-        let bww : @io::Writer = (bw as @io::Writer);
-        let encoder = (@Encoder(bww) as @serialize::Encoder);
-        do encoder.emit_enum(~"Option") {
-            do encoder.emit_enum_variant (~"Some",37,1242) {
-                do encoder.emit_enum_variant_arg (0) {
-                    encoder.emit_owned_str(~"jodhpurs")
-                }
-            }
-        }
-        assert_eq!(str::from_bytes(bw.bytes), ~"\"jodhpurs\"");
+    fn test_write_enum_no_args() {
+        let animal = Dog;
+
+        let s = do io::with_str_writer |wr| {
+            let encoder = Encoder(wr);
+            animal.encode(&encoder);
+        };
+        assert_eq!(s, ~"\"Dog\"");
     }
 
     #[test]
-    fn test_write_none () {
-        let bw = @io::BytesWriter();
-        let bww : @io::Writer = (bw as @io::Writer);
-        let encoder = (@Encoder(bww) as @serialize::Encoder);
-        do encoder.emit_enum(~"Option") {
-            do encoder.emit_enum_variant (~"None",37,1242) {
-            }
-        }
-        assert_eq!(str::from_bytes(bw.bytes), ~"null");
+    fn test_write_enum_no_args_pretty() {
+        let animal = Dog;
+
+        let s = do io::with_str_writer |wr| {
+            let encoder = PrettyEncoder(wr);
+            animal.encode(&encoder);
+        };
+        assert_eq!(s, ~"\"Dog\"");
+    }
+
+    #[test]
+    fn test_write_enum_multiple_args() {
+        let animal = Frog(~"Henry", 349);
+
+        let s = do io::with_str_writer |wr| {
+            let encoder = Encoder(wr);
+            animal.encode(&encoder);
+        };
+        assert_eq!(s, ~"[\"Frog\",\"Henry\",349]");
+    }
+
+    #[test]
+    fn test_write_enum_multiple_args_pretty() {
+        let animal = Frog(~"Henry", 349);
+
+        let s = do io::with_str_writer |wr| {
+            let encoder = PrettyEncoder(wr);
+            animal.encode(&encoder);
+        };
+        assert_eq!(
+            s,
+            ~"\
+            [\n  \
+                \"Frog\",\n  \
+                \"Henry\",\n  \
+                349\n\
+            ]"
+        );
+    }
+
+    #[test]
+    fn test_write_some() {
+        let value = Some(~"jodhpurs");
+        let s = do io::with_str_writer |wr| {
+            let encoder = Encoder(wr);
+            value.encode(&encoder);
+        };
+        assert_eq!(s, ~"\"jodhpurs\"");
+    }
+
+    #[test]
+    fn test_write_some_pretty() {
+        let value = Some(~"jodhpurs");
+        let s = do io::with_str_writer |wr| {
+            let encoder = PrettyEncoder(wr);
+            value.encode(&encoder);
+        };
+        assert_eq!(s, ~"\"jodhpurs\"");
+    }
+
+    #[test]
+    fn test_write_none() {
+        let value: Option<~str> = None;
+        let s = do io::with_str_writer |wr| {
+            let encoder = Encoder(wr);
+            value.encode(&encoder);
+        };
+        assert_eq!(s, ~"null");
+    }
+
+    #[test]
+    fn test_write_none_pretty() {
+        let value: Option<~str> = None;
+        let s = do io::with_str_writer |wr| {
+            let encoder = Encoder(wr);
+            value.encode(&encoder);
+        };
+        assert_eq!(s, ~"null");
     }
 
     #[test]
     fn test_trailing_characters() {
-        fail_unless!(from_str(~"nulla") ==
+        assert_eq!(from_str(~"nulla"),
             Err(Error {line: 1u, col: 5u, msg: @~"trailing characters"}));
-        fail_unless!(from_str(~"truea") ==
+        assert_eq!(from_str(~"truea"),
             Err(Error {line: 1u, col: 5u, msg: @~"trailing characters"}));
-        fail_unless!(from_str(~"falsea") ==
+        assert_eq!(from_str(~"falsea"),
             Err(Error {line: 1u, col: 6u, msg: @~"trailing characters"}));
-        fail_unless!(from_str(~"1a") ==
+        assert_eq!(from_str(~"1a"),
             Err(Error {line: 1u, col: 2u, msg: @~"trailing characters"}));
-        fail_unless!(from_str(~"[]a") ==
+        assert_eq!(from_str(~"[]a"),
             Err(Error {line: 1u, col: 3u, msg: @~"trailing characters"}));
-        fail_unless!(from_str(~"{}a") ==
+        assert_eq!(from_str(~"{}a"),
             Err(Error {line: 1u, col: 3u, msg: @~"trailing characters"}));
     }
 
     #[test]
     fn test_read_identifiers() {
-        fail_unless!(from_str(~"n") ==
+        assert_eq!(from_str(~"n"),
             Err(Error {line: 1u, col: 2u, msg: @~"invalid syntax"}));
-        fail_unless!(from_str(~"nul") ==
+        assert_eq!(from_str(~"nul"),
             Err(Error {line: 1u, col: 4u, msg: @~"invalid syntax"}));
 
-        fail_unless!(from_str(~"t") ==
+        assert_eq!(from_str(~"t"),
             Err(Error {line: 1u, col: 2u, msg: @~"invalid syntax"}));
-        fail_unless!(from_str(~"truz") ==
+        assert_eq!(from_str(~"truz"),
             Err(Error {line: 1u, col: 4u, msg: @~"invalid syntax"}));
 
-        fail_unless!(from_str(~"f") ==
+        assert_eq!(from_str(~"f"),
             Err(Error {line: 1u, col: 2u, msg: @~"invalid syntax"}));
-        fail_unless!(from_str(~"faz") ==
+        assert_eq!(from_str(~"faz"),
             Err(Error {line: 1u, col: 3u, msg: @~"invalid syntax"}));
 
-        fail_unless!(from_str(~"null") == Ok(Null));
-        fail_unless!(from_str(~"true") == Ok(Boolean(true)));
-        fail_unless!(from_str(~"false") == Ok(Boolean(false)));
-        fail_unless!(from_str(~" null ") == Ok(Null));
-        fail_unless!(from_str(~" true ") == Ok(Boolean(true)));
-        fail_unless!(from_str(~" false ") == Ok(Boolean(false)));
+        assert_eq!(from_str(~"null"), Ok(Null));
+        assert_eq!(from_str(~"true"), Ok(Boolean(true)));
+        assert_eq!(from_str(~"false"), Ok(Boolean(false)));
+        assert_eq!(from_str(~" null "), Ok(Null));
+        assert_eq!(from_str(~" true "), Ok(Boolean(true)));
+        assert_eq!(from_str(~" false "), Ok(Boolean(false)));
     }
 
     #[test]
     fn test_read_number() {
-        fail_unless!(from_str(~"+") ==
+        assert_eq!(from_str(~"+"),
             Err(Error {line: 1u, col: 1u, msg: @~"invalid syntax"}));
-        fail_unless!(from_str(~".") ==
+        assert_eq!(from_str(~"."),
             Err(Error {line: 1u, col: 1u, msg: @~"invalid syntax"}));
 
-        fail_unless!(from_str(~"-") ==
+        assert_eq!(from_str(~"-"),
             Err(Error {line: 1u, col: 2u, msg: @~"invalid number"}));
-        fail_unless!(from_str(~"00") ==
+        assert_eq!(from_str(~"00"),
             Err(Error {line: 1u, col: 2u, msg: @~"invalid number"}));
-        fail_unless!(from_str(~"1.") ==
+        assert_eq!(from_str(~"1."),
             Err(Error {line: 1u, col: 3u, msg: @~"invalid number"}));
-        fail_unless!(from_str(~"1e") ==
+        assert_eq!(from_str(~"1e"),
             Err(Error {line: 1u, col: 3u, msg: @~"invalid number"}));
-        fail_unless!(from_str(~"1e+") ==
+        assert_eq!(from_str(~"1e+"),
             Err(Error {line: 1u, col: 4u, msg: @~"invalid number"}));
 
-        fail_unless!(from_str(~"3") == Ok(Number(3f)));
-        fail_unless!(from_str(~"3.1") == Ok(Number(3.1f)));
-        fail_unless!(from_str(~"-1.2") == Ok(Number(-1.2f)));
-        fail_unless!(from_str(~"0.4") == Ok(Number(0.4f)));
-        fail_unless!(from_str(~"0.4e5") == Ok(Number(0.4e5f)));
-        fail_unless!(from_str(~"0.4e+15") == Ok(Number(0.4e15f)));
-        fail_unless!(from_str(~"0.4e-01") == Ok(Number(0.4e-01f)));
-        fail_unless!(from_str(~" 3 ") == Ok(Number(3f)));
+        assert_eq!(from_str(~"3"), Ok(Number(3f)));
+        assert_eq!(from_str(~"3.1"), Ok(Number(3.1f)));
+        assert_eq!(from_str(~"-1.2"), Ok(Number(-1.2f)));
+        assert_eq!(from_str(~"0.4"), Ok(Number(0.4f)));
+        assert_eq!(from_str(~"0.4e5"), Ok(Number(0.4e5f)));
+        assert_eq!(from_str(~"0.4e+15"), Ok(Number(0.4e15f)));
+        assert_eq!(from_str(~"0.4e-01"), Ok(Number(0.4e-01f)));
+        assert_eq!(from_str(~" 3 "), Ok(Number(3f)));
     }
 
     #[test]
     fn test_read_str() {
-        fail_unless!(from_str(~"\"") ==
+        assert_eq!(from_str(~"\""),
             Err(Error {line: 1u, col: 2u, msg: @~"EOF while parsing string"
         }));
-        fail_unless!(from_str(~"\"lol") ==
+        assert_eq!(from_str(~"\"lol"),
             Err(Error {line: 1u, col: 5u, msg: @~"EOF while parsing string"
         }));
 
-        fail_unless!(from_str(~"\"\"") == Ok(String(~"")));
-        fail_unless!(from_str(~"\"foo\"") == Ok(String(~"foo")));
-        fail_unless!(from_str(~"\"\\\"\"") == Ok(String(~"\"")));
-        fail_unless!(from_str(~"\"\\b\"") == Ok(String(~"\x08")));
-        fail_unless!(from_str(~"\"\\n\"") == Ok(String(~"\n")));
-        fail_unless!(from_str(~"\"\\r\"") == Ok(String(~"\r")));
-        fail_unless!(from_str(~"\"\\t\"") == Ok(String(~"\t")));
-        fail_unless!(from_str(~" \"foo\" ") == Ok(String(~"foo")));
+        assert_eq!(from_str(~"\"\""), Ok(String(~"")));
+        assert_eq!(from_str(~"\"foo\""), Ok(String(~"foo")));
+        assert_eq!(from_str(~"\"\\\"\""), Ok(String(~"\"")));
+        assert_eq!(from_str(~"\"\\b\""), Ok(String(~"\x08")));
+        assert_eq!(from_str(~"\"\\n\""), Ok(String(~"\n")));
+        assert_eq!(from_str(~"\"\\r\""), Ok(String(~"\r")));
+        assert_eq!(from_str(~"\"\\t\""), Ok(String(~"\t")));
+        assert_eq!(from_str(~" \"foo\" "), Ok(String(~"foo")));
     }
 
     #[test]
     fn test_unicode_hex_escapes_in_str() {
-        fail_unless!(from_str(~"\"\\u12ab\"") == Ok(String(~"\u12ab")));
-        fail_unless!(from_str(~"\"\\uAB12\"") == Ok(String(~"\uAB12")));
+        assert_eq!(from_str(~"\"\\u12ab\""), Ok(String(~"\u12ab")));
+        assert_eq!(from_str(~"\"\\uAB12\""), Ok(String(~"\uAB12")));
     }
 
     #[test]
     fn test_read_list() {
-        fail_unless!(from_str(~"[") ==
+        assert_eq!(from_str(~"["),
             Err(Error {line: 1u, col: 2u, msg: @~"EOF while parsing value"}));
-        fail_unless!(from_str(~"[1") ==
+        assert_eq!(from_str(~"[1"),
             Err(Error {line: 1u, col: 3u, msg: @~"EOF while parsing list"}));
-        fail_unless!(from_str(~"[1,") ==
+        assert_eq!(from_str(~"[1,"),
             Err(Error {line: 1u, col: 4u, msg: @~"EOF while parsing value"}));
-        fail_unless!(from_str(~"[1,]") ==
+        assert_eq!(from_str(~"[1,]"),
             Err(Error {line: 1u, col: 4u, msg: @~"invalid syntax"}));
-        fail_unless!(from_str(~"[6 7]") ==
+        assert_eq!(from_str(~"[6 7]"),
             Err(Error {line: 1u, col: 4u, msg: @~"expected `,` or `]`"}));
 
-        fail_unless!(from_str(~"[]") == Ok(List(~[])));
-        fail_unless!(from_str(~"[ ]") == Ok(List(~[])));
-        fail_unless!(from_str(~"[true]") == Ok(List(~[Boolean(true)])));
-        fail_unless!(from_str(~"[ false ]") == Ok(List(~[Boolean(false)])));
-        fail_unless!(from_str(~"[null]") == Ok(List(~[Null])));
-        fail_unless!(from_str(~"[3, 1]") ==
+        assert_eq!(from_str(~"[]"), Ok(List(~[])));
+        assert_eq!(from_str(~"[ ]"), Ok(List(~[])));
+        assert_eq!(from_str(~"[true]"), Ok(List(~[Boolean(true)])));
+        assert_eq!(from_str(~"[ false ]"), Ok(List(~[Boolean(false)])));
+        assert_eq!(from_str(~"[null]"), Ok(List(~[Null])));
+        assert_eq!(from_str(~"[3, 1]"),
                      Ok(List(~[Number(3f), Number(1f)])));
-        fail_unless!(from_str(~"\n[3, 2]\n") ==
+        assert_eq!(from_str(~"\n[3, 2]\n"),
                      Ok(List(~[Number(3f), Number(2f)])));
-        fail_unless!(from_str(~"[2, [4, 1]]") ==
+        assert_eq!(from_str(~"[2, [4, 1]]"),
                Ok(List(~[Number(2f), List(~[Number(4f), Number(1f)])])));
     }
 
     #[test]
     fn test_read_object() {
-        fail_unless!(from_str(~"{") ==
+        assert_eq!(from_str(~"{"),
             Err(Error {
                 line: 1u,
                 col: 2u,
                 msg: @~"EOF while parsing object"}));
-        fail_unless!(from_str(~"{ ") ==
+        assert_eq!(from_str(~"{ "),
             Err(Error {
                 line: 1u,
                 col: 3u,
                 msg: @~"EOF while parsing object"}));
-        fail_unless!(from_str(~"{1") ==
+        assert_eq!(from_str(~"{1"),
             Err(Error {
                 line: 1u,
                 col: 2u,
                 msg: @~"key must be a string"}));
-        fail_unless!(from_str(~"{ \"a\"") ==
+        assert_eq!(from_str(~"{ \"a\""),
             Err(Error {
                 line: 1u,
                 col: 6u,
                 msg: @~"EOF while parsing object"}));
-        fail_unless!(from_str(~"{\"a\"") ==
+        assert_eq!(from_str(~"{\"a\""),
             Err(Error {
                 line: 1u,
                 col: 5u,
                 msg: @~"EOF while parsing object"}));
-        fail_unless!(from_str(~"{\"a\" ") ==
+        assert_eq!(from_str(~"{\"a\" "),
             Err(Error {
                 line: 1u,
                 col: 6u,
                 msg: @~"EOF while parsing object"}));
 
-        fail_unless!(from_str(~"{\"a\" 1") ==
+        assert_eq!(from_str(~"{\"a\" 1"),
             Err(Error {line: 1u, col: 6u, msg: @~"expected `:`"}));
-        fail_unless!(from_str(~"{\"a\":") ==
+        assert_eq!(from_str(~"{\"a\":"),
             Err(Error {line: 1u, col: 6u, msg: @~"EOF while parsing value"}));
-        fail_unless!(from_str(~"{\"a\":1") ==
+        assert_eq!(from_str(~"{\"a\":1"),
             Err(Error {
                 line: 1u,
                 col: 7u,
                 msg: @~"EOF while parsing object"}));
-        fail_unless!(from_str(~"{\"a\":1 1") ==
+        assert_eq!(from_str(~"{\"a\":1 1"),
             Err(Error {line: 1u, col: 8u, msg: @~"expected `,` or `}`"}));
-        fail_unless!(from_str(~"{\"a\":1,") ==
+        assert_eq!(from_str(~"{\"a\":1,"),
             Err(Error {
                 line: 1u,
                 col: 8u,
                 msg: @~"EOF while parsing object"}));
 
-        fail_unless!(result::unwrap(from_str(~"{}")) == mk_object(~[]));
-        fail_unless!(result::unwrap(from_str(~"{\"a\": 3}")) ==
+        assert_eq!(result::unwrap(from_str(~"{}")), mk_object(~[]));
+        assert_eq!(result::unwrap(from_str(~"{\"a\": 3}")),
                   mk_object(~[(~"a", Number(3.0f))]));
 
-        fail_unless!(result::unwrap(from_str(
-                ~"{ \"a\": null, \"b\" : true }")) ==
+        assert_eq!(result::unwrap(from_str(
+                ~"{ \"a\": null, \"b\" : true }")),
                   mk_object(~[
                       (~"a", Null),
                       (~"b", Boolean(true))]));
-        fail_unless!(result::unwrap(
-                      from_str(~"\n{ \"a\": null, \"b\" : true }\n")) ==
+        assert_eq!(result::unwrap(
+                      from_str(~"\n{ \"a\": null, \"b\" : true }\n")),
                   mk_object(~[
                       (~"a", Null),
                       (~"b", Boolean(true))]));
-        fail_unless!(result::unwrap(from_str(
-                ~"{\"a\" : 1.0 ,\"b\": [ true ]}")) ==
+        assert_eq!(result::unwrap(from_str(
+                ~"{\"a\" : 1.0 ,\"b\": [ true ]}")),
                   mk_object(~[
                       (~"a", Number(1.0)),
                       (~"b", List(~[Boolean(true)]))
                   ]));
-        fail_unless!(result::unwrap(from_str(
+        assert_eq!(result::unwrap(from_str(
                       ~"{" +
                           ~"\"a\": 1.0, " +
                           ~"\"b\": [" +
@@ -1515,7 +1692,7 @@ mod tests {
                               ~"\"foo\\nbar\", " +
                               ~"{ \"c\": {\"d\": null} } " +
                           ~"]" +
-                      ~"}")) ==
+                      ~"}")),
                   mk_object(~[
                       (~"a", Number(1.0f)),
                       (~"b", List(~[
@@ -1529,8 +1706,36 @@ mod tests {
     }
 
     #[test]
+    fn test_read_none() {
+        let decoder = Decoder(from_str(~"null").unwrap());
+        let value: Option<~str> = Decodable::decode(&decoder);
+        assert_eq!(value, None);
+    }
+
+    #[test]
+    fn test_read_some() {
+        let decoder = Decoder(from_str(~"\"jodhpurs\"").unwrap());
+        let value: Option<~str> = Decodable::decode(&decoder);
+        assert_eq!(value, Some(~"jodhpurs"));
+    }
+
+    #[test]
+    fn test_read_enum_no_args() {
+        let decoder = Decoder(from_str(~"\"Dog\"").unwrap());
+        let value: Animal = Decodable::decode(&decoder);
+        assert_eq!(value, Dog);
+    }
+
+    #[test]
+    fn test_read_enum_multiple_args() {
+        let decoder = Decoder(from_str(~"[\"Frog\",\"Henry\",349]").unwrap());
+        let value: Animal = Decodable::decode(&decoder);
+        assert_eq!(value, Frog(~"Henry", 349));
+    }
+
+    #[test]
     fn test_multiline_errors() {
-        fail_unless!(from_str(~"{\n  \"foo\":\n \"bar\"") ==
+        assert_eq!(from_str(~"{\n  \"foo\":\n \"bar\""),
             Err(Error {
                 line: 3u,
                 col: 8u,

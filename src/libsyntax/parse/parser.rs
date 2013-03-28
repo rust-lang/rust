@@ -28,7 +28,7 @@ use ast::{expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac};
 use ast::{expr_method_call, expr_paren, expr_path, expr_repeat};
 use ast::{expr_ret, expr_swap, expr_struct, expr_tup, expr_unary};
 use ast::{expr_vec, expr_vstore, expr_vstore_mut_box, expr_inline_asm};
-use ast::{expr_vstore_fixed, expr_vstore_slice, expr_vstore_box};
+use ast::{expr_vstore_slice, expr_vstore_box};
 use ast::{expr_vstore_mut_slice, expr_while, extern_fn, field, fn_decl};
 use ast::{expr_vstore_uniq, TyClosure, TyBareFn, Onceness, Once, Many};
 use ast::{foreign_item, foreign_item_const, foreign_item_fn, foreign_mod};
@@ -1223,7 +1223,7 @@ pub impl Parser {
             let lvl = self.parse_expr();
             self.expect(&token::COMMA);
             let e = self.parse_expr();
-            ex = expr_log(ast::log_other, lvl, e);
+            ex = expr_log(lvl, e);
             hi = self.span.hi;
             self.expect(&token::RPAREN);
         } else if self.eat_keyword(&~"return") {
@@ -2721,8 +2721,9 @@ pub impl Parser {
                     }
                     self.bump();
                 }
-                token::IDENT(*) => {
+                token::MOD_SEP | token::IDENT(*) => {
                     let maybe_bound = match *self.token {
+                        token::MOD_SEP => None,
                         token::IDENT(copy sid, _) => {
                             match *self.id_to_str(sid) {
                                 ~"send" |
@@ -2750,7 +2751,7 @@ pub impl Parser {
                             result.push(bound);
                         }
                         None => {
-                            let ty = self.parse_ty(false);
+                            let ty = self.parse_ty(true);
                             result.push(TraitTyParamBound(ty));
                         }
                     }
@@ -3099,14 +3100,6 @@ pub impl Parser {
     //    impl<T> Foo { ... }
     //    impl<T> ToStr for ~[T] { ... }
     fn parse_item_impl(&self, visibility: ast::visibility) -> item_info {
-        fn wrap_path(p: &Parser, pt: @path) -> @Ty {
-            @Ty {
-                id: p.get_id(),
-                node: ty_path(pt, p.get_id()),
-                span: pt.span,
-            }
-        }
-
         // First, parse type parameters if necessary.
         let generics = self.parse_generics();
 

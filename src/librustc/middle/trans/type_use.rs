@@ -329,7 +329,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
         mark_for_method_call(cx, e.id, e.callee_id);
       }
-      expr_log(_, _, val) => {
+      expr_log(_, val) => {
         node_type_needs(cx, use_tydesc, val.id);
       }
       expr_call(f, _, _) => {
