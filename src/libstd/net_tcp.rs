@@ -1281,7 +1281,7 @@ impl ToTcpErr for uv::ll::uv_err_data {
 
 extern fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
                     nread: libc::ssize_t,
-                    ++buf: uv::ll::uv_buf_t) {
+                    buf: uv::ll::uv_buf_t) {
     unsafe {
         debug!("entering on_tcp_read_cb stream: %? nread: %?",
                         stream, nread);
