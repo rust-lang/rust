@@ -11,7 +11,6 @@
 use core::prelude::*;
 
 use core::cell::Cell;
-use core::cmp;
 use core::os;
 use core::result;
 use core::run;
@@ -21,6 +20,7 @@ use core::result::Result;
 use std::getopts;
 
 /// The type of document to output
+#[deriving(Eq)]
 pub enum OutputFormat {
     /// Markdown
     pub Markdown,
@@ -28,26 +28,13 @@ pub enum OutputFormat {
     pub PandocHtml
 }
 
-impl cmp::Eq for OutputFormat {
-    fn eq(&self, other: &OutputFormat) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    fn ne(&self, other: &OutputFormat) -> bool { !(*self).eq(other) }
-}
-
 /// How to organize the output
+#[deriving(Eq)]
 pub enum OutputStyle {
     /// All in a single document
     pub DocPerCrate,
     /// Each module in its own document
     pub DocPerMod
-}
-
-impl cmp::Eq for OutputStyle {
-    fn eq(&self, other: &OutputStyle) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    fn ne(&self, other: &OutputStyle) -> bool { !(*self).eq(other) }
 }
 
 /// The configuration for a rustdoc session

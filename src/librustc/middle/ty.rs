@@ -76,6 +76,7 @@ pub struct method {
     def_id: ast::def_id
 }
 
+#[deriving(Eq)]
 pub struct mt {
     ty: t,
     mutbl: ast::mutability,
@@ -161,21 +162,8 @@ pub type opt_region_variance = Option<region_variance>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving(Eq)]
 pub enum region_variance { rv_covariant, rv_invariant, rv_contravariant }
-
-impl cmp::Eq for region_variance {
-    fn eq(&self, other: &region_variance) -> bool {
-        match ((*self), (*other)) {
-            (rv_covariant, rv_covariant) => true,
-            (rv_invariant, rv_invariant) => true,
-            (rv_contravariant, rv_contravariant) => true,
-            (rv_covariant, _) => false,
-            (rv_invariant, _) => false,
-            (rv_contravariant, _) => false
-        }
-    }
-    fn ne(&self, other: &region_variance) -> bool { !(*self).eq(other) }
-}
 
 #[auto_encode]
 #[auto_decode]
@@ -417,6 +405,7 @@ impl to_bytes::IterBytes for param_ty {
 /// Representation of regions:
 #[auto_encode]
 #[auto_decode]
+#[deriving(Eq)]
 pub enum Region {
     /// Bound regions are found (primarily) in function types.  They indicate
     /// region parameters that have yet to be replaced with actual regions
@@ -446,6 +435,7 @@ pub enum Region {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving(Eq)]
 pub enum bound_region {
     /// The self region for structs, impls (&T in a type defn or &'self T)
     br_self,
@@ -585,6 +575,7 @@ pub enum type_err {
     terr_float_mismatch(expected_found<ast::float_ty>)
 }
 
+#[deriving(Eq)]
 pub enum param_bound {
     bound_copy,
     bound_durable,
@@ -4365,127 +4356,6 @@ pub fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
         },
         None => tcx.sess.bug(~"get_impl_id: trait isn't in trait_impls")
     }
-}
-
-impl cmp::Eq for mt {
-    fn eq(&self, other: &mt) -> bool {
-        (*self).ty == (*other).ty && (*self).mutbl == (*other).mutbl
-    }
-    fn ne(&self, other: &mt) -> bool { !(*self).eq(other) }
-}
-
-impl cmp::Eq for Region {
-    fn eq(&self, other: &Region) -> bool {
-        match (*self) {
-            re_bound(e0a) => {
-                match (*other) {
-                    re_bound(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            re_free(e0a, e1a) => {
-                match (*other) {
-                    re_free(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            re_scope(e0a) => {
-                match (*other) {
-                    re_scope(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            re_static => {
-                match (*other) {
-                    re_static => true,
-                    _ => false
-                }
-            }
-            re_infer(e0a) => {
-                match (*other) {
-                    re_infer(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    fn ne(&self, other: &Region) -> bool { !(*self).eq(other) }
-}
-
-impl cmp::Eq for bound_region {
-    fn eq(&self, other: &bound_region) -> bool {
-        match (*self) {
-            br_self => {
-                match (*other) {
-                    br_self => true,
-                    _ => false
-                }
-            }
-            br_anon(e0a) => {
-                match (*other) {
-                    br_anon(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            br_named(e0a) => {
-                match (*other) {
-                    br_named(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            br_cap_avoid(e0a, e1a) => {
-                match (*other) {
-                    br_cap_avoid(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            br_fresh(e0a) => {
-                match (*other) {
-                    br_fresh(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    fn ne(&self, other: &bound_region) -> bool { !(*self).eq(other) }
-}
-
-impl cmp::Eq for param_bound {
-    fn eq(&self, other: &param_bound) -> bool {
-        match (*self) {
-            bound_copy => {
-                match (*other) {
-                    bound_copy => true,
-                    _ => false
-                }
-            }
-            bound_durable => {
-                match (*other) {
-                    bound_durable => true,
-                    _ => false
-                }
-            }
-            bound_owned => {
-                match (*other) {
-                    bound_owned => true,
-                    _ => false
-                }
-            }
-            bound_const => {
-                match (*other) {
-                    bound_const => true,
-                    _ => false
-                }
-            }
-            bound_trait(e0a) => {
-                match (*other) {
-                    bound_trait(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    fn ne(&self, other: &param_bound) -> bool { !self.eq(other) }
 }
 
 // Local Variables:
