@@ -201,6 +201,10 @@ pub struct CrateContext {
 
      // Cache of emitted const values
      const_values: @mut LinearMap<ast::node_id, ValueRef>,
+
+     // Cache of external const values
+     extern_const_values: @mut LinearMap<ast::def_id, ValueRef>,
+
      module_data: @mut LinearMap<~str, ValueRef>,
      lltypes: @mut LinearMap<ty::t, TypeRef>,
      llsizingtypes: @mut LinearMap<ty::t, TypeRef>,
