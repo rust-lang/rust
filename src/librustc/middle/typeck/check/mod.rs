@@ -2150,17 +2150,21 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             let count = ty::eval_repeat_count(tcx, count_expr);
             check_expr_with_hint(fcx, count_expr, ty::mk_uint(tcx));
             let tt = ast_expr_vstore_to_vstore(fcx, ev, count, vst);
+            let mutability = match vst {
+                ast::expr_vstore_mut_box | ast::expr_vstore_mut_slice => {
+                    ast::m_mutbl
+                }
+                _ => mutbl
+            };
             let t: ty::t = fcx.infcx().next_ty_var();
             check_expr_has_type(fcx, element, t);
             let arg_t = fcx.expr_ty(element);
             if ty::type_is_error(arg_t) {
                 ty::mk_err(tcx)
-            }
-            else if ty::type_is_bot(arg_t) {
+            } else if ty::type_is_bot(arg_t) {
                 ty::mk_bot(tcx)
-            }
-            else {
-                ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutbl}, tt)
+            } else {
+                ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutability}, tt)
             }
           }
           _ =>
