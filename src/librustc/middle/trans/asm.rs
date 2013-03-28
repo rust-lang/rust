@@ -122,7 +122,7 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
         }
     };
 
-    // Again, based on how many outputs we have 
+    // Again, based on how many outputs we have
     if numOutputs == 1 {
         let op = PointerCast(bcx, aoutputs[0], T_ptr(val_ty(outputs[0])));
         Store(bcx, r, op);
