@@ -3873,9 +3873,6 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                     ast::struct_variant_kind(_) => {
                         fail!(~"struct variant kinds unimpl in enum_variants")
                     }
-                    ast::enum_variant_kind(_) => {
-                        fail!(~"enum variant kinds unimpl in enum_variants")
-                    }
                 }
             })
           }
