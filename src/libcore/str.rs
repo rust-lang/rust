@@ -21,7 +21,7 @@ use at_vec;
 use cast;
 use char;
 use clone::Clone;
-use cmp::{Equiv, TotalOrd, Ordering, Less, Equal, Greater};
+use cmp::{Equiv, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use libc;
 use option::{None, Option, Some};
 use ptr;
@@ -928,6 +928,30 @@ impl Eq for @str {
     }
     #[inline(always)]
     fn ne(&self, other: &@str) -> bool { !(*self).eq(other) }
+}
+
+#[cfg(notest)]
+impl<'self> TotalEq for &'self str {
+    #[inline(always)]
+    fn equals(&self, other: & &'self str) -> bool {
+        eq_slice((*self), (*other))
+    }
+}
+
+#[cfg(notest)]
+impl TotalEq for ~str {
+    #[inline(always)]
+    fn equals(&self, other: &~str) -> bool {
+        eq_slice((*self), (*other))
+    }
+}
+
+#[cfg(notest)]
+impl TotalEq for @str {
+    #[inline(always)]
+    fn equals(&self, other: &@str) -> bool {
+        eq_slice((*self), (*other))
+    }
 }
 
 #[cfg(notest)]
