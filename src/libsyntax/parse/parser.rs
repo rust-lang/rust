@@ -1792,10 +1792,10 @@ pub impl Parser {
         let lo = self.span.lo;
         let lhs = self.parse_binops();
         match *self.token {
-            token::EQ => {
-                self.bump();
-                let rhs = self.parse_expr();
-                self.mk_expr(lo, rhs.span.hi, expr_assign(lhs, rhs))
+          token::EQ => {
+              self.bump();
+              let rhs = self.parse_expr();
+              self.mk_expr(lo, rhs.span.hi, expr_assign(lhs, rhs))
           }
           token::BINOPEQ(op) => {
               self.bump();
