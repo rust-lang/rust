@@ -55,7 +55,8 @@ fn create_derived_clone_impl(cx: @ext_ctxt,
         cx.ident_of(~"Clone"),
     ];
     let trait_path = build::mk_raw_path_global(span, trait_path);
-    create_derived_impl(cx, span, type_ident, generics, methods, trait_path, opt_vec::Empty)
+    create_derived_impl(cx, span, type_ident, generics, methods, trait_path,
+                        opt_vec::Empty, opt_vec::Empty)
 }
 // Creates a method from the given expression conforming to the signature of
 // the `clone` method.
@@ -219,7 +220,7 @@ fn expand_deriving_clone_tuple_struct_method(cx: @ext_ctxt,
     let mut subcalls = ~[];
     for uint::range(0, struct_def.fields.len()) |i| {
         // Create the expression for this field.
-        let field_ident = cx.ident_of(~"__self" + i.to_str());
+        let field_ident = cx.ident_of(~"__self_" + i.to_str());
         let field = build::mk_path(cx, span, ~[ field_ident ]);
 
         // Call the substructure method.
@@ -262,7 +263,7 @@ fn expand_deriving_clone_enum_method(cx: @ext_ctxt,
         let mut subcalls = ~[];
         for uint::range(0, variant_arg_count(cx, span, variant)) |j| {
             // Create the expression for this field.
-            let field_ident = cx.ident_of(~"__self" + j.to_str());
+            let field_ident = cx.ident_of(~"__self_" + j.to_str());
             let field = build::mk_path(cx, span, ~[ field_ident ]);
 
             // Call the substructure method.

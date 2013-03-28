@@ -81,7 +81,8 @@ fn create_derived_decodable_impl(
         generics,
         methods,
         trait_path,
-        generic_ty_params
+        generic_ty_params,
+        opt_vec::Empty
     )
 }
 

@@ -131,7 +131,7 @@ fn create_derived_eq_impl(cx: @ext_ctxt,
         cx.ident_of(~"Eq")
     ];
     let trait_path = build::mk_raw_path_global(span, trait_path);
-    create_derived_impl(cx, span, type_ident, generics, methods, trait_path, opt_vec::Empty)
+    create_derived_impl(cx, span, type_ident, generics, methods, trait_path, opt_vec::Empty, [])
 }
 
 fn call_substructure_eq_method(cx: @ext_ctxt,
@@ -338,13 +338,13 @@ fn expand_deriving_eq_enum_method(cx: @ext_ctxt,
         let mut matching_body_expr = None;
         for uint::range(0, variant_arg_count(cx, span, self_variant)) |i| {
             // Create the expression for the other field.
-            let other_field_ident = cx.ident_of(~"__other" + i.to_str());
+            let other_field_ident = cx.ident_of(~"__other_" + i.to_str());
             let other_field = build::mk_path(cx,
                                              span,
                                              ~[ other_field_ident ]);
 
             // Create the expression for this field.
-            let self_field_ident = cx.ident_of(~"__self" + i.to_str());
+            let self_field_ident = cx.ident_of(~"__self_" + i.to_str());
             let self_field = build::mk_path(cx, span, ~[ self_field_ident ]);
 
             // Call the substructure method.
@@ -456,10 +456,10 @@ fn expand_deriving_eq_struct_tuple_method(cx: @ext_ctxt,
     // Create comparison expression, comparing each of the fields
     let mut match_body = None;
     for fields.eachi |i, _| {
-        let other_field_ident = cx.ident_of(other_str + i.to_str());
+        let other_field_ident = cx.ident_of(fmt!("%s_%u", other_str, i));
         let other_field = build::mk_path(cx, span, ~[ other_field_ident ]);
 
-        let self_field_ident = cx.ident_of(self_str + i.to_str());
+        let self_field_ident = cx.ident_of(fmt!("%s_%u", self_str, i));
         let self_field = build::mk_path(cx, span, ~[ self_field_ident ]);
 
         call_substructure_eq_method(cx, span, self_field, other_field,
