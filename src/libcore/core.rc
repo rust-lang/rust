@@ -212,7 +212,6 @@ pub mod rand;
 pub mod run;
 pub mod sys;
 pub mod cast;
-pub mod mutable;
 pub mod flate;
 pub mod repr;
 pub mod cleanup;
