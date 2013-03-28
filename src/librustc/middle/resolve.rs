@@ -37,7 +37,7 @@ use syntax::ast::{expr_binary, expr_break, expr_cast, expr_field};
 use syntax::ast::{expr_fn_block, expr_index, expr_method_call, expr_path};
 use syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
 use syntax::ast::{def_upvar, def_use, def_variant, div, eq};
-use syntax::ast::{enum_variant_kind, expr, expr_again, expr_assign_op};
+use syntax::ast::{expr, expr_again, expr_assign_op};
 use syntax::ast::{expr_index, expr_loop};
 use syntax::ast::{expr_path, expr_struct, expr_unary, fn_decl};
 use syntax::ast::{foreign_item, foreign_item_const, foreign_item_fn, ge};
@@ -1382,16 +1382,6 @@ pub impl Resolver {
                                               local_def(variant.node.id)),
                                   variant.span);
                 self.structs.insert(local_def(variant.node.id));
-            }
-            enum_variant_kind(ref enum_definition) => {
-                child.define_type(privacy,
-                                  def_ty(local_def(variant.node.id)),
-                                  variant.span);
-                for (*enum_definition).variants.each |variant| {
-                    self.build_reduced_graph_for_variant(*variant, item_id,
-                                                         parent_privacy,
-                                                         parent, visitor);
-                }
             }
         }
     }

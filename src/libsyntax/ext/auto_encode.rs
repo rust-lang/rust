@@ -990,8 +990,6 @@ fn mk_enum_ser_body(
                 ),
             ast::struct_variant_kind(*) =>
                 fail!(~"struct variants unimplemented"),
-            ast::enum_variant_kind(*) =>
-                fail!(~"enum variants unimplemented"),
         }
     };
 
@@ -1089,8 +1087,6 @@ fn mk_enum_deser_body(
             },
             ast::struct_variant_kind(*) =>
                 fail!(~"struct variants unimplemented"),
-            ast::enum_variant_kind(*) =>
-                fail!(~"enum variants unimplemented")
         };
 
         let pat = @ast::pat {

@@ -202,15 +202,6 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
                     |f| ty::node_id_to_type(ccx.tcx, f.node.id));
                 result_ty = Some(ty::mk_ctor_fn(tcx, input_tys, enum_ty));
             }
-
-            ast::enum_variant_kind(ref enum_definition) => {
-                get_enum_variant_types(ccx,
-                                       enum_ty,
-                                       enum_definition.variants,
-                                       generics,
-                                       rp);
-                result_ty = None;
-            }
         };
 
         match result_ty {

@@ -204,8 +204,6 @@ pub fn monomorphic_fn(ccx: @CrateContext,
             }
             ast::struct_variant_kind(_) =>
                 ccx.tcx.sess.bug(~"can't monomorphize struct variants"),
-            ast::enum_variant_kind(_) =>
-                ccx.tcx.sess.bug(~"can't monomorphize enum variants")
         }
         d
       }
