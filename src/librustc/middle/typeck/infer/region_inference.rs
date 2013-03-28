@@ -548,7 +548,6 @@ use util::common::indenter;
 use util::ppaux::note_and_explain_region;
 
 use core::cell::{Cell, empty_cell};
-use core::cmp;
 use core::hashmap::linear::{LinearMap, LinearSet};
 use core::result::{Err, Ok, Result};
 use core::to_bytes;
@@ -556,30 +555,11 @@ use core::uint;
 use core::vec;
 use syntax::codemap::span;
 
+#[deriving(Eq)]
 enum Constraint {
     ConstrainVarSubVar(RegionVid, RegionVid),
     ConstrainRegSubVar(Region, RegionVid),
     ConstrainVarSubReg(RegionVid, Region)
-}
-
-impl cmp::Eq for Constraint {
-    fn eq(&self, other: &Constraint) -> bool {
-        match ((*self), (*other)) {
-            (ConstrainVarSubVar(v0a, v1a), ConstrainVarSubVar(v0b, v1b)) => {
-                v0a == v0b && v1a == v1b
-            }
-            (ConstrainRegSubVar(ra, va), ConstrainRegSubVar(rb, vb)) => {
-                ra == rb && va == vb
-            }
-            (ConstrainVarSubReg(va, ra), ConstrainVarSubReg(vb, rb)) => {
-                va == vb && ra == rb
-            }
-            (ConstrainVarSubVar(*), _) => false,
-            (ConstrainRegSubVar(*), _) => false,
-            (ConstrainVarSubReg(*), _) => false
-        }
-    }
-    fn ne(&self, other: &Constraint) -> bool { !(*self).eq(other) }
 }
 
 impl to_bytes::IterBytes for Constraint {
@@ -597,16 +577,10 @@ impl to_bytes::IterBytes for Constraint {
     }
 }
 
+#[deriving(Eq)]
 struct TwoRegions {
     a: Region,
     b: Region,
-}
-
-impl cmp::Eq for TwoRegions {
-    fn eq(&self, other: &TwoRegions) -> bool {
-        (*self).a == (*other).a && (*self).b == (*other).b
-    }
-    fn ne(&self, other: &TwoRegions) -> bool { !(*self).eq(other) }
 }
 
 impl to_bytes::IterBytes for TwoRegions {

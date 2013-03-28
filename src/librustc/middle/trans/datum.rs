@@ -104,7 +104,6 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
-use core::cmp;
 use core::container::Set; // XXX: this should not be necessary
 use core::to_bytes;
 use core::uint;
@@ -140,6 +139,7 @@ pub struct DatumBlock {
     datum: Datum,
 }
 
+#[deriving(Eq)]
 pub enum DatumMode {
     /// `val` is a pointer to the actual value (and thus has type *T)
     ByRef,
@@ -156,13 +156,6 @@ pub impl DatumMode {
     fn is_by_value(&self) -> bool {
         match *self { ByRef => false, ByValue => true }
     }
-}
-
-impl cmp::Eq for DatumMode {
-    fn eq(&self, other: &DatumMode) -> bool {
-        (*self) as uint == (*other as uint)
-    }
-    fn ne(&self, other: &DatumMode) -> bool { !(*self).eq(other) }
 }
 
 impl to_bytes::IterBytes for DatumMode {
