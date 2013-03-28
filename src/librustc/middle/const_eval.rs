@@ -110,7 +110,6 @@ pub fn classify(e: @expr,
 
               ast::expr_vstore(e, vstore) => {
                   match vstore {
-                      ast::expr_vstore_fixed(_) |
                       ast::expr_vstore_slice => classify(e, tcx),
                       ast::expr_vstore_uniq |
                       ast::expr_vstore_box |

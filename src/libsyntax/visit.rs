@@ -559,7 +559,7 @@ pub fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         expr_break(_) => (),
         expr_again(_) => (),
         expr_ret(eo) => visit_expr_opt(eo, e, v),
-        expr_log(_, lv, x) => {
+        expr_log(lv, x) => {
             (v.visit_expr)(lv, e, v);
             (v.visit_expr)(x, e, v);
         }

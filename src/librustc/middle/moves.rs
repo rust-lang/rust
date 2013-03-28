@@ -567,7 +567,7 @@ pub impl VisitContext {
                 self.consume_block(blk, visitor);
             }
 
-            expr_log(_, a_expr, b_expr) => {
+            expr_log(a_expr, b_expr) => {
                 self.consume_expr(a_expr, visitor);
                 self.use_expr(b_expr, Read, visitor);
             }

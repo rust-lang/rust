@@ -681,10 +681,49 @@ impl vtable_decoder_helpers for reader::Decoder {
         @self.read_to_vec(|| self.read_vtable_origin(xcx) )
     }
 
+    #[cfg(stage0)]
     fn read_vtable_origin(&self, xcx: @ExtendedDecodeContext)
         -> typeck::vtable_origin {
         do self.read_enum(~"vtable_origin") {
             do self.read_enum_variant |i| {
+                match i {
+                  0 => {
+                    typeck::vtable_static(
+                        do self.read_enum_variant_arg(0u) {
+                            self.read_def_id(xcx)
+                        },
+                        do self.read_enum_variant_arg(1u) {
+                            self.read_tys(xcx)
+                        },
+                        do self.read_enum_variant_arg(2u) {
+                            self.read_vtable_res(xcx)
+                        }
+                    )
+                  }
+                  1 => {
+                    typeck::vtable_param(
+                        do self.read_enum_variant_arg(0u) {
+                            self.read_uint()
+                        },
+                        do self.read_enum_variant_arg(1u) {
+                            self.read_uint()
+                        }
+                    )
+                  }
+                  // hard to avoid - user input
+                  _ => fail!(~"bad enum variant")
+                }
+            }
+        }
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn read_vtable_origin(&self, xcx: @ExtendedDecodeContext)
+        -> typeck::vtable_origin {
+        do self.read_enum("vtable_origin") {
+            do self.read_enum_variant(["vtable_static", "vtable_param"]) |i| {
                 match i {
                   0 => {
                     typeck::vtable_static(
