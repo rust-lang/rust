@@ -4666,7 +4666,7 @@ pub impl Resolver {
         }
     }
 
-    fn find_best_match_for_name(@mut self, name: &str) -> Option<~str> {
+    fn find_best_match_for_name(@mut self, name: &str, max_distance: uint) -> Option<~str> {
         let this = &mut *self;
 
         let mut maybes: ~[~str] = ~[];
@@ -4694,6 +4694,7 @@ pub impl Resolver {
         if vec::len(values) > 0 &&
             values[smallest] != uint::max_value &&
             values[smallest] < str::len(name) + 2 &&
+            values[smallest] <= max_distance &&
             maybes[smallest] != name.to_owned() {
 
             Some(vec::swap_remove(&mut maybes, smallest))
@@ -4770,8 +4771,9 @@ pub impl Resolver {
                                         wrong_name));
                         }
                         else {
-                            match self.find_best_match_for_name(wrong_name) {
-
+                            // limit search to 5 to reduce the number
+                            // of stupid suggestions
+                            match self.find_best_match_for_name(wrong_name, 5) {
                                 Some(m) => {
                                     self.session.span_err(expr.span,
                                             fmt!("unresolved name: `%s`. \
@@ -5292,4 +5294,3 @@ pub fn resolve_crate(session: Session,
         trait_map: trait_map
     }
 }
-
