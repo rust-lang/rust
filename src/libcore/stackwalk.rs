@@ -80,7 +80,7 @@ fn breakpoint() {
     }
 }
 
-fn frame_address(f: &fn(++x: *u8)) {
+fn frame_address(f: &fn(x: *u8)) {
     unsafe {
         rusti::frame_address(f)
     }
@@ -95,7 +95,7 @@ pub mod rustrt {
 pub mod rusti {
     #[abi = "rust-intrinsic"]
     pub extern {
-        pub fn frame_address(f: &once fn(++x: *u8));
+        pub fn frame_address(f: &once fn(x: *u8));
     }
 }
 
