@@ -64,6 +64,7 @@ pub unsafe fn fail_borrowed() {
 
 // FIXME #4942: Make these signatures agree with exchange_alloc's signatures
 #[lang="exchange_malloc"]
+#[inline(always)]
 pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     transmute(exchange_alloc::malloc(transmute(td), transmute(size)))
 }
@@ -72,11 +73,13 @@ pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 // inside a landing pad may corrupt the state of the exception handler. If a
 // problem occurs, call exit instead.
 #[lang="exchange_free"]
+#[inline(always)]
 pub unsafe fn exchange_free(ptr: *c_char) {
     exchange_alloc::free(transmute(ptr))
 }
 
 #[lang="malloc"]
+#[inline(always)]
 pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     return rustrt::rust_upcall_malloc(td, size);
 }
@@ -85,6 +88,7 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 // inside a landing pad may corrupt the state of the exception handler. If a
 // problem occurs, call exit instead.
 #[lang="free"]
+#[inline(always)]
 pub unsafe fn local_free(ptr: *c_char) {
     rustrt::rust_upcall_free(ptr);
 }
@@ -117,6 +121,7 @@ pub unsafe fn check_not_borrowed(a: *u8) {
 }
 
 #[lang="strdup_uniq"]
+#[inline(always)]
 pub unsafe fn strdup_uniq(ptr: *c_uchar, len: uint) -> ~str {
     str::raw::from_buf_len(ptr, len)
 }
