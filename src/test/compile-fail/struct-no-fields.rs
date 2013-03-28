@@ -8,15 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:mismatched types: expected `()` but found `bool`
+// error-pattern: Unit-like struct should be written as: struct Foo;
+struct Foo {}
 
-struct r;
-
-impl Drop for r {
-    fn finalize(&self) {
-        true
-    }
-}
-
-fn main() {
-}
+fn main() {}

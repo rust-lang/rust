@@ -3207,6 +3207,10 @@ pub impl Parser {
                   }
                 }
             }
+            if fields.len() == 0 {
+                self.fatal(fmt!("Unit-like struct should be written as: struct %s;",
+                                *self.interner.get(class_name)));
+            }
             self.bump();
         } else if *self.token == token::LPAREN {
             // It's a tuple-like struct.
