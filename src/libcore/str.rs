@@ -22,6 +22,7 @@ use cast;
 use char;
 use clone::Clone;
 use cmp::{Equiv, TotalOrd, Ordering, Less, Equal, Greater};
+use condition;
 use libc;
 use option::{None, Option, Some};
 use ptr;
@@ -47,6 +48,35 @@ Section: Creating a string
 pub fn from_bytes(vv: &const [u8]) -> ~str {
     fail_unless!(is_utf8(vv));
     return unsafe { raw::from_bytes(vv) };
+}
+
+// Condition for invalid UTF-8 string
+condition! {
+    is_not_utf8: ~[u8] -> ();
+}
+
+/**
+ * Condition types for invalid UTF-8 string
+ *
+ * strict       raise an error (default mode)
+ * replacement  replace the invalid string to unicode replacement character
+ * ignore       ignore the invalid string
+ */
+const strict: uint = 1;
+const replacement: uint = 2;
+const ignore: uint = 3;
+
+/**
+ * Convert a vector of bytes to a UTF-8 string
+
+ * Provide a condition when presented with invalid UTF-8
+ */
+pub fn from_fixed_utf8_bytes(v: &[const u8], mode: uint) -> ~str {
+    let bytes = match mode {
+        replacement | ignore => do is_not_utf8::cond.trap(|_| {()}).in { fix_utf8(v, mode) },
+        _ => fix_utf8(v, mode)
+    };
+    return unsafe { raw::from_bytes(bytes) };
 }
 
 /// Copy a slice into a new unique str
@@ -1605,6 +1635,39 @@ pub fn is_utf8(v: &const [u8]) -> bool {
         }
     }
     return true;
+}
+
+/// Fixes if a vector of bytes contains invalid UTF-8
+pub fn fix_utf8(v: &[const u8], mode: uint) -> ~[u8] {
+    let mut i = 0u;
+    let total = vec::len::<u8>(v);
+    let mut result = ~[];
+    while i < total {
+        let chend = i + utf8_char_width(v[i]);
+        let mut j = i + 1u;
+        while j < total && j < chend && v[j] & 192u8 == tag_cont_u8 {
+            j += 1u;
+        }
+        if j == chend {
+            fail_unless!(i != chend);
+            result = vec::append(result, v.view(i, j));
+        } else {
+            match mode {
+                replacement => {
+                    let replacement_char: ~[u8] = ~[0xef, 0xbf, 0xbd];
+                    result = vec::append(result, replacement_char);
+                },
+                _ => ()
+            }
+            if i == chend {
+                is_not_utf8::cond.raise(v.slice(i, i + 1));
+            } else {
+                is_not_utf8::cond.raise(v.slice(i, chend));
+            }
+        }
+        i = j;
+    }
+    result
 }
 
 /// Determines if a vector of `u16` contains valid UTF-16

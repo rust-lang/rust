@@ -210,6 +210,25 @@ pub trait ReaderUtil {
     fn read_i8(&self) -> i8;
 }
 
+/// Special utility functions defined on readers.
+pub trait ReaderUtilEx {
+
+    /// Read up until a specified character (which is not returned) or EOF.
+    /// And fix the invalid utf-8 character according to the mode.
+    /// It provides three modes. (strict: raise an error,
+    /// replacement: replace the invalid string to unicode replacement character,
+    /// ignore: ignore the invalid string)
+    fn read_and_fix_utf8_until(&self, c: char, mode: uint) -> ~str;
+
+    /// Read up until the first '\n' char (which is not returned) or EOF.
+    /// And fix the invalid utf-8 character according to the mode.
+    fn read_fixed_utf8_line(&self, mode: uint) -> ~str;
+
+    /// Iterate over every line until the iterator breaks or EOF.
+    /// And fix the invalid utf-8 character according to the mode.
+    fn each_fixed_utf8_line(&self, mode: uint, it: fn(&str) -> bool);
+}
+
 impl<T:Reader> ReaderUtil for T {
 
     fn read_bytes(&self,len: uint) -> ~[u8] {
@@ -488,6 +507,31 @@ impl<T:Reader> ReaderUtil for T {
 
     fn read_i8(&self) -> i8 {
         self.read_byte() as i8
+    }
+}
+
+impl<T:Reader> ReaderUtilEx for T {
+
+    fn read_and_fix_utf8_until(&self, c: char, mode: uint) -> ~str {
+        let mut bytes = ~[];
+        loop {
+            let ch = self.read_byte();
+            if ch == -1 || ch == c as int {
+                break;
+            }
+            bytes.push(ch as u8);
+        }
+        str::from_fixed_utf8_bytes(bytes, mode)
+    }
+
+    fn read_fixed_utf8_line(&self, mode: uint) -> ~str {
+        self.read_and_fix_utf8_until('\n', mode)
+    }
+
+    fn each_fixed_utf8_line(&self, mode: uint, it: fn(&str) -> bool) {
+        while !self.eof() {
+            if !it(self.read_fixed_utf8_line(mode)) { break; }
+        }
     }
 }
 
