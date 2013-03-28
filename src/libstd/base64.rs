@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Base64 binary-to-text encoding
+
 use core::iter;
 use core::str;
 use core::vec;
