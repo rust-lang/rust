@@ -124,6 +124,7 @@ use core::prelude::*;
 use back::abi;
 use lib;
 use lib::llvm::{ValueRef, TypeRef, llvm, True};
+use metadata::csearch;
 use middle::borrowck::root_map_key;
 use middle::trans::_match;
 use middle::trans::adt;
@@ -150,6 +151,7 @@ use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn,
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
+use core::cast::transmute;
 use core::hashmap::linear::LinearMap;
 use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
@@ -1079,11 +1081,35 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
 
                 fn get_val(bcx: block, did: ast::def_id, const_ty: ty::t)
                     -> ValueRef {
-                    // The LLVM global has the type of its initializer,
-                    // which may not be equal to the enum's type for
-                    // non-C-like enums.
-                    PointerCast(bcx, base::get_item_val(bcx.ccx(), did.node),
-                                T_ptr(type_of(bcx.ccx(), const_ty)))
+                    if did.crate == ast::local_crate {
+                        // The LLVM global has the type of its initializer,
+                        // which may not be equal to the enum's type for
+                        // non-C-like enums.
+                        PointerCast(bcx,
+                                    base::get_item_val(bcx.ccx(), did.node),
+                                    T_ptr(type_of(bcx.ccx(), const_ty)))
+                    } else {
+                        // For external constants, we don't inline.
+                        match bcx.ccx().extern_const_values.find(&did) {
+                            None => {
+                                unsafe {
+                                    let llty = type_of(bcx.ccx(), const_ty);
+                                    let symbol = csearch::get_symbol(
+                                        bcx.ccx().sess.cstore,
+                                        did);
+                                    let llval = llvm::LLVMAddGlobal(
+                                        bcx.ccx().llmod,
+                                        llty,
+                                        transmute::<&u8,*i8>(&symbol[0]));
+                                    bcx.ccx().extern_const_values.insert(
+                                        did,
+                                        llval);
+                                    llval
+                                }
+                            }
+                            Some(llval) => *llval
+                        }
+                    }
                 }
 
                 let did = get_did(ccx, did);

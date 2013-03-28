@@ -2540,8 +2540,9 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
             }
           }
 
-          _ => {
-            ccx.sess.bug(~"get_item_val(): unexpected variant")
+          ref variant => {
+            ccx.sess.bug(fmt!("get_item_val(): unexpected variant: %?",
+                              variant))
           }
         };
         if !(exprt || ccx.reachable.contains(&id)) {
@@ -3085,6 +3086,7 @@ pub fn trans_crate(sess: session::Session,
               const_cstr_cache: @mut LinearMap::new(),
               const_globals: @mut LinearMap::new(),
               const_values: @mut LinearMap::new(),
+              extern_const_values: @mut LinearMap::new(),
               module_data: @mut LinearMap::new(),
               lltypes: @mut LinearMap::new(),
               llsizingtypes: @mut LinearMap::new(),
