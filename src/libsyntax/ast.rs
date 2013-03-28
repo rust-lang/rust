@@ -1186,6 +1186,15 @@ pub struct trait_ref {
 #[deriving(Eq)]
 pub enum visibility { public, private, inherited }
 
+impl visibility {
+    fn inherit_from(&self, parent_visibility: visibility) -> visibility {
+        match self {
+            &inherited => parent_visibility,
+            &public | &private => *self
+        }
+    }
+}
+
 #[auto_encode]
 #[auto_decode]
 #[deriving(Eq)]

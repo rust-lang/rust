@@ -315,7 +315,6 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                                 ty: ty});
     }
 
-
     fn ty_method_of_trait_method(self: &CrateCtxt,
                                  trait_rp: Option<ty::region_variance>,
                                  trait_generics: &ast::Generics,
@@ -336,8 +335,8 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                                         AbiSet::Rust(),
                                         &m_generics.lifetimes,
                                         m_decl),
-            // assume public, because this is only invoked on trait methods
             self_ty: m_self_ty.node,
+            // assume public, because this is only invoked on trait methods
             vis: ast::public,
             def_id: local_def(*m_id)
         }
@@ -599,7 +598,7 @@ pub fn convert_field(ccx: &CrateCtxt,
 }
 
 pub struct ConvertedMethod {
-    mty: ty::method,
+    mty: @ty::method,
     id: ast::node_id,
     span: span,
     body_id: ast::node_id
@@ -609,13 +608,15 @@ pub fn convert_methods(ccx: &CrateCtxt,
                        ms: &[@ast::method],
                        rp: Option<ty::region_variance>,
                        rcvr_bounds: @~[ty::param_bounds],
-                       rcvr_generics: &ast::Generics)
-                    -> ~[ConvertedMethod] {
-
+                       rcvr_generics: &ast::Generics,
+                       rcvr_visibility: ast::visibility)
+                    -> ~[ConvertedMethod]
+{
     let tcx = ccx.tcx;
-    do vec::map(ms) |m| {
+    return vec::map(ms, |m| {
         let bounds = ty_param_bounds(ccx, &m.generics);
-        let mty = ty_of_method(ccx, *m, rp, rcvr_generics, &m.generics);
+        let mty = @ty_of_method(ccx, *m, rp, rcvr_generics,
+                                rcvr_visibility, &m.generics);
         let fty = ty::mk_bare_fn(tcx, copy mty.fty);
         tcx.tcache.insert(
             local_def(m.id),
@@ -628,8 +629,34 @@ pub fn convert_methods(ccx: &CrateCtxt,
                 ty: fty
             });
         write_ty_to_tcx(tcx, m.id, fty);
+        tcx.methods.insert(mty.def_id, mty);
         ConvertedMethod {mty: mty, id: m.id,
                          span: m.span, body_id: m.body.node.id}
+    });
+
+    fn ty_of_method(ccx: &CrateCtxt,
+                    m: @ast::method,
+                    rp: Option<ty::region_variance>,
+                    rcvr_generics: &ast::Generics,
+                    rcvr_visibility: ast::visibility,
+                    method_generics: &ast::Generics) -> ty::method
+    {
+        let rscope = MethodRscope::new(m.self_ty.node,
+                                       rp,
+                                       rcvr_generics);
+        ty::method {
+            ident: m.ident,
+            tps: ty_param_bounds(ccx, &m.generics),
+            fty: astconv::ty_of_bare_fn(ccx,
+                                        &rscope,
+                                        m.purity,
+                                        ast::RustAbi,
+                                        &method_generics.lifetimes,
+                                        &m.decl),
+            self_ty: m.self_ty.node,
+            vis: m.vis.inherit_from(rcvr_visibility),
+            def_id: local_def(m.id)
+        }
     }
 }
 
@@ -665,7 +692,7 @@ pub fn convert(ccx: &CrateCtxt, it: @ast::item) {
                                generics,
                                rp);
       }
-      ast::item_impl(ref generics, trait_ref, selfty, ref ms) => {
+      ast::item_impl(ref generics, opt_trait_ref, selfty, ref ms) => {
         let i_bounds = ty_param_bounds(ccx, generics);
         let region_parameterization =
             RegionParameterization::from_variance_and_generics(rp, generics);
@@ -677,9 +704,20 @@ pub fn convert(ccx: &CrateCtxt, it: @ast::item) {
                             region_param: rp,
                             ty: selfty});
 
-        // XXX: Bad copy of `ms` below.
-        let cms = convert_methods(ccx, *ms, rp, i_bounds, generics);
-        for trait_ref.each |t| {
+        // If there is a trait reference, treat the methods as always public.
+        // This is to work around some incorrect behavior in privacy checking:
+        // when the method belongs to a trait, it should acquire the privacy
+        // from the trait, not the impl. Forcing the visibility to be public
+        // makes things sorta work.
+        let parent_visibility = if opt_trait_ref.is_some() {
+            ast::public
+        } else {
+            it.vis
+        };
+
+        let cms = convert_methods(ccx, *ms, rp, i_bounds, generics,
+                                  parent_visibility);
+        for opt_trait_ref.each |t| {
             check_methods_against_trait(ccx, generics, rp, selfty, *t, cms);
         }
       }
@@ -694,7 +732,8 @@ pub fn convert(ccx: &CrateCtxt, it: @ast::item) {
         let (_, provided_methods) =
             split_trait_methods(*trait_methods);
         let (bounds, _) = mk_substs(ccx, generics, rp);
-        let _ = convert_methods(ccx, provided_methods, rp, bounds, generics);
+        let _ = convert_methods(ccx, provided_methods, rp, bounds, generics,
+                                it.vis);
       }
       ast::item_struct(struct_def, ref generics) => {
         ensure_no_ty_param_bounds(ccx, it.span, generics, "structure");
@@ -792,30 +831,6 @@ pub fn convert_foreign(ccx: &CrateCtxt, i: @ast::foreign_item) {
     let tpt = ty_of_foreign_item(ccx, i);
     write_ty_to_tcx(ccx.tcx, i.id, tpt.ty);
     ccx.tcx.tcache.insert(local_def(i.id), tpt);
-}
-
-pub fn ty_of_method(ccx: &CrateCtxt,
-                    m: @ast::method,
-                    rp: Option<ty::region_variance>,
-                    rcvr_generics: &ast::Generics,
-                    method_generics: &ast::Generics)
-                 -> ty::method {
-    let rscope = MethodRscope::new(m.self_ty.node,
-                                   rp,
-                                   rcvr_generics);
-    ty::method {
-        ident: m.ident,
-        tps: ty_param_bounds(ccx, &m.generics),
-        fty: astconv::ty_of_bare_fn(ccx,
-                                    &rscope,
-                                    m.purity,
-                                    AbiSet::Rust(),
-                                    &method_generics.lifetimes,
-                                    &m.decl),
-        self_ty: m.self_ty.node,
-        vis: m.vis,
-        def_id: local_def(m.id)
-    }
 }
 
 /*

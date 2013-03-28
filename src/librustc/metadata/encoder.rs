@@ -562,13 +562,25 @@ fn encode_info_for_struct_ctor(ecx: @EncodeContext,
     ebml_w.end_tag();
 }
 
+fn encode_method_ty_fields(ecx: @EncodeContext,
+                           ebml_w: writer::Encoder,
+                           method_ty: &ty::method)
+{
+    encode_def_id(ebml_w, method_ty.def_id);
+    encode_name(ecx, ebml_w, method_ty.ident);
+    encode_ty_type_param_bounds(ebml_w, ecx, method_ty.tps,
+                                tag_item_method_tps);
+    encode_method_fty(ecx, ebml_w, &method_ty.fty);
+    encode_visibility(ebml_w, method_ty.vis);
+    encode_self_type(ebml_w, method_ty.self_ty);
+}
+
 fn encode_info_for_method(ecx: @EncodeContext,
                           ebml_w: writer::Encoder,
                           impl_path: &[ast_map::path_elt],
                           should_inline: bool,
                           parent_id: node_id,
                           m: @method,
-                          parent_visibility: ast::visibility,
                           owner_generics: &ast::Generics,
                           method_generics: &ast::Generics) {
     debug!("encode_info_for_method: %d %s %u %u", m.id,
@@ -576,7 +588,10 @@ fn encode_info_for_method(ecx: @EncodeContext,
            owner_generics.ty_params.len(),
            method_generics.ty_params.len());
     ebml_w.start_tag(tag_items_data_item);
-    encode_def_id(ebml_w, local_def(m.id));
+
+    let method_def_id = local_def(m.id);
+    let method_ty: @ty::method = ty::method(ecx.tcx, method_def_id);
+    encode_method_ty_fields(ecx, ebml_w, method_ty);
 
     match m.self_ty.node {
         ast::sty_static => {
@@ -592,16 +607,7 @@ fn encode_info_for_method(ecx: @EncodeContext,
     encode_type_param_bounds(ebml_w, ecx, &combined_ty_params);
 
     encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, m.id));
-    encode_name(ecx, ebml_w, m.ident);
     encode_path(ecx, ebml_w, impl_path, ast_map::path_name(m.ident));
-    encode_self_type(ebml_w, m.self_ty.node);
-
-    // Combine parent visibility and this visibility.
-    let visibility = match m.vis {
-        ast::inherited => parent_visibility,
-        vis => vis,
-    };
-    encode_visibility(ebml_w, visibility);
 
     if len > 0u || should_inline {
         (ecx.encode_inlined_item)(
@@ -610,6 +616,7 @@ fn encode_info_for_method(ecx: @EncodeContext,
     } else {
         encode_symbol(ecx, ebml_w, m.id);
     }
+
     ebml_w.end_tag();
 }
 
@@ -863,17 +870,6 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
         let mut impl_path = vec::append(~[], path);
         impl_path += ~[ast_map::path_name(item.ident)];
 
-        // If there is a trait reference, treat the methods as always public.
-        // This is to work around some incorrect behavior in privacy checking:
-        // when the method belongs to a trait, it should acquire the privacy
-        // from the trait, not the impl. Forcing the visibility to be public
-        // makes things sorta work.
-        let parent_visibility = if opt_trait.is_some() {
-            ast::public
-        } else {
-            item.vis
-        };
-
         for methods.each |m| {
             index.push(entry {val: m.id, pos: ebml_w.writer.tell()});
             encode_info_for_method(ecx,
@@ -882,7 +878,6 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
                                    should_inline(m.attrs),
                                    item.id,
                                    *m,
-                                   parent_visibility,
                                    generics,
                                    &m.generics);
         }
@@ -909,11 +904,6 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
         ebml_w.end_tag();
 
         // Now output the method info for each method.
-        //
-        // Note: for the moment, the data structures here are *slightly*
-        // different from those expected by `encode_info_for_method()`,
-        // but I do plan to refactor this later in this patch to avoid the
-        // duplication.
         for ty::trait_method_def_ids(tcx, local_def(item.id)).eachi |i, &method_def_id| {
             assert!(method_def_id.crate == ast::local_crate);
 
@@ -923,9 +913,13 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
 
             ebml_w.start_tag(tag_items_data_item);
 
-            encode_def_id(ebml_w, method_def_id);
+            encode_method_ty_fields(ecx, ebml_w, method_ty);
+
             encode_parent_item(ebml_w, local_def(item.id));
-            encode_name(ecx, ebml_w, method_ty.ident);
+
+            let mut trait_path = vec::append(~[], path);
+            trait_path.push(ast_map::path_name(item.ident));
+            encode_path(ecx, ebml_w, trait_path, ast_map::path_name(method_ty.ident));
 
             match method_ty.self_ty {
                 sty_static => {
@@ -945,15 +939,6 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
                                       method_ty.fty.purity));
                 }
             }
-
-            encode_ty_type_param_bounds(ebml_w, ecx, method_ty.tps,
-                                        tag_item_method_tps);
-            encode_method_fty(ecx, ebml_w, &method_ty.fty);
-            encode_visibility(ebml_w, method_ty.vis);
-            encode_self_type(ebml_w, method_ty.self_ty);
-            let mut trait_path = vec::append(~[], path);
-            trait_path.push(ast_map::path_name(item.ident));
-            encode_path(ecx, ebml_w, trait_path, ast_map::path_name(method_ty.ident));
 
             match ms[i] {
                 required(_) => {
