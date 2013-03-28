@@ -875,8 +875,7 @@ the compiler that unsafety does not leak outside of the unsafe block, and is
 used to create safe concepts on top of low-level code.
 
 ~~~~
-use core::libc::funcs::c95::stdlib::{calloc, free};
-use core::libc::types::os::arch::c95::size_t;
+use core::libc::{calloc, free, size_t};
 
 fn main() {
     unsafe {
@@ -909,9 +908,7 @@ The unsafe code from above can be contained behind a safe API that prevents
 memory leaks or use-after-free:
 
 ~~~~
-use core::libc::funcs::c95::stdlib::{calloc, free};
-use core::libc::types::common::c95::c_void;
-use core::libc::types::os::arch::c95::size_t;
+use core::libc::{calloc, free, c_void, size_t};
 
 struct Blob { priv ptr: *c_void }
 
