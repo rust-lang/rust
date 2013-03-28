@@ -155,8 +155,8 @@ Some productions are defined by exclusion of particular Unicode characters:
 
 ~~~~~~~~ {.ebnf .gram}
 comment : block_comment | line_comment ;
-block_comment : "/*" block_comment_body * "*" + "/" ;
-block_comment_body : non_star * | '*' + non_slash ;
+block_comment : "/*" block_comment_body * '*' + '/' ;
+block_comment_body : non_star * | '*' + non_slash_or_star ;
 line_comment : "//" non_eol * ;
 ~~~~~~~~
 
