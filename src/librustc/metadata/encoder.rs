@@ -286,8 +286,7 @@ fn encode_enum_variant_info(ecx: @EncodeContext, ebml_w: writer::Encoder,
                     if args.len() > 0 && generics.ty_params.len() == 0 => {
                 encode_symbol(ecx, ebml_w, variant.node.id);
             }
-            ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) |
-            ast::enum_variant_kind(_) => {}
+            ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) => {}
         }
         encode_discriminant(ecx, ebml_w, variant.node.id);
         if vi[i].disr_val != disr_val {

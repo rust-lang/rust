@@ -1078,7 +1078,6 @@ pub struct variant_arg {
 pub enum variant_kind {
     tuple_variant_kind(~[variant_arg]),
     struct_variant_kind(@struct_def),
-    enum_variant_kind(enum_def)
 }
 
 #[auto_encode]
@@ -1086,7 +1085,6 @@ pub enum variant_kind {
 #[deriving(Eq)]
 pub struct enum_def {
     variants: ~[variant],
-    common: Option<@struct_def>,
 }
 
 #[auto_encode]

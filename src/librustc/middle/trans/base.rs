@@ -2051,14 +2051,6 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: ast::enum_def,
                 trans_struct_def(ccx, struct_def, path,
                                  variant.node.id);
             }
-            ast::enum_variant_kind(ref enum_definition) => {
-                trans_enum_def(ccx,
-                               *enum_definition,
-                               id,
-                               path,
-                               vi,
-                               &mut *i);
-            }
         }
     }
 }
@@ -2512,9 +2504,6 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                 }
                 ast::struct_variant_kind(_) => {
                     fail!(~"struct variant kind unexpected in get_item_val")
-                }
-                ast::enum_variant_kind(_) => {
-                    fail!(~"enum variant kind unexpected in get_item_val")
                 }
             }
             set_inline_hint(llfn);

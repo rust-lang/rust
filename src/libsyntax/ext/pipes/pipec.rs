@@ -238,7 +238,7 @@ impl to_type_decls for state {
             cx.item_enum_poly(
                 name,
                 self.span,
-                ast::enum_def { variants: items_msg, common: None },
+                ast::enum_def { variants: items_msg },
                 cx.strip_bounds(&self.generics)
             )
         ]

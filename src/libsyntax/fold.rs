@@ -257,9 +257,6 @@ pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
                     variants: do enum_definition.variants.map |x| {
                         fld.fold_variant(x)
                     },
-                    common: do enum_definition.common.map |x| {
-                        fold_struct_def(*x, fld)
-                    }
                 },
                 fold_generics(generics, fld))
         }
@@ -681,17 +678,6 @@ fn noop_fold_variant(v: &variant_, fld: @ast_fold) -> variant_ {
                 dtor: dtor,
                 ctor_id: struct_def.ctor_id.map(|c| fld.new_id(*c))
             })
-        }
-        enum_variant_kind(ref enum_definition) => {
-            let variants = do (*enum_definition).variants.map |x| {
-                fld.fold_variant(x)
-            };
-            let common = do (*enum_definition).common.map |x| {
-                fold_struct_def(*x, fld)
-            };
-            kind = enum_variant_kind(
-                ast::enum_def { variants: variants, common: common }
-            );
         }
     }
 
