@@ -118,7 +118,7 @@ pub trait Decoder {
     fn read_tup_elt<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
     // Specialized types:
-    fn read_option<T>(&self, f: &fn() -> T) -> Option<T>;
+    fn read_option<T>(&self, f: &fn(bool) -> T) -> T;
 }
 
 pub trait Encodable<S:Encoder> {
@@ -395,7 +395,13 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for Option<T> {
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for Option<T> {
     fn decode(d: &D) -> Option<T> {
-        d.read_option(|| Decodable::decode(d))
+        do d.read_option |b| {
+            if b {
+                Some(Decodable::decode(d))
+            } else {
+                None
+            }
+        }
     }
 }
 
