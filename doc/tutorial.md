@@ -982,7 +982,9 @@ when it is collected.
 
 If an object doesn't contain garbage-collected boxes, it consists of a single
 ownership tree and is given the `Owned` trait which allows it to be sent
-between tasks.
+between tasks. Custom destructors can only be implemented directly on types
+that are `Owned`, but garbage-collected boxes can still *contain* types with
+custom destructors.
 
 # Boxes
 
