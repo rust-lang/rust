@@ -335,7 +335,20 @@ pub mod reader {
             self.push_doc(self.next_doc(EsEnum), f)
         }
 
+        #[cfg(stage0)]
         fn read_enum_variant<T>(&self, f: &fn(uint) -> T) -> T {
+            debug!("read_enum_variant()");
+            let idx = self._next_uint(EsEnumVid);
+            debug!("  idx=%u", idx);
+            do self.push_doc(self.next_doc(EsEnumBody)) {
+                f(idx)
+            }
+        }
+
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        #[cfg(stage3)]
+        fn read_enum_variant<T>(&self, _names: &[&str], f: &fn(uint) -> T) -> T {
             debug!("read_enum_variant()");
             let idx = self._next_uint(EsEnumVid);
             debug!("  idx=%u", idx);
@@ -397,8 +410,37 @@ pub mod reader {
             debug!("read_tup_elt(idx=%u)", idx);
             f()
         }
-    }
 
+        #[cfg(stage0)]
+        fn read_option<T>(&self, f: &fn() -> T) -> Option<T> {
+            debug!("read_option()");
+            do self.read_enum("Option") || {
+                do self.read_enum_variant |idx| {
+                    match idx {
+                        0 => None,
+                        1 => Some(f()),
+                        _ => fail!(),
+                    }
+                }
+            }
+        }
+
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        #[cfg(stage3)]
+        fn read_option<T>(&self, f: &fn() -> T) -> Option<T> {
+            debug!("read_option()");
+            do self.read_enum("Option") || {
+                do self.read_enum_variant(["None", "Some"]) |idx| {
+                    match idx {
+                        0 => None,
+                        1 => Some(f()),
+                        _ => fail!(),
+                    }
+                }
+            }
+        }
+    }
 }
 
 pub mod writer {
@@ -664,9 +706,19 @@ pub mod writer {
 
         fn emit_tup(&self, _len: uint, f: &fn()) { f() }
         fn emit_tup_elt(&self, _idx: uint, f: &fn()) { f() }
-    }
 
+        fn emit_option(&self, f: &fn()) {
+            self.emit_enum("Option", f);
+        }
+        fn emit_option_none(&self) {
+            self.emit_enum_variant("None", 0, 0, || ())
+        }
+        fn emit_option_some(&self, f: &fn()) {
+            self.emit_enum_variant("Some", 1, 1, f)
+        }
+    }
 }
+
 // ___________________________________________________________________________
 // Testing
 

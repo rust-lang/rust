@@ -552,9 +552,8 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
         expr_ret(ref e) => {
             expr_ret(e.map(|x| fld.fold_expr(*x)))
         }
-        expr_log(i, lv, e) => {
+        expr_log(lv, e) => {
             expr_log(
-                i,
                 fld.fold_expr(lv),
                 fld.fold_expr(e)
             )

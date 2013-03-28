@@ -3114,7 +3114,6 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_lit(@codemap::spanned {node: lit_str(_), _}) |
         ast::expr_vstore(_, ast::expr_vstore_slice) |
         ast::expr_vstore(_, ast::expr_vstore_mut_slice) |
-        ast::expr_vstore(_, ast::expr_vstore_fixed(_)) |
         ast::expr_vec(*) => {
             RvalueDpsExpr
         }

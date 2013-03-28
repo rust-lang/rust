@@ -62,6 +62,11 @@ pub trait Encoder {
 
     fn emit_tup(&self, len: uint, f: &fn());
     fn emit_tup_elt(&self, idx: uint, f: &fn());
+
+    // Specialized types:
+    fn emit_option(&self, f: &fn());
+    fn emit_option_none(&self);
+    fn emit_option_some(&self, f: &fn());
 }
 
 pub trait Decoder {
@@ -87,7 +92,15 @@ pub trait Decoder {
 
     // Compound types:
     fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T;
+
+    #[cfg(stage0)]
     fn read_enum_variant<T>(&self, f: &fn(uint) -> T) -> T;
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T;
+
     fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
     fn read_owned<T>(&self, f: &fn() -> T) -> T;
@@ -103,6 +116,9 @@ pub trait Decoder {
 
     fn read_tup<T>(&self, sz: uint, f: &fn() -> T) -> T;
     fn read_tup_elt<T>(&self, idx: uint, f: &fn() -> T) -> T;
+
+    // Specialized types:
+    fn read_option<T>(&self, f: &fn() -> T) -> Option<T>;
 }
 
 pub trait Encodable<S:Encoder> {
@@ -368,14 +384,10 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for @[T] {
 
 impl<S:Encoder,T:Encodable<S>> Encodable<S> for Option<T> {
     fn encode(&self, s: &S) {
-        do s.emit_enum(~"option") {
+        do s.emit_option {
             match *self {
-              None => do s.emit_enum_variant(~"none", 0u, 0u) {
-              },
-
-              Some(ref v) => do s.emit_enum_variant(~"some", 1u, 1u) {
-                s.emit_enum_variant_arg(0u, || v.encode(s))
-              }
+                None => s.emit_option_none(),
+                Some(ref v) => s.emit_option_some(|| v.encode(s)),
             }
         }
     }
@@ -383,16 +395,7 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for Option<T> {
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for Option<T> {
     fn decode(d: &D) -> Option<T> {
-        do d.read_enum(~"option") {
-            do d.read_enum_variant |i| {
-                match i {
-                  0 => None,
-                  1 => Some(d.read_enum_variant_arg(
-                      0u, || Decodable::decode(d))),
-                  _ => fail!(fmt!("Bad variant for option: %u", i))
-                }
-            }
-        }
+        d.read_option(|| Decodable::decode(d))
     }
 }
 

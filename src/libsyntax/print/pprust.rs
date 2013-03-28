@@ -325,7 +325,7 @@ pub fn commasep<IN>(s: @ps, b: breaks, elts: &[IN], op: &fn(@ps, IN)) {
 pub fn commasep_cmnt<IN>(s: @ps, b: breaks, elts: &[IN], op: &fn(@ps, IN),
                          get_span: &fn(IN) -> codemap::span) {
     box(s, 0u, b);
-    let len = vec::len::<IN>(elts);
+    let len = elts.len();
     let mut i = 0u;
     for elts.each |elt| {
         maybe_print_comment(s, get_span(*elt).hi);
@@ -1029,8 +1029,6 @@ pub fn print_vstore(s: @ps, t: ast::vstore) {
 
 pub fn print_expr_vstore(s: @ps, t: ast::expr_vstore) {
     match t {
-      ast::expr_vstore_fixed(Some(i)) => word(s.s, fmt!("%u", i)),
-      ast::expr_vstore_fixed(None) => word(s.s, ~"_"),
       ast::expr_vstore_uniq => word(s.s, ~"~"),
       ast::expr_vstore_box => word(s.s, ~"@"),
       ast::expr_vstore_mut_box => {
@@ -1105,16 +1103,9 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
     let ann_node = node_expr(s, expr);
     (s.ann.pre)(ann_node);
     match expr.node {
-        ast::expr_vstore(e, v) => match v {
-            ast::expr_vstore_fixed(_) => {
-                print_expr(s, e);
-                word(s.s, ~"/");
-                print_expr_vstore(s, v);
-            }
-            _ => {
-                print_expr_vstore(s, v);
-                print_expr(s, e);
-            }
+        ast::expr_vstore(e, v) => {
+            print_expr_vstore(s, v);
+            print_expr(s, e);
         },
       ast::expr_vec(ref exprs, mutbl) => {
         ibox(s, indent_unit);
@@ -1391,20 +1382,14 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
           _ => ()
         }
       }
-      ast::expr_log(lvl, lexp, expr) => {
-        match lvl {
-          ast::debug => { word_nbsp(s, ~"log"); print_expr(s, expr); }
-          ast::error => { word_nbsp(s, ~"log_err"); print_expr(s, expr); }
-          ast::log_other => {
-            word_nbsp(s, ~"log");
-            popen(s);
-            print_expr(s, lexp);
-            word(s.s, ~",");
-            space_if_not_bol(s);
-            print_expr(s, expr);
-            pclose(s);
-          }
-        }
+      ast::expr_log(lexp, expr) => {
+        word(s.s, ~"__log");
+        popen(s);
+        print_expr(s, lexp);
+        word(s.s, ~",");
+        space_if_not_bol(s);
+        print_expr(s, expr);
+        pclose(s);
       }
       ast::expr_inline_asm(a, in, out, c, v, _) => {
         if v {
@@ -2139,7 +2124,7 @@ pub fn print_comment(s: @ps, cmnt: comments::cmnt) {
     }
 }
 
-pub fn print_string(s: @ps, st: ~str) {
+pub fn print_string(s: @ps, st: &str) {
     word(s.s, ~"\"");
     word(s.s, str::escape_default(st));
     word(s.s, ~"\"");
