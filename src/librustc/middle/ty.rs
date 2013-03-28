@@ -165,11 +165,12 @@ pub type opt_region_variance = Option<region_variance>;
 #[deriving(Eq)]
 pub enum region_variance { rv_covariant, rv_invariant, rv_contravariant }
 
-#[auto_encode]
-#[auto_decode]
 pub enum AutoAdjustment {
     AutoAddEnv(ty::Region, ast::Sigil),
-    AutoDerefRef(AutoDerefRef)
+    AutoDerefRef(AutoDerefRef),
+    AutoObject(SigilAndRegion,
+               ast::def_id /* ID of trait */,
+               substs /* trait substitutions */),
 }
 
 #[auto_encode]
@@ -177,6 +178,14 @@ pub enum AutoAdjustment {
 pub struct AutoDerefRef {
     autoderefs: uint,
     autoref: Option<AutoRef>
+}
+
+#[auto_encode]
+#[auto_decode]
+pub enum SigilAndRegion {
+    BorrowedSigilAndRegion(Region),
+    OwnedSigilAndRegion,
+    ManagedSigilAndRegion,
 }
 
 #[auto_encode]
@@ -2932,6 +2941,10 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
                 }
             }
         }
+
+        Some(&@AutoObject(ref sigil, def_id, ref substs)) => {
+            trait_adjustment_to_ty(cx, sigil, def_id, substs)
+        }
     };
 
     fn borrow_vec(cx: ctxt, expr: @ast::expr,
@@ -2974,6 +2987,19 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
             }
         }
     }
+}
+
+pub fn trait_adjustment_to_ty(cx: ctxt,
+                              sigil: &SigilAndRegion,
+                              def_id: ast::def_id,
+                              substs: &substs)
+                           -> t {
+    let trait_store = match *sigil {
+        BorrowedSigilAndRegion(region) => RegionTraitStore(region),
+        OwnedSigilAndRegion => UniqTraitStore,
+        ManagedSigilAndRegion => BoxTraitStore,
+    };
+    mk_trait(cx, def_id, copy *substs, trait_store)
 }
 
 pub struct ParamsTy {

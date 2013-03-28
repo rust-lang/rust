@@ -292,6 +292,12 @@ pub impl GatherLoanCtxt {
                 return;
             }
 
+            ty::AutoObject(*) => {
+                // NB: We need not do something now, but if this borrows
+                // `@Trait` to `&Trait` then this will need a guarantee.
+                return;
+            }
+
             ty::AutoDerefRef(
                 ty::AutoDerefRef {
                     autoref: None, _ }) => {

@@ -472,7 +472,7 @@ pub impl BorrowckCtxt {
     fn cat_expr_autoderefd(&self, expr: @ast::expr,
                            adj: @ty::AutoAdjustment) -> cmt {
         match *adj {
-            ty::AutoAddEnv(*) => {
+            ty::AutoAddEnv(*) | ty::AutoObject(*) => {
                 // no autoderefs
                 cat_expr_unadjusted(self.tcx, self.method_map, expr)
             }

@@ -222,6 +222,9 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                 }
             }
         }
+        Some(&@ty::AutoObject(*)) => {
+            cx.sess.span_unimpl(e.span, ~"unimplemented const object");
+        }
     }
 
     let ety_adjusted = ty::expr_ty_adjusted(cx.tcx, e);

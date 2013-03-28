@@ -359,6 +359,12 @@ pub impl mem_categorization_ctxt {
                 self.cat_expr_unadjusted(expr)
             }
 
+            Some(&@ty::AutoObject(*)) => {
+                // Result is an rvalue.
+                let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
+                self.cat_rvalue(expr, expr_ty)
+            }
+
             Some(&@ty::AutoAddEnv(*)) => {
                 // Convert a bare fn to a closure by adding NULL env.
                 // Result is an rvalue.

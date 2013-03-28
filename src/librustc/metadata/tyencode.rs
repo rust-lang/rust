@@ -132,7 +132,7 @@ fn enc_opt<T>(w: @io::Writer, t: Option<T>, enc_f: &fn(T)) {
     }
 }
 
-fn enc_substs(w: @io::Writer, cx: @ctxt, substs: ty::substs) {
+pub fn enc_substs(w: @io::Writer, cx: @ctxt, substs: ty::substs) {
     do enc_opt(w, substs.self_r) |r| { enc_region(w, cx, r) }
     do enc_opt(w, substs.self_ty) |t| { enc_ty(w, cx, t) }
     w.write_char('[');

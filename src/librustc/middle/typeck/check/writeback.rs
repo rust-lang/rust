@@ -119,6 +119,10 @@ fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::node_id)
     match fcx.inh.adjustments.find(&id) {
         None => (),
 
+        Some(&adjustment @ @ty::AutoObject(*)) => {
+            fcx.tcx().adjustments.insert(id, adjustment);
+        }
+
         Some(&@ty::AutoAddEnv(r, s)) => {
             match resolve_region(fcx.infcx(), r, resolve_all | force_all) {
                 Err(e) => {
