@@ -31,9 +31,11 @@ struct s {
 
 struct q : r {
     //~^ ERROR obsolete syntax: class traits
+    foo: int
 }
 
 struct sss {
+    bar: int,
     priv {
     //~^ ERROR obsolete syntax: private section
         foo: ()
