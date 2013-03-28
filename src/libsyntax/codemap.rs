@@ -35,10 +35,12 @@ pub trait Pos {
 }
 
 /// A byte offset
+#[deriving(Eq)]
 pub struct BytePos(uint);
 /// A character offset. Because of multibyte utf8 characters, a byte offset
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
 /// values to CharPos values as necessary.
+#[deriving(Eq)]
 pub struct CharPos(uint);
 
 // XXX: Lots of boilerplate in these impls, but so far my attempts to fix
@@ -47,11 +49,6 @@ pub struct CharPos(uint);
 impl Pos for BytePos {
     fn from_uint(n: uint) -> BytePos { BytePos(n) }
     fn to_uint(&self) -> uint { **self }
-}
-
-impl cmp::Eq for BytePos {
-    fn eq(&self, other: &BytePos) -> bool { **self == **other }
-    fn ne(&self, other: &BytePos) -> bool { !(*self).eq(other) }
 }
 
 impl cmp::Ord for BytePos {
@@ -82,11 +79,6 @@ impl to_bytes::IterBytes for BytePos {
 impl Pos for CharPos {
     fn from_uint(n: uint) -> CharPos { CharPos(n) }
     fn to_uint(&self) -> uint { **self }
-}
-
-impl cmp::Eq for CharPos {
-    fn eq(&self, other: &CharPos) -> bool { **self == **other }
-    fn ne(&self, other: &CharPos) -> bool { !(*self).eq(other) }
 }
 
 impl cmp::Ord for CharPos {

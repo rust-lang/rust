@@ -45,16 +45,9 @@ enum Msg {
     Exit
 }
 
+#[deriving(Clone)]
 pub struct Srv {
     ch: SharedChan<Msg>
-}
-
-impl Clone for Srv {
-    fn clone(&self) -> Srv {
-        Srv {
-            ch: self.ch.clone()
-        }
-    }
 }
 
 pub fn from_str<T>(source: ~str, owner: SrvOwner<T>) -> T {

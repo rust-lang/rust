@@ -18,13 +18,13 @@ use lib::llvm::struct_tys;
 use middle::trans::common::*;
 use middle::trans::cabi::*;
 
-use core::cmp;
 use core::libc::c_uint;
 use core::option;
 use core::option::Option;
 use core::uint;
 use core::vec;
 
+#[deriving(Eq)]
 enum x86_64_reg_class {
     no_class,
     integer_class,
@@ -38,13 +38,6 @@ enum x86_64_reg_class {
     x87up_class,
     complex_x87_class,
     memory_class
-}
-
-impl cmp::Eq for x86_64_reg_class {
-    fn eq(&self, other: &x86_64_reg_class) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    fn ne(&self, other: &x86_64_reg_class) -> bool { !(*self).eq(other) }
 }
 
 fn is_sse(++c: x86_64_reg_class) -> bool {
