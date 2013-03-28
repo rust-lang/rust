@@ -1,4 +1,4 @@
-Version 0.6 (March 2013)
+Version 0.6 (April 2013)
 ---------------------------
 
    * ~2100 changes, numerous bugfixes
