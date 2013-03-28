@@ -232,7 +232,7 @@ pub fn Parser(sess: @mut ParseSess,
         token: @mut copy tok0.tok,
         span: @mut copy tok0.sp,
         last_span: @mut copy tok0.sp,
-        buffer: @mut [copy tok0, .. 4],
+        buffer: @mut ([copy tok0, .. 4]),
         buffer_start: @mut 0,
         buffer_end: @mut 0,
         tokens_consumed: @mut 0,
@@ -1653,12 +1653,11 @@ pub impl Parser {
             hi = e.span.hi;
             // HACK: turn @[...] into a @-evec
             ex = match e.node {
-              expr_vec(*) if m == m_mutbl =>
+              expr_vec(*) | expr_repeat(*) if m == m_mutbl =>
                 expr_vstore(e, expr_vstore_mut_box),
-              expr_vec(*) if m == m_imm => expr_vstore(e, expr_vstore_box),
-              expr_lit(@codemap::spanned {
-                  node: lit_str(_), span: _}) if m == m_imm =>
-                expr_vstore(e, expr_vstore_box),
+              expr_vec(*) |
+              expr_lit(@codemap::spanned { node: lit_str(_), span: _}) |
+              expr_repeat(*) if m == m_imm => expr_vstore(e, expr_vstore_box),
               _ => expr_unary(box(m), e)
             };
           }
@@ -1673,8 +1672,9 @@ pub impl Parser {
             hi = e.span.hi;
             // HACK: turn ~[...] into a ~-evec
             ex = match e.node {
-              expr_vec(*) | expr_lit(@codemap::spanned {
-                node: lit_str(_), span: _})
+              expr_vec(*) |
+              expr_lit(@codemap::spanned { node: lit_str(_), span: _}) |
+              expr_repeat(*)
               if m == m_imm => expr_vstore(e, expr_vstore_uniq),
               _ => expr_unary(uniq(m), e)
             };
