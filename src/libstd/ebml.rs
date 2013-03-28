@@ -411,13 +411,13 @@ pub mod reader {
         }
 
         #[cfg(stage0)]
-        fn read_option<T>(&self, f: &fn() -> T) -> Option<T> {
+        fn read_option<T>(&self, f: &fn(bool) -> T) -> T {
             debug!("read_option()");
             do self.read_enum("Option") || {
                 do self.read_enum_variant |idx| {
                     match idx {
-                        0 => None,
-                        1 => Some(f()),
+                        0 => f(false),
+                        1 => f(true),
                         _ => fail!(),
                     }
                 }
@@ -427,13 +427,13 @@ pub mod reader {
         #[cfg(stage1)]
         #[cfg(stage2)]
         #[cfg(stage3)]
-        fn read_option<T>(&self, f: &fn() -> T) -> Option<T> {
+        fn read_option<T>(&self, f: &fn(bool) -> T) -> T {
             debug!("read_option()");
             do self.read_enum("Option") || {
                 do self.read_enum_variant(["None", "Some"]) |idx| {
                     match idx {
-                        0 => None,
-                        1 => Some(f()),
+                        0 => f(false),
+                        1 => f(true),
                         _ => fail!(),
                     }
                 }
