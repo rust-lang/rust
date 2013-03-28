@@ -762,8 +762,7 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
   optflag(~"", ~"test", ~"Build a test harness"),
   optopt(~"", ~"target",
                         ~"Target triple cpu-manufacturer-kernel[-os]
-                          to compile for (see
-         http://sources.redhat.com/autobook/autobook/autobook_17.html
+                          to compile for (see chapter 3.4 of http://www.sourceware.org/autobook/
                           for detail)", ~"TRIPLE"),
   optopt(~"", ~"android-cross-path",
          ~"The path to the Android NDK", "PATH"),
