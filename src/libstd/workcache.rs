@@ -27,7 +27,6 @@ use core::run;
 use core::hashmap::linear::LinearMap;
 use core::task;
 use core::to_bytes;
-use core::mutable::Mut;
 
 /**
 *
@@ -168,7 +167,7 @@ impl<D:Decoder> Decodable<D> for WorkMap {
 struct Database {
     db_filename: Path,
     db_cache: LinearMap<~str, ~str>,
-    mut db_dirty: bool
+    db_dirty: bool
 }
 
 pub impl Database {
@@ -210,8 +209,8 @@ pub impl Logger {
 }
 
 struct Context {
-    db: @Mut<Database>,
-    logger: @Mut<Logger>,
+    db: @mut Database,
+    logger: @mut Logger,
     cfg: @json::Object,
     freshness: LinearMap<~str,@fn(&str,&str)->bool>
 }
@@ -228,7 +227,7 @@ struct Exec {
 }
 
 struct Work<T> {
-    prep: @Mut<Prep>,
+    prep: @mut Prep,
     res: Option<Either<T,PortOne<(Exec,T)>>>
 }
 
@@ -261,8 +260,8 @@ fn digest_file(path: &Path) -> ~str {
 
 pub impl Context {
 
-    fn new(db: @Mut<Database>,
-                  lg: @Mut<Logger>,
+    fn new(db: @mut Database,
+                  lg: @mut Logger,
                   cfg: @json::Object) -> Context {
         Context {
             db: db,
@@ -277,19 +276,19 @@ pub impl Context {
               Decodable<json::Decoder>>( // FIXME(#5121)
                   @self,
                   fn_name:&str,
-                  blk: &fn(@Mut<Prep>)->Work<T>) -> Work<T> {
-        let p = @Mut(Prep {
+                  blk: &fn(@mut Prep)->Work<T>) -> Work<T> {
+        let p = @mut Prep {
             ctxt: self,
             fn_name: fn_name.to_owned(),
             declared_inputs: WorkMap::new()
-        });
+        };
         blk(p)
     }
 }
 
 
 trait TPrep {
-    fn declare_input(&self, kind:&str, name:&str, val:&str);
+    fn declare_input(&mut self, kind:&str, name:&str, val:&str);
     fn is_fresh(&self, cat:&str, kind:&str, name:&str, val:&str) -> bool;
     fn all_fresh(&self, cat:&str, map:&WorkMap) -> bool;
     fn exec<T:Owned +
@@ -298,30 +297,25 @@ trait TPrep {
         &self, blk: ~fn(&Exec) -> T) -> Work<T>;
 }
 
-impl TPrep for @Mut<Prep> {
-    fn declare_input(&self, kind:&str, name:&str, val:&str) {
-        do self.borrow_mut |p| {
-            p.declared_inputs.insert(WorkKey::new(kind, name),
-                                     val.to_owned());
-        }
+impl TPrep for Prep {
+    fn declare_input(&mut self, kind:&str, name:&str, val:&str) {
+        self.declared_inputs.insert(WorkKey::new(kind, name),
+                                 val.to_owned());
     }
 
     fn is_fresh(&self, cat: &str, kind: &str,
                 name: &str, val: &str) -> bool {
-        do self.borrow_imm |p| {
-            let k = kind.to_owned();
-            let f = (*p.ctxt.freshness.get(&k))(name, val);
-            do p.ctxt.logger.borrow_imm |lg| {
-                if f {
-                    lg.info(fmt!("%s %s:%s is fresh",
-                                 cat, kind, name));
-                } else {
-                    lg.info(fmt!("%s %s:%s is not fresh",
-                                 cat, kind, name))
-                }
+        let k = kind.to_owned();
+        let f = (*self.ctxt.freshness.get(&k))(name, val);
+        let lg = self.ctxt.logger;
+            if f {
+                lg.info(fmt!("%s %s:%s is fresh",
+                             cat, kind, name));
+            } else {
+                lg.info(fmt!("%s %s:%s is not fresh",
+                             cat, kind, name))
             }
-            f
-        }
+        f
     }
 
     fn all_fresh(&self, cat: &str, map: &WorkMap) -> bool {
@@ -339,38 +333,34 @@ impl TPrep for @Mut<Prep> {
             &self, blk: ~fn(&Exec) -> T) -> Work<T> {
         let mut bo = Some(blk);
 
-        do self.borrow_imm |p| {
-            let cached = do p.ctxt.db.borrow_mut |db| {
-                db.prepare(p.fn_name, &p.declared_inputs)
-            };
+        let cached = self.ctxt.db.prepare(self.fn_name, &self.declared_inputs);
 
-            match cached {
-                Some((ref disc_in, ref disc_out, ref res))
-                if self.all_fresh("declared input",
-                                  &p.declared_inputs) &&
-                self.all_fresh("discovered input", disc_in) &&
-                self.all_fresh("discovered output", disc_out) => {
-                    Work::new(*self, Left(json_decode(*res)))
+        match cached {
+            Some((ref disc_in, ref disc_out, ref res))
+            if self.all_fresh("declared input",
+                              &self.declared_inputs) &&
+            self.all_fresh("discovered input", disc_in) &&
+            self.all_fresh("discovered output", disc_out) => {
+                Work::new(@mut *self, Left(json_decode(*res)))
+            }
+
+            _ => {
+                let (chan, port) = oneshot::init();
+                let mut blk = None;
+                blk <-> bo;
+                let blk = blk.unwrap();
+                let chan = Cell(chan);
+
+                do task::spawn || {
+                    let exe = Exec {
+                        discovered_inputs: WorkMap::new(),
+                        discovered_outputs: WorkMap::new(),
+                    };
+                    let chan = chan.take();
+                    let v = blk(&exe);
+                    send_one(chan, (exe, v));
                 }
-
-                _ => {
-                    let (chan, port) = oneshot::init();
-                    let mut blk = None;
-                    blk <-> bo;
-                    let blk = blk.unwrap();
-                    let chan = Cell(chan);
-                    do task::spawn || {
-                        let exe = Exec {
-                            discovered_inputs: WorkMap::new(),
-                            discovered_outputs: WorkMap::new(),
-                        };
-                        let chan = chan.take();
-                        let v = blk(&exe);
-                        send_one(chan, (exe, v));
-                    }
-
-                    Work::new(*self, Right(port))
-                }
+                Work::new(@mut *self, Right(port))
             }
         }
     }
@@ -379,7 +369,7 @@ impl TPrep for @Mut<Prep> {
 pub impl<T:Owned +
          Encodable<json::Encoder> +
          Decodable<json::Decoder>> Work<T> { // FIXME(#5121)
-    fn new(p: @Mut<Prep>, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
+    fn new(p: @mut Prep, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
         Work { prep: p, res: Some(e) }
     }
 }
@@ -404,15 +394,13 @@ fn unwrap<T:Owned +
 
             let s = json_encode(&v);
 
-            do ww.prep.borrow_imm |p| {
-                do p.ctxt.db.borrow_mut |db| {
-                    db.cache(p.fn_name,
-                             &p.declared_inputs,
-                             &exe.discovered_inputs,
-                             &exe.discovered_outputs,
-                             s);
-                }
-            }
+            let p = &*ww.prep;
+            let db = p.ctxt.db;
+            db.cache(p.fn_name,
+                 &p.declared_inputs,
+                 &exe.discovered_inputs,
+                 &exe.discovered_outputs,
+                 s);
             v
         }
     }
@@ -422,10 +410,10 @@ fn unwrap<T:Owned +
 fn test() {
     use core::io::WriterUtil;
 
-    let db = @Mut(Database { db_filename: Path("db.json"),
+    let db = @mut Database { db_filename: Path("db.json"),
                              db_cache: LinearMap::new(),
-                             db_dirty: false });
-    let lg = @Mut(Logger { a: () });
+                             db_dirty: false };
+    let lg = @mut Logger { a: () };
     let cfg = @LinearMap::new();
     let cx = @Context::new(db, lg, cfg);
     let w:Work<~str> = do cx.prep("test1") |prep| {
