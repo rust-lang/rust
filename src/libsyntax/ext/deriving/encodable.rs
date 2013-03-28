@@ -81,7 +81,8 @@ fn create_derived_encodable_impl(
         generics,
         methods,
         trait_path,
-        generic_ty_params
+        generic_ty_params,
+        opt_vec::Empty
     )
 }
 
@@ -306,7 +307,7 @@ fn expand_deriving_encodable_enum_method(
         let variant_arg_len = variant_arg_count(cx, span, variant);
         for uint::range(0, variant_arg_len) |j| {
             // Create the expression for this field.
-            let field_ident = cx.ident_of(~"__self" + j.to_str());
+            let field_ident = cx.ident_of(~"__self_" + j.to_str());
             let field = build::mk_path(cx, span, ~[ field_ident ]);
 
             // Call the substructure method.
