@@ -126,7 +126,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: 
 type Registers = [uint, ..22];
 
 #[cfg(target_arch = "x86_64")]
-fn new_regs() -> ~Registers { ~[0, .. 22] }
+fn new_regs() -> ~Registers { ~([0, .. 22]) }
 
 #[cfg(target_arch = "x86_64")]
 fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
