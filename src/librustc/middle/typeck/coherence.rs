@@ -333,10 +333,16 @@ pub impl CoherenceChecker {
             let new_id = parse::next_node_id(tcx.sess.parse_sess);
             let new_did = local_def(new_id);
 
+            let new_method_ty = @ty::method {
+                def_id: new_did,
+                ..copy *trait_method
+            };
+
             // XXX: Perform substitutions.
             let new_polytype = ty::lookup_item_type(tcx,
                                                     trait_method.def_id);
             tcx.tcache.insert(new_did, new_polytype);
+            tcx.methods.insert(new_did, new_method_ty);
 
             // Pair the new synthesized ID up with the
             // ID of the method.
@@ -498,7 +504,7 @@ pub impl CoherenceChecker {
 
     fn each_provided_trait_method(&self,
             trait_did: ast::def_id,
-            f: &fn(x: &ty::method) -> bool) {
+            f: &fn(x: @ty::method) -> bool) {
         // Make a list of all the names of the provided methods.
         // XXX: This is horrible.
         let mut provided_method_idents = HashSet::new();

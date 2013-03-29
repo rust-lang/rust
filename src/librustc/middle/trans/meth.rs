@@ -376,7 +376,8 @@ pub fn method_with_name(ccx: @CrateContext, impl_id: ast::def_id,
     }
 }
 
-pub fn method_with_name_or_default(ccx: @CrateContext, impl_id: ast::def_id,
+pub fn method_with_name_or_default(ccx: @CrateContext,
+                                   impl_id: ast::def_id,
                                    name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
         match *ccx.tcx.items.get(&impl_id.node) {

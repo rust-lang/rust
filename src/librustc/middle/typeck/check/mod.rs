@@ -2125,7 +2125,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     match expr.node {
       ast::expr_vstore(ev, vst) => {
         let typ = match ev.node {
-          ast::expr_lit(@codemap::spanned { node: ast::lit_str(s), _ }) => {
+          ast::expr_lit(@codemap::spanned { node: ast::lit_str(_), _ }) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             ty::mk_estr(tcx, tt)
           }
@@ -2162,7 +2162,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
           }
           ast::expr_repeat(element, count_expr, mutbl) => {
-            let count = ty::eval_repeat_count(tcx, count_expr);
+            let _ = ty::eval_repeat_count(tcx, count_expr);
             check_expr_with_hint(fcx, count_expr, ty::mk_uint(tcx));
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             let mutability = match vst {
