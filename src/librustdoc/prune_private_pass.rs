@@ -85,7 +85,7 @@ fn strip_priv_methods(
         let ast_method = do methods.find |m| {
             extract::to_str(m.ident) == method.name
         };
-        fail_unless!(ast_method.is_some());
+        assert!(ast_method.is_some());
         let ast_method = ast_method.unwrap();
         match ast_method.vis {
             ast::public => true,
@@ -157,7 +157,7 @@ fn is_visible(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
 #[test]
 fn should_prune_items_without_pub_modifier() {
     let doc = test::mk_doc(~"mod a { }");
-    fail_unless!(vec::is_empty(doc.cratemod().mods()));
+    assert!(vec::is_empty(doc.cratemod().mods()));
 }
 
 #[test]
@@ -168,7 +168,7 @@ fn should_not_prune_trait_impls() {
           trait Foo { } \
           impl Foo for int { } \
           ");
-    fail_unless!(!doc.cratemod().impls().is_empty());
+    assert!(!doc.cratemod().impls().is_empty());
 }
 
 #[test]
@@ -178,7 +178,7 @@ fn should_prune_associated_methods_without_vis_modifier_on_impls_without_vis_mod
           pub fn bar() { }\
           fn baz() { }\
           }");
-    fail_unless!(doc.cratemod().impls()[0].methods.len() == 1);
+    assert!(doc.cratemod().impls()[0].methods.len() == 1);
 }
 
 #[test]
@@ -188,7 +188,7 @@ fn should_prune_priv_associated_methods_on_impls_without_vis_modifier() {
           pub fn bar() { }\
           priv fn baz() { }\
           }");
-    fail_unless!(doc.cratemod().impls()[0].methods.len() == 1);
+    assert!(doc.cratemod().impls()[0].methods.len() == 1);
 }
 
 #[test]
@@ -198,7 +198,7 @@ fn should_prune_priv_associated_methods_on_pub_impls() {
           fn bar() { }\
           priv fn baz() { }\
           }");
-    fail_unless!(doc.cratemod().impls()[0].methods.len() == 1);
+    assert!(doc.cratemod().impls()[0].methods.len() == 1);
 }
 
 #[test]
@@ -208,7 +208,7 @@ fn should_prune_associated_methods_without_vis_modifier_on_priv_impls() {
           pub fn bar() { }\
           fn baz() { }\
           }");
-    fail_unless!(doc.cratemod().impls()[0].methods.len() == 1);
+    assert!(doc.cratemod().impls()[0].methods.len() == 1);
 }
 
 #[test]
@@ -218,7 +218,7 @@ fn should_prune_priv_associated_methods_on_priv_impls() {
           pub fn bar() { }\
           priv fn baz() { }\
           }");
-    fail_unless!(doc.cratemod().impls()[0].methods.len() == 1);
+    assert!(doc.cratemod().impls()[0].methods.len() == 1);
 }
 
 #[test]
@@ -227,7 +227,7 @@ fn should_prune_associated_impls_with_no_pub_methods() {
         ~"priv impl Foo {\
           fn baz() { }\
           }");
-    fail_unless!(doc.cratemod().impls().is_empty());
+    assert!(doc.cratemod().impls().is_empty());
 }
 
 #[test]
@@ -236,7 +236,7 @@ fn should_not_prune_associated_impls_with_pub_methods() {
         ~" \
           impl Foo { pub fn bar() { } } \
           ");
-    fail_unless!(!doc.cratemod().impls().is_empty());
+    assert!(!doc.cratemod().impls().is_empty());
 }
 
 

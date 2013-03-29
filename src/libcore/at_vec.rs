@@ -292,30 +292,30 @@ pub fn test() {
     }
 
     assert_eq!(seq_range(10, 15), @[10, 11, 12, 13, 14]);
-    fail_unless!(from_fn(5, |x| x+1) == @[1, 2, 3, 4, 5]);
-    fail_unless!(from_elem(5, 3.14) == @[3.14, 3.14, 3.14, 3.14, 3.14]);
+    assert!(from_fn(5, |x| x+1) == @[1, 2, 3, 4, 5]);
+    assert!(from_elem(5, 3.14) == @[3.14, 3.14, 3.14, 3.14, 3.14]);
 }
 
 #[test]
 pub fn append_test() {
-    fail_unless!(@[1,2,3] + @[4,5,6] == @[1,2,3,4,5,6]);
+    assert!(@[1,2,3] + @[4,5,6] == @[1,2,3,4,5,6]);
 }
 
 #[test]
 pub fn test_from_owned() {
-    fail_unless!(from_owned::<int>(~[]) == @[]);
-    fail_unless!(from_owned(~[true]) == @[true]);
-    fail_unless!(from_owned(~[1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
-    fail_unless!(from_owned(~[~"abc", ~"123"]) == @[~"abc", ~"123"]);
-    fail_unless!(from_owned(~[~[42]]) == @[~[42]]);
+    assert!(from_owned::<int>(~[]) == @[]);
+    assert!(from_owned(~[true]) == @[true]);
+    assert!(from_owned(~[1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
+    assert!(from_owned(~[~"abc", ~"123"]) == @[~"abc", ~"123"]);
+    assert!(from_owned(~[~[42]]) == @[~[42]]);
 }
 
 #[test]
 pub fn test_from_slice() {
-    fail_unless!(from_slice::<int>([]) == @[]);
-    fail_unless!(from_slice([true]) == @[true]);
-    fail_unless!(from_slice([1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
-    fail_unless!(from_slice([@"abc", @"123"]) == @[@"abc", @"123"]);
-    fail_unless!(from_slice([@[42]]) == @[@[42]]);
+    assert!(from_slice::<int>([]) == @[]);
+    assert!(from_slice([true]) == @[true]);
+    assert!(from_slice([1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
+    assert!(from_slice([@"abc", @"123"]) == @[@"abc", @"123"]);
+    assert!(from_slice([@[42]]) == @[@[42]]);
 }
 

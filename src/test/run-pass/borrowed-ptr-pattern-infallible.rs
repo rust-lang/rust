@@ -10,7 +10,7 @@
 
 pub fn main() {
     let (&x, &y, &z) = (&3, &'a', &@"No pets!");
-    fail_unless!(x == 3);
-    fail_unless!(y == 'a');
-    fail_unless!(z == @"No pets!");
+    assert!(x == 3);
+    assert!(y == 'a');
+    assert!(z == @"No pets!");
 }

@@ -22,5 +22,5 @@ pub fn main() {
     grow(&mut v);
     let len = vec::len::<int>(v);
     debug!(len);
-    fail_unless!((len == 3 as uint));
+    assert!((len == 3 as uint));
 }

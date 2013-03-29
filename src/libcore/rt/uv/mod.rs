@@ -89,7 +89,7 @@ pub struct Loop {
 pub impl Loop {
     fn new() -> Loop {
         let handle = unsafe { uvll::loop_new() };
-        fail_unless!(handle.is_not_null());
+        assert!(handle.is_not_null());
         NativeHandle::from_native_handle(handle)
     }
 
@@ -126,8 +126,8 @@ pub impl IdleWatcher {
     fn new(loop_: &mut Loop) -> IdleWatcher {
         unsafe {
             let handle = uvll::idle_new();
-            fail_unless!(handle.is_not_null());
-            fail_unless!(0 == uvll::idle_init(loop_.native_handle(), handle));
+            assert!(handle.is_not_null());
+            assert!(0 == uvll::idle_init(loop_.native_handle(), handle));
             uvll::set_data_for_uv_handle(handle, null::<()>());
             NativeHandle::from_native_handle(handle)
         }
@@ -137,7 +137,7 @@ pub impl IdleWatcher {
 
         set_watcher_callback(self, cb);
         unsafe {
-            fail_unless!(0 == uvll::idle_start(self.native_handle(), idle_cb))
+            assert!(0 == uvll::idle_start(self.native_handle(), idle_cb))
         };
 
         extern fn idle_cb(handle: *uvll::uv_idle_t, status: c_int) {
@@ -149,7 +149,7 @@ pub impl IdleWatcher {
     }
 
     fn stop(&mut self) {
-        unsafe { fail_unless!(0 == uvll::idle_stop(self.native_handle())); }
+        unsafe { assert!(0 == uvll::idle_stop(self.native_handle())); }
     }
 
     fn close(self) {
@@ -183,7 +183,7 @@ pub impl UvError {
         unsafe {
             let inner = match self { &UvError(ref a) => a };
             let name_str = uvll::err_name(inner);
-            fail_unless!(name_str.is_not_null());
+            assert!(name_str.is_not_null());
             from_c_str(name_str)
         }
     }
@@ -192,7 +192,7 @@ pub impl UvError {
         unsafe {
             let inner = match self { &UvError(ref a) => a };
             let desc_str = uvll::strerror(inner);
-            fail_unless!(desc_str.is_not_null());
+            assert!(desc_str.is_not_null());
             from_c_str(desc_str)
         }
     }
@@ -208,7 +208,7 @@ impl ToStr for UvError {
 fn error_smoke_test() {
     let err = uvll::uv_err_t { code: 1, sys_errno_: 1 };
     let err: UvError = UvError(err);
-    fail_unless!(err.to_str() == ~"EOF: end of file");
+    assert!(err.to_str() == ~"EOF: end of file");
 }
 
 
@@ -274,7 +274,7 @@ pub fn borrow_callback_from_watcher<H, W: Watcher + NativeHandle<*H>,
     unsafe {
         let handle = watcher.native_handle();
         let handle_data: *c_void = uvll::get_data_for_uv_handle(handle);
-        fail_unless!(handle_data.is_not_null());
+        assert!(handle_data.is_not_null());
         let cb = transmute::<&*c_void, &~CB>(&handle_data);
         return &**cb;
     }
@@ -287,7 +287,7 @@ pub fn take_callback_from_watcher<H, W: Watcher + NativeHandle<*H>, CB: Callback
     unsafe {
         let handle = watcher.native_handle();
         let handle_data: *c_void = uvll::get_data_for_uv_handle(handle);
-        fail_unless!(handle_data.is_not_null());
+        assert!(handle_data.is_not_null());
         uvll::set_data_for_uv_handle(handle, null::<()>());
         let cb: ~CB = transmute::<*c_void, ~CB>(handle_data);
         let cb = match cb { ~cb => cb };
@@ -341,7 +341,7 @@ fn test_slice_to_uv_buf() {
     let slice = [0, .. 20];
     let buf = slice_to_uv_buf(slice);
 
-    fail_unless!(buf.len == 20);
+    assert!(buf.len == 20);
 
     unsafe {
         let base = transmute::<*u8, *mut u8>(buf.base);
@@ -349,8 +349,8 @@ fn test_slice_to_uv_buf() {
         (*ptr::mut_offset(base, 1)) = 2;
     }
 
-    fail_unless!(slice[0] == 1);
-    fail_unless!(slice[1] == 2);
+    assert!(slice[0] == 1);
+    assert!(slice[1] == 2);
 }
 
 /// The uv buffer type
@@ -367,7 +367,7 @@ pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
 /// Transmute an owned vector to a Buf
 pub fn vec_to_uv_buf(v: ~[u8]) -> Buf {
     let data = unsafe { malloc(v.len() as size_t) } as *u8;
-    fail_unless!(data.is_not_null());
+    assert!(data.is_not_null());
     do vec::as_imm_buf(v) |b, l| {
         let data = data as *mut u8;
         unsafe { ptr::copy_memory(data, b, l) }
@@ -416,7 +416,7 @@ fn idle_smoke_test() {
         let count_ptr: *mut int = &mut count;
         do idle_watcher.start |idle_watcher, status| {
             let mut idle_watcher = idle_watcher;
-            fail_unless!(status.is_none());
+            assert!(status.is_none());
             if unsafe { *count_ptr == 10 } {
                 idle_watcher.stop();
                 idle_watcher.close();
@@ -426,7 +426,7 @@ fn idle_smoke_test() {
         }
         loop_.run();
         loop_.close();
-        fail_unless!(count == 10);
+        assert!(count == 10);
     }
 }
 
@@ -437,10 +437,10 @@ fn idle_start_stop_start() {
         let mut idle_watcher = { IdleWatcher::new(&mut loop_) };
         do idle_watcher.start |idle_watcher, status| {
             let mut idle_watcher = idle_watcher;
-            fail_unless!(status.is_none());
+            assert!(status.is_none());
             idle_watcher.stop();
             do idle_watcher.start |idle_watcher, status| {
-                fail_unless!(status.is_none());
+                assert!(status.is_none());
                 let mut idle_watcher = idle_watcher;
                 idle_watcher.stop();
                 idle_watcher.close();

@@ -14,12 +14,12 @@ use uint::range;
 
 // random uint less than n
 fn under(r : rand::rng, n : uint) -> uint {
-    fail_unless!(n != 0u); r.next() as uint % n
+    assert!(n != 0u); r.next() as uint % n
 }
 
 // random choice from a vec
 fn choice<T:copy>(r : rand::rng, v : ~[const T]) -> T {
-    fail_unless!(vec::len(v) != 0u); v[under(r, vec::len(v))]
+    assert!(vec::len(v) != 0u); v[under(r, vec::len(v))]
 }
 
 // k in n chance of being true

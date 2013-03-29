@@ -19,8 +19,8 @@ enum bar {
 }
 
 pub fn main() {
-    fail_unless!(~"a(22)" == fmt!("%?", a(22u)));
-    fail_unless!(~"b(~\"hi\")" == fmt!("%?", b(~"hi")));
-    fail_unless!(~"c" == fmt!("%?", c));
-    fail_unless!(~"d" == fmt!("%?", d));
+    assert!(~"a(22)" == fmt!("%?", a(22u)));
+    assert!(~"b(~\"hi\")" == fmt!("%?", b(~"hi")));
+    assert!(~"c" == fmt!("%?", c));
+    assert!(~"d" == fmt!("%?", d));
 }

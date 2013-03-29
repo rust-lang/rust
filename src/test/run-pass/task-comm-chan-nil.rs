@@ -19,5 +19,5 @@ pub fn main() {
     let (po, ch) = comm::stream();
     ch.send(());
     let n: () = po.recv();
-    fail_unless!((n == ()));
+    assert!((n == ()));
 }

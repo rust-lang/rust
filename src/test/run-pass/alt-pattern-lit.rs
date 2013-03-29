@@ -18,4 +18,4 @@ fn altlit(f: int) -> int {
     }
 }
 
-pub fn main() { fail_unless!((altlit(10) == 20)); fail_unless!((altlit(11) == 22)); }
+pub fn main() { assert!((altlit(10) == 20)); assert!((altlit(11) == 22)); }

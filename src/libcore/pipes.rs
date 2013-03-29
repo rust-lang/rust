@@ -153,7 +153,7 @@ pub impl PacketHeader {
     unsafe fn mark_blocked(&self, this: *rust_task) -> State {
         rustrt::rust_task_ref(this);
         let old_task = swap_task(&mut self.blocked_task, this);
-        fail_unless!(old_task.is_null());
+        assert!(old_task.is_null());
         swap_state_acq(&mut self.state, Blocked)
     }
 
@@ -175,7 +175,7 @@ pub impl PacketHeader {
     // continuum. It ends making multiple unique pointers to the same
     // thing. You'll proobably want to forget them when you're done.
     unsafe fn buf_header(&self) -> ~BufferHeader {
-        fail_unless!(self.buffer.is_not_null());
+        assert!(self.buffer.is_not_null());
         reinterpret_cast(&self.buffer)
     }
 
@@ -379,8 +379,8 @@ pub fn send<T,Tbuffer>(p: SendPacketBuffered<T,Tbuffer>, payload: T) -> bool {
     let header = p.header();
     let p_ = p.unwrap();
     let p = unsafe { &*p_ };
-    fail_unless!(ptr::addr_of(&(p.header)) == header);
-    fail_unless!(p.payload.is_none());
+    assert!(ptr::addr_of(&(p.header)) == header);
+    assert!(p.payload.is_none());
     p.payload = Some(payload);
     let old_state = swap_state_rel(&mut p.header.state, Full);
     match old_state {
@@ -482,7 +482,7 @@ pub fn try_recv<T:Owned,Tbuffer:Owned>(p: RecvPacketBuffered<T, Tbuffer>)
     debug!("blocked = %x this = %x old_task = %x",
            p.header.blocked_task as uint,
            this as uint, old_task as uint);
-    fail_unless!(old_task.is_null());
+    assert!(old_task.is_null());
     let mut first = true;
     let mut count = SPIN_COUNT;
     loop {
@@ -527,7 +527,7 @@ pub fn try_recv<T:Owned,Tbuffer:Owned>(p: RecvPacketBuffered<T, Tbuffer>)
           Terminated => {
             // This assert detects when we've accidentally unsafely
             // casted too big of a number to a state.
-            fail_unless!(old_state == Terminated);
+            assert!(old_state == Terminated);
 
             let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
             if !old_task.is_null() {
@@ -576,7 +576,7 @@ fn sender_terminate<T:Owned>(p: *Packet<T>) {
         fail!(~"you dun goofed")
       }
       Terminated => {
-        fail_unless!(p.header.blocked_task.is_null());
+        assert!(p.header.blocked_task.is_null());
         // I have to clean up, use drop_glue
       }
     }
@@ -587,7 +587,7 @@ fn receiver_terminate<T:Owned>(p: *Packet<T>) {
     let p = unsafe { &*p };
     match swap_state_rel(&mut p.header.state, Terminated) {
       Empty => {
-        fail_unless!(p.header.blocked_task.is_null());
+        assert!(p.header.blocked_task.is_null());
         // the sender will clean up
       }
       Blocked => {
@@ -595,12 +595,12 @@ fn receiver_terminate<T:Owned>(p: *Packet<T>) {
         if !old_task.is_null() {
             unsafe {
                 rustrt::rust_task_deref(old_task);
-                fail_unless!(old_task == rustrt::rust_get_task());
+                assert!(old_task == rustrt::rust_get_task());
             }
         }
       }
       Terminated | Full => {
-        fail_unless!(p.header.blocked_task.is_null());
+        assert!(p.header.blocked_task.is_null());
         // I have to clean up, use drop_glue
       }
     }
@@ -663,7 +663,7 @@ pub fn wait_many<T: Selectable>(pkts: &[T]) -> uint {
     debug!("%?, %?", ready_packet, pkts[ready_packet]);
 
     unsafe {
-        fail_unless!((*pkts[ready_packet].header()).state == Full
+        assert!((*pkts[ready_packet].header()).state == Full
                      || (*pkts[ready_packet].header()).state == Terminated);
     }
 
@@ -995,6 +995,6 @@ pub mod test {
             let _chan = chan;
         }
 
-        fail_unless!(!port.peek());
+        assert!(!port.peek());
     }
 }

@@ -255,8 +255,8 @@ pub struct param_substs {
 
 pub impl param_substs {
     fn validate(&self) {
-        for self.tys.each |t| { fail_unless!(!ty::type_needs_infer(*t)); }
-        for self.self_ty.each |t| { fail_unless!(!ty::type_needs_infer(*t)); }
+        for self.tys.each |t| { assert!(!ty::type_needs_infer(*t)); }
+        for self.self_ty.each |t| { assert!(!ty::type_needs_infer(*t)); }
     }
 }
 
@@ -1359,7 +1359,7 @@ pub fn monomorphize_type(bcx: block, t: ty::t) -> ty::t {
         Some(substs) => {
             ty::subst_tps(bcx.tcx(), substs.tys, substs.self_ty, t)
         }
-        _ => { fail_unless!(!ty::type_has_params(t)); t }
+        _ => { assert!(!ty::type_has_params(t)); t }
     }
 }
 

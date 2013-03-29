@@ -22,7 +22,7 @@ fn what() {
     let i = @mut false;
     let dont = {||the(i)};
     dont();
-    fail_unless!((*i));
+    assert!((*i));
 }
 
 fn zombiejesus() {
@@ -57,8 +57,8 @@ fn notsure() {
 
 fn canttouchthis() -> uint {
     fn p() -> bool { true }
-    let _a = (fail_unless!((true)) == (fail_unless!(p())));
-    let _c = (fail_unless!((p())) == ());
+    let _a = (assert!((true)) == (assert!(p())));
+    let _c = (assert!((p())) == ());
     let _b: bool = (debug!("%d", 0) == (return 0u));
 }
 

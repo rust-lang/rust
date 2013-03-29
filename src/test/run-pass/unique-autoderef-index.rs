@@ -10,5 +10,5 @@
 
 pub fn main() {
     let i = ~~[100];
-    fail_unless!(i[0] == 100);
+    assert!(i[0] == 100);
 }

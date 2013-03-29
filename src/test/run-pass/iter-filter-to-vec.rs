@@ -11,9 +11,9 @@
 fn is_even(x: &uint) -> bool { (*x % 2) == 0 }
 
 pub fn main() {
-    fail_unless!([1, 3].filter_to_vec(is_even) == ~[]);
-    fail_unless!([1, 2, 3].filter_to_vec(is_even) == ~[2]);
-    fail_unless!(iter::filter_to_vec(&None::<uint>, is_even) == ~[]);
-    fail_unless!(iter::filter_to_vec(&Some(1u), is_even) == ~[]);
-    fail_unless!(iter::filter_to_vec(&Some(2u), is_even) == ~[2]);
+    assert!([1, 3].filter_to_vec(is_even) == ~[]);
+    assert!([1, 2, 3].filter_to_vec(is_even) == ~[2]);
+    assert!(iter::filter_to_vec(&None::<uint>, is_even) == ~[]);
+    assert!(iter::filter_to_vec(&Some(1u), is_even) == ~[]);
+    assert!(iter::filter_to_vec(&Some(2u), is_even) == ~[2]);
 }

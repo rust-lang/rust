@@ -17,7 +17,7 @@ pub fn main() {
       break;
     }
   }
-  fail_unless!((i == 10u));
+  assert!((i == 10u));
   let mut is_even = false;
   loop {
     if i == 21u {
@@ -31,7 +31,7 @@ pub fn main() {
     }
     is_even = true;
   }
-  fail_unless!(!is_even);
+  assert!(!is_even);
   loop {
     error!(~"c");
     if i == 22u {
@@ -44,5 +44,5 @@ pub fn main() {
     }
     is_even = true;
   }
-  fail_unless!(is_even);
+  assert!(is_even);
 }

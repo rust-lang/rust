@@ -17,5 +17,5 @@ fn main() {
 }
 
 fn startfn() {
-    fail_unless!(str::is_empty(~"Ensure that the child task runs by failing"));
+    assert!(str::is_empty(~"Ensure that the child task runs by failing"));
 }

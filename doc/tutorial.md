@@ -381,7 +381,7 @@ expression to the given type.
 ~~~~
 let x: float = 4.0;
 let y: uint = x as uint;
-fail_unless!(y == 4u);
+assert!(y == 4u);
 ~~~~
 
 ## Syntax extensions
@@ -850,8 +850,8 @@ Ending the function with a semicolon like so is equivalent to returning `()`.
 fn line(a: int, b: int, x: int) -> int { a * x + b  }
 fn oops(a: int, b: int, x: int) -> ()  { a * x + b; }
 
-fail_unless!(8 == line(5, 3, 1));
-fail_unless!(() == oops(5, 3, 1));
+assert!(8 == line(5, 3, 1));
+assert!(() == oops(5, 3, 1));
 ~~~~
 
 As with `match` expressions and `let` bindings, function arguments support
@@ -1417,8 +1417,8 @@ and [`core::str`]. Here are some examples.
 let crayons = [Almond, AntiqueBrass, Apricot];
 
 // Check the length of the vector
-fail_unless!(crayons.len() == 3);
-fail_unless!(!crayons.is_empty());
+assert!(crayons.len() == 3);
+assert!(!crayons.is_empty());
 
 // Iterate over a vector, obtaining a pointer to each element
 for crayons.each |crayon| {

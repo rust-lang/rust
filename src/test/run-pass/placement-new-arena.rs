@@ -17,5 +17,5 @@ pub fn main() {
     let p = &arena::Arena();
     let x = p.alloc(|| 4u);
     io::print(fmt!("%u", *x));
-    fail_unless!(*x == 4u);
+    assert!(*x == 4u);
 }

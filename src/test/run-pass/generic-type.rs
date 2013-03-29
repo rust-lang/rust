@@ -14,6 +14,6 @@ struct Pair<T> {x: T, y: T}
 
 pub fn main() {
     let x: Pair<int> = Pair {x: 10, y: 12};
-    fail_unless!((x.x == 10));
-    fail_unless!((x.y == 12));
+    assert!((x.x == 10));
+    assert!((x.y == 12));
 }

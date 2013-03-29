@@ -51,7 +51,7 @@ fn spawn_supervised_blocking(myname: &str, +f: ~fn()) {
     task::task().future_result(|+r| res = Some(r)).supervised().spawn(f);
     error!("%s group waiting", myname);
     let x = res.unwrap().recv();
-    fail_unless!(x == task::Success);
+    assert!(x == task::Success);
 }
 
 fn main() {
@@ -81,5 +81,5 @@ fn main() {
         error!("Grandparent group wakes up and fails");
         fail!();
     };
-    fail_unless!(x.is_err());
+    assert!(x.is_err());
 }

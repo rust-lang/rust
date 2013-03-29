@@ -8,5 +8,5 @@ pub fn main() {
         let y = y.clone();
         |x| *x + *y
     };
-    fail_unless!(foo(@22) == 25);
+    assert!(foo(@22) == 25);
 }

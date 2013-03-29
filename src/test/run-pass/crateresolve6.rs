@@ -18,6 +18,6 @@ extern mod cr6_1 (name = "crateresolve_calories", vers = "0.1", calories="100");
 extern mod cr6_2 (name = "crateresolve_calories", vers = "0.1", calories="200");
 
 pub fn main() {
-    fail_unless!(cr6_1::f() == 100);
-    fail_unless!(cr6_2::f() == 200);
+    assert!(cr6_1::f() == 100);
+    assert!(cr6_2::f() == 200);
 }

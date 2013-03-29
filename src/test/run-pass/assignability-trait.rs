@@ -41,17 +41,17 @@ fn length<A, T: iterable<A>>(x: T) -> uint {
 pub fn main() {
     let x = ~[0,1,2,3];
     // Call a method
-    for x.iterate() |y| { fail_unless!(x[*y] == *y); }
+    for x.iterate() |y| { assert!(x[*y] == *y); }
     // Call a parameterized function
-    fail_unless!(length(x.clone()) == vec::len(x));
+    assert!(length(x.clone()) == vec::len(x));
     // Call a parameterized function, with type arguments that require
     // a borrow
-    fail_unless!(length::<int, &[int]>(x) == vec::len(x));
+    assert!(length::<int, &[int]>(x) == vec::len(x));
 
     // Now try it with a type that *needs* to be borrowed
     let z = [0,1,2,3];
     // Call a method
-    for z.iterate() |y| { fail_unless!(z[*y] == *y); }
+    for z.iterate() |y| { assert!(z[*y] == *y); }
     // Call a parameterized function
-    fail_unless!(length::<int, &[int]>(z) == vec::len(z));
+    assert!(length::<int, &[int]>(z) == vec::len(z));
 }

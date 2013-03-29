@@ -17,7 +17,7 @@ pub fn main() {
     do first_ten |i| { debug!("main"); debug!(i); sum = sum + i; }
     debug!("sum");
     debug!(sum);
-    fail_unless!((sum == 45));
+    assert!((sum == 45));
 }
 
 fn first_ten(it: &fn(int)) {

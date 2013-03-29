@@ -36,22 +36,22 @@ impl<'self> Stats for &'self [f64] {
     }
 
     fn min(self) -> f64 {
-        fail_unless!(self.len() != 0);
+        assert!(self.len() != 0);
         vec::foldl(self[0], self, |p,q| cmp::min(p, *q))
     }
 
     fn max(self) -> f64 {
-        fail_unless!(self.len() != 0);
+        assert!(self.len() != 0);
         vec::foldl(self[0], self, |p,q| cmp::max(p, *q))
     }
 
     fn mean(self) -> f64 {
-        fail_unless!(self.len() != 0);
+        assert!(self.len() != 0);
         self.sum() / (self.len() as f64)
     }
 
     fn median(self) -> f64 {
-        fail_unless!(self.len() != 0);
+        assert!(self.len() != 0);
         let mut tmp = vec::from_slice(self);
         sort::tim_sort(tmp);
         if tmp.len() & 1 == 0 {

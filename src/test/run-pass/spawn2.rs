@@ -22,15 +22,15 @@ fn child(&&args: (int, int, int, int, int, int, int, int, int)) {
     error!(i7);
     error!(i8);
     error!(i9);
-    fail_unless!((i1 == 10));
-    fail_unless!((i2 == 20));
-    fail_unless!((i3 == 30));
-    fail_unless!((i4 == 40));
-    fail_unless!((i5 == 50));
-    fail_unless!((i6 == 60));
-    fail_unless!((i7 == 70));
-    fail_unless!((i8 == 80));
-    fail_unless!((i9 == 90));
+    assert!((i1 == 10));
+    assert!((i2 == 20));
+    assert!((i3 == 30));
+    assert!((i4 == 40));
+    assert!((i5 == 50));
+    assert!((i6 == 60));
+    assert!((i7 == 70));
+    assert!((i8 == 80));
+    assert!((i9 == 90));
 }
 
 // Local Variables:

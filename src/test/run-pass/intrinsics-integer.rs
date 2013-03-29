@@ -40,83 +40,83 @@ pub fn main() {
     unsafe {
         use rusti::*;
 
-        fail_unless!((ctpop8(0i8) == 0i8));
-        fail_unless!((ctpop16(0i16) == 0i16));
-        fail_unless!((ctpop32(0i32) == 0i32));
-        fail_unless!((ctpop64(0i64) == 0i64));
+        assert!((ctpop8(0i8) == 0i8));
+        assert!((ctpop16(0i16) == 0i16));
+        assert!((ctpop32(0i32) == 0i32));
+        assert!((ctpop64(0i64) == 0i64));
 
-        fail_unless!((ctpop8(1i8) == 1i8));
-        fail_unless!((ctpop16(1i16) == 1i16));
-        fail_unless!((ctpop32(1i32) == 1i32));
-        fail_unless!((ctpop64(1i64) == 1i64));
+        assert!((ctpop8(1i8) == 1i8));
+        assert!((ctpop16(1i16) == 1i16));
+        assert!((ctpop32(1i32) == 1i32));
+        assert!((ctpop64(1i64) == 1i64));
 
-        fail_unless!((ctpop8(10i8) == 2i8));
-        fail_unless!((ctpop16(10i16) == 2i16));
-        fail_unless!((ctpop32(10i32) == 2i32));
-        fail_unless!((ctpop64(10i64) == 2i64));
+        assert!((ctpop8(10i8) == 2i8));
+        assert!((ctpop16(10i16) == 2i16));
+        assert!((ctpop32(10i32) == 2i32));
+        assert!((ctpop64(10i64) == 2i64));
 
-        fail_unless!((ctpop8(100i8) == 3i8));
-        fail_unless!((ctpop16(100i16) == 3i16));
-        fail_unless!((ctpop32(100i32) == 3i32));
-        fail_unless!((ctpop64(100i64) == 3i64));
+        assert!((ctpop8(100i8) == 3i8));
+        assert!((ctpop16(100i16) == 3i16));
+        assert!((ctpop32(100i32) == 3i32));
+        assert!((ctpop64(100i64) == 3i64));
 
-        fail_unless!((ctpop8(-1i8) == 8i8));
-        fail_unless!((ctpop16(-1i16) == 16i16));
-        fail_unless!((ctpop32(-1i32) == 32i32));
-        fail_unless!((ctpop64(-1i64) == 64i64));
+        assert!((ctpop8(-1i8) == 8i8));
+        assert!((ctpop16(-1i16) == 16i16));
+        assert!((ctpop32(-1i32) == 32i32));
+        assert!((ctpop64(-1i64) == 64i64));
 
-        fail_unless!((ctlz8(0i8) == 8i8));
-        fail_unless!((ctlz16(0i16) == 16i16));
-        fail_unless!((ctlz32(0i32) == 32i32));
-        fail_unless!((ctlz64(0i64) == 64i64));
+        assert!((ctlz8(0i8) == 8i8));
+        assert!((ctlz16(0i16) == 16i16));
+        assert!((ctlz32(0i32) == 32i32));
+        assert!((ctlz64(0i64) == 64i64));
 
-        fail_unless!((ctlz8(1i8) == 7i8));
-        fail_unless!((ctlz16(1i16) == 15i16));
-        fail_unless!((ctlz32(1i32) == 31i32));
-        fail_unless!((ctlz64(1i64) == 63i64));
+        assert!((ctlz8(1i8) == 7i8));
+        assert!((ctlz16(1i16) == 15i16));
+        assert!((ctlz32(1i32) == 31i32));
+        assert!((ctlz64(1i64) == 63i64));
 
-        fail_unless!((ctlz8(10i8) == 4i8));
-        fail_unless!((ctlz16(10i16) == 12i16));
-        fail_unless!((ctlz32(10i32) == 28i32));
-        fail_unless!((ctlz64(10i64) == 60i64));
+        assert!((ctlz8(10i8) == 4i8));
+        assert!((ctlz16(10i16) == 12i16));
+        assert!((ctlz32(10i32) == 28i32));
+        assert!((ctlz64(10i64) == 60i64));
 
-        fail_unless!((ctlz8(100i8) == 1i8));
-        fail_unless!((ctlz16(100i16) == 9i16));
-        fail_unless!((ctlz32(100i32) == 25i32));
-        fail_unless!((ctlz64(100i64) == 57i64));
+        assert!((ctlz8(100i8) == 1i8));
+        assert!((ctlz16(100i16) == 9i16));
+        assert!((ctlz32(100i32) == 25i32));
+        assert!((ctlz64(100i64) == 57i64));
 
-        fail_unless!((cttz8(-1i8) == 0i8));
-        fail_unless!((cttz16(-1i16) == 0i16));
-        fail_unless!((cttz32(-1i32) == 0i32));
-        fail_unless!((cttz64(-1i64) == 0i64));
+        assert!((cttz8(-1i8) == 0i8));
+        assert!((cttz16(-1i16) == 0i16));
+        assert!((cttz32(-1i32) == 0i32));
+        assert!((cttz64(-1i64) == 0i64));
         
-        fail_unless!((cttz8(0i8) == 8i8));
-        fail_unless!((cttz16(0i16) == 16i16));
-        fail_unless!((cttz32(0i32) == 32i32));
-        fail_unless!((cttz64(0i64) == 64i64));
+        assert!((cttz8(0i8) == 8i8));
+        assert!((cttz16(0i16) == 16i16));
+        assert!((cttz32(0i32) == 32i32));
+        assert!((cttz64(0i64) == 64i64));
 
-        fail_unless!((cttz8(1i8) == 0i8));
-        fail_unless!((cttz16(1i16) == 0i16));
-        fail_unless!((cttz32(1i32) == 0i32));
-        fail_unless!((cttz64(1i64) == 0i64));
+        assert!((cttz8(1i8) == 0i8));
+        assert!((cttz16(1i16) == 0i16));
+        assert!((cttz32(1i32) == 0i32));
+        assert!((cttz64(1i64) == 0i64));
 
-        fail_unless!((cttz8(10i8) == 1i8));
-        fail_unless!((cttz16(10i16) == 1i16));
-        fail_unless!((cttz32(10i32) == 1i32));
-        fail_unless!((cttz64(10i64) == 1i64));
+        assert!((cttz8(10i8) == 1i8));
+        assert!((cttz16(10i16) == 1i16));
+        assert!((cttz32(10i32) == 1i32));
+        assert!((cttz64(10i64) == 1i64));
 
-        fail_unless!((cttz8(100i8) == 2i8));
-        fail_unless!((cttz16(100i16) == 2i16));
-        fail_unless!((cttz32(100i32) == 2i32));
-        fail_unless!((cttz64(100i64) == 2i64));
+        assert!((cttz8(100i8) == 2i8));
+        assert!((cttz16(100i16) == 2i16));
+        assert!((cttz32(100i32) == 2i32));
+        assert!((cttz64(100i64) == 2i64));
 
-        fail_unless!((cttz8(-1i8) == 0i8));
-        fail_unless!((cttz16(-1i16) == 0i16));
-        fail_unless!((cttz32(-1i32) == 0i32));
-        fail_unless!((cttz64(-1i64) == 0i64));
+        assert!((cttz8(-1i8) == 0i8));
+        assert!((cttz16(-1i16) == 0i16));
+        assert!((cttz32(-1i32) == 0i32));
+        assert!((cttz64(-1i64) == 0i64));
 
-        fail_unless!((bswap16(0x0A0Bi16) == 0x0B0Ai16));
-        fail_unless!((bswap32(0x0ABBCC0Di32) == 0x0DCCBB0Ai32));
-        fail_unless!((bswap64(0x0122334455667708i64) == 0x0877665544332201i64));
+        assert!((bswap16(0x0A0Bi16) == 0x0B0Ai16));
+        assert!((bswap32(0x0ABBCC0Di32) == 0x0DCCBB0Ai32));
+        assert!((bswap64(0x0122334455667708i64) == 0x0877665544332201i64));
     }
 }

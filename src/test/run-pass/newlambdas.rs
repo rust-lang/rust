@@ -19,11 +19,11 @@ fn ff() -> @fn(int) -> int {
 }
 
 pub fn main() {
-    fail_unless!(f(10, |a| a) == 10);
+    assert!(f(10, |a| a) == 10);
     g(||());
-    fail_unless!(do f(10) |a| { a } == 10);
+    assert!(do f(10) |a| { a } == 10);
     do g() { }
     let _x: @fn() -> int = || 10;
     let _y: @fn(int) -> int = |a| a;
-    fail_unless!(ff()(10) == 11);
+    assert!(ff()(10) == 11);
 }

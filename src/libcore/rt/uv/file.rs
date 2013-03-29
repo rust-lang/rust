@@ -25,7 +25,7 @@ impl Request for FsRequest;
 impl FsRequest {
     fn new() -> FsRequest {
         let fs_req = unsafe { malloc_req(UV_FS) };
-        fail_unless!(fs_req.is_not_null());
+        assert!(fs_req.is_not_null());
         let fs_req = fs_req as *uvll::uv_write_t;
         unsafe { uvll::set_data_for_req(fs_req, null::<()>()); }
         NativeHandle::from_native_handle(fs_req)

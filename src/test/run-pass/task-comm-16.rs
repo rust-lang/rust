@@ -19,9 +19,9 @@ fn test_rec() {
     ch.send(r0);
     let mut r1: R;
     r1 = po.recv();
-    fail_unless!((r1.val0 == 0));
-    fail_unless!((r1.val1 == 1u8));
-    fail_unless!((r1.val2 == '2'));
+    assert!((r1.val0 == 0));
+    assert!((r1.val1 == 1u8));
+    assert!((r1.val2 == '2'));
 }
 
 fn test_vec() {
@@ -29,9 +29,9 @@ fn test_vec() {
     let v0: ~[int] = ~[0, 1, 2];
     ch.send(v0);
     let v1 = po.recv();
-    fail_unless!((v1[0] == 0));
-    fail_unless!((v1[1] == 1));
-    fail_unless!((v1[2] == 2));
+    assert!((v1[0] == 0));
+    assert!((v1[1] == 1));
+    assert!((v1[2] == 2));
 }
 
 fn test_str() {
@@ -39,10 +39,10 @@ fn test_str() {
     let s0 = ~"test";
     ch.send(s0);
     let s1 = po.recv();
-    fail_unless!((s1[0] == 't' as u8));
-    fail_unless!((s1[1] == 'e' as u8));
-    fail_unless!((s1[2] == 's' as u8));
-    fail_unless!((s1[3] == 't' as u8));
+    assert!((s1[0] == 't' as u8));
+    assert!((s1[1] == 'e' as u8));
+    assert!((s1[2] == 's' as u8));
+    assert!((s1[3] == 't' as u8));
 }
 
 enum t {
@@ -85,11 +85,11 @@ fn test_tag() {
     ch.send(tag3(10, 11u8, 'A'));
     let mut t1: t;
     t1 = po.recv();
-    fail_unless!((t1 == tag1));
+    assert!((t1 == tag1));
     t1 = po.recv();
-    fail_unless!((t1 == tag2(10)));
+    assert!((t1 == tag2(10)));
     t1 = po.recv();
-    fail_unless!((t1 == tag3(10, 11u8, 'A')));
+    assert!((t1 == tag3(10, 11u8, 'A')));
 }
 
 fn test_chan() {
@@ -102,7 +102,7 @@ fn test_chan() {
     ch1.send(10);
     let mut i: int;
     i = po0.recv();
-    fail_unless!((i == 10));
+    assert!((i == 10));
 }
 
 pub fn main() {

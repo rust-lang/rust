@@ -42,7 +42,7 @@ pub impl Results {
                 }
 
                 for uint::range(0, num_keys) |i| {
-                    fail_unless!(set.contains(&i));
+                    assert!(set.contains(&i));
                 }
             }
         }
@@ -64,7 +64,7 @@ pub impl Results {
 
             do timed(&mut self.delete_ints) {
                 for uint::range(0, num_keys) |i| {
-                    fail_unless!(set.remove(&i));
+                    assert!(set.remove(&i));
                 }
             }
         }
@@ -82,7 +82,7 @@ pub impl Results {
 
                 for uint::range(0, num_keys) |i| {
                     let s = uint::to_str(i);
-                    fail_unless!(set.contains(&s));
+                    assert!(set.contains(&s));
                 }
             }
         }
@@ -104,7 +104,7 @@ pub impl Results {
             }
             do timed(&mut self.delete_strings) {
                 for uint::range(0, num_keys) |i| {
-                    fail_unless!(set.remove(&uint::to_str(i)));
+                    assert!(set.remove(&uint::to_str(i)));
                 }
             }
         }

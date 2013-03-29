@@ -12,21 +12,21 @@
 fn test_assign() {
     let mut x: int;
     let mut y: () = x = 10;
-    fail_unless!((x == 10));
+    assert!((x == 10));
     let mut z = x = 11;
-    fail_unless!((x == 11));
+    assert!((x == 11));
     z = x = 12;
-    fail_unless!((x == 12));
+    assert!((x == 12));
 }
 
 fn test_assign_op() {
     let mut x: int = 0;
     let mut y: () = x += 10;
-    fail_unless!((x == 10));
+    assert!((x == 10));
     let mut z = x += 11;
-    fail_unless!((x == 21));
+    assert!((x == 21));
     z = x += 12;
-    fail_unless!((x == 33));
+    assert!((x == 33));
 }
 
 pub fn main() { test_assign(); test_assign_op(); }

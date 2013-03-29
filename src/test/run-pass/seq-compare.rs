@@ -11,16 +11,16 @@
 
 
 pub fn main() {
-    fail_unless!((~"hello" < ~"hellr"));
-    fail_unless!((~"hello " > ~"hello"));
-    fail_unless!((~"hello" != ~"there"));
-    fail_unless!((~[1, 2, 3, 4] > ~[1, 2, 3]));
-    fail_unless!((~[1, 2, 3] < ~[1, 2, 3, 4]));
-    fail_unless!((~[1, 2, 4, 4] > ~[1, 2, 3, 4]));
-    fail_unless!((~[1, 2, 3, 4] < ~[1, 2, 4, 4]));
-    fail_unless!((~[1, 2, 3] <= ~[1, 2, 3]));
-    fail_unless!((~[1, 2, 3] <= ~[1, 2, 3, 3]));
-    fail_unless!((~[1, 2, 3, 4] > ~[1, 2, 3]));
-    fail_unless!((~[1, 2, 3] == ~[1, 2, 3]));
-    fail_unless!((~[1, 2, 3] != ~[1, 1, 3]));
+    assert!((~"hello" < ~"hellr"));
+    assert!((~"hello " > ~"hello"));
+    assert!((~"hello" != ~"there"));
+    assert!((~[1, 2, 3, 4] > ~[1, 2, 3]));
+    assert!((~[1, 2, 3] < ~[1, 2, 3, 4]));
+    assert!((~[1, 2, 4, 4] > ~[1, 2, 3, 4]));
+    assert!((~[1, 2, 3, 4] < ~[1, 2, 4, 4]));
+    assert!((~[1, 2, 3] <= ~[1, 2, 3]));
+    assert!((~[1, 2, 3] <= ~[1, 2, 3, 3]));
+    assert!((~[1, 2, 3, 4] > ~[1, 2, 3]));
+    assert!((~[1, 2, 3] == ~[1, 2, 3]));
+    assert!((~[1, 2, 3] != ~[1, 1, 3]));
 }

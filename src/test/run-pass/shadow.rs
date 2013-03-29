@@ -28,4 +28,4 @@ fn foo(c: ~[int]) {
 
 enum t<T> { none, some(T), }
 
-pub fn main() { let x = 10; let x = x + 20; fail_unless!((x == 30)); foo(~[]); }
+pub fn main() { let x = 10; let x = x + 20; assert!((x == 30)); foo(~[]); }

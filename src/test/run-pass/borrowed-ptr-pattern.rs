@@ -15,7 +15,7 @@ fn foo<T:Copy>(x: &T) -> T{
 }
 
 pub fn main() {
-    fail_unless!(foo(&3) == 3);
-    fail_unless!(foo(&'a') == 'a');
-    fail_unless!(foo(&@"Dogs rule, cats drool") == @"Dogs rule, cats drool");
+    assert!(foo(&3) == 3);
+    assert!(foo(&'a') == 'a');
+    assert!(foo(&@"Dogs rule, cats drool") == @"Dogs rule, cats drool");
 }

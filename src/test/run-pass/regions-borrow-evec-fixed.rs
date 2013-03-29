@@ -16,5 +16,5 @@ fn foo(x: &[int]) -> int {
 
 pub fn main() {
     let p = [1,2,3,4,5];
-    fail_unless!(foo(p) == 1);
+    assert!(foo(p) == 1);
 }

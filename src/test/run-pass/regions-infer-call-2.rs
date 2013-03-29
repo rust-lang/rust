@@ -19,5 +19,5 @@ fn has_one<'a>(x: &'a int) -> int {
 }
 
 pub fn main() {
-    fail_unless!(has_one(&2) == 22);
+    assert!(has_one(&2) == 22);
 }

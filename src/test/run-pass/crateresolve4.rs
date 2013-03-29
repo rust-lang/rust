@@ -16,12 +16,12 @@
 
 pub mod a {
     extern mod crateresolve4b(vers = "0.1");
-    pub fn f() { fail_unless!(crateresolve4b::f() == 20); }
+    pub fn f() { assert!(crateresolve4b::f() == 20); }
 }
 
 pub mod b {
     extern mod crateresolve4b(vers = "0.2");
-    pub fn f() { fail_unless!(crateresolve4b::g() == 10); }
+    pub fn f() { assert!(crateresolve4b::g() == 10); }
 }
 
 pub fn main() {

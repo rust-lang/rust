@@ -24,9 +24,9 @@ fn asBlock( f : &fn()->uint ) -> uint {
 
 pub fn main() {
    let x = asSendfn(|| 22u);
-   fail_unless!((x == 22u));
+   assert!((x == 22u));
    let x = asLambda(|| 22u);
-   fail_unless!((x == 22u));
+   assert!((x == 22u));
    let x = asBlock(|| 22u);
-   fail_unless!((x == 22u));
+   assert!((x == 22u));
 }

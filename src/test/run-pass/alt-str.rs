@@ -24,7 +24,7 @@ pub fn main() {
     }
 
     let x = match ~"a" { ~"a" => 1, ~"b" => 2, _ => fail!() };
-    fail_unless!((x == 1));
+    assert!((x == 1));
 
     match ~"a" { ~"a" => { } ~"b" => { }, _ => fail!() }
 

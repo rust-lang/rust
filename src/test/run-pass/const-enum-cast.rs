@@ -20,12 +20,12 @@ pub fn main () {
     let a2 = B2 as int;
     let a3 = A2 as float;
     let a4 = B2 as float;
-    fail_unless!(c1 == 1);
-    fail_unless!(c2 == 2);
-    fail_unless!(c3 == 1.0);
-    fail_unless!(c4 == 2.0);
-    fail_unless!(a1 == 1);
-    fail_unless!(a2 == 2);
-    fail_unless!(a3 == 1.0);
-    fail_unless!(a4 == 2.0);
+    assert!(c1 == 1);
+    assert!(c2 == 2);
+    assert!(c3 == 1.0);
+    assert!(c4 == 2.0);
+    assert!(a1 == 1);
+    assert!(a2 == 2);
+    assert!(a3 == 1.0);
+    assert!(a4 == 2.0);
 }

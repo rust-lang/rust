@@ -16,14 +16,14 @@ pub fn main() {
     let mut x: int = 1;
     x *= 2;
     debug!(x);
-    fail_unless!((x == 2));
+    assert!((x == 2));
     x += 3;
     debug!(x);
-    fail_unless!((x == 5));
+    assert!((x == 5));
     x *= x;
     debug!(x);
-    fail_unless!((x == 25));
+    assert!((x == 25));
     x /= 5;
     debug!(x);
-    fail_unless!((x == 5));
+    assert!((x == 5));
 }

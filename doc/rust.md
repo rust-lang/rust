@@ -1971,7 +1971,7 @@ let v = ~[1,2,3];
 
 mutate(copy v);   // Pass a copy
 
-fail_unless!(v[0] == 1); // Original was not modified
+assert!(v[0] == 1); // Original was not modified
 ~~~~
 
 ### Unary move expressions
@@ -2491,7 +2491,7 @@ An example of a tuple type and its use:
 type Pair<'self> = (int,&'self str);
 let p: Pair<'static> = (10,"hello");
 let (a, b) = p;
-fail_unless!(b != "world");
+assert!(b != "world");
 ~~~~
 
 
@@ -2519,7 +2519,7 @@ An example of a vector type and its use:
 ~~~~
 let v: &[int] = &[7, 5, 3];
 let i: int = v[2];
-fail_unless!(i == 3);
+assert!(i == 3);
 ~~~~
 
 All in-bounds elements of a vector are always initialized,
@@ -2925,7 +2925,7 @@ example of an _implicit dereference_ operation performed on box values:
 ~~~~~~~~
 struct Foo { y: int }
 let x = @Foo{y: 10};
-fail_unless!(x.y == 10);
+assert!(x.y == 10);
 ~~~~~~~~
 
 Other operations act on box values as single-word-sized address values. For

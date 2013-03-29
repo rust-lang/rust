@@ -585,7 +585,7 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
     // The caller should not both provide explicit bound lifetime
     // names and expected types.  Either we infer the bound lifetime
     // names or they are provided, but not both.
-    fail_unless!(lifetimes.is_empty() || expected_sig.is_none());
+    assert!(lifetimes.is_empty() || expected_sig.is_none());
 
     debug!("ty_of_fn_decl");
     let _i = indenter();

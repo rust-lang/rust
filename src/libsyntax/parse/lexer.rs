@@ -187,7 +187,7 @@ pub fn bump(rdr: @mut StringReader) {
     rdr.last_pos = rdr.pos;
     let current_byte_offset = byte_offset(rdr).to_uint();;
     if current_byte_offset < (*rdr.src).len() {
-        fail_unless!(rdr.curr != -1 as char);
+        assert!(rdr.curr != -1 as char);
         let last_char = rdr.curr;
         let next = str::char_range_at(*rdr.src, current_byte_offset);
         let byte_offset_diff = next.next - current_byte_offset;
@@ -314,7 +314,7 @@ fn consume_any_line_comment(rdr: @mut StringReader)
 }
 
 pub fn is_block_non_doc_comment(s: &str) -> bool {
-    fail_unless!(s.len() >= 1u);
+    assert!(s.len() >= 1u);
     str::all_between(s, 1u, s.len() - 1u, |ch| ch == '*')
 }
 

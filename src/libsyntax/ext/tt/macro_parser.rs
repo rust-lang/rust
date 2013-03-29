@@ -407,7 +407,7 @@ pub fn parse(
             }
         }
 
-        fail_unless!(cur_eis.len() > 0u);
+        assert!(cur_eis.len() > 0u);
     }
 }
 

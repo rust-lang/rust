@@ -12,7 +12,7 @@ pub fn main() {
     match ~100 {
       ~x => {
         debug!("%?", x);
-        fail_unless!(x == 100);
+        assert!(x == 100);
       }
     }
 }

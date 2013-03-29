@@ -26,5 +26,5 @@ impl ty_ops for () {
 
 pub fn main() {
     let fn_env: @fn() -> uint = || mk_nil(());
-    fail_unless!(fn_env() == 22u);
+    assert!(fn_env() == 22u);
 }

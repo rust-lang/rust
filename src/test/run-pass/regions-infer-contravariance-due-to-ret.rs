@@ -24,5 +24,5 @@ fn with(bi: &boxed_int) -> int {
 pub fn main() {
     let g = 21;
     let foo = boxed_int { f: &g };
-    fail_unless!(with(&foo) == 22);
+    assert!(with(&foo) == 22);
 }

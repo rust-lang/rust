@@ -20,5 +20,5 @@ mod mod_dir_simple {
 }
 
 pub fn main() {
-    fail_unless!(mod_dir_simple::load_another_mod::test::foo() == 10);
+    assert!(mod_dir_simple::load_another_mod::test::foo() == 10);
 }
