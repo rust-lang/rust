@@ -555,13 +555,12 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 fld.fold_expr(e)
             )
         }
-        expr_inline_asm(asm, ins, outs, c, v, a) => {
-            expr_inline_asm(
-                asm,
-                ins.map(|&(c, in)| (c, fld.fold_expr(in))),
-                outs.map(|&(c, out)| (c, fld.fold_expr(out))),
-                c, v, a
-            )
+        expr_inline_asm(a) => {
+            expr_inline_asm(inline_asm {
+                inputs: a.inputs.map(|&(c, in)| (c, fld.fold_expr(in))),
+                outputs: a.outputs.map(|&(c, out)| (c, fld.fold_expr(out))),
+                .. a
+            })
         }
         expr_mac(ref mac) => expr_mac(fold_mac((*mac))),
         expr_struct(path, ref fields, maybe_expr) => {

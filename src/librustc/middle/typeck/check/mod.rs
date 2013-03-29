@@ -2336,13 +2336,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let region_lb = ty::re_scope(expr.id);
         instantiate_path(fcx, pth, tpt, expr.span, expr.id, region_lb);
       }
-      ast::expr_inline_asm(_, ref ins, ref outs, _, _, _) => {
+      ast::expr_inline_asm(ref ia) => {
           fcx.require_unsafe(expr.span, ~"use of inline assembly");
 
-          for ins.each |&(_, in)| {
+          for ia.inputs.each |&(_, in)| {
               check_expr(fcx, in);
           }
-          for outs.each |&(_, out)| {
+          for ia.outputs.each |&(_, out)| {
               check_expr(fcx, out);
           }
           fcx.write_nil(id);
