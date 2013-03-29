@@ -16,11 +16,11 @@ pub fn main() {
   let a2 = Foo(5, 6, ~"abc");
   let b = Foo(5, 7, ~"def");
 
-  fail_unless!(a1 == a1);
-  fail_unless!(a1 == a2);
-  fail_unless!(!(a1 == b));
+  assert!(a1 == a1);
+  assert!(a1 == a2);
+  assert!(!(a1 == b));
 
-  fail_unless!(a1 != b);
-  fail_unless!(!(a1 != a1));
-  fail_unless!(!(a1 != a2));
+  assert!(a1 != b);
+  assert!(!(a1 != a1));
+  assert!(!(a1 != a2));
 }

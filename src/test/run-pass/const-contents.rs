@@ -18,10 +18,10 @@ static notb : bool = !true;
 static neg : int = -(1);
 
 pub fn main() {
-    fail_unless!((lsl == 4));
-    fail_unless!((add == 3));
-    fail_unless!((addf == 3.0f));
-    fail_unless!((not == -1));
-    fail_unless!((notb == false));
-    fail_unless!((neg == -1));
+    assert!((lsl == 4));
+    assert!((add == 3));
+    assert!((addf == 3.0f));
+    assert!((not == -1));
+    assert!((notb == false));
+    assert!((neg == -1));
 }

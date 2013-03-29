@@ -18,7 +18,7 @@ struct S {
 
 impl Foo for S {
     fn f(&self) {
-        fail_unless!(self.x == 3);
+        assert!(self.x == 3);
     }
 }
 

@@ -35,5 +35,5 @@ fn main() {
     let ctxt = ctxt { v: 22u };
     let hc = has_ctxt { c: &ctxt };
     let hc_as_get_ctxt: @get_ctxt = @hc;
-    fail_unless!(get_v(hc_as_get_ctxt) == 22u);
+    assert!(get_v(hc_as_get_ctxt) == 22u);
 }

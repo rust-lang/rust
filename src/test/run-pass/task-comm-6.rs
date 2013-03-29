@@ -41,7 +41,7 @@ fn test00() {
         sum += r;
         i += 1;
     }
-    fail_unless!((sum == 1998000));
+    assert!((sum == 1998000));
     // assert (sum == 4 * ((number_of_messages *
     //                   (number_of_messages - 1)) / 2));
 

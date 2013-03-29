@@ -484,7 +484,7 @@ pub mod groups {
     pub fn reqopt(short_name: &str, long_name: &str,
                   desc: &str, hint: &str) -> OptGroup {
         let len = short_name.len();
-        fail_unless!(len == 1 || len == 0);
+        assert!(len == 1 || len == 0);
         return OptGroup { short_name: str::from_slice(short_name),
                 long_name: str::from_slice(long_name),
                 hint: str::from_slice(hint),
@@ -497,7 +497,7 @@ pub mod groups {
     pub fn optopt(short_name: &str, long_name: &str,
                   desc: &str, hint: &str) -> OptGroup {
         let len = short_name.len();
-        fail_unless!(len == 1 || len == 0);
+        assert!(len == 1 || len == 0);
         return OptGroup {short_name: str::from_slice(short_name),
                 long_name: str::from_slice(long_name),
                 hint: str::from_slice(hint),
@@ -510,7 +510,7 @@ pub mod groups {
     pub fn optflag(short_name: &str, long_name: &str,
                    desc: &str) -> OptGroup {
         let len = short_name.len();
-        fail_unless!(len == 1 || len == 0);
+        assert!(len == 1 || len == 0);
         return OptGroup {short_name: str::from_slice(short_name),
                 long_name: str::from_slice(long_name),
                 hint: ~"",
@@ -523,7 +523,7 @@ pub mod groups {
     pub fn optflagopt(short_name: &str, long_name: &str,
                       desc: &str, hint: &str) -> OptGroup {
         let len = short_name.len();
-        fail_unless!(len == 1 || len == 0);
+        assert!(len == 1 || len == 0);
         return OptGroup {short_name: str::from_slice(short_name),
                 long_name: str::from_slice(long_name),
                 hint: str::from_slice(hint),
@@ -539,7 +539,7 @@ pub mod groups {
     pub fn optmulti(short_name: &str, long_name: &str,
                     desc: &str, hint: &str) -> OptGroup {
         let len = short_name.len();
-        fail_unless!(len == 1 || len == 0);
+        assert!(len == 1 || len == 0);
         return OptGroup {short_name: str::from_slice(short_name),
                 long_name: str::from_slice(long_name),
                 hint: str::from_slice(hint),
@@ -666,11 +666,11 @@ mod tests {
 
     pub fn check_fail_type(f: Fail_, ft: FailType) {
         match f {
-          ArgumentMissing(_) => fail_unless!(ft == ArgumentMissing_),
-          UnrecognizedOption(_) => fail_unless!(ft == UnrecognizedOption_),
-          OptionMissing(_) => fail_unless!(ft == OptionMissing_),
-          OptionDuplicated(_) => fail_unless!(ft == OptionDuplicated_),
-          UnexpectedArgument(_) => fail_unless!(ft == UnexpectedArgument_)
+          ArgumentMissing(_) => assert!(ft == ArgumentMissing_),
+          UnrecognizedOption(_) => assert!(ft == UnrecognizedOption_),
+          OptionMissing(_) => assert!(ft == OptionMissing_),
+          OptionDuplicated(_) => assert!(ft == OptionDuplicated_),
+          UnexpectedArgument(_) => assert!(ft == UnexpectedArgument_)
         }
     }
 
@@ -683,8 +683,8 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            fail_unless!((opt_present(m, ~"test")));
-            fail_unless!((opt_str(m, ~"test") == ~"20"));
+            assert!((opt_present(m, ~"test")));
+            assert!((opt_str(m, ~"test") == ~"20"));
           }
           _ => { fail!(~"test_reqopt_long failed"); }
         }
@@ -730,8 +730,8 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            fail_unless!((opt_present(m, ~"t")));
-            fail_unless!((opt_str(m, ~"t") == ~"20"));
+            assert!((opt_present(m, ~"t")));
+            assert!((opt_str(m, ~"t") == ~"20"));
           }
           _ => fail!()
         }
@@ -779,8 +779,8 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            fail_unless!((opt_present(m, ~"test")));
-            fail_unless!((opt_str(m, ~"test") == ~"20"));
+            assert!((opt_present(m, ~"test")));
+            assert!((opt_str(m, ~"test") == ~"20"));
           }
           _ => fail!()
         }
@@ -792,7 +792,7 @@ mod tests {
         let opts = ~[optopt(~"test")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => fail_unless!(!opt_present(m, ~"test")),
+          Ok(ref m) => assert!(!opt_present(m, ~"test")),
           _ => fail!()
         }
     }
@@ -826,8 +826,8 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            fail_unless!((opt_present(m, ~"t")));
-            fail_unless!((opt_str(m, ~"t") == ~"20"));
+            assert!((opt_present(m, ~"t")));
+            assert!((opt_str(m, ~"t") == ~"20"));
           }
           _ => fail!()
         }
@@ -839,7 +839,7 @@ mod tests {
         let opts = ~[optopt(~"t")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => fail_unless!(!opt_present(m, ~"t")),
+          Ok(ref m) => assert!(!opt_present(m, ~"t")),
           _ => fail!()
         }
     }
@@ -874,7 +874,7 @@ mod tests {
         let opts = ~[optflag(~"test")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => fail_unless!(opt_present(m, ~"test")),
+          Ok(ref m) => assert!(opt_present(m, ~"test")),
           _ => fail!()
         }
     }
@@ -885,7 +885,7 @@ mod tests {
         let opts = ~[optflag(~"test")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => fail_unless!(!opt_present(m, ~"test")),
+          Ok(ref m) => assert!(!opt_present(m, ~"test")),
           _ => fail!()
         }
     }
@@ -921,7 +921,7 @@ mod tests {
         let opts = ~[optflag(~"t")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => fail_unless!(opt_present(m, ~"t")),
+          Ok(ref m) => assert!(opt_present(m, ~"t")),
           _ => fail!()
         }
     }
@@ -932,7 +932,7 @@ mod tests {
         let opts = ~[optflag(~"t")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => fail_unless!(!opt_present(m, ~"t")),
+          Ok(ref m) => assert!(!opt_present(m, ~"t")),
           _ => fail!()
         }
     }
@@ -946,7 +946,7 @@ mod tests {
           Ok(ref m) => {
             // The next variable after the flag is just a free argument
 
-            fail_unless!((m.free[0] == ~"20"));
+            assert!((m.free[0] == ~"20"));
           }
           _ => fail!()
         }
@@ -971,7 +971,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            fail_unless!((opt_count(m, ~"v") == 1));
+            assert!((opt_count(m, ~"v") == 1));
           }
           _ => fail!()
         }
@@ -984,7 +984,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            fail_unless!((opt_count(m, ~"v") == 2));
+            assert!((opt_count(m, ~"v") == 2));
           }
           _ => fail!()
         }
@@ -997,7 +997,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            fail_unless!((opt_count(m, ~"v") == 2));
+            assert!((opt_count(m, ~"v") == 2));
           }
           _ => fail!()
         }
@@ -1010,7 +1010,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            fail_unless!((opt_count(m, ~"verbose") == 1));
+            assert!((opt_count(m, ~"verbose") == 1));
           }
           _ => fail!()
         }
@@ -1023,7 +1023,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            fail_unless!((opt_count(m, ~"verbose") == 2));
+            assert!((opt_count(m, ~"verbose") == 2));
           }
           _ => fail!()
         }
@@ -1037,8 +1037,8 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            fail_unless!((opt_present(m, ~"test")));
-            fail_unless!((opt_str(m, ~"test") == ~"20"));
+            assert!((opt_present(m, ~"test")));
+            assert!((opt_str(m, ~"test") == ~"20"));
           }
           _ => fail!()
         }
@@ -1050,7 +1050,7 @@ mod tests {
         let opts = ~[optmulti(~"test")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => fail_unless!(!opt_present(m, ~"test")),
+          Ok(ref m) => assert!(!opt_present(m, ~"test")),
           _ => fail!()
         }
     }
@@ -1073,11 +1073,11 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-              fail_unless!((opt_present(m, ~"test")));
-              fail_unless!((opt_str(m, ~"test") == ~"20"));
+              assert!((opt_present(m, ~"test")));
+              assert!((opt_str(m, ~"test") == ~"20"));
               let pair = opt_strs(m, ~"test");
-              fail_unless!((pair[0] == ~"20"));
-              fail_unless!((pair[1] == ~"30"));
+              assert!((pair[0] == ~"20"));
+              assert!((pair[1] == ~"30"));
           }
           _ => fail!()
         }
@@ -1090,8 +1090,8 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            fail_unless!((opt_present(m, ~"t")));
-            fail_unless!((opt_str(m, ~"t") == ~"20"));
+            assert!((opt_present(m, ~"t")));
+            assert!((opt_str(m, ~"t") == ~"20"));
           }
           _ => fail!()
         }
@@ -1103,7 +1103,7 @@ mod tests {
         let opts = ~[optmulti(~"t")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => fail_unless!(!opt_present(m, ~"t")),
+          Ok(ref m) => assert!(!opt_present(m, ~"t")),
           _ => fail!()
         }
     }
@@ -1126,11 +1126,11 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            fail_unless!((opt_present(m, ~"t")));
-            fail_unless!((opt_str(m, ~"t") == ~"20"));
+            assert!((opt_present(m, ~"t")));
+            assert!((opt_str(m, ~"t") == ~"20"));
             let pair = opt_strs(m, ~"t");
-            fail_unless!((pair[0] == ~"20"));
-            fail_unless!((pair[1] == ~"30"));
+            assert!((pair[0] == ~"20"));
+            assert!((pair[1] == ~"30"));
           }
           _ => fail!()
         }
@@ -1171,20 +1171,20 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            fail_unless!((m.free[0] == ~"prog"));
-            fail_unless!((m.free[1] == ~"free1"));
-            fail_unless!((opt_str(m, ~"s") == ~"20"));
-            fail_unless!((m.free[2] == ~"free2"));
-            fail_unless!((opt_present(m, ~"flag")));
-            fail_unless!((opt_str(m, ~"long") == ~"30"));
-            fail_unless!((opt_present(m, ~"f")));
+            assert!((m.free[0] == ~"prog"));
+            assert!((m.free[1] == ~"free1"));
+            assert!((opt_str(m, ~"s") == ~"20"));
+            assert!((m.free[2] == ~"free2"));
+            assert!((opt_present(m, ~"flag")));
+            assert!((opt_str(m, ~"long") == ~"30"));
+            assert!((opt_present(m, ~"f")));
             let pair = opt_strs(m, ~"m");
-            fail_unless!((pair[0] == ~"40"));
-            fail_unless!((pair[1] == ~"50"));
+            assert!((pair[0] == ~"40"));
+            assert!((pair[1] == ~"50"));
             let pair = opt_strs(m, ~"n");
-            fail_unless!((pair[0] == ~"-A B"));
-            fail_unless!((pair[1] == ~"-60 70"));
-            fail_unless!((!opt_present(m, ~"notpresent")));
+            assert!((pair[0] == ~"-A B"));
+            assert!((pair[1] == ~"-60 70"));
+            assert!((!opt_present(m, ~"notpresent")));
           }
           _ => fail!()
         }
@@ -1198,18 +1198,18 @@ mod tests {
           result::Ok(m) => m,
           result::Err(_) => fail!()
         };
-        fail_unless!(opts_present(matches, ~[~"e"]));
-        fail_unless!(opts_present(matches, ~[~"encrypt"]));
-        fail_unless!(opts_present(matches, ~[~"encrypt", ~"e"]));
-        fail_unless!(opts_present(matches, ~[~"e", ~"encrypt"]));
-        fail_unless!(!opts_present(matches, ~[~"f"]));
-        fail_unless!(!opts_present(matches, ~[~"thing"]));
-        fail_unless!(!opts_present(matches, ~[]));
+        assert!(opts_present(matches, ~[~"e"]));
+        assert!(opts_present(matches, ~[~"encrypt"]));
+        assert!(opts_present(matches, ~[~"encrypt", ~"e"]));
+        assert!(opts_present(matches, ~[~"e", ~"encrypt"]));
+        assert!(!opts_present(matches, ~[~"f"]));
+        assert!(!opts_present(matches, ~[~"thing"]));
+        assert!(!opts_present(matches, ~[]));
 
-        fail_unless!(opts_str(matches, ~[~"e"]) == ~"foo");
-        fail_unless!(opts_str(matches, ~[~"encrypt"]) == ~"foo");
-        fail_unless!(opts_str(matches, ~[~"e", ~"encrypt"]) == ~"foo");
-        fail_unless!(opts_str(matches, ~[~"encrypt", ~"e"]) == ~"foo");
+        assert!(opts_str(matches, ~[~"e"]) == ~"foo");
+        assert!(opts_str(matches, ~[~"encrypt"]) == ~"foo");
+        assert!(opts_str(matches, ~[~"e", ~"encrypt"]) == ~"foo");
+        assert!(opts_str(matches, ~[~"encrypt", ~"e"]) == ~"foo");
     }
 
     #[test]
@@ -1220,17 +1220,17 @@ mod tests {
           result::Ok(m) => m,
           result::Err(_) => fail!()
         };
-        fail_unless!(opts_present(matches, ~[~"L"]));
-        fail_unless!(opts_str(matches, ~[~"L"]) == ~"foo");
-        fail_unless!(opts_present(matches, ~[~"M"]));
-        fail_unless!(opts_str(matches, ~[~"M"]) == ~".");
+        assert!(opts_present(matches, ~[~"L"]));
+        assert!(opts_str(matches, ~[~"L"]) == ~"foo");
+        assert!(opts_present(matches, ~[~"M"]));
+        assert!(opts_str(matches, ~[~"M"]) == ~".");
 
     }
 
     #[test]
     pub fn test_groups_reqopt() {
         let opt = groups::reqopt(~"b", ~"banana", ~"some bananas", ~"VAL");
-        fail_unless!(opt == OptGroup { short_name: ~"b",
+        assert!(opt == OptGroup { short_name: ~"b",
                         long_name: ~"banana",
                         hint: ~"VAL",
                         desc: ~"some bananas",
@@ -1241,7 +1241,7 @@ mod tests {
     #[test]
     pub fn test_groups_optopt() {
         let opt = groups::optopt(~"a", ~"apple", ~"some apples", ~"VAL");
-        fail_unless!(opt == OptGroup { short_name: ~"a",
+        assert!(opt == OptGroup { short_name: ~"a",
                         long_name: ~"apple",
                         hint: ~"VAL",
                         desc: ~"some apples",
@@ -1252,7 +1252,7 @@ mod tests {
     #[test]
     pub fn test_groups_optflag() {
         let opt = groups::optflag(~"k", ~"kiwi", ~"some kiwis");
-        fail_unless!(opt == OptGroup { short_name: ~"k",
+        assert!(opt == OptGroup { short_name: ~"k",
                         long_name: ~"kiwi",
                         hint: ~"",
                         desc: ~"some kiwis",
@@ -1264,7 +1264,7 @@ mod tests {
     pub fn test_groups_optflagopt() {
         let opt = groups::optflagopt(~"p", ~"pineapple",
                                        ~"some pineapples", ~"VAL");
-        fail_unless!(opt == OptGroup { short_name: ~"p",
+        assert!(opt == OptGroup { short_name: ~"p",
                         long_name: ~"pineapple",
                         hint: ~"VAL",
                         desc: ~"some pineapples",
@@ -1276,7 +1276,7 @@ mod tests {
     pub fn test_groups_optmulti() {
         let opt = groups::optmulti(~"l", ~"lime",
                                      ~"some limes", ~"VAL");
-        fail_unless!(opt == OptGroup { short_name: ~"l",
+        assert!(opt == OptGroup { short_name: ~"l",
                         long_name: ~"lime",
                         hint: ~"VAL",
                         desc: ~"some limes",
@@ -1290,7 +1290,7 @@ mod tests {
         let verbose = groups::reqopt(~"b", ~"banana",
                                        ~"some bananas", ~"VAL");
 
-        fail_unless!(groups::long_to_short(&verbose) == short);
+        assert!(groups::long_to_short(&verbose) == short);
     }
 
     #[test]
@@ -1315,7 +1315,7 @@ mod tests {
                             ~"-p", ~"16", ~"l", ~"35"];
 
         // FIXME #4681: sort options here?
-        fail_unless!(getopts(sample_args, short)
+        assert!(getopts(sample_args, short)
             == groups::getopts(sample_args, verbose));
     }
 
@@ -1347,7 +1347,7 @@ Options:
 
         debug!("expected: <<%s>>", expected);
         debug!("generated: <<%s>>", generated_usage);
-        fail_unless!(generated_usage == expected);
+        assert!(generated_usage == expected);
     }
 
     #[test]
@@ -1376,7 +1376,7 @@ Options:
 
         debug!("expected: <<%s>>", expected);
         debug!("generated: <<%s>>", usage);
-        fail_unless!(usage == expected)
+        assert!(usage == expected)
     }
 }
 

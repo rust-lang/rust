@@ -14,6 +14,6 @@ pub fn main() {
     let mut j = i.clone();
     *i = 2;
     *j = 3;
-    fail_unless!(*i == 2);
-    fail_unless!(*j == 3);
+    assert!(*i == 2);
+    assert!(*j == 3);
 }

@@ -20,9 +20,9 @@ impl C for S { fn c(&self) -> int { 30 } }
 
 // Both B and C inherit from A
 fn f<T:B + C>(x: &T) {
-    fail_unless!(x.a() == 10);
-    fail_unless!(x.b() == 20);
-    fail_unless!(x.c() == 30);
+    assert!(x.a() == 10);
+    assert!(x.b() == 20);
+    assert!(x.c() == 30);
 }
 
 pub fn main() {

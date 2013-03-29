@@ -11,5 +11,5 @@
 // error-pattern:custom message
 
 fn main() {
-    fail_unless!(false, "custom message");
+    assert!(false, "custom message");
 }

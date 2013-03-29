@@ -28,13 +28,13 @@ priv fn parse_data(len: uint, io: @io::Reader) -> Result {
   let res =
       if (len > 0) {
       let bytes = io.read_bytes(len as uint);
-      fail_unless!(bytes.len() == len);
+      assert!(bytes.len() == len);
       Data(bytes)
   } else {
       Data(~[])
   };
-  fail_unless!(io.read_char() == '\r');
-  fail_unless!(io.read_char() == '\n');
+  assert!(io.read_char() == '\r');
+  assert!(io.read_char() == '\n');
   return res;
 }
 

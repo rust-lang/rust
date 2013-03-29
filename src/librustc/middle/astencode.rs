@@ -175,7 +175,7 @@ pub impl ExtendedDecodeContext {
          */
 
         // from_id_range should be non-empty
-        fail_unless!(!ast_util::empty(self.from_id_range));
+        assert!(!ast_util::empty(self.from_id_range));
         (id - self.from_id_range.min + self.to_id_range.min)
     }
     fn tr_def_id(&self, did: ast::def_id) -> ast::def_id {
@@ -212,7 +212,7 @@ pub impl ExtendedDecodeContext {
          * refer to the current crate and to the new, inlined node-id.
          */
 
-        fail_unless!(did.crate == ast::local_crate);
+        assert!(did.crate == ast::local_crate);
         ast::def_id { crate: ast::local_crate, node: self.tr_id(did.node) }
     }
     fn tr_span(&self, _span: span) -> span {
@@ -1129,56 +1129,6 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
         }
     }
 
-    #[cfg(stage0)]
-    fn read_auto_adjustment(&self, xcx: @ExtendedDecodeContext)
-                         -> ty::AutoAdjustment {
-        do self.read_enum("AutoAdjustment") {
-            do self.read_enum_variant |i| {
-                match i {
-                    0 => {
-                        let region: ty::Region =
-                            do self.read_enum_variant_arg(0) {
-                                Decodable::decode(self)
-                            };
-                        let sigil: ast::Sigil =
-                            do self.read_enum_variant_arg(1) {
-                                Decodable::decode(self)
-                            };
-                        ty::AutoAddEnv(region.tr(xcx), sigil)
-                    }
-                    1 => {
-                        let auto_deref_ref: ty::AutoDerefRef =
-                            do self.read_enum_variant_arg(0) {
-                                Decodable::decode(self)
-                            };
-                        ty::AutoDerefRef(auto_deref_ref.tr(xcx))
-                    }
-                    2 => {
-                        let sigil_and_region: ty::SigilAndRegion =
-                            do self.read_enum_variant_arg(0) {
-                                Decodable::decode(self)
-                            };
-                        let def_id: ast::def_id =
-                            do self.read_enum_variant_arg(1) {
-                                Decodable::decode(self)
-                            };
-                        let substs: ty::substs =
-                            do self.read_enum_variant_arg(2) {
-                                self.read_substs(xcx)
-                            };
-                        ty::AutoObject(sigil_and_region.tr(xcx),
-                                       def_id,
-                                       substs)
-                    }
-                    _ => fail!(~"bad enum variant")
-                }
-            }
-        }
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn read_auto_adjustment(&self, xcx: @ExtendedDecodeContext)
                          -> ty::AutoAdjustment {
         do self.read_enum("AutoAdjustment") {
@@ -1396,7 +1346,7 @@ fn roundtrip(in_item: Option<@ast::item>) {
     debug!("expected string: %s", exp_str);
     debug!("actual string  : %s", out_str);
 
-    fail_unless!(exp_str == out_str);
+    assert!(exp_str == out_str);
 }
 
 #[test]
@@ -1443,7 +1393,7 @@ fn test_simplification() {
     ).get());
     match (item_out, item_exp) {
       (ast::ii_item(item_out), ast::ii_item(item_exp)) => {
-        fail_unless!(pprust::item_to_str(item_out,
+        assert!(pprust::item_to_str(item_out,
                                          ext_cx.parse_sess().interner)
                      == pprust::item_to_str(item_exp,
                                             ext_cx.parse_sess().interner));

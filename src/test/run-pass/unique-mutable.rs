@@ -11,5 +11,5 @@
 pub fn main() {
     let mut i = ~0;
     *i = 1;
-    fail_unless!(*i == 1);
+    assert!(*i == 1);
 }

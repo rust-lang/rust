@@ -34,13 +34,13 @@ fn ascending<M: Map<uint, uint>>(map: &mut M, n_keys: uint) {
 
     do timed("search") {
         for uint::range(0, n_keys) |i| {
-            fail_unless!(map.find(&i).unwrap() == &(i + 1));
+            assert!(map.find(&i).unwrap() == &(i + 1));
         }
     }
 
     do timed("remove") {
         for uint::range(0, n_keys) |i| {
-            fail_unless!(map.remove(&i));
+            assert!(map.remove(&i));
         }
     }
 }
@@ -56,13 +56,13 @@ fn descending<M: Map<uint, uint>>(map: &mut M, n_keys: uint) {
 
     do timed("search") {
         for uint::range_rev(n_keys, 0) |i| {
-            fail_unless!(map.find(&i).unwrap() == &(i + 1));
+            assert!(map.find(&i).unwrap() == &(i + 1));
         }
     }
 
     do timed("remove") {
         for uint::range_rev(n_keys, 0) |i| {
-            fail_unless!(map.remove(&i));
+            assert!(map.remove(&i));
         }
     }
 }
@@ -77,13 +77,13 @@ fn vector<M: Map<uint, uint>>(map: &mut M, n_keys: uint, dist: &[uint]) {
 
     do timed("search") {
         for uint::range(0, n_keys) |i| {
-            fail_unless!(map.find(&dist[i]).unwrap() == &(i + 1));
+            assert!(map.find(&dist[i]).unwrap() == &(i + 1));
         }
     }
 
     do timed("remove") {
         for uint::range(0, n_keys) |i| {
-            fail_unless!(map.remove(&dist[i]));
+            assert!(map.remove(&dist[i]));
         }
     }
 }

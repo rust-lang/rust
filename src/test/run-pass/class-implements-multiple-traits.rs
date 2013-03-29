@@ -123,7 +123,7 @@ fn scratched_something<T:scratchy>(critter: T) -> bool {
 pub fn main() {
   let nyan : cat  = cat(0u, 2, "nyan");
   annoy_neighbors(nyan as noisy);
-  fail_unless!((nyan.meow_count() == 10u));
-  fail_unless!((bite_everything(nyan as bitey)));
-  fail_unless!((scratched_something(nyan as scratchy)));
+  assert!((nyan.meow_count() == 10u));
+  assert!((bite_everything(nyan as bitey)));
+  assert!((scratched_something(nyan as scratchy)));
 }

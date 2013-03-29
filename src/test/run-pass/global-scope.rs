@@ -14,7 +14,7 @@ pub fn f() -> int { return 1; }
 
 pub mod foo {
     pub fn f() -> int { return 2; }
-    pub fn g() { fail_unless!((f() == 2)); fail_unless!((::f() == 1)); }
+    pub fn g() { assert!((f() == 2)); assert!((::f() == 1)); }
 }
 
 pub fn main() { return foo::g(); }

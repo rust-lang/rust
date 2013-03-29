@@ -9,12 +9,12 @@
 // except according to those terms.
 
 pub fn main() {
-    fail_unless!([].contains(&22u) == false);
-    fail_unless!([1u, 3u].contains(&22u) == false);
-    fail_unless!([22u, 1u, 3u].contains(&22u) == true);
-    fail_unless!([1u, 22u, 3u].contains(&22u) == true);
-    fail_unless!([1u, 3u, 22u].contains(&22u) == true);
-    fail_unless!(iter::contains(&None::<uint>, &22u) == false);
-    fail_unless!(iter::contains(&Some(1u), &22u) == false);
-    fail_unless!(iter::contains(&Some(22u), &22u) == true);
+    assert!([].contains(&22u) == false);
+    assert!([1u, 3u].contains(&22u) == false);
+    assert!([22u, 1u, 3u].contains(&22u) == true);
+    assert!([1u, 22u, 3u].contains(&22u) == true);
+    assert!([1u, 3u, 22u].contains(&22u) == true);
+    assert!(iter::contains(&None::<uint>, &22u) == false);
+    assert!(iter::contains(&Some(1u), &22u) == false);
+    assert!(iter::contains(&Some(22u), &22u) == true);
 }

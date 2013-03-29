@@ -2529,7 +2529,7 @@ pub impl Parser {
 
     fn parse_block(&self) -> blk {
         let (attrs, blk) = self.parse_inner_attrs_and_block(false);
-        fail_unless!(vec::is_empty(attrs));
+        assert!(vec::is_empty(attrs));
         return blk;
     }
 
@@ -3922,7 +3922,7 @@ pub impl Parser {
         foreign_items_allowed: bool,
         macros_allowed: bool
     ) -> item_or_view_item {
-        fail_unless!(items_allowed != foreign_items_allowed);
+        assert!(items_allowed != foreign_items_allowed);
 
         maybe_whole!(iovi self, nt_item);
         let lo = self.span.lo;
@@ -4333,13 +4333,13 @@ pub impl Parser {
                         view_items.push(view_item);
                     }
                     iovi_item(item) => {
-                        fail_unless!(items_allowed);
+                        assert!(items_allowed);
                         items.push(item);
                         attrs = self.parse_outer_attributes();
                         break;
                     }
                     iovi_foreign_item(foreign_item) => {
-                        fail_unless!(foreign_items_allowed);
+                        assert!(foreign_items_allowed);
                         foreign_items.push(foreign_item);
                         attrs = self.parse_outer_attributes();
                         break;
@@ -4364,11 +4364,11 @@ pub impl Parser {
                         view_items.push(view_item);
                     }
                     iovi_item(item) => {
-                        fail_unless!(items_allowed);
+                        assert!(items_allowed);
                         items.push(item)
                     }
                     iovi_foreign_item(foreign_item) => {
-                        fail_unless!(foreign_items_allowed);
+                        assert!(foreign_items_allowed);
                         foreign_items.push(foreign_item);
                     }
                 }

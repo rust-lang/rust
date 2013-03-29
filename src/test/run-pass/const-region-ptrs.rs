@@ -18,6 +18,6 @@ static y: &'static Pair<'static> = &Pair {a: 15, b: x};
 pub fn main() {
     io::println(fmt!("x = %?", *x));
     io::println(fmt!("y = {a: %?, b: %?}", y.a, *(y.b)));
-    fail_unless!(*x == 10);
-    fail_unless!(*(y.b) == 10);
+    assert!(*x == 10);
+    assert!(*(y.b) == 10);
 }

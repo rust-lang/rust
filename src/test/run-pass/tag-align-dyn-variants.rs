@@ -40,32 +40,32 @@ fn variant_data_is_aligned<A,B>(amnt: uint, &&u: a_tag<A,B>) -> bool {
 
 pub fn main() {
     let x = mk_rec(22u64, 23u64);
-    fail_unless!(is_aligned(8u, x.tA));
-    fail_unless!(variant_data_is_aligned(8u, x.tA));
-    fail_unless!(is_aligned(8u, x.tB));
-    fail_unless!(variant_data_is_aligned(8u, x.tB));
+    assert!(is_aligned(8u, x.tA));
+    assert!(variant_data_is_aligned(8u, x.tA));
+    assert!(is_aligned(8u, x.tB));
+    assert!(variant_data_is_aligned(8u, x.tB));
 
     let x = mk_rec(22u64, 23u32);
-    fail_unless!(is_aligned(8u, x.tA));
-    fail_unless!(variant_data_is_aligned(8u, x.tA));
-    fail_unless!(is_aligned(8u, x.tB));
-    fail_unless!(variant_data_is_aligned(4u, x.tB));
+    assert!(is_aligned(8u, x.tA));
+    assert!(variant_data_is_aligned(8u, x.tA));
+    assert!(is_aligned(8u, x.tB));
+    assert!(variant_data_is_aligned(4u, x.tB));
 
     let x = mk_rec(22u32, 23u64);
-    fail_unless!(is_aligned(8u, x.tA));
-    fail_unless!(variant_data_is_aligned(4u, x.tA));
-    fail_unless!(is_aligned(8u, x.tB));
-    fail_unless!(variant_data_is_aligned(8u, x.tB));
+    assert!(is_aligned(8u, x.tA));
+    assert!(variant_data_is_aligned(4u, x.tA));
+    assert!(is_aligned(8u, x.tB));
+    assert!(variant_data_is_aligned(8u, x.tB));
 
     let x = mk_rec(22u32, 23u32);
-    fail_unless!(is_aligned(4u, x.tA));
-    fail_unless!(variant_data_is_aligned(4u, x.tA));
-    fail_unless!(is_aligned(4u, x.tB));
-    fail_unless!(variant_data_is_aligned(4u, x.tB));
+    assert!(is_aligned(4u, x.tA));
+    assert!(variant_data_is_aligned(4u, x.tA));
+    assert!(is_aligned(4u, x.tB));
+    assert!(variant_data_is_aligned(4u, x.tB));
 
     let x = mk_rec(22f64, 23f64);
-    fail_unless!(is_aligned(8u, x.tA));
-    fail_unless!(variant_data_is_aligned(8u, x.tA));
-    fail_unless!(is_aligned(8u, x.tB));
-    fail_unless!(variant_data_is_aligned(8u, x.tB));
+    assert!(is_aligned(8u, x.tA));
+    assert!(variant_data_is_aligned(8u, x.tA));
+    assert!(is_aligned(8u, x.tB));
+    assert!(variant_data_is_aligned(8u, x.tB));
 }

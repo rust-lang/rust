@@ -88,6 +88,6 @@ pub fn main() {
   let whitefang : dog = dog();
   annoy_neighbors(@(copy nyan));
   annoy_neighbors(@(copy whitefang));
-  fail_unless!((nyan.meow_count() == 10u));
-  fail_unless!((*whitefang.volume == 1));
+  assert!((nyan.meow_count() == 10u));
+  assert!((*whitefang.volume == 1));
 }

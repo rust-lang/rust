@@ -15,13 +15,13 @@ struct C { c: int }
 
 pub fn main() {
     match A {a: 10, b: @20} {
-        x@A {a, b: @20} => { fail_unless!(x.a == 10); fail_unless!(a == 10); }
+        x@A {a, b: @20} => { assert!(x.a == 10); assert!(a == 10); }
         A {b, _} => { fail!(); }
     }
     let mut x@B {b, _} = B {a: 10, b: C {c: 20}};
     x.b.c = 30;
-    fail_unless!(b.c == 20);
+    assert!(b.c == 20);
     let mut y@D {d, _} = D {a: 10, d: C {c: 20}};
     y.d.c = 30;
-    fail_unless!(d.c == 20);
+    assert!(d.c == 20);
 }

@@ -20,5 +20,5 @@ struct foo(uint);
 
 pub fn main() {
     let x = foo(3u);
-    fail_unless!(x.double() == 6u);
+    assert!(x.double() == 6u);
 }

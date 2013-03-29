@@ -30,5 +30,5 @@ pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
 fn test_mkdtemp() {
     let p = mkdtemp(&Path("."), "foobar").unwrap();
     os::remove_dir(&p);
-    fail_unless!(str::ends_with(p.to_str(), "foobar"));
+    assert!(str::ends_with(p.to_str(), "foobar"));
 }

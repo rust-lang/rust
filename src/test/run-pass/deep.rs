@@ -16,4 +16,4 @@ fn f(x: int) -> int {
     if x == 1 { return 1; } else { let y: int = 1 + f(x - 1); return y; }
 }
 
-pub fn main() { fail_unless!((f(5000) == 5000)); }
+pub fn main() { assert!((f(5000) == 5000)); }

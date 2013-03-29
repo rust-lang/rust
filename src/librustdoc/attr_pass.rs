@@ -81,7 +81,7 @@ fn fold_crate(
 #[test]
 fn should_replace_top_module_name_with_crate_name() {
     let doc = test::mk_doc(~"#[link(name = \"bond\")];");
-    fail_unless!(doc.cratemod().name() == ~"bond");
+    assert!(doc.cratemod().name() == ~"bond");
 }
 
 fn fold_item(
@@ -124,25 +124,25 @@ fn parse_item_attrs<T:Owned>(
 #[test]
 fn should_should_extract_mod_attributes() {
     let doc = test::mk_doc(~"#[doc = \"test\"] mod a { }");
-    fail_unless!(doc.cratemod().mods()[0].desc() == Some(~"test"));
+    assert!(doc.cratemod().mods()[0].desc() == Some(~"test"));
 }
 
 #[test]
 fn should_extract_top_mod_attributes() {
     let doc = test::mk_doc(~"#[doc = \"test\"];");
-    fail_unless!(doc.cratemod().desc() == Some(~"test"));
+    assert!(doc.cratemod().desc() == Some(~"test"));
 }
 
 #[test]
 fn should_extract_foreign_fn_attributes() {
     let doc = test::mk_doc(~"extern { #[doc = \"test\"] fn a(); }");
-    fail_unless!(doc.cratemod().nmods()[0].fns[0].desc() == Some(~"test"));
+    assert!(doc.cratemod().nmods()[0].fns[0].desc() == Some(~"test"));
 }
 
 #[test]
 fn should_extract_fn_attributes() {
     let doc = test::mk_doc(~"#[doc = \"test\"] fn a() -> int { }");
-    fail_unless!(doc.cratemod().fns()[0].desc() == Some(~"test"));
+    assert!(doc.cratemod().fns()[0].desc() == Some(~"test"));
 }
 
 fn fold_enum(
@@ -194,13 +194,13 @@ fn fold_enum(
 fn should_extract_enum_docs() {
     let doc = test::mk_doc(~"#[doc = \"b\"]\
                             enum a { v }");
-    fail_unless!(doc.cratemod().enums()[0].desc() == Some(~"b"));
+    assert!(doc.cratemod().enums()[0].desc() == Some(~"b"));
 }
 
 #[test]
 fn should_extract_variant_docs() {
     let doc = test::mk_doc(~"enum a { #[doc = \"c\"] v }");
-    fail_unless!(doc.cratemod().enums()[0].variants[0].desc == Some(~"c"));
+    assert!(doc.cratemod().enums()[0].variants[0].desc == Some(~"c"));
 }
 
 fn fold_trait(
@@ -253,7 +253,7 @@ fn merge_method_attrs(
     };
 
     do vec::map2(docs, attrs) |doc, attrs| {
-        fail_unless!(doc.name == attrs.first());
+        assert!(doc.name == attrs.first());
         let desc = attrs.second();
 
         doc::MethodDoc {
@@ -266,7 +266,7 @@ fn merge_method_attrs(
 #[test]
 fn should_extract_trait_docs() {
     let doc = test::mk_doc(~"#[doc = \"whatever\"] trait i { fn a(); }");
-    fail_unless!(doc.cratemod().traits()[0].desc() == Some(~"whatever"));
+    assert!(doc.cratemod().traits()[0].desc() == Some(~"whatever"));
 }
 
 #[test]
@@ -276,7 +276,7 @@ fn should_extract_trait_method_docs() {
          #[doc = \"desc\"]\
          fn f(a: bool) -> bool;\
          }");
-    fail_unless!(doc.cratemod().traits()[0].methods[0].desc == Some(~"desc"));
+    assert!(doc.cratemod().traits()[0].methods[0].desc == Some(~"desc"));
 }
 
 
@@ -297,7 +297,7 @@ fn fold_impl(
 fn should_extract_impl_docs() {
     let doc = test::mk_doc(
         ~"#[doc = \"whatever\"] impl int { fn a() { } }");
-    fail_unless!(doc.cratemod().impls()[0].desc() == Some(~"whatever"));
+    assert!(doc.cratemod().impls()[0].desc() == Some(~"whatever"));
 }
 
 #[test]
@@ -307,7 +307,7 @@ fn should_extract_impl_method_docs() {
          #[doc = \"desc\"]\
          fn f(a: bool) -> bool { }\
          }");
-    fail_unless!(doc.cratemod().impls()[0].methods[0].desc == Some(~"desc"));
+    assert!(doc.cratemod().impls()[0].methods[0].desc == Some(~"desc"));
 }
 
 #[cfg(test)]

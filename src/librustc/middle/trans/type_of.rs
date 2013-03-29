@@ -68,7 +68,7 @@ pub fn type_of_fn_from_ty(cx: @CrateContext, fty: ty::t) -> TypeRef {
 }
 
 pub fn type_of_non_gc_box(cx: @CrateContext, t: ty::t) -> TypeRef {
-    fail_unless!(!ty::type_needs_infer(t));
+    assert!(!ty::type_needs_infer(t));
 
     let t_norm = ty::normalize_ty(cx.tcx, t);
     if t != t_norm {

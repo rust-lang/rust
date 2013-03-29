@@ -12,9 +12,9 @@
 
 pub fn main() {
     let f = 4.999999999999;
-    fail_unless!((f > 4.90));
-    fail_unless!((f < 5.0));
+    assert!((f > 4.90));
+    assert!((f < 5.0));
     let g = 4.90000000001e-10;
-    fail_unless!((g > 5e-11));
-    fail_unless!((g < 5e-9));
+    assert!((g > 5e-11));
+    assert!((g < 5e-9));
 }

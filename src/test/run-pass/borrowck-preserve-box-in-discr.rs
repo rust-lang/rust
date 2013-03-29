@@ -16,14 +16,14 @@ pub fn main() {
     let mut x = @F {f: ~3};
     match x {
       @F {f: ref b_x} => {
-        fail_unless!(**b_x == 3);
-        fail_unless!(ptr::addr_of(&(*x.f)) == ptr::addr_of(&(**b_x)));
+        assert!(**b_x == 3);
+        assert!(ptr::addr_of(&(*x.f)) == ptr::addr_of(&(**b_x)));
 
         x = @F {f: ~4};
 
         debug!("ptr::addr_of(*b_x) = %x", ptr::addr_of(&(**b_x)) as uint);
-        fail_unless!(**b_x == 3);
-        fail_unless!(ptr::addr_of(&(*x.f)) != ptr::addr_of(&(**b_x)));
+        assert!(**b_x == 3);
+        assert!(ptr::addr_of(&(*x.f)) != ptr::addr_of(&(**b_x)));
       }
     }
 }

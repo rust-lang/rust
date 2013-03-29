@@ -143,61 +143,61 @@ pub mod inst {
 
     #[test]
     fn test_next_power_of_two() {
-        fail_unless!((next_power_of_two(0u) == 0u));
-        fail_unless!((next_power_of_two(1u) == 1u));
-        fail_unless!((next_power_of_two(2u) == 2u));
-        fail_unless!((next_power_of_two(3u) == 4u));
-        fail_unless!((next_power_of_two(4u) == 4u));
-        fail_unless!((next_power_of_two(5u) == 8u));
-        fail_unless!((next_power_of_two(6u) == 8u));
-        fail_unless!((next_power_of_two(7u) == 8u));
-        fail_unless!((next_power_of_two(8u) == 8u));
-        fail_unless!((next_power_of_two(9u) == 16u));
-        fail_unless!((next_power_of_two(10u) == 16u));
-        fail_unless!((next_power_of_two(11u) == 16u));
-        fail_unless!((next_power_of_two(12u) == 16u));
-        fail_unless!((next_power_of_two(13u) == 16u));
-        fail_unless!((next_power_of_two(14u) == 16u));
-        fail_unless!((next_power_of_two(15u) == 16u));
-        fail_unless!((next_power_of_two(16u) == 16u));
-        fail_unless!((next_power_of_two(17u) == 32u));
-        fail_unless!((next_power_of_two(18u) == 32u));
-        fail_unless!((next_power_of_two(19u) == 32u));
-        fail_unless!((next_power_of_two(20u) == 32u));
-        fail_unless!((next_power_of_two(21u) == 32u));
-        fail_unless!((next_power_of_two(22u) == 32u));
-        fail_unless!((next_power_of_two(23u) == 32u));
-        fail_unless!((next_power_of_two(24u) == 32u));
-        fail_unless!((next_power_of_two(25u) == 32u));
-        fail_unless!((next_power_of_two(26u) == 32u));
-        fail_unless!((next_power_of_two(27u) == 32u));
-        fail_unless!((next_power_of_two(28u) == 32u));
-        fail_unless!((next_power_of_two(29u) == 32u));
-        fail_unless!((next_power_of_two(30u) == 32u));
-        fail_unless!((next_power_of_two(31u) == 32u));
-        fail_unless!((next_power_of_two(32u) == 32u));
-        fail_unless!((next_power_of_two(33u) == 64u));
-        fail_unless!((next_power_of_two(34u) == 64u));
-        fail_unless!((next_power_of_two(35u) == 64u));
-        fail_unless!((next_power_of_two(36u) == 64u));
-        fail_unless!((next_power_of_two(37u) == 64u));
-        fail_unless!((next_power_of_two(38u) == 64u));
-        fail_unless!((next_power_of_two(39u) == 64u));
+        assert!((next_power_of_two(0u) == 0u));
+        assert!((next_power_of_two(1u) == 1u));
+        assert!((next_power_of_two(2u) == 2u));
+        assert!((next_power_of_two(3u) == 4u));
+        assert!((next_power_of_two(4u) == 4u));
+        assert!((next_power_of_two(5u) == 8u));
+        assert!((next_power_of_two(6u) == 8u));
+        assert!((next_power_of_two(7u) == 8u));
+        assert!((next_power_of_two(8u) == 8u));
+        assert!((next_power_of_two(9u) == 16u));
+        assert!((next_power_of_two(10u) == 16u));
+        assert!((next_power_of_two(11u) == 16u));
+        assert!((next_power_of_two(12u) == 16u));
+        assert!((next_power_of_two(13u) == 16u));
+        assert!((next_power_of_two(14u) == 16u));
+        assert!((next_power_of_two(15u) == 16u));
+        assert!((next_power_of_two(16u) == 16u));
+        assert!((next_power_of_two(17u) == 32u));
+        assert!((next_power_of_two(18u) == 32u));
+        assert!((next_power_of_two(19u) == 32u));
+        assert!((next_power_of_two(20u) == 32u));
+        assert!((next_power_of_two(21u) == 32u));
+        assert!((next_power_of_two(22u) == 32u));
+        assert!((next_power_of_two(23u) == 32u));
+        assert!((next_power_of_two(24u) == 32u));
+        assert!((next_power_of_two(25u) == 32u));
+        assert!((next_power_of_two(26u) == 32u));
+        assert!((next_power_of_two(27u) == 32u));
+        assert!((next_power_of_two(28u) == 32u));
+        assert!((next_power_of_two(29u) == 32u));
+        assert!((next_power_of_two(30u) == 32u));
+        assert!((next_power_of_two(31u) == 32u));
+        assert!((next_power_of_two(32u) == 32u));
+        assert!((next_power_of_two(33u) == 64u));
+        assert!((next_power_of_two(34u) == 64u));
+        assert!((next_power_of_two(35u) == 64u));
+        assert!((next_power_of_two(36u) == 64u));
+        assert!((next_power_of_two(37u) == 64u));
+        assert!((next_power_of_two(38u) == 64u));
+        assert!((next_power_of_two(39u) == 64u));
     }
 
     #[test]
     fn test_overflows() {
         use uint;
-        fail_unless!((uint::max_value > 0u));
-        fail_unless!((uint::min_value <= 0u));
-        fail_unless!((uint::min_value + uint::max_value + 1u == 0u));
+        assert!((uint::max_value > 0u));
+        assert!((uint::min_value <= 0u));
+        assert!((uint::min_value + uint::max_value + 1u == 0u));
     }
 
     #[test]
     fn test_div() {
-        fail_unless!((div_floor(3u, 4u) == 0u));
-        fail_unless!((div_ceil(3u, 4u)  == 1u));
-        fail_unless!((div_round(3u, 4u) == 1u));
+        assert!((div_floor(3u, 4u) == 0u));
+        assert!((div_ceil(3u, 4u)  == 1u));
+        assert!((div_round(3u, 4u) == 1u));
     }
 
     #[test]
@@ -206,7 +206,7 @@ pub mod inst {
         let ten = 10 as uint;
         let mut accum = 0;
         for ten.times { accum += 1; }
-        fail_unless!((accum == 10));
+        assert!((accum == 10));
     }
 }
 
@@ -236,45 +236,45 @@ impl NumCast for uint {
 
 #[test]
 fn test_numcast() {
-    fail_unless!((20u   == 20u.to_uint()));
-    fail_unless!((20u8  == 20u.to_u8()));
-    fail_unless!((20u16 == 20u.to_u16()));
-    fail_unless!((20u32 == 20u.to_u32()));
-    fail_unless!((20u64 == 20u.to_u64()));
-    fail_unless!((20i   == 20u.to_int()));
-    fail_unless!((20i8  == 20u.to_i8()));
-    fail_unless!((20i16 == 20u.to_i16()));
-    fail_unless!((20i32 == 20u.to_i32()));
-    fail_unless!((20i64 == 20u.to_i64()));
-    fail_unless!((20f   == 20u.to_float()));
-    fail_unless!((20f32 == 20u.to_f32()));
-    fail_unless!((20f64 == 20u.to_f64()));
+    assert!((20u   == 20u.to_uint()));
+    assert!((20u8  == 20u.to_u8()));
+    assert!((20u16 == 20u.to_u16()));
+    assert!((20u32 == 20u.to_u32()));
+    assert!((20u64 == 20u.to_u64()));
+    assert!((20i   == 20u.to_int()));
+    assert!((20i8  == 20u.to_i8()));
+    assert!((20i16 == 20u.to_i16()));
+    assert!((20i32 == 20u.to_i32()));
+    assert!((20i64 == 20u.to_i64()));
+    assert!((20f   == 20u.to_float()));
+    assert!((20f32 == 20u.to_f32()));
+    assert!((20f64 == 20u.to_f64()));
 
-    fail_unless!((20u == NumCast::from(20u)));
-    fail_unless!((20u == NumCast::from(20u8)));
-    fail_unless!((20u == NumCast::from(20u16)));
-    fail_unless!((20u == NumCast::from(20u32)));
-    fail_unless!((20u == NumCast::from(20u64)));
-    fail_unless!((20u == NumCast::from(20i)));
-    fail_unless!((20u == NumCast::from(20i8)));
-    fail_unless!((20u == NumCast::from(20i16)));
-    fail_unless!((20u == NumCast::from(20i32)));
-    fail_unless!((20u == NumCast::from(20i64)));
-    fail_unless!((20u == NumCast::from(20f)));
-    fail_unless!((20u == NumCast::from(20f32)));
-    fail_unless!((20u == NumCast::from(20f64)));
+    assert!((20u == NumCast::from(20u)));
+    assert!((20u == NumCast::from(20u8)));
+    assert!((20u == NumCast::from(20u16)));
+    assert!((20u == NumCast::from(20u32)));
+    assert!((20u == NumCast::from(20u64)));
+    assert!((20u == NumCast::from(20i)));
+    assert!((20u == NumCast::from(20i8)));
+    assert!((20u == NumCast::from(20i16)));
+    assert!((20u == NumCast::from(20i32)));
+    assert!((20u == NumCast::from(20i64)));
+    assert!((20u == NumCast::from(20f)));
+    assert!((20u == NumCast::from(20f32)));
+    assert!((20u == NumCast::from(20f64)));
 
-    fail_unless!((20u == num::cast(20u)));
-    fail_unless!((20u == num::cast(20u8)));
-    fail_unless!((20u == num::cast(20u16)));
-    fail_unless!((20u == num::cast(20u32)));
-    fail_unless!((20u == num::cast(20u64)));
-    fail_unless!((20u == num::cast(20i)));
-    fail_unless!((20u == num::cast(20i8)));
-    fail_unless!((20u == num::cast(20i16)));
-    fail_unless!((20u == num::cast(20i32)));
-    fail_unless!((20u == num::cast(20i64)));
-    fail_unless!((20u == num::cast(20f)));
-    fail_unless!((20u == num::cast(20f32)));
-    fail_unless!((20u == num::cast(20f64)));
+    assert!((20u == num::cast(20u)));
+    assert!((20u == num::cast(20u8)));
+    assert!((20u == num::cast(20u16)));
+    assert!((20u == num::cast(20u32)));
+    assert!((20u == num::cast(20u64)));
+    assert!((20u == num::cast(20i)));
+    assert!((20u == num::cast(20i8)));
+    assert!((20u == num::cast(20i16)));
+    assert!((20u == num::cast(20i32)));
+    assert!((20u == num::cast(20i64)));
+    assert!((20u == num::cast(20f)));
+    assert!((20u == num::cast(20f32)));
+    assert!((20u == num::cast(20f64)));
 }

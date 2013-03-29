@@ -16,6 +16,6 @@ fn foo(s: &~str) -> bool {
 }
 
 pub fn main() {
-    fail_unless!(foo(&~"kitty"));
-    fail_unless!(!foo(&~"gata"));
+    assert!(foo(&~"kitty"));
+    assert!(!foo(&~"gata"));
 }

@@ -246,7 +246,7 @@ pub impl FileMap {
     fn next_line(&self, +pos: BytePos) {
         // the new charpos must be > the last one (or it's the first one).
         let lines = &mut *self.lines;
-        fail_unless!((lines.len() == 0) || (lines[lines.len() - 1] < pos));
+        assert!((lines.len() == 0) || (lines[lines.len() - 1] < pos));
         self.lines.push(pos);
     }
 
@@ -264,7 +264,7 @@ pub impl FileMap {
     }
 
     pub fn record_multibyte_char(&self, pos: BytePos, bytes: uint) {
-        fail_unless!(bytes >=2 && bytes <= 4);
+        assert!(bytes >=2 && bytes <= 4);
         let mbc = MultiByteChar {
             pos: pos,
             bytes: bytes,
@@ -387,7 +387,7 @@ pub impl CodeMap {
     pub fn span_to_snippet(&self, sp: span) -> ~str {
         let begin = self.lookup_byte_offset(sp.lo);
         let end = self.lookup_byte_offset(sp.hi);
-        fail_unless!(begin.fm.start_pos == end.fm.start_pos);
+        assert!(begin.fm.start_pos == end.fm.start_pos);
         return str::slice(*begin.fm.src,
                           begin.pos.to_uint(), end.pos.to_uint()).to_owned();
     }
@@ -449,7 +449,7 @@ priv impl CodeMap {
         debug!("codemap: char pos %? is on the line at char pos %?",
                chpos, linechpos);
         debug!("codemap: byte is on line: %?", line);
-        fail_unless!(chpos >= linechpos);
+        assert!(chpos >= linechpos);
         return Loc {
             file: f,
             line: line,
@@ -488,7 +488,7 @@ priv impl CodeMap {
                 total_extra_bytes += mbc.bytes;
                 // We should never see a byte position in the middle of a
                 // character
-                fail_unless!(bpos == mbc.pos
+                assert!(bpos == mbc.pos
                     || bpos.to_uint() >= mbc.pos.to_uint() + mbc.bytes);
             } else {
                 break;

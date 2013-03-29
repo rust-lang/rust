@@ -37,5 +37,5 @@ impl Point: Movable<int, int>;
 pub fn main() {
     let p = Point{ x: 1, y: 2};
     p.translate(3);
-    fail_unless!(p.X() == 4);
+    assert!(p.X() == 4);
 }

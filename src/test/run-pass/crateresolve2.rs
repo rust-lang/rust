@@ -15,17 +15,17 @@
 
 mod a {
     extern mod crateresolve2(vers = "0.1");
-    pub fn f() { fail_unless!(crateresolve2::f() == 10); }
+    pub fn f() { assert!(crateresolve2::f() == 10); }
 }
 
 mod b {
     extern mod crateresolve2(vers = "0.2");
-    pub fn f() { fail_unless!(crateresolve2::f() == 20); }
+    pub fn f() { assert!(crateresolve2::f() == 20); }
 }
 
 mod c {
     extern mod crateresolve2(vers = "0.3");
-    pub fn f() { fail_unless!(crateresolve2::f() == 30); }
+    pub fn f() { assert!(crateresolve2::f() == 30); }
 }
 
 pub fn main() {

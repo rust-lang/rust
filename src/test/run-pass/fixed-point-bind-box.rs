@@ -25,6 +25,6 @@ fn fact_(f: @fn(v: int) -> int, n: int) -> int {
 
 pub fn main() {
     let fact = fix(fact_);
-    fail_unless!((fact(5) == 120));
-    fail_unless!((fact(2) == 2));
+    assert!((fact(5) == 120));
+    assert!((fact(2) == 2));
 }

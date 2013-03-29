@@ -71,7 +71,7 @@ fn should_extract_crate_name_from_link_attribute() {
     let source = ~"#[link(name = \"snuggles\")]";
     let attrs = test::parse_attributes(source);
     let attrs = parse_crate(attrs);
-    fail_unless!(attrs.name == Some(~"snuggles"));
+    assert!(attrs.name == Some(~"snuggles"));
 }
 
 #[test]
@@ -79,7 +79,7 @@ fn should_not_extract_crate_name_if_no_link_attribute() {
     let source = ~"";
     let attrs = test::parse_attributes(source);
     let attrs = parse_crate(attrs);
-    fail_unless!(attrs.name == None);
+    assert!(attrs.name == None);
 }
 
 #[test]
@@ -87,7 +87,7 @@ fn should_not_extract_crate_name_if_no_name_value_in_link_attribute() {
     let source = ~"#[link(whatever)]";
     let attrs = test::parse_attributes(source);
     let attrs = parse_crate(attrs);
-    fail_unless!(attrs.name == None);
+    assert!(attrs.name == None);
 }
 
 pub fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
@@ -106,7 +106,7 @@ fn parse_desc_should_handle_undocumented_mods() {
     let source = ~"";
     let attrs = test::parse_attributes(source);
     let attrs = parse_desc(attrs);
-    fail_unless!(attrs == None);
+    assert!(attrs == None);
 }
 
 #[test]
@@ -114,7 +114,7 @@ fn parse_desc_should_parse_simple_doc_attributes() {
     let source = ~"#[doc = \"basic\"]";
     let attrs = test::parse_attributes(source);
     let attrs = parse_desc(attrs);
-    fail_unless!(attrs == Some(~"basic"));
+    assert!(attrs == Some(~"basic"));
 }
 
 pub fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
@@ -133,28 +133,28 @@ pub fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
 fn should_parse_hidden_attribute() {
     let source = ~"#[doc(hidden)]";
     let attrs = test::parse_attributes(source);
-    fail_unless!(parse_hidden(attrs) == true);
+    assert!(parse_hidden(attrs) == true);
 }
 
 #[test]
 fn should_parse_hidden_attribute_with_other_docs() {
     let source = ~"#[doc = \"foo\"] #[doc(hidden)] #[doc = \"foo\"]";
     let attrs = test::parse_attributes(source);
-    fail_unless!(parse_hidden(attrs) == true);
+    assert!(parse_hidden(attrs) == true);
 }
 
 #[test]
 fn should_not_parse_non_hidden_attribute() {
     let source = ~"#[doc = \"\"]";
     let attrs = test::parse_attributes(source);
-    fail_unless!(parse_hidden(attrs) == false);
+    assert!(parse_hidden(attrs) == false);
 }
 
 #[test]
 fn should_concatenate_multiple_doc_comments() {
     let source = ~"/// foo\n/// bar";
     let desc = parse_desc(test::parse_attributes(source));
-    fail_unless!(desc == Some(~"foo\nbar"));
+    assert!(desc == Some(~"foo\nbar"));
 }
 
 

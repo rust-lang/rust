@@ -14,7 +14,7 @@ fn main() {
     c.send(false);
     match x {
         Some(z) if z.recv() => { fail!() }, //~ ERROR cannot bind by-move into a pattern guard
-        Some(z) => { fail_unless!(!z.recv()); },
+        Some(z) => { assert!(!z.recv()); },
         None => fail!()
     }
 }

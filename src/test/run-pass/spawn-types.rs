@@ -19,7 +19,7 @@ use core::comm::*;
 type ctx = Chan<int>;
 
 fn iotask(cx: &ctx, ip: ~str) {
-    fail_unless!((ip == ~"localhost"));
+    assert!((ip == ~"localhost"));
 }
 
 pub fn main() {

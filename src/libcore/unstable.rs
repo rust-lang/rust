@@ -81,7 +81,7 @@ pub fn run_in_bare_thread(f: ~fn()) {
 fn test_run_in_bare_thread() {
     let i = 100;
     do run_in_bare_thread {
-        fail_unless!(i == 100);
+        assert!(i == 100);
     }
 }
 
@@ -90,7 +90,7 @@ fn test_run_in_bare_thread_exchange() {
     // Does the exchange heap work without the runtime?
     let i = ~100;
     do run_in_bare_thread {
-        fail_unless!(i == ~100);
+        assert!(i == ~100);
     }
 }
 
@@ -123,7 +123,7 @@ impl<T> Drop for ArcDestruct<T>{
                 let data: ~ArcData<T> = cast::reinterpret_cast(&self.data);
                 let new_count =
                     intrinsics::atomic_xsub(&mut data.count, 1) - 1;
-                fail_unless!(new_count >= 0);
+                assert!(new_count >= 0);
                 if new_count == 0 {
                     // drop glue takes over.
                 } else {
@@ -163,7 +163,7 @@ pub unsafe fn get_shared_mutable_state<T:Owned>(
 {
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
-        fail_unless!(ptr.count > 0);
+        assert!(ptr.count > 0);
         let r = cast::transmute(ptr.data.get_ref());
         cast::forget(ptr);
         return r;
@@ -174,7 +174,7 @@ pub unsafe fn get_shared_immutable_state<'a,T:Owned>(
         rc: &'a SharedMutableState<T>) -> &'a T {
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
-        fail_unless!(ptr.count > 0);
+        assert!(ptr.count > 0);
         // Cast us back into the correct region
         let r = cast::transmute_region(ptr.data.get_ref());
         cast::forget(ptr);
@@ -187,7 +187,7 @@ pub unsafe fn clone_shared_mutable_state<T:Owned>(rc: &SharedMutableState<T>)
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
         let new_count = intrinsics::atomic_xadd(&mut ptr.count, 1) + 1;
-        fail_unless!(new_count >= 2);
+        assert!(new_count >= 2);
         cast::forget(ptr);
     }
     ArcDestruct((*rc).data)
@@ -338,7 +338,7 @@ pub mod tests {
         for futures.each |f| { f.recv() }
 
         do total.with |total| {
-            fail_unless!(**total == num_tasks * count)
+            assert!(**total == num_tasks * count)
         };
     }
 
@@ -350,11 +350,11 @@ pub mod tests {
         let x2 = x.clone();
         do task::try || {
             do x2.with |one| {
-                fail_unless!(*one == 2);
+                assert!(*one == 2);
             }
         };
         do x.with |one| {
-            fail_unless!(*one == 1);
+            assert!(*one == 1);
         }
     }
 }

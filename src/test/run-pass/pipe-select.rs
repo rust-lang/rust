@@ -48,7 +48,7 @@ pub fn main() {
         error!("selecting");
         let (i, _, _) = select(~[left, right]);
         error!("selected");
-        fail_unless!(i == 0);
+        assert!(i == 0);
 
         error!("waiting for pipes");
         let stream::send(x, _) = recv(p);
@@ -60,7 +60,7 @@ pub fn main() {
         let (i, m, _) = select(~[left, right]);
         error!("selected %?", i);
         if m.is_some() {
-            fail_unless!(i == 1);
+            assert!(i == 1);
         }
     });
 

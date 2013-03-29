@@ -12,20 +12,20 @@ pub fn main() {
     let x = ~1;
     let y = ptr::addr_of(&(*x)) as uint;
     let lam_move: @fn() -> uint = || ptr::addr_of(&(*x)) as uint;
-    fail_unless!(lam_move() == y);
+    assert!(lam_move() == y);
 
     let x = ~2;
     let y = ptr::addr_of(&(*x)) as uint;
     let lam_move: @fn() -> uint = || ptr::addr_of(&(*x)) as uint;
-    fail_unless!(lam_move() == y);
+    assert!(lam_move() == y);
 
     let x = ~3;
     let y = ptr::addr_of(&(*x)) as uint;
     let snd_move: ~fn() -> uint = || ptr::addr_of(&(*x)) as uint;
-    fail_unless!(snd_move() == y);
+    assert!(snd_move() == y);
 
     let x = ~4;
     let y = ptr::addr_of(&(*x)) as uint;
     let lam_move: ~fn() -> uint = || ptr::addr_of(&(*x)) as uint;
-    fail_unless!(lam_move() == y);
+    assert!(lam_move() == y);
 }

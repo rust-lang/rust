@@ -20,5 +20,5 @@ mod ctr {
 fn main() {
     let c = ctr::new(42);
     let c2 = ctr::inc(c);
-    fail_unless!(*c2 == 5); //~ ERROR can only dereference enums with a single, public variant
+    assert!(*c2 == 5); //~ ERROR can only dereference enums with a single, public variant
 }

@@ -21,6 +21,6 @@ pub fn main() {
     let x = Some(0u64);
     match x {
         None => fail!(),
-        Some(ref y) => fail_unless!(is_aligned(y))
+        Some(ref y) => assert!(is_aligned(y))
     }
 }

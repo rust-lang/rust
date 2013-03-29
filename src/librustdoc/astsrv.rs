@@ -138,7 +138,7 @@ fn should_prune_unconfigured_items() {
     let source = ~"#[cfg(shut_up_and_leave_me_alone)]fn a() { }";
     do from_str(source) |srv| {
         do exec(srv) |ctxt| {
-            fail_unless!(vec::is_empty(ctxt.ast.node.module.items));
+            assert!(vec::is_empty(ctxt.ast.node.module.items));
         }
     }
 }
@@ -148,7 +148,7 @@ fn srv_should_build_ast_map() {
     let source = ~"fn a() { }";
     do from_str(source) |srv| {
         do exec(srv) |ctxt| {
-            fail_unless!(!ctxt.ast_map.is_empty())
+            assert!(!ctxt.ast_map.is_empty())
         };
     }
 }
@@ -164,6 +164,6 @@ fn srv_should_return_request_result() {
     let source = ~"fn a() { }";
     do from_str(source) |srv| {
         let result = exec(srv, |_ctxt| 1000 );
-        fail_unless!(result == 1000);
+        assert!(result == 1000);
     }
 }

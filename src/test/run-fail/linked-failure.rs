@@ -13,7 +13,7 @@
 // error-pattern:1 == 2
 extern mod std;
 
-fn child() { fail_unless!((1 == 2)); }
+fn child() { assert!((1 == 2)); }
 
 fn main() {
     let (p, _c) = comm::stream::<int>();

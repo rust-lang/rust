@@ -12,7 +12,7 @@ extern mod std;
 use core::cmp::Eq;
 
 fn f<T:Eq>(o: &mut Option<T>) {
-    fail_unless!(*o == option::None);
+    assert!(*o == option::None);
 }
 
 fn main() {

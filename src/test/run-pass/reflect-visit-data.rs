@@ -651,7 +651,7 @@ pub fn main() {
             io::println(fmt!("val: %s", *s));
         }
         error!("%?", u.vals.clone());
-        fail_unless!(u.vals == ~[
+        assert!(u.vals == ~[
             ~"1", ~"2", ~"3", ~"true", ~"false", ~"5", ~"4", ~"3", ~"12"
         ]);
     }
