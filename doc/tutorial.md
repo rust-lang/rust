@@ -1002,11 +1002,46 @@ refer to that through a pointer.
 
 ## Owned boxes
 
-An owned box (`~`) is a uniquely owned allocation on the heap. An owned box
-inherits the mutability and lifetime of the owner as it would if there was no
-box. The purpose of an owned box is to add a layer of indirection in order to
-create recursive data structures or cheaply pass around an object larger than a
-pointer.
+An owned box (`~`) is a uniquely owned allocation on the heap. It inherits the
+mutability and lifetime of the owner as it would if there was no box.
+
+~~~~
+let x = 5; // immutable
+let mut y = 5; // mutable
+y += 2;
+
+let x = ~5; // immutable
+let mut y = ~5; // mutable
+*y += 2; // the * operator is needed to access the contained value
+~~~~
+
+The purpose of an owned box is to add a layer of indirection in order to create
+recursive data structures or cheaply pass around an object larger than a
+pointer. Since an owned box has a unique owner, it can be used to represent any
+tree data structure.
+
+The following struct won't compile, because the lack of indirection would mean
+it has an infinite size:
+
+~~~~ {.xfail-test}
+struct Foo {
+    child: Option<Foo>
+}
+~~~~
+
+> ***Note:*** The `Option` type is an enum that represents an *optional* value.
+> It's comparable to a nullable pointer in many other languages, but stores the
+> contained value unboxed.
+
+Adding indirection with an owned pointer allocates the child outside of the
+struct on the heap, which makes it a finite size and won't result in a
+compile-time error:
+
+~~~~
+struct Foo {
+    child: Option<~Foo>
+}
+~~~~
 
 ## Managed boxes
 
