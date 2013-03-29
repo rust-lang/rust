@@ -562,11 +562,11 @@ pub fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         }
         expr_mac(ref mac) => visit_mac((*mac), e, v),
         expr_paren(x) => (v.visit_expr)(x, e, v),
-        expr_inline_asm(_, ins, outs, _, _, _) => {
-            for ins.each |&(_, in)| {
+        expr_inline_asm(ref a) => {
+            for a.inputs.each |&(_, in)| {
                 (v.visit_expr)(in, e, v);
             }
-            for outs.each |&(_, out)| {
+            for a.outputs.each |&(_, out)| {
                 (v.visit_expr)(out, e, v);
             }
         }

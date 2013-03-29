@@ -1306,11 +1306,11 @@ pub impl Liveness {
             self.propagate_through_expr(e, succ)
           }
 
-          expr_inline_asm(_, ref ins, ref outs, _, _, _) =>{
-            let succ = do ins.foldr(succ) |&(_, expr), succ| {
+          expr_inline_asm(ref ia) =>{
+            let succ = do ia.inputs.foldr(succ) |&(_, expr), succ| {
                 self.propagate_through_expr(expr, succ)
             };
-            do outs.foldr(succ) |&(_, expr), succ| {
+            do ia.outputs.foldr(succ) |&(_, expr), succ| {
                 self.propagate_through_expr(expr, succ)
             }
           }
@@ -1580,14 +1580,19 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
         visit::visit_expr(expr, self, vt);
       }
 
-      expr_inline_asm(_, ref ins, ref outs, _, _, _) => {
-        for ins.each |&(_, in)| {
+      expr_inline_asm(ref ia) => {
+        for ia.inputs.each |&(_, in)| {
           (vt.visit_expr)(in, self, vt);
         }
 
         // Output operands must be lvalues
-        for outs.each |&(_, out)| {
-          self.check_lvalue(out, vt);
+        for ia.outputs.each |&(_, out)| {
+          match out.node {
+            expr_addr_of(_, inner) => {
+              self.check_lvalue(inner, vt);
+            }
+            _ => {}
+          }
           (vt.visit_expr)(out, self, vt);
         }
 

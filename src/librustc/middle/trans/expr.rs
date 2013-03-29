@@ -128,6 +128,7 @@ use metadata::csearch;
 use middle::borrowck::root_map_key;
 use middle::trans::_match;
 use middle::trans::adt;
+use middle::trans::asm;
 use middle::trans::base;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -548,108 +549,8 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
         ast::expr_paren(a) => {
             return trans_rvalue_stmt_unadjusted(bcx, a);
         }
-        ast::expr_inline_asm(asm, ref ins, ref outs,
-                             clobs, volatile, alignstack) => {
-            let mut constraints = ~[];
-            let mut cleanups = ~[];
-            let mut aoutputs = ~[];
-
-            let outputs = do outs.map |&(c, out)| {
-                constraints.push(copy *c);
-
-                let aoutty = ty::arg {
-                    mode: ast::expl(ast::by_copy),
-                    ty: expr_ty(bcx, out)
-                };
-                aoutputs.push(unpack_result!(bcx, {
-                    callee::trans_arg_expr(bcx, aoutty, out, &mut cleanups,
-                                           None, callee::DontAutorefArg)
-                    }));
-
-                let e = match out.node {
-                    ast::expr_addr_of(_, e) => e,
-                    _ => fail!(~"Expression must be addr of")
-                };
-
-                let outty = ty::arg {
-                    mode: ast::expl(ast::by_copy),
-                    ty: expr_ty(bcx, e)
-                };
-
-                unpack_result!(bcx, {
-                    callee::trans_arg_expr(bcx, outty, e, &mut cleanups,
-                                           None, callee::DontAutorefArg)
-                })
-
-            };
-
-            for cleanups.each |c| {
-                revoke_clean(bcx, *c);
-            }
-            cleanups = ~[];
-
-            let inputs = do ins.map |&(c, in)| {
-                constraints.push(copy *c);
-
-                let inty = ty::arg {
-                    mode: ast::expl(ast::by_copy),
-                    ty: expr_ty(bcx, in)
-                };
-
-                unpack_result!(bcx, {
-                    callee::trans_arg_expr(bcx, inty, in, &mut cleanups,
-                                           None, callee::DontAutorefArg)
-                })
-
-            };
-
-            for cleanups.each |c| {
-                revoke_clean(bcx, *c);
-            }
-
-            let mut constraints = str::connect(constraints, ",");
-
-            // Add the clobbers
-            if *clobs != ~"" {
-                if constraints == ~"" {
-                    constraints += *clobs;
-                } else {
-                    constraints += ~"," + *clobs;
-                }
-            } else {
-                constraints += *clobs;
-            }
-
-            debug!("Asm Constraints: %?", constraints);
-
-            let output = if outputs.len() == 0 {
-                T_void()
-            } else if outputs.len() == 1 {
-                val_ty(outputs[0])
-            } else {
-                T_struct(outputs.map(|o| val_ty(*o)))
-            };
-
-            let r = do str::as_c_str(*asm) |a| {
-                do str::as_c_str(constraints) |c| {
-                    InlineAsmCall(bcx, a, c, inputs, output, volatile,
-                                  alignstack, lib::llvm::AD_ATT)
-                }
-            };
-
-            if outputs.len() == 1 {
-                let op = PointerCast(bcx, aoutputs[0],
-                                     T_ptr(val_ty(outputs[0])));
-                Store(bcx, r, op);
-            } else {
-                for aoutputs.eachi |i, o| {
-                    let v = ExtractValue(bcx, r, i);
-                    let op = PointerCast(bcx, *o, T_ptr(val_ty(outputs[i])));
-                    Store(bcx, v, op);
-                }
-            }
-
-            return bcx;
+        ast::expr_inline_asm(ref a) => {
+            return asm::trans_inline_asm(bcx, a);
         }
         _ => {
             bcx.tcx().sess.span_bug(

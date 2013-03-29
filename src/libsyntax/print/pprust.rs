@@ -1388,16 +1388,16 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         print_expr(s, expr);
         pclose(s);
       }
-      ast::expr_inline_asm(a, in, out, c, v, _) => {
-        if v {
+      ast::expr_inline_asm(a) => {
+        if a.volatile {
             word(s.s, ~"__volatile__ asm!");
         } else {
             word(s.s, ~"asm!");
         }
         popen(s);
-        print_string(s, *a);
+        print_string(s, *a.asm);
         word_space(s, ~":");
-        for out.each |&(co, o)| {
+        for a.outputs.each |&(co, o)| {
             print_string(s, *co);
             popen(s);
             print_expr(s, o);
@@ -1405,7 +1405,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
             word_space(s, ~",");
         }
         word_space(s, ~":");
-        for in.each |&(co, o)| {
+        for a.inputs.each |&(co, o)| {
             print_string(s, *co);
             popen(s);
             print_expr(s, o);
@@ -1413,7 +1413,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
             word_space(s, ~",");
         }
         word_space(s, ~":");
-        print_string(s, *c);
+        print_string(s, *a.clobbers);
         pclose(s);
       }
       ast::expr_mac(ref m) => print_mac(s, (*m)),
