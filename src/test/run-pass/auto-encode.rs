@@ -25,6 +25,20 @@ use std::ebml;
 use std::serialize::{Decodable, Encodable};
 use std::time;
 
+<<<<<<< HEAD
+=======
+fn test_prettyprint<A:Encodable<prettyprint::Serializer>>(
+    a: &A,
+    expected: &~str
+) {
+    let s = do io::with_str_writer |w| {
+        a.encode(&prettyprint::Serializer(w))
+    };
+    debug!("s == %?", s);
+    assert!(s == *expected);
+}
+
+>>>>>>> librustc: Remove `fail_unless!`
 fn test_ebml<A:
     Eq +
     Encodable<EBWriter::Encoder> +
