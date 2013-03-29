@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
 fn id<T>(t: T) -> T { t }
 
-fn f<T>(v: &'r T) -> &'r fn()->T { id::<&'r fn()->T>(|| *v) } //~ ERROR ???
+fn f<'r, T>(v: &'r T) -> &'r fn()->T { id::<&'r fn()->T>(|| *v) } //~ ERROR cannot infer an appropriate lifetime due to conflicting requirements
 
 fn main() {
     let v = &5;
