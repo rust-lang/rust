@@ -55,7 +55,7 @@ pub enum RoundMode {
  *
  * ~~~
  * let twenty: f32 = num::cast(0x14);
- * fail_unless!(twenty == 20f32);
+ * assert!(twenty == 20f32);
  * ~~~
  */
 #[inline(always)]

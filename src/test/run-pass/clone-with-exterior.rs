@@ -13,8 +13,8 @@
 extern mod std;
 
 fn f(x : @{a:int, b:int}) {
-    fail_unless!((x.a == 10));
-    fail_unless!((x.b == 12));
+    assert!((x.a == 10));
+    assert!((x.b == 12));
 }
 
 pub fn main() {

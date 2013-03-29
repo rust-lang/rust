@@ -20,6 +20,6 @@ pub fn main() {
     let b: *u8 = f;
     let c: *u8 = g;
 
-    fail_unless!(a == b);
-    fail_unless!(a != c);
+    assert!(a == b);
+    assert!(a != c);
 }

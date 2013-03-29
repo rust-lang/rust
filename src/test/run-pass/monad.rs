@@ -40,9 +40,9 @@ fn transform(x: Option<int>) -> Option<~str> {
 }
 
 pub fn main() {
-    fail_unless!(transform(Some(10)) == Some(~"11"));
-    fail_unless!(transform(None) == None);
-    fail_unless!((~[~"hi"])
+    assert!(transform(Some(10)) == Some(~"11"));
+    assert!(transform(None) == None);
+    assert!((~[~"hi"])
         .bind(|x| ~[x.clone(), *x + ~"!"] )
         .bind(|x| ~[x.clone(), *x + ~"?"] ) ==
         ~[~"hi", ~"hi?", ~"hi!", ~"hi!?"]);

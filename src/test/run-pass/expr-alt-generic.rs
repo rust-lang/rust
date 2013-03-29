@@ -15,7 +15,7 @@ type compare<T> = @fn(T, T) -> bool;
 
 fn test_generic<T:Copy>(expected: T, eq: compare<T>) {
   let actual: T = match true { true => { expected }, _ => fail!(~"wat") };
-    fail_unless!((eq(expected, actual)));
+    assert!((eq(expected, actual)));
 }
 
 fn test_bool() {

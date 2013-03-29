@@ -105,7 +105,7 @@ mod test {
         left.send(~"abc");
         right.send(123);
 
-        fail_unless!(left.recv() == 123);
-        fail_unless!(right.recv() == ~"abc");
+        assert!(left.recv() == 123);
+        assert!(right.recv() == ~"abc");
     }
 }

@@ -139,7 +139,7 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
                 CEnum(discrs.min(), discrs.max())
             } else if cases.len() == 1 {
                 // Equivalent to a struct/tuple/newtype.
-                fail_unless!(cases[0].discr == 0);
+                assert!(cases[0].discr == 0);
                 Univariant(mk_struct(cx, cases[0].tys), false)
             } else {
                 // The general case.  Since there's at least one
@@ -191,7 +191,7 @@ fn generic_fields_of(cx: @CrateContext, r: &Repr, sizing: bool)
             // To get "the" type of a general enum, we pick the case
             // with the largest alignment (so it will always align
             // correctly in containing structures) and pad it out.
-            fail_unless!(sts.len() >= 1);
+            assert!(sts.len() >= 1);
             let mut most_aligned = None;
             let mut largest_align = 0;
             let mut largest_size = 0;
@@ -300,16 +300,16 @@ pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
 pub fn trans_start_init(bcx: block, r: &Repr, val: ValueRef, discr: int) {
     match *r {
         CEnum(min, max) => {
-            fail_unless!(min <= discr && discr <= max);
+            assert!(min <= discr && discr <= max);
             Store(bcx, C_int(bcx.ccx(), discr), GEPi(bcx, val, [0, 0]))
         }
         Univariant(ref st, true) => {
-            fail_unless!(discr == 0);
+            assert!(discr == 0);
             Store(bcx, C_bool(true),
                   GEPi(bcx, val, [0, st.fields.len() - 1]))
         }
         Univariant(*) => {
-            fail_unless!(discr == 0);
+            assert!(discr == 0);
         }
         General(*) => {
             Store(bcx, C_int(bcx.ccx(), discr), GEPi(bcx, val, [0, 0]))
@@ -325,7 +325,7 @@ pub fn num_args(r: &Repr, discr: int) -> uint {
     match *r {
         CEnum(*) => 0,
         Univariant(ref st, dtor) => {
-            fail_unless!(discr == 0);
+            assert!(discr == 0);
             st.fields.len() - (if dtor { 1 } else { 0 })
         }
         General(ref cases) => cases[discr as uint].fields.len() - 1
@@ -343,7 +343,7 @@ pub fn trans_field_ptr(bcx: block, r: &Repr, val: ValueRef, discr: int,
             bcx.ccx().sess.bug(~"element access in C-like enum")
         }
         Univariant(ref st, _dtor) => {
-            fail_unless!(discr == 0);
+            assert!(discr == 0);
             struct_field_ptr(bcx, st, val, ix, false)
         }
         General(ref cases) => {
@@ -401,12 +401,12 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
                    vals: &[ValueRef]) -> ValueRef {
     match *r {
         CEnum(min, max) => {
-            fail_unless!(vals.len() == 0);
-            fail_unless!(min <= discr && discr <= max);
+            assert!(vals.len() == 0);
+            assert!(min <= discr && discr <= max);
             C_int(ccx, discr)
         }
         Univariant(ref st, _dro) => {
-            fail_unless!(discr == 0);
+            assert!(discr == 0);
             C_struct(build_const_struct(ccx, st, vals))
         }
         General(ref cases) => {
@@ -431,7 +431,7 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
  */
 fn build_const_struct(ccx: @CrateContext, st: &Struct, vals: &[ValueRef])
     -> ~[ValueRef] {
-    fail_unless!(vals.len() == st.fields.len());
+    assert!(vals.len() == st.fields.len());
 
     let mut offset = 0;
     let mut cfields = ~[];
@@ -447,7 +447,7 @@ fn build_const_struct(ccx: @CrateContext, st: &Struct, vals: &[ValueRef])
             cfields.push(padding(target_offset - offset));
             offset = target_offset;
         }
-        fail_unless!(!is_undef(vals[i]));
+        assert!(!is_undef(vals[i]));
         // If that assert fails, could change it to wrap in a struct?
         // (See `const_struct_field` for why real fields must not be undef.)
         cfields.push(vals[i]);

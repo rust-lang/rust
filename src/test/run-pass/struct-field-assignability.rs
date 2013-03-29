@@ -4,6 +4,6 @@ struct Foo<'self> {
 
 pub fn main() {
     let f = Foo { x: @3 };
-    fail_unless!(*f.x == 3);
+    assert!(*f.x == 3);
 }
 

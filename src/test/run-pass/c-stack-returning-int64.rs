@@ -29,8 +29,8 @@ fn atoll(s: ~str) -> i64 {
 
 pub fn main() {
     unsafe {
-        fail_unless!(atol(~"1024") * 10 == atol(~"10240"));
-        fail_unless!((atoll(~"11111111111111111") * 10i64)
+        assert!(atol(~"1024") * 10 == atol(~"10240"));
+        assert!((atoll(~"11111111111111111") * 10i64)
             == atoll(~"111111111111111110"));
     }
 }

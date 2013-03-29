@@ -358,8 +358,8 @@ pub mod flatteners {
 
     impl<T:Copy + Owned> Unflattener<T> for PodUnflattener<T> {
         fn unflatten(&self, buf: ~[u8]) -> T {
-            fail_unless!(size_of::<T>() != 0);
-            fail_unless!(size_of::<T>() == buf.len());
+            assert!(size_of::<T>() != 0);
+            assert!(size_of::<T>() == buf.len());
             let addr_of_init: &u8 = unsafe { &*vec::raw::to_ptr(buf) };
             let addr_of_value: &T = unsafe { cast::transmute(addr_of_init) };
             copy *addr_of_value
@@ -368,7 +368,7 @@ pub mod flatteners {
 
     impl<T:Copy + Owned> Flattener<T> for PodFlattener<T> {
         fn flatten(&self, val: T) -> ~[u8] {
-            fail_unless!(size_of::<T>() != 0);
+            assert!(size_of::<T>() != 0);
             let val: *T = ptr::to_unsafe_ptr(&val);
             let byte_value = val as *u8;
             unsafe { vec::from_buf(byte_value, size_of::<T>()) }
@@ -519,11 +519,11 @@ pub mod bytepipes {
             let mut left = count;
             let mut bytes = ~[];
             while !self.reader.eof() && left > 0 {
-                fail_unless!(left <= count);
-                fail_unless!(left > 0);
+                assert!(left <= count);
+                assert!(left > 0);
                 let new_bytes = self.reader.read_bytes(left);
                 bytes.push_all(new_bytes);
-                fail_unless!(new_bytes.len() <= left);
+                assert!(new_bytes.len() <= left);
                 left -= new_bytes.len();
             }
 
@@ -576,7 +576,7 @@ pub mod bytepipes {
                 return Some(bytes);
             } else if vec::uniq_len(&const self.buf) > 0 {
                 let mut bytes = ::core::util::replace(&mut self.buf, ~[]);
-                fail_unless!(count > bytes.len());
+                assert!(count > bytes.len());
                 match self.try_recv(count - bytes.len()) {
                     Some(rest) => {
                         bytes.push_all(rest);
@@ -587,7 +587,7 @@ pub mod bytepipes {
             } else if vec::uniq_len(&const self.buf) == 0 {
                 match self.port.try_recv() {
                     Some(buf) => {
-                        fail_unless!(!buf.is_empty());
+                        assert!(!buf.is_empty());
                         self.buf = buf;
                         return self.try_recv(count);
                     }
@@ -655,7 +655,7 @@ mod test {
         let port = serial::reader_port(reader);
 
         let res: int = port.recv();
-        fail_unless!(res == 10i);
+        assert!(res == 10i);
     }
 
     #[test]
@@ -669,7 +669,7 @@ mod test {
         }
 
         for int::range(0, 10) |i| {
-            fail_unless!(i == port.recv())
+            assert!(i == port.recv())
         }
     }
 
@@ -684,7 +684,7 @@ mod test {
         }
 
         for int::range(0, 10) |i| {
-            fail_unless!(@i == port.recv())
+            assert!(@i == port.recv())
         }
     }
 
@@ -701,7 +701,7 @@ mod test {
         let port = pod::reader_port(reader);
 
         let res: int = port.recv();
-        fail_unless!(res == 10);
+        assert!(res == 10);
     }
 
     #[test]
@@ -715,7 +715,7 @@ mod test {
         }
 
         for int::range(0, 10) |i| {
-            fail_unless!(i == port.recv())
+            assert!(i == port.recv())
         }
     }
 
@@ -799,7 +799,7 @@ mod test {
                 kill_ch.send(None)
             };
 
-            fail_unless!(listen_res.is_ok());
+            assert!(listen_res.is_ok());
         }
 
         // Client task
@@ -812,7 +812,7 @@ mod test {
             debug!("connecting");
             let iotask = &uv::global_loop::get();
             let connect_result = tcp::connect(copy addr, port, iotask);
-            fail_unless!(connect_result.is_ok());
+            assert!(connect_result.is_ok());
             let sock = result::unwrap(connect_result);
             let socket_buf: tcp::TcpSocketBuf = tcp::socket_buf(sock);
 
@@ -833,7 +833,7 @@ mod test {
             debug!("accepting connection");
             let accept_result = tcp::accept(conn);
             debug!("accepted");
-            fail_unless!(accept_result.is_ok());
+            assert!(accept_result.is_ok());
             let sock = result::unwrap(accept_result);
             res_chan.send(());
 
@@ -845,7 +845,7 @@ mod test {
             for int::range(0, 10) |i| {
                 let j = port.recv();
                 debug!("receieved %?", j);
-                fail_unless!(i == j);
+                assert!(i == j);
             }
 
             // The test is over!
@@ -891,7 +891,7 @@ mod test {
             let bytes = ~[];
             let port = loader(bytes);
             let res: Option<int> = port.try_recv();
-            fail_unless!(res.is_none());
+            assert!(res.is_none());
         }
 
         #[test]
@@ -908,7 +908,7 @@ mod test {
             let bytes = ~[0];
             let port = loader(bytes);
             let res: Option<int> = port.try_recv();
-            fail_unless!(res.is_none());
+            assert!(res.is_none());
         }
 
         #[test]
@@ -926,7 +926,7 @@ mod test {
             let bytes = CONTINUE.to_vec() + ~[0];
             let port = loader(bytes);
             let res: Option<int> = port.try_recv();
-            fail_unless!(res.is_none());
+            assert!(res.is_none());
         }
 
         #[test]
@@ -939,7 +939,7 @@ mod test {
         }
 
         fn test_try_recv_none4<P:BytePort>(+loader: PortLoader<P>) {
-            fail_unless!(do task::try || {
+            assert!(do task::try || {
                 static CONTINUE: [u8, ..4] = [0xAA, 0xBB, 0xCC, 0xDD];
                 // The control word is followed by a valid length,
                 // then undeserializable garbage

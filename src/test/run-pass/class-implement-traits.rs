@@ -65,7 +65,7 @@ fn make_speak<C:noisy>(mut c: C) {
 pub fn main() {
   let mut nyan = cat(0u, 2, ~"nyan");
   nyan.eat();
-  fail_unless!((!nyan.eat()));
+  assert!((!nyan.eat()));
   for uint::range(1u, 10u) |_i| { make_speak(nyan); };
-  fail_unless!((nyan.eat()));
+  assert!((nyan.eat()));
 }

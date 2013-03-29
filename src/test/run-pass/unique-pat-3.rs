@@ -12,7 +12,7 @@
 enum bar { u(~int), w(int), }
 
 pub fn main() {
-    fail_unless!(match u(~10) {
+    assert!(match u(~10) {
       u(a) => {
         error!(a);
         *a

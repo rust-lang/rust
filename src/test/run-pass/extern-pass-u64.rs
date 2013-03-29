@@ -16,7 +16,7 @@ pub extern {
 
 pub fn main() {
     unsafe {
-        fail_unless!(22_u64 == rust_dbg_extern_identity_u64(22_u64));
+        assert!(22_u64 == rust_dbg_extern_identity_u64(22_u64));
     }
 }
 

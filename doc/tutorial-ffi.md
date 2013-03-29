@@ -239,7 +239,7 @@ fn unix_time_in_microseconds() -> u64 {
     }
 }
 
-# fn main() { fail_unless!(fmt!("%?", unix_time_in_microseconds()) != ~""); }
+# fn main() { assert!(fmt!("%?", unix_time_in_microseconds()) != ~""); }
 ~~~~
 
 The `#[nolink]` attribute indicates that there's no foreign library to

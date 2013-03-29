@@ -20,5 +20,5 @@ use issue2378b::{methods};
 
 pub fn main() {
     let x = {a: just(3), b: just(5)};
-    fail_unless!(x[0u] == (3, 5));
+    assert!(x[0u] == (3, 5));
 }

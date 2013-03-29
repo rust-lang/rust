@@ -11,5 +11,5 @@
 mod not_a_real_file; //~ ERROR not_a_real_file.rs
 
 fn main() {
-    fail_unless!(mod_file_aux::bar() == 10);
+    assert!(mod_file_aux::bar() == 10);
 }

@@ -16,9 +16,9 @@ pub fn main() {
     v += ~[3];
     v += ~[4];
     v += ~[5];
-    fail_unless!((v[0] == 1));
-    fail_unless!((v[1] == 2));
-    fail_unless!((v[2] == 3));
-    fail_unless!((v[3] == 4));
-    fail_unless!((v[4] == 5));
+    assert!((v[0] == 1));
+    assert!((v[1] == 2));
+    assert!((v[2] == 3));
+    assert!((v[3] == 4));
+    assert!((v[4] == 5));
 }

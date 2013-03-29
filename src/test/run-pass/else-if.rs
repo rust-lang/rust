@@ -12,19 +12,19 @@
 
 pub fn main() {
     if 1 == 2 {
-        fail_unless!((false));
+        assert!((false));
     } else if 2 == 3 {
-        fail_unless!((false));
-    } else if 3 == 4 { fail_unless!((false)); } else { fail_unless!((true)); }
-    if 1 == 2 { fail_unless!((false)); } else if 2 == 2 { fail_unless!((true)); }
+        assert!((false));
+    } else if 3 == 4 { assert!((false)); } else { assert!((true)); }
+    if 1 == 2 { assert!((false)); } else if 2 == 2 { assert!((true)); }
     if 1 == 2 {
-        fail_unless!((false));
+        assert!((false));
     } else if 2 == 2 {
         if 1 == 1 {
-            fail_unless!((true));
-        } else { if 2 == 1 { fail_unless!((false)); } else { fail_unless!((false)); } }
+            assert!((true));
+        } else { if 2 == 1 { assert!((false)); } else { assert!((false)); } }
     }
     if 1 == 2 {
-        fail_unless!((false));
-    } else { if 1 == 2 { fail_unless!((false)); } else { fail_unless!((true)); } }
+        assert!((false));
+    } else { if 1 == 2 { assert!((false)); } else { assert!((true)); } }
 }

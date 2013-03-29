@@ -35,6 +35,6 @@ pub fn main() {
     make_cycle(z);
     let (a, b) = z();
     debug!("a=%u b=%u", *a as uint, b as uint);
-    fail_unless!(*a == x);
-    fail_unless!(b == y);
+    assert!(*a == x);
+    assert!(b == y);
 }

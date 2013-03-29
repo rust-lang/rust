@@ -20,7 +20,7 @@ pub fn main() {
 }
 
 fn test_color(color: color, val: int, name: ~str) {
-    fail_unless!(color as int == val);
-    fail_unless!(color as float == val as float);
+    assert!(color as int == val);
+    assert!(color as float == val as float);
 }
 

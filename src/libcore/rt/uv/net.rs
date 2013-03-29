@@ -104,7 +104,7 @@ pub impl StreamWatcher {
     fn write(&mut self, msg: ~[u8], cb: ConnectionCallback) {
         // XXX: Borrowck
         let data = get_watcher_data(unsafe { transmute_mut_region(self) });
-        fail_unless!(data.write_cb.is_none());
+        assert!(data.write_cb.is_none());
         data.write_cb = Some(cb);
 
         let req = WriteRequest::new();
@@ -112,7 +112,7 @@ pub impl StreamWatcher {
         // XXX: Allocation
         let bufs = ~[buf];
         unsafe {
-            fail_unless!(0 == uvll::write(req.native_handle(),
+            assert!(0 == uvll::write(req.native_handle(),
                                           self.native_handle(),
                                           &bufs, write_cb));
         }
@@ -133,7 +133,7 @@ pub impl StreamWatcher {
         let self_handle = self.native_handle() as *c_void;
         let stream_handle = stream.native_handle() as *c_void;
         unsafe {
-            fail_unless!(0 == uvll::accept(self_handle, stream_handle));
+            assert!(0 == uvll::accept(self_handle, stream_handle));
         }
     }
 
@@ -141,7 +141,7 @@ pub impl StreamWatcher {
         {
             let mut self = self;
             let data = get_watcher_data(&mut self);
-            fail_unless!(data.close_cb.is_none());
+            assert!(data.close_cb.is_none());
             data.close_cb = Some(cb);
         }
 
@@ -184,8 +184,8 @@ pub impl TcpWatcher {
     fn new(loop_: &mut Loop) -> TcpWatcher {
         unsafe {
             let handle = malloc_handle(UV_TCP);
-            fail_unless!(handle.is_not_null());
-            fail_unless!(0 == uvll::tcp_init(loop_.native_handle(), handle));
+            assert!(handle.is_not_null());
+            assert!(0 == uvll::tcp_init(loop_.native_handle(), handle));
             let mut watcher = NativeHandle::from_native_handle(handle);
             install_watcher_data(&mut watcher);
             return watcher;
@@ -200,7 +200,7 @@ pub impl TcpWatcher {
                         uvll::tcp_bind(self.native_handle(), addr)
                     };
                     // XXX: bind is likely to fail. need real error handling
-                    fail_unless!(result == 0);
+                    assert!(result == 0);
                 }
             }
             _ => fail!()
@@ -209,7 +209,7 @@ pub impl TcpWatcher {
 
     fn connect(&mut self, address: IpAddr, cb: ConnectionCallback) {
         unsafe {
-            fail_unless!(get_watcher_data(self).connect_cb.is_none());
+            assert!(get_watcher_data(self).connect_cb.is_none());
             get_watcher_data(self).connect_cb = Some(cb);
 
             let mut connect_watcher = ConnectRequest::new();
@@ -218,7 +218,7 @@ pub impl TcpWatcher {
                 Ipv4(*) => {
                     do ip4_as_uv_ip4(address) |addr| {
                         rtdebug!("connect_t: %x", connect_handle as uint);
-                        fail_unless!(0 == uvll::tcp_connect(connect_handle,
+                        assert!(0 == uvll::tcp_connect(connect_handle,
                                                             self.native_handle(),
                                                             addr, connect_cb));
                     }
@@ -244,13 +244,13 @@ pub impl TcpWatcher {
     fn listen(&mut self, cb: ConnectionCallback) {
         // XXX: Borrowck
         let data = get_watcher_data(unsafe { transmute_mut_region(self) });
-        fail_unless!(data.connect_cb.is_none());
+        assert!(data.connect_cb.is_none());
         data.connect_cb = Some(cb);
 
         unsafe {
             static BACKLOG: c_int = 128; // XXX should be configurable
             // XXX: This can probably fail
-            fail_unless!(0 == uvll::listen(self.native_handle(),
+            assert!(0 == uvll::listen(self.native_handle(),
                                            BACKLOG, connection_cb));
         }
 
@@ -291,7 +291,7 @@ impl ConnectRequest {
         let connect_handle = unsafe {
             malloc_req(UV_CONNECT)
         };
-        fail_unless!(connect_handle.is_not_null());
+        assert!(connect_handle.is_not_null());
         let connect_handle = connect_handle as *uvll::uv_connect_t;
         ConnectRequest(connect_handle)
     }
@@ -328,7 +328,7 @@ pub impl WriteRequest {
         let write_handle = unsafe {
             malloc_req(UV_WRITE)
         };
-        fail_unless!(write_handle.is_not_null());
+        assert!(write_handle.is_not_null());
         let write_handle = write_handle as *uvll::uv_write_t;
         WriteRequest(write_handle)
     }
@@ -365,8 +365,8 @@ fn connect_close() {
         let addr = Ipv4(127, 0, 0, 1, 2923);
         do tcp_watcher.connect(addr) |stream_watcher, status| {
             rtdebug!("tcp_watcher.connect!");
-            fail_unless!(status.is_some());
-            fail_unless!(status.get().name() == ~"ECONNREFUSED");
+            assert!(status.is_some());
+            assert!(status.get().name() == ~"ECONNREFUSED");
             stream_watcher.close(||());
         }
         loop_.run();
@@ -384,7 +384,7 @@ fn connect_read() {
         do tcp_watcher.connect(addr) |stream_watcher, status| {
             let mut stream_watcher = stream_watcher;
             rtdebug!("tcp_watcher.connect!");
-            fail_unless!(status.is_none());
+            assert!(status.is_none());
             let alloc: AllocCallback = |size| {
                 vec_to_uv_buf(vec::from_elem(size, 0))
             };
@@ -421,7 +421,7 @@ fn listen() {
         rtdebug!("listening");
         do server_tcp_watcher.listen |server_stream_watcher, status| {
             rtdebug!("listened!");
-            fail_unless!(status.is_none());
+            assert!(status.is_none());
             let mut server_stream_watcher = server_stream_watcher;
             let mut loop_ = loop_;
             let mut client_tcp_watcher = TcpWatcher::new(&mut loop_);
@@ -443,12 +443,12 @@ fn listen() {
                     rtdebug!("got %d bytes", nread);
                     let buf = buf.unwrap();
                     for buf.slice(0, nread as uint).each |byte| {
-                        fail_unless!(*byte == count as u8);
+                        assert!(*byte == count as u8);
                         rtdebug!("%u", *byte as uint);
                         count += 1;
                     }
                 } else {
-                    fail_unless!(count == MAX);
+                    assert!(count == MAX);
                     do stream_watcher.close {
                         server_stream_watcher.close(||());
                     }
@@ -463,12 +463,12 @@ fn listen() {
             let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
             do tcp_watcher.connect(addr) |stream_watcher, status| {
                 rtdebug!("connecting");
-                fail_unless!(status.is_none());
+                assert!(status.is_none());
                 let mut stream_watcher = stream_watcher;
                 let msg = ~[0, 1, 2, 3, 4, 5, 6 ,7 ,8, 9];
                 do stream_watcher.write(msg) |stream_watcher, status| {
                     rtdebug!("writing");
-                    fail_unless!(status.is_none());
+                    assert!(status.is_none());
                     stream_watcher.close(||());
                 }
             }

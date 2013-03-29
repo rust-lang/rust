@@ -133,7 +133,7 @@ pub fn trans(bcx: block, expr: @ast::expr) -> Callee {
             }
             ast::def_variant(tid, vid) => {
                 // nullary variants are not callable
-                fail_unless!(ty::enum_variant_with_id(bcx.tcx(),
+                assert!(ty::enum_variant_with_id(bcx.tcx(),
                                                       tid,
                                                       vid).args.len() > 0u);
                 fn_callee(bcx, trans_fn_ref(bcx, vid, ref_expr.id))
@@ -231,7 +231,7 @@ pub fn trans_fn_ref_with_vtables(
            vtables);
     let _indenter = indenter();
 
-    fail_unless!(type_params.all(|t| !ty::type_needs_infer(*t)));
+    assert!(type_params.all(|t| !ty::type_needs_infer(*t)));
 
     // Polytype of the function item (may have type params)
     let fn_tpt = ty::lookup_item_type(tcx, def_id);
@@ -286,7 +286,7 @@ pub fn trans_fn_ref_with_vtables(
     // Create a monomorphic verison of generic functions
     if must_monomorphise {
         // Should be either intra-crate or inlined.
-        fail_unless!(def_id.crate == ast::local_crate);
+        assert!(def_id.crate == ast::local_crate);
 
         let mut (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, type_params,
@@ -705,7 +705,7 @@ pub fn trans_arg_expr(bcx: block,
         // FIXME(#3548) use the adjustments table
         match autoref_arg {
             DoAutorefArg => {
-                fail_unless!(!
+                assert!(!
                     bcx.ccx().maps.moves_map.contains(&arg_expr.id));
                 val = arg_datum.to_ref_llval(bcx);
             }

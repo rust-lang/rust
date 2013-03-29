@@ -9,16 +9,16 @@
 // except according to those terms.
 
 pub fn main() {
-    fail_unless!((~[0, 1]).to_str() == ~"[0, 1]");
-    fail_unless!((&[1, 2]).to_str() == ~"[1, 2]");
-    fail_unless!((@[2, 3]).to_str() == ~"[2, 3]");
+    assert!((~[0, 1]).to_str() == ~"[0, 1]");
+    assert!((&[1, 2]).to_str() == ~"[1, 2]");
+    assert!((@[2, 3]).to_str() == ~"[2, 3]");
 
     let foo = ~[3, 4];
     let bar = &[4, 5];
     let baz = @[5, 6];
 
-    fail_unless!(foo.to_str() == ~"[3, 4]");
-    fail_unless!(bar.to_str() == ~"[4, 5]");
-    fail_unless!(baz.to_str() == ~"[5, 6]");
+    assert!(foo.to_str() == ~"[3, 4]");
+    assert!(bar.to_str() == ~"[4, 5]");
+    assert!(baz.to_str() == ~"[5, 6]");
 
 }

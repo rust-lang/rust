@@ -77,15 +77,15 @@ fn seq_range<BT:buildable<int>>(lo: uint, hi: uint) -> BT {
 
 pub fn main() {
     let v: @[int] = seq_range(0, 10);
-    fail_unless!(v == @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    assert!(v == @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
     let v: @[int] = map(&[1,2,3], |x| 1+x);
-    fail_unless!(v == @[2, 3, 4]);
+    assert!(v == @[2, 3, 4]);
     let v: ~[int] = map(&[1,2,3], |x| 1+x);
-    fail_unless!(v == ~[2, 3, 4]);
+    assert!(v == ~[2, 3, 4]);
 
-    fail_unless!(bool_like::select(true, 9, 14) == 9);
-    fail_unless!(!andand(true, false));
-    fail_unless!(andand(7, 12) == 12);
-    fail_unless!(andand(0, 12) == 0);
+    assert!(bool_like::select(true, 9, 14) == 9);
+    assert!(!andand(true, false));
+    assert!(andand(7, 12) == 12);
+    assert!(andand(0, 12) == 0);
 }

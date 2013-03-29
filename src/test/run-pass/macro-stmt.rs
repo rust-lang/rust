@@ -27,16 +27,16 @@ pub fn main() {
     );
 
     mylet!(y, 8*2);
-    fail_unless!((y == 16));
+    assert!((y == 16));
 
     myfn!(mult, (a,b), { a*b } );
 
-    fail_unless!((mult(2, add(4,4)) == 16));
+    assert!((mult(2, add(4,4)) == 16));
 
     macro_rules! actually_an_expr_macro (
         () => ( 16 )
     )
 
-    fail_unless!({ actually_an_expr_macro!() } == 16);
+    assert!({ actually_an_expr_macro!() } == 16);
 
 }

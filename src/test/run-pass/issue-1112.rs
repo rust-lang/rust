@@ -35,10 +35,10 @@ pub fn main() {
 }
 
 fn bar<T>(x: X<T>) {
-    fail_unless!(x.b == 9u8);
-    fail_unless!(x.c == true);
-    fail_unless!(x.d == 10u8);
-    fail_unless!(x.e == 11u16);
-    fail_unless!(x.f == 12u8);
-    fail_unless!(x.g == 13u8);
+    assert!(x.b == 9u8);
+    assert!(x.c == true);
+    assert!(x.d == 10u8);
+    assert!(x.e == 11u16);
+    assert!(x.f == 12u8);
+    assert!(x.g == 13u8);
 }

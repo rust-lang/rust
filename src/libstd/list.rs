@@ -165,28 +165,28 @@ mod tests {
         let full1 = from_vec(~[1]);
         let full2 = from_vec(~['r', 'u']);
 
-        fail_unless!(is_empty(empty));
-        fail_unless!(!is_empty(full1));
-        fail_unless!(!is_empty(full2));
+        assert!(is_empty(empty));
+        assert!(!is_empty(full1));
+        assert!(!is_empty(full2));
     }
 
     #[test]
     pub fn test_from_vec() {
         let l = from_vec(~[0, 1, 2]);
 
-        fail_unless!((head(l) == 0));
+        assert!((head(l) == 0));
 
         let tail_l = tail(l);
-        fail_unless!((head(tail_l) == 1));
+        assert!((head(tail_l) == 1));
 
         let tail_tail_l = tail(tail_l);
-        fail_unless!((head(tail_tail_l) == 2));
+        assert!((head(tail_tail_l) == 2));
     }
 
     #[test]
     pub fn test_from_vec_empty() {
         let empty : @list::List<int> = from_vec(~[]);
-        fail_unless!((empty == @list::Nil::<int>));
+        assert!((empty == @list::Nil::<int>));
     }
 
     #[test]
@@ -194,8 +194,8 @@ mod tests {
         fn add(a: &uint, b: &int) -> uint { return *a + (*b as uint); }
         let l = from_vec(~[0, 1, 2, 3, 4]);
         let empty = @list::Nil::<int>;
-        fail_unless!((list::foldl(0u, l, add) == 10u));
-        fail_unless!((list::foldl(0u, empty, add) == 0u));
+        assert!((list::foldl(0u, l, add) == 10u));
+        assert!((list::foldl(0u, empty, add) == 0u));
     }
 
     #[test]
@@ -204,14 +204,14 @@ mod tests {
             *a - *b
         }
         let l = from_vec(~[1, 2, 3, 4]);
-        fail_unless!((list::foldl(0, l, sub) == -10));
+        assert!((list::foldl(0, l, sub) == -10));
     }
 
     #[test]
     pub fn test_find_success() {
         fn match_(i: &int) -> bool { return *i == 2; }
         let l = from_vec(~[0, 1, 2]);
-        fail_unless!((list::find(l, match_) == option::Some(2)));
+        assert!((list::find(l, match_) == option::Some(2)));
     }
 
     #[test]
@@ -219,31 +219,31 @@ mod tests {
         fn match_(_i: &int) -> bool { return false; }
         let l = from_vec(~[0, 1, 2]);
         let empty = @list::Nil::<int>;
-        fail_unless!((list::find(l, match_) == option::None::<int>));
-        fail_unless!((list::find(empty, match_) == option::None::<int>));
+        assert!((list::find(l, match_) == option::None::<int>));
+        assert!((list::find(empty, match_) == option::None::<int>));
     }
 
     #[test]
     pub fn test_has() {
         let l = from_vec(~[5, 8, 6]);
         let empty = @list::Nil::<int>;
-        fail_unless!((list::has(l, 5)));
-        fail_unless!((!list::has(l, 7)));
-        fail_unless!((list::has(l, 8)));
-        fail_unless!((!list::has(empty, 5)));
+        assert!((list::has(l, 5)));
+        assert!((!list::has(l, 7)));
+        assert!((list::has(l, 8)));
+        assert!((!list::has(empty, 5)));
     }
 
     #[test]
     pub fn test_len() {
         let l = from_vec(~[0, 1, 2]);
         let empty = @list::Nil::<int>;
-        fail_unless!((list::len(l) == 3u));
-        fail_unless!((list::len(empty) == 0u));
+        assert!((list::len(l) == 3u));
+        assert!((list::len(empty) == 0u));
     }
 
     #[test]
     pub fn test_append() {
-        fail_unless!(from_vec(~[1,2,3,4])
+        assert!(from_vec(~[1,2,3,4])
             == list::append(list::from_vec(~[1,2]), list::from_vec(~[3,4])));
     }
 }

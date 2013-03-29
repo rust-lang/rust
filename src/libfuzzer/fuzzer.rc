@@ -377,13 +377,13 @@ pub fn check_whole_compiler(code: ~str, suggested_filename_prefix: &Path,
 
 pub fn removeIfExists(filename: &Path) {
     // So sketchy!
-    fail_unless!(!contains(filename.to_str(), ~" "));
+    assert!(!contains(filename.to_str(), ~" "));
     run::program_output(~"bash", ~[~"-c", ~"rm " + filename.to_str()]);
 }
 
 pub fn removeDirIfExists(filename: &Path) {
     // So sketchy!
-    fail_unless!(!contains(filename.to_str(), ~" "));
+    assert!(!contains(filename.to_str(), ~" "));
     run::program_output(~"bash", ~[~"-c", ~"rm -r " + filename.to_str()]);
 }
 

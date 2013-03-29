@@ -21,13 +21,13 @@ fn make_generic_record<A:Copy,B:Copy>(a: A, b: B) -> Pair<A,B> {
 fn test05_start(f: &~fn(v: float, v: ~str) -> Pair<float, ~str>) {
     let p = (*f)(22.22f, ~"Hi");
     debug!(copy p);
-    fail_unless!(p.a == 22.22f);
-    fail_unless!(p.b == ~"Hi");
+    assert!(p.a == 22.22f);
+    assert!(p.b == ~"Hi");
 
     let q = (*f)(44.44f, ~"Ho");
     debug!(copy q);
-    fail_unless!(q.a == 44.44f);
-    fail_unless!(q.b == ~"Ho");
+    assert!(q.a == 44.44f);
+    assert!(q.b == ~"Ho");
 }
 
 fn spawn<A:Copy,B:Copy>(f: extern fn(&~fn(A,B)->Pair<A,B>)) {

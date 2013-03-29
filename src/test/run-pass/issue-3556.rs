@@ -32,11 +32,11 @@ fn check_strs(actual: &str, expected: &str) -> bool
     
 pub fn main()
 {
- //       fail_unless!(check_strs(fmt!("%?", Text(@~"foo")), "Text(@~\"foo\")"));
- //       fail_unless!(check_strs(fmt!("%?", ETag(@~[~"foo"], @~"bar")), "ETag(@~[ ~\"foo\" ], @~\"bar\")"));
+ //       assert!(check_strs(fmt!("%?", Text(@~"foo")), "Text(@~\"foo\")"));
+ //       assert!(check_strs(fmt!("%?", ETag(@~[~"foo"], @~"bar")), "ETag(@~[ ~\"foo\" ], @~\"bar\")"));
     
         let t = Text(@~"foo");
         let u = Section(@~[~"alpha"], true, @~[t], @~"foo", @~"foo", @~"foo", @~"foo", @~"foo");
         let v = fmt!("%?", u);    // this is the line that causes the seg fault
-        fail_unless!(v.len() > 0);
+        assert!(v.len() > 0);
 }

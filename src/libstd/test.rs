@@ -282,7 +282,7 @@ pub fn run_tests_console(opts: &TestOpts,
 
     run_tests(opts, tests, |x| callback(&x, st));
 
-    fail_unless!(st.passed + st.failed +
+    assert!(st.passed + st.failed +
                  st.ignored + st.benchmarked == st.total);
     let success = st.failed == 0u;
 
@@ -403,7 +403,7 @@ fn should_sort_failures_before_printing_them() {
 
     let apos = str::find_str(s, ~"a").get();
     let bpos = str::find_str(s, ~"b").get();
-    fail_unless!(apos < bpos);
+    assert!(apos < bpos);
 }
 
 fn use_color() -> bool { return get_concurrency() == 1; }
@@ -797,7 +797,7 @@ mod tests {
         let ch = SharedChan(ch);
         run_test(false, desc, ch);
         let (_, res) = p.recv();
-        fail_unless!(res != TrOk);
+        assert!(res != TrOk);
     }
 
     #[test]
@@ -815,7 +815,7 @@ mod tests {
         let ch = SharedChan(ch);
         run_test(false, desc, ch);
         let (_, res) = p.recv();
-        fail_unless!(res == TrIgnored);
+        assert!(res == TrIgnored);
     }
 
     #[test]
@@ -834,7 +834,7 @@ mod tests {
         let ch = SharedChan(ch);
         run_test(false, desc, ch);
         let (_, res) = p.recv();
-        fail_unless!(res == TrOk);
+        assert!(res == TrOk);
     }
 
     #[test]
@@ -852,7 +852,7 @@ mod tests {
         let ch = SharedChan(ch);
         run_test(false, desc, ch);
         let (_, res) = p.recv();
-        fail_unless!(res == TrFailed);
+        assert!(res == TrFailed);
     }
 
     #[test]
@@ -862,7 +862,7 @@ mod tests {
           either::Left(copy o) => o,
           _ => fail!(~"Malformed arg in first_free_arg_should_be_a_filter")
         };
-        fail_unless!(~"filter" == opts.filter.get());
+        assert!(~"filter" == opts.filter.get());
     }
 
     #[test]
@@ -872,7 +872,7 @@ mod tests {
           either::Left(copy o) => o,
           _ => fail!(~"Malformed arg in parse_ignored_flag")
         };
-        fail_unless!((opts.run_ignored));
+        assert!((opts.run_ignored));
     }
 
     #[test]
@@ -912,9 +912,9 @@ mod tests {
         ];
         let filtered = filter_tests(&opts, tests);
 
-        fail_unless!((vec::len(filtered) == 1));
-        fail_unless!((filtered[0].desc.name.to_str() == ~"1"));
-        fail_unless!((filtered[0].desc.ignore == false));
+        assert!((vec::len(filtered) == 1));
+        assert!((filtered[0].desc.name.to_str() == ~"1"));
+        assert!((filtered[0].desc.ignore == false));
     }
 
     #[test]
@@ -969,7 +969,7 @@ mod tests {
         for vec::each(pairs) |p| {
             match *p {
                 (ref a, ref b) => {
-                    fail_unless!((*a == b.desc.name.to_str()));
+                    assert!((*a == b.desc.name.to_str()));
                 }
             }
         }

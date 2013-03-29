@@ -12,5 +12,5 @@
 
 pub fn main() {
     match -1 { -1 => {}, _ => fail!(~"wat") }
-    fail_unless!(1-1 == 0);
+    assert!(1-1 == 0);
 }

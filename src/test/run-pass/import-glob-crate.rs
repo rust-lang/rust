@@ -17,5 +17,5 @@ use core::vec::*;
 pub fn main() {
     let mut v = from_elem(0u, 0);
     v = vec::append(v, ~[4, 2]);
-    fail_unless!((reversed(v) == ~[2, 4]));
+    assert!((reversed(v) == ~[2, 4]));
 }

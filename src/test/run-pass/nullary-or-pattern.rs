@@ -15,6 +15,6 @@ fn or_alt(q: blah) -> int {
 }
 
 pub fn main() {
-    fail_unless!((or_alt(a) == 42));
-    fail_unless!((or_alt(b) == 42));
+    assert!((or_alt(a) == 42));
+    assert!((or_alt(b) == 42));
 }

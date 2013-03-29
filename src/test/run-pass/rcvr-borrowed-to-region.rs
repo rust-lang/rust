@@ -26,26 +26,26 @@ pub fn main() {
     /*
     let x = @mut 6;
     let y = x.get();
-    fail_unless!(y == 6);
+    assert!(y == 6);
     */
 
     let x = @6;
     let y = x.get();
     debug!("y=%d", y);
-    fail_unless!(y == 6);
+    assert!(y == 6);
 
     let mut x = ~6;
     let y = x.get();
     debug!("y=%d", y);
-    fail_unless!(y == 6);
+    assert!(y == 6);
 
     let x = ~6;
     let y = x.get();
     debug!("y=%d", y);
-    fail_unless!(y == 6);
+    assert!(y == 6);
 
     let x = &6;
     let y = x.get();
     debug!("y=%d", y);
-    fail_unless!(y == 6);
+    assert!(y == 6);
 }

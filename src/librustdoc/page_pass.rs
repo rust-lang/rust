@@ -155,19 +155,19 @@ fn should_not_split_the_doc_into_pages_for_doc_per_crate() {
         config::DocPerCrate,
         ~"mod a { } mod b { mod c { } }"
     );
-    fail_unless!(doc.pages.len() == 1u);
+    assert!(doc.pages.len() == 1u);
 }
 
 #[test]
 fn should_make_a_page_for_every_mod() {
     let doc = test::mk_doc(~"mod a { }");
-    fail_unless!(doc.pages.mods()[0].name() == ~"a");
+    assert!(doc.pages.mods()[0].name() == ~"a");
 }
 
 #[test]
 fn should_remove_mods_from_containing_mods() {
     let doc = test::mk_doc(~"mod a { }");
-    fail_unless!(vec::is_empty(doc.cratemod().mods()));
+    assert!(vec::is_empty(doc.cratemod().mods()));
 }
 
 #[cfg(test)]

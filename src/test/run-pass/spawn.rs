@@ -17,7 +17,7 @@ pub fn main() {
     task::spawn(|| child(10) );
 }
 
-fn child(&&i: int) { error!(i); fail_unless!((i == 10)); }
+fn child(&&i: int) { error!(i); assert!((i == 10)); }
 
 // Local Variables:
 // mode: rust;

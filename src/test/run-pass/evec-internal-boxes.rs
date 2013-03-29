@@ -13,6 +13,6 @@ pub fn main() {
     let _y : [@int, ..5] = [@1,@2,@3,@4,@5];
     let mut z = [@1,@2,@3,@4,@5];
     z = x;
-    fail_unless!(*z[0] == 1);
-    fail_unless!(*z[4] == 5);
+    assert!(*z[0] == 1);
+    assert!(*z[4] == 5);
 }

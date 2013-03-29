@@ -17,7 +17,7 @@ fn apply<T>(x: T, f: &fn(T)) {
 }
 
 fn check_int(x: int) {
-    fail_unless!(x == 22);
+    assert!(x == 22);
 }
 
 fn check_struct(x: X) {
