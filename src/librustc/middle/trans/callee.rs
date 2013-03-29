@@ -238,8 +238,7 @@ pub fn trans_fn_ref_with_vtables(
 
     // Modify the def_id if this is a default method; we want to be
     // monomorphizing the trait's code.
-    let (def_id, opt_impl_did) =
-            match tcx.provided_method_sources.find(&def_id) {
+    let (def_id, opt_impl_did) = match tcx.provided_method_sources.find(&def_id) {
         None => (def_id, None),
         Some(source) => (source.method_id, Some(source.impl_id))
     };
