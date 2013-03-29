@@ -236,6 +236,16 @@ fn doc_method_fty(doc: ebml::Doc, tcx: ty::ctxt, cdata: cmd) -> ty::BareFnTy {
                           |_, did| translate_def_id(cdata, did))
 }
 
+fn doc_transformed_self_ty(doc: ebml::Doc,
+                           tcx: ty::ctxt,
+                           cdata: cmd) -> Option<ty::t>
+{
+    do reader::maybe_get_doc(doc, tag_item_method_transformed_self_ty).map |tp| {
+        parse_ty_data(tp.data, cdata.cnum, tp.start, tcx,
+                      |_, did| translate_def_id(cdata, did))
+    }
+}
+
 pub fn item_type(item_id: ast::def_id, item: ebml::Doc,
                  tcx: ty::ctxt, cdata: cmd) -> ty::t {
     let t = doc_type(item, tcx, cdata);
@@ -716,14 +726,17 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     let method_doc = lookup_item(id, cdata.data);
     let def_id = item_def_id(method_doc, cdata);
     let name = item_name(intr, method_doc);
-    let bounds = item_ty_param_bounds(method_doc, tcx, cdata,
-                                      tag_item_method_tps);
+    let bounds =
+        item_ty_param_bounds(method_doc, tcx, cdata,
+                             tag_item_method_tps);
+    let transformed_self_ty = doc_transformed_self_ty(method_doc, tcx, cdata);
     let fty = doc_method_fty(method_doc, tcx, cdata);
     let vis = item_visibility(method_doc);
     let self_ty = get_self_ty(method_doc);
     ty::method {
         ident: name,
         tps: bounds,
+        transformed_self_ty: transformed_self_ty,
         fty: fty,
         self_ty: self_ty,
         vis: vis,
@@ -767,10 +780,12 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
             }
         };
 
+        let transformed_self_ty = doc_transformed_self_ty(mth, tcx, cdata);
         let self_ty = get_self_ty(mth);
         let ty_method = ty::method {
             ident: name,
             tps: bounds,
+            transformed_self_ty: transformed_self_ty,
             fty: fty,
             self_ty: self_ty,
             vis: ast::public,

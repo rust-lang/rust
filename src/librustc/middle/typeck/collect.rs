@@ -237,15 +237,17 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
             for ms.each |m| {
                 let ty_method = @match m {
                     &ast::required(ref m) => {
-                        ty_method_of_trait_method(ccx, region_paramd, generics,
-                                                  &m.id, &m.ident, &m.self_ty,
-                                                  &m.generics, &m.purity, &m.decl)
+                        ty_method_of_trait_method(
+                            ccx, trait_id, region_paramd, generics,
+                            &m.id, &m.ident, &m.self_ty,
+                            &m.generics, &m.purity, &m.decl)
                     }
 
                     &ast::provided(ref m) => {
-                        ty_method_of_trait_method(ccx, region_paramd, generics,
-                                                  &m.id, &m.ident, &m.self_ty,
-                                                  &m.generics, &m.purity, &m.decl)
+                        ty_method_of_trait_method(
+                            ccx, trait_id, region_paramd, generics,
+                            &m.id, &m.ident, &m.self_ty,
+                            &m.generics, &m.purity, &m.decl)
                     }
                 };
 
@@ -316,6 +318,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
     }
 
     fn ty_method_of_trait_method(self: &CrateCtxt,
+                                 trait_id: ast::node_id,
                                  trait_rp: Option<ty::region_variance>,
                                  trait_generics: &ast::Generics,
                                  m_id: &ast::node_id,
@@ -325,16 +328,16 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                                  m_purity: &ast::purity,
                                  m_decl: &ast::fn_decl) -> ty::method
     {
+        let trait_self_ty = ty::mk_self(self.tcx, local_def(trait_id));
         let rscope = MethodRscope::new(m_self_ty.node, trait_rp, trait_generics);
+        let (transformed_self_ty, fty) =
+            astconv::ty_of_method(self, &rscope, *m_purity, &m_generics.lifetimes,
+                                  trait_self_ty, *m_self_ty, m_decl);
         ty::method {
             ident: *m_ident,
             tps: ty_param_bounds(self, m_generics),
-            fty: astconv::ty_of_bare_fn(self,
-                                        &rscope,
-                                        *m_purity,
-                                        AbiSet::Rust(),
-                                        &m_generics.lifetimes,
-                                        m_decl),
+            transformed_self_ty: transformed_self_ty,
+            fty: fty,
             self_ty: m_self_ty.node,
             // assume public, because this is only invoked on trait methods
             vis: ast::public,
@@ -607,6 +610,7 @@ pub struct ConvertedMethod {
 pub fn convert_methods(ccx: &CrateCtxt,
                        ms: &[@ast::method],
                        rp: Option<ty::region_variance>,
+                       untransformed_rcvr_ty: ty::t,
                        rcvr_bounds: @~[ty::param_bounds],
                        rcvr_generics: &ast::Generics,
                        rcvr_visibility: ast::visibility)
@@ -615,8 +619,9 @@ pub fn convert_methods(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
     return vec::map(ms, |m| {
         let bounds = ty_param_bounds(ccx, &m.generics);
-        let mty = @ty_of_method(ccx, *m, rp, rcvr_generics,
-                                rcvr_visibility, &m.generics);
+        let mty = @ty_of_method(
+            ccx, *m, rp, untransformed_rcvr_ty,
+            rcvr_generics, rcvr_visibility, &m.generics);
         let fty = ty::mk_bare_fn(tcx, copy mty.fty);
         tcx.tcache.insert(
             local_def(m.id),
@@ -637,6 +642,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
     fn ty_of_method(ccx: &CrateCtxt,
                     m: @ast::method,
                     rp: Option<ty::region_variance>,
+                    untransformed_rcvr_ty: ty::t,
                     rcvr_generics: &ast::Generics,
                     rcvr_visibility: ast::visibility,
                     method_generics: &ast::Generics) -> ty::method
@@ -644,15 +650,16 @@ pub fn convert_methods(ccx: &CrateCtxt,
         let rscope = MethodRscope::new(m.self_ty.node,
                                        rp,
                                        rcvr_generics);
+        let (transformed_self_ty, fty) =
+            astconv::ty_of_method(ccx, &rscope, m.purity,
+                                  &method_generics.lifetimes,
+                                  untransformed_rcvr_ty,
+                                  m.self_ty, &m.decl);
         ty::method {
             ident: m.ident,
             tps: ty_param_bounds(ccx, &m.generics),
-            fty: astconv::ty_of_bare_fn(ccx,
-                                        &rscope,
-                                        m.purity,
-                                        ast::RustAbi,
-                                        &method_generics.lifetimes,
-                                        &m.decl),
+            transformed_self_ty: transformed_self_ty,
+            fty: fty,
             self_ty: m.self_ty.node,
             vis: m.vis.inherit_from(rcvr_visibility),
             def_id: local_def(m.id)
@@ -715,7 +722,7 @@ pub fn convert(ccx: &CrateCtxt, it: @ast::item) {
             it.vis
         };
 
-        let cms = convert_methods(ccx, *ms, rp, i_bounds, generics,
+        let cms = convert_methods(ccx, *ms, rp, selfty, i_bounds, generics,
                                   parent_visibility);
         for opt_trait_ref.each |t| {
             check_methods_against_trait(ccx, generics, rp, selfty, *t, cms);
@@ -732,7 +739,9 @@ pub fn convert(ccx: &CrateCtxt, it: @ast::item) {
         let (_, provided_methods) =
             split_trait_methods(*trait_methods);
         let (bounds, _) = mk_substs(ccx, generics, rp);
-        let _ = convert_methods(ccx, provided_methods, rp, bounds, generics,
+        let untransformed_rcvr_ty = ty::mk_self(tcx, local_def(it.id));
+        let _ = convert_methods(ccx, provided_methods, rp,
+                                untransformed_rcvr_ty, bounds, generics,
                                 it.vis);
       }
       ast::item_struct(struct_def, ref generics) => {

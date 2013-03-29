@@ -162,6 +162,7 @@ pub static tag_link_args_arg: uint = 0x7a;
 
 pub static tag_item_method_tps: uint = 0x7b;
 pub static tag_item_method_fty: uint = 0x7c;
+pub static tag_item_method_transformed_self_ty: uint = 0x7d;
 
 pub struct LinkMeta {
     name: @str,

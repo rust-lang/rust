@@ -71,6 +71,7 @@ pub type param_bounds = @~[param_bound];
 pub struct method {
     ident: ast::ident,
     tps: @~[param_bounds],
+    transformed_self_ty: Option<ty::t>,
     fty: BareFnTy,
     self_ty: ast::self_ty_,
     vis: ast::visibility,

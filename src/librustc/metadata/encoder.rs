@@ -230,6 +230,17 @@ fn encode_type(ecx: @EncodeContext, ebml_w: writer::Encoder, typ: ty::t) {
     ebml_w.end_tag();
 }
 
+fn encode_transformed_self_ty(ecx: @EncodeContext,
+                              ebml_w: writer::Encoder,
+                              opt_typ: Option<ty::t>)
+{
+    for opt_typ.each |&typ| {
+        ebml_w.start_tag(tag_item_method_transformed_self_ty);
+        write_type(ecx, ebml_w, typ);
+        ebml_w.end_tag();
+    }
+}
+
 fn encode_method_fty(ecx: @EncodeContext,
                      ebml_w: writer::Encoder,
                      typ: &ty::BareFnTy)
@@ -570,6 +581,7 @@ fn encode_method_ty_fields(ecx: @EncodeContext,
     encode_name(ecx, ebml_w, method_ty.ident);
     encode_ty_type_param_bounds(ebml_w, ecx, method_ty.tps,
                                 tag_item_method_tps);
+    encode_transformed_self_ty(ecx, ebml_w, method_ty.transformed_self_ty);
     encode_method_fty(ecx, ebml_w, &method_ty.fty);
     encode_visibility(ebml_w, method_ty.vis);
     encode_self_type(ebml_w, method_ty.self_ty);
