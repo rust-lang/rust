@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use lib::llvm::llvm;
-use lib::llvm::{CallConv, TypeKind, AtomicBinOp, AtomicOrdering, AsmDialect};
-use lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False};
+use lib::llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect};
+use lib::llvm::{Opcode, IntPredicate, RealPredicate, False};
 use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
 use lib;
 use middle::trans::common::*;
@@ -19,7 +19,7 @@ use syntax::codemap::span;
 use core::prelude::*;
 use core::cast;
 use core::hashmap::linear::LinearMap;
-use core::libc::{c_uint, c_int, c_ulonglong, c_char};
+use core::libc::{c_uint, c_ulonglong, c_char};
 use core::libc;
 use core::option::Some;
 use core::ptr;

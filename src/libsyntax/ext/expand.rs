@@ -12,7 +12,7 @@ use core::prelude::*;
 
 use ast::{blk_, attribute_, attr_outer, meta_word};
 use ast::{crate, expr_, expr_mac, mac_invoc_tt};
-use ast::{tt_delim, tt_tok, item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
+use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
 use ast;
 use attr;
 use codemap;
@@ -20,7 +20,7 @@ use codemap::{span, CallInfo, ExpandedFrom, NameAndSpan, spanned};
 use ext::base::*;
 use fold::*;
 use parse;
-use parse::{parser, parse_item_from_source_str, new_parser_from_tts};
+use parse::{parse_item_from_source_str};
 
 use core::vec;
 

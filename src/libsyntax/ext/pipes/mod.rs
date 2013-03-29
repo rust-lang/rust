@@ -49,7 +49,7 @@ use ext::base;
 use ext::base::ext_ctxt;
 use ext::pipes::parse_proto::proto_parser;
 use ext::pipes::pipec::gen_init;
-use ext::pipes::proto::{visit, protocol};
+use ext::pipes::proto::visit;
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
 

@@ -574,7 +574,7 @@ pub fn random() -> uint {
 
 #[cfg(test)]
 pub mod tests {
-    use option::{None, Option, Some};
+    use option::{Option, Some};
     use rand;
 
     #[test]

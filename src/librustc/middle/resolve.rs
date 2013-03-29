@@ -13,27 +13,27 @@ use core::prelude::*;
 use driver::session;
 use driver::session::Session;
 use metadata::csearch::{each_path, get_method_names_if_trait};
-use metadata::csearch::{get_static_methods_if_impl, get_struct_fields};
-use metadata::csearch::{get_type_name_if_impl};
+use metadata::csearch::get_static_methods_if_impl;
+use metadata::csearch::get_type_name_if_impl;
 use metadata::cstore::find_extern_mod_stmt_cnum;
 use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 use middle::lang_items::LanguageItems;
 use middle::lint::{deny, allow, forbid, level, unused_imports, warn};
 use middle::lint::{get_lint_level, get_lint_settings_level};
-use middle::pat_util::{pat_bindings};
+use middle::pat_util::pat_bindings;
 
 use core::str;
 use core::vec;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound, _mod, add, arm};
 use syntax::ast::{binding_mode, bitand, bitor, bitxor, blk};
 use syntax::ast::{bind_infer, bind_by_ref, bind_by_copy};
-use syntax::ast::{crate, crate_num, decl_item, def, def_arg, def_binding};
+use syntax::ast::{crate, decl_item, def, def_arg, def_binding};
 use syntax::ast::{def_const, def_foreign_mod, def_fn, def_id, def_label};
 use syntax::ast::{def_local, def_mod, def_prim_ty, def_region, def_self};
 use syntax::ast::{def_self_ty, def_static_method, def_struct, def_ty};
 use syntax::ast::{def_ty_param, def_typaram_binder};
 use syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
-use syntax::ast::{expr_binary, expr_break, expr_cast, expr_field};
+use syntax::ast::{expr_binary, expr_break, expr_field};
 use syntax::ast::{expr_fn_block, expr_index, expr_method_call, expr_path};
 use syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
 use syntax::ast::{def_upvar, def_use, def_variant, div, eq};
@@ -41,24 +41,24 @@ use syntax::ast::{expr, expr_again, expr_assign_op};
 use syntax::ast::{expr_index, expr_loop};
 use syntax::ast::{expr_path, expr_struct, expr_unary, fn_decl};
 use syntax::ast::{foreign_item, foreign_item_const, foreign_item_fn, ge};
-use syntax::ast::{Generics};
-use syntax::ast::{gt, ident, impure_fn, inherited, item, item_struct};
+use syntax::ast::Generics;
+use syntax::ast::{gt, ident, inherited, item, item_struct};
 use syntax::ast::{item_const, item_enum, item_fn, item_foreign_mod};
 use syntax::ast::{item_impl, item_mac, item_mod, item_trait, item_ty, le};
-use syntax::ast::{local, local_crate, lt, method, mode, module_ns, mul};
+use syntax::ast::{local, local_crate, lt, method, mode, mul};
 use syntax::ast::{named_field, ne, neg, node_id, pat, pat_enum, pat_ident};
-use syntax::ast::{path, pat_box, pat_lit, pat_range, pat_struct};
-use syntax::ast::{pat_tup, pat_uniq, pat_wild, prim_ty, private, provided};
+use syntax::ast::{path, pat_lit, pat_range, pat_struct};
+use syntax::ast::{prim_ty, private, provided};
 use syntax::ast::{public, required, rem, self_ty_, shl, shr, stmt_decl};
 use syntax::ast::{struct_dtor, struct_field, struct_variant_kind};
 use syntax::ast::{sty_static, subtract, trait_ref, tuple_variant_kind, Ty};
 use syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
 use syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, TyParam, ty_path};
 use syntax::ast::{ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8, ty_uint};
-use syntax::ast::{type_value_ns, unnamed_field};
+use syntax::ast::unnamed_field;
 use syntax::ast::{variant, view_item, view_item_extern_mod};
 use syntax::ast::{view_item_use, view_path_glob, view_path_list};
-use syntax::ast::{view_path_simple, visibility, anonymous, named, not};
+use syntax::ast::{view_path_simple, anonymous, named, not};
 use syntax::ast::{unsafe_fn};
 use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
@@ -67,15 +67,16 @@ use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
 use syntax::attr::{attr_metas, contains_name, attrs_contains_name};
 use syntax::parse::token::ident_interner;
 use syntax::parse::token::special_idents;
-use syntax::print::pprust::{pat_to_str, path_to_str};
+use syntax::print::pprust::path_to_str;
 use syntax::codemap::{span, dummy_sp};
-use syntax::visit::{default_visitor, fk_method, mk_vt, Visitor, visit_block};
-use syntax::visit::{visit_crate, visit_expr, visit_expr_opt, visit_fn};
-use syntax::visit::{visit_foreign_item, visit_item, visit_method_helper};
+use syntax::visit::{default_visitor, mk_vt, Visitor, visit_block};
+use syntax::visit::{visit_crate, visit_expr, visit_expr_opt};
+use syntax::visit::{visit_foreign_item, visit_item};
 use syntax::visit::{visit_mod, visit_ty, vt};
 use syntax::opt_vec::OptVec;
 
-use core::str::{connect, each_split_str};
+use core::option::Some;
+use core::str::each_split_str;
 use core::hashmap::linear::{LinearMap, LinearSet};
 
 // Definition mapping
@@ -1425,7 +1426,6 @@ pub impl Resolver {
 
                     // Build up the import directives.
                     let module_ = self.get_module_from_parent(parent);
-                    let state = @mut ImportState();
                     match view_path.node {
                         view_path_simple(binding, full_path, _, _) => {
                             let source_ident = *full_path.idents.last();
@@ -1435,19 +1435,17 @@ pub impl Resolver {
                                                         module_,
                                                         module_path,
                                                         subclass,
-                                                        view_path.span,
-                                                        state);
+                                                        view_path.span);
                         }
                         view_path_list(_, ref source_idents, _) => {
-                            for (*source_idents).each |source_ident| {
+                            for source_idents.each |source_ident| {
                                 let name = source_ident.node.name;
                                 let subclass = @SingleImport(name, name);
                                 self.build_import_directive(privacy,
                                                             module_,
                                                             copy module_path,
                                                             subclass,
-                                                            view_path.span,
-                                                            state);
+                                                            source_ident.span);
                             }
                         }
                         view_path_glob(_, _) => {
@@ -1455,8 +1453,7 @@ pub impl Resolver {
                                                         module_,
                                                         module_path,
                                                         @GlobImport,
-                                                        view_path.span,
-                                                        state);
+                                                        view_path.span);
                         }
                     }
                 }
@@ -1842,8 +1839,7 @@ pub impl Resolver {
                               module_: @mut Module,
                               +module_path: ~[ident],
                               subclass: @ImportDirectiveSubclass,
-                              span: span,
-                              state: @mut ImportState) {
+                              span: span) {
         let directive = @ImportDirective(privacy, module_path,
                                          subclass, span);
         module_.imports.push(directive);
@@ -1867,6 +1863,7 @@ pub impl Resolver {
                     }
                     None => {
                         debug!("(building import directive) creating new");
+                        let state = @mut ImportState();
                         let resolution = @mut ImportResolution(privacy,
                                                                span,
                                                                state);

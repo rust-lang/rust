@@ -17,7 +17,7 @@
 use core::prelude::*;
 
 use driver;
-use metadata::csearch::{ProvidedTraitMethodInfo, each_path, get_impl_traits};
+use metadata::csearch::{each_path, get_impl_traits};
 use metadata::csearch::{get_impls_for_mod};
 use metadata::csearch;
 use metadata::cstore::{CStore, iter_crate_data};
@@ -35,14 +35,11 @@ use middle::ty::{type_is_ty_var};
 use middle::ty;
 use middle::typeck::CrateCtxt;
 use middle::typeck::infer::combine::Combine;
-use middle::typeck::infer::{InferCtxt, can_mk_subty};
+use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar};
 use middle::typeck::infer::{resolve_nested_tvar, resolve_type};
 use syntax::ast::{crate, def_id, def_mod, def_ty};
-use syntax::ast::{item, item_struct, item_const, item_enum, item_fn};
-use syntax::ast::{item_foreign_mod, item_impl, item_mac, item_mod};
-use syntax::ast::{item_trait, item_ty, local_crate, method, node_id};
-use syntax::ast::{trait_ref};
+use syntax::ast::{item, item_impl, item_mod, local_crate, method, trait_ref};
 use syntax::ast;
 use syntax::ast_map::node_item;
 use syntax::ast_map;

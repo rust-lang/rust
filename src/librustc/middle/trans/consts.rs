@@ -28,7 +28,7 @@ use middle::ty;
 use util::ppaux::{expr_repr, ty_to_str};
 
 use core::libc::c_uint;
-use syntax::{ast, ast_util, codemap, ast_map};
+use syntax::{ast, ast_util, ast_map};
 use util::ppaux::ty_to_str;
 
 pub fn const_lit(cx: @CrateContext, e: @ast::expr, lit: ast::lit)

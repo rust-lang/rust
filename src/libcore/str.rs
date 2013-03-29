@@ -21,7 +21,7 @@ use at_vec;
 use cast;
 use char;
 use clone::Clone;
-use cmp::{Equiv, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
+use cmp::{TotalOrd, Ordering, Less, Equal, Greater};
 use libc;
 use option::{None, Option, Some};
 use ptr;
@@ -31,7 +31,7 @@ use uint;
 use vec;
 use to_str::ToStr;
 
-#[cfg(notest)] use cmp::{Eq, Ord};
+#[cfg(notest)] use cmp::{Eq, Ord, Equiv, TotalEq};
 
 /*
 Section: Creating a string

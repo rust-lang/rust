@@ -461,7 +461,7 @@ pub enum FailType {
  */
 pub mod groups {
     use getopts::{HasArg, Long, Maybe, Multi, No, Occur, Opt, Optional, Req};
-    use getopts::{Result, Short, Yes};
+    use getopts::{Short, Yes};
 
     use core::prelude::*;
     use core::str;

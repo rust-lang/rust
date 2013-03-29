@@ -16,7 +16,7 @@
 
 use core::prelude::*;
 
-use back::{link, abi, upcall};
+use back::{abi, upcall};
 use driver::session;
 use driver::session::Session;
 use lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};

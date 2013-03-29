@@ -24,7 +24,7 @@ use middle::borrowck::{Loan, bckerr, BorrowckCtxt, inherent_mutability};
 use middle::borrowck::{ReqMaps, root_map_key, save_and_restore_managed};
 use middle::borrowck::{MoveError, MoveOk, MoveFromIllegalCmt};
 use middle::borrowck::{MoveWhileBorrowed};
-use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
+use middle::mem_categorization::{cat_arg, cat_comp, cat_deref};
 use middle::mem_categorization::{cat_local, cat_rvalue, cat_self};
 use middle::mem_categorization::{cat_special, cmt, gc_ptr, loan_path, lp_arg};
 use middle::mem_categorization::{lp_comp, lp_deref, lp_local};
@@ -33,7 +33,7 @@ use util::ppaux::ty_to_str;
 
 use core::hashmap::linear::LinearSet;
 use core::uint;
-use syntax::ast::{m_const, m_imm, m_mutbl};
+use syntax::ast::m_mutbl;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;

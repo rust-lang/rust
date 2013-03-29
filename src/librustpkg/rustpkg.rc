@@ -29,14 +29,13 @@ extern mod syntax(vers = "0.6");
 use core::*;
 use core::container::Map;
 use core::hashmap::linear::LinearMap;
-use core::io::{ReaderUtil, WriterUtil};
+use core::io::WriterUtil;
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use std::net::url;
 use std::{json, semver, getopts};
 use syntax::codemap::spanned;
-use syntax::{ast, attr, codemap, diagnostic, parse, visit};
-
+use syntax::{ast, diagnostic};
 use util::Package;
 
 mod usage;
