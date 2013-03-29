@@ -1240,10 +1240,7 @@ mod test {
         fn emit_float(&self, +_v: float) { self.add_unknown_to_log(); }
 
         fn emit_char(&self, +_v: char) { self.add_unknown_to_log(); }
-
-        fn emit_borrowed_str(&self, +_v: &str) { self.add_unknown_to_log(); }
-        fn emit_owned_str(&self, +_v: &str) { self.add_unknown_to_log(); }
-        fn emit_managed_str(&self, +_v: &str) { self.add_unknown_to_log(); }
+        fn emit_str(&self, +_v: &str) { self.add_unknown_to_log(); }
 
         fn emit_borrowed(&self, f: &fn()) { self.add_unknown_to_log(); f() }
         fn emit_owned(&self, f: &fn()) { self.add_unknown_to_log(); f() }

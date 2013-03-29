@@ -105,20 +105,14 @@ impl serialize::Encoder for Encoder {
         self.wr.write_str(float::to_str_digits(v, 6u));
     }
 
-    fn emit_char(&self, v: char) { self.emit_borrowed_str(str::from_char(v)) }
-
-    fn emit_borrowed_str(&self, v: &str) { self.wr.write_str(escape_str(v)) }
-    fn emit_owned_str(&self, v: &str) { self.emit_borrowed_str(v) }
-    fn emit_managed_str(&self, v: &str) { self.emit_borrowed_str(v) }
+    fn emit_char(&self, v: char) { self.emit_str(str::from_char(v)) }
+    fn emit_str(&self, v: &str) { self.wr.write_str(escape_str(v)) }
 
     fn emit_borrowed(&self, f: &fn()) { f() }
     fn emit_owned(&self, f: &fn()) { f() }
     fn emit_managed(&self, f: &fn()) { f() }
 
-    fn emit_enum(&self, _name: &str, f: &fn()) {
-        f()
-    }
-
+    fn emit_enum(&self, _name: &str, f: &fn()) { f() }
     fn emit_enum_variant(&self, name: &str, _id: uint, cnt: uint, f: &fn()) {
         // enums are encoded as strings or vectors:
         // Bunny => "Bunny"
@@ -224,15 +218,8 @@ impl serialize::Encoder for PrettyEncoder {
         self.wr.write_str(float::to_str_digits(v, 6u));
     }
 
-    fn emit_char(&self, v: char) { self.emit_borrowed_str(str::from_char(v)) }
-
-    fn emit_borrowed_str(&self, v: &str) { self.wr.write_str(escape_str(v)); }
-    fn emit_owned_str(&self, v: &str) { self.emit_borrowed_str(v) }
-    fn emit_managed_str(&self, v: &str) { self.emit_borrowed_str(v) }
-
-    fn emit_borrowed(&self, f: &fn()) { f() }
-    fn emit_owned(&self, f: &fn()) { f() }
-    fn emit_managed(&self, f: &fn()) { f() }
+    fn emit_char(&self, v: char) { self.emit_str(str::from_char(v)) }
+    fn emit_str(&self, v: &str) { self.wr.write_str(escape_str(v)); }
 
     fn emit_enum(&self, _name: &str, f: &fn()) { f() }
     fn emit_enum_variant(&self, name: &str, _id: uint, cnt: uint, f: &fn()) {
@@ -818,36 +805,19 @@ impl<'self> serialize::Decoder for Decoder<'self> {
 
     fn read_char(&self) -> char {
         let mut v = ~[];
-        for str::each_char(self.read_owned_str()) |c| { v.push(c) }
+        for str::each_char(self.read_str()) |c| { v.push(c) }
         if v.len() != 1 { fail!(~"string must have one character") }
         v[0]
     }
 
-    fn read_owned_str(&self) -> ~str {
-        debug!("read_owned_str");
+    fn read_str(&self) -> ~str {
+        debug!("read_str");
         match *self.pop() {
             String(ref s) => copy *s,
             ref json => fail!(fmt!("not a string: %?", *json))
         }
     }
 
-    fn read_managed_str(&self) -> @str {
-        debug!("read_managed_str");
-        match *self.pop() {
-            String(ref s) => s.to_managed(),
-            ref json => fail!(fmt!("not a string: %?", *json))
-        }
-    }
-
-    fn read_owned<T>(&self, f: &fn() -> T) -> T {
-        debug!("read_owned()");
-        f()
-    }
-
-    fn read_managed<T>(&self, f: &fn() -> T) -> T {
-        debug!("read_managed()");
-        f()
-    }
 
     fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T {
         debug!("read_enum(%s)", name);
