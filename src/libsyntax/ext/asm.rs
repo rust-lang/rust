@@ -53,13 +53,14 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
     let mut cons = ~"";
     let mut volatile = false;
     let mut alignstack = false;
+    let mut dialect = ast::asm_att;
 
     let mut state = Asm;
     loop outer: {
         match state {
             Asm => {
                 asm = expr_to_str(cx, p.parse_expr(),
-                                ~"inline assembly must be a string literal.");
+                                  ~"inline assembly must be a string literal.");
             }
             Outputs => {
                 while *p.token != token::EOF &&
@@ -125,6 +126,8 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
                     volatile = true;
                 } else if option == ~"alignstack" {
                     alignstack = true;
+                } else if option == ~"intel" {
+                    dialect = ast::asm_intel;
                 }
 
                 if *p.token == token::COMMA {
@@ -163,8 +166,15 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
     MRExpr(@ast::expr {
         id: cx.next_id(),
         callee_id: cx.next_id(),
-        node: ast::expr_inline_asm(@asm, inputs, outputs,
-                                   @cons, volatile, alignstack),
+        node: ast::expr_inline_asm(ast::inline_asm {
+            asm: @asm,
+            clobbers: @cons,
+            inputs: inputs,
+            outputs: outputs,
+            volatile: volatile,
+            alignstack: alignstack,
+            dialect: dialect
+        }),
         span: sp
     })
 }
