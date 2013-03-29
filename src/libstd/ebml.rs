@@ -311,11 +311,8 @@ pub mod reader {
         fn read_f64(&self) -> f64 { fail!(~"read_f64()"); }
         fn read_f32(&self) -> f32 { fail!(~"read_f32()"); }
         fn read_float(&self) -> float { fail!(~"read_float()"); }
-
         fn read_char(&self) -> char { fail!(~"read_char()"); }
-
-        fn read_owned_str(&self) -> ~str { doc_as_str(self.next_doc(EsStr)) }
-        fn read_managed_str(&self) -> @str { fail!(~"read_managed_str()"); }
+        fn read_str(&self) -> ~str { doc_as_str(self.next_doc(EsStr)) }
 
         // Compound types:
         fn read_owned<T>(&self, f: &fn() -> T) -> T {
@@ -650,16 +647,8 @@ pub mod writer {
             fail!(~"Unimplemented: serializing a char");
         }
 
-        fn emit_borrowed_str(&self, v: &str) {
+        fn emit_str(&self, v: &str) {
             self.wr_tagged_str(EsStr as uint, v)
-        }
-
-        fn emit_owned_str(&self, v: &str) {
-            self.emit_borrowed_str(v)
-        }
-
-        fn emit_managed_str(&self, v: &str) {
-            self.emit_borrowed_str(v)
         }
 
         fn emit_borrowed(&self, f: &fn()) { f() }

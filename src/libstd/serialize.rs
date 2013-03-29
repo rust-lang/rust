@@ -38,9 +38,7 @@ pub trait Encoder {
     fn emit_f64(&self, v: f64);
     fn emit_f32(&self, v: f32);
     fn emit_char(&self, v: char);
-    fn emit_borrowed_str(&self, v: &str);
-    fn emit_owned_str(&self, v: &str);
-    fn emit_managed_str(&self, v: &str);
+    fn emit_str(&self, v: &str);
 
     // Compound types:
     fn emit_borrowed(&self, f: &fn());
@@ -87,20 +85,16 @@ pub trait Decoder {
     fn read_f32(&self) -> f32;
     fn read_float(&self) -> float;
     fn read_char(&self) -> char;
-    fn read_owned_str(&self) -> ~str;
-    fn read_managed_str(&self) -> @str;
+    fn read_str(&self) -> ~str;
 
     // Compound types:
     fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T;
-
     #[cfg(stage0)]
     fn read_enum_variant<T>(&self, f: &fn(uint) -> T) -> T;
-
     #[cfg(stage1)]
     #[cfg(stage2)]
     #[cfg(stage3)]
     fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T;
-
     fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
     fn read_owned<T>(&self, f: &fn() -> T) -> T;
@@ -230,27 +224,25 @@ impl<D:Decoder> Decodable<D> for i64 {
 }
 
 impl<'self, S:Encoder> Encodable<S> for &'self str {
-    fn encode(&self, s: &S) { s.emit_borrowed_str(*self) }
+    fn encode(&self, s: &S) { s.emit_str(*self) }
 }
 
 impl<S:Encoder> Encodable<S> for ~str {
-    fn encode(&self, s: &S) { s.emit_owned_str(*self) }
+    fn encode(&self, s: &S) { s.emit_str(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for ~str {
     fn decode(d: &D) -> ~str {
-        d.read_owned_str()
+        d.read_str()
     }
 }
 
 impl<S:Encoder> Encodable<S> for @str {
-    fn encode(&self, s: &S) { s.emit_managed_str(*self) }
+    fn encode(&self, s: &S) { s.emit_str(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for @str {
-    fn decode(d: &D) -> @str {
-        d.read_managed_str()
-    }
+    fn decode(d: &D) -> @str { d.read_str().to_managed() }
 }
 
 impl<S:Encoder> Encodable<S> for float {
