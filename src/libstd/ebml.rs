@@ -315,16 +315,6 @@ pub mod reader {
         fn read_str(&self) -> ~str { doc_as_str(self.next_doc(EsStr)) }
 
         // Compound types:
-        fn read_owned<T>(&self, f: &fn() -> T) -> T {
-            debug!("read_owned()");
-            f()
-        }
-
-        fn read_managed<T>(&self, f: &fn() -> T) -> T {
-            debug!("read_managed()");
-            f()
-        }
-
         fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T {
             debug!("read_enum(%s)", name);
             self._check_label(name);
@@ -650,10 +640,6 @@ pub mod writer {
         fn emit_str(&self, v: &str) {
             self.wr_tagged_str(EsStr as uint, v)
         }
-
-        fn emit_borrowed(&self, f: &fn()) { f() }
-        fn emit_owned(&self, f: &fn()) { f() }
-        fn emit_managed(&self, f: &fn()) { f() }
 
         fn emit_enum(&self, name: &str, f: &fn()) {
             self._emit_label(name);

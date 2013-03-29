@@ -41,9 +41,6 @@ pub trait Encoder {
     fn emit_str(&self, v: &str);
 
     // Compound types:
-    fn emit_borrowed(&self, f: &fn());
-    fn emit_owned(&self, f: &fn());
-    fn emit_managed(&self, f: &fn());
 
     fn emit_enum(&self, name: &str, f: &fn());
     fn emit_enum_variant(&self, v_name: &str, v_id: uint, sz: uint, f: &fn());
@@ -96,9 +93,6 @@ pub trait Decoder {
     #[cfg(stage3)]
     fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T;
     fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T;
-
-    fn read_owned<T>(&self, f: &fn() -> T) -> T;
-    fn read_managed<T>(&self, f: &fn() -> T) -> T;
 
     fn read_owned_vec<T>(&self, f: &fn(uint) -> T) -> T;
     fn read_managed_vec<T>(&self, f: &fn(uint) -> T) -> T;
@@ -296,31 +290,31 @@ impl<D:Decoder> Decodable<D> for () {
 
 impl<'self, S:Encoder,T:Encodable<S>> Encodable<S> for &'self T {
     fn encode(&self, s: &S) {
-        s.emit_borrowed(|| (**self).encode(s))
+        (**self).encode(s)
     }
 }
 
 impl<S:Encoder,T:Encodable<S>> Encodable<S> for ~T {
     fn encode(&self, s: &S) {
-        s.emit_owned(|| (**self).encode(s))
+        (**self).encode(s)
     }
 }
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~T {
     fn decode(d: &D) -> ~T {
-        d.read_owned(|| ~Decodable::decode(d))
+        ~Decodable::decode(d)
     }
 }
 
 impl<S:Encoder,T:Encodable<S>> Encodable<S> for @T {
     fn encode(&self, s: &S) {
-        s.emit_managed(|| (**self).encode(s))
+        (**self).encode(s)
     }
 }
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for @T {
     fn decode(d: &D) -> @T {
-        d.read_managed(|| @Decodable::decode(d))
+        @Decodable::decode(d)
     }
 }
 

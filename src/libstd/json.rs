@@ -108,10 +108,6 @@ impl serialize::Encoder for Encoder {
     fn emit_char(&self, v: char) { self.emit_str(str::from_char(v)) }
     fn emit_str(&self, v: &str) { self.wr.write_str(escape_str(v)) }
 
-    fn emit_borrowed(&self, f: &fn()) { f() }
-    fn emit_owned(&self, f: &fn()) { f() }
-    fn emit_managed(&self, f: &fn()) { f() }
-
     fn emit_enum(&self, _name: &str, f: &fn()) { f() }
     fn emit_enum_variant(&self, name: &str, _id: uint, cnt: uint, f: &fn()) {
         // enums are encoded as strings or vectors:
