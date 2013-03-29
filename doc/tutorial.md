@@ -1035,10 +1035,10 @@ let z = x; // no new memory allocated, x can no longer be used
 # Borrowed pointers
 
 Rust's borrowed pointers are a general purpose reference type. In contrast with
-owned pointers, where the holder of an owned pointer is the owner of the
-pointed-to memory, borrowed pointers never imply ownership. A pointer can be
-borrowed to any object, and the compiler verifies that it cannot outlive the
-lifetime of the object.
+owned boxes, where the holder of an owned box is the owner of the pointed-to
+memory, borrowed pointers never imply ownership. A pointer can be borrowed to
+any object, and the compiler verifies that it cannot outlive the lifetime of
+the object.
 
 As an example, consider a simple struct type, `Point`:
 
