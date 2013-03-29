@@ -13,12 +13,12 @@
 pub fn main() {
     match ('c',) {
         (x,) => {
-            fail_unless!(x == 'c');
+            assert!(x == 'c');
         }
     }
     // test the 1-tuple type too
     let x: (char,) = ('d',);
     let (y,) = x;
-    fail_unless!(y == 'd');
+    assert!(y == 'd');
 }
 

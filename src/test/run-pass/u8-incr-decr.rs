@@ -24,5 +24,5 @@ pub fn main() {
 
     y = y - 9u8; // 0x9
 
-    fail_unless!((x == y));
+    assert!((x == y));
 }

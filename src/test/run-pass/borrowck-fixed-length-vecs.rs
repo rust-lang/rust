@@ -11,5 +11,5 @@
 pub fn main() {
     let x = [22];
     let y = &x[0];
-    fail_unless!(*y == 22);
+    assert!(*y == 22);
 }

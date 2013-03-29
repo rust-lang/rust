@@ -252,7 +252,7 @@ impl<T:Reader> ReaderUtil for T {
                 let w = str::utf8_char_width(b0);
                 let end = i + w;
                 i += 1;
-                fail_unless!((w > 0));
+                assert!((w > 0));
                 if w == 1 {
                     chars.push(b0 as char);
                     loop;
@@ -265,8 +265,8 @@ impl<T:Reader> ReaderUtil for T {
                 while i < end {
                     let next = bytes[i] as int;
                     i += 1;
-                    fail_unless!((next > -1));
-                    fail_unless!((next & 192 == 128));
+                    assert!((next > -1));
+                    assert!((next & 192 == 128));
                     val <<= 6;
                     val += (next & 63) as uint;
                 }
@@ -307,7 +307,7 @@ impl<T:Reader> ReaderUtil for T {
         if vec::len(c) == 0 {
             return -1 as char; // FIXME will this stay valid? // #2004
         }
-        fail_unless!((vec::len(c) == 1));
+        assert!((vec::len(c) == 1));
         return c[0];
     }
 
@@ -364,7 +364,7 @@ impl<T:Reader> ReaderUtil for T {
     // FIXME int reading methods need to deal with eof - issue #2004
 
     fn read_le_uint_n(&self, nbytes: uint) -> u64 {
-        fail_unless!(nbytes > 0 && nbytes <= 8);
+        assert!(nbytes > 0 && nbytes <= 8);
 
         let mut val = 0u64, pos = 0, i = nbytes;
         while i > 0 {
@@ -380,7 +380,7 @@ impl<T:Reader> ReaderUtil for T {
     }
 
     fn read_be_uint_n(&self, nbytes: uint) -> u64 {
-        fail_unless!(nbytes > 0 && nbytes <= 8);
+        assert!(nbytes > 0 && nbytes <= 8);
 
         let mut val = 0u64, i = nbytes;
         while i > 0 {
@@ -510,7 +510,7 @@ impl Reader for *libc::FILE {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         unsafe {
             do vec::as_mut_buf(bytes) |buf_p, buf_len| {
-                fail_unless!(buf_len >= len);
+                assert!(buf_len >= len);
 
                 let count = libc::fread(buf_p as *mut c_void, 1u as size_t,
                                         len as size_t, *self);
@@ -531,7 +531,7 @@ impl Reader for *libc::FILE {
     }
     fn seek(&self, offset: int, whence: SeekStyle) {
         unsafe {
-            fail_unless!(libc::fseek(*self,
+            assert!(libc::fseek(*self,
                                      offset as c_long,
                                      convert_whence(whence)) == 0 as c_int);
         }
@@ -717,7 +717,7 @@ impl Writer for *libc::FILE {
     }
     fn seek(&self, offset: int, whence: SeekStyle) {
         unsafe {
-            fail_unless!(libc::fseek(*self,
+            assert!(libc::fseek(*self,
                                      offset as c_long,
                                      convert_whence(whence)) == 0 as c_int);
         }
@@ -845,7 +845,7 @@ pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
 
 pub fn u64_to_le_bytes<T>(n: u64, size: uint,
                           f: &fn(v: &[u8]) -> T) -> T {
-    fail_unless!(size <= 8u);
+    assert!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
       2u => f(&[n as u8,
@@ -877,7 +877,7 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint,
 
 pub fn u64_to_be_bytes<T>(n: u64, size: uint,
                            f: &fn(v: &[u8]) -> T) -> T {
-    fail_unless!(size <= 8u);
+    assert!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
       2u => f(&[(n >> 8) as u8,
@@ -912,7 +912,7 @@ pub fn u64_from_be_bytes(data: &const [u8],
                          size: uint)
                       -> u64 {
     let mut sz = size;
-    fail_unless!((sz <= 8u));
+    assert!((sz <= 8u));
     let mut val = 0_u64;
     let mut pos = start;
     while sz > 0u {
@@ -1186,7 +1186,7 @@ pub fn with_str_writer(f: &fn(@Writer)) -> ~str {
         // Make sure the vector has a trailing null and is proper utf8.
         v.push(0);
     }
-    fail_unless!(str::is_utf8(v));
+    assert!(str::is_utf8(v));
 
     unsafe { ::cast::transmute(v) }
 }
@@ -1261,7 +1261,7 @@ pub mod fsync {
                 None => (),
                 Some(level) => {
                   // fail hard if not succesful
-                  fail_unless!(((self.arg.fsync_fn)(self.arg.val, level)
+                  assert!(((self.arg.fsync_fn)(self.arg.val, level)
                     != -1));
                 }
             }
@@ -1346,14 +1346,14 @@ mod tests {
         let inp: @io::Reader = result::get(&io::file_reader(tmpfile));
         let frood2: ~str = inp.read_c_str();
         debug!(copy frood2);
-        fail_unless!(frood == frood2);
+        assert!(frood == frood2);
     }
 
     #[test]
     fn test_readchars_empty() {
         do io::with_str_reader(~"") |inp| {
             let res : ~[char] = inp.read_chars(128);
-            fail_unless!((vec::len(res) == 0));
+            assert!((vec::len(res) == 0));
         }
     }
 
@@ -1361,22 +1361,22 @@ mod tests {
     fn test_read_line_utf8() {
         do io::with_str_reader(~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤") |inp| {
             let line = inp.read_line();
-            fail_unless!(line == ~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤");
+            assert!(line == ~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤");
         }
     }
 
     #[test]
     fn test_read_lines() {
         do io::with_str_reader(~"a\nb\nc\n") |inp| {
-            fail_unless!(inp.read_lines() == ~[~"a", ~"b", ~"c"]);
+            assert!(inp.read_lines() == ~[~"a", ~"b", ~"c"]);
         }
 
         do io::with_str_reader(~"a\nb\nc") |inp| {
-            fail_unless!(inp.read_lines() == ~[~"a", ~"b", ~"c"]);
+            assert!(inp.read_lines() == ~[~"a", ~"b", ~"c"]);
         }
 
         do io::with_str_reader(~"") |inp| {
-            fail_unless!(inp.read_lines().is_empty());
+            assert!(inp.read_lines().is_empty());
         }
     }
 
@@ -1393,9 +1393,9 @@ mod tests {
             do io::with_str_reader(s) |inp| {
                 let res : ~[char] = inp.read_chars(len);
                 if (len <= vec::len(ivals)) {
-                    fail_unless!((vec::len(res) == len));
+                    assert!((vec::len(res) == len));
                 }
-                fail_unless!(vec::slice(ivals, 0u, vec::len(res)) ==
+                assert!(vec::slice(ivals, 0u, vec::len(res)) ==
                              vec::map(res, |x| *x as int));
             }
         }
@@ -1412,7 +1412,7 @@ mod tests {
     fn test_readchar() {
         do io::with_str_reader(~"生") |inp| {
             let res : char = inp.read_char();
-            fail_unless!((res as int == 29983));
+            assert!((res as int == 29983));
         }
     }
 
@@ -1420,7 +1420,7 @@ mod tests {
     fn test_readchar_empty() {
         do io::with_str_reader(~"") |inp| {
             let res : char = inp.read_char();
-            fail_unless!((res as int == -1));
+            assert!((res as int == -1));
         }
     }
 
@@ -1428,7 +1428,7 @@ mod tests {
     fn file_reader_not_exist() {
         match io::file_reader(&Path("not a file")) {
           result::Err(copy e) => {
-            fail_unless!(e == ~"error opening not a file");
+            assert!(e == ~"error opening not a file");
           }
           result::Ok(_) => fail!()
         }
@@ -1469,7 +1469,7 @@ mod tests {
     fn file_writer_bad_name() {
         match io::file_writer(&Path("?/?"), ~[]) {
           result::Err(copy e) => {
-            fail_unless!(str::starts_with(e, "error opening"));
+            assert!(str::starts_with(e, "error opening"));
           }
           result::Ok(_) => fail!()
         }
@@ -1479,7 +1479,7 @@ mod tests {
     fn buffered_file_writer_bad_name() {
         match io::buffered_file_writer(&Path("?/?")) {
           result::Err(copy e) => {
-            fail_unless!(str::starts_with(e, "error opening"));
+            assert!(str::starts_with(e, "error opening"));
           }
           result::Ok(_) => fail!()
         }
@@ -1489,15 +1489,15 @@ mod tests {
     fn bytes_buffer_overwrite() {
         let wr = BytesWriter();
         wr.write(~[0u8, 1u8, 2u8, 3u8]);
-        fail_unless!(wr.bytes == ~[0u8, 1u8, 2u8, 3u8]);
+        assert!(wr.bytes == ~[0u8, 1u8, 2u8, 3u8]);
         wr.seek(-2, SeekCur);
         wr.write(~[4u8, 5u8, 6u8, 7u8]);
-        fail_unless!(wr.bytes == ~[0u8, 1u8, 4u8, 5u8, 6u8, 7u8]);
+        assert!(wr.bytes == ~[0u8, 1u8, 4u8, 5u8, 6u8, 7u8]);
         wr.seek(-2, SeekEnd);
         wr.write(~[8u8]);
         wr.seek(1, SeekSet);
         wr.write(~[9u8]);
-        fail_unless!(wr.bytes == ~[0u8, 9u8, 4u8, 5u8, 8u8, 7u8]);
+        assert!(wr.bytes == ~[0u8, 9u8, 4u8, 5u8, 8u8, 7u8]);
     }
 
     #[test]
@@ -1517,7 +1517,7 @@ mod tests {
         {
             let file = io::file_reader(&path).get();
             for uints.each |i| {
-                fail_unless!(file.read_le_u64() == *i);
+                assert!(file.read_le_u64() == *i);
             }
         }
     }
@@ -1539,7 +1539,7 @@ mod tests {
         {
             let file = io::file_reader(&path).get();
             for uints.each |i| {
-                fail_unless!(file.read_be_u64() == *i);
+                assert!(file.read_be_u64() == *i);
             }
         }
     }
@@ -1563,7 +1563,7 @@ mod tests {
             for ints.each |i| {
                 // this tests that the sign extension is working
                 // (comparing the values as i32 would not test this)
-                fail_unless!(file.read_be_int_n(4) == *i as i64);
+                assert!(file.read_be_int_n(4) == *i as i64);
             }
         }
     }
@@ -1582,7 +1582,7 @@ mod tests {
         {
             let file = io::file_reader(&path).get();
             let f = file.read_be_f32();
-            fail_unless!(f == 8.1250);
+            assert!(f == 8.1250);
         }
     }
 
@@ -1599,8 +1599,8 @@ mod tests {
 
         {
             let file = io::file_reader(&path).get();
-            fail_unless!(file.read_be_f32() == 8.1250);
-            fail_unless!(file.read_le_f32() == 8.1250);
+            assert!(file.read_be_f32() == 8.1250);
+            assert!(file.read_le_f32() == 8.1250);
         }
     }
 }

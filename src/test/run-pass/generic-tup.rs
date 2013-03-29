@@ -12,6 +12,6 @@ fn get_third<T:Copy>(t: (T, T, T)) -> T { let (_, _, x) = t; return x; }
 
 pub fn main() {
     debug!(get_third((1, 2, 3)));
-    fail_unless!((get_third((1, 2, 3)) == 3));
-    fail_unless!((get_third((5u8, 6u8, 7u8)) == 7u8));
+    assert!((get_third((1, 2, 3)) == 3));
+    assert!((get_third((5u8, 6u8, 7u8)) == 7u8));
 }

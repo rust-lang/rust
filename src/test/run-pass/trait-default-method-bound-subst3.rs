@@ -21,6 +21,6 @@ fn f<T, V: A>(i: V, j: T, k: T) -> (T, T) {
 }
 
 pub fn main () {
-    fail_unless!(f(0, 1, 2) == (1, 2));
-    fail_unless!(f(0, 1u8, 2u8) == (1u8, 2u8));
+    assert!(f(0, 1, 2) == (1, 2));
+    assert!(f(0, 1u8, 2u8) == (1u8, 2u8));
 }

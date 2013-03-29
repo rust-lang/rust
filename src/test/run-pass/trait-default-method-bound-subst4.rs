@@ -21,6 +21,6 @@ fn f<T, V: A<T>>(i: V, j: uint) -> uint {
 }
 
 pub fn main () {
-    fail_unless!(f::<float, int>(0, 2u) == 2u);
-    fail_unless!(f::<uint, int>(0, 2u) == 2u);
+    assert!(f::<float, int>(0, 2u) == 2u);
+    assert!(f::<uint, int>(0, 2u) == 2u);
 }

@@ -44,5 +44,5 @@ mod m {
 pub fn main() {
   let mut y: int = 5;
   let x: &mut int = &mut y;
-  fail_unless!((lgamma(1.0 as c_double, x) == 0.0 as c_double));
+  assert!((lgamma(1.0 as c_double, x) == 0.0 as c_double));
 }

@@ -11,5 +11,5 @@
 static a: *u8 = 0 as *u8;
 
 pub fn main() {
-    fail_unless!(a == ptr::null());
+    assert!(a == ptr::null());
 }

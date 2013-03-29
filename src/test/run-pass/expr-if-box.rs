@@ -16,12 +16,12 @@
 // Tests for if as expressions returning boxed types
 fn test_box() {
     let rs = if true { @100 } else { @101 };
-    fail_unless!((*rs == 100));
+    assert!((*rs == 100));
 }
 
 fn test_str() {
     let rs = if true { ~"happy" } else { ~"sad" };
-    fail_unless!((rs == ~"happy"));
+    assert!((rs == ~"happy"));
 }
 
 pub fn main() { test_box(); test_str(); }

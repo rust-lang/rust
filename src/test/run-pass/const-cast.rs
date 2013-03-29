@@ -16,6 +16,6 @@ static a: &'static int = &10;
 static b: *int = a as *int;
 
 pub fn main() {
-    fail_unless!(x as *libc::c_void == y);
-    fail_unless!(a as *int == b);
+    assert!(x as *libc::c_void == y);
+    assert!(a as *int == b);
 }

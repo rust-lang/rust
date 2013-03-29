@@ -19,20 +19,20 @@ pub fn main() {
 
     // Usable at all:
     let mut any_negative = do vec::any(v) |e| { float::is_negative(*e) };
-    fail_unless!(any_negative);
+    assert!(any_negative);
 
     // Higher precedence than assignments:
     any_negative = do vec::any(v) |e| { float::is_negative(*e) };
-    fail_unless!(any_negative);
+    assert!(any_negative);
 
     // Higher precedence than unary operations:
     let abs_v = do vec::map(v) |e| { float::abs(*e) };
-    fail_unless!(do vec::all(abs_v) |e| { float::is_nonnegative(*e) });
-    fail_unless!(!do vec::any(abs_v) |e| { float::is_negative(*e) });
+    assert!(do vec::all(abs_v) |e| { float::is_nonnegative(*e) });
+    assert!(!do vec::any(abs_v) |e| { float::is_negative(*e) });
 
     // Usable in funny statement-like forms:
     if !do vec::any(v) |e| { float::is_positive(*e) } {
-        fail_unless!(false);
+        assert!(false);
     }
     match do vec::all(v) |e| { float::is_negative(*e) } {
         true => { fail!(~"incorrect answer."); }
@@ -51,12 +51,12 @@ pub fn main() {
     let w = do vec::foldl(0f, v) |x, y| { x + *y } + 10f;
     let y = do vec::foldl(0f, v) |x, y| { x + *y } + 10f;
     let z = 10f + do vec::foldl(0f, v) |x, y| { x + *y };
-    fail_unless!(w == y);
-    fail_unless!(y == z);
+    assert!(w == y);
+    assert!(y == z);
 
     // In the tail of a block
     let w =
         if true { do vec::any(abs_v) |e| { float::is_nonnegative(*e) } }
       else { false };
-    fail_unless!(w);
+    assert!(w);
 }

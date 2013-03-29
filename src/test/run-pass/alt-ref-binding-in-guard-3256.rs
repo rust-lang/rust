@@ -12,7 +12,7 @@ pub fn main() {
     let x = Some(unstable::exclusive(true));
     match x {
         Some(ref z) if z.with(|b| *b) => {
-            do z.with |b| { fail_unless!(*b); }
+            do z.with |b| { assert!(*b); }
         },
         _ => fail!()
     }

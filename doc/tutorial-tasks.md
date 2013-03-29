@@ -297,7 +297,7 @@ let result = ports.foldl(0, |accum, port| *accum + port.recv() );
 
 Rust has a built-in mechanism for raising exceptions. The `fail!()` macro
 (which can also be written with an error string as an argument: `fail!(
-~reason)`) and the `fail_unless!` construct (which effectively calls `fail!()`
+~reason)`) and the `assert!` construct (which effectively calls `fail!()`
 if a boolean expression is false) are both ways to raise exceptions. When a
 task raises an exception the task unwinds its stack---running destructors and
 freeing memory along the way---and then exits. Unlike exceptions in C++,
@@ -339,7 +339,7 @@ let result: Result<int, ()> = do task::try {
         fail!(~"oops!");
     }
 };
-fail_unless!(result.is_err());
+assert!(result.is_err());
 ~~~
 
 Unlike `spawn`, the function spawned using `try` may return a value,
@@ -401,7 +401,7 @@ do spawn {  // Bidirectionally linked
     // Wait for the supervised child task to exist.
     let message = receiver.recv();
     // Kill both it and the parent task.
-    fail_unless!(message != 42);
+    assert!(message != 42);
 }
 do try {  // Unidirectionally linked
     sender.send(42);
@@ -507,13 +507,13 @@ do spawn {
 };
 
 from_child.send(22);
-fail_unless!(from_child.recv() == ~"22");
+assert!(from_child.recv() == ~"22");
 
 from_child.send(23);
 from_child.send(0);
 
-fail_unless!(from_child.recv() == ~"23");
-fail_unless!(from_child.recv() == ~"0");
+assert!(from_child.recv() == ~"23");
+assert!(from_child.recv() == ~"0");
 
 # }
 ~~~~

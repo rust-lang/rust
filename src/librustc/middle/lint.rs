@@ -882,7 +882,7 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
 fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
     fn is_camel_case(cx: ty::ctxt, ident: ast::ident) -> bool {
         let ident = cx.sess.str_of(ident);
-        fail_unless!(!ident.is_empty());
+        assert!(!ident.is_empty());
         let ident = ident_without_trailing_underscores(*ident);
         let ident = ident_without_leading_underscores(ident);
         char::is_uppercase(str::char_at(ident, 0)) &&

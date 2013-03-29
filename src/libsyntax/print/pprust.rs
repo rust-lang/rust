@@ -1294,8 +1294,8 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         print_fn_block_args(s, decl);
         space(s.s);
         // }
-        fail_unless!(body.node.stmts.is_empty());
-        fail_unless!(body.node.expr.is_some());
+        assert!(body.node.stmts.is_empty());
+        assert!(body.node.expr.is_some());
         // we extract the block, so as not to create another set of boxes
         match body.node.expr.get().node {
             ast::expr_block(ref blk) => {
@@ -1445,7 +1445,7 @@ pub fn print_decl(s: @ps, decl: @ast::decl) {
 
         // if any are mut, all are mut
         if locs.any(|l| l.node.is_mutbl) {
-            fail_unless!(locs.all(|l| l.node.is_mutbl));
+            assert!(locs.all(|l| l.node.is_mutbl));
             word_nbsp(s, ~"mut");
         }
 
@@ -2080,7 +2080,7 @@ pub fn maybe_print_comment(s: @ps, pos: BytePos) {
 pub fn print_comment(s: @ps, cmnt: comments::cmnt) {
     match cmnt.style {
       comments::mixed => {
-        fail_unless!((vec::len(cmnt.lines) == 1u));
+        assert!((vec::len(cmnt.lines) == 1u));
         zerobreak(s.s);
         word(s.s, cmnt.lines[0]);
         zerobreak(s.s);

@@ -28,5 +28,5 @@ pub fn main() {
     }
 
     error!("%?", x);
-    fail_unless!((x == 42));
+    assert!((x == 42));
 }

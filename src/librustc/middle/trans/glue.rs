@@ -401,7 +401,7 @@ pub fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_visit_glue");
     let mut bcx = bcx;
     let ty_visitor_name = special_idents::ty_visitor;
-    fail_unless!(bcx.ccx().tcx.intrinsic_defs.contains_key(&ty_visitor_name));
+    assert!(bcx.ccx().tcx.intrinsic_defs.contains_key(&ty_visitor_name));
     let (trait_id, ty) = *bcx.ccx().tcx.intrinsic_defs.get(&ty_visitor_name);
     let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), ty)));
     bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, trait_id);
@@ -489,7 +489,7 @@ pub fn trans_struct_drop(bcx: block,
         // Class dtors have no explicit args, so the params should
         // just consist of the output pointer and the environment
         // (self)
-        fail_unless!((params.len() == 2));
+        assert!((params.len() == 2));
 
         // If we need to take a reference to the class (because it's using
         // the Drop trait), do so now.
@@ -675,7 +675,7 @@ pub fn declare_tydesc(ccx: @CrateContext, t: ty::t) -> @mut tydesc_info {
     let _icx = ccx.insn_ctxt("declare_tydesc");
     // If emit_tydescs already ran, then we shouldn't be creating any new
     // tydescs.
-    fail_unless!(!*ccx.finished_tydescs);
+    assert!(!*ccx.finished_tydescs);
 
     let llty = type_of(ccx, t);
 

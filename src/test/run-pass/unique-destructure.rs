@@ -12,5 +12,5 @@ struct Foo { a: int, b: int }
 
 pub fn main() {
     let ~Foo{a, b} = ~Foo{a: 100, b: 200};
-    fail_unless!(a + b == 300);
+    assert!(a + b == 300);
 }

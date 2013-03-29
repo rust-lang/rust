@@ -18,5 +18,5 @@ struct Thing {
 fn main() {
     let sth = Thing{x: 0, y: 1,};
     let sth2 = Thing{y: 9 , ..sth};
-    fail_unless!(sth.x + sth2.y == 9);
+    assert!(sth.x + sth2.y == 9);
 }

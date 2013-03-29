@@ -78,6 +78,6 @@ pub fn main() {
   for uint::range(1u, 5u) |_i| { nyan.speak(); }
   // cat returns true if uint input is greater than
   // the number of meows so far
-  fail_unless!((nyan.get(1)));
-  fail_unless!((!nyan.get(10)));
+  assert!((nyan.get(1)));
+  assert!((!nyan.get(10)));
 }

@@ -26,7 +26,7 @@ fn gg<T:Bar>(a: &T) -> int {
 
 pub fn main() {
     let a = &A { x: 3 };
-    fail_unless!(ff(a) == 10);
-    fail_unless!(gg(a) == 20);
+    assert!(ff(a) == 10);
+    assert!(gg(a) == 20);
 }
 

@@ -177,9 +177,9 @@ mod tests {
     #[test]
     fn test_find_mut() {
         let mut m = SmallIntMap::new();
-        fail_unless!(m.insert(1, 12));
-        fail_unless!(m.insert(2, 8));
-        fail_unless!(m.insert(5, 14));
+        assert!(m.insert(1, 12));
+        assert!(m.insert(2, 8));
+        assert!(m.insert(5, 14));
         let new = 100;
         match m.find_mut(&5) {
             None => fail!(), Some(x) => *x = new
@@ -190,30 +190,30 @@ mod tests {
     #[test]
     fn test_len() {
         let mut map = SmallIntMap::new();
-        fail_unless!(map.len() == 0);
-        fail_unless!(map.is_empty());
-        fail_unless!(map.insert(5, 20));
-        fail_unless!(map.len() == 1);
-        fail_unless!(!map.is_empty());
-        fail_unless!(map.insert(11, 12));
-        fail_unless!(map.len() == 2);
-        fail_unless!(!map.is_empty());
-        fail_unless!(map.insert(14, 22));
-        fail_unless!(map.len() == 3);
-        fail_unless!(!map.is_empty());
+        assert!(map.len() == 0);
+        assert!(map.is_empty());
+        assert!(map.insert(5, 20));
+        assert!(map.len() == 1);
+        assert!(!map.is_empty());
+        assert!(map.insert(11, 12));
+        assert!(map.len() == 2);
+        assert!(!map.is_empty());
+        assert!(map.insert(14, 22));
+        assert!(map.len() == 3);
+        assert!(!map.is_empty());
     }
 
     #[test]
     fn test_clear() {
         let mut map = SmallIntMap::new();
-        fail_unless!(map.insert(5, 20));
-        fail_unless!(map.insert(11, 12));
-        fail_unless!(map.insert(14, 22));
+        assert!(map.insert(5, 20));
+        assert!(map.insert(11, 12));
+        assert!(map.insert(14, 22));
         map.clear();
-        fail_unless!(map.is_empty());
-        fail_unless!(map.find(&5).is_none());
-        fail_unless!(map.find(&11).is_none());
-        fail_unless!(map.find(&14).is_none());
+        assert!(map.is_empty());
+        assert!(map.find(&5).is_none());
+        assert!(map.find(&11).is_none());
+        assert!(map.find(&14).is_none());
     }
 
     #[test]
@@ -238,11 +238,11 @@ mod tests {
         map.update_with_key(3, 2, addMoreToCount);
 
         // check the total counts
-        fail_unless!(map.find(&3).get() == &10);
-        fail_unless!(map.find(&5).get() == &3);
-        fail_unless!(map.find(&9).get() == &1);
+        assert!(map.find(&3).get() == &10);
+        assert!(map.find(&5).get() == &3);
+        assert!(map.find(&9).get() == &1);
 
         // sadly, no sevens were counted
-        fail_unless!(map.find(&7).is_none());
+        assert!(map.find(&7).is_none());
     }
 }

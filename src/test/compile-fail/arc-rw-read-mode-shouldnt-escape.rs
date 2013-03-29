@@ -18,5 +18,5 @@ fn main() {
         //~^ ERROR cannot infer an appropriate lifetime
     }
     // Adding this line causes a method unification failure instead
-    // do (&option::unwrap(y)).read |state| { fail_unless!(*state == 1); }
+    // do (&option::unwrap(y)).read |state| { assert!(*state == 1); }
 }

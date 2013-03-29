@@ -12,9 +12,9 @@
 fn let_in<T>(x: T, f: &fn(T)) {}
 
 fn main() {
-    let_in(3u, |i| { fail_unless!(i == 3); });
+    let_in(3u, |i| { assert!(i == 3); });
     //~^ ERROR expected `uint` but found `int`
 
-    let_in(3, |i| { fail_unless!(i == 3u); });
+    let_in(3, |i| { assert!(i == 3u); });
     //~^ ERROR expected `int` but found `uint`
 }

@@ -59,7 +59,7 @@ impl EventLoop for UvEventLoop {
     fn callback(&mut self, f: ~fn()) {
         let mut idle_watcher =  IdleWatcher::new(self.uvio.uv_loop());
         do idle_watcher.start |idle_watcher, status| {
-            fail_unless!(status.is_none());
+            assert!(status.is_none());
             let mut idle_watcher = idle_watcher;
             idle_watcher.stop();
             idle_watcher.close();
@@ -82,7 +82,7 @@ fn test_callback_run_once() {
             unsafe { *count_ptr += 1 }
         }
         event_loop.run();
-        fail_unless!(count == 1);
+        assert!(count == 1);
     }
 }
 
@@ -105,13 +105,13 @@ impl IoFactory for UvIoFactory {
         let result_cell_ptr: *Cell<Option<~StreamObject>> = &result_cell;
 
         do Scheduler::local |scheduler| {
-            fail_unless!(scheduler.in_task_context());
+            assert!(scheduler.in_task_context());
 
             // Block this task and take ownership, switch to scheduler context
             do scheduler.block_running_task_and_then |scheduler, task| {
 
                 rtdebug!("connect: entered scheduler context");
-                fail_unless!(!scheduler.in_task_context());
+                assert!(!scheduler.in_task_context());
                 let mut tcp_watcher = TcpWatcher::new(self.uv_loop());
                 let task_cell = Cell(task);
 
@@ -138,7 +138,7 @@ impl IoFactory for UvIoFactory {
             }
         }
 
-        fail_unless!(!result_cell.is_empty());
+        assert!(!result_cell.is_empty());
         return result_cell.take();
     }
 
@@ -179,7 +179,7 @@ impl TcpListener for UvTcpListener {
         let server_tcp_watcher = self.watcher();
 
         do Scheduler::local |scheduler| {
-            fail_unless!(scheduler.in_task_context());
+            assert!(scheduler.in_task_context());
 
             do scheduler.block_running_task_and_then |_, task| {
                 let task_cell = Cell(task);
@@ -208,7 +208,7 @@ impl TcpListener for UvTcpListener {
             }
         }
 
-        fail_unless!(!result_cell.is_empty());
+        assert!(!result_cell.is_empty());
         return result_cell.take();
     }
 }
@@ -244,12 +244,12 @@ impl Stream for UvStream {
         let result_cell_ptr: *Cell<Result<uint, ()>> = &result_cell;
 
         do Scheduler::local |scheduler| {
-            fail_unless!(scheduler.in_task_context());
+            assert!(scheduler.in_task_context());
             let watcher = self.watcher();
             let buf_ptr: *&mut [u8] = &buf;
             do scheduler.block_running_task_and_then |scheduler, task| {
                 rtdebug!("read: entered scheduler context");
-                fail_unless!(!scheduler.in_task_context());
+                assert!(!scheduler.in_task_context());
                 let mut watcher = watcher;
                 let task_cell = Cell(task);
                 // XXX: We shouldn't reallocate these callbacks every
@@ -267,7 +267,7 @@ impl Stream for UvStream {
                     watcher.read_stop();
 
                     let result = if status.is_none() {
-                        fail_unless!(nread >= 0);
+                        assert!(nread >= 0);
                         Ok(nread as uint)
                     } else {
                         Err(())
@@ -282,7 +282,7 @@ impl Stream for UvStream {
             }
         }
 
-        fail_unless!(!result_cell.is_empty());
+        assert!(!result_cell.is_empty());
         return result_cell.take();
     }
 
@@ -290,7 +290,7 @@ impl Stream for UvStream {
         let result_cell = empty_cell();
         let result_cell_ptr: *Cell<Result<(), ()>> = &result_cell;
         do Scheduler::local |scheduler| {
-            fail_unless!(scheduler.in_task_context());
+            assert!(scheduler.in_task_context());
             let watcher = self.watcher();
             let buf_ptr: *&[u8] = &buf;
             do scheduler.block_running_task_and_then |_, task| {
@@ -315,7 +315,7 @@ impl Stream for UvStream {
             }
         }
 
-        fail_unless!(!result_cell.is_empty());
+        assert!(!result_cell.is_empty());
         return result_cell.take();
     }
 }
@@ -330,7 +330,7 @@ fn test_simple_io_no_connect() {
                 let io = sched.event_loop.io().unwrap();
                 let addr = Ipv4(127, 0, 0, 1, 2926);
                 let maybe_chan = io.connect(addr);
-                fail_unless!(maybe_chan.is_none());
+                assert!(maybe_chan.is_none());
             }
         };
         sched.task_queue.push_back(task);
@@ -361,10 +361,10 @@ fn test_simple_tcp_server_and_client() {
                 let mut stream = listener.listen().unwrap();
                 let mut buf = [0, .. 2048];
                 let nread = stream.read(buf).unwrap();
-                fail_unless!(nread == 8);
+                assert!(nread == 8);
                 for uint::range(0, nread) |i| {
                     rtdebug!("%u", buf[i] as uint);
-                    fail_unless!(buf[i] == i as u8);
+                    assert!(buf[i] == i as u8);
                 }
                 stream.close();
                 listener.close();
@@ -411,7 +411,7 @@ fn test_read_and_block() {
                     let nread = stream.read(buf).unwrap();
                     for uint::range(0, nread) |i| {
                         let val = buf[i] as uint;
-                        fail_unless!(val == current % 8);
+                        assert!(val == current % 8);
                         current += 1;
                     }
                     reads += 1;
@@ -427,7 +427,7 @@ fn test_read_and_block() {
                 }
 
                 // Make sure we had multiple reads
-                fail_unless!(reads > 1);
+                assert!(reads > 1);
 
                 stream.close();
                 listener.close();

@@ -12,7 +12,7 @@ fn main() {
     let x = Some(unstable::exclusive(false));
     match x {
         Some(copy z) => { //~ ERROR copying a value of non-copyable type
-            do z.with |b| { fail_unless!(!*b); }
+            do z.with |b| { assert!(!*b); }
         }
         None => fail!()
     }

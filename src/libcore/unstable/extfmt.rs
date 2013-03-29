@@ -340,11 +340,11 @@ pub mod ct {
             parse_count(s, 0, s.len()) == Parsed::new(count, next)
         }
 
-        fail_unless!(test("", CountImplied, 0));
-        fail_unless!(test("*", CountIsNextParam, 1));
-        fail_unless!(test("*1", CountIsNextParam, 1));
-        fail_unless!(test("*1$", CountIsParam(1), 3));
-        fail_unless!(test("123", CountIs(123), 3));
+        assert!(test("", CountImplied, 0));
+        assert!(test("*", CountIsNextParam, 1));
+        assert!(test("*1", CountIsNextParam, 1));
+        assert!(test("*1$", CountIsParam(1), 3));
+        assert!(test("123", CountIs(123), 3));
     }
 
     #[test]
@@ -355,8 +355,8 @@ pub mod ct {
 
         fn test(s: &str, flags: &[Flag], next: uint) {
             let f = parse_flags(s, 0, s.len());
-            fail_unless!(pack(f.val) == pack(flags));
-            fail_unless!(f.next == next);
+            assert!(pack(f.val) == pack(flags));
+            assert!(f.next == next);
         }
 
         test("", [], 0);
@@ -367,7 +367,7 @@ pub mod ct {
 
     #[test]
     fn test_parse_fmt_string() {
-        fail_unless!(parse_fmt_string("foo %s bar", die) == ~[
+        assert!(parse_fmt_string("foo %s bar", die) == ~[
             PieceString(~"foo "),
             PieceConv(Conv {
                 param: None,
@@ -378,7 +378,7 @@ pub mod ct {
             }),
             PieceString(~" bar")]);
 
-        fail_unless!(parse_fmt_string("%s", die) == ~[
+        assert!(parse_fmt_string("%s", die) == ~[
             PieceConv(Conv {
                 param: None,
                 flags: ~[],
@@ -387,7 +387,7 @@ pub mod ct {
                 ty: TyStr,
             })]);
 
-        fail_unless!(parse_fmt_string("%%%%", die) == ~[
+        assert!(parse_fmt_string("%%%%", die) == ~[
             PieceString(~"%"), PieceString(~"%")]);
     }
 
@@ -397,10 +397,10 @@ pub mod ct {
             parse_parameter(s, 0, s.len()) == Parsed::new(param, next)
         }
 
-        fail_unless!(test("", None, 0));
-        fail_unless!(test("foo", None, 0));
-        fail_unless!(test("123", None, 0));
-        fail_unless!(test("123$", Some(123), 4));
+        assert!(test("", None, 0));
+        assert!(test("foo", None, 0));
+        assert!(test("123", None, 0));
+        assert!(test("123$", Some(123), 4));
     }
 
     #[test]
@@ -409,12 +409,12 @@ pub mod ct {
             parse_precision(s, 0, s.len()) == Parsed::new(count, next)
         }
 
-        fail_unless!(test("", CountImplied, 0));
-        fail_unless!(test(".", CountIs(0), 1));
-        fail_unless!(test(".*", CountIsNextParam, 2));
-        fail_unless!(test(".*1", CountIsNextParam, 2));
-        fail_unless!(test(".*1$", CountIsParam(1), 4));
-        fail_unless!(test(".123", CountIs(123), 4));
+        assert!(test("", CountImplied, 0));
+        assert!(test(".", CountIs(0), 1));
+        assert!(test(".*", CountIsNextParam, 2));
+        assert!(test(".*1", CountIsNextParam, 2));
+        assert!(test(".*1$", CountIsParam(1), 4));
+        assert!(test(".123", CountIs(123), 4));
     }
 
     #[test]
@@ -423,17 +423,17 @@ pub mod ct {
             parse_type(s, 0, s.len(), die) == Parsed::new(ty, 1)
         }
 
-        fail_unless!(test("b", TyBool));
-        fail_unless!(test("c", TyChar));
-        fail_unless!(test("d", TyInt(Signed)));
-        fail_unless!(test("f", TyFloat));
-        fail_unless!(test("i", TyInt(Signed)));
-        fail_unless!(test("o", TyOctal));
-        fail_unless!(test("s", TyStr));
-        fail_unless!(test("t", TyBits));
-        fail_unless!(test("x", TyHex(CaseLower)));
-        fail_unless!(test("X", TyHex(CaseUpper)));
-        fail_unless!(test("?", TyPoly));
+        assert!(test("b", TyBool));
+        assert!(test("c", TyChar));
+        assert!(test("d", TyInt(Signed)));
+        assert!(test("f", TyFloat));
+        assert!(test("i", TyInt(Signed)));
+        assert!(test("o", TyOctal));
+        assert!(test("s", TyStr));
+        assert!(test("t", TyBits));
+        assert!(test("x", TyHex(CaseLower)));
+        assert!(test("X", TyHex(CaseUpper)));
+        assert!(test("?", TyPoly));
     }
 
     #[test]
@@ -453,16 +453,16 @@ pub mod ct {
     #[test]
     fn test_peek_num() {
         let s1 = "";
-        fail_unless!(peek_num(s1, 0, s1.len()).is_none());
+        assert!(peek_num(s1, 0, s1.len()).is_none());
 
         let s2 = "foo";
-        fail_unless!(peek_num(s2, 0, s2.len()).is_none());
+        assert!(peek_num(s2, 0, s2.len()).is_none());
 
         let s3 = "123";
-        fail_unless!(peek_num(s3, 0, s3.len()) == Some(Parsed::new(123, 3)));
+        assert!(peek_num(s3, 0, s3.len()) == Some(Parsed::new(123, 3)));
 
         let s4 = "123foo";
-        fail_unless!(peek_num(s4, 0, s4.len()) == Some(Parsed::new(123, 3)));
+        assert!(peek_num(s4, 0, s4.len()) == Some(Parsed::new(123, 3)));
     }
 }
 

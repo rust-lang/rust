@@ -12,4 +12,4 @@
 
 static foo: int = 4 >> 1;
 enum bs { thing = foo }
-pub fn main() { fail_unless!((thing as int == foo)); }
+pub fn main() { assert!((thing as int == foo)); }

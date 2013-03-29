@@ -1,7 +1,7 @@
 /* this is for run-pass/syntax-extension-source-utils.rs */
 
 {
-    fail_unless!(file!().ends_with("includeme.fragment"));
-    fail_unless!(line!() == 5u);
+    assert!(file!().ends_with("includeme.fragment"));
+    assert!(line!() == 5u);
     fmt!("victory robot %u", line!())
 }

@@ -19,10 +19,10 @@ fn main() {
     
     do task::spawn() {
         let v = *arc::get(&arc_v);
-        fail_unless!(v[3] == 4);
+        assert!(v[3] == 4);
     };
 
-    fail_unless!((*arc::get(&arc_v))[2] == 3);
+    assert!((*arc::get(&arc_v))[2] == 3);
 
     info!(arc_v);
 }

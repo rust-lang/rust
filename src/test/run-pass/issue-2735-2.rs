@@ -31,5 +31,5 @@ fn defer<'r>(b: &'r mut bool) -> defer<'r> {
 pub fn main() {
     let mut dtor_ran = false;
     let _  = defer(&mut dtor_ran);
-    fail_unless!((dtor_ran));
+    assert!((dtor_ran));
 }

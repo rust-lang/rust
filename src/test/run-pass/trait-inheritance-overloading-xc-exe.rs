@@ -23,8 +23,8 @@ fn mi(v: int) -> MyInt { MyInt { val: v } }
 pub fn main() {
     let (x, y) = (mi(3), mi(5));
     let (a, b, c) = f(x, y);
-    fail_unless!(a == mi(8));
-    fail_unless!(b == mi(-2));
-    fail_unless!(c == mi(15));
+    assert!(a == mi(8));
+    assert!(b == mi(-2));
+    assert!(c == mi(15));
 }
 

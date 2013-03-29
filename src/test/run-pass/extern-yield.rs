@@ -35,7 +35,7 @@ pub fn main() {
         do task::spawn {
             let result = count(5u);
             debug!("result = %?", result);
-            fail_unless!(result == 16u);
+            assert!(result == 16u);
         };
     }
 }

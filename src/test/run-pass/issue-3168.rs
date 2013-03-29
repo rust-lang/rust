@@ -26,6 +26,6 @@ pub fn main() {
         p3.recv();
     };
     error!("parent tries");
-    fail_unless!(!p.recv().try_send(()));
+    assert!(!p.recv().try_send(()));
     error!("all done!");
 }

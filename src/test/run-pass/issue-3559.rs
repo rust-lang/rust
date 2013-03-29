@@ -32,7 +32,7 @@ fn tester()
     let mut table = core::hashmap::linear::LinearMap();
     table.insert(@~"one", 1);
     table.insert(@~"two", 2);
-    fail_unless!(check_strs(table.to_str(), ~"xxx"));   // not sure what expected should be
+    assert!(check_strs(table.to_str(), ~"xxx"));   // not sure what expected should be
 }
 
 pub fn main() {}

@@ -11,7 +11,7 @@
 
 
 fn range(a: int, b: int, it: &fn(int)) {
-    fail_unless!((a < b));
+    assert!((a < b));
     let mut i: int = a;
     while i < b { it(i); i += 1; }
 }

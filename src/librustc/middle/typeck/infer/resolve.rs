@@ -114,9 +114,9 @@ pub impl ResolveState {
         // n.b. This is a hokey mess because the current fold doesn't
         // allow us to pass back errors in any useful way.
 
-        fail_unless!(vec::is_empty(self.v_seen));
+        assert!(vec::is_empty(self.v_seen));
         let rty = indent(|| self.resolve_type(typ) );
-        fail_unless!(vec::is_empty(self.v_seen));
+        assert!(vec::is_empty(self.v_seen));
         match self.err {
           None => {
             debug!("Resolved to %s + %s (modes=%x)",

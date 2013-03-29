@@ -118,7 +118,7 @@ pub fn get_rpath_relative_to_output(os: session::os,
                                  -> Path {
     use core::os;
 
-    fail_unless!(not_win32(os));
+    assert!(not_win32(os));
 
     // Mac doesn't appear to support $ORIGIN
     let prefix = match os {
@@ -134,8 +134,8 @@ pub fn get_rpath_relative_to_output(os: session::os,
 
 // Find the relative path from one file to another
 pub fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
-    fail_unless!(abs1.is_absolute);
-    fail_unless!(abs2.is_absolute);
+    assert!(abs1.is_absolute);
+    assert!(abs2.is_absolute);
     let abs1 = abs1.normalize();
     let abs2 = abs2.normalize();
     debug!("finding relative path from %s to %s",
@@ -144,8 +144,8 @@ pub fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
     let split2: &[~str] = abs2.components;
     let len1 = vec::len(split1);
     let len2 = vec::len(split2);
-    fail_unless!(len1 > 0);
-    fail_unless!(len2 > 0);
+    assert!(len1 > 0);
+    assert!(len2 > 0);
 
     let max_common_path = uint::min(len1, len2) - 1;
     let mut start_idx = 0;
@@ -215,7 +215,7 @@ mod test {
     pub fn test_rpaths_to_flags() {
         let flags = rpaths_to_flags(~[Path("path1"),
                                       Path("path2")]);
-        fail_unless!(flags == ~[~"-Wl,-rpath,path1", ~"-Wl,-rpath,path2"]);
+        assert!(flags == ~[~"-Wl,-rpath,path1", ~"-Wl,-rpath,path2"]);
     }
 
     #[test]
@@ -226,13 +226,13 @@ mod test {
         debug!("test_prefix_path: %s vs. %s",
                res.to_str(),
                d.to_str());
-        fail_unless!(str::ends_with(res.to_str(), d.to_str()));
+        assert!(str::ends_with(res.to_str(), d.to_str()));
     }
 
     #[test]
     pub fn test_prefix_rpath_abs() {
         let res = get_install_prefix_rpath("triple");
-        fail_unless!(res.is_absolute);
+        assert!(res.is_absolute);
     }
 
     #[test]
@@ -240,7 +240,7 @@ mod test {
         let res = minimize_rpaths([Path("rpath1"),
                                    Path("rpath2"),
                                    Path("rpath1")]);
-        fail_unless!(res == ~[Path("rpath1"), Path("rpath2")]);
+        assert!(res == ~[Path("rpath1"), Path("rpath2")]);
     }
 
     #[test]
@@ -249,7 +249,7 @@ mod test {
                                     Path("1a"), Path("4a"),Path("1a"),
                                     Path("2"), Path("3"), Path("4a"),
                                     Path("3")]);
-        fail_unless!(res == ~[Path("1a"), Path("2"), Path("4a"), Path("3")]);
+        assert!(res == ~[Path("1a"), Path("2"), Path("4a"), Path("3")]);
     }
 
     #[test]
@@ -257,7 +257,7 @@ mod test {
         let p1 = Path("/usr/bin/rustc");
         let p2 = Path("/usr/lib/mylib");
         let res = get_relative_to(&p1, &p2);
-        fail_unless!(res == Path("../lib"));
+        assert!(res == Path("../lib"));
     }
 
     #[test]
@@ -265,7 +265,7 @@ mod test {
         let p1 = Path("/usr/bin/rustc");
         let p2 = Path("/usr/bin/../lib/mylib");
         let res = get_relative_to(&p1, &p2);
-        fail_unless!(res == Path("../lib"));
+        assert!(res == Path("../lib"));
     }
 
     #[test]
@@ -273,7 +273,7 @@ mod test {
         let p1 = Path("/usr/bin/whatever/rustc");
         let p2 = Path("/usr/lib/whatever/mylib");
         let res = get_relative_to(&p1, &p2);
-        fail_unless!(res == Path("../../lib/whatever"));
+        assert!(res == Path("../../lib/whatever"));
     }
 
     #[test]
@@ -281,7 +281,7 @@ mod test {
         let p1 = Path("/usr/bin/whatever/../rustc");
         let p2 = Path("/usr/lib/whatever/mylib");
         let res = get_relative_to(&p1, &p2);
-        fail_unless!(res == Path("../lib/whatever"));
+        assert!(res == Path("../lib/whatever"));
     }
 
     #[test]
@@ -289,7 +289,7 @@ mod test {
         let p1 = Path("/usr/bin/whatever/../rustc");
         let p2 = Path("/usr/lib/whatever/../mylib");
         let res = get_relative_to(&p1, &p2);
-        fail_unless!(res == Path("../lib"));
+        assert!(res == Path("../lib"));
     }
 
     #[test]
@@ -297,7 +297,7 @@ mod test {
         let p1 = Path("/1");
         let p2 = Path("/2/3");
         let res = get_relative_to(&p1, &p2);
-        fail_unless!(res == Path("2"));
+        assert!(res == Path("2"));
     }
 
     #[test]
@@ -305,7 +305,7 @@ mod test {
         let p1 = Path("/1/2");
         let p2 = Path("/3");
         let res = get_relative_to(&p1, &p2);
-        fail_unless!(res == Path(".."));
+        assert!(res == Path(".."));
     }
 
     #[test]
@@ -318,7 +318,7 @@ mod test {
         debug!("test_relative_tu8: %s vs. %s",
                res.to_str(),
                Path(".").to_str());
-        fail_unless!(res == Path("."));
+        assert!(res == Path("."));
     }
 
     #[test]
@@ -328,7 +328,7 @@ mod test {
       let o = session::os_linux;
       let res = get_rpath_relative_to_output(o,
             &Path("bin/rustc"), &Path("lib/libstd.so"));
-      fail_unless!(res.to_str() == ~"$ORIGIN/../lib");
+      assert!(res.to_str() == ~"$ORIGIN/../lib");
     }
 
     #[test]
@@ -337,7 +337,7 @@ mod test {
         let o = session::os_freebsd;
         let res = get_rpath_relative_to_output(o,
             &Path("bin/rustc"), &Path("lib/libstd.so"));
-        fail_unless!(res.to_str() == ~"$ORIGIN/../lib");
+        assert!(res.to_str() == ~"$ORIGIN/../lib");
     }
 
     #[test]
@@ -348,7 +348,7 @@ mod test {
         let res = get_rpath_relative_to_output(o,
                                                &Path("bin/rustc"),
                                                &Path("lib/libstd.so"));
-        fail_unless!(res.to_str() == ~"@executable_path/../lib");
+        assert!(res.to_str() == ~"@executable_path/../lib");
     }
 
     #[test]
@@ -358,6 +358,6 @@ mod test {
                res.to_str(),
                os::make_absolute(&Path("lib")).to_str());
 
-        fail_unless!(res == os::make_absolute(&Path("lib")));
+        assert!(res == os::make_absolute(&Path("lib")));
     }
 }

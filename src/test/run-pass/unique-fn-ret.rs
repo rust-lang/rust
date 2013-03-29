@@ -13,5 +13,5 @@ fn f() -> ~int {
 }
 
 pub fn main() {
-    fail_unless!(f() == ~100);
+    assert!(f() == ~100);
 }

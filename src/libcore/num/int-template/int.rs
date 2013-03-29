@@ -40,21 +40,21 @@ mod inst {
 
     #[test]
     fn test_pow() {
-        fail_unless!((pow(0, 0u) == 1));
-        fail_unless!((pow(0, 1u) == 0));
-        fail_unless!((pow(0, 2u) == 0));
-        fail_unless!((pow(-1, 0u) == 1));
-        fail_unless!((pow(1, 0u) == 1));
-        fail_unless!((pow(-3, 2u) == 9));
-        fail_unless!((pow(-3, 3u) == -27));
-        fail_unless!((pow(4, 9u) == 262144));
+        assert!((pow(0, 0u) == 1));
+        assert!((pow(0, 1u) == 0));
+        assert!((pow(0, 2u) == 0));
+        assert!((pow(-1, 0u) == 1));
+        assert!((pow(1, 0u) == 1));
+        assert!((pow(-3, 2u) == 9));
+        assert!((pow(-3, 3u) == -27));
+        assert!((pow(4, 9u) == 262144));
     }
 
     #[test]
     fn test_overflows() {
-        fail_unless!((::int::max_value > 0));
-        fail_unless!((::int::min_value <= 0));
-        fail_unless!((::int::min_value + ::int::max_value + 1 == 0));
+        assert!((::int::max_value > 0));
+        assert!((::int::min_value <= 0));
+        assert!((::int::min_value + ::int::max_value + 1 == 0));
     }
 }
 
@@ -84,45 +84,45 @@ impl NumCast for int {
 
 #[test]
 fn test_numcast() {
-    fail_unless!((20u   == 20i.to_uint()));
-    fail_unless!((20u8  == 20i.to_u8()));
-    fail_unless!((20u16 == 20i.to_u16()));
-    fail_unless!((20u32 == 20i.to_u32()));
-    fail_unless!((20u64 == 20i.to_u64()));
-    fail_unless!((20i   == 20i.to_int()));
-    fail_unless!((20i8  == 20i.to_i8()));
-    fail_unless!((20i16 == 20i.to_i16()));
-    fail_unless!((20i32 == 20i.to_i32()));
-    fail_unless!((20i64 == 20i.to_i64()));
-    fail_unless!((20f   == 20i.to_float()));
-    fail_unless!((20f32 == 20i.to_f32()));
-    fail_unless!((20f64 == 20i.to_f64()));
+    assert!((20u   == 20i.to_uint()));
+    assert!((20u8  == 20i.to_u8()));
+    assert!((20u16 == 20i.to_u16()));
+    assert!((20u32 == 20i.to_u32()));
+    assert!((20u64 == 20i.to_u64()));
+    assert!((20i   == 20i.to_int()));
+    assert!((20i8  == 20i.to_i8()));
+    assert!((20i16 == 20i.to_i16()));
+    assert!((20i32 == 20i.to_i32()));
+    assert!((20i64 == 20i.to_i64()));
+    assert!((20f   == 20i.to_float()));
+    assert!((20f32 == 20i.to_f32()));
+    assert!((20f64 == 20i.to_f64()));
 
-    fail_unless!((20i == NumCast::from(20u)));
-    fail_unless!((20i == NumCast::from(20u8)));
-    fail_unless!((20i == NumCast::from(20u16)));
-    fail_unless!((20i == NumCast::from(20u32)));
-    fail_unless!((20i == NumCast::from(20u64)));
-    fail_unless!((20i == NumCast::from(20i)));
-    fail_unless!((20i == NumCast::from(20i8)));
-    fail_unless!((20i == NumCast::from(20i16)));
-    fail_unless!((20i == NumCast::from(20i32)));
-    fail_unless!((20i == NumCast::from(20i64)));
-    fail_unless!((20i == NumCast::from(20f)));
-    fail_unless!((20i == NumCast::from(20f32)));
-    fail_unless!((20i == NumCast::from(20f64)));
+    assert!((20i == NumCast::from(20u)));
+    assert!((20i == NumCast::from(20u8)));
+    assert!((20i == NumCast::from(20u16)));
+    assert!((20i == NumCast::from(20u32)));
+    assert!((20i == NumCast::from(20u64)));
+    assert!((20i == NumCast::from(20i)));
+    assert!((20i == NumCast::from(20i8)));
+    assert!((20i == NumCast::from(20i16)));
+    assert!((20i == NumCast::from(20i32)));
+    assert!((20i == NumCast::from(20i64)));
+    assert!((20i == NumCast::from(20f)));
+    assert!((20i == NumCast::from(20f32)));
+    assert!((20i == NumCast::from(20f64)));
 
-    fail_unless!((20i == num::cast(20u)));
-    fail_unless!((20i == num::cast(20u8)));
-    fail_unless!((20i == num::cast(20u16)));
-    fail_unless!((20i == num::cast(20u32)));
-    fail_unless!((20i == num::cast(20u64)));
-    fail_unless!((20i == num::cast(20i)));
-    fail_unless!((20i == num::cast(20i8)));
-    fail_unless!((20i == num::cast(20i16)));
-    fail_unless!((20i == num::cast(20i32)));
-    fail_unless!((20i == num::cast(20i64)));
-    fail_unless!((20i == num::cast(20f)));
-    fail_unless!((20i == num::cast(20f32)));
-    fail_unless!((20i == num::cast(20f64)));
+    assert!((20i == num::cast(20u)));
+    assert!((20i == num::cast(20u8)));
+    assert!((20i == num::cast(20u16)));
+    assert!((20i == num::cast(20u32)));
+    assert!((20i == num::cast(20u64)));
+    assert!((20i == num::cast(20i)));
+    assert!((20i == num::cast(20i8)));
+    assert!((20i == num::cast(20i16)));
+    assert!((20i == num::cast(20i32)));
+    assert!((20i == num::cast(20i64)));
+    assert!((20i == num::cast(20f)));
+    assert!((20i == num::cast(20f32)));
+    assert!((20i == num::cast(20f64)));
 }

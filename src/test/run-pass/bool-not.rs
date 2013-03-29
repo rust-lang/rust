@@ -13,6 +13,6 @@
 
 // -*- rust -*-
 pub fn main() {
-    if !false { fail_unless!((true)); } else { fail_unless!((false)); }
-    if !true { fail_unless!((false)); } else { fail_unless!((true)); }
+    if !false { assert!((true)); } else { assert!((false)); }
+    if !true { assert!((false)); } else { assert!((true)); }
 }

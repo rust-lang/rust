@@ -22,5 +22,5 @@ fn free<T>(-_t: T) {
 
 pub fn main() {
     let z = @3;
-    fail_unless!(3 == it_takes_two(z, z));
+    assert!(3 == it_takes_two(z, z));
 }

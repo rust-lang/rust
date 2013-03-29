@@ -11,7 +11,7 @@
 fn force(f: &fn() -> int) -> int { return f(); }
 pub fn main() {
     fn f() -> int { return 7; }
-    fail_unless!((force(f) == 7));
+    assert!((force(f) == 7));
     let g = {||force(f)};
-    fail_unless!((g() == 7));
+    assert!((g() == 7));
 }

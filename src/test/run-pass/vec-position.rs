@@ -10,7 +10,7 @@
 
 pub fn main() {
     let mut v = ~[1, 2, 3];
-    fail_unless!(v.position(|x| *x == 1) == Some(0));
-    fail_unless!(v.position(|x| *x == 3) == Some(2));
-    fail_unless!(v.position(|x| *x == 17) == None);
+    assert!(v.position(|x| *x == 1) == Some(0));
+    assert!(v.position(|x| *x == 3) == Some(2));
+    assert!(v.position(|x| *x == 17) == None);
 }

@@ -876,7 +876,7 @@ impl io::Reader for TcpSocketBuf {
         let mut count: uint = 0;
 
         loop {
-          fail_unless!(count < len);
+          assert!(count < len);
 
           // If possible, copy up to `len` bytes from the internal
           // `data.buf` into `buf`
@@ -897,7 +897,7 @@ impl io::Reader for TcpSocketBuf {
                 }
           }
 
-          fail_unless!(count <= len);
+          assert!(count <= len);
           if count == len {
               break;
           }
@@ -1589,15 +1589,15 @@ pub mod test {
             server_port,
             expected_req,
             hl_loop);
-        fail_unless!(actual_resp_result.is_ok());
+        assert!(actual_resp_result.is_ok());
         let actual_resp = actual_resp_result.get();
         let actual_req = server_result_po.recv();
         debug!("REQ: expected: '%s' actual: '%s'",
                        expected_req, actual_req);
         debug!("RESP: expected: '%s' actual: '%s'",
                        expected_resp, actual_resp);
-        fail_unless!(str::contains(actual_req, expected_req));
-        fail_unless!(str::contains(actual_resp, expected_resp));
+        assert!(str::contains(actual_req, expected_req));
+        assert!(str::contains(actual_resp, expected_resp));
     }
     pub fn impl_gl_tcp_ipv4_get_peer_addr() {
         let hl_loop = &uv::global_loop::get();
@@ -1630,9 +1630,9 @@ pub mod test {
 
         debug!("testing peer address");
         // This is what we are actually testing!
-        fail_unless!(net::ip::format_addr(&sock.get_peer_addr()) ==
+        assert!(net::ip::format_addr(&sock.get_peer_addr()) ==
             ~"127.0.0.1");
-        fail_unless!(net::ip::get_port(&sock.get_peer_addr()) == 8887);
+        assert!(net::ip::get_port(&sock.get_peer_addr()) == 8887);
 
         // Fulfill the protocol the test server expects
         let resp_bytes = str::to_bytes(~"ping");
@@ -1693,7 +1693,7 @@ pub mod test {
             hl_loop);
         match listen_err {
           AddressInUse => {
-            fail_unless!(true);
+            assert!(true);
           }
           _ => {
             fail!(~"expected address_in_use listen error,"+
@@ -1712,7 +1712,7 @@ pub mod test {
                             hl_loop);
         match listen_err {
           AccessDenied => {
-            fail_unless!(true);
+            assert!(true);
           }
           _ => {
             fail!(~"expected address_in_use listen error,"+
@@ -1749,7 +1749,7 @@ pub mod test {
         let server_addr = ip::v4::parse_addr(server_ip);
         let conn_result = connect(server_addr, server_port, iotask);
         if result::is_err(&conn_result) {
-            fail_unless!(false);
+            assert!(false);
         }
         let sock_buf = @socket_buf(result::unwrap(conn_result));
         buf_write(sock_buf, expected_req);
@@ -1764,8 +1764,8 @@ pub mod test {
                        expected_req, actual_req);
         debug!("RESP: expected: '%s' actual: '%s'",
                        expected_resp, actual_resp);
-        fail_unless!(str::contains(actual_req, expected_req));
-        fail_unless!(str::contains(actual_resp, expected_resp));
+        assert!(str::contains(actual_req, expected_req));
+        assert!(str::contains(actual_resp, expected_resp));
     }
 
     pub fn impl_tcp_socket_impl_reader_handles_eof() {
@@ -1796,7 +1796,7 @@ pub mod test {
         let server_addr = ip::v4::parse_addr(server_ip);
         let conn_result = connect(server_addr, server_port, hl_loop);
         if result::is_err(&conn_result) {
-            fail_unless!(false);
+            assert!(false);
         }
         let sock_buf = @socket_buf(result::unwrap(conn_result));
         buf_write(sock_buf, expected_req);
@@ -1804,7 +1804,7 @@ pub mod test {
         let buf_reader = sock_buf as @Reader;
         let actual_response = str::from_bytes(buf_reader.read_whole_stream());
         debug!("Actual response: %s", actual_response);
-        fail_unless!(expected_resp == actual_response);
+        assert!(expected_resp == actual_response);
     }
 
     fn buf_write<W:io::Writer>(w: &W, val: &str) {
