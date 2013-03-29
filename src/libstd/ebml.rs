@@ -348,8 +348,8 @@ pub mod reader {
             f()
         }
 
-        fn read_owned_vec<T>(&self, f: &fn(uint) -> T) -> T {
-            debug!("read_owned_vec()");
+        fn read_seq<T>(&self, f: &fn(uint) -> T) -> T {
+            debug!("read_seq()");
             do self.push_doc(self.next_doc(EsVec)) {
                 let len = self._next_uint(EsVecLen);
                 debug!("  len=%u", len);
@@ -357,17 +357,8 @@ pub mod reader {
             }
         }
 
-        fn read_managed_vec<T>(&self, f: &fn(uint) -> T) -> T {
-            debug!("read_managed_vec()");
-            do self.push_doc(self.next_doc(EsVec)) {
-                let len = self._next_uint(EsVecLen);
-                debug!("  len=%u", len);
-                f(len)
-            }
-        }
-
-        fn read_vec_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
-            debug!("read_vec_elt(idx=%u)", idx);
+        fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
+            debug!("read_seq_elt(idx=%u)", idx);
             self.push_doc(self.next_doc(EsVecElt), f)
         }
 
@@ -652,22 +643,14 @@ pub mod writer {
         }
         fn emit_enum_variant_arg(&self, _idx: uint, f: &fn()) { f() }
 
-        fn emit_borrowed_vec(&self, len: uint, f: &fn()) {
+        fn emit_seq(&self, len: uint, f: &fn()) {
             do self.wr_tag(EsVec as uint) {
                 self._emit_tagged_uint(EsVecLen, len);
                 f()
             }
         }
 
-        fn emit_owned_vec(&self, len: uint, f: &fn()) {
-            self.emit_borrowed_vec(len, f)
-        }
-
-        fn emit_managed_vec(&self, len: uint, f: &fn()) {
-            self.emit_borrowed_vec(len, f)
-        }
-
-        fn emit_vec_elt(&self, _idx: uint, f: &fn()) {
+        fn emit_seq_elt(&self, _idx: uint, f: &fn()) {
             self.wr_tag(EsVecElt as uint, f)
         }
 

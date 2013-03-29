@@ -46,10 +46,8 @@ pub trait Encoder {
     fn emit_enum_variant(&self, v_name: &str, v_id: uint, sz: uint, f: &fn());
     fn emit_enum_variant_arg(&self, idx: uint, f: &fn());
 
-    fn emit_borrowed_vec(&self, len: uint, f: &fn());
-    fn emit_owned_vec(&self, len: uint, f: &fn());
-    fn emit_managed_vec(&self, len: uint, f: &fn());
-    fn emit_vec_elt(&self, idx: uint, f: &fn());
+    fn emit_seq(&self, len: uint, f: &fn());
+    fn emit_seq_elt(&self, idx: uint, f: &fn());
 
     fn emit_rec(&self, f: &fn());
     fn emit_struct(&self, name: &str, _len: uint, f: &fn());
@@ -94,9 +92,8 @@ pub trait Decoder {
     fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T;
     fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
-    fn read_owned_vec<T>(&self, f: &fn(uint) -> T) -> T;
-    fn read_managed_vec<T>(&self, f: &fn(uint) -> T) -> T;
-    fn read_vec_elt<T>(&self, idx: uint, f: &fn() -> T) -> T;
+    fn read_seq<T>(&self, f: &fn(uint) -> T) -> T;
+    fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
     fn read_rec<T>(&self, f: &fn() -> T) -> T;
     fn read_struct<T>(&self, name: &str, _len: uint, f: &fn() -> T) -> T;
@@ -320,9 +317,9 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for @T {
 
 impl<'self, S:Encoder,T:Encodable<S>> Encodable<S> for &'self [T] {
     fn encode(&self, s: &S) {
-        do s.emit_borrowed_vec(self.len()) {
+        do s.emit_seq(self.len()) {
             for self.eachi |i, e| {
-                s.emit_vec_elt(i, || e.encode(s))
+                s.emit_seq_elt(i, || e.encode(s))
             }
         }
     }
@@ -330,9 +327,9 @@ impl<'self, S:Encoder,T:Encodable<S>> Encodable<S> for &'self [T] {
 
 impl<S:Encoder,T:Encodable<S>> Encodable<S> for ~[T] {
     fn encode(&self, s: &S) {
-        do s.emit_owned_vec(self.len()) {
+        do s.emit_seq(self.len()) {
             for self.eachi |i, e| {
-                s.emit_vec_elt(i, || e.encode(s))
+                s.emit_seq_elt(i, || e.encode(s))
             }
         }
     }
@@ -340,9 +337,9 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for ~[T] {
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~[T] {
     fn decode(d: &D) -> ~[T] {
-        do d.read_owned_vec |len| {
+        do d.read_seq |len| {
             do vec::from_fn(len) |i| {
-                d.read_vec_elt(i, || Decodable::decode(d))
+                d.read_seq_elt(i, || Decodable::decode(d))
             }
         }
     }
@@ -350,9 +347,9 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~[T] {
 
 impl<S:Encoder,T:Encodable<S>> Encodable<S> for @[T] {
     fn encode(&self, s: &S) {
-        do s.emit_managed_vec(self.len()) {
+        do s.emit_seq(self.len()) {
             for self.eachi |i, e| {
-                s.emit_vec_elt(i, || e.encode(s))
+                s.emit_seq_elt(i, || e.encode(s))
             }
         }
     }
@@ -360,9 +357,9 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for @[T] {
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for @[T] {
     fn decode(d: &D) -> @[T] {
-        do d.read_managed_vec |len| {
+        do d.read_seq |len| {
             do at_vec::from_fn(len) |i| {
-                d.read_vec_elt(i, || Decodable::decode(d))
+                d.read_seq_elt(i, || Decodable::decode(d))
             }
         }
     }
@@ -395,9 +392,9 @@ impl<S:Encoder,T0:Encodable<S>,T1:Encodable<S>> Encodable<S> for (T0, T1) {
     fn encode(&self, s: &S) {
         match *self {
             (ref t0, ref t1) => {
-                do s.emit_tup(2) {
-                    s.emit_tup_elt(0, || t0.encode(s));
-                    s.emit_tup_elt(1, || t1.encode(s));
+                do s.emit_seq(2) {
+                    s.emit_seq_elt(0, || t0.encode(s));
+                    s.emit_seq_elt(1, || t1.encode(s));
                 }
             }
         }
@@ -406,10 +403,11 @@ impl<S:Encoder,T0:Encodable<S>,T1:Encodable<S>> Encodable<S> for (T0, T1) {
 
 impl<D:Decoder,T0:Decodable<D>,T1:Decodable<D>> Decodable<D> for (T0, T1) {
     fn decode(d: &D) -> (T0, T1) {
-        do d.read_tup(2) {
+        do d.read_seq |len| {
+            fail_unless!(len == 2);
             (
-                d.read_tup_elt(0, || Decodable::decode(d)),
-                d.read_tup_elt(1, || Decodable::decode(d))
+                d.read_seq_elt(0, || Decodable::decode(d)),
+                d.read_seq_elt(1, || Decodable::decode(d))
             )
         }
     }
@@ -424,10 +422,10 @@ impl<
     fn encode(&self, s: &S) {
         match *self {
             (ref t0, ref t1, ref t2) => {
-                do s.emit_tup(3) {
-                    s.emit_tup_elt(0, || t0.encode(s));
-                    s.emit_tup_elt(1, || t1.encode(s));
-                    s.emit_tup_elt(2, || t2.encode(s));
+                do s.emit_seq(3) {
+                    s.emit_seq_elt(0, || t0.encode(s));
+                    s.emit_seq_elt(1, || t1.encode(s));
+                    s.emit_seq_elt(2, || t2.encode(s));
                 }
             }
         }
@@ -441,11 +439,12 @@ impl<
     T2: Decodable<D>
 > Decodable<D> for (T0, T1, T2) {
     fn decode(d: &D) -> (T0, T1, T2) {
-        do d.read_tup(3) {
+        do d.read_seq |len| {
+            fail_unless!(len == 3);
             (
-                d.read_tup_elt(0, || Decodable::decode(d)),
-                d.read_tup_elt(1, || Decodable::decode(d)),
-                d.read_tup_elt(2, || Decodable::decode(d))
+                d.read_seq_elt(0, || Decodable::decode(d)),
+                d.read_seq_elt(1, || Decodable::decode(d)),
+                d.read_seq_elt(2, || Decodable::decode(d))
             )
         }
     }
@@ -461,11 +460,11 @@ impl<
     fn encode(&self, s: &S) {
         match *self {
             (ref t0, ref t1, ref t2, ref t3) => {
-                do s.emit_tup(4) {
-                    s.emit_tup_elt(0, || t0.encode(s));
-                    s.emit_tup_elt(1, || t1.encode(s));
-                    s.emit_tup_elt(2, || t2.encode(s));
-                    s.emit_tup_elt(3, || t3.encode(s));
+                do s.emit_seq(4) {
+                    s.emit_seq_elt(0, || t0.encode(s));
+                    s.emit_seq_elt(1, || t1.encode(s));
+                    s.emit_seq_elt(2, || t2.encode(s));
+                    s.emit_seq_elt(3, || t3.encode(s));
                 }
             }
         }
@@ -480,12 +479,13 @@ impl<
     T3: Decodable<D>
 > Decodable<D> for (T0, T1, T2, T3) {
     fn decode(d: &D) -> (T0, T1, T2, T3) {
-        do d.read_tup(4) {
+        do d.read_seq |len| {
+            fail_unless!(len == 4);
             (
-                d.read_tup_elt(0, || Decodable::decode(d)),
-                d.read_tup_elt(1, || Decodable::decode(d)),
-                d.read_tup_elt(2, || Decodable::decode(d)),
-                d.read_tup_elt(3, || Decodable::decode(d))
+                d.read_seq_elt(0, || Decodable::decode(d)),
+                d.read_seq_elt(1, || Decodable::decode(d)),
+                d.read_seq_elt(2, || Decodable::decode(d)),
+                d.read_seq_elt(3, || Decodable::decode(d))
             )
         }
     }
@@ -502,12 +502,12 @@ impl<
     fn encode(&self, s: &S) {
         match *self {
             (ref t0, ref t1, ref t2, ref t3, ref t4) => {
-                do s.emit_tup(5) {
-                    s.emit_tup_elt(0, || t0.encode(s));
-                    s.emit_tup_elt(1, || t1.encode(s));
-                    s.emit_tup_elt(2, || t2.encode(s));
-                    s.emit_tup_elt(3, || t3.encode(s));
-                    s.emit_tup_elt(4, || t4.encode(s));
+                do s.emit_seq(5) {
+                    s.emit_seq_elt(0, || t0.encode(s));
+                    s.emit_seq_elt(1, || t1.encode(s));
+                    s.emit_seq_elt(2, || t2.encode(s));
+                    s.emit_seq_elt(3, || t3.encode(s));
+                    s.emit_seq_elt(4, || t4.encode(s));
                 }
             }
         }
@@ -524,13 +524,14 @@ impl<
 > Decodable<D> for (T0, T1, T2, T3, T4) {
     fn decode(d: &D)
       -> (T0, T1, T2, T3, T4) {
-        do d.read_tup(5) {
+        do d.read_seq |len| {
+            fail_unless!(len == 5);
             (
-                d.read_tup_elt(0, || Decodable::decode(d)),
-                d.read_tup_elt(1, || Decodable::decode(d)),
-                d.read_tup_elt(2, || Decodable::decode(d)),
-                d.read_tup_elt(3, || Decodable::decode(d)),
-                d.read_tup_elt(4, || Decodable::decode(d))
+                d.read_seq_elt(0, || Decodable::decode(d)),
+                d.read_seq_elt(1, || Decodable::decode(d)),
+                d.read_seq_elt(2, || Decodable::decode(d)),
+                d.read_seq_elt(3, || Decodable::decode(d)),
+                d.read_seq_elt(4, || Decodable::decode(d))
             )
         }
     }
@@ -547,9 +548,9 @@ pub trait EncoderHelpers {
 
 impl<S:Encoder> EncoderHelpers for S {
     fn emit_from_vec<T>(&self, v: &[T], f: &fn(v: &T)) {
-        do self.emit_owned_vec(v.len()) {
+        do self.emit_seq(v.len()) {
             for v.eachi |i, e| {
-                do self.emit_vec_elt(i) {
+                do self.emit_seq_elt(i) {
                     f(e)
                 }
             }
@@ -563,9 +564,9 @@ pub trait DecoderHelpers {
 
 impl<D:Decoder> DecoderHelpers for D {
     fn read_to_vec<T>(&self, f: &fn() -> T) -> ~[T] {
-        do self.read_owned_vec |len| {
+        do self.read_seq |len| {
             do vec::from_fn(len) |i| {
-                self.read_vec_elt(i, || f())
+                self.read_seq_elt(i, || f())
             }
         }
     }

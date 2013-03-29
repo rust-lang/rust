@@ -1255,17 +1255,10 @@ mod test {
             self.add_to_log(CallToEmitEnumVariantArg (idx)); f();
         }
 
-        fn emit_borrowed_vec(&self, +_len: uint, f: &fn()) {
+        fn emit_seq(&self, +_len: uint, f: &fn()) {
             self.add_unknown_to_log(); f();
         }
-
-        fn emit_owned_vec(&self, +_len: uint, f: &fn()) {
-            self.add_unknown_to_log(); f();
-        }
-        fn emit_managed_vec(&self, +_len: uint, f: &fn()) {
-            self.add_unknown_to_log(); f();
-        }
-        fn emit_vec_elt(&self, +_idx: uint, f: &fn()) {
+        fn emit_seq_elt(&self, +_idx: uint, f: &fn()) {
             self.add_unknown_to_log(); f();
         }
 
