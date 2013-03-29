@@ -21,6 +21,10 @@ pub use ops::{Shl, Shr, Index};
 pub use option::{Option, Some, None};
 pub use result::{Result, Ok, Err};
 
+/* Reexported functions */
+
+pub use io::{print, println};
+
 /* Reexported types and traits */
 
 pub use clone::Clone;
