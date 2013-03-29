@@ -56,6 +56,6 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 
 
 pub fn main() {
-  let mut nyan: @noisy = @cat(0u, 2, ~"nyan") as @noisy;
+  let mut nyan: @noisy = @cat(0u, 2, ~"nyan");
   nyan.speak();
 }

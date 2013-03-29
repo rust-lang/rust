@@ -33,6 +33,6 @@ fn f<A:Copy>(x: @clam<A>, a: A) {
 pub fn main() {
 
   let c = foo(42);
-  let d: @clam<int> = @c as @clam<int>;
+  let d: @clam<int> = @c;
   f(d, c.x);
 }

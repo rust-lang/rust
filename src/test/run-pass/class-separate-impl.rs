@@ -66,6 +66,6 @@ fn print_out(thing: @ToStr, expected: ~str) {
 }
 
 pub fn main() {
-  let mut nyan : @ToStr = @cat(0u, 2, ~"nyan") as @ToStr;
+  let mut nyan : @ToStr = @cat(0u, 2, ~"nyan");
   print_out(nyan, ~"nyan");
 }

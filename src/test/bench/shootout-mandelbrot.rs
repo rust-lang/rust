@@ -112,7 +112,7 @@ fn writer(path: ~str, pport: comm::Port<Line>, size: uint)
 {
     let cout: @io::Writer = match path {
         ~"" => {
-            @Devnull as @io::Writer
+            @Devnull
         }
         ~"-" => {
             io::stdout()

@@ -34,5 +34,6 @@ fn get_v(gc: @get_ctxt) -> uint {
 fn main() {
     let ctxt = ctxt { v: 22u };
     let hc = has_ctxt { c: &ctxt };
-    fail_unless!(get_v(@hc as @get_ctxt) == 22u);
+    let hc_as_get_ctxt: @get_ctxt = @hc;
+    fail_unless!(get_v(hc_as_get_ctxt) == 22u);
 }

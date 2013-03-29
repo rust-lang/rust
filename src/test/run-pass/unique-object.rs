@@ -24,7 +24,7 @@ impl Foo for Bar {
 
 pub fn main() {
     let x = ~Bar { x: 10 };
-    let y = x as ~Foo;
+    let y: ~Foo = x;
     fail_unless!(y.f() == 10);
 }
 

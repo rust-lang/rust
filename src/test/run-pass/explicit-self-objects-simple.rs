@@ -24,7 +24,7 @@ impl Foo for S {
 
 pub fn main() {
     let x = @S { x: 3 };
-    let y = x as @Foo;
+    let y: @Foo = x;
     y.f();
 }
 

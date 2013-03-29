@@ -21,7 +21,7 @@ fn print_out(thing: @ToStr, expected: ~str) {
 }
 
 pub fn main() {
-  let nyan : @ToStr = @cat(0u, 2, ~"nyan") as @ToStr;
+  let nyan : @ToStr = @cat(0u, 2, ~"nyan");
   print_out(nyan, ~"nyan");
 }
 
