@@ -364,6 +364,34 @@ impl<'self> to_bytes::IterBytes for StringRef<'self> {
     }
 }
 
+/**
+ * Maps a token to a record specifying the corresponding binary
+ * operator
+ */
+pub fn token_to_binop(tok: Token) -> Option<ast::binop> {
+  match tok {
+      BINOP(STAR)    => Some(ast::mul),
+      BINOP(SLASH)   => Some(ast::quot),
+      BINOP(PERCENT) => Some(ast::rem),
+      BINOP(PLUS)    => Some(ast::add),
+      BINOP(MINUS)   => Some(ast::subtract),
+      BINOP(SHL)     => Some(ast::shl),
+      BINOP(SHR)     => Some(ast::shr),
+      BINOP(AND)     => Some(ast::bitand),
+      BINOP(CARET)   => Some(ast::bitxor),
+      BINOP(OR)      => Some(ast::bitor),
+      LT             => Some(ast::lt),
+      LE             => Some(ast::le),
+      GE             => Some(ast::ge),
+      GT             => Some(ast::gt),
+      EQEQ           => Some(ast::eq),
+      NE             => Some(ast::ne),
+      ANDAND         => Some(ast::and),
+      OROR           => Some(ast::or),
+      _              => None
+  }
+}
+
 pub struct ident_interner {
     priv interner: Interner<@~str>,
 }

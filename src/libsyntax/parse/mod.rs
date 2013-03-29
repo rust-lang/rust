@@ -36,9 +36,6 @@ pub mod attr;
 /// Common routines shared by parser mods
 pub mod common;
 
-/// Functions dealing with operator precedence
-pub mod prec;
-
 /// Routines the parser uses to classify AST nodes
 pub mod classify;
 

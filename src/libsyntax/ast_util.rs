@@ -355,6 +355,10 @@ pub fn operator_prec(op: ast::binop) -> uint {
   }
 }
 
+/// Precedence of the `as` operator, which is a binary operator
+/// not appearing in the prior table.
+pub static as_prec: uint = 11u;
+
 pub fn dtor_ty() -> @ast::Ty {
     @ast::Ty {id: 0, node: ty_nil, span: dummy_sp()}
 }
