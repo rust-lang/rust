@@ -399,24 +399,24 @@ pub fn set_optimize_for_size(f: ValueRef) {
     unsafe {
         llvm::LLVMAddFunctionAttr(f,
                                   lib::llvm::OptimizeForSizeAttribute
-                                  as c_ulonglong,
-                                  0u as c_ulonglong);
+                                    as c_uint,
+                                  0);
     }
 }
 
 pub fn set_no_inline(f: ValueRef) {
     unsafe {
         llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::NoInlineAttribute as c_ulonglong,
-                                  0u as c_ulonglong);
+                                  lib::llvm::NoInlineAttribute as c_uint,
+                                  0);
     }
 }
 
 pub fn set_no_unwind(f: ValueRef) {
     unsafe {
         llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::NoUnwindAttribute as c_ulonglong,
-                                  0u as c_ulonglong);
+                                  lib::llvm::NoUnwindAttribute as c_uint,
+                                  0);
     }
 }
 
@@ -425,15 +425,16 @@ pub fn set_no_unwind(f: ValueRef) {
 pub fn set_uwtable(f: ValueRef) {
     unsafe {
         llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::UWTableAttribute as c_ulonglong,
-                                  0u as c_ulonglong);
+                                  lib::llvm::UWTableAttribute as c_uint,
+                                  0);
     }
 }
 
 pub fn set_inline_hint(f: ValueRef) {
     unsafe {
-        llvm::LLVMAddFunctionAttr(f, lib::llvm::InlineHintAttribute
-                                  as c_ulonglong, 0u as c_ulonglong);
+        llvm::LLVMAddFunctionAttr(f,
+                                  lib::llvm::InlineHintAttribute as c_uint,
+                                  0);
     }
 }
 
@@ -449,14 +450,15 @@ pub fn set_inline_hint_if_appr(attrs: &[ast::attribute],
 
 pub fn set_always_inline(f: ValueRef) {
     unsafe {
-        llvm::LLVMAddFunctionAttr(f, lib::llvm::AlwaysInlineAttribute
-                                  as c_ulonglong, 0u as c_ulonglong);
+        llvm::LLVMAddFunctionAttr(f,
+                                  lib::llvm::AlwaysInlineAttribute as c_uint,
+                                  0);
     }
 }
 
-pub fn set_custom_stack_growth_fn(f: ValueRef) {
+pub fn set_fixed_stack_segment(f: ValueRef) {
     unsafe {
-        llvm::LLVMAddFunctionAttr(f, 0u as c_ulonglong, 1u as c_ulonglong);
+        llvm::LLVMAddFunctionAttr(f, 0, 1 << (39 - 32));
     }
 }
 
@@ -1774,6 +1776,7 @@ pub fn trans_closure(ccx: @CrateContext,
                      param_substs: Option<@param_substs>,
                      id: ast::node_id,
                      impl_id: Option<ast::def_id>,
+                     attributes: &[ast::attribute],
                      maybe_load_env: &fn(fn_ctxt),
                      finish: &fn(block)) {
     ccx.stats.n_closures += 1;
@@ -1784,10 +1787,20 @@ pub fn trans_closure(ccx: @CrateContext,
            param_substs.repr(ccx.tcx));
 
     // Set up arguments to the function.
-    let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, id, impl_id, param_substs,
-                                  Some(body.span));
-    let raw_llargs = create_llargs_for_fn_args(fcx, ty_self,
-                                               decl.inputs);
+    let fcx = new_fn_ctxt_w_id(ccx,
+                               path,
+                               llfndecl,
+                               id,
+                               impl_id,
+                               param_substs,
+                               Some(body.span));
+    let raw_llargs = create_llargs_for_fn_args(fcx, ty_self, decl.inputs);
+
+    // Set the fixed stack segment flag if necessary.
+    if attr::attrs_contains_name(attributes, "fixed_stack_segment") {
+        set_no_inline(fcx.llfn);
+        set_fixed_stack_segment(fcx.llfn);
+    }
 
     // Set GC for function.
     if ccx.sess.opts.gc {
@@ -1840,7 +1853,8 @@ pub fn trans_fn(ccx: @CrateContext,
                 ty_self: self_arg,
                 param_substs: Option<@param_substs>,
                 id: ast::node_id,
-                impl_id: Option<ast::def_id>) {
+                impl_id: Option<ast::def_id>,
+                attrs: &[ast::attribute]) {
     let do_time = ccx.sess.trans_stats();
     let start = if do_time { time::get_time() }
                 else { time::Timespec::new(0, 0) };
@@ -1850,8 +1864,16 @@ pub fn trans_fn(ccx: @CrateContext,
     let _icx = ccx.insn_ctxt("trans_fn");
     ccx.stats.n_fns += 1;
     let the_path_str = path_str(ccx.sess, path);
-    trans_closure(ccx, path, decl, body, llfndecl, ty_self,
-                  param_substs, id, impl_id,
+    trans_closure(ccx,
+                  path,
+                  decl,
+                  body,
+                  llfndecl,
+                  ty_self,
+                  param_substs,
+                  id,
+                  impl_id,
+                  attrs,
                   |fcx| {
                       if ccx.sess.opts.extra_debuginfo {
                           debuginfo::create_function(fcx);
@@ -2023,8 +2045,16 @@ pub fn trans_struct_dtor(ccx: @CrateContext,
   }
   /* Translate the dtor body */
   let decl = ast_util::dtor_dec();
-  trans_fn(ccx, path, &decl, body, lldecl,
-           impl_self(class_ty), psubsts, dtor_id, None);
+  trans_fn(ccx,
+           path,
+           &decl,
+           body,
+           lldecl,
+           impl_self(class_ty),
+           psubsts,
+           dtor_id,
+           None,
+           []);
   lldecl
 }
 
@@ -2073,7 +2103,14 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx,
                      vec::append(/*bad*/copy *path, ~[path_name(item.ident)]),
-                     decl, body, llfndecl, no_self, None, item.id, None);
+                     decl,
+                     body,
+                     llfndecl,
+                     no_self,
+                     None,
+                     item.id,
+                     None,
+                     item.attrs);
         } else {
             for body.node.stmts.each |stmt| {
                 match stmt.node {

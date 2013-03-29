@@ -137,7 +137,8 @@ pub fn trans_method(ccx: @CrateContext,
              self_arg,
              param_substs,
              method.id,
-             Some(impl_id));
+             Some(impl_id),
+             []);
 }
 
 pub fn trans_self_arg(bcx: block,

@@ -451,6 +451,7 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   TargetOptions Options;
   Options.NoFramePointerElim = true;
   Options.EnableSegmentedStacks = EnableSegmentedStacks;
+  Options.FixedStackSegmentSize = 2 * 1024 * 1024;  // XXX: This is too big.
 
   PassManager *PM = unwrap<PassManager>(PMR);
 

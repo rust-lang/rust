@@ -191,6 +191,14 @@ rust_upcall_malloc(type_desc *td, uintptr_t size) {
     return upcall_malloc(td, size);
 }
 
+extern "C" CDECL uintptr_t
+rust_upcall_malloc_noswitch(type_desc *td, uintptr_t size) {
+    rust_task *task = rust_get_current_task();
+    s_malloc_args args = {task, 0, td, size};
+    upcall_s_malloc(&args);
+    return args.retval;
+}
+
 /**********************************************************************
  * Called whenever an object in the task-local heap is freed.
  */
@@ -229,6 +237,13 @@ upcall_free(void* ptr) {
 extern "C" CDECL void
 rust_upcall_free(void* ptr) {
     upcall_free(ptr);
+}
+
+extern "C" CDECL void
+rust_upcall_free_noswitch(void* ptr) {
+    rust_task *task = rust_get_current_task();
+    s_free_args args = {task,ptr};
+    upcall_s_free(&args);
 }
 
 /**********************************************************************/
