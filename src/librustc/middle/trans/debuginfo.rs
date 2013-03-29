@@ -542,13 +542,23 @@ fn create_tuple(cx: @CrateContext, t: ty::t, elements: &[ty::t], span: span)
     return mdval;
 }
 
-fn create_boxed_type(cx: @CrateContext, outer: ty::t, _inner: ty::t,
+// returns (void* type as a ValueRef, size in bytes, align in bytes)
+fn voidptr() -> (ValueRef, int, int) {
+    let null = ptr::null();
+    let size = sys::size_of::<ValueRef>() as int;
+    let align = sys::min_align_of::<ValueRef>() as int;
+    let vp = create_derived_type(PointerTypeTag, null, ~"", 0,
+                                 size, align, 0, null);
+    return (vp, size, align);
+}
+
+fn create_boxed_type(cx: @CrateContext, contents: ty::t,
                      span: span, boxed: @Metadata<TyDescMetadata>)
     -> @Metadata<TyDescMetadata> {
     //let tg = StructureTypeTag;
     /*let cache = cx.llmetadata;
     match cached_metadata::<@Metadata<TyDescMetadata>>(
-        cache, tg, {|md| ty::hash_ty(outer) == ty::hash_ty(md.data.hash)}) {
+        cache, tg, {|md| ty::hash_ty(contents) == ty::hash_ty(md.data.hash)}) {
       option::Some(md) { return md; }
       option::None {}
     }*/
@@ -557,18 +567,23 @@ fn create_boxed_type(cx: @CrateContext, outer: ty::t, _inner: ty::t,
     //let cu_node = create_compile_unit_metadata(cx, fname);
     let uint_t = ty::mk_uint(cx.tcx);
     let refcount_type = create_basic_type(cx, uint_t, span);
-    let scx = create_structure(file_node,
-                               @/*bad*/ copy ty_to_str(cx.tcx, outer), 0);
+    let name = ty_to_str(cx.tcx, contents);
+    let scx = create_structure(file_node, @fmt!("box<%s>", name), 0);
     add_member(scx, ~"refcnt", 0, sys::size_of::<uint>() as int,
                sys::min_align_of::<uint>() as int, refcount_type.node);
-    add_member(scx, ~"boxed", 0, 8, //XXX member_size_and_align(??)
-               8, //XXX just a guess
-               boxed.node);
+    // the tydesc and other pointers should be irrelevant to the
+    // debugger, so treat them as void* types
+    let (vp, vpsize, vpalign) = voidptr();
+    add_member(scx, ~"tydesc", 0, vpsize, vpalign, vp);
+    add_member(scx, ~"prev", 0, vpsize, vpalign, vp);
+    add_member(scx, ~"next", 0, vpsize, vpalign, vp);
+    let (size, align) = size_and_align_of(cx, contents);
+    add_member(scx, ~"boxed", 0, size, align, boxed.node);
     let llnode = finish_structure(scx);
     let mdval = @Metadata {
         node: llnode,
         data: TyDescMetadata {
-            hash: ty::type_id(outer)
+            hash: ty::type_id(contents)
         }
     };
     //update_cache(cache, tg, tydesc_metadata(mdval));
@@ -655,11 +670,10 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span)
         ty::ty_enum(_did, ref _substs) => {
             cx.sess.span_bug(span, ~"debuginfo for enum NYI")
         }
-        ty::ty_box(ref _mt) => {
-            cx.sess.span_bug(span, ~"debuginfo for box NYI")
-        },
-        ty::ty_uniq(ref _mt) => {
-            cx.sess.span_bug(span, ~"debuginfo for uniq NYI")
+        ty::ty_box(ref mt) | ty::ty_uniq(ref mt) => {
+            let boxed = create_ty(cx, mt.ty, span);
+            let box_md = create_boxed_type(cx, mt.ty, span, boxed);
+            create_pointer_type(cx, t, span, box_md)
         },
         ty::ty_evec(ref _mt, ref _vstore) => {
             cx.sess.span_bug(span, ~"debuginfo for evec NYI")
