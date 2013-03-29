@@ -544,6 +544,29 @@ pub fn bound_lifetimes<AC:AstConv>(
     bound_lifetime_names
 }
 
+struct SelfInfo {
+    untransformed_self_ty: ty::t,
+    self_transform: ast::self_ty
+}
+
+pub fn ty_of_method<AC:AstConv,RS:region_scope + Copy + Durable>(
+    self: &AC,
+    rscope: &RS,
+    purity: ast::purity,
+    lifetimes: &OptVec<ast::Lifetime>,
+    untransformed_self_ty: ty::t,
+    self_transform: ast::self_ty,
+    decl: &ast::fn_decl) -> (Option<ty::t>, ty::BareFnTy)
+{
+    let self_info = SelfInfo {
+        untransformed_self_ty: untransformed_self_ty,
+        self_transform: self_transform
+    };
+    let (a, b) = ty_of_method_or_bare_fn(
+        self, rscope, purity, AbiSet::Rust(), lifetimes, Some(&self_info), decl);
+    (a.get(), b)
+}
+
 pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
     self: &AC,
     rscope: &RS,
@@ -552,6 +575,20 @@ pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
     lifetimes: &OptVec<ast::Lifetime>,
     decl: &ast::fn_decl) -> ty::BareFnTy
 {
+    let (_, b) = ty_of_method_or_bare_fn(
+        self, rscope, purity, abi, lifetimes, None, decl);
+    b
+}
+
+fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
+    self: &AC,
+    rscope: &RS,
+    purity: ast::purity,
+    abi: AbiSet,
+    lifetimes: &OptVec<ast::Lifetime>,
+    opt_self_info: Option<&SelfInfo>,
+    decl: &ast::fn_decl) -> (Option<Option<ty::t>>, ty::BareFnTy)
+{
     debug!("ty_of_bare_fn");
 
     // new region names that appear inside of the fn decl are bound to
@@ -559,18 +596,56 @@ pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
     let bound_lifetime_names = bound_lifetimes(self, lifetimes);
     let rb = in_binding_rscope(rscope, RegionParamNames(copy bound_lifetime_names));
 
+    let opt_transformed_self_ty = opt_self_info.map(|&self_info| {
+        transform_self_ty(self, &rb, self_info)
+    });
+
     let input_tys = decl.inputs.map(|a| ty_of_arg(self, &rb, *a, None));
+
     let output_ty = match decl.output.node {
         ast::ty_infer => self.ty_infer(decl.output.span),
         _ => ast_ty_to_ty(self, &rb, decl.output)
     };
 
-    ty::BareFnTy {
-        purity: purity,
-        abis: abi,
-        sig: ty::FnSig {bound_lifetime_names: bound_lifetime_names,
-                        inputs: input_tys,
-                        output: output_ty}
+    return (opt_transformed_self_ty,
+            ty::BareFnTy {
+                purity: purity,
+                abis: abi,
+                sig: ty::FnSig {bound_lifetime_names: bound_lifetime_names,
+                                inputs: input_tys,
+                                output: output_ty}
+            });
+
+    fn transform_self_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
+        self: &AC,
+        rscope: &RS,
+        self_info: &SelfInfo) -> Option<ty::t>
+    {
+        match self_info.self_transform.node {
+            ast::sty_static => None,
+            ast::sty_value => {
+                Some(self_info.untransformed_self_ty)
+            }
+            ast::sty_region(lifetime, mutability) => {
+                let region =
+                    ast_region_to_region(self, rscope,
+                                         self_info.self_transform.span,
+                                         lifetime);
+                Some(ty::mk_rptr(self.tcx(), region,
+                                 ty::mt {ty: self_info.untransformed_self_ty,
+                                         mutbl: mutability}))
+            }
+            ast::sty_box(mutability) => {
+                Some(ty::mk_box(self.tcx(),
+                                ty::mt {ty: self_info.untransformed_self_ty,
+                                        mutbl: mutability}))
+            }
+            ast::sty_uniq(mutability) => {
+                Some(ty::mk_uniq(self.tcx(),
+                                 ty::mt {ty: self_info.untransformed_self_ty,
+                                         mutbl: mutability}))
+            }
+        }
     }
 }
 
