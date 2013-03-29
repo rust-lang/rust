@@ -980,10 +980,10 @@ impl<'self> serialize::Decoder for Decoder<'self> {
         }
     }
 
-    fn read_option<T>(&self, f: &fn() -> T) -> Option<T> {
+    fn read_option<T>(&self, f: &fn(bool) -> T) -> T {
         match *self.peek() {
-            Null => { self.pop(); None }
-            _ => Some(f()),
+            Null => { self.pop(); f(false) }
+            _ => f(true),
         }
     }
 }
