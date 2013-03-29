@@ -3107,11 +3107,15 @@ pub impl Parser {
         // XXX: clownshoes
         let ident = special_idents::clownshoes_extensions;
 
+        // Special case: if the next identifier that follows is '(', don't
+        // allow this to be parsed as a trait.
+        let could_be_trait = *self.token != token::LPAREN;
+
         // Parse the trait.
         let mut ty = self.parse_ty(false);
 
         // Parse traits, if necessary.
-        let opt_trait = if self.eat_keyword(&~"for") {
+        let opt_trait = if could_be_trait && self.eat_keyword(&~"for") {
             // New-style trait. Reinterpret the type as a trait.
             let opt_trait_ref = match ty.node {
                 ty_path(path, node_id) => {
