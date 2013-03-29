@@ -30,5 +30,5 @@ fn is_8_byte_aligned(&&u: a_tag<u64>) -> bool {
 
 pub fn main() {
     let x = mk_rec();
-    fail_unless!(is_8_byte_aligned(x.t));
+    assert!(is_8_byte_aligned(x.t));
 }

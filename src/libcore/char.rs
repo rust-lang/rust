@@ -200,7 +200,7 @@ pub fn escape_unicode(c: char) -> ~str {
     let (c, pad) = (if c <= '\xff' { ('x', 2u) }
                     else if c <= '\uffff' { ('u', 4u) }
                     else { ('U', 8u) });
-    fail_unless!(str::len(s) <= pad);
+    assert!(str::len(s) <= pad);
     let mut out = ~"\\";
     unsafe {
         str::push_str(&mut out, str::from_char(c));
@@ -258,32 +258,32 @@ impl Eq for char {
 
 #[test]
 fn test_is_lowercase() {
-    fail_unless!(is_lowercase('a'));
-    fail_unless!(is_lowercase('ö'));
-    fail_unless!(is_lowercase('ß'));
-    fail_unless!(!is_lowercase('Ü'));
-    fail_unless!(!is_lowercase('P'));
+    assert!(is_lowercase('a'));
+    assert!(is_lowercase('ö'));
+    assert!(is_lowercase('ß'));
+    assert!(!is_lowercase('Ü'));
+    assert!(!is_lowercase('P'));
 }
 
 #[test]
 fn test_is_uppercase() {
-    fail_unless!(!is_uppercase('h'));
-    fail_unless!(!is_uppercase('ä'));
-    fail_unless!(!is_uppercase('ß'));
-    fail_unless!(is_uppercase('Ö'));
-    fail_unless!(is_uppercase('T'));
+    assert!(!is_uppercase('h'));
+    assert!(!is_uppercase('ä'));
+    assert!(!is_uppercase('ß'));
+    assert!(is_uppercase('Ö'));
+    assert!(is_uppercase('T'));
 }
 
 #[test]
 fn test_is_whitespace() {
-    fail_unless!(is_whitespace(' '));
-    fail_unless!(is_whitespace('\u2007'));
-    fail_unless!(is_whitespace('\t'));
-    fail_unless!(is_whitespace('\n'));
+    assert!(is_whitespace(' '));
+    assert!(is_whitespace('\u2007'));
+    assert!(is_whitespace('\t'));
+    assert!(is_whitespace('\n'));
 
-    fail_unless!(!is_whitespace('a'));
-    fail_unless!(!is_whitespace('_'));
-    fail_unless!(!is_whitespace('\u0000'));
+    assert!(!is_whitespace('a'));
+    assert!(!is_whitespace('_'));
+    assert!(!is_whitespace('\u0000'));
 }
 
 #[test]
@@ -299,24 +299,24 @@ fn test_to_digit() {
     assert_eq!(to_digit('z', 36u), Some(35u));
     assert_eq!(to_digit('Z', 36u), Some(35u));
 
-    fail_unless!(to_digit(' ', 10u).is_none());
-    fail_unless!(to_digit('$', 36u).is_none());
+    assert!(to_digit(' ', 10u).is_none());
+    assert!(to_digit('$', 36u).is_none());
 }
 
 #[test]
 fn test_is_ascii() {
-   fail_unless!(str::all(~"banana", is_ascii));
-   fail_unless!(! str::all(~"ประเทศไทย中华Việt Nam", is_ascii));
+   assert!(str::all(~"banana", is_ascii));
+   assert!(! str::all(~"ประเทศไทย中华Việt Nam", is_ascii));
 }
 
 #[test]
 fn test_is_digit() {
-   fail_unless!(is_digit('2'));
-   fail_unless!(is_digit('7'));
-   fail_unless!(! is_digit('c'));
-   fail_unless!(! is_digit('i'));
-   fail_unless!(! is_digit('z'));
-   fail_unless!(! is_digit('Q'));
+   assert!(is_digit('2'));
+   assert!(is_digit('7'));
+   assert!(! is_digit('c'));
+   assert!(! is_digit('i'));
+   assert!(! is_digit('z'));
+   assert!(! is_digit('Q'));
 }
 
 #[test]

@@ -26,6 +26,6 @@ fn foo2() -> int { 3 }
 
 
 fn main() {
-    fail_unless!(1 == foo1());
-    fail_unless!(3 == foo2());
+    assert!(1 == foo1());
+    assert!(3 == foo2());
 }

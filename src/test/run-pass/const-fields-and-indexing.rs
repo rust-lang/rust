@@ -28,7 +28,7 @@ pub fn main() {
     io::println(fmt!("%?", p));
     io::println(fmt!("%?", q));
     io::println(fmt!("%?", t));
-    fail_unless!(p == 3);
-    fail_unless!(q == 3);
-    fail_unless!(t == 20);
+    assert!(p == 3);
+    assert!(q == 3);
+    assert!(t == 20);
 }

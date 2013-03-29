@@ -92,7 +92,7 @@ fn pandoc_writer(
     config: config::Config,
     page: doc::Page
 ) -> Writer {
-    fail_unless!(config.pandoc_cmd.is_some());
+    assert!(config.pandoc_cmd.is_some());
     let pandoc_cmd = (&config.pandoc_cmd).get();
     let filename = make_local_filename(config, page);
 
@@ -201,7 +201,7 @@ pub fn make_filename(
                 config.output_style == config::DocPerMod {
                 ~"index"
             } else {
-                fail_unless!(doc.topmod.name() != ~"");
+                assert!(doc.topmod.name() != ~"");
                 doc.topmod.name()
             }
           }
@@ -229,7 +229,7 @@ fn should_use_markdown_file_name_based_off_crate() {
     let doc = test::mk_doc(~"test", ~"");
     let page = doc::CratePage(doc.CrateDoc());
     let filename = make_local_filename(config, page);
-    fail_unless!(filename.to_str() == ~"output/dir/test.md");
+    assert!(filename.to_str() == ~"output/dir/test.md");
 }
 
 #[test]
@@ -243,7 +243,7 @@ fn should_name_html_crate_file_name_index_html_when_doc_per_mod() {
     let doc = test::mk_doc(~"", ~"");
     let page = doc::CratePage(doc.CrateDoc());
     let filename = make_local_filename(config, page);
-    fail_unless!(filename.to_str() == ~"output/dir/index.html");
+    assert!(filename.to_str() == ~"output/dir/index.html");
 }
 
 #[test]
@@ -258,7 +258,7 @@ fn should_name_mod_file_names_by_path() {
     let modb = copy doc.cratemod().mods()[0].mods()[0];
     let page = doc::ItemPage(doc::ModTag(modb));
     let filename = make_local_filename(config, page);
-    fail_unless!(filename == Path("output/dir/a_b.html"));
+    assert!(filename == Path("output/dir/a_b.html"));
 }
 
 #[cfg(test)]

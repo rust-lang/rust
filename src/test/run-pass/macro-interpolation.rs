@@ -23,7 +23,7 @@ macro_rules! overly_complicated (
 
 )
 pub fn main() {
-    fail_unless!(overly_complicated!(f, x, Option<uint>, { return Some(x); },
+    assert!(overly_complicated!(f, x, Option<uint>, { return Some(x); },
                                Some(8u), Some(y), y) == 8u)
 
 }

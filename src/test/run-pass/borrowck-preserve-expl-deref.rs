@@ -14,7 +14,7 @@ fn borrow(x: &int, f: &fn(x: &int)) {
     let before = *x;
     f(x);
     let after = *x;
-    fail_unless!(before == after);
+    assert!(before == after);
 }
 
 struct F { f: ~int }
@@ -22,12 +22,12 @@ struct F { f: ~int }
 pub fn main() {
     let mut x = @F {f: ~3};
     do borrow((*x).f) |b_x| {
-        fail_unless!(*b_x == 3);
-        fail_unless!(ptr::addr_of(&(*x.f)) == ptr::addr_of(&(*b_x)));
+        assert!(*b_x == 3);
+        assert!(ptr::addr_of(&(*x.f)) == ptr::addr_of(&(*b_x)));
         x = @F {f: ~4};
 
         debug!("ptr::addr_of(*b_x) = %x", ptr::addr_of(&(*b_x)) as uint);
-        fail_unless!(*b_x == 3);
-        fail_unless!(ptr::addr_of(&(*x.f)) != ptr::addr_of(&(*b_x)));
+        assert!(*b_x == 3);
+        assert!(ptr::addr_of(&(*x.f)) != ptr::addr_of(&(*b_x)));
     }
 }

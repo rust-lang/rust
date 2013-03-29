@@ -14,6 +14,6 @@ pub fn main() {
     let x = &[1,2,3];
     let y = x;
     let z = thing(x);
-    fail_unless!((z[2] == x[2]));
-    fail_unless!((z[1] == y[1]));
+    assert!((z[2] == x[2]));
+    assert!((z[1] == y[1]));
 }

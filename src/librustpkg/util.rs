@@ -790,19 +790,19 @@ pub fn link_exe(src: &Path, dest: &Path) -> bool {
 
 #[test]
 fn test_is_cmd() {
-    fail_unless!(is_cmd(~"build"));
-    fail_unless!(is_cmd(~"clean"));
-    fail_unless!(is_cmd(~"do"));
-    fail_unless!(is_cmd(~"info"));
-    fail_unless!(is_cmd(~"install"));
-    fail_unless!(is_cmd(~"prefer"));
-    fail_unless!(is_cmd(~"test"));
-    fail_unless!(is_cmd(~"uninstall"));
-    fail_unless!(is_cmd(~"unprefer"));
+    assert!(is_cmd(~"build"));
+    assert!(is_cmd(~"clean"));
+    assert!(is_cmd(~"do"));
+    assert!(is_cmd(~"info"));
+    assert!(is_cmd(~"install"));
+    assert!(is_cmd(~"prefer"));
+    assert!(is_cmd(~"test"));
+    assert!(is_cmd(~"uninstall"));
+    assert!(is_cmd(~"unprefer"));
 }
 
 #[test]
 fn test_parse_name() {
-    fail_unless!(parse_name(~"org.mozilla.servo").get() == ~"servo");
-    fail_unless!(parse_name(~"org. mozilla.servo 2131").is_err());
+    assert!(parse_name(~"org.mozilla.servo").get() == ~"servo");
+    assert!(parse_name(~"org. mozilla.servo 2131").is_err());
 }

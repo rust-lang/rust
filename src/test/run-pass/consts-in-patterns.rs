@@ -18,6 +18,6 @@ pub fn main() {
         BAR => 2,
         _ => 3
     };
-    fail_unless!(y == 2);
+    assert!(y == 2);
 }
 

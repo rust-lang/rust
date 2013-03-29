@@ -14,15 +14,15 @@
 // -*- rust -*-
 
 // Tests for standalone blocks as expressions
-fn test_basic() { let rs: bool = { true }; fail_unless!((rs)); }
+fn test_basic() { let rs: bool = { true }; assert!((rs)); }
 
 struct RS { v1: int, v2: int }
 
-fn test_rec() { let rs = { RS {v1: 10, v2: 20} }; fail_unless!((rs.v2 == 20)); }
+fn test_rec() { let rs = { RS {v1: 10, v2: 20} }; assert!((rs.v2 == 20)); }
 
 fn test_filled_with_stuff() {
     let rs = { let mut a = 0; while a < 10 { a += 1; } a };
-    fail_unless!((rs == 10));
+    assert!((rs == 10));
 }
 
 pub fn main() { test_basic(); test_rec(); test_filled_with_stuff(); }

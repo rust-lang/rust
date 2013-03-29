@@ -97,10 +97,10 @@ pub enum uv_req_type {
 }
 
 pub unsafe fn malloc_handle(handle: uv_handle_type) -> *c_void {
-    fail_unless!(handle != UV_UNKNOWN_HANDLE && handle != UV_HANDLE_TYPE_MAX);
+    assert!(handle != UV_UNKNOWN_HANDLE && handle != UV_HANDLE_TYPE_MAX);
     let size = unsafe { rust_uv_handle_size(handle as uint) };
     let p = malloc(size);
-    fail_unless!(p.is_not_null());
+    assert!(p.is_not_null());
     return p;
 }
 
@@ -109,10 +109,10 @@ pub unsafe fn free_handle(v: *c_void) {
 }
 
 pub unsafe fn malloc_req(req: uv_req_type) -> *c_void {
-    fail_unless!(req != UV_UNKNOWN_REQ && req != UV_REQ_TYPE_MAX);
+    assert!(req != UV_UNKNOWN_REQ && req != UV_REQ_TYPE_MAX);
     let size = unsafe { rust_uv_req_size(req as uint) };
     let p = malloc(size);
-    fail_unless!(p.is_not_null());
+    assert!(p.is_not_null());
     return p;
 }
 
@@ -123,14 +123,14 @@ pub unsafe fn free_req(v: *c_void) {
 #[test]
 fn handle_sanity_check() {
     unsafe {
-        fail_unless!(UV_HANDLE_TYPE_MAX as uint == rust_uv_handle_type_max());
+        assert!(UV_HANDLE_TYPE_MAX as uint == rust_uv_handle_type_max());
     }
 }
 
 #[test]
 fn request_sanity_check() {
     unsafe {
-        fail_unless!(UV_REQ_TYPE_MAX as uint == rust_uv_req_type_max());
+        assert!(UV_REQ_TYPE_MAX as uint == rust_uv_req_type_max());
     }
 }
 

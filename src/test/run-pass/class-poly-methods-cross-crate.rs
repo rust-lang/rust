@@ -16,10 +16,10 @@ use cci_class_6::kitties::*;
 pub fn main() {
   let mut nyan : cat<char> = cat::<char>(52u, 99, ~['p']);
   let mut kitty = cat(1000u, 2, ~[~"tabby"]);
-  fail_unless!((nyan.how_hungry == 99));
-  fail_unless!((kitty.how_hungry == 2));
+  assert!((nyan.how_hungry == 99));
+  assert!((kitty.how_hungry == 2));
   nyan.speak(~[1u,2u,3u]);
-  fail_unless!((nyan.meow_count() == 55u));
+  assert!((nyan.meow_count() == 55u));
   kitty.speak(~[~"meow", ~"mew", ~"purr", ~"chirp"]);
-  fail_unless!((kitty.meow_count() == 1004u));
+  assert!((kitty.meow_count() == 1004u));
 }

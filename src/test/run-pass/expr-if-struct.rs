@@ -19,7 +19,7 @@ struct I { i: int }
 
 fn test_rec() {
     let rs = if true { I {i: 100} } else { I {i: 101} };
-    fail_unless!((rs.i == 100));
+    assert!((rs.i == 100));
 }
 
 enum mood { happy, sad, }
@@ -33,7 +33,7 @@ impl cmp::Eq for mood {
 
 fn test_tag() {
     let rs = if true { happy } else { sad };
-    fail_unless!((rs == happy));
+    assert!((rs == happy));
 }
 
 pub fn main() { test_rec(); test_tag(); }

@@ -41,5 +41,5 @@ fn test00() {
 
     result.unwrap().recv();
 
-    fail_unless!((sum == number_of_messages * (number_of_messages - 1) / 2));
+    assert!((sum == number_of_messages * (number_of_messages - 1) / 2));
 }

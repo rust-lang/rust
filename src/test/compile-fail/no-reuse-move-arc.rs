@@ -17,10 +17,10 @@ fn main() {
 
     do task::spawn() { //~ NOTE `arc_v` moved into closure environment here
         let v = *arc::get(&arc_v);
-        fail_unless!(v[3] == 4);
+        assert!(v[3] == 4);
     };
 
-    fail_unless!((*arc::get(&arc_v))[2] == 3); //~ ERROR use of moved value: `arc_v`
+    assert!((*arc::get(&arc_v))[2] == 3); //~ ERROR use of moved value: `arc_v`
 
     info!(arc_v);
 }

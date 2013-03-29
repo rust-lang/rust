@@ -10,11 +10,11 @@
 
 fn f(mut y: ~int) {
     *y = 5;
-    fail_unless!(*y == 5);
+    assert!(*y == 5);
 }
 
 fn g() {
-    let frob: &fn(~int) = |mut q| { *q = 2; fail_unless!(*q == 2); };
+    let frob: &fn(~int) = |mut q| { *q = 2; assert!(*q == 2); };
     let w = ~37;
     frob(w);
 

@@ -21,6 +21,6 @@ pub fn main() {
         let mut x = @1;
         let mut y = @2;
         rusti::move_val(&mut y, x);
-        fail_unless!(*y == 1);
+        assert!(*y == 1);
     }
 }

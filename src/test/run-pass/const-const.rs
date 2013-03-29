@@ -12,5 +12,5 @@ static a: int = 1;
 static b: int = a + 2;
 
 pub fn main() {
-    fail_unless!(b == 3);
+    assert!(b == 3);
 }

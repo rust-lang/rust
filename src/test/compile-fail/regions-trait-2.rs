@@ -23,7 +23,7 @@ impl<'self> get_ctxt for has_ctxt<'self> {
 fn make_gc() -> @get_ctxt  {
     let ctxt = ctxt { v: 22u };
     let hc = has_ctxt { c: &ctxt };
-    return @hc as @get_ctxt;
+    @hc
 }
 
 fn main() {

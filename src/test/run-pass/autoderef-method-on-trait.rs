@@ -17,6 +17,7 @@ impl double for uint {
 }
 
 pub fn main() {
-    let x = @(@3u as @double);
-    fail_unless!(x.double() == 6u);
+    let y: @double = @3u;
+    let x = @y;
+    assert!(x.double() == 6u);
 }

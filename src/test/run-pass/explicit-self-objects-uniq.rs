@@ -18,13 +18,13 @@ struct S {
 
 impl Foo for S {
     fn f(~self) {
-        fail_unless!(self.x == 3);
+        assert!(self.x == 3);
     }
 }
 
 pub fn main() {
     let x = ~S { x: 3 };
-    let y = x as ~Foo;
+    let y: ~Foo = x;
     y.f();
 }
 

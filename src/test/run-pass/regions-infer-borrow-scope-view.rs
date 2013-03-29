@@ -14,6 +14,6 @@ pub fn main() {
     let v = ~[1, 2, 3];
     let x = view(v);
     let y = view(x);
-    fail_unless!((v[0] == x[0]) && (v[0] == y[0]));
+    assert!((v[0] == x[0]) && (v[0] == y[0]));
 }
 

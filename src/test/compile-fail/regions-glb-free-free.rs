@@ -37,5 +37,5 @@ mod argparse {
 fn main () {
     let f : argparse::Flag = argparse::flag(~"flag", ~"My flag");
     let updated_flag = f.set_desc(~"My new flag");
-    fail_unless!(updated_flag.desc == "My new flag");
+    assert!(updated_flag.desc == "My new flag");
 }

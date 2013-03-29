@@ -50,7 +50,7 @@ pub unsafe fn bump_box_refcount<T>(t: @T) { forget(t); }
  *
  * # Example
  *
- *     fail_unless!(transmute("L") == ~[76u8, 0u8]);
+ *     assert!(transmute("L") == ~[76u8, 0u8]);
  */
 #[inline(always)]
 pub unsafe fn transmute<L, G>(thing: L) -> G {
@@ -116,7 +116,7 @@ pub mod tests {
 
     #[test]
     pub fn test_reinterpret_cast() {
-        fail_unless!(1u == unsafe { reinterpret_cast(&1) });
+        assert!(1u == unsafe { reinterpret_cast(&1) });
     }
 
     #[test]
@@ -127,8 +127,8 @@ pub mod tests {
             let ptr: *int = transmute(box); // refcount 2
             let _box1: @~str = reinterpret_cast(&ptr);
             let _box2: @~str = reinterpret_cast(&ptr);
-            fail_unless!(*_box1 == ~"box box box");
-            fail_unless!(*_box2 == ~"box box box");
+            assert!(*_box1 == ~"box box box");
+            assert!(*_box2 == ~"box box box");
             // Will destroy _box1 and _box2. Without the bump, this would
             // use-after-free. With too many bumps, it would leak.
         }
@@ -140,7 +140,7 @@ pub mod tests {
         unsafe {
             let x = @100u8;
             let x: *BoxRepr = transmute(x);
-            fail_unless!((*x).data == 100);
+            assert!((*x).data == 100);
             let _x: @int = transmute(x);
         }
     }
@@ -148,7 +148,7 @@ pub mod tests {
     #[test]
     pub fn test_transmute2() {
         unsafe {
-            fail_unless!(~[76u8, 0u8] == transmute(~"L"));
+            assert!(~[76u8, 0u8] == transmute(~"L"));
         }
     }
 }

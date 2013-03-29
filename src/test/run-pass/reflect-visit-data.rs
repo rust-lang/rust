@@ -489,7 +489,7 @@ pub impl my_visitor {
         unsafe {
             let u = my_visitor(**self);
             let v = ptr_visit_adaptor::<my_visitor>(Inner {inner: u});
-            visit_tydesc(inner, @v as @TyVisitor);
+            visit_tydesc(inner, @v);
             true
         }
     }
@@ -644,14 +644,14 @@ pub fn main() {
         let td = get_tydesc_for(r);
         unsafe { error!("tydesc sz: %u, align: %u",
                         (*td).size, (*td).align); }
-        let v = @v as @TyVisitor;
+        let v: @TyVisitor = @v;
         visit_tydesc(td, v);
 
         for (u.vals.clone()).each |s| {
             io::println(fmt!("val: %s", *s));
         }
         error!("%?", u.vals.clone());
-        fail_unless!(u.vals == ~[
+        assert!(u.vals == ~[
             ~"1", ~"2", ~"3", ~"true", ~"false", ~"5", ~"4", ~"3", ~"12"
         ]);
     }

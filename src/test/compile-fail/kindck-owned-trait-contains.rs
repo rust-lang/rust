@@ -16,7 +16,7 @@ impl<A:Copy> repeat<A> for @A {
 
 fn repeater<A:Copy>(v: @A) -> @repeat<A> {
     // Note: owned kind is not necessary as A appears in the trait type
-    @v as @repeat<A> // No
+    @v // No
 }
 
 fn main() {
@@ -27,5 +27,5 @@ fn main() {
         let x: &'blk int = &3;
         repeater(@x)
     };
-    fail_unless!(3 == *(y.get())); //~ ERROR reference is not valid
+    assert!(3 == *(y.get())); //~ ERROR reference is not valid
 }

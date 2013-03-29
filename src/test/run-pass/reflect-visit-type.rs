@@ -153,6 +153,6 @@ pub fn main() {
     for (v.types.clone()).each {|s|
         io::println(fmt!("type: %s", s));
     }
-    fail_unless!(v.types == ["bool", "int", "i8", "i16",
+    assert!(v.types == ["bool", "int", "i8", "i16",
                        "[", "int", "]"]);
 }

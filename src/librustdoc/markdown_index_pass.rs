@@ -164,27 +164,27 @@ fn pandoc_header_id(header: &str) -> ~str {
 
 #[test]
 fn should_remove_punctuation_from_headers() {
-    fail_unless!(pandoc_header_id(~"impl foo of bar<A>") ==
+    assert!(pandoc_header_id(~"impl foo of bar<A>") ==
         ~"impl-foo-of-bara");
-    fail_unless!(pandoc_header_id(~"impl of num::num for int")
+    assert!(pandoc_header_id(~"impl of num::num for int")
         == ~"impl-of-numnum-for-int");
-    fail_unless!(pandoc_header_id(~"impl of num::num for int/&")
+    assert!(pandoc_header_id(~"impl of num::num for int/&")
         == ~"impl-of-numnum-for-int");
-    fail_unless!(pandoc_header_id(~"impl of num::num for ^int")
+    assert!(pandoc_header_id(~"impl of num::num for ^int")
         == ~"impl-of-numnum-for-int");
-    fail_unless!(pandoc_header_id(~"impl for & condvar")
+    assert!(pandoc_header_id(~"impl for & condvar")
         == ~"impl-for-condvar");
-    fail_unless!(pandoc_header_id(~"impl of Select<T, U> for (Left, Right)")
+    assert!(pandoc_header_id(~"impl of Select<T, U> for (Left, Right)")
                  == ~"impl-of-selectt-u-for-left-right");
-    fail_unless!(pandoc_header_id(~"impl of Condition<'self, T, U>")
+    assert!(pandoc_header_id(~"impl of Condition<'self, T, U>")
                  == ~"impl-of-conditionself-t-u");
-    fail_unless!(pandoc_header_id(~"impl of Condition<T: Copy + Clone>")
+    assert!(pandoc_header_id(~"impl of Condition<T: Copy + Clone>")
                  == ~"impl-of-conditiont-copy-clone");
 }
 
 #[test]
 fn should_trim_whitespace_after_removing_punctuation() {
-    fail_unless!(pandoc_header_id("impl foo for ()") == ~"impl-foo-for");
+    assert!(pandoc_header_id("impl foo for ()") == ~"impl-foo-for");
 }
 
 #[test]
@@ -193,13 +193,13 @@ fn should_index_mod_contents() {
         config::DocPerCrate,
         ~"mod a { } fn b() { }"
     );
-    fail_unless!((&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
+    assert!((&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
         kind: ~"Module",
         name: ~"a",
         brief: None,
         link: ~"#module-a"
     });
-    fail_unless!((&doc.cratemod().index).get().entries[1] == doc::IndexEntry {
+    assert!((&doc.cratemod().index).get().entries[1] == doc::IndexEntry {
         kind: ~"Function",
         name: ~"b",
         brief: None,
@@ -213,13 +213,13 @@ fn should_index_mod_contents_multi_page() {
         config::DocPerMod,
         ~"mod a { } fn b() { }"
     );
-    fail_unless!((&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
+    assert!((&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
         kind: ~"Module",
         name: ~"a",
         brief: None,
         link: ~"a.html"
     });
-    fail_unless!((&doc.cratemod().index).get().entries[1] == doc::IndexEntry {
+    assert!((&doc.cratemod().index).get().entries[1] == doc::IndexEntry {
         kind: ~"Function",
         name: ~"b",
         brief: None,
@@ -233,7 +233,7 @@ fn should_index_foreign_mod_pages() {
         config::DocPerMod,
         ~"extern mod a { }"
     );
-    fail_unless!((&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
+    assert!((&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
         kind: ~"Foreign module",
         name: ~"a",
         brief: None,
@@ -247,7 +247,7 @@ fn should_add_brief_desc_to_index() {
         config::DocPerMod,
         ~"#[doc = \"test\"] mod a { }"
     );
-    fail_unless!((&doc.cratemod().index).get().entries[0].brief
+    assert!((&doc.cratemod().index).get().entries[0].brief
         == Some(~"test"));
 }
 
@@ -257,7 +257,7 @@ fn should_index_foreign_mod_contents() {
         config::DocPerCrate,
         ~"extern mod a { fn b(); }"
     );
-    fail_unless!((&doc.cratemod().nmods()[0].index).get().entries[0]
+    assert!((&doc.cratemod().nmods()[0].index).get().entries[0]
         == doc::IndexEntry {
         kind: ~"Function",
         name: ~"b",

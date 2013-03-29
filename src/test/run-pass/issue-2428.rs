@@ -16,5 +16,5 @@ pub fn main() {
         Bar = quux
     }
 
-    fail_unless!((Bar as int == quux));
+    assert!((Bar as int == quux));
 }

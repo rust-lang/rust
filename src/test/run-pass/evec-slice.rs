@@ -12,8 +12,8 @@ pub fn main() {
     let x : &[int] = &[1,2,3,4,5];
     let mut z = &[1,2,3,4,5];
     z = x;
-    fail_unless!(z[0] == 1);
-    fail_unless!(z[4] == 5);
+    assert!(z[0] == 1);
+    assert!(z[4] == 5);
 
     let a : &[int] = &[1,1,1,1,1];
     let b : &[int] = &[2,2,2,2,2];
@@ -22,33 +22,33 @@ pub fn main() {
 
     debug!(a);
 
-    fail_unless!(a < b);
-    fail_unless!(a <= b);
-    fail_unless!(a != b);
-    fail_unless!(b >= a);
-    fail_unless!(b > a);
+    assert!(a < b);
+    assert!(a <= b);
+    assert!(a != b);
+    assert!(b >= a);
+    assert!(b > a);
 
     debug!(b);
 
-    fail_unless!(b < c);
-    fail_unless!(b <= c);
-    fail_unless!(b != c);
-    fail_unless!(c >= b);
-    fail_unless!(c > b);
+    assert!(b < c);
+    assert!(b <= c);
+    assert!(b != c);
+    assert!(c >= b);
+    assert!(c > b);
 
-    fail_unless!(a < c);
-    fail_unless!(a <= c);
-    fail_unless!(a != c);
-    fail_unless!(c >= a);
-    fail_unless!(c > a);
+    assert!(a < c);
+    assert!(a <= c);
+    assert!(a != c);
+    assert!(c >= a);
+    assert!(c > a);
 
     debug!(c);
 
-    fail_unless!(a < cc);
-    fail_unless!(a <= cc);
-    fail_unless!(a != cc);
-    fail_unless!(cc >= a);
-    fail_unless!(cc > a);
+    assert!(a < cc);
+    assert!(a <= cc);
+    assert!(a != cc);
+    assert!(cc >= a);
+    assert!(cc > a);
 
     debug!(cc);
 }

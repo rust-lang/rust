@@ -11,5 +11,5 @@
 fn f(f: @fn(int) -> int) -> int { f(10) }
 
 pub fn main() {
-    fail_unless!(do f() |i| { i } == 10);
+    assert!(do f() |i| { i } == 10);
 }

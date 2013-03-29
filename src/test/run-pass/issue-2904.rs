@@ -60,7 +60,7 @@ fn square_from_char(c: char) -> square {
 }
 
 fn read_board_grid<rdr:'static + io::Reader>(+in: rdr) -> ~[~[square]] {
-    let in = @in as @io::Reader;
+    let in: @io::Reader = @in;
     let mut grid = ~[];
     for in.each_line |line| {
         let mut row = ~[];
@@ -70,14 +70,14 @@ fn read_board_grid<rdr:'static + io::Reader>(+in: rdr) -> ~[~[square]] {
         grid.push(row)
     }
     let width = grid[0].len();
-    for grid.each |row| { fail_unless!(row.len() == width) }
+    for grid.each |row| { assert!(row.len() == width) }
     grid
 }
 
 mod test {
     #[test]
     pub fn trivial_to_str() {
-        fail_unless!(lambda.to_str() == "\\")
+        assert!(lambda.to_str() == "\\")
     }
 
     #[test]

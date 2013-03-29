@@ -128,6 +128,68 @@ pub impl Coerce {
                 };
             }
 
+            ty::ty_trait(def_id, ref substs, ty::BoxTraitStore) => {
+                let result = do self.unpack_actual_value(a) |sty_a| {
+                    match *sty_a {
+                        ty::ty_box(*) => {
+                            self.coerce_object(a,
+                                               sty_a,
+                                               b,
+                                               def_id,
+                                               substs,
+                                               ty::BoxTraitStore)
+                        }
+                        _ => Err(ty::terr_mismatch)
+                    }
+                };
+                match result {
+                    Ok(t) => return Ok(t),
+                    Err(_) => {}
+                }
+            }
+
+            ty::ty_trait(def_id, ref substs, ty::UniqTraitStore) => {
+                let result = do self.unpack_actual_value(a) |sty_a| {
+                    match *sty_a {
+                        ty::ty_uniq(*) => {
+                            self.coerce_object(a,
+                                               sty_a,
+                                               b,
+                                               def_id,
+                                               substs,
+                                               ty::UniqTraitStore)
+                        }
+                        _ => Err(ty::terr_mismatch)
+                    }
+                };
+                match result {
+                    Ok(t) => return Ok(t),
+                    Err(_) => {}
+                }
+            }
+
+            ty::ty_trait(def_id,
+                         ref substs,
+                         ty::RegionTraitStore(region)) => {
+                let result = do self.unpack_actual_value(a) |sty_a| {
+                    match *sty_a {
+                        ty::ty_rptr(*) => {
+                            self.coerce_object(a,
+                                               sty_a,
+                                               b,
+                                               def_id,
+                                               substs,
+                                               ty::RegionTraitStore(region))
+                        }
+                        _ => Err(ty::terr_mismatch)
+                    }
+                };
+                match result {
+                    Ok(t) => return Ok(t),
+                    Err(_) => {}
+                }
+            }
+
             _ => {}
         }
 
@@ -375,5 +437,33 @@ pub impl Coerce {
         // point at are compatible:
         let a_unsafe = ty::mk_ptr(self.infcx.tcx, mt_a);
         self.subtype(a_unsafe, b)
+    }
+
+    fn coerce_object(&self,
+                     a: ty::t,
+                     sty_a: &ty::sty,
+                     b: ty::t,
+                     trait_def_id: ast::def_id,
+                     trait_substs: &ty::substs,
+                     trait_store: ty::TraitStore)
+                  -> CoerceResult {
+        debug!("coerce_object(a=%s, sty_a=%?, b=%s)",
+               a.inf_str(self.infcx),
+               sty_a,
+               b.inf_str(self.infcx));
+
+        let sigil_and_region = match trait_store {
+            ty::BareTraitStore => return Err(ty::terr_mismatch),
+            ty::BoxTraitStore => ty::ManagedSigilAndRegion,
+            ty::UniqTraitStore => ty::OwnedSigilAndRegion,
+            ty::RegionTraitStore(region) => {
+                ty::BorrowedSigilAndRegion(region)
+            }
+        };
+
+        let adjustment = @ty::AutoObject(sigil_and_region,
+                                         trait_def_id,
+                                         copy *trait_substs);
+        Ok(Some(adjustment))
     }
 }

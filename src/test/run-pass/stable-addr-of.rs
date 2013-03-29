@@ -12,5 +12,5 @@
 
 pub fn main() {
     let foo = 1;
-    fail_unless!(ptr::addr_of(&foo) == ptr::addr_of(&foo));
+    assert!(ptr::addr_of(&foo) == ptr::addr_of(&foo));
 }

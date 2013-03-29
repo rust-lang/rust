@@ -168,7 +168,7 @@ fn should_create_section_headers() {
          Body\"]\
          mod a {
          }");
-    fail_unless!(str::contains(
+    assert!(str::contains(
         doc.cratemod().mods()[0].item.sections[0].header,
         ~"Header"));
 }
@@ -181,7 +181,7 @@ fn should_create_section_bodies() {
          Body\"]\
          mod a {
          }");
-    fail_unless!(str::contains(
+    assert!(str::contains(
         doc.cratemod().mods()[0].item.sections[0].body,
         ~"Body"));
 }
@@ -194,7 +194,7 @@ fn should_not_create_sections_from_indented_headers() {
          Body\"]\
          mod a {
          }");
-    fail_unless!(vec::is_empty(doc.cratemod().mods()[0].item.sections));
+    assert!(vec::is_empty(doc.cratemod().mods()[0].item.sections));
 }
 
 #[test]
@@ -206,10 +206,10 @@ fn should_remove_section_text_from_main_desc() {
          Body\"]\
          mod a {
          }");
-    fail_unless!(!str::contains(
+    assert!(!str::contains(
         doc.cratemod().mods()[0].desc().get(),
         ~"Header"));
-    fail_unless!(!str::contains(
+    assert!(!str::contains(
         doc.cratemod().mods()[0].desc().get(),
         ~"Body"));
 }
@@ -222,7 +222,7 @@ fn should_eliminate_desc_if_it_is_just_whitespace() {
          Body\"]\
          mod a {
          }");
-    fail_unless!(doc.cratemod().mods()[0].desc() == None);
+    assert!(doc.cratemod().mods()[0].desc() == None);
 }
 
 #[test]
@@ -233,7 +233,7 @@ fn should_sectionalize_trait_methods() {
          # Header\n\
          Body\"]\
          fn a(); }");
-    fail_unless!(doc.cratemod().traits()[0].methods[0].sections.len() == 1u);
+    assert!(doc.cratemod().traits()[0].methods[0].sections.len() == 1u);
 }
 
 #[test]
@@ -244,7 +244,7 @@ fn should_sectionalize_impl_methods() {
          # Header\n\
          Body\"]\
          fn a() { } }");
-    fail_unless!(doc.cratemod().impls()[0].methods[0].sections.len() == 1u);
+    assert!(doc.cratemod().impls()[0].methods[0].sections.len() == 1u);
 }
 
 #[cfg(test)]

@@ -19,8 +19,8 @@ enum color {
 pub fn main() {
     let act = fmt!("%?", red);
     io::println(act);
-    fail_unless!(~"red" == act);
-    fail_unless!(~"green" == fmt!("%?", green));
-    fail_unless!(~"white" == fmt!("%?", white));
+    assert!(~"red" == act);
+    assert!(~"green" == fmt!("%?", green));
+    assert!(~"white" == fmt!("%?", white));
 }
 

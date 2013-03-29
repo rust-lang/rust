@@ -14,13 +14,13 @@
 // -*- rust -*-
 struct Point {x: int, y: int, z: int}
 
-fn f(p: @mut Point) { fail_unless!((p.z == 12)); p.z = 13; fail_unless!((p.z == 13)); }
+fn f(p: @mut Point) { assert!((p.z == 12)); p.z = 13; assert!((p.z == 13)); }
 
 pub fn main() {
     let a: Point = Point {x: 10, y: 11, z: 12};
     let b: @mut Point = @mut copy a;
-    fail_unless!((b.z == 12));
+    assert!((b.z == 12));
     f(b);
-    fail_unless!((a.z == 12));
-    fail_unless!((b.z == 13));
+    assert!((a.z == 12));
+    assert!((b.z == 13));
 }

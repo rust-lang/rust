@@ -188,7 +188,7 @@ extern fn tear_down_walk_cb(handle: *libc::c_void, arg: *libc::c_void) {
     // pretty much, if we still have an active handle and it is *not*
     // the async handle that facilities global loop communication, we
     // want to barf out and fail
-    fail_unless!(handle == arg);
+    assert!(handle == arg);
 }
 
 extern fn tear_down_close_cb(handle: *ll::uv_async_t) {

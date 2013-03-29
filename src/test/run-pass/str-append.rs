@@ -17,7 +17,7 @@ fn test1() {
     let mut s: ~str = ~"hello";
     s += ~"world";
     debug!(s.clone());
-    fail_unless!((s[9] == 'd' as u8));
+    assert!((s[9] == 'd' as u8));
 }
 
 fn test2() {
@@ -28,8 +28,8 @@ fn test2() {
     let b: ~str = ~"ABC" + ff + ~"ABC";
     debug!(a.clone());
     debug!(b.clone());
-    fail_unless!((a == ~"abcABCabc"));
-    fail_unless!((b == ~"ABCabcABC"));
+    assert!((a == ~"abcABCabc"));
+    assert!((b == ~"ABCabcABC"));
 }
 
 pub fn main() { test1(); test2(); }

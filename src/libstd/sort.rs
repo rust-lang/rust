@@ -223,7 +223,7 @@ pub fn tim_sort<T:Copy + Ord>(array: &mut [T]) {
 fn binarysort<T:Copy + Ord>(array: &mut [T], start: uint) {
     let size = array.len();
     let mut start = start;
-    fail_unless!(start <= size);
+    assert!(start <= size);
 
     if start == 0 { start += 1; }
 
@@ -231,7 +231,7 @@ fn binarysort<T:Copy + Ord>(array: &mut [T], start: uint) {
         let pivot = array[start];
         let mut left = 0;
         let mut right = start;
-        fail_unless!(left <= right);
+        assert!(left <= right);
 
         while left < right {
             let mid = (left + right) >> 1;
@@ -241,7 +241,7 @@ fn binarysort<T:Copy + Ord>(array: &mut [T], start: uint) {
                 left = mid+1;
             }
         }
-        fail_unless!(left == right);
+        assert!(left == right);
         let mut n = start-left;
 
         copy_vec(array, left+1, array, left, n);
@@ -272,7 +272,7 @@ fn min_run_length(n: uint) -> uint {
 
 fn count_run_ascending<T:Copy + Ord>(array: &mut [T]) -> uint {
     let size = array.len();
-    fail_unless!(size > 0);
+    assert!(size > 0);
     if size == 1 { return 1; }
 
     let mut run = 2;
@@ -295,7 +295,7 @@ fn gallop_left<T:Copy + Ord>(key: &const T,
                              hint: uint)
                           -> uint {
     let size = array.len();
-    fail_unless!(size != 0 && hint < size);
+    assert!(size != 0 && hint < size);
 
     let mut last_ofs = 0;
     let mut ofs = 1;
@@ -326,7 +326,7 @@ fn gallop_left<T:Copy + Ord>(key: &const T,
         last_ofs = hint - ofs;
         ofs = hint - tmp;
     }
-    fail_unless!((last_ofs < ofs || last_ofs+1 < ofs+1) && ofs <= size);
+    assert!((last_ofs < ofs || last_ofs+1 < ofs+1) && ofs <= size);
 
     last_ofs += 1;
     while last_ofs < ofs {
@@ -337,7 +337,7 @@ fn gallop_left<T:Copy + Ord>(key: &const T,
             ofs = m;
         }
     }
-    fail_unless!(last_ofs == ofs);
+    assert!(last_ofs == ofs);
     return ofs;
 }
 
@@ -346,7 +346,7 @@ fn gallop_right<T:Copy + Ord>(key: &const T,
                               hint: uint)
                            -> uint {
     let size = array.len();
-    fail_unless!(size != 0 && hint < size);
+    assert!(size != 0 && hint < size);
 
     let mut last_ofs = 0;
     let mut ofs = 1;
@@ -378,7 +378,7 @@ fn gallop_right<T:Copy + Ord>(key: &const T,
         ofs = hint - tmp;
     }
 
-    fail_unless!((last_ofs < ofs || last_ofs+1 < ofs+1) && ofs <= size);
+    assert!((last_ofs < ofs || last_ofs+1 < ofs+1) && ofs <= size);
 
     last_ofs += 1;
     while last_ofs < ofs {
@@ -390,7 +390,7 @@ fn gallop_right<T:Copy + Ord>(key: &const T,
             ofs = m;
         }
     }
-    fail_unless!(last_ofs == ofs);
+    assert!(last_ofs == ofs);
     return ofs;
 }
 
@@ -420,16 +420,16 @@ impl<T:Copy + Ord> MergeState<T> {
 
     fn merge_at(&mut self, n: uint, array: &mut [T]) {
         let mut size = self.runs.len();
-        fail_unless!(size >= 2);
-        fail_unless!(n == size-2 || n == size-3);
+        assert!(size >= 2);
+        assert!(n == size-2 || n == size-3);
 
         let mut b1 = self.runs[n].base;
         let mut l1 = self.runs[n].len;
         let b2 = self.runs[n+1].base;
         let l2 = self.runs[n+1].len;
 
-        fail_unless!(l1 > 0 && l2 > 0);
-        fail_unless!(b1 + l1 == b2);
+        assert!(l1 > 0 && l2 > 0);
+        assert!(b1 + l1 == b2);
 
         self.runs[n].len = l1 + l2;
         if n == size-3 {
@@ -458,7 +458,7 @@ impl<T:Copy + Ord> MergeState<T> {
 
     fn merge_lo(&mut self, array: &mut [T], base1: uint, len1: uint,
                 base2: uint, len2: uint) {
-        fail_unless!(len1 != 0 && len2 != 0 && base1+len1 == base2);
+        assert!(len1 != 0 && len2 != 0 && base1+len1 == base2);
 
         let mut tmp = ~[];
         for uint::range(base1, base1+len1) |i| {
@@ -491,7 +491,7 @@ impl<T:Copy + Ord> MergeState<T> {
             let mut break_outer = false;
 
             loop {
-                fail_unless!(len1 > 1 && len2 != 0);
+                assert!(len1 > 1 && len2 != 0);
                 if array[c2] < tmp[c1] {
                     array[dest] <-> array[c2];
                     dest += 1; c2 += 1; len2 -= 1;
@@ -515,7 +515,7 @@ impl<T:Copy + Ord> MergeState<T> {
 
             // Start to gallop
             loop {
-                fail_unless!(len1 > 1 && len2 != 0);
+                assert!(len1 > 1 && len2 != 0);
 
                 let tmp_view = vec::const_slice(tmp, c1, c1+len1);
                 count1 = gallop_right(&const array[c2], tmp_view, 0);
@@ -550,21 +550,21 @@ impl<T:Copy + Ord> MergeState<T> {
         self.min_gallop = if min_gallop < 1 { 1 } else { min_gallop };
 
         if len1 == 1 {
-            fail_unless!(len2 > 0);
+            assert!(len2 > 0);
             copy_vec(array, dest, array, c2, len2);
             array[dest+len2] <-> tmp[c1];
         } else if len1 == 0 {
             fail!(~"Comparison violates its contract!");
         } else {
-            fail_unless!(len2 == 0);
-            fail_unless!(len1 > 1);
+            assert!(len2 == 0);
+            assert!(len1 > 1);
             copy_vec(array, dest, tmp, c1, len1);
         }
     }
 
     fn merge_hi(&mut self, array: &mut [T], base1: uint, len1: uint,
                 base2: uint, len2: uint) {
-        fail_unless!(len1 != 1 && len2 != 0 && base1 + len1 == base2);
+        assert!(len1 != 1 && len2 != 0 && base1 + len1 == base2);
 
         let mut tmp = ~[];
         for uint::range(base2, base2+len2) |i| {
@@ -599,7 +599,7 @@ impl<T:Copy + Ord> MergeState<T> {
             let mut break_outer = false;
 
             loop {
-                fail_unless!(len1 != 0 && len2 > 1);
+                assert!(len1 != 0 && len2 > 1);
                 if tmp[c2] < array[c1] {
                     array[dest] <-> array[c1];
                     dest -= 1; c1 -= 1; len1 -= 1;
@@ -623,7 +623,7 @@ impl<T:Copy + Ord> MergeState<T> {
 
             // Start to gallop
             loop {
-                fail_unless!(len2 > 1 && len1 != 0);
+                assert!(len2 > 1 && len1 != 0);
 
                 let tmp_view = vec::mut_slice(array, base1, base1+len1);
                 count1 = len1 - gallop_right(
@@ -669,7 +669,7 @@ impl<T:Copy + Ord> MergeState<T> {
         self.min_gallop = if min_gallop < 1 { 1 } else { min_gallop };
 
         if len2 == 1 {
-            fail_unless!(len1 > 0);
+            assert!(len1 > 0);
             dest -= len1;
             c1 -= len1;
             copy_vec(array, dest+1, array, c1+1, len1);
@@ -677,8 +677,8 @@ impl<T:Copy + Ord> MergeState<T> {
         } else if len2 == 0 {
             fail!(~"Comparison violates its contract!");
         } else {
-            fail_unless!(len1 == 0);
-            fail_unless!(len2 != 0);
+            assert!(len1 == 0);
+            assert!(len2 != 0);
             copy_vec(array, dest-(len2-1), tmp, 0, len2);
         }
     }
@@ -718,7 +718,7 @@ fn copy_vec<T:Copy>(dest: &mut [T],
                     from: &const [T],
                     s2: uint,
                     len: uint) {
-    fail_unless!(s1+len <= dest.len() && s2+len <= from.len());
+    assert!(s1+len <= dest.len() && s2+len <= from.len());
 
     let mut slice = ~[];
     for uint::range(s2, s2+len) |i| {
@@ -742,7 +742,7 @@ mod test_qsort3 {
         let mut i = 0;
         while i < len {
             // debug!(v2[i]);
-            fail_unless!((v2[i] == v1[i]));
+            assert!((v2[i] == v1[i]));
             i += 1;
         }
     }
@@ -787,7 +787,7 @@ mod test_qsort {
         let mut i = 0u;
         while i < len {
             // debug!(v2[i]);
-            fail_unless!((v2[i] == v1[i]));
+            assert!((v2[i] == v1[i]));
             i += 1;
         }
     }
@@ -832,7 +832,7 @@ mod test_qsort {
         for vec::each(pairs) |p| {
             let (a, b) = *p;
             debug!("%d %d", a, b);
-            fail_unless!((a == b));
+            assert!((a == b));
         }
     }
 }
@@ -853,7 +853,7 @@ mod tests {
         let mut i = 0u;
         while i < len {
             debug!(v3[i]);
-            fail_unless!((v3[i] == v2[i]));
+            assert!((v3[i] == v2[i]));
             i += 1;
         }
     }
@@ -880,7 +880,7 @@ mod tests {
         pub fn le(a: &int, b: &int) -> bool { *a <= *b }
         let mut v1 = ~[3, 2, 1];
         let v2 = merge_sort(v1, le);
-        fail_unless!(v2 == ~[1, 2, 3]);
+        assert!(v2 == ~[1, 2, 3]);
     }
 
     #[test]
@@ -901,7 +901,7 @@ mod tests {
         let names2 = ~["Alex Andy", "Jack Brown", "joe bob", "Joe Bob",
                        "JOE Bob", "JOE BOB", "Sally Mae"];
         let names3 = merge_sort(names1, ile);
-        fail_unless!(names3 == names2);
+        assert!(names3 == names2);
     }
 }
 
@@ -938,7 +938,7 @@ mod test_tim_sort {
         let mut i = 0u;
         while i < len {
             // debug!(v2[i]);
-            fail_unless!((v2[i] == v1[i]));
+            assert!((v2[i] == v1[i]));
             i += 1u;
         }
     }

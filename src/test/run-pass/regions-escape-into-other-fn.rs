@@ -13,5 +13,5 @@ fn bar(x: &uint) -> uint { *x }
 
 pub fn main() {
     let p = @3u;
-    fail_unless!(bar(foo(p)) == 3);
+    assert!(bar(foo(p)) == 3);
 }

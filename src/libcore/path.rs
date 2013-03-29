@@ -440,7 +440,7 @@ impl GenericPath for PosixPath {
 
     fn with_filename(&self, f: &str) -> PosixPath {
         unsafe {
-            fail_unless!(! str::any(f, |c| windows::is_sep(c as u8)));
+            assert!(! str::any(f, |c| windows::is_sep(c as u8)));
             self.dir_path().push(f)
         }
     }
@@ -485,7 +485,7 @@ impl GenericPath for PosixPath {
     }
 
     fn push_rel(&self, other: &PosixPath) -> PosixPath {
-        fail_unless!(!other.is_absolute);
+        assert!(!other.is_absolute);
         self.push_many(other.components)
     }
 
@@ -657,7 +657,7 @@ impl GenericPath for WindowsPath {
     }
 
     fn with_filename(&self, f: &str) -> WindowsPath {
-        fail_unless!(! str::any(f, |c| windows::is_sep(c as u8)));
+        assert!(! str::any(f, |c| windows::is_sep(c as u8)));
         self.dir_path().push(f)
     }
 
@@ -704,7 +704,7 @@ impl GenericPath for WindowsPath {
     }
 
     fn push_rel(&self, other: &WindowsPath) -> WindowsPath {
-        fail_unless!(!other.is_absolute);
+        assert!(!other.is_absolute);
         self.push_many(other.components)
     }
 
@@ -891,30 +891,30 @@ mod tests {
         let path = PosixPath("tmp/");
         let path = path.push("/hmm");
         let path = path.normalize();
-        fail_unless!(~"tmp/hmm" == path.to_str());
+        assert!(~"tmp/hmm" == path.to_str());
 
         let path = WindowsPath("tmp/");
         let path = path.push("/hmm");
         let path = path.normalize();
-        fail_unless!(~"tmp\\hmm" == path.to_str());
+        assert!(~"tmp\\hmm" == path.to_str());
     }
 
     #[test]
     fn test_filetype_foo_bar() {
         let wp = PosixPath("foo.bar");
-        fail_unless!(wp.filetype() == Some(~".bar"));
+        assert!(wp.filetype() == Some(~".bar"));
 
         let wp = WindowsPath("foo.bar");
-        fail_unless!(wp.filetype() == Some(~".bar"));
+        assert!(wp.filetype() == Some(~".bar"));
     }
 
     #[test]
     fn test_filetype_foo() {
         let wp = PosixPath("foo");
-        fail_unless!(wp.filetype() == None);
+        assert!(wp.filetype() == None);
 
         let wp = WindowsPath("foo");
-        fail_unless!(wp.filetype() == None);
+        assert!(wp.filetype() == None);
     }
 
     #[test]
@@ -925,7 +925,7 @@ mod tests {
             if (ss != sss) {
                 debug!("got %s", ss);
                 debug!("expected %s", sss);
-                fail_unless!(ss == sss);
+                assert!(ss == sss);
             }
         }
 
@@ -983,7 +983,7 @@ mod tests {
             if (ss != sss) {
                 debug!("got %s", ss);
                 debug!("expected %s", sss);
-                fail_unless!(ss == sss);
+                assert!(ss == sss);
             }
         }
 
@@ -999,42 +999,42 @@ mod tests {
 
     #[test]
     fn test_extract_unc_prefixes() {
-        fail_unless!(windows::extract_unc_prefix("\\\\").is_none());
-        fail_unless!(windows::extract_unc_prefix("//").is_none());
-        fail_unless!(windows::extract_unc_prefix("\\\\hi").is_none());
-        fail_unless!(windows::extract_unc_prefix("//hi").is_none());
-        fail_unless!(windows::extract_unc_prefix("\\\\hi\\") ==
+        assert!(windows::extract_unc_prefix("\\\\").is_none());
+        assert!(windows::extract_unc_prefix("//").is_none());
+        assert!(windows::extract_unc_prefix("\\\\hi").is_none());
+        assert!(windows::extract_unc_prefix("//hi").is_none());
+        assert!(windows::extract_unc_prefix("\\\\hi\\") ==
             Some((~"hi", ~"\\")));
-        fail_unless!(windows::extract_unc_prefix("//hi\\") ==
+        assert!(windows::extract_unc_prefix("//hi\\") ==
             Some((~"hi", ~"\\")));
-        fail_unless!(windows::extract_unc_prefix("\\\\hi\\there") ==
+        assert!(windows::extract_unc_prefix("\\\\hi\\there") ==
             Some((~"hi", ~"\\there")));
-        fail_unless!(windows::extract_unc_prefix("//hi/there") ==
+        assert!(windows::extract_unc_prefix("//hi/there") ==
             Some((~"hi", ~"/there")));
-        fail_unless!(windows::extract_unc_prefix(
+        assert!(windows::extract_unc_prefix(
             "\\\\hi\\there\\friends.txt") ==
             Some((~"hi", ~"\\there\\friends.txt")));
-        fail_unless!(windows::extract_unc_prefix(
+        assert!(windows::extract_unc_prefix(
             "//hi\\there\\friends.txt") ==
             Some((~"hi", ~"\\there\\friends.txt")));
     }
 
     #[test]
     fn test_extract_drive_prefixes() {
-        fail_unless!(windows::extract_drive_prefix("c").is_none());
-        fail_unless!(windows::extract_drive_prefix("c:") ==
+        assert!(windows::extract_drive_prefix("c").is_none());
+        assert!(windows::extract_drive_prefix("c:") ==
                      Some((~"c", ~"")));
-        fail_unless!(windows::extract_drive_prefix("d:") ==
+        assert!(windows::extract_drive_prefix("d:") ==
                      Some((~"d", ~"")));
-        fail_unless!(windows::extract_drive_prefix("z:") ==
+        assert!(windows::extract_drive_prefix("z:") ==
                      Some((~"z", ~"")));
-        fail_unless!(windows::extract_drive_prefix("c:\\hi") ==
+        assert!(windows::extract_drive_prefix("c:\\hi") ==
                      Some((~"c", ~"\\hi")));
-        fail_unless!(windows::extract_drive_prefix("d:hi") ==
+        assert!(windows::extract_drive_prefix("d:hi") ==
                      Some((~"d", ~"hi")));
-        fail_unless!(windows::extract_drive_prefix("c:hi\\there.txt") ==
+        assert!(windows::extract_drive_prefix("c:hi\\there.txt") ==
                      Some((~"c", ~"hi\\there.txt")));
-        fail_unless!(windows::extract_drive_prefix("c:\\hi\\there.txt") ==
+        assert!(windows::extract_drive_prefix("c:\\hi\\there.txt") ==
                      Some((~"c", ~"\\hi\\there.txt")));
     }
 
@@ -1046,7 +1046,7 @@ mod tests {
             if (ss != sss) {
                 debug!("got %s", ss);
                 debug!("expected %s", sss);
-                fail_unless!(ss == sss);
+                assert!(ss == sss);
             }
         }
 
@@ -1131,9 +1131,9 @@ mod tests {
 
     #[test]
     fn test_windows_path_restrictions() {
-        fail_unless!(WindowsPath("hi").is_restricted() == false);
-        fail_unless!(WindowsPath("C:\\NUL").is_restricted() == true);
-        fail_unless!(WindowsPath("C:\\COM1.TXT").is_restricted() == true);
-        fail_unless!(WindowsPath("c:\\prn.exe").is_restricted() == true);
+        assert!(WindowsPath("hi").is_restricted() == false);
+        assert!(WindowsPath("C:\\NUL").is_restricted() == true);
+        assert!(WindowsPath("C:\\COM1.TXT").is_restricted() == true);
+        assert!(WindowsPath("c:\\prn.exe").is_restricted() == true);
     }
 }

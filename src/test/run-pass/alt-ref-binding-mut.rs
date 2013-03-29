@@ -21,5 +21,5 @@ fn destructure(x: &mut Rec) {
 pub fn main() {
     let mut v = Rec {f: 22};
     destructure(&mut v);
-    fail_unless!(v.f == 23);
+    assert!(v.f == 23);
 }

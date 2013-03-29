@@ -15,5 +15,5 @@ fn foo(x: &uint) -> uint {
 pub fn main() {
     let p = ~3u;
     let r = foo(p);
-    fail_unless!(r == 3u);
+    assert!(r == 3u);
 }

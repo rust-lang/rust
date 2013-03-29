@@ -11,7 +11,7 @@
 
 // error-pattern:1 == 2
 
-fn child() { fail_unless!((1 == 2)); }
+fn child() { assert!((1 == 2)); }
 
 fn parent() {
     let (p, _c) = comm::stream::<int>();

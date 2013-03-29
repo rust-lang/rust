@@ -165,11 +165,12 @@ pub type opt_region_variance = Option<region_variance>;
 #[deriving(Eq)]
 pub enum region_variance { rv_covariant, rv_invariant, rv_contravariant }
 
-#[auto_encode]
-#[auto_decode]
 pub enum AutoAdjustment {
     AutoAddEnv(ty::Region, ast::Sigil),
-    AutoDerefRef(AutoDerefRef)
+    AutoDerefRef(AutoDerefRef),
+    AutoObject(SigilAndRegion,
+               ast::def_id /* ID of trait */,
+               substs /* trait substitutions */),
 }
 
 #[auto_encode]
@@ -177,6 +178,14 @@ pub enum AutoAdjustment {
 pub struct AutoDerefRef {
     autoderefs: uint,
     autoref: Option<AutoRef>
+}
+
+#[auto_encode]
+#[auto_decode]
+pub enum SigilAndRegion {
+    BorrowedSigilAndRegion(Region),
+    OwnedSigilAndRegion,
+    ManagedSigilAndRegion,
 }
 
 #[auto_encode]
@@ -2005,7 +2014,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // If this assertion failures, it is likely because of a
                 // failure in the cross-crate inlining code to translate a
                 // def-id.
-                fail_unless!(p.def_id.crate == ast::local_crate);
+                assert!(p.def_id.crate == ast::local_crate);
 
                 param_bounds_to_contents(
                     cx, *cx.ty_param_bounds.get(&p.def_id.node))
@@ -2932,6 +2941,10 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
                 }
             }
         }
+
+        Some(&@AutoObject(ref sigil, def_id, ref substs)) => {
+            trait_adjustment_to_ty(cx, sigil, def_id, substs)
+        }
     };
 
     fn borrow_vec(cx: ctxt, expr: @ast::expr,
@@ -2974,6 +2987,19 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
             }
         }
     }
+}
+
+pub fn trait_adjustment_to_ty(cx: ctxt,
+                              sigil: &SigilAndRegion,
+                              def_id: ast::def_id,
+                              substs: &substs)
+                           -> t {
+    let trait_store = match *sigil {
+        BorrowedSigilAndRegion(region) => RegionTraitStore(region),
+        OwnedSigilAndRegion => UniqTraitStore,
+        ManagedSigilAndRegion => BoxTraitStore,
+    };
+    mk_trait(cx, def_id, copy *substs, trait_store)
 }
 
 pub struct ParamsTy {
@@ -3559,7 +3585,7 @@ pub fn trait_supertraits(cx: ctxt,
 
     // Not in the cache. It had better be in the metadata, which means it
     // shouldn't be local.
-    fail_unless!(!is_local(id));
+    assert!(!is_local(id));
 
     // Get the supertraits out of the metadata and create the
     // InstantiatedTraitRef for each.
@@ -3591,7 +3617,7 @@ pub fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
         // If the lookup in trait_method_cache fails, assume that the trait
         // method we're trying to look up is in a different crate, and look
         // for it there.
-        fail_unless!(id.crate != ast::local_crate);
+        assert!(id.crate != ast::local_crate);
         let result = csearch::get_trait_methods(cx, id);
 
         // Store the trait method in the local trait_method_cache so that
@@ -3912,7 +3938,7 @@ pub fn lookup_item_type(cx: ctxt,
         return tpt;
       }
       None => {
-        fail_unless!(did.crate != ast::local_crate);
+        assert!(did.crate != ast::local_crate);
         let tyt = csearch::get_type(cx, did);
         cx.tcache.insert(did, tyt);
         return tyt;

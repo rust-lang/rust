@@ -29,13 +29,13 @@ fn builtin_equal<T>(&&a: T, &&b: T) -> bool { return a == b; }
 fn builtin_equal_int(&&a: int, &&b: int) -> bool { return a == b; }
 
 fn main() {
-    fail_unless!((builtin_equal(5, 5)));
-    fail_unless!((!builtin_equal(5, 4)));
-    fail_unless!((!vec_equal(~[5, 5], ~[5], bind builtin_equal(_, _))));
-    fail_unless!((!vec_equal(~[5, 5], ~[5], builtin_equal_int)));
-    fail_unless!((!vec_equal(~[5, 5], ~[5, 4], builtin_equal_int)));
-    fail_unless!((!vec_equal(~[5, 5], ~[4, 5], builtin_equal_int)));
-    fail_unless!((vec_equal(~[5, 5], ~[5, 5], builtin_equal_int)));
+    assert!((builtin_equal(5, 5)));
+    assert!((!builtin_equal(5, 4)));
+    assert!((!vec_equal(~[5, 5], ~[5], bind builtin_equal(_, _))));
+    assert!((!vec_equal(~[5, 5], ~[5], builtin_equal_int)));
+    assert!((!vec_equal(~[5, 5], ~[5, 4], builtin_equal_int)));
+    assert!((!vec_equal(~[5, 5], ~[4, 5], builtin_equal_int)));
+    assert!((vec_equal(~[5, 5], ~[5, 5], builtin_equal_int)));
 
     error!("Pass");
 }

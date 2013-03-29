@@ -103,11 +103,11 @@ fn new_taskset() -> TaskSet {
 }
 fn taskset_insert(tasks: &mut TaskSet, task: *rust_task) {
     let didnt_overwrite = tasks.insert(task);
-    fail_unless!(didnt_overwrite);
+    assert!(didnt_overwrite);
 }
 fn taskset_remove(tasks: &mut TaskSet, task: *rust_task) {
     let was_present = tasks.remove(&task);
-    fail_unless!(was_present);
+    assert!(was_present);
 }
 pub fn taskset_each(tasks: &TaskSet, blk: &fn(v: *rust_task) -> bool) {
     tasks.each(|k| blk(*k))
@@ -231,7 +231,7 @@ fn each_ancestor(list:        &mut AncestorList,
             // NB: Takes a lock! (this ancestor node)
             do access_ancestors(ancestor_arc) |nobe| {
                 // Check monotonicity
-                fail_unless!(last_generation > nobe.generation);
+                assert!(last_generation > nobe.generation);
                 /*##########################################################*
                  * Step 1: Look at this ancestor group (call iterator block).
                  *##########################################################*/
@@ -423,7 +423,7 @@ fn kill_taskgroup(state: TaskGroupInner, me: *rust_task, is_main: bool) {
                 }
             }
             for taskset_each(&group.descendants) |child| {
-                fail_unless!(child != me);
+                assert!(child != me);
                 rt::rust_task_kill_other(child);
             }
             // Only one task should ever do this.
@@ -498,7 +498,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                         }
                         None => 0 // the actual value doesn't really matter.
                     };
-                fail_unless!(new_generation < uint::max_value);
+                assert!(new_generation < uint::max_value);
                 // Build a new node in the ancestor list.
                 AncestorList(Some(unstable::exclusive(AncestorNode {
                     generation: new_generation,
@@ -545,7 +545,7 @@ pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
                 DefaultScheduler => rt::new_task(),
                 _ => new_task_in_sched(opts.sched)
             };
-            fail_unless!(!new_task.is_null());
+            assert!(!new_task.is_null());
             // Getting killed after here would leak the task.
             let mut notify_chan = if opts.notify_chan.is_none() {
                 None
@@ -717,7 +717,7 @@ fn test_spawn_raw_notify_success() {
     };
     do spawn_raw(opts) {
     }
-    fail_unless!(notify_po.recv() == Success);
+    assert!(notify_po.recv() == Success);
 }
 
 #[test]
@@ -734,5 +734,5 @@ fn test_spawn_raw_notify_failure() {
     do spawn_raw(opts) {
         fail!();
     }
-    fail_unless!(notify_po.recv() == Failure);
+    assert!(notify_po.recv() == Failure);
 }

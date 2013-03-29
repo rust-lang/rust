@@ -336,7 +336,7 @@ pub fn emit_calls_to_trait_visit_ty(bcx: block,
                                  -> block {
     use syntax::parse::token::special_idents::tydesc;
     let final = sub_block(bcx, ~"final");
-    fail_unless!(bcx.ccx().tcx.intrinsic_defs.contains_key(&tydesc));
+    assert!(bcx.ccx().tcx.intrinsic_defs.contains_key(&tydesc));
     let (_, tydesc_ty) = *bcx.ccx().tcx.intrinsic_defs.get(&tydesc);
     let tydesc_ty = type_of(bcx.ccx(), tydesc_ty);
     let mut r = Reflector {

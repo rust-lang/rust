@@ -25,7 +25,7 @@ impl Foo for A {
 
 pub fn main() {
     let a = A { x: 3 };
-    let b = (&a) as &Foo;
-    fail_unless!(b.f() == 3);
+    let b: &Foo = &a;
+    assert!(b.f() == 3);
 }
 

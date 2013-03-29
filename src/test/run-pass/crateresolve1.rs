@@ -16,5 +16,5 @@
 extern mod crateresolve1(vers = "0.2");
 
 pub fn main() {
-    fail_unless!(crateresolve1::f() == 20);
+    assert!(crateresolve1::f() == 20);
 }
