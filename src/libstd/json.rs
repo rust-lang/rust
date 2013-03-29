@@ -854,19 +854,6 @@ impl<'self> serialize::Decoder for Decoder<'self> {
         f()
     }
 
-    #[cfg(stage0)]
-    fn read_enum_variant<T>(&self, f: &fn(uint) -> T) -> T {
-        debug!("read_enum_variant()");
-        let idx = match *self.peek() {
-            Null => 0,
-            _ => 1,
-        };
-        f(idx)
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T {
         debug!("read_enum_variant(names=%?)", names);
         let name = match *self.peek() {
