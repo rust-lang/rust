@@ -1053,6 +1053,20 @@ mutability. They do own the contained object, and mutability is defined by the
 type of the shared box (`@` or `@mut`). An object containing a managed box is
 not `Owned`, and can't be sent between tasks.
 
+~~~~
+let a = @5; // immutable
+
+let mut b = @5; // mutable variable, immutable box
+b = @10;
+
+let c = @mut 5; // immutable variable, mutable box
+*c = 10;
+
+let mut d = @mut 5; // mutable variable, mutable box
+*d += 5;
+d = @mut 15;
+~~~~
+
 # Move semantics
 
 Rust uses a shallow copy for parameter passing, assignment and returning values
