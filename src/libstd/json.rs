@@ -156,6 +156,22 @@ impl serialize::Encoder for Encoder {
     fn emit_option(&self, f: &fn()) { f(); }
     fn emit_option_none(&self) { self.emit_nil(); }
     fn emit_option_some(&self, f: &fn()) { f(); }
+
+    fn emit_map(&self, _len: uint, f: &fn()) {
+        self.wr.write_char('{');
+        f();
+        self.wr.write_char('}');
+    }
+
+    fn emit_map_elt_key(&self, idx: uint, f: &fn()) {
+        if idx != 0 { self.wr.write_char(','); }
+        f()
+    }
+
+    fn emit_map_elt_val(&self, _idx: uint, f: &fn()) {
+        self.wr.write_char(':');
+        f()
+    }
 }
 
 pub struct PrettyEncoder {
@@ -276,6 +292,34 @@ impl serialize::Encoder for PrettyEncoder {
     fn emit_option(&self, f: &fn()) { f(); }
     fn emit_option_none(&self) { self.emit_nil(); }
     fn emit_option_some(&self, f: &fn()) { f(); }
+
+    fn emit_map(&self, len: uint, f: &fn()) {
+        if len == 0 {
+            self.wr.write_str("{}");
+        } else {
+            self.wr.write_char('{');
+            self.indent += 2;
+            f();
+            self.wr.write_char('\n');
+            self.indent -= 2;
+            self.wr.write_str(spaces(self.indent));
+            self.wr.write_char('}');
+        }
+    }
+    fn emit_map_elt_key(&self, idx: uint, f: &fn()) {
+        if idx == 0 {
+            self.wr.write_char('\n');
+        } else {
+            self.wr.write_str(",\n");
+        }
+        self.wr.write_str(spaces(self.indent));
+        f();
+    }
+
+    fn emit_map_elt_val(&self, _idx: uint, f: &fn()) {
+        self.wr.write_str(": ");
+        f();
+    }
 }
 
 impl<E: serialize::Encoder> serialize::Encodable<E> for Json {
@@ -285,17 +329,7 @@ impl<E: serialize::Encoder> serialize::Encodable<E> for Json {
             String(ref v) => v.encode(e),
             Boolean(v) => v.encode(e),
             List(ref v) => v.encode(e),
-            Object(ref v) => {
-                do e.emit_struct("Object", v.len())|| {
-                    let mut idx = 0;
-                    for v.each |&(key, value)| {
-                        do e.emit_field(*key, idx) {
-                            value.encode(e);
-                        }
-                        idx += 1;
-                    }
-                }
-            },
+            Object(ref v) => v.encode(e),
             Null => e.emit_nil(),
         }
     }
@@ -702,37 +736,20 @@ pub fn from_str(s: &str) -> Result<Json, Error> {
     }
 }
 
-pub struct Decoder<'self> {
-    priv json: Json,
-    priv mut stack: ~[&'self Json],
+pub struct Decoder {
+    priv mut stack: ~[Json],
 }
 
 pub fn Decoder(json: Json) -> Decoder {
-    Decoder { json: json, stack: ~[] }
+    Decoder { stack: ~[json] }
 }
 
-priv impl<'self> Decoder<'self> {
-    fn peek(&self) -> &'self Json {
-        if vec::uniq_len(&const self.stack) == 0 {
-            self.stack.push(&self.json);
-        }
-        self.stack[vec::uniq_len(&const self.stack) - 1]
-    }
-
-    fn pop(&self) -> &'self Json {
-        if vec::uniq_len(&const self.stack) == 0 {
-            self.stack.push(&self.json);
-        }
-        self.stack.pop()
-    }
-}
-
-impl<'self> serialize::Decoder for Decoder<'self> {
+impl serialize::Decoder for Decoder {
     fn read_nil(&self) -> () {
         debug!("read_nil");
-        match *self.pop() {
+        match self.stack.pop() {
             Null => (),
-            _ => fail!(~"not a null")
+            value => fail!(fmt!("not a null: %?", value))
         }
     }
 
@@ -750,9 +767,9 @@ impl<'self> serialize::Decoder for Decoder<'self> {
 
     fn read_bool(&self) -> bool {
         debug!("read_bool");
-        match *self.pop() {
+        match self.stack.pop() {
             Boolean(b) => b,
-            _ => fail!(~"not a boolean")
+            value => fail!(fmt!("not a boolean: %?", value))
         }
     }
 
@@ -760,9 +777,9 @@ impl<'self> serialize::Decoder for Decoder<'self> {
     fn read_f32(&self) -> f32 { self.read_float() as f32 }
     fn read_float(&self) -> float {
         debug!("read_float");
-        match *self.pop() {
+        match self.stack.pop() {
             Number(f) => f,
-            _ => fail!(~"not a number")
+            value => fail!(fmt!("not a number: %?", value))
         }
     }
 
@@ -775,12 +792,11 @@ impl<'self> serialize::Decoder for Decoder<'self> {
 
     fn read_str(&self) -> ~str {
         debug!("read_str");
-        match *self.pop() {
-            String(ref s) => copy *s,
-            ref json => fail!(fmt!("not a string: %?", *json))
+        match self.stack.pop() {
+            String(s) => s,
+            json => fail!(fmt!("not a string: %?", json))
         }
     }
-
 
     fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T {
         debug!("read_enum(%s)", name);
@@ -790,9 +806,9 @@ impl<'self> serialize::Decoder for Decoder<'self> {
     #[cfg(stage0)]
     fn read_enum_variant<T>(&self, f: &fn(uint) -> T) -> T {
         debug!("read_enum_variant()");
-        let idx = match *self.peek() {
-            Null => 0,
-            _ => 1,
+        let idx = match self.stack.pop() {
+            Null => { self.stack.push(Null); 0 },
+            value => { self.stack.push(value); 1 },
         };
         f(idx)
     }
@@ -802,12 +818,20 @@ impl<'self> serialize::Decoder for Decoder<'self> {
     #[cfg(stage3)]
     fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T {
         debug!("read_enum_variant(names=%?)", names);
-        let name = match *self.peek() {
-            String(ref s) => s,
-            List([String(ref s), .. _]) => s,
+        let name = match self.stack.pop() {
+            String(s) => s,
+            List(list) => {
+                do vec::consume_reverse(list) |_i, v| {
+                    self.stack.push(v);
+                }
+                match self.stack.pop() {
+                    String(s) => s,
+                    value => fail!(fmt!("invalid variant name: %?", value)),
+                }
+            }
             ref json => fail!(fmt!("invalid variant: %?", *json)),
         };
-        let idx = match vec::position(names, |n| str::eq_slice(*n, *name)) {
+        let idx = match vec::position(names, |n| str::eq_slice(*n, name)) {
             Some(idx) => idx,
             None => fail!(fmt!("Unknown variant name: %?", name)),
         };
@@ -816,72 +840,89 @@ impl<'self> serialize::Decoder for Decoder<'self> {
 
     fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T {
         debug!("read_enum_variant_arg(idx=%u)", idx);
-        match *self.peek() {
-            List(ref list) => {
-                self.stack.push(&list[idx + 1]);
-                f()
-            }
-            ref json => fail!(fmt!("not a list: %?", json)),
-        }
+        f()
     }
 
     fn read_seq<T>(&self, f: &fn(uint) -> T) -> T {
         debug!("read_seq()");
-        let len = match *self.peek() {
-            List(ref list) => list.len(),
+        let len = match self.stack.pop() {
+            List(list) => {
+                let len = list.len();
+                do vec::consume_reverse(list) |_i, v| {
+                    self.stack.push(v);
+                }
+                len
+            }
             _ => fail!(~"not a list"),
         };
         let res = f(len);
-        self.pop();
+        self.stack.pop();
         res
     }
 
     fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
         debug!("read_seq_elt(idx=%u)", idx);
-        match *self.peek() {
-            List(ref list) => {
-                self.stack.push(&list[idx]);
-                f()
-            }
-            _ => fail!(~"not a list"),
-        }
+        f()
     }
 
-    fn read_struct<T>(&self, _name: &str, _len: uint, f: &fn() -> T) -> T {
-        debug!("read_struct()");
+    fn read_struct<T>(&self, name: &str, len: uint, f: &fn() -> T) -> T {
+        debug!("read_struct(name=%s, len=%u)", name, len);
         let value = f();
-        self.pop();
+        self.stack.pop();
         value
     }
 
     fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
         debug!("read_field(%s, idx=%u)", name, idx);
-        let top = self.peek();
-        match *top {
-            Object(ref obj) => {
-                match obj.find(&name.to_owned()) {
+        match self.stack.pop() {
+            Object(obj) => {
+                let mut obj = obj;
+                let value = match obj.pop(&name.to_owned()) {
                     None => fail!(fmt!("no such field: %s", name)),
                     Some(json) => {
                         self.stack.push(json);
                         f()
                     }
-                }
+                };
+                self.stack.push(Object(obj));
+                value
             }
-            Number(_) => fail!(~"num"),
-            String(_) => fail!(~"str"),
-            Boolean(_) => fail!(~"bool"),
-            List(_) => fail!(fmt!("list: %?", top)),
-            Null => fail!(~"null"),
-
-            //_ => fail!(fmt!("not an object: %?", *top))
+            value => fail!(fmt!("not an object: %?", value))
         }
     }
 
     fn read_option<T>(&self, f: &fn(bool) -> T) -> T {
-        match *self.peek() {
-            Null => { self.pop(); f(false) }
-            _ => f(true),
+        match self.stack.pop() {
+            Null => f(false),
+            value => { self.stack.push(value); f(true) }
         }
+    }
+
+    fn read_map<T>(&self, f: &fn(uint) -> T) -> T {
+        debug!("read_map()");
+        let len = match self.stack.pop() {
+            Object(obj) => {
+                let mut obj = obj;
+                let len = obj.len();
+                do obj.consume |key, value| {
+                    self.stack.push(value);
+                    self.stack.push(String(key));
+                }
+                len
+            }
+            json => fail!(fmt!("not an object: %?", json)),
+        };
+        f(len)
+    }
+
+    fn read_map_elt_key<T>(&self, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_map_elt_key(idx=%u)", idx);
+        f()
+    }
+
+    fn read_map_elt_val<T>(&self, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_map_elt_val(idx=%u)", idx);
+        f()
     }
 }
 
@@ -1251,7 +1292,7 @@ mod tests {
 
     #[test]
     fn test_write_object_pretty() {
-        assert_eq!(to_pretty_str(&mk_object(~[])), ~"{\n}");
+        assert_eq!(to_pretty_str(&mk_object(~[])), ~"{}");
         assert_eq!(
             to_pretty_str(&mk_object(~[(~"a", Boolean(true))])),
             ~"\
@@ -1628,6 +1669,16 @@ mod tests {
         let decoder = Decoder(from_str(~"[\"Frog\",\"Henry\",349]").unwrap());
         let value: Animal = Decodable::decode(&decoder);
         assert_eq!(value, Frog(~"Henry", 349));
+    }
+
+    #[test]
+    fn test_read_map() {
+        let s = ~"{\"a\": \"Dog\", \"b\": [\"Frog\", \"Henry\", 349]}";
+        let decoder = Decoder(from_str(s).unwrap());
+        let map: LinearMap<~str, Animal> = Decodable::decode(&decoder);
+
+        assert_eq!(map.find(&~"a"), Some(Dog));
+        assert_eq!(map.find(&~"b"), Some(Frog(~"Henry", 349)));
     }
 
     #[test]

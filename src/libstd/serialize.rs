@@ -16,9 +16,8 @@ Core encoding and decoding interfaces.
 
 #[forbid(non_camel_case_types)];
 
-use core::at_vec;
 use core::prelude::*;
-use core::vec;
+use core::hashmap::linear::LinearMap;
 
 pub trait Encoder {
     // Primitive types:
@@ -56,6 +55,10 @@ pub trait Encoder {
     fn emit_option(&self, f: &fn());
     fn emit_option_none(&self);
     fn emit_option_some(&self, f: &fn());
+
+    fn emit_map(&self, len: uint, f: &fn());
+    fn emit_map_elt_key(&self, idx: uint, f: &fn());
+    fn emit_map_elt_val(&self, idx: uint, f: &fn());
 }
 
 pub trait Decoder {
@@ -96,6 +99,10 @@ pub trait Decoder {
 
     // Specialized types:
     fn read_option<T>(&self, f: &fn(bool) -> T) -> T;
+
+    fn read_map<T>(&self, f: &fn(uint) -> T) -> T;
+    fn read_map_elt_key<T>(&self, idx: uint, f: &fn() -> T) -> T;
+    fn read_map_elt_val<T>(&self, idx: uint, f: &fn() -> T) -> T;
 }
 
 pub trait Encodable<S:Encoder> {
@@ -525,6 +532,58 @@ impl<
                 d.read_seq_elt(3, || Decodable::decode(d)),
                 d.read_seq_elt(4, || Decodable::decode(d))
             )
+        }
+    }
+}
+
+impl<
+    E: Encoder,
+    K: Encodable<E> + Hash + IterBytes + Eq,
+    V: Encodable<E>
+> Encodable<E> for LinearMap<K, V> {
+    fn encode(&self, e: &E) {
+        do e.emit_map(self.len()) {
+            let mut i = 0;
+            for self.each |&(key, val)| {
+                e.emit_map_elt_key(i, || key.encode(e));
+                e.emit_map_elt_val(i, || val.encode(e));
+                i += 1;
+            }
+        }
+    }
+}
+
+impl<
+    D: Decoder,
+    K: Decodable<D> + Hash + IterBytes + Eq,
+    V: Decodable<D>
+> Decodable<D> for LinearMap<K, V> {
+    #[cfg(stage0)]
+    fn decode(d: &D) -> LinearMap<K, V> {
+        do d.read_map |len| {
+            let mut map = LinearMap::new();
+            map.reserve_at_least(len);
+            for uint::range(0, len) |i| {
+                let key = d.read_map_elt_key(i, || Decodable::decode(d));
+                let val = d.read_map_elt_val(i, || Decodable::decode(d));
+                map.insert(key, val);
+            }
+            map
+        }
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn decode(d: &D) -> LinearMap<K, V> {
+        do d.read_map |len| {
+            let mut map = LinearMap::with_capacity(len);
+            for uint::range(0, len) |i| {
+                let key = d.read_map_elt_key(i, || Decodable::decode(d));
+                let val = d.read_map_elt_val(i, || Decodable::decode(d));
+                map.insert(key, val);
+            }
+            map
         }
     }
 }

@@ -402,6 +402,21 @@ pub mod reader {
                 }
             }
         }
+
+        fn read_map<T>(&self, _f: &fn(uint) -> T) -> T {
+            debug!("read_map()");
+            fail!(~"read_map is unimplemented");
+        }
+
+        fn read_map_elt_key<T>(&self, idx: uint, _f: &fn() -> T) -> T {
+            debug!("read_map_elt_key(idx=%u)", idx);
+            fail!(~"read_map_elt_val is unimplemented");
+        }
+
+        fn read_map_elt_val<T>(&self, idx: uint, _f: &fn() -> T) -> T {
+            debug!("read_map_elt_val(idx=%u)", idx);
+            fail!(~"read_map_elt_val is unimplemented");
+        }
     }
 }
 
@@ -653,6 +668,18 @@ pub mod writer {
         }
         fn emit_option_some(&self, f: &fn()) {
             self.emit_enum_variant("Some", 1, 1, f)
+        }
+
+        fn emit_map(&self, _len: uint, _f: &fn()) {
+            fail!(~"emit_map is unimplemented");
+        }
+
+        fn emit_map_elt_key(&self, _idx: uint, _f: &fn()) {
+            fail!(~"emit_map_elt_key is unimplemented");
+        }
+
+        fn emit_map_elt_val(&self, _idx: uint, _f: &fn()) {
+            fail!(~"emit_map_elt_val is unimplemented");
         }
     }
 }
