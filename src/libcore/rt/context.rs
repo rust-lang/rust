@@ -160,7 +160,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: 
 type Registers = [uint, ..32];
 
 #[cfg(target_arch = "arm")]
-fn new_regs() -> ~Registers { ~[0, .. 32] }
+fn new_regs() -> ~Registers { ~([0, .. 32]) }
 
 #[cfg(target_arch = "arm")]
 fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
@@ -178,7 +178,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: 
 type Registers = [uint, ..32];
 
 #[cfg(target_arch = "mips")]
-fn new_regs() -> ~Registers { ~[0, .. 32] }
+fn new_regs() -> ~Registers { ~([0, .. 32]) }
 
 #[cfg(target_arch = "mips")]
 fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
