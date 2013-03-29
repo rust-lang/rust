@@ -549,7 +549,7 @@ use util::ppaux::note_and_explain_region;
 
 use core::cell::{Cell, empty_cell};
 use core::hashmap::linear::{LinearMap, LinearSet};
-use core::result::{Err, Ok, Result};
+use core::result::{Err, Ok};
 use core::to_bytes;
 use core::uint;
 use core::vec;

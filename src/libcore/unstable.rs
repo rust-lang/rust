@@ -15,7 +15,7 @@ use libc;
 use comm::{GenericChan, GenericPort};
 use prelude::*;
 use task;
-use task::{TaskBuilder, atomically};
+use task::atomically;
 
 #[path = "unstable/at_exit.rs"]
 pub mod at_exit;

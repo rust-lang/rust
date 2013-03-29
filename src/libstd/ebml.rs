@@ -54,7 +54,7 @@ pub enum EbmlEncoderTag {
 
 pub mod reader {
     use ebml::{Doc, EbmlEncoderTag, EsBool, EsEnum, EsEnumBody, EsEnumVid};
-    use ebml::{EsF32, EsF64, EsFloat, EsI16, EsI32, EsI64, EsI8, EsInt};
+    use ebml::{EsI16, EsI32, EsI64, EsI8, EsInt};
     use ebml::{EsLabel, EsOpaque, EsStr, EsU16, EsU32, EsU64, EsU8, EsUint};
     use ebml::{EsVec, EsVecElt, EsVecLen, TaggedDoc};
     use serialize;
@@ -443,10 +443,10 @@ pub mod reader {
 }
 
 pub mod writer {
-    use ebml::{Doc, EbmlEncoderTag, EsBool, EsEnum, EsEnumBody, EsEnumVid};
-    use ebml::{EsF32, EsF64, EsFloat, EsI16, EsI32, EsI64, EsI8, EsInt};
+    use ebml::{EbmlEncoderTag, EsBool, EsEnum, EsEnumBody, EsEnumVid};
+    use ebml::{EsI16, EsI32, EsI64, EsI8, EsInt};
     use ebml::{EsLabel, EsOpaque, EsStr, EsU16, EsU32, EsU64, EsU8, EsUint};
-    use ebml::{EsVec, EsVecElt, EsVecLen, TaggedDoc};
+    use ebml::{EsVec, EsVecElt, EsVecLen};
 
     use core::io;
     use core::str;

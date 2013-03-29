@@ -334,13 +334,13 @@ pub impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C> {
 
 pub mod flatteners {
     use ebml;
-    use flatpipes::{ByteChan, BytePort, Flattener, Unflattener};
+    use flatpipes::{Flattener, Unflattener};
     use io_util::BufReader;
     use json;
     use serialize::{Encoder, Decoder, Encodable, Decodable};
 
     use core::cast;
-    use core::io::{Writer, Reader, BytesWriter, ReaderUtil};
+    use core::io::{Writer, Reader, ReaderUtil};
     use core::prelude::*;
     use core::ptr;
     use core::sys::size_of;
@@ -637,7 +637,7 @@ mod test {
     use net::tcp::TcpSocketBuf;
 
     use core::int;
-    use core::io::{BytesReader, BytesWriter};
+    use core::io::BytesWriter;
     use core::prelude::*;
     use core::result;
     use core::task;

@@ -55,8 +55,8 @@ use middle::mem_categorization::{gc_ptr, region_ptr};
 use middle::ty;
 use util::common::indenter;
 
-use core::result::{Err, Ok, Result};
-use syntax::ast::{m_const, m_imm, m_mutbl};
+use core::result::{Err, Ok};
+use syntax::ast::m_imm;
 use syntax::ast;
 
 pub fn loan(bccx: @BorrowckCtxt,

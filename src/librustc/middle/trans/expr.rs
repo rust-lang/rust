@@ -123,7 +123,7 @@ use core::prelude::*;
 
 use back::abi;
 use lib;
-use lib::llvm::{ValueRef, TypeRef, llvm, True};
+use lib::llvm::{ValueRef, TypeRef, llvm};
 use metadata::csearch;
 use middle::borrowck::root_map_key;
 use middle::trans::_match;
@@ -132,7 +132,7 @@ use middle::trans::asm;
 use middle::trans::base;
 use middle::trans::base::*;
 use middle::trans::build::*;
-use middle::trans::callee::{AutorefArg, DoAutorefArg, DontAutorefArg};
+use middle::trans::callee::DoAutorefArg;
 use middle::trans::callee;
 use middle::trans::closure;
 use middle::trans::common::*;

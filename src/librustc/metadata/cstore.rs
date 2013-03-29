@@ -20,7 +20,7 @@ use metadata::decoder;
 use core::hashmap::linear::LinearMap;
 use core::vec;
 use std;
-use syntax::{ast, attr};
+use syntax::ast;
 use syntax::parse::token::ident_interner;
 
 // A map from external crate numbers (as decoded from some crate file) to

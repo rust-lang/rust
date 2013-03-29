@@ -10,10 +10,10 @@
 
 use core::prelude::*;
 
-use back::{link, abi};
+use back::abi;
 use driver;
 use lib::llvm::llvm;
-use lib::llvm::{ValueRef, TypeRef};
+use lib::llvm::ValueRef;
 use lib;
 use metadata::csearch;
 use middle::trans::base::*;
@@ -31,9 +31,9 @@ use middle::ty;
 use middle::ty::arg;
 use middle::typeck;
 use util::common::indenter;
-use util::ppaux::{ty_to_str, tys_to_str};
+use util::ppaux::ty_to_str;
 
-use syntax::ast_map::{path, path_mod, path_name, node_id_to_str};
+use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util;
 use syntax::{ast, ast_map};
 

@@ -11,7 +11,7 @@
 use core::prelude::*;
 
 use middle::ty;
-use middle::ty::{arg, canon_mode};
+use middle::ty::canon_mode;
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid,
                  br_fresh};
 use middle::ty::{ctxt, field, method};
@@ -27,7 +27,7 @@ use middle::ty::{ty_uint, ty_unboxed_vec, ty_infer};
 use metadata::encoder;
 use syntax::codemap::span;
 use syntax::print::pprust;
-use syntax::print::pprust::{path_to_str, mode_to_str};
+use syntax::print::pprust::mode_to_str;
 use syntax::{ast, ast_util};
 use syntax::ast_map;
 
