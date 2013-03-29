@@ -25,7 +25,7 @@ use util::ppaux::bound_region_to_str;
 use std::list::Nil;
 use std::list;
 use syntax::ast;
-use syntax::ast::{Onceness, m_const, purity, ret_style};
+use syntax::ast::{Onceness, m_const, purity};
 use syntax::codemap::span;
 
 

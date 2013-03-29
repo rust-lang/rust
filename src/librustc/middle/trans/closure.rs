@@ -12,13 +12,13 @@ use core::prelude::*;
 
 use back::abi;
 use back::link::{mangle_internal_name_by_path_and_seq};
-use lib::llvm::{llvm, ValueRef, TypeRef};
+use lib::llvm::{llvm, ValueRef};
 use middle::moves;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
-use middle::trans::datum::{Datum, INIT, ByRef, ByValue, ZeroMem};
+use middle::trans::datum::{Datum, INIT, ByRef, ZeroMem};
 use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::machine;
@@ -27,7 +27,7 @@ use middle::ty;
 use util::ppaux::ty_to_str;
 
 use syntax::ast;
-use syntax::ast_map::{path, path_mod, path_name};
+use syntax::ast_map::path_name;
 use syntax::ast_util;
 use syntax::parse::token::special_idents;
 

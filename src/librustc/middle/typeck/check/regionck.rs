@@ -30,13 +30,13 @@ this point a bit better.
 use core::prelude::*;
 
 use middle::freevars::get_freevars;
-use middle::pat_util::{pat_bindings, pat_is_binding};
+use middle::pat_util::pat_bindings;
 use middle::ty::{encl_region, re_scope};
 use middle::ty;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::check::lookup_def;
-use middle::typeck::infer::{fres, resolve_and_force_all_but_regions};
-use middle::typeck::infer::{resolve_type};
+use middle::typeck::infer::resolve_and_force_all_but_regions;
+use middle::typeck::infer::resolve_type;
 use util::ppaux::{note_and_explain_region, ty_to_str};
 
 use core::result;

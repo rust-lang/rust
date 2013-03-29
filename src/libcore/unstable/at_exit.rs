@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use cast;
-use libc::{c_void, size_t};
+use libc::size_t;
 use rand::RngUtil;
 use rand;
 use sys;

@@ -11,7 +11,8 @@
 use core::prelude::*;
 
 use back::abi;
-use lib::llvm::{llvm, ValueRef, TypeRef, Bool, True, False};
+use lib::llvm::{llvm, SetLinkage, InternalLinkage, PrivateLinkage,
+                ValueRef, TypeRef, Bool, True, False};
 use metadata::csearch;
 use middle::const_eval;
 use middle::trans::adt;
@@ -27,7 +28,7 @@ use middle::ty;
 use util::ppaux::{expr_repr, ty_to_str};
 
 use core::libc::c_uint;
-use syntax::{ast, ast_util, codemap, ast_map};
+use syntax::{ast, ast_util, ast_map};
 use util::ppaux::ty_to_str;
 
 pub fn const_lit(cx: @CrateContext, e: @ast::expr, lit: ast::lit)
@@ -104,6 +105,7 @@ fn const_addr_of(cx: @CrateContext, cv: ValueRef) -> ValueRef {
         };
         llvm::LLVMSetInitializer(gv, cv);
         llvm::LLVMSetGlobalConstant(gv, True);
+        SetLinkage(gv, PrivateLinkage);
         gv
     }
 }
@@ -483,6 +485,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                 };
                 llvm::LLVMSetInitializer(gv, cv);
                 llvm::LLVMSetGlobalConstant(gv, True);
+                SetLinkage(gv, PrivateLinkage);
                 let p = const_ptrcast(cx, gv, llunitty);
                 C_struct(~[p, sz])
               }

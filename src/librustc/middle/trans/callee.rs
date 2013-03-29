@@ -21,7 +21,7 @@ use core::prelude::*;
 use back::abi;
 use driver::session;
 use lib;
-use lib::llvm::{ValueRef, TypeRef};
+use lib::llvm::ValueRef;
 use lib::llvm::llvm;
 use metadata::csearch;
 use middle::trans::base;

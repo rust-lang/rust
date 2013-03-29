@@ -24,8 +24,7 @@ use middle::borrowck::{LoanKind, TotalFreeze, PartialFreeze,
                        TotalTake, PartialTake, Immobile};
 use middle::borrowck::ReqMaps;
 use middle::borrowck::loan;
-use middle::mem_categorization::{cat_binding, cat_discr, cmt, comp_variant};
-use middle::mem_categorization::{mem_categorization_ctxt};
+use middle::mem_categorization::{cmt, mem_categorization_ctxt};
 use middle::pat_util;
 use middle::ty::{ty_region};
 use middle::ty;
@@ -166,7 +165,7 @@ fn req_loans_in_expr(ex: @ast::expr,
         visit::visit_expr(ex, self, vt);
       }
 
-      ast::expr_method_call(rcvr, _, _, ref args, _) => {
+      ast::expr_method_call(_, _, _, ref args, _) => {
         let arg_tys = ty::ty_fn_args(ty::node_id_to_type(self.tcx(),
                                                          ex.callee_id));
         let scope_r = ty::re_scope(ex.id);

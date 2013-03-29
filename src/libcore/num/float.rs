@@ -24,12 +24,13 @@ use f64;
 use num::NumCast;
 use num::strconv;
 use num;
-use option::{None, Option, Some};
+use option::Option;
 use to_str;
 use from_str;
 
 #[cfg(notest)] use cmp::{Eq, Ord};
 #[cfg(notest)] use ops;
+#[cfg(test)] use option::{Some, None};
 
 pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
 pub use f64::logarithm;

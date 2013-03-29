@@ -33,7 +33,7 @@ extern mod syntax(vers = "0.6");
 use core::*;
 use core::io::WriterUtil;
 
-use syntax::{ast, ast_util, fold, visit, codemap};
+use syntax::{ast, fold, visit, codemap};
 use syntax::parse;
 use syntax::print::pprust;
 use syntax::diagnostic;

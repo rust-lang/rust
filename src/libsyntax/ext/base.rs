@@ -12,12 +12,12 @@ use core::prelude::*;
 
 use ast;
 use codemap;
-use codemap::{CodeMap, span, ExpnInfo, ExpandedFrom, dummy_sp};
-use codemap::{CallInfo, NameAndSpan};
+use codemap::{CodeMap, span, ExpnInfo, ExpandedFrom};
+use codemap::CallInfo;
 use diagnostic::span_handler;
 use ext;
 use parse;
-use parse::{parser, token};
+use parse::token;
 
 use core::vec;
 use core::hashmap::linear::LinearMap;

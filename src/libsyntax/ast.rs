@@ -10,7 +10,7 @@
 
 // The Rust abstract syntax tree.
 
-use codemap::{span, FileName, spanned};
+use codemap::{span, spanned};
 
 use core::cast;
 use core::option::{None, Option, Some};

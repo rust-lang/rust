@@ -13,7 +13,7 @@
 
 use core::prelude::*;
 
-use middle::ty::{Vid, param_ty};
+use middle::ty::param_ty;
 use middle::ty;
 
 use core::hashmap::linear::LinearMap;
@@ -24,7 +24,6 @@ use core::vec;
 use syntax::ast::*;
 use syntax::diagnostic::span_handler;
 use syntax::print::pprust::*;
-use middle::ty::Vid;
 
 pub struct ctxt {
     diag: @span_handler,

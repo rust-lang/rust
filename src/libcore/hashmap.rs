@@ -681,7 +681,7 @@ pub mod linear {
 
     #[test]
     mod test_map {
-        use container::{Container, Mutable, Map, Set};
+        use container::{Container, Map, Set};
         use option::{None, Some};
         use hashmap::linear::LinearMap;
         use hashmap::linear;
@@ -859,7 +859,7 @@ pub mod linear {
 #[test]
     mod test_set {
         use hashmap::linear;
-        use container::{Container, Mutable, Map, Set};
+        use container::{Container, Map, Set};
         use vec;
 
         #[test]

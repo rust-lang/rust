@@ -26,7 +26,7 @@ use syntax::codemap::{span, dummy_sp};
 use syntax::diagnostic::span_handler;
 use syntax::parse::token::ident_interner;
 use syntax::visit;
-use syntax::{ast, ast_util};
+use syntax::ast;
 
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.

@@ -10,7 +10,7 @@
 
 use prelude::*;
 use libc::{size_t, ssize_t, c_int, c_void};
-use cast::{transmute, transmute_mut_region};
+use cast::transmute_mut_region;
 use super::super::uvll;
 use super::super::uvll::*;
 use super::{Loop, Watcher, Request, UvError, Buf, Callback, NativeHandle, NullCallback,
