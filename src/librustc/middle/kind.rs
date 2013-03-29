@@ -20,7 +20,7 @@ use util::ppaux::{ty_to_str, tys_to_str};
 
 use syntax::ast::*;
 use syntax::attr::attrs_contains_name;
-use syntax::codemap::{span, spanned};
+use syntax::codemap::span;
 use syntax::print::pprust::expr_to_str;
 use syntax::{visit, ast_util};
 

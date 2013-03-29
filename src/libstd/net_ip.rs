@@ -149,7 +149,7 @@ pub fn get_addr(node: &str, iotask: &iotask)
 }
 
 pub mod v4 {
-    use net::ip::{IpAddr, Ipv4, Ipv6, ParseAddrErr};
+    use net::ip::{IpAddr, Ipv4, ParseAddrErr};
     use uv::ll;
     use uv_ip4_addr = uv::ll::ip4_addr;
     use uv_ip4_name = uv::ll::ip4_name;

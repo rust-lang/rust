@@ -14,7 +14,7 @@ Runtime type reflection
 
 */
 
-use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
+use intrinsic::{TyDesc, TyVisitor};
 use libc::c_void;
 use sys;
 use vec;

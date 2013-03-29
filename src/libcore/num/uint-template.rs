@@ -16,7 +16,7 @@ use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
 use num;
-use option::{None, Option, Some};
+use option::Option;
 use prelude::*;
 
 #[cfg(notest)] use cmp::{Eq, Ord};

@@ -13,7 +13,7 @@
 use core::cmp::{Eq, Ord};
 use core::prelude::*;
 use core::util;
-use core::vec::{len, push};
+use core::vec::len;
 use core::vec;
 
 type Le<'self, T> = &'self fn(v1: &T, v2: &T) -> bool;

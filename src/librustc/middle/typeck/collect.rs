@@ -33,7 +33,7 @@ are represented as `ty_param()` instances.
 use core::prelude::*;
 
 use metadata::csearch;
-use middle::ty::{InstantiatedTraitRef, arg};
+use middle::ty::InstantiatedTraitRef;
 use middle::ty::{substs, ty_param_bounds_and_ty, ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::astconv::{AstConv, ty_of_arg};

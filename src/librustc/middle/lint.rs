@@ -35,8 +35,8 @@ use std::smallintmap::SmallIntMap;
 use syntax::attr;
 use syntax::codemap::span;
 use syntax::codemap;
-use syntax::print::pprust::{expr_to_str, mode_to_str, pat_to_str};
-use syntax::{ast, ast_util, visit};
+use syntax::print::pprust::mode_to_str;
+use syntax::{ast, visit};
 
 /**
  * A 'lint' check is a kind of miscellaneous constraint that a user _might_

@@ -23,7 +23,7 @@ use core::uint;
 use core::vec;
 use syntax::ast;
 use syntax::ast::*;
-use syntax::codemap::{respan, dummy_sp};
+use syntax::codemap::dummy_sp;
 use syntax::opt_vec;
 
 // Compact string representation for ty::t values. API ty_str &

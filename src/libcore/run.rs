@@ -458,7 +458,7 @@ pub fn waitpid(pid: pid_t) -> int {
 
 #[cfg(test)]
 mod tests {
-    use option::{None, Some};
+    use option::None;
     use os;
     use run::{readclose, writeclose};
     use run;

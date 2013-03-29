@@ -18,7 +18,7 @@ use result::Result;
 
 use int;
 use libc;
-use libc::{c_int, c_long, c_uint, c_void, size_t, ssize_t};
+use libc::{c_int, c_long, c_void, size_t, ssize_t};
 use libc::consts::os::posix88::*;
 use os;
 use cast;

@@ -12,7 +12,7 @@ use core::prelude::*;
 
 use core::io::{ReaderUtil, WriterUtil};
 use core::io;
-use core::libc::{c_int, pid_t};
+use core::libc::c_int;
 use core::os;
 use core::run::spawn_process;
 use core::run;

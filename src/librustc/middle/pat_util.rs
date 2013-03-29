@@ -15,7 +15,7 @@ use middle::resolve;
 use core::hashmap::linear::LinearMap;
 use syntax::ast::*;
 use syntax::ast_util::{path_to_ident, walk_pat};
-use syntax::codemap::{span, respan};
+use syntax::codemap::span;
 
 pub type PatIdMap = LinearMap<ident, node_id>;
 

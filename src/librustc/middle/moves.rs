@@ -211,8 +211,7 @@ use core::prelude::*;
 use middle::pat_util::{pat_bindings};
 use middle::freevars;
 use middle::ty;
-use middle::typeck::{method_map, method_map_entry};
-use middle::typeck::check::{DerefArgs, DoDerefArgs, DontDerefArgs};
+use middle::typeck::method_map;
 use util::ppaux;
 use util::common::indenter;
 
@@ -221,8 +220,7 @@ use core::vec;
 use syntax::ast::*;
 use syntax::ast_util;
 use syntax::visit;
-use syntax::visit::{fn_kind, fk_item_fn, fk_method, fk_dtor,
-                    fk_anon, fk_fn_block, vt};
+use syntax::visit::vt;
 use syntax::print::pprust;
 use syntax::codemap::span;
 
