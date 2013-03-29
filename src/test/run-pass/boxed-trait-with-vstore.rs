@@ -19,7 +19,7 @@ impl Foo for int {
 }
 
 pub fn main() {
-    let x = @3 as @Foo;
+    let x: @Foo = @3;
     x.foo();
 }
 
