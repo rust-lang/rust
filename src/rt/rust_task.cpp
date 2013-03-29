@@ -457,8 +457,9 @@ rust_task::get_next_stack_size(size_t min, size_t current, size_t requested) {
         "min: %" PRIdPTR " current: %" PRIdPTR " requested: %" PRIdPTR,
         min, current, requested);
 
-    // Allocate at least enough to accomodate the next frame
-    size_t sz = std::max(min, requested);
+    // Allocate at least enough to accomodate the next frame, plus a little
+    // slack to avoid thrashing
+    size_t sz = std::max(min, requested + (requested / 2));
 
     // And double the stack size each allocation
     const size_t max = 1024 * 1024;

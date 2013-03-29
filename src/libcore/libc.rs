@@ -1073,8 +1073,10 @@ pub mod funcs {
                 // Omitted: putc, putchar (might be macros).
                 unsafe fn puts(s: *c_char) -> c_int;
                 unsafe fn ungetc(c: c_int, stream: *FILE) -> c_int;
+                #[fast_ffi]
                 unsafe fn fread(ptr: *mut c_void, size: size_t,
                          nobj: size_t, stream: *FILE) -> size_t;
+                #[fast_ffi]
                 unsafe fn fwrite(ptr: *c_void, size: size_t,
                           nobj: size_t, stream: *FILE) -> size_t;
                 unsafe fn fseek(stream: *FILE, offset: c_long,
@@ -1108,9 +1110,13 @@ pub mod funcs {
                               -> c_long;
                 unsafe fn strtoul(s: *c_char, endp: **c_char, base: c_int)
                                -> c_ulong;
+                #[fast_ffi]
                 unsafe fn calloc(nobj: size_t, size: size_t) -> *c_void;
+                #[fast_ffi]
                 unsafe fn malloc(size: size_t) -> *c_void;
+                #[fast_ffi]
                 unsafe fn realloc(p: *c_void, size: size_t) -> *c_void;
+                #[fast_ffi]
                 unsafe fn free(p: *c_void);
                 unsafe fn abort() -> !;
                 unsafe fn exit(status: c_int) -> !;
@@ -1304,6 +1310,7 @@ pub mod funcs {
                         textmode: c_int) -> c_int;
 
                 #[link_name = "_read"]
+                #[fast_ffi]
                 unsafe fn read(fd: c_int, buf: *mut c_void, count: c_uint)
                             -> c_int;
 
@@ -1314,6 +1321,7 @@ pub mod funcs {
                 unsafe fn unlink(c: *c_char) -> c_int;
 
                 #[link_name = "_write"]
+                #[fast_ffi]
                 unsafe fn write(fd: c_int, buf: *c_void, count: c_uint)
                              -> c_int;
             }
@@ -1466,6 +1474,7 @@ pub mod funcs {
                 unsafe fn pathconf(path: *c_char, name: c_int) -> c_long;
                 unsafe fn pause() -> c_int;
                 unsafe fn pipe(fds: *mut c_int) -> c_int;
+                #[fast_ffi]
                 unsafe fn read(fd: c_int, buf: *mut c_void,
                         count: size_t) -> ssize_t;
                 unsafe fn rmdir(path: *c_char) -> c_int;
@@ -1478,6 +1487,7 @@ pub mod funcs {
                 unsafe fn tcgetpgrp(fd: c_int) -> pid_t;
                 unsafe fn ttyname(fd: c_int) -> *c_char;
                 unsafe fn unlink(c: *c_char) -> c_int;
+                #[fast_ffi]
                 unsafe fn write(fd: c_int, buf: *c_void, count: size_t)
                              -> ssize_t;
             }

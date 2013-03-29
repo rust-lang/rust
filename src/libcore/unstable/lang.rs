@@ -35,6 +35,14 @@ pub mod rustrt {
 
         #[rust_stack]
         unsafe fn rust_upcall_free(ptr: *c_char);
+
+        #[fast_ffi]
+        unsafe fn rust_upcall_malloc_noswitch(td: *c_char,
+                                              size: uintptr_t)
+                                           -> *c_char;
+
+        #[fast_ffi]
+        unsafe fn rust_upcall_free_noswitch(ptr: *c_char);
     }
 }
 
@@ -81,7 +89,7 @@ pub unsafe fn exchange_free(ptr: *c_char) {
 #[lang="malloc"]
 #[inline(always)]
 pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    return rustrt::rust_upcall_malloc(td, size);
+    return rustrt::rust_upcall_malloc_noswitch(td, size);
 }
 
 // NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
@@ -90,7 +98,7 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 #[lang="free"]
 #[inline(always)]
 pub unsafe fn local_free(ptr: *c_char) {
-    rustrt::rust_upcall_free(ptr);
+    rustrt::rust_upcall_free_noswitch(ptr);
 }
 
 #[lang="borrow_as_imm"]

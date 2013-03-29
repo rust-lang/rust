@@ -416,9 +416,16 @@ pub fn trans_expr_fn(bcx: block,
                                                  None => None};
             let ClosureResult {llbox, cdata_ty, bcx}
                 = build_closure(bcx, cap_vars, sigil, ret_handle);
-            trans_closure(ccx, sub_path, decl,
-                          body, llfn, no_self,
-                          /*bad*/ copy bcx.fcx.param_substs, user_id, None,
+            trans_closure(ccx,
+                          sub_path,
+                          decl,
+                          body,
+                          llfn,
+                          no_self,
+                          /*bad*/ copy bcx.fcx.param_substs,
+                          user_id,
+                          None,
+                          [],
                           |fcx| load_environment(fcx, cdata_ty, cap_vars,
                                                  ret_handle.is_some(), sigil),
                           |bcx| {
