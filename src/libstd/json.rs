@@ -158,13 +158,6 @@ impl serialize::Encoder for Encoder {
         f();
     }
 
-    fn emit_tup(&self, len: uint, f: &fn()) {
-        self.emit_seq(len, f);
-    }
-    fn emit_tup_elt(&self, idx: uint, f: &fn()) {
-        self.emit_seq_elt(idx, f)
-    }
-
     fn emit_option(&self, f: &fn()) { f(); }
     fn emit_option_none(&self) { self.emit_nil(); }
     fn emit_option_some(&self, f: &fn()) { f(); }
@@ -286,12 +279,6 @@ impl serialize::Encoder for PrettyEncoder {
         self.wr.write_str(escape_str(name));
         self.wr.write_str(": ");
         f();
-    }
-    fn emit_tup(&self, sz: uint, f: &fn()) {
-        self.emit_seq(sz, f);
-    }
-    fn emit_tup_elt(&self, idx: uint, f: &fn()) {
-        self.emit_seq_elt(idx, f)
     }
 
     fn emit_option(&self, f: &fn()) { f(); }
@@ -902,24 +889,6 @@ impl<'self> serialize::Decoder for Decoder<'self> {
             Null => fail!(~"null"),
 
             //_ => fail!(fmt!("not an object: %?", *top))
-        }
-    }
-
-    fn read_tup<T>(&self, len: uint, f: &fn() -> T) -> T {
-        debug!("read_tup(len=%u)", len);
-        let value = f();
-        self.pop();
-        value
-    }
-
-    fn read_tup_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
-        debug!("read_tup_elt(idx=%u)", idx);
-        match *self.peek() {
-            List(ref list) => {
-                self.stack.push(&list[idx]);
-                f()
-            }
-            _ => fail!(~"not a list")
         }
     }
 

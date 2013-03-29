@@ -53,9 +53,6 @@ pub trait Encoder {
     fn emit_struct(&self, name: &str, _len: uint, f: &fn());
     fn emit_field(&self, f_name: &str, f_idx: uint, f: &fn());
 
-    fn emit_tup(&self, len: uint, f: &fn());
-    fn emit_tup_elt(&self, idx: uint, f: &fn());
-
     // Specialized types:
     fn emit_option(&self, f: &fn());
     fn emit_option_none(&self);
@@ -98,9 +95,6 @@ pub trait Decoder {
     fn read_rec<T>(&self, f: &fn() -> T) -> T;
     fn read_struct<T>(&self, name: &str, _len: uint, f: &fn() -> T) -> T;
     fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T;
-
-    fn read_tup<T>(&self, sz: uint, f: &fn() -> T) -> T;
-    fn read_tup_elt<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
     // Specialized types:
     fn read_option<T>(&self, f: &fn(bool) -> T) -> T;
