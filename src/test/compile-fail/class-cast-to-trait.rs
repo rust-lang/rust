@@ -58,6 +58,6 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 }
 
 fn main() {
-  let nyan : @noisy  = @cat(0, 2, ~"nyan") as @noisy;
+  let nyan : @noisy  = @cat(0, 2, ~"nyan");
   nyan.eat(); //~ ERROR type `@noisy` does not implement any method in scope named `eat`
 }

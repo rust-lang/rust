@@ -16,7 +16,8 @@ impl<A:Copy> repeat<A> for @A {
 
 fn repeater<A:Copy>(v: @A) -> @repeat<A> {
     // Note: owned kind is not necessary as A appears in the trait type
-    @v as @repeat<A> // No
+    let repeat: @repeat<A> = @v;    // No
+    repeat
 }
 
 pub fn main() {

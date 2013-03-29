@@ -34,7 +34,7 @@ fn print_s(s: &S) {
 pub fn main() {
     let s: @S = @S { s: 5 };
     print_s(s);
-    let t: @T = s as @T;
+    let t: @T = s;
     print_t(t);
 
 }

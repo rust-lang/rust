@@ -28,7 +28,7 @@ impl Foo for Bar {
 
 fn main() {
     let x = ~Bar { x: 10 };
-    let y: ~Foo = x as ~Foo;
+    let y: ~Foo = x;
     let _z = copy y; //~ ERROR copying a value of non-copyable type
 }
 

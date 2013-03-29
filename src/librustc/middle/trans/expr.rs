@@ -147,8 +147,8 @@ use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::ty;
 use middle::ty::struct_mutable_fields;
-use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn,
-                 AutoDerefRef, AutoAddEnv};
+use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
+use middle::ty::{AutoDerefRef, AutoAddEnv, AutoObject};
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
@@ -237,6 +237,29 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
 
             return DatumBlock {bcx: bcx, datum: datum};
         }
+        Some(&@AutoObject(sigil_and_region, trait_def_id, _)) => {
+            let mut bcx = bcx;
+
+            let adjusted_ty = expr_ty_adjusted(bcx, expr);
+            let scratch = scratch_datum(bcx, adjusted_ty, false);
+
+            let trait_store = match sigil_and_region {
+                ty::BorrowedSigilAndRegion(r) => ty::RegionTraitStore(r),
+                ty::OwnedSigilAndRegion => ty::UniqTraitStore,
+                ty::ManagedSigilAndRegion => ty::BoxTraitStore,
+            };
+
+            bcx = meth::trans_trait_cast(bcx,
+                                         expr,
+                                         expr.id,
+                                         SaveIn(scratch.val),
+                                         trait_store,
+                                         false);    // no adjustments
+
+            let scratch = scratch.to_appropriate_datum(bcx);
+            scratch.add_clean(bcx);
+            return DatumBlock { bcx: bcx, datum: scratch };
+        }
     };
 
     fn auto_ref(bcx: block, datum: Datum) -> DatumBlock {
@@ -292,16 +315,27 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
 }
 
 pub fn trans_into(bcx: block, expr: @ast::expr, dest: Dest) -> block {
+    debug!("checking adjustment for id %d", expr.id as int);
     if bcx.tcx().adjustments.contains_key(&expr.id) {
         // use trans_to_datum, which is mildly less efficient but
         // which will perform the adjustments:
         let datumblock = trans_to_datum(bcx, expr);
+        debug!("storing adjusted with llty %s into %s",
+               datumblock.datum.to_str(bcx.ccx()),
+               dest.to_str(bcx.ccx()));
         return match dest {
             Ignore => datumblock.bcx,
             SaveIn(lldest) => datumblock.store_to(expr.id, INIT, lldest)
         };
     }
 
+    trans_into_unadjusted(bcx, expr, dest)
+}
+
+pub fn trans_into_unadjusted(bcx: block,
+                             expr: @ast::expr,
+                             dest: Dest)
+                          -> block {
     let ty = expr_ty(bcx, expr);
 
     debug!("trans_into_unadjusted(expr=%s, dest=%s)",
@@ -324,6 +358,9 @@ pub fn trans_into(bcx: block, expr: @ast::expr, dest: Dest) -> block {
     return match kind {
         ty::LvalueExpr => {
             let datumblock = trans_lvalue_unadjusted(bcx, expr);
+            debug!("storing LvalueExpr with llty %s into %s",
+                   datumblock.datum.to_str(bcx.ccx()),
+                   dest.to_str(bcx.ccx()));
             match dest {
                 Ignore => datumblock.bcx,
                 SaveIn(lldest) => datumblock.store_to(expr.id, INIT, lldest)
@@ -668,8 +705,12 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_cast(val, _) => {
             match ty::get(node_id_type(bcx, expr.id)).sty {
                 ty::ty_trait(_, _, store) => {
-                    return meth::trans_trait_cast(bcx, val, expr.id, dest,
-                                                  store);
+                    return meth::trans_trait_cast(bcx,
+                                                  val,
+                                                  expr.id,
+                                                  dest,
+                                                  store,
+                                                  true);
                 }
                 _ => {
                     bcx.tcx().sess.span_bug(expr.span,

@@ -108,7 +108,7 @@ fn query(cmd: ~[~str], sb: TcpSocketBuf) -> Result {
   let cmd = cmd_to_str(cmd);
   //io::println(cmd);
   sb.write_str(cmd);
-  let res = parse_response(@sb as @io::Reader);
+  let res = parse_response(@sb);
   //io::println(fmt!("%?", res));
   res
 }
@@ -116,7 +116,7 @@ fn query(cmd: ~[~str], sb: TcpSocketBuf) -> Result {
 fn query2(cmd: ~[~str]) -> Result {
   let _cmd = cmd_to_str(cmd);
     do io::with_str_reader(~"$3\r\nXXX\r\n") |sb| {
-    let res = parse_response(@sb as @io::Reader);
+    let res = parse_response(@sb);
     io::println(fmt!("%?", res));
     res
     }

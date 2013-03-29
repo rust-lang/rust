@@ -825,14 +825,18 @@ pub fn trans_trait_cast(bcx: block,
                         val: @ast::expr,
                         id: ast::node_id,
                         dest: expr::Dest,
-                        store: ty::TraitStore)
+                        store: ty::TraitStore,
+                        do_adjustments: bool)
                      -> block {
     let mut bcx = bcx;
     let _icx = bcx.insn_ctxt("impl::trans_cast");
 
     let lldest = match dest {
         Ignore => {
-            return expr::trans_into(bcx, val, Ignore);
+            if do_adjustments {
+                return expr::trans_into(bcx, val, Ignore);
+            }
+            return expr::trans_into_unadjusted(bcx, val, Ignore);
         }
         SaveIn(dest) => dest
     };
@@ -847,7 +851,13 @@ pub fn trans_trait_cast(bcx: block,
             llboxdest = PointerCast(bcx,
                                     llboxdest,
                                     T_ptr(type_of(bcx.ccx(), v_ty)));
-            bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
+            if do_adjustments {
+                bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
+            } else {
+                bcx = expr::trans_into_unadjusted(bcx,
+                                                  val,
+                                                  SaveIn(llboxdest));
+            }
         }
         ty::UniqTraitStore => {
             // Translate the uniquely-owned value into the second element of
@@ -856,7 +866,14 @@ pub fn trans_trait_cast(bcx: block,
             llvaldest = PointerCast(bcx,
                                     llvaldest,
                                     T_ptr(type_of(bcx.ccx(), v_ty)));
-            bcx = expr::trans_into(bcx, val, SaveIn(llvaldest));
+
+            if do_adjustments {
+                bcx = expr::trans_into(bcx, val, SaveIn(llvaldest));
+            } else {
+                bcx = expr::trans_into_unadjusted(bcx,
+                                                  val,
+                                                  SaveIn(llvaldest));
+            }
 
             // Get the type descriptor of the wrapped value and store it into
             // the third element of the triple as well.
