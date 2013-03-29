@@ -73,7 +73,7 @@ pub mod pipes {
     pub fn send<T:Owned>(mut p: send_packet<T>, +payload: T) {
         let mut p = p.unwrap();
         let mut p = unsafe { uniquify(p) };
-        fail_unless!((*p).payload.is_none());
+        assert!((*p).payload.is_none());
         (*p).payload = Some(payload);
         let old_state = swap_state_rel(&mut (*p).state, full);
         match old_state {
@@ -110,7 +110,7 @@ pub mod pipes {
                 return Some(payload.unwrap())
               }
               terminated => {
-                fail_unless!(old_state == terminated);
+                assert!(old_state == terminated);
                 return None;
               }
             }

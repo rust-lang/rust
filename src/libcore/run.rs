@@ -495,7 +495,7 @@ mod tests {
 
         debug!(copy expected);
         debug!(copy actual);
-        fail_unless!((expected == actual));
+        assert!((expected == actual));
     }
 
     #[test]
@@ -504,7 +504,7 @@ mod tests {
                                      &None, &None,
                                      0i32, 0i32, 0i32);
         let status = run::waitpid(pid);
-        fail_unless!(status == 1);
+        assert!(status == 1);
     }
 
 }

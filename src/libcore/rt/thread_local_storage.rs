@@ -21,12 +21,12 @@ pub type Key = pthread_key_t;
 
 #[cfg(unix)]
 pub unsafe fn create(key: &mut Key) {
-    unsafe { fail_unless!(0 == pthread_key_create(key, null())); }
+    unsafe { assert!(0 == pthread_key_create(key, null())); }
 }
 
 #[cfg(unix)]
 pub unsafe fn set(key: Key, value: *mut c_void) {
-    unsafe { fail_unless!(0 == pthread_setspecific(key, value)); }
+    unsafe { assert!(0 == pthread_setspecific(key, value)); }
 }
 
 #[cfg(unix)]
@@ -58,12 +58,12 @@ pub type Key = DWORD;
 pub unsafe fn create(key: &mut Key) {
     static TLS_OUT_OF_INDEXES: DWORD = 0xFFFFFFFF;
     *key = unsafe { TlsAlloc() };
-    fail_unless!(*key != TLS_OUT_OF_INDEXES);
+    assert!(*key != TLS_OUT_OF_INDEXES);
 }
 
 #[cfg(windows)]
 pub unsafe fn set(key: Key, value: *mut c_void) {
-    unsafe { fail_unless!(0 != TlsSetValue(key, value)) }
+    unsafe { assert!(0 != TlsSetValue(key, value)) }
 }
 
 #[cfg(windows)]
@@ -88,10 +88,10 @@ fn tls_smoke_test() {
         create(&mut key);
         set(key, transmute(value));
         let value: ~int = transmute(get(key));
-        fail_unless!(value == ~20);
+        assert!(value == ~20);
         let value = ~30;
         set(key, transmute(value));
         let value: ~int = transmute(get(key));
-        fail_unless!(value == ~30);
+        assert!(value == ~30);
     }
 }

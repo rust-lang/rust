@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn main() {
-    fail_unless!((~[~100])[0] == ~100);
+    assert!((~[~100])[0] == ~100);
 }

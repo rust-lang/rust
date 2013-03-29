@@ -20,5 +20,5 @@ macro_rules! foo {
 }
 
 pub fn main() {
-    fail_unless!(foo!(m::t) == 10);
+    assert!(foo!(m::t) == 10);
 }

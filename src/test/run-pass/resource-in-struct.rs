@@ -41,5 +41,5 @@ pub fn main() {
     let c = @mut true;
     sink(none);
     sink(some(close_res(c)));
-    fail_unless!((!*c));
+    assert!((!*c));
 }

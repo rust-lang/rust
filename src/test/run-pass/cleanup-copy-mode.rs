@@ -12,7 +12,7 @@
 fn adder(+x: @int, +y: @int) -> int { return *x + *y; }
 fn failer() -> @int { fail!(); }
 pub fn main() {
-    fail_unless!(result::is_err(&task::try(|| {
+    assert!(result::is_err(&task::try(|| {
         adder(@2, failer()); ()
     })));
 }

@@ -16,5 +16,5 @@ pub fn main() {
                   ~[true, false, false, true, true],
                   |i, b| if *b { -(*i) } else { *i } );
     error!(v.clone());
-    fail_unless!((v == ~[-1, 2, 3, -4, -5]));
+    assert!((v == ~[-1, 2, 3, -4, -5]));
 }

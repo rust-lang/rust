@@ -14,18 +14,18 @@ fn borrow(x: &int, f: &fn(x: &int)) {
     let before = *x;
     f(x);
     let after = *x;
-    fail_unless!(before == after);
+    assert!(before == after);
 }
 
 pub fn main() {
     let mut x = @3;
     do borrow(x) |b_x| {
-        fail_unless!(*b_x == 3);
-        fail_unless!(ptr::addr_of(&(*x)) == ptr::addr_of(&(*b_x)));
+        assert!(*b_x == 3);
+        assert!(ptr::addr_of(&(*x)) == ptr::addr_of(&(*b_x)));
         x = @22;
 
         debug!("ptr::addr_of(*b_x) = %x", ptr::addr_of(&(*b_x)) as uint);
-        fail_unless!(*b_x == 3);
-        fail_unless!(ptr::addr_of(&(*x)) != ptr::addr_of(&(*b_x)));
+        assert!(*b_x == 3);
+        assert!(ptr::addr_of(&(*x)) != ptr::addr_of(&(*b_x)));
     }
 }

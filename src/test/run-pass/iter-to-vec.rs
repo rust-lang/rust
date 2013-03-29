@@ -9,10 +9,10 @@
 // except according to those terms.
 
 pub fn main() {
-    fail_unless!([1u, 3u].to_vec() == ~[1u, 3u]);
+    assert!([1u, 3u].to_vec() == ~[1u, 3u]);
     let e: ~[uint] = ~[];
-    fail_unless!(e.to_vec() == ~[]);
-    fail_unless!(iter::to_vec(&None::<uint>) == ~[]);
-    fail_unless!(iter::to_vec(&Some(1u)) == ~[1u]);
-    fail_unless!(iter::to_vec(&Some(2u)) == ~[2u]);
+    assert!(e.to_vec() == ~[]);
+    assert!(iter::to_vec(&None::<uint>) == ~[]);
+    assert!(iter::to_vec(&Some(1u)) == ~[1u]);
+    assert!(iter::to_vec(&Some(2u)) == ~[2u]);
 }

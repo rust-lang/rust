@@ -16,7 +16,7 @@
 // Tests for match as expressions resulting in boxed types
 fn test_box() {
     let res = match true { true => { ~100 }, _ => fail!() };
-    fail_unless!((*res == 100));
+    assert!((*res == 100));
 }
 
 pub fn main() { test_box(); }

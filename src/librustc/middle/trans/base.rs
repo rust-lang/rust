@@ -314,7 +314,7 @@ pub fn non_gc_box_cast(bcx: block, val: ValueRef) -> ValueRef {
     unsafe {
         debug!("non_gc_box_cast");
         add_comment(bcx, ~"non_gc_box_cast");
-        fail_unless!(llvm::LLVMGetPointerAddressSpace(val_ty(val)) ==
+        assert!(llvm::LLVMGetPointerAddressSpace(val_ty(val)) ==
                      gc_box_addrspace || bcx.unreachable);
         let non_gc_t = T_ptr(llvm::LLVMGetElementType(val_ty(val)));
         PointerCast(bcx, val, non_gc_t)
@@ -489,7 +489,7 @@ pub fn get_res_dtor(ccx: @CrateContext, did: ast::def_id,
         let did = if did.crate != ast::local_crate {
             inline::maybe_instantiate_inline(ccx, did, true)
         } else { did };
-        fail_unless!(did.crate == ast::local_crate);
+        assert!(did.crate == ast::local_crate);
         let (val, _) =
             monomorphize::monomorphic_fn(ccx, did, substs, None, None, None);
 
@@ -1336,7 +1336,7 @@ pub fn cleanup_and_leave(bcx: block,
         }
         cur = match cur.parent {
           Some(next) => next,
-          None => { fail_unless!(upto.is_none()); break; }
+          None => { assert!(upto.is_none()); break; }
         };
     }
     match leave {
@@ -1523,7 +1523,7 @@ pub fn alloc_ty(bcx: block, t: ty::t) -> ValueRef {
     let ccx = bcx.ccx();
     let llty = type_of::type_of(ccx, t);
     if ty::type_has_params(t) { debug!("%s", ty_to_str(ccx.tcx, t)); }
-    fail_unless!(!ty::type_has_params(t));
+    assert!(!ty::type_has_params(t));
     let val = alloca(bcx, llty);
     return val;
 }
@@ -2471,7 +2471,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
             // Want parent_id and not id, because id is the dtor's type
             let class_ty = ty::lookup_item_type(tcx, parent_id).ty;
             // This code shouldn't be reached if the class is generic
-            fail_unless!(!ty::type_has_params(class_ty));
+            assert!(!ty::type_has_params(class_ty));
             let lldty = unsafe {
                 T_fn(~[
                     T_ptr(type_of(ccx, ty::mk_nil(tcx))),
@@ -2491,7 +2491,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
             let llfn;
             match v.node.kind {
                 ast::tuple_variant_kind(ref args) => {
-                    fail_unless!(args.len() != 0u);
+                    assert!(args.len() != 0u);
                     let pth = vec::append(/*bad*/copy *pth,
                                           ~[path_name(enm.ident),
                                             path_name((*v).node.name)]);

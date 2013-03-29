@@ -607,56 +607,56 @@ pub fn test_num() {
     let ten: f64 = num::cast(10);
     let two: f64 = num::cast(2);
 
-    fail_unless!((ten.add(&two)    == num::cast(12)));
-    fail_unless!((ten.sub(&two)    == num::cast(8)));
-    fail_unless!((ten.mul(&two)    == num::cast(20)));
-    fail_unless!((ten.div(&two)    == num::cast(5)));
-    fail_unless!((ten.modulo(&two) == num::cast(0)));
+    assert!((ten.add(&two)    == num::cast(12)));
+    assert!((ten.sub(&two)    == num::cast(8)));
+    assert!((ten.mul(&two)    == num::cast(20)));
+    assert!((ten.div(&two)    == num::cast(5)));
+    assert!((ten.modulo(&two) == num::cast(0)));
 }
 
 #[test]
 fn test_numcast() {
-    fail_unless!((20u   == 20f64.to_uint()));
-    fail_unless!((20u8  == 20f64.to_u8()));
-    fail_unless!((20u16 == 20f64.to_u16()));
-    fail_unless!((20u32 == 20f64.to_u32()));
-    fail_unless!((20u64 == 20f64.to_u64()));
-    fail_unless!((20i   == 20f64.to_int()));
-    fail_unless!((20i8  == 20f64.to_i8()));
-    fail_unless!((20i16 == 20f64.to_i16()));
-    fail_unless!((20i32 == 20f64.to_i32()));
-    fail_unless!((20i64 == 20f64.to_i64()));
-    fail_unless!((20f   == 20f64.to_float()));
-    fail_unless!((20f32 == 20f64.to_f32()));
-    fail_unless!((20f64 == 20f64.to_f64()));
+    assert!((20u   == 20f64.to_uint()));
+    assert!((20u8  == 20f64.to_u8()));
+    assert!((20u16 == 20f64.to_u16()));
+    assert!((20u32 == 20f64.to_u32()));
+    assert!((20u64 == 20f64.to_u64()));
+    assert!((20i   == 20f64.to_int()));
+    assert!((20i8  == 20f64.to_i8()));
+    assert!((20i16 == 20f64.to_i16()));
+    assert!((20i32 == 20f64.to_i32()));
+    assert!((20i64 == 20f64.to_i64()));
+    assert!((20f   == 20f64.to_float()));
+    assert!((20f32 == 20f64.to_f32()));
+    assert!((20f64 == 20f64.to_f64()));
 
-    fail_unless!((20f64 == NumCast::from(20u)));
-    fail_unless!((20f64 == NumCast::from(20u8)));
-    fail_unless!((20f64 == NumCast::from(20u16)));
-    fail_unless!((20f64 == NumCast::from(20u32)));
-    fail_unless!((20f64 == NumCast::from(20u64)));
-    fail_unless!((20f64 == NumCast::from(20i)));
-    fail_unless!((20f64 == NumCast::from(20i8)));
-    fail_unless!((20f64 == NumCast::from(20i16)));
-    fail_unless!((20f64 == NumCast::from(20i32)));
-    fail_unless!((20f64 == NumCast::from(20i64)));
-    fail_unless!((20f64 == NumCast::from(20f)));
-    fail_unless!((20f64 == NumCast::from(20f32)));
-    fail_unless!((20f64 == NumCast::from(20f64)));
+    assert!((20f64 == NumCast::from(20u)));
+    assert!((20f64 == NumCast::from(20u8)));
+    assert!((20f64 == NumCast::from(20u16)));
+    assert!((20f64 == NumCast::from(20u32)));
+    assert!((20f64 == NumCast::from(20u64)));
+    assert!((20f64 == NumCast::from(20i)));
+    assert!((20f64 == NumCast::from(20i8)));
+    assert!((20f64 == NumCast::from(20i16)));
+    assert!((20f64 == NumCast::from(20i32)));
+    assert!((20f64 == NumCast::from(20i64)));
+    assert!((20f64 == NumCast::from(20f)));
+    assert!((20f64 == NumCast::from(20f32)));
+    assert!((20f64 == NumCast::from(20f64)));
 
-    fail_unless!((20f64 == num::cast(20u)));
-    fail_unless!((20f64 == num::cast(20u8)));
-    fail_unless!((20f64 == num::cast(20u16)));
-    fail_unless!((20f64 == num::cast(20u32)));
-    fail_unless!((20f64 == num::cast(20u64)));
-    fail_unless!((20f64 == num::cast(20i)));
-    fail_unless!((20f64 == num::cast(20i8)));
-    fail_unless!((20f64 == num::cast(20i16)));
-    fail_unless!((20f64 == num::cast(20i32)));
-    fail_unless!((20f64 == num::cast(20i64)));
-    fail_unless!((20f64 == num::cast(20f)));
-    fail_unless!((20f64 == num::cast(20f32)));
-    fail_unless!((20f64 == num::cast(20f64)));
+    assert!((20f64 == num::cast(20u)));
+    assert!((20f64 == num::cast(20u8)));
+    assert!((20f64 == num::cast(20u16)));
+    assert!((20f64 == num::cast(20u32)));
+    assert!((20f64 == num::cast(20u64)));
+    assert!((20f64 == num::cast(20i)));
+    assert!((20f64 == num::cast(20i8)));
+    assert!((20f64 == num::cast(20i16)));
+    assert!((20f64 == num::cast(20i32)));
+    assert!((20f64 == num::cast(20i64)));
+    assert!((20f64 == num::cast(20f)));
+    assert!((20f64 == num::cast(20f32)));
+    assert!((20f64 == num::cast(20f64)));
 }
 
 //

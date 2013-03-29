@@ -704,7 +704,7 @@ pub mod node {
      */
     pub fn of_substr_unsafer(str: @~str, byte_start: uint, byte_len: uint,
                              char_len: uint) -> @Node {
-        fail_unless!((byte_start + byte_len <= str::len(*str)));
+        assert!((byte_start + byte_len <= str::len(*str)));
         let candidate = @Leaf(Leaf {
             byte_offset: byte_start,
             byte_len: byte_len,
@@ -1313,8 +1313,8 @@ mod tests {
 
     #[test]
     fn trivial() {
-        fail_unless!(char_len(empty()) == 0u);
-        fail_unless!(byte_len(empty()) == 0u);
+        assert!(char_len(empty()) == 0u);
+        assert!(byte_len(empty()) == 0u);
     }
 
     #[test]
@@ -1322,8 +1322,8 @@ mod tests {
         let sample = @~"0123456789ABCDE";
         let r      = of_str(sample);
 
-        fail_unless!(char_len(r) == str::char_len(*sample));
-        fail_unless!(rope_to_string(r) == *sample);
+        assert!(char_len(r) == str::char_len(*sample));
+        assert!(rope_to_string(r) == *sample);
     }
 
     #[test]
@@ -1338,8 +1338,8 @@ mod tests {
         }
         let sample = @*buf;
         let r      = of_str(sample);
-        fail_unless!(char_len(r) == str::char_len(*sample));
-        fail_unless!(rope_to_string(r) == *sample);
+        assert!(char_len(r) == str::char_len(*sample));
+        assert!(rope_to_string(r) == *sample);
 
         let mut string_iter = 0u;
         let string_len  = str::len(*sample);
@@ -1359,7 +1359,7 @@ mod tests {
             }
         }
 
-        fail_unless!(equal);
+        assert!(equal);
     }
 
     #[test]
@@ -1384,7 +1384,7 @@ mod tests {
             }
         }
 
-        fail_unless!(len == str::char_len(*sample));
+        assert!(len == str::char_len(*sample));
     }
 
     #[test]
@@ -1405,11 +1405,11 @@ mod tests {
         while i < 8 { r2 = append_rope(r2, r2); i+= 1;}
 
 
-        fail_unless!(eq(r1, r2));
+        assert!(eq(r1, r2));
         let r3 = bal(r2);
-        fail_unless!(char_len(r1) == char_len(r3));
+        assert!(char_len(r1) == char_len(r3));
 
-        fail_unless!(eq(r1, r3));
+        assert!(eq(r1, r3));
     }
 
     #[test]
@@ -1426,23 +1426,23 @@ mod tests {
         for uint::range(0u, char_len(r)) |i| {
             r2 = append_char(r2, char_at(r, i));
         }
-        fail_unless!(eq(r, r2));
+        assert!(eq(r, r2));
 
         let mut r3 = empty();
         for uint::range(0u, char_len(r)) |i| {
             r3 = prepend_char(r3, char_at(r, char_len(r) - i - 1u));
         }
-        fail_unless!(eq(r, r3));
+        assert!(eq(r, r3));
 
         //Additional sanity checks
         let balr = bal(r);
         let bal2 = bal(r2);
         let bal3 = bal(r3);
-        fail_unless!(eq(r, balr));
-        fail_unless!(eq(r, bal2));
-        fail_unless!(eq(r, bal3));
-        fail_unless!(eq(r2, r3));
-        fail_unless!(eq(bal2, bal3));
+        assert!(eq(r, balr));
+        assert!(eq(r, bal2));
+        assert!(eq(r, bal3));
+        assert!(eq(r2, r3));
+        assert!(eq(bal2, bal3));
     }
 
     #[test]
@@ -1457,6 +1457,6 @@ mod tests {
         //Same rope, obtained with rope::concat
         let r2 = concat(vec::from_elem(10u, chunk));
 
-        fail_unless!(eq(r, r2));
+        assert!(eq(r, r2));
     }
 }

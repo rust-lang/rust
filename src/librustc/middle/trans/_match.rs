@@ -1259,7 +1259,7 @@ pub fn compile_submatch(bcx: block,
     /*
       For an empty match, a fall-through case must exist
      */
-    fail_unless!((m.len() > 0u || chk.is_some()));
+    assert!((m.len() > 0u || chk.is_some()));
     let _icx = bcx.insn_ctxt("match::compile_submatch");
     let mut bcx = bcx;
     let tcx = bcx.tcx(), dm = tcx.def_map;

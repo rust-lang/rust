@@ -18,6 +18,6 @@ static C: E = S1 { u: 23 };
 pub fn main() {
     match C {
         S0 { _ } => fail!(),
-        S1 { u } => fail_unless!(u == 23)
+        S1 { u } => assert!(u == 23)
     }
 }

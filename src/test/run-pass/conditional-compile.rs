@@ -88,7 +88,7 @@ pub fn main() { fail!() }
 pub fn main() {
     // Exercise some of the configured items in ways that wouldn't be possible
     // if they had the bogus definition
-    fail_unless!((b));
+    assert!((b));
     let x: t = true;
     let y: tg = bar;
 
@@ -104,7 +104,7 @@ fn test_in_fn_ctxt() {
     #[cfg(bogus)]
     static i: int = 0;
     static i: int = 1;
-    fail_unless!((i == 1));
+    assert!((i == 1));
 }
 
 mod test_foreign_items {

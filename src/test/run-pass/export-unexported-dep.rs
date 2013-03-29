@@ -24,7 +24,7 @@ mod foo {
 
     pub fn f() -> t { return t1; }
 
-    pub fn g(v: t) { fail_unless!((v == t1)); }
+    pub fn g(v: t) { assert!((v == t1)); }
 }
 
 pub fn main() { foo::g(foo::f()); }

@@ -87,29 +87,29 @@ pub fn main() {
                          v6: Some(C { f: 31 })}};
 
     let p = get_v1(&a);
-    fail_unless!(*p == a.value.v1);
+    assert!(*p == a.value.v1);
 
     let p = get_v2(&a, 1);
-    fail_unless!(*p == a.value.v2[1]);
+    assert!(*p == a.value.v2[1]);
 
     let p = get_v3(&a, 1);
-    fail_unless!(*p == a.value.v3[1]);
+    assert!(*p == a.value.v3[1]);
 
     let p = get_v4(&a, 1);
-    fail_unless!(*p == a.value.v4.f);
+    assert!(*p == a.value.v4.f);
 
     let p = get_v5(&a, 1);
-    fail_unless!(*p == a.value.v5.f);
+    assert!(*p == a.value.v5.f);
 
     let p = get_v6_a(&a, 1);
-    fail_unless!(*p == a.value.v6.get().f);
+    assert!(*p == a.value.v6.get().f);
 
     let p = get_v6_b(&a, 1);
-    fail_unless!(*p == a.value.v6.get().f);
+    assert!(*p == a.value.v6.get().f);
 
     let p = get_v6_c(&a, 1);
-    fail_unless!(*p == a.value.v6.get().f);
+    assert!(*p == a.value.v6.get().f);
 
     let p = get_v5_ref(&a, 1);
-    fail_unless!(*p == a.value.v5.f);
+    assert!(*p == a.value.v5.f);
 }

@@ -20,7 +20,7 @@ pub fn main() {
 
     match getopts(args, opts) {
         result::Ok(ref m)  =>
-            fail_unless!(!opt_present(m, "b")),
+            assert!(!opt_present(m, "b")),
         result::Err(ref f) => fail!(fail_str(copy *f))
     };
 

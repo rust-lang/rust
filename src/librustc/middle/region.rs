@@ -463,7 +463,7 @@ pub impl DetermineRpCtxt {
     /// variance `variance`.  If `id` was already parameterized, then
     /// the new variance is joined with the old variance.
     fn add_rp(&mut self, id: ast::node_id, variance: region_variance) {
-        fail_unless!(id != 0);
+        assert!(id != 0);
         let old_variance = self.region_paramd_items.find(&id).
                                 map_consume(|x| *x);
         let joined_variance = match old_variance {

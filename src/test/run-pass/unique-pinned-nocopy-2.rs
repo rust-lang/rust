@@ -32,5 +32,5 @@ pub fn main() {
     {
         let j = ~r(i);
     }
-    fail_unless!(*i == 1);
+    assert!(*i == 1);
 }

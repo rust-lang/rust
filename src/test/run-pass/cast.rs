@@ -14,13 +14,13 @@
 // -*- rust -*-
 pub fn main() {
     let i: int = 'Q' as int;
-    fail_unless!((i == 0x51));
+    assert!((i == 0x51));
     let u: u32 = i as u32;
-    fail_unless!((u == 0x51 as u32));
-    fail_unless!((u == 'Q' as u32));
-    fail_unless!((i as u8 == 'Q' as u8));
-    fail_unless!((i as u8 as i8 == 'Q' as u8 as i8));
-    fail_unless!((0x51 as char == 'Q'));
-    fail_unless!((true == 1 as bool));
-    fail_unless!((0 as u32 == false as u32));
+    assert!((u == 0x51 as u32));
+    assert!((u == 'Q' as u32));
+    assert!((i as u8 == 'Q' as u8));
+    assert!((i as u8 as i8 == 'Q' as u8 as i8));
+    assert!((0x51 as char == 'Q'));
+    assert!((true == 1 as bool));
+    assert!((0 as u32 == false as u32));
 }

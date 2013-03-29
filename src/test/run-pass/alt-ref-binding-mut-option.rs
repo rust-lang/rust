@@ -14,5 +14,5 @@ pub fn main() {
       None => {}
       Some(ref mut p) => { *p += 1; }
     }
-    fail_unless!(v == Some(23));
+    assert!(v == Some(23));
 }

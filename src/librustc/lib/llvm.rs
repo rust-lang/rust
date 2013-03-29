@@ -1472,8 +1472,8 @@ pub struct TypeNames {
 }
 
 pub fn associate_type(tn: @TypeNames, s: @str, t: TypeRef) {
-    fail_unless!(tn.type_names.insert(t, s));
-    fail_unless!(tn.named_types.insert(s, t));
+    assert!(tn.type_names.insert(t, s));
+    assert!(tn.named_types.insert(s, t));
 }
 
 pub fn type_has_name(tn: @TypeNames, t: TypeRef) -> Option<@str> {

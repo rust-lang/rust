@@ -12,5 +12,5 @@ pub fn main() {
     let i = ~100;
     let mut j;
     j = i;
-    fail_unless!(*j == 100);
+    assert!(*j == 100);
 }

@@ -23,6 +23,6 @@ pub fn main() {
 
         //let bt1 = sys::frame_address();
         //debug!("%?", bt1);
-        //fail_unless!(bt0 == bt1);
+        //assert!(bt0 == bt1);
     }
 }

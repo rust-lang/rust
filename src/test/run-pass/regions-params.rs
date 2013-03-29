@@ -23,5 +23,5 @@ fn parameterized(x: &uint) -> uint {
 
 pub fn main() {
     let x = 3u;
-    fail_unless!(parameterized(&x) == 3u);
+    assert!(parameterized(&x) == 3u);
 }

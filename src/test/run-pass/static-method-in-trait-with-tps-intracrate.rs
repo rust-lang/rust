@@ -31,5 +31,5 @@ impl Deserializer for FromThinAir {
 pub fn main() {
     let d = FromThinAir { dummy: () };
     let i: int = Deserializable::deserialize(&d);
-    fail_unless!(i == 22);
+    assert!(i == 22);
 }

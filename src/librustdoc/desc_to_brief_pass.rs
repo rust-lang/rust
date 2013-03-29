@@ -84,13 +84,13 @@ fn fold_impl(fold: &fold::Fold<()>, doc: doc::ImplDoc) -> doc::ImplDoc {
 #[test]
 fn should_promote_desc() {
     let doc = test::mk_doc(~"#[doc = \"desc\"] mod m { }");
-    fail_unless!(doc.cratemod().mods()[0].brief() == Some(~"desc"));
+    assert!(doc.cratemod().mods()[0].brief() == Some(~"desc"));
 }
 
 #[test]
 fn should_promote_trait_method_desc() {
     let doc = test::mk_doc(~"trait i { #[doc = \"desc\"] fn a(); }");
-    fail_unless!(doc.cratemod().traits()[0].methods[0].brief ==
+    assert!(doc.cratemod().traits()[0].methods[0].brief ==
         Some(~"desc"));
 }
 
@@ -98,7 +98,7 @@ fn should_promote_trait_method_desc() {
 fn should_promote_impl_method_desc() {
     let doc = test::mk_doc(
         ~"impl int { #[doc = \"desc\"] fn a() { } }");
-    fail_unless!(doc.cratemod().impls()[0].methods[0].brief == Some(~"desc"));
+    assert!(doc.cratemod().impls()[0].methods[0].brief == Some(~"desc"));
 }
 
 #[cfg(test)]
@@ -222,20 +222,20 @@ fn paragraphs(s: &str) -> ~[~str] {
 #[test]
 fn test_paragraphs_1() {
     let paras = paragraphs(~"1\n\n2");
-    fail_unless!(paras == ~[~"1", ~"2"]);
+    assert!(paras == ~[~"1", ~"2"]);
 }
 
 #[test]
 fn test_paragraphs_2() {
     let paras = paragraphs(~"\n\n1\n1\n\n2\n\n");
-    fail_unless!(paras == ~[~"1\n1", ~"2"]);
+    assert!(paras == ~[~"1\n1", ~"2"]);
 }
 
 #[test]
 fn should_promote_short_descs() {
     let desc = Some(~"desc");
     let brief = extract(copy desc);
-    fail_unless!(brief == desc);
+    assert!(brief == desc);
 }
 
 #[test]
@@ -249,7 +249,7 @@ Scotland in the mid 12th century, although it may have been built by
 King Henry II of England when he took control of England'snorthern
 counties.");
     let brief = extract(desc);
-    fail_unless!(brief == None);
+    assert!(brief == None);
 }
 
 #[test]
@@ -263,7 +263,7 @@ Scotland in the mid 12th century, although it may have been built by
 King Henry II of England when he took control of England'snorthern
 counties.");
     let brief = extract(desc);
-    fail_unless!(brief == Some(
+    assert!(brief == Some(
         ~"Warkworth Castle is a ruined medieval building in the town"));
 }
 
@@ -278,7 +278,7 @@ Scotland in the mid 12th century, although it may have been built by
 King Henry II of England when he took control of England'snorthern
 counties.");
     let brief = extract(desc);
-    fail_unless!(brief == Some(
+    assert!(brief == Some(
         ~"Warkworth..Castle is a ruined medieval building in the town"));
 }
 
@@ -293,6 +293,6 @@ Scotland in the mid 12th century, although it may have been built by
 King Henry II of England when he took control of England'snorthern
 counties.");
     let brief = extract(desc);
-    fail_unless!(brief == Some(
+    assert!(brief == Some(
         ~"Warkworth... Castle is a ruined medieval building in the town"));
 }

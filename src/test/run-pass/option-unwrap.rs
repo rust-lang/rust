@@ -38,5 +38,5 @@ pub fn main() {
         let c = unwrap(b);
     }
 
-    fail_unless!(*x == 0);
+    assert!(*x == 0);
 }

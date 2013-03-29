@@ -86,13 +86,13 @@ fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
 #[test]
 fn should_add_fn_sig() {
     let doc = test::mk_doc(~"fn a<T>() -> int { }");
-    fail_unless!(doc.cratemod().fns()[0].sig == Some(~"fn a<T>() -> int"));
+    assert!(doc.cratemod().fns()[0].sig == Some(~"fn a<T>() -> int"));
 }
 
 #[test]
 fn should_add_foreign_fn_sig() {
     let doc = test::mk_doc(~"extern mod a { fn a<T>() -> int; }");
-    fail_unless!(doc.cratemod().nmods()[0].fns[0].sig ==
+    assert!(doc.cratemod().nmods()[0].fns[0].sig ==
         Some(~"fn a<T>() -> int"));
 }
 
@@ -122,7 +122,7 @@ fn fold_const(
 #[test]
 fn should_add_const_types() {
     let doc = test::mk_doc(~"static a: bool = true;");
-    fail_unless!(doc.cratemod().consts()[0].sig == Some(~"bool"));
+    assert!(doc.cratemod().consts()[0].sig == Some(~"bool"));
 }
 
 fn fold_enum(
@@ -166,7 +166,7 @@ fn fold_enum(
 #[test]
 fn should_add_variant_sigs() {
     let doc = test::mk_doc(~"enum a { b(int) }");
-    fail_unless!(doc.cratemod().enums()[0].variants[0].sig ==
+    assert!(doc.cratemod().enums()[0].variants[0].sig ==
         Some(~"b(int)"));
 }
 
@@ -263,7 +263,7 @@ fn get_method_sig(
 #[test]
 fn should_add_trait_method_sigs() {
     let doc = test::mk_doc(~"trait i { fn a<T>(&mut self) -> int; }");
-    fail_unless!(doc.cratemod().traits()[0].methods[0].sig
+    assert!(doc.cratemod().traits()[0].methods[0].sig
         == Some(~"fn a<T>(&mut self) -> int"));
 }
 
@@ -308,31 +308,31 @@ fn fold_impl(
 #[test]
 fn should_add_impl_bounds() {
     let doc = test::mk_doc(~"impl<T, U: Copy, V: Copy + Clone> Option<T, U, V> { }");
-    fail_unless!(doc.cratemod().impls()[0].bounds_str == Some(~"<T, U: Copy, V: Copy + Clone>"));
+    assert!(doc.cratemod().impls()[0].bounds_str == Some(~"<T, U: Copy, V: Copy + Clone>"));
 }
 
 #[test]
 fn should_add_impl_trait_types() {
     let doc = test::mk_doc(~"impl j for int { fn a<T>() { } }");
-    fail_unless!(doc.cratemod().impls()[0].trait_types[0] == ~"j");
+    assert!(doc.cratemod().impls()[0].trait_types[0] == ~"j");
 }
 
 #[test]
 fn should_not_add_impl_trait_types_if_none() {
     let doc = test::mk_doc(~"impl int { fn a() { } }");
-    fail_unless!(vec::len(doc.cratemod().impls()[0].trait_types) == 0);
+    assert!(vec::len(doc.cratemod().impls()[0].trait_types) == 0);
 }
 
 #[test]
 fn should_add_impl_self_ty() {
     let doc = test::mk_doc(~"impl int { fn a() { } }");
-    fail_unless!(doc.cratemod().impls()[0].self_ty == Some(~"int"));
+    assert!(doc.cratemod().impls()[0].self_ty == Some(~"int"));
 }
 
 #[test]
 fn should_add_impl_method_sigs() {
     let doc = test::mk_doc(~"impl int { fn a<T>(&self) -> int { fail!() } }");
-    fail_unless!(doc.cratemod().impls()[0].methods[0].sig
+    assert!(doc.cratemod().impls()[0].methods[0].sig
         == Some(~"fn a<T>(&self) -> int"));
 }
 
@@ -372,7 +372,7 @@ fn fold_type(
 #[test]
 fn should_add_type_signatures() {
     let doc = test::mk_doc(~"type t<T> = int;");
-    fail_unless!(doc.cratemod().types()[0].sig == Some(~"type t<T> = int"));
+    assert!(doc.cratemod().types()[0].sig == Some(~"type t<T> = int"));
 }
 
 fn fold_struct(
@@ -425,7 +425,7 @@ fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
 #[test]
 fn should_add_struct_defs() {
     let doc = test::mk_doc(~"struct S { field: () }");
-    fail_unless!((&doc.cratemod().structs()[0].sig).get().contains(
+    assert!((&doc.cratemod().structs()[0].sig).get().contains(
         "struct S {"));
 }
 
@@ -433,14 +433,14 @@ fn should_add_struct_defs() {
 fn should_not_serialize_struct_drop_blocks() {
     // All we care about are the fields
     let doc = test::mk_doc(~"struct S { field: (), drop { } }");
-    fail_unless!(!(&doc.cratemod().structs()[0].sig).get().contains("drop"));
+    assert!(!(&doc.cratemod().structs()[0].sig).get().contains("drop"));
 }
 
 #[test]
 fn should_not_serialize_struct_attrs() {
     // All we care about are the fields
     let doc = test::mk_doc(~"#[wut] struct S { field: () }");
-    fail_unless!(!(&doc.cratemod().structs()[0].sig).get().contains("wut"));
+    assert!(!(&doc.cratemod().structs()[0].sig).get().contains("wut"));
 }
 
 #[cfg(test)]

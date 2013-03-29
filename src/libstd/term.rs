@@ -60,7 +60,7 @@ pub fn color_supported() -> bool {
 }
 
 pub fn set_color(writer: @io::Writer, first_char: u8, color: u8) {
-    fail_unless!((color < 16u8));
+    assert!((color < 16u8));
     esc(writer);
     let mut color = color;
     if color >= 8u8 { writer.write(~['1' as u8, ';' as u8]); color -= 8u8; }

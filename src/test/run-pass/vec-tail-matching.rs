@@ -10,18 +10,18 @@ pub fn main() {
     ];
     match x {
         [first, ..tail] => {
-            fail_unless!(first.string == ~"foo");
-            fail_unless!(tail.len() == 2);
-            fail_unless!(tail[0].string == ~"bar");
-            fail_unless!(tail[1].string == ~"baz");
+            assert!(first.string == ~"foo");
+            assert!(tail.len() == 2);
+            assert!(tail[0].string == ~"bar");
+            assert!(tail[1].string == ~"baz");
 
             match tail {
                 [Foo { _ }, _, Foo { _ }, ..tail] => {
                     ::core::util::unreachable();
                 }
                 [Foo { string: a }, Foo { string: b }] => {
-                    fail_unless!(a == ~"bar");
-                    fail_unless!(b == ~"baz");
+                    assert!(a == ~"bar");
+                    assert!(b == ~"baz");
                 }
                 _ => {
                     ::core::util::unreachable();

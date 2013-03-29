@@ -247,19 +247,19 @@ pub impl Datum {
                       action: CopyAction, datum: Datum) -> block {
         debug!("store_to_datum(self=%s, action=%?, datum=%s)",
                self.to_str(bcx.ccx()), action, datum.to_str(bcx.ccx()));
-        fail_unless!(datum.mode.is_by_ref());
+        assert!(datum.mode.is_by_ref());
         self.store_to(bcx, id, action, datum.val)
     }
 
     fn move_to_datum(&self, bcx: block, action: CopyAction, datum: Datum)
                     -> block {
-        fail_unless!(datum.mode.is_by_ref());
+        assert!(datum.mode.is_by_ref());
         self.move_to(bcx, action, datum.val)
     }
 
     fn copy_to_datum(&self, bcx: block, action: CopyAction, datum: Datum)
                     -> block {
-        fail_unless!(datum.mode.is_by_ref());
+        assert!(datum.mode.is_by_ref());
         self.copy_to(bcx, action, datum.val)
     }
 
@@ -372,7 +372,7 @@ pub impl Datum {
          * Schedules this datum for cleanup in `bcx`.  The datum
          * must be an rvalue. */
 
-        fail_unless!(self.source == RevokeClean);
+        assert!(self.source == RevokeClean);
         match self.mode {
             ByValue => {
                 add_clean_temp_immediate(bcx, self.val, self.ty);
@@ -393,7 +393,7 @@ pub impl Datum {
                     // Lvalues which potentially need to be dropped
                     // must be passed by ref, so that we can zero them
                     // out.
-                    fail_unless!(self.mode.is_by_ref());
+                    assert!(self.mode.is_by_ref());
                     zero_mem(bcx, self.val, self.ty);
                 }
             }
@@ -697,7 +697,7 @@ pub impl Datum {
                         // changing the type, so I am putting this
                         // code in place here to do the right
                         // thing if this change ever goes through.
-                        fail_unless!(ty::type_is_immediate(ty));
+                        assert!(ty::type_is_immediate(ty));
                         (Some(Datum {ty: ty, ..*self}), bcx)
                     }
                 };
@@ -737,7 +737,7 @@ pub impl Datum {
                         // except for changing the type, so I am putting this
                         // code in place here to do the right thing if this
                         // change ever goes through.
-                        fail_unless!(ty::type_is_immediate(ty));
+                        assert!(ty::type_is_immediate(ty));
                         (Some(Datum {ty: ty, ..*self}), bcx)
                     }
                 }
@@ -797,7 +797,7 @@ pub impl Datum {
         // either we were asked to deref a specific number of times,
         // in which case we should have, or we asked to deref as many
         // times as we can
-        fail_unless!(derefs == max || max == uint::max_value);
+        assert!(derefs == max || max == uint::max_value);
         DatumBlock { bcx: bcx, datum: datum }
     }
 
@@ -817,7 +817,7 @@ pub impl DatumBlock {
     }
 
     fn assert_by_ref(&self) -> DatumBlock {
-        fail_unless!(self.datum.mode.is_by_ref());
+        assert!(self.datum.mode.is_by_ref());
         *self
     }
 

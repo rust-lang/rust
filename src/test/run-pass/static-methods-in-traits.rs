@@ -29,7 +29,7 @@ mod a {
 pub fn main() {
 	let x: int = a::Foo::foo();
 	let y: uint = a::Foo::foo();
-	fail_unless!(x == 3);
-	fail_unless!(y == 5);
+	assert!(x == 3);
+	assert!(y == 5);
 }
 

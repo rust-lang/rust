@@ -267,8 +267,8 @@ pub fn last_opt<'r,T>(v: &'r [T]) -> Option<&'r T> {
 /// Return a slice that points into another slice.
 #[inline(always)]
 pub fn slice<'r,T>(v: &'r [T], start: uint, end: uint) -> &'r [T] {
-    fail_unless!(start <= end);
-    fail_unless!(end <= len(v));
+    assert!(start <= end);
+    assert!(end <= len(v));
     do as_imm_buf(v) |p, _len| {
         unsafe {
             ::cast::reinterpret_cast(
@@ -282,8 +282,8 @@ pub fn slice<'r,T>(v: &'r [T], start: uint, end: uint) -> &'r [T] {
 #[inline(always)]
 pub fn mut_slice<'r,T>(v: &'r mut [T], start: uint, end: uint)
                     -> &'r mut [T] {
-    fail_unless!(start <= end);
-    fail_unless!(end <= v.len());
+    assert!(start <= end);
+    assert!(end <= v.len());
     do as_mut_buf(v) |p, _len| {
         unsafe {
             ::cast::reinterpret_cast(
@@ -297,8 +297,8 @@ pub fn mut_slice<'r,T>(v: &'r mut [T], start: uint, end: uint)
 #[inline(always)]
 pub fn const_slice<'r,T>(v: &'r const [T], start: uint, end: uint)
                       -> &'r const [T] {
-    fail_unless!(start <= end);
-    fail_unless!(end <= len(v));
+    assert!(start <= end);
+    assert!(end <= len(v));
     do as_const_buf(v) |p, _len| {
         unsafe {
             ::cast::reinterpret_cast(
@@ -454,7 +454,7 @@ pub fn partitioned<T:Copy>(v: &[T], f: &fn(&T) -> bool) -> (~[T], ~[T]) {
 /// Removes the first element from a vector and return it
 pub fn shift<T>(v: &mut ~[T]) -> T {
     unsafe {
-        fail_unless!(!v.is_empty());
+        assert!(!v.is_empty());
 
         if v.len() == 1 { return v.pop() }
 
@@ -471,7 +471,7 @@ pub fn shift<T>(v: &mut ~[T]) -> T {
         // Save the last element. We're going to overwrite its position
         let mut work_elt = v.pop();
         // We still should have room to work where what last element was
-        fail_unless!(capacity(v) >= ln);
+        assert!(capacity(v) >= ln);
         // Pretend like we have the original length so we can use
         // the vector copy_memory to overwrite the hole we just made
         raw::set_len(&mut *v, ln);
@@ -517,7 +517,7 @@ pub fn unshift<T>(v: &mut ~[T], x: T) {
 /// elements after position i one position to the right.
 pub fn insert<T>(v: &mut ~[T], i: uint, x: T) {
     let len = v.len();
-    fail_unless!(i <= len);
+    assert!(i <= len);
 
     v.push(x);
     let mut j = len;
@@ -531,7 +531,7 @@ pub fn insert<T>(v: &mut ~[T], i: uint, x: T) {
 /// all elements after position i one position to the left.
 pub fn remove<T>(v: &mut ~[T], i: uint) -> T {
     let len = v.len();
-    fail_unless!(i < len);
+    assert!(i < len);
 
     let mut j = i;
     while j < len - 1 {
@@ -656,7 +656,7 @@ pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
 /// Shorten a vector, dropping excess elements.
 pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
     do as_mut_buf(*v) |p, oldlen| {
-        fail_unless!(newlen <= oldlen);
+        assert!(newlen <= oldlen);
         unsafe {
             // This loop is optimized out for non-drop types.
             for uint::range(newlen, oldlen) |i| {
@@ -1160,8 +1160,8 @@ pub fn position_between<T>(v: &[T],
                            end: uint,
                            f: &fn(t: &T) -> bool)
                         -> Option<uint> {
-    fail_unless!(start <= end);
-    fail_unless!(end <= len(v));
+    assert!(start <= end);
+    assert!(end <= len(v));
     let mut i = start;
     while i < end { if f(&v[i]) { return Some::<uint>(i); } i += 1u; }
     None
@@ -1193,8 +1193,8 @@ pub fn rposition<T>(v: &[T], f: &fn(t: &T) -> bool) -> Option<uint> {
  */
 pub fn rposition_between<T>(v: &[T], start: uint, end: uint,
                              f: &fn(t: &T) -> bool) -> Option<uint> {
-    fail_unless!(start <= end);
-    fail_unless!(end <= len(v));
+    assert!(start <= end);
+    assert!(end <= len(v));
     let mut i = end;
     while i > start {
         if f(&v[i - 1u]) { return Some::<uint>(i - 1u); }
@@ -1250,7 +1250,7 @@ pub fn zip_slice<T:Copy,U:Copy>(v: &const [T], u: &const [U])
     let mut zipped = ~[];
     let sz = len(v);
     let mut i = 0u;
-    fail_unless!(sz == len(u));
+    assert!(sz == len(u));
     while i < sz {
         unsafe { zipped.push((v[i], u[i])); i += 1u; }
     }
@@ -1265,7 +1265,7 @@ pub fn zip_slice<T:Copy,U:Copy>(v: &const [T], u: &const [U])
  */
 pub fn zip<T, U>(mut v: ~[T], mut u: ~[U]) -> ~[(T, U)] {
     let mut i = len(v);
-    fail_unless!(i == len(u));
+    assert!(i == len(u));
     let mut w = with_capacity(i);
     while i > 0 {
         unsafe { w.push((v.pop(),u.pop())); }
@@ -1444,7 +1444,7 @@ pub fn eachi_reverse<'r,T>(v: &'r [T], blk: &fn(i: uint, v: &'r T) -> bool) {
  */
 #[inline]
 pub fn each2<U, T>(v1: &[U], v2: &[T], f: &fn(u: &U, t: &T) -> bool) {
-    fail_unless!(len(v1) == len(v2));
+    assert!(len(v1) == len(v2));
     for uint::range(0u, len(v1)) |i| {
         if !f(&v1[i], &v2[i]) {
             return;
@@ -1488,7 +1488,7 @@ pub fn each_permutation<T:Copy>(v: &[T], put: &fn(ts: &[T]) -> bool) {
 
 pub fn windowed<TT:Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
     let mut ww = ~[];
-    fail_unless!(1u <= nn);
+    assert!(1u <= nn);
     for vec::eachi (xx) |ii, _x| {
         let len = xx.len();
         if ii+nn <= len {
@@ -2267,8 +2267,8 @@ pub mod raw {
     #[inline(always)]
     pub unsafe fn copy_memory<T>(dst: &mut [T], src: &const [T],
                                  count: uint) {
-        fail_unless!(dst.len() >= count);
-        fail_unless!(src.len() >= count);
+        assert!(dst.len() >= count);
+        assert!(src.len() >= count);
 
         do as_mut_buf(dst) |p_dst, _len_dst| {
             do as_const_buf(src) |p_src, _len_src| {
@@ -2604,21 +2604,21 @@ mod tests {
             let a = ~[1, 2, 3];
             let mut ptr = raw::to_ptr(a);
             let b = from_buf(ptr, 3u);
-            fail_unless!(b.len() == 3u);
-            fail_unless!(b[0] == 1);
-            fail_unless!(b[1] == 2);
-            fail_unless!(b[2] == 3);
+            assert!(b.len() == 3u);
+            assert!(b[0] == 1);
+            assert!(b[1] == 2);
+            assert!(b[2] == 3);
 
             // Test on-heap copy-from-buf.
             let c = ~[1, 2, 3, 4, 5];
             ptr = raw::to_ptr(c);
             let d = from_buf(ptr, 5u);
-            fail_unless!(d.len() == 5u);
-            fail_unless!(d[0] == 1);
-            fail_unless!(d[1] == 2);
-            fail_unless!(d[2] == 3);
-            fail_unless!(d[3] == 4);
-            fail_unless!(d[4] == 5);
+            assert!(d.len() == 5u);
+            assert!(d[0] == 1);
+            assert!(d[1] == 2);
+            assert!(d[2] == 3);
+            assert!(d[3] == 4);
+            assert!(d[4] == 5);
         }
     }
 
@@ -2626,43 +2626,43 @@ mod tests {
     fn test_from_fn() {
         // Test on-stack from_fn.
         let mut v = from_fn(3u, square);
-        fail_unless!(v.len() == 3u);
-        fail_unless!(v[0] == 0u);
-        fail_unless!(v[1] == 1u);
-        fail_unless!(v[2] == 4u);
+        assert!(v.len() == 3u);
+        assert!(v[0] == 0u);
+        assert!(v[1] == 1u);
+        assert!(v[2] == 4u);
 
         // Test on-heap from_fn.
         v = from_fn(5u, square);
-        fail_unless!(v.len() == 5u);
-        fail_unless!(v[0] == 0u);
-        fail_unless!(v[1] == 1u);
-        fail_unless!(v[2] == 4u);
-        fail_unless!(v[3] == 9u);
-        fail_unless!(v[4] == 16u);
+        assert!(v.len() == 5u);
+        assert!(v[0] == 0u);
+        assert!(v[1] == 1u);
+        assert!(v[2] == 4u);
+        assert!(v[3] == 9u);
+        assert!(v[4] == 16u);
     }
 
     #[test]
     fn test_from_elem() {
         // Test on-stack from_elem.
         let mut v = from_elem(2u, 10u);
-        fail_unless!(v.len() == 2u);
-        fail_unless!(v[0] == 10u);
-        fail_unless!(v[1] == 10u);
+        assert!(v.len() == 2u);
+        assert!(v[0] == 10u);
+        assert!(v[1] == 10u);
 
         // Test on-heap from_elem.
         v = from_elem(6u, 20u);
-        fail_unless!(v[0] == 20u);
-        fail_unless!(v[1] == 20u);
-        fail_unless!(v[2] == 20u);
-        fail_unless!(v[3] == 20u);
-        fail_unless!(v[4] == 20u);
-        fail_unless!(v[5] == 20u);
+        assert!(v[0] == 20u);
+        assert!(v[1] == 20u);
+        assert!(v[2] == 20u);
+        assert!(v[3] == 20u);
+        assert!(v[4] == 20u);
+        assert!(v[5] == 20u);
     }
 
     #[test]
     fn test_is_empty() {
-        fail_unless!(is_empty::<int>(~[]));
-        fail_unless!(!is_empty(~[0]));
+        assert!(is_empty::<int>(~[]));
+        assert!(!is_empty(~[0]));
     }
 
     #[test]
@@ -2671,18 +2671,18 @@ mod tests {
         let v0 : &[Z] = &[];
         let v1 : &[Z] = &[[]];
         let v2 : &[Z] = &[[], []];
-        fail_unless!(sys::size_of::<Z>() == 0);
-        fail_unless!(v0.len() == 0);
-        fail_unless!(v1.len() == 1);
-        fail_unless!(v2.len() == 2);
+        assert!(sys::size_of::<Z>() == 0);
+        assert!(v0.len() == 0);
+        assert!(v1.len() == 1);
+        assert!(v2.len() == 2);
     }
 
     #[test]
     fn test_head() {
         let mut a = ~[11];
-        fail_unless!(a.head() == &11);
+        assert!(a.head() == &11);
         a = ~[11, 12];
-        fail_unless!(a.head() == &11);
+        assert!(a.head() == &11);
     }
 
     #[test]
@@ -2696,19 +2696,19 @@ mod tests {
     #[test]
     fn test_head_opt() {
         let mut a = ~[];
-        fail_unless!(a.head_opt() == None);
+        assert!(a.head_opt() == None);
         a = ~[11];
-        fail_unless!(a.head_opt().unwrap() == &11);
+        assert!(a.head_opt().unwrap() == &11);
         a = ~[11, 12];
-        fail_unless!(a.head_opt().unwrap() == &11);
+        assert!(a.head_opt().unwrap() == &11);
     }
 
     #[test]
     fn test_tail() {
         let mut a = ~[11];
-        fail_unless!(a.tail() == &[]);
+        assert!(a.tail() == &[]);
         a = ~[11, 12];
-        fail_unless!(a.tail() == &[12]);
+        assert!(a.tail() == &[12]);
     }
 
     #[test]
@@ -2722,9 +2722,9 @@ mod tests {
     #[test]
     fn test_tailn() {
         let mut a = ~[11, 12, 13];
-        fail_unless!(a.tailn(0) == &[11, 12, 13]);
+        assert!(a.tailn(0) == &[11, 12, 13]);
         a = ~[11, 12, 13];
-        fail_unless!(a.tailn(2) == &[13]);
+        assert!(a.tailn(2) == &[13]);
     }
 
     #[test]
@@ -2738,9 +2738,9 @@ mod tests {
     #[test]
     fn test_init() {
         let mut a = ~[11];
-        fail_unless!(a.init() == &[]);
+        assert!(a.init() == &[]);
         a = ~[11, 12];
-        fail_unless!(a.init() == &[11]);
+        assert!(a.init() == &[11]);
     }
 
     #[init]
@@ -2754,9 +2754,9 @@ mod tests {
     #[test]
     fn test_initn() {
         let mut a = ~[11, 12, 13];
-        fail_unless!(a.initn(0) == &[11, 12, 13]);
+        assert!(a.initn(0) == &[11, 12, 13]);
         a = ~[11, 12, 13];
-        fail_unless!(a.initn(2) == &[11]);
+        assert!(a.initn(2) == &[11]);
     }
 
     #[init]
@@ -2770,9 +2770,9 @@ mod tests {
     #[test]
     fn test_last() {
         let mut a = ~[11];
-        fail_unless!(a.last() == &11);
+        assert!(a.last() == &11);
         a = ~[11, 12];
-        fail_unless!(a.last() == &12);
+        assert!(a.last() == &12);
     }
 
     #[test]
@@ -2786,11 +2786,11 @@ mod tests {
     #[test]
     fn test_last_opt() {
         let mut a = ~[];
-        fail_unless!(a.last_opt() == None);
+        assert!(a.last_opt() == None);
         a = ~[11];
-        fail_unless!(a.last_opt().unwrap() == &11);
+        assert!(a.last_opt().unwrap() == &11);
         a = ~[11, 12];
-        fail_unless!(a.last_opt().unwrap() == &12);
+        assert!(a.last_opt().unwrap() == &12);
     }
 
     #[test]
@@ -2798,35 +2798,35 @@ mod tests {
         // Test fixed length vector.
         let vec_fixed = [1, 2, 3, 4];
         let v_a = slice(vec_fixed, 1u, vec_fixed.len()).to_vec();
-        fail_unless!(v_a.len() == 3u);
-        fail_unless!(v_a[0] == 2);
-        fail_unless!(v_a[1] == 3);
-        fail_unless!(v_a[2] == 4);
+        assert!(v_a.len() == 3u);
+        assert!(v_a[0] == 2);
+        assert!(v_a[1] == 3);
+        assert!(v_a[2] == 4);
 
         // Test on stack.
         let vec_stack = &[1, 2, 3];
         let v_b = slice(vec_stack, 1u, 3u).to_vec();
-        fail_unless!(v_b.len() == 2u);
-        fail_unless!(v_b[0] == 2);
-        fail_unless!(v_b[1] == 3);
+        assert!(v_b.len() == 2u);
+        assert!(v_b[0] == 2);
+        assert!(v_b[1] == 3);
 
         // Test on managed heap.
         let vec_managed = @[1, 2, 3, 4, 5];
         let v_c = slice(vec_managed, 0u, 3u).to_vec();
-        fail_unless!(v_c.len() == 3u);
-        fail_unless!(v_c[0] == 1);
-        fail_unless!(v_c[1] == 2);
-        fail_unless!(v_c[2] == 3);
+        assert!(v_c.len() == 3u);
+        assert!(v_c[0] == 1);
+        assert!(v_c[1] == 2);
+        assert!(v_c[2] == 3);
 
         // Test on exchange heap.
         let vec_unique = ~[1, 2, 3, 4, 5, 6];
         let v_d = slice(vec_unique, 1u, 6u).to_vec();
-        fail_unless!(v_d.len() == 5u);
-        fail_unless!(v_d[0] == 2);
-        fail_unless!(v_d[1] == 3);
-        fail_unless!(v_d[2] == 4);
-        fail_unless!(v_d[3] == 5);
-        fail_unless!(v_d[4] == 6);
+        assert!(v_d.len() == 5u);
+        assert!(v_d[0] == 2);
+        assert!(v_d[1] == 3);
+        assert!(v_d[2] == 4);
+        assert!(v_d[3] == 5);
+        assert!(v_d[4] == 6);
     }
 
     #[test]
@@ -2834,27 +2834,27 @@ mod tests {
         // Test on-heap pop.
         let mut v = ~[1, 2, 3, 4, 5];
         let e = v.pop();
-        fail_unless!(v.len() == 4u);
-        fail_unless!(v[0] == 1);
-        fail_unless!(v[1] == 2);
-        fail_unless!(v[2] == 3);
-        fail_unless!(v[3] == 4);
-        fail_unless!(e == 5);
+        assert!(v.len() == 4u);
+        assert!(v[0] == 1);
+        assert!(v[1] == 2);
+        assert!(v[2] == 3);
+        assert!(v[3] == 4);
+        assert!(e == 5);
     }
 
     #[test]
     fn test_swap_remove() {
         let mut v = ~[1, 2, 3, 4, 5];
         let mut e = v.swap_remove(0);
-        fail_unless!(v.len() == 4);
-        fail_unless!(e == 1);
-        fail_unless!(v[0] == 5);
+        assert!(v.len() == 4);
+        assert!(e == 1);
+        assert!(v[0] == 5);
         e = v.swap_remove(3);
-        fail_unless!(v.len() == 3);
-        fail_unless!(e == 4);
-        fail_unless!(v[0] == 5);
-        fail_unless!(v[1] == 2);
-        fail_unless!(v[2] == 3);
+        assert!(v.len() == 3);
+        assert!(e == 4);
+        assert!(v[0] == 5);
+        assert!(v[1] == 2);
+        assert!(v[2] == 3);
     }
 
     #[test]
@@ -2863,11 +2863,11 @@ mod tests {
         let mut v = ~[::unstable::exclusive(()), ::unstable::exclusive(()),
                       ::unstable::exclusive(())];
         let mut _e = v.swap_remove(0);
-        fail_unless!(v.len() == 2);
+        assert!(v.len() == 2);
         _e = v.swap_remove(1);
-        fail_unless!(v.len() == 1);
+        assert!(v.len() == 1);
         _e = v.swap_remove(0);
-        fail_unless!(v.len() == 0);
+        assert!(v.len() == 0);
     }
 
     #[test]
@@ -2875,14 +2875,14 @@ mod tests {
         // Test on-stack push().
         let mut v = ~[];
         v.push(1);
-        fail_unless!(v.len() == 1u);
-        fail_unless!(v[0] == 1);
+        assert!(v.len() == 1u);
+        assert!(v[0] == 1);
 
         // Test on-heap push().
         v.push(2);
-        fail_unless!(v.len() == 2u);
-        fail_unless!(v[0] == 1);
-        fail_unless!(v[1] == 2);
+        assert!(v.len() == 2u);
+        assert!(v[0] == 1);
+        assert!(v[1] == 2);
     }
 
     #[test]
@@ -2890,48 +2890,48 @@ mod tests {
         // Test on-stack grow().
         let mut v = ~[];
         v.grow(2u, &1);
-        fail_unless!(v.len() == 2u);
-        fail_unless!(v[0] == 1);
-        fail_unless!(v[1] == 1);
+        assert!(v.len() == 2u);
+        assert!(v[0] == 1);
+        assert!(v[1] == 1);
 
         // Test on-heap grow().
         v.grow(3u, &2);
-        fail_unless!(v.len() == 5u);
-        fail_unless!(v[0] == 1);
-        fail_unless!(v[1] == 1);
-        fail_unless!(v[2] == 2);
-        fail_unless!(v[3] == 2);
-        fail_unless!(v[4] == 2);
+        assert!(v.len() == 5u);
+        assert!(v[0] == 1);
+        assert!(v[1] == 1);
+        assert!(v[2] == 2);
+        assert!(v[3] == 2);
+        assert!(v[4] == 2);
     }
 
     #[test]
     fn test_grow_fn() {
         let mut v = ~[];
         v.grow_fn(3u, square);
-        fail_unless!(v.len() == 3u);
-        fail_unless!(v[0] == 0u);
-        fail_unless!(v[1] == 1u);
-        fail_unless!(v[2] == 4u);
+        assert!(v.len() == 3u);
+        assert!(v[0] == 0u);
+        assert!(v[1] == 1u);
+        assert!(v[2] == 4u);
     }
 
     #[test]
     fn test_grow_set() {
         let mut v = ~[1, 2, 3];
         v.grow_set(4u, &4, 5);
-        fail_unless!(v.len() == 5u);
-        fail_unless!(v[0] == 1);
-        fail_unless!(v[1] == 2);
-        fail_unless!(v[2] == 3);
-        fail_unless!(v[3] == 4);
-        fail_unless!(v[4] == 5);
+        assert!(v.len() == 5u);
+        assert!(v[0] == 1);
+        assert!(v[1] == 2);
+        assert!(v[2] == 3);
+        assert!(v[3] == 4);
+        assert!(v[4] == 5);
     }
 
     #[test]
     fn test_truncate() {
         let mut v = ~[@6,@5,@4];
         v.truncate(1);
-        fail_unless!(v.len() == 1);
-        fail_unless!(*(v[0]) == 6);
+        assert!(v.len() == 1);
+        assert!(*(v[0]) == 6);
         // If the unsafe block didn't drop things properly, we blow up here.
     }
 
@@ -2939,7 +2939,7 @@ mod tests {
     fn test_clear() {
         let mut v = ~[@6,@5,@4];
         v.clear();
-        fail_unless!(v.len() == 0);
+        assert!(v.len() == 0);
         // If the unsafe block didn't drop things properly, we blow up here.
     }
 
@@ -2948,7 +2948,7 @@ mod tests {
         fn case(a: ~[uint], b: ~[uint]) {
             let mut v = a;
             v.dedup();
-            fail_unless!(v == b);
+            assert!(v == b);
         }
         case(~[], ~[]);
         case(~[1], ~[1]);
@@ -2993,20 +2993,20 @@ mod tests {
         // Test on-stack map.
         let mut v = ~[1u, 2u, 3u];
         let mut w = map(v, square_ref);
-        fail_unless!(w.len() == 3u);
-        fail_unless!(w[0] == 1u);
-        fail_unless!(w[1] == 4u);
-        fail_unless!(w[2] == 9u);
+        assert!(w.len() == 3u);
+        assert!(w[0] == 1u);
+        assert!(w[1] == 4u);
+        assert!(w[2] == 9u);
 
         // Test on-heap map.
         v = ~[1u, 2u, 3u, 4u, 5u];
         w = map(v, square_ref);
-        fail_unless!(w.len() == 5u);
-        fail_unless!(w[0] == 1u);
-        fail_unless!(w[1] == 4u);
-        fail_unless!(w[2] == 9u);
-        fail_unless!(w[3] == 16u);
-        fail_unless!(w[4] == 25u);
+        assert!(w.len() == 5u);
+        assert!(w[0] == 1u);
+        assert!(w[1] == 4u);
+        assert!(w[2] == 9u);
+        assert!(w[3] == 16u);
+        assert!(w[4] == 25u);
     }
 
     #[test]
@@ -3017,7 +3017,7 @@ mod tests {
         let v1 = ~[5, 4, 3, 2, 1];
         let u = map2::<int, int, int>(v0, v1, f);
         let mut i = 0;
-        while i < 5 { fail_unless!(v0[i] * v1[i] == u[i]); i += 1; }
+        while i < 5 { assert!(v0[i] * v1[i] == u[i]); i += 1; }
     }
 
     #[test]
@@ -3025,17 +3025,17 @@ mod tests {
         // Test on-stack filter-map.
         let mut v = ~[1u, 2u, 3u];
         let mut w = filter_mapped(v, square_if_odd_r);
-        fail_unless!(w.len() == 2u);
-        fail_unless!(w[0] == 1u);
-        fail_unless!(w[1] == 9u);
+        assert!(w.len() == 2u);
+        assert!(w[0] == 1u);
+        assert!(w[1] == 9u);
 
         // Test on-heap filter-map.
         v = ~[1u, 2u, 3u, 4u, 5u];
         w = filter_mapped(v, square_if_odd_r);
-        fail_unless!(w.len() == 3u);
-        fail_unless!(w[0] == 1u);
-        fail_unless!(w[1] == 9u);
-        fail_unless!(w[2] == 25u);
+        assert!(w.len() == 3u);
+        assert!(w[0] == 1u);
+        assert!(w[1] == 9u);
+        assert!(w[2] == 25u);
 
         fn halve(i: &int) -> Option<int> {
             if *i % 2 == 0 {
@@ -3050,11 +3050,11 @@ mod tests {
         let all_odd2: ~[int] = ~[];
         let mix: ~[int] = ~[9, 2, 6, 7, 1, 0, 0, 3];
         let mix_dest: ~[int] = ~[1, 3, 0, 0];
-        fail_unless!(filter_mapped(all_even, halve) ==
+        assert!(filter_mapped(all_even, halve) ==
                      map(all_even, halve_for_sure));
-        fail_unless!(filter_mapped(all_odd1, halve) == ~[]);
-        fail_unless!(filter_mapped(all_odd2, halve) == ~[]);
-        fail_unless!(filter_mapped(mix, halve) == mix_dest);
+        assert!(filter_mapped(all_odd1, halve) == ~[]);
+        assert!(filter_mapped(all_odd2, halve) == ~[]);
+        assert!(filter_mapped(mix, halve) == mix_dest);
     }
 
     #[test]
@@ -3062,17 +3062,17 @@ mod tests {
         // Test on-stack filter-map.
         let mut v = ~[1u, 2u, 3u];
         let mut w = filter_map(v, square_if_odd_v);
-        fail_unless!(w.len() == 2u);
-        fail_unless!(w[0] == 1u);
-        fail_unless!(w[1] == 9u);
+        assert!(w.len() == 2u);
+        assert!(w[0] == 1u);
+        assert!(w[1] == 9u);
 
         // Test on-heap filter-map.
         v = ~[1u, 2u, 3u, 4u, 5u];
         w = filter_map(v, square_if_odd_v);
-        fail_unless!(w.len() == 3u);
-        fail_unless!(w[0] == 1u);
-        fail_unless!(w[1] == 9u);
-        fail_unless!(w[2] == 25u);
+        assert!(w.len() == 3u);
+        assert!(w[0] == 1u);
+        assert!(w[1] == 9u);
+        assert!(w[2] == 25u);
 
         fn halve(i: int) -> Option<int> {
             if i % 2 == 0 {
@@ -3088,24 +3088,24 @@ mod tests {
         let all_odd2: ~[int] = ~[];
         let mix: ~[int] = ~[9, 2, 6, 7, 1, 0, 0, 3];
         let mix_dest: ~[int] = ~[1, 3, 0, 0];
-        fail_unless!(filter_map(all_even, halve) ==
+        assert!(filter_map(all_even, halve) ==
                      map(all_even0, halve_for_sure));
-        fail_unless!(filter_map(all_odd1, halve) == ~[]);
-        fail_unless!(filter_map(all_odd2, halve) == ~[]);
-        fail_unless!(filter_map(mix, halve) == mix_dest);
+        assert!(filter_map(all_odd1, halve) == ~[]);
+        assert!(filter_map(all_odd2, halve) == ~[]);
+        assert!(filter_map(mix, halve) == mix_dest);
     }
 
     #[test]
     fn test_filter() {
-        fail_unless!(filter(~[1u, 2u, 3u], is_odd) == ~[1u, 3u]);
-        fail_unless!(filter(~[1u, 2u, 4u, 8u, 16u], is_three) == ~[]);
+        assert!(filter(~[1u, 2u, 3u], is_odd) == ~[1u, 3u]);
+        assert!(filter(~[1u, 2u, 4u, 8u, 16u], is_three) == ~[]);
     }
 
     #[test]
     fn test_retain() {
         let mut v = ~[1, 2, 3, 4, 5];
         v.retain(is_odd);
-        fail_unless!(v == ~[1, 3, 5]);
+        assert!(v == ~[1, 3, 5]);
     }
 
     #[test]
@@ -3113,12 +3113,12 @@ mod tests {
         // Test on-stack fold.
         let mut v = ~[1u, 2u, 3u];
         let mut sum = foldl(0u, v, add);
-        fail_unless!(sum == 6u);
+        assert!(sum == 6u);
 
         // Test on-heap fold.
         v = ~[1u, 2u, 3u, 4u, 5u];
         sum = foldl(0u, v, add);
-        fail_unless!(sum == 15u);
+        assert!(sum == 15u);
     }
 
     #[test]
@@ -3128,7 +3128,7 @@ mod tests {
         }
         let mut v = ~[1, 2, 3, 4];
         let sum = foldl(0, v, sub);
-        fail_unless!(sum == -10);
+        assert!(sum == -10);
     }
 
     #[test]
@@ -3138,7 +3138,7 @@ mod tests {
         }
         let mut v = ~[1, 2, 3, 4];
         let sum = foldr(v, 0, sub);
-        fail_unless!(sum == -2);
+        assert!(sum == -2);
     }
 
     #[test]
@@ -3154,18 +3154,18 @@ mod tests {
         for each(~[1, 2, 3]) |v| {
             i += *v;
         }
-        fail_unless!(i == 6);
+        assert!(i == 6);
     }
 
     #[test]
     fn test_iteri() {
         let mut i = 0;
         for eachi(~[1, 2, 3]) |j, v| {
-            if i == 0 { fail_unless!(*v == 1); }
-            fail_unless!(j + 1u == *v as uint);
+            if i == 0 { assert!(*v == 1); }
+            assert!(j + 1u == *v as uint);
             i += *v;
         }
-        fail_unless!(i == 6);
+        assert!(i == 6);
     }
 
     #[test]
@@ -3180,21 +3180,21 @@ mod tests {
     fn test_each_reverse_nonempty() {
         let mut i = 0;
         for each_reverse(~[1, 2, 3]) |v| {
-            if i == 0 { fail_unless!(*v == 3); }
+            if i == 0 { assert!(*v == 3); }
             i += *v
         }
-        fail_unless!(i == 6);
+        assert!(i == 6);
     }
 
     #[test]
     fn test_eachi_reverse() {
         let mut i = 0;
         for eachi_reverse(~[0, 1, 2]) |j, v| {
-            if i == 0 { fail_unless!(*v == 2); }
-            fail_unless!(j == *v as uint);
+            if i == 0 { assert!(*v == 2); }
+            assert!(j == *v as uint);
             i += *v;
         }
-        fail_unless!(i == 3);
+        assert!(i == 3);
     }
 
     #[test]
@@ -3211,47 +3211,47 @@ mod tests {
 
         results = ~[];
         for each_permutation(~[]) |v| { results.push(from_slice(v)); }
-        fail_unless!(results == ~[~[]]);
+        assert!(results == ~[~[]]);
 
         results = ~[];
         for each_permutation(~[7]) |v| { results.push(from_slice(v)); }
-        fail_unless!(results == ~[~[7]]);
+        assert!(results == ~[~[7]]);
 
         results = ~[];
         for each_permutation(~[1,1]) |v| { results.push(from_slice(v)); }
-        fail_unless!(results == ~[~[1,1],~[1,1]]);
+        assert!(results == ~[~[1,1],~[1,1]]);
 
         results = ~[];
         for each_permutation(~[5,2,0]) |v| { results.push(from_slice(v)); }
-        fail_unless!(results ==
+        assert!(results ==
             ~[~[5,2,0],~[5,0,2],~[2,5,0],~[2,0,5],~[0,5,2],~[0,2,5]]);
     }
 
     #[test]
     fn test_any_and_all() {
-        fail_unless!(any(~[1u, 2u, 3u], is_three));
-        fail_unless!(!any(~[0u, 1u, 2u], is_three));
-        fail_unless!(any(~[1u, 2u, 3u, 4u, 5u], is_three));
-        fail_unless!(!any(~[1u, 2u, 4u, 5u, 6u], is_three));
+        assert!(any(~[1u, 2u, 3u], is_three));
+        assert!(!any(~[0u, 1u, 2u], is_three));
+        assert!(any(~[1u, 2u, 3u, 4u, 5u], is_three));
+        assert!(!any(~[1u, 2u, 4u, 5u, 6u], is_three));
 
-        fail_unless!(all(~[3u, 3u, 3u], is_three));
-        fail_unless!(!all(~[3u, 3u, 2u], is_three));
-        fail_unless!(all(~[3u, 3u, 3u, 3u, 3u], is_three));
-        fail_unless!(!all(~[3u, 3u, 0u, 1u, 2u], is_three));
+        assert!(all(~[3u, 3u, 3u], is_three));
+        assert!(!all(~[3u, 3u, 2u], is_three));
+        assert!(all(~[3u, 3u, 3u, 3u, 3u], is_three));
+        assert!(!all(~[3u, 3u, 0u, 1u, 2u], is_three));
     }
 
     #[test]
     fn test_any2_and_all2() {
 
-        fail_unless!(any2(~[2u, 4u, 6u], ~[2u, 4u, 6u], is_equal));
-        fail_unless!(any2(~[1u, 2u, 3u], ~[4u, 5u, 3u], is_equal));
-        fail_unless!(!any2(~[1u, 2u, 3u], ~[4u, 5u, 6u], is_equal));
-        fail_unless!(any2(~[2u, 4u, 6u], ~[2u, 4u], is_equal));
+        assert!(any2(~[2u, 4u, 6u], ~[2u, 4u, 6u], is_equal));
+        assert!(any2(~[1u, 2u, 3u], ~[4u, 5u, 3u], is_equal));
+        assert!(!any2(~[1u, 2u, 3u], ~[4u, 5u, 6u], is_equal));
+        assert!(any2(~[2u, 4u, 6u], ~[2u, 4u], is_equal));
 
-        fail_unless!(all2(~[2u, 4u, 6u], ~[2u, 4u, 6u], is_equal));
-        fail_unless!(!all2(~[1u, 2u, 3u], ~[4u, 5u, 3u], is_equal));
-        fail_unless!(!all2(~[1u, 2u, 3u], ~[4u, 5u, 6u], is_equal));
-        fail_unless!(!all2(~[2u, 4u, 6u], ~[2u, 4u], is_equal));
+        assert!(all2(~[2u, 4u, 6u], ~[2u, 4u, 6u], is_equal));
+        assert!(!all2(~[1u, 2u, 3u], ~[4u, 5u, 3u], is_equal));
+        assert!(!all2(~[1u, 2u, 3u], ~[4u, 5u, 6u], is_equal));
+        assert!(!all2(~[2u, 4u, 6u], ~[2u, 4u], is_equal));
     }
 
     #[test]
@@ -3261,26 +3261,26 @@ mod tests {
 
         let z1 = zip(v1, v2);
 
-        fail_unless!((1, 4) == z1[0]);
-        fail_unless!((2, 5) == z1[1]);
-        fail_unless!((3, 6) == z1[2]);
+        assert!((1, 4) == z1[0]);
+        assert!((2, 5) == z1[1]);
+        assert!((3, 6) == z1[2]);
 
         let (left, right) = unzip(z1);
 
-        fail_unless!((1, 4) == (left[0], right[0]));
-        fail_unless!((2, 5) == (left[1], right[1]));
-        fail_unless!((3, 6) == (left[2], right[2]));
+        assert!((1, 4) == (left[0], right[0]));
+        assert!((2, 5) == (left[1], right[1]));
+        assert!((3, 6) == (left[2], right[2]));
     }
 
     #[test]
     fn test_position_elem() {
-        fail_unless!(position_elem(~[], &1).is_none());
+        assert!(position_elem(~[], &1).is_none());
 
         let v1 = ~[1, 2, 3, 3, 2, 5];
-        fail_unless!(position_elem(v1, &1) == Some(0u));
-        fail_unless!(position_elem(v1, &2) == Some(1u));
-        fail_unless!(position_elem(v1, &5) == Some(5u));
-        fail_unless!(position_elem(v1, &4).is_none());
+        assert!(position_elem(v1, &1) == Some(0u));
+        assert!(position_elem(v1, &2) == Some(1u));
+        assert!(position_elem(v1, &5) == Some(5u));
+        assert!(position_elem(v1, &4).is_none());
     }
 
     #[test]
@@ -3288,178 +3288,178 @@ mod tests {
         fn less_than_three(i: &int) -> bool { *i < 3 }
         fn is_eighteen(i: &int) -> bool { *i == 18 }
 
-        fail_unless!(position(~[], less_than_three).is_none());
+        assert!(position(~[], less_than_three).is_none());
 
         let v1 = ~[5, 4, 3, 2, 1];
-        fail_unless!(position(v1, less_than_three) == Some(3u));
-        fail_unless!(position(v1, is_eighteen).is_none());
+        assert!(position(v1, less_than_three) == Some(3u));
+        assert!(position(v1, is_eighteen).is_none());
     }
 
     #[test]
     fn test_position_between() {
-        fail_unless!(position_between(~[], 0u, 0u, f).is_none());
+        assert!(position_between(~[], 0u, 0u, f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        fail_unless!(position_between(v, 0u, 0u, f).is_none());
-        fail_unless!(position_between(v, 0u, 1u, f).is_none());
-        fail_unless!(position_between(v, 0u, 2u, f) == Some(1u));
-        fail_unless!(position_between(v, 0u, 3u, f) == Some(1u));
-        fail_unless!(position_between(v, 0u, 4u, f) == Some(1u));
+        assert!(position_between(v, 0u, 0u, f).is_none());
+        assert!(position_between(v, 0u, 1u, f).is_none());
+        assert!(position_between(v, 0u, 2u, f) == Some(1u));
+        assert!(position_between(v, 0u, 3u, f) == Some(1u));
+        assert!(position_between(v, 0u, 4u, f) == Some(1u));
 
-        fail_unless!(position_between(v, 1u, 1u, f).is_none());
-        fail_unless!(position_between(v, 1u, 2u, f) == Some(1u));
-        fail_unless!(position_between(v, 1u, 3u, f) == Some(1u));
-        fail_unless!(position_between(v, 1u, 4u, f) == Some(1u));
+        assert!(position_between(v, 1u, 1u, f).is_none());
+        assert!(position_between(v, 1u, 2u, f) == Some(1u));
+        assert!(position_between(v, 1u, 3u, f) == Some(1u));
+        assert!(position_between(v, 1u, 4u, f) == Some(1u));
 
-        fail_unless!(position_between(v, 2u, 2u, f).is_none());
-        fail_unless!(position_between(v, 2u, 3u, f).is_none());
-        fail_unless!(position_between(v, 2u, 4u, f) == Some(3u));
+        assert!(position_between(v, 2u, 2u, f).is_none());
+        assert!(position_between(v, 2u, 3u, f).is_none());
+        assert!(position_between(v, 2u, 4u, f) == Some(3u));
 
-        fail_unless!(position_between(v, 3u, 3u, f).is_none());
-        fail_unless!(position_between(v, 3u, 4u, f) == Some(3u));
+        assert!(position_between(v, 3u, 3u, f).is_none());
+        assert!(position_between(v, 3u, 4u, f) == Some(3u));
 
-        fail_unless!(position_between(v, 4u, 4u, f).is_none());
+        assert!(position_between(v, 4u, 4u, f).is_none());
     }
 
     #[test]
     fn test_find() {
-        fail_unless!(find(~[], f).is_none());
+        assert!(find(~[], f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        fail_unless!(find(v, f) == Some((1, 'b')));
-        fail_unless!(find(v, g).is_none());
+        assert!(find(v, f) == Some((1, 'b')));
+        assert!(find(v, g).is_none());
     }
 
     #[test]
     fn test_find_between() {
-        fail_unless!(find_between(~[], 0u, 0u, f).is_none());
+        assert!(find_between(~[], 0u, 0u, f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        fail_unless!(find_between(v, 0u, 0u, f).is_none());
-        fail_unless!(find_between(v, 0u, 1u, f).is_none());
-        fail_unless!(find_between(v, 0u, 2u, f) == Some((1, 'b')));
-        fail_unless!(find_between(v, 0u, 3u, f) == Some((1, 'b')));
-        fail_unless!(find_between(v, 0u, 4u, f) == Some((1, 'b')));
+        assert!(find_between(v, 0u, 0u, f).is_none());
+        assert!(find_between(v, 0u, 1u, f).is_none());
+        assert!(find_between(v, 0u, 2u, f) == Some((1, 'b')));
+        assert!(find_between(v, 0u, 3u, f) == Some((1, 'b')));
+        assert!(find_between(v, 0u, 4u, f) == Some((1, 'b')));
 
-        fail_unless!(find_between(v, 1u, 1u, f).is_none());
-        fail_unless!(find_between(v, 1u, 2u, f) == Some((1, 'b')));
-        fail_unless!(find_between(v, 1u, 3u, f) == Some((1, 'b')));
-        fail_unless!(find_between(v, 1u, 4u, f) == Some((1, 'b')));
+        assert!(find_between(v, 1u, 1u, f).is_none());
+        assert!(find_between(v, 1u, 2u, f) == Some((1, 'b')));
+        assert!(find_between(v, 1u, 3u, f) == Some((1, 'b')));
+        assert!(find_between(v, 1u, 4u, f) == Some((1, 'b')));
 
-        fail_unless!(find_between(v, 2u, 2u, f).is_none());
-        fail_unless!(find_between(v, 2u, 3u, f).is_none());
-        fail_unless!(find_between(v, 2u, 4u, f) == Some((3, 'b')));
+        assert!(find_between(v, 2u, 2u, f).is_none());
+        assert!(find_between(v, 2u, 3u, f).is_none());
+        assert!(find_between(v, 2u, 4u, f) == Some((3, 'b')));
 
-        fail_unless!(find_between(v, 3u, 3u, f).is_none());
-        fail_unless!(find_between(v, 3u, 4u, f) == Some((3, 'b')));
+        assert!(find_between(v, 3u, 3u, f).is_none());
+        assert!(find_between(v, 3u, 4u, f) == Some((3, 'b')));
 
-        fail_unless!(find_between(v, 4u, 4u, f).is_none());
+        assert!(find_between(v, 4u, 4u, f).is_none());
     }
 
     #[test]
     fn test_rposition() {
-        fail_unless!(find(~[], f).is_none());
+        assert!(find(~[], f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        fail_unless!(position(v, f) == Some(1u));
-        fail_unless!(position(v, g).is_none());
+        assert!(position(v, f) == Some(1u));
+        assert!(position(v, g).is_none());
     }
 
     #[test]
     fn test_rposition_between() {
-        fail_unless!(rposition_between(~[], 0u, 0u, f).is_none());
+        assert!(rposition_between(~[], 0u, 0u, f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        fail_unless!(rposition_between(v, 0u, 0u, f).is_none());
-        fail_unless!(rposition_between(v, 0u, 1u, f).is_none());
-        fail_unless!(rposition_between(v, 0u, 2u, f) == Some(1u));
-        fail_unless!(rposition_between(v, 0u, 3u, f) == Some(1u));
-        fail_unless!(rposition_between(v, 0u, 4u, f) == Some(3u));
+        assert!(rposition_between(v, 0u, 0u, f).is_none());
+        assert!(rposition_between(v, 0u, 1u, f).is_none());
+        assert!(rposition_between(v, 0u, 2u, f) == Some(1u));
+        assert!(rposition_between(v, 0u, 3u, f) == Some(1u));
+        assert!(rposition_between(v, 0u, 4u, f) == Some(3u));
 
-        fail_unless!(rposition_between(v, 1u, 1u, f).is_none());
-        fail_unless!(rposition_between(v, 1u, 2u, f) == Some(1u));
-        fail_unless!(rposition_between(v, 1u, 3u, f) == Some(1u));
-        fail_unless!(rposition_between(v, 1u, 4u, f) == Some(3u));
+        assert!(rposition_between(v, 1u, 1u, f).is_none());
+        assert!(rposition_between(v, 1u, 2u, f) == Some(1u));
+        assert!(rposition_between(v, 1u, 3u, f) == Some(1u));
+        assert!(rposition_between(v, 1u, 4u, f) == Some(3u));
 
-        fail_unless!(rposition_between(v, 2u, 2u, f).is_none());
-        fail_unless!(rposition_between(v, 2u, 3u, f).is_none());
-        fail_unless!(rposition_between(v, 2u, 4u, f) == Some(3u));
+        assert!(rposition_between(v, 2u, 2u, f).is_none());
+        assert!(rposition_between(v, 2u, 3u, f).is_none());
+        assert!(rposition_between(v, 2u, 4u, f) == Some(3u));
 
-        fail_unless!(rposition_between(v, 3u, 3u, f).is_none());
-        fail_unless!(rposition_between(v, 3u, 4u, f) == Some(3u));
+        assert!(rposition_between(v, 3u, 3u, f).is_none());
+        assert!(rposition_between(v, 3u, 4u, f) == Some(3u));
 
-        fail_unless!(rposition_between(v, 4u, 4u, f).is_none());
+        assert!(rposition_between(v, 4u, 4u, f).is_none());
     }
 
     #[test]
     fn test_rfind() {
-        fail_unless!(rfind(~[], f).is_none());
+        assert!(rfind(~[], f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        fail_unless!(rfind(v, f) == Some((3, 'b')));
-        fail_unless!(rfind(v, g).is_none());
+        assert!(rfind(v, f) == Some((3, 'b')));
+        assert!(rfind(v, g).is_none());
     }
 
     #[test]
     fn test_rfind_between() {
-        fail_unless!(rfind_between(~[], 0u, 0u, f).is_none());
+        assert!(rfind_between(~[], 0u, 0u, f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        fail_unless!(rfind_between(v, 0u, 0u, f).is_none());
-        fail_unless!(rfind_between(v, 0u, 1u, f).is_none());
-        fail_unless!(rfind_between(v, 0u, 2u, f) == Some((1, 'b')));
-        fail_unless!(rfind_between(v, 0u, 3u, f) == Some((1, 'b')));
-        fail_unless!(rfind_between(v, 0u, 4u, f) == Some((3, 'b')));
+        assert!(rfind_between(v, 0u, 0u, f).is_none());
+        assert!(rfind_between(v, 0u, 1u, f).is_none());
+        assert!(rfind_between(v, 0u, 2u, f) == Some((1, 'b')));
+        assert!(rfind_between(v, 0u, 3u, f) == Some((1, 'b')));
+        assert!(rfind_between(v, 0u, 4u, f) == Some((3, 'b')));
 
-        fail_unless!(rfind_between(v, 1u, 1u, f).is_none());
-        fail_unless!(rfind_between(v, 1u, 2u, f) == Some((1, 'b')));
-        fail_unless!(rfind_between(v, 1u, 3u, f) == Some((1, 'b')));
-        fail_unless!(rfind_between(v, 1u, 4u, f) == Some((3, 'b')));
+        assert!(rfind_between(v, 1u, 1u, f).is_none());
+        assert!(rfind_between(v, 1u, 2u, f) == Some((1, 'b')));
+        assert!(rfind_between(v, 1u, 3u, f) == Some((1, 'b')));
+        assert!(rfind_between(v, 1u, 4u, f) == Some((3, 'b')));
 
-        fail_unless!(rfind_between(v, 2u, 2u, f).is_none());
-        fail_unless!(rfind_between(v, 2u, 3u, f).is_none());
-        fail_unless!(rfind_between(v, 2u, 4u, f) == Some((3, 'b')));
+        assert!(rfind_between(v, 2u, 2u, f).is_none());
+        assert!(rfind_between(v, 2u, 3u, f).is_none());
+        assert!(rfind_between(v, 2u, 4u, f) == Some((3, 'b')));
 
-        fail_unless!(rfind_between(v, 3u, 3u, f).is_none());
-        fail_unless!(rfind_between(v, 3u, 4u, f) == Some((3, 'b')));
+        assert!(rfind_between(v, 3u, 3u, f).is_none());
+        assert!(rfind_between(v, 3u, 4u, f) == Some((3, 'b')));
 
-        fail_unless!(rfind_between(v, 4u, 4u, f).is_none());
+        assert!(rfind_between(v, 4u, 4u, f).is_none());
     }
 
     #[test]
     fn reverse_and_reversed() {
         let mut v: ~[int] = ~[10, 20];
-        fail_unless!(v[0] == 10);
-        fail_unless!(v[1] == 20);
+        assert!(v[0] == 10);
+        assert!(v[1] == 20);
         reverse(v);
-        fail_unless!(v[0] == 20);
-        fail_unless!(v[1] == 10);
+        assert!(v[0] == 20);
+        assert!(v[1] == 10);
         let v2 = reversed::<int>(~[10, 20]);
-        fail_unless!(v2[0] == 20);
-        fail_unless!(v2[1] == 10);
+        assert!(v2[0] == 20);
+        assert!(v2[1] == 10);
         v[0] = 30;
-        fail_unless!(v2[0] == 20);
+        assert!(v2[0] == 20);
         // Make sure they work with 0-length vectors too.
 
         let v4 = reversed::<int>(~[]);
-        fail_unless!(v4 == ~[]);
+        assert!(v4 == ~[]);
         let mut v3: ~[int] = ~[];
         reverse::<int>(v3);
     }
@@ -3467,30 +3467,30 @@ mod tests {
     #[test]
     fn reversed_mut() {
         let mut v2 = reversed::<int>(~[10, 20]);
-        fail_unless!(v2[0] == 20);
-        fail_unless!(v2[1] == 10);
+        assert!(v2[0] == 20);
+        assert!(v2[1] == 10);
     }
 
     #[test]
     fn test_split() {
         fn f(x: &int) -> bool { *x == 3 }
 
-        fail_unless!(split(~[], f) == ~[]);
-        fail_unless!(split(~[1, 2], f) == ~[~[1, 2]]);
-        fail_unless!(split(~[3, 1, 2], f) == ~[~[], ~[1, 2]]);
-        fail_unless!(split(~[1, 2, 3], f) == ~[~[1, 2], ~[]]);
-        fail_unless!(split(~[1, 2, 3, 4, 3, 5], f) == ~[~[1, 2], ~[4], ~[5]]);
+        assert!(split(~[], f) == ~[]);
+        assert!(split(~[1, 2], f) == ~[~[1, 2]]);
+        assert!(split(~[3, 1, 2], f) == ~[~[], ~[1, 2]]);
+        assert!(split(~[1, 2, 3], f) == ~[~[1, 2], ~[]]);
+        assert!(split(~[1, 2, 3, 4, 3, 5], f) == ~[~[1, 2], ~[4], ~[5]]);
     }
 
     #[test]
     fn test_splitn() {
         fn f(x: &int) -> bool { *x == 3 }
 
-        fail_unless!(splitn(~[], 1u, f) == ~[]);
-        fail_unless!(splitn(~[1, 2], 1u, f) == ~[~[1, 2]]);
-        fail_unless!(splitn(~[3, 1, 2], 1u, f) == ~[~[], ~[1, 2]]);
-        fail_unless!(splitn(~[1, 2, 3], 1u, f) == ~[~[1, 2], ~[]]);
-        fail_unless!(splitn(~[1, 2, 3, 4, 3, 5], 1u, f) ==
+        assert!(splitn(~[], 1u, f) == ~[]);
+        assert!(splitn(~[1, 2], 1u, f) == ~[~[1, 2]]);
+        assert!(splitn(~[3, 1, 2], 1u, f) == ~[~[], ~[1, 2]]);
+        assert!(splitn(~[1, 2, 3], 1u, f) == ~[~[1, 2], ~[]]);
+        assert!(splitn(~[1, 2, 3, 4, 3, 5], 1u, f) ==
                       ~[~[1, 2], ~[4, 3, 5]]);
     }
 
@@ -3498,10 +3498,10 @@ mod tests {
     fn test_rsplit() {
         fn f(x: &int) -> bool { *x == 3 }
 
-        fail_unless!(rsplit(~[], f) == ~[]);
-        fail_unless!(rsplit(~[1, 2], f) == ~[~[1, 2]]);
-        fail_unless!(rsplit(~[1, 2, 3], f) == ~[~[1, 2], ~[]]);
-        fail_unless!(rsplit(~[1, 2, 3, 4, 3, 5], f) ==
+        assert!(rsplit(~[], f) == ~[]);
+        assert!(rsplit(~[1, 2], f) == ~[~[1, 2]]);
+        assert!(rsplit(~[1, 2, 3], f) == ~[~[1, 2], ~[]]);
+        assert!(rsplit(~[1, 2, 3, 4, 3, 5], f) ==
             ~[~[1, 2], ~[4], ~[5]]);
     }
 
@@ -3509,57 +3509,57 @@ mod tests {
     fn test_rsplitn() {
         fn f(x: &int) -> bool { *x == 3 }
 
-        fail_unless!(rsplitn(~[], 1u, f) == ~[]);
-        fail_unless!(rsplitn(~[1, 2], 1u, f) == ~[~[1, 2]]);
-        fail_unless!(rsplitn(~[1, 2, 3], 1u, f) == ~[~[1, 2], ~[]]);
-        fail_unless!(rsplitn(~[1, 2, 3, 4, 3, 5], 1u, f) ==
+        assert!(rsplitn(~[], 1u, f) == ~[]);
+        assert!(rsplitn(~[1, 2], 1u, f) == ~[~[1, 2]]);
+        assert!(rsplitn(~[1, 2, 3], 1u, f) == ~[~[1, 2], ~[]]);
+        assert!(rsplitn(~[1, 2, 3, 4, 3, 5], 1u, f) ==
                        ~[~[1, 2, 3, 4], ~[5]]);
     }
 
     #[test]
     fn test_partition() {
         // FIXME (#4355 maybe): using v.partition here crashes
-        fail_unless!(partition(~[], |x: &int| *x < 3) == (~[], ~[]));
-        fail_unless!(partition(~[1, 2, 3], |x: &int| *x < 4) ==
+        assert!(partition(~[], |x: &int| *x < 3) == (~[], ~[]));
+        assert!(partition(~[1, 2, 3], |x: &int| *x < 4) ==
             (~[1, 2, 3], ~[]));
-        fail_unless!(partition(~[1, 2, 3], |x: &int| *x < 2) ==
+        assert!(partition(~[1, 2, 3], |x: &int| *x < 2) ==
             (~[1], ~[2, 3]));
-        fail_unless!(partition(~[1, 2, 3], |x: &int| *x < 0) ==
+        assert!(partition(~[1, 2, 3], |x: &int| *x < 0) ==
             (~[], ~[1, 2, 3]));
     }
 
     #[test]
     fn test_partitioned() {
-        fail_unless!((~[]).partitioned(|x: &int| *x < 3) == (~[], ~[]));
-        fail_unless!((~[1, 2, 3]).partitioned(|x: &int| *x < 4) ==
+        assert!((~[]).partitioned(|x: &int| *x < 3) == (~[], ~[]));
+        assert!((~[1, 2, 3]).partitioned(|x: &int| *x < 4) ==
                      (~[1, 2, 3], ~[]));
-        fail_unless!((~[1, 2, 3]).partitioned(|x: &int| *x < 2) ==
+        assert!((~[1, 2, 3]).partitioned(|x: &int| *x < 2) ==
                      (~[1], ~[2, 3]));
-        fail_unless!((~[1, 2, 3]).partitioned(|x: &int| *x < 0) ==
+        assert!((~[1, 2, 3]).partitioned(|x: &int| *x < 0) ==
                      (~[], ~[1, 2, 3]));
     }
 
     #[test]
     fn test_concat() {
-        fail_unless!(concat(~[~[1], ~[2,3]]) == ~[1, 2, 3]);
+        assert!(concat(~[~[1], ~[2,3]]) == ~[1, 2, 3]);
     }
 
     #[test]
     fn test_connect() {
-        fail_unless!(connect(~[], &0) == ~[]);
-        fail_unless!(connect(~[~[1], ~[2, 3]], &0) == ~[1, 0, 2, 3]);
-        fail_unless!(connect(~[~[1], ~[2], ~[3]], &0) == ~[1, 0, 2, 0, 3]);
+        assert!(connect(~[], &0) == ~[]);
+        assert!(connect(~[~[1], ~[2, 3]], &0) == ~[1, 0, 2, 3]);
+        assert!(connect(~[~[1], ~[2], ~[3]], &0) == ~[1, 0, 2, 0, 3]);
     }
 
     #[test]
     fn test_windowed () {
-        fail_unless!(~[~[1u,2u,3u],~[2u,3u,4u],~[3u,4u,5u],~[4u,5u,6u]]
+        assert!(~[~[1u,2u,3u],~[2u,3u,4u],~[3u,4u,5u],~[4u,5u,6u]]
                      == windowed (3u, ~[1u,2u,3u,4u,5u,6u]));
 
-        fail_unless!(~[~[1u,2u,3u,4u],~[2u,3u,4u,5u],~[3u,4u,5u,6u]]
+        assert!(~[~[1u,2u,3u,4u],~[2u,3u,4u,5u],~[3u,4u,5u,6u]]
                      == windowed (4u, ~[1u,2u,3u,4u,5u,6u]));
 
-        fail_unless!(~[] == windowed (7u, ~[1u,2u,3u,4u,5u,6u]));
+        assert!(~[] == windowed (7u, ~[1u,2u,3u,4u,5u,6u]));
     }
 
     #[test]
@@ -3573,26 +3573,26 @@ mod tests {
     fn test_unshift() {
         let mut x = ~[1, 2, 3];
         x.unshift(0);
-        fail_unless!(x == ~[0, 1, 2, 3]);
+        assert!(x == ~[0, 1, 2, 3]);
     }
 
     #[test]
     fn test_insert() {
         let mut a = ~[1, 2, 4];
         a.insert(2, 3);
-        fail_unless!(a == ~[1, 2, 3, 4]);
+        assert!(a == ~[1, 2, 3, 4]);
 
         let mut a = ~[1, 2, 3];
         a.insert(0, 0);
-        fail_unless!(a == ~[0, 1, 2, 3]);
+        assert!(a == ~[0, 1, 2, 3]);
 
         let mut a = ~[1, 2, 3];
         a.insert(3, 4);
-        fail_unless!(a == ~[1, 2, 3, 4]);
+        assert!(a == ~[1, 2, 3, 4]);
 
         let mut a = ~[];
         a.insert(0, 1);
-        fail_unless!(a == ~[1]);
+        assert!(a == ~[1]);
     }
 
     #[test]
@@ -3607,15 +3607,15 @@ mod tests {
     fn test_remove() {
         let mut a = ~[1, 2, 3, 4];
         a.remove(2);
-        fail_unless!(a == ~[1, 2, 4]);
+        assert!(a == ~[1, 2, 4]);
 
         let mut a = ~[1, 2, 3];
         a.remove(0);
-        fail_unless!(a == ~[2, 3]);
+        assert!(a == ~[2, 3]);
 
         let mut a = ~[1];
         a.remove(0);
-        fail_unless!(a == ~[]);
+        assert!(a == ~[]);
     }
 
     #[test]
@@ -3630,19 +3630,19 @@ mod tests {
     fn test_capacity() {
         let mut v = ~[0u64];
         reserve(&mut v, 10u);
-        fail_unless!(capacity(&v) == 10u);
+        assert!(capacity(&v) == 10u);
         let mut v = ~[0u32];
         reserve(&mut v, 10u);
-        fail_unless!(capacity(&v) == 10u);
+        assert!(capacity(&v) == 10u);
     }
 
     #[test]
     fn test_slice_2() {
         let v = ~[1, 2, 3, 4, 5];
         let v = v.slice(1u, 3u);
-        fail_unless!(v.len() == 2u);
-        fail_unless!(v[0] == 2);
-        fail_unless!(v[1] == 3);
+        assert!(v.len() == 2u);
+        assert!(v[0] == 2);
+        assert!(v[1] == 3);
     }
 
 

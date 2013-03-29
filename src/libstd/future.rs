@@ -155,7 +155,7 @@ pub mod test {
     #[test]
     pub fn test_from_value() {
         let f = from_value(~"snail");
-        fail_unless!(f.get() == ~"snail");
+        assert!(f.get() == ~"snail");
     }
 
     #[test]
@@ -163,31 +163,31 @@ pub mod test {
         let (ch, po) = oneshot::init();
         send_one(ch, ~"whale");
         let f = from_port(po);
-        fail_unless!(f.get() == ~"whale");
+        assert!(f.get() == ~"whale");
     }
 
     #[test]
     pub fn test_from_fn() {
         let f = from_fn(|| ~"brail");
-        fail_unless!(f.get() == ~"brail");
+        assert!(f.get() == ~"brail");
     }
 
     #[test]
     pub fn test_interface_get() {
         let f = from_value(~"fail");
-        fail_unless!(f.get() == ~"fail");
+        assert!(f.get() == ~"fail");
     }
 
     #[test]
     pub fn test_get_ref_method() {
         let f = from_value(22);
-        fail_unless!(*f.get_ref() == 22);
+        assert!(*f.get_ref() == 22);
     }
 
     #[test]
     pub fn test_spawn() {
         let f = spawn(|| ~"bale");
-        fail_unless!(f.get() == ~"bale");
+        assert!(f.get() == ~"bale");
     }
 
     #[test]
@@ -204,7 +204,7 @@ pub mod test {
         let f = do spawn { copy expected };
         do task::spawn || {
             let actual = f.get();
-            fail_unless!(actual == expected);
+            assert!(actual == expected);
         }
     }
 }

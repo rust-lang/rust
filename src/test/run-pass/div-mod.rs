@@ -15,14 +15,14 @@
 pub fn main() {
     let x: int = 15;
     let y: int = 5;
-    fail_unless!((x / 5 == 3));
-    fail_unless!((x / 4 == 3));
-    fail_unless!((x / 3 == 5));
-    fail_unless!((x / y == 3));
-    fail_unless!((15 / y == 3));
-    fail_unless!((x % 5 == 0));
-    fail_unless!((x % 4 == 3));
-    fail_unless!((x % 3 == 0));
-    fail_unless!((x % y == 0));
-    fail_unless!((15 % y == 0));
+    assert!((x / 5 == 3));
+    assert!((x / 4 == 3));
+    assert!((x / 3 == 5));
+    assert!((x / y == 3));
+    assert!((15 / y == 3));
+    assert!((x % 5 == 0));
+    assert!((x % 4 == 3));
+    assert!((x % 3 == 0));
+    assert!((x % y == 0));
+    assert!((15 % y == 0));
 }

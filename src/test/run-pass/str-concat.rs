@@ -17,5 +17,5 @@ pub fn main() {
     let b: ~str = ~"world";
     let s: ~str = a + b;
     debug!(s.clone());
-    fail_unless!((s[9] == 'd' as u8));
+    assert!((s[9] == 'd' as u8));
 }

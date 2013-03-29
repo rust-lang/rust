@@ -54,7 +54,7 @@ impl gen_send for message {
           message(ref _id, span, ref tys, this, Some(ref next_state)) => {
             debug!("pipec: next state exists");
             let next = this.proto.get_state(next_state.state);
-            fail_unless!(next_state.tys.len() ==
+            assert!(next_state.tys.len() ==
                 next.generics.ty_params.len());
             let arg_names = tys.mapi(|i, _ty| cx.ident_of(~"x_"+i.to_str()));
             let args_ast = vec::map2(arg_names, *tys, |n, t| cx.arg(*n, *t));

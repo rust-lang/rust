@@ -32,10 +32,10 @@ fn test1() {
         error!("b: %x", qq.b as uint);
         error!("c: %x", qq.c as uint);
         error!("d: %x", qq.d as uint);
-        fail_unless!(qq.a == q.c + 1u64);
-        fail_unless!(qq.b == q.d - 1u64);
-        fail_unless!(qq.c == q.a + 1u64);
-        fail_unless!(qq.d == q.b - 1u64);
+        assert!(qq.a == q.c + 1u64);
+        assert!(qq.b == q.d - 1u64);
+        assert!(qq.c == q.a + 1u64);
+        assert!(qq.d == q.b - 1u64);
     }
 }
 
@@ -49,9 +49,9 @@ fn test2() {
         error!("a: %f", ff.a as float);
         error!("b: %u", ff.b as uint);
         error!("c: %f", ff.c as float);
-        fail_unless!(ff.a == f.c + 1.0f64);
-        fail_unless!(ff.b == 0xff_u8);
-        fail_unless!(ff.c == f.a - 1.0f64);
+        assert!(ff.a == f.c + 1.0f64);
+        assert!(ff.b == 0xff_u8);
+        assert!(ff.c == f.a - 1.0f64);
     }
 }
 

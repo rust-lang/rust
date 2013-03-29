@@ -60,7 +60,7 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 pub fn main() {
   let mut nyan = cat(0u, 2, ~"nyan");
   nyan.eat();
-  fail_unless!((!nyan.eat()));
+  assert!((!nyan.eat()));
   for uint::range(1u, 10u) |_i| { nyan.speak(); };
-  fail_unless!((nyan.eat()));
+  assert!((nyan.eat()));
 }

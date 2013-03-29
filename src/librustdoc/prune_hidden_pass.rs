@@ -66,7 +66,7 @@ fn should_prune_hidden_items() {
     use core::vec;
 
     let doc = test::mk_doc(~"#[doc(hidden)] mod a { }");
-    fail_unless!(vec::is_empty(doc.cratemod().mods()))
+    assert!(vec::is_empty(doc.cratemod().mods()))
 }
 
 #[cfg(test)]

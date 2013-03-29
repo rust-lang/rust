@@ -19,6 +19,6 @@ pub impl Foo {
 
 pub fn main() {
     let m = Foo(3);
-    fail_unless!(m.len() == 3);
+    assert!(m.len() == 3);
 }
 

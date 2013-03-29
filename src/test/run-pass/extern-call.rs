@@ -33,5 +33,5 @@ fn fact(n: uint) -> uint {
 pub fn main() {
     let result = fact(10u);
     debug!("result = %?", result);
-    fail_unless!(result == 3628800u);
+    assert!(result == 3628800u);
 }

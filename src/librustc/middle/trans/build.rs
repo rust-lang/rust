@@ -813,7 +813,7 @@ pub fn Phi(cx: block, Ty: TypeRef, vals: &[ValueRef], bbs: &[BasicBlockRef])
     -> ValueRef {
     unsafe {
         if cx.unreachable { return llvm::LLVMGetUndef(Ty); }
-        fail_unless!(vals.len() == bbs.len());
+        assert!(vals.len() == bbs.len());
         let phi = EmptyPhi(cx, Ty);
         count_insn(cx, "addincoming");
         llvm::LLVMAddIncoming(phi, vec::raw::to_ptr(vals),
@@ -1033,7 +1033,7 @@ pub fn Trap(cx: block) {
         let T: ValueRef = str::as_c_str(~"llvm.trap", |buf| {
             llvm::LLVMGetNamedFunction(M, buf)
         });
-        fail_unless!((T as int != 0));
+        assert!((T as int != 0));
         let Args: ~[ValueRef] = ~[];
         unsafe {
             count_insn(cx, "trap");
@@ -1047,7 +1047,7 @@ pub fn LandingPad(cx: block, Ty: TypeRef, PersFn: ValueRef,
                   NumClauses: uint) -> ValueRef {
     unsafe {
         check_not_terminated(cx);
-        fail_unless!(!cx.unreachable);
+        assert!(!cx.unreachable);
         count_insn(cx, "landingpad");
         return llvm::LLVMBuildLandingPad(B(cx), Ty, PersFn,
                                       NumClauses as c_uint, noname());

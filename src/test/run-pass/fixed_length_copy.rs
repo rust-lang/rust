@@ -15,6 +15,6 @@
 pub fn main() {
     let arr = [1,2,3];
     let arr2 = arr;
-    fail_unless!((arr[1] == 2));
-    fail_unless!((arr2[2] == 3));
+    assert!((arr[1] == 2));
+    assert!((arr2[2] == 3));
 }

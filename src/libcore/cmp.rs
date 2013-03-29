@@ -177,7 +177,7 @@ mod test {
 
     #[test]
     fn test_int_totaleq() {
-        fail_unless!(5.equals(&5));
-        fail_unless!(!2.equals(&17));
+        assert!(5.equals(&5));
+        assert!(!2.equals(&17));
     }
 }

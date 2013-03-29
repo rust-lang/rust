@@ -22,9 +22,9 @@ pub fn main() {
         None => (),
         Some(foo) => fail!(fmt!("expected None, but found %?", foo))
     }
-    fail_unless!(foo == somefoo.get());
-    fail_unless!(bar == somebar.get());
-    fail_unless!(foobar == somefoobar.get());
+    assert!(foo == somefoo.get());
+    assert!(bar == somebar.get());
+    assert!(foobar == somefoobar.get());
 }
 
 fn optint(in: int) -> Option<int> {

@@ -240,7 +240,7 @@ impl RngUtil for @Rng {
      * failing if start >= end
      */
     fn gen_int_range(&self, start: int, end: int) -> int {
-        fail_unless!(start < end);
+        assert!(start < end);
         start + int::abs(self.gen_int() % (end - start))
     }
 
@@ -274,7 +274,7 @@ impl RngUtil for @Rng {
      * failing if start >= end
      */
     fn gen_uint_range(&self, start: uint, end: uint) -> uint {
-        fail_unless!(start < end);
+        assert!(start < end);
         start + (self.gen_uint() % (end - start))
     }
 
@@ -326,7 +326,7 @@ impl RngUtil for @Rng {
      * Return a char randomly chosen from chars, failing if chars is empty
      */
     fn gen_char_from(&self, chars: &str) -> char {
-        fail_unless!(!chars.is_empty());
+        assert!(!chars.is_empty());
         let mut cs = ~[];
         for str::each_char(chars) |c| { cs.push(c) }
         self.choose(cs)
@@ -582,7 +582,7 @@ pub mod tests {
         let seed = rand::seed();
         let ra = rand::seeded_rng(seed);
         let rb = rand::seeded_rng(seed);
-        fail_unless!(ra.gen_str(100u) == rb.gen_str(100u));
+        assert!(ra.gen_str(100u) == rb.gen_str(100u));
     }
 
     #[test]
@@ -591,7 +591,7 @@ pub mod tests {
         let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
         let ra = rand::seeded_rng(seed);
         let rb = rand::seeded_rng(seed);
-        fail_unless!(ra.gen_str(100u) == rb.gen_str(100u));
+        assert!(ra.gen_str(100u) == rb.gen_str(100u));
     }
 
     #[test]
@@ -601,7 +601,7 @@ pub mod tests {
         // Regression test that isaac is actually using the above vector
         let r = ra.next();
         error!("%?", r);
-        fail_unless!(r == 890007737u32 // on x86_64
+        assert!(r == 890007737u32 // on x86_64
                      || r == 2935188040u32); // on x86
     }
 
@@ -609,9 +609,9 @@ pub mod tests {
     pub fn gen_int_range() {
         let r = rand::Rng();
         let a = r.gen_int_range(-3, 42);
-        fail_unless!(a >= -3 && a < 42);
-        fail_unless!(r.gen_int_range(0, 1) == 0);
-        fail_unless!(r.gen_int_range(-12, -11) == -12);
+        assert!(a >= -3 && a < 42);
+        assert!(r.gen_int_range(0, 1) == 0);
+        assert!(r.gen_int_range(-12, -11) == -12);
     }
 
     #[test]
@@ -625,9 +625,9 @@ pub mod tests {
     pub fn gen_uint_range() {
         let r = rand::Rng();
         let a = r.gen_uint_range(3u, 42u);
-        fail_unless!(a >= 3u && a < 42u);
-        fail_unless!(r.gen_uint_range(0u, 1u) == 0u);
-        fail_unless!(r.gen_uint_range(12u, 13u) == 12u);
+        assert!(a >= 3u && a < 42u);
+        assert!(r.gen_uint_range(0u, 1u) == 0u);
+        assert!(r.gen_uint_range(12u, 13u) == 12u);
     }
 
     #[test]
@@ -648,8 +648,8 @@ pub mod tests {
     #[test]
     pub fn gen_weighted_bool() {
         let r = rand::Rng();
-        fail_unless!(r.gen_weighted_bool(0u) == true);
-        fail_unless!(r.gen_weighted_bool(1u) == true);
+        assert!(r.gen_weighted_bool(0u) == true);
+        assert!(r.gen_weighted_bool(1u) == true);
     }
 
     #[test]
@@ -658,40 +658,40 @@ pub mod tests {
         debug!(r.gen_str(10u));
         debug!(r.gen_str(10u));
         debug!(r.gen_str(10u));
-        fail_unless!(r.gen_str(0u).len() == 0u);
-        fail_unless!(r.gen_str(10u).len() == 10u);
-        fail_unless!(r.gen_str(16u).len() == 16u);
+        assert!(r.gen_str(0u).len() == 0u);
+        assert!(r.gen_str(10u).len() == 10u);
+        assert!(r.gen_str(16u).len() == 16u);
     }
 
     #[test]
     pub fn gen_bytes() {
         let r = rand::Rng();
-        fail_unless!(r.gen_bytes(0u).len() == 0u);
-        fail_unless!(r.gen_bytes(10u).len() == 10u);
-        fail_unless!(r.gen_bytes(16u).len() == 16u);
+        assert!(r.gen_bytes(0u).len() == 0u);
+        assert!(r.gen_bytes(10u).len() == 10u);
+        assert!(r.gen_bytes(16u).len() == 16u);
     }
 
     #[test]
     pub fn choose() {
         let r = rand::Rng();
-        fail_unless!(r.choose([1, 1, 1]) == 1);
+        assert!(r.choose([1, 1, 1]) == 1);
     }
 
     #[test]
     pub fn choose_option() {
         let r = rand::Rng();
         let x: Option<int> = r.choose_option([]);
-        fail_unless!(x.is_none());
-        fail_unless!(r.choose_option([1, 1, 1]) == Some(1));
+        assert!(x.is_none());
+        assert!(r.choose_option([1, 1, 1]) == Some(1));
     }
 
     #[test]
     pub fn choose_weighted() {
         let r = rand::Rng();
-        fail_unless!(r.choose_weighted(~[
+        assert!(r.choose_weighted(~[
             rand::Weighted { weight: 1u, item: 42 },
         ]) == 42);
-        fail_unless!(r.choose_weighted(~[
+        assert!(r.choose_weighted(~[
             rand::Weighted { weight: 0u, item: 42 },
             rand::Weighted { weight: 1u, item: 43 },
         ]) == 43);
@@ -700,23 +700,23 @@ pub mod tests {
     #[test]
     pub fn choose_weighted_option() {
         let r = rand::Rng();
-        fail_unless!(r.choose_weighted_option(~[
+        assert!(r.choose_weighted_option(~[
             rand::Weighted { weight: 1u, item: 42 },
         ]) == Some(42));
-        fail_unless!(r.choose_weighted_option(~[
+        assert!(r.choose_weighted_option(~[
             rand::Weighted { weight: 0u, item: 42 },
             rand::Weighted { weight: 1u, item: 43 },
         ]) == Some(43));
         let v: Option<int> = r.choose_weighted_option([]);
-        fail_unless!(v.is_none());
+        assert!(v.is_none());
     }
 
     #[test]
     pub fn weighted_vec() {
         let r = rand::Rng();
         let empty: ~[int] = ~[];
-        fail_unless!(r.weighted_vec(~[]) == empty);
-        fail_unless!(r.weighted_vec(~[
+        assert!(r.weighted_vec(~[]) == empty);
+        assert!(r.weighted_vec(~[
             rand::Weighted { weight: 0u, item: 3u },
             rand::Weighted { weight: 1u, item: 2u },
             rand::Weighted { weight: 2u, item: 1u },
@@ -727,16 +727,16 @@ pub mod tests {
     pub fn shuffle() {
         let r = rand::Rng();
         let empty: ~[int] = ~[];
-        fail_unless!(r.shuffle(~[]) == empty);
-        fail_unless!(r.shuffle(~[1, 1, 1]) == ~[1, 1, 1]);
+        assert!(r.shuffle(~[]) == empty);
+        assert!(r.shuffle(~[1, 1, 1]) == ~[1, 1, 1]);
     }
 
     #[test]
     pub fn task_rng() {
         let r = rand::task_rng();
         r.gen_int();
-        fail_unless!(r.shuffle(~[1, 1, 1]) == ~[1, 1, 1]);
-        fail_unless!(r.gen_uint_range(0u, 1u) == 0u);
+        assert!(r.shuffle(~[1, 1, 1]) == ~[1, 1, 1]);
+        assert!(r.gen_uint_range(0u, 1u) == 0u);
     }
 
     #[test]

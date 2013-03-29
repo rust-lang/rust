@@ -20,5 +20,5 @@ fn foo() -> @fn() -> int {
 }
 
 pub fn main() {
-    fail_unless!(foo()() == 22);
+    assert!(foo()() == 22);
 }

@@ -187,7 +187,7 @@ fn get_global_state() -> Exclusive<GlobalState> {
         let prev_i = unsafe { atomic_cxchg(&mut *global_ptr, 0, state_i) };
 
         // Sanity check that we're not trying to reinitialize after shutdown
-        fail_unless!(prev_i != POISON);
+        assert!(prev_i != POISON);
 
         if prev_i == 0 {
             // Successfully installed the global pointer
@@ -201,7 +201,7 @@ fn get_global_state() -> Exclusive<GlobalState> {
                 let prev_i = unsafe {
                     atomic_cxchg(&mut *global_ptr, state_i, POISON)
                 };
-                fail_unless!(prev_i == state_i);
+                assert!(prev_i == state_i);
 
                 // Capture the global state object in the at_exit closure
                 // so that it is destroyed at the right time
@@ -245,7 +245,7 @@ fn test_clone_rc() {
                     ~shared_mutable_state(10)
                 };
 
-                fail_unless!(get_shared_immutable_state(&val) == &10);
+                assert!(get_shared_immutable_state(&val) == &10);
             }
         }
     }
@@ -273,7 +273,7 @@ fn test_modify() {
             match v {
                 Some(sms) => {
                     let v = get_shared_immutable_state(sms);
-                    fail_unless!(*v == 10);
+                    assert!(*v == 10);
                     None
                 },
                 _ => fail!()

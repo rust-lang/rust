@@ -10,4 +10,4 @@
 
 fn f() -> int { { return 3; } }
 
-pub fn main() { fail_unless!((f() == 3)); }
+pub fn main() { assert!((f() == 3)); }
