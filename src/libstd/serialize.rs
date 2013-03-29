@@ -49,7 +49,6 @@ pub trait Encoder {
     fn emit_seq(&self, len: uint, f: &fn());
     fn emit_seq_elt(&self, idx: uint, f: &fn());
 
-    fn emit_rec(&self, f: &fn());
     fn emit_struct(&self, name: &str, _len: uint, f: &fn());
     fn emit_field(&self, f_name: &str, f_idx: uint, f: &fn());
 
@@ -92,7 +91,6 @@ pub trait Decoder {
     fn read_seq<T>(&self, f: &fn(uint) -> T) -> T;
     fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
-    fn read_rec<T>(&self, f: &fn() -> T) -> T;
     fn read_struct<T>(&self, name: &str, _len: uint, f: &fn() -> T) -> T;
     fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T;
 

@@ -1262,9 +1262,6 @@ mod test {
             self.add_unknown_to_log(); f();
         }
 
-        fn emit_rec(&self, f: &fn()) {
-            self.add_unknown_to_log(); f();
-        }
         fn emit_struct(&self, name: &str, +len: uint, f: &fn()) {
             self.add_to_log(CallToEmitStruct (name.to_str(),len)); f();
         }
