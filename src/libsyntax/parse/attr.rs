@@ -62,12 +62,14 @@ impl parser_attr for Parser {
         return attrs;
     }
 
+    // matches attribute = # attribute_naked
     fn parse_attribute(&self, style: ast::attr_style) -> ast::attribute {
         let lo = self.span.lo;
         self.expect(&token::POUND);
         return self.parse_attribute_naked(style, lo);
     }
 
+    // matches attribute_naked = [ meta_item ]
     fn parse_attribute_naked(&self, style: ast::attr_style, lo: BytePos) ->
         ast::attribute {
         self.expect(&token::LBRACKET);
@@ -86,6 +88,7 @@ impl parser_attr for Parser {
     // is an inner attribute of the containing item or an outer attribute of
     // the first contained item until we see the semi).
 
+    // matches inner_attrs* outer_attr?
     // you can make the 'next' field an Option, but the result is going to be
     // more useful as a vector.
     fn parse_inner_attrs_and_next(&self) ->
@@ -134,6 +137,9 @@ impl parser_attr for Parser {
         (inner_attrs, next_outer_attrs)
     }
 
+    // matches meta_item = IDENT
+    // | IDENT = lit
+    // | IDENT meta_seq
     fn parse_meta_item(&self) -> @ast::meta_item {
         let lo = self.span.lo;
         let name = self.id_to_str(self.parse_ident());
@@ -156,6 +162,7 @@ impl parser_attr for Parser {
         }
     }
 
+    // matches meta_seq = ( COMMASEP(meta_item) )
     fn parse_meta_seq(&self) -> ~[@ast::meta_item] {
         copy self.parse_seq(
             &token::LPAREN,
