@@ -855,9 +855,7 @@ impl serialize::Decoder for Decoder {
             }
             _ => fail!(~"not a list"),
         };
-        let res = f(len);
-        self.stack.pop();
-        res
+        f(len)
     }
 
     fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
@@ -1675,10 +1673,10 @@ mod tests {
     fn test_read_map() {
         let s = ~"{\"a\": \"Dog\", \"b\": [\"Frog\", \"Henry\", 349]}";
         let decoder = Decoder(from_str(s).unwrap());
-        let map: LinearMap<~str, Animal> = Decodable::decode(&decoder);
+        let mut map: LinearMap<~str, Animal> = Decodable::decode(&decoder);
 
-        assert_eq!(map.find(&~"a"), Some(Dog));
-        assert_eq!(map.find(&~"b"), Some(Frog(~"Henry", 349)));
+        assert_eq!(map.pop(&~"a"), Some(Dog));
+        assert_eq!(map.pop(&~"b"), Some(Frog(~"Henry", 349)));
     }
 
     #[test]
