@@ -125,7 +125,7 @@ but a small number are defined in terms of Unicode properties or explicit codepo
 ## Special Unicode Productions
 
 The following productions in the Rust grammar are defined in terms of Unicode properties:
-`ident`, `non_null`, `non_star`, `non_eol`, `non_slash`, `non_single_quote` and `non_double_quote`.
+`ident`, `non_null`, `non_star`, `non_eol`, `non_slash_or_star`, `non_single_quote` and `non_double_quote`.
 
 ### Identifiers
 
@@ -147,7 +147,7 @@ Some productions are defined by exclusion of particular Unicode characters:
   - `non_null` is any single Unicode character aside from `U+0000` (null)
   - `non_eol` is `non_null` restricted to exclude `U+000A` (`'\n'`)
   - `non_star` is `non_null` restricted to exclude `U+002A` (`*`)
-  - `non_slash` is `non_null` restricted to exclude `U+002F` (`/`)
+  - `non_slash_or_star` is `non_null` restricted to exclude `U+002F` (`/`) and `U+002A` (`*`)
   - `non_single_quote` is `non_null` restricted to exclude `U+0027`  (`'`)
   - `non_double_quote` is `non_null` restricted to exclude `U+0022` (`"`)
 
@@ -155,8 +155,8 @@ Some productions are defined by exclusion of particular Unicode characters:
 
 ~~~~~~~~ {.ebnf .gram}
 comment : block_comment | line_comment ;
-block_comment : "/*" block_comment_body * "*/" ;
-block_comment_body : non_star * | '*' non_slash ;
+block_comment : "/*" block_comment_body * '*' + '/' ;
+block_comment_body : non_star * | '*' + non_slash_or_star ;
 line_comment : "//" non_eol * ;
 ~~~~~~~~
 
