@@ -1336,7 +1336,17 @@ fn roundtrip(in_item: Option<@ast::item>) {
     let ebml_doc = reader::Doc(@bytes);
     let out_item = decode_item_ast(ebml_doc);
 
-    assert_eq!(in_item, out_item);
+    let exp_str = do io::with_str_writer |w| {
+        in_item.encode(&prettyprint::Serializer(w))
+    };
+    let out_str = do io::with_str_writer |w| {
+        out_item.encode(&prettyprint::Serializer(w))
+    };
+
+    debug!("expected string: %s", exp_str);
+    debug!("actual string  : %s", out_str);
+
+    assert!(exp_str == out_str);
 }
 
 #[test]
