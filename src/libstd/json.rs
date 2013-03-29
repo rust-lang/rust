@@ -130,19 +130,13 @@ impl serialize::Encoder for Encoder {
         f();
     }
 
-    fn emit_borrowed_vec(&self, _len: uint, f: &fn()) {
+    fn emit_seq(&self, _len: uint, f: &fn()) {
         self.wr.write_char('[');
         f();
         self.wr.write_char(']');
     }
 
-    fn emit_owned_vec(&self, len: uint, f: &fn()) {
-        self.emit_borrowed_vec(len, f)
-    }
-    fn emit_managed_vec(&self, len: uint, f: &fn()) {
-        self.emit_borrowed_vec(len, f)
-    }
-    fn emit_vec_elt(&self, idx: uint, f: &fn()) {
+    fn emit_seq_elt(&self, idx: uint, f: &fn()) {
         if idx != 0 { self.wr.write_char(','); }
         f()
     }
@@ -165,10 +159,10 @@ impl serialize::Encoder for Encoder {
     }
 
     fn emit_tup(&self, len: uint, f: &fn()) {
-        self.emit_borrowed_vec(len, f);
+        self.emit_seq(len, f);
     }
     fn emit_tup_elt(&self, idx: uint, f: &fn()) {
-        self.emit_vec_elt(idx, f)
+        self.emit_seq_elt(idx, f)
     }
 
     fn emit_option(&self, f: &fn()) { f(); }
@@ -243,7 +237,7 @@ impl serialize::Encoder for PrettyEncoder {
         f()
     }
 
-    fn emit_borrowed_vec(&self, len: uint, f: &fn()) {
+    fn emit_seq(&self, len: uint, f: &fn()) {
         if len == 0 {
             self.wr.write_str("[]");
         } else {
@@ -256,13 +250,7 @@ impl serialize::Encoder for PrettyEncoder {
             self.wr.write_char(']');
         }
     }
-    fn emit_owned_vec(&self, len: uint, f: &fn()) {
-        self.emit_borrowed_vec(len, f)
-    }
-    fn emit_managed_vec(&self, len: uint, f: &fn()) {
-        self.emit_borrowed_vec(len, f)
-    }
-    fn emit_vec_elt(&self, idx: uint, f: &fn()) {
+    fn emit_seq_elt(&self, idx: uint, f: &fn()) {
         if idx == 0 {
             self.wr.write_char('\n');
         } else {
@@ -300,10 +288,10 @@ impl serialize::Encoder for PrettyEncoder {
         f();
     }
     fn emit_tup(&self, sz: uint, f: &fn()) {
-        self.emit_borrowed_vec(sz, f);
+        self.emit_seq(sz, f);
     }
     fn emit_tup_elt(&self, idx: uint, f: &fn()) {
-        self.emit_vec_elt(idx, f)
+        self.emit_seq_elt(idx, f)
     }
 
     fn emit_option(&self, f: &fn()) { f(); }
@@ -858,8 +846,8 @@ impl<'self> serialize::Decoder for Decoder<'self> {
         }
     }
 
-    fn read_owned_vec<T>(&self, f: &fn(uint) -> T) -> T {
-        debug!("read_owned_vec()");
+    fn read_seq<T>(&self, f: &fn(uint) -> T) -> T {
+        debug!("read_seq()");
         let len = match *self.peek() {
             List(ref list) => list.len(),
             _ => fail!(~"not a list"),
@@ -869,19 +857,8 @@ impl<'self> serialize::Decoder for Decoder<'self> {
         res
     }
 
-    fn read_managed_vec<T>(&self, f: &fn(uint) -> T) -> T {
-        debug!("read_owned_vec()");
-        let len = match *self.peek() {
-            List(ref list) => list.len(),
-            _ => fail!(~"not a list"),
-        };
-        let res = f(len);
-        self.pop();
-        res
-    }
-
-    fn read_vec_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
-        debug!("read_vec_elt(idx=%u)", idx);
+    fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_seq_elt(idx=%u)", idx);
         match *self.peek() {
             List(ref list) => {
                 self.stack.push(&list[idx]);
