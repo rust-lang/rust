@@ -141,11 +141,6 @@ impl serialize::Encoder for Encoder {
         f()
     }
 
-    fn emit_rec(&self, f: &fn()) {
-        self.wr.write_char('{');
-        f();
-        self.wr.write_char('}');
-    }
     fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) {
         self.wr.write_char('{');
         f();
@@ -253,20 +248,17 @@ impl serialize::Encoder for PrettyEncoder {
         f()
     }
 
-    fn emit_rec(&self, f: &fn()) {
-        self.wr.write_char('{');
-        self.indent += 2;
-        f();
-        self.wr.write_char('\n');
-        self.indent -= 2;
-        self.wr.write_str(spaces(self.indent));
-        self.wr.write_char('}');
-    }
     fn emit_struct(&self, _name: &str, len: uint, f: &fn()) {
         if len == 0 {
             self.wr.write_str("{}");
         } else {
-            self.emit_rec(f)
+            self.wr.write_char('{');
+            self.indent += 2;
+            f();
+            self.wr.write_char('\n');
+            self.indent -= 2;
+            self.wr.write_str(spaces(self.indent));
+            self.wr.write_char('}');
         }
     }
     fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
@@ -286,25 +278,25 @@ impl serialize::Encoder for PrettyEncoder {
     fn emit_option_some(&self, f: &fn()) { f(); }
 }
 
-impl<S:serialize::Encoder> serialize::Encodable<S> for Json {
-    fn encode(&self, s: &S) {
+impl<E: serialize::Encoder> serialize::Encodable<E> for Json {
+    fn encode(&self, e: &E) {
         match *self {
-            Number(v) => v.encode(s),
-            String(ref v) => v.encode(s),
-            Boolean(v) => v.encode(s),
-            List(ref v) => v.encode(s),
+            Number(v) => v.encode(e),
+            String(ref v) => v.encode(e),
+            Boolean(v) => v.encode(e),
+            List(ref v) => v.encode(e),
             Object(ref v) => {
-                do s.emit_rec || {
+                do e.emit_struct("Object", v.len())|| {
                     let mut idx = 0;
                     for v.each |&(key, value)| {
-                        do s.emit_field(*key, idx) {
-                            value.encode(s);
+                        do e.emit_field(*key, idx) {
+                            value.encode(e);
                         }
                         idx += 1;
                     }
                 }
             },
-            Null => s.emit_nil(),
+            Null => e.emit_nil(),
         }
     }
 }
@@ -855,13 +847,6 @@ impl<'self> serialize::Decoder for Decoder<'self> {
         }
     }
 
-    fn read_rec<T>(&self, f: &fn() -> T) -> T {
-        debug!("read_rec()");
-        let value = f();
-        self.pop();
-        value
-    }
-
     fn read_struct<T>(&self, _name: &str, _len: uint, f: &fn() -> T) -> T {
         debug!("read_struct()");
         let value = f();
@@ -870,7 +855,7 @@ impl<'self> serialize::Decoder for Decoder<'self> {
     }
 
     fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
-        debug!("read_rec_field(%s, idx=%u)", name, idx);
+        debug!("read_field(%s, idx=%u)", name, idx);
         let top = self.peek();
         match *top {
             Object(ref obj) => {
