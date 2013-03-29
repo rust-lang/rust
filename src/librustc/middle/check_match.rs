@@ -11,7 +11,7 @@
 use core::prelude::*;
 
 use middle::const_eval::{compare_const_vals, lookup_const_by_id};
-use middle::const_eval::{eval_const_expr, const_val, const_int, const_bool};
+use middle::const_eval::{eval_const_expr, const_val, const_bool};
 use middle::pat_util::*;
 use middle::ty::*;
 use middle::ty;
@@ -23,7 +23,7 @@ use core::uint;
 use core::vec;
 use std::sort;
 use syntax::ast::*;
-use syntax::ast_util::{variant_def_ids, unguarded_pat, walk_pat};
+use syntax::ast_util::{unguarded_pat, walk_pat};
 use syntax::codemap::{span, dummy_sp, spanned};
 use syntax::visit;
 

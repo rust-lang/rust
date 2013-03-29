@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use core::*;
-use core::hash::{Hash, HashUtil, Streaming};
+use core::hash::Streaming;
 use core::hashmap::linear::LinearMap;
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
@@ -17,10 +17,10 @@ use std::getopts::groups::getopts;
 use std::semver;
 use std::{json, term, sort, getopts};
 use syntax::ast_util::*;
-use syntax::codemap::{span, dummy_sp, spanned};
+use syntax::codemap::{dummy_sp, spanned};
 use syntax::ext::base::{mk_ctxt, ext_ctxt};
 use syntax::ext::build;
-use syntax::{ast, attr, codemap, diagnostic, fold, parse, visit};
+use syntax::{ast, attr, codemap, diagnostic, fold};
 
 pub struct Package {
     id: ~str,

@@ -11,7 +11,7 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
-use lib::llvm::{llvm, TypeRef, ValueRef, Integer, Pointer, Float, Double};
+use lib::llvm::{llvm, TypeRef, Integer, Pointer, Float, Double};
 use lib::llvm::{Struct, Array, Attribute};
 use lib::llvm::{StructRetAttribute, ByValAttribute};
 use lib::llvm::struct_tys;

@@ -12,8 +12,8 @@
 
 use core::prelude::*;
 
-use lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
-use lib::llvm::{True, False, Bool};
+use lib::llvm::{ValueRef, TypeRef};
+use lib::llvm::False;
 use lib::llvm::llvm;
 use middle::trans::common::*;
 use middle::trans::type_of;

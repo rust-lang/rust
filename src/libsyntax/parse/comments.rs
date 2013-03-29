@@ -11,7 +11,7 @@
 use core::prelude::*;
 
 use ast;
-use codemap::{BytePos, CharPos, CodeMap, FileMap, Pos};
+use codemap::{BytePos, CharPos, CodeMap, Pos};
 use diagnostic;
 use parse::lexer::{is_whitespace, get_str_from, reader};
 use parse::lexer::{StringReader, bump, is_eof, nextch, TokenAndSpan};

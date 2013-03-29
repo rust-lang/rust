@@ -14,7 +14,7 @@ use back::rpath;
 use driver::session::Session;
 use driver::session;
 use lib::llvm::llvm;
-use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False};
+use lib::llvm::ModuleRef;
 use lib;
 use metadata::common::LinkMeta;
 use metadata::{encoder, csearch, cstore};
@@ -25,7 +25,7 @@ use util::ppaux;
 use core::char;
 use core::hash::Streaming;
 use core::hash;
-use core::io::{Writer, WriterUtil};
+use core::io::WriterUtil;
 use core::libc::{c_int, c_uint, c_char};
 use core::os::consts::{macos, freebsd, linux, android, win32};
 use core::os;
@@ -86,7 +86,7 @@ pub mod jit {
     use back::link::llvm_err;
     use driver::session::Session;
     use lib::llvm::llvm;
-    use lib::llvm::{ModuleRef, PassManagerRef, mk_target_data};
+    use lib::llvm::{ModuleRef, PassManagerRef};
     use metadata::cstore;
 
     use core::cast;
@@ -171,11 +171,11 @@ pub mod write {
     use driver::session::Session;
     use driver::session;
     use lib::llvm::llvm;
-    use lib::llvm::{False, True, ModuleRef, mk_pass_manager, mk_target_data};
+    use lib::llvm::{False, ModuleRef, mk_pass_manager, mk_target_data};
     use lib;
 
     use core::prelude::*;
-    use core::libc::{c_char, c_int, c_uint};
+    use core::libc::{c_int, c_uint};
     use core::path::Path;
     use core::str;
     use core::run;

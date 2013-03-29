@@ -22,7 +22,7 @@ use core::prelude::*;
 use parse;
 
 use core::cell::Cell;
-use core::comm::{stream, Chan, SharedChan, Port};
+use core::comm::{stream, SharedChan, Port};
 use rustc::driver::driver;
 use rustc::driver::session::Session;
 use rustc::driver::session::{basic_options, options};

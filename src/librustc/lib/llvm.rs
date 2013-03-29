@@ -11,7 +11,7 @@
 use core::prelude::*;
 
 use core::hashmap::linear::LinearMap;
-use core::libc::{c_char, c_int, c_uint, c_longlong, c_ulonglong};
+use core::libc::c_uint;
 use core::option;
 use core::ptr;
 use core::str;
@@ -223,7 +223,7 @@ pub enum SectionIterator_opaque {}
 pub type SectionIteratorRef = *SectionIterator_opaque;
 
 pub mod llvm {
-    use super::{AsmDialect, AtomicBinOp, AtomicOrdering, BasicBlockRef};
+    use super::{AtomicBinOp, AtomicOrdering, BasicBlockRef};
     use super::{Bool, BuilderRef, ContextRef, MemoryBufferRef, ModuleRef};
     use super::{ObjectFileRef, Opcode, PassManagerRef, PassManagerBuilderRef};
     use super::{SectionIteratorRef, TargetDataRef, TypeKind, TypeRef, UseRef};

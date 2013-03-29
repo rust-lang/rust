@@ -19,7 +19,7 @@ use core::prelude::*;
 
 use astsrv;
 use config;
-use doc::{ItemUtils, PageUtils};
+use doc::ItemUtils;
 use doc;
 use fold::Fold;
 use fold;
@@ -28,6 +28,8 @@ use util::NominalOp;
 
 use core::comm::*;
 use syntax::ast;
+
+#[cfg(test)] use doc::PageUtils;
 
 pub fn mk_pass(output_style: config::OutputStyle) -> Pass {
     Pass {

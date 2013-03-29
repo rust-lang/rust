@@ -35,7 +35,7 @@ use middle::trans::inline;
 use middle::ty;
 use middle::typeck;
 
-use core::option::{Some, None, Option};
+use core::option::{Some, None};
 use core::uint;
 use core::vec;
 use std::list::{List, Cons, Nil};

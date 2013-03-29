@@ -36,12 +36,14 @@
 use cell::Cell;
 use cmp::Eq;
 use result::Result;
-use comm::{stream, Chan, GenericChan, GenericPort, Port, SharedChan};
+use comm::{stream, Chan, GenericChan, GenericPort, Port};
 use prelude::*;
 use result;
 use task::rt::{task_id, sched_id, rust_task};
 use util;
 use util::replace;
+
+#[cfg(test)] use comm::SharedChan;
 
 mod local_data_priv;
 pub mod local_data;

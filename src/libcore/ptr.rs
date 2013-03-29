@@ -13,7 +13,6 @@
 use cast;
 use libc;
 use libc::{c_void, size_t};
-use unstable::intrinsics::{memmove32,memmove64};
 use sys;
 
 #[cfg(test)] use vec;
@@ -116,12 +115,14 @@ pub fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
 #[inline(always)]
 #[cfg(target_word_size = "32")]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
+    use unstable::intrinsics::memmove32;
     let n = count * sys::size_of::<T>();
     memmove32(dst as *mut u8, src as *u8, n as u32);
 }
 #[inline(always)]
 #[cfg(target_word_size = "64")]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
+    use unstable::intrinsics::memmove64;
     let n = count * sys::size_of::<T>();
     memmove64(dst as *mut u8, src as *u8, n as u64);
 }

@@ -13,7 +13,7 @@ use core::prelude::*;
 use back::link;
 use back::{arm, x86, x86_64, mips};
 use driver::session::{Aggressive};
-use driver::session::{Session, Session_, OptLevel, No, Less, Default};
+use driver::session::{Session, Session_, No, Less, Default};
 use driver::session;
 use front;
 use lib::llvm::llvm;

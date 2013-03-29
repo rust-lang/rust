@@ -866,7 +866,7 @@ mod biguint_tests {
 
     use core::*;
     use core::num::{IntConvertible, Zero, One};
-    use super::{BigInt, BigUint, BigDigit};
+    use super::{BigUint, BigDigit};
 
     #[test]
     fn test_from_slice() {

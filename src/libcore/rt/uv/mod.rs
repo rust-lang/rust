@@ -39,16 +39,13 @@ use str::raw::from_c_str;
 use to_str::ToStr;
 use vec;
 use ptr;
-use libc::{c_void, c_int, size_t, malloc, free, ssize_t};
-use cast::{transmute, transmute_mut_region};
+use libc::{c_void, c_int, size_t, malloc, free};
+use cast::transmute;
 use ptr::null;
 use super::uvll;
-use super::uvll::*;
 use unstable::finally::Finally;
 
 #[cfg(test)] use unstable::run_in_bare_thread;
-#[cfg(test)] use super::thread::Thread;
-#[cfg(test)] use cell::Cell;
 
 pub use self::file::{FsRequest, FsCallback};
 pub use self::net::{StreamWatcher, TcpWatcher};

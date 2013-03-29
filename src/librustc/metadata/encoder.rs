@@ -24,8 +24,8 @@ use middle;
 use util::ppaux::ty_to_str;
 
 use core::flate;
-use core::hash::{Hash, HashUtil};
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hash::HashUtil;
+use core::hashmap::linear::LinearMap;
 use core::int;
 use core::io::{Writer, WriterUtil};
 use core::io;

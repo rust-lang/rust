@@ -14,7 +14,7 @@
 
 use container::{Container, Mutable};
 use cast;
-use cmp::{Eq, Equiv, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
+use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use iter::BaseIter;
 use iter;
@@ -27,6 +27,8 @@ use ptr::addr_of;
 use sys;
 use uint;
 use vec;
+
+#[cfg(notest)] use cmp::Equiv;
 
 pub mod rustrt {
     use libc;

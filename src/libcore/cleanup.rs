@@ -11,10 +11,12 @@
 #[doc(hidden)];
 
 use libc::{c_char, c_void, intptr_t, uintptr_t};
-use ptr::{mut_null, null, to_unsafe_ptr};
+use ptr::mut_null;
 use repr::BoxRepr;
 use sys::TypeDesc;
 use cast::transmute;
+
+#[cfg(notest)] use ptr::to_unsafe_ptr;
 
 /**
  * Runtime structures
