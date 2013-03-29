@@ -1272,13 +1272,6 @@ mod test {
             self.add_to_log(CallToEmitField (name.to_str(),idx)); f();
         }
 
-        fn emit_tup(&self, +_len: uint, f: &fn()) {
-            self.add_unknown_to_log(); f();
-        }
-        fn emit_tup_elt(&self, +_idx: uint, f: &fn()) {
-            self.add_unknown_to_log(); f();
-        }
-
         fn emit_option(&self, f: &fn()) {
             self.add_to_log(CallToEmitOption);
             f();

@@ -378,16 +378,6 @@ pub mod reader {
             f()
         }
 
-        fn read_tup<T>(&self, len: uint, f: &fn() -> T) -> T {
-            debug!("read_tup(len=%u)", len);
-            f()
-        }
-
-        fn read_tup_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
-            debug!("read_tup_elt(idx=%u)", idx);
-            f()
-        }
-
         #[cfg(stage0)]
         fn read_option<T>(&self, f: &fn(bool) -> T) -> T {
             debug!("read_option()");
@@ -660,9 +650,6 @@ pub mod writer {
             self._emit_label(name);
             f()
         }
-
-        fn emit_tup(&self, _len: uint, f: &fn()) { f() }
-        fn emit_tup_elt(&self, _idx: uint, f: &fn()) { f() }
 
         fn emit_option(&self, f: &fn()) {
             self.emit_enum("Option", f);
