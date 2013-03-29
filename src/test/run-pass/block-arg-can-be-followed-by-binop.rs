@@ -14,5 +14,5 @@ pub fn main() {
     // Trailing expressions don't require parentheses:
     let y = do vec::foldl(0f, v) |x, y| { x + *y } + 10f;
 
-    fail_unless!(y == 15f);
+    assert!(y == 15f);
 }

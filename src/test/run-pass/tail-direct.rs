@@ -12,7 +12,7 @@
 
 
 // -*- rust -*-
-pub fn main() { fail_unless!((even(42))); fail_unless!((odd(45))); }
+pub fn main() { assert!((even(42))); assert!((odd(45))); }
 
 fn even(n: int) -> bool { if n == 0 { return true; } else { return odd(n - 1); } }
 

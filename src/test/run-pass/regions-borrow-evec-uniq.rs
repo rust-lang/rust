@@ -15,9 +15,9 @@ fn foo(x: &[int]) -> int {
 pub fn main() {
     let p = ~[1,2,3,4,5];
     let r = foo(p);
-    fail_unless!(r == 1);
+    assert!(r == 1);
 
     let p = ~[5,4,3,2,1];
     let r = foo(p);
-    fail_unless!(r == 5);
+    assert!(r == 5);
 }

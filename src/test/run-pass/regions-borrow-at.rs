@@ -16,5 +16,5 @@ pub fn main() {
     let p = @22u;
     let r = foo(p);
     debug!("r=%u", r);
-    fail_unless!(r == 22u);
+    assert!(r == 22u);
 }

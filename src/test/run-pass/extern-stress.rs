@@ -36,7 +36,7 @@ fn count(n: uint) -> uint {
 pub fn main() {
     for iter::repeat(100u) {
         do task::spawn {
-            fail_unless!(count(5u) == 16u);
+            assert!(count(5u) == 16u);
         };
     }
 }

@@ -12,12 +12,12 @@
 
 #[cfg(target_arch = "x86")]
 fn target() {
-    fail_unless!((-1000 as uint >> 3u == 536870787u));
+    assert!((-1000 as uint >> 3u == 536870787u));
 }
 
 #[cfg(target_arch = "x86_64")]
 fn target() {
-    fail_unless!((-1000 as uint >> 3u == 2305843009213693827u));
+    assert!((-1000 as uint >> 3u == 2305843009213693827u));
 }
 
 fn general() {
@@ -28,14 +28,14 @@ fn general() {
     a = a ^ b;
     debug!(a);
     debug!(b);
-    fail_unless!((b == 1));
-    fail_unless!((a == 2));
-    fail_unless!((!0xf0 & 0xff == 0xf));
-    fail_unless!((0xf0 | 0xf == 0xff));
-    fail_unless!((0xf << 4 == 0xf0));
-    fail_unless!((0xf0 >> 4 == 0xf));
-    fail_unless!((-16 >> 2 == -4));
-    fail_unless!((0b1010_1010 | 0b0101_0101 == 0xff));
+    assert!((b == 1));
+    assert!((a == 2));
+    assert!((!0xf0 & 0xff == 0xf));
+    assert!((0xf0 | 0xf == 0xff));
+    assert!((0xf << 4 == 0xf0));
+    assert!((0xf0 >> 4 == 0xf));
+    assert!((-16 >> 2 == -4));
+    assert!((0b1010_1010 | 0b0101_0101 == 0xff));
 }
 
 pub fn main() {

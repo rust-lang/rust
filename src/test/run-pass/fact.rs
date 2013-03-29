@@ -32,7 +32,7 @@ fn f(x: int) -> int {
 }
 
 pub fn main() {
-    fail_unless!((f(5) == 120));
+    assert!((f(5) == 120));
     // debug!("all done");
 
 }

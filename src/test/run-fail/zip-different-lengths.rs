@@ -15,7 +15,7 @@ extern mod std;
 use core::vec::{same_length, zip};
 
 fn enum_chars(start: u8, end: u8) -> ~[char] {
-    fail_unless!(start < end);
+    assert!(start < end);
     let mut i = start;
     let mut r = ~[];
     while i <= end { r.push(i as char); i += 1 as u8; }
@@ -23,7 +23,7 @@ fn enum_chars(start: u8, end: u8) -> ~[char] {
 }
 
 fn enum_uints(start: uint, end: uint) -> ~[uint] {
-    fail_unless!(start < end);
+    assert!(start < end);
     let mut i = start;
     let mut r = ~[];
     while i <= end { r.push(i); i += 1; }
@@ -35,7 +35,7 @@ fn main() {
     let chars = enum_chars(a, j);
     let ints = enum_uints(k, l);
 
-    fail_unless!(same_length(chars, ints));
+    assert!(same_length(chars, ints));
     let ps = zip(chars, ints);
     fail!(~"the impossible happened");
 }

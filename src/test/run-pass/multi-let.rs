@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() { let x = 10, y = x; fail_unless!((y == 10)); }
+pub fn main() { let x = 10, y = x; assert!((y == 10)); }

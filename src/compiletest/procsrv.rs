@@ -25,7 +25,7 @@ fn target_env(lib_path: ~str, prog: ~str) -> ~[(~str,~str)] {
     let mut env = os::env();
 
     // Make sure we include the aux directory in the path
-    fail_unless!(prog.ends_with(~".exe"));
+    assert!(prog.ends_with(~".exe"));
     let aux_path = prog.slice(0u, prog.len() - 4u) + ~".libaux";
 
     env = do vec::map(env) |pair| {

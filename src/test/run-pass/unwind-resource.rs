@@ -42,5 +42,5 @@ pub fn main() {
     let c = SharedChan(c);
     task::spawn_unlinked(|| f(c.clone()) );
     error!("hiiiiiiiii");
-    fail_unless!(p.recv());
+    assert!(p.recv());
 }

@@ -14,8 +14,8 @@ pub fn main() {
     let x = Foo(1, 2);
     match x {
         Foo(a, b) => {
-            fail_unless!(a == 1);
-            fail_unless!(b == 2);
+            assert!(a == 1);
+            assert!(b == 2);
             io::println(fmt!("%d %d", a, b));
         }
     }

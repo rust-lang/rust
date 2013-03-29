@@ -33,7 +33,7 @@ fn shrinky_pointer(i: @@mut int) -> shrinky_pointer {
 
 pub fn main() {
     let my_total = @@mut 10;
-    { let pt = shrinky_pointer(my_total); fail_unless!((pt.look_at() == 10)); }
+    { let pt = shrinky_pointer(my_total); assert!((pt.look_at() == 10)); }
     error!("my_total = %d", **my_total);
-    fail_unless!((**my_total == 9));
+    assert!((**my_total == 9));
 }

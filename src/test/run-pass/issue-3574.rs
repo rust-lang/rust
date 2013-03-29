@@ -22,6 +22,6 @@ fn compare(x: &str, y: &str) -> bool
 
 pub fn main()
 {
-    fail_unless!(compare("foo", "foo"));
-    fail_unless!(compare(@"foo", @"foo"));
+    assert!(compare("foo", "foo"));
+    assert!(compare(@"foo", @"foo"));
 }

@@ -93,7 +93,7 @@ pub impl Scheduler {
     // That will be important for embedding the runtime into external
     // event loops.
     fn run(~self) -> ~Scheduler {
-        fail_unless!(!self.in_task_context());
+        assert!(!self.in_task_context());
 
         // Give ownership of the scheduler (self) to the thread
         do self.install |scheduler| {
@@ -129,7 +129,7 @@ pub impl Scheduler {
     // * Scheduler-context operations
 
     fn resume_task_from_queue(&mut self) -> bool {
-        fail_unless!(!self.in_task_context());
+        assert!(!self.in_task_context());
 
         let mut self = self;
         match self.task_queue.pop_front() {
@@ -145,7 +145,7 @@ pub impl Scheduler {
     }
 
     fn resume_task_immediately(&mut self, task: ~Task) {
-        fail_unless!(!self.in_task_context());
+        assert!(!self.in_task_context());
 
         rtdebug!("scheduling a task");
 
@@ -153,7 +153,7 @@ pub impl Scheduler {
         self.current_task = Some(task);
         self.swap_in_task();
         // The running task should have passed ownership elsewhere
-        fail_unless!(self.current_task.is_none());
+        assert!(self.current_task.is_none());
 
         // Running tasks may have asked us to do some cleanup
         self.run_cleanup_jobs();
@@ -165,7 +165,7 @@ pub impl Scheduler {
     /// Called by a running task to end execution, after which it will
     /// be recycled by the scheduler for reuse in a new task.
     fn terminate_current_task(&mut self) {
-        fail_unless!(self.in_task_context());
+        assert!(self.in_task_context());
 
         rtdebug!("ending running task");
 
@@ -184,7 +184,7 @@ pub impl Scheduler {
     /// running task.  It gets transmuted to the scheduler's lifetime
     /// and called while the task is blocked.
     fn block_running_task_and_then(&mut self, f: &fn(&mut Scheduler, ~Task)) {
-        fail_unless!(self.in_task_context());
+        assert!(self.in_task_context());
 
         rtdebug!("blocking task");
 
@@ -203,7 +203,7 @@ pub impl Scheduler {
     /// You would want to think hard about doing this, e.g. if there are
     /// pending I/O events it would be a bad idea.
     fn resume_task_from_running_task_direct(&mut self, next_task: ~Task) {
-        fail_unless!(self.in_task_context());
+        assert!(self.in_task_context());
 
         rtdebug!("switching tasks");
 
@@ -255,7 +255,7 @@ pub impl Scheduler {
     }
 
     fn run_cleanup_jobs(&mut self) {
-        fail_unless!(!self.in_task_context());
+        assert!(!self.in_task_context());
         rtdebug!("running cleanup jobs");
 
         while !self.cleanup_jobs.is_empty() {
@@ -273,7 +273,7 @@ pub impl Scheduler {
     // XXX: Hack. This should return &'self mut but I don't know how to
     // make the borrowcheck happy
     fn task_from_last_cleanup_job(&mut self) -> &mut Task {
-        fail_unless!(!self.cleanup_jobs.is_empty());
+        assert!(!self.cleanup_jobs.is_empty());
         let last_job: &'self mut CleanupJob = &mut self.cleanup_jobs[0];
         let last_task: &'self Task = match last_job {
             &RescheduleTask(~ref task) => task,
@@ -358,7 +358,7 @@ impl ThreadLocalScheduler {
         unsafe {
             let key = match self { &ThreadLocalScheduler(key) => key };
             let mut value: *mut c_void = tls::get(key);
-            fail_unless!(value.is_not_null());
+            assert!(value.is_not_null());
             {
                 let value_ptr = &mut value;
                 let sched: &mut ~Scheduler = {
@@ -374,7 +374,7 @@ impl ThreadLocalScheduler {
         unsafe {
             let key = match self { &ThreadLocalScheduler(key) => key };
             let value: *mut c_void = tls::get(key);
-            fail_unless!(value.is_not_null());
+            assert!(value.is_not_null());
             let sched = transmute(value);
             tls::set(key, mut_null());
             return sched;
@@ -430,7 +430,7 @@ fn test_simple_scheduling() {
         };
         sched.task_queue.push_back(task);
         sched.run();
-        fail_unless!(task_ran);
+        assert!(task_ran);
     }
 }
 
@@ -449,7 +449,7 @@ fn test_several_tasks() {
             sched.task_queue.push_back(task);
         }
         sched.run();
-        fail_unless!(task_count == total);
+        assert!(task_count == total);
     }
 }
 
@@ -473,7 +473,7 @@ fn test_swap_tasks() {
         };
         sched.task_queue.push_back(task1);
         sched.run();
-        fail_unless!(count == 3);
+        assert!(count == 3);
     }
 }
 
@@ -492,7 +492,7 @@ fn test_run_a_lot_of_tasks_queued() {
         sched.task_queue.push_back(start_task);
         sched.run();
 
-        fail_unless!(count == MAX);
+        assert!(count == MAX);
 
         fn run_task(count_ptr: *mut int) {
             do Scheduler::local |sched| {
@@ -525,7 +525,7 @@ fn test_run_a_lot_of_tasks_direct() {
         sched.task_queue.push_back(start_task);
         sched.run();
 
-        fail_unless!(count == MAX);
+        assert!(count == MAX);
 
         fn run_task(count_ptr: *mut int) {
             do Scheduler::local |sched| {
@@ -550,9 +550,9 @@ fn test_block_task() {
         let mut sched = ~UvEventLoop::new_scheduler();
         let task = ~do Task::new(&mut sched.stack_pool) {
             do Scheduler::local |sched| {
-                fail_unless!(sched.in_task_context());
+                assert!(sched.in_task_context());
                 do sched.block_running_task_and_then() |sched, task| {
-                    fail_unless!(!sched.in_task_context());
+                    assert!(!sched.in_task_context());
                     sched.task_queue.push_back(task);
                 }
             }

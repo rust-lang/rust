@@ -20,5 +20,5 @@ fn main () {
 
     let myInt: uint = (aFn.theFn)();
 
-    fail_unless!(myInt == 10);
+    assert!(myInt == 10);
 }

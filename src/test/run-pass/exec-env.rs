@@ -12,5 +12,5 @@
 // exec-env:TEST_EXEC_ENV=22
 
 pub fn main() {
-    fail_unless!(os::getenv(~"TEST_EXEC_ENV") == Some(~"22"));
+    assert!(os::getenv(~"TEST_EXEC_ENV") == Some(~"22"));
 }

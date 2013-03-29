@@ -14,5 +14,5 @@ struct X { x: xx, y: int }
 
 pub fn main() {
     let @X {x: xx(x), y: y} = @X{x: xx(10), y: 20};
-    fail_unless!((x + y == 30));
+    assert!((x + y == 30));
 }

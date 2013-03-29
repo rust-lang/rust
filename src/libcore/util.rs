@@ -82,7 +82,7 @@ terminate normally, but instead directly return from a function.
 
 ~~~
 fn choose_weighted_item(v: &[Item]) -> Item {
-    fail_unless!(!v.is_empty());
+    assert!(!v.is_empty());
     let mut so_far = 0u;
     for v.each |item| {
         so_far += item.weight;
@@ -110,23 +110,23 @@ mod tests {
     pub fn identity_crisis() {
         // Writing a test for the identity function. How did it come to this?
         let x = ~[(5, false)];
-        //FIXME #3387 fail_unless!(x.eq(id(copy x)));
+        //FIXME #3387 assert!(x.eq(id(copy x)));
         let y = copy x;
-        fail_unless!(x.eq(&id(y)));
+        assert!(x.eq(&id(y)));
     }
     #[test]
     pub fn test_swap() {
         let mut x = 31337;
         let mut y = 42;
         swap(&mut x, &mut y);
-        fail_unless!(x == 42);
-        fail_unless!(y == 31337);
+        assert!(x == 42);
+        assert!(y == 31337);
     }
     #[test]
     pub fn test_replace() {
         let mut x = Some(NonCopyable());
         let y = replace(&mut x, None);
-        fail_unless!(x.is_none());
-        fail_unless!(y.is_some());
+        assert!(x.is_none());
+        assert!(y.is_some());
     }
 }

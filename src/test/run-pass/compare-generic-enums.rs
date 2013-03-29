@@ -15,8 +15,8 @@ fn cmp(x: Option<an_int>, y: Option<int>) -> bool {
 }
 
 pub fn main() {
-    fail_unless!(!cmp(Some(3), None));
-    fail_unless!(!cmp(Some(3), Some(4)));
-    fail_unless!(cmp(Some(3), Some(3)));
-    fail_unless!(cmp(None, None));
+    assert!(!cmp(Some(3), None));
+    assert!(!cmp(Some(3), Some(4)));
+    assert!(cmp(Some(3), Some(3)));
+    assert!(cmp(None, None));
 }

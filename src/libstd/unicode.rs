@@ -224,25 +224,25 @@ mod tests {
 
     #[test]
     fn test_is_digit() {
-        fail_unless!((unicode::icu::is_digit('0')));
-        fail_unless!((!unicode::icu::is_digit('m')));
+        assert!((unicode::icu::is_digit('0')));
+        assert!((!unicode::icu::is_digit('m')));
     }
 
     #[test]
     fn test_is_lower() {
-        fail_unless!((unicode::icu::is_lower('m')));
-        fail_unless!((!unicode::icu::is_lower('M')));
+        assert!((unicode::icu::is_lower('m')));
+        assert!((!unicode::icu::is_lower('M')));
     }
 
     #[test]
     fn test_is_space() {
-        fail_unless!((unicode::icu::is_space(' ')));
-        fail_unless!((!unicode::icu::is_space('m')));
+        assert!((unicode::icu::is_space(' ')));
+        assert!((!unicode::icu::is_space('m')));
     }
 
     #[test]
     fn test_is_upper() {
-        fail_unless!((unicode::icu::is_upper('M')));
-        fail_unless!((!unicode::icu::is_upper('m')));
+        assert!((unicode::icu::is_upper('M')));
+        assert!((!unicode::icu::is_upper('m')));
     }
 }

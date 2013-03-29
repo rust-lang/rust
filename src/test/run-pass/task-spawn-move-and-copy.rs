@@ -22,5 +22,5 @@ pub fn main() {
     });
 
     let x_in_child = p.recv();
-    fail_unless!(x_in_parent == x_in_child);
+    assert!(x_in_parent == x_in_child);
 }

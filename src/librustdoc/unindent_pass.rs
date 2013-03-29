@@ -84,7 +84,7 @@ fn unindent(s: &str) -> ~str {
             if str::is_whitespace(*line) {
                 copy *line
             } else {
-                fail_unless!(str::len(*line) >= min_indent);
+                assert!(str::len(*line) >= min_indent);
                 str::slice(*line, min_indent, str::len(*line)).to_owned()
             }
         };
@@ -98,14 +98,14 @@ fn unindent(s: &str) -> ~str {
 fn should_unindent() {
     let s = ~"    line1\n    line2";
     let r = unindent(s);
-    fail_unless!(r == ~"line1\nline2");
+    assert!(r == ~"line1\nline2");
 }
 
 #[test]
 fn should_unindent_multiple_paragraphs() {
     let s = ~"    line1\n\n    line2";
     let r = unindent(s);
-    fail_unless!(r == ~"line1\n\nline2");
+    assert!(r == ~"line1\n\nline2");
 }
 
 #[test]
@@ -114,7 +114,7 @@ fn should_leave_multiple_indent_levels() {
     // base indentation and should be preserved
     let s = ~"    line1\n\n        line2";
     let r = unindent(s);
-    fail_unless!(r == ~"line1\n\n    line2");
+    assert!(r == ~"line1\n\n    line2");
 }
 
 #[test]
@@ -126,12 +126,12 @@ fn should_ignore_first_line_indent() {
     //          and continue here"]
     let s = ~"line1\n    line2";
     let r = unindent(s);
-    fail_unless!(r == ~"line1\nline2");
+    assert!(r == ~"line1\nline2");
 }
 
 #[test]
 fn should_not_ignore_first_line_indent_in_a_single_line_para() {
     let s = ~"line1\n\n    line2";
     let r = unindent(s);
-    fail_unless!(r == ~"line1\n\n    line2");
+    assert!(r == ~"line1\n\n    line2");
 }

@@ -19,13 +19,13 @@ enum foo {
 }
 
 fn check_log<T>(exp: ~str, v: T) {
-    fail_unless!(exp == fmt!("%?", v));
+    assert!(exp == fmt!("%?", v));
 }
 
 pub fn main() {
     let x = list::from_vec(~[a(22u), b(~"hi")]);
     let exp = ~"@Cons(a(22), @Cons(b(~\"hi\"), @Nil))";
     let act = fmt!("%?", x);
-    fail_unless!(act == exp);
+    assert!(act == exp);
     check_log(exp, x);
 }

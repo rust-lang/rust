@@ -23,9 +23,9 @@ pub fn main() {
         let (_0, _1) = p;
         debug!(_0);
         debug!(_1);
-        fail_unless!((_0 + 10 == i));
+        assert!((_0 + 10 == i));
         i += 1;
         j = _1;
     };
-    fail_unless!((j == 45));
+    assert!((j == 45));
 }

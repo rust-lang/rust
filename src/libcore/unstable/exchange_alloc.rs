@@ -20,11 +20,11 @@ use intrinsic::TyDesc;
 
 pub unsafe fn malloc(td: *TypeDesc, size: uint) -> *c_void {
     unsafe {
-        fail_unless!(td.is_not_null());
+        assert!(td.is_not_null());
 
         let total_size = get_box_size(size, (*td).align);
         let p = c_malloc(total_size as size_t);
-        fail_unless!(p.is_not_null());
+        assert!(p.is_not_null());
 
         // FIXME #3475: Converting between our two different tydesc types
         let td: *TyDesc = transmute(td);
@@ -57,7 +57,7 @@ pub unsafe fn free(ptr: *c_void) {
     let exchange_count = &mut *rust_get_exchange_count_ptr();
     atomic_xsub(exchange_count, 1);
 
-    fail_unless!(ptr.is_not_null());
+    assert!(ptr.is_not_null());
     c_free(ptr);
 }
 ///Thin wrapper around libc::free, as with exchange_alloc::malloc_raw
@@ -75,7 +75,7 @@ fn get_box_size(body_size: uint, body_align: uint) -> uint {
 // Rounds |size| to the nearest |alignment|. Invariant: |alignment| is a power
 // of two.
 fn align_to(size: uint, align: uint) -> uint {
-    fail_unless!(align != 0);
+    assert!(align != 0);
     (size + align - 1) & !(align - 1)
 }
 

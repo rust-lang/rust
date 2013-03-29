@@ -17,7 +17,7 @@ pub fn main() {
     let y: u8 = 12u8;
     x = x + 1u8;
     x = x - 1u8;
-    fail_unless!((x == y));
+    assert!((x == y));
     // x = 14u8;
     // x = x + 1u8;
 

@@ -55,7 +55,7 @@ pub fn main() {
                              right: Some(t1),
                              val: 2 as to_str });
     let expected = ~"[2, some([1, none, none]), some([1, none, none])]";
-    fail_unless!(t2.to_str() == expected);
-    fail_unless!(foo(t2 as to_str) == expected);
+    assert!(t2.to_str() == expected);
+    assert!(foo(t2 as to_str) == expected);
     t1.left = Some(t2); // create cycle
 }

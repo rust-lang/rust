@@ -15,7 +15,7 @@ fn f<T:Copy>(t: T) -> T {
 
 pub fn main() {
     let t = f(~100);
-    fail_unless!(t == ~100);
+    assert!(t == ~100);
     let t = f(~@~[100]);
-    fail_unless!(t == ~@~[100]);
+    assert!(t == ~@~[100]);
 }

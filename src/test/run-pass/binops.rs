@@ -11,55 +11,55 @@
 // Binop corner cases
 
 fn test_nil() {
-    fail_unless!((() == ()));
-    fail_unless!((!(() != ())));
-    fail_unless!((!(() < ())));
-    fail_unless!((() <= ()));
-    fail_unless!((!(() > ())));
-    fail_unless!((() >= ()));
+    assert!((() == ()));
+    assert!((!(() != ())));
+    assert!((!(() < ())));
+    assert!((() <= ()));
+    assert!((!(() > ())));
+    assert!((() >= ()));
 }
 
 fn test_bool() {
-    fail_unless!((!(true < false)));
-    fail_unless!((!(true <= false)));
-    fail_unless!((true > false));
-    fail_unless!((true >= false));
+    assert!((!(true < false)));
+    assert!((!(true <= false)));
+    assert!((true > false));
+    assert!((true >= false));
 
-    fail_unless!((false < true));
-    fail_unless!((false <= true));
-    fail_unless!((!(false > true)));
-    fail_unless!((!(false >= true)));
+    assert!((false < true));
+    assert!((false <= true));
+    assert!((!(false > true)));
+    assert!((!(false >= true)));
 
     // Bools support bitwise binops
-    fail_unless!((false & false == false));
-    fail_unless!((true & false == false));
-    fail_unless!((true & true == true));
-    fail_unless!((false | false == false));
-    fail_unless!((true | false == true));
-    fail_unless!((true | true == true));
-    fail_unless!((false ^ false == false));
-    fail_unless!((true ^ false == true));
-    fail_unless!((true ^ true == false));
+    assert!((false & false == false));
+    assert!((true & false == false));
+    assert!((true & true == true));
+    assert!((false | false == false));
+    assert!((true | false == true));
+    assert!((true | true == true));
+    assert!((false ^ false == false));
+    assert!((true ^ false == true));
+    assert!((true ^ true == false));
 }
 
 fn test_char() {
     let ch10 = 10 as char;
     let ch4 = 4 as char;
     let ch2 = 2 as char;
-    fail_unless!((ch10 + ch4 == 14 as char));
-    fail_unless!((ch10 - ch4 == 6 as char));
-    fail_unless!((ch10 * ch4 == 40 as char));
-    fail_unless!((ch10 / ch4 == ch2));
-    fail_unless!((ch10 % ch4 == ch2));
-    fail_unless!((ch10 >> ch2 == ch2));
-    fail_unless!((ch10 << ch4 == 160 as char));
-    fail_unless!((ch10 | ch4 == 14 as char));
-    fail_unless!((ch10 & ch2 == ch2));
-    fail_unless!((ch10 ^ ch2 == 8 as char));
+    assert!((ch10 + ch4 == 14 as char));
+    assert!((ch10 - ch4 == 6 as char));
+    assert!((ch10 * ch4 == 40 as char));
+    assert!((ch10 / ch4 == ch2));
+    assert!((ch10 % ch4 == ch2));
+    assert!((ch10 >> ch2 == ch2));
+    assert!((ch10 << ch4 == 160 as char));
+    assert!((ch10 | ch4 == 14 as char));
+    assert!((ch10 & ch2 == ch2));
+    assert!((ch10 ^ ch2 == 8 as char));
 }
 
 fn test_box() {
-    fail_unless!((@10 == @10));
+    assert!((@10 == @10));
 }
 
 fn test_ptr() {
@@ -68,14 +68,14 @@ fn test_ptr() {
         let p2: *u8 = ::core::cast::reinterpret_cast(&0);
         let p3: *u8 = ::core::cast::reinterpret_cast(&1);
 
-        fail_unless!(p1 == p2);
-        fail_unless!(p1 != p3);
-        fail_unless!(p1 < p3);
-        fail_unless!(p1 <= p3);
-        fail_unless!(p3 > p1);
-        fail_unless!(p3 >= p3);
-        fail_unless!(p1 <= p2);
-        fail_unless!(p1 >= p2);
+        assert!(p1 == p2);
+        assert!(p1 != p3);
+        assert!(p1 < p3);
+        assert!(p1 <= p3);
+        assert!(p3 > p1);
+        assert!(p3 >= p3);
+        assert!(p1 <= p2);
+        assert!(p1 >= p2);
     }
 }
 
@@ -110,11 +110,11 @@ fn test_class() {
          (::core::cast::reinterpret_cast::<*p, uint>(&ptr::addr_of(&q))),
          (::core::cast::reinterpret_cast::<*p, uint>(&ptr::addr_of(&r))));
   }
-  fail_unless!((q == r));
+  assert!((q == r));
   r.y = 17;
-  fail_unless!((r.y != q.y));
-  fail_unless!((r.y == 17));
-  fail_unless!((q != r));
+  assert!((r.y != q.y));
+  assert!((r.y == 17));
+  assert!((q != r));
 }
 
 pub fn main() {

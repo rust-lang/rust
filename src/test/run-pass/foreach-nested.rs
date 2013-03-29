@@ -20,8 +20,8 @@ pub fn main() {
     do two |i| {
         do two |j| { a[p] = 10 * i + j; p += 1; }
     }
-    fail_unless!((a[0] == 0));
-    fail_unless!((a[1] == 1));
-    fail_unless!((a[2] == 10));
-    fail_unless!((a[3] == 11));
+    assert!((a[0] == 0));
+    assert!((a[1] == 1));
+    assert!((a[2] == 10));
+    assert!((a[3] == 11));
 }

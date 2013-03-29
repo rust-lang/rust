@@ -86,20 +86,20 @@ pub fn test_bool_from_str() {
     use from_str::FromStr;
 
     do all_values |v| {
-        fail_unless!(Some(v) == FromStr::from_str(to_str(v)))
+        assert!(Some(v) == FromStr::from_str(to_str(v)))
     }
 }
 
 #[test]
 pub fn test_bool_to_str() {
-    fail_unless!(to_str(false) == ~"false");
-    fail_unless!(to_str(true) == ~"true");
+    assert!(to_str(false) == ~"false");
+    assert!(to_str(true) == ~"true");
 }
 
 #[test]
 pub fn test_bool_to_bit() {
     do all_values |v| {
-        fail_unless!(to_bit(v) == if is_true(v) { 1u8 } else { 0u8 });
+        assert!(to_bit(v) == if is_true(v) { 1u8 } else { 0u8 });
     }
 }
 

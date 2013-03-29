@@ -29,5 +29,5 @@ fn call_it<B:TraitB>(b: B)  -> int {
 
 fn main() {
     let x = 3i;
-    fail_unless!(call_it(x) == 22);
+    assert!(call_it(x) == 22);
 }

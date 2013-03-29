@@ -30,5 +30,5 @@ pub fn main() {
     let ctxt = Ctxt { v: 22 };
     let hc = HasCtxt { c: &ctxt };
 
-    fail_unless!(get_v(@hc as @get_ctxt) == 22);
+    assert!(get_v(@hc as @get_ctxt) == 22);
 }

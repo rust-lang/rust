@@ -28,9 +28,9 @@ fn w_ret(v: ~[int]) -> int {
 }
 
 pub fn main() {
-    fail_unless!(w_semi(~[0, 1, 2, 3]) == -10);
-    fail_unless!(w_paren1(~[0, 1, 2, 3]) == -4);
-    fail_unless!(w_paren2(~[0, 1, 2, 3]) == -4);
-    fail_unless!(w_ret(~[0, 1, 2, 3]) == -4);
+    assert!(w_semi(~[0, 1, 2, 3]) == -10);
+    assert!(w_paren1(~[0, 1, 2, 3]) == -4);
+    assert!(w_paren2(~[0, 1, 2, 3]) == -4);
+    assert!(w_ret(~[0, 1, 2, 3]) == -4);
 }
 

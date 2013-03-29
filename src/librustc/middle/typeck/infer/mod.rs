@@ -586,7 +586,7 @@ pub impl InferCtxt {
 
     /// Execute `f` and commit the bindings if successful
     fn commit<T,E>(@mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
-        fail_unless!(!self.in_snapshot());
+        assert!(!self.in_snapshot());
 
         debug!("commit()");
         do indent {
@@ -679,7 +679,7 @@ pub impl InferCtxt {
         let region_var = self.next_region_var_nb(span);
 
         // add lb_region as a lower bound on the newly built variable
-        fail_unless!(self.region_vars.make_subregion(span,
+        assert!(self.region_vars.make_subregion(span,
                                                      lb_region,
                                                      region_var).is_ok());
 

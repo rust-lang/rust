@@ -1407,7 +1407,7 @@ pub impl Resolver {
                     match view_path.node {
                         view_path_simple(_, full_path, _, _) => {
                             let path_len = full_path.idents.len();
-                            fail_unless!(path_len != 0);
+                            assert!(path_len != 0);
 
                             for full_path.idents.eachi |i, ident| {
                                 if i != path_len - 1 {
@@ -2083,7 +2083,7 @@ pub impl Resolver {
         // Decrement the count of unresolved imports.
         match resolution_result {
             Success(()) => {
-                fail_unless!(self.unresolved_imports >= 1);
+                assert!(self.unresolved_imports >= 1);
                 self.unresolved_imports -= 1;
             }
             _ => {
@@ -2099,7 +2099,7 @@ pub impl Resolver {
         if !resolution_result.indeterminate() {
             match *import_directive.subclass {
                 GlobImport => {
-                    fail_unless!(module_.glob_count >= 1);
+                    assert!(module_.glob_count >= 1);
                     module_.glob_count -= 1;
                 }
                 SingleImport(*) => {
@@ -2266,7 +2266,7 @@ pub impl Resolver {
         }
 
         // We've successfully resolved the import. Write the results in.
-        fail_unless!(module_.import_resolutions.contains_key(&target));
+        assert!(module_.import_resolutions.contains_key(&target));
         let import_resolution = module_.import_resolutions.get(&target);
 
         match value_result {
@@ -2329,7 +2329,7 @@ pub impl Resolver {
             }
         }
 
-        fail_unless!(import_resolution.outstanding_references >= 1);
+        assert!(import_resolution.outstanding_references >= 1);
         import_resolution.outstanding_references -= 1;
 
         debug!("(resolving single import) successfully resolved import");
@@ -2359,7 +2359,7 @@ pub impl Resolver {
             return Indeterminate;
         }
 
-        fail_unless!(containing_module.glob_count == 0);
+        assert!(containing_module.glob_count == 0);
 
         // Add all resolved imports from the containing module.
         for containing_module.import_resolutions.each
@@ -2560,7 +2560,7 @@ pub impl Resolver {
                                       span: span)
                                    -> ResolveResult<@mut Module> {
         let module_path_len = module_path.len();
-        fail_unless!(module_path_len > 0);
+        assert!(module_path_len > 0);
 
         debug!("(resolving module path for import) processing `%s` rooted at \
                `%s`",
@@ -2923,7 +2923,7 @@ pub impl Resolver {
         // If this is a search of all imports, we should be done with glob
         // resolution at this point.
         if name_search_type == SearchItemsAndAllImports {
-            fail_unless!(module_.glob_count == 0);
+            assert!(module_.glob_count == 0);
         }
 
         // Check the list of resolved imports.

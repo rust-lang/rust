@@ -197,87 +197,87 @@ mod tests {
         let mut sorted = merge_sort(data, le);
         let mut heap = from_vec(data);
         while !heap.is_empty() {
-            fail_unless!(heap.top() == sorted.last());
-            fail_unless!(heap.pop() == sorted.pop());
+            assert!(heap.top() == sorted.last());
+            assert!(heap.pop() == sorted.pop());
         }
     }
 
     #[test]
     fn test_push() {
         let mut heap = from_vec(~[2, 4, 9]);
-        fail_unless!(heap.len() == 3);
-        fail_unless!(*heap.top() == 9);
+        assert!(heap.len() == 3);
+        assert!(*heap.top() == 9);
         heap.push(11);
-        fail_unless!(heap.len() == 4);
-        fail_unless!(*heap.top() == 11);
+        assert!(heap.len() == 4);
+        assert!(*heap.top() == 11);
         heap.push(5);
-        fail_unless!(heap.len() == 5);
-        fail_unless!(*heap.top() == 11);
+        assert!(heap.len() == 5);
+        assert!(*heap.top() == 11);
         heap.push(27);
-        fail_unless!(heap.len() == 6);
-        fail_unless!(*heap.top() == 27);
+        assert!(heap.len() == 6);
+        assert!(*heap.top() == 27);
         heap.push(3);
-        fail_unless!(heap.len() == 7);
-        fail_unless!(*heap.top() == 27);
+        assert!(heap.len() == 7);
+        assert!(*heap.top() == 27);
         heap.push(103);
-        fail_unless!(heap.len() == 8);
-        fail_unless!(*heap.top() == 103);
+        assert!(heap.len() == 8);
+        assert!(*heap.top() == 103);
     }
 
     #[test]
     fn test_push_unique() {
         let mut heap = from_vec(~[~2, ~4, ~9]);
-        fail_unless!(heap.len() == 3);
-        fail_unless!(*heap.top() == ~9);
+        assert!(heap.len() == 3);
+        assert!(*heap.top() == ~9);
         heap.push(~11);
-        fail_unless!(heap.len() == 4);
-        fail_unless!(*heap.top() == ~11);
+        assert!(heap.len() == 4);
+        assert!(*heap.top() == ~11);
         heap.push(~5);
-        fail_unless!(heap.len() == 5);
-        fail_unless!(*heap.top() == ~11);
+        assert!(heap.len() == 5);
+        assert!(*heap.top() == ~11);
         heap.push(~27);
-        fail_unless!(heap.len() == 6);
-        fail_unless!(*heap.top() == ~27);
+        assert!(heap.len() == 6);
+        assert!(*heap.top() == ~27);
         heap.push(~3);
-        fail_unless!(heap.len() == 7);
-        fail_unless!(*heap.top() == ~27);
+        assert!(heap.len() == 7);
+        assert!(*heap.top() == ~27);
         heap.push(~103);
-        fail_unless!(heap.len() == 8);
-        fail_unless!(*heap.top() == ~103);
+        assert!(heap.len() == 8);
+        assert!(*heap.top() == ~103);
     }
 
     #[test]
     fn test_push_pop() {
         let mut heap = from_vec(~[5, 5, 2, 1, 3]);
-        fail_unless!(heap.len() == 5);
-        fail_unless!(heap.push_pop(6) == 6);
-        fail_unless!(heap.len() == 5);
-        fail_unless!(heap.push_pop(0) == 5);
-        fail_unless!(heap.len() == 5);
-        fail_unless!(heap.push_pop(4) == 5);
-        fail_unless!(heap.len() == 5);
-        fail_unless!(heap.push_pop(1) == 4);
-        fail_unless!(heap.len() == 5);
+        assert!(heap.len() == 5);
+        assert!(heap.push_pop(6) == 6);
+        assert!(heap.len() == 5);
+        assert!(heap.push_pop(0) == 5);
+        assert!(heap.len() == 5);
+        assert!(heap.push_pop(4) == 5);
+        assert!(heap.len() == 5);
+        assert!(heap.push_pop(1) == 4);
+        assert!(heap.len() == 5);
     }
 
     #[test]
     fn test_replace() {
         let mut heap = from_vec(~[5, 5, 2, 1, 3]);
-        fail_unless!(heap.len() == 5);
-        fail_unless!(heap.replace(6) == 5);
-        fail_unless!(heap.len() == 5);
-        fail_unless!(heap.replace(0) == 6);
-        fail_unless!(heap.len() == 5);
-        fail_unless!(heap.replace(4) == 5);
-        fail_unless!(heap.len() == 5);
-        fail_unless!(heap.replace(1) == 4);
-        fail_unless!(heap.len() == 5);
+        assert!(heap.len() == 5);
+        assert!(heap.replace(6) == 5);
+        assert!(heap.len() == 5);
+        assert!(heap.replace(0) == 6);
+        assert!(heap.len() == 5);
+        assert!(heap.replace(4) == 5);
+        assert!(heap.len() == 5);
+        assert!(heap.replace(1) == 4);
+        assert!(heap.len() == 5);
     }
 
     fn check_to_vec(data: ~[int]) {
         let heap = from_vec(data);
-        fail_unless!(merge_sort(heap.to_vec(), le) == merge_sort(data, le));
-        fail_unless!(heap.to_sorted_vec() == merge_sort(data, le));
+        assert!(merge_sort(heap.to_vec(), le) == merge_sort(data, le));
+        assert!(heap.to_sorted_vec() == merge_sort(data, le));
     }
 
     #[test]
@@ -305,7 +305,7 @@ mod tests {
     #[test]
     fn test_empty_maybe_pop() {
         let mut heap = new::<int>();
-        fail_unless!(heap.maybe_pop().is_none());
+        assert!(heap.maybe_pop().is_none());
     }
 
     #[test]
@@ -316,7 +316,7 @@ mod tests {
     #[test]
     fn test_empty_maybe_top() {
         let empty = new::<int>();
-        fail_unless!(empty.maybe_top().is_none());
+        assert!(empty.maybe_top().is_none());
     }
 
     #[test]

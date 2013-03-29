@@ -18,7 +18,7 @@ fn test_generic<T:Copy+Clone>(expected: T, eq: compare<T>) {
         true => expected.clone(),
         _ => fail!(~"wat")
     };
-    fail_unless!((eq(expected, actual)));
+    assert!((eq(expected, actual)));
 }
 
 fn test_vec() {

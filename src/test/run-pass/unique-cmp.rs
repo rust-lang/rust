@@ -10,9 +10,9 @@
 
 pub fn main() {
     let i = ~100;
-    fail_unless!(i == ~100);
-    fail_unless!(i < ~101);
-    fail_unless!(i <= ~100);
-    fail_unless!(i > ~99);
-    fail_unless!(i >= ~99);
+    assert!(i == ~100);
+    assert!(i < ~101);
+    assert!(i <= ~100);
+    assert!(i > ~99);
+    assert!(i >= ~99);
 }

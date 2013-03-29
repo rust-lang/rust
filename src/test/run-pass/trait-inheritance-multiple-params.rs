@@ -20,11 +20,11 @@ impl C for S { fn c(&self) -> int { 30 } }
 
 // Multiple type params, multiple levels of inheritance
 fn f<X:A,Y:B,Z:C>(x: &X, y: &Y, z: &Z) {
-    fail_unless!(x.a() == 10);
-    fail_unless!(y.a() == 10);
-    fail_unless!(y.b() == 20);
-    fail_unless!(z.a() == 10);
-    fail_unless!(z.c() == 30);
+    assert!(x.a() == 10);
+    assert!(y.a() == 10);
+    assert!(y.b() == 20);
+    assert!(z.a() == 10);
+    assert!(z.c() == 30);
 }
 
 pub fn main() {

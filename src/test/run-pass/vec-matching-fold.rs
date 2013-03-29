@@ -26,8 +26,8 @@ pub fn main() {
     let x = [1, 2, 3, 4, 5];
 
     let product = foldl(x, 1, |a, b| a * *b);
-    fail_unless!(product == 120);
+    assert!(product == 120);
 
     let sum = foldr(x, 0, |a, b| *a + b);
-    fail_unless!(sum == 15);
+    assert!(sum == 15);
 }

@@ -27,5 +27,5 @@ fn cat(in_x : uint, in_y : int) -> cat {
 
 pub fn main() {
     let mut nyan : cat = cat(52u, 99);
-    fail_unless!((nyan.meow_count() == 52u));
+    assert!((nyan.meow_count() == 52u));
 }
