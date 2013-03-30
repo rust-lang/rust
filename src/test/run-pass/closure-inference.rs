@@ -16,5 +16,5 @@ fn apply<A>(f: &fn(A) -> A, v: A) -> A { f(v) }
 
 pub fn main() {
     let f = {|i| foo(i)};
-    fail_unless!(apply(f, 2) == 3);
+    assert!(apply(f, 2) == 3);
 }

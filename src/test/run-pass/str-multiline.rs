@@ -21,6 +21,6 @@ is a test";
                is \
                another \
                test";
-    fail_unless!((a == ~"this is a test"));
-    fail_unless!((b == ~"this is another test"));
+    assert!((a == ~"this is a test"));
+    assert!((b == ~"this is another test"));
 }

@@ -352,29 +352,29 @@ pub fn test() {
         let mut p = Pair {fst: 10, snd: 20};
         let pptr: *mut Pair = &mut p;
         let iptr: *mut int = cast::reinterpret_cast(&pptr);
-        fail_unless!((*iptr == 10));;
+        assert!((*iptr == 10));;
         *iptr = 30;
-        fail_unless!((*iptr == 30));
-        fail_unless!((p.fst == 30));;
+        assert!((*iptr == 30));
+        assert!((p.fst == 30));;
 
         *pptr = Pair {fst: 50, snd: 60};
-        fail_unless!((*iptr == 50));
-        fail_unless!((p.fst == 50));
-        fail_unless!((p.snd == 60));
+        assert!((*iptr == 50));
+        assert!((p.fst == 50));
+        assert!((p.snd == 60));
 
         let mut v0 = ~[32000u16, 32001u16, 32002u16];
         let mut v1 = ~[0u16, 0u16, 0u16];
 
         copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 1u),
                     offset(vec::raw::to_ptr(v0), 1u), 1u);
-        fail_unless!((v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16));
+        assert!((v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16));
         copy_memory(vec::raw::to_mut_ptr(v1),
                     offset(vec::raw::to_ptr(v0), 2u), 1u);
-        fail_unless!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
+        assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
                       v1[2] == 0u16));
         copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 2u),
                     vec::raw::to_ptr(v0), 1u);
-        fail_unless!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
+        assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
                       v1[2] == 32000u16));
     }
 }
@@ -386,11 +386,11 @@ pub fn test_position() {
 
     let s = ~"hello";
     unsafe {
-        fail_unless!(2u == as_c_str(s, |p| position(p,
+        assert!(2u == as_c_str(s, |p| position(p,
             |c| *c == 'l' as c_char)));
-        fail_unless!(4u == as_c_str(s, |p| position(p,
+        assert!(4u == as_c_str(s, |p| position(p,
             |c| *c == 'o' as c_char)));
-        fail_unless!(5u == as_c_str(s, |p| position(p,
+        assert!(5u == as_c_str(s, |p| position(p,
             |c| *c == 0 as c_char)));
     }
 }
@@ -405,8 +405,8 @@ pub fn test_buf_len() {
             do str::as_c_str(s2) |p2| {
                 let v = ~[p0, p1, p2, null()];
                 do vec::as_imm_buf(v) |vp, len| {
-                    fail_unless!(unsafe { buf_len(vp) } == 3u);
-                    fail_unless!(len == 4u);
+                    assert!(unsafe { buf_len(vp) } == 3u);
+                    assert!(len == 4u);
                 }
             }
         }
@@ -416,20 +416,20 @@ pub fn test_buf_len() {
 #[test]
 pub fn test_is_null() {
    let p: *int = null();
-   fail_unless!(p.is_null());
-   fail_unless!(!p.is_not_null());
+   assert!(p.is_null());
+   assert!(!p.is_not_null());
 
    let q = offset(p, 1u);
-   fail_unless!(!q.is_null());
-   fail_unless!(q.is_not_null());
+   assert!(!q.is_null());
+   assert!(q.is_not_null());
 
    let mp: *mut int = mut_null();
-   fail_unless!(mp.is_null());
-   fail_unless!(!mp.is_not_null());
+   assert!(mp.is_null());
+   assert!(!mp.is_not_null());
 
    let mq = mp.offset(1u);
-   fail_unless!(!mq.is_null());
-   fail_unless!(mq.is_not_null());
+   assert!(!mq.is_null());
+   assert!(mq.is_not_null());
 }
 
 #[cfg(test)]
@@ -462,11 +462,11 @@ pub mod ptr_tests {
                 debug!(
                     "test_ptr_array_each e: %s, a: %s",
                          expected, actual);
-                fail_unless!(actual == expected);
+                assert!(actual == expected);
                 ctr += 1;
                 iteration_count += 1;
             });
-            fail_unless!(iteration_count == 3u);
+            assert!(iteration_count == 3u);
         }
     }
     #[test]
@@ -494,11 +494,11 @@ pub mod ptr_tests {
                 debug!(
                     "test_ptr_array_each e: %s, a: %s",
                          expected, actual);
-                fail_unless!(actual == expected);
+                assert!(actual == expected);
                 ctr += 1;
                 iteration_count += 1;
             });
-            fail_unless!(iteration_count == 3);
+            assert!(iteration_count == 3);
         }
     }
     #[test]

@@ -25,17 +25,17 @@ fn vec_peek<'r, T>(v: &'r [T]) -> Option< (&'r T, &'r [T]) > {
 
 fn test_peek_empty_stack() {
     let v : &[int] = &[];
-    fail_unless!((None == vec_peek(v)));
+    assert!((None == vec_peek(v)));
 }
 
 fn test_peek_empty_unique() {
     let v : ~[int] = ~[];
-    fail_unless!((None == vec_peek(v)));
+    assert!((None == vec_peek(v)));
 }
 
 fn test_peek_empty_managed() {
     let v : @[int] = @[];
-    fail_unless!((None == vec_peek(v)));
+    assert!((None == vec_peek(v)));
 }
 
 

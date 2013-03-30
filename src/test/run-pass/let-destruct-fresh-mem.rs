@@ -16,8 +16,8 @@ pub fn main() {
     let mut X {x: x, y: @A {a: a}} = u;
     x = 100;
     a = 100;
-    fail_unless!((x == 100));
-    fail_unless!((a == 100));
-    fail_unless!((u.x == 10));
-    fail_unless!((u.y.a == 20));
+    assert!((x == 100));
+    assert!((a == 100));
+    assert!((u.x == 10));
+    assert!((u.y.a == 20));
 }

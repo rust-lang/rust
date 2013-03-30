@@ -159,23 +159,23 @@ mod tests {
 
     #[test]
     pub fn test_to_base64() {
-        fail_unless!((~"").to_base64()       == ~"");
-        fail_unless!((~"f").to_base64()      == ~"Zg==");
-        fail_unless!((~"fo").to_base64()     == ~"Zm8=");
-        fail_unless!((~"foo").to_base64()    == ~"Zm9v");
-        fail_unless!((~"foob").to_base64()   == ~"Zm9vYg==");
-        fail_unless!((~"fooba").to_base64()  == ~"Zm9vYmE=");
-        fail_unless!((~"foobar").to_base64() == ~"Zm9vYmFy");
+        assert!((~"").to_base64()       == ~"");
+        assert!((~"f").to_base64()      == ~"Zg==");
+        assert!((~"fo").to_base64()     == ~"Zm8=");
+        assert!((~"foo").to_base64()    == ~"Zm9v");
+        assert!((~"foob").to_base64()   == ~"Zm9vYg==");
+        assert!((~"fooba").to_base64()  == ~"Zm9vYmE=");
+        assert!((~"foobar").to_base64() == ~"Zm9vYmFy");
     }
 
     #[test]
     pub fn test_from_base64() {
-        fail_unless!((~"").from_base64() == str::to_bytes(~""));
-        fail_unless!((~"Zg==").from_base64() == str::to_bytes(~"f"));
-        fail_unless!((~"Zm8=").from_base64() == str::to_bytes(~"fo"));
-        fail_unless!((~"Zm9v").from_base64() == str::to_bytes(~"foo"));
-        fail_unless!((~"Zm9vYg==").from_base64() == str::to_bytes(~"foob"));
-        fail_unless!((~"Zm9vYmE=").from_base64() == str::to_bytes(~"fooba"));
-        fail_unless!((~"Zm9vYmFy").from_base64() == str::to_bytes(~"foobar"));
+        assert!((~"").from_base64() == str::to_bytes(~""));
+        assert!((~"Zg==").from_base64() == str::to_bytes(~"f"));
+        assert!((~"Zm8=").from_base64() == str::to_bytes(~"fo"));
+        assert!((~"Zm9v").from_base64() == str::to_bytes(~"foo"));
+        assert!((~"Zm9vYg==").from_base64() == str::to_bytes(~"foob"));
+        assert!((~"Zm9vYmE=").from_base64() == str::to_bytes(~"fooba"));
+        assert!((~"Zm9vYmFy").from_base64() == str::to_bytes(~"foobar"));
     }
 }

@@ -181,7 +181,7 @@ pub fn to_str_exact(num: float, digits: uint) -> ~str {
 #[test]
 pub fn test_to_str_exact_do_decimal() {
     let s = to_str_exact(5.0, 4u);
-    fail_unless!(s == ~"5.0000");
+    assert!(s == ~"5.0000");
 }
 
 /**
@@ -501,191 +501,191 @@ impl ops::Neg<float> for float {
 
 #[test]
 pub fn test_from_str() {
-   fail_unless!(from_str(~"3") == Some(3.));
-   fail_unless!(from_str(~"3.14") == Some(3.14));
-   fail_unless!(from_str(~"+3.14") == Some(3.14));
-   fail_unless!(from_str(~"-3.14") == Some(-3.14));
-   fail_unless!(from_str(~"2.5E10") == Some(25000000000.));
-   fail_unless!(from_str(~"2.5e10") == Some(25000000000.));
-   fail_unless!(from_str(~"25000000000.E-10") == Some(2.5));
-   fail_unless!(from_str(~".") == Some(0.));
-   fail_unless!(from_str(~".e1") == Some(0.));
-   fail_unless!(from_str(~".e-1") == Some(0.));
-   fail_unless!(from_str(~"5.") == Some(5.));
-   fail_unless!(from_str(~".5") == Some(0.5));
-   fail_unless!(from_str(~"0.5") == Some(0.5));
-   fail_unless!(from_str(~"-.5") == Some(-0.5));
-   fail_unless!(from_str(~"-5") == Some(-5.));
-   fail_unless!(from_str(~"inf") == Some(infinity));
-   fail_unless!(from_str(~"+inf") == Some(infinity));
-   fail_unless!(from_str(~"-inf") == Some(neg_infinity));
+   assert!(from_str(~"3") == Some(3.));
+   assert!(from_str(~"3.14") == Some(3.14));
+   assert!(from_str(~"+3.14") == Some(3.14));
+   assert!(from_str(~"-3.14") == Some(-3.14));
+   assert!(from_str(~"2.5E10") == Some(25000000000.));
+   assert!(from_str(~"2.5e10") == Some(25000000000.));
+   assert!(from_str(~"25000000000.E-10") == Some(2.5));
+   assert!(from_str(~".") == Some(0.));
+   assert!(from_str(~".e1") == Some(0.));
+   assert!(from_str(~".e-1") == Some(0.));
+   assert!(from_str(~"5.") == Some(5.));
+   assert!(from_str(~".5") == Some(0.5));
+   assert!(from_str(~"0.5") == Some(0.5));
+   assert!(from_str(~"-.5") == Some(-0.5));
+   assert!(from_str(~"-5") == Some(-5.));
+   assert!(from_str(~"inf") == Some(infinity));
+   assert!(from_str(~"+inf") == Some(infinity));
+   assert!(from_str(~"-inf") == Some(neg_infinity));
    // note: NaN != NaN, hence this slightly complex test
    match from_str(~"NaN") {
-       Some(f) => fail_unless!(is_NaN(f)),
+       Some(f) => assert!(is_NaN(f)),
        None => fail!()
    }
    // note: -0 == 0, hence these slightly more complex tests
    match from_str(~"-0") {
-       Some(v) if is_zero(v) => fail_unless!(is_negative(v)),
+       Some(v) if is_zero(v) => assert!(is_negative(v)),
        _ => fail!()
    }
    match from_str(~"0") {
-       Some(v) if is_zero(v) => fail_unless!(is_positive(v)),
+       Some(v) if is_zero(v) => assert!(is_positive(v)),
        _ => fail!()
    }
 
-   fail_unless!(from_str(~"").is_none());
-   fail_unless!(from_str(~"x").is_none());
-   fail_unless!(from_str(~" ").is_none());
-   fail_unless!(from_str(~"   ").is_none());
-   fail_unless!(from_str(~"e").is_none());
-   fail_unless!(from_str(~"E").is_none());
-   fail_unless!(from_str(~"E1").is_none());
-   fail_unless!(from_str(~"1e1e1").is_none());
-   fail_unless!(from_str(~"1e1.1").is_none());
-   fail_unless!(from_str(~"1e1-1").is_none());
+   assert!(from_str(~"").is_none());
+   assert!(from_str(~"x").is_none());
+   assert!(from_str(~" ").is_none());
+   assert!(from_str(~"   ").is_none());
+   assert!(from_str(~"e").is_none());
+   assert!(from_str(~"E").is_none());
+   assert!(from_str(~"E1").is_none());
+   assert!(from_str(~"1e1e1").is_none());
+   assert!(from_str(~"1e1.1").is_none());
+   assert!(from_str(~"1e1-1").is_none());
 }
 
 #[test]
 pub fn test_from_str_hex() {
-   fail_unless!(from_str_hex(~"a4") == Some(164.));
-   fail_unless!(from_str_hex(~"a4.fe") == Some(164.9921875));
-   fail_unless!(from_str_hex(~"-a4.fe") == Some(-164.9921875));
-   fail_unless!(from_str_hex(~"+a4.fe") == Some(164.9921875));
-   fail_unless!(from_str_hex(~"ff0P4") == Some(0xff00 as float));
-   fail_unless!(from_str_hex(~"ff0p4") == Some(0xff00 as float));
-   fail_unless!(from_str_hex(~"ff0p-4") == Some(0xff as float));
-   fail_unless!(from_str_hex(~".") == Some(0.));
-   fail_unless!(from_str_hex(~".p1") == Some(0.));
-   fail_unless!(from_str_hex(~".p-1") == Some(0.));
-   fail_unless!(from_str_hex(~"f.") == Some(15.));
-   fail_unless!(from_str_hex(~".f") == Some(0.9375));
-   fail_unless!(from_str_hex(~"0.f") == Some(0.9375));
-   fail_unless!(from_str_hex(~"-.f") == Some(-0.9375));
-   fail_unless!(from_str_hex(~"-f") == Some(-15.));
-   fail_unless!(from_str_hex(~"inf") == Some(infinity));
-   fail_unless!(from_str_hex(~"+inf") == Some(infinity));
-   fail_unless!(from_str_hex(~"-inf") == Some(neg_infinity));
+   assert!(from_str_hex(~"a4") == Some(164.));
+   assert!(from_str_hex(~"a4.fe") == Some(164.9921875));
+   assert!(from_str_hex(~"-a4.fe") == Some(-164.9921875));
+   assert!(from_str_hex(~"+a4.fe") == Some(164.9921875));
+   assert!(from_str_hex(~"ff0P4") == Some(0xff00 as float));
+   assert!(from_str_hex(~"ff0p4") == Some(0xff00 as float));
+   assert!(from_str_hex(~"ff0p-4") == Some(0xff as float));
+   assert!(from_str_hex(~".") == Some(0.));
+   assert!(from_str_hex(~".p1") == Some(0.));
+   assert!(from_str_hex(~".p-1") == Some(0.));
+   assert!(from_str_hex(~"f.") == Some(15.));
+   assert!(from_str_hex(~".f") == Some(0.9375));
+   assert!(from_str_hex(~"0.f") == Some(0.9375));
+   assert!(from_str_hex(~"-.f") == Some(-0.9375));
+   assert!(from_str_hex(~"-f") == Some(-15.));
+   assert!(from_str_hex(~"inf") == Some(infinity));
+   assert!(from_str_hex(~"+inf") == Some(infinity));
+   assert!(from_str_hex(~"-inf") == Some(neg_infinity));
    // note: NaN != NaN, hence this slightly complex test
    match from_str_hex(~"NaN") {
-       Some(f) => fail_unless!(is_NaN(f)),
+       Some(f) => assert!(is_NaN(f)),
        None => fail!()
    }
    // note: -0 == 0, hence these slightly more complex tests
    match from_str_hex(~"-0") {
-       Some(v) if is_zero(v) => fail_unless!(is_negative(v)),
+       Some(v) if is_zero(v) => assert!(is_negative(v)),
        _ => fail!()
    }
    match from_str_hex(~"0") {
-       Some(v) if is_zero(v) => fail_unless!(is_positive(v)),
+       Some(v) if is_zero(v) => assert!(is_positive(v)),
        _ => fail!()
    }
-   fail_unless!(from_str_hex(~"e") == Some(14.));
-   fail_unless!(from_str_hex(~"E") == Some(14.));
-   fail_unless!(from_str_hex(~"E1") == Some(225.));
-   fail_unless!(from_str_hex(~"1e1e1") == Some(123361.));
-   fail_unless!(from_str_hex(~"1e1.1") == Some(481.0625));
+   assert!(from_str_hex(~"e") == Some(14.));
+   assert!(from_str_hex(~"E") == Some(14.));
+   assert!(from_str_hex(~"E1") == Some(225.));
+   assert!(from_str_hex(~"1e1e1") == Some(123361.));
+   assert!(from_str_hex(~"1e1.1") == Some(481.0625));
 
-   fail_unless!(from_str_hex(~"").is_none());
-   fail_unless!(from_str_hex(~"x").is_none());
-   fail_unless!(from_str_hex(~" ").is_none());
-   fail_unless!(from_str_hex(~"   ").is_none());
-   fail_unless!(from_str_hex(~"p").is_none());
-   fail_unless!(from_str_hex(~"P").is_none());
-   fail_unless!(from_str_hex(~"P1").is_none());
-   fail_unless!(from_str_hex(~"1p1p1").is_none());
-   fail_unless!(from_str_hex(~"1p1.1").is_none());
-   fail_unless!(from_str_hex(~"1p1-1").is_none());
+   assert!(from_str_hex(~"").is_none());
+   assert!(from_str_hex(~"x").is_none());
+   assert!(from_str_hex(~" ").is_none());
+   assert!(from_str_hex(~"   ").is_none());
+   assert!(from_str_hex(~"p").is_none());
+   assert!(from_str_hex(~"P").is_none());
+   assert!(from_str_hex(~"P1").is_none());
+   assert!(from_str_hex(~"1p1p1").is_none());
+   assert!(from_str_hex(~"1p1.1").is_none());
+   assert!(from_str_hex(~"1p1-1").is_none());
 }
 
 #[test]
 pub fn test_to_str_hex() {
-   fail_unless!(to_str_hex(164.) == ~"a4");
-   fail_unless!(to_str_hex(164.9921875) == ~"a4.fe");
-   fail_unless!(to_str_hex(-164.9921875) == ~"-a4.fe");
-   fail_unless!(to_str_hex(0xff00 as float) == ~"ff00");
-   fail_unless!(to_str_hex(-(0xff00 as float)) == ~"-ff00");
-   fail_unless!(to_str_hex(0.) == ~"0");
-   fail_unless!(to_str_hex(15.) == ~"f");
-   fail_unless!(to_str_hex(-15.) == ~"-f");
-   fail_unless!(to_str_hex(0.9375) == ~"0.f");
-   fail_unless!(to_str_hex(-0.9375) == ~"-0.f");
-   fail_unless!(to_str_hex(infinity) == ~"inf");
-   fail_unless!(to_str_hex(neg_infinity) == ~"-inf");
-   fail_unless!(to_str_hex(NaN) == ~"NaN");
-   fail_unless!(to_str_hex(0.) == ~"0");
-   fail_unless!(to_str_hex(-0.) == ~"-0");
+   assert!(to_str_hex(164.) == ~"a4");
+   assert!(to_str_hex(164.9921875) == ~"a4.fe");
+   assert!(to_str_hex(-164.9921875) == ~"-a4.fe");
+   assert!(to_str_hex(0xff00 as float) == ~"ff00");
+   assert!(to_str_hex(-(0xff00 as float)) == ~"-ff00");
+   assert!(to_str_hex(0.) == ~"0");
+   assert!(to_str_hex(15.) == ~"f");
+   assert!(to_str_hex(-15.) == ~"-f");
+   assert!(to_str_hex(0.9375) == ~"0.f");
+   assert!(to_str_hex(-0.9375) == ~"-0.f");
+   assert!(to_str_hex(infinity) == ~"inf");
+   assert!(to_str_hex(neg_infinity) == ~"-inf");
+   assert!(to_str_hex(NaN) == ~"NaN");
+   assert!(to_str_hex(0.) == ~"0");
+   assert!(to_str_hex(-0.) == ~"-0");
 }
 
 #[test]
 pub fn test_to_str_radix() {
-   fail_unless!(to_str_radix(36., 36u) == ~"10");
-   fail_unless!(to_str_radix(8.125, 2u) == ~"1000.001");
+   assert!(to_str_radix(36., 36u) == ~"10");
+   assert!(to_str_radix(8.125, 2u) == ~"1000.001");
 }
 
 #[test]
 pub fn test_from_str_radix() {
-   fail_unless!(from_str_radix(~"10", 36u) == Some(36.));
-   fail_unless!(from_str_radix(~"1000.001", 2u) == Some(8.125));
+   assert!(from_str_radix(~"10", 36u) == Some(36.));
+   assert!(from_str_radix(~"1000.001", 2u) == Some(8.125));
 }
 
 #[test]
 pub fn test_positive() {
-  fail_unless!((is_positive(infinity)));
-  fail_unless!((is_positive(1.)));
-  fail_unless!((is_positive(0.)));
-  fail_unless!((!is_positive(-1.)));
-  fail_unless!((!is_positive(neg_infinity)));
-  fail_unless!((!is_positive(1./neg_infinity)));
-  fail_unless!((!is_positive(NaN)));
+  assert!((is_positive(infinity)));
+  assert!((is_positive(1.)));
+  assert!((is_positive(0.)));
+  assert!((!is_positive(-1.)));
+  assert!((!is_positive(neg_infinity)));
+  assert!((!is_positive(1./neg_infinity)));
+  assert!((!is_positive(NaN)));
 }
 
 #[test]
 pub fn test_negative() {
-  fail_unless!((!is_negative(infinity)));
-  fail_unless!((!is_negative(1.)));
-  fail_unless!((!is_negative(0.)));
-  fail_unless!((is_negative(-1.)));
-  fail_unless!((is_negative(neg_infinity)));
-  fail_unless!((is_negative(1./neg_infinity)));
-  fail_unless!((!is_negative(NaN)));
+  assert!((!is_negative(infinity)));
+  assert!((!is_negative(1.)));
+  assert!((!is_negative(0.)));
+  assert!((is_negative(-1.)));
+  assert!((is_negative(neg_infinity)));
+  assert!((is_negative(1./neg_infinity)));
+  assert!((!is_negative(NaN)));
 }
 
 #[test]
 pub fn test_nonpositive() {
-  fail_unless!((!is_nonpositive(infinity)));
-  fail_unless!((!is_nonpositive(1.)));
-  fail_unless!((!is_nonpositive(0.)));
-  fail_unless!((is_nonpositive(-1.)));
-  fail_unless!((is_nonpositive(neg_infinity)));
-  fail_unless!((is_nonpositive(1./neg_infinity)));
-  fail_unless!((!is_nonpositive(NaN)));
+  assert!((!is_nonpositive(infinity)));
+  assert!((!is_nonpositive(1.)));
+  assert!((!is_nonpositive(0.)));
+  assert!((is_nonpositive(-1.)));
+  assert!((is_nonpositive(neg_infinity)));
+  assert!((is_nonpositive(1./neg_infinity)));
+  assert!((!is_nonpositive(NaN)));
 }
 
 #[test]
 pub fn test_nonnegative() {
-  fail_unless!((is_nonnegative(infinity)));
-  fail_unless!((is_nonnegative(1.)));
-  fail_unless!((is_nonnegative(0.)));
-  fail_unless!((!is_nonnegative(-1.)));
-  fail_unless!((!is_nonnegative(neg_infinity)));
-  fail_unless!((!is_nonnegative(1./neg_infinity)));
-  fail_unless!((!is_nonnegative(NaN)));
+  assert!((is_nonnegative(infinity)));
+  assert!((is_nonnegative(1.)));
+  assert!((is_nonnegative(0.)));
+  assert!((!is_nonnegative(-1.)));
+  assert!((!is_nonnegative(neg_infinity)));
+  assert!((!is_nonnegative(1./neg_infinity)));
+  assert!((!is_nonnegative(NaN)));
 }
 
 #[test]
 pub fn test_to_str_inf() {
-    fail_unless!(to_str_digits(infinity, 10u) == ~"inf");
-    fail_unless!(to_str_digits(-infinity, 10u) == ~"-inf");
+    assert!(to_str_digits(infinity, 10u) == ~"inf");
+    assert!(to_str_digits(-infinity, 10u) == ~"-inf");
 }
 
 #[test]
 pub fn test_round() {
-    fail_unless!(round(5.8) == 6.0);
-    fail_unless!(round(5.2) == 5.0);
-    fail_unless!(round(3.0) == 3.0);
-    fail_unless!(round(2.5) == 3.0);
-    fail_unless!(round(-3.5) == -4.0);
+    assert!(round(5.8) == 6.0);
+    assert!(round(5.2) == 5.0);
+    assert!(round(3.0) == 3.0);
+    assert!(round(2.5) == 3.0);
+    assert!(round(-3.5) == -4.0);
 }
 
 #[test]
@@ -693,56 +693,56 @@ pub fn test_num() {
     let ten: float = num::cast(10);
     let two: float = num::cast(2);
 
-    fail_unless!((ten.add(&two)    == num::cast(12)));
-    fail_unless!((ten.sub(&two)    == num::cast(8)));
-    fail_unless!((ten.mul(&two)    == num::cast(20)));
-    fail_unless!((ten.div(&two)    == num::cast(5)));
-    fail_unless!((ten.modulo(&two) == num::cast(0)));
+    assert!((ten.add(&two)    == num::cast(12)));
+    assert!((ten.sub(&two)    == num::cast(8)));
+    assert!((ten.mul(&two)    == num::cast(20)));
+    assert!((ten.div(&two)    == num::cast(5)));
+    assert!((ten.modulo(&two) == num::cast(0)));
 }
 
 #[test]
 fn test_numcast() {
-    fail_unless!((20u   == 20f.to_uint()));
-    fail_unless!((20u8  == 20f.to_u8()));
-    fail_unless!((20u16 == 20f.to_u16()));
-    fail_unless!((20u32 == 20f.to_u32()));
-    fail_unless!((20u64 == 20f.to_u64()));
-    fail_unless!((20i   == 20f.to_int()));
-    fail_unless!((20i8  == 20f.to_i8()));
-    fail_unless!((20i16 == 20f.to_i16()));
-    fail_unless!((20i32 == 20f.to_i32()));
-    fail_unless!((20i64 == 20f.to_i64()));
-    fail_unless!((20f   == 20f.to_float()));
-    fail_unless!((20f32 == 20f.to_f32()));
-    fail_unless!((20f64 == 20f.to_f64()));
+    assert!((20u   == 20f.to_uint()));
+    assert!((20u8  == 20f.to_u8()));
+    assert!((20u16 == 20f.to_u16()));
+    assert!((20u32 == 20f.to_u32()));
+    assert!((20u64 == 20f.to_u64()));
+    assert!((20i   == 20f.to_int()));
+    assert!((20i8  == 20f.to_i8()));
+    assert!((20i16 == 20f.to_i16()));
+    assert!((20i32 == 20f.to_i32()));
+    assert!((20i64 == 20f.to_i64()));
+    assert!((20f   == 20f.to_float()));
+    assert!((20f32 == 20f.to_f32()));
+    assert!((20f64 == 20f.to_f64()));
 
-    fail_unless!((20f == NumCast::from(20u)));
-    fail_unless!((20f == NumCast::from(20u8)));
-    fail_unless!((20f == NumCast::from(20u16)));
-    fail_unless!((20f == NumCast::from(20u32)));
-    fail_unless!((20f == NumCast::from(20u64)));
-    fail_unless!((20f == NumCast::from(20i)));
-    fail_unless!((20f == NumCast::from(20i8)));
-    fail_unless!((20f == NumCast::from(20i16)));
-    fail_unless!((20f == NumCast::from(20i32)));
-    fail_unless!((20f == NumCast::from(20i64)));
-    fail_unless!((20f == NumCast::from(20f)));
-    fail_unless!((20f == NumCast::from(20f32)));
-    fail_unless!((20f == NumCast::from(20f64)));
+    assert!((20f == NumCast::from(20u)));
+    assert!((20f == NumCast::from(20u8)));
+    assert!((20f == NumCast::from(20u16)));
+    assert!((20f == NumCast::from(20u32)));
+    assert!((20f == NumCast::from(20u64)));
+    assert!((20f == NumCast::from(20i)));
+    assert!((20f == NumCast::from(20i8)));
+    assert!((20f == NumCast::from(20i16)));
+    assert!((20f == NumCast::from(20i32)));
+    assert!((20f == NumCast::from(20i64)));
+    assert!((20f == NumCast::from(20f)));
+    assert!((20f == NumCast::from(20f32)));
+    assert!((20f == NumCast::from(20f64)));
 
-    fail_unless!((20f == num::cast(20u)));
-    fail_unless!((20f == num::cast(20u8)));
-    fail_unless!((20f == num::cast(20u16)));
-    fail_unless!((20f == num::cast(20u32)));
-    fail_unless!((20f == num::cast(20u64)));
-    fail_unless!((20f == num::cast(20i)));
-    fail_unless!((20f == num::cast(20i8)));
-    fail_unless!((20f == num::cast(20i16)));
-    fail_unless!((20f == num::cast(20i32)));
-    fail_unless!((20f == num::cast(20i64)));
-    fail_unless!((20f == num::cast(20f)));
-    fail_unless!((20f == num::cast(20f32)));
-    fail_unless!((20f == num::cast(20f64)));
+    assert!((20f == num::cast(20u)));
+    assert!((20f == num::cast(20u8)));
+    assert!((20f == num::cast(20u16)));
+    assert!((20f == num::cast(20u32)));
+    assert!((20f == num::cast(20u64)));
+    assert!((20f == num::cast(20i)));
+    assert!((20f == num::cast(20i8)));
+    assert!((20f == num::cast(20i16)));
+    assert!((20f == num::cast(20i32)));
+    assert!((20f == num::cast(20i64)));
+    assert!((20f == num::cast(20f)));
+    assert!((20f == num::cast(20f32)));
+    assert!((20f == num::cast(20f64)));
 }
 
 

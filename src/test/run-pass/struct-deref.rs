@@ -12,6 +12,6 @@ struct Foo(int);
 
 pub fn main() {
     let x: Foo = Foo(2);
-    fail_unless!(*x == 2);
+    assert!(*x == 2);
 }
 

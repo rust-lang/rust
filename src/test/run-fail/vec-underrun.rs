@@ -14,8 +14,8 @@
 fn main() {
     let v: ~[int] = ~[10, 20];
     let x: int = 0;
-    fail_unless!((v[x] == 10));
+    assert!((v[x] == 10));
     // Bounds-check failure.
 
-    fail_unless!((v[x - 1] == 20));
+    assert!((v[x - 1] == 20));
 }

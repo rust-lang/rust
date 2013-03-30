@@ -14,11 +14,11 @@ fn double_int(a: int) -> ~[int] { return ~[a] + ~[a]; }
 
 pub fn main() {
     let mut d = double(1);
-    fail_unless!((d[0] == 1));
-    fail_unless!((d[1] == 1));
+    assert!((d[0] == 1));
+    assert!((d[1] == 1));
 
     d = double_int(1);
-    fail_unless!((d[0] == 1));
-    fail_unless!((d[1] == 1));
+    assert!((d[0] == 1));
+    assert!((d[1] == 1));
 }
 

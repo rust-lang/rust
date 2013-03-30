@@ -171,7 +171,7 @@ priv impl<T> DList<T> {
     // Remove a node from the list.
     fn unlink(@mut self, nobe: @mut DListNode<T>) {
         self.assert_mine(nobe);
-        fail_unless!(self.size > 0);
+        assert!(self.size > 0);
         self.link(nobe.prev, nobe.next);
         nobe.prev = None; // Release extraneous references.
         nobe.next = None;
@@ -193,7 +193,7 @@ priv impl<T> DList<T> {
                    nobe: DListLink<T>,
                    neighbour: @mut DListNode<T>) {
         self.assert_mine(neighbour);
-        fail_unless!(self.size > 0);
+        assert!(self.size > 0);
         self.link(neighbour.prev, nobe);
         self.link(nobe, Some(neighbour));
         self.size += 1;
@@ -202,7 +202,7 @@ priv impl<T> DList<T> {
                     neighbour: @mut DListNode<T>,
                     nobe: DListLink<T>) {
         self.assert_mine(neighbour);
-        fail_unless!(self.size > 0);
+        assert!(self.size > 0);
         self.link(nobe, neighbour.next);
         self.link(Some(neighbour), nobe);
         self.size += 1;
@@ -410,7 +410,7 @@ pub impl<T> DList<T> {
     /// Check data structure integrity. O(n).
     fn assert_consistent(@mut self) {
         if self.hd.is_none() || self.tl.is_none() {
-            fail_unless!(self.hd.is_none() && self.tl.is_none());
+            assert!(self.hd.is_none() && self.tl.is_none());
         }
         // iterate forwards
         let mut count = 0;
@@ -418,7 +418,7 @@ pub impl<T> DList<T> {
         let mut rabbit = link;
         while link.is_some() {
             let nobe = link.get();
-            fail_unless!(nobe.linked);
+            assert!(nobe.linked);
             // check cycle
             if rabbit.is_some() {
                 rabbit = rabbit.get().next;
@@ -427,19 +427,19 @@ pub impl<T> DList<T> {
                 rabbit = rabbit.get().next;
             }
             if rabbit.is_some() {
-                fail_unless!(!managed::mut_ptr_eq(rabbit.get(), nobe));
+                assert!(!managed::mut_ptr_eq(rabbit.get(), nobe));
             }
             // advance
             link = nobe.next_link();
             count += 1;
         }
-        fail_unless!(count == self.len());
+        assert!(count == self.len());
         // iterate backwards - some of this is probably redundant.
         link = self.peek_tail_n();
         rabbit = link;
         while link.is_some() {
             let nobe = link.get();
-            fail_unless!(nobe.linked);
+            assert!(nobe.linked);
             // check cycle
             if rabbit.is_some() {
                 rabbit = rabbit.get().prev;
@@ -448,13 +448,13 @@ pub impl<T> DList<T> {
                 rabbit = rabbit.get().prev;
             }
             if rabbit.is_some() {
-                fail_unless!(!managed::mut_ptr_eq(rabbit.get(), nobe));
+                assert!(!managed::mut_ptr_eq(rabbit.get(), nobe));
             }
             // advance
             link = nobe.prev_link();
             count -= 1;
         }
-        fail_unless!(count == 0);
+        assert!(count == 0);
     }
 }
 
@@ -510,7 +510,7 @@ impl<T> BaseIter<T> for @mut DList<T> {
         let mut link = self.peek_n();
         while link.is_some() {
             let nobe = link.get();
-            fail_unless!(nobe.linked);
+            assert!(nobe.linked);
 
             {
                 let frozen_nobe = &*nobe;
@@ -563,7 +563,7 @@ mod tests {
         abcd.assert_consistent(); assert_eq!(abcd.pop().get(), 6);
         abcd.assert_consistent(); assert_eq!(abcd.pop().get(), 7);
         abcd.assert_consistent(); assert_eq!(abcd.pop().get(), 8);
-        abcd.assert_consistent(); fail_unless!(abcd.is_empty());
+        abcd.assert_consistent(); assert!(abcd.is_empty());
     }
     #[test]
     pub fn test_dlist_append() {
@@ -579,7 +579,7 @@ mod tests {
         a.assert_consistent(); assert_eq!(a.pop().get(), 4);
         a.assert_consistent(); assert_eq!(a.pop().get(), 5);
         a.assert_consistent(); assert_eq!(a.pop().get(), 6);
-        a.assert_consistent(); fail_unless!(a.is_empty());
+        a.assert_consistent(); assert!(a.is_empty());
     }
     #[test]
     pub fn test_dlist_append_empty() {
@@ -592,7 +592,7 @@ mod tests {
         a.assert_consistent(); assert_eq!(a.pop().get(), 1);
         a.assert_consistent(); assert_eq!(a.pop().get(), 2);
         a.assert_consistent(); assert_eq!(a.pop().get(), 3);
-        a.assert_consistent(); fail_unless!(a.is_empty());
+        a.assert_consistent(); assert!(a.is_empty());
     }
     #[test]
     pub fn test_dlist_append_to_empty() {
@@ -605,7 +605,7 @@ mod tests {
         a.assert_consistent(); assert_eq!(a.pop().get(), 4);
         a.assert_consistent(); assert_eq!(a.pop().get(), 5);
         a.assert_consistent(); assert_eq!(a.pop().get(), 6);
-        a.assert_consistent(); fail_unless!(a.is_empty());
+        a.assert_consistent(); assert!(a.is_empty());
     }
     #[test]
     pub fn test_dlist_append_two_empty() {
@@ -645,7 +645,7 @@ mod tests {
         b.assert_consistent(); assert_eq!(b.pop().get(), 4);
         b.assert_consistent(); assert_eq!(b.pop().get(), 5);
         b.assert_consistent(); assert_eq!(b.pop().get(), 6);
-        b.assert_consistent(); fail_unless!(b.is_empty());
+        b.assert_consistent(); assert!(b.is_empty());
     }
     #[test]
     pub fn test_dlist_reverse() {
@@ -657,7 +657,7 @@ mod tests {
         a.assert_consistent(); assert_eq!(a.pop().get(), 3);
         a.assert_consistent(); assert_eq!(a.pop().get(), 4);
         a.assert_consistent(); assert_eq!(a.pop().get(), 5);
-        a.assert_consistent(); fail_unless!(a.is_empty());
+        a.assert_consistent(); assert!(a.is_empty());
     }
     #[test]
     pub fn test_dlist_reverse_empty() {
@@ -681,7 +681,7 @@ mod tests {
         a.assert_consistent(); assert_eq!(a.pop().get(), 4);
         a.assert_consistent(); assert_eq!(a.pop().get(), 3);
         a.assert_consistent(); assert_eq!(a.pop().get(), 5);
-        a.assert_consistent(); fail_unless!(a.is_empty());
+        a.assert_consistent(); assert!(a.is_empty());
     }
     #[test]
     pub fn test_dlist_clear() {
@@ -694,8 +694,8 @@ mod tests {
     pub fn test_dlist_is_empty() {
         let empty = DList::<int>();
         let full1 = from_vec(~[1,2,3]);
-        fail_unless!(empty.is_empty());
-        fail_unless!(!full1.is_empty());
+        assert!(empty.is_empty());
+        assert!(!full1.is_empty());
     }
     #[test]
     pub fn test_dlist_head_tail() {
@@ -714,8 +714,8 @@ mod tests {
         assert_eq!(l.tail(), 3);
         assert_eq!(l.head(), 3);
         assert_eq!(l.pop().get(), 3);
-        fail_unless!(l.is_empty());
-        fail_unless!(l.pop().is_none());
+        assert!(l.is_empty());
+        assert!(l.pop().is_none());
     }
     #[test]
     pub fn test_dlist_pop_tail() {
@@ -727,8 +727,8 @@ mod tests {
         assert_eq!(l.tail(), 1);
         assert_eq!(l.head(), 1);
         assert_eq!(l.pop_tail().get(), 1);
-        fail_unless!(l.is_empty());
-        fail_unless!(l.pop_tail().is_none());
+        assert!(l.is_empty());
+        assert!(l.pop_tail().is_none());
     }
     #[test]
     pub fn test_dlist_push() {
@@ -786,7 +786,7 @@ mod tests {
         l.assert_consistent(); assert_eq!(l.tail(), 3);
         l.assert_consistent(); assert_eq!(l.pop().get(), 2);
         l.assert_consistent(); assert_eq!(l.pop().get(), 3);
-        l.assert_consistent(); fail_unless!(l.is_empty());
+        l.assert_consistent(); assert!(l.is_empty());
     }
     #[test]
     pub fn test_dlist_remove_mid() {
@@ -801,7 +801,7 @@ mod tests {
         l.assert_consistent(); assert_eq!(l.tail(), 3);
         l.assert_consistent(); assert_eq!(l.pop().get(), 1);
         l.assert_consistent(); assert_eq!(l.pop().get(), 3);
-        l.assert_consistent(); fail_unless!(l.is_empty());
+        l.assert_consistent(); assert!(l.is_empty());
     }
     #[test]
     pub fn test_dlist_remove_tail() {
@@ -816,7 +816,7 @@ mod tests {
         l.assert_consistent(); assert_eq!(l.tail(), 2);
         l.assert_consistent(); assert_eq!(l.pop().get(), 1);
         l.assert_consistent(); assert_eq!(l.pop().get(), 2);
-        l.assert_consistent(); fail_unless!(l.is_empty());
+        l.assert_consistent(); assert!(l.is_empty());
     }
     #[test]
     pub fn test_dlist_remove_one_two() {
@@ -832,7 +832,7 @@ mod tests {
         l.assert_consistent(); assert_eq!(l.head(), 3);
         l.assert_consistent(); assert_eq!(l.tail(), 3);
         l.assert_consistent(); assert_eq!(l.pop().get(), 3);
-        l.assert_consistent(); fail_unless!(l.is_empty());
+        l.assert_consistent(); assert!(l.is_empty());
     }
     #[test]
     pub fn test_dlist_remove_one_three() {
@@ -847,7 +847,7 @@ mod tests {
         l.assert_consistent(); assert_eq!(l.head(), 2);
         l.assert_consistent(); assert_eq!(l.tail(), 2);
         l.assert_consistent(); assert_eq!(l.pop().get(), 2);
-        l.assert_consistent(); fail_unless!(l.is_empty());
+        l.assert_consistent(); assert!(l.is_empty());
     }
     #[test]
     pub fn test_dlist_remove_two_three() {
@@ -862,7 +862,7 @@ mod tests {
         l.assert_consistent(); assert_eq!(l.head(), 1);
         l.assert_consistent(); assert_eq!(l.tail(), 1);
         l.assert_consistent(); assert_eq!(l.pop().get(), 1);
-        l.assert_consistent(); fail_unless!(l.is_empty());
+        l.assert_consistent(); assert!(l.is_empty());
     }
     #[test]
     pub fn test_dlist_remove_all() {
@@ -874,8 +874,8 @@ mod tests {
         l.assert_consistent(); l.remove(two);
         l.assert_consistent(); l.remove(three);
         l.assert_consistent(); l.remove(one); // Twenty-three is number one!
-        l.assert_consistent(); fail_unless!(l.peek().is_none());
-        l.assert_consistent(); fail_unless!(l.is_empty());
+        l.assert_consistent(); assert!(l.peek().is_none());
+        l.assert_consistent(); assert!(l.is_empty());
     }
     #[test]
     pub fn test_dlist_insert_n_before() {
@@ -891,7 +891,7 @@ mod tests {
         l.assert_consistent(); assert_eq!(l.pop().get(), 1);
         l.assert_consistent(); assert_eq!(l.pop().get(), 3);
         l.assert_consistent(); assert_eq!(l.pop().get(), 2);
-        l.assert_consistent(); fail_unless!(l.is_empty());
+        l.assert_consistent(); assert!(l.is_empty());
     }
     #[test]
     pub fn test_dlist_insert_n_after() {
@@ -907,7 +907,7 @@ mod tests {
         l.assert_consistent(); assert_eq!(l.pop().get(), 1);
         l.assert_consistent(); assert_eq!(l.pop().get(), 3);
         l.assert_consistent(); assert_eq!(l.pop().get(), 2);
-        l.assert_consistent(); fail_unless!(l.is_empty());
+        l.assert_consistent(); assert!(l.is_empty());
     }
     #[test]
     pub fn test_dlist_insert_before_head() {
@@ -922,7 +922,7 @@ mod tests {
         l.assert_consistent(); assert_eq!(l.pop().get(), 3);
         l.assert_consistent(); assert_eq!(l.pop().get(), 1);
         l.assert_consistent(); assert_eq!(l.pop().get(), 2);
-        l.assert_consistent(); fail_unless!(l.is_empty());
+        l.assert_consistent(); assert!(l.is_empty());
     }
     #[test]
     pub fn test_dlist_insert_after_tail() {
@@ -937,7 +937,7 @@ mod tests {
         l.assert_consistent(); assert_eq!(l.pop().get(), 1);
         l.assert_consistent(); assert_eq!(l.pop().get(), 2);
         l.assert_consistent(); assert_eq!(l.pop().get(), 3);
-        l.assert_consistent(); fail_unless!(l.is_empty());
+        l.assert_consistent(); assert!(l.is_empty());
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     pub fn test_dlist_asymmetric_link() {

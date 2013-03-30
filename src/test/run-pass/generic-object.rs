@@ -25,6 +25,6 @@ impl Foo<int> for S {
 pub fn main() {
     let x = @S { x: 1 };
     let y = x as @Foo<int>;
-    fail_unless!(y.get() == 1);
+    assert!(y.get() == 1);
 }
 

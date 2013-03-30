@@ -68,13 +68,13 @@ impl Nus for thing { fn f(&self) {} }
 pub fn main() {
 
     let x = @thing(A {a: @10});
-    fail_unless!(x.foo() == 10);
-    fail_unless!(x.quux() == 10);
+    assert!(x.foo() == 10);
+    assert!(x.quux() == 10);
 
     let y = ~thing(A {a: @10});
-    fail_unless!((copy y).bar() == 10);
-    fail_unless!(y.quux() == 10);
+    assert!((copy y).bar() == 10);
+    assert!(y.quux() == 10);
 
     let z = thing(A {a: @11});
-    fail_unless!(z.spam() == 11);
+    assert!(z.spam() == 11);
 }

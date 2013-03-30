@@ -170,10 +170,10 @@ pub mod tests {
 
     #[test]
     pub fn size_of_basic() {
-        fail_unless!(size_of::<u8>() == 1u);
-        fail_unless!(size_of::<u16>() == 2u);
-        fail_unless!(size_of::<u32>() == 4u);
-        fail_unless!(size_of::<u64>() == 8u);
+        assert!(size_of::<u8>() == 1u);
+        assert!(size_of::<u16>() == 2u);
+        assert!(size_of::<u32>() == 4u);
+        assert!(size_of::<u64>() == 8u);
     }
 
     #[test]
@@ -181,30 +181,30 @@ pub mod tests {
     #[cfg(target_arch = "arm")]
     #[cfg(target_arch = "mips")]
     pub fn size_of_32() {
-        fail_unless!(size_of::<uint>() == 4u);
-        fail_unless!(size_of::<*uint>() == 4u);
+        assert!(size_of::<uint>() == 4u);
+        assert!(size_of::<*uint>() == 4u);
     }
 
     #[test]
     #[cfg(target_arch = "x86_64")]
     pub fn size_of_64() {
-        fail_unless!(size_of::<uint>() == 8u);
-        fail_unless!(size_of::<*uint>() == 8u);
+        assert!(size_of::<uint>() == 8u);
+        assert!(size_of::<*uint>() == 8u);
     }
 
     #[test]
     pub fn nonzero_size_of_basic() {
         type Z = [i8, ..0];
-        fail_unless!(size_of::<Z>() == 0u);
-        fail_unless!(nonzero_size_of::<Z>() == 1u);
-        fail_unless!(nonzero_size_of::<uint>() == size_of::<uint>());
+        assert!(size_of::<Z>() == 0u);
+        assert!(nonzero_size_of::<Z>() == 1u);
+        assert!(nonzero_size_of::<uint>() == size_of::<uint>());
     }
 
     #[test]
     pub fn align_of_basic() {
-        fail_unless!(pref_align_of::<u8>() == 1u);
-        fail_unless!(pref_align_of::<u16>() == 2u);
-        fail_unless!(pref_align_of::<u32>() == 4u);
+        assert!(pref_align_of::<u8>() == 1u);
+        assert!(pref_align_of::<u16>() == 2u);
+        assert!(pref_align_of::<u32>() == 4u);
     }
 
     #[test]
@@ -212,15 +212,15 @@ pub mod tests {
     #[cfg(target_arch = "arm")]
     #[cfg(target_arch = "mips")]
     pub fn align_of_32() {
-        fail_unless!(pref_align_of::<uint>() == 4u);
-        fail_unless!(pref_align_of::<*uint>() == 4u);
+        assert!(pref_align_of::<uint>() == 4u);
+        assert!(pref_align_of::<*uint>() == 4u);
     }
 
     #[test]
     #[cfg(target_arch = "x86_64")]
     pub fn align_of_64() {
-        fail_unless!(pref_align_of::<uint>() == 8u);
-        fail_unless!(pref_align_of::<*uint>() == 8u);
+        assert!(pref_align_of::<uint>() == 8u);
+        assert!(pref_align_of::<*uint>() == 8u);
     }
 
     #[test]
@@ -229,7 +229,7 @@ pub mod tests {
             let x = 10;
             let f: &fn(int) -> int = |y| x + y;
 
-            fail_unless!(f(20) == 30);
+            assert!(f(20) == 30);
 
             let original_closure: Closure = cast::transmute(f);
 
@@ -242,7 +242,7 @@ pub mod tests {
             };
 
             let new_f: &fn(int) -> int = cast::transmute(new_closure);
-            fail_unless!(new_f(20) == 30);
+            assert!(new_f(20) == 30);
         }
     }
 }

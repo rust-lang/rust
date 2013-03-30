@@ -47,9 +47,9 @@ pub fn main() {
     list.push(copy foo, 22);
     list.push(copy bar, 44);
 
-    fail_unless!(list[foo] == 22)
-    fail_unless!(list[bar] == 44)
+    assert!(list[foo] == 22)
+    assert!(list[bar] == 44)
 
-    fail_unless!(list[foo] == 22)
-    fail_unless!(list[bar] == 44)
+    assert!(list[foo] == 22)
+    assert!(list[bar] == 44)
 }

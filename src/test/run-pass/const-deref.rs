@@ -15,6 +15,6 @@ static E: &'static S = &S(C);
 static F: int = ***E;
 
 pub fn main() {
-    fail_unless!(D == 1000);
-    fail_unless!(F == 1000);
+    assert!(D == 1000);
+    assert!(F == 1000);
 }

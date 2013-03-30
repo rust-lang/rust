@@ -13,5 +13,5 @@ pub fn main() {
     let y: int = 42;
     let mut x: int;
     x = y;
-    fail_unless!((x == 42));
+    assert!((x == 42));
 }

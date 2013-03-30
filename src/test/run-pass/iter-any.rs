@@ -11,11 +11,11 @@
 fn is_even(x: &uint) -> bool { (*x % 2) == 0 }
 
 pub fn main() {
-    fail_unless!(![1u, 3u].any(is_even));
-    fail_unless!([1u, 2u].any(is_even));
-    fail_unless!(![].any(is_even));
+    assert!(![1u, 3u].any(is_even));
+    assert!([1u, 2u].any(is_even));
+    assert!(![].any(is_even));
 
-    fail_unless!(!iter::any(&Some(1u), is_even));
-    fail_unless!(iter::any(&Some(2u), is_even));
-    fail_unless!(!iter::any(&None::<uint>, is_even));
+    assert!(!iter::any(&Some(1u), is_even));
+    assert!(iter::any(&Some(2u), is_even));
+    assert!(!iter::any(&None::<uint>, is_even));
 }

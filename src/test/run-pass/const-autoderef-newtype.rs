@@ -13,5 +13,5 @@ static C0: S = S([3]);
 static C1: int = C0[0];
 
 pub fn main() {
-    fail_unless!(C1 == 3);
+    assert!(C1 == 3);
 }

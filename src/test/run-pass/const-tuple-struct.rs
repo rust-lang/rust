@@ -15,8 +15,8 @@ static X: Bar = Bar(1, 2);
 pub fn main() {
     match X {
         Bar(x, y) => {
-            fail_unless!(x == 1);
-            fail_unless!(y == 2);
+            assert!(x == 1);
+            assert!(y == 2);
         }
     }
 }

@@ -15,7 +15,7 @@ fn foo(cond: bool) {
 
     if cond {
         x = &3; //~ ERROR illegal borrow: borrowed value does not live long enough
-        fail_unless!((*x == 3));
+        assert!((*x == 3));
     }
 }
 

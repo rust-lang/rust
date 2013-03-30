@@ -17,7 +17,7 @@ use readMaybeRenamed = static_methods_crate::read::readMaybe;
 
 pub fn main() {
     let result: int = read(~"5");
-    fail_unless!(result == 5);
-    fail_unless!(readMaybeRenamed(~"false") == Some(false));
-    fail_unless!(readMaybeRenamed(~"foo") == None::<bool>);
+    assert!(result == 5);
+    assert!(readMaybeRenamed(~"false") == Some(false));
+    assert!(readMaybeRenamed(~"foo") == None::<bool>);
 }

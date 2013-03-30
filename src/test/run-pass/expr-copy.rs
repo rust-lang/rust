@@ -19,9 +19,9 @@ struct A { a: int }
 pub fn main() {
     let mut x = A {a: 10};
     f(&mut x);
-    fail_unless!(x.a == 100);
+    assert!(x.a == 100);
     x.a = 20;
     let mut y = copy x;
     f(&mut y);
-    fail_unless!(x.a == 20);
+    assert!(x.a == 20);
 }

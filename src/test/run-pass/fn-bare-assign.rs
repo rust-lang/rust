@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn f(i: int, called: &mut bool) {
-    fail_unless!(i == 10);
+    assert!(i == 10);
     *called = true;
 }
 
@@ -21,5 +21,5 @@ pub fn main() {
     let mut called = false;
     let h = f;
     g(h, &mut called);
-    fail_unless!(called == true);
+    assert!(called == true);
 }

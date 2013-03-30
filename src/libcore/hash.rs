@@ -456,7 +456,7 @@ pub fn test_siphash() {
         let vec = u8to64_le!(vecs[t], 0);
         let out = buf.hash_keyed(k0, k1);
         debug!("got %?, expected %?", out, vec);
-        fail_unless!(vec == out);
+        assert!(vec == out);
 
         stream_full.reset();
         stream_full.input(buf);
@@ -465,7 +465,7 @@ pub fn test_siphash() {
         let v = to_hex_str(&vecs[t]);
         debug!("%d: (%s) => inc=%s full=%s", t, v, i, f);
 
-        fail_unless!(f == i && f == v);
+        assert!(f == i && f == v);
 
         buf += ~[t as u8];
         stream_inc.input(~[t as u8]);
@@ -477,20 +477,20 @@ pub fn test_siphash() {
 #[test] #[cfg(target_arch = "arm")]
 pub fn test_hash_uint() {
     let val = 0xdeadbeef_deadbeef_u64;
-    fail_unless!((val as u64).hash() != (val as uint).hash());
-    fail_unless!((val as u32).hash() == (val as uint).hash());
+    assert!((val as u64).hash() != (val as uint).hash());
+    assert!((val as u32).hash() == (val as uint).hash());
 }
 #[test] #[cfg(target_arch = "x86_64")]
 pub fn test_hash_uint() {
     let val = 0xdeadbeef_deadbeef_u64;
-    fail_unless!((val as u64).hash() == (val as uint).hash());
-    fail_unless!((val as u32).hash() != (val as uint).hash());
+    assert!((val as u64).hash() == (val as uint).hash());
+    assert!((val as u32).hash() != (val as uint).hash());
 }
 #[test] #[cfg(target_arch = "x86")]
 pub fn test_hash_uint() {
     let val = 0xdeadbeef_deadbeef_u64;
-    fail_unless!((val as u64).hash() != (val as uint).hash());
-    fail_unless!((val as u32).hash() == (val as uint).hash());
+    assert!((val as u64).hash() != (val as uint).hash());
+    assert!((val as u32).hash() == (val as uint).hash());
 }
 
 #[test]
@@ -505,17 +505,17 @@ pub fn test_hash_idempotent() {
 pub fn test_hash_no_bytes_dropped_64() {
     let val = 0xdeadbeef_deadbeef_u64;
 
-    fail_unless!(val.hash() != zero_byte(val, 0).hash());
-    fail_unless!(val.hash() != zero_byte(val, 1).hash());
-    fail_unless!(val.hash() != zero_byte(val, 2).hash());
-    fail_unless!(val.hash() != zero_byte(val, 3).hash());
-    fail_unless!(val.hash() != zero_byte(val, 4).hash());
-    fail_unless!(val.hash() != zero_byte(val, 5).hash());
-    fail_unless!(val.hash() != zero_byte(val, 6).hash());
-    fail_unless!(val.hash() != zero_byte(val, 7).hash());
+    assert!(val.hash() != zero_byte(val, 0).hash());
+    assert!(val.hash() != zero_byte(val, 1).hash());
+    assert!(val.hash() != zero_byte(val, 2).hash());
+    assert!(val.hash() != zero_byte(val, 3).hash());
+    assert!(val.hash() != zero_byte(val, 4).hash());
+    assert!(val.hash() != zero_byte(val, 5).hash());
+    assert!(val.hash() != zero_byte(val, 6).hash());
+    assert!(val.hash() != zero_byte(val, 7).hash());
 
     fn zero_byte(val: u64, byte: uint) -> u64 {
-        fail_unless!(byte < 8);
+        assert!(byte < 8);
         val & !(0xff << (byte * 8))
     }
 }
@@ -524,13 +524,13 @@ pub fn test_hash_no_bytes_dropped_64() {
 pub fn test_hash_no_bytes_dropped_32() {
     let val = 0xdeadbeef_u32;
 
-    fail_unless!(val.hash() != zero_byte(val, 0).hash());
-    fail_unless!(val.hash() != zero_byte(val, 1).hash());
-    fail_unless!(val.hash() != zero_byte(val, 2).hash());
-    fail_unless!(val.hash() != zero_byte(val, 3).hash());
+    assert!(val.hash() != zero_byte(val, 0).hash());
+    assert!(val.hash() != zero_byte(val, 1).hash());
+    assert!(val.hash() != zero_byte(val, 2).hash());
+    assert!(val.hash() != zero_byte(val, 3).hash());
 
     fn zero_byte(val: u32, byte: uint) -> u32 {
-        fail_unless!(byte < 4);
+        assert!(byte < 4);
         val & !(0xff << (byte * 8))
     }
 }

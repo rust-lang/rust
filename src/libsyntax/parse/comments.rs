@@ -48,7 +48,7 @@ pub fn is_doc_comment(s: &str) -> bool {
 }
 
 pub fn doc_comment_style(comment: &str) -> ast::attr_style {
-    fail_unless!(is_doc_comment(comment));
+    assert!(is_doc_comment(comment));
     if comment.starts_with(~"//!") || comment.starts_with(~"/*!") {
         ast::attr_inner
     } else {
@@ -134,7 +134,7 @@ fn read_to_eol(rdr: @mut StringReader) -> ~str {
 
 fn read_one_line_comment(rdr: @mut StringReader) -> ~str {
     let val = read_to_eol(rdr);
-    fail_unless!((val[0] == '/' as u8 && val[1] == '/' as u8) ||
+    assert!((val[0] == '/' as u8 && val[1] == '/' as u8) ||
                  (val[0] == '#' as u8 && val[1] == '!' as u8));
     return val;
 }
@@ -247,7 +247,7 @@ fn read_block_comment(rdr: @mut StringReader,
             bump(rdr);
         }
         if !is_block_non_doc_comment(curr_line) { return; }
-        fail_unless!(!curr_line.contains_char('\n'));
+        assert!(!curr_line.contains_char('\n'));
         lines.push(curr_line);
     } else {
         let mut level: int = 1;

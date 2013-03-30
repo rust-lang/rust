@@ -19,7 +19,7 @@ mod rusti {
 pub fn main() {
     unsafe {
         let addr = rusti::morestack_addr();
-        fail_unless!(addr.is_not_null());
+        assert!(addr.is_not_null());
         error!("%?", addr);
     }
 }

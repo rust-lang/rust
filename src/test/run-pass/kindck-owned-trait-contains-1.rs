@@ -22,5 +22,5 @@ fn repeater<A:Copy>(v: @A) -> @repeat<A> {
 pub fn main() {
     let x = &3;
     let y = repeater(@x);
-    fail_unless!(*x == *(y.get()));
+    assert!(*x == *(y.get()));
 }

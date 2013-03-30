@@ -29,7 +29,7 @@ fn mi(v: int) -> MyInt { MyInt { val: v } }
 
 pub fn main() {
     let (x, y, z) = (mi(3), mi(5), mi(3));
-    fail_unless!(x != y);
-    fail_unless!(x == z);
+    assert!(x != y);
+    assert!(x == z);
 }
 

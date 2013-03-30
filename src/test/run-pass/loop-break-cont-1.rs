@@ -13,5 +13,5 @@ pub fn main() {
   loop {
     break;
   }
-  fail_unless!(true);
+  assert!(true);
 }

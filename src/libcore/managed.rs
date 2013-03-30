@@ -91,8 +91,8 @@ impl<T:Ord> Ord for @mut T {
 fn test() {
     let x = @3;
     let y = @3;
-    fail_unless!((ptr_eq::<int>(x, x)));
-    fail_unless!((ptr_eq::<int>(y, y)));
-    fail_unless!((!ptr_eq::<int>(x, y)));
-    fail_unless!((!ptr_eq::<int>(y, x)));
+    assert!((ptr_eq::<int>(x, x)));
+    assert!((ptr_eq::<int>(y, y)));
+    assert!((!ptr_eq::<int>(x, y)));
+    assert!((!ptr_eq::<int>(y, x)));
 }

@@ -13,12 +13,12 @@ use std::rand;
 
 // random uint less than n
 fn under(r : rand::rng, n : uint) -> uint {
-    fail_unless!(n != 0u); r.next() as uint % n
+    assert!(n != 0u); r.next() as uint % n
 }
 
 // random choice from a vec
 fn choice<T:copy>(r : rand::rng, v : ~[T]) -> T {
-    fail_unless!(vec::len(v) != 0u); v[under(r, vec::len(v))]
+    assert!(vec::len(v) != 0u); v[under(r, vec::len(v))]
 }
 
 // 1 in n chance of being true
@@ -49,12 +49,12 @@ fn shuffled<T:copy>(r : rand::rng, v : ~[T]) -> ~[T] {
 // * weighted_vec is O(total weight) space
 type weighted<T> = { weight: uint, item: T };
 fn weighted_choice<T:copy>(r : rand::rng, v : ~[weighted<T>]) -> T {
-    fail_unless!(vec::len(v) != 0u);
+    assert!(vec::len(v) != 0u);
     let total = 0u;
     for {weight: weight, item: _} in v {
         total += weight;
     }
-    fail_unless!(total >= 0u);
+    assert!(total >= 0u);
     let chosen = under(r, total);
     let so_far = 0u;
     for {weight: weight, item: item} in v {

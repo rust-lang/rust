@@ -38,6 +38,6 @@ pub impl<K,V> LinearMap<K,V> {
 
 pub fn main() {
     let mut m = ~linear_map::<(),()>();
-    fail_unless!(m.len() == 0);
+    assert!(m.len() == 0);
 }
 

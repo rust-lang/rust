@@ -14,6 +14,6 @@ static C: &'static &'static &'static &'static [u8, ..1] = & & & &A;
 static D: u8 = (&C)[0];
 
 pub fn main() {
-    fail_unless!(B == A[0]);
-    fail_unless!(D == A[0]);
+    assert!(B == A[0]);
+    assert!(D == A[0]);
 }

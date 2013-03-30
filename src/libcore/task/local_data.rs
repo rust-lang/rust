@@ -92,17 +92,17 @@ fn test_tls_multitask() {
         do task::spawn {
             unsafe {
                 // TLS shouldn't carry over.
-                fail_unless!(local_data_get(my_key).is_none());
+                assert!(local_data_get(my_key).is_none());
                 local_data_set(my_key, @~"child data");
-                fail_unless!(*(local_data_get(my_key).get()) ==
+                assert!(*(local_data_get(my_key).get()) ==
                     ~"child data");
                 // should be cleaned up for us
             }
         }
         // Must work multiple times
-        fail_unless!(*(local_data_get(my_key).get()) == ~"parent data");
-        fail_unless!(*(local_data_get(my_key).get()) == ~"parent data");
-        fail_unless!(*(local_data_get(my_key).get()) == ~"parent data");
+        assert!(*(local_data_get(my_key).get()) == ~"parent data");
+        assert!(*(local_data_get(my_key).get()) == ~"parent data");
+        assert!(*(local_data_get(my_key).get()) == ~"parent data");
     }
 }
 
@@ -112,7 +112,7 @@ fn test_tls_overwrite() {
         fn my_key(_x: @~str) { }
         local_data_set(my_key, @~"first data");
         local_data_set(my_key, @~"next data"); // Shouldn't leak.
-        fail_unless!(*(local_data_get(my_key).get()) == ~"next data");
+        assert!(*(local_data_get(my_key).get()) == ~"next data");
     }
 }
 
@@ -121,9 +121,9 @@ fn test_tls_pop() {
     unsafe {
         fn my_key(_x: @~str) { }
         local_data_set(my_key, @~"weasel");
-        fail_unless!(*(local_data_pop(my_key).get()) == ~"weasel");
+        assert!(*(local_data_pop(my_key).get()) == ~"weasel");
         // Pop must remove the data from the map.
-        fail_unless!(local_data_pop(my_key).is_none());
+        assert!(local_data_pop(my_key).is_none());
     }
 }
 
@@ -144,7 +144,7 @@ fn test_tls_modify() {
                 None                 => fail!(~"missing value")
             }
         });
-        fail_unless!(*(local_data_pop(my_key).get()) == ~"next data");
+        assert!(*(local_data_pop(my_key).get()) == ~"next data");
     }
 }
 

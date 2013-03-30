@@ -16,6 +16,6 @@ pub fn main() {
         let j = copy i;
         let rc2 = sys::refcount(*i);
         error!("rc1: %u rc2: %u", rc1, rc2);
-        fail_unless!(rc1 + 1u == rc2);
+        assert!(rc1 + 1u == rc2);
     }
 }

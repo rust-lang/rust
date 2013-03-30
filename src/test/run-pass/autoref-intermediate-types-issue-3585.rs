@@ -26,5 +26,5 @@ impl Foo for uint {
 
 pub fn main() {
     let x = @3u;
-    fail_unless!(x.foo() == ~"@3");
+    assert!(x.foo() == ~"@3");
 }

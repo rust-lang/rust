@@ -15,14 +15,14 @@ pub fn main() {
     let y_diaeresis: char = 'ÿ'; // 0xff
     let pi: char = 'Π'; // 0x3a0
 
-    fail_unless!((yen as int == 0xa5));
-    fail_unless!((c_cedilla as int == 0xe7));
-    fail_unless!((thorn as int == 0xfe));
-    fail_unless!((y_diaeresis as int == 0xff));
-    fail_unless!((pi as int == 0x3a0));
+    assert!((yen as int == 0xa5));
+    assert!((c_cedilla as int == 0xe7));
+    assert!((thorn as int == 0xfe));
+    assert!((y_diaeresis as int == 0xff));
+    assert!((pi as int == 0x3a0));
 
-    fail_unless!((pi as int == '\u03a0' as int));
-    fail_unless!(('\x0a' as int == '\n' as int));
+    assert!((pi as int == '\u03a0' as int));
+    assert!(('\x0a' as int == '\n' as int));
 
     let bhutan: ~str = ~"འབྲུག་ཡུལ།";
     let japan: ~str = ~"日本";
@@ -37,7 +37,7 @@ pub fn main() {
     let austria_e: ~str = ~"\u00d6sterreich";
 
     let oo: char = 'Ö';
-    fail_unless!((oo as int == 0xd6));
+    assert!((oo as int == 0xd6));
 
     fn check_str_eq(a: ~str, b: ~str) {
         let mut i: int = 0;
@@ -46,7 +46,7 @@ pub fn main() {
             debug!(ab);
             let bb: u8 = b[i];
             debug!(bb);
-            fail_unless!((ab == bb));
+            assert!((ab == bb));
             i += 1;
         }
     }

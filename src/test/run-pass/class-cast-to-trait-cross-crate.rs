@@ -51,7 +51,7 @@ class cat : to_str {
 fn print_out<T:to_str>(thing: T, expected: str) {
   let actual = thing.to_str();
   debug!("%s", actual);
-  fail_unless!((actual == expected));
+  assert!((actual == expected));
 }
 
 pub fn main() {

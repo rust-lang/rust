@@ -271,7 +271,7 @@ pub fn build_closure(bcx0: block,
         let datum = expr::trans_local_var(bcx, cap_var.def);
         match cap_var.mode {
             moves::CapRef => {
-                fail_unless!(sigil == ast::BorrowedSigil);
+                assert!(sigil == ast::BorrowedSigil);
                 env_vals.push(EnvValue {action: EnvRef,
                                         datum: datum});
             }

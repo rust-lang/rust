@@ -13,7 +13,7 @@ extern mod std;
 fn test(actual: ~str, expected: ~str) {
     debug!(actual.clone());
     debug!(expected.clone());
-    fail_unless!((actual == expected));
+    assert!((actual == expected));
 }
 
 pub fn main() {
@@ -250,13 +250,13 @@ fn part6() {
 
 fn percent() {
     let s = fmt!("ab%%cd");
-    fail_unless!((s == ~"ab%cd"));
+    assert!((s == ~"ab%cd"));
 }
 
 fn more_floats() {
-    fail_unless!(~"3.1416"      == fmt!("%.4f", 3.14159));
-    fail_unless!(~"3"           == fmt!("%.0f", 3.14159));
-    fail_unless!(~"99"          == fmt!("%.0f", 98.5));
-    fail_unless!(~"7.0000"      == fmt!("%.4f", 6.999999999));
-    fail_unless!(~"3.141590000" == fmt!("%.9f", 3.14159));
+    assert!(~"3.1416"      == fmt!("%.4f", 3.14159));
+    assert!(~"3"           == fmt!("%.0f", 3.14159));
+    assert!(~"99"          == fmt!("%.0f", 98.5));
+    assert!(~"7.0000"      == fmt!("%.4f", 6.999999999));
+    assert!(~"3.141590000" == fmt!("%.9f", 3.14159));
 }

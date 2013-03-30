@@ -180,7 +180,7 @@ impl region_scope for MethodRscope {
         })
     }
     fn self_region(&self, _span: span) -> Result<ty::Region, RegionError> {
-        fail_unless!(self.variance.is_some() || self.self_ty.is_borrowed());
+        assert!(self.variance.is_some() || self.self_ty.is_borrowed());
         match self.variance {
             None => {}  // must be borrowed self, so this is OK
             Some(_) => {

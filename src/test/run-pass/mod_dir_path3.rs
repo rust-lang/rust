@@ -17,5 +17,5 @@ mod pancakes {
 }
 
 pub fn main() {
-    fail_unless!(pancakes::test::foo() == 10);
+    assert!(pancakes::test::foo() == 10);
 }
