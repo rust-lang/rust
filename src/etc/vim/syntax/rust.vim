@@ -11,8 +11,9 @@ elseif exists("b:current_syntax")
 endif
 
 syn keyword   rustConditional match if else
+syn keyword   rustOperator    as
 
-syn keyword   rustKeyword     as break
+syn keyword   rustKeyword     break copy do drop extern
 syn keyword   rustKeyword     for if impl let log
 syn keyword   rustKeyword     copy do drop extern
 syn keyword   rustKeyword     for impl let log
@@ -127,6 +128,7 @@ hi def link rustBoolean       Boolean
 hi def link rustConstant      Constant
 hi def link rustSelf          Constant
 hi def link rustFloat         Float
+hi def link rustOperator      Operator
 hi def link rustKeyword       Keyword
 hi def link rustConditional   Conditional
 hi def link rustIdentifier    Identifier
