@@ -10,17 +10,20 @@ elseif exists("b:current_syntax")
   finish
 endif
 
-syn match     rustAssert      "\<assert\(\w\)*"
-syn keyword   rustKeyword     as break
-syn keyword   rustKeyword     copy do drop else extern
+syn keyword   rustConditional match if else
+syn keyword   rustOperator    as
+
+syn keyword   rustKeyword     break copy do drop extern
 syn keyword   rustKeyword     for if impl let log
-syn keyword   rustKeyword     loop match mod once priv pub pure
-syn keyword   rustKeyword     ref return static
+syn keyword   rustKeyword     copy do drop extern
+syn keyword   rustKeyword     for impl let log
+syn keyword   rustKeyword     loop mod once priv pub
+syn keyword   rustKeyword     return
 syn keyword   rustKeyword     unsafe use while
 " FIXME: Scoped impl's name is also fallen in this category
 syn keyword   rustKeyword     mod trait struct enum type nextgroup=rustIdentifier skipwhite
 syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
-syn keyword   rustStorage     const mut
+syn keyword   rustStorage     const mut ref static
 
 syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
@@ -71,8 +74,8 @@ syn keyword   rustConstant    STDIN_FILENO STDOUT_FILENO STDERR_FILENO
 syn match     rustModPath     "\w\(\w\)*::[^<]"he=e-3,me=e-3
 syn match     rustModPathSep  "::"
 
-syn match     rustFuncCall    "\w\(\w\)*("he=e-1,me=e-1 contains=rustAssert
-syn match     rustFuncCall    "\w\(\w\)*::<"he=e-3,me=e-3 contains=rustAssert " foo::<T>();
+syn match     rustFuncCall    "\w\(\w\)*("he=e-1,me=e-1
+syn match     rustFuncCall    "\w\(\w\)*::<"he=e-3,me=e-3 " foo::<T>();
 
 syn match     rustMacro       '\w\(\w\)*!'
 syn match     rustMacro       '#\w\(\w\)*'
@@ -110,8 +113,7 @@ syn match   rustCharacter   "'\([^'\\]\|\\\(['nrt\\\"]\|x\x\{2}\|u\x\{4}\|U\x\{8
 syn region    rustComment     start="/\*" end="\*/" contains=rustComment,rustTodo
 syn region    rustComment     start="//" skip="\\$" end="$" contains=rustTodo keepend
 
-
-syn keyword   rustTodo        TODO FIXME XXX NB unsafe
+syn keyword rustTodo contained TODO FIXME XXX NB
 
 hi def link rustHexNumber       rustNumber
 hi def link rustBinNumber       rustNumber
@@ -126,8 +128,9 @@ hi def link rustBoolean       Boolean
 hi def link rustConstant      Constant
 hi def link rustSelf          Constant
 hi def link rustFloat         Float
-hi def link rustAssert        Keyword
+hi def link rustOperator      Operator
 hi def link rustKeyword       Keyword
+hi def link rustConditional   Conditional
 hi def link rustIdentifier    Identifier
 hi def link rustModPath       Include
 hi def link rustFuncName      Function
@@ -140,7 +143,6 @@ hi def link rustStorage       StorageClass
 hi def link rustLifetime      Special
 
 " Other Suggestions:
-" hi rustAssert ctermfg=yellow
 " hi rustMacro ctermfg=magenta
 
 syn sync minlines=200
