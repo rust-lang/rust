@@ -1281,13 +1281,13 @@ mod test {
             f();
         }
 
-        fn read_map<T>(&self, f: &fn(uint) -> T) -> T {
+        fn emit_map<T>(&self, f: &fn(uint) -> T) -> T {
             self.add_unknown_to_log(); f(0);
         }
-        fn read_map_elt_key<T>(&self, idx: uint, f: &fn() -> T) -> T {
+        fn emit_map_elt_key<T>(&self, idx: uint, f: &fn() -> T) -> T {
             self.add_unknown_to_log(); f();
         }
-        fn read_map_elt_val<T>(&self, idx: uint, f: &fn() -> T) -> T {
+        fn emit_map_elt_val<T>(&self, idx: uint, f: &fn() -> T) -> T {
             self.add_unknown_to_log(); f();
         }
     }

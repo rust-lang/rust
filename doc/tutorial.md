@@ -1002,11 +1002,46 @@ refer to that through a pointer.
 
 ## Owned boxes
 
-An owned box (`~`) is a uniquely owned allocation on the heap. An owned box
-inherits the mutability and lifetime of the owner as it would if there was no
-box. The purpose of an owned box is to add a layer of indirection in order to
-create recursive data structures or cheaply pass around an object larger than a
-pointer.
+An owned box (`~`) is a uniquely owned allocation on the heap. It inherits the
+mutability and lifetime of the owner as it would if there was no box.
+
+~~~~
+let x = 5; // immutable
+let mut y = 5; // mutable
+y += 2;
+
+let x = ~5; // immutable
+let mut y = ~5; // mutable
+*y += 2; // the * operator is needed to access the contained value
+~~~~
+
+The purpose of an owned box is to add a layer of indirection in order to create
+recursive data structures or cheaply pass around an object larger than a
+pointer. Since an owned box has a unique owner, it can be used to represent any
+tree data structure.
+
+The following struct won't compile, because the lack of indirection would mean
+it has an infinite size:
+
+~~~~ {.xfail-test}
+struct Foo {
+    child: Option<Foo>
+}
+~~~~
+
+> ***Note:*** The `Option` type is an enum that represents an *optional* value.
+> It's comparable to a nullable pointer in many other languages, but stores the
+> contained value unboxed.
+
+Adding indirection with an owned pointer allocates the child outside of the
+struct on the heap, which makes it a finite size and won't result in a
+compile-time error:
+
+~~~~
+struct Foo {
+    child: Option<~Foo>
+}
+~~~~
 
 ## Managed boxes
 
@@ -1017,6 +1052,20 @@ boxes lack an owner, so they start a new ownership tree and don't inherit
 mutability. They do own the contained object, and mutability is defined by the
 type of the shared box (`@` or `@mut`). An object containing a managed box is
 not `Owned`, and can't be sent between tasks.
+
+~~~~
+let a = @5; // immutable
+
+let mut b = @5; // mutable variable, immutable box
+b = @10;
+
+let c = @mut 5; // immutable variable, mutable box
+*c = 10;
+
+let mut d = @mut 5; // mutable variable, mutable box
+*d += 5;
+d = @mut 15;
+~~~~
 
 # Move semantics
 
@@ -1035,10 +1084,10 @@ let z = x; // no new memory allocated, x can no longer be used
 # Borrowed pointers
 
 Rust's borrowed pointers are a general purpose reference type. In contrast with
-owned pointers, where the holder of an owned pointer is the owner of the
-pointed-to memory, borrowed pointers never imply ownership. A pointer can be
-borrowed to any object, and the compiler verifies that it cannot outlive the
-lifetime of the object.
+owned boxes, where the holder of an owned box is the owner of the pointed-to
+memory, borrowed pointers never imply ownership. A pointer can be borrowed to
+any object, and the compiler verifies that it cannot outlive the lifetime of
+the object.
 
 As an example, consider a simple struct type, `Point`:
 
@@ -1124,10 +1173,7 @@ For a more in-depth explanation of borrowed pointers, read the
 ## Freezing
 
 Borrowing an immutable pointer to an object freezes it and prevents mutation.
-`Owned` objects have freezing enforced statically at compile-time. Mutable
-managed boxes handle freezing dynamically when any of their contents are
-borrowed, and the task will fail if an attempt to modify them is made while
-they are frozen.
+`Owned` objects have freezing enforced statically at compile-time.
 
 ~~~~
 let mut x = 5;
@@ -1135,6 +1181,20 @@ let mut x = 5;
     let y = &x; // x is now frozen, it cannot be modified
 }
 // x is now unfrozen again
+~~~~
+
+Mutable managed boxes handle freezing dynamically when any of their contents
+are borrowed, and the task will fail if an attempt to modify them is made while
+they are frozen:
+
+~~~~
+let x = @mut 5;
+let y = x;
+{
+    let y = &*y; // the managed box is now frozen
+    // modifying it through x or y will cause a task failure
+}
+// the box is now unfrozen again
 ~~~~
 
 # Dereferencing pointers

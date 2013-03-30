@@ -83,11 +83,6 @@ pub trait Decoder {
 
     // Compound types:
     fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T;
-    #[cfg(stage0)]
-    fn read_enum_variant<T>(&self, f: &fn(uint) -> T) -> T;
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T;
     fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
@@ -558,23 +553,6 @@ impl<
     K: Decodable<D> + Hash + IterBytes + Eq,
     V: Decodable<D>
 > Decodable<D> for LinearMap<K, V> {
-    #[cfg(stage0)]
-    fn decode(d: &D) -> LinearMap<K, V> {
-        do d.read_map |len| {
-            let mut map = LinearMap::new();
-            map.reserve_at_least(len);
-            for uint::range(0, len) |i| {
-                let key = d.read_map_elt_key(i, || Decodable::decode(d));
-                let val = d.read_map_elt_val(i, || Decodable::decode(d));
-                map.insert(key, val);
-            }
-            map
-        }
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn decode(d: &D) -> LinearMap<K, V> {
         do d.read_map |len| {
             let mut map = LinearMap::with_capacity(len);
