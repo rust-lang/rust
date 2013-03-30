@@ -35,6 +35,7 @@ use core::uint;
 use core::vec;
 use std::serialize::Encodable;
 use std;
+use syntax::abi::AbiSet;
 use syntax::ast::*;
 use syntax::ast;
 use syntax::ast_map;
@@ -653,7 +654,7 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
         (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
         ebml_w.end_tag();
       }
-      item_fn(_, purity, ref generics, _) => {
+      item_fn(_, purity, _, ref generics, _) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
@@ -979,7 +980,7 @@ fn encode_info_for_foreign_item(ecx: @EncodeContext,
                                 nitem: @foreign_item,
                                 index: @mut ~[entry<int>],
                                 +path: ast_map::path,
-                                abi: foreign_abi) {
+                                abi: AbiSet) {
     if !reachable(ecx, nitem.id) { return; }
     index.push(entry { val: nitem.id, pos: ebml_w.writer.tell() });
 
@@ -990,7 +991,7 @@ fn encode_info_for_foreign_item(ecx: @EncodeContext,
         encode_family(ebml_w, purity_fn_family(purity));
         encode_type_param_bounds(ebml_w, ecx, &generics.ty_params);
         encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, nitem.id));
-        if abi == foreign_abi_rust_intrinsic {
+        if abi.is_intrinsic() {
             (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_foreign(nitem));
         } else {
             encode_symbol(ecx, ebml_w, nitem.id);

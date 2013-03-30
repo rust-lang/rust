@@ -18,7 +18,7 @@ use core::ptr::addr_of;
 use core::vec;
 
 #[abi = "rust-intrinsic"]
-extern "C" mod rusti {
+extern "rust-intrinsic" mod rusti {
     fn move_val_init<T>(dst: &mut T, +src: T);
     fn init<T>() -> T;
 }

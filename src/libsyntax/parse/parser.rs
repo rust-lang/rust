@@ -10,7 +10,9 @@
 
 use core::prelude::*;
 
-use ast::{Sigil, BorrowedSigil, ManagedSigil, OwnedSigil, RustAbi};
+use abi;
+use abi::AbiSet;
+use ast::{Sigil, BorrowedSigil, ManagedSigil, OwnedSigil};
 use ast::{CallSugar, NoSugar, DoSugar, ForSugar};
 use ast::{TyBareFn, TyClosure};
 use ast::{RegionTyParamBound, TraitTyParamBound};
@@ -361,11 +363,13 @@ pub impl Parser {
 
         */
 
+        let opt_abis = self.parse_opt_abis();
+        let abis = opt_abis.get_or_default(AbiSet::Rust());
         let purity = self.parse_purity();
         self.expect_keyword(&~"fn");
         let (decl, lifetimes) = self.parse_ty_fn_decl();
         return ty_bare_fn(@TyBareFn {
-            abi: RustAbi,
+            abis: abis,
             purity: purity,
             lifetimes: lifetimes,
             decl: decl
@@ -3041,11 +3045,13 @@ pub impl Parser {
                      span: mk_sp(lo, hi) }
     }
 
-    fn parse_item_fn(&self, purity: purity) -> item_info {
+    fn parse_item_fn(&self, purity: purity, abis: AbiSet) -> item_info {
         let (ident, generics) = self.parse_fn_header();
         let decl = self.parse_fn_decl(|p| p.parse_arg());
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
-        (ident, item_fn(decl, purity, generics, body), Some(inner_attrs))
+        (ident,
+         item_fn(decl, purity, abis, generics, body),
+         Some(inner_attrs))
     }
 
     fn parse_method(&self) -> @method {
@@ -3607,7 +3613,7 @@ pub impl Parser {
     }
 
     fn parse_foreign_mod_items(&self, sort: ast::foreign_mod_sort,
-                               +abi: ast::ident,
+                               +abis: AbiSet,
                                +first_item_attrs: ~[attribute])
                             -> foreign_mod {
         // Shouldn't be any view items since we've already parsed an item attr
@@ -3630,30 +3636,20 @@ pub impl Parser {
         }
         ast::foreign_mod {
             sort: sort,
-            abi: abi,
+            abis: abis,
             view_items: view_items,
             items: items
         }
     }
 
-    fn parse_item_foreign_mod(&self, lo: BytePos,
+    fn parse_item_foreign_mod(&self,
+                              lo: BytePos,
+                              opt_abis: Option<AbiSet>,
                               visibility: visibility,
                               attrs: ~[attribute],
                               items_allowed: bool)
-                           -> item_or_view_item {
-
-        // Parse the ABI.
-        let abi_opt;
-        match *self.token {
-            token::LIT_STR(copy found_abi) => {
-                self.bump();
-                abi_opt = Some(found_abi);
-            }
-            _ => {
-                abi_opt = None;
-            }
-        }
-
+                           -> item_or_view_item
+    {
         let mut must_be_named_mod = false;
         if self.is_keyword(&~"mod") {
             must_be_named_mod = true;
@@ -3688,14 +3684,10 @@ pub impl Parser {
 
         // extern mod { ... }
         if items_allowed && self.eat(&token::LBRACE) {
-            let abi;
-            match abi_opt {
-                Some(found_abi) => abi = found_abi,
-                None => abi = special_idents::c_abi,
-            }
+            let abis = opt_abis.get_or_default(AbiSet::C());
 
             let (inner, next) = self.parse_inner_attrs_and_next();
-            let m = self.parse_foreign_mod_items(sort, abi, next);
+            let m = self.parse_foreign_mod_items(sort, abis, next);
             self.expect(&token::RBRACE);
 
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident,
@@ -3704,12 +3696,8 @@ pub impl Parser {
                                                        Some(inner))));
         }
 
-        match abi_opt {
-            None => {}  // OK.
-            Some(_) => {
-                self.span_err(*self.span, ~"an ABI may not be specified \
-                                                here");
-            }
+        if opt_abis.is_some() {
+            self.span_err(*self.span, ~"an ABI may not be specified here");
         }
 
         // extern mod foo;
@@ -3913,6 +3901,49 @@ pub impl Parser {
         }
     }
 
+    fn parse_opt_abis(&self) -> Option<AbiSet> {
+        match *self.token {
+            token::LIT_STR(s) => {
+                self.bump();
+                let the_string = self.id_to_str(s);
+                let mut words = ~[];
+                for str::each_word(*the_string) |s| { words.push(s) }
+                let mut abis = AbiSet::empty();
+                for words.each |word| {
+                    match abi::lookup(*word) {
+                        Some(abi) => {
+                            if abis.contains(abi) {
+                                self.span_err(
+                                    *self.span,
+                                    fmt!("ABI `%s` appears twice",
+                                         *word));
+                            } else {
+                                abis.add(abi);
+                            }
+                        }
+
+                        None => {
+                            self.span_err(
+                                *self.span,
+                                fmt!("illegal ABI: \
+                                      expected one of [%s], \
+                                      found `%s`",
+                                     str::connect_slices(
+                                         abi::all_names(),
+                                         ", "),
+                                     *word));
+                        }
+                    }
+                }
+                Some(abis)
+            }
+
+            _ => {
+                None
+            }
+        }
+    }
+
     // parse one of the items or view items allowed by the
     // flags; on failure, return iovi_none.
     fn parse_item_or_view_item(
@@ -3961,7 +3992,8 @@ pub impl Parser {
             self.is_keyword(&~"fn") &&
             !self.fn_expr_lookahead(self.look_ahead(1u)) {
             self.bump();
-            let (ident, item_, extra_attrs) = self.parse_item_fn(impure_fn);
+            let (ident, item_, extra_attrs) =
+                self.parse_item_fn(impure_fn, AbiSet::Rust());
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
@@ -3970,7 +4002,8 @@ pub impl Parser {
             // PURE FUNCTION ITEM
             self.obsolete(*self.last_span, ObsoletePurity);
             self.expect_keyword(&~"fn");
-            let (ident, item_, extra_attrs) = self.parse_item_fn(impure_fn);
+            let (ident, item_, extra_attrs) =
+                self.parse_item_fn(impure_fn, AbiSet::Rust());
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
@@ -3987,16 +4020,20 @@ pub impl Parser {
             // UNSAFE FUNCTION ITEM (where items are allowed)
             self.bump();
             self.expect_keyword(&~"fn");
-            let (ident, item_, extra_attrs) = self.parse_item_fn(unsafe_fn);
+            let (ident, item_, extra_attrs) =
+                self.parse_item_fn(unsafe_fn, AbiSet::Rust());
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
         if self.eat_keyword(&~"extern") {
+            let opt_abis = self.parse_opt_abis();
+
             if items_allowed && self.eat_keyword(&~"fn") {
                 // EXTERN FUNCTION ITEM
+                let abis = opt_abis.get_or_default(AbiSet::C());
                 let (ident, item_, extra_attrs) =
-                    self.parse_item_fn(extern_fn);
+                    self.parse_item_fn(extern_fn, abis);
                 return iovi_item(self.mk_item(lo, self.last_span.hi, ident,
                                               item_, visibility,
                                               maybe_append(attrs,
@@ -4004,7 +4041,7 @@ pub impl Parser {
             }
             if !foreign_items_allowed {
                 // EXTERN MODULE ITEM
-                return self.parse_item_foreign_mod(lo, visibility, attrs,
+                return self.parse_item_foreign_mod(lo, opt_abis, visibility, attrs,
                                                    items_allowed);
             }
         }

@@ -57,6 +57,7 @@ use syntax::ast_map::{path, path_elt};
 use syntax::codemap::span;
 use syntax::parse::token::ident_interner;
 use syntax::{ast, ast_map};
+use syntax::abi::{X86, X86_64, Arm, Mips};
 
 pub type namegen = @fn(+s: ~str) -> ident;
 pub fn new_namegen(intr: @ident_interner) -> namegen {
@@ -777,10 +778,10 @@ pub fn T_bool() -> TypeRef { return T_i8(); }
 
 pub fn T_int(targ_cfg: @session::config) -> TypeRef {
     return match targ_cfg.arch {
-      session::arch_x86 => T_i32(),
-      session::arch_x86_64 => T_i64(),
-      session::arch_arm => T_i32(),
-      session::arch_mips => T_i32()
+        X86 => T_i32(),
+        X86_64 => T_i64(),
+        Arm => T_i32(),
+        Mips => T_i32()
     };
 }
 
@@ -815,10 +816,10 @@ pub fn T_float_ty(cx: @CrateContext, t: ast::float_ty) -> TypeRef {
 
 pub fn T_float(targ_cfg: @session::config) -> TypeRef {
     return match targ_cfg.arch {
-      session::arch_x86 => T_f64(),
-      session::arch_x86_64 => T_f64(),
-      session::arch_arm => T_f64(),
-      session::arch_mips => T_f64()
+        X86 => T_f64(),
+        X86_64 => T_f64(),
+        Arm => T_f64(),
+        Mips => T_f64()
     };
 }
 

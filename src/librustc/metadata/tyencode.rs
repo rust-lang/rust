@@ -21,6 +21,7 @@ use core::io::WriterUtil;
 use core::io;
 use core::uint;
 use core::vec;
+use syntax::abi::AbiSet;
 use syntax::ast::*;
 use syntax::diagnostic::span_handler;
 use syntax::print::pprust::*;
@@ -367,10 +368,13 @@ fn enc_purity(w: @io::Writer, p: purity) {
     }
 }
 
-fn enc_abi(w: @io::Writer, a: Abi) {
-    match a {
-        RustAbi => w.write_char('r'),
+fn enc_abi_set(w: @io::Writer, abis: AbiSet) {
+    w.write_char('[');
+    for abis.each |abi| {
+        w.write_str(abi.name());
+        w.write_char(',');
     }
+    w.write_char(']')
 }
 
 fn enc_onceness(w: @io::Writer, o: Onceness) {
@@ -382,7 +386,7 @@ fn enc_onceness(w: @io::Writer, o: Onceness) {
 
 fn enc_bare_fn_ty(w: @io::Writer, cx: @ctxt, ft: &ty::BareFnTy) {
     enc_purity(w, ft.purity);
-    enc_abi(w, ft.abi);
+    enc_abi_set(w, ft.abis);
     enc_fn_sig(w, cx, &ft.sig);
 }
 

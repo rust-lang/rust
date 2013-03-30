@@ -21,7 +21,9 @@ use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::isr_alist;
 use syntax::ast;
 use syntax::ast::{Many, Once, extern_fn, impure_fn, m_const, m_imm, m_mutbl};
-use syntax::ast::{pure_fn, unsafe_fn, Onceness, purity};
+use syntax::ast::{noreturn, pure_fn, ret_style, return_val, unsafe_fn};
+use syntax::ast::{Onceness, purity};
+use syntax::abi::AbiSet;
 use syntax::codemap::span;
 use util::common::{indent, indenter};
 use util::ppaux::mt_to_str;
@@ -283,7 +285,7 @@ impl Combine for Glb {
         super_sigils(self, p1, p2)
     }
 
-    fn abis(&self, p1: ast::Abi, p2: ast::Abi) -> cres<ast::Abi> {
+    fn abis(&self, p1: AbiSet, p2: AbiSet) -> cres<AbiSet> {
         super_abis(self, p1, p2)
     }
 
