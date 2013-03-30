@@ -14,12 +14,12 @@ syn keyword   rustKeyword     as break
 syn keyword   rustKeyword     copy do drop else extern
 syn keyword   rustKeyword     for if impl let log
 syn keyword   rustKeyword     loop match mod once priv pub
-syn keyword   rustKeyword     ref return static
+syn keyword   rustKeyword     return
 syn keyword   rustKeyword     unsafe use while
 " FIXME: Scoped impl's name is also fallen in this category
 syn keyword   rustKeyword     mod trait struct enum type nextgroup=rustIdentifier skipwhite
 syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
-syn keyword   rustStorage     const mut
+syn keyword   rustStorage     const mut ref static
 
 syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
