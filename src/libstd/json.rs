@@ -1165,6 +1165,14 @@ mod tests {
 
     use std::serialize::Decodable;
 
+    #[auto_encode]
+    #[auto_decode]
+    #[deriving(Eq)]
+    enum Animal {
+        Dog,
+        Frog(~str, int)
+    }
+
     fn mk_object(items: &[(~str, Json)]) -> Json {
         let mut d = ~LinearMap::new();
 
@@ -1180,42 +1188,49 @@ mod tests {
     #[test]
     fn test_write_null() {
         assert_eq!(to_str(&Null), ~"null");
+        assert_eq!(to_pretty_str(&Null), ~"null");
     }
+
 
     #[test]
     fn test_write_number() {
         assert_eq!(to_str(&Number(3f)), ~"3");
+        assert_eq!(to_pretty_str(&Number(3f)), ~"3");
+
         assert_eq!(to_str(&Number(3.1f)), ~"3.1");
+        assert_eq!(to_pretty_str(&Number(3.1f)), ~"3.1");
+
         assert_eq!(to_str(&Number(-1.5f)), ~"-1.5");
+        assert_eq!(to_pretty_str(&Number(-1.5f)), ~"-1.5");
+
         assert_eq!(to_str(&Number(0.5f)), ~"0.5");
+        assert_eq!(to_pretty_str(&Number(0.5f)), ~"0.5");
     }
 
     #[test]
     fn test_write_str() {
         assert_eq!(to_str(&String(~"")), ~"\"\"");
+        assert_eq!(to_pretty_str(&String(~"")), ~"\"\"");
+
         assert_eq!(to_str(&String(~"foo")), ~"\"foo\"");
+        assert_eq!(to_pretty_str(&String(~"foo")), ~"\"foo\"");
     }
 
     #[test]
     fn test_write_bool() {
         assert_eq!(to_str(&Boolean(true)), ~"true");
+        assert_eq!(to_pretty_str(&Boolean(true)), ~"true");
+
         assert_eq!(to_str(&Boolean(false)), ~"false");
+        assert_eq!(to_pretty_str(&Boolean(false)), ~"false");
     }
 
     #[test]
     fn test_write_list() {
         assert_eq!(to_str(&List(~[])), ~"[]");
-        assert_eq!(to_str(&List(~[Boolean(true)])), ~"[true]");
-        assert_eq!(to_str(&List(~[
-            Boolean(false),
-            Null,
-            List(~[String(~"foo\nbar"), Number(3.5f)])
-        ])), ~"[false,null,[\"foo\\nbar\",3.5]]");
-    }
-
-    #[test]
-    fn test_write_list_pretty() {
         assert_eq!(to_pretty_str(&List(~[])), ~"[]");
+
+        assert_eq!(to_str(&List(~[Boolean(true)])), ~"[true]");
         assert_eq!(
             to_pretty_str(&List(~[Boolean(true)])),
             ~"\
@@ -1223,6 +1238,12 @@ mod tests {
                 true\n\
             ]"
         );
+
+        assert_eq!(to_str(&List(~[
+            Boolean(false),
+            Null,
+            List(~[String(~"foo\nbar"), Number(3.5f)])
+        ])), ~"[false,null,[\"foo\\nbar\",3.5]]");
         assert_eq!(
             to_pretty_str(&List(~[
                 Boolean(false),
@@ -1244,10 +1265,20 @@ mod tests {
     #[test]
     fn test_write_object() {
         assert_eq!(to_str(&mk_object(~[])), ~"{}");
+        assert_eq!(to_pretty_str(&mk_object(~[])), ~"{}");
+
         assert_eq!(
             to_str(&mk_object(~[(~"a", Boolean(true))])),
             ~"{\"a\":true}"
         );
+        assert_eq!(
+            to_pretty_str(&mk_object(~[(~"a", Boolean(true))])),
+            ~"\
+            {\n  \
+                \"a\": true\n\
+            }"
+        );
+
         assert_eq!(
             to_str(&mk_object(~[
                 (~"b", List(~[
@@ -1260,29 +1291,6 @@ mod tests {
                     {\"c\":\"\\f\\r\"},\
                     {\"d\":\"\"}\
                 ]\
-            }"
-        );
-        let a = mk_object(~[
-            (~"a", Boolean(true)),
-            (~"b", List(~[
-                mk_object(~[(~"c", String(~"\x0c\r"))]),
-                mk_object(~[(~"d", String(~""))])
-            ]))
-        ]);
-        // We can't compare the strings directly because the object fields be
-        // printed in a different order.
-        let b = from_str(to_str(&a)).unwrap();
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn test_write_object_pretty() {
-        assert_eq!(to_pretty_str(&mk_object(~[])), ~"{}");
-        assert_eq!(
-            to_pretty_str(&mk_object(~[(~"a", Boolean(true))])),
-            ~"\
-            {\n  \
-                \"a\": true\n\
             }"
         );
         assert_eq!(
@@ -1304,6 +1312,7 @@ mod tests {
                 ]\n\
             }"
         );
+
         let a = mk_object(~[
             (~"a", Boolean(true)),
             (~"b", List(~[
@@ -1311,63 +1320,44 @@ mod tests {
                 mk_object(~[(~"d", String(~""))])
             ]))
         ]);
+
         // We can't compare the strings directly because the object fields be
         // printed in a different order.
-        let b = from_str(to_str(&a)).unwrap();
-        assert_eq!(a, b);
-    }
-
-    #[auto_encode]
-    #[auto_decode]
-    #[deriving(Eq)]
-    enum Animal {
-        Dog,
-        Frog(~str, int)
+        assert_eq!(copy a, from_str(to_str(&a)).unwrap());
+        assert_eq!(copy a, from_str(to_pretty_str(&a)).unwrap());
     }
 
     #[test]
-    fn test_write_enum_no_args() {
+    fn test_write_enum() {
         let animal = Dog;
-
-        let s = do io::with_str_writer |wr| {
-            let encoder = Encoder(wr);
-            animal.encode(&encoder);
-        };
-        assert_eq!(s, ~"\"Dog\"");
-    }
-
-    #[test]
-    fn test_write_enum_no_args_pretty() {
-        let animal = Dog;
-
-        let s = do io::with_str_writer |wr| {
-            let encoder = PrettyEncoder(wr);
-            animal.encode(&encoder);
-        };
-        assert_eq!(s, ~"\"Dog\"");
-    }
-
-    #[test]
-    fn test_write_enum_multiple_args() {
-        let animal = Frog(~"Henry", 349);
-
-        let s = do io::with_str_writer |wr| {
-            let encoder = Encoder(wr);
-            animal.encode(&encoder);
-        };
-        assert_eq!(s, ~"[\"Frog\",\"Henry\",349]");
-    }
-
-    #[test]
-    fn test_write_enum_multiple_args_pretty() {
-        let animal = Frog(~"Henry", 349);
-
-        let s = do io::with_str_writer |wr| {
-            let encoder = PrettyEncoder(wr);
-            animal.encode(&encoder);
-        };
         assert_eq!(
-            s,
+            do io::with_str_writer |wr| {
+                let encoder = Encoder(wr);
+                animal.encode(&encoder);
+            },
+            ~"\"Dog\""
+        );
+        assert_eq!(
+            do io::with_str_writer |wr| {
+                let encoder = PrettyEncoder(wr);
+                animal.encode(&encoder);
+            },
+            ~"\"Dog\""
+        );
+
+        let animal = Frog(~"Henry", 349);
+        assert_eq!(
+            do io::with_str_writer |wr| {
+                let encoder = Encoder(wr);
+                animal.encode(&encoder);
+            },
+            ~"[\"Frog\",\"Henry\",349]"
+        );
+        assert_eq!(
+            do io::with_str_writer |wr| {
+                let encoder = PrettyEncoder(wr);
+                animal.encode(&encoder);
+            },
             ~"\
             [\n  \
                 \"Frog\",\n  \
@@ -1385,10 +1375,7 @@ mod tests {
             value.encode(&encoder);
         };
         assert_eq!(s, ~"\"jodhpurs\"");
-    }
 
-    #[test]
-    fn test_write_some_pretty() {
         let value = Some(~"jodhpurs");
         let s = do io::with_str_writer |wr| {
             let encoder = PrettyEncoder(wr);
@@ -1405,11 +1392,7 @@ mod tests {
             value.encode(&encoder);
         };
         assert_eq!(s, ~"null");
-    }
 
-    #[test]
-    fn test_write_none_pretty() {
-        let value: Option<~str> = None;
         let s = do io::with_str_writer |wr| {
             let encoder = Encoder(wr);
             value.encode(&encoder);
