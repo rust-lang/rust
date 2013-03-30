@@ -109,8 +109,7 @@ syn match   rustCharacter   "'\([^'\\]\|\\\(['nrt\\\"]\|x\x\{2}\|u\x\{4}\|U\x\{8
 syn region    rustComment     start="/\*" end="\*/" contains=rustComment,rustTodo
 syn region    rustComment     start="//" skip="\\$" end="$" contains=rustTodo keepend
 
-
-syn keyword   rustTodo        TODO FIXME XXX NB unsafe
+syn keyword rustTodo contained TODO FIXME XXX NB
 
 hi def link rustHexNumber       rustNumber
 hi def link rustBinNumber       rustNumber
