@@ -10,11 +10,10 @@ elseif exists("b:current_syntax")
   finish
 endif
 
-syn match     rustAssert      "\<assert\(\w\)*"
 syn keyword   rustKeyword     as break
 syn keyword   rustKeyword     copy do drop else extern
 syn keyword   rustKeyword     for if impl let log
-syn keyword   rustKeyword     loop match mod once priv pub pure
+syn keyword   rustKeyword     loop match mod once priv pub
 syn keyword   rustKeyword     ref return static
 syn keyword   rustKeyword     unsafe use while
 " FIXME: Scoped impl's name is also fallen in this category
@@ -71,8 +70,8 @@ syn keyword   rustConstant    STDIN_FILENO STDOUT_FILENO STDERR_FILENO
 syn match     rustModPath     "\w\(\w\)*::[^<]"he=e-3,me=e-3
 syn match     rustModPathSep  "::"
 
-syn match     rustFuncCall    "\w\(\w\)*("he=e-1,me=e-1 contains=rustAssert
-syn match     rustFuncCall    "\w\(\w\)*::<"he=e-3,me=e-3 contains=rustAssert " foo::<T>();
+syn match     rustFuncCall    "\w\(\w\)*("he=e-1,me=e-1
+syn match     rustFuncCall    "\w\(\w\)*::<"he=e-3,me=e-3 " foo::<T>();
 
 syn match     rustMacro       '\w\(\w\)*!'
 syn match     rustMacro       '#\w\(\w\)*'
@@ -126,7 +125,6 @@ hi def link rustBoolean       Boolean
 hi def link rustConstant      Constant
 hi def link rustSelf          Constant
 hi def link rustFloat         Float
-hi def link rustAssert        Keyword
 hi def link rustKeyword       Keyword
 hi def link rustIdentifier    Identifier
 hi def link rustModPath       Include
@@ -140,7 +138,6 @@ hi def link rustStorage       StorageClass
 hi def link rustLifetime      Special
 
 " Other Suggestions:
-" hi rustAssert ctermfg=yellow
 " hi rustMacro ctermfg=magenta
 
 syn sync minlines=200
