@@ -311,23 +311,10 @@ pub mod reader {
         fn read_f64(&self) -> f64 { fail!(~"read_f64()"); }
         fn read_f32(&self) -> f32 { fail!(~"read_f32()"); }
         fn read_float(&self) -> float { fail!(~"read_float()"); }
-
         fn read_char(&self) -> char { fail!(~"read_char()"); }
-
-        fn read_owned_str(&self) -> ~str { doc_as_str(self.next_doc(EsStr)) }
-        fn read_managed_str(&self) -> @str { fail!(~"read_managed_str()"); }
+        fn read_str(&self) -> ~str { doc_as_str(self.next_doc(EsStr)) }
 
         // Compound types:
-        fn read_owned<T>(&self, f: &fn() -> T) -> T {
-            debug!("read_owned()");
-            f()
-        }
-
-        fn read_managed<T>(&self, f: &fn() -> T) -> T {
-            debug!("read_managed()");
-            f()
-        }
-
         fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T {
             debug!("read_enum(%s)", name);
             self._check_label(name);
@@ -348,8 +335,8 @@ pub mod reader {
             f()
         }
 
-        fn read_owned_vec<T>(&self, f: &fn(uint) -> T) -> T {
-            debug!("read_owned_vec()");
+        fn read_seq<T>(&self, f: &fn(uint) -> T) -> T {
+            debug!("read_seq()");
             do self.push_doc(self.next_doc(EsVec)) {
                 let len = self._next_uint(EsVecLen);
                 debug!("  len=%u", len);
@@ -357,23 +344,9 @@ pub mod reader {
             }
         }
 
-        fn read_managed_vec<T>(&self, f: &fn(uint) -> T) -> T {
-            debug!("read_managed_vec()");
-            do self.push_doc(self.next_doc(EsVec)) {
-                let len = self._next_uint(EsVecLen);
-                debug!("  len=%u", len);
-                f(len)
-            }
-        }
-
-        fn read_vec_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
-            debug!("read_vec_elt(idx=%u)", idx);
+        fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
+            debug!("read_seq_elt(idx=%u)", idx);
             self.push_doc(self.next_doc(EsVecElt), f)
-        }
-
-        fn read_rec<T>(&self, f: &fn() -> T) -> T {
-            debug!("read_rec()");
-            f()
         }
 
         fn read_struct<T>(&self, name: &str, _len: uint, f: &fn() -> T) -> T {
@@ -384,16 +357,6 @@ pub mod reader {
         fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
             debug!("read_field(name=%s, idx=%u)", name, idx);
             self._check_label(name);
-            f()
-        }
-
-        fn read_tup<T>(&self, len: uint, f: &fn() -> T) -> T {
-            debug!("read_tup(len=%u)", len);
-            f()
-        }
-
-        fn read_tup_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
-            debug!("read_tup_elt(idx=%u)", idx);
             f()
         }
 
@@ -408,6 +371,21 @@ pub mod reader {
                     }
                 }
             }
+        }
+
+        fn read_map<T>(&self, _f: &fn(uint) -> T) -> T {
+            debug!("read_map()");
+            fail!(~"read_map is unimplemented");
+        }
+
+        fn read_map_elt_key<T>(&self, idx: uint, _f: &fn() -> T) -> T {
+            debug!("read_map_elt_key(idx=%u)", idx);
+            fail!(~"read_map_elt_val is unimplemented");
+        }
+
+        fn read_map_elt_val<T>(&self, idx: uint, _f: &fn() -> T) -> T {
+            debug!("read_map_elt_val(idx=%u)", idx);
+            fail!(~"read_map_elt_val is unimplemented");
         }
     }
 }
@@ -620,21 +598,9 @@ pub mod writer {
             fail!(~"Unimplemented: serializing a char");
         }
 
-        fn emit_borrowed_str(&self, v: &str) {
+        fn emit_str(&self, v: &str) {
             self.wr_tagged_str(EsStr as uint, v)
         }
-
-        fn emit_owned_str(&self, v: &str) {
-            self.emit_borrowed_str(v)
-        }
-
-        fn emit_managed_str(&self, v: &str) {
-            self.emit_borrowed_str(v)
-        }
-
-        fn emit_borrowed(&self, f: &fn()) { f() }
-        fn emit_owned(&self, f: &fn()) { f() }
-        fn emit_managed(&self, f: &fn()) { f() }
 
         fn emit_enum(&self, name: &str, f: &fn()) {
             self._emit_label(name);
@@ -647,34 +613,22 @@ pub mod writer {
         }
         fn emit_enum_variant_arg(&self, _idx: uint, f: &fn()) { f() }
 
-        fn emit_borrowed_vec(&self, len: uint, f: &fn()) {
+        fn emit_seq(&self, len: uint, f: &fn()) {
             do self.wr_tag(EsVec as uint) {
                 self._emit_tagged_uint(EsVecLen, len);
                 f()
             }
         }
 
-        fn emit_owned_vec(&self, len: uint, f: &fn()) {
-            self.emit_borrowed_vec(len, f)
-        }
-
-        fn emit_managed_vec(&self, len: uint, f: &fn()) {
-            self.emit_borrowed_vec(len, f)
-        }
-
-        fn emit_vec_elt(&self, _idx: uint, f: &fn()) {
+        fn emit_seq_elt(&self, _idx: uint, f: &fn()) {
             self.wr_tag(EsVecElt as uint, f)
         }
 
-        fn emit_rec(&self, f: &fn()) { f() }
         fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) { f() }
         fn emit_field(&self, name: &str, _idx: uint, f: &fn()) {
             self._emit_label(name);
             f()
         }
-
-        fn emit_tup(&self, _len: uint, f: &fn()) { f() }
-        fn emit_tup_elt(&self, _idx: uint, f: &fn()) { f() }
 
         fn emit_option(&self, f: &fn()) {
             self.emit_enum("Option", f);
@@ -684,6 +638,18 @@ pub mod writer {
         }
         fn emit_option_some(&self, f: &fn()) {
             self.emit_enum_variant("Some", 1, 1, f)
+        }
+
+        fn emit_map(&self, _len: uint, _f: &fn()) {
+            fail!(~"emit_map is unimplemented");
+        }
+
+        fn emit_map_elt_key(&self, _idx: uint, _f: &fn()) {
+            fail!(~"emit_map_elt_key is unimplemented");
+        }
+
+        fn emit_map_elt_val(&self, _idx: uint, _f: &fn()) {
+            fail!(~"emit_map_elt_val is unimplemented");
         }
     }
 }

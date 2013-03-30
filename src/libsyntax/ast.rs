@@ -71,7 +71,7 @@ impl<S:Encoder> Encodable<S> for ident {
             Some(intr) => intr
         };
 
-        s.emit_owned_str(*(*intr).get(*self));
+        s.emit_str(*(*intr).get(*self));
     }
 }
 
@@ -84,7 +84,7 @@ impl<D:Decoder> Decodable<D> for ident {
             Some(intr) => intr
         };
 
-        (*intr).intern(@d.read_owned_str())
+        (*intr).intern(@d.read_str())
     }
 }
 
