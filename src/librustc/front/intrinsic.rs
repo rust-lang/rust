@@ -126,7 +126,7 @@ pub mod intrinsic {
         use super::{TyDesc, TyVisitor};
 
         #[abi = "rust-intrinsic"]
-        pub extern {
+        pub extern "rust-intrinsic" {
             pub fn get_tydesc<T>() -> *();
             pub fn visit_tydesc(++td: *TyDesc, &&tv: @TyVisitor);
         }

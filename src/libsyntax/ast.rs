@@ -10,7 +10,9 @@
 
 // The Rust abstract syntax tree.
 
-use codemap::{span, spanned};
+use codemap::{span, FileName, spanned};
+use abi::AbiSet;
+use opt_vec::OptVec;
 
 use core::cast;
 use core::option::{None, Option, Some};
@@ -19,7 +21,6 @@ use core::to_bytes;
 use core::to_str::ToStr;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
-use opt_vec::OptVec;
 
 /* can't import macros yet, so this is copied from token.rs. See its comment
  * there. */
@@ -322,27 +323,6 @@ pub enum mutability { m_mutbl, m_imm, m_const, }
 impl to_bytes::IterBytes for mutability {
     fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
-    }
-}
-
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
-pub enum Abi {
-    RustAbi
-}
-
-impl to_bytes::IterBytes for Abi {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        (*self as uint).iter_bytes(lsb0, f)
-    }
-}
-
-impl ToStr for Abi {
-    fn to_str(&self) -> ~str {
-        match *self {
-            RustAbi => ~"\"rust\""
-        }
     }
 }
 
@@ -893,7 +873,7 @@ pub struct TyClosure {
 #[deriving(Eq)]
 pub struct TyBareFn {
     purity: purity,
-    abi: Abi,
+    abis: AbiSet,
     lifetimes: OptVec<Lifetime>,
     decl: fn_decl
 }
@@ -1057,15 +1037,6 @@ pub struct _mod {
     items: ~[@item],
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
-pub enum foreign_abi {
-    foreign_abi_rust_intrinsic,
-    foreign_abi_cdecl,
-    foreign_abi_stdcall,
-}
-
 // Foreign mods can be named or anonymous
 #[auto_encode]
 #[auto_decode]
@@ -1077,7 +1048,7 @@ pub enum foreign_mod_sort { named, anonymous }
 #[deriving(Eq)]
 pub struct foreign_mod {
     sort: foreign_mod_sort,
-    abi: ident,
+    abis: AbiSet,
     view_items: ~[@view_item],
     items: ~[@foreign_item],
 }
@@ -1267,7 +1238,7 @@ pub struct item {
 #[deriving(Eq)]
 pub enum item_ {
     item_const(@Ty, @expr),
-    item_fn(fn_decl, purity, Generics, blk),
+    item_fn(fn_decl, purity, AbiSet, Generics, blk),
     item_mod(_mod),
     item_foreign_mod(foreign_mod),
     item_ty(@Ty, Generics),

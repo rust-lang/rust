@@ -39,6 +39,7 @@ use syntax::ast_map::path_name;
 use syntax::ast_util::local_def;
 use syntax::opt_vec;
 use syntax::parse::token::special_idents;
+use syntax::abi::AbiSet;
 
 pub fn monomorphic_fn(ccx: @CrateContext,
                       fn_id: ast::def_id,
@@ -97,7 +98,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       ast_map::node_item(i, pt) => (pt, i.ident, i.span),
       ast_map::node_variant(ref v, enm, pt) => (pt, (*v).node.name, enm.span),
       ast_map::node_method(m, _, pt) => (pt, m.ident, m.span),
-      ast_map::node_foreign_item(i, ast::foreign_abi_rust_intrinsic, _, pt)
+      ast_map::node_foreign_item(i, abis, _, pt) if abis.is_intrinsic()
       => (pt, i.ident, i.span),
       ast_map::node_foreign_item(*) => {
         // Foreign externs don't have to be monomorphized.
@@ -174,8 +175,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
 
     let lldecl = match *map_node {
       ast_map::node_item(i@@ast::item {
-                // XXX: Bad copy.
-                node: ast::item_fn(ref decl, _, _, ref body),
+                node: ast::item_fn(ref decl, _, _, _, ref body),
                 _
             }, _) => {
         let d = mk_lldecl();
@@ -280,7 +280,7 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
                 tcx,
                 ty::BareFnTy {
                     purity: ast::impure_fn,
-                    abi: ast::RustAbi,
+                    abis: AbiSet::Rust(),
                     sig: FnSig {bound_lifetime_names: opt_vec::Empty,
                                 inputs: ~[],
                                 output: ty::mk_nil(tcx)}}))

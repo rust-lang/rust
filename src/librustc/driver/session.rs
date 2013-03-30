@@ -25,19 +25,17 @@ use syntax::codemap::span;
 use syntax::diagnostic;
 use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
+use syntax::abi;
 use syntax;
 
 #[deriving(Eq)]
 pub enum os { os_win32, os_macos, os_linux, os_android, os_freebsd, }
 
-#[deriving(Eq)]
-pub enum arch { arch_x86, arch_x86_64, arch_arm, arch_mips, }
-
 pub enum crate_type { bin_crate, lib_crate, unknown_crate, }
 
 pub struct config {
     os: os,
-    arch: arch,
+    arch: abi::Architecture,
     target_strs: target_strs::t,
     int_type: int_ty,
     uint_type: uint_ty,

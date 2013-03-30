@@ -45,7 +45,6 @@ pub mod pipes {
         }
     }
 
-    #[abi = "rust-intrinsic"]
     mod rusti {
       pub fn atomic_xchg(_dst: &mut int, _src: int) -> int { fail!(); }
       pub fn atomic_xchg_acq(_dst: &mut int, _src: int) -> int { fail!(); }

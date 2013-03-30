@@ -15,7 +15,7 @@ The intrinsics are defined in librustc/middle/trans/foreign.rs.
 */
 
 #[abi = "rust-intrinsic"]
-pub extern {
+pub extern "rust-intrinsic" {
     pub fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
     pub fn atomic_cxchg_acq(dst: &mut int, old: int, src: int) -> int;
     pub fn atomic_cxchg_rel(dst: &mut int, old: int, src: int) -> int;

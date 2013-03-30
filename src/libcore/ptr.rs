@@ -43,7 +43,7 @@ pub mod libc_ {
 
 pub mod rusti {
     #[abi = "rust-intrinsic"]
-    pub extern {
+    pub extern "rust-intrinsic" {
         fn addr_of<T>(&&val: T) -> *T;
     }
 }

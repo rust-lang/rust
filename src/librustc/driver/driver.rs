@@ -33,6 +33,7 @@ use std::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
 use std::getopts::{opt_present};
 use std::getopts;
 use syntax::ast;
+use syntax::abi;
 use syntax::attr;
 use syntax::codemap;
 use syntax::diagnostic;
@@ -85,10 +86,10 @@ pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
     // ARM is bi-endian, however using NDK seems to default
     // to little-endian unless a flag is provided.
     let (end,arch,wordsz) = match sess.targ_cfg.arch {
-      session::arch_x86 => (~"little",~"x86",~"32"),
-      session::arch_x86_64 => (~"little",~"x86_64",~"64"),
-      session::arch_arm => (~"little",~"arm",~"32"),
-      session::arch_mips => (~"little",~"arm",~"32")
+        abi::X86 => (~"little",~"x86",~"32"),
+        abi::X86_64 => (~"little",~"x86_64",~"64"),
+        abi::Arm => (~"little",~"arm",~"32"),
+        abi::Mips => (~"little",~"arm",~"32")
     };
 
     return ~[ // Target bindings.
@@ -308,7 +309,7 @@ pub fn compile_rest(sess: Session, cfg: ast::crate_cfg,
     };
 
     // NOTE: Android hack
-    if sess.targ_cfg.arch == session::arch_arm &&
+    if sess.targ_cfg.arch == abi::Arm &&
             (sess.opts.output_type == link::output_type_object ||
              sess.opts.output_type == link::output_type_exe) {
         let output_type = link::output_type_assembly;
@@ -453,20 +454,20 @@ pub fn get_os(triple: &str) -> Option<session::os> {
         } else { None }
 }
 
-pub fn get_arch(triple: &str) -> Option<session::arch> {
+pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
     if str::contains(triple, ~"i386") ||
         str::contains(triple, ~"i486") ||
                str::contains(triple, ~"i586") ||
                str::contains(triple, ~"i686") ||
                str::contains(triple, ~"i786") {
-            Some(session::arch_x86)
+            Some(abi::X86)
         } else if str::contains(triple, ~"x86_64") {
-            Some(session::arch_x86_64)
+            Some(abi::X86_64)
         } else if str::contains(triple, ~"arm") ||
                       str::contains(triple, ~"xscale") {
-            Some(session::arch_arm)
+            Some(abi::Arm)
         } else if str::contains(triple, ~"mips") {
-            Some(session::arch_mips)
+            Some(abi::Mips)
         } else { None }
 }
 
@@ -483,16 +484,16 @@ pub fn build_target_config(sopts: @session::options,
                           ~"unknown architecture: " + sopts.target_triple)
     };
     let (int_type, uint_type, float_type) = match arch {
-      session::arch_x86 => (ast::ty_i32, ast::ty_u32, ast::ty_f64),
-      session::arch_x86_64 => (ast::ty_i64, ast::ty_u64, ast::ty_f64),
-      session::arch_arm => (ast::ty_i32, ast::ty_u32, ast::ty_f64),
-      session::arch_mips => (ast::ty_i32, ast::ty_u32, ast::ty_f64)
+      abi::X86 => (ast::ty_i32, ast::ty_u32, ast::ty_f64),
+      abi::X86_64 => (ast::ty_i64, ast::ty_u64, ast::ty_f64),
+      abi::Arm => (ast::ty_i32, ast::ty_u32, ast::ty_f64),
+      abi::Mips => (ast::ty_i32, ast::ty_u32, ast::ty_f64)
     };
     let target_strs = match arch {
-      session::arch_x86 => x86::get_target_strs(os),
-      session::arch_x86_64 => x86_64::get_target_strs(os),
-      session::arch_arm => arm::get_target_strs(os),
-      session::arch_mips => mips::get_target_strs(os)
+      abi::X86 => x86::get_target_strs(os),
+      abi::X86_64 => x86_64::get_target_strs(os),
+      abi::Arm => arm::get_target_strs(os),
+      abi::Mips => mips::get_target_strs(os)
     };
     let target_cfg = @session::config {
         os: os,

@@ -852,7 +852,7 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
     let (ident, ret_ty, id) = match *cx.tcx.items.get(&fcx.id) {
       ast_map::node_item(item, _) => {
         match item.node {
-          ast::item_fn(ref decl, _, _, _) => {
+          ast::item_fn(ref decl, _, _, _, _) => {
             (item.ident, decl.output, item.id)
           }
           _ => fcx.ccx.sess.span_bug(item.span, ~"create_function: item \

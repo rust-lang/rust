@@ -72,6 +72,7 @@ use syntax::ast::{Onceness, purity};
 use syntax::ast;
 use syntax::opt_vec;
 use syntax::codemap::span;
+use syntax::abi::AbiSet;
 
 pub trait Combine {
     fn infcx(&self) -> @mut InferCtxt;
@@ -101,7 +102,7 @@ pub trait Combine {
     fn args(&self, a: ty::arg, b: ty::arg) -> cres<ty::arg>;
     fn sigils(&self, p1: ast::Sigil, p2: ast::Sigil) -> cres<ast::Sigil>;
     fn purities(&self, a: purity, b: purity) -> cres<purity>;
-    fn abis(&self, a: ast::Abi, b: ast::Abi) -> cres<ast::Abi>;
+    fn abis(&self, a: AbiSet, b: AbiSet) -> cres<AbiSet>;
     fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<Onceness>;
     fn contraregions(&self, a: ty::Region, b: ty::Region)
                   -> cres<ty::Region>;
@@ -396,7 +397,7 @@ pub fn super_closure_tys<C:Combine>(
 }
 
 pub fn super_abis<C:Combine>(
-    self: &C, a: ast::Abi, b: ast::Abi) -> cres<ast::Abi>
+    self: &C, a: AbiSet, b: AbiSet) -> cres<AbiSet>
 {
     if a == b {
         Ok(a)
@@ -409,10 +410,10 @@ pub fn super_bare_fn_tys<C:Combine>(
     self: &C, a_f: &ty::BareFnTy, b_f: &ty::BareFnTy) -> cres<ty::BareFnTy>
 {
     let purity = if_ok!(self.purities(a_f.purity, b_f.purity));
-    let abi = if_ok!(self.abis(a_f.abi, b_f.abi));
+    let abi = if_ok!(self.abis(a_f.abis, b_f.abis));
     let sig = if_ok!(self.fn_sigs(&a_f.sig, &b_f.sig));
     Ok(ty::BareFnTy {purity: purity,
-                     abi: abi,
+                     abis: abi,
                      sig: sig})
 }
 
