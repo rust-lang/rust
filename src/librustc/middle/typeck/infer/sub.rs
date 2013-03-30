@@ -24,6 +24,7 @@ use util::ppaux::bound_region_to_str;
 
 use std::list::Nil;
 use std::list;
+use syntax::abi::AbiSet;
 use syntax::ast;
 use syntax::ast::{Onceness, m_const, purity};
 use syntax::codemap::span;
@@ -216,7 +217,7 @@ impl Combine for Sub {
         super_sigils(self, p1, p2)
     }
 
-    fn abis(&self, p1: ast::Abi, p2: ast::Abi) -> cres<ast::Abi> {
+    fn abis(&self, p1: AbiSet, p2: AbiSet) -> cres<AbiSet> {
         super_abis(self, p1, p2)
     }
 

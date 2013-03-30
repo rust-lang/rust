@@ -69,7 +69,7 @@ fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
         match *ctxt.ast_map.get(&fn_id) {
           ast_map::node_item(@ast::item {
             ident: ident,
-            node: ast::item_fn(ref decl, purity, ref tys, _), _
+            node: ast::item_fn(ref decl, purity, _, ref tys, _), _
           }, _) |
           ast_map::node_foreign_item(@ast::foreign_item {
             ident: ident,

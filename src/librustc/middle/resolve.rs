@@ -1139,7 +1139,7 @@ pub impl Resolver {
                 name_bindings.define_value
                     (privacy, def_const(local_def(item.id)), sp);
             }
-            item_fn(_, purity, _, _) => {
+            item_fn(_, purity, _, _, _) => {
               let (name_bindings, new_parent) =
                 self.add_child(ident, parent, ForbidDuplicateValues, sp);
 
@@ -3530,7 +3530,7 @@ pub impl Resolver {
                 }
             }
 
-            item_fn(ref fn_decl, _, ref generics, ref block) => {
+            item_fn(ref fn_decl, _, _, ref generics, ref block) => {
                 // If this is the main function, we must record it in the
                 // session.
                 // FIXME #4404 android JNI hacks

@@ -15,7 +15,8 @@
 
 use core::prelude::*;
 
-use ast::ident;
+use abi::AbiSet;
+use ast::{ident, node_id};
 use ast;
 use ast_util;
 use codemap::{span, respan, dummy_sp, spanned};
@@ -272,6 +273,7 @@ impl ext_ctxt_ast_builder for @ext_ctxt {
                   dummy_sp(),
                   ast::item_fn(self.fn_decl(inputs, output),
                                ast::impure_fn,
+                               AbiSet::Rust(),
                                generics,
                                body))
     }

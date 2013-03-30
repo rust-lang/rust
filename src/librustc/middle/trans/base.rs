@@ -82,6 +82,7 @@ use syntax::parse::token::special_idents;
 use syntax::print::pprust::stmt_to_str;
 use syntax::visit;
 use syntax::{ast, ast_util, codemap, ast_map};
+use syntax::abi::{X86, X86_64, Arm, Mips};
 
 pub struct icx_popper {
     ccx: @CrateContext,
@@ -1455,10 +1456,12 @@ pub fn call_memcpy(cx: block, dst: ValueRef, src: ValueRef,
     let _icx = cx.insn_ctxt("call_memcpy");
     let ccx = cx.ccx();
     let key = match ccx.sess.targ_cfg.arch {
-      session::arch_x86
-      | session::arch_arm
-      | session::arch_mips => ~"llvm.memcpy.p0i8.p0i8.i32",
-      session::arch_x86_64 => ~"llvm.memcpy.p0i8.p0i8.i64"
+        X86 | Arm | Mips => {
+            ~"llvm.memcpy.p0i8.p0i8.i32"
+        }
+        X86_64 => {
+            ~"llvm.memcpy.p0i8.p0i8.i64"
+        }
     };
     let memcpy = *ccx.intrinsics.get(&key);
     let src_ptr = PointerCast(cx, src, T_ptr(T_i8()));
@@ -1499,12 +1502,10 @@ pub fn memzero(cx: block, llptr: ValueRef, llty: TypeRef) {
 
     let intrinsic_key;
     match ccx.sess.targ_cfg.arch {
-        session::arch_x86
-        | session::arch_arm
-        | session::arch_mips => {
+        X86 | Arm | Mips => {
             intrinsic_key = ~"llvm.memset.p0i8.i32";
         }
-        session::arch_x86_64 => {
+        X86_64 => {
             intrinsic_key = ~"llvm.memset.p0i8.i64";
         }
     }
@@ -2063,7 +2064,7 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
         _ => fail!(~"trans_item"),
     };
     match item.node {
-      ast::item_fn(ref decl, purity, ref generics, ref body) => {
+      ast::item_fn(ref decl, purity, _abis, ref generics, ref body) => {
         if purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_foreign_fn(ccx,
@@ -2105,11 +2106,7 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
       }
       ast::item_const(_, expr) => consts::trans_const(ccx, expr, item.id),
       ast::item_foreign_mod(ref foreign_mod) => {
-        let abi = match attr::foreign_abi(item.attrs) {
-            Right(abi_) => abi_,
-            Left(msg) => ccx.sess.span_fatal(item.span, msg)
-        };
-        foreign::trans_foreign_mod(ccx, foreign_mod, abi);
+        foreign::trans_foreign_mod(ccx, path, foreign_mod);
       }
       ast::item_struct(struct_def, ref generics) => {
         if !generics.is_type_parameterized() {
@@ -2405,7 +2402,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                     g
                 }
               }
-              ast::item_fn(_, purity, _, _) => {
+              ast::item_fn(_, purity, _, _, _) => {
                 let llfn = if purity != ast::extern_fn {
                     register_fn(ccx, i.span, my_path, i.id, i.attrs)
                 } else {

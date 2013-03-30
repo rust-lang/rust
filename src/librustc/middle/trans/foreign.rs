@@ -12,9 +12,6 @@ use core::prelude::*;
 
 use back::{link, abi};
 use driver::session;
-use driver::session::arch_x86_64;
-use driver::session::arch_arm;
-use driver::session::arch_mips;
 use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
 use lib::llvm::{TypeRef, ValueRef};
 use lib;
@@ -42,13 +39,16 @@ use syntax::{ast, ast_util};
 use syntax::{attr, ast_map};
 use syntax::opt_vec;
 use syntax::parse::token::special_idents;
+use syntax::abi::{Architecture, X86, X86_64, Arm, Mips};
+use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall,
+                  Cdecl, Aapcs, C};
 
-fn abi_info(arch: session::arch) -> @cabi::ABIInfo {
+fn abi_info(arch: Architecture) -> @cabi::ABIInfo {
     return match arch {
-        arch_x86_64 => x86_64_abi_info(),
-        arch_arm => cabi_arm::abi_info(),
-        arch_mips => mips_abi_info(),
-        _ => cabi::llvm_abi_info()
+        X86_64 => x86_64_abi_info(),
+        Arm => cabi_arm::abi_info(),
+        Mips => mips_abi_info(),
+        X86 => cabi::llvm_abi_info()
     }
 }
 
@@ -239,36 +239,65 @@ fn build_wrap_fn_(ccx: @CrateContext,
 // unnecessary). We used to do this, in fact, and will perhaps do so
 // in the future.
 pub fn trans_foreign_mod(ccx: @CrateContext,
-                         foreign_mod: &ast::foreign_mod,
-                         abi: ast::foreign_abi)
+                         path: &ast_map::path,
+                         foreign_mod: &ast::foreign_mod)
 {
     let _icx = ccx.insn_ctxt("foreign::trans_foreign_mod");
 
-    let mut cc = match abi {
-        ast::foreign_abi_rust_intrinsic |
-        ast::foreign_abi_cdecl => lib::llvm::CCallConv,
-        ast::foreign_abi_stdcall => lib::llvm::X86StdcallCallConv
+    let arch = ccx.sess.targ_cfg.arch;
+    let abi = match foreign_mod.abis.for_arch(arch) {
+        None => {
+            ccx.sess.fatal(
+                fmt!("No suitable ABI for target architecture \
+                      in module %s",
+                     ast_map::path_to_str(*path,
+                                          ccx.sess.intr())));
+        }
+
+        Some(abi) => abi,
     };
 
-    for vec::each(foreign_mod.items) |foreign_item| {
+    for vec::each(foreign_mod.items) |&foreign_item| {
         match foreign_item.node {
             ast::foreign_item_fn(*) => {
                 let id = foreign_item.id;
-                if abi != ast::foreign_abi_rust_intrinsic {
-                    let llwrapfn = get_item_val(ccx, id);
-                    let tys = shim_types(ccx, id);
-                    if attr::attrs_contains_name(
-                        foreign_item.attrs, "rust_stack")
-                    {
-                        build_direct_fn(ccx, llwrapfn, *foreign_item,
-                                        &tys, cc);
-                    } else {
-                        let llshimfn = build_shim_fn(ccx, *foreign_item,
-                                                     &tys, cc);
-                        build_wrap_fn(ccx, &tys, llshimfn, llwrapfn);
+                match abi {
+                    RustIntrinsic => {
+                        // Intrinsics are emitted by monomorphic fn
                     }
-                } else {
-                    // Intrinsics are emitted by monomorphic fn
+
+                    Rust => {
+                        // FIXME(#3678) Implement linking to foreign fns with Rust ABI
+                        ccx.sess.unimpl(
+                            fmt!("Foreign functions with Rust ABI"));
+                    }
+
+                    Stdcall => {
+                        build_foreign_fn(ccx, id, foreign_item,
+                                         lib::llvm::X86StdcallCallConv);
+                    }
+
+                    Fastcall => {
+                        build_foreign_fn(ccx, id, foreign_item,
+                                         lib::llvm::X86FastcallCallConv);
+                    }
+
+                    Cdecl => {
+                        // FIXME(#3678) should really be more specific
+                        build_foreign_fn(ccx, id, foreign_item,
+                                         lib::llvm::CCallConv);
+                    }
+
+                    Aapcs => {
+                        // FIXME(#3678) should really be more specific
+                        build_foreign_fn(ccx, id, foreign_item,
+                                         lib::llvm::CCallConv);
+                    }
+
+                    C => {
+                        build_foreign_fn(ccx, id, foreign_item,
+                                         lib::llvm::CCallConv);
+                    }
                 }
             }
             ast::foreign_item_const(*) => {
@@ -276,6 +305,25 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
                     foreign_item.ident);
                 ccx.item_symbols.insert(foreign_item.id, copy *ident);
             }
+        }
+    }
+
+    fn build_foreign_fn(ccx: @CrateContext,
+                        id: ast::node_id,
+                        foreign_item: @ast::foreign_item,
+                        cc: lib::llvm::CallConv)
+    {
+        let llwrapfn = get_item_val(ccx, id);
+        let tys = shim_types(ccx, id);
+        if attr::attrs_contains_name(
+            foreign_item.attrs, "rust_stack")
+        {
+            build_direct_fn(ccx, llwrapfn, foreign_item,
+                            &tys, cc);
+        } else {
+            let llshimfn = build_shim_fn(ccx, foreign_item,
+                                         &tys, cc);
+            build_wrap_fn(ccx, &tys, llshimfn, llwrapfn);
         }
     }
 
@@ -1078,22 +1126,5 @@ pub fn register_foreign_fn(ccx: @CrateContext,
     do tys.fn_ty.decl_fn |fnty| {
         register_fn_fuller(ccx, sp, /*bad*/copy path, node_id, attrs,
                            t, lib::llvm::CCallConv, fnty)
-    }
-}
-
-fn abi_of_foreign_fn(ccx: @CrateContext, i: @ast::foreign_item)
-    -> ast::foreign_abi {
-    match attr::first_attr_value_str_by_name(i.attrs, ~"abi") {
-      None => match *ccx.tcx.items.get(&i.id) {
-        ast_map::node_foreign_item(_, abi, _, _) => abi,
-        // ??
-        _ => fail!(~"abi_of_foreign_fn: not foreign")
-      },
-      Some(_) => match attr::foreign_abi(i.attrs) {
-        either::Right(abi) => abi,
-        either::Left(ref msg) => {
-            ccx.sess.span_fatal(i.span, (/*bad*/copy *msg))
-        }
-      }
     }
 }

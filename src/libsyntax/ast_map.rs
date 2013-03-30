@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use abi::AbiSet;
 use ast::*;
 use ast;
 use ast_util::{inlined_item_utils, stmt_id};
@@ -87,7 +88,7 @@ pub fn path_elt_to_str(pe: path_elt, itr: @ident_interner) -> ~str {
 
 pub enum ast_node {
     node_item(@item, @path),
-    node_foreign_item(@foreign_item, foreign_abi, visibility, @path),
+    node_foreign_item(@foreign_item, AbiSet, visibility, @path),
     node_trait_method(@trait_method, def_id /* trait did */,
                       @path /* path to the trait */),
     node_method(@method, def_id /* impl did */, @path /* path to the impl */),
@@ -171,7 +172,7 @@ pub fn map_decoded_item(diag: @span_handler,
       ii_item(*) | ii_dtor(*) => { /* fallthrough */ }
       ii_foreign(i) => {
         cx.map.insert(i.id, node_foreign_item(i,
-                                              foreign_abi_rust_intrinsic,
+                                              AbiSet::Intrinsic(),
                                               i.vis,    // Wrong but OK
                                               @path));
       }
@@ -274,10 +275,6 @@ pub fn map_item(i: @item, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
             }
         }
         item_foreign_mod(ref nm) => {
-            let abi = match attr::foreign_abi(i.attrs) {
-                Left(ref msg) => cx.diag.span_fatal(i.span, (*msg)),
-                Right(abi) => abi
-            };
             for nm.items.each |nitem| {
                 // Compute the visibility for this native item.
                 let visibility = match nitem.vis {
@@ -289,7 +286,7 @@ pub fn map_item(i: @item, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
                 cx.map.insert(nitem.id,
                     node_foreign_item(
                         *nitem,
-                        abi,
+                        nm.abis,
                         visibility,
                         // FIXME (#2543)
                         if nm.sort == ast::named {
