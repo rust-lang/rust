@@ -105,20 +105,10 @@ impl serialize::Encoder for Encoder {
         self.wr.write_str(float::to_str_digits(v, 6u));
     }
 
-    fn emit_char(&self, v: char) { self.emit_borrowed_str(str::from_char(v)) }
+    fn emit_char(&self, v: char) { self.emit_str(str::from_char(v)) }
+    fn emit_str(&self, v: &str) { self.wr.write_str(escape_str(v)) }
 
-    fn emit_borrowed_str(&self, v: &str) { self.wr.write_str(escape_str(v)) }
-    fn emit_owned_str(&self, v: &str) { self.emit_borrowed_str(v) }
-    fn emit_managed_str(&self, v: &str) { self.emit_borrowed_str(v) }
-
-    fn emit_borrowed(&self, f: &fn()) { f() }
-    fn emit_owned(&self, f: &fn()) { f() }
-    fn emit_managed(&self, f: &fn()) { f() }
-
-    fn emit_enum(&self, _name: &str, f: &fn()) {
-        f()
-    }
-
+    fn emit_enum(&self, _name: &str, f: &fn()) { f() }
     fn emit_enum_variant(&self, name: &str, _id: uint, cnt: uint, f: &fn()) {
         // enums are encoded as strings or vectors:
         // Bunny => "Bunny"
@@ -140,28 +130,17 @@ impl serialize::Encoder for Encoder {
         f();
     }
 
-    fn emit_borrowed_vec(&self, _len: uint, f: &fn()) {
+    fn emit_seq(&self, _len: uint, f: &fn()) {
         self.wr.write_char('[');
         f();
         self.wr.write_char(']');
     }
 
-    fn emit_owned_vec(&self, len: uint, f: &fn()) {
-        self.emit_borrowed_vec(len, f)
-    }
-    fn emit_managed_vec(&self, len: uint, f: &fn()) {
-        self.emit_borrowed_vec(len, f)
-    }
-    fn emit_vec_elt(&self, idx: uint, f: &fn()) {
+    fn emit_seq_elt(&self, idx: uint, f: &fn()) {
         if idx != 0 { self.wr.write_char(','); }
         f()
     }
 
-    fn emit_rec(&self, f: &fn()) {
-        self.wr.write_char('{');
-        f();
-        self.wr.write_char('}');
-    }
     fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) {
         self.wr.write_char('{');
         f();
@@ -174,16 +153,25 @@ impl serialize::Encoder for Encoder {
         f();
     }
 
-    fn emit_tup(&self, len: uint, f: &fn()) {
-        self.emit_borrowed_vec(len, f);
-    }
-    fn emit_tup_elt(&self, idx: uint, f: &fn()) {
-        self.emit_vec_elt(idx, f)
-    }
-
     fn emit_option(&self, f: &fn()) { f(); }
     fn emit_option_none(&self) { self.emit_nil(); }
     fn emit_option_some(&self, f: &fn()) { f(); }
+
+    fn emit_map(&self, _len: uint, f: &fn()) {
+        self.wr.write_char('{');
+        f();
+        self.wr.write_char('}');
+    }
+
+    fn emit_map_elt_key(&self, idx: uint, f: &fn()) {
+        if idx != 0 { self.wr.write_char(','); }
+        f()
+    }
+
+    fn emit_map_elt_val(&self, _idx: uint, f: &fn()) {
+        self.wr.write_char(':');
+        f()
+    }
 }
 
 pub struct PrettyEncoder {
@@ -224,15 +212,8 @@ impl serialize::Encoder for PrettyEncoder {
         self.wr.write_str(float::to_str_digits(v, 6u));
     }
 
-    fn emit_char(&self, v: char) { self.emit_borrowed_str(str::from_char(v)) }
-
-    fn emit_borrowed_str(&self, v: &str) { self.wr.write_str(escape_str(v)); }
-    fn emit_owned_str(&self, v: &str) { self.emit_borrowed_str(v) }
-    fn emit_managed_str(&self, v: &str) { self.emit_borrowed_str(v) }
-
-    fn emit_borrowed(&self, f: &fn()) { f() }
-    fn emit_owned(&self, f: &fn()) { f() }
-    fn emit_managed(&self, f: &fn()) { f() }
+    fn emit_char(&self, v: char) { self.emit_str(str::from_char(v)) }
+    fn emit_str(&self, v: &str) { self.wr.write_str(escape_str(v)); }
 
     fn emit_enum(&self, _name: &str, f: &fn()) { f() }
     fn emit_enum_variant(&self, name: &str, _id: uint, cnt: uint, f: &fn()) {
@@ -260,7 +241,7 @@ impl serialize::Encoder for PrettyEncoder {
         f()
     }
 
-    fn emit_borrowed_vec(&self, len: uint, f: &fn()) {
+    fn emit_seq(&self, len: uint, f: &fn()) {
         if len == 0 {
             self.wr.write_str("[]");
         } else {
@@ -273,13 +254,7 @@ impl serialize::Encoder for PrettyEncoder {
             self.wr.write_char(']');
         }
     }
-    fn emit_owned_vec(&self, len: uint, f: &fn()) {
-        self.emit_borrowed_vec(len, f)
-    }
-    fn emit_managed_vec(&self, len: uint, f: &fn()) {
-        self.emit_borrowed_vec(len, f)
-    }
-    fn emit_vec_elt(&self, idx: uint, f: &fn()) {
+    fn emit_seq_elt(&self, idx: uint, f: &fn()) {
         if idx == 0 {
             self.wr.write_char('\n');
         } else {
@@ -289,20 +264,17 @@ impl serialize::Encoder for PrettyEncoder {
         f()
     }
 
-    fn emit_rec(&self, f: &fn()) {
-        self.wr.write_char('{');
-        self.indent += 2;
-        f();
-        self.wr.write_char('\n');
-        self.indent -= 2;
-        self.wr.write_str(spaces(self.indent));
-        self.wr.write_char('}');
-    }
     fn emit_struct(&self, _name: &str, len: uint, f: &fn()) {
         if len == 0 {
             self.wr.write_str("{}");
         } else {
-            self.emit_rec(f)
+            self.wr.write_char('{');
+            self.indent += 2;
+            f();
+            self.wr.write_char('\n');
+            self.indent -= 2;
+            self.wr.write_str(spaces(self.indent));
+            self.wr.write_char('}');
         }
     }
     fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
@@ -316,37 +288,49 @@ impl serialize::Encoder for PrettyEncoder {
         self.wr.write_str(": ");
         f();
     }
-    fn emit_tup(&self, sz: uint, f: &fn()) {
-        self.emit_borrowed_vec(sz, f);
-    }
-    fn emit_tup_elt(&self, idx: uint, f: &fn()) {
-        self.emit_vec_elt(idx, f)
-    }
 
     fn emit_option(&self, f: &fn()) { f(); }
     fn emit_option_none(&self) { self.emit_nil(); }
     fn emit_option_some(&self, f: &fn()) { f(); }
+
+    fn emit_map(&self, len: uint, f: &fn()) {
+        if len == 0 {
+            self.wr.write_str("{}");
+        } else {
+            self.wr.write_char('{');
+            self.indent += 2;
+            f();
+            self.wr.write_char('\n');
+            self.indent -= 2;
+            self.wr.write_str(spaces(self.indent));
+            self.wr.write_char('}');
+        }
+    }
+    fn emit_map_elt_key(&self, idx: uint, f: &fn()) {
+        if idx == 0 {
+            self.wr.write_char('\n');
+        } else {
+            self.wr.write_str(",\n");
+        }
+        self.wr.write_str(spaces(self.indent));
+        f();
+    }
+
+    fn emit_map_elt_val(&self, _idx: uint, f: &fn()) {
+        self.wr.write_str(": ");
+        f();
+    }
 }
 
-impl<S:serialize::Encoder> serialize::Encodable<S> for Json {
-    fn encode(&self, s: &S) {
+impl<E: serialize::Encoder> serialize::Encodable<E> for Json {
+    fn encode(&self, e: &E) {
         match *self {
-            Number(v) => v.encode(s),
-            String(ref v) => v.encode(s),
-            Boolean(v) => v.encode(s),
-            List(ref v) => v.encode(s),
-            Object(ref v) => {
-                do s.emit_rec || {
-                    let mut idx = 0;
-                    for v.each |&(key, value)| {
-                        do s.emit_field(*key, idx) {
-                            value.encode(s);
-                        }
-                        idx += 1;
-                    }
-                }
-            },
-            Null => s.emit_nil(),
+            Number(v) => v.encode(e),
+            String(ref v) => v.encode(e),
+            Boolean(v) => v.encode(e),
+            List(ref v) => v.encode(e),
+            Object(ref v) => v.encode(e),
+            Null => e.emit_nil(),
         }
     }
 }
@@ -752,37 +736,20 @@ pub fn from_str(s: &str) -> Result<Json, Error> {
     }
 }
 
-pub struct Decoder<'self> {
-    priv json: Json,
-    priv mut stack: ~[&'self Json],
+pub struct Decoder {
+    priv mut stack: ~[Json],
 }
 
 pub fn Decoder(json: Json) -> Decoder {
-    Decoder { json: json, stack: ~[] }
+    Decoder { stack: ~[json] }
 }
 
-priv impl<'self> Decoder<'self> {
-    fn peek(&self) -> &'self Json {
-        if vec::uniq_len(&const self.stack) == 0 {
-            self.stack.push(&self.json);
-        }
-        self.stack[vec::uniq_len(&const self.stack) - 1]
-    }
-
-    fn pop(&self) -> &'self Json {
-        if vec::uniq_len(&const self.stack) == 0 {
-            self.stack.push(&self.json);
-        }
-        self.stack.pop()
-    }
-}
-
-impl<'self> serialize::Decoder for Decoder<'self> {
+impl serialize::Decoder for Decoder {
     fn read_nil(&self) -> () {
         debug!("read_nil");
-        match *self.pop() {
+        match self.stack.pop() {
             Null => (),
-            _ => fail!(~"not a null")
+            value => fail!(fmt!("not a null: %?", value))
         }
     }
 
@@ -800,9 +767,9 @@ impl<'self> serialize::Decoder for Decoder<'self> {
 
     fn read_bool(&self) -> bool {
         debug!("read_bool");
-        match *self.pop() {
+        match self.stack.pop() {
             Boolean(b) => b,
-            _ => fail!(~"not a boolean")
+            value => fail!(fmt!("not a boolean: %?", value))
         }
     }
 
@@ -810,43 +777,25 @@ impl<'self> serialize::Decoder for Decoder<'self> {
     fn read_f32(&self) -> f32 { self.read_float() as f32 }
     fn read_float(&self) -> float {
         debug!("read_float");
-        match *self.pop() {
+        match self.stack.pop() {
             Number(f) => f,
-            _ => fail!(~"not a number")
+            value => fail!(fmt!("not a number: %?", value))
         }
     }
 
     fn read_char(&self) -> char {
         let mut v = ~[];
-        for str::each_char(self.read_owned_str()) |c| { v.push(c) }
+        for str::each_char(self.read_str()) |c| { v.push(c) }
         if v.len() != 1 { fail!(~"string must have one character") }
         v[0]
     }
 
-    fn read_owned_str(&self) -> ~str {
-        debug!("read_owned_str");
-        match *self.pop() {
-            String(ref s) => copy *s,
-            ref json => fail!(fmt!("not a string: %?", *json))
+    fn read_str(&self) -> ~str {
+        debug!("read_str");
+        match self.stack.pop() {
+            String(s) => s,
+            json => fail!(fmt!("not a string: %?", json))
         }
-    }
-
-    fn read_managed_str(&self) -> @str {
-        debug!("read_managed_str");
-        match *self.pop() {
-            String(ref s) => s.to_managed(),
-            ref json => fail!(fmt!("not a string: %?", *json))
-        }
-    }
-
-    fn read_owned<T>(&self, f: &fn() -> T) -> T {
-        debug!("read_owned()");
-        f()
-    }
-
-    fn read_managed<T>(&self, f: &fn() -> T) -> T {
-        debug!("read_managed()");
-        f()
     }
 
     fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T {
@@ -856,12 +805,20 @@ impl<'self> serialize::Decoder for Decoder<'self> {
 
     fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T {
         debug!("read_enum_variant(names=%?)", names);
-        let name = match *self.peek() {
-            String(ref s) => s,
-            List([String(ref s), .. _]) => s,
+        let name = match self.stack.pop() {
+            String(s) => s,
+            List(list) => {
+                do vec::consume_reverse(list) |_i, v| {
+                    self.stack.push(v);
+                }
+                match self.stack.pop() {
+                    String(s) => s,
+                    value => fail!(fmt!("invalid variant name: %?", value)),
+                }
+            }
             ref json => fail!(fmt!("invalid variant: %?", *json)),
         };
-        let idx = match vec::position(names, |n| str::eq_slice(*n, *name)) {
+        let idx = match vec::position(names, |n| str::eq_slice(*n, name)) {
             Some(idx) => idx,
             None => fail!(fmt!("Unknown variant name: %?", name)),
         };
@@ -870,108 +827,87 @@ impl<'self> serialize::Decoder for Decoder<'self> {
 
     fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T {
         debug!("read_enum_variant_arg(idx=%u)", idx);
-        match *self.peek() {
-            List(ref list) => {
-                self.stack.push(&list[idx + 1]);
-                f()
-            }
-            ref json => fail!(fmt!("not a list: %?", json)),
-        }
+        f()
     }
 
-    fn read_owned_vec<T>(&self, f: &fn(uint) -> T) -> T {
-        debug!("read_owned_vec()");
-        let len = match *self.peek() {
-            List(ref list) => list.len(),
-            _ => fail!(~"not a list"),
-        };
-        let res = f(len);
-        self.pop();
-        res
-    }
-
-    fn read_managed_vec<T>(&self, f: &fn(uint) -> T) -> T {
-        debug!("read_owned_vec()");
-        let len = match *self.peek() {
-            List(ref list) => list.len(),
-            _ => fail!(~"not a list"),
-        };
-        let res = f(len);
-        self.pop();
-        res
-    }
-
-    fn read_vec_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
-        debug!("read_vec_elt(idx=%u)", idx);
-        match *self.peek() {
-            List(ref list) => {
-                self.stack.push(&list[idx]);
-                f()
+    fn read_seq<T>(&self, f: &fn(uint) -> T) -> T {
+        debug!("read_seq()");
+        let len = match self.stack.pop() {
+            List(list) => {
+                let len = list.len();
+                do vec::consume_reverse(list) |_i, v| {
+                    self.stack.push(v);
+                }
+                len
             }
             _ => fail!(~"not a list"),
-        }
+        };
+        f(len)
     }
 
-    fn read_rec<T>(&self, f: &fn() -> T) -> T {
-        debug!("read_rec()");
-        let value = f();
-        self.pop();
-        value
+    fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_seq_elt(idx=%u)", idx);
+        f()
     }
 
-    fn read_struct<T>(&self, _name: &str, _len: uint, f: &fn() -> T) -> T {
-        debug!("read_struct()");
+    fn read_struct<T>(&self, name: &str, len: uint, f: &fn() -> T) -> T {
+        debug!("read_struct(name=%s, len=%u)", name, len);
         let value = f();
-        self.pop();
+        self.stack.pop();
         value
     }
 
     fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
-        debug!("read_rec_field(%s, idx=%u)", name, idx);
-        let top = self.peek();
-        match *top {
-            Object(ref obj) => {
-                match obj.find(&name.to_owned()) {
+        debug!("read_field(%s, idx=%u)", name, idx);
+        match self.stack.pop() {
+            Object(obj) => {
+                let mut obj = obj;
+                let value = match obj.pop(&name.to_owned()) {
                     None => fail!(fmt!("no such field: %s", name)),
                     Some(json) => {
                         self.stack.push(json);
                         f()
                     }
-                }
+                };
+                self.stack.push(Object(obj));
+                value
             }
-            Number(_) => fail!(~"num"),
-            String(_) => fail!(~"str"),
-            Boolean(_) => fail!(~"bool"),
-            List(_) => fail!(fmt!("list: %?", top)),
-            Null => fail!(~"null"),
-
-            //_ => fail!(fmt!("not an object: %?", *top))
-        }
-    }
-
-    fn read_tup<T>(&self, len: uint, f: &fn() -> T) -> T {
-        debug!("read_tup(len=%u)", len);
-        let value = f();
-        self.pop();
-        value
-    }
-
-    fn read_tup_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
-        debug!("read_tup_elt(idx=%u)", idx);
-        match *self.peek() {
-            List(ref list) => {
-                self.stack.push(&list[idx]);
-                f()
-            }
-            _ => fail!(~"not a list")
+            value => fail!(fmt!("not an object: %?", value))
         }
     }
 
     fn read_option<T>(&self, f: &fn(bool) -> T) -> T {
-        match *self.peek() {
-            Null => { self.pop(); f(false) }
-            _ => f(true),
+        match self.stack.pop() {
+            Null => f(false),
+            value => { self.stack.push(value); f(true) }
         }
+    }
+
+    fn read_map<T>(&self, f: &fn(uint) -> T) -> T {
+        debug!("read_map()");
+        let len = match self.stack.pop() {
+            Object(obj) => {
+                let mut obj = obj;
+                let len = obj.len();
+                do obj.consume |key, value| {
+                    self.stack.push(value);
+                    self.stack.push(String(key));
+                }
+                len
+            }
+            json => fail!(fmt!("not an object: %?", json)),
+        };
+        f(len)
+    }
+
+    fn read_map_elt_key<T>(&self, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_map_elt_key(idx=%u)", idx);
+        f()
+    }
+
+    fn read_map_elt_val<T>(&self, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_map_elt_val(idx=%u)", idx);
+        f()
     }
 }
 
@@ -1229,6 +1165,30 @@ mod tests {
 
     use std::serialize::Decodable;
 
+    #[auto_encode]
+    #[auto_decode]
+    #[deriving(Eq)]
+    enum Animal {
+        Dog,
+        Frog(~str, int)
+    }
+
+    #[auto_encode]
+    #[auto_decode]
+    #[deriving(Eq)]
+    struct Inner {
+        a: (),
+        b: uint,
+        c: ~[~str],
+    }
+
+    #[auto_encode]
+    #[auto_decode]
+    #[deriving(Eq)]
+    struct Outer {
+        inner: ~[Inner],
+    }
+
     fn mk_object(items: &[(~str, Json)]) -> Json {
         let mut d = ~LinearMap::new();
 
@@ -1244,42 +1204,49 @@ mod tests {
     #[test]
     fn test_write_null() {
         assert_eq!(to_str(&Null), ~"null");
+        assert_eq!(to_pretty_str(&Null), ~"null");
     }
+
 
     #[test]
     fn test_write_number() {
         assert_eq!(to_str(&Number(3f)), ~"3");
+        assert_eq!(to_pretty_str(&Number(3f)), ~"3");
+
         assert_eq!(to_str(&Number(3.1f)), ~"3.1");
+        assert_eq!(to_pretty_str(&Number(3.1f)), ~"3.1");
+
         assert_eq!(to_str(&Number(-1.5f)), ~"-1.5");
+        assert_eq!(to_pretty_str(&Number(-1.5f)), ~"-1.5");
+
         assert_eq!(to_str(&Number(0.5f)), ~"0.5");
+        assert_eq!(to_pretty_str(&Number(0.5f)), ~"0.5");
     }
 
     #[test]
     fn test_write_str() {
         assert_eq!(to_str(&String(~"")), ~"\"\"");
+        assert_eq!(to_pretty_str(&String(~"")), ~"\"\"");
+
         assert_eq!(to_str(&String(~"foo")), ~"\"foo\"");
+        assert_eq!(to_pretty_str(&String(~"foo")), ~"\"foo\"");
     }
 
     #[test]
     fn test_write_bool() {
         assert_eq!(to_str(&Boolean(true)), ~"true");
+        assert_eq!(to_pretty_str(&Boolean(true)), ~"true");
+
         assert_eq!(to_str(&Boolean(false)), ~"false");
+        assert_eq!(to_pretty_str(&Boolean(false)), ~"false");
     }
 
     #[test]
     fn test_write_list() {
         assert_eq!(to_str(&List(~[])), ~"[]");
-        assert_eq!(to_str(&List(~[Boolean(true)])), ~"[true]");
-        assert_eq!(to_str(&List(~[
-            Boolean(false),
-            Null,
-            List(~[String(~"foo\nbar"), Number(3.5f)])
-        ])), ~"[false,null,[\"foo\\nbar\",3.5]]");
-    }
-
-    #[test]
-    fn test_write_list_pretty() {
         assert_eq!(to_pretty_str(&List(~[])), ~"[]");
+
+        assert_eq!(to_str(&List(~[Boolean(true)])), ~"[true]");
         assert_eq!(
             to_pretty_str(&List(~[Boolean(true)])),
             ~"\
@@ -1287,6 +1254,12 @@ mod tests {
                 true\n\
             ]"
         );
+
+        assert_eq!(to_str(&List(~[
+            Boolean(false),
+            Null,
+            List(~[String(~"foo\nbar"), Number(3.5f)])
+        ])), ~"[false,null,[\"foo\\nbar\",3.5]]");
         assert_eq!(
             to_pretty_str(&List(~[
                 Boolean(false),
@@ -1308,10 +1281,20 @@ mod tests {
     #[test]
     fn test_write_object() {
         assert_eq!(to_str(&mk_object(~[])), ~"{}");
+        assert_eq!(to_pretty_str(&mk_object(~[])), ~"{}");
+
         assert_eq!(
             to_str(&mk_object(~[(~"a", Boolean(true))])),
             ~"{\"a\":true}"
         );
+        assert_eq!(
+            to_pretty_str(&mk_object(~[(~"a", Boolean(true))])),
+            ~"\
+            {\n  \
+                \"a\": true\n\
+            }"
+        );
+
         assert_eq!(
             to_str(&mk_object(~[
                 (~"b", List(~[
@@ -1324,29 +1307,6 @@ mod tests {
                     {\"c\":\"\\f\\r\"},\
                     {\"d\":\"\"}\
                 ]\
-            }"
-        );
-        let a = mk_object(~[
-            (~"a", Boolean(true)),
-            (~"b", List(~[
-                mk_object(~[(~"c", String(~"\x0c\r"))]),
-                mk_object(~[(~"d", String(~""))])
-            ]))
-        ]);
-        // We can't compare the strings directly because the object fields be
-        // printed in a different order.
-        let b = from_str(to_str(&a)).unwrap();
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn test_write_object_pretty() {
-        assert_eq!(to_pretty_str(&mk_object(~[])), ~"{\n}");
-        assert_eq!(
-            to_pretty_str(&mk_object(~[(~"a", Boolean(true))])),
-            ~"\
-            {\n  \
-                \"a\": true\n\
             }"
         );
         assert_eq!(
@@ -1368,6 +1328,7 @@ mod tests {
                 ]\n\
             }"
         );
+
         let a = mk_object(~[
             (~"a", Boolean(true)),
             (~"b", List(~[
@@ -1375,63 +1336,44 @@ mod tests {
                 mk_object(~[(~"d", String(~""))])
             ]))
         ]);
+
         // We can't compare the strings directly because the object fields be
         // printed in a different order.
-        let b = from_str(to_str(&a)).unwrap();
-        assert_eq!(a, b);
-    }
-
-    #[auto_encode]
-    #[auto_decode]
-    #[deriving(Eq)]
-    enum Animal {
-        Dog,
-        Frog(~str, int)
+        assert_eq!(copy a, from_str(to_str(&a)).unwrap());
+        assert_eq!(copy a, from_str(to_pretty_str(&a)).unwrap());
     }
 
     #[test]
-    fn test_write_enum_no_args() {
+    fn test_write_enum() {
         let animal = Dog;
-
-        let s = do io::with_str_writer |wr| {
-            let encoder = Encoder(wr);
-            animal.encode(&encoder);
-        };
-        assert_eq!(s, ~"\"Dog\"");
-    }
-
-    #[test]
-    fn test_write_enum_no_args_pretty() {
-        let animal = Dog;
-
-        let s = do io::with_str_writer |wr| {
-            let encoder = PrettyEncoder(wr);
-            animal.encode(&encoder);
-        };
-        assert_eq!(s, ~"\"Dog\"");
-    }
-
-    #[test]
-    fn test_write_enum_multiple_args() {
-        let animal = Frog(~"Henry", 349);
-
-        let s = do io::with_str_writer |wr| {
-            let encoder = Encoder(wr);
-            animal.encode(&encoder);
-        };
-        assert_eq!(s, ~"[\"Frog\",\"Henry\",349]");
-    }
-
-    #[test]
-    fn test_write_enum_multiple_args_pretty() {
-        let animal = Frog(~"Henry", 349);
-
-        let s = do io::with_str_writer |wr| {
-            let encoder = PrettyEncoder(wr);
-            animal.encode(&encoder);
-        };
         assert_eq!(
-            s,
+            do io::with_str_writer |wr| {
+                let encoder = Encoder(wr);
+                animal.encode(&encoder);
+            },
+            ~"\"Dog\""
+        );
+        assert_eq!(
+            do io::with_str_writer |wr| {
+                let encoder = PrettyEncoder(wr);
+                animal.encode(&encoder);
+            },
+            ~"\"Dog\""
+        );
+
+        let animal = Frog(~"Henry", 349);
+        assert_eq!(
+            do io::with_str_writer |wr| {
+                let encoder = Encoder(wr);
+                animal.encode(&encoder);
+            },
+            ~"[\"Frog\",\"Henry\",349]"
+        );
+        assert_eq!(
+            do io::with_str_writer |wr| {
+                let encoder = PrettyEncoder(wr);
+                animal.encode(&encoder);
+            },
             ~"\
             [\n  \
                 \"Frog\",\n  \
@@ -1449,10 +1391,7 @@ mod tests {
             value.encode(&encoder);
         };
         assert_eq!(s, ~"\"jodhpurs\"");
-    }
 
-    #[test]
-    fn test_write_some_pretty() {
         let value = Some(~"jodhpurs");
         let s = do io::with_str_writer |wr| {
             let encoder = PrettyEncoder(wr);
@@ -1469,11 +1408,7 @@ mod tests {
             value.encode(&encoder);
         };
         assert_eq!(s, ~"null");
-    }
 
-    #[test]
-    fn test_write_none_pretty() {
-        let value: Option<~str> = None;
         let s = do io::with_str_writer |wr| {
             let encoder = Encoder(wr);
             value.encode(&encoder);
@@ -1523,6 +1458,18 @@ mod tests {
     }
 
     #[test]
+    fn test_decode_identifiers() {
+        let v: () = Decodable::decode(&Decoder(from_str(~"null").unwrap()));
+        assert_eq!(v, ());
+
+        let v: bool = Decodable::decode(&Decoder(from_str(~"true").unwrap()));
+        assert_eq!(v, true);
+
+        let v: bool = Decodable::decode(&Decoder(from_str(~"false").unwrap()));
+        assert_eq!(v, false);
+    }
+
+    #[test]
     fn test_read_number() {
         assert_eq!(from_str(~"+"),
             Err(Error {line: 1u, col: 1u, msg: @~"invalid syntax"}));
@@ -1551,6 +1498,30 @@ mod tests {
     }
 
     #[test]
+    fn test_decode_numbers() {
+        let v: float = Decodable::decode(&Decoder(from_str(~"3").unwrap()));
+        assert_eq!(v, 3f);
+
+        let v: float = Decodable::decode(&Decoder(from_str(~"3.1").unwrap()));
+        assert_eq!(v, 3.1f);
+
+        let v: float = Decodable::decode(&Decoder(from_str(~"-1.2").unwrap()));
+        assert_eq!(v, -1.2f);
+
+        let v: float = Decodable::decode(&Decoder(from_str(~"0.4").unwrap()));
+        assert_eq!(v, 0.4f);
+
+        let v: float = Decodable::decode(&Decoder(from_str(~"0.4e5").unwrap()));
+        assert_eq!(v, 0.4e5f);
+
+        let v: float = Decodable::decode(&Decoder(from_str(~"0.4e15").unwrap()));
+        assert_eq!(v, 0.4e15f);
+
+        let v: float = Decodable::decode(&Decoder(from_str(~"0.4e-01").unwrap()));
+        assert_eq!(v, 0.4e-01f);
+    }
+
+    #[test]
     fn test_read_str() {
         assert_eq!(from_str(~"\""),
             Err(Error {line: 1u, col: 2u, msg: @~"EOF while parsing string"
@@ -1567,12 +1538,38 @@ mod tests {
         assert_eq!(from_str(~"\"\\r\""), Ok(String(~"\r")));
         assert_eq!(from_str(~"\"\\t\""), Ok(String(~"\t")));
         assert_eq!(from_str(~" \"foo\" "), Ok(String(~"foo")));
+        assert_eq!(from_str(~"\"\\u12ab\""), Ok(String(~"\u12ab")));
+        assert_eq!(from_str(~"\"\\uAB12\""), Ok(String(~"\uAB12")));
     }
 
     #[test]
-    fn test_unicode_hex_escapes_in_str() {
-        assert_eq!(from_str(~"\"\\u12ab\""), Ok(String(~"\u12ab")));
-        assert_eq!(from_str(~"\"\\uAB12\""), Ok(String(~"\uAB12")));
+    fn test_decode_str() {
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\"").unwrap()));
+        assert_eq!(v, ~"");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"foo\"").unwrap()));
+        assert_eq!(v, ~"foo");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\\\"\"").unwrap()));
+        assert_eq!(v, ~"\"");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\\b\"").unwrap()));
+        assert_eq!(v, ~"\x08");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\\n\"").unwrap()));
+        assert_eq!(v, ~"\n");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\\r\"").unwrap()));
+        assert_eq!(v, ~"\r");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\\t\"").unwrap()));
+        assert_eq!(v, ~"\t");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\\u12ab\"").unwrap()));
+        assert_eq!(v, ~"\u12ab");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\\uAB12\"").unwrap()));
+        assert_eq!(v, ~"\uAB12");
     }
 
     #[test]
@@ -1599,6 +1596,28 @@ mod tests {
                      Ok(List(~[Number(3f), Number(2f)])));
         assert_eq!(from_str(~"[2, [4, 1]]"),
                Ok(List(~[Number(2f), List(~[Number(4f), Number(1f)])])));
+    }
+
+    #[test]
+    fn test_decode_list() {
+        let v: ~[()] = Decodable::decode(&Decoder(from_str(~"[]").unwrap()));
+        assert_eq!(v, ~[]);
+
+        let v: ~[()] = Decodable::decode(&Decoder(from_str(~"[null]").unwrap()));
+        assert_eq!(v, ~[()]);
+
+
+        let v: ~[bool] = Decodable::decode(&Decoder(from_str(~"[true]").unwrap()));
+        assert_eq!(v, ~[true]);
+
+        let v: ~[bool] = Decodable::decode(&Decoder(from_str(~"[true]").unwrap()));
+        assert_eq!(v, ~[true]);
+
+        let v: ~[int] = Decodable::decode(&Decoder(from_str(~"[3, 1]").unwrap()));
+        assert_eq!(v, ~[3, 1]);
+
+        let v: ~[~[uint]] = Decodable::decode(&Decoder(from_str(~"[[3], [1, 2]]").unwrap()));
+        assert_eq!(v, ~[~[3], ~[1, 2]]);
     }
 
     #[test]
@@ -1693,31 +1712,53 @@ mod tests {
     }
 
     #[test]
-    fn test_read_none() {
-        let decoder = Decoder(from_str(~"null").unwrap());
-        let value: Option<~str> = Decodable::decode(&decoder);
-        assert_eq!(value, None);
+    fn test_decode_struct() {
+        let s = ~"{
+            \"inner\": [
+                { \"a\": null, \"b\": 2, \"c\": [\"abc\", \"xyz\"] }
+            ]
+        }";
+        let v: Outer = Decodable::decode(&Decoder(from_str(s).unwrap()));
+        assert_eq!(
+            v,
+            Outer {
+                inner: ~[
+                    Inner { a: (), b: 2, c: ~[~"abc", ~"xyz"] }
+                ]
+            }
+        );
     }
 
     #[test]
-    fn test_read_some() {
+    fn test_decode_option() {
+        let decoder = Decoder(from_str(~"null").unwrap());
+        let value: Option<~str> = Decodable::decode(&decoder);
+        assert_eq!(value, None);
+
         let decoder = Decoder(from_str(~"\"jodhpurs\"").unwrap());
         let value: Option<~str> = Decodable::decode(&decoder);
         assert_eq!(value, Some(~"jodhpurs"));
     }
 
     #[test]
-    fn test_read_enum_no_args() {
+    fn test_decode_enum() {
         let decoder = Decoder(from_str(~"\"Dog\"").unwrap());
         let value: Animal = Decodable::decode(&decoder);
         assert_eq!(value, Dog);
-    }
 
-    #[test]
-    fn test_read_enum_multiple_args() {
         let decoder = Decoder(from_str(~"[\"Frog\",\"Henry\",349]").unwrap());
         let value: Animal = Decodable::decode(&decoder);
         assert_eq!(value, Frog(~"Henry", 349));
+    }
+
+    #[test]
+    fn test_decode_map() {
+        let s = ~"{\"a\": \"Dog\", \"b\": [\"Frog\", \"Henry\", 349]}";
+        let decoder = Decoder(from_str(s).unwrap());
+        let mut map: LinearMap<~str, Animal> = Decodable::decode(&decoder);
+
+        assert_eq!(map.pop(&~"a"), Some(Dog));
+        assert_eq!(map.pop(&~"b"), Some(Frog(~"Henry", 349)));
     }
 
     #[test]

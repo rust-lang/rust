@@ -22,20 +22,8 @@ use EBWriter = std::ebml::writer;
 use core::cmp::Eq;
 use core::io::Writer;
 use std::ebml;
-use std::prettyprint;
 use std::serialize::{Encodable, Decodable};
 use std::time;
-
-fn test_prettyprint<A:Encodable<prettyprint::Serializer>>(
-    a: &A,
-    expected: &~str
-) {
-    let s = do io::with_str_writer |w| {
-        a.encode(&prettyprint::Serializer(w))
-    };
-    debug!("s == %?", s);
-    assert!(s == *expected);
-}
 
 fn test_ebml<A:
     Eq +
@@ -149,36 +137,27 @@ enum CLike { A, B, C }
 
 pub fn main() {
     let a = &Plus(@Minus(@Val(3u), @Val(10u)), @Plus(@Val(22u), @Val(5u)));
-    test_prettyprint(a, &~"Plus(@Minus(@Val(3u), @Val(10u)), \
-                           @Plus(@Val(22u), @Val(5u)))");
     test_ebml(a);
 
     let a = &Spanned {lo: 0u, hi: 5u, node: 22u};
-    test_prettyprint(a, &~"Spanned {lo: 0u, hi: 5u, node: 22u}");
     test_ebml(a);
 
     let a = &Point {x: 3u, y: 5u};
-    test_prettyprint(a, &~"Point {x: 3u, y: 5u}");
     test_ebml(a);
 
     let a = &@[1u, 2u, 3u];
-    test_prettyprint(a, &~"@[1u, 2u, 3u]");
     test_ebml(a);
 
     let a = &Top(22u);
-    test_prettyprint(a, &~"Top(22u)");
     test_ebml(a);
 
     let a = &Bottom(222u);
-    test_prettyprint(a, &~"Bottom(222u)");
     test_ebml(a);
 
     let a = &A;
-    test_prettyprint(a, &~"A");
     test_ebml(a);
 
     let a = &B;
-    test_prettyprint(a, &~"B");
     test_ebml(a);
 
     let a = &time::now();

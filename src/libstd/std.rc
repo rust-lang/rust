@@ -88,7 +88,6 @@ pub mod md4;
 pub mod tempfile;
 pub mod term;
 pub mod time;
-pub mod prettyprint;
 pub mod arena;
 pub mod par;
 pub mod cmp;

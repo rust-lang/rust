@@ -560,6 +560,28 @@ pub fn consume<T>(mut v: ~[T], f: &fn(uint, v: T)) {
     }
 }
 
+pub fn consume_reverse<T>(mut v: ~[T], f: &fn(uint, v: T)) {
+    unsafe {
+        do as_mut_buf(v) |p, ln| {
+            let mut i = ln;
+            while i > 0 {
+                i -= 1;
+
+                // NB: This unsafe operation counts on init writing 0s to the
+                // holes we create in the vector. That ensures that, if the
+                // iterator fails then we won't try to clean up the consumed
+                // elements during unwinding
+                let mut x = intrinsics::init();
+                let p = ptr::mut_offset(p, i);
+                x <-> *p;
+                f(i, x);
+            }
+        }
+
+        raw::set_len(&mut v, 0);
+    }
+}
+
 /// Remove the last element from a vector and return it
 pub fn pop<T>(v: &mut ~[T]) -> T {
     let ln = v.len();
@@ -1985,6 +2007,7 @@ pub trait OwnedVector<T> {
     fn truncate(&mut self, newlen: uint);
     fn retain(&mut self, f: &fn(t: &T) -> bool);
     fn consume(self, f: &fn(uint, v: T));
+    fn consume_reverse(self, f: &fn(uint, v: T));
     fn filter(self, f: &fn(t: &T) -> bool) -> ~[T];
     fn partition(self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
     fn grow_fn(&mut self, n: uint, op: iter::InitOp<T>);
@@ -2044,6 +2067,11 @@ impl<T> OwnedVector<T> for ~[T] {
     #[inline]
     fn consume(self, f: &fn(uint, v: T)) {
         consume(self, f)
+    }
+
+    #[inline]
+    fn consume_reverse(self, f: &fn(uint, v: T)) {
+        consume_reverse(self, f)
     }
 
     #[inline]
