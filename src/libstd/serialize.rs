@@ -17,7 +17,10 @@ Core encoding and decoding interfaces.
 #[forbid(non_camel_case_types)];
 
 use core::prelude::*;
-use core::hashmap::linear::LinearMap;
+use core::dlist::DList;
+use core::hashmap::linear::{LinearMap, LinearSet};
+use core::trie::{TrieMap, TrieSet};
+use treemap::{TreeMap, TreeSet};
 
 pub trait Encoder {
     // Primitive types:
@@ -532,6 +535,33 @@ impl<
 }
 
 impl<
+    S: Encoder,
+    T: Encodable<S> + Copy
+> Encodable<S> for @mut DList<T> {
+    fn encode(&self, s: &S) {
+        do s.emit_seq(self.size) {
+            let mut i = 0;
+            for self.each |e| {
+                s.emit_seq_elt(i, || e.encode(s));
+                i += 1;
+            }
+        }
+    }
+}
+
+impl<D:Decoder,T:Decodable<D>> Decodable<D> for @mut DList<T> {
+    fn decode(d: &D) -> @mut DList<T> {
+        let list = DList();
+        do d.read_seq |len| {
+            for uint::range(0, len) |i| {
+                list.push(d.read_seq_elt(i, || Decodable::decode(d)));
+            }
+        }
+        list
+    }
+}
+
+impl<
     E: Encoder,
     K: Encodable<E> + Hash + IterBytes + Eq,
     V: Encodable<E>
@@ -562,6 +592,158 @@ impl<
                 map.insert(key, val);
             }
             map
+        }
+    }
+}
+
+impl<
+    S: Encoder,
+    T: Encodable<S> + Hash + IterBytes + Eq
+> Encodable<S> for LinearSet<T> {
+    fn encode(&self, s: &S) {
+        do s.emit_seq(self.len()) {
+            let mut i = 0;
+            for self.each |e| {
+                s.emit_seq_elt(i, || e.encode(s));
+                i += 1;
+            }
+        }
+    }
+}
+
+impl<
+    D: Decoder,
+    T: Decodable<D> + Hash + IterBytes + Eq
+> Decodable<D> for LinearSet<T> {
+    fn decode(d: &D) -> LinearSet<T> {
+        do d.read_seq |len| {
+            let mut set = LinearSet::with_capacity(len);
+            for uint::range(0, len) |i| {
+                set.insert(d.read_seq_elt(i, || Decodable::decode(d)));
+            }
+            set
+        }
+    }
+}
+
+impl<
+    E: Encoder,
+    V: Encodable<E>
+> Encodable<E> for TrieMap<V> {
+    fn encode(&self, e: &E) {
+        do e.emit_map(self.len()) {
+            let mut i = 0;
+            for self.each |&(key, val)| {
+                e.emit_map_elt_key(i, || key.encode(e));
+                e.emit_map_elt_val(i, || val.encode(e));
+                i += 1;
+            }
+        }
+    }
+}
+
+impl<
+    D: Decoder,
+    V: Decodable<D>
+> Decodable<D> for TrieMap<V> {
+    fn decode(d: &D) -> TrieMap<V> {
+        do d.read_map |len| {
+            let mut map = TrieMap::new();
+            for uint::range(0, len) |i| {
+                let key = d.read_map_elt_key(i, || Decodable::decode(d));
+                let val = d.read_map_elt_val(i, || Decodable::decode(d));
+                map.insert(key, val);
+            }
+            map
+        }
+    }
+}
+
+impl<S: Encoder> Encodable<S> for TrieSet {
+    fn encode(&self, s: &S) {
+        do s.emit_seq(self.len()) {
+            let mut i = 0;
+            for self.each |e| {
+                s.emit_seq_elt(i, || e.encode(s));
+                i += 1;
+            }
+        }
+    }
+}
+
+impl<D: Decoder> Decodable<D> for TrieSet {
+    fn decode(d: &D) -> TrieSet {
+        do d.read_seq |len| {
+            let mut set = TrieSet::new();
+            for uint::range(0, len) |i| {
+                set.insert(d.read_seq_elt(i, || Decodable::decode(d)));
+            }
+            set
+        }
+    }
+}
+
+impl<
+    E: Encoder,
+    K: Encodable<E> + Eq + TotalOrd,
+    V: Encodable<E> + Eq
+> Encodable<E> for TreeMap<K, V> {
+    fn encode(&self, e: &E) {
+        do e.emit_map(self.len()) {
+            let mut i = 0;
+            for self.each |&(key, val)| {
+                e.emit_map_elt_key(i, || key.encode(e));
+                e.emit_map_elt_val(i, || val.encode(e));
+                i += 1;
+            }
+        }
+    }
+}
+
+impl<
+    D: Decoder,
+    K: Decodable<D> + Eq + TotalOrd,
+    V: Decodable<D> + Eq
+> Decodable<D> for TreeMap<K, V> {
+    fn decode(d: &D) -> TreeMap<K, V> {
+        do d.read_map |len| {
+            let mut map = TreeMap::new();
+            for uint::range(0, len) |i| {
+                let key = d.read_map_elt_key(i, || Decodable::decode(d));
+                let val = d.read_map_elt_val(i, || Decodable::decode(d));
+                map.insert(key, val);
+            }
+            map
+        }
+    }
+}
+
+impl<
+    S: Encoder,
+    T: Encodable<S> + Eq + TotalOrd
+> Encodable<S> for TreeSet<T> {
+    fn encode(&self, s: &S) {
+        do s.emit_seq(self.len()) {
+            let mut i = 0;
+            for self.each |e| {
+                s.emit_seq_elt(i, || e.encode(s));
+                i += 1;
+            }
+        }
+    }
+}
+
+impl<
+    D: Decoder,
+    T: Decodable<D> + Eq + TotalOrd
+> Decodable<D> for TreeSet<T> {
+    fn decode(d: &D) -> TreeSet<T> {
+        do d.read_seq |len| {
+            let mut set = TreeSet::new();
+            for uint::range(0, len) |i| {
+                set.insert(d.read_seq_elt(i, || Decodable::decode(d)));
+            }
+            set
         }
     }
 }
