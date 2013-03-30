@@ -30,11 +30,20 @@ use opt_vec;
 
 use core::uint;
 
-pub mod eq;
 pub mod clone;
 pub mod iter_bytes;
 pub mod encodable;
 pub mod decodable;
+
+#[path="cmp/eq.rs"]
+pub mod eq;
+#[path="cmp/totaleq.rs"]
+pub mod totaleq;
+#[path="cmp/ord.rs"]
+pub mod ord;
+#[path="cmp/totalord.rs"]
+pub mod totalord;
+
 
 pub mod generic;
 
@@ -74,8 +83,6 @@ pub fn expand_meta_deriving(cx: @ext_ctxt,
                     meta_list(tname, _) |
                     meta_word(tname) => {
                         match *tname {
-                            ~"Eq" => eq::expand_deriving_eq(cx, titem.span,
-                                                            titem, in_items),
                             ~"Clone" => clone::expand_deriving_clone(cx,
                                 titem.span, titem, in_items),
                             ~"IterBytes" => iter_bytes::expand_deriving_iter_bytes(cx,
@@ -84,6 +91,14 @@ pub fn expand_meta_deriving(cx: @ext_ctxt,
                                 titem.span, titem, in_items),
                             ~"Decodable" => decodable::expand_deriving_decodable(cx,
                                 titem.span, titem, in_items),
+                            ~"Eq" => eq::expand_deriving_eq(cx, titem.span,
+                                                             titem, in_items),
+                            ~"TotalEq" => totaleq::expand_deriving_totaleq(cx, titem.span,
+                                                                           titem, in_items),
+                            ~"Ord" => ord::expand_deriving_ord(cx, titem.span,
+                                                               titem, in_items),
+                            ~"TotalOrd" => totalord::expand_deriving_totalord(cx, titem.span,
+                                                                              titem, in_items),
                             tname => {
                                 cx.span_err(titem.span, fmt!("unknown \
                                     `deriving` trait: `%s`", tname));
