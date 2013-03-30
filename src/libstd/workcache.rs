@@ -137,7 +137,11 @@ pub impl WorkKey {
     }
 }
 
-type WorkMap = LinearMap<WorkKey, ~str>;
+struct WorkMap(LinearMap<WorkKey, ~str>);
+
+impl WorkMap {
+    fn new() -> WorkMap { WorkMap(LinearMap::new()) }
+}
 
 impl<S:Encoder> Encodable<S> for WorkMap {
     fn encode(&self, s: &S) {
@@ -153,7 +157,7 @@ impl<S:Encoder> Encodable<S> for WorkMap {
 impl<D:Decoder> Decodable<D> for WorkMap {
     fn decode(d: &D) -> WorkMap {
         let v : ~[(WorkKey,~str)] = Decodable::decode(d);
-        let mut w = LinearMap::new();
+        let mut w = WorkMap::new();
         for v.each |&(k, v)| {
             w.insert(copy k, copy v);
         }
@@ -235,7 +239,7 @@ fn json_encode<T:Encodable<json::Encoder>>(t: &T) -> ~str {
 }
 
 // FIXME(#5121)
-fn json_decode<T:Decodable<json::Decoder<'static>>>(s: &str) -> T {
+fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
     do io::with_str_reader(s) |rdr| {
         let j = result::unwrap(json::from_reader(rdr));
         Decodable::decode(&json::Decoder(j))
@@ -260,18 +264,25 @@ pub impl Context {
     fn new(db: @Mut<Database>,
                   lg: @Mut<Logger>,
                   cfg: @json::Object) -> Context {
-        Context{db: db, logger: lg, cfg: cfg, freshness: LinearMap::new()}
+        Context {
+            db: db,
+            logger: lg,
+            cfg: cfg,
+            freshness: LinearMap::new()
+        }
     }
 
     fn prep<T:Owned +
               Encodable<json::Encoder> +
-              Decodable<json::Decoder<'static>>>( // FIXME(#5121)
+              Decodable<json::Decoder>>( // FIXME(#5121)
                   @self,
                   fn_name:&str,
                   blk: &fn(@Mut<Prep>)->Work<T>) -> Work<T> {
-        let p = @Mut(Prep {ctxt: self,
-                           fn_name: fn_name.to_owned(),
-                           declared_inputs: LinearMap::new()});
+        let p = @Mut(Prep {
+            ctxt: self,
+            fn_name: fn_name.to_owned(),
+            declared_inputs: WorkMap::new()
+        });
         blk(p)
     }
 }
@@ -283,7 +294,7 @@ trait TPrep {
     fn all_fresh(&self, cat:&str, map:&WorkMap) -> bool;
     fn exec<T:Owned +
               Encodable<json::Encoder> +
-              Decodable<json::Decoder<'static>>>( // FIXME(#5121)
+              Decodable<json::Decoder>>( // FIXME(#5121)
         &self, blk: ~fn(&Exec) -> T) -> Work<T>;
 }
 
@@ -324,7 +335,7 @@ impl TPrep for @Mut<Prep> {
 
     fn exec<T:Owned +
               Encodable<json::Encoder> +
-              Decodable<json::Decoder<'static>>>( // FIXME(#5121)
+              Decodable<json::Decoder>>( // FIXME(#5121)
             &self, blk: ~fn(&Exec) -> T) -> Work<T> {
         let mut bo = Some(blk);
 
@@ -349,8 +360,10 @@ impl TPrep for @Mut<Prep> {
                     let blk = blk.unwrap();
                     let chan = Cell(chan);
                     do task::spawn || {
-                        let exe = Exec{discovered_inputs: LinearMap::new(),
-                                       discovered_outputs: LinearMap::new()};
+                        let exe = Exec {
+                            discovered_inputs: WorkMap::new(),
+                            discovered_outputs: WorkMap::new(),
+                        };
                         let chan = chan.take();
                         let v = blk(&exe);
                         send_one(chan, (exe, v));
@@ -365,7 +378,7 @@ impl TPrep for @Mut<Prep> {
 
 pub impl<T:Owned +
          Encodable<json::Encoder> +
-         Decodable<json::Decoder<'static>>> Work<T> { // FIXME(#5121)
+         Decodable<json::Decoder>> Work<T> { // FIXME(#5121)
     fn new(p: @Mut<Prep>, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
         Work { prep: p, res: Some(e) }
     }
@@ -374,7 +387,7 @@ pub impl<T:Owned +
 // FIXME (#3724): movable self. This should be in impl Work.
 fn unwrap<T:Owned +
             Encodable<json::Encoder> +
-            Decodable<json::Decoder<'static>>>( // FIXME(#5121)
+            Decodable<json::Decoder>>( // FIXME(#5121)
         w: Work<T>) -> T {
     let mut ww = w;
     let mut s = None;

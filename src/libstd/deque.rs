@@ -66,6 +66,18 @@ pub impl<T> Deque<T> {
         get(self.elts, idx)
     }
 
+    /// Iterate over the elements in the deque
+    fn each(&self, f: &fn(&T) -> bool) {
+        self.eachi(|_i, e| f(e))
+    }
+
+    /// Iterate over the elements in the deque by index
+    fn eachi(&self, f: &fn(uint, &T) -> bool) {
+        for uint::range(0, self.nelts) |i| {
+            if !f(i, self.get(i as int)) { return; }
+        }
+    }
+
     /// Remove and return the first element in the deque
     ///
     /// Fails if the deque is empty
@@ -223,6 +235,7 @@ mod tests {
         assert!(*deq.get(3) == d);
     }
 
+    #[test]
     fn test_parameterized<T:Copy + Eq + Durable>(a: T, b: T, c: T, d: T) {
         let mut deq = Deque::new();
         assert!(deq.len() == 0);
@@ -299,5 +312,24 @@ mod tests {
         let reccy3 = RecCy { x: 1, y: 777, t: Three(1, 2, 3) };
         let reccy4 = RecCy { x: 19, y: 252, t: Two(17, 42) };
         test_parameterized::<RecCy>(reccy1, reccy2, reccy3, reccy4);
+    }
+
+    #[test]
+    fn test_eachi() {
+        let mut deq = Deque::new();
+        deq.add_back(1);
+        deq.add_back(2);
+        deq.add_back(3);
+
+        for deq.eachi |i, e| {
+            assert_eq!(*e, i + 1);
+        }
+
+        deq.pop_front();
+
+        for deq.eachi |i, e| {
+            assert_eq!(*e, i + 2);
+        }
+
     }
 }

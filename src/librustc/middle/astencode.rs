@@ -558,7 +558,7 @@ trait read_method_map_entry_helper {
 fn encode_method_map_entry(ecx: @e::EncodeContext,
                               ebml_w: writer::Encoder,
                               mme: method_map_entry) {
-    do ebml_w.emit_rec {
+    do ebml_w.emit_struct("method_map_entry", 3) {
         do ebml_w.emit_field(~"self_arg", 0u) {
             ebml_w.emit_arg(ecx, mme.self_arg);
         }
@@ -574,7 +574,7 @@ fn encode_method_map_entry(ecx: @e::EncodeContext,
 impl read_method_map_entry_helper for reader::Decoder {
     fn read_method_map_entry(&self, xcx: @ExtendedDecodeContext)
         -> method_map_entry {
-        do self.read_rec {
+        do self.read_struct("method_map_entry", 3) {
             method_map_entry {
                 self_arg: self.read_field(~"self_arg", 0u, || {
                     self.read_arg(xcx)
@@ -778,7 +778,7 @@ impl ebml_writer_helpers for writer::Encoder {
 
     fn emit_tpbt(&self, ecx: @e::EncodeContext,
                  tpbt: ty::ty_param_bounds_and_ty) {
-        do self.emit_rec {
+        do self.emit_struct("ty_param_bounds_and_ty", 3) {
             do self.emit_field(~"bounds", 0) {
                 do self.emit_from_vec(*tpbt.bounds) |bs| {
                     self.emit_bounds(ecx, *bs);
@@ -1045,7 +1045,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
     fn read_ty_param_bounds_and_ty(&self, xcx: @ExtendedDecodeContext)
         -> ty::ty_param_bounds_and_ty
     {
-        do self.read_rec {
+        do self.read_struct("ty_param_bounds_and_ty", 3) {
             ty::ty_param_bounds_and_ty {
                 bounds: self.read_field(~"bounds", 0u, || {
                     @self.read_to_vec(|| self.read_bounds(xcx) )
@@ -1212,7 +1212,6 @@ fn mk_ctxt() -> @fake_ext_ctxt {
 #[cfg(test)]
 fn roundtrip(in_item: Option<@ast::item>) {
     use core::io;
-    use std::prettyprint;
 
     let in_item = in_item.get();
     let bytes = do io::with_bytes_writer |wr| {
@@ -1222,17 +1221,7 @@ fn roundtrip(in_item: Option<@ast::item>) {
     let ebml_doc = reader::Doc(@bytes);
     let out_item = decode_item_ast(ebml_doc);
 
-    let exp_str = do io::with_str_writer |w| {
-        in_item.encode(&prettyprint::Serializer(w))
-    };
-    let out_str = do io::with_str_writer |w| {
-        out_item.encode(&prettyprint::Serializer(w))
-    };
-
-    debug!("expected string: %s", exp_str);
-    debug!("actual string  : %s", out_str);
-
-    assert!(exp_str == out_str);
+    assert_eq!(in_item, out_item);
 }
 
 #[test]
