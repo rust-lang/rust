@@ -1173,6 +1173,22 @@ mod tests {
         Frog(~str, int)
     }
 
+    #[auto_encode]
+    #[auto_decode]
+    #[deriving(Eq)]
+    struct Inner {
+        a: (),
+        b: uint,
+        c: ~[~str],
+    }
+
+    #[auto_encode]
+    #[auto_decode]
+    #[deriving(Eq)]
+    struct Outer {
+        inner: ~[Inner],
+    }
+
     fn mk_object(items: &[(~str, Json)]) -> Json {
         let mut d = ~LinearMap::new();
 
@@ -1442,6 +1458,18 @@ mod tests {
     }
 
     #[test]
+    fn test_decode_identifiers() {
+        let v: () = Decodable::decode(&Decoder(from_str(~"null").unwrap()));
+        assert_eq!(v, ());
+
+        let v: bool = Decodable::decode(&Decoder(from_str(~"true").unwrap()));
+        assert_eq!(v, true);
+
+        let v: bool = Decodable::decode(&Decoder(from_str(~"false").unwrap()));
+        assert_eq!(v, false);
+    }
+
+    #[test]
     fn test_read_number() {
         assert_eq!(from_str(~"+"),
             Err(Error {line: 1u, col: 1u, msg: @~"invalid syntax"}));
@@ -1470,6 +1498,30 @@ mod tests {
     }
 
     #[test]
+    fn test_decode_numbers() {
+        let v: float = Decodable::decode(&Decoder(from_str(~"3").unwrap()));
+        assert_eq!(v, 3f);
+
+        let v: float = Decodable::decode(&Decoder(from_str(~"3.1").unwrap()));
+        assert_eq!(v, 3.1f);
+
+        let v: float = Decodable::decode(&Decoder(from_str(~"-1.2").unwrap()));
+        assert_eq!(v, -1.2f);
+
+        let v: float = Decodable::decode(&Decoder(from_str(~"0.4").unwrap()));
+        assert_eq!(v, 0.4f);
+
+        let v: float = Decodable::decode(&Decoder(from_str(~"0.4e5").unwrap()));
+        assert_eq!(v, 0.4e5f);
+
+        let v: float = Decodable::decode(&Decoder(from_str(~"0.4e15").unwrap()));
+        assert_eq!(v, 0.4e15f);
+
+        let v: float = Decodable::decode(&Decoder(from_str(~"0.4e-01").unwrap()));
+        assert_eq!(v, 0.4e-01f);
+    }
+
+    #[test]
     fn test_read_str() {
         assert_eq!(from_str(~"\""),
             Err(Error {line: 1u, col: 2u, msg: @~"EOF while parsing string"
@@ -1486,12 +1538,38 @@ mod tests {
         assert_eq!(from_str(~"\"\\r\""), Ok(String(~"\r")));
         assert_eq!(from_str(~"\"\\t\""), Ok(String(~"\t")));
         assert_eq!(from_str(~" \"foo\" "), Ok(String(~"foo")));
+        assert_eq!(from_str(~"\"\\u12ab\""), Ok(String(~"\u12ab")));
+        assert_eq!(from_str(~"\"\\uAB12\""), Ok(String(~"\uAB12")));
     }
 
     #[test]
-    fn test_unicode_hex_escapes_in_str() {
-        assert_eq!(from_str(~"\"\\u12ab\""), Ok(String(~"\u12ab")));
-        assert_eq!(from_str(~"\"\\uAB12\""), Ok(String(~"\uAB12")));
+    fn test_decode_str() {
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\"").unwrap()));
+        assert_eq!(v, ~"");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"foo\"").unwrap()));
+        assert_eq!(v, ~"foo");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\\\"\"").unwrap()));
+        assert_eq!(v, ~"\"");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\\b\"").unwrap()));
+        assert_eq!(v, ~"\x08");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\\n\"").unwrap()));
+        assert_eq!(v, ~"\n");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\\r\"").unwrap()));
+        assert_eq!(v, ~"\r");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\\t\"").unwrap()));
+        assert_eq!(v, ~"\t");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\\u12ab\"").unwrap()));
+        assert_eq!(v, ~"\u12ab");
+
+        let v: ~str = Decodable::decode(&Decoder(from_str(~"\"\\uAB12\"").unwrap()));
+        assert_eq!(v, ~"\uAB12");
     }
 
     #[test]
@@ -1518,6 +1596,28 @@ mod tests {
                      Ok(List(~[Number(3f), Number(2f)])));
         assert_eq!(from_str(~"[2, [4, 1]]"),
                Ok(List(~[Number(2f), List(~[Number(4f), Number(1f)])])));
+    }
+
+    #[test]
+    fn test_decode_list() {
+        let v: ~[()] = Decodable::decode(&Decoder(from_str(~"[]").unwrap()));
+        assert_eq!(v, ~[]);
+
+        let v: ~[()] = Decodable::decode(&Decoder(from_str(~"[null]").unwrap()));
+        assert_eq!(v, ~[()]);
+
+
+        let v: ~[bool] = Decodable::decode(&Decoder(from_str(~"[true]").unwrap()));
+        assert_eq!(v, ~[true]);
+
+        let v: ~[bool] = Decodable::decode(&Decoder(from_str(~"[true]").unwrap()));
+        assert_eq!(v, ~[true]);
+
+        let v: ~[int] = Decodable::decode(&Decoder(from_str(~"[3, 1]").unwrap()));
+        assert_eq!(v, ~[3, 1]);
+
+        let v: ~[~[uint]] = Decodable::decode(&Decoder(from_str(~"[[3], [1, 2]]").unwrap()));
+        assert_eq!(v, ~[~[3], ~[1, 2]]);
     }
 
     #[test]
@@ -1612,35 +1712,47 @@ mod tests {
     }
 
     #[test]
-    fn test_read_none() {
-        let decoder = Decoder(from_str(~"null").unwrap());
-        let value: Option<~str> = Decodable::decode(&decoder);
-        assert_eq!(value, None);
+    fn test_decode_struct() {
+        let s = ~"{
+            \"inner\": [
+                { \"a\": null, \"b\": 2, \"c\": [\"abc\", \"xyz\"] }
+            ]
+        }";
+        let v: Outer = Decodable::decode(&Decoder(from_str(s).unwrap()));
+        assert_eq!(
+            v,
+            Outer {
+                inner: ~[
+                    Inner { a: (), b: 2, c: ~[~"abc", ~"xyz"] }
+                ]
+            }
+        );
     }
 
     #[test]
-    fn test_read_some() {
+    fn test_decode_option() {
+        let decoder = Decoder(from_str(~"null").unwrap());
+        let value: Option<~str> = Decodable::decode(&decoder);
+        assert_eq!(value, None);
+
         let decoder = Decoder(from_str(~"\"jodhpurs\"").unwrap());
         let value: Option<~str> = Decodable::decode(&decoder);
         assert_eq!(value, Some(~"jodhpurs"));
     }
 
     #[test]
-    fn test_read_enum_no_args() {
+    fn test_decode_enum() {
         let decoder = Decoder(from_str(~"\"Dog\"").unwrap());
         let value: Animal = Decodable::decode(&decoder);
         assert_eq!(value, Dog);
-    }
 
-    #[test]
-    fn test_read_enum_multiple_args() {
         let decoder = Decoder(from_str(~"[\"Frog\",\"Henry\",349]").unwrap());
         let value: Animal = Decodable::decode(&decoder);
         assert_eq!(value, Frog(~"Henry", 349));
     }
 
     #[test]
-    fn test_read_map() {
+    fn test_decode_map() {
         let s = ~"{\"a\": \"Dog\", \"b\": [\"Frog\", \"Henry\", 349]}";
         let decoder = Decoder(from_str(s).unwrap());
         let mut map: LinearMap<~str, Animal> = Decodable::decode(&decoder);
