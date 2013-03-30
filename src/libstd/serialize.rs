@@ -20,6 +20,7 @@ use core::prelude::*;
 use core::dlist::DList;
 use core::hashmap::linear::{LinearMap, LinearSet};
 use core::trie::{TrieMap, TrieSet};
+use deque::Deque;
 use treemap::{TreeMap, TreeSet};
 
 pub trait Encoder {
@@ -558,6 +559,31 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for @mut DList<T> {
             }
         }
         list
+    }
+}
+
+impl<
+    S: Encoder,
+    T: Encodable<S>
+> Encodable<S> for Deque<T> {
+    fn encode(&self, s: &S) {
+        do s.emit_seq(self.len()) {
+            for self.eachi |i, e| {
+                s.emit_seq_elt(i, || e.encode(s));
+            }
+        }
+    }
+}
+
+impl<D:Decoder,T:Decodable<D>> Decodable<D> for Deque<T> {
+    fn decode(d: &D) -> Deque<T> {
+        let mut deque = Deque::new();
+        do d.read_seq |len| {
+            for uint::range(0, len) |i| {
+                deque.add_back(d.read_seq_elt(i, || Decodable::decode(d)));
+            }
+        }
+        deque
     }
 }
 
