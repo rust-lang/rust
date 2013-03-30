@@ -20,6 +20,6 @@ pub fn main() {
     //debug!("%?", bt0);
     do cci_iter_lib::iter(~[1, 2, 3]) |i| {
         io::print(fmt!("%d", i));
-        //fail_unless!(bt0 == sys::rusti::frame_address(2u32));
+        //assert!(bt0 == sys::rusti::frame_address(2u32));
     }
 }

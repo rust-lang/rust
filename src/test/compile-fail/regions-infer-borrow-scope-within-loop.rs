@@ -19,10 +19,10 @@ fn foo(cond: &fn() -> bool, box: &fn() -> @int) {
 	// of this borrow is the fn body as a whole.
         y = borrow(x); //~ ERROR illegal borrow: cannot root managed value long enough
 
-        fail_unless!(*x == *y);
+        assert!(*x == *y);
         if cond() { break; }
     }
-    fail_unless!(*y != 0);
+    assert!(*y != 0);
 }
 
 fn main() {}

@@ -18,10 +18,10 @@ pub fn main() {
     let origin: Point = Point {x: 0, y: 0};
     let right: Point = Point {x: origin.x + 10,.. origin};
     let up: Point = Point {y: origin.y + 10,.. origin};
-    fail_unless!((origin.x == 0));
-    fail_unless!((origin.y == 0));
-    fail_unless!((right.x == 10));
-    fail_unless!((right.y == 0));
-    fail_unless!((up.x == 0));
-    fail_unless!((up.y == 10));
+    assert!((origin.x == 0));
+    assert!((origin.y == 0));
+    assert!((right.x == 10));
+    assert!((right.y == 0));
+    assert!((up.x == 0));
+    assert!((up.y == 10));
 }

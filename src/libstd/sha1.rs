@@ -74,7 +74,7 @@ pub fn sha1() -> @Sha1 {
           work_buf: @mut ~[u32]};
 
     fn add_input(st: &mut Sha1State, msg: &const [u8]) {
-        fail_unless!((!st.computed));
+        assert!((!st.computed));
         for vec::each_const(msg) |element| {
             st.msg_block[st.msg_block_idx] = *element;
             st.msg_block_idx += 1u;
@@ -90,8 +90,8 @@ pub fn sha1() -> @Sha1 {
         }
     }
     fn process_msg_block(st: &mut Sha1State) {
-        fail_unless!((vec::len(st.h) == digest_buf_len));
-        fail_unless!((vec::uniq_len(st.work_buf) == work_buf_len));
+        assert!((vec::len(st.h) == digest_buf_len));
+        assert!((vec::uniq_len(st.work_buf) == work_buf_len));
         let mut t: int; // Loop counter
         let mut w = st.work_buf;
 
@@ -192,7 +192,7 @@ pub fn sha1() -> @Sha1 {
      * can be assumed that the message digest has been computed.
      */
     fn pad_msg(st: &mut Sha1State) {
-        fail_unless!((vec::len((*st).msg_block) == msg_block_len));
+        assert!((vec::len((*st).msg_block) == msg_block_len));
 
         /*
          * Check to see if the current message block is too small to hold
@@ -230,7 +230,7 @@ pub fn sha1() -> @Sha1 {
 
     impl Sha1 for Sha1State {
         fn reset(&mut self) {
-            fail_unless!((vec::len(self.h) == digest_buf_len));
+            assert!((vec::len(self.h) == digest_buf_len));
             self.len_low = 0u32;
             self.len_high = 0u32;
             self.msg_block_idx = 0u;
@@ -366,13 +366,13 @@ mod tests {
             ];
             let tests = fips_180_1_tests + wikipedia_tests;
             fn check_vec_eq(v0: ~[u8], v1: ~[u8]) {
-                fail_unless!((vec::len::<u8>(v0) == vec::len::<u8>(v1)));
+                assert!((vec::len::<u8>(v0) == vec::len::<u8>(v1)));
                 let len = vec::len::<u8>(v0);
                 let mut i = 0u;
                 while i < len {
                     let a = v0[i];
                     let b = v1[i];
-                    fail_unless!((a == b));
+                    assert!((a == b));
                     i += 1u;
                 }
             }
@@ -385,8 +385,8 @@ mod tests {
                 check_vec_eq(t.output, out);
 
                 let out_str = sh.result_str();
-                fail_unless!((out_str.len() == 40));
-                fail_unless!((out_str == t.output_str));
+                assert!((out_str.len() == 40));
+                assert!((out_str == t.output_str));
 
                 sh.reset();
             }
@@ -406,8 +406,8 @@ mod tests {
                 check_vec_eq(t.output, out);
 
                 let out_str = sh.result_str();
-                fail_unless!((out_str.len() == 40));
-                fail_unless!((out_str == t.output_str));
+                assert!((out_str.len() == 40));
+                assert!((out_str == t.output_str));
 
                 sh.reset();
             }

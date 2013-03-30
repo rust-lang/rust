@@ -74,7 +74,7 @@ pub fn const_lit(cx: @CrateContext, e: @ast::expr, lit: ast::lit)
 pub fn const_ptrcast(cx: @CrateContext, a: ValueRef, t: TypeRef) -> ValueRef {
     unsafe {
         let b = llvm::LLVMConstPointerCast(a, T_ptr(t));
-        fail_unless!(cx.const_globals.insert(b as int, a));
+        assert!(cx.const_globals.insert(b as int, a));
         b
     }
 }
@@ -116,7 +116,7 @@ fn const_deref_ptr(cx: @CrateContext, v: ValueRef) -> ValueRef {
         None => v
     };
     unsafe {
-        fail_unless!(llvm::LLVMIsGlobalConstant(v) == True);
+        assert!(llvm::LLVMIsGlobalConstant(v) == True);
         llvm::LLVMGetInitializer(v)
     }
 }
@@ -131,7 +131,7 @@ fn const_deref(cx: @CrateContext, v: ValueRef, t: ty::t, explicit: bool)
     -> (ValueRef, ty::t) {
     match ty::deref(cx.tcx, t, explicit) {
         Some(ref mt) => {
-            fail_unless!(mt.mutbl != ast::m_mutbl);
+            assert!(mt.mutbl != ast::m_mutbl);
             let dv = match ty::get(t).sty {
                 ty::ty_ptr(*) | ty::ty_rptr(*) => {
                      const_deref_ptr(cx, v)
@@ -197,8 +197,8 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
             match adj.autoref {
                 None => { }
                 Some(ref autoref) => {
-                    fail_unless!(autoref.region == ty::re_static);
-                    fail_unless!(autoref.mutbl != ast::m_mutbl);
+                    assert!(autoref.region == ty::re_static);
+                    assert!(autoref.mutbl != ast::m_mutbl);
                     // Don't copy data to do a deref+ref.
                     let llptr = match maybe_ptr {
                         Some(ptr) => ptr,
@@ -211,8 +211,8 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                         ty::AutoBorrowVec => {
                             let size = machine::llsize_of(cx,
                                                           val_ty(llconst));
-                            fail_unless!(abi::slice_elt_base == 0);
-                            fail_unless!(abi::slice_elt_len == 1);
+                            assert!(abi::slice_elt_base == 0);
+                            assert!(abi::slice_elt_len == 1);
                             llconst = C_struct(~[llptr, size]);
                         }
                         _ => {
@@ -375,7 +375,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
               let len = match ty::get(bt).sty {
-                  ty::ty_estr(*) => {fail_unless!(len > 0); len - 1},
+                  ty::ty_estr(*) => {assert!(len > 0); len - 1},
                   _ => len
               };
               if iv >= len {
@@ -494,14 +494,14 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
             }
           }
           ast::expr_path(pth) => {
-            fail_unless!(pth.types.len() == 0);
+            assert!(pth.types.len() == 0);
             match cx.tcx.def_map.find(&e.id) {
                 Some(&ast::def_fn(def_id, _purity)) => {
                     if !ast_util::is_local(def_id) {
                         let ty = csearch::get_type(cx.tcx, def_id).ty;
                         base::trans_external_path(cx, def_id, ty)
                     } else {
-                        fail_unless!(ast_util::is_local(def_id));
+                        assert!(ast_util::is_local(def_id));
                         base::get_item_val(cx, def_id.node)
                     }
                 }

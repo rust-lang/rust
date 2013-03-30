@@ -25,16 +25,16 @@ mod m {
     #[cfg(target_arch = "x86")]
     pub fn main() {
         unsafe {
-            fail_unless!(::rusti::pref_align_of::<u64>() == 8u);
-            fail_unless!(::rusti::min_align_of::<u64>() == 4u);
+            assert!(::rusti::pref_align_of::<u64>() == 8u);
+            assert!(::rusti::min_align_of::<u64>() == 4u);
         }
     }
 
     #[cfg(target_arch = "x86_64")]
     pub fn main() {
         unsafe {
-            fail_unless!(::rusti::pref_align_of::<u64>() == 8u);
-            fail_unless!(::rusti::min_align_of::<u64>() == 8u);
+            assert!(::rusti::pref_align_of::<u64>() == 8u);
+            assert!(::rusti::min_align_of::<u64>() == 8u);
         }
     }
 }
@@ -44,8 +44,8 @@ mod m {
     #[cfg(target_arch = "x86")]
     pub fn main() {
         unsafe {
-            fail_unless!(::rusti::pref_align_of::<u64>() == 8u);
-            fail_unless!(::rusti::min_align_of::<u64>() == 8u);
+            assert!(::rusti::pref_align_of::<u64>() == 8u);
+            assert!(::rusti::min_align_of::<u64>() == 8u);
         }
     }
 }

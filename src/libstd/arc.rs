@@ -44,7 +44,7 @@ pub impl<'self> Condvar<'self> {
      */
     #[inline(always)]
     fn wait_on(&self, condvar_id: uint) {
-        fail_unless!(!*self.failed);
+        assert!(!*self.failed);
         self.cond.wait_on(condvar_id);
         // This is why we need to wrap sync::condvar.
         check_poison(self.is_mutex, *self.failed);
@@ -60,7 +60,7 @@ pub impl<'self> Condvar<'self> {
      */
     #[inline(always)]
     fn signal_on(&self, condvar_id: uint) -> bool {
-        fail_unless!(!*self.failed);
+        assert!(!*self.failed);
         self.cond.signal_on(condvar_id)
     }
 
@@ -74,7 +74,7 @@ pub impl<'self> Condvar<'self> {
      */
     #[inline(always)]
     fn broadcast_on(&self, condvar_id: uint) -> uint {
-        fail_unless!(!*self.failed);
+        assert!(!*self.failed);
         self.cond.broadcast_on(condvar_id)
     }
 }
@@ -230,7 +230,7 @@ struct PoisonOnFail {
 impl Drop for PoisonOnFail {
     fn finalize(&self) {
         unsafe {
-            /* fail_unless!(!*self.failed);
+            /* assert!(!*self.failed);
                -- might be false in case of cond.wait() */
             if task::failing() {
                 *self.failed = true;
@@ -392,7 +392,7 @@ pub impl<T:Const + Owned> RWARC<T> {
         // of this cast is removing the mutability.)
         let new_data = unsafe { cast::transmute_immut(data) };
         // Downgrade ensured the token belonged to us. Just a sanity check.
-        fail_unless!(ptr::ref_eq(&state.data, new_data));
+        assert!(ptr::ref_eq(&state.data, new_data));
         // Produce new token
         RWReadMode {
             data: new_data,
@@ -505,13 +505,13 @@ mod tests {
             let arc_v = p.recv();
 
             let v = *arc::get::<~[int]>(&arc_v);
-            fail_unless!(v[3] == 4);
+            assert!(v[3] == 4);
         };
 
         let c = p.recv();
         c.send(arc::clone(&arc_v));
 
-        fail_unless!((*arc::get(&arc_v))[2] == 3);
+        assert!((*arc::get(&arc_v))[2] == 3);
 
         info!(arc_v);
     }
@@ -532,7 +532,7 @@ mod tests {
         }
         do arc.access_cond |state, cond| {
             comm::send_one(c.take(), ());
-            fail_unless!(!*state);
+            assert!(!*state);
             while !*state {
                 cond.wait();
             }
@@ -549,7 +549,7 @@ mod tests {
             do arc2.access_cond |one, cond| {
                 cond.signal();
                 // Parent should fail when it wakes up.
-                fail_unless!(*one == 0);
+                assert!(*one == 0);
             }
         }
 
@@ -566,11 +566,11 @@ mod tests {
         let arc2 = ~arc.clone();
         do task::try || {
             do arc2.access |one| {
-                fail_unless!(*one == 2);
+                assert!(*one == 2);
             }
         };
         do arc.access |one| {
-            fail_unless!(*one == 1);
+            assert!(*one == 1);
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -579,11 +579,11 @@ mod tests {
         let arc2 = (*arc).clone();
         do task::try || {
             do arc2.write |one| {
-                fail_unless!(*one == 2);
+                assert!(*one == 2);
             }
         };
         do arc.read |one| {
-            fail_unless!(*one == 1);
+            assert!(*one == 1);
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -592,11 +592,11 @@ mod tests {
         let arc2 = (*arc).clone();
         do task::try || {
             do arc2.write |one| {
-                fail_unless!(*one == 2);
+                assert!(*one == 2);
             }
         };
         do arc.write |one| {
-            fail_unless!(*one == 1);
+            assert!(*one == 1);
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -606,12 +606,12 @@ mod tests {
         do task::try || {
             do arc2.write_downgrade |write_mode| {
                 do (&write_mode).write |one| {
-                    fail_unless!(*one == 2);
+                    assert!(*one == 2);
                 }
             }
         };
         do arc.write |one| {
-            fail_unless!(*one == 1);
+            assert!(*one == 1);
         }
     }
     #[test] #[ignore(cfg(windows))]
@@ -620,11 +620,11 @@ mod tests {
         let arc2 = (*arc).clone();
         do task::try || {
             do arc2.read |one| {
-                fail_unless!(*one == 2);
+                assert!(*one == 2);
             }
         };
         do arc.read |one| {
-            fail_unless!(*one == 1);
+            assert!(*one == 1);
         }
     }
     #[test] #[ignore(cfg(windows))]
@@ -633,11 +633,11 @@ mod tests {
         let arc2 = (*arc).clone();
         do task::try || {
             do arc2.read |one| {
-                fail_unless!(*one == 2);
+                assert!(*one == 2);
             }
         };
         do arc.write |one| {
-            fail_unless!(*one == 1);
+            assert!(*one == 1);
         }
     }
     #[test] #[ignore(cfg(windows))]
@@ -648,12 +648,12 @@ mod tests {
             do arc2.write_downgrade |write_mode| {
                 let read_mode = arc2.downgrade(write_mode);
                 do (&read_mode).read |one| {
-                    fail_unless!(*one == 2);
+                    assert!(*one == 2);
                 }
             }
         };
         do arc.write |one| {
-            fail_unless!(*one == 1);
+            assert!(*one == 1);
         }
     }
     #[test]
@@ -681,7 +681,7 @@ mod tests {
             do task::task().future_result(|+r| children.push(r)).spawn
                 || {
                 do arc3.read |num| {
-                    fail_unless!(*num >= 0);
+                    assert!(*num >= 0);
                 }
             }
         }
@@ -691,7 +691,7 @@ mod tests {
 
         // Wait for writer to finish
         p.recv();
-        do arc.read |num| { fail_unless!(*num == 10); }
+        do arc.read |num| { assert!(*num == 10); }
     }
     #[test]
     pub fn test_rw_downgrade() {
@@ -712,7 +712,7 @@ mod tests {
             do task::spawn || {
                 rp1.recv(); // wait for downgrader to give go-ahead
                 do arcn.read |state| {
-                    fail_unless!(*state == 31337);
+                    assert!(*state == 31337);
                     rc2.send(());
                 }
             }
@@ -724,7 +724,7 @@ mod tests {
         do task::spawn || {
             wp1.recv();
             do arc2.write_cond |state, cond| {
-                fail_unless!(*state == 0);
+                assert!(*state == 0);
                 *state = 42;
                 cond.signal();
             }
@@ -732,7 +732,7 @@ mod tests {
             do arc2.write |state| {
                 // This shouldn't happen until after the downgrade read
                 // section, and all other readers, finish.
-                fail_unless!(*state == 31337);
+                assert!(*state == 31337);
                 *state = 42;
             }
             wc2.send(());
@@ -745,7 +745,7 @@ mod tests {
                 while *state == 0 {
                     cond.wait();
                 }
-                fail_unless!(*state == 42);
+                assert!(*state == 42);
                 *state = 31337;
                 // send to other readers
                 for vec::each(reader_convos) |x| {
@@ -763,7 +763,7 @@ mod tests {
                     }
                 }
                 wc1.send(()); // tell writer to try again
-                fail_unless!(*state == 31337);
+                assert!(*state == 31337);
             }
         }
 

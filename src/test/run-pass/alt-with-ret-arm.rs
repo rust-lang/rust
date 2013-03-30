@@ -16,6 +16,6 @@ pub fn main() {
         None => return (),
         Some(num) => num as u32
     };
-    fail_unless!(f == 1234u32);
+    assert!(f == 1234u32);
     error!(f)
 }

@@ -47,7 +47,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                       impl_did_opt: Option<ast::def_id>,
                       ref_id: Option<ast::node_id>) ->
                       (ValueRef, bool) {
-    fail_unless!(real_substs.all(|t| !ty::type_needs_infer(*t)));
+    assert!(real_substs.all(|t| !ty::type_needs_infer(*t)));
     let _icx = ccx.insn_ctxt("monomorphic_fn");
     let mut must_cast = false;
     let substs = vec::map(real_substs, |t| {
@@ -57,8 +57,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         }
     });
 
-    for real_substs.each() |s| { fail_unless!(!ty::type_has_params(*s)); }
-    for substs.each() |s| { fail_unless!(!ty::type_has_params(*s)); }
+    for real_substs.each() |s| { assert!(!ty::type_has_params(*s)); }
+    for substs.each() |s| { assert!(!ty::type_has_params(*s)); }
     let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
     // XXX: Bad copy.
     let hash_id = make_mono_id(ccx, fn_id, copy substs, vtables, impl_did_opt,

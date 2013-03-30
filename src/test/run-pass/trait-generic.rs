@@ -42,8 +42,8 @@ fn bar<U:to_str,T:map<U>>(x: T) -> ~[~str] {
 }
 
 pub fn main() {
-    fail_unless!(foo(~[1]) == ~[~"hi"]);
-    fail_unless!(bar::<int, ~[int]>(~[4, 5]) == ~[~"4", ~"5"]);
-    fail_unless!(bar::<~str, ~[~str]>(~[~"x", ~"y"]) == ~[~"x", ~"y"]);
-    fail_unless!(bar::<(), ~[()]>(~[()]) == ~[~"()"]);
+    assert!(foo(~[1]) == ~[~"hi"]);
+    assert!(bar::<int, ~[int]>(~[4, 5]) == ~[~"4", ~"5"]);
+    assert!(bar::<~str, ~[~str]>(~[~"x", ~"y"]) == ~[~"x", ~"y"]);
+    assert!(bar::<(), ~[()]>(~[()]) == ~[~"()"]);
 }

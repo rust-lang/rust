@@ -241,104 +241,104 @@ impl ToStrRadix for T {
 
 #[test]
 pub fn test_to_str() {
-    fail_unless!(to_str_radix(0 as T, 10u) == ~"0");
-    fail_unless!(to_str_radix(1 as T, 10u) == ~"1");
-    fail_unless!(to_str_radix(2 as T, 10u) == ~"2");
-    fail_unless!(to_str_radix(11 as T, 10u) == ~"11");
-    fail_unless!(to_str_radix(11 as T, 16u) == ~"b");
-    fail_unless!(to_str_radix(255 as T, 16u) == ~"ff");
-    fail_unless!(to_str_radix(0xff as T, 10u) == ~"255");
+    assert!(to_str_radix(0 as T, 10u) == ~"0");
+    assert!(to_str_radix(1 as T, 10u) == ~"1");
+    assert!(to_str_radix(2 as T, 10u) == ~"2");
+    assert!(to_str_radix(11 as T, 10u) == ~"11");
+    assert!(to_str_radix(11 as T, 16u) == ~"b");
+    assert!(to_str_radix(255 as T, 16u) == ~"ff");
+    assert!(to_str_radix(0xff as T, 10u) == ~"255");
 }
 
 #[test]
 pub fn test_from_str() {
-    fail_unless!(from_str(~"0") == Some(0u as T));
-    fail_unless!(from_str(~"3") == Some(3u as T));
-    fail_unless!(from_str(~"10") == Some(10u as T));
-    fail_unless!(u32::from_str(~"123456789") == Some(123456789 as u32));
-    fail_unless!(from_str(~"00100") == Some(100u as T));
+    assert!(from_str(~"0") == Some(0u as T));
+    assert!(from_str(~"3") == Some(3u as T));
+    assert!(from_str(~"10") == Some(10u as T));
+    assert!(u32::from_str(~"123456789") == Some(123456789 as u32));
+    assert!(from_str(~"00100") == Some(100u as T));
 
-    fail_unless!(from_str(~"").is_none());
-    fail_unless!(from_str(~" ").is_none());
-    fail_unless!(from_str(~"x").is_none());
+    assert!(from_str(~"").is_none());
+    assert!(from_str(~" ").is_none());
+    assert!(from_str(~"x").is_none());
 }
 
 #[test]
 pub fn test_parse_bytes() {
     use str::to_bytes;
-    fail_unless!(parse_bytes(to_bytes(~"123"), 10u) == Some(123u as T));
-    fail_unless!(parse_bytes(to_bytes(~"1001"), 2u) == Some(9u as T));
-    fail_unless!(parse_bytes(to_bytes(~"123"), 8u) == Some(83u as T));
-    fail_unless!(u16::parse_bytes(to_bytes(~"123"), 16u) ==
+    assert!(parse_bytes(to_bytes(~"123"), 10u) == Some(123u as T));
+    assert!(parse_bytes(to_bytes(~"1001"), 2u) == Some(9u as T));
+    assert!(parse_bytes(to_bytes(~"123"), 8u) == Some(83u as T));
+    assert!(u16::parse_bytes(to_bytes(~"123"), 16u) ==
                  Some(291u as u16));
-    fail_unless!(u16::parse_bytes(to_bytes(~"ffff"), 16u) ==
+    assert!(u16::parse_bytes(to_bytes(~"ffff"), 16u) ==
                  Some(65535u as u16));
-    fail_unless!(parse_bytes(to_bytes(~"z"), 36u) == Some(35u as T));
+    assert!(parse_bytes(to_bytes(~"z"), 36u) == Some(35u as T));
 
-    fail_unless!(parse_bytes(to_bytes(~"Z"), 10u).is_none());
-    fail_unless!(parse_bytes(to_bytes(~"_"), 2u).is_none());
+    assert!(parse_bytes(to_bytes(~"Z"), 10u).is_none());
+    assert!(parse_bytes(to_bytes(~"_"), 2u).is_none());
 }
 
 #[test]
 fn test_uint_to_str_overflow() {
     let mut u8_val: u8 = 255_u8;
-    fail_unless!((u8::to_str(u8_val) == ~"255"));
+    assert!((u8::to_str(u8_val) == ~"255"));
 
     u8_val += 1 as u8;
-    fail_unless!((u8::to_str(u8_val) == ~"0"));
+    assert!((u8::to_str(u8_val) == ~"0"));
 
     let mut u16_val: u16 = 65_535_u16;
-    fail_unless!((u16::to_str(u16_val) == ~"65535"));
+    assert!((u16::to_str(u16_val) == ~"65535"));
 
     u16_val += 1 as u16;
-    fail_unless!((u16::to_str(u16_val) == ~"0"));
+    assert!((u16::to_str(u16_val) == ~"0"));
 
     let mut u32_val: u32 = 4_294_967_295_u32;
-    fail_unless!((u32::to_str(u32_val) == ~"4294967295"));
+    assert!((u32::to_str(u32_val) == ~"4294967295"));
 
     u32_val += 1 as u32;
-    fail_unless!((u32::to_str(u32_val) == ~"0"));
+    assert!((u32::to_str(u32_val) == ~"0"));
 
     let mut u64_val: u64 = 18_446_744_073_709_551_615_u64;
-    fail_unless!((u64::to_str(u64_val) == ~"18446744073709551615"));
+    assert!((u64::to_str(u64_val) == ~"18446744073709551615"));
 
     u64_val += 1 as u64;
-    fail_unless!((u64::to_str(u64_val) == ~"0"));
+    assert!((u64::to_str(u64_val) == ~"0"));
 }
 
 #[test]
 fn test_uint_from_str_overflow() {
     let mut u8_val: u8 = 255_u8;
-    fail_unless!((u8::from_str(~"255") == Some(u8_val)));
-    fail_unless!((u8::from_str(~"256").is_none()));
+    assert!((u8::from_str(~"255") == Some(u8_val)));
+    assert!((u8::from_str(~"256").is_none()));
 
     u8_val += 1 as u8;
-    fail_unless!((u8::from_str(~"0") == Some(u8_val)));
-    fail_unless!((u8::from_str(~"-1").is_none()));
+    assert!((u8::from_str(~"0") == Some(u8_val)));
+    assert!((u8::from_str(~"-1").is_none()));
 
     let mut u16_val: u16 = 65_535_u16;
-    fail_unless!((u16::from_str(~"65535") == Some(u16_val)));
-    fail_unless!((u16::from_str(~"65536").is_none()));
+    assert!((u16::from_str(~"65535") == Some(u16_val)));
+    assert!((u16::from_str(~"65536").is_none()));
 
     u16_val += 1 as u16;
-    fail_unless!((u16::from_str(~"0") == Some(u16_val)));
-    fail_unless!((u16::from_str(~"-1").is_none()));
+    assert!((u16::from_str(~"0") == Some(u16_val)));
+    assert!((u16::from_str(~"-1").is_none()));
 
     let mut u32_val: u32 = 4_294_967_295_u32;
-    fail_unless!((u32::from_str(~"4294967295") == Some(u32_val)));
-    fail_unless!((u32::from_str(~"4294967296").is_none()));
+    assert!((u32::from_str(~"4294967295") == Some(u32_val)));
+    assert!((u32::from_str(~"4294967296").is_none()));
 
     u32_val += 1 as u32;
-    fail_unless!((u32::from_str(~"0") == Some(u32_val)));
-    fail_unless!((u32::from_str(~"-1").is_none()));
+    assert!((u32::from_str(~"0") == Some(u32_val)));
+    assert!((u32::from_str(~"-1").is_none()));
 
     let mut u64_val: u64 = 18_446_744_073_709_551_615_u64;
-    fail_unless!((u64::from_str(~"18446744073709551615") == Some(u64_val)));
-    fail_unless!((u64::from_str(~"18446744073709551616").is_none()));
+    assert!((u64::from_str(~"18446744073709551615") == Some(u64_val)));
+    assert!((u64::from_str(~"18446744073709551616").is_none()));
 
     u64_val += 1 as u64;
-    fail_unless!((u64::from_str(~"0") == Some(u64_val)));
-    fail_unless!((u64::from_str(~"-1").is_none()));
+    assert!((u64::from_str(~"0") == Some(u64_val)));
+    assert!((u64::from_str(~"-1").is_none()));
 }
 
 #[test]
@@ -372,7 +372,7 @@ pub fn test_ranges() {
         l.push(i);
     }
 
-    fail_unless!(l == ~[0,1,2,
+    assert!(l == ~[0,1,2,
                         13,12,11,
                         20,22,24,
                         36,34,32]);
@@ -397,11 +397,11 @@ pub fn test_num() {
     let ten: T = num::cast(10);
     let two: T = num::cast(2);
 
-    fail_unless!((ten.add(&two)    == num::cast(12)));
-    fail_unless!((ten.sub(&two)    == num::cast(8)));
-    fail_unless!((ten.mul(&two)    == num::cast(20)));
-    fail_unless!((ten.div(&two)    == num::cast(5)));
-    fail_unless!((ten.modulo(&two) == num::cast(0)));
+    assert!((ten.add(&two)    == num::cast(12)));
+    assert!((ten.sub(&two)    == num::cast(8)));
+    assert!((ten.mul(&two)    == num::cast(20)));
+    assert!((ten.div(&two)    == num::cast(5)));
+    assert!((ten.modulo(&two) == num::cast(0)));
 }
 
 #[test]

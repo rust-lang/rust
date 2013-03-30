@@ -27,7 +27,7 @@ pub fn main() {
   //  fn b(x:int) -> int { fail!(); }
 
   let z = b(42);
-  fail_unless!((z.i == 42));
-  fail_unless!((z.do_stuff() == 37));
+  assert!((z.i == 42));
+  assert!((z.do_stuff() == 37));
   
 }

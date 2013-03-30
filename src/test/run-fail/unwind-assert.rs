@@ -12,5 +12,5 @@
 
 fn main() {
     let a = @0;
-    fail_unless!(false);
+    assert!(false);
 }

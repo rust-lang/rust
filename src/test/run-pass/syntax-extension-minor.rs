@@ -11,8 +11,8 @@
 
 pub fn main() {
     let asdf_fdsa = ~"<.<";
-    fail_unless!((concat_idents!(asd, f_f, dsa) == ~"<.<"));
+    assert!((concat_idents!(asd, f_f, dsa) == ~"<.<"));
 
-    fail_unless!(stringify!(use_mention_distinction) ==
+    assert!(stringify!(use_mention_distinction) ==
                 ~"use_mention_distinction");
 }

@@ -80,12 +80,12 @@ pub impl<T> Cell<T> {
 #[test]
 fn test_basic() {
     let value_cell = Cell(~10);
-    fail_unless!(!value_cell.is_empty());
+    assert!(!value_cell.is_empty());
     let value = value_cell.take();
-    fail_unless!(value == ~10);
-    fail_unless!(value_cell.is_empty());
+    assert!(value == ~10);
+    assert!(value_cell.is_empty());
     value_cell.put_back(value);
-    fail_unless!(!value_cell.is_empty());
+    assert!(!value_cell.is_empty());
 }
 
 #[test]

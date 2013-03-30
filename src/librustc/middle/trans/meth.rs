@@ -327,7 +327,7 @@ pub fn trans_static_method_callee(bcx: block,
 
     match vtbls[bound_index] {
         typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
-            fail_unless!(rcvr_substs.all(|t| !ty::type_needs_infer(*t)));
+            assert!(rcvr_substs.all(|t| !ty::type_needs_infer(*t)));
 
             let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
             let callee_substs = combine_impl_and_methods_tps(

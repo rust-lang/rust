@@ -13,5 +13,5 @@ fn foo() -> int { 22 }
 pub fn main() {
     let mut x: ~[@fn() -> int] = ~[];
     x.push(foo);
-    fail_unless!((x[0])() == 22);
+    assert!((x[0])() == 22);
 }

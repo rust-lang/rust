@@ -47,18 +47,18 @@ impl Equal for ColorTree {
 }
 
 pub fn main() {
-    fail_unless!(Equal::isEq(cyan, cyan));
-    fail_unless!(Equal::isEq(magenta, magenta));
-    fail_unless!(!Equal::isEq(cyan, yellow));
-    fail_unless!(!Equal::isEq(magenta, cyan));
+    assert!(Equal::isEq(cyan, cyan));
+    assert!(Equal::isEq(magenta, magenta));
+    assert!(!Equal::isEq(cyan, yellow));
+    assert!(!Equal::isEq(magenta, cyan));
 
-    fail_unless!(Equal::isEq(leaf(cyan), leaf(cyan)));
-    fail_unless!(!Equal::isEq(leaf(cyan), leaf(yellow)));
+    assert!(Equal::isEq(leaf(cyan), leaf(cyan)));
+    assert!(!Equal::isEq(leaf(cyan), leaf(yellow)));
 
-    fail_unless!(Equal::isEq(branch(@leaf(magenta), @leaf(cyan)),
+    assert!(Equal::isEq(branch(@leaf(magenta), @leaf(cyan)),
                 branch(@leaf(magenta), @leaf(cyan))));
 
-    fail_unless!(!Equal::isEq(branch(@leaf(magenta), @leaf(cyan)),
+    assert!(!Equal::isEq(branch(@leaf(magenta), @leaf(cyan)),
                  branch(@leaf(magenta), @leaf(magenta))));
 
     error!("Assertions all succeeded!");

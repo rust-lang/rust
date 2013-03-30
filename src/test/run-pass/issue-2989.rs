@@ -41,5 +41,5 @@ pub fn main() {
         io::println(fmt!("%u => %u vs %u", i, bools[i] as uint, bools2[i] as uint));
     }
 
-    fail_unless!(bools == bools2);
+    assert!(bools == bools2);
 }

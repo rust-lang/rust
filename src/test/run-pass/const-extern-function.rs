@@ -18,6 +18,6 @@ struct S {
 }
 
 pub fn main() {
-    fail_unless!(foopy == f);
-    fail_unless!(f == s.f);
+    assert!(foopy == f);
+    assert!(f == s.f);
 }

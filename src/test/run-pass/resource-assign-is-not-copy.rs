@@ -36,5 +36,5 @@ pub fn main() {
         let (c, _d) = b;
         debug!(c);
     }
-    fail_unless!(*i == 1);
+    assert!(*i == 1);
 }

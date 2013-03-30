@@ -19,5 +19,5 @@ pub fn main() {
         })
     )
 
-    fail_unless!(mylambda_tt!(y, y * 2)(8) == 16)
+    assert!(mylambda_tt!(y, y * 2)(8) == 16)
 }

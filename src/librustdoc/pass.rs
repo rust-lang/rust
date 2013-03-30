@@ -93,6 +93,6 @@ fn test_run_passes() {
         ];
         let doc = extract::from_srv(srv.clone(), ~"one");
         let doc = run_passes(srv, doc, passes);
-        fail_unless!(doc.cratemod().name() == ~"onetwothree");
+        assert!(doc.cratemod().name() == ~"onetwothree");
     }
 }

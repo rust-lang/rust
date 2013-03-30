@@ -19,5 +19,5 @@ fn f(p: &mut Point) { p.z = 13; }
 pub fn main() {
     let mut x: Point = Point {x: 10, y: 11, z: 12};
     f(&mut x);
-    fail_unless!((x.z == 13));
+    assert!((x.z == 13));
 }

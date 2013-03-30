@@ -21,5 +21,5 @@ fn f<T, V: A<T>>(i: V, j: T) -> T {
 }
 
 pub fn main () {
-    fail_unless!(f(0, 2) == 2);
+    assert!(f(0, 2) == 2);
 }

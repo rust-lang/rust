@@ -29,8 +29,8 @@ fn cat(in_x: uint, in_y: int) -> cat {
 pub fn main() {
   let mut nyan: cat = cat(52u, 99);
   let mut kitty = cat(1000u, 2);
-  fail_unless!((nyan.how_hungry == 99));
-  fail_unless!((kitty.how_hungry == 2));
+  assert!((nyan.how_hungry == 99));
+  assert!((kitty.how_hungry == 2));
   nyan.speak();
-  fail_unless!((nyan.meow_count() == 53u));
+  assert!((nyan.meow_count() == 53u));
 }

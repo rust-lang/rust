@@ -12,6 +12,6 @@ pub fn main() {
     let mut i = ~100;
     let mut j = ~200;
     i <-> j;
-    fail_unless!(i == ~200);
-    fail_unless!(j == ~100);
+    assert!(i == ~200);
+    assert!(j == ~100);
 }

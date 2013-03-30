@@ -12,12 +12,12 @@ pub fn main() {
     let mut a = ~[~10];
     let b = a.clone();
 
-    fail_unless!(*a[0] == 10);
-    fail_unless!(*b[0] == 10);
+    assert!(*a[0] == 10);
+    assert!(*b[0] == 10);
 
     // This should only modify the value in a, not b
     *a[0] = 20;
 
-    fail_unless!(*a[0] == 20);
-    fail_unless!(*b[0] == 10);
+    assert!(*a[0] == 20);
+    assert!(*b[0] == 10);
 }

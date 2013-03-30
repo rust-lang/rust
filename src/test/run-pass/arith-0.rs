@@ -13,5 +13,5 @@
 pub fn main() {
     let a: int = 10;
     debug!(a);
-    fail_unless!((a * (a - 1) == 90));
+    assert!((a * (a - 1) == 90));
 }

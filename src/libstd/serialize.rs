@@ -401,7 +401,7 @@ impl<S:Encoder,T0:Encodable<S>,T1:Encodable<S>> Encodable<S> for (T0, T1) {
 impl<D:Decoder,T0:Decodable<D>,T1:Decodable<D>> Decodable<D> for (T0, T1) {
     fn decode(d: &D) -> (T0, T1) {
         do d.read_seq |len| {
-            fail_unless!(len == 2);
+            assert!(len == 2);
             (
                 d.read_seq_elt(0, || Decodable::decode(d)),
                 d.read_seq_elt(1, || Decodable::decode(d))
@@ -437,7 +437,7 @@ impl<
 > Decodable<D> for (T0, T1, T2) {
     fn decode(d: &D) -> (T0, T1, T2) {
         do d.read_seq |len| {
-            fail_unless!(len == 3);
+            assert!(len == 3);
             (
                 d.read_seq_elt(0, || Decodable::decode(d)),
                 d.read_seq_elt(1, || Decodable::decode(d)),
@@ -477,7 +477,7 @@ impl<
 > Decodable<D> for (T0, T1, T2, T3) {
     fn decode(d: &D) -> (T0, T1, T2, T3) {
         do d.read_seq |len| {
-            fail_unless!(len == 4);
+            assert!(len == 4);
             (
                 d.read_seq_elt(0, || Decodable::decode(d)),
                 d.read_seq_elt(1, || Decodable::decode(d)),
@@ -522,7 +522,7 @@ impl<
     fn decode(d: &D)
       -> (T0, T1, T2, T3, T4) {
         do d.read_seq |len| {
-            fail_unless!(len == 5);
+            assert!(len == 5);
             (
                 d.read_seq_elt(0, || Decodable::decode(d)),
                 d.read_seq_elt(1, || Decodable::decode(d)),

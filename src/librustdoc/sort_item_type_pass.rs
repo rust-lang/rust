@@ -55,14 +55,14 @@ fn test() {
     do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv.clone(), ~"");
         let doc = (mk_pass().f)(srv.clone(), doc);
-        fail_unless!(doc.cratemod().items[0].name() == ~"iconst");
-        fail_unless!(doc.cratemod().items[1].name() == ~"itype");
-        fail_unless!(doc.cratemod().items[2].name() == ~"ienum");
-        fail_unless!(doc.cratemod().items[3].name() == ~"istruct");
-        fail_unless!(doc.cratemod().items[4].name() == ~"itrait");
-        fail_unless!(doc.cratemod().items[5].name() == ~"__extensions__");
-        fail_unless!(doc.cratemod().items[6].name() == ~"ifn");
-        fail_unless!(doc.cratemod().items[7].name() == ~"imod");
-        fail_unless!(doc.cratemod().items[8].name() == ~"inmod");
+        assert!(doc.cratemod().items[0].name() == ~"iconst");
+        assert!(doc.cratemod().items[1].name() == ~"itype");
+        assert!(doc.cratemod().items[2].name() == ~"ienum");
+        assert!(doc.cratemod().items[3].name() == ~"istruct");
+        assert!(doc.cratemod().items[4].name() == ~"itrait");
+        assert!(doc.cratemod().items[5].name() == ~"__extensions__");
+        assert!(doc.cratemod().items[6].name() == ~"ifn");
+        assert!(doc.cratemod().items[7].name() == ~"imod");
+        assert!(doc.cratemod().items[8].name() == ~"inmod");
     }
 }

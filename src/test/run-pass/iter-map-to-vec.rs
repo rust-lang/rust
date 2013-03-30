@@ -11,9 +11,9 @@
 fn inc(x: &uint) -> uint { *x + 1 }
 
 pub fn main() {
-    fail_unless!([1, 3].map_to_vec(inc) == ~[2, 4]);
-    fail_unless!([1, 2, 3].map_to_vec(inc) == ~[2, 3, 4]);
-    fail_unless!(iter::map_to_vec(&None::<uint>, inc) == ~[]);
-    fail_unless!(iter::map_to_vec(&Some(1u), inc) == ~[2]);
-    fail_unless!(iter::map_to_vec(&Some(2u), inc) == ~[3]);
+    assert!([1, 3].map_to_vec(inc) == ~[2, 4]);
+    assert!([1, 2, 3].map_to_vec(inc) == ~[2, 3, 4]);
+    assert!(iter::map_to_vec(&None::<uint>, inc) == ~[]);
+    assert!(iter::map_to_vec(&Some(1u), inc) == ~[2]);
+    assert!(iter::map_to_vec(&Some(2u), inc) == ~[3]);
 }

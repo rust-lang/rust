@@ -137,31 +137,31 @@ impl<A:ToStr> ToStr for @[A] {
 mod tests {
     #[test]
     fn test_simple_types() {
-        fail_unless!(1i.to_str() == ~"1");
-        fail_unless!((-1i).to_str() == ~"-1");
-        fail_unless!(200u.to_str() == ~"200");
-        fail_unless!(2u8.to_str() == ~"2");
-        fail_unless!(true.to_str() == ~"true");
-        fail_unless!(false.to_str() == ~"false");
-        fail_unless!(().to_str() == ~"()");
-        fail_unless!((~"hi").to_str() == ~"hi");
-        fail_unless!((@"hi").to_str() == ~"hi");
+        assert!(1i.to_str() == ~"1");
+        assert!((-1i).to_str() == ~"-1");
+        assert!(200u.to_str() == ~"200");
+        assert!(2u8.to_str() == ~"2");
+        assert!(true.to_str() == ~"true");
+        assert!(false.to_str() == ~"false");
+        assert!(().to_str() == ~"()");
+        assert!((~"hi").to_str() == ~"hi");
+        assert!((@"hi").to_str() == ~"hi");
     }
 
     #[test]
     fn test_tuple_types() {
-        fail_unless!((1, 2).to_str() == ~"(1, 2)");
-        fail_unless!((~"a", ~"b", false).to_str() == ~"(a, b, false)");
-        fail_unless!(((), ((), 100)).to_str() == ~"((), ((), 100))");
+        assert!((1, 2).to_str() == ~"(1, 2)");
+        assert!((~"a", ~"b", false).to_str() == ~"(a, b, false)");
+        assert!(((), ((), 100)).to_str() == ~"((), ((), 100))");
     }
 
     #[test]
     fn test_vectors() {
         let x: ~[int] = ~[];
-        fail_unless!(x.to_str() == ~"[]");
-        fail_unless!((~[1]).to_str() == ~"[1]");
-        fail_unless!((~[1, 2, 3]).to_str() == ~"[1, 2, 3]");
-        fail_unless!((~[~[], ~[1], ~[1, 1]]).to_str() ==
+        assert!(x.to_str() == ~"[]");
+        assert!((~[1]).to_str() == ~"[1]");
+        assert!((~[1, 2, 3]).to_str() == ~"[1, 2, 3]");
+        assert!((~[~[], ~[1], ~[1, 1]]).to_str() ==
                ~"[[], [1], [1, 1]]");
     }
 }

@@ -49,7 +49,7 @@ pub impl<T> TaskPool<T> {
            opt_sched_mode: Option<SchedMode>,
            init_fn_factory: ~fn() -> ~fn(uint) -> T)
         -> TaskPool<T> {
-        fail_unless!(n_tasks >= 1);
+        assert!(n_tasks >= 1);
 
         let channels = do vec::from_fn(n_tasks) |i| {
             let (port, chan) = comm::stream::<Msg<T>>();

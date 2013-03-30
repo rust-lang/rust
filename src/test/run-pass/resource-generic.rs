@@ -36,5 +36,5 @@ pub fn main() {
     fn dec_box(i: @mut int) { *i -= 1; }
 
     { let _i = finish(Arg{val: box, fin: dec_box}); }
-    fail_unless!((*box == 9));
+    assert!((*box == 9));
 }

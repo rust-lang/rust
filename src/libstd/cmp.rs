@@ -53,15 +53,15 @@ impl FuzzyEq<f64> for f64 {
 
 #[test]
 fn test_fuzzy_equals() {
-    fail_unless!((&1.0f).fuzzy_eq(&1.0));
-    fail_unless!((&1.0f32).fuzzy_eq(&1.0f32));
-    fail_unless!((&1.0f64).fuzzy_eq(&1.0f64));
+    assert!((&1.0f).fuzzy_eq(&1.0));
+    assert!((&1.0f32).fuzzy_eq(&1.0f32));
+    assert!((&1.0f64).fuzzy_eq(&1.0f64));
 }
 
 #[test]
 fn test_fuzzy_eq_eps() {
-    fail_unless!((&1.2f).fuzzy_eq_eps(&0.9, &0.5));
-    fail_unless!(!(&1.5f).fuzzy_eq_eps(&0.9, &0.5));
+    assert!((&1.2f).fuzzy_eq_eps(&0.9, &0.5));
+    assert!(!(&1.5f).fuzzy_eq_eps(&0.9, &0.5));
 }
 
 #[test]
@@ -87,16 +87,16 @@ mod test_complex{
         let a = Complex {r: 0.9, i: 0.9};
         let b = Complex {r: 0.9, i: 0.9};
 
-        fail_unless!((a.fuzzy_eq(&b)));
+        assert!((a.fuzzy_eq(&b)));
     }
 
     #[test]
     fn test_fuzzy_eq_eps() {
         let other = Complex {r: 0.9, i: 0.9};
 
-        fail_unless!((&Complex {r: 0.9, i: 1.2}).fuzzy_eq_eps(&other, &0.5));
-        fail_unless!((&Complex {r: 1.2, i: 0.9}).fuzzy_eq_eps(&other, &0.5));
-        fail_unless!(!(&Complex {r: 0.9, i: 1.5}).fuzzy_eq_eps(&other, &0.5));
-        fail_unless!(!(&Complex {r: 1.5, i: 0.9}).fuzzy_eq_eps(&other, &0.5));
+        assert!((&Complex {r: 0.9, i: 1.2}).fuzzy_eq_eps(&other, &0.5));
+        assert!((&Complex {r: 1.2, i: 0.9}).fuzzy_eq_eps(&other, &0.5));
+        assert!(!(&Complex {r: 0.9, i: 1.5}).fuzzy_eq_eps(&other, &0.5));
+        assert!(!(&Complex {r: 1.5, i: 0.9}).fuzzy_eq_eps(&other, &0.5));
     }
 }

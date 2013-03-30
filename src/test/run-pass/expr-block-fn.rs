@@ -14,7 +14,7 @@ fn test_fn() {
     type t = @fn() -> int;
     fn ten() -> int { return 10; }
     let rs: t = { ten };
-    //fail_unless!((rs() == 10));
+    //assert!((rs() == 10));
 }
 
 pub fn main() { test_fn(); }

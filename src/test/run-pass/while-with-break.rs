@@ -15,5 +15,5 @@ pub fn main() {
             break;
         }
     }
-    fail_unless!((i == 95));
+    assert!((i == 95));
 }

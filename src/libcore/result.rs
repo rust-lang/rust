@@ -294,7 +294,7 @@ pub impl<T, E: Copy> Result<T, E> {
  *         else { return ok(x+1u); }
  *     }
  *     map(~[1u, 2u, 3u], inc_conditionally).chain {|incd|
- *         fail_unless!(incd == ~[2u, 3u, 4u]);
+ *         assert!(incd == ~[2u, 3u, 4u]);
  *     }
  */
 #[inline(always)]
@@ -337,7 +337,7 @@ pub fn map_opt<T,U:Copy,V:Copy>(
 pub fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
                 op: &fn(&S,&T) -> Result<V,U>) -> Result<~[V],U> {
 
-    fail_unless!(vec::same_length(ss, ts));
+    assert!(vec::same_length(ss, ts));
     let n = vec::len(ts);
     let mut vs = vec::with_capacity(n);
     let mut i = 0u;
@@ -360,7 +360,7 @@ pub fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
 pub fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
                          op: &fn(&S,&T) -> Result<(),U>) -> Result<(),U> {
 
-    fail_unless!(vec::same_length(ss, ts));
+    assert!(vec::same_length(ss, ts));
     let n = vec::len(ts);
     let mut i = 0u;
     while i < n {
@@ -407,50 +407,50 @@ mod tests {
 
     #[test]
     pub fn chain_success() {
-        fail_unless!(get(&chain(op1(), op2)) == 667u);
+        assert!(get(&chain(op1(), op2)) == 667u);
     }
 
     #[test]
     pub fn chain_failure() {
-        fail_unless!(get_err(&chain(op3(), op2)) == ~"sadface");
+        assert!(get_err(&chain(op3(), op2)) == ~"sadface");
     }
 
     #[test]
     pub fn test_impl_iter() {
         let mut valid = false;
         Ok::<~str, ~str>(~"a").iter(|_x| valid = true);
-        fail_unless!(valid);
+        assert!(valid);
 
         Err::<~str, ~str>(~"b").iter(|_x| valid = false);
-        fail_unless!(valid);
+        assert!(valid);
     }
 
     #[test]
     pub fn test_impl_iter_err() {
         let mut valid = true;
         Ok::<~str, ~str>(~"a").iter_err(|_x| valid = false);
-        fail_unless!(valid);
+        assert!(valid);
 
         valid = false;
         Err::<~str, ~str>(~"b").iter_err(|_x| valid = true);
-        fail_unless!(valid);
+        assert!(valid);
     }
 
     #[test]
     pub fn test_impl_map() {
-        fail_unless!(Ok::<~str, ~str>(~"a").map(|_x| ~"b") == Ok(~"b"));
-        fail_unless!(Err::<~str, ~str>(~"a").map(|_x| ~"b") == Err(~"a"));
+        assert!(Ok::<~str, ~str>(~"a").map(|_x| ~"b") == Ok(~"b"));
+        assert!(Err::<~str, ~str>(~"a").map(|_x| ~"b") == Err(~"a"));
     }
 
     #[test]
     pub fn test_impl_map_err() {
-        fail_unless!(Ok::<~str, ~str>(~"a").map_err(|_x| ~"b") == Ok(~"a"));
-        fail_unless!(Err::<~str, ~str>(~"a").map_err(|_x| ~"b") == Err(~"b"));
+        assert!(Ok::<~str, ~str>(~"a").map_err(|_x| ~"b") == Ok(~"a"));
+        assert!(Err::<~str, ~str>(~"a").map_err(|_x| ~"b") == Err(~"b"));
     }
 
     #[test]
     pub fn test_get_ref_method() {
         let foo: Result<int, ()> = Ok(100);
-        fail_unless!(*foo.get_ref() == 100);
+        assert!(*foo.get_ref() == 100);
     }
 }

@@ -19,5 +19,5 @@ fn select<'r>(x: &'r Option<int>, y: &'r Option<int>) -> &'r Option<int> {
 pub fn main() {
     let x = None;
     let y = Some(3);
-    fail_unless!(select(&x, &y).get() == 3);
+    assert!(select(&x, &y).get() == 3);
 }

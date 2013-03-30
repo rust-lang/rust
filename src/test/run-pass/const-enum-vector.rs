@@ -13,7 +13,7 @@ static C: [E, ..3] = [V0, V1(0xDEADBEE), V0];
 
 pub fn main() {
     match C[1] {
-        V1(n) => fail_unless!(n == 0xDEADBEE),
+        V1(n) => assert!(n == 0xDEADBEE),
         _ => fail!()
     }
     match C[2] { 

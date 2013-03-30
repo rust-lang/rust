@@ -12,6 +12,6 @@
 
 pub fn main() {
     let f = {|i| i};
-    fail_unless!(f(2) == 2);
-    fail_unless!(f(5) == 5);
+    assert!(f(2) == 2);
+    assert!(f(5) == 5);
 }

@@ -98,9 +98,9 @@ fn should_record_mod_paths() {
     do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv.clone(), ~"");
         let doc = run(srv.clone(), doc);
-        fail_unless!(doc.cratemod().mods()[0].mods()[0].mods()[0].path()
+        assert!(doc.cratemod().mods()[0].mods()[0].mods()[0].path()
             == ~[~"a", ~"b"]);
-        fail_unless!(doc.cratemod().mods()[0].mods()[1].mods()[0].path()
+        assert!(doc.cratemod().mods()[0].mods()[1].mods()[0].path()
             == ~[~"a", ~"d"]);
     }
 }
@@ -111,7 +111,7 @@ fn should_record_fn_paths() {
     do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv.clone(), ~"");
         let doc = run(srv.clone(), doc);
-        fail_unless!(doc.cratemod().mods()[0].fns()[0].path() == ~[~"a"]);
+        assert!(doc.cratemod().mods()[0].fns()[0].path() == ~[~"a"]);
     }
 }
 

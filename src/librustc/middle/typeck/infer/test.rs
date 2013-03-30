@@ -110,7 +110,7 @@ pub impl Env {
                       m: &ast::_mod,
                       idx: uint,
                       names: &[~str]) -> Option<ast::node_id> {
-            fail_unless!(idx < names.len());
+            assert!(idx < names.len());
             for m.items.each |item| {
                 if self.tcx.sess.str_of(item.ident) == names[idx] {
                     return search(self, *item, idx+1, names);

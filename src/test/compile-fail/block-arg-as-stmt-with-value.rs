@@ -19,5 +19,5 @@ fn compute1() -> float {
 fn main() {
     let x = compute1();
     debug!(x);
-    fail_unless!((x == -4f));
+    assert!((x == -4f));
 }

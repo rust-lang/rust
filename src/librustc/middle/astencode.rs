@@ -175,7 +175,7 @@ pub impl ExtendedDecodeContext {
          */
 
         // from_id_range should be non-empty
-        fail_unless!(!ast_util::empty(self.from_id_range));
+        assert!(!ast_util::empty(self.from_id_range));
         (id - self.from_id_range.min + self.to_id_range.min)
     }
     fn tr_def_id(&self, did: ast::def_id) -> ast::def_id {
@@ -212,7 +212,7 @@ pub impl ExtendedDecodeContext {
          * refer to the current crate and to the new, inlined node-id.
          */
 
-        fail_unless!(did.crate == ast::local_crate);
+        assert!(did.crate == ast::local_crate);
         ast::def_id { crate: ast::local_crate, node: self.tr_id(did.node) }
     }
     fn tr_span(&self, _span: span) -> span {
@@ -1232,7 +1232,7 @@ fn roundtrip(in_item: Option<@ast::item>) {
     debug!("expected string: %s", exp_str);
     debug!("actual string  : %s", out_str);
 
-    fail_unless!(exp_str == out_str);
+    assert!(exp_str == out_str);
 }
 
 #[test]
@@ -1279,7 +1279,7 @@ fn test_simplification() {
     ).get());
     match (item_out, item_exp) {
       (ast::ii_item(item_out), ast::ii_item(item_exp)) => {
-        fail_unless!(pprust::item_to_str(item_out,
+        assert!(pprust::item_to_str(item_out,
                                          ext_cx.parse_sess().interner)
                      == pprust::item_to_str(item_exp,
                                             ext_cx.parse_sess().interner));
