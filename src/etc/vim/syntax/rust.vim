@@ -10,10 +10,13 @@ elseif exists("b:current_syntax")
   finish
 endif
 
+syn keyword   rustConditional match if else
+
 syn keyword   rustKeyword     as break
-syn keyword   rustKeyword     copy do drop else extern
 syn keyword   rustKeyword     for if impl let log
-syn keyword   rustKeyword     loop match mod once priv pub
+syn keyword   rustKeyword     copy do drop extern
+syn keyword   rustKeyword     for impl let log
+syn keyword   rustKeyword     loop mod once priv pub
 syn keyword   rustKeyword     return
 syn keyword   rustKeyword     unsafe use while
 " FIXME: Scoped impl's name is also fallen in this category
@@ -125,6 +128,7 @@ hi def link rustConstant      Constant
 hi def link rustSelf          Constant
 hi def link rustFloat         Float
 hi def link rustKeyword       Keyword
+hi def link rustConditional   Conditional
 hi def link rustIdentifier    Identifier
 hi def link rustModPath       Include
 hi def link rustFuncName      Function
