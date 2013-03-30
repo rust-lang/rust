@@ -18,12 +18,8 @@ Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
 
 */
 
-use iter;
-use iter::BaseIter;
-use kinds::Copy;
-use managed;
-use option::{None, Option, Some};
-use vec;
+use core::prelude::*;
+use core::managed;
 
 pub type DListLink<T> = Option<@mut DListNode<T>>;
 
@@ -540,10 +536,8 @@ impl<T> BaseIter<T> for @mut DList<T> {
 
 #[cfg(test)]
 mod tests {
-    use dlist::{DList, concat, from_vec, new_dlist_node};
-    use iter;
-    use option::{None, Some};
-    use vec;
+    use super::*;
+    use core::prelude::*;
 
     #[test]
     pub fn test_dlist_concat() {
