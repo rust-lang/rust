@@ -134,10 +134,10 @@ pub fn start(main: *u8, argc: int, argv: *c_char,
     use rt::start;
 
     unsafe {
-        let use_new_rt = do str::as_c_str("RUST_NEWRT") |s| {
+        let use_old_rt = do str::as_c_str("RUST_NEWRT") |s| {
             getenv(s).is_null()
         };
-        if use_new_rt {
+        if use_old_rt {
             return rust_start(main as *c_void, argc as c_int, argv,
                               crate_map as *c_void) as int;
         } else {
@@ -159,10 +159,10 @@ pub fn start(main: *u8, argc: int, argv: **c_char,
     use rt::start;
 
     unsafe {
-        let use_new_rt = do str::as_c_str("RUST_NEWRT") |s| {
+        let use_old_rt = do str::as_c_str("RUST_NEWRT") |s| {
             getenv(s).is_null()
         };
-        if use_new_rt {
+        if use_old_rt {
             return rust_start(main as *c_void, argc as c_int, argv,
                               crate_map as *c_void) as int;
         } else {
