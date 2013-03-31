@@ -2247,7 +2247,7 @@ pub fn create_main_wrapper(ccx: @CrateContext,
         fn main_name() -> ~str { return ~"WinMain@16"; }
         #[cfg(unix)]
         fn main_name() -> ~str { return ~"main"; }
-        let llfty = T_fn(~[ccx.int_type, T_ptr(T_i8())], ccx.int_type);
+        let llfty = T_fn(~[ccx.int_type, T_ptr(T_ptr(T_i8()))], ccx.int_type);
 
         // FIXME #4404 android JNI hacks
         let llfn = if *ccx.sess.building_library {
