@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -44,13 +44,13 @@ pub trait Program {
     /// Returns the process id of the program
     fn get_id(&mut self) -> pid_t;
 
-    /// Returns an io::writer that can be used to write to stdin
+    /// Returns an io::Writer that can be used to write to stdin
     fn input(&mut self) -> @io::Writer;
 
-    /// Returns an io::reader that can be used to read from stdout
+    /// Returns an io::Reader that can be used to read from stdout
     fn output(&mut self) -> @io::Reader;
 
-    /// Returns an io::reader that can be used to read from stderr
+    /// Returns an io::Reader that can be used to read from stderr
     fn err(&mut self) -> @io::Reader;
 
     /// Closes the handle to the child processes standard input
@@ -200,9 +200,9 @@ pub fn run_program(prog: &str, args: &[~str]) -> int {
 }
 
 /**
- * Spawns a process and returns a program
+ * Spawns a process and returns a Program
  *
- * The returned value is a boxed class containing a <program> object that can
+ * The returned value is a boxed class containing a <Program> object that can
  * be used for sending and receiving data over the standard file descriptors.
  * The class will ensure that file descriptors are closed properly.
  *
