@@ -30,7 +30,7 @@ Version 0.6 (April 2013)
         `@mut T`, `core::mut` or `core::cell`
       * `extern mod { ... }` is no longer valid syntax for foreign
         function modules. Use extern blocks: `extern { ... }`
-      * Newtype enums removed. Used tuple-structs.
+      * Newtype enums removed. Use tuple-structs.
       * Trait implementations no longer support visibility modifiers
       * Pattern matching over vectors improved and expanded
       * `const` renamed to `static` to correspond to lifetime name,
@@ -40,6 +40,10 @@ Version 0.6 (April 2013)
         `#[deriving(Clone)]`
       * Casts to traits must use a pointer sigil, e.g. `@foo as @Bar`
         instead of `foo as Bar`.
+      * Fixed length vector types are now written as `[int, .. 3]`
+        instead of `[int * 3]`.
+      * Fixed length vector types can express the length as a constant
+        expression. (ex: `[int, .. GL_BUFFER_SIZE - 2]`)
 
    * Semantic changes
       * Types with owned pointers or custom destructors move by default,
