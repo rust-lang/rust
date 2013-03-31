@@ -172,6 +172,14 @@ fn with_dirp<T>(d: &Option<~str>,
     }
 }
 
+/// helper function that closes non-NULL files and then makes them NULL
+priv unsafe fn fclose_and_null(f: &mut *libc::FILE) {
+    if *f != 0 as *libc::FILE {
+        libc::fclose(*f);
+        *f = 0 as *libc::FILE;
+    }
+}
+
 /**
  * Spawns a process and waits for it to terminate
  *
@@ -249,8 +257,8 @@ pub fn start_program(prog: &str, args: &[~str]) -> @Program {
     fn destroy_repr(r: &mut ProgRepr) {
         unsafe {
             finish_repr(&mut *r);
-            libc::fclose(r.out_file);
-            libc::fclose(r.err_file);
+            fclose_and_null(&mut r.out_file);
+            fclose_and_null(&mut r.err_file);
         }
     }
     struct ProgRes {
@@ -505,6 +513,19 @@ mod tests {
                                      0i32, 0i32, 0i32);
         let status = run::waitpid(pid);
         assert!(status == 1);
+    }
+
+    #[test]
+    pub fn test_destroy_once() {
+        let mut p = run::start_program("echo", []);
+        p.destroy(); // this shouldn't crash (and nor should the destructor)
+    }
+
+    #[test]
+    pub fn test_destroy_twice() {
+        let mut p = run::start_program("echo", []);
+        p.destroy(); // this shouldnt crash...
+        p.destroy(); // ...and nor should this (and nor should the destructor)
     }
 
 }
