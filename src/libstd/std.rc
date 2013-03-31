@@ -75,6 +75,7 @@ pub mod priority_queue;
 pub mod rope;
 pub mod smallintmap;
 pub mod sort;
+pub mod dlist;
 pub mod treemap;
 
 // And ... other stuff
