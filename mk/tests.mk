@@ -69,14 +69,14 @@ endif
 ifdef CFG_WINDOWSY_$(1)
   CFG_TESTLIB_$(1)=$$(CFG_BUILD_DIR)/$$(2)/$$(strip \
    $$(if $$(findstring stage0,$$(1)), \
-       stage0/$$(CFG_LIBDIR), \
+       stage0/$$(CFG_LIB_DIR_$(CFG_BUILD_TRIPLE)), \
       $$(if $$(findstring stage1,$$(1)), \
-           stage1/$$(CFG_LIBDIR), \
+           stage1/$$(CFG_LIB_DIR_$(CFG_BUILD_TRIPLE)), \
           $$(if $$(findstring stage2,$$(1)), \
-               stage2/$$(CFG_LIBDIR), \
+               stage2/$$(CFG_LIB_DIR_$(CFG_BUILD_TRIPLE)), \
                $$(if $$(findstring stage3,$$(1)), \
-                    stage3/$$(CFG_LIBDIR), \
-               )))))/rustc/$$(CFG_BUILD_TRIPLE)/$$(CFG_LIBDIR)
+                    stage3/$$(CFG_LIB_DIR_$(CFG_BUILD_TRIPLE)), \
+               )))))/rustc/$$(CFG_BUILD_TRIPLE)/$$(CFG_LIB_DIR_$(CFG_BUILD_TRIPLE))
   CFG_RUN_TEST_$(1)=$$(call CFG_RUN_$(1),$$(call CFG_TESTLIB_$(1),$$(1),$$(3)),$$(1))
 endif
 

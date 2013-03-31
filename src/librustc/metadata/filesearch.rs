@@ -179,9 +179,9 @@ fn get_rustpkg_lib_path_nearest() -> Result<Path, ~str> {
 // The name of the directory rustc expects libraries to be located.
 // On Unix should be "lib", on windows "bin"
 pub fn libdir() -> ~str {
-   let libdir = env!("CFG_LIBDIR");
+   let libdir = env!("CFG_DEFAULT_LIB_DIR");
    if str::is_empty(libdir) {
-      fail!(~"rustc compiled without CFG_LIBDIR environment variable");
+      fail!(~"rustc compiled without CFG_DEFAULT_LIB_DIR environment variable");
    }
    libdir
 }
