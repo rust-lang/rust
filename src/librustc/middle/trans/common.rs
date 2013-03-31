@@ -1304,6 +1304,12 @@ pub fn is_undef(val: ValueRef) -> bool {
     }
 }
 
+pub fn is_null(val: ValueRef) -> bool {
+    unsafe {
+        llvm::LLVMIsNull(val) != False
+    }
+}
+
 // Used to identify cached monomorphized functions and vtables
 #[deriving(Eq)]
 pub enum mono_param_id {
