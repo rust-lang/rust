@@ -1865,8 +1865,10 @@ pub struct CharRange {
  * Given a byte position and a str, return the previous char and its position
  *
  * This function can be used to iterate over a unicode string in reverse.
+ *
+ * returns 0 for next index if called on start index 0
  */
-fn char_range_at_reverse(ss: &str, start: uint) -> CharRange {
+pub fn char_range_at_reverse(ss: &str, start: uint) -> CharRange {
     let mut prev = start;
 
     // while there is a previous byte == 10......
@@ -1875,7 +1877,12 @@ fn char_range_at_reverse(ss: &str, start: uint) -> CharRange {
     }
 
     // now refer to the initial byte of previous char
-    prev -= 1u;
+    if prev > 0u {
+        prev -= 1u;
+    } else {
+        prev = 0u;
+    }
+
 
     let ch = char_at(ss, prev);
     return CharRange {ch:ch, next:prev};
@@ -3761,4 +3768,10 @@ mod tests {
         "12345555".cmp(& &"123456") == Less;
         "22".cmp(& &"1234") == Greater;
     }
+
+    #[test]
+    fn test_char_range_at_reverse_underflow() {
+        assert!(char_range_at_reverse("abc", 0).next == 0);
+    }
+
 }
