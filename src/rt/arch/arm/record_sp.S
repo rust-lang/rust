@@ -1,3 +1,8 @@
+// Mark stack as non-executable
+#if defined(__linux__) && defined(__ELF__)
+.section	.note.GNU-stack, "", @progbits
+#endif
+
 .text
 .code 32
 .arm
@@ -45,11 +50,11 @@ get_sp_limit:
 get_sp:
 	mov r0, sp
 	mov pc, lr
-	
+
 .data
 my_cpu:	.long	0
 .global my_array
-my_array:	
+my_array:
 	.long	0
 	.long	0
 	.long	0
@@ -57,5 +62,5 @@ my_array:
 	.long	0
 	.long	0
 	.long	0
-	.long	0	
+	.long	0
 .end
