@@ -189,7 +189,6 @@ pub mod container;
 pub mod option;
 pub mod result;
 pub mod either;
-pub mod dlist;
 pub mod hashmap;
 pub mod cell;
 pub mod trie;
