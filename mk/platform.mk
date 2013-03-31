@@ -61,8 +61,6 @@ ifdef CFG_VALGRIND
 endif
 
 ifneq ($(findstring linux,$(CFG_OSTYPE)),)
-  # -znoexecstack is here because librt is for some reason being created
-  # with executable stack and Fedora (or SELinux) doesn't like that (#798)
   ifdef CFG_PERF
     ifneq ($(CFG_PERF_WITH_LOGFD),)
         CFG_PERF_TOOL := $(CFG_PERF) stat -r 3 --log-fd 2
@@ -126,7 +124,7 @@ CFG_GCCISH_CXXFLAGS_x86_64-unknown-linux-gnu := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_x86_64-unknown-linux-gnu := -shared -fPIC -ldl -lpthread -lrt -g -m64
 CFG_GCCISH_DEF_FLAG_x86_64-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=
 CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-linux-gnu := -Wl,-whole-archive
-CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-linux-gnu := -Wl,-no-whole-archive -Wl,-znoexecstack
+CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-linux-gnu := -Wl,-no-whole-archive
 CFG_DEF_SUFFIX_x86_64-unknown-linux-gnu := .linux.def
 CFG_INSTALL_NAME_x86_64-unknown-linux-gnu =
 CFG_LIBUV_LINK_FLAGS_x86_64-unknown-linux-gnu =
@@ -152,7 +150,7 @@ CFG_GCCISH_CXXFLAGS_i686-unknown-linux-gnu := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_i686-unknown-linux-gnu := -shared -fPIC -ldl -lpthread -lrt -g -m32
 CFG_GCCISH_DEF_FLAG_i686-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=
 CFG_GCCISH_PRE_LIB_FLAGS_i686-unknown-linux-gnu := -Wl,-whole-archive
-CFG_GCCISH_POST_LIB_FLAGS_i686-unknown-linux-gnu := -Wl,-no-whole-archive -Wl,-znoexecstack
+CFG_GCCISH_POST_LIB_FLAGS_i686-unknown-linux-gnu := -Wl,-no-whole-archive
 CFG_DEF_SUFFIX_i686-unknown-linux-gnu := .linux.def
 CFG_INSTALL_NAME_i686-unknown-linux-gnu =
 CFG_LIBUV_LINK_FLAGS_i686-unknown-linux-gnu =
@@ -228,7 +226,7 @@ CFG_GCCISH_CXXFLAGS_arm-linux-androideabi := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_arm-linux-androideabi := -shared -fPIC -ldl -g -lm -lsupc++ -lgnustl_shared
 CFG_GCCISH_DEF_FLAG_arm-linux-androideabi := -Wl,--export-dynamic,--dynamic-list=
 CFG_GCCISH_PRE_LIB_FLAGS_arm-linux-androideabi := -Wl,-whole-archive
-CFG_GCCISH_POST_LIB_FLAGS_arm-linux-androideabi := -Wl,-no-whole-archive -Wl,-znoexecstack
+CFG_GCCISH_POST_LIB_FLAGS_arm-linux-androideabi := -Wl,-no-whole-archive
 CFG_DEF_SUFFIX_arm-linux-androideabi := .android.def
 CFG_INSTALL_NAME_arm-linux-androideabi =
 CFG_LIBUV_LINK_FLAGS_arm-linux-androideabi =

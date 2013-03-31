@@ -1,7 +1,12 @@
+// Mark stack as non-executable
+#if defined(__linux__) && defined(__ELF__)
+.section	.note.GNU-stack, "", @progbits
+#endif
+
 #include "regs.h"
 #define ARG0 RUSTRT_ARG0_S
 #define ARG1 RUSTRT_ARG1_S
-        
+
         .text
 
 /*
@@ -11,7 +16,7 @@ and Microsoft discussion at
 http://msdn.microsoft.com/en-US/library/9z1stfyw%28v=VS.80%29.aspx.
 
 BOTH CALLING CONVENTIONS
-        
+
 Callee save registers:
 	R12--R15, RDI, RSI, RBX, RBP, RSP
         XMM0--XMM5
@@ -30,7 +35,7 @@ User flags have no specified role and are not preserved
         across calls, with the exception of DF in %rFLAGS,
         which must be clear (set to "forward" direction)
         on function entry and return.
-        
+
 MICROSOFT CALLING CONVENTIONS
 
 Return value: RAX
@@ -39,7 +44,7 @@ First four arguments:
         RCX, RDX, R8, R9
         XMM0, XMM1, XMM2, XMM3
 */
-	
+
 /*
         Stores current registers into arg0/RCX and restores
         registers found in arg1/RDX. This is used by our
@@ -47,7 +52,7 @@ First four arguments:
         registers and the register used for the first argument.
         Volatile registers in general ought to be saved by the caller
         anyhow.
-*/	
+*/
 
 #if defined(__APPLE__) || defined(_WIN32)
 #define SWAP_REGISTERS _swap_registers
