@@ -40,11 +40,8 @@ pub enum Architecture {
     Mips
 }
 
-// FIXME(#5423) After a snapshot, we can change these constants:
-// const IntelBits: u32 = (1 << (X86 as uint)) | (1 << X86_64 as uint));
-// const ArmBits: u32 = (1 << (Arm as uint));
-static IntelBits: u32 = 1 | 2;
-static ArmBits: u32 = 4;
+static IntelBits: u32 = (1 << (X86 as uint)) | (1 << (X86_64 as uint));
+static ArmBits: u32 = (1 << (Arm as uint));
 
 struct AbiData {
     abi: Abi,
