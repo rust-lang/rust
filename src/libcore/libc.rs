@@ -9,7 +9,19 @@
 // except according to those terms.
 
 /*!
-* Bindings for libc.
+* Bindings for the C standard library and other platform libraries
+*
+* This module contains bindings to the C standard library,
+* organized into modules by their defining standard.
+* Additionally, it contains some assorted platform-specific definitions.
+* For convenience, most functions and types are reexported from `core::libc`,
+* so `pub use core::libc::*` will import the available
+* C bindings as appropriate for the target platform. The exact
+* set of functions available are platform specific.
+*
+* *Note* Rustdoc does not indicate reexports currently. Also, because these
+* definitions are platform-specific, some may not
+* appear in the generated documentation.
 *
 * We consider the following specs reasonably normative with respect
 * to interoperating with the C standard library (libc/msvcrt):
