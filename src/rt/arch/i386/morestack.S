@@ -1,3 +1,8 @@
+// Mark stack as non-executable
+#if defined(__linux__) && defined(__ELF__)
+.section	.note.GNU-stack, "", @progbits
+#endif
+
 /*
 	__morestack
 
@@ -218,11 +223,11 @@ MORESTACK:
 .L$bail:
 	movl 32(%esp),%eax
 	inc %eax
-	
+
 	addl $44, %esp
 	popl %ebp
 	addl $4+8,%esp
-	
+
 	jmpl *%eax
 
 #if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
@@ -241,7 +246,7 @@ L_rust_get_task$stub:
 L_upcall_new_stack$stub:
 	.indirect_symbol _upcall_new_stack
 	.ascii	 "\364\364\364\364\364"
-	
+
 L_upcall_del_stack$stub:
 	.indirect_symbol _upcall_del_stack
 	.ascii	 "\364\364\364\364\364"

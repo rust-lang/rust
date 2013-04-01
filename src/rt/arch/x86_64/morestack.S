@@ -1,3 +1,8 @@
+// Mark stack as non-executable
+#if defined(__linux__) && defined(__ELF__)
+.section	.note.GNU-stack, "", @progbits
+#endif
+
 /*
 	__morestack
 
@@ -78,7 +83,7 @@ MORESTACK:
 	movq %r11, %rdx // Size of stack arguments
 	movq %rax, %rsi // Address of stack arguments
 	movq %r10, %rdi // The amount of stack needed
-        
+
 #ifdef __APPLE__
 	call UPCALL_NEW_STACK
 #endif
@@ -132,7 +137,7 @@ MORESTACK:
 	popq %rax // Restore the return value
 	popq %rbp
 	ret
-	
+
 	.cfi_endproc
 
 #else
