@@ -39,7 +39,7 @@ etc.
 
 Additionally, `core` contains a `prelude` module that reexports many of the
 most common core modules, types and traits. The contents of the prelude are
-imported inte every *module* by default.  Implicitly, all modules behave as if
+imported into every *module* by default.  Implicitly, all modules behave as if
 they contained the following prologue:
 
     use core::prelude::*;
