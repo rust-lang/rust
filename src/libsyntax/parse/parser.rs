@@ -2552,7 +2552,7 @@ pub impl Parser {
                                          self.parse_outer_attributes());
 
             match self.parse_item_or_view_item(/*bad*/ copy item_attrs,
-                                               true, false, false) {
+                                                           false) {
               iovi_item(i) => {
                 let hi = i.span.hi;
                 let decl = @spanned(lo, hi, decl_item(i));
@@ -2642,7 +2642,7 @@ pub impl Parser {
             items: items,
             _
         } = self.parse_items_and_view_items(first_item_attrs,
-                                            IMPORTS_AND_ITEMS_ALLOWED, false);
+                                            false, false);
 
         for items.each |item| {
             let decl = @spanned(item.span.lo, item.span.hi, decl_item(*item));
@@ -2763,7 +2763,7 @@ pub impl Parser {
 
     // matches optbounds = ( ( : ( boundseq )? )? )
     // where   boundseq  = ( bound + boundseq ) | bound
-    // and     bound     = ( 'static ) | ty
+    // and     bound     = 'static | ty
     fn parse_optional_ty_param_bounds(&self) -> @OptVec<TyParamBound> {
         if !self.eat(&token::COLON) {
             return @opt_vec::Empty;
@@ -3431,8 +3431,7 @@ pub impl Parser {
             items: starting_items,
             _
         } = self.parse_items_and_view_items(first_item_attrs,
-                                            VIEW_ITEMS_AND_ITEMS_ALLOWED,
-                                            true);
+                                            true, true);
         let mut items: ~[@item] = starting_items;
         let attrs_remaining_len = attrs_remaining.len();
 
@@ -3450,8 +3449,6 @@ pub impl Parser {
                    attrs);
             match self.parse_item_or_view_item(
                 /*bad*/ copy attrs,
-                true, // items allowed
-                false, // foreign items allowed
                 true // macros allowed
             ) {
               iovi_item(item) => items.push(item),
@@ -3668,15 +3665,7 @@ pub impl Parser {
         else { self.unexpected(); }
     }
 
-    fn parse_foreign_item(&self, attrs: ~[attribute]) -> @foreign_item {
-        let vis = self.parse_visibility();
-        if self.is_keyword(&~"const") || self.is_keyword(&~"static") {
-            self.parse_item_foreign_const(vis, attrs)
-        } else {
-            self.parse_item_foreign_fn(attrs)
-        }
-    }
-
+    // how is this different from parse_foreign_items
     fn parse_foreign_mod_items(&self, sort: ast::foreign_mod_sort,
                                abis: AbiSet,
                                first_item_attrs: ~[attribute])
@@ -3687,23 +3676,14 @@ pub impl Parser {
             view_items: view_items,
             items: _,
             foreign_items: foreign_items
-        } = self.parse_items_and_view_items(first_item_attrs,
-                                            FOREIGN_ITEMS_ALLOWED,
-                                            true);
-
-        let mut items: ~[@foreign_item] = foreign_items;
+        } = self.parse_foreign_items(first_item_attrs, true);
         let mut initial_attrs = attrs_remaining;
-        while *self.token != token::RBRACE {
-            let attrs = vec::append(initial_attrs,
-                                    self.parse_outer_attributes());
-            initial_attrs = ~[];
-            items.push(self.parse_foreign_item(attrs));
-        }
+        assert!(*self.token == token::RBRACE);
         ast::foreign_mod {
             sort: sort,
             abis: abis,
             view_items: view_items,
-            items: items
+            items: foreign_items
         }
     }
 
@@ -3965,6 +3945,7 @@ pub impl Parser {
         }
     }
 
+    // parse a string as an ABI spec on an extern type or module
     fn parse_opt_abis(&self) -> Option<AbiSet> {
         match *self.token {
             token::LIT_STR(s) => {
@@ -4010,31 +3991,53 @@ pub impl Parser {
 
     // parse one of the items or view items allowed by the
     // flags; on failure, return iovi_none.
+    // NB: this function no longer parses the items inside an
+    // extern mod.
     fn parse_item_or_view_item(
         &self,
         attrs: ~[attribute],
-        items_allowed: bool,
-        foreign_items_allowed: bool,
         macros_allowed: bool
     ) -> item_or_view_item {
-        assert!(items_allowed != foreign_items_allowed);
-
         maybe_whole!(iovi self, nt_item);
         let lo = self.span.lo;
 
-        let visibility;
-        if self.eat_keyword(&~"pub") {
-            visibility = public;
-        } else if self.eat_keyword(&~"priv") {
-            visibility = private;
-        } else {
-            visibility = inherited;
-        }
+        let visibility = self.parse_visibility();
 
-        if items_allowed &&
-                (self.is_keyword(&~"const") ||
-                (self.is_keyword(&~"static") &&
-                    !self.token_is_keyword(&~"fn", &self.look_ahead(1)))) {
+        // must be a view item:
+        if self.eat_keyword(&~"use") {
+            // USE ITEM (iovi_view_item)
+            let view_item = self.parse_use();
+            self.expect(&token::SEMI);
+            return iovi_view_item(@ast::view_item {
+                node: view_item,
+                attrs: attrs,
+                vis: visibility,
+                span: mk_sp(lo, self.last_span.hi)
+            });
+        }
+        // either a view item or an item:
+        if self.eat_keyword(&~"extern") {
+            let opt_abis = self.parse_opt_abis();
+
+            if self.eat_keyword(&~"fn") {
+                // EXTERN FUNCTION ITEM
+                let abis = opt_abis.get_or_default(AbiSet::C());
+                let (ident, item_, extra_attrs) =
+                    self.parse_item_fn(extern_fn, abis);
+                return iovi_item(self.mk_item(lo, self.last_span.hi, ident,
+                                              item_, visibility,
+                                              maybe_append(attrs,
+                                                           extra_attrs)));
+            } else  {
+                // EXTERN MODULE ITEM (iovi_view_item)
+                return self.parse_item_foreign_mod(lo, opt_abis, visibility, attrs,
+                                                   true);
+            }
+        }
+        // the rest are all guaranteed to be items:
+        if (self.is_keyword(&~"const") ||
+            (self.is_keyword(&~"static") &&
+             !self.token_is_keyword(&~"fn", &self.look_ahead(1)))) {
             // CONST / STATIC ITEM
             if self.is_keyword(&~"const") {
                 self.obsolete(*self.span, ObsoleteConstItem);
@@ -4045,13 +4048,7 @@ pub impl Parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if foreign_items_allowed &&
-                (self.is_keyword(&~"const") || self.is_keyword(&~"static")) {
-            // FOREIGN CONST ITEM
-            let item = self.parse_item_foreign_const(visibility, attrs);
-            return iovi_foreign_item(item);
-        }
-        if items_allowed && self.is_keyword(&~"fn") &&
+        if self.is_keyword(&~"fn") &&
             !self.fn_expr_lookahead(self.look_ahead(1u)) {
             // FUNCTION ITEM
             self.bump();
@@ -4061,7 +4058,7 @@ pub impl Parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && self.eat_keyword(&~"pure") {
+        if self.eat_keyword(&~"pure") {
             // PURE FUNCTION ITEM (obsolete)
             self.obsolete(*self.last_span, ObsoletePurity);
             self.expect_keyword(&~"fn");
@@ -4071,16 +4068,9 @@ pub impl Parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if foreign_items_allowed &&
-            (self.is_keyword(&~"fn") || self.is_keyword(&~"pure") ||
-             self.is_keyword(&~"unsafe")) {
-            // FOREIGN FUNCTION ITEM (no items allowed)
-                let item = self.parse_item_foreign_fn(attrs);
-                return iovi_foreign_item(item);
-        }
-        if items_allowed && self.is_keyword(&~"unsafe")
+        if self.is_keyword(&~"unsafe")
             && self.look_ahead(1u) != token::LBRACE {
-            // UNSAFE FUNCTION ITEM (where items are allowed)
+            // UNSAFE FUNCTION ITEM
             self.bump();
             self.expect_keyword(&~"fn");
             let (ident, item_, extra_attrs) =
@@ -4089,55 +4079,35 @@ pub impl Parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if self.eat_keyword(&~"extern") {
-            let opt_abis = self.parse_opt_abis();
-
-            if items_allowed && self.eat_keyword(&~"fn") {
-                // EXTERN FUNCTION ITEM
-                let abis = opt_abis.get_or_default(AbiSet::C());
-                let (ident, item_, extra_attrs) =
-                    self.parse_item_fn(extern_fn, abis);
-                return iovi_item(self.mk_item(lo, self.last_span.hi, ident,
-                                              item_, visibility,
-                                              maybe_append(attrs,
-                                                           extra_attrs)));
-            }
-            if items_allowed {
-                // EXTERN MODULE ITEM
-                return self.parse_item_foreign_mod(lo, opt_abis, visibility, attrs,
-                                                   items_allowed);
-            }
-        }
-        if items_allowed && self.eat_keyword(&~"mod") {
+        if self.eat_keyword(&~"mod") {
             // MODULE ITEM
             let (ident, item_, extra_attrs) = self.parse_item_mod(attrs);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && self.eat_keyword(&~"type") {
+        if self.eat_keyword(&~"type") {
             // TYPE ITEM
             let (ident, item_, extra_attrs) = self.parse_item_type();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && self.eat_keyword(&~"enum") {
+        if self.eat_keyword(&~"enum") {
             // ENUM ITEM
             let (ident, item_, extra_attrs) = self.parse_item_enum();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && self.eat_keyword(&~"trait") {
+        if self.eat_keyword(&~"trait") {
             // TRAIT ITEM
             let (ident, item_, extra_attrs) = self.parse_item_trait();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && !foreign_items_allowed &&
-                self.eat_keyword(&~"impl") {
+        if self.eat_keyword(&~"impl") {
             // IMPL ITEM
             let (ident, item_, extra_attrs) =
                 self.parse_item_impl(visibility);
@@ -4145,24 +4115,50 @@ pub impl Parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && self.eat_keyword(&~"struct") {
+        if self.eat_keyword(&~"struct") {
             // STRUCT ITEM
             let (ident, item_, extra_attrs) = self.parse_item_struct();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && self.eat_keyword(&~"use") {
-            // USE ITEM
-            let view_item = self.parse_use();
-            self.expect(&token::SEMI);
-            return iovi_view_item(@ast::view_item {
-                node: view_item,
-                attrs: attrs,
-                vis: visibility,
-                span: mk_sp(lo, self.last_span.hi)
-            });
+        self.parse_macro_use_or_failure(attrs,macros_allowed,lo,visibility)
+    }
+
+    // parse a foreign item; on failure, return iovi_none.
+    // trying to differentiate this from the other parse_foreign_item....
+    fn parse_foreign_item(
+        &self,
+        attrs: ~[attribute],
+        macros_allowed: bool
+    ) -> item_or_view_item {
+        maybe_whole!(iovi self, nt_item);
+        let lo = self.span.lo;
+
+        let visibility = self.parse_visibility();
+
+        if (self.is_keyword(&~"const") || self.is_keyword(&~"static")) {
+            // FOREIGN CONST ITEM
+            let item = self.parse_item_foreign_const(visibility, attrs);
+            return iovi_foreign_item(item);
         }
+        if (self.is_keyword(&~"fn") || self.is_keyword(&~"pure") ||
+             self.is_keyword(&~"unsafe")) {
+            // FOREIGN FUNCTION ITEM
+                let item = self.parse_item_foreign_fn(attrs);
+                return iovi_foreign_item(item);
+        }
+        self.parse_macro_use_or_failure(attrs,macros_allowed,lo,visibility)
+    }
+
+    // this is the fall-through for parsing items.
+    fn parse_macro_use_or_failure(
+        &self,
+        attrs: ~[attribute],
+        macros_allowed: bool,
+        lo : BytePos,
+        visibility : visibility
+    ) -> item_or_view_item {
         if macros_allowed && !self.is_any_keyword(&copy *self.token)
                 && self.look_ahead(1) == token::NOT
                 && (is_plain_ident(&self.look_ahead(2))
@@ -4219,7 +4215,7 @@ pub impl Parser {
     }
 
     fn parse_item(&self, attrs: ~[attribute]) -> Option<@ast::item> {
-        match self.parse_item_or_view_item(attrs, true, false, true) {
+        match self.parse_item_or_view_item(attrs, true) {
             iovi_none =>
                 None,
             iovi_view_item(_) =>
@@ -4375,101 +4371,73 @@ pub impl Parser {
 
     // Parses a sequence of items. Stops when it finds program
     // text that can't be parsed as an item
-    // - mod_items uses VIEW_ITEMS_AND_ITEMS_ALLOWED
-    // - block_tail_ uses IMPORTS_AND_ITEMS_ALLOWED
-    // - foreign_mod_items uses FOREIGN_ITEMS_ALLOWED
+    // - mod_items uses extern_mod_allowed = true
+    // - block_tail_ uses extern_mod_allowed = false
     fn parse_items_and_view_items(&self, first_item_attrs: ~[attribute],
-                                  mode: view_item_parse_mode,
+                                  mut extern_mod_allowed: bool,
                                   macros_allowed: bool)
                                 -> ParsedItemsAndViewItems {
         let mut attrs = vec::append(first_item_attrs,
                                     self.parse_outer_attributes());
-
-        let items_allowed = match mode {
-            VIEW_ITEMS_AND_ITEMS_ALLOWED | IMPORTS_AND_ITEMS_ALLOWED => true,
-            FOREIGN_ITEMS_ALLOWED => false
-        };
-        let foreign_items_allowed = match mode {
-            FOREIGN_ITEMS_ALLOWED => true,
-            VIEW_ITEMS_AND_ITEMS_ALLOWED | IMPORTS_AND_ITEMS_ALLOWED => false
-        };
-
         // First, parse view items.
-        let mut (view_items, items, foreign_items) = (~[], ~[], ~[]);
+        let mut (view_items, items) = (~[], ~[]);
         let mut done = false;
-        if mode != FOREIGN_ITEMS_ALLOWED {
-            let mut extern_mod_allowed = match mode {
-                VIEW_ITEMS_AND_ITEMS_ALLOWED => true,
-                IMPORTS_AND_ITEMS_ALLOWED => false,
-                FOREIGN_ITEMS_ALLOWED => {
-                    self.bug(~"couldn't get here with FOREIGN_ITEMS_ALLOWED")
+        // I think this code would probably read better as a single
+        // loop with a mutable three-state-variable (for extern mods,
+        // view items, and regular items) ... except that because
+        // of macros, I'd like to delay that entire check until later.
+        loop {
+            match self.parse_item_or_view_item(/*bad*/ copy attrs,
+                                                           macros_allowed) {
+                iovi_none => {
+                    done = true;
+                    break;
                 }
-            };
-
-            loop {
-                match self.parse_item_or_view_item(/*bad*/ copy attrs,
-                                                   items_allowed,
-                                                   foreign_items_allowed,
-                                                   macros_allowed) {
-                    iovi_none => {
-                        done = true;
-                        break;
-                    }
-                    iovi_view_item(view_item) => {
-                        match view_item.node {
-                            view_item_use(*) => {
-                                // `extern mod` must precede `use`.
-                                extern_mod_allowed = false;
-                            }
-                            view_item_extern_mod(*)
-                                    if !extern_mod_allowed => {
-                                self.span_err(view_item.span,
-                                              ~"\"extern mod\" \
-                                                declarations are not \
-                                                allowed here");
-                            }
-                            view_item_extern_mod(*) => {}
+                iovi_view_item(view_item) => {
+                    match view_item.node {
+                        view_item_use(*) => {
+                            // `extern mod` must precede `use`.
+                            extern_mod_allowed = false;
                         }
-                        view_items.push(view_item);
+                        view_item_extern_mod(*)
+                        if !extern_mod_allowed => {
+                            self.span_err(view_item.span,
+                                          ~"\"extern mod\" \
+                                            declarations are not \
+                                            allowed here");
+                        }
+                        view_item_extern_mod(*) => {}
                     }
-                    iovi_item(item) => {
-                        assert!(items_allowed);
-                        items.push(item);
-                        attrs = self.parse_outer_attributes();
-                        break;
-                    }
-                    iovi_foreign_item(foreign_item) => {
-                        assert!(foreign_items_allowed);
-                        foreign_items.push(foreign_item);
-                        attrs = self.parse_outer_attributes();
-                        break;
-                    }
+                    view_items.push(view_item);
                 }
-                attrs = self.parse_outer_attributes();
+                iovi_item(item) => {
+                    items.push(item);
+                    attrs = self.parse_outer_attributes();
+                    break;
+                }
+                iovi_foreign_item(_) => {
+                    fail!();
+                }
             }
+            attrs = self.parse_outer_attributes();
         }
 
         // Next, parse items.
         if !done {
             loop {
                 match self.parse_item_or_view_item(/*bad*/ copy attrs,
-                                                   items_allowed,
-                                                   foreign_items_allowed,
                                                    macros_allowed) {
                     iovi_none => break,
                     iovi_view_item(view_item) => {
                         self.span_err(view_item.span,
                                       ~"`use` and `extern mod` declarations \
                                         must precede items");
-                        view_items.push(view_item);
                     }
                     iovi_item(item) => {
-                        assert!(items_allowed);
                         items.push(item)
                     }
-                    iovi_foreign_item(foreign_item) => {
-                        assert!(foreign_items_allowed);
-                        foreign_items.push(foreign_item);
+                    iovi_foreign_item(_) => {
+                        fail!();
                     }
                 }
                 attrs = self.parse_outer_attributes();
@@ -4480,6 +4448,43 @@ pub impl Parser {
             attrs_remaining: attrs,
             view_items: view_items,
             items: items,
+            foreign_items: ~[]
+        }
+    }
+
+    // splitting parse_items_and_view_items into two functions...
+    // Parses a sequence of foreign items. Stops when it finds program
+    // text that can't be parsed as an item
+    fn parse_foreign_items(&self, first_item_attrs: ~[attribute],
+                           macros_allowed: bool)
+        -> ParsedItemsAndViewItems {
+        let mut attrs = vec::append(first_item_attrs,
+                                    self.parse_outer_attributes());
+        let mut foreign_items = ~[];
+        loop {
+            match self.parse_foreign_item(/*bad*/ copy attrs, macros_allowed) {
+                iovi_none => break,
+                iovi_view_item(view_item) => {
+                    // I think this can't occur:
+                    self.span_err(view_item.span,
+                                  ~"`use` and `extern mod` declarations \
+                                    must precede items");
+                }
+                iovi_item(_) => {
+                    // FIXME #5668: this will occur for a macro invocation:
+                    fail!();
+                }
+                iovi_foreign_item(foreign_item) => {
+                    foreign_items.push(foreign_item);
+                }
+            }
+            attrs = self.parse_outer_attributes();
+        }
+
+        ParsedItemsAndViewItems {
+            attrs_remaining: attrs,
+            view_items: ~[],
+            items: ~[],
             foreign_items: foreign_items
         }
     }
