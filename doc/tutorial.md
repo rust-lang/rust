@@ -2554,26 +2554,65 @@ a hash representing the crate metadata.
 
 ## The core library
 
-The Rust [core] library is the language runtime and contains
-required memory management and task scheduling code as well as a
-number of modules necessary for effective usage of the primitive
-types. Methods on [vectors] and [strings], implementations of most
-comparison and math operators, and pervasive types like [`Option`]
-and [`Result`] live in core.
+The Rust core library provides runtime features required by the language,
+including the task scheduler and memory allocators, as well as library
+support for Rust built-in types, platform abstractions, and other commonly
+used features.
 
-All Rust programs link to the core library and import its contents,
-as if the following were written at the top of the crate.
+[`core`] includes modules corresponding to each of the integer types, each of
+the floating point types, the [`bool`] type, [tuples], [characters], [strings],
+[vectors], [managed boxes], [owned boxes],
+and unsafe and borrowed [pointers].  Additionally, `core` provides
+some pervasive types ([`option`] and [`result`]),
+[task] creation and [communication] primitives,
+platform abstractions ([`os`] and [`path`]), basic
+I/O abstractions ([`io`]), [containers] like [`hashmap`],
+common traits ([`kinds`], [`ops`], [`cmp`], [`num`],
+[`to_str`], [`clone`]), and complete bindings to the C standard library ([`libc`]).
 
-~~~ {.xfail-test}
-extern mod core;
-use core::*;
-~~~
+### Core injection and the Rust prelude
 
-[core]: core/index.html
-[vectors]: core/vec.html
+`core` is imported at the topmost level of every crate by default, as
+if the first line of each crate was
+
+    extern mod core;
+
+This means that the contents of core can be accessed from from any context
+with the `core::` path prefix, as in `use core::vec`, `use core::task::spawn`,
+etc.
+
+Additionally, `core` contains a `prelude` module that reexports many of the
+most common core modules, types and traits. The contents of the prelude are
+imported into every *module* by default.  Implicitly, all modules behave as if
+they contained the following prologue:
+
+    use core::prelude::*;
+
+[`core`]: core/index.html
+[`bool`]: core/bool.html
+[tuples]: core/tuple.html
+[characters]: core/char.html
 [strings]: core/str.html
-[`Option`]: core/option.html
-[`Result`]: core/result.html
+[vectors]: core/vec.html
+[managed boxes]: core/managed.html
+[owned boxes]: core/owned.html
+[pointers]: core/ptr.html
+[`option`]: core/option.html
+[`result`]: core/result.html
+[task]: core/task.html
+[communication]: core/comm.html
+[`os`]: core/os.html
+[`path`]: core/path.html
+[`io`]: core/io.html
+[containers]: core/container.html
+[`hashmap`]: core/hashmap.html
+[`kinds`]: core/kinds.html
+[`ops`]: core/ops.html
+[`cmp`]: core/cmp.html
+[`num`]: core/num.html
+[`to_str`]: core/to_str.html
+[`clone`]: core/clone.html
+[`libc`]: core/libc.html
 
 # What next?
 
@@ -2585,10 +2624,7 @@ tutorials on individual topics.
 * [Macros][macros]
 * [The foreign function interface][ffi]
 
-There is further documentation on the [wiki], including articles about
-[unit testing] in Rust, [documenting][rustdoc] and [packaging][cargo]
-Rust code, and a discussion of the [attributes] used to apply metadata
-to code.
+There is further documentation on the [wiki].
 
 [borrow]: tutorial-borrowed-ptr.html
 [tasks]: tutorial-tasks.html
