@@ -1436,10 +1436,10 @@ The definitions of these operations have to be easy for the compiler to find.
 The `lang` attribute makes it possible to declare these operations.
 For example, the `str` module in the Rust core library defines the string equality function:
 
-~~~
+~~~ {.xfail-test}
 #[lang="str_eq"]
 pub fn eq_slice(a: &str, b: &str) -> bool {
-    true // not actually the implementation
+    // details elided
 }
 ~~~
 
