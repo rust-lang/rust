@@ -51,19 +51,19 @@ $(foreach target,$(CFG_TARGET_TRIPLES), \
 define INSTALL_TARGET_N
 install-target-$(1)-host-$(2): $$(TSREQ$$(ISTAGE)_T_$(1)_H_$(2)) $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)mkdir -p $$(PTL$(1)$(2))
-	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME_$(1)))
 	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CORELIB_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(STDLIB_GLOB_$(1)))
-	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
+	$$(Q)$$(call INSTALL_LIB,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
 
 endef
 
 define INSTALL_HOST_N
 install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)mkdir -p $$(PTL$(1)$(2))
-	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME_$(1)))
 	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CORELIB_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB, \
@@ -80,7 +80,7 @@ install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUSTI_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUST_GLOB_$(1)))
-	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
+	$$(Q)$$(call INSTALL_LIB,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
 
 endef
 
