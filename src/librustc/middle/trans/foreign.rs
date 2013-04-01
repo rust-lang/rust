@@ -11,7 +11,6 @@
 use core::prelude::*;
 
 use back::{link, abi};
-use driver::session;
 use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
 use lib::llvm::{TypeRef, ValueRef};
 use lib;

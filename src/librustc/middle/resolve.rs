@@ -1358,7 +1358,7 @@ pub impl Resolver {
                                        item_id: def_id,
                                        +parent_privacy: Privacy,
                                        parent: ReducedGraphParent,
-                                       &&visitor: vt<ReducedGraphParent>) {
+                                       &&_visitor: vt<ReducedGraphParent>) {
         let ident = variant.node.name;
         let (child, _) = self.add_child(ident, parent, ForbidDuplicateValues,
                                         variant.span);
