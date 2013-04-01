@@ -33,7 +33,7 @@ are represented as `ty_param()` instances.
 use core::prelude::*;
 
 use metadata::csearch;
-use middle::ty::{InstantiatedTraitRef, arg};
+use middle::ty::InstantiatedTraitRef;
 use middle::ty::{substs, ty_param_bounds_and_ty, ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::astconv::{AstConv, ty_of_arg};
@@ -860,7 +860,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }
-      ast::item_fn(ref decl, purity, abi, ref generics, _) => {
+      ast::item_fn(ref decl, purity, _, ref generics, _) => {
         let bounds = ty_param_bounds(ccx, generics);
         let tofd = astconv::ty_of_bare_fn(ccx,
                                           &empty_rscope,

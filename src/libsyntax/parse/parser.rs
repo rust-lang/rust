@@ -3777,7 +3777,7 @@ pub impl Parser {
         };
     }
 
-    fn parse_enum_def(&self, generics: &ast::Generics) -> enum_def {
+    fn parse_enum_def(&self, _generics: &ast::Generics) -> enum_def {
         let mut variants = ~[];
         let mut all_nullary = true, have_disr = false;
         while *self.token != token::RBRACE {
