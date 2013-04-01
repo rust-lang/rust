@@ -718,8 +718,8 @@ pub impl VisitContext {
     }
 
     fn use_receiver(&self,
-                    expr_id: node_id,
-                    span: span,
+                    _expr_id: node_id,
+                    _span: span,
                     receiver_expr: @expr,
                     visitor: vt<VisitContext>)
     {

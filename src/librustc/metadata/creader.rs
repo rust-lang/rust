@@ -18,7 +18,6 @@ use metadata::decoder;
 use metadata::filesearch::FileSearch;
 use metadata::loader;
 
-use core::either;
 use core::hashmap::linear::LinearMap;
 use core::vec;
 use syntax::attr;

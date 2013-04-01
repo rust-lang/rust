@@ -18,7 +18,6 @@ use util::ppaux::{ty_to_str};
 use core::hashmap::linear::LinearMap;
 use core::char;
 use core::cmp;
-use core::either;
 use core::i8;
 use core::i16;
 use core::i32;
