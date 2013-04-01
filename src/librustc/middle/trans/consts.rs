@@ -11,7 +11,7 @@
 use core::prelude::*;
 
 use back::abi;
-use lib::llvm::{llvm, SetLinkage, InternalLinkage, PrivateLinkage,
+use lib::llvm::{llvm, SetLinkage, PrivateLinkage,
                 ValueRef, TypeRef, Bool, True, False};
 use metadata::csearch;
 use middle::const_eval;

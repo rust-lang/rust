@@ -286,7 +286,7 @@ pub fn create_enum_variant_pattern(cx: @ext_ctxt,
     }
 }
 
-pub fn variant_arg_count(cx: @ext_ctxt, span: span, variant: &variant) -> uint {
+pub fn variant_arg_count(_cx: @ext_ctxt, _span: span, variant: &variant) -> uint {
     match variant.node.kind {
         tuple_variant_kind(ref args) => args.len(),
         struct_variant_kind(ref struct_def) => struct_def.fields.len(),
