@@ -1420,13 +1420,111 @@ names are effectively reserved. Some significant attributes include:
 
 * The `doc` attribute, for documenting code in-place.
 * The `cfg` attribute, for conditional-compilation by build-configuration.
+* The `lang` attribute, for custom definitions of traits and functions that are known to the Rust compiler (see [Language items](#language-items)).
 * The `link` attribute, for describing linkage metadata for a crate.
 * The `test` attribute, for marking functions as unit tests.
-* The `allow`, `warn`, `forbid`, and `deny` attributes, for controling lint checks. Lint checks supported
+* The `allow`, `warn`, `forbid`, and `deny` attributes, for controlling lint checks. Lint checks supported
 by the compiler can be found via `rustc -W help`.
 
 Other attributes may be added or removed during development of the language.
 
+### Language items
+
+Some primitive Rust operations are defined in Rust code,
+rather than being implemented directly in C or assembly language.
+The definitions of these operations have to be easy for the compiler to find.
+The `lang` attribute makes it possible to declare these operations.
+For example, the `str` module in the Rust core library defines the string equality function:
+
+~~~ {.xfail-test}
+#[lang="str_eq"]
+pub fn eq_slice(a: &str, b: &str) -> bool {
+    // details elided
+}
+~~~
+
+The name `str_eq` has a special meaning to the Rust compiler,
+and the presence of this definition means that it will use this definition
+when generating calls to the string equality function.
+
+A complete list of the built-in language items follows:
+
+#### Traits
+
+`const`
+  : Cannot be mutated.
+`copy`
+  : Can be implicitly copied.
+`owned`
+  : Are uniquely owned.
+`durable`
+  : Contain borrowed pointers.
+`drop`
+  : Have finalizers.
+`add`
+  : Elements can be added (for example, integers and floats).
+`sub`
+  : Elements can be subtracted.
+`mul`
+  : Elements can be multiplied.
+`div`
+  : Elements can be divided.
+`mod`
+  : Elements have a modulo operation.
+`neg`
+  : Elements can be negated arithmetically.
+`not`
+  : Elements can be negated logically.
+`bitxor`
+  : Elements have an exclusive-or operation.
+`bitand`
+  : Elements have a bitwise `and` operation.
+`bitor`
+  : Elements have a bitwise `or` operation.
+`shl`
+  : Elements have a left shift operation.
+`shr`
+  : Elements have a right shift operation.
+`index`
+  : Elements can be indexed.
+`eq`
+  : Elements can be compared for equality.
+`ord`
+  : Elements have a partial ordering.
+
+#### Operations
+
+`str_eq`
+  : Compare two strings for equality.
+`uniq_str_eq`
+  : Compare two owned strings for equality.
+`annihilate`
+  : Destroy a box before freeing it.
+`log_type`
+  : Generically print a string representation of any type.
+`fail_`
+  : Abort the program with an error.
+`fail_bounds_check`
+  : Abort the program with a bounds check error.
+`exchange_malloc`
+  : Allocate memory on the exchange heap.
+`exchange_free`
+  : Free memory that was allocated on the exchange heap.
+`malloc`
+  : Allocate memory on the managed heap.
+`free`
+  : Free memory that was allocated on the managed heap.
+`borrow_as_imm`
+  : Create an immutable borrowed pointer to a mutable value.
+`return_to_mut`
+  : Release a borrowed pointer created with `return_to_mut`
+`check_not_borrowed`
+  : Fail if a value has existing borrowed pointers to it.
+`strdup_uniq`
+  : Return a new unique string containing a copy of the contents of a unique string.
+
+> **Note:** This list is likely to become out of date. We should auto-generate it
+> from `librustc/middle/lang_items.rs`.
 
 # Statements and expressions
 
