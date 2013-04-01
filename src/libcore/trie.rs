@@ -65,7 +65,7 @@ impl<T> Mutable for TrieMap<T> {
     }
 }
 
-impl<T> Map<uint, T> for TrieMap<T> {
+impl<'self, T> Map<'self, uint, T> for TrieMap<T> {
     /// Return true if the map contains a value for the specified key
     #[inline(always)]
     fn contains_key(&self, key: &uint) -> bool {
@@ -80,7 +80,7 @@ impl<T> Map<uint, T> for TrieMap<T> {
 
     /// Visit all values in order
     #[inline(always)]
-    fn each_value(&self, f: &fn(&T) -> bool) {
+    fn each_value(&self, f: &fn(&'self T) -> bool) {
         self.each(|&(_, v)| f(v))
     }
 
@@ -156,7 +156,7 @@ pub impl<T> TrieMap<T> {
 
     /// Visit all values in reverse order
     #[inline(always)]
-    fn each_value_reverse(&self, f: &fn(&T) -> bool) {
+    fn each_value_reverse(&self, f: &fn(&'self T) -> bool) {
         self.each_reverse(|&(_, v)| f(v))
     }
 }

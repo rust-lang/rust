@@ -70,15 +70,15 @@ impl<T> Mutable for cat<T> {
     fn clear(&mut self) {}
 }
 
-impl<T> Map<int, T> for cat<T> {
+impl<'self, T> Map<'self, int, T> for cat<T> {
     fn contains_key(&self, k: &int) -> bool { *k <= self.meows }
 
     fn each_key(&self, f: &fn(v: &int) -> bool) {
         for self.each |&(k, _)| { if !f(&k) { break; } loop;};
     }
 
-    fn each_value(&self, f: &fn(v: &T) -> bool) {
-        for self.each |&(_, v)| { if !f(v) { break; } loop;};
+    fn each_value(&self, f: &fn(v: &'self T) -> bool) {
+        fail!();
     }
 
     fn mutate_values(&mut self, f: &fn(&int, &mut T) -> bool) {

@@ -25,7 +25,7 @@ pub trait Mutable: Container {
     fn clear(&mut self);
 }
 
-pub trait Map<K, V>: Mutable {
+pub trait Map<'self, K, V>: Mutable {
     /// Return true if the map contains a value for the specified key
     fn contains_key(&self, key: &K) -> bool;
 
@@ -33,7 +33,7 @@ pub trait Map<K, V>: Mutable {
     fn each_key(&self, f: &fn(&K) -> bool);
 
     /// Visit all values
-    fn each_value(&self, f: &fn(&V) -> bool);
+    fn each_value(&self, f: &fn(&'self V) -> bool);
 
     /// Iterate over the map and mutate the contained values
     fn mutate_values(&mut self, f: &fn(&K, &mut V) -> bool);

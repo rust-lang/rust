@@ -315,7 +315,7 @@ impl<K:Hash + IterBytes + Eq,V> Mutable for HashMap<K, V> {
     }
 }
 
-impl<'self,K:Hash + IterBytes + Eq,V> Map<K, V> for HashMap<K, V> {
+impl<'self,K:Hash + IterBytes + Eq,V> Map<'self, K, V> for HashMap<K, V> {
     /// Return true if the map contains a value for the specified key
     fn contains_key(&self, k: &K) -> bool {
         match self.bucket_for_key(k) {
@@ -325,12 +325,12 @@ impl<'self,K:Hash + IterBytes + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 
     /// Visit all keys
-    fn each_key(&self, blk: &fn(k: &K) -> bool) {
+    fn each_key(&self, blk: &fn(k: &'self K) -> bool) {
         self.each(|&(k, _)| blk(k))
     }
 
     /// Visit all values
-    fn each_value(&self, blk: &fn(v: &V) -> bool) {
+    fn each_value(&self, blk: &fn(v: &'self V) -> bool) {
         self.each(|&(_, v)| blk(v))
     }
 
@@ -564,7 +564,7 @@ pub struct HashSet<T> {
 
 impl<T:Hash + IterBytes + Eq> BaseIter<T> for HashSet<T> {
     /// Visit all values in order
-    fn each(&self, f: &fn(&T) -> bool) { self.map.each_key(f) }
+    fn each(&self, f: &fn(&'self T) -> bool) { self.map.each_key(f) }
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 

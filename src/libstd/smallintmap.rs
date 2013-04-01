@@ -70,7 +70,7 @@ impl<V> Mutable for SmallIntMap<V> {
     fn clear(&mut self) { self.v.clear() }
 }
 
-impl<V> Map<uint, V> for SmallIntMap<V> {
+impl<'self, V> Map<'self, uint, V> for SmallIntMap<V> {
     /// Return true if the map contains a value for the specified key
     fn contains_key(&self, key: &uint) -> bool {
         self.find(key).is_some()
@@ -82,7 +82,7 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
     }
 
     /// Visit all values in order
-    fn each_value(&self, blk: &fn(value: &V) -> bool) {
+    fn each_value(&self, blk: &fn(value: &'self V) -> bool) {
         self.each(|&(_, v)| blk(v))
     }
 
