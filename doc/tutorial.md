@@ -1539,9 +1539,9 @@ for spawning [tasks][tasks].
 
 Rust closures have a convenient subtyping property: you can pass any kind of
 closure (as long as the arguments and return types match) to functions
-that expect a `fn()`. Thus, when writing a higher-order function that
+that expect a `&fn()`. Thus, when writing a higher-order function that
 only calls its function argument, and does nothing else with it, you
-should almost always declare the type of that argument as `fn()`. That way,
+should almost always declare the type of that argument as `&fn()`. That way,
 callers may pass any kind of closure.
 
 ~~~~
