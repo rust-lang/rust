@@ -5,7 +5,7 @@
 SetupIconFile=rust-logo.ico
 AppName=Rust
 AppVersion={#CFG_VERSION}
-AppCopyright=Copyright (C) 2006-2012 Mozilla Foundation, MIT license
+AppCopyright=Copyright (C) 2006-2013 Mozilla Foundation, MIT license
 AppPublisher=Mozilla Foundation
 AppPublisherURL=http://www.rust-lang.org
 VersionInfoVersion={#CFG_VERSION}
