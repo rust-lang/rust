@@ -11,7 +11,6 @@
 use core::prelude::*;
 
 use abi::AbiSet;
-use abi;
 use ast::{RegionTyParamBound, TraitTyParamBound, required, provided};
 use ast;
 use ast_util;
@@ -2180,7 +2179,7 @@ pub fn print_opt_sigil(s: @ps, opt_sigil: Option<ast::Sigil>) {
 }
 
 pub fn print_fn_header_info(s: @ps,
-                            opt_sty: Option<ast::self_ty_>,
+                            _opt_sty: Option<ast::self_ty_>,
                             opt_purity: Option<ast::purity>,
                             abis: AbiSet,
                             onceness: ast::Onceness,

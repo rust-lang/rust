@@ -19,7 +19,6 @@ use codemap::BytePos;
 use diagnostic::span_handler;
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
 
-use core::either::Either;
 use core::vec;
 use core::hashmap::linear::LinearSet;
 use std;

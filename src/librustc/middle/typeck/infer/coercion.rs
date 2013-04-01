@@ -66,9 +66,9 @@ we may want to adjust precisely when coercions occur.
 
 use core::prelude::*;
 
-use middle::ty::{TyVar, AutoPtr, AutoBorrowVec, AutoBorrowFn};
-use middle::ty::{AutoAdjustment, AutoDerefRef, AutoRef};
-use middle::ty::{vstore_slice, vstore_box, vstore_uniq, vstore_fixed};
+use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowFn};
+use middle::ty::{AutoDerefRef, AutoRef};
+use middle::ty::{vstore_slice, vstore_box, vstore_uniq};
 use middle::ty::{mt};
 use middle::ty;
 use middle::typeck::infer::{CoerceResult, resolve_type};
@@ -76,10 +76,9 @@ use middle::typeck::infer::combine::CombineFields;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::resolve::try_resolve_tvar_shallow;
-use util::common::{indent, indenter};
+use util::common::indenter;
 
-use syntax::abi::AbiSet;
-use syntax::ast::{m_const, m_imm, m_mutbl};
+use syntax::ast::m_imm;
 use syntax::ast;
 
 // Note: Coerce is not actually a combiner, in that it does not
