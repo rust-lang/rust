@@ -10,7 +10,7 @@
 
 // The Rust abstract syntax tree.
 
-use codemap::{span, FileName, spanned};
+use codemap::{span, spanned};
 use abi::AbiSet;
 use opt_vec::OptVec;
 

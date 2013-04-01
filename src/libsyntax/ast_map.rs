@@ -15,7 +15,6 @@ use ast::*;
 use ast;
 use ast_util::{inlined_item_utils, stmt_id};
 use ast_util;
-use attr;
 use codemap;
 use codemap::spanned;
 use diagnostic::span_handler;

@@ -110,7 +110,6 @@ use util::common::{block_query, indenter, loop_query};
 use util::ppaux::{bound_region_to_str, expr_repr, pat_repr};
 use util::ppaux;
 
-use core::either;
 use core::hashmap::linear::LinearMap;
 use core::ptr;
 use core::result::{Result, Ok, Err};
@@ -119,7 +118,7 @@ use core::str;
 use core::vec;
 use std::list::Nil;
 use syntax::abi::AbiSet;
-use syntax::ast::{provided, required, ty_i};
+use syntax::ast::{provided, required};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::local_def;
@@ -3021,7 +3020,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                            vs: &[ast::variant],
                            id: ast::node_id) {
     fn do_check(ccx: @mut CrateCtxt,
-                sp: span,
+                _sp: span,
                 vs: &[ast::variant],
                 id: ast::node_id,
                 disr_vals: &mut ~[int],
@@ -3303,7 +3302,7 @@ pub fn type_is_c_like_enum(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {
 
 pub fn ast_expr_vstore_to_vstore(fcx: @mut FnCtxt,
                                  e: @ast::expr,
-                                 n: uint,
+                                 _n: uint,
                                  v: ast::expr_vstore)
                               -> ty::vstore {
     match v {

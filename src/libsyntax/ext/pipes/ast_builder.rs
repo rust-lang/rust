@@ -16,7 +16,7 @@
 use core::prelude::*;
 
 use abi::AbiSet;
-use ast::{ident, node_id};
+use ast::ident;
 use ast;
 use ast_util;
 use codemap::{span, respan, dummy_sp, spanned};

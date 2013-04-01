@@ -21,7 +21,7 @@ use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::isr_alist;
 use syntax::ast;
 use syntax::ast::{Many, Once, extern_fn, impure_fn, m_const, m_imm, m_mutbl};
-use syntax::ast::{noreturn, pure_fn, ret_style, return_val, unsafe_fn};
+use syntax::ast::{pure_fn, unsafe_fn};
 use syntax::ast::{Onceness, purity};
 use syntax::abi::AbiSet;
 use syntax::codemap::span;

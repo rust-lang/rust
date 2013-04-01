@@ -20,7 +20,6 @@ use uv;
 use uv::iotask;
 use uv::iotask::IoTask;
 
-use core::io::{Reader, ReaderUtil, Writer};
 use core::io;
 use core::libc::size_t;
 use core::libc;
@@ -1439,7 +1438,7 @@ struct TcpBufferedSocketData {
     mut buf_off: uint
 }
 
-//#[cfg(test)]
+#[cfg(test)]
 pub mod test {
     use net::ip;
     use net::tcp::{GenericListenErr, TcpConnectErrData, TcpListenErrData};
