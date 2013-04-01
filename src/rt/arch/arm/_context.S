@@ -1,3 +1,8 @@
+// Mark stack as non-executable
+#if defined(__linux__) && defined(__ELF__)
+.section	.note.GNU-stack, "", @progbits
+#endif
+
 .text
 .code 32
 .arm
@@ -17,12 +22,12 @@ swap_registers:
 	str r10, [r0, #40]
 	str r11, [r0, #44]
 	str r12, [r0, #48]
-	str sp, [r0, #52] 
+	str sp, [r0, #52]
 	str lr, [r0, #56]
 
 	mrs r2, cpsr
 	str r2, [r0, #64]
-	
+
 
 	ldr r0, [r1, #0]
 	ldr r3, [r1, #12]
@@ -35,10 +40,10 @@ swap_registers:
 	ldr r10, [r1, #40]
 	ldr r11, [r1, #44]
 	ldr r12, [r1, #48]
-	
+
 	ldr sp, [r1, #52]
 	ldr lr, [r1, #56]
-	 
+
 	ldr r2, [r1, #64]
 	msr cpsr_cxsf, r2
 

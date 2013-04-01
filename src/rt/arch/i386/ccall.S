@@ -1,3 +1,8 @@
+// Mark stack as non-executable
+#if defined(__linux__) && defined(__ELF__)
+.section	.note.GNU-stack, "", @progbits
+#endif
+
 /*
 	The function for switching to the C stack.  It is called
 	__morestack because gdb allows any frame with that name to

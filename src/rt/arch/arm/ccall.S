@@ -1,3 +1,8 @@
+// Mark stack as non-executable
+#if defined(__linux__) && defined(__ELF__)
+.section	.note.GNU-stack, "", @progbits
+#endif
+
 .text
 .code 32
 .arm
@@ -19,4 +24,3 @@ __morestack:
 	pop {r4, fp, lr}
 	mov pc, lr
 	.fnend
-
