@@ -88,6 +88,7 @@ fn vector<M: Map<uint, uint>>(map: &mut M, n_keys: uint, dist: &[uint]) {
     }
 }
 
+#[fixed_stack_segment]
 fn main() {
     let args = os::args();
     let n_keys = {

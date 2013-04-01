@@ -233,7 +233,7 @@ pub type ctxt = @ctxt_;
 
 struct ctxt_ {
     diag: @syntax::diagnostic::span_handler,
-    interner: @mut HashMap<intern_key, t_box>,
+    interner: @mut HashMap<intern_key, ~t_box_>,
     next_id: @mut uint,
     vecs_implicitly_copyable: bool,
     legacy_modes: bool,
@@ -317,7 +317,7 @@ enum tbox_flag {
     needs_subst = 1 | 2 | 8
 }
 
-type t_box = @t_box_;
+type t_box = &'static t_box_;
 
 struct t_box_ {
     sty: sty,
@@ -882,7 +882,7 @@ fn mk_t(cx: ctxt, +st: sty) -> t { mk_t_with_id(cx, st, None) }
 fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
     let key = intern_key { sty: to_unsafe_ptr(&st), o_def_id: o_def_id };
     match cx.interner.find(&key) {
-      Some(&t) => unsafe { return cast::reinterpret_cast(&t); },
+      Some(t) => unsafe { return cast::transmute(&t.sty); },
       _ => ()
     }
 
@@ -952,21 +952,27 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       }
     }
 
-    let t = @t_box_ {
+    let t = ~t_box_ {
         sty: st,
         id: *cx.next_id,
         flags: flags,
         o_def_id: o_def_id
     };
+
+    let sty_ptr = to_unsafe_ptr(&t.sty);
+
     let key = intern_key {
-        sty: to_unsafe_ptr(&t.sty),
+        sty: sty_ptr,
         o_def_id: o_def_id
     };
 
     cx.interner.insert(key, t);
 
     *cx.next_id += 1;
-    unsafe { cast::reinterpret_cast(&t) }
+
+    unsafe {
+        cast::transmute::<*sty, t>(sty_ptr)
+    }
 }
 
 pub fn mk_nil(cx: ctxt) -> t { mk_t(cx, ty_nil) }
