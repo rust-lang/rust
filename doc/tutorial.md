@@ -2561,12 +2561,18 @@ types. Methods on [vectors] and [strings], implementations of most
 comparison and math operators, and pervasive types like [`Option`]
 and [`Result`] live in core.
 
-All Rust programs link to the core library and import its contents,
+All Rust programs link to the core library,
 as if the following were written at the top of the crate.
 
 ~~~ {.xfail-test}
 extern mod core;
-use core::*;
+~~~
+
+As with any other library,
+Rust programs must explicitly import names in `core`:
+
+~~~ {.xfail-test}
+use core::cmp::{Eq, Ord};
 ~~~
 
 [core]: core/index.html
