@@ -133,7 +133,6 @@ impl to_bytes::IterBytes for creader_cache_key {
 
 struct intern_key {
     sty: *sty,
-    o_def_id: Option<ast::def_id>
 }
 
 // NB: Do not replace this with #[deriving(Eq)]. The automatically-derived
@@ -142,7 +141,7 @@ struct intern_key {
 impl cmp::Eq for intern_key {
     fn eq(&self, other: &intern_key) -> bool {
         unsafe {
-            *self.sty == *other.sty && self.o_def_id == other.o_def_id
+            *self.sty == *other.sty
         }
     }
     fn ne(&self, other: &intern_key) -> bool {
@@ -153,7 +152,7 @@ impl cmp::Eq for intern_key {
 impl to_bytes::IterBytes for intern_key {
     fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         unsafe {
-            to_bytes::iter_bytes_2(&*self.sty, &self.o_def_id, lsb0, f);
+            (*self.sty).iter_bytes(lsb0, f);
         }
     }
 }
@@ -326,7 +325,6 @@ pub struct t_box_ {
     sty: sty,
     id: uint,
     flags: uint,
-    o_def_id: Option<ast::def_id>
 }
 
 // To reduce refcounting cost, we're representing types as unsafe pointers
@@ -359,7 +357,6 @@ pub fn type_needs_infer(t: t) -> bool {
 pub fn type_has_regions(t: t) -> bool {
     tbox_has_flag(get(t), has_regions)
 }
-pub fn type_def_id(t: t) -> Option<ast::def_id> { get(t).o_def_id }
 pub fn type_id(t: t) -> uint { get(t).id }
 
 #[deriving(Eq)]
@@ -516,7 +513,6 @@ pub struct substs {
 mod primitives {
     use super::{sty, t_box_};
 
-    use core::option::None;
     use syntax::ast;
 
     macro_rules! def_prim_ty(
@@ -525,7 +521,6 @@ mod primitives {
                 sty: $sty,
                 id: $id,
                 flags: 0,
-                o_def_id: None,
             };
         )
     )
@@ -551,14 +546,12 @@ mod primitives {
         sty: super::ty_bot,
         id: 16,
         flags: super::has_ty_bot as uint,
-        o_def_id: None,
     };
 
     pub static TY_ERR: t_box_ = t_box_ {
         sty: super::ty_err,
         id: 17,
         flags: super::has_ty_err as uint,
-        o_def_id: None,
     };
 
     pub static LAST_PRIMITIVE_ID: uint = 18;
@@ -945,13 +938,11 @@ pub fn mk_ctxt(s: session::Session,
      }
 }
 
-
 // Type constructors
-fn mk_t(cx: ctxt, +st: sty) -> t { mk_t_with_id(cx, st, None) }
 
 // Interns a type/name combination, stores the resulting box in cx.interner,
 // and returns the box as cast to an unsafe ptr (see comments for t above).
-fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
+fn mk_t(cx: ctxt, +st: sty) -> t {
     // Check for primitive types.
     match st {
         ty_nil => return mk_nil(cx),
@@ -963,7 +954,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
         _ => {}
     };
 
-    let key = intern_key { sty: to_unsafe_ptr(&st), o_def_id: o_def_id };
+    let key = intern_key { sty: to_unsafe_ptr(&st) };
     match cx.interner.find(&key) {
       Some(t) => unsafe { return cast::transmute(&t.sty); },
       _ => ()
@@ -1039,14 +1030,12 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
         sty: st,
         id: *cx.next_id,
         flags: flags,
-        o_def_id: o_def_id
     };
 
     let sty_ptr = to_unsafe_ptr(&t.sty);
 
     let key = intern_key {
         sty: sty_ptr,
-        o_def_id: o_def_id
     };
 
     cx.interner.insert(key, t);
@@ -1262,10 +1251,6 @@ pub fn mk_opaque_closure_ptr(cx: ctxt, sigil: ast::Sigil) -> t {
 }
 
 pub fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
-
-pub fn mk_with_id(cx: ctxt, base: t, def_id: ast::def_id) -> t {
-    mk_t_with_id(cx, /*bad*/copy get(base).sty, Some(def_id))
-}
 
 // Converts s to its machine type equivalent
 pub fn mach_sty(cfg: @session::config, t: t) -> sty {

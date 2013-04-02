@@ -381,9 +381,9 @@ fn parse_ty(st: @mut PState, conv: conv_did) -> ty::t {
         }
       }
       '"' => {
-        let def = parse_def(st, TypeWithId, conv);
+        let _ = parse_def(st, TypeWithId, conv);
         let inner = parse_ty(st, conv);
-        ty::mk_with_id(st.tcx, inner, def)
+        inner
       }
       'B' => ty::mk_opaque_box(st.tcx),
       'a' => {
