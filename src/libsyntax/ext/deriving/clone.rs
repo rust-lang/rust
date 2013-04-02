@@ -29,6 +29,7 @@ pub fn expand_deriving_clone(cx: @ext_ctxt,
                 name: ~"clone",
                 nargs: 0,
                 output_type: None, // return Self
+                const_nonmatching: false,
                 combine_substructure: cs_clone
             }
         ]

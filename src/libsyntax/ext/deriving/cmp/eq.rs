@@ -31,24 +31,24 @@ pub fn expand_deriving_eq(cx: @ext_ctxt,
         cs_or(|cx, span, _| build::mk_bool(cx, span, true),
               cx, span, substr)
     }
-
+    macro_rules! md (
+        ($name:expr, $f:ident) => {
+            MethodDef {
+                name: $name,
+                output_type: Some(~[~"bool"]),
+                nargs: 1,
+                const_nonmatching: true,
+                combine_substructure: $f
+            },
+        }
+    )
 
     let trait_def = TraitDef {
         path: ~[~"core", ~"cmp", ~"Eq"],
         additional_bounds: ~[],
         methods: ~[
-            MethodDef {
-                name: ~"ne",
-                output_type: Some(~[~"bool"]),
-                nargs: 1,
-                combine_substructure: cs_ne
-            },
-            MethodDef {
-                name: ~"eq",
-                output_type: Some(~[~"bool"]),
-                nargs: 1,
-                combine_substructure: cs_eq
-            }
+            md!(~"eq", cs_eq),
+            md!(~"ne", cs_ne)
         ]
     };
 

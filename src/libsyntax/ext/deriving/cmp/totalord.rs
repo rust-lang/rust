@@ -28,6 +28,7 @@ pub fn expand_deriving_totalord(cx: @ext_ctxt,
                 name: ~"cmp",
                 output_type: Some(~[~"core", ~"cmp", ~"Ordering"]),
                 nargs: 1,
+                const_nonmatching: false,
                 combine_substructure: cs_cmp
             }
         ]

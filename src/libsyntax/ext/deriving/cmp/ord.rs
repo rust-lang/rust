@@ -16,10 +16,16 @@ use ext::build;
 use ext::deriving::generic::*;
 use core::option::Some;
 
-macro_rules! mk_cso {
-    ($less:expr, $equal:expr) => {
-        |cx, span, substr|
-        cs_ord($less, $equal, cx, span, substr)
+macro_rules! md {
+    ($name:expr, $less:expr, $equal:expr) => {
+        MethodDef {
+            name: $name,
+            output_type: Some(~[~"bool"]),
+            nargs: 1,
+            const_nonmatching: false,
+            combine_substructure: |cx, span, substr|
+                    cs_ord($less, $equal, cx, span, substr)
+        }
     }
 }
 
@@ -32,30 +38,10 @@ pub fn expand_deriving_ord(cx: @ext_ctxt,
         // XXX: Ord doesn't imply Eq yet
         additional_bounds: ~[~[~"core", ~"cmp", ~"Eq"]],
         methods: ~[
-            MethodDef {
-                name: ~"lt",
-                output_type: Some(~[~"bool"]),
-                nargs: 1,
-                combine_substructure: mk_cso!(true, false)
-            },
-            MethodDef {
-                name: ~"le",
-                output_type: Some(~[~"bool"]),
-                nargs: 1,
-                combine_substructure: mk_cso!(true, true)
-            },
-            MethodDef {
-                name: ~"gt",
-                output_type: Some(~[~"bool"]),
-                nargs: 1,
-                combine_substructure: mk_cso!(false, false)
-            },
-            MethodDef {
-                name: ~"ge",
-                output_type: Some(~[~"bool"]),
-                nargs: 1,
-                combine_substructure: mk_cso!(false, true)
-            },
+            md!(~"lt", true,  false),
+            md!(~"le", true,  true),
+            md!(~"gt", false, false),
+            md!(~"ge", false, true)
         ]
     };
 
