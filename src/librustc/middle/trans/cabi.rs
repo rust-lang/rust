@@ -180,37 +180,3 @@ pub impl FnType {
         Ret(bcx, llretval);
     }
 }
-
-enum LLVM_ABIInfo { LLVM_ABIInfo }
-
-impl ABIInfo for LLVM_ABIInfo {
-    fn compute_info(&self,
-                    atys: &[TypeRef],
-                    rty: TypeRef,
-                    _ret_def: bool) -> FnType {
-        let arg_tys = do atys.map |a| {
-            LLVMType { cast: false, ty: *a }
-        };
-        let ret_ty = LLVMType {
-            cast: false,
-            ty: rty
-        };
-        let attrs = do atys.map |_| {
-            option::None
-        };
-        let sret = false;
-
-        return FnType {
-            arg_tys: arg_tys,
-            ret_ty: ret_ty,
-            attrs: attrs,
-            sret: sret
-        };
-    }
-}
-
-pub fn llvm_abi_info() -> @ABIInfo {
-    return @LLVM_ABIInfo as @ABIInfo;
-}
-
-

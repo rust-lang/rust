@@ -30,26 +30,6 @@ rust_dbg_extern_identity_u64(uint64_t u) {
     return u;
 }
 
-struct TwoU64s {
-    uint64_t one;
-    uint64_t two;
-};
-
-extern "C" CDECL TwoU64s
-rust_dbg_extern_identity_TwoU64s(TwoU64s u) {
-    return u;
-}
-
-struct TwoDoubles {
-    double one;
-    double two;
-};
-
-extern "C" CDECL TwoDoubles
-rust_dbg_extern_identity_TwoDoubles(TwoDoubles u) {
-    return u;
-}
-
 extern "C" CDECL double
 rust_dbg_extern_identity_double(double u) {
     return u;
@@ -103,3 +83,85 @@ rust_dbg_call(dbg_callback cb, void *data) {
 }
 
 extern "C" CDECL void rust_dbg_do_nothing() { }
+
+struct TwoU8s {
+    uint8_t one;
+    uint8_t two;
+};
+
+extern "C" CDECL TwoU8s
+rust_dbg_extern_return_TwoU8s() {
+    struct TwoU8s s;
+    s.one = 10;
+    s.two = 20;
+    return s;
+}
+
+extern "C" CDECL TwoU8s
+rust_dbg_extern_identity_TwoU8s(TwoU8s u) {
+    return u;
+}
+
+struct TwoU16s {
+    uint16_t one;
+    uint16_t two;
+};
+
+extern "C" CDECL TwoU16s
+rust_dbg_extern_return_TwoU16s() {
+    struct TwoU16s s;
+    s.one = 10;
+    s.two = 20;
+    return s;
+}
+
+extern "C" CDECL TwoU16s
+rust_dbg_extern_identity_TwoU16s(TwoU16s u) {
+    return u;
+}
+
+struct TwoU32s {
+    uint32_t one;
+    uint32_t two;
+};
+
+extern "C" CDECL TwoU32s
+rust_dbg_extern_return_TwoU32s() {
+    struct TwoU32s s;
+    s.one = 10;
+    s.two = 20;
+    return s;
+}
+
+extern "C" CDECL TwoU32s
+rust_dbg_extern_identity_TwoU32s(TwoU32s u) {
+    return u;
+}
+
+struct TwoU64s {
+    uint64_t one;
+    uint64_t two;
+};
+
+extern "C" CDECL TwoU64s
+rust_dbg_extern_return_TwoU64s() {
+    struct TwoU64s s;
+    s.one = 10;
+    s.two = 20;
+    return s;
+}
+
+extern "C" CDECL TwoU64s
+rust_dbg_extern_identity_TwoU64s(TwoU64s u) {
+    return u;
+}
+
+struct TwoDoubles {
+    double one;
+    double two;
+};
+
+extern "C" CDECL TwoDoubles
+rust_dbg_extern_identity_TwoDoubles(TwoDoubles u) {
+    return u;
+}
