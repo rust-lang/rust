@@ -227,7 +227,6 @@ Borrowck results in two maps.
 use core::prelude::*;
 
 use middle::mem_categorization::*;
-use middle::region;
 use middle::ty;
 use middle::typeck;
 use middle::moves;
@@ -458,7 +457,7 @@ pub fn root_map() -> root_map {
 
 pub impl BorrowckCtxt {
     fn is_subregion_of(&self, r_sub: ty::Region, r_sup: ty::Region) -> bool {
-        region::is_subregion_of(self.tcx.region_map, r_sub, r_sup)
+        self.tcx.region_maps.is_subregion_of(r_sub, r_sup)
     }
 
     fn cat_expr(&self, expr: @ast::expr) -> cmt {

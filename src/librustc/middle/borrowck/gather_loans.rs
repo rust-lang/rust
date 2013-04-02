@@ -242,7 +242,7 @@ fn req_loans_in_expr(ex: @ast::expr,
         // (if used like `a.b(...)`), the call where it's an argument
         // (if used like `x(a.b)`), or the block (if used like `let x
         // = a.b`).
-        let scope_r = ty::re_scope(*self.tcx().region_map.get(&ex.id));
+        let scope_r = self.tcx().region_maps.encl_region(ex.id);
         let rcvr_cmt = self.bccx.cat_expr(rcvr);
         self.guarantee_valid(rcvr_cmt, m_imm, scope_r);
         visit::visit_expr(ex, self, vt);
@@ -524,7 +524,10 @@ pub impl GatherLoanCtxt {
         // immutable structures, this is just the converse I suppose)
 
         let scope_id = match scope_r {
-            ty::re_scope(scope_id) | ty::re_free(scope_id, _) => scope_id,
+            ty::re_scope(scope_id) |
+            ty::re_free(ty::FreeRegion {scope_id, _}) => {
+                scope_id
+            }
             _ => {
                 self.bccx.tcx.sess.span_bug(
                     cmt.span,

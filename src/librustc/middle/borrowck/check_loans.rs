@@ -128,9 +128,9 @@ pub impl CheckLoanCtxt {
               Some(e) => return Some(pc_cmt(*e))
             }
 
-            match self.tcx().region_map.find(&scope_id) {
+            match self.tcx().region_maps.opt_encl_scope(scope_id) {
               None => return default_purity,
-              Some(&next_scope_id) => scope_id = next_scope_id
+              Some(next_scope_id) => scope_id = next_scope_id
             }
         }
     }
@@ -146,9 +146,9 @@ pub impl CheckLoanCtxt {
                 }
             }
 
-            match self.tcx().region_map.find(&scope_id) {
+            match self.tcx().region_maps.opt_encl_scope(scope_id) {
               None => return,
-              Some(&next_scope_id) => scope_id = next_scope_id,
+              Some(next_scope_id) => scope_id = next_scope_id,
             }
         }
     }
@@ -270,7 +270,7 @@ pub impl CheckLoanCtxt {
 
         debug!("new_loans has length %?", new_loans.len());
 
-        let par_scope_id = *self.tcx().region_map.get(&scope_id);
+        let par_scope_id = self.tcx().region_maps.encl_scope(scope_id);
         for self.walk_loans(par_scope_id) |old_loan| {
             debug!("old_loan=%?", self.bccx.loan_to_repr(old_loan));
 
