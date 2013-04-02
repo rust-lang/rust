@@ -309,6 +309,8 @@ pub struct lit {
     pos: BytePos
 }
 
+// it appears this function is called only from pprust... that's
+// probably not a good thing.
 pub fn gather_comments_and_literals(span_diagnostic:
                                     @diagnostic::span_handler,
                                     path: ~str,
