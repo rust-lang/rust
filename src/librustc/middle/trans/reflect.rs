@@ -323,7 +323,7 @@ pub impl Reflector {
           }
 
           // Miscallaneous extra types
-          ty::ty_trait(_, _, _) => self.leaf(~"trait"),
+          ty::ty_trait(_, _, _, _) => self.leaf(~"trait"),
           ty::ty_infer(_) => self.leaf(~"infer"),
           ty::ty_err => self.leaf(~"err"),
           ty::ty_param(ref p) => {

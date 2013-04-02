@@ -224,16 +224,20 @@ pub fn region_to_str_space(cx: ctxt, prefix: &str, region: Region) -> ~str {
     }
 }
 
+fn mutability_to_str(m: ast::mutability) -> ~str {
+    match m {
+        ast::m_mutbl => ~"mut ",
+        ast::m_imm => ~"",
+        ast::m_const => ~"const "
+    }
+}
+
 pub fn mt_to_str(cx: ctxt, m: &mt) -> ~str {
     mt_to_str_wrapped(cx, "", m, "")
 }
 
 pub fn mt_to_str_wrapped(cx: ctxt, before: &str, m: &mt, after: &str) -> ~str {
-    let mstr = match m.mutbl {
-      ast::m_mutbl => "mut ",
-      ast::m_imm => "",
-      ast::m_const => "const "
-    };
+    let mstr = mutability_to_str(m.mutbl);
     return fmt!("%s%s%s%s", mstr, before, ty_to_str(cx, m.ty), after);
 }
 
@@ -456,11 +460,11 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         let base = ast_map::path_to_str(path, cx.sess.intr());
         parameterized(cx, base, substs.self_r, substs.tps)
       }
-      ty_trait(did, ref substs, s) => {
+      ty_trait(did, ref substs, s, mutbl) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
         let ty = parameterized(cx, base, substs.self_r, substs.tps);
-        fmt!("%s%s", trait_store_to_str(cx, s), ty)
+        fmt!("%s%s%s", trait_store_to_str(cx, s), mutability_to_str(mutbl), ty)
       }
       ty_evec(ref mt, vs) => {
         vstore_ty_to_str(cx, mt, vs)

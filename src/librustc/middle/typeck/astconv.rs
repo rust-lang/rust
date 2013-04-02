@@ -277,9 +277,9 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
                 }
                 return ty::mk_evec(tcx, mt, vst);
             }
-            ast::ty_path(path, id) if a_seq_ty.mutbl == ast::m_imm => {
+            ast::ty_path(path, id) => {
                 match tcx.def_map.find(&id) {
-                    Some(&ast::def_prim_ty(ast::ty_str)) => {
+                    Some(&ast::def_prim_ty(ast::ty_str)) if a_seq_ty.mutbl == ast::m_imm => {
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                         return ty::mk_estr(tcx, vst);
                     }
@@ -305,7 +305,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
                         return ty::mk_trait(tcx,
                                             result.def_id,
                                             copy result.substs,
-                                            trait_store);
+                                            trait_store,
+                                            a_seq_ty.mutbl);
                     }
                     _ => {}
                 }
