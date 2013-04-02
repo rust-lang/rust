@@ -67,6 +67,15 @@ pub fn from_bytes_with_null<'a>(vv: &'a [u8]) -> &'a str {
     return unsafe { raw::from_bytes_with_null(vv) };
 }
 
+pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
+    unsafe {
+        assert!(is_utf8(vector));
+        let (ptr, len): (*u8, uint) = ::cast::transmute(vector);
+        let string: &'a str = ::cast::transmute((ptr, len + 1));
+        string
+    }
+}
+
 /// Copy a slice into a new unique str
 pub fn from_slice(s: &str) -> ~str {
     unsafe { raw::slice_bytes_owned(s, 0, len(s)) }
