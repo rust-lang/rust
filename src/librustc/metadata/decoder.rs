@@ -37,7 +37,7 @@ use std::serialize::Decodable;
 use syntax::ast_map;
 use syntax::attr;
 use syntax::diagnostic::span_handler;
-use syntax::parse::token::{ident_interner, special_idents};
+use syntax::parse::token::{StringRef, ident_interner, special_idents};
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 use syntax::codemap;
@@ -322,7 +322,13 @@ fn item_path(intr: @ident_interner, item_doc: ebml::Doc) -> ast_map::path {
 
 fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::ident {
     let name = reader::get_doc(item, tag_paths_data_name);
-    intr.intern(@str::from_bytes(reader::doc_data(name)))
+    do reader::with_doc_data(name) |data| {
+        let string = str::from_bytes_slice(data);
+        match intr.find_equiv(&StringRef(string)) {
+            None => intr.intern(@(string.to_owned())),
+            Some(val) => val,
+        }
+    }
 }
 
 fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)

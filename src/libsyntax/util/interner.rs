@@ -13,6 +13,7 @@
 // type, and vice versa.
 
 use core::prelude::*;
+use core::cmp::Equiv;
 use core::hashmap::HashMap;
 
 pub struct Interner<T> {
@@ -64,6 +65,14 @@ pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
     fn get(&self, idx: uint) -> T { self.vect[idx] }
 
     fn len(&self) -> uint { let vect = &*self.vect; vect.len() }
+
+    fn find_equiv<Q:Hash + IterBytes + Equiv<T>>(&self, val: &Q)
+                                              -> Option<uint> {
+        match self.map.find_equiv(val) {
+            Some(v) => Some(*v),
+            None => None,
+        }
+    }
 }
 
 #[test]
