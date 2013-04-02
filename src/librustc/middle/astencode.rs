@@ -475,9 +475,12 @@ impl tr for ty::Region {
     fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::Region {
         match *self {
             ty::re_bound(br) => ty::re_bound(br.tr(xcx)),
-            ty::re_free(id, br) => ty::re_free(xcx.tr_id(id), br.tr(xcx)),
             ty::re_scope(id) => ty::re_scope(xcx.tr_id(id)),
             ty::re_static | ty::re_infer(*) => *self,
+            ty::re_free(ref fr) => {
+                ty::re_free(ty::FreeRegion {scope_id: xcx.tr_id(fr.scope_id),
+                                            bound_region: fr.bound_region.tr(xcx)})
+            }
         }
     }
 }
