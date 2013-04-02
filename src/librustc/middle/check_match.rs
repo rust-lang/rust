@@ -596,8 +596,11 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                                              class_id);
                             }
                             _ => {
-                                cx.tcx.sess.span_bug(pat_span,
-                                ~"struct pattern didn't resolve to a struct");
+                                cx.tcx.sess.span_bug(
+                                    pat_span,
+                                    fmt!("struct pattern resolved to %s, \
+                                          not a struct",
+                                         ty_to_str(cx.tcx, left_ty)));
                             }
                         }
                         let args = vec::map(class_fields, |class_field| {

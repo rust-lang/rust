@@ -95,6 +95,7 @@ use middle::typeck::check::method::{CheckTraitsAndInherentMethods};
 use middle::typeck::check::method::{CheckTraitsOnly, DontAutoderefReceiver};
 use middle::typeck::check::method::{TransformTypeNormally};
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
+use middle::typeck::check::regionmanip::relate_free_regions;
 use middle::typeck::check::vtable::{LocationInfo, VtableContext};
 use middle::typeck::CrateCtxt;
 use middle::typeck::infer::{resolve_type, force_tvar};
@@ -308,9 +309,13 @@ pub fn check_fn(ccx: @mut CrateCtxt,
     // the node_id of the body block.
 
     let (isr, self_info, fn_sig) = {
-        replace_bound_regions_in_fn_sig(tcx, inherited_isr, self_info, fn_sig,
-                                        |br| ty::re_free(body.node.id, br))
+        replace_bound_regions_in_fn_sig(
+            tcx, inherited_isr, self_info, fn_sig,
+            |br| ty::re_free(ty::FreeRegion {scope_id: body.node.id,
+                                             bound_region: br}))
     };
+
+    relate_free_regions(tcx, self_info.map(|s| s.self_ty), &fn_sig);
 
     let arg_tys = fn_sig.inputs.map(|a| a.ty);
     let ret_ty = fn_sig.output;
@@ -2841,8 +2846,7 @@ pub fn check_decl_local(fcx: @mut FnCtxt, local: @ast::local)  {
         _ => {}
     }
 
-    let region =
-        ty::re_scope(*tcx.region_map.get(&local.node.id));
+    let region = tcx.region_maps.encl_region(local.node.id);
     let pcx = pat_ctxt {
         fcx: fcx,
         map: pat_id_map(tcx.def_map, local.node.pat),
