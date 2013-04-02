@@ -473,6 +473,7 @@ pub impl Parser {
         (decl, lifetimes)
     }
 
+    // parse the methods in a trait declaration
     fn parse_trait_methods(&self) -> ~[trait_method] {
         do self.parse_unspanned_seq(
             &token::LBRACE,
@@ -558,6 +559,7 @@ pub impl Parser {
     }
 
     // parse [mut/const/imm] ID : TY
+    // now used only by obsolete record syntax parser...
     fn parse_ty_field(&self) -> ty_field {
         let lo = self.span.lo;
         let mutbl = self.parse_mutability();
@@ -834,6 +836,7 @@ pub impl Parser {
         either::Left(self.parse_arg_general(true))
     }
 
+    // parse an argument in a lambda header e.g. |arg, arg|
     fn parse_fn_block_arg(&self) -> arg_or_capture_item {
         let m = self.parse_arg_mode();
         let is_mutbl = self.eat_keyword(&~"mut");
@@ -1269,6 +1272,7 @@ pub impl Parser {
             }
             hi = self.span.hi;
         } else if self.eat_keyword(&~"__log") {
+            // LOG expression
             self.expect(&token::LPAREN);
             let lvl = self.parse_expr();
             self.expect(&token::COMMA);
@@ -1277,12 +1281,14 @@ pub impl Parser {
             hi = self.span.hi;
             self.expect(&token::RPAREN);
         } else if self.eat_keyword(&~"return") {
+            // RETURN expression
             if can_begin_expr(&*self.token) {
                 let e = self.parse_expr();
                 hi = e.span.hi;
                 ex = expr_ret(Some(e));
             } else { ex = expr_ret(None); }
         } else if self.eat_keyword(&~"break") {
+            // BREAK expression
             if is_ident(&*self.token) {
                 ex = expr_break(Some(self.parse_ident()));
             } else {
@@ -1290,6 +1296,7 @@ pub impl Parser {
             }
             hi = self.span.hi;
         } else if self.eat_keyword(&~"copy") {
+            // COPY expression
             let e = self.parse_expr();
             ex = expr_copy(e);
             hi = e.span.hi;
@@ -1300,6 +1307,7 @@ pub impl Parser {
 
             // `!`, as an operator, is prefix, so we know this isn't that
             if *self.token == token::NOT {
+                // MACRO INVOCATION expression
                 self.bump();
                 match *self.token {
                     token::LPAREN | token::LBRACE => {}
@@ -1354,6 +1362,7 @@ pub impl Parser {
             hi = pth.span.hi;
             ex = expr_path(pth);
         } else {
+            // other literal expression
             let lit = self.parse_lit();
             hi = lit.span.hi;
             ex = expr_lit(@lit);
@@ -1362,6 +1371,7 @@ pub impl Parser {
         return self.mk_expr(lo, hi, ex);
     }
 
+    // parse a block or unsafe block
     fn parse_block_expr(
         &self,
         lo: BytePos,
@@ -1372,7 +1382,7 @@ pub impl Parser {
         return self.mk_expr(blk.span.lo, blk.span.hi, expr_block(blk));
     }
 
-    // parse a.b or a(13) or just a
+    // parse a.b or a(13) or a[4] or just a
     fn parse_dot_or_call_expr(&self) -> @expr {
         let b = self.parse_bottom_expr();
         self.parse_dot_or_call_expr_with(b)
@@ -1834,6 +1844,7 @@ pub impl Parser {
         }
     }
 
+    // parse an 'if' expression ('if' token already eaten)
     fn parse_if_expr(&self) -> @expr {
         let lo = self.last_span.lo;
         let cond = self.parse_expr();
@@ -1848,7 +1859,7 @@ pub impl Parser {
         self.mk_expr(lo, hi, expr_if(cond, thn, els))
     }
 
-    // `|args| { ... }` like in `do` expressions
+    // `|args| { ... }` or `{ ...}` like in `do` expressions
     fn parse_lambda_block_expr(&self) -> @expr {
         self.parse_lambda_expr_(
             || {
@@ -1882,6 +1893,9 @@ pub impl Parser {
                                 || self.parse_expr())
     }
 
+    // parse something of the form |args| expr
+    // this is used both in parsing a lambda expr
+    // and in parsing a block expr as e.g. in for...
     fn parse_lambda_expr_(
         &self,
         parse_decl: &fn() -> fn_decl,
@@ -1912,6 +1926,9 @@ pub impl Parser {
         }
     }
 
+    // parse a 'for' or 'do'.
+    // the 'for' and 'do' expressions parse as calls, but look like
+    // function calls followed by a closure expression.
     fn parse_sugary_call_expr(&self, keyword: ~str,
                               sugar: CallSugar,
                               ctor: &fn(v: @expr) -> expr_) -> @expr {
@@ -2098,6 +2115,7 @@ pub impl Parser {
         }
     }
 
+    // parse patterns, separated by '|' s
     fn parse_pats(&self) -> ~[@pat] {
         let mut pats = ~[];
         loop {
@@ -2152,6 +2170,7 @@ pub impl Parser {
         (before, slice, after)
     }
 
+    // parse the fields of a struct-like pattern
     fn parse_pat_fields(&self, refutable: bool) -> (~[ast::field_pat], bool) {
         let mut fields = ~[];
         let mut etc = false;
@@ -2195,6 +2214,9 @@ pub impl Parser {
         return (fields, etc);
     }
 
+    // parse a pattern. The 'refutable' argument
+    // appears to control whether the binding_mode
+    // 'bind_infer' or 'bind_by_copy' is used.
     fn parse_pat(&self, refutable: bool) -> @pat {
         maybe_whole!(self, nt_pat);
 
@@ -2202,7 +2224,9 @@ pub impl Parser {
         let mut hi = self.span.hi;
         let pat;
         match *self.token {
+            // parse _
           token::UNDERSCORE => { self.bump(); pat = pat_wild; }
+            // parse @pat
           token::AT => {
             self.bump();
             let sub = self.parse_pat(refutable);
@@ -2226,6 +2250,7 @@ pub impl Parser {
             };
           }
           token::TILDE => {
+            // parse ~pat
             self.bump();
             let sub = self.parse_pat(refutable);
             hi = sub.span.hi;
@@ -2248,6 +2273,7 @@ pub impl Parser {
             };
           }
           token::BINOP(token::AND) => {
+              // parse &pat
               let lo = self.span.lo;
               self.bump();
               let sub = self.parse_pat(refutable);
@@ -2278,6 +2304,7 @@ pub impl Parser {
             pat = pat_wild;
           }
           token::LPAREN => {
+            // parse (pat,pat,pat,...) as tuple
             self.bump();
             if *self.token == token::RPAREN {
                 hi = self.span.hi;
@@ -2302,6 +2329,7 @@ pub impl Parser {
             }
           }
           token::LBRACKET => {
+            // parse [pat,pat,...] as vector pattern
             self.bump();
             let (before, slice, after) =
                 self.parse_pat_vec_elements(refutable);
@@ -2314,6 +2342,7 @@ pub impl Parser {
                 || self.is_keyword(&~"true")
                 || self.is_keyword(&~"false")
             {
+                // parse an expression pattern or exp .. exp
                 let val = self.parse_expr_res(RESTRICT_NO_BAR_OP);
                 if self.eat(&token::DOTDOT) {
                     let end = self.parse_expr_res(RESTRICT_NO_BAR_OP);
@@ -2322,9 +2351,11 @@ pub impl Parser {
                     pat = pat_lit(val);
                 }
             } else if self.eat_keyword(&~"ref") {
+                // parse ref pat
                 let mutbl = self.parse_mutability();
                 pat = self.parse_pat_ident(refutable, bind_by_ref(mutbl));
             } else if self.eat_keyword(&~"copy") {
+                // parse copy pat
                 pat = self.parse_pat_ident(refutable, bind_by_copy);
             } else {
                 // XXX---refutable match bindings should work same as let
@@ -2344,12 +2375,15 @@ pub impl Parser {
                     let name = self.parse_path_without_tps();
                     let sub;
                     if self.eat(&token::AT) {
+                        // parse foo @ pat
                         sub = Some(self.parse_pat(refutable));
                     } else {
+                        // or just foo
                         sub = None;
                     };
                     pat = pat_ident(binding_mode, name, sub);
                 } else {
+                    // parse an enum pat
                     let enum_path = self.parse_path_with_tps(true);
                     match *self.token {
                         token::LBRACE => {
@@ -2404,6 +2438,8 @@ pub impl Parser {
         @ast::pat { id: self.get_id(), node: pat, span: mk_sp(lo, hi) }
     }
 
+    // used by the copy foo and ref foo patterns to give a good
+    // error message when parsing mistakes like ref foo(a,b)
     fn parse_pat_ident(&self, refutable: bool,
                        binding_mode: ast::binding_mode) -> ast::pat_ {
         if !is_plain_ident(&*self.token) {
@@ -2411,6 +2447,7 @@ pub impl Parser {
                 *self.last_span,
                 ~"expected identifier, found path");
         }
+        // why a path here, and not just an identifier?
         let name = self.parse_path_without_tps();
         let sub = if self.eat(&token::AT) {
             Some(self.parse_pat(refutable))
@@ -2455,6 +2492,7 @@ pub impl Parser {
         )
     }
 
+    // parse a "let" stmt
     fn parse_let(&self) -> @decl {
         let is_mutbl = self.eat_keyword(&~"mut");
         let lo = self.span.lo;
@@ -2485,6 +2523,7 @@ pub impl Parser {
         })
     }
 
+    // parse a statement. may include decl
     fn parse_stmt(&self, first_item_attrs: ~[attribute]) -> @stmt {
         maybe_whole!(self, nt_stmt);
 
@@ -2504,6 +2543,11 @@ pub impl Parser {
         } else if is_ident(&*self.token)
             && !self.is_any_keyword(&copy *self.token)
             && self.look_ahead(1) == token::NOT {
+            // parse a macro invocation. Looks like there's serious
+            // overlap here; if this clause doesn't catch it (and it
+            // won't, for brace-delimited macros) it will fall through
+            // to the macro clause of parse_item_or_view_item. This
+            // could use some cleanup, it appears to me.
 
             check_expected_item(self, first_item_attrs);
 
@@ -2569,6 +2613,7 @@ pub impl Parser {
         }
     }
 
+    // is this expression a successfully-parsed statement?
     fn expr_is_complete(&self, e: @expr) -> bool {
         return *self.restriction == RESTRICT_STMT_EXPR &&
             !classify::expr_requires_semi_to_be_stmt(e);
@@ -2602,7 +2647,7 @@ pub impl Parser {
 
         (inner, self.parse_block_tail_(lo, default_blk, next))
     }
-    
+
     // Precondition: already parsed the '{' or '#{'
     // I guess that also means "already parsed the 'impure'" if
     // necessary, and this should take a qualifier.
@@ -3040,6 +3085,7 @@ pub impl Parser {
         (spanned(lo, hi, self_ty), fn_decl)
     }
 
+    // parse the |arg, arg| header on a lambda
     fn parse_fn_block_decl(&self) -> fn_decl {
         let inputs_captures = {
             if self.eat(&token::OROR) {
@@ -3066,7 +3112,6 @@ pub impl Parser {
         }
     }
 
-    // matches fn_header = IDENT generics
     // parse the name and optional generic types of a function header.
     fn parse_fn_header(&self) -> (ident, ast::Generics) {
         let id = self.parse_ident();
@@ -3095,6 +3140,7 @@ pub impl Parser {
          Some(inner_attrs))
     }
 
+    // parse a method in a trait impl
     fn parse_method(&self) -> @method {
         let attrs = self.parse_outer_attributes();
         let lo = self.span.lo;
@@ -3383,6 +3429,7 @@ pub impl Parser {
         }
     }
 
+    // parse visiility: PUB, PRIV, or nothing
     fn parse_visibility(&self) -> visibility {
         if self.eat_keyword(&~"pub") { public }
         else if self.eat_keyword(&~"priv") { private }
@@ -3414,9 +3461,8 @@ pub impl Parser {
         let mut items: ~[@item] = starting_items;
         let attrs_remaining_len = attrs_remaining.len();
 
-        // looks like this code depends on the invariant that
-        // outer attributes can't occur on view items (or macro
-        // invocations?)
+        // don't think this other loop is even necessary....
+
         let mut first = true;
         while *self.token != term {
             let mut attrs = self.parse_outer_attributes();
@@ -3533,6 +3579,7 @@ pub impl Parser {
         self.mod_path_stack.pop();
     }
 
+    // read a module from a source file.
     fn eval_src_mod(&self, id: ast::ident,
                     outer_attrs: ~[ast::attribute],
                     id_sp: span) -> (ast::item_, ~[ast::attribute]) {
@@ -3590,6 +3637,7 @@ pub impl Parser {
         }
     }
 
+    // parse a function declaration from a foreign module
     fn parse_item_foreign_fn(&self,  attrs: ~[attribute]) -> @foreign_item {
         let lo = self.span.lo;
         let vis = self.parse_visibility();
@@ -3606,6 +3654,7 @@ pub impl Parser {
                              vis: vis }
     }
 
+    // parse a const definition from a foreign module
     fn parse_item_foreign_const(&self, vis: ast::visibility,
                                 attrs: ~[attribute]) -> @foreign_item {
         let lo = self.span.lo;
@@ -3630,6 +3679,7 @@ pub impl Parser {
                              vis: vis }
     }
 
+    // parse safe/unsafe and fn
     fn parse_fn_purity(&self) -> purity {
         if self.eat_keyword(&~"fn") { impure_fn }
         else if self.eat_keyword(&~"pure") {
@@ -3644,12 +3694,13 @@ pub impl Parser {
         else { self.unexpected(); }
     }
 
-    // how is this different from parse_foreign_items
+
+    // at this point, this is essentially a wrapper for
+    // parse_foreign_items.
     fn parse_foreign_mod_items(&self, sort: ast::foreign_mod_sort,
                                abis: AbiSet,
                                first_item_attrs: ~[attribute])
                             -> foreign_mod {
-        // Shouldn't be any view items since we've already parsed an item attr
         let ParsedItemsAndViewItems {
             attrs_remaining: attrs_remaining,
             view_items: view_items,
@@ -3666,7 +3717,7 @@ pub impl Parser {
         }
     }
 
-    // parse extern mod foo { ... } or extern { ... }
+    // parse extern foo; or extern mod foo { ... } or extern { ... }
     fn parse_item_foreign_mod(&self,
                               lo: BytePos,
                               opt_abis: Option<AbiSet>,
@@ -3755,6 +3806,8 @@ pub impl Parser {
         }
     }
 
+    // parse a structure-like enum variant definition
+    // this should probably be renamed or refactored...
     fn parse_struct_def(&self) -> @struct_def {
         let mut the_dtor: Option<(blk, ~[attribute], codemap::span)> = None;
         let mut fields: ~[@struct_field] = ~[];
@@ -3798,6 +3851,7 @@ pub impl Parser {
         };
     }
 
+    // parse the part of an "enum" decl following the '{'
     fn parse_enum_def(&self, _generics: &ast::Generics) -> enum_def {
         let mut variants = ~[];
         let mut all_nullary = true, have_disr = false;
@@ -3858,6 +3912,7 @@ pub impl Parser {
         ast::enum_def { variants: variants }
     }
 
+    // parse an "enum" declaration
     fn parse_item_enum(&self) -> item_info {
         let id = self.parse_ident();
         self.parse_region_param();
@@ -4204,6 +4259,7 @@ pub impl Parser {
         }
     }
 
+    // parse, e.g., "use a::b::{z,y}"
     fn parse_use(&self) -> view_item_ {
         return view_item_use(self.parse_view_paths());
     }
@@ -4429,7 +4485,6 @@ pub impl Parser {
         }
     }
 
-    // splitting parse_items_and_view_items into two functions...
     // Parses a sequence of foreign items. Stops when it finds program
     // text that can't be parsed as an item
     fn parse_foreign_items(&self, first_item_attrs: ~[attribute],
@@ -4466,7 +4521,8 @@ pub impl Parser {
         }
     }
 
-    // Parses a source module as a crate
+    // Parses a source module as a crate. This is the main
+    // entry point for the parser.
     fn parse_crate_mod(&self) -> @crate {
         let lo = self.span.lo;
         // parse the crate's inner attrs, maybe (oops) one

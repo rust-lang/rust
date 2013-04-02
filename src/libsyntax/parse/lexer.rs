@@ -286,6 +286,8 @@ fn consume_any_line_comment(rdr: @mut StringReader)
         }
     } else if rdr.curr == '#' {
         if nextch(rdr) == '!' {
+            // I guess this is the only way to figure out if
+            // we're at the beginning of the file...
             let cmap = @CodeMap::new();
             (*cmap).files.push(rdr.filemap);
             let loc = cmap.lookup_char_pos_adj(rdr.last_pos);
