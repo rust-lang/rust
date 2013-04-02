@@ -133,7 +133,7 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
         ty::ty_bare_fn(*) => T_ptr(T_i8()),
         ty::ty_closure(*) => T_struct(~[T_ptr(T_i8()), T_ptr(T_i8())], false),
-        ty::ty_trait(_, _, store) => T_opaque_trait(cx, store),
+        ty::ty_trait(_, _, store, _) => T_opaque_trait(cx, store),
 
         ty::ty_estr(ty::vstore_fixed(size)) => T_array(T_i8(), size),
         ty::ty_evec(mt, ty::vstore_fixed(size)) => {
@@ -249,7 +249,7 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
       ty::ty_bare_fn(_) => T_ptr(type_of_fn_from_ty(cx, t)),
       ty::ty_closure(_) => T_fn_pair(cx, type_of_fn_from_ty(cx, t)),
-      ty::ty_trait(_, _, store) => T_opaque_trait(cx, store),
+      ty::ty_trait(_, _, store, _) => T_opaque_trait(cx, store),
       ty::ty_type => T_ptr(cx.tydesc_type),
       ty::ty_tup(*) => {
           let repr = adt::represent_type(cx, t);

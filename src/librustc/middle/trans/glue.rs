@@ -551,11 +551,11 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_closure(_) => {
         closure::make_closure_glue(bcx, v0, t, drop_ty)
       }
-      ty::ty_trait(_, _, ty::BoxTraitStore) => {
+      ty::ty_trait(_, _, ty::BoxTraitStore, _) => {
         let llbox = Load(bcx, GEPi(bcx, v0, [0u, 1u]));
         decr_refcnt_maybe_free(bcx, llbox, ty::mk_opaque_box(ccx.tcx))
       }
-      ty::ty_trait(_, _, ty::UniqTraitStore) => {
+      ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
         let lluniquevalue = GEPi(bcx, v0, [0, 1]);
         let lltydesc = Load(bcx, GEPi(bcx, v0, [0, 2]));
         call_tydesc_glue_full(bcx, lluniquevalue, lltydesc,
@@ -617,12 +617,12 @@ pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_closure(_) => {
         closure::make_closure_glue(bcx, v, t, take_ty)
       }
-      ty::ty_trait(_, _, ty::BoxTraitStore) => {
+      ty::ty_trait(_, _, ty::BoxTraitStore, _) => {
         let llbox = Load(bcx, GEPi(bcx, v, [0u, 1u]));
         incr_refcnt_of_boxed(bcx, llbox);
         bcx
       }
-      ty::ty_trait(_, _, ty::UniqTraitStore) => {
+      ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
         let llval = GEPi(bcx, v, [0, 1]);
         let lltydesc = Load(bcx, GEPi(bcx, v, [0, 2]));
         call_tydesc_glue_full(bcx, llval, lltydesc,

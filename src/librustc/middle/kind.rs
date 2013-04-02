@@ -589,7 +589,7 @@ pub fn check_cast_for_escaping_regions(
 pub fn check_kind_bounds_of_cast(cx: Context, source: @expr, target: @expr) {
     let target_ty = ty::expr_ty(cx.tcx, target);
     match ty::get(target_ty).sty {
-        ty::ty_trait(_, _, ty::UniqTraitStore) => {
+        ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
             let source_ty = ty::expr_ty(cx.tcx, source);
             if !ty::type_is_owned(cx.tcx, source_ty) {
                 cx.tcx.sess.span_err(
