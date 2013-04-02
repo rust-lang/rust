@@ -496,7 +496,7 @@ pub trait ReaderUtil {
     /**
     * Read an i8. 
     * 
-    * `u8`s are 1 byte.
+    * `i8`s are 1 byte.
     * 
     * # Examples
     *
