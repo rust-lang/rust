@@ -92,14 +92,12 @@ use ptr;
 use task;
 use vec;
 
-#[doc(hidden)]
 static SPIN_COUNT: uint = 0;
 
 macro_rules! move_it (
     { $x:expr } => ( unsafe { let y = *ptr::addr_of(&($x)); y } )
 )
 
-#[doc(hidden)]
 #[deriving(Eq)]
 enum State {
     Empty,
@@ -124,7 +122,6 @@ pub fn BufferHeader() -> BufferHeader {
 }
 
 // This is for protocols to associate extra data to thread around.
-#[doc(hidden)]
 pub struct Buffer<T> {
     header: BufferHeader,
     data: T,
@@ -185,13 +182,11 @@ pub impl PacketHeader {
     }
 }
 
-#[doc(hidden)]
 pub struct Packet<T> {
     header: PacketHeader,
     mut payload: Option<T>,
 }
 
-#[doc(hidden)]
 pub trait HasBuffer {
     fn set_buffer(&self, b: *libc::c_void);
 }
@@ -202,14 +197,12 @@ impl<T:Owned> HasBuffer for Packet<T> {
     }
 }
 
-#[doc(hidden)]
 pub fn mk_packet<T:Owned>() -> Packet<T> {
     Packet {
         header: PacketHeader(),
         payload: None,
     }
 }
-#[doc(hidden)]
 fn unibuffer<T>() -> ~Buffer<Packet<T>> {
     let b = ~Buffer {
         header: BufferHeader(),
@@ -225,7 +218,6 @@ fn unibuffer<T>() -> ~Buffer<Packet<T>> {
     b
 }
 
-#[doc(hidden)]
 pub fn packet<T>() -> *Packet<T> {
     let b = unibuffer();
     let p = ptr::addr_of(&(b.data));
@@ -234,7 +226,6 @@ pub fn packet<T>() -> *Packet<T> {
     p
 }
 
-#[doc(hidden)]
 pub fn entangle_buffer<T:Owned,Tstart:Owned>(
     buffer: ~Buffer<T>,
     init: &fn(*libc::c_void, x: &T) -> *Packet<Tstart>)
@@ -245,30 +236,6 @@ pub fn entangle_buffer<T:Owned,Tstart:Owned>(
     (SendPacketBuffered(p), RecvPacketBuffered(p))
 }
 
-// If I call the rusti versions directly from a polymorphic function,
-// I get link errors. This is a bug that needs investigated more.
-#[doc(hidden)]
-pub fn atomic_xchng_rel(dst: &mut int, src: int) -> int {
-    unsafe {
-        intrinsics::atomic_xchg_rel(dst, src)
-    }
-}
-
-#[doc(hidden)]
-pub fn atomic_add_acq(dst: &mut int, src: int) -> int {
-    unsafe {
-        intrinsics::atomic_xadd_acq(dst, src)
-    }
-}
-
-#[doc(hidden)]
-pub fn atomic_sub_rel(dst: &mut int, src: int) -> int {
-    unsafe {
-        intrinsics::atomic_xsub_rel(dst, src)
-    }
-}
-
-#[doc(hidden)]
 pub fn swap_task(dst: &mut *rust_task, src: *rust_task) -> *rust_task {
     // It might be worth making both acquire and release versions of
     // this.
@@ -277,11 +244,9 @@ pub fn swap_task(dst: &mut *rust_task, src: *rust_task) -> *rust_task {
     }
 }
 
-#[doc(hidden)]
 #[allow(non_camel_case_types)]
 pub type rust_task = libc::c_void;
 
-#[doc(hidden)]
 pub mod rustrt {
     use libc;
     use super::rust_task;
@@ -303,7 +268,6 @@ pub mod rustrt {
     }
 }
 
-#[doc(hidden)]
 fn wait_event(this: *rust_task) -> *libc::c_void {
     unsafe {
         let mut event = ptr::null();
@@ -316,21 +280,18 @@ fn wait_event(this: *rust_task) -> *libc::c_void {
     }
 }
 
-#[doc(hidden)]
 fn swap_state_acq(dst: &mut State, src: State) -> State {
     unsafe {
         transmute(intrinsics::atomic_xchg_acq(transmute(dst), src as int))
     }
 }
 
-#[doc(hidden)]
 fn swap_state_rel(dst: &mut State, src: State) -> State {
     unsafe {
         transmute(intrinsics::atomic_xchg_rel(transmute(dst), src as int))
     }
 }
 
-#[doc(hidden)]
 pub unsafe fn get_buffer<T>(p: *PacketHeader) -> ~Buffer<T> {
     transmute((*p).buf_header())
 }
@@ -348,7 +309,7 @@ impl<T> ::ops::Drop for BufferResource<T> {
             let b = move_it!(self.buffer);
             //let p = ptr::addr_of(*b);
             //error!("drop %?", p);
-            let old_count = atomic_sub_rel(&mut b.header.ref_count, 1);
+            let old_count = intrinsics::atomic_xsub_rel(&mut b.header.ref_count, 1);
             //let old_count = atomic_xchng_rel(b.header.ref_count, 0);
             if old_count == 1 {
                 // The new count is 0.
@@ -365,7 +326,7 @@ impl<T> ::ops::Drop for BufferResource<T> {
 fn BufferResource<T>(b: ~Buffer<T>) -> BufferResource<T> {
     //let p = ptr::addr_of(*b);
     //error!("take %?", p);
-    atomic_add_acq(&mut b.header.ref_count, 1);
+    unsafe { intrinsics::atomic_xadd_acq(&mut b.header.ref_count, 1) };
 
     BufferResource {
         // tjc: ????
@@ -373,7 +334,6 @@ fn BufferResource<T>(b: ~Buffer<T>) -> BufferResource<T> {
     }
 }
 
-#[doc(hidden)]
 pub fn send<T,Tbuffer>(p: SendPacketBuffered<T,Tbuffer>, payload: T) -> bool {
     let header = p.header();
     let p_ = p.unwrap();
@@ -550,7 +510,6 @@ pub fn peek<T:Owned,Tb:Owned>(p: &RecvPacketBuffered<T, Tb>) -> bool {
     }
 }
 
-#[doc(hidden)]
 fn sender_terminate<T:Owned>(p: *Packet<T>) {
     let p = unsafe { &*p };
     match swap_state_rel(&mut p.header.state, Terminated) {
@@ -581,7 +540,6 @@ fn sender_terminate<T:Owned>(p: *Packet<T>) {
     }
 }
 
-#[doc(hidden)]
 fn receiver_terminate<T:Owned>(p: *Packet<T>) {
     let p = unsafe { &*p };
     match swap_state_rel(&mut p.header.state, Terminated) {
@@ -675,7 +633,6 @@ message.
 */
 pub type SendPacket<T> = SendPacketBuffered<T, Packet<T>>;
 
-#[doc(hidden)]
 pub fn SendPacket<T>(p: *Packet<T>) -> SendPacket<T> {
     SendPacketBuffered(p)
 }
@@ -746,7 +703,6 @@ pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
 /// message.
 pub type RecvPacket<T> = RecvPacketBuffered<T, Packet<T>>;
 
-#[doc(hidden)]
 pub fn RecvPacket<T>(p: *Packet<T>) -> RecvPacket<T> {
     RecvPacketBuffered(p)
 }
@@ -814,7 +770,6 @@ pub fn RecvPacketBuffered<T,Tbuffer>(p: *Packet<T>)
     }
 }
 
-#[doc(hidden)]
 pub fn entangle<T>() -> (SendPacket<T>, RecvPacket<T>) {
     let p = packet();
     (SendPacket(p), RecvPacket(p))
@@ -863,7 +818,6 @@ pub fn select2<A:Owned,Ab:Owned,B:Owned,Bb:Owned>(
     }
 }
 
-#[doc(hidden)]
 pub trait Selectable {
     fn header(&self) -> *PacketHeader;
 }
