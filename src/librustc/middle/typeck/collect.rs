@@ -33,7 +33,7 @@ are represented as `ty_param()` instances.
 use core::prelude::*;
 
 use metadata::csearch;
-use middle::ty::{substs, ty_param_bounds_and_ty, ty_param_substs_and_ty};
+use middle::ty::{substs, ty_param_bounds_and_ty};
 use middle::ty;
 use middle::typeck::astconv::{AstConv, ty_of_arg};
 use middle::typeck::astconv::{ast_ty_to_ty};
@@ -41,8 +41,7 @@ use middle::typeck::astconv;
 use middle::typeck::infer;
 use middle::typeck::rscope::*;
 use middle::typeck::rscope;
-use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx,
-                     write_tpt_to_tcx};
+use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
 use util::common::{indenter, pluralize};
 use util::ppaux;
 
@@ -362,7 +361,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
     for ast_trait_refs.each |&ast_trait_ref| {
         let trait_ref = instantiate_trait_ref(ccx, ast_trait_ref, rp, generics);
 
-        // NOTE Could have same trait multiple times
+        // FIXME(#5527) Could have same trait multiple times
         if ty_trait_refs.any(|other_trait| other_trait.def_id == trait_ref.def_id) {
             // This means a trait inherited from the same supertrait more
             // than once.

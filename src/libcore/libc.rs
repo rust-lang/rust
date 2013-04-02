@@ -1394,7 +1394,7 @@ pub mod funcs {
             use libc::types::common::posix88::{DIR, dirent_t};
             use libc::types::os::arch::c95::{c_char, c_int, c_long};
 
-            // NOTE: On OS X opendir and readdir have two versions,
+            // NB: On OS X opendir and readdir have two versions,
             // one for 32-bit kernelspace and one for 64.
             // We should be linking to the 64-bit ones, called
             // opendir$INODE64, etc. but for some reason rustc

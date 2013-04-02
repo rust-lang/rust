@@ -222,7 +222,7 @@ pub fn expand_auto_decode(
 priv impl @ext_ctxt {
     fn bind_path(
         &self,
-        span: span,
+        _span: span,
         ident: ast::ident,
         path: @ast::path,
         bounds: @OptVec<ast::TyParamBound>

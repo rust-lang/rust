@@ -38,7 +38,7 @@ use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar};
 use middle::typeck::infer::{resolve_nested_tvar, resolve_type};
-use syntax::ast::{crate, def_id, def_mod, def_ty, def_trait};
+use syntax::ast::{crate, def_id, def_mod, def_trait};
 use syntax::ast::{item, item_impl, item_mod, local_crate, method, trait_ref};
 use syntax::ast;
 use syntax::ast_map::node_item;
