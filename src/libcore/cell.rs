@@ -10,7 +10,7 @@
 
 //! A mutable, nullable memory location
 
-use cast::transmute;
+use cast::transmute_mut;
 use prelude::*;
 
 /*
@@ -20,16 +20,12 @@ Similar to a mutable option type, but friendlier.
 */
 
 pub struct Cell<T> {
-    mut value: Option<T>
+    value: Option<T>
 }
 
 impl<T:cmp::Eq> cmp::Eq for Cell<T> {
     fn eq(&self, other: &Cell<T>) -> bool {
-        unsafe {
-            let frozen_self: &Option<T> = transmute(&mut self.value);
-            let frozen_other: &Option<T> = transmute(&mut other.value);
-            frozen_self == frozen_other
-        }
+        (self.value) == (other.value)
     }
     fn ne(&self, other: &Cell<T>) -> bool { !self.eq(other) }
 }
@@ -46,6 +42,7 @@ pub fn empty_cell<T>() -> Cell<T> {
 pub impl<T> Cell<T> {
     /// Yields the value, failing if the cell is empty.
     fn take(&self) -> T {
+        let mut self = unsafe { transmute_mut(self) };
         if self.is_empty() {
             fail!(~"attempt to take an empty cell");
         }
@@ -57,6 +54,7 @@ pub impl<T> Cell<T> {
 
     /// Returns the value, failing if the cell is full.
     fn put_back(&self, value: T) {
+        let mut self = unsafe { transmute_mut(self) };
         if !self.is_empty() {
             fail!(~"attempt to put a value back into a full cell");
         }

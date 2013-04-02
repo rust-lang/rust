@@ -633,7 +633,7 @@ pub fn push<T>(v: &mut ~[T], initval: T) {
 // This doesn't bother to make sure we have space.
 #[inline(always)] // really pretty please
 unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
-    let repr: **raw::VecRepr = ::cast::transmute(v);
+    let repr: **mut raw::VecRepr = ::cast::transmute(v);
     let fill = (**repr).unboxed.fill;
     (**repr).unboxed.fill += sys::nonzero_size_of::<T>();
     let p = addr_of(&((**repr).unboxed.data));
@@ -2148,8 +2148,8 @@ pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
 
 /// The internal 'unboxed' representation of a vector
 pub struct UnboxedVecRepr {
-    mut fill: uint,
-    mut alloc: uint,
+    fill: uint,
+    alloc: uint,
     data: u8
 }
 
@@ -2171,8 +2171,8 @@ pub mod raw {
     }
 
     pub struct SliceRepr {
-        mut data: *u8,
-        mut len: uint
+        data: *u8,
+        len: uint
     }
 
     /**
@@ -2184,7 +2184,7 @@ pub mod raw {
      */
     #[inline(always)]
     pub unsafe fn set_len<T>(v: &mut ~[T], new_len: uint) {
-        let repr: **VecRepr = ::cast::transmute(v);
+        let repr: **mut VecRepr = ::cast::transmute(v);
         (**repr).unboxed.fill = new_len * sys::nonzero_size_of::<T>();
     }
 
