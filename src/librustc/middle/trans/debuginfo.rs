@@ -565,8 +565,8 @@ fn create_boxed_type(cx: @CrateContext, contents: ty::t,
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
     //let cu_node = create_compile_unit_metadata(cx, fname);
-    let uint_t = ty::mk_uint(cx.tcx);
-    let refcount_type = create_basic_type(cx, uint_t, span);
+    let int_t = ty::mk_int(cx.tcx);
+    let refcount_type = create_basic_type(cx, int_t, span);
     let name = ty_to_str(cx.tcx, contents);
     let scx = create_structure(file_node, @fmt!("box<%s>", name), 0);
     add_member(scx, ~"refcnt", 0, sys::size_of::<uint>() as int,
@@ -621,33 +621,97 @@ fn create_composite_type(type_tag: int, name: &str, file: ValueRef,
     return llmdnode(lldata);
 }
 
-fn create_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
-              vec_ty_span: codemap::span) -> @Metadata<TyDescMetadata> {
-    let fname = filename_from_span(cx, vec_ty_span);
+fn create_fixed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
+                    len: int, span: span) -> @Metadata<TyDescMetadata> {
+    let t_md = create_ty(cx, elem_t, span);
+    let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
-    let elem_ty_md = create_ty(cx, elem_t, vec_ty_span);
-    let scx = create_structure(file_node,
-                               @/*bad*/ copy ty_to_str(cx.tcx, vec_t), 0);
-    let size_t_type = create_basic_type(cx, ty::mk_uint(cx.tcx), vec_ty_span);
-    add_member(scx, ~"fill", 0, sys::size_of::<libc::size_t>() as int,
-               sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
-    add_member(scx, ~"alloc", 0, sys::size_of::<libc::size_t>() as int,
-               sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
-    let subrange = llmdnode(~[lltag(SubrangeTag), lli64(0), lli64(0)]);
-    let (arr_size, arr_align) = size_and_align_of(cx, elem_t);
-    let data_ptr = create_composite_type(ArrayTypeTag, ~"", file_node.node, 0,
-                                         arr_size, arr_align, 0,
-                                         Some(elem_ty_md.node),
-                                         Some(~[subrange]));
-    add_member(scx, ~"data", 0, 0, // clang says the size should be 0
-               sys::min_align_of::<u8>() as int, data_ptr);
-    let llnode = finish_structure(scx);
+    let (size, align) = size_and_align_of(cx, elem_t);
+    let subrange = llmdnode(~[lltag(SubrangeTag), lli64(0), lli64(len - 1)]);
+    let name = fmt!("[%s]", ty_to_str(cx.tcx, elem_t));
+    let array = create_composite_type(ArrayTypeTag, name, file_node.node, 0,
+                                      size * len, align, 0, Some(t_md.node),
+                                      Some(~[subrange]));
     @Metadata {
-        node: llnode,
+        node: array,
         data: TyDescMetadata {
             hash: ty::type_id(vec_t)
         }
     }
+}
+
+fn create_boxed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
+                    vec_ty_span: codemap::span)
+    -> @Metadata<TyDescMetadata> {
+    let fname = filename_from_span(cx, vec_ty_span);
+    let file_node = create_file(cx, fname);
+    let elem_ty_md = create_ty(cx, elem_t, vec_ty_span);
+    let vec_scx = create_structure(file_node,
+                               @/*bad*/ copy ty_to_str(cx.tcx, vec_t), 0);
+    let size_t_type = create_basic_type(cx, ty::mk_uint(cx.tcx), vec_ty_span);
+    add_member(vec_scx, ~"fill", 0, sys::size_of::<libc::size_t>() as int,
+               sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
+    add_member(vec_scx, ~"alloc", 0, sys::size_of::<libc::size_t>() as int,
+               sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
+    let subrange = llmdnode(~[lltag(SubrangeTag), lli64(0), lli64(0)]);
+    let (arr_size, arr_align) = size_and_align_of(cx, elem_t);
+    let name = fmt!("[%s]", ty_to_str(cx.tcx, elem_t));
+    let data_ptr = create_composite_type(ArrayTypeTag, name, file_node.node, 0,
+                                         arr_size, arr_align, 0,
+                                         Some(elem_ty_md.node),
+                                         Some(~[subrange]));
+    add_member(vec_scx, ~"data", 0, 0, // clang says the size should be 0
+               sys::min_align_of::<u8>() as int, data_ptr);
+    let llnode = finish_structure(vec_scx);
+    let vec_md = @Metadata {
+        node: llnode,
+        data: TyDescMetadata {
+            hash: ty::type_id(vec_t)
+        }
+    };
+
+    let box_scx = create_structure(file_node, @fmt!("box<%s>", name), 0);
+    let int_t = ty::mk_int(cx.tcx);
+    let refcount_type = create_basic_type(cx, int_t, vec_ty_span);
+    add_member(box_scx, ~"refcnt", 0, sys::size_of::<uint>() as int,
+               sys::min_align_of::<uint>() as int, refcount_type.node);
+    let (vp, vpsize, vpalign) = voidptr();
+    add_member(box_scx, ~"tydesc", 0, vpsize, vpalign, vp);
+    add_member(box_scx, ~"prev", 0, vpsize, vpalign, vp);
+    add_member(box_scx, ~"next", 0, vpsize, vpalign, vp);
+    let size = 2 * sys::size_of::<int>() as int;
+    let align = sys::min_align_of::<int>() as int;
+    add_member(box_scx, ~"boxed", 0, size, align, vec_md.node);
+    let llnode = finish_structure(box_scx);
+    let mdval = @Metadata {
+        node: llnode,
+        data: TyDescMetadata {
+            hash: ty::type_id(elem_t)
+        }
+    };
+    return mdval;
+}
+
+fn create_vec_slice(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t, span: span)
+    -> @Metadata<TyDescMetadata> {
+    let fname = filename_from_span(cx, span);
+    let file_node = create_file(cx, fname);
+    let elem_ty_md = create_ty(cx, elem_t, span);
+    let uint_type = create_basic_type(cx, ty::mk_uint(cx.tcx), span);
+    let elem_ptr = create_pointer_type(cx, elem_t, span, elem_ty_md);
+    let scx = create_structure(file_node, @ty_to_str(cx.tcx, vec_t), 0);
+    let (_, ptr_size, ptr_align) = voidptr();
+    add_member(scx, ~"vec", 0, ptr_size, ptr_align, elem_ptr.node);
+    add_member(scx, ~"length", 0, sys::size_of::<uint>() as int,
+               sys::min_align_of::<uint>() as int, uint_type.node);
+    let llnode = finish_structure(scx);
+    let mdval = @Metadata {
+        node: llnode,
+        data: TyDescMetadata {
+            hash: ty::type_id(vec_t)
+        }
+    };
+    return mdval;
 }
 
 fn create_ty(cx: @CrateContext, t: ty::t, span: span)
@@ -664,8 +728,20 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span)
     match sty {
         ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_int(_) | ty::ty_uint(_)
         | ty::ty_float(_) => create_basic_type(cx, t, span),
-        ty::ty_estr(_vstore) => {
-            cx.sess.span_bug(span, ~"debuginfo for estr NYI")
+        ty::ty_estr(ref vstore) => {
+            let i8_t = ty::mk_i8(cx.tcx);
+            match *vstore {
+                ty::vstore_fixed(len) => {
+                    create_fixed_vec(cx, t, i8_t, len as int + 1, span)
+                },
+                ty::vstore_uniq | ty::vstore_box => {
+                    let box_md = create_boxed_vec(cx, t, i8_t, span);
+                    create_pointer_type(cx, t, span, box_md)
+                }
+                ty::vstore_slice(_region) => {
+                    create_vec_slice(cx, t, i8_t, span)
+                }
+            }
         },
         ty::ty_enum(_did, ref _substs) => {
             cx.sess.span_bug(span, ~"debuginfo for enum NYI")
@@ -675,8 +751,19 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span)
             let box_md = create_boxed_type(cx, mt.ty, span, boxed);
             create_pointer_type(cx, t, span, box_md)
         },
-        ty::ty_evec(ref _mt, ref _vstore) => {
-            cx.sess.span_bug(span, ~"debuginfo for evec NYI")
+        ty::ty_evec(ref mt, ref vstore) => {
+            match *vstore {
+                ty::vstore_fixed(len) => {
+                    create_fixed_vec(cx, t, mt.ty, len as int, span)
+                },
+                ty::vstore_uniq | ty::vstore_box => {
+                    let box_md = create_boxed_vec(cx, t, mt.ty, span);
+                    create_pointer_type(cx, t, span, box_md)
+                },
+                ty::vstore_slice(_region) => {
+                    create_vec_slice(cx, t, mt.ty, span)
+                }
+            }
         },
         ty::ty_ptr(ref mt) => {
             let pointee = create_ty(cx, mt.ty, span);
