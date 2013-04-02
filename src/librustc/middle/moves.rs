@@ -211,7 +211,7 @@ use core::prelude::*;
 use middle::pat_util::{pat_bindings};
 use middle::freevars;
 use middle::ty;
-use middle::typeck::{method_map, method_map_entry};
+use middle::typeck::{method_map};
 use util::ppaux;
 use util::common::indenter;
 

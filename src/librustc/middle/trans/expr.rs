@@ -1714,7 +1714,6 @@ fn trans_assign_op(bcx: block,
     return result_datum.copy_to_datum(bcx, DROP_EXISTING, dst_datum);
 }
 
-// NOTE: Mode neccessary here?
 fn shorten(+x: ~str) -> ~str {
     if x.len() > 60 { x.substr(0, 60).to_owned() } else { x }
 }

@@ -4367,7 +4367,7 @@ pub fn iter_bound_traits_and_supertraits(tcx: ctxt,
                 for supertrait_refs.each |&supertrait_ref| {
                     let d_id = supertrait_ref.def_id;
                     if !supertrait_set.contains_key(&d_id) {
-                        // NOTE Could have same trait multiple times
+                        // FIXME(#5527) Could have same trait multiple times
                         supertrait_set.insert(d_id, ());
                         trait_ref = supertrait_ref;
                         seen_def_ids.push(d_id);
