@@ -6,7 +6,7 @@ terms.
 
 Longer version:
 
-The Rust Project is copyright 2012, The Rust Project
+The Rust Project is copyright 2013, The Rust Project
 Developers (given in the file AUTHORS.txt).
 
 Licensed under the Apache License, Version 2.0
@@ -257,7 +257,7 @@ their own copyright notices and license terms:
 * LLVM and Clang. Code for this package is found in
   src/llvm.
 
-    Copyright (c) 2003-2012 University of Illinois at
+    Copyright (c) 2003-2013 University of Illinois at
     Urbana-Champaign.  All rights reserved.
 
     Developed by:
