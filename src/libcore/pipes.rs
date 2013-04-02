@@ -669,87 +669,6 @@ pub fn wait_many<T: Selectable>(pkts: &[T]) -> uint {
     ready_packet
 }
 
-/** Receives a message from one of two endpoints.
-
-The return value is `left` if the first endpoint received something,
-or `right` if the second endpoint receives something. In each case,
-the result includes the other endpoint as well so it can be used
-again. Below is an example of using `select2`.
-
-~~~
-match select2(a, b) {
-  left((none, b)) {
-    // endpoint a was closed.
-  }
-  right((a, none)) {
-    // endpoint b was closed.
-  }
-  left((Some(_), b)) {
-    // endpoint a received a message
-  }
-  right(a, Some(_)) {
-    // endpoint b received a message.
-  }
-}
-~~~
-
-Sometimes messages will be available on both endpoints at once. In
-this case, `select2` may return either `left` or `right`.
-
-*/
-pub fn select2<A:Owned,Ab:Owned,B:Owned,Bb:Owned>(
-    a: RecvPacketBuffered<A, Ab>,
-    b: RecvPacketBuffered<B, Bb>)
-    -> Either<(Option<A>, RecvPacketBuffered<B, Bb>),
-              (RecvPacketBuffered<A, Ab>, Option<B>)>
-{
-    let i = wait_many([a.header(), b.header()]);
-
-    match i {
-      0 => Left((try_recv(a), b)),
-      1 => Right((a, try_recv(b))),
-      _ => fail!(~"select2 return an invalid packet")
-    }
-}
-
-#[doc(hidden)]
-pub trait Selectable {
-    fn header(&self) -> *PacketHeader;
-}
-
-impl Selectable for *PacketHeader {
-    fn header(&self) -> *PacketHeader { *self }
-}
-
-/// Returns the index of an endpoint that is ready to receive.
-pub fn selecti<T:Selectable>(endpoints: &[T]) -> uint {
-    wait_many(endpoints)
-}
-
-/// Returns 0 or 1 depending on which endpoint is ready to receive
-pub fn select2i<A:Selectable,B:Selectable>(a: &A, b: &B) ->
-        Either<(), ()> {
-    match wait_many([a.header(), b.header()]) {
-      0 => Left(()),
-      1 => Right(()),
-      _ => fail!(~"wait returned unexpected index")
-    }
-}
-
-/** Waits on a set of endpoints. Returns a message, its index, and a
- list of the remaining endpoints.
-
-*/
-pub fn select<T:Owned,Tb:Owned>(endpoints: ~[RecvPacketBuffered<T, Tb>])
-    -> (uint, Option<T>, ~[RecvPacketBuffered<T, Tb>])
-{
-    let ready = wait_many(endpoints.map(|p| p.header()));
-    let mut remaining = endpoints;
-    let port = remaining.swap_remove(ready);
-    let result = try_recv(port);
-    (ready, result, remaining)
-}
-
 /** The sending end of a pipe. It can be used to send exactly one
 message.
 
@@ -899,6 +818,87 @@ pub fn RecvPacketBuffered<T,Tbuffer>(p: *Packet<T>)
 pub fn entangle<T>() -> (SendPacket<T>, RecvPacket<T>) {
     let p = packet();
     (SendPacket(p), RecvPacket(p))
+}
+
+/** Receives a message from one of two endpoints.
+
+The return value is `left` if the first endpoint received something,
+or `right` if the second endpoint receives something. In each case,
+the result includes the other endpoint as well so it can be used
+again. Below is an example of using `select2`.
+
+~~~
+match select2(a, b) {
+  left((none, b)) {
+    // endpoint a was closed.
+  }
+  right((a, none)) {
+    // endpoint b was closed.
+  }
+  left((Some(_), b)) {
+    // endpoint a received a message
+  }
+  right(a, Some(_)) {
+    // endpoint b received a message.
+  }
+}
+~~~
+
+Sometimes messages will be available on both endpoints at once. In
+this case, `select2` may return either `left` or `right`.
+
+*/
+pub fn select2<A:Owned,Ab:Owned,B:Owned,Bb:Owned>(
+    a: RecvPacketBuffered<A, Ab>,
+    b: RecvPacketBuffered<B, Bb>)
+    -> Either<(Option<A>, RecvPacketBuffered<B, Bb>),
+              (RecvPacketBuffered<A, Ab>, Option<B>)>
+{
+    let i = wait_many([a.header(), b.header()]);
+
+    match i {
+      0 => Left((try_recv(a), b)),
+      1 => Right((a, try_recv(b))),
+      _ => fail!(~"select2 return an invalid packet")
+    }
+}
+
+#[doc(hidden)]
+pub trait Selectable {
+    fn header(&self) -> *PacketHeader;
+}
+
+impl Selectable for *PacketHeader {
+    fn header(&self) -> *PacketHeader { *self }
+}
+
+/// Returns the index of an endpoint that is ready to receive.
+pub fn selecti<T:Selectable>(endpoints: &[T]) -> uint {
+    wait_many(endpoints)
+}
+
+/// Returns 0 or 1 depending on which endpoint is ready to receive
+pub fn select2i<A:Selectable,B:Selectable>(a: &A, b: &B) ->
+        Either<(), ()> {
+    match wait_many([a.header(), b.header()]) {
+      0 => Left(()),
+      1 => Right(()),
+      _ => fail!(~"wait returned unexpected index")
+    }
+}
+
+/** Waits on a set of endpoints. Returns a message, its index, and a
+ list of the remaining endpoints.
+
+*/
+pub fn select<T:Owned,Tb:Owned>(endpoints: ~[RecvPacketBuffered<T, Tb>])
+    -> (uint, Option<T>, ~[RecvPacketBuffered<T, Tb>])
+{
+    let ready = wait_many(endpoints.map(|p| p.header()));
+    let mut remaining = endpoints;
+    let port = remaining.swap_remove(ready);
+    let result = try_recv(port);
+    (ready, result, remaining)
 }
 
 pub mod rt {
