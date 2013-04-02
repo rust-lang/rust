@@ -42,9 +42,9 @@ packages:
 Assuming you're on a relatively modern *nix system and have met the
 prerequisites, something along these lines should work.
 
-    $ curl -O http://static.rust-lang.org/dist/rust-0.5.tar.gz
-    $ tar -xzf rust-0.5.tar.gz
-    $ cd rust-0.5
+    $ curl -O http://static.rust-lang.org/dist/rust-0.6.tar.gz
+    $ tar -xzf rust-0.6.tar.gz
+    $ cd rust-0.6
     $ ./configure
     $ make && make install
 
@@ -59,8 +59,8 @@ When complete, `make install` will place several programs into
 API-documentation tool, and `rustpkg`, the Rust package manager and build system.
 
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
-[tarball]: http://static.rust-lang.org/dist/rust-0.5.tar.gz
-[win-exe]: http://static.rust-lang.org/dist/rust-0.5-install.exe
+[tarball]: http://static.rust-lang.org/dist/rust-0.6.tar.gz
+[win-exe]: http://static.rust-lang.org/dist/rust-0.6-install.exe
 
 
 ## License
