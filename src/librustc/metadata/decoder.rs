@@ -249,12 +249,7 @@ fn doc_transformed_self_ty(doc: ebml::Doc,
 
 pub fn item_type(item_id: ast::def_id, item: ebml::Doc,
                  tcx: ty::ctxt, cdata: cmd) -> ty::t {
-    let t = doc_type(item, tcx, cdata);
-    if family_names_type(item_family(item)) {
-        ty::mk_with_id(tcx, t, item_id)
-    } else {
-        t
-    }
+    doc_type(item, tcx, cdata)
 }
 
 fn doc_trait_ref(doc: ebml::Doc, tcx: ty::ctxt, cdata: cmd) -> ty::TraitRef {
