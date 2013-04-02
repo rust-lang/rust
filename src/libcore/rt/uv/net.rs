@@ -81,7 +81,7 @@ pub impl StreamWatcher {
             return (*alloc_cb)(suggested_size as uint);
         }
 
-        extern fn read_cb(stream: *uvll::uv_stream_t, nread: ssize_t, ++buf: Buf) {
+        extern fn read_cb(stream: *uvll::uv_stream_t, nread: ssize_t, buf: Buf) {
             rtdebug!("buf addr: %x", buf.base as uint);
             rtdebug!("buf len: %d", buf.len as int);
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
