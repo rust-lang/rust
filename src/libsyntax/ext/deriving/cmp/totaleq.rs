@@ -35,6 +35,7 @@ pub fn expand_deriving_totaleq(cx: @ext_ctxt,
                 name: ~"equals",
                 output_type: Some(~[~"bool"]),
                 nargs: 1,
+                const_nonmatching: true,
                 combine_substructure: cs_equals
             }
         ]

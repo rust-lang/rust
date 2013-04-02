@@ -40,7 +40,8 @@ arguments:
 - `EnumMatching`, when `Self` is an enum and all the arguments are the
   same variant of the enum (e.g. `Some(1)`, `Some(3)` and `Some(4)`)
 - `EnumNonMatching` when `Self` is an enum and the arguments are not
-  the same variant (e.g. `None`, `Some(1)` and `None`)
+  the same variant (e.g. `None`, `Some(1)` and `None`). If
+  `const_nonmatching` is true, this will contain an empty list.
 
 In the first two cases, the values from the corresponding fields in
 all the arguments are grouped together. In the `EnumNonMatching` case
@@ -129,9 +130,11 @@ use core::prelude::*;
 use ast;
 
 use ast::{
+
     and, binop, deref, enum_def, expr, expr_match, ident, impure_fn,
-    item, Generics, m_imm, meta_item, method, named_field, or, public,
-    struct_def, sty_region, ty_rptr, ty_path, variant};
+    item, Generics, m_imm, meta_item, method, named_field, or,
+    pat_wild, public, struct_def, sty_region, ty_rptr, ty_path,
+    variant};
 
 use ast_util;
 use ext::base::ext_ctxt;
@@ -176,6 +179,10 @@ pub struct MethodDef<'self> {
     output_type: Option<~[~str]>,
     /// Number of arguments other than `self` (all of type `&Self`)
     nargs: uint,
+
+    /// if the value of the nonmatching enums is independent of the
+    /// actual enums, i.e. can use _ => .. match.
+    const_nonmatching: bool,
 
     combine_substructure: CombineSubstructureFunc<'self>
 }
@@ -555,12 +562,13 @@ impl<'self> MethodDef<'self> {
                                enum_def: &enum_def,
                                type_ident: ident)
         -> @expr {
-        self.build_enum_match(cx, span, enum_def, type_ident, ~[])
+        self.build_enum_match(cx, span, enum_def, type_ident,
+                              None, ~[], 0)
     }
 
 
     /**
-    Creates the nested matches for an enum definition, i.e.
+    Creates the nested matches for an enum definition recursively, i.e.
 
     ```
     match self {
@@ -575,14 +583,20 @@ impl<'self> MethodDef<'self> {
     the tree are the same. Hopefully the optimisers get rid of any
     repetition, otherwise derived methods with many Self arguments will be
     exponentially large.
+
+    `matching` is Some(n) if all branches in the tree above the
+    current position are variant `n`, `None` otherwise (including on
+    the first call).
     */
     fn build_enum_match(&self,
                         cx: @ext_ctxt, span: span,
                         enum_def: &enum_def,
                         type_ident: ident,
+                        matching: Option<uint>,
                         matches_so_far: ~[(uint, variant,
-                                           ~[(Option<ident>, @expr)])]) -> @expr {
-        if matches_so_far.len() == self.nargs + 1 {
+                                           ~[(Option<ident>, @expr)])],
+                        match_count: uint) -> @expr {
+        if match_count == self.nargs + 1 {
             // we've matched against all arguments, so make the final
             // expression at the bottom of the match tree
             match matches_so_far {
@@ -594,41 +608,44 @@ impl<'self> MethodDef<'self> {
                     // vec of tuples, where each tuple represents a
                     // field.
 
-                    // `ref` inside let matches is buggy. Causes havoc wih rusc.
-                    // let (variant_index, ref self_vec) = matches_so_far[0];
-                    let (variant_index, variant, self_vec) = match matches_so_far[0] {
-                        (i, v, ref s) => (i, v, s)
-                    };
-
                     let substructure;
 
                     // most arms don't have matching variants, so do a
                     // quick check to see if they match (even though
                     // this means iterating twice) instead of being
                     // optimistic and doing a pile of allocations etc.
-                    if matches_so_far.all(|&(v_i, _, _)| v_i == variant_index) {
-                        let mut enum_matching_fields = vec::from_elem(self_vec.len(), ~[]);
+                    match matching {
+                        Some(variant_index) => {
+                            // `ref` inside let matches is buggy. Causes havoc wih rusc.
+                            // let (variant_index, ref self_vec) = matches_so_far[0];
+                            let (variant, self_vec) = match matches_so_far[0] {
+                                (_, v, ref s) => (v, s)
+                            };
 
-                        for matches_so_far.tail().each |&(_, _, other_fields)| {
-                            for other_fields.eachi |i, &(_, other_field)| {
-                                enum_matching_fields[i].push(other_field);
+                            let mut enum_matching_fields = vec::from_elem(self_vec.len(), ~[]);
+
+                            for matches_so_far.tail().each |&(_, _, other_fields)| {
+                                for other_fields.eachi |i, &(_, other_field)| {
+                                    enum_matching_fields[i].push(other_field);
+                                }
                             }
+                            let field_tuples =
+                                do vec::map2(*self_vec,
+                                             enum_matching_fields) |&(id, self_f), &other| {
+                                (id, self_f, other)
+                            };
+                            substructure = EnumMatching(variant_index, variant, field_tuples);
                         }
-                        let field_tuples =
-                            do vec::map2(*self_vec,
-                                         enum_matching_fields) |&(id, self_f), &other| {
-                            (id, self_f, other)
-                        };
-                        substructure = EnumMatching(variant_index, variant, field_tuples);
-                    } else {
-                        substructure = EnumNonMatching(matches_so_far);
+                        None => {
+                            substructure = EnumNonMatching(matches_so_far);
+                        }
                     }
                     self.call_substructure_method(cx, span, type_ident, &substructure)
                 }
             }
 
         } else {  // there are still matches to create
-            let (current_match_ident, current_match_str) = if matches_so_far.is_empty() {
+            let (current_match_ident, current_match_str) = if match_count == 0 {
                 (cx.ident_of(~"self"), ~"__self")
             } else {
                 let s = fmt!("__other_%u", matches_so_far.len() - 1);
@@ -640,8 +657,32 @@ impl<'self> MethodDef<'self> {
             // this is used as a stack
             let mut matches_so_far = matches_so_far;
 
-            // create an arm matching on each variant
-            for enum_def.variants.eachi |index, variant| {
+            macro_rules! mk_arm(
+                ($pat:expr, $expr:expr) => {
+                    {
+                        let blk = build::mk_simple_block(cx, span, $expr);
+                        let arm = ast::arm {
+                            pats: ~[$ pat ],
+                            guard: None,
+                            body: blk
+                        };
+                        arm
+                    }
+                }
+            )
+
+            // the code for nonmatching variants only matters when
+            // we've seen at least one other variant already
+            if self.const_nonmatching && match_count > 0 {
+                // make a matching-variant match, and a _ match.
+                let index = match matching {
+                    Some(i) => i,
+                    None => cx.span_bug(span, ~"Non-matching variants when required to\
+                                                be matching in `deriving_generic`")
+                };
+
+                // matching-variant match
+                let variant = &enum_def.variants[index];
                 let pattern = create_enum_variant_pattern(cx, span,
                                                           variant,
                                                           current_match_str);
@@ -653,23 +694,63 @@ impl<'self> MethodDef<'self> {
                     }
                 };
 
-
                 matches_so_far.push((index, *variant, idents));
                 let arm_expr = self.build_enum_match(cx, span,
                                                      enum_def,
                                                      type_ident,
-                                                     matches_so_far);
+                                                     matching,
+                                                     matches_so_far,
+                                                     match_count + 1);
                 matches_so_far.pop();
-
-                let arm_block = build::mk_simple_block(cx, span, arm_expr);
-                let arm = ast::arm {
-                    pats: ~[ pattern ],
-                    guard: None,
-                    body: arm_block
-                };
+                let arm = mk_arm!(pattern, arm_expr);
                 arms.push(arm);
-            }
 
+                if enum_def.variants.len() > 1 {
+                    // _ match, if necessary
+                    let wild_pat = @ast::pat {
+                        id: cx.next_id(),
+                        node: pat_wild,
+                        span: span
+                    };
+
+                    let wild_expr = self.call_substructure_method(cx, span, type_ident,
+                                                                  &EnumNonMatching(~[]));
+                    let wild_arm = mk_arm!(wild_pat, wild_expr);
+                    arms.push(wild_arm);
+                }
+            } else {
+                // create an arm matching on each variant
+                for enum_def.variants.eachi |index, variant| {
+                    let pattern = create_enum_variant_pattern(cx, span,
+                                                              variant,
+                                                              current_match_str);
+
+                    let idents = do vec::build |push| {
+                        for each_variant_arg_ident(cx, span, variant) |i, field_id| {
+                            let id = cx.ident_of(fmt!("%s_%u", current_match_str, i));
+                            push((field_id, build::mk_path(cx, span, ~[ id ])));
+                        }
+                    };
+
+                    matches_so_far.push((index, *variant, idents));
+                    let new_matching =
+                        match matching {
+                            _ if match_count == 0 => Some(index),
+                            Some(i) if index == i => Some(i),
+                            _ => None
+                        };
+                    let arm_expr = self.build_enum_match(cx, span,
+                                                         enum_def,
+                                                         type_ident,
+                                                         new_matching,
+                                                         matches_so_far,
+                                                         match_count + 1);
+                    matches_so_far.pop();
+
+                    let arm = mk_arm!(pattern, arm_expr);
+                    arms.push(arm);
+                }
+            }
             let deref_expr = build::mk_unary(cx, span, deref,
                                              build::mk_path(cx, span,
                                                             ~[ current_match_ident ]));
