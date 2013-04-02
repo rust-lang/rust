@@ -356,7 +356,6 @@ impl NativeHandle<*uvll::uv_write_t> for WriteRequest {
 
 
 #[test]
-#[ignore(reason = "ffi struct issues")]
 fn connect_close() {
     do run_in_bare_thread() {
         let mut loop_ = Loop::new();
@@ -409,7 +408,6 @@ fn connect_read() {
 }
 
 #[test]
-#[ignore(reason = "ffi struct issues")]
 fn listen() {
     do run_in_bare_thread() {
         static MAX: int = 10;

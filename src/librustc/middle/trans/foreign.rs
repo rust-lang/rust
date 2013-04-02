@@ -16,9 +16,10 @@ use lib::llvm::{TypeRef, ValueRef};
 use lib;
 use middle::trans::base::*;
 use middle::trans::cabi;
-use middle::trans::cabi_x86_64::*;
+use middle::trans::cabi_x86;
+use middle::trans::cabi_x86_64;
 use middle::trans::cabi_arm;
-use middle::trans::cabi_mips::*;
+use middle::trans::cabi_mips;
 use middle::trans::build::*;
 use middle::trans::callee::*;
 use middle::trans::common::*;
@@ -42,12 +43,12 @@ use syntax::abi::{Architecture, X86, X86_64, Arm, Mips};
 use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall,
                   Cdecl, Aapcs, C};
 
-fn abi_info(arch: Architecture) -> @cabi::ABIInfo {
-    return match arch {
-        X86_64 => x86_64_abi_info(),
+fn abi_info(ccx: @CrateContext) -> @cabi::ABIInfo {
+    return match ccx.sess.targ_cfg.arch {
+        X86 => cabi_x86::abi_info(ccx),
+        X86_64 => cabi_x86_64::abi_info(),
         Arm => cabi_arm::abi_info(),
-        Mips => mips_abi_info(),
-        X86 => cabi::llvm_abi_info()
+        Mips => cabi_mips::abi_info(),
     }
 }
 
@@ -112,7 +113,7 @@ fn shim_types(ccx: @CrateContext, id: ast::node_id) -> ShimTypes {
         !ty::type_is_bot(fn_sig.output) &&
         !ty::type_is_nil(fn_sig.output);
     let fn_ty =
-        abi_info(ccx.sess.targ_cfg.arch).compute_info(
+        abi_info(ccx).compute_info(
             llsig.llarg_tys,
             llsig.llret_ty,
             ret_def);
