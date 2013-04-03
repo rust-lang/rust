@@ -17,7 +17,7 @@ use core::from_str::FromStr;
 use core::io::{Reader, ReaderUtil};
 use core::io;
 use core::prelude::*;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::str;
 use core::to_bytes::IterBytes;
 use core::to_bytes;
@@ -212,7 +212,7 @@ fn encode_plus(s: &str) -> ~str {
 /**
  * Encode a hashmap to the 'application/x-www-form-urlencoded' media type.
  */
-pub fn encode_form_urlencoded(m: &LinearMap<~str, ~[~str]>) -> ~str {
+pub fn encode_form_urlencoded(m: &HashMap<~str, ~[~str]>) -> ~str {
     let mut out = ~"";
     let mut first = true;
 
@@ -238,9 +238,9 @@ pub fn encode_form_urlencoded(m: &LinearMap<~str, ~[~str]>) -> ~str {
  * Decode a string encoded with the 'application/x-www-form-urlencoded' media
  * type into a hashmap.
  */
-pub fn decode_form_urlencoded(s: &[u8]) -> LinearMap<~str, ~[~str]> {
+pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, ~[~str]> {
     do io::with_bytes_reader(s) |rdr| {
-        let mut m = LinearMap::new();
+        let mut m = HashMap::new();
         let mut key = ~"";
         let mut value = ~"";
         let mut parsing_key = true;
@@ -818,7 +818,7 @@ mod tests {
 
     use net_url::*;
 
-    use core::hashmap::linear::LinearMap;
+    use core::hashmap::HashMap;
 
     #[test]
     pub fn test_url_parse() {
@@ -1053,18 +1053,18 @@ mod tests {
 
     #[test]
     pub fn test_encode_form_urlencoded() {
-        let mut m = LinearMap::new();
+        let mut m = HashMap::new();
         assert!(encode_form_urlencoded(&m) == ~"");
 
         m.insert(~"", ~[]);
         m.insert(~"foo", ~[]);
         assert!(encode_form_urlencoded(&m) == ~"");
 
-        let mut m = LinearMap::new();
+        let mut m = HashMap::new();
         m.insert(~"foo", ~[~"bar", ~"123"]);
         assert!(encode_form_urlencoded(&m) == ~"foo=bar&foo=123");
 
-        let mut m = LinearMap::new();
+        let mut m = HashMap::new();
         m.insert(~"foo bar", ~[~"abc", ~"12 = 34"]);
         assert!(encode_form_urlencoded(&m) ==
             ~"foo+bar=abc&foo+bar=12+%3D+34");

@@ -25,7 +25,7 @@
 //  writes pbm image to output path
 
 use core::io::WriterUtil;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 
 struct cmplx {
     re: f64,
@@ -125,7 +125,7 @@ fn writer(path: ~str, pport: comm::Port<Line>, size: uint)
     };
     cout.write_line("P4");
     cout.write_line(fmt!("%u %u", size, size));
-    let mut lines: LinearMap<uint, Line> = LinearMap::new();
+    let mut lines: HashMap<uint, Line> = HashMap::new();
     let mut done = 0_u;
     let mut i = 0_u;
     while i < size {

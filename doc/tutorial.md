@@ -1888,8 +1888,8 @@ illegal to copy and pass by value.
 Generic `type`, `struct`, and `enum` declarations follow the same pattern:
 
 ~~~~
-# use core::hashmap::linear::LinearMap;
-type Set<T> = LinearMap<T, ()>;
+# use core::hashmap::HashMap;
+type Set<T> = HashMap<T, ()>;
 
 struct Stack<T> {
     elements: ~[T]

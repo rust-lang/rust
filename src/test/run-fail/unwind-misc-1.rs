@@ -14,7 +14,7 @@
 
 fn main() {
     let count = @mut 0u;
-    let mut map = core::hashmap::linear::LinearMap::new();
+    let mut map = core::hashmap::HashMap::new();
     let mut arr = ~[];
     for uint::range(0u, 10u) |i| {
         arr += ~[@~"key stuff"];

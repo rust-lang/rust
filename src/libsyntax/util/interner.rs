@@ -13,10 +13,10 @@
 // type, and vice versa.
 
 use core::prelude::*;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 
 pub struct Interner<T> {
-    priv map: @mut LinearMap<T, uint>,
+    priv map: @mut HashMap<T, uint>,
     priv vect: @mut ~[T],
 }
 
@@ -24,7 +24,7 @@ pub struct Interner<T> {
 pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
     fn new() -> Interner<T> {
         Interner {
-            map: @mut LinearMap::new(),
+            map: @mut HashMap::new(),
             vect: @mut ~[],
         }
     }

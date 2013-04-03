@@ -153,7 +153,7 @@ use util::common::indenter;
 use util::ppaux::ty_to_str;
 
 use core::cast::transmute;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
 use syntax::codemap;
@@ -1091,7 +1091,7 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
     };
 
     fn take_local(bcx: block,
-                  table: &LinearMap<ast::node_id, local_val>,
+                  table: &HashMap<ast::node_id, local_val>,
                   nid: ast::node_id) -> Datum {
         let (v, mode) = match table.find(&nid) {
             Some(&local_mem(v)) => (v, ByRef),

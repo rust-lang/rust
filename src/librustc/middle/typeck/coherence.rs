@@ -53,7 +53,7 @@ use syntax::visit::{visit_mod};
 use util::ppaux::ty_to_str;
 
 use core::result::Ok;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 use core::uint;
 
 pub struct UniversalQuantificationResult {
@@ -164,17 +164,17 @@ pub fn method_to_MethodInfo(ast_method: @method) -> @MethodInfo {
 pub struct CoherenceInfo {
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
-    inherent_methods: @mut LinearMap<def_id, @mut ~[@Impl]>,
+    inherent_methods: @mut HashMap<def_id, @mut ~[@Impl]>,
 
     // Contains implementations of methods associated with a trait. For these,
     // the associated trait must be imported at the call site.
-    extension_methods: @mut LinearMap<def_id, @mut ~[@Impl]>,
+    extension_methods: @mut HashMap<def_id, @mut ~[@Impl]>,
 }
 
 pub fn CoherenceInfo() -> CoherenceInfo {
     CoherenceInfo {
-        inherent_methods: @mut LinearMap::new(),
-        extension_methods: @mut LinearMap::new(),
+        inherent_methods: @mut HashMap::new(),
+        extension_methods: @mut HashMap::new(),
     }
 }
 
@@ -183,7 +183,7 @@ pub fn CoherenceChecker(crate_context: @mut CrateCtxt) -> CoherenceChecker {
         crate_context: crate_context,
         inference_context: new_infer_ctxt(crate_context.tcx),
 
-        base_type_def_ids: @mut LinearMap::new(),
+        base_type_def_ids: @mut HashMap::new(),
     }
 }
 
@@ -194,7 +194,7 @@ pub struct CoherenceChecker {
     // A mapping from implementations to the corresponding base type
     // definition ID.
 
-    base_type_def_ids: @mut LinearMap<def_id,def_id>,
+    base_type_def_ids: @mut HashMap<def_id,def_id>,
 }
 
 pub impl CoherenceChecker {
@@ -471,7 +471,7 @@ pub impl CoherenceChecker {
                ty_to_str(self.crate_context.tcx, self_t));
         match self.crate_context.tcx.trait_impls.find(&trait_t) {
             None => {
-                let m = @mut LinearMap::new();
+                let m = @mut HashMap::new();
                 m.insert(self_t, the_impl);
                 self.crate_context.tcx.trait_impls.insert(trait_t, m);
             }
@@ -501,7 +501,7 @@ pub impl CoherenceChecker {
             f: &fn(x: &ty::method) -> bool) {
         // Make a list of all the names of the provided methods.
         // XXX: This is horrible.
-        let mut provided_method_idents = LinearSet::new();
+        let mut provided_method_idents = HashSet::new();
         let tcx = self.crate_context.tcx;
         for ty::provided_trait_methods(tcx, trait_did).each |ident| {
             provided_method_idents.insert(*ident);
@@ -705,7 +705,7 @@ pub impl CoherenceChecker {
 
         let tcx = self.crate_context.tcx;
 
-        let mut provided_names = LinearSet::new();
+        let mut provided_names = HashSet::new();
         // Implemented methods
         for uint::range(0, all_methods.len()) |i| {
             provided_names.insert(all_methods[i].ident);
@@ -812,7 +812,7 @@ pub impl CoherenceChecker {
 
     // External crate handling
 
-    fn add_impls_for_module(&self, impls_seen: &mut LinearSet<def_id>,
+    fn add_impls_for_module(&self, impls_seen: &mut HashSet<def_id>,
                             crate_store: @mut CStore,
                             module_def_id: def_id) {
         let implementations = get_impls_for_mod(crate_store,
@@ -931,7 +931,7 @@ pub impl CoherenceChecker {
     // Adds implementations and traits from external crates to the coherence
     // info.
     fn add_external_crates(&self) {
-        let mut impls_seen = LinearSet::new();
+        let mut impls_seen = HashSet::new();
 
         let crate_store = self.crate_context.tcx.sess.cstore;
         do iter_crate_data(crate_store) |crate_number, _crate_metadata| {

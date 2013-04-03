@@ -28,7 +28,7 @@ use core::result::{Ok, Err};
 use core::result;
 use core::uint;
 use core::vec;
-use core::hashmap::linear::LinearSet;
+use core::hashmap::HashSet;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
@@ -234,7 +234,7 @@ pub fn lookup_vtable(vcx: &VtableContext,
         _ => {
             let mut found = ~[];
 
-            let mut impls_seen = LinearSet::new();
+            let mut impls_seen = HashSet::new();
 
             match vcx.ccx.coherence_info.extension_methods.find(&trait_id) {
                 None => {

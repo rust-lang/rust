@@ -20,7 +20,7 @@ use diagnostic::span_handler;
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
 
 use core::vec;
-use core::hashmap::linear::LinearSet;
+use core::hashmap::HashSet;
 use std;
 
 /* Constructors */
@@ -333,7 +333,7 @@ pub fn find_inline_attr(attrs: &[ast::attribute]) -> inline_attr {
 
 pub fn require_unique_names(diagnostic: @span_handler,
                             metas: &[@ast::meta_item]) {
-    let mut set = LinearSet::new();
+    let mut set = HashSet::new();
     for metas.each |meta| {
         let name = get_meta_item_name(*meta);
 

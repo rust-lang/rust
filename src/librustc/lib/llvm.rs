@@ -10,7 +10,7 @@
 
 use core::prelude::*;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::libc::c_uint;
 use core::option;
 use core::ptr;
@@ -1467,8 +1467,8 @@ pub fn SetLinkage(Global: ValueRef, Link: Linkage) {
 /* Memory-managed object interface to type handles. */
 
 pub struct TypeNames {
-    type_names: @mut LinearMap<TypeRef, @str>,
-    named_types: @mut LinearMap<@str, TypeRef>
+    type_names: @mut HashMap<TypeRef, @str>,
+    named_types: @mut HashMap<@str, TypeRef>
 }
 
 pub fn associate_type(tn: @TypeNames, s: @str, t: TypeRef) {
@@ -1486,8 +1486,8 @@ pub fn name_has_type(tn: @TypeNames, s: @str) -> Option<TypeRef> {
 
 pub fn mk_type_names() -> @TypeNames {
     @TypeNames {
-        type_names: @mut LinearMap::new(),
-        named_types: @mut LinearMap::new()
+        type_names: @mut HashMap::new(),
+        named_types: @mut HashMap::new()
     }
 }
 

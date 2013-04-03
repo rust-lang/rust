@@ -14,11 +14,11 @@
 extern mod req;
 
 use req::*;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 
 pub fn main() {
   let v = ~[@~"hi"];
-  let mut m: req::header_map = LinearMap::new();
+  let mut m: req::header_map = HashMap::new();
   m.insert(~"METHOD", @mut v);
   request::<int>(&m);
 }

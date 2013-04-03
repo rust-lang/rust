@@ -18,7 +18,7 @@ use core::os;
 use core::uint;
 use core::util;
 use core::vec;
-use core::hashmap::linear::LinearSet;
+use core::hashmap::HashSet;
 
 fn not_win32(os: session::os) -> bool {
   match os {
@@ -186,7 +186,7 @@ pub fn get_install_prefix_rpath(target_triple: &str) -> Path {
 }
 
 pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
-    let mut set = LinearSet::new();
+    let mut set = HashSet::new();
     let mut minimized = ~[];
     for rpaths.each |rpath| {
         if set.insert(rpath.to_str()) {
