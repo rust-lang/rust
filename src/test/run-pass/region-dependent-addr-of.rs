@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test lifetimes are linked properly when we create dependent region pointers.
+// Issue #3148.
+
 struct A {
     value: B
 }
