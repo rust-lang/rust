@@ -494,8 +494,8 @@ pub mod guarantor {
      * inferencer would not know of this dependency and thus it might
      * infer the lifetime of L2 to be greater than L1 (issue #3148).
      *
-     * There are a number of troublesome scenarios in the test
-     * `region-dependent-addr-of.rs`, but here is one example:
+     * There are a number of troublesome scenarios in the tests
+     * `region-dependent-*.rs`, but here is one example:
      *
      *     struct Foo { i: int }
      *     struct Bar { foo: Foo  }
@@ -583,8 +583,35 @@ pub mod guarantor {
         let mut expr_ct = categorize_unadjusted(rcx, expr);
         expr_ct = apply_autoderefs(
             rcx, expr, autoderefs, expr_ct);
-        for expr_ct.cat.guarantor.each |g| {
-            infallibly_mk_subr(rcx, true, expr.span, autoref.region, *g);
+
+        match autoref.kind {
+            ty::AutoPtr => {
+                // In this case, we are implicitly adding an `&`.
+                maybe_make_subregion(rcx, expr, autoref.region,
+                                     expr_ct.cat.guarantor);
+            }
+
+            ty::AutoBorrowVec |
+            ty::AutoBorrowVecRef |
+            ty::AutoBorrowFn => {
+                // In each of these cases, what is being borrowed is
+                // not the (autoderef'd) expr itself but rather the
+                // contents of the autoderef'd expression (i.e., what
+                // the pointer points at).
+                maybe_make_subregion(rcx, expr, autoref.region,
+                                     guarantor_of_deref(&expr_ct.cat));
+            }
+        }
+
+        fn maybe_make_subregion(
+            rcx: @mut Rcx,
+            expr: @ast::expr,
+            sub_region: ty::Region,
+            sup_region: Option<ty::Region>)
+        {
+            for sup_region.each |r| {
+                infallibly_mk_subr(rcx, true, expr.span, sub_region, *r);
+            }
         }
     }
 
@@ -813,18 +840,30 @@ pub mod guarantor {
 
     fn pointer_categorize(ty: ty::t) -> PointerCategorization {
         match ty::get(ty).sty {
-            ty::ty_rptr(r, _) | ty::ty_evec(_, ty::vstore_slice(r)) |
+            ty::ty_rptr(r, _) |
+            ty::ty_evec(_, ty::vstore_slice(r)) |
             ty::ty_estr(ty::vstore_slice(r)) => {
                 BorrowedPointer(r)
             }
-            ty::ty_uniq(*) | ty::ty_estr(ty::vstore_uniq) |
+            ty::ty_uniq(*) |
+            ty::ty_estr(ty::vstore_uniq) |
             ty::ty_evec(_, ty::vstore_uniq) => {
                 OwnedPointer
             }
-            ty::ty_box(*) | ty::ty_ptr(*) |
+            ty::ty_box(*) |
+            ty::ty_ptr(*) |
             ty::ty_evec(_, ty::vstore_box) |
             ty::ty_estr(ty::vstore_box) => {
                 OtherPointer
+            }
+            ty::ty_closure(ref closure_ty) => {
+                match closure_ty.sigil {
+                    ast::BorrowedSigil => BorrowedPointer(closure_ty.region),
+                    ast::OwnedSigil => OwnedPointer,
+
+                    // NOTE This is...not quite right.  Deduce a test etc.
+                    ast::ManagedSigil => OtherPointer,
+                }
             }
             _ => {
                 NotPointer

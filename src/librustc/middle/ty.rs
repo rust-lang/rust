@@ -197,13 +197,13 @@ pub enum AutoRefKind {
     /// Convert from T to &T
     AutoPtr,
 
-    /// Convert from @[]/~[] to &[] (or str)
+    /// Convert from @[]/~[]/&[] to &[] (or str)
     AutoBorrowVec,
 
-    /// Convert from @[]/~[] to &&[] (or str)
+    /// Convert from @[]/~[]/&[] to &&[] (or str)
     AutoBorrowVecRef,
 
-    /// Convert from @fn()/~fn() to &fn()
+    /// Convert from @fn()/~fn()/&fn() to &fn()
     AutoBorrowFn
 }
 
