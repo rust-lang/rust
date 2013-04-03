@@ -4280,7 +4280,7 @@ pub impl Parser {
                                             rp: None,
                                             types: ~[] };
                     return @spanned(lo, self.span.hi,
-                                 view_path_glob(path, self.get_id()));
+                                    view_path_glob(path, self.get_id()));
                   }
 
                   _ => break
