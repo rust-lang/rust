@@ -10,6 +10,7 @@
 
 //! Operations on tuples
 
+use clone::Clone;
 use kinds::Copy;
 use vec;
 
@@ -44,6 +45,15 @@ impl<T:Copy,U:Copy> CopyableTuple<T, U> for (T, U) {
         return (u, t);
     }
 
+}
+
+impl<T:Clone,U:Clone> Clone for (T, U) {
+    fn clone(&self) -> (T, U) {
+        let (a, b) = match *self {
+            (ref a, ref b) => (a, b)
+        };
+        (a.clone(), b.clone())
+    }
 }
 
 pub trait ImmutableTuple<T, U> {
@@ -252,3 +262,10 @@ fn test_tuple() {
     assert!(('a', 2).swap() == (2, 'a'));
 }
 
+#[test]
+fn test_clone() {
+    let a = (1, ~"2");
+    let b = a.clone();
+    assert!(a.first() == b.first());
+    assert!(a.second() == b.second());
+}
