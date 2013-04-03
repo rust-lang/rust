@@ -96,10 +96,10 @@ impl Reader for @Reader {
 /**
 * The `ReaderUtil` trait is a home for many of the utility functions
 * a particular Reader should implement.
-* 
+*
 * The default `Reader` trait is focused entirely on bytes. `ReaderUtil` is based
 * on higher-level concepts like 'chars' and 'lines.'
-* 
+*
 * # Examples:
 *
 * None right now.
@@ -117,7 +117,7 @@ pub trait ReaderUtil {
 
     /**
     * Reads up until a specific character or EOF.
-    * 
+    *
     * The `include` parameter specifies if the character should be included
     * in the returned string.
     *
@@ -129,7 +129,7 @@ pub trait ReaderUtil {
 
     /**
     * Reads up until the first '\n' or EOF.
-    * 
+    *
     * The '\n' is not included in the result.
     *
     * # Examples
@@ -140,9 +140,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads `n` chars.
-    * 
+    *
     * Assumes that those chars are UTF-8 encoded.
-    * 
+    *
     * The '\n' is not included in the result.
     *
     * # Examples
@@ -209,7 +209,7 @@ pub trait ReaderUtil {
 
     /**
     * Reads all of the lines in the stream.
-    * 
+    *
     * Returns a vector of those lines.
     *
     * # Examples
@@ -220,9 +220,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads `n` little-endian unsigned integer bytes.
-    * 
+    *
     * `n` must be between 1 and 8, inclusive.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -231,9 +231,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads `n` little-endian signed integer bytes.
-    * 
+    *
     * `n` must be between 1 and 8, inclusive.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -242,9 +242,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads `n` big-endian unsigned integer bytes.
-    * 
+    *
     * `n` must be between 1 and 8, inclusive.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -253,9 +253,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads `n` big-endian signed integer bytes.
-    * 
+    *
     * `n` must be between 1 and 8, inclusive.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -264,9 +264,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a little-endian unsigned integer.
-    * 
+    *
     * The number of bytes returned is system-dependant.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -275,9 +275,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a little-endian integer.
-    * 
+    *
     * The number of bytes returned is system-dependant.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -286,9 +286,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a big-endian unsigned integer.
-    * 
+    *
     * The number of bytes returned is system-dependant.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -297,9 +297,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a big-endian integer.
-    * 
+    *
     * The number of bytes returned is system-dependant.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -308,9 +308,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a big-endian `u64`.
-    * 
+    *
     * `u64`s are 8 bytes long.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -319,9 +319,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a big-endian `u32`.
-    * 
+    *
     * `u32`s are 4 bytes long.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -330,9 +330,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a big-endian `u16`.
-    * 
+    *
     * `u16`s are 2 bytes long.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -341,9 +341,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a big-endian `i64`.
-    * 
+    *
     * `i64`s are 8 bytes long.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -352,9 +352,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a big-endian `i32`.
-    * 
+    *
     * `i32`s are 4 bytes long.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -363,9 +363,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a big-endian `i16`.
-    * 
+    *
     * `i16`s are 2 bytes long.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -374,9 +374,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a big-endian `f64`.
-    * 
+    *
     * `f64`s are 8 byte, IEEE754 double-precision floating point numbers.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -385,9 +385,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a big-endian `f32`.
-    * 
+    *
     * `f32`s are 4 byte, IEEE754 single-precision floating point numbers.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -396,9 +396,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a little-endian `u64`.
-    * 
+    *
     * `u64`s are 8 bytes long.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -407,9 +407,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a little-endian `u32`.
-    * 
+    *
     * `u32`s are 4 bytes long.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -418,9 +418,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a little-endian `u16`.
-    * 
+    *
     * `u16`s are 2 bytes long.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -429,9 +429,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a little-endian `i64`.
-    * 
+    *
     * `i64`s are 8 bytes long.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -440,9 +440,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a little-endian `i32`.
-    * 
+    *
     * `i32`s are 4 bytes long.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -451,9 +451,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a little-endian `i16`.
-    * 
+    *
     * `i16`s are 2 bytes long.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -462,9 +462,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a little-endian `f64`.
-    * 
+    *
     * `f64`s are 8 byte, IEEE754 double-precision floating point numbers.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -473,9 +473,9 @@ pub trait ReaderUtil {
 
     /**
     * Reads a little-endian `f32`.
-    * 
+    *
     * `f32`s are 4 byte, IEEE754 single-precision floating point numbers.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -483,10 +483,10 @@ pub trait ReaderUtil {
     fn read_le_f32(&self) -> f32;
 
     /**
-    * Read a u8. 
-    * 
+    * Read a u8.
+    *
     * `u8`s are 1 byte.
-    * 
+    *
     * # Examples
     *
     * None right now.
@@ -494,10 +494,10 @@ pub trait ReaderUtil {
     fn read_u8(&self) -> u8;
 
     /**
-    * Read an i8. 
-    * 
+    * Read an i8.
+    *
     * `i8`s are 1 byte.
-    * 
+    *
     * # Examples
     *
     * None right now.
