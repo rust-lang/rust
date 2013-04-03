@@ -12,6 +12,9 @@
 // allows bidirectional lookup; i.e. given a value, one can easily find the
 // type, and vice versa.
 
+// allow the interner_key macro to escape this module:
+#[macro_escape];
+
 use core::prelude::*;
 use core::hashmap::HashMap;
 
@@ -65,6 +68,17 @@ pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
 
     fn len(&self) -> uint { let vect = &*self.vect; vect.len() }
 }
+
+/* Key for thread-local data for sneaking interner information to the
+* encoder/decoder. It sounds like a hack because it is one.
+* Bonus ultra-hack: functions as keys don't work across crates,
+* so we have to use a unique number. See taskgroup_key! in task.rs
+* for another case of this. */
+macro_rules! interner_key (
+    () => (cast::transmute::<(uint, uint),
+           &fn(+v: @@::parse::token::ident_interner)>(
+        (-3 as uint, 0u)))
+)
 
 #[cfg(test)]
 mod tests {
