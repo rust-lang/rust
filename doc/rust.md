@@ -3261,7 +3261,7 @@ fn main() {
     error!("This is an error log")
     warn!("This is a warn log")
     info!("this is an info log")
-    debug!("This is a dubug log")
+    debug!("This is a debug log")
 }
 ```
 
