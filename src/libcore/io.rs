@@ -49,29 +49,89 @@ pub mod rustrt {
 
 // FIXME (#2004): This is all buffered. We might need an unbuffered variant
 // as well
+/**
+* The SeekStyle enum describes the relationship between the position
+* we'd like to seek to from our current position. It's used as an argument
+* to the `seek` method defined on the `Reader` trait.
+*
+* There are three seek styles:
+*
+* 1. `SeekSet` means that the new position should become our position.
+* 2. `SeekCur` means that we should seek from the current position.
+* 3. `SeekEnd` means that we should seek from the end.
+*
+* # Examples
+*
+* None right now.
+*/
 pub enum SeekStyle { SeekSet, SeekEnd, SeekCur, }
 
 
-/// The raw underlying reader trait. All readers must implement this.
+/**
+* The core Reader trait. All readers must implement this trait.
+*
+* # Examples
+*
+* None right now.
+*/
 pub trait Reader {
     // FIXME (#2004): Seekable really should be orthogonal.
 
-    /// Read up to len bytes (or EOF) and put them into bytes (which
-    /// must be at least len bytes long). Return number of bytes read.
     // FIXME (#2982): This should probably return an error.
+    /**
+    * Reads bytes and puts them into `bytes`. Returns the number of
+    * bytes read.
+    *
+    * The number of bytes to be read is `len` or the end of the file,
+    * whichever comes first.
+    *
+    * The buffer must be at least `len` bytes long.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read(&self, bytes: &mut [u8], len: uint) -> uint;
 
-    /// Read a single byte, returning a negative value for EOF or read error.
+    /**
+    * Reads a single byte.
+    *
+    * In the case of an EOF or an error, returns a negative value.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_byte(&self) -> int;
 
-    /// Return whether the stream is currently at EOF position.
+    /**
+    * Returns a boolean value: are we currently at EOF?
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn eof(&self) -> bool;
 
-    /// Move the current position within the stream. The second parameter
-    /// determines the position that the first parameter is relative to.
+    /**
+    * Seek to a given `position` in the stream.
+    *
+    * Takes an optional SeekStyle, which affects how we seek from the
+    * position. See `SeekStyle` docs for more details.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn seek(&self, position: int, style: SeekStyle);
 
-    /// Return the current position within the stream.
+    /**
+    * Returns the current position within the stream.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn tell(&self) -> uint;
 }
 
