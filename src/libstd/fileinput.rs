@@ -461,7 +461,7 @@ mod test {
         }
 
         assert_eq!(fi.read_byte(), -1);
-        fail_unless!(fi.eof());
+        assert!(fi.eof());
         assert_eq!(fi.state().line_num, 3)
 
     }
@@ -482,7 +482,7 @@ mod test {
         let count = fi.read(buf, 10);
         assert_eq!(count, 6);
         assert_eq!(buf, "0\n1\n2\n".to_bytes());
-        fail_unless!(fi.eof())
+        assert!(fi.eof())
         assert_eq!(fi.state().line_num, 3);
     }
 
@@ -520,7 +520,9 @@ mod test {
         }
 
         for input_vec_state(filenames) |line, state| {
-            let nums = str::split_char(line, ' ');
+            let nums = do vec::build |p| {
+                for str::each_split_char(line, ' ') |s| { p(s.to_owned()); }
+            };
             let file_num = uint::from_str(nums[0]).get();
             let line_num = uint::from_str(nums[1]).get();
             assert_eq!(line_num, state.line_num_file);
