@@ -59,10 +59,13 @@ pub mod reader {
     use ebml::{EsVec, EsVecElt, EsVecLen, TaggedDoc};
     use serialize;
 
+    use core::cast::transmute;
     use core::int;
     use core::io;
     use core::prelude::*;
+    use core::ptr::offset;
     use core::str;
+    use core::unstable::intrinsics::bswap32;
     use core::vec;
 
     // ebml reading
@@ -78,7 +81,8 @@ pub mod reader {
         next: uint
     }
 
-    fn vuint_at(data: &[u8], start: uint) -> Res {
+    #[inline(never)]
+    fn vuint_at_slow(data: &[u8], start: uint) -> Res {
         let a = data[start];
         if a & 0x80u8 != 0u8 {
             return Res {val: (a & 0x7fu8) as uint, next: start + 1u};
@@ -87,18 +91,63 @@ pub mod reader {
             return Res {val: ((a & 0x3fu8) as uint) << 8u |
                         (data[start + 1u] as uint),
                     next: start + 2u};
-        } else if a & 0x20u8 != 0u8 {
+        }
+        if a & 0x20u8 != 0u8 {
             return Res {val: ((a & 0x1fu8) as uint) << 16u |
                         (data[start + 1u] as uint) << 8u |
                         (data[start + 2u] as uint),
                     next: start + 3u};
-        } else if a & 0x10u8 != 0u8 {
+        }
+        if a & 0x10u8 != 0u8 {
             return Res {val: ((a & 0x0fu8) as uint) << 24u |
                         (data[start + 1u] as uint) << 16u |
                         (data[start + 2u] as uint) << 8u |
                         (data[start + 3u] as uint),
                     next: start + 4u};
-        } else { error!("vint too big"); fail!(); }
+        }
+        fail!(~"vint too big");
+    }
+
+    #[cfg(target_arch = "x86")]
+    #[cfg(target_arch = "x86_64")]
+    pub fn vuint_at(data: &[u8], start: uint) -> Res {
+        if data.len() - start < 4 {
+            return vuint_at_slow(data, start);
+        }
+
+        unsafe {
+            let (ptr, _): (*u8, uint) = transmute(data);
+            let ptr = offset(ptr, start);
+            let ptr: *i32 = transmute(ptr);
+            let val = bswap32(*ptr);
+            let val: u32 = transmute(val);
+            if (val & 0x80000000) != 0 {
+                Res {
+                    val: ((val >> 24) & 0x7f) as uint,
+                    next: start + 1
+                }
+            } else if (val & 0x40000000) != 0 {
+                Res {
+                    val: ((val >> 16) & 0x3fff) as uint,
+                    next: start + 2
+                }
+            } else if (val & 0x20000000) != 0 {
+                Res {
+                    val: ((val >> 8) & 0x1fffff) as uint,
+                    next: start + 3
+                }
+            } else {
+                Res {
+                    val: (val & 0x0fffffff) as uint,
+                    next: start + 4
+                }
+            }
+        }
+    }
+
+    #[cfg(target_arch = "arm")]
+    pub fn vuint_at(data: &[u8], start: uint) -> Res {
+        vuint_at_slow(data, start)
     }
 
     pub fn Doc(data: @~[u8]) -> Doc {
