@@ -21,7 +21,7 @@ use middle::ty;
 use middle::typeck;
 
 use core::prelude::*;
-use core::hashmap::linear::LinearSet;
+use core::hashmap::HashSet;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_util::def_id_of_def;
@@ -30,18 +30,18 @@ use syntax::codemap;
 use syntax::print::pprust::expr_to_str;
 use syntax::{visit, ast_map};
 
-pub type map = @LinearSet<node_id>;
+pub type map = @HashSet<node_id>;
 
 struct ctx<'self> {
     exp_map2: resolve::ExportMap2,
     tcx: ty::ctxt,
     method_map: typeck::method_map,
-    rmap: &'self mut LinearSet<node_id>,
+    rmap: &'self mut HashSet<node_id>,
 }
 
 pub fn find_reachable(crate_mod: &_mod, exp_map2: resolve::ExportMap2,
                       tcx: ty::ctxt, method_map: typeck::method_map) -> map {
-    let mut rmap = LinearSet::new();
+    let mut rmap = HashSet::new();
     {
         let cx = ctx {
             exp_map2: exp_map2,
@@ -96,7 +96,7 @@ fn traverse_public_mod(cx: ctx, mod_id: node_id, m: &_mod) {
 
 fn traverse_public_item(cx: ctx, item: @item) {
     // XXX: it shouldn't be necessary to do this
-    let rmap: &mut LinearSet<node_id> = cx.rmap;
+    let rmap: &mut HashSet<node_id> = cx.rmap;
     if rmap.contains(&item.id) { return; }
     rmap.insert(item.id);
     match item.node {
@@ -154,7 +154,7 @@ fn mk_ty_visitor() -> visit::vt<ctx> {
 
 fn traverse_ty<'a>(ty: @Ty, cx: ctx<'a>, v: visit::vt<ctx<'a>>) {
     // XXX: it shouldn't be necessary to do this
-    let rmap: &mut LinearSet<node_id> = cx.rmap;
+    let rmap: &mut HashSet<node_id> = cx.rmap;
     if rmap.contains(&ty.id) { return; }
     rmap.insert(ty.id);
 

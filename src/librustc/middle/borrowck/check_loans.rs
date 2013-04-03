@@ -31,7 +31,7 @@ use middle::mem_categorization::{lp_comp, lp_deref, lp_local};
 use middle::ty;
 use util::ppaux::ty_to_str;
 
-use core::hashmap::linear::LinearSet;
+use core::hashmap::HashSet;
 use core::uint;
 use syntax::ast::m_mutbl;
 use syntax::ast;
@@ -44,7 +44,7 @@ struct CheckLoanCtxt {
     bccx: @BorrowckCtxt,
     req_maps: ReqMaps,
 
-    reported: LinearSet<ast::node_id>,
+    reported: HashSet<ast::node_id>,
 
     declared_purity: @mut ast::purity,
     fn_args: @mut @~[ast::node_id]
@@ -68,7 +68,7 @@ pub fn check_loans(bccx: @BorrowckCtxt,
     let clcx = @mut CheckLoanCtxt {
         bccx: bccx,
         req_maps: req_maps,
-        reported: LinearSet::new(),
+        reported: HashSet::new(),
         declared_purity: @mut ast::impure_fn,
         fn_args: @mut @~[]
     };

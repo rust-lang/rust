@@ -14,7 +14,7 @@ use syntax::ast;
 use syntax::codemap::{span};
 use syntax::visit;
 
-use core::hashmap::linear::LinearSet;
+use core::hashmap::HashSet;
 use core::str;
 use std;
 
@@ -114,7 +114,7 @@ pub fn pluralize(n: uint, +s: ~str) -> ~str {
 }
 
 // A set of node IDs (used to keep track of which node IDs are for statements)
-pub type stmt_set = @mut LinearSet<ast::node_id>;
+pub type stmt_set = @mut HashSet<ast::node_id>;
 
 //
 // Local Variables:

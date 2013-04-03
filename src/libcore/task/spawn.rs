@@ -79,7 +79,7 @@ use comm::{Chan, GenericChan};
 use prelude::*;
 use unstable;
 use ptr;
-use hashmap::linear::LinearSet;
+use hashmap::HashSet;
 use task::local_data_priv::{local_get, local_set};
 use task::rt::rust_task;
 use task::rt;
@@ -96,10 +96,10 @@ macro_rules! move_it (
     { $x:expr } => ( unsafe { let y = *ptr::addr_of(&($x)); y } )
 )
 
-type TaskSet = LinearSet<*rust_task>;
+type TaskSet = HashSet<*rust_task>;
 
 fn new_taskset() -> TaskSet {
-    LinearSet::new()
+    HashSet::new()
 }
 fn taskset_insert(tasks: &mut TaskSet, task: *rust_task) {
     let didnt_overwrite = tasks.insert(task);

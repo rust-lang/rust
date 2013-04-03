@@ -18,7 +18,7 @@ use util::interner;
 
 use core::cast;
 use core::char;
-use core::hashmap::linear::LinearSet;
+use core::hashmap::HashSet;
 use core::str;
 use core::task;
 
@@ -458,8 +458,8 @@ pub fn mk_fake_ident_interner() -> @ident_interner {
  * appear as identifiers at all. Reserved keywords are not used anywhere in
  * the language and may not appear as identifiers.
  */
-pub fn keyword_table() -> LinearSet<~str> {
-    let mut keywords = LinearSet::new();
+pub fn keyword_table() -> HashSet<~str> {
+    let mut keywords = HashSet::new();
     let mut tmp = temporary_keyword_table();
     let mut strict = strict_keyword_table();
     let mut reserved = reserved_keyword_table();
@@ -471,8 +471,8 @@ pub fn keyword_table() -> LinearSet<~str> {
 }
 
 /// Keywords that may be used as identifiers
-pub fn temporary_keyword_table() -> LinearSet<~str> {
-    let mut words = LinearSet::new();
+pub fn temporary_keyword_table() -> HashSet<~str> {
+    let mut words = HashSet::new();
     let keys = ~[
         ~"self", ~"static",
     ];
@@ -483,8 +483,8 @@ pub fn temporary_keyword_table() -> LinearSet<~str> {
 }
 
 /// Full keywords. May not appear anywhere else.
-pub fn strict_keyword_table() -> LinearSet<~str> {
-    let mut words = LinearSet::new();
+pub fn strict_keyword_table() -> HashSet<~str> {
+    let mut words = HashSet::new();
     let keys = ~[
         ~"as",
         ~"break",
@@ -509,8 +509,8 @@ pub fn strict_keyword_table() -> LinearSet<~str> {
     return words;
 }
 
-pub fn reserved_keyword_table() -> LinearSet<~str> {
-    let mut words = LinearSet::new();
+pub fn reserved_keyword_table() -> HashSet<~str> {
+    let mut words = HashSet::new();
     let keys = ~[
         ~"be"
     ];

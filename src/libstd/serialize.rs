@@ -17,7 +17,7 @@ Core encoding and decoding interfaces.
 #[forbid(non_camel_case_types)];
 
 use core::prelude::*;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 use core::trie::{TrieMap, TrieSet};
 use deque::Deque;
 use dlist::DList;
@@ -591,7 +591,7 @@ impl<
     E: Encoder,
     K: Encodable<E> + Hash + IterBytes + Eq,
     V: Encodable<E>
-> Encodable<E> for LinearMap<K, V> {
+> Encodable<E> for HashMap<K, V> {
     fn encode(&self, e: &E) {
         do e.emit_map(self.len()) {
             let mut i = 0;
@@ -608,10 +608,10 @@ impl<
     D: Decoder,
     K: Decodable<D> + Hash + IterBytes + Eq,
     V: Decodable<D>
-> Decodable<D> for LinearMap<K, V> {
-    fn decode(d: &D) -> LinearMap<K, V> {
+> Decodable<D> for HashMap<K, V> {
+    fn decode(d: &D) -> HashMap<K, V> {
         do d.read_map |len| {
-            let mut map = LinearMap::with_capacity(len);
+            let mut map = HashMap::with_capacity(len);
             for uint::range(0, len) |i| {
                 let key = d.read_map_elt_key(i, || Decodable::decode(d));
                 let val = d.read_map_elt_val(i, || Decodable::decode(d));
@@ -625,7 +625,7 @@ impl<
 impl<
     S: Encoder,
     T: Encodable<S> + Hash + IterBytes + Eq
-> Encodable<S> for LinearSet<T> {
+> Encodable<S> for HashSet<T> {
     fn encode(&self, s: &S) {
         do s.emit_seq(self.len()) {
             let mut i = 0;
@@ -640,10 +640,10 @@ impl<
 impl<
     D: Decoder,
     T: Decodable<D> + Hash + IterBytes + Eq
-> Decodable<D> for LinearSet<T> {
-    fn decode(d: &D) -> LinearSet<T> {
+> Decodable<D> for HashSet<T> {
+    fn decode(d: &D) -> HashSet<T> {
         do d.read_seq |len| {
-            let mut set = LinearSet::with_capacity(len);
+            let mut set = HashSet::with_capacity(len);
             for uint::range(0, len) |i| {
                 set.insert(d.read_seq_elt(i, || Decodable::decode(d)));
             }

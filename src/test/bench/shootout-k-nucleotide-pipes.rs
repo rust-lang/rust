@@ -15,13 +15,13 @@
 
 extern mod std;
 use std::sort;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::io::ReaderUtil;
 use core::comm::{stream, Port, Chan};
 use core::cmp::Ord;
 
 // given a map, print a sorted version of it
-fn sort_and_fmt(mm: &LinearMap<~[u8], uint>, total: uint) -> ~str {
+fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
    fn pct(xx: uint, yy: uint) -> float {
       return (xx as float) * 100f / (yy as float);
    }
@@ -67,7 +67,7 @@ fn sort_and_fmt(mm: &LinearMap<~[u8], uint>, total: uint) -> ~str {
 }
 
 // given a map, search for the frequency of a pattern
-fn find(mm: &LinearMap<~[u8], uint>, key: ~str) -> uint {
+fn find(mm: &HashMap<~[u8], uint>, key: ~str) -> uint {
    match mm.find(&str::to_bytes(str::to_lower(key))) {
       option::None      => { return 0u; }
       option::Some(&num) => { return num; }
@@ -75,7 +75,7 @@ fn find(mm: &LinearMap<~[u8], uint>, key: ~str) -> uint {
 }
 
 // given a map, increment the counter for a key
-fn update_freq(mm: &mut LinearMap<~[u8], uint>, key: &[u8]) {
+fn update_freq(mm: &mut HashMap<~[u8], uint>, key: &[u8]) {
     let key = vec::slice(key, 0, key.len()).to_vec();
     let newval = match mm.pop(&key) {
         Some(v) => v + 1,
@@ -103,7 +103,7 @@ fn windows_with_carry(bb: &[u8], nn: uint,
 fn make_sequence_processor(sz: uint, from_parent: comm::Port<~[u8]>,
                            to_parent: comm::Chan<~str>) {
 
-   let mut freqs: LinearMap<~[u8], uint> = LinearMap::new();
+   let mut freqs: HashMap<~[u8], uint> = HashMap::new();
    let mut carry: ~[u8] = ~[];
    let mut total: uint = 0u;
 

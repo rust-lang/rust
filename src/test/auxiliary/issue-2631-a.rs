@@ -13,9 +13,9 @@
 
 extern mod std;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 
-pub type header_map = LinearMap<~str, @mut ~[@~str]>;
+pub type header_map = HashMap<~str, @mut ~[@~str]>;
 
 // the unused ty param is necessary so this gets monomorphized
 pub fn request<T:Copy>(req: &header_map) {

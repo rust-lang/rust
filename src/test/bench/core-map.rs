@@ -13,7 +13,7 @@ extern mod std;
 use core::io;
 use std::time;
 use std::treemap::TreeMap;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 use core::trie::TrieMap;
 
 fn timed(label: &str, f: &fn()) {
@@ -102,7 +102,7 @@ fn main() {
 
     {
         let rng = core::rand::seeded_rng([1, 1, 1, 1, 1, 1, 1]);
-        let mut set = LinearSet::new();
+        let mut set = HashSet::new();
         while set.len() != n_keys {
             let next = rng.next() as uint;
             if set.insert(next) {
@@ -131,21 +131,21 @@ fn main() {
         vector(&mut map, n_keys, rand);
     }
 
-    io::println("\nLinearMap:");
+    io::println("\nHashMap:");
 
     {
-        let mut map = LinearMap::new::<uint, uint>();
+        let mut map = HashMap::new::<uint, uint>();
         ascending(&mut map, n_keys);
     }
 
     {
-        let mut map = LinearMap::new::<uint, uint>();
+        let mut map = HashMap::new::<uint, uint>();
         descending(&mut map, n_keys);
     }
 
     {
         io::println(" Random integers:");
-        let mut map = LinearMap::new::<uint, uint>();
+        let mut map = HashMap::new::<uint, uint>();
         vector(&mut map, n_keys, rand);
     }
 

@@ -167,7 +167,7 @@ use middle::trans::type_of;
 use middle::ty;
 use util::common::indenter;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_util::path_to_ident;
@@ -323,7 +323,7 @@ pub struct BindingInfo {
     ty: ty::t,
 }
 
-pub type BindingsMap = LinearMap<ident, BindingInfo>;
+pub type BindingsMap = HashMap<ident, BindingInfo>;
 
 pub struct ArmData<'self> {
     bodycx: block,
@@ -1620,7 +1620,7 @@ pub fn trans_match_inner(scope_cx: block,
         // to an alloca() that will be the value for that local variable.
         // Note that we use the names because each binding will have many ids
         // from the various alternatives.
-        let mut bindings_map = LinearMap::new();
+        let mut bindings_map = HashMap::new();
         do pat_bindings(tcx.def_map, arm.pats[0]) |bm, p_id, _s, path| {
             let ident = path_to_ident(path);
             let variable_ty = node_id_type(bcx, p_id);

@@ -28,7 +28,7 @@ extern mod syntax(vers = "0.6");
 
 use core::*;
 use core::container::Map;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::io::WriterUtil;
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
@@ -253,7 +253,7 @@ impl PackageScript {
 struct Ctx {
     cfgs: ~[~str],
     json: bool,
-    dep_cache: @mut LinearMap<~str, bool>
+    dep_cache: @mut HashMap<~str, bool>
 }
 
 impl Ctx {
@@ -483,14 +483,14 @@ impl Ctx {
         if self.json {
             match PackageScript::parse(&os::getcwd()) {
                 result::Ok(script) => {
-                    let mut map = ~LinearMap::new();
+                    let mut map = ~HashMap::new();
 
                     map.insert(~"id", json::String(script.id));
                     map.insert(~"name", json::String(script.name));
                     map.insert(~"vers", json::String(script.vers.to_str()));
                     map.insert(~"deps", json::List(do script.deps.map |&dep| {
                         let (url, target) = dep;
-                        let mut inner = ~LinearMap::new();
+                        let mut inner = ~HashMap::new();
 
                         inner.insert(~"url", json::String(url));
 
@@ -921,7 +921,7 @@ pub fn main() {
     Ctx {
         cfgs: cfgs,
         json: json,
-        dep_cache: @mut LinearMap::new()
+        dep_cache: @mut HashMap::new()
     }.run(cmd, args);
 }
 

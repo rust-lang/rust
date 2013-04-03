@@ -26,7 +26,7 @@ use middle::ty::{region_variance, rv_covariant, rv_invariant};
 use middle::ty::{rv_contravariant};
 use middle::ty;
 
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 use core::vec;
 use syntax::ast_map;
 use syntax::codemap::span;
@@ -46,7 +46,7 @@ Encodes the bounding lifetime for a given AST node:
 - Variables and bindings are mapped to the block in which they are declared.
 
 */
-pub type region_map = @mut LinearMap<ast::node_id, ast::node_id>;
+pub type region_map = @mut HashMap<ast::node_id, ast::node_id>;
 
 pub struct ctxt {
     sess: Session,
@@ -62,7 +62,7 @@ pub struct ctxt {
     // the condition in a while loop is always a parent.  In those
     // cases, we add the node id of such an expression to this set so
     // that when we visit it we can view it as a parent.
-    root_exprs: @mut LinearSet<ast::node_id>,
+    root_exprs: @mut HashSet<ast::node_id>,
 
     // The parent scope is the innermost block, statement, call, or match
     // expression during the execution of which the current expression
@@ -350,8 +350,8 @@ pub fn resolve_crate(sess: Session,
                   -> region_map {
     let cx: ctxt = ctxt {sess: sess,
                          def_map: def_map,
-                         region_map: @mut LinearMap::new(),
-                         root_exprs: @mut LinearSet::new(),
+                         region_map: @mut HashMap::new(),
+                         root_exprs: @mut HashSet::new(),
                          parent: None};
     let visitor = visit::mk_vt(@visit::Visitor {
         visit_block: resolve_block,
@@ -387,7 +387,7 @@ pub fn resolve_crate(sess: Session,
 // a worklist.  We can then process the worklist, propagating indirect
 // dependencies until a fixed point is reached.
 
-pub type region_paramd_items = @mut LinearMap<ast::node_id, region_variance>;
+pub type region_paramd_items = @mut HashMap<ast::node_id, region_variance>;
 
 #[deriving(Eq)]
 pub struct region_dep {
@@ -395,7 +395,7 @@ pub struct region_dep {
     id: ast::node_id
 }
 
-pub type dep_map = @mut LinearMap<ast::node_id, @mut ~[region_dep]>;
+pub type dep_map = @mut HashMap<ast::node_id, @mut ~[region_dep]>;
 
 pub struct DetermineRpCtxt {
     sess: Session,
@@ -790,8 +790,8 @@ pub fn determine_rp_in_crate(sess: Session,
         sess: sess,
         ast_map: ast_map,
         def_map: def_map,
-        region_paramd_items: @mut LinearMap::new(),
-        dep_map: @mut LinearMap::new(),
+        region_paramd_items: @mut HashMap::new(),
+        dep_map: @mut HashMap::new(),
         worklist: ~[],
         item_id: 0,
         anon_implies_rp: false,

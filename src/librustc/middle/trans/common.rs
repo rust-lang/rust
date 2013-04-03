@@ -45,7 +45,7 @@ use util::ppaux::{expr_repr, ty_to_str};
 
 use core::cast;
 use core::hash;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 use core::libc::{c_uint, c_longlong, c_ulonglong};
 use core::ptr;
 use core::str;
@@ -134,7 +134,7 @@ pub struct Stats {
     n_inlines: uint,
     n_closures: uint,
     llvm_insn_ctxt: @mut ~[~str],
-    llvm_insns: @mut LinearMap<~str, uint>,
+    llvm_insns: @mut HashMap<~str, uint>,
     fn_times: @mut ~[(~str, int)] // (ident, time)
 }
 
@@ -156,7 +156,7 @@ pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
     }
 }
 
-pub type ExternMap = @mut LinearMap<@str, ValueRef>;
+pub type ExternMap = @mut HashMap<@str, ValueRef>;
 
 // Crate context.  Every crate we compile has one of these.
 pub struct CrateContext {
@@ -165,30 +165,30 @@ pub struct CrateContext {
      td: TargetData,
      tn: @TypeNames,
      externs: ExternMap,
-     intrinsics: LinearMap<~str, ValueRef>,
-     item_vals: @mut LinearMap<ast::node_id, ValueRef>,
+     intrinsics: HashMap<~str, ValueRef>,
+     item_vals: @mut HashMap<ast::node_id, ValueRef>,
      exp_map2: resolve::ExportMap2,
      reachable: reachable::map,
-     item_symbols: @mut LinearMap<ast::node_id, ~str>,
+     item_symbols: @mut HashMap<ast::node_id, ~str>,
      link_meta: LinkMeta,
-     enum_sizes: @mut LinearMap<ty::t, uint>,
-     discrims: @mut LinearMap<ast::def_id, ValueRef>,
-     discrim_symbols: @mut LinearMap<ast::node_id, ~str>,
-     tydescs: @mut LinearMap<ty::t, @mut tydesc_info>,
+     enum_sizes: @mut HashMap<ty::t, uint>,
+     discrims: @mut HashMap<ast::def_id, ValueRef>,
+     discrim_symbols: @mut HashMap<ast::node_id, ~str>,
+     tydescs: @mut HashMap<ty::t, @mut tydesc_info>,
      // Set when running emit_tydescs to enforce that no more tydescs are
      // created.
      finished_tydescs: @mut bool,
      // Track mapping of external ids to local items imported for inlining
-     external: @mut LinearMap<ast::def_id, Option<ast::node_id>>,
+     external: @mut HashMap<ast::def_id, Option<ast::node_id>>,
      // Cache instances of monomorphized functions
-     monomorphized: @mut LinearMap<mono_id, ValueRef>,
-     monomorphizing: @mut LinearMap<ast::def_id, uint>,
+     monomorphized: @mut HashMap<mono_id, ValueRef>,
+     monomorphizing: @mut HashMap<ast::def_id, uint>,
      // Cache computed type parameter uses (see type_use.rs)
-     type_use_cache: @mut LinearMap<ast::def_id, ~[type_use::type_uses]>,
+     type_use_cache: @mut HashMap<ast::def_id, ~[type_use::type_uses]>,
      // Cache generated vtables
-     vtables: @mut LinearMap<mono_id, ValueRef>,
+     vtables: @mut HashMap<mono_id, ValueRef>,
      // Cache of constant strings,
-     const_cstr_cache: @mut LinearMap<@~str, ValueRef>,
+     const_cstr_cache: @mut HashMap<@~str, ValueRef>,
 
      // Reverse-direction for const ptrs cast from globals.
      // Key is an int, cast from a ValueRef holding a *T,
@@ -198,24 +198,24 @@ pub struct CrateContext {
      // when we ptrcast, and we have to ptrcast during translation
      // of a [T] const because we form a slice, a [*T,int] pair, not
      // a pointer to an LLVM array type.
-     const_globals: @mut LinearMap<int, ValueRef>,
+     const_globals: @mut HashMap<int, ValueRef>,
 
      // Cache of emitted const values
-     const_values: @mut LinearMap<ast::node_id, ValueRef>,
+     const_values: @mut HashMap<ast::node_id, ValueRef>,
 
      // Cache of external const values
-     extern_const_values: @mut LinearMap<ast::def_id, ValueRef>,
+     extern_const_values: @mut HashMap<ast::def_id, ValueRef>,
 
-     module_data: @mut LinearMap<~str, ValueRef>,
-     lltypes: @mut LinearMap<ty::t, TypeRef>,
-     llsizingtypes: @mut LinearMap<ty::t, TypeRef>,
-     adt_reprs: @mut LinearMap<ty::t, @adt::Repr>,
+     module_data: @mut HashMap<~str, ValueRef>,
+     lltypes: @mut HashMap<ty::t, TypeRef>,
+     llsizingtypes: @mut HashMap<ty::t, TypeRef>,
+     adt_reprs: @mut HashMap<ty::t, @adt::Repr>,
      names: namegen,
      next_addrspace: addrspace_gen,
      symbol_hasher: @hash::State,
-     type_hashcodes: @mut LinearMap<ty::t, @str>,
-     type_short_names: @mut LinearMap<ty::t, ~str>,
-     all_llvm_symbols: @mut LinearSet<~str>,
+     type_hashcodes: @mut HashMap<ty::t, @str>,
+     type_short_names: @mut HashMap<ty::t, ~str>,
+     all_llvm_symbols: @mut HashSet<~str>,
      tcx: ty::ctxt,
      maps: astencode::Maps,
      stats: @mut Stats,
@@ -314,12 +314,12 @@ pub struct fn_ctxt_ {
     loop_ret: Option<(ValueRef, ValueRef)>,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: @mut LinearMap<ast::node_id, local_val>,
+    llargs: @mut HashMap<ast::node_id, local_val>,
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: @mut LinearMap<ast::node_id, local_val>,
+    lllocals: @mut HashMap<ast::node_id, local_val>,
     // Same as above, but for closure upvars
-    llupvars: @mut LinearMap<ast::node_id, ValueRef>,
+    llupvars: @mut HashMap<ast::node_id, ValueRef>,
 
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.

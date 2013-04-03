@@ -9,7 +9,7 @@
 // except according to those terms.
 
 extern mod std;
-use core::hashmap::linear::LinearSet;
+use core::hashmap::HashSet;
 use std::bitv::BitvSet;
 use std::treemap::TreeSet;
 use core::io::WriterUtil;
@@ -158,9 +158,9 @@ fn main() {
     {
         let rng = rand::seeded_rng(seed);
         let mut results = empty_results();
-        results.bench_int(rng, num_keys, max, || LinearSet::new::<uint>());
-        results.bench_str(rng, num_keys, || LinearSet::new::<~str>());
-        write_results("core::hashmap::LinearSet", &results);
+        results.bench_int(rng, num_keys, max, || HashSet::new::<uint>());
+        results.bench_str(rng, num_keys, || HashSet::new::<~str>());
+        write_results("core::hashmap::HashSet", &results);
     }
 
     {
