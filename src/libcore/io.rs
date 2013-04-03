@@ -55,14 +55,14 @@ pub mod rustrt {
 * to the `seek` method defined on the `Reader` trait.
 *
 * There are three seek styles:
-* 
+*
 * 1. `SeekSet` means that the new position should become our position.
 * 2. `SeekCur` means that we should seek from the current position.
 * 3. `SeekEnd` means that we should seek from the end.
 *
 * # Examples
-* 
-* None right now. 
+*
+* None right now.
 */
 pub enum SeekStyle { SeekSet, SeekEnd, SeekCur, }
 
@@ -71,8 +71,8 @@ pub enum SeekStyle { SeekSet, SeekEnd, SeekCur, }
 * The core Reader trait. All readers must implement this trait.
 *
 * # Examples
-* 
-* None right now. 
+*
+* None right now.
 */
 pub trait Reader {
     // FIXME (#2004): Seekable really should be orthogonal.
@@ -82,14 +82,14 @@ pub trait Reader {
     * Reads bytes and puts them into `bytes`. Returns the number of
     * bytes read.
     *
-    * The number of bytes to be read is `len` or the end of the file, 
+    * The number of bytes to be read is `len` or the end of the file,
     * whichever comes first.
     *
     * The buffer must be at least `len` bytes long.
     *
     * # Examples
-    * 
-    * None right now. 
+    *
+    * None right now.
     */
     fn read(&self, bytes: &mut [u8], len: uint) -> uint;
 
@@ -99,8 +99,8 @@ pub trait Reader {
     * In the case of an EOF or an error, returns a negative value.
     *
     * # Examples
-    * 
-    * None right now. 
+    *
+    * None right now.
     */
     fn read_byte(&self) -> int;
 
@@ -108,20 +108,20 @@ pub trait Reader {
     * Returns a boolean value: are we currently at EOF?
     *
     * # Examples
-    * 
-    * None right now. 
+    *
+    * None right now.
     */
     fn eof(&self) -> bool;
 
     /**
     * Seek to a given `position` in the stream.
-    * 
+    *
     * Takes an optional SeekStyle, which affects how we seek from the
     * position. See `SeekStyle` docs for more details.
     *
     * # Examples
-    * 
-    * None right now. 
+    *
+    * None right now.
     */
     fn seek(&self, position: int, style: SeekStyle);
 
@@ -129,8 +129,8 @@ pub trait Reader {
     * Returns the current position within the stream.
     *
     * # Examples
-    * 
-    * None right now. 
+    *
+    * None right now.
     */
     fn tell(&self) -> uint;
 }
