@@ -2274,8 +2274,8 @@ pub mod raw {
 
     /// Sets the length of the string and adds the null terminator
     pub unsafe fn set_len(v: &mut ~str, new_len: uint) {
-        let v: **vec::raw::VecRepr = cast::transmute(v);
-        let repr: *vec::raw::VecRepr = *v;
+        let v: **mut vec::raw::VecRepr = cast::transmute(v);
+        let repr: *mut vec::raw::VecRepr = *v;
         (*repr).unboxed.fill = new_len + 1u;
         let null = ptr::mut_offset(cast::transmute(&((*repr).unboxed.data)),
                                    new_len);
