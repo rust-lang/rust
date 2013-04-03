@@ -151,7 +151,7 @@ pub fn parse_input(sess: Session, +cfg: ast::crate_cfg, input: input)
     -> @ast::crate {
     match input {
       file_input(ref file) => {
-        parse::parse_crate_from_file(&(*file), cfg, sess.parse_sess)
+        parse::parse_crate_from_file_using_tts(&(*file), cfg, sess.parse_sess)
       }
       str_input(ref src) => {
         // FIXME (#2319): Don't really want to box the source string
