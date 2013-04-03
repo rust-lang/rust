@@ -2284,25 +2284,14 @@ pub fn create_main_wrapper(ccx: @CrateContext,
             let opaque_crate_map = llvm::LLVMBuildPointerCast(
                 bld, crate_map, T_ptr(T_i8()), noname());
 
-            if *ccx.sess.building_library {
-                ~[
-                    retptr,
-                    C_null(T_opaque_box_ptr(ccx)),
-                    opaque_rust_main,
-                    llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
-                    llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
-                    opaque_crate_map
-                ]
-            } else {
-                ~[
-                    retptr,
-                    C_null(T_opaque_box_ptr(ccx)),
-                    opaque_rust_main,
-                    llvm::LLVMGetParam(llfn, 0 as c_uint),
-                    llvm::LLVMGetParam(llfn, 1 as c_uint),
-                    opaque_crate_map
-                ]
-            }
+            ~[
+                retptr,
+                C_null(T_opaque_box_ptr(ccx)),
+                opaque_rust_main,
+                llvm::LLVMGetParam(llfn, 0 as c_uint),
+                llvm::LLVMGetParam(llfn, 1 as c_uint),
+                opaque_crate_map
+            ]
         };
 
         unsafe {
