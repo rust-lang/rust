@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::hashmap::linear::LinearSet;
+use core::hashmap::HashSet;
 
 struct Foo {
-  n: LinearSet<int>,
+  n: HashSet<int>,
 }
 
 pub impl Foo {
@@ -29,6 +29,6 @@ fn bar(f: &mut Foo) {
 }
 
 fn main() {
-  let mut f = Foo { n: LinearSet::new() };
+  let mut f = Foo { n: HashSet::new() };
   bar(&mut f);
 }

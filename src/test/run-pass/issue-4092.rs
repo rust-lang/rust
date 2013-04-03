@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 
 pub fn main() {
-    let mut x = LinearMap::new();
+    let mut x = HashMap::new();
     x.insert((@"abc", 0), 0);
 }

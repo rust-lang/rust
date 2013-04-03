@@ -31,7 +31,7 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{expr_repr, region_to_str};
 
-use core::hashmap::linear::{LinearSet, LinearMap};
+use core::hashmap::{HashSet, HashMap};
 use core::vec;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
@@ -72,17 +72,17 @@ struct GatherLoanCtxt {
     req_maps: ReqMaps,
     item_ub: ast::node_id,
     root_ub: ast::node_id,
-    ignore_adjustments: LinearSet<ast::node_id>
+    ignore_adjustments: HashSet<ast::node_id>
 }
 
 pub fn gather_loans(bccx: @BorrowckCtxt, crate: @ast::crate) -> ReqMaps {
     let glcx = @mut GatherLoanCtxt {
         bccx: bccx,
-        req_maps: ReqMaps { req_loan_map: LinearMap::new(),
-                            pure_map: LinearMap::new() },
+        req_maps: ReqMaps { req_loan_map: HashMap::new(),
+                            pure_map: HashMap::new() },
         item_ub: 0,
         root_ub: 0,
-        ignore_adjustments: LinearSet::new()
+        ignore_adjustments: HashSet::new()
     };
     let v = visit::mk_vt(@visit::Visitor {visit_expr: req_loans_in_expr,
                                           visit_fn: req_loans_in_fn,

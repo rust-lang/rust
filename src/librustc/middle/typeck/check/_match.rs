@@ -18,7 +18,7 @@ use middle::typeck::check::{instantiate_path, lookup_def};
 use middle::typeck::check::{structure_of, valid_range_bounds};
 use middle::typeck::require_same_types;
 
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 use core::vec;
 use syntax::ast;
 use syntax::ast_util;
@@ -228,7 +228,7 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
 /// `class_fields` describes the type of each field of the struct.
 /// `class_id` is the ID of the struct.
 /// `substitutions` are the type substitutions applied to this struct type
-/// (e.g. K,V in LinearMap<K,V>).
+/// (e.g. K,V in HashMap<K,V>).
 /// `etc` is true if the pattern said '...' and false otherwise.
 pub fn check_struct_pat_fields(pcx: pat_ctxt,
                                span: span,
@@ -241,13 +241,13 @@ pub fn check_struct_pat_fields(pcx: pat_ctxt,
     let tcx = pcx.fcx.ccx.tcx;
 
     // Index the class fields.
-    let mut field_map = LinearMap::new();
+    let mut field_map = HashMap::new();
     for class_fields.eachi |i, class_field| {
         field_map.insert(class_field.ident, i);
     }
 
     // Typecheck each field.
-    let mut found_fields = LinearSet::new();
+    let mut found_fields = HashSet::new();
     for fields.each |field| {
         match field_map.find(&field.ident) {
             Some(&index) => {

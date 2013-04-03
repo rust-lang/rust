@@ -67,7 +67,7 @@ use util::ppaux::ty_to_str;
 use util::ppaux;
 
 use core::hash;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 use core::int;
 use core::io;
 use core::libc::{c_uint, c_ulonglong};
@@ -1609,9 +1609,9 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           llself: None,
           personality: None,
           loop_ret: None,
-          llargs: @mut LinearMap::new(),
-          lllocals: @mut LinearMap::new(),
-          llupvars: @mut LinearMap::new(),
+          llargs: @mut HashMap::new(),
+          lllocals: @mut HashMap::new(),
+          llupvars: @mut HashMap::new(),
           id: id,
           impl_id: impl_id,
           param_substs: param_substs,
@@ -2610,7 +2610,7 @@ pub fn p2i(ccx: @CrateContext, v: ValueRef) -> ValueRef {
     }
 }
 
-pub fn declare_intrinsics(llmod: ModuleRef) -> LinearMap<~str, ValueRef> {
+pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     let T_memcpy32_args: ~[TypeRef] =
         ~[T_ptr(T_i8()), T_ptr(T_i8()), T_i32(), T_i32(), T_i1()];
     let T_memcpy64_args: ~[TypeRef] =
@@ -2743,7 +2743,7 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> LinearMap<~str, ValueRef> {
     let bswap64 = decl_cdecl_fn(llmod, ~"llvm.bswap.i64",
                                 T_fn(~[T_i64()], T_i64()));
 
-    let mut intrinsics = LinearMap::new();
+    let mut intrinsics = HashMap::new();
     intrinsics.insert(~"llvm.gcroot", gcroot);
     intrinsics.insert(~"llvm.gcread", gcread);
     intrinsics.insert(~"llvm.memcpy.p0i8.p0i8.i32", memcpy32);
@@ -2804,7 +2804,7 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> LinearMap<~str, ValueRef> {
 }
 
 pub fn declare_dbg_intrinsics(llmod: ModuleRef,
-                              intrinsics: &mut LinearMap<~str, ValueRef>) {
+                              intrinsics: &mut HashMap<~str, ValueRef>) {
     let declare =
         decl_cdecl_fn(llmod, ~"llvm.dbg.declare",
                       T_fn(~[T_metadata(), T_metadata()], T_void()));
@@ -3052,37 +3052,37 @@ pub fn trans_crate(sess: session::Session,
               llmod: llmod,
               td: td,
               tn: tn,
-              externs: @mut LinearMap::new(),
+              externs: @mut HashMap::new(),
               intrinsics: intrinsics,
-              item_vals: @mut LinearMap::new(),
+              item_vals: @mut HashMap::new(),
               exp_map2: emap2,
               reachable: reachable,
-              item_symbols: @mut LinearMap::new(),
+              item_symbols: @mut HashMap::new(),
               link_meta: link_meta,
-              enum_sizes: @mut LinearMap::new(),
-              discrims: @mut LinearMap::new(),
-              discrim_symbols: @mut LinearMap::new(),
-              tydescs: @mut LinearMap::new(),
+              enum_sizes: @mut HashMap::new(),
+              discrims: @mut HashMap::new(),
+              discrim_symbols: @mut HashMap::new(),
+              tydescs: @mut HashMap::new(),
               finished_tydescs: @mut false,
-              external: @mut LinearMap::new(),
-              monomorphized: @mut LinearMap::new(),
-              monomorphizing: @mut LinearMap::new(),
-              type_use_cache: @mut LinearMap::new(),
-              vtables: @mut LinearMap::new(),
-              const_cstr_cache: @mut LinearMap::new(),
-              const_globals: @mut LinearMap::new(),
-              const_values: @mut LinearMap::new(),
-              extern_const_values: @mut LinearMap::new(),
-              module_data: @mut LinearMap::new(),
-              lltypes: @mut LinearMap::new(),
-              llsizingtypes: @mut LinearMap::new(),
-              adt_reprs: @mut LinearMap::new(),
+              external: @mut HashMap::new(),
+              monomorphized: @mut HashMap::new(),
+              monomorphizing: @mut HashMap::new(),
+              type_use_cache: @mut HashMap::new(),
+              vtables: @mut HashMap::new(),
+              const_cstr_cache: @mut HashMap::new(),
+              const_globals: @mut HashMap::new(),
+              const_values: @mut HashMap::new(),
+              extern_const_values: @mut HashMap::new(),
+              module_data: @mut HashMap::new(),
+              lltypes: @mut HashMap::new(),
+              llsizingtypes: @mut HashMap::new(),
+              adt_reprs: @mut HashMap::new(),
               names: new_namegen(sess.parse_sess.interner),
               next_addrspace: new_addrspace_gen(),
               symbol_hasher: symbol_hasher,
-              type_hashcodes: @mut LinearMap::new(),
-              type_short_names: @mut LinearMap::new(),
-              all_llvm_symbols: @mut LinearSet::new(),
+              type_hashcodes: @mut HashMap::new(),
+              type_short_names: @mut HashMap::new(),
+              all_llvm_symbols: @mut HashSet::new(),
               tcx: tcx,
               maps: maps,
               stats: @mut Stats {
@@ -3095,7 +3095,7 @@ pub fn trans_crate(sess: session::Session,
                 n_inlines: 0u,
                 n_closures: 0u,
                 llvm_insn_ctxt: @mut ~[],
-                llvm_insns: @mut LinearMap::new(),
+                llvm_insns: @mut HashMap::new(),
                 fn_times: @mut ~[]
               },
               upcalls: upcall::declare_upcalls(targ_cfg, llmod),

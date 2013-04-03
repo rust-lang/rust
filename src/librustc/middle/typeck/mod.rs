@@ -55,7 +55,7 @@ use middle::ty;
 use util::common::time;
 use util::ppaux;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::result;
 use core::vec;
 use std::list::List;
@@ -129,7 +129,7 @@ pub struct method_map_entry {
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type method_map = @mut LinearMap<ast::node_id, method_map_entry>;
+pub type method_map = @mut HashMap<ast::node_id, method_map_entry>;
 
 // Resolutions for bounds of all parameters, left to right, for a given path.
 pub type vtable_res = @~[vtable_origin];
@@ -170,7 +170,7 @@ pub impl vtable_origin {
     }
 }
 
-pub type vtable_map = @mut LinearMap<ast::node_id, vtable_res>;
+pub type vtable_map = @mut HashMap<ast::node_id, vtable_res>;
 
 pub struct CrateCtxt {
     // A mapping from method call sites to traits that have that method.
@@ -342,8 +342,8 @@ pub fn check_crate(tcx: ty::ctxt,
     let time_passes = tcx.sess.time_passes();
     let ccx = @mut CrateCtxt {
         trait_map: trait_map,
-        method_map: @mut LinearMap::new(),
-        vtable_map: @mut LinearMap::new(),
+        method_map: @mut HashMap::new(),
+        vtable_map: @mut HashMap::new(),
         coherence_info: @coherence::CoherenceInfo(),
         tcx: tcx
     };

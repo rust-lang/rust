@@ -12,17 +12,17 @@ use core::prelude::*;
 
 use middle::resolve;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use syntax::ast::*;
 use syntax::ast_util::{path_to_ident, walk_pat};
 use syntax::codemap::span;
 
-pub type PatIdMap = LinearMap<ident, node_id>;
+pub type PatIdMap = HashMap<ident, node_id>;
 
 // This is used because same-named variables in alternative patterns need to
 // use the node_id of their namesake in the first pattern.
 pub fn pat_id_map(dm: resolve::DefMap, pat: @pat) -> PatIdMap {
-    let mut map = LinearMap::new();
+    let mut map = HashMap::new();
     do pat_bindings(dm, pat) |_bm, p_id, _s, n| {
       map.insert(path_to_ident(n), p_id);
     };

@@ -548,7 +548,7 @@ use util::common::indenter;
 use util::ppaux::note_and_explain_region;
 
 use core::cell::{Cell, empty_cell};
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 use core::result::{Err, Ok};
 use core::to_bytes;
 use core::uint;
@@ -600,12 +600,12 @@ enum CombineMapType {
     Lub, Glb
 }
 
-type CombineMap = LinearMap<TwoRegions, RegionVid>;
+type CombineMap = HashMap<TwoRegions, RegionVid>;
 
 pub struct RegionVarBindings {
     tcx: ty::ctxt,
     var_spans: ~[span],
-    constraints: LinearMap<Constraint, span>,
+    constraints: HashMap<Constraint, span>,
     lubs: CombineMap,
     glbs: CombineMap,
     skolemization_count: uint,
@@ -632,9 +632,9 @@ pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
         tcx: tcx,
         var_spans: ~[],
         values: empty_cell(),
-        constraints: LinearMap::new(),
-        lubs: LinearMap::new(),
-        glbs: LinearMap::new(),
+        constraints: HashMap::new(),
+        lubs: HashMap::new(),
+        glbs: HashMap::new(),
         skolemization_count: 0,
         bound_count: 0,
         undo_log: ~[]
@@ -1194,7 +1194,7 @@ struct SpannedRegion {
     span: span,
 }
 
-type TwoRegionsMap = LinearSet<TwoRegions>;
+type TwoRegionsMap = HashSet<TwoRegions>;
 
 pub impl RegionVarBindings {
     fn infer_variable_values(&mut self) -> ~[GraphNodeValue] {
@@ -1423,7 +1423,7 @@ pub impl RegionVarBindings {
         &mut self,
         graph: &Graph) -> ~[GraphNodeValue]
     {
-        let mut dup_map = LinearSet::new();
+        let mut dup_map = HashSet::new();
         graph.nodes.mapi(|idx, node| {
             match node.value {
                 Value(_) => {
@@ -1598,7 +1598,7 @@ pub impl RegionVarBindings {
                                 orig_node_idx: RegionVid,
                                 dir: Direction)
                              -> ~[SpannedRegion] {
-        let mut set = LinearSet::new();
+        let mut set = HashSet::new();
         let mut stack = ~[orig_node_idx];
         set.insert(orig_node_idx.to_uint());
         let mut result = ~[];

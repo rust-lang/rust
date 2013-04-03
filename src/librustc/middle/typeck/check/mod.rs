@@ -110,7 +110,7 @@ use util::common::{block_query, indenter, loop_query};
 use util::ppaux::{bound_region_to_str, expr_repr, pat_repr};
 use util::ppaux;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::ptr;
 use core::result::{Result, Ok, Err};
 use core::result;
@@ -158,12 +158,12 @@ pub struct SelfInfo {
 /// share the inherited fields.
 pub struct inherited {
     infcx: @mut infer::InferCtxt,
-    locals: @mut LinearMap<ast::node_id, ty::t>,
+    locals: @mut HashMap<ast::node_id, ty::t>,
 
     // Temporary tables:
-    node_types: @mut LinearMap<ast::node_id, ty::t>,
-    node_type_substs: @mut LinearMap<ast::node_id, ty::substs>,
-    adjustments: @mut LinearMap<ast::node_id, @ty::AutoAdjustment>,
+    node_types: @mut HashMap<ast::node_id, ty::t>,
+    node_type_substs: @mut HashMap<ast::node_id, ty::substs>,
+    adjustments: @mut HashMap<ast::node_id, @ty::AutoAdjustment>,
     method_map: method_map,
     vtable_map: vtable_map,
 }
@@ -220,12 +220,12 @@ pub struct FnCtxt {
 pub fn blank_inherited(ccx: @mut CrateCtxt) -> @inherited {
     @inherited {
         infcx: infer::new_infer_ctxt(ccx.tcx),
-        locals: @mut LinearMap::new(),
-        node_types: @mut LinearMap::new(),
-        node_type_substs: @mut LinearMap::new(),
-        adjustments: @mut LinearMap::new(),
-        method_map: @mut LinearMap::new(),
-        vtable_map: @mut LinearMap::new(),
+        locals: @mut HashMap::new(),
+        node_types: @mut HashMap::new(),
+        node_type_substs: @mut HashMap::new(),
+        adjustments: @mut HashMap::new(),
+        method_map: @mut HashMap::new(),
+        vtable_map: @mut HashMap::new(),
     }
 }
 
@@ -504,7 +504,7 @@ pub fn check_method(ccx: @mut CrateCtxt,
 
 pub fn check_no_duplicate_fields(tcx: ty::ctxt,
                                  fields: ~[(ast::ident, span)]) {
-    let mut field_names = LinearMap::new();
+    let mut field_names = HashMap::new();
 
     for fields.each |p| {
         let (id, sp) = *p;
@@ -1761,7 +1761,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                       check_completeness: bool)  {
         let tcx = fcx.ccx.tcx;
 
-        let mut class_field_map = LinearMap::new();
+        let mut class_field_map = HashMap::new();
         let mut fields_found = 0;
         for field_types.each |field| {
             // XXX: Check visibility here.

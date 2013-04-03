@@ -18,7 +18,7 @@ use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
 use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident, ident_interner};
 use parse::lexer::TokenAndSpan;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::option;
 use core::vec;
 
@@ -39,7 +39,7 @@ pub struct TtReader {
     // the unzipped tree:
     stack: @mut TtFrame,
     /* for MBE-style macro transcription */
-    interpolations: LinearMap<ident, @named_match>,
+    interpolations: HashMap<ident, @named_match>,
     repeat_idx: ~[uint],
     repeat_len: ~[uint],
     /* cached: */
@@ -52,7 +52,7 @@ pub struct TtReader {
  *  should) be none. */
 pub fn new_tt_reader(sp_diag: @span_handler,
                      itr: @ident_interner,
-                     interp: Option<LinearMap<ident,@named_match>>,
+                     interp: Option<HashMap<ident,@named_match>>,
                      +src: ~[ast::token_tree])
                   -> @mut TtReader {
     let r = @mut TtReader {
@@ -66,7 +66,7 @@ pub fn new_tt_reader(sp_diag: @span_handler,
             up: option::None
         },
         interpolations: match interp { /* just a convienience */
-            None => LinearMap::new(),
+            None => HashMap::new(),
             Some(x) => x
         },
         repeat_idx: ~[],

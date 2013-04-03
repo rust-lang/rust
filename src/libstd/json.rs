@@ -16,7 +16,7 @@
 
 use core::prelude::*;
 use core::io::{WriterUtil, ReaderUtil};
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 
 use serialize::Encodable;
 use serialize;
@@ -33,7 +33,7 @@ pub enum Json {
 }
 
 pub type List = ~[Json];
-pub type Object = LinearMap<~str, Json>;
+pub type Object = HashMap<~str, Json>;
 
 #[deriving(Eq)]
 pub struct Error {
@@ -677,7 +677,7 @@ priv impl Parser {
         self.bump();
         self.parse_whitespace();
 
-        let mut values = ~LinearMap::new();
+        let mut values = ~HashMap::new();
 
         if self.ch == '}' {
           self.bump();
@@ -1127,9 +1127,9 @@ impl<A:ToJson> ToJson for ~[A] {
     fn to_json(&self) -> Json { List(self.map(|elt| elt.to_json())) }
 }
 
-impl<A:ToJson + Copy> ToJson for LinearMap<~str, A> {
+impl<A:ToJson + Copy> ToJson for HashMap<~str, A> {
     fn to_json(&self) -> Json {
-        let mut d = LinearMap::new();
+        let mut d = HashMap::new();
         for self.each |&(key, value)| {
             d.insert(copy *key, value.to_json());
         }
@@ -1161,7 +1161,7 @@ mod tests {
     use super::*;
 
     use core::prelude::*;
-    use core::hashmap::linear::LinearMap;
+    use core::hashmap::HashMap;
 
     use std::serialize::Decodable;
 
@@ -1190,7 +1190,7 @@ mod tests {
     }
 
     fn mk_object(items: &[(~str, Json)]) -> Json {
-        let mut d = ~LinearMap::new();
+        let mut d = ~HashMap::new();
 
         for items.each |item| {
             match *item {
@@ -1755,7 +1755,7 @@ mod tests {
     fn test_decode_map() {
         let s = ~"{\"a\": \"Dog\", \"b\": [\"Frog\", \"Henry\", 349]}";
         let decoder = Decoder(from_str(s).unwrap());
-        let mut map: LinearMap<~str, Animal> = Decodable::decode(&decoder);
+        let mut map: HashMap<~str, Animal> = Decodable::decode(&decoder);
 
         assert_eq!(map.pop(&~"a"), Some(Dog));
         assert_eq!(map.pop(&~"b"), Some(Frog(~"Henry", 349)));

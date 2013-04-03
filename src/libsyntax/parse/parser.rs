@@ -94,7 +94,7 @@ use opt_vec::OptVec;
 
 use core::either::Either;
 use core::either;
-use core::hashmap::linear::LinearSet;
+use core::hashmap::HashSet;
 use core::vec;
 
 #[deriving(Eq)]
@@ -243,7 +243,7 @@ pub fn Parser(sess: @mut ParseSess,
         keywords: token::keyword_table(),
         strict_keywords: token::strict_keyword_table(),
         reserved_keywords: token::reserved_keyword_table(),
-        obsolete_set: @mut LinearSet::new(),
+        obsolete_set: @mut HashSet::new(),
         mod_path_stack: @mut ~[],
     }
 }
@@ -263,12 +263,12 @@ pub struct Parser {
     quote_depth: @mut uint, // not (yet) related to the quasiquoter
     reader: @reader,
     interner: @token::ident_interner,
-    keywords: LinearSet<~str>,
-    strict_keywords: LinearSet<~str>,
-    reserved_keywords: LinearSet<~str>,
+    keywords: HashSet<~str>,
+    strict_keywords: HashSet<~str>,
+    reserved_keywords: HashSet<~str>,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
-    obsolete_set: @mut LinearSet<ObsoleteSyntax>,
+    obsolete_set: @mut HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
     mod_path_stack: @mut ~[~str],
 
