@@ -495,7 +495,7 @@ omitted.
 
 A powerful application of pattern matching is *destructuring*:
 matching in order to bind names to the contents of data
-types. Remember that `(float, float)` is a tuple of two floats:
+types. Assuming that `(float, float)` is a tuple of two floats:
 
 ~~~~
 fn angle(vector: (float, float)) -> float {
