@@ -106,13 +106,13 @@ fn compare_and_swap(address: &mut int, oldval: int, newval: int) -> bool {
  ****************************************************************************/
 
 struct ArcData<T> {
-    mut count:     libc::intptr_t,
+    count:     libc::intptr_t,
     // FIXME(#3224) should be able to make this non-option to save memory
-    mut data:      Option<T>,
+    data:      Option<T>,
 }
 
 struct ArcDestruct<T> {
-    mut data: *libc::c_void,
+    data: *libc::c_void,
 }
 
 #[unsafe_destructor]
@@ -120,7 +120,7 @@ impl<T> Drop for ArcDestruct<T>{
     fn finalize(&self) {
         unsafe {
             do task::unkillable {
-                let data: ~ArcData<T> = cast::reinterpret_cast(&self.data);
+                let mut data: ~ArcData<T> = cast::reinterpret_cast(&self.data);
                 let new_count =
                     intrinsics::atomic_xsub(&mut data.count, 1) - 1;
                 assert!(new_count >= 0);
@@ -185,7 +185,7 @@ pub unsafe fn get_shared_immutable_state<'a,T:Owned>(
 pub unsafe fn clone_shared_mutable_state<T:Owned>(rc: &SharedMutableState<T>)
         -> SharedMutableState<T> {
     unsafe {
-        let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
+        let mut ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
         let new_count = intrinsics::atomic_xadd(&mut ptr.count, 1) + 1;
         assert!(new_count >= 2);
         cast::forget(ptr);
@@ -252,7 +252,7 @@ pub impl LittleLock {
     }
 }
 
-struct ExData<T> { lock: LittleLock, mut failed: bool, mut data: T, }
+struct ExData<T> { lock: LittleLock, failed: bool, data: T, }
 /**
  * An arc over mutable data that is protected by a lock. For library use only.
  */
@@ -260,7 +260,7 @@ pub struct Exclusive<T> { x: SharedMutableState<ExData<T>> }
 
 pub fn exclusive<T:Owned>(user_data: T) -> Exclusive<T> {
     let data = ExData {
-        lock: LittleLock(), mut failed: false, mut data: user_data
+        lock: LittleLock(), failed: false, data: user_data
     };
     Exclusive { x: unsafe { shared_mutable_state(data) } }
 }
