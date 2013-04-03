@@ -153,120 +153,415 @@ impl Reader for @Reader {
     }
 }
 
-/// Generic utility functions defined on readers.
+/**
+* The `ReaderUtil` trait is a home for many of the utility functions
+* a particular Reader should implement.
+*
+* The default `Reader` trait is focused entirely on bytes. `ReaderUtil` is based
+* on higher-level concepts like 'chars' and 'lines.'
+*
+* # Examples:
+*
+* None right now.
+*/
 pub trait ReaderUtil {
 
-    /// Read len bytes into a new vec.
+    /**
+    * Reads `len` number of bytes, and gives you a new vector back.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_bytes(&self, len: uint) -> ~[u8];
 
-    /// Read up until a specified character (which is optionally included) or EOF.
+    /**
+    * Reads up until a specific character or EOF.
+    *
+    * The `include` parameter specifies if the character should be included
+    * in the returned string.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_until(&self, c: char, include: bool) -> ~str;
 
-    /// Read up until the first '\n' char (which is not returned), or EOF.
+    /**
+    * Reads up until the first '\n' or EOF.
+    *
+    * The '\n' is not included in the result.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_line(&self) -> ~str;
 
-    /// Read n utf-8 encoded chars.
+    /**
+    * Reads `n` chars.
+    *
+    * Assumes that those chars are UTF-8 encoded.
+    *
+    * The '\n' is not included in the result.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_chars(&self, n: uint) -> ~[char];
 
-    /// Read a single utf-8 encoded char.
+    /**
+    * Reads a single UTF-8 encoded char.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_char(&self) -> char;
 
-    /// Read up until the first null byte (which is not returned), or EOF.
+    /**
+    * Reads up until the first null byte or EOF.
+    *
+    * The null byte is not returned.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_c_str(&self) -> ~str;
 
-    /// Read all the data remaining in the stream in one go.
+    /**
+    * Reads all remaining data in the stream.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_whole_stream(&self) -> ~[u8];
 
-    /// Iterate over every byte until the iterator breaks or EOF.
+    /**
+    * Iterate over every byte until EOF or the iterator breaks.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn each_byte(&self, it: &fn(int) -> bool);
 
-    /// Iterate over every char until the iterator breaks or EOF.
+    /**
+    * Iterate over every char until EOF or the iterator breaks.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn each_char(&self, it: &fn(char) -> bool);
 
-    /// Iterate over every line until the iterator breaks or EOF.
+    /**
+    * Iterate over every line until EOF or the iterator breaks.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn each_line(&self, it: &fn(&str) -> bool);
 
-    /// Read all the lines of the file into a vector.
+    /**
+    * Reads all of the lines in the stream.
+    *
+    * Returns a vector of those lines.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_lines(&self) -> ~[~str];
 
-    /// Read n (between 1 and 8) little-endian unsigned integer bytes.
+    /**
+    * Reads `n` little-endian unsigned integer bytes.
+    *
+    * `n` must be between 1 and 8, inclusive.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_le_uint_n(&self, nbytes: uint) -> u64;
 
-    /// Read n (between 1 and 8) little-endian signed integer bytes.
+    /**
+    * Reads `n` little-endian signed integer bytes.
+    *
+    * `n` must be between 1 and 8, inclusive.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_le_int_n(&self, nbytes: uint) -> i64;
 
-    /// Read n (between 1 and 8) big-endian unsigned integer bytes.
+    /**
+    * Reads `n` big-endian unsigned integer bytes.
+    *
+    * `n` must be between 1 and 8, inclusive.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_be_uint_n(&self, nbytes: uint) -> u64;
 
-    /// Read n (between 1 and 8) big-endian signed integer bytes.
+    /**
+    * Reads `n` big-endian signed integer bytes.
+    *
+    * `n` must be between 1 and 8, inclusive.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_be_int_n(&self, nbytes: uint) -> i64;
 
-    /// Read a little-endian uint (number of bytes depends on system).
+    /**
+    * Reads a little-endian unsigned integer.
+    *
+    * The number of bytes returned is system-dependant.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_le_uint(&self) -> uint;
 
-    /// Read a little-endian int (number of bytes depends on system).
+    /**
+    * Reads a little-endian integer.
+    *
+    * The number of bytes returned is system-dependant.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_le_int(&self) -> int;
 
-    /// Read a big-endian uint (number of bytes depends on system).
+    /**
+    * Reads a big-endian unsigned integer.
+    *
+    * The number of bytes returned is system-dependant.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_be_uint(&self) -> uint;
 
-    /// Read a big-endian int (number of bytes depends on system).
+    /**
+    * Reads a big-endian integer.
+    *
+    * The number of bytes returned is system-dependant.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_be_int(&self) -> int;
 
-    /// Read a big-endian u64 (8 bytes).
+    /**
+    * Reads a big-endian `u64`.
+    *
+    * `u64`s are 8 bytes long.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_be_u64(&self) -> u64;
 
-    /// Read a big-endian u32 (4 bytes).
+    /**
+    * Reads a big-endian `u32`.
+    *
+    * `u32`s are 4 bytes long.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_be_u32(&self) -> u32;
 
-    /// Read a big-endian u16 (2 bytes).
+    /**
+    * Reads a big-endian `u16`.
+    *
+    * `u16`s are 2 bytes long.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_be_u16(&self) -> u16;
 
-    /// Read a big-endian i64 (8 bytes).
+    /**
+    * Reads a big-endian `i64`.
+    *
+    * `i64`s are 8 bytes long.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_be_i64(&self) -> i64;
 
-    /// Read a big-endian i32 (4 bytes).
+    /**
+    * Reads a big-endian `i32`.
+    *
+    * `i32`s are 4 bytes long.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_be_i32(&self) -> i32;
 
-    /// Read a big-endian i16 (2 bytes).
+    /**
+    * Reads a big-endian `i16`.
+    *
+    * `i16`s are 2 bytes long.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_be_i16(&self) -> i16;
 
-    /// Read a big-endian IEEE754 double-precision floating-point (8 bytes).
+    /**
+    * Reads a big-endian `f64`.
+    *
+    * `f64`s are 8 byte, IEEE754 double-precision floating point numbers.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_be_f64(&self) -> f64;
 
-    /// Read a big-endian IEEE754 single-precision floating-point (4 bytes).
+    /**
+    * Reads a big-endian `f32`.
+    *
+    * `f32`s are 4 byte, IEEE754 single-precision floating point numbers.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_be_f32(&self) -> f32;
 
-    /// Read a little-endian u64 (8 bytes).
+    /**
+    * Reads a little-endian `u64`.
+    *
+    * `u64`s are 8 bytes long.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_le_u64(&self) -> u64;
 
-    /// Read a little-endian u32 (4 bytes).
+    /**
+    * Reads a little-endian `u32`.
+    *
+    * `u32`s are 4 bytes long.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_le_u32(&self) -> u32;
 
-    /// Read a little-endian u16 (2 bytes).
+    /**
+    * Reads a little-endian `u16`.
+    *
+    * `u16`s are 2 bytes long.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_le_u16(&self) -> u16;
 
-    /// Read a litle-endian i64 (8 bytes).
+    /**
+    * Reads a little-endian `i64`.
+    *
+    * `i64`s are 8 bytes long.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_le_i64(&self) -> i64;
 
-    /// Read a litle-endian i32 (4 bytes).
+    /**
+    * Reads a little-endian `i32`.
+    *
+    * `i32`s are 4 bytes long.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_le_i32(&self) -> i32;
 
-    /// Read a litle-endian i16 (2 bytes).
+    /**
+    * Reads a little-endian `i16`.
+    *
+    * `i16`s are 2 bytes long.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_le_i16(&self) -> i16;
 
-    /// Read a litten-endian IEEE754 double-precision floating-point
-    /// (8 bytes).
+    /**
+    * Reads a little-endian `f64`.
+    *
+    * `f64`s are 8 byte, IEEE754 double-precision floating point numbers.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_le_f64(&self) -> f64;
 
-    /// Read a litten-endian IEEE754 single-precision floating-point
-    /// (4 bytes).
+    /**
+    * Reads a little-endian `f32`.
+    *
+    * `f32`s are 4 byte, IEEE754 single-precision floating point numbers.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_le_f32(&self) -> f32;
 
-    /// Read a u8 (1 byte).
+    /**
+    * Read a u8.
+    *
+    * `u8`s are 1 byte.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_u8(&self) -> u8;
 
-    /// Read a i8 (1 byte).
+    /**
+    * Read an i8.
+    *
+    * `i8`s are 1 byte.
+    *
+    * # Examples
+    *
+    * None right now.
+    */
     fn read_i8(&self) -> i8;
 }
 
