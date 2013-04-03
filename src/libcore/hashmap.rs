@@ -35,7 +35,7 @@ struct Bucket<K,V> {
     value: V,
 }
 
-pub struct LinearMap<K,V> {
+pub struct HashMap<K,V> {
     priv k0: u64,
     priv k1: u64,
     priv resize_at: uint,
@@ -55,7 +55,7 @@ fn resize_at(capacity: uint) -> uint {
 }
 
 pub fn linear_map_with_capacity<K:Eq + Hash,V>(
-    initial_capacity: uint) -> LinearMap<K, V> {
+    initial_capacity: uint) -> HashMap<K, V> {
     let r = rand::task_rng();
     linear_map_with_capacity_and_keys(r.gen_u64(), r.gen_u64(),
                                       initial_capacity)
@@ -63,8 +63,8 @@ pub fn linear_map_with_capacity<K:Eq + Hash,V>(
 
 fn linear_map_with_capacity_and_keys<K:Eq + Hash,V>(
     k0: u64, k1: u64,
-    initial_capacity: uint) -> LinearMap<K, V> {
-    LinearMap {
+    initial_capacity: uint) -> HashMap<K, V> {
+    HashMap {
         k0: k0, k1: k1,
         resize_at: resize_at(initial_capacity),
         size: 0,
@@ -72,7 +72,7 @@ fn linear_map_with_capacity_and_keys<K:Eq + Hash,V>(
     }
 }
 
-priv impl<K:Hash + IterBytes + Eq,V> LinearMap<K, V> {
+priv impl<K:Hash + IterBytes + Eq,V> HashMap<K, V> {
     #[inline(always)]
     fn to_bucket(&self, h: uint) -> uint {
         // A good hash function with entropy spread over all of the
@@ -190,7 +190,7 @@ priv impl<K:Hash + IterBytes + Eq,V> LinearMap<K, V> {
     fn value_for_bucket(&self, idx: uint) -> &'self V {
         match self.buckets[idx] {
             Some(ref bkt) => &bkt.value,
-            None => fail!(~"LinearMap::find: internal logic error"),
+            None => fail!(~"HashMap::find: internal logic error"),
         }
     }
 
@@ -280,7 +280,7 @@ priv impl<K:Hash + IterBytes + Eq,V> LinearMap<K, V> {
 }
 
 impl<'self,K:Hash + IterBytes + Eq,V>
-        BaseIter<(&'self K, &'self V)> for LinearMap<K, V> {
+        BaseIter<(&'self K, &'self V)> for HashMap<K, V> {
     /// Visit all key-value pairs
     fn each(&self, blk: &fn(&(&'self K, &'self V)) -> bool) {
         for uint::range(0, self.buckets.len()) |i| {
@@ -297,7 +297,7 @@ impl<'self,K:Hash + IterBytes + Eq,V>
 }
 
 
-impl<K:Hash + IterBytes + Eq,V> Container for LinearMap<K, V> {
+impl<K:Hash + IterBytes + Eq,V> Container for HashMap<K, V> {
     /// Return the number of elements in the map
     fn len(&const self) -> uint { self.size }
 
@@ -305,7 +305,7 @@ impl<K:Hash + IterBytes + Eq,V> Container for LinearMap<K, V> {
     fn is_empty(&const self) -> bool { self.len() == 0 }
 }
 
-impl<K:Hash + IterBytes + Eq,V> Mutable for LinearMap<K, V> {
+impl<K:Hash + IterBytes + Eq,V> Mutable for HashMap<K, V> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) {
         for uint::range(0, self.buckets.len()) |idx| {
@@ -315,7 +315,7 @@ impl<K:Hash + IterBytes + Eq,V> Mutable for LinearMap<K, V> {
     }
 }
 
-impl<'self,K:Hash + IterBytes + Eq,V> Map<K, V> for LinearMap<K, V> {
+impl<'self,K:Hash + IterBytes + Eq,V> Map<K, V> for HashMap<K, V> {
     /// Return true if the map contains a value for the specified key
     fn contains_key(&self, k: &K) -> bool {
         match self.bucket_for_key(k) {
@@ -391,15 +391,15 @@ impl<'self,K:Hash + IterBytes + Eq,V> Map<K, V> for LinearMap<K, V> {
     }
 }
 
-pub impl<K: Hash + IterBytes + Eq, V> LinearMap<K, V> {
-    /// Create an empty LinearMap
-    fn new() -> LinearMap<K, V> {
-        LinearMap::with_capacity(INITIAL_CAPACITY)
+pub impl<K: Hash + IterBytes + Eq, V> HashMap<K, V> {
+    /// Create an empty HashMap
+    fn new() -> HashMap<K, V> {
+        HashMap::with_capacity(INITIAL_CAPACITY)
     }
 
-    /// Create an empty LinearMap with space for at least `n` elements in
+    /// Create an empty HashMap with space for at least `n` elements in
     /// the hash table.
-    fn with_capacity(capacity: uint) -> LinearMap<K, V> {
+    fn with_capacity(capacity: uint) -> HashMap<K, V> {
         linear_map_with_capacity(capacity)
     }
 
@@ -541,8 +541,8 @@ pub impl<K: Hash + IterBytes + Eq, V> LinearMap<K, V> {
     }
 }
 
-impl<K:Hash + IterBytes + Eq,V:Eq> Eq for LinearMap<K, V> {
-    fn eq(&self, other: &LinearMap<K, V>) -> bool {
+impl<K:Hash + IterBytes + Eq,V:Eq> Eq for HashMap<K, V> {
+    fn eq(&self, other: &HashMap<K, V>) -> bool {
         if self.len() != other.len() { return false; }
 
         for self.each |&(key, value)| {
@@ -555,25 +555,25 @@ impl<K:Hash + IterBytes + Eq,V:Eq> Eq for LinearMap<K, V> {
         true
     }
 
-    fn ne(&self, other: &LinearMap<K, V>) -> bool { !self.eq(other) }
+    fn ne(&self, other: &HashMap<K, V>) -> bool { !self.eq(other) }
 }
 
-pub struct LinearSet<T> {
-    priv map: LinearMap<T, ()>
+pub struct HashSet<T> {
+    priv map: HashMap<T, ()>
 }
 
-impl<T:Hash + IterBytes + Eq> BaseIter<T> for LinearSet<T> {
+impl<T:Hash + IterBytes + Eq> BaseIter<T> for HashSet<T> {
     /// Visit all values in order
     fn each(&self, f: &fn(&T) -> bool) { self.map.each_key(f) }
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
-impl<T:Hash + IterBytes + Eq> Eq for LinearSet<T> {
-    fn eq(&self, other: &LinearSet<T>) -> bool { self.map == other.map }
-    fn ne(&self, other: &LinearSet<T>) -> bool { self.map != other.map }
+impl<T:Hash + IterBytes + Eq> Eq for HashSet<T> {
+    fn eq(&self, other: &HashSet<T>) -> bool { self.map == other.map }
+    fn ne(&self, other: &HashSet<T>) -> bool { self.map != other.map }
 }
 
-impl<T:Hash + IterBytes + Eq> Container for LinearSet<T> {
+impl<T:Hash + IterBytes + Eq> Container for HashSet<T> {
     /// Return the number of elements in the set
     fn len(&const self) -> uint { self.map.len() }
 
@@ -581,12 +581,12 @@ impl<T:Hash + IterBytes + Eq> Container for LinearSet<T> {
     fn is_empty(&const self) -> bool { self.map.is_empty() }
 }
 
-impl<T:Hash + IterBytes + Eq> Mutable for LinearSet<T> {
+impl<T:Hash + IterBytes + Eq> Mutable for HashSet<T> {
     /// Clear the set, removing all values.
     fn clear(&mut self) { self.map.clear() }
 }
 
-impl<T:Hash + IterBytes + Eq> Set<T> for LinearSet<T> {
+impl<T:Hash + IterBytes + Eq> Set<T> for HashSet<T> {
     /// Return true if the set contains a value
     fn contains(&self, value: &T) -> bool { self.map.contains_key(value) }
 
@@ -600,22 +600,22 @@ impl<T:Hash + IterBytes + Eq> Set<T> for LinearSet<T> {
 
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
-    fn is_disjoint(&self, other: &LinearSet<T>) -> bool {
+    fn is_disjoint(&self, other: &HashSet<T>) -> bool {
         iter::all(self, |v| !other.contains(v))
     }
 
     /// Return true if the set is a subset of another
-    fn is_subset(&self, other: &LinearSet<T>) -> bool {
+    fn is_subset(&self, other: &HashSet<T>) -> bool {
         iter::all(self, |v| other.contains(v))
     }
 
     /// Return true if the set is a superset of another
-    fn is_superset(&self, other: &LinearSet<T>) -> bool {
+    fn is_superset(&self, other: &HashSet<T>) -> bool {
         other.is_subset(self)
     }
 
     /// Visit the values representing the difference
-    fn difference(&self, other: &LinearSet<T>, f: &fn(&T) -> bool) {
+    fn difference(&self, other: &HashSet<T>, f: &fn(&T) -> bool) {
         for self.each |v| {
             if !other.contains(v) {
                 if !f(v) { return }
@@ -625,14 +625,14 @@ impl<T:Hash + IterBytes + Eq> Set<T> for LinearSet<T> {
 
     /// Visit the values representing the symmetric difference
     fn symmetric_difference(&self,
-                            other: &LinearSet<T>,
+                            other: &HashSet<T>,
                             f: &fn(&T) -> bool) {
         self.difference(other, f);
         other.difference(self, f);
     }
 
     /// Visit the values representing the intersection
-    fn intersection(&self, other: &LinearSet<T>, f: &fn(&T) -> bool) {
+    fn intersection(&self, other: &HashSet<T>, f: &fn(&T) -> bool) {
         for self.each |v| {
             if other.contains(v) {
                 if !f(v) { return }
@@ -641,7 +641,7 @@ impl<T:Hash + IterBytes + Eq> Set<T> for LinearSet<T> {
     }
 
     /// Visit the values representing the union
-    fn union(&self, other: &LinearSet<T>, f: &fn(&T) -> bool) {
+    fn union(&self, other: &HashSet<T>, f: &fn(&T) -> bool) {
         for self.each |v| {
             if !f(v) { return }
         }
@@ -654,16 +654,16 @@ impl<T:Hash + IterBytes + Eq> Set<T> for LinearSet<T> {
     }
 }
 
-pub impl <T:Hash + IterBytes + Eq> LinearSet<T> {
-    /// Create an empty LinearSet
-    fn new() -> LinearSet<T> {
-        LinearSet::with_capacity(INITIAL_CAPACITY)
+pub impl <T:Hash + IterBytes + Eq> HashSet<T> {
+    /// Create an empty HashSet
+    fn new() -> HashSet<T> {
+        HashSet::with_capacity(INITIAL_CAPACITY)
     }
 
-    /// Create an empty LinearSet with space for at least `n` elements in
+    /// Create an empty HashSet with space for at least `n` elements in
     /// the hash table.
-    fn with_capacity(capacity: uint) -> LinearSet<T> {
-        LinearSet { map: LinearMap::with_capacity(capacity) }
+    fn with_capacity(capacity: uint) -> HashSet<T> {
+        HashSet { map: HashMap::with_capacity(capacity) }
     }
 
     /// Reserve space for at least `n` elements in the hash table.
@@ -686,7 +686,7 @@ mod test_map {
 
     #[test]
     pub fn test_insert() {
-        let mut m = LinearMap::new();
+        let mut m = HashMap::new();
         assert!(m.insert(1, 2));
         assert!(m.insert(2, 4));
         assert!(*m.get(&1) == 2);
@@ -695,7 +695,7 @@ mod test_map {
 
     #[test]
     fn test_find_mut() {
-        let mut m = LinearMap::new();
+        let mut m = HashMap::new();
         assert!(m.insert(1, 12));
         assert!(m.insert(2, 8));
         assert!(m.insert(5, 14));
@@ -708,7 +708,7 @@ mod test_map {
 
     #[test]
     pub fn test_insert_overwrite() {
-        let mut m = LinearMap::new();
+        let mut m = HashMap::new();
         assert!(m.insert(1, 2));
         assert!(*m.get(&1) == 2);
         assert!(!m.insert(1, 3));
@@ -748,7 +748,7 @@ mod test_map {
 
     #[test]
     pub fn test_pop() {
-        let mut m = LinearMap::new();
+        let mut m = HashMap::new();
         m.insert(1, 2);
         assert!(m.pop(&1) == Some(2));
         assert!(m.pop(&1) == None);
@@ -756,7 +756,7 @@ mod test_map {
 
     #[test]
     pub fn test_swap() {
-        let mut m = LinearMap::new();
+        let mut m = HashMap::new();
         assert!(m.swap(1, 2) == None);
         assert!(m.swap(1, 3) == Some(2));
         assert!(m.swap(1, 4) == Some(3));
@@ -764,24 +764,24 @@ mod test_map {
 
     #[test]
     pub fn test_find_or_insert() {
-        let mut m = LinearMap::new::<int, int>();
+        let mut m = HashMap::new::<int, int>();
         assert!(m.find_or_insert(1, 2) == &2);
         assert!(m.find_or_insert(1, 3) == &2);
     }
 
     #[test]
     pub fn test_find_or_insert_with() {
-        let mut m = LinearMap::new::<int, int>();
+        let mut m = HashMap::new::<int, int>();
         assert!(m.find_or_insert_with(1, |_| 2) == &2);
         assert!(m.find_or_insert_with(1, |_| 3) == &2);
     }
 
     #[test]
     pub fn test_consume() {
-        let mut m = LinearMap::new();
+        let mut m = HashMap::new();
         assert!(m.insert(1, 2));
         assert!(m.insert(2, 3));
-        let mut m2 = LinearMap::new();
+        let mut m2 = HashMap::new();
         do m.consume |k, v| {
             m2.insert(k, v);
         }
@@ -807,7 +807,7 @@ mod test_map {
 
     #[test]
     pub fn test_find() {
-        let mut m = LinearMap::new();
+        let mut m = HashMap::new();
         assert!(m.find(&1).is_none());
         m.insert(1, 2);
         match m.find(&1) {
@@ -818,12 +818,12 @@ mod test_map {
 
     #[test]
     pub fn test_eq() {
-        let mut m1 = LinearMap::new();
+        let mut m1 = HashMap::new();
         m1.insert(1, 2);
         m1.insert(2, 3);
         m1.insert(3, 4);
 
-        let mut m2 = LinearMap::new();
+        let mut m2 = HashMap::new();
         m2.insert(1, 2);
         m2.insert(2, 3);
 
@@ -836,7 +836,7 @@ mod test_map {
 
     #[test]
     pub fn test_expand() {
-        let mut m = LinearMap::new();
+        let mut m = HashMap::new();
 
         assert!(m.len() == 0);
         assert!(m.is_empty());
@@ -861,8 +861,8 @@ mod test_set {
 
     #[test]
     fn test_disjoint() {
-        let mut xs = LinearSet::new();
-        let mut ys = LinearSet::new();
+        let mut xs = HashSet::new();
+        let mut ys = HashSet::new();
         assert!(xs.is_disjoint(&ys));
         assert!(ys.is_disjoint(&xs));
         assert!(xs.insert(5));
@@ -883,13 +883,13 @@ mod test_set {
 
     #[test]
     fn test_subset_and_superset() {
-        let mut a = LinearSet::new();
+        let mut a = HashSet::new();
         assert!(a.insert(0));
         assert!(a.insert(5));
         assert!(a.insert(11));
         assert!(a.insert(7));
 
-        let mut b = LinearSet::new();
+        let mut b = HashSet::new();
         assert!(b.insert(0));
         assert!(b.insert(7));
         assert!(b.insert(19));
@@ -912,8 +912,8 @@ mod test_set {
 
     #[test]
     fn test_intersection() {
-        let mut a = LinearSet::new();
-        let mut b = LinearSet::new();
+        let mut a = HashSet::new();
+        let mut b = HashSet::new();
 
         assert!(a.insert(11));
         assert!(a.insert(1));
@@ -942,8 +942,8 @@ mod test_set {
 
     #[test]
     fn test_difference() {
-        let mut a = LinearSet::new();
-        let mut b = LinearSet::new();
+        let mut a = HashSet::new();
+        let mut b = HashSet::new();
 
         assert!(a.insert(1));
         assert!(a.insert(3));
@@ -965,8 +965,8 @@ mod test_set {
 
     #[test]
     fn test_symmetric_difference() {
-        let mut a = LinearSet::new();
-        let mut b = LinearSet::new();
+        let mut a = HashSet::new();
+        let mut b = HashSet::new();
 
         assert!(a.insert(1));
         assert!(a.insert(3));
@@ -991,8 +991,8 @@ mod test_set {
 
     #[test]
     fn test_union() {
-        let mut a = LinearSet::new();
-        let mut b = LinearSet::new();
+        let mut a = HashSet::new();
+        let mut b = HashSet::new();
 
         assert!(a.insert(1));
         assert!(a.insert(3));
