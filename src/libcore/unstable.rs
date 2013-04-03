@@ -120,9 +120,9 @@ impl<T> Drop for ArcDestruct<T>{
     fn finalize(&self) {
         unsafe {
             do task::unkillable {
-                let data: ~ArcData<T> = cast::reinterpret_cast(&self.data);
+                let mut data: ~ArcData<T> = cast::reinterpret_cast(&self.data);
                 let new_count =
-                    intrinsics::atomic_xsub(cast::transmute_mut(&data.count), 1) - 1;
+                    intrinsics::atomic_xsub(&mut data.count, 1) - 1;
                 assert!(new_count >= 0);
                 if new_count == 0 {
                     // drop glue takes over.
@@ -185,8 +185,8 @@ pub unsafe fn get_shared_immutable_state<'a,T:Owned>(
 pub unsafe fn clone_shared_mutable_state<T:Owned>(rc: &SharedMutableState<T>)
         -> SharedMutableState<T> {
     unsafe {
-        let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
-        let new_count = intrinsics::atomic_xadd(cast::transmute_mut(&ptr.count), 1) + 1;
+        let mut ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
+        let new_count = intrinsics::atomic_xadd(&mut ptr.count, 1) + 1;
         assert!(new_count >= 2);
         cast::forget(ptr);
     }
