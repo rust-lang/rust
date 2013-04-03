@@ -18,7 +18,7 @@ use core::os;
 use core::uint;
 use core::util;
 use core::vec;
-use core::hashmap::linear::LinearSet;
+use core::hashmap::LinearSet;
 
 fn not_win32(os: session::os) -> bool {
   match os {

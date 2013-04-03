@@ -20,7 +20,7 @@ use parse;
 use parse::token;
 
 use core::vec;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 
 // new-style macro! tt code:
 //
@@ -509,7 +509,7 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 #[cfg(test)]
 mod test {
     use super::MapChain;
-    use core::hashmap::linear::LinearMap;
+    use core::hashmap::LinearMap;
 
     #[test] fn testenv () {
         let mut a = LinearMap::new();

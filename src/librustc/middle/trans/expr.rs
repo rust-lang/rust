@@ -153,7 +153,7 @@ use util::common::indenter;
 use util::ppaux::ty_to_str;
 
 use core::cast::transmute;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
 use syntax::codemap;

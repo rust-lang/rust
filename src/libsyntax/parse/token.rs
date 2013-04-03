@@ -18,7 +18,7 @@ use util::interner;
 
 use core::cast;
 use core::char;
-use core::hashmap::linear::LinearSet;
+use core::hashmap::LinearSet;
 use core::str;
 use core::task;
 

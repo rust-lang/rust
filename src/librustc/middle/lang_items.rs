@@ -31,7 +31,7 @@ use syntax::ast_util::local_def;
 use syntax::visit::{default_simple_visitor, mk_simple_visitor, SimpleVisitor};
 use syntax::visit::visit_crate;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::ptr;
 
 pub enum LangItem {

@@ -18,7 +18,7 @@ use metadata::decoder;
 use metadata::filesearch::FileSearch;
 use metadata::loader;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::vec;
 use syntax::attr;
 use syntax::codemap::{span, dummy_sp};

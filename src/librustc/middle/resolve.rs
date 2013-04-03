@@ -77,7 +77,7 @@ use syntax::opt_vec::OptVec;
 
 use core::option::Some;
 use core::str::each_split_str;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{LinearMap, LinearSet};
 
 // Definition mapping
 pub type DefMap = @mut LinearMap<node_id,def>;

@@ -13,7 +13,7 @@
 // type, and vice versa.
 
 use core::prelude::*;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 
 pub struct Interner<T> {
     priv map: @mut LinearMap<T, uint>,

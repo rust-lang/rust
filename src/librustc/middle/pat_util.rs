@@ -12,7 +12,7 @@ use core::prelude::*;
 
 use middle::resolve;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use syntax::ast::*;
 use syntax::ast_util::{path_to_ident, walk_pat};
 use syntax::codemap::span;

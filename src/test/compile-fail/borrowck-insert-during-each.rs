@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::hashmap::linear::LinearSet;
+use core::hashmap::LinearSet;
 
 struct Foo {
   n: LinearSet<int>,

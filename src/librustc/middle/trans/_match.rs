@@ -167,7 +167,7 @@ use middle::trans::type_of;
 use middle::ty;
 use util::common::indenter;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_util::path_to_ident;

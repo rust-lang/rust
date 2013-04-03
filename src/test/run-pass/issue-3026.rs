@@ -10,7 +10,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 
 pub fn main() {
     let mut buggy_map: LinearMap<uint, &uint> = LinearMap::new::<uint, &uint>();

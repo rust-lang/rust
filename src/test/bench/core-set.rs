@@ -9,7 +9,7 @@
 // except according to those terms.
 
 extern mod std;
-use core::hashmap::linear::LinearSet;
+use core::hashmap::LinearSet;
 use std::bitv::BitvSet;
 use std::treemap::TreeSet;
 use core::io::WriterUtil;

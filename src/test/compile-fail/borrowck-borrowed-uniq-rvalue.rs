@@ -10,7 +10,7 @@
 
 //buggy.rs
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 
 fn main() {
     let mut buggy_map :LinearMap<uint, &uint> =

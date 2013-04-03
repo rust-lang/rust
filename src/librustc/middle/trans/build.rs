@@ -18,7 +18,7 @@ use syntax::codemap::span;
 
 use core::prelude::*;
 use core::cast;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::libc::{c_uint, c_ulonglong, c_char};
 use core::libc;
 use core::option::Some;

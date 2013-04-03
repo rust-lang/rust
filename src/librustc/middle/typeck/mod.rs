@@ -55,7 +55,7 @@ use middle::ty;
 use util::common::time;
 use util::ppaux;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::result;
 use core::vec;
 use std::list::List;

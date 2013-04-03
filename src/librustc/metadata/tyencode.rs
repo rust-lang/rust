@@ -16,7 +16,7 @@ use core::prelude::*;
 use middle::ty::param_ty;
 use middle::ty;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::io::WriterUtil;
 use core::io;
 use core::uint;

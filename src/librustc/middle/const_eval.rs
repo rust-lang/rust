@@ -20,7 +20,7 @@ use core::vec;
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
 
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{LinearMap, LinearSet};
 
 //
 // This pass classifies expressions by their constant-ness.

@@ -24,7 +24,7 @@ use core::pipes::recv;
 use core::prelude::*;
 use core::result;
 use core::run;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::task;
 use core::to_bytes;
 

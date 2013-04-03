@@ -17,7 +17,7 @@ use core::from_str::FromStr;
 use core::io::{Reader, ReaderUtil};
 use core::io;
 use core::prelude::*;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::str;
 use core::to_bytes::IterBytes;
 use core::to_bytes;
@@ -818,7 +818,7 @@ mod tests {
 
     use net_url::*;
 
-    use core::hashmap::linear::LinearMap;
+    use core::hashmap::LinearMap;
 
     #[test]
     pub fn test_url_parse() {

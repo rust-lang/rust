@@ -53,7 +53,7 @@ use syntax::visit::{visit_mod};
 use util::ppaux::ty_to_str;
 
 use core::result::Ok;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{LinearMap, LinearSet};
 use core::uint;
 
 pub struct UniversalQuantificationResult {

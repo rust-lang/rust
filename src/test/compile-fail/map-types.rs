@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use core::container::Map;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 
 // Test that trait types printed in error msgs include the type arguments.
 

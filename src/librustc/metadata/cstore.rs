@@ -17,7 +17,7 @@ use core::prelude::*;
 use metadata::cstore;
 use metadata::decoder;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::vec;
 use std;
 use syntax::ast;

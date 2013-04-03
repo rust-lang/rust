@@ -36,7 +36,7 @@ use core::result;
 use core::to_bytes;
 use core::uint;
 use core::vec;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{LinearMap, LinearSet};
 use std::smallintmap::SmallIntMap;
 use syntax::ast::*;
 use syntax::ast_util::{is_local, local_def};

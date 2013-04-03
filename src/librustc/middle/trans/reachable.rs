@@ -21,7 +21,7 @@ use middle::ty;
 use middle::typeck;
 
 use core::prelude::*;
-use core::hashmap::linear::LinearSet;
+use core::hashmap::LinearSet;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_util::def_id_of_def;

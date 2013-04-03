@@ -45,7 +45,7 @@ use util::ppaux::{expr_repr, ty_to_str};
 
 use core::cast;
 use core::hash;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{LinearMap, LinearSet};
 use core::libc::{c_uint, c_longlong, c_ulonglong};
 use core::ptr;
 use core::str;

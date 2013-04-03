@@ -14,7 +14,7 @@ use syntax::ast;
 use syntax::codemap::{span};
 use syntax::visit;
 
-use core::hashmap::linear::LinearSet;
+use core::hashmap::LinearSet;
 use core::str;
 use std;
 

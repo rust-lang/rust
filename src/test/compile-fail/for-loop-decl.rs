@@ -11,7 +11,7 @@
 // error-pattern: mismatched types
 extern mod std;
 use std::bitv;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 
 struct FnInfo {
     vars: LinearMap<uint, VarInfo>

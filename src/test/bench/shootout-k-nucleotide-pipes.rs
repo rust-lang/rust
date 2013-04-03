@@ -15,7 +15,7 @@
 
 extern mod std;
 use std::sort;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::io::ReaderUtil;
 use core::comm::{stream, Port, Chan};
 use core::cmp::Ord;

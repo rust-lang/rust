@@ -14,7 +14,7 @@
 extern mod req;
 
 use req::*;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 
 pub fn main() {
   let v = ~[@~"hi"];

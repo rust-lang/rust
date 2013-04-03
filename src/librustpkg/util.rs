@@ -10,7 +10,7 @@
 
 use core::*;
 use core::hash::Streaming;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use std::getopts::groups::getopts;

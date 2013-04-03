@@ -31,7 +31,7 @@ use middle::mem_categorization::{lp_comp, lp_deref, lp_local};
 use middle::ty;
 use util::ppaux::ty_to_str;
 
-use core::hashmap::linear::LinearSet;
+use core::hashmap::LinearSet;
 use core::uint;
 use syntax::ast::m_mutbl;
 use syntax::ast;

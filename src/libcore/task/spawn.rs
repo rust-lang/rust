@@ -79,7 +79,7 @@ use comm::{Chan, GenericChan};
 use prelude::*;
 use unstable;
 use ptr;
-use hashmap::linear::LinearSet;
+use hashmap::LinearSet;
 use task::local_data_priv::{local_get, local_set};
 use task::rt::rust_task;
 use task::rt;
