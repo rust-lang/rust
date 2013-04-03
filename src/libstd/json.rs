@@ -16,7 +16,7 @@
 
 use core::prelude::*;
 use core::io::{WriterUtil, ReaderUtil};
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 
 use serialize::Encodable;
 use serialize;
@@ -1161,7 +1161,7 @@ mod tests {
     use super::*;
 
     use core::prelude::*;
-    use core::hashmap::linear::LinearMap;
+    use core::hashmap::LinearMap;
 
     use std::serialize::Decodable;
 

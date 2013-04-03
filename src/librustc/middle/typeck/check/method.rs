@@ -95,7 +95,7 @@ use middle::typeck::{method_self, method_static, method_trait, method_super};
 use util::common::indenter;
 use util::ppaux::expr_repr;
 
-use core::hashmap::linear::LinearSet;
+use core::hashmap::LinearSet;
 use core::result;
 use core::uint;
 use core::vec;

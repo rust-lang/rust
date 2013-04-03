@@ -441,7 +441,7 @@ expression context, the final namespace qualifier is omitted.
 Two examples of paths with type arguments:
 
 ~~~~
-# use core::hashmap::linear::LinearMap;
+# use core::hashmap::LinearMap;
 # fn f() {
 # fn id<T:Copy>(t: T) -> T { t }
 type t = LinearMap<int,~str>;  // Type arguments used in a type expression

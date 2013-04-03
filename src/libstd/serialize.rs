@@ -17,7 +17,7 @@ Core encoding and decoding interfaces.
 #[forbid(non_camel_case_types)];
 
 use core::prelude::*;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{LinearMap, LinearSet};
 use core::trie::{TrieMap, TrieSet};
 use deque::Deque;
 use dlist::DList;

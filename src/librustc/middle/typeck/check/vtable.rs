@@ -28,7 +28,7 @@ use core::result::{Ok, Err};
 use core::result;
 use core::uint;
 use core::vec;
-use core::hashmap::linear::LinearSet;
+use core::hashmap::LinearSet;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;

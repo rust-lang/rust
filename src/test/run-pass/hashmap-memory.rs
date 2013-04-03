@@ -19,7 +19,7 @@
 pub fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 
 mod map_reduce {
-    use core::hashmap::linear::LinearMap;
+    use core::hashmap::LinearMap;
     use core::comm::*;
 
     pub type putter = @fn(~str, ~str);

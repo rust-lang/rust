@@ -67,7 +67,7 @@ use util::ppaux::ty_to_str;
 use util::ppaux;
 
 use core::hash;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{LinearMap, LinearSet};
 use core::int;
 use core::io;
 use core::libc::{c_uint, c_ulonglong};

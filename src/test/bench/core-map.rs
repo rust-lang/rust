@@ -13,7 +13,7 @@ extern mod std;
 use core::io;
 use std::time;
 use std::treemap::TreeMap;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{LinearMap, LinearSet};
 use core::trie::TrieMap;
 
 fn timed(label: &str, f: &fn()) {

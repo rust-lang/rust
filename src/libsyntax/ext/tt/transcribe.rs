@@ -18,7 +18,7 @@ use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
 use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident, ident_interner};
 use parse::lexer::TokenAndSpan;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::option;
 use core::vec;
 

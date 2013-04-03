@@ -23,7 +23,7 @@ use print::pprust;
 use visit;
 
 use core::cmp;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::str;
 use core::vec;
 

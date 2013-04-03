@@ -10,7 +10,7 @@
 
 use core::prelude::*;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::libc::c_uint;
 use core::option;
 use core::ptr;

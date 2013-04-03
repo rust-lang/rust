@@ -31,7 +31,7 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{expr_repr, region_to_str};
 
-use core::hashmap::linear::{LinearSet, LinearMap};
+use core::hashmap::{LinearSet, LinearMap};
 use core::vec;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;

@@ -24,7 +24,7 @@ use std::arc;
 use std::time;
 use std::deque::Deque;
 use std::par;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{LinearMap, LinearSet};
 use core::io::WriterUtil;
 use core::int::abs;
 use core::rand::RngUtil;

@@ -34,7 +34,7 @@ use ops::Drop;
 use unstable::{Exclusive, exclusive};
 use unstable::at_exit::at_exit;
 use unstable::intrinsics::atomic_cxchg;
-use hashmap::linear::LinearMap;
+use hashmap::LinearMap;
 use sys::Closure;
 
 #[cfg(test)] use unstable::{SharedMutableState, shared_mutable_state};

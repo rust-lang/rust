@@ -13,7 +13,7 @@
 
 extern mod std;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 
 pub type header_map = LinearMap<~str, @mut ~[@~str]>;
 

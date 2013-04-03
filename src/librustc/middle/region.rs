@@ -26,7 +26,7 @@ use middle::ty::{region_variance, rv_covariant, rv_invariant};
 use middle::ty::{rv_contravariant};
 use middle::ty;
 
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{LinearMap, LinearSet};
 use core::vec;
 use syntax::ast_map;
 use syntax::codemap::span;

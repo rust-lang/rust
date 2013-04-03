@@ -11,7 +11,7 @@
 // except according to those terms.
 
 extern mod std;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use std::json;
 
 enum object {

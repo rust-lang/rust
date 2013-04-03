@@ -110,7 +110,7 @@ use util::common::{block_query, indenter, loop_query};
 use util::ppaux::{bound_region_to_str, expr_repr, pat_repr};
 use util::ppaux;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::ptr;
 use core::result::{Result, Ok, Err};
 use core::result;

@@ -17,7 +17,7 @@ use core::prelude::*;
 use middle::resolve;
 use middle::ty;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use syntax::codemap::span;
 use syntax::{ast, ast_util, visit};
 

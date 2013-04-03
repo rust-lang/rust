@@ -111,7 +111,7 @@ use middle::typeck;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::io::WriterUtil;
 use core::io;
 use core::ptr;

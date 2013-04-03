@@ -21,7 +21,7 @@ is trying to shut down.
 use cell::Cell;
 use comm::{GenericSmartChan, stream};
 use comm::{Port, Chan, SharedChan, GenericChan, GenericPort};
-use hashmap::linear::LinearMap;
+use hashmap::LinearMap;
 use option::{Some, None};
 use unstable::at_exit::at_exit;
 use unstable::finally::Finally;

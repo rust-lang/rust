@@ -215,7 +215,7 @@ use middle::typeck::method_map;
 use util::ppaux;
 use util::common::indenter;
 
-use core::hashmap::linear::{LinearSet, LinearMap};
+use core::hashmap::{LinearSet, LinearMap};
 use core::vec;
 use syntax::ast::*;
 use syntax::ast_util;

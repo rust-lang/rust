@@ -234,7 +234,7 @@ use middle::moves;
 use util::common::stmt_set;
 use util::ppaux::note_and_explain_region;
 
-use core::hashmap::linear::{LinearSet, LinearMap};
+use core::hashmap::{LinearSet, LinearMap};
 use core::io;
 use core::result::{Result, Ok, Err};
 use core::to_bytes;

@@ -20,7 +20,7 @@ use middle::trans;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::libc;
 use core::option;
 use core::sys;

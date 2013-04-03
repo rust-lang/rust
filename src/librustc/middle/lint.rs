@@ -15,7 +15,7 @@ use driver::session;
 use middle::ty;
 use util::ppaux::{ty_to_str};
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::LinearMap;
 use core::char;
 use core::cmp;
 use core::i8;
