@@ -3269,7 +3269,7 @@ These four log levels correspond to levels 1-4, as controlled by `RUST_LOG`:
 
 ```bash
 $ RUST_LOG=rust=3 ./rust
-rust: ~"\"This is na error log\""
+rust: ~"\"This is an error log\""
 rust: ~"\"This is a warn log\""
 rust: ~"\"this is an info log\""
 ```
