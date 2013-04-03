@@ -374,16 +374,6 @@ pub impl ident_interner {
     }
 }
 
-/* Key for thread-local data for sneaking interner information to the
- * encoder/decoder. It sounds like a hack because it is one.
- * Bonus ultra-hack: functions as keys don't work across crates,
- * so we have to use a unique number. See taskgroup_key! in task.rs
- * for another case of this. */
-macro_rules! interner_key (
-    () => (cast::transmute::<(uint, uint), &fn(+v: @@token::ident_interner)>(
-        (-3 as uint, 0u)))
-)
-
 pub fn mk_ident_interner() -> @ident_interner {
     unsafe {
         match task::local_data::local_data_get(interner_key!()) {

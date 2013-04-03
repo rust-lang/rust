@@ -22,14 +22,6 @@ use core::to_str::ToStr;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 
-/* can't import macros yet, so this is copied from token.rs. See its comment
- * there. */
-macro_rules! interner_key (
-    () => (cast::transmute::<(uint, uint),
-            &fn(+v: @@::parse::token::ident_interner)>(
-        (-3 as uint, 0u)))
-)
-
 // an identifier contains an index into the interner
 // table and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
