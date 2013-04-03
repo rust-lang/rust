@@ -15,18 +15,6 @@ extern mod std;
 
 use core::os;
 
-// Using sqrt from the standard library is way slower than using libc
-// directly even though std just calls libc, I guess it must be
-// because the the indirection through another dynamic linker
-// stub. Kind of shocking. Might be able to make it faster still with
-// an llvm intrinsic.
-mod libc {
-    #[nolink]
-    pub extern {
-        pub fn sqrt(n: float) -> float;
-    }
-}
-
 fn main() {
     let args = os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
@@ -49,6 +37,7 @@ fn main() {
 
 pub mod NBodySystem {
     use Body;
+    use core::float::sqrt;
 
     pub fn make() -> ~[Body::Props] {
         let mut bodies: ~[Body::Props] =
@@ -107,7 +96,7 @@ pub mod NBodySystem {
 
             let dSquared = dx * dx + dy * dy + dz * dz;
 
-            let distance = ::libc::sqrt(dSquared);
+            let distance = sqrt(dSquared);
             let mag = dt / (dSquared * distance);
 
             bi.vx -= dx * bj.mass * mag;
@@ -148,9 +137,9 @@ pub mod NBodySystem {
                     dy = bodies[i].y - bodies[j].y;
                     dz = bodies[i].z - bodies[j].z;
 
-                    distance = ::libc::sqrt(dx * dx
-                                            + dy * dy
-                                            + dz * dz);
+                    distance = sqrt(dx * dx
+                                    + dy * dy
+                                    + dz * dz);
                     e -= bodies[i].mass
                         * bodies[j].mass / distance;
 
