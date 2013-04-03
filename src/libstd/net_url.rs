@@ -25,7 +25,7 @@ use core::to_str::ToStr;
 use core::to_str;
 use core::uint;
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 struct Url {
     scheme: ~str,
     user: Option<UserInfo>,
@@ -36,7 +36,7 @@ struct Url {
     fragment: Option<~str>
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 struct UserInfo {
     user: ~str,
     pass: Option<~str>
@@ -398,7 +398,7 @@ pub fn get_scheme(rawurl: &str) -> Result<(~str, ~str), ~str> {
     return Err(~"url: Scheme must be terminated with a colon.");
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 enum Input {
     Digit, // all digits
     Hex, // digits and letters a-f
