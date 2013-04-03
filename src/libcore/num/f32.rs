@@ -10,12 +10,9 @@
 
 //! Operations and constants for `f32`
 
-use cmath;
-use libc::{c_float, c_int};
 use num::strconv;
 use num;
 use option::Option;
-use unstable::intrinsics::floorf32;
 use from_str;
 use to_str;
 
@@ -24,79 +21,93 @@ use to_str;
 
 pub use cmath::c_float_targ_consts::*;
 
+// An inner module is required to get the #[inline(always)] attribute on the
+// functions.
+pub use self::delegated::*;
+
 macro_rules! delegate(
     (
-        fn $name:ident(
-            $(
-                $arg:ident : $arg_ty:ty
-            ),*
-        ) -> $rv:ty = $bound_name:path
+        $(
+            fn $name:ident(
+                $(
+                    $arg:ident : $arg_ty:ty
+                ),*
+            ) -> $rv:ty = $bound_name:path
+        ),*
     ) => (
-        pub fn $name($( $arg : $arg_ty ),*) -> $rv {
-            unsafe {
-                $bound_name($( $arg ),*)
-            }
+        mod delegated {
+            use cmath::c_float_utils;
+            use libc::{c_float, c_int};
+            use unstable::intrinsics;
+
+            $(
+                #[inline(always)]
+                pub fn $name($( $arg : $arg_ty ),*) -> $rv {
+                    unsafe {
+                        $bound_name($( $arg ),*)
+                    }
+                }
+            )*
         }
     )
 )
 
-delegate!(fn acos(n: c_float) -> c_float = cmath::c_float_utils::acos)
-delegate!(fn asin(n: c_float) -> c_float = cmath::c_float_utils::asin)
-delegate!(fn atan(n: c_float) -> c_float = cmath::c_float_utils::atan)
-delegate!(fn atan2(a: c_float, b: c_float) -> c_float =
-    cmath::c_float_utils::atan2)
-delegate!(fn cbrt(n: c_float) -> c_float = cmath::c_float_utils::cbrt)
-delegate!(fn ceil(n: c_float) -> c_float = cmath::c_float_utils::ceil)
-delegate!(fn copysign(x: c_float, y: c_float) -> c_float =
-    cmath::c_float_utils::copysign)
-delegate!(fn cos(n: c_float) -> c_float = cmath::c_float_utils::cos)
-delegate!(fn cosh(n: c_float) -> c_float = cmath::c_float_utils::cosh)
-delegate!(fn erf(n: c_float) -> c_float = cmath::c_float_utils::erf)
-delegate!(fn erfc(n: c_float) -> c_float = cmath::c_float_utils::erfc)
-delegate!(fn exp(n: c_float) -> c_float = cmath::c_float_utils::exp)
-delegate!(fn expm1(n: c_float) -> c_float = cmath::c_float_utils::expm1)
-delegate!(fn exp2(n: c_float) -> c_float = cmath::c_float_utils::exp2)
-delegate!(fn abs(n: c_float) -> c_float = cmath::c_float_utils::abs)
-delegate!(fn abs_sub(a: c_float, b: c_float) -> c_float =
-    cmath::c_float_utils::abs_sub)
-delegate!(fn mul_add(a: c_float, b: c_float, c: c_float) -> c_float =
-    cmath::c_float_utils::mul_add)
-delegate!(fn fmax(a: c_float, b: c_float) -> c_float =
-    cmath::c_float_utils::fmax)
-delegate!(fn fmin(a: c_float, b: c_float) -> c_float =
-    cmath::c_float_utils::fmin)
-delegate!(fn nextafter(x: c_float, y: c_float) -> c_float =
-    cmath::c_float_utils::nextafter)
-delegate!(fn frexp(n: c_float, value: &mut c_int) -> c_float =
-    cmath::c_float_utils::frexp)
-delegate!(fn hypot(x: c_float, y: c_float) -> c_float =
-    cmath::c_float_utils::hypot)
-delegate!(fn ldexp(x: c_float, n: c_int) -> c_float =
-    cmath::c_float_utils::ldexp)
-delegate!(fn lgamma(n: c_float, sign: &mut c_int) -> c_float =
-    cmath::c_float_utils::lgamma)
-delegate!(fn ln(n: c_float) -> c_float = cmath::c_float_utils::ln)
-delegate!(fn log_radix(n: c_float) -> c_float =
-    cmath::c_float_utils::log_radix)
-delegate!(fn ln1p(n: c_float) -> c_float = cmath::c_float_utils::ln1p)
-delegate!(fn log10(n: c_float) -> c_float = cmath::c_float_utils::log10)
-delegate!(fn log2(n: c_float) -> c_float = cmath::c_float_utils::log2)
-delegate!(fn ilog_radix(n: c_float) -> c_int =
-    cmath::c_float_utils::ilog_radix)
-delegate!(fn modf(n: c_float, iptr: &mut c_float) -> c_float =
-    cmath::c_float_utils::modf)
-delegate!(fn pow(n: c_float, e: c_float) -> c_float =
-    cmath::c_float_utils::pow)
-delegate!(fn round(n: c_float) -> c_float = cmath::c_float_utils::round)
-delegate!(fn ldexp_radix(n: c_float, i: c_int) -> c_float =
-    cmath::c_float_utils::ldexp_radix)
-delegate!(fn sin(n: c_float) -> c_float = cmath::c_float_utils::sin)
-delegate!(fn sinh(n: c_float) -> c_float = cmath::c_float_utils::sinh)
-delegate!(fn sqrt(n: c_float) -> c_float = cmath::c_float_utils::sqrt)
-delegate!(fn tan(n: c_float) -> c_float = cmath::c_float_utils::tan)
-delegate!(fn tanh(n: c_float) -> c_float = cmath::c_float_utils::tanh)
-delegate!(fn tgamma(n: c_float) -> c_float = cmath::c_float_utils::tgamma)
-delegate!(fn trunc(n: c_float) -> c_float = cmath::c_float_utils::trunc)
+delegate!(
+    // intrinsics
+    fn abs(n: f32) -> f32 = intrinsics::fabsf32,
+    fn cos(n: f32) -> f32 = intrinsics::cosf32,
+    fn exp(n: f32) -> f32 = intrinsics::expf32,
+    fn exp2(n: f32) -> f32 = intrinsics::exp2f32,
+    fn floor(x: f32) -> f32 = intrinsics::floorf32,
+    fn ln(n: f32) -> f32 = intrinsics::logf32,
+    fn log10(n: f32) -> f32 = intrinsics::log10f32,
+    fn log2(n: f32) -> f32 = intrinsics::log2f32,
+    fn mul_add(a: f32, b: f32, c: f32) -> f32 = intrinsics::fmaf32,
+    fn pow(n: f32, e: f32) -> f32 = intrinsics::powf32,
+    fn powi(n: f32, e: c_int) -> f32 = intrinsics::powif32,
+    fn sin(n: f32) -> f32 = intrinsics::sinf32,
+    fn sqrt(n: f32) -> f32 = intrinsics::sqrtf32,
+
+    // LLVM 3.3 required to use intrinsics for these four
+    fn ceil(n: c_float) -> c_float = c_float_utils::ceil,
+    fn trunc(n: c_float) -> c_float = c_float_utils::trunc,
+    /*
+    fn ceil(n: f32) -> f32 = intrinsics::ceilf32,
+    fn trunc(n: f32) -> f32 = intrinsics::truncf32,
+    fn rint(n: f32) -> f32 = intrinsics::rintf32,
+    fn nearbyint(n: f32) -> f32 = intrinsics::nearbyintf32,
+    */
+
+    // cmath
+    fn acos(n: c_float) -> c_float = c_float_utils::acos,
+    fn asin(n: c_float) -> c_float = c_float_utils::asin,
+    fn atan(n: c_float) -> c_float = c_float_utils::atan,
+    fn atan2(a: c_float, b: c_float) -> c_float = c_float_utils::atan2,
+    fn cbrt(n: c_float) -> c_float = c_float_utils::cbrt,
+    fn copysign(x: c_float, y: c_float) -> c_float = c_float_utils::copysign,
+    fn cosh(n: c_float) -> c_float = c_float_utils::cosh,
+    fn erf(n: c_float) -> c_float = c_float_utils::erf,
+    fn erfc(n: c_float) -> c_float = c_float_utils::erfc,
+    fn expm1(n: c_float) -> c_float = c_float_utils::expm1,
+    fn abs_sub(a: c_float, b: c_float) -> c_float = c_float_utils::abs_sub,
+    fn fmax(a: c_float, b: c_float) -> c_float = c_float_utils::fmax,
+    fn fmin(a: c_float, b: c_float) -> c_float = c_float_utils::fmin,
+    fn nextafter(x: c_float, y: c_float) -> c_float = c_float_utils::nextafter,
+    fn frexp(n: c_float, value: &mut c_int) -> c_float = c_float_utils::frexp,
+    fn hypot(x: c_float, y: c_float) -> c_float = c_float_utils::hypot,
+    fn ldexp(x: c_float, n: c_int) -> c_float = c_float_utils::ldexp,
+    fn lgamma(n: c_float, sign: &mut c_int) -> c_float = c_float_utils::lgamma,
+    fn log_radix(n: c_float) -> c_float = c_float_utils::log_radix,
+    fn ln1p(n: c_float) -> c_float = c_float_utils::ln1p,
+    fn ilog_radix(n: c_float) -> c_int = c_float_utils::ilog_radix,
+    fn modf(n: c_float, iptr: &mut c_float) -> c_float = c_float_utils::modf,
+    fn round(n: c_float) -> c_float = c_float_utils::round,
+    fn ldexp_radix(n: c_float, i: c_int) -> c_float = c_float_utils::ldexp_radix,
+    fn sinh(n: c_float) -> c_float = c_float_utils::sinh,
+    fn tan(n: c_float) -> c_float = c_float_utils::tan,
+    fn tanh(n: c_float) -> c_float = c_float_utils::tanh,
+    fn tgamma(n: c_float) -> c_float = c_float_utils::tgamma)
+
 
 // These are not defined inside consts:: for consistency with
 // the integer types
@@ -143,9 +154,6 @@ pub fn ge(x: f32, y: f32) -> bool { return x >= y; }
 #[inline(always)]
 pub fn gt(x: f32, y: f32) -> bool { return x > y; }
 
-/// Returns `x` rounded down
-#[inline(always)]
-pub fn floor(x: f32) -> f32 { unsafe { floorf32(x) } }
 
 // FIXME (#1999): replace the predicates below with llvm intrinsics or
 // calls to the libmath macros in the rust runtime for performance.
