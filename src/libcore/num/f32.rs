@@ -16,7 +16,7 @@ use num::NumCast;
 use num::strconv;
 use num;
 use option::Option;
-use unstable::intrinsics::floorf32;
+use unstable::intrinsics;
 use from_str;
 use to_str;
 
@@ -93,7 +93,6 @@ delegate!(fn ldexp_radix(n: c_float, i: c_int) -> c_float =
     cmath::c_float_utils::ldexp_radix)
 delegate!(fn sin(n: c_float) -> c_float = cmath::c_float_utils::sin)
 delegate!(fn sinh(n: c_float) -> c_float = cmath::c_float_utils::sinh)
-delegate!(fn sqrt(n: c_float) -> c_float = cmath::c_float_utils::sqrt)
 delegate!(fn tan(n: c_float) -> c_float = cmath::c_float_utils::tan)
 delegate!(fn tanh(n: c_float) -> c_float = cmath::c_float_utils::tanh)
 delegate!(fn tgamma(n: c_float) -> c_float = cmath::c_float_utils::tgamma)
@@ -146,7 +145,10 @@ pub fn gt(x: f32, y: f32) -> bool { return x > y; }
 
 /// Returns `x` rounded down
 #[inline(always)]
-pub fn floor(x: f32) -> f32 { unsafe { floorf32(x) } }
+pub fn floor(x: f32) -> f32 { unsafe { intrinsics::llvm::floorf32(x) } }
+
+#[inline(always)]
+pub fn sqrt(x: f32) -> f32 { unsafe { intrinsics::llvm::sqrtf32(x) } }
 
 // FIXME (#1999): replace the predicates below with llvm intrinsics or
 // calls to the libmath macros in the rust runtime for performance.

@@ -10,35 +10,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-
-mod rusti {
-    #[abi = "rust-intrinsic"]
-    pub extern "rust-intrinsic" {
-        fn ctpop8(x: i8) -> i8;
-        fn ctpop16(x: i16) -> i16;
-        fn ctpop32(x: i32) -> i32;
-        fn ctpop64(x: i64) -> i64;
-
-        fn ctlz8(x: i8) -> i8;
-        fn ctlz16(x: i16) -> i16;
-        fn ctlz32(x: i32) -> i32;
-        fn ctlz64(x: i64) -> i64;
-
-        fn cttz8(x: i8) -> i8;
-        fn cttz16(x: i16) -> i16;
-        fn cttz32(x: i32) -> i32;
-        fn cttz64(x: i64) -> i64;
-
-        fn bswap16(x: i16) -> i16;
-        fn bswap32(x: i32) -> i32;
-        fn bswap64(x: i64) -> i64;
-    }
-}
-
 pub fn main() {
     unsafe {
-        use rusti::*;
+        use core::unstable::intrinsics::llvm::*;
 
         assert!((ctpop8(0i8) == 0i8));
         assert!((ctpop16(0i16) == 0i16));

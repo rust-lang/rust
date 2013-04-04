@@ -14,7 +14,7 @@ extern mod std;
 
 use core::io::{ReaderUtil, WriterUtil};
 use core::io;
-use core::unstable::intrinsics::cttz16;
+use core::unstable::intrinsics::llvm::cttz16;
 
 // Computes a single solution to a given 9x9 sudoku
 //
