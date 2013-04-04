@@ -988,7 +988,7 @@ custom destructors.
 
 # Boxes
 
-Many modern languages represent values as as pointers to heap memory by
+Many modern languages represent values as pointers to heap memory by
 default. In contrast, Rust, like C and C++, represents such types directly.
 Another way to say this is that aggregate data in Rust are *unboxed*. This
 means that if you `let x = Point { x: 1f, y: 1f };`, you are creating a struct
