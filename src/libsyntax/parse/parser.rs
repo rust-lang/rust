@@ -2844,7 +2844,8 @@ pub impl Parser {
         (lifetimes, opt_vec::take_vec(result))
     }
 
-    fn parse_fn_decl(&self, parse_arg_fn: &fn(&Parser) -> arg_or_capture_item)
+    // parse the argument list and result type of a function declaration
+    fn parse_fn_decl(&self)
         -> fn_decl
     {
         let args_or_capture_items: ~[arg_or_capture_item] =
@@ -2852,7 +2853,7 @@ pub impl Parser {
                 &token::LPAREN,
                 &token::RPAREN,
                 seq_sep_trailing_disallowed(token::COMMA),
-                parse_arg_fn
+                |p| p.parse_arg()
             );
 
         let inputs = either::lefts(args_or_capture_items);
@@ -3081,7 +3082,7 @@ pub impl Parser {
     // parse an item-position function declaration.
     fn parse_item_fn(&self, purity: purity, abis: AbiSet) -> item_info {
         let (ident, generics) = self.parse_fn_header();
-        let decl = self.parse_fn_decl(|p| p.parse_arg());
+        let decl = self.parse_fn_decl();
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
         (ident,
          item_fn(decl, purity, abis, generics, body),
@@ -3593,7 +3594,7 @@ pub impl Parser {
         let vis = self.parse_visibility();
         let purity = self.parse_fn_purity();
         let (ident, generics) = self.parse_fn_header();
-        let decl = self.parse_fn_decl(|p| p.parse_arg());
+        let decl = self.parse_fn_decl();
         let hi = self.span.hi;
         self.expect(&token::SEMI);
         @ast::foreign_item { ident: ident,
