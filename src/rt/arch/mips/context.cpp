@@ -40,6 +40,7 @@ void context::call(void *f, void *arg, void *stack)
 
   regs.data[4] = (uint32_t)arg;
   regs.data[29] = (uint32_t)sp;
+  regs.data[25] = (uint32_t)f;
   regs.data[31] = (uint32_t)f;
 
   // Last base pointer on the stack should be 0
