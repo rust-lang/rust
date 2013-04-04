@@ -2243,17 +2243,17 @@ pub fn create_main_wrapper(ccx: @CrateContext,
     }
 
     fn create_entry_fn(ccx: @CrateContext, rust_main: ValueRef) {
-        #[cfg(windows)]
-        fn main_name() -> ~str { return ~"WinMain@16"; }
-        #[cfg(unix)]
-        fn main_name() -> ~str { return ~"main"; }
         let llfty = T_fn(~[ccx.int_type, T_ptr(T_ptr(T_i8()))], ccx.int_type);
 
         // FIXME #4404 android JNI hacks
         let llfn = if *ccx.sess.building_library {
             decl_cdecl_fn(ccx.llmod, ~"amain", llfty)
         } else {
-            decl_cdecl_fn(ccx.llmod, main_name(), llfty)
+            let main_name = match ccx.sess.targ_cfg.os {
+                session::os_win32 => ~"WinMain@16",
+                _ => ~"main",
+            };
+            decl_cdecl_fn(ccx.llmod, main_name, llfty)
         };
         let llbb = str::as_c_str(~"top", |buf| {
             unsafe {
@@ -2284,25 +2284,14 @@ pub fn create_main_wrapper(ccx: @CrateContext,
             let opaque_crate_map = llvm::LLVMBuildPointerCast(
                 bld, crate_map, T_ptr(T_i8()), noname());
 
-            if *ccx.sess.building_library {
-                ~[
-                    retptr,
-                    C_null(T_opaque_box_ptr(ccx)),
-                    opaque_rust_main,
-                    llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
-                    llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
-                    opaque_crate_map
-                ]
-            } else {
-                ~[
-                    retptr,
-                    C_null(T_opaque_box_ptr(ccx)),
-                    opaque_rust_main,
-                    llvm::LLVMGetParam(llfn, 0 as c_uint),
-                    llvm::LLVMGetParam(llfn, 1 as c_uint),
-                    opaque_crate_map
-                ]
-            }
+            ~[
+                retptr,
+                C_null(T_opaque_box_ptr(ccx)),
+                opaque_rust_main,
+                llvm::LLVMGetParam(llfn, 0 as c_uint),
+                llvm::LLVMGetParam(llfn, 1 as c_uint),
+                opaque_crate_map
+            ]
         };
 
         unsafe {
