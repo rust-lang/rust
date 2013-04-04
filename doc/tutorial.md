@@ -1069,8 +1069,8 @@ d = @mut 15;
 
 A mutable variable and an immutable variable can refer to the same box, given 
 that their types are compatible. Mutability of a box is a property of its type, 
-however, so for example a mutable hande to an immutable box cannot be assigned 
-a reference to a mutable box.
+however, so for example a mutable handle to an immutable box cannot be 
+assigned a reference to a mutable box.
 
 ~~~~
 let a = @1;     // immutable box
@@ -1079,8 +1079,8 @@ let b = @mut 2; // mutable box
 let mut c : @int;       // declare a variable with type managed immutable int
 let mut d : @mut int;   // and one of type managed mutable int
 
-c = a;          // box type is the same
-d = b;          // box type is the same
+c = a;          // box type is the same, okay
+d = b;          // box type is the same, okay
 
 // but b cannot be assigned to c, or a to d
 c = b;          // error
