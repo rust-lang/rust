@@ -189,6 +189,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: 
 
     regs[4] = arg as uint;
     regs[29] = sp as uint;
+    regs[25] = fptr as uint;
     regs[31] = fptr as uint;
 }
 

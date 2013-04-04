@@ -89,7 +89,7 @@ pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
         abi::X86 => (~"little",~"x86",~"32"),
         abi::X86_64 => (~"little",~"x86_64",~"64"),
         abi::Arm => (~"little",~"arm",~"32"),
-        abi::Mips => (~"little",~"arm",~"32")
+        abi::Mips => (~"big",~"mips",~"32")
     };
 
     return ~[ // Target bindings.
