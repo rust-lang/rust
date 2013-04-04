@@ -1135,22 +1135,23 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         sugar: ast::CallSugar,
         deref_args: DerefArgs) -> ty::t
     {
-        match ty::get(method_fn_ty).sty {
-            ty::ty_bare_fn(ref fty) => {
-                check_argument_types(fcx, sp, fty.sig.inputs, callee_expr,
-                                     args, sugar, deref_args);
-                fty.sig.output
-            }
-            ty::ty_err => {
-                let err_inputs = err_args(fcx.tcx(), args.len());
-                check_argument_types(fcx, sp, err_inputs, callee_expr,
-                                     args, sugar, deref_args);
-                method_fn_ty
-            }
-            _ => {
-                fcx.tcx().sess.span_bug(
-                    sp,
-                    fmt!("Method without bare fn type"));
+        if ty::type_is_error(method_fn_ty) {
+            let err_inputs = err_args(fcx.tcx(), args.len());
+            check_argument_types(fcx, sp, err_inputs, callee_expr,
+                                 args, sugar, deref_args);
+            method_fn_ty
+        } else {
+            match ty::get(method_fn_ty).sty {
+                ty::ty_bare_fn(ref fty) => {
+                    check_argument_types(fcx, sp, fty.sig.inputs, callee_expr,
+                                         args, sugar, deref_args);
+                    fty.sig.output
+                }
+                _ => {
+                    fcx.tcx().sess.span_bug(
+                        sp,
+                        fmt!("Method without bare fn type"));
+                }
             }
         }
     }
