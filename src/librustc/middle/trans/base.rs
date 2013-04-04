@@ -2701,6 +2701,14 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
                                 T_fn(~[T_f32()], T_f32()));
     let truncf64 = decl_cdecl_fn(llmod, ~"llvm.trunc.f64",
                                 T_fn(~[T_f64()], T_f64()));
+    let rintf32 = decl_cdecl_fn(llmod, ~"llvm.rint.f32",
+                                T_fn(~[T_f32()], T_f32()));
+    let rintf64 = decl_cdecl_fn(llmod, ~"llvm.rint.f64",
+                                T_fn(~[T_f64()], T_f64()));
+    let nearbyintf32 = decl_cdecl_fn(llmod, ~"llvm.nearbyint.f32",
+                                T_fn(~[T_f32()], T_f32()));
+    let nearbyintf64 = decl_cdecl_fn(llmod, ~"llvm.nearbyint.f64",
+                                T_fn(~[T_f64()], T_f64()));
     let ctpop8 = decl_cdecl_fn(llmod, ~"llvm.ctpop.i8",
                                 T_fn(~[T_i8()], T_i8()));
     let ctpop16 = decl_cdecl_fn(llmod, ~"llvm.ctpop.i16",
@@ -2773,6 +2781,10 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     intrinsics.insert(~"llvm.ceil.f64", ceilf64);
     intrinsics.insert(~"llvm.trunc.f32", truncf32);
     intrinsics.insert(~"llvm.trunc.f64", truncf64);
+    intrinsics.insert(~"llvm.rint.f32", rintf32);
+    intrinsics.insert(~"llvm.rint.f64", rintf64);
+    intrinsics.insert(~"llvm.nearbyint.f32", nearbyintf32);
+    intrinsics.insert(~"llvm.nearbyint.f64", nearbyintf64);
     intrinsics.insert(~"llvm.ctpop.i8", ctpop8);
     intrinsics.insert(~"llvm.ctpop.i16", ctpop16);
     intrinsics.insert(~"llvm.ctpop.i32", ctpop32);
