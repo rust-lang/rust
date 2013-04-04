@@ -3251,6 +3251,28 @@ of runtime logging modules follows.
 * `::rt::backtrace` Log a backtrace on task failure
 * `::rt::callback` Unused
 
+#### Logging Expressions
+
+Rust provides several macros to log information. Here's a simple Rust program
+that demonstrates all four of them:
+
+```rust
+fn main() {
+    error!("This is an error log")
+    warn!("This is a warn log")
+    info!("this is an info log")
+    debug!("This is a debug log")
+}
+```
+
+These four log levels correspond to levels 1-4, as controlled by `RUST_LOG`:
+
+```bash
+$ RUST_LOG=rust=3 ./rust
+rust: ~"\"This is an error log\""
+rust: ~"\"This is a warn log\""
+rust: ~"\"this is an info log\""
+```
 
 # Appendix: Rationales and design tradeoffs
 
