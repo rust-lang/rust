@@ -763,6 +763,7 @@ pub impl Parser {
         return ty_rptr(opt_lifetime, mt);
     }
 
+    // parse an optional mode.
     fn parse_arg_mode(&self) -> mode {
         if self.eat(&token::BINOP(token::MINUS)) {
             self.obsolete(*self.span, ObsoleteMode);
@@ -829,6 +830,7 @@ pub impl Parser {
                   ty: t, pat: pat, id: self.get_id() }
     }
 
+    // parse a single function argument
     fn parse_arg(&self) -> arg_or_capture_item {
         either::Left(self.parse_arg_general(true))
     }
@@ -2883,6 +2885,8 @@ pub impl Parser {
         self.bump();
     }
 
+    // parse the argument list and result type of a function
+    // that may have a self type.
     fn parse_fn_decl_with_self(
         &self,
         parse_arg_fn:
@@ -3056,6 +3060,7 @@ pub impl Parser {
         }
     }
 
+    // parse the name and optional generic types of a function header.
     fn parse_fn_header(&self) -> (ident, ast::Generics) {
         let id = self.parse_ident();
         let generics = self.parse_generics();
@@ -3073,6 +3078,7 @@ pub impl Parser {
                      span: mk_sp(lo, hi) }
     }
 
+    // parse an item-position function declaration.
     fn parse_item_fn(&self, purity: purity, abis: AbiSet) -> item_info {
         let (ident, generics) = self.parse_fn_header();
         let decl = self.parse_fn_decl(|p| p.parse_arg());
