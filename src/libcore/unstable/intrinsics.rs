@@ -84,7 +84,7 @@ pub extern mod llvm {
     #[inline(always)]
     #[link_name="llvm.powi.f32"]
     pub fn powif32(a: f32, x: i32) -> f32;
-    
+
     #[nomangle]
     #[rust_stack]
     #[inline(always)]
@@ -132,7 +132,7 @@ pub extern mod llvm {
     #[inline(always)]
     #[link_name="llvm.exp.f32"]
     pub fn expf32(x: f32) -> f32;
-    
+
     #[nomangle]
     #[rust_stack]
     #[inline(always)]
@@ -151,7 +151,7 @@ pub extern mod llvm {
     #[link_name="llvm.log.f64"]
     pub fn logf64(x: f64) -> f64;
 
-    /* TODO: Do these intrinsics even exist?
+    /* NOTE: Do these intrinsics even exist?
     pub fn exp2f32(x: f32) -> f32;
     pub fn exp2f64(x: f64) -> f64;
 
@@ -199,7 +199,7 @@ pub extern mod llvm {
     #[link_name="llvm.floor.f64"]
     pub fn floorf64(x: f64) -> f64;
 
-    /* TODO: Needs LLVM 3.3
+    /* NOTE: Needs LLVM 3.3
     #[nomangle]
     #[rust_stack]
     #[link_name="llvm.ceil.f32"]
@@ -245,7 +245,7 @@ pub extern mod llvm {
     #[link_name="llvm.ctpop.i64"]
     pub fn ctpop64(x: i64) -> i64;
 
-    /* TODO: Needs bool constants
+    /* NOTE: Needs bool constants
     #[nomangle]
     #[rust_stack]
     #[inline(always)]
