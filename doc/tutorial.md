@@ -1067,6 +1067,26 @@ let mut d = @mut 5; // mutable variable, mutable box
 d = @mut 15;
 ~~~~
 
+A mutable variable and an immutable variable can refer to the same box, given 
+that their types are compatible. Mutability of a box is a property of its type, 
+however, so for example a mutable hande to an immutable box cannot be assigned 
+a reference to a mutable box.
+
+~~~~
+let a = @1;     // immutable box
+let b = @mut 2; // mutable box
+
+let mut c : @int;       // declare a variable with type managed immutable int
+let mut d : @mut int;   // and one of type managed mutable int
+
+c = a;          // box type is the same
+d = b;          // box type is the same
+
+// but b cannot be assigned to c, or a to d
+c = b;          // error
+~~~~
+
+
 # Move semantics
 
 Rust uses a shallow copy for parameter passing, assignment and returning values
@@ -1079,6 +1099,16 @@ the source location and will not be destroyed there.
 let x = ~5;
 let y = x.clone(); // y is a newly allocated box
 let z = x; // no new memory allocated, x can no longer be used
+~~~~
+
+Since in owned boxes mutabilility is a property of the owner, not the 
+box, mutable boxes may become immutable when they are moved, and vice-versa.
+
+~~~~
+let r = ~13;
+let mut s = r; // box becomes mutable
+*s += 1;
+let t = s; // box becomes immutable
 ~~~~
 
 # Borrowed pointers
