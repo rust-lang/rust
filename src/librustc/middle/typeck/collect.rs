@@ -653,13 +653,20 @@ pub fn convert_methods(ccx: &CrateCtxt,
                                   &method_generics.lifetimes,
                                   untransformed_rcvr_ty,
                                   m.self_ty, &m.decl);
+
+        // if the method specifies a visibility, use that, otherwise
+        // inherit the visibility from the impl (so `foo` in `pub impl
+        // { fn foo(); }` is public, but private in `priv impl { fn
+        // foo(); }`).
+        let method_vis = m.vis.inherit_from(rcvr_visibility);
+
         ty::method {
             ident: m.ident,
             generics: ty_generics(ccx, None, &m.generics),
             transformed_self_ty: transformed_self_ty,
             fty: fty,
             self_ty: m.self_ty.node,
-            vis: m.vis.inherit_from(rcvr_visibility),
+            vis: method_vis,
             def_id: local_def(m.id)
         }
     }
