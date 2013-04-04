@@ -534,7 +534,7 @@ mod test {
     fn test_empty_files() {
         let filenames = pathify(vec::from_fn(
             3,
-            |i| fmt!("tmp/lib-fileinput-test-next-file-%u.tmp", i)),true);
+            |i| fmt!("tmp/lib-fileinput-test-empty-files-%u.tmp", i)),true);
 
         make_file(filenames[0].get_ref(), ~[~"1", ~"2"]);
         make_file(filenames[1].get_ref(), ~[]);
