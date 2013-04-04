@@ -1191,7 +1191,7 @@ they are frozen:
 let x = @mut 5;
 let y = x;
 {
-    let y = &*y; // the managed box is now frozen
+    let z = &*y; // the managed box is now frozen
     // modifying it through x or y will cause a task failure
 }
 // the box is now unfrozen again
