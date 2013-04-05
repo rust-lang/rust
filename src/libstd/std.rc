@@ -95,6 +95,7 @@ pub mod cmp;
 pub mod base64;
 pub mod rl;
 pub mod workcache;
+#[path="num/bigint.rs"]
 pub mod bigint;
 pub mod stats;
 pub mod semver;
