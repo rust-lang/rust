@@ -99,6 +99,8 @@ pub mod workcache;
 pub mod bigint;
 #[path="num/rational.rs"]
 pub mod rational;
+#[path="num/complex.rs"]
+pub mod complex;
 pub mod stats;
 pub mod semver;
 pub mod fileinput;
