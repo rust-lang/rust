@@ -90,7 +90,7 @@ pub trait Combine {
     fn tps(&self, as_: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]>;
     fn self_tys(&self, a: Option<ty::t>, b: Option<ty::t>)
                -> cres<Option<ty::t>>;
-    fn substs(&self, did: ast::def_id, as_: &ty::substs,
+    fn substs(&self, generics: &ty::Generics, as_: &ty::substs,
               bs: &ty::substs) -> cres<ty::substs>;
     fn bare_fn_tys(&self, a: &ty::BareFnTy,
                    b: &ty::BareFnTy) -> cres<ty::BareFnTy>;
@@ -114,6 +114,7 @@ pub trait Combine {
                     a: ty::TraitStore,
                     b: ty::TraitStore)
                  -> cres<ty::TraitStore>;
+    fn trait_refs(&self, a: &ty::TraitRef, b: &ty::TraitRef) -> cres<ty::TraitRef>;
 }
 
 pub struct CombineFields {
@@ -192,32 +193,31 @@ pub fn eq_opt_regions<C:Combine>(
 }
 
 pub fn super_substs<C:Combine>(
-    self: &C, did: ast::def_id,
+    self: &C, generics: &ty::Generics,
     a: &ty::substs, b: &ty::substs) -> cres<ty::substs> {
 
     fn relate_region_param<C:Combine>(
         self: &C,
-        did: ast::def_id,
+        generics: &ty::Generics,
         a: Option<ty::Region>,
         b: Option<ty::Region>)
         -> cres<Option<ty::Region>>
     {
-        let polyty = ty::lookup_item_type(self.infcx().tcx, did);
-        match (polyty.region_param, a, b) {
-          (None, None, None) => {
+        match (&generics.region_param, &a, &b) {
+          (&None, &None, &None) => {
             Ok(None)
           }
-          (Some(ty::rv_invariant), Some(a), Some(b)) => {
+          (&Some(ty::rv_invariant), &Some(a), &Some(b)) => {
             do eq_regions(self, a, b).then {
                 Ok(Some(a))
             }
           }
-          (Some(ty::rv_covariant), Some(a), Some(b)) => {
+          (&Some(ty::rv_covariant), &Some(a), &Some(b)) => {
             do self.regions(a, b).chain |r| {
                 Ok(Some(r))
             }
           }
-          (Some(ty::rv_contravariant), Some(a), Some(b)) => {
+          (&Some(ty::rv_contravariant), &Some(a), &Some(b)) => {
             do self.contraregions(a, b).chain |r| {
                 Ok(Some(r))
             }
@@ -233,14 +233,14 @@ pub fn super_substs<C:Combine>(
                       b had opt_region %s with variance %?",
                       a.inf_str(self.infcx()),
                       b.inf_str(self.infcx()),
-                      polyty.region_param));
+                     generics.region_param));
           }
         }
     }
 
     do self.tps(a.tps, b.tps).chain |tps| {
         do self.self_tys(a.self_ty, b.self_ty).chain |self_ty| {
-            do relate_region_param(self, did,
+            do relate_region_param(self, generics,
                                    a.self_r, b.self_r).chain |self_r|
             {
                 Ok(substs {
@@ -520,26 +520,29 @@ pub fn super_tys<C:Combine>(
       (ty::ty_enum(a_id, ref a_substs),
        ty::ty_enum(b_id, ref b_substs))
       if a_id == b_id => {
-        do self.substs(a_id, a_substs, b_substs).chain |substs| {
-            Ok(ty::mk_enum(tcx, a_id, substs))
-        }
+          let type_def = ty::lookup_item_type(tcx, a_id);
+          do self.substs(&type_def.generics, a_substs, b_substs).chain |substs| {
+              Ok(ty::mk_enum(tcx, a_id, substs))
+          }
       }
 
       (ty::ty_trait(a_id, ref a_substs, a_store),
        ty::ty_trait(b_id, ref b_substs, b_store))
       if a_id == b_id => {
-        do self.substs(a_id, a_substs, b_substs).chain |substs| {
-            do self.trait_stores(ty::terr_trait, a_store, b_store).chain |s| {
-                Ok(ty::mk_trait(tcx, a_id, /*bad*/copy substs, s))
-            }
-        }
+          let trait_def = ty::lookup_trait_def(tcx, a_id);
+          do self.substs(&trait_def.generics, a_substs, b_substs).chain |substs| {
+              do self.trait_stores(ty::terr_trait, a_store, b_store).chain |s| {
+                  Ok(ty::mk_trait(tcx, a_id, /*bad*/copy substs, s))
+              }
+          }
       }
 
       (ty::ty_struct(a_id, ref a_substs), ty::ty_struct(b_id, ref b_substs))
       if a_id == b_id => {
-        do self.substs(a_id, a_substs, b_substs).chain |substs| {
-            Ok(ty::mk_struct(tcx, a_id, substs))
-        }
+          let type_def = ty::lookup_item_type(tcx, a_id);
+          do self.substs(&type_def.generics, a_substs, b_substs).chain |substs| {
+              Ok(ty::mk_struct(tcx, a_id, substs))
+          }
       }
 
       (ty::ty_box(ref a_mt), ty::ty_box(ref b_mt)) => {
@@ -634,3 +637,25 @@ pub fn super_tys<C:Combine>(
         Ok(ty::mk_mach_float(tcx, val))
     }
 }
+
+pub fn super_trait_refs<C:Combine>(
+    self: &C, a: &ty::TraitRef, b: &ty::TraitRef) -> cres<ty::TraitRef>
+{
+    // Different traits cannot be related
+
+    // - NOTE in the future, expand out subtraits!
+
+    if a.def_id != b.def_id {
+        Err(ty::terr_traits(
+            expected_found(self, a.def_id, b.def_id)))
+    } else {
+        let tcx = self.infcx().tcx;
+        let trait_def = ty::lookup_trait_def(tcx, a.def_id);
+        let substs = if_ok!(self.substs(&trait_def.generics, &a.substs, &b.substs));
+        Ok(ty::TraitRef {
+            def_id: a.def_id,
+            substs: substs
+        })
+    }
+}
+

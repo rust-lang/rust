@@ -117,7 +117,7 @@ fn fold_mod(
                         !doc.methods.is_empty()
                     } else {
                         // This is a trait implementation, make it visible
-                        // NOTE: This is not quite right since this could be an impl
+                        // NB: This is not quite right since this could be an impl
                         // of a private trait. We can't know that without running
                         // resolve though.
                         true

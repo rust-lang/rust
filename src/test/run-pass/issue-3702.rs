@@ -13,7 +13,7 @@ pub fn main() {
     fn to_str(&self) -> ~str;
   }
 
-  fn to_string(t: Text) {
+  fn to_string(t: @Text) {
     io::println(t.to_str());
   }
 

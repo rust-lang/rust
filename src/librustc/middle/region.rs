@@ -690,7 +690,9 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
     match ty.node {
       ast::ty_path(path, id) => {
         match cx.def_map.find(&id) {
-          Some(&ast::def_ty(did)) | Some(&ast::def_struct(did)) => {
+          Some(&ast::def_ty(did)) |
+          Some(&ast::def_trait(did)) |
+          Some(&ast::def_struct(did)) => {
             if did.crate == ast::local_crate {
                 if cx.region_is_relevant(path.rp) {
                     cx.add_dep(did.node);

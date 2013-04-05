@@ -214,11 +214,16 @@ pub fn enc_vstore(w: @io::Writer, cx: @ctxt, v: ty::vstore) {
     }
 }
 
+pub fn enc_trait_ref(w: @io::Writer, cx: @ctxt, s: &ty::TraitRef) {
+    w.write_str((cx.ds)(s.def_id));
+    w.write_char('|');
+    enc_substs(w, cx, s.substs);
+}
+
 pub fn enc_trait_store(w: @io::Writer, cx: @ctxt, s: ty::TraitStore) {
     match s {
         ty::UniqTraitStore => w.write_char('~'),
         ty::BoxTraitStore => w.write_char('@'),
-        ty::BareTraitStore => w.write_char('.'),
         ty::RegionTraitStore(re) => {
             w.write_char('&');
             enc_region(w, cx, re);
@@ -384,7 +389,7 @@ fn enc_onceness(w: @io::Writer, o: Onceness) {
     }
 }
 
-fn enc_bare_fn_ty(w: @io::Writer, cx: @ctxt, ft: &ty::BareFnTy) {
+pub fn enc_bare_fn_ty(w: @io::Writer, cx: @ctxt, ft: &ty::BareFnTy) {
     enc_purity(w, ft.purity);
     enc_abi_set(w, ft.abis);
     enc_fn_sig(w, cx, &ft.sig);
@@ -415,8 +420,8 @@ pub fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
           ty::bound_const => w.write_char('K'),
           ty::bound_durable => w.write_char('O'),
           ty::bound_trait(tp) => {
-            w.write_char('I');
-            enc_ty(w, cx, tp);
+              w.write_char('I');
+              enc_trait_ref(w, cx, tp);
           }
         }
     }

@@ -144,7 +144,7 @@ pub static crate_node_id: node_id = 0;
 // the "special" built-in traits (see middle::lang_items) and
 // detects Copy, Send, Owned, and Const.
 pub enum TyParamBound {
-    TraitTyParamBound(@Ty),
+    TraitTyParamBound(@trait_ref),
     RegionTyParamBound
 }
 
@@ -194,6 +194,7 @@ pub enum def {
     def_local(node_id, bool /* is_mutbl */),
     def_variant(def_id /* enum */, def_id /* variant */),
     def_ty(def_id),
+    def_trait(def_id),
     def_prim_ty(prim_ty),
     def_ty_param(def_id, uint),
     def_binding(node_id, binding_mode),
@@ -1184,6 +1185,15 @@ pub struct trait_ref {
 #[auto_decode]
 #[deriving(Eq)]
 pub enum visibility { public, private, inherited }
+
+impl visibility {
+    fn inherit_from(&self, parent_visibility: visibility) -> visibility {
+        match self {
+            &inherited => parent_visibility,
+            &public | &private => *self
+        }
+    }
+}
 
 #[auto_encode]
 #[auto_decode]

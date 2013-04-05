@@ -308,7 +308,7 @@ pub fn compile_rest(sess: Session, cfg: ast::crate_cfg,
 
     };
 
-    // NOTE: Android hack
+    // NB: Android hack
     if sess.targ_cfg.arch == abi::Arm &&
             (sess.opts.output_type == link::output_type_object ||
              sess.opts.output_type == link::output_type_exe) {
