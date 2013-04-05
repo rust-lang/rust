@@ -11,7 +11,7 @@
 //! Rustdoc - The Rust documentation generator
 
 #[link(name = "rustdoc",
-       vers = "0.6",
+       vers = "0.7-rc",
        uuid = "f8abd014-b281-484d-a0c3-26e3de8e2412",
        url = "https://github.com/mozilla/rust/tree/master/src/rustdoc")];
 
@@ -23,10 +23,10 @@
 
 #[allow(non_implicitly_copyable_typarams)];
 
-extern mod core(vers = "0.6");
-extern mod std(vers = "0.6");
-extern mod rustc(vers = "0.6");
-extern mod syntax(vers = "0.6");
+extern mod core(vers = "0.7-rc");
+extern mod std(vers = "0.7-rc");
+extern mod rustc(vers = "0.7-rc");
+extern mod syntax(vers = "0.7-rc");
 
 use config::Config;
 use doc::Item;
