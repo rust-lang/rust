@@ -17,8 +17,8 @@ use core::prelude::*;
 // FIXME #1284: handle complex NaN & infinity etc. This
 // probably doesn't map to C's _Complex correctly.
 
-// XXX: Need generic sqrt to implement .norm(). Need generic sin/cos
-// for .to/from_polar().
+// FIXME #5734:: Need generic sin/cos for .to/from_polar().
+// FIXME #5735: Need generic sqrt to implement .norm().
 
 
 /// A complex number in Cartesian form.
@@ -75,7 +75,6 @@ impl<T: Copy + Add<T,T> + Sub<T,T> + Mul<T,T> + Div<T,T> + Neg<T>>
         let norm_sqr = self.norm_sqr();
         Cmplx::new(self.re / norm_sqr,
                     -self.im / norm_sqr)
-
     }
 }
 
@@ -233,7 +232,7 @@ mod test {
     #[should_fail]
     #[ignore]
     fn test_inv_zero() {
-        // XXX: should this really fail, or just NaN?
+        // FIXME #5736: should this really fail, or just NaN?
         _0_0i.inv();
     }
 
