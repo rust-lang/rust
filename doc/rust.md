@@ -441,10 +441,10 @@ expression context, the final namespace qualifier is omitted.
 Two examples of paths with type arguments:
 
 ~~~~
-# use core::hashmap::linear::LinearMap;
+# use core::hashmap::HashMap;
 # fn f() {
 # fn id<T:Copy>(t: T) -> T { t }
-type t = LinearMap<int,~str>;  // Type arguments used in a type expression
+type t = HashMap<int,~str>;  // Type arguments used in a type expression
 let x = id::<int>(10);         // Type arguments used in a call expression
 # }
 ~~~~
@@ -3251,6 +3251,28 @@ of runtime logging modules follows.
 * `::rt::backtrace` Log a backtrace on task failure
 * `::rt::callback` Unused
 
+#### Logging Expressions
+
+Rust provides several macros to log information. Here's a simple Rust program
+that demonstrates all four of them:
+
+```rust
+fn main() {
+    error!("This is an error log")
+    warn!("This is a warn log")
+    info!("this is an info log")
+    debug!("This is a debug log")
+}
+```
+
+These four log levels correspond to levels 1-4, as controlled by `RUST_LOG`:
+
+```bash
+$ RUST_LOG=rust=3 ./rust
+rust: ~"\"This is an error log\""
+rust: ~"\"This is a warn log\""
+rust: ~"\"this is an info log\""
+```
 
 # Appendix: Rationales and design tradeoffs
 

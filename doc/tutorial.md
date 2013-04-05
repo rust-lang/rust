@@ -495,7 +495,7 @@ omitted.
 
 A powerful application of pattern matching is *destructuring*:
 matching in order to bind names to the contents of data
-types. Remember that `(float, float)` is a tuple of two floats:
+types. Assuming that `(float, float)` is a tuple of two floats:
 
 ~~~~
 fn angle(vector: (float, float)) -> float {
@@ -988,7 +988,7 @@ custom destructors.
 
 # Boxes
 
-Many modern languages represent values as as pointers to heap memory by
+Many modern languages represent values as pointers to heap memory by
 default. In contrast, Rust, like C and C++, represents such types directly.
 Another way to say this is that aggregate data in Rust are *unboxed*. This
 means that if you `let x = Point { x: 1f, y: 1f };`, you are creating a struct
@@ -1191,7 +1191,7 @@ they are frozen:
 let x = @mut 5;
 let y = x;
 {
-    let y = &*y; // the managed box is now frozen
+    let z = &*y; // the managed box is now frozen
     // modifying it through x or y will cause a task failure
 }
 // the box is now unfrozen again
@@ -1888,8 +1888,8 @@ illegal to copy and pass by value.
 Generic `type`, `struct`, and `enum` declarations follow the same pattern:
 
 ~~~~
-# use core::hashmap::linear::LinearMap;
-type Set<T> = LinearMap<T, ()>;
+# use core::hashmap::HashMap;
+type Set<T> = HashMap<T, ()>;
 
 struct Stack<T> {
     elements: ~[T]

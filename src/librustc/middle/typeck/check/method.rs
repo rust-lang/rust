@@ -95,7 +95,7 @@ use middle::typeck::{method_self, method_static, method_trait, method_super};
 use util::common::indenter;
 use util::ppaux::expr_repr;
 
-use core::hashmap::linear::LinearSet;
+use core::hashmap::HashSet;
 use core::result;
 use core::uint;
 use core::vec;
@@ -131,7 +131,7 @@ pub fn lookup(
         check_traits: CheckTraitsFlag,      // Whether we check traits only.
         autoderef_receiver: AutoderefReceiverFlag)
      -> Option<method_map_entry> {
-    let mut impl_dups = LinearSet::new();
+    let mut impl_dups = HashSet::new();
     let lcx = LookupContext {
         fcx: fcx,
         expr: expr,
@@ -159,7 +159,7 @@ pub struct LookupContext<'self> {
     callee_id: node_id,
     m_name: ast::ident,
     supplied_tps: &'self [ty::t],
-    impl_dups: &'self mut LinearSet<def_id>,
+    impl_dups: &'self mut HashSet<def_id>,
     inherent_candidates: @mut ~[Candidate],
     extension_candidates: @mut ~[Candidate],
     deref_args: check::DerefArgs,

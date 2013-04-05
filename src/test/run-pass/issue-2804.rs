@@ -11,7 +11,7 @@
 // except according to those terms.
 
 extern mod std;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use std::json;
 
 enum object {
@@ -58,7 +58,7 @@ fn add_interface(store: int, managed_ip: ~str, data: std::json::Json) -> (~str, 
     }
 }
 
-fn add_interfaces(store: int, managed_ip: ~str, device: LinearMap<~str, std::json::Json>) -> ~[(~str, object)]
+fn add_interfaces(store: int, managed_ip: ~str, device: HashMap<~str, std::json::Json>) -> ~[(~str, object)]
 {
     match device.get(&~"interfaces")
     {

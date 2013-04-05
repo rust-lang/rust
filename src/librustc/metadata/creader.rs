@@ -18,7 +18,7 @@ use metadata::decoder;
 use metadata::filesearch::FileSearch;
 use metadata::loader;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::vec;
 use syntax::attr;
 use syntax::codemap::{span, dummy_sp};
@@ -302,7 +302,7 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
     debug!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
-    let mut cnum_map = LinearMap::new();
+    let mut cnum_map = HashMap::new();
     for decoder::get_crate_deps(e.intr, cdata).each |dep| {
         let extrn_cnum = dep.cnum;
         let cname = dep.name;

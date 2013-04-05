@@ -25,7 +25,7 @@ use util::ppaux::ty_to_str;
 
 use core::flate;
 use core::hash::HashUtil;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::int;
 use core::io::{Writer, WriterUtil};
 use core::io;
@@ -50,7 +50,7 @@ use syntax;
 use writer = std::ebml::writer;
 
 // used by astencode:
-type abbrev_map = @mut LinearMap<ty::t, tyencode::ty_abbrev>;
+type abbrev_map = @mut HashMap<ty::t, tyencode::ty_abbrev>;
 
 pub type encode_inlined_item = @fn(ecx: @EncodeContext,
                                    ebml_w: writer::Encoder,
@@ -62,8 +62,8 @@ pub struct EncodeParams {
     tcx: ty::ctxt,
     reachable: reachable::map,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: @mut LinearMap<ast::node_id, ~str>,
-    discrim_symbols: @mut LinearMap<ast::node_id, ~str>,
+    item_symbols: @mut HashMap<ast::node_id, ~str>,
+    discrim_symbols: @mut HashMap<ast::node_id, ~str>,
     link_meta: LinkMeta,
     cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item
@@ -89,8 +89,8 @@ pub struct EncodeContext {
     stats: @mut Stats,
     reachable: reachable::map,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: @mut LinearMap<ast::node_id, ~str>,
-    discrim_symbols: @mut LinearMap<ast::node_id, ~str>,
+    item_symbols: @mut HashMap<ast::node_id, ~str>,
+    discrim_symbols: @mut HashMap<ast::node_id, ~str>,
     link_meta: LinkMeta,
     cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item,
@@ -1345,7 +1345,7 @@ pub fn encode_metadata(+parms: EncodeParams, crate: &crate) -> ~[u8] {
         link_meta: link_meta,
         cstore: cstore,
         encode_inlined_item: encode_inlined_item,
-        type_abbrevs: @mut LinearMap::new()
+        type_abbrevs: @mut HashMap::new()
      };
 
     let ebml_w = writer::Encoder(wr as @io::Writer);

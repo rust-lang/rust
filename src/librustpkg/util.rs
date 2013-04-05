@@ -10,7 +10,7 @@
 
 use core::*;
 use core::hash::Streaming;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use std::getopts::groups::getopts;
@@ -337,7 +337,7 @@ fn _add_pkg(packages: ~[json::Json], pkg: &Package) -> ~[json::Json] {
         }
     }
 
-    let mut map = ~LinearMap::new();
+    let mut map = ~HashMap::new();
 
     map.insert(~"id", json::String(pkg.id));
     map.insert(~"vers", json::String(pkg.vers.to_str()));

@@ -1,5 +1,3 @@
-// xfail-fast
-
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -10,10 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::hashmap::HashMap;
+fn main() {
+    let a : ~int = ~5i;
+    let b : ~int = a.clone();
 
-pub fn main() {
-    let mut buggy_map: HashMap<uint, &uint> = HashMap::new::<uint, &uint>();
-    let x = ~1;
-    buggy_map.insert(42, &*x);
+    debug!(fmt!("a: %?, b: %?", a, b));
+    
+    let a : @int = @5i;
+    let b : @int = a.clone();
+
+    debug!(fmt!("a: %?, b: %?", a, b));
+
+    let a : @mut int = @mut 5i;
+    let b : @mut int = a.clone();
+    *b = 6;
+
+    debug!(fmt!("a: %?, b: %?", a, b));
 }

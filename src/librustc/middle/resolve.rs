@@ -77,10 +77,10 @@ use syntax::opt_vec::OptVec;
 
 use core::option::Some;
 use core::str::each_split_str;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 
 // Definition mapping
-pub type DefMap = @mut LinearMap<node_id,def>;
+pub type DefMap = @mut HashMap<node_id,def>;
 
 pub struct binding_info {
     span: span,
@@ -88,7 +88,7 @@ pub struct binding_info {
 }
 
 // Map from the name in a pattern to its binding mode.
-pub type BindingMap = LinearMap<ident,binding_info>;
+pub type BindingMap = HashMap<ident,binding_info>;
 
 // Implementation resolution
 //
@@ -109,11 +109,11 @@ pub struct Impl {
 }
 
 // Trait method resolution
-pub type TraitMap = LinearMap<node_id,@mut ~[def_id]>;
+pub type TraitMap = HashMap<node_id,@mut ~[def_id]>;
 
 // This is the replacement export map. It maps a module to all of the exports
 // within.
-pub type ExportMap2 = @mut LinearMap<node_id, ~[Export2]>;
+pub type ExportMap2 = @mut HashMap<node_id, ~[Export2]>;
 
 pub struct Export2 {
     name: @~str,        // The name of the target.
@@ -328,13 +328,13 @@ pub fn namespace_for_duplicate_checking_mode(mode: DuplicateCheckingMode)
 
 /// One local scope.
 pub struct Rib {
-    bindings: @mut LinearMap<ident,def_like>,
+    bindings: @mut HashMap<ident,def_like>,
     kind: RibKind,
 }
 
 pub fn Rib(kind: RibKind) -> Rib {
     Rib {
-        bindings: @mut LinearMap::new(),
+        bindings: @mut HashMap::new(),
         kind: kind
     }
 }
@@ -450,12 +450,12 @@ pub struct Module {
     def_id: Option<def_id>,
     kind: ModuleKind,
 
-    children: @mut LinearMap<ident, @mut NameBindings>,
+    children: @mut HashMap<ident, @mut NameBindings>,
     imports: @mut ~[@ImportDirective],
 
     // The external module children of this node that were declared with
     // `extern mod`.
-    external_module_children: @mut LinearMap<ident, @mut Module>,
+    external_module_children: @mut HashMap<ident, @mut Module>,
 
     // The anonymous children of this node. Anonymous children are pseudo-
     // modules that are implicitly created around items contained within
@@ -472,10 +472,10 @@ pub struct Module {
     // There will be an anonymous module created around `g` with the ID of the
     // entry block for `f`.
 
-    anonymous_children: @mut LinearMap<node_id,@mut Module>,
+    anonymous_children: @mut HashMap<node_id,@mut Module>,
 
     // The status of resolving each import in this module.
-    import_resolutions: @mut LinearMap<ident, @mut ImportResolution>,
+    import_resolutions: @mut HashMap<ident, @mut ImportResolution>,
 
     // The number of unresolved globs that this module exports.
     glob_count: uint,
@@ -492,11 +492,11 @@ pub fn Module(parent_link: ParentLink,
         parent_link: parent_link,
         def_id: def_id,
         kind: kind,
-        children: @mut LinearMap::new(),
+        children: @mut HashMap::new(),
         imports: @mut ~[],
-        external_module_children: @mut LinearMap::new(),
-        anonymous_children: @mut LinearMap::new(),
-        import_resolutions: @mut LinearMap::new(),
+        external_module_children: @mut HashMap::new(),
+        anonymous_children: @mut HashMap::new(),
+        import_resolutions: @mut HashMap::new(),
         glob_count: 0,
         resolved_import_count: 0
     }
@@ -707,7 +707,7 @@ pub fn NameBindings() -> NameBindings {
 
 /// Interns the names of the primitive types.
 pub struct PrimitiveTypeTable {
-    primitive_types: LinearMap<ident,prim_ty>,
+    primitive_types: HashMap<ident,prim_ty>,
 }
 
 pub impl PrimitiveTypeTable {
@@ -720,7 +720,7 @@ pub impl PrimitiveTypeTable {
 
 pub fn PrimitiveTypeTable(intr: @ident_interner) -> PrimitiveTypeTable {
     let mut table = PrimitiveTypeTable {
-        primitive_types: LinearMap::new()
+        primitive_types: HashMap::new()
     };
 
     table.intern(intr, @~"bool",    ty_bool);
@@ -775,8 +775,8 @@ pub fn Resolver(session: Session,
 
         graph_root: graph_root,
 
-        trait_info: LinearMap::new(),
-        structs: LinearSet::new(),
+        trait_info: HashMap::new(),
+        structs: HashSet::new(),
 
         unresolved_imports: 0,
 
@@ -799,9 +799,9 @@ pub fn Resolver(session: Session,
         attr_main_fn: None,
         main_fns: ~[],
 
-        def_map: @mut LinearMap::new(),
-        export_map2: @mut LinearMap::new(),
-        trait_map: LinearMap::new(),
+        def_map: @mut HashMap::new(),
+        export_map2: @mut HashMap::new(),
+        trait_map: HashMap::new(),
 
         intr: session.intr()
     };
@@ -819,8 +819,8 @@ pub struct Resolver {
 
     graph_root: @mut NameBindings,
 
-    trait_info: LinearMap<def_id, LinearSet<ident>>,
-    structs: LinearSet<def_id>,
+    trait_info: HashMap<def_id, HashSet<ident>>,
+    structs: HashSet<def_id>,
 
     // The number of imports that are currently unresolved.
     unresolved_imports: uint,
@@ -1309,7 +1309,7 @@ pub impl Resolver {
                 }
 
                 // Add the names of all the methods to the trait info.
-                let mut method_names = LinearSet::new();
+                let mut method_names = HashSet::new();
                 for methods.each |method| {
                     let ty_m = trait_method_to_ty_method(method);
 
@@ -1543,7 +1543,7 @@ pub impl Resolver {
 
     fn handle_external_def(@mut self,
                            def: def,
-                           modules: &mut LinearMap<def_id, @mut Module>,
+                           modules: &mut HashMap<def_id, @mut Module>,
                            child_name_bindings: @mut NameBindings,
                            final_ident: &str,
                            ident: ident,
@@ -1623,7 +1623,7 @@ pub impl Resolver {
                 // Nothing to do.
               }
               Some(method_names) => {
-                let mut interned_method_names = LinearSet::new();
+                let mut interned_method_names = HashSet::new();
                 for method_names.each |method_data| {
                     let (method_name, self_ty) = *method_data;
                     debug!("(building reduced graph for \
@@ -1663,7 +1663,7 @@ pub impl Resolver {
      * crate.
      */
     fn build_reduced_graph_for_external_crate(@mut self, root: @mut Module) {
-        let mut modules = LinearMap::new();
+        let mut modules = HashMap::new();
 
         // Create all the items reachable by paths.
         for each_path(self.session.cstore, root.def_id.get().crate)
@@ -3906,7 +3906,7 @@ pub impl Resolver {
     }
 
     fn binding_mode_map(@mut self, pat: @pat) -> BindingMap {
-        let mut result = LinearMap::new();
+        let mut result = HashMap::new();
         do pat_bindings(self.def_map, pat) |binding_mode, _id, sp, path| {
             let ident = path_to_ident(path);
             result.insert(ident,
@@ -3958,7 +3958,7 @@ pub impl Resolver {
     fn resolve_arm(@mut self, arm: &arm, visitor: ResolveVisitor) {
         self.value_ribs.push(@Rib(NormalRibKind));
 
-        let bindings_list = @mut LinearMap::new();
+        let bindings_list = @mut HashMap::new();
         for arm.pats.each |pattern| {
             self.resolve_pattern(*pattern, RefutableMode, Immutable,
                                  Some(bindings_list), visitor);
@@ -4078,7 +4078,7 @@ pub impl Resolver {
                        mutability: Mutability,
                        // Maps idents to the node ID for the (outermost)
                        // pattern that binds them
-                       bindings_list: Option<@mut LinearMap<ident,node_id>>,
+                       bindings_list: Option<@mut HashMap<ident,node_id>>,
                        visitor: ResolveVisitor) {
         let pat_id = pattern.id;
         do walk_pat(pattern) |pattern| {
@@ -4282,7 +4282,7 @@ pub impl Resolver {
                 }
 
                 pat_struct(path, _, _) => {
-                    let structs: &mut LinearSet<def_id> = &mut self.structs;
+                    let structs: &mut HashSet<def_id> = &mut self.structs;
                     match self.resolve_path(path, TypeNS, false, visitor) {
                         Some(def_ty(class_id))
                                 if structs.contains(&class_id) => {
@@ -4791,7 +4791,7 @@ pub impl Resolver {
 
             expr_struct(path, _, _) => {
                 // Resolve the path to the structure it goes to.
-                let structs: &mut LinearSet<def_id> = &mut self.structs;
+                let structs: &mut HashSet<def_id> = &mut self.structs;
                 match self.resolve_path(path, TypeNS, false, visitor) {
                     Some(def_ty(class_id)) | Some(def_struct(class_id))
                             if structs.contains(&class_id) => {

@@ -16,7 +16,7 @@ use core::prelude::*;
 use middle::ty::param_ty;
 use middle::ty;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::io::WriterUtil;
 use core::io;
 use core::uint;
@@ -47,7 +47,7 @@ pub struct ty_abbrev {
 
 pub enum abbrev_ctxt {
     ac_no_abbrevs,
-    ac_use_abbrevs(@mut LinearMap<ty::t, ty_abbrev>),
+    ac_use_abbrevs(@mut HashMap<ty::t, ty_abbrev>),
 }
 
 fn cx_uses_abbrevs(cx: @ctxt) -> bool {

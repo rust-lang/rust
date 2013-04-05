@@ -111,7 +111,7 @@ use middle::typeck;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::io::WriterUtil;
 use core::io;
 use core::ptr;
@@ -134,7 +134,7 @@ use syntax::{visit, ast_util};
 //
 // Very subtle (#2633): borrowck will remove entries from this table
 // if it detects an outstanding loan (that is, the addr is taken).
-pub type last_use_map = @mut LinearMap<node_id, @mut ~[node_id]>;
+pub type last_use_map = @mut HashMap<node_id, @mut ~[node_id]>;
 
 #[deriving(Eq)]
 struct Variable(uint);
@@ -172,7 +172,7 @@ pub fn check_crate(tcx: ty::ctxt,
         .. *visit::default_visitor()
     });
 
-    let last_use_map = @mut LinearMap::new();
+    let last_use_map = @mut HashMap::new();
     let initial_maps = @mut IrMaps(tcx,
                                    method_map,
                                    variable_moves_map,
@@ -264,9 +264,9 @@ struct IrMaps {
 
     num_live_nodes: uint,
     num_vars: uint,
-    live_node_map: LinearMap<node_id, LiveNode>,
-    variable_map: LinearMap<node_id, Variable>,
-    capture_info_map: LinearMap<node_id, @~[CaptureInfo]>,
+    live_node_map: HashMap<node_id, LiveNode>,
+    variable_map: HashMap<node_id, Variable>,
+    capture_info_map: HashMap<node_id, @~[CaptureInfo]>,
     var_kinds: ~[VarKind],
     lnks: ~[LiveNodeKind],
 }
@@ -285,9 +285,9 @@ fn IrMaps(tcx: ty::ctxt,
         last_use_map: last_use_map,
         num_live_nodes: 0,
         num_vars: 0,
-        live_node_map: LinearMap::new(),
-        variable_map: LinearMap::new(),
-        capture_info_map: LinearMap::new(),
+        live_node_map: HashMap::new(),
+        variable_map: HashMap::new(),
+        capture_info_map: HashMap::new(),
         var_kinds: ~[],
         lnks: ~[]
     }
@@ -612,7 +612,7 @@ static ACC_READ: uint = 1u;
 static ACC_WRITE: uint = 2u;
 static ACC_USE: uint = 4u;
 
-type LiveNodeMap = @mut LinearMap<node_id, LiveNode>;
+type LiveNodeMap = @mut HashMap<node_id, LiveNode>;
 
 struct Liveness {
     tcx: ty::ctxt,
@@ -639,8 +639,8 @@ fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
         users: @mut vec::from_elem(ir.num_live_nodes * ir.num_vars,
                                    invalid_users()),
         loop_scope: @mut ~[],
-        break_ln: @mut LinearMap::new(),
-        cont_ln: @mut LinearMap::new()
+        break_ln: @mut HashMap::new(),
+        cont_ln: @mut HashMap::new()
     }
 }
 

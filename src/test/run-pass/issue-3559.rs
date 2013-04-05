@@ -29,7 +29,7 @@ fn check_strs(actual: &str, expected: &str) -> bool
 #[test]
 fn tester()
 {
-    let mut table = core::hashmap::linear::LinearMap();
+    let mut table = core::hashmap::HashMap();
     table.insert(@~"one", 1);
     table.insert(@~"two", 2);
     assert!(check_strs(table.to_str(), ~"xxx"));   // not sure what expected should be

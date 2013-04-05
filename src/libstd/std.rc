@@ -98,6 +98,7 @@ pub mod workcache;
 pub mod bigint;
 pub mod stats;
 pub mod semver;
+pub mod fileinput;
 
 #[cfg(unicode)]
 mod unicode;

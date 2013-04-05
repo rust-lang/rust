@@ -24,7 +24,7 @@ use std::arc;
 use std::time;
 use std::deque::Deque;
 use std::par;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 use core::io::WriterUtil;
 use core::int::abs;
 use core::rand::RngUtil;
@@ -81,7 +81,7 @@ fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
 
 fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
     let mut graph = do vec::from_fn(N) |_i| {
-        LinearSet::new()
+        HashSet::new()
     };
 
     do vec::each(edges) |e| {
@@ -104,7 +104,7 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
 }
 
 fn gen_search_keys(graph: &[~[node_id]], n: uint) -> ~[node_id] {
-    let mut keys = LinearSet::new();
+    let mut keys = HashSet::new();
     let r = rand::Rng();
 
     while keys.len() < n {

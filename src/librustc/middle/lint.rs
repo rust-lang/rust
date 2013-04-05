@@ -15,7 +15,7 @@ use driver::session;
 use middle::ty;
 use util::ppaux::{ty_to_str};
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::char;
 use core::cmp;
 use core::i8;
@@ -108,7 +108,7 @@ struct LintSpec {
     default: level
 }
 
-pub type LintDict = @LinearMap<~str, LintSpec>;
+pub type LintDict = @HashMap<~str, LintSpec>;
 
 /*
   Pass names should not contain a '-', as the compiler normalizes
@@ -273,7 +273,7 @@ pub fn get_lint_dict() -> LintDict {
          }),
         */
     ];
-    let mut map = LinearMap::new();
+    let mut map = HashMap::new();
     do vec::consume(v) |_, (k, v)| {
         map.insert(k, v);
     }
@@ -282,7 +282,7 @@ pub fn get_lint_dict() -> LintDict {
 
 // This is a highly not-optimal set of data structure decisions.
 type LintModes = @mut SmallIntMap<level>;
-type LintModeMap = @mut LinearMap<ast::node_id, LintModes>;
+type LintModeMap = @mut HashMap<ast::node_id, LintModes>;
 
 // settings_map maps node ids of items with non-default lint settings
 // to their settings; default_settings contains the settings for everything
@@ -295,7 +295,7 @@ pub struct LintSettings {
 pub fn mk_lint_settings() -> LintSettings {
     LintSettings {
         default_settings: @mut SmallIntMap::new(),
-        settings_map: @mut LinearMap::new()
+        settings_map: @mut HashMap::new()
     }
 }
 

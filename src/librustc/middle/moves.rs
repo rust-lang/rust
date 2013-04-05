@@ -215,7 +215,7 @@ use middle::typeck::method_map;
 use util::ppaux;
 use util::common::indenter;
 
-use core::hashmap::linear::{LinearSet, LinearMap};
+use core::hashmap::{HashSet, HashMap};
 use core::vec;
 use syntax::ast::*;
 use syntax::ast_util;
@@ -240,14 +240,14 @@ pub struct CaptureVar {
     mode: CaptureMode // How variable is being accessed
 }
 
-pub type CaptureMap = @mut LinearMap<node_id, @[CaptureVar]>;
+pub type CaptureMap = @mut HashMap<node_id, @[CaptureVar]>;
 
-pub type MovesMap = @mut LinearSet<node_id>;
+pub type MovesMap = @mut HashSet<node_id>;
 
 /**
  * For each variable which will be moved, links to the
  * expression */
-pub type VariableMovesMap = @mut LinearMap<node_id, @expr>;
+pub type VariableMovesMap = @mut HashMap<node_id, @expr>;
 
 /** See the section Output on the module comment for explanation. */
 pub struct MoveMaps {
@@ -280,9 +280,9 @@ pub fn compute_moves(tcx: ty::ctxt,
         tcx: tcx,
         method_map: method_map,
         move_maps: MoveMaps {
-            moves_map: @mut LinearSet::new(),
-            variable_moves_map: @mut LinearMap::new(),
-            capture_map: @mut LinearMap::new()
+            moves_map: @mut HashSet::new(),
+            variable_moves_map: @mut HashMap::new(),
+            capture_map: @mut HashMap::new()
         }
     };
     visit::visit_crate(*crate, visit_cx, visitor);

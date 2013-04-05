@@ -43,7 +43,7 @@ use io;
 use libc::{size_t, uintptr_t};
 use option::{None, Option, Some};
 use ptr;
-use hashmap::linear::LinearSet;
+use hashmap::HashSet;
 use stackwalk;
 use sys;
 
@@ -344,7 +344,7 @@ pub fn cleanup_stack_for_failure() {
             ptr::null()
         };
 
-        let mut roots = LinearSet::new();
+        let mut roots = HashSet::new();
         for walk_gc_roots(need_cleanup, sentinel) |root, tydesc| {
             // Track roots to avoid double frees.
             if roots.contains(&*root) {
