@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -73,3 +73,24 @@ clone_impl!(f64)
 
 clone_impl!(bool)
 clone_impl!(char)
+
+#[test]
+fn test_owned_clone() {
+    let a : ~int = ~5i;
+    let b : ~int = a.clone();
+    assert!(a == b);
+}
+
+#[test]
+fn test_managed_clone() {
+    let a : @int = @5i;
+    let b : @int = a.clone();
+    assert!(a == b);
+}
+
+#[test]
+fn test_managed_mut_clone() {
+    let a : @int = @5i;
+    let b : @int = a.clone();
+    assert!(a == b);
+}
