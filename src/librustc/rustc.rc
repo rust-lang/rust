@@ -10,7 +10,7 @@
 
 
 #[link(name = "rustc",
-       vers = "0.6",
+       vers = "0.7-rc",
        uuid = "0ce89b41-2f92-459e-bbc1-8f5fe32f16cf",
        url = "https://github.com/mozilla/rust/tree/master/src/rustc")];
 
@@ -27,9 +27,9 @@
 
 #[no_core];
 
-extern mod core(vers = "0.6");
-extern mod std(vers = "0.6");
-extern mod syntax(vers = "0.6");
+extern mod core(vers = "0.7-rc");
+extern mod std(vers = "0.7-rc");
+extern mod syntax(vers = "0.7-rc");
 
 use core::prelude::*;
 
