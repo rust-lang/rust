@@ -8,18 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn borrow(x: &int, f: &fn(x: &int)) {
-    f(x)
-}
+fn main() {
+    let a : ~int = ~5i;
+    let b : ~int = a.clone();
 
-fn test1(x: @~int) {
-    do borrow(&**x.clone()) |p| {
-        let x_a = ptr::addr_of(&(**x));
-        assert!((x_a as uint) != ptr::to_uint(p));
-        assert!(unsafe{*x_a} == *p);
-    }
-}
+    debug!(fmt!("a: %?, b: %?", a, b));
+    
+    let a : @int = @5i;
+    let b : @int = a.clone();
 
-pub fn main() {
-    test1(@~22);
+    debug!(fmt!("a: %?, b: %?", a, b));
+
+    let a : @mut int = @mut 5i;
+    let b : @mut int = a.clone();
+    *b = 6;
+
+    debug!(fmt!("a: %?, b: %?", a, b));
 }

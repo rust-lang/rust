@@ -36,6 +36,16 @@ impl<T:Clone> Clone for ~T {
     fn clone(&self) -> ~T { ~(**self).clone() }
 }
 
+impl<T:Clone> Clone for @T {
+    #[inline(always)]
+    fn clone(&self) -> @T { @(**self).clone() }
+}
+
+impl<T:Clone> Clone for @mut T {
+    #[inline(always)]
+    fn clone(&self) -> @mut T { @mut (**self).clone() }
+}
+
 macro_rules! clone_impl(
     ($t:ty) => {
         impl Clone for $t {
