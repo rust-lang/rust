@@ -67,6 +67,8 @@ private:
 
     stk_seg *cached_c_stack;
     stk_seg *extra_c_stack;
+    stk_seg *cached_big_stack;
+    stk_seg *extra_big_stack;
 
     rust_task_list running_tasks;
     rust_task_list blocked_tasks;
@@ -147,6 +149,10 @@ public:
     stk_seg *borrow_c_stack();
     void return_c_stack(stk_seg *stack);
 
+    // Called by tasks when they need a big stack
+    stk_seg *borrow_big_stack();
+    void return_big_stack(stk_seg *stack);
+
     int get_id() { return this->id; }
 };
 
@@ -200,6 +206,32 @@ rust_sched_loop::return_c_stack(stk_seg *stack) {
     } else {
         extra_c_stack = stack;
     }
+}
+
+// NB: Runs on the Rust stack. Might return NULL!
+inline stk_seg *
+rust_sched_loop::borrow_big_stack() {
+    assert(cached_big_stack);
+    stk_seg *your_stack;
+    if (extra_big_stack) {
+        your_stack = extra_big_stack;
+        extra_big_stack = NULL;
+    } else {
+        your_stack = cached_big_stack;
+        cached_big_stack = NULL;
+    }
+    return your_stack;
+}
+
+// NB: Runs on the Rust stack
+inline void
+rust_sched_loop::return_big_stack(stk_seg *stack) {
+    assert(!extra_big_stack);
+    assert(stack);
+    if (!cached_big_stack)
+        cached_big_stack = stack;
+    else
+        extra_big_stack = stack;
 }
 
 // this is needed to appease the circular dependency gods
