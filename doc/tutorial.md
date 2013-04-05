@@ -1081,7 +1081,9 @@ let mut d : @mut int;   // and one of type managed mutable int
 
 c = a;          // box type is the same, okay
 d = b;          // box type is the same, okay
+~~~~
 
+~~~~ {.xfail-test}
 // but b cannot be assigned to c, or a to d
 c = b;          // error
 ~~~~
@@ -1101,7 +1103,7 @@ let y = x.clone(); // y is a newly allocated box
 let z = x; // no new memory allocated, x can no longer be used
 ~~~~
 
-Since in owned boxes mutabilility is a property of the owner, not the 
+Since in owned boxes mutability is a property of the owner, not the 
 box, mutable boxes may become immutable when they are moved, and vice-versa.
 
 ~~~~
