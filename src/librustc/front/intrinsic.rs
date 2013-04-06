@@ -96,7 +96,7 @@ pub mod intrinsic {
                                     disr_val: int,
                                     n_fields: uint,
                                     name: &str) -> bool;
-        fn visit_enum_variant_field(&self, i: uint, inner: *TyDesc) -> bool;
+        fn visit_enum_variant_field(&self, i: uint, offset: uint, inner: *TyDesc) -> bool;
         fn visit_leave_enum_variant(&self, variant: uint,
                                     disr_val: int,
                                     n_fields: uint,

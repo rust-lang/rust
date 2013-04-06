@@ -193,6 +193,14 @@ pub impl ReprVisitor {
         self.bump(sys::size_of::<T>());
     }
 
+    #[cfg(stage0)] #[inline(always)]
+    fn stage0_bump_past<T>(&self) {
+        self.bump_past::<T>();
+    }
+    #[cfg(not(stage0))] #[inline(always)]
+    fn stage0_bump_past<T>(&self) {
+    }
+
     #[inline(always)]
     fn visit_inner(&self, inner: *TyDesc) -> bool {
         self.visit_ptr_inner(self.ptr, inner)
@@ -487,7 +495,7 @@ impl TyVisitor for ReprVisitor {
                         self.var_stk.push(TagMismatch);
                     }
                 };
-                self.bump_past::<int>();
+                self.stage0_bump_past::<int>();
             }
         }
 
@@ -500,7 +508,24 @@ impl TyVisitor for ReprVisitor {
         true
     }
 
+    #[cfg(stage0)]
     fn visit_enum_variant_field(&self, i: uint, inner: *TyDesc) -> bool {
+        match self.var_stk[vec::uniq_len(&const self.var_stk) - 1] {
+            Degenerate | TagMatch => {
+                if i != 0 {
+                    self.writer.write_str(", ");
+                }
+                if ! self.visit_inner(inner) {
+                    return false;
+                }
+            }
+            TagMismatch => ()
+        }
+        true
+    }
+
+    #[cfg(not(stage0))]
+    fn visit_enum_variant_field(&self, i: uint, _offset: uint, inner: *TyDesc) -> bool {
         match self.var_stk[vec::uniq_len(&const self.var_stk) - 1] {
             Degenerate | TagMatch => {
                 if i != 0 {

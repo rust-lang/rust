@@ -406,7 +406,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
                                 disr_val: int,
                                 n_fields: uint,
                                 name: &str) -> bool {
-        self.inner.push_ptr();
+        self.inner.push_ptr(); // NOTE remove after next snapshot
         if ! self.inner.visit_enter_enum_variant(variant, disr_val,
                                                  n_fields, name) {
             return false;
@@ -414,10 +414,20 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
+    #[cfg(stage0)]
     fn visit_enum_variant_field(&self, i: uint, inner: *TyDesc) -> bool {
         unsafe { self.align((*inner).align); }
         if ! self.inner.visit_enum_variant_field(i, inner) { return false; }
         unsafe { self.bump((*inner).size); }
+        true
+    }
+
+    #[cfg(not(stage0))]
+    fn visit_enum_variant_field(&self, i: uint, offset: uint, inner: *TyDesc) -> bool {
+        self.inner.push_ptr();
+        self.bump(offset);
+        if ! self.inner.visit_enum_variant_field(i, offset, inner) { return false; }
+        self.inner.pop_ptr();
         true
     }
 
@@ -429,7 +439,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
                                                  n_fields, name) {
             return false;
         }
-        self.inner.pop_ptr();
+        self.inner.pop_ptr(); // NOTE remove after next snapshot
         true
     }
 
