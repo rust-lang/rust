@@ -279,24 +279,6 @@ priv impl<K:Hash + IterBytes + Eq,V> HashMap<K, V> {
     }
 }
 
-impl<'self,K:Hash + IterBytes + Eq,V>
-        BaseIter<(&'self K, &'self V)> for HashMap<K, V> {
-    /// Visit all key-value pairs
-    fn each(&self, blk: &fn(&(&'self K, &'self V)) -> bool) {
-        for uint::range(0, self.buckets.len()) |i| {
-            let mut broke = false;
-            do self.buckets[i].map |bucket| {
-                if !blk(&(&bucket.key, &bucket.value)) {
-                    broke = true; // FIXME(#3064) just write "break;"
-                }
-            };
-            if broke { break; }
-        }
-    }
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
-
 impl<K:Hash + IterBytes + Eq,V> Container for HashMap<K, V> {
     /// Return the number of elements in the map
     fn len(&const self) -> uint { self.size }
@@ -315,7 +297,7 @@ impl<K:Hash + IterBytes + Eq,V> Mutable for HashMap<K, V> {
     }
 }
 
-impl<'self,K:Hash + IterBytes + Eq,V> Map<K, V> for HashMap<K, V> {
+impl<K:Hash + IterBytes + Eq,V> Map<K, V> for HashMap<K, V> {
     /// Return true if the map contains a value for the specified key
     fn contains_key(&self, k: &K) -> bool {
         match self.bucket_for_key(k) {
@@ -324,14 +306,25 @@ impl<'self,K:Hash + IterBytes + Eq,V> Map<K, V> for HashMap<K, V> {
         }
     }
 
+    /// Visit all key-value pairs
+    fn each(&self, blk: &fn(&'self K, &'self V) -> bool) {
+        for uint::range(0, self.buckets.len()) |i| {
+            for self.buckets[i].each |bucket| {
+                if !blk(&bucket.key, &bucket.value) {
+                    return;
+                }
+            }
+        }
+    }
+
     /// Visit all keys
     fn each_key(&self, blk: &fn(k: &K) -> bool) {
-        self.each(|&(k, _)| blk(k))
+        self.each(|k, _| blk(k))
     }
 
     /// Visit all values
     fn each_value(&self, blk: &fn(v: &V) -> bool) {
-        self.each(|&(_, v)| blk(v))
+        self.each(|_, v| blk(v))
     }
 
     /// Iterate over the map and mutate the contained values
@@ -545,7 +538,7 @@ impl<K:Hash + IterBytes + Eq,V:Eq> Eq for HashMap<K, V> {
     fn eq(&self, other: &HashMap<K, V>) -> bool {
         if self.len() != other.len() { return false; }
 
-        for self.each |&(key, value)| {
+        for self.each |key, value| {
             match other.find(key) {
                 None => return false,
                 Some(v) => if value != v { return false },
@@ -798,7 +791,7 @@ mod test_map {
             assert!(m.insert(i, i*2));
         }
         let mut observed = 0;
-        for m.each |&(k, v)| {
+        for m.each |k, v| {
             assert!(*v == *k * 2);
             observed |= (1 << *k);
         }

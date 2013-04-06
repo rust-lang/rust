@@ -48,7 +48,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
    let mut pairs = ~[];
 
    // map -> [(k,%)]
-   for mm.each |&(&key, &val)| {
+   for mm.each |&key, &val| {
       pairs.push((key, pct(val, total)));
    }
 

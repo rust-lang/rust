@@ -926,7 +926,7 @@ impl Eq for Json {
                     &Object(ref d1) => {
                         if d0.len() == d1.len() {
                             let mut equal = true;
-                            for d0.each |&(k, v0)| {
+                            for d0.each |k, v0| {
                                 match d1.find(k) {
                                     Some(v1) if v0 == v1 => { },
                                     _ => { equal = false; break }
@@ -989,12 +989,12 @@ impl Ord for Json {
                         let mut d1_flat = ~[];
 
                         // FIXME #4430: this is horribly inefficient...
-                        for d0.each |&(k, v)| {
+                        for d0.each |k, v| {
                              d0_flat.push((@copy *k, @copy *v));
                         }
                         d0_flat.qsort();
 
-                        for d1.each |&(k, v)| {
+                        for d1.each |k, v| {
                             d1_flat.push((@copy *k, @copy *v));
                         }
                         d1_flat.qsort();
@@ -1125,7 +1125,7 @@ impl<A:ToJson> ToJson for ~[A] {
 impl<A:ToJson + Copy> ToJson for HashMap<~str, A> {
     fn to_json(&self) -> Json {
         let mut d = HashMap::new();
-        for self.each |&(key, value)| {
+        for self.each |key, value| {
             d.insert(copy *key, value.to_json());
         }
         Object(~d)

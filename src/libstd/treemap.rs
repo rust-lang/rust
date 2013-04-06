@@ -82,24 +82,6 @@ impl<K: Ord + TotalOrd, V> Ord for TreeMap<K, V> {
     fn gt(&self, other: &TreeMap<K, V>) -> bool { lt(other, self) }
 }
 
-impl<'self, K: TotalOrd, V> BaseIter<(&'self K, &'self V)> for TreeMap<K, V> {
-    /// Visit all key-value pairs in order
-    fn each(&self, f: &fn(&(&'self K, &'self V)) -> bool) {
-        each(&self.root, f)
-    }
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
-impl<'self, K: TotalOrd, V>
-    ReverseIter<(&'self K, &'self V)>
-    for TreeMap<K, V>
-{
-    /// Visit all key-value pairs in reverse order
-    fn each_reverse(&self, f: &fn(&(&'self K, &'self V)) -> bool) {
-        each_reverse(&self.root, f);
-    }
-}
-
 impl<K: TotalOrd, V> Container for TreeMap<K, V> {
     /// Return the number of elements in the map
     fn len(&const self) -> uint { self.length }
@@ -122,12 +104,19 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
         self.find(key).is_some()
     }
 
+    /// Visit all key-value pairs in order
+    fn each(&self, f: &fn(&'self K, &'self V) -> bool) {
+        each(&self.root, f)
+    }
+
     /// Visit all keys in order
-    fn each_key(&self, f: &fn(&K) -> bool) { self.each(|&(k, _)| f(k)) }
+    fn each_key(&self, f: &fn(&K) -> bool) {
+        self.each(|k, _| f(k))
+    }
 
     /// Visit all values in order
     fn each_value(&self, f: &fn(&V) -> bool) {
-        self.each(|&(_, v)| f(v))
+        self.each(|_, v| f(v))
     }
 
     /// Iterate over the map and mutate the contained values
@@ -180,14 +169,19 @@ pub impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
+    /// Visit all key-value pairs in reverse order
+    fn each_reverse(&'self self, f: &fn(&'self K, &'self V) -> bool) {
+        each_reverse(&self.root, f);
+    }
+
     /// Visit all keys in reverse order
     fn each_key_reverse(&self, f: &fn(&K) -> bool) {
-        self.each_reverse(|&(k, _)| f(k))
+        self.each_reverse(|k, _| f(k))
     }
 
     /// Visit all values in reverse order
     fn each_value_reverse(&self, f: &fn(&V) -> bool) {
-        self.each_reverse(|&(_, v)| f(v))
+        self.each_reverse(|_, v| f(v))
     }
 
     /// Get a lazy iterator over the key-value pairs in the map.
@@ -538,18 +532,18 @@ pub impl<K: TotalOrd, V> TreeNode<K, V> {
 }
 
 fn each<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
-                            f: &fn(&(&'r K, &'r V)) -> bool) {
+                            f: &fn(&'r K, &'r V) -> bool) {
     for node.each |x| {
         each(&x.left, f);
-        if f(&(&x.key, &x.value)) { each(&x.right, f) }
+        if f(&x.key, &x.value) { each(&x.right, f) }
     }
 }
 
 fn each_reverse<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
-                                    f: &fn(&(&'r K, &'r V)) -> bool) {
+                                    f: &fn(&'r K, &'r V) -> bool) {
     for node.each |x| {
         each_reverse(&x.right, f);
-        if f(&(&x.key, &x.value)) { each_reverse(&x.left, f) }
+        if f(&x.key, &x.value) { each_reverse(&x.left, f) }
     }
 }
 
@@ -796,7 +790,7 @@ mod test_treemap {
             let &(k, v) = x;
             assert!(map.find(&k).unwrap() == &v)
         }
-        for map.each |&(map_k, map_v)| {
+        for map.each |map_k, map_v| {
             let mut found = false;
             for ctrl.each |x| {
                 let &(ctrl_k, ctrl_v) = x;
@@ -912,7 +906,7 @@ mod test_treemap {
         assert!(m.insert(1, 2));
 
         let mut n = 0;
-        for m.each |&(k, v)| {
+        for m.each |k, v| {
             assert!(*k == n);
             assert!(*v == n * 2);
             n += 1;
@@ -930,7 +924,7 @@ mod test_treemap {
         assert!(m.insert(1, 2));
 
         let mut n = 4;
-        for m.each_reverse |&(k, v)| {
+        for m.each_reverse |k, v| {
             assert!(*k == n);
             assert!(*v == n * 2);
             n -= 1;
