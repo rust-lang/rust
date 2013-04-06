@@ -64,7 +64,7 @@ static commands: &'static [Command<'static>] = &[
     Command{
         cmd: "run",
         action: Call(cmd_run),
-        usage_line: "build a executable, and run it",
+        usage_line: "build an executable, and run it",
         usage_full: UsgStr(
             "The run command is an shortcut for the command line \n\
              \"rustc <filename> -o <filestem>~ && ./<filestem>~\".\
