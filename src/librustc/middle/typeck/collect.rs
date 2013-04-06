@@ -52,6 +52,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, split_trait_methods};
 use syntax::ast_util;
+use syntax::attr;
 use syntax::codemap::span;
 use syntax::codemap;
 use syntax::print::pprust::path_to_str;
@@ -94,7 +95,8 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
                       }
 
                       ast::item_struct(*) => {
-                        let ty = ty::mk_struct(ccx.tcx, def_id, substs);
+                        let packed = attr::find_packed_attr(crate_item.attrs);
+                        let ty = ty::mk_struct(ccx.tcx, def_id, substs, packed);
                         ccx.tcx.intrinsic_defs.insert
                             (intrinsic_item.ident, (def_id, ty));
                       }
@@ -195,7 +197,8 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
                                struct_def,
                                generics,
                                tpt,
-                               variant.node.id);
+                               variant.node.id,
+                               false);
 
                 let input_tys = struct_def.fields.map(
                     |f| ty::node_id_to_type(ccx.tcx, f.node.id));
@@ -756,7 +759,10 @@ pub fn convert(ccx: &CrateCtxt, it: @ast::item) {
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         tcx.tcache.insert(local_def(it.id), tpt);
 
-        convert_struct(ccx, rp, struct_def, generics, tpt, it.id);
+        // look up the packed attribute now and store it.
+        let packed = attr::find_packed_attr(it.attrs);
+
+        convert_struct(ccx, rp, struct_def, generics, tpt, it.id, packed);
       }
       ast::item_ty(_, ref generics) => {
         ensure_no_ty_param_bounds(ccx, it.span, generics, "type");
@@ -778,7 +784,8 @@ pub fn convert_struct(ccx: &CrateCtxt,
                       struct_def: @ast::struct_def,
                       generics: &ast::Generics,
                       tpt: ty::ty_param_bounds_and_ty,
-                      id: ast::node_id) {
+                      id: ast::node_id,
+                      packed: bool) {
     let tcx = ccx.tcx;
 
     for struct_def.dtor.each |dtor| {
@@ -810,7 +817,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
        convert_field(ccx, rp, tpt.generics.bounds, *f, generics);
     }
     let (_, substs) = mk_substs(ccx, generics, rp);
-    let selfty = ty::mk_struct(tcx, local_def(id), substs);
+    let selfty = ty::mk_struct(tcx, local_def(id), substs, packed);
 
     // If this struct is enum-like or tuple-like, create the type of its
     // constructor.
@@ -1005,7 +1012,9 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
       }
       ast::item_struct(_, ref generics) => {
           let (ty_generics, substs) = mk_substs(ccx, generics, rp);
-          let t = ty::mk_struct(tcx, local_def(it.id), substs);
+          let packed = attr::find_packed_attr(it.attrs);
+          let t = ty::mk_struct(tcx, local_def(it.id), substs, packed);
+
           let tpt = ty_param_bounds_and_ty {
               generics: ty_generics,
               ty: t

@@ -108,7 +108,7 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
     } else if numOutputs == 1 {
         val_ty(outputs[0])
     } else {
-        T_struct(outputs.map(|o| val_ty(*o)))
+        T_struct(outputs.map(|o| val_ty(*o)), false)
     };
 
     let dialect = match ia.dialect {

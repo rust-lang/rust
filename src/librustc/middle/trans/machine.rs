@@ -142,9 +142,9 @@ pub fn static_size_of_enum(cx: @CrateContext, t: ty::t) -> uint {
 
                 debug!("static_size_of_enum: variant %s type %s",
                        *cx.tcx.sess.str_of(variant.name),
-                       ty_str(cx.tn, T_struct(lltypes)));
+                       ty_str(cx.tn, T_struct(lltypes, false)));
 
-                let this_size = llsize_of_real(cx, T_struct(lltypes));
+                let this_size = llsize_of_real(cx, T_struct(lltypes, false));
                 if max_size < this_size {
                     max_size = this_size;
                 }
@@ -155,4 +155,3 @@ pub fn static_size_of_enum(cx: @CrateContext, t: ty::t) -> uint {
         _ => cx.sess.bug(~"static_size_of_enum called on non-enum")
     }
 }
-

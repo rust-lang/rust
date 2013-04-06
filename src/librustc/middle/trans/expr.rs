@@ -1123,7 +1123,7 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
                          node_id_opt: Option<ast::node_id>,
                          op: &fn(int, (&[ty::field])) -> R) -> R {
     match ty::get(ty).sty {
-        ty::ty_struct(did, ref substs) => {
+        ty::ty_struct(did, ref substs, _) => {
             op(0, struct_mutable_fields(tcx, did, substs))
         }
 

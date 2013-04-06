@@ -330,6 +330,9 @@ pub fn find_inline_attr(attrs: &[ast::attribute]) -> inline_attr {
     }
 }
 
+pub fn find_packed_attr(attrs: &[ast::attribute]) -> bool {
+    attrs_contains_name(attrs, "packed")
+}
 
 pub fn require_unique_names(diagnostic: @span_handler,
                             metas: &[@ast::meta_item]) {

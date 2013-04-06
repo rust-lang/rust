@@ -449,7 +449,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
           }
       }
       ty_self(*) => ~"Self",
-      ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
+      ty_enum(did, ref substs) | ty_struct(did, ref substs, _) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
         parameterized(cx, base, substs.self_r, substs.tps)

@@ -96,7 +96,7 @@ fn check_struct_safe_for_destructor(cx: Context,
             self_r: None,
             self_ty: None,
             tps: ~[]
-        });
+        }, false); // packed-ness doesn't matter for destructor safety
         if !ty::type_is_owned(cx.tcx, struct_ty) {
             cx.tcx.sess.span_err(span,
                                  ~"cannot implement a destructor on a struct \

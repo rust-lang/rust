@@ -242,7 +242,9 @@ pub impl Reflector {
             self.visit(~"leave_fn", extra);
           }
 
-          ty::ty_struct(did, ref substs) => {
+          // Possible broken with packed-ness, at least, not known
+          // to work.
+          ty::ty_struct(did, ref substs, _packed) => {
               let bcx = self.bcx;
               let tcx = bcx.ccx().tcx;
               let fields = ty::struct_fields(tcx, did, substs);
@@ -367,4 +369,3 @@ pub fn ast_purity_constant(purity: ast::purity) -> uint {
         ast::extern_fn => 3u
     }
 }
-

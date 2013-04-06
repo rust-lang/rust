@@ -477,7 +477,7 @@ pub impl VisitContext {
                     // then `with` is consumed, otherwise it is only read
                     let with_ty = ty::expr_ty(self.tcx, *with_expr);
                     let with_fields = match ty::get(with_ty).sty {
-                        ty::ty_struct(did, ref substs) => {
+                        ty::ty_struct(did, ref substs, _) => {
                             ty::struct_fields(self.tcx, did, substs)
                         }
                         ref r => {

@@ -702,7 +702,7 @@ pub impl Datum {
                     }
                 };
             }
-            ty::ty_struct(did, ref substs) => {
+            ty::ty_struct(did, ref substs, _) => {
                 // Check whether this struct is a newtype struct.
                 let fields = ty::struct_fields(ccx.tcx, did, substs);
                 if fields.len() != 1 || fields[0].ident !=
@@ -858,4 +858,3 @@ pub impl DatumBlock {
         self.datum.to_str(self.ccx())
     }
 }
-

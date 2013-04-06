@@ -437,7 +437,7 @@ pub fn check_crate(tcx: ty::ctxt,
                     // allow pointers to violate privacy
                     match ty::get(ty::type_autoderef(tcx, ty::expr_ty(tcx,
                                                           base))).sty {
-                        ty_struct(id, _)
+                        ty_struct(id, _, _)
                         if id.crate != local_crate ||
                            !privileged_items.contains(&(id.node)) => {
                             match method_map.find(&expr.id) {
@@ -462,7 +462,7 @@ pub fn check_crate(tcx: ty::ctxt,
                     // Ditto
                     match ty::get(ty::type_autoderef(tcx, ty::expr_ty(tcx,
                                                           base))).sty {
-                        ty_struct(id, _)
+                        ty_struct(id, _, _)
                         if id.crate != local_crate ||
                            !privileged_items.contains(&(id.node)) => {
                             match method_map.find(&expr.id) {
@@ -488,7 +488,7 @@ pub fn check_crate(tcx: ty::ctxt,
                 }
                 expr_struct(_, ref fields, _) => {
                     match ty::get(ty::expr_ty(tcx, expr)).sty {
-                        ty_struct(id, _) => {
+                        ty_struct(id, _, _) => {
                             if id.crate != local_crate ||
                                     !privileged_items.contains(&(id.node)) {
                                 for (*fields).each |field| {
@@ -554,7 +554,7 @@ pub fn check_crate(tcx: ty::ctxt,
             match pattern.node {
                 pat_struct(_, ref fields, _) => {
                     match ty::get(ty::pat_ty(tcx, pattern)).sty {
-                        ty_struct(id, _) => {
+                        ty_struct(id, _, _) => {
                             if id.crate != local_crate ||
                                     !privileged_items.contains(&(id.node)) {
                                 for fields.each |field| {
@@ -606,4 +606,3 @@ pub fn check_crate(tcx: ty::ctxt,
     });
     visit::visit_crate(*crate, method_map, visitor);
 }
-

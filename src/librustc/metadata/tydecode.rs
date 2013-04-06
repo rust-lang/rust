@@ -387,9 +387,11 @@ fn parse_ty(st: @mut PState, conv: conv_did) -> ty::t {
       'a' => {
           assert!((next(st) == '['));
           let did = parse_def(st, NominalType, conv);
+          let packed = next(st) == '1';
+          assert!((next(st) == '|'));
           let substs = parse_substs(st, conv);
           assert!((next(st) == ']'));
-          return ty::mk_struct(st.tcx, did, substs);
+          return ty::mk_struct(st.tcx, did, substs, packed);
       }
       c => { error!("unexpected char in type string: %c", c); fail!();}
     }
