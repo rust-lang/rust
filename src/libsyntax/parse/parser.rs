@@ -520,7 +520,7 @@ pub impl Parser {
               token::LBRACE => {
                 debug!("parse_trait_methods(): parsing provided method");
                 let (inner_attrs, body) =
-                    p.parse_inner_attrs_and_block(true);
+                    p.parse_inner_attrs_and_block();
                 let attrs = vec::append(attrs, inner_attrs);
                 provided(@ast::method {
                     ident: ident,
@@ -1975,7 +1975,7 @@ pub impl Parser {
     fn parse_while_expr(&self) -> @expr {
         let lo = self.last_span.lo;
         let cond = self.parse_expr();
-        let body = self.parse_block_no_value();
+        let body = self.parse_block();
         let hi = body.span.hi;
         return self.mk_expr(lo, hi, expr_while(cond, body));
     }
@@ -2003,7 +2003,7 @@ pub impl Parser {
             }
 
             let lo = self.last_span.lo;
-            let body = self.parse_block_no_value();
+            let body = self.parse_block();
             let hi = body.span.hi;
             return self.mk_expr(lo, hi, expr_loop(body, opt_ident));
         } else {
@@ -2581,47 +2581,35 @@ pub impl Parser {
             !classify::expr_requires_semi_to_be_stmt(e);
     }
 
+    // parse a block. No inner attrs are allowed.
     fn parse_block(&self) -> blk {
-        // disallow inner attrs:
-        let (attrs, blk) = self.parse_inner_attrs_and_block(false);
-        assert!(vec::is_empty(attrs));
-        return blk;
-    }
-
-    // I claim the existence of the 'parse_attrs' flag strongly
-    // suggests a name-change or refactoring for this function.
-    fn parse_inner_attrs_and_block(&self, parse_attrs: bool)
-        -> (~[attribute], blk) {
-
-        maybe_whole!(pair_empty self, nt_block);
-
-        fn maybe_parse_inner_attrs_and_next(p: &Parser, parse_attrs: bool) ->
-            (~[attribute], ~[attribute]) {
-            if parse_attrs {
-                p.parse_inner_attrs_and_next()
-            } else {
-                (~[], ~[])
-            }
-        }
+        maybe_whole!(self, nt_block);
 
         let lo = self.span.lo;
         if self.eat_keyword(&~"unsafe") {
             self.obsolete(copy *self.span, ObsoleteUnsafeBlock);
         }
         self.expect(&token::LBRACE);
-        let (inner, next) =
-            maybe_parse_inner_attrs_and_next(self, parse_attrs);
+
+        return self.parse_block_tail_(lo, default_blk, ~[]);
+    }
+
+    // parse a block. Inner attrs are allowed.
+    fn parse_inner_attrs_and_block(&self)
+        -> (~[attribute], blk) {
+
+        maybe_whole!(pair_empty self, nt_block);
+
+        let lo = self.span.lo;
+        if self.eat_keyword(&~"unsafe") {
+            self.obsolete(copy *self.span, ObsoleteUnsafeBlock);
+        }
+        self.expect(&token::LBRACE);
+        let (inner, next) = self.parse_inner_attrs_and_next();
 
         (inner, self.parse_block_tail_(lo, default_blk, next))
     }
-
-    fn parse_block_no_value(&self) -> blk {
-        // We parse blocks that cannot have a value the same as any other
-        // block; the type checker will make sure that the tail expression (if
-        // any) has unit type.
-        return self.parse_block();
-    }
-
+    
     // Precondition: already parsed the '{' or '#{'
     // I guess that also means "already parsed the 'impure'" if
     // necessary, and this should take a qualifier.
@@ -3108,7 +3096,7 @@ pub impl Parser {
     fn parse_item_fn(&self, purity: purity, abis: AbiSet) -> item_info {
         let (ident, generics) = self.parse_fn_header();
         let decl = self.parse_fn_decl();
-        let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
+        let (inner_attrs, body) = self.parse_inner_attrs_and_block();
         (ident,
          item_fn(decl, purity, abis, generics, body),
          Some(inner_attrs))
@@ -3126,7 +3114,7 @@ pub impl Parser {
             p.parse_arg()
         };
 
-        let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
+        let (inner_attrs, body) = self.parse_inner_attrs_and_block();
         let hi = body.span.hi;
         let attrs = vec::append(attrs, inner_attrs);
         @ast::method {
@@ -4126,7 +4114,6 @@ pub impl Parser {
     }
 
     // parse a foreign item; on failure, return iovi_none.
-    // trying to differentiate this from the other parse_foreign_item....
     fn parse_foreign_item(
         &self,
         attrs: ~[attribute],
