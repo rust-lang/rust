@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -13,7 +13,7 @@ fn borrow(x: &int, f: &fn(x: &int)) {
 }
 
 fn test1(x: @~int) {
-    do borrow(&*x.clone()) |p| {
+    do borrow(&**x.clone()) |p| {
         let x_a = ptr::addr_of(&(**x));
         assert!((x_a as uint) != ptr::to_uint(p));
         assert!(unsafe{*x_a} == *p);
