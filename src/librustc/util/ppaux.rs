@@ -248,7 +248,7 @@ pub fn trait_store_to_str(cx: ctxt, s: ty::TraitStore) -> ~str {
 pub fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
     match vs {
       ty::vstore_fixed(_) => {
-        fmt!("[%s * %s]", ty, vstore_to_str(cx, vs))
+        fmt!("[%s, .. %s]", ty, vstore_to_str(cx, vs))
       }
       ty::vstore_slice(_) => {
         fmt!("%s %s", vstore_to_str(cx, vs), ty)
