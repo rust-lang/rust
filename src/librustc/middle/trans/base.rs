@@ -2848,7 +2848,7 @@ pub fn create_module_map(ccx: @CrateContext) -> ValueRef {
         lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
     }
     let mut elts: ~[ValueRef] = ~[];
-    for ccx.module_data.each |&(key, &val)| {
+    for ccx.module_data.each |key, &val| {
         let elt = C_struct(~[p2i(ccx, C_cstr(ccx, @/*bad*/ copy *key)),
                             p2i(ccx, val)]);
         elts.push(elt);
@@ -3139,7 +3139,7 @@ pub fn trans_crate(sess: session::Session,
         }
 
         if ccx.sess.count_llvm_insns() {
-            for ccx.stats.llvm_insns.each |&(&k, &v)| {
+            for ccx.stats.llvm_insns.each |&k, &v| {
                 io::println(fmt!("%-7u %s", v, k));
             }
         }
