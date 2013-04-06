@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use lib::llvm::{TypeRef, ValueRef};
+use back::link::mangle_internal_name_by_path_and_seq;
+use lib::llvm::{TypeRef, ValueRef, llvm};
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -25,10 +25,13 @@ use middle::trans::type_of::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
+use core::libc::c_uint;
 use core::option::None;
 use core::vec;
 use syntax::ast::def_id;
 use syntax::ast;
+use syntax::ast_map::path_name;
+use syntax::parse::token::special_idents;
 
 pub struct Reflector {
     visitor_val: ValueRef,
@@ -270,8 +273,28 @@ pub impl Reflector {
             let ccx = bcx.ccx();
             let repr = adt::represent_type(bcx.ccx(), t);
             let variants = ty::substd_enum_variants(ccx.tcx, did, substs);
+            let llptrty = T_ptr(type_of(ccx, t));
 
-            let enum_args = ~[self.c_uint(vec::len(variants))]
+            // Build the get_disr function.  (XXX: break this out into a function)
+            let sub_path = bcx.fcx.path + ~[path_name(special_idents::anon)];
+            let get_disr_sym = mangle_internal_name_by_path_and_seq(ccx, sub_path, ~"get_disr");
+            let get_disr_args = [ty::arg { mode: ast::expl(ast::by_copy),
+                                           ty: ty::mk_nil_ptr(ccx.tcx) }];
+            let get_disr_llfty = type_of_fn(ccx, get_disr_args, ty::mk_int(ccx.tcx));
+            let get_disr_llfdecl = decl_internal_cdecl_fn(ccx.llmod, get_disr_sym, get_disr_llfty);
+            let get_disr_arg = unsafe {
+                llvm::LLVMGetParam(get_disr_llfdecl, first_real_arg as c_uint)
+            };
+            let get_disr_fcx = new_fn_ctxt(ccx, ~[], get_disr_llfdecl, None);
+            let get_disr_bcx = top_scope_block(get_disr_fcx, None);
+            let get_disr_arg = BitCast(get_disr_bcx, get_disr_arg, llptrty);
+            let get_disr_ret = adt::trans_get_discr(get_disr_bcx, repr, get_disr_arg);
+            Store(get_disr_bcx, get_disr_ret, get_disr_fcx.llretptr);
+            cleanup_and_Br(get_disr_bcx, get_disr_bcx, get_disr_fcx.llreturn);
+            finish_fn(get_disr_fcx, get_disr_bcx.llbb);
+
+            let enum_args = ~[self.c_uint(vec::len(variants)),
+                              get_disr_llfdecl]
                 + self.c_size_and_align(t);
             do self.bracketed(~"enum", enum_args) |this| {
                 for variants.eachi |i, v| {
@@ -282,7 +305,7 @@ pub impl Reflector {
                     do this.bracketed(~"enum_variant", variant_args) |this| {
                         for v.args.eachi |j, a| {
                             let bcx = this.bcx;
-                            let null = C_null(T_ptr(type_of(ccx, t)));
+                            let null = C_null(llptrty);
                             let offset = p2i(ccx, adt::trans_field_ptr(bcx, repr, null,
                                                                        v.disr_val, j));
                             let field_args = ~[this.c_uint(j),

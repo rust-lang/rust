@@ -28,6 +28,9 @@ pub mod intrinsic {
         // Remaining fields not listed
     }
 
+    // FIXME: make this a 0-variant enum; trans/reflect.rs has to match it.
+    pub type Opaque = ();
+
     pub trait TyVisitor {
         fn visit_bot(&self) -> bool;
         fn visit_nil(&self) -> bool;
@@ -91,6 +94,7 @@ pub mod intrinsic {
                            sz: uint, align: uint) -> bool;
 
         fn visit_enter_enum(&self, n_variants: uint,
+                            get_disr: extern unsafe fn(ptr: *Opaque) -> int,
                             sz: uint, align: uint) -> bool;
         fn visit_enter_enum_variant(&self, variant: uint,
                                     disr_val: int,
@@ -102,6 +106,7 @@ pub mod intrinsic {
                                     n_fields: uint,
                                     name: &str) -> bool;
         fn visit_leave_enum(&self, n_variants: uint,
+                            get_disr: extern unsafe fn(ptr: *Opaque) -> int,
                             sz: uint, align: uint) -> bool;
 
         fn visit_enter_fn(&self, purity: uint, proto: uint,
