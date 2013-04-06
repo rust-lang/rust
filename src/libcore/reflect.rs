@@ -15,6 +15,7 @@ Runtime type reflection
 */
 
 use intrinsic::{TyDesc, TyVisitor};
+#[cfg(not(stage0))] use intrinsic::Opaque;
 use libc::c_void;
 use sys;
 use vec;
@@ -393,10 +394,23 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
+    #[cfg(stage0)]
     fn visit_enter_enum(&self, n_variants: uint, sz: uint, align: uint)
                      -> bool {
         self.align(align);
         if ! self.inner.visit_enter_enum(n_variants, sz, align) {
+            return false;
+        }
+        true
+    }
+
+    #[cfg(not(stage0))]
+    fn visit_enter_enum(&self, n_variants: uint,
+                        get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        sz: uint, align: uint)
+                     -> bool {
+        self.align(align);
+        if ! self.inner.visit_enter_enum(n_variants, get_disr, sz, align) {
             return false;
         }
         true
@@ -443,9 +457,21 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
+    #[cfg(stage0)]
     fn visit_leave_enum(&self, n_variants: uint, sz: uint, align: uint)
                      -> bool {
         if ! self.inner.visit_leave_enum(n_variants, sz, align) {
+            return false;
+        }
+        self.bump(sz);
+        true
+    }
+
+    #[cfg(not(stage0))]
+    fn visit_leave_enum(&self, n_variants: uint,
+                        get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        sz: uint, align: uint) -> bool {
+        if ! self.inner.visit_leave_enum(n_variants, get_disr, sz, align) {
             return false;
         }
         self.bump(sz);
