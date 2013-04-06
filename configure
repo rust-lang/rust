@@ -136,6 +136,16 @@ validate_opt () {
                 isArgValid=1
             fi
         done
+        for option in $VOID_OPTIONS
+        do
+            if echo "$arg" | grep -q -- "--$option="
+            then
+                isArgValid=1
+            elif [ "$arg" = "--${option}" ]
+            then
+                isArgValid=1
+            fi
+        done
         if [ "$arg" = "--help" ]
         then
             echo ""
@@ -180,6 +190,30 @@ valopt() {
         fi
         OP="${OP}=[${DEFAULT}]"
         printf "    --%-30s %s\n" "$OP" "$DOC"
+    fi
+}
+
+voidopt() {
+    VOID_OPTIONS="$VOID_OPTIONS $1"
+
+    local OP=$1
+    shift
+    local DOC="$*"
+    if [ $HELP -eq 0 ]
+    then
+        for arg in $CFG_CONFIGURE_ARGS
+        do
+            if echo "$arg" | grep -q -- "--$OP="
+            then
+                printf "configure: ignoring an argument (voidopt): $arg\n"
+            elif [ "$arg" = "--${option}" ]
+            then
+                printf "configure: ignoring an argument (voidopt): $arg\n"
+            fi
+        done
+    else
+        OP="${OP}"
+        printf "    --%-30s %s\n" "$OP" "ignored... $DOC"
     fi
 }
 
@@ -363,6 +397,7 @@ fi
 
 BOOL_OPTIONS=""
 VAL_OPTIONS=""
+VOID_OPTIONS=""
 
 opt sharedstd 1 "build libstd as a shared library"
 opt valgrind 0 "run tests with valgrind (memcheck by default)"
@@ -386,6 +421,15 @@ valopt host-triples "${CFG_BUILD_TRIPLE}" "LLVM host triples"
 valopt target-triples "${CFG_HOST_TRIPLES}" "LLVM target triples"
 valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path"
 valopt mingw32-cross-path "" "MinGW32 cross compiler path"
+voidopt build
+voidopt includedir
+voidopt mandir
+voidopt infodir
+voidopt sysconfdir
+voidopt localstatedir
+voidopt libexecdir
+voidopt disable-maintainer-mode
+voidopt disable-dependency-tracking
 
 # Validate Options
 step_msg "validating $CFG_SELF args"
