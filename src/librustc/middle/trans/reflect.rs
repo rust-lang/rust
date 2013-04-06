@@ -10,6 +10,7 @@
 
 
 use lib::llvm::{TypeRef, ValueRef};
+use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee::{ArgVals, DontAutorefArg};
@@ -266,23 +267,28 @@ pub impl Reflector {
           // variant?
           ty::ty_enum(did, ref substs) => {
             let bcx = self.bcx;
-            let tcx = bcx.ccx().tcx;
-            let variants = ty::substd_enum_variants(tcx, did, substs);
+            let ccx = bcx.ccx();
+            let repr = adt::represent_type(bcx.ccx(), t);
+            let variants = ty::substd_enum_variants(ccx.tcx, did, substs);
 
-            let extra = ~[self.c_uint(vec::len(variants))]
+            let enum_args = ~[self.c_uint(vec::len(variants))]
                 + self.c_size_and_align(t);
-            do self.bracketed(~"enum", extra) |this| {
+            do self.bracketed(~"enum", enum_args) |this| {
                 for variants.eachi |i, v| {
-                    let extra1 = ~[this.c_uint(i),
-                                   this.c_int(v.disr_val),
-                                   this.c_uint(vec::len(v.args)),
-                                   this.c_slice(
-                                       bcx.ccx().sess.str_of(v.name))];
-                    do this.bracketed(~"enum_variant", extra1) |this| {
+                    let variant_args = ~[this.c_uint(i),
+                                         this.c_int(v.disr_val),
+                                         this.c_uint(vec::len(v.args)),
+                                         this.c_slice(ccx.sess.str_of(v.name))];
+                    do this.bracketed(~"enum_variant", variant_args) |this| {
                         for v.args.eachi |j, a| {
-                            let extra = ~[this.c_uint(j),
-                                          this.c_tydesc(*a)];
-                            this.visit(~"enum_variant_field", extra);
+                            let bcx = this.bcx;
+                            let null = C_null(T_ptr(type_of(ccx, t)));
+                            let offset = p2i(ccx, adt::trans_field_ptr(bcx, repr, null,
+                                                                       v.disr_val, j));
+                            let field_args = ~[this.c_uint(j),
+                                               offset,
+                                               this.c_tydesc(*a)];
+                            this.visit(~"enum_variant_field", field_args);
                         }
                     }
                 }

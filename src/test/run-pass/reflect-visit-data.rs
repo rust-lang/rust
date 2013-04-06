@@ -394,8 +394,8 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
-    fn visit_enum_variant_field(&self, i: uint, inner: *TyDesc) -> bool {
-        if ! self.inner.visit_enum_variant_field(i, inner) { return false; }
+    fn visit_enum_variant_field(&self, i: uint, offset: uint, inner: *TyDesc) -> bool {
+        if ! self.inner.visit_enum_variant_field(i, offset, inner) { return false; }
         true
     }
 
@@ -594,7 +594,7 @@ impl TyVisitor for my_visitor {
                                 _disr_val: int,
                                 _n_fields: uint,
                                 _name: &str) -> bool { true }
-    fn visit_enum_variant_field(&self, _i: uint, inner: *TyDesc) -> bool {
+    fn visit_enum_variant_field(&self, _i: uint, _offset: uint, inner: *TyDesc) -> bool {
         self.visit_inner(inner)
     }
     fn visit_leave_enum_variant(&self, _variant: uint,
