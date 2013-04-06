@@ -62,6 +62,8 @@ using namespace llvm::sys;
 
 static const char *LLVMRustError;
 
+extern cl::opt<bool> EnableARMEHABI;
+
 extern "C" LLVMMemoryBufferRef
 LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {
   LLVMMemoryBufferRef MemBuf = NULL;
@@ -429,10 +431,16 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
 
   LLVMRustInitializeTargets();
 
-  int argc = 3;
-  const char* argv[] = {"rustc", "-arm-enable-ehabi",
-      "-arm-enable-ehabi-descriptors"};
-  cl::ParseCommandLineOptions(argc, argv);
+  // Initializing the command-line options more than once is not
+  // allowed. So, check if they've already been initialized.
+  // (This could happen if we're being called from rustpkg, for
+  // example.)
+  if (!EnableARMEHABI) {
+    int argc = 3;
+    const char* argv[] = {"rustc", "-arm-enable-ehabi",
+			  "-arm-enable-ehabi-descriptors"};
+    cl::ParseCommandLineOptions(argc, argv);
+  }
 
   TargetOptions Options;
   Options.NoFramePointerElim = true;
