@@ -134,7 +134,7 @@ pub fn fold_fn_decl(decl: &ast::fn_decl, fld: @ast_fold) -> ast::fn_decl {
 
 fn fold_ty_param_bound(tpb: &TyParamBound, fld: @ast_fold) -> TyParamBound {
     match *tpb {
-        TraitTyParamBound(ty) => TraitTyParamBound(fld.fold_ty(ty)),
+        TraitTyParamBound(ty) => TraitTyParamBound(fold_trait_ref(ty, fld)),
         RegionTyParamBound => RegionTyParamBound
     }
 }

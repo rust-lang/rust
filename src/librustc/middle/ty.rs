@@ -25,8 +25,10 @@ use middle;
 use util::ppaux::{note_and_explain_region, bound_region_to_str};
 use util::ppaux::{region_to_str, vstore_to_str};
 use util::ppaux::{trait_store_to_str, ty_to_str, tys_to_str};
+use util::ppaux::{trait_ref_to_str};
 use util::common::{indenter};
 
+use core;
 use core::cast;
 use core::cmp;
 use core::ops;
@@ -44,6 +46,7 @@ use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::codemap;
 use syntax::print::pprust;
+use syntax::parse::token::special_idents;
 use syntax::{ast, ast_map};
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
@@ -70,7 +73,8 @@ pub type param_bounds = @~[param_bound];
 
 pub struct method {
     ident: ast::ident,
-    tps: @~[param_bounds],
+    generics: ty::Generics,
+    transformed_self_ty: Option<ty::t>,
     fty: BareFnTy,
     self_ty: ast::self_ty_,
     vis: ast::visibility,
@@ -95,9 +99,8 @@ pub enum vstore {
 
 #[auto_encode]
 #[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub enum TraitStore {
-    BareTraitStore,             // a plain trait without a sigil
     BoxTraitStore,              // @Trait
     UniqTraitStore,             // ~Trait
     RegionTraitStore(Region),   // &Trait
@@ -224,11 +227,6 @@ pub struct ProvidedMethodSource {
     impl_id: ast::def_id
 }
 
-pub struct InstantiatedTraitRef {
-    def_id: ast::def_id,
-    tpt: ty_param_substs_and_ty
-}
-
 pub type ctxt = @ctxt_;
 
 struct ctxt_ {
@@ -255,8 +253,21 @@ struct ctxt_ {
     // other items.
     node_type_substs: @mut HashMap<node_id, ~[t]>,
 
+    // Maps from a method to the method "descriptor"
+    methods: @mut HashMap<def_id, @method>,
+
+    // Maps from a trait def-id to a list of the def-ids of its methods
+    trait_method_def_ids: @mut HashMap<def_id, @~[def_id]>,
+
+    // A cache for the trait_methods() routine
+    trait_methods_cache: @mut HashMap<def_id, @~[@method]>,
+
+    trait_refs: @mut HashMap<node_id, @TraitRef>,
+    trait_defs: @mut HashMap<def_id, @TraitDef>,
+
     items: ast_map::map,
     intrinsic_defs: @mut HashMap<ast::ident, (ast::def_id, t)>,
+    intrinsic_traits: @mut HashMap<ast::ident, @TraitRef>,
     freevars: freevars::freevar_map,
     tcache: type_cache,
     rcache: creader_cache,
@@ -266,7 +277,6 @@ struct ctxt_ {
     tc_cache: @mut HashMap<uint, TypeContents>,
     ast_ty_to_ty_cache: @mut HashMap<node_id, ast_ty_to_ty_cache_entry>,
     enum_var_cache: @mut HashMap<def_id, @~[VariantInfo]>,
-    trait_method_cache: @mut HashMap<def_id, @~[method]>,
     ty_param_bounds: @mut HashMap<ast::node_id, param_bounds>,
     inferred_modes: @mut HashMap<ast::node_id, ast::mode>,
     adjustments: @mut HashMap<ast::node_id, @AutoAdjustment>,
@@ -277,7 +287,7 @@ struct ctxt_ {
     // that implementation implements.
     provided_methods: ProvidedMethodsMap,
     provided_method_sources: @mut HashMap<ast::def_id, ProvidedMethodSource>,
-    supertraits: @mut HashMap<ast::def_id, @~[InstantiatedTraitRef]>,
+    supertraits: @mut HashMap<ast::def_id, @~[@TraitRef]>,
 
     // A mapping from the def ID of an enum or struct type to the def ID
     // of the method that implements its destructor. If the type is not
@@ -527,6 +537,12 @@ pub enum sty {
     ty_unboxed_vec(mt),
 }
 
+#[deriving(Eq, IterBytes)]
+pub struct TraitRef {
+    def_id: def_id,
+    substs: substs
+}
+
 #[deriving(Eq)]
 pub enum IntVarValue {
     IntType(ast::int_ty),
@@ -573,16 +589,17 @@ pub enum type_err {
     terr_self_substs,
     terr_integer_as_char,
     terr_int_mismatch(expected_found<IntVarValue>),
-    terr_float_mismatch(expected_found<ast::float_ty>)
+    terr_float_mismatch(expected_found<ast::float_ty>),
+    terr_traits(expected_found<ast::def_id>),
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub enum param_bound {
     bound_copy,
     bound_durable,
     bound_owned,
     bound_const,
-    bound_trait(t),
+    bound_trait(@TraitRef),
 }
 
 #[deriving(Eq)]
@@ -648,19 +665,6 @@ impl cmp::Eq for InferRegion {
     }
     fn ne(&self, other: &InferRegion) -> bool {
         !((*self) == (*other))
-    }
-}
-
-impl to_bytes::IterBytes for param_bound {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        match *self {
-          bound_copy => 0u8.iter_bytes(lsb0, f),
-          bound_durable => 1u8.iter_bytes(lsb0, f),
-          bound_owned => 2u8.iter_bytes(lsb0, f),
-          bound_const => 3u8.iter_bytes(lsb0, f),
-          bound_trait(ref t) =>
-          to_bytes::iter_bytes_2(&4u8, t, lsb0, f)
-        }
     }
 }
 
@@ -750,6 +754,13 @@ impl to_bytes::IterBytes for RegionVid {
     }
 }
 
+/// Information about the type/lifetime parametesr associated with an item.
+/// Analogous to ast::Generics.
+pub struct Generics {
+    bounds: @~[param_bounds],
+    region_param: Option<region_variance>,
+}
+
 /// A polytype.
 ///
 /// - `bounds`: The list of bounds for each type parameter.  The length of the
@@ -761,9 +772,14 @@ impl to_bytes::IterBytes for RegionVid {
 /// - `ty`: the base type.  May have reference to the (unsubstituted) bound
 ///   region `&self` or to (unsubstituted) ty_param types
 pub struct ty_param_bounds_and_ty {
-    bounds: @~[param_bounds],
-    region_param: Option<region_variance>,
+    generics: Generics,
     ty: t
+}
+
+/// As `ty_param_bounds_and_ty` but for a trait ref.
+pub struct TraitDef {
+    generics: Generics,
+    trait_ref: @ty::TraitRef,
 }
 
 pub struct ty_param_substs_and_ty {
@@ -820,6 +836,9 @@ pub fn mk_ctxt(s: session::Session,
         region_paramd_items: region_paramd_items,
         node_types: @mut SmallIntMap::new(),
         node_type_substs: @mut HashMap::new(),
+        trait_refs: @mut HashMap::new(),
+        trait_defs: @mut HashMap::new(),
+        intrinsic_traits: @mut HashMap::new(),
         items: amap,
         intrinsic_defs: @mut HashMap::new(),
         freevars: freevars,
@@ -831,7 +850,9 @@ pub fn mk_ctxt(s: session::Session,
         tc_cache: @mut HashMap::new(),
         ast_ty_to_ty_cache: @mut HashMap::new(),
         enum_var_cache: @mut HashMap::new(),
-        trait_method_cache: @mut HashMap::new(),
+        methods: @mut HashMap::new(),
+        trait_method_def_ids: @mut HashMap::new(),
+        trait_methods_cache: @mut HashMap::new(),
         ty_param_bounds: @mut HashMap::new(),
         inferred_modes: @mut HashMap::new(),
         adjustments: @mut HashMap::new(),
@@ -1401,7 +1422,7 @@ pub fn param_bound_to_str(cx: ctxt, pb: &param_bound) -> ~str {
         bound_durable => ~"'static",
         bound_owned => ~"owned",
         bound_const => ~"const",
-        bound_trait(t) => ::util::ppaux::ty_to_str(cx, t)
+        bound_trait(t) => ::util::ppaux::trait_ref_to_str(cx, t)
     }
 }
 
@@ -1455,13 +1476,26 @@ pub fn subst(cx: ctxt,
     }
 }
 
+pub fn subst_in_trait_ref(cx: ctxt,
+                          substs: &substs,
+                          trait_ref: &ty::TraitRef) -> ty::TraitRef
+{
+    ty::TraitRef {
+        def_id: trait_ref.def_id,
+        substs: subst_in_substs(cx, substs, &trait_ref.substs)
+    }
+}
+
 // Performs substitutions on a set of substitutions (result = sup(sub)) to
 // yield a new set of substitutions. This is used in trait inheritance.
-pub fn subst_substs(cx: ctxt, sup: &substs, sub: &substs) -> substs {
+pub fn subst_in_substs(cx: ctxt,
+                       substs: &substs,
+                       in_substs: &substs) -> substs
+{
     substs {
-        self_r: sup.self_r,
-        self_ty: sup.self_ty.map(|typ| subst(cx, sub, *typ)),
-        tps: sup.tps.map(|typ| subst(cx, sub, *typ))
+        self_r: in_substs.self_r,
+        self_ty: in_substs.self_ty.map(|&typ| subst(cx, substs, typ)),
+        tps: in_substs.tps.map(|&typ| subst(cx, substs, typ))
     }
 }
 
@@ -1475,6 +1509,11 @@ pub fn type_is_bot(ty: t) -> bool {
 
 pub fn type_is_error(ty: t) -> bool {
     (get(ty).flags & (has_ty_err as uint)) != 0
+}
+
+pub fn trait_ref_contains_error(tref: &ty::TraitRef) -> bool {
+    tref.substs.self_ty.any(|&t| type_is_error(t)) ||
+        tref.substs.tps.any(|&t| type_is_error(t))
 }
 
 pub fn type_is_ty_var(ty: t) -> bool {
@@ -1921,8 +1960,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 TC_OWNED_CLOSURE
             }
 
-            ty_trait(_, _, BoxTraitStore) |
-            ty_trait(_, _, BareTraitStore) => {
+            ty_trait(_, _, BoxTraitStore) => {
                 TC_MANAGED
             }
 
@@ -2581,17 +2619,6 @@ impl to_bytes::IterBytes for vstore {
     }
 }
 
-impl to_bytes::IterBytes for TraitStore {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        match *self {
-          BareTraitStore => 0u8.iter_bytes(lsb0, f),
-          UniqTraitStore => 1u8.iter_bytes(lsb0, f),
-          BoxTraitStore => 2u8.iter_bytes(lsb0, f),
-          RegionTraitStore(ref r) => to_bytes::iter_bytes_2(&3u8, r, lsb0, f),
-        }
-    }
-}
-
 impl to_bytes::IterBytes for substs {
     fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_3(&self.self_r,
@@ -2704,6 +2731,16 @@ impl to_bytes::IterBytes for sty {
     }
 }
 
+pub fn node_id_to_trait_ref(cx: ctxt, id: ast::node_id) -> @ty::TraitRef {
+    match cx.trait_refs.find(&id) {
+       Some(&t) => t,
+       None => cx.sess.bug(
+           fmt!("node_id_to_trait_ref: no trait ref for node `%s`",
+                ast_map::node_id_to_str(cx.items, id,
+                                        cx.sess.parse_sess.interner)))
+    }
+}
+
 pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
     //io::println(fmt!("%?/%?", id, cx.node_types.len()));
     match cx.node_types.find(&(id as uint)) {
@@ -2724,6 +2761,16 @@ pub fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> ~[t] {
 
 fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
     cx.node_type_substs.contains_key(&id)
+}
+
+pub fn ty_fn_sig(fty: t) -> FnSig {
+    match get(fty).sty {
+        ty_bare_fn(ref f) => copy f.sig,
+        ty_closure(ref f) => copy f.sig,
+        ref s => {
+            fail!(fmt!("ty_fn_sig() called on non-fn type: %?", s))
+        }
+    }
 }
 
 // Type accessors for substructures of types
@@ -3004,7 +3051,7 @@ pub fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
             // n.b.: When we encode impl methods, the bounds
             // that we encode include both the impl bounds
             // and then the method bounds themselves...
-            ty::lookup_item_type(tcx, did).bounds
+            ty::lookup_item_type(tcx, did).generics.bounds
           }
           typeck::method_param(typeck::method_param {
               trait_id: trt_id,
@@ -3015,10 +3062,9 @@ pub fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
             // ...trait methods bounds, in contrast, include only the
             // method bounds, so we must preprend the tps from the
             // trait itself.  This ought to be harmonized.
-            let trt_bounds =
-                ty::lookup_item_type(tcx, trt_id).bounds;
+            let trt_bounds = ty::lookup_trait_def(tcx, trt_id).generics.bounds;
             @(vec::append(/*bad*/copy *trt_bounds,
-                          *ty::trait_methods(tcx, trt_id)[n_mth].tps))
+                          *ty::trait_method(tcx, trt_id, n_mth).generics.bounds))
           }
         }
     }
@@ -3203,10 +3249,8 @@ pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
 
-pub fn method_idx(id: ast::ident, meths: &[method]) -> Option<uint> {
-    let mut i = 0u;
-    for meths.each |m| { if m.ident == id { return Some(i); } i += 1u; }
-    return None;
+pub fn method_idx(id: ast::ident, meths: &[@method]) -> Option<uint> {
+    vec::position(meths, |m| m.ident == id)
 }
 
 /// Returns a vector containing the indices of all type parameters that appear
@@ -3469,6 +3513,11 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
                  ty_sort_str(cx, values.expected),
                  ty_sort_str(cx, values.found))
         }
+        terr_traits(values) => {
+            fmt!("expected trait %s but found trait %s",
+                 item_path_str(cx, values.expected),
+                 item_path_str(cx, values.found))
+        }
         terr_self_substs => {
             ~"inconsistent self substitution" // XXX this is more of a bug
         }
@@ -3527,10 +3576,6 @@ pub fn def_has_ty_params(def: ast::def) -> bool {
     }
 }
 
-pub fn store_trait_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
-    cx.trait_method_cache.insert(ast_util::local_def(id), ms);
-}
-
 pub fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
     if is_local(id) {
         match cx.items.find(&id.node) {
@@ -3550,11 +3595,11 @@ pub fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
 }
 
 pub fn trait_supertraits(cx: ctxt,
-                         id: ast::def_id)
-                      -> @~[InstantiatedTraitRef] {
+                         id: ast::def_id) -> @~[@TraitRef]
+{
     // Check the cache.
     match cx.supertraits.find(&id) {
-        Some(&instantiated_trait_info) => { return instantiated_trait_info; }
+        Some(&trait_refs) => { return trait_refs; }
         None => {}  // Continue.
     }
 
@@ -3563,63 +3608,73 @@ pub fn trait_supertraits(cx: ctxt,
     assert!(!is_local(id));
 
     // Get the supertraits out of the metadata and create the
-    // InstantiatedTraitRef for each.
-    let mut result = ~[];
-    for csearch::get_supertraits(cx, id).each |trait_type| {
-        match get(*trait_type).sty {
-            ty_trait(def_id, ref substs, _) => {
-                result.push(InstantiatedTraitRef {
-                    def_id: def_id,
-                    tpt: ty_param_substs_and_ty {
-                        substs: (/*bad*/copy *substs),
-                        ty: *trait_type
-                    }
-                });
-            }
-            _ => cx.sess.bug(~"trait_supertraits: trait ref wasn't a trait")
-        }
-    }
-
-    // Unwrap and return the result.
-    return @result;
+    // TraitRef for each.
+    let result = @csearch::get_supertraits(cx, id);
+    cx.supertraits.insert(id, result);
+    return result;
 }
 
-pub fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
-    match cx.trait_method_cache.find(&id) {
-      // Local traits are supposed to have been added explicitly.
-      Some(&ms) => ms,
-      _ => {
-        // If the lookup in trait_method_cache fails, assume that the trait
-        // method we're trying to look up is in a different crate, and look
-        // for it there.
-        assert!(id.crate != ast::local_crate);
-        let result = csearch::get_trait_methods(cx, id);
+fn lookup_locally_or_in_crate_store<V:Copy>(
+    descr: &str,
+    def_id: ast::def_id,
+    map: &mut HashMap<ast::def_id, V>,
+    load_external: &fn() -> V) -> V
+{
+    /*!
+     *
+     * Helper for looking things up in the various maps
+     * that are populated during typeck::collect (e.g.,
+     * `cx.methods`, `cx.tcache`, etc).  All of these share
+     * the pattern that if the id is local, it should have
+     * been loaded into the map by the `typeck::collect` phase.
+     * If the def-id is external, then we have to go consult
+     * the crate loading code (and cache the result for the future).
+     */
 
-        // Store the trait method in the local trait_method_cache so that
-        // future lookups succeed.
-        cx.trait_method_cache.insert(id, result);
-        result
-      }
+    match map.find(&def_id) {
+        Some(&v) => { return v; }
+        None => { }
+    }
+
+    if def_id.crate == ast::local_crate {
+        fail!(fmt!("No def'n found for %? in tcx.%s",
+                   def_id, descr));
+    }
+    let v = load_external();
+    map.insert(def_id, v);
+    return v;
+}
+
+pub fn trait_method(cx: ctxt, trait_did: ast::def_id, idx: uint) -> @method {
+    let method_def_id = ty::trait_method_def_ids(cx, trait_did)[idx];
+    ty::method(cx, method_def_id)
+}
+
+pub fn trait_methods(cx: ctxt, trait_did: ast::def_id) -> @~[@method] {
+    match cx.trait_methods_cache.find(&trait_did) {
+        Some(&methods) => methods,
+        None => {
+            let def_ids = ty::trait_method_def_ids(cx, trait_did);
+            let methods = @def_ids.map(|d| ty::method(cx, *d));
+            cx.trait_methods_cache.insert(trait_did, methods);
+            methods
+        }
     }
 }
 
-/*
-  Could this return a list of (def_id, substs) pairs?
- */
-pub fn impl_traits(cx: ctxt, id: ast::def_id, store: TraitStore) -> ~[t] {
-    fn storeify(cx: ctxt, ty: t, store: TraitStore) -> t {
-        match ty::get(ty).sty {
-            ty::ty_trait(did, ref substs, trait_store) => {
-                if store == trait_store {
-                    ty
-                } else {
-                    mk_trait(cx, did, (/*bad*/copy *substs), store)
-                }
-            }
-            _ => cx.sess.bug(~"impl_traits: not a trait")
-        }
-    }
+pub fn method(cx: ctxt, id: ast::def_id) -> @method {
+    lookup_locally_or_in_crate_store(
+        "methods", id, cx.methods,
+        || @csearch::get_method(cx, id))
+}
 
+pub fn trait_method_def_ids(cx: ctxt, id: ast::def_id) -> @~[def_id] {
+    lookup_locally_or_in_crate_store(
+        "methods", id, cx.trait_method_def_ids,
+        || @csearch::get_trait_method_def_ids(cx.cstore, id))
+}
+
+pub fn impl_trait_refs(cx: ctxt, id: ast::def_id) -> ~[@TraitRef] {
     if id.crate == ast::local_crate {
         debug!("(impl_traits) searching for trait impl %?", id);
         match cx.items.find(&id.node) {
@@ -3627,17 +3682,15 @@ pub fn impl_traits(cx: ctxt, id: ast::def_id, store: TraitStore) -> ~[t] {
                         node: ast::item_impl(_, opt_trait, _, _),
                         _},
                     _)) => {
-
-               do opt_trait.map_default(~[]) |trait_ref| {
-                   ~[storeify(cx, node_id_to_type(cx, trait_ref.ref_id),
-                              store)]
+               match opt_trait {
+                   Some(t) => ~[ty::node_id_to_trait_ref(cx, t.ref_id)],
+                   None => ~[]
                }
            }
            _ => ~[]
         }
     } else {
-        vec::map(csearch::get_impl_traits(cx, id),
-                 |x| storeify(cx, *x, store))
+        csearch::get_impl_traits(cx, id)
     }
 }
 
@@ -3906,18 +3959,25 @@ pub fn enum_variant_with_id(cx: ctxt,
 pub fn lookup_item_type(cx: ctxt,
                         did: ast::def_id)
                      -> ty_param_bounds_and_ty {
-    match cx.tcache.find(&did) {
-      Some(&tpt) => {
-        // The item is in this crate. The caller should have added it to the
-        // type cache already
-        return tpt;
-      }
-      None => {
-        assert!(did.crate != ast::local_crate);
-        let tyt = csearch::get_type(cx, did);
-        cx.tcache.insert(did, tyt);
-        return tyt;
-      }
+    lookup_locally_or_in_crate_store(
+        "tcache", did, cx.tcache,
+        || csearch::get_type(cx, did))
+}
+
+/// Given the did of a trait, returns its canonical trait ref.
+pub fn lookup_trait_def(cx: ctxt, did: ast::def_id) -> @ty::TraitDef {
+    match cx.trait_defs.find(&did) {
+        Some(&trait_def) => {
+            // The item is in this crate. The caller should have added it to the
+            // type cache already
+            return trait_def;
+        }
+        None => {
+            assert!(did.crate != ast::local_crate);
+            let trait_def = @csearch::get_trait_def(cx, did);
+            cx.trait_defs.insert(did, trait_def);
+            return trait_def;
+        }
     }
 }
 
@@ -4204,9 +4264,6 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
                 t
             },
 
-        ty_trait(did, ref substs, BareTraitStore) =>
-            mk_trait(cx, did, copy *substs, BoxTraitStore),
-
         _ =>
             t
     };
@@ -4272,12 +4329,11 @@ pub fn determine_inherited_purity(parent_purity: ast::purity,
 // list.
 pub fn iter_bound_traits_and_supertraits(tcx: ctxt,
                                          bounds: param_bounds,
-                                         f: &fn(t) -> bool) {
+                                         f: &fn(&TraitRef) -> bool) {
     let mut fin = false;
 
     for bounds.each |bound| {
-
-        let bound_trait_ty = match *bound {
+        let bound_trait_ref = match *bound {
             ty::bound_trait(bound_t) => bound_t,
 
             ty::bound_copy | ty::bound_owned |
@@ -4286,39 +4342,38 @@ pub fn iter_bound_traits_and_supertraits(tcx: ctxt,
             }
         };
 
-        let mut supertrait_map = HashMap::new();
+        let mut supertrait_set = HashMap::new();
         let mut seen_def_ids = ~[];
         let mut i = 0;
-        let trait_ty_id = ty_to_def_id(bound_trait_ty).expect(
-            ~"iter_trait_ty_supertraits got a non-trait type");
-        let mut trait_ty = bound_trait_ty;
+        let trait_ty_id = bound_trait_ref.def_id;
+        let mut trait_ref = bound_trait_ref;
 
-        debug!("iter_bound_traits_and_supertraits: trait_ty = %s",
-               ty_to_str(tcx, trait_ty));
+        debug!("iter_bound_traits_and_supertraits: trait_ref = %s",
+               trait_ref_to_str(tcx, trait_ref));
 
         // Add the given trait ty to the hash map
-        supertrait_map.insert(trait_ty_id, trait_ty);
+        supertrait_set.insert(trait_ty_id, ());
         seen_def_ids.push(trait_ty_id);
 
-        if f(trait_ty) {
+        if f(trait_ref) {
             // Add all the supertraits to the hash map,
             // executing <f> on each of them
-            while i < supertrait_map.len() && !fin {
+            while i < supertrait_set.len() && !fin {
                 let init_trait_id = seen_def_ids[i];
                 i += 1;
-                 // Add supertraits to supertrait_map
-                let supertraits = trait_supertraits(tcx, init_trait_id);
-                for supertraits.each |supertrait| {
-                    let super_t = supertrait.tpt.ty;
-                    let d_id = ty_to_def_id(super_t).expect("supertrait \
-                        should be a trait ty");
-                    if !supertrait_map.contains_key(&d_id) {
-                        supertrait_map.insert(d_id, super_t);
-                        trait_ty = super_t;
+
+                 // Add supertraits to supertrait_set
+                let supertrait_refs = trait_supertraits(tcx, init_trait_id);
+                for supertrait_refs.each |&supertrait_ref| {
+                    let d_id = supertrait_ref.def_id;
+                    if !supertrait_set.contains_key(&d_id) {
+                        // FIXME(#5527) Could have same trait multiple times
+                        supertrait_set.insert(d_id, ());
+                        trait_ref = supertrait_ref;
                         seen_def_ids.push(d_id);
                     }
-                    debug!("A super_t = %s", ty_to_str(tcx, trait_ty));
-                    if !f(trait_ty) {
+                    debug!("A super_t = %s", trait_ref_to_str(tcx, trait_ref));
+                    if !f(trait_ref) {
                         fin = true;
                     }
                 }
@@ -4353,6 +4408,14 @@ pub fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
         },
         None => tcx.sess.bug(~"get_impl_id: trait isn't in trait_impls")
     }
+}
+
+pub fn visitor_object_ty(tcx: ctxt) -> (@TraitRef, t) {
+    let ty_visitor_name = special_idents::ty_visitor;
+    assert!(tcx.intrinsic_traits.contains_key(&ty_visitor_name));
+    let trait_ref = *tcx.intrinsic_traits.get(&ty_visitor_name);
+    (trait_ref,
+     mk_trait(tcx, trait_ref.def_id, copy trait_ref.substs, BoxTraitStore))
 }
 
 // Local Variables:

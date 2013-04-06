@@ -46,7 +46,8 @@ use ops::Add;
 use kinds::Copy;
 use util;
 use num::Zero;
-use iter::{BaseIter, MutableIter};
+use iter::{BaseIter, MutableIter, ExtendedIter};
+use iter;
 
 #[cfg(test)] use ptr;
 #[cfg(test)] use str;
@@ -115,6 +116,31 @@ impl<T> MutableIter<T> for Option<T> {
     #[inline(always)]
     fn each_mut(&mut self, f: &fn(&'self mut T) -> bool) {
         match *self { None => (), Some(ref mut t) => { f(t); } }
+    }
+}
+
+impl<A> ExtendedIter<A> for Option<A> {
+    pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) {
+        iter::eachi(self, blk)
+    }
+    pub fn all(&self, blk: &fn(&A) -> bool) -> bool {
+        iter::all(self, blk)
+    }
+    pub fn any(&self, blk: &fn(&A) -> bool) -> bool {
+        iter::any(self, blk)
+    }
+    pub fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
+        iter::foldl(self, b0, blk)
+    }
+    pub fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
+        iter::position(self, f)
+    }
+    fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
+        iter::map_to_vec(self, op)
+    }
+    fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
+        -> ~[B] {
+        iter::flat_map_to_vec(self, op)
     }
 }
 

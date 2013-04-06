@@ -92,6 +92,7 @@ use middle::typeck::check;
 use middle::typeck::infer;
 use middle::typeck::{method_map_entry, method_origin, method_param};
 use middle::typeck::{method_self, method_static, method_trait, method_super};
+use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use util::common::indenter;
 use util::ppaux::expr_repr;
 
@@ -99,6 +100,7 @@ use core::hashmap::HashSet;
 use core::result;
 use core::uint;
 use core::vec;
+use std::list::Nil;
 use syntax::ast::{def_id, sty_value, sty_region, sty_box};
 use syntax::ast::{sty_uniq, sty_static, node_id, by_copy, by_ref};
 use syntax::ast::{m_const, m_mutbl, m_imm};
@@ -121,7 +123,7 @@ pub fn lookup(
         fcx: @mut FnCtxt,
 
         // In a call `a.b::<X, Y, ...>(...)`:
-        expr: @ast::expr,                   // The expression `a.b`.
+        expr: @ast::expr,                   // The expression `a.b(...)`.
         self_expr: @ast::expr,              // The expression `a`.
         callee_id: node_id,                 // Where to store `a.b`'s type
         m_name: ast::ident,                 // The ident `b`.
@@ -174,13 +176,7 @@ pub struct LookupContext<'self> {
 pub struct Candidate {
     rcvr_ty: ty::t,
     rcvr_substs: ty::substs,
-    explicit_self: ast::self_ty_,
-
-    // FIXME #3446---these two fields should be easily derived from
-    // origin, yet are not
-    num_method_tps: uint,
-    self_mode: ast::rmode,
-
+    method_ty: @ty::method,
     origin: method_origin,
 }
 
@@ -386,7 +382,7 @@ pub impl<'self> LookupContext<'self> {
         let bounds = tcx.ty_param_bounds.get(&param_ty.def_id.node);
 
         for bounds.each |bound| {
-            let bound_trait_ty = match *bound {
+            let bound_trait_ref = match *bound {
                 ty::bound_trait(bound_t) => bound_t,
 
                 ty::bound_copy | ty::bound_owned |
@@ -395,22 +391,10 @@ pub impl<'self> LookupContext<'self> {
                 }
             };
 
-
-            let bound_substs = match ty::get(bound_trait_ty).sty {
-                ty::ty_trait(_, ref substs, _) => (/*bad*/copy *substs),
-                _ => {
-                    self.bug(fmt!("add_candidates_from_param: \
-                                   non-trait bound %s",
-                                  self.ty_to_str(bound_trait_ty)));
-                }
-            };
-
-
             // Loop over the trait and all of its supertraits.
             let mut worklist = ~[];
 
-            let init_trait_ty = bound_trait_ty;
-            let init_substs = bound_substs;
+            let init_trait_ref = bound_trait_ref;
 
             // Replace any appearance of `self` with the type of the
             // generic parameter itself.  Note that this is the only
@@ -421,29 +405,26 @@ pub impl<'self> LookupContext<'self> {
             // to self are not permitted).
             let init_substs = substs {
                 self_ty: Some(rcvr_ty),
-                ..init_substs
+                ..copy bound_trait_ref.substs
             };
 
-            worklist.push((init_trait_ty, init_substs));
+            worklist.push((init_trait_ref.def_id, init_substs));
 
             let mut i = 0;
             while i < worklist.len() {
-                let (init_trait_ty, init_substs) = /*bad*/copy worklist[i];
+                let (init_trait_id, init_substs) = /*bad*/copy worklist[i];
                 i += 1;
 
-                let init_trait_id = ty::ty_to_def_id(init_trait_ty).get();
-
                 // Add all the supertraits of this trait to the worklist.
-                let supertraits = ty::trait_supertraits(tcx,
-                                                        init_trait_id);
-                for supertraits.each |supertrait| {
+                let supertraits = ty::trait_supertraits(tcx, init_trait_id);
+                for supertraits.each |supertrait_ref| {
                     debug!("adding supertrait: %?",
-                           supertrait.def_id);
+                           supertrait_ref.def_id);
 
-                    let new_substs = ty::subst_substs(
+                    let new_substs = ty::subst_in_substs(
                         tcx,
-                        &supertrait.tpt.substs,
-                        &init_substs);
+                        &init_substs,
+                        &supertrait_ref.substs);
 
                     // Again replacing the self type
                     let new_substs = substs {
@@ -451,7 +432,7 @@ pub impl<'self> LookupContext<'self> {
                         ..new_substs
                     };
 
-                    worklist.push((supertrait.tpt.ty, new_substs));
+                    worklist.push((supertrait_ref.def_id, new_substs));
                 }
 
 
@@ -472,7 +453,7 @@ pub impl<'self> LookupContext<'self> {
                         }
                     }
                 };
-                let method = &trait_methods[pos];
+                let method = trait_methods[pos];
 
                 let (rcvr_ty, rcvr_substs) =
                     self.create_rcvr_ty_and_substs_for_method(
@@ -484,9 +465,7 @@ pub impl<'self> LookupContext<'self> {
                 let cand = Candidate {
                     rcvr_ty: rcvr_ty,
                     rcvr_substs: rcvr_substs,
-                    explicit_self: method.self_ty,
-                    num_method_tps: method.tps.len(),
-                    self_mode: get_mode_from_self_type(method.self_ty),
+                    method_ty: method,
                     origin: method_param(
                         method_param {
                             trait_id: init_trait_id,
@@ -518,7 +497,7 @@ pub impl<'self> LookupContext<'self> {
             Some(i) => i,
             None => { return; } // no method with the right name
         };
-        let method = &ms[index];
+        let method = ms[index];
 
         /* FIXME(#3157) we should transform the vstore in accordance
            with the self type
@@ -552,9 +531,7 @@ pub impl<'self> LookupContext<'self> {
         self.inherent_candidates.push(Candidate {
             rcvr_ty: rcvr_ty,
             rcvr_substs: rcvr_substs,
-            explicit_self: method.self_ty,
-            num_method_tps: method.tps.len(),
-            self_mode: get_mode_from_self_type(method.self_ty),
+            method_ty: method,
             origin: method_trait(did, index, store)
         });
     }
@@ -563,63 +540,65 @@ pub impl<'self> LookupContext<'self> {
                                           self_ty: ty::t,
                                           did: def_id,
                                           substs: &ty::substs) {
+        struct MethodInfo {
+            method_ty: @ty::method,
+            trait_def_id: ast::def_id,
+            index: uint
+        }
+
         let tcx = self.tcx();
         // First, try self methods
-        let mut method = None;
+        let mut method_info: Option<MethodInfo> = None;
         let methods = ty::trait_methods(tcx, did);
-        let mut index = None;
-        let mut trait_did = None;
         match vec::position(*methods, |m| m.ident == self.m_name) {
             Some(i) => {
-                index = Some(i);
-                trait_did = Some(did);
-                method = Some((methods[i].self_ty, methods[i].tps.len()));
+                method_info = Some(MethodInfo {
+                    method_ty: methods[i],
+                    index: i,
+                    trait_def_id: did
+                });
             }
             None => ()
         }
         // No method found yet? Check each supertrait
-        if method.is_none() {
+        if method_info.is_none() {
             for ty::trait_supertraits(tcx, did).each() |trait_ref| {
                 let supertrait_methods =
                     ty::trait_methods(tcx, trait_ref.def_id);
                 match vec::position(*supertrait_methods,
                                     |m| m.ident == self.m_name) {
                     Some(i) => {
-                        index = Some(i);
-                        trait_did = Some(trait_ref.def_id);
-                        method = Some((supertrait_methods[i].self_ty,
-                                       supertrait_methods[i].tps.len()));
+                        method_info = Some(MethodInfo {
+                            method_ty: supertrait_methods[i],
+                            index: i,
+                            trait_def_id: trait_ref.def_id
+                        });
                         break;
                     }
                     None => ()
                 }
             }
         }
-        match (method, index, trait_did) {
-            (Some((method_self_ty, method_num_tps)),
-             Some(index), Some(trait_did)) => {
-
+        match method_info {
+            Some(ref info) => {
                 // We've found a method -- return it
-                let rcvr_substs = substs { self_ty: Some(self_ty),
+                let rcvr_substs = substs {self_ty: Some(self_ty),
                                           ..copy *substs };
                 let (rcvr_ty, rcvr_substs) =
                     self.create_rcvr_ty_and_substs_for_method(
-                        method_self_ty,
+                        info.method_ty.self_ty,
                         self_ty,
                         rcvr_substs,
                         TransformTypeNormally);
-                let origin = if trait_did == did {
-                    method_self(trait_did, index)
-                }
-                else {
-                    method_super(trait_did, index)
+                let origin = if did == info.trait_def_id {
+                    method_self(info.trait_def_id, info.index)
+                } else {
+                    method_super(info.trait_def_id, info.index)
                 };
                 self.inherent_candidates.push(Candidate {
                     rcvr_ty: rcvr_ty,
                     rcvr_substs: rcvr_substs,
-                    explicit_self: method_self_ty,
-                    num_method_tps: method_num_tps,
-                    self_mode: get_mode_from_self_type(method_self_ty),
+                    method_ty: info.method_ty,
                     origin: origin
                 });
             }
@@ -651,7 +630,7 @@ pub impl<'self> LookupContext<'self> {
             }
         };
 
-        let method = &impl_info.methods[idx];
+        let method = ty::method(self.tcx(), impl_info.methods[idx].did);
 
         // determine the `self` of the impl with fresh
         // variables for each parameter:
@@ -667,7 +646,7 @@ pub impl<'self> LookupContext<'self> {
 
         let (impl_ty, impl_substs) =
             self.create_rcvr_ty_and_substs_for_method(
-                method.self_type,
+                method.self_ty,
                 impl_ty,
                 impl_substs,
                 TransformTypeNormally);
@@ -675,10 +654,8 @@ pub impl<'self> LookupContext<'self> {
         candidates.push(Candidate {
             rcvr_ty: impl_ty,
             rcvr_substs: impl_substs,
-            explicit_self: method.self_type,
-            num_method_tps: method.n_tps,
-            self_mode: get_mode_from_self_type(method.self_type),
-            origin: method_static(method.did)
+            method_ty: method,
+            origin: method_static(method.def_id)
         });
     }
 
@@ -699,6 +676,9 @@ pub impl<'self> LookupContext<'self> {
             debug!("(pushing candidates from provided methods) adding \
                     candidate");
 
+            let method = ty::method(self.tcx(),
+                                    provided_method_info.method_info.did);
+
             // XXX: Needs to support generics.
             let dummy_substs = substs {
                 self_r: None,
@@ -707,7 +687,7 @@ pub impl<'self> LookupContext<'self> {
             };
             let (impl_ty, impl_substs) =
                 self.create_rcvr_ty_and_substs_for_method(
-                    provided_method_info.method_info.self_type,
+                    method.self_ty,
                     self_ty,
                     dummy_substs,
                     TransformTypeNormally);
@@ -715,10 +695,7 @@ pub impl<'self> LookupContext<'self> {
             candidates.push(Candidate {
                 rcvr_ty: impl_ty,
                 rcvr_substs: impl_substs,
-                explicit_self: provided_method_info.method_info.self_type,
-                num_method_tps: provided_method_info.method_info.n_tps,
-                self_mode: get_mode_from_self_type(
-                    provided_method_info.method_info.self_type),
+                method_ty: method,
                 origin: method_static(provided_method_info.method_info.did)
             });
         }
@@ -1092,9 +1069,15 @@ pub impl<'self> LookupContext<'self> {
     fn confirm_candidate(&self,
                          self_ty: ty::t,
                          candidate: &Candidate)
-        -> method_map_entry {
+        -> method_map_entry
+    {
         let tcx = self.tcx();
         let fty = self.fn_ty_from_origin(&candidate.origin);
+
+        debug!("confirm_candidate(expr=%s, candidate=%s, fty=%s)",
+               expr_repr(tcx, self.expr),
+               self.cand_to_str(candidate),
+               self.ty_to_str(fty));
 
         self.enforce_trait_instance_limitations(fty, candidate);
         self.enforce_drop_trait_limitations(candidate);
@@ -1118,20 +1101,21 @@ pub impl<'self> LookupContext<'self> {
         // If they were not explicitly supplied, just construct fresh
         // type variables.
         let num_supplied_tps = self.supplied_tps.len();
+        let num_method_tps = candidate.method_ty.generics.bounds.len();
         let m_substs = {
             if num_supplied_tps == 0u {
-                self.fcx.infcx().next_ty_vars(candidate.num_method_tps)
-            } else if candidate.num_method_tps == 0u {
+                self.fcx.infcx().next_ty_vars(num_method_tps)
+            } else if num_method_tps == 0u {
                 tcx.sess.span_err(
                     self.expr.span,
                     ~"this method does not take type parameters");
-                self.fcx.infcx().next_ty_vars(candidate.num_method_tps)
-            } else if num_supplied_tps != candidate.num_method_tps {
+                self.fcx.infcx().next_ty_vars(num_method_tps)
+            } else if num_supplied_tps != num_method_tps {
                 tcx.sess.span_err(
                     self.expr.span,
                     ~"incorrect number of type \
                      parameters given for this method");
-                self.fcx.infcx().next_ty_vars(candidate.num_method_tps)
+                self.fcx.infcx().next_ty_vars(num_method_tps)
             } else {
                 self.supplied_tps.to_vec()
             }
@@ -1145,13 +1129,41 @@ pub impl<'self> LookupContext<'self> {
             ../*bad*/copy candidate.rcvr_substs
         };
 
-        self.fcx.write_ty_substs(self.callee_id, fty, all_substs);
+        // Compute the method type with type parameters substituted
+        debug!("fty=%s all_substs=%s",
+               self.ty_to_str(fty),
+               ty::substs_to_str(tcx, &all_substs));
+        let fty = ty::subst(tcx, &all_substs, fty);
+        debug!("after subst, fty=%s", self.ty_to_str(fty));
+
+        // Replace any bound regions that appear in the function
+        // signature with region variables
+        let bare_fn_ty = match ty::get(fty).sty {
+            ty::ty_bare_fn(ref f) => copy *f,
+            ref s => {
+                tcx.sess.span_bug(
+                    self.expr.span,
+                    fmt!("Invoking method with non-bare-fn ty: %?", s));
+            }
+        };
+        let (_, _, fn_sig) =
+            replace_bound_regions_in_fn_sig(
+                tcx, @Nil, None, &bare_fn_ty.sig,
+                |_br| self.fcx.infcx().next_region_var(
+                    self.expr.span, self.expr.id));
+        let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {sig: fn_sig, ..bare_fn_ty});
+        debug!("after replacing bound regions, fty=%s", self.ty_to_str(fty));
+
+        let self_mode = get_mode_from_self_type(candidate.method_ty.self_ty);
+
+        self.fcx.write_ty(self.callee_id, fty);
+        self.fcx.write_substs(self.callee_id, all_substs);
         method_map_entry {
             self_arg: arg {
-                mode: ast::expl(candidate.self_mode),
+                mode: ast::expl(self_mode),
                 ty: candidate.rcvr_ty,
             },
-            explicit_self: candidate.explicit_self,
+            explicit_self: candidate.method_ty.self_ty,
             origin: candidate.origin,
         }
     }
@@ -1183,7 +1195,7 @@ pub impl<'self> LookupContext<'self> {
                   self-type through a boxed trait");
         }
 
-        if candidate.num_method_tps > 0 {
+        if candidate.method_ty.generics.bounds.len() > 0 {
             self.tcx().sess.span_err(
                 self.expr.span,
                 ~"cannot call a generic method through a boxed trait");
@@ -1300,10 +1312,9 @@ pub impl<'self> LookupContext<'self> {
     }
 
     fn cand_to_str(&self, cand: &Candidate) -> ~str {
-        fmt!("Candidate(rcvr_ty=%s, rcvr_substs=%s, self_mode=%?, origin=%?)",
+        fmt!("Candidate(rcvr_ty=%s, rcvr_substs=%s, origin=%?)",
              self.ty_to_str(cand.rcvr_ty),
              ty::substs_to_str(self.tcx(), &cand.rcvr_substs),
-             cand.self_mode,
              cand.origin)
     }
 

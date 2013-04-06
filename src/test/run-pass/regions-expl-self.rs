@@ -15,7 +15,7 @@ struct Foo {
 }
 
 pub impl Foo {
-    fn foo(&'a self) {}
+    fn foo<'a>(&'a self) {}
 }
 
 pub fn main() {}

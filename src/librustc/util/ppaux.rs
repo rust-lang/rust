@@ -239,7 +239,6 @@ pub fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
 
 pub fn trait_store_to_str(cx: ctxt, s: ty::TraitStore) -> ~str {
     match s {
-      ty::BareTraitStore => ~"",
       ty::UniqTraitStore => ~"~",
       ty::BoxTraitStore => ~"@",
       ty::RegionTraitStore(r) => region_to_str_space(cx, "&", r)
@@ -283,6 +282,12 @@ pub fn fn_sig_to_str(cx: ctxt, typ: &ty::FnSig) -> ~str {
     fmt!("fn%s -> %s",
          tys_to_str(cx, typ.inputs.map(|a| a.ty)),
          ty_to_str(cx, typ.output))
+}
+
+pub fn trait_ref_to_str(cx: ctxt, trait_ref: &ty::TraitRef) -> ~str {
+    let path = ty::item_path(cx, trait_ref.def_id);
+    let base = ast_map::path_to_str(path, cx.sess.intr());
+    parameterized(cx, base, trait_ref.substs.self_r, trait_ref.substs.tps)
 }
 
 pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
@@ -443,7 +448,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                    str::from_bytes(~[('a' as u8) + (id as u8)]))
           }
       }
-      ty_self(*) => ~"self",
+      ty_self(*) => ~"Self",
       ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());

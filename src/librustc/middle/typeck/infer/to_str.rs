@@ -16,7 +16,7 @@ use middle::ty;
 use middle::typeck::infer::{Bound, Bounds};
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::unify::{Redirect, Root, VarValue};
-use util::ppaux::{mt_to_str, ty_to_str};
+use util::ppaux::{mt_to_str, ty_to_str, trait_ref_to_str};
 
 use syntax::ast;
 
@@ -89,5 +89,11 @@ impl InferStr for IntVarValue {
 impl InferStr for ast::float_ty {
     fn inf_str(&self, _cx: &InferCtxt) -> ~str {
         self.to_str()
+    }
+}
+
+impl InferStr for ty::TraitRef {
+    fn inf_str(&self, cx: &InferCtxt) -> ~str {
+        trait_ref_to_str(cx.tcx, self)
     }
 }

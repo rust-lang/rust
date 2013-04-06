@@ -417,6 +417,7 @@ impl tr for ast::def {
           ast::def_variant(e_did, v_did) => {
             ast::def_variant(e_did.tr(xcx), v_did.tr(xcx))
           }
+          ast::def_trait(did) => ast::def_trait(did.tr(xcx)),
           ast::def_ty(did) => ast::def_ty(did.tr(xcx)),
           ast::def_prim_ty(p) => ast::def_prim_ty(p),
           ast::def_ty_param(did, v) => ast::def_ty_param(did.tr(xcx), v),
@@ -778,16 +779,20 @@ impl ebml_writer_helpers for writer::Encoder {
 
     fn emit_tpbt(&self, ecx: @e::EncodeContext,
                  tpbt: ty::ty_param_bounds_and_ty) {
-        do self.emit_struct("ty_param_bounds_and_ty", 3) {
-            do self.emit_field(~"bounds", 0) {
-                do self.emit_from_vec(*tpbt.bounds) |bs| {
-                    self.emit_bounds(ecx, *bs);
+        do self.emit_struct("ty_param_bounds_and_ty", 2) {
+            do self.emit_field(~"generics", 0) {
+                do self.emit_struct("Generics", 2) {
+                    do self.emit_field(~"bounds", 0) {
+                        do self.emit_from_vec(*tpbt.generics.bounds) |bs| {
+                            self.emit_bounds(ecx, *bs);
+                        }
+                    }
+                    do self.emit_field(~"region_param", 1) {
+                        tpbt.generics.region_param.encode(self);
+                    }
                 }
             }
-            do self.emit_field(~"region_param", 1u) {
-                tpbt.region_param.encode(self);
-            }
-            do self.emit_field(~"ty", 2u) {
+            do self.emit_field(~"ty", 1) {
                 self.emit_ty(ecx, tpbt.ty);
             }
         }
@@ -1045,15 +1050,19 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
     fn read_ty_param_bounds_and_ty(&self, xcx: @ExtendedDecodeContext)
         -> ty::ty_param_bounds_and_ty
     {
-        do self.read_struct("ty_param_bounds_and_ty", 3) {
+        do self.read_struct("ty_param_bounds_and_ty", 2) {
             ty::ty_param_bounds_and_ty {
-                bounds: self.read_field(~"bounds", 0u, || {
-                    @self.read_to_vec(|| self.read_bounds(xcx) )
-                }),
-                region_param: self.read_field(~"region_param", 1u, || {
-                    Decodable::decode(self)
-                }),
-                ty: self.read_field(~"ty", 2u, || {
+                generics: do self.read_struct("Generics", 2) {
+                    ty::Generics {
+                        bounds: self.read_field(~"bounds", 0, || {
+                            @self.read_to_vec(|| self.read_bounds(xcx) )
+                        }),
+                        region_param: self.read_field(~"region_param", 1, || {
+                            Decodable::decode(self)
+                        })
+                    }
+                },
+                ty: self.read_field(~"ty", 1, || {
                     self.read_ty(xcx)
                 })
             }
