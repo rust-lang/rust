@@ -562,7 +562,7 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
 
         match opt_trait {
             Some(t) => {
-                print_path(s, t.path, false);
+                print_trait_ref(s, t);
                 space(s.s);
                 word_space(s, ~"for");
             }
@@ -617,6 +617,10 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
       }
     }
     (s.ann.post)(ann_node);
+}
+
+fn print_trait_ref(s: @ps, t: &ast::trait_ref) {
+    print_path(s, t.path, false);
 }
 
 pub fn print_enum_def(s: @ps, enum_definition: ast::enum_def,
@@ -1744,7 +1748,7 @@ pub fn print_bounds(s: @ps, bounds: @OptVec<ast::TyParamBound>) {
             }
 
             match *bound {
-                TraitTyParamBound(ty) => print_type(s, ty),
+                TraitTyParamBound(tref) => print_trait_ref(s, tref),
                 RegionTyParamBound => word(s.s, ~"'static"),
             }
         }

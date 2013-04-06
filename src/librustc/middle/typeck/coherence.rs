@@ -38,7 +38,7 @@ use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar};
 use middle::typeck::infer::{resolve_nested_tvar, resolve_type};
-use syntax::ast::{crate, def_id, def_mod, def_ty};
+use syntax::ast::{crate, def_id, def_mod, def_trait};
 use syntax::ast::{item, item_impl, item_mod, local_crate, method, trait_ref};
 use syntax::ast;
 use syntax::ast_map::node_item;
@@ -333,10 +333,16 @@ pub impl CoherenceChecker {
             let new_id = parse::next_node_id(tcx.sess.parse_sess);
             let new_did = local_def(new_id);
 
+            let new_method_ty = @ty::method {
+                def_id: new_did,
+                ..copy *trait_method
+            };
+
             // XXX: Perform substitutions.
             let new_polytype = ty::lookup_item_type(tcx,
                                                     trait_method.def_id);
             tcx.tcache.insert(new_did, new_polytype);
+            tcx.methods.insert(new_did, new_method_ty);
 
             // Pair the new synthesized ID up with the
             // ID of the method.
@@ -352,7 +358,7 @@ pub impl CoherenceChecker {
                 @ProvidedMethodInfo {
                     method_info: @MethodInfo {
                         did: new_did,
-                        n_tps: trait_method.tps.len(),
+                        n_tps: trait_method.generics.bounds.len(),
                         ident: trait_method.ident,
                         self_type: trait_method.self_ty
                     },
@@ -498,7 +504,7 @@ pub impl CoherenceChecker {
 
     fn each_provided_trait_method(&self,
             trait_did: ast::def_id,
-            f: &fn(x: &ty::method) -> bool) {
+            f: &fn(x: @ty::method) -> bool) {
         // Make a list of all the names of the provided methods.
         // XXX: This is horrible.
         let mut provided_method_idents = HashSet::new();
@@ -507,7 +513,7 @@ pub impl CoherenceChecker {
             provided_method_idents.insert(*ident);
         }
 
-        for ty::trait_methods(tcx, trait_did).each |method| {
+        for ty::trait_methods(tcx, trait_did).each |&method| {
             if provided_method_idents.contains(&method.ident) {
                 if !f(method) {
                     break;
@@ -536,10 +542,10 @@ pub impl CoherenceChecker {
                                   -> UniversalQuantificationResult {
         // NDM--this span is bogus.
         let self_region =
-            polytype.region_param.map(
+            polytype.generics.region_param.map(
                 |_r| self.inference_context.next_region_var_nb(dummy_sp()));
 
-        let bounds_count = polytype.bounds.len();
+        let bounds_count = polytype.generics.bounds.len();
         let type_parameters =
             self.inference_context.next_ty_vars(bounds_count);
 
@@ -559,7 +565,7 @@ pub impl CoherenceChecker {
         UniversalQuantificationResult {
             monotype: monotype,
             type_variables: type_parameters,
-            bounds: polytype.bounds
+            bounds: polytype.generics.bounds
         }
     }
 
@@ -858,17 +864,8 @@ pub impl CoherenceChecker {
             }
 
             // Record all the trait methods.
-            for associated_traits.each |trait_type| {
-                match get(*trait_type).sty {
-                    ty_trait(trait_id, _, _) => {
-                        self.add_trait_method(trait_id, *implementation);
-                    }
-                    _ => {
-                        self.crate_context.tcx.sess.bug(~"trait type \
-                                                          returned is not a \
-                                                          trait");
-                    }
-                }
+            for associated_traits.each |trait_ref| {
+                self.add_trait_method(trait_ref.def_id, *implementation);
             }
 
             // Add the implementation to the mapping from
@@ -917,7 +914,7 @@ pub impl CoherenceChecker {
                 @ProvidedMethodInfo {
                     method_info: @MethodInfo {
                         did: new_did,
-                        n_tps: trait_method_info.ty.tps.len(),
+                        n_tps: trait_method_info.ty.generics.bounds.len(),
                         ident: trait_method_info.ty.ident,
                         self_type: trait_method_info.ty.self_ty
                     },
@@ -947,16 +944,8 @@ pub impl CoherenceChecker {
                                                   crate_store,
                                                   def_id);
                     }
-                    dl_def(def_ty(def_id)) => {
-                        let tcx = self.crate_context.tcx;
-                        let polytype = csearch::get_type(tcx, def_id);
-                        match ty::get(polytype.ty).sty {
-                            ty::ty_trait(*) => {
-                                self.add_default_methods_for_external_trait(
-                                    def_id);
-                            }
-                            _ => {}
-                        }
+                    dl_def(def_trait(def_id)) => {
+                        self.add_default_methods_for_external_trait(def_id);
                     }
                     dl_def(_) | dl_impl(_) | dl_field => {
                         // Skip this.

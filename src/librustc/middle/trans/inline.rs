@@ -87,8 +87,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
             ccx.stats.n_inlines += 1;
             ccx.external.insert(fn_id, Some(mth.id));
             let ty::ty_param_bounds_and_ty {
-                bounds: impl_bnds,
-                region_param: _,
+                generics: ty::Generics { bounds: impl_bnds, _ },
                 ty: _
             } = ty::lookup_item_type(ccx.tcx, impl_did);
             if translate &&

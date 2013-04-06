@@ -222,15 +222,14 @@ pub fn expand_auto_decode(
 priv impl @ext_ctxt {
     fn bind_path(
         &self,
-        span: span,
+        _span: span,
         ident: ast::ident,
         path: @ast::path,
         bounds: @OptVec<ast::TyParamBound>
     ) -> ast::TyParam {
-        let bound = ast::TraitTyParamBound(@ast::Ty {
-            id: self.next_id(),
-            node: ast::ty_path(path, self.next_id()),
-            span: span,
+        let bound = ast::TraitTyParamBound(@ast::trait_ref {
+            ref_id: self.next_id(),
+            path: path
         });
 
         ast::TyParam {
@@ -466,10 +465,9 @@ fn mk_impl(
     // All the type parameters need to bound to the trait.
     let mut impl_tps = opt_vec::with(ty_param);
     for generics.ty_params.each |tp| {
-        let t_bound = ast::TraitTyParamBound(@ast::Ty {
-            id: cx.next_id(),
-            node: ast::ty_path(path, cx.next_id()),
-            span: span,
+        let t_bound = ast::TraitTyParamBound(@ast::trait_ref {
+            path: path,
+            ref_id: cx.next_id(),
         });
 
         impl_tps.push(ast::TyParam {

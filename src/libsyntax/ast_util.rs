@@ -61,7 +61,7 @@ pub fn def_id_of_def(d: def) -> def_id {
       def_fn(id, _) | def_static_method(id, _, _) | def_mod(id) |
       def_foreign_mod(id) | def_const(id) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
-      def_use(id) | def_struct(id) => {
+      def_use(id) | def_struct(id) | def_trait(id) => {
         id
       }
       def_arg(id, _, _) | def_local(id, _) | def_self(id, _) | def_self_ty(id)

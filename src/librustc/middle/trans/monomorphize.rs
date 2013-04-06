@@ -169,7 +169,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     let psubsts = Some(@param_substs {
         tys: substs,
         vtables: vtables,
-        bounds: tpt.bounds,
+        bounds: tpt.generics.bounds,
         self_ty: impl_ty_opt
     });
 
@@ -291,7 +291,7 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
         ty::ty_trait(_, _, ref store) => {
             let sigil = match *store {
                 ty::UniqTraitStore => ast::OwnedSigil,
-                ty::BoxTraitStore | ty::BareTraitStore => ast::ManagedSigil,
+                ty::BoxTraitStore => ast::ManagedSigil,
                 ty::RegionTraitStore(_) => ast::BorrowedSigil,
             };
 
@@ -328,7 +328,7 @@ pub fn make_mono_id(ccx: @CrateContext, item: ast::def_id, substs: &[ty::t],
                     +param_uses: Option<~[type_use::type_uses]>) -> mono_id {
     let precise_param_ids = match vtables {
       Some(vts) => {
-        let bounds = ty::lookup_item_type(ccx.tcx, item).bounds;
+        let bounds = ty::lookup_item_type(ccx.tcx, item).generics.bounds;
         let mut i = 0;
         vec::map2(*bounds, substs, |bounds, subst| {
             let mut v = ~[];

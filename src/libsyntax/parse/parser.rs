@@ -2750,8 +2750,8 @@ pub impl Parser {
                     self.bump();
                 }
                 token::MOD_SEP | token::IDENT(*) => {
-                    let maybe_bound = match *self.token {
-                        token::MOD_SEP => None,
+                    let obsolete_bound = match *self.token {
+                        token::MOD_SEP => false,
                         token::IDENT(copy sid, _) => {
                             match *self.id_to_str(sid) {
                                 ~"send" |
@@ -2761,27 +2761,18 @@ pub impl Parser {
                                     self.obsolete(
                                         *self.span,
                                         ObsoleteLowerCaseKindBounds);
-
-                                    // Bogus value, but doesn't matter, since
-                                    // is an error
-                                    Some(TraitTyParamBound(
-                                        self.mk_ty_path(sid)))
+                                    self.bump();
+                                    true
                                 }
-                                _ => None
+                                _ => false
                             }
                         }
                         _ => fail!()
                     };
 
-                    match maybe_bound {
-                        Some(bound) => {
-                            self.bump();
-                            result.push(bound);
-                        }
-                        None => {
-                            let ty = self.parse_ty(true);
-                            result.push(TraitTyParamBound(ty));
-                        }
+                    if !obsolete_bound {
+                        let tref = self.parse_trait_ref();
+                        result.push(TraitTyParamBound(tref));
                     }
                 }
                 _ => break,

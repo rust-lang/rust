@@ -610,7 +610,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
         } else {
             for m.items.each |item| {
                 let tpt = ty::lookup_item_type(ccx.tcx, local_def(item.id));
-                if !tpt.bounds.is_empty() {
+                if !tpt.generics.bounds.is_empty() {
                     ccx.tcx.sess.span_err(
                         item.span,
                         fmt!("foreign items may not have type parameters"));
@@ -627,6 +627,10 @@ impl AstConv for FnCtxt {
 
     fn get_item_ty(&self, id: ast::def_id) -> ty::ty_param_bounds_and_ty {
         ty::lookup_item_type(self.tcx(), id)
+    }
+
+    fn get_trait_def(&self, id: ast::def_id) -> @ty::TraitDef {
+        ty::lookup_trait_def(self.tcx(), id)
     }
 
     fn ty_infer(&self, _span: span) -> ty::t {
@@ -1064,7 +1068,7 @@ pub fn impl_self_ty(vcx: &VtableContext,
 
     let (n_tps, region_param, raw_ty) = {
         let ity = ty::lookup_item_type(tcx, did);
-        (vec::len(*ity.bounds), ity.region_param, ity.ty)
+        (ity.generics.bounds.len(), ity.generics.region_param, ity.ty)
     };
 
     let self_r = if region_param.is_some() {
@@ -1122,103 +1126,84 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                unifier: &fn()) {
     debug!(">> typechecking %s", fcx.expr_to_str(expr));
 
-    // A generic function to factor out common logic from call and
-    // overloaded operations
-    fn check_call_inner(
+    fn check_method_argument_types(
         fcx: @mut FnCtxt,
         sp: span,
-        call_expr_id: ast::node_id,
-        in_fty: ty::t,
+        method_fn_ty: ty::t,
         callee_expr: @ast::expr,
         args: &[@ast::expr],
         sugar: ast::CallSugar,
         deref_args: DerefArgs) -> ty::t
     {
-        let tcx = fcx.ccx.tcx;
-
-        // Replace all region parameters in the arguments and return
-        // type with fresh region variables.
-
-        debug!("check_call_inner: before universal quant., in_fty=%s",
-               fcx.infcx().ty_to_str(in_fty));
-
-        let formal_tys;
-
-        // FIXME(#3678) For now, do not permit calls to C abi functions.
-        match structure_of(fcx, sp, in_fty) {
-            ty::ty_bare_fn(ty::BareFnTy {abis, _}) => {
-                if !abis.is_rust() {
-                    tcx.sess.span_err(
+        if ty::type_is_error(method_fn_ty) {
+            let err_inputs = err_args(fcx.tcx(), args.len());
+            check_argument_types(fcx, sp, err_inputs, callee_expr,
+                                 args, sugar, deref_args);
+            method_fn_ty
+        } else {
+            match ty::get(method_fn_ty).sty {
+                ty::ty_bare_fn(ref fty) => {
+                    check_argument_types(fcx, sp, fty.sig.inputs, callee_expr,
+                                         args, sugar, deref_args);
+                    fty.sig.output
+                }
+                _ => {
+                    fcx.tcx().sess.span_bug(
                         sp,
-                        fmt!("Calls to C ABI functions are not (yet) \
-                              supported; be patient, dear user"));
+                        fmt!("Method without bare fn type"));
                 }
             }
-            _ => {}
         }
+    }
 
-        // This is subtle: we expect `fty` to be a function type, which
-        // normally introduce a level of binding.  In this case, we want to
-        // process the types bound by the function but not by any nested
-        // functions.  Therefore, we match one level of structure.
-        let ret_ty = match structure_of(fcx, sp, in_fty) {
-            ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
-            ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => {
-                let (_, _, sig) =
-                    replace_bound_regions_in_fn_sig(
-                        tcx, @Nil, None, sig,
-                        |_br| fcx.infcx().next_region_var(
-                            sp, call_expr_id));
+    fn check_argument_types(
+        fcx: @mut FnCtxt,
+        sp: span,
+        fn_inputs: &[ty::arg],
+        callee_expr: @ast::expr,
+        args: &[@ast::expr],
+        sugar: ast::CallSugar,
+        deref_args: DerefArgs)
+    {
+        /*!
+         *
+         * Generic function that factors out common logic from
+         * function calls, method calls and overloaded operators.
+         */
 
-                let supplied_arg_count = args.len();
+        let tcx = fcx.ccx.tcx;
 
-                // Grab the argument types, supplying fresh type variables
-                // if the wrong number of arguments were supplied
-                let expected_arg_count = sig.inputs.len();
-                formal_tys = if expected_arg_count == supplied_arg_count {
-                    sig.inputs.map(|a| a.ty)
-                } else {
-                    let suffix = match sugar {
-                        ast::NoSugar => "",
-                        ast::DoSugar => " (including the closure passed by \
-                                         the `do` keyword)",
-                        ast::ForSugar => " (including the closure passed by \
-                                          the `for` keyword)"
-                    };
-                    let msg = fmt!("this function takes %u parameter%s but \
-                                    %u parameter%s supplied%s",
-                                   expected_arg_count,
-                                   if expected_arg_count == 1 {""}
-                                   else {"s"},
-                                   supplied_arg_count,
-                                   if supplied_arg_count == 1 {" was"}
-                                   else {"s were"},
-                                   suffix);
+        // Grab the argument types, supplying fresh type variables
+        // if the wrong number of arguments were supplied
+        let supplied_arg_count = args.len();
+        let expected_arg_count = fn_inputs.len();
+        let formal_tys = if expected_arg_count == supplied_arg_count {
+            fn_inputs.map(|a| a.ty)
+        } else {
+            let suffix = match sugar {
+                ast::NoSugar => "",
+                ast::DoSugar => " (including the closure passed by \
+                                 the `do` keyword)",
+                ast::ForSugar => " (including the closure passed by \
+                                  the `for` keyword)"
+            };
+            let msg = fmt!("this function takes %u parameter%s but \
+                            %u parameter%s supplied%s",
+                           expected_arg_count,
+                           if expected_arg_count == 1 {""}
+                           else {"s"},
+                           supplied_arg_count,
+                           if supplied_arg_count == 1 {" was"}
+                           else {"s were"},
+                           suffix);
 
-                    tcx.sess.span_err(sp, msg);
+            tcx.sess.span_err(sp, msg);
 
-                    vec::from_fn(supplied_arg_count, |_| ty::mk_err(tcx))
-                };
-
-                sig.output
-            }
-
-            _ => {
-                fcx.type_error_message(sp, |actual| {
-                    fmt!("expected function or foreign function but \
-                          found `%s`", actual) }, in_fty, None);
-
-                // check each arg against "error", in order to set up
-                // all the node type bindings
-                formal_tys = args.map(|_x| ty::mk_err(tcx));
-                ty::mk_err(tcx)
-            }
+            vec::from_elem(supplied_arg_count, ty::mk_err(tcx))
         };
 
-        debug!("check_call_inner: after universal quant., \
-                formal_tys=%? ret_ty=%s",
-               formal_tys.map(|t| fcx.infcx().ty_to_str(*t)),
-               fcx.infcx().ty_to_str(ret_ty));
+        debug!("check_argument_types: formal_tys=%?",
+               formal_tys.map(|t| fcx.infcx().ty_to_str(*t)));
 
         // Check the arguments.
         // We do this in a pretty awful way: first we typecheck any arguments
@@ -1268,8 +1253,11 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 }
             }
         }
+    }
 
-        ret_ty
+    fn err_args(tcx: ty::ctxt, len: uint) -> ~[ty::arg] {
+        vec::from_fn(len, |_| ty::arg {mode: ast::expl(ast::by_copy),
+                                       ty: ty::mk_err(tcx)})
     }
 
     // A generic function for checking assignment expressions
@@ -1284,43 +1272,63 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // The callee checks for bot / err, we don't need to
     }
 
-    // A generic function for doing all of the checking for call or
-    // method expressions
-    fn check_call_or_method(fcx: @mut FnCtxt,
-                            sp: span,
-                            call_expr_id: ast::node_id,
-                            fn_ty: ty::t,
-                            expr: @ast::expr,
-                            args: &[@ast::expr],
-                            sugar: ast::CallSugar)
-    {
-
-        // Call the generic checker.
-        let ret_ty = check_call_inner(fcx, sp, call_expr_id,
-                                           fn_ty, expr, args, sugar,
-                                           DontDerefArgs);
-        // Pull the return type out of the type of the function.
-        fcx.write_ty(call_expr_id, ret_ty);
-        // Callee checks for bot and err, no need for that
-    }
-
     // A generic function for doing all of the checking for call expressions
     fn check_call(fcx: @mut FnCtxt,
-                  sp: span,
-                  call_expr_id: ast::node_id,
+                  call_expr: @ast::expr,
                   f: @ast::expr,
                   args: &[@ast::expr],
                   sugar: ast::CallSugar) {
         // Index expressions need to be handled separately, to inform them
         // that they appear in call position.
-        let mut _bot = check_expr(fcx, f);
-        check_call_or_method(fcx,
-                             sp,
-                             call_expr_id,
-                             fcx.expr_ty(f),
-                             f,
-                             args,
-                             sugar)
+        check_expr(fcx, f);
+
+
+        // Extract the function signature from `in_fty`.
+        let fn_ty = fcx.expr_ty(f);
+        let fn_sty = structure_of(fcx, f.span, fn_ty);
+
+        // FIXME(#3678) For now, do not permit calls to C abi functions.
+        match fn_sty {
+            ty::ty_bare_fn(ty::BareFnTy {abis, _}) => {
+                if !abis.is_rust() {
+                    fcx.tcx().sess.span_err(
+                        call_expr.span,
+                        fmt!("Calls to C ABI functions are not (yet) \
+                              supported; be patient, dear user"));
+                }
+            }
+            _ => {}
+        }
+
+        let fn_sig = match fn_sty {
+            ty::ty_bare_fn(ty::BareFnTy {sig: sig, _}) |
+            ty::ty_closure(ty::ClosureTy {sig: sig, _}) => sig,
+            _ => {
+                fcx.type_error_message(call_expr.span, |actual| {
+                    fmt!("expected function but \
+                          found `%s`", actual) }, fn_ty, None);
+
+                // check each arg against "error", in order to set up
+                // all the node type bindings
+                FnSig {bound_lifetime_names: opt_vec::Empty,
+                       inputs: err_args(fcx.tcx(), args.len()),
+                       output: ty::mk_err(fcx.tcx())}
+            }
+        };
+
+        // Replace any bound regions that appear in the function
+        // signature with region variables
+        let (_, _, fn_sig) =
+            replace_bound_regions_in_fn_sig(
+                fcx.tcx(), @Nil, None, &fn_sig,
+                |_br| fcx.infcx().next_region_var(call_expr.span, call_expr.id));
+
+        // Call the generic checker.
+        check_argument_types(fcx, call_expr.span, fn_sig.inputs, f,
+                             args, sugar, DontDerefArgs);
+
+        // Pull the return type out of the type of the function.
+        fcx.write_ty(call_expr.id, fn_sig.output);
     }
 
     // Checks a method call.
@@ -1332,6 +1340,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                          tps: &[@ast::Ty],
                          sugar: ast::CallSugar) {
         check_expr(fcx, rcvr);
+
         // no need to check for bot/err -- callee does that
         let expr_t = structurally_resolved_type(fcx,
                                                 expr.span,
@@ -1369,13 +1378,14 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
         }
 
-        check_call_or_method(fcx,
-                             expr.span,
-                             expr.id,
-                             fcx.node_ty(expr.callee_id),
-                             expr,
-                             args,
-                             sugar)
+        // Call the generic checker.
+        let fn_ty = fcx.node_ty(expr.callee_id);
+        let ret_ty = check_method_argument_types(fcx, expr.span,
+                                                 fn_ty, expr, args, sugar,
+                                                 DontDerefArgs);
+
+        // Pull the return type out of the type of the function.
+        fcx.write_ty(expr.id, ret_ty);
     }
 
     // A generic function for checking the then and else in an if
@@ -1423,10 +1433,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 let method_ty = fcx.node_ty(op_ex.callee_id);
                 let method_map = fcx.inh.method_map;
                 method_map.insert(op_ex.id, *origin);
-                check_call_inner(fcx, op_ex.span,
-                                 op_ex.id, method_ty,
-                                 op_ex, args,
-                                 ast::NoSugar, deref_args)
+                check_method_argument_types(fcx, op_ex.span,
+                                            method_ty, op_ex, args,
+                                            ast::NoSugar, deref_args)
             }
             _ => {
                 let tcx = fcx.tcx();
@@ -1434,9 +1443,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 // Check the args anyway
                 // so we get all the error messages
                 let expected_ty = ty::mk_err(tcx);
-                check_call_inner(fcx, op_ex.span, op_ex.id,
-                                 expected_ty, op_ex, args,
-                                 ast::NoSugar, deref_args);
+                check_method_argument_types(fcx, op_ex.span,
+                                            expected_ty, op_ex, args,
+                                            ast::NoSugar, deref_args);
                 ty::mk_err(tcx)
             }
         }
@@ -1884,8 +1893,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
         } else {
             let item_type = ty::lookup_item_type(tcx, class_id);
-            type_parameter_count = (*item_type.bounds).len();
-            region_parameterized = item_type.region_param;
+            type_parameter_count = item_type.generics.bounds.len();
+            region_parameterized = item_type.generics.region_param;
             raw_type = item_type.ty;
         }
 
@@ -1972,8 +1981,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
         } else {
             let item_type = ty::lookup_item_type(tcx, enum_id);
-            type_parameter_count = (*item_type.bounds).len();
-            region_parameterized = item_type.region_param;
+            type_parameter_count = item_type.generics.bounds.len();
+            region_parameterized = item_type.generics.region_param;
             raw_type = item_type.ty;
         }
 
@@ -2121,12 +2130,12 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     match expr.node {
       ast::expr_vstore(ev, vst) => {
         let typ = match ev.node {
-          ast::expr_lit(@codemap::spanned { node: ast::lit_str(s), _ }) => {
-            let tt = ast_expr_vstore_to_vstore(fcx, ev, s.len(), vst);
+          ast::expr_lit(@codemap::spanned { node: ast::lit_str(_), _ }) => {
+            let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             ty::mk_estr(tcx, tt)
           }
           ast::expr_vec(ref args, mutbl) => {
-            let tt = ast_expr_vstore_to_vstore(fcx, ev, args.len(), vst);
+            let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             let mutability;
             let mut any_error = false;
             let mut any_bot = false;
@@ -2158,9 +2167,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
           }
           ast::expr_repeat(element, count_expr, mutbl) => {
-            let count = ty::eval_repeat_count(tcx, count_expr);
+            let _ = ty::eval_repeat_count(tcx, count_expr);
             check_expr_with_hint(fcx, count_expr, ty::mk_uint(tcx));
-            let tt = ast_expr_vstore_to_vstore(fcx, ev, count, vst);
+            let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             let mutability = match vst {
                 ast::expr_vstore_mut_box | ast::expr_vstore_mut_slice => {
                     ast::m_mutbl
@@ -2546,7 +2555,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(id, fcx.node_ty(b.node.id));
       }
       ast::expr_call(f, ref args, sugar) => {
-          check_call(fcx, expr.span, expr.id, f, *args, sugar);
+          check_call(fcx, expr, f, *args, sugar);
           let f_ty = fcx.expr_ty(f);
           let (args_bot, args_err) = args.foldl((false, false),
              |&(rest_bot, rest_err), a| {
@@ -3143,8 +3152,10 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
       ast::def_fn(_, ast::extern_fn) => {
         // extern functions are just u8 pointers
         return ty_param_bounds_and_ty {
-            bounds: @~[],
-            region_param: None,
+            generics: ty::Generics {
+                bounds: @~[],
+                region_param: None
+            },
             ty: ty::mk_ptr(
                 fcx.ccx.tcx,
                 ty::mt {
@@ -3169,7 +3180,10 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
       ast::def_upvar(_, inner, _, _) => {
         return ty_param_bounds_and_ty_for_def(fcx, sp, *inner);
       }
-      ast::def_ty(_) | ast::def_prim_ty(_) | ast::def_ty_param(*)=> {
+      ast::def_trait(_) |
+      ast::def_ty(_) |
+      ast::def_prim_ty(_) |
+      ast::def_ty_param(*)=> {
         fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found type");
       }
       ast::def_mod(*) | ast::def_foreign_mod(*) => {
@@ -3204,14 +3218,18 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
                         region_lb: ty::Region) {
     debug!(">>> instantiate_path");
 
-    let ty_param_count = vec::len(*tpt.bounds);
+    let ty_param_count = tpt.generics.bounds.len();
     let ty_substs_len = vec::len(pth.types);
+
+    debug!("ty_param_count=%? ty_substs_len=%?",
+           ty_param_count,
+           ty_substs_len);
 
     // determine the region bound, using the value given by the user
     // (if any) and otherwise using a fresh region variable
     let self_r = match pth.rp {
       Some(_) => { // user supplied a lifetime parameter...
-        match tpt.region_param {
+        match tpt.generics.region_param {
           None => { // ...but the type is not lifetime parameterized!
             fcx.ccx.tcx.sess.span_err
                 (span, ~"this item is not region-parameterized");
@@ -3224,7 +3242,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
       }
       None => { // no lifetime parameter supplied, insert default
         fcx.region_var_if_parameterized(
-            tpt.region_param, span, region_lb)
+            tpt.generics.region_param, span, region_lb)
       }
     };
 
@@ -3302,7 +3320,6 @@ pub fn type_is_c_like_enum(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {
 
 pub fn ast_expr_vstore_to_vstore(fcx: @mut FnCtxt,
                                  e: @ast::expr,
-                                 _n: uint,
                                  v: ast::expr_vstore)
                               -> ty::vstore {
     match v {
@@ -3423,28 +3440,13 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
       }
       ~"visit_tydesc" => {
           let tydesc_name = special_idents::tydesc;
-          let ty_visitor_name = tcx.sess.ident_of(~"TyVisitor");
           assert!(tcx.intrinsic_defs.contains_key(&tydesc_name));
-          assert!(ccx.tcx.intrinsic_defs.contains_key(&ty_visitor_name));
           let (_, tydesc_ty) = *tcx.intrinsic_defs.get(&tydesc_name);
-          let (_, visitor_trait) = *tcx.intrinsic_defs.get(&ty_visitor_name);
-
-          let visitor_trait = match ty::get(visitor_trait).sty {
-            ty::ty_trait(trait_def_id, ref trait_substs, _) => {
-                ty::mk_trait(tcx,
-                             trait_def_id,
-                             copy *trait_substs,
-                             ty::BoxTraitStore)
-            }
-            _ => {
-                tcx.sess.span_bug(it.span, ~"TyVisitor wasn't a trait?!")
-            }
-          };
-
+          let (_, visitor_object_ty) = ty::visitor_object_ty(tcx);
           let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {ty: tydesc_ty,
                                                    mutbl: ast::m_imm});
           (0u, ~[arg(ast::by_copy, td_ptr),
-                 arg(ast::by_ref, visitor_trait)], ty::mk_nil(tcx))
+                 arg(ast::by_ref, visitor_object_ty)], ty::mk_nil(tcx))
       }
       ~"frame_address" => {
         let fty = ty::mk_closure(ccx.tcx, ty::ClosureTy {
@@ -3690,7 +3692,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                     output: output}
     });
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
-    let i_n_tps = (*i_ty.bounds).len();
+    let i_n_tps = i_ty.generics.bounds.len();
     if i_n_tps != n_tps {
         tcx.sess.span_err(it.span, fmt!("intrinsic has wrong number \
                                          of type parameters: found %u, \
