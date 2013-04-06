@@ -62,7 +62,10 @@ pub trait Program {
      */
     fn finish(&mut self) -> int;
 
-    /// Closes open handles
+    /**
+     * Forcibly terminate the program. On Posix OSs SIGKILL will be sent
+     * to the process. On Win32 TerminateProcess(..) will be called.
+     */
     fn destroy(&mut self);
 }
 
@@ -248,19 +251,43 @@ pub fn start_program(prog: &str, args: &[~str]) -> @Program {
             r.in_fd = invalid_fd;
         }
     }
+
+    fn close_repr_outputs(r: &mut ProgRepr) {
+        unsafe {
+            fclose_and_null(&mut r.out_file);
+            fclose_and_null(&mut r.err_file);
+        }
+    }
+
     fn finish_repr(r: &mut ProgRepr) -> int {
         if r.finished { return 0; }
         r.finished = true;
         close_repr_input(&mut *r);
         return waitpid(r.pid);
     }
+
     fn destroy_repr(r: &mut ProgRepr) {
-        unsafe {
-            finish_repr(&mut *r);
-            fclose_and_null(&mut r.out_file);
-            fclose_and_null(&mut r.err_file);
+        killpid(r.pid);
+        finish_repr(&mut *r);
+        close_repr_outputs(&mut *r);
+
+        #[cfg(windows)]
+        fn killpid(pid: pid_t) {
+            unsafe {
+                libc::funcs::extra::kernel32::TerminateProcess(
+                    cast::transmute(pid), 1);
+            }
+        }
+
+        #[cfg(unix)]
+        fn killpid(pid: pid_t) {
+            unsafe {
+                libc::funcs::posix88::signal::kill(
+                    pid, libc::consts::os::posix88::SIGKILL as c_int);
+            }
         }
     }
+
     struct ProgRes {
         r: ProgRepr,
     }
@@ -268,8 +295,9 @@ pub fn start_program(prog: &str, args: &[~str]) -> @Program {
     impl Drop for ProgRes {
         fn finalize(&self) {
             unsafe {
-                // FIXME #4943: This is bad.
-                destroy_repr(cast::transmute(&self.r));
+                // FIXME #4943: transmute is bad.
+                finish_repr(cast::transmute(&self.r));
+                close_repr_outputs(cast::transmute(&self.r));
             }
         }
     }
@@ -295,6 +323,7 @@ pub fn start_program(prog: &str, args: &[~str]) -> @Program {
         fn finish(&mut self) -> int { finish_repr(&mut self.r) }
         fn destroy(&mut self) { destroy_repr(&mut self.r); }
     }
+
     let mut repr = ProgRepr {
         pid: pid,
         in_fd: pipe_input.out,
@@ -466,8 +495,10 @@ pub fn waitpid(pid: pid_t) -> int {
 
 #[cfg(test)]
 mod tests {
+    use libc;
     use option::None;
     use os;
+    use path::Path;
     use run::{readclose, writeclose};
     use run;
 
@@ -526,6 +557,27 @@ mod tests {
         let mut p = run::start_program("echo", []);
         p.destroy(); // this shouldnt crash...
         p.destroy(); // ...and nor should this (and nor should the destructor)
+    }
+
+    #[test]
+    #[cfg(unix)] // there is no way to sleep on windows from inside libcore...
+    pub fn test_destroy_actually_kills() {
+        let path = Path("test/core-run-test-destroy-actually-kills.tmp");
+
+        os::remove_file(&path);
+
+        let cmd = fmt!("sleep 5 && echo MurderDeathKill > %s", path.to_str());
+        let mut p = run::start_program("sh", [~"-c", cmd]);
+
+        p.destroy(); // destroy the program before it has a chance to echo its message
+
+        unsafe {
+            // wait to ensure the program is really destroyed and not just waiting itself
+            libc::sleep(10);
+        }
+
+        // the program should not have had chance to echo its message
+        assert!(!path.exists());
     }
 
 }
