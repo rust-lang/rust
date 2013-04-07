@@ -1653,11 +1653,12 @@ Path expressions are [lvalues](#lvalues-rvalues-and-temporaries).
 
 ### Tuple expressions
 
-Tuples are written by enclosing two or more comma-separated
+Tuples are written by enclosing one or more comma-separated
 expressions in parentheses. They are used to create [tuple-typed](#tuple-types)
 values.
 
 ~~~~~~~~ {.tuple}
+(0,);
 (0f, 4.5f);
 ("a", 4u, true);
 ~~~~~~~~
