@@ -113,8 +113,8 @@ syn match   rustCharacter   "'\([^'\\]\|\\\(['nrt\\\"]\|x\x\{2}\|u\x\{4}\|U\x\{8
 syn region    rustCommentDoc  start="/\*\*" end="\*/"
 syn region    rustCommentDoc  start="///" skip="\\$" end="$" keepend
 syn match     rustComment     "/\*\*/"
-syn region    rustComment     start="/\*[^\*]" end="\*/" contains=rustTodo
-syn region    rustComment     start="//[^/]" skip="\\$" end="$" contains=rustTodo keepend
+syn region    rustComment     start="/\*\([^\*]\|$\)" end="\*/" contains=rustTodo
+syn region    rustComment     start="//\([^/]\|$\)" skip="\\$" end="$" contains=rustTodo keepend
 
 syn keyword rustTodo contained TODO FIXME XXX NB
 
