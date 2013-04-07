@@ -289,7 +289,7 @@ fn expand_deriving_eq_struct_method(cx: @ext_ctxt,
                                             &mut outer_expr);
             }
             unnamed_field => {
-                cx.span_unimpl(span, ~"unnamed fields with `deriving_eq`");
+                cx.span_unimpl(span, ~"unnamed fields with `deriving(Eq)`");
             }
         }
     }

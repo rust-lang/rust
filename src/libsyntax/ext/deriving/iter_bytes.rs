@@ -191,7 +191,7 @@ fn expand_deriving_iter_bytes_struct_method(cx: @ext_ctxt,
             }
             unnamed_field => {
                 cx.span_unimpl(span,
-                               ~"unnamed fields with `deriving_iter_bytes`");
+                               ~"unnamed fields with `deriving(IterBytes)`");
             }
         }
     }
