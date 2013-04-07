@@ -185,7 +185,6 @@ fn struct_ty(ty: TypeRef,
         fields.push(ty);
     }
 
-    // XXX: Is this meant to be always non-packed?
     return T_struct(fields, false);
 }
 
