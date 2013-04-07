@@ -13,7 +13,7 @@ fn borrow(x: &int, f: &fn(x: &int)) {
 }
 
 fn test1(x: @~int) {
-    do borrow(&**x.clone()) |p| {
+    do borrow(&*(*x).clone()) |p| {
         let x_a = ptr::addr_of(&(**x));
         assert!((x_a as uint) != ptr::to_uint(p));
         assert!(unsafe{*x_a} == *p);
