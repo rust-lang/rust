@@ -64,7 +64,7 @@ totaleq_impl!(i64)
 totaleq_impl!(int)
 totaleq_impl!(uint)
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum Ordering { Less, Equal, Greater }
 
 /// Trait for types that form a total order
