@@ -448,7 +448,7 @@ priv static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  * - Could accept option to allow ignoring underscores, allowing for numbers
  *   formated like `FF_AE_FF_FF`.
  */
-pub fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
+pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
                                     Mul<T,T>+Sub<T,T>+Neg<T>+Add<T,T>+
                                     NumStrConv>(
         buf: &[u8], radix: uint, negative: bool, fractional: bool,
@@ -531,9 +531,12 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
                     accum -= cast(digit as int);
                 }
 
-                // Detect overflow by comparing to last value
-                if accum_positive && accum < last_accum { return None; }
-                if !accum_positive && accum > last_accum { return None; }
+                // Detect overflow by comparing to last value, except
+                // if we've not seen any non-zero digits.
+                if last_accum != _0 {
+                    if accum_positive && accum <= last_accum { return None; }
+                    if !accum_positive && accum >= last_accum { return None; }
+                }
                 last_accum = accum;
             }
             None => match c {
@@ -637,11 +640,27 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
  * `from_str_bytes_common()`, for details see there.
  */
 #[inline(always)]
-pub fn from_str_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+Mul<T,T>+
+pub fn from_str_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+Mul<T,T>+
                               Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv>(
         buf: &str, radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool
         ) -> Option<T> {
     from_str_bytes_common(str::to_bytes(buf), radix, negative,
                             fractional, special, exponent, empty_zero)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use option::*;
+
+    #[test]
+    fn from_str_issue5770() {
+        // try to parse 0b1_1111_1111 = 511 as a u8. Caused problems
+        // since 255*2+1 == 255 (mod 256) so the overflow wasn't
+        // detected.
+        let n : Option<u8> = from_str_common("111111111", 2, false, false, false,
+                                             ExpNone, false);
+        assert_eq!(n, None);
+    }
 }
