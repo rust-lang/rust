@@ -2579,7 +2579,7 @@ to the record type-constructor. The differences are as follows:
 
 Tuple types and values are denoted by listing the types or values of their
 elements, respectively, in a parenthesized, comma-separated
-list. Single-element tuples are not legal; all tuples have two or more values.
+list.
 
 The members of a tuple are laid out in memory contiguously, like a record, in
 order specified by the tuple type.
