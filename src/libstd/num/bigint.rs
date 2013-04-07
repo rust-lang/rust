@@ -16,8 +16,8 @@ A BigUint is represented as an array of BigDigits.
 A BigInt is a combination of BigUint and Sign.
 */
 
-use core::cmp::{Eq, Ord};
-use core::num::{IntConvertible, Zero, One};
+use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
+use core::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix};
 use core::*;
 
 /**
@@ -78,15 +78,46 @@ pub struct BigUint {
 }
 
 impl Eq for BigUint {
-    fn eq(&self, other: &BigUint) -> bool { self.cmp(other) == 0 }
-    fn ne(&self, other: &BigUint) -> bool { self.cmp(other) != 0 }
+    fn eq(&self, other: &BigUint) -> bool { self.equals(other) }
+    fn ne(&self, other: &BigUint) -> bool { !self.equals(other) }
+}
+
+impl TotalEq for BigUint {
+    fn equals(&self, other: &BigUint) -> bool {
+        match self.cmp(other) { Equal => true, _ => false }
+    }
 }
 
 impl Ord for BigUint {
-    fn lt(&self, other: &BigUint) -> bool { self.cmp(other) <  0 }
-    fn le(&self, other: &BigUint) -> bool { self.cmp(other) <= 0 }
-    fn ge(&self, other: &BigUint) -> bool { self.cmp(other) >= 0 }
-    fn gt(&self, other: &BigUint) -> bool { self.cmp(other) >  0 }
+    fn lt(&self, other: &BigUint) -> bool {
+        match self.cmp(other) { Less => true, _ => false}
+    }
+    fn le(&self, other: &BigUint) -> bool {
+        match self.cmp(other) { Less | Equal => true, _ => false }
+    }
+    fn ge(&self, other: &BigUint) -> bool {
+        match self.cmp(other) { Greater | Equal => true, _ => false }
+    }
+    fn gt(&self, other: &BigUint) -> bool {
+        match self.cmp(other) { Greater => true, _ => false }
+    }
+}
+
+impl TotalOrd for BigUint {
+    fn cmp(&self, other: &BigUint) -> Ordering {
+        let s_len = self.data.len(), o_len = other.data.len();
+        if s_len < o_len { return Less; }
+        if s_len > o_len { return Greater;  }
+
+        for self.data.eachi_reverse |i, elm| {
+            match (*elm, other.data[i]) {
+                (l, r) if l < r => return Less,
+                (l, r) if l > r => return Greater,
+                _               => loop
+            };
+        }
+        return Equal;
+    }
 }
 
 impl ToStr for BigUint {
@@ -95,7 +126,7 @@ impl ToStr for BigUint {
 
 impl from_str::FromStr for BigUint {
     fn from_str(s: &str) -> Option<BigUint> {
-        BigUint::from_str_radix(s, 10)
+        FromStrRadix::from_str_radix(s, 10)
     }
 }
 
@@ -189,12 +220,10 @@ impl Mul<BigUint, BigUint> for BigUint {
         let mm = {
             let (s1, n1) = sub_sign(sHi, sLo);
             let (s2, n2) = sub_sign(oHi, oLo);
-            if s1 * s2 < 0 {
-                hh + ll + (n1 * n2)
-            } else if s1 * s2 > 0 {
-                hh + ll - (n1 * n2)
-            } else {
-                hh + ll
+            match (s1, s2) {
+                (Equal, _) | (_, Equal) => hh + ll,
+                (Less, Greater) | (Greater, Less) => hh + ll + (n1 * n2),
+                (Less, Less) | (Greater, Greater) => hh + ll - (n1 * n2)
             }
         };
 
@@ -223,11 +252,11 @@ impl Mul<BigUint, BigUint> for BigUint {
                     BigUint::from_slice(vec::slice(a.data, 0, mid)));
         }
 
-        fn sub_sign(a: BigUint, b: BigUint) -> (int, BigUint) {
+        fn sub_sign(a: BigUint, b: BigUint) -> (Ordering, BigUint) {
             match a.cmp(&b) {
-                s if s < 0 => (s, b - a),
-                s if s > 0 => (s, a - b),
-                _          => (0, Zero::zero())
+                Less    => (Less,    b - a),
+                Greater => (Greater, a - b),
+                _       => (Equal,   Zero::zero())
             }
         }
     }
@@ -261,6 +290,49 @@ impl IntConvertible for BigUint {
     }
 }
 
+impl ToStrRadix for BigUint {
+    fn to_str_radix(&self, radix: uint) -> ~str {
+        assert!(1 < radix && radix <= 16);
+        let (base, max_len) = get_radix_base(radix);
+        if base == BigDigit::base {
+            return fill_concat(self.data, radix, max_len)
+        }
+        return fill_concat(convert_base(copy *self, base), radix, max_len);
+
+        fn convert_base(n: BigUint, base: uint) -> ~[BigDigit] {
+            let divider    = BigUint::from_uint(base);
+            let mut result = ~[];
+            let mut r      = n;
+            while r > divider {
+                let (d, r0) = r.divmod(&divider);
+                result += [r0.to_uint() as BigDigit];
+                r = d;
+            }
+            if r.is_not_zero() {
+                result += [r.to_uint() as BigDigit];
+            }
+            return result;
+        }
+
+        fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
+            if v.is_empty() { return ~"0" }
+            let s = str::concat(vec::reversed(v).map(|n| {
+                let s = uint::to_str_radix(*n as uint, radix);
+                str::from_chars(vec::from_elem(l - s.len(), '0')) + s
+            }));
+            str::trim_left_chars(s, ['0']).to_owned()
+        }
+    }
+}
+
+impl FromStrRadix for BigUint {
+    /// Creates and initializes an BigUint.
+    pub fn from_str_radix(s: &str, radix: uint)
+        -> Option<BigUint> {
+        BigUint::parse_bytes(str::to_bytes(s), radix)
+    }
+}
+
 pub impl BigUint {
     /// Creates and initializes an BigUint.
     pub fn new(v: ~[BigDigit]) -> BigUint {
@@ -288,12 +360,6 @@ pub impl BigUint {
     }
 
     /// Creates and initializes an BigUint.
-    pub fn from_str_radix(s: &str, radix: uint)
-        -> Option<BigUint> {
-        BigUint::parse_bytes(str::to_bytes(s), radix)
-    }
-
-    /// Creates and initializes an BigUint.
     pub fn parse_bytes(buf: &[u8], radix: uint)
         -> Option<BigUint> {
         let (base, unit_len) = get_radix_base(radix);
@@ -318,31 +384,15 @@ pub impl BigUint {
 
     fn abs(&self) -> BigUint { copy *self }
 
-    /// Compare two BigUint value.
-    fn cmp(&self, other: &BigUint) -> int {
-        let s_len = self.data.len(), o_len = other.data.len();
-        if s_len < o_len { return -1; }
-        if s_len > o_len { return  1;  }
-
-        for self.data.eachi_reverse |i, elm| {
-            match (*elm, other.data[i]) {
-                (l, r) if l < r => return -1,
-                (l, r) if l > r => return  1,
-                _               => loop
-            };
-        }
-        return 0;
-    }
-
     fn divmod(&self, other: &BigUint) -> (BigUint, BigUint) {
         if other.is_zero() { fail!() }
         if self.is_zero() { return (Zero::zero(), Zero::zero()); }
         if *other == One::one() { return (copy *self, Zero::zero()); }
 
         match self.cmp(other) {
-            s if s < 0 => return (Zero::zero(), copy *self),
-            0          => return (One::one(), Zero::zero()),
-            _          => {} // Do nothing
+            Less    => return (Zero::zero(), copy *self),
+            Equal   => return (One::one(), Zero::zero()),
+            Greater => {} // Do nothing
         }
 
         let mut shift = 0;
@@ -430,39 +480,6 @@ pub impl BigUint {
             1 => self.data[0] as uint,
             2 => BigDigit::to_uint(self.data[1], self.data[0]),
             _ => uint::max_value
-        }
-    }
-
-    fn to_str_radix(&self, radix: uint) -> ~str {
-        assert!(1 < radix && radix <= 16);
-        let (base, max_len) = get_radix_base(radix);
-        if base == BigDigit::base {
-            return fill_concat(self.data, radix, max_len)
-        }
-        return fill_concat(convert_base(copy *self, base), radix, max_len);
-
-        fn convert_base(n: BigUint, base: uint) -> ~[BigDigit] {
-            let divider    = BigUint::from_uint(base);
-            let mut result = ~[];
-            let mut r      = n;
-            while r > divider {
-                let (d, r0) = r.divmod(&divider);
-                result += [r0.to_uint() as BigDigit];
-                r = d;
-            }
-            if r.is_not_zero() {
-                result += [r.to_uint() as BigDigit];
-            }
-            return result;
-        }
-
-        fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
-            if v.is_empty() { return ~"0" }
-            let s = str::concat(vec::reversed(v).map(|n| {
-                let s = uint::to_str_radix(*n as uint, radix);
-                str::from_chars(vec::from_elem(l - s.len(), '0')) + s
-            }));
-            str::trim_left_chars(s, ['0']).to_owned()
         }
     }
 
@@ -561,22 +578,31 @@ priv fn get_radix_base(radix: uint) -> (uint, uint) {
 pub enum Sign { Minus, Zero, Plus }
 
 impl Ord for Sign {
-    fn lt(&self, other: &Sign) -> bool { self.cmp(other) <  0 }
-    fn le(&self, other: &Sign) -> bool { self.cmp(other) <= 0 }
-    fn ge(&self, other: &Sign) -> bool { self.cmp(other) >= 0 }
-    fn gt(&self, other: &Sign) -> bool { self.cmp(other) >  0 }
+    fn lt(&self, other: &Sign) -> bool {
+        match self.cmp(other) { Less => true, _ => false}
+    }
+    fn le(&self, other: &Sign) -> bool {
+        match self.cmp(other) { Less | Equal => true, _ => false }
+    }
+    fn ge(&self, other: &Sign) -> bool {
+        match self.cmp(other) { Greater | Equal => true, _ => false }
+    }
+    fn gt(&self, other: &Sign) -> bool {
+        match self.cmp(other) { Greater => true, _ => false }
+    }
 }
 
-pub impl Sign {
-    /// Compare two Sign.
-    fn cmp(&self, other: &Sign) -> int {
+impl TotalOrd for Sign {
+    fn cmp(&self, other: &Sign) -> Ordering {
         match (*self, *other) {
-          (Minus, Minus) | (Zero,  Zero) | (Plus, Plus) =>  0,
-          (Minus, Zero)  | (Minus, Plus) | (Zero, Plus) => -1,
-          _                                             =>  1
+          (Minus, Minus) | (Zero,  Zero) | (Plus, Plus) => Equal,
+          (Minus, Zero)  | (Minus, Plus) | (Zero, Plus) => Less,
+          _                                             => Greater
         }
     }
+}
 
+impl Neg<Sign> for Sign {
     /// Negate Sign value.
     fn neg(&self) -> Sign {
         match *self {
@@ -594,15 +620,42 @@ pub struct BigInt {
 }
 
 impl Eq for BigInt {
-    fn eq(&self, other: &BigInt) -> bool { self.cmp(other) == 0 }
-    fn ne(&self, other: &BigInt) -> bool { self.cmp(other) != 0 }
+    fn eq(&self, other: &BigInt) -> bool { self.equals(other) }
+    fn ne(&self, other: &BigInt) -> bool { !self.equals(other) }
+}
+
+impl TotalEq for BigInt {
+    fn equals(&self, other: &BigInt) -> bool {
+        match self.cmp(other) { Equal => true, _ => false }
+    }
 }
 
 impl Ord for BigInt {
-    fn lt(&self, other: &BigInt) -> bool { self.cmp(other) <  0 }
-    fn le(&self, other: &BigInt) -> bool { self.cmp(other) <= 0 }
-    fn ge(&self, other: &BigInt) -> bool { self.cmp(other) >= 0 }
-    fn gt(&self, other: &BigInt) -> bool { self.cmp(other) >  0 }
+    fn lt(&self, other: &BigInt) -> bool {
+        match self.cmp(other) { Less => true, _ => false}
+    }
+    fn le(&self, other: &BigInt) -> bool {
+        match self.cmp(other) { Less | Equal => true, _ => false }
+    }
+    fn ge(&self, other: &BigInt) -> bool {
+        match self.cmp(other) { Greater | Equal => true, _ => false }
+    }
+    fn gt(&self, other: &BigInt) -> bool {
+        match self.cmp(other) { Greater => true, _ => false }
+    }
+}
+
+impl TotalOrd for BigInt {
+    fn cmp(&self, other: &BigInt) -> Ordering {
+        let scmp = self.sign.cmp(&other.sign);
+        if scmp != Equal { return scmp; }
+
+        match self.sign {
+            Zero  => Equal,
+            Plus  => self.data.cmp(&other.data),
+            Minus => other.data.cmp(&self.data),
+        }
+    }
 }
 
 impl ToStr for BigInt {
@@ -611,7 +664,7 @@ impl ToStr for BigInt {
 
 impl from_str::FromStr for BigInt {
     fn from_str(s: &str) -> Option<BigInt> {
-        BigInt::from_str_radix(s, 10)
+        FromStrRadix::from_str_radix(s, 10)
     }
 }
 
@@ -659,12 +712,9 @@ impl Sub<BigInt, BigInt> for BigInt {
             (Zero, _)    => -other,
             (_,    Zero) => copy *self,
             (Plus, Plus) => match self.data.cmp(&other.data) {
-                s if s < 0 =>
-                    BigInt::from_biguint(Minus, other.data - self.data),
-                s if s > 0 =>
-                    BigInt::from_biguint(Plus, self.data - other.data),
-                _ =>
-                    Zero::zero()
+                Less    => BigInt::from_biguint(Minus, other.data - self.data),
+                Greater => BigInt::from_biguint(Plus, self.data - other.data),
+                Equal   => Zero::zero()
             },
             (Plus, Minus) => self + (-*other),
             (Minus, Plus) => -((-self) + *other),
@@ -730,6 +780,24 @@ impl IntConvertible for BigInt {
     }
 }
 
+impl ToStrRadix for BigInt {
+    fn to_str_radix(&self, radix: uint) -> ~str {
+        match self.sign {
+            Plus  => self.data.to_str_radix(radix),
+            Zero  => ~"0",
+            Minus => ~"-" + self.data.to_str_radix(radix)
+        }
+    }
+}
+
+impl FromStrRadix for BigInt {
+    /// Creates and initializes an BigInt.
+    pub fn from_str_radix(s: &str, radix: uint)
+        -> Option<BigInt> {
+        BigInt::parse_bytes(str::to_bytes(s), radix)
+    }
+}
+
 pub impl BigInt {
     /// Creates and initializes an BigInt.
     pub fn new(sign: Sign, v: ~[BigDigit]) -> BigInt {
@@ -756,12 +824,6 @@ pub impl BigInt {
     }
 
     /// Creates and initializes an BigInt.
-    pub fn from_str_radix(s: &str, radix: uint)
-        -> Option<BigInt> {
-        BigInt::parse_bytes(str::to_bytes(s), radix)
-    }
-
-    /// Creates and initializes an BigInt.
     pub fn parse_bytes(buf: &[u8], radix: uint)
         -> Option<BigInt> {
         if buf.is_empty() { return None; }
@@ -777,19 +839,6 @@ pub impl BigInt {
 
     fn abs(&self) -> BigInt {
         BigInt::from_biguint(Plus, copy self.data)
-    }
-
-    fn cmp(&self, other: &BigInt) -> int {
-        let ss = self.sign, os = other.sign;
-        if ss < os { return -1; }
-        if ss > os { return  1; }
-
-        assert!(ss == os);
-        match ss {
-            Zero  => 0,
-            Plus  => self.data.cmp(&other.data),
-            Minus => self.data.cmp(&other.data).neg(),
-        }
     }
 
     fn divmod(&self, other: &BigInt) -> (BigInt, BigInt) {
@@ -851,21 +900,14 @@ pub impl BigInt {
             Minus => 0
         }
     }
-
-    fn to_str_radix(&self, radix: uint) -> ~str {
-        match self.sign {
-            Plus  => self.data.to_str_radix(radix),
-            Zero  => ~"0",
-            Minus => ~"-" + self.data.to_str_radix(radix)
-        }
-    }
 }
 
 #[cfg(test)]
 mod biguint_tests {
 
     use core::*;
-    use core::num::{IntConvertible, Zero, One};
+    use core::num::{IntConvertible, Zero, One, FromStrRadix};
+    use core::cmp::{Less, Equal, Greater};
     use super::{BigUint, BigDigit};
 
     #[test]
@@ -889,8 +931,8 @@ mod biguint_tests {
             for vec::slice(data, i, data.len()).eachi |j0, nj| {
                 let j = j0 + i;
                 if i == j {
-                    assert!(ni.cmp(nj) == 0);
-                    assert!(nj.cmp(ni) == 0);
+                    assert_eq!(ni.cmp(nj), Equal);
+                    assert_eq!(nj.cmp(ni), Equal);
                     assert!(ni == nj);
                     assert!(!(ni != nj));
                     assert!(ni <= nj);
@@ -898,8 +940,8 @@ mod biguint_tests {
                     assert!(!(ni < nj));
                     assert!(!(ni > nj));
                 } else {
-                    assert!(ni.cmp(nj) < 0);
-                    assert!(nj.cmp(ni) > 0);
+                    assert_eq!(ni.cmp(nj), Less);
+                    assert_eq!(nj.cmp(ni), Greater);
 
                     assert!(!(ni == nj));
                     assert!(ni != nj);
@@ -1245,13 +1287,13 @@ mod biguint_tests {
             let &(n, rs) = num_pair;
             for rs.each |str_pair| {
                 let &(radix, str) = str_pair;
-                assert!(Some(n) == BigUint::from_str_radix(str, radix));
+                assert_eq!(Some(n), FromStrRadix::from_str_radix(str, radix));
             }
         }
 
-        assert!(BigUint::from_str_radix(~"Z", 10) == None);
-        assert!(BigUint::from_str_radix(~"_", 2) == None);
-        assert!(BigUint::from_str_radix(~"-1", 10) == None);
+        assert_eq!(FromStrRadix::from_str_radix::<BigUint>(~"Z", 10), None);
+        assert_eq!(FromStrRadix::from_str_radix::<BigUint>(~"_", 2), None);
+        assert_eq!(FromStrRadix::from_str_radix::<BigUint>(~"-1", 10), None);
     }
 
     #[test]
@@ -1266,7 +1308,7 @@ mod biguint_tests {
 
         fn check(n: uint, s: &str) {
             let n = factor(n);
-            let ans = match BigUint::from_str_radix(s, 10) {
+            let ans = match FromStrRadix::from_str_radix(s, 10) {
                 Some(x) => x, None => fail!()
             };
             assert!(n == ans);
@@ -1282,9 +1324,9 @@ mod biguint_tests {
 #[cfg(test)]
 mod bigint_tests {
     use super::{BigInt, BigUint, BigDigit, Sign, Minus, Zero, Plus};
-
     use core::*;
-    use core::num::{IntConvertible, Zero, One};
+    use core::cmp::{Less, Equal, Greater};
+    use core::num::{IntConvertible, Zero, One, FromStrRadix};
 
     #[test]
     fn test_from_biguint() {
@@ -1311,8 +1353,8 @@ mod bigint_tests {
             for vec::slice(nums, i, nums.len()).eachi |j0, nj| {
                 let j = i + j0;
                 if i == j {
-                    assert!(ni.cmp(nj) == 0);
-                    assert!(nj.cmp(ni) == 0);
+                    assert_eq!(ni.cmp(nj), Equal);
+                    assert_eq!(nj.cmp(ni), Equal);
                     assert!(ni == nj);
                     assert!(!(ni != nj));
                     assert!(ni <= nj);
@@ -1320,8 +1362,8 @@ mod bigint_tests {
                     assert!(!(ni < nj));
                     assert!(!(ni > nj));
                 } else {
-                    assert!(ni.cmp(nj) < 0);
-                    assert!(nj.cmp(ni) > 0);
+                    assert_eq!(ni.cmp(nj), Less);
+                    assert_eq!(nj.cmp(ni), Greater);
 
                     assert!(!(ni == nj));
                     assert!(ni != nj);
@@ -1623,8 +1665,8 @@ mod bigint_tests {
     #[test]
     fn test_from_str_radix() {
         fn check(s: &str, ans: Option<int>) {
-            let ans = ans.map(|&n| IntConvertible::from_int(n));
-            assert!(BigInt::from_str_radix(s, 10) == ans);
+            let ans = ans.map(|&n| IntConvertible::from_int::<BigInt>(n));
+            assert!(FromStrRadix::from_str_radix(s, 10) == ans);
         }
         check("10", Some(10));
         check("1", Some(1));
