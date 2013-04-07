@@ -188,9 +188,7 @@ fn expand_deriving_clone_struct_method(cx: @ext_ctxt,
                 fields.push(field);
             }
             unnamed_field => {
-                cx.span_bug(span,
-                            ~"unnamed fields in \
-                              expand_deriving_clone_struct_method");
+                cx.span_bug(span, ~"unnamed fields in `deriving(Clone)`");
             }
         }
     }
