@@ -28,8 +28,7 @@ pub mod intrinsic {
         // Remaining fields not listed
     }
 
-    // FIXME: make this a 0-variant enum; trans/reflect.rs has to match it.
-    pub type Opaque = ();
+    pub enum Opaque { }
 
     pub trait TyVisitor {
         fn visit_bot(&self) -> bool;
