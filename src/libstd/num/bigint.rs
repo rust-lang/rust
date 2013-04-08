@@ -341,7 +341,7 @@ pub impl BigUint {
 
         if new_len == v.len() { return BigUint { data: v }; }
         let mut v = v;
-        unsafe { v.truncate(new_len); }
+        v.truncate(new_len);
         return BigUint { data: v };
     }
 
