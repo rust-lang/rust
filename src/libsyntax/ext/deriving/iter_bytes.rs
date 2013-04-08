@@ -17,6 +17,7 @@ use ext::build;
 use ext::deriving::*;
 use codemap::{span, spanned};
 use ast_util;
+use opt_vec;
 
 use core::uint;
 
@@ -49,12 +50,13 @@ fn create_derived_iter_bytes_impl(cx: @ext_ctxt,
                                   method: @method)
                                -> @item {
     let methods = [ method ];
-    let trait_path = [
+    let trait_path = ~[
         cx.ident_of(~"core"),
         cx.ident_of(~"to_bytes"),
         cx.ident_of(~"IterBytes")
     ];
-    create_derived_impl(cx, span, type_ident, generics, methods, trait_path)
+    let trait_path = build::mk_raw_path_global(span, trait_path);
+    create_derived_impl(cx, span, type_ident, generics, methods, trait_path, opt_vec::Empty)
 }
 
 // Creates a method from the given set of statements conforming to the
