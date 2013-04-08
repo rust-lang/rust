@@ -17,6 +17,7 @@ use ext::build;
 use ext::deriving::*;
 use codemap::{span, spanned};
 use ast_util;
+use opt_vec;
 
 use core::uint;
 
@@ -124,12 +125,13 @@ fn create_derived_eq_impl(cx: @ext_ctxt,
                           ne_method: @method)
                        -> @item {
     let methods = [ eq_method, ne_method ];
-    let trait_path = [
+    let trait_path = ~[
         cx.ident_of(~"core"),
         cx.ident_of(~"cmp"),
         cx.ident_of(~"Eq")
     ];
-    create_derived_impl(cx, span, type_ident, generics, methods, trait_path)
+    let trait_path = build::mk_raw_path_global(span, trait_path);
+    create_derived_impl(cx, span, type_ident, generics, methods, trait_path, opt_vec::Empty)
 }
 
 fn call_substructure_eq_method(cx: @ext_ctxt,
