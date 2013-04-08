@@ -2320,7 +2320,7 @@ impl Shape for CircleStruct {
 Notice that methods of `Circle` can call methods on `Shape`, as our
 `radius` implementation calls the `area` method.
 This is a silly way to compute the radius of a circle
-(since we could just return the `circle` field), but you get the idea.
+(since we could just return the `radius` field), but you get the idea.
 
 In type-parameterized functions,
 methods of the supertrait may be called on values of subtrait-bound type parameters.
