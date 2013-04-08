@@ -624,9 +624,10 @@ impl TyVisitor for ReprVisitor {
     fn visit_leave_enum(&self, _n_variants: uint,
                         _get_disr: extern unsafe fn(ptr: *Opaque) -> int,
                         _sz: uint, _align: uint) -> bool {
-        // NOTE should this assert that it's not still SearchingFor the right variant?
-        self.var_stk.pop();
-        true
+        match self.var_stk.pop() {
+            SearchingFor(*) => fail!(~"enum value matched no variant"),
+            _ => true
+        }
     }
 
     fn visit_enter_fn(&self, _purity: uint, _proto: uint,
