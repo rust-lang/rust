@@ -275,26 +275,27 @@ pub impl Reflector {
             let variants = ty::substd_enum_variants(ccx.tcx, did, substs);
             let llptrty = T_ptr(type_of(ccx, t));
 
-            // Build the get_disr function.  (XXX: break this out into a function)
-            let sub_path = bcx.fcx.path + ~[path_name(special_idents::anon)];
-            let get_disr_sym = mangle_internal_name_by_path_and_seq(ccx, sub_path, ~"get_disr");
-            let get_disr_args = [ty::arg { mode: ast::expl(ast::by_copy),
-                                           ty: ty::mk_nil_ptr(ccx.tcx) }];
-            let get_disr_llfty = type_of_fn(ccx, get_disr_args, ty::mk_int(ccx.tcx));
-            let get_disr_llfdecl = decl_internal_cdecl_fn(ccx.llmod, get_disr_sym, get_disr_llfty);
-            let get_disr_arg = unsafe {
-                llvm::LLVMGetParam(get_disr_llfdecl, first_real_arg as c_uint)
+            let make_get_disr = || {
+                let sub_path = bcx.fcx.path + ~[path_name(special_idents::anon)];
+                let sym = mangle_internal_name_by_path_and_seq(ccx, sub_path, ~"get_disr");
+                let args = [ty::arg { mode: ast::expl(ast::by_copy),
+                                      ty: ty::mk_nil_ptr(ccx.tcx) }];
+                let llfty = type_of_fn(ccx, args, ty::mk_int(ccx.tcx));
+                let llfdecl = decl_internal_cdecl_fn(ccx.llmod, sym, llfty);
+                let arg = unsafe {
+                    llvm::LLVMGetParam(llfdecl, first_real_arg as c_uint)
+                };
+                let fcx = new_fn_ctxt(ccx, ~[], llfdecl, None);
+                let bcx = top_scope_block(fcx, None);
+                let arg = BitCast(bcx, arg, llptrty);
+                let ret = adt::trans_get_discr(bcx, repr, arg);
+                Store(bcx, ret, fcx.llretptr);
+                cleanup_and_Br(bcx, bcx, fcx.llreturn);
+                finish_fn(fcx, bcx.llbb);
+                llfdecl
             };
-            let get_disr_fcx = new_fn_ctxt(ccx, ~[], get_disr_llfdecl, None);
-            let get_disr_bcx = top_scope_block(get_disr_fcx, None);
-            let get_disr_arg = BitCast(get_disr_bcx, get_disr_arg, llptrty);
-            let get_disr_ret = adt::trans_get_discr(get_disr_bcx, repr, get_disr_arg);
-            Store(get_disr_bcx, get_disr_ret, get_disr_fcx.llretptr);
-            cleanup_and_Br(get_disr_bcx, get_disr_bcx, get_disr_fcx.llreturn);
-            finish_fn(get_disr_fcx, get_disr_bcx.llbb);
 
-            let enum_args = ~[self.c_uint(vec::len(variants)),
-                              get_disr_llfdecl]
+            let enum_args = ~[self.c_uint(vec::len(variants)), make_get_disr()]
                 + self.c_size_and_align(t);
             do self.bracketed(~"enum", enum_args) |this| {
                 for variants.eachi |i, v| {
