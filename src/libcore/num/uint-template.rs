@@ -168,21 +168,21 @@ impl ops::Neg<T> for T {
 #[inline(always)]
 pub fn from_str(s: &str) -> Option<T> {
     strconv::from_str_common(s, 10u, false, false, false,
-                             strconv::ExpNone, false)
+                             strconv::ExpNone, false, false)
 }
 
 /// Parse a string as a number in the given base.
 #[inline(always)]
 pub fn from_str_radix(s: &str, radix: uint) -> Option<T> {
     strconv::from_str_common(s, radix, false, false, false,
-                             strconv::ExpNone, false)
+                             strconv::ExpNone, false, false)
 }
 
 /// Parse a byte slice as a number in the given base.
 #[inline(always)]
 pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
     strconv::from_str_bytes_common(buf, radix, false, false, false,
-                                   strconv::ExpNone, false)
+                                   strconv::ExpNone, false, false)
 }
 
 impl FromStr for T {
