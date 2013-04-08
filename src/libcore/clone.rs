@@ -14,7 +14,7 @@ In Rust, some simple types are "implicitly copyable" and when you
 assign them or pass them as arguments, the receiver will get a copy,
 leaving the original value in place. These types do not require
 allocation to copy and do not have finalizers (i.e. they do not
-contain owned pointers or implement `Drop`), so the compiler considers
+contain owned boxes or implement `Drop`), so the compiler considers
 them cheap and safe to copy and automatically implements the `Copy`
 trait for them. For other types copies must be made explicitly,
 by convention implementing the `Clone` trait and calling the
@@ -23,32 +23,38 @@ by convention implementing the `Clone` trait and calling the
 */
 
 pub trait Clone {
+    /// Return a deep copy of the owned object tree. Managed boxes are cloned with a shallow copy.
     fn clone(&self) -> Self;
 }
 
 impl Clone for () {
+    /// Return a copy of the value.
     #[inline(always)]
     fn clone(&self) -> () { () }
 }
 
 impl<T:Clone> Clone for ~T {
+    /// Return a deep copy of the owned box.
     #[inline(always)]
     fn clone(&self) -> ~T { ~(**self).clone() }
 }
 
-impl<T:Clone> Clone for @T {
+impl<T> Clone for @T {
+    /// Return a shallow copy of the managed box.
     #[inline(always)]
-    fn clone(&self) -> @T { @(**self).clone() }
+    fn clone(&self) -> @T { *self }
 }
 
-impl<T:Clone> Clone for @mut T {
+impl<T> Clone for @mut T {
+    /// Return a shallow copy of the managed box.
     #[inline(always)]
-    fn clone(&self) -> @mut T { @mut (**self).clone() }
+    fn clone(&self) -> @mut T { *self }
 }
 
 macro_rules! clone_impl(
     ($t:ty) => {
         impl Clone for $t {
+            /// Return a copy of the value.
             #[inline(always)]
             fn clone(&self) -> $t { *self }
         }
@@ -76,21 +82,23 @@ clone_impl!(char)
 
 #[test]
 fn test_owned_clone() {
-    let a : ~int = ~5i;
-    let b : ~int = a.clone();
+    let a: ~int = ~5i;
+    let b: ~int = a.clone();
     assert!(a == b);
 }
 
 #[test]
 fn test_managed_clone() {
-    let a : @int = @5i;
-    let b : @int = a.clone();
+    let a: @int = @5i;
+    let b: @int = a.clone();
     assert!(a == b);
 }
 
 #[test]
 fn test_managed_mut_clone() {
-    let a : @int = @5i;
-    let b : @int = a.clone();
+    let a: @mut int = @mut 5i;
+    let b: @mut int = a.clone();
+    assert!(a == b);
+    *b = 10;
     assert!(a == b);
 }
