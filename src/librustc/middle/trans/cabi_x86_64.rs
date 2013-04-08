@@ -256,10 +256,10 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                         cls[i] = sse_int_class;
                     } else if is_sse(cls[i]) {
                         i += 1;
-                        while cls[i] == sseup_class { i += 1u; }
+                        while i != e && cls[i] == sseup_class { i += 1u; }
                     } else if cls[i] == x87_class {
                         i += 1;
-                        while cls[i] == x87up_class { i += 1u; }
+                        while i != e && cls[i] == x87up_class { i += 1u; }
                     } else {
                         i += 1;
                     }
