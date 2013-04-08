@@ -342,10 +342,7 @@ pub fn to_writer(wr: @io::Writer, json: &Json) {
 
 /// Encodes a json value into a string
 pub fn to_str(json: &Json) -> ~str {
-    unsafe {
-        // ugh, should be safe
-        io::with_str_writer(|wr| to_writer(wr, json))
-    }
+    io::with_str_writer(|wr| to_writer(wr, json))
 }
 
 /// Encodes a json value into a io::writer
@@ -988,23 +985,21 @@ impl Ord for Json {
                 match *other {
                     Number(_) | String(_) | Boolean(_) | List(_) => false,
                     Object(ref d1) => {
-                        unsafe {
-                            let mut d0_flat = ~[];
-                            let mut d1_flat = ~[];
+                        let mut d0_flat = ~[];
+                        let mut d1_flat = ~[];
 
-                            // FIXME #4430: this is horribly inefficient...
-                            for d0.each |&(k, v)| {
-                                 d0_flat.push((@copy *k, @copy *v));
-                            }
-                            d0_flat.qsort();
-
-                            for d1.each |&(k, v)| {
-                                d1_flat.push((@copy *k, @copy *v));
-                            }
-                            d1_flat.qsort();
-
-                            d0_flat < d1_flat
+                        // FIXME #4430: this is horribly inefficient...
+                        for d0.each |&(k, v)| {
+                             d0_flat.push((@copy *k, @copy *v));
                         }
+                        d0_flat.qsort();
+
+                        for d1.each |&(k, v)| {
+                            d1_flat.push((@copy *k, @copy *v));
+                        }
+                        d1_flat.qsort();
+
+                        d0_flat < d1_flat
                     }
                     Null => true
                 }
