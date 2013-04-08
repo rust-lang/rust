@@ -1653,11 +1653,12 @@ Path expressions are [lvalues](#lvalues-rvalues-and-temporaries).
 
 ### Tuple expressions
 
-Tuples are written by enclosing two or more comma-separated
+Tuples are written by enclosing one or more comma-separated
 expressions in parentheses. They are used to create [tuple-typed](#tuple-types)
 values.
 
 ~~~~~~~~ {.tuple}
+(0,);
 (0f, 4.5f);
 ("a", 4u, true);
 ~~~~~~~~
@@ -2578,7 +2579,7 @@ to the record type-constructor. The differences are as follows:
 
 Tuple types and values are denoted by listing the types or values of their
 elements, respectively, in a parenthesized, comma-separated
-list. Single-element tuples are not legal; all tuples have two or more values.
+list.
 
 The members of a tuple are laid out in memory contiguously, like a record, in
 order specified by the tuple type.
