@@ -274,12 +274,15 @@ pub impl Reflector {
             let repr = adt::represent_type(bcx.ccx(), t);
             let variants = ty::substd_enum_variants(ccx.tcx, did, substs);
             let llptrty = T_ptr(type_of(ccx, t));
+            let (_, opaquety) = *(ccx.tcx.intrinsic_defs.find(&ccx.sess.ident_of(~"Opaque"))
+                                      .expect("Failed to resolve intrinsic::Opaque"));
+            let opaqueptrty = ty::mk_ptr(ccx.tcx, ty::mt { ty: opaquety, mutbl: ast::m_imm });
 
             let make_get_disr = || {
                 let sub_path = bcx.fcx.path + ~[path_name(special_idents::anon)];
                 let sym = mangle_internal_name_by_path_and_seq(ccx, sub_path, ~"get_disr");
                 let args = [ty::arg { mode: ast::expl(ast::by_copy),
-                                      ty: ty::mk_nil_ptr(ccx.tcx) }];
+                                      ty: opaqueptrty }];
                 let llfty = type_of_fn(ccx, args, ty::mk_int(ccx.tcx));
                 let llfdecl = decl_internal_cdecl_fn(ccx.llmod, sym, llfty);
                 let arg = unsafe {
