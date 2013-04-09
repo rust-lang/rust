@@ -1020,11 +1020,9 @@ pub fn any(ss: &str, pred: &fn(char) -> bool) -> bool {
 /// Apply a function to each character
 pub fn map(ss: &str, ff: &fn(char) -> char) -> ~str {
     let mut result = ~"";
-    unsafe {
-        reserve(&mut result, len(ss));
-        for ss.each_char |cc| {
-            str::push_char(&mut result, ff(cc));
-        }
+    reserve(&mut result, len(ss));
+    for ss.each_char |cc| {
+        str::push_char(&mut result, ff(cc));
     }
     result
 }
@@ -1660,20 +1658,18 @@ pub fn to_utf16(s: &str) -> ~[u16] {
         // Arithmetic with u32 literals is easier on the eyes than chars.
         let mut ch = ch as u32;
 
-        unsafe {
-            if (ch & 0xFFFF_u32) == ch {
-                // The BMP falls through (assuming non-surrogate, as it
-                // should)
-                assert!(ch <= 0xD7FF_u32 || ch >= 0xE000_u32);
-                u.push(ch as u16)
-            } else {
-                // Supplementary planes break into surrogates.
-                assert!(ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32);
-                ch -= 0x1_0000_u32;
-                let w1 = 0xD800_u16 | ((ch >> 10) as u16);
-                let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
-                u.push_all(~[w1, w2])
-            }
+        if (ch & 0xFFFF_u32) == ch {
+            // The BMP falls through (assuming non-surrogate, as it
+            // should)
+            assert!(ch <= 0xD7FF_u32 || ch >= 0xE000_u32);
+            u.push(ch as u16)
+        } else {
+            // Supplementary planes break into surrogates.
+            assert!(ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32);
+            ch -= 0x1_0000_u32;
+            let w1 = 0xD800_u16 | ((ch >> 10) as u16);
+            let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
+            u.push_all(~[w1, w2])
         }
     }
     u
@@ -1705,16 +1701,14 @@ pub fn utf16_chars(v: &[u16], f: &fn(char)) {
 
 pub fn from_utf16(v: &[u16]) -> ~str {
     let mut buf = ~"";
-    unsafe {
-        reserve(&mut buf, vec::len(v));
-        utf16_chars(v, |ch| push_char(&mut buf, ch));
-    }
+    reserve(&mut buf, vec::len(v));
+    utf16_chars(v, |ch| push_char(&mut buf, ch));
     buf
 }
 
 pub fn with_capacity(capacity: uint) -> ~str {
     let mut buf = ~"";
-    unsafe { reserve(&mut buf, capacity); }
+    reserve(&mut buf, capacity);
     buf
 }
 
@@ -2105,11 +2099,9 @@ pub fn capacity(s: &const ~str) -> uint {
 /// Escape each char in `s` with char::escape_default.
 pub fn escape_default(s: &str) -> ~str {
     let mut out: ~str = ~"";
-    unsafe {
-        reserve_at_least(&mut out, str::len(s));
-        for s.each_char |c| {
-            push_str(&mut out, char::escape_default(c));
-        }
+    reserve_at_least(&mut out, str::len(s));
+    for s.each_char |c| {
+        push_str(&mut out, char::escape_default(c));
     }
     out
 }
@@ -2117,11 +2109,9 @@ pub fn escape_default(s: &str) -> ~str {
 /// Escape each char in `s` with char::escape_unicode.
 pub fn escape_unicode(s: &str) -> ~str {
     let mut out: ~str = ~"";
-    unsafe {
-        reserve_at_least(&mut out, str::len(s));
-        for s.each_char |c| {
-            push_str(&mut out, char::escape_unicode(c));
-        }
+    reserve_at_least(&mut out, str::len(s));
+    for s.each_char |c| {
+        push_str(&mut out, char::escape_unicode(c));
     }
     out
 }

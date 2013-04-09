@@ -76,36 +76,30 @@ pub trait Streaming {
 impl<A:IterBytes> Hash for A {
     #[inline(always)]
     fn hash_keyed(&self, k0: u64, k1: u64) -> u64 {
-        unsafe {
-            let s = &State(k0, k1);
-            for self.iter_bytes(true) |bytes| {
-                s.input(bytes);
-            }
-            s.result_u64()
+        let s = &State(k0, k1);
+        for self.iter_bytes(true) |bytes| {
+            s.input(bytes);
         }
+        s.result_u64()
     }
 }
 
 fn hash_keyed_2<A: IterBytes,
                 B: IterBytes>(a: &A, b: &B, k0: u64, k1: u64) -> u64 {
-    unsafe {
-        let s = &State(k0, k1);
-        for a.iter_bytes(true) |bytes| { s.input(bytes); }
-        for b.iter_bytes(true) |bytes| { s.input(bytes); }
-        s.result_u64()
-    }
+    let s = &State(k0, k1);
+    for a.iter_bytes(true) |bytes| { s.input(bytes); }
+    for b.iter_bytes(true) |bytes| { s.input(bytes); }
+    s.result_u64()
 }
 
 fn hash_keyed_3<A: IterBytes,
                 B: IterBytes,
                 C: IterBytes>(a: &A, b: &B, c: &C, k0: u64, k1: u64) -> u64 {
-    unsafe {
-        let s = &State(k0, k1);
-        for a.iter_bytes(true) |bytes| { s.input(bytes); }
-        for b.iter_bytes(true) |bytes| { s.input(bytes); }
-        for c.iter_bytes(true) |bytes| { s.input(bytes); }
-        s.result_u64()
-    }
+    let s = &State(k0, k1);
+    for a.iter_bytes(true) |bytes| { s.input(bytes); }
+    for b.iter_bytes(true) |bytes| { s.input(bytes); }
+    for c.iter_bytes(true) |bytes| { s.input(bytes); }
+    s.result_u64()
 }
 
 fn hash_keyed_4<A: IterBytes,
@@ -113,14 +107,12 @@ fn hash_keyed_4<A: IterBytes,
                 C: IterBytes,
                 D: IterBytes>(a: &A, b: &B, c: &C, d: &D, k0: u64, k1: u64)
                            -> u64 {
-    unsafe {
-        let s = &State(k0, k1);
-        for a.iter_bytes(true) |bytes| { s.input(bytes); }
-        for b.iter_bytes(true) |bytes| { s.input(bytes); }
-        for c.iter_bytes(true) |bytes| { s.input(bytes); }
-        for d.iter_bytes(true) |bytes| { s.input(bytes); }
-        s.result_u64()
-    }
+    let s = &State(k0, k1);
+    for a.iter_bytes(true) |bytes| { s.input(bytes); }
+    for b.iter_bytes(true) |bytes| { s.input(bytes); }
+    for c.iter_bytes(true) |bytes| { s.input(bytes); }
+    for d.iter_bytes(true) |bytes| { s.input(bytes); }
+    s.result_u64()
 }
 
 fn hash_keyed_5<A: IterBytes,
@@ -129,15 +121,13 @@ fn hash_keyed_5<A: IterBytes,
                 D: IterBytes,
                 E: IterBytes>(a: &A, b: &B, c: &C, d: &D, e: &E,
                               k0: u64, k1: u64) -> u64 {
-    unsafe {
-        let s = &State(k0, k1);
-        for a.iter_bytes(true) |bytes| { s.input(bytes); }
-        for b.iter_bytes(true) |bytes| { s.input(bytes); }
-        for c.iter_bytes(true) |bytes| { s.input(bytes); }
-        for d.iter_bytes(true) |bytes| { s.input(bytes); }
-        for e.iter_bytes(true) |bytes| { s.input(bytes); }
-        s.result_u64()
-    }
+    let s = &State(k0, k1);
+    for a.iter_bytes(true) |bytes| { s.input(bytes); }
+    for b.iter_bytes(true) |bytes| { s.input(bytes); }
+    for c.iter_bytes(true) |bytes| { s.input(bytes); }
+    for d.iter_bytes(true) |bytes| { s.input(bytes); }
+    for e.iter_bytes(true) |bytes| { s.input(bytes); }
+    s.result_u64()
 }
 
 // Implement State as SipState

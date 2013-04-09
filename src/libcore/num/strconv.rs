@@ -228,10 +228,8 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
         deccum /= radix_gen;
         deccum = deccum.round_to_zero();
 
-        unsafe { // FIXME: Pureness workaround (#4568)
-            buf.push(char::from_digit(current_digit.to_int() as uint, radix)
-                 .unwrap() as u8);
-        }
+        buf.push(char::from_digit(current_digit.to_int() as uint, radix)
+             .unwrap() as u8);
 
         // No more digits to calculate for the non-fractional part -> break
         if deccum == _0 { break; }
@@ -247,21 +245,15 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
     // Decide what sign to put in front
     match sign {
         SignNeg | SignAll if neg => {
-            unsafe { // FIXME: Pureness workaround (#4568)
-                buf.push('-' as u8);
-            }
+            buf.push('-' as u8);
         }
         SignAll => {
-            unsafe { // FIXME: Pureness workaround (#4568)
-                buf.push('+' as u8);
-            }
+            buf.push('+' as u8);
         }
         _ => ()
     }
 
-    unsafe { // FIXME: Pureness workaround (#4568)
-        vec::reverse(buf);
-    }
+    vec::reverse(buf);
 
     // Remember start of the fractional digits.
     // Points one beyond end of buf if none get generated,
@@ -271,9 +263,7 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
     // Now emit the fractional part, if any
     deccum = num.fractional_part();
     if deccum != _0 || (limit_digits && exact && digit_count > 0) {
-        unsafe { // FIXME: Pureness workaround (#4568)
-            buf.push('.' as u8);
-        }
+        buf.push('.' as u8);
         let mut dig = 0u;
 
         // calculate new digits while
@@ -299,10 +289,8 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
                 current_digit_signed
             };
 
-            unsafe { // FIXME: Pureness workaround (#4568)
-                buf.push(char::from_digit(
-                    current_digit.to_int() as uint, radix).unwrap() as u8);
-            }
+            buf.push(char::from_digit(
+                current_digit.to_int() as uint, radix).unwrap() as u8);
 
             // Decrease the deccumulator one fractional digit at a time
             deccum = deccum.fractional_part();
@@ -320,33 +308,31 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
                 char::from_digit(val, radix).unwrap() as u8
             };
 
-            unsafe { // FIXME: Pureness workaround (#4568)
-                let extra_digit = ascii2value(buf.pop());
-                if extra_digit >= radix / 2 { // -> need to round
-                    let mut i: int = buf.len() as int - 1;
-                    loop {
-                        // If reached left end of number, have to
-                        // insert additional digit:
-                        if i < 0
-                        || buf[i] == '-' as u8
-                        || buf[i] == '+' as u8 {
-                            buf.insert((i + 1) as uint, value2ascii(1));
-                            break;
-                        }
+            let extra_digit = ascii2value(buf.pop());
+            if extra_digit >= radix / 2 { // -> need to round
+                let mut i: int = buf.len() as int - 1;
+                loop {
+                    // If reached left end of number, have to
+                    // insert additional digit:
+                    if i < 0
+                    || buf[i] == '-' as u8
+                    || buf[i] == '+' as u8 {
+                        buf.insert((i + 1) as uint, value2ascii(1));
+                        break;
+                    }
 
-                        // Skip the '.'
-                        if buf[i] == '.' as u8 { i -= 1; loop; }
+                    // Skip the '.'
+                    if buf[i] == '.' as u8 { i -= 1; loop; }
 
-                        // Either increment the digit,
-                        // or set to 0 if max and carry the 1.
-                        let current_digit = ascii2value(buf[i]);
-                        if current_digit < (radix - 1) {
-                            buf[i] = value2ascii(current_digit+1);
-                            break;
-                        } else {
-                            buf[i] = value2ascii(0);
-                            i -= 1;
-                        }
+                    // Either increment the digit,
+                    // or set to 0 if max and carry the 1.
+                    let current_digit = ascii2value(buf[i]);
+                    if current_digit < (radix - 1) {
+                        buf[i] = value2ascii(current_digit+1);
+                        break;
+                    } else {
+                        buf[i] = value2ascii(0);
+                        i -= 1;
                     }
                 }
             }

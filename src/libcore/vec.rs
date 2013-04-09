@@ -167,7 +167,7 @@ pub fn from_slice<T:Copy>(t: &[T]) -> ~[T] {
 
 pub fn with_capacity<T>(capacity: uint) -> ~[T] {
     let mut vec = ~[];
-    unsafe { reserve(&mut vec, capacity); }
+    reserve(&mut vec, capacity);
     vec
 }
 
@@ -186,7 +186,7 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
 #[inline(always)]
 pub fn build_sized<A>(size: uint, builder: &fn(push: &fn(v: A))) -> ~[A] {
     let mut vec = with_capacity(size);
-    builder(|x| unsafe { vec.push(x) });
+    builder(|x| vec.push(x));
     vec
 }
 
@@ -437,12 +437,10 @@ pub fn partitioned<T:Copy>(v: &[T], f: &fn(&T) -> bool) -> (~[T], ~[T]) {
     let mut rights = ~[];
 
     for each(v) |elt| {
-        unsafe {
-            if f(elt) {
-                lefts.push(*elt);
-            } else {
-                rights.push(*elt);
-            }
+        if f(elt) {
+            lefts.push(*elt);
+        } else {
+            rights.push(*elt);
         }
     }
 
@@ -735,16 +733,14 @@ pub fn dedup<T:Eq>(v: &mut ~[T]) {
 #[inline(always)]
 pub fn append<T:Copy>(lhs: ~[T], rhs: &const [T]) -> ~[T] {
     let mut v = lhs;
-    unsafe {
-        v.push_all(rhs);
-    }
+    v.push_all(rhs);
     v
 }
 
 #[inline(always)]
 pub fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
     let mut v = lhs;
-    unsafe { v.push(x); }
+    v.push(x);
     v
 }
 
@@ -811,9 +807,7 @@ pub fn grow_set<T:Copy>(v: &mut ~[T], index: uint, initval: &T, val: T) {
 pub fn map<T, U>(v: &[T], f: &fn(t: &T) -> U) -> ~[U] {
     let mut result = with_capacity(len(v));
     for each(v) |elem| {
-        unsafe {
-            result.push(f(elem));
-        }
+        result.push(f(elem));
     }
     result
 }
@@ -841,7 +835,7 @@ pub fn mapi<T, U>(v: &[T], f: &fn(uint, t: &T) -> U) -> ~[U] {
  */
 pub fn flat_map<T, U>(v: &[T], f: &fn(t: &T) -> ~[U]) -> ~[U] {
     let mut result = ~[];
-    for each(v) |elem| { unsafe{ result.push_all_move(f(elem)); } }
+    for each(v) |elem| { result.push_all_move(f(elem)); }
     result
 }
 
@@ -853,7 +847,7 @@ pub fn map2<T:Copy,U:Copy,V>(v0: &[T], v1: &[U],
     let mut u: ~[V] = ~[];
     let mut i = 0u;
     while i < v0_len {
-        unsafe { u.push(f(&v0[i], &v1[i])) };
+        u.push(f(&v0[i], &v1[i]));
         i += 1u;
     }
     u
@@ -894,7 +888,7 @@ pub fn filter_mapped<T, U: Copy>(
     for each(v) |elem| {
         match f(elem) {
           None => {/* no-op */ }
-          Some(result_elem) => unsafe { result.push(result_elem); }
+          Some(result_elem) => { result.push(result_elem); }
         }
     }
     result
@@ -927,7 +921,7 @@ pub fn filter<T>(v: ~[T], f: &fn(t: &T) -> bool) -> ~[T] {
 pub fn filtered<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[T] {
     let mut result = ~[];
     for each(v) |elem| {
-        if f(elem) { unsafe { result.push(*elem); } }
+        if f(elem) { result.push(*elem); }
     }
     result
 }
@@ -959,7 +953,7 @@ pub fn retain<T>(v: &mut ~[T], f: &fn(t: &T) -> bool) {
  */
 pub fn concat<T:Copy>(v: &[~[T]]) -> ~[T] {
     let mut r = ~[];
-    for each(v) |inner| { unsafe { r.push_all(*inner); } }
+    for each(v) |inner| { r.push_all(*inner); }
     r
 }
 
@@ -968,8 +962,8 @@ pub fn connect<T:Copy>(v: &[~[T]], sep: &T) -> ~[T] {
     let mut r: ~[T] = ~[];
     let mut first = true;
     for each(v) |inner| {
-        if first { first = false; } else { unsafe { r.push(*sep); } }
-        unsafe { r.push_all(*inner) };
+        if first { first = false; } else { r.push(*sep); }
+        r.push_all(*inner);
     }
     r
 }
@@ -1236,10 +1230,8 @@ pub fn unzip_slice<T:Copy,U:Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
     let mut ts = ~[], us = ~[];
     for each(v) |p| {
         let (t, u) = *p;
-        unsafe {
-            ts.push(t);
-            us.push(u);
-        }
+        ts.push(t);
+        us.push(u);
     }
     (ts, us)
 }
@@ -1254,12 +1246,10 @@ pub fn unzip_slice<T:Copy,U:Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
  */
 pub fn unzip<T,U>(v: ~[(T, U)]) -> (~[T], ~[U]) {
     let mut ts = ~[], us = ~[];
-    unsafe {
-        do consume(v) |_i, p| {
-            let (t, u) = p;
-            ts.push(t);
-            us.push(u);
-        }
+    do consume(v) |_i, p| {
+        let (t, u) = p;
+        ts.push(t);
+        us.push(u);
     }
     (ts, us)
 }
@@ -1274,7 +1264,8 @@ pub fn zip_slice<T:Copy,U:Copy>(v: &const [T], u: &const [U])
     let mut i = 0u;
     assert!(sz == len(u));
     while i < sz {
-        unsafe { zipped.push((v[i], u[i])); i += 1u; }
+        zipped.push((v[i], u[i]));
+        i += 1u;
     }
     zipped
 }
@@ -1290,10 +1281,10 @@ pub fn zip<T, U>(mut v: ~[T], mut u: ~[U]) -> ~[(T, U)] {
     assert!(i == len(u));
     let mut w = with_capacity(i);
     while i > 0 {
-        unsafe { w.push((v.pop(),u.pop())); }
+        w.push((v.pop(),u.pop()));
         i -= 1;
     }
-    unsafe { reverse(w); }
+    reverse(w);
     w
 }
 
@@ -1322,10 +1313,8 @@ pub fn reversed<T:Copy>(v: &const [T]) -> ~[T] {
     let mut rs: ~[T] = ~[];
     let mut i = len::<T>(v);
     if i == 0 { return (rs); } else { i -= 1; }
-    unsafe {
-        while i != 0 { rs.push(v[i]); i -= 1; }
-        rs.push(v[0]);
-    }
+    while i != 0 { rs.push(v[i]); i -= 1; }
+    rs.push(v[0]);
     rs
 }
 
@@ -1495,12 +1484,10 @@ pub fn each_permutation<T:Copy>(v: &[T], put: &fn(ts: &[T]) -> bool) {
         while i < ln {
             let elt = v[i];
             let mut rest = slice(v, 0u, i).to_vec();
-            unsafe {
-                rest.push_all(const_slice(v, i+1u, ln));
-                for each_permutation(rest) |permutation| {
-                    if !put(append(~[elt], permutation)) {
-                        return;
-                    }
+            rest.push_all(const_slice(v, i+1u, ln));
+            for each_permutation(rest) |permutation| {
+                if !put(append(~[elt], permutation)) {
+                    return;
                 }
             }
             i += 1u;
@@ -1514,9 +1501,7 @@ pub fn windowed<TT:Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
     for vec::eachi (xx) |ii, _x| {
         let len = xx.len();
         if ii+nn <= len {
-            unsafe {
-                ww.push(slice(xx, ii, ii+nn).to_vec());
-            }
+            ww.push(slice(xx, ii, ii+nn).to_vec());
         }
     }
     ww

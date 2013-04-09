@@ -99,7 +99,7 @@ pub fn DList<T>() -> @mut DList<T> {
 /// Creates a new dlist with a single element
 pub fn from_elem<T>(data: T) -> @mut DList<T> {
     let list = DList();
-    unsafe { list.push(data); }
+    list.push(data);
     list
 }
 
@@ -484,11 +484,8 @@ pub impl<T:Copy> DList<T> {
     /// Get the elements of the list as a vector. O(n).
     fn to_vec(@mut self) -> ~[T] {
         let mut v = vec::with_capacity(self.size);
-        unsafe {
-            // Take this out of the unchecked when iter's functions are pure
-            for iter::eachi(&self) |index,data| {
-                v[index] = *data;
-            }
+        for iter::eachi(&self) |index,data| {
+            v[index] = *data;
         }
         v
     }
