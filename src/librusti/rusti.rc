@@ -273,7 +273,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 ~":{\\n ..lines.. \\n:}\\n - execute multiline command\n" +
                 ~":load <crate> ... - \
                   loads given crates as dynamic libraries\n" +
-                ~":clear - clear the screen\n" +
+                ~":clear - clear the bindings\n" +
                 ~":exit - exit from the repl\n" +
                 ~":help - show this message");
         }
