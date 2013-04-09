@@ -21,6 +21,9 @@ use core::hashmap::{HashMap, HashSet};
 use core::trie::{TrieMap, TrieSet};
 use deque::Deque;
 use dlist::DList;
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
 use treemap::{TreeMap, TreeSet};
 
 pub trait Encoder {
@@ -738,6 +741,9 @@ impl<D: Decoder> Decodable<D> for TrieSet {
     }
 }
 
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
 impl<
     E: Encoder,
     K: Encodable<E> + Eq + TotalOrd,
@@ -755,6 +761,9 @@ impl<
     }
 }
 
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
 impl<
     D: Decoder,
     K: Decodable<D> + Eq + TotalOrd,
@@ -773,6 +782,9 @@ impl<
     }
 }
 
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
 impl<
     S: Encoder,
     T: Encodable<S> + Eq + TotalOrd
@@ -788,6 +800,9 @@ impl<
     }
 }
 
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
 impl<
     D: Decoder,
     T: Decodable<D> + Eq + TotalOrd
