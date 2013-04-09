@@ -28,12 +28,12 @@ pub trait Subst {
 // Substitution over types
 //
 // Because this is so common, we make a special optimization to avoid
-// doing anything is `substs` is a no-op.  I tried to generalize these
+// doing anything if `substs` is a no-op.  I tried to generalize these
 // to all subst methods but ran into trouble due to the limitations of
 // our current method/trait matching algorithm. - Niko
 
-trait Subst1 {
-    fn subst1(&self, tcx: ty::ctxt, substs: &ty::substs) -> Self;
+trait EffectfulSubst {
+    fn effectfulSubst(&self, tcx: ty::ctxt, substs: &ty::substs) -> Self;
 }
 
 impl Subst for ty::t {
@@ -41,20 +41,24 @@ impl Subst for ty::t {
         if ty::substs_is_noop(substs) {
             return *self;
         } else {
-            return self.subst1(tcx, substs);
+            return self.effectfulSubst(tcx, substs);
         }
     }
 }
 
-impl Subst1 for ty::t {
-    fn subst1(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::t {
+impl EffectfulSubst for ty::t {
+    fn effectfulSubst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::t {
         if !ty::type_needs_subst(*self) {
             return *self;
         }
 
         match ty::get(*self).sty {
-            ty::ty_param(p) => substs.tps[p.idx],
-            ty::ty_self(_) => substs.self_ty.get(),
+            ty::ty_param(p) => {
+                substs.tps[p.idx]
+            }
+            ty::ty_self(_) => {
+                substs.self_ty.expect("ty_self not found in substs")
+            }
             _ => {
                 ty::fold_regions_and_ty(
                     tcx, *self,
@@ -74,8 +78,8 @@ impl Subst1 for ty::t {
                         }
                         _ => r
                     },
-                    |t| t.subst1(tcx, substs),
-                    |t| t.subst1(tcx, substs))
+                    |t| t.effectfulSubst(tcx, substs),
+                    |t| t.effectfulSubst(tcx, substs))
             }
         }
     }

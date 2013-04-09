@@ -376,7 +376,14 @@ pub impl<'self> LookupContext<'self> {
 
         let tcx = self.tcx();
         let mut next_bound_idx = 0; // count only trait bounds
-        let type_param_def = tcx.ty_param_defs.get(&param_ty.def_id.node);
+        let type_param_def = match tcx.ty_param_defs.find(&param_ty.def_id.node) {
+            Some(t) => t,
+            None => {
+                tcx.sess.span_bug(
+                    self.expr.span,
+                    fmt!("No param def for %?", param_ty));
+            }
+        };
 
         for ty::each_bound_trait_and_supertraits(tcx, type_param_def.bounds)
             |bound_trait_ref|
