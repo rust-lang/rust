@@ -13,14 +13,14 @@
 // FIXME #2238 Make run only accept source that emits an executable
 
 #[link(name = "rust",
-       vers = "0.6",
+       vers = "0.7-rc",
        uuid = "4a24da33-5cc8-4037-9352-2cbe9bd9d27c",
        url = "https://github.com/mozilla/rust/tree/master/src/rust")];
 
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-extern mod core(vers = "0.6");
+extern mod core(vers = "0.7-rc");
 
 use core::run;
 

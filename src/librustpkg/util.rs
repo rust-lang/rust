@@ -140,7 +140,7 @@ fn add_pkg_module(ctx: @mut ReadyCtx, m: ast::_mod) -> ast::_mod {
     let ext_cx = ctx.ext_cx;
     let item = quote_item! (
         mod __pkg {
-            extern mod rustpkg (vers="0.6");
+            extern mod rustpkg (vers="0.7-rc");
             static listeners : &[rustpkg::Listener] = $listeners;
             #[main]
             fn main() {
