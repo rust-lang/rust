@@ -368,7 +368,7 @@ fn create_basic_type(cx: @CrateContext, t: ty::t, span: span)
         ty::ty_uint(uint_ty) => match uint_ty {
             ast::ty_u => (~"uint", DW_ATE_unsigned),
             ast::ty_u8 => (~"u8", DW_ATE_unsigned),
-            ast::ty_u16 => (~"i16", DW_ATE_unsigned),
+            ast::ty_u16 => (~"u16", DW_ATE_unsigned),
             ast::ty_u32 => (~"u32", DW_ATE_unsigned),
             ast::ty_u64 => (~"u64", DW_ATE_unsigned)
         },
