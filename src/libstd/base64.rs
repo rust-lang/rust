@@ -29,47 +29,45 @@ static CHARS: [char, ..64] = [
 impl<'self> ToBase64 for &'self [u8] {
     fn to_base64(&self) -> ~str {
         let mut s = ~"";
-        unsafe {
-            let len = self.len();
-            str::reserve(&mut s, ((len + 3u) / 4u) * 3u);
+        let len = self.len();
+        str::reserve(&mut s, ((len + 3u) / 4u) * 3u);
 
-            let mut i = 0u;
+        let mut i = 0u;
 
-            while i < len - (len % 3u) {
-                let n = (self[i] as uint) << 16u |
-                        (self[i + 1u] as uint) << 8u |
-                        (self[i + 2u] as uint);
+        while i < len - (len % 3u) {
+            let n = (self[i] as uint) << 16u |
+                    (self[i + 1u] as uint) << 8u |
+                    (self[i + 2u] as uint);
 
-                // This 24-bit number gets separated into four 6-bit numbers.
-                str::push_char(&mut s, CHARS[(n >> 18u) & 63u]);
-                str::push_char(&mut s, CHARS[(n >> 12u) & 63u]);
-                str::push_char(&mut s, CHARS[(n >> 6u) & 63u]);
-                str::push_char(&mut s, CHARS[n & 63u]);
+            // This 24-bit number gets separated into four 6-bit numbers.
+            str::push_char(&mut s, CHARS[(n >> 18u) & 63u]);
+            str::push_char(&mut s, CHARS[(n >> 12u) & 63u]);
+            str::push_char(&mut s, CHARS[(n >> 6u) & 63u]);
+            str::push_char(&mut s, CHARS[n & 63u]);
 
-                i += 3u;
-            }
+            i += 3u;
+        }
 
-            // Heh, would be cool if we knew this was exhaustive
-            // (the dream of bounded integer types)
-            match len % 3 {
-              0 => (),
-              1 => {
-                let n = (self[i] as uint) << 16u;
-                str::push_char(&mut s, CHARS[(n >> 18u) & 63u]);
-                str::push_char(&mut s, CHARS[(n >> 12u) & 63u]);
-                str::push_char(&mut s, '=');
-                str::push_char(&mut s, '=');
-              }
-              2 => {
-                let n = (self[i] as uint) << 16u |
-                    (self[i + 1u] as uint) << 8u;
-                str::push_char(&mut s, CHARS[(n >> 18u) & 63u]);
-                str::push_char(&mut s, CHARS[(n >> 12u) & 63u]);
-                str::push_char(&mut s, CHARS[(n >> 6u) & 63u]);
-                str::push_char(&mut s, '=');
-              }
-              _ => fail!(~"Algebra is broken, please alert the math police")
-            }
+        // Heh, would be cool if we knew this was exhaustive
+        // (the dream of bounded integer types)
+        match len % 3 {
+          0 => (),
+          1 => {
+            let n = (self[i] as uint) << 16u;
+            str::push_char(&mut s, CHARS[(n >> 18u) & 63u]);
+            str::push_char(&mut s, CHARS[(n >> 12u) & 63u]);
+            str::push_char(&mut s, '=');
+            str::push_char(&mut s, '=');
+          }
+          2 => {
+            let n = (self[i] as uint) << 16u |
+                (self[i + 1u] as uint) << 8u;
+            str::push_char(&mut s, CHARS[(n >> 18u) & 63u]);
+            str::push_char(&mut s, CHARS[(n >> 12u) & 63u]);
+            str::push_char(&mut s, CHARS[(n >> 6u) & 63u]);
+            str::push_char(&mut s, '=');
+          }
+          _ => fail!(~"Algebra is broken, please alert the math police")
         }
         s
     }
@@ -99,49 +97,47 @@ impl FromBase64 for ~[u8] {
 
         let mut r = vec::with_capacity((len / 4u) * 3u - padding);
 
-        unsafe {
-            let mut i = 0u;
-            while i < len {
-                let mut n = 0u;
+        let mut i = 0u;
+        while i < len {
+            let mut n = 0u;
 
-                for iter::repeat(4u) {
-                    let ch = self[i] as char;
-                    n <<= 6u;
+            for iter::repeat(4u) {
+                let ch = self[i] as char;
+                n <<= 6u;
 
-                    if ch >= 'A' && ch <= 'Z' {
-                        n |= (ch as uint) - 0x41u;
-                    } else if ch >= 'a' && ch <= 'z' {
-                        n |= (ch as uint) - 0x47u;
-                    } else if ch >= '0' && ch <= '9' {
-                        n |= (ch as uint) + 0x04u;
-                    } else if ch == '+' {
-                        n |= 0x3Eu;
-                    } else if ch == '/' {
-                        n |= 0x3Fu;
-                    } else if ch == '=' {
-                        match len - i {
-                          1u => {
-                            r.push(((n >> 16u) & 0xFFu) as u8);
-                            r.push(((n >> 8u ) & 0xFFu) as u8);
-                            return copy r;
-                          }
-                          2u => {
-                            r.push(((n >> 10u) & 0xFFu) as u8);
-                            return copy r;
-                          }
-                          _ => fail!(~"invalid base64 padding")
-                        }
-                    } else {
-                        fail!(~"invalid base64 character");
+                if ch >= 'A' && ch <= 'Z' {
+                    n |= (ch as uint) - 0x41u;
+                } else if ch >= 'a' && ch <= 'z' {
+                    n |= (ch as uint) - 0x47u;
+                } else if ch >= '0' && ch <= '9' {
+                    n |= (ch as uint) + 0x04u;
+                } else if ch == '+' {
+                    n |= 0x3Eu;
+                } else if ch == '/' {
+                    n |= 0x3Fu;
+                } else if ch == '=' {
+                    match len - i {
+                      1u => {
+                        r.push(((n >> 16u) & 0xFFu) as u8);
+                        r.push(((n >> 8u ) & 0xFFu) as u8);
+                        return copy r;
+                      }
+                      2u => {
+                        r.push(((n >> 10u) & 0xFFu) as u8);
+                        return copy r;
+                      }
+                      _ => fail!(~"invalid base64 padding")
                     }
+                } else {
+                    fail!(~"invalid base64 character");
+                }
 
-                    i += 1u;
-                };
+                i += 1u;
+            };
 
-                r.push(((n >> 16u) & 0xFFu) as u8);
-                r.push(((n >> 8u ) & 0xFFu) as u8);
-                r.push(((n       ) & 0xFFu) as u8);
-            }
+            r.push(((n >> 16u) & 0xFFu) as u8);
+            r.push(((n >> 8u ) & 0xFFu) as u8);
+            r.push(((n       ) & 0xFFu) as u8);
         }
         r
     }

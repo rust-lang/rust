@@ -39,9 +39,8 @@ pub enum Result<T, U> {
 pub fn get<T:Copy,U>(res: &Result<T, U>) -> T {
     match *res {
       Ok(copy t) => t,
-      Err(ref the_err) => unsafe {
+      Err(ref the_err) =>
         fail!(fmt!("get called on error result: %?", *the_err))
-      }
     }
 }
 
@@ -56,9 +55,8 @@ pub fn get<T:Copy,U>(res: &Result<T, U>) -> T {
 pub fn get_ref<'a, T, U>(res: &'a Result<T, U>) -> &'a T {
     match *res {
         Ok(ref t) => t,
-        Err(ref the_err) => unsafe {
+        Err(ref the_err) =>
             fail!(fmt!("get_ref called on error result: %?", *the_err))
-        }
     }
 }
 

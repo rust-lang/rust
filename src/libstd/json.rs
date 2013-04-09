@@ -342,10 +342,7 @@ pub fn to_writer(wr: @io::Writer, json: &Json) {
 
 /// Encodes a json value into a string
 pub fn to_str(json: &Json) -> ~str {
-    unsafe {
-        // ugh, should be safe
-        io::with_str_writer(|wr| to_writer(wr, json))
-    }
+    io::with_str_writer(|wr| to_writer(wr, json))
 }
 
 /// Encodes a json value into a io::writer
@@ -360,9 +357,9 @@ pub fn to_pretty_str(json: &Json) -> ~str {
 
 pub struct Parser {
     priv rdr: @io::Reader,
-    priv mut ch: char,
-    priv mut line: uint,
-    priv mut col: uint,
+    priv ch: char,
+    priv line: uint,
+    priv col: uint,
 }
 
 /// Decode a json value from an io::reader
@@ -376,7 +373,7 @@ pub fn Parser(rdr: @io::Reader) -> Parser {
 }
 
 pub impl Parser {
-    fn parse(&self) -> Result<Json, Error> {
+    fn parse(&mut self) -> Result<Json, Error> {
         match self.parse_value() {
           Ok(value) => {
             // Skip trailing whitespaces.
@@ -396,7 +393,7 @@ pub impl Parser {
 priv impl Parser {
     fn eof(&self) -> bool { self.ch == -1 as char }
 
-    fn bump(&self) {
+    fn bump(&mut self) {
         self.ch = self.rdr.read_char();
 
         if self.ch == '\n' {
@@ -407,7 +404,7 @@ priv impl Parser {
         }
     }
 
-    fn next_char(&self) -> char {
+    fn next_char(&mut self) -> char {
         self.bump();
         self.ch
     }
@@ -416,7 +413,7 @@ priv impl Parser {
         Err(Error { line: self.line, col: self.col, msg: @msg })
     }
 
-    fn parse_value(&self) -> Result<Json, Error> {
+    fn parse_value(&mut self) -> Result<Json, Error> {
         self.parse_whitespace();
 
         if self.eof() { return self.error(~"EOF while parsing value"); }
@@ -437,11 +434,11 @@ priv impl Parser {
         }
     }
 
-    fn parse_whitespace(&self) {
+    fn parse_whitespace(&mut self) {
         while char::is_whitespace(self.ch) { self.bump(); }
     }
 
-    fn parse_ident(&self, ident: &str, value: Json) -> Result<Json, Error> {
+    fn parse_ident(&mut self, ident: &str, value: Json) -> Result<Json, Error> {
         if str::all(ident, |c| c == self.next_char()) {
             self.bump();
             Ok(value)
@@ -450,7 +447,7 @@ priv impl Parser {
         }
     }
 
-    fn parse_number(&self) -> Result<Json, Error> {
+    fn parse_number(&mut self) -> Result<Json, Error> {
         let mut neg = 1f;
 
         if self.ch == '-' {
@@ -480,7 +477,7 @@ priv impl Parser {
         Ok(Number(neg * res))
     }
 
-    fn parse_integer(&self) -> Result<float, Error> {
+    fn parse_integer(&mut self) -> Result<float, Error> {
         let mut res = 0f;
 
         match self.ch {
@@ -512,7 +509,7 @@ priv impl Parser {
         Ok(res)
     }
 
-    fn parse_decimal(&self, res: float) -> Result<float, Error> {
+    fn parse_decimal(&mut self, res: float) -> Result<float, Error> {
         self.bump();
 
         // Make sure a digit follows the decimal place.
@@ -538,10 +535,9 @@ priv impl Parser {
         Ok(res)
     }
 
-    fn parse_exponent(&self, res: float) -> Result<float, Error> {
+    fn parse_exponent(&mut self, mut res: float) -> Result<float, Error> {
         self.bump();
 
-        let mut res = res;
         let mut exp = 0u;
         let mut neg_exp = false;
 
@@ -579,7 +575,7 @@ priv impl Parser {
         Ok(res)
     }
 
-    fn parse_str(&self) -> Result<~str, Error> {
+    fn parse_str(&mut self) -> Result<~str, Error> {
         let mut escape = false;
         let mut res = ~"";
 
@@ -643,7 +639,7 @@ priv impl Parser {
         self.error(~"EOF while parsing string")
     }
 
-    fn parse_list(&self) -> Result<Json, Error> {
+    fn parse_list(&mut self) -> Result<Json, Error> {
         self.bump();
         self.parse_whitespace();
 
@@ -673,7 +669,7 @@ priv impl Parser {
         };
     }
 
-    fn parse_object(&self) -> Result<Json, Error> {
+    fn parse_object(&mut self) -> Result<Json, Error> {
         self.bump();
         self.parse_whitespace();
 
@@ -726,7 +722,8 @@ priv impl Parser {
 
 /// Decodes a json value from an @io::Reader
 pub fn from_reader(rdr: @io::Reader) -> Result<Json, Error> {
-    Parser(rdr).parse()
+    let mut parser = Parser(rdr);
+    parser.parse()
 }
 
 /// Decodes a json value from a string
@@ -988,23 +985,21 @@ impl Ord for Json {
                 match *other {
                     Number(_) | String(_) | Boolean(_) | List(_) => false,
                     Object(ref d1) => {
-                        unsafe {
-                            let mut d0_flat = ~[];
-                            let mut d1_flat = ~[];
+                        let mut d0_flat = ~[];
+                        let mut d1_flat = ~[];
 
-                            // FIXME #4430: this is horribly inefficient...
-                            for d0.each |&(k, v)| {
-                                 d0_flat.push((@copy *k, @copy *v));
-                            }
-                            d0_flat.qsort();
-
-                            for d1.each |&(k, v)| {
-                                d1_flat.push((@copy *k, @copy *v));
-                            }
-                            d1_flat.qsort();
-
-                            d0_flat < d1_flat
+                        // FIXME #4430: this is horribly inefficient...
+                        for d0.each |&(k, v)| {
+                             d0_flat.push((@copy *k, @copy *v));
                         }
+                        d0_flat.qsort();
+
+                        for d1.each |&(k, v)| {
+                            d1_flat.push((@copy *k, @copy *v));
+                        }
+                        d1_flat.qsort();
+
+                        d0_flat < d1_flat
                     }
                     Null => true
                 }

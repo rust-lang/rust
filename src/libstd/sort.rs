@@ -27,7 +27,7 @@ type Le<'self, T> = &'self fn(v1: &T, v2: &T) -> bool;
 pub fn merge_sort<T:Copy>(v: &const [T], le: Le<T>) -> ~[T] {
     type Slice = (uint, uint);
 
-    unsafe {return merge_sort_(v, (0u, len(v)), le);}
+    return merge_sort_(v, (0u, len(v)), le);
 
     fn merge_sort_<T:Copy>(v: &const [T], slice: Slice, le: Le<T>)
         -> ~[T] {
@@ -68,14 +68,11 @@ fn part<T>(arr: &mut [T], left: uint,
     let mut storage_index: uint = left;
     let mut i: uint = left;
     while i < right {
-        // XXX: Unsafe because borrow check doesn't handle this right
-        unsafe {
-            let a: &T = cast::transmute(&mut arr[i]);
-            let b: &T = cast::transmute(&mut arr[right]);
-            if compare_func(a, b) {
-                arr[i] <-> arr[storage_index];
-                storage_index += 1;
-            }
+        let a: &mut T = &mut arr[i];
+        let b: &mut T = &mut arr[right];
+        if compare_func(a, b) {
+            arr[i] <-> arr[storage_index];
+            storage_index += 1;
         }
         i += 1;
     }
@@ -888,12 +885,9 @@ mod tests {
         // tjc: funny that we have to use parens
         fn ile(x: &(&'static str), y: &(&'static str)) -> bool
         {
-            unsafe // to_lower is not pure...
-            {
-                let x = x.to_lower();
-                let y = y.to_lower();
-                x <= y
-            }
+            let x = x.to_lower();
+            let y = y.to_lower();
+            x <= y
         }
 
         let names1 = ~["joe bob", "Joe Bob", "Jack Brown", "JOE Bob",
@@ -921,10 +915,8 @@ mod test_tim_sort {
 
     impl Ord for CVal {
         fn lt(&self, other: &CVal) -> bool {
-            unsafe {
-                let rng = rand::Rng();
-                if rng.gen_float() > 0.995 { fail!(~"It's happening!!!"); }
-            }
+            let rng = rand::Rng();
+            if rng.gen_float() > 0.995 { fail!(~"It's happening!!!"); }
             (*self).val < other.val
         }
         fn le(&self, other: &CVal) -> bool { (*self).val <= other.val }

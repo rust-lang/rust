@@ -239,7 +239,6 @@ mod test {
 
     mod arith {
         use super::*;
-        use super::super::*;
         use core::num::Zero;
 
         #[test]

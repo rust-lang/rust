@@ -283,134 +283,132 @@ mod tests {
 
     #[test]
     pub fn test() {
-        unsafe {
-            struct Test {
-                input: ~str,
-                output: ~[u8],
-                output_str: ~str,
+        struct Test {
+            input: ~str,
+            output: ~[u8],
+            output_str: ~str,
+        }
+
+        fn a_million_letter_a() -> ~str {
+            let mut i = 0;
+            let mut rs = ~"";
+            while i < 100000 {
+                str::push_str(&mut rs, ~"aaaaaaaaaa");
+                i += 1;
             }
+            return rs;
+        }
+        // Test messages from FIPS 180-1
 
-            fn a_million_letter_a() -> ~str {
-                let mut i = 0;
-                let mut rs = ~"";
-                while i < 100000 {
-                    str::push_str(&mut rs, ~"aaaaaaaaaa");
-                    i += 1;
-                }
-                return rs;
+        let fips_180_1_tests = ~[
+            Test {
+                input: ~"abc",
+                output: ~[
+                    0xA9u8, 0x99u8, 0x3Eu8, 0x36u8,
+                    0x47u8, 0x06u8, 0x81u8, 0x6Au8,
+                    0xBAu8, 0x3Eu8, 0x25u8, 0x71u8,
+                    0x78u8, 0x50u8, 0xC2u8, 0x6Cu8,
+                    0x9Cu8, 0xD0u8, 0xD8u8, 0x9Du8,
+                ],
+                output_str: ~"a9993e364706816aba3e25717850c26c9cd0d89d"
+            },
+            Test {
+                input:
+                     ~"abcdbcdecdefdefgefghfghighij" +
+                     ~"hijkijkljklmklmnlmnomnopnopq",
+                output: ~[
+                    0x84u8, 0x98u8, 0x3Eu8, 0x44u8,
+                    0x1Cu8, 0x3Bu8, 0xD2u8, 0x6Eu8,
+                    0xBAu8, 0xAEu8, 0x4Au8, 0xA1u8,
+                    0xF9u8, 0x51u8, 0x29u8, 0xE5u8,
+                    0xE5u8, 0x46u8, 0x70u8, 0xF1u8,
+                ],
+                output_str: ~"84983e441c3bd26ebaae4aa1f95129e5e54670f1"
+            },
+            Test {
+                input: a_million_letter_a(),
+                output: ~[
+                    0x34u8, 0xAAu8, 0x97u8, 0x3Cu8,
+                    0xD4u8, 0xC4u8, 0xDAu8, 0xA4u8,
+                    0xF6u8, 0x1Eu8, 0xEBu8, 0x2Bu8,
+                    0xDBu8, 0xADu8, 0x27u8, 0x31u8,
+                    0x65u8, 0x34u8, 0x01u8, 0x6Fu8,
+                ],
+                output_str: ~"34aa973cd4c4daa4f61eeb2bdbad27316534016f"
+            },
+        ];
+        // Examples from wikipedia
+
+        let wikipedia_tests = ~[
+            Test {
+                input: ~"The quick brown fox jumps over the lazy dog",
+                output: ~[
+                    0x2fu8, 0xd4u8, 0xe1u8, 0xc6u8,
+                    0x7au8, 0x2du8, 0x28u8, 0xfcu8,
+                    0xedu8, 0x84u8, 0x9eu8, 0xe1u8,
+                    0xbbu8, 0x76u8, 0xe7u8, 0x39u8,
+                    0x1bu8, 0x93u8, 0xebu8, 0x12u8,
+                ],
+                output_str: ~"2fd4e1c67a2d28fced849ee1bb76e7391b93eb12",
+            },
+            Test {
+                input: ~"The quick brown fox jumps over the lazy cog",
+                output: ~[
+                    0xdeu8, 0x9fu8, 0x2cu8, 0x7fu8,
+                    0xd2u8, 0x5eu8, 0x1bu8, 0x3au8,
+                    0xfau8, 0xd3u8, 0xe8u8, 0x5au8,
+                    0x0bu8, 0xd1u8, 0x7du8, 0x9bu8,
+                    0x10u8, 0x0du8, 0xb4u8, 0xb3u8,
+                ],
+                output_str: ~"de9f2c7fd25e1b3afad3e85a0bd17d9b100db4b3",
+            },
+        ];
+        let tests = fips_180_1_tests + wikipedia_tests;
+        fn check_vec_eq(v0: ~[u8], v1: ~[u8]) {
+            assert!((vec::len::<u8>(v0) == vec::len::<u8>(v1)));
+            let len = vec::len::<u8>(v0);
+            let mut i = 0u;
+            while i < len {
+                let a = v0[i];
+                let b = v1[i];
+                assert!((a == b));
+                i += 1u;
             }
-            // Test messages from FIPS 180-1
+        }
+        // Test that it works when accepting the message all at once
 
-            let fips_180_1_tests = ~[
-                Test {
-                    input: ~"abc",
-                    output: ~[
-                        0xA9u8, 0x99u8, 0x3Eu8, 0x36u8,
-                        0x47u8, 0x06u8, 0x81u8, 0x6Au8,
-                        0xBAu8, 0x3Eu8, 0x25u8, 0x71u8,
-                        0x78u8, 0x50u8, 0xC2u8, 0x6Cu8,
-                        0x9Cu8, 0xD0u8, 0xD8u8, 0x9Du8,
-                    ],
-                    output_str: ~"a9993e364706816aba3e25717850c26c9cd0d89d"
-                },
-                Test {
-                    input:
-                         ~"abcdbcdecdefdefgefghfghighij" +
-                         ~"hijkijkljklmklmnlmnomnopnopq",
-                    output: ~[
-                        0x84u8, 0x98u8, 0x3Eu8, 0x44u8,
-                        0x1Cu8, 0x3Bu8, 0xD2u8, 0x6Eu8,
-                        0xBAu8, 0xAEu8, 0x4Au8, 0xA1u8,
-                        0xF9u8, 0x51u8, 0x29u8, 0xE5u8,
-                        0xE5u8, 0x46u8, 0x70u8, 0xF1u8,
-                    ],
-                    output_str: ~"84983e441c3bd26ebaae4aa1f95129e5e54670f1"
-                },
-                Test {
-                    input: a_million_letter_a(),
-                    output: ~[
-                        0x34u8, 0xAAu8, 0x97u8, 0x3Cu8,
-                        0xD4u8, 0xC4u8, 0xDAu8, 0xA4u8,
-                        0xF6u8, 0x1Eu8, 0xEBu8, 0x2Bu8,
-                        0xDBu8, 0xADu8, 0x27u8, 0x31u8,
-                        0x65u8, 0x34u8, 0x01u8, 0x6Fu8,
-                    ],
-                    output_str: ~"34aa973cd4c4daa4f61eeb2bdbad27316534016f"
-                },
-            ];
-            // Examples from wikipedia
+        let mut sh = sha1::sha1();
+        for vec::each(tests) |t| {
+            sh.input_str(t.input);
+            let out = sh.result();
+            check_vec_eq(t.output, out);
 
-            let wikipedia_tests = ~[
-                Test {
-                    input: ~"The quick brown fox jumps over the lazy dog",
-                    output: ~[
-                        0x2fu8, 0xd4u8, 0xe1u8, 0xc6u8,
-                        0x7au8, 0x2du8, 0x28u8, 0xfcu8,
-                        0xedu8, 0x84u8, 0x9eu8, 0xe1u8,
-                        0xbbu8, 0x76u8, 0xe7u8, 0x39u8,
-                        0x1bu8, 0x93u8, 0xebu8, 0x12u8,
-                    ],
-                    output_str: ~"2fd4e1c67a2d28fced849ee1bb76e7391b93eb12",
-                },
-                Test {
-                    input: ~"The quick brown fox jumps over the lazy cog",
-                    output: ~[
-                        0xdeu8, 0x9fu8, 0x2cu8, 0x7fu8,
-                        0xd2u8, 0x5eu8, 0x1bu8, 0x3au8,
-                        0xfau8, 0xd3u8, 0xe8u8, 0x5au8,
-                        0x0bu8, 0xd1u8, 0x7du8, 0x9bu8,
-                        0x10u8, 0x0du8, 0xb4u8, 0xb3u8,
-                    ],
-                    output_str: ~"de9f2c7fd25e1b3afad3e85a0bd17d9b100db4b3",
-                },
-            ];
-            let tests = fips_180_1_tests + wikipedia_tests;
-            fn check_vec_eq(v0: ~[u8], v1: ~[u8]) {
-                assert!((vec::len::<u8>(v0) == vec::len::<u8>(v1)));
-                let len = vec::len::<u8>(v0);
-                let mut i = 0u;
-                while i < len {
-                    let a = v0[i];
-                    let b = v1[i];
-                    assert!((a == b));
-                    i += 1u;
-                }
+            let out_str = sh.result_str();
+            assert!((out_str.len() == 40));
+            assert!((out_str == t.output_str));
+
+            sh.reset();
+        }
+
+
+        // Test that it works when accepting the message in pieces
+        for vec::each(tests) |t| {
+            let len = str::len(t.input);
+            let mut left = len;
+            while left > 0u {
+                let take = (left + 1u) / 2u;
+                sh.input_str(str::slice(t.input, len - left,
+                             take + len - left).to_owned());
+                left = left - take;
             }
-            // Test that it works when accepting the message all at once
+            let out = sh.result();
+            check_vec_eq(t.output, out);
 
-            let mut sh = sha1::sha1();
-            for vec::each(tests) |t| {
-                sh.input_str(t.input);
-                let out = sh.result();
-                check_vec_eq(t.output, out);
+            let out_str = sh.result_str();
+            assert!((out_str.len() == 40));
+            assert!((out_str == t.output_str));
 
-                let out_str = sh.result_str();
-                assert!((out_str.len() == 40));
-                assert!((out_str == t.output_str));
-
-                sh.reset();
-            }
-
-
-            // Test that it works when accepting the message in pieces
-            for vec::each(tests) |t| {
-                let len = str::len(t.input);
-                let mut left = len;
-                while left > 0u {
-                    let take = (left + 1u) / 2u;
-                    sh.input_str(str::slice(t.input, len - left,
-                                 take + len - left).to_owned());
-                    left = left - take;
-                }
-                let out = sh.result();
-                check_vec_eq(t.output, out);
-
-                let out_str = sh.result_str();
-                assert!((out_str.len() == 40));
-                assert!((out_str == t.output_str));
-
-                sh.reset();
-            }
+            sh.reset();
         }
     }
 }
