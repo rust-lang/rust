@@ -369,7 +369,7 @@ pub impl<'self> LanguageItemCollector<'self> {
     }
 
     fn collect_local_language_items(&self) {
-        let this = unsafe { ptr::addr_of(&self) };
+        let this = ptr::addr_of(&self);
         visit_crate(*self.crate, (), mk_simple_visitor(@SimpleVisitor {
             visit_item: |item| {
                 for item.attrs.each |attribute| {
