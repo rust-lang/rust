@@ -63,7 +63,7 @@ use middle::trans::type_of;
 use middle::trans::type_of::*;
 use middle::ty;
 use util::common::indenter;
-use util::ppaux::ty_to_str;
+use util::ppaux::{Repr, ty_to_str};
 use util::ppaux;
 
 use core::hash;
@@ -1592,11 +1592,11 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
     for param_substs.each |p| { p.validate(); }
 
     debug!("new_fn_ctxt_w_id(path=%s, id=%?, impl_id=%?, \
-            param_substs=%s",
+            param_substs=%s)",
            path_str(ccx.sess, path),
            id,
            impl_id,
-           opt_param_substs_to_str(ccx.tcx, &param_substs));
+           param_substs.repr(ccx.tcx));
 
     let llbbs = mk_standard_basic_blocks(llfndecl);
     return @mut fn_ctxt_ {
@@ -1788,6 +1788,9 @@ pub fn trans_closure(ccx: @CrateContext,
     let _icx = ccx.insn_ctxt("trans_closure");
     set_uwtable(llfndecl);
 
+    debug!("trans_closure(..., param_substs=%s)",
+           param_substs.repr(ccx.tcx));
+
     // Set up arguments to the function.
     let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, id, impl_id, param_substs,
                                   Some(body.span));
@@ -1849,7 +1852,9 @@ pub fn trans_fn(ccx: @CrateContext,
     let do_time = ccx.sess.trans_stats();
     let start = if do_time { time::get_time() }
                 else { time::Timespec::new(0, 0) };
-    debug!("trans_fn(ty_self=%?)", ty_self);
+    debug!("trans_fn(ty_self=%?, param_substs=%s)",
+           ty_self,
+           param_substs.repr(ccx.tcx));
     let _icx = ccx.insn_ctxt("trans_fn");
     ccx.stats.n_fns += 1;
     let the_path_str = path_str(ccx.sess, path);

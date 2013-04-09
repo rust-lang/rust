@@ -30,7 +30,7 @@ use middle::trans::type_use;
 use middle::ty;
 use middle::ty::{FnSig};
 use middle::typeck;
-use util::ppaux::ty_to_str;
+use util::ppaux::Repr;
 
 use core::vec;
 use syntax::ast;
@@ -46,8 +46,21 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                       real_substs: &[ty::t],
                       vtables: Option<typeck::vtable_res>,
                       impl_did_opt: Option<ast::def_id>,
-                      ref_id: Option<ast::node_id>) ->
-                      (ValueRef, bool) {
+                      ref_id: Option<ast::node_id>)
+    -> (ValueRef, bool)
+{
+    debug!("monomorphic_fn(\
+            fn_id=%s, \
+            real_substs=%s, \
+            vtables=%s, \
+            impl_did_opt=%s, \
+            ref_id=%?)",
+           fn_id.repr(ccx.tcx),
+           real_substs.repr(ccx.tcx),
+           vtables.repr(ccx.tcx),
+           impl_did_opt.repr(ccx.tcx),
+           ref_id);
+
     assert!(real_substs.all(|t| !ty::type_needs_infer(*t)));
     let _icx = ccx.insn_ctxt("monomorphic_fn");
     let mut must_cast = false;
@@ -69,13 +82,15 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         must_cast = true;
     }
 
-    debug!("monomorphic_fn(fn_id=%? (%s), vtables=%?, \
-            real_substs=%?, substs=%?, \
-            hash_id = %?",
-           fn_id, ty::item_path_str(ccx.tcx, fn_id),
-           vtables,
-           real_substs.map(|s| ty_to_str(ccx.tcx, *s)),
-           substs.map(|s| ty_to_str(ccx.tcx, *s)), hash_id);
+    debug!("monomorphic_fn(\
+            fn_id=%s, \
+            vtables=%s, \
+            substs=%s, \
+            hash_id=%?)",
+           fn_id.repr(ccx.tcx),
+           vtables.repr(ccx.tcx),
+           substs.repr(ccx.tcx),
+           hash_id);
 
     match ccx.monomorphized.find(&hash_id) {
       Some(&val) => {
@@ -169,7 +184,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     let psubsts = Some(@param_substs {
         tys: substs,
         vtables: vtables,
-        bounds: tpt.generics.bounds,
+        type_param_defs: tpt.generics.type_param_defs,
         self_ty: impl_ty_opt
     });
 
@@ -322,17 +337,19 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
     }
 }
 
-pub fn make_mono_id(ccx: @CrateContext, item: ast::def_id, substs: &[ty::t],
+pub fn make_mono_id(ccx: @CrateContext,
+                    item: ast::def_id,
+                    substs: &[ty::t],
                     vtables: Option<typeck::vtable_res>,
                     impl_did_opt: Option<ast::def_id>,
                     +param_uses: Option<~[type_use::type_uses]>) -> mono_id {
     let precise_param_ids = match vtables {
       Some(vts) => {
-        let bounds = ty::lookup_item_type(ccx.tcx, item).generics.bounds;
+        let item_ty = ty::lookup_item_type(ccx.tcx, item);
         let mut i = 0;
-        vec::map2(*bounds, substs, |bounds, subst| {
+        vec::map2(*item_ty.generics.type_param_defs, substs, |type_param_def, subst| {
             let mut v = ~[];
-            for bounds.each |bound| {
+            for type_param_def.bounds.each |bound| {
                 match *bound {
                   ty::bound_trait(_) => {
                     v.push(meth::vtable_id(ccx, /*bad*/copy vts[i]));
