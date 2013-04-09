@@ -91,10 +91,8 @@ pub struct icx_popper {
 #[unsafe_destructor]
 impl Drop for icx_popper {
     fn finalize(&self) {
-        unsafe {
-            if self.ccx.sess.count_llvm_insns() {
-                self.ccx.stats.llvm_insn_ctxt.pop();
-            }
+        if self.ccx.sess.count_llvm_insns() {
+            self.ccx.stats.llvm_insn_ctxt.pop();
         }
     }
 }
@@ -145,9 +143,7 @@ pub fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv,
             llvm::LLVMGetOrInsertFunction(llmod, buf, llty)
         }
     });
-    unsafe {
-        lib::llvm::SetFunctionCallConv(llfn, cc);
-    }
+    lib::llvm::SetFunctionCallConv(llfn, cc);
     return llfn;
 }
 
@@ -730,11 +726,9 @@ pub fn cast_shift_expr_rhs(cx: block, op: ast::binop,
 
 pub fn cast_shift_const_rhs(op: ast::binop,
                             lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    unsafe {
-        cast_shift_rhs(op, lhs, rhs,
-                       |a, b| unsafe { llvm::LLVMConstTrunc(a, b) },
-                       |a, b| unsafe { llvm::LLVMConstZExt(a, b) })
-    }
+    cast_shift_rhs(op, lhs, rhs,
+                   |a, b| unsafe { llvm::LLVMConstTrunc(a, b) },
+                   |a, b| unsafe { llvm::LLVMConstZExt(a, b) })
 }
 
 pub fn cast_shift_rhs(op: ast::binop,
@@ -2865,9 +2859,7 @@ pub fn create_module_map(ccx: @CrateContext) -> ValueRef {
             llvm::LLVMAddGlobal(ccx.llmod, maptype, buf)
         }
     });
-    unsafe {
-        lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
-    }
+    lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
     let mut elts: ~[ValueRef] = ~[];
     for ccx.module_data.each |key, &val| {
         let elt = C_struct(~[p2i(ccx, C_cstr(ccx, @/*bad*/ copy *key)),

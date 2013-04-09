@@ -27,9 +27,7 @@ use core::str;
 use core::vec;
 
 pub fn terminate(cx: block, _: &str) {
-    unsafe {
-        cx.terminated = true;
-    }
+    cx.terminated = true;
 }
 
 pub fn check_not_terminated(cx: block) {

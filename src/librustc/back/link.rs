@@ -615,9 +615,7 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
 }
 
 pub fn truncated_hash_result(symbol_hasher: &hash::State) -> ~str {
-    unsafe {
-        symbol_hasher.result_str()
-    }
+    symbol_hasher.result_str()
 }
 
 

@@ -172,17 +172,15 @@ fn cast_safely<T:Copy,U>(val: T) -> U {
 }
 
 fn md_from_metadata<T>(val: debug_metadata) -> T {
-    unsafe {
-        match val {
-          file_metadata(md) => cast_safely(md),
-          compile_unit_metadata(md) => cast_safely(md),
-          subprogram_metadata(md) => cast_safely(md),
-          local_var_metadata(md) => cast_safely(md),
-          tydesc_metadata(md) => cast_safely(md),
-          block_metadata(md) => cast_safely(md),
-          argument_metadata(md) => cast_safely(md),
-          retval_metadata(md) => cast_safely(md)
-        }
+    match val {
+      file_metadata(md) => cast_safely(md),
+      compile_unit_metadata(md) => cast_safely(md),
+      subprogram_metadata(md) => cast_safely(md),
+      local_var_metadata(md) => cast_safely(md),
+      tydesc_metadata(md) => cast_safely(md),
+      block_metadata(md) => cast_safely(md),
+      argument_metadata(md) => cast_safely(md),
+      retval_metadata(md) => cast_safely(md)
     }
 }
 
@@ -190,56 +188,52 @@ fn cached_metadata<T:Copy>(cache: metadata_cache,
                             mdtag: int,
                             eq_fn: &fn(md: T) -> bool)
                          -> Option<T> {
-    unsafe {
-        if cache.contains_key(&mdtag) {
-            let items = cache.get(&mdtag);
-            for items.each |item| {
-                let md: T = md_from_metadata::<T>(*item);
-                if eq_fn(md) {
-                    return option::Some(md);
-                }
+    if cache.contains_key(&mdtag) {
+        let items = cache.get(&mdtag);
+        for items.each |item| {
+            let md: T = md_from_metadata::<T>(*item);
+            if eq_fn(md) {
+                return option::Some(md);
             }
         }
-        return option::None;
     }
+    return option::None;
 }
 
 fn create_compile_unit(cx: @CrateContext) -> @Metadata<CompileUnitMetadata> {
-    unsafe {
-        let cache = get_cache(cx);
-        let crate_name = /*bad*/copy (/*bad*/copy cx.dbg_cx).get().crate_file;
-        let tg = CompileUnitTag;
-        match cached_metadata::<@Metadata<CompileUnitMetadata>>(cache, tg,
-                            |md| md.data.name == crate_name) {
-          option::Some(md) => return md,
-          option::None => ()
-        }
-
-        let (_, work_dir) = get_file_path_and_dir(
-            cx.sess.working_dir.to_str(), crate_name);
-        let unit_metadata = ~[lltag(tg),
-                             llunused(),
-                             lli32(DW_LANG_RUST),
-                             llstr(crate_name),
-                             llstr(work_dir),
-                             llstr(env!("CFG_VERSION")),
-                             lli1(true), // deprecated: main compile unit
-                             lli1(cx.sess.opts.optimize != session::No),
-                             llstr(~""), // flags (???)
-                             lli32(0) // runtime version (???)
-                            ];
-        let unit_node = llmdnode(unit_metadata);
-        add_named_metadata(cx, ~"llvm.dbg.cu", unit_node);
-        let mdval = @Metadata {
-            node: unit_node,
-            data: CompileUnitMetadata {
-                name: crate_name
-            }
-        };
-        update_cache(cache, tg, compile_unit_metadata(mdval));
-
-        return mdval;
+    let cache = get_cache(cx);
+    let crate_name = /*bad*/copy (/*bad*/copy cx.dbg_cx).get().crate_file;
+    let tg = CompileUnitTag;
+    match cached_metadata::<@Metadata<CompileUnitMetadata>>(cache, tg,
+                        |md| md.data.name == crate_name) {
+      option::Some(md) => return md,
+      option::None => ()
     }
+
+    let (_, work_dir) = get_file_path_and_dir(
+        cx.sess.working_dir.to_str(), crate_name);
+    let unit_metadata = ~[lltag(tg),
+                         llunused(),
+                         lli32(DW_LANG_RUST),
+                         llstr(crate_name),
+                         llstr(work_dir),
+                         llstr(env!("CFG_VERSION")),
+                         lli1(true), // deprecated: main compile unit
+                         lli1(cx.sess.opts.optimize != session::No),
+                         llstr(~""), // flags (???)
+                         lli32(0) // runtime version (???)
+                        ];
+    let unit_node = llmdnode(unit_metadata);
+    add_named_metadata(cx, ~"llvm.dbg.cu", unit_node);
+    let mdval = @Metadata {
+        node: unit_node,
+        data: CompileUnitMetadata {
+            name: crate_name
+        }
+    };
+    update_cache(cache, tg, compile_unit_metadata(mdval));
+
+    return mdval;
 }
 
 fn get_cache(cx: @CrateContext) -> metadata_cache {
@@ -710,113 +704,109 @@ fn create_var(type_tag: int, context: ValueRef, name: &str, file: ValueRef,
 
 pub fn create_local_var(bcx: block, local: @ast::local)
     -> @Metadata<LocalVarMetadata> {
-    unsafe {
-        let cx = bcx.ccx();
-        let cache = get_cache(cx);
-        let tg = AutoVariableTag;
-        match cached_metadata::<@Metadata<LocalVarMetadata>>(
-            cache, tg, |md| md.data.id == local.node.id) {
-          option::Some(md) => return md,
-          option::None => ()
-        }
-
-        let name = match local.node.pat.node {
-          ast::pat_ident(_, pth, _) => ast_util::path_to_ident(pth),
-          // FIXME this should be handled (#2533)
-          _ => fail!(~"no single variable name for local")
-        };
-        let loc = cx.sess.codemap.lookup_char_pos(local.span.lo);
-        let ty = node_id_type(bcx, local.node.id);
-        let tymd = create_ty(cx, ty, local.node.ty.span);
-        let filemd = create_file(cx, /*bad*/copy loc.file.name);
-        let context = match bcx.parent {
-            None => create_function(bcx.fcx).node,
-            Some(_) => create_block(bcx).node
-        };
-        let mdnode = create_var(tg, context, *cx.sess.str_of(name),
-                                filemd.node, loc.line as int, tymd.node);
-        let mdval = @Metadata {
-            node: mdnode,
-            data: LocalVarMetadata {
-                id: local.node.id
-            }
-        };
-        update_cache(cache, AutoVariableTag, local_var_metadata(mdval));
-
-        let llptr = match bcx.fcx.lllocals.find(&local.node.id) {
-          option::Some(&local_mem(v)) => v,
-          option::Some(_) => {
-            bcx.tcx().sess.span_bug(local.span, ~"local is bound to \
-                    something weird");
-          }
-          option::None => {
-            match *bcx.fcx.lllocals.get(&local.node.pat.id) {
-              local_imm(v) => v,
-              _ => bcx.tcx().sess.span_bug(local.span, ~"local is bound to \
-                                                         something weird")
-            }
-          }
-        };
-        let declargs = ~[llmdnode(~[llptr]), mdnode];
-        trans::build::Call(bcx, *cx.intrinsics.get(&~"llvm.dbg.declare"),
-                           declargs);
-        return mdval;
+    let cx = bcx.ccx();
+    let cache = get_cache(cx);
+    let tg = AutoVariableTag;
+    match cached_metadata::<@Metadata<LocalVarMetadata>>(
+        cache, tg, |md| md.data.id == local.node.id) {
+      option::Some(md) => return md,
+      option::None => ()
     }
+
+    let name = match local.node.pat.node {
+      ast::pat_ident(_, pth, _) => ast_util::path_to_ident(pth),
+      // FIXME this should be handled (#2533)
+      _ => fail!(~"no single variable name for local")
+    };
+    let loc = cx.sess.codemap.lookup_char_pos(local.span.lo);
+    let ty = node_id_type(bcx, local.node.id);
+    let tymd = create_ty(cx, ty, local.node.ty.span);
+    let filemd = create_file(cx, /*bad*/copy loc.file.name);
+    let context = match bcx.parent {
+        None => create_function(bcx.fcx).node,
+        Some(_) => create_block(bcx).node
+    };
+    let mdnode = create_var(tg, context, *cx.sess.str_of(name),
+                            filemd.node, loc.line as int, tymd.node);
+    let mdval = @Metadata {
+        node: mdnode,
+        data: LocalVarMetadata {
+            id: local.node.id
+        }
+    };
+    update_cache(cache, AutoVariableTag, local_var_metadata(mdval));
+
+    let llptr = match bcx.fcx.lllocals.find(&local.node.id) {
+      option::Some(&local_mem(v)) => v,
+      option::Some(_) => {
+        bcx.tcx().sess.span_bug(local.span, ~"local is bound to \
+                something weird");
+      }
+      option::None => {
+        match *bcx.fcx.lllocals.get(&local.node.pat.id) {
+          local_imm(v) => v,
+          _ => bcx.tcx().sess.span_bug(local.span, ~"local is bound to \
+                                                     something weird")
+        }
+      }
+    };
+    let declargs = ~[llmdnode(~[llptr]), mdnode];
+    trans::build::Call(bcx, *cx.intrinsics.get(&~"llvm.dbg.declare"),
+                       declargs);
+    return mdval;
 }
 
 pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
     -> Option<@Metadata<ArgumentMetadata>> {
-    unsafe {
-        let fcx = bcx.fcx, cx = *fcx.ccx;
-        let cache = get_cache(cx);
-        let tg = ArgVariableTag;
-        match cached_metadata::<@Metadata<ArgumentMetadata>>(
-            cache, ArgVariableTag, |md| md.data.id == arg.id) {
-          option::Some(md) => return Some(md),
-          option::None => ()
-        }
+    let fcx = bcx.fcx, cx = *fcx.ccx;
+    let cache = get_cache(cx);
+    let tg = ArgVariableTag;
+    match cached_metadata::<@Metadata<ArgumentMetadata>>(
+        cache, ArgVariableTag, |md| md.data.id == arg.id) {
+      option::Some(md) => return Some(md),
+      option::None => ()
+    }
 
-        let loc = cx.sess.codemap.lookup_char_pos(sp.lo);
-        if loc.file.name == ~"<intrinsic>" {
+    let loc = cx.sess.codemap.lookup_char_pos(sp.lo);
+    if loc.file.name == ~"<intrinsic>" {
+        return None;
+    }
+    let ty = node_id_type(bcx, arg.id);
+    let tymd = create_ty(cx, ty, arg.ty.span);
+    let filemd = create_file(cx, /*bad*/copy loc.file.name);
+    let context = create_function(bcx.fcx);
+
+    match arg.pat.node {
+        ast::pat_ident(_, path, _) => {
+            // XXX: This is wrong; it should work for multiple bindings.
+            let mdnode = create_var(
+                tg,
+                context.node,
+                *cx.sess.str_of(*path.idents.last()),
+                filemd.node,
+                loc.line as int,
+                tymd.node
+            );
+
+            let mdval = @Metadata {
+                node: mdnode,
+                data: ArgumentMetadata {
+                    id: arg.id
+                }
+            };
+            update_cache(cache, tg, argument_metadata(mdval));
+
+            let llptr = match *fcx.llargs.get(&arg.id) {
+              local_mem(v) | local_imm(v) => v,
+            };
+            let declargs = ~[llmdnode(~[llptr]), mdnode];
+            trans::build::Call(bcx,
+                               *cx.intrinsics.get(&~"llvm.dbg.declare"),
+                               declargs);
+            return Some(mdval);
+        }
+        _ => {
             return None;
-        }
-        let ty = node_id_type(bcx, arg.id);
-        let tymd = create_ty(cx, ty, arg.ty.span);
-        let filemd = create_file(cx, /*bad*/copy loc.file.name);
-        let context = create_function(bcx.fcx);
-
-        match arg.pat.node {
-            ast::pat_ident(_, path, _) => {
-                // XXX: This is wrong; it should work for multiple bindings.
-                let mdnode = create_var(
-                    tg,
-                    context.node,
-                    *cx.sess.str_of(*path.idents.last()),
-                    filemd.node,
-                    loc.line as int,
-                    tymd.node
-                );
-
-                let mdval = @Metadata {
-                    node: mdnode,
-                    data: ArgumentMetadata {
-                        id: arg.id
-                    }
-                };
-                update_cache(cache, tg, argument_metadata(mdval));
-
-                let llptr = match *fcx.llargs.get(&arg.id) {
-                  local_mem(v) | local_imm(v) => v,
-                };
-                let declargs = ~[llmdnode(~[llptr]), mdnode];
-                trans::build::Call(bcx,
-                                   *cx.intrinsics.get(&~"llvm.dbg.declare"),
-                                   declargs);
-                return Some(mdval);
-            }
-            _ => {
-                return None;
-            }
         }
     }
 }
