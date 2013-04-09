@@ -44,7 +44,7 @@ pub fn fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
 }
 
 #[lang="fail_bounds_check"]
-pub unsafe fn fail_bounds_check(file: *c_char, line: size_t,
+pub fn fail_bounds_check(file: *c_char, line: size_t,
                                 index: size_t, len: size_t) {
     let msg = fmt!("index out of bounds: the len is %d but the index is %d",
                     len as int, index as int);
@@ -53,7 +53,7 @@ pub unsafe fn fail_bounds_check(file: *c_char, line: size_t,
     }
 }
 
-pub unsafe fn fail_borrowed() {
+pub fn fail_borrowed() {
     let msg = "borrowed";
     do str::as_buf(msg) |msg_p, _| {
         do str::as_buf("???") |file_p, _| {

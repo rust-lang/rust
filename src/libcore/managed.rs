@@ -38,13 +38,13 @@ pub mod raw {
 #[inline(always)]
 pub fn ptr_eq<T>(a: @T, b: @T) -> bool {
     //! Determine if two shared boxes point to the same object
-    unsafe { ptr::addr_of(&(*a)) == ptr::addr_of(&(*b)) }
+    ptr::addr_of(&(*a)) == ptr::addr_of(&(*b))
 }
 
 #[inline(always)]
 pub fn mut_ptr_eq<T>(a: @mut T, b: @mut T) -> bool {
     //! Determine if two mutable shared boxes point to the same object
-    unsafe { ptr::addr_of(&(*a)) == ptr::addr_of(&(*b)) }
+    ptr::addr_of(&(*a)) == ptr::addr_of(&(*b))
 }
 
 #[cfg(notest)]
