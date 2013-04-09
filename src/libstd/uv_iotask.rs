@@ -75,7 +75,7 @@ pub fn spawn_iotask(task: task::TaskBuilder) -> IoTask {
  * module. It is not safe to send the `loop_ptr` param to this callback out
  * via ports/chans.
  */
-pub unsafe fn interact(iotask: &IoTask, cb: ~fn(*c_void)) {
+pub fn interact(iotask: &IoTask, cb: ~fn(*c_void)) {
     send_msg(iotask, Interaction(cb));
 }
 
@@ -87,9 +87,7 @@ pub unsafe fn interact(iotask: &IoTask, cb: ~fn(*c_void)) {
  * closed, causing a failure otherwise.
  */
 pub fn exit(iotask: &IoTask) {
-    unsafe {
-        send_msg(iotask, TeardownLoop);
-    }
+    send_msg(iotask, TeardownLoop);
 }
 
 

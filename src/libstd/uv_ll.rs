@@ -1111,22 +1111,22 @@ pub unsafe fn freeaddrinfo(res: *addrinfo) {
 }
 
 // libuv struct initializers
-pub unsafe fn tcp_t() -> uv_tcp_t {
+pub fn tcp_t() -> uv_tcp_t {
     return uv_ll_struct_stubgen::gen_stub_uv_tcp_t();
 }
-pub unsafe fn connect_t() -> uv_connect_t {
+pub fn connect_t() -> uv_connect_t {
     return uv_ll_struct_stubgen::gen_stub_uv_connect_t();
 }
-pub unsafe fn write_t() -> uv_write_t {
+pub fn write_t() -> uv_write_t {
     return uv_ll_struct_stubgen::gen_stub_uv_write_t();
 }
-pub unsafe fn async_t() -> uv_async_t {
+pub fn async_t() -> uv_async_t {
     return uv_ll_struct_stubgen::gen_stub_uv_async_t();
 }
-pub unsafe fn timer_t() -> uv_timer_t {
+pub fn timer_t() -> uv_timer_t {
     return uv_ll_struct_stubgen::gen_stub_uv_timer_t();
 }
-pub unsafe fn getaddrinfo_t() -> uv_getaddrinfo_t {
+pub fn getaddrinfo_t() -> uv_getaddrinfo_t {
     return uv_ll_struct_stubgen::gen_stub_uv_getaddrinfo_t();
 }
 
