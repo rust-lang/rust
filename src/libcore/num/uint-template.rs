@@ -78,12 +78,15 @@ pub fn range_step(start: T,
     if step >= 0 {
         while i < stop {
             if !it(i) { break }
+            // avoiding overflow. break if i + step > max_value
+            if i > max_value - (step as T) { break; }
             i += step as T;
         }
-    }
-    else {
+    } else {
         while i > stop {
             if !it(i) { break }
+            // avoiding underflow. break if i + step < min_value
+            if i < min_value + ((-step) as T) { break; }
             i -= -step as T;
         }
     }
@@ -371,11 +374,27 @@ pub fn test_ranges() {
     for range_step(36,30,-2) |i| {
         l.push(i);
     }
+    for range_step(max_value - 2, max_value, 2) |i| {
+        l.push(i);
+    }
+    for range_step(max_value - 3, max_value, 2) |i| {
+        l.push(i);
+    }
+    for range_step(min_value + 2, min_value, -2) |i| {
+        l.push(i);
+    }
+    for range_step(min_value + 3, min_value, -2) |i| {
+        l.push(i);
+    }
 
-    assert!(l == ~[0,1,2,
-                        13,12,11,
-                        20,22,24,
-                        36,34,32]);
+    assert_eq!(l, ~[0,1,2,
+                    13,12,11,
+                    20,22,24,
+                    36,34,32,
+                    max_value-2,
+                    max_value-3,max_value-1,
+                    min_value+2,
+                    min_value+3,min_value+1]);
 
     // None of the `fail`s should execute.
     for range(0,0) |_i| {
