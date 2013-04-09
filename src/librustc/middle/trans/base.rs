@@ -131,6 +131,13 @@ impl get_insn_ctxt for fn_ctxt {
     }
 }
 
+fn fcx_has_nonzero_span(fcx: fn_ctxt) -> bool {
+    match fcx.span {
+        None => true,
+        Some(span) => *span.lo != 0 || *span.hi != 0
+    }
+}
+
 pub fn log_fn_time(ccx: @CrateContext, +name: ~str, start: time::Timespec,
                    end: time::Timespec) {
     let elapsed = 1000 * ((end.sec - start.sec) as int) +
@@ -1158,7 +1165,8 @@ pub fn trans_stmt(cx: block, s: ast::stmt) -> block {
                 ast::decl_local(ref locals) => {
                     for locals.each |local| {
                         bcx = init_local(bcx, *local);
-                        if cx.sess().opts.extra_debuginfo {
+                        if cx.sess().opts.extra_debuginfo
+                            && fcx_has_nonzero_span(bcx.fcx) {
                             debuginfo::create_local_var(bcx, *local);
                         }
                     }
@@ -1738,7 +1746,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
 
         fcx.llargs.insert(arg_id, local_mem(llarg));
 
-        if fcx.ccx.sess.opts.extra_debuginfo {
+        if fcx.ccx.sess.opts.extra_debuginfo && fcx_has_nonzero_span(fcx) {
             debuginfo::create_arg(bcx, args[arg_n], args[arg_n].ty.span);
         }
     }
@@ -1861,7 +1869,8 @@ pub fn trans_fn(ccx: @CrateContext,
     trans_closure(ccx, path, decl, body, llfndecl, ty_self,
                   param_substs, id, impl_id,
                   |fcx| {
-                      if ccx.sess.opts.extra_debuginfo {
+                      if ccx.sess.opts.extra_debuginfo
+                          && fcx_has_nonzero_span(fcx) {
                           debuginfo::create_function(fcx);
                       }
                   },
