@@ -64,12 +64,30 @@ totaleq_impl!(i64)
 totaleq_impl!(int)
 totaleq_impl!(uint)
 
-#[deriving(Eq)]
-pub enum Ordering { Less, Equal, Greater }
+#[deriving(Clone, Eq)]
+pub enum Ordering { Less = -1, Equal = 0, Greater = 1 }
 
 /// Trait for types that form a total order
 pub trait TotalOrd: TotalEq {
     fn cmp(&self, other: &Self) -> Ordering;
+}
+
+impl TotalOrd for Ordering {
+    #[inline(always)]
+    fn cmp(&self, other: &Ordering) -> Ordering {
+        (*self as int).cmp(&(*other as int))
+    }
+}
+
+impl Ord for Ordering {
+    #[inline(always)]
+    fn lt(&self, other: &Ordering) -> bool { (*self as int) < (*other as int) }
+    #[inline(always)]
+    fn le(&self, other: &Ordering) -> bool { (*self as int) <= (*other as int) }
+    #[inline(always)]
+    fn gt(&self, other: &Ordering) -> bool { (*self as int) > (*other as int) }
+    #[inline(always)]
+    fn ge(&self, other: &Ordering) -> bool { (*self as int) >= (*other as int) }
 }
 
 macro_rules! totalord_impl(
@@ -179,5 +197,11 @@ mod test {
     fn test_int_totaleq() {
         assert!(5.equals(&5));
         assert!(!2.equals(&17));
+    }
+
+    #[test]
+    fn test_ordering_order() {
+        assert!(Less < Equal);
+        assert_eq!(Greater.cmp(&Less), Greater);
     }
 }
