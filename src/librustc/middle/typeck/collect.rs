@@ -335,7 +335,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                            ty::mk_bare_fn(tcx, copy m.fty));
 
         // create the type parameter definitions for `foo`, applying
-        // the substutition to any traits that appear in their bounds.
+        // the substitution to any traits that appear in their bounds.
 
         // add in the type parameters from the trait
         let mut new_type_param_defs = ~[];
