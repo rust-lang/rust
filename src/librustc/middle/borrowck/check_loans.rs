@@ -33,6 +33,7 @@ use util::ppaux::ty_to_str;
 
 use core::hashmap::HashSet;
 use core::uint;
+use core::util::with;
 use syntax::ast::m_mutbl;
 use syntax::ast;
 use syntax::ast_util;
@@ -40,13 +41,18 @@ use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::visit;
 
+struct PurityState {
+    def: ast::node_id,
+    purity: ast::purity
+}
+
 struct CheckLoanCtxt {
     bccx: @BorrowckCtxt,
     req_maps: ReqMaps,
 
     reported: HashSet<ast::node_id>,
 
-    declared_purity: @mut ast::purity,
+    declared_purity: @mut PurityState,
     fn_args: @mut @~[ast::node_id]
 }
 
@@ -62,6 +68,16 @@ enum purity_cause {
     pc_cmt(bckerr)
 }
 
+// if we're not pure, why?
+#[deriving(Eq)]
+enum impurity_cause {
+    // some surrounding block was marked as 'unsafe'
+    pc_unsafe,
+
+    // nothing was unsafe, and nothing was pure
+    pc_default,
+}
+
 pub fn check_loans(bccx: @BorrowckCtxt,
                    +req_maps: ReqMaps,
                    crate: @ast::crate) {
@@ -69,7 +85,8 @@ pub fn check_loans(bccx: @BorrowckCtxt,
         bccx: bccx,
         req_maps: req_maps,
         reported: HashSet::new(),
-        declared_purity: @mut ast::impure_fn,
+        declared_purity: @mut PurityState { purity: ast::impure_fn,
+                                            def: 0 },
         fn_args: @mut @~[]
     };
     let vt = visit::mk_vt(@visit::Visitor {visit_expr: check_loans_in_expr,
@@ -106,16 +123,18 @@ pub impl assignment_type {
 pub impl CheckLoanCtxt {
     fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
-    fn purity(&mut self, scope_id: ast::node_id) -> Option<purity_cause> {
-        let default_purity = match *self.declared_purity {
+    fn purity(&mut self, scope_id: ast::node_id)
+                -> Either<purity_cause, impurity_cause>
+    {
+        let default_purity = match self.declared_purity.purity {
           // an unsafe declaration overrides all
-          ast::unsafe_fn => return None,
+          ast::unsafe_fn => return Right(pc_unsafe),
 
           // otherwise, remember what was declared as the
           // default, but we must scan for requirements
           // imposed by the borrow check
-          ast::pure_fn => Some(pc_pure_fn),
-          ast::extern_fn | ast::impure_fn => None
+          ast::pure_fn => Left(pc_pure_fn),
+          ast::extern_fn | ast::impure_fn => Right(pc_default)
         };
 
         // scan to see if this scope or any enclosing scope requires
@@ -125,7 +144,7 @@ pub impl CheckLoanCtxt {
         loop {
             match self.req_maps.pure_map.find(&scope_id) {
               None => (),
-              Some(e) => return Some(pc_cmt(*e))
+              Some(e) => return Left(pc_cmt(*e))
             }
 
             match self.tcx().region_maps.opt_encl_scope(scope_id) {
@@ -171,7 +190,7 @@ pub impl CheckLoanCtxt {
     // overloaded operators the callee has an id but no expr.
     // annoying.
     fn check_pure_callee_or_arg(&mut self,
-                                pc: purity_cause,
+                                pc: Either<purity_cause, impurity_cause>,
                                 opt_expr: Option<@ast::expr>,
                                 callee_id: ast::node_id,
                                 callee_span: span) {
@@ -196,7 +215,7 @@ pub impl CheckLoanCtxt {
         match opt_expr {
           Some(expr) => {
             match expr.node {
-              ast::expr_path(_) if pc == pc_pure_fn => {
+              ast::expr_path(_) if pc == Left(pc_pure_fn) => {
                 let def = *self.tcx().def_map.get(&expr.id);
                 let did = ast_util::def_id_of_def(def);
                 let is_fn_arg =
@@ -361,10 +380,10 @@ pub impl CheckLoanCtxt {
         // if this is a pure function, only loan-able state can be
         // assigned, because it is uniquely tied to this function and
         // is not visible from the outside
-        match self.purity(ex.id) {
-          None => (),
-          Some(pc_cmt(_)) => {
-            let purity = self.purity(ex.id).get();
+        let purity = self.purity(ex.id);
+        match purity {
+          Right(_) => (),
+          Left(pc_cmt(_)) => {
             // Subtle: Issue #3162.  If we are enforcing purity
             // because there is a reference to aliasable, mutable data
             // that we require to be immutable, we can't allow writes
@@ -376,10 +395,10 @@ pub impl CheckLoanCtxt {
                 ex.span,
                 at.ing_form(self.bccx.cmt_to_str(cmt)));
           }
-          Some(pc_pure_fn) => {
+          Left(pc_pure_fn) => {
             if cmt.lp.is_none() {
                 self.report_purity_error(
-                    pc_pure_fn, ex.span,
+                    purity, ex.span,
                     at.ing_form(self.bccx.cmt_to_str(cmt)));
             }
           }
@@ -462,14 +481,23 @@ pub impl CheckLoanCtxt {
         }
     }
 
-    fn report_purity_error(&mut self, pc: purity_cause, sp: span, msg: ~str) {
+    fn report_purity_error(&mut self, pc: Either<purity_cause, impurity_cause>,
+                           sp: span, msg: ~str) {
         match pc {
-          pc_pure_fn => {
+          Right(pc_default) => { fail!(~"pc_default should be filtered sooner") }
+          Right(pc_unsafe) => {
+            // this error was prevented by being marked as unsafe, so flag the
+            // definition as having contributed to the validity of the program
+            let def = self.declared_purity.def;
+            debug!("flagging %? as a used unsafe source", def);
+            self.tcx().used_unsafe.insert(def);
+          }
+          Left(pc_pure_fn) => {
             self.tcx().sess.span_err(
                 sp,
                 fmt!("%s prohibited in pure context", msg));
           }
-          pc_cmt(ref e) => {
+          Left(pc_cmt(ref e)) => {
             if self.reported.insert((*e).cmt.id) {
                 self.tcx().sess.span_err(
                     (*e).cmt.span,
@@ -556,16 +584,32 @@ pub impl CheckLoanCtxt {
                   callee_id: ast::node_id,
                   callee_span: span,
                   args: &[@ast::expr]) {
-        match self.purity(expr.id) {
-          None => {}
-          Some(ref pc) => {
-            self.check_pure_callee_or_arg(
-                (*pc), callee, callee_id, callee_span);
-            for args.each |arg| {
-                self.check_pure_callee_or_arg(
-                    (*pc), Some(*arg), arg.id, arg.span);
+        let pc = self.purity(expr.id);
+        match pc {
+            // no purity, no need to check for anything
+            Right(pc_default) => return,
+
+            // some form of purity, definitely need to check
+            Left(_) => (),
+
+            // Unsafe trumped. To see if the unsafe is necessary, see what the
+            // purity would have been without a trump, and if it's some form
+            // of purity then we need to go ahead with the check
+            Right(pc_unsafe) => {
+                match do with(&mut self.declared_purity.purity,
+                              ast::impure_fn) { self.purity(expr.id) } {
+                    Right(pc_unsafe) => fail!(~"unsafe can't trump twice"),
+                    Right(pc_default) => return,
+                    Left(_) => ()
+                }
             }
-          }
+
+        }
+        self.check_pure_callee_or_arg(
+            pc, callee, callee_id, callee_span);
+        for args.each |arg| {
+            self.check_pure_callee_or_arg(
+                pc, Some(*arg), arg.id, arg.span);
         }
     }
 }
@@ -580,27 +624,32 @@ fn check_loans_in_fn(fk: &visit::fn_kind,
     let is_stack_closure = self.is_stack_closure(id);
     let fty = ty::node_id_to_type(self.tcx(), id);
 
-    let declared_purity;
+    let declared_purity, src;
     match *fk {
         visit::fk_item_fn(*) | visit::fk_method(*) |
         visit::fk_dtor(*) => {
             declared_purity = ty::ty_fn_purity(fty);
+            src = id;
         }
 
         visit::fk_anon(*) | visit::fk_fn_block(*) => {
             let fty_sigil = ty::ty_closure_sigil(fty);
             check_moves_from_captured_variables(self, id, fty_sigil);
-            declared_purity = ty::determine_inherited_purity(
-                *self.declared_purity,
-                ty::ty_fn_purity(fty),
+            let pair = ty::determine_inherited_purity(
+                (self.declared_purity.purity, self.declared_purity.def),
+                (ty::ty_fn_purity(fty), id),
                 fty_sigil);
+            declared_purity = pair.first();
+            src = pair.second();
         }
     }
 
     debug!("purity on entry=%?", copy self.declared_purity);
     do save_and_restore_managed(self.declared_purity) {
         do save_and_restore_managed(self.fn_args) {
-            *self.declared_purity = declared_purity;
+            self.declared_purity = @mut PurityState {
+                purity: declared_purity, def: src
+            };
 
             match *fk {
                 visit::fk_anon(*) |
@@ -754,7 +803,10 @@ fn check_loans_in_block(blk: &ast::blk,
           ast::default_blk => {
           }
           ast::unsafe_blk => {
-            *self.declared_purity = ast::unsafe_fn;
+            *self.declared_purity = PurityState {
+                purity: ast::unsafe_fn,
+                def: blk.node.id,
+            };
           }
         }
 
