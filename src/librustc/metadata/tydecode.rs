@@ -547,11 +547,17 @@ pub fn parse_def_id(buf: &[u8]) -> ast::def_id {
     ast::def_id { crate: crate_num, node: def_num }
 }
 
-pub fn parse_bounds_data(data: @~[u8], start: uint,
-                         crate_num: int, tcx: ty::ctxt, conv: conv_did)
-                      -> @~[ty::param_bound] {
+pub fn parse_type_param_def_data(data: @~[u8], start: uint,
+                                 crate_num: int, tcx: ty::ctxt,
+                                 conv: conv_did) -> ty::TypeParameterDef
+{
     let st = parse_state_from_data(data, crate_num, start, tcx);
-    parse_bounds(st, conv)
+    parse_type_param_def(st, conv)
+}
+
+fn parse_type_param_def(st: @mut PState, conv: conv_did) -> ty::TypeParameterDef {
+    ty::TypeParameterDef {def_id: parse_def(st, NominalType, conv),
+                          bounds: parse_bounds(st, conv)}
 }
 
 fn parse_bounds(st: @mut PState, conv: conv_did) -> @~[ty::param_bound] {

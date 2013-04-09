@@ -107,7 +107,7 @@ use middle::typeck::{isr_alist, lookup_def_ccx};
 use middle::typeck::no_params;
 use middle::typeck::{require_same_types, method_map, vtable_map};
 use util::common::{block_query, indenter, loop_query};
-use util::ppaux::{bound_region_to_str, expr_repr, pat_repr};
+use util::ppaux::{bound_region_to_str};
 use util::ppaux;
 
 use core::hashmap::HashMap;
@@ -610,7 +610,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
         } else {
             for m.items.each |item| {
                 let tpt = ty::lookup_item_type(ccx.tcx, local_def(item.id));
-                if !tpt.generics.bounds.is_empty() {
+                if tpt.generics.has_type_params() {
                     ccx.tcx.sess.span_err(
                         item.span,
                         fmt!("foreign items may not have type parameters"));
@@ -761,11 +761,11 @@ pub impl FnCtxt {
     }
 
     fn expr_to_str(&self, expr: @ast::expr) -> ~str {
-        expr_repr(self.tcx(), expr)
+        expr.repr(self.tcx())
     }
 
     fn pat_to_str(&self, pat: @ast::pat) -> ~str {
-        pat_repr(self.tcx(), pat)
+        pat.repr(self.tcx())
     }
 
     fn expr_ty(&self, ex: @ast::expr) -> ty::t {
@@ -1068,7 +1068,7 @@ pub fn impl_self_ty(vcx: &VtableContext,
 
     let (n_tps, region_param, raw_ty) = {
         let ity = ty::lookup_item_type(tcx, did);
-        (ity.generics.bounds.len(), ity.generics.region_param, ity.ty)
+        (ity.generics.type_param_defs.len(), ity.generics.region_param, ity.ty)
     };
 
     let self_r = if region_param.is_some() {
@@ -1893,7 +1893,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
         } else {
             let item_type = ty::lookup_item_type(tcx, class_id);
-            type_parameter_count = item_type.generics.bounds.len();
+            type_parameter_count = item_type.generics.type_param_defs.len();
             region_parameterized = item_type.generics.region_param;
             raw_type = item_type.ty;
         }
@@ -1981,7 +1981,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
         } else {
             let item_type = ty::lookup_item_type(tcx, enum_id);
-            type_parameter_count = item_type.generics.bounds.len();
+            type_parameter_count = item_type.generics.type_param_defs.len();
             region_parameterized = item_type.generics.region_param;
             raw_type = item_type.ty;
         }
@@ -3153,7 +3153,7 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
         // extern functions are just u8 pointers
         return ty_param_bounds_and_ty {
             generics: ty::Generics {
-                bounds: @~[],
+                type_param_defs: @~[],
                 region_param: None
             },
             ty: ty::mk_ptr(
@@ -3218,7 +3218,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
                         region_lb: ty::Region) {
     debug!(">>> instantiate_path");
 
-    let ty_param_count = tpt.generics.bounds.len();
+    let ty_param_count = tpt.generics.type_param_defs.len();
     let ty_substs_len = vec::len(pth.types);
 
     debug!("ty_param_count=%? ty_substs_len=%?",
@@ -3692,7 +3692,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                     output: output}
     });
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
-    let i_n_tps = i_ty.generics.bounds.len();
+    let i_n_tps = i_ty.generics.type_param_defs.len();
     if i_n_tps != n_tps {
         tcx.sess.span_err(it.span, fmt!("intrinsic has wrong number \
                                          of type parameters: found %u, \

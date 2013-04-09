@@ -102,6 +102,16 @@ impl<T:Copy> OptVec<T> {
             self.push(copy *e);
         }
     }
+
+    #[inline(always)]
+    fn mapi_to_vec<B>(&self, op: &fn(uint, &T) -> B) -> ~[B] {
+        let mut index = 0;
+        iter::map_to_vec(self, |a| {
+            let i = index;
+            index += 1;
+            op(i, a)
+        })
+    }
 }
 
 impl<A:Eq> Eq for OptVec<A> {

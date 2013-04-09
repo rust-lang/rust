@@ -41,7 +41,7 @@ use middle::trans::type_use;
 use middle::ty::substs;
 use middle::ty;
 use middle::typeck;
-use util::ppaux::{expr_repr, ty_to_str};
+use util::ppaux::{Repr};
 
 use core::cast;
 use core::hash;
@@ -250,7 +250,7 @@ pub enum local_val { local_mem(ValueRef), local_imm(ValueRef), }
 pub struct param_substs {
     tys: ~[ty::t],
     vtables: Option<typeck::vtable_res>,
-    bounds: @~[ty::param_bounds],
+    type_param_defs: @~[ty::TypeParameterDef],
     self_ty: Option<ty::t>
 }
 
@@ -261,16 +261,25 @@ pub impl param_substs {
     }
 }
 
-pub fn param_substs_to_str(tcx: ty::ctxt, substs: &param_substs) -> ~str {
-    fmt!("param_substs {tys:%?, vtables:%?, bounds:%?}",
-         substs.tys.map(|t| ty_to_str(tcx, *t)),
-         substs.vtables.map(|vs| vs.map(|v| v.to_str(tcx))),
-         substs.bounds.map(|b| ty::param_bounds_to_str(tcx, *b)))
+fn param_substs_to_str(self: &param_substs,
+                       tcx: ty::ctxt) -> ~str
+{
+    fmt!("param_substs {tys:%s, vtables:%s, type_param_defs:%s}",
+         self.tys.repr(tcx),
+         self.vtables.repr(tcx),
+         self.type_param_defs.repr(tcx))
 }
 
-pub fn opt_param_substs_to_str(tcx: ty::ctxt,
-                               substs: &Option<@param_substs>) -> ~str {
-    substs.map_default(~"None", |&ps| param_substs_to_str(tcx, ps))
+impl Repr for param_substs {
+    fn repr(&self, tcx: ty::ctxt) -> ~str {
+        param_substs_to_str(self, tcx)
+    }
+}
+
+impl Repr for @param_substs {
+    fn repr(&self, tcx: ty::ctxt) -> ~str {
+        param_substs_to_str(*self, tcx)
+    }
 }
 
 // Function context.  Every LLVM function we create will have one of
@@ -413,8 +422,9 @@ pub fn root_for_cleanup(bcx: block, v: ValueRef, t: ty::t)
 pub fn add_clean(bcx: block, val: ValueRef, t: ty::t) {
     if !ty::type_needs_drop(bcx.tcx(), t) { return; }
     debug!("add_clean(%s, %s, %s)",
-           bcx.to_str(), val_str(bcx.ccx().tn, val),
-           ty_to_str(bcx.ccx().tcx, t));
+           bcx.to_str(),
+           val_str(bcx.ccx().tn, val),
+           t.repr(bcx.tcx()));
     let (root, rooted) = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx) |scope_info| {
@@ -429,7 +439,7 @@ pub fn add_clean_temp_immediate(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { return; }
     debug!("add_clean_temp_immediate(%s, %s, %s)",
            cx.to_str(), val_str(cx.ccx().tn, val),
-           ty_to_str(cx.ccx().tcx, ty));
+           ty.repr(cx.tcx()));
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     do in_scope_cx(cx) |scope_info| {
         scope_info.cleanups.push(
@@ -442,7 +452,7 @@ pub fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
     if !ty::type_needs_drop(bcx.tcx(), t) { return; }
     debug!("add_clean_temp_mem(%s, %s, %s)",
            bcx.to_str(), val_str(bcx.ccx().tn, val),
-           ty_to_str(bcx.ccx().tcx, t));
+           t.repr(bcx.tcx()));
     let (root, rooted) = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx) |scope_info| {
@@ -455,7 +465,7 @@ pub fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
 pub fn add_clean_frozen_root(bcx: block, val: ValueRef, t: ty::t) {
     debug!("add_clean_frozen_root(%s, %s, %s)",
            bcx.to_str(), val_str(bcx.ccx().tn, val),
-           ty_to_str(bcx.ccx().tcx, t));
+           t.repr(bcx.tcx()));
     let (root, rooted) = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx) |scope_info| {
@@ -703,7 +713,7 @@ pub impl block_ {
     }
 
     fn expr_to_str(@mut self, e: @ast::expr) -> ~str {
-        expr_repr(self.tcx(), e)
+        e.repr(self.tcx())
     }
 
     fn expr_is_lval(@mut self, e: @ast::expr) -> bool {
@@ -733,7 +743,7 @@ pub impl block_ {
     }
 
     fn ty_to_str(@mut self, t: ty::t) -> ~str {
-        ty_to_str(self.tcx(), t)
+        t.repr(self.tcx())
     }
     fn to_str(@mut self) -> ~str {
         match self.node_info {
@@ -1445,14 +1455,14 @@ pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, +vt: typeck::vtable_origin)
 pub fn find_vtable(tcx: ty::ctxt, ps: &param_substs,
                    n_param: uint, n_bound: uint)
     -> typeck::vtable_origin {
-    debug!("find_vtable_in_fn_ctxt(n_param=%u, n_bound=%u, ps=%?)",
-           n_param, n_bound, param_substs_to_str(tcx, ps));
+    debug!("find_vtable(n_param=%u, n_bound=%u, ps=%s)",
+           n_param, n_bound, ps.repr(tcx));
 
     // Vtables are stored in a flat array, finding the right one is
     // somewhat awkward
-    let first_n_bounds = ps.bounds.slice(0, n_param);
+    let first_n_type_param_defs = ps.type_param_defs.slice(0, n_param);
     let vtables_to_skip =
-        ty::count_traits_and_supertraits(tcx, first_n_bounds);
+        ty::count_traits_and_supertraits(tcx, first_n_type_param_defs);
     let vtable_off = vtables_to_skip + n_bound;
     /*bad*/ copy ps.vtables.get()[vtable_off]
 }

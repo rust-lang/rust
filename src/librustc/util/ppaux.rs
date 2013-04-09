@@ -11,6 +11,7 @@
 use core::prelude::*;
 
 use middle::ty;
+use middle::typeck;
 use middle::ty::canon_mode;
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid,
                  br_fresh};
@@ -34,6 +35,10 @@ use syntax::abi::AbiSet;
 
 use core::str;
 use core::vec;
+
+pub trait Repr {
+    fn repr(&self, tcx: ctxt) -> ~str;
+}
 
 pub fn note_and_explain_region(cx: ctxt,
                                prefix: ~str,
@@ -257,18 +262,6 @@ pub fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
     }
 }
 
-pub fn expr_repr(cx: ctxt, expr: @ast::expr) -> ~str {
-    fmt!("expr(%d: %s)",
-         expr.id,
-         pprust::expr_to_str(expr, cx.sess.intr()))
-}
-
-pub fn pat_repr(cx: ctxt, pat: @ast::pat) -> ~str {
-    fmt!("pat(%d: %s)",
-         pat.id,
-         pprust::pat_to_str(pat, cx.sess.intr()))
-}
-
 pub fn tys_to_str(cx: ctxt, ts: &[t]) -> ~str {
     let tstrs = ts.map(|t| ty_to_str(cx, *t));
     fmt!("(%s)", str::connect(tstrs, ", "))
@@ -287,7 +280,13 @@ pub fn fn_sig_to_str(cx: ctxt, typ: &ty::FnSig) -> ~str {
 pub fn trait_ref_to_str(cx: ctxt, trait_ref: &ty::TraitRef) -> ~str {
     let path = ty::item_path(cx, trait_ref.def_id);
     let base = ast_map::path_to_str(path, cx.sess.intr());
-    parameterized(cx, base, trait_ref.substs.self_r, trait_ref.substs.tps)
+    if cx.sess.verbose() && trait_ref.substs.self_ty.is_some() {
+        let mut all_tps = copy trait_ref.substs.tps;
+        for trait_ref.substs.self_ty.each |&t| { all_tps.push(t); }
+        parameterized(cx, base, trait_ref.substs.self_r, all_tps)
+    } else {
+        parameterized(cx, base, trait_ref.substs.self_r, trait_ref.substs.tps)
+    }
 }
 
 pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
@@ -497,10 +496,261 @@ pub fn ty_to_short_str(cx: ctxt, typ: t) -> ~str {
     return s;
 }
 
+impl<T:Repr> Repr for Option<T> {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        match self {
+            &None => ~"None",
+            &Some(ref t) => fmt!("Some(%s)", t.repr(tcx))
+        }
+    }
+}
+
+/*
+Annoyingly, these conflict with @ast::expr.
+
+impl<T:Repr> Repr for @T {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        (&**self).repr(tcx)
+    }
+}
+
+impl<T:Repr> Repr for ~T {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        (&**self).repr(tcx)
+    }
+}
+*/
+
+fn repr_vec<T:Repr>(tcx: ctxt, v: &[T]) -> ~str {
+    fmt!("[%s]", str::connect(v.map(|t| t.repr(tcx)), ","))
+}
+
+impl<'self, T:Repr> Repr for &'self [T] {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        repr_vec(tcx, *self)
+    }
+}
+
+// This is necessary to handle types like Option<@~[T]>, for which
+// autoderef cannot convert the &[T] handler
+impl<T:Repr> Repr for @~[T] {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        repr_vec(tcx, **self)
+    }
+}
+
+impl Repr for ty::TypeParameterDef {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        fmt!("TypeParameterDef {%?, bounds: %s}",
+             self.def_id, self.bounds.repr(tcx))
+    }
+}
+
+impl Repr for ty::t {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        ty_to_str(tcx, *self)
+    }
+}
+
+impl Repr for ty::substs {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        fmt!("substs(self_r=%s, self_ty=%s, tps=%s)",
+             self.self_r.repr(tcx),
+             self.self_ty.repr(tcx),
+             self.tps.repr(tcx))
+    }
+}
+
+impl Repr for ty::param_bound {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        match *self {
+            ty::bound_copy => ~"copy",
+            ty::bound_durable => ~"'static",
+            ty::bound_owned => ~"owned",
+            ty::bound_const => ~"const",
+            ty::bound_trait(ref t) => t.repr(tcx)
+        }
+    }
+}
+
+impl Repr for ty::TraitRef {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        trait_ref_to_str(tcx, self)
+    }
+}
+
+impl Repr for @ast::expr {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        fmt!("expr(%d: %s)",
+             self.id,
+             pprust::expr_to_str(*self, tcx.sess.intr()))
+    }
+}
+
+impl Repr for @ast::pat {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        fmt!("pat(%d: %s)",
+             self.id,
+             pprust::pat_to_str(*self, tcx.sess.intr()))
+    }
+}
+
+impl Repr for ty::Region {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        region_to_str(tcx, *self)
+    }
+}
+
+impl Repr for ast::def_id {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        // Unfortunately, there seems to be no way to attempt to print
+        // a path for a def-id, so I'll just make a best effort for now
+        // and otherwise fallback to just printing the crate/node pair
+        if self.crate == ast::local_crate {
+            match tcx.items.find(&self.node) {
+                Some(&ast_map::node_item(*)) |
+                Some(&ast_map::node_foreign_item(*)) |
+                Some(&ast_map::node_method(*)) |
+                Some(&ast_map::node_trait_method(*)) |
+                Some(&ast_map::node_variant(*)) |
+                Some(&ast_map::node_struct_ctor(*)) => {
+                    return fmt!("%?:%s", *self, ty::item_path_str(tcx, *self));
+                }
+                _ => {}
+            }
+        }
+        return fmt!("%?", *self);
+    }
+}
+
+impl Repr for ty::ty_param_bounds_and_ty {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        fmt!("ty_param_bounds_and_ty {generics: %s, ty: %s}",
+             self.generics.repr(tcx),
+             self.ty.repr(tcx))
+    }
+}
+
+impl Repr for ty::Generics {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        fmt!("Generics {type_param_defs: %s, region_param: %?}",
+             self.type_param_defs.repr(tcx),
+             self.region_param)
+    }
+}
+
+impl Repr for ty::method {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        fmt!("method {ident: %s, generics: %s, transformed_self_ty: %s, \
+              fty: %s, self_ty: %s, vis: %s, def_id: %s}",
+             self.ident.repr(tcx),
+             self.generics.repr(tcx),
+             self.transformed_self_ty.repr(tcx),
+             self.fty.repr(tcx),
+             self.self_ty.repr(tcx),
+             self.vis.repr(tcx),
+             self.def_id.repr(tcx))
+    }
+}
+
+impl Repr for ast::ident {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        copy *tcx.sess.intr().get(*self)
+    }
+}
+
+impl Repr for ast::self_ty_ {
+    fn repr(&self, _tcx: ctxt) -> ~str {
+        fmt!("%?", *self)
+    }
+}
+
+impl Repr for ast::visibility {
+    fn repr(&self, _tcx: ctxt) -> ~str {
+        fmt!("%?", *self)
+    }
+}
+
+impl Repr for ty::BareFnTy {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        fmt!("BareFnTy {purity: %?, abis: %s, sig: %s}",
+             self.purity,
+             self.abis.to_str(),
+             self.sig.repr(tcx))
+    }
+}
+
+impl Repr for ty::FnSig {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        fn_sig_to_str(tcx, self)
+    }
+}
+
+impl Repr for typeck::method_map_entry {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        fmt!("method_map_entry {self_arg: %s, \
+              explicit_self: %s, \
+              origin: %s}",
+             self.self_arg.repr(tcx),
+             self.explicit_self.repr(tcx),
+             self.origin.repr(tcx))
+    }
+}
+
+impl Repr for ty::arg {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        fmt!("%?(%s)", self.mode, self.ty.repr(tcx))
+    }
+}
+
+impl Repr for typeck::method_origin {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        match self {
+            &typeck::method_super(def_id, n) => {
+                fmt!("method_super(%s, %?)",
+                     def_id.repr(tcx), n)
+            }
+            &typeck::method_static(def_id) => {
+                fmt!("method_static(%s)", def_id.repr(tcx))
+            }
+            &typeck::method_param(ref p) => {
+                p.repr(tcx)
+            }
+            &typeck::method_trait(def_id, n, st) => {
+                fmt!("method_trait(%s, %?, %s)", def_id.repr(tcx), n,
+                     st.repr(tcx))
+            }
+            &typeck::method_self(def_id, n) => {
+                fmt!("method_self(%s, %?)", def_id.repr(tcx), n)
+            }
+        }
+    }
+}
+
+impl Repr for typeck::method_param {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        fmt!("method_param(%s,%?,%?,%?)",
+             self.trait_id.repr(tcx),
+             self.method_num,
+             self.param_num,
+             self.bound_num)
+    }
+}
+
+impl Repr for ty::TraitStore {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        match self {
+            &ty::BoxTraitStore => ~"@Trait",
+            &ty::UniqTraitStore => ~"~Trait",
+            &ty::RegionTraitStore(r) => fmt!("&%s Trait", r.repr(tcx))
+        }
+    }
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// End:
+// End

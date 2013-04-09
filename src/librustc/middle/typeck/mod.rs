@@ -53,6 +53,7 @@ use core::prelude::*;
 use middle::resolve;
 use middle::ty;
 use util::common::time;
+use util::ppaux::Repr;
 use util::ppaux;
 
 use core::hashmap::HashMap;
@@ -153,14 +154,15 @@ pub enum vtable_origin {
     vtable_param(uint, uint)
 }
 
-pub impl vtable_origin {
-    fn to_str(&self, tcx: ty::ctxt) -> ~str {
+impl Repr for vtable_origin {
+    fn repr(&self, tcx: ty::ctxt) -> ~str {
         match *self {
             vtable_static(def_id, ref tys, ref vtable_res) => {
-                fmt!("vtable_static(%?:%s, %?, %?)",
-                     def_id, ty::item_path_str(tcx, def_id),
-                     tys,
-                     vtable_res.map(|o| o.to_str(tcx)))
+                fmt!("vtable_static(%?:%s, %s, %s)",
+                     def_id,
+                     ty::item_path_str(tcx, def_id),
+                     tys.repr(tcx),
+                     vtable_res.repr(tcx))
             }
 
             vtable_param(x, y) => {
@@ -222,7 +224,7 @@ pub fn lookup_def_ccx(ccx: @mut CrateCtxt, sp: span, id: ast::node_id)
 
 pub fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
     ty::ty_param_bounds_and_ty {
-        generics: ty::Generics {bounds: @~[],
+        generics: ty::Generics {type_param_defs: @~[],
                                 region_param: None},
         ty: t
     }
