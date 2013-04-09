@@ -420,7 +420,8 @@ fn create_pointer_type(cx: @CrateContext, t: ty::t, span: span,
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
     //let cu_node = create_compile_unit(cx, fname);
-    let llnode = create_derived_type(tg, file_node.node, ~"", 0, size * 8,
+    let name = ty_to_str(cx.tcx, t);
+    let llnode = create_derived_type(tg, file_node.node, name, 0, size * 8,
                                      align * 8, 0, pointee.node);
     let mdval = @Metadata {
         node: llnode,
@@ -714,6 +715,26 @@ fn create_vec_slice(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t, span: span)
     return mdval;
 }
 
+fn create_fn_ty(cx: @CrateContext, fn_ty: ty::t, inputs: ~[ty::t], output: ty::t,
+                span: span) -> @Metadata<TyDescMetadata> {
+    let fname = filename_from_span(cx, span);
+    let file_node = create_file(cx, fname);
+    let (vp, _, _) = voidptr();
+    let output_md = create_ty(cx, output, span);
+    let output_ptr_md = create_pointer_type(cx, output, span, output_md);
+    let inputs_vals = do inputs.map |arg| { create_ty(cx, *arg, span).node };
+    let members = ~[output_ptr_md.node, vp] + inputs_vals;
+    let llnode = create_composite_type(SubroutineTag, ~"", file_node.node,
+                                       0, 0, 0, 0, None, Some(members));
+    let mdval = @Metadata {
+        node: llnode,
+        data: TyDescMetadata {
+            hash: ty::type_id(fn_ty)
+        }
+    };
+    return mdval;
+}
+
 fn create_ty(cx: @CrateContext, t: ty::t, span: span)
     -> @Metadata<TyDescMetadata> {
     debug!("create_ty: %?", ty::get(t));
@@ -772,8 +793,10 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span)
         ty::ty_rptr(ref _region, ref _mt) => {
             cx.sess.span_bug(span, ~"debuginfo for rptr NYI")
         },
-        ty::ty_bare_fn(ref _barefnty) => {
-            cx.sess.span_bug(span, ~"debuginfo for bare_fn NYI")
+        ty::ty_bare_fn(ref barefnty) => {
+            let inputs = do barefnty.sig.inputs.map |a| { a.ty };
+            let output = barefnty.sig.output;
+            create_fn_ty(cx, t, inputs, output, span)
         },
         ty::ty_closure(ref _closurety) => {
             cx.sess.span_bug(span, ~"debuginfo for closure NYI")
