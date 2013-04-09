@@ -862,17 +862,15 @@ pub mod node {
      * This function executes in linear time.
      */
     pub fn flatten(node: @Node) -> @Node {
-        unsafe {
-            match (*node) {
-                Leaf(_) => node,
-                Concat(ref x) => {
-                    @Leaf(Leaf {
-                        byte_offset: 0u,
-                        byte_len: x.byte_len,
-                        char_len: x.char_len,
-                        content: @serialize_node(node),
-                    })
-                }
+        match (*node) {
+            Leaf(_) => node,
+            Concat(ref x) => {
+                @Leaf(Leaf {
+                    byte_offset: 0u,
+                    byte_len: x.byte_len,
+                    char_len: x.char_len,
+                    content: @serialize_node(node),
+                })
             }
         }
     }

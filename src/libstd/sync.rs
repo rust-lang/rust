@@ -101,17 +101,15 @@ fn new_sem_and_signal(count: int, num_condvars: uint)
 pub impl<Q:Owned> Sem<Q> {
     fn acquire(&self) {
         let mut waiter_nobe = None;
-        unsafe {
-            do (**self).with |state| {
-                state.count -= 1;
-                if state.count < 0 {
-                    // Create waiter nobe.
-                    let (WaitEnd, SignalEnd) = comm::oneshot();
-                    // Tell outer scope we need to block.
-                    waiter_nobe = Some(WaitEnd);
-                    // Enqueue ourself.
-                    state.waiters.tail.send(SignalEnd);
-                }
+        do (**self).with |state| {
+            state.count -= 1;
+            if state.count < 0 {
+                // Create waiter nobe.
+                let (WaitEnd, SignalEnd) = comm::oneshot();
+                // Tell outer scope we need to block.
+                waiter_nobe = Some(WaitEnd);
+                // Enqueue ourself.
+                state.waiters.tail.send(SignalEnd);
             }
         }
         // Uncomment if you wish to test for sem races. Not valgrind-friendly.
@@ -122,12 +120,10 @@ pub impl<Q:Owned> Sem<Q> {
         }
     }
     fn release(&self) {
-        unsafe {
-            do (**self).with |state| {
-                state.count += 1;
-                if state.count <= 0 {
-                    signal_waitqueue(&state.waiters);
-                }
+        do (**self).with |state| {
+            state.count += 1;
+            if state.count <= 0 {
+                signal_waitqueue(&state.waiters);
             }
         }
     }
@@ -169,9 +165,7 @@ struct SemReleaseGeneric<'self, Q> { sem: &'self Sem<Q> }
 #[unsafe_destructor]
 impl<'self, Q:Owned> Drop for SemReleaseGeneric<'self, Q> {
     fn finalize(&self) {
-        unsafe {
-            self.sem.release();
-        }
+        self.sem.release();
     }
 }
 
@@ -291,13 +285,11 @@ pub impl<'self> Condvar<'self> {
     fn signal_on(&self, condvar_id: uint) -> bool {
         let mut out_of_bounds = None;
         let mut result = false;
-        unsafe {
-            do (**self.sem).with |state| {
-                if condvar_id < vec::len(state.blocked) {
-                    result = signal_waitqueue(&state.blocked[condvar_id]);
-                } else {
-                    out_of_bounds = Some(vec::len(state.blocked));
-                }
+        do (**self.sem).with |state| {
+            if condvar_id < vec::len(state.blocked) {
+                result = signal_waitqueue(&state.blocked[condvar_id]);
+            } else {
+                out_of_bounds = Some(vec::len(state.blocked));
             }
         }
         do check_cvar_bounds(out_of_bounds, condvar_id, "cond.signal_on()") {
@@ -312,17 +304,15 @@ pub impl<'self> Condvar<'self> {
     fn broadcast_on(&self, condvar_id: uint) -> uint {
         let mut out_of_bounds = None;
         let mut queue = None;
-        unsafe {
-            do (**self.sem).with |state| {
-                if condvar_id < vec::len(state.blocked) {
-                    // To avoid :broadcast_heavy, we make a new waitqueue,
-                    // swap it out with the old one, and broadcast on the
-                    // old one outside of the little-lock.
-                    queue = Some(util::replace(&mut state.blocked[condvar_id],
-                                               new_waitqueue()));
-                } else {
-                    out_of_bounds = Some(vec::len(state.blocked));
-                }
+        do (**self.sem).with |state| {
+            if condvar_id < vec::len(state.blocked) {
+                // To avoid :broadcast_heavy, we make a new waitqueue,
+                // swap it out with the old one, and broadcast on the
+                // old one outside of the little-lock.
+                queue = Some(util::replace(&mut state.blocked[condvar_id],
+                                           new_waitqueue()));
+            } else {
+                out_of_bounds = Some(vec::len(state.blocked));
             }
         }
         do check_cvar_bounds(out_of_bounds, condvar_id, "cond.signal_on()") {
