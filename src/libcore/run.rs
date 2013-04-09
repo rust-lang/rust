@@ -382,64 +382,62 @@ pub struct ProgramOutput {status: int, out: ~str, err: ~str}
  * the contents of stdout and the contents of stderr.
  */
 pub fn program_output(prog: &str, args: &[~str]) -> ProgramOutput {
-    unsafe {
-        let pipe_in = os::pipe();
-        let pipe_out = os::pipe();
-        let pipe_err = os::pipe();
-        let pid = spawn_process(prog, args, &None, &None,
-                                pipe_in.in, pipe_out.out, pipe_err.out);
+    let pipe_in = os::pipe();
+    let pipe_out = os::pipe();
+    let pipe_err = os::pipe();
+    let pid = spawn_process(prog, args, &None, &None,
+                            pipe_in.in, pipe_out.out, pipe_err.out);
 
-        os::close(pipe_in.in);
-        os::close(pipe_out.out);
-        os::close(pipe_err.out);
-        if pid == -1i32 {
-            os::close(pipe_in.out);
-            os::close(pipe_out.in);
-            os::close(pipe_err.in);
-            fail!();
-        }
-
+    os::close(pipe_in.in);
+    os::close(pipe_out.out);
+    os::close(pipe_err.out);
+    if pid == -1i32 {
         os::close(pipe_in.out);
-
-        // Spawn two entire schedulers to read both stdout and sterr
-        // in parallel so we don't deadlock while blocking on one
-        // or the other. FIXME (#2625): Surely there's a much more
-        // clever way to do this.
-        let (p, ch) = stream();
-        let ch = SharedChan(ch);
-        let ch_clone = ch.clone();
-        do task::spawn_sched(task::SingleThreaded) {
-            let errput = readclose(pipe_err.in);
-            ch.send((2, errput));
-        };
-        do task::spawn_sched(task::SingleThreaded) {
-            let output = readclose(pipe_out.in);
-            ch_clone.send((1, output));
-        };
-        let status = run::waitpid(pid);
-        let mut errs = ~"";
-        let mut outs = ~"";
-        let mut count = 2;
-        while count > 0 {
-            let stream = p.recv();
-            match stream {
-                (1, copy s) => {
-                    outs = s;
-                }
-                (2, copy s) => {
-                    errs = s;
-                }
-                (n, _) => {
-                    fail!(fmt!("program_output received an unexpected file \
-                               number: %u", n));
-                }
-            };
-            count -= 1;
-        };
-        return ProgramOutput {status: status,
-                              out: outs,
-                              err: errs};
+        os::close(pipe_out.in);
+        os::close(pipe_err.in);
+        fail!();
     }
+
+    os::close(pipe_in.out);
+
+    // Spawn two entire schedulers to read both stdout and sterr
+    // in parallel so we don't deadlock while blocking on one
+    // or the other. FIXME (#2625): Surely there's a much more
+    // clever way to do this.
+    let (p, ch) = stream();
+    let ch = SharedChan(ch);
+    let ch_clone = ch.clone();
+    do task::spawn_sched(task::SingleThreaded) {
+        let errput = readclose(pipe_err.in);
+        ch.send((2, errput));
+    };
+    do task::spawn_sched(task::SingleThreaded) {
+        let output = readclose(pipe_out.in);
+        ch_clone.send((1, output));
+    };
+    let status = run::waitpid(pid);
+    let mut errs = ~"";
+    let mut outs = ~"";
+    let mut count = 2;
+    while count > 0 {
+        let stream = p.recv();
+        match stream {
+            (1, copy s) => {
+                outs = s;
+            }
+            (2, copy s) => {
+                errs = s;
+            }
+            (n, _) => {
+                fail!(fmt!("program_output received an unexpected file \
+                           number: %u", n));
+            }
+        };
+        count -= 1;
+    };
+    return ProgramOutput {status: status,
+                          out: outs,
+                          err: errs};
 }
 
 pub fn writeclose(fd: c_int, s: ~str) {

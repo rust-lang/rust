@@ -55,17 +55,13 @@ pub fn addr_of<T>(val: &T) -> *T { unsafe { rusti::addr_of(*val) } }
 /// Calculate the offset from a pointer
 #[inline(always)]
 pub fn offset<T>(ptr: *T, count: uint) -> *T {
-    unsafe {
-        (ptr as uint + count * sys::size_of::<T>()) as *T
-    }
+    (ptr as uint + count * sys::size_of::<T>()) as *T
 }
 
 /// Calculate the offset from a const pointer
 #[inline(always)]
 pub fn const_offset<T>(ptr: *const T, count: uint) -> *const T {
-    unsafe {
-        (ptr as uint + count * sys::size_of::<T>()) as *T
-    }
+    (ptr as uint + count * sys::size_of::<T>()) as *T
 }
 
 /// Calculate the offset from a mut pointer
