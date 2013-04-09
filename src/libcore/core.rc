@@ -48,7 +48,7 @@ they contained the following prologue:
 
 
 #[link(name = "core",
-       vers = "0.6",
+       vers = "0.7-rc",
        uuid = "c70c24a7-5551-4f73-8e37-380b11d80be8",
        url = "https://github.com/mozilla/rust/tree/master/src/libcore")];
 
@@ -66,7 +66,7 @@ they contained the following prologue:
 #[allow(deprecated_drop)];
 
 // Make core testable by not duplicating lang items. See #2912
-#[cfg(test)] extern mod realcore(name = "core", vers = "0.6");
+#[cfg(test)] extern mod realcore(name = "core", vers = "0.7-rc");
 #[cfg(test)] pub use kinds = realcore::kinds;
 #[cfg(test)] pub use ops = realcore::ops;
 #[cfg(test)] pub use cmp = realcore::cmp;
