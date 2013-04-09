@@ -946,7 +946,7 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
 }
 
 pub fn update_source_pos(cx: block, s: span) {
-    if !cx.sess().opts.debuginfo {
+    if !cx.sess().opts.debuginfo || (*s.lo == 0 && *s.hi == 0) {
         return;
     }
     let cm = cx.sess().codemap;
