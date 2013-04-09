@@ -16,7 +16,7 @@ trait get_ctxt<'self> {
 
 struct HasCtxt<'self> { c: &'self Ctxt }
 
-impl<'self> get_ctxt for HasCtxt<'self> {
+impl<'self> get_ctxt<'self> for HasCtxt<'self> {
     fn get_ctxt(&self) -> &'self Ctxt {
         self.c
     }
