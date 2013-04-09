@@ -83,9 +83,8 @@ pub enum lint {
 
     legacy_modes,
 
-    // FIXME(#3266)--make liveness warnings lintable
-    // unused_variable,
-    // dead_assignment
+    unused_variable,
+    dead_assignment,
 }
 
 pub fn level_to_str(lv: level) -> &'static str {
@@ -257,21 +256,19 @@ pub fn get_lint_dict() -> LintDict {
             default: deny
         }),
 
-        /* FIXME(#3266)--make liveness warnings lintable
-        (@~"unused_variable",
-         @LintSpec {
+        (~"unused_variable",
+         LintSpec {
             lint: unused_variable,
             desc: "detect variables which are not used in any way",
             default: warn
-         }),
+        }),
 
-        (@~"dead_assignment",
-         @LintSpec {
+        (~"dead_assignment",
+         LintSpec {
             lint: dead_assignment,
             desc: "detect assignments that will never be read",
             default: warn
-         }),
-        */
+        }),
     ];
     let mut map = HashMap::new();
     do vec::consume(v) |_, (k, v)| {
