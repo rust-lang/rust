@@ -34,6 +34,7 @@ pub mod clone;
 pub mod eq;
 pub mod iter_bytes;
 pub mod encodable;
+pub mod decodable;
 
 type ExpandDerivingStructDefFn<'self> = &'self fn(@ext_ctxt,
                                                   span,
@@ -78,6 +79,8 @@ pub fn expand_meta_deriving(cx: @ext_ctxt,
                             ~"IterBytes" => iter_bytes::expand_deriving_iter_bytes(cx,
                                 titem.span, titem, in_items),
                             ~"Encodable" => encodable::expand_deriving_encodable(cx,
+                                titem.span, titem, in_items),
+                            ~"Decodable" => decodable::expand_deriving_decodable(cx,
                                 titem.span, titem, in_items),
                             tname => {
                                 cx.span_err(titem.span, fmt!("unknown \
