@@ -171,16 +171,14 @@ fn parse_name_directive(line: ~str, directive: ~str) -> bool {
 
 fn parse_name_value_directive(line: ~str,
                               directive: ~str) -> Option<~str> {
-    unsafe {
-        let keycolon = directive + ~":";
-        match str::find_str(line, keycolon) {
-            Some(colon) => {
-                let value = str::slice(line, colon + str::len(keycolon),
-                                       str::len(line)).to_owned();
-                debug!("%s: %s", directive,  value);
-                Some(value)
-            }
-            None => None
+    let keycolon = directive + ~":";
+    match str::find_str(line, keycolon) {
+        Some(colon) => {
+            let value = str::slice(line, colon + str::len(keycolon),
+                                   str::len(line)).to_owned();
+            debug!("%s: %s", directive,  value);
+            Some(value)
         }
+        None => None
     }
 }
