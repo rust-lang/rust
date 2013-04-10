@@ -20,7 +20,7 @@ use middle::trans;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::libc;
 use core::option;
 use core::sys;
@@ -106,7 +106,7 @@ pub struct DebugContext {
 
 pub fn mk_ctxt(+crate: ~str, intr: @ident_interner) -> DebugContext {
     DebugContext {
-        llmetadata: @mut LinearMap::new(),
+        llmetadata: @mut HashMap::new(),
         names: new_namegen(intr),
         crate_file: crate
     }
@@ -151,7 +151,7 @@ struct RetvalMetadata {
     id: ast::node_id
 }
 
-type metadata_cache = @mut LinearMap<int, ~[debug_metadata]>;
+type metadata_cache = @mut HashMap<int, ~[debug_metadata]>;
 
 enum debug_metadata {
     file_metadata(@Metadata<FileMetadata>),
@@ -368,7 +368,7 @@ fn create_basic_type(cx: @CrateContext, t: ty::t, span: span)
         ty::ty_uint(uint_ty) => match uint_ty {
             ast::ty_u => (~"uint", DW_ATE_unsigned),
             ast::ty_u8 => (~"u8", DW_ATE_unsigned),
-            ast::ty_u16 => (~"i16", DW_ATE_unsigned),
+            ast::ty_u16 => (~"u16", DW_ATE_unsigned),
             ast::ty_u32 => (~"u32", DW_ATE_unsigned),
             ast::ty_u64 => (~"u64", DW_ATE_unsigned)
         },

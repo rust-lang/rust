@@ -18,7 +18,7 @@ not required in or otherwise suitable for the core library.
 */
 
 #[link(name = "std",
-       vers = "0.6",
+       vers = "0.7-rc",
        uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
        url = "https://github.com/mozilla/rust/tree/master/src/libstd")];
 
@@ -32,7 +32,7 @@ not required in or otherwise suitable for the core library.
 
 #[no_core];
 
-extern mod core(vers = "0.6");
+extern mod core(vers = "0.7-rc");
 use core::prelude::*;
 
 pub mod uv_ll;
@@ -95,9 +95,15 @@ pub mod cmp;
 pub mod base64;
 pub mod rl;
 pub mod workcache;
+#[path="num/bigint.rs"]
 pub mod bigint;
+#[path="num/rational.rs"]
+pub mod rational;
+#[path="num/complex.rs"]
+pub mod complex;
 pub mod stats;
 pub mod semver;
+pub mod fileinput;
 
 #[cfg(unicode)]
 mod unicode;

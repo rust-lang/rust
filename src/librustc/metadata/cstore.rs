@@ -17,7 +17,7 @@ use core::prelude::*;
 use metadata::cstore;
 use metadata::decoder;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::vec;
 use std;
 use syntax::ast;
@@ -27,7 +27,7 @@ use syntax::parse::token::ident_interner;
 // local crate numbers (as generated during this session). Each external
 // crate may refer to types in other external crates, and each has their
 // own crate numbers.
-pub type cnum_map = @mut LinearMap<ast::crate_num, ast::crate_num>;
+pub type cnum_map = @mut HashMap<ast::crate_num, ast::crate_num>;
 
 pub struct crate_metadata {
     name: @~str,
@@ -37,7 +37,7 @@ pub struct crate_metadata {
 }
 
 pub struct CStore {
-    priv metas: LinearMap <ast::crate_num, @crate_metadata>,
+    priv metas: HashMap <ast::crate_num, @crate_metadata>,
     priv extern_mod_crate_map: extern_mod_crate_map,
     priv used_crate_files: ~[Path],
     priv used_libraries: ~[~str],
@@ -46,12 +46,12 @@ pub struct CStore {
 }
 
 // Map from node_id's of local extern mod statements to crate numbers
-type extern_mod_crate_map = LinearMap<ast::node_id, ast::crate_num>;
+type extern_mod_crate_map = HashMap<ast::node_id, ast::crate_num>;
 
 pub fn mk_cstore(intr: @ident_interner) -> CStore {
     return CStore {
-        metas: LinearMap::new(),
-        extern_mod_crate_map: LinearMap::new(),
+        metas: HashMap::new(),
+        extern_mod_crate_map: HashMap::new(),
         used_crate_files: ~[],
         used_libraries: ~[],
         used_link_args: ~[],

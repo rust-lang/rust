@@ -53,9 +53,10 @@ use core::prelude::*;
 use middle::resolve;
 use middle::ty;
 use util::common::time;
+use util::ppaux::Repr;
 use util::ppaux;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::result;
 use core::vec;
 use std::list::List;
@@ -129,7 +130,7 @@ pub struct method_map_entry {
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type method_map = @mut LinearMap<ast::node_id, method_map_entry>;
+pub type method_map = @mut HashMap<ast::node_id, method_map_entry>;
 
 // Resolutions for bounds of all parameters, left to right, for a given path.
 pub type vtable_res = @~[vtable_origin];
@@ -153,14 +154,15 @@ pub enum vtable_origin {
     vtable_param(uint, uint)
 }
 
-pub impl vtable_origin {
-    fn to_str(&self, tcx: ty::ctxt) -> ~str {
+impl Repr for vtable_origin {
+    fn repr(&self, tcx: ty::ctxt) -> ~str {
         match *self {
             vtable_static(def_id, ref tys, ref vtable_res) => {
-                fmt!("vtable_static(%?:%s, %?, %?)",
-                     def_id, ty::item_path_str(tcx, def_id),
-                     tys,
-                     vtable_res.map(|o| o.to_str(tcx)))
+                fmt!("vtable_static(%?:%s, %s, %s)",
+                     def_id,
+                     ty::item_path_str(tcx, def_id),
+                     tys.repr(tcx),
+                     vtable_res.repr(tcx))
             }
 
             vtable_param(x, y) => {
@@ -170,7 +172,7 @@ pub impl vtable_origin {
     }
 }
 
-pub type vtable_map = @mut LinearMap<ast::node_id, vtable_res>;
+pub type vtable_map = @mut HashMap<ast::node_id, vtable_res>;
 
 pub struct CrateCtxt {
     // A mapping from method call sites to traits that have that method.
@@ -222,8 +224,8 @@ pub fn lookup_def_ccx(ccx: @mut CrateCtxt, sp: span, id: ast::node_id)
 
 pub fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
     ty::ty_param_bounds_and_ty {
-        bounds: @~[],
-        region_param: None,
+        generics: ty::Generics {type_param_defs: @~[],
+                                region_param: None},
         ty: t
     }
 }
@@ -342,8 +344,8 @@ pub fn check_crate(tcx: ty::ctxt,
     let time_passes = tcx.sess.time_passes();
     let ccx = @mut CrateCtxt {
         trait_map: trait_map,
-        method_map: @mut LinearMap::new(),
-        vtable_map: @mut LinearMap::new(),
+        method_map: @mut HashMap::new(),
+        vtable_map: @mut HashMap::new(),
         coherence_info: @coherence::CoherenceInfo(),
         tcx: tcx
     };

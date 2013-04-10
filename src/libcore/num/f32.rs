@@ -507,7 +507,7 @@ impl num::ToStrRadix for f32 {
 #[inline(always)]
 pub fn from_str(num: &str) -> Option<f32> {
     strconv::from_str_common(num, 10u, true, true, true,
-                             strconv::ExpDec, false)
+                             strconv::ExpDec, false, false)
 }
 
 /**
@@ -540,7 +540,7 @@ pub fn from_str(num: &str) -> Option<f32> {
 #[inline(always)]
 pub fn from_str_hex(num: &str) -> Option<f32> {
     strconv::from_str_common(num, 16u, true, true, true,
-                             strconv::ExpBin, false)
+                             strconv::ExpBin, false, false)
 }
 
 /**
@@ -565,7 +565,7 @@ pub fn from_str_hex(num: &str) -> Option<f32> {
 #[inline(always)]
 pub fn from_str_radix(num: &str, rdx: uint) -> Option<f32> {
     strconv::from_str_common(num, rdx, true, true, false,
-                             strconv::ExpNone, false)
+                             strconv::ExpNone, false, false)
 }
 
 impl from_str::FromStr for f32 {

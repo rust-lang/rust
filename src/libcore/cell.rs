@@ -10,7 +10,7 @@
 
 //! A mutable, nullable memory location
 
-use cast::transmute;
+use cast::transmute_mut;
 use prelude::*;
 
 /*
@@ -20,16 +20,12 @@ Similar to a mutable option type, but friendlier.
 */
 
 pub struct Cell<T> {
-    mut value: Option<T>
+    value: Option<T>
 }
 
 impl<T:cmp::Eq> cmp::Eq for Cell<T> {
     fn eq(&self, other: &Cell<T>) -> bool {
-        unsafe {
-            let frozen_self: &Option<T> = transmute(&mut self.value);
-            let frozen_other: &Option<T> = transmute(&mut other.value);
-            frozen_self == frozen_other
-        }
+        (self.value) == (other.value)
     }
     fn ne(&self, other: &Cell<T>) -> bool { !self.eq(other) }
 }
@@ -46,6 +42,7 @@ pub fn empty_cell<T>() -> Cell<T> {
 pub impl<T> Cell<T> {
     /// Yields the value, failing if the cell is empty.
     fn take(&self) -> T {
+        let mut self = unsafe { transmute_mut(self) };
         if self.is_empty() {
             fail!(~"attempt to take an empty cell");
         }
@@ -57,6 +54,7 @@ pub impl<T> Cell<T> {
 
     /// Returns the value, failing if the cell is full.
     fn put_back(&self, value: T) {
+        let mut self = unsafe { transmute_mut(self) };
         if !self.is_empty() {
             fail!(~"attempt to put a value back into a full cell");
         }
@@ -72,6 +70,14 @@ pub impl<T> Cell<T> {
     fn with_ref<R>(&self, op: &fn(v: &T) -> R) -> R {
         let v = self.take();
         let r = op(&v);
+        self.put_back(v);
+        r
+    }
+
+    // Calls a closure with a mutable reference to the value.
+    fn with_mut_ref<R>(&self, op: &fn(v: &mut T) -> R) -> R {
+        let mut v = self.take();
+        let r = op(&mut v);
         self.put_back(v);
         r
     }
@@ -102,4 +108,22 @@ fn test_take_empty() {
 fn test_put_back_non_empty() {
     let value_cell = Cell(~10);
     value_cell.put_back(~20);
+}
+
+#[test]
+fn test_with_ref() {
+    let good = 6;
+    let c = Cell(~[1, 2, 3, 4, 5, 6]);
+    let l = do c.with_ref() |v| { v.len() };
+    assert!(l == good);
+}
+
+#[test]
+fn test_with_mut_ref() {
+    let good = ~[1, 2, 3];
+    let mut v = ~[1, 2];
+    let c = Cell(v);
+    do c.with_mut_ref() |v| { v.push(3); }
+    let v = c.take();
+    assert!(v == good);
 }

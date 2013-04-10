@@ -176,16 +176,12 @@ pub fn now() -> Tm {
 
 /// Parses the time from the string according to the format string.
 pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
-    // unsafe only because do_strptime is annoying to make pure
-    // (it does IO with a str_reader)
-    unsafe {do_strptime(s, format)}
+    do_strptime(s, format)
 }
 
 /// Formats the time according to the format string.
 pub fn strftime(format: &str, tm: &Tm) -> ~str {
-    // unsafe only because do_strftime is annoying to make pure
-    // (it does IO with a str_reader)
-    unsafe { do_strftime(format, tm) }
+    do_strftime(format, tm)
 }
 
 pub impl Tm {

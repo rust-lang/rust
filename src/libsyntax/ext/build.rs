@@ -337,6 +337,17 @@ pub fn mk_ty_path_global(cx: @ext_ctxt,
     let ty = @ast::Ty { id: cx.next_id(), node: ty, span: span };
     ty
 }
+pub fn mk_trait_ref_global(cx: @ext_ctxt,
+                           span: span,
+                           +idents: ~[ ast::ident ])
+    -> @ast::trait_ref
+{
+    let path = build::mk_raw_path_global(span, idents);
+    @ast::trait_ref {
+        path: path,
+        ref_id: cx.next_id()
+    }
+}
 pub fn mk_simple_ty_path(cx: @ext_ctxt,
                          span: span,
                          ident: ast::ident)

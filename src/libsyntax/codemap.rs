@@ -252,15 +252,13 @@ pub impl FileMap {
 
     // get a line from the list of pre-computed line-beginnings
     pub fn get_line(&self, line: int) -> ~str {
-        unsafe {
-            let begin: BytePos = self.lines[line] - self.start_pos;
-            let begin = begin.to_uint();
-            let end = match str::find_char_from(*self.src, '\n', begin) {
-                Some(e) => e,
-                None => str::len(*self.src)
-            };
-            str::slice(*self.src, begin, end).to_owned()
-        }
+        let begin: BytePos = self.lines[line] - self.start_pos;
+        let begin = begin.to_uint();
+        let end = match str::find_char_from(*self.src, '\n', begin) {
+            Some(e) => e,
+            None => str::len(*self.src)
+        };
+        str::slice(*self.src, begin, end).to_owned()
     }
 
     pub fn record_multibyte_char(&self, pos: BytePos, bytes: uint) {

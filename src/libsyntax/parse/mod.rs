@@ -45,10 +45,14 @@ pub mod classify;
 /// Reporting obsolete syntax
 pub mod obsolete;
 
+// info about a parsing session.
+// This structure and the reader both have
+// an interner associated with them. If they're
+// not the same, bad things can happen.
 pub struct ParseSess {
-    cm: @codemap::CodeMap,
+    cm: @codemap::CodeMap, // better be the same as the one in the reader!
     next_id: node_id,
-    span_diagnostic: @span_handler,
+    span_diagnostic: @span_handler, // better be the same as the one in the reader!
     interner: @ident_interner,
 }
 
@@ -89,6 +93,19 @@ pub fn parse_crate_from_file(
     p.parse_crate_mod(/*bad*/ copy cfg)
     // why is there no p.abort_if_errors here?
 }
+
+pub fn parse_crate_from_file_using_tts(
+    input: &Path,
+    cfg: ast::crate_cfg,
+    sess: @mut ParseSess
+) -> @ast::crate {
+    let p = new_parser_from_file(sess, /*bad*/ copy cfg, input);
+    let tts = p.parse_all_token_trees();
+    new_parser_from_tts(sess,cfg,tts).parse_crate_mod(/*bad*/ copy cfg)
+    // why is there no p.abort_if_errors here?
+}
+
+
 
 pub fn parse_crate_from_source_str(
     name: ~str,
@@ -313,6 +330,7 @@ mod test {
     use std;
     use core::io;
     use core::option::None;
+    use ast;
 
     #[test] fn to_json_str<E : Encodable<std::json::Encoder>>(val: @E) -> ~str {
         do io::with_str_writer |writer| {
@@ -320,10 +338,38 @@ mod test {
         }
     }
 
-    #[test] fn alltts () {
+    fn string_to_crate (source_str : @~str) -> @ast::crate {
+        parse_crate_from_source_str(
+            ~"bogofile",
+            source_str,
+            ~[],
+            new_parse_sess(None))
+    }
+
+    fn string_to_tt_to_crate (source_str : @~str) -> @ast::crate {
         let tts = parse_tts_from_source_str(
             ~"bogofile",
-            @~"fn foo (x : int) { x; }",
+           source_str,
+           ~[],
+           new_parse_sess(None));
+        new_parser_from_tts(new_parse_sess(None),~[],tts)
+            .parse_crate_mod(~[])
+    }
+
+    // make sure that parsing from TTs produces the same result
+    // as parsing from strings
+    #[test] fn tts_produce_the_same_result () {
+        let source_str = @~"fn foo (x : int) { x; }";
+        assert_eq!(string_to_tt_to_crate(source_str),
+                     string_to_crate(source_str));
+    }
+
+    // check the contents of the tt manually:
+    #[test] fn alltts () {
+        let source_str = @~"fn foo (x : int) { x; }";
+        let tts = parse_tts_from_source_str(
+            ~"bogofile",
+            source_str,
             ~[],
             new_parse_sess(None));
         assert_eq!(

@@ -119,6 +119,18 @@ pub fn parse_ty_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
     parse_ty(st, conv)
 }
 
+pub fn parse_bare_fn_ty_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
+                             conv: conv_did) -> ty::BareFnTy {
+    let st = parse_state_from_data(data, crate_num, pos, tcx);
+    parse_bare_fn_ty(st, conv)
+}
+
+pub fn parse_trait_ref_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
+                            conv: conv_did) -> ty::TraitRef {
+    let st = parse_state_from_data(data, crate_num, pos, tcx);
+    parse_trait_ref(st, conv)
+}
+
 pub fn parse_arg_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
                       conv: conv_did) -> ty::arg {
     let st = parse_state_from_data(data, crate_num, pos, tcx);
@@ -177,7 +189,6 @@ fn parse_trait_store(st: @mut PState) -> ty::TraitStore {
         '~' => ty::UniqTraitStore,
         '@' => ty::BoxTraitStore,
         '&' => ty::RegionTraitStore(parse_region(st)),
-        '.' => ty::BareTraitStore,
         c => st.tcx.sess.bug(fmt!("parse_trait_store(): bad input '%c'", c))
     }
 }
@@ -257,6 +268,12 @@ fn parse_str(st: @mut PState, term: char) -> ~str {
     }
     next(st);
     return result;
+}
+
+fn parse_trait_ref(st: @mut PState, conv: conv_did) -> ty::TraitRef {
+    let def = parse_def(st, NominalType, conv);
+    let substs = parse_substs(st, conv);
+    ty::TraitRef {def_id: def, substs: substs}
 }
 
 fn parse_ty(st: @mut PState, conv: conv_did) -> ty::t {
@@ -530,11 +547,17 @@ pub fn parse_def_id(buf: &[u8]) -> ast::def_id {
     ast::def_id { crate: crate_num, node: def_num }
 }
 
-pub fn parse_bounds_data(data: @~[u8], start: uint,
-                         crate_num: int, tcx: ty::ctxt, conv: conv_did)
-                      -> @~[ty::param_bound] {
+pub fn parse_type_param_def_data(data: @~[u8], start: uint,
+                                 crate_num: int, tcx: ty::ctxt,
+                                 conv: conv_did) -> ty::TypeParameterDef
+{
     let st = parse_state_from_data(data, crate_num, start, tcx);
-    parse_bounds(st, conv)
+    parse_type_param_def(st, conv)
+}
+
+fn parse_type_param_def(st: @mut PState, conv: conv_did) -> ty::TypeParameterDef {
+    ty::TypeParameterDef {def_id: parse_def(st, NominalType, conv),
+                          bounds: parse_bounds(st, conv)}
 }
 
 fn parse_bounds(st: @mut PState, conv: conv_did) -> @~[ty::param_bound] {
@@ -545,7 +568,7 @@ fn parse_bounds(st: @mut PState, conv: conv_did) -> @~[ty::param_bound] {
           'C' => ty::bound_copy,
           'K' => ty::bound_const,
           'O' => ty::bound_durable,
-          'I' => ty::bound_trait(parse_ty(st, conv)),
+          'I' => ty::bound_trait(@parse_trait_ref(st, conv)),
           '.' => break,
           _ => fail!(~"parse_bounds: bad bounds")
         });

@@ -23,7 +23,7 @@ use print::pprust;
 use visit;
 
 use core::cmp;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::str;
 use core::vec;
 
@@ -104,7 +104,7 @@ pub enum ast_node {
     node_struct_ctor(@struct_def, @item, @path),
 }
 
-pub type map = @mut LinearMap<node_id, ast_node>;
+pub type map = @mut HashMap<node_id, ast_node>;
 
 pub struct Ctx {
     map: map,
@@ -134,7 +134,7 @@ pub fn mk_ast_map_visitor() -> vt {
 
 pub fn map_crate(diag: @span_handler, c: crate) -> map {
     let cx = @mut Ctx {
-        map: @mut LinearMap::new(),
+        map: @mut HashMap::new(),
         path: ~[],
         local_id: 0u,
         diag: diag,

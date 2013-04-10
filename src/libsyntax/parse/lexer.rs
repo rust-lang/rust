@@ -80,7 +80,8 @@ pub fn new_low_level_string_reader(span_diagnostic: @span_handler,
         last_pos: filemap.start_pos,
         col: CharPos(0),
         curr: initial_char,
-        filemap: filemap, interner: itr,
+        filemap: filemap,
+        interner: itr,
         /* dummy values; not read */
         peek_tok: token::EOF,
         peek_span: codemap::dummy_sp()
@@ -150,6 +151,7 @@ impl reader for TtReader {
 }
 
 // EFFECT: advance peek_tok and peek_span to refer to the next token.
+// EFFECT: update the interner, maybe.
 fn string_advance_token(r: @mut StringReader) {
     match (consume_whitespace_and_comments(r)) {
         Some(comment) => {
@@ -173,12 +175,10 @@ fn byte_offset(rdr: @mut StringReader) -> BytePos {
 }
 
 pub fn get_str_from(rdr: @mut StringReader, start: BytePos) -> ~str {
-    unsafe {
-        // I'm pretty skeptical about this subtraction. What if there's a
-        // multi-byte character before the mark?
-        return str::slice(*rdr.src, start.to_uint() - 1u,
-                          byte_offset(rdr).to_uint() - 1u).to_owned();
-    }
+    // I'm pretty skeptical about this subtraction. What if there's a
+    // multi-byte character before the mark?
+    return str::slice(*rdr.src, start.to_uint() - 1u,
+                      byte_offset(rdr).to_uint() - 1u).to_owned();
 }
 
 // EFFECT: advance the StringReader by one character. If a newline is
@@ -440,7 +440,11 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         if str::len(num_str) == 0u {
             rdr.fatal(~"no valid digits found for number");
         }
-        let parsed = u64::from_str_radix(num_str, base as uint).get();
+        let parsed = match u64::from_str_radix(num_str, base as uint) {
+            Some(p) => p,
+            None => rdr.fatal(~"int literal is too large")
+        };
+
         match tp {
           either::Left(t) => return token::LIT_INT(parsed as i64, t),
           either::Right(t) => return token::LIT_UINT(parsed, t)
@@ -501,7 +505,10 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         if str::len(num_str) == 0u {
             rdr.fatal(~"no valid digits found for number");
         }
-        let parsed = u64::from_str_radix(num_str, base as uint).get();
+        let parsed = match u64::from_str_radix(num_str, base as uint) {
+            Some(p) => p,
+            None => rdr.fatal(~"int literal is too large")
+        };
 
         debug!("lexing %s as an unsuffixed integer literal",
                num_str);
@@ -539,6 +546,9 @@ fn ident_continue(c: char) -> bool {
         || (c > 'z' && char::is_XID_continue(c))
 }
 
+// return the next token from the string
+// EFFECT: advances the input past that token
+// EFFECT: updates the interner
 fn next_token_inner(rdr: @mut StringReader) -> token::Token {
     let mut accum_str = ~"";
     let mut c = rdr.curr;

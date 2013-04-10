@@ -27,6 +27,7 @@
 LIBUV_FLAGS_i386 = -m32 -fPIC
 LIBUV_FLAGS_x86_64 = -m64 -fPIC
 LIBUV_FLAGS_arm = -fPIC -DANDROID -std=gnu99
+LIBUV_FLAGS_mips = -fPIC -mips32r2 -msoft-float -mabi=32
 
 # when we're doing a snapshot build, we intentionally degrade as many
 # features in libuv and the runtime as possible, to ease portability.
@@ -180,6 +181,10 @@ else
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
 		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
+		CC="$$(CC_$(1))" \
+		CXX="$$(CXX_$(1))" \
+		AR="$$(AR_$(1))" \
 		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
 		V=$$(VERBOSE)
 endif

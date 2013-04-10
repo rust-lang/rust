@@ -265,7 +265,7 @@ use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::{ValsAndBindings, Root};
 use middle::typeck::isr_alist;
 use util::common::indent;
-use util::ppaux::{bound_region_to_str, ty_to_str};
+use util::ppaux::{bound_region_to_str, ty_to_str, trait_ref_to_str};
 
 use core::cmp::Eq;
 use core::result::{Result, Ok, Err};
@@ -415,6 +415,23 @@ pub fn mk_eqty(cx: @mut InferCtxt,
         do cx.commit {
             let suber = cx.sub(a_is_expected, span);
             eq_tys(&suber, a, b)
+        }
+    }.to_ures()
+}
+
+pub fn mk_sub_trait_refs(cx: @mut InferCtxt,
+                         a_is_expected: bool,
+                         span: span,
+                         a: &ty::TraitRef,
+                         b: &ty::TraitRef)
+    -> ures
+{
+    debug!("mk_sub_trait_refs(%s <: %s)",
+           a.inf_str(cx), b.inf_str(cx));
+    do indent {
+        do cx.commit {
+            let suber = cx.sub(a_is_expected, span);
+            suber.trait_refs(a, b)
         }
     }.to_ures()
 }
@@ -700,10 +717,40 @@ pub impl InferCtxt {
                   self.resolve_type_vars_if_possible(t))
     }
 
+    fn trait_ref_to_str(@mut self, t: &ty::TraitRef) -> ~str {
+        let t = self.resolve_type_vars_in_trait_ref_if_possible(t);
+        trait_ref_to_str(self.tcx, &t)
+    }
+
     fn resolve_type_vars_if_possible(@mut self, typ: ty::t) -> ty::t {
         match resolve_type(self, typ, resolve_nested_tvar | resolve_ivar) {
           result::Ok(new_type) => new_type,
           result::Err(_) => typ
+        }
+    }
+
+    fn resolve_type_vars_in_trait_ref_if_possible(@mut self,
+                                                  trait_ref: &ty::TraitRef)
+        -> ty::TraitRef
+    {
+        // make up a dummy type just to reuse/abuse the resolve machinery
+        let dummy0 = ty::mk_trait(self.tcx,
+                                  trait_ref.def_id,
+                                  copy trait_ref.substs,
+                                  ty::UniqTraitStore);
+        let dummy1 = self.resolve_type_vars_if_possible(dummy0);
+        match ty::get(dummy1).sty {
+            ty::ty_trait(ref def_id, ref substs, _) => {
+                ty::TraitRef {def_id: *def_id,
+                              substs: copy *substs}
+            }
+            _ => {
+                self.tcx.sess.bug(
+                    fmt!("resolve_type_vars_if_possible() yielded %s \
+                          when supplied with %s",
+                         self.ty_to_str(dummy0),
+                         self.ty_to_str(dummy1)));
+            }
         }
     }
 

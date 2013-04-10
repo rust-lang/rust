@@ -462,7 +462,7 @@ pub impl mem_categorization_ctxt {
           ast::def_fn(*) | ast::def_static_method(*) | ast::def_mod(_) |
           ast::def_foreign_mod(_) | ast::def_const(_) |
           ast::def_use(_) | ast::def_variant(*) |
-          ast::def_ty(_) | ast::def_prim_ty(_) |
+          ast::def_trait(_) | ast::def_ty(_) | ast::def_prim_ty(_) |
           ast::def_ty_param(*) | ast::def_struct(*) |
           ast::def_typaram_binder(*) | ast::def_region(_) |
           ast::def_label(_) | ast::def_self_ty(*) => {

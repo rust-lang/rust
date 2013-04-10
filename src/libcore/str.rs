@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -753,16 +753,18 @@ pub fn each_split_within<'a>(ss: &'a str,
 
 /// Convert a string to lowercase. ASCII only
 pub fn to_lower(s: &str) -> ~str {
-    map(s,
-        |c| unsafe{(libc::tolower(c as libc::c_char)) as char}
-    )
+    do map(s) |c| {
+        assert!(char::is_ascii(c));
+        (unsafe{libc::tolower(c as libc::c_char)}) as char
+    }
 }
 
 /// Convert a string to uppercase. ASCII only
 pub fn to_upper(s: &str) -> ~str {
-    map(s,
-        |c| unsafe{(libc::toupper(c as libc::c_char)) as char}
-    )
+    do map(s) |c| {
+        assert!(char::is_ascii(c));
+        (unsafe{libc::toupper(c as libc::c_char)}) as char
+    }
 }
 
 /**
@@ -1020,11 +1022,9 @@ pub fn any(ss: &str, pred: &fn(char) -> bool) -> bool {
 /// Apply a function to each character
 pub fn map(ss: &str, ff: &fn(char) -> char) -> ~str {
     let mut result = ~"";
-    unsafe {
-        reserve(&mut result, len(ss));
-        for ss.each_char |cc| {
-            str::push_char(&mut result, ff(cc));
-        }
+    reserve(&mut result, len(ss));
+    for ss.each_char |cc| {
+        str::push_char(&mut result, ff(cc));
     }
     result
 }
@@ -1660,20 +1660,18 @@ pub fn to_utf16(s: &str) -> ~[u16] {
         // Arithmetic with u32 literals is easier on the eyes than chars.
         let mut ch = ch as u32;
 
-        unsafe {
-            if (ch & 0xFFFF_u32) == ch {
-                // The BMP falls through (assuming non-surrogate, as it
-                // should)
-                assert!(ch <= 0xD7FF_u32 || ch >= 0xE000_u32);
-                u.push(ch as u16)
-            } else {
-                // Supplementary planes break into surrogates.
-                assert!(ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32);
-                ch -= 0x1_0000_u32;
-                let w1 = 0xD800_u16 | ((ch >> 10) as u16);
-                let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
-                u.push_all(~[w1, w2])
-            }
+        if (ch & 0xFFFF_u32) == ch {
+            // The BMP falls through (assuming non-surrogate, as it
+            // should)
+            assert!(ch <= 0xD7FF_u32 || ch >= 0xE000_u32);
+            u.push(ch as u16)
+        } else {
+            // Supplementary planes break into surrogates.
+            assert!(ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32);
+            ch -= 0x1_0000_u32;
+            let w1 = 0xD800_u16 | ((ch >> 10) as u16);
+            let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
+            u.push_all(~[w1, w2])
         }
     }
     u
@@ -1705,16 +1703,14 @@ pub fn utf16_chars(v: &[u16], f: &fn(char)) {
 
 pub fn from_utf16(v: &[u16]) -> ~str {
     let mut buf = ~"";
-    unsafe {
-        reserve(&mut buf, vec::len(v));
-        utf16_chars(v, |ch| push_char(&mut buf, ch));
-    }
+    reserve(&mut buf, vec::len(v));
+    utf16_chars(v, |ch| push_char(&mut buf, ch));
     buf
 }
 
 pub fn with_capacity(capacity: uint) -> ~str {
     let mut buf = ~"";
-    unsafe { reserve(&mut buf, capacity); }
+    reserve(&mut buf, capacity);
     buf
 }
 
@@ -2105,11 +2101,9 @@ pub fn capacity(s: &const ~str) -> uint {
 /// Escape each char in `s` with char::escape_default.
 pub fn escape_default(s: &str) -> ~str {
     let mut out: ~str = ~"";
-    unsafe {
-        reserve_at_least(&mut out, str::len(s));
-        for s.each_char |c| {
-            push_str(&mut out, char::escape_default(c));
-        }
+    reserve_at_least(&mut out, str::len(s));
+    for s.each_char |c| {
+        push_str(&mut out, char::escape_default(c));
     }
     out
 }
@@ -2117,11 +2111,9 @@ pub fn escape_default(s: &str) -> ~str {
 /// Escape each char in `s` with char::escape_unicode.
 pub fn escape_unicode(s: &str) -> ~str {
     let mut out: ~str = ~"";
-    unsafe {
-        reserve_at_least(&mut out, str::len(s));
-        for s.each_char |c| {
-            push_str(&mut out, char::escape_unicode(c));
-        }
+    reserve_at_least(&mut out, str::len(s));
+    for s.each_char |c| {
+        push_str(&mut out, char::escape_unicode(c));
     }
     out
 }
@@ -2274,8 +2266,8 @@ pub mod raw {
 
     /// Sets the length of the string and adds the null terminator
     pub unsafe fn set_len(v: &mut ~str, new_len: uint) {
-        let v: **vec::raw::VecRepr = cast::transmute(v);
-        let repr: *vec::raw::VecRepr = *v;
+        let v: **mut vec::raw::VecRepr = cast::transmute(v);
+        let repr: *mut vec::raw::VecRepr = *v;
         (*repr).unboxed.fill = new_len + 1u;
         let null = ptr::mut_offset(cast::transmute(&((*repr).unboxed.data)),
                                    new_len);
@@ -2994,12 +2986,11 @@ mod tests {
 
     #[test]
     fn test_to_lower() {
-        unsafe {
-            assert!(~"" == map(~"",
-                |c| libc::tolower(c as c_char) as char));
-            assert!(~"ymca" == map(~"YMCA",
-                |c| libc::tolower(c as c_char) as char));
-        }
+        // libc::tolower, and hence str::to_lower
+        // are culturally insensitive: they only work for ASCII
+        // (see Issue #1347)
+        assert!(~"" == to_lower(""));
+        assert!(~"ymca" == to_lower("YMCA"));
     }
 
     #[test]
@@ -3480,12 +3471,8 @@ mod tests {
 
     #[test]
     fn test_map() {
-        unsafe {
-            assert!(~"" == map(~"", |c|
-                libc::toupper(c as c_char) as char));
-            assert!(~"YMCA" == map(~"ymca",
-                                  |c| libc::toupper(c as c_char) as char));
-        }
+        assert!(~"" == map(~"", |c| unsafe {libc::toupper(c as c_char)} as char));
+        assert!(~"YMCA" == map(~"ymca", |c| unsafe {libc::toupper(c as c_char)} as char));
     }
 
     #[test]
@@ -3499,11 +3486,11 @@ mod tests {
 
     #[test]
     fn test_any() {
-        assert!(false  == any(~"", char::is_uppercase));
+        assert!(false == any(~"", char::is_uppercase));
         assert!(false == any(~"ymca", char::is_uppercase));
         assert!(true  == any(~"YMCA", char::is_uppercase));
-        assert!(true == any(~"yMCA", char::is_uppercase));
-        assert!(true == any(~"Ymcy", char::is_uppercase));
+        assert!(true  == any(~"yMCA", char::is_uppercase));
+        assert!(true  == any(~"Ymcy", char::is_uppercase));
     }
 
     #[test]

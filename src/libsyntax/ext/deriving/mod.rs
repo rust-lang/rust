@@ -177,9 +177,9 @@ pub fn create_derived_impl(cx: @ext_ctxt,
 
     // Create the type parameters.
     let impl_ty_params = generics.ty_params.map(|ty_param| {
-        let bound = build::mk_ty_path_global(cx,
-                                             span,
-                                             trait_path.map(|x| *x));
+        let bound = build::mk_trait_ref_global(cx,
+                                               span,
+                                               trait_path.map(|x| *x));
         let bounds = @opt_vec::with(TraitTyParamBound(bound));
         build::mk_ty_param(cx, ty_param.ident, bounds)
     });

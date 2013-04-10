@@ -228,10 +228,8 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
         deccum /= radix_gen;
         deccum = deccum.round_to_zero();
 
-        unsafe { // FIXME: Pureness workaround (#4568)
-            buf.push(char::from_digit(current_digit.to_int() as uint, radix)
-                 .unwrap() as u8);
-        }
+        buf.push(char::from_digit(current_digit.to_int() as uint, radix)
+             .unwrap() as u8);
 
         // No more digits to calculate for the non-fractional part -> break
         if deccum == _0 { break; }
@@ -247,21 +245,15 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
     // Decide what sign to put in front
     match sign {
         SignNeg | SignAll if neg => {
-            unsafe { // FIXME: Pureness workaround (#4568)
-                buf.push('-' as u8);
-            }
+            buf.push('-' as u8);
         }
         SignAll => {
-            unsafe { // FIXME: Pureness workaround (#4568)
-                buf.push('+' as u8);
-            }
+            buf.push('+' as u8);
         }
         _ => ()
     }
 
-    unsafe { // FIXME: Pureness workaround (#4568)
-        vec::reverse(buf);
-    }
+    vec::reverse(buf);
 
     // Remember start of the fractional digits.
     // Points one beyond end of buf if none get generated,
@@ -271,9 +263,7 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
     // Now emit the fractional part, if any
     deccum = num.fractional_part();
     if deccum != _0 || (limit_digits && exact && digit_count > 0) {
-        unsafe { // FIXME: Pureness workaround (#4568)
-            buf.push('.' as u8);
-        }
+        buf.push('.' as u8);
         let mut dig = 0u;
 
         // calculate new digits while
@@ -299,10 +289,8 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
                 current_digit_signed
             };
 
-            unsafe { // FIXME: Pureness workaround (#4568)
-                buf.push(char::from_digit(
-                    current_digit.to_int() as uint, radix).unwrap() as u8);
-            }
+            buf.push(char::from_digit(
+                current_digit.to_int() as uint, radix).unwrap() as u8);
 
             // Decrease the deccumulator one fractional digit at a time
             deccum = deccum.fractional_part();
@@ -320,33 +308,31 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
                 char::from_digit(val, radix).unwrap() as u8
             };
 
-            unsafe { // FIXME: Pureness workaround (#4568)
-                let extra_digit = ascii2value(buf.pop());
-                if extra_digit >= radix / 2 { // -> need to round
-                    let mut i: int = buf.len() as int - 1;
-                    loop {
-                        // If reached left end of number, have to
-                        // insert additional digit:
-                        if i < 0
-                        || buf[i] == '-' as u8
-                        || buf[i] == '+' as u8 {
-                            buf.insert((i + 1) as uint, value2ascii(1));
-                            break;
-                        }
+            let extra_digit = ascii2value(buf.pop());
+            if extra_digit >= radix / 2 { // -> need to round
+                let mut i: int = buf.len() as int - 1;
+                loop {
+                    // If reached left end of number, have to
+                    // insert additional digit:
+                    if i < 0
+                    || buf[i] == '-' as u8
+                    || buf[i] == '+' as u8 {
+                        buf.insert((i + 1) as uint, value2ascii(1));
+                        break;
+                    }
 
-                        // Skip the '.'
-                        if buf[i] == '.' as u8 { i -= 1; loop; }
+                    // Skip the '.'
+                    if buf[i] == '.' as u8 { i -= 1; loop; }
 
-                        // Either increment the digit,
-                        // or set to 0 if max and carry the 1.
-                        let current_digit = ascii2value(buf[i]);
-                        if current_digit < (radix - 1) {
-                            buf[i] = value2ascii(current_digit+1);
-                            break;
-                        } else {
-                            buf[i] = value2ascii(0);
-                            i -= 1;
-                        }
+                    // Either increment the digit,
+                    // or set to 0 if max and carry the 1.
+                    let current_digit = ascii2value(buf[i]);
+                    if current_digit < (radix - 1) {
+                        buf[i] = value2ascii(current_digit+1);
+                        break;
+                    } else {
+                        buf[i] = value2ascii(0);
+                        i -= 1;
                     }
                 }
             }
@@ -429,6 +415,8 @@ priv static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  *                  `FFp128`. The exponent string itself is always base 10.
  *                  Can conflict with `radix`, see Failure.
  * - `empty_zero` - Whether to accept a empty `buf` as a 0 or not.
+ * - `ignore_underscores` - Whether all underscores within the string should
+ *                          be ignored.
  *
  * # Return value
  * Returns `Some(n)` if `buf` parses to a number n without overflowing, and
@@ -443,16 +431,13 @@ priv static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  *   between digit and exponent sign `'p'`.
  * - Fails if `radix` > 18 and `special == true` due to conflict
  *   between digit and lowest first character in `inf` and `NaN`, the `'i'`.
- *
- * # Possible improvements
- * - Could accept option to allow ignoring underscores, allowing for numbers
- *   formated like `FF_AE_FF_FF`.
  */
-pub fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
+pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
                                     Mul<T,T>+Sub<T,T>+Neg<T>+Add<T,T>+
                                     NumStrConv>(
         buf: &[u8], radix: uint, negative: bool, fractional: bool,
-        special: bool, exponent: ExponentFormat, empty_zero: bool
+        special: bool, exponent: ExponentFormat, empty_zero: bool,
+        ignore_underscores: bool
         ) -> Option<T> {
     match exponent {
         ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
@@ -531,12 +516,16 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
                     accum -= cast(digit as int);
                 }
 
-                // Detect overflow by comparing to last value
-                if accum_positive && accum < last_accum { return None; }
-                if !accum_positive && accum > last_accum { return None; }
+                // Detect overflow by comparing to last value, except
+                // if we've not seen any non-zero digits.
+                if last_accum != _0 {
+                    if accum_positive && accum <= last_accum { return None; }
+                    if !accum_positive && accum >= last_accum { return None; }
+                }
                 last_accum = accum;
             }
             None => match c {
+                '_' if ignore_underscores => {}
                 'e' | 'E' | 'p' | 'P' => {
                     exp_found = true;
                     break;                       // start of exponent
@@ -580,6 +569,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
                     last_accum = accum;
                 }
                 None => match c {
+                    '_' if ignore_underscores => {}
                     'e' | 'E' | 'p' | 'P' => {
                         exp_found = true;
                         break;                   // start of exponent
@@ -607,6 +597,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
     if exp_found {
         let c = buf[i] as char;
         let base = match (c, exponent) {
+            // c is never _ so don't need to handle specially
             ('e', ExpDec) | ('E', ExpDec) => 10u,
             ('p', ExpBin) | ('P', ExpBin) => 2u,
             _ => return None // char doesn't fit given exponent format
@@ -615,7 +606,8 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
         // parse remaining bytes as decimal integer,
         // skipping the exponent char
         let exp: Option<int> = from_str_bytes_common(
-            buf.slice(i+1, len), 10, true, false, false, ExpNone, false);
+            buf.slice(i+1, len), 10, true, false, false, ExpNone, false,
+            ignore_underscores);
 
         match exp {
             Some(exp_pow) => {
@@ -637,11 +629,44 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
  * `from_str_bytes_common()`, for details see there.
  */
 #[inline(always)]
-pub fn from_str_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+Mul<T,T>+
+pub fn from_str_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+Mul<T,T>+
                               Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv>(
         buf: &str, radix: uint, negative: bool, fractional: bool,
-        special: bool, exponent: ExponentFormat, empty_zero: bool
+        special: bool, exponent: ExponentFormat, empty_zero: bool,
+        ignore_underscores: bool
         ) -> Option<T> {
     from_str_bytes_common(str::to_bytes(buf), radix, negative,
-                            fractional, special, exponent, empty_zero)
+                          fractional, special, exponent, empty_zero,
+                          ignore_underscores)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use option::*;
+
+    #[test]
+    fn from_str_ignore_underscores() {
+        let s : Option<u8> = from_str_common("__1__", 2, false, false, false,
+                                             ExpNone, false, true);
+        assert_eq!(s, Some(1u8));
+
+        let n : Option<u8> = from_str_common("__1__", 2, false, false, false,
+                                             ExpNone, false, false);
+        assert_eq!(n, None);
+
+        let f : Option<f32> = from_str_common("_1_._1_e_1_", 10, false, true, false,
+                                              ExpDec, false, true);
+        assert_eq!(f, Some(1.1e1f32));
+    }
+
+    #[test]
+    fn from_str_issue5770() {
+        // try to parse 0b1_1111_1111 = 511 as a u8. Caused problems
+        // since 255*2+1 == 255 (mod 256) so the overflow wasn't
+        // detected.
+        let n : Option<u8> = from_str_common("111111111", 2, false, false, false,
+                                             ExpNone, false, false);
+        assert_eq!(n, None);
+    }
 }

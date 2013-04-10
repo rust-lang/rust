@@ -298,7 +298,7 @@ pub fn start_program(prog: &str, args: &[~str]) -> @Program {
     @ProgRes(repr) as @Program
 }
 
-fn read_all(rd: io::Reader) -> ~str {
+fn read_all(rd: @io::Reader) -> ~str {
     let buf = io::with_bytes_writer(|wr| {
         let mut bytes = [0, ..4096];
         while !rd.eof() {

@@ -242,7 +242,7 @@ impl num::ToStrRadix for float {
 #[inline(always)]
 pub fn from_str(num: &str) -> Option<float> {
     strconv::from_str_common(num, 10u, true, true, true,
-                             strconv::ExpDec, false)
+                             strconv::ExpDec, false, false)
 }
 
 /**
@@ -275,7 +275,7 @@ pub fn from_str(num: &str) -> Option<float> {
 #[inline(always)]
 pub fn from_str_hex(num: &str) -> Option<float> {
     strconv::from_str_common(num, 16u, true, true, true,
-                             strconv::ExpBin, false)
+                             strconv::ExpBin, false, false)
 }
 
 /**
@@ -300,7 +300,7 @@ pub fn from_str_hex(num: &str) -> Option<float> {
 #[inline(always)]
 pub fn from_str_radix(num: &str, radix: uint) -> Option<float> {
     strconv::from_str_common(num, radix, true, true, false,
-                             strconv::ExpNone, false)
+                             strconv::ExpNone, false, false)
 }
 
 impl from_str::FromStr for float {

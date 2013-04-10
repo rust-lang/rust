@@ -11,7 +11,7 @@
 // rusti - REPL using the JIT backend
 
 #[link(name = "rusti",
-       vers = "0.6",
+       vers = "0.7-rc",
        uuid = "7fb5bf52-7d45-4fee-8325-5ad3311149fc",
        url = "https://github.com/mozilla/rust/tree/master/src/rusti")];
 
@@ -23,10 +23,10 @@
 #[allow(vecs_implicitly_copyable,
         non_implicitly_copyable_typarams)];
 
-extern mod core(vers = "0.6");
-extern mod std(vers = "0.6");
-extern mod rustc(vers = "0.6");
-extern mod syntax(vers = "0.6");
+extern mod core(vers = "0.7-rc");
+extern mod std(vers = "0.7-rc");
+extern mod rustc(vers = "0.7-rc");
+extern mod syntax(vers = "0.7-rc");
 
 use core::*;
 use core::io::WriterUtil;
@@ -273,7 +273,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 ~":{\\n ..lines.. \\n:}\\n - execute multiline command\n" +
                 ~":load <crate> ... - \
                   loads given crates as dynamic libraries\n" +
-                ~":clear - clear the screen\n" +
+                ~":clear - clear the bindings\n" +
                 ~":exit - exit from the repl\n" +
                 ~":help - show this message");
         }

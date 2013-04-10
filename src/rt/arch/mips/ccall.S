@@ -5,30 +5,39 @@
 
 .text
 
+.align 2
 .globl __morestack
 .hidden __morestack
-.align 2
+.cfi_sections .eh_frame_entry
+.cfi_startproc
 .set nomips16
 .ent __morestack
 __morestack:
         .set noreorder
         .set nomacro
-        move $7, $29
+
+        addiu $29, $29, -8
+        sw $31, 4($29)
+        sw $30, 0($29)
+
+        .cfi_def_cfa_offset 8
+        .cfi_offset 31, -4
+        .cfi_offset 30, -8
+
+        move $30, $29
+        .cfi_def_cfa_register 30
+
         move $29, $6
-
-        sw $7, 0($29)
-        sw $31, -4($29)
-
-        addiu $29, $29, -24
         move $25, $5
         jalr $25
         nop
-        addiu $29, $29, 24
+        move $29, $30
 
-        lw $31, -4($29)
-        lw $7, 0($29)
+        lw $30, 0($29)
+        lw $31, 4($29)
+        addiu $29, $29, 8
 
-        move $29, $7
         jr $31
         nop
 .end __morestack
+.cfi_endproc

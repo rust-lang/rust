@@ -31,7 +31,7 @@ use syntax::ast;
 
 pub struct Reflector {
     visitor_val: ValueRef,
-    visitor_methods: @~[ty::method],
+    visitor_methods: @~[@ty::method],
     final_bcx: block,
     tydesc_ty: TypeRef,
     bcx: block

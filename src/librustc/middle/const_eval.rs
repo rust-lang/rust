@@ -20,7 +20,7 @@ use core::vec;
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
 
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -189,14 +189,14 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
         }
     } else {
         let maps = astencode::Maps {
-            mutbl_map: @mut LinearSet::new(),
-            root_map: @mut LinearMap::new(),
-            last_use_map: @mut LinearMap::new(),
-            method_map: @mut LinearMap::new(),
-            vtable_map: @mut LinearMap::new(),
-            write_guard_map: @mut LinearSet::new(),
-            moves_map: @mut LinearSet::new(),
-            capture_map: @mut LinearMap::new()
+            mutbl_map: @mut HashSet::new(),
+            root_map: @mut HashMap::new(),
+            last_use_map: @mut HashMap::new(),
+            method_map: @mut HashMap::new(),
+            vtable_map: @mut HashMap::new(),
+            write_guard_map: @mut HashSet::new(),
+            moves_map: @mut HashSet::new(),
+            capture_map: @mut HashMap::new()
         };
         match csearch::maybe_get_item_ast(tcx, def_id,
             |a, b, c, d| astencode::decode_inlined_item(a, b, maps, /*bar*/ copy c, d)) {
