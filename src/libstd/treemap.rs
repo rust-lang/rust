@@ -116,17 +116,17 @@ impl<K: TotalOrd, V> Mutable for TreeMap<K, V> {
     }
 }
 
-impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
+impl<'self, K: TotalOrd, V> Map<'self, K, V> for TreeMap<K, V> {
     /// Return true if the map contains a value for the specified key
     fn contains_key(&self, key: &K) -> bool {
         self.find(key).is_some()
     }
 
     /// Visit all keys in order
-    fn each_key(&self, f: &fn(&K) -> bool) { self.each(|&(k, _)| f(k)) }
+    fn each_key(&self, f: &fn(&'self K) -> bool) { self.each(|&(k, _)| f(k)) }
 
     /// Visit all values in order
-    fn each_value(&self, f: &fn(&V) -> bool) {
+    fn each_value(&self, f: &fn(&'self V) -> bool) {
         self.each(|&(_, v)| f(v))
     }
 
@@ -181,12 +181,12 @@ pub impl<K: TotalOrd, V> TreeMap<K, V> {
     fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
     /// Visit all keys in reverse order
-    fn each_key_reverse(&self, f: &fn(&K) -> bool) {
+    fn each_key_reverse(&self, f: &fn(&'self K) -> bool) {
         self.each_reverse(|&(k, _)| f(k))
     }
 
     /// Visit all values in reverse order
-    fn each_value_reverse(&self, f: &fn(&V) -> bool) {
+    fn each_value_reverse(&self, f: &fn(&'self V) -> bool) {
         self.each_reverse(|&(_, v)| f(v))
     }
 
@@ -244,7 +244,7 @@ pub struct TreeSet<T> {
 impl<T: TotalOrd> BaseIter<T> for TreeSet<T> {
     /// Visit all values in order
     #[inline(always)]
-    fn each(&self, f: &fn(&T) -> bool) { self.map.each_key(f) }
+    fn each(&self, f: &fn(&'self T) -> bool) { self.map.each_key(f) }
     #[inline(always)]
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
@@ -252,7 +252,7 @@ impl<T: TotalOrd> BaseIter<T> for TreeSet<T> {
 impl<T: TotalOrd> ReverseIter<T> for TreeSet<T> {
     /// Visit all values in reverse order
     #[inline(always)]
-    fn each_reverse(&self, f: &fn(&T) -> bool) {
+    fn each_reverse(&self, f: &fn(&'self T) -> bool) {
         self.map.each_key_reverse(f)
     }
 }
