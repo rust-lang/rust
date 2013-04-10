@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -106,7 +106,8 @@ fn shim_types(ccx: @CrateContext, id: ast::node_id) -> ShimTypes {
     };
     let llsig = foreign_signature(ccx, &fn_sig);
     let bundle_ty = T_struct(vec::append_one(copy llsig.llarg_tys,
-                                             T_ptr(llsig.llret_ty)));
+                                             T_ptr(llsig.llret_ty)),
+                             false);
     let ret_def =
         !ty::type_is_bot(fn_sig.output) &&
         !ty::type_is_nil(fn_sig.output);

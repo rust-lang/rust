@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -938,7 +938,7 @@ pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
     // The landing pad return type (the type being propagated). Not sure what
     // this represents but it's determined by the personality function and
     // this is what the EH proposal example uses.
-    let llretty = T_struct(~[T_ptr(T_i8()), T_i32()]);
+    let llretty = T_struct(~[T_ptr(T_i8()), T_i32()], false);
     // The exception handling personality function. This is the C++
     // personality function __gxx_personality_v0, wrapped in our naming
     // convention.
@@ -2837,7 +2837,7 @@ pub fn decl_gc_metadata(ccx: @CrateContext, llmod_id: &str) {
 }
 
 pub fn create_module_map(ccx: @CrateContext) -> ValueRef {
-    let elttype = T_struct(~[ccx.int_type, ccx.int_type]);
+    let elttype = T_struct(~[ccx.int_type, ccx.int_type], false);
     let maptype = T_array(elttype, ccx.module_data.len() + 1);
     let map = str::as_c_str(~"_rust_mod_map", |buf| {
         unsafe {
@@ -2877,7 +2877,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     };
     let sym_name = ~"_rust_crate_map_" + mapname;
     let arrtype = T_array(int_type, n_subcrates as uint);
-    let maptype = T_struct(~[T_i32(), T_ptr(T_i8()), int_type, arrtype]);
+    let maptype = T_struct(~[T_i32(), T_ptr(T_i8()), int_type, arrtype], false);
     let map = str::as_c_str(sym_name, |buf| {
         unsafe {
             llvm::LLVMAddGlobal(llmod, maptype, buf)
