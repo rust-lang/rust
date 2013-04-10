@@ -48,8 +48,13 @@ pub trait Encoder {
     fn emit_enum_variant(&self, v_name: &str, v_id: uint, sz: uint, f: &fn());
     fn emit_enum_variant_arg(&self, idx: uint, f: &fn());
 
-    fn emit_struct(&self, name: &str, _len: uint, f: &fn());
+    fn emit_struct(&self, name: &str, len: uint, f: &fn());
+    #[cfg(stage0)]
     fn emit_field(&self, f_name: &str, f_idx: uint, f: &fn());
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn emit_struct_field(&self, f_name: &str, f_idx: uint, f: &fn());
 
     // Specialized types:
     fn emit_option(&self, f: &fn());
@@ -89,8 +94,13 @@ pub trait Decoder {
     fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T;
     fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
-    fn read_struct<T>(&self, name: &str, _len: uint, f: &fn() -> T) -> T;
-    fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T;
+    fn read_struct<T>(&self, s_name: &str, len: uint, f: &fn() -> T) -> T;
+    #[cfg(stage0)]
+    fn read_field<T>(&self, f_name: &str, f_idx: uint, f: &fn() -> T) -> T;
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn read_struct_field<T>(&self, f_name: &str, f_idx: uint, f: &fn() -> T) -> T;
 
     // Specialized types:
     fn read_option<T>(&self, f: &fn(bool) -> T) -> T;
