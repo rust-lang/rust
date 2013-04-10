@@ -1253,6 +1253,14 @@ mod test {
             self.add_to_log(CallToEmitEnumVariantArg (idx)); f();
         }
 
+        fn emit_enum_struct_variant(&self, name: &str, id: uint, cnt: uint, f: &fn()) {
+            self.emit_enum_variant(name, id, cnt, f)
+        }
+
+        fn emit_enum_struct_variant_field(&self, _name: &str, idx: uint, f: &fn()) {
+            self.emit_enum_variant_arg(idx, f)
+        }
+
         fn emit_struct(&self, name: &str, +len: uint, f: &fn()) {
             self.add_to_log(CallToEmitStruct (name.to_str(),len)); f();
         }

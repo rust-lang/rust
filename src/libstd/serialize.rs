@@ -45,8 +45,12 @@ pub trait Encoder {
 
     // Compound types:
     fn emit_enum(&self, name: &str, f: &fn());
-    fn emit_enum_variant(&self, v_name: &str, v_id: uint, sz: uint, f: &fn());
-    fn emit_enum_variant_arg(&self, idx: uint, f: &fn());
+
+    fn emit_enum_variant(&self, v_name: &str, v_id: uint, len: uint, f: &fn());
+    fn emit_enum_variant_arg(&self, a_idx: uint, f: &fn());
+
+    fn emit_enum_struct_variant(&self, v_name: &str, v_id: uint, len: uint, f: &fn());
+    fn emit_enum_struct_variant_field(&self, f_name: &str, f_idx: uint, f: &fn());
 
     fn emit_struct(&self, name: &str, len: uint, f: &fn());
     #[cfg(stage0)]
@@ -97,8 +101,12 @@ pub trait Decoder {
 
     // Compound types:
     fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T;
+
     fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T;
-    fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T;
+    fn read_enum_variant_arg<T>(&self, a_idx: uint, f: &fn() -> T) -> T;
+
+    fn read_enum_struct_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T;
+    fn read_enum_struct_variant_field<T>(&self, &f_name: &str, f_idx: uint, f: &fn() -> T) -> T;
 
     fn read_struct<T>(&self, s_name: &str, len: uint, f: &fn() -> T) -> T;
     #[cfg(stage0)]
