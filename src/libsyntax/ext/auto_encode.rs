@@ -1260,6 +1260,20 @@ mod test {
             self.add_to_log(CallToEmitField (name.to_str(),idx)); f();
         }
 
+        fn emit_tuple(&self, _len: uint, f: &fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_tuple_arg(&self, _idx: uint, f: &fn()) {
+            self.add_unknown_to_log(); f();
+        }
+
+        fn emit_tuple_struct(&self, _name: &str, _len: uint, f: &fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_tuple_struct_arg(&self, _idx: uint, f: &fn()) {
+            self.add_unknown_to_log(); f();
+        }
+
         fn emit_option(&self, f: &fn()) {
             self.add_to_log(CallToEmitOption);
             f();
