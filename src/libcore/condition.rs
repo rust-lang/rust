@@ -28,7 +28,7 @@ pub struct Condition<'self, T, U> {
 }
 
 pub impl<'self, T, U> Condition<'self, T, U> {
-    fn trap(&self, h: &'self fn(T) -> U) -> Trap<'self, T, U> {
+    fn trap(&'self self, h: &'self fn(T) -> U) -> Trap<'self, T, U> {
         unsafe {
             let p : *RustClosure = ::cast::transmute(&h);
             let prev = task::local_data::local_data_get(self.key);

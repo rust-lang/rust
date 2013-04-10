@@ -25,6 +25,7 @@ pub trait Mutable: Container {
     fn clear(&mut self);
 }
 
+#[cfg(stage0)]
 pub trait Map<K, V>: Mutable {
     /// Return true if the map contains a value for the specified key
     fn contains_key(&self, key: &K) -> bool;
@@ -46,6 +47,41 @@ pub trait Map<K, V>: Mutable {
 
     /// Return a mutable reference to the value corresponding to the key
     fn find_mut(&mut self, key: &K) -> Option<&'self mut V>;
+
+    /// Insert a key-value pair into the map. An existing value for a
+    /// key is replaced by the new value. Return true if the key did
+    /// not already exist in the map.
+    fn insert(&mut self, key: K, value: V) -> bool;
+
+    /// Remove a key-value pair from the map. Return true if the key
+    /// was present in the map, otherwise false.
+    fn remove(&mut self, key: &K) -> bool;
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+pub trait Map<K, V>: Mutable {
+    /// Return true if the map contains a value for the specified key
+    fn contains_key(&self, key: &K) -> bool;
+
+    // Visits all keys and values
+    fn each<'a>(&'a self, f: &fn(&K, &'a V) -> bool);
+
+    /// Visit all keys
+    fn each_key(&self, f: &fn(&K) -> bool);
+
+    /// Visit all values
+    fn each_value<'a>(&'a self, f: &fn(&'a V) -> bool);
+
+    /// Iterate over the map and mutate the contained values
+    fn mutate_values(&mut self, f: &fn(&K, &mut V) -> bool);
+
+    /// Return a reference to the value corresponding to the key
+    fn find<'a>(&'a self, key: &K) -> Option<&'a V>;
+
+    /// Return a mutable reference to the value corresponding to the key
+    fn find_mut<'a>(&'a mut self, key: &K) -> Option<&'a mut V>;
 
     /// Insert a key-value pair into the map. An existing value for a
     /// key is replaced by the new value. Return true if the key did
