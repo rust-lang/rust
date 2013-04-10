@@ -698,7 +698,8 @@ pub impl Parser {
             let path = self.parse_path_with_tps(false);
             ty_path(path, self.get_id())
         } else {
-            self.fatal(~"expected type");
+            self.fatal(fmt!("expected type, found token %?",
+                            *self.token));
         };
 
         let sp = mk_sp(lo, self.last_span.hi);
