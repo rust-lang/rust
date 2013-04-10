@@ -265,7 +265,7 @@ pub fn visit_ty<E>(t: @Ty, e: E, v: vt<E>) {
     }
 }
 
-pub fn visit_path<E>(p: @path, e: E, v: vt<E>) {
+pub fn visit_path<E>(p: @Path, e: E, v: vt<E>) {
     for p.types.each |tp| { (v.visit_ty)(*tp, e, v); }
 }
 

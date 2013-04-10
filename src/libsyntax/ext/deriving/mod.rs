@@ -185,7 +185,7 @@ pub fn create_derived_impl(cx: @ext_ctxt,
     });
 
     // Create the reference to the trait.
-    let trait_path = ast::path {
+    let trait_path = ast::Path {
         span: span,
         global: true,
         idents: trait_path.map(|x| *x),

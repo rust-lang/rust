@@ -99,7 +99,7 @@ pub struct pat_ctxt {
     block_region: ty::Region, // Region for the block of the arm
 }
 
-pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
+pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::Path,
                          subpats: &Option<~[@ast::pat]>, expected: ty::t) {
 
     // Typecheck the path.
@@ -234,7 +234,7 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
 /// `etc` is true if the pattern said '...' and false otherwise.
 pub fn check_struct_pat_fields(pcx: pat_ctxt,
                                span: span,
-                               path: @ast::path,
+                               path: @ast::Path,
                                fields: &[ast::field_pat],
                                class_fields: ~[ty::field_ty],
                                class_id: ast::def_id,
@@ -285,7 +285,7 @@ pub fn check_struct_pat_fields(pcx: pat_ctxt,
 }
 
 pub fn check_struct_pat(pcx: pat_ctxt, pat_id: ast::node_id, span: span,
-                        expected: ty::t, path: @ast::path,
+                        expected: ty::t, path: @ast::Path,
                         fields: &[ast::field_pat], etc: bool,
                         class_id: ast::def_id, substitutions: &ty::substs) {
     let fcx = pcx.fcx;
@@ -326,7 +326,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: pat_ctxt,
                                           pat_id: ast::node_id,
                                           span: span,
                                           expected: ty::t,
-                                          path: @ast::path,
+                                          path: @ast::Path,
                                           fields: &[ast::field_pat],
                                           etc: bool,
                                           enum_id: ast::def_id,
