@@ -188,6 +188,9 @@ pub impl Reflector {
               let extra = extra + self.c_mt(mt);
               self.visit(~"evec_" + name, extra)
           }
+          ty::ty_multi(*) => {
+              fail!();
+          }
           ty::ty_box(ref mt) => {
               let extra = self.c_mt(mt);
               self.visit(~"box", extra)

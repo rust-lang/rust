@@ -477,8 +477,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
           }
         }
       }
-      ast::ty_multi(*) => {
-        fail!();
+      ast::ty_multi(t, n) => {
+        ty::mk_multi(tcx, ast_ty_to_ty(self, rscope, t), n)
       }
       ast::ty_infer => {
         // ty_infer should only appear as the type of arguments or return
