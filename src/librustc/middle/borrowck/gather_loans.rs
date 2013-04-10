@@ -29,7 +29,7 @@ use middle::pat_util;
 use middle::ty::{ty_region};
 use middle::ty;
 use util::common::indenter;
-use util::ppaux::{expr_repr, region_to_str};
+use util::ppaux::{Repr, region_to_str};
 
 use core::hashmap::{HashSet, HashMap};
 use core::vec;
@@ -282,7 +282,7 @@ pub impl GatherLoanCtxt {
                              expr: @ast::expr,
                              adjustment: &ty::AutoAdjustment) {
         debug!("guarantee_adjustments(expr=%s, adjustment=%?)",
-               expr_repr(self.tcx(), expr), adjustment);
+               expr.repr(self.tcx()), adjustment);
         let _i = indenter();
 
         match *adjustment {
