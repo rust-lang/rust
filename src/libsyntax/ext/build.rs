@@ -63,8 +63,8 @@ pub fn mk_unary(cx: @ext_ctxt, sp: span, op: ast::unop, e: @ast::expr)
     cx.next_id(); // see ast_util::op_expr_callee_id
     mk_expr(cx, sp, ast::expr_unary(op, e))
 }
-pub fn mk_raw_path(sp: span, +idents: ~[ast::ident]) -> @ast::path {
-    let p = @ast::path { span: sp,
+pub fn mk_raw_path(sp: span, +idents: ~[ast::ident]) -> @ast::Path {
+    let p = @ast::Path { span: sp,
                          global: false,
                          idents: idents,
                          rp: None,
@@ -74,15 +74,15 @@ pub fn mk_raw_path(sp: span, +idents: ~[ast::ident]) -> @ast::path {
 pub fn mk_raw_path_(sp: span,
                     +idents: ~[ast::ident],
                     +types: ~[@ast::Ty])
-                 -> @ast::path {
-    @ast::path { span: sp,
+                 -> @ast::Path {
+    @ast::Path { span: sp,
                  global: false,
                  idents: idents,
                  rp: None,
                  types: types }
 }
-pub fn mk_raw_path_global(sp: span, +idents: ~[ast::ident]) -> @ast::path {
-    @ast::path { span: sp,
+pub fn mk_raw_path_global(sp: span, +idents: ~[ast::ident]) -> @ast::Path {
+    @ast::Path { span: sp,
                  global: true,
                  idents: idents,
                  rp: None,
@@ -295,7 +295,7 @@ pub fn mk_pat_ident_with_binding_mode(cx: @ext_ctxt,
 }
 pub fn mk_pat_enum(cx: @ext_ctxt,
                    span: span,
-                   path: @ast::path,
+                   path: @ast::Path,
                    +subpats: ~[@ast::pat])
                 -> @ast::pat {
     let pat = ast::pat_enum(path, Some(subpats));
@@ -303,7 +303,7 @@ pub fn mk_pat_enum(cx: @ext_ctxt,
 }
 pub fn mk_pat_struct(cx: @ext_ctxt,
                      span: span,
-                     path: @ast::path,
+                     path: @ast::Path,
                      +field_pats: ~[ast::field_pat])
                   -> @ast::pat {
     let pat = ast::pat_struct(path, field_pats, false);

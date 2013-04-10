@@ -224,7 +224,7 @@ priv impl @ext_ctxt {
         &self,
         _span: span,
         ident: ast::ident,
-        path: @ast::path,
+        path: @ast::Path,
         bounds: @OptVec<ast::TyParamBound>
     ) -> ast::TyParam {
         let bound = ast::TraitTyParamBound(@ast::trait_ref {
@@ -248,8 +248,8 @@ priv impl @ext_ctxt {
         }
     }
 
-    fn path(&self, span: span, +strs: ~[ast::ident]) -> @ast::path {
-        @ast::path {
+    fn path(&self, span: span, +strs: ~[ast::ident]) -> @ast::Path {
+        @ast::Path {
             span: span,
             global: false,
             idents: strs,
@@ -258,8 +258,8 @@ priv impl @ext_ctxt {
         }
     }
 
-    fn path_global(&self, span: span, +strs: ~[ast::ident]) -> @ast::path {
-        @ast::path {
+    fn path_global(&self, span: span, +strs: ~[ast::ident]) -> @ast::Path {
+        @ast::Path {
             span: span,
             global: true,
             idents: strs,
@@ -273,8 +273,8 @@ priv impl @ext_ctxt {
         span: span,
         +strs: ~[ast::ident],
         +tps: ~[@ast::Ty]
-    ) -> @ast::path {
-        @ast::path {
+    ) -> @ast::Path {
+        @ast::Path {
             span: span,
             global: false,
             idents: strs,
@@ -288,8 +288,8 @@ priv impl @ext_ctxt {
         span: span,
         +strs: ~[ast::ident],
         +tps: ~[@ast::Ty]
-    ) -> @ast::path {
-        @ast::path {
+    ) -> @ast::Path {
+        @ast::Path {
             span: span,
             global: true,
             idents: strs,
@@ -439,7 +439,7 @@ fn mk_impl(
     span: span,
     ident: ast::ident,
     ty_param: ast::TyParam,
-    path: @ast::path,
+    path: @ast::Path,
     generics: &ast::Generics,
     f: &fn(@ast::Ty) -> @ast::method
 ) -> @ast::item {

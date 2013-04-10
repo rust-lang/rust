@@ -206,8 +206,12 @@ pub struct FileLines
     lines: ~[uint]
 }
 
+// represents the origin of a file:
 pub enum FileSubstr {
+    // indicates that this is a normal standalone file:
     pub FssNone,
+    // indicates that this "file" is actually a substring
+    // of another file that appears earlier in the codemap
     pub FssInternal(span),
 }
 
