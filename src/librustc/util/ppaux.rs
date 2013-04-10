@@ -750,6 +750,12 @@ impl Repr for ty::TraitStore {
     }
 }
 
+impl Repr for ty::vstore {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        vstore_to_str(tcx, *self)
+    }
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

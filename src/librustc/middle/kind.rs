@@ -16,7 +16,7 @@ use middle::liveness;
 use middle::pat_util;
 use middle::ty;
 use middle::typeck;
-use util::ppaux::{Repr, ty_to_str, tys_to_str};
+use util::ppaux::{Repr, ty_to_str};
 
 use syntax::ast::*;
 use syntax::attr::attrs_contains_name;
