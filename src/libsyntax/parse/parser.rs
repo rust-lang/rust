@@ -50,7 +50,7 @@ use ast::{sty_box, sty_region, sty_static, sty_uniq, sty_value};
 use ast::{token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok};
 use ast::{tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot, ty_box};
 use ast::{ty_field, ty_fixed_length_vec, ty_closure, ty_bare_fn};
-use ast::{ty_infer, ty_method};
+use ast::{ty_infer, ty_method, ty_multi};
 use ast::{ty_nil, TyParam, TyParamBound, ty_path, ty_ptr, ty_rptr};
 use ast::{ty_tup, ty_u32, ty_uniq, ty_vec, uniq};
 use ast::{unnamed_field, unsafe_blk, unsafe_fn, view_item};
@@ -707,7 +707,22 @@ pub impl Parser {
             || is_ident_or_path(&*self.token) {
             // NAMED TYPE
             let path = self.parse_path_with_tps(false);
-            ty_path(path, self.get_id())
+            let t = ty_path(path, self.get_id());
+            let sp = mk_sp(lo, self.last_span.hi);
+            if self.eat(&token::BINOP(token::CARET)) {
+                match *self.token {
+                    token::LIT_INT_UNSUFFIXED(i) if i > 0 => {
+                        self.bump();
+                        let t = @Ty {id: self.get_id(), node: t, span: sp};
+                        ty_multi(t, i as uint)
+                    }
+                    _ => {
+                        self.fatal(~"expected SIMD vector length")
+                    }
+                }
+            } else {
+                t
+            }
         } else {
             self.fatal(fmt!("expected type, found token %?",
                             *self.token));
