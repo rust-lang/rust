@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -44,6 +44,7 @@ use std::smallintmap::SmallIntMap;
 use syntax::ast::*;
 use syntax::ast_util::{is_local, local_def};
 use syntax::ast_util;
+use syntax::attr;
 use syntax::codemap::span;
 use syntax::codemap;
 use syntax::print::pprust;
@@ -3930,6 +3931,28 @@ pub fn lookup_trait_def(cx: ctxt, did: ast::def_id) -> @ty::TraitDef {
             cx.trait_defs.insert(did, trait_def);
             return trait_def;
         }
+    }
+}
+
+// Determine whether an item is annotated with #[packed] or not
+pub fn lookup_packed(tcx: ctxt,
+                  did: def_id) -> bool {
+    if is_local(did) {
+        match tcx.items.find(&did.node) {
+            Some(
+                &ast_map::node_item(@ast::item {
+                    attrs: ref attrs,
+                    _
+                }, _)) => attr::attrs_contains_name(*attrs, "packed"),
+            _ => tcx.sess.bug(fmt!("lookup_packed: %? is not an item",
+                                   did))
+        }
+    } else {
+        let mut ret = false;
+        do csearch::get_item_attrs(tcx.cstore, did) |meta_items| {
+            ret = attr::contains_name(meta_items, "packed");
+        }
+        ret
     }
 }
 
