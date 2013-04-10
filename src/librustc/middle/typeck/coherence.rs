@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -114,7 +114,7 @@ pub fn type_is_defined_in_local_crate(original_type: t) -> bool {
         match get(t).sty {
             ty_enum(def_id, _) |
             ty_trait(def_id, _, _) |
-            ty_struct(def_id, _) => {
+            ty_struct(def_id, _, _) => {
                 if def_id.crate == ast::local_crate {
                     found_nominal = true;
                 }
@@ -138,7 +138,7 @@ pub fn get_base_type_def_id(inference_context: @mut InferCtxt,
         Some(base_type) => {
             match get(base_type).sty {
                 ty_enum(def_id, _) |
-                ty_struct(def_id, _) |
+                ty_struct(def_id, _, _) |
                 ty_trait(def_id, _, _) => {
                     return Some(def_id);
                 }
@@ -981,7 +981,7 @@ pub impl CoherenceChecker {
 
             let self_type = self.get_self_type_for_implementation(*impl_info);
             match ty::get(self_type.ty).sty {
-                ty::ty_struct(type_def_id, _) => {
+                ty::ty_struct(type_def_id, _, _) => {
                     tcx.destructor_for_type.insert(type_def_id,
                                                    method_def_id);
                     tcx.destructors.insert(method_def_id);
@@ -1014,4 +1014,3 @@ pub fn check_coherence(crate_context: @mut CrateCtxt, crate: @crate) {
     let coherence_checker = @CoherenceChecker(crate_context);
     coherence_checker.check_coherence(crate);
 }
-

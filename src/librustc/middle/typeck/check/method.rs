@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -319,7 +319,7 @@ pub impl<'self> LookupContext<'self> {
                     self.push_inherent_candidates_from_self(
                         self_ty, self_did, &substs);
                 }
-                ty_enum(did, _) | ty_struct(did, _) => {
+                ty_enum(did, _) | ty_struct(did, _, _) => {
                     if self.check_traits == CheckTraitsAndInherentMethods {
                         self.push_inherent_impl_candidates_for_type(did);
                     }

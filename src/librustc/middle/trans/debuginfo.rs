@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -680,7 +680,10 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span)
         ty::ty_trait(_did, ref _substs, ref _vstore) => {
             cx.sess.span_bug(span, ~"debuginfo for trait NYI")
         },
-        ty::ty_struct(did, ref substs) => {
+
+        // The packed-ness is probably broken here. At least it's not
+        // known to be working.
+        ty::ty_struct(did, ref substs, _packed) => {
             let fields = ty::struct_fields(cx.tcx, did, substs);
             create_struct(cx, t, fields, span)
         },

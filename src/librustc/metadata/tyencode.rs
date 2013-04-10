@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -328,12 +328,18 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, +st: ty::sty) {
           enc_sigil(w, p);
       }
       ty::ty_opaque_box => w.write_char('B'),
-      ty::ty_struct(def, ref substs) => {
+      ty::ty_struct(def, ref substs, packed) => {
           debug!("~~~~ %s", ~"a[");
           w.write_str(&"a[");
           let s = (cx.ds)(def);
           debug!("~~~~ %s", s);
           w.write_str(s);
+          debug!("~~~~ %s", ~"|");
+          w.write_char('|');
+          let p = if packed { '1' }
+                  else { '0' };
+          debug!("~~~~ %c", p);
+          w.write_char(p);
           debug!("~~~~ %s", ~"|");
           w.write_char('|');
           enc_substs(w, cx, (*substs));

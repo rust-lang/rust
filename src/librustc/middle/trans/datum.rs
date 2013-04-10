@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -702,7 +702,7 @@ pub impl Datum {
                     }
                 };
             }
-            ty::ty_struct(did, ref substs) => {
+            ty::ty_struct(did, ref substs, _) => {
                 // Check whether this struct is a newtype struct.
                 let fields = ty::struct_fields(ccx.tcx, did, substs);
                 if fields.len() != 1 || fields[0].ident !=
@@ -858,4 +858,3 @@ pub impl DatumBlock {
         self.datum.to_str(self.ccx())
     }
 }
-

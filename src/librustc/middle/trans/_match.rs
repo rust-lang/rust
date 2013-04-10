@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1339,7 +1339,7 @@ pub fn compile_submatch(bcx: block,
         let struct_ty = node_id_type(bcx, pat_id);
         let struct_element_count;
         match ty::get(struct_ty).sty {
-            ty::ty_struct(struct_id, _) => {
+            ty::ty_struct(struct_id, _, _) => {
                 struct_element_count =
                     ty::lookup_struct_fields(tcx, struct_id).len();
             }

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -537,11 +537,11 @@ pub fn super_tys<C:Combine>(
           }
       }
 
-      (ty::ty_struct(a_id, ref a_substs), ty::ty_struct(b_id, ref b_substs))
-      if a_id == b_id => {
+      (ty::ty_struct(a_id, ref a_substs, a_packed), ty::ty_struct(b_id, ref b_substs, b_packed))
+      if a_id == b_id && a_packed == b_packed => {
           let type_def = ty::lookup_item_type(tcx, a_id);
           do self.substs(&type_def.generics, a_substs, b_substs).chain |substs| {
-              Ok(ty::mk_struct(tcx, a_id, substs))
+              Ok(ty::mk_struct(tcx, a_id, substs, a_packed))
           }
       }
 
@@ -658,4 +658,3 @@ pub fn super_trait_refs<C:Combine>(
         })
     }
 }
-

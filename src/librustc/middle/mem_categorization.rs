@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -188,7 +188,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_comp(comp_variant(did)))
         }
 
-        ty::ty_struct(_, _) => {
+        ty::ty_struct(*) => {
             Some(deref_comp(comp_anon_field))
         }
 
@@ -1112,7 +1112,7 @@ pub fn field_mutbl(tcx: ty::ctxt,
                 -> Option<ast::mutability> {
     // Need to refactor so that struct/enum fields can be treated uniformly.
     match ty::get(base_ty).sty {
-      ty::ty_struct(did, _) => {
+      ty::ty_struct(did, _, _) => {
         for ty::lookup_struct_fields(tcx, did).each |fld| {
             if fld.ident == f_name {
                 let m = match fld.mutability {
@@ -1175,4 +1175,3 @@ pub impl categorization {
         }
     }
 }
-

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1123,7 +1123,7 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
                          node_id_opt: Option<ast::node_id>,
                          op: &fn(int, (&[ty::field])) -> R) -> R {
     match ty::get(ty).sty {
-        ty::ty_struct(did, ref substs) => {
+        ty::ty_struct(did, ref substs, _) => {
             op(0, struct_mutable_fields(tcx, did, substs))
         }
 

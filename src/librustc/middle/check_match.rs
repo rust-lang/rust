@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -459,7 +459,7 @@ pub fn ctor_arity(cx: @MatchCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
             None => fail!(~"impossible case")
         }
       }
-      ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
+      ty::ty_struct(cid, _, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
       ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
         match ctor {
           vec(n) => n,
@@ -589,7 +589,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                         // Grab the class data that we care about.
                         let class_fields, class_id;
                         match ty::get(left_ty).sty {
-                            ty::ty_struct(cid, _) => {
+                            ty::ty_struct(cid, _, _) => {
                                 class_id = cid;
                                 class_fields =
                                     ty::lookup_struct_fields(cx.tcx,

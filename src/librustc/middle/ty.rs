@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -518,7 +518,7 @@ pub enum sty {
     ty_bare_fn(BareFnTy),
     ty_closure(ClosureTy),
     ty_trait(def_id, substs, TraitStore),
-    ty_struct(def_id, substs),
+    ty_struct(def_id, substs, bool), // bool is whether this is packed or not
     ty_tup(~[t]),
 
     ty_param(param_ty), // type parameter
@@ -918,7 +918,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       &ty_param(_) => flags |= has_params as uint,
       &ty_infer(_) => flags |= needs_infer as uint,
       &ty_self(_) => flags |= has_self as uint,
-      &ty_enum(_, ref substs) | &ty_struct(_, ref substs) |
+      &ty_enum(_, ref substs) | &ty_struct(_, ref substs, _) |
       &ty_trait(_, ref substs, _) => {
         flags |= sflags(substs);
       }
@@ -1094,9 +1094,11 @@ pub fn mk_trait(cx: ctxt,
     mk_t(cx, ty_trait(did, substs, store))
 }
 
-pub fn mk_struct(cx: ctxt, struct_id: ast::def_id, +substs: substs) -> t {
+pub fn mk_struct(cx: ctxt, struct_id: ast::def_id, +substs: substs,
+                 packed: bool) -> t {
     // take a copy of substs so that we own the vectors inside
-    mk_t(cx, ty_struct(struct_id, substs))
+
+    mk_t(cx, ty_struct(struct_id, substs, packed))
 }
 
 pub fn mk_var(cx: ctxt, v: TyVid) -> t { mk_infer(cx, TyVar(v)) }
@@ -1195,7 +1197,7 @@ pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
       ty_ptr(ref tm) | ty_rptr(_, ref tm) | ty_uniq(ref tm) => {
         maybe_walk_ty(tm.ty, f);
       }
-      ty_enum(_, ref substs) | ty_struct(_, ref substs) |
+      ty_enum(_, ref substs) | ty_struct(_, ref substs, _) |
       ty_trait(_, ref substs, _) => {
         for (*substs).tps.each |subty| { maybe_walk_ty(*subty, f); }
       }
@@ -1271,8 +1273,8 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
         ty_rptr(r, ref tm) => {
             ty_rptr(r, mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
-        ty_struct(did, ref substs) => {
-            ty_struct(did, fold_substs(substs, fldop))
+        ty_struct(did, ref substs, packed) => {
+            ty_struct(did, fold_substs(substs, fldop), packed)
         }
         ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
         ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) | ty_err |
@@ -1341,8 +1343,8 @@ pub fn fold_regions_and_ty(
       ty_enum(def_id, ref substs) => {
         ty::mk_enum(cx, def_id, fold_substs(substs, fldr, fldt))
       }
-      ty_struct(def_id, ref substs) => {
-        ty::mk_struct(cx, def_id, fold_substs(substs, fldr, fldt))
+      ty_struct(def_id, ref substs, packed) => {
+        ty::mk_struct(cx, def_id, fold_substs(substs, fldr, fldt), packed)
       }
       ty_trait(def_id, ref substs, st) => {
         ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), st)
@@ -2006,7 +2008,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 TC_NONE
             }
 
-            ty_struct(did, ref substs) => {
+            ty_struct(did, ref substs, _) => {
                 let flds = struct_fields(cx, did, substs);
                 let flds_tc = flds.foldl(
                     TC_NONE,
@@ -2188,7 +2190,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             n
           }
 
-          ty_struct(did, ref substs) => {
+          ty_struct(did, ref substs, _packed) => {
             let flds = struct_fields(cx, did, substs);
             flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
           }
@@ -2290,11 +2292,11 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             false
           }
 
-          ty_struct(ref did, _) if vec::contains(*seen, did) => {
+          ty_struct(ref did, _, _) if vec::contains(*seen, did) => {
             false
           }
 
-          ty_struct(did, ref substs) => {
+          ty_struct(did, ref substs, _) => {
               seen.push(did);
               let r = vec::any(struct_fields(cx, did, substs),
                                |f| type_requires(cx, seen, r_ty, f.mt.ty));
@@ -2354,7 +2356,7 @@ pub fn type_structurally_contains(cx: ctxt,
         }
         return false;
       }
-      ty_struct(did, ref substs) => {
+      ty_struct(did, ref substs, _) => {
         for lookup_struct_fields(cx, did).each |field| {
             let ft = lookup_field_type(cx, did, field.id, substs);
             if type_structurally_contains(cx, ft, test) { return true; }
@@ -2451,7 +2453,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       }
       ty_param(_) => result = false,
       ty_opaque_closure_ptr(_) => result = true,
-      ty_struct(did, ref substs) => {
+      ty_struct(did, ref substs, _) => {
         result = vec::any(lookup_struct_fields(cx, did), |f| {
             let fty = ty::lookup_item_type(cx, f.id);
             let sty = subst(cx, substs, fty.ty);
@@ -2527,7 +2529,7 @@ pub fn deref_sty(cx: ctxt, sty: &sty, explicit: bool) -> Option<mt> {
         }
       }
 
-      ty_struct(did, ref substs) => {
+      ty_struct(did, ref substs, _) => {
         let fields = struct_fields(cx, did, substs);
         if fields.len() == 1 && fields[0].ident ==
                 syntax::parse::token::special_idents::unnamed_field {
@@ -2717,8 +2719,8 @@ impl to_bytes::IterBytes for sty {
 
           ty_opaque_box => 22u8.iter_bytes(lsb0, f),
 
-          ty_struct(ref did, ref substs) =>
-          to_bytes::iter_bytes_3(&23u8, did, substs, lsb0, f),
+          ty_struct(ref did, ref substs, packed) =>
+          to_bytes::iter_bytes_4(&23u8, did, substs, &packed, lsb0, f),
 
           ty_rptr(ref r, ref mt) =>
           to_bytes::iter_bytes_3(&24u8, r, mt, lsb0, f),
@@ -3390,7 +3392,7 @@ pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_bare_fn(_) => ~"extern fn",
       ty_closure(_) => ~"fn",
       ty_trait(id, _, _) => fmt!("trait %s", item_path_str(cx, id)),
-      ty_struct(id, _) => fmt!("struct %s", item_path_str(cx, id)),
+      ty_struct(id, _, _) => fmt!("struct %s", item_path_str(cx, id)),
       ty_tup(_) => ~"tuple",
       ty_infer(TyVar(_)) => ~"inferred type",
       ty_infer(IntVar(_)) => ~"integral variable",
@@ -3696,7 +3698,7 @@ pub fn impl_trait_refs(cx: ctxt, id: ast::def_id) -> ~[@TraitRef] {
 
 pub fn ty_to_def_id(ty: t) -> Option<ast::def_id> {
     match get(ty).sty {
-      ty_trait(id, _, _) | ty_struct(id, _) | ty_enum(id, _) => Some(id),
+      ty_trait(id, _, _) | ty_struct(id, _, _) | ty_enum(id, _) => Some(id),
       _ => None
     }
 }
@@ -4253,13 +4255,15 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
                     t
             },
 
-        ty_struct(did, ref r) =>
+        ty_struct(did, ref r, packed) =>
             match (*r).self_r {
               Some(_) =>
                 // Ditto.
-                mk_struct(cx, did, substs {self_r: Some(ty::re_static),
-                                           self_ty: None,
-                                           tps: /*bad*/copy (*r).tps}),
+                mk_struct(cx, did,
+                                      substs {self_r: Some(ty::re_static),
+                                              self_ty: None,
+                                              tps: /*bad*/copy (*r).tps},
+                                      packed),
               None =>
                 t
             },

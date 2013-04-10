@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -443,7 +443,7 @@ pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_opaque_closure_ptr(ck) => {
         closure::make_opaque_cbox_free_glue(bcx, ck, v)
       }
-      ty::ty_struct(did, ref substs) => {
+      ty::ty_struct(did, ref substs, _) => {
         // Call the dtor if there is one
         match ty::ty_dtor(bcx.tcx(), did) {
             ty::NoDtor => bcx,
@@ -533,7 +533,7 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_unboxed_vec(_) => {
         tvec::make_drop_glue_unboxed(bcx, v0, t)
       }
-      ty::ty_struct(did, ref substs) => {
+      ty::ty_struct(did, ref substs, _) => {
         let tcx = bcx.tcx();
         match ty::ty_dtor(tcx, did) {
           ty::TraitDtor(dtor) => {

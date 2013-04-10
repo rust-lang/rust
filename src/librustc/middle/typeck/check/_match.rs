@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -147,7 +147,7 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
 
             kind_name = "variant";
         }
-        ty::ty_struct(struct_def_id, ref expected_substs) => {
+        ty::ty_struct(struct_def_id, ref expected_substs, _) => {
             // Lookup the struct ctor def id
             let s_def = lookup_def(pcx.fcx, pat.span, pat.id);
             let s_def_id = ast_util::def_id_of_def(s_def);
@@ -445,7 +445,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         // Grab the class data that we care about.
         let structure = structure_of(fcx, pat.span, expected);
         match structure {
-            ty::ty_struct(cid, ref substs) => {
+            ty::ty_struct(cid, ref substs, _) => {
                 check_struct_pat(pcx, pat.id, pat.span, expected, path,
                                  *fields, etc, cid, substs);
             }
@@ -586,4 +586,3 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
       }
     }
 }
-

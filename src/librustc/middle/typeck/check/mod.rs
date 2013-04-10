@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -123,6 +123,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::local_def;
 use syntax::ast_util;
+use syntax::attr;
 use syntax::codemap::span;
 use syntax::codemap;
 use syntax::opt_vec::OptVec;
@@ -1701,7 +1702,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let (base_t, derefs) = do_autoderef(fcx, expr.span, expr_t);
 
         match structure_of(fcx, expr.span, base_t) {
-            ty::ty_struct(base_id, ref substs) => {
+            ty::ty_struct(base_id, ref substs, _) => {
                 // This is just for fields -- the same code handles
                 // methods in both classes and traits
 
@@ -1848,7 +1849,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         if !error_happened {
             fcx.write_ty(node_id, ty::mk_struct(fcx.ccx.tcx,
-                                class_id, substitutions));
+                                class_id, substitutions, false));
         }
     }
 
@@ -1870,6 +1871,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             match tcx.items.find(&class_id.node) {
                 Some(&ast_map::node_item(@ast::item {
                         node: ast::item_struct(_, ref generics),
+                        attrs: ref attrs,
                         _
                     }, _)) => {
 
@@ -1878,13 +1880,15 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     let self_region =
                         bound_self_region(region_parameterized);
 
+                    let packed = attr::find_packed_attr(*attrs);
+
                     raw_type = ty::mk_struct(tcx, class_id, substs {
                         self_r: self_region,
                         self_ty: None,
                         tps: ty::ty_params_to_tys(
                             tcx,
                             generics)
-                    });
+                    }, packed);
                 }
                 _ => {
                     tcx.sess.span_bug(span,
