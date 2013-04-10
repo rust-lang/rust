@@ -16,6 +16,7 @@ use comm::{GenericChan, GenericPort};
 use prelude::*;
 use task;
 use task::atomically;
+use self::finally::Finally;
 
 #[path = "unstable/at_exit.rs"]
 pub mod at_exit;
@@ -229,25 +230,13 @@ fn LittleLock() -> LittleLock {
 pub impl LittleLock {
     #[inline(always)]
     unsafe fn lock<T>(&self, f: &fn() -> T) -> T {
-        struct Unlock {
-            l: rust_little_lock,
-            drop {
-                unsafe {
-                    rustrt::rust_unlock_little_lock(self.l);
-                }
-            }
-        }
-
-        fn Unlock(l: rust_little_lock) -> Unlock {
-            Unlock {
-                l: l
-            }
-        }
-
         do atomically {
             rustrt::rust_lock_little_lock(self.l);
-            let _r = Unlock(self.l);
-            f()
+            do (|| {
+                f()
+            }).finally {
+                rustrt::rust_unlock_little_lock(self.l);
+            }
         }
     }
 }
