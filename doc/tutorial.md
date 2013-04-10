@@ -498,7 +498,8 @@ matching in order to bind names to the contents of data
 types.
 
 > ***Note:*** The following code makes use of tuples (`(float, float)`) which
-> are explained later. For now you can think of tuples as a list of items.
+> are explained in section 5.3. For now you can think of tuples as a list of
+> items.
 
 ~~~~
 fn angle(vector: (float, float)) -> float {
