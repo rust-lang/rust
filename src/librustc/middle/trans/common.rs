@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -765,7 +765,7 @@ pub fn T_void() -> TypeRef {
 }
 
 pub fn T_nil() -> TypeRef {
-    return T_struct(~[])
+    return T_struct(~[], false)
 }
 
 pub fn T_metadata() -> TypeRef { unsafe { return llvm::LLVMMetadataType(); } }
@@ -848,7 +848,7 @@ pub fn T_fn(inputs: &[TypeRef], output: TypeRef) -> TypeRef {
 }
 
 pub fn T_fn_pair(cx: @CrateContext, tfn: TypeRef) -> TypeRef {
-    return T_struct(~[T_ptr(tfn), T_opaque_cbox_ptr(cx)]);
+    return T_struct(~[T_ptr(tfn), T_opaque_cbox_ptr(cx)], false);
 }
 
 pub fn T_ptr(t: TypeRef) -> TypeRef {
@@ -863,11 +863,11 @@ pub fn T_root(t: TypeRef, addrspace: addrspace) -> TypeRef {
     }
 }
 
-pub fn T_struct(elts: &[TypeRef]) -> TypeRef {
+pub fn T_struct(elts: &[TypeRef], packed: bool) -> TypeRef {
     unsafe {
         return llvm::LLVMStructType(to_ptr(elts),
                                     elts.len() as c_uint,
-                                    False);
+                                    packed as Bool);
     }
 }
 
@@ -878,16 +878,16 @@ pub fn T_named_struct(name: &str) -> TypeRef {
     }
 }
 
-pub fn set_struct_body(t: TypeRef, elts: &[TypeRef]) {
+pub fn set_struct_body(t: TypeRef, elts: &[TypeRef], packed: bool) {
     unsafe {
         llvm::LLVMStructSetBody(t,
                                 to_ptr(elts),
                                 elts.len() as c_uint,
-                                False);
+                                packed as Bool);
     }
 }
 
-pub fn T_empty_struct() -> TypeRef { return T_struct(~[]); }
+pub fn T_empty_struct() -> TypeRef { return T_struct(~[], false); }
 
 // A vtable is, in reality, a vtable pointer followed by zero or more pointers
 // to tydescs and other vtables that it closes over. But the types and number
@@ -913,7 +913,7 @@ pub fn T_task(targ_cfg: @session::config) -> TypeRef {
     let elems =
         ~[t_int, t_int, t_int, t_int,
          t_int, t_int, t_int, t_int];
-    set_struct_body(t, elems);
+    set_struct_body(t, elems, false);
     return t;
 }
 
@@ -956,7 +956,7 @@ pub fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
         ~[int_type, int_type,
           glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty,
           T_ptr(T_i8()), T_ptr(T_i8())];
-    set_struct_body(tydesc, elems);
+    set_struct_body(tydesc, elems, false);
     return tydesc;
 }
 
@@ -969,8 +969,9 @@ pub fn T_array(t: TypeRef, n: uint) -> TypeRef {
 // Interior vector.
 pub fn T_vec2(targ_cfg: @session::config, t: TypeRef) -> TypeRef {
     return T_struct(~[T_int(targ_cfg), // fill
-                  T_int(targ_cfg), // alloc
-                  T_array(t, 0u)]); // elements
+                      T_int(targ_cfg), // alloc
+                      T_array(t, 0u)], // elements
+                    false);
 }
 
 pub fn T_vec(ccx: @CrateContext, t: TypeRef) -> TypeRef {
@@ -1001,11 +1002,11 @@ pub fn T_box_header_fields(cx: @CrateContext) -> ~[TypeRef] {
 }
 
 pub fn T_box_header(cx: @CrateContext) -> TypeRef {
-    return T_struct(T_box_header_fields(cx));
+    return T_struct(T_box_header_fields(cx), false);
 }
 
 pub fn T_box(cx: @CrateContext, t: TypeRef) -> TypeRef {
-    return T_struct(vec::append(T_box_header_fields(cx), ~[t]));
+    return T_struct(vec::append(T_box_header_fields(cx), ~[t]), false);
 }
 
 pub fn T_box_ptr(t: TypeRef) -> TypeRef {
@@ -1023,7 +1024,7 @@ pub fn T_opaque_box_ptr(cx: @CrateContext) -> TypeRef {
 }
 
 pub fn T_unique(cx: @CrateContext, t: TypeRef) -> TypeRef {
-    return T_struct(vec::append(T_box_header_fields(cx), ~[t]));
+    return T_struct(vec::append(T_box_header_fields(cx), ~[t]), false);
 }
 
 pub fn T_unique_ptr(t: TypeRef) -> TypeRef {
@@ -1033,12 +1034,12 @@ pub fn T_unique_ptr(t: TypeRef) -> TypeRef {
 }
 
 pub fn T_port(cx: @CrateContext, _t: TypeRef) -> TypeRef {
-    return T_struct(~[cx.int_type]); // Refcount
+    return T_struct(~[cx.int_type], false); // Refcount
 
 }
 
 pub fn T_chan(cx: @CrateContext, _t: TypeRef) -> TypeRef {
-    return T_struct(~[cx.int_type]); // Refcount
+    return T_struct(~[cx.int_type], false); // Refcount
 
 }
 
@@ -1056,21 +1057,22 @@ pub fn T_enum_discrim(cx: @CrateContext) -> TypeRef {
 }
 
 pub fn T_captured_tydescs(cx: @CrateContext, n: uint) -> TypeRef {
-    return T_struct(vec::from_elem::<TypeRef>(n, T_ptr(cx.tydesc_type)));
+    return T_struct(vec::from_elem::<TypeRef>(n, T_ptr(cx.tydesc_type)), false);
 }
 
 pub fn T_opaque_trait(cx: @CrateContext, store: ty::TraitStore) -> TypeRef {
     match store {
         ty::BoxTraitStore => {
-            T_struct(~[T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)])
+            T_struct(~[T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)], false)
         }
         ty::UniqTraitStore => {
             T_struct(~[T_ptr(cx.tydesc_type),
                        T_unique_ptr(T_unique(cx, T_i8())),
-                       T_ptr(cx.tydesc_type)])
+                       T_ptr(cx.tydesc_type)],
+                     false)
         }
         ty::RegionTraitStore(_) => {
-            T_struct(~[T_ptr(cx.tydesc_type), T_ptr(T_i8())])
+            T_struct(~[T_ptr(cx.tydesc_type), T_ptr(T_i8())], false)
         }
     }
 }

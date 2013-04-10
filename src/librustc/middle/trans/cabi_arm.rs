@@ -12,6 +12,7 @@ use lib::llvm::{llvm, Integer, Pointer, Float, Double, Struct, Array};
 use lib::llvm::struct_tys;
 use lib::llvm::TypeRef;
 use lib::llvm::{Attribute, StructRetAttribute};
+use lib::llvm::True;
 use middle::trans::cabi::{ABIInfo, FnType, LLVMType};
 use middle::trans::common::{T_i8, T_i16, T_i32, T_i64};
 use middle::trans::common::{T_array, T_ptr, T_void};
@@ -39,8 +40,12 @@ fn ty_align(ty: TypeRef) -> uint {
             Float => 4,
             Double => 8,
             Struct => {
-                do vec::foldl(1, struct_tys(ty)) |a, t| {
-                    uint::max(a, ty_align(*t))
+                if llvm::LLVMIsPackedStruct(ty) == True {
+                    1
+                } else {
+                    do vec::foldl(1, struct_tys(ty)) |a, t| {
+                        uint::max(a, ty_align(*t))
+                    }
                 }
             }
             Array => {
@@ -62,10 +67,16 @@ fn ty_size(ty: TypeRef) -> uint {
             Float => 4,
             Double => 8,
             Struct => {
-                let size = do vec::foldl(0, struct_tys(ty)) |s, t| {
-                    align(s, *t) + ty_size(*t)
-                };
-                align(size, ty)
+                if llvm::LLVMIsPackedStruct(ty) == True {
+                    do vec::foldl(0, struct_tys(ty)) |s, t| {
+                        s + ty_size(*t)
+                    }
+                } else {
+                    let size = do vec::foldl(0, struct_tys(ty)) |s, t| {
+                        align(s, *t) + ty_size(*t)
+                    };
+                    align(size, ty)
+                }
             }
             Array => {
                 let len = llvm::LLVMGetArrayLength(ty) as uint;
