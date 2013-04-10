@@ -544,10 +544,6 @@ pub struct DetermineRpCtxt {
     // see long discussion on region_is_relevant().
     anon_implies_rp: bool,
 
-    // true when we are not within an &self method.
-    // see long discussion on region_is_relevant().
-    self_implies_rp: bool,
-
     // encodes the context of the current type; invariant if
     // mutable, covariant otherwise
     ambient_variance: region_variance,
@@ -689,7 +685,7 @@ pub impl DetermineRpCtxt {
                 false
             }
             Some(ref l) if l.ident == special_idents::self_ => {
-                self.self_implies_rp
+                true
             }
             Some(_) => {
                 false
@@ -700,23 +696,18 @@ pub impl DetermineRpCtxt {
     fn with(@mut self,
             item_id: ast::node_id,
             anon_implies_rp: bool,
-            self_implies_rp: bool,
             f: &fn()) {
         let old_item_id = self.item_id;
         let old_anon_implies_rp = self.anon_implies_rp;
-        let old_self_implies_rp = self.self_implies_rp;
         self.item_id = item_id;
         self.anon_implies_rp = anon_implies_rp;
-        self.self_implies_rp = self_implies_rp;
-        debug!("with_item_id(%d, %b, %b)",
+        debug!("with_item_id(%d, %b)",
                item_id,
-               anon_implies_rp,
-               self_implies_rp);
+               anon_implies_rp);
         let _i = ::util::common::indenter();
         f();
         self.item_id = old_item_id;
         self.anon_implies_rp = old_anon_implies_rp;
-        self.self_implies_rp = old_self_implies_rp;
     }
 
     fn with_ambient_variance(@mut self, variance: region_variance, f: &fn()) {
@@ -730,7 +721,7 @@ pub impl DetermineRpCtxt {
 pub fn determine_rp_in_item(item: @ast::item,
                             &&cx: @mut DetermineRpCtxt,
                             visitor: visit::vt<@mut DetermineRpCtxt>) {
-    do cx.with(item.id, true, true) {
+    do cx.with(item.id, true) {
         visit::visit_item(item, cx, visitor);
     }
 }
@@ -742,12 +733,7 @@ pub fn determine_rp_in_fn(fk: &visit::fn_kind,
                           _: ast::node_id,
                           &&cx: @mut DetermineRpCtxt,
                           visitor: visit::vt<@mut DetermineRpCtxt>) {
-    let self_implies_rp = match fk {
-        &visit::fk_method(_, _, m) => !m.self_ty.node.is_borrowed(),
-        _ => true
-    };
-
-    do cx.with(cx.item_id, false, self_implies_rp) {
+    do cx.with(cx.item_id, false) {
         do cx.with_ambient_variance(rv_contravariant) {
             for decl.inputs.each |a| {
                 (visitor.visit_ty)(a.ty, cx, visitor);
@@ -763,7 +749,7 @@ pub fn determine_rp_in_fn(fk: &visit::fn_kind,
 pub fn determine_rp_in_ty_method(ty_m: &ast::ty_method,
                                  &&cx: @mut DetermineRpCtxt,
                                  visitor: visit::vt<@mut DetermineRpCtxt>) {
-    do cx.with(cx.item_id, false, !ty_m.self_ty.node.is_borrowed()) {
+    do cx.with(cx.item_id, false) {
         visit::visit_ty_method(ty_m, cx, visitor);
     }
 }
@@ -868,7 +854,7 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
       ast::ty_bare_fn(@ast::TyBareFn {decl: ref decl, _}) => {
         // fn() binds the & region, so do not consider &T types that
         // appear *inside* a fn() type to affect the enclosing item:
-        do cx.with(cx.item_id, false, true) {
+        do cx.with(cx.item_id, false) {
             // parameters are contravariant
             do cx.with_ambient_variance(rv_contravariant) {
                 for decl.inputs.each |a| {
@@ -929,7 +915,6 @@ pub fn determine_rp_in_crate(sess: Session,
         worklist: ~[],
         item_id: 0,
         anon_implies_rp: false,
-        self_implies_rp: true,
         ambient_variance: rv_covariant
     };
 

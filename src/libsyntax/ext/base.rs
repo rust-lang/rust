@@ -454,7 +454,20 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 
     // ugh: can't get this to compile with mut because of the
     // lack of flow sensitivity.
+    #[cfg(stage0)]
     fn get_map(&self) -> &'self HashMap<K,@V> {
+        match *self {
+            BaseMapChain (~ref map) => map,
+            ConsMapChain (~ref map,_) => map
+        }
+    }
+
+    // ugh: can't get this to compile with mut because of the
+    // lack of flow sensitivity.
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn get_map<'a>(&'a self) -> &'a HashMap<K,@V> {
         match *self {
             BaseMapChain (~ref map) => map,
             ConsMapChain (~ref map,_) => map

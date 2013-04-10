@@ -24,8 +24,7 @@ use middle::subst::Subst;
 use middle::typeck;
 use middle;
 use util::ppaux::{note_and_explain_region, bound_region_to_str};
-use util::ppaux::{region_to_str, vstore_to_str};
-use util::ppaux::{trait_store_to_str, ty_to_str, tys_to_str};
+use util::ppaux::{trait_store_to_str, ty_to_str, vstore_to_str};
 use util::ppaux::Repr;
 use util::common::{indenter};
 

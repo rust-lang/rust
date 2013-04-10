@@ -13,7 +13,7 @@
 use core::prelude::*;
 
 use middle::ty;
-use middle::typeck::check::SelfInfo;
+
 use middle::typeck::isr_alist;
 use util::common::indenter;
 use util::ppaux::region_to_str;
@@ -26,29 +26,24 @@ use std::list::Cons;
 pub fn replace_bound_regions_in_fn_sig(
     tcx: ty::ctxt,
     isr: isr_alist,
-    self_info: Option<SelfInfo>,
+    opt_self_ty: Option<ty::t>,
     fn_sig: &ty::FnSig,
     mapf: &fn(ty::bound_region) -> ty::Region)
-    -> (isr_alist, Option<SelfInfo>, ty::FnSig)
+    -> (isr_alist, Option<ty::t>, ty::FnSig)
 {
-    // Take self_info apart; the self_ty part is the only one we want
-    // to update here.
-    let self_ty = self_info.map(|s| s.self_ty);
-    let rebuild_self_info = |t| self_info.map(|s| SelfInfo{self_ty: t, ..*s});
-
     let mut all_tys = ty::tys_in_fn_sig(fn_sig);
 
-    for self_info.each |self_info| {
-        all_tys.push(self_info.self_ty);
+    for opt_self_ty.each |&self_ty| {
+        all_tys.push(self_ty);
     }
 
-    for self_ty.each |t| { all_tys.push(*t) }
+    for opt_self_ty.each |&t| { all_tys.push(t) }
 
-    debug!("replace_bound_regions_in_fn_sig(self_info.self_ty=%?, fn_sig=%s, \
+    debug!("replace_bound_regions_in_fn_sig(self_ty=%?, fn_sig=%s, \
             all_tys=%?)",
-           self_ty.map(|t| ppaux::ty_to_str(tcx, *t)),
+           opt_self_ty.map(|&t| ppaux::ty_to_str(tcx, t)),
            ppaux::fn_sig_to_str(tcx, fn_sig),
-           all_tys.map(|t| ppaux::ty_to_str(tcx, *t)));
+           all_tys.map(|&t| ppaux::ty_to_str(tcx, t)));
     let _i = indenter();
 
     let isr = do create_bound_region_mapping(tcx, isr, all_tys) |br| {
@@ -58,20 +53,15 @@ pub fn replace_bound_regions_in_fn_sig(
     let new_fn_sig = ty::fold_sig(fn_sig, |t| {
         replace_bound_regions(tcx, isr, t)
     });
-    let t_self = self_ty.map(|t| replace_bound_regions(tcx, isr, *t));
+    let new_self_ty = opt_self_ty.map(|&t| replace_bound_regions(tcx, isr, t));
 
-    debug!("result of replace_bound_regions_in_fn_sig: self_info.self_ty=%?, \
-                fn_sig=%s",
-           t_self.map(|t| ppaux::ty_to_str(tcx, *t)),
+    debug!("result of replace_bound_regions_in_fn_sig: \
+            new_self_ty=%?, \
+            fn_sig=%s",
+           new_self_ty.map(|&t| ppaux::ty_to_str(tcx, t)),
            ppaux::fn_sig_to_str(tcx, &new_fn_sig));
 
-    // Glue updated self_ty back together with its original def_id.
-    let new_self_info: Option<SelfInfo> = match t_self {
-      None    => None,
-      Some(t) => rebuild_self_info(t)
-    };
-
-    return (isr, new_self_info, new_fn_sig);
+    return (isr, new_self_ty, new_fn_sig);
 
     // Takes `isr`, a (possibly empty) mapping from in-scope region
     // names ("isr"s) to their corresponding regions; `tys`, a list of

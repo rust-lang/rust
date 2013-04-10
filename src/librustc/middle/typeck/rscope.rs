@@ -180,12 +180,11 @@ impl region_scope for MethodRscope {
         })
     }
     fn self_region(&self, _span: span) -> Result<ty::Region, RegionError> {
-        assert!(self.variance.is_some() || self.self_ty.is_borrowed());
+        assert!(self.variance.is_some());
         match self.variance {
             None => {}  // must be borrowed self, so this is OK
             Some(_) => {
-                if !self.self_ty.is_borrowed() &&
-                        !self.region_param_names.has_self() {
+                if !self.region_param_names.has_self() {
                     return Err(RegionError {
                         msg: ~"the `self` lifetime must be declared",
                         replacement: ty::re_bound(ty::br_self)
