@@ -41,7 +41,7 @@ pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
         id: cx.next_id(),
         callee_id: cx.next_id(),
         node: ast::expr_path(
-            @ast::path {
+            @ast::Path {
                  span: sp,
                  global: false,
                  idents: ~[res],

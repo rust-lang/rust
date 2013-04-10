@@ -113,7 +113,7 @@ pub enum nonterminal {
     nt_expr(@ast::expr),
     nt_ty(  @ast::Ty),
     nt_ident(ast::ident, bool),
-    nt_path(@ast::path),
+    nt_path(@ast::Path),
     nt_tt(  @ast::token_tree), //needs @ed to break a circularity
     nt_matchers(~[ast::matcher])
 }
