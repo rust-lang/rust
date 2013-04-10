@@ -105,6 +105,7 @@
 
 use core::prelude::*;
 
+use middle::lint::{unused_variable, dead_assignment};
 use middle::pat_util;
 use middle::ty;
 use middle::typeck;
@@ -118,6 +119,7 @@ use core::ptr;
 use core::to_str;
 use core::uint;
 use core::vec;
+use core::util::with;
 use syntax::ast::*;
 use syntax::codemap::span;
 use syntax::parse::token::special_idents;
@@ -169,6 +171,7 @@ pub fn check_crate(tcx: ty::ctxt,
         visit_local: visit_local,
         visit_expr: visit_expr,
         visit_arm: visit_arm,
+        visit_item: visit_item,
         .. *visit::default_visitor()
     });
 
@@ -177,7 +180,8 @@ pub fn check_crate(tcx: ty::ctxt,
                                    method_map,
                                    variable_moves_map,
                                    capture_map,
-                                   last_use_map);
+                                   last_use_map,
+                                   0);
     visit::visit_crate(*crate, initial_maps, visitor);
     tcx.sess.abort_if_errors();
     return last_use_map;
@@ -269,13 +273,16 @@ struct IrMaps {
     capture_info_map: HashMap<node_id, @~[CaptureInfo]>,
     var_kinds: ~[VarKind],
     lnks: ~[LiveNodeKind],
+
+    cur_item: node_id,
 }
 
 fn IrMaps(tcx: ty::ctxt,
           method_map: typeck::method_map,
           variable_moves_map: moves::VariableMovesMap,
           capture_map: moves::CaptureMap,
-          last_use_map: last_use_map)
+          last_use_map: last_use_map,
+          cur_item: node_id)
        -> IrMaps {
     IrMaps {
         tcx: tcx,
@@ -289,7 +296,8 @@ fn IrMaps(tcx: ty::ctxt,
         variable_map: HashMap::new(),
         capture_info_map: HashMap::new(),
         var_kinds: ~[],
-        lnks: ~[]
+        lnks: ~[],
+        cur_item: cur_item,
     }
 }
 
@@ -394,6 +402,12 @@ pub impl IrMaps {
     }
 }
 
+fn visit_item(item: @item, &&self: @mut IrMaps, v: vt<@mut IrMaps>) {
+    do with(&mut self.cur_item, item.id) {
+        visit::visit_item(item, self, v)
+    }
+}
+
 fn visit_fn(fk: &visit::fn_kind,
             decl: &fn_decl,
             body: &blk,
@@ -409,7 +423,8 @@ fn visit_fn(fk: &visit::fn_kind,
                               self.method_map,
                               self.variable_moves_map,
                               self.capture_map,
-                              self.last_use_map);
+                              self.last_use_map,
+                              self.cur_item);
 
     debug!("creating fn_maps: %x", ptr::addr_of(&(*fn_maps)) as uint);
 
@@ -692,17 +707,19 @@ pub impl Liveness {
         }
     }
 
-    fn pat_bindings(&self, pat: @pat, f: &fn(LiveNode, Variable, span)) {
+    fn pat_bindings(&self, pat: @pat,
+                    f: &fn(LiveNode, Variable, span, node_id)) {
         let def_map = self.tcx.def_map;
         do pat_util::pat_bindings(def_map, pat) |_bm, p_id, sp, _n| {
             let ln = self.live_node(p_id, sp);
             let var = self.variable(p_id, sp);
-            f(ln, var, sp);
+            f(ln, var, sp, p_id);
         }
     }
 
     fn arm_pats_bindings(&self,
-                         pats: &[@pat], f: &fn(LiveNode, Variable, span)) {
+                         pats: &[@pat],
+                         f: &fn(LiveNode, Variable, span, node_id)) {
         // only consider the first pattern; any later patterns must have
         // the same bindings, and we also consider the first pattern to be
         // the "authoratative" set of ids
@@ -718,7 +735,7 @@ pub impl Liveness {
     fn define_bindings_in_arm_pats(&self, pats: &[@pat],
                                    succ: LiveNode) -> LiveNode {
         let mut succ = succ;
-        do self.arm_pats_bindings(pats) |ln, var, _sp| {
+        do self.arm_pats_bindings(pats) |ln, var, _sp, _id| {
             self.init_from_succ(ln, succ);
             self.define(ln, var);
             succ = ln;
@@ -1509,8 +1526,8 @@ fn check_local(local: @local, &&self: @Liveness, vt: vt<@Liveness>) {
         // should not be live at this point.
 
         debug!("check_local() with no initializer");
-        do self.pat_bindings(local.node.pat) |ln, var, sp| {
-            if !self.warn_about_unused(sp, ln, var) {
+        do self.pat_bindings(local.node.pat) |ln, var, sp, id| {
+            if !self.warn_about_unused(sp, id, ln, var) {
                 match self.live_on_exit(ln, var) {
                   None => { /* not live: good */ }
                   Some(lnk) => {
@@ -1528,8 +1545,8 @@ fn check_local(local: @local, &&self: @Liveness, vt: vt<@Liveness>) {
 }
 
 fn check_arm(arm: &arm, &&self: @Liveness, vt: vt<@Liveness>) {
-    do self.arm_pats_bindings(arm.pats) |ln, var, sp| {
-        self.warn_about_unused(sp, ln, var);
+    do self.arm_pats_bindings(arm.pats) |ln, var, sp, id| {
+        self.warn_about_unused(sp, id, ln, var);
     }
     visit::visit_arm(arm, self, vt);
 }
@@ -1691,14 +1708,14 @@ pub impl Liveness {
                 let ln = self.live_node(expr.id, expr.span);
                 let var = self.variable(nid, expr.span);
                 self.check_for_reassignment(ln, var, expr.span);
-                self.warn_about_dead_assign(expr.span, ln, var);
+                self.warn_about_dead_assign(expr.span, expr.id, ln, var);
               }
               def => {
                 match relevant_def(def) {
                   Some(nid) => {
                     let ln = self.live_node(expr.id, expr.span);
                     let var = self.variable(nid, expr.span);
-                    self.warn_about_dead_assign(expr.span, ln, var);
+                    self.warn_about_dead_assign(expr.span, expr.id, ln, var);
                   }
                   None => {}
                 }
@@ -1715,7 +1732,7 @@ pub impl Liveness {
     }
 
     fn check_for_reassignments_in_pat(@self, pat: @pat) {
-        do self.pat_bindings(pat) |ln, var, sp| {
+        do self.pat_bindings(pat) |ln, var, sp, _id| {
             self.check_for_reassignment(ln, var, sp);
         }
     }
@@ -1861,21 +1878,21 @@ pub impl Liveness {
             do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
                     |_bm, p_id, sp, _n| {
                 let var = self.variable(p_id, sp);
-                self.warn_about_unused(sp, entry_ln, var);
+                self.warn_about_unused(sp, p_id, entry_ln, var);
             }
         }
     }
 
     fn warn_about_unused_or_dead_vars_in_pat(@self, pat: @pat) {
-        do self.pat_bindings(pat) |ln, var, sp| {
-            if !self.warn_about_unused(sp, ln, var) {
-                self.warn_about_dead_assign(sp, ln, var);
+        do self.pat_bindings(pat) |ln, var, sp, id| {
+            if !self.warn_about_unused(sp, id, ln, var) {
+                self.warn_about_dead_assign(sp, id, ln, var);
             }
         }
     }
 
-    fn warn_about_unused(@self, sp: span, ln: LiveNode, var: Variable)
-                        -> bool {
+    fn warn_about_unused(@self, sp: span, id: node_id,
+                         ln: LiveNode, var: Variable) -> bool {
         if !self.used_on_entry(ln, var) {
             for self.should_warn(var).each |name| {
 
@@ -1889,14 +1906,14 @@ pub impl Liveness {
                 };
 
                 if is_assigned {
-                    // FIXME(#3266)--make liveness warnings lintable
-                    self.tcx.sess.span_warn(
-                        sp, fmt!("variable `%s` is assigned to, \
+                    self.tcx.sess.span_lint(unused_variable, id,
+                        self.ir.cur_item, sp,
+                        fmt!("variable `%s` is assigned to, \
                                   but never used", **name));
                 } else {
-                    // FIXME(#3266)--make liveness warnings lintable
-                    self.tcx.sess.span_warn(
-                        sp, fmt!("unused variable: `%s`", **name));
+                    self.tcx.sess.span_lint(unused_variable, id,
+                        self.ir.cur_item, sp,
+                        fmt!("unused variable: `%s`", **name));
                 }
             }
             return true;
@@ -1904,12 +1921,12 @@ pub impl Liveness {
         return false;
     }
 
-    fn warn_about_dead_assign(@self, sp: span, ln: LiveNode, var: Variable) {
+    fn warn_about_dead_assign(@self, sp: span, id: node_id,
+                              ln: LiveNode, var: Variable) {
         if self.live_on_exit(ln, var).is_none() {
             for self.should_warn(var).each |name| {
-                // FIXME(#3266)--make liveness warnings lintable
-                self.tcx.sess.span_warn(
-                    sp,
+                self.tcx.sess.span_lint(dead_assignment, id,
+                    self.ir.cur_item, sp,
                     fmt!("value assigned to `%s` is never read", **name));
             }
         }
