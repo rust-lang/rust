@@ -460,7 +460,7 @@ pub fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
 
     do cx.with_lint_attrs(/*bad*/copy crate.node.attrs) |cx| {
         // Copy out the default settings
-        for cx.curr.each |&(k, &v)| {
+        for cx.curr.each |&k, &v| {
             sess.lint_settings.default_settings.insert(k, v);
         }
 

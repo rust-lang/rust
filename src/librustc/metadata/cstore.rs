@@ -86,7 +86,7 @@ pub fn have_crate_data(cstore: &CStore, cnum: ast::crate_num) -> bool {
 
 pub fn iter_crate_data(cstore: &CStore,
                        i: &fn(ast::crate_num, @crate_metadata)) {
-    for cstore.metas.each |&(&k, &v)| {
+    for cstore.metas.each |&k, &v| {
         i(k, v);
     }
 }

@@ -2369,7 +2369,7 @@ pub impl Resolver {
 
         // Add all resolved imports from the containing module.
         for containing_module.import_resolutions.each
-                |&(ident, target_import_resolution)| {
+                |ident, target_import_resolution| {
 
             debug!("(resolving glob import) writing module resolution \
                     %? into `%s`",
@@ -2457,13 +2457,13 @@ pub impl Resolver {
         };
 
         // Add all children from the containing module.
-        for containing_module.children.each |&(ident, name_bindings)| {
+        for containing_module.children.each |ident, name_bindings| {
             merge_import_resolution(ident, *name_bindings);
         }
 
         // Add external module children from the containing module.
         for containing_module.external_module_children.each
-                |&(ident, module)| {
+                |ident, module| {
             let name_bindings =
                 @mut Resolver::create_name_bindings_from_module(*module);
             merge_import_resolution(ident, name_bindings);
@@ -3111,7 +3111,7 @@ pub impl Resolver {
     fn add_exports_for_module(@mut self,
                               exports2: &mut ~[Export2],
                               module_: @mut Module) {
-        for module_.children.each |&(ident, namebindings)| {
+        for module_.children.each |ident, namebindings| {
             debug!("(computing exports) maybe export '%s'",
                    *self.session.str_of(*ident));
             self.add_exports_of_namebindings(&mut *exports2,
@@ -3126,7 +3126,7 @@ pub impl Resolver {
                                              false);
         }
 
-        for module_.import_resolutions.each |&(ident, importresolution)| {
+        for module_.import_resolutions.each |ident, importresolution| {
             if importresolution.privacy != Public {
                 debug!("(computing exports) not reexporting private `%s`",
                        *self.session.str_of(*ident));
@@ -3934,7 +3934,7 @@ pub impl Resolver {
         for arm.pats.eachi() |i, p| {
             let map_i = self.binding_mode_map(*p);
 
-            for map_0.each |&(&key, &binding_0)| {
+            for map_0.each |&key, &binding_0| {
                 match map_i.find(&key) {
                   None => {
                     self.session.span_err(
@@ -3955,7 +3955,7 @@ pub impl Resolver {
                 }
             }
 
-            for map_i.each |&(&key, &binding)| {
+            for map_i.each |&key, &binding| {
                 if !map_0.contains_key(&key) {
                     self.session.span_err(
                         binding.span,
@@ -5248,7 +5248,7 @@ pub impl Resolver {
         }
 
         debug!("Import resolutions:");
-        for module_.import_resolutions.each |&(name, import_resolution)| {
+        for module_.import_resolutions.each |name, import_resolution| {
             let mut value_repr;
             match import_resolution.target_for_namespace(ValueNS) {
                 None => { value_repr = ~""; }
