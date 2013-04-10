@@ -152,6 +152,12 @@ impl serialize::Encoder for Encoder {
         f();
     }
 
+    fn emit_tuple(&self, len: uint, f: &fn()) { self.emit_seq(len, f) }
+    fn emit_tuple_arg(&self, idx: uint, f: &fn()) { self.emit_seq_elt(idx, f) }
+
+    fn emit_tuple_struct(&self, _name: &str, len: uint, f: &fn()) { self.emit_seq(len, f) }
+    fn emit_tuple_struct_arg(&self, idx: uint, f: &fn()) { self.emit_seq_elt(idx, f) }
+
     fn emit_option(&self, f: &fn()) { f(); }
     fn emit_option_none(&self) { self.emit_nil(); }
     fn emit_option_some(&self, f: &fn()) { f(); }
@@ -290,6 +296,12 @@ impl serialize::Encoder for PrettyEncoder {
         self.wr.write_str(": ");
         f();
     }
+
+    fn emit_tuple(&self, len: uint, f: &fn()) { self.emit_seq(len, f) }
+    fn emit_tuple_arg(&self, idx: uint, f: &fn()) { self.emit_seq_elt(idx, f) }
+
+    fn emit_tuple_struct(&self, _name: &str, len: uint, f: &fn()) { self.emit_seq(len, f) }
+    fn emit_tuple_struct_arg(&self, idx: uint, f: &fn()) { self.emit_seq_elt(idx, f) }
 
     fn emit_option(&self, f: &fn()) { f(); }
     fn emit_option_none(&self) { self.emit_nil(); }
@@ -899,6 +911,26 @@ impl serialize::Decoder for Decoder {
             }
             value => fail!(fmt!("not an object: %?", value))
         }
+    }
+
+    fn read_tuple<T>(&self, f: &fn(uint) -> T) -> T {
+        debug!("read_tuple()");
+        self.read_seq(f)
+    }
+
+    fn read_tuple_arg<T>(&self, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_tuple_arg(idx=%u)", idx);
+        self.read_seq_elt(idx, f)
+    }
+
+    fn read_tuple_struct<T>(&self, name: &str, f: &fn(uint) -> T) -> T {
+        debug!("read_tuple_struct(name=%?)", name);
+        self.read_tuple(f)
+    }
+
+    fn read_tuple_struct_arg<T>(&self, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_tuple_struct_arg(idx=%u)", idx);
+        self.read_tuple_arg(idx, f)
     }
 
     fn read_option<T>(&self, f: &fn(bool) -> T) -> T {

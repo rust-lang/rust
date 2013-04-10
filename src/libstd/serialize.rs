@@ -56,6 +56,12 @@ pub trait Encoder {
     #[cfg(stage3)]
     fn emit_struct_field(&self, f_name: &str, f_idx: uint, f: &fn());
 
+    fn emit_tuple(&self, len: uint, f: &fn());
+    fn emit_tuple_arg(&self, idx: uint, f: &fn());
+
+    fn emit_tuple_struct(&self, name: &str, len: uint, f: &fn());
+    fn emit_tuple_struct_arg(&self, f_idx: uint, f: &fn());
+
     // Specialized types:
     fn emit_option(&self, f: &fn());
     fn emit_option_none(&self);
@@ -101,6 +107,12 @@ pub trait Decoder {
     #[cfg(stage2)]
     #[cfg(stage3)]
     fn read_struct_field<T>(&self, f_name: &str, f_idx: uint, f: &fn() -> T) -> T;
+
+    fn read_tuple<T>(&self, f: &fn(uint) -> T) -> T;
+    fn read_tuple_arg<T>(&self, a_idx: uint, f: &fn() -> T) -> T;
+
+    fn read_tuple_struct<T>(&self, s_name: &str, f: &fn(uint) -> T) -> T;
+    fn read_tuple_struct_arg<T>(&self, a_idx: uint, f: &fn() -> T) -> T;
 
     // Specialized types:
     fn read_option<T>(&self, f: &fn(bool) -> T) -> T;
