@@ -4107,38 +4107,34 @@ pub impl Parser {
                                               maybe_append(attrs,
                                                            extra_attrs)));
             }
-            if !foreign_items_allowed {
+            if items_allowed {
                 // EXTERN MODULE ITEM
                 return self.parse_item_foreign_mod(lo, opt_abis, visibility, attrs,
                                                    items_allowed);
             }
         }
-        if items_allowed && !foreign_items_allowed &&
-                self.eat_keyword(&~"mod") {
+        if items_allowed && self.eat_keyword(&~"mod") {
             // MODULE ITEM
             let (ident, item_, extra_attrs) = self.parse_item_mod(attrs);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && !foreign_items_allowed &&
-                self.eat_keyword(&~"type") {
+        if items_allowed && self.eat_keyword(&~"type") {
             // TYPE ITEM
             let (ident, item_, extra_attrs) = self.parse_item_type();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && !foreign_items_allowed &&
-                self.eat_keyword(&~"enum") {
+        if items_allowed && self.eat_keyword(&~"enum") {
             // ENUM ITEM
             let (ident, item_, extra_attrs) = self.parse_item_enum();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && !foreign_items_allowed &&
-                self.eat_keyword(&~"trait") {
+        if items_allowed && self.eat_keyword(&~"trait") {
             // TRAIT ITEM
             let (ident, item_, extra_attrs) = self.parse_item_trait();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
@@ -4154,15 +4150,14 @@ pub impl Parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && !foreign_items_allowed &&
-                self.eat_keyword(&~"struct") {
+        if items_allowed && self.eat_keyword(&~"struct") {
             // STRUCT ITEM
             let (ident, item_, extra_attrs) = self.parse_item_struct();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if !foreign_items_allowed && self.eat_keyword(&~"use") {
+        if items_allowed && self.eat_keyword(&~"use") {
             // USE ITEM
             let view_item = self.parse_use();
             self.expect(&token::SEMI);

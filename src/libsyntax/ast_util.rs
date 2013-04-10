@@ -756,7 +756,6 @@ mod test {
         assert_eq!(refold_test_sc(3,&t),test_sc);
     }
 
-
     // extend a syntax context with a sequence of marks given
     // in a vector. v[0] will be the outermost mark.
     fn unfold_marks(mrks:~[Mrk],tail:SyntaxContext,table: &mut SCTable) -> SyntaxContext {
