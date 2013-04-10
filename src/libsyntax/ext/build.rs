@@ -64,12 +64,7 @@ pub fn mk_unary(cx: @ext_ctxt, sp: span, op: ast::unop, e: @ast::expr)
     mk_expr(cx, sp, ast::expr_unary(op, e))
 }
 pub fn mk_raw_path(sp: span, +idents: ~[ast::ident]) -> @ast::Path {
-    let p = @ast::Path { span: sp,
-                         global: false,
-                         idents: idents,
-                         rp: None,
-                         types: ~[] };
-    return p;
+    mk_raw_path_(sp, idents, ~[])
 }
 pub fn mk_raw_path_(sp: span,
                     +idents: ~[ast::ident],
@@ -82,11 +77,16 @@ pub fn mk_raw_path_(sp: span,
                  types: types }
 }
 pub fn mk_raw_path_global(sp: span, +idents: ~[ast::ident]) -> @ast::Path {
+    mk_raw_path_global_(sp, idents, ~[])
+}
+pub fn mk_raw_path_global_(sp: span,
+                           +idents: ~[ast::ident],
+                           +types: ~[@ast::Ty]) -> @ast::Path {
     @ast::Path { span: sp,
                  global: true,
                  idents: idents,
                  rp: None,
-                 types: ~[] }
+                 types: types }
 }
 pub fn mk_path(cx: @ext_ctxt, sp: span, +idents: ~[ast::ident])
             -> @ast::expr {
@@ -271,6 +271,29 @@ pub fn mk_simple_block(cx: @ext_ctxt,
         span: span,
     }
 }
+pub fn mk_lambda_(cx: @ext_ctxt,
+                 span: span,
+                 fn_decl: ast::fn_decl,
+                 blk: ast::blk)
+              -> @ast::expr {
+    mk_expr(cx, span, ast::expr_fn_block(fn_decl, blk))
+}
+pub fn mk_lambda(cx: @ext_ctxt,
+                       span: span,
+                       fn_decl: ast::fn_decl,
+                       expr: @ast::expr)
+                    -> @ast::expr {
+    let blk = mk_simple_block(cx, span, expr);
+    mk_lambda_(cx, span, fn_decl, blk)
+}
+pub fn mk_lambda_stmts(cx: @ext_ctxt,
+                       span: span,
+                       fn_decl: ast::fn_decl,
+                       stmts: ~[@ast::stmt])
+                    -> @ast::expr {
+    let blk = mk_block(cx, span, ~[], stmts, None);
+    mk_lambda(cx, span, fn_decl, blk)
+}
 pub fn mk_copy(cx: @ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_copy(e))
 }
@@ -337,12 +360,35 @@ pub fn mk_ty_path_global(cx: @ext_ctxt,
     let ty = @ast::Ty { id: cx.next_id(), node: ty, span: span };
     ty
 }
+pub fn mk_ty_rptr(cx: @ext_ctxt,
+                  span: span,
+                  ty: @ast::Ty,
+                  mutbl: ast::mutability)
+               -> @ast::Ty {
+    @ast::Ty {
+        id: cx.next_id(),
+        span: span,
+        node: ast::ty_rptr(
+            None,
+            ast::mt { ty: ty, mutbl: mutbl }
+        ),
+    }
+}
+pub fn mk_ty_infer(cx: @ext_ctxt, span: span) -> @ast::Ty {
+    @ast::Ty {
+        id: cx.next_id(),
+        node: ast::ty_infer,
+        span: span,
+    }
+}
 pub fn mk_trait_ref_global(cx: @ext_ctxt,
                            span: span,
                            +idents: ~[ ast::ident ])
     -> @ast::trait_ref
 {
-    let path = build::mk_raw_path_global(span, idents);
+    mk_trait_ref_(cx, build::mk_raw_path_global(span, idents))
+}
+pub fn mk_trait_ref_(cx: @ext_ctxt, path: @ast::Path) -> @ast::trait_ref {
     @ast::trait_ref {
         path: path,
         ref_id: cx.next_id()
@@ -370,6 +416,16 @@ pub fn mk_arg(cx: @ext_ctxt,
 }
 pub fn mk_fn_decl(+inputs: ~[ast::arg], output: @ast::Ty) -> ast::fn_decl {
     ast::fn_decl { inputs: inputs, output: output, cf: ast::return_val }
+}
+pub fn mk_trait_ty_param_bound_global(cx: @ext_ctxt,
+                                      span: span,
+                                      +idents: ~[ast::ident])
+                                   -> ast::TyParamBound {
+    ast::TraitTyParamBound(mk_trait_ref_global(cx, span, idents))
+}
+pub fn mk_trait_ty_param_bound_(cx: @ext_ctxt,
+                                path: @ast::Path) -> ast::TyParamBound {
+    ast::TraitTyParamBound(mk_trait_ref_(cx, path))
 }
 pub fn mk_ty_param(cx: @ext_ctxt,
                    ident: ast::ident,
