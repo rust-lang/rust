@@ -344,3 +344,29 @@ pub fn copy_seq<T:Copy,IT:BaseIter<T>,BT:Buildable<T>>(v: &IT) -> BT {
         for v.each |x| { push(*x); }
     }
 }
+
+/**
+ * Helper function to transform an internal iterator into an owned vector.
+ *
+ * # Example:
+ *
+ * ~~~
+ * let v = ~[1, 2, 3];
+ * let v2 = do iter_to_vec |f| { v.each(|e| f(*e)) };
+ * if v != v2 { fail!() }
+ * ~~~
+ */
+#[inline(always)]
+pub fn iter_to_vec<T>(pusher: &fn(it: &fn(T) -> bool)) -> ~[T] {
+    let mut v = ~[];
+    let pushf = |e| {v.push(e); true};
+    pusher(pushf);
+    v
+}
+
+#[test]
+fn test_iter_to_vec() {
+    let v = ~[1, 2, 3];
+    let v2 = do iter_to_vec |f| { v.each(|e| f(*e)) };
+    if v != v2 { fail!() }
+}
