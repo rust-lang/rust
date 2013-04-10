@@ -14,38 +14,12 @@
  */
 
 use core::container::{Container, Mutable, Map, Set};
-use core::iter::{BaseIter, ReverseIter};
+use core::iter::{BaseIter};
 use core::option::{Some, None};
 use core::prelude::*;
 
 pub struct SmallIntMap<T> {
     priv v: ~[Option<T>],
-}
-
-impl<'self, V> BaseIter<(uint, &'self V)> for SmallIntMap<V> {
-    /// Visit all key-value pairs in order
-    fn each(&self, it: &fn(&(uint, &'self V)) -> bool) {
-        for uint::range(0, self.v.len()) |i| {
-            match self.v[i] {
-              Some(ref elt) => if !it(&(i, elt)) { break },
-              None => ()
-            }
-        }
-    }
-
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
-impl<'self, V> ReverseIter<(uint, &'self V)> for SmallIntMap<V> {
-    /// Visit all key-value pairs in reverse order
-    fn each_reverse(&self, it: &fn(&(uint, &'self V)) -> bool) {
-        for uint::range_rev(self.v.len(), 0) |i| {
-            match self.v[i - 1] {
-              Some(ref elt) => if !it(&(i - 1, elt)) { break },
-              None => ()
-            }
-        }
-    }
 }
 
 impl<V> Container for SmallIntMap<V> {
@@ -76,14 +50,24 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
         self.find(key).is_some()
     }
 
+    /// Visit all key-value pairs in order
+    fn each(&self, it: &fn(&uint, &'self V) -> bool) {
+        for uint::range(0, self.v.len()) |i| {
+            match self.v[i] {
+              Some(ref elt) => if !it(&i, elt) { break },
+              None => ()
+            }
+        }
+    }
+
     /// Visit all keys in order
     fn each_key(&self, blk: &fn(key: &uint) -> bool) {
-        self.each(|&(k, _)| blk(&k))
+        self.each(|k, _| blk(k))
     }
 
     /// Visit all values in order
     fn each_value(&self, blk: &fn(value: &V) -> bool) {
-        self.each(|&(_, v)| blk(v))
+        self.each(|_, v| blk(v))
     }
 
     /// Iterate over the map and mutate the contained values
@@ -148,6 +132,16 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
 pub impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap
     fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
+
+    /// Visit all key-value pairs in reverse order
+    fn each_reverse(&self, it: &fn(uint, &'self V) -> bool) {
+        for uint::range_rev(self.v.len(), 0) |i| {
+            match self.v[i - 1] {
+              Some(ref elt) => if !it(i - 1, elt) { break },
+              None => ()
+            }
+        }
+    }
 
     fn get(&self, key: &uint) -> &'self V {
         self.find(key).expect("key not present")

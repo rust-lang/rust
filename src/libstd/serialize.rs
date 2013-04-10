@@ -595,7 +595,7 @@ impl<
     fn encode(&self, e: &E) {
         do e.emit_map(self.len()) {
             let mut i = 0;
-            for self.each |&(key, val)| {
+            for self.each |key, val| {
                 e.emit_map_elt_key(i, || key.encode(e));
                 e.emit_map_elt_val(i, || val.encode(e));
                 i += 1;
@@ -659,7 +659,7 @@ impl<
     fn encode(&self, e: &E) {
         do e.emit_map(self.len()) {
             let mut i = 0;
-            for self.each |&(key, val)| {
+            for self.each |key, val| {
                 e.emit_map_elt_key(i, || key.encode(e));
                 e.emit_map_elt_val(i, || val.encode(e));
                 i += 1;
@@ -717,7 +717,7 @@ impl<
     fn encode(&self, e: &E) {
         do e.emit_map(self.len()) {
             let mut i = 0;
-            for self.each |&(key, val)| {
+            for self.each |key, val| {
                 e.emit_map_elt_key(i, || key.encode(e));
                 e.emit_map_elt_val(i, || val.encode(e));
                 i += 1;
