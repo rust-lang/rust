@@ -538,10 +538,9 @@ more convincing in the future.
 
 use core::prelude::*;
 
-use middle::region::is_subregion_of;
-use middle::region;
 use middle::ty;
-use middle::ty::{Region, RegionVid, re_static, re_infer, re_free, re_bound};
+use middle::ty::{FreeRegion, Region, RegionVid};
+use middle::ty::{re_static, re_infer, re_free, re_bound};
 use middle::ty::{re_scope, ReVar, ReSkolemized, br_fresh};
 use middle::typeck::infer::cres;
 use util::common::indenter;
@@ -554,6 +553,7 @@ use core::to_bytes;
 use core::uint;
 use core::vec;
 use syntax::codemap::span;
+use syntax::ast;
 
 #[deriving(Eq)]
 enum Constraint {
@@ -1025,11 +1025,12 @@ pub impl RegionVarBindings {
 }
 
 priv impl RegionVarBindings {
-    fn is_subregion_of(&mut self, sub: Region, sup: Region) -> bool {
-        is_subregion_of(self.tcx.region_map, sub, sup)
+    fn is_subregion_of(&self, sub: Region, sup: Region) -> bool {
+        let rm = self.tcx.region_maps;
+        rm.is_subregion_of(sub, sup)
     }
 
-    fn lub_concrete_regions(&mut self, +a: Region, +b: Region) -> Region {
+    fn lub_concrete_regions(&self, +a: Region, +b: Region) -> Region {
         match (a, b) {
           (re_static, _) | (_, re_static) => {
             re_static // nothing lives longer than static
@@ -1042,17 +1043,17 @@ priv impl RegionVarBindings {
                       non-concrete regions: %?, %?", a, b));
           }
 
-          (f @ re_free(f_id, _), re_scope(s_id)) |
-          (re_scope(s_id), f @ re_free(f_id, _)) => {
+          (f @ re_free(ref fr), re_scope(s_id)) |
+          (re_scope(s_id), f @ re_free(ref fr)) => {
             // A "free" region can be interpreted as "some region
-            // at least as big as the block f_id".  So, we can
+            // at least as big as the block fr.scope_id".  So, we can
             // reasonably compare free regions and scopes:
-            let rm = self.tcx.region_map;
-            match region::nearest_common_ancestor(rm, f_id, s_id) {
-              // if the free region's scope `f_id` is bigger than
+            let rm = self.tcx.region_maps;
+            match rm.nearest_common_ancestor(fr.scope_id, s_id) {
+              // if the free region's scope `fr.scope_id` is bigger than
               // the scope region `s_id`, then the LUB is the free
               // region itself:
-              Some(r_id) if r_id == f_id => f,
+              Some(r_id) if r_id == fr.scope_id => f,
 
               // otherwise, we don't know what the free region is,
               // so we must conservatively say the LUB is static:
@@ -1064,32 +1065,67 @@ priv impl RegionVarBindings {
             // The region corresponding to an outer block is a
             // subtype of the region corresponding to an inner
             // block.
-            let rm = self.tcx.region_map;
-            match region::nearest_common_ancestor(rm, a_id, b_id) {
+            let rm = self.tcx.region_maps;
+            match rm.nearest_common_ancestor(a_id, b_id) {
               Some(r_id) => re_scope(r_id),
               _ => re_static
             }
+          }
+
+          (re_free(ref a_fr), re_free(ref b_fr)) => {
+             self.lub_free_regions(a_fr, b_fr)
           }
 
           // For these types, we cannot define any additional
           // relationship:
           (re_infer(ReSkolemized(*)), _) |
           (_, re_infer(ReSkolemized(*))) |
-          (re_free(_, _), re_free(_, _)) |
           (re_bound(_), re_bound(_)) |
-          (re_bound(_), re_free(_, _)) |
+          (re_bound(_), re_free(_)) |
           (re_bound(_), re_scope(_)) |
-          (re_free(_, _), re_bound(_)) |
+          (re_free(_), re_bound(_)) |
           (re_scope(_), re_bound(_)) => {
             if a == b {a} else {re_static}
           }
         }
     }
 
-    fn glb_concrete_regions(&mut self,
+    fn lub_free_regions(&self,
+                        a: &FreeRegion,
+                        b: &FreeRegion) -> ty::Region
+    {
+        /*!
+         * Computes a region that encloses both free region arguments.
+         * Guarantee that if the same two regions are given as argument,
+         * in any order, a consistent result is returned.
+         */
+
+        return match a.cmp(b) {
+            Less => helper(self, a, b),
+            Greater => helper(self, b, a),
+            Equal => ty::re_free(*a)
+        };
+
+        fn helper(self: &RegionVarBindings,
+                  a: &FreeRegion,
+                  b: &FreeRegion) -> ty::Region
+        {
+            let rm = self.tcx.region_maps;
+            if rm.sub_free_region(*a, *b) {
+                ty::re_free(*b)
+            } else if rm.sub_free_region(*b, *a) {
+                ty::re_free(*a)
+            } else {
+                ty::re_static
+            }
+        }
+    }
+
+    fn glb_concrete_regions(&self,
                             +a: Region,
                             +b: Region)
                          -> cres<Region> {
+        debug!("glb_concrete_regions(%?, %?)", a, b);
         match (a, b) {
             (re_static, r) | (r, re_static) => {
                 // static lives longer than everything else
@@ -1104,37 +1140,26 @@ priv impl RegionVarBindings {
                           non-concrete regions: %?, %?", a, b));
             }
 
-            (re_free(f_id, _), s @ re_scope(s_id)) |
-            (s @ re_scope(s_id), re_free(f_id, _)) => {
+            (re_free(ref fr), s @ re_scope(s_id)) |
+            (s @ re_scope(s_id), re_free(ref fr)) => {
                 // Free region is something "at least as big as
-                // `f_id`."  If we find that the scope `f_id` is bigger
+                // `fr.scope_id`."  If we find that the scope `fr.scope_id` is bigger
                 // than the scope `s_id`, then we can say that the GLB
                 // is the scope `s_id`.  Otherwise, as we do not know
                 // big the free region is precisely, the GLB is undefined.
-                let rm = self.tcx.region_map;
-                match region::nearest_common_ancestor(rm, f_id, s_id) {
-                    Some(r_id) if r_id == f_id => Ok(s),
+                let rm = self.tcx.region_maps;
+                match rm.nearest_common_ancestor(fr.scope_id, s_id) {
+                    Some(r_id) if r_id == fr.scope_id => Ok(s),
                     _ => Err(ty::terr_regions_no_overlap(b, a))
                 }
             }
 
-            (re_scope(a_id), re_scope(b_id)) |
-            (re_free(a_id, _), re_free(b_id, _)) => {
-                if a == b {
-                    // Same scope or same free identifier, easy case.
-                    Ok(a)
-                } else {
-                    // We want to generate the intersection of two
-                    // scopes or two free regions.  So, if one of
-                    // these scopes is a subscope of the other, return
-                    // it.  Otherwise fail.
-                    let rm = self.tcx.region_map;
-                    match region::nearest_common_ancestor(rm, a_id, b_id) {
-                        Some(r_id) if a_id == r_id => Ok(re_scope(b_id)),
-                        Some(r_id) if b_id == r_id => Ok(re_scope(a_id)),
-                        _ => Err(ty::terr_regions_no_overlap(b, a))
-                    }
-                }
+            (re_scope(a_id), re_scope(b_id)) => {
+                self.intersect_scopes(a, b, a_id, b_id)
+            }
+
+            (re_free(ref a_fr), re_free(ref b_fr)) => {
+                self.glb_free_regions(a_fr, b_fr)
             }
 
             // For these types, we cannot define any additional
@@ -1142,9 +1167,9 @@ priv impl RegionVarBindings {
             (re_infer(ReSkolemized(*)), _) |
             (_, re_infer(ReSkolemized(*))) |
             (re_bound(_), re_bound(_)) |
-            (re_bound(_), re_free(_, _)) |
+            (re_bound(_), re_free(_)) |
             (re_bound(_), re_scope(_)) |
-            (re_free(_, _), re_bound(_)) |
+            (re_free(_), re_bound(_)) |
             (re_scope(_), re_bound(_)) => {
                 if a == b {
                     Ok(a)
@@ -1155,9 +1180,61 @@ priv impl RegionVarBindings {
         }
     }
 
+    fn glb_free_regions(&self,
+                        a: &FreeRegion,
+                        b: &FreeRegion) -> cres<ty::Region>
+    {
+        /*!
+         * Computes a region that is enclosed by both free region arguments,
+         * if any. Guarantees that if the same two regions are given as argument,
+         * in any order, a consistent result is returned.
+         */
+
+        return match a.cmp(b) {
+            Less => helper(self, a, b),
+            Greater => helper(self, b, a),
+            Equal => Ok(ty::re_free(*a))
+        };
+
+        fn helper(self: &RegionVarBindings,
+                  a: &FreeRegion,
+                  b: &FreeRegion) -> cres<ty::Region>
+        {
+            let rm = self.tcx.region_maps;
+            if rm.sub_free_region(*a, *b) {
+                Ok(ty::re_free(*a))
+            } else if rm.sub_free_region(*b, *a) {
+                Ok(ty::re_free(*b))
+            } else {
+                self.intersect_scopes(ty::re_free(*a), ty::re_free(*b),
+                                      a.scope_id, b.scope_id)
+            }
+        }
+    }
+
     fn report_type_error(&mut self, span: span, terr: &ty::type_err) {
         let terr_str = ty::type_err_to_str(self.tcx, terr);
         self.tcx.sess.span_err(span, terr_str);
+    }
+
+    fn intersect_scopes(&self,
+                        region_a: ty::Region,
+                        region_b: ty::Region,
+                        scope_a: ast::node_id,
+                        scope_b: ast::node_id) -> cres<Region>
+    {
+        // We want to generate the intersection of two
+        // scopes or two free regions.  So, if one of
+        // these scopes is a subscope of the other, return
+        // it.  Otherwise fail.
+        debug!("intersect_scopes(scope_a=%?, scope_b=%?, region_a=%?, region_b=%?)",
+               scope_a, scope_b, region_a, region_b);
+        let rm = self.tcx.region_maps;
+        match rm.nearest_common_ancestor(scope_a, scope_b) {
+            Some(r_id) if scope_a == r_id => Ok(re_scope(scope_b)),
+            Some(r_id) if scope_b == r_id => Ok(re_scope(scope_a)),
+            _ => Err(ty::terr_regions_no_overlap(region_a, region_b))
+        }
     }
 }
 

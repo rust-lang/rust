@@ -161,7 +161,6 @@ impl<A:Ord> Ord for (A,) {
     fn gt(&self, other: &(A,)) -> bool { other.lt(&(*self))  }
 }
 
-
 #[cfg(notest)]
 impl<A:Eq,B:Eq> Eq for (A, B) {
     #[inline(always)]

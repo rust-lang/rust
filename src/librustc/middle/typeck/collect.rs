@@ -477,7 +477,8 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     // a free region.  So, for example, if the impl type is
     // "&'self str", then this would replace the self type with a free
     // region `self`.
-    let dummy_self_r = ty::re_free(cm.body_id, ty::br_self);
+    let dummy_self_r = ty::re_free(ty::FreeRegion {scope_id: cm.body_id,
+                                                   bound_region: ty::br_self});
     let self_ty = replace_bound_self(tcx, self_ty, dummy_self_r);
 
     // Perform substitutions so that the trait/impl methods are expressed
