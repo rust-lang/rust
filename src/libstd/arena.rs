@@ -171,7 +171,7 @@ unsafe fn un_bitpack_tydesc_ptr(p: uint) -> (*TypeDesc, bool) {
 
 pub impl Arena {
     // Functions for the POD part of the arena
-    fn alloc_pod_grow(&self, n_bytes: uint, align: uint) -> *u8 {
+    priv fn alloc_pod_grow(&self, n_bytes: uint, align: uint) -> *u8 {
         // Allocate a new chunk.
         let chunk_size = at_vec::capacity(self.pod_head.data);
         let new_min_chunk_size = uint::max(n_bytes, chunk_size);
@@ -183,7 +183,7 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    fn alloc_pod_inner(&self, n_bytes: uint, align: uint) -> *u8 {
+    priv fn alloc_pod_inner(&self, n_bytes: uint, align: uint) -> *u8 {
         let head = &mut self.pod_head;
 
         let start = round_up_to(head.fill, align);
@@ -202,7 +202,22 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    fn alloc_pod<T>(&self, op: &fn() -> T) -> &'self T {
+    #[cfg(stage0)]
+    priv fn alloc_pod<T>(&self, op: &fn() -> T) -> &'self T {
+        unsafe {
+            let tydesc = sys::get_type_desc::<T>();
+            let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
+            let ptr: *mut T = reinterpret_cast(&ptr);
+            rusti::move_val_init(&mut (*ptr), op());
+            return reinterpret_cast(&ptr);
+        }
+    }
+
+    #[inline(always)]
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    priv fn alloc_pod<'a, T>(&'a self, op: &fn() -> T) -> &'a T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
             let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
@@ -213,7 +228,7 @@ pub impl Arena {
     }
 
     // Functions for the non-POD part of the arena
-    fn alloc_nonpod_grow(&self, n_bytes: uint, align: uint) -> (*u8, *u8) {
+    priv fn alloc_nonpod_grow(&self, n_bytes: uint, align: uint) -> (*u8, *u8) {
         // Allocate a new chunk.
         let chunk_size = at_vec::capacity(self.head.data);
         let new_min_chunk_size = uint::max(n_bytes, chunk_size);
@@ -225,7 +240,7 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    fn alloc_nonpod_inner(&self, n_bytes: uint, align: uint) -> (*u8, *u8) {
+    priv fn alloc_nonpod_inner(&self, n_bytes: uint, align: uint) -> (*u8, *u8) {
         let head = &mut self.head;
 
         let tydesc_start = head.fill;
@@ -247,7 +262,32 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    fn alloc_nonpod<T>(&self, op: &fn() -> T) -> &'self T {
+    #[cfg(stage0)]
+    priv fn alloc_nonpod<T>(&self, op: &fn() -> T) -> &'self T {
+        unsafe {
+            let tydesc = sys::get_type_desc::<T>();
+            let (ty_ptr, ptr) =
+                self.alloc_nonpod_inner((*tydesc).size, (*tydesc).align);
+            let ty_ptr: *mut uint = reinterpret_cast(&ty_ptr);
+            let ptr: *mut T = reinterpret_cast(&ptr);
+            // Write in our tydesc along with a bit indicating that it
+            // has *not* been initialized yet.
+            *ty_ptr = reinterpret_cast(&tydesc);
+            // Actually initialize it
+            rusti::move_val_init(&mut(*ptr), op());
+            // Now that we are done, update the tydesc to indicate that
+            // the object is there.
+            *ty_ptr = bitpack_tydesc_ptr(tydesc, true);
+
+            return reinterpret_cast(&ptr);
+        }
+    }
+
+    #[inline(always)]
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    priv fn alloc_nonpod<'a, T>(&'a self, op: &fn() -> T) -> &'a T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
             let (ty_ptr, ptr) =
@@ -269,7 +309,23 @@ pub impl Arena {
 
     // The external interface
     #[inline(always)]
+    #[cfg(stage0)]
     fn alloc<T>(&self, op: &fn() -> T) -> &'self T {
+        unsafe {
+            if !rusti::needs_drop::<T>() {
+                self.alloc_pod(op)
+            } else {
+                self.alloc_nonpod(op)
+            }
+        }
+    }
+
+    // The external interface
+    #[inline(always)]
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn alloc<'a, T>(&'a self, op: &fn() -> T) -> &'a T {
         unsafe {
             if !rusti::needs_drop::<T>() {
                 self.alloc_pod(op)
