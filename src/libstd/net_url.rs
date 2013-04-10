@@ -216,7 +216,7 @@ pub fn encode_form_urlencoded(m: &HashMap<~str, ~[~str]>) -> ~str {
     let mut out = ~"";
     let mut first = true;
 
-    for m.each |&(key, values)| {
+    for m.each |key, values| {
         let key = encode_plus(*key);
 
         for values.each |value| {
