@@ -963,20 +963,28 @@ pub fn ExtractElement(cx: block, VecVal: ValueRef, Index: ValueRef) ->
 }
 
 pub fn InsertElement(cx: block, VecVal: ValueRef, EltVal: ValueRef,
-                 Index: ValueRef) {
+                     Index: ValueRef) -> ValueRef {
     unsafe {
-        if cx.unreachable { return; }
+        if cx.unreachable { return llvm::LLVMGetUndef(T_nil()); }
         count_insn(cx, "insertelement");
-        llvm::LLVMBuildInsertElement(B(cx), VecVal, EltVal, Index, noname());
+        llvm::LLVMBuildInsertElement(B(cx), VecVal, EltVal, Index, noname())
     }
 }
 
 pub fn ShuffleVector(cx: block, V1: ValueRef, V2: ValueRef,
-                     Mask: ValueRef) {
+                     Mask: ValueRef) -> ValueRef {
     unsafe {
-        if cx.unreachable { return; }
+        if cx.unreachable { return llvm::LLVMGetUndef(T_nil()); }
         count_insn(cx, "shufflevector");
-        llvm::LLVMBuildShuffleVector(B(cx), V1, V2, Mask, noname());
+        llvm::LLVMBuildShuffleVector(B(cx), V1, V2, Mask, noname())
+    }
+}
+
+pub fn VectorSplat(cx: block, NumElts: uint, EltVal: ValueRef) -> ValueRef {
+    unsafe {
+        let Undef = llvm::LLVMGetUndef(T_vector(val_ty(EltVal), NumElts));
+        let VecVal = InsertElement(cx, Undef, EltVal, C_i32(0));
+        ShuffleVector(cx, VecVal, Undef, C_null(T_vector(T_i32(), NumElts)))
     }
 }
 
