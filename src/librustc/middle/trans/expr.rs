@@ -1589,6 +1589,7 @@ pub enum cast_kind {
     cast_integral,
     cast_float,
     cast_enum,
+    cast_multi,
     cast_other,
 }
 
@@ -1601,6 +1602,7 @@ pub fn cast_type_kind(t: ty::t) -> cast_kind {
         ty::ty_uint(*)    => cast_integral,
         ty::ty_bool       => cast_integral,
         ty::ty_enum(*)    => cast_enum,
+        ty::ty_multi(*)   => cast_multi,
         _                 => cast_other
     }
 }
@@ -1661,6 +1663,10 @@ fn trans_imm_cast(bcx: block, expr: @ast::expr,
                     cast_float => SIToFP(bcx, lldiscrim_a, ll_t_out),
                     _ => ccx.sess.bug(~"translating unsupported cast.")
                 }
+            }
+            (cast_integral, cast_multi) |
+            (cast_float, cast_multi) => {
+                VectorSplat(bcx, ty::multi_size(t_out), llexpr)
             }
             _ => ccx.sess.bug(~"translating unsupported cast.")
         };

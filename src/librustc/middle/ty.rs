@@ -1581,6 +1581,13 @@ pub fn type_is_sequence(ty: t) -> bool {
     }
 }
 
+pub fn type_is_multi(ty: t) -> bool {
+    match get(ty).sty {
+        ty_multi(*) => true,
+        _ => false
+    }
+}
+
 pub fn type_is_str(ty: t) -> bool {
     match get(ty).sty {
       ty_estr(_) => true,
@@ -1594,6 +1601,20 @@ pub fn sequence_element_type(cx: ctxt, ty: t) -> t {
       ty_evec(mt, _) | ty_unboxed_vec(mt) => return mt.ty,
       _ => cx.sess.bug(
           ~"sequence_element_type called on non-sequence value"),
+    }
+}
+
+pub fn multi_type(ty: t) -> t {
+    match get(ty).sty {
+        ty_multi(t, _) => t,
+        _ => fail!(~"multi_type called on invalid type")
+    }
+}
+
+pub fn multi_size(ty: t) -> uint {
+    match get(ty).sty {
+        ty_multi(_, n) => n,
+        _ => fail!(~"multi_size called on invalid type")
     }
 }
 
@@ -1680,8 +1701,8 @@ pub fn type_is_scalar(ty: t) -> bool {
 }
 
 pub fn type_is_immediate(ty: t) -> bool {
-    return type_is_scalar(ty) || type_is_boxed(ty) ||
-        type_is_unique(ty) || type_is_region_ptr(ty);
+    return type_is_scalar(ty) || type_is_multi(ty) ||
+        type_is_boxed(ty) || type_is_unique(ty) || type_is_region_ptr(ty);
 }
 
 pub fn type_needs_drop(cx: ctxt, ty: t) -> bool {
