@@ -16,7 +16,7 @@ use middle::liveness;
 use middle::pat_util;
 use middle::ty;
 use middle::typeck;
-use util::ppaux::{ty_to_str, tys_to_str};
+use util::ppaux::{Repr, ty_to_str, tys_to_str};
 
 use syntax::ast::*;
 use syntax::attr::attrs_contains_name;
@@ -91,7 +91,7 @@ fn check_struct_safe_for_destructor(cx: Context,
                                     span: span,
                                     struct_did: def_id) {
     let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
-    if struct_tpt.generics.bounds.len() == 0 {
+    if !struct_tpt.generics.has_type_params() {
         let struct_ty = ty::mk_struct(cx.tcx, struct_did, ty::substs {
             self_r: None,
             self_ty: None,
@@ -276,10 +276,10 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
     for cx.tcx.node_type_substs.find(&type_parameter_id).each |ts| {
         // FIXME(#5562): removing this copy causes a segfault before stage2
         let ts = /*bad*/ copy **ts;
-        let bounds = match e.node {
+        let type_param_defs = match e.node {
           expr_path(_) => {
             let did = ast_util::def_id_of_def(*cx.tcx.def_map.get(&e.id));
-            ty::lookup_item_type(cx.tcx, did).generics.bounds
+            ty::lookup_item_type(cx.tcx, did).generics.type_param_defs
           }
           _ => {
             // Type substitutions should only occur on paths and
@@ -287,20 +287,20 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
 
             // Even though the callee_id may have been the id with
             // node_type_substs, e.id is correct here.
-            ty::method_call_bounds(cx.tcx, cx.method_map, e.id).expect(
+            ty::method_call_type_param_defs(cx.tcx, cx.method_map, e.id).expect(
                 ~"non path/method call expr has type substs??")
           }
         };
-        if ts.len() != bounds.len() {
+        if ts.len() != type_param_defs.len() {
             // Fail earlier to make debugging easier
             fail!(fmt!("internal error: in kind::check_expr, length \
                        mismatch between actual and declared bounds: actual = \
-                        %s (%u tys), declared = %? (%u tys)",
-                      tys_to_str(cx.tcx, ts), ts.len(),
-                      *bounds, bounds.len()));
+                        %s, declared = %s",
+                       ts.repr(cx.tcx),
+                       type_param_defs.repr(cx.tcx)));
         }
-        for vec::each2(ts, *bounds) |ty, bound| {
-            check_bounds(cx, type_parameter_id, e.span, *ty, *bound)
+        for vec::each2(ts, *type_param_defs) |&ty, type_param_def| {
+            check_bounds(cx, type_parameter_id, e.span, ty, type_param_def)
         }
     }
 
@@ -340,9 +340,10 @@ fn check_ty(aty: @Ty, cx: Context, v: visit::vt<Context>) {
             // FIXME(#5562): removing this copy causes a segfault before stage2
             let ts = /*bad*/ copy **ts;
             let did = ast_util::def_id_of_def(*cx.tcx.def_map.get(&id));
-            let bounds = ty::lookup_item_type(cx.tcx, did).generics.bounds;
-            for vec::each2(ts, *bounds) |ty, bound| {
-                check_bounds(cx, aty.id, aty.span, *ty, *bound)
+            let type_param_defs =
+                ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
+            for vec::each2(ts, *type_param_defs) |&ty, type_param_def| {
+                check_bounds(cx, aty.id, aty.span, ty, type_param_def)
             }
         }
       }
@@ -355,11 +356,11 @@ pub fn check_bounds(cx: Context,
                     _type_parameter_id: node_id,
                     sp: span,
                     ty: ty::t,
-                    bounds: ty::param_bounds)
+                    type_param_def: &ty::TypeParameterDef)
 {
     let kind = ty::type_contents(cx.tcx, ty);
     let mut missing = ~[];
-    for bounds.each |bound| {
+    for type_param_def.bounds.each |bound| {
         match *bound {
             ty::bound_trait(_) => {
                 /* Not our job, checking in typeck */

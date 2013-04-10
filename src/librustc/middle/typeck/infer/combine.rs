@@ -274,15 +274,14 @@ pub fn super_tps<C:Combine>(
 pub fn super_self_tys<C:Combine>(
     self: &C, a: Option<ty::t>, b: Option<ty::t>) -> cres<Option<ty::t>> {
 
-    // Note: the self type parameter is (currently) always treated as
-    // *invariant* (otherwise the type system would be unsound).
-
     match (a, b) {
       (None, None) => {
         Ok(None)
       }
       (Some(a), Some(b)) => {
-        eq_tys(self, a, b).then(|| Ok(Some(a)) )
+          // FIXME(#5781) this should be eq_tys
+          // eq_tys(self, a, b).then(|| Ok(Some(a)) )
+          self.contratys(a, b).chain(|t| Ok(Some(t)))
       }
       (None, Some(_)) |
       (Some(_), None) => {

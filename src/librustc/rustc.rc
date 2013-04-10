@@ -83,6 +83,7 @@ pub mod middle {
         pub mod asm;
     }
     pub mod ty;
+    pub mod subst;
     pub mod resolve;
     #[path = "typeck/mod.rs"]
     pub mod typeck;

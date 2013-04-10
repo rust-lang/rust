@@ -30,7 +30,7 @@ use middle::ty;
 use middle::ty::arg;
 use middle::typeck;
 use util::common::indenter;
-use util::ppaux::ty_to_str;
+use util::ppaux::Repr;
 
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util;
@@ -61,7 +61,7 @@ pub fn trans_impl(ccx: @CrateContext, +path: path, name: ast::ident,
                     param_substs_opt = Some(@param_substs {
                         tys: ~[],
                         vtables: None,
-                        bounds: @~[],
+                        type_param_defs: @~[],
                         self_ty: Some(self_ty)
                     });
                 }
@@ -115,11 +115,8 @@ pub fn trans_method(ccx: @CrateContext,
             }
         };
         debug!("calling trans_fn with base_self_ty %s, self_ty %s",
-               match base_self_ty {
-                    None => ~"(none)",
-                    Some(x) => ty_to_str(ccx.tcx, x),
-               },
-               ty_to_str(ccx.tcx, self_ty));
+               base_self_ty.repr(ccx.tcx),
+               self_ty.repr(ccx.tcx));
         match method.self_ty.node {
           ast::sty_value => {
             impl_owned_self(self_ty)
@@ -175,8 +172,9 @@ pub fn trans_method_callee(bcx: block,
     let _icx = bcx.insn_ctxt("impl::trans_method_callee");
     let tcx = bcx.tcx();
 
-    debug!("trans_method_callee(callee_id=%?, self=%s, mentry=%?)",
-           callee_id, bcx.expr_to_str(self), mentry);
+    debug!("trans_method_callee(callee_id=%?, self=%s, mentry=%s)",
+           callee_id, bcx.expr_to_str(self),
+           mentry.repr(bcx.tcx()));
 
     // Replace method_self with method_static here.
     let mut origin = mentry.origin;
@@ -302,7 +300,8 @@ pub fn trans_static_method_callee(bcx: block,
     // one we are interested in.
     let bound_index = {
         let trait_def = ty::lookup_trait_def(bcx.tcx(), trait_id);
-        ty::count_traits_and_supertraits(bcx.tcx(), *trait_def.generics.bounds)
+        ty::count_traits_and_supertraits(
+            bcx.tcx(), *trait_def.generics.type_param_defs)
     };
 
     let mname = if method_id.crate == ast::local_crate {
@@ -552,14 +551,15 @@ pub fn combine_impl_and_methods_origins(bcx: block,
     let ccx = bcx.ccx(), tcx = bcx.tcx();
     let n_m_tps = method_ty_param_count(ccx, mth_did, impl_did);
     let ty::ty_param_bounds_and_ty {
-        generics: ty::Generics {bounds: r_m_bounds, _},
+        generics: r_m_generics,
         _
     } = ty::lookup_item_type(tcx, mth_did);
-    let n_r_m_tps = r_m_bounds.len(); // rcvr + method tps
-    let m_boundss = vec::slice(*r_m_bounds, n_r_m_tps - n_m_tps, n_r_m_tps);
+    let n_r_m_tps = r_m_generics.type_param_defs.len(); // rcvr + method tps
+    let m_type_param_defs =
+        vec::slice(*r_m_generics.type_param_defs, n_r_m_tps - n_m_tps, n_r_m_tps);
 
     // Flatten out to find the number of vtables the method expects.
-    let m_vtables = ty::count_traits_and_supertraits(tcx, m_boundss);
+    let m_vtables = ty::count_traits_and_supertraits(tcx, m_type_param_defs);
 
     // Find the vtables we computed at type check time and monomorphize them
     let r_m_origins = match node_vtables(bcx, callee_id) {
@@ -787,12 +787,13 @@ pub fn make_impl_vtable(ccx: @CrateContext,
     // XXX: This should support multiple traits.
     let trt_id = ty::impl_trait_refs(tcx, impl_id)[0].def_id;
 
-    let has_tps = ty::lookup_item_type(ccx.tcx, impl_id).generics.bounds.len() > 0u;
+    let has_tps =
+        !ty::lookup_item_type(ccx.tcx, impl_id).generics.type_param_defs.is_empty();
     make_vtable(ccx, ty::trait_method_def_ids(tcx, trt_id).map(|method_def_id| {
         let im = ty::method(tcx, *method_def_id);
         let fty = ty::subst_tps(tcx, substs, None,
                                 ty::mk_bare_fn(tcx, copy im.fty));
-        if im.generics.bounds.len() > 0u || ty::type_has_self(fty) {
+        if im.generics.has_type_params() || ty::type_has_self(fty) {
             debug!("(making impl vtable) method has self or type params: %s",
                    *tcx.sess.str_of(im.ident));
             C_null(T_ptr(T_nil()))

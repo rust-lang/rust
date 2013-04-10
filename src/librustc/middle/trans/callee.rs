@@ -42,6 +42,7 @@ use middle::trans::type_of;
 use middle::ty;
 use middle::typeck;
 use util::common::indenter;
+use util::ppaux::Repr;
 
 use syntax::ast;
 use syntax::ast_map;
@@ -74,23 +75,12 @@ pub struct Callee {
 
 pub fn trans(bcx: block, expr: @ast::expr) -> Callee {
     let _icx = bcx.insn_ctxt("trans_callee");
+    debug!("callee::trans(expr=%s)", expr.repr(bcx.tcx()));
 
     // pick out special kinds of expressions that can be called:
     match expr.node {
         ast::expr_path(_) => {
             return trans_def(bcx, bcx.def(expr.id), expr);
-        }
-        ast::expr_field(base, _, _) => {
-            match bcx.ccx().maps.method_map.find(&expr.id) {
-                Some(origin) => { // An impl method
-                    // FIXME(#5562): removing this copy causes a segfault
-                    //               before stage2
-                    let origin = /*bad*/ copy *origin;
-                    return meth::trans_method_callee(bcx, expr.id,
-                                                     base, origin);
-                }
-                None => {} // not a method, just a field
-            }
         }
         _ => {}
     }
@@ -178,11 +168,13 @@ pub fn trans_fn_ref(bcx: block,
      * with id `def_id` into a function pointer.  This may require
      * monomorphization or inlining. */
 
-    let _icx = bcx.insn_ctxt("trans_fn");
+    let _icx = bcx.insn_ctxt("trans_fn_ref");
 
     let type_params = node_id_type_params(bcx, ref_id);
-
     let vtables = node_vtables(bcx, ref_id);
+    debug!("trans_fn_ref(def_id=%s, ref_id=%?, type_params=%s, vtables=%s)",
+           def_id.repr(bcx.tcx()), ref_id, type_params.repr(bcx.tcx()),
+           vtables.repr(bcx.tcx()));
     trans_fn_ref_with_vtables(bcx, def_id, ref_id, type_params, vtables)
 }
 
@@ -224,12 +216,13 @@ pub fn trans_fn_ref_with_vtables(
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
 
-    debug!("trans_fn_ref_with_vtables(bcx=%s, def_id=%?, ref_id=%?, \
-            type_params=%?, vtables=%?)",
-           bcx.to_str(), def_id, ref_id,
-           type_params.map(|t| bcx.ty_to_str(*t)),
-           vtables);
-    let _indenter = indenter();
+    debug!("trans_fn_ref_with_vtables(bcx=%s, def_id=%s, ref_id=%?, \
+            type_params=%s, vtables=%s)",
+           bcx.to_str(),
+           def_id.repr(bcx.tcx()),
+           ref_id,
+           type_params.repr(bcx.tcx()),
+           vtables.repr(bcx.tcx()));
 
     assert!(type_params.all(|t| !ty::type_needs_infer(*t)));
 
@@ -335,6 +328,9 @@ pub fn trans_method_call(in_cx: block,
                          dest: expr::Dest)
                       -> block {
     let _icx = in_cx.insn_ctxt("trans_method_call");
+    debug!("trans_method_call(call_ex=%s, rcvr=%s)",
+           call_ex.repr(in_cx.tcx()),
+           rcvr.repr(in_cx.tcx()));
     trans_call_inner(
         in_cx,
         call_ex.info(),
@@ -343,9 +339,14 @@ pub fn trans_method_call(in_cx: block,
         |cx| {
             match cx.ccx().maps.method_map.find(&call_ex.id) {
                 Some(origin) => {
+                    debug!("origin for %s: %s",
+                           call_ex.repr(in_cx.tcx()),
+                           origin.repr(in_cx.tcx()));
+
                     // FIXME(#5562): removing this copy causes a segfault
                     //               before stage2
                     let origin = /*bad*/ copy *origin;
+
                     meth::trans_method_callee(cx,
                                               call_ex.callee_id,
                                               rcvr,
@@ -641,8 +642,9 @@ pub fn trans_arg_expr(bcx: block,
 
     debug!("trans_arg_expr(formal_ty=(%?,%s), arg_expr=%s, \
             ret_flag=%?)",
-           formal_ty.mode, bcx.ty_to_str(formal_ty.ty),
-           bcx.expr_to_str(arg_expr),
+           formal_ty.mode,
+           formal_ty.ty.repr(bcx.tcx()),
+           arg_expr.repr(bcx.tcx()),
            ret_flag.map(|v| bcx.val_str(*v)));
     let _indenter = indenter();
 

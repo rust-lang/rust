@@ -32,6 +32,7 @@ use middle::ty::{ty_rptr, ty_self, ty_struct, ty_trait, ty_tup};
 use middle::ty::{ty_type, ty_uint, ty_uniq, ty_bare_fn, ty_closure};
 use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec};
 use middle::ty::{type_is_ty_var};
+use middle::subst::Subst;
 use middle::ty;
 use middle::typeck::CrateCtxt;
 use middle::typeck::infer::combine::Combine;
@@ -59,7 +60,7 @@ use core::uint;
 pub struct UniversalQuantificationResult {
     monotype: t,
     type_variables: ~[ty::t],
-    bounds: @~[param_bounds]
+    type_param_defs: @~[ty::TypeParameterDef]
 }
 
 pub fn get_base_type(inference_context: @mut InferCtxt,
@@ -269,17 +270,16 @@ pub impl CoherenceChecker {
         // We only want to generate one Impl structure. When we generate one,
         // we store it here so that we don't recreate it.
         let mut implementation_opt = None;
-        for associated_traits.each |associated_trait| {
-            let trait_did =
-                self.trait_ref_to_trait_def_id(*associated_trait);
-            debug!("(checking implementation) adding impl for trait \
-                    '%s', item '%s'",
-                    ast_map::node_id_to_str(
-                        self.crate_context.tcx.items, trait_did.node,
-                        self.crate_context.tcx.sess.parse_sess.interner),
-                    *self.crate_context.tcx.sess.str_of(item.ident));
+        for associated_traits.each |&associated_trait| {
+            let trait_ref =
+                ty::node_id_to_trait_ref(
+                    self.crate_context.tcx,
+                    associated_trait.ref_id);
+            debug!("(checking implementation) adding impl for trait '%s', item '%s'",
+                   trait_ref.repr(self.crate_context.tcx),
+                   *self.crate_context.tcx.sess.str_of(item.ident));
 
-            self.instantiate_default_methods(item.id, trait_did);
+            self.instantiate_default_methods(item.id, trait_ref);
 
             let implementation;
             if implementation_opt.is_none() {
@@ -287,7 +287,7 @@ pub impl CoherenceChecker {
                 implementation_opt = Some(implementation);
             }
 
-            self.add_trait_method(trait_did, implementation_opt.get());
+            self.add_trait_method(trait_ref.def_id, implementation_opt.get());
         }
 
         // Add the implementation to the mapping from implementation to base
@@ -325,22 +325,48 @@ pub impl CoherenceChecker {
     // Creates default method IDs and performs type substitutions for an impl
     // and trait pair. Then, for each provided method in the trait, inserts a
     // `ProvidedMethodInfo` instance into the `provided_method_sources` map.
-    fn instantiate_default_methods(&self, impl_id: ast::node_id,
-                                   trait_did: ast::def_id) {
-        for self.each_provided_trait_method(trait_did) |trait_method| {
+    fn instantiate_default_methods(&self,
+                                   impl_id: ast::node_id,
+                                   trait_ref: &ty::TraitRef) {
+        let tcx = self.crate_context.tcx;
+        debug!("instantiate_default_methods(impl_id=%?, trait_ref=%s)",
+               impl_id, trait_ref.repr(tcx));
+
+        let impl_poly_type = ty::lookup_item_type(tcx, local_def(impl_id));
+
+        for self.each_provided_trait_method(trait_ref.def_id) |trait_method| {
             // Synthesize an ID.
-            let tcx = self.crate_context.tcx;
             let new_id = parse::next_node_id(tcx.sess.parse_sess);
             let new_did = local_def(new_id);
 
-            let new_method_ty = @ty::method {
-                def_id: new_did,
-                ..copy *trait_method
-            };
+            debug!("new_did=%? trait_method=%s", new_did, trait_method.repr(tcx));
 
-            // XXX: Perform substitutions.
-            let new_polytype = ty::lookup_item_type(tcx,
-                                                    trait_method.def_id);
+            // Create substitutions for the various trait parameters.
+            let new_method_ty =
+                @subst_receiver_types_in_method_ty(
+                    tcx,
+                    impl_id,
+                    trait_ref,
+                    new_did,
+                    trait_method);
+
+            debug!("new_method_ty=%s", new_method_ty.repr(tcx));
+
+            // construct the polytype for the method based on the method_ty
+            let new_generics = ty::Generics {
+                type_param_defs:
+                    @vec::append(
+                        copy *impl_poly_type.generics.type_param_defs,
+                        *new_method_ty.generics.type_param_defs),
+                region_param:
+                    impl_poly_type.generics.region_param
+            };
+            let new_polytype = ty::ty_param_bounds_and_ty {
+                generics: new_generics,
+                ty: ty::mk_bare_fn(tcx, copy new_method_ty.fty)
+            };
+            debug!("new_polytype=%s", new_polytype.repr(tcx));
+
             tcx.tcache.insert(new_did, new_polytype);
             tcx.methods.insert(new_did, new_method_ty);
 
@@ -358,7 +384,7 @@ pub impl CoherenceChecker {
                 @ProvidedMethodInfo {
                     method_info: @MethodInfo {
                         did: new_did,
-                        n_tps: trait_method.generics.bounds.len(),
+                        n_tps: trait_method.generics.type_param_defs.len(),
                         ident: trait_method.ident,
                         self_type: trait_method.self_ty
                     },
@@ -545,9 +571,8 @@ pub impl CoherenceChecker {
             polytype.generics.region_param.map(
                 |_r| self.inference_context.next_region_var_nb(dummy_sp()));
 
-        let bounds_count = polytype.generics.bounds.len();
-        let type_parameters =
-            self.inference_context.next_ty_vars(bounds_count);
+        let bounds_count = polytype.generics.type_param_defs.len();
+        let type_parameters = self.inference_context.next_ty_vars(bounds_count);
 
         let substitutions = substs {
             self_r: self_region,
@@ -565,7 +590,7 @@ pub impl CoherenceChecker {
         UniversalQuantificationResult {
             monotype: monotype,
             type_variables: type_parameters,
-            bounds: polytype.generics.bounds
+            type_param_defs: polytype.generics.type_param_defs
         }
     }
 
@@ -582,13 +607,13 @@ pub impl CoherenceChecker {
                 // Check to ensure that each parameter binding respected its
                 // kind bounds.
                 for [ a, b ].each |result| {
-                    for vec::each2(result.type_variables, *result.bounds)
-                            |ty_var, bounds| {
+                    for vec::each2(result.type_variables, *result.type_param_defs)
+                            |ty_var, type_param_def| {
                         match resolve_type(self.inference_context,
                                            *ty_var,
                                            resolve_nested_tvar) {
                             Ok(resolved_ty) => {
-                                for bounds.each |bound| {
+                                for type_param_def.bounds.each |bound| {
                                     match *bound {
                                         bound_copy => {
                                             if !ty::type_is_copyable(
@@ -914,7 +939,7 @@ pub impl CoherenceChecker {
                 @ProvidedMethodInfo {
                     method_info: @MethodInfo {
                         did: new_did,
-                        n_tps: trait_method_info.ty.generics.bounds.len(),
+                        n_tps: trait_method_info.ty.generics.type_param_defs.len(),
                         ident: trait_method_info.ty.ident,
                         self_type: trait_method_info.ty.self_ty
                     },
@@ -1007,6 +1032,70 @@ pub impl CoherenceChecker {
                 }
             }
         }
+    }
+}
+
+fn subst_receiver_types_in_method_ty(
+    tcx: ty::ctxt,
+    impl_id: ast::node_id,
+    trait_ref: &ty::TraitRef,
+    new_def_id: ast::def_id,
+    method: &ty::method) -> ty::method
+{
+    /*!
+     * Substitutes the values for the receiver's type parameters
+     * that are found in method, leaving the method's type parameters
+     * intact.  This is in fact a mildly complex operation,
+     * largely because of the hokey way that we concatenate the
+     * receiver and method generics.
+     */
+
+    // determine how many type parameters were declared on the impl
+    let num_impl_type_parameters = {
+        let impl_polytype = ty::lookup_item_type(tcx, local_def(impl_id));
+        impl_polytype.generics.type_param_defs.len()
+    };
+
+    // determine how many type parameters appear on the trait
+    let num_trait_type_parameters = trait_ref.substs.tps.len();
+
+    // the current method type has the type parameters from the trait + method
+    let num_method_type_parameters =
+        num_trait_type_parameters + method.generics.type_param_defs.len();
+
+    // the new method type will have the type parameters from the impl + method
+    let combined_tps = vec::from_fn(num_method_type_parameters, |i| {
+        if i < num_trait_type_parameters {
+            // replace type parameters that come from trait with new value
+            trait_ref.substs.tps[i]
+        } else {
+            // replace type parameters that belong to method with another
+            // type parameter, this time with the index adjusted
+            let method_index = i - num_trait_type_parameters;
+            let type_param_def = &method.generics.type_param_defs[method_index];
+            let new_index = num_impl_type_parameters + method_index;
+            ty::mk_param(tcx, new_index, type_param_def.def_id)
+        }
+    });
+
+    let combined_substs = ty::substs {
+        self_r: trait_ref.substs.self_r,
+        self_ty: trait_ref.substs.self_ty,
+        tps: combined_tps
+    };
+
+    ty::method {
+        ident: method.ident,
+
+        // method tps cannot appear in the self_ty, so use `substs` from trait ref
+        transformed_self_ty: method.transformed_self_ty.subst(tcx, &trait_ref.substs),
+
+        // method types *can* appear in the generic bounds or the fty
+        generics: method.generics.subst(tcx, &combined_substs),
+        fty: method.fty.subst(tcx, &combined_substs),
+        self_ty: method.self_ty,
+        vis: method.vis,
+        def_id: new_def_id
     }
 }
 

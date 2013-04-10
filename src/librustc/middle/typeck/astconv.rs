@@ -135,6 +135,7 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Copy + Durable>(
     rscope: &RS,
     def_id: ast::def_id,
     decl_generics: &ty::Generics,
+    self_ty: Option<ty::t>,
     path: @ast::path) -> ty::substs
 {
     /*!
@@ -172,15 +173,15 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Copy + Durable>(
     };
 
     // Convert the type parameters supplied by the user.
-    if !vec::same_length(*decl_generics.bounds, path.types) {
+    if !vec::same_length(*decl_generics.type_param_defs, path.types) {
         self.tcx().sess.span_fatal(
             path.span,
             fmt!("wrong number of type arguments: expected %u but found %u",
-                 decl_generics.bounds.len(), path.types.len()));
+                 decl_generics.type_param_defs.len(), path.types.len()));
     }
     let tps = path.types.map(|a_t| ast_ty_to_ty(self, rscope, *a_t));
 
-    substs {self_r:self_r, self_ty:None, tps:tps}
+    substs {self_r:self_r, self_ty:self_ty, tps:tps}
 }
 
 pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
@@ -195,7 +196,7 @@ pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
         ty: decl_ty
     } = self.get_item_ty(did);
 
-    let substs = ast_path_substs(self, rscope, did, &generics, path);
+    let substs = ast_path_substs(self, rscope, did, &generics, None, path);
     let ty = ty::subst(tcx, &substs, decl_ty);
     ty_param_substs_and_ty { substs: substs, ty: ty }
 }
@@ -204,14 +205,18 @@ pub fn ast_path_to_trait_ref<AC:AstConv,RS:region_scope + Copy + Durable>(
     self: &AC,
     rscope: &RS,
     trait_def_id: ast::def_id,
+    self_ty: Option<ty::t>,
     path: @ast::path) -> @ty::TraitRef
 {
     let trait_def =
         self.get_trait_def(trait_def_id);
     let substs =
         ast_path_substs(
-            self, rscope,
-            trait_def.trait_ref.def_id, &trait_def.generics,
+            self,
+            rscope,
+            trait_def.trait_ref.def_id,
+            &trait_def.generics,
+            self_ty,
             path);
     let trait_ref =
         @ty::TraitRef {def_id: trait_def_id,
@@ -280,7 +285,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
                     }
                     Some(&ast::def_trait(trait_def_id)) => {
                         let result = ast_path_to_trait_ref(
-                            self, rscope, trait_def_id, path);
+                            self, rscope, trait_def_id, None, path);
                         let trait_store = match vst {
                             ty::vstore_box => ty::BoxTraitStore,
                             ty::vstore_uniq => ty::UniqTraitStore,

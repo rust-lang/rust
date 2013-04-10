@@ -94,7 +94,6 @@ use middle::typeck::{method_map_entry, method_origin, method_param};
 use middle::typeck::{method_self, method_static, method_trait, method_super};
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use util::common::indenter;
-use util::ppaux::expr_repr;
 
 use core::hashmap::HashSet;
 use core::result;
@@ -149,8 +148,7 @@ pub fn lookup(
         autoderef_receiver: autoderef_receiver,
     };
     let mme = lcx.do_lookup(self_ty);
-    debug!("method lookup for %s yielded %?",
-           expr_repr(fcx.tcx(), expr), mme);
+    debug!("method lookup for %s yielded %?", expr.repr(fcx.tcx()), mme);
     return mme;
 }
 
@@ -197,9 +195,8 @@ pub impl<'self> LookupContext<'self> {
 
         debug!("do_lookup(self_ty=%s, expr=%s, self_expr=%s)",
                self.ty_to_str(self_ty),
-               expr_repr(self.tcx(), self.expr),
-               expr_repr(self.tcx(), self.self_expr));
-        let _indenter = indenter();
+               self.expr.repr(self.tcx()),
+               self.self_expr.repr(self.tcx()));
 
         // Prepare the list of candidates
         self.push_inherent_candidates(self_ty);
@@ -379,105 +376,59 @@ pub impl<'self> LookupContext<'self> {
 
         let tcx = self.tcx();
         let mut next_bound_idx = 0; // count only trait bounds
-        let bounds = tcx.ty_param_bounds.get(&param_ty.def_id.node);
-
-        for bounds.each |bound| {
-            let bound_trait_ref = match *bound {
-                ty::bound_trait(bound_t) => bound_t,
-
-                ty::bound_copy | ty::bound_owned |
-                ty::bound_const | ty::bound_durable => {
-                    loop; // skip non-trait bounds
-                }
-            };
-
-            // Loop over the trait and all of its supertraits.
-            let mut worklist = ~[];
-
-            let init_trait_ref = bound_trait_ref;
-
-            // Replace any appearance of `self` with the type of the
-            // generic parameter itself.  Note that this is the only
-            // case where this replacement is necessary: in all other
-            // cases, we are either invoking a method directly from an
-            // impl or class (where the self type is not permitted),
-            // or from a trait type (in which case methods that refer
-            // to self are not permitted).
-            let init_substs = substs {
-                self_ty: Some(rcvr_ty),
-                ..copy bound_trait_ref.substs
-            };
-
-            worklist.push((init_trait_ref.def_id, init_substs));
-
-            let mut i = 0;
-            while i < worklist.len() {
-                let (init_trait_id, init_substs) = /*bad*/copy worklist[i];
-                i += 1;
-
-                // Add all the supertraits of this trait to the worklist.
-                let supertraits = ty::trait_supertraits(tcx, init_trait_id);
-                for supertraits.each |supertrait_ref| {
-                    debug!("adding supertrait: %?",
-                           supertrait_ref.def_id);
-
-                    let new_substs = ty::subst_in_substs(
-                        tcx,
-                        &init_substs,
-                        &supertrait_ref.substs);
-
-                    // Again replacing the self type
-                    let new_substs = substs {
-                        self_ty: Some(rcvr_ty),
-                        ..new_substs
-                    };
-
-                    worklist.push((supertrait_ref.def_id, new_substs));
-                }
-
-
-                let this_bound_idx = next_bound_idx;
-                next_bound_idx += 1;
-
-                let trait_methods = ty::trait_methods(tcx, init_trait_id);
-                let pos = {
-                    match trait_methods.position(|m| {
-                        m.self_ty != ast::sty_static &&
-                            m.ident == self.m_name })
-                    {
-                        Some(pos) => pos,
-                        None => {
-                            debug!("trait doesn't contain method: %?",
-                                   init_trait_id);
-                            loop; // check next trait or bound
-                        }
-                    }
-                };
-                let method = trait_methods[pos];
-
-                let (rcvr_ty, rcvr_substs) =
-                    self.create_rcvr_ty_and_substs_for_method(
-                        method.self_ty,
-                        rcvr_ty,
-                        init_substs,
-                        TransformTypeNormally);
-
-                let cand = Candidate {
-                    rcvr_ty: rcvr_ty,
-                    rcvr_substs: rcvr_substs,
-                    method_ty: method,
-                    origin: method_param(
-                        method_param {
-                            trait_id: init_trait_id,
-                            method_num: pos,
-                            param_num: param_ty.idx,
-                            bound_num: this_bound_idx,
-                        })
-                };
-
-                debug!("pushing inherent candidate for param: %?", cand);
-                self.inherent_candidates.push(cand);
+        let type_param_def = match tcx.ty_param_defs.find(&param_ty.def_id.node) {
+            Some(t) => t,
+            None => {
+                tcx.sess.span_bug(
+                    self.expr.span,
+                    fmt!("No param def for %?", param_ty));
             }
+        };
+
+        for ty::each_bound_trait_and_supertraits(tcx, type_param_def.bounds)
+            |bound_trait_ref|
+        {
+            let this_bound_idx = next_bound_idx;
+            next_bound_idx += 1;
+
+            let trait_methods = ty::trait_methods(tcx, bound_trait_ref.def_id);
+            let pos = {
+                match trait_methods.position(|m| {
+                    m.self_ty != ast::sty_static &&
+                        m.ident == self.m_name })
+                {
+                    Some(pos) => pos,
+                    None => {
+                        debug!("trait doesn't contain method: %?",
+                               bound_trait_ref.def_id);
+                        loop; // check next trait or bound
+                    }
+                }
+            };
+            let method = trait_methods[pos];
+
+            let (rcvr_ty, rcvr_substs) =
+                self.create_rcvr_ty_and_substs_for_method(
+                    method.self_ty,
+                    rcvr_ty,
+                    copy bound_trait_ref.substs,
+                    TransformTypeNormally);
+
+            let cand = Candidate {
+                rcvr_ty: rcvr_ty,
+                rcvr_substs: rcvr_substs,
+                method_ty: method,
+                origin: method_param(
+                    method_param {
+                        trait_id: bound_trait_ref.def_id,
+                        method_num: pos,
+                        param_num: param_ty.idx,
+                        bound_num: this_bound_idx,
+                    })
+            };
+
+            debug!("pushing inherent candidate for param: %?", cand);
+            self.inherent_candidates.push(cand);
         }
     }
 
@@ -499,7 +450,7 @@ pub impl<'self> LookupContext<'self> {
         };
         let method = ms[index];
 
-        /* FIXME(#3157) we should transform the vstore in accordance
+        /* FIXME(#5762) we should transform the vstore in accordance
            with the self type
 
         match method.self_type {
@@ -517,6 +468,9 @@ pub impl<'self> LookupContext<'self> {
         // `trait_ty` for `self` here, because it allows the compiler
         // to soldier on.  An error will be reported should this
         // candidate be selected if the method refers to `self`.
+        //
+        // NB: `confirm_candidate()` also relies upon this substitution
+        // for Self.
         let rcvr_substs = substs {
             self_ty: Some(self_ty),
             ../*bad*/copy *substs
@@ -1075,7 +1029,7 @@ pub impl<'self> LookupContext<'self> {
         let fty = self.fn_ty_from_origin(&candidate.origin);
 
         debug!("confirm_candidate(expr=%s, candidate=%s, fty=%s)",
-               expr_repr(tcx, self.expr),
+               self.expr.repr(tcx),
                self.cand_to_str(candidate),
                self.ty_to_str(fty));
 
@@ -1101,7 +1055,7 @@ pub impl<'self> LookupContext<'self> {
         // If they were not explicitly supplied, just construct fresh
         // type variables.
         let num_supplied_tps = self.supplied_tps.len();
-        let num_method_tps = candidate.method_ty.generics.bounds.len();
+        let num_method_tps = candidate.method_ty.generics.type_param_defs.len();
         let m_substs = {
             if num_supplied_tps == 0u {
                 self.fcx.infcx().next_ty_vars(num_method_tps)
@@ -1195,7 +1149,7 @@ pub impl<'self> LookupContext<'self> {
                   self-type through a boxed trait");
         }
 
-        if candidate.method_ty.generics.bounds.len() > 0 {
+        if candidate.method_ty.generics.has_type_params() {
             self.tcx().sess.span_err(
                 self.expr.span,
                 ~"cannot call a generic method through a boxed trait");

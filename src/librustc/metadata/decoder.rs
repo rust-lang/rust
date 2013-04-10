@@ -19,7 +19,8 @@ use metadata::csearch::{ProvidedTraitMethodInfo, StaticMethodInfo};
 use metadata::csearch;
 use metadata::cstore;
 use metadata::decoder;
-use metadata::tydecode::{parse_ty_data, parse_def_id, parse_bounds_data,
+use metadata::tydecode::{parse_ty_data, parse_def_id,
+                         parse_type_param_def_data,
                          parse_bare_fn_ty_data, parse_trait_ref_data};
 use middle::{ty, resolve};
 
@@ -266,13 +267,14 @@ fn item_trait_ref(doc: ebml::Doc, tcx: ty::ctxt, cdata: cmd) -> ty::TraitRef {
     doc_trait_ref(tp, tcx, cdata)
 }
 
-fn item_ty_param_bounds(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd,
-                        tag: uint)
-    -> @~[ty::param_bounds] {
+fn item_ty_param_defs(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd,
+                      tag: uint)
+    -> @~[ty::TypeParameterDef] {
     let mut bounds = ~[];
     for reader::tagged_docs(item, tag) |p| {
-        let bd = parse_bounds_data(p.data, p.start, cdata.cnum, tcx,
-                                   |_, did| translate_def_id(cdata, did));
+        let bd = parse_type_param_def_data(
+            p.data, p.start, cdata.cnum, tcx,
+            |_, did| translate_def_id(cdata, did));
         bounds.push(bd);
     }
     @bounds
@@ -378,11 +380,11 @@ pub fn get_trait_def(cdata: cmd,
                      tcx: ty::ctxt) -> ty::TraitDef
 {
     let item_doc = lookup_item(item_id, cdata.data);
-    let tp_bounds = item_ty_param_bounds(item_doc, tcx, cdata,
-                                         tag_items_data_item_ty_param_bounds);
+    let tp_defs = item_ty_param_defs(item_doc, tcx, cdata,
+                                     tag_items_data_item_ty_param_bounds);
     let rp = item_ty_region_param(item_doc);
     ty::TraitDef {
-        generics: ty::Generics {bounds: tp_bounds,
+        generics: ty::Generics {type_param_defs: tp_defs,
                                 region_param: rp},
         trait_ref: @item_trait_ref(item_doc, tcx, cdata)
     }
@@ -394,12 +396,12 @@ pub fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     let item = lookup_item(id, cdata.data);
     let t = item_type(ast::def_id { crate: cdata.cnum, node: id }, item, tcx,
                       cdata);
-    let tp_bounds = if family_has_type_params(item_family(item)) {
-        item_ty_param_bounds(item, tcx, cdata, tag_items_data_item_ty_param_bounds)
+    let tp_defs = if family_has_type_params(item_family(item)) {
+        item_ty_param_defs(item, tcx, cdata, tag_items_data_item_ty_param_bounds)
     } else { @~[] };
     let rp = item_ty_region_param(item);
     ty::ty_param_bounds_and_ty {
-        generics: ty::Generics {bounds: tp_bounds,
+        generics: ty::Generics {type_param_defs: tp_defs,
                                 region_param: rp},
         ty: t
     }
@@ -753,9 +755,8 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     let method_doc = lookup_item(id, cdata.data);
     let def_id = item_def_id(method_doc, cdata);
     let name = item_name(intr, method_doc);
-    let bounds =
-        item_ty_param_bounds(method_doc, tcx, cdata,
-                             tag_item_method_tps);
+    let type_param_defs = item_ty_param_defs(method_doc, tcx, cdata,
+                                             tag_item_method_tps);
     let transformed_self_ty = doc_transformed_self_ty(method_doc, tcx, cdata);
     let fty = doc_method_fty(method_doc, tcx, cdata);
     let vis = item_visibility(method_doc);
@@ -763,7 +764,7 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     ty::method {
         ident: name,
         generics: ty::Generics {
-            bounds: bounds,
+            type_param_defs: type_param_defs,
             region_param: None
         },
         transformed_self_ty: transformed_self_ty,
@@ -797,8 +798,9 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
 
         let did = item_def_id(mth, cdata);
 
-        let bounds = item_ty_param_bounds(mth, tcx, cdata,
-                                          tag_items_data_item_ty_param_bounds);
+        let type_param_defs =
+            item_ty_param_defs(mth, tcx, cdata,
+                               tag_items_data_item_ty_param_bounds);
         let name = item_name(intr, mth);
         let ty = doc_type(mth, tcx, cdata);
 
@@ -815,7 +817,7 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
         let ty_method = ty::method {
             ident: name,
             generics: ty::Generics {
-                bounds: bounds,
+                type_param_defs: type_param_defs,
                 region_param: None
             },
             transformed_self_ty: transformed_self_ty,
