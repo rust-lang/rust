@@ -179,10 +179,10 @@ fn encode_family(ebml_w: writer::Encoder, c: char) {
 
 pub fn def_to_str(did: def_id) -> ~str { fmt!("%d:%d", did.crate, did.node) }
 
-fn encode_ty_type_param_bounds(ebml_w: writer::Encoder,
-                               ecx: @EncodeContext,
-                               params: @~[ty::param_bounds],
-                               tag: uint) {
+fn encode_ty_type_param_defs(ebml_w: writer::Encoder,
+                             ecx: @EncodeContext,
+                             params: @~[ty::TypeParameterDef],
+                             tag: uint) {
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
@@ -191,7 +191,7 @@ fn encode_ty_type_param_bounds(ebml_w: writer::Encoder,
         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     for params.each |param| {
         ebml_w.start_tag(tag);
-        tyencode::enc_bounds(ebml_w.writer, ty_str_ctxt, *param);
+        tyencode::enc_type_param_def(ebml_w.writer, ty_str_ctxt, param);
         ebml_w.end_tag();
     }
 }
@@ -199,10 +199,10 @@ fn encode_ty_type_param_bounds(ebml_w: writer::Encoder,
 fn encode_type_param_bounds(ebml_w: writer::Encoder,
                             ecx: @EncodeContext,
                             params: &OptVec<TyParam>) {
-    let ty_param_bounds =
-        @params.map_to_vec(|param| *ecx.tcx.ty_param_bounds.get(&param.id));
-    encode_ty_type_param_bounds(ebml_w, ecx, ty_param_bounds,
-                                tag_items_data_item_ty_param_bounds);
+    let ty_param_defs =
+        @params.map_to_vec(|param| *ecx.tcx.ty_param_defs.get(&param.id));
+    encode_ty_type_param_defs(ebml_w, ecx, ty_param_defs,
+                              tag_items_data_item_ty_param_bounds);
 }
 
 
@@ -588,8 +588,9 @@ fn encode_method_ty_fields(ecx: @EncodeContext,
 {
     encode_def_id(ebml_w, method_ty.def_id);
     encode_name(ecx, ebml_w, method_ty.ident);
-    encode_ty_type_param_bounds(ebml_w, ecx, method_ty.generics.bounds,
-                                tag_item_method_tps);
+    encode_ty_type_param_defs(ebml_w, ecx,
+                              method_ty.generics.type_param_defs,
+                              tag_item_method_tps);
     encode_transformed_self_ty(ecx, ebml_w, method_ty.transformed_self_ty);
     encode_method_fty(ecx, ebml_w, &method_ty.fty);
     encode_visibility(ebml_w, method_ty.vis);
@@ -952,8 +953,9 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
                                       method_ty.fty.purity));
 
                     let tpt = ty::lookup_item_type(tcx, method_def_id);
-                    encode_ty_type_param_bounds(ebml_w, ecx, tpt.generics.bounds,
-                                                tag_items_data_item_ty_param_bounds);
+                    encode_ty_type_param_defs(ebml_w, ecx,
+                                              tpt.generics.type_param_defs,
+                                              tag_items_data_item_ty_param_bounds);
                     encode_type(ecx, ebml_w, tpt.ty);
                 }
 

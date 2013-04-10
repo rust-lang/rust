@@ -86,13 +86,11 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
           csearch::found(ast::ii_method(impl_did, mth)) => {
             ccx.stats.n_inlines += 1;
             ccx.external.insert(fn_id, Some(mth.id));
-            let ty::ty_param_bounds_and_ty {
-                generics: ty::Generics { bounds: impl_bnds, _ },
-                ty: _
-            } = ty::lookup_item_type(ccx.tcx, impl_did);
-            if translate &&
-                impl_bnds.len() + mth.generics.ty_params.len() == 0u
-            {
+            let impl_tpt = ty::lookup_item_type(ccx.tcx, impl_did);
+            let num_type_params =
+                impl_tpt.generics.type_param_defs.len() +
+                mth.generics.ty_params.len();
+            if translate && num_type_params == 0 {
                 let llfn = get_item_val(ccx, mth.id);
                 let path = vec::append(
                     ty::item_path(ccx.tcx, impl_did),

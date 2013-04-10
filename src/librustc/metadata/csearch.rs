@@ -210,7 +210,7 @@ pub fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
     debug!("got field data %?", the_field);
     let ty = decoder::item_type(def, the_field, tcx, cdata);
     ty::ty_param_bounds_and_ty {
-        generics: ty::Generics {bounds: @~[],
+        generics: ty::Generics {type_param_defs: @~[],
                                 region_param: None},
         ty: ty
     }

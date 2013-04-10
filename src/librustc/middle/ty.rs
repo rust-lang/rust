@@ -20,12 +20,13 @@ use middle::lint;
 use middle::resolve::{Impl, MethodInfo};
 use middle::resolve;
 use middle::ty;
+use middle::subst::Subst;
 use middle::typeck;
 use middle;
 use util::ppaux::{note_and_explain_region, bound_region_to_str};
 use util::ppaux::{region_to_str, vstore_to_str};
 use util::ppaux::{trait_store_to_str, ty_to_str, tys_to_str};
-use util::ppaux::{trait_ref_to_str};
+use util::ppaux::Repr;
 use util::common::{indenter};
 
 use core;
@@ -277,7 +278,7 @@ struct ctxt_ {
     tc_cache: @mut HashMap<uint, TypeContents>,
     ast_ty_to_ty_cache: @mut HashMap<node_id, ast_ty_to_ty_cache_entry>,
     enum_var_cache: @mut HashMap<def_id, @~[VariantInfo]>,
-    ty_param_bounds: @mut HashMap<ast::node_id, param_bounds>,
+    ty_param_defs: @mut HashMap<ast::node_id, TypeParameterDef>,
     inferred_modes: @mut HashMap<ast::node_id, ast::mode>,
     adjustments: @mut HashMap<ast::node_id, @AutoAdjustment>,
     normalized_cache: @mut HashMap<t, t>,
@@ -400,18 +401,11 @@ impl to_bytes::IterBytes for ClosureTy {
     }
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub struct param_ty {
     idx: uint,
     def_id: def_id
 }
-
-impl to_bytes::IterBytes for param_ty {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_2(&self.idx, &self.def_id, lsb0, f)
-    }
-}
-
 
 /// Representation of regions:
 #[auto_encode]
@@ -754,11 +748,22 @@ impl to_bytes::IterBytes for RegionVid {
     }
 }
 
+pub struct TypeParameterDef {
+    def_id: ast::def_id,
+    bounds: param_bounds
+}
+
 /// Information about the type/lifetime parametesr associated with an item.
 /// Analogous to ast::Generics.
 pub struct Generics {
-    bounds: @~[param_bounds],
+    type_param_defs: @~[TypeParameterDef],
     region_param: Option<region_variance>,
+}
+
+pub impl Generics {
+    fn has_type_params(&self) -> bool {
+        !self.type_param_defs.is_empty()
+    }
 }
 
 /// A polytype.
@@ -853,7 +858,7 @@ pub fn mk_ctxt(s: session::Session,
         methods: @mut HashMap::new(),
         trait_method_def_ids: @mut HashMap::new(),
         trait_methods_cache: @mut HashMap::new(),
-        ty_param_bounds: @mut HashMap::new(),
+        ty_param_defs: @mut HashMap::new(),
         inferred_modes: @mut HashMap::new(),
         adjustments: @mut HashMap::new(),
         normalized_cache: new_ty_hash(),
@@ -1227,6 +1232,12 @@ pub fn fold_sig(sig: &FnSig, fldop: &fn(t) -> t) -> FnSig {
     }
 }
 
+pub fn fold_bare_fn_ty(fty: &BareFnTy, fldop: &fn(t) -> t) -> BareFnTy {
+    BareFnTy {sig: fold_sig(&fty.sig, fldop),
+              abis: fty.abis,
+              purity: fty.purity}
+}
+
 fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
     fn fold_substs(substs: &substs, fldop: &fn(t) -> t) -> substs {
         substs {self_r: substs.self_r,
@@ -1261,8 +1272,7 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
             ty_tup(new_ts)
         }
         ty_bare_fn(ref f) => {
-            let sig = fold_sig(&f.sig, fldop);
-            ty_bare_fn(BareFnTy {sig: sig, abis: f.abis, purity: f.purity})
+            ty_bare_fn(fold_bare_fn_ty(f, fldop))
         }
         ty_closure(ref f) => {
             let sig = fold_sig(&f.sig, fldop);
@@ -1409,94 +1419,22 @@ pub fn substs_is_noop(substs: &substs) -> bool {
 }
 
 pub fn substs_to_str(cx: ctxt, substs: &substs) -> ~str {
-    fmt!("substs(self_r=%s, self_ty=%s, tps=%?)",
-         substs.self_r.map_default(~"none", |r| region_to_str(cx, *r)),
-         substs.self_ty.map_default(~"none",
-                                    |t| ::util::ppaux::ty_to_str(cx, *t)),
-         tys_to_str(cx, substs.tps))
+    substs.repr(cx)
 }
 
 pub fn param_bound_to_str(cx: ctxt, pb: &param_bound) -> ~str {
-    match *pb {
-        bound_copy => ~"copy",
-        bound_durable => ~"'static",
-        bound_owned => ~"owned",
-        bound_const => ~"const",
-        bound_trait(t) => ::util::ppaux::trait_ref_to_str(cx, t)
-    }
+    pb.repr(cx)
 }
 
 pub fn param_bounds_to_str(cx: ctxt, pbs: param_bounds) -> ~str {
-    fmt!("%?", pbs.map(|pb| param_bound_to_str(cx, pb)))
+    pbs.repr(cx)
 }
 
 pub fn subst(cx: ctxt,
              substs: &substs,
              typ: t)
           -> t {
-    debug!("subst(substs=%s, typ=%s)",
-           substs_to_str(cx, substs),
-           ::util::ppaux::ty_to_str(cx, typ));
-
-    if substs_is_noop(substs) { return typ; }
-    let r = do_subst(cx, substs, typ);
-    debug!("  r = %s", ::util::ppaux::ty_to_str(cx, r));
-    return r;
-
-    fn do_subst(cx: ctxt,
-                substs: &substs,
-                typ: t) -> t {
-        let tb = get(typ);
-        if !tbox_has_flag(tb, needs_subst) { return typ; }
-        match tb.sty {
-          ty_param(p) => substs.tps[p.idx],
-          ty_self(_) => substs.self_ty.get(),
-          _ => {
-            fold_regions_and_ty(
-                cx, typ,
-                |r| match r {
-                    re_bound(br_self) => {
-                        match substs.self_r {
-                            None => {
-                                cx.sess.bug(
-                                    fmt!("ty::subst: \
-                                  Reference to self region when given substs \
-                                  with no self region, ty = %s",
-                                  ::util::ppaux::ty_to_str(cx, typ)))
-                            }
-                            Some(self_r) => self_r
-                        }
-                    }
-                    _ => r
-                },
-                |t| do_subst(cx, substs, t),
-                |t| do_subst(cx, substs, t))
-          }
-        }
-    }
-}
-
-pub fn subst_in_trait_ref(cx: ctxt,
-                          substs: &substs,
-                          trait_ref: &ty::TraitRef) -> ty::TraitRef
-{
-    ty::TraitRef {
-        def_id: trait_ref.def_id,
-        substs: subst_in_substs(cx, substs, &trait_ref.substs)
-    }
-}
-
-// Performs substitutions on a set of substitutions (result = sup(sub)) to
-// yield a new set of substitutions. This is used in trait inheritance.
-pub fn subst_in_substs(cx: ctxt,
-                       substs: &substs,
-                       in_substs: &substs) -> substs
-{
-    substs {
-        self_r: in_substs.self_r,
-        self_ty: in_substs.self_ty.map(|&typ| subst(cx, substs, typ)),
-        tps: in_substs.tps.map(|&typ| subst(cx, substs, typ))
-    }
+    typ.subst(cx, substs)
 }
 
 // Type utilities
@@ -1509,6 +1447,10 @@ pub fn type_is_bot(ty: t) -> bool {
 
 pub fn type_is_error(ty: t) -> bool {
     (get(ty).flags & (has_ty_err as uint)) != 0
+}
+
+pub fn type_needs_subst(ty: t) -> bool {
+    tbox_has_flag(get(ty), needs_subst)
 }
 
 pub fn trait_ref_contains_error(tref: &ty::TraitRef) -> bool {
@@ -2046,8 +1988,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // def-id.
                 assert!(p.def_id.crate == ast::local_crate);
 
-                param_bounds_to_contents(
-                    cx, *cx.ty_param_bounds.get(&p.def_id.node))
+                type_param_def_to_contents(
+                    cx, cx.ty_param_defs.get(&p.def_id.node))
             }
 
             ty_self(_) => {
@@ -2141,13 +2083,13 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         st + rt + ot
     }
 
-    fn param_bounds_to_contents(cx: ctxt,
-                                bounds: param_bounds) -> TypeContents
+    fn type_param_def_to_contents(cx: ctxt,
+                                  type_param_def: &TypeParameterDef) -> TypeContents
     {
-        debug!("param_bounds_to_contents()");
+        debug!("type_param_def_to_contents(%s)", type_param_def.repr(cx));
         let _i = indenter();
 
-        let r = bounds.foldl(TC_ALL, |tc, bound| {
+        let r = type_param_def.bounds.foldl(TC_ALL, |tc, bound| {
             debug!("tc = %s, bound = %?", tc.to_str(), bound);
             match *bound {
                 bound_copy => tc - TypeContents::nonimplicitly_copyable(cx),
@@ -3042,16 +2984,18 @@ pub fn expr_has_ty_params(cx: ctxt, expr: @ast::expr) -> bool {
     return node_id_has_type_params(cx, expr.id);
 }
 
-pub fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
-                          id: ast::node_id)
-    -> Option<@~[param_bounds]> {
+pub fn method_call_type_param_defs(
+    tcx: ctxt,
+    method_map: typeck::method_map,
+    id: ast::node_id) -> Option<@~[TypeParameterDef]>
+{
     do method_map.find(&id).map |method| {
         match method.origin {
           typeck::method_static(did) => {
             // n.b.: When we encode impl methods, the bounds
             // that we encode include both the impl bounds
             // and then the method bounds themselves...
-            ty::lookup_item_type(tcx, did).generics.bounds
+            ty::lookup_item_type(tcx, did).generics.type_param_defs
           }
           typeck::method_param(typeck::method_param {
               trait_id: trt_id,
@@ -3062,9 +3006,11 @@ pub fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
             // ...trait methods bounds, in contrast, include only the
             // method bounds, so we must preprend the tps from the
             // trait itself.  This ought to be harmonized.
-            let trt_bounds = ty::lookup_trait_def(tcx, trt_id).generics.bounds;
-            @(vec::append(/*bad*/copy *trt_bounds,
-                          *ty::trait_method(tcx, trt_id, n_mth).generics.bounds))
+            let trait_type_param_defs =
+                ty::lookup_trait_def(tcx, trt_id).generics.type_param_defs;
+            @vec::append(
+                copy *trait_type_param_defs,
+                *ty::trait_method(tcx, trt_id, n_mth).generics.type_param_defs)
           }
         }
     }
@@ -3612,6 +3558,12 @@ pub fn trait_supertraits(cx: ctxt,
     let result = @csearch::get_supertraits(cx, id);
     cx.supertraits.insert(id, result);
     return result;
+}
+
+pub fn trait_ref_supertraits(cx: ctxt, trait_ref: &ty::TraitRef) -> ~[@TraitRef] {
+    let supertrait_refs = trait_supertraits(cx, trait_ref.def_id);
+    supertrait_refs.map(
+        |supertrait_ref| @supertrait_ref.subst(cx, &trait_ref.substs))
 }
 
 fn lookup_locally_or_in_crate_store<V:Copy>(
@@ -4327,11 +4279,9 @@ pub fn determine_inherited_purity(parent_purity: ast::purity,
 // Here, the supertraits are the transitive closure of the supertrait
 // relation on the supertraits from each bounded trait's constraint
 // list.
-pub fn iter_bound_traits_and_supertraits(tcx: ctxt,
+pub fn each_bound_trait_and_supertraits(tcx: ctxt,
                                          bounds: param_bounds,
                                          f: &fn(&TraitRef) -> bool) {
-    let mut fin = false;
-
     for bounds.each |bound| {
         let bound_trait_ref = match *bound {
             ty::bound_trait(bound_t) => bound_t,
@@ -4343,51 +4293,46 @@ pub fn iter_bound_traits_and_supertraits(tcx: ctxt,
         };
 
         let mut supertrait_set = HashMap::new();
-        let mut seen_def_ids = ~[];
+        let mut trait_refs = ~[];
         let mut i = 0;
-        let trait_ty_id = bound_trait_ref.def_id;
-        let mut trait_ref = bound_trait_ref;
 
-        debug!("iter_bound_traits_and_supertraits: trait_ref = %s",
-               trait_ref_to_str(tcx, trait_ref));
+        // Seed the worklist with the trait from the bound
+        supertrait_set.insert(bound_trait_ref.def_id, ());
+        trait_refs.push(bound_trait_ref);
 
         // Add the given trait ty to the hash map
-        supertrait_set.insert(trait_ty_id, ());
-        seen_def_ids.push(trait_ty_id);
+        while i < trait_refs.len() {
+            debug!("each_bound_trait_and_supertraits(i=%?, trait_ref=%s)",
+                   i, trait_refs[i].repr(tcx));
 
-        if f(trait_ref) {
-            // Add all the supertraits to the hash map,
-            // executing <f> on each of them
-            while i < supertrait_set.len() && !fin {
-                let init_trait_id = seen_def_ids[i];
-                i += 1;
+            if !f(trait_refs[i]) {
+                return;
+            }
 
-                 // Add supertraits to supertrait_set
-                let supertrait_refs = trait_supertraits(tcx, init_trait_id);
-                for supertrait_refs.each |&supertrait_ref| {
-                    let d_id = supertrait_ref.def_id;
-                    if !supertrait_set.contains_key(&d_id) {
-                        // FIXME(#5527) Could have same trait multiple times
-                        supertrait_set.insert(d_id, ());
-                        trait_ref = supertrait_ref;
-                        seen_def_ids.push(d_id);
-                    }
-                    debug!("A super_t = %s", trait_ref_to_str(tcx, trait_ref));
-                    if !f(trait_ref) {
-                        fin = true;
-                    }
+            // Add supertraits to supertrait_set
+            let supertrait_refs = trait_ref_supertraits(tcx, trait_refs[i]);
+            for supertrait_refs.each |&supertrait_ref| {
+                debug!("each_bound_trait_and_supertraits(supertrait_ref=%s)",
+                       supertrait_ref.repr(tcx));
+
+                let d_id = supertrait_ref.def_id;
+                if !supertrait_set.contains_key(&d_id) {
+                    // FIXME(#5527) Could have same trait multiple times
+                    supertrait_set.insert(d_id, ());
+                    trait_refs.push(supertrait_ref);
                 }
             }
-        };
-        fin = false;
+
+            i += 1;
+        }
     }
 }
 
 pub fn count_traits_and_supertraits(tcx: ctxt,
-                                    boundses: &[param_bounds]) -> uint {
+                                    type_param_defs: &[TypeParameterDef]) -> uint {
     let mut total = 0;
-    for boundses.each |bounds| {
-        for iter_bound_traits_and_supertraits(tcx, *bounds) |_trait_ty| {
+    for type_param_defs.each |type_param_def| {
+        for each_bound_trait_and_supertraits(tcx, type_param_def.bounds) |_| {
             total += 1;
         }
     }

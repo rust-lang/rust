@@ -412,7 +412,7 @@ fn enc_fn_sig(w: @io::Writer, cx: @ctxt, fsig: &ty::FnSig) {
     enc_ty(w, cx, fsig.output);
 }
 
-pub fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
+fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
     for vec::each(*bs) |bound| {
         match *bound {
           ty::bound_owned => w.write_char('S'),
@@ -426,6 +426,12 @@ pub fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
         }
     }
     w.write_char('.');
+}
+
+pub fn enc_type_param_def(w: @io::Writer, cx: @ctxt, v: &ty::TypeParameterDef) {
+    w.write_str((cx.ds)(v.def_id));
+    w.write_char('|');
+    enc_bounds(w, cx, v.bounds);
 }
 
 //
