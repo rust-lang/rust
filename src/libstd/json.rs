@@ -135,7 +135,17 @@ impl serialize::Encoder for Encoder {
         f();
         self.wr.write_char('}');
     }
+    #[cfg(stage0)]
     fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
+        if idx != 0 { self.wr.write_char(','); }
+        self.wr.write_str(escape_str(name));
+        self.wr.write_char(':');
+        f();
+    }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn emit_struct_field(&self, name: &str, idx: uint, f: &fn()) {
         if idx != 0 { self.wr.write_char(','); }
         self.wr.write_str(escape_str(name));
         self.wr.write_char(':');
@@ -254,7 +264,22 @@ impl serialize::Encoder for PrettyEncoder {
             self.wr.write_char('}');
         }
     }
+    #[cfg(stage0)]
     fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
+        if idx == 0 {
+            self.wr.write_char('\n');
+        } else {
+            self.wr.write_str(",\n");
+        }
+        self.wr.write_str(spaces(self.indent));
+        self.wr.write_str(escape_str(name));
+        self.wr.write_str(": ");
+        f();
+    }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn emit_struct_field(&self, name: &str, idx: uint, f: &fn()) {
         if idx == 0 {
             self.wr.write_char('\n');
         } else {
@@ -834,8 +859,31 @@ impl serialize::Decoder for Decoder {
         value
     }
 
+    #[cfg(stage0)]
     fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
-        debug!("read_field(%s, idx=%u)", name, idx);
+        debug!("read_field(name=%?, idx=%u)", name, idx);
+        match self.stack.pop() {
+            Object(obj) => {
+                let mut obj = obj;
+                let value = match obj.pop(&name.to_owned()) {
+                    None => fail!(fmt!("no such field: %s", name)),
+                    Some(json) => {
+                        self.stack.push(json);
+                        f()
+                    }
+                };
+                self.stack.push(Object(obj));
+                value
+            }
+            value => fail!(fmt!("not an object: %?", value))
+        }
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn read_struct_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_struct_field(name=%?, idx=%u)", name, idx);
         match self.stack.pop() {
             Object(obj) => {
                 let mut obj = obj;

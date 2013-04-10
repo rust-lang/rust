@@ -340,8 +340,18 @@ pub mod reader {
             f()
         }
 
+        #[cfg(stage0)]
         fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
-            debug!("read_field(name=%s, idx=%u)", name, idx);
+            debug!("read_field(name=%?, idx=%u)", name, idx);
+            self._check_label(name);
+            f()
+        }
+
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        #[cfg(stage3)]
+        fn read_struct_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
+            debug!("read_struct_field(name=%?, idx=%u)", name, idx);
             self._check_label(name);
             f()
         }
@@ -614,7 +624,15 @@ pub mod writer {
         fn emit_enum_variant_arg(&self, _idx: uint, f: &fn()) { f() }
 
         fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) { f() }
+        #[cfg(stage0)]
         fn emit_field(&self, name: &str, _idx: uint, f: &fn()) {
+            self._emit_label(name);
+            f()
+        }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        #[cfg(stage3)]
+        fn emit_struct_field(&self, name: &str, _idx: uint, f: &fn()) {
             self._emit_label(name);
             f()
         }
