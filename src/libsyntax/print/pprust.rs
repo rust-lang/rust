@@ -429,6 +429,9 @@ pub fn print_type(s: @ps, ty: @ast::Ty) {
         print_expr(s, v);
         word(s.s, ~"]");
       }
+      ast::ty_multi(*) => {
+          fail!();
+      }
       ast::ty_mac(_) => {
           fail!(~"print_type doesn't know how to print a ty_mac");
       }
