@@ -335,20 +335,6 @@ pub mod reader {
             f()
         }
 
-        fn read_seq<T>(&self, f: &fn(uint) -> T) -> T {
-            debug!("read_seq()");
-            do self.push_doc(self.next_doc(EsVec)) {
-                let len = self._next_uint(EsVecLen);
-                debug!("  len=%u", len);
-                f(len)
-            }
-        }
-
-        fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
-            debug!("read_seq_elt(idx=%u)", idx);
-            self.push_doc(self.next_doc(EsVecElt), f)
-        }
-
         fn read_struct<T>(&self, name: &str, _len: uint, f: &fn() -> T) -> T {
             debug!("read_struct(name=%s)", name);
             f()
@@ -371,6 +357,20 @@ pub mod reader {
                     }
                 }
             }
+        }
+
+        fn read_seq<T>(&self, f: &fn(uint) -> T) -> T {
+            debug!("read_seq()");
+            do self.push_doc(self.next_doc(EsVec)) {
+                let len = self._next_uint(EsVecLen);
+                debug!("  len=%u", len);
+                f(len)
+            }
+        }
+
+        fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
+            debug!("read_seq_elt(idx=%u)", idx);
+            self.push_doc(self.next_doc(EsVecElt), f)
         }
 
         fn read_map<T>(&self, _f: &fn(uint) -> T) -> T {
@@ -613,17 +613,6 @@ pub mod writer {
         }
         fn emit_enum_variant_arg(&self, _idx: uint, f: &fn()) { f() }
 
-        fn emit_seq(&self, len: uint, f: &fn()) {
-            do self.wr_tag(EsVec as uint) {
-                self._emit_tagged_uint(EsVecLen, len);
-                f()
-            }
-        }
-
-        fn emit_seq_elt(&self, _idx: uint, f: &fn()) {
-            self.wr_tag(EsVecElt as uint, f)
-        }
-
         fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) { f() }
         fn emit_field(&self, name: &str, _idx: uint, f: &fn()) {
             self._emit_label(name);
@@ -638,6 +627,17 @@ pub mod writer {
         }
         fn emit_option_some(&self, f: &fn()) {
             self.emit_enum_variant("Some", 1, 1, f)
+        }
+
+        fn emit_seq(&self, len: uint, f: &fn()) {
+            do self.wr_tag(EsVec as uint) {
+                self._emit_tagged_uint(EsVecLen, len);
+                f()
+            }
+        }
+
+        fn emit_seq_elt(&self, _idx: uint, f: &fn()) {
+            self.wr_tag(EsVecElt as uint, f)
         }
 
         fn emit_map(&self, _len: uint, _f: &fn()) {

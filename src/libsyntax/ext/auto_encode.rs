@@ -1253,13 +1253,6 @@ mod test {
             self.add_to_log(CallToEmitEnumVariantArg (idx)); f();
         }
 
-        fn emit_seq(&self, +_len: uint, f: &fn()) {
-            self.add_unknown_to_log(); f();
-        }
-        fn emit_seq_elt(&self, +_idx: uint, f: &fn()) {
-            self.add_unknown_to_log(); f();
-        }
-
         fn emit_struct(&self, name: &str, +len: uint, f: &fn()) {
             self.add_to_log(CallToEmitStruct (name.to_str(),len)); f();
         }
@@ -1277,6 +1270,13 @@ mod test {
         fn emit_option_some(&self, f: &fn()) {
             self.add_to_log(CallToEmitOptionSome);
             f();
+        }
+
+        fn emit_seq(&self, +_len: uint, f: &fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_seq_elt(&self, +_idx: uint, f: &fn()) {
+            self.add_unknown_to_log(); f();
         }
 
         fn emit_map(&self, _len: uint, f: &fn()) {
