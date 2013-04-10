@@ -437,8 +437,7 @@ pub impl Bitv {
             if offset >= bitv.nbits {
                 0
             } else {
-                // NOTE cannot use bitv[offset] until snapshot
-                bitv.index(&offset) as u8 << (7 - bit)
+                bitv[offset] as u8 << (7 - bit)
             }
         }
 
@@ -460,8 +459,7 @@ pub impl Bitv {
      * Transform self into a [bool] by turning each bit into a bool
      */
     fn to_bools(&self) -> ~[bool] {
-        // NOTE cannot use self[i] until snapshot
-        vec::from_fn(self.nbits, |i| self.index(&i))
+        vec::from_fn(self.nbits, |i| self[i])
     }
 
     /**
