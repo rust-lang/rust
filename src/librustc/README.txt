@@ -75,7 +75,7 @@ The 3 central data structures:
 Control and information flow within the compiler:
 -------------------------------------------------
 
-- main() in driver/rustc.rs assumes control on startup. Options are
+- main() in rustc.rc assumes control on startup. Options are
   parsed, platform is detected, etc.
 
 - libsyntax/parse/parser.rs parses the input files and produces an AST
