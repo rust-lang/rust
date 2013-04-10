@@ -44,13 +44,9 @@ pub trait Encoder {
     fn emit_str(&self, v: &str);
 
     // Compound types:
-
     fn emit_enum(&self, name: &str, f: &fn());
     fn emit_enum_variant(&self, v_name: &str, v_id: uint, sz: uint, f: &fn());
     fn emit_enum_variant_arg(&self, idx: uint, f: &fn());
-
-    fn emit_seq(&self, len: uint, f: &fn());
-    fn emit_seq_elt(&self, idx: uint, f: &fn());
 
     fn emit_struct(&self, name: &str, _len: uint, f: &fn());
     fn emit_field(&self, f_name: &str, f_idx: uint, f: &fn());
@@ -59,6 +55,9 @@ pub trait Encoder {
     fn emit_option(&self, f: &fn());
     fn emit_option_none(&self);
     fn emit_option_some(&self, f: &fn());
+
+    fn emit_seq(&self, len: uint, f: &fn());
+    fn emit_seq_elt(&self, idx: uint, f: &fn());
 
     fn emit_map(&self, len: uint, f: &fn());
     fn emit_map_elt_key(&self, idx: uint, f: &fn());
@@ -90,14 +89,14 @@ pub trait Decoder {
     fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T;
     fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
-    fn read_seq<T>(&self, f: &fn(uint) -> T) -> T;
-    fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T;
-
     fn read_struct<T>(&self, name: &str, _len: uint, f: &fn() -> T) -> T;
     fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T;
 
     // Specialized types:
     fn read_option<T>(&self, f: &fn(bool) -> T) -> T;
+
+    fn read_seq<T>(&self, f: &fn(uint) -> T) -> T;
+    fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
     fn read_map<T>(&self, f: &fn(uint) -> T) -> T;
     fn read_map_elt_key<T>(&self, idx: uint, f: &fn() -> T) -> T;

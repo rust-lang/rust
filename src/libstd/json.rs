@@ -130,17 +130,6 @@ impl serialize::Encoder for Encoder {
         f();
     }
 
-    fn emit_seq(&self, _len: uint, f: &fn()) {
-        self.wr.write_char('[');
-        f();
-        self.wr.write_char(']');
-    }
-
-    fn emit_seq_elt(&self, idx: uint, f: &fn()) {
-        if idx != 0 { self.wr.write_char(','); }
-        f()
-    }
-
     fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) {
         self.wr.write_char('{');
         f();
@@ -156,6 +145,17 @@ impl serialize::Encoder for Encoder {
     fn emit_option(&self, f: &fn()) { f(); }
     fn emit_option_none(&self) { self.emit_nil(); }
     fn emit_option_some(&self, f: &fn()) { f(); }
+
+    fn emit_seq(&self, _len: uint, f: &fn()) {
+        self.wr.write_char('[');
+        f();
+        self.wr.write_char(']');
+    }
+
+    fn emit_seq_elt(&self, idx: uint, f: &fn()) {
+        if idx != 0 { self.wr.write_char(','); }
+        f()
+    }
 
     fn emit_map(&self, _len: uint, f: &fn()) {
         self.wr.write_char('{');
@@ -241,29 +241,6 @@ impl serialize::Encoder for PrettyEncoder {
         f()
     }
 
-    fn emit_seq(&self, len: uint, f: &fn()) {
-        if len == 0 {
-            self.wr.write_str("[]");
-        } else {
-            self.wr.write_char('[');
-            self.indent += 2;
-            f();
-            self.wr.write_char('\n');
-            self.indent -= 2;
-            self.wr.write_str(spaces(self.indent));
-            self.wr.write_char(']');
-        }
-    }
-    fn emit_seq_elt(&self, idx: uint, f: &fn()) {
-        if idx == 0 {
-            self.wr.write_char('\n');
-        } else {
-            self.wr.write_str(",\n");
-        }
-        self.wr.write_str(spaces(self.indent));
-        f()
-    }
-
     fn emit_struct(&self, _name: &str, len: uint, f: &fn()) {
         if len == 0 {
             self.wr.write_str("{}");
@@ -292,6 +269,29 @@ impl serialize::Encoder for PrettyEncoder {
     fn emit_option(&self, f: &fn()) { f(); }
     fn emit_option_none(&self) { self.emit_nil(); }
     fn emit_option_some(&self, f: &fn()) { f(); }
+
+    fn emit_seq(&self, len: uint, f: &fn()) {
+        if len == 0 {
+            self.wr.write_str("[]");
+        } else {
+            self.wr.write_char('[');
+            self.indent += 2;
+            f();
+            self.wr.write_char('\n');
+            self.indent -= 2;
+            self.wr.write_str(spaces(self.indent));
+            self.wr.write_char(']');
+        }
+    }
+    fn emit_seq_elt(&self, idx: uint, f: &fn()) {
+        if idx == 0 {
+            self.wr.write_char('\n');
+        } else {
+            self.wr.write_str(",\n");
+        }
+        self.wr.write_str(spaces(self.indent));
+        f()
+    }
 
     fn emit_map(&self, len: uint, f: &fn()) {
         if len == 0 {
@@ -827,26 +827,6 @@ impl serialize::Decoder for Decoder {
         f()
     }
 
-    fn read_seq<T>(&self, f: &fn(uint) -> T) -> T {
-        debug!("read_seq()");
-        let len = match self.stack.pop() {
-            List(list) => {
-                let len = list.len();
-                do vec::consume_reverse(list) |_i, v| {
-                    self.stack.push(v);
-                }
-                len
-            }
-            _ => fail!(~"not a list"),
-        };
-        f(len)
-    }
-
-    fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
-        debug!("read_seq_elt(idx=%u)", idx);
-        f()
-    }
-
     fn read_struct<T>(&self, name: &str, len: uint, f: &fn() -> T) -> T {
         debug!("read_struct(name=%s, len=%u)", name, len);
         let value = f();
@@ -878,6 +858,26 @@ impl serialize::Decoder for Decoder {
             Null => f(false),
             value => { self.stack.push(value); f(true) }
         }
+    }
+
+    fn read_seq<T>(&self, f: &fn(uint) -> T) -> T {
+        debug!("read_seq()");
+        let len = match self.stack.pop() {
+            List(list) => {
+                let len = list.len();
+                do vec::consume_reverse(list) |_i, v| {
+                    self.stack.push(v);
+                }
+                len
+            }
+            _ => fail!(~"not a list"),
+        };
+        f(len)
+    }
+
+    fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_seq_elt(idx=%u)", idx);
+        f()
     }
 
     fn read_map<T>(&self, f: &fn(uint) -> T) -> T {
