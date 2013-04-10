@@ -8,38 +8,57 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[deny(unused_variable)];
+#[deny(dead_assignment)];
+
 fn f1(x: int) {
-    //~^ WARNING unused variable: `x`
+    //~^ ERROR unused variable: `x`
 }
 
 fn f1b(x: &mut int) {
-    //~^ WARNING unused variable: `x`
+    //~^ ERROR unused variable: `x`
 }
+
+#[allow(unused_variable)]
+fn f1c(x: int) {}
 
 fn f2() {
     let x = 3;
-    //~^ WARNING unused variable: `x`
+    //~^ ERROR unused variable: `x`
 }
 
 fn f3() {
     let mut x = 3;
-    //~^ WARNING variable `x` is assigned to, but never used
+    //~^ ERROR variable `x` is assigned to, but never used
     x += 4;
-    //~^ WARNING value assigned to `x` is never read
+    //~^ ERROR value assigned to `x` is never read
 }
 
 fn f3b() {
     let mut z = 3;
-    //~^ WARNING variable `z` is assigned to, but never used
+    //~^ ERROR variable `z` is assigned to, but never used
     loop {
         z += 4;
     }
 }
 
+#[allow(unused_variable)]
+fn f3c() {
+    let mut z = 3;
+    loop { z += 4; }
+}
+
+#[allow(unused_variable)]
+#[allow(dead_assignment)]
+fn f3d() {
+    let mut x = 3;
+    x += 4;
+}
+
 fn f4() {
     match Some(3) {
       Some(i) => {
-        //~^ WARNING unused variable: `i`
+        //~^ ERROR unused variable: `i`
       }
       None => {}
     }
@@ -57,16 +76,5 @@ fn f4b() -> int {
     }
 }
 
-// leave this in here just to trigger compile-fail:
-struct r {
-    x: (),
-}
-
-impl Drop for r {
-    fn finalize(&self) {}
-}
-
 fn main() {
-    let x = r { x: () };
-    || { copy x; }; //~ ERROR copying a value of non-copyable type
 }
