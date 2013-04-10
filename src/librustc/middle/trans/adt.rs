@@ -88,6 +88,7 @@ pub enum Repr {
 struct Struct {
     size: u64,
     align: u64,
+    packed: bool,
     fields: ~[ty::t]
 }
 
@@ -109,17 +110,18 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
     }
     let repr = @match ty::get(t).sty {
         ty::ty_tup(ref elems) => {
-            Univariant(mk_struct(cx, *elems), false)
+            Univariant(mk_struct(cx, *elems, false), false)
         }
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx, def_id);
             let ftys = do fields.map |field| {
                 ty::lookup_field_type(cx.tcx, def_id, field.id, substs)
             };
+            let packed = ty::lookup_packed(cx.tcx, def_id);
             let dtor = ty::ty_dtor(cx.tcx, def_id).is_present();
             let ftys =
                 if dtor { ftys + [ty::mk_bool(cx.tcx)] } else { ftys };
-            Univariant(mk_struct(cx, ftys), dtor)
+            Univariant(mk_struct(cx, ftys, packed), dtor)
         }
         ty::ty_enum(def_id, ref substs) => {
             struct Case { discr: int, tys: ~[ty::t] };
@@ -132,7 +134,7 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
             };
             if cases.len() == 0 {
                 // Uninhabitable; represent as unit
-                Univariant(mk_struct(cx, ~[]), false)
+                Univariant(mk_struct(cx, ~[], false), false)
             } else if cases.all(|c| c.tys.len() == 0) {
                 // All bodies empty -> intlike
                 let discrs = cases.map(|c| c.discr);
@@ -140,7 +142,7 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
             } else if cases.len() == 1 {
                 // Equivalent to a struct/tuple/newtype.
                 assert!(cases[0].discr == 0);
-                Univariant(mk_struct(cx, cases[0].tys), false)
+                Univariant(mk_struct(cx, cases[0].tys, false), false)
             } else {
                 // The general case.  Since there's at least one
                 // non-empty body, explicit discriminants should have
@@ -151,7 +153,7 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
                                      ty::item_path_str(cx.tcx, def_id)))
                 }
                 let discr = ~[ty::mk_int(cx.tcx)];
-                General(cases.map(|c| mk_struct(cx, discr + c.tys)))
+                General(cases.map(|c| mk_struct(cx, discr + c.tys, false)))
             }
         }
         _ => cx.sess.bug(~"adt::represent_type called on non-ADT type")
@@ -160,12 +162,13 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
     return repr;
 }
 
-fn mk_struct(cx: @CrateContext, tys: &[ty::t]) -> Struct {
+fn mk_struct(cx: @CrateContext, tys: &[ty::t], packed: bool) -> Struct {
     let lltys = tys.map(|&ty| type_of::sizing_type_of(cx, ty));
-    let llty_rec = T_struct(lltys);
+    let llty_rec = T_struct(lltys, packed);
     Struct {
         size: machine::llsize_of_alloc(cx, llty_rec) /*bad*/as u64,
         align: machine::llalign_of_min(cx, llty_rec) /*bad*/as u64,
+        packed: packed,
         fields: vec::from_slice(tys)
     }
 }
@@ -358,7 +361,8 @@ fn struct_field_ptr(bcx: block, st: &Struct, val: ValueRef, ix: uint,
 
     let val = if needs_cast {
         let real_llty = T_struct(st.fields.map(
-            |&ty| type_of::type_of(ccx, ty)));
+            |&ty| type_of::type_of(ccx, ty)),
+                                 st.packed);
         PointerCast(bcx, val, T_ptr(real_llty))
     } else {
         val
