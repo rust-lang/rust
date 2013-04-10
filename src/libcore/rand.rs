@@ -505,7 +505,7 @@ impl RngUtil for @Rng {
         self.next() & 1u32 == 1u32
     }
 
-    /// Return a bool with a 1 in n chance of true
+    /// Return a bool with a 1-in-n chance of true
     fn gen_weighted_bool(&self, n: uint) -> bool {
         if n == 0u {
             true
