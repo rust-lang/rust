@@ -2056,6 +2056,18 @@ pub fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
 
 /**
  * Returns the byte offset of an inner slice relative to an enclosing outer slice
+ *
+ * # Example
+ *
+ * ~~~
+ * let string = "a\nb\nc";
+ * let mut lines = ~[];
+ * for each_line(string) |line| { lines.push(line) }
+ *
+ * assert!(subslice_offset(string, lines[0]) == 0); // &"a"
+ * assert!(subslice_offset(string, lines[1]) == 2); // &"b"
+ * assert!(subslice_offset(string, lines[2]) == 4); // &"c"
+ * ~~~
  */
 #[inline(always)]
 pub fn subslice_offset(outer: &str, inner: &str) -> uint {
@@ -3461,6 +3473,13 @@ mod tests {
         let c = slice(a, 0, len(a) - 6);
         assert!(subslice_offset(a, b) == 7);
         assert!(subslice_offset(a, c) == 0);
+
+        let string = "a\nb\nc";
+        let mut lines = ~[];
+        for each_line(string) |line| { lines.push(line) }
+        assert!(subslice_offset(string, lines[0]) == 0);
+        assert!(subslice_offset(string, lines[1]) == 2);
+        assert!(subslice_offset(string, lines[2]) == 4);
     }
 
     #[test]
