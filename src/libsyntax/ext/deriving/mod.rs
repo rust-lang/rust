@@ -18,7 +18,7 @@ use ast::{Ty, bind_by_ref, deref, enum_def};
 use ast::{expr, expr_match, ident, item, item_};
 use ast::{item_enum, item_impl, item_struct, Generics};
 use ast::{m_imm, meta_item, method};
-use ast::{named_field, pat, pat_ident, public};
+use ast::{named_field, pat, pat_ident};
 use ast::{struct_def, struct_variant_kind};
 use ast::{tuple_variant_kind};
 use ast::{ty_path, unnamed_field, variant};
@@ -131,7 +131,7 @@ fn create_impl_item(cx: @ext_ctxt, span: span, +item: item_) -> @item {
         attrs: ~[],
         id: cx.next_id(),
         node: item,
-        vis: public,
+        vis: ast::inherited,
         span: span,
     }
 }

@@ -126,7 +126,7 @@ fn create_encode_method(
         id: cx.next_id(),
         span: span,
         self_id: cx.next_id(),
-        vis: public
+        vis: inherited
     }
 }
 

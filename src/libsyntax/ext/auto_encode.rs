@@ -501,7 +501,7 @@ fn mk_impl(
         attrs: ~[],
         id: cx.next_id(),
         node: ast::item_impl(generics, opt_trait, ty, ~[f(ty)]),
-        vis: ast::public,
+        vis: ast::inherited,
         span: span,
     }
 }
@@ -652,7 +652,7 @@ fn mk_ser_method(
         id: cx.next_id(),
         span: span,
         self_id: cx.next_id(),
-        vis: ast::public,
+        vis: ast::inherited,
     }
 }
 
@@ -706,7 +706,7 @@ fn mk_deser_method(
         id: cx.next_id(),
         span: span,
         self_id: cx.next_id(),
-        vis: ast::public,
+        vis: ast::inherited,
     }
 }
 
