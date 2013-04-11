@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[link(name = "syntax",
-       vers = "0.7-rc",
+       vers = "0.7-pre",
        uuid = "9311401b-d6ea-4cd9-a1d9-61f89499c645")];
 
 
@@ -25,8 +25,8 @@
 
 #[no_core];
 
-extern mod core(vers = "0.7-rc");
-extern mod std(vers = "0.7-rc");
+extern mod core(vers = "0.7-pre");
+extern mod std(vers = "0.7-pre");
 
 use core::*;
 

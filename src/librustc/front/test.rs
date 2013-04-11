@@ -265,7 +265,7 @@ mod __test {
 */
 
 fn mk_std(cx: &TestCtxt) -> @ast::view_item {
-    let vers = ast::lit_str(@~"0.7-rc");
+    let vers = ast::lit_str(@~"0.7-pre");
     let vers = nospan(vers);
     let mi = ast::meta_name_value(@~"vers", vers);
     let mi = nospan(mi);
