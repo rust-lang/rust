@@ -859,7 +859,7 @@ do
         LDFLAGS=$LLVM_LDFLAGS
 
         LLVM_FLAGS="$LLVM_TARGETS $LLVM_OPTS $LLVM_BUILD \
-                        $LLVM_HOST $LLVM_TARGET"
+                        $LLVM_HOST $LLVM_TARGET --with-python=$CFG_PYTHON"
 
         msg "configuring LLVM with:"
         msg "$LLVM_FLAGS"
