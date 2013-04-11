@@ -44,21 +44,35 @@ pub trait Encoder {
     fn emit_str(&self, v: &str);
 
     // Compound types:
-
     fn emit_enum(&self, name: &str, f: &fn());
-    fn emit_enum_variant(&self, v_name: &str, v_id: uint, sz: uint, f: &fn());
-    fn emit_enum_variant_arg(&self, idx: uint, f: &fn());
 
-    fn emit_seq(&self, len: uint, f: &fn());
-    fn emit_seq_elt(&self, idx: uint, f: &fn());
+    fn emit_enum_variant(&self, v_name: &str, v_id: uint, len: uint, f: &fn());
+    fn emit_enum_variant_arg(&self, a_idx: uint, f: &fn());
 
-    fn emit_struct(&self, name: &str, _len: uint, f: &fn());
+    fn emit_enum_struct_variant(&self, v_name: &str, v_id: uint, len: uint, f: &fn());
+    fn emit_enum_struct_variant_field(&self, f_name: &str, f_idx: uint, f: &fn());
+
+    fn emit_struct(&self, name: &str, len: uint, f: &fn());
+    #[cfg(stage0)]
     fn emit_field(&self, f_name: &str, f_idx: uint, f: &fn());
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn emit_struct_field(&self, f_name: &str, f_idx: uint, f: &fn());
+
+    fn emit_tuple(&self, len: uint, f: &fn());
+    fn emit_tuple_arg(&self, idx: uint, f: &fn());
+
+    fn emit_tuple_struct(&self, name: &str, len: uint, f: &fn());
+    fn emit_tuple_struct_arg(&self, f_idx: uint, f: &fn());
 
     // Specialized types:
     fn emit_option(&self, f: &fn());
     fn emit_option_none(&self);
     fn emit_option_some(&self, f: &fn());
+
+    fn emit_seq(&self, len: uint, f: &fn());
+    fn emit_seq_elt(&self, idx: uint, f: &fn());
 
     fn emit_map(&self, len: uint, f: &fn());
     fn emit_map_elt_key(&self, idx: uint, f: &fn());
@@ -87,17 +101,32 @@ pub trait Decoder {
 
     // Compound types:
     fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T;
+
     fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T;
-    fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T;
+    fn read_enum_variant_arg<T>(&self, a_idx: uint, f: &fn() -> T) -> T;
 
-    fn read_seq<T>(&self, f: &fn(uint) -> T) -> T;
-    fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T;
+    fn read_enum_struct_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T;
+    fn read_enum_struct_variant_field<T>(&self, &f_name: &str, f_idx: uint, f: &fn() -> T) -> T;
 
-    fn read_struct<T>(&self, name: &str, _len: uint, f: &fn() -> T) -> T;
-    fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T;
+    fn read_struct<T>(&self, s_name: &str, len: uint, f: &fn() -> T) -> T;
+    #[cfg(stage0)]
+    fn read_field<T>(&self, f_name: &str, f_idx: uint, f: &fn() -> T) -> T;
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn read_struct_field<T>(&self, f_name: &str, f_idx: uint, f: &fn() -> T) -> T;
+
+    fn read_tuple<T>(&self, f: &fn(uint) -> T) -> T;
+    fn read_tuple_arg<T>(&self, a_idx: uint, f: &fn() -> T) -> T;
+
+    fn read_tuple_struct<T>(&self, s_name: &str, f: &fn(uint) -> T) -> T;
+    fn read_tuple_struct_arg<T>(&self, a_idx: uint, f: &fn() -> T) -> T;
 
     // Specialized types:
     fn read_option<T>(&self, f: &fn(bool) -> T) -> T;
+
+    fn read_seq<T>(&self, f: &fn(uint) -> T) -> T;
+    fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
     fn read_map<T>(&self, f: &fn(uint) -> T) -> T;
     fn read_map_elt_key<T>(&self, idx: uint, f: &fn() -> T) -> T;
