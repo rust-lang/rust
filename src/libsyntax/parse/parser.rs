@@ -98,7 +98,6 @@ use core::vec;
 enum restriction {
     UNRESTRICTED,
     RESTRICT_STMT_EXPR,
-    RESTRICT_NO_CALL_EXPRS,
     RESTRICT_NO_BAR_OP,
     RESTRICT_NO_BAR_OR_DOUBLEBAR_OP,
 }
@@ -1377,10 +1376,6 @@ pub impl Parser {
         self.parse_dot_or_call_expr_with(b)
     }
 
-    fn permits_call(&self) -> bool {
-        return *self.restriction != RESTRICT_NO_CALL_EXPRS;
-    }
-
     fn parse_dot_or_call_expr_with(&self, e0: @expr) -> @expr {
         let mut e = e0;
         let lo = e.span.lo;
@@ -1401,7 +1396,7 @@ pub impl Parser {
 
                     // expr.f() method call
                     match *self.token {
-                        token::LPAREN if self.permits_call() => {
+                        token::LPAREN => {
                             let es = self.parse_unspanned_seq(
                                 &token::LPAREN,
                                 &token::RPAREN,
@@ -1425,7 +1420,7 @@ pub impl Parser {
             if self.expr_is_complete(e) { break; }
             match *self.token {
               // expr(...)
-              token::LPAREN if self.permits_call() => {
+              token::LPAREN => {
                 let es = self.parse_unspanned_seq(
                     &token::LPAREN,
                     &token::RPAREN,
