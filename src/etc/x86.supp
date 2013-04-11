@@ -565,3 +565,95 @@
    fun:__gxx_personality_v0
    ...
 }
+
+{
+   llvm-optimization-reads-uninitialized-memory-1
+   Memcheck:Cond
+   fun:_ZN4test17run_tests_console4anon13expr_fn*
+   ...
+}
+
+{
+   llvm-optimization-reads-uninitialized-memory-2
+   Memcheck:Cond
+   fun:_ZN4test17run_tests_console*
+   ...
+}
+
+{
+   llvm-optimization-reads-uninitialized-memory-3
+   Memcheck:Cond
+   fun:_ZN4test9run_tests4anon13expr_fn_*
+   ...
+}
+
+{
+   llvm-optimization-reads-uninitialized-memory-4
+   Memcheck:Cond
+   fun:_ZN5parse6parser14__extensions__10meth_*parse_item_fn*
+   ...
+}
+
+{
+   llvm-optimization-reads-uninitialized-memory-5
+   Memcheck:Cond
+   fun:_ZN4fold25noop_fold_item_underscore*
+   ...
+}
+
+{
+   llvm-optimization-reads-uninitialized-memory-6
+   Memcheck:Cond
+   fun:_ZN5parse6parser14__extensions__10meth_*parse_item_fn17*
+   ...
+}
+
+{
+   llvm-optimization-reads-uninitialized-memory-9
+   Memcheck:Cond
+   fun:_ZN5parse6parser14__extensions__10meth_*parse_item_foreign_fn*
+   fun:_ZN5parse6parser14__extensions__10meth_*parse_item_or_view_item*
+   ...
+}
+
+{
+   llvm-optimization-reads-uninitialized-memory-11
+   Memcheck:Cond
+   fun:_ZN4fold22noop_fold_foreign_item17_*
+   ...
+}
+
+
+{
+   llvm-optimization-reads-uninitialized-memory-12
+   Memcheck:Cond
+   fun:_ZN5parse6parser14__extensions__10meth_*parse_item_struct*
+   fun:_ZN5parse6parser14__extensions__10meth_*parse_item_or_view_item*
+   ...
+}
+
+{
+   llvm-optimization-reads-uninitialized-memory-13
+   Memcheck:Cond
+   fun:_ZN5parse6parser14__extensions__10meth_*parse_item_type*
+   fun:_ZN5parse6parser14__extensions__10meth_*parse_item_or_view_item*
+   ...
+}
+
+{
+   llvm-optimization-reads-uninitialized-memory-14
+   Memcheck:Cond
+   fun:_ZN7ast_map6map_fn16_*
+   fun:_ZN5visit30visit_struct_dtor_helper_*
+   obj:*
+   fun:_ZN8unstable6extfmt2rt14__extensions__10meth_*
+   ...
+}
+
+{
+   llvm-optimization-reads-uninitialized-memory-15
+   Memcheck:Cond
+   fun:_ZN7ast_map6map_fn16_*
+   fun:_ZN5visit30visit_struct_dtor_helper_*
+   ...
+}
