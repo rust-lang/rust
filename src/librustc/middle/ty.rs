@@ -2410,6 +2410,14 @@ pub fn type_is_fp(ty: t) -> bool {
     }
 }
 
+pub fn type_uses_fp(ty: t) -> bool {
+    match get(ty).sty {
+        ty_infer(FloatVar(_)) | ty_float(_) => true,
+        ty_multi(t, _) => type_uses_fp(t),
+        _ => false
+    }
+}
+
 pub fn type_is_numeric(ty: t) -> bool {
     return type_is_integral(ty) || type_is_fp(ty);
 }
@@ -4143,6 +4151,7 @@ pub fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
           ty_bool => tycat_bool,
           ty_int(_) | ty_uint(_) | ty_infer(IntVar(_)) => tycat_int,
           ty_float(_) | ty_infer(FloatVar(_)) => tycat_float,
+          ty_multi(ty, _) => tycat(ty),
           ty_tup(_) | ty_enum(_, _) => tycat_struct,
           ty_bot => tycat_bot,
           _ => tycat_other

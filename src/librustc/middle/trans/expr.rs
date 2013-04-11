@@ -1379,7 +1379,7 @@ fn trans_eager_binop(bcx: block,
         if ty::type_is_bot(lhs_t) { rhs_t }
         else { lhs_t }
     };
-    let is_float = ty::type_is_fp(intype);
+    let is_float = ty::type_uses_fp(intype);
 
     let rhs = base::cast_shift_expr_rhs(bcx, op, lhs, rhs);
 
