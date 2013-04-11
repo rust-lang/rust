@@ -41,6 +41,7 @@ Cody Schroeder <codys@cs.washington.edu>
 Damian Gryski <damian@gryski.com>
 Damien Grassart <damien@grassart.com>
 Damien Schoof <damien.schoof@gmail.com>
+Dan Luu <danluu@gmail.com>
 Daniel Brooks <db48x@db48x.net>
 Daniel Luz <dev@mernen.com>
 Daniel Micay <danielmicay@gmail.com>
