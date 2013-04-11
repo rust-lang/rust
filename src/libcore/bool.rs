@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Boolean logic
 
+#[cfg(notest)]
+use cmp::{Eq, Ord, TotalOrd, Ordering};
 use option::{None, Option, Some};
 use from_str::FromStr;
-
-#[cfg(notest)] use cmp;
 
 /// Negation / inverse
 pub fn not(v: bool) -> bool { !v }
@@ -73,40 +72,86 @@ pub fn all_values(blk: &fn(v: bool)) {
 }
 
 /// converts truth value to an 8 bit byte
+#[inline(always)]
 pub fn to_bit(v: bool) -> u8 { if v { 1u8 } else { 0u8 } }
 
 #[cfg(notest)]
-impl cmp::Eq for bool {
+impl Ord for bool {
+    #[inline(always)]
+    fn lt(&self, other: &bool) -> bool { to_bit(*self) < to_bit(*other) }
+    #[inline(always)]
+    fn le(&self, other: &bool) -> bool { to_bit(*self) <= to_bit(*other) }
+    #[inline(always)]
+    fn gt(&self, other: &bool) -> bool { to_bit(*self) > to_bit(*other) }
+    #[inline(always)]
+    fn ge(&self, other: &bool) -> bool { to_bit(*self) >= to_bit(*other) }
+}
+
+#[cfg(notest)]
+impl TotalOrd for bool {
+    #[inline(always)]
+    fn cmp(&self, other: &bool) -> Ordering { to_bit(*self).cmp(&to_bit(*other)) }
+}
+
+#[cfg(notest)]
+impl Eq for bool {
+    #[inline(always)]
     fn eq(&self, other: &bool) -> bool { (*self) == (*other) }
+    #[inline(always)]
     fn ne(&self, other: &bool) -> bool { (*self) != (*other) }
 }
 
-#[test]
-pub fn test_bool_from_str() {
-    use from_str::FromStr;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use prelude::*;
 
-    do all_values |v| {
-        assert!(Some(v) == FromStr::from_str(to_str(v)))
+    #[test]
+    fn test_bool_from_str() {
+        use from_str::FromStr;
+
+        do all_values |v| {
+            assert!(Some(v) == FromStr::from_str(to_str(v)))
+        }
+    }
+
+    #[test]
+    fn test_bool_to_str() {
+        assert!(to_str(false) == ~"false");
+        assert!(to_str(true) == ~"true");
+    }
+
+    #[test]
+    fn test_bool_to_bit() {
+        do all_values |v| {
+            assert!(to_bit(v) == if is_true(v) { 1u8 } else { 0u8 });
+        }
+    }
+
+    #[test]
+    fn test_bool_ord() {
+        assert!(true > false);
+        assert!(!(false > true));
+
+        assert!(false < true);
+        assert!(!(true < false));
+
+        assert!(false <= false);
+        assert!(false >= false);
+        assert!(true <= true);
+        assert!(true >= true);
+
+        assert!(false <= true);
+        assert!(!(false >= true));
+        assert!(true >= false);
+        assert!(!(true <= false));
+    }
+
+    #[test]
+    fn test_bool_totalord() {
+        assert_eq!(true.cmp(&true), Equal);
+        assert_eq!(false.cmp(&false), Equal);
+        assert_eq!(true.cmp(&false), Greater);
+        assert_eq!(false.cmp(&true), Less);
     }
 }
-
-#[test]
-pub fn test_bool_to_str() {
-    assert!(to_str(false) == ~"false");
-    assert!(to_str(true) == ~"true");
-}
-
-#[test]
-pub fn test_bool_to_bit() {
-    do all_values |v| {
-        assert!(to_bit(v) == if is_true(v) { 1u8 } else { 0u8 });
-    }
-}
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
