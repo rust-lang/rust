@@ -63,10 +63,22 @@ pub trait Program {
     fn finish(&mut self) -> int;
 
     /**
-     * Forcibly terminate the program. On Posix OSs SIGKILL will be sent
-     * to the process. On Win32 TerminateProcess(..) will be called.
+     * Terminate the program, giving it a chance to clean itself up if
+     * this is supported by the operating system.
+     *
+     * On Posix OSs SIGTERM will be sent to the process. On Win32
+     * TerminateProcess(..) will be called.
      */
     fn destroy(&mut self);
+
+    /**
+     * Terminate the program as soon as possible without giving it a
+     * chance to clean itself up.
+     *
+     * On Posix OSs SIGKILL will be sent to the process. On Win32
+     * TerminateProcess(..) will be called.
+     */
+    fn force_destroy(&mut self);
 }
 
 
@@ -266,13 +278,13 @@ pub fn start_program(prog: &str, args: &[~str]) -> @Program {
         return waitpid(r.pid);
     }
 
-    fn destroy_repr(r: &mut ProgRepr) {
-        killpid(r.pid);
+    fn destroy_repr(r: &mut ProgRepr, force: bool) {
+        killpid(r.pid, force);
         finish_repr(&mut *r);
         close_repr_outputs(&mut *r);
 
         #[cfg(windows)]
-        fn killpid(pid: pid_t) {
+        fn killpid(pid: pid_t, _force: bool) {
             unsafe {
                 libc::funcs::extra::kernel32::TerminateProcess(
                     cast::transmute(pid), 1);
@@ -280,10 +292,16 @@ pub fn start_program(prog: &str, args: &[~str]) -> @Program {
         }
 
         #[cfg(unix)]
-        fn killpid(pid: pid_t) {
+        fn killpid(pid: pid_t, force: bool) {
+
+            let signal = if force {
+                libc::consts::os::posix88::SIGKILL
+            } else {
+                libc::consts::os::posix88::SIGTERM
+            };
+
             unsafe {
-                libc::funcs::posix88::signal::kill(
-                    pid, libc::consts::os::posix88::SIGKILL as c_int);
+                libc::funcs::posix88::signal::kill(pid, signal as c_int);
             }
         }
     }
@@ -321,7 +339,8 @@ pub fn start_program(prog: &str, args: &[~str]) -> @Program {
         }
         fn close_input(&mut self) { close_repr_input(&mut self.r); }
         fn finish(&mut self) -> int { finish_repr(&mut self.r) }
-        fn destroy(&mut self) { destroy_repr(&mut self.r); }
+        fn destroy(&mut self) { destroy_repr(&mut self.r, false); }
+        fn force_destroy(&mut self) { destroy_repr(&mut self.r, true); }
     }
 
     let mut repr = ProgRepr {
@@ -559,10 +578,9 @@ mod tests {
         p.destroy(); // ...and nor should this (and nor should the destructor)
     }
 
-    #[test]
     #[cfg(unix)] // there is no way to sleep on windows from inside libcore...
-    pub fn test_destroy_actually_kills() {
-        let path = Path("test/core-run-test-destroy-actually-kills.tmp");
+    pub fn test_destroy_actually_kills(force: bool) {
+        let path = Path(fmt!("test/core-run-test-destroy-actually-kills-%?.tmp", force));
 
         os::remove_file(&path);
 
@@ -580,6 +598,17 @@ mod tests {
         assert!(!path.exists());
     }
 
+    #[test]
+    #[cfg(unix)]
+    pub fn test_unforced_destroy_actually_kills() {
+        test_destroy_actually_kills(false);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    pub fn test_forced_destroy_actually_kills() {
+        test_destroy_actually_kills(true);
+    }
 }
 
 // Local Variables:
