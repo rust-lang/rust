@@ -17,8 +17,8 @@
 #[allow(deprecated_mode)];
 #[allow(deprecated_pattern)];
 
-extern mod core(vers = "0.7-rc");
-extern mod std(vers = "0.7-rc");
+extern mod core(vers = "0.7-pre");
+extern mod std(vers = "0.7-pre");
 
 use core::*;
 

@@ -11,7 +11,7 @@
 // rustpkg - a purely function package manager and build system
 
 #[link(name = "rustpkg",
-       vers = "0.7-rc",
+       vers = "0.7-pre",
        uuid = "25de5e6e-279e-4a20-845c-4cabae92daaf",
        url = "https://github.com/mozilla/rust/tree/master/src/librustpkg")];
 
@@ -21,10 +21,10 @@
 #[allow(vecs_implicitly_copyable,
         non_implicitly_copyable_typarams)];
 
-extern mod core(vers = "0.7-rc");
-extern mod std(vers = "0.7-rc");
-extern mod rustc(vers = "0.7-rc");
-extern mod syntax(vers = "0.7-rc");
+extern mod core(vers = "0.7-pre");
+extern mod std(vers = "0.7-pre");
+extern mod rustc(vers = "0.7-pre");
+extern mod syntax(vers = "0.7-pre");
 
 use core::*;
 use core::container::Map;

@@ -19,7 +19,7 @@ use syntax::codemap;
 use syntax::codemap::dummy_sp;
 use syntax::fold;
 
-static CORE_VERSION: &'static str = "0.7-rc";
+static CORE_VERSION: &'static str = "0.7-pre";
 
 pub fn maybe_inject_libcore_ref(sess: Session,
                                 crate: @ast::crate) -> @ast::crate {
