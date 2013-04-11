@@ -17,6 +17,7 @@ use ext::build;
 use ext::deriving::*;
 use codemap::{span, spanned};
 use ast_util;
+use opt_vec;
 
 use core::uint;
 
@@ -48,12 +49,13 @@ fn create_derived_clone_impl(cx: @ext_ctxt,
                              method: @method)
                           -> @item {
     let methods = [ method ];
-    let trait_path = [
+    let trait_path = ~[
         cx.ident_of(~"core"),
         cx.ident_of(~"clone"),
         cx.ident_of(~"Clone"),
     ];
-    create_derived_impl(cx, span, type_ident, generics, methods, trait_path)
+    let trait_path = build::mk_raw_path_global(span, trait_path);
+    create_derived_impl(cx, span, type_ident, generics, methods, trait_path, opt_vec::Empty)
 }
 // Creates a method from the given expression conforming to the signature of
 // the `clone` method.
@@ -188,9 +190,7 @@ fn expand_deriving_clone_struct_method(cx: @ext_ctxt,
                 fields.push(field);
             }
             unnamed_field => {
-                cx.span_bug(span,
-                            ~"unnamed fields in \
-                              expand_deriving_clone_struct_method");
+                cx.span_bug(span, ~"unnamed fields in `deriving(Clone)`");
             }
         }
     }

@@ -14,7 +14,7 @@
 use core::prelude::*;
 
 use ast;
-use ast::{TraitTyParamBound, Ty, bind_by_ref, deref, enum_def};
+use ast::{Ty, bind_by_ref, deref, enum_def};
 use ast::{expr, expr_match, ident, item, item_};
 use ast::{item_enum, item_impl, item_struct, Generics};
 use ast::{m_imm, meta_item, method};
@@ -33,6 +33,8 @@ use core::uint;
 pub mod clone;
 pub mod eq;
 pub mod iter_bytes;
+pub mod encodable;
+pub mod decodable;
 
 type ExpandDerivingStructDefFn<'self> = &'self fn(@ext_ctxt,
                                                   span,
@@ -75,6 +77,10 @@ pub fn expand_meta_deriving(cx: @ext_ctxt,
                             ~"Eq" => eq::expand_deriving_eq(cx, titem.span,
                                 titem, in_items),
                             ~"IterBytes" => iter_bytes::expand_deriving_iter_bytes(cx,
+                                titem.span, titem, in_items),
+                            ~"Encodable" => encodable::expand_deriving_encodable(cx,
+                                titem.span, titem, in_items),
+                            ~"Decodable" => decodable::expand_deriving_decodable(cx,
                                 titem.span, titem, in_items),
                             tname => {
                                 cx.span_err(titem.span, fmt!("unknown \
@@ -153,12 +159,13 @@ pub fn create_self_type_with_params(cx: @ext_ctxt,
 }
 
 pub fn create_derived_impl(cx: @ext_ctxt,
-                       span: span,
-                       type_ident: ident,
-                       generics: &Generics,
-                       methods: &[@method],
-                       trait_path: &[ident])
-                    -> @item {
+                           span: span,
+                           type_ident: ident,
+                           generics: &Generics,
+                           methods: &[@method],
+                           trait_path: @ast::Path,
+                           mut impl_ty_params: opt_vec::OptVec<ast::TyParam>)
+                        -> @item {
     /*!
      *
      * Given that we are deriving a trait `Tr` for a type `T<'a, ...,
@@ -175,29 +182,16 @@ pub fn create_derived_impl(cx: @ext_ctxt,
         build::mk_lifetime(cx, l.span, l.ident)
     });
 
-    // Create the type parameters.
-    let impl_ty_params = generics.ty_params.map(|ty_param| {
-        let bound = build::mk_trait_ref_global(cx,
-                                               span,
-                                               trait_path.map(|x| *x));
-        let bounds = @opt_vec::with(TraitTyParamBound(bound));
-        build::mk_ty_param(cx, ty_param.ident, bounds)
-    });
-
     // Create the reference to the trait.
-    let trait_path = ast::Path {
-        span: span,
-        global: true,
-        idents: trait_path.map(|x| *x),
-        rp: None,
-        types: ~[]
+    let trait_ref = build::mk_trait_ref_(cx, trait_path);
+
+    // Create the type parameters.
+    for generics.ty_params.each |ty_param| {
+        let bounds = @opt_vec::with(
+            build::mk_trait_ty_param_bound_(cx, trait_path)
+        );
+        impl_ty_params.push(build::mk_ty_param(cx, ty_param.ident, bounds));
     };
-    let trait_path = @trait_path;
-    let trait_ref = ast::trait_ref {
-        path: trait_path,
-        ref_id: cx.next_id()
-    };
-    let trait_ref = @trait_ref;
 
     // Create the type of `self`.
     let self_type = create_self_type_with_params(cx,

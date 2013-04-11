@@ -64,12 +64,7 @@ pub fn mk_unary(cx: @ext_ctxt, sp: span, op: ast::unop, e: @ast::expr)
     mk_expr(cx, sp, ast::expr_unary(op, e))
 }
 pub fn mk_raw_path(sp: span, +idents: ~[ast::ident]) -> @ast::Path {
-    let p = @ast::Path { span: sp,
-                         global: false,
-                         idents: idents,
-                         rp: None,
-                         types: ~[] };
-    return p;
+    mk_raw_path_(sp, idents, ~[])
 }
 pub fn mk_raw_path_(sp: span,
                     +idents: ~[ast::ident],
@@ -82,11 +77,16 @@ pub fn mk_raw_path_(sp: span,
                  types: types }
 }
 pub fn mk_raw_path_global(sp: span, +idents: ~[ast::ident]) -> @ast::Path {
+    mk_raw_path_global_(sp, idents, ~[])
+}
+pub fn mk_raw_path_global_(sp: span,
+                           +idents: ~[ast::ident],
+                           +types: ~[@ast::Ty]) -> @ast::Path {
     @ast::Path { span: sp,
                  global: true,
                  idents: idents,
                  rp: None,
-                 types: ~[] }
+                 types: types }
 }
 pub fn mk_path(cx: @ext_ctxt, sp: span, +idents: ~[ast::ident])
             -> @ast::expr {
@@ -271,6 +271,36 @@ pub fn mk_simple_block(cx: @ext_ctxt,
         span: span,
     }
 }
+pub fn mk_lambda_(cx: @ext_ctxt,
+                 span: span,
+                 fn_decl: ast::fn_decl,
+                 blk: ast::blk)
+              -> @ast::expr {
+    mk_expr(cx, span, ast::expr_fn_block(fn_decl, blk))
+}
+pub fn mk_lambda(cx: @ext_ctxt,
+                 span: span,
+                 fn_decl: ast::fn_decl,
+                 expr: @ast::expr)
+              -> @ast::expr {
+    let blk = mk_simple_block(cx, span, expr);
+    mk_lambda_(cx, span, fn_decl, blk)
+}
+pub fn mk_lambda_stmts(cx: @ext_ctxt,
+                       span: span,
+                       fn_decl: ast::fn_decl,
+                       stmts: ~[@ast::stmt])
+                    -> @ast::expr {
+    let blk = mk_block(cx, span, ~[], stmts, None);
+    mk_lambda(cx, span, fn_decl, blk)
+}
+pub fn mk_lambda_no_args(cx: @ext_ctxt,
+                         span: span,
+                         expr: @ast::expr)
+                      -> @ast::expr {
+    let fn_decl = mk_fn_decl(~[], mk_ty_infer(cx, span));
+    mk_lambda(cx, span, fn_decl, expr)
+}
 pub fn mk_copy(cx: @ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_copy(e))
 }
@@ -280,11 +310,20 @@ pub fn mk_managed(cx: @ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
 pub fn mk_pat(cx: @ext_ctxt, span: span, +pat: ast::pat_) -> @ast::pat {
     @ast::pat { id: cx.next_id(), node: pat, span: span }
 }
+pub fn mk_pat_wild(cx: @ext_ctxt, span: span) -> @ast::pat {
+    mk_pat(cx, span, ast::pat_wild)
+}
+pub fn mk_pat_lit(cx: @ext_ctxt,
+                  span: span,
+                  expr: @ast::expr) -> @ast::pat {
+    mk_pat(cx, span, ast::pat_lit(expr))
+}
 pub fn mk_pat_ident(cx: @ext_ctxt,
                     span: span,
                     ident: ast::ident) -> @ast::pat {
     mk_pat_ident_with_binding_mode(cx, span, ident, ast::bind_by_copy)
 }
+
 pub fn mk_pat_ident_with_binding_mode(cx: @ext_ctxt,
                                       span: span,
                                       ident: ast::ident,
@@ -337,12 +376,35 @@ pub fn mk_ty_path_global(cx: @ext_ctxt,
     let ty = @ast::Ty { id: cx.next_id(), node: ty, span: span };
     ty
 }
+pub fn mk_ty_rptr(cx: @ext_ctxt,
+                  span: span,
+                  ty: @ast::Ty,
+                  mutbl: ast::mutability)
+               -> @ast::Ty {
+    @ast::Ty {
+        id: cx.next_id(),
+        span: span,
+        node: ast::ty_rptr(
+            None,
+            ast::mt { ty: ty, mutbl: mutbl }
+        ),
+    }
+}
+pub fn mk_ty_infer(cx: @ext_ctxt, span: span) -> @ast::Ty {
+    @ast::Ty {
+        id: cx.next_id(),
+        node: ast::ty_infer,
+        span: span,
+    }
+}
 pub fn mk_trait_ref_global(cx: @ext_ctxt,
                            span: span,
                            +idents: ~[ ast::ident ])
     -> @ast::trait_ref
 {
-    let path = build::mk_raw_path_global(span, idents);
+    mk_trait_ref_(cx, build::mk_raw_path_global(span, idents))
+}
+pub fn mk_trait_ref_(cx: @ext_ctxt, path: @ast::Path) -> @ast::trait_ref {
     @ast::trait_ref {
         path: path,
         ref_id: cx.next_id()
@@ -371,6 +433,16 @@ pub fn mk_arg(cx: @ext_ctxt,
 pub fn mk_fn_decl(+inputs: ~[ast::arg], output: @ast::Ty) -> ast::fn_decl {
     ast::fn_decl { inputs: inputs, output: output, cf: ast::return_val }
 }
+pub fn mk_trait_ty_param_bound_global(cx: @ext_ctxt,
+                                      span: span,
+                                      +idents: ~[ast::ident])
+                                   -> ast::TyParamBound {
+    ast::TraitTyParamBound(mk_trait_ref_global(cx, span, idents))
+}
+pub fn mk_trait_ty_param_bound_(cx: @ext_ctxt,
+                                path: @ast::Path) -> ast::TyParamBound {
+    ast::TraitTyParamBound(mk_trait_ref_(cx, path))
+}
 pub fn mk_ty_param(cx: @ext_ctxt,
                    ident: ast::ident,
                    bounds: @OptVec<ast::TyParamBound>)
@@ -379,8 +451,38 @@ pub fn mk_ty_param(cx: @ext_ctxt,
 }
 pub fn mk_lifetime(cx: @ext_ctxt,
                    span: span,
-                   ident: ast::ident) -> ast::Lifetime
-{
+                   ident: ast::ident)
+                -> ast::Lifetime {
     ast::Lifetime { id: cx.next_id(), span: span, ident: ident }
 }
-
+pub fn mk_arm(cx: @ext_ctxt,
+              span: span,
+              pats: ~[@ast::pat],
+              expr: @ast::expr)
+           -> ast::arm {
+    ast::arm {
+        pats: pats,
+        guard: None,
+        body: mk_simple_block(cx, span, expr)
+    }
+}
+pub fn mk_unreachable(cx: @ext_ctxt, span: span) -> @ast::expr {
+    let loc = cx.codemap().lookup_char_pos(span.lo);
+    mk_call_global(
+        cx,
+        span,
+        ~[
+            cx.ident_of(~"core"),
+            cx.ident_of(~"sys"),
+            cx.ident_of(~"begin_unwind"),
+        ],
+        ~[
+            mk_uniq_str(cx, span, ~"internal error: entered unreachable code"),
+            mk_uniq_str(cx, span, loc.file.name),
+            mk_uint(cx, span, loc.line),
+        ]
+    )
+}
+pub fn mk_unreachable_arm(cx: @ext_ctxt, span: span) -> ast::arm {
+    mk_arm(cx, span, ~[mk_pat_wild(cx, span)], mk_unreachable(cx, span))
+}
