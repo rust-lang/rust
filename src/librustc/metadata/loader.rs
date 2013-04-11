@@ -206,7 +206,8 @@ fn get_metadata_section(os: os,
         while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
             let name_buf = llvm::LLVMGetSectionName(si.llsi);
             let name = unsafe { str::raw::from_c_str(name_buf) };
-            if name == meta_section_name(os) {
+            debug!("get_matadata_section: name %s", name);
+            if name == read_meta_section_name(os) {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
                 let mut found = None;
@@ -244,6 +245,16 @@ fn get_metadata_section(os: os,
 pub fn meta_section_name(os: os) -> ~str {
     match os {
       os_macos => ~"__DATA,__note.rustc",
+      os_win32 => ~".note.rustc",
+      os_linux => ~".note.rustc",
+      os_android => ~".note.rustc",
+      os_freebsd => ~".note.rustc"
+    }
+}
+
+pub fn read_meta_section_name(os: os) -> ~str {
+    match os {
+      os_macos => ~"__note.rustc",
       os_win32 => ~".note.rustc",
       os_linux => ~".note.rustc",
       os_android => ~".note.rustc",
