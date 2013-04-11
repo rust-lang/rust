@@ -864,6 +864,7 @@ pub mod consts {
             pub static F_TLOCK : int = 2;
             pub static F_ULOCK : int = 0;
             pub static SIGKILL : int = 9;
+            pub static SIGTERM : int = 15;
         }
         pub mod posix01 {
         }
@@ -932,6 +933,7 @@ pub mod consts {
             pub static F_TLOCK : int = 2;
             pub static F_ULOCK : int = 0;
             pub static SIGKILL : int = 9;
+            pub static SIGTERM : int = 15;
         }
         pub mod posix01 {
         }
@@ -1001,6 +1003,7 @@ pub mod consts {
             pub static F_TLOCK : int = 2;
             pub static F_ULOCK : int = 0;
             pub static SIGKILL : int = 9;
+            pub static SIGTERM : int = 15;
         }
         pub mod posix01 {
         }
