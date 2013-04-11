@@ -171,7 +171,7 @@ fn parse_vstore(st: @mut PState) -> ty::vstore {
 
     let c = peek(st);
     if '0' <= c && c <= '9' {
-        let n = parse_int(st) as uint;
+        let n = parse_uint(st);
         assert!(next(st) == '|');
         return ty::vstore_fixed(n);
     }
@@ -214,13 +214,13 @@ fn parse_bound_region(st: @mut PState) -> ty::bound_region {
     match next(st) {
       's' => ty::br_self,
       'a' => {
-        let id = parse_int(st) as uint;
+        let id = parse_uint(st);
         assert!(next(st) == '|');
         ty::br_anon(id)
       }
       '[' => ty::br_named(st.tcx.sess.ident_of(parse_str(st, ']'))),
       'c' => {
-        let id = parse_int(st);
+        let id = parse_uint(st) as int;
         assert!(next(st) == '|');
         ty::br_cap_avoid(id, @parse_bound_region(st))
       },
@@ -235,14 +235,14 @@ fn parse_region(st: @mut PState) -> ty::Region {
       }
       'f' => {
         assert!(next(st) == '[');
-        let id = parse_int(st);
+        let id = parse_uint(st) as int;
         assert!(next(st) == '|');
         let br = parse_bound_region(st);
         assert!(next(st) == ']');
         ty::re_free(id, br)
       }
       's' => {
-        let id = parse_int(st);
+        let id = parse_uint(st) as int;
         assert!(next(st) == '|');
         ty::re_scope(id)
       }
@@ -318,7 +318,7 @@ fn parse_ty(st: @mut PState, conv: conv_did) -> ty::t {
       'p' => {
         let did = parse_def(st, TypeParameter, conv);
         debug!("parsed ty_param: did=%?", did);
-        return ty::mk_param(st.tcx, parse_int(st) as uint, did);
+        return ty::mk_param(st.tcx, parse_uint(st), did);
       }
       's' => {
         let did = parse_def(st, TypeParameter, conv);
@@ -413,14 +413,14 @@ fn parse_def(st: @mut PState, source: DefIdSource,
     return conv(source, parse_def_id(def));
 }
 
-fn parse_int(st: @mut PState) -> int {
+fn parse_uint(st: @mut PState) -> uint {
     let mut n = 0;
     loop {
         let cur = peek(st);
         if cur < '0' || cur > '9' { return n; }
         st.pos = st.pos + 1u;
         n *= 10;
-        n += (cur as int) - ('0' as int);
+        n += (cur as uint) - ('0' as uint);
     };
 }
 
