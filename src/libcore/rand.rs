@@ -157,11 +157,11 @@ pub trait RngUtil {
      *
      * ~~~
      *
-     * use core::rand::RngUtil;  
+     * use core::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::Rng(); 
-     *     println(fmt!("%d",rng.gen_int())); 
+     *     rng = rand::Rng();
+     *     println(fmt!("%d",rng.gen_int()));
      * }
      * ~~~
      */
@@ -197,11 +197,11 @@ pub trait RngUtil {
      *
      * ~~~
      *
-     * use core::rand::RngUtil;  
+     * use core::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::Rng(); 
-     *     println(fmt!("%f",rng.gen_float())); 
+     *     rng = rand::Rng();
+     *     println(fmt!("%f",rng.gen_float()));
      * }
      * ~~~
      */
@@ -223,10 +223,10 @@ pub trait RngUtil {
      *
      * ~~~
      *
-     * use core::rand::RngUtil;  
+     * use core::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::Rng(); 
+     *     rng = rand::Rng();
      *     println(fmt!("%b",rng.gen_bool()));
      * }
      * ~~~
@@ -239,11 +239,11 @@ pub trait RngUtil {
      *
      * ~~~
      *
-     * use core::rand::RngUtil;  
+     * use core::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::Rng(); 
-     *     println(fmt!("%b",rng.gen_weighted_bool(3))); 
+     *     rng = rand::Rng();
+     *     println(fmt!("%b",rng.gen_weighted_bool(3)));
      * }
      * ~~~
      */
@@ -255,11 +255,11 @@ pub trait RngUtil {
      *
      * ~~~
      *
-     * use core::rand::RngUtil;  
+     * use core::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::Rng(); 
-     *     println(rng.gen_str(8)); 
+     *     rng = rand::Rng();
+     *     println(rng.gen_str(8));
      * }
      * ~~~
      */
@@ -271,16 +271,16 @@ pub trait RngUtil {
      *
      * ~~~
      *
-     * use core::rand::RngUtil;  
+     * use core::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::Rng(); 
-     *     println(fmt!("%?",rng.gen_bytes(8))); 
+     *     rng = rand::Rng();
+     *     println(fmt!("%?",rng.gen_bytes(8)));
      * }
      * ~~~
      */
     fn gen_bytes(&self, len: uint) -> ~[u8];
-    /// 
+    ///
     /**
      * Choose an item randomly, failing if values is empty
      *
@@ -288,11 +288,11 @@ pub trait RngUtil {
      *
      * ~~~
      *
-     * use core::rand::RngUtil;  
+     * use core::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::Rng(); 
-     *     println(fmt!("%d",rng.choose([1,2,4,8,16,32]))); 
+     *     rng = rand::Rng();
+     *     println(fmt!("%d",rng.choose([1,2,4,8,16,32])));
      * }
      * ~~~
      */
@@ -307,11 +307,13 @@ pub trait RngUtil {
      *
      * ~~~
      *
-     * use core::rand::RngUtil;  
+     * use core::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::Rng(); 
-     *     let x = [rand::Weighted {weight: 4, item: 'a'}, rand::Weighted {weight: 2, item: 'b'}, rand::Weighted {weight: 2, item: 'c'}];
+     *     rng = rand::Rng();
+     *     let x = [rand::Weighted {weight: 4, item: 'a'},
+     *              rand::Weighted {weight: 2, item: 'b'},
+     *              rand::Weighted {weight: 2, item: 'c'}];
      *     println(fmt!("%c",rng.choose_weighted(x)));
      * }
      * ~~~
@@ -325,11 +327,13 @@ pub trait RngUtil {
      *
      * ~~~
      *
-     * use core::rand::RngUtil;  
+     * use core::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::Rng(); 
-     *     let x = [rand::Weighted {weight: 4, item: 'a'}, rand::Weighted {weight: 2, item: 'b'}, rand::Weighted {weight: 2, item: 'c'}];
+     *     rng = rand::Rng();
+     *     let x = [rand::Weighted {weight: 4, item: 'a'},
+     *              rand::Weighted {weight: 2, item: 'b'},
+     *              rand::Weighted {weight: 2, item: 'c'}];
      *     println(fmt!("%?",rng.choose_weighted_option(x)));
      * }
      * ~~~
@@ -343,11 +347,13 @@ pub trait RngUtil {
      *
      * ~~~
      *
-     * use core::rand::RngUtil;  
+     * use core::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::Rng(); 
-     *     let x = [rand::Weighted {weight: 4, item: 'a'}, rand::Weighted {weight: 2, item: 'b'}, rand::Weighted {weight: 2, item: 'c'}];
+     *     rng = rand::Rng();
+     *     let x = [rand::Weighted {weight: 4, item: 'a'},
+     *              rand::Weighted {weight: 2, item: 'b'},
+     *              rand::Weighted {weight: 2, item: 'c'}];
      *     println(fmt!("%?",rng.weighted_vec(x)));
      * }
      * ~~~
@@ -360,10 +366,10 @@ pub trait RngUtil {
      *
      * ~~~
      *
-     * use core::rand::RngUtil;  
+     * use core::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::Rng(); 
+     *     rng = rand::Rng();
      *     println(fmt!("%?",rng.shuffle([1,2,3])));
      * }
      * ~~~
@@ -376,10 +382,10 @@ pub trait RngUtil {
      *
      * ~~~
      *
-     * use core::rand::RngUtil;  
+     * use core::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::Rng(); 
+     *     rng = rand::Rng();
      *     let mut y = [1,2,3];
      *     rng.shuffle_mut(y);
      *     println(fmt!("%?",y));
