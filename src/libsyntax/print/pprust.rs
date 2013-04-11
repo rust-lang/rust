@@ -95,7 +95,6 @@ pub fn rust_printer(writer: @io::Writer, intr: @ident_interner) -> @ps {
 }
 
 pub static indent_unit: uint = 4u;
-pub static match_indent_unit: uint = 2u;
 
 pub static default_columns: uint = 78u;
 
@@ -1227,16 +1226,16 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         print_block(s, blk);
       }
       ast::expr_match(expr, ref arms) => {
-        cbox(s, match_indent_unit);
+        cbox(s, indent_unit);
         ibox(s, 4);
         word_nbsp(s, ~"match");
         print_expr(s, expr);
         space(s.s);
         bopen(s);
-        let len = (*arms).len();
-        for (*arms).eachi |i, arm| {
+        let len = arms.len();
+        for arms.eachi |i, arm| {
             space(s.s);
-            cbox(s, match_indent_unit);
+            cbox(s, indent_unit);
             ibox(s, 0u);
             let mut first = true;
             for arm.pats.each |p| {
@@ -1269,7 +1268,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
                             ast::expr_block(ref blk) => {
                                 // the block will close the pattern's ibox
                                 print_block_unclosed_indent(
-                                    s, blk, match_indent_unit);
+                                    s, blk, indent_unit);
                             }
                             _ => {
                                 end(s); // close the ibox for the pattern
@@ -1286,10 +1285,10 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
                 }
             } else {
                 // the block will close the pattern's ibox
-                print_block_unclosed_indent(s, &arm.body, match_indent_unit);
+                print_block_unclosed_indent(s, &arm.body, indent_unit);
             }
         }
-        bclose_(s, expr.span, match_indent_unit);
+        bclose_(s, expr.span, indent_unit);
       }
       ast::expr_fn_block(ref decl, ref body) => {
         // in do/for blocks we don't want to show an empty

@@ -109,6 +109,7 @@ impl serialize::Encoder for Encoder {
     fn emit_str(&self, v: &str) { self.wr.write_str(escape_str(v)) }
 
     fn emit_enum(&self, _name: &str, f: &fn()) { f() }
+
     fn emit_enum_variant(&self, name: &str, _id: uint, cnt: uint, f: &fn()) {
         // enums are encoded as strings or vectors:
         // Bunny => "Bunny"
@@ -126,9 +127,49 @@ impl serialize::Encoder for Encoder {
     }
 
     fn emit_enum_variant_arg(&self, idx: uint, f: &fn()) {
-        if (idx != 0) {self.wr.write_char(',');}
+        if idx != 0 {self.wr.write_char(',');}
         f();
     }
+
+    fn emit_enum_struct_variant(&self, name: &str, id: uint, cnt: uint, f: &fn()) {
+        self.emit_enum_variant(name, id, cnt, f)
+    }
+
+    fn emit_enum_struct_variant_field(&self, _field: &str, idx: uint, f: &fn()) {
+        self.emit_enum_variant_arg(idx, f)
+    }
+
+    fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) {
+        self.wr.write_char('{');
+        f();
+        self.wr.write_char('}');
+    }
+    #[cfg(stage0)]
+    fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
+        if idx != 0 { self.wr.write_char(','); }
+        self.wr.write_str(escape_str(name));
+        self.wr.write_char(':');
+        f();
+    }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn emit_struct_field(&self, name: &str, idx: uint, f: &fn()) {
+        if idx != 0 { self.wr.write_char(','); }
+        self.wr.write_str(escape_str(name));
+        self.wr.write_char(':');
+        f();
+    }
+
+    fn emit_tuple(&self, len: uint, f: &fn()) { self.emit_seq(len, f) }
+    fn emit_tuple_arg(&self, idx: uint, f: &fn()) { self.emit_seq_elt(idx, f) }
+
+    fn emit_tuple_struct(&self, _name: &str, len: uint, f: &fn()) { self.emit_seq(len, f) }
+    fn emit_tuple_struct_arg(&self, idx: uint, f: &fn()) { self.emit_seq_elt(idx, f) }
+
+    fn emit_option(&self, f: &fn()) { f(); }
+    fn emit_option_none(&self) { self.emit_nil(); }
+    fn emit_option_some(&self, f: &fn()) { f(); }
 
     fn emit_seq(&self, _len: uint, f: &fn()) {
         self.wr.write_char('[');
@@ -140,22 +181,6 @@ impl serialize::Encoder for Encoder {
         if idx != 0 { self.wr.write_char(','); }
         f()
     }
-
-    fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) {
-        self.wr.write_char('{');
-        f();
-        self.wr.write_char('}');
-    }
-    fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
-        if idx != 0 { self.wr.write_char(','); }
-        self.wr.write_str(escape_str(name));
-        self.wr.write_char(':');
-        f();
-    }
-
-    fn emit_option(&self, f: &fn()) { f(); }
-    fn emit_option_none(&self) { self.emit_nil(); }
-    fn emit_option_some(&self, f: &fn()) { f(); }
 
     fn emit_map(&self, _len: uint, f: &fn()) {
         self.wr.write_char('{');
@@ -216,6 +241,7 @@ impl serialize::Encoder for PrettyEncoder {
     fn emit_str(&self, v: &str) { self.wr.write_str(escape_str(v)); }
 
     fn emit_enum(&self, _name: &str, f: &fn()) { f() }
+
     fn emit_enum_variant(&self, name: &str, _id: uint, cnt: uint, f: &fn()) {
         if cnt == 0 {
             self.wr.write_str(escape_str(name));
@@ -233,6 +259,7 @@ impl serialize::Encoder for PrettyEncoder {
             self.wr.write_char(']');
         }
     }
+
     fn emit_enum_variant_arg(&self, idx: uint, f: &fn()) {
         if idx != 0 {
             self.wr.write_str(",\n");
@@ -240,6 +267,65 @@ impl serialize::Encoder for PrettyEncoder {
         self.wr.write_str(spaces(self.indent));
         f()
     }
+
+    fn emit_enum_struct_variant(&self, name: &str, id: uint, cnt: uint, f: &fn()) {
+        self.emit_enum_variant(name, id, cnt, f)
+    }
+
+    fn emit_enum_struct_variant_field(&self, _field: &str, idx: uint, f: &fn()) {
+        self.emit_enum_variant_arg(idx, f)
+    }
+
+
+    fn emit_struct(&self, _name: &str, len: uint, f: &fn()) {
+        if len == 0 {
+            self.wr.write_str("{}");
+        } else {
+            self.wr.write_char('{');
+            self.indent += 2;
+            f();
+            self.wr.write_char('\n');
+            self.indent -= 2;
+            self.wr.write_str(spaces(self.indent));
+            self.wr.write_char('}');
+        }
+    }
+    #[cfg(stage0)]
+    fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
+        if idx == 0 {
+            self.wr.write_char('\n');
+        } else {
+            self.wr.write_str(",\n");
+        }
+        self.wr.write_str(spaces(self.indent));
+        self.wr.write_str(escape_str(name));
+        self.wr.write_str(": ");
+        f();
+    }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn emit_struct_field(&self, name: &str, idx: uint, f: &fn()) {
+        if idx == 0 {
+            self.wr.write_char('\n');
+        } else {
+            self.wr.write_str(",\n");
+        }
+        self.wr.write_str(spaces(self.indent));
+        self.wr.write_str(escape_str(name));
+        self.wr.write_str(": ");
+        f();
+    }
+
+    fn emit_tuple(&self, len: uint, f: &fn()) { self.emit_seq(len, f) }
+    fn emit_tuple_arg(&self, idx: uint, f: &fn()) { self.emit_seq_elt(idx, f) }
+
+    fn emit_tuple_struct(&self, _name: &str, len: uint, f: &fn()) { self.emit_seq(len, f) }
+    fn emit_tuple_struct_arg(&self, idx: uint, f: &fn()) { self.emit_seq_elt(idx, f) }
+
+    fn emit_option(&self, f: &fn()) { f(); }
+    fn emit_option_none(&self) { self.emit_nil(); }
+    fn emit_option_some(&self, f: &fn()) { f(); }
 
     fn emit_seq(&self, len: uint, f: &fn()) {
         if len == 0 {
@@ -263,35 +349,6 @@ impl serialize::Encoder for PrettyEncoder {
         self.wr.write_str(spaces(self.indent));
         f()
     }
-
-    fn emit_struct(&self, _name: &str, len: uint, f: &fn()) {
-        if len == 0 {
-            self.wr.write_str("{}");
-        } else {
-            self.wr.write_char('{');
-            self.indent += 2;
-            f();
-            self.wr.write_char('\n');
-            self.indent -= 2;
-            self.wr.write_str(spaces(self.indent));
-            self.wr.write_char('}');
-        }
-    }
-    fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
-        if idx == 0 {
-            self.wr.write_char('\n');
-        } else {
-            self.wr.write_str(",\n");
-        }
-        self.wr.write_str(spaces(self.indent));
-        self.wr.write_str(escape_str(name));
-        self.wr.write_str(": ");
-        f();
-    }
-
-    fn emit_option(&self, f: &fn()) { f(); }
-    fn emit_option_none(&self) { self.emit_nil(); }
-    fn emit_option_some(&self, f: &fn()) { f(); }
 
     fn emit_map(&self, len: uint, f: &fn()) {
         if len == 0 {
@@ -827,6 +884,93 @@ impl serialize::Decoder for Decoder {
         f()
     }
 
+    fn read_enum_struct_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T {
+        debug!("read_enum_struct_variant(names=%?)", names);
+        self.read_enum_variant(names, f)
+    }
+
+
+    fn read_enum_struct_variant_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_enum_struct_variant_field(name=%?, idx=%u)", name, idx);
+        self.read_enum_variant_arg(idx, f)
+    }
+
+    fn read_struct<T>(&self, name: &str, len: uint, f: &fn() -> T) -> T {
+        debug!("read_struct(name=%s, len=%u)", name, len);
+        let value = f();
+        self.stack.pop();
+        value
+    }
+
+    #[cfg(stage0)]
+    fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_field(name=%?, idx=%u)", name, idx);
+        match self.stack.pop() {
+            Object(obj) => {
+                let mut obj = obj;
+                let value = match obj.pop(&name.to_owned()) {
+                    None => fail!(fmt!("no such field: %s", name)),
+                    Some(json) => {
+                        self.stack.push(json);
+                        f()
+                    }
+                };
+                self.stack.push(Object(obj));
+                value
+            }
+            value => fail!(fmt!("not an object: %?", value))
+        }
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn read_struct_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_struct_field(name=%?, idx=%u)", name, idx);
+        match self.stack.pop() {
+            Object(obj) => {
+                let mut obj = obj;
+                let value = match obj.pop(&name.to_owned()) {
+                    None => fail!(fmt!("no such field: %s", name)),
+                    Some(json) => {
+                        self.stack.push(json);
+                        f()
+                    }
+                };
+                self.stack.push(Object(obj));
+                value
+            }
+            value => fail!(fmt!("not an object: %?", value))
+        }
+    }
+
+    fn read_tuple<T>(&self, f: &fn(uint) -> T) -> T {
+        debug!("read_tuple()");
+        self.read_seq(f)
+    }
+
+    fn read_tuple_arg<T>(&self, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_tuple_arg(idx=%u)", idx);
+        self.read_seq_elt(idx, f)
+    }
+
+    fn read_tuple_struct<T>(&self, name: &str, f: &fn(uint) -> T) -> T {
+        debug!("read_tuple_struct(name=%?)", name);
+        self.read_tuple(f)
+    }
+
+    fn read_tuple_struct_arg<T>(&self, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_tuple_struct_arg(idx=%u)", idx);
+        self.read_tuple_arg(idx, f)
+    }
+
+    fn read_option<T>(&self, f: &fn(bool) -> T) -> T {
+        match self.stack.pop() {
+            Null => f(false),
+            value => { self.stack.push(value); f(true) }
+        }
+    }
+
     fn read_seq<T>(&self, f: &fn(uint) -> T) -> T {
         debug!("read_seq()");
         let len = match self.stack.pop() {
@@ -845,39 +989,6 @@ impl serialize::Decoder for Decoder {
     fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
         debug!("read_seq_elt(idx=%u)", idx);
         f()
-    }
-
-    fn read_struct<T>(&self, name: &str, len: uint, f: &fn() -> T) -> T {
-        debug!("read_struct(name=%s, len=%u)", name, len);
-        let value = f();
-        self.stack.pop();
-        value
-    }
-
-    fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
-        debug!("read_field(%s, idx=%u)", name, idx);
-        match self.stack.pop() {
-            Object(obj) => {
-                let mut obj = obj;
-                let value = match obj.pop(&name.to_owned()) {
-                    None => fail!(fmt!("no such field: %s", name)),
-                    Some(json) => {
-                        self.stack.push(json);
-                        f()
-                    }
-                };
-                self.stack.push(Object(obj));
-                value
-            }
-            value => fail!(fmt!("not an object: %?", value))
-        }
-    }
-
-    fn read_option<T>(&self, f: &fn(bool) -> T) -> T {
-        match self.stack.pop() {
-            Null => f(false),
-            value => { self.stack.push(value); f(true) }
-        }
     }
 
     fn read_map<T>(&self, f: &fn(uint) -> T) -> T {

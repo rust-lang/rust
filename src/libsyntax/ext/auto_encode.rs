@@ -732,12 +732,12 @@ fn mk_struct_ser_impl(
             )
         );
 
-        // ast for `__s.emit_field($(name), $(idx), $(expr_lambda))`
+        // ast for `__s.emit_struct_field($(name), $(idx), $(expr_lambda))`
         cx.stmt(
             cx.expr_method_call(
                 span,
                 cx.expr_var(span, ~"__s"),
-                cx.ident_of(~"emit_field"),
+                cx.ident_of(~"emit_struct_field"),
                 ~[
                     cx.lit_str(span, @cx.str_of(field.ident)),
                     cx.lit_uint(span, idx),
@@ -786,11 +786,11 @@ fn mk_struct_deser_impl(
             )
         );
 
-        // ast for `__d.read_field($(name), $(idx), $(expr_lambda))`
+        // ast for `__d.read_struct_field($(name), $(idx), $(expr_lambda))`
         let expr: @ast::expr = cx.expr_method_call(
             span,
             cx.expr_var(span, ~"__d"),
-            cx.ident_of(~"read_field"),
+            cx.ident_of(~"read_struct_field"),
             ~[
                 cx.lit_str(span, @cx.str_of(field.ident)),
                 cx.lit_uint(span, idx),
@@ -1253,18 +1253,33 @@ mod test {
             self.add_to_log(CallToEmitEnumVariantArg (idx)); f();
         }
 
-        fn emit_seq(&self, +_len: uint, f: &fn()) {
-            self.add_unknown_to_log(); f();
+        fn emit_enum_struct_variant(&self, name: &str, id: uint, cnt: uint, f: &fn()) {
+            self.emit_enum_variant(name, id, cnt, f)
         }
-        fn emit_seq_elt(&self, +_idx: uint, f: &fn()) {
-            self.add_unknown_to_log(); f();
+
+        fn emit_enum_struct_variant_field(&self, _name: &str, idx: uint, f: &fn()) {
+            self.emit_enum_variant_arg(idx, f)
         }
 
         fn emit_struct(&self, name: &str, +len: uint, f: &fn()) {
             self.add_to_log(CallToEmitStruct (name.to_str(),len)); f();
         }
-        fn emit_field(&self, name: &str, +idx: uint, f: &fn()) {
+        fn emit_struct_field(&self, name: &str, +idx: uint, f: &fn()) {
             self.add_to_log(CallToEmitField (name.to_str(),idx)); f();
+        }
+
+        fn emit_tuple(&self, _len: uint, f: &fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_tuple_arg(&self, _idx: uint, f: &fn()) {
+            self.add_unknown_to_log(); f();
+        }
+
+        fn emit_tuple_struct(&self, _name: &str, _len: uint, f: &fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_tuple_struct_arg(&self, _idx: uint, f: &fn()) {
+            self.add_unknown_to_log(); f();
         }
 
         fn emit_option(&self, f: &fn()) {
@@ -1277,6 +1292,13 @@ mod test {
         fn emit_option_some(&self, f: &fn()) {
             self.add_to_log(CallToEmitOptionSome);
             f();
+        }
+
+        fn emit_seq(&self, +_len: uint, f: &fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_seq_elt(&self, +_idx: uint, f: &fn()) {
+            self.add_unknown_to_log(); f();
         }
 
         fn emit_map(&self, _len: uint, f: &fn()) {

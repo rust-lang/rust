@@ -22,7 +22,7 @@ use EBWriter = std::ebml::writer;
 use core::cmp::Eq;
 use core::io::Writer;
 use std::ebml;
-use std::serialize::{Encodable, Decodable};
+use std::serialize::{Decodable, Encodable};
 use std::time;
 
 fn test_ebml<A:
@@ -39,8 +39,7 @@ fn test_ebml<A:
     assert!(*a1 == a2);
 }
 
-#[auto_encode]
-#[auto_decode]
+#[deriving(Decodable, Encodable)]
 enum Expr {
     Val(uint),
     Plus(@Expr, @Expr),
@@ -107,32 +106,26 @@ impl cmp::Eq for CLike {
     fn ne(&self, other: &CLike) -> bool { !self.eq(other) }
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Decodable, Encodable, Eq)]
 struct Spanned<T> {
     lo: uint,
     hi: uint,
     node: T,
 }
 
-#[auto_encode]
-#[auto_decode]
+#[deriving(Decodable, Encodable)]
 struct SomeStruct { v: ~[uint] }
 
-#[auto_encode]
-#[auto_decode]
+#[deriving(Decodable, Encodable)]
 struct Point {x: uint, y: uint}
 
-#[auto_encode]
-#[auto_decode]
+#[deriving(Decodable, Encodable)]
 enum Quark<T> {
     Top(T),
     Bottom(T)
 }
 
-#[auto_encode]
-#[auto_decode]
+#[deriving(Decodable, Encodable)]
 enum CLike { A, B, C }
 
 pub fn main() {

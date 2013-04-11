@@ -17,9 +17,9 @@ fn main() {
     let x = Some(3);
     let y =
         match x {
-          Some(_) =>
-          ~"some" + ~"very" + ~"very" + ~"very" + ~"very" + ~"very" + ~"very"
-              + ~"very" + ~"very" + ~"long" + ~"string",
-          None => ~"none"
+            Some(_) =>
+            ~"some" + ~"very" + ~"very" + ~"very" + ~"very" + ~"very" +
+                ~"very" + ~"very" + ~"very" + ~"long" + ~"string",
+            None => ~"none"
         };
 }
