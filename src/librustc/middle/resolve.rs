@@ -801,6 +801,8 @@ pub fn Resolver(session: Session,
         attr_main_fn: None,
         main_fns: ~[],
 
+        start_fn: None,
+
         def_map: @mut HashMap::new(),
         export_map2: @mut HashMap::new(),
         trait_map: HashMap::new(),
@@ -860,8 +862,12 @@ pub struct Resolver {
 
     // The function that has attribute named 'main'
     attr_main_fn: Option<(node_id, span)>,
-    // The functions named 'main'
+
+    // The functions that could be main functions
     main_fns: ~[Option<(node_id, span)>],
+
+    // The function that has the attribute 'start' on it
+    start_fn: Option<(node_id, span)>,
 
     def_map: DefMap,
     export_map2: ExportMap2,
@@ -3538,6 +3544,7 @@ pub impl Resolver {
             item_fn(ref fn_decl, _, _, ref generics, ref block) => {
                 // If this is the main function, we must record it in the
                 // session.
+
                 // FIXME #4404 android JNI hacks
                 if !*self.session.building_library ||
                     self.session.targ_cfg.os == session::os_android {
@@ -3555,6 +3562,16 @@ pub impl Resolver {
                             self.session.span_err(
                                     item.span,
                                     ~"multiple 'main' functions");
+                        }
+                    }
+
+                    if attrs_contains_name(item.attrs, ~"start") {
+                        if self.start_fn.is_none() {
+                            self.start_fn = Some((item.id, item.span));
+                        } else {
+                            self.session.span_err(
+                                    item.span,
+                                    ~"multiple 'start' functions");
                         }
                     }
                 }
@@ -5096,7 +5113,7 @@ pub impl Resolver {
     //
     fn check_duplicate_main(@mut self) {
         let this = &mut *self;
-        if this.attr_main_fn.is_none() {
+        if this.attr_main_fn.is_none() && this.start_fn.is_none() {
             if this.main_fns.len() >= 1u {
                 let mut i = 1u;
                 while i < this.main_fns.len() {
@@ -5106,10 +5123,15 @@ pub impl Resolver {
                         ~"multiple 'main' functions");
                     i += 1;
                 }
-                *this.session.main_fn = this.main_fns[0];
+                *this.session.entry_fn = this.main_fns[0];
+                *this.session.entry_type = Some(session::EntryMain);
             }
+        } else if !this.start_fn.is_none() {
+            *this.session.entry_fn = this.start_fn;
+            *this.session.entry_type = Some(session::EntryStart);
         } else {
-            *this.session.main_fn = this.attr_main_fn;
+            *this.session.entry_fn = this.attr_main_fn;
+            *this.session.entry_type = Some(session::EntryMain);
         }
     }
 

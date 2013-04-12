@@ -144,6 +144,16 @@ pub struct crate_metadata {
     data: ~[u8]
 }
 
+// The type of entry function, so
+// users can have their own entry
+// functions that don't start a
+// scheduler
+#[deriving(Eq)]
+pub enum EntryFnType {
+    EntryMain,
+    EntryStart
+}
+
 pub struct Session_ {
     targ_cfg: @config,
     opts: @options,
@@ -151,7 +161,8 @@ pub struct Session_ {
     parse_sess: @mut ParseSess,
     codemap: @codemap::CodeMap,
     // For a library crate, this is always none
-    main_fn: @mut Option<(node_id, codemap::span)>,
+    entry_fn: @mut Option<(node_id, codemap::span)>,
+    entry_type: @mut Option<EntryFnType>,
     span_diagnostic: @diagnostic::span_handler,
     filesearch: @filesearch::FileSearch,
     building_library: @mut bool,
