@@ -121,7 +121,7 @@ fn test_with_ref() {
 #[test]
 fn test_with_mut_ref() {
     let good = ~[1, 2, 3];
-    let mut v = ~[1, 2];
+    let v = ~[1, 2];
     let c = Cell(v);
     do c.with_mut_ref() |v| { v.push(3); }
     let v = c.take();
