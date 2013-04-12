@@ -838,8 +838,7 @@ pub mod node {
                   option::None => break,
                   option::Some(x) => {
                     //FIXME (#2744): Replace with memcpy or something similar
-                    let mut local_buf: ~[u8] =
-                        cast::transmute(*x.content);
+                    let local_buf: ~[u8] = cast::transmute(*x.content);
                     let mut i = x.byte_offset;
                     while i < x.byte_len {
                         buf[offset] = local_buf[i];
@@ -1156,7 +1155,7 @@ pub mod node {
         }
 
         pub fn empty() -> T {
-            let mut stack : ~[@Node] = ~[];
+            let stack : ~[@Node] = ~[];
             T { stack: stack, stackpos: -1 }
         }
 

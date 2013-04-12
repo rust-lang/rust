@@ -113,7 +113,7 @@ pub impl<T> Deque<T> {
     ///
     /// Fails if the deque is empty
     fn pop_front(&mut self) -> T {
-        let mut result = self.elts[self.lo].swap_unwrap();
+        let result = self.elts[self.lo].swap_unwrap();
         self.lo = (self.lo + 1u) % self.elts.len();
         self.nelts -= 1u;
         result
@@ -126,7 +126,7 @@ pub impl<T> Deque<T> {
         if self.hi == 0u {
             self.hi = self.elts.len() - 1u;
         } else { self.hi -= 1u; }
-        let mut result = self.elts[self.hi].swap_unwrap();
+        let result = self.elts[self.hi].swap_unwrap();
         self.elts[self.hi] = None;
         self.nelts -= 1u;
         result
@@ -204,7 +204,7 @@ pub impl<T> Deque<T> {
     ///
     /// Fails if the deque is empty
     fn pop_front(&mut self) -> T {
-        let mut result = self.elts[self.lo].swap_unwrap();
+        let result = self.elts[self.lo].swap_unwrap();
         self.lo = (self.lo + 1u) % self.elts.len();
         self.nelts -= 1u;
         result
@@ -217,7 +217,7 @@ pub impl<T> Deque<T> {
         if self.hi == 0u {
             self.hi = self.elts.len() - 1u;
         } else { self.hi -= 1u; }
-        let mut result = self.elts[self.hi].swap_unwrap();
+        let result = self.elts[self.hi].swap_unwrap();
         self.elts[self.hi] = None;
         self.nelts -= 1u;
         result
