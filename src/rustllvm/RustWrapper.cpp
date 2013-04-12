@@ -222,12 +222,6 @@ public:
   virtual void deallocateExceptionTable(void *ET) {
     llvm_unreachable("Unimplemented call");
   }
-  virtual uint8_t* allocateDataSection(uintptr_t, unsigned int, unsigned int, bool) {
-    llvm_unreachable("Unimplemented call");
-  }
-  virtual bool applyPermissions(std::string*) {
-    llvm_unreachable("Unimplemented call");
-  }
 };
 
 bool RustMCJITMemoryManager::loadCrate(const char* file, std::string* err) {
