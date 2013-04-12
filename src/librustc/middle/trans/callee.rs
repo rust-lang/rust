@@ -292,7 +292,7 @@ pub fn trans_fn_ref_with_vtables(
     }
 
     // Find the actual function pointer.
-    let mut val = {
+    let val = {
         if def_id.crate == ast::local_crate {
             // Internal reference.
             get_item_val(ccx, def_id.node)
@@ -415,7 +415,7 @@ pub fn trans_lang_call_with_type_params(bcx: block,
                                                     type_params,
                                                     None,
                                                     fty);
-                    let mut llfnty = type_of::type_of(callee.bcx.ccx(),
+                    let llfnty = type_of::type_of(callee.bcx.ccx(),
                                                       substituted);
                     new_llval = PointerCast(callee.bcx, fn_data.llfn, llfnty);
                 }
@@ -712,7 +712,7 @@ pub fn trans_arg_expr(bcx: block,
         }
     };
     let mut arg_datum = arg_datumblock.datum;
-    let mut bcx = arg_datumblock.bcx;
+    let bcx = arg_datumblock.bcx;
 
     debug!("   arg datum: %s", arg_datum.to_str(bcx.ccx()));
 

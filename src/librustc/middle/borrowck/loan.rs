@@ -51,7 +51,7 @@ use middle::mem_categorization::{cat_arg, cat_binding, cat_discr, cat_comp};
 use middle::mem_categorization::{cat_deref, cat_discr, cat_local, cat_self};
 use middle::mem_categorization::{cat_special, cat_stack_upvar, cmt};
 use middle::mem_categorization::{comp_field, comp_index, comp_variant};
-use middle::mem_categorization::{gc_ptr, region_ptr, lp_local, lp_arg};
+use middle::mem_categorization::{gc_ptr, region_ptr};
 use middle::ty;
 use util::common::indenter;
 

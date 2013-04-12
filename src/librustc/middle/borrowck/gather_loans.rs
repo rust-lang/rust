@@ -305,7 +305,7 @@ pub impl GatherLoanCtxt {
                 let mcx = &mem_categorization_ctxt {
                     tcx: self.tcx(),
                     method_map: self.bccx.method_map};
-                let mut cmt = mcx.cat_expr_autoderefd(expr, autoderefs);
+                let cmt = mcx.cat_expr_autoderefd(expr, autoderefs);
                 debug!("after autoderef, cmt=%s", self.bccx.cmt_to_repr(cmt));
 
                 match autoref.kind {

@@ -481,7 +481,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                   left_ty: ty::t)
                -> Option<~[@pat]> {
     // Sad, but I can't get rid of this easily
-    let mut r0 = copy *raw_pat(r[0]);
+    let r0 = copy *raw_pat(r[0]);
     match r0 {
         pat{id: pat_id, node: n, span: pat_span} =>
             match n {
