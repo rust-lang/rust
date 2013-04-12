@@ -192,7 +192,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         }
         Some(&@AutoAddEnv(*)) => {
             let mut bcx = bcx;
-            let mut datum = unpack_datum!(bcx, {
+            let datum = unpack_datum!(bcx, {
                 trans_to_datum_unadjusted(bcx, expr)
             });
             add_env(bcx, expr, datum)
@@ -1187,7 +1187,7 @@ fn trans_rec_or_struct(bcx: block,
                        dest: Dest) -> block
 {
     let _icx = bcx.insn_ctxt("trans_rec");
-    let mut bcx = bcx;
+    let bcx = bcx;
 
     let ty = node_id_type(bcx, id);
     let tcx = bcx.tcx();
@@ -1505,7 +1505,7 @@ fn trans_lazy_binop(bcx: block,
                     b: @ast::expr) -> DatumBlock {
     let _icx = bcx.insn_ctxt("trans_lazy_binop");
     let binop_ty = expr_ty(bcx, binop_expr);
-    let mut bcx = bcx;
+    let bcx = bcx;
 
     let Result {bcx: past_lhs, val: lhs} = {
         do base::with_scope_result(bcx, a.info(), ~"lhs") |bcx| {
