@@ -2202,28 +2202,32 @@ pub fn register_fn_fuller(ccx: @CrateContext,
     ccx.item_symbols.insert(node_id, ps);
 
     // FIXME #4404 android JNI hacks
-    let is_main = is_main_fn(&ccx.sess, node_id) &&
+    let is_entry = is_entry_fn(&ccx.sess, node_id) &&
                      (!*ccx.sess.building_library ||
                       (*ccx.sess.building_library &&
                        ccx.sess.targ_cfg.os == session::os_android));
-    if is_main { create_main_wrapper(ccx, sp, llfn); }
+    if is_entry { create_entry_wrapper(ccx, sp, llfn); }
     llfn
 }
 
-pub fn is_main_fn(sess: &Session, node_id: ast::node_id) -> bool {
-    match *sess.main_fn {
-        Some((main_id, _)) => node_id == main_id,
+pub fn is_entry_fn(sess: &Session, node_id: ast::node_id) -> bool {
+    match *sess.entry_fn {
+        Some((entry_id, _)) => node_id == entry_id,
         None => false
     }
 }
 
 // Create a _rust_main(args: ~[str]) function which will be called from the
 // runtime rust_start function
-pub fn create_main_wrapper(ccx: @CrateContext,
+pub fn create_entry_wrapper(ccx: @CrateContext,
                            _sp: span, main_llfn: ValueRef) {
-
-    let llfn = create_main(ccx, main_llfn);
-    create_entry_fn(ccx, llfn);
+    let et = ccx.sess.entry_type.unwrap();
+    if et == session::EntryMain {
+        let llfn = create_main(ccx, main_llfn);
+        create_entry_fn(ccx, llfn, true);
+    } else {
+        create_entry_fn(ccx, main_llfn, false);
+    }
 
     fn create_main(ccx: @CrateContext, main_llfn: ValueRef) -> ValueRef {
         let nt = ty::mk_nil(ccx.tcx);
@@ -2247,7 +2251,7 @@ pub fn create_main_wrapper(ccx: @CrateContext,
         return llfdecl;
     }
 
-    fn create_entry_fn(ccx: @CrateContext, rust_main: ValueRef) {
+    fn create_entry_fn(ccx: @CrateContext, rust_main: ValueRef, use_start_lang_item:bool) {
         let llfty = T_fn(~[ccx.int_type, T_ptr(T_ptr(T_i8()))], ccx.int_type);
 
         // FIXME #4404 android JNI hacks
@@ -2269,34 +2273,51 @@ pub fn create_main_wrapper(ccx: @CrateContext,
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
         }
-        let crate_map = ccx.crate_map;
-        let start_def_id = ccx.tcx.lang_items.start_fn();
-        let start_fn = if start_def_id.crate == ast::local_crate {
-            ccx.sess.bug(~"start lang item is never in the local crate")
-        } else {
-            let start_fn_type = csearch::get_type(ccx.tcx,
-                                                  start_def_id).ty;
-            trans_external_path(ccx, start_def_id, start_fn_type)
-        };
 
         let retptr = unsafe {
             llvm::LLVMBuildAlloca(bld, ccx.int_type, noname())
         };
 
-        let args = unsafe {
-            let opaque_rust_main = llvm::LLVMBuildPointerCast(
-                bld, rust_main, T_ptr(T_i8()), noname());
-            let opaque_crate_map = llvm::LLVMBuildPointerCast(
-                bld, crate_map, T_ptr(T_i8()), noname());
+        let crate_map = ccx.crate_map;
+        let opaque_crate_map = unsafe {llvm::LLVMBuildPointerCast(
+                bld, crate_map, T_ptr(T_i8()), noname())};
 
-            ~[
-                retptr,
-                C_null(T_opaque_box_ptr(ccx)),
-                opaque_rust_main,
-                llvm::LLVMGetParam(llfn, 0 as c_uint),
-                llvm::LLVMGetParam(llfn, 1 as c_uint),
-                opaque_crate_map
-            ]
+        let (start_fn, args) = if use_start_lang_item {
+            let start_def_id = ccx.tcx.lang_items.start_fn();
+            let start_fn = if start_def_id.crate == ast::local_crate {
+                ccx.sess.bug(~"start lang item is never in the local crate")
+            } else {
+                let start_fn_type = csearch::get_type(ccx.tcx,
+                        start_def_id).ty;
+                trans_external_path(ccx, start_def_id, start_fn_type)
+            };
+
+            let args = unsafe {
+                let opaque_rust_main = llvm::LLVMBuildPointerCast(
+                        bld, rust_main, T_ptr(T_i8()), noname());
+
+                ~[
+                    retptr,
+                    C_null(T_opaque_box_ptr(ccx)),
+                    opaque_rust_main,
+                    llvm::LLVMGetParam(llfn, 0 as c_uint),
+                    llvm::LLVMGetParam(llfn, 1 as c_uint),
+                    opaque_crate_map
+                 ]
+            };
+            (start_fn, args)
+        } else {
+            debug!("using user-defined start fn");
+            let args = unsafe {
+                ~[ retptr,
+                   C_null(T_opaque_box_ptr(ccx)),
+                   llvm::LLVMGetParam(llfn, 0 as c_uint),
+                   llvm::LLVMGetParam(llfn, 1 as c_uint),
+                   opaque_crate_map
+                ]
+            };
+
+            (rust_main, args)
         };
 
         unsafe {
