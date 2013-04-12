@@ -105,7 +105,16 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
     }
 
     /// Visit all key-value pairs in order
+    #[cfg(stage0)]
     fn each(&self, f: &fn(&'self K, &'self V) -> bool) {
+        each(&self.root, f)
+    }
+
+    /// Visit all key-value pairs in order
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn each<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) {
         each(&self.root, f)
     }
 
@@ -115,16 +124,26 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
     }
 
     /// Visit all values in order
+    #[cfg(stage0)]
     fn each_value(&self, f: &fn(&V) -> bool) {
         self.each(|_, v| f(v))
     }
 
+    /// Visit all values in order
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn each_value<'a>(&'a self, f: &fn(&'a V) -> bool) {
+        self.each(|_, v| f(v))
+    }
+
     /// Iterate over the map and mutate the contained values
-    fn mutate_values(&mut self, f: &fn(&'self K, &'self mut V) -> bool) {
+    fn mutate_values(&mut self, f: &fn(&K, &mut V) -> bool) {
         mutate_values(&mut self.root, f);
     }
 
     /// Return a reference to the value corresponding to the key
+    #[cfg(stage0)]
     fn find(&self, key: &K) -> Option<&'self V> {
         let mut current: &'self Option<~TreeNode<K, V>> = &self.root;
         loop {
@@ -141,9 +160,39 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
         }
     }
 
+    /// Return a reference to the value corresponding to the key
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn find<'a>(&'a self, key: &K) -> Option<&'a V> {
+        let mut current: &'a Option<~TreeNode<K, V>> = &self.root;
+        loop {
+            match *current {
+              Some(ref r) => {
+                match key.cmp(&r.key) {
+                  Less => current = &r.left,
+                  Greater => current = &r.right,
+                  Equal => return Some(&r.value)
+                }
+              }
+              None => return None
+            }
+        }
+    }
+
     /// Return a mutable reference to the value corresponding to the key
     #[inline(always)]
+    #[cfg(stage0)]
     fn find_mut(&mut self, key: &K) -> Option<&'self mut V> {
+        find_mut(&mut self.root, key)
+    }
+
+    /// Return a mutable reference to the value corresponding to the key
+    #[inline(always)]
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn find_mut<'a>(&'a mut self, key: &K) -> Option<&'a mut V> {
         find_mut(&mut self.root, key)
     }
 
@@ -170,7 +219,16 @@ pub impl<K: TotalOrd, V> TreeMap<K, V> {
     fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
     /// Visit all key-value pairs in reverse order
-    fn each_reverse(&'self self, f: &fn(&'self K, &'self V) -> bool) {
+    #[cfg(stage0)]
+    fn each_reverse(&self, f: &fn(&'self K, &'self V) -> bool) {
+        each_reverse(&self.root, f);
+    }
+
+    /// Visit all key-value pairs in reverse order
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn each_reverse<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) {
         each_reverse(&self.root, f);
     }
 
@@ -186,7 +244,17 @@ pub impl<K: TotalOrd, V> TreeMap<K, V> {
 
     /// Get a lazy iterator over the key-value pairs in the map.
     /// Requires that it be frozen (immutable).
+    #[cfg(stage0)]
     fn iter(&self) -> TreeMapIterator<'self, K, V> {
+        TreeMapIterator{stack: ~[], node: &self.root}
+    }
+
+    /// Get a lazy iterator over the key-value pairs in the map.
+    /// Requires that it be frozen (immutable).
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn iter<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
         TreeMapIterator{stack: ~[], node: &self.root}
     }
 }
@@ -490,7 +558,18 @@ pub impl <T: TotalOrd> TreeSet<T> {
     /// Get a lazy iterator over the values in the set.
     /// Requires that it be frozen (immutable).
     #[inline(always)]
+    #[cfg(stage0)]
     fn iter(&self) -> TreeSetIterator<'self, T> {
+        TreeSetIterator{iter: self.map.iter()}
+    }
+
+    /// Get a lazy iterator over the values in the set.
+    /// Requires that it be frozen (immutable).
+    #[inline(always)]
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn iter<'a>(&'a self) -> TreeSetIterator<'a, T> {
         TreeSetIterator{iter: self.map.iter()}
     }
 }

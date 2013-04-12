@@ -93,16 +93,15 @@ use middle::typeck::check::method::{AutoderefReceiver};
 use middle::typeck::check::method::{AutoderefReceiverFlag};
 use middle::typeck::check::method::{CheckTraitsAndInherentMethods};
 use middle::typeck::check::method::{CheckTraitsOnly, DontAutoderefReceiver};
-use middle::typeck::check::method::{TransformTypeNormally};
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
+use middle::typeck::check::regionmanip::relate_free_regions;
 use middle::typeck::check::vtable::{LocationInfo, VtableContext};
 use middle::typeck::CrateCtxt;
 use middle::typeck::infer::{resolve_type, force_tvar};
 use middle::typeck::infer;
 use middle::typeck::rscope::bound_self_region;
-use middle::typeck::rscope::{RegionError, RegionParameterization};
+use middle::typeck::rscope::{RegionError};
 use middle::typeck::rscope::region_scope;
-use middle::typeck::rscope;
 use middle::typeck::{isr_alist, lookup_def_ccx};
 use middle::typeck::no_params;
 use middle::typeck::{require_same_types, method_map, vtable_map};
@@ -279,7 +278,7 @@ pub fn check_bare_fn(ccx: @mut CrateCtxt,
 }
 
 pub fn check_fn(ccx: @mut CrateCtxt,
-                +self_info: Option<SelfInfo>,
+                opt_self_info: Option<SelfInfo>,
                 purity: ast::purity,
                 fn_sig: &ty::FnSig,
                 decl: &ast::fn_decl,
@@ -306,19 +305,28 @@ pub fn check_fn(ccx: @mut CrateCtxt,
     // First, we have to replace any bound regions in the fn and self
     // types with free ones.  The free region references will be bound
     // the node_id of the body block.
-
-    let (isr, self_info, fn_sig) = {
-        replace_bound_regions_in_fn_sig(tcx, inherited_isr, self_info, fn_sig,
-                                        |br| ty::re_free(body.node.id, br))
+    let (isr, opt_self_info, fn_sig) = {
+        let opt_self_ty = opt_self_info.map(|i| i.self_ty);
+        let (isr, opt_self_ty, fn_sig) =
+            replace_bound_regions_in_fn_sig(
+                tcx, inherited_isr, opt_self_ty, fn_sig,
+                |br| ty::re_free(ty::FreeRegion {scope_id: body.node.id,
+                                                 bound_region: br}));
+        let opt_self_info =
+            opt_self_info.map(
+                |si| SelfInfo {self_ty: opt_self_ty.get(), ..*si});
+        (isr, opt_self_info, fn_sig)
     };
+
+    relate_free_regions(tcx, opt_self_info.map(|s| s.self_ty), &fn_sig);
 
     let arg_tys = fn_sig.inputs.map(|a| a.ty);
     let ret_ty = fn_sig.output;
 
-    debug!("check_fn(arg_tys=%?, ret_ty=%?, self_info.self_ty=%?)",
-           arg_tys.map(|a| ppaux::ty_to_str(tcx, *a)),
+    debug!("check_fn(arg_tys=%?, ret_ty=%?, opt_self_ty=%?)",
+           arg_tys.map(|&a| ppaux::ty_to_str(tcx, a)),
            ppaux::ty_to_str(tcx, ret_ty),
-           self_info.map(|s| ppaux::ty_to_str(tcx, s.self_ty)));
+           opt_self_info.map(|si| ppaux::ty_to_str(tcx, si.self_ty)));
 
     // ______________________________________________________________________
     // Create the function context.  This is either derived from scratch or,
@@ -343,7 +351,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         }
     };
 
-    gather_locals(fcx, decl, body, arg_tys, self_info);
+    gather_locals(fcx, decl, body, arg_tys, opt_self_info);
     check_block_with_expected(fcx, body, Some(ret_ty));
 
     // We unify the tail expr's type with the
@@ -361,7 +369,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
       None => ()
     }
 
-    for self_info.each |self_info| {
+    for opt_self_info.each |self_info| {
         fcx.write_ty(self_info.self_id, self_info.self_ty);
     }
     for vec::each2(decl.inputs, arg_tys) |input, arg| {
@@ -374,7 +382,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                      decl: &ast::fn_decl,
                      body: &ast::blk,
                      arg_tys: &[ty::t],
-                     self_info: Option<SelfInfo>) {
+                     opt_self_info: Option<SelfInfo>) {
         let tcx = fcx.ccx.tcx;
 
         let assign: @fn(ast::node_id, Option<ty::t>) = |nid, ty_opt| {
@@ -393,7 +401,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         };
 
         // Add the self parameter
-        for self_info.each |self_info| {
+        for opt_self_info.each |self_info| {
             assign(self_info.self_id, Some(self_info.self_ty));
             debug!("self is assigned to %s",
                    fcx.infcx().ty_to_str(
@@ -479,26 +487,22 @@ pub fn check_fn(ccx: @mut CrateCtxt,
 }
 
 pub fn check_method(ccx: @mut CrateCtxt,
-                    method: @ast::method,
-                    self_ty: ty::t)
+                    method: @ast::method)
 {
-    let self_info = if method.self_ty.node == ast::sty_static {None} else {
-        let ty = method::transform_self_type_for_method(
-            ccx.tcx,
-            Some(ty::re_bound(ty::br_self)),
-            self_ty,
-            method.self_ty.node,
-            TransformTypeNormally);
-        Some(SelfInfo {self_ty: ty, self_id: method.self_id,
-                       span: method.self_ty.span})
-    };
+    let method_def_id = local_def(method.id);
+    let method_ty = ty::method(ccx.tcx, method_def_id);
+    let opt_self_info = method_ty.transformed_self_ty.map(|&ty| {
+        SelfInfo {self_ty: ty,
+                  self_id: method.self_id,
+                  span: method.self_ty.span}
+    });
 
     check_bare_fn(
         ccx,
         &method.decl,
         &method.body,
         method.id,
-        self_info
+        opt_self_info
     );
 }
 
@@ -570,15 +574,12 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
       ast::item_fn(ref decl, _, _, _, ref body) => {
         check_bare_fn(ccx, decl, body, it.id, None);
       }
-      ast::item_impl(ref generics, _, ty, ref ms) => {
+      ast::item_impl(_, _, _, ref ms) => {
         let rp = ccx.tcx.region_paramd_items.find(&it.id).map_consume(|x| *x);
         debug!("item_impl %s with id %d rp %?",
                *ccx.tcx.sess.str_of(it.ident), it.id, rp);
-        let rp = RegionParameterization::from_variance_and_generics(
-            rp, generics);
-        let self_ty = ccx.to_ty(&rscope::type_rscope(rp), ty);
         for ms.each |m| {
-            check_method(ccx, *m, self_ty);
+            check_method(ccx, *m);
         }
       }
       ast::item_trait(_, _, ref trait_methods) => {
@@ -589,8 +590,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
                 // bodies to check.
               }
               provided(m) => {
-                let self_ty = ty::mk_self(ccx.tcx, local_def(it.id));
-                check_method(ccx, m, self_ty);
+                check_method(ccx, m);
               }
             }
         }
@@ -2841,8 +2841,7 @@ pub fn check_decl_local(fcx: @mut FnCtxt, local: @ast::local)  {
         _ => {}
     }
 
-    let region =
-        ty::re_scope(*tcx.region_map.get(&local.node.id));
+    let region = tcx.region_maps.encl_region(local.node.id);
     let pcx = pat_ctxt {
         fcx: fcx,
         map: pat_id_map(tcx.def_map, local.node.pat),

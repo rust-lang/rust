@@ -1632,6 +1632,10 @@ pub fn print_pat(s: @ps, &&pat: @ast::pat, refutable: bool) {
     (s.ann.post)(ann_node);
 }
 
+pub fn self_ty_to_str(self_ty: ast::self_ty_, intr: @ident_interner) -> ~str {
+    to_str(self_ty, |a, b| { print_self_ty(a, b); () }, intr)
+}
+
 // Returns whether it printed anything
 pub fn print_self_ty(s: @ps, self_ty: ast::self_ty_) -> bool {
     match self_ty {

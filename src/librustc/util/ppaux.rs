@@ -41,9 +41,9 @@ pub trait Repr {
 }
 
 pub fn note_and_explain_region(cx: ctxt,
-                               prefix: ~str,
+                               prefix: &str,
                                region: ty::Region,
-                               suffix: ~str) {
+                               suffix: &str) {
     match explain_region_and_span(cx, region) {
       (ref str, Some(span)) => {
         cx.sess.span_note(
@@ -98,23 +98,23 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
         }
       }
 
-      re_free(id, br) => {
-        let prefix = match br {
+      re_free(ref fr) => {
+        let prefix = match fr.bound_region {
           br_anon(idx) => fmt!("the anonymous lifetime #%u defined on",
                                idx + 1),
           br_fresh(_) => fmt!("an anonymous lifetime defined on"),
           _ => fmt!("the lifetime %s as defined on",
-                    bound_region_to_str(cx, br))
+                    bound_region_to_str(cx, fr.bound_region))
         };
 
-        match cx.items.find(&id) {
+        match cx.items.find(&fr.scope_id) {
           Some(&ast_map::node_block(ref blk)) => {
             let (msg, opt_span) = explain_span(cx, "block", blk.span);
             (fmt!("%s %s", prefix, msg), opt_span)
           }
           Some(_) | None => {
             // this really should not happen
-            (fmt!("%s node %d", prefix, id), None)
+            (fmt!("%s node %d", prefix, fr.scope_id), None)
           }
         }
       }
@@ -215,7 +215,7 @@ pub fn region_to_str_space(cx: ctxt, prefix: &str, region: Region) -> ~str {
     match region {
         re_scope(_) => prefix.to_str(),
         re_bound(br) => bound_region_to_str_space(cx, prefix, br),
-        re_free(_, br) => bound_region_to_str_space(cx, prefix, br),
+        re_free(ref fr) => bound_region_to_str_space(cx, prefix, fr.bound_region),
         re_infer(ReSkolemized(_, br)) => {
             bound_region_to_str_space(cx, prefix, br)
         }
@@ -225,12 +225,16 @@ pub fn region_to_str_space(cx: ctxt, prefix: &str, region: Region) -> ~str {
 }
 
 pub fn mt_to_str(cx: ctxt, m: &mt) -> ~str {
+    mt_to_str_wrapped(cx, "", m, "")
+}
+
+pub fn mt_to_str_wrapped(cx: ctxt, before: &str, m: &mt, after: &str) -> ~str {
     let mstr = match m.mutbl {
       ast::m_mutbl => "mut ",
       ast::m_imm => "",
       ast::m_const => "const "
     };
-    return fmt!("%s%s", mstr, ty_to_str(cx, m.ty));
+    return fmt!("%s%s%s%s", mstr, before, ty_to_str(cx, m.ty), after);
 }
 
 pub fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
@@ -250,15 +254,14 @@ pub fn trait_store_to_str(cx: ctxt, s: ty::TraitStore) -> ~str {
     }
 }
 
-pub fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
+pub fn vstore_ty_to_str(cx: ctxt, mt: &mt, vs: ty::vstore) -> ~str {
     match vs {
-      ty::vstore_fixed(_) => {
-        fmt!("[%s, .. %s]", ty, vstore_to_str(cx, vs))
-      }
-      ty::vstore_slice(_) => {
-        fmt!("%s %s", vstore_to_str(cx, vs), ty)
-      }
-      _ => fmt!("%s[%s]", vstore_to_str(cx, vs), ty)
+        ty::vstore_fixed(_) => {
+            fmt!("[%s, .. %s]", mt_to_str(cx, mt), vstore_to_str(cx, vs))
+        }
+        _ => {
+            fmt!("%s%s", vstore_to_str(cx, vs), mt_to_str_wrapped(cx, "[", mt, "]"))
+        }
     }
 }
 
@@ -460,7 +463,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         fmt!("%s%s", trait_store_to_str(cx, s), ty)
       }
       ty_evec(ref mt, vs) => {
-        vstore_ty_to_str(cx, fmt!("%s", mt_to_str(cx, mt)), vs)
+        vstore_ty_to_str(cx, mt, vs)
       }
       ty_estr(vs) => fmt!("%s%s", vstore_to_str(cx, vs), ~"str"),
       ty_opaque_box => ~"@?",
@@ -744,6 +747,12 @@ impl Repr for ty::TraitStore {
             &ty::UniqTraitStore => ~"~Trait",
             &ty::RegionTraitStore(r) => fmt!("&%s Trait", r.repr(tcx))
         }
+    }
+}
+
+impl Repr for ty::vstore {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        vstore_to_str(tcx, *self)
     }
 }
 

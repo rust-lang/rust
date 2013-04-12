@@ -11,7 +11,7 @@
 use core::prelude::*;
 
 use middle::resolve::Impl;
-use middle::ty::{param_ty, substs};
+use middle::ty::{param_ty};
 use middle::ty;
 use middle::typeck::check::{FnCtxt, impl_self_ty};
 use middle::typeck::check::{structurally_resolved_type};
@@ -489,6 +489,8 @@ pub fn early_resolve_expr(ex: @ast::expr,
     match ex.node {
       ast::expr_path(*) => {
         for fcx.opt_node_ty_substs(ex.id) |substs| {
+            debug!("vtable resolution on parameter bounds for expr %s",
+                   ex.repr(fcx.tcx()));
             let def = *cx.tcx.def_map.get(&ex.id);
             let did = ast_util::def_id_of_def(def);
             let item_ty = ty::lookup_item_type(cx.tcx, did);
@@ -518,6 +520,8 @@ pub fn early_resolve_expr(ex: @ast::expr,
       ast::expr_index(*) | ast::expr_method_call(*) => {
         match ty::method_call_type_param_defs(cx.tcx, fcx.inh.method_map, ex.id) {
           Some(type_param_defs) => {
+            debug!("vtable resolution on parameter bounds for method call %s",
+                   ex.repr(fcx.tcx()));
             if has_trait_bounds(*type_param_defs) {
                 let callee_id = match ex.node {
                   ast::expr_field(_, _, _) => ex.id,
@@ -537,6 +541,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
         }
       }
       ast::expr_cast(src, _) => {
+          debug!("vtable resolution on expr %s", ex.repr(fcx.tcx()));
           let target_ty = fcx.expr_ty(ex);
           match ty::get(target_ty).sty {
               ty::ty_trait(target_def_id, ref target_substs, store) => {

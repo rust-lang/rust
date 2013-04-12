@@ -178,15 +178,6 @@ pub struct Candidate {
     origin: method_origin,
 }
 
-/**
- * How the self type should be transformed according to the form of explicit
- * self provided by the method.
- */
-pub enum TransformTypeFlag {
-    TransformTypeNormally,
-    TransformTypeForObject,
-}
-
 pub impl<'self> LookupContext<'self> {
     fn do_lookup(&self, self_ty: ty::t) -> Option<method_map_entry> {
         let mut self_ty = structurally_resolved_type(self.fcx,
@@ -285,13 +276,13 @@ pub impl<'self> LookupContext<'self> {
 
     fn push_inherent_candidates(&self, self_ty: ty::t) {
         /*!
-         *
          * Collect all inherent candidates into
          * `self.inherent_candidates`.  See comment at the start of
          * the file.  To find the inherent candidates, we repeatedly
          * deref the self-ty to find the "base-type".  So, for
          * example, if the receiver is @@C where `C` is a struct type,
-         * we'll want to find the inherent impls for `C`. */
+         * we'll want to find the inherent impls for `C`.
+         */
 
         let mut enum_dids = ~[];
         let mut self_ty = self_ty;
@@ -407,16 +398,9 @@ pub impl<'self> LookupContext<'self> {
             };
             let method = trait_methods[pos];
 
-            let (rcvr_ty, rcvr_substs) =
-                self.create_rcvr_ty_and_substs_for_method(
-                    method.self_ty,
-                    rcvr_ty,
-                    copy bound_trait_ref.substs,
-                    TransformTypeNormally);
-
             let cand = Candidate {
                 rcvr_ty: rcvr_ty,
-                rcvr_substs: rcvr_substs,
+                rcvr_substs: copy bound_trait_ref.substs,
                 method_ty: method,
                 origin: method_param(
                     method_param {
@@ -476,14 +460,8 @@ pub impl<'self> LookupContext<'self> {
             ../*bad*/copy *substs
         };
 
-        let (rcvr_ty, rcvr_substs) =
-            self.create_rcvr_ty_and_substs_for_method(method.self_ty,
-                                                      self_ty,
-                                                      rcvr_substs,
-                                                      TransformTypeForObject);
-
         self.inherent_candidates.push(Candidate {
-            rcvr_ty: rcvr_ty,
+            rcvr_ty: self_ty,
             rcvr_substs: rcvr_substs,
             method_ty: method,
             origin: method_trait(did, index, store)
@@ -538,19 +516,13 @@ pub impl<'self> LookupContext<'self> {
                 // We've found a method -- return it
                 let rcvr_substs = substs {self_ty: Some(self_ty),
                                           ..copy *substs };
-                let (rcvr_ty, rcvr_substs) =
-                    self.create_rcvr_ty_and_substs_for_method(
-                        info.method_ty.self_ty,
-                        self_ty,
-                        rcvr_substs,
-                        TransformTypeNormally);
                 let origin = if did == info.trait_def_id {
                     method_self(info.trait_def_id, info.index)
                 } else {
                     method_super(info.trait_def_id, info.index)
                 };
                 self.inherent_candidates.push(Candidate {
-                    rcvr_ty: rcvr_ty,
+                    rcvr_ty: self_ty,
                     rcvr_substs: rcvr_substs,
                     method_ty: info.method_ty,
                     origin: origin
@@ -598,13 +570,6 @@ pub impl<'self> LookupContext<'self> {
             ty: impl_ty
         } = impl_self_ty(&vcx, location_info, impl_info.did);
 
-        let (impl_ty, impl_substs) =
-            self.create_rcvr_ty_and_substs_for_method(
-                method.self_ty,
-                impl_ty,
-                impl_substs,
-                TransformTypeNormally);
-
         candidates.push(Candidate {
             rcvr_ty: impl_ty,
             rcvr_substs: impl_substs,
@@ -639,67 +604,14 @@ pub impl<'self> LookupContext<'self> {
                 self_ty: None,
                 tps: ~[]
             };
-            let (impl_ty, impl_substs) =
-                self.create_rcvr_ty_and_substs_for_method(
-                    method.self_ty,
-                    self_ty,
-                    dummy_substs,
-                    TransformTypeNormally);
 
             candidates.push(Candidate {
-                rcvr_ty: impl_ty,
-                rcvr_substs: impl_substs,
+                rcvr_ty: self_ty,
+                rcvr_substs: dummy_substs,
                 method_ty: method,
                 origin: method_static(provided_method_info.method_info.did)
             });
         }
-    }
-
-    fn create_rcvr_ty_and_substs_for_method(&self,
-                                            self_decl: ast::self_ty_,
-                                            self_ty: ty::t,
-                                            +self_substs: ty::substs,
-                                            transform_type: TransformTypeFlag)
-                                         -> (ty::t, ty::substs) {
-        // If the self type includes a region (like &self), we need to
-        // ensure that the receiver substitutions have a self region.
-        // If the receiver type does not itself contain borrowed
-        // pointers, there may not be one yet.
-        //
-        // FIXME(#3446)--this awkward situation comes about because
-        // the regions in the receiver are substituted before (and
-        // differently from) those in the argument types.  This
-        // shouldn't really have to be.
-        let rcvr_substs = {
-            match self_decl {
-                sty_static | sty_value |
-                sty_box(_) | sty_uniq(_) => {
-                    self_substs
-                }
-                sty_region(*) if self_substs.self_r.is_some() => {
-                    // FIXME(#4846) ignoring expl lifetime here
-                    self_substs
-                }
-                sty_region(*) => {
-                    // FIXME(#4846) ignoring expl lifetime here
-                    substs {
-                        self_r:
-                             Some(self.infcx().next_region_var(
-                                 self.expr.span,
-                                 self.expr.id)),
-                        ..self_substs
-                    }
-                }
-            }
-        };
-
-        let rcvr_ty = transform_self_type_for_method(self.tcx(),
-                                                     rcvr_substs.self_r,
-                                                     self_ty,
-                                                     self_decl,
-                                                     transform_type);
-
-        (rcvr_ty, rcvr_substs)
     }
 
     // ______________________________________________________________________
@@ -1036,20 +948,34 @@ pub impl<'self> LookupContext<'self> {
         self.enforce_trait_instance_limitations(fty, candidate);
         self.enforce_drop_trait_limitations(candidate);
 
-        // before we only checked whether self_ty could be a subtype
-        // of rcvr_ty; now we actually make it so (this may cause
-        // variables to unify etc).  Since we checked beforehand, and
-        // nothing has changed in the meantime, this unification
-        // should never fail.
-        match self.fcx.mk_subty(false, self.self_expr.span,
-                                self_ty, candidate.rcvr_ty) {
-            result::Ok(_) => (),
-            result::Err(_) => {
-                self.bug(fmt!("%s was assignable to %s but now is not?",
-                              self.ty_to_str(self_ty),
-                              self.ty_to_str(candidate.rcvr_ty)));
+        // static methods should never have gotten this far:
+        assert!(candidate.method_ty.self_ty != sty_static);
+
+        let transformed_self_ty = match candidate.origin {
+            method_trait(*) => {
+                match candidate.method_ty.self_ty {
+                    sty_region(*) => {
+                        // FIXME(#5762) again, preserving existing
+                        // behavior here which (for &self) desires
+                        // &@Trait where @Trait is the type of the
+                        // receiver.  Here we fetch the method's
+                        // transformed_self_ty which will be something
+                        // like &'a Self.  We then perform a
+                        // substitution which will replace Self with
+                        // @Trait.
+                        let t = candidate.method_ty.transformed_self_ty.get();
+                        ty::subst(tcx, &candidate.rcvr_substs, t)
+                    }
+                    _ => {
+                        candidate.rcvr_ty
+                    }
+                }
             }
-        }
+            _ => {
+                let t = candidate.method_ty.transformed_self_ty.get();
+                ty::subst(tcx, &candidate.rcvr_substs, t)
+            }
+        };
 
         // Determine the values for the type parameters of the method.
         // If they were not explicitly supplied, just construct fresh
@@ -1100,15 +1026,31 @@ pub impl<'self> LookupContext<'self> {
                     fmt!("Invoking method with non-bare-fn ty: %?", s));
             }
         };
-        let (_, _, fn_sig) =
+        let (_, opt_transformed_self_ty, fn_sig) =
             replace_bound_regions_in_fn_sig(
-                tcx, @Nil, None, &bare_fn_ty.sig,
+                tcx, @Nil, Some(transformed_self_ty), &bare_fn_ty.sig,
                 |_br| self.fcx.infcx().next_region_var(
                     self.expr.span, self.expr.id));
+        let transformed_self_ty = opt_transformed_self_ty.get();
         let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {sig: fn_sig, ..bare_fn_ty});
         debug!("after replacing bound regions, fty=%s", self.ty_to_str(fty));
 
         let self_mode = get_mode_from_self_type(candidate.method_ty.self_ty);
+
+        // before we only checked whether self_ty could be a subtype
+        // of rcvr_ty; now we actually make it so (this may cause
+        // variables to unify etc).  Since we checked beforehand, and
+        // nothing has changed in the meantime, this unification
+        // should never fail.
+        match self.fcx.mk_subty(false, self.self_expr.span,
+                                self_ty, transformed_self_ty) {
+            result::Ok(_) => (),
+            result::Err(_) => {
+                self.bug(fmt!("%s was a subtype of %s but now is not?",
+                              self.ty_to_str(self_ty),
+                              self.ty_to_str(transformed_self_ty)));
+            }
+        }
 
         self.fcx.write_ty(self.callee_id, fty);
         self.fcx.write_substs(self.callee_id, all_substs);
@@ -1180,7 +1122,87 @@ pub impl<'self> LookupContext<'self> {
         debug!("is_relevant(self_ty=%s, candidate=%s)",
                self.ty_to_str(self_ty), self.cand_to_str(candidate));
 
-        self.fcx.can_mk_subty(self_ty, candidate.rcvr_ty).is_ok()
+        // Check for calls to object methods.  We resolve these differently.
+        //
+        // FIXME(#5762)---we don't check that an @self method is only called
+        // on an @Trait object here and so forth
+        match candidate.origin {
+            method_trait(*) => {
+                match candidate.method_ty.self_ty {
+                    sty_static | sty_value => {
+                        return false;
+                    }
+                    sty_region(*) => {
+                        // just echoing current behavior here, which treats
+                        // an &self method on an @Trait object as requiring
+                        // an &@Trait receiver (wacky)
+                    }
+                    sty_box(*) | sty_uniq(*) => {
+                        return self.fcx.can_mk_subty(self_ty,
+                                                     candidate.rcvr_ty).is_ok();
+                    }
+                };
+            }
+            _ => {}
+        }
+
+        return match candidate.method_ty.self_ty {
+            sty_static => {
+                false
+            }
+
+            sty_value => {
+                self.fcx.can_mk_subty(self_ty, candidate.rcvr_ty).is_ok()
+            }
+
+            sty_region(_, m) => {
+                match ty::get(self_ty).sty {
+                    ty::ty_rptr(_, mt) => {
+                        mutability_matches(mt.mutbl, m) &&
+                        self.fcx.can_mk_subty(mt.ty, candidate.rcvr_ty).is_ok()
+                    }
+
+                    _ => false
+                }
+            }
+
+            sty_box(m) => {
+                match ty::get(self_ty).sty {
+                    ty::ty_box(mt) => {
+                        mutability_matches(mt.mutbl, m) &&
+                        self.fcx.can_mk_subty(mt.ty, candidate.rcvr_ty).is_ok()
+                    }
+
+                    _ => false
+                }
+            }
+
+            sty_uniq(m) => {
+                match ty::get(self_ty).sty {
+                    ty::ty_uniq(mt) => {
+                        mutability_matches(mt.mutbl, m) &&
+                        self.fcx.can_mk_subty(mt.ty, candidate.rcvr_ty).is_ok()
+                    }
+
+                    _ => false
+                }
+            }
+        };
+
+        fn mutability_matches(self_mutbl: ast::mutability,
+                              candidate_mutbl: ast::mutability) -> bool {
+            //! True if `self_mutbl <: candidate_mutbl`
+
+            match (self_mutbl, candidate_mutbl) {
+                (_, m_const) => true,
+                (m_mutbl, m_mutbl) => true,
+                (m_imm, m_imm) => true,
+                (m_mutbl, m_imm) => false,
+                (m_imm, m_mutbl) => false,
+                (m_const, m_imm) => false,
+                (m_const, m_mutbl) => false,
+            }
+        }
     }
 
     fn fn_ty_from_origin(&self, origin: &method_origin) -> ty::t {
@@ -1278,45 +1300,6 @@ pub impl<'self> LookupContext<'self> {
 
     fn bug(&self, +s: ~str) -> ! {
         self.tcx().sess.bug(s)
-    }
-}
-
-pub fn transform_self_type_for_method(tcx: ty::ctxt,
-                                      self_region: Option<ty::Region>,
-                                      impl_ty: ty::t,
-                                      self_type: ast::self_ty_,
-                                      flag: TransformTypeFlag)
-                                   -> ty::t {
-    match self_type {
-      sty_static => {
-        tcx.sess.bug(~"calling transform_self_type_for_method on \
-                       static method");
-      }
-      sty_value => {
-        impl_ty
-      }
-      sty_region(_, mutability) => {
-        // FIXME(#4846) ignoring expl lifetime here
-        mk_rptr(tcx,
-                self_region.expect(~"self region missing for &self param"),
-                ty::mt { ty: impl_ty, mutbl: mutability })
-      }
-      sty_box(mutability) => {
-        match flag {
-            TransformTypeNormally => {
-                mk_box(tcx, ty::mt { ty: impl_ty, mutbl: mutability })
-            }
-            TransformTypeForObject => impl_ty
-        }
-      }
-      sty_uniq(mutability) => {
-        match flag {
-            TransformTypeNormally => {
-                mk_uniq(tcx, ty::mt { ty: impl_ty, mutbl: mutability })
-            }
-            TransformTypeForObject => impl_ty
-        }
-      }
     }
 }
 
