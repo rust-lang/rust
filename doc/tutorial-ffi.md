@@ -2,83 +2,170 @@
 
 # Introduction
 
-Because Rust is a systems programming language, one of its goals is to
-interoperate well with C code.
+This tutorial will use the [snappy](https://code.google.com/p/snappy/)
+compression/decompression library as an introduction to writing bindings for
+foreign code. Rust is currently unable to call directly into a C++ library, but
+snappy includes a C interface (documented in
+[`snappy-c.h`](https://code.google.com/p/snappy/source/browse/trunk/snappy-c.h)).
 
-We'll start with an example, which is a bit bigger than usual. We'll
-go over it one piece at a time. This is a program that uses OpenSSL's
-`SHA1` function to compute the hash of its first command-line
-argument, which it then converts to a hexadecimal string and prints to
-standard output. If you have the OpenSSL libraries installed, it
-should compile and run without any extra effort.
+The following is a minimal example of calling a foreign function which will compile if snappy is
+installed:
 
 ~~~~ {.xfail-test}
-extern mod std;
-use core::libc::c_uint;
+use core::libc::size_t;
 
-extern mod crypto {
-    fn SHA1(src: *u8, sz: c_uint, out: *u8) -> *u8;
-}
-
-fn as_hex(data: ~[u8]) -> ~str {
-    let mut acc = ~"";
-    for data.each |&byte| { acc += fmt!("%02x", byte as uint); }
-    return acc;
-}
-
-fn sha1(data: ~str) -> ~str {
-    unsafe {
-        let bytes = str::to_bytes(data);
-        let hash = crypto::SHA1(vec::raw::to_ptr(bytes),
-                                vec::len(bytes) as c_uint,
-                                ptr::null());
-        return as_hex(vec::from_buf(hash, 20));
-    }
+#[link_args = "-lsnappy"]
+extern {
+    fn snappy_max_compressed_length(source_length: size_t) -> size_t;
 }
 
 fn main() {
-    io::println(sha1(core::os::args()[1]));
+    let x = unsafe { snappy_max_compressed_length(100) };
+    println(fmt!("max compressed length of a 100 byte buffer: %?", x));
 }
 ~~~~
 
-# Foreign modules
+The `extern` block is a list of function signatures in a foreign library, in this case with the
+platform's C ABI. The `#[link_args]` attribute is used to instruct the linker to link against the
+snappy library so the symbols are resolved.
 
-Before we can call the `SHA1` function defined in the OpenSSL library, we have
-to declare it. That is what this part of the program does:
+Foreign functions are assumed to be unsafe so calls to them need to be wrapped with `unsafe {}` as a
+promise to the compiler that everything contained within truly is safe. C libraries often expose
+interfaces that aren't thread-safe, and almost any function that takes a pointer argument isn't
+valid for all possible inputs since the pointer could be dangling, and raw pointers fall outside of
+Rust's safe memory model.
 
-~~~~ {.xfail-test}
-extern mod crypto {
-    fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8; }
-~~~~
+When declaring the argument types to a foreign function, the Rust compiler will not check if the
+declaration is correct, so specifying it correctly is part of keeping the binding correct at
+runtime.
 
-An `extern` module declaration containing function signatures introduces the
-functions listed as _foreign functions_. Foreign functions differ from regular
-Rust functions in that they are implemented in some other language (usually C)
-and called through Rust's foreign function interface (FFI). An extern module
-like this is called a foreign module, and implicitly tells the compiler to
-link with a library that contains the listed foreign functions, and has the
-same name as the module.
-
-In this case, the Rust compiler changes the name `crypto` to a shared library
-name in a platform-specific way (`libcrypto.so` on Linux, for example),
-searches for the shared library with that name, and links the library into the
-program. If you want the module to have a different name from the actual
-library, you can use the `"link_name"` attribute, like:
+The `extern` block can be extended to cover the entire snappy API:
 
 ~~~~ {.xfail-test}
-#[link_name = "crypto"]
-extern mod something {
-    fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
+use core::libc::{c_int, size_t};
+
+#[link_args = "-lsnappy"]
+extern {
+    fn snappy_compress(input: *u8,
+                       input_length: size_t,
+                       compressed: *mut u8,
+                       compressed_length: *mut size_t) -> c_int;
+    fn snappy_uncompress(compressed: *u8,
+                         compressed_length: size_t,
+                         uncompressed: *mut u8,
+                         uncompressed_length: *mut size_t) -> c_int;
+    fn snappy_max_compressed_length(source_length: size_t) -> size_t;
+    fn snappy_uncompressed_length(compressed: *u8,
+                                  compressed_length: size_t,
+                                  result: *mut size_t) -> c_int;
+    fn snappy_validate_compressed_buffer(compressed: *u8,
+                                         compressed_length: size_t) -> c_int;
 }
 ~~~~
+
+# Creating a safe interface
+
+The raw C API needs to be wrapped to provide memory safety and make use higher-level concepts like
+vectors. A library can choose to expose only the safe, high-level interface and hide the unsafe
+internal details.
+
+Wrapping the functions which expect buffers involves using the `vec::raw` module to manipulate Rust
+vectors as pointers to memory. Rust's vectors are guaranteed to be a contiguous block of memory. The
+length is number of elements currently contained, and the capacity is the total size in elements of
+the allocated memory. The length is less than or equal to the capacity.
+
+~~~~ {.xfail-test}
+pub fn validate_compressed_buffer(src: &[u8]) -> bool {
+    unsafe {
+        snappy_validate_compressed_buffer(vec::raw::to_ptr(src), src.len() as size_t) == 0
+    }
+}
+~~~~
+
+The `validate_compressed_buffer` wrapper above makes use of an `unsafe` block, but it makes the
+guarantee that calling it is safe for all inputs by leaving off `unsafe` from the function
+signature.
+
+The `snappy_compress` and `snappy_uncompress` functions are more complex, since a buffer has to be
+allocated to hold the output too.
+
+The `snappy_max_compressed_length` function can be used to allocate a vector with the maximum
+required capacity to hold the compressed output. The vector can then be passed to the
+`snappy_compress` function as an output parameter. An output parameter is also passed to retrieve
+the true length after compression for setting the length.
+
+~~~~ {.xfail-test}
+pub fn compress(src: &[u8]) -> ~[u8] {
+    unsafe {
+        let srclen = src.len() as size_t;
+        let psrc = vec::raw::to_ptr(src);
+
+        let mut dstlen = snappy_max_compressed_length(srclen);
+        let mut dst = vec::with_capacity(dstlen as uint);
+        let pdst = vec::raw::to_mut_ptr(dst);
+
+        snappy_compress(psrc, srclen, pdst, &mut dstlen);
+        vec::raw::set_len(&mut dst, dstlen as uint);
+        dst
+    }
+}
+~~~~
+
+Decompression is similar, because snappy stores the uncompressed size as part of the compression
+format and `snappy_uncompressed_length` will retrieve the exact buffer size required.
+
+~~~~ {.xfail-test}
+pub fn uncompress(src: &[u8]) -> Option<~[u8]> {
+    unsafe {
+        let srclen = src.len() as size_t;
+        let psrc = vec::raw::to_ptr(src);
+
+        let mut dstlen: size_t = 0;
+        snappy_uncompressed_length(psrc, srclen, &mut dstlen);
+
+        let mut dst = vec::with_capacity(dstlen as uint);
+        let pdst = vec::raw::to_mut_ptr(dst);
+
+        if snappy_uncompress(psrc, srclen, pdst, &mut dstlen) == 0 {
+            vec::raw::set_len(&mut dst, dstlen as uint);
+            Some(dst)
+        } else {
+            None // SNAPPY_INVALID_INPUT
+        }
+    }
+}
+~~~~
+
+For reference, the examples used here are also available as an [library on
+GitHub](https://github.com/thestinger/rust-snappy).
+
+# Linking
+
+In addition to the `#[link_args]` attribute for explicitly passing arguments to the linker, an
+`extern mod` block will pass `-lmodname` to the linker by default unless it has a `#[nolink]`
+attribute applied.
+
+# Unsafe blocks
+
+Some operations, like dereferencing unsafe pointers or calling functions that have been marked
+unsafe are only allowed inside unsafe blocks. Unsafe blocks isolate unsafety and are a promise to
+the compiler that the unsafety does not leak out of the block.
+
+Unsafe functions, on the other hand, advertise it to the world. An unsafe function is written like
+this:
+
+~~~~
+unsafe fn kaboom(ptr: *int) -> int { *ptr }
+~~~~
+
+This function can only be called from an `unsafe` block or another `unsafe` function.
 
 # Foreign calling conventions
 
-Most foreign code is C code, which usually uses the `cdecl` calling
-convention, so that is what Rust uses by default when calling foreign
-functions. Some foreign functions, most notably the Windows API, use other
-calling conventions. Rust provides the `"abi"` attribute as a way to hint to
-the compiler which calling convention to use:
+Most foreign code exposes a C ABI, and Rust uses the platform's C calling convention by default when
+calling foreign functions. Some foreign functions, most notably the Windows API, use other calling
+conventions. Rust provides the `abi` attribute as a way to hint to the compiler which calling
+convention to use:
 
 ~~~~
 #[cfg(target_os = "win32")]
@@ -88,169 +175,26 @@ extern mod kernel32 {
 }
 ~~~~
 
-The `"abi"` attribute applies to a foreign module (it cannot be applied
-to a single function within a module), and must be either `"cdecl"`
-or `"stdcall"`. We may extend the compiler in the future to support other
+The `abi` attribute applies to a foreign module (it cannot be applied to a single function within a
+module), and must be either `"cdecl"` or `"stdcall"`. The compiler may eventually support other
 calling conventions.
 
-# Unsafe pointers
+# Interoperability with foreign code
 
-The foreign `SHA1` function takes three arguments, and returns a pointer.
+Rust guarantees that the layout of a `struct` is compatible with the platform's representation in C.
+A `#[packed]` attribute is available, which will lay out the struct members without padding.
+However, there are currently no guarantees about the layout of an `enum`.
 
-~~~~ {.xfail-test}
-# extern mod crypto {
-fn SHA1(src: *u8, sz: libc::c_uint, out: *u8) -> *u8;
-# }
-~~~~
+Rust's owned and managed boxes use non-nullable pointers as handles which point to the contained
+object. However, they should not be manually because they are managed by internal allocators.
+Borrowed pointers can safely be assumed to be non-nullable pointers directly to the type. However,
+breaking the borrow checking or mutability rules is not guaranteed to be safe, so prefer using raw
+pointers (`*`) if that's needed because the compiler can't make as many assumptions about them.
 
-When declaring the argument types to a foreign function, the Rust
-compiler has no way to check whether your declaration is correct, so
-you have to be careful. If you get the number or types of the
-arguments wrong, you're likely to cause a segmentation fault. Or,
-probably even worse, your code will work on one platform, but break on
-another.
+Vectors and strings share the same basic memory layout, and utilities are available in the `vec` and
+`str` modules for working with C APIs. Strings are terminated with `\0` for interoperability with C,
+but it should not be assumed because a slice will not always be nul-terminated. Instead, the
+`str::as_c_str` function should be used.
 
-In this case, we declare that `SHA1` takes two `unsigned char*`
-arguments and one `unsigned long`. The Rust equivalents are `*u8`
-unsafe pointers and an `uint` (which, like `unsigned long`, is a
-machine-word-sized type).
-
-The standard library provides various functions to create unsafe pointers,
-such as those in `core::cast`. Most of these functions have `unsafe` in their
-name.  You can dereference an unsafe pointer with the `*` operator, but use
-caution: unlike Rust's other pointer types, unsafe pointers are completely
-unmanaged, so they might point at invalid memory, or be null pointers.
-
-# Unsafe blocks
-
-The `sha1` function is the most obscure part of the program.
-
-~~~~
-# pub mod crypto {
-#   pub fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out }
-# }
-# fn as_hex(data: ~[u8]) -> ~str { ~"hi" }
-fn sha1(data: ~str) -> ~str {
-    unsafe {
-        let bytes = str::to_bytes(data);
-        let hash = crypto::SHA1(vec::raw::to_ptr(bytes),
-                                vec::len(bytes), ptr::null());
-        return as_hex(vec::from_buf(hash, 20));
-    }
-}
-~~~~
-
-First, what does the `unsafe` keyword at the top of the function
-mean? `unsafe` is a block modifier—it declares the block following it
-to be known to be unsafe.
-
-Some operations, like dereferencing unsafe pointers or calling
-functions that have been marked unsafe, are only allowed inside unsafe
-blocks. With the `unsafe` keyword, you're telling the compiler 'I know
-what I'm doing'. The main motivation for such an annotation is that
-when you have a memory error (and you will, if you're using unsafe
-constructs), you have some idea where to look—it will most likely be
-caused by some unsafe code.
-
-Unsafe blocks isolate unsafety. Unsafe functions, on the other hand,
-advertise it to the world. An unsafe function is written like this:
-
-~~~~
-unsafe fn kaboom() { ~"I'm harmless!"; }
-~~~~
-
-This function can only be called from an `unsafe` block or another
-`unsafe` function.
-
-# Pointer fiddling
-
-The standard library defines a number of helper functions for dealing
-with unsafe data, casting between types, and generally subverting
-Rust's safety mechanisms.
-
-Let's look at our `sha1` function again.
-
-~~~~
-# pub mod crypto {
-#     pub fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out }
-# }
-# fn as_hex(data: ~[u8]) -> ~str { ~"hi" }
-# fn x(data: ~str) -> ~str {
-# unsafe {
-let bytes = str::to_bytes(data);
-let hash = crypto::SHA1(vec::raw::to_ptr(bytes),
-                        vec::len(bytes), ptr::null());
-return as_hex(vec::from_buf(hash, 20));
-# }
-# }
-~~~~
-
-The `str::to_bytes` function is perfectly safe: it converts a string to a
-`~[u8]`. The program then feeds this byte array to `vec::raw::to_ptr`, which
-returns an unsafe pointer to its contents.
-
-This pointer will become invalid at the end of the scope in which the vector
-it points to (`bytes`) is valid, so you should be very careful how you use
-it. In this case, the local variable `bytes` outlives the pointer, so we're
-good.
-
-Passing a null pointer as the third argument to `SHA1` makes it use a
-static buffer, and thus save us the effort of allocating memory
-ourselves. `ptr::null` is a generic function that, in this case, returns an
-unsafe null pointer of type `*u8`. (Rust generics are awesome
-like that: they can take the right form depending on the type that they
-are expected to return.)
-
-Finally, `vec::from_buf` builds up a new `~[u8]` from the
-unsafe pointer that `SHA1` returned. SHA1 digests are always
-twenty bytes long, so we can pass `20` for the length of the new
-vector.
-
-# Passing structures
-
-C functions often take pointers to structs as arguments. Since Rust
-`struct`s are binary-compatible with C structs, Rust programs can call
-such functions directly.
-
-This program uses the POSIX function `gettimeofday` to get a
-microsecond-resolution timer.
-
-~~~~
-extern mod std;
-use core::libc::c_ulonglong;
-
-struct timeval {
-    tv_sec: c_ulonglong,
-    tv_usec: c_ulonglong
-}
-
-#[nolink]
-extern mod lib_c {
-    fn gettimeofday(tv: *mut timeval, tz: *()) -> i32;
-}
-fn unix_time_in_microseconds() -> u64 {
-    unsafe {
-        let mut x = timeval {
-            tv_sec: 0 as c_ulonglong,
-            tv_usec: 0 as c_ulonglong
-        };
-        lib_c::gettimeofday(&mut x, ptr::null());
-        return (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
-    }
-}
-
-# fn main() { assert!(fmt!("%?", unix_time_in_microseconds()) != ~""); }
-~~~~
-
-The `#[nolink]` attribute indicates that there's no foreign library to
-link in. The standard C library is already linked with Rust programs.
-
-In C, a `timeval` is a struct with two 32-bit integer fields. Thus, we
-define a `struct` type with the same contents, and declare
-`gettimeofday` to take a pointer to such a `struct`.
-
-This program does not use the second argument to `gettimeofday` (the time
- zone), so the `extern mod` declaration for it simply declares this argument
- to be a pointer to the unit type (written `()`). Since all null pointers have
- the same representation regardless of their referent type, this is safe.
-
+The standard library includes type aliases and function definitions for the C standard library in
+the `libc` module, and Rust links against `libc` and `libm` by default.
