@@ -56,11 +56,13 @@ impl<T:Clone,U:Clone> Clone for (T, U) {
     }
 }
 
+#[cfg(stage0)]
 pub trait ImmutableTuple<T, U> {
     fn first_ref(&self) -> &'self T;
     fn second_ref(&self) -> &'self U;
 }
 
+#[cfg(stage0)]
 impl<T, U> ImmutableTuple<T, U> for (T, U) {
     #[inline(always)]
     fn first_ref(&self) -> &'self T {
@@ -70,6 +72,32 @@ impl<T, U> ImmutableTuple<T, U> for (T, U) {
     }
     #[inline(always)]
     fn second_ref(&self) -> &'self U {
+        match *self {
+            (_, ref u) => u,
+        }
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+pub trait ImmutableTuple<T, U> {
+    fn first_ref<'a>(&'a self) -> &'a T;
+    fn second_ref<'a>(&'a self) -> &'a U;
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+impl<T, U> ImmutableTuple<T, U> for (T, U) {
+    #[inline(always)]
+    fn first_ref<'a>(&'a self) -> &'a T {
+        match *self {
+            (ref t, _) => t,
+        }
+    }
+    #[inline(always)]
+    fn second_ref<'a>(&'a self) -> &'a U {
         match *self {
             (_, ref u) => u,
         }
@@ -160,7 +188,6 @@ impl<A:Ord> Ord for (A,) {
     #[inline(always)]
     fn gt(&self, other: &(A,)) -> bool { other.lt(&(*self))  }
 }
-
 
 #[cfg(notest)]
 impl<A:Eq,B:Eq> Eq for (A, B) {

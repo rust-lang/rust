@@ -101,8 +101,18 @@ impl<T: Copy + Add<T,T>> Add<Option<T>, Option<T>> for Option<T> {
 
 impl<T> BaseIter<T> for Option<T> {
     /// Performs an operation on the contained value by reference
+    #[cfg(stage0)]
     #[inline(always)]
     fn each(&self, f: &fn(x: &'self T) -> bool) {
+        match *self { None => (), Some(ref t) => { f(t); } }
+    }
+
+    /// Performs an operation on the contained value by reference
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    #[inline(always)]
+    fn each<'a>(&'a self, f: &fn(x: &'a T) -> bool) {
         match *self { None => (), Some(ref t) => { f(t); } }
     }
 
@@ -113,8 +123,17 @@ impl<T> BaseIter<T> for Option<T> {
 }
 
 impl<T> MutableIter<T> for Option<T> {
+    #[cfg(stage0)]
     #[inline(always)]
     fn each_mut(&mut self, f: &fn(&'self mut T) -> bool) {
+        match *self { None => (), Some(ref mut t) => { f(t); } }
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    #[inline(always)]
+    fn each_mut<'a>(&'a mut self, f: &fn(&'a mut T) -> bool) {
         match *self { None => (), Some(ref mut t) => { f(t); } }
     }
 }
@@ -182,14 +201,37 @@ pub impl<T> Option<T> {
      * Update an optional value by optionally running its content by reference
      * through a function that returns an option.
      */
+    #[cfg(stage0)]
     #[inline(always)]
     fn chain_ref<U>(&self, f: &fn(x: &'self T) -> Option<U>) -> Option<U> {
         match *self { Some(ref x) => f(x), None => None }
     }
 
+    /**
+     * Update an optional value by optionally running its content by reference
+     * through a function that returns an option.
+     */
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    #[inline(always)]
+    fn chain_ref<'a, U>(&'a self, f: &fn(x: &'a T) -> Option<U>) -> Option<U> {
+        match *self { Some(ref x) => f(x), None => None }
+    }
+
     /// Maps a `some` value from one type to another by reference
+    #[cfg(stage0)]
     #[inline(always)]
     fn map<U>(&self, f: &fn(&'self T) -> U) -> Option<U> {
+        match *self { Some(ref x) => Some(f(x)), None => None }
+    }
+
+    /// Maps a `some` value from one type to another by reference
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    #[inline(always)]
+    fn map<'a, U>(&self, f: &fn(&'a T) -> U) -> Option<U> {
         match *self { Some(ref x) => Some(f(x)), None => None }
     }
 
@@ -201,8 +243,18 @@ pub impl<T> Option<T> {
     }
 
     /// Applies a function to the contained value or returns a default
+    #[cfg(stage0)]
     #[inline(always)]
     fn map_default<U>(&self, def: U, f: &fn(&'self T) -> U) -> U {
+        match *self { None => def, Some(ref t) => f(t) }
+    }
+
+    /// Applies a function to the contained value or returns a default
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    #[inline(always)]
+    fn map_default<'a, U>(&'a self, def: U, f: &fn(&'a T) -> U) -> U {
         match *self { None => def, Some(ref t) => f(t) }
     }
 
@@ -244,7 +296,33 @@ pub impl<T> Option<T> {
     case explicitly.
      */
     #[inline(always)]
+    #[cfg(stage0)]
     fn get_ref(&self) -> &'self T {
+        match *self {
+          Some(ref x) => x,
+          None => fail!(~"option::get_ref none")
+        }
+    }
+
+    /**
+    Gets an immutable reference to the value inside an option.
+
+    # Failure
+
+    Fails if the value equals `None`
+
+    # Safety note
+
+    In general, because this function may fail, its use is discouraged
+    (calling `get` on `None` is akin to dereferencing a null pointer).
+    Instead, prefer to use pattern matching and handle the `None`
+    case explicitly.
+     */
+    #[inline(always)]
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
           Some(ref x) => x,
           None => fail!(~"option::get_ref none")
@@ -266,7 +344,33 @@ pub impl<T> Option<T> {
     case explicitly.
      */
     #[inline(always)]
+    #[cfg(stage0)]
     fn get_mut_ref(&mut self) -> &'self mut T {
+        match *self {
+          Some(ref mut x) => x,
+          None => fail!(~"option::get_mut_ref none")
+        }
+    }
+
+    /**
+    Gets a mutable reference to the value inside an option.
+
+    # Failure
+
+    Fails if the value equals `None`
+
+    # Safety note
+
+    In general, because this function may fail, its use is discouraged
+    (calling `get` on `None` is akin to dereferencing a null pointer).
+    Instead, prefer to use pattern matching and handle the `None`
+    case explicitly.
+     */
+    #[inline(always)]
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn get_mut_ref<'a>(&'a mut self) -> &'a mut T {
         match *self {
           Some(ref mut x) => x,
           None => fail!(~"option::get_mut_ref none")

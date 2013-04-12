@@ -116,6 +116,19 @@ totalord_impl!(i64)
 totalord_impl!(int)
 totalord_impl!(uint)
 
+pub fn cmp2<A:TotalOrd,B:TotalOrd>(
+    a1: &A, b1: &B,
+    a2: &A, b2: &B) -> Ordering
+{
+    //! Compares (a1, b1) against (a2, b2), where the a values are more significant.
+
+    match a1.cmp(a2) {
+        Less => Less,
+        Greater => Greater,
+        Equal => b1.cmp(b2)
+    }
+}
+
 /**
 Return `o1` if it is not `Equal`, otherwise `o2`. Simulates the
 lexical ordering on a type `(int, int)`.
@@ -206,6 +219,14 @@ mod test {
         assert_eq!(5.cmp(&5), Equal);
         assert_eq!((-5).cmp(&12), Less);
         assert_eq!(12.cmp(-5), Greater);
+    }
+
+    #[test]
+    fn test_cmp2() {
+        assert_eq!(cmp2(1, 2, 3, 4), Less);
+        assert_eq!(cmp2(3, 2, 3, 4), Less);
+        assert_eq!(cmp2(5, 2, 3, 4), Greater);
+        assert_eq!(cmp2(5, 5, 5, 4), Greater);
     }
 
     #[test]

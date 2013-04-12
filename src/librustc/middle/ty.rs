@@ -24,8 +24,7 @@ use middle::subst::Subst;
 use middle::typeck;
 use middle;
 use util::ppaux::{note_and_explain_region, bound_region_to_str};
-use util::ppaux::{region_to_str, vstore_to_str};
-use util::ppaux::{trait_store_to_str, ty_to_str, tys_to_str};
+use util::ppaux::{trait_store_to_str, ty_to_str, vstore_to_str};
 use util::ppaux::Repr;
 use util::common::{indenter};
 
@@ -241,7 +240,7 @@ struct ctxt_ {
     sess: session::Session,
     def_map: resolve::DefMap,
 
-    region_map: middle::region::region_map,
+    region_maps: @mut middle::region::RegionMaps,
     region_paramd_items: middle::region::region_paramd_items,
 
     // Stores the types for various nodes in the AST.  Note that this table
@@ -411,7 +410,7 @@ pub struct param_ty {
 /// Representation of regions:
 #[auto_encode]
 #[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub enum Region {
     /// Bound regions are found (primarily) in function types.  They indicate
     /// region parameters that have yet to be replaced with actual regions
@@ -427,7 +426,7 @@ pub enum Region {
     /// When checking a function body, the types of all arguments and so forth
     /// that refer to bound region parameters are modified to refer to free
     /// region parameters.
-    re_free(node_id, bound_region),
+    re_free(FreeRegion),
 
     /// A concrete region naming some expression within the current function.
     re_scope(node_id),
@@ -439,9 +438,26 @@ pub enum Region {
     re_infer(InferRegion)
 }
 
+pub impl Region {
+    fn is_bound(&self) -> bool {
+        match self {
+            &re_bound(*) => true,
+            _ => false
+        }
+    }
+}
+
 #[auto_encode]
 #[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
+pub struct FreeRegion {
+    scope_id: node_id,
+    bound_region: bound_region
+}
+
+#[auto_encode]
+#[auto_decode]
+#[deriving(Eq, IterBytes)]
 pub enum bound_region {
     /// The self region for structs, impls (&T in a type defn or &'self T)
     br_self,
@@ -811,7 +827,7 @@ pub fn mk_ctxt(s: session::Session,
                dm: resolve::DefMap,
                amap: ast_map::map,
                freevars: freevars::freevar_map,
-               region_map: middle::region::region_map,
+               region_maps: @mut middle::region::RegionMaps,
                region_paramd_items: middle::region::region_paramd_items,
                +lang_items: middle::lang_items::LanguageItems,
                crate: @ast::crate)
@@ -838,7 +854,7 @@ pub fn mk_ctxt(s: session::Session,
         cstore: s.cstore,
         sess: s,
         def_map: dm,
-        region_map: region_map,
+        region_maps: region_maps,
         region_paramd_items: region_paramd_items,
         node_types: @mut SmallIntMap::new(),
         node_type_substs: @mut HashMap::new(),
@@ -1177,15 +1193,6 @@ pub fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
     }
 }
 
-// Returns the narrowest lifetime enclosing the evaluation of the expression
-// with id `id`.
-pub fn encl_region(cx: ctxt, id: ast::node_id) -> ty::Region {
-    match cx.region_map.find(&id) {
-      Some(&encl_scope) => ty::re_scope(encl_scope),
-      None => ty::re_static
-    }
-}
-
 pub fn walk_ty(ty: t, f: &fn(t)) {
     maybe_walk_ty(ty, |t| { f(t); true });
 }
@@ -1309,8 +1316,8 @@ pub fn walk_regions_and_ty(
         fold_regions_and_ty(
             cx, ty,
             |r| { walkr(r); r },
-            |t| { walkt(t); walk_regions_and_ty(cx, t, walkr, walkt); t },
-            |t| { walkt(t); walk_regions_and_ty(cx, t, walkr, walkt); t });
+            |t| { walk_regions_and_ty(cx, t, walkr, walkt); t },
+            |t| { walk_regions_and_ty(cx, t, walkr, walkt); t });
     }
 }
 
@@ -2507,43 +2514,52 @@ pub fn index_sty(cx: ctxt, sty: &sty) -> Option<mt> {
     }
 }
 
-impl to_bytes::IterBytes for bound_region {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        match *self {
-          ty::br_self => 0u8.iter_bytes(lsb0, f),
+/**
+ * Enforces an arbitrary but consistent total ordering over
+ * free regions.  This is needed for establishing a consistent
+ * LUB in region_inference. */
+impl cmp::TotalOrd for FreeRegion {
+    fn cmp(&self, other: &FreeRegion) -> Ordering {
+        cmp::cmp2(&self.scope_id, &self.bound_region,
+                  &other.scope_id, &other.bound_region)
+    }
+}
 
-          ty::br_anon(ref idx) =>
-          to_bytes::iter_bytes_2(&1u8, idx, lsb0, f),
+impl cmp::TotalEq for FreeRegion {
+    fn equals(&self, other: &FreeRegion) -> bool {
+        *self == *other
+    }
+}
 
-          ty::br_named(ref ident) =>
-          to_bytes::iter_bytes_2(&2u8, ident, lsb0, f),
+/**
+ * Enforces an arbitrary but consistent total ordering over
+ * bound regions.  This is needed for establishing a consistent
+ * LUB in region_inference. */
+impl cmp::TotalOrd for bound_region {
+    fn cmp(&self, other: &bound_region) -> Ordering {
+        match (self, other) {
+            (&ty::br_self, &ty::br_self) => cmp::Equal,
+            (&ty::br_self, _) => cmp::Less,
 
-          ty::br_cap_avoid(ref id, ref br) =>
-          to_bytes::iter_bytes_3(&3u8, id, br, lsb0, f),
+            (&ty::br_anon(ref a1), &ty::br_anon(ref a2)) => a1.cmp(a2),
+            (&ty::br_anon(*), _) => cmp::Less,
 
-          ty::br_fresh(ref x) =>
-          to_bytes::iter_bytes_2(&4u8, x, lsb0, f)
+            (&ty::br_named(ref a1), &ty::br_named(ref a2)) => a1.repr.cmp(&a2.repr),
+            (&ty::br_named(*), _) => cmp::Less,
+
+            (&ty::br_cap_avoid(ref a1, @ref b1),
+             &ty::br_cap_avoid(ref a2, @ref b2)) => cmp::cmp2(a1, b1, a2, b2),
+            (&ty::br_cap_avoid(*), _) => cmp::Less,
+
+            (&ty::br_fresh(ref a1), &ty::br_fresh(ref a2)) => a1.cmp(a2),
+            (&ty::br_fresh(*), _) => cmp::Less,
         }
     }
 }
 
-impl to_bytes::IterBytes for Region {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        match *self {
-          re_bound(ref br) =>
-          to_bytes::iter_bytes_2(&0u8, br, lsb0, f),
-
-          re_free(ref id, ref br) =>
-          to_bytes::iter_bytes_3(&1u8, id, br, lsb0, f),
-
-          re_scope(ref id) =>
-          to_bytes::iter_bytes_2(&2u8, id, lsb0, f),
-
-          re_infer(ref id) =>
-          to_bytes::iter_bytes_2(&3u8, id, lsb0, f),
-
-          re_static => 4u8.iter_bytes(lsb0, f)
-        }
+impl cmp::TotalEq for bound_region {
+    fn equals(&self, other: &bound_region) -> bool {
+        *self == *other
     }
 }
 
@@ -2857,8 +2873,17 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
      */
 
     let unadjusted_ty = expr_ty(cx, expr);
+    adjust_ty(cx, expr.span, unadjusted_ty, cx.adjustments.find(&expr.id))
+}
 
-    return match cx.adjustments.find(&expr.id) {
+pub fn adjust_ty(cx: ctxt,
+                 span: span,
+                 unadjusted_ty: ty::t,
+                 adjustment: Option<&@AutoAdjustment>) -> ty::t
+{
+    /*! See `expr_ty_adjusted` */
+
+    return match adjustment {
         None => unadjusted_ty,
 
         Some(&@AutoAddEnv(r, s)) => {
@@ -2887,7 +2912,7 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
                     Some(mt) => { adjusted_ty = mt.ty; }
                     None => {
                         cx.sess.span_bug(
-                            expr.span,
+                            span,
                             fmt!("The %uth autoderef failed: %s",
                                  i, ty_to_str(cx,
                                               adjusted_ty)));
@@ -2906,18 +2931,18 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
                         }
 
                         AutoBorrowVec => {
-                            borrow_vec(cx, expr, autoref, adjusted_ty)
+                            borrow_vec(cx, span, autoref, adjusted_ty)
                         }
 
                         AutoBorrowVecRef => {
-                            adjusted_ty = borrow_vec(cx, expr, autoref,
+                            adjusted_ty = borrow_vec(cx, span, autoref,
                                                      adjusted_ty);
                             mk_rptr(cx, autoref.region,
                                     mt {ty: adjusted_ty, mutbl: ast::m_imm})
                         }
 
                         AutoBorrowFn => {
-                            borrow_fn(cx, expr, autoref, adjusted_ty)
+                            borrow_fn(cx, span, autoref, adjusted_ty)
                         }
                     }
                 }
@@ -2925,7 +2950,7 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
         }
     };
 
-    fn borrow_vec(cx: ctxt, expr: @ast::expr,
+    fn borrow_vec(cx: ctxt, span: span,
                   autoref: &AutoRef, ty: ty::t) -> ty::t {
         match get(ty).sty {
             ty_evec(mt, _) => {
@@ -2939,14 +2964,14 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
 
             ref s => {
                 cx.sess.span_bug(
-                    expr.span,
+                    span,
                     fmt!("borrow-vec associated with bad sty: %?",
                          s));
             }
         }
     }
 
-    fn borrow_fn(cx: ctxt, expr: @ast::expr,
+    fn borrow_fn(cx: ctxt, span: span,
                  autoref: &AutoRef, ty: ty::t) -> ty::t {
         match get(ty).sty {
             ty_closure(ref fty) => {
@@ -2959,7 +2984,7 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
 
             ref s => {
                 cx.sess.span_bug(
-                    expr.span,
+                    span,
                     fmt!("borrow-fn associated with bad sty: %?",
                          s));
             }

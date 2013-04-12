@@ -318,7 +318,11 @@ pub fn slice_shift_char<'a>(s: &'a str) -> (char, &'a str) {
 
 /// Prepend a char to a string
 pub fn unshift_char(s: &mut ~str, ch: char) {
-    *s = from_char(ch) + *s;
+    // This could be more efficient.
+    let mut new_str = ~"";
+    new_str.push_char(ch);
+    new_str.push_str(*s);
+    *s = new_str;
 }
 
 /**

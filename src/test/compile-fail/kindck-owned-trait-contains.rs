@@ -27,5 +27,6 @@ fn main() {
         let x: &'blk int = &3;
         repeater(@x)
     };
-    assert!(3 == *(y.get())); //~ ERROR reference is not valid
+    assert!(3 == *(y.get())); //~ ERROR dereference of reference outside its lifetime
+    //~^ ERROR reference is not valid outside of its lifetime
 }

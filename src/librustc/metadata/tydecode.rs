@@ -239,7 +239,8 @@ fn parse_region(st: @mut PState) -> ty::Region {
         assert!(next(st) == '|');
         let br = parse_bound_region(st);
         assert!(next(st) == ']');
-        ty::re_free(id, br)
+        ty::re_free(ty::FreeRegion {scope_id: id,
+                                    bound_region: br})
       }
       's' => {
         let id = parse_uint(st) as int;

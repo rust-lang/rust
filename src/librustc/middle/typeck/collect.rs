@@ -55,7 +55,7 @@ use syntax::ast_util::{local_def, split_trait_methods};
 use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::codemap;
-use syntax::print::pprust::path_to_str;
+use syntax::print::pprust::{path_to_str, self_ty_to_str};
 use syntax::visit;
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
@@ -453,31 +453,35 @@ pub fn compare_impl_method(tcx: ty::ctxt,
 
     let impl_m = &cm.mty;
 
-    // FIXME(#2687)---this check is too strict.  For example, a trait
-    // method with self type `&self` or `&mut self` should be
-    // implementable by an `&const self` method (the impl assumes less
-    // than the trait provides).
-    if impl_m.self_ty != trait_m.self_ty {
-        if impl_m.self_ty == ast::sty_static {
-            // Needs to be a fatal error because otherwise,
-            // method::transform_self_type_for_method ICEs
-            tcx.sess.span_fatal(cm.span,
-                 fmt!("method `%s` is declared as \
-                       static in its impl, but not in \
-                       its trait", *tcx.sess.str_of(impl_m.ident)));
-        }
-        else if trait_m.self_ty == ast::sty_static {
-            tcx.sess.span_fatal(cm.span,
-                 fmt!("method `%s` is declared as \
-                       static in its trait, but not in \
-                       its impl", *tcx.sess.str_of(impl_m.ident)));
-        }
-        else {
+    // Try to give more informative error messages about self typing
+    // mismatches.  Note that any mismatch will also be detected
+    // below, where we construct a canonical function type that
+    // includes the self parameter as a normal parameter.  It's just
+    // that the error messages you get out of this code are a bit more
+    // inscrutable, particularly for cases where one method has no
+    // self.
+    match (&trait_m.self_ty, &impl_m.self_ty) {
+        (&ast::sty_static, &ast::sty_static) => {}
+        (&ast::sty_static, _) => {
             tcx.sess.span_err(
                 cm.span,
-                fmt!("method `%s`'s self type does \
-                      not match the trait method's \
-                      self type", *tcx.sess.str_of(impl_m.ident)));
+                fmt!("method `%s` has a `%s` declaration in the impl, \
+                      but not in the trait",
+                     *tcx.sess.str_of(trait_m.ident),
+                     self_ty_to_str(impl_m.self_ty, tcx.sess.intr())));
+            return;
+        }
+        (_, &ast::sty_static) => {
+            tcx.sess.span_err(
+                cm.span,
+                fmt!("method `%s` has a `%s` declaration in the trait, \
+                      but not in the impl",
+                     *tcx.sess.str_of(trait_m.ident),
+                     self_ty_to_str(trait_m.self_ty, tcx.sess.intr())));
+            return;
+        }
+        _ => {
+            // Let the type checker catch other errors below
         }
     }
 
@@ -535,8 +539,54 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     // a free region.  So, for example, if the impl type is
     // "&'self str", then this would replace the self type with a free
     // region `self`.
-    let dummy_self_r = ty::re_free(cm.body_id, ty::br_self);
+    let dummy_self_r = ty::re_free(ty::FreeRegion {scope_id: cm.body_id,
+                                                   bound_region: ty::br_self});
     let self_ty = replace_bound_self(tcx, self_ty, dummy_self_r);
+
+    // We are going to create a synthetic fn type that includes
+    // both the method's self argument and its normal arguments.
+    // So a method like `fn(&self, a: uint)` would be converted
+    // into a function `fn(self: &T, a: uint)`.
+    let mut trait_fn_args = ~[];
+    let mut impl_fn_args = ~[];
+
+    // For both the trait and the impl, create an argument to
+    // represent the self argument (unless this is a static method).
+    // This argument will have the *transformed* self type.
+    for trait_m.transformed_self_ty.each |&t| {
+        trait_fn_args.push(ty::arg {mode: ast::expl(ast::by_copy), ty: t});
+    }
+    for impl_m.transformed_self_ty.each |&t| {
+        impl_fn_args.push(ty::arg {mode: ast::expl(ast::by_copy), ty: t});
+    }
+
+    // Add in the normal arguments.
+    trait_fn_args.push_all(trait_m.fty.sig.inputs);
+    impl_fn_args.push_all(impl_m.fty.sig.inputs);
+
+    // Create a bare fn type for trait/impl that includes self argument
+    let trait_fty =
+        ty::mk_bare_fn(
+            tcx,
+            ty::BareFnTy {purity: trait_m.fty.purity,
+                          abis: trait_m.fty.abis,
+                          sig: ty::FnSig {
+                              bound_lifetime_names:
+                                  copy trait_m.fty.sig.bound_lifetime_names,
+                              inputs: trait_fn_args,
+                              output: trait_m.fty.sig.output
+                          }});
+    let impl_fty =
+        ty::mk_bare_fn(
+            tcx,
+            ty::BareFnTy {purity: impl_m.fty.purity,
+                          abis: impl_m.fty.abis,
+                          sig: ty::FnSig {
+                              bound_lifetime_names:
+                                  copy impl_m.fty.sig.bound_lifetime_names,
+                              inputs: impl_fn_args,
+                              output: impl_m.fty.sig.output
+                          }});
 
     // Perform substitutions so that the trait/impl methods are expressed
     // in terms of the same set of type/region parameters:
@@ -546,7 +596,6 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     //   that correspond to the parameters we will find on the impl
     // - replace self region with a fresh, dummy region
     let impl_fty = {
-        let impl_fty = ty::mk_bare_fn(tcx, copy impl_m.fty);
         debug!("impl_fty (pre-subst): %s", ppaux::ty_to_str(tcx, impl_fty));
         replace_bound_self(tcx, impl_fty, dummy_self_r)
     };
@@ -564,7 +613,6 @@ pub fn compare_impl_method(tcx: ty::ctxt,
             self_ty: Some(self_ty),
             tps: vec::append(trait_tps, dummy_tps)
         };
-        let trait_fty = ty::mk_bare_fn(tcx, copy trait_m.fty);
         debug!("trait_fty (pre-subst): %s substs=%s",
                trait_fty.repr(tcx), substs.repr(tcx));
         ty::subst(tcx, &substs, trait_fty)
