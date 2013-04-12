@@ -158,7 +158,7 @@ impl MethodRscope {
                variance: Option<ty::region_variance>,
                rcvr_generics: &ast::Generics)
             -> MethodRscope {
-        let mut region_param_names =
+        let region_param_names =
             RegionParamNames::from_generics(rcvr_generics);
         MethodRscope {
             self_ty: self_ty,

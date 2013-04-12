@@ -102,7 +102,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     }
 
     let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
-    let mut llitem_ty = tpt.ty;
+    let llitem_ty = tpt.ty;
 
     let map_node = session::expect(ccx.sess, ccx.tcx.items.find(&fn_id.node),
      || fmt!("While monomorphizing %?, couldn't find it in the item map \

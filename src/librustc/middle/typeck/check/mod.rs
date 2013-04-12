@@ -1625,7 +1625,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // block syntax lambdas; that is, lambdas without explicit
         // sigils.
         let expected_sty = unpack_expected(fcx, expected, |x| Some(copy *x));
-        let mut error_happened = false;
+        let error_happened = false;
         let (expected_sig,
              expected_purity,
              expected_sigil,
@@ -1706,7 +1706,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                    field: ast::ident,
                    tys: &[@ast::Ty]) {
         let tcx = fcx.ccx.tcx;
-        let mut bot = check_expr(fcx, base);
+        let bot = check_expr(fcx, base);
         let expr_t = structurally_resolved_type(fcx, expr.span,
                                                 fcx.expr_ty(base));
         let (base_t, derefs) = do_autoderef(fcx, expr.span, expr_t);
@@ -2867,7 +2867,7 @@ pub fn check_decl_local(fcx: @mut FnCtxt, local: @ast::local)  {
 }
 
 pub fn check_stmt(fcx: @mut FnCtxt, stmt: @ast::stmt)  {
-    let mut node_id;
+    let node_id;
     let mut saw_bot = false;
     let mut saw_err = false;
     match stmt.node {
@@ -3124,7 +3124,8 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
     ccx.tcx.enum_var_cache.insert(local_def(id), @variants);
 
     // Check that it is possible to represent this enum:
-    let mut outer = true, did = local_def(id);
+    let mut outer = true;
+    let did = local_def(id);
     if ty::type_structurally_contains(ccx.tcx, rty, |sty| {
         match *sty {
           ty::ty_enum(id, _) if id == did => {

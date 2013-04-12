@@ -273,7 +273,7 @@ pub mod write {
                 let LLVMOptDefault    = 2 as c_int; // -O2, -Os
                 let LLVMOptAggressive = 3 as c_int; // -O3
 
-                let mut CodeGenOptLevel = match opts.optimize {
+                let CodeGenOptLevel = match opts.optimize {
                   session::No => LLVMOptNone,
                   session::Less => LLVMOptLess,
                   session::Default => LLVMOptDefault,
@@ -294,7 +294,7 @@ pub mod write {
                     return;
                 }
 
-                let mut FileType;
+                let FileType;
                 if output_type == output_type_object ||
                        output_type == output_type_exe {
                    FileType = lib::llvm::ObjectFile;
@@ -820,7 +820,7 @@ pub fn link_binary(sess: Session,
     cc_args.push(output.to_str());
     cc_args.push(obj_filename.to_str());
 
-    let mut lib_cmd;
+    let lib_cmd;
     let os = sess.targ_cfg.os;
     if os == session::os_macos {
         lib_cmd = ~"-dynamiclib";

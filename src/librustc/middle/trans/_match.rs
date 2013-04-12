@@ -248,7 +248,7 @@ pub enum opt_result {
 pub fn trans_opt(bcx: block, o: &Opt) -> opt_result {
     let _icx = bcx.insn_ctxt("match::trans_opt");
     let ccx = bcx.ccx();
-    let mut bcx = bcx;
+    let bcx = bcx;
     match *o {
         lit(ExprLit(lit_expr)) => {
             let datumblock = expr::trans_to_datum(bcx, lit_expr);
