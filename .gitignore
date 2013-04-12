@@ -49,6 +49,8 @@
 .valgrindrc
 lexer.ml
 TAGS
+TAGS.emacs
+TAGS.vim
 version.ml
 version.texi
 /Makefile
@@ -60,6 +62,7 @@ config.mk
 /inst/
 /mingw-build/
 src/.DS_Store
+/tmp/
 /stage0/
 /dl/
 /stage1/
@@ -75,6 +78,8 @@ version.md
 rust.tex
 keywords.md
 x86_64-apple-darwin/
+x86_64-unknown-linux-gnu/
+i686-unknown-linux-gnu/
 doc/core/
 tmp.*.rs
 config.stamp
