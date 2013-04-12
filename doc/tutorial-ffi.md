@@ -65,8 +65,8 @@ extern {
 
 # Creating a safe interface
 
-The raw C API needs to be wrapped to provide memory safety and make use higher-level concepts like
-vectors. A library can choose to expose only the safe, high-level interface and hide the unsafe
+The raw C API needs to be wrapped to provide memory safety and make use of higher-level concepts
+like vectors. A library can choose to expose only the safe, high-level interface and hide the unsafe
 internal details.
 
 Wrapping the functions which expect buffers involves using the `vec::raw` module to manipulate Rust
