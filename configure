@@ -237,7 +237,7 @@ need_cmd uname
 need_cmd date
 need_cmd tr
 need_cmd sed
-
+need_cmd file
 
 msg "inspecting environment"
 
