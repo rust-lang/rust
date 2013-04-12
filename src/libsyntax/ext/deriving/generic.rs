@@ -130,7 +130,6 @@ use core::prelude::*;
 use ast;
 
 use ast::{
-
     and, binop, deref, enum_def, expr, expr_match, ident, impure_fn,
     item, Generics, m_imm, meta_item, method, named_field, or,
     pat_wild, public, struct_def, sty_region, ty_rptr, ty_path,
@@ -328,7 +327,7 @@ impl<'self> MethodDef<'self> {
             }
             Some(str_path) => {
                 let p = do str_path.map |&s| { cx.ident_of(s) };
-                build::mk_raw_path(span, p)
+                build::mk_raw_path_global(span, p)
             }
         }
     }
