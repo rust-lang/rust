@@ -93,7 +93,7 @@ pub fn sha1() -> @Sha1 {
         assert!((vec::len(st.h) == digest_buf_len));
         assert!((vec::uniq_len(st.work_buf) == work_buf_len));
         let mut t: int; // Loop counter
-        let mut w = st.work_buf;
+        let w = st.work_buf;
 
         // Initialize the first 16 words of the vector w
         t = 0;
@@ -260,7 +260,7 @@ pub fn sha1() -> @Sha1 {
             return s;
         }
     }
-    let mut st = Sha1State {
+    let st = Sha1State {
          h: vec::from_elem(digest_buf_len, 0u32),
          len_low: 0u32,
          len_high: 0u32,
