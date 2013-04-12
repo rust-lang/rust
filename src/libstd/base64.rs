@@ -75,6 +75,23 @@ impl<'self> ToBase64 for &'self [u8] {
     }
 }
 
+/**
+ * Convert any string (literal, `@`, `&`, `~`) to base64 encoding.
+ *
+ *
+ * *Example*:
+ *
+ * ~~~~
+ * extern mod std;
+ * use std::base64::ToBase64;
+ *
+ * fn main () {
+ *   let str = "Hello, World".to_base64();
+ *   println(fmt!("%s",str));
+ * }
+ * ~~~~
+ *
+ */
 impl<'self> ToBase64 for &'self str {
     fn to_base64(&self) -> ~str {
         str::to_bytes(*self).to_base64()
@@ -147,6 +164,34 @@ impl FromBase64 for ~[u8] {
     }
 }
 
+/**
+ * Convert any string (literal, `@`, `&`, `~`)
+ * that contains a base64 encoded value, to the byte values it encodes.
+ *
+ * You can use the `from_bytes` function in `core::str`
+ * to turn a `[u8]` into a string with characters corresponding to those values.
+ *
+ * *Example*:
+ *
+ * This is an example of going from a string literal to the base64 encoding
+ * and back to the same string.
+ *
+ * ~~~~
+ * extern mod std;
+ * use std::base64::ToBase64;
+ * use std::base64::FromBase64;
+ * use core::str;
+ *
+ * fn main () {
+ *   let hello_str = "Hello, World".to_base64();
+ *   println(fmt!("%s",hello_str));
+ *   let bytes = hello_str.from_base64();
+ *   println(fmt!("%?",bytes));
+ *   let result_str = str::from_bytes(bytes);
+ *   println(fmt!("%s",result_str));
+ * }
+ * ~~~~
+ */
 impl FromBase64 for ~str {
     fn from_base64(&self) -> ~[u8] {
         str::to_bytes(*self).from_base64()
