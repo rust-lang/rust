@@ -56,7 +56,8 @@ fn create_derived_iter_bytes_impl(cx: @ext_ctxt,
         cx.ident_of(~"IterBytes")
     ];
     let trait_path = build::mk_raw_path_global(span, trait_path);
-    create_derived_impl(cx, span, type_ident, generics, methods, trait_path, opt_vec::Empty)
+    create_derived_impl(cx, span, type_ident, generics, methods, trait_path,
+                        opt_vec::Empty, opt_vec::Empty)
 }
 
 // Creates a method from the given set of statements conforming to the
@@ -230,7 +231,7 @@ fn expand_deriving_iter_bytes_enum_method(cx: @ext_ctxt,
         // as well.
         for uint::range(0, variant_arg_count(cx, span, variant)) |j| {
             // Create the expression for this field.
-            let field_ident = cx.ident_of(~"__self" + j.to_str());
+            let field_ident = cx.ident_of(~"__self_" + j.to_str());
             let field = build::mk_path(cx, span, ~[ field_ident ]);
 
             // Call the substructure method.
