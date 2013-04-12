@@ -151,7 +151,16 @@ pub impl Scheduler {
 
         // Store the task in the scheduler so it can be grabbed later
         self.current_task = Some(task);
-        self.swap_in_task();
+
+        // Take pointers to both the task and scheduler's saved registers.
+        {
+            let (sched_context, _, next_task_context) = self.get_contexts();
+            let next_task_context = next_task_context.unwrap();
+            // Context switch to the task, restoring it's registers
+            // and saving the scheduler's
+            Context::swap(sched_context, next_task_context);
+        }
+
         // The running task should have passed ownership elsewhere
         assert!(self.current_task.is_none());
 
@@ -171,8 +180,11 @@ pub impl Scheduler {
 
         let dead_task = self.current_task.swap_unwrap();
         self.enqueue_cleanup_job(RecycleTask(dead_task));
-        let dead_task = self.task_from_last_cleanup_job();
-        self.swap_out_task(dead_task);
+        {
+            let (sched_context, last_task_context, _) = self.get_contexts();
+            let last_task_context = last_task_context.unwrap();
+            Context::swap(last_task_context, sched_context);
+        }
     }
 
     /// Block a running task, context switch to the scheduler, then pass the
@@ -194,9 +206,13 @@ pub impl Scheduler {
         };
         let f_opaque = HackAroundBorrowCk::from_fn(f_fake_region);
         self.enqueue_cleanup_job(GiveTask(blocked_task, f_opaque));
-        let blocked_task = self.task_from_last_cleanup_job();
+        {
+            let (sched_context, last_task_context, _) = self.get_contexts();
+            let last_task_context = last_task_context.unwrap();
+            Context::swap(last_task_context, sched_context);
+        }
 
-        self.swap_out_task(blocked_task);
+        // XXX: Should probably run cleanup jobs
     }
 
     /// Switch directly to another task, without going through the scheduler.
@@ -209,42 +225,16 @@ pub impl Scheduler {
 
         let old_running_task = self.current_task.swap_unwrap();
         self.enqueue_cleanup_job(RescheduleTask(old_running_task));
-        let old_running_task = self.task_from_last_cleanup_job();
-
         self.current_task = Some(next_task);
-        self.swap_in_task_from_running_task(old_running_task);
+        {
+            let (_, last_task_context, next_task_context) = self.get_contexts();
+            let last_task_context = last_task_context.unwrap();
+            let next_task_context = next_task_context.unwrap();
+            Context::swap(last_task_context, next_task_context);
+        }
+
+        // XXX: Should probably run cleanup jobs
     }
-
-
-    // * Context switching
-
-    // NB: When switching to a task callers are expected to first set
-    // self.running_task. When switching away from a task likewise move
-    // out of the self.running_task
-
-    priv fn swap_in_task(&mut self) {
-        // Take pointers to both the task and scheduler's saved registers.
-        let running_task: &~Task = self.current_task.get_ref();
-        let task_context = &running_task.saved_context;
-        let scheduler_context = &mut self.saved_context;
-
-        // Context switch to the task, restoring it's registers
-        // and saving the scheduler's
-        Context::swap(scheduler_context, task_context);
-    }
-
-    priv fn swap_out_task(&mut self, running_task: &mut Task) {
-        let task_context = &mut running_task.saved_context;
-        let scheduler_context = &self.saved_context;
-        Context::swap(task_context, scheduler_context);
-    }
-
-    priv fn swap_in_task_from_running_task(&mut self, running_task: &mut Task) {
-        let running_task_context = &mut running_task.saved_context;
-        let next_context = &self.current_task.get_ref().saved_context;
-        Context::swap(running_task_context, next_context);
-    }
-
 
     // * Other stuff
 
@@ -270,20 +260,42 @@ pub impl Scheduler {
         }
     }
 
-    // XXX: Hack. This should return &'self mut but I don't know how to
-    // make the borrowcheck happy
-    fn task_from_last_cleanup_job(&mut self) -> &mut Task {
-        assert!(!self.cleanup_jobs.is_empty());
-        let last_job: &'self mut CleanupJob = &mut self.cleanup_jobs[0];
-        let last_task: &'self Task = match last_job {
-            &RescheduleTask(~ref task) => task,
-            &RecycleTask(~ref task) => task,
-            &GiveTask(~ref task, _) => task,
+    /// Get mutable references to all the contexts that may be involved in a
+    /// context switch.
+    ///
+    /// Returns (the scheduler context, the optional context of the
+    /// task in the cleanup list, the optional context of the task in
+    /// the current task slot).  When context switching to a task,
+    /// callers should first arrange for that task to be located in the
+    /// Scheduler's current_task slot and set up the
+    /// post-context-switch cleanup job.
+    fn get_contexts(&mut self) -> (&'self mut Context,
+                                   Option<&'self mut Context>,
+                                   Option<&'self mut Context>) {
+        let last_task = if !self.cleanup_jobs.is_empty() {
+            let last_job: &'self mut CleanupJob = &mut self.cleanup_jobs[0];
+            let last_task: &'self Task = match last_job {
+                &RescheduleTask(~ref task) => task,
+                &RecycleTask(~ref task) => task,
+                &GiveTask(~ref task, _) => task,
+            };
+            Some(last_task)
+        } else {
+            None
         };
         // XXX: Pattern matching mutable pointers above doesn't work
         // because borrowck thinks the three patterns are conflicting
         // borrows
-        return unsafe { transmute::<&Task, &mut Task>(last_task) };
+        let last_task = unsafe { transmute::<Option<&Task>, Option<&mut Task>>(last_task) };
+        let last_task_context = match last_task {
+            Some(ref t) => Some(&mut t.saved_context), None => None
+        };
+        let next_task_context = match self.current_task {
+            Some(ref mut t) => Some(&mut t.saved_context), None => None
+        };
+        return (&mut self.saved_context,
+                last_task_context,
+                next_task_context);
     }
 }
 
@@ -313,6 +325,9 @@ pub impl Task {
     priv fn build_start_wrapper(start: ~fn()) -> ~fn() {
         // XXX: The old code didn't have this extra allocation
         let wrapper: ~fn() = || {
+            // XXX: Should probably run scheduler cleanup jobs for situations
+            // where a task context switches directly to a new task
+
             start();
 
             let mut sched = ThreadLocalScheduler::new();
