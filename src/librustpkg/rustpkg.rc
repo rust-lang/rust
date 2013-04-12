@@ -162,7 +162,6 @@ struct Ctx {
 fn dest_dir(pkgid: PkgId) -> Path {
     default_dest_dir(&pkgid.path).expect(
         ~"couldn't make default dir?!")
-        
 }
 
 /// Returns the default output directory for compilation.
@@ -339,23 +338,21 @@ impl Ctx {
         // Always use the "build" subdirectory of the package dir,
         // but we should allow this to be configured
         let dst_dir = dest_dir(pkgid);
-        
+
         let mut src = PkgSrc::new(cwd, &dst_dir, &pkgid);
-        
         match src.package_script_option(cwd) {
             Some(script_path) => {
                 let script = PkgScript::parse(script_path, pkgid);
                 let (_, status) = script.run_custom(cmd); // Ignore cfgs?
                 if status == 42 { // ???
                     util::error(~"no fns are listening for that cmd");
-                    
                     return false;
                 }
-
                 status == 0
             }
             None => {
-                util::error(fmt!("invoked `do`, but there is no package script in %s", cwd.to_str()));
+                util::error(fmt!("invoked `do`, but there is no package script in %s",
+                                 cwd.to_str()));
                 false
             }
         }
@@ -929,8 +926,8 @@ impl PkgSrc {
                                      dst_dir,
                                      crate.flags,
                                      crate.cfgs + cfgs,
-                                     false, test); 
-            if !result  {
+                                     false, test);
+            if !result {
                 build_err::cond.raise(fmt!("build failure on %s",
                                            path.to_str()));
             }
