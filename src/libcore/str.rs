@@ -673,7 +673,7 @@ pub fn levdistance(s: &str, t: &str) -> uint {
 
         for t.each_chari |j, tc| {
 
-            let mut next = dcol[j + 1];
+            let next = dcol[j + 1];
 
             if sc == tc {
                 dcol[j + 1] = current;
@@ -909,7 +909,7 @@ impl TotalOrd for @str {
 /// Bytewise slice less than
 fn lt(a: &str, b: &str) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
-    let mut end = uint::min(a_len, b_len);
+    let end = uint::min(a_len, b_len);
 
     let mut i = 0;
     while i < end {
@@ -1715,7 +1715,7 @@ pub fn utf16_chars(v: &[u16], f: &fn(char)) {
     let len = vec::len(v);
     let mut i = 0u;
     while (i < len && v[i] != 0u16) {
-        let mut u = v[i];
+        let u = v[i];
 
         if  u <= 0xD7FF_u16 || u >= 0xE000_u16 {
             f(u as char);
