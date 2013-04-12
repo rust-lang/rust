@@ -60,7 +60,7 @@ impl<T: Copy + Div<T,T> + Modulo<T,T> + Neg<T> + Zero + One + Ord + Eq>
 
     /// Put self into lowest terms, with denom > 0.
     fn reduce(&mut self) {
-        let mut g : T = gcd(self.numer, self.denom);
+        let g : T = gcd(self.numer, self.denom);
 
         self.numer /= g;
         self.denom /= g;

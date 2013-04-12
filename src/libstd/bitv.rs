@@ -891,7 +891,7 @@ mod tests {
     #[test]
     fn test_0_elements() {
         let mut act;
-        let mut exp;
+        let exp;
         act = Bitv::new(0u, false);
         exp = vec::from_elem::<uint>(0u, 0u);
         assert!(act.eq_vec(exp));
