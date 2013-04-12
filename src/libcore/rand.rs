@@ -742,7 +742,7 @@ struct XorShiftState {
 impl Rng for XorShiftState {
     fn next(&self) -> u32 {
         let x = self.x;
-        let mut t = x ^ (x << 11);
+        let t = x ^ (x << 11);
         self.x = self.y;
         self.y = self.z;
         self.z = self.w;

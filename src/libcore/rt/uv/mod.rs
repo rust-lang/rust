@@ -402,7 +402,7 @@ fn loop_smoke_test() {
 fn idle_new_then_close() {
     do run_in_bare_thread {
         let mut loop_ = Loop::new();
-        let mut idle_watcher = { IdleWatcher::new(&mut loop_) };
+        let idle_watcher = { IdleWatcher::new(&mut loop_) };
         idle_watcher.close();
     }
 }
