@@ -50,6 +50,8 @@ independently:
 
 use core::prelude::*;
 
+use driver::session;
+
 use middle::resolve;
 use middle::ty;
 use util::common::time;
@@ -63,7 +65,8 @@ use std::list::List;
 use std::list;
 use syntax::codemap::span;
 use syntax::print::pprust::*;
-use syntax::{ast, ast_map};
+use syntax::{ast, ast_map, abi};
+use syntax::opt_vec;
 
 #[path = "check/mod.rs"]
 pub mod check;
@@ -327,12 +330,68 @@ fn check_main_fn_ty(ccx: @mut CrateCtxt,
     }
 }
 
-fn check_for_main_fn(ccx: @mut CrateCtxt) {
+fn check_start_fn_ty(ccx: @mut CrateCtxt,
+                     start_id: ast::node_id,
+                     start_span: span) {
+
+    let tcx = ccx.tcx;
+    let start_t = ty::node_id_to_type(tcx, start_id);
+    match ty::get(start_t).sty {
+        ty::ty_bare_fn(_) => {
+            match tcx.items.find(&start_id) {
+                Some(&ast_map::node_item(it,_)) => {
+                    match it.node {
+                        ast::item_fn(_,_,_,ref ps,_)
+                        if ps.is_parameterized() => {
+                            tcx.sess.span_err(
+                                start_span,
+                                ~"start function is not allowed to have type \
+                                parameters");
+                            return;
+                        }
+                        _ => ()
+                    }
+                }
+                _ => ()
+            }
+
+            fn arg(m: ast::rmode, ty: ty::t) -> ty::arg {
+                ty::arg {mode: ast::expl(m), ty: ty}
+            }
+
+            let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
+                purity: ast::impure_fn,
+                abis: abi::AbiSet::Rust(),
+                sig: ty::FnSig {bound_lifetime_names: opt_vec::Empty,
+                            inputs: ~[arg(ast::by_copy, ty::mk_int(tcx)),
+                                      arg(ast::by_copy, ty::mk_imm_ptr(tcx,
+                                                            ty::mk_imm_ptr(tcx, ty::mk_u8(tcx)))),
+                                      arg(ast::by_copy, ty::mk_imm_ptr(tcx, ty::mk_u8(tcx)))],
+                            output: ty::mk_int(tcx)}
+            });
+
+            require_same_types(tcx, None, false, start_span, start_t, se_ty,
+                || fmt!("start function expects type: `%s`", ppaux::ty_to_str(ccx.tcx, se_ty)));
+
+        }
+        _ => {
+            tcx.sess.span_bug(start_span,
+                              ~"start has a non-function type: found `" +
+                              ppaux::ty_to_str(tcx, start_t) + ~"`");
+        }
+    }
+}
+
+fn check_for_entry_fn(ccx: @mut CrateCtxt) {
     let tcx = ccx.tcx;
     if !*tcx.sess.building_library {
-        match *tcx.sess.main_fn {
-          Some((id, sp)) => check_main_fn_ty(ccx, id, sp),
-          None => tcx.sess.err(~"main function not found")
+        match *tcx.sess.entry_fn {
+          Some((id, sp)) => match *tcx.sess.entry_type {
+              Some(session::EntryMain) => check_main_fn_ty(ccx, id, sp),
+              Some(session::EntryStart) => check_start_fn_ty(ccx, id, sp),
+              None => tcx.sess.bug(~"entry function without a type")
+          },
+          None => tcx.sess.err(~"entry function not found")
         }
     }
 }
@@ -359,7 +418,7 @@ pub fn check_crate(tcx: ty::ctxt,
     time(time_passes, ~"type checking", ||
         check::check_item_types(ccx, crate));
 
-    check_for_main_fn(ccx);
+    check_for_entry_fn(ccx);
     tcx.sess.abort_if_errors();
     (ccx.method_map, ccx.vtable_map)
 }
