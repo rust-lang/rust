@@ -16,7 +16,7 @@ use middle::liveness;
 use middle::pat_util;
 use middle::ty;
 use middle::typeck;
-use util::ppaux::{Repr, ty_to_str, tys_to_str};
+use util::ppaux::{Repr, ty_to_str};
 
 use syntax::ast::*;
 use syntax::attr::attrs_contains_name;
@@ -478,13 +478,13 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
     }
 }
 
-/// This is rather subtle.  When we are casting a value to a
-/// instantiated trait like `a as trait<'r>`, regionck already ensures
-/// that any borrowed pointers that appear in the type of `a` are
-/// bounded by `&r`.  However, it is possible that there are *type
-/// parameters* in the type of `a`, and those *type parameters* may
-/// have borrowed pointers within them.  We have to guarantee that the
-/// regions which appear in those type parameters are not obscured.
+/// This is rather subtle.  When we are casting a value to a instantiated
+/// trait like `a as trait<'r>`, regionck already ensures that any borrowed
+/// pointers that appear in the type of `a` are bounded by `'r` (ed.: modulo
+/// FIXME(#5723)).  However, it is possible that there are *type parameters*
+/// in the type of `a`, and those *type parameters* may have borrowed pointers
+/// within them.  We have to guarantee that the regions which appear in those
+/// type parameters are not obscured.
 ///
 /// Therefore, we ensure that one of three conditions holds:
 ///
@@ -501,6 +501,8 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
 ///
 /// (3) The type parameter is owned (and therefore does not contain
 /// borrowed ptrs).
+///
+/// FIXME(#5723)---This code should probably move into regionck.
 pub fn check_cast_for_escaping_regions(
     cx: Context,
     source: @expr,
@@ -509,39 +511,77 @@ pub fn check_cast_for_escaping_regions(
     // Determine what type we are casting to; if it is not an trait, then no
     // worries.
     let target_ty = ty::expr_ty(cx.tcx, target);
-    let target_substs = match ty::get(target_ty).sty {
-      ty::ty_trait(_, ref substs, _) => {(/*bad*/copy *substs)}
-      _ => { return; /* not a cast to a trait */ }
-    };
+    match ty::get(target_ty).sty {
+        ty::ty_trait(*) => {}
+        _ => { return; }
+    }
+
+    // Collect up the regions that appear in the target type.  We want to
+    // ensure that these lifetimes are shorter than all lifetimes that are in
+    // the source type.  See test `src/test/compile-fail/regions-trait-2.rs`
+    let mut target_regions = ~[];
+    ty::walk_regions_and_ty(
+        cx.tcx,
+        target_ty,
+        |r| {
+            if !r.is_bound() {
+                target_regions.push(r);
+            }
+        },
+        |_| true);
 
     // Check, based on the region associated with the trait, whether it can
     // possibly escape the enclosing fn item (note that all type parameters
-    // must have been declared on the enclosing fn item):
-    match target_substs.self_r {
-      Some(ty::re_scope(*)) => { return; /* case (1) */ }
-      None | Some(ty::re_static) | Some(ty::re_free(*)) => {}
-      Some(ty::re_bound(*)) | Some(ty::re_infer(*)) => {
-        cx.tcx.sess.span_bug(
-            source.span,
-            fmt!("bad region found in kind: %?", target_substs.self_r));
-      }
+    // must have been declared on the enclosing fn item).
+    if target_regions.any(|r| is_re_scope(*r)) {
+        return; /* case (1) */
     }
 
     // Assuming the trait instance can escape, then ensure that each parameter
-    // either appears in the trait type or is owned:
+    // either appears in the trait type or is owned.
     let target_params = ty::param_tys_in_type(target_ty);
     let source_ty = ty::expr_ty(cx.tcx, source);
-    do ty::walk_ty(source_ty) |ty| {
-        match ty::get(ty).sty {
-          ty::ty_param(source_param) => {
-            if target_params.contains(&source_param) {
-                /* case (2) */
-            } else {
-                check_durable(cx.tcx, ty, source.span); /* case (3) */
+    ty::walk_regions_and_ty(
+        cx.tcx,
+        source_ty,
+
+        |_r| {
+            // FIXME(#5723) --- turn this check on once &Objects are usable
+            //
+            // if !target_regions.any(|t_r| is_subregion_of(cx, *t_r, r)) {
+            //     cx.tcx.sess.span_err(
+            //         source.span,
+            //         fmt!("source contains borrowed pointer with lifetime \
+            //               not found in the target type `%s`",
+            //              ty_to_str(cx.tcx, target_ty)));
+            //     note_and_explain_region(
+            //         cx.tcx, "source data is only valid for ", r, "");
+            // }
+        },
+
+        |ty| {
+            match ty::get(ty).sty {
+                ty::ty_param(source_param) => {
+                    if target_params.contains(&source_param) {
+                        /* case (2) */
+                    } else {
+                        check_durable(cx.tcx, ty, source.span); /* case (3) */
+                    }
+                }
+                _ => {}
             }
-          }
-          _ => {}
+            true
+        });
+
+    fn is_re_scope(+r: ty::Region) -> bool {
+        match r {
+            ty::re_scope(*) => true,
+            _ => false
         }
+    }
+
+    fn is_subregion_of(cx: Context, r_sub: ty::Region, r_sup: ty::Region) -> bool {
+        cx.tcx.region_maps.is_subregion_of(r_sub, r_sup)
     }
 }
 

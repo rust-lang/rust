@@ -24,7 +24,7 @@ use metadata::cstore::{CStore, iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::resolve::{Impl, MethodInfo};
 use middle::ty::{ProvidedMethodSource, ProvidedMethodInfo, bound_copy, get};
-use middle::ty::{lookup_item_type, param_bounds, subst};
+use middle::ty::{lookup_item_type, subst};
 use middle::ty::{substs, t, ty_bool, ty_bot, ty_box, ty_enum, ty_err};
 use middle::ty::{ty_estr, ty_evec, ty_float, ty_infer, ty_int, ty_nil};
 use middle::ty::{ty_opaque_box, ty_param, ty_param_bounds_and_ty, ty_ptr};

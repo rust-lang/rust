@@ -146,12 +146,12 @@ fn enc_region(w: @io::Writer, cx: @ctxt, r: ty::Region) {
         w.write_char('b');
         enc_bound_region(w, cx, br);
       }
-      ty::re_free(id, br) => {
+      ty::re_free(ref fr) => {
         w.write_char('f');
         w.write_char('[');
-        w.write_int(id);
+        w.write_int(fr.scope_id);
         w.write_char('|');
-        enc_bound_region(w, cx, br);
+        enc_bound_region(w, cx, fr.bound_region);
         w.write_char(']');
       }
       ty::re_scope(nid) => {

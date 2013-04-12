@@ -11,7 +11,7 @@
 /*!
 
 This file actually contains two passes related to regions.  The first
-pass builds up the `region_map`, which describes the parent links in
+pass builds up the `scope_map`, which describes the parent links in
 the region hierarchy.  The second pass infers which types must be
 region parameterized.
 
@@ -23,7 +23,7 @@ use driver::session::Session;
 use metadata::csearch;
 use middle::resolve;
 use middle::ty::{region_variance, rv_covariant, rv_invariant};
-use middle::ty::{rv_contravariant};
+use middle::ty::{rv_contravariant, FreeRegion};
 use middle::ty;
 
 use core::hashmap::{HashMap, HashSet};
@@ -37,23 +37,31 @@ use syntax::{ast, visit};
 pub type parent = Option<ast::node_id>;
 
 /**
-Encodes the bounding lifetime for a given AST node:
+The region maps encode information about region relationships.
 
-- Expressions are mapped to the expression or block encoding the maximum
-  (static) lifetime of a value produced by that expression.  This is
-  generally the innermost call, statement, match, or block.
-
-- Variables and bindings are mapped to the block in which they are declared.
-
+- `scope_map` maps from:
+  - an expression to the expression or block encoding the maximum
+    (static) lifetime of a value produced by that expression.  This is
+    generally the innermost call, statement, match, or block.
+  - a variable or binding id to the block in which that variable is declared.
+- `free_region_map` maps from:
+  - a free region `a` to a list of free regions `bs` such that
+    `a <= b for all b in bs`
+  - the free region map is populated during type check as we check
+    each function. See the function `relate_free_regions` for
+    more information.
 */
-pub type region_map = @mut HashMap<ast::node_id, ast::node_id>;
+pub struct RegionMaps {
+    priv scope_map: HashMap<ast::node_id, ast::node_id>,
+    priv free_region_map: HashMap<FreeRegion, ~[FreeRegion]>,
+}
 
 pub struct ctxt {
     sess: Session,
     def_map: resolve::DefMap,
 
     // Generated maps:
-    region_map: region_map,
+    region_maps: @mut RegionMaps,
 
     // Generally speaking, expressions are parented to their innermost
     // enclosing block. But some kinds of expressions serve as
@@ -98,94 +106,215 @@ pub struct ctxt {
     parent: parent,
 }
 
-/// Returns true if `subscope` is equal to or is lexically nested inside
-/// `superscope` and false otherwise.
-pub fn scope_contains(region_map: region_map, superscope: ast::node_id,
-                      subscope: ast::node_id) -> bool {
-    let mut subscope = subscope;
-    while superscope != subscope {
-        match region_map.find(&subscope) {
-            None => return false,
-            Some(&scope) => subscope = scope
+pub impl RegionMaps {
+    fn relate_free_regions(&mut self,
+                           sub: FreeRegion,
+                           sup: FreeRegion)
+    {
+        match self.free_region_map.find_mut(&sub) {
+            Some(sups) => {
+                if !sups.contains(&sup) {
+                    sups.push(sup);
+                }
+                return;
+            }
+            None => {}
+        }
+
+        debug!("relate_free_regions(sub=%?, sup=%?)", sub, sup);
+
+        self.free_region_map.insert(sub, ~[sup]);
+    }
+
+    fn record_parent(&mut self,
+                     sub: ast::node_id,
+                     sup: ast::node_id)
+    {
+        debug!("record_parent(sub=%?, sup=%?)", sub, sup);
+
+        self.scope_map.insert(sub, sup);
+    }
+
+    fn opt_encl_scope(&self,
+                      id: ast::node_id) -> Option<ast::node_id>
+    {
+        //! Returns the narrowest scope that encloses `id`, if any.
+
+        self.scope_map.find(&id).map(|&x| *x)
+    }
+
+    fn encl_scope(&self,
+                  id: ast::node_id) -> ast::node_id
+    {
+        //! Returns the narrowest scope that encloses `id`, if any.
+
+        match self.scope_map.find(&id) {
+            Some(&r) => r,
+            None => { fail!(fmt!("No enclosing scope for id %?", id)); }
         }
     }
-    return true;
-}
 
-/// Determines whether one region is a subregion of another.  This is
-/// intended to run *after inference* and sadly the logic is somewhat
-/// duplicated with the code in infer.rs.
-pub fn is_subregion_of(region_map: region_map,
-                       sub_region: ty::Region,
-                       super_region: ty::Region) -> bool {
-    sub_region == super_region ||
-        match (sub_region, super_region) {
-            (_, ty::re_static) => {
-                true
-            }
+    fn encl_region(&self,
+                   id: ast::node_id) -> ty::Region
+    {
+        //! Returns the narrowest scope region that encloses `id`, if any.
 
-            (ty::re_scope(sub_scope), ty::re_scope(super_scope)) |
-            (ty::re_scope(sub_scope), ty::re_free(super_scope, _)) => {
-                scope_contains(region_map, super_scope, sub_scope)
-            }
+        ty::re_scope(self.encl_scope(id))
+    }
 
-            _ => {
-                false
+    fn is_sub_scope(&self,
+                    sub_scope: ast::node_id,
+                    superscope: ast::node_id) -> bool
+    {
+        /*!
+         * Returns true if `sub_scope` is equal to or is lexically
+         * nested inside `superscope` and false otherwise.
+         */
+
+        let mut sub_scope = sub_scope;
+        while superscope != sub_scope {
+            match self.scope_map.find(&sub_scope) {
+                None => return false,
+                Some(&scope) => sub_scope = scope
             }
         }
-}
+        return true;
+    }
 
-/// Finds the nearest common ancestor (if any) of two scopes.  That
-/// is, finds the smallest scope which is greater than or equal to
-/// both `scope_a` and `scope_b`.
-pub fn nearest_common_ancestor(region_map: region_map,
-                               scope_a: ast::node_id,
-                               scope_b: ast::node_id)
-                            -> Option<ast::node_id> {
+    fn sub_free_region(&self,
+                       sub: FreeRegion,
+                       sup: FreeRegion) -> bool
+    {
+        /*!
+         * Determines whether two free regions have a subregion relationship
+         * by walking the graph encoded in `free_region_map`.  Note that
+         * it is possible that `sub != sup` and `sub <= sup` and `sup <= sub`
+         * (that is, the user can give two different names to the same lifetime).
+         */
 
-    fn ancestors_of(region_map: region_map, scope: ast::node_id)
-                    -> ~[ast::node_id] {
-        let mut result = ~[scope];
-        let mut scope = scope;
-        loop {
-            match region_map.find(&scope) {
-                None => return result,
-                Some(&superscope) => {
-                    result.push(superscope);
-                    scope = superscope;
+        if sub == sup {
+            return true;
+        }
+
+        // Do a little breadth-first-search here.  The `queue` list
+        // doubles as a way to detect if we've seen a particular FR
+        // before.  Note that we expect this graph to be an *extremely
+        // shallow* tree.
+        let mut queue = ~[sub];
+        let mut i = 0;
+        while i < queue.len() {
+            match self.free_region_map.find(&queue[i]) {
+                Some(parents) => {
+                    for parents.each |parent| {
+                        if *parent == sup {
+                            return true;
+                        }
+
+                        if !queue.contains(parent) {
+                            queue.push(*parent);
+                        }
+                    }
+                }
+                None => {}
+            }
+            i += 1;
+        }
+        return false;
+    }
+
+    fn is_subregion_of(&self,
+                       sub_region: ty::Region,
+                       super_region: ty::Region) -> bool
+    {
+        /*!
+         * Determines whether one region is a subregion of another.  This is
+         * intended to run *after inference* and sadly the logic is somewhat
+         * duplicated with the code in infer.rs.
+         */
+
+        debug!("is_subregion_of(sub_region=%?, super_region=%?)",
+               sub_region, super_region);
+
+        sub_region == super_region || {
+            match (sub_region, super_region) {
+                (_, ty::re_static) => {
+                    true
+                }
+
+                (ty::re_scope(sub_scope), ty::re_scope(super_scope)) => {
+                    self.is_sub_scope(sub_scope, super_scope)
+                }
+
+                (ty::re_scope(sub_scope), ty::re_free(ref fr)) => {
+                    self.is_sub_scope(sub_scope, fr.scope_id)
+                }
+
+                (ty::re_free(sub_fr), ty::re_free(super_fr)) => {
+                    self.sub_free_region(sub_fr, super_fr)
+                }
+
+                _ => {
+                    false
                 }
             }
         }
     }
 
-    if scope_a == scope_b { return Some(scope_a); }
+    fn nearest_common_ancestor(&self,
+                               scope_a: ast::node_id,
+                               scope_b: ast::node_id) -> Option<ast::node_id>
+    {
+        /*!
+         * Finds the nearest common ancestor (if any) of two scopes.  That
+         * is, finds the smallest scope which is greater than or equal to
+         * both `scope_a` and `scope_b`.
+         */
 
-    let a_ancestors = ancestors_of(region_map, scope_a);
-    let b_ancestors = ancestors_of(region_map, scope_b);
-    let mut a_index = vec::len(a_ancestors) - 1u;
-    let mut b_index = vec::len(b_ancestors) - 1u;
+        if scope_a == scope_b { return Some(scope_a); }
 
-    // Here, ~[ab]_ancestors is a vector going from narrow to broad.
-    // The end of each vector will be the item where the scope is
-    // defined; if there are any common ancestors, then the tails of
-    // the vector will be the same.  So basically we want to walk
-    // backwards from the tail of each vector and find the first point
-    // where they diverge.  If one vector is a suffix of the other,
-    // then the corresponding scope is a superscope of the other.
+        let a_ancestors = ancestors_of(self, scope_a);
+        let b_ancestors = ancestors_of(self, scope_b);
+        let mut a_index = vec::len(a_ancestors) - 1u;
+        let mut b_index = vec::len(b_ancestors) - 1u;
 
-    if a_ancestors[a_index] != b_ancestors[b_index] {
-        return None;
-    }
+        // Here, ~[ab]_ancestors is a vector going from narrow to broad.
+        // The end of each vector will be the item where the scope is
+        // defined; if there are any common ancestors, then the tails of
+        // the vector will be the same.  So basically we want to walk
+        // backwards from the tail of each vector and find the first point
+        // where they diverge.  If one vector is a suffix of the other,
+        // then the corresponding scope is a superscope of the other.
 
-    loop {
-        // Loop invariant: a_ancestors[a_index] == b_ancestors[b_index]
-        // for all indices between a_index and the end of the array
-        if a_index == 0u { return Some(scope_a); }
-        if b_index == 0u { return Some(scope_b); }
-        a_index -= 1u;
-        b_index -= 1u;
         if a_ancestors[a_index] != b_ancestors[b_index] {
-            return Some(a_ancestors[a_index + 1u]);
+            return None;
+        }
+
+        loop {
+            // Loop invariant: a_ancestors[a_index] == b_ancestors[b_index]
+            // for all indices between a_index and the end of the array
+            if a_index == 0u { return Some(scope_a); }
+            if b_index == 0u { return Some(scope_b); }
+            a_index -= 1u;
+            b_index -= 1u;
+            if a_ancestors[a_index] != b_ancestors[b_index] {
+                return Some(a_ancestors[a_index + 1u]);
+            }
+        }
+
+        fn ancestors_of(self: &RegionMaps, scope: ast::node_id)
+            -> ~[ast::node_id]
+        {
+            let mut result = ~[scope];
+            let mut scope = scope;
+            loop {
+                match self.scope_map.find(&scope) {
+                    None => return result,
+                    Some(&superscope) => {
+                        result.push(superscope);
+                        scope = superscope;
+                    }
+                }
+            }
         }
     }
 }
@@ -205,8 +334,7 @@ pub fn parent_id(cx: ctxt, span: span) -> ast::node_id {
 /// Records the current parent (if any) as the parent of `child_id`.
 pub fn record_parent(cx: ctxt, child_id: ast::node_id) {
     for cx.parent.each |parent_id| {
-        debug!("parent of node %d is node %d", child_id, *parent_id);
-        cx.region_map.insert(child_id, *parent_id);
+        cx.region_maps.record_parent(child_id, *parent_id);
     }
 }
 
@@ -328,7 +456,7 @@ pub fn resolve_fn(fk: &visit::fn_kind,
     // Record the ID of `self`.
     match *fk {
         visit::fk_method(_, _, method) => {
-            cx.region_map.insert(method.self_id, body.node.id);
+            cx.region_maps.record_parent(method.self_id, body.node.id);
         }
         _ => {}
     }
@@ -338,7 +466,7 @@ pub fn resolve_fn(fk: &visit::fn_kind,
            body.node.id, cx.parent, fn_cx.parent);
 
     for decl.inputs.each |input| {
-        cx.region_map.insert(input.id, body.node.id);
+        cx.region_maps.record_parent(input.id, body.node.id);
     }
 
     visit::visit_fn(fk, decl, body, sp, id, fn_cx, visitor);
@@ -346,11 +474,15 @@ pub fn resolve_fn(fk: &visit::fn_kind,
 
 pub fn resolve_crate(sess: Session,
                      def_map: resolve::DefMap,
-                     crate: @ast::crate)
-                  -> region_map {
+                     crate: @ast::crate) -> @mut RegionMaps
+{
+    let region_maps = @mut RegionMaps {
+        scope_map: HashMap::new(),
+        free_region_map: HashMap::new()
+    };
     let cx: ctxt = ctxt {sess: sess,
                          def_map: def_map,
-                         region_map: @mut HashMap::new(),
+                         region_maps: region_maps,
                          root_exprs: @mut HashSet::new(),
                          parent: None};
     let visitor = visit::mk_vt(@visit::Visitor {
@@ -365,7 +497,7 @@ pub fn resolve_crate(sess: Session,
         .. *visit::default_visitor()
     });
     visit::visit_crate(*crate, cx, visitor);
-    return cx.region_map;
+    return region_maps;
 }
 
 // ___________________________________________________________________________
@@ -411,10 +543,6 @@ pub struct DetermineRpCtxt {
     // true when we are within an item but not within a method.
     // see long discussion on region_is_relevant().
     anon_implies_rp: bool,
-
-    // true when we are not within an &self method.
-    // see long discussion on region_is_relevant().
-    self_implies_rp: bool,
 
     // encodes the context of the current type; invariant if
     // mutable, covariant otherwise
@@ -557,7 +685,7 @@ pub impl DetermineRpCtxt {
                 false
             }
             Some(ref l) if l.ident == special_idents::self_ => {
-                self.self_implies_rp
+                true
             }
             Some(_) => {
                 false
@@ -568,23 +696,18 @@ pub impl DetermineRpCtxt {
     fn with(@mut self,
             item_id: ast::node_id,
             anon_implies_rp: bool,
-            self_implies_rp: bool,
             f: &fn()) {
         let old_item_id = self.item_id;
         let old_anon_implies_rp = self.anon_implies_rp;
-        let old_self_implies_rp = self.self_implies_rp;
         self.item_id = item_id;
         self.anon_implies_rp = anon_implies_rp;
-        self.self_implies_rp = self_implies_rp;
-        debug!("with_item_id(%d, %b, %b)",
+        debug!("with_item_id(%d, %b)",
                item_id,
-               anon_implies_rp,
-               self_implies_rp);
+               anon_implies_rp);
         let _i = ::util::common::indenter();
         f();
         self.item_id = old_item_id;
         self.anon_implies_rp = old_anon_implies_rp;
-        self.self_implies_rp = old_self_implies_rp;
     }
 
     fn with_ambient_variance(@mut self, variance: region_variance, f: &fn()) {
@@ -598,7 +721,7 @@ pub impl DetermineRpCtxt {
 pub fn determine_rp_in_item(item: @ast::item,
                             &&cx: @mut DetermineRpCtxt,
                             visitor: visit::vt<@mut DetermineRpCtxt>) {
-    do cx.with(item.id, true, true) {
+    do cx.with(item.id, true) {
         visit::visit_item(item, cx, visitor);
     }
 }
@@ -610,12 +733,7 @@ pub fn determine_rp_in_fn(fk: &visit::fn_kind,
                           _: ast::node_id,
                           &&cx: @mut DetermineRpCtxt,
                           visitor: visit::vt<@mut DetermineRpCtxt>) {
-    let self_implies_rp = match fk {
-        &visit::fk_method(_, _, m) => !m.self_ty.node.is_borrowed(),
-        _ => true
-    };
-
-    do cx.with(cx.item_id, false, self_implies_rp) {
+    do cx.with(cx.item_id, false) {
         do cx.with_ambient_variance(rv_contravariant) {
             for decl.inputs.each |a| {
                 (visitor.visit_ty)(a.ty, cx, visitor);
@@ -631,7 +749,7 @@ pub fn determine_rp_in_fn(fk: &visit::fn_kind,
 pub fn determine_rp_in_ty_method(ty_m: &ast::ty_method,
                                  &&cx: @mut DetermineRpCtxt,
                                  visitor: visit::vt<@mut DetermineRpCtxt>) {
-    do cx.with(cx.item_id, false, !ty_m.self_ty.node.is_borrowed()) {
+    do cx.with(cx.item_id, false) {
         visit::visit_ty_method(ty_m, cx, visitor);
     }
 }
@@ -736,7 +854,7 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
       ast::ty_bare_fn(@ast::TyBareFn {decl: ref decl, _}) => {
         // fn() binds the & region, so do not consider &T types that
         // appear *inside* a fn() type to affect the enclosing item:
-        do cx.with(cx.item_id, false, true) {
+        do cx.with(cx.item_id, false) {
             // parameters are contravariant
             do cx.with_ambient_variance(rv_contravariant) {
                 for decl.inputs.each |a| {
@@ -797,7 +915,6 @@ pub fn determine_rp_in_crate(sess: Session,
         worklist: ~[],
         item_id: 0,
         anon_implies_rp: false,
-        self_implies_rp: true,
         ambient_variance: rv_covariant
     };
 

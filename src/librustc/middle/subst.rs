@@ -62,22 +62,7 @@ impl EffectfulSubst for ty::t {
             _ => {
                 ty::fold_regions_and_ty(
                     tcx, *self,
-                    |r| match r {
-                        ty::re_bound(ty::br_self) => {
-                            match substs.self_r {
-                                None => {
-                                    tcx.sess.bug(
-                                        fmt!("ty::subst: \
-                                              Reference to self region when \
-                                              given substs with no self region, \
-                                              ty = %s",
-                                             self.repr(tcx)));
-                                }
-                                Some(self_r) => self_r
-                            }
-                        }
-                        _ => r
-                    },
+                    |r| r.subst(tcx, substs),
                     |t| t.effectfulSubst(tcx, substs),
                     |t| t.effectfulSubst(tcx, substs))
             }
@@ -118,7 +103,7 @@ impl Subst for ty::TraitRef {
 impl Subst for ty::substs {
     fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::substs {
         ty::substs {
-            self_r: self.self_r,
+            self_r: self.self_r.subst(tcx, substs),
             self_ty: self.self_ty.map(|typ| typ.subst(tcx, substs)),
             tps: self.tps.map(|typ| typ.subst(tcx, substs))
         }
@@ -162,6 +147,34 @@ impl Subst for ty::Generics {
         ty::Generics {
             type_param_defs: self.type_param_defs.subst(tcx, substs),
             region_param: self.region_param
+        }
+    }
+}
+
+impl Subst for ty::Region {
+    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::Region {
+        // Note: This routine only handles the self region, because it
+        // is only concerned with substitutions of regions that appear
+        // in types. Region substitution of the bound regions that
+        // appear in a function signature is done using the
+        // specialized routine
+        // `middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig()`.
+        // As we transition to the new region syntax this distinction
+        // will most likely disappear.
+        match self {
+            &ty::re_bound(ty::br_self) => {
+                match substs.self_r {
+                    None => {
+                        tcx.sess.bug(
+                            fmt!("ty::Region#subst(): \
+                                  Reference to self region when \
+                                  given substs with no self region: %s",
+                                 substs.repr(tcx)));
+                    }
+                    Some(self_r) => self_r
+                }
+            }
+            _ => *self
         }
     }
 }
