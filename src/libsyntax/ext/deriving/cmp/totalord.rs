@@ -45,10 +45,10 @@ pub fn ordering_const(cx: @ext_ctxt, span: span, cnst: Ordering) -> @expr {
         Equal => ~"Equal",
         Greater => ~"Greater"
     };
-    build::mk_path(cx, span,
-                   ~[cx.ident_of(~"core"),
-                     cx.ident_of(~"cmp"),
-                     cx.ident_of(cnst)])
+    build::mk_path_global(cx, span,
+                          ~[cx.ident_of(~"core"),
+                            cx.ident_of(~"cmp"),
+                            cx.ident_of(cnst)])
 }
 
 pub fn cs_cmp(cx: @ext_ctxt, span: span,
@@ -61,7 +61,7 @@ pub fn cs_cmp(cx: @ext_ctxt, span: span,
         // foldr (possibly) nests the matches in lexical_ordering better
         false,
         |cx, span, old, new| {
-            build::mk_call(cx, span, lexical_ord, ~[old, new])
+            build::mk_call_global(cx, span, lexical_ord, ~[old, new])
         },
         ordering_const(cx, span, Equal),
         |cx, span, list| {
@@ -70,7 +70,7 @@ pub fn cs_cmp(cx: @ext_ctxt, span: span,
                 // later one
                 [(self_var, _, _),
                  (other_var, _, _)] => ordering_const(cx, span,
-                                                   self_var.cmp(&other_var)),
+                                                      self_var.cmp(&other_var)),
                 _ => cx.span_bug(span, "Not exactly 2 arguments in `deriving(TotalOrd)`")
             }
         },
