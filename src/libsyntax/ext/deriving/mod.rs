@@ -24,30 +24,41 @@ use ast::{tuple_variant_kind};
 use ast::{ty_path, unnamed_field, variant};
 use ext::base::ext_ctxt;
 use ext::build;
-use codemap::span;
+use codemap::{span, respan};
 use parse::token::special_idents::clownshoes_extensions;
 use opt_vec;
 
 use core::uint;
 
 pub mod clone;
-pub mod eq;
 pub mod iter_bytes;
 pub mod encodable;
 pub mod decodable;
 
-type ExpandDerivingStructDefFn<'self> = &'self fn(@ext_ctxt,
-                                                  span,
-                                                  x: &struct_def,
-                                                  ident,
-                                                  y: &Generics)
-                                               -> @item;
-type ExpandDerivingEnumDefFn<'self> = &'self fn(@ext_ctxt,
-                                                span,
-                                                x: &enum_def,
-                                                ident,
-                                                y: &Generics)
-                                             -> @item;
+#[path="cmp/eq.rs"]
+pub mod eq;
+#[path="cmp/totaleq.rs"]
+pub mod totaleq;
+#[path="cmp/ord.rs"]
+pub mod ord;
+#[path="cmp/totalord.rs"]
+pub mod totalord;
+
+
+pub mod generic;
+
+pub type ExpandDerivingStructDefFn<'self> = &'self fn(@ext_ctxt,
+                                                       span,
+                                                       x: &struct_def,
+                                                       ident,
+                                                       y: &Generics)
+                                                 -> @item;
+pub type ExpandDerivingEnumDefFn<'self> = &'self fn(@ext_ctxt,
+                                                    span,
+                                                    x: &enum_def,
+                                                    ident,
+                                                    y: &Generics)
+                                                 -> @item;
 
 pub fn expand_meta_deriving(cx: @ext_ctxt,
                             _span: span,
@@ -74,14 +85,20 @@ pub fn expand_meta_deriving(cx: @ext_ctxt,
                         match *tname {
                             ~"Clone" => clone::expand_deriving_clone(cx,
                                 titem.span, titem, in_items),
-                            ~"Eq" => eq::expand_deriving_eq(cx, titem.span,
-                                titem, in_items),
                             ~"IterBytes" => iter_bytes::expand_deriving_iter_bytes(cx,
                                 titem.span, titem, in_items),
                             ~"Encodable" => encodable::expand_deriving_encodable(cx,
                                 titem.span, titem, in_items),
                             ~"Decodable" => decodable::expand_deriving_decodable(cx,
                                 titem.span, titem, in_items),
+                            ~"Eq" => eq::expand_deriving_eq(cx, titem.span,
+                                                             titem, in_items),
+                            ~"TotalEq" => totaleq::expand_deriving_totaleq(cx, titem.span,
+                                                                           titem, in_items),
+                            ~"Ord" => ord::expand_deriving_ord(cx, titem.span,
+                                                               titem, in_items),
+                            ~"TotalOrd" => totalord::expand_deriving_totalord(cx, titem.span,
+                                                                              titem, in_items),
                             tname => {
                                 cx.span_err(titem.span, fmt!("unknown \
                                     `deriving` trait: `%s`", tname));
@@ -126,9 +143,19 @@ pub fn expand_deriving(cx: @ext_ctxt,
 }
 
 fn create_impl_item(cx: @ext_ctxt, span: span, +item: item_) -> @item {
+    let doc_attr = respan(span,
+                          ast::lit_str(@~"Automatically derived."));
+    let doc_attr = respan(span, ast::meta_name_value(@~"doc", doc_attr));
+    let doc_attr = ast::attribute_ {
+        style: ast::attr_outer,
+        value: @doc_attr,
+        is_sugared_doc: false
+    };
+    let doc_attr = respan(span, doc_attr);
+
     @ast::item {
         ident: clownshoes_extensions,
-        attrs: ~[],
+        attrs: ~[doc_attr],
         id: cx.next_id(),
         node: item,
         vis: public,
@@ -164,14 +191,17 @@ pub fn create_derived_impl(cx: @ext_ctxt,
                            generics: &Generics,
                            methods: &[@method],
                            trait_path: @ast::Path,
-                           mut impl_ty_params: opt_vec::OptVec<ast::TyParam>)
+                           mut impl_ty_params: opt_vec::OptVec<ast::TyParam>,
+                           bounds_paths: opt_vec::OptVec<~[ident]>)
                         -> @item {
     /*!
      *
      * Given that we are deriving a trait `Tr` for a type `T<'a, ...,
      * 'z, A, ..., Z>`, creates an impl like:
      *
-     *      impl<'a, ..., 'z, A:Tr, ..., Z: Tr> Tr for T<A, ..., Z> { ... }
+     *      impl<'a, ..., 'z, A:Tr B1 B2, ..., Z: Tr B1 B2> Tr for T<A, ..., Z> { ... }
+     *
+     * where B1, B2, ... are the bounds given by `bounds_paths`.
      *
      * FIXME(#5090): Remove code duplication between this and the
      * code in auto_encode.rs
@@ -182,16 +212,21 @@ pub fn create_derived_impl(cx: @ext_ctxt,
         build::mk_lifetime(cx, l.span, l.ident)
     });
 
-    // Create the reference to the trait.
-    let trait_ref = build::mk_trait_ref_(cx, trait_path);
-
     // Create the type parameters.
     for generics.ty_params.each |ty_param| {
-        let bounds = @opt_vec::with(
-            build::mk_trait_ty_param_bound_(cx, trait_path)
-        );
-        impl_ty_params.push(build::mk_ty_param(cx, ty_param.ident, bounds));
-    };
+        let mut bounds = do bounds_paths.map |&bound_path| {
+            build::mk_trait_ty_param_bound_global(cx, span, bound_path)
+        };
+
+        let this_trait_bound =
+            build::mk_trait_ty_param_bound_(cx, trait_path);
+        bounds.push(this_trait_bound);
+
+        impl_ty_params.push(build::mk_ty_param(cx, ty_param.ident, @bounds));
+    }
+
+    // Create the reference to the trait.
+    let trait_ref = build::mk_trait_ref_(cx, trait_path);
 
     // Create the type of `self`.
     let self_type = create_self_type_with_params(cx,
@@ -216,8 +251,8 @@ pub fn create_subpatterns(cx: @ext_ctxt,
     let mut subpats = ~[];
     for uint::range(0, n) |_i| {
         // Create the subidentifier.
-        let index = subpats.len().to_str();
-        let ident = cx.ident_of(prefix + index);
+        let index = subpats.len();
+        let ident = cx.ident_of(fmt!("%s_%u", prefix, index));
 
         // Create the subpattern.
         let subpath = build::mk_raw_path(span, ~[ ident ]);
@@ -286,6 +321,29 @@ pub fn variant_arg_count(_cx: @ext_ctxt, _span: span, variant: &variant) -> uint
         struct_variant_kind(ref struct_def) => struct_def.fields.len(),
     }
 }
+
+/// Iterate through the idents of the variant arguments. The field is
+/// unnamed (i.e. it's not a struct-like enum), then `None`.
+pub fn each_variant_arg_ident(_cx: @ext_ctxt, _span: span,
+                              variant: &variant, it: &fn(uint, Option<ident>) -> bool) {
+    match variant.node.kind {
+        tuple_variant_kind(ref args) => {
+            for uint::range(0, args.len()) |i| {
+                if !it(i, None) { break }
+            }
+        }
+        struct_variant_kind(ref struct_def) => {
+            for struct_def.fields.eachi |i, f| {
+                let id = match f.node.kind {
+                    named_field(ident, _, _) => Some(ident),
+                    unnamed_field => None
+                };
+                if !it(i, id) { break }
+            }
+        }
+    }
+}
+
 
 pub fn expand_enum_or_struct_match(cx: @ext_ctxt,
                                span: span,

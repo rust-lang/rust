@@ -117,6 +117,19 @@ totalord_impl!(int)
 totalord_impl!(uint)
 
 /**
+Return `o1` if it is not `Equal`, otherwise `o2`. Simulates the
+lexical ordering on a type `(int, int)`.
+*/
+// used in deriving code in libsyntax
+#[inline(always)]
+pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
+    match o1 {
+        Equal => o2,
+        _ => o1
+    }
+}
+
+/**
 * Trait for values that can be compared for a sort-order.
 *
 * Eventually this may be simplified to only require
@@ -184,6 +197,8 @@ pub fn max<T:Ord>(v1: T, v2: T) -> T {
 
 #[cfg(test)]
 mod test {
+    use super::lexical_ordering;
+
     #[test]
     fn test_int_totalord() {
         assert_eq!(5.cmp(&10), Less);
@@ -203,5 +218,17 @@ mod test {
     fn test_ordering_order() {
         assert!(Less < Equal);
         assert_eq!(Greater.cmp(&Less), Greater);
+    }
+
+    #[test]
+    fn test_lexical_ordering() {
+        fn t(o1: Ordering, o2: Ordering, e: Ordering) {
+            assert_eq!(lexical_ordering(o1, o2), e);
+        }
+        for [Less, Equal, Greater].each |&o| {
+            t(Less, o, Less);
+            t(Equal, o, o);
+            t(Greater, o, Greater);
+         }
     }
 }
