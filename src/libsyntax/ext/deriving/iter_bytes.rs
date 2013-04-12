@@ -104,7 +104,7 @@ fn create_iter_bytes_method(cx: @ext_ctxt,
         id: cx.next_id(),
         span: span,
         self_id: cx.next_id(),
-        vis: public
+        vis: inherited
     }
 }
 

@@ -105,7 +105,7 @@ fn create_clone_method(cx: @ext_ctxt,
         id: cx.next_id(),
         span: span,
         self_id: cx.next_id(),
-        vis: public,
+        vis: inherited,
     }
 }
 

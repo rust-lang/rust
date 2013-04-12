@@ -133,16 +133,16 @@ pub trait Decoder {
     fn read_map_elt_val<T>(&self, idx: uint, f: &fn() -> T) -> T;
 }
 
-pub trait Encodable<S:Encoder> {
-    fn encode(&self, s: &S);
+pub trait Encodable<E: Encoder> {
+    fn encode(&self, e: &E);
 }
 
 pub trait Decodable<D:Decoder> {
     fn decode(d: &D) -> Self;
 }
 
-impl<S:Encoder> Encodable<S> for uint {
-    fn encode(&self, s: &S) { s.emit_uint(*self) }
+impl<E: Encoder> Encodable<E> for uint {
+    fn encode(&self, e: &E) { e.emit_uint(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for uint {
@@ -151,8 +151,8 @@ impl<D:Decoder> Decodable<D> for uint {
     }
 }
 
-impl<S:Encoder> Encodable<S> for u8 {
-    fn encode(&self, s: &S) { s.emit_u8(*self) }
+impl<E: Encoder> Encodable<E> for u8 {
+    fn encode(&self, e: &E) { e.emit_u8(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for u8 {
@@ -161,8 +161,8 @@ impl<D:Decoder> Decodable<D> for u8 {
     }
 }
 
-impl<S:Encoder> Encodable<S> for u16 {
-    fn encode(&self, s: &S) { s.emit_u16(*self) }
+impl<E: Encoder> Encodable<E> for u16 {
+    fn encode(&self, e: &E) { e.emit_u16(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for u16 {
@@ -171,8 +171,8 @@ impl<D:Decoder> Decodable<D> for u16 {
     }
 }
 
-impl<S:Encoder> Encodable<S> for u32 {
-    fn encode(&self, s: &S) { s.emit_u32(*self) }
+impl<E: Encoder> Encodable<E> for u32 {
+    fn encode(&self, e: &E) { e.emit_u32(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for u32 {
@@ -181,8 +181,8 @@ impl<D:Decoder> Decodable<D> for u32 {
     }
 }
 
-impl<S:Encoder> Encodable<S> for u64 {
-    fn encode(&self, s: &S) { s.emit_u64(*self) }
+impl<E: Encoder> Encodable<E> for u64 {
+    fn encode(&self, e: &E) { e.emit_u64(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for u64 {
@@ -191,8 +191,8 @@ impl<D:Decoder> Decodable<D> for u64 {
     }
 }
 
-impl<S:Encoder> Encodable<S> for int {
-    fn encode(&self, s: &S) { s.emit_int(*self) }
+impl<E: Encoder> Encodable<E> for int {
+    fn encode(&self, e: &E) { e.emit_int(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for int {
@@ -201,8 +201,8 @@ impl<D:Decoder> Decodable<D> for int {
     }
 }
 
-impl<S:Encoder> Encodable<S> for i8 {
-    fn encode(&self, s: &S) { s.emit_i8(*self) }
+impl<E: Encoder> Encodable<E> for i8 {
+    fn encode(&self, e: &E) { e.emit_i8(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for i8 {
@@ -211,8 +211,8 @@ impl<D:Decoder> Decodable<D> for i8 {
     }
 }
 
-impl<S:Encoder> Encodable<S> for i16 {
-    fn encode(&self, s: &S) { s.emit_i16(*self) }
+impl<E: Encoder> Encodable<E> for i16 {
+    fn encode(&self, e: &E) { e.emit_i16(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for i16 {
@@ -221,8 +221,8 @@ impl<D:Decoder> Decodable<D> for i16 {
     }
 }
 
-impl<S:Encoder> Encodable<S> for i32 {
-    fn encode(&self, s: &S) { s.emit_i32(*self) }
+impl<E: Encoder> Encodable<E> for i32 {
+    fn encode(&self, e: &E) { e.emit_i32(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for i32 {
@@ -231,8 +231,8 @@ impl<D:Decoder> Decodable<D> for i32 {
     }
 }
 
-impl<S:Encoder> Encodable<S> for i64 {
-    fn encode(&self, s: &S) { s.emit_i64(*self) }
+impl<E: Encoder> Encodable<E> for i64 {
+    fn encode(&self, e: &E) { e.emit_i64(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for i64 {
@@ -241,12 +241,12 @@ impl<D:Decoder> Decodable<D> for i64 {
     }
 }
 
-impl<'self, S:Encoder> Encodable<S> for &'self str {
-    fn encode(&self, s: &S) { s.emit_str(*self) }
+impl<'self, E: Encoder> Encodable<E> for &'self str {
+    fn encode(&self, e: &E) { e.emit_str(*self) }
 }
 
-impl<S:Encoder> Encodable<S> for ~str {
-    fn encode(&self, s: &S) { s.emit_str(*self) }
+impl<E: Encoder> Encodable<E> for ~str {
+    fn encode(&self, e: &E) { e.emit_str(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for ~str {
@@ -255,16 +255,16 @@ impl<D:Decoder> Decodable<D> for ~str {
     }
 }
 
-impl<S:Encoder> Encodable<S> for @str {
-    fn encode(&self, s: &S) { s.emit_str(*self) }
+impl<E: Encoder> Encodable<E> for @str {
+    fn encode(&self, e: &E) { e.emit_str(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for @str {
     fn decode(d: &D) -> @str { d.read_str().to_managed() }
 }
 
-impl<S:Encoder> Encodable<S> for float {
-    fn encode(&self, s: &S) { s.emit_float(*self) }
+impl<E: Encoder> Encodable<E> for float {
+    fn encode(&self, e: &E) { e.emit_float(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for float {
@@ -273,8 +273,8 @@ impl<D:Decoder> Decodable<D> for float {
     }
 }
 
-impl<S:Encoder> Encodable<S> for f32 {
-    fn encode(&self, s: &S) { s.emit_f32(*self) }
+impl<E: Encoder> Encodable<E> for f32 {
+    fn encode(&self, e: &E) { e.emit_f32(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for f32 {
@@ -282,8 +282,8 @@ impl<D:Decoder> Decodable<D> for f32 {
         d.read_f32() }
 }
 
-impl<S:Encoder> Encodable<S> for f64 {
-    fn encode(&self, s: &S) { s.emit_f64(*self) }
+impl<E: Encoder> Encodable<E> for f64 {
+    fn encode(&self, e: &E) { e.emit_f64(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for f64 {
@@ -292,8 +292,8 @@ impl<D:Decoder> Decodable<D> for f64 {
     }
 }
 
-impl<S:Encoder> Encodable<S> for bool {
-    fn encode(&self, s: &S) { s.emit_bool(*self) }
+impl<E: Encoder> Encodable<E> for bool {
+    fn encode(&self, e: &E) { e.emit_bool(*self) }
 }
 
 impl<D:Decoder> Decodable<D> for bool {
@@ -302,8 +302,8 @@ impl<D:Decoder> Decodable<D> for bool {
     }
 }
 
-impl<S:Encoder> Encodable<S> for () {
-    fn encode(&self, s: &S) { s.emit_nil() }
+impl<E: Encoder> Encodable<E> for () {
+    fn encode(&self, e: &E) { e.emit_nil() }
 }
 
 impl<D:Decoder> Decodable<D> for () {
@@ -312,15 +312,15 @@ impl<D:Decoder> Decodable<D> for () {
     }
 }
 
-impl<'self, S:Encoder,T:Encodable<S>> Encodable<S> for &'self T {
-    fn encode(&self, s: &S) {
-        (**self).encode(s)
+impl<'self, E: Encoder,T:Encodable<E>> Encodable<E> for &'self T {
+    fn encode(&self, e: &E) {
+        (**self).encode(e)
     }
 }
 
-impl<S:Encoder,T:Encodable<S>> Encodable<S> for ~T {
-    fn encode(&self, s: &S) {
-        (**self).encode(s)
+impl<E: Encoder,T:Encodable<E>> Encodable<E> for ~T {
+    fn encode(&self, e: &E) {
+        (**self).encode(e)
     }
 }
 
@@ -330,9 +330,9 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~T {
     }
 }
 
-impl<S:Encoder,T:Encodable<S>> Encodable<S> for @T {
-    fn encode(&self, s: &S) {
-        (**self).encode(s)
+impl<E: Encoder,T:Encodable<E>> Encodable<E> for @T {
+    fn encode(&self, e: &E) {
+        (**self).encode(e)
     }
 }
 
@@ -342,21 +342,21 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for @T {
     }
 }
 
-impl<'self, S:Encoder,T:Encodable<S>> Encodable<S> for &'self [T] {
-    fn encode(&self, s: &S) {
-        do s.emit_seq(self.len()) {
-            for self.eachi |i, e| {
-                s.emit_seq_elt(i, || e.encode(s))
+impl<'self, E: Encoder,T:Encodable<E>> Encodable<E> for &'self [T] {
+    fn encode(&self, e: &E) {
+        do e.emit_seq(self.len()) {
+            for self.eachi |i, elt| {
+                e.emit_seq_elt(i, || elt.encode(e))
             }
         }
     }
 }
 
-impl<S:Encoder,T:Encodable<S>> Encodable<S> for ~[T] {
-    fn encode(&self, s: &S) {
-        do s.emit_seq(self.len()) {
-            for self.eachi |i, e| {
-                s.emit_seq_elt(i, || e.encode(s))
+impl<E: Encoder,T:Encodable<E>> Encodable<E> for ~[T] {
+    fn encode(&self, e: &E) {
+        do e.emit_seq(self.len()) {
+            for self.eachi |i, elt| {
+                e.emit_seq_elt(i, || elt.encode(e))
             }
         }
     }
@@ -372,11 +372,11 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~[T] {
     }
 }
 
-impl<S:Encoder,T:Encodable<S>> Encodable<S> for @[T] {
-    fn encode(&self, s: &S) {
-        do s.emit_seq(self.len()) {
-            for self.eachi |i, e| {
-                s.emit_seq_elt(i, || e.encode(s))
+impl<E: Encoder,T:Encodable<E>> Encodable<E> for @[T] {
+    fn encode(&self, e: &E) {
+        do e.emit_seq(self.len()) {
+            for self.eachi |i, elt| {
+                e.emit_seq_elt(i, || elt.encode(e))
             }
         }
     }
@@ -392,12 +392,12 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for @[T] {
     }
 }
 
-impl<S:Encoder,T:Encodable<S>> Encodable<S> for Option<T> {
-    fn encode(&self, s: &S) {
-        do s.emit_option {
+impl<E: Encoder,T:Encodable<E>> Encodable<E> for Option<T> {
+    fn encode(&self, e: &E) {
+        do e.emit_option {
             match *self {
-                None => s.emit_option_none(),
-                Some(ref v) => s.emit_option_some(|| v.encode(s)),
+                None => e.emit_option_none(),
+                Some(ref v) => e.emit_option_some(|| v.encode(e)),
             }
         }
     }
@@ -415,13 +415,13 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for Option<T> {
     }
 }
 
-impl<S:Encoder,T0:Encodable<S>,T1:Encodable<S>> Encodable<S> for (T0, T1) {
-    fn encode(&self, s: &S) {
+impl<E: Encoder,T0:Encodable<E>,T1:Encodable<E>> Encodable<E> for (T0, T1) {
+    fn encode(&self, e: &E) {
         match *self {
             (ref t0, ref t1) => {
-                do s.emit_seq(2) {
-                    s.emit_seq_elt(0, || t0.encode(s));
-                    s.emit_seq_elt(1, || t1.encode(s));
+                do e.emit_seq(2) {
+                    e.emit_seq_elt(0, || t0.encode(e));
+                    e.emit_seq_elt(1, || t1.encode(e));
                 }
             }
         }
@@ -441,18 +441,18 @@ impl<D:Decoder,T0:Decodable<D>,T1:Decodable<D>> Decodable<D> for (T0, T1) {
 }
 
 impl<
-    S: Encoder,
-    T0: Encodable<S>,
-    T1: Encodable<S>,
-    T2: Encodable<S>
-> Encodable<S> for (T0, T1, T2) {
-    fn encode(&self, s: &S) {
+    E: Encoder,
+    T0: Encodable<E>,
+    T1: Encodable<E>,
+    T2: Encodable<E>
+> Encodable<E> for (T0, T1, T2) {
+    fn encode(&self, e: &E) {
         match *self {
             (ref t0, ref t1, ref t2) => {
-                do s.emit_seq(3) {
-                    s.emit_seq_elt(0, || t0.encode(s));
-                    s.emit_seq_elt(1, || t1.encode(s));
-                    s.emit_seq_elt(2, || t2.encode(s));
+                do e.emit_seq(3) {
+                    e.emit_seq_elt(0, || t0.encode(e));
+                    e.emit_seq_elt(1, || t1.encode(e));
+                    e.emit_seq_elt(2, || t2.encode(e));
                 }
             }
         }
@@ -478,20 +478,20 @@ impl<
 }
 
 impl<
-    S: Encoder,
-    T0: Encodable<S>,
-    T1: Encodable<S>,
-    T2: Encodable<S>,
-    T3: Encodable<S>
-> Encodable<S> for (T0, T1, T2, T3) {
-    fn encode(&self, s: &S) {
+    E: Encoder,
+    T0: Encodable<E>,
+    T1: Encodable<E>,
+    T2: Encodable<E>,
+    T3: Encodable<E>
+> Encodable<E> for (T0, T1, T2, T3) {
+    fn encode(&self, e: &E) {
         match *self {
             (ref t0, ref t1, ref t2, ref t3) => {
-                do s.emit_seq(4) {
-                    s.emit_seq_elt(0, || t0.encode(s));
-                    s.emit_seq_elt(1, || t1.encode(s));
-                    s.emit_seq_elt(2, || t2.encode(s));
-                    s.emit_seq_elt(3, || t3.encode(s));
+                do e.emit_seq(4) {
+                    e.emit_seq_elt(0, || t0.encode(e));
+                    e.emit_seq_elt(1, || t1.encode(e));
+                    e.emit_seq_elt(2, || t2.encode(e));
+                    e.emit_seq_elt(3, || t3.encode(e));
                 }
             }
         }
@@ -519,22 +519,22 @@ impl<
 }
 
 impl<
-    S: Encoder,
-    T0: Encodable<S>,
-    T1: Encodable<S>,
-    T2: Encodable<S>,
-    T3: Encodable<S>,
-    T4: Encodable<S>
-> Encodable<S> for (T0, T1, T2, T3, T4) {
-    fn encode(&self, s: &S) {
+    E: Encoder,
+    T0: Encodable<E>,
+    T1: Encodable<E>,
+    T2: Encodable<E>,
+    T3: Encodable<E>,
+    T4: Encodable<E>
+> Encodable<E> for (T0, T1, T2, T3, T4) {
+    fn encode(&self, e: &E) {
         match *self {
             (ref t0, ref t1, ref t2, ref t3, ref t4) => {
-                do s.emit_seq(5) {
-                    s.emit_seq_elt(0, || t0.encode(s));
-                    s.emit_seq_elt(1, || t1.encode(s));
-                    s.emit_seq_elt(2, || t2.encode(s));
-                    s.emit_seq_elt(3, || t3.encode(s));
-                    s.emit_seq_elt(4, || t4.encode(s));
+                do e.emit_seq(5) {
+                    e.emit_seq_elt(0, || t0.encode(e));
+                    e.emit_seq_elt(1, || t1.encode(e));
+                    e.emit_seq_elt(2, || t2.encode(e));
+                    e.emit_seq_elt(3, || t3.encode(e));
+                    e.emit_seq_elt(4, || t4.encode(e));
                 }
             }
         }
@@ -565,14 +565,14 @@ impl<
 }
 
 impl<
-    S: Encoder,
-    T: Encodable<S> + Copy
-> Encodable<S> for @mut DList<T> {
-    fn encode(&self, s: &S) {
-        do s.emit_seq(self.size) {
+    E: Encoder,
+    T: Encodable<E> + Copy
+> Encodable<E> for @mut DList<T> {
+    fn encode(&self, e: &E) {
+        do e.emit_seq(self.size) {
             let mut i = 0;
-            for self.each |e| {
-                s.emit_seq_elt(i, || e.encode(s));
+            for self.each |elt| {
+                e.emit_seq_elt(i, || elt.encode(e));
                 i += 1;
             }
         }
@@ -592,13 +592,13 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for @mut DList<T> {
 }
 
 impl<
-    S: Encoder,
-    T: Encodable<S>
-> Encodable<S> for Deque<T> {
-    fn encode(&self, s: &S) {
-        do s.emit_seq(self.len()) {
-            for self.eachi |i, e| {
-                s.emit_seq_elt(i, || e.encode(s));
+    E: Encoder,
+    T: Encodable<E>
+> Encodable<E> for Deque<T> {
+    fn encode(&self, e: &E) {
+        do e.emit_seq(self.len()) {
+            for self.eachi |i, elt| {
+                e.emit_seq_elt(i, || elt.encode(e));
             }
         }
     }
@@ -652,14 +652,14 @@ impl<
 }
 
 impl<
-    S: Encoder,
-    T: Encodable<S> + Hash + IterBytes + Eq
-> Encodable<S> for HashSet<T> {
-    fn encode(&self, s: &S) {
-        do s.emit_seq(self.len()) {
+    E: Encoder,
+    T: Encodable<E> + Hash + IterBytes + Eq
+> Encodable<E> for HashSet<T> {
+    fn encode(&self, e: &E) {
+        do e.emit_seq(self.len()) {
             let mut i = 0;
-            for self.each |e| {
-                s.emit_seq_elt(i, || e.encode(s));
+            for self.each |elt| {
+                e.emit_seq_elt(i, || elt.encode(e));
                 i += 1;
             }
         }
@@ -714,12 +714,12 @@ impl<
     }
 }
 
-impl<S: Encoder> Encodable<S> for TrieSet {
-    fn encode(&self, s: &S) {
-        do s.emit_seq(self.len()) {
+impl<E: Encoder> Encodable<E> for TrieSet {
+    fn encode(&self, e: &E) {
+        do e.emit_seq(self.len()) {
             let mut i = 0;
-            for self.each |e| {
-                s.emit_seq_elt(i, || e.encode(s));
+            for self.each |elt| {
+                e.emit_seq_elt(i, || elt.encode(e));
                 i += 1;
             }
         }
@@ -774,14 +774,14 @@ impl<
 }
 
 impl<
-    S: Encoder,
-    T: Encodable<S> + Eq + TotalOrd
-> Encodable<S> for TreeSet<T> {
-    fn encode(&self, s: &S) {
-        do s.emit_seq(self.len()) {
+    E: Encoder,
+    T: Encodable<E> + Eq + TotalOrd
+> Encodable<E> for TreeSet<T> {
+    fn encode(&self, e: &E) {
+        do e.emit_seq(self.len()) {
             let mut i = 0;
-            for self.each |e| {
-                s.emit_seq_elt(i, || e.encode(s));
+            for self.each |elt| {
+                e.emit_seq_elt(i, || elt.encode(e));
                 i += 1;
             }
         }
@@ -812,7 +812,7 @@ pub trait EncoderHelpers {
     fn emit_from_vec<T>(&self, v: &[T], f: &fn(v: &T));
 }
 
-impl<S:Encoder> EncoderHelpers for S {
+impl<E: Encoder> EncoderHelpers for E {
     fn emit_from_vec<T>(&self, v: &[T], f: &fn(v: &T)) {
         do self.emit_seq(v.len()) {
             for v.eachi |i, e| {

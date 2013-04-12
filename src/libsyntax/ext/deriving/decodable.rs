@@ -133,7 +133,7 @@ fn create_decode_method(
         id: cx.next_id(),
         span: span,
         self_id: cx.next_id(),
-        vis: public
+        vis: inherited
     }
 }
 
