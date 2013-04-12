@@ -810,7 +810,7 @@ pub impl Parser {
     // This version of parse arg doesn't necessarily require
     // identifier names.
     fn parse_arg_general(&self, require_name: bool) -> arg {
-        let mut m;
+        let m;
         let mut is_mutbl = false;
         let pat = if require_name || self.is_named_argument() {
             m = self.parse_arg_mode();
@@ -1154,7 +1154,7 @@ pub impl Parser {
         let lo = self.span.lo;
         let mut hi = self.span.hi;
 
-        let mut ex: expr_;
+        let ex: expr_;
 
         if *self.token == token::LPAREN {
             self.bump();
@@ -1629,9 +1629,9 @@ pub impl Parser {
     // parse a prefix-operator expr
     fn parse_prefix_expr(&self) -> @expr {
         let lo = self.span.lo;
-        let mut hi;
+        let hi;
 
-        let mut ex;
+        let ex;
         match *self.token {
           token::NOT => {
             self.bump();
@@ -1781,7 +1781,7 @@ pub impl Parser {
           token::BINOPEQ(op) => {
               self.bump();
               let rhs = self.parse_expr();
-              let mut aop;
+              let aop;
               match op {
                   token::PLUS => aop = add,
                   token::MINUS => aop = subtract,
@@ -1956,7 +1956,7 @@ pub impl Parser {
         let lo = self.last_span.lo;
         let cond = self.parse_expr();
         let body = self.parse_block_no_value();
-        let mut hi = body.span.hi;
+        let hi = body.span.hi;
         return self.mk_expr(lo, hi, expr_while(cond, body));
     }
 
@@ -1984,7 +1984,7 @@ pub impl Parser {
 
             let lo = self.last_span.lo;
             let body = self.parse_block_no_value();
-            let mut hi = body.span.hi;
+            let hi = body.span.hi;
             return self.mk_expr(lo, hi, expr_loop(body, opt_ident));
         } else {
             // This is a 'continue' expression
@@ -2043,7 +2043,7 @@ pub impl Parser {
 
             arms.push(ast::arm { pats: pats, guard: guard, body: blk });
         }
-        let mut hi = self.span.hi;
+        let hi = self.span.hi;
         self.bump();
         return self.mk_expr(lo, hi, expr_match(discriminant, arms));
     }
@@ -2162,7 +2162,7 @@ pub impl Parser {
             let hi1 = self.last_span.lo;
             let fieldpath = ast_util::ident_to_path(mk_sp(lo1, hi1),
                                                     fieldname);
-            let mut subpat;
+            let subpat;
             if *self.token == token::COLON {
                 self.bump();
                 subpat = self.parse_pat(refutable);
@@ -2183,7 +2183,7 @@ pub impl Parser {
 
         let lo = self.span.lo;
         let mut hi = self.span.hi;
-        let mut pat;
+        let pat;
         match *self.token {
           token::UNDERSCORE => { self.bump(); pat = pat_wild; }
           token::AT => {
@@ -2534,7 +2534,7 @@ pub impl Parser {
             match self.parse_item_or_view_item(/*bad*/ copy item_attrs,
                                                true, false, false) {
               iovi_item(i) => {
-                let mut hi = i.span.hi;
+                let hi = i.span.hi;
                 let decl = @spanned(lo, hi, decl_item(i));
                 return @spanned(lo, hi, stmt_decl(decl, self.get_id()));
               }
@@ -2704,7 +2704,7 @@ pub impl Parser {
                 }
             }
         }
-        let mut hi = self.span.hi;
+        let hi = self.span.hi;
         self.bump();
         let bloc = ast::blk_ {
             view_items: view_items,
@@ -3590,7 +3590,7 @@ pub impl Parser {
         let purity = self.parse_fn_purity();
         let (ident, generics) = self.parse_fn_header();
         let decl = self.parse_fn_decl(|p| p.parse_arg());
-        let mut hi = self.span.hi;
+        let hi = self.span.hi;
         self.expect(&token::SEMI);
         @ast::foreign_item { ident: ident,
                              attrs: attrs,
@@ -3798,7 +3798,7 @@ pub impl Parser {
             }
         }
         self.bump();
-        let mut actual_dtor = do the_dtor.map |dtor| {
+        let actual_dtor = do the_dtor.map |dtor| {
             let (d_body, d_attrs, d_s) = copy *dtor;
             codemap::spanned { node: ast::struct_dtor_ { id: self.get_id(),
                                                      attrs: d_attrs,

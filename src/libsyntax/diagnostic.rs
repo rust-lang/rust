@@ -342,7 +342,7 @@ fn highlight_lines_internal(cm: @codemap::CodeMap,
         while num > 0u { num /= 10u; digits += 1u; }
 
         // indent past |name:## | and the 0-offset column location
-        let mut left = str::len(fm.name) + digits + lo.col.to_uint() + 3u;
+        let left = str::len(fm.name) + digits + lo.col.to_uint() + 3u;
         let mut s = ~"";
         // Skip is the number of characters we need to skip because they are
         // part of the 'filename:line ' part of the previous line.
