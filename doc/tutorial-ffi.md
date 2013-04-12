@@ -186,10 +186,11 @@ A `#[packed]` attribute is available, which will lay out the struct members with
 However, there are currently no guarantees about the layout of an `enum`.
 
 Rust's owned and managed boxes use non-nullable pointers as handles which point to the contained
-object. However, they should not be manually because they are managed by internal allocators.
-Borrowed pointers can safely be assumed to be non-nullable pointers directly to the type. However,
-breaking the borrow checking or mutability rules is not guaranteed to be safe, so prefer using raw
-pointers (`*`) if that's needed because the compiler can't make as many assumptions about them.
+object. However, they should not be manually created because they are managed by internal
+allocators. Borrowed pointers can safely be assumed to be non-nullable pointers directly to the
+type. However, breaking the borrow checking or mutability rules is not guaranteed to be safe, so
+prefer using raw pointers (`*`) if that's needed because the compiler can't make as many assumptions
+about them.
 
 Vectors and strings share the same basic memory layout, and utilities are available in the `vec` and
 `str` modules for working with C APIs. Strings are terminated with `\0` for interoperability with C,
