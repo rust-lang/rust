@@ -1516,9 +1516,8 @@ fn check_local(local: @local, self: @Liveness, vt: vt<@Liveness>) {
 
         // Initializer:
         self.warn_about_unused_or_dead_vars_in_pat(local.node.pat);
-        if !local.node.is_mutbl {
-            self.check_for_reassignments_in_pat(local.node.pat);
-        }
+        self.check_for_reassignments_in_pat(local.node.pat,
+                                            local.node.is_mutbl);
       }
       None => {
 
@@ -1702,12 +1701,15 @@ pub impl Liveness {
         match expr.node {
           expr_path(_) => {
             match *self.tcx.def_map.get(&expr.id) {
-              def_local(nid, false) => {
-                // Assignment to an immutable variable or argument:
-                // only legal if there is no later assignment.
+              def_local(nid, mutbl) => {
+                // Assignment to an immutable variable or argument: only legal
+                // if there is no later assignment. If this local is actually
+                // mutable, then check for a reassignment to flag the mutability
+                // as being used.
                 let ln = self.live_node(expr.id, expr.span);
                 let var = self.variable(nid, expr.span);
-                self.check_for_reassignment(ln, var, expr.span);
+                self.check_for_reassignment(ln, var, expr.span,
+                                            if mutbl {Some(nid)} else {None});
                 self.warn_about_dead_assign(expr.span, expr.id, ln, var);
               }
               def => {
@@ -1731,23 +1733,28 @@ pub impl Liveness {
        }
     }
 
-    fn check_for_reassignments_in_pat(@self, pat: @pat) {
-        do self.pat_bindings(pat) |ln, var, sp, _id| {
-            self.check_for_reassignment(ln, var, sp);
+    fn check_for_reassignments_in_pat(@self, pat: @pat, mutbl: bool) {
+        do self.pat_bindings(pat) |ln, var, sp, id| {
+            self.check_for_reassignment(ln, var, sp,
+                                        if mutbl {Some(id)} else {None});
         }
     }
 
     fn check_for_reassignment(@self, ln: LiveNode, var: Variable,
-                              orig_span: span) {
+                              orig_span: span, mutbl: Option<node_id>) {
         match self.assigned_on_exit(ln, var) {
           Some(ExprNode(span)) => {
-            self.tcx.sess.span_err(
-                span,
-                ~"re-assignment of immutable variable");
-
-            self.tcx.sess.span_note(
-                orig_span,
-                ~"prior assignment occurs here");
+            match mutbl {
+              Some(id) => { self.tcx.used_mut_nodes.insert(id); }
+              None => {
+                self.tcx.sess.span_err(
+                    span,
+                    ~"re-assignment of immutable variable");
+                self.tcx.sess.span_note(
+                    orig_span,
+                    ~"prior assignment occurs here");
+              }
+            }
           }
           Some(lnk) => {
             self.tcx.sess.span_bug(

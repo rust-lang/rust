@@ -304,6 +304,11 @@ struct ctxt_ {
     // Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     // present in this set can be warned about.
     used_unsafe: @mut HashSet<ast::node_id>,
+
+    // Set of nodes which mark locals as mutable which end up getting used at
+    // some point. Local variable definitions not in this set can be warned
+    // about.
+    used_mut_nodes: @mut HashSet<ast::node_id>,
 }
 
 pub enum tbox_flag {
@@ -933,6 +938,7 @@ pub fn mk_ctxt(s: session::Session,
         destructors: @mut HashSet::new(),
         trait_impls: @mut HashMap::new(),
         used_unsafe: @mut HashSet::new(),
+        used_mut_nodes: @mut HashSet::new(),
      }
 }
 
