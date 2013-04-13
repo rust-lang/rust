@@ -202,6 +202,35 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(
     total
 }
 
+#[cfg(test)]
+fn test_num<T:Num + NumCast>(ten: T, two: T) {
+    assert!(ten.add(&two)    == cast(12));
+    assert!(ten.sub(&two)    == cast(8));
+    assert!(ten.mul(&two)    == cast(20));
+    assert!(ten.div(&two)    == cast(5));
+    assert!(ten.modulo(&two) == cast(0));
+
+    assert!(ten.add(&two)    == ten + two);
+    assert!(ten.sub(&two)    == ten - two);
+    assert!(ten.mul(&two)    == ten * two);
+    assert!(ten.div(&two)    == ten / two);
+    assert!(ten.modulo(&two) == ten % two);
+}
+
+#[test] fn test_u8_num()    { test_num(10u8,  2u8)  }
+#[test] fn test_u16_num()   { test_num(10u16, 2u16) }
+#[test] fn test_u32_num()   { test_num(10u32, 2u32) }
+#[test] fn test_u64_num()   { test_num(10u64, 2u64) }
+#[test] fn test_uint_num()  { test_num(10u,   2u)   }
+#[test] fn test_i8_num()    { test_num(10i8,  2i8)  }
+#[test] fn test_i16_num()   { test_num(10i16, 2i16) }
+#[test] fn test_i32_num()   { test_num(10i32, 2i32) }
+#[test] fn test_i64_num()   { test_num(10i64, 2i64) }
+#[test] fn test_int_num()   { test_num(10i,   2i)   }
+#[test] fn test_f32_num()   { test_num(10f32, 2f32) }
+#[test] fn test_f64_num()   { test_num(10f64, 2f64) }
+#[test] fn test_float_num() { test_num(10f,   2f)   }
+
 macro_rules! test_cast_20(
     ($_20:expr) => ({
         let _20 = $_20;
@@ -263,26 +292,3 @@ macro_rules! test_cast_20(
 #[test] fn test_f32_cast()   { test_cast_20!(20f32) }
 #[test] fn test_f64_cast()   { test_cast_20!(20f64) }
 #[test] fn test_float_cast() { test_cast_20!(20f)   }
-
-#[test]
-fn test_generic_cast() {
-    use ops::Add;
-
-    fn add_2<T: Add<T,T> + NumCast>(n: T) -> T {
-        n + cast(2)
-    }
-
-    assert!(add_2(1u)   == 3u);
-    assert!(add_2(1u8)  == 3u8);
-    assert!(add_2(1u16) == 3u16);
-    assert!(add_2(1u32) == 3u32);
-    assert!(add_2(1u64) == 3u64);
-    assert!(add_2(1i)   == 3i);
-    assert!(add_2(1i8)  == 3i8);
-    assert!(add_2(1i16) == 3i16);
-    assert!(add_2(1i32) == 3i32);
-    assert!(add_2(1i64) == 3i64);
-    assert!(add_2(1f)   == 3f);
-    assert!(add_2(1f32) == 3f32);
-    assert!(add_2(1f64) == 3f64);
-}

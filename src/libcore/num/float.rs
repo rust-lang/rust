@@ -663,18 +663,6 @@ pub fn test_round() {
     assert!(round(-3.5) == -4.0);
 }
 
-#[test]
-pub fn test_num() {
-    let ten: float = num::cast(10);
-    let two: float = num::cast(2);
-
-    assert!((ten.add(&two)    == num::cast(12)));
-    assert!((ten.sub(&two)    == num::cast(8)));
-    assert!((ten.mul(&two)    == num::cast(20)));
-    assert!((ten.div(&two)    == num::cast(5)));
-    assert!((ten.modulo(&two) == num::cast(0)));
-}
-
 
 //
 // Local Variables:
