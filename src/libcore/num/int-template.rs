@@ -398,18 +398,6 @@ fn test_int_from_str_overflow() {
 }
 
 #[test]
-pub fn test_num() {
-    let ten: T = num::cast(10);
-    let two: T = num::cast(2);
-
-    assert!((ten.add(&two)    == num::cast(12)));
-    assert!((ten.sub(&two)    == num::cast(8)));
-    assert!((ten.mul(&two)    == num::cast(20)));
-    assert!((ten.div(&two)    == num::cast(5)));
-    assert!((ten.modulo(&two) == num::cast(0)));
-}
-
-#[test]
 pub fn test_ranges() {
     let mut l = ~[];
 
