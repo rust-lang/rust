@@ -49,7 +49,7 @@ pub enum RoundMode {
 }
 
 /**
- * Cast a number the the enclosing type
+ * Cast from one machine scalar to another
  *
  * # Example
  *
@@ -64,7 +64,7 @@ pub fn cast<T:NumCast,U:NumCast>(n: T) -> U {
 }
 
 /**
- * An interface for generic numeric type casts
+ * An interface for casting between machine scalars
  */
 pub trait NumCast {
     fn from<T:NumCast>(n: T) -> Self;
