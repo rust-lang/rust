@@ -25,13 +25,33 @@ do || {
 
 use ops::Drop;
 
-#[cfg(test)] use task::failing;
+#[cfg(test)] use task::{failing, spawn};
 
 pub trait Finally<T> {
     fn finally(&self, dtor: &fn()) -> T;
 }
 
 impl<'self,T> Finally<T> for &'self fn() -> T {
+    fn finally(&self, dtor: &fn()) -> T {
+        let _d = Finallyalizer {
+            dtor: dtor
+        };
+
+        (*self)()
+    }
+}
+
+impl<T> Finally<T> for ~fn() -> T {
+    fn finally(&self, dtor: &fn()) -> T {
+        let _d = Finallyalizer {
+            dtor: dtor
+        };
+
+        (*self)()
+    }
+}
+
+impl<T> Finally<T> for @fn() -> T {
     fn finally(&self, dtor: &fn()) -> T {
         let _d = Finallyalizer {
             dtor: dtor
@@ -95,4 +115,25 @@ fn test_compact() {
     fn but_always_run_this_function() { }
     do_some_fallible_work.finally(
         but_always_run_this_function);
+}
+
+#[test]
+fn test_owned() {
+    fn spawn_with_finalizer(f: ~fn()) {
+        do spawn { do f.finally { } }
+    }
+    let owned: ~fn() = || { };
+    spawn_with_finalizer(owned);
+}
+
+#[test]
+fn test_managed() {
+    let i = @mut 10;
+    let managed: @fn() -> int = || {
+        let r = *i;
+        *i += 10;
+        r
+    };
+    assert!(do managed.finally {} == 10);
+    assert!(*i == 20);
 }
