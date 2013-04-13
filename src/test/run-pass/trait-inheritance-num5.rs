@@ -11,7 +11,7 @@
 use core::cmp::{Eq, Ord};
 use core::num::NumCast::from;
 
-pub trait NumExt: Eq + NumCast {}
+pub trait NumExt: Eq + Num + NumCast {}
 
 impl NumExt for f32 {}
 impl NumExt for int {}

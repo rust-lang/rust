@@ -16,6 +16,28 @@ use kinds::Copy;
 
 pub mod strconv;
 
+pub trait Num: Eq + Zero + One
+             + Neg<Self>
+             + Add<Self,Self>
+             + Sub<Self,Self>
+             + Mul<Self,Self>
+             + Div<Self,Self>
+             + Modulo<Self,Self> {}
+
+impl Num for u8 {}
+impl Num for u16 {}
+impl Num for u32 {}
+impl Num for u64 {}
+impl Num for uint {}
+impl Num for i8 {}
+impl Num for i16 {}
+impl Num for i32 {}
+impl Num for i64 {}
+impl Num for int {}
+impl Num for f32 {}
+impl Num for f64 {}
+impl Num for float {}
+
 pub trait IntConvertible {
     fn to_int(&self) -> int;
     fn from_int(n: int) -> Self;
