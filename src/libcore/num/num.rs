@@ -241,3 +241,26 @@ macro_rules! test_cast_20(
 #[test] fn test_f32_cast()   { test_cast_20!(20f32) }
 #[test] fn test_f64_cast()   { test_cast_20!(20f64) }
 #[test] fn test_float_cast() { test_cast_20!(20f)   }
+
+#[test]
+fn test_generic_cast() {
+    use ops::Add;
+    
+    fn add_2<T: Add<T,T> + NumCast>(n: T) -> T {
+        n + cast(2)
+    }
+    
+    assert!(add_2(1u)   == 3u);
+    assert!(add_2(1u8)  == 3u8);
+    assert!(add_2(1u16) == 3u16);
+    assert!(add_2(1u32) == 3u32);
+    assert!(add_2(1u64) == 3u64);
+    assert!(add_2(1i)   == 3i);
+    assert!(add_2(1i8)  == 3i8);
+    assert!(add_2(1i16) == 3i16);
+    assert!(add_2(1i32) == 3i32);
+    assert!(add_2(1i64) == 3i64);
+    assert!(add_2(1f)   == 3f);
+    assert!(add_2(1f32) == 3f32);
+    assert!(add_2(1f64) == 3f64);
+}
