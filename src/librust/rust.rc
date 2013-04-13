@@ -67,8 +67,8 @@ static commands: &'static [Command<'static>] = &[
         usage_line: "build an executable, and run it",
         usage_full: UsgStr(
             "The run command is an shortcut for the command line \n\
-             \"rustc <filename> -o <filestem>~ && ./<filestem>~\".\
-            \n\nUsage:\trust run <filename>"
+             \"rustc <filename> -o <filestem>~ && ./<filestem>~ [<arguments>...]\".\
+            \n\nUsage:\trust run <filename> [<arguments>...]"
         )
     },
     Command{
@@ -169,14 +169,14 @@ fn cmd_test(args: &[~str]) -> ValidUsage {
 
 fn cmd_run(args: &[~str]) -> ValidUsage {
     match args {
-        [filename] => {
+        [filename, ..prog_args] => {
             let exec = Path(filename).filestem().unwrap() + "~";
             if run::run_program("rustc", [
                 filename.to_owned(),
                 ~"-o",
                 exec.to_owned()
             ]) == 0 {
-                run::run_program(~"./"+exec, []);
+                run::run_program(~"./"+exec, prog_args);
             }
             Valid
         }
