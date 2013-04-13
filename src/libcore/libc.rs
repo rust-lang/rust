@@ -863,6 +863,8 @@ pub mod consts {
             pub static F_TEST : int = 3;
             pub static F_TLOCK : int = 2;
             pub static F_ULOCK : int = 0;
+            pub static SIGKILL : int = 9;
+            pub static SIGTERM : int = 15;
         }
         pub mod posix01 {
         }
@@ -930,6 +932,8 @@ pub mod consts {
             pub static F_TEST : int = 3;
             pub static F_TLOCK : int = 2;
             pub static F_ULOCK : int = 0;
+            pub static SIGKILL : int = 9;
+            pub static SIGTERM : int = 15;
         }
         pub mod posix01 {
         }
@@ -998,6 +1002,8 @@ pub mod consts {
             pub static F_TEST : int = 3;
             pub static F_TLOCK : int = 2;
             pub static F_ULOCK : int = 0;
+            pub static SIGKILL : int = 9;
+            pub static SIGTERM : int = 15;
         }
         pub mod posix01 {
         }
@@ -1482,6 +1488,17 @@ pub mod funcs {
                              -> ssize_t;
             }
         }
+
+        #[nolink]
+        #[abi = "cdecl"]
+        pub mod signal {
+            use libc::types::os::arch::c95::{c_int};
+            use libc::types::os::arch::posix88::{pid_t};
+
+            pub extern {
+                unsafe fn kill(pid: pid_t, sig: c_int) -> c_int;
+            }
+        }
     }
 
     #[cfg(target_os = "linux")]
@@ -1623,6 +1640,7 @@ pub mod funcs {
     pub mod extra {
 
         pub mod kernel32 {
+            use libc::types::os::arch::c95::{c_uint};
             use libc::types::os::arch::extra::{BOOL, DWORD, HMODULE};
             use libc::types::os::arch::extra::{LPCWSTR, LPWSTR, LPTCH};
             use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES};
@@ -1663,6 +1681,7 @@ pub mod funcs {
                                        findFileData: HANDLE)
                     -> BOOL;
                 unsafe fn FindClose(findFile: HANDLE) -> BOOL;
+                unsafe fn TerminateProcess(hProcess: HANDLE, uExitCode: c_uint) -> BOOL;
             }
         }
 
