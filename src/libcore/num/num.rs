@@ -9,8 +9,8 @@
 // except according to those terms.
 
 //! An interface for numeric types
-use cmp::Ord;
-use ops::{Div, Mul, Neg};
+use cmp::{Eq, Ord};
+use ops::{Neg, Add, Sub, Mul, Div, Modulo};
 use option::Option;
 use kinds::Copy;
 
@@ -86,6 +86,57 @@ pub trait NumCast {
     fn to_float(&self) -> float;
 }
 
+macro_rules! impl_num_cast(
+    ($T:ty, $conv:ident) => (
+        // FIXME #4375: This enclosing module is necessary because
+        // of a bug with macros expanding into multiple items 
+        pub mod $conv {
+            use num::NumCast;
+            
+            #[cfg(notest)]
+            impl NumCast for $T {
+                #[doc = "Cast `n` to a `$T`"]
+                #[inline(always)]
+                fn from<N:NumCast>(n: N) -> $T {
+                    // `$conv` could be generated using `concat_idents!`, but that
+                    // macro seems to be broken at the moment
+                    n.$conv()
+                }
+
+                #[inline(always)] fn to_u8(&self)    -> u8    { *self as u8    }
+                #[inline(always)] fn to_u16(&self)   -> u16   { *self as u16   }
+                #[inline(always)] fn to_u32(&self)   -> u32   { *self as u32   }
+                #[inline(always)] fn to_u64(&self)   -> u64   { *self as u64   }
+                #[inline(always)] fn to_uint(&self)  -> uint  { *self as uint  }
+
+                #[inline(always)] fn to_i8(&self)    -> i8    { *self as i8    }
+                #[inline(always)] fn to_i16(&self)   -> i16   { *self as i16   }
+                #[inline(always)] fn to_i32(&self)   -> i32   { *self as i32   }
+                #[inline(always)] fn to_i64(&self)   -> i64   { *self as i64   }
+                #[inline(always)] fn to_int(&self)   -> int   { *self as int   }
+
+                #[inline(always)] fn to_f32(&self)   -> f32   { *self as f32   }
+                #[inline(always)] fn to_f64(&self)   -> f64   { *self as f64   }
+                #[inline(always)] fn to_float(&self) -> float { *self as float }
+            }
+        }
+    )
+)
+
+impl_num_cast!(u8,    to_u8)
+impl_num_cast!(u16,   to_u16)
+impl_num_cast!(u32,   to_u32)
+impl_num_cast!(u64,   to_u64)
+impl_num_cast!(uint,  to_uint)
+impl_num_cast!(i8,    to_i8)
+impl_num_cast!(i16,   to_i16)
+impl_num_cast!(i32,   to_i32)
+impl_num_cast!(i64,   to_i64)
+impl_num_cast!(int,   to_int)
+impl_num_cast!(f32,   to_f32)
+impl_num_cast!(f64,   to_f64)
+impl_num_cast!(float, to_float)
+
 pub trait ToStrRadix {
     pub fn to_str_radix(&self, radix: uint) -> ~str;
 }
@@ -129,3 +180,64 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(
     total
 }
 
+macro_rules! test_cast_20(
+    ($_20:expr) => ({
+        let _20 = $_20;
+        
+        assert!(20u   == _20.to_uint());
+        assert!(20u8  == _20.to_u8());
+        assert!(20u16 == _20.to_u16());
+        assert!(20u32 == _20.to_u32());
+        assert!(20u64 == _20.to_u64());
+        assert!(20i   == _20.to_int());
+        assert!(20i8  == _20.to_i8());
+        assert!(20i16 == _20.to_i16());
+        assert!(20i32 == _20.to_i32());
+        assert!(20i64 == _20.to_i64());
+        assert!(20f   == _20.to_float());
+        assert!(20f32 == _20.to_f32());
+        assert!(20f64 == _20.to_f64());
+
+        assert!(_20 == NumCast::from(20u));
+        assert!(_20 == NumCast::from(20u8));
+        assert!(_20 == NumCast::from(20u16));
+        assert!(_20 == NumCast::from(20u32));
+        assert!(_20 == NumCast::from(20u64));
+        assert!(_20 == NumCast::from(20i));
+        assert!(_20 == NumCast::from(20i8));
+        assert!(_20 == NumCast::from(20i16));
+        assert!(_20 == NumCast::from(20i32));
+        assert!(_20 == NumCast::from(20i64));
+        assert!(_20 == NumCast::from(20f));
+        assert!(_20 == NumCast::from(20f32));
+        assert!(_20 == NumCast::from(20f64));
+
+        assert!(_20 == cast(20u));
+        assert!(_20 == cast(20u8));
+        assert!(_20 == cast(20u16));
+        assert!(_20 == cast(20u32));
+        assert!(_20 == cast(20u64));
+        assert!(_20 == cast(20i));
+        assert!(_20 == cast(20i8));
+        assert!(_20 == cast(20i16));
+        assert!(_20 == cast(20i32));
+        assert!(_20 == cast(20i64));
+        assert!(_20 == cast(20f));
+        assert!(_20 == cast(20f32));
+        assert!(_20 == cast(20f64));
+    })
+)
+
+#[test] fn test_u8_cast()    { test_cast_20!(20u8)  }
+#[test] fn test_u16_cast()   { test_cast_20!(20u16) }
+#[test] fn test_u32_cast()   { test_cast_20!(20u32) }
+#[test] fn test_u64_cast()   { test_cast_20!(20u64) }
+#[test] fn test_uint_cast()  { test_cast_20!(20u)   }
+#[test] fn test_i8_cast()    { test_cast_20!(20i8)  }
+#[test] fn test_i16_cast()   { test_cast_20!(20i16) }
+#[test] fn test_i32_cast()   { test_cast_20!(20i32) }
+#[test] fn test_i64_cast()   { test_cast_20!(20i64) }
+#[test] fn test_int_cast()   { test_cast_20!(20i)   }
+#[test] fn test_f32_cast()   { test_cast_20!(20f32) }
+#[test] fn test_f64_cast()   { test_cast_20!(20f64) }
+#[test] fn test_float_cast() { test_cast_20!(20f)   }
