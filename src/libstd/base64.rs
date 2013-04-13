@@ -28,7 +28,7 @@ static CHARS: [char, ..64] = [
 
 impl<'self> ToBase64 for &'self [u8] {
     /**
-     * Turn a vector of `u8` bytes into a string representing them in base64.
+     * Turn a vector of `u8` bytes into a base64 string.
      *
      * *Example*:
      *
@@ -92,7 +92,7 @@ impl<'self> ToBase64 for &'self [u8] {
 
 impl<'self> ToBase64 for &'self str {
     /**
-     * Convert any string (literal, `@`, `&`, `~`) to base64 encoding.
+     * Convert any string (literal, `@`, `&`, or `~`) to base64 encoding.
      *
      *
      * *Example*:
@@ -119,8 +119,8 @@ pub trait FromBase64 {
 
 impl FromBase64 for ~[u8] {
     /**
-     * Turn a vector of `u8`s representing characters
-     * encoding byte values in base64 into the vector of `u8` byte values.
+     * Convert base64 `u8` vector into u8 byte values.
+     * Every 4 encoded characters is converted into 3 octets, modulo padding.
      *
      * *Example*:
      *
@@ -200,16 +200,15 @@ impl FromBase64 for ~[u8] {
 
 impl FromBase64 for ~str {
     /**
-     * Convert any string (literal, `@`, `&`, `~`)
-     * that contains a base64 encoded value, to the byte values it encodes.
+     * Convert any base64 encoded string (literal, `@`, `&`, or `~`)
+     * to the byte values it encodes.
      *
      * You can use the `from_bytes` function in `core::str`
      * to turn a `[u8]` into a string with characters corresponding to those values.
      *
      * *Example*:
      *
-     * This is an example of going from a string literal to the base64 encoding
-     * and back to the same string.
+     * This converts a string literal to base64 and back.
      *
      * ~~~~
      * extern mod std;
