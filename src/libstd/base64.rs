@@ -26,6 +26,21 @@ static CHARS: [char, ..64] = [
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'
 ];
 
+/**
+ * Turn a vector of `u8` bytes into a string representing them in base64.
+ *
+ * *Example*:
+ *
+ * ~~~~
+ * extern mod std;
+ * use std::base64::ToBase64;
+ *
+ * fn main () {
+ *   let str = [52,32].to_base64();
+ *   println(fmt!("%s", str));
+ * }
+ * ~~~~
+ */
 impl<'self> ToBase64 for &'self [u8] {
     fn to_base64(&self) -> ~str {
         let mut s = ~"";
@@ -102,6 +117,25 @@ pub trait FromBase64 {
     fn from_base64(&self) -> ~[u8];
 }
 
+/**
+ * Turn a vector of `u8`s representing characters
+ * encoding byte values in base64 into the vector of `u8` byte values.
+ *
+ * *Example*:
+ *
+ * ~~~~
+ * extern mod std;
+ * use std::base64::ToBase64;
+ * use std::base64::FromBase64;
+ *
+ * fn main () {
+ *   let str = [52,32].to_base64();
+ *   println(fmt!("%s", str));
+ *   let bytes = str.from_base64();
+ *   println(fmt!("%?",bytes));
+ * }
+ * ~~~~
+ */
 impl FromBase64 for ~[u8] {
     fn from_base64(&self) -> ~[u8] {
         if self.len() % 4u != 0u { fail!(~"invalid base64 length"); }
