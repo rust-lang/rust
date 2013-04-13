@@ -29,7 +29,7 @@ extern mod rustc(vers = "0.7-pre");
 extern mod syntax(vers = "0.7-pre");
 
 use core::*;
-use core::io::WriterUtil;
+use core::io::{ReaderUtil, WriterUtil};
 use rustc::driver::{driver, session};
 use syntax::{ast, diagnostic};
 use syntax::ast_util::*;
@@ -241,23 +241,29 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
 
 /// Tries to get a line from rl after outputting a prompt. Returns
 /// None if no input was read (e.g. EOF was reached).
-fn get_line(prompt: ~str) -> Option<~str> {
-    let result = unsafe { rl::read(prompt) };
+fn get_line(use_rl: bool, prompt: ~str) -> Option<~str> {
+    if use_rl {
+        let result = unsafe { rl::read(prompt) };
 
-    if result.is_none() {
-        return None;
+        match result {
+            None => None,
+            Some(line) => {
+                unsafe { rl::add_history(line) };
+                Some(line)
+            }
+        }
+    } else {
+        if io::stdin().eof() {
+            None
+        } else {
+            Some(io::stdin().read_line())
+        }
     }
-
-    let line = result.get();
-
-    unsafe { rl::add_history(line) };
-
-    return Some(line);
 }
 
 /// Run a command, e.g. :clear, :exit, etc.
 fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
-           cmd: ~str, args: ~[~str]) -> CmdAction {
+           cmd: ~str, args: ~[~str], use_rl: bool) -> CmdAction {
     let mut action = action_none;
     match cmd {
         ~"exit" => repl.running = false,
@@ -313,7 +319,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             let mut multiline_cmd = ~"";
             let mut end_multiline = false;
             while (!end_multiline) {
-                match get_line(~"rusti| ") {
+                match get_line(use_rl, ~"rusti| ") {
                     None => fail!(~"unterminated multiline command :{ .. :}"),
                     Some(line) => {
                         if str::trim(line) == ~":}" {
@@ -333,7 +339,8 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
 
 /// Executes a line of input, which may either be rust code or a
 /// :command. Returns a new Repl if it has changed.
-fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str)
+fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
+            use_rl: bool)
     -> Option<Repl> {
     if line.starts_with(~":") {
         let full = line.substr(1, line.len() - 1);
@@ -349,11 +356,11 @@ fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str)
                     vec::slice(split, 1, len).to_vec()
                 } else { ~[] };
 
-                match run_cmd(repl, in, out, cmd, args) {
+                match run_cmd(repl, in, out, cmd, args, use_rl) {
                     action_none => { }
                     action_run_line(multiline_cmd) => {
                         if !multiline_cmd.is_empty() {
-                            return run_line(repl, in, out, multiline_cmd);
+                            return run_line(repl, in, out, multiline_cmd, use_rl);
                         }
                     }
                 }
@@ -386,30 +393,37 @@ pub fn main() {
         stmts: ~""
     };
 
-    io::println("WARNING: The Rust REPL is experimental and may be");
-    io::println("unstable. If you encounter problems, please use the");
-    io::println("compiler instead.");
+    let istty = unsafe { libc::isatty(libc::STDIN_FILENO as i32) } != 0;
 
-    unsafe {
-        do rl::complete |line, suggest| {
-            if line.starts_with(":") {
-                suggest(~":clear");
-                suggest(~":exit");
-                suggest(~":help");
-                suggest(~":load");
+    // only print this stuff if the user is actually typing into rusti
+    if istty {
+        io::println("WARNING: The Rust REPL is experimental and may be");
+        io::println("unstable. If you encounter problems, please use the");
+        io::println("compiler instead.");
+
+        unsafe {
+            do rl::complete |line, suggest| {
+                if line.starts_with(":") {
+                    suggest(~":clear");
+                    suggest(~":exit");
+                    suggest(~":help");
+                    suggest(~":load");
+                }
             }
         }
     }
 
     while repl.running {
-        match get_line(repl.prompt) {
+        match get_line(istty, repl.prompt) {
             None => break,
             Some(line) => {
                 if line.is_empty() {
-                    io::println(~"()");
+                    if istty {
+                        io::println(~"()");
+                    }
                     loop;
                 }
-                match run_line(&mut repl, in, out, line) {
+                match run_line(&mut repl, in, out, line, istty) {
                     Some(new_repl) => repl = new_repl,
                     None => { }
                 }
