@@ -89,10 +89,10 @@ pub trait NumCast {
 macro_rules! impl_num_cast(
     ($T:ty, $conv:ident) => (
         // FIXME #4375: This enclosing module is necessary because
-        // of a bug with macros expanding into multiple items 
+        // of a bug with macros expanding into multiple items
         pub mod $conv {
             use num::NumCast;
-            
+
             #[cfg(notest)]
             impl NumCast for $T {
                 #[doc = "Cast `n` to a `$T`"]
@@ -183,7 +183,7 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(
 macro_rules! test_cast_20(
     ($_20:expr) => ({
         let _20 = $_20;
-        
+
         assert!(20u   == _20.to_uint());
         assert!(20u8  == _20.to_u8());
         assert!(20u16 == _20.to_u16());
@@ -245,11 +245,11 @@ macro_rules! test_cast_20(
 #[test]
 fn test_generic_cast() {
     use ops::Add;
-    
+
     fn add_2<T: Add<T,T> + NumCast>(n: T) -> T {
         n + cast(2)
     }
-    
+
     assert!(add_2(1u)   == 3u);
     assert!(add_2(1u8)  == 3u8);
     assert!(add_2(1u16) == 3u16);
