@@ -555,18 +555,6 @@ impl num::FromStrRadix for f32 {
     }
 }
 
-#[test]
-pub fn test_num() {
-    let ten: f32 = num::cast(10);
-    let two: f32 = num::cast(2);
-
-    assert!((ten.add(&two)    == num::cast(12)));
-    assert!((ten.sub(&two)    == num::cast(8)));
-    assert!((ten.mul(&two)    == num::cast(20)));
-    assert!((ten.div(&two)    == num::cast(5)));
-    assert!((ten.modulo(&two) == num::cast(0)));
-}
-
 //
 // Local Variables:
 // mode: rust
