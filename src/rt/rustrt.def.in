@@ -199,6 +199,7 @@ rust_opendir
 rust_dbg_extern_identity_u32
 rust_dbg_extern_identity_u64
 rust_dbg_extern_identity_TwoU64s
+rust_dbg_extern_identity_TwoDoubles
 rust_dbg_extern_identity_double
 rust_dbg_extern_identity_u8
 rust_get_rt_env

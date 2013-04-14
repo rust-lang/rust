@@ -866,6 +866,16 @@ rust_dbg_extern_identity_TwoU64s(TwoU64s u) {
     return u;
 }
 
+struct TwoDoubles {
+    double one;
+    double two;
+};
+
+extern "C" CDECL TwoDoubles
+rust_dbg_extern_identity_TwoDoubles(TwoDoubles u) {
+    return u;
+}
+
 extern "C" CDECL double
 rust_dbg_extern_identity_double(double u) {
     return u;

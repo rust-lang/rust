@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S {
-    r: float
+struct TwoDoubles {
+    r: float,
+    i: float
 }
 
 extern "C" {
-    fn rust_dbg_extern_identity_double(arg1: S) -> float;
+    fn rust_dbg_extern_identity_TwoDoubles(arg1: TwoDoubles) -> TwoDoubles;
 }
 
 pub fn main() {}
