@@ -161,7 +161,7 @@ pub fn foldl<A,B,IA:BaseIter<A>>(self: &IA, b0: B, blk: &fn(&B, &A) -> B)
 
 #[inline(always)]
 pub fn to_vec<A:Copy,IA:BaseIter<A>>(self: &IA) -> ~[A] {
-    foldl::<A,~[A],IA>(self, ~[], |r, a| vec::append(copy (*r), ~[*a]))
+    map_to_vec(self, |&x| x)
 }
 
 #[inline(always)]
