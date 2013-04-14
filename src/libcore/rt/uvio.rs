@@ -108,7 +108,7 @@ impl IoFactory for UvIoFactory {
             assert!(scheduler.in_task_context());
 
             // Block this task and take ownership, switch to scheduler context
-            do scheduler.block_running_task_and_then |scheduler, task| {
+            do scheduler.deschedule_running_task_and_then |scheduler, task| {
 
                 rtdebug!("connect: entered scheduler context");
                 assert!(!scheduler.in_task_context());
@@ -181,7 +181,7 @@ impl TcpListener for UvTcpListener {
         do Scheduler::local |scheduler| {
             assert!(scheduler.in_task_context());
 
-            do scheduler.block_running_task_and_then |_, task| {
+            do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell(task);
                 let mut server_tcp_watcher = server_tcp_watcher;
                 do server_tcp_watcher.listen |server_stream_watcher, status| {
@@ -247,7 +247,7 @@ impl Stream for UvStream {
             assert!(scheduler.in_task_context());
             let watcher = self.watcher();
             let buf_ptr: *&mut [u8] = &buf;
-            do scheduler.block_running_task_and_then |scheduler, task| {
+            do scheduler.deschedule_running_task_and_then |scheduler, task| {
                 rtdebug!("read: entered scheduler context");
                 assert!(!scheduler.in_task_context());
                 let mut watcher = watcher;
@@ -293,7 +293,7 @@ impl Stream for UvStream {
             assert!(scheduler.in_task_context());
             let watcher = self.watcher();
             let buf_ptr: *&[u8] = &buf;
-            do scheduler.block_running_task_and_then |_, task| {
+            do scheduler.deschedule_running_task_and_then |_, task| {
                 let mut watcher = watcher;
                 let task_cell = Cell(task);
                 let buf = unsafe { &*buf_ptr };
@@ -420,7 +420,7 @@ fn test_read_and_block() {
                         // Yield to the other task in hopes that it
                         // will trigger a read callback while we are
                         // not ready for it
-                        do scheduler.block_running_task_and_then |scheduler, task| {
+                        do scheduler.deschedule_running_task_and_then |scheduler, task| {
                             scheduler.task_queue.push_back(task);
                         }
                     }
