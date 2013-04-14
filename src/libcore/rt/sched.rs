@@ -195,7 +195,7 @@ pub impl Scheduler {
     /// The closure here is a *stack* closure that lives in the
     /// running task.  It gets transmuted to the scheduler's lifetime
     /// and called while the task is blocked.
-    fn block_running_task_and_then(&mut self, f: &fn(&mut Scheduler, ~Task)) {
+    fn deschedule_running_task_and_then(&mut self, f: &fn(&mut Scheduler, ~Task)) {
         assert!(self.in_task_context());
 
         rtdebug!("blocking task");
@@ -566,7 +566,7 @@ fn test_block_task() {
         let task = ~do Task::new(&mut sched.stack_pool) {
             do Scheduler::local |sched| {
                 assert!(sched.in_task_context());
-                do sched.block_running_task_and_then() |sched, task| {
+                do sched.deschedule_running_task_and_then() |sched, task| {
                     assert!(!sched.in_task_context());
                     sched.task_queue.push_back(task);
                 }
