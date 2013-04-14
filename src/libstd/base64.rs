@@ -37,8 +37,8 @@ impl<'self> ToBase64 for &'self [u8] {
      * use std::base64::ToBase64;
      *
      * fn main () {
-     *   let str = [52,32].to_base64();
-     *   println(fmt!("%s", str));
+     *     let str = [52,32].to_base64();
+     *     println(fmt!("%s", str));
      * }
      * ~~~~
      */
@@ -102,8 +102,8 @@ impl<'self> ToBase64 for &'self str {
      * use std::base64::ToBase64;
      *
      * fn main () {
-     *   let str = "Hello, World".to_base64();
-     *   println(fmt!("%s",str));
+     *     let str = "Hello, World".to_base64();
+     *     println(fmt!("%s",str));
      * }
      * ~~~~
      *
@@ -130,10 +130,10 @@ impl FromBase64 for ~[u8] {
      * use std::base64::FromBase64;
      *
      * fn main () {
-     *   let str = [52,32].to_base64();
-     *   println(fmt!("%s", str));
-     *   let bytes = str.from_base64();
-     *   println(fmt!("%?",bytes));
+     *     let str = [52,32].to_base64();
+     *     println(fmt!("%s", str));
+     *     let bytes = str.from_base64();
+     *     println(fmt!("%?",bytes));
      * }
      * ~~~~
      */
@@ -217,12 +217,12 @@ impl FromBase64 for ~str {
      * use core::str;
      *
      * fn main () {
-     *   let hello_str = "Hello, World".to_base64();
-     *   println(fmt!("%s",hello_str));
-     *   let bytes = hello_str.from_base64();
-     *   println(fmt!("%?",bytes));
-     *   let result_str = str::from_bytes(bytes);
-     *   println(fmt!("%s",result_str));
+     *     let hello_str = "Hello, World".to_base64();
+     *     println(fmt!("%s",hello_str));
+     *     let bytes = hello_str.from_base64();
+     *     println(fmt!("%?",bytes));
+     *     let result_str = str::from_bytes(bytes);
+     *     println(fmt!("%s",result_str));
      * }
      * ~~~~
      */
