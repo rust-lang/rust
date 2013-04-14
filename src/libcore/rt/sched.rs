@@ -212,7 +212,7 @@ pub impl Scheduler {
             Context::swap(last_task_context, sched_context);
         }
 
-        // XXX: Should probably run cleanup jobs
+        self.run_cleanup_jobs();
     }
 
     /// Switch directly to another task, without going through the scheduler.
@@ -233,7 +233,7 @@ pub impl Scheduler {
             Context::swap(last_task_context, next_task_context);
         }
 
-        // XXX: Should probably run cleanup jobs
+        self.run_cleanup_jobs();
     }
 
     // * Other stuff
@@ -245,7 +245,6 @@ pub impl Scheduler {
     }
 
     fn run_cleanup_jobs(&mut self) {
-        assert!(!self.in_task_context());
         rtdebug!("running cleanup jobs");
 
         while !self.cleanup_jobs.is_empty() {
@@ -325,8 +324,12 @@ pub impl Task {
     priv fn build_start_wrapper(start: ~fn()) -> ~fn() {
         // XXX: The old code didn't have this extra allocation
         let wrapper: ~fn() = || {
-            // XXX: Should probably run scheduler cleanup jobs for situations
-            // where a task context switches directly to a new task
+            // This is the first code to execute after the initial
+            // context switch to the task. The previous context may
+            // have asked us to do some cleanup.
+            let mut sched = ThreadLocalScheduler::new();
+            let sched = sched.get_scheduler();
+            sched.run_cleanup_jobs();
 
             start();
 
