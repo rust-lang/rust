@@ -863,10 +863,20 @@ pub mod consts {
             pub static F_TEST : int = 3;
             pub static F_TLOCK : int = 2;
             pub static F_ULOCK : int = 0;
+            pub static SIGHUP : int = 1;
+            pub static SIGINT : int = 2;
+            pub static SIGQUIT : int = 3;
+            pub static SIGILL : int = 4;
+            pub static SIGABRT : int = 6;
+            pub static SIGFPE : int = 8;
             pub static SIGKILL : int = 9;
+            pub static SIGSEGV : int = 11;
+            pub static SIGPIPE : int = 13;
+            pub static SIGALRM : int = 14;
             pub static SIGTERM : int = 15;
         }
         pub mod posix01 {
+            pub static SIGTRAP : int = 5;
         }
         pub mod posix08 {
         }
@@ -932,10 +942,20 @@ pub mod consts {
             pub static F_TEST : int = 3;
             pub static F_TLOCK : int = 2;
             pub static F_ULOCK : int = 0;
+            pub static SIGHUP : int = 1;
+            pub static SIGINT : int = 2;
+            pub static SIGQUIT : int = 3;
+            pub static SIGILL : int = 4;
+            pub static SIGABRT : int = 6;
+            pub static SIGFPE : int = 8;
             pub static SIGKILL : int = 9;
+            pub static SIGSEGV : int = 11;
+            pub static SIGPIPE : int = 13;
+            pub static SIGALRM : int = 14;
             pub static SIGTERM : int = 15;
         }
         pub mod posix01 {
+            pub static SIGTRAP : int = 5;
         }
         pub mod posix08 {
         }
@@ -1002,10 +1022,20 @@ pub mod consts {
             pub static F_TEST : int = 3;
             pub static F_TLOCK : int = 2;
             pub static F_ULOCK : int = 0;
+            pub static SIGHUP : int = 1;
+            pub static SIGINT : int = 2;
+            pub static SIGQUIT : int = 3;
+            pub static SIGILL : int = 4;
+            pub static SIGABRT : int = 6;
+            pub static SIGFPE : int = 8;
             pub static SIGKILL : int = 9;
+            pub static SIGSEGV : int = 11;
+            pub static SIGPIPE : int = 13;
+            pub static SIGALRM : int = 14;
             pub static SIGTERM : int = 15;
         }
         pub mod posix01 {
+            pub static SIGTRAP : int = 5;
         }
         pub mod posix08 {
         }
