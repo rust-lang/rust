@@ -38,12 +38,9 @@ pub struct Scheduler {
     priv saved_context: Context,
     /// The currently executing task
     priv current_task: Option<~Task>,
-    /// A queue of jobs to perform immediately upon return from task
-    /// context to scheduler context.
-    /// XXX: This probably should be a single cleanup action and it
-    /// should run after a context switch, not on return from the
-    /// scheduler
-    priv cleanup_jobs: ~[CleanupJob]
+    /// An action performed after a context switch on behalf of the
+    /// code running before the context switch
+    priv cleanup_job: Option<CleanupJob>
 }
 
 // XXX: Some hacks to put a &fn in Scheduler without borrowck
@@ -84,7 +81,7 @@ pub impl Scheduler {
             stack_pool: StackPool::new(),
             saved_context: Context::empty(),
             current_task: None,
-            cleanup_jobs: ~[]
+            cleanup_job: None
         }
     }
 
@@ -165,7 +162,7 @@ pub impl Scheduler {
         assert!(self.current_task.is_none());
 
         // Running tasks may have asked us to do some cleanup
-        self.run_cleanup_jobs();
+        self.run_cleanup_job();
     }
 
 
@@ -212,7 +209,7 @@ pub impl Scheduler {
             Context::swap(last_task_context, sched_context);
         }
 
-        self.run_cleanup_jobs();
+        self.run_cleanup_job();
     }
 
     /// Switch directly to another task, without going through the scheduler.
@@ -233,7 +230,7 @@ pub impl Scheduler {
             Context::swap(last_task_context, next_task_context);
         }
 
-        self.run_cleanup_jobs();
+        self.run_cleanup_job();
     }
 
     // * Other stuff
@@ -241,21 +238,25 @@ pub impl Scheduler {
     fn in_task_context(&self) -> bool { self.current_task.is_some() }
 
     fn enqueue_cleanup_job(&mut self, job: CleanupJob) {
-        self.cleanup_jobs.unshift(job);
+        assert!(self.cleanup_job.is_none());
+        self.cleanup_job = Some(job);
     }
 
-    fn run_cleanup_jobs(&mut self) {
+    fn run_cleanup_job(&mut self) {
         rtdebug!("running cleanup jobs");
 
-        while !self.cleanup_jobs.is_empty() {
-            match self.cleanup_jobs.pop() {
-                RescheduleTask(task) => {
-                    // NB: Pushing to the *front* of the queue
-                    self.task_queue.push_front(task);
-                }
-                RecycleTask(task) => task.recycle(&mut self.stack_pool),
-                GiveTask(task, f) => (f.to_fn())(self, task)
+        if self.cleanup_job.is_none() {
+            return;
+        }
+
+        let cleanup_job = self.cleanup_job.swap_unwrap();
+        match cleanup_job {
+            RescheduleTask(task) => {
+                // NB: Pushing to the *front* of the queue
+                self.task_queue.push_front(task);
             }
+            RecycleTask(task) => task.recycle(&mut self.stack_pool),
+            GiveTask(task, f) => (f.to_fn())(self, task)
         }
     }
 
@@ -271,16 +272,15 @@ pub impl Scheduler {
     fn get_contexts(&mut self) -> (&'self mut Context,
                                    Option<&'self mut Context>,
                                    Option<&'self mut Context>) {
-        let last_task = if !self.cleanup_jobs.is_empty() {
-            let last_job: &'self mut CleanupJob = &mut self.cleanup_jobs[0];
-            let last_task: &'self Task = match last_job {
-                &RescheduleTask(~ref task) => task,
-                &RecycleTask(~ref task) => task,
-                &GiveTask(~ref task, _) => task,
-            };
-            Some(last_task)
-        } else {
-            None
+        let last_task = match self.cleanup_job {
+            Some(RescheduleTask(~ref task)) |
+            Some(RecycleTask(~ref task)) |
+            Some(GiveTask(~ref task, _)) => {
+                Some(task)
+            }
+            None => {
+                None
+            }
         };
         // XXX: Pattern matching mutable pointers above doesn't work
         // because borrowck thinks the three patterns are conflicting
@@ -329,7 +329,7 @@ pub impl Task {
             // have asked us to do some cleanup.
             let mut sched = ThreadLocalScheduler::new();
             let sched = sched.get_scheduler();
-            sched.run_cleanup_jobs();
+            sched.run_cleanup_job();
 
             start();
 
