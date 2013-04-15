@@ -1,5 +1,17 @@
+Version 0.7 (July 2013)
+-----------------------
+
+   * ??? changes, numerous bugfixes
+
+   * Semantic changes
+      * The `self` parameter no longer implicitly means `&'self self`, and can be explicitly marked
+        with a lifetime.
+
+   * Libraries
+      * New `core::iterator` module for external iterator objects
+
 Version 0.6 (April 2013)
----------------------------
+------------------------
 
    * ~2100 changes, numerous bugfixes
 
