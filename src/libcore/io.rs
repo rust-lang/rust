@@ -1536,11 +1536,8 @@ pub fn with_bytes_writer(f: &fn(@Writer)) -> ~[u8] {
 pub fn with_str_writer(f: &fn(@Writer)) -> ~str {
     let mut v = with_bytes_writer(f);
 
-    // FIXME (#3758): This should not be needed.
-    unsafe {
-        // Make sure the vector has a trailing null and is proper utf8.
-        v.push(0);
-    }
+    // Make sure the vector has a trailing null and is proper utf8.
+    v.push(0);
     assert!(str::is_utf8(v));
 
     unsafe { ::cast::transmute(v) }
@@ -1640,16 +1637,14 @@ pub mod fsync {
     // outer res
     pub fn FILE_res_sync(file: &FILERes, opt_level: Option<Level>,
                          blk: &fn(v: Res<*libc::FILE>)) {
-        unsafe {
-            blk(Res(Arg {
-                val: file.f, opt_level: opt_level,
-                fsync_fn: |file, l| {
-                    unsafe {
-                        os::fsync_fd(libc::fileno(file), l) as int
-                    }
+        blk(Res(Arg {
+            val: file.f, opt_level: opt_level,
+            fsync_fn: |file, l| {
+                unsafe {
+                    os::fsync_fd(libc::fileno(file), l) as int
                 }
-            }));
-        }
+            }
+        }));
     }
 
     // fsync fd after executing blk

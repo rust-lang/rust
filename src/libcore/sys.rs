@@ -127,10 +127,8 @@ pub fn refcount<T>(t: @T) -> uint {
 }
 
 pub fn log_str<T>(t: &T) -> ~str {
-    unsafe {
-        do io::with_str_writer |wr| {
-            repr::write_repr(wr, t)
-        }
+    do io::with_str_writer |wr| {
+        repr::write_repr(wr, t)
     }
 }
 
@@ -157,10 +155,8 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
 }
 
 pub fn fail_assert(msg: &str, file: &str, line: uint) -> ! {
-    unsafe {
-        let (msg, file) = (msg.to_owned(), file.to_owned());
-        begin_unwind(~"assertion failed: " + msg, file, line)
-    }
+    let (msg, file) = (msg.to_owned(), file.to_owned());
+    begin_unwind(~"assertion failed: " + msg, file, line)
 }
 
 #[cfg(test)]

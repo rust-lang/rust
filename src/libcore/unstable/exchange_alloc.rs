@@ -19,27 +19,25 @@ use ptr::null;
 use intrinsic::TyDesc;
 
 pub unsafe fn malloc(td: *TypeDesc, size: uint) -> *c_void {
-    unsafe {
-        assert!(td.is_not_null());
+    assert!(td.is_not_null());
 
-        let total_size = get_box_size(size, (*td).align);
-        let p = c_malloc(total_size as size_t);
-        assert!(p.is_not_null());
+    let total_size = get_box_size(size, (*td).align);
+    let p = c_malloc(total_size as size_t);
+    assert!(p.is_not_null());
 
-        // FIXME #3475: Converting between our two different tydesc types
-        let td: *TyDesc = transmute(td);
+    // FIXME #3475: Converting between our two different tydesc types
+    let td: *TyDesc = transmute(td);
 
-        let box: &mut BoxRepr = transmute(p);
-        box.header.ref_count = -1; // Exchange values not ref counted
-        box.header.type_desc = td;
-        box.header.prev = null();
-        box.header.next = null();
+    let box: &mut BoxRepr = transmute(p);
+    box.header.ref_count = -1; // Exchange values not ref counted
+    box.header.type_desc = td;
+    box.header.prev = null();
+    box.header.next = null();
 
-        let exchange_count = &mut *rust_get_exchange_count_ptr();
-        atomic_xadd(exchange_count, 1);
+    let exchange_count = &mut *rust_get_exchange_count_ptr();
+    atomic_xadd(exchange_count, 1);
 
-        return transmute(box);
-    }
+    return transmute(box);
 }
 /**
 Thin wrapper around libc::malloc, none of the box header
