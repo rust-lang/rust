@@ -104,14 +104,16 @@ impl IoFactory for UvIoFactory {
         let result_cell = empty_cell();
         let result_cell_ptr: *Cell<Option<~StreamObject>> = &result_cell;
 
-        let scheduler = Scheduler::unsafe_local_borrow();
+        let scheduler = Scheduler::local_take();
         assert!(scheduler.in_task_context());
 
         // Block this task and take ownership, switch to scheduler context
-        do scheduler.deschedule_running_task_and_then |scheduler, task| {
+        do scheduler.deschedule_running_task_and_then |task| {
 
             rtdebug!("connect: entered scheduler context");
-            assert!(!scheduler.in_task_context());
+            do Scheduler::local_borrow |scheduler| {
+                assert!(!scheduler.in_task_context());
+            }
             let mut tcp_watcher = TcpWatcher::new(self.uv_loop());
             let task_cell = Cell(task);
 
@@ -131,7 +133,7 @@ impl IoFactory for UvIoFactory {
                 unsafe { (*result_cell_ptr).put_back(maybe_stream); }
 
                 // Context switch
-                let scheduler = Scheduler::unsafe_local_borrow();
+                let scheduler = Scheduler::local_take();
                 scheduler.resume_task_immediately(task_cell.take());
             }
         }
@@ -176,10 +178,10 @@ impl TcpListener for UvTcpListener {
 
         let server_tcp_watcher = self.watcher();
 
-        let scheduler = Scheduler::unsafe_local_borrow();
+        let scheduler = Scheduler::local_take();
         assert!(scheduler.in_task_context());
 
-        do scheduler.deschedule_running_task_and_then |_, task| {
+        do scheduler.deschedule_running_task_and_then |task| {
             let task_cell = Cell(task);
             let mut server_tcp_watcher = server_tcp_watcher;
             do server_tcp_watcher.listen |server_stream_watcher, status| {
@@ -199,7 +201,7 @@ impl TcpListener for UvTcpListener {
 
                 rtdebug!("resuming task from listen");
                 // Context switch
-                let scheduler = Scheduler::unsafe_local_borrow();
+                let scheduler = Scheduler::local_take();
                 scheduler.resume_task_immediately(task_cell.take());
             }
         }
@@ -239,13 +241,15 @@ impl Stream for UvStream {
         let result_cell = empty_cell();
         let result_cell_ptr: *Cell<Result<uint, ()>> = &result_cell;
 
-        let scheduler = Scheduler::unsafe_local_borrow();
+        let scheduler = Scheduler::local_take();
         assert!(scheduler.in_task_context());
         let watcher = self.watcher();
         let buf_ptr: *&mut [u8] = &buf;
-        do scheduler.deschedule_running_task_and_then |scheduler, task| {
+        do scheduler.deschedule_running_task_and_then |task| {
             rtdebug!("read: entered scheduler context");
-            assert!(!scheduler.in_task_context());
+            do Scheduler::local_borrow |scheduler| {
+                assert!(!scheduler.in_task_context());
+            }
             let mut watcher = watcher;
             let task_cell = Cell(task);
             // XXX: We shouldn't reallocate these callbacks every
@@ -271,7 +275,7 @@ impl Stream for UvStream {
 
                 unsafe { (*result_cell_ptr).put_back(result); }
 
-                let scheduler = Scheduler::unsafe_local_borrow();
+                let scheduler = Scheduler::local_take();
                 scheduler.resume_task_immediately(task_cell.take());
             }
         }
@@ -283,11 +287,11 @@ impl Stream for UvStream {
     fn write(&mut self, buf: &[u8]) -> Result<(), ()> {
         let result_cell = empty_cell();
         let result_cell_ptr: *Cell<Result<(), ()>> = &result_cell;
-        let scheduler = Scheduler::unsafe_local_borrow();
+        let scheduler = Scheduler::local_take();
         assert!(scheduler.in_task_context());
         let watcher = self.watcher();
         let buf_ptr: *&[u8] = &buf;
-        do scheduler.deschedule_running_task_and_then |_, task| {
+        do scheduler.deschedule_running_task_and_then |task| {
             let mut watcher = watcher;
             let task_cell = Cell(task);
             let buf = unsafe { &*buf_ptr };
@@ -302,7 +306,7 @@ impl Stream for UvStream {
 
                 unsafe { (*result_cell_ptr).put_back(result); }
 
-                let scheduler = Scheduler::unsafe_local_borrow();
+                let scheduler = Scheduler::local_take();
                 scheduler.resume_task_immediately(task_cell.take());
             }
         }
@@ -404,12 +408,15 @@ fn test_read_and_block() {
                 }
                 reads += 1;
 
-                let scheduler = Scheduler::unsafe_local_borrow();
+                let scheduler = Scheduler::local_take();
                 // Yield to the other task in hopes that it
                 // will trigger a read callback while we are
                 // not ready for it
-                do scheduler.deschedule_running_task_and_then |scheduler, task| {
-                    scheduler.task_queue.push_back(task);
+                do scheduler.deschedule_running_task_and_then |task| {
+                    let task = Cell(task);
+                    do Scheduler::local_borrow |scheduler| {
+                        scheduler.task_queue.push_back(task.take());
+                    }
                 }
             }
 
