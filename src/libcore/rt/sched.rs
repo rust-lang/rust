@@ -203,7 +203,10 @@ pub impl Scheduler {
             Context::swap(last_task_context, sched_context);
         }
 
-        self.run_cleanup_job();
+        // We could be executing in a different thread now
+        do local::borrow |sched| {
+            sched.run_cleanup_job();
+        }
     }
 
     /// Switch directly to another task, without going through the scheduler.
@@ -224,7 +227,10 @@ pub impl Scheduler {
             Context::swap(last_task_context, next_task_context);
         }
 
-        self.run_cleanup_job();
+        // We could be executing in a different thread now
+        do local::borrow |sched| {
+            sched.run_cleanup_job();
+        }
     }
 
     // * Other stuff
