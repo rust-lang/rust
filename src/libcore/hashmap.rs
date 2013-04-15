@@ -847,7 +847,7 @@ mod test_map {
     use uint;
 
     #[test]
-    pub fn test_insert() {
+    fn test_insert() {
         let mut m = HashMap::new();
         assert!(m.insert(1, 2));
         assert!(m.insert(2, 4));
@@ -869,7 +869,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn test_insert_overwrite() {
+    fn test_insert_overwrite() {
         let mut m = HashMap::new();
         assert!(m.insert(1, 2));
         assert!(*m.get(&1) == 2);
@@ -878,7 +878,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn test_insert_conflicts() {
+    fn test_insert_conflicts() {
         let mut m = linear_map_with_capacity(4);
         assert!(m.insert(1, 2));
         assert!(m.insert(5, 3));
@@ -889,7 +889,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn test_conflict_remove() {
+    fn test_conflict_remove() {
         let mut m = linear_map_with_capacity(4);
         assert!(m.insert(1, 2));
         assert!(m.insert(5, 3));
@@ -900,7 +900,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn test_is_empty() {
+    fn test_is_empty() {
         let mut m = linear_map_with_capacity(4);
         assert!(m.insert(1, 2));
         assert!(!m.is_empty());
@@ -909,7 +909,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn test_pop() {
+    fn test_pop() {
         let mut m = HashMap::new();
         m.insert(1, 2);
         assert!(m.pop(&1) == Some(2));
@@ -917,7 +917,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn test_swap() {
+    fn test_swap() {
         let mut m = HashMap::new();
         assert!(m.swap(1, 2) == None);
         assert!(m.swap(1, 3) == Some(2));
@@ -925,21 +925,21 @@ mod test_map {
     }
 
     #[test]
-    pub fn test_find_or_insert() {
+    fn test_find_or_insert() {
         let mut m = HashMap::new::<int, int>();
         assert!(m.find_or_insert(1, 2) == &2);
         assert!(m.find_or_insert(1, 3) == &2);
     }
 
     #[test]
-    pub fn test_find_or_insert_with() {
+    fn test_find_or_insert_with() {
         let mut m = HashMap::new::<int, int>();
         assert!(m.find_or_insert_with(1, |_| 2) == &2);
         assert!(m.find_or_insert_with(1, |_| 3) == &2);
     }
 
     #[test]
-    pub fn test_consume() {
+    fn test_consume() {
         let mut m = HashMap::new();
         assert!(m.insert(1, 2));
         assert!(m.insert(2, 3));
@@ -954,7 +954,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn test_iterate() {
+    fn test_iterate() {
         let mut m = linear_map_with_capacity(4);
         for uint::range(0, 32) |i| {
             assert!(m.insert(i, i*2));
@@ -968,7 +968,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn test_find() {
+    fn test_find() {
         let mut m = HashMap::new();
         assert!(m.find(&1).is_none());
         m.insert(1, 2);
@@ -979,7 +979,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn test_eq() {
+    fn test_eq() {
         let mut m1 = HashMap::new();
         m1.insert(1, 2);
         m1.insert(2, 3);
@@ -997,7 +997,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn test_expand() {
+    fn test_expand() {
         let mut m = HashMap::new();
 
         assert!(m.len() == 0);

@@ -876,7 +876,7 @@ pub fn list_metadata(sess: Session, path: &Path, out: @io::Writer) {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use core::prelude::*;
 
     use driver::driver::{build_configuration, build_session};
@@ -890,7 +890,7 @@ pub mod test {
 
     // When the user supplies --test we should implicitly supply --cfg test
     #[test]
-    pub fn test_switch_implies_cfg_test() {
+    fn test_switch_implies_cfg_test() {
         let matches =
             &match getopts(~[~"--test"], optgroups()) {
               Ok(copy m) => m,
@@ -907,7 +907,7 @@ pub mod test {
     // When the user supplies --test and --cfg test, don't implicitly add
     // another --cfg test
     #[test]
-    pub fn test_switch_implies_cfg_test_unless_cfg_test() {
+    fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
             &match getopts(~[~"--test", ~"--cfg=test"], optgroups()) {
               Ok(copy m) => m,

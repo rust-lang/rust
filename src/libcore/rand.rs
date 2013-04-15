@@ -747,12 +747,12 @@ pub fn random() -> uint {
 
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use option::{Option, Some};
     use rand;
 
     #[test]
-    pub fn rng_seeded() {
+    fn rng_seeded() {
         let seed = rand::seed();
         let ra = rand::seeded_rng(seed);
         let rb = rand::seeded_rng(seed);
@@ -760,7 +760,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn rng_seeded_custom_seed() {
+    fn rng_seeded_custom_seed() {
         // much shorter than generated seeds which are 1024 bytes
         let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
         let ra = rand::seeded_rng(seed);
@@ -769,7 +769,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn rng_seeded_custom_seed2() {
+    fn rng_seeded_custom_seed2() {
         let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
         let ra = rand::seeded_rng(seed);
         // Regression test that isaac is actually using the above vector
@@ -780,7 +780,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn gen_int_range() {
+    fn gen_int_range() {
         let r = rand::Rng();
         let a = r.gen_int_range(-3, 42);
         assert!(a >= -3 && a < 42);
@@ -791,12 +791,12 @@ pub mod tests {
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    pub fn gen_int_from_fail() {
+    fn gen_int_from_fail() {
         rand::Rng().gen_int_range(5, -2);
     }
 
     #[test]
-    pub fn gen_uint_range() {
+    fn gen_uint_range() {
         let r = rand::Rng();
         let a = r.gen_uint_range(3u, 42u);
         assert!(a >= 3u && a < 42u);
@@ -807,12 +807,12 @@ pub mod tests {
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    pub fn gen_uint_range_fail() {
+    fn gen_uint_range_fail() {
         rand::Rng().gen_uint_range(5u, 2u);
     }
 
     #[test]
-    pub fn gen_float() {
+    fn gen_float() {
         let r = rand::Rng();
         let a = r.gen_float();
         let b = r.gen_float();
@@ -820,14 +820,14 @@ pub mod tests {
     }
 
     #[test]
-    pub fn gen_weighted_bool() {
+    fn gen_weighted_bool() {
         let r = rand::Rng();
         assert!(r.gen_weighted_bool(0u) == true);
         assert!(r.gen_weighted_bool(1u) == true);
     }
 
     #[test]
-    pub fn gen_str() {
+    fn gen_str() {
         let r = rand::Rng();
         debug!(r.gen_str(10u));
         debug!(r.gen_str(10u));
@@ -838,7 +838,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn gen_bytes() {
+    fn gen_bytes() {
         let r = rand::Rng();
         assert!(r.gen_bytes(0u).len() == 0u);
         assert!(r.gen_bytes(10u).len() == 10u);
@@ -846,13 +846,13 @@ pub mod tests {
     }
 
     #[test]
-    pub fn choose() {
+    fn choose() {
         let r = rand::Rng();
         assert!(r.choose([1, 1, 1]) == 1);
     }
 
     #[test]
-    pub fn choose_option() {
+    fn choose_option() {
         let r = rand::Rng();
         let x: Option<int> = r.choose_option([]);
         assert!(x.is_none());
@@ -860,7 +860,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn choose_weighted() {
+    fn choose_weighted() {
         let r = rand::Rng();
         assert!(r.choose_weighted(~[
             rand::Weighted { weight: 1u, item: 42 },
@@ -872,7 +872,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn choose_weighted_option() {
+    fn choose_weighted_option() {
         let r = rand::Rng();
         assert!(r.choose_weighted_option(~[
             rand::Weighted { weight: 1u, item: 42 },
@@ -886,7 +886,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn weighted_vec() {
+    fn weighted_vec() {
         let r = rand::Rng();
         let empty: ~[int] = ~[];
         assert!(r.weighted_vec(~[]) == empty);
@@ -898,7 +898,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn shuffle() {
+    fn shuffle() {
         let r = rand::Rng();
         let empty: ~[int] = ~[];
         assert!(r.shuffle(~[]) == empty);
@@ -906,7 +906,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn task_rng() {
+    fn task_rng() {
         let r = rand::task_rng();
         r.gen_int();
         assert!(r.shuffle(~[1, 1, 1]) == ~[1, 1, 1]);
@@ -914,7 +914,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn random() {
+    fn random() {
         // not sure how to test this aside from just getting a number
         let _n : uint = rand::random();
     }

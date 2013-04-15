@@ -1225,7 +1225,7 @@ pub unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use core::prelude::*;
     use core::comm::{SharedChan, stream, GenericChan, GenericPort};
     use super::*;
@@ -1759,11 +1759,11 @@ pub mod test {
     #[cfg(target_os="darwin")]
     #[cfg(target_os="linux")]
     #[cfg(target_os="android")]
-    pub mod tcp_and_server_client_test {
+    mod tcp_and_server_client_test {
         #[cfg(target_arch="x86_64")]
-        pub mod impl64 {
+        mod impl64 {
             #[test]
-            pub fn test_uv_ll_tcp_server_and_request() {
+            fn test_uv_ll_tcp_server_and_request() {
                 unsafe {
                     super::super::impl_uv_tcp_server_and_request();
                 }
@@ -1772,10 +1772,10 @@ pub mod test {
         #[cfg(target_arch="x86")]
         #[cfg(target_arch="arm")]
         #[cfg(target_arch="mips")]
-        pub mod impl32 {
+        mod impl32 {
             #[test]
             #[ignore(cfg(target_os = "linux"))]
-            pub fn test_uv_ll_tcp_server_and_request() {
+            fn test_uv_ll_tcp_server_and_request() {
                 unsafe {
                     super::super::impl_uv_tcp_server_and_request();
                 }

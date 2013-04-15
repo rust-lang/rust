@@ -521,7 +521,7 @@ mod tests {
 
     // Regression test for memory leaks
     #[ignore(cfg(windows))] // FIXME (#2626)
-    pub fn test_leaks() {
+    fn test_leaks() {
         run::run_program("echo", []);
         run::start_program("echo", []);
         run::program_output("echo", []);
@@ -529,7 +529,7 @@ mod tests {
 
     #[test]
     #[allow(non_implicitly_copyable_typarams)]
-    pub fn test_pipes() {
+    fn test_pipes() {
         let pipe_in = os::pipe();
         let pipe_out = os::pipe();
         let pipe_err = os::pipe();
@@ -555,7 +555,7 @@ mod tests {
     }
 
     #[test]
-    pub fn waitpid() {
+    fn waitpid() {
         let pid = run::spawn_process("false", [],
                                      &None, &None,
                                      0i32, 0i32, 0i32);
@@ -564,20 +564,20 @@ mod tests {
     }
 
     #[test]
-    pub fn test_destroy_once() {
+    fn test_destroy_once() {
         let mut p = run::start_program("echo", []);
         p.destroy(); // this shouldn't crash (and nor should the destructor)
     }
 
     #[test]
-    pub fn test_destroy_twice() {
+    fn test_destroy_twice() {
         let mut p = run::start_program("echo", []);
         p.destroy(); // this shouldnt crash...
         p.destroy(); // ...and nor should this (and nor should the destructor)
     }
 
     #[cfg(unix)] // there is no way to sleep on windows from inside libcore...
-    pub fn test_destroy_actually_kills(force: bool) {
+    fn test_destroy_actually_kills(force: bool) {
         let path = Path(fmt!("test/core-run-test-destroy-actually-kills-%?.tmp", force));
 
         os::remove_file(&path);
@@ -598,13 +598,13 @@ mod tests {
 
     #[test]
     #[cfg(unix)]
-    pub fn test_unforced_destroy_actually_kills() {
+    fn test_unforced_destroy_actually_kills() {
         test_destroy_actually_kills(false);
     }
 
     #[test]
     #[cfg(unix)]
-    pub fn test_forced_destroy_actually_kills() {
+    fn test_forced_destroy_actually_kills() {
         test_destroy_actually_kills(true);
     }
 }
