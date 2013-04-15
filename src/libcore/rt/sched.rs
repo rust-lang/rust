@@ -11,14 +11,11 @@
 use option::*;
 use sys;
 use cast::transmute;
-use libc::c_void;
-use ptr::mut_null;
 
 use super::work_queue::WorkQueue;
 use super::stack::{StackPool, StackSegment};
 use super::rtio::{EventLoop, EventLoopObject};
 use super::context::Context;
-use tls = super::thread_local_storage;
 
 #[cfg(test)] use super::uvio::UvEventLoop;
 #[cfg(test)] use unstable::run_in_bare_thread;
@@ -110,18 +107,13 @@ pub impl Scheduler {
     }
 
     fn install(~self, f: &fn(&mut Scheduler)) -> ~Scheduler {
-        let mut tlsched = ThreadLocalScheduler::new();
-        tlsched.put_scheduler(self);
-        {
-            let sched = tlsched.get_scheduler();
-            f(sched);
+        do local::install(self) {
+            local::borrow(f)
         }
-        return tlsched.take_scheduler();
     }
 
     fn local(f: &fn(&mut Scheduler)) {
-        let mut tlsched = ThreadLocalScheduler::new();
-        f(tlsched.get_scheduler());
+        local::borrow(f)
     }
 
     // * Scheduler-context operations
@@ -329,15 +321,15 @@ pub impl Task {
             // This is the first code to execute after the initial
             // context switch to the task. The previous context may
             // have asked us to do some cleanup.
-            let mut sched = ThreadLocalScheduler::new();
-            let sched = sched.get_scheduler();
-            sched.run_cleanup_job();
+            do Scheduler::local |sched| {
+                sched.run_cleanup_job();
+            }
 
             start();
 
-            let mut sched = ThreadLocalScheduler::new();
-            let sched = sched.get_scheduler();
-            sched.terminate_current_task();
+            do Scheduler::local |sched| {
+                sched.terminate_current_task();
+            }
         };
         return wrapper;
     }
@@ -352,90 +344,103 @@ pub impl Task {
     }
 }
 
-// NB: This is a type so we can use make use of the &self region.
-struct ThreadLocalScheduler(tls::Key);
+mod local {
 
-impl ThreadLocalScheduler {
-    fn new() -> ThreadLocalScheduler {
+    //! Access to the thread-local Scheduler
+
+    use ptr::mut_null;
+    use libc::c_void;
+    use cast::transmute;
+
+    use super::Scheduler;
+    use tls = super::super::thread_local_storage;
+    #[cfg(test)] use super::super::uvio::UvEventLoop;
+
+    /// Give the Scheduler to thread-local storage
+    pub fn put(sched: ~Scheduler) {
         unsafe {
-            // NB: This assumes that the TLS key has been created prior.
-            // Currently done in rust_start.
-            let key: *mut c_void = rust_get_sched_tls_key();
-            let key: &mut tls::Key = transmute(key);
-            ThreadLocalScheduler(*key)
+            let key = tls_key();
+            let void_sched: *mut c_void = transmute::<~Scheduler, *mut c_void>(sched);
+            tls::set(key, void_sched);
         }
     }
 
-    fn put_scheduler(&mut self, scheduler: ~Scheduler) {
+    /// Take ownership of the Scheduler from thread-local storage
+    pub fn take() -> ~Scheduler {
         unsafe {
-            let key = match self { &ThreadLocalScheduler(key) => key };
-            let value: *mut c_void = transmute::<~Scheduler, *mut c_void>(scheduler);
-            tls::set(key, value);
-        }
-    }
-
-    fn get_scheduler(&mut self) -> &'self mut Scheduler {
-        unsafe {
-            let key = match self { &ThreadLocalScheduler(key) => key };
-            let mut value: *mut c_void = tls::get(key);
-            assert!(value.is_not_null());
-            {
-                let value_ptr = &mut value;
-                let sched: &mut ~Scheduler = {
-                    transmute::<&mut *mut c_void, &mut ~Scheduler>(value_ptr)
-                };
-                let sched: &mut Scheduler = &mut **sched;
-                return sched;
-            }
-        }
-    }
-
-    fn take_scheduler(&mut self) -> ~Scheduler {
-        unsafe {
-            let key = match self { &ThreadLocalScheduler(key) => key };
-            let value: *mut c_void = tls::get(key);
-            assert!(value.is_not_null());
-            let sched = transmute(value);
+            let key = tls_key();
+            let void_sched: *mut c_void = tls::get(key);
+            assert!(void_sched.is_not_null());
+            let sched = transmute::<*mut c_void, ~Scheduler>(void_sched);
             tls::set(key, mut_null());
             return sched;
         }
     }
-}
 
-extern {
-    fn rust_get_sched_tls_key() -> *mut c_void;
-}
-
-#[test]
-fn thread_local_scheduler_smoke_test() {
-    let scheduler = ~UvEventLoop::new_scheduler();
-    let mut tls_scheduler = ThreadLocalScheduler::new();
-    tls_scheduler.put_scheduler(scheduler);
-    {
-        let _scheduler = tls_scheduler.get_scheduler();
-    }
-    let _scheduler = tls_scheduler.take_scheduler();
-}
-
-#[test]
-fn thread_local_scheduler_two_instances() {
-    let scheduler = ~UvEventLoop::new_scheduler();
-    let mut tls_scheduler = ThreadLocalScheduler::new();
-    tls_scheduler.put_scheduler(scheduler);
-    {
-
-        let _scheduler = tls_scheduler.get_scheduler();
-    }
-    {
-        let scheduler = tls_scheduler.take_scheduler();
-        tls_scheduler.put_scheduler(scheduler);
+    /// Give the Scheduler to thread-local storage for the duration of the block
+    pub fn install(sched: ~Scheduler, f: &fn()) -> ~Scheduler {
+        put(sched);
+        f();
+        return take();
     }
 
-    let mut tls_scheduler = ThreadLocalScheduler::new();
-    {
-        let _scheduler = tls_scheduler.get_scheduler();
+    /// Borrow a mutable reference to the thread-local Scheduler
+    /// # Safety Note
+    /// Because this leaves the Scheduler in thread-local storage it is possible
+    /// For the Scheduler pointer to be aliased
+    pub fn borrow(f: &fn(&mut Scheduler)) {
+        unsafe {
+            let key = tls_key();
+            let mut void_sched: *mut c_void = tls::get(key);
+            assert!(void_sched.is_not_null());
+            {
+                let void_sched_ptr = &mut void_sched;
+                let sched: &mut ~Scheduler = {
+                    transmute::<&mut *mut c_void, &mut ~Scheduler>(void_sched_ptr)
+                };
+                let sched: &mut Scheduler = &mut **sched;
+                f(sched);
+            }
+        }
     }
-    let _scheduler = tls_scheduler.take_scheduler();
+
+    fn tls_key() -> tls::Key {
+        unsafe {
+            let key: *mut c_void = rust_get_sched_tls_key();
+            let key: &mut tls::Key = transmute(key);
+            return *key;
+        }
+    }
+
+    extern {
+        fn rust_get_sched_tls_key() -> *mut c_void;
+    }
+
+    #[test]
+    fn thread_local_scheduler_smoke_test() {
+        let scheduler = ~UvEventLoop::new_scheduler();
+        put(scheduler);
+        let _scheduler = take();
+    }
+
+    #[test]
+    fn thread_local_scheduler_two_instances() {
+        let scheduler = ~UvEventLoop::new_scheduler();
+        put(scheduler);
+        let _scheduler = take();
+        let scheduler = ~UvEventLoop::new_scheduler();
+        put(scheduler);
+        let _scheduler = take();
+    }
+
+    #[test]
+    fn install_borrow_smoke_test() {
+        let scheduler = ~UvEventLoop::new_scheduler();
+        let _scheduler = do install(scheduler) {
+            do borrow |_sched| {
+            }
+        };
+    }
 }
 
 #[test]
