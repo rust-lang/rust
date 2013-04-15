@@ -28,6 +28,8 @@ pub mod intrinsic {
         // Remaining fields not listed
     }
 
+    pub enum Opaque { }
+
     pub trait TyVisitor {
         fn visit_bot(&self) -> bool;
         fn visit_nil(&self) -> bool;
@@ -91,17 +93,19 @@ pub mod intrinsic {
                            sz: uint, align: uint) -> bool;
 
         fn visit_enter_enum(&self, n_variants: uint,
+                            get_disr: extern unsafe fn(ptr: *Opaque) -> int,
                             sz: uint, align: uint) -> bool;
         fn visit_enter_enum_variant(&self, variant: uint,
                                     disr_val: int,
                                     n_fields: uint,
                                     name: &str) -> bool;
-        fn visit_enum_variant_field(&self, i: uint, inner: *TyDesc) -> bool;
+        fn visit_enum_variant_field(&self, i: uint, offset: uint, inner: *TyDesc) -> bool;
         fn visit_leave_enum_variant(&self, variant: uint,
                                     disr_val: int,
                                     n_fields: uint,
                                     name: &str) -> bool;
         fn visit_leave_enum(&self, n_variants: uint,
+                            get_disr: extern unsafe fn(ptr: *Opaque) -> int,
                             sz: uint, align: uint) -> bool;
 
         fn visit_enter_fn(&self, purity: uint, proto: uint,
