@@ -154,106 +154,106 @@ fn is_visible(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
     }
 }
 
-#[test]
-fn should_prune_items_without_pub_modifier() {
-    let doc = test::mk_doc(~"mod a { }");
-    assert!(vec::is_empty(doc.cratemod().mods()));
-}
-
-#[test]
-fn should_not_prune_trait_impls() {
-    // Impls are more complicated
-    let doc = test::mk_doc(
-        ~" \
-          trait Foo { } \
-          impl Foo for int { } \
-          ");
-    assert!(!doc.cratemod().impls().is_empty());
-}
-
-#[test]
-fn should_prune_associated_methods_without_vis_modifier_on_impls_without_vis_modifier() {
-    let doc = test::mk_doc(
-        ~"impl Foo {\
-          pub fn bar() { }\
-          fn baz() { }\
-          }");
-    assert!(doc.cratemod().impls()[0].methods.len() == 1);
-}
-
-#[test]
-fn should_prune_priv_associated_methods_on_impls_without_vis_modifier() {
-    let doc = test::mk_doc(
-        ~"impl Foo {\
-          pub fn bar() { }\
-          priv fn baz() { }\
-          }");
-    assert!(doc.cratemod().impls()[0].methods.len() == 1);
-}
-
-#[test]
-fn should_prune_priv_associated_methods_on_pub_impls() {
-    let doc = test::mk_doc(
-        ~"pub impl Foo {\
-          fn bar() { }\
-          priv fn baz() { }\
-          }");
-    assert!(doc.cratemod().impls()[0].methods.len() == 1);
-}
-
-#[test]
-fn should_prune_associated_methods_without_vis_modifier_on_priv_impls() {
-    let doc = test::mk_doc(
-        ~"priv impl Foo {\
-          pub fn bar() { }\
-          fn baz() { }\
-          }");
-    assert!(doc.cratemod().impls()[0].methods.len() == 1);
-}
-
-#[test]
-fn should_prune_priv_associated_methods_on_priv_impls() {
-    let doc = test::mk_doc(
-        ~"priv impl Foo {\
-          pub fn bar() { }\
-          priv fn baz() { }\
-          }");
-    assert!(doc.cratemod().impls()[0].methods.len() == 1);
-}
-
-#[test]
-fn should_prune_associated_impls_with_no_pub_methods() {
-    let doc = test::mk_doc(
-        ~"priv impl Foo {\
-          fn baz() { }\
-          }");
-    assert!(doc.cratemod().impls().is_empty());
-}
-
-#[test]
-fn should_not_prune_associated_impls_with_pub_methods() {
-    let doc = test::mk_doc(
-        ~" \
-          impl Foo { pub fn bar() { } } \
-          ");
-    assert!(!doc.cratemod().impls().is_empty());
-}
-
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use astsrv;
     use doc;
     use extract;
     use tystr_pass;
     use prune_private_pass::run;
+    use core::vec;
 
-    pub fn mk_doc(source: ~str) -> doc::Doc {
+    fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");
             let doc = tystr_pass::run(srv.clone(), doc);
             run(srv.clone(), doc)
         }
     }
-}
 
+    #[test]
+    fn should_prune_items_without_pub_modifier() {
+        let doc = mk_doc(~"mod a { }");
+        assert!(vec::is_empty(doc.cratemod().mods()));
+    }
+
+    #[test]
+    fn should_not_prune_trait_impls() {
+        // Impls are more complicated
+        let doc = mk_doc(
+            ~" \
+              trait Foo { } \
+              impl Foo for int { } \
+              ");
+        assert!(!doc.cratemod().impls().is_empty());
+    }
+
+    #[test]
+    fn should_prune_associated_methods_without_vis_modifier_on_impls_without_vis_modifier() {
+        let doc = mk_doc(
+            ~"impl Foo {\
+              pub fn bar() { }\
+              fn baz() { }\
+              }");
+        assert!(doc.cratemod().impls()[0].methods.len() == 1);
+    }
+
+    #[test]
+    fn should_prune_priv_associated_methods_on_impls_without_vis_modifier() {
+        let doc = mk_doc(
+            ~"impl Foo {\
+              pub fn bar() { }\
+              priv fn baz() { }\
+              }");
+        assert!(doc.cratemod().impls()[0].methods.len() == 1);
+    }
+
+    #[test]
+    fn should_prune_priv_associated_methods_on_pub_impls() {
+        let doc = mk_doc(
+            ~"pub impl Foo {\
+              fn bar() { }\
+              priv fn baz() { }\
+              }");
+        assert!(doc.cratemod().impls()[0].methods.len() == 1);
+    }
+
+    #[test]
+    fn should_prune_associated_methods_without_vis_modifier_on_priv_impls() {
+        let doc = mk_doc(
+            ~"priv impl Foo {\
+              pub fn bar() { }\
+              fn baz() { }\
+              }");
+        assert!(doc.cratemod().impls()[0].methods.len() == 1);
+    }
+
+    #[test]
+    fn should_prune_priv_associated_methods_on_priv_impls() {
+        let doc = mk_doc(
+            ~"priv impl Foo {\
+              pub fn bar() { }\
+              priv fn baz() { }\
+              }");
+        assert!(doc.cratemod().impls()[0].methods.len() == 1);
+    }
+
+    #[test]
+    fn should_prune_associated_impls_with_no_pub_methods() {
+        let doc = mk_doc(
+            ~"priv impl Foo {\
+              fn baz() { }\
+              }");
+        assert!(doc.cratemod().impls().is_empty());
+    }
+
+    #[test]
+    fn should_not_prune_associated_impls_with_pub_methods() {
+        let doc = mk_doc(
+            ~" \
+              impl Foo { pub fn bar() { } } \
+              ");
+        assert!(!doc.cratemod().impls().is_empty());
+    }
+}
