@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -27,6 +27,21 @@ static CHARS: [char, ..64] = [
 ];
 
 impl<'self> ToBase64 for &'self [u8] {
+    /**
+     * Turn a vector of `u8` bytes into a base64 string.
+     *
+     * *Example*:
+     *
+     * ~~~~
+     * extern mod std;
+     * use std::base64::ToBase64;
+     *
+     * fn main () {
+     *     let str = [52,32].to_base64();
+     *     println(fmt!("%s", str));
+     * }
+     * ~~~~
+     */
     fn to_base64(&self) -> ~str {
         let mut s = ~"";
         let len = self.len();
@@ -74,6 +89,23 @@ impl<'self> ToBase64 for &'self [u8] {
 }
 
 impl<'self> ToBase64 for &'self str {
+    /**
+     * Convert any string (literal, `@`, `&`, or `~`) to base64 encoding.
+     *
+     *
+     * *Example*:
+     *
+     * ~~~~
+     * extern mod std;
+     * use std::base64::ToBase64;
+     *
+     * fn main () {
+     *     let str = "Hello, World".to_base64();
+     *     println(fmt!("%s",str));
+     * }
+     * ~~~~
+     *
+     */
     fn to_base64(&self) -> ~str {
         str::to_bytes(*self).to_base64()
     }
@@ -84,6 +116,25 @@ pub trait FromBase64 {
 }
 
 impl FromBase64 for ~[u8] {
+    /**
+     * Convert base64 `u8` vector into u8 byte values.
+     * Every 4 encoded characters is converted into 3 octets, modulo padding.
+     *
+     * *Example*:
+     *
+     * ~~~~
+     * extern mod std;
+     * use std::base64::ToBase64;
+     * use std::base64::FromBase64;
+     *
+     * fn main () {
+     *     let str = [52,32].to_base64();
+     *     println(fmt!("%s", str));
+     *     let bytes = str.from_base64();
+     *     println(fmt!("%?",bytes));
+     * }
+     * ~~~~
+     */
     fn from_base64(&self) -> ~[u8] {
         if self.len() % 4u != 0u { fail!(~"invalid base64 length"); }
 
@@ -144,6 +195,33 @@ impl FromBase64 for ~[u8] {
 }
 
 impl FromBase64 for ~str {
+    /**
+     * Convert any base64 encoded string (literal, `@`, `&`, or `~`)
+     * to the byte values it encodes.
+     *
+     * You can use the `from_bytes` function in `core::str`
+     * to turn a `[u8]` into a string with characters corresponding to those values.
+     *
+     * *Example*:
+     *
+     * This converts a string literal to base64 and back.
+     *
+     * ~~~~
+     * extern mod std;
+     * use std::base64::ToBase64;
+     * use std::base64::FromBase64;
+     * use core::str;
+     *
+     * fn main () {
+     *     let hello_str = "Hello, World".to_base64();
+     *     println(fmt!("%s",hello_str));
+     *     let bytes = hello_str.from_base64();
+     *     println(fmt!("%?",bytes));
+     *     let result_str = str::from_bytes(bytes);
+     *     println(fmt!("%s",result_str));
+     * }
+     * ~~~~
+     */
     fn from_base64(&self) -> ~[u8] {
         str::to_bytes(*self).from_base64()
     }
