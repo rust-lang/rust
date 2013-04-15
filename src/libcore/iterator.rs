@@ -12,20 +12,46 @@
 
 use prelude::*;
 
-pub trait Iterator<T> {
+pub trait Iterator<A> {
     /// Advance the iterator and return the next value. Return `None` when the end is reached.
-    fn next(&mut self) -> Option<T>;
+    fn next(&mut self) -> Option<A>;
 }
 
-/// A shim implementing the `for` loop iteration protocol for iterator objects
-#[inline]
-pub fn advance<T, U: Iterator<T>>(iter: &mut U, f: &fn(T) -> bool) {
-    loop {
-        match iter.next() {
-            Some(x) => {
-                if !f(x) { return }
+pub trait IteratorUtil<A> {
+    fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<Self, U>;
+    // FIXME: #5898: should be called map
+    fn transform<'r, B>(self, f: &'r fn(A) -> B) -> MapIterator<'r, A, B, Self>;
+    fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> FilterIterator<'r, A, Self>;
+    fn advance(&mut self, f: &fn(A) -> bool);
+}
+
+impl<A, T: Iterator<A>> IteratorUtil<A> for T {
+    #[inline(always)]
+    fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<T, U> {
+        ZipIterator{a: self, b: other}
+    }
+
+    // FIXME: #5898: should be called map
+    #[inline(always)]
+    fn transform<'r, B>(self, f: &'r fn(A) -> B) -> MapIterator<'r, A, B, T> {
+        MapIterator{iter: self, f: f}
+    }
+
+    #[inline(always)]
+    fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> FilterIterator<'r, A, T> {
+        FilterIterator{iter: self, predicate: predicate}
+    }
+
+    /// A shim implementing the `for` loop iteration protocol for iterator objects
+    #[inline]
+    fn advance(&mut self, f: &fn(A) -> bool) {
+        loop {
+            match self.next() {
+                Some(x) => {
+                    if !f(x) { return }
+                }
+                None => return
             }
-            None => return
         }
     }
 }
@@ -33,13 +59,6 @@ pub fn advance<T, U: Iterator<T>>(iter: &mut U, f: &fn(T) -> bool) {
 pub struct ZipIterator<T, U> {
     priv a: T,
     priv b: U
-}
-
-pub impl<A, B, T: Iterator<A>, U: Iterator<B>> ZipIterator<T, U> {
-    #[inline(always)]
-    fn new(a: T, b: U) -> ZipIterator<T, U> {
-        ZipIterator{a: a, b: b}
-    }
 }
 
 impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for ZipIterator<T, U> {
@@ -57,17 +76,10 @@ pub struct FilterIterator<'self, A, T> {
     priv predicate: &'self fn(&A) -> bool
 }
 
-pub impl<'self, A, T: Iterator<A>> FilterIterator<'self, A, T> {
-    #[inline(always)]
-    fn new(iter: T, predicate: &'self fn(&A) -> bool) -> FilterIterator<'self, A, T> {
-        FilterIterator{iter: iter, predicate: predicate}
-    }
-}
-
 impl<'self, A, T: Iterator<A>> Iterator<A> for FilterIterator<'self, A, T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
-        for advance(self) |x| {
+        for self.iter.advance |x| {
             if (self.predicate)(&x) {
                 return Some(x);
             } else {
@@ -81,13 +93,6 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for FilterIterator<'self, A, T> {
 pub struct MapIterator<'self, A, B, T> {
     priv iter: T,
     priv f: &'self fn(A) -> B
-}
-
-pub impl<'self, A, B, T: Iterator<A>> MapIterator<'self, A, B, T> {
-    #[inline(always)]
-    fn new(iter: T, f: &'self fn(A) -> B) -> MapIterator<'self, A, B, T> {
-        MapIterator{iter: iter, f: f}
-    }
 }
 
 impl<'self, A, B, T: Iterator<A>> Iterator<B> for MapIterator<'self, A, B, T> {
