@@ -11,7 +11,8 @@
 // rustpkg utilities having to do with paths and directories
 
 use core::path::*;
-use core::os;
+use core::{os, str};
+use core::option::*;
 use util::PkgId;
 
 /// Returns the output directory to use.
@@ -46,6 +47,24 @@ pub fn default_dest_dir(pkg_dir: &Path) -> Path {
         }
         else {
             cond.raise((rslt, ~"Could not create directory"))
+        }
+    }
+}
+
+/// Replace all occurrences of '-' in the stem part of path with '_'
+/// This is because we treat rust-foo-bar-quux and rust_foo_bar_quux
+/// as the same name
+pub fn normalize(p: ~Path) -> ~Path {
+    match p.filestem() {
+        None => p,
+        Some(st) => {
+            let replaced = str::replace(st, "-", "_");
+            if replaced != st {
+                ~p.with_filestem(replaced)
+            }
+            else {
+                p
+            }
         }
     }
 }

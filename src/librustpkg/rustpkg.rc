@@ -36,13 +36,16 @@ use rustc::metadata::filesearch;
 use std::net::url;
 use std::{getopts};
 use syntax::{ast, diagnostic};
-use util::{ExitCode, Pkg, PkgId};
-use path_util::dest_dir;
+use util::*;
+use path_util::{dest_dir, normalize};
+use predicates::has_main_fn;
+use rustc::driver::session::{lib_crate, bin_crate, unknown_crate, crate_type};
 
 mod conditions;
 mod usage;
 mod path_util;
 mod util;
+mod predicates;
 
 /// A PkgScript represents user-supplied custom logic for
 /// special build hooks. This only exists for packages with
@@ -117,9 +120,11 @@ impl PkgScript {
             Ok(r) => {
                 let root = r.pop().pop().pop().pop(); // :-\
                 debug!("Root is %s, calling compile_rest", root.to_str());
-                util::compile_crate_from_input(self.input, Some(self.build_dir),
-                                               sess, Some(crate), os::args()[0]);
                 let exe = self.build_dir.push(~"pkg" + util::exe_suffix());
+                util::compile_crate_from_input(self.input, Some(self.build_dir),
+                                               sess, Some(crate),
+                                               exe, os::args()[0],
+                                               driver::cu_everything);
                 debug!("Running program: %s %s %s", exe.to_str(), root.to_str(), what);
                 let status = run::run_program(exe.to_str(), ~[root.to_str(), what]);
                 if status != 0 {
@@ -728,7 +733,6 @@ condition! {
 
 impl PkgSrc {
 
-
     fn new(src_dir: &Path, dst_dir: &Path,
                   id: &PkgId) -> PkgSrc {
         PkgSrc {
@@ -786,14 +790,16 @@ impl PkgSrc {
     /// True if the given path's stem is self's pkg ID's stem
     /// or if the pkg ID's stem is <rust-foo> and the given path's
     /// stem is foo
+    /// Requires that dashes in p have already been normalized to
+    /// underscores
     fn stem_matches(&self, p: &Path) -> bool {
-        let self_id = self.id.path.filestem();
+        let self_id = normalize(~self.id.path).filestem();
         if self_id == p.filestem() {
             return true;
         }
         else {
             for self_id.each |pth| {
-                if pth.starts_with("rust-")
+                if pth.starts_with("rust_") // because p is already normalized
                     && match p.filestem() {
                            Some(s) => str::eq_slice(s, pth.slice(5, pth.len())),
                            None => false
@@ -841,18 +847,25 @@ impl PkgSrc {
                     // consider it to be a crate
                     let ext = pth.filetype();
                     let matches = |p: &Path| {
-                        self.stem_matches(p) && (ext == Some(~".rc")
+                        let normalized = normalize(~*p);
+                        self.stem_matches(normalized) && (ext == Some(~".rc")
                                                   || ext == Some(~".rs"))
                     };
                     debug!("Checking %? which %s and ext = %? %? %?", pth.filestem(),
                            if matches(pth) { "matches" } else { "does not match" },
                            ext, saw_rs, saw_rc);
                     if matches(pth) &&
-                        // Avoid pushing foo.rc *and* foo.rs
+                        // Avoid visiting foo.rc *and* foo.rs
                          !((ext == Some(~".rc") && saw_rs) ||
                            (ext == Some(~".rs") && saw_rc)) {
-                        push_crate(&mut self.libs, // ????
+                        if has_main_fn(pth, os::args()[0]) {
+                            push_crate(&mut self.mains,
                                    prefix, pth);
+                        }
+                        else {
+                            push_crate(&mut self.libs,
+                                       prefix, pth);
+                        }
                         if ext == Some(~".rc") {
                             saw_rc = true;
                         }
@@ -874,7 +887,7 @@ impl PkgSrc {
                            src_dir: &Path,
                            crates: &[Crate],
                            cfgs: ~[~str],
-                           test: bool) {
+                           test: bool, crate_type: crate_type) {
 
         for crates.each |&crate| {
             let path = &src_dir.push_rel(&crate.file).normalize();
@@ -885,7 +898,7 @@ impl PkgSrc {
                                      dst_dir,
                                      crate.flags,
                                      crate.cfgs + cfgs,
-                                     false, test);
+                                     false, test, crate_type);
             if !result {
                 build_err::cond.raise(fmt!("build failure on %s",
                                            path.to_str()));
@@ -898,12 +911,12 @@ impl PkgSrc {
     fn build(&self, dst_dir: &Path, cfgs: ~[~str]) {
         let dir = self.check_dir();
         debug!("Building libs");
-        PkgSrc::build_crates(dst_dir, &dir, self.libs, cfgs, false);
+        PkgSrc::build_crates(dst_dir, &dir, self.libs, cfgs, false, lib_crate);
         debug!("Building mains");
-        PkgSrc::build_crates(dst_dir, &dir, self.mains, cfgs, false);
+        PkgSrc::build_crates(dst_dir, &dir, self.mains, cfgs, false, bin_crate);
         debug!("Building tests");
-        PkgSrc::build_crates(dst_dir, &dir, self.tests, cfgs, true);
+        PkgSrc::build_crates(dst_dir, &dir, self.tests, cfgs, true, bin_crate);
         debug!("Building benches");
-        PkgSrc::build_crates(dst_dir, &dir, self.benchs, cfgs, true);
+        PkgSrc::build_crates(dst_dir, &dir, self.benchs, cfgs, true, bin_crate);
     }
 }
