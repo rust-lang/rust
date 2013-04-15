@@ -2433,8 +2433,7 @@ pub impl Parser {
     }
 
     // parse a local variable declaration
-    fn parse_local(&self, is_mutbl: bool,
-                   allow_init: bool) -> @local {
+    fn parse_local(&self, is_mutbl: bool) -> @local {
         let lo = self.span.lo;
         let pat = self.parse_pat(false);
         let mut ty = @Ty {
@@ -2443,7 +2442,7 @@ pub impl Parser {
             span: mk_sp(lo, lo),
         };
         if self.eat(&token::COLON) { ty = self.parse_ty(false); }
-        let init = if allow_init { self.parse_initializer() } else { None };
+        let init = self.parse_initializer();
         @spanned(
             lo,
             self.last_span.hi,
@@ -2460,9 +2459,9 @@ pub impl Parser {
     fn parse_let(&self) -> @decl {
         let is_mutbl = self.eat_keyword(&~"mut");
         let lo = self.span.lo;
-        let mut locals = ~[self.parse_local(is_mutbl, true)];
+        let mut locals = ~[self.parse_local(is_mutbl)];
         while self.eat(&token::COMMA) {
-            locals.push(self.parse_local(is_mutbl, true));
+            locals.push(self.parse_local(is_mutbl));
         }
         return @spanned(lo, self.last_span.hi, decl_local(locals));
     }
