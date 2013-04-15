@@ -104,7 +104,7 @@ impl IoFactory for UvIoFactory {
         let result_cell = empty_cell();
         let result_cell_ptr: *Cell<Option<~StreamObject>> = &result_cell;
 
-        do Scheduler::local |scheduler| {
+        do Scheduler::unsafe_local |scheduler| {
             assert!(scheduler.in_task_context());
 
             // Block this task and take ownership, switch to scheduler context
@@ -131,7 +131,7 @@ impl IoFactory for UvIoFactory {
                     unsafe { (*result_cell_ptr).put_back(maybe_stream); }
 
                     // Context switch
-                    do Scheduler::local |scheduler| {
+                    do Scheduler::unsafe_local |scheduler| {
                         scheduler.resume_task_immediately(task_cell.take());
                     }
                 }
@@ -178,7 +178,7 @@ impl TcpListener for UvTcpListener {
 
         let server_tcp_watcher = self.watcher();
 
-        do Scheduler::local |scheduler| {
+        do Scheduler::unsafe_local |scheduler| {
             assert!(scheduler.in_task_context());
 
             do scheduler.deschedule_running_task_and_then |_, task| {
@@ -201,7 +201,7 @@ impl TcpListener for UvTcpListener {
 
                     rtdebug!("resuming task from listen");
                     // Context switch
-                    do Scheduler::local |scheduler| {
+                    do Scheduler::unsafe_local |scheduler| {
                         scheduler.resume_task_immediately(task_cell.take());
                     }
                 }
@@ -243,7 +243,7 @@ impl Stream for UvStream {
         let result_cell = empty_cell();
         let result_cell_ptr: *Cell<Result<uint, ()>> = &result_cell;
 
-        do Scheduler::local |scheduler| {
+        do Scheduler::unsafe_local |scheduler| {
             assert!(scheduler.in_task_context());
             let watcher = self.watcher();
             let buf_ptr: *&mut [u8] = &buf;
@@ -275,7 +275,7 @@ impl Stream for UvStream {
 
                     unsafe { (*result_cell_ptr).put_back(result); }
 
-                    do Scheduler::local |scheduler| {
+                    do Scheduler::unsafe_local |scheduler| {
                         scheduler.resume_task_immediately(task_cell.take());
                     }
                 }
@@ -289,7 +289,7 @@ impl Stream for UvStream {
     fn write(&mut self, buf: &[u8]) -> Result<(), ()> {
         let result_cell = empty_cell();
         let result_cell_ptr: *Cell<Result<(), ()>> = &result_cell;
-        do Scheduler::local |scheduler| {
+        do Scheduler::unsafe_local |scheduler| {
             assert!(scheduler.in_task_context());
             let watcher = self.watcher();
             let buf_ptr: *&[u8] = &buf;
@@ -308,7 +308,7 @@ impl Stream for UvStream {
 
                     unsafe { (*result_cell_ptr).put_back(result); }
 
-                    do Scheduler::local |scheduler| {
+                    do Scheduler::unsafe_local |scheduler| {
                         scheduler.resume_task_immediately(task_cell.take());
                     }
                 }
@@ -326,7 +326,7 @@ fn test_simple_io_no_connect() {
     do run_in_bare_thread {
         let mut sched = ~UvEventLoop::new_scheduler();
         let task = ~do Task::new(&mut sched.stack_pool) {
-            do Scheduler::local |sched| {
+            do Scheduler::unsafe_local |sched| {
                 let io = sched.event_loop.io().unwrap();
                 let addr = Ipv4(127, 0, 0, 1, 2926);
                 let maybe_chan = io.connect(addr);
@@ -346,7 +346,7 @@ fn test_simple_tcp_server_and_client() {
         let addr = Ipv4(127, 0, 0, 1, 2929);
 
         let client_task = ~do Task::new(&mut sched.stack_pool) {
-            do Scheduler::local |sched| {
+            do Scheduler::unsafe_local |sched| {
                 let io = sched.event_loop.io().unwrap();
                 let mut stream = io.connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -355,7 +355,7 @@ fn test_simple_tcp_server_and_client() {
         };
 
         let server_task = ~do Task::new(&mut sched.stack_pool) {
-            do Scheduler::local |sched| {
+            do Scheduler::unsafe_local |sched| {
                 let io = sched.event_loop.io().unwrap();
                 let mut listener = io.bind(addr).unwrap();
                 let mut stream = listener.listen().unwrap();
@@ -385,7 +385,7 @@ fn test_read_and_block() {
         let addr = Ipv4(127, 0, 0, 1, 2930);
 
         let client_task = ~do Task::new(&mut sched.stack_pool) {
-            do Scheduler::local |sched| {
+            do Scheduler::unsafe_local |sched| {
                 let io = sched.event_loop.io().unwrap();
                 let mut stream = io.connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -397,7 +397,7 @@ fn test_read_and_block() {
         };
 
         let server_task = ~do Task::new(&mut sched.stack_pool) {
-            do Scheduler::local |sched| {
+            do Scheduler::unsafe_local |sched| {
                 let io = sched.event_loop.io().unwrap();
                 let mut listener = io.bind(addr).unwrap();
                 let mut stream = listener.listen().unwrap();
@@ -416,7 +416,7 @@ fn test_read_and_block() {
                     }
                     reads += 1;
 
-                    do Scheduler::local |scheduler| {
+                    do Scheduler::unsafe_local |scheduler| {
                         // Yield to the other task in hopes that it
                         // will trigger a read callback while we are
                         // not ready for it
@@ -448,7 +448,7 @@ fn test_read_read_read() {
         let addr = Ipv4(127, 0, 0, 1, 2931);
 
         let client_task = ~do Task::new(&mut sched.stack_pool) {
-            do Scheduler::local |sched| {
+            do Scheduler::unsafe_local |sched| {
                 let io = sched.event_loop.io().unwrap();
                 let mut stream = io.connect(addr).unwrap();
                 let mut buf = [0, .. 2048];
