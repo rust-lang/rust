@@ -39,18 +39,11 @@ pub fn take() -> ~Scheduler {
     }
 }
 
-/// Give the Scheduler to thread-local storage for the duration of the block
-pub fn install(sched: ~Scheduler, f: &fn()) -> ~Scheduler {
-    put(sched);
-    f();
-    return take();
-}
-
 /// Borrow a mutable reference to the thread-local Scheduler
 /// # Safety Note
 /// Because this leaves the Scheduler in thread-local storage it is possible
 /// For the Scheduler pointer to be aliased
-pub fn borrow(f: &fn(&mut Scheduler)) {
+pub unsafe fn borrow(f: &fn(&mut Scheduler)) {
     unsafe {
         let key = tls_key();
         let mut void_sched: *mut c_void = tls::get(key);
@@ -96,11 +89,13 @@ fn thread_local_scheduler_two_instances() {
 }
 
 #[test]
-fn install_borrow_smoke_test() {
+fn borrow_smoke_test() {
     let scheduler = ~UvEventLoop::new_scheduler();
-    let _scheduler = do install(scheduler) {
+    put(scheduler);
+    unsafe {
         do borrow |_sched| {
         }
-    };
+    }
+    let _scheduler = take();
 }
 
