@@ -728,19 +728,19 @@ mod tests {
      * Semaphore tests
      ************************************************************************/
     #[test]
-    pub fn test_sem_acquire_release() {
+    fn test_sem_acquire_release() {
         let s = ~semaphore(1);
         s.acquire();
         s.release();
         s.acquire();
     }
     #[test]
-    pub fn test_sem_basic() {
+    fn test_sem_basic() {
         let s = ~semaphore(1);
         do s.access { }
     }
     #[test]
-    pub fn test_sem_as_mutex() {
+    fn test_sem_as_mutex() {
         let s = ~semaphore(1);
         let s2 = ~s.clone();
         do task::spawn || {
@@ -753,7 +753,7 @@ mod tests {
         }
     }
     #[test]
-    pub fn test_sem_as_cvar() {
+    fn test_sem_as_cvar() {
         /* Child waits and parent signals */
         let (p,c) = comm::stream();
         let s = ~semaphore(0);
@@ -779,7 +779,7 @@ mod tests {
         c.send(());
     }
     #[test]
-    pub fn test_sem_multi_resource() {
+    fn test_sem_multi_resource() {
         // Parent and child both get in the critical section at the same
         // time, and shake hands.
         let s = ~semaphore(2);
@@ -798,7 +798,7 @@ mod tests {
         }
     }
     #[test]
-    pub fn test_sem_runtime_friendly_blocking() {
+    fn test_sem_runtime_friendly_blocking() {
         // Force the runtime to schedule two threads on the same sched_loop.
         // When one blocks, it should schedule the other one.
         do task::spawn_sched(task::ManualThreads(1)) {
@@ -823,7 +823,7 @@ mod tests {
      * Mutex tests
      ************************************************************************/
     #[test]
-    pub fn test_mutex_lock() {
+    fn test_mutex_lock() {
         // Unsafely achieve shared state, and do the textbook
         // "load tmp = move ptr; inc tmp; store ptr <- tmp" dance.
         let (p,c) = comm::stream();
@@ -854,7 +854,7 @@ mod tests {
         }
     }
     #[test]
-    pub fn test_mutex_cond_wait() {
+    fn test_mutex_cond_wait() {
         let m = ~Mutex();
 
         // Child wakes up parent
@@ -886,7 +886,7 @@ mod tests {
         let _ = port.recv(); // Wait until child wakes up
     }
     #[cfg(test)]
-    pub fn test_mutex_cond_broadcast_helper(num_waiters: uint) {
+    fn test_mutex_cond_broadcast_helper(num_waiters: uint) {
         let m = ~Mutex();
         let mut ports = ~[];
 
@@ -913,15 +913,15 @@ mod tests {
         for ports.each |port| { let _ = port.recv(); }
     }
     #[test]
-    pub fn test_mutex_cond_broadcast() {
+    fn test_mutex_cond_broadcast() {
         test_mutex_cond_broadcast_helper(12);
     }
     #[test]
-    pub fn test_mutex_cond_broadcast_none() {
+    fn test_mutex_cond_broadcast_none() {
         test_mutex_cond_broadcast_helper(0);
     }
     #[test]
-    pub fn test_mutex_cond_no_waiter() {
+    fn test_mutex_cond_no_waiter() {
         let m = ~Mutex();
         let m2 = ~m.clone();
         do task::try || {
@@ -932,7 +932,7 @@ mod tests {
         }
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_mutex_killed_simple() {
+    fn test_mutex_killed_simple() {
         // Mutex must get automatically unlocked if failed/killed within.
         let m = ~Mutex();
         let m2 = ~m.clone();
@@ -947,7 +947,7 @@ mod tests {
         do m.lock { }
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_mutex_killed_cond() {
+    fn test_mutex_killed_cond() {
         // Getting killed during cond wait must not corrupt the mutex while
         // unwinding (e.g. double unlock).
         let m = ~Mutex();
@@ -973,7 +973,7 @@ mod tests {
         }
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_mutex_killed_broadcast() {
+    fn test_mutex_killed_broadcast() {
         let m = ~Mutex();
         let m2 = ~m.clone();
         let (p,c) = comm::stream();
@@ -1026,7 +1026,7 @@ mod tests {
         }
     }
     #[test]
-    pub fn test_mutex_cond_signal_on_0() {
+    fn test_mutex_cond_signal_on_0() {
         // Tests that signal_on(0) is equivalent to signal().
         let m = ~Mutex();
         do m.lock_cond |cond| {
@@ -1040,7 +1040,7 @@ mod tests {
         }
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_mutex_different_conds() {
+    fn test_mutex_different_conds() {
         let result = do task::try {
             let m = ~mutex_with_condvars(2);
             let m2 = ~m.clone();
@@ -1061,7 +1061,7 @@ mod tests {
         assert!(result.is_err());
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_mutex_no_condvars() {
+    fn test_mutex_no_condvars() {
         let result = do task::try {
             let m = ~mutex_with_condvars(0);
             do m.lock_cond |cond| { cond.wait(); }
@@ -1084,7 +1084,7 @@ mod tests {
     #[cfg(test)]
     pub enum RWlockMode { Read, Write, Downgrade, DowngradeRead }
     #[cfg(test)]
-    pub fn lock_rwlock_in_mode(x: &RWlock, mode: RWlockMode, blk: &fn()) {
+    fn lock_rwlock_in_mode(x: &RWlock, mode: RWlockMode, blk: &fn()) {
         match mode {
             Read => x.read(blk),
             Write => x.write(blk),
@@ -1100,7 +1100,7 @@ mod tests {
         }
     }
     #[cfg(test)]
-    pub fn test_rwlock_exclusion(x: ~RWlock,
+    fn test_rwlock_exclusion(x: ~RWlock,
                                  mode1: RWlockMode,
                                  mode2: RWlockMode) {
         // Test mutual exclusion between readers and writers. Just like the
@@ -1132,21 +1132,21 @@ mod tests {
         }
     }
     #[test]
-    pub fn test_rwlock_readers_wont_modify_the_data() {
+    fn test_rwlock_readers_wont_modify_the_data() {
         test_rwlock_exclusion(~RWlock(), Read, Write);
         test_rwlock_exclusion(~RWlock(), Write, Read);
         test_rwlock_exclusion(~RWlock(), Read, Downgrade);
         test_rwlock_exclusion(~RWlock(), Downgrade, Read);
     }
     #[test]
-    pub fn test_rwlock_writers_and_writers() {
+    fn test_rwlock_writers_and_writers() {
         test_rwlock_exclusion(~RWlock(), Write, Write);
         test_rwlock_exclusion(~RWlock(), Write, Downgrade);
         test_rwlock_exclusion(~RWlock(), Downgrade, Write);
         test_rwlock_exclusion(~RWlock(), Downgrade, Downgrade);
     }
     #[cfg(test)]
-    pub fn test_rwlock_handshake(x: ~RWlock,
+    fn test_rwlock_handshake(x: ~RWlock,
                                  mode1: RWlockMode,
                                  mode2: RWlockMode,
                                  make_mode2_go_first: bool) {
@@ -1178,7 +1178,7 @@ mod tests {
         }
     }
     #[test]
-    pub fn test_rwlock_readers_and_readers() {
+    fn test_rwlock_readers_and_readers() {
         test_rwlock_handshake(~RWlock(), Read, Read, false);
         // The downgrader needs to get in before the reader gets in, otherwise
         // they cannot end up reading at the same time.
@@ -1187,7 +1187,7 @@ mod tests {
         // Two downgrade_reads can never both end up reading at the same time.
     }
     #[test]
-    pub fn test_rwlock_downgrade_unlock() {
+    fn test_rwlock_downgrade_unlock() {
         // Tests that downgrade can unlock the lock in both modes
         let x = ~RWlock();
         do lock_rwlock_in_mode(x, Downgrade) { }
@@ -1197,12 +1197,12 @@ mod tests {
         test_rwlock_exclusion(y, Write, Write);
     }
     #[test]
-    pub fn test_rwlock_read_recursive() {
+    fn test_rwlock_read_recursive() {
         let x = ~RWlock();
         do x.read { do x.read { } }
     }
     #[test]
-    pub fn test_rwlock_cond_wait() {
+    fn test_rwlock_cond_wait() {
         // As test_mutex_cond_wait above.
         let x = ~RWlock();
 
@@ -1237,7 +1237,7 @@ mod tests {
         do x.read { } // Just for good measure
     }
     #[cfg(test)]
-    pub fn test_rwlock_cond_broadcast_helper(num_waiters: uint,
+    fn test_rwlock_cond_broadcast_helper(num_waiters: uint,
                                              dg1: bool,
                                              dg2: bool) {
         // Much like the mutex broadcast test. Downgrade-enabled.
@@ -1276,7 +1276,7 @@ mod tests {
         for ports.each |port| { let _ = port.recv(); }
     }
     #[test]
-    pub fn test_rwlock_cond_broadcast() {
+    fn test_rwlock_cond_broadcast() {
         test_rwlock_cond_broadcast_helper(0, true, true);
         test_rwlock_cond_broadcast_helper(0, true, false);
         test_rwlock_cond_broadcast_helper(0, false, true);
@@ -1287,7 +1287,7 @@ mod tests {
         test_rwlock_cond_broadcast_helper(12, false, false);
     }
     #[cfg(test)] #[ignore(cfg(windows))]
-    pub fn rwlock_kill_helper(mode1: RWlockMode, mode2: RWlockMode) {
+    fn rwlock_kill_helper(mode1: RWlockMode, mode2: RWlockMode) {
         // Mutex must get automatically unlocked if failed/killed within.
         let x = ~RWlock();
         let x2 = (*x).clone();
@@ -1302,23 +1302,23 @@ mod tests {
         do lock_rwlock_in_mode(x, mode2) { }
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_rwlock_reader_killed_writer() {
+    fn test_rwlock_reader_killed_writer() {
         rwlock_kill_helper(Read, Write);
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_rwlock_writer_killed_reader() {
+    fn test_rwlock_writer_killed_reader() {
         rwlock_kill_helper(Write,Read );
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_rwlock_reader_killed_reader() {
+    fn test_rwlock_reader_killed_reader() {
         rwlock_kill_helper(Read, Read );
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_rwlock_writer_killed_writer() {
+    fn test_rwlock_writer_killed_writer() {
         rwlock_kill_helper(Write,Write);
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_rwlock_kill_downgrader() {
+    fn test_rwlock_kill_downgrader() {
         rwlock_kill_helper(Downgrade, Read);
         rwlock_kill_helper(Read, Downgrade);
         rwlock_kill_helper(Downgrade, Write);
@@ -1333,7 +1333,7 @@ mod tests {
         rwlock_kill_helper(Downgrade, DowngradeRead);
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    pub fn test_rwlock_downgrade_cant_swap() {
+    fn test_rwlock_downgrade_cant_swap() {
         // Tests that you can't downgrade with a different rwlock's token.
         let x = ~RWlock();
         let y = ~RWlock();

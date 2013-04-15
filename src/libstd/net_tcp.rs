@@ -1426,7 +1426,7 @@ struct TcpBufferedSocketData {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use net::ip;
     use net::tcp::{GenericListenErr, TcpConnectErrData, TcpListenErrData};
     use net::tcp::{connect, accept, read, listen, TcpSocket, socket_buf};
@@ -1447,9 +1447,9 @@ pub mod test {
     #[cfg(target_os="darwin")]
     #[cfg(target_os="linux")]
     #[cfg(target_os="android")]
-    pub mod tcp_ipv4_server_and_client_test {
+    mod tcp_ipv4_server_and_client_test {
         #[cfg(target_arch="x86_64")]
-        pub mod impl64 {
+        mod impl64 {
             use net::tcp::test::*;
 
             #[test]
@@ -1497,7 +1497,7 @@ pub mod test {
         #[cfg(target_arch="x86")]
         #[cfg(target_arch="arm")]
         #[cfg(target_arch="mips")]
-        pub mod impl32 {
+        mod impl32 {
             use net::tcp::test::*;
 
             #[test]

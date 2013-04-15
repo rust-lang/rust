@@ -925,7 +925,7 @@ fn test_spawn_sched_childs_on_default_sched() {
 }
 
 #[cfg(test)]
-pub mod testrt {
+mod testrt {
     use libc;
 
     #[nolink]
