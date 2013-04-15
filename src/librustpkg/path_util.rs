@@ -75,7 +75,7 @@ mod test {
         let substitute_path = Path("xyzzy");
         assert!(default_dest_dir(&the_path) == the_path.push(~"build"));
         let nonexistent_path = mk_nonexistent(&the_path, "quux");
-        let bogus = do ::conditions::bad_path::cond.trap(|_| { 
+        let bogus = do ::conditions::bad_path::cond.trap(|_| {
             substitute_path
         }).in { default_dest_dir(&nonexistent_path) };
         assert!(bogus == substitute_path);
