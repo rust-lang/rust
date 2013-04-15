@@ -95,9 +95,9 @@ pub impl Scheduler {
         // Give ownership of the scheduler (self) to the thread
         local::put(self);
 
-        do Scheduler::local |scheduler| {
+        do Scheduler::unsafe_local |scheduler| {
             fn run_scheduler_once() {
-                do Scheduler::local |scheduler| {
+                do Scheduler::unsafe_local |scheduler| {
                     if scheduler.resume_task_from_queue() {
                         // Ok, a task ran. Nice! We'll do it again later
                         scheduler.event_loop.callback(run_scheduler_once);
@@ -112,7 +112,11 @@ pub impl Scheduler {
         return local::take();
     }
 
-    fn local(f: &fn(&mut Scheduler)) {
+    /// Get a mutable pointer to the thread-local scheduler.
+    /// # Safety Note
+    /// This allows other mutable aliases to the scheduler, both in the current
+    /// execution context and other execution contexts.
+    fn unsafe_local(f: &fn(&mut Scheduler)) {
         unsafe { local::borrow(f) }
     }
 
@@ -204,7 +208,7 @@ pub impl Scheduler {
         }
 
         // We could be executing in a different thread now
-        do Scheduler::local |sched| {
+        do Scheduler::unsafe_local |sched| {
             sched.run_cleanup_job();
         }
     }
@@ -228,7 +232,7 @@ pub impl Scheduler {
         }
 
         // We could be executing in a different thread now
-        do Scheduler::local |sched| {
+        do Scheduler::unsafe_local |sched| {
             sched.run_cleanup_job();
         }
     }
@@ -327,13 +331,13 @@ pub impl Task {
             // This is the first code to execute after the initial
             // context switch to the task. The previous context may
             // have asked us to do some cleanup.
-            do Scheduler::local |sched| {
+            do Scheduler::unsafe_local |sched| {
                 sched.run_cleanup_job();
             }
 
             start();
 
-            do Scheduler::local |sched| {
+            do Scheduler::unsafe_local |sched| {
                 sched.terminate_current_task();
             }
         };
@@ -394,7 +398,7 @@ fn test_swap_tasks() {
         let mut sched = ~UvEventLoop::new_scheduler();
         let task1 = ~do Task::new(&mut sched.stack_pool) {
             unsafe { *count_ptr = *count_ptr + 1; }
-            do Scheduler::local |sched| {
+            do Scheduler::unsafe_local |sched| {
                 let task2 = ~do Task::new(&mut sched.stack_pool) {
                     unsafe { *count_ptr = *count_ptr + 1; }
                 };
@@ -427,7 +431,7 @@ fn test_run_a_lot_of_tasks_queued() {
         assert!(count == MAX);
 
         fn run_task(count_ptr: *mut int) {
-            do Scheduler::local |sched| {
+            do Scheduler::unsafe_local |sched| {
                 let task = ~do Task::new(&mut sched.stack_pool) {
                     unsafe {
                         *count_ptr = *count_ptr + 1;
@@ -460,7 +464,7 @@ fn test_run_a_lot_of_tasks_direct() {
         assert!(count == MAX);
 
         fn run_task(count_ptr: *mut int) {
-            do Scheduler::local |sched| {
+            do Scheduler::unsafe_local |sched| {
                 let task = ~do Task::new(&mut sched.stack_pool) {
                     unsafe {
                         *count_ptr = *count_ptr + 1;
@@ -481,7 +485,7 @@ fn test_block_task() {
     do run_in_bare_thread {
         let mut sched = ~UvEventLoop::new_scheduler();
         let task = ~do Task::new(&mut sched.stack_pool) {
-            do Scheduler::local |sched| {
+            do Scheduler::unsafe_local |sched| {
                 assert!(sched.in_task_context());
                 do sched.deschedule_running_task_and_then() |sched, task| {
                     assert!(!sched.in_task_context());
