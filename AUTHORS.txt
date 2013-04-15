@@ -31,6 +31,7 @@ Bilal Husain <bilal@bilalhusain.com>
 Bill Fallon <bill.fallon@robos.li>
 Brendan Eich <brendan@mozilla.org>
 Brendan Zabarauskas <bjzaba@yahoo.com.au>
+Brett Cannon <brett@python.org>
 Brian Anderson <banderson@mozilla.com>
 Brian J. Burg <burg@cs.washington.edu>
 Brian Leibig <brian.leibig@gmail.com>
@@ -50,6 +51,7 @@ Dave Herman <dherman@mozilla.com>
 David Forsythe <dforsythe@gmail.com>
 David Klein <david.klein@baesystemsdetica.com>
 David Rajchenbach-Teller <dteller@mozilla.com>
+Diggory Hardy <diggory.hardy@gmail.com>
 Dimitri Krassovski <labria@startika.com>
 Donovan Preston <donovanpreston@gmail.com>
 Drew Willcoxon <adw@mozilla.com>
@@ -76,9 +78,11 @@ Ian D. Bollinger <ian.bollinger@gmail.com>
 Ilyong Cho <ilyoan@gmail.com>
 Isaac Aggrey <isaac.aggrey@gmail.com>
 Ivano Coppola <rgbfirefox@gmail.com>
+Jack Moffitt <jack@metajack.im>
 Jacob Harris Cryer Kragh <jhckragh@gmail.com>
 Jacob Parker <j3parker@csclub.uwaterloo.ca>
 Jakub Wieczorek <jakubw@jakubw.net>
+James Miller <bladeon@gmail.com>
 Jason Orendorff <jorendorff@mozilla.com>
 Jed Davis <jld@panix.com>
 Jeff Balogh <jbalogh@mozilla.com>
