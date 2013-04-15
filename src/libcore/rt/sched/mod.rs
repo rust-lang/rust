@@ -93,7 +93,9 @@ pub impl Scheduler {
         assert!(!self.in_task_context());
 
         // Give ownership of the scheduler (self) to the thread
-        do self.install |scheduler| {
+        local::put(self);
+
+        do Scheduler::local |scheduler| {
             fn run_scheduler_once() {
                 do Scheduler::local |scheduler| {
                     if scheduler.resume_task_from_queue() {
@@ -106,16 +108,12 @@ pub impl Scheduler {
             scheduler.event_loop.callback(run_scheduler_once);
             scheduler.event_loop.run();
         }
-    }
 
-    fn install(~self, f: &fn(&mut Scheduler)) -> ~Scheduler {
-        do local::install(self) {
-            local::borrow(f)
-        }
+        return local::take();
     }
 
     fn local(f: &fn(&mut Scheduler)) {
-        local::borrow(f)
+        unsafe { local::borrow(f) }
     }
 
     // * Scheduler-context operations
@@ -206,7 +204,7 @@ pub impl Scheduler {
         }
 
         // We could be executing in a different thread now
-        do local::borrow |sched| {
+        do Scheduler::local |sched| {
             sched.run_cleanup_job();
         }
     }
@@ -230,7 +228,7 @@ pub impl Scheduler {
         }
 
         // We could be executing in a different thread now
-        do local::borrow |sched| {
+        do Scheduler::local |sched| {
             sched.run_cleanup_job();
         }
     }
