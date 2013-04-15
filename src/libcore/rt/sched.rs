@@ -60,6 +60,7 @@ impl HackAroundBorrowCk for UnsafeTaskReceiver {
 }
 
 enum CleanupJob {
+    DoNothing,
     RescheduleTask(~Task),
     RecycleTask(~Task),
     GiveTask(~Task, UnsafeTaskReceiver)
@@ -148,6 +149,7 @@ pub impl Scheduler {
 
         // Store the task in the scheduler so it can be grabbed later
         self.current_task = Some(task);
+        self.enqueue_cleanup_job(DoNothing);
 
         // Take pointers to both the task and scheduler's saved registers.
         {
@@ -243,14 +245,13 @@ pub impl Scheduler {
     }
 
     fn run_cleanup_job(&mut self) {
-        rtdebug!("running cleanup jobs");
+        rtdebug!("running cleanup job");
 
-        if self.cleanup_job.is_none() {
-            return;
-        }
+        assert!(self.cleanup_job.is_some());
 
         let cleanup_job = self.cleanup_job.swap_unwrap();
         match cleanup_job {
+            DoNothing => { }
             RescheduleTask(task) => {
                 // NB: Pushing to the *front* of the queue
                 self.task_queue.push_front(task);
@@ -278,9 +279,10 @@ pub impl Scheduler {
             Some(GiveTask(~ref task, _)) => {
                 Some(task)
             }
-            None => {
+            Some(DoNothing) => {
                 None
             }
+            None => fail!(fmt!("all context switches should have a cleanup job"))
         };
         // XXX: Pattern matching mutable pointers above doesn't work
         // because borrowck thinks the three patterns are conflicting
