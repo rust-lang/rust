@@ -563,21 +563,26 @@ pub fn link_exe(src: &Path, dest: &Path) -> bool {
     }
 }
 
-#[test]
-fn test_is_cmd() {
-    assert!(is_cmd(~"build"));
-    assert!(is_cmd(~"clean"));
-    assert!(is_cmd(~"do"));
-    assert!(is_cmd(~"info"));
-    assert!(is_cmd(~"install"));
-    assert!(is_cmd(~"prefer"));
-    assert!(is_cmd(~"test"));
-    assert!(is_cmd(~"uninstall"));
-    assert!(is_cmd(~"unprefer"));
-}
+#[cfg(test)]
+mod test {
+    use super::{is_cmd, parse_name};
 
-#[test]
-fn test_parse_name() {
-    assert!(parse_name(~"org.mozilla.servo").get() == ~"servo");
-    assert!(parse_name(~"org. mozilla.servo 2131").is_err());
+    #[test]
+    fn test_is_cmd() {
+        assert!(is_cmd(~"build"));
+        assert!(is_cmd(~"clean"));
+        assert!(is_cmd(~"do"));
+        assert!(is_cmd(~"info"));
+        assert!(is_cmd(~"install"));
+        assert!(is_cmd(~"prefer"));
+        assert!(is_cmd(~"test"));
+        assert!(is_cmd(~"uninstall"));
+        assert!(is_cmd(~"unprefer"));
+    }
+
+    #[test]
+    fn test_parse_name() {
+        assert!(parse_name(~"org.mozilla.servo").get() == ~"servo");
+        assert!(parse_name(~"org. mozilla.servo 2131").is_err());
+    }
 }

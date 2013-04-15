@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// rustpkg - a purely function package manager and build system
+// rustpkg - a package manager and build system for Rust
 
 #[link(name = "rustpkg",
        vers = "0.7-pre",
@@ -37,8 +37,11 @@ use std::net::url;
 use std::{getopts};
 use syntax::{ast, diagnostic};
 use util::{ExitCode, Pkg, PkgId};
+use path_util::dest_dir;
 
+mod conditions;
 mod usage;
+mod path_util;
 mod util;
 
 /// A PkgScript represents user-supplied custom logic for
@@ -153,46 +156,6 @@ struct Ctx {
     // Cache of hashes of things already installed
     // though I'm not sure why the value is a bool
     dep_cache: @mut HashMap<~str, bool>,
-}
-
-
-/// Returns the output directory to use.
-/// Right now is always the default, should
-/// support changing it.
-fn dest_dir(pkgid: PkgId) -> Path {
-    default_dest_dir(&pkgid.path).expect(
-        ~"couldn't make default dir?!")
-}
-
-/// Returns the default output directory for compilation.
-/// Creates that directory if it doesn't exist.
-fn default_dest_dir(pkg_dir: &Path) -> Option<Path> {
-    use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
-
-    // For now: assumes that pkg_dir exists and is relative
-    // to the CWD. Change this later when we do path searching.
-    let rslt = pkg_dir.push("build");
-    let is_dir = os::path_is_dir(&rslt);
-    if os::path_exists(&rslt) {
-        if is_dir {
-            Some(rslt)
-        }
-        else {
-            util::error(fmt!("%s is not a directory", rslt.to_str()));
-            None
-        }
-    }
-    else {
-        // Create it
-        if os::make_dir(&rslt, (S_IRUSR | S_IWUSR | S_IXUSR) as i32) {
-            Some(rslt)
-        }
-        else {
-            util::error(fmt!("Could not create directory %s",
-                             rslt.to_str()));
-            None // ??? should probably use conditions
-        }
-    }
 }
 
 impl Ctx {
@@ -760,10 +723,6 @@ pub struct PkgSrc {
 }
 
 condition! {
-    bad_path: (super::Path, ~str) -> super::Path;
-}
-
-condition! {
     build_err: (~str) -> ();
 }
 
@@ -785,7 +744,7 @@ impl PkgSrc {
 
 
     fn check_dir(&self) -> Path {
-        use bad_path::cond;
+        use conditions::bad_path::cond;
 
         debug!("Pushing onto root: %s | %s", self.id.path.to_str(),
                self.root.to_str());
