@@ -579,7 +579,7 @@ mod test {
         assert!(is_cmd(~"uninstall"));
         assert!(is_cmd(~"unprefer"));
     }
-    
+
     #[test]
     fn test_parse_name() {
         assert!(parse_name(~"org.mozilla.servo").get() == ~"servo");
