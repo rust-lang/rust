@@ -43,7 +43,7 @@ pub fn take() -> ~Scheduler {
 /// # Safety Note
 /// Because this leaves the Scheduler in thread-local storage it is possible
 /// For the Scheduler pointer to be aliased
-pub unsafe fn borrow(f: &fn(&mut Scheduler)) {
+pub unsafe fn borrow() -> &mut Scheduler {
     unsafe {
         let key = tls_key();
         let mut void_sched: *mut c_void = tls::get(key);
@@ -54,7 +54,7 @@ pub unsafe fn borrow(f: &fn(&mut Scheduler)) {
                 transmute::<&mut *mut c_void, &mut ~Scheduler>(void_sched_ptr)
             };
             let sched: &mut Scheduler = &mut **sched;
-            f(sched);
+            return sched;
         }
     }
 }
@@ -93,8 +93,7 @@ fn borrow_smoke_test() {
     let scheduler = ~UvEventLoop::new_scheduler();
     put(scheduler);
     unsafe {
-        do borrow |_sched| {
-        }
+        let _scheduler = borrow();
     }
     let _scheduler = take();
 }
