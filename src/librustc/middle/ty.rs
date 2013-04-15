@@ -300,7 +300,11 @@ struct ctxt_ {
     destructors: @mut HashSet<ast::def_id>,
 
     // Maps a trait onto a mapping from self-ty to impl
-    trait_impls: @mut HashMap<ast::def_id, @mut HashMap<t, @Impl>>
+    trait_impls: @mut HashMap<ast::def_id, @mut HashMap<t, @Impl>>,
+
+    // Set of used unsafe nodes (functions or blocks). Unsafe nodes not
+    // present in this set can be warned about.
+    used_unsafe: @mut HashSet<ast::node_id>,
 }
 
 enum tbox_flag {
@@ -885,7 +889,8 @@ pub fn mk_ctxt(s: session::Session,
         supertraits: @mut HashMap::new(),
         destructor_for_type: @mut HashMap::new(),
         destructors: @mut HashSet::new(),
-        trait_impls: @mut HashMap::new()
+        trait_impls: @mut HashMap::new(),
+        used_unsafe: @mut HashSet::new(),
      }
 }
 
@@ -4309,16 +4314,16 @@ pub fn eval_repeat_count(tcx: ctxt, count_expr: @ast::expr) -> uint {
 }
 
 // Determine what purity to check a nested function under
-pub fn determine_inherited_purity(parent_purity: ast::purity,
-                                       child_purity: ast::purity,
-                                       child_sigil: ast::Sigil)
-                                    -> ast::purity {
+pub fn determine_inherited_purity(parent: (ast::purity, ast::node_id),
+                                  child: (ast::purity, ast::node_id),
+                                  child_sigil: ast::Sigil)
+                                    -> (ast::purity, ast::node_id) {
     // If the closure is a stack closure and hasn't had some non-standard
     // purity inferred for it, then check it under its parent's purity.
     // Otherwise, use its own
     match child_sigil {
-        ast::BorrowedSigil if child_purity == ast::impure_fn => parent_purity,
-        _ => child_purity
+        ast::BorrowedSigil if child.first() == ast::impure_fn => parent,
+        _ => child
     }
 }
 

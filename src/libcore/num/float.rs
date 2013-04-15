@@ -369,27 +369,27 @@ pub fn is_NaN(x: float) -> bool { f64::is_NaN(x as f64) }
 
 #[inline(always)]
 pub fn abs(x: float) -> float {
-    unsafe { f64::abs(x as f64) as float }
+    f64::abs(x as f64) as float
 }
 #[inline(always)]
 pub fn sqrt(x: float) -> float {
-    unsafe { f64::sqrt(x as f64) as float }
+    f64::sqrt(x as f64) as float
 }
 #[inline(always)]
 pub fn atan(x: float) -> float {
-    unsafe { f64::atan(x as f64) as float }
+    f64::atan(x as f64) as float
 }
 #[inline(always)]
 pub fn sin(x: float) -> float {
-    unsafe { f64::sin(x as f64) as float }
+    f64::sin(x as f64) as float
 }
 #[inline(always)]
 pub fn cos(x: float) -> float {
-    unsafe { f64::cos(x as f64) as float }
+    f64::cos(x as f64) as float
 }
 #[inline(always)]
 pub fn tan(x: float) -> float {
-    unsafe { f64::tan(x as f64) as float }
+    f64::tan(x as f64) as float
 }
 
 #[cfg(notest)]

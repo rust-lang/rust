@@ -274,13 +274,11 @@ impl ToStr for Abi {
 
 impl ToStr for AbiSet {
     fn to_str(&self) -> ~str {
-        unsafe { // so we can push to strs.
-            let mut strs = ~[];
-            for self.each |abi| {
-                strs.push(abi.data().name);
-            }
-            fmt!("\"%s\"", str::connect_slices(strs, " "))
+        let mut strs = ~[];
+        for self.each |abi| {
+            strs.push(abi.data().name);
         }
+        fmt!("\"%s\"", str::connect_slices(strs, " "))
     }
 }
 

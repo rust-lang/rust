@@ -205,8 +205,6 @@ fn align_down(sp: *mut uint) -> *mut uint {
 #[inline(always)]
 pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
     use core::sys::size_of;
-    unsafe {
-        (ptr as int + count * (size_of::<T>() as int)) as *mut T
-    }
+    (ptr as int + count * (size_of::<T>() as int)) as *mut T
 }
 

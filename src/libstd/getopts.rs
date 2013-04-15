@@ -223,128 +223,126 @@ pub type Result = result::Result<Matches, Fail_>;
  * Use <fail_str> to get an error message.
  */
 pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
-    unsafe {
-        let n_opts = opts.len();
-        fn f(_x: uint) -> ~[Optval] { return ~[]; }
-        let mut vals = vec::from_fn(n_opts, f);
-        let mut free: ~[~str] = ~[];
-        let l = args.len();
-        let mut i = 0;
-        while i < l {
-            let cur = args[i];
-            let curlen = cur.len();
-            if !is_arg(cur) {
-                free.push(cur);
-            } else if cur == ~"--" {
-                let mut j = i + 1;
-                while j < l { free.push(args[j]); j += 1; }
-                break;
-            } else {
-                let mut names;
-                let mut i_arg = None;
-                if cur[1] == '-' as u8 {
-                    let tail = str::slice(cur, 2, curlen).to_owned();
-                    let mut tail_eq = ~[];
-                    for str::each_splitn_char(tail, '=', 1) |s| { tail_eq.push(s.to_owned()) }
-                    if tail_eq.len() <= 1 {
-                        names = ~[Long(tail)];
-                    } else {
-                        names =
-                            ~[Long(tail_eq[0])];
-                        i_arg = Some(tail_eq[1]);
-                    }
+    let n_opts = opts.len();
+    fn f(_x: uint) -> ~[Optval] { return ~[]; }
+    let mut vals = vec::from_fn(n_opts, f);
+    let mut free: ~[~str] = ~[];
+    let l = args.len();
+    let mut i = 0;
+    while i < l {
+        let cur = args[i];
+        let curlen = cur.len();
+        if !is_arg(cur) {
+            free.push(cur);
+        } else if cur == ~"--" {
+            let mut j = i + 1;
+            while j < l { free.push(args[j]); j += 1; }
+            break;
+        } else {
+            let mut names;
+            let mut i_arg = None;
+            if cur[1] == '-' as u8 {
+                let tail = str::slice(cur, 2, curlen).to_owned();
+                let mut tail_eq = ~[];
+                for str::each_splitn_char(tail, '=', 1) |s| { tail_eq.push(s.to_owned()) }
+                if tail_eq.len() <= 1 {
+                    names = ~[Long(tail)];
                 } else {
-                    let mut j = 1;
-                    let mut last_valid_opt_id = None;
-                    names = ~[];
-                    while j < curlen {
-                        let range = str::char_range_at(cur, j);
-                        let opt = Short(range.ch);
-
-                        /* In a series of potential options (eg. -aheJ), if we
-                           see one which takes an argument, we assume all
-                           subsequent characters make up the argument. This
-                           allows options such as -L/usr/local/lib/foo to be
-                           interpreted correctly
-                        */
-
-                        match find_opt(opts, opt) {
-                          Some(id) => last_valid_opt_id = Some(id),
-                          None => {
-                            let arg_follows =
-                                last_valid_opt_id.is_some() &&
-                                match opts[last_valid_opt_id.get()]
-                                  .hasarg {
-
-                                  Yes | Maybe => true,
-                                  No => false
-                                };
-                            if arg_follows && j < curlen {
-                                i_arg = Some(cur.slice(j, curlen).to_owned());
-                                break;
-                            } else {
-                                last_valid_opt_id = None;
-                            }
-                          }
-                        }
-                        names.push(opt);
-                        j = range.next;
-                    }
+                    names =
+                        ~[Long(tail_eq[0])];
+                    i_arg = Some(tail_eq[1]);
                 }
-                let mut name_pos = 0;
-                for names.each() |nm| {
-                    name_pos += 1;
-                    let optid = match find_opt(opts, *nm) {
-                      Some(id) => id,
-                      None => return Err(UnrecognizedOption(name_str(nm)))
-                    };
-                    match opts[optid].hasarg {
-                      No => {
-                        if !i_arg.is_none() {
-                            return Err(UnexpectedArgument(name_str(nm)));
+            } else {
+                let mut j = 1;
+                let mut last_valid_opt_id = None;
+                names = ~[];
+                while j < curlen {
+                    let range = str::char_range_at(cur, j);
+                    let opt = Short(range.ch);
+
+                    /* In a series of potential options (eg. -aheJ), if we
+                       see one which takes an argument, we assume all
+                       subsequent characters make up the argument. This
+                       allows options such as -L/usr/local/lib/foo to be
+                       interpreted correctly
+                    */
+
+                    match find_opt(opts, opt) {
+                      Some(id) => last_valid_opt_id = Some(id),
+                      None => {
+                        let arg_follows =
+                            last_valid_opt_id.is_some() &&
+                            match opts[last_valid_opt_id.get()]
+                              .hasarg {
+
+                              Yes | Maybe => true,
+                              No => false
+                            };
+                        if arg_follows && j < curlen {
+                            i_arg = Some(cur.slice(j, curlen).to_owned());
+                            break;
+                        } else {
+                            last_valid_opt_id = None;
                         }
+                      }
+                    }
+                    names.push(opt);
+                    j = range.next;
+                }
+            }
+            let mut name_pos = 0;
+            for names.each() |nm| {
+                name_pos += 1;
+                let optid = match find_opt(opts, *nm) {
+                  Some(id) => id,
+                  None => return Err(UnrecognizedOption(name_str(nm)))
+                };
+                match opts[optid].hasarg {
+                  No => {
+                    if !i_arg.is_none() {
+                        return Err(UnexpectedArgument(name_str(nm)));
+                    }
+                    vals[optid].push(Given);
+                  }
+                  Maybe => {
+                    if !i_arg.is_none() {
+                        vals[optid].push(Val(i_arg.get()));
+                    } else if name_pos < names.len() ||
+                                  i + 1 == l || is_arg(args[i + 1]) {
                         vals[optid].push(Given);
-                      }
-                      Maybe => {
-                        if !i_arg.is_none() {
-                            vals[optid].push(Val(i_arg.get()));
-                        } else if name_pos < names.len() ||
-                                      i + 1 == l || is_arg(args[i + 1]) {
-                            vals[optid].push(Given);
-                        } else { i += 1; vals[optid].push(Val(args[i])); }
-                      }
-                      Yes => {
-                        if !i_arg.is_none() {
-                            vals[optid].push(Val(i_arg.get()));
-                        } else if i + 1 == l {
-                            return Err(ArgumentMissing(name_str(nm)));
-                        } else { i += 1; vals[optid].push(Val(args[i])); }
-                      }
-                    }
+                    } else { i += 1; vals[optid].push(Val(args[i])); }
+                  }
+                  Yes => {
+                    if !i_arg.is_none() {
+                        vals[optid].push(Val(i_arg.get()));
+                    } else if i + 1 == l {
+                        return Err(ArgumentMissing(name_str(nm)));
+                    } else { i += 1; vals[optid].push(Val(args[i])); }
+                  }
                 }
             }
-            i += 1;
         }
-        i = 0u;
-        while i < n_opts {
-            let n = vals[i].len();
-            let occ = opts[i].occur;
-            if occ == Req {
-                if n == 0 {
-                    return Err(OptionMissing(name_str(&(opts[i].name))));
-                }
-            }
-            if occ != Multi {
-                if n > 1 {
-                    return Err(OptionDuplicated(name_str(&(opts[i].name))));
-                }
-            }
-            i += 1;
-        }
-        return Ok(Matches {opts: vec::from_slice(opts),
-                   vals: vals,
-                   free: free});
+        i += 1;
     }
+    i = 0u;
+    while i < n_opts {
+        let n = vals[i].len();
+        let occ = opts[i].occur;
+        if occ == Req {
+            if n == 0 {
+                return Err(OptionMissing(name_str(&(opts[i].name))));
+            }
+        }
+        if occ != Multi {
+            if n > 1 {
+                return Err(OptionDuplicated(name_str(&(opts[i].name))));
+            }
+        }
+        i += 1;
+    }
+    return Ok(Matches {opts: vec::from_slice(opts),
+               vals: vals,
+               free: free});
 }
 
 fn opt_vals(mm: &Matches, nm: &str) -> ~[Optval] {
