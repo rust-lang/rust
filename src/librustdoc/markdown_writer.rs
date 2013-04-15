@@ -182,7 +182,7 @@ fn generic_writer(process: ~fn(markdown: ~str)) -> Writer {
     result
 }
 
-fn make_local_filename(
+pub fn make_local_filename(
     config: config::Config,
     page: doc::Page
 ) -> Path {
@@ -216,65 +216,6 @@ pub fn make_filename(
     };
 
     Path(filename).with_filetype(ext)
-}
-
-#[test]
-fn should_use_markdown_file_name_based_off_crate() {
-    let config = config::Config {
-        output_dir: Path("output/dir"),
-        output_format: config::Markdown,
-        output_style: config::DocPerCrate,
-        .. config::default_config(&Path("input/test.rc"))
-    };
-    let doc = test::mk_doc(~"test", ~"");
-    let page = doc::CratePage(doc.CrateDoc());
-    let filename = make_local_filename(config, page);
-    assert!(filename.to_str() == ~"output/dir/test.md");
-}
-
-#[test]
-fn should_name_html_crate_file_name_index_html_when_doc_per_mod() {
-    let config = config::Config {
-        output_dir: Path("output/dir"),
-        output_format: config::PandocHtml,
-        output_style: config::DocPerMod,
-        .. config::default_config(&Path("input/test.rc"))
-    };
-    let doc = test::mk_doc(~"", ~"");
-    let page = doc::CratePage(doc.CrateDoc());
-    let filename = make_local_filename(config, page);
-    assert!(filename.to_str() == ~"output/dir/index.html");
-}
-
-#[test]
-fn should_name_mod_file_names_by_path() {
-    let config = config::Config {
-        output_dir: Path("output/dir"),
-        output_format: config::PandocHtml,
-        output_style: config::DocPerMod,
-        .. config::default_config(&Path("input/test.rc"))
-    };
-    let doc = test::mk_doc(~"", ~"mod a { mod b { } }");
-    let modb = copy doc.cratemod().mods()[0].mods()[0];
-    let page = doc::ItemPage(doc::ModTag(modb));
-    let filename = make_local_filename(config, page);
-    assert!(filename == Path("output/dir/a_b.html"));
-}
-
-#[cfg(test)]
-mod test {
-    use astsrv;
-    use doc;
-    use extract;
-    use path_pass;
-
-    pub fn mk_doc(name: ~str, source: ~str) -> doc::Doc {
-        do astsrv::from_str(source) |srv| {
-            let doc = extract::from_srv(srv.clone(), copy name);
-            let doc = (path_pass::mk_pass().f)(srv.clone(), doc);
-            doc
-        }
-    }
 }
 
 fn write_file(path: &Path, s: ~str) {
@@ -321,4 +262,66 @@ fn future_writer() -> (Writer, future::Future<~str>) {
         res
     };
     (writer, future)
+}
+
+#[cfg(test)]
+mod test {
+    use astsrv;
+    use doc;
+    use extract;
+    use path_pass;
+    use config;
+    use super::make_local_filename;
+    use core::prelude::*;
+
+    fn mk_doc(name: ~str, source: ~str) -> doc::Doc {
+        do astsrv::from_str(source) |srv| {
+            let doc = extract::from_srv(srv.clone(), copy name);
+            let doc = (path_pass::mk_pass().f)(srv.clone(), doc);
+            doc
+        }
+    }
+
+    #[test]
+    fn should_use_markdown_file_name_based_off_crate() {
+        let config = config::Config {
+            output_dir: Path("output/dir"),
+            output_format: config::Markdown,
+            output_style: config::DocPerCrate,
+            .. config::default_config(&Path("input/test.rc"))
+        };
+        let doc = mk_doc(~"test", ~"");
+        let page = doc::CratePage(doc.CrateDoc());
+        let filename = make_local_filename(config, page);
+        assert!(filename.to_str() == ~"output/dir/test.md");
+    }
+
+    #[test]
+    fn should_name_html_crate_file_name_index_html_when_doc_per_mod() {
+        let config = config::Config {
+            output_dir: Path("output/dir"),
+            output_format: config::PandocHtml,
+            output_style: config::DocPerMod,
+            .. config::default_config(&Path("input/test.rc"))
+        };
+        let doc = mk_doc(~"", ~"");
+        let page = doc::CratePage(doc.CrateDoc());
+        let filename = make_local_filename(config, page);
+        assert!(filename.to_str() == ~"output/dir/index.html");
+    }
+
+    #[test]
+    fn should_name_mod_file_names_by_path() {
+        let config = config::Config {
+            output_dir: Path("output/dir"),
+            output_format: config::PandocHtml,
+            output_style: config::DocPerMod,
+            .. config::default_config(&Path("input/test.rc"))
+        };
+        let doc = mk_doc(~"", ~"mod a { mod b { } }");
+        let modb = copy doc.cratemod().mods()[0].mods()[0];
+        let page = doc::ItemPage(doc::ModTag(modb));
+        let filename = make_local_filename(config, page);
+        assert!(filename == Path("output/dir/a_b.html"));
+    }
 }

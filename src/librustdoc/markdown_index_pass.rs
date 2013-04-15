@@ -115,7 +115,7 @@ fn item_to_entry(
     }
 }
 
-fn pandoc_header_id(header: &str) -> ~str {
+pub fn pandoc_header_id(header: &str) -> ~str {
 
     // http://johnmacfarlane.net/pandoc/README.html#headers
 
@@ -162,110 +162,6 @@ fn pandoc_header_id(header: &str) -> ~str {
     fn maybe_use_section_id(s: &str) -> ~str { s.to_str() }
 }
 
-#[test]
-fn should_remove_punctuation_from_headers() {
-    assert!(pandoc_header_id(~"impl foo of bar<A>") ==
-        ~"impl-foo-of-bara");
-    assert!(pandoc_header_id(~"impl of num::num for int")
-        == ~"impl-of-numnum-for-int");
-    assert!(pandoc_header_id(~"impl of num::num for int/&")
-        == ~"impl-of-numnum-for-int");
-    assert!(pandoc_header_id(~"impl of num::num for ^int")
-        == ~"impl-of-numnum-for-int");
-    assert!(pandoc_header_id(~"impl for & condvar")
-        == ~"impl-for-condvar");
-    assert!(pandoc_header_id(~"impl of Select<T, U> for (Left, Right)")
-                 == ~"impl-of-selectt-u-for-left-right");
-    assert!(pandoc_header_id(~"impl of Condition<'self, T, U>")
-                 == ~"impl-of-conditionself-t-u");
-    assert!(pandoc_header_id(~"impl of Condition<T: Copy + Clone>")
-                 == ~"impl-of-conditiont-copy-clone");
-}
-
-#[test]
-fn should_trim_whitespace_after_removing_punctuation() {
-    assert!(pandoc_header_id("impl foo for ()") == ~"impl-foo-for");
-}
-
-#[test]
-fn should_index_mod_contents() {
-    let doc = test::mk_doc(
-        config::DocPerCrate,
-        ~"mod a { } fn b() { }"
-    );
-    assert!((&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
-        kind: ~"Module",
-        name: ~"a",
-        brief: None,
-        link: ~"#module-a"
-    });
-    assert!((&doc.cratemod().index).get().entries[1] == doc::IndexEntry {
-        kind: ~"Function",
-        name: ~"b",
-        brief: None,
-        link: ~"#function-b"
-    });
-}
-
-#[test]
-fn should_index_mod_contents_multi_page() {
-    let doc = test::mk_doc(
-        config::DocPerMod,
-        ~"mod a { } fn b() { }"
-    );
-    assert!((&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
-        kind: ~"Module",
-        name: ~"a",
-        brief: None,
-        link: ~"a.html"
-    });
-    assert!((&doc.cratemod().index).get().entries[1] == doc::IndexEntry {
-        kind: ~"Function",
-        name: ~"b",
-        brief: None,
-        link: ~"#function-b"
-    });
-}
-
-#[test]
-fn should_index_foreign_mod_pages() {
-    let doc = test::mk_doc(
-        config::DocPerMod,
-        ~"extern mod a { }"
-    );
-    assert!((&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
-        kind: ~"Foreign module",
-        name: ~"a",
-        brief: None,
-        link: ~"a.html"
-    });
-}
-
-#[test]
-fn should_add_brief_desc_to_index() {
-    let doc = test::mk_doc(
-        config::DocPerMod,
-        ~"#[doc = \"test\"] mod a { }"
-    );
-    assert!((&doc.cratemod().index).get().entries[0].brief
-        == Some(~"test"));
-}
-
-#[test]
-fn should_index_foreign_mod_contents() {
-    let doc = test::mk_doc(
-        config::DocPerCrate,
-        ~"extern mod a { fn b(); }"
-    );
-    assert!((&doc.cratemod().nmods()[0].index).get().entries[0]
-        == doc::IndexEntry {
-        kind: ~"Function",
-        name: ~"b",
-        brief: None,
-        link: ~"#function-b"
-    });
-}
-
 #[cfg(test)]
 mod test {
     use astsrv;
@@ -276,10 +172,10 @@ mod test {
     use extract;
     use markdown_index_pass::run;
     use path_pass;
+    use super::pandoc_header_id;
+    use core::prelude::*;
 
-    use core::path::Path;
-
-    pub fn mk_doc(output_style: config::OutputStyle, source: ~str)
+    fn mk_doc(output_style: config::OutputStyle, source: ~str)
                -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let config = config::Config {
@@ -292,5 +188,109 @@ mod test {
             let doc = (path_pass::mk_pass().f)(srv.clone(), doc);
             run(srv.clone(), doc, config)
         }
+    }
+
+    #[test]
+    fn should_remove_punctuation_from_headers() {
+        assert!(pandoc_header_id(~"impl foo of bar<A>") ==
+                ~"impl-foo-of-bara");
+        assert!(pandoc_header_id(~"impl of num::num for int")
+                == ~"impl-of-numnum-for-int");
+        assert!(pandoc_header_id(~"impl of num::num for int/&")
+                == ~"impl-of-numnum-for-int");
+        assert!(pandoc_header_id(~"impl of num::num for ^int")
+                == ~"impl-of-numnum-for-int");
+        assert!(pandoc_header_id(~"impl for & condvar")
+                == ~"impl-for-condvar");
+        assert!(pandoc_header_id(~"impl of Select<T, U> for (Left, Right)")
+                == ~"impl-of-selectt-u-for-left-right");
+        assert!(pandoc_header_id(~"impl of Condition<'self, T, U>")
+                == ~"impl-of-conditionself-t-u");
+        assert!(pandoc_header_id(~"impl of Condition<T: Copy + Clone>")
+                == ~"impl-of-conditiont-copy-clone");
+    }
+
+    #[test]
+    fn should_trim_whitespace_after_removing_punctuation() {
+        assert!(pandoc_header_id("impl foo for ()") == ~"impl-foo-for");
+    }
+
+    #[test]
+    fn should_index_mod_contents() {
+        let doc = mk_doc(
+            config::DocPerCrate,
+            ~"mod a { } fn b() { }"
+        );
+        assert!((&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
+            kind: ~"Module",
+            name: ~"a",
+            brief: None,
+            link: ~"#module-a"
+        });
+        assert!((&doc.cratemod().index).get().entries[1] == doc::IndexEntry {
+            kind: ~"Function",
+            name: ~"b",
+            brief: None,
+            link: ~"#function-b"
+        });
+    }
+
+    #[test]
+    fn should_index_mod_contents_multi_page() {
+        let doc = mk_doc(
+            config::DocPerMod,
+            ~"mod a { } fn b() { }"
+        );
+        assert!((&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
+            kind: ~"Module",
+            name: ~"a",
+            brief: None,
+            link: ~"a.html"
+        });
+        assert!((&doc.cratemod().index).get().entries[1] == doc::IndexEntry {
+            kind: ~"Function",
+            name: ~"b",
+            brief: None,
+            link: ~"#function-b"
+        });
+    }
+
+    #[test]
+    fn should_index_foreign_mod_pages() {
+        let doc = mk_doc(
+            config::DocPerMod,
+            ~"extern mod a { }"
+        );
+        assert!((&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
+            kind: ~"Foreign module",
+            name: ~"a",
+            brief: None,
+            link: ~"a.html"
+        });
+    }
+
+    #[test]
+    fn should_add_brief_desc_to_index() {
+        let doc = mk_doc(
+            config::DocPerMod,
+            ~"#[doc = \"test\"] mod a { }"
+        );
+        assert!((&doc.cratemod().index).get().entries[0].brief
+                == Some(~"test"));
+    }
+
+    #[test]
+    fn should_index_foreign_mod_contents() {
+        let doc = mk_doc(
+            config::DocPerCrate,
+            ~"extern mod a { fn b(); }"
+        );
+        assert!((&doc.cratemod().nmods()[0].index).get().entries[0]
+                == doc::IndexEntry {
+                    kind: ~"Function",
+                    name: ~"b",
+                    brief: None,
+                    link: ~"#function-b"
+                });
     }
 }
