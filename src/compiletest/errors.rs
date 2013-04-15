@@ -30,36 +30,34 @@ pub fn load_errors(testfile: &Path) -> ~[ExpectedError] {
 }
 
 fn parse_expected(line_num: uint, line: ~str) -> ~[ExpectedError] {
-    unsafe {
-        let error_tag = ~"//~";
-        let mut idx;
-        match str::find_str(line, error_tag) {
-          None => return ~[],
-          Some(nn) => { idx = (nn as uint) + str::len(error_tag); }
-        }
-
-        // "//~^^^ kind msg" denotes a message expected
-        // three lines above current line:
-        let mut adjust_line = 0u;
-        let len = str::len(line);
-        while idx < len && line[idx] == ('^' as u8) {
-            adjust_line += 1u;
-            idx += 1u;
-        }
-
-        // Extract kind:
-        while idx < len && line[idx] == (' ' as u8) { idx += 1u; }
-        let start_kind = idx;
-        while idx < len && line[idx] != (' ' as u8) { idx += 1u; }
-        let kind = str::to_lower(str::slice(line, start_kind, idx).to_owned());
-
-        // Extract msg:
-        while idx < len && line[idx] == (' ' as u8) { idx += 1u; }
-        let msg = str::slice(line, idx, len).to_owned();
-
-        debug!("line=%u kind=%s msg=%s", line_num - adjust_line, kind, msg);
-
-        return ~[ExpectedError{line: line_num - adjust_line, kind: kind,
-                               msg: msg}];
+    let error_tag = ~"//~";
+    let mut idx;
+    match str::find_str(line, error_tag) {
+      None => return ~[],
+      Some(nn) => { idx = (nn as uint) + str::len(error_tag); }
     }
+
+    // "//~^^^ kind msg" denotes a message expected
+    // three lines above current line:
+    let mut adjust_line = 0u;
+    let len = str::len(line);
+    while idx < len && line[idx] == ('^' as u8) {
+        adjust_line += 1u;
+        idx += 1u;
+    }
+
+    // Extract kind:
+    while idx < len && line[idx] == (' ' as u8) { idx += 1u; }
+    let start_kind = idx;
+    while idx < len && line[idx] != (' ' as u8) { idx += 1u; }
+    let kind = str::to_lower(str::slice(line, start_kind, idx).to_owned());
+
+    // Extract msg:
+    while idx < len && line[idx] == (' ' as u8) { idx += 1u; }
+    let msg = str::slice(line, idx, len).to_owned();
+
+    debug!("line=%u kind=%s msg=%s", line_num - adjust_line, kind, msg);
+
+    return ~[ExpectedError{line: line_num - adjust_line, kind: kind,
+                           msg: msg}];
 }

@@ -157,13 +157,13 @@ struct AncestorList(Option<unstable::Exclusive<AncestorNode>>);
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline(always)]
 fn access_group<U>(x: &TaskGroupArc, blk: &fn(TaskGroupInner) -> U) -> U {
-    unsafe { x.with(blk) }
+    x.with(blk)
 }
 
 #[inline(always)]
 fn access_ancestors<U>(x: &unstable::Exclusive<AncestorNode>,
                        blk: &fn(x: &mut AncestorNode) -> U) -> U {
-    unsafe { x.with(blk) }
+    x.with(blk)
 }
 
 // Iterates over an ancestor list.

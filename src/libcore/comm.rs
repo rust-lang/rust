@@ -188,16 +188,14 @@ impl<T: Owned> Peekable<T> for Port<T> {
 
 #[inline(always)]
 fn port_peek<T:Owned>(self: &Port<T>) -> bool {
-    unsafe {
-        let mut endp = None;
-        endp <-> self.endp;
-        let peek = match &endp {
-            &Some(ref endp) => peek(endp),
-            &None => fail!(~"peeking empty stream")
-        };
-        self.endp <-> endp;
-        peek
-    }
+    let mut endp = None;
+    endp <-> self.endp;
+    let peek = match &endp {
+        &Some(ref endp) => peek(endp),
+        &None => fail!(~"peeking empty stream")
+    };
+    self.endp <-> endp;
+    peek
 }
 
 impl<T: Owned> Selectable for Port<T> {

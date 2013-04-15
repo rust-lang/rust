@@ -21,17 +21,17 @@ pub type Key = pthread_key_t;
 
 #[cfg(unix)]
 pub unsafe fn create(key: &mut Key) {
-    unsafe { assert!(0 == pthread_key_create(key, null())); }
+    assert!(0 == pthread_key_create(key, null()));
 }
 
 #[cfg(unix)]
 pub unsafe fn set(key: Key, value: *mut c_void) {
-    unsafe { assert!(0 == pthread_setspecific(key, value)); }
+    assert!(0 == pthread_setspecific(key, value));
 }
 
 #[cfg(unix)]
 pub unsafe fn get(key: Key) -> *mut c_void {
-    unsafe { pthread_getspecific(key) }
+    pthread_getspecific(key)
 }
 
 #[cfg(target_os="macos")]

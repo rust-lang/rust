@@ -19,7 +19,7 @@ use metadata::csearch::get_type_name_if_impl;
 use metadata::cstore::find_extern_mod_stmt_cnum;
 use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 use middle::lang_items::LanguageItems;
-use middle::lint::{deny, allow, forbid, level, unused_imports, warn};
+use middle::lint::{allow, level, unused_imports};
 use middle::lint::{get_lint_level, get_lint_settings_level};
 use middle::pat_util::pat_bindings;
 
@@ -5212,17 +5212,11 @@ pub impl Resolver {
                     import_resolution.span != dummy_sp() &&
                     import_resolution.privacy != Public {
                 import_resolution.state.warned = true;
-                match self.unused_import_lint_level(module_) {
-                    warn => {
-                        self.session.span_warn(copy import_resolution.span,
-                                               ~"unused import");
-                    }
-                    deny | forbid => {
-                      self.session.span_err(copy import_resolution.span,
-                                            ~"unused import");
-                    }
-                    allow => ()
-                }
+                let span = import_resolution.span;
+                self.session.span_lint_level(
+                    self.unused_import_lint_level(module_),
+                    span,
+                    ~"unused import");
             }
         }
     }

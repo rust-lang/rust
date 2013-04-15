@@ -116,35 +116,33 @@ pub fn get_addr(node: &str, iotask: &iotask)
     let mut output_ch = Some(SharedChan(output_ch));
     do str::as_buf(node) |node_ptr, len| {
         let output_ch = output_ch.swap_unwrap();
-        unsafe {
-            debug!("slice len %?", len);
-            let handle = create_uv_getaddrinfo_t();
-            let handle_ptr = ptr::addr_of(&handle);
-            let handle_data = GetAddrData {
-                output_ch: output_ch.clone()
-            };
-            let handle_data_ptr = ptr::addr_of(&handle_data);
-            do interact(iotask) |loop_ptr| {
-                unsafe {
-                    let result = uv_getaddrinfo(
-                        loop_ptr,
-                        handle_ptr,
-                        get_addr_cb,
-                        node_ptr,
-                        ptr::null(),
-                        ptr::null());
-                    match result {
-                        0i32 => {
-                            set_data_for_req(handle_ptr, handle_data_ptr);
-                        }
-                        _ => {
-                            output_ch.send(result::Err(GetAddrUnknownError));
-                        }
+        debug!("slice len %?", len);
+        let handle = create_uv_getaddrinfo_t();
+        let handle_ptr = ptr::addr_of(&handle);
+        let handle_data = GetAddrData {
+            output_ch: output_ch.clone()
+        };
+        let handle_data_ptr = ptr::addr_of(&handle_data);
+        do interact(iotask) |loop_ptr| {
+            unsafe {
+                let result = uv_getaddrinfo(
+                    loop_ptr,
+                    handle_ptr,
+                    get_addr_cb,
+                    node_ptr,
+                    ptr::null(),
+                    ptr::null());
+                match result {
+                    0i32 => {
+                        set_data_for_req(handle_ptr, handle_data_ptr);
+                    }
+                    _ => {
+                        output_ch.send(result::Err(GetAddrUnknownError));
                     }
                 }
-            };
-            output_po.recv()
-        }
+            }
+        };
+        output_po.recv()
     }
 }
 

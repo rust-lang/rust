@@ -75,6 +75,7 @@ pub enum lint {
     default_methods,
     deprecated_mutable_fields,
     deprecated_drop,
+    unused_unsafe,
     foreign_mode,
 
     managed_heap_memory,
@@ -254,6 +255,13 @@ pub fn get_lint_dict() -> LintDict {
             lint: deprecated_drop,
             desc: "deprecated \"drop\" notation for the destructor",
             default: deny
+        }),
+
+        (~"unused_unsafe",
+         LintSpec {
+            lint: unused_unsafe,
+            desc: "unnecessary use of an \"unsafe\" block or function",
+            default: warn
         }),
 
         (~"unused_variable",
@@ -490,6 +498,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_default_methods(cx, i);
     check_item_deprecated_mutable_fields(cx, i);
     check_item_deprecated_drop(cx, i);
+    check_item_unused_unsafe(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -923,19 +932,55 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
     }
 }
 
+fn check_item_unused_unsafe(cx: ty::ctxt, it: @ast::item) {
+    let visit_expr: @fn(@ast::expr) = |e| {
+        match e.node {
+            ast::expr_block(ref blk) if blk.node.rules == ast::unsafe_blk => {
+                if !cx.used_unsafe.contains(&blk.node.id) {
+                    cx.sess.span_lint(unused_unsafe, blk.node.id, it.id,
+                                      blk.span,
+                                      ~"unnecessary \"unsafe\" block");
+                }
+            }
+            _ => ()
+        }
+    };
+
+    let visit = item_stopping_visitor(
+        visit::mk_simple_visitor(@visit::SimpleVisitor {
+            visit_expr: visit_expr,
+            .. *visit::default_simple_visitor()
+        }));
+    visit::visit_item(it, (), visit);
+}
+
 fn check_fn(tcx: ty::ctxt, fk: &visit::fn_kind, decl: &ast::fn_decl,
             _body: &ast::blk, span: span, id: ast::node_id) {
     debug!("lint check_fn fk=%? id=%?", fk, id);
 
-    // don't complain about blocks, since they tend to get their modes
-    // specified from the outside
+    // Check for an 'unsafe fn' which doesn't need to be unsafe
     match *fk {
-      visit::fk_fn_block(*) => { return; }
-      _ => {}
+        visit::fk_item_fn(_, _, ast::unsafe_fn, _) => {
+            if !tcx.used_unsafe.contains(&id) {
+                tcx.sess.span_lint(unused_unsafe, id, id, span,
+                                   ~"unnecessary \"unsafe\" function");
+            }
+        }
+        _ => ()
     }
 
-    let fn_ty = ty::node_id_to_type(tcx, id);
-    check_fn_deprecated_modes(tcx, fn_ty, decl, span, id);
+    // Check for deprecated modes
+    match *fk {
+        // don't complain about blocks, since they tend to get their modes
+        // specified from the outside
+        visit::fk_fn_block(*) => {}
+
+        _ => {
+            let fn_ty = ty::node_id_to_type(tcx, id);
+            check_fn_deprecated_modes(tcx, fn_ty, decl, span, id);
+        }
+    }
+
 }
 
 fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: &ast::fn_decl,

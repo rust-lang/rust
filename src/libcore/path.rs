@@ -389,13 +389,11 @@ impl GenericPath for PosixPath {
     }
 
     fn dirname(&self) -> ~str {
-        unsafe {
-            let s = self.dir_path().to_str();
-            if s.len() == 0 {
-                ~"."
-            } else {
-                s
-            }
+        let s = self.dir_path().to_str();
+        if s.len() == 0 {
+            ~"."
+        } else {
+            s
         }
     }
 
@@ -439,10 +437,8 @@ impl GenericPath for PosixPath {
     }
 
     fn with_filename(&self, f: &str) -> PosixPath {
-        unsafe {
-            assert!(! str::any(f, |c| windows::is_sep(c as u8)));
-            self.dir_path().push(f)
-        }
+        assert!(! str::any(f, |c| windows::is_sep(c as u8)));
+        self.dir_path().push(f)
     }
 
     fn with_filestem(&self, s: &str) -> PosixPath {
@@ -509,7 +505,7 @@ impl GenericPath for PosixPath {
             for str::each_split_nonempty(*e, |c| windows::is_sep(c as u8)) |s| {
                 ss.push(s.to_owned())
             }
-            unsafe { v.push_all_move(ss); }
+            v.push_all_move(ss);
         }
         PosixPath { is_absolute: self.is_absolute,
                     components: v }
@@ -521,14 +517,14 @@ impl GenericPath for PosixPath {
         for str::each_split_nonempty(s, |c| windows::is_sep(c as u8)) |s| {
             ss.push(s.to_owned())
         }
-        unsafe { v.push_all_move(ss); }
+        v.push_all_move(ss);
         PosixPath { components: v, ..copy *self }
     }
 
     fn pop(&self) -> PosixPath {
         let mut cs = copy self.components;
         if cs.len() != 0 {
-            unsafe { cs.pop(); }
+            cs.pop();
         }
         return PosixPath {
             is_absolute: self.is_absolute,
@@ -607,13 +603,11 @@ impl GenericPath for WindowsPath {
     }
 
     fn dirname(&self) -> ~str {
-        unsafe {
-            let s = self.dir_path().to_str();
-            if s.len() == 0 {
-                ~"."
-            } else {
-                s
-            }
+        let s = self.dir_path().to_str();
+        if s.len() == 0 {
+            ~"."
+        } else {
+            s
         }
     }
 
@@ -770,7 +764,7 @@ impl GenericPath for WindowsPath {
             for str::each_split_nonempty(*e, |c| windows::is_sep(c as u8)) |s| {
                 ss.push(s.to_owned())
             }
-            unsafe { v.push_all_move(ss); }
+            v.push_all_move(ss);
         }
         // tedious, but as-is, we can't use ..self
         return WindowsPath {
@@ -787,14 +781,14 @@ impl GenericPath for WindowsPath {
         for str::each_split_nonempty(s, |c| windows::is_sep(c as u8)) |s| {
             ss.push(s.to_owned())
         }
-        unsafe { v.push_all_move(ss); }
+        v.push_all_move(ss);
         return WindowsPath { components: v, ..copy *self }
     }
 
     fn pop(&self) -> WindowsPath {
         let mut cs = copy self.components;
         if cs.len() != 0 {
-            unsafe { cs.pop(); }
+            cs.pop();
         }
         return WindowsPath {
             host: copy self.host,
@@ -820,18 +814,14 @@ impl GenericPath for WindowsPath {
 
 pub fn normalize(components: &[~str]) -> ~[~str] {
     let mut cs = ~[];
-    unsafe {
-        for components.each |c| {
-            unsafe {
-                if *c == ~"." && components.len() > 1 { loop; }
-                if *c == ~"" { loop; }
-                if *c == ~".." && cs.len() != 0 {
-                    cs.pop();
-                    loop;
-                }
-                cs.push(copy *c);
-            }
+    for components.each |c| {
+        if *c == ~"." && components.len() > 1 { loop; }
+        if *c == ~"" { loop; }
+        if *c == ~".." && cs.len() != 0 {
+            cs.pop();
+            loop;
         }
+        cs.push(copy *c);
     }
     cs
 }

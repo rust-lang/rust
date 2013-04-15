@@ -152,45 +152,37 @@ pub type SharedMutableState<T> = ArcDestruct<T>;
 pub unsafe fn shared_mutable_state<T:Owned>(data: T) ->
         SharedMutableState<T> {
     let data = ~ArcData { count: 1, data: Some(data) };
-    unsafe {
-        let ptr = cast::transmute(data);
-        ArcDestruct(ptr)
-    }
+    let ptr = cast::transmute(data);
+    ArcDestruct(ptr)
 }
 
 #[inline(always)]
 pub unsafe fn get_shared_mutable_state<T:Owned>(
     rc: *SharedMutableState<T>) -> *mut T
 {
-    unsafe {
-        let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
-        assert!(ptr.count > 0);
-        let r = cast::transmute(ptr.data.get_ref());
-        cast::forget(ptr);
-        return r;
-    }
+    let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
+    assert!(ptr.count > 0);
+    let r = cast::transmute(ptr.data.get_ref());
+    cast::forget(ptr);
+    return r;
 }
 #[inline(always)]
 pub unsafe fn get_shared_immutable_state<'a,T:Owned>(
         rc: &'a SharedMutableState<T>) -> &'a T {
-    unsafe {
-        let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
-        assert!(ptr.count > 0);
-        // Cast us back into the correct region
-        let r = cast::transmute_region(ptr.data.get_ref());
-        cast::forget(ptr);
-        return r;
-    }
+    let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
+    assert!(ptr.count > 0);
+    // Cast us back into the correct region
+    let r = cast::transmute_region(ptr.data.get_ref());
+    cast::forget(ptr);
+    return r;
 }
 
 pub unsafe fn clone_shared_mutable_state<T:Owned>(rc: &SharedMutableState<T>)
         -> SharedMutableState<T> {
-    unsafe {
-        let mut ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
-        let new_count = intrinsics::atomic_xadd(&mut ptr.count, 1) + 1;
-        assert!(new_count >= 2);
-        cast::forget(ptr);
-    }
+    let mut ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
+    let new_count = intrinsics::atomic_xadd(&mut ptr.count, 1) + 1;
+    assert!(new_count >= 2);
+    cast::forget(ptr);
     ArcDestruct((*rc).data)
 }
 

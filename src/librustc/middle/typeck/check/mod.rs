@@ -179,6 +179,11 @@ pub enum FnKind {
     Vanilla
 }
 
+struct PurityState {
+    purity: ast::purity,
+    from: ast::node_id,
+}
+
 pub struct FnCtxt {
     // var_bindings, locals and next_var_id are shared
     // with any nested functions that capture the environment
@@ -187,7 +192,7 @@ pub struct FnCtxt {
     ret_ty: ty::t,
     // Used by loop bodies that return from the outer function
     indirect_ret_ty: Option<ty::t>,
-    purity: ast::purity,
+    ps: PurityState,
 
     // Sometimes we generate region pointers where the precise region
     // to use is not known. For example, an expression like `&x.f`
@@ -238,7 +243,7 @@ pub fn blank_fn_ctxt(ccx: @mut CrateCtxt,
     @mut FnCtxt {
         ret_ty: rty,
         indirect_ret_ty: None,
-        purity: ast::pure_fn,
+        ps: PurityState { purity: ast::pure_fn, from: 0 },
         region_lb: region_bnd,
         in_scope_regions: @Nil,
         fn_kind: Vanilla,
@@ -265,7 +270,7 @@ pub fn check_bare_fn(ccx: @mut CrateCtxt,
         ty::ty_bare_fn(ref fn_ty) => {
             let fcx =
                 check_fn(ccx, self_info, fn_ty.purity,
-                         &fn_ty.sig, decl, body, Vanilla,
+                         &fn_ty.sig, decl, id, body, Vanilla,
                          @Nil, blank_inherited(ccx));;
 
             vtable::resolve_in_block(fcx, body);
@@ -282,6 +287,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                 purity: ast::purity,
                 fn_sig: &ty::FnSig,
                 decl: &ast::fn_decl,
+                id: ast::node_id,
                 body: &ast::blk,
                 fn_kind: FnKind,
                 inherited_isr: isr_alist,
@@ -342,7 +348,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         @mut FnCtxt {
             ret_ty: ret_ty,
             indirect_ret_ty: indirect_ret_ty,
-            purity: purity,
+            ps: PurityState { purity: purity, from: id },
             region_lb: body.node.id,
             in_scope_regions: isr,
             fn_kind: fn_kind,
@@ -867,8 +873,12 @@ pub impl FnCtxt {
     }
 
     fn require_unsafe(&self, sp: span, op: ~str) {
-        match self.purity {
-          ast::unsafe_fn => {/*ok*/}
+        match self.ps.purity {
+          ast::unsafe_fn => {
+            // ok, but flag that we used the source of unsafeness
+            debug!("flagging %? as a used unsafe source", self.ps.from);
+            self.tcx().used_unsafe.insert(self.ps.from);
+          }
           _ => {
             self.ccx.tcx.sess.span_err(
                 sp,
@@ -1679,12 +1689,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         fcx.write_ty(expr.id, fty);
 
-        let inherited_purity =
-            ty::determine_inherited_purity(copy fcx.purity, purity,
+        let (inherited_purity, id) =
+            ty::determine_inherited_purity((fcx.ps.purity, fcx.ps.from),
+                                           (purity, expr.id),
                                            sigil);
 
         check_fn(fcx.ccx, None, inherited_purity, &fty_sig,
-                 decl, body, fn_kind, fcx.in_scope_regions, fcx.inh);
+                 decl, id, body, fn_kind, fcx.in_scope_regions, fcx.inh);
     }
 
 
@@ -2923,8 +2934,11 @@ pub fn check_block_with_expected(fcx0: @mut FnCtxt,
                                  blk: &ast::blk,
                                  expected: Option<ty::t>) {
     let fcx = match blk.node.rules {
-      ast::unsafe_blk => @mut FnCtxt {purity: ast::unsafe_fn,.. copy *fcx0},
-      ast::default_blk => fcx0
+        ast::unsafe_blk => @mut FnCtxt {
+            ps: PurityState { purity: ast::unsafe_fn, from: blk.node.id },
+            .. copy *fcx0
+        },
+        ast::default_blk => fcx0
     };
     do fcx.with_region_lb(blk.node.id) {
         let mut warned = false;

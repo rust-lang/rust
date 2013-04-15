@@ -170,18 +170,16 @@ pub fn push_char(s: &mut ~str, ch: char) {
 /// Convert a char to a string
 pub fn from_char(ch: char) -> ~str {
     let mut buf = ~"";
-    unsafe { push_char(&mut buf, ch); }
+    push_char(&mut buf, ch);
     buf
 }
 
 /// Convert a vector of chars to a string
 pub fn from_chars(chs: &[char]) -> ~str {
     let mut buf = ~"";
-    unsafe {
-        reserve(&mut buf, chs.len());
-        for vec::each(chs) |ch| {
-            push_char(&mut buf, *ch);
-        }
+    reserve(&mut buf, chs.len());
+    for vec::each(chs) |ch| {
+        push_char(&mut buf, *ch);
     }
     buf
 }
@@ -226,9 +224,7 @@ pub fn push_str(lhs: &mut ~str, rhs: &str) {
 #[inline(always)]
 pub fn append(lhs: ~str, rhs: &str) -> ~str {
     let mut v = lhs;
-    unsafe {
-        push_str_no_overallocate(&mut v, rhs);
-    }
+    push_str_no_overallocate(&mut v, rhs);
     v
 }
 
@@ -236,7 +232,7 @@ pub fn append(lhs: ~str, rhs: &str) -> ~str {
 pub fn concat(v: &[~str]) -> ~str {
     let mut s: ~str = ~"";
     for vec::each(v) |ss| {
-        unsafe { push_str(&mut s, *ss) };
+        push_str(&mut s, *ss);
     }
     s
 }
@@ -245,8 +241,8 @@ pub fn concat(v: &[~str]) -> ~str {
 pub fn connect(v: &[~str], sep: &str) -> ~str {
     let mut s = ~"", first = true;
     for vec::each(v) |ss| {
-        if first { first = false; } else { unsafe { push_str(&mut s, sep); } }
-        unsafe { push_str(&mut s, *ss) };
+        if first { first = false; } else { push_str(&mut s, sep); }
+        push_str(&mut s, *ss);
     }
     s
 }
@@ -255,8 +251,8 @@ pub fn connect(v: &[~str], sep: &str) -> ~str {
 pub fn connect_slices(v: &[&str], sep: &str) -> ~str {
     let mut s = ~"", first = true;
     for vec::each(v) |ss| {
-        if first { first = false; } else { unsafe { push_str(&mut s, sep); } }
-        unsafe { push_str(&mut s, *ss) };
+        if first { first = false; } else { push_str(&mut s, sep); }
+        push_str(&mut s, *ss);
     }
     s
 }
@@ -2251,16 +2247,14 @@ pub mod raw {
             assert!((end <= n));
 
             let mut v = vec::with_capacity(end - begin + 1u);
-            unsafe {
-                do vec::as_imm_buf(v) |vbuf, _vlen| {
-                    let vbuf = ::cast::transmute_mut_unsafe(vbuf);
-                    let src = ptr::offset(sbuf, begin);
-                    ptr::copy_memory(vbuf, src, end - begin);
-                }
-                vec::raw::set_len(&mut v, end - begin);
-                v.push(0u8);
-                ::cast::transmute(v)
+            do vec::as_imm_buf(v) |vbuf, _vlen| {
+                let vbuf = ::cast::transmute_mut_unsafe(vbuf);
+                let src = ptr::offset(sbuf, begin);
+                ptr::copy_memory(vbuf, src, end - begin);
             }
+            vec::raw::set_len(&mut v, end - begin);
+            v.push(0u8);
+            ::cast::transmute(v)
         }
     }
 
@@ -2304,7 +2298,7 @@ pub mod raw {
     }
 
     /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
-    pub unsafe fn pop_byte(s: &mut ~str) -> u8 {
+    pub fn pop_byte(s: &mut ~str) -> u8 {
         let len = len(*s);
         assert!((len > 0u));
         let b = s[len - 1u];
@@ -2313,7 +2307,7 @@ pub mod raw {
     }
 
     /// Removes the first byte from a string and returns it. (Not UTF-8 safe).
-    pub unsafe fn shift_byte(s: &mut ~str) -> u8 {
+    pub fn shift_byte(s: &mut ~str) -> u8 {
         let len = len(*s);
         assert!((len > 0u));
         let b = s[0];
