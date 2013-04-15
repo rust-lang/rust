@@ -612,7 +612,6 @@
    llvm-optimization-reads-uninitialized-memory-9
    Memcheck:Cond
    fun:_ZN5parse6parser14__extensions__10meth_*parse_item_foreign_fn*
-   fun:_ZN5parse6parser14__extensions__10meth_*parse_item_or_view_item*
    ...
 }
 
@@ -628,7 +627,6 @@
    llvm-optimization-reads-uninitialized-memory-12
    Memcheck:Cond
    fun:_ZN5parse6parser14__extensions__10meth_*parse_item_struct*
-   fun:_ZN5parse6parser14__extensions__10meth_*parse_item_or_view_item*
    ...
 }
 
@@ -636,7 +634,6 @@
    llvm-optimization-reads-uninitialized-memory-13
    Memcheck:Cond
    fun:_ZN5parse6parser14__extensions__10meth_*parse_item_type*
-   fun:_ZN5parse6parser14__extensions__10meth_*parse_item_or_view_item*
    ...
 }
 
