@@ -160,12 +160,12 @@ pub fn fail_assert(msg: &str, file: &str, line: uint) -> ! {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use cast;
     use sys::{Closure, pref_align_of, size_of, nonzero_size_of};
 
     #[test]
-    pub fn size_of_basic() {
+    fn size_of_basic() {
         assert!(size_of::<u8>() == 1u);
         assert!(size_of::<u16>() == 2u);
         assert!(size_of::<u32>() == 4u);
@@ -176,20 +176,20 @@ pub mod tests {
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "arm")]
     #[cfg(target_arch = "mips")]
-    pub fn size_of_32() {
+    fn size_of_32() {
         assert!(size_of::<uint>() == 4u);
         assert!(size_of::<*uint>() == 4u);
     }
 
     #[test]
     #[cfg(target_arch = "x86_64")]
-    pub fn size_of_64() {
+    fn size_of_64() {
         assert!(size_of::<uint>() == 8u);
         assert!(size_of::<*uint>() == 8u);
     }
 
     #[test]
-    pub fn nonzero_size_of_basic() {
+    fn nonzero_size_of_basic() {
         type Z = [i8, ..0];
         assert!(size_of::<Z>() == 0u);
         assert!(nonzero_size_of::<Z>() == 1u);
@@ -197,7 +197,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn align_of_basic() {
+    fn align_of_basic() {
         assert!(pref_align_of::<u8>() == 1u);
         assert!(pref_align_of::<u16>() == 2u);
         assert!(pref_align_of::<u32>() == 4u);
@@ -207,20 +207,20 @@ pub mod tests {
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "arm")]
     #[cfg(target_arch = "mips")]
-    pub fn align_of_32() {
+    fn align_of_32() {
         assert!(pref_align_of::<uint>() == 4u);
         assert!(pref_align_of::<*uint>() == 4u);
     }
 
     #[test]
     #[cfg(target_arch = "x86_64")]
-    pub fn align_of_64() {
+    fn align_of_64() {
         assert!(pref_align_of::<uint>() == 8u);
         assert!(pref_align_of::<*uint>() == 8u);
     }
 
     #[test]
-    pub fn synthesize_closure() {
+    fn synthesize_closure() {
         unsafe {
             let x = 10;
             let f: &fn(int) -> int = |y| x + y;

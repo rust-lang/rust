@@ -823,7 +823,7 @@ mod tests {
 
     #[test]
     #[ignore(cfg(windows))]
-    pub fn test_should_fail() {
+    fn test_should_fail() {
         fn f() { fail!(); }
         let desc = TestDescAndFn {
             desc: TestDesc {
@@ -841,7 +841,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_should_fail_but_succeeds() {
+    fn test_should_fail_but_succeeds() {
         fn f() { }
         let desc = TestDescAndFn {
             desc: TestDesc {
@@ -859,7 +859,7 @@ mod tests {
     }
 
     #[test]
-    pub fn first_free_arg_should_be_a_filter() {
+    fn first_free_arg_should_be_a_filter() {
         let args = ~[~"progname", ~"filter"];
         let opts = match parse_opts(args) {
           either::Left(copy o) => o,
@@ -869,7 +869,7 @@ mod tests {
     }
 
     #[test]
-    pub fn parse_ignored_flag() {
+    fn parse_ignored_flag() {
         let args = ~[~"progname", ~"filter", ~"--ignored"];
         let opts = match parse_opts(args) {
           either::Left(copy o) => o,

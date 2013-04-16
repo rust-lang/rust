@@ -160,106 +160,109 @@ fn parse_header(line: ~str) -> Option<~str> {
     }
 }
 
-#[test]
-fn should_create_section_headers() {
-    let doc = test::mk_doc(
-        ~"#[doc = \"\
-         # Header\n\
-         Body\"]\
-         mod a {
-         }");
-    assert!(str::contains(
-        doc.cratemod().mods()[0].item.sections[0].header,
-        ~"Header"));
-}
 
-#[test]
-fn should_create_section_bodies() {
-    let doc = test::mk_doc(
-        ~"#[doc = \"\
-         # Header\n\
-         Body\"]\
-         mod a {
-         }");
-    assert!(str::contains(
-        doc.cratemod().mods()[0].item.sections[0].body,
-        ~"Body"));
-}
-
-#[test]
-fn should_not_create_sections_from_indented_headers() {
-    let doc = test::mk_doc(
-        ~"#[doc = \"\n\
-         Text\n             # Header\n\
-         Body\"]\
-         mod a {
-         }");
-    assert!(vec::is_empty(doc.cratemod().mods()[0].item.sections));
-}
-
-#[test]
-fn should_remove_section_text_from_main_desc() {
-    let doc = test::mk_doc(
-        ~"#[doc = \"\
-         Description\n\n\
-         # Header\n\
-         Body\"]\
-         mod a {
-         }");
-    assert!(!str::contains(
-        doc.cratemod().mods()[0].desc().get(),
-        ~"Header"));
-    assert!(!str::contains(
-        doc.cratemod().mods()[0].desc().get(),
-        ~"Body"));
-}
-
-#[test]
-fn should_eliminate_desc_if_it_is_just_whitespace() {
-    let doc = test::mk_doc(
-        ~"#[doc = \"\
-         # Header\n\
-         Body\"]\
-         mod a {
-         }");
-    assert!(doc.cratemod().mods()[0].desc() == None);
-}
-
-#[test]
-fn should_sectionalize_trait_methods() {
-    let doc = test::mk_doc(
-        ~"trait i {
-         #[doc = \"\
-         # Header\n\
-         Body\"]\
-         fn a(); }");
-    assert!(doc.cratemod().traits()[0].methods[0].sections.len() == 1u);
-}
-
-#[test]
-fn should_sectionalize_impl_methods() {
-    let doc = test::mk_doc(
-        ~"impl bool {
-         #[doc = \"\
-         # Header\n\
-         Body\"]\
-         fn a() { } }");
-    assert!(doc.cratemod().impls()[0].methods[0].sections.len() == 1u);
-}
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use astsrv;
     use attr_pass;
     use doc;
     use extract;
     use sectionalize_pass::run;
+    use core::prelude::*;
 
-    pub fn mk_doc(source: ~str) -> doc::Doc {
+    fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");
             let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
             run(srv.clone(), doc)
         }
+    }
+
+    #[test]
+    fn should_create_section_headers() {
+        let doc = mk_doc(
+            ~"#[doc = \"\
+              # Header\n\
+              Body\"]\
+              mod a {
+}");
+        assert!(str::contains(
+            doc.cratemod().mods()[0].item.sections[0].header,
+            ~"Header"));
+    }
+
+    #[test]
+    fn should_create_section_bodies() {
+        let doc = mk_doc(
+            ~"#[doc = \"\
+              # Header\n\
+              Body\"]\
+              mod a {
+}");
+        assert!(str::contains(
+            doc.cratemod().mods()[0].item.sections[0].body,
+            ~"Body"));
+    }
+
+    #[test]
+    fn should_not_create_sections_from_indented_headers() {
+        let doc = mk_doc(
+            ~"#[doc = \"\n\
+              Text\n             # Header\n\
+              Body\"]\
+              mod a {
+}");
+        assert!(vec::is_empty(doc.cratemod().mods()[0].item.sections));
+    }
+
+    #[test]
+    fn should_remove_section_text_from_main_desc() {
+        let doc = mk_doc(
+            ~"#[doc = \"\
+              Description\n\n\
+              # Header\n\
+              Body\"]\
+              mod a {
+}");
+        assert!(!str::contains(
+            doc.cratemod().mods()[0].desc().get(),
+            ~"Header"));
+        assert!(!str::contains(
+            doc.cratemod().mods()[0].desc().get(),
+            ~"Body"));
+    }
+
+    #[test]
+    fn should_eliminate_desc_if_it_is_just_whitespace() {
+        let doc = mk_doc(
+            ~"#[doc = \"\
+              # Header\n\
+              Body\"]\
+              mod a {
+}");
+        assert!(doc.cratemod().mods()[0].desc() == None);
+    }
+
+    #[test]
+    fn should_sectionalize_trait_methods() {
+        let doc = mk_doc(
+            ~"trait i {
+#[doc = \"\
+              # Header\n\
+              Body\"]\
+              fn a(); }");
+        assert!(doc.cratemod().traits()[0].methods[0].sections.len() == 1u);
+    }
+
+    #[test]
+    fn should_sectionalize_impl_methods() {
+        let doc = mk_doc(
+            ~"impl bool {
+#[doc = \"\
+              # Header\n\
+              Body\"]\
+              fn a() { } }");
+        assert!(doc.cratemod().impls()[0].methods[0].sections.len() == 1u);
     }
 }

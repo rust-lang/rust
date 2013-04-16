@@ -957,13 +957,13 @@ pub mod rt {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use either::Right;
     use comm::{Chan, Port, oneshot, recv_one, stream, Select2,
                GenericChan, Peekable};
 
     #[test]
-    pub fn test_select2() {
+    fn test_select2() {
         let (p1, c1) = stream();
         let (p2, c2) = stream();
 
@@ -978,7 +978,7 @@ pub mod test {
     }
 
     #[test]
-    pub fn test_oneshot() {
+    fn test_oneshot() {
         let (c, p) = oneshot::init();
 
         oneshot::client::send(c, ());

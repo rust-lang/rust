@@ -2248,7 +2248,7 @@ pub fn print_onceness(s: @ps, o: ast::Onceness) {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use super::*;
 
     use ast;

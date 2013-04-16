@@ -733,7 +733,7 @@ mod test_qsort3 {
 
     use core::vec;
 
-    pub fn check_sort(v1: &mut [int], v2: &mut [int]) {
+    fn check_sort(v1: &mut [int], v2: &mut [int]) {
         let len = vec::len::<int>(v1);
         quick_sort3::<int>(v1);
         let mut i = 0;
@@ -745,7 +745,7 @@ mod test_qsort3 {
     }
 
     #[test]
-    pub fn test() {
+    fn test() {
         {
             let mut v1 = ~[3, 7, 4, 5, 2, 9, 5, 8];
             let mut v2 = ~[2, 3, 4, 5, 5, 7, 8, 9];
@@ -777,7 +777,7 @@ mod test_qsort {
     use core::int;
     use core::vec;
 
-    pub fn check_sort(v1: &mut [int], v2: &mut [int]) {
+    fn check_sort(v1: &mut [int], v2: &mut [int]) {
         let len = vec::len::<int>(v1);
         fn leual(a: &int, b: &int) -> bool { *a <= *b }
         quick_sort::<int>(v1, leual);
@@ -790,7 +790,7 @@ mod test_qsort {
     }
 
     #[test]
-    pub fn test() {
+    fn test() {
         {
             let mut v1 = ~[3, 7, 4, 5, 2, 9, 5, 8];
             let mut v2 = ~[2, 3, 4, 5, 5, 7, 8, 9];
@@ -816,7 +816,7 @@ mod test_qsort {
 
     // Regression test for #750
     #[test]
-    pub fn test_simple() {
+    fn test_simple() {
         let mut names = ~[2, 1, 3];
 
         let expected = ~[1, 2, 3];
@@ -842,7 +842,7 @@ mod tests {
 
     use core::vec;
 
-    pub fn check_sort(v1: &[int], v2: &[int]) {
+    fn check_sort(v1: &[int], v2: &[int]) {
         let len = vec::len::<int>(v1);
         pub fn le(a: &int, b: &int) -> bool { *a <= *b }
         let f = le;
@@ -856,7 +856,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test() {
+    fn test() {
         {
             let v1 = ~[3, 7, 4, 5, 2, 9, 5, 8];
             let v2 = ~[2, 3, 4, 5, 5, 7, 8, 9];
@@ -873,7 +873,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_merge_sort_mutable() {
+    fn test_merge_sort_mutable() {
         pub fn le(a: &int, b: &int) -> bool { *a <= *b }
         let mut v1 = ~[3, 2, 1];
         let v2 = merge_sort(v1, le);
@@ -881,7 +881,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_merge_sort_stability() {
+    fn test_merge_sort_stability() {
         // tjc: funny that we have to use parens
         fn ile(x: &(&'static str), y: &(&'static str)) -> bool
         {
