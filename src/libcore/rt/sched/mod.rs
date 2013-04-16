@@ -46,17 +46,13 @@ pub struct Scheduler {
 // XXX: Some hacks to put a &fn in Scheduler without borrowck
 // complaining
 type UnsafeTaskReceiver = sys::Closure;
-trait HackAroundBorrowCk {
+trait ClosureConverter {
     fn from_fn(&fn(~Task)) -> Self;
     fn to_fn(self) -> &fn(~Task);
 }
-impl HackAroundBorrowCk for UnsafeTaskReceiver {
-    fn from_fn(f: &fn(~Task)) -> UnsafeTaskReceiver {
-        unsafe { transmute(f) }
-    }
-    fn to_fn(self) -> &fn(~Task) {
-        unsafe { transmute(self) }
-    }
+impl ClosureConverter for UnsafeTaskReceiver {
+    fn from_fn(f: &fn(~Task)) -> UnsafeTaskReceiver { unsafe { transmute(f) } }
+    fn to_fn(self) -> &fn(~Task) { unsafe { transmute(self) } }
 }
 
 enum CleanupJob {
@@ -223,10 +219,8 @@ pub impl Scheduler {
         rtdebug!("blocking task");
 
         let blocked_task = self.current_task.swap_unwrap();
-        let f_fake_region = unsafe {
-            transmute::<&fn(~Task), &fn(~Task)>(f)
-        };
-        let f_opaque = HackAroundBorrowCk::from_fn(f_fake_region);
+        let f_fake_region = unsafe { transmute::<&fn(~Task), &fn(~Task)>(f) };
+        let f_opaque = ClosureConverter::from_fn(f_fake_region);
         self.enqueue_cleanup_job(GiveTask(blocked_task, f_opaque));
 
         local::put(self);
