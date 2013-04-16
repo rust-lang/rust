@@ -98,6 +98,7 @@ pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
 pub use vec::{OwnedVector, OwnedCopyableVector};
 pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
 pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
+pub use iter::{ExtendedMutableIter};
 
 pub use num::{Num, NumCast};
 pub use ptr::Ptr;
