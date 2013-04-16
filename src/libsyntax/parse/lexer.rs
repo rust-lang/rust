@@ -781,7 +781,7 @@ fn consume_whitespace(rdr: @mut StringReader) {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use super::*;
 
     use ast;

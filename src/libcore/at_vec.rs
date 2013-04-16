@@ -277,45 +277,49 @@ pub mod raw {
     pub unsafe fn reserve_at_least<T>(v: &mut @[T], n: uint) {
         reserve(v, uint::next_power_of_two(n));
     }
-
 }
 
-#[test]
-pub fn test() {
-    // Some code that could use that, then:
-    fn seq_range(lo: uint, hi: uint) -> @[uint] {
-        do build |push| {
-            for uint::range(lo, hi) |i| {
-                push(i);
+#[cfg(test)]
+mod test {
+    use super::*;
+    use prelude::*;
+
+    #[test]
+    fn test() {
+        // Some code that could use that, then:
+        fn seq_range(lo: uint, hi: uint) -> @[uint] {
+            do build |push| {
+                for uint::range(lo, hi) |i| {
+                    push(i);
+                }
             }
         }
+
+        assert_eq!(seq_range(10, 15), @[10, 11, 12, 13, 14]);
+        assert!(from_fn(5, |x| x+1) == @[1, 2, 3, 4, 5]);
+        assert!(from_elem(5, 3.14) == @[3.14, 3.14, 3.14, 3.14, 3.14]);
     }
 
-    assert_eq!(seq_range(10, 15), @[10, 11, 12, 13, 14]);
-    assert!(from_fn(5, |x| x+1) == @[1, 2, 3, 4, 5]);
-    assert!(from_elem(5, 3.14) == @[3.14, 3.14, 3.14, 3.14, 3.14]);
-}
+    #[test]
+    fn append_test() {
+        assert!(@[1,2,3] + @[4,5,6] == @[1,2,3,4,5,6]);
+    }
 
-#[test]
-pub fn append_test() {
-    assert!(@[1,2,3] + @[4,5,6] == @[1,2,3,4,5,6]);
-}
+    #[test]
+    fn test_from_owned() {
+        assert!(from_owned::<int>(~[]) == @[]);
+        assert!(from_owned(~[true]) == @[true]);
+        assert!(from_owned(~[1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
+        assert!(from_owned(~[~"abc", ~"123"]) == @[~"abc", ~"123"]);
+        assert!(from_owned(~[~[42]]) == @[~[42]]);
+    }
 
-#[test]
-pub fn test_from_owned() {
-    assert!(from_owned::<int>(~[]) == @[]);
-    assert!(from_owned(~[true]) == @[true]);
-    assert!(from_owned(~[1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
-    assert!(from_owned(~[~"abc", ~"123"]) == @[~"abc", ~"123"]);
-    assert!(from_owned(~[~[42]]) == @[~[42]]);
+    #[test]
+    fn test_from_slice() {
+        assert!(from_slice::<int>([]) == @[]);
+        assert!(from_slice([true]) == @[true]);
+        assert!(from_slice([1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
+        assert!(from_slice([@"abc", @"123"]) == @[@"abc", @"123"]);
+        assert!(from_slice([@[42]]) == @[@[42]]);
+    }
 }
-
-#[test]
-pub fn test_from_slice() {
-    assert!(from_slice::<int>([]) == @[]);
-    assert!(from_slice([true]) == @[true]);
-    assert!(from_slice([1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
-    assert!(from_slice([@"abc", @"123"]) == @[@"abc", @"123"]);
-    assert!(from_slice([@[42]]) == @[@[42]]);
-}
-

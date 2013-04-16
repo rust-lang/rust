@@ -282,7 +282,7 @@ mod tests {
     use core::vec;
 
     #[test]
-    pub fn test() {
+    fn test() {
         struct Test {
             input: ~str,
             output: ~[u8],

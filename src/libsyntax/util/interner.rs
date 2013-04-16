@@ -66,43 +66,47 @@ pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
     fn len(&self) -> uint { let vect = &*self.vect; vect.len() }
 }
 
-#[test]
-#[should_fail]
-pub fn i1 () {
-    let i : Interner<@~str> = Interner::new();
-    i.get(13);
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    #[should_fail]
+    fn i1 () {
+        let i : Interner<@~str> = Interner::new();
+        i.get(13);
+    }
 
-#[test]
-pub fn i2 () {
-    let i : Interner<@~str> = Interner::new();
-    // first one is zero:
-    assert_eq!(i.intern (@~"dog"), 0);
-    // re-use gets the same entry:
-    assert_eq!(i.intern (@~"dog"), 0);
-    // different string gets a different #:
-    assert_eq!(i.intern (@~"cat"), 1);
-    assert_eq!(i.intern (@~"cat"), 1);
-    // dog is still at zero
-    assert_eq!(i.intern (@~"dog"), 0);
-    // gensym gets 3
-    assert_eq!(i.gensym (@~"zebra" ), 2);
-    // gensym of same string gets new number :
-    assert_eq!(i.gensym (@~"zebra" ), 3);
-    // gensym of *existing* string gets new number:
-    assert_eq!(i.gensym (@~"dog"), 4);
-    assert_eq!(i.get(0), @~"dog");
-    assert_eq!(i.get(1), @~"cat");
-    assert_eq!(i.get(2), @~"zebra");
-    assert_eq!(i.get(3), @~"zebra");
-    assert_eq!(i.get(4), @~"dog");
-}
+    #[test]
+    fn i2 () {
+        let i : Interner<@~str> = Interner::new();
+        // first one is zero:
+        assert_eq!(i.intern (@~"dog"), 0);
+        // re-use gets the same entry:
+        assert_eq!(i.intern (@~"dog"), 0);
+        // different string gets a different #:
+        assert_eq!(i.intern (@~"cat"), 1);
+        assert_eq!(i.intern (@~"cat"), 1);
+        // dog is still at zero
+        assert_eq!(i.intern (@~"dog"), 0);
+        // gensym gets 3
+        assert_eq!(i.gensym (@~"zebra" ), 2);
+        // gensym of same string gets new number :
+        assert_eq!(i.gensym (@~"zebra" ), 3);
+        // gensym of *existing* string gets new number:
+        assert_eq!(i.gensym (@~"dog"), 4);
+        assert_eq!(i.get(0), @~"dog");
+        assert_eq!(i.get(1), @~"cat");
+        assert_eq!(i.get(2), @~"zebra");
+        assert_eq!(i.get(3), @~"zebra");
+        assert_eq!(i.get(4), @~"dog");
+    }
 
-#[test]
-pub fn i3 () {
-    let i : Interner<@~str> = Interner::prefill([@~"Alan",@~"Bob",@~"Carol"]);
-    assert_eq!(i.get(0), @~"Alan");
-    assert_eq!(i.get(1), @~"Bob");
-    assert_eq!(i.get(2), @~"Carol");
-    assert_eq!(i.intern(@~"Bob"), 1);
+    #[test]
+    fn i3 () {
+        let i : Interner<@~str> = Interner::prefill([@~"Alan",@~"Bob",@~"Carol"]);
+        assert_eq!(i.get(0), @~"Alan");
+        assert_eq!(i.get(1), @~"Bob");
+        assert_eq!(i.get(2), @~"Carol");
+        assert_eq!(i.intern(@~"Bob"), 1);
+    }
 }

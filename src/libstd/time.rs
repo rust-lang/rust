@@ -872,7 +872,7 @@ mod tests {
     use core::str;
     use core::vec;
 
-    pub fn test_get_time() {
+    fn test_get_time() {
         static some_recent_date: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
         static some_future_date: i64 = 1577836800i64; // 2020-01-01T00:00:00Z
 
@@ -893,7 +893,7 @@ mod tests {
         }
     }
 
-    pub fn test_precise_time() {
+    fn test_precise_time() {
         let s0 = precise_time_s();
         let ns1 = precise_time_ns();
 
@@ -910,7 +910,7 @@ mod tests {
         assert!(ns2 >= ns1);
     }
 
-    pub fn test_at_utc() {
+    fn test_at_utc() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
@@ -931,7 +931,7 @@ mod tests {
         assert!(utc.tm_nsec == 54321_i32);
     }
 
-    pub fn test_at() {
+    fn test_at() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
@@ -959,7 +959,7 @@ mod tests {
         assert!(local.tm_nsec == 54321_i32);
     }
 
-    pub fn test_to_timespec() {
+    fn test_to_timespec() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
@@ -970,7 +970,7 @@ mod tests {
         assert!(utc.to_local().to_timespec() == time);
     }
 
-    pub fn test_conversions() {
+    fn test_conversions() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
@@ -986,7 +986,7 @@ mod tests {
         assert!(utc.to_local().to_utc() == utc);
     }
 
-    pub fn test_strptime() {
+    fn test_strptime() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
@@ -1144,7 +1144,7 @@ mod tests {
         assert!(test(~"%", ~"%%"));
     }
 
-    pub fn test_ctime() {
+    fn test_ctime() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
@@ -1158,7 +1158,7 @@ mod tests {
         assert!(local.ctime() == ~"Fri Feb 13 15:31:30 2009");
     }
 
-    pub fn test_strftime() {
+    fn test_strftime() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
@@ -1231,7 +1231,7 @@ mod tests {
         assert!(utc.rfc3339() == ~"2009-02-13T23:31:30Z");
     }
 
-    pub fn test_timespec_eq_ord() {
+    fn test_timespec_eq_ord() {
         use core::cmp::{eq, ge, gt, le, lt, ne};
 
         let a = &Timespec::new(-2, 1);
@@ -1265,7 +1265,7 @@ mod tests {
     }
 
     #[test]
-    pub fn run_tests() {
+    fn run_tests() {
         // The tests race on tzset. So instead of having many independent
         // tests, we will just call the functions now.
         test_get_time();
