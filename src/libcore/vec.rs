@@ -1495,16 +1495,35 @@ pub fn each_permutation<T:Copy>(v: &[T], put: &fn(ts: &[T]) -> bool) {
     }
 }
 
-pub fn windowed<TT:Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
-    let mut ww = ~[];
-    assert!(1u <= nn);
-    for vec::eachi (xx) |ii, _x| {
-        let len = xx.len();
-        if ii+nn <= len {
-            ww.push(slice(xx, ii, ii+nn).to_vec());
-        }
+/**
+ * Iterate over all contiguous windows of length `n` of the vector `v`.
+ *
+ * # Example
+ *
+ * Print the adjacent pairs of a vector (i.e. `[1,2]`, `[2,3]`, `[3,4]`)
+ *
+ * ~~~
+ * for windowed(2, &[1,2,3,4]) |v| {
+ *     io::println(fmt!("%?", v));
+ * }
+ * ~~~
+ *
+ */
+#[cfg(stage0)] // XXX: lifetimes!
+pub fn windowed<T>(n: uint, v: &[T], it: &fn(&[T]) -> bool) {
+    assert!(1u <= n);
+    for uint::range(0, v.len() - n + 1) |i| {
+        if !it(v.slice(i, i+n)) { return }
     }
-    ww
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+pub fn windowed<'r, T>(n: uint, v: &'r [T], it: &fn(&'r [T]) -> bool) {
+    assert!(1u <= n);
+    for uint::range(0, v.len() - n + 1) |i| {
+        if !it(v.slice(i, i + n)) { return }
+    }
 }
 
 /**
@@ -3761,20 +3780,26 @@ mod tests {
 
     #[test]
     fn test_windowed () {
-        assert!(~[~[1u,2u,3u],~[2u,3u,4u],~[3u,4u,5u],~[4u,5u,6u]]
-                     == windowed (3u, ~[1u,2u,3u,4u,5u,6u]));
+        fn t(n: uint, expected: &[&[int]]) {
+            let mut i = 0;
+            for windowed(n, ~[1,2,3,4,5,6]) |v| {
+                assert_eq!(v, expected[i]);
+                i += 1;
+            }
 
-        assert!(~[~[1u,2u,3u,4u],~[2u,3u,4u,5u],~[3u,4u,5u,6u]]
-                     == windowed (4u, ~[1u,2u,3u,4u,5u,6u]));
-
-        assert!(~[] == windowed (7u, ~[1u,2u,3u,4u,5u,6u]));
+            // check that we actually iterated the right number of times
+            assert_eq!(i, expected.len());
+        }
+        t(3, &[&[1,2,3],&[2,3,4],&[3,4,5],&[4,5,6]]);
+        t(4, &[&[1,2,3,4],&[2,3,4,5],&[3,4,5,6]]);
+        t(7, &[]);
     }
 
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_windowed_() {
-        let _x = windowed (0u, ~[1u,2u,3u,4u,5u,6u]);
+        for windowed (0u, ~[1u,2u,3u,4u,5u,6u]) |_v| {}
     }
 
     #[test]
