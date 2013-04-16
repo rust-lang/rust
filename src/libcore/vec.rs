@@ -1388,13 +1388,19 @@ pub fn each<'r,T>(v: &'r [T], f: &fn(&'r T) -> bool) {
 /// to mutate the contents as you iterate.
 #[inline(always)]
 pub fn each_mut<'r,T>(v: &'r mut [T], f: &fn(elem: &'r mut T) -> bool) {
-    let mut i = 0;
-    let n = v.len();
-    while i < n {
-        if !f(&mut v[i]) {
-            return;
+    do vec::as_mut_buf(v) |p, n| {
+        let mut n = n;
+        let mut p = p;
+        while n > 0 {
+            unsafe {
+                let q: &'r mut T = cast::transmute_mut_region(&mut *p);
+                if !f(q) {
+                    break;
+                }
+                p = p.offset(1);
+            }
+            n -= 1;
         }
-        i += 1;
     }
 }
 
@@ -1422,6 +1428,22 @@ pub fn eachi<'r,T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) {
     let mut i = 0;
     for each(v) |p| {
         if !f(i, p) { return; }
+        i += 1;
+    }
+}
+
+/**
+ * Iterates over a mutable vector's elements and indices
+ *
+ * Return true to continue, false to break.
+ */
+#[inline(always)]
+pub fn eachi_mut<'r,T>(v: &'r mut [T], f: &fn(uint, v: &'r mut T) -> bool) {
+    let mut i = 0;
+    for each_mut(v) |p| {
+        if !f(i, p) {
+            return;
+        }
         i += 1;
     }
 }
@@ -2651,6 +2673,13 @@ impl<'self,A> iter::ExtendedIter<A> for &'self [A] {
     fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
         -> ~[B] {
         iter::flat_map_to_vec(self, op)
+    }
+}
+
+impl<'self,A> iter::ExtendedMutableIter<A> for &'self mut [A] {
+    #[inline(always)]
+    pub fn eachi_mut(&mut self, blk: &fn(uint, v: &mut A) -> bool) {
+        eachi_mut(*self, blk)
     }
 }
 
