@@ -63,7 +63,7 @@ pub struct EncodeParams {
     reachable: reachable::map,
     reexports2: middle::resolve::ExportMap2,
     item_symbols: @mut HashMap<ast::node_id, ~str>,
-    discrim_symbols: @mut HashMap<ast::node_id, ~str>,
+    discrim_symbols: @mut HashMap<ast::node_id, @~str>,
     link_meta: LinkMeta,
     cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item
@@ -90,7 +90,7 @@ pub struct EncodeContext {
     reachable: reachable::map,
     reexports2: middle::resolve::ExportMap2,
     item_symbols: @mut HashMap<ast::node_id, ~str>,
-    discrim_symbols: @mut HashMap<ast::node_id, ~str>,
+    discrim_symbols: @mut HashMap<ast::node_id, @~str>,
     link_meta: LinkMeta,
     cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item,
@@ -285,7 +285,7 @@ fn encode_symbol(ecx: @EncodeContext, ebml_w: writer::Encoder, id: node_id) {
 fn encode_discriminant(ecx: @EncodeContext, ebml_w: writer::Encoder,
                        id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
-    ebml_w.writer.write(str::to_bytes(*ecx.discrim_symbols.get(&id)));
+    ebml_w.writer.write(str::to_bytes(**ecx.discrim_symbols.get(&id)));
     ebml_w.end_tag();
 }
 
