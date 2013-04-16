@@ -62,7 +62,7 @@ pub fn source_name(input: input) -> ~str {
     }
 }
 
-pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
+pub fn default_configuration(sess: Session, argv0: @~str, input: input) ->
    ast::crate_cfg {
     let libc = match sess.targ_cfg.os {
       session::os_win32 => ~"msvcrt.dll",
@@ -101,7 +101,7 @@ pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
          mk(@~"target_word_size", @wordsz),
          mk(@~"target_libc", @libc),
          // Build bindings.
-         mk(@~"build_compiler", @argv0),
+         mk(@~"build_compiler", argv0),
          mk(@~"build_input", @source_name(input))];
 }
 
@@ -114,7 +114,7 @@ pub fn append_configuration(+cfg: ast::crate_cfg, +name: ~str)
     }
 }
 
-pub fn build_configuration(sess: Session, +argv0: ~str, input: input) ->
+pub fn build_configuration(sess: Session, argv0: @~str, input: input) ->
    ast::crate_cfg {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
@@ -523,7 +523,7 @@ pub fn host_triple() -> ~str {
         };
 }
 
-pub fn build_session_options(+binary: ~str,
+pub fn build_session_options(binary: @~str,
                              matches: &getopts::Matches,
                              demitter: diagnostic::Emitter)
                           -> @session::options {

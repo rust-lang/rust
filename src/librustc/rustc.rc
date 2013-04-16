@@ -206,9 +206,9 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     ::core::logging::console_off();
 
     let mut args = /*bad*/copy *args;
-    let binary = args.shift();
+    let binary = @args.shift();
 
-    if args.is_empty() { usage(binary); return; }
+    if args.is_empty() { usage(*binary); return; }
 
     let matches =
         &match getopts::groups::getopts(args, optgroups()) {
@@ -219,7 +219,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
         };
 
     if opt_present(matches, ~"h") || opt_present(matches, ~"help") {
-        usage(binary);
+        usage(*binary);
         return;
     }
 
@@ -236,7 +236,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     }
 
     if opt_present(matches, ~"v") || opt_present(matches, ~"version") {
-        version(binary);
+        version(*binary);
         return;
     }
     let input = match vec::len(matches.free) {
@@ -253,8 +253,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
       _ => early_error(demitter, ~"multiple input filenames provided")
     };
 
-    // XXX: Bad copy.
-    let sopts = build_session_options(copy binary, matches, demitter);
+    let sopts = build_session_options(binary, matches, demitter);
     let sess = build_session(sopts, demitter);
     let odir = getopts::opt_maybe_str(matches, ~"out-dir");
     let odir = odir.map(|o| Path(*o));
