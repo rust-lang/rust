@@ -654,3 +654,11 @@
    fun:_ZN5visit30visit_struct_dtor_helper_*
    ...
 }
+
+{
+   llvm-optimization-reads-uninitialized-memory-16
+   Memcheck:Cond
+   fun:_ZN7ast_map6map_fn*
+   fun:_ZN5visit30visit_struct_dtor_helper*
+   ...
+}
