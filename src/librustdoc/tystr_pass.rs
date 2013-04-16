@@ -67,33 +67,20 @@ fn fold_fn(
 fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
     do astsrv::exec(srv) |ctxt| {
         match *ctxt.ast_map.get(&fn_id) {
-          ast_map::node_item(@ast::item {
-            ident: ident,
-            node: ast::item_fn(ref decl, purity, _, ref tys, _), _
-          }, _) |
-          ast_map::node_foreign_item(@ast::foreign_item {
-            ident: ident,
-            node: ast::foreign_item_fn(ref decl, purity, ref tys), _
-          }, _, _, _) => {
-            Some(pprust::fun_to_str(decl, purity, ident, None, tys,
-                                    extract::interner()))
-          }
-          _ => fail!(~"get_fn_sig: fn_id not bound to a fn item")
+            ast_map::node_item(@ast::item {
+                ident: ident,
+                node: ast::item_fn(ref decl, purity, _, ref tys, _), _
+            }, _) |
+            ast_map::node_foreign_item(@ast::foreign_item {
+                ident: ident,
+                node: ast::foreign_item_fn(ref decl, purity, ref tys), _
+            }, _, _, _) => {
+                Some(pprust::fun_to_str(decl, purity, ident, None, tys,
+                                        extract::interner()))
+            }
+            _ => fail!(~"get_fn_sig: fn_id not bound to a fn item")
         }
     }
-}
-
-#[test]
-fn should_add_fn_sig() {
-    let doc = test::mk_doc(~"fn a<T>() -> int { }");
-    assert!(doc.cratemod().fns()[0].sig == Some(~"fn a<T>() -> int"));
-}
-
-#[test]
-fn should_add_foreign_fn_sig() {
-    let doc = test::mk_doc(~"extern mod a { fn a<T>() -> int; }");
-    assert!(doc.cratemod().nmods()[0].fns[0].sig ==
-        Some(~"fn a<T>() -> int"));
 }
 
 fn fold_const(
@@ -117,12 +104,6 @@ fn fold_const(
             }}),
         .. doc
     }
-}
-
-#[test]
-fn should_add_const_types() {
-    let doc = test::mk_doc(~"static a: bool = true;");
-    assert!(doc.cratemod().consts()[0].sig == Some(~"bool"));
 }
 
 fn fold_enum(
@@ -163,13 +144,6 @@ fn fold_enum(
     }
 }
 
-#[test]
-fn should_add_variant_sigs() {
-    let doc = test::mk_doc(~"enum a { b(int) }");
-    assert!(doc.cratemod().enums()[0].variants[0].sig ==
-        Some(~"b(int)"));
-}
-
 fn fold_trait(
     fold: &fold::Fold<astsrv::Srv>,
     doc: doc::TraitDoc
@@ -200,71 +174,64 @@ fn get_method_sig(
 ) -> Option<~str> {
     do astsrv::exec(srv) |ctxt| {
         match *ctxt.ast_map.get(&item_id) {
-          ast_map::node_item(@ast::item {
-            node: ast::item_trait(_, _, ref methods), _
-          }, _) => {
-            match vec::find(*methods, |method| {
-                match copy *method {
-                  ast::required(ty_m) => to_str(ty_m.ident) == method_name,
-                  ast::provided(m) => to_str(m.ident) == method_name,
-                }
-            }) {
-                Some(method) => {
-                  match method {
-                    ast::required(ty_m) => {
-                      Some(pprust::fun_to_str(
-                          &ty_m.decl,
-                          ty_m.purity,
-                          ty_m.ident,
-                          Some(ty_m.self_ty.node),
-                          &ty_m.generics,
-                          extract::interner()
-                      ))
+            ast_map::node_item(@ast::item {
+                node: ast::item_trait(_, _, ref methods), _
+            }, _) => {
+                match vec::find(*methods, |method| {
+                    match copy *method {
+                        ast::required(ty_m) => to_str(ty_m.ident) == method_name,
+                        ast::provided(m) => to_str(m.ident) == method_name,
                     }
-                    ast::provided(m) => {
-                      Some(pprust::fun_to_str(
-                          &m.decl,
-                          m.purity,
-                          m.ident,
-                          Some(m.self_ty.node),
-                          &m.generics,
-                          extract::interner()
-                      ))
+                }) {
+                    Some(method) => {
+                        match method {
+                            ast::required(ty_m) => {
+                                Some(pprust::fun_to_str(
+                                    &ty_m.decl,
+                                    ty_m.purity,
+                                    ty_m.ident,
+                                    Some(ty_m.self_ty.node),
+                                    &ty_m.generics,
+                                    extract::interner()
+                                ))
+                            }
+                            ast::provided(m) => {
+                                Some(pprust::fun_to_str(
+                                    &m.decl,
+                                    m.purity,
+                                    m.ident,
+                                    Some(m.self_ty.node),
+                                    &m.generics,
+                                    extract::interner()
+                                ))
+                            }
+                        }
                     }
-                  }
+                    _ => fail!(~"method not found")
                 }
-                _ => fail!(~"method not found")
             }
-          }
-          ast_map::node_item(@ast::item {
-            node: ast::item_impl(_, _, _, ref methods), _
-          }, _) => {
-            match vec::find(*methods, |method| {
-                to_str(method.ident) == method_name
-            }) {
-                Some(method) => {
-                    Some(pprust::fun_to_str(
-                        &method.decl,
-                        method.purity,
-                        method.ident,
-                        Some(method.self_ty.node),
-                        &method.generics,
-                        extract::interner()
-                    ))
+            ast_map::node_item(@ast::item {
+                node: ast::item_impl(_, _, _, ref methods), _
+            }, _) => {
+                match vec::find(*methods, |method| {
+                    to_str(method.ident) == method_name
+                }) {
+                    Some(method) => {
+                        Some(pprust::fun_to_str(
+                            &method.decl,
+                            method.purity,
+                            method.ident,
+                            Some(method.self_ty.node),
+                            &method.generics,
+                            extract::interner()
+                        ))
+                    }
+                    None => fail!(~"method not found")
                 }
-                None => fail!(~"method not found")
             }
-          }
-          _ => fail!(~"get_method_sig: item ID not bound to trait or impl")
+            _ => fail!(~"get_method_sig: item ID not bound to trait or impl")
         }
     }
-}
-
-#[test]
-fn should_add_trait_method_sigs() {
-    let doc = test::mk_doc(~"trait i { fn a<T>(&mut self) -> int; }");
-    assert!(doc.cratemod().traits()[0].methods[0].sig
-        == Some(~"fn a<T>(&mut self) -> int"));
 }
 
 fn fold_impl(
@@ -305,37 +272,6 @@ fn fold_impl(
     }
 }
 
-#[test]
-fn should_add_impl_bounds() {
-    let doc = test::mk_doc(~"impl<T, U: Copy, V: Copy + Clone> Option<T, U, V> { }");
-    assert!(doc.cratemod().impls()[0].bounds_str == Some(~"<T, U: Copy, V: Copy + Clone>"));
-}
-
-#[test]
-fn should_add_impl_trait_types() {
-    let doc = test::mk_doc(~"impl j for int { fn a<T>() { } }");
-    assert!(doc.cratemod().impls()[0].trait_types[0] == ~"j");
-}
-
-#[test]
-fn should_not_add_impl_trait_types_if_none() {
-    let doc = test::mk_doc(~"impl int { fn a() { } }");
-    assert!(vec::len(doc.cratemod().impls()[0].trait_types) == 0);
-}
-
-#[test]
-fn should_add_impl_self_ty() {
-    let doc = test::mk_doc(~"impl int { fn a() { } }");
-    assert!(doc.cratemod().impls()[0].self_ty == Some(~"int"));
-}
-
-#[test]
-fn should_add_impl_method_sigs() {
-    let doc = test::mk_doc(~"impl int { fn a<T>(&self) -> int { fail!() } }");
-    assert!(doc.cratemod().impls()[0].methods[0].sig
-        == Some(~"fn a<T>(&self) -> int"));
-}
-
 fn fold_type(
     fold: &fold::Fold<astsrv::Srv>,
     doc: doc::TyDoc
@@ -367,12 +303,6 @@ fn fold_type(
         },
         .. doc
     }
-}
-
-#[test]
-fn should_add_type_signatures() {
-    let doc = test::mk_doc(~"type t<T> = int;");
-    assert!(doc.cratemod().types()[0].sig == Some(~"type t<T> = int"));
 }
 
 fn fold_struct(
@@ -422,38 +352,109 @@ fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
     }
 }
 
-#[test]
-fn should_add_struct_defs() {
-    let doc = test::mk_doc(~"struct S { field: () }");
-    assert!((&doc.cratemod().structs()[0].sig).get().contains(
-        "struct S {"));
-}
-
-#[test]
-fn should_not_serialize_struct_drop_blocks() {
-    // All we care about are the fields
-    let doc = test::mk_doc(~"struct S { field: (), drop { } }");
-    assert!(!(&doc.cratemod().structs()[0].sig).get().contains("drop"));
-}
-
-#[test]
-fn should_not_serialize_struct_attrs() {
-    // All we care about are the fields
-    let doc = test::mk_doc(~"#[wut] struct S { field: () }");
-    assert!(!(&doc.cratemod().structs()[0].sig).get().contains("wut"));
-}
-
 #[cfg(test)]
-pub mod test {
+mod test {
     use astsrv;
     use doc;
     use extract;
     use tystr_pass::run;
+    use core::prelude::*;
 
-    pub fn mk_doc(source: ~str) -> doc::Doc {
+    fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");
             run(srv.clone(), doc)
         }
+    }
+
+    #[test]
+    fn should_add_fn_sig() {
+        let doc = mk_doc(~"fn a<T>() -> int { }");
+        assert!(doc.cratemod().fns()[0].sig == Some(~"fn a<T>() -> int"));
+    }
+
+    #[test]
+    fn should_add_foreign_fn_sig() {
+        let doc = mk_doc(~"extern mod a { fn a<T>() -> int; }");
+        assert!(doc.cratemod().nmods()[0].fns[0].sig ==
+                Some(~"fn a<T>() -> int"));
+    }
+
+    #[test]
+    fn should_add_const_types() {
+        let doc = mk_doc(~"static a: bool = true;");
+        assert!(doc.cratemod().consts()[0].sig == Some(~"bool"));
+    }
+
+    #[test]
+    fn should_add_variant_sigs() {
+        let doc = mk_doc(~"enum a { b(int) }");
+        assert!(doc.cratemod().enums()[0].variants[0].sig ==
+                Some(~"b(int)"));
+    }
+
+    #[test]
+    fn should_add_trait_method_sigs() {
+        let doc = mk_doc(~"trait i { fn a<T>(&mut self) -> int; }");
+        assert!(doc.cratemod().traits()[0].methods[0].sig
+                == Some(~"fn a<T>(&mut self) -> int"));
+    }
+
+    #[test]
+    fn should_add_impl_bounds() {
+        let doc = mk_doc(~"impl<T, U: Copy, V: Copy + Clone> Option<T, U, V> { }");
+        assert!(doc.cratemod().impls()[0].bounds_str == Some(~"<T, U: Copy, V: Copy + Clone>"));
+    }
+
+    #[test]
+    fn should_add_impl_trait_types() {
+        let doc = mk_doc(~"impl j for int { fn a<T>() { } }");
+        assert!(doc.cratemod().impls()[0].trait_types[0] == ~"j");
+    }
+
+    #[test]
+    fn should_not_add_impl_trait_types_if_none() {
+        let doc = mk_doc(~"impl int { fn a() { } }");
+        assert!(vec::len(doc.cratemod().impls()[0].trait_types) == 0);
+    }
+
+    #[test]
+    fn should_add_impl_self_ty() {
+        let doc = mk_doc(~"impl int { fn a() { } }");
+        assert!(doc.cratemod().impls()[0].self_ty == Some(~"int"));
+    }
+
+    #[test]
+    fn should_add_impl_method_sigs() {
+        let doc = mk_doc(~"impl int { fn a<T>(&self) -> int { fail!() } }");
+        assert!(doc.cratemod().impls()[0].methods[0].sig
+                == Some(~"fn a<T>(&self) -> int"));
+    }
+
+    #[test]
+    fn should_add_type_signatures() {
+        let doc = mk_doc(~"type t<T> = int;");
+        assert!(doc.cratemod().types()[0].sig == Some(~"type t<T> = int"));
+    }
+
+    #[test]
+    fn should_add_struct_defs() {
+        let doc = mk_doc(~"struct S { field: () }");
+        assert!((&doc.cratemod().structs()[0].sig).get().contains(
+            "struct S {"));
+    }
+
+    #[test]
+    fn should_not_serialize_struct_drop_blocks() {
+        // All we care about are the fields
+        let doc = mk_doc(~"struct S { field: (), drop { } }");
+        assert!(!(&doc.cratemod().structs()[0].sig).get().contains("drop"));
+    }
+
+    #[test]
+    fn should_not_serialize_struct_attrs() {
+        // All we care about are the fields
+        let doc = mk_doc(~"#[wut] struct S { field: () }");
+        assert!(!(&doc.cratemod().structs()[0].sig).get().contains("wut"));
     }
 }

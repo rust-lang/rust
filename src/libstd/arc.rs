@@ -492,7 +492,7 @@ mod tests {
     use core::vec;
 
     #[test]
-    pub fn manually_share_arc() {
+    fn manually_share_arc() {
         let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let arc_v = arc::ARC(v);
 
@@ -517,7 +517,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_mutex_arc_condvar() {
+    fn test_mutex_arc_condvar() {
         let arc = ~MutexARC(false);
         let arc2 = ~arc.clone();
         let (p,c) = comm::oneshot();
@@ -539,7 +539,7 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    pub fn test_arc_condvar_poison() {
+    fn test_arc_condvar_poison() {
         let arc = ~MutexARC(1);
         let arc2 = ~arc.clone();
         let (p, c) = comm::stream();
@@ -561,7 +561,7 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    pub fn test_mutex_arc_poison() {
+    fn test_mutex_arc_poison() {
         let arc = ~MutexARC(1);
         let arc2 = ~arc.clone();
         do task::try || {
@@ -574,7 +574,7 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    pub fn test_rw_arc_poison_wr() {
+    fn test_rw_arc_poison_wr() {
         let arc = ~RWARC(1);
         let arc2 = (*arc).clone();
         do task::try || {
@@ -587,7 +587,7 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    pub fn test_rw_arc_poison_ww() {
+    fn test_rw_arc_poison_ww() {
         let arc = ~RWARC(1);
         let arc2 = (*arc).clone();
         do task::try || {
@@ -600,7 +600,7 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    pub fn test_rw_arc_poison_dw() {
+    fn test_rw_arc_poison_dw() {
         let arc = ~RWARC(1);
         let arc2 = (*arc).clone();
         do task::try || {
@@ -615,7 +615,7 @@ mod tests {
         }
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_rw_arc_no_poison_rr() {
+    fn test_rw_arc_no_poison_rr() {
         let arc = ~RWARC(1);
         let arc2 = (*arc).clone();
         do task::try || {
@@ -628,7 +628,7 @@ mod tests {
         }
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_rw_arc_no_poison_rw() {
+    fn test_rw_arc_no_poison_rw() {
         let arc = ~RWARC(1);
         let arc2 = (*arc).clone();
         do task::try || {
@@ -641,7 +641,7 @@ mod tests {
         }
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_rw_arc_no_poison_dr() {
+    fn test_rw_arc_no_poison_dr() {
         let arc = ~RWARC(1);
         let arc2 = (*arc).clone();
         do task::try || {
@@ -657,7 +657,7 @@ mod tests {
         }
     }
     #[test]
-    pub fn test_rw_arc() {
+    fn test_rw_arc() {
         let arc = ~RWARC(0);
         let arc2 = (*arc).clone();
         let (p,c) = comm::stream();
@@ -694,7 +694,7 @@ mod tests {
         do arc.read |num| { assert!(*num == 10); }
     }
     #[test]
-    pub fn test_rw_downgrade() {
+    fn test_rw_downgrade() {
         // (1) A downgrader gets in write mode and does cond.wait.
         // (2) A writer gets in write mode, sets state to 42, and does signal.
         // (3) Downgrader wakes, sets state to 31337.

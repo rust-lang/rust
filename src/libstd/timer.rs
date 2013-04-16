@@ -183,13 +183,13 @@ mod test {
     use core::pipes::{stream, SharedChan};
 
     #[test]
-    pub fn test_gl_timer_simple_sleep_test() {
+    fn test_gl_timer_simple_sleep_test() {
         let hl_loop = &uv::global_loop::get();
         sleep(hl_loop, 1u);
     }
 
     #[test]
-    pub fn test_gl_timer_sleep_stress1() {
+    fn test_gl_timer_sleep_stress1() {
         let hl_loop = &uv::global_loop::get();
         for iter::repeat(50u) {
             sleep(hl_loop, 1u);
@@ -197,7 +197,7 @@ mod test {
     }
 
     #[test]
-    pub fn test_gl_timer_sleep_stress2() {
+    fn test_gl_timer_sleep_stress2() {
         let (po, ch) = stream();
         let ch = SharedChan(ch);
         let hl_loop = &uv::global_loop::get();
@@ -241,7 +241,7 @@ mod test {
 
     #[test]
     #[cfg(ignore)]
-    pub fn test_gl_timer_recv_timeout_before_time_passes() {
+    fn test_gl_timer_recv_timeout_before_time_passes() {
         let times = 100;
         let mut successes = 0;
         let mut failures = 0;
@@ -270,7 +270,7 @@ mod test {
     }
 
     #[test]
-    pub fn test_gl_timer_recv_timeout_after_time_passes() {
+    fn test_gl_timer_recv_timeout_after_time_passes() {
         let times = 100;
         let mut successes = 0;
         let mut failures = 0;

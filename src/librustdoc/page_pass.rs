@@ -149,27 +149,6 @@ fn fold_nmod(
     return doc;
 }
 
-#[test]
-fn should_not_split_the_doc_into_pages_for_doc_per_crate() {
-    let doc = test::mk_doc_(
-        config::DocPerCrate,
-        ~"mod a { } mod b { mod c { } }"
-    );
-    assert!(doc.pages.len() == 1u);
-}
-
-#[test]
-fn should_make_a_page_for_every_mod() {
-    let doc = test::mk_doc(~"mod a { }");
-    assert!(doc.pages.mods()[0].name() == ~"a");
-}
-
-#[test]
-fn should_remove_mods_from_containing_mods() {
-    let doc = test::mk_doc(~"mod a { }");
-    assert!(vec::is_empty(doc.cratemod().mods()));
-}
-
 #[cfg(test)]
 mod test {
     use astsrv;
@@ -177,8 +156,9 @@ mod test {
     use doc;
     use extract;
     use page_pass::run;
+    use core::vec;
 
-    pub fn mk_doc_(
+    fn mk_doc_(
         output_style: config::OutputStyle,
         source: ~str
     ) -> doc::Doc {
@@ -188,7 +168,28 @@ mod test {
         }
     }
 
-    pub fn mk_doc(source: ~str) -> doc::Doc {
+    fn mk_doc(source: ~str) -> doc::Doc {
         mk_doc_(config::DocPerMod, copy source)
+    }
+
+    #[test]
+    fn should_not_split_the_doc_into_pages_for_doc_per_crate() {
+        let doc = mk_doc_(
+            config::DocPerCrate,
+            ~"mod a { } mod b { mod c { } }"
+        );
+        assert!(doc.pages.len() == 1u);
+    }
+
+    #[test]
+    fn should_make_a_page_for_every_mod() {
+        let doc = mk_doc(~"mod a { }");
+        assert!(doc.pages.mods()[0].name() == ~"a");
+    }
+
+    #[test]
+    fn should_remove_mods_from_containing_mods() {
+        let doc = mk_doc(~"mod a { }");
+        assert!(vec::is_empty(doc.cratemod().mods()));
     }
 }

@@ -232,7 +232,7 @@ mod tests {
     use core::str;
 
     #[test]
-    pub fn test_to_base64() {
+    fn test_to_base64() {
         assert!((~"").to_base64()       == ~"");
         assert!((~"f").to_base64()      == ~"Zg==");
         assert!((~"fo").to_base64()     == ~"Zm8=");
@@ -243,7 +243,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_from_base64() {
+    fn test_from_base64() {
         assert!((~"").from_base64() == str::to_bytes(~""));
         assert!((~"Zg==").from_base64() == str::to_bytes(~"f"));
         assert!((~"Zm8=").from_base64() == str::to_bytes(~"fo"));

@@ -15,8 +15,6 @@ use libc;
 use libc::{c_void, size_t};
 use sys;
 
-#[cfg(test)] use vec;
-#[cfg(test)] use str;
 #[cfg(notest)] use cmp::{Eq, Ord};
 use uint;
 
@@ -341,101 +339,101 @@ impl<'self,T:Ord> Ord for &'self const T {
     }
 }
 
-#[test]
-pub fn test() {
-    unsafe {
-        struct Pair {mut fst: int, mut snd: int};
-        let mut p = Pair {fst: 10, snd: 20};
-        let pptr: *mut Pair = &mut p;
-        let iptr: *mut int = cast::reinterpret_cast(&pptr);
-        assert!((*iptr == 10));;
-        *iptr = 30;
-        assert!((*iptr == 30));
-        assert!((p.fst == 30));;
+#[cfg(test)]
+pub mod ptr_tests {
+    use super::*;
+    use prelude::*;
 
-        *pptr = Pair {fst: 50, snd: 60};
-        assert!((*iptr == 50));
-        assert!((p.fst == 50));
-        assert!((p.snd == 60));
+    #[test]
+    fn test() {
+        unsafe {
+            struct Pair {mut fst: int, mut snd: int};
+            let mut p = Pair {fst: 10, snd: 20};
+            let pptr: *mut Pair = &mut p;
+            let iptr: *mut int = cast::reinterpret_cast(&pptr);
+            assert!((*iptr == 10));;
+            *iptr = 30;
+            assert!((*iptr == 30));
+            assert!((p.fst == 30));;
 
-        let mut v0 = ~[32000u16, 32001u16, 32002u16];
-        let mut v1 = ~[0u16, 0u16, 0u16];
+            *pptr = Pair {fst: 50, snd: 60};
+            assert!((*iptr == 50));
+            assert!((p.fst == 50));
+            assert!((p.snd == 60));
 
-        copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 1u),
-                    offset(vec::raw::to_ptr(v0), 1u), 1u);
-        assert!((v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16));
-        copy_memory(vec::raw::to_mut_ptr(v1),
-                    offset(vec::raw::to_ptr(v0), 2u), 1u);
-        assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
-                      v1[2] == 0u16));
-        copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 2u),
-                    vec::raw::to_ptr(v0), 1u);
-        assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
-                      v1[2] == 32000u16));
+            let mut v0 = ~[32000u16, 32001u16, 32002u16];
+            let mut v1 = ~[0u16, 0u16, 0u16];
+
+            copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 1u),
+                        offset(vec::raw::to_ptr(v0), 1u), 1u);
+            assert!((v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16));
+            copy_memory(vec::raw::to_mut_ptr(v1),
+                        offset(vec::raw::to_ptr(v0), 2u), 1u);
+            assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
+                     v1[2] == 0u16));
+            copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 2u),
+                        vec::raw::to_ptr(v0), 1u);
+            assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
+                     v1[2] == 32000u16));
+        }
     }
-}
 
-#[test]
-pub fn test_position() {
-    use str::as_c_str;
-    use libc::c_char;
+    #[test]
+    fn test_position() {
+        use str::as_c_str;
+        use libc::c_char;
 
-    let s = ~"hello";
-    unsafe {
-        assert!(2u == as_c_str(s, |p| position(p,
-            |c| *c == 'l' as c_char)));
-        assert!(4u == as_c_str(s, |p| position(p,
-            |c| *c == 'o' as c_char)));
-        assert!(5u == as_c_str(s, |p| position(p,
-            |c| *c == 0 as c_char)));
+        let s = ~"hello";
+        unsafe {
+            assert!(2u == as_c_str(s, |p| position(p,
+                                                   |c| *c == 'l' as c_char)));
+            assert!(4u == as_c_str(s, |p| position(p,
+                                                   |c| *c == 'o' as c_char)));
+            assert!(5u == as_c_str(s, |p| position(p,
+                                                   |c| *c == 0 as c_char)));
+        }
     }
-}
 
-#[test]
-pub fn test_buf_len() {
-    let s0 = ~"hello";
-    let s1 = ~"there";
-    let s2 = ~"thing";
-    do str::as_c_str(s0) |p0| {
-        do str::as_c_str(s1) |p1| {
-            do str::as_c_str(s2) |p2| {
-                let v = ~[p0, p1, p2, null()];
-                do vec::as_imm_buf(v) |vp, len| {
-                    assert!(unsafe { buf_len(vp) } == 3u);
-                    assert!(len == 4u);
+    #[test]
+    fn test_buf_len() {
+        let s0 = ~"hello";
+        let s1 = ~"there";
+        let s2 = ~"thing";
+        do str::as_c_str(s0) |p0| {
+            do str::as_c_str(s1) |p1| {
+                do str::as_c_str(s2) |p2| {
+                    let v = ~[p0, p1, p2, null()];
+                    do vec::as_imm_buf(v) |vp, len| {
+                        assert!(unsafe { buf_len(vp) } == 3u);
+                        assert!(len == 4u);
+                    }
                 }
             }
         }
     }
-}
 
-#[test]
-pub fn test_is_null() {
-   let p: *int = null();
-   assert!(p.is_null());
-   assert!(!p.is_not_null());
-
-   let q = offset(p, 1u);
-   assert!(!q.is_null());
-   assert!(q.is_not_null());
-
-   let mp: *mut int = mut_null();
-   assert!(mp.is_null());
-   assert!(!mp.is_not_null());
-
-   let mq = mp.offset(1u);
-   assert!(!mq.is_null());
-   assert!(mq.is_not_null());
-}
-
-#[cfg(test)]
-pub mod ptr_tests {
-    use ptr;
-    use str;
-    use libc;
-    use vec;
     #[test]
-    pub fn test_ptr_array_each_with_len() {
+    fn test_is_null() {
+        let p: *int = null();
+        assert!(p.is_null());
+        assert!(!p.is_not_null());
+
+        let q = offset(p, 1u);
+        assert!(!q.is_null());
+        assert!(q.is_not_null());
+
+        let mp: *mut int = mut_null();
+        assert!(mp.is_null());
+        assert!(!mp.is_not_null());
+
+        let mq = mp.offset(1u);
+        assert!(!mq.is_null());
+        assert!(mq.is_not_null());
+    }
+
+
+    #[test]
+    fn test_ptr_array_each_with_len() {
         unsafe {
             let one = ~"oneOne";
             let two = ~"twoTwo";
@@ -451,22 +449,22 @@ pub mod ptr_tests {
             let arr_ptr = &arr[0];
             let mut ctr = 0;
             let mut iteration_count = 0;
-            ptr::array_each_with_len(arr_ptr, vec::len(arr),
-                |e| {
-                let actual = str::raw::from_c_str(e);
-                let expected = copy expected_arr[ctr];
-                debug!(
-                    "test_ptr_array_each e: %s, a: %s",
-                         expected, actual);
-                assert!(actual == expected);
-                ctr += 1;
-                iteration_count += 1;
-            });
+            array_each_with_len(arr_ptr, vec::len(arr),
+                                |e| {
+                                         let actual = str::raw::from_c_str(e);
+                                         let expected = copy expected_arr[ctr];
+                                         debug!(
+                                             "test_ptr_array_each e: %s, a: %s",
+                                             expected, actual);
+                                         assert!(actual == expected);
+                                         ctr += 1;
+                                         iteration_count += 1;
+                                     });
             assert!(iteration_count == 3u);
         }
     }
     #[test]
-    pub fn test_ptr_array_each() {
+    fn test_ptr_array_each() {
         unsafe {
             let one = ~"oneOne";
             let two = ~"twoTwo";
@@ -484,12 +482,12 @@ pub mod ptr_tests {
             let arr_ptr = &arr[0];
             let mut ctr = 0;
             let mut iteration_count = 0;
-            ptr::array_each(arr_ptr, |e| {
+            array_each(arr_ptr, |e| {
                 let actual = str::raw::from_c_str(e);
                 let expected = copy expected_arr[ctr];
                 debug!(
                     "test_ptr_array_each e: %s, a: %s",
-                         expected, actual);
+                    expected, actual);
                 assert!(actual == expected);
                 ctr += 1;
                 iteration_count += 1;
@@ -500,9 +498,9 @@ pub mod ptr_tests {
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    pub fn test_ptr_array_each_with_len_null_ptr() {
+    fn test_ptr_array_each_with_len_null_ptr() {
         unsafe {
-            ptr::array_each_with_len(0 as **libc::c_char, 1, |e| {
+            array_each_with_len(0 as **libc::c_char, 1, |e| {
                 str::raw::from_c_str(e);
             });
         }
@@ -510,9 +508,9 @@ pub mod ptr_tests {
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    pub fn test_ptr_array_each_null_ptr() {
+    fn test_ptr_array_each_null_ptr() {
         unsafe {
-            ptr::array_each(0 as **libc::c_char, |e| {
+            array_each(0 as **libc::c_char, |e| {
                 str::raw::from_c_str(e);
             });
         }

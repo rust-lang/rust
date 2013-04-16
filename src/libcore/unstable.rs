@@ -286,14 +286,14 @@ pub impl<T:Owned> Exclusive<T> {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use comm;
     use super::exclusive;
     use task;
     use uint;
 
     #[test]
-    pub fn exclusive_arc() {
+    fn exclusive_arc() {
         let mut futures = ~[];
 
         let num_tasks = 10;
@@ -324,7 +324,7 @@ pub mod tests {
     }
 
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    pub fn exclusive_poison() {
+    fn exclusive_poison() {
         // Tests that if one task fails inside of an exclusive, subsequent
         // accesses will also fail.
         let x = exclusive(1);
