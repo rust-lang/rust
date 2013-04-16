@@ -282,6 +282,7 @@ pub mod raw {
 #[cfg(test)]
 mod test {
     use super::*;
+    use prelude::*;
 
     #[test]
     fn test() {
