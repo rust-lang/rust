@@ -468,11 +468,9 @@ pub fn set_glue_inlining(f: ValueRef, t: ty::t) {
 
 // Double-check that we never ask LLVM to declare the same symbol twice. It
 // silently mangles such symbols, breaking our linkage model.
-pub fn note_unique_llvm_symbol(ccx: @CrateContext, +sym: ~str) {
-    // XXX: this should not be necessary
-    use core::container::Set;
+pub fn note_unique_llvm_symbol(ccx: @CrateContext, sym: @~str) {
     if ccx.all_llvm_symbols.contains(&sym) {
-        ccx.sess.bug(~"duplicate LLVM symbol: " + sym);
+        ccx.sess.bug(~"duplicate LLVM symbol: " + *sym);
     }
     ccx.all_llvm_symbols.insert(sym);
 }
@@ -2576,11 +2574,10 @@ pub fn trans_constant(ccx: @CrateContext, it: @ast::item) {
                 path_name(variant.node.name),
                 path_name(special_idents::descrim)
             ]);
-            let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
+            let s = @mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
             let disr_val = vi[i].disr_val;
-            // XXX: Bad copy.
-            note_unique_llvm_symbol(ccx, copy s);
-            let discrim_gvar = str::as_c_str(s, |buf| {
+            note_unique_llvm_symbol(ccx, s);
+            let discrim_gvar = str::as_c_str(*s, |buf| {
                 unsafe {
                     llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
                 }

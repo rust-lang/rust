@@ -173,7 +173,7 @@ pub struct CrateContext {
      link_meta: LinkMeta,
      enum_sizes: @mut HashMap<ty::t, uint>,
      discrims: @mut HashMap<ast::def_id, ValueRef>,
-     discrim_symbols: @mut HashMap<ast::node_id, ~str>,
+     discrim_symbols: @mut HashMap<ast::node_id, @~str>,
      tydescs: @mut HashMap<ty::t, @mut tydesc_info>,
      // Set when running emit_tydescs to enforce that no more tydescs are
      // created.
@@ -215,7 +215,7 @@ pub struct CrateContext {
      symbol_hasher: @hash::State,
      type_hashcodes: @mut HashMap<ty::t, @str>,
      type_short_names: @mut HashMap<ty::t, ~str>,
-     all_llvm_symbols: @mut HashSet<~str>,
+     all_llvm_symbols: @mut HashSet<@~str>,
      tcx: ty::ctxt,
      maps: astencode::Maps,
      stats: @mut Stats,
