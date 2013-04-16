@@ -996,7 +996,7 @@ mod test_treemap {
                         (&x5, &y5)];
         let mut i = 0;
 
-        for advance(&mut b) |x| {
+        for b.advance |x| {
             assert!(expected[i] == x);
             i += 1;
 
@@ -1005,7 +1005,7 @@ mod test_treemap {
             }
         }
 
-        for advance(&mut b) |x| {
+        for b.advance |x| {
             assert!(expected[i] == x);
             i += 1;
         }
@@ -1209,7 +1209,7 @@ mod test_set {
 
         let x = x;
         let y = y;
-        let mut z = ZipIterator::new(x.iter(), y.iter());
+        let mut z = x.iter().zip(y.iter());
 
         // FIXME: #5801: this needs a type hint to compile...
         let result: Option<(&uint, & &'static str)> = z.next();
