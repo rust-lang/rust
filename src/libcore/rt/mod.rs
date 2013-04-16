@@ -32,6 +32,7 @@ macro_rules! rtdebug (
     ($( $arg:expr),+) => ( $(let _ = $arg)*; )
 )
 
+#[path = "sched/mod.rs"]
 mod sched;
 mod rtio;
 pub mod uvll;
