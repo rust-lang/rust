@@ -10,9 +10,12 @@
 
 /*
 The test runner should check that, after `rustpkg build hello-world`:
-  * testsuite/hello-world/build/ exists
-  * testsuite/hello-world/build/ contains an executable named hello-world
-  * testsuite/hello-world/build/ does not contain a library
+  * testsuite/pass/hello-world/build/ exists
+  * testsuite/pass/hello-world/build/ contains an executable named hello-world
+  * testsuite/pass/hello-world/build/ does not contain a library
+
+ It should also check that after `rustpkg clean hello-world`:
+  * testsuite/pass/hello-world/build is empty
 */
 
 use core::io;
