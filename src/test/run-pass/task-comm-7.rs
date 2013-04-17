@@ -23,7 +23,7 @@ fn test00_start(c: comm::Chan<int>, start: int, number_of_messages: int) {
 fn test00() {
     let mut r: int = 0;
     let mut sum: int = 0;
-    let p = comm::PortSet();
+    let p = comm::PortSet::new();
     let number_of_messages: int = 10;
 
     let c = p.chan();

@@ -53,7 +53,7 @@ fn server(requests: PortSet<request>, responses: Chan<uint>) {
 fn run(args: &[~str]) {
     let (from_child, to_parent) = stream();
     let (from_parent_, to_child) = stream();
-    let from_parent = PortSet();
+    let from_parent = PortSet::new();
     from_parent.add(from_parent_);
 
     let size = uint::from_str(args[1]).get();

@@ -657,7 +657,7 @@ fn test_cant_dup_task_builder() {
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
     let (po, ch) = stream();
-    let ch = SharedChan(ch);
+    let ch = SharedChan::new(ch);
     do spawn_unlinked {
         let ch = ch.clone();
         do spawn_unlinked {
@@ -881,7 +881,7 @@ fn test_spawn_sched_no_threads() {
 #[test]
 fn test_spawn_sched() {
     let (po, ch) = stream::<()>();
-    let ch = SharedChan(ch);
+    let ch = SharedChan::new(ch);
 
     fn f(i: int, ch: SharedChan<()>) {
         let parent_sched_id = unsafe { rt::rust_get_sched_id() };

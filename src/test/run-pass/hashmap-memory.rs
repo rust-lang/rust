@@ -60,7 +60,7 @@ mod map_reduce {
 
     pub fn map_reduce(inputs: ~[~str]) {
         let (ctrl_port, ctrl_chan) = stream();
-        let ctrl_chan = SharedChan(ctrl_chan);
+        let ctrl_chan = SharedChan::new(ctrl_chan);
 
         // This task becomes the master control task. It spawns others
         // to do the rest.

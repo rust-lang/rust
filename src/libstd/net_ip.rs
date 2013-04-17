@@ -113,7 +113,7 @@ enum IpGetAddrErr {
 pub fn get_addr(node: &str, iotask: &iotask)
     -> result::Result<~[IpAddr], IpGetAddrErr> {
     let (output_po, output_ch) = stream();
-    let mut output_ch = Some(SharedChan(output_ch));
+    let mut output_ch = Some(SharedChan::new(output_ch));
     do str::as_buf(node) |node_ptr, len| {
         let output_ch = output_ch.swap_unwrap();
         debug!("slice len %?", len);

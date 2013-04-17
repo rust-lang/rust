@@ -150,16 +150,16 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
     -> result::Result<TcpSocket, TcpConnectErrData> {
     unsafe {
         let (result_po, result_ch) = stream::<ConnAttempt>();
-        let result_ch = SharedChan(result_ch);
+        let result_ch = SharedChan::new(result_ch);
         let (closed_signal_po, closed_signal_ch) = stream::<()>();
-        let closed_signal_ch = SharedChan(closed_signal_ch);
+        let closed_signal_ch = SharedChan::new(closed_signal_ch);
         let conn_data = ConnectReqData {
             result_ch: result_ch,
             closed_signal_ch: closed_signal_ch
         };
         let conn_data_ptr = ptr::addr_of(&conn_data);
         let (reader_po, reader_ch) = stream::<Result<~[u8], TcpErrData>>();
-        let reader_ch = SharedChan(reader_ch);
+        let reader_ch = SharedChan::new(reader_ch);
         let stream_handle_ptr = malloc_uv_tcp_t();
         *(stream_handle_ptr as *mut uv::ll::uv_tcp_t) = uv::ll::tcp_t();
         let socket_data = @TcpSocketData {
@@ -517,7 +517,7 @@ pub fn accept(new_conn: TcpNewConnection)
                     server_handle_ptr) as *TcpListenFcData;
                 let (reader_po, reader_ch) = stream::<
                     Result<~[u8], TcpErrData>>();
-                let reader_ch = SharedChan(reader_ch);
+                let reader_ch = SharedChan::new(reader_ch);
                 let iotask = &(*server_data_ptr).iotask;
                 let stream_handle_ptr = malloc_uv_tcp_t();
                 *(stream_handle_ptr as *mut uv::ll::uv_tcp_t) =
@@ -537,7 +537,7 @@ pub fn accept(new_conn: TcpNewConnection)
                     (*client_socket_data_ptr).stream_handle_ptr;
 
                 let (result_po, result_ch) = stream::<Option<TcpErrData>>();
-                let result_ch = SharedChan(result_ch);
+                let result_ch = SharedChan::new(result_ch);
 
                 // UNSAFE LIBUV INTERACTION BEGIN
                 // .. normally this happens within the context of
@@ -646,9 +646,9 @@ fn listen_common(host_ip: ip::IpAddr,
                  on_connect_cb: ~fn(*uv::ll::uv_tcp_t))
               -> result::Result<(), TcpListenErrData> {
     let (stream_closed_po, stream_closed_ch) = stream::<()>();
-    let stream_closed_ch = SharedChan(stream_closed_ch);
+    let stream_closed_ch = SharedChan::new(stream_closed_ch);
     let (kill_po, kill_ch) = stream::<Option<TcpErrData>>();
-    let kill_ch = SharedChan(kill_ch);
+    let kill_ch = SharedChan::new(kill_ch);
     let server_stream = uv::ll::tcp_t();
     let server_stream_ptr = ptr::addr_of(&server_stream);
     let server_data: TcpListenFcData = TcpListenFcData {
@@ -997,7 +997,7 @@ impl io::Writer for TcpSocketBuf {
 fn tear_down_socket_data(socket_data: @TcpSocketData) {
     unsafe {
         let (closed_po, closed_ch) = stream::<()>();
-        let closed_ch = SharedChan(closed_ch);
+        let closed_ch = SharedChan::new(closed_ch);
         let close_data = TcpSocketCloseData {
             closed_ch: closed_ch
         };
@@ -1147,7 +1147,7 @@ fn write_common_impl(socket_data_ptr: *TcpSocketData,
             vec::len(raw_write_data)) ];
         let write_buf_vec_ptr = ptr::addr_of(&write_buf_vec);
         let (result_po, result_ch) = stream::<TcpWriteResult>();
-        let result_ch = SharedChan(result_ch);
+        let result_ch = SharedChan::new(result_ch);
         let write_data = WriteReqData {
             result_ch: result_ch
         };
@@ -1554,7 +1554,7 @@ mod test {
         let (server_result_po, server_result_ch) = stream::<~str>();
 
         let (cont_po, cont_ch) = stream::<()>();
-        let cont_ch = SharedChan(cont_ch);
+        let cont_ch = SharedChan::new(cont_ch);
         // server
         let hl_loop_clone = hl_loop.clone();
         do task::spawn_sched(task::ManualThreads(1u)) {
@@ -1592,7 +1592,7 @@ mod test {
         let expected_resp = ~"pong";
 
         let (cont_po, cont_ch) = stream::<()>();
-        let cont_ch = SharedChan(cont_ch);
+        let cont_ch = SharedChan::new(cont_ch);
         // server
         let hl_loop_clone = hl_loop.clone();
         do task::spawn_sched(task::ManualThreads(1u)) {
@@ -1652,7 +1652,7 @@ mod test {
         let expected_resp = ~"pong";
 
         let (cont_po, cont_ch) = stream::<()>();
-        let cont_ch = SharedChan(cont_ch);
+        let cont_ch = SharedChan::new(cont_ch);
         // server
         let hl_loop_clone = hl_loop.clone();
         do task::spawn_sched(task::ManualThreads(1u)) {
@@ -1717,7 +1717,7 @@ mod test {
         let (server_result_po, server_result_ch) = stream::<~str>();
 
         let (cont_po, cont_ch) = stream::<()>();
-        let cont_ch = SharedChan(cont_ch);
+        let cont_ch = SharedChan::new(cont_ch);
         // server
         let iotask_clone = iotask.clone();
         do task::spawn_sched(task::ManualThreads(1u)) {
@@ -1764,7 +1764,7 @@ mod test {
         let expected_resp = ~"A string\nwith multiple lines\n";
 
         let (cont_po, cont_ch) = stream::<()>();
-        let cont_ch = SharedChan(cont_ch);
+        let cont_ch = SharedChan::new(cont_ch);
         // server
         let hl_loop_clone = hl_loop.clone();
         do task::spawn_sched(task::ManualThreads(1u)) {
@@ -1813,7 +1813,7 @@ mod test {
                           cont_ch: SharedChan<()>,
                           iotask: &IoTask) -> ~str {
         let (server_po, server_ch) = stream::<~str>();
-        let server_ch = SharedChan(server_ch);
+        let server_ch = SharedChan::new(server_ch);
         let server_ip_addr = ip::v4::parse_addr(server_ip);
         let listen_result = listen(server_ip_addr, server_port, 128,
                                    iotask,

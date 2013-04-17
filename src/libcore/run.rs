@@ -405,7 +405,7 @@ pub fn program_output(prog: &str, args: &[~str]) -> ProgramOutput {
     // or the other. FIXME (#2625): Surely there's a much more
     // clever way to do this.
     let (p, ch) = stream();
-    let ch = SharedChan(ch);
+    let ch = SharedChan::new(ch);
     let ch_clone = ch.clone();
     do task::spawn_sched(task::SingleThreaded) {
         let errput = readclose(pipe_err.in);

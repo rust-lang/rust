@@ -1717,12 +1717,12 @@ mod test {
             let kill_server_msg = ~"does a dog have buddha nature?";
             let server_resp_msg = ~"mu!";
             let (client_port, client_chan) = stream::<~str>();
-            let client_chan = SharedChan(client_chan);
+            let client_chan = SharedChan::new(client_chan);
             let (server_port, server_chan) = stream::<~str>();
-            let server_chan = SharedChan(server_chan);
+            let server_chan = SharedChan::new(server_chan);
 
             let (continue_port, continue_chan) = stream::<bool>();
-            let continue_chan = SharedChan(continue_chan);
+            let continue_chan = SharedChan::new(continue_chan);
 
             let kill_server_msg_copy = copy kill_server_msg;
             let server_resp_msg_copy = copy server_resp_msg;
