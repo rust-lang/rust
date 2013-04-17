@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,6 +15,7 @@ use str;
 use u32;
 use uint;
 use unicode;
+use libc;
 
 #[cfg(notest)] use cmp::Eq;
 
@@ -105,6 +106,42 @@ pub fn is_alphanumeric(c: char) -> bool {
 pub fn is_ascii(c: char) -> bool {
    c - ('\x7F' & c) == '\x00'
 }
+
+pub enum CaseFoldingRule {
+    // FIXME: #5820 Add support for locale-specific unicode case folding
+    // See: http://www.w3.org/International/wiki/Case_folding
+
+    Default,
+    //Locale(&str)
+}
+
+/// Converts a character to its lower case representation, using the given case folding rules
+#[inline(always)]
+pub fn to_lower(c: char, folding_rule: CaseFoldingRule) -> char {
+    match folding_rule {
+        Default if is_ascii(c) => unsafe{(libc::tolower(c as libc::c_char)) as char},
+        Default                => c,
+    }
+}
+
+/// Converts a character to its upper case representation, using the given case folding rules
+#[inline(always)]
+pub fn to_upper(c: char, folding_rule: CaseFoldingRule) -> char {
+    match folding_rule {
+        Default if is_ascii(c) => unsafe{(libc::toupper(c as libc::c_char)) as char},
+        Default                => c,
+    }
+}
+
+/// Converts a character to its lower case representation, using the default (english)
+/// case folding rules
+#[inline(always)]
+pub fn to_lower_default(c: char) -> char { to_lower(c, Default) }
+
+/// Converts a character to its upper case representation, using the default (english)
+/// case folding rules
+#[inline(always)]
+pub fn to_upper_default(c: char) -> char { to_upper(c, Default) }
 
 /// Indicates whether the character is numeric (Nd, Nl, or No)
 #[inline(always)]
@@ -234,6 +271,34 @@ pub fn escape_default(c: char) -> ~str {
     }
 }
 
+/// Returns the amount of bytes this character would need if encoded in utf8
+pub fn len_utf8_bytes(c: char) -> uint {
+    static max_one_b: uint = 128u;
+    static max_two_b: uint = 2048u;
+    static max_three_b: uint = 65536u;
+    static max_four_b: uint = 2097152u;
+
+    let code = c as uint;
+    if code < max_one_b { 1u }
+    else if code < max_two_b { 2u }
+    else if code < max_three_b { 3u }
+    else if code < max_four_b { 4u }
+    else { fail!(~"invalid character!") }
+}
+
+/// Compares two characters, ignoring case differences.
+/// Currently only works for ascii.
+pub fn eq_ignore_case(c1: char, c2: char) -> bool {
+    // FIXME: #5820 Add support for non-ascii comparisons
+    if is_ascii(c1) && is_ascii(c2) {
+        unsafe{
+            libc::tolower(c1 as libc::c_char) == libc::tolower(c2 as libc::c_char)
+        }
+    } else {
+        c1 == c2
+    }
+}
+
 /**
  * Compare two chars
  *
@@ -334,7 +399,6 @@ fn test_escape_default() {
     assert_eq!(escape_default('\U0001d4b6'), ~"\\U0001d4b6");
 }
 
-
 #[test]
 fn test_escape_unicode() {
     assert_eq!(escape_unicode('\x00'), ~"\\x00");
@@ -343,4 +407,23 @@ fn test_escape_unicode() {
     assert_eq!(escape_unicode('a'), ~"\\x61");
     assert_eq!(escape_unicode('\u011b'), ~"\\u011b");
     assert_eq!(escape_unicode('\U0001d4b6'), ~"\\U0001d4b6");
+}
+
+#[test]
+fn test_eq_ignore_case() {
+    assert!(eq_ignore_case('a', 'A'));
+    assert!(eq_ignore_case('P', 'p'));
+    assert!(eq_ignore_case('.', '.'));
+    assert!(eq_ignore_case('x', 'x'));
+    assert!(eq_ignore_case('X', 'X'));
+    assert!(!eq_ignore_case('a', 'α'));
+    assert!(!eq_ignore_case('P', 'h'));
+    assert!(!eq_ignore_case('.', ':'));
+    assert!(!eq_ignore_case('x', '<'));
+    assert!(!eq_ignore_case('X', 'ä'));
+
+    // FIXME: #5820 Uncomment if unicode support
+    //assert!(eq_ignore_case('ö', 'Ö'));
+    //assert!(eq_ignore_case('Ü', 'ü'));
+    //assert!(eq_ignore_case('ω', 'Ω'));
 }
