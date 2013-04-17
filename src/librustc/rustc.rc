@@ -85,6 +85,7 @@ pub mod middle {
     pub mod lint;
     #[path = "borrowck/mod.rs"]
     pub mod borrowck;
+    pub mod dataflow;
     pub mod mem_categorization;
     pub mod liveness;
     pub mod kind;
