@@ -56,20 +56,6 @@ pub trait Peekable<T> {
     fn peek(&self) -> bool;
 }
 
-/// Returns the index of an endpoint that is ready to receive.
-pub fn selecti<T: Selectable>(endpoints: &[T]) -> uint {
-    wait_many(endpoints)
-}
-
-/// Returns 0 or 1 depending on which endpoint is ready to receive
-pub fn select2i<A: Selectable, B: Selectable>(a: &A, b: &B) ->
-        Either<(), ()> {
-    match wait_many([a.header(), b.header()]) {
-      0 => Left(()),
-      1 => Right(()),
-      _ => fail!(~"wait returned unexpected index")
-    }
-}
 
 // Streams - Make pipes a little easier in general.
 
@@ -322,38 +308,6 @@ pub fn SharedChan<T:Owned>(c: Chan<T>) -> SharedChan<T> {
     unstable::exclusive(c)
 }
 
-/// Receive a message from one of two endpoints.
-pub trait Select2<T: Owned, U: Owned> {
-    /// Receive a message or return `None` if a connection closes.
-    fn try_select(&self) -> Either<Option<T>, Option<U>>;
-    /// Receive a message or fail if a connection closes.
-    fn select(&self) -> Either<T, U>;
-}
-
-impl<T: Owned, U: Owned,
-     Left: Selectable + GenericPort<T>,
-     Right: Selectable + GenericPort<U>>
-    Select2<T, U> for (Left, Right) {
-
-    fn select(&self) -> Either<T, U> {
-        match *self {
-          (ref lp, ref rp) => match select2i(lp, rp) {
-            Left(()) => Left (lp.recv()),
-            Right(()) => Right(rp.recv())
-          }
-        }
-    }
-
-    fn try_select(&self) -> Either<Option<T>, Option<U>> {
-        match *self {
-          (ref lp, ref rp) => match select2i(lp, rp) {
-            Left(()) => Left (lp.try_recv()),
-            Right(()) => Right(rp.try_recv())
-          }
-        }
-    }
-}
-
 /*proto! oneshot (
     Oneshot:send<T:Owned> {
         send(T) -> !
@@ -484,6 +438,55 @@ pub fn send_one<T: Owned>(chan: ChanOne<T>, data: T) {
 pub fn try_send_one<T: Owned>(chan: ChanOne<T>, data: T)
         -> bool {
     oneshot::client::try_send(chan, data).is_some()
+}
+
+
+
+/// Returns the index of an endpoint that is ready to receive.
+pub fn selecti<T: Selectable>(endpoints: &[T]) -> uint {
+    wait_many(endpoints)
+}
+
+/// Returns 0 or 1 depending on which endpoint is ready to receive
+pub fn select2i<A: Selectable, B: Selectable>(a: &A, b: &B) ->
+        Either<(), ()> {
+    match wait_many([a.header(), b.header()]) {
+      0 => Left(()),
+      1 => Right(()),
+      _ => fail!(~"wait returned unexpected index")
+    }
+}
+
+/// Receive a message from one of two endpoints.
+pub trait Select2<T: Owned, U: Owned> {
+    /// Receive a message or return `None` if a connection closes.
+    fn try_select(&self) -> Either<Option<T>, Option<U>>;
+    /// Receive a message or fail if a connection closes.
+    fn select(&self) -> Either<T, U>;
+}
+
+impl<T: Owned, U: Owned,
+     Left: Selectable + GenericPort<T>,
+     Right: Selectable + GenericPort<U>>
+    Select2<T, U> for (Left, Right) {
+
+    fn select(&self) -> Either<T, U> {
+        match *self {
+          (ref lp, ref rp) => match select2i(lp, rp) {
+            Left(()) => Left (lp.recv()),
+            Right(()) => Right(rp.recv())
+          }
+        }
+    }
+
+    fn try_select(&self) -> Either<Option<T>, Option<U>> {
+        match *self {
+          (ref lp, ref rp) => match select2i(lp, rp) {
+            Left(()) => Left (lp.try_recv()),
+            Right(()) => Right(rp.try_recv())
+          }
+        }
+    }
 }
 
 #[cfg(test)]
