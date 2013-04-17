@@ -66,7 +66,7 @@ pub enum ObsoleteSyntax {
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
     #[inline(always)]
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f);
     }
 }

@@ -237,8 +237,8 @@ macro_rules! without_macro_scoping(
 
 // Support for item-position macro invocations, exactly the same
 // logic as for expression-position macro invocations.
-pub fn expand_item_mac(+extsbox: @mut SyntaxEnv,
-                       cx: @ext_ctxt, &&it: @ast::item,
+pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
+                       cx: @ext_ctxt, it: @ast::item,
                        fld: @ast_fold)
                     -> Option<@ast::item> {
     let (pth, tts) = match it.node {

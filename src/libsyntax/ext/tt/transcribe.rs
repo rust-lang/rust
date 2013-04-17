@@ -53,7 +53,7 @@ pub struct TtReader {
 pub fn new_tt_reader(sp_diag: @span_handler,
                      itr: @ident_interner,
                      interp: Option<HashMap<ident,@named_match>>,
-                     +src: ~[ast::token_tree])
+                     src: ~[ast::token_tree])
                   -> @mut TtReader {
     let r = @mut TtReader {
         sp_diag: sp_diag,
@@ -109,7 +109,7 @@ pub fn dup_tt_reader(r: @mut TtReader) -> @mut TtReader {
 fn lookup_cur_matched_by_matched(r: &mut TtReader,
                                       start: @named_match)
                                    -> @named_match {
-    fn red(+ad: @named_match, idx: &uint) -> @named_match {
+    fn red(ad: @named_match, idx: &uint) -> @named_match {
         match *ad {
           matched_nonterminal(_) => {
             // end of the line; duplicate henceforth

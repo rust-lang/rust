@@ -239,7 +239,7 @@ priv impl @ext_ctxt {
         }
     }
 
-    fn expr(&self, span: span, +node: ast::expr_) -> @ast::expr {
+    fn expr(&self, span: span, node: ast::expr_) -> @ast::expr {
         @ast::expr {
             id: self.next_id(),
             callee_id: self.next_id(),
@@ -248,7 +248,7 @@ priv impl @ext_ctxt {
         }
     }
 
-    fn path(&self, span: span, +strs: ~[ast::ident]) -> @ast::Path {
+    fn path(&self, span: span, strs: ~[ast::ident]) -> @ast::Path {
         @ast::Path {
             span: span,
             global: false,
@@ -258,7 +258,7 @@ priv impl @ext_ctxt {
         }
     }
 
-    fn path_global(&self, span: span, +strs: ~[ast::ident]) -> @ast::Path {
+    fn path_global(&self, span: span, strs: ~[ast::ident]) -> @ast::Path {
         @ast::Path {
             span: span,
             global: true,
@@ -271,8 +271,8 @@ priv impl @ext_ctxt {
     fn path_tps(
         &self,
         span: span,
-        +strs: ~[ast::ident],
-        +tps: ~[@ast::Ty]
+        strs: ~[ast::ident],
+        tps: ~[@ast::Ty]
     ) -> @ast::Path {
         @ast::Path {
             span: span,
@@ -286,8 +286,8 @@ priv impl @ext_ctxt {
     fn path_tps_global(
         &self,
         span: span,
-        +strs: ~[ast::ident],
-        +tps: ~[@ast::Ty]
+        strs: ~[ast::ident],
+        tps: ~[@ast::Ty]
     ) -> @ast::Path {
         @ast::Path {
             span: span,
@@ -301,8 +301,8 @@ priv impl @ext_ctxt {
     fn ty_path(
         &self,
         span: span,
-        +strs: ~[ast::ident],
-        +tps: ~[@ast::Ty]
+        strs: ~[ast::ident],
+        tps: ~[@ast::Ty]
     ) -> @ast::Ty {
         @ast::Ty {
             id: self.next_id(),
@@ -349,13 +349,13 @@ priv impl @ext_ctxt {
                                 span: span}))
     }
 
-    fn lambda(&self, +blk: ast::blk) -> @ast::expr {
+    fn lambda(&self, blk: ast::blk) -> @ast::expr {
         let ext_cx = *self;
         let blk_e = self.expr(copy blk.span, ast::expr_block(copy blk));
         quote_expr!( || $blk_e )
     }
 
-    fn blk(&self, span: span, +stmts: ~[@ast::stmt]) -> ast::blk {
+    fn blk(&self, span: span, stmts: ~[@ast::stmt]) -> ast::blk {
         codemap::spanned {
             node: ast::blk_ {
                 view_items: ~[],
@@ -381,19 +381,19 @@ priv impl @ext_ctxt {
         }
     }
 
-    fn expr_path(&self, span: span, +strs: ~[ast::ident]) -> @ast::expr {
+    fn expr_path(&self, span: span, strs: ~[ast::ident]) -> @ast::expr {
         self.expr(span, ast::expr_path(self.path(span, strs)))
     }
 
     fn expr_path_global(
         &self,
         span: span,
-        +strs: ~[ast::ident]
+        strs: ~[ast::ident]
     ) -> @ast::expr {
         self.expr(span, ast::expr_path(self.path_global(span, strs)))
     }
 
-    fn expr_var(&self, span: span, +var: ~str) -> @ast::expr {
+    fn expr_var(&self, span: span, var: ~str) -> @ast::expr {
         self.expr_path(span, ~[self.ident_of(var)])
     }
 
@@ -410,7 +410,7 @@ priv impl @ext_ctxt {
         &self,
         span: span,
         expr: @ast::expr,
-        +args: ~[@ast::expr]
+        args: ~[@ast::expr]
     ) -> @ast::expr {
         self.expr(span, ast::expr_call(expr, args, ast::NoSugar))
     }
@@ -420,7 +420,7 @@ priv impl @ext_ctxt {
         span: span,
         expr: @ast::expr,
         ident: ast::ident,
-        +args: ~[@ast::expr]
+        args: ~[@ast::expr]
     ) -> @ast::expr {
         self.expr(span, ast::expr_method_call(expr, ident, ~[], args, ast::NoSugar))
     }
@@ -429,7 +429,7 @@ priv impl @ext_ctxt {
         self.lambda(self.expr_blk(expr))
     }
 
-    fn lambda_stmts(&self, span: span, +stmts: ~[@ast::stmt]) -> @ast::expr {
+    fn lambda_stmts(&self, span: span, stmts: ~[@ast::stmt]) -> @ast::expr {
         self.lambda(self.blk(span, stmts))
     }
 }
@@ -597,7 +597,7 @@ fn mk_deser_impl(
 fn mk_ser_method(
     cx: @ext_ctxt,
     span: span,
-    +ser_body: ast::blk
+    ser_body: ast::blk
 ) -> @ast::method {
     let ty_s = @ast::Ty {
         id: cx.next_id(),
@@ -660,7 +660,7 @@ fn mk_deser_method(
     cx: @ext_ctxt,
     span: span,
     ty: @ast::Ty,
-    +deser_body: ast::blk
+    deser_body: ast::blk
 ) -> @ast::method {
     let ty_d = @ast::Ty {
         id: cx.next_id(),
@@ -864,7 +864,7 @@ fn mk_enum_ser_impl(
     cx: @ext_ctxt,
     span: span,
     ident: ast::ident,
-    +enum_def: ast::enum_def,
+    enum_def: ast::enum_def,
     generics: &ast::Generics
 ) -> @ast::item {
     let body = mk_enum_ser_body(
@@ -881,7 +881,7 @@ fn mk_enum_deser_impl(
     cx: @ext_ctxt,
     span: span,
     ident: ast::ident,
-    +enum_def: ast::enum_def,
+    enum_def: ast::enum_def,
     generics: &ast::Generics
 ) -> @ast::item {
     let body = mk_enum_deser_body(
@@ -974,7 +974,7 @@ fn mk_enum_ser_body(
     cx: @ext_ctxt,
     span: span,
     name: ast::ident,
-    +variants: ~[ast::variant]
+    variants: ~[ast::variant]
 ) -> @ast::expr {
     let arms = do variants.mapi |v_idx, variant| {
         match variant.node.kind {
@@ -1219,37 +1219,37 @@ mod test {
     impl Encoder for TestEncoder {
         fn emit_nil(&self) { self.add_to_log(CallToEmitNil) }
 
-        fn emit_uint(&self, +v: uint) {self.add_to_log(CallToEmitUint(v)); }
-        fn emit_u64(&self, +_v: u64) { self.add_unknown_to_log(); }
-        fn emit_u32(&self, +_v: u32) { self.add_unknown_to_log(); }
-        fn emit_u16(&self, +_v: u16) { self.add_unknown_to_log(); }
-        fn emit_u8(&self, +_v: u8)   { self.add_unknown_to_log(); }
+        fn emit_uint(&self, v: uint) {self.add_to_log(CallToEmitUint(v)); }
+        fn emit_u64(&self, _v: u64) { self.add_unknown_to_log(); }
+        fn emit_u32(&self, _v: u32) { self.add_unknown_to_log(); }
+        fn emit_u16(&self, _v: u16) { self.add_unknown_to_log(); }
+        fn emit_u8(&self, _v: u8)   { self.add_unknown_to_log(); }
 
-        fn emit_int(&self, +_v: int) { self.add_unknown_to_log(); }
-        fn emit_i64(&self, +_v: i64) { self.add_unknown_to_log(); }
-        fn emit_i32(&self, +_v: i32) { self.add_unknown_to_log(); }
-        fn emit_i16(&self, +_v: i16) { self.add_unknown_to_log(); }
-        fn emit_i8(&self, +_v: i8)   { self.add_unknown_to_log(); }
+        fn emit_int(&self, _v: int) { self.add_unknown_to_log(); }
+        fn emit_i64(&self, _v: i64) { self.add_unknown_to_log(); }
+        fn emit_i32(&self, _v: i32) { self.add_unknown_to_log(); }
+        fn emit_i16(&self, _v: i16) { self.add_unknown_to_log(); }
+        fn emit_i8(&self, _v: i8)   { self.add_unknown_to_log(); }
 
-        fn emit_bool(&self, +_v: bool) { self.add_unknown_to_log(); }
+        fn emit_bool(&self, _v: bool) { self.add_unknown_to_log(); }
 
-        fn emit_f64(&self, +_v: f64) { self.add_unknown_to_log(); }
-        fn emit_f32(&self, +_v: f32) { self.add_unknown_to_log(); }
-        fn emit_float(&self, +_v: float) { self.add_unknown_to_log(); }
+        fn emit_f64(&self, _v: f64) { self.add_unknown_to_log(); }
+        fn emit_f32(&self, _v: f32) { self.add_unknown_to_log(); }
+        fn emit_float(&self, _v: float) { self.add_unknown_to_log(); }
 
-        fn emit_char(&self, +_v: char) { self.add_unknown_to_log(); }
-        fn emit_str(&self, +_v: &str) { self.add_unknown_to_log(); }
+        fn emit_char(&self, _v: char) { self.add_unknown_to_log(); }
+        fn emit_str(&self, _v: &str) { self.add_unknown_to_log(); }
 
         fn emit_enum(&self, name: &str, f: &fn()) {
             self.add_to_log(CallToEmitEnum(name.to_str())); f(); }
 
-        fn emit_enum_variant(&self, name: &str, +id: uint,
-                             +cnt: uint, f: &fn()) {
+        fn emit_enum_variant(&self, name: &str, id: uint,
+                             cnt: uint, f: &fn()) {
             self.add_to_log(CallToEmitEnumVariant (name.to_str(),id,cnt));
             f();
         }
 
-        fn emit_enum_variant_arg(&self, +idx: uint, f: &fn()) {
+        fn emit_enum_variant_arg(&self, idx: uint, f: &fn()) {
             self.add_to_log(CallToEmitEnumVariantArg (idx)); f();
         }
 
@@ -1261,10 +1261,10 @@ mod test {
             self.emit_enum_variant_arg(idx, f)
         }
 
-        fn emit_struct(&self, name: &str, +len: uint, f: &fn()) {
+        fn emit_struct(&self, name: &str, len: uint, f: &fn()) {
             self.add_to_log(CallToEmitStruct (name.to_str(),len)); f();
         }
-        fn emit_struct_field(&self, name: &str, +idx: uint, f: &fn()) {
+        fn emit_struct_field(&self, name: &str, idx: uint, f: &fn()) {
             self.add_to_log(CallToEmitField (name.to_str(),idx)); f();
         }
 
@@ -1294,10 +1294,10 @@ mod test {
             f();
         }
 
-        fn emit_seq(&self, +_len: uint, f: &fn()) {
+        fn emit_seq(&self, _len: uint, f: &fn()) {
             self.add_unknown_to_log(); f();
         }
-        fn emit_seq_elt(&self, +_idx: uint, f: &fn()) {
+        fn emit_seq_elt(&self, _idx: uint, f: &fn()) {
             self.add_unknown_to_log(); f();
         }
 

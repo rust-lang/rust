@@ -126,7 +126,7 @@ pub fn parse_crate_from_source_str(
 pub fn parse_expr_from_source_str(
     name: ~str,
     source: @~str,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> @ast::expr {
     let p = new_parser_from_source_str(
@@ -142,8 +142,8 @@ pub fn parse_expr_from_source_str(
 pub fn parse_item_from_source_str(
     name: ~str,
     source: @~str,
-    +cfg: ast::crate_cfg,
-    +attrs: ~[ast::attribute],
+    cfg: ast::crate_cfg,
+    attrs: ~[ast::attribute],
     sess: @mut ParseSess
 ) -> Option<@ast::item> {
     let p = new_parser_from_source_str(
@@ -159,7 +159,7 @@ pub fn parse_item_from_source_str(
 pub fn parse_meta_from_source_str(
     name: ~str,
     source: @~str,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> @ast::meta_item {
     let p = new_parser_from_source_str(
@@ -175,8 +175,8 @@ pub fn parse_meta_from_source_str(
 pub fn parse_stmt_from_source_str(
     name: ~str,
     source: @~str,
-    +cfg: ast::crate_cfg,
-    +attrs: ~[ast::attribute],
+    cfg: ast::crate_cfg,
+    attrs: ~[ast::attribute],
     sess: @mut ParseSess
 ) -> @ast::stmt {
     let p = new_parser_from_source_str(
@@ -192,7 +192,7 @@ pub fn parse_stmt_from_source_str(
 pub fn parse_tts_from_source_str(
     name: ~str,
     source: @~str,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> ~[ast::token_tree] {
     let p = new_parser_from_source_str(
@@ -207,20 +207,20 @@ pub fn parse_tts_from_source_str(
 }
 
 pub fn parse_from_source_str<T>(
-    f: &fn (Parser) -> T,
+    f: &fn(&Parser) -> T,
     name: ~str, ss: codemap::FileSubstr,
     source: @~str,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> T {
     let p = new_parser_from_source_str(
         sess,
         cfg,
-        /*bad*/ copy name,
-        /*bad*/ copy ss,
+        name,
+        ss,
         source
     );
-    let r = f(p);
+    let r = f(&p);
     if !p.reader.is_eof() {
         p.reader.fatal(~"expected end-of-string");
     }
@@ -236,9 +236,9 @@ pub fn next_node_id(sess: @mut ParseSess) -> node_id {
 }
 
 pub fn new_parser_from_source_str(sess: @mut ParseSess,
-                                  +cfg: ast::crate_cfg,
-                                  +name: ~str,
-                                  +ss: codemap::FileSubstr,
+                                  cfg: ast::crate_cfg,
+                                  name: ~str,
+                                  ss: codemap::FileSubstr,
                                   source: @~str)
                                -> Parser {
     let filemap = sess.cm.new_filemap_w_substr(name, ss, source);
@@ -254,7 +254,7 @@ pub fn new_parser_from_source_str(sess: @mut ParseSess,
 /// that draws from that string
 pub fn new_parser_result_from_file(
     sess: @mut ParseSess,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     path: &Path
 ) -> Result<Parser, ~str> {
     match io::read_whole_file_str(path) {
@@ -274,7 +274,7 @@ pub fn new_parser_result_from_file(
 /// if the file doesn't exist
 pub fn new_parser_from_file(
     sess: @mut ParseSess,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     path: &Path
 ) -> Parser {
     match new_parser_result_from_file(sess, cfg, path) {
@@ -289,7 +289,7 @@ pub fn new_parser_from_file(
 /// error messages correctly when the file does not exist.
 pub fn new_sub_parser_from_file(
     sess: @mut ParseSess,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     path: &Path,
     sp: span
 ) -> Parser {
@@ -303,8 +303,8 @@ pub fn new_sub_parser_from_file(
 
 pub fn new_parser_from_tts(
     sess: @mut ParseSess,
-    +cfg: ast::crate_cfg,
-    +tts: ~[ast::token_tree]
+    cfg: ast::crate_cfg,
+    tts: ~[ast::token_tree]
 ) -> Parser {
     let trdr = lexer::new_tt_reader(
         copy sess.span_diagnostic,
@@ -316,7 +316,7 @@ pub fn new_parser_from_tts(
 }
 
 // abort if necessary
-pub fn maybe_aborted<T>(+result : T, p: Parser) -> T {
+pub fn maybe_aborted<T>(result : T, p: Parser) -> T {
     p.abort_if_errors();
     result
 }

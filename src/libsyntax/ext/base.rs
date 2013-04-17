@@ -238,7 +238,7 @@ pub trait ext_ctxt {
     fn ident_of(@mut self, st: ~str) -> ast::ident;
 }
 
-pub fn mk_ctxt(parse_sess: @mut parse::ParseSess, +cfg: ast::crate_cfg)
+pub fn mk_ctxt(parse_sess: @mut parse::ParseSess, cfg: ast::crate_cfg)
             -> @ext_ctxt {
     struct CtxtRepr {
         parse_sess: @mut parse::ParseSess,
@@ -439,7 +439,7 @@ pub enum MapChain<K,V> {
 impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 
     // Constructor. I don't think we need a zero-arg one.
-    fn new(+init: ~HashMap<K,@V>) -> @mut MapChain<K,V> {
+    fn new(init: ~HashMap<K,@V>) -> @mut MapChain<K,V> {
         @mut BaseMapChain(init)
     }
 
@@ -509,7 +509,7 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
     }
 
     // insert the binding into the top-level map
-    fn insert (&mut self, +key: K, +ext: @V) -> bool {
+    fn insert (&mut self, key: K, ext: @V) -> bool {
         // can't abstract over get_map because of flow sensitivity...
         match *self {
             BaseMapChain (~ref mut map) => map.insert(key, ext),
