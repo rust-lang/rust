@@ -898,9 +898,9 @@ mod test {
                              getopts::fail_str(f))
             };
         let sessopts = build_session_options(
-            ~"rustc", matches, diagnostic::emit);
+            @~"rustc", matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
-        let cfg = build_configuration(sess, ~"whatever", str_input(~""));
+        let cfg = build_configuration(sess, @~"whatever", str_input(~""));
         assert!((attr::contains_name(cfg, ~"test")));
     }
 
@@ -917,9 +917,9 @@ mod test {
               }
             };
         let sessopts = build_session_options(
-            ~"rustc", matches, diagnostic::emit);
+            @~"rustc", matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
-        let cfg = build_configuration(sess, ~"whatever", str_input(~""));
+        let cfg = build_configuration(sess, @~"whatever", str_input(~""));
         let test_items = attr::find_meta_items_by_name(cfg, ~"test");
         assert!((vec::len(test_items) == 1u));
     }
