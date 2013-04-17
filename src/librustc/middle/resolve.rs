@@ -351,7 +351,7 @@ pub struct ImportDirective {
 }
 
 pub fn ImportDirective(privacy: Privacy,
-                       +module_path: ~[ident],
+                       module_path: ~[ident],
                        subclass: @ImportDirectiveSubclass,
                        span: span)
                     -> ImportDirective {
@@ -401,7 +401,7 @@ pub struct ImportResolution {
 }
 
 pub fn ImportResolution(privacy: Privacy,
-                        +span: span,
+                        span: span,
                         state: @mut ImportState) -> ImportResolution {
     ImportResolution {
         privacy: privacy,
@@ -904,7 +904,7 @@ pub impl Resolver {
     fn build_reduced_graph(@mut self) {
         let initial_parent =
             ModuleReducedGraphParent(self.graph_root.get_module());
-        visit_crate(*self.crate, initial_parent, mk_vt(@Visitor {
+        visit_crate(self.crate, initial_parent, mk_vt(@Visitor {
             visit_item: |item, context, visitor|
                 self.build_reduced_graph_for_item(item, context, visitor),
 
@@ -1088,7 +1088,7 @@ pub impl Resolver {
     fn build_reduced_graph_for_item(@mut self,
                                     item: @item,
                                     parent: ReducedGraphParent,
-                                    &&visitor: vt<ReducedGraphParent>) {
+                                    visitor: vt<ReducedGraphParent>) {
         let ident = item.ident;
         let sp = item.span;
         let privacy = visibility_to_privacy(item.vis);
@@ -1173,7 +1173,7 @@ pub impl Resolver {
                     (privacy, def_ty(local_def(item.id)), sp);
 
                 for (*enum_definition).variants.each |variant| {
-                    self.build_reduced_graph_for_variant(*variant,
+                    self.build_reduced_graph_for_variant(variant,
                         local_def(item.id),
                         // inherited => privacy of the enum item
                         variant_visibility_to_privacy(variant.node.vis,
@@ -1362,11 +1362,11 @@ pub impl Resolver {
     // Constructs the reduced graph for one variant. Variants exist in the
     // type and/or value namespaces.
     fn build_reduced_graph_for_variant(@mut self,
-                                       variant: variant,
+                                       variant: &variant,
                                        item_id: def_id,
-                                       +parent_privacy: Privacy,
+                                       parent_privacy: Privacy,
                                        parent: ReducedGraphParent,
-                                       &&_visitor: vt<ReducedGraphParent>) {
+                                       _visitor: vt<ReducedGraphParent>) {
         let ident = variant.node.name;
         let (child, _) = self.add_child(ident, parent, ForbidDuplicateValues,
                                         variant.span);
@@ -1402,7 +1402,7 @@ pub impl Resolver {
     fn build_reduced_graph_for_view_item(@mut self,
                                          view_item: @view_item,
                                          parent: ReducedGraphParent,
-                                         &&_visitor: vt<ReducedGraphParent>) {
+                                         _visitor: vt<ReducedGraphParent>) {
         let privacy = visibility_to_privacy(view_item.vis);
         match view_item.node {
             view_item_use(ref view_paths) => {
@@ -1495,7 +1495,7 @@ pub impl Resolver {
     fn build_reduced_graph_for_foreign_item(@mut self,
                                             foreign_item: @foreign_item,
                                             parent: ReducedGraphParent,
-                                            &&visitor:
+                                            visitor:
                                                 vt<ReducedGraphParent>) {
         let name = foreign_item.ident;
         let (name_bindings, new_parent) =
@@ -1526,7 +1526,7 @@ pub impl Resolver {
     fn build_reduced_graph_for_block(@mut self,
                                      block: &blk,
                                      parent: ReducedGraphParent,
-                                     &&visitor: vt<ReducedGraphParent>) {
+                                     visitor: vt<ReducedGraphParent>) {
         let mut new_parent;
         if self.block_needs_anonymous_module(block) {
             let block_id = block.node.id;
@@ -1849,7 +1849,7 @@ pub impl Resolver {
     fn build_import_directive(@mut self,
                               privacy: Privacy,
                               module_: @mut Module,
-                              +module_path: ~[ident],
+                              module_path: ~[ident],
                               subclass: @ImportDirectiveSubclass,
                               span: span) {
         let directive = @ImportDirective(privacy, module_path,
@@ -2912,7 +2912,7 @@ pub impl Resolver {
                               module_: @mut Module,
                               name: ident,
                               namespace: Namespace,
-                              +name_search_type: NameSearchType)
+                              name_search_type: NameSearchType)
                            -> ResolveResult<Target> {
         debug!("(resolving name in module) resolving `%s` in `%s`",
                *self.session.str_of(name),
@@ -3352,7 +3352,7 @@ pub impl Resolver {
     fn resolve_crate(@mut self) {
         debug!("(resolving crate) starting");
 
-        visit_crate(*self.crate, (), mk_vt(@Visitor {
+        visit_crate(self.crate, (), mk_vt(@Visitor {
             visit_item: |item, _context, visitor|
                 self.resolve_item(item, visitor),
             visit_arm: |arm, _context, visitor|
@@ -3509,7 +3509,7 @@ pub impl Resolver {
                 self.resolve_struct(item.id,
                                     generics,
                                     struct_def.fields,
-                                    struct_def.dtor,
+                                    &struct_def.dtor,
                                     visitor);
             }
 
@@ -3768,7 +3768,7 @@ pub impl Resolver {
                       id: node_id,
                       generics: &Generics,
                       fields: &[@struct_field],
-                      optional_destructor: Option<struct_dtor>,
+                      optional_destructor: &Option<struct_dtor>,
                       visitor: ResolveVisitor) {
         // If applicable, create a rib for the type parameters.
         do self.with_type_parameter_rib(HasTypeParameters
@@ -3784,7 +3784,7 @@ pub impl Resolver {
             }
 
             // Resolve the destructor, if applicable.
-            match optional_destructor {
+            match *optional_destructor {
                 None => {
                     // Nothing to do.
                 }
@@ -4525,7 +4525,7 @@ pub impl Resolver {
 
     fn resolve_module_relative_path(@mut self,
                                     path: @Path,
-                                    +xray: XrayFlag,
+                                    xray: XrayFlag,
                                     namespace: Namespace)
                                  -> Option<def> {
         let module_path_idents = self.intern_module_part_of_path(path);
@@ -4571,7 +4571,7 @@ pub impl Resolver {
     /// import resolution.
     fn resolve_crate_relative_path(@mut self,
                                    path: @Path,
-                                   +xray: XrayFlag,
+                                   xray: XrayFlag,
                                    namespace: Namespace)
                                 -> Option<def> {
         let module_path_idents = self.intern_module_part_of_path(path);
@@ -5076,7 +5076,7 @@ pub impl Resolver {
 
     fn add_fixed_trait_for_expr(@mut self,
                                 expr_id: node_id,
-                                +trait_id: def_id) {
+                                trait_id: def_id) {
         self.trait_map.insert(expr_id, @mut ~[trait_id]);
     }
 

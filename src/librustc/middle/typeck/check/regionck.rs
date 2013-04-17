@@ -159,11 +159,11 @@ fn regionck_visitor() -> rvt {
                                   .. *visit::default_visitor()})
 }
 
-fn visit_item(_item: @ast::item, &&_rcx: @mut Rcx, _v: rvt) {
+fn visit_item(_item: @ast::item, _rcx: @mut Rcx, _v: rvt) {
     // Ignore items
 }
 
-fn visit_local(l: @ast::local, &&rcx: @mut Rcx, v: rvt) {
+fn visit_local(l: @ast::local, rcx: @mut Rcx, v: rvt) {
     // Check to make sure that the regions in all local variables are
     // within scope.
     //
@@ -194,11 +194,11 @@ fn visit_local(l: @ast::local, &&rcx: @mut Rcx, v: rvt) {
     }
 }
 
-fn visit_block(b: &ast::blk, &&rcx: @mut Rcx, v: rvt) {
+fn visit_block(b: &ast::blk, rcx: @mut Rcx, v: rvt) {
     visit::visit_block(b, rcx, v);
 }
 
-fn visit_expr(expr: @ast::expr, &&rcx: @mut Rcx, v: rvt) {
+fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
     debug!("regionck::visit_expr(e=%s)", rcx.fcx.expr_to_str(expr));
 
     for rcx.fcx.inh.adjustments.find(&expr.id).each |&adjustment| {
@@ -333,7 +333,7 @@ fn visit_expr(expr: @ast::expr, &&rcx: @mut Rcx, v: rvt) {
     visit::visit_expr(expr, rcx, v);
 }
 
-fn visit_stmt(s: @ast::stmt, &&rcx: @mut Rcx, v: rvt) {
+fn visit_stmt(s: @ast::stmt, rcx: @mut Rcx, v: rvt) {
     visit::visit_stmt(s, rcx, v);
 }
 
@@ -973,10 +973,10 @@ pub mod guarantor {
     }
 
     fn apply_autoderefs(
-        +rcx: @mut Rcx,
-        +expr: @ast::expr,
-        +autoderefs: uint,
-        +ct: ExprCategorizationType)
+        rcx: @mut Rcx,
+        expr: @ast::expr,
+        autoderefs: uint,
+        ct: ExprCategorizationType)
      -> ExprCategorizationType {
         let mut ct = ct;
         let tcx = rcx.fcx.ccx.tcx;

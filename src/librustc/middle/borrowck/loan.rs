@@ -257,10 +257,10 @@ pub impl LoanContext {
     }
 
     fn issue_loan(&mut self,
-                  +cmt: cmt,
-                  +scope_ub: ty::Region,
-                  +loan_kind: LoanKind,
-                  +owns_lent_data: bool) -> bckres<()> {
+                  cmt: cmt,
+                  scope_ub: ty::Region,
+                  loan_kind: LoanKind,
+                  owns_lent_data: bool) -> bckres<()> {
         // Subtle: the `scope_ub` is the maximal lifetime of `cmt`.
         // Therefore, if `cmt` owns the data being lent, then the
         // scope of the loan must be less than `scope_ub`, or else the

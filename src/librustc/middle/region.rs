@@ -496,7 +496,7 @@ pub fn resolve_crate(sess: Session,
         visit_local: resolve_local,
         .. *visit::default_visitor()
     });
-    visit::visit_crate(*crate, cx, visitor);
+    visit::visit_crate(crate, cx, visitor);
     return region_maps;
 }
 
@@ -549,8 +549,8 @@ pub struct DetermineRpCtxt {
     ambient_variance: region_variance,
 }
 
-pub fn join_variance(++variance1: region_variance,
-                     ++variance2: region_variance)
+pub fn join_variance(variance1: region_variance,
+                     variance2: region_variance)
                   -> region_variance {
     match (variance1, variance2) {
       (rv_invariant, _) => {rv_invariant}
@@ -570,8 +570,8 @@ pub fn join_variance(++variance1: region_variance,
 /// appears in a co-variant position.  This implies that this
 /// occurrence of `r` is contra-variant with respect to the current
 /// item, and hence the function returns `rv_contravariant`.
-pub fn add_variance(+ambient_variance: region_variance,
-                    +variance: region_variance)
+pub fn add_variance(ambient_variance: region_variance,
+                    variance: region_variance)
                  -> region_variance {
     match (ambient_variance, variance) {
       (rv_invariant, _) => rv_invariant,
@@ -719,7 +719,7 @@ pub impl DetermineRpCtxt {
 }
 
 pub fn determine_rp_in_item(item: @ast::item,
-                            &&cx: @mut DetermineRpCtxt,
+                            cx: @mut DetermineRpCtxt,
                             visitor: visit::vt<@mut DetermineRpCtxt>) {
     do cx.with(item.id, true) {
         visit::visit_item(item, cx, visitor);
@@ -731,7 +731,7 @@ pub fn determine_rp_in_fn(fk: &visit::fn_kind,
                           body: &ast::blk,
                           _: span,
                           _: ast::node_id,
-                          &&cx: @mut DetermineRpCtxt,
+                          cx: @mut DetermineRpCtxt,
                           visitor: visit::vt<@mut DetermineRpCtxt>) {
     do cx.with(cx.item_id, false) {
         do cx.with_ambient_variance(rv_contravariant) {
@@ -747,7 +747,7 @@ pub fn determine_rp_in_fn(fk: &visit::fn_kind,
 }
 
 pub fn determine_rp_in_ty_method(ty_m: &ast::ty_method,
-                                 &&cx: @mut DetermineRpCtxt,
+                                 cx: @mut DetermineRpCtxt,
                                  visitor: visit::vt<@mut DetermineRpCtxt>) {
     do cx.with(cx.item_id, false) {
         visit::visit_ty_method(ty_m, cx, visitor);
@@ -755,7 +755,7 @@ pub fn determine_rp_in_ty_method(ty_m: &ast::ty_method,
 }
 
 pub fn determine_rp_in_ty(ty: @ast::Ty,
-                          &&cx: @mut DetermineRpCtxt,
+                          cx: @mut DetermineRpCtxt,
                           visitor: visit::vt<@mut DetermineRpCtxt>) {
     // we are only interested in types that will require an item to
     // be region-parameterized.  if cx.item_id is zero, then this type
@@ -871,7 +871,7 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
     }
 
     fn visit_mt(mt: ast::mt,
-                &&cx: @mut DetermineRpCtxt,
+                cx: @mut DetermineRpCtxt,
                 visitor: visit::vt<@mut DetermineRpCtxt>) {
         // mutability is invariant
         if mt.mutbl == ast::m_mutbl {
@@ -886,7 +886,7 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
 
 pub fn determine_rp_in_struct_field(
         cm: @ast::struct_field,
-        &&cx: @mut DetermineRpCtxt,
+        cx: @mut DetermineRpCtxt,
         visitor: visit::vt<@mut DetermineRpCtxt>) {
     match cm.node.kind {
       ast::named_field(_, ast::struct_mutable, _) => {
@@ -903,7 +903,7 @@ pub fn determine_rp_in_struct_field(
 
 pub fn determine_rp_in_crate(sess: Session,
                              ast_map: ast_map::map,
-                             +def_map: resolve::DefMap,
+                             def_map: resolve::DefMap,
                              crate: @ast::crate)
                           -> region_paramd_items {
     let cx = @mut DetermineRpCtxt {
@@ -927,7 +927,7 @@ pub fn determine_rp_in_crate(sess: Session,
         visit_struct_field: determine_rp_in_struct_field,
         .. *visit::default_visitor()
     });
-    visit::visit_crate(*crate, cx, visitor);
+    visit::visit_crate(crate, cx, visitor);
 
     // Propagate indirect dependencies
     //

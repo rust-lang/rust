@@ -48,7 +48,7 @@ pub enum output_type {
     output_type_exe,
 }
 
-pub fn llvm_err(sess: Session, +msg: ~str) -> ! {
+pub fn llvm_err(sess: Session, msg: ~str) -> ! {
     unsafe {
         let cstr = llvm::LLVMRustGetLastError();
         if cstr == ptr::null() {
@@ -153,7 +153,7 @@ pub mod jit {
                     code: entry,
                     env: ptr::null()
                 };
-                let func: &fn(++argv: ~[@~str]) = cast::transmute(closure);
+                let func: &fn(argv: ~[@~str]) = cast::transmute(closure);
 
                 func(~[sess.opts.binary]);
             }
@@ -519,7 +519,7 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
 
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(symbol_hasher: &hash::State,
-                              +cmh_items: ~[@ast::meta_item],
+                              cmh_items: ~[@ast::meta_item],
                               dep_hashes: ~[~str]) -> @str {
         fn len_and_str(s: &str) -> ~str {
             fmt!("%u_%s", s.len(), s)
@@ -568,7 +568,7 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
                        name, default));
     }
 
-    fn crate_meta_name(sess: Session, output: &Path, +opt_name: Option<@str>)
+    fn crate_meta_name(sess: Session, output: &Path, opt_name: Option<@str>)
                     -> @str {
         return match opt_name {
               Some(v) => v,
@@ -703,7 +703,7 @@ pub fn mangle(sess: Session, ss: path) -> ~str {
 }
 
 pub fn exported_name(sess: Session,
-                     +path: path,
+                     path: path,
                      hash: &str,
                      vers: &str) -> ~str {
     return mangle(sess,
@@ -713,7 +713,7 @@ pub fn exported_name(sess: Session,
 }
 
 pub fn mangle_exported_name(ccx: @CrateContext,
-                            +path: path,
+                            path: path,
                             t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
     return exported_name(ccx.sess, path,
@@ -733,17 +733,17 @@ pub fn mangle_internal_name_by_type_only(ccx: @CrateContext,
 }
 
 pub fn mangle_internal_name_by_path_and_seq(ccx: @CrateContext,
-                                            +path: path,
-                                            +flav: ~str) -> ~str {
+                                            path: path,
+                                            flav: ~str) -> ~str {
     return mangle(ccx.sess,
                   vec::append_one(path, path_name((ccx.names)(flav))));
 }
 
-pub fn mangle_internal_name_by_path(ccx: @CrateContext, +path: path) -> ~str {
+pub fn mangle_internal_name_by_path(ccx: @CrateContext, path: path) -> ~str {
     return mangle(ccx.sess, path);
 }
 
-pub fn mangle_internal_name_by_seq(ccx: @CrateContext, +flav: ~str) -> ~str {
+pub fn mangle_internal_name_by_seq(ccx: @CrateContext, flav: ~str) -> ~str {
     return fmt!("%s_%u", flav, (ccx.names)(flav).repr);
 }
 
@@ -768,7 +768,7 @@ pub fn link_binary(sess: Session,
                    out_filename: &Path,
                    lm: LinkMeta) {
     // Converts a library file-stem into a cc -l argument
-    fn unlib(config: @session::config, +stem: ~str) -> ~str {
+    fn unlib(config: @session::config, stem: ~str) -> ~str {
         if stem.starts_with("lib") &&
             config.os != session::os_win32 {
             stem.slice(3, stem.len()).to_owned()

@@ -321,7 +321,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @CrateContext,
 }
 
 // See [Note-arg-mode]
-pub fn call_tydesc_glue_full(++bcx: block,
+pub fn call_tydesc_glue_full(bcx: block,
                              v: ValueRef,
                              tydesc: ValueRef,
                              field: uint,
@@ -388,7 +388,7 @@ pub fn call_tydesc_glue_full(++bcx: block,
 }
 
 // See [Note-arg-mode]
-pub fn call_tydesc_glue(++cx: block, v: ValueRef, t: ty::t, field: uint)
+pub fn call_tydesc_glue(cx: block, v: ValueRef, t: ty::t, field: uint)
     -> block {
     let _icx = cx.insn_ctxt("call_tydesc_glue");
     let ti = get_tydesc(cx.ccx(), t);
@@ -713,7 +713,7 @@ pub fn declare_tydesc(ccx: @CrateContext, t: ty::t) -> @mut tydesc_info {
 pub type glue_helper = @fn(block, ValueRef, ty::t);
 
 pub fn declare_generic_glue(ccx: @CrateContext, t: ty::t, llfnty: TypeRef,
-                            +name: ~str) -> ValueRef {
+                            name: ~str) -> ValueRef {
     let _icx = ccx.insn_ctxt("declare_generic_glue");
     let name = name;
     //XXX this triggers duplicate LLVM symbols

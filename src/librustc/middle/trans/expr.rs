@@ -1572,7 +1572,7 @@ fn trans_binary(bcx: block,
 fn trans_overloaded_op(bcx: block,
                        expr: @ast::expr,
                        rcvr: @ast::expr,
-                       +args: ~[@ast::expr],
+                       args: ~[@ast::expr],
                        ret_ty: ty::t,
                        dest: Dest)
                        -> block {
@@ -1746,6 +1746,6 @@ fn trans_assign_op(bcx: block,
     return result_datum.copy_to_datum(bcx, DROP_EXISTING, dst_datum);
 }
 
-fn shorten(+x: ~str) -> ~str {
+fn shorten(x: ~str) -> ~str {
     if x.len() > 60 { x.substr(0, 60).to_owned() } else { x }
 }
