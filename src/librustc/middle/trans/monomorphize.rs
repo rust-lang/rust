@@ -303,7 +303,7 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
         ty::ty_closure(ref fty) => {
             Some(normalized_closure_ty(tcx, fty.sigil))
         }
-        ty::ty_trait(_, _, ref store) => {
+        ty::ty_trait(_, _, ref store, _) => {
             let sigil = match *store {
                 ty::UniqTraitStore => ast::OwnedSigil,
                 ty::BoxTraitStore => ast::ManagedSigil,
