@@ -12,8 +12,9 @@
 
 #[warn(non_camel_case_types)];
 
-use container::{Container, Mutable};
+use cast::transmute;
 use cast;
+use container::{Container, Mutable};
 use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use iter::BaseIter;
@@ -2137,6 +2138,7 @@ pub trait ImmutableCopyableVector<T> {
     fn filtered(&self, f: &fn(&T) -> bool) -> ~[T];
     fn rfind(&self, f: &fn(t: &T) -> bool) -> Option<T>;
     fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
+    unsafe fn unsafe_get(&self, elem: uint) -> T;
 }
 
 /// Extension methods for vectors
@@ -2172,6 +2174,13 @@ impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
     #[inline]
     fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]) {
         partitioned(*self, f)
+    }
+
+    /// Returns the element at the given index, without doing bounds checking.
+    #[inline(always)]
+    unsafe fn unsafe_get(&self, elem: uint) -> T {
+        let (ptr, _): (*T, uint) = transmute(*self);
+        *ptr.offset(elem)
     }
 }
 
@@ -2310,6 +2319,19 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
     #[inline]
     fn dedup(&mut self) {
         dedup(self)
+    }
+}
+
+pub trait MutableVector<T> {
+    unsafe fn unsafe_set(&self, elem: uint, val: T);
+}
+
+impl<'self,T> MutableVector<T> for &'self mut [T] {
+    #[inline(always)]
+    unsafe fn unsafe_set(&self, elem: uint, val: T) {
+        let pair_ptr: &(*mut T, uint) = transmute(self);
+        let (ptr, _) = *pair_ptr;
+        *ptr.offset(elem) = val;
     }
 }
 
