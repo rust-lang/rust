@@ -55,11 +55,6 @@ pub trait Encoder {
     fn emit_enum_struct_variant_field(&self, f_name: &str, f_idx: uint, f: &fn());
 
     fn emit_struct(&self, name: &str, len: uint, f: &fn());
-    #[cfg(stage0)]
-    fn emit_field(&self, f_name: &str, f_idx: uint, f: &fn());
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn emit_struct_field(&self, f_name: &str, f_idx: uint, f: &fn());
 
     fn emit_tuple(&self, len: uint, f: &fn());
@@ -111,11 +106,6 @@ pub trait Decoder {
     fn read_enum_struct_variant_field<T>(&self, &f_name: &str, f_idx: uint, f: &fn() -> T) -> T;
 
     fn read_struct<T>(&self, s_name: &str, len: uint, f: &fn() -> T) -> T;
-    #[cfg(stage0)]
-    fn read_field<T>(&self, f_name: &str, f_idx: uint, f: &fn() -> T) -> T;
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn read_struct_field<T>(&self, f_name: &str, f_idx: uint, f: &fn() -> T) -> T;
 
     fn read_tuple<T>(&self, f: &fn(uint) -> T) -> T;

@@ -135,32 +135,6 @@ pub unsafe fn strdup_uniq(ptr: *c_uchar, len: uint) -> ~str {
 }
 
 #[lang="start"]
-#[cfg(stage0)]
-pub fn start(main: *u8, argc: int, argv: *c_char,
-             crate_map: *u8) -> int {
-    use libc::getenv;
-    use rt::start;
-
-    unsafe {
-        let use_old_rt = do str::as_c_str("RUST_NEWRT") |s| {
-            getenv(s).is_null()
-        };
-        if use_old_rt {
-            return rust_start(main as *c_void, argc as c_int, argv,
-                              crate_map as *c_void) as int;
-        } else {
-            return start(main, argc, argv, crate_map);
-        }
-    }
-
-    extern {
-        fn rust_start(main: *c_void, argc: c_int, argv: *c_char,
-                      crate_map: *c_void) -> c_int;
-    }
-}
-
-#[lang="start"]
-#[cfg(not(stage0))]
 pub fn start(main: *u8, argc: int, argv: **c_char,
              crate_map: *u8) -> int {
     use libc::getenv;
