@@ -225,19 +225,11 @@ pub fn is_whitespace(c: char) -> bool {
     return c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
-fn may_begin_ident(c: char) -> bool { return is_alpha(c) || c == '_'; }
-
 fn in_range(c: char, lo: char, hi: char) -> bool {
     return lo <= c && c <= hi
 }
 
-fn is_alpha(c: char) -> bool {
-    return in_range(c, 'a', 'z') || in_range(c, 'A', 'Z');
-}
-
 fn is_dec_digit(c: char) -> bool { return in_range(c, '0', '9'); }
-
-fn is_alnum(c: char) -> bool { return is_alpha(c) || is_dec_digit(c); }
 
 fn is_hex_digit(c: char) -> bool {
     return in_range(c, '0', '9') || in_range(c, 'a', 'f') ||
@@ -444,8 +436,7 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         }
     }
     let mut is_float = false;
-    if rdr.curr == '.' && !(is_alpha(nextch(rdr)) || nextch(rdr) == '_' ||
-                            nextch(rdr) == '.') {
+    if rdr.curr == '.' && !(ident_start(nextch(rdr)) || nextch(rdr) == '.') {
         is_float = true;
         bump(rdr);
         let dec_part = scan_digits(rdr, 10u);
