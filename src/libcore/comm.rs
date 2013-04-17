@@ -73,11 +73,64 @@ pub fn select2i<A: Selectable, B: Selectable>(a: &A, b: &B) ->
 
 // Streams - Make pipes a little easier in general.
 
-proto! streamp (
+/*proto! streamp (
     Open:send<T: Owned> {
         data(T) -> Open<T>
     }
-)
+)*/
+
+#[allow(non_camel_case_types)]
+pub mod streamp {
+    priv use core::kinds::Owned;
+
+    pub fn init<T: Owned>() -> (client::Open<T>, server::Open<T>) {
+        pub use core::pipes::HasBuffer;
+        ::core::pipes::entangle()
+    }
+
+    #[allow(non_camel_case_types)]
+    pub enum Open<T> { pub data(T, server::Open<T>), }
+
+    #[allow(non_camel_case_types)]
+    pub mod client {
+        priv use core::kinds::Owned;
+
+        #[allow(non_camel_case_types)]
+        pub fn try_data<T: Owned>(pipe: Open<T>, x_0: T) ->
+            ::core::option::Option<Open<T>> {
+            {
+                use super::data;
+                let (c, s) = ::core::pipes::entangle();
+                let message = data(x_0, s);
+                if ::core::pipes::send(pipe, message) {
+                    ::core::pipes::rt::make_some(c)
+                } else { ::core::pipes::rt::make_none() }
+            }
+        }
+
+        #[allow(non_camel_case_types)]
+        pub fn data<T: Owned>(pipe: Open<T>, x_0: T) -> Open<T> {
+            {
+                use super::data;
+                let (c, s) = ::core::pipes::entangle();
+                let message = data(x_0, s);
+                ::core::pipes::send(pipe, message);
+                c
+            }
+        }
+
+        #[allow(non_camel_case_types)]
+        pub type Open<T> = ::core::pipes::SendPacket<super::Open<T>>;
+    }
+
+    #[allow(non_camel_case_types)]
+    pub mod server {
+        priv use core::kinds::Owned;
+
+        #[allow(non_camel_case_types)]
+        pub type Open<T> = ::core::pipes::RecvPacket<super::Open<T>>;
+    }
+}
 
 #[doc(hidden)]
 struct Chan_<T> {
@@ -364,11 +417,82 @@ impl<T: Owned, U: Owned,
     }
 }
 
-proto! oneshot (
+/*proto! oneshot (
     Oneshot:send<T:Owned> {
         send(T) -> !
     }
-)
+)*/
+
+#[allow(non_camel_case_types)]
+pub mod oneshot {
+    priv use core::kinds::Owned;
+
+    pub fn init<T: Owned>() -> (client::Oneshot<T>, server::Oneshot<T>) {
+        pub use core::pipes::HasBuffer;
+
+        let buffer =
+            ~::core::pipes::Buffer{
+            header: ::core::pipes::BufferHeader(),
+            data: __Buffer{
+                Oneshot: ::core::pipes::mk_packet::<Oneshot<T>>()
+            },
+        };
+        do ::core::pipes::entangle_buffer(buffer) |buffer, data| {
+            {
+                data.Oneshot.set_buffer(buffer);
+                ::ptr::addr_of(&(data.Oneshot))
+            }
+        }
+    }
+    #[allow(non_camel_case_types)]
+    pub enum Oneshot<T> { pub send(T), }
+    #[allow(non_camel_case_types)]
+    pub struct __Buffer<T> {
+        Oneshot: ::core::pipes::Packet<Oneshot<T>>,
+    }
+
+    #[allow(non_camel_case_types)]
+    pub mod client {
+
+        priv use core::kinds::Owned;
+
+        #[allow(non_camel_case_types)]
+        pub fn try_send<T: Owned>(pipe: Oneshot<T>, x_0: T) ->
+            ::core::option::Option<()> {
+            {
+                use super::send;
+                let message = send(x_0);
+                if ::core::pipes::send(pipe, message) {
+                    ::core::pipes::rt::make_some(())
+                } else { ::core::pipes::rt::make_none() }
+            }
+        }
+
+        #[allow(non_camel_case_types)]
+        pub fn send<T: Owned>(pipe: Oneshot<T>, x_0: T) {
+            {
+                use super::send;
+                let message = send(x_0);
+                ::core::pipes::send(pipe, message);
+            }
+        }
+
+        #[allow(non_camel_case_types)]
+        pub type Oneshot<T> =
+            ::core::pipes::SendPacketBuffered<super::Oneshot<T>,
+                                              super::__Buffer<T>>;
+    }
+
+    #[allow(non_camel_case_types)]
+    pub mod server {
+        priv use core::kinds::Owned;
+
+        #[allow(non_camel_case_types)]
+        pub type Oneshot<T> =
+            ::core::pipes::RecvPacketBuffered<super::Oneshot<T>,
+                                              super::__Buffer<T>>;
+    }
+}
 
 /// The send end of a oneshot pipe.
 pub type ChanOne<T> = oneshot::client::Oneshot<T>;
