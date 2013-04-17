@@ -27,11 +27,11 @@ pub enum OptVec<T> {
     Vec(~[T])
 }
 
-pub fn with<T>(+t: T) -> OptVec<T> {
+pub fn with<T>(t: T) -> OptVec<T> {
     Vec(~[t])
 }
 
-pub fn from<T>(+t: ~[T]) -> OptVec<T> {
+pub fn from<T>(t: ~[T]) -> OptVec<T> {
     if t.len() == 0 {
         Empty
     } else {
@@ -40,7 +40,7 @@ pub fn from<T>(+t: ~[T]) -> OptVec<T> {
 }
 
 impl<T> OptVec<T> {
-    fn push(&mut self, +t: T) {
+    fn push(&mut self, t: T) {
         match *self {
             Vec(ref mut v) => {
                 v.push(t);
@@ -91,7 +91,7 @@ impl<T> OptVec<T> {
     }
 }
 
-pub fn take_vec<T>(+v: OptVec<T>) -> ~[T] {
+pub fn take_vec<T>(v: OptVec<T>) -> ~[T] {
     match v {
         Empty => ~[],
         Vec(v) => v
@@ -99,7 +99,7 @@ pub fn take_vec<T>(+v: OptVec<T>) -> ~[T] {
 }
 
 impl<T:Copy> OptVec<T> {
-    fn prepend(&self, +t: T) -> OptVec<T> {
+    fn prepend(&self, t: T) -> OptVec<T> {
         let mut v0 = ~[t];
         match *self {
             Empty => {}
@@ -157,7 +157,7 @@ impl<A> BaseIter<A> for OptVec<A> {
 
 impl<A> iter::ExtendedIter<A> for OptVec<A> {
     #[inline(always)]
-    fn eachi(&self, blk: &fn(+v: uint, v: &A) -> bool) {
+    fn eachi(&self, blk: &fn(v: uint, v: &A) -> bool) {
         iter::eachi(self, blk)
     }
     #[inline(always)]
@@ -169,7 +169,7 @@ impl<A> iter::ExtendedIter<A> for OptVec<A> {
         iter::any(self, blk)
     }
     #[inline(always)]
-    fn foldl<B>(&self, +b0: B, blk: &fn(&B, &A) -> B) -> B {
+    fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
         iter::foldl(self, b0, blk)
     }
     #[inline(always)]

@@ -142,7 +142,7 @@ pub fn expand_deriving(cx: @ext_ctxt,
     result
 }
 
-fn create_impl_item(cx: @ext_ctxt, span: span, +item: item_) -> @item {
+fn create_impl_item(cx: @ext_ctxt, span: span, item: item_) -> @item {
     let doc_attr = respan(span,
                           ast::lit_str(@~"Automatically derived."));
     let doc_attr = respan(span, ast::meta_name_value(@~"doc", doc_attr));

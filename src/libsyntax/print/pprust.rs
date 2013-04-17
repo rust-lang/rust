@@ -134,7 +134,7 @@ pub fn print_crate(cm: @CodeMap,
     print_crate_(s, crate);
 }
 
-pub fn print_crate_(s: @ps, &&crate: @ast::crate) {
+pub fn print_crate_(s: @ps, crate: @ast::crate) {
     print_mod(s, &crate.node.module, crate.node.attrs);
     print_remaining_comments(s);
     eof(s.s);
@@ -164,7 +164,7 @@ pub fn tts_to_str(tts: &[ast::token_tree], intr: @ident_interner) -> ~str {
     to_str(tts, print_tts, intr)
 }
 
-pub fn stmt_to_str(s: ast::stmt, intr: @ident_interner) -> ~str {
+pub fn stmt_to_str(s: &ast::stmt, intr: @ident_interner) -> ~str {
     to_str(s, print_stmt, intr)
 }
 
@@ -177,7 +177,7 @@ pub fn generics_to_str(generics: &ast::Generics,
     to_str(generics, print_generics, intr)
 }
 
-pub fn path_to_str(&&p: @ast::Path, intr: @ident_interner) -> ~str {
+pub fn path_to_str(p: @ast::Path, intr: @ident_interner) -> ~str {
     to_str(p, |a,b| print_path(a, b, false), intr)
 }
 
@@ -312,7 +312,7 @@ pub fn synth_comment(s: @ps, text: ~str) {
     word(s.s, ~"*/");
 }
 
-pub fn commasep<IN>(s: @ps, b: breaks, elts: &[IN], op: &fn(@ps, IN)) {
+pub fn commasep<IN: Copy>(s: @ps, b: breaks, elts: &[IN], op: &fn(@ps, IN)) {
     box(s, 0u, b);
     let mut first = true;
     for elts.each |elt| {
@@ -323,8 +323,8 @@ pub fn commasep<IN>(s: @ps, b: breaks, elts: &[IN], op: &fn(@ps, IN)) {
 }
 
 
-pub fn commasep_cmnt<IN>(s: @ps, b: breaks, elts: &[IN], op: &fn(@ps, IN),
-                         get_span: &fn(IN) -> codemap::span) {
+pub fn commasep_cmnt<IN: Copy>(s: @ps, b: breaks, elts: &[IN], op: &fn(@ps, IN),
+                               get_span: &fn(IN) -> codemap::span) {
     box(s, 0u, b);
     let len = elts.len();
     let mut i = 0u;
@@ -343,7 +343,7 @@ pub fn commasep_cmnt<IN>(s: @ps, b: breaks, elts: &[IN], op: &fn(@ps, IN),
 }
 
 pub fn commasep_exprs(s: @ps, b: breaks, exprs: &[@ast::expr]) {
-    fn expr_span(&&expr: @ast::expr) -> codemap::span { return expr.span; }
+    fn expr_span(expr: @ast::expr) -> codemap::span { return expr.span; }
     commasep_cmnt(s, b, exprs, print_expr, expr_span);
 }
 
@@ -371,7 +371,7 @@ pub fn print_opt_lifetime(s: @ps, lifetime: Option<@ast::Lifetime>) {
     }
 }
 
-pub fn print_type(s: @ps, &&ty: @ast::Ty) {
+pub fn print_type(s: @ps, ty: @ast::Ty) {
     maybe_print_comment(s, ty.span.lo);
     ibox(s, 0u);
     match ty.node {
@@ -465,7 +465,7 @@ pub fn print_foreign_item(s: @ps, item: @ast::foreign_item) {
     }
 }
 
-pub fn print_item(s: @ps, &&item: @ast::item) {
+pub fn print_item(s: @ps, item: @ast::item) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);
@@ -760,7 +760,7 @@ pub fn print_tt(s: @ps, tt: ast::token_tree) {
     }
 }
 
-pub fn print_tts(s: @ps, &&tts: &[ast::token_tree]) {
+pub fn print_tts(s: @ps, tts: &[ast::token_tree]) {
     ibox(s, 0);
     for tts.eachi |i, tt| {
         if i != 0 {
@@ -872,7 +872,7 @@ pub fn print_attribute(s: @ps, attr: ast::attribute) {
 }
 
 
-pub fn print_stmt(s: @ps, st: ast::stmt) {
+pub fn print_stmt(s: @ps, st: &ast::stmt) {
     maybe_print_comment(s, st.span.lo);
     match st.node {
       ast::stmt_decl(decl, _) => {
@@ -950,7 +950,7 @@ pub fn print_possibly_embedded_block_(s: @ps,
 
     for blk.node.view_items.each |vi| { print_view_item(s, *vi); }
     for blk.node.stmts.each |st| {
-        print_stmt(s, **st);
+        print_stmt(s, *st);
     }
     match blk.node.expr {
       Some(expr) => {
@@ -1089,7 +1089,7 @@ pub fn print_call_post(s: @ps,
     }
 }
 
-pub fn print_expr(s: @ps, &&expr: @ast::expr) {
+pub fn print_expr(s: @ps, expr: @ast::expr) {
     fn print_field(s: @ps, field: ast::field) {
         ibox(s, indent_unit);
         if field.node.mutbl == ast::m_mutbl { word_nbsp(s, ~"mut"); }
@@ -1454,7 +1454,7 @@ pub fn print_decl(s: @ps, decl: @ast::decl) {
             word_nbsp(s, ~"mut");
         }
 
-        fn print_local(s: @ps, &&loc: @ast::local) {
+        fn print_local(s: @ps, loc: @ast::local) {
             ibox(s, indent_unit);
             print_local_decl(s, loc);
             end(s);
@@ -1485,7 +1485,7 @@ pub fn print_for_decl(s: @ps, loc: @ast::local, coll: @ast::expr) {
     print_expr(s, coll);
 }
 
-pub fn print_path(s: @ps, &&path: @ast::Path, colons_before_params: bool) {
+pub fn print_path(s: @ps, path: @ast::Path, colons_before_params: bool) {
     maybe_print_comment(s, path.span.lo);
     if path.global { word(s.s, ~"::"); }
     let mut first = true;
@@ -1513,15 +1513,15 @@ pub fn print_path(s: @ps, &&path: @ast::Path, colons_before_params: bool) {
     }
 }
 
-pub fn print_irrefutable_pat(s: @ps, &&pat: @ast::pat) {
+pub fn print_irrefutable_pat(s: @ps, pat: @ast::pat) {
     print_pat(s, pat, false)
 }
 
-pub fn print_refutable_pat(s: @ps, &&pat: @ast::pat) {
+pub fn print_refutable_pat(s: @ps, pat: @ast::pat) {
     print_pat(s, pat, true)
 }
 
-pub fn print_pat(s: @ps, &&pat: @ast::pat, refutable: bool) {
+pub fn print_pat(s: @ps, pat: @ast::pat, refutable: bool) {
     maybe_print_comment(s, pat.span.lo);
     let ann_node = node_pat(s, pat);
     (s.ann.pre)(ann_node);
@@ -1758,12 +1758,12 @@ pub fn print_bounds(s: @ps, bounds: @OptVec<ast::TyParamBound>) {
     }
 }
 
-pub fn print_lifetime(s: @ps, &&lifetime: &ast::Lifetime) {
+pub fn print_lifetime(s: @ps, lifetime: &ast::Lifetime) {
     word(s.s, ~"'");
     print_ident(s, lifetime.ident);
 }
 
-pub fn print_generics(s: @ps, &&generics: &ast::Generics) {
+pub fn print_generics(s: @ps, generics: &ast::Generics) {
     let total = generics.lifetimes.len() + generics.ty_params.len();
     if total > 0 {
         word(s.s, ~"<");
@@ -1790,7 +1790,7 @@ pub fn print_generics(s: @ps, &&generics: &ast::Generics) {
     }
 }
 
-pub fn print_meta_item(s: @ps, &&item: @ast::meta_item) {
+pub fn print_meta_item(s: @ps, item: @ast::meta_item) {
     ibox(s, indent_unit);
     match item.node {
       ast::meta_word(name) => word(s.s, *name),
@@ -1814,7 +1814,7 @@ pub fn print_meta_item(s: @ps, &&item: @ast::meta_item) {
     end(s);
 }
 
-pub fn print_view_path(s: @ps, &&vp: @ast::view_path) {
+pub fn print_view_path(s: @ps, vp: @ast::view_path) {
     match vp.node {
       ast::view_path_simple(ident, path, namespace, _) => {
         if namespace == ast::module_ns {
@@ -2006,7 +2006,7 @@ pub fn print_remaining_comments(s: @ps) {
     }
 }
 
-pub fn print_literal(s: @ps, &&lit: @ast::lit) {
+pub fn print_literal(s: @ps, lit: @ast::lit) {
     maybe_print_comment(s, lit.span.lo);
     match next_lit(s, lit.span.lo) {
       Some(ref ltrl) => {
@@ -2137,7 +2137,7 @@ pub fn print_string(s: @ps, st: &str) {
     word(s.s, ~"\"");
 }
 
-pub fn to_str<T>(t: T, f: @fn(@ps, T), intr: @ident_interner) -> ~str {
+pub fn to_str<T: Copy>(t: T, f: @fn(@ps, T), intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
         f(s, t);

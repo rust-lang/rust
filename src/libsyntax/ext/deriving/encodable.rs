@@ -91,7 +91,7 @@ fn create_derived_encodable_impl(
 fn create_encode_method(
     cx: @ext_ctxt,
     span: span,
-    +statements: ~[@stmt]
+    statements: ~[@stmt]
 ) -> @method {
     // Create the `e` parameter.
     let e_arg_type = build::mk_ty_rptr(
