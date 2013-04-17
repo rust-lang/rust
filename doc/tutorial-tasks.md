@@ -236,7 +236,7 @@ Instead we can use a `SharedChan`, a type that allows a single
 use core::comm::{stream, SharedChan};
 
 let (port, chan) = stream();
-let chan = SharedChan(chan);
+let chan = SharedChan::new(chan);
 
 for uint::range(0, 3) |init_val| {
     // Create a new channel handle to distribute to the child task

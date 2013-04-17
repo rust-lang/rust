@@ -50,7 +50,7 @@ pub fn run(
 
     let (result_port, result_chan) = stream();
     let (page_port, page_chan) = stream();
-    let page_chan = SharedChan(page_chan);
+    let page_chan = SharedChan::new(page_chan);
     do task::spawn {
         result_chan.send(make_doc_from_pages(&page_port));
     };

@@ -211,7 +211,7 @@ mod test {
     #[ignore]
     fn test_stress_gl_uv_global_loop_high_level_global_timer() {
         let (exit_po, exit_ch) = stream::<()>();
-        let exit_ch = SharedChan(exit_ch);
+        let exit_ch = SharedChan::new(exit_ch);
         let cycles = 5000u;
         for iter::repeat(cycles) {
             let exit_ch_clone = exit_ch.clone();

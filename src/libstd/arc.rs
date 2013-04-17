@@ -499,7 +499,7 @@ mod tests {
         let (p, c) = comm::stream();
 
         do task::spawn() || {
-            let p = comm::PortSet();
+            let p = comm::PortSet::new();
             c.send(p.chan());
 
             let arc_v = p.recv();

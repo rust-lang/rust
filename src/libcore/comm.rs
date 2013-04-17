@@ -19,6 +19,7 @@ use option::{Option, Some, None};
 use uint;
 use unstable;
 use vec;
+use unstable::Exclusive;
 
 use pipes::{recv, try_recv, wait_many, peek, PacketHeader};
 
@@ -218,13 +219,14 @@ pub struct PortSet<T> {
     mut ports: ~[Port<T>],
 }
 
-pub fn PortSet<T: Owned>() -> PortSet<T>{
-    PortSet {
-        ports: ~[]
-    }
-}
-
 pub impl<T: Owned> PortSet<T> {
+
+    fn new() -> PortSet<T> {
+        PortSet {
+            ports: ~[]
+        }
+    }
+
     fn add(&self, port: Port<T>) {
         self.ports.push(port)
     }
@@ -279,12 +281,21 @@ impl<T: Owned> Peekable<T> for PortSet<T> {
 }
 
 /// A channel that can be shared between many senders.
-pub type SharedChan<T> = unstable::Exclusive<Chan<T>>;
+pub struct SharedChan<T> {
+    ch: Exclusive<Chan<T>>
+}
+
+impl<T: Owned> SharedChan<T> {
+    /// Converts a `chan` into a `shared_chan`.
+    pub fn new(c: Chan<T>) -> SharedChan<T> {
+        SharedChan { ch: unstable::exclusive(c) }
+    }
+}
 
 impl<T: Owned> GenericChan<T> for SharedChan<T> {
     fn send(&self, x: T) {
         let mut xx = Some(x);
-        do self.with_imm |chan| {
+        do self.ch.with_imm |chan| {
             let mut x = None;
             x <-> xx;
             chan.send(x.unwrap())
@@ -295,7 +306,7 @@ impl<T: Owned> GenericChan<T> for SharedChan<T> {
 impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
     fn try_send(&self, x: T) -> bool {
         let mut xx = Some(x);
-        do self.with_imm |chan| {
+        do self.ch.with_imm |chan| {
             let mut x = None;
             x <-> xx;
             chan.try_send(x.unwrap())
@@ -303,9 +314,10 @@ impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
     }
 }
 
-/// Converts a `chan` into a `shared_chan`.
-pub fn SharedChan<T:Owned>(c: Chan<T>) -> SharedChan<T> {
-    unstable::exclusive(c)
+impl<T: Owned> ::clone::Clone for SharedChan<T> {
+    fn clone(&self) -> SharedChan<T> {
+        SharedChan { ch: self.ch.clone() }
+    }
 }
 
 /*proto! oneshot (

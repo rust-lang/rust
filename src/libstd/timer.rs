@@ -43,7 +43,7 @@ pub fn delayed_send<T:Owned>(iotask: &IoTask,
                               ch: &Chan<T>,
                               val: T) {
     let (timer_done_po, timer_done_ch) = stream::<()>();
-    let timer_done_ch = SharedChan(timer_done_ch);
+    let timer_done_ch = SharedChan::new(timer_done_ch);
     let timer = uv::ll::timer_t();
     let timer_ptr = ptr::addr_of(&timer);
     do iotask::interact(iotask) |loop_ptr| {
@@ -199,7 +199,7 @@ mod test {
     #[test]
     fn test_gl_timer_sleep_stress2() {
         let (po, ch) = stream();
-        let ch = SharedChan(ch);
+        let ch = SharedChan::new(ch);
         let hl_loop = &uv::global_loop::get();
 
         let repeat = 20u;

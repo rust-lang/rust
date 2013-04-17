@@ -32,7 +32,7 @@ fn test00() {
 
     debug!("Creating tasks");
 
-    let po = comm::PortSet();
+    let po = comm::PortSet::new();
 
     let mut i: int = 0;
 
