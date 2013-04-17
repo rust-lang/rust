@@ -81,7 +81,7 @@ pub fn check_crate(tcx: ty::ctxt,
         visit_block: check_block,
         .. *visit::default_visitor()
     });
-    visit::visit_crate(*crate, ctx, visit);
+    visit::visit_crate(crate, ctx, visit);
     tcx.sess.abort_if_errors();
 }
 
@@ -573,7 +573,7 @@ pub fn check_cast_for_escaping_regions(
             true
         });
 
-    fn is_re_scope(+r: ty::Region) -> bool {
+    fn is_re_scope(r: ty::Region) -> bool {
         match r {
             ty::re_scope(*) => true,
             _ => false

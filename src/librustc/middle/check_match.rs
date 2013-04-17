@@ -40,7 +40,7 @@ pub fn check_crate(tcx: ty::ctxt,
     let cx = @MatchCheckCtxt {tcx: tcx,
                               method_map: method_map,
                               moves_map: moves_map};
-    visit::visit_crate(*crate, (), visit::mk_vt(@visit::Visitor {
+    visit::visit_crate(crate, (), visit::mk_vt(@visit::Visitor {
         visit_expr: |a,b,c| check_expr(cx, a, b, c),
         visit_local: |a,b,c| check_local(cx, a, b, c),
         visit_fn: |kind, decl, body, sp, id, e, v|
@@ -58,7 +58,7 @@ pub fn expr_is_non_moving_lvalue(cx: @MatchCheckCtxt, expr: @expr) -> bool {
     !cx.moves_map.contains(&expr.id)
 }
 
-pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
+pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, s: (), v: visit::vt<()>) {
     visit::visit_expr(ex, s, v);
     match ex.node {
       expr_match(scrut, ref arms) => {
@@ -259,7 +259,7 @@ pub fn is_useful(cx: @MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
                 not_useful
               }
               _ => {
-                let arity = ctor_arity(cx, single, left_ty);
+                let arity = ctor_arity(cx, &single, left_ty);
                 is_useful_specialized(cx, m, v, single, arity, left_ty)
               }
             }
@@ -268,14 +268,14 @@ pub fn is_useful(cx: @MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
             match is_useful(cx,
                             &m.filter_mapped(|r| default(cx, *r)),
                             v.tail()) {
-              useful_ => useful(left_ty, (/*bad*/copy *ctor)),
+              useful_ => useful(left_ty, /*bad*/copy *ctor),
               ref u => (/*bad*/copy *u)
             }
           }
         }
       }
       Some(ref v0_ctor) => {
-        let arity = ctor_arity(cx, (*v0_ctor), left_ty);
+        let arity = ctor_arity(cx, v0_ctor, left_ty);
         is_useful_specialized(cx, m, v, /*bad*/copy *v0_ctor, arity, left_ty)
       }
     }
@@ -284,13 +284,13 @@ pub fn is_useful(cx: @MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
 pub fn is_useful_specialized(cx: @MatchCheckCtxt,
                              m: &matrix,
                              v: &[@pat],
-                             +ctor: ctor,
+                             ctor: ctor,
                              arity: uint,
                              lty: ty::t)
                           -> useful {
-    let ms = m.filter_mapped(|r| specialize(cx, *r, ctor, arity, lty));
+    let ms = m.filter_mapped(|r| specialize(cx, *r, &ctor, arity, lty));
     let could_be_useful = is_useful(
-        cx, &ms, specialize(cx, v, ctor, arity, lty).get());
+        cx, &ms, specialize(cx, v, &ctor, arity, lty).get());
     match could_be_useful {
       useful_ => useful(lty, ctor),
       ref u => (/*bad*/copy *u)
@@ -447,12 +447,12 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
     }
 }
 
-pub fn ctor_arity(cx: @MatchCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
+pub fn ctor_arity(cx: @MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
     match ty::get(ty).sty {
       ty::ty_tup(ref fs) => fs.len(),
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) => 1u,
       ty::ty_enum(eid, _) => {
-          let id = match ctor { variant(id) => id,
+          let id = match *ctor { variant(id) => id,
           _ => fail!(~"impossible case") };
         match vec::find(*ty::enum_variants(cx.tcx, eid), |v| v.id == id ) {
             Some(v) => v.args.len(),
@@ -461,7 +461,7 @@ pub fn ctor_arity(cx: @MatchCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
       }
       ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
       ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
-        match ctor {
+        match *ctor {
           vec(n) => n,
           _ => 0u
         }
@@ -476,7 +476,7 @@ pub fn wild() -> @pat {
 
 pub fn specialize(cx: @MatchCheckCtxt,
                   r: &[@pat],
-                  ctor_id: ctor,
+                  ctor_id: &ctor,
                   arity: uint,
                   left_ty: ty::t)
                -> Option<~[@pat]> {
@@ -491,7 +491,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
             pat_ident(_, _, _) => {
                 match cx.tcx.def_map.find(&pat_id) {
                     Some(&def_variant(_, id)) => {
-                        if variant(id) == ctor_id {
+                        if variant(id) == *ctor_id {
                             Some(vec::from_slice(r.tail()))
                         } else {
                             None
@@ -501,11 +501,11 @@ pub fn specialize(cx: @MatchCheckCtxt,
                         let const_expr =
                             lookup_const_by_id(cx.tcx, did).get();
                         let e_v = eval_const_expr(cx.tcx, const_expr);
-                        let match_ = match ctor_id {
-                            val(ref v) => compare_const_vals(e_v, (*v)) == 0,
+                        let match_ = match *ctor_id {
+                            val(ref v) => compare_const_vals(&e_v, v) == 0,
                             range(ref c_lo, ref c_hi) => {
-                                compare_const_vals((*c_lo), e_v) >= 0 &&
-                                    compare_const_vals((*c_hi), e_v) <= 0
+                                compare_const_vals(c_lo, &e_v) >= 0 &&
+                                    compare_const_vals(c_hi, &e_v) <= 0
                             }
                             single => true,
                             _ => fail!(~"type error")
@@ -532,11 +532,11 @@ pub fn specialize(cx: @MatchCheckCtxt,
                         let const_expr =
                             lookup_const_by_id(cx.tcx, did).get();
                         let e_v = eval_const_expr(cx.tcx, const_expr);
-                        let match_ = match ctor_id {
-                            val(ref v) => compare_const_vals(e_v, (*v)) == 0,
+                        let match_ = match *ctor_id {
+                            val(ref v) => compare_const_vals(&e_v, v) == 0,
                             range(ref c_lo, ref c_hi) => {
-                                compare_const_vals((*c_lo), e_v) >= 0 &&
-                                    compare_const_vals((*c_hi), e_v) <= 0
+                                compare_const_vals(c_lo, &e_v) >= 0 &&
+                                    compare_const_vals(c_hi, &e_v) <= 0
                             }
                             single => true,
                             _ => fail!(~"type error")
@@ -547,7 +547,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             None
                         }
                     }
-                    def_variant(_, id) if variant(id) == ctor_id => {
+                    def_variant(_, id) if variant(id) == *ctor_id => {
                         let args = match args {
                             Some(args) => args,
                             None => vec::from_elem(arity, wild())
@@ -571,7 +571,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                 // Is this a struct or an enum variant?
                 match *cx.tcx.def_map.get(&pat_id) {
                     def_variant(_, variant_id) => {
-                        if variant(variant_id) == ctor_id {
+                        if variant(variant_id) == *ctor_id {
                             // FIXME #4731: Is this right? --pcw
                             let args = flds.map(|ty_field| {
                                 match flds.find(|f|
@@ -620,11 +620,11 @@ pub fn specialize(cx: @MatchCheckCtxt,
             }
             pat_lit(expr) => {
                 let e_v = eval_const_expr(cx.tcx, expr);
-                let match_ = match ctor_id {
-                    val(ref v) => compare_const_vals(e_v, (*v)) == 0,
+                let match_ = match *ctor_id {
+                    val(ref v) => compare_const_vals(&e_v, v) == 0,
                     range(ref c_lo, ref c_hi) => {
-                        compare_const_vals((*c_lo), e_v) >= 0 &&
-                            compare_const_vals((*c_hi), e_v) <= 0
+                        compare_const_vals(c_lo, &e_v) >= 0 &&
+                            compare_const_vals(c_hi, &e_v) <= 0
                     }
                     single => true,
                     _ => fail!(~"type error")
@@ -632,7 +632,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                 if match_ { Some(vec::from_slice(r.tail())) } else { None }
             }
             pat_range(lo, hi) => {
-                let (c_lo, c_hi) = match ctor_id {
+                let (c_lo, c_hi) = match *ctor_id {
                     val(ref v) => ((/*bad*/copy *v), (/*bad*/copy *v)),
                     range(ref lo, ref hi) =>
                         ((/*bad*/copy *lo), (/*bad*/copy *hi)),
@@ -641,12 +641,12 @@ pub fn specialize(cx: @MatchCheckCtxt,
                 };
                 let v_lo = eval_const_expr(cx.tcx, lo),
                 v_hi = eval_const_expr(cx.tcx, hi);
-                let match_ = compare_const_vals(c_lo, v_lo) >= 0 &&
-                    compare_const_vals(c_hi, v_hi) <= 0;
+                let match_ = compare_const_vals(&c_lo, &v_lo) >= 0 &&
+                    compare_const_vals(&c_hi, &v_hi) <= 0;
           if match_ { Some(vec::from_slice(r.tail())) } else { None }
       }
             pat_vec(before, slice, after) => {
-                match ctor_id {
+                match *ctor_id {
                     vec(_) => {
                         let num_elements = before.len() + after.len();
                         if num_elements < arity && slice.is_some() {
@@ -682,7 +682,7 @@ pub fn default(cx: @MatchCheckCtxt, r: &[@pat]) -> Option<~[@pat]> {
 
 pub fn check_local(cx: @MatchCheckCtxt,
                    loc: @local,
-                   &&s: (),
+                   s: (),
                    v: visit::vt<()>) {
     visit::visit_local(loc, s, v);
     if is_refutable(cx, loc.node.pat) {
@@ -704,7 +704,7 @@ pub fn check_fn(cx: @MatchCheckCtxt,
                 body: &blk,
                 sp: span,
                 id: node_id,
-                &&s: (),
+                s: (),
                 v: visit::vt<()>) {
     visit::visit_fn(kind, decl, body, sp, id, s, v);
     for decl.inputs.each |input| {

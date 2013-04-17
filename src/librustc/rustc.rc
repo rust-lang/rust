@@ -18,12 +18,10 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[legacy_modes];
-
 #[allow(non_implicitly_copyable_typarams)];
 #[allow(non_camel_case_types)];
-#[allow(deprecated_mode)];
-#[warn(deprecated_pattern)];
+#[deny(deprecated_pattern)];
+#[deny(deprecated_mode)];
 
 #[no_core];
 
@@ -259,12 +257,12 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     let odir = odir.map(|o| Path(*o));
     let ofile = getopts::opt_maybe_str(matches, ~"o");
     let ofile = ofile.map(|o| Path(*o));
-    let cfg = build_configuration(sess, binary, input);
+    let cfg = build_configuration(sess, binary, &input);
     let pretty = getopts::opt_default(matches, ~"pretty", "normal").map(
                     |a| parse_pretty(sess, *a));
     match pretty {
       Some::<pp_mode>(ppm) => {
-        pretty_print_input(sess, cfg, input, ppm);
+        pretty_print_input(sess, cfg, &input, ppm);
         return;
       }
       None::<pp_mode> => {/* continue */ }
@@ -282,7 +280,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
         return;
     }
 
-    compile_input(sess, cfg, input, &odir, &ofile);
+    compile_input(sess, cfg, &input, &odir, &ofile);
 }
 
 #[deriving(Eq)]
@@ -303,7 +301,7 @@ diagnostic emitter which records when we hit a fatal error. If the task
 fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
-pub fn monitor(+f: ~fn(diagnostic::Emitter)) {
+pub fn monitor(f: ~fn(diagnostic::Emitter)) {
     use core::comm::*;
     let (p, ch) = stream();
     let ch = SharedChan::new(ch);

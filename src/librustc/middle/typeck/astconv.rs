@@ -248,7 +248,7 @@ pub static NO_TPS: uint = 2;
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
 pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
-    self: &AC, rscope: &RS, &&ast_ty: @ast::Ty) -> ty::t {
+    self: &AC, rscope: &RS, ast_ty: @ast::Ty) -> ty::t {
 
     fn ast_mt_to_mt<AC:AstConv, RS:region_scope + Copy + Durable>(
         self: &AC, rscope: &RS, mt: &ast::mt) -> ty::mt {

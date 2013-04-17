@@ -257,7 +257,7 @@ pub fn check_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
         visit_item: |a| check_item(ccx, a),
         .. *visit::default_simple_visitor()
     });
-    visit::visit_crate(*crate, (), visit);
+    visit::visit_crate(crate, (), visit);
 }
 
 pub fn check_bare_fn(ccx: @mut CrateCtxt,
@@ -430,11 +430,11 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                 match_region: region,
                 block_region: region,
             };
-            _match::check_pat(pcx, input.pat, *arg_ty);
+            _match::check_pat(&pcx, input.pat, *arg_ty);
         }
 
         // Add explicitly-declared locals.
-        let visit_local: @fn(@ast::local, &&e: (), visit::vt<()>) =
+        let visit_local: @fn(@ast::local, e: (), visit::vt<()>) =
                 |local, e, v| {
             let o_ty = match local.node.ty.node {
               ast::ty_infer => None,
@@ -449,7 +449,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         };
 
         // Add pattern bindings.
-        let visit_pat: @fn(@ast::pat, &&e: (), visit::vt<()>) = |p, e, v| {
+        let visit_pat: @fn(@ast::pat, e: (), visit::vt<()>) = |p, e, v| {
             match p.node {
               ast::pat_ident(_, path, _)
                   if pat_util::pat_is_binding(fcx.ccx.tcx.def_map, p) => {
@@ -464,7 +464,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             visit::visit_pat(p, e, v);
         };
 
-        let visit_block: @fn(&ast::blk, &&e: (), visit::vt<()>) = |b, e, v| {
+        let visit_block: @fn(&ast::blk, e: (), visit::vt<()>) = |b, e, v| {
             // non-obvious: the `blk` variable maps to region lb, so
             // we have to keep this up-to-date.  This
             // is... unfortunate.  It'd be nice to not need this.
@@ -476,9 +476,9 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         // Don't descend into fns and items
         fn visit_fn(_fk: &visit::fn_kind, _decl: &ast::fn_decl,
                     _body: &ast::blk, _sp: span,
-                    _id: ast::node_id, &&_t: (), _v: visit::vt<()>) {
+                    _id: ast::node_id, _t: (), _v: visit::vt<()>) {
         }
-        fn visit_item(_i: @ast::item, &&_e: (), _v: visit::vt<()>) { }
+        fn visit_item(_i: @ast::item, _e: (), _v: visit::vt<()>) { }
 
         let visit = visit::mk_vt(
             @visit::Visitor {visit_local: visit_local,
@@ -714,7 +714,7 @@ pub impl FnCtxt {
         self.inh.node_types.insert(node_id, ty);
     }
 
-    fn write_substs(&self, node_id: ast::node_id, +substs: ty::substs) {
+    fn write_substs(&self, node_id: ast::node_id, substs: ty::substs) {
         if !ty::substs_is_noop(&substs) {
             debug!("write_substs(%d, %s) in fcx %s",
                    node_id,
@@ -727,7 +727,7 @@ pub impl FnCtxt {
     fn write_ty_substs(&self,
                        node_id: ast::node_id,
                        ty: ty::t,
-                       +substs: ty::substs) {
+                       substs: ty::substs) {
         let ty = ty::subst(self.tcx(), &substs, ty);
         self.write_ty(node_id, ty);
         self.write_substs(node_id, substs);
@@ -1429,9 +1429,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         self_ex: @ast::expr,
                         self_t: ty::t,
                         opname: ast::ident,
-                        +args: ~[@ast::expr],
-                        +deref_args: DerefArgs,
-                        +autoderef_receiver: AutoderefReceiverFlag,
+                        args: ~[@ast::expr],
+                        deref_args: DerefArgs,
+                        autoderef_receiver: AutoderefReceiverFlag,
                         unbound_method: &fn(),
                         _expected_result: Option<ty::t>
                        )
@@ -1570,7 +1570,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
     fn check_user_unop(fcx: @mut FnCtxt,
                        op_str: ~str,
-                       +mname: ~str,
+                       mname: ~str,
                        ex: @ast::expr,
                        rhs_expr: @ast::expr,
                        rhs_t: ty::t,
@@ -1775,7 +1775,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                       span: span,
                                       class_id: ast::def_id,
                                       node_id: ast::node_id,
-                                      +substitutions: ty::substs,
+                                      substitutions: ty::substs,
                                       field_types: &[ty::field_ty],
                                       ast_fields: &[ast::field],
                                       check_completeness: bool)  {
@@ -2859,7 +2859,7 @@ pub fn check_decl_local(fcx: @mut FnCtxt, local: @ast::local)  {
         match_region: region,
         block_region: region,
     };
-    _match::check_pat(pcx, local.node.pat, t);
+    _match::check_pat(&pcx, local.node.pat, t);
     let pat_ty = fcx.node_ty(local.node.pat.id);
     if ty::type_is_error(pat_ty) || ty::type_is_bot(pat_ty) {
         fcx.write_ty(local.node.id, pat_ty);
@@ -2947,7 +2947,7 @@ pub fn check_block_with_expected(fcx0: @mut FnCtxt,
         let mut any_err = false;
         for blk.node.stmts.each |s| {
             check_stmt(fcx, *s);
-            let s_ty = fcx.node_ty(ast_util::stmt_id(**s));
+            let s_ty = fcx.node_ty(ast_util::stmt_id(*s));
             if last_was_bot && !warned && match s.node {
                   ast::stmt_decl(@codemap::spanned { node: ast::decl_local(_),
                                                  _}, _) |
@@ -3350,7 +3350,7 @@ pub fn may_break(cx: ty::ctxt, id: ast::node_id, b: &ast::blk) -> bool {
     // First: is there an unlabeled break immediately
     // inside the loop?
     (loop_query(b, |e| {
-        match e {
+        match *e {
             ast::expr_break(_) => true,
             _ => false
         }

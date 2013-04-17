@@ -111,7 +111,7 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
     }
 
     visit::visit_crate(
-        *crate, (),
+        crate, (),
         visit::mk_simple_visitor(@visit::SimpleVisitor {
             visit_item: |a| convert(ccx, a),
             visit_foreign_item: |a|convert_foreign(ccx, a),

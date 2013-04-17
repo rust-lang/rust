@@ -443,7 +443,7 @@ pub impl LoanKind {
 /// Creates and returns a new root_map
 
 impl to_bytes::IterBytes for root_map_key {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.id, &self.derefs, lsb0, f);
     }
 }
@@ -529,11 +529,11 @@ pub impl BorrowckCtxt {
         self.note_and_explain_bckerr(err);
     }
 
-    fn span_err(&self, s: span, +m: ~str) {
+    fn span_err(&self, s: span, m: ~str) {
         self.tcx.sess.span_err(s, m);
     }
 
-    fn span_note(&self, s: span, +m: ~str) {
+    fn span_note(&self, s: span, m: ~str) {
         self.tcx.sess.span_note(s, m);
     }
 

@@ -44,7 +44,7 @@ pub fn check_match(fcx: @mut FnCtxt,
             block_region: ty::re_scope(arm.body.node.id)
         };
 
-        for arm.pats.each |p| { check_pat(pcx, *p, pattern_ty);}
+        for arm.pats.each |p| { check_pat(&pcx, *p, pattern_ty);}
     }
 
     // Now typecheck the blocks.
@@ -99,7 +99,7 @@ pub struct pat_ctxt {
     block_region: ty::Region, // Region for the block of the arm
 }
 
-pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::Path,
+pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
                          subpats: &Option<~[@ast::pat]>, expected: ty::t) {
 
     // Typecheck the path.
@@ -247,7 +247,7 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::Path,
 /// `substitutions` are the type substitutions applied to this struct type
 /// (e.g. K,V in HashMap<K,V>).
 /// `etc` is true if the pattern said '...' and false otherwise.
-pub fn check_struct_pat_fields(pcx: pat_ctxt,
+pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                                span: span,
                                path: @ast::Path,
                                fields: &[ast::field_pat],
@@ -299,7 +299,7 @@ pub fn check_struct_pat_fields(pcx: pat_ctxt,
     }
 }
 
-pub fn check_struct_pat(pcx: pat_ctxt, pat_id: ast::node_id, span: span,
+pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::node_id, span: span,
                         expected: ty::t, path: @ast::Path,
                         fields: &[ast::field_pat], etc: bool,
                         class_id: ast::def_id, substitutions: &ty::substs) {
@@ -337,7 +337,7 @@ pub fn check_struct_pat(pcx: pat_ctxt, pat_id: ast::node_id, span: span,
                             substitutions, etc);
 }
 
-pub fn check_struct_like_enum_variant_pat(pcx: pat_ctxt,
+pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
                                           pat_id: ast::node_id,
                                           span: span,
                                           expected: ty::t,
@@ -375,7 +375,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: pat_ctxt,
 
 // Pattern checking is top-down rather than bottom-up so that bindings get
 // their types immediately.
-pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
+pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 

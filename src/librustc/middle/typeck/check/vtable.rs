@@ -135,7 +135,7 @@ fn lookup_vtables(vcx: &VtableContext,
 }
 
 fn fixup_substs(vcx: &VtableContext, location_info: &LocationInfo,
-                id: ast::def_id, +substs: ty::substs,
+                id: ast::def_id, substs: ty::substs,
                 is_early: bool) -> Option<ty::substs> {
     let tcx = vcx.tcx();
     // use a dummy type just to package up the substs that need fixing up
@@ -480,7 +480,7 @@ pub fn location_info_for_expr(expr: @ast::expr) -> LocationInfo {
 }
 
 pub fn early_resolve_expr(ex: @ast::expr,
-                          &&fcx: @mut FnCtxt,
+                          fcx: @mut FnCtxt,
                           is_early: bool) {
     debug!("vtable: early_resolve_expr() ex with id %? (early: %b): %s",
            ex.id, is_early, expr_to_str(ex, fcx.tcx().sess.intr()));
@@ -656,7 +656,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
 }
 
 fn resolve_expr(ex: @ast::expr,
-                &&fcx: @mut FnCtxt,
+                fcx: @mut FnCtxt,
                 v: visit::vt<@mut FnCtxt>) {
     early_resolve_expr(ex, fcx, false);
     visit::visit_expr(ex, fcx, v);

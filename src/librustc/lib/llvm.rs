@@ -1929,7 +1929,7 @@ pub fn type_to_str(names: @TypeNames, ty: TypeRef) -> @str {
     return type_to_str_inner(names, [], ty);
 }
 
-pub fn type_to_str_inner(names: @TypeNames, +outer0: &[TypeRef], ty: TypeRef)
+pub fn type_to_str_inner(names: @TypeNames, outer0: &[TypeRef], ty: TypeRef)
                       -> @str {
     unsafe {
         match type_has_name(names, ty) {

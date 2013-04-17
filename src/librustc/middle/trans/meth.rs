@@ -42,7 +42,7 @@ for non-monomorphized methods only.  Other methods will
 be generated once they are invoked with specific type parameters,
 see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
-pub fn trans_impl(ccx: @CrateContext, +path: path, name: ast::ident,
+pub fn trans_impl(ccx: @CrateContext, path: path, name: ast::ident,
                   methods: &[@ast::method], generics: &ast::Generics,
                   self_ty: Option<ty::t>, id: ast::node_id) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
@@ -89,7 +89,7 @@ Translates a (possibly monomorphized) method body.
 - `impl_id`: the node ID of the impl this method is inside
 */
 pub fn trans_method(ccx: @CrateContext,
-                    +path: path,
+                    path: path,
                     method: &ast::method,
                     param_substs: Option<@param_substs>,
                     base_self_ty: Option<ty::t>,
@@ -443,7 +443,7 @@ pub fn trans_monomorphized_callee(bcx: block,
                                   mentry: typeck::method_map_entry,
                                   trait_id: ast::def_id,
                                   n_method: uint,
-                                  +vtbl: typeck::vtable_origin)
+                                  vtbl: typeck::vtable_origin)
                                -> Callee {
     let _icx = bcx.insn_ctxt("impl::trans_monomorphized_callee");
     return match vtbl {
@@ -724,7 +724,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
 }
 
 pub fn vtable_id(ccx: @CrateContext,
-                 +origin: typeck::vtable_origin)
+                 origin: typeck::vtable_origin)
               -> mono_id {
     match origin {
         typeck::vtable_static(impl_id, substs, sub_vtables) => {
@@ -747,7 +747,7 @@ pub fn vtable_id(ccx: @CrateContext,
 }
 
 pub fn get_vtable(ccx: @CrateContext,
-                  +origin: typeck::vtable_origin)
+                  origin: typeck::vtable_origin)
                -> ValueRef {
     // XXX: Bad copy.
     let hash_id = vtable_id(ccx, copy origin);
