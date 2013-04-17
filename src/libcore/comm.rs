@@ -132,25 +132,17 @@ pub mod streamp {
     }
 }
 
-struct Chan_<T> {
+/// An endpoint that can send many messages.
+pub struct Chan<T> {
     mut endp: Option<streamp::client::Open<T>>
 }
 
-/// An endpoint that can send many messages.
-pub enum Chan<T> {
-    Chan_(Chan_<T>)
-}
-
-struct Port_<T> {
+/// An endpoint that can receive many messages.
+pub struct Port<T> {
     mut endp: Option<streamp::server::Open<T>>,
 }
 
-/// An endpoint that can receive many messages.
-pub enum Port<T> {
-    Port_(Port_<T>)
-}
-
-/** Creates a `(chan, port)` pair.
+/** Creates a `(Port, Chan)` pair.
 
 These allow sending or receiving an unlimited number of messages.
 
@@ -158,96 +150,70 @@ These allow sending or receiving an unlimited number of messages.
 pub fn stream<T:Owned>() -> (Port<T>, Chan<T>) {
     let (c, s) = streamp::init();
 
-    (Port_(Port_ { endp: Some(s) }), Chan_(Chan_{ endp: Some(c) }))
-}
-
-// Add an inherent method so that imports of GenericChan are not
-// required.
-pub impl<T: Owned> Chan<T> {
-    fn send(&self, x: T) { chan_send(self, x) }
-    fn try_send(&self, x: T) -> bool { chan_try_send(self, x) }
+    (Port { endp: Some(s) }, Chan { endp: Some(c) })
 }
 
 impl<T: Owned> GenericChan<T> for Chan<T> {
-    fn send(&self, x: T) { chan_send(self, x) }
-}
-
-#[inline(always)]
-fn chan_send<T:Owned>(self: &Chan<T>, x: T) {
-    let mut endp = None;
-    endp <-> self.endp;
-    self.endp = Some(
-        streamp::client::data(endp.unwrap(), x))
+    #[inline(always)]
+    fn send(&self, x: T) {
+        let mut endp = None;
+        endp <-> self.endp;
+        self.endp = Some(
+            streamp::client::data(endp.unwrap(), x))
+    }
 }
 
 impl<T: Owned> GenericSmartChan<T> for Chan<T> {
+    #[inline(always)]
     fn try_send(&self, x: T) -> bool {
-        chan_try_send(self, x)
-    }
-}
-
-#[inline(always)]
-fn chan_try_send<T:Owned>(self: &Chan<T>, x: T) -> bool {
-    let mut endp = None;
-    endp <-> self.endp;
-    match streamp::client::try_data(endp.unwrap(), x) {
-        Some(next) => {
-            self.endp = Some(next);
-            true
+        let mut endp = None;
+        endp <-> self.endp;
+        match streamp::client::try_data(endp.unwrap(), x) {
+            Some(next) => {
+                self.endp = Some(next);
+                true
+            }
+            None => false
         }
-        None => false
     }
-}
-
-// Use an inherent impl so that imports are not required:
-pub impl<T: Owned> Port<T> {
-    fn recv(&self) -> T { port_recv(self) }
-    fn try_recv(&self) -> Option<T> { port_try_recv(self) }
-    fn peek(&self) -> bool { port_peek(self) }
 }
 
 impl<T: Owned> GenericPort<T> for Port<T> {
-    // These two calls will prefer the inherent versions above:
-    fn recv(&self) -> T { port_recv(self) }
-    fn try_recv(&self) -> Option<T> { port_try_recv(self) }
-}
+    #[inline(always)]
+    fn recv(&self) -> T {
+        let mut endp = None;
+        endp <-> self.endp;
+        let streamp::data(x, endp) = recv(endp.unwrap());
+        self.endp = Some(endp);
+        x
+    }
 
-#[inline(always)]
-fn port_recv<T:Owned>(self: &Port<T>) -> T {
-    let mut endp = None;
-    endp <-> self.endp;
-    let streamp::data(x, endp) = recv(endp.unwrap());
-    self.endp = Some(endp);
-    x
-}
-
-#[inline(always)]
-fn port_try_recv<T:Owned>(self: &Port<T>) -> Option<T> {
-    let mut endp = None;
-    endp <-> self.endp;
-    match try_recv(endp.unwrap()) {
-        Some(streamp::data(x, endp)) => {
-            self.endp = Some(endp);
-            Some(x)
+    #[inline(always)]
+    fn try_recv(&self) -> Option<T> {
+        let mut endp = None;
+        endp <-> self.endp;
+        match try_recv(endp.unwrap()) {
+            Some(streamp::data(x, endp)) => {
+                self.endp = Some(endp);
+                Some(x)
+            }
+            None => None
         }
-        None => None
     }
 }
 
 impl<T: Owned> Peekable<T> for Port<T> {
-    fn peek(&self) -> bool { port_peek(self) }
-}
-
-#[inline(always)]
-fn port_peek<T:Owned>(self: &Port<T>) -> bool {
-    let mut endp = None;
-    endp <-> self.endp;
-    let peek = match &endp {
-        &Some(ref endp) => peek(endp),
-        &None => fail!(~"peeking empty stream")
-    };
-    self.endp <-> endp;
-    peek
+    #[inline(always)]
+    fn peek(&self) -> bool {
+        let mut endp = None;
+        endp <-> self.endp;
+        let peek = match &endp {
+            &Some(ref endp) => peek(endp),
+            &None => fail!(~"peeking empty stream")
+        };
+        self.endp <-> endp;
+        peek
+    }
 }
 
 impl<T: Owned> Selectable for Port<T> {
@@ -272,13 +238,6 @@ pub fn PortSet<T: Owned>() -> PortSet<T>{
     }
 }
 
-// Use an inherent impl so that imports are not required:
-pub impl<T:Owned> PortSet<T> {
-    fn recv(&self) -> T { port_set_recv(self) }
-    fn try_recv(&self) -> Option<T> { port_set_try_recv(self) }
-    fn peek(&self) -> bool { port_set_peek(self) }
-}
-
 pub impl<T: Owned> PortSet<T> {
     fn add(&self, port: Port<T>) {
         self.ports.push(port)
@@ -292,90 +251,69 @@ pub impl<T: Owned> PortSet<T> {
 }
 
 impl<T:Owned> GenericPort<T> for PortSet<T> {
-    fn try_recv(&self) -> Option<T> { port_set_try_recv(self) }
-    fn recv(&self) -> T { port_set_recv(self) }
-}
-
-#[inline(always)]
-fn port_set_recv<T:Owned>(self: &PortSet<T>) -> T {
-    port_set_try_recv(self).expect("port_set: endpoints closed")
-}
-
-#[inline(always)]
-fn port_set_try_recv<T:Owned>(self: &PortSet<T>) -> Option<T> {
-    let mut result = None;
-    // we have to swap the ports array so we aren't borrowing
-    // aliasable mutable memory.
-    let mut ports = ~[];
-    ports <-> self.ports;
-    while result.is_none() && ports.len() > 0 {
-        let i = wait_many(ports);
-        match ports[i].try_recv() {
-            Some(m) => {
-                result = Some(m);
-            }
-            None => {
-                // Remove this port.
-                let _ = ports.swap_remove(i);
+    fn try_recv(&self) -> Option<T> {
+        let mut result = None;
+        // we have to swap the ports array so we aren't borrowing
+        // aliasable mutable memory.
+        let mut ports = ~[];
+        ports <-> self.ports;
+        while result.is_none() && ports.len() > 0 {
+            let i = wait_many(ports);
+            match ports[i].try_recv() {
+                Some(m) => {
+                    result = Some(m);
+                }
+                None => {
+                    // Remove this port.
+                    let _ = ports.swap_remove(i);
+                }
             }
         }
+        ports <-> self.ports;
+        result
     }
-    ports <-> self.ports;
-    result
+    fn recv(&self) -> T {
+        self.try_recv().expect("port_set: endpoints closed")
+    }
 }
 
 impl<T: Owned> Peekable<T> for PortSet<T> {
-    fn peek(&self) -> bool { port_set_peek(self) }
-}
-
-#[inline(always)]
-fn port_set_peek<T:Owned>(self: &PortSet<T>) -> bool {
-    // It'd be nice to use self.port.each, but that version isn't
-    // pure.
-    for uint::range(0, vec::uniq_len(&const self.ports)) |i| {
-        // XXX: Botch pending demuting.
-        unsafe {
-            let port: &Port<T> = cast::transmute(&mut self.ports[i]);
-            if port.peek() { return true }
+    fn peek(&self) -> bool {
+        // It'd be nice to use self.port.each, but that version isn't
+        // pure.
+        for uint::range(0, vec::uniq_len(&const self.ports)) |i| {
+            // XXX: Botch pending demuting.
+            unsafe {
+                let port: &Port<T> = cast::transmute(&mut self.ports[i]);
+                if port.peek() { return true }
+            }
         }
+        false
     }
-    false
 }
-
 
 /// A channel that can be shared between many senders.
 pub type SharedChan<T> = unstable::Exclusive<Chan<T>>;
 
-pub impl<T: Owned> SharedChan<T> {
-    fn send(&self, x: T) { shared_chan_send(self, x) }
-    fn try_send(&self, x: T) -> bool { shared_chan_try_send(self, x) }
-}
-
 impl<T: Owned> GenericChan<T> for SharedChan<T> {
-    fn send(&self, x: T) { shared_chan_send(self, x) }
-}
-
-#[inline(always)]
-fn shared_chan_send<T:Owned>(self: &SharedChan<T>, x: T) {
-    let mut xx = Some(x);
-    do self.with_imm |chan| {
-        let mut x = None;
-        x <-> xx;
-        chan.send(x.unwrap())
+    fn send(&self, x: T) {
+        let mut xx = Some(x);
+        do self.with_imm |chan| {
+            let mut x = None;
+            x <-> xx;
+            chan.send(x.unwrap())
+        }
     }
 }
 
 impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
-    fn try_send(&self, x: T) -> bool { shared_chan_try_send(self, x) }
-}
-
-#[inline(always)]
-fn shared_chan_try_send<T:Owned>(self: &SharedChan<T>, x: T) -> bool {
-    let mut xx = Some(x);
-    do self.with_imm |chan| {
-        let mut x = None;
-        x <-> xx;
-        chan.try_send(x.unwrap())
+    fn try_send(&self, x: T) -> bool {
+        let mut xx = Some(x);
+        do self.with_imm |chan| {
+            let mut x = None;
+            x <-> xx;
+            chan.try_send(x.unwrap())
+        }
     }
 }
 
