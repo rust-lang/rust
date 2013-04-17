@@ -132,7 +132,6 @@ pub mod streamp {
     }
 }
 
-#[doc(hidden)]
 struct Chan_<T> {
     mut endp: Option<streamp::client::Open<T>>
 }
