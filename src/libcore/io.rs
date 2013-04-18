@@ -176,7 +176,7 @@ pub trait ReaderUtil {
     fn read_bytes(&self, len: uint) -> ~[u8];
 
     /**
-    * Reads up until a specific character or EOF.
+    * Reads up until a specific byte is seen or EOF.
     *
     * The `include` parameter specifies if the character should be included
     * in the returned string.
@@ -185,7 +185,7 @@ pub trait ReaderUtil {
     *
     * None right now.
     */
-    fn read_until(&self, c: char, include: bool) -> ~str;
+    fn read_until(&self, c: u8, include: bool) -> ~str;
 
     /**
     * Reads up until the first '\n' or EOF.
@@ -577,7 +577,7 @@ impl<T:Reader> ReaderUtil for T {
         bytes
     }
 
-    fn read_until(&self, c: char, include: bool) -> ~str {
+    fn read_until(&self, c: u8, include: bool) -> ~str {
         let mut bytes = ~[];
         loop {
             let ch = self.read_byte();
@@ -593,7 +593,7 @@ impl<T:Reader> ReaderUtil for T {
     }
 
     fn read_line(&self) -> ~str {
-        self.read_until('\n', false)
+        self.read_until('\n' as u8, false)
     }
 
     fn read_chars(&self, n: uint) -> ~[char] {
@@ -667,7 +667,7 @@ impl<T:Reader> ReaderUtil for T {
     }
 
     fn read_c_str(&self) -> ~str {
-        self.read_until(0 as char, false)
+        self.read_until(0u8, false)
     }
 
     fn read_whole_stream(&self) -> ~[u8] {
@@ -693,7 +693,7 @@ impl<T:Reader> ReaderUtil for T {
             // include the \n, so that we can distinguish an entirely empty
             // line read after "...\n", and the trailing empty line in
             // "...\n\n".
-            let mut line = self.read_until('\n', true);
+            let mut line = self.read_until('\n' as u8, true);
 
             // blank line at the end of the reader is ignored
             if self.eof() && line.is_empty() { break; }
