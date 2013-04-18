@@ -752,7 +752,7 @@ impl PkgSrc {
                          `test.rs`, or `bench.rs`.");
             fail!(~"Failed to infer crates to build");
         }
-        
+
         debug!("found %u libs, %u mains, %u tests, %u benchs",
                self.libs.len(),
                self.mains.len(),
