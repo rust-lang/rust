@@ -24,6 +24,7 @@ use clone::Clone;
 use cmp::{TotalOrd, Ordering, Less, Equal, Greater};
 use libc;
 use option::{None, Option, Some};
+use iterator::Iterator;
 use ptr;
 use str;
 use u8;
@@ -2358,6 +2359,10 @@ pub trait StrSlice<'self> {
     fn any(&self, it: &fn(char) -> bool) -> bool;
     fn contains<'a>(&self, needle: &'a str) -> bool;
     fn contains_char(&self, needle: char) -> bool;
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn char_iter(&self) -> StrCharIterator<'self>;
     fn each(&self, it: &fn(u8) -> bool);
     fn eachi(&self, it: &fn(uint, u8) -> bool);
     fn each_reverse(&self, it: &fn(u8) -> bool);
@@ -2419,6 +2424,18 @@ impl<'self> StrSlice<'self> for &'self str {
     fn contains_char(&self, needle: char) -> bool {
         contains_char(*self, needle)
     }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    #[inline]
+    fn char_iter(&self) -> StrCharIterator<'self> {
+        StrCharIterator {
+            index: 0,
+            string: *self
+        }
+    }
+
     /// Iterate over the bytes in a string
     #[inline]
     fn each(&self, it: &fn(u8) -> bool) { each(*self, it) }
@@ -2606,6 +2623,30 @@ impl Clone for ~str {
     #[inline(always)]
     fn clone(&self) -> ~str {
         from_slice(*self)
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+pub struct StrCharIterator<'self> {
+    priv index: uint,
+    priv string: &'self str,
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+impl<'self> Iterator<char> for StrCharIterator<'self> {
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        if self.index < self.string.len() {
+            let CharRange {ch, next} = char_range_at(self.string, self.index);
+            self.index = next;
+            Some(ch)
+        } else {
+            None
+        }
     }
 }
 
@@ -3901,4 +3942,19 @@ mod tests {
         assert!(char_range_at_reverse("abc", 0).next == 0);
     }
 
+    #[test]
+    fn test_iterator() {
+        use iterator::*;
+        let s = ~"ศไทย中华Việt Nam";
+        let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
+
+        let mut pos = 0;
+        let mut it = s.char_iter();
+
+        for it.advance |c| {
+            assert_eq!(c, v[pos]);
+            pos += 1;
+        }
+        assert_eq!(pos, v.len());
+    }
 }
