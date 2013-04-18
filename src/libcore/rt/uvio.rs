@@ -11,6 +11,7 @@
 use option::*;
 use result::*;
 
+use super::io::net::ip::{IpAddr, Ipv4};
 use super::uv::*;
 use super::rtio::*;
 use ops::Drop;
