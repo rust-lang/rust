@@ -547,6 +547,53 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     @f.fold_crate(&*c)
 }
 
+// given a function from paths to paths, produce
+// an ast_fold that applies that function:
+fn fun_to_path_folder(f: @fn(&ast::Path)->ast::Path) -> @ast_fold{
+    let afp = default_ast_fold();
+    let f_pre = @AstFoldFns{
+        fold_path : |p, _| f(p),
+        .. *afp
+    };
+    make_fold(f_pre)
+}
+/* going to have to figure out whether the table is passed in or
+extracted from TLS...
+// update the ctxts in a path to get a rename node
+fn ctxt_update_rename(from: ast::Name,
+                       fromctx: ast::SyntaxContext, to: ast::Name) ->
+    @fn(&ast::Path,@ast_fold)->ast::Path {
+    return |p:&ast::Path,_|
+    ast::Path {span: p.span,
+               global: p.global,
+               idents: p.idents.map(|id|
+                                    ast::ident{
+                                        repr: id.repr,
+                                        // this needs to be cached....
+                                        ctxt: Some(@ast::Rename(from,fromctx,
+                                                           to,id.ctxt))
+                                    }),
+               rp: p.rp,
+               types: p.types};
+}
+
+// update the ctxts in a path to get a mark node
+fn ctxt_update_mark(mark: uint) ->
+    @fn(&ast::Path,@ast_fold)->ast::Path {
+    return |p:&ast::Path,_|
+    ast::Path {span: p.span,
+               global: p.global,
+               idents: p.idents.map(|id|
+                                    ast::ident{
+                                        repr: id.repr,
+                                        // this needs to be cached....
+                                        ctxt: Some(@ast::Mark(mark,id.ctxt))
+                                    }),
+               rp: p.rp,
+               types: p.types};
+}
+*/
+
 #[cfg(test)]
 mod test {
     use super::*;
