@@ -177,27 +177,64 @@ impl num::One for T {
 
 #[cfg(notest)]
 impl ops::Add<T,T> for T {
+    #[inline(always)]
     fn add(&self, other: &T) -> T { *self + *other }
 }
 #[cfg(notest)]
 impl ops::Sub<T,T> for T {
+    #[inline(always)]
     fn sub(&self, other: &T) -> T { *self - *other }
 }
 #[cfg(notest)]
 impl ops::Mul<T,T> for T {
+    #[inline(always)]
     fn mul(&self, other: &T) -> T { *self * *other }
 }
 #[cfg(notest)]
 impl ops::Div<T,T> for T {
+    #[inline(always)]
     fn div(&self, other: &T) -> T { *self / *other }
 }
 #[cfg(notest)]
 impl ops::Modulo<T,T> for T {
+    #[inline(always)]
     fn modulo(&self, other: &T) -> T { *self % *other }
 }
 #[cfg(notest)]
 impl ops::Neg<T> for T {
+    #[inline(always)]
     fn neg(&self) -> T { -*self }
+}
+
+#[cfg(notest)]
+impl ops::BitOr<T,T> for T {
+    #[inline(always)]
+    fn bitor(&self, other: &T) -> T { *self | *other }
+}
+#[cfg(notest)]
+impl ops::BitAnd<T,T> for T {
+    #[inline(always)]
+    fn bitand(&self, other: &T) -> T { *self & *other }
+}
+#[cfg(notest)]
+impl ops::BitXor<T,T> for T {
+    #[inline(always)]
+    fn bitxor(&self, other: &T) -> T { *self ^ *other }
+}
+#[cfg(notest)]
+impl ops::Shl<T,T> for T {
+    #[inline(always)]
+    fn shl(&self, other: &T) -> T { *self << *other }
+}
+#[cfg(notest)]
+impl ops::Shr<T,T> for T {
+    #[inline(always)]
+    fn shr(&self, other: &T) -> T { *self >> *other }
+}
+#[cfg(notest)]
+impl ops::Not<T> for T {
+    #[inline(always)]
+    fn not(&self) -> T { !*self }
 }
 
 // String conversion functions and impl str -> num
@@ -284,18 +321,28 @@ mod tests {
     use prelude::*;
 
     #[test]
-    fn test_from_str() {
-        assert!(from_str(~"0") == Some(0 as T));
-        assert!(from_str(~"3") == Some(3 as T));
-        assert!(from_str(~"10") == Some(10 as T));
-        assert!(i32::from_str(~"123456789") == Some(123456789 as i32));
-        assert!(from_str(~"00100") == Some(100 as T));
+    fn test_bitwise_ops() {
+        assert_eq!(0b1110 as T, (0b1100 as T).bitor(&(0b1010 as T)));
+        assert_eq!(0b1000 as T, (0b1100 as T).bitand(&(0b1010 as T)));
+        assert_eq!(0b0110 as T, (0b1100 as T).bitxor(&(0b1010 as T)));
+        assert_eq!(0b1110 as T, (0b0111 as T).shl(&(1 as T)));
+        assert_eq!(0b0111 as T, (0b1110 as T).shr(&(1 as T)));
+        assert_eq!(-(0b11 as T) - (1 as T), (0b11 as T).not());
+    }
 
-        assert!(from_str(~"-1") == Some(-1 as T));
-        assert!(from_str(~"-3") == Some(-3 as T));
-        assert!(from_str(~"-10") == Some(-10 as T));
-        assert!(i32::from_str(~"-123456789") == Some(-123456789 as i32));
-        assert!(from_str(~"-00100") == Some(-100 as T));
+    #[test]
+    fn test_from_str() {
+        assert_eq!(from_str(~"0"), Some(0 as T));
+        assert_eq!(from_str(~"3"), Some(3 as T));
+        assert_eq!(from_str(~"10"), Some(10 as T));
+        assert_eq!(i32::from_str(~"123456789"), Some(123456789 as i32));
+        assert_eq!(from_str(~"00100"), Some(100 as T));
+
+        assert_eq!(from_str(~"-1"), Some(-1 as T));
+        assert_eq!(from_str(~"-3"), Some(-3 as T));
+        assert_eq!(from_str(~"-10"), Some(-10 as T));
+        assert_eq!(i32::from_str(~"-123456789"), Some(-123456789 as i32));
+        assert_eq!(from_str(~"-00100"), Some(-100 as T));
 
         assert!(from_str(~" ").is_none());
         assert!(from_str(~"x").is_none());
@@ -304,28 +351,23 @@ mod tests {
     #[test]
     fn test_parse_bytes() {
         use str::to_bytes;
-        assert!(parse_bytes(to_bytes(~"123"), 10u) == Some(123 as T));
-        assert!(parse_bytes(to_bytes(~"1001"), 2u) == Some(9 as T));
-        assert!(parse_bytes(to_bytes(~"123"), 8u) == Some(83 as T));
-        assert!(i32::parse_bytes(to_bytes(~"123"), 16u) == Some(291 as i32));
-        assert!(i32::parse_bytes(to_bytes(~"ffff"), 16u) ==
-                Some(65535 as i32));
-        assert!(i32::parse_bytes(to_bytes(~"FFFF"), 16u) ==
-                Some(65535 as i32));
-        assert!(parse_bytes(to_bytes(~"z"), 36u) == Some(35 as T));
-        assert!(parse_bytes(to_bytes(~"Z"), 36u) == Some(35 as T));
+        assert_eq!(parse_bytes(to_bytes(~"123"), 10u), Some(123 as T));
+        assert_eq!(parse_bytes(to_bytes(~"1001"), 2u), Some(9 as T));
+        assert_eq!(parse_bytes(to_bytes(~"123"), 8u), Some(83 as T));
+        assert_eq!(i32::parse_bytes(to_bytes(~"123"), 16u), Some(291 as i32));
+        assert_eq!(i32::parse_bytes(to_bytes(~"ffff"), 16u), Some(65535 as i32));
+        assert_eq!(i32::parse_bytes(to_bytes(~"FFFF"), 16u), Some(65535 as i32));
+        assert_eq!(parse_bytes(to_bytes(~"z"), 36u), Some(35 as T));
+        assert_eq!(parse_bytes(to_bytes(~"Z"), 36u), Some(35 as T));
 
-        assert!(parse_bytes(to_bytes(~"-123"), 10u) == Some(-123 as T));
-        assert!(parse_bytes(to_bytes(~"-1001"), 2u) == Some(-9 as T));
-        assert!(parse_bytes(to_bytes(~"-123"), 8u) == Some(-83 as T));
-        assert!(i32::parse_bytes(to_bytes(~"-123"), 16u) ==
-                Some(-291 as i32));
-        assert!(i32::parse_bytes(to_bytes(~"-ffff"), 16u) ==
-                Some(-65535 as i32));
-        assert!(i32::parse_bytes(to_bytes(~"-FFFF"), 16u) ==
-                Some(-65535 as i32));
-        assert!(parse_bytes(to_bytes(~"-z"), 36u) == Some(-35 as T));
-        assert!(parse_bytes(to_bytes(~"-Z"), 36u) == Some(-35 as T));
+        assert_eq!(parse_bytes(to_bytes(~"-123"), 10u), Some(-123 as T));
+        assert_eq!(parse_bytes(to_bytes(~"-1001"), 2u), Some(-9 as T));
+        assert_eq!(parse_bytes(to_bytes(~"-123"), 8u), Some(-83 as T));
+        assert_eq!(i32::parse_bytes(to_bytes(~"-123"), 16u), Some(-291 as i32));
+        assert_eq!(i32::parse_bytes(to_bytes(~"-ffff"), 16u), Some(-65535 as i32));
+        assert_eq!(i32::parse_bytes(to_bytes(~"-FFFF"), 16u), Some(-65535 as i32));
+        assert_eq!(parse_bytes(to_bytes(~"-z"), 36u), Some(-35 as T));
+        assert_eq!(parse_bytes(to_bytes(~"-Z"), 36u), Some(-35 as T));
 
         assert!(parse_bytes(to_bytes(~"Z"), 35u).is_none());
         assert!(parse_bytes(to_bytes(~"-9"), 2u).is_none());
@@ -333,74 +375,74 @@ mod tests {
 
     #[test]
     fn test_to_str() {
-        assert!((to_str_radix(0 as T, 10u) == ~"0"));
-        assert!((to_str_radix(1 as T, 10u) == ~"1"));
-        assert!((to_str_radix(-1 as T, 10u) == ~"-1"));
-        assert!((to_str_radix(127 as T, 16u) == ~"7f"));
-        assert!((to_str_radix(100 as T, 10u) == ~"100"));
+        assert_eq!(to_str_radix(0 as T, 10u), ~"0");
+        assert_eq!(to_str_radix(1 as T, 10u), ~"1");
+        assert_eq!(to_str_radix(-1 as T, 10u), ~"-1");
+        assert_eq!(to_str_radix(127 as T, 16u), ~"7f");
+        assert_eq!(to_str_radix(100 as T, 10u), ~"100");
 
     }
 
     #[test]
     fn test_int_to_str_overflow() {
         let mut i8_val: i8 = 127_i8;
-        assert!((i8::to_str(i8_val) == ~"127"));
+        assert_eq!(i8::to_str(i8_val), ~"127");
 
         i8_val += 1 as i8;
-        assert!((i8::to_str(i8_val) == ~"-128"));
+        assert_eq!(i8::to_str(i8_val), ~"-128");
 
         let mut i16_val: i16 = 32_767_i16;
-        assert!((i16::to_str(i16_val) == ~"32767"));
+        assert_eq!(i16::to_str(i16_val), ~"32767");
 
         i16_val += 1 as i16;
-        assert!((i16::to_str(i16_val) == ~"-32768"));
+        assert_eq!(i16::to_str(i16_val), ~"-32768");
 
         let mut i32_val: i32 = 2_147_483_647_i32;
-        assert!((i32::to_str(i32_val) == ~"2147483647"));
+        assert_eq!(i32::to_str(i32_val), ~"2147483647");
 
         i32_val += 1 as i32;
-        assert!((i32::to_str(i32_val) == ~"-2147483648"));
+        assert_eq!(i32::to_str(i32_val), ~"-2147483648");
 
         let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
-        assert!((i64::to_str(i64_val) == ~"9223372036854775807"));
+        assert_eq!(i64::to_str(i64_val), ~"9223372036854775807");
 
         i64_val += 1 as i64;
-        assert!((i64::to_str(i64_val) == ~"-9223372036854775808"));
+        assert_eq!(i64::to_str(i64_val), ~"-9223372036854775808");
     }
 
     #[test]
     fn test_int_from_str_overflow() {
         let mut i8_val: i8 = 127_i8;
-        assert!((i8::from_str(~"127") == Some(i8_val)));
-        assert!((i8::from_str(~"128").is_none()));
+        assert_eq!(i8::from_str(~"127"), Some(i8_val));
+        assert!(i8::from_str(~"128").is_none());
 
         i8_val += 1 as i8;
-        assert!((i8::from_str(~"-128") == Some(i8_val)));
-        assert!((i8::from_str(~"-129").is_none()));
+        assert_eq!(i8::from_str(~"-128"), Some(i8_val));
+        assert!(i8::from_str(~"-129").is_none());
 
         let mut i16_val: i16 = 32_767_i16;
-        assert!((i16::from_str(~"32767") == Some(i16_val)));
-        assert!((i16::from_str(~"32768").is_none()));
+        assert_eq!(i16::from_str(~"32767"), Some(i16_val));
+        assert!(i16::from_str(~"32768").is_none());
 
         i16_val += 1 as i16;
-        assert!((i16::from_str(~"-32768") == Some(i16_val)));
-        assert!((i16::from_str(~"-32769").is_none()));
+        assert_eq!(i16::from_str(~"-32768"), Some(i16_val));
+        assert!(i16::from_str(~"-32769").is_none());
 
         let mut i32_val: i32 = 2_147_483_647_i32;
-        assert!((i32::from_str(~"2147483647") == Some(i32_val)));
-        assert!((i32::from_str(~"2147483648").is_none()));
+        assert_eq!(i32::from_str(~"2147483647"), Some(i32_val));
+        assert!(i32::from_str(~"2147483648").is_none());
 
         i32_val += 1 as i32;
-        assert!((i32::from_str(~"-2147483648") == Some(i32_val)));
-        assert!((i32::from_str(~"-2147483649").is_none()));
+        assert_eq!(i32::from_str(~"-2147483648"), Some(i32_val));
+        assert!(i32::from_str(~"-2147483649").is_none());
 
         let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
-        assert!((i64::from_str(~"9223372036854775807") == Some(i64_val)));
-        assert!((i64::from_str(~"9223372036854775808").is_none()));
+        assert_eq!(i64::from_str(~"9223372036854775807"), Some(i64_val));
+        assert!(i64::from_str(~"9223372036854775808").is_none());
 
         i64_val += 1 as i64;
-        assert!((i64::from_str(~"-9223372036854775808") == Some(i64_val)));
-        assert!((i64::from_str(~"-9223372036854775809").is_none()));
+        assert_eq!(i64::from_str(~"-9223372036854775808"), Some(i64_val));
+        assert!(i64::from_str(~"-9223372036854775809").is_none());
     }
 
     #[test]
