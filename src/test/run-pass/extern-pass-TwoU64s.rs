@@ -11,7 +11,9 @@
 // Test a foreign function that accepts and returns a struct
 // by value.
 
-// xfail-fast This works standalone on windows but not with check-fast. don't know why
+// xfail-fast This works standalone on windows but not with check-fast.
+// possibly because there is another test that uses this extern fn but gives it
+// a diferent signature
 
 #[deriving(Eq)]
 struct TwoU64s {
