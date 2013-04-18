@@ -125,27 +125,25 @@ pub enum RealPredicate {
     RealPredicateTrue = 15,
 }
 
-// enum for the LLVM TypeKind type - must stay in sync with the def of
+// The LLVM TypeKind type - must stay in sync with the def of
 // LLVMTypeKind in llvm/include/llvm-c/Core.h
-#[deriving(Eq)]
-pub enum TypeKind {
-    Void      = 0,
-    Half      = 1,
-    Float     = 2,
-    Double    = 3,
-    X86_FP80  = 4,
-    FP128     = 5,
-    PPC_FP128 = 6,
-    Label     = 7,
-    Integer   = 8,
-    Function  = 9,
-    Struct    = 10,
-    Array     = 11,
-    Pointer   = 12,
-    Vector    = 13,
-    Metadata  = 14,
-    X86_MMX   = 15
-}
+pub type TypeKind = u32;
+pub static Void: TypeKind      = 0;
+pub static Half: TypeKind      = 1;
+pub static Float: TypeKind     = 2;
+pub static Double: TypeKind    = 3;
+pub static X86_FP80: TypeKind  = 4;
+pub static FP128: TypeKind     = 5;
+pub static PPC_FP128: TypeKind = 6;
+pub static Label: TypeKind     = 7;
+pub static Integer: TypeKind   = 8;
+pub static Function: TypeKind  = 9;
+pub static Struct: TypeKind    = 10;
+pub static Array: TypeKind     = 11;
+pub static Pointer: TypeKind   = 12;
+pub static Vector: TypeKind    = 13;
+pub static Metadata: TypeKind  = 14;
+pub static X86_MMX: TypeKind   = 15;
 
 pub enum AtomicBinOp {
     Xchg = 0,
@@ -1582,7 +1580,8 @@ pub fn type_to_str_inner(names: @TypeNames, +outer0: &[TypeRef], ty: TypeRef)
           }
           Vector => return @"Vector",
           Metadata => return @"Metadata",
-          X86_MMX => return @"X86_MMAX"
+          X86_MMX => return @"X86_MMAX",
+          _ => fail!()
         }
     }
 }

@@ -8,22 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we ignore modes when calling extern functions.
+// xfail-win32 #5745
 
-#[deriving(Eq)]
-struct TwoU64s {
-    one: u64, two: u64
+struct TwoU8s {
+    one: u8, two: u8
 }
 
 pub extern {
-    pub fn rust_dbg_extern_identity_TwoU64s(&&u: TwoU64s) -> TwoU64s;
+    pub fn rust_dbg_extern_return_TwoU8s() -> TwoU8s;
 }
 
 pub fn main() {
     unsafe {
-        let x = TwoU64s {one: 22, two: 23};
-        let y = rust_dbg_extern_identity_TwoU64s(x);
-        assert!(x == y);
+        let y = rust_dbg_extern_return_TwoU8s();
+        assert!(y.one == 10);
+        assert!(y.two == 20);
     }
 }
-
