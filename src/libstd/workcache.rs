@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -30,11 +30,12 @@ use core::to_bytes;
 
 /**
 *
-* This is a loose clone of the fbuild build system, made a touch more
-* generic (not wired to special cases on files) and much less metaprogram-y
-* due to rust's comparative weakness there, relative to python.
+* This is a loose clone of the [fbuild build system](https://github.com/felix-lang/fbuild),
+* made a touch more generic (not wired to special cases on files) and much
+* less metaprogram-y due to rust's comparative weakness there, relative to
+* python.
 *
-* It's based around _imperative bulids_ that happen to have some function
+* It's based around _imperative builds_ that happen to have some function
 * calls cached. That is, it's _just_ a mechanism for describing cached
 * functions. This makes it much simpler and smaller than a "build system"
 * that produces an IR and evaluates it. The evaluation order is normal
@@ -54,7 +55,7 @@ use core::to_bytes;
 * Works are conceptually single units, but we store them most of the time
 * in maps of the form (type,name) => value. These are WorkMaps.
 *
-* A cached function divides the works it's interested up into inputs and
+* A cached function divides the works it's interested in into inputs and
 * outputs, and subdivides those into declared (input) works and
 * discovered (input and output) works.
 *
