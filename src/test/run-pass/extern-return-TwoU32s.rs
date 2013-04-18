@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-macos Broken on mac i686
+
 struct TwoU32s {
     one: u32, two: u32
 }
