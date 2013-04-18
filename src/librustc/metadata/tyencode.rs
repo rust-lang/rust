@@ -22,6 +22,7 @@ use core::io;
 use core::uint;
 use core::vec;
 use syntax::abi::AbiSet;
+use syntax::ast;
 use syntax::ast::*;
 use syntax::diagnostic::span_handler;
 use syntax::print::pprust::*;
@@ -113,12 +114,17 @@ pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
       }
     }
 }
-fn enc_mt(w: @io::Writer, cx: @ctxt, mt: ty::mt) {
-    match mt.mutbl {
+
+fn enc_mutability(w: @io::Writer, mt: ast::mutability) {
+    match mt {
       m_imm => (),
       m_mutbl => w.write_char('m'),
       m_const => w.write_char('?')
     }
+}
+
+fn enc_mt(w: @io::Writer, cx: @ctxt, mt: ty::mt) {
+    enc_mutability(w, mt.mutbl);
     enc_ty(w, cx, mt.ty);
 }
 
@@ -269,12 +275,13 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, +st: ty::sty) {
         enc_substs(w, cx, (*substs));
         w.write_char(']');
       }
-      ty::ty_trait(def, ref substs, store) => {
+      ty::ty_trait(def, ref substs, store, mt) => {
         w.write_str(&"x[");
         w.write_str((cx.ds)(def));
         w.write_char('|');
         enc_substs(w, cx, (*substs));
         enc_trait_store(w, cx, store);
+        enc_mutability(w, mt);
         w.write_char(']');
       }
       ty::ty_tup(ts) => {

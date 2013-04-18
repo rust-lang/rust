@@ -313,8 +313,9 @@ fn parse_ty(st: @mut PState, conv: conv_did) -> ty::t {
         let def = parse_def(st, NominalType, conv);
         let substs = parse_substs(st, conv);
         let store = parse_trait_store(st);
+        let mt = parse_mutability(st);
         assert!(next(st) == ']');
-        return ty::mk_trait(st.tcx, def, substs, store);
+        return ty::mk_trait(st.tcx, def, substs, store, mt);
       }
       'p' => {
         let did = parse_def(st, TypeParameter, conv);
@@ -396,13 +397,16 @@ fn parse_ty(st: @mut PState, conv: conv_did) -> ty::t {
     }
 }
 
-fn parse_mt(st: @mut PState, conv: conv_did) -> ty::mt {
-    let mut m;
+fn parse_mutability(st: @mut PState) -> ast::mutability {
     match peek(st) {
-      'm' => { next(st); m = ast::m_mutbl; }
-      '?' => { next(st); m = ast::m_const; }
-      _ => { m = ast::m_imm; }
+      'm' => { next(st); ast::m_mutbl }
+      '?' => { next(st); ast::m_const }
+      _ => { ast::m_imm }
     }
+}
+
+fn parse_mt(st: @mut PState, conv: conv_did) -> ty::mt {
+    let m = parse_mutability(st);
     ty::mt { ty: parse_ty(st, conv), mutbl: m }
 }
 
