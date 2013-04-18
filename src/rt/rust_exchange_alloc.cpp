@@ -48,8 +48,8 @@ rust_get_exchange_count_ptr() {
 void
 rust_check_exchange_count_on_exit() {
   if (exchange_count != 0) {
-    printf("exchange heap not empty on on exit");
-    printf("%d dangling allocations", (int)exchange_count);
+    printf("exchange heap not empty on exit\n");
+    printf("%d dangling allocations\n", (int)exchange_count);
     abort();
   }
 }
