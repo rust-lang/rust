@@ -21,4 +21,4 @@ extern mod std;
 
 pub mod foo;
 pub mod bar;
-pub mod generated;
+#[path = "build/generated.rs"] pub mod generated;
