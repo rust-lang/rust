@@ -39,5 +39,5 @@ pub fn from_str_sess(sess: session::Session, source: ~str) -> @ast::crate {
 }
 
 fn cfg(sess: session::Session, input: driver::input) -> ast::crate_cfg {
-    driver::build_configuration(sess, @~"rustdoc", input)
+    driver::build_configuration(sess, @~"rustdoc", &input)
 }
