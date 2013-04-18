@@ -126,7 +126,7 @@ fn run_loop(iotask_ch: &Chan<IoTask>) {
         // while we dwell in the I/O loop
         let iotask = IoTask{
             async_handle: async_handle,
-            op_chan: SharedChan(msg_ch)
+            op_chan: SharedChan::new(msg_ch)
         };
         iotask_ch.send(iotask);
 
@@ -230,7 +230,7 @@ fn impl_uv_iotask_async(iotask: &IoTask) {
         let (exit_po, exit_ch) = stream::<()>();
         let ah_data = AhData {
             iotask: iotask.clone(),
-            exit_ch: SharedChan(exit_ch)
+            exit_ch: SharedChan::new(exit_ch)
         };
         let ah_data_ptr: *AhData = unsafe {
             ptr::to_unsafe_ptr(&ah_data)
@@ -293,7 +293,7 @@ fn test_uv_iotask_async() {
         // loop lives until, at least, all of the
         // impl_uv_hl_async() runs have been called, at least.
         let (work_exit_po, work_exit_ch) = stream::<()>();
-        let work_exit_ch = SharedChan(work_exit_ch);
+        let work_exit_ch = SharedChan::new(work_exit_ch);
         for iter::repeat(7u) {
             let iotask_clone = iotask.clone();
             let work_exit_ch_clone = work_exit_ch.clone();

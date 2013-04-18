@@ -69,7 +69,7 @@ fn create_global_service() -> ~WeakTaskService {
     debug!("creating global weak task service");
     let (port, chan) = stream::<ServiceMsg>();
     let port = Cell(port);
-    let chan = SharedChan(chan);
+    let chan = SharedChan::new(chan);
     let chan_clone = chan.clone();
 
     do task().unlinked().spawn {

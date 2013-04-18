@@ -26,7 +26,7 @@ use core::comm::*;
 
 fn grandchild_group(num_tasks: uint) {
     let (po, ch) = stream();
-    let ch = SharedChan(ch);
+    let ch = SharedChan::new(ch);
 
     for num_tasks.times {
         let ch = ch.clone();

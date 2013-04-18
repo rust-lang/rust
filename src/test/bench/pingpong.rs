@@ -14,7 +14,8 @@
  
 extern mod std;
 
-use core::pipes::{spawn_service, recv};
+use core::cell::Cell;
+use core::pipes::*;
 use std::time::precise_time_s;
 
 proto! pingpong (
@@ -69,6 +70,52 @@ macro_rules! follow (
         }
     )
 )
+
+
+/** Spawn a task to provide a service.
+
+It takes an initialization function that produces a send and receive
+endpoint. The send endpoint is returned to the caller and the receive
+endpoint is passed to the new task.
+
+*/
+pub fn spawn_service<T:Owned,Tb:Owned>(
+            init: extern fn() -> (SendPacketBuffered<T, Tb>,
+                                  RecvPacketBuffered<T, Tb>),
+            service: ~fn(v: RecvPacketBuffered<T, Tb>))
+        -> SendPacketBuffered<T, Tb> {
+    let (client, server) = init();
+
+    // This is some nasty gymnastics required to safely move the pipe
+    // into a new task.
+    let server = Cell(server);
+    do task::spawn {
+        service(server.take());
+    }
+
+    client
+}
+
+/** Like `spawn_service_recv`, but for protocols that start in the
+receive state.
+
+*/
+pub fn spawn_service_recv<T:Owned,Tb:Owned>(
+        init: extern fn() -> (RecvPacketBuffered<T, Tb>,
+                              SendPacketBuffered<T, Tb>),
+        service: ~fn(v: SendPacketBuffered<T, Tb>))
+        -> RecvPacketBuffered<T, Tb> {
+    let (client, server) = init();
+
+    // This is some nasty gymnastics required to safely move the pipe
+    // into a new task.
+    let server = Cell(server);
+    do task::spawn {
+        service(server.take())
+    }
+
+    client
+}
 
 fn switch<T:Owned,Tb:Owned,U>(+endp: core::pipes::RecvPacketBuffered<T, Tb>,
                       f: &fn(+v: Option<T>) -> U) -> U {
