@@ -23,9 +23,9 @@ use io::{Writer, WriterUtil};
 use libc::c_void;
 use managed;
 use ptr;
+#[cfg(stage0)] use sys;
 use reflect;
 use reflect::{MovePtr, align};
-use sys;
 use to_str::ToStr;
 use vec::UnboxedVecRepr;
 use vec::raw::{VecRepr, SliceRepr};
@@ -479,7 +479,7 @@ impl TyVisitor for ReprVisitor {
     }
 
     #[cfg(not(stage0))]
-    fn visit_enter_enum(&self, n_variants: uint,
+    fn visit_enter_enum(&self, _n_variants: uint,
                         get_disr: extern unsafe fn(ptr: *Opaque) -> int,
                         _sz: uint, _align: uint) -> bool {
         let disr = unsafe { get_disr(transmute(self.ptr)) };
