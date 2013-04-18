@@ -195,7 +195,9 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::Path,
         Some(ref subpats) => subpats_len = subpats.len()
     }
 
-    if arg_len > 0u {
+    let mut error_happened = false;
+
+    if arg_len > 0 {
         // N-ary variant.
         if arg_len != subpats_len {
             let s = fmt!("this pattern has %u field%s, but the corresponding \
@@ -205,23 +207,36 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::Path,
                          kind_name,
                          arg_len,
                          if arg_len == 1u { ~"" } else { ~"s" });
-            // XXX: This should not be fatal.
-            tcx.sess.span_fatal(pat.span, s);
+            tcx.sess.span_err(pat.span, s);
+            error_happened = true;
         }
 
-        for subpats.each |pats| {
-            for vec::each2(*pats, arg_types) |subpat, arg_ty| {
-              check_pat(pcx, *subpat, *arg_ty);
+        if !error_happened {
+            for subpats.each |pats| {
+                for vec::each2(*pats, arg_types) |subpat, arg_ty| {
+                    check_pat(pcx, *subpat, *arg_ty);
+                }
             }
         }
-    } else if subpats_len > 0u {
-        tcx.sess.span_fatal
+    } else if subpats_len > 0 {
+        tcx.sess.span_err
             (pat.span, fmt!("this pattern has %u field%s, but the \
                              corresponding %s has no fields",
                             subpats_len,
                             if subpats_len == 1u { ~"" }
                             else { ~"s" },
                             kind_name));
+        error_happened = true;
+    }
+
+    if error_happened {
+        let tcx = pcx.fcx.ccx.tcx;
+
+        for subpats.each |pats| {
+            for pats.each |pat| {
+                check_pat(pcx, *pat, ty::mk_err(tcx));
+            }
+        }
     }
 }
 
@@ -446,6 +461,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
       ast::pat_struct(path, ref fields, etc) => {
         // Grab the class data that we care about.
         let structure = structure_of(fcx, pat.span, expected);
+        let mut error_happened = false;
         match structure {
             ty::ty_struct(cid, ref substs) => {
                 check_struct_pat(pcx, pat.id, pat.span, expected, path,
@@ -457,16 +473,21 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                     substs);
             }
             _ => {
-                // XXX: This should not be fatal.
-                tcx.sess.span_fatal(pat.span,
+                tcx.sess.span_err(pat.span,
                                     fmt!("mismatched types: expected `%s` \
                                           but found struct",
                                          fcx.infcx().ty_to_str(expected)));
+                error_happened = true;
             }
         }
 
         // Finally, write in the type.
-        fcx.write_ty(pat.id, expected);
+        if error_happened {
+            fcx.write_error(pat.id);
+        }
+        else {
+            fcx.write_ty(pat.id, expected);
+        }
       }
       ast::pat_tup(ref elts) => {
         let s = structure_of(fcx, pat.span, expected);
