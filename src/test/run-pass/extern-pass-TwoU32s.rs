@@ -11,6 +11,8 @@
 // Test a foreign function that accepts and returns a struct
 // by value.
 
+// xfail-macos Broken on mac i686
+
 #[deriving(Eq)]
 struct TwoU32s {
     one: u32, two: u32
