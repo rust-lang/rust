@@ -667,7 +667,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         }
         ast::expr_cast(val, _) => {
             match ty::get(node_id_type(bcx, expr.id)).sty {
-                ty::ty_trait(_, _, store) => {
+                ty::ty_trait(_, _, store, _) => {
                     return meth::trans_trait_cast(bcx, val, expr.id, dest,
                                                   store);
                 }

@@ -737,10 +737,11 @@ pub impl InferCtxt {
         let dummy0 = ty::mk_trait(self.tcx,
                                   trait_ref.def_id,
                                   copy trait_ref.substs,
-                                  ty::UniqTraitStore);
+                                  ty::UniqTraitStore,
+                                  ast::m_imm);
         let dummy1 = self.resolve_type_vars_if_possible(dummy0);
         match ty::get(dummy1).sty {
-            ty::ty_trait(ref def_id, ref substs, _) => {
+            ty::ty_trait(ref def_id, ref substs, _, _) => {
                 ty::TraitRef {def_id: *def_id,
                               substs: copy *substs}
             }

@@ -141,10 +141,11 @@ fn fixup_substs(vcx: &VtableContext, location_info: &LocationInfo,
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx,
                          id, substs,
-                         ty::RegionTraitStore(ty::re_static));
+                         ty::RegionTraitStore(ty::re_static),
+                         ast::m_imm);
     do fixup_ty(vcx, location_info, t, is_early).map |t_f| {
         match ty::get(*t_f).sty {
-          ty::ty_trait(_, ref substs_f, _) => (/*bad*/copy *substs_f),
+          ty::ty_trait(_, ref substs_f, _, _) => (/*bad*/copy *substs_f),
           _ => fail!(~"t_f should be a trait")
         }
     }
@@ -544,7 +545,12 @@ pub fn early_resolve_expr(ex: @ast::expr,
           debug!("vtable resolution on expr %s", ex.repr(fcx.tcx()));
           let target_ty = fcx.expr_ty(ex);
           match ty::get(target_ty).sty {
-              ty::ty_trait(target_def_id, ref target_substs, store) => {
+              ty::ty_trait(target_def_id, ref target_substs, store, target_mutbl) => {
+                  fn mutability_allowed(a_mutbl: ast::mutability,
+                                        b_mutbl: ast::mutability) -> bool {
+                      a_mutbl == b_mutbl ||
+                      (a_mutbl == ast::m_mutbl && b_mutbl == ast::m_imm)
+                  }
                   // Look up vtables for the type we're casting to,
                   // passing in the source and target type.  The source
                   // must be a pointer type suitable to the object sigil,
@@ -552,6 +558,14 @@ pub fn early_resolve_expr(ex: @ast::expr,
                   let ty = structurally_resolved_type(fcx, ex.span,
                                                       fcx.expr_ty(src));
                   match (&ty::get(ty).sty, store) {
+                      (&ty::ty_box(mt), ty::BoxTraitStore) |
+                      (&ty::ty_uniq(mt), ty::UniqTraitStore) |
+                      (&ty::ty_rptr(_, mt), ty::RegionTraitStore(*))
+                        if !mutability_allowed(mt.mutbl, target_mutbl) => {
+                          fcx.tcx().sess.span_err(ex.span,
+                                                  fmt!("types differ in mutability"));
+                      }
+
                       (&ty::ty_box(mt), ty::BoxTraitStore) |
                       (&ty::ty_uniq(mt), ty::UniqTraitStore) |
                       (&ty::ty_rptr(_, mt), ty::RegionTraitStore(*)) => {

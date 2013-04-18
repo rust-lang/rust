@@ -671,7 +671,7 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span)
         ty::ty_closure(ref _closurety) => {
             cx.sess.span_bug(span, ~"debuginfo for closure NYI")
         },
-        ty::ty_trait(_did, ref _substs, ref _vstore) => {
+        ty::ty_trait(_did, ref _substs, ref _vstore, _) => {
             cx.sess.span_bug(span, ~"debuginfo for trait NYI")
         },
         ty::ty_struct(did, ref substs) => {
