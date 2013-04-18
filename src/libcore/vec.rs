@@ -18,6 +18,10 @@ use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use iter::BaseIter;
 use iter;
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+use iterator::Iterator;
 use kinds::Copy;
 use libc;
 use option::{None, Option, Some};
@@ -1919,6 +1923,7 @@ impl<'self,T> ImmutableVector<T> for &'self [T] {
 #[cfg(stage3)]
 pub trait ImmutableVector<'self, T> {
     fn slice(&self, start: uint, end: uint) -> &'self [T];
+    fn iter(self) -> VecIterator<'self, T>;
     fn head(&self) -> &'self T;
     fn head_opt(&self) -> Option<&'self T>;
     fn tail(&self) -> &'self [T];
@@ -1947,6 +1952,15 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     #[inline]
     fn slice(&self, start: uint, end: uint) -> &'self [T] {
         slice(*self, start, end)
+    }
+
+    #[inline]
+    fn iter(self) -> VecIterator<'self, T> {
+        unsafe {
+            let p = vec::raw::to_ptr(self);
+            VecIterator{ptr: p, end: p.offset(self.len()),
+                        lifetime: cast::transmute(p)}
+        }
     }
 
     /// Returns the first element of a vector, failing if the vector is empty.
@@ -2795,7 +2809,33 @@ impl<A:Clone> Clone for ~[A] {
     }
 }
 
-// ___________________________________________________________________________
+// could be implemented with &[T] with .slice(), but this avoids bounds checks
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+pub struct VecIterator<'self, T> {
+    priv ptr: *T,
+    priv end: *T,
+    priv lifetime: &'self T // FIXME: #5922
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+impl<'self, T> Iterator<&'self T> for VecIterator<'self, T> {
+    #[inline]
+    fn next(&mut self) -> Option<&'self T> {
+        unsafe {
+            if self.ptr == self.end {
+                None
+            } else {
+                let old = self.ptr;
+                self.ptr = self.ptr.offset(1);
+                Some(cast::transmute(old))
+            }
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -4420,6 +4460,19 @@ mod tests {
         [1, 2, 3, 4].cmp(& &[1, 2, 3, 4]) == Equal;
         [1, 2, 3, 4, 5, 5, 5, 5].cmp(& &[1, 2, 3, 4, 5, 6]) == Less;
         [2, 2].cmp(& &[1, 2, 3, 4]) == Greater;
+    }
+
+    #[test]
+    fn test_iterator() {
+        use iterator::*;
+        let xs = [1, 2, 5, 10, 11];
+        let ys = [1, 2, 5, 10, 11, 19];
+        let mut it = xs.iter();
+        let mut i = 0;
+        for it.advance |&x| {
+            assert_eq!(x, ys[i]);
+            i += 1;
+        }
     }
 }
 
