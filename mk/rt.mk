@@ -76,7 +76,8 @@ RUNTIME_CXXS_$(1) := \
               rt/boxed_region.cpp \
               rt/arch/$$(HOST_$(1))/context.cpp \
               rt/arch/$$(HOST_$(1))/gpr.cpp \
-              rt/rust_android_dummy.cpp
+              rt/rust_android_dummy.cpp \
+              rt/rust_test_helpers.cpp
 
 RUNTIME_CS_$(1) := rt/linenoise/linenoise.c rt/linenoise/utf8.c
 
