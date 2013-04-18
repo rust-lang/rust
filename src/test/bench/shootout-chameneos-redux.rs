@@ -137,9 +137,9 @@ fn rendezvous(nn: uint, set: ~[color]) {
 
     // these ports will allow us to hear from the creatures
     let (from_creatures, to_rendezvous) = stream::<CreatureInfo>();
-    let to_rendezvous = SharedChan(to_rendezvous);
+    let to_rendezvous = SharedChan::new(to_rendezvous);
     let (from_creatures_log, to_rendezvous_log) = stream::<~str>();
-    let to_rendezvous_log = SharedChan(to_rendezvous_log);
+    let to_rendezvous_log = SharedChan::new(to_rendezvous_log);
 
     // these channels will be passed to the creatures so they can talk to us
 

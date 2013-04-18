@@ -15,7 +15,7 @@ pub fn main() { test00(); }
 fn test00() {
     let mut r: int = 0;
     let mut sum: int = 0;
-    let p = comm::PortSet();
+    let p = comm::PortSet::new();
     let c0 = p.chan();
     let c1 = p.chan();
     let c2 = p.chan();

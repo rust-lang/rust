@@ -38,7 +38,7 @@ fn fib(n: int) -> int {
         } else if n <= 2 {
             c.send(1);
         } else {
-            let p = PortSet();
+            let p = PortSet::new();
             let ch = p.chan();
             task::spawn(|| pfib(ch, n - 1) );
             let ch = p.chan();

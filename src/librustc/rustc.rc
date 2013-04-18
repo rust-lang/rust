@@ -307,7 +307,7 @@ bug and need to present an error.
 pub fn monitor(+f: ~fn(diagnostic::Emitter)) {
     use core::comm::*;
     let (p, ch) = stream();
-    let ch = SharedChan(ch);
+    let ch = SharedChan::new(ch);
     let ch_capture = ch.clone();
     match do task::try || {
         let ch = ch_capture.clone();

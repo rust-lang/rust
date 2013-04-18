@@ -446,7 +446,7 @@ fn run_tests(opts: &TestOpts,
     let mut pending = 0;
 
     let (p, ch) = stream();
-    let ch = SharedChan(ch);
+    let ch = SharedChan::new(ch);
 
     while pending > 0 || !remaining.is_empty() {
         while pending < concurrency && !remaining.is_empty() {
@@ -797,7 +797,7 @@ mod tests {
             testfn: DynTestFn(|| f()),
         };
         let (p, ch) = stream();
-        let ch = SharedChan(ch);
+        let ch = SharedChan::new(ch);
         run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert!(res != TrOk);
@@ -815,7 +815,7 @@ mod tests {
             testfn: DynTestFn(|| f()),
         };
         let (p, ch) = stream();
-        let ch = SharedChan(ch);
+        let ch = SharedChan::new(ch);
         run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert!(res == TrIgnored);
@@ -834,7 +834,7 @@ mod tests {
             testfn: DynTestFn(|| f()),
         };
         let (p, ch) = stream();
-        let ch = SharedChan(ch);
+        let ch = SharedChan::new(ch);
         run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert!(res == TrOk);
@@ -852,7 +852,7 @@ mod tests {
             testfn: DynTestFn(|| f()),
         };
         let (p, ch) = stream();
-        let ch = SharedChan(ch);
+        let ch = SharedChan::new(ch);
         run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert!(res == TrFailed);

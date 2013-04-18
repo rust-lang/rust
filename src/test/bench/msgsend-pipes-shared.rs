@@ -58,7 +58,7 @@ fn run(args: &[~str]) {
     let (from_child, to_parent) = comm::stream();
     let (from_parent, to_child) = comm::stream();
 
-    let to_child = SharedChan(to_child);
+    let to_child = SharedChan::new(to_child);
 
     let size = uint::from_str(args[1]).get();
     let workers = uint::from_str(args[2]).get();

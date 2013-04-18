@@ -232,7 +232,7 @@ fn write_file(path: &Path, s: ~str) {
 pub fn future_writer_factory(
 ) -> (WriterFactory, Port<(doc::Page, ~str)>) {
     let (markdown_po, markdown_ch) = stream();
-    let markdown_ch = SharedChan(markdown_ch);
+    let markdown_ch = SharedChan::new(markdown_ch);
     let writer_factory: WriterFactory = |page| {
         let (writer_po, writer_ch) = comm::stream();
         let markdown_ch = markdown_ch.clone();
