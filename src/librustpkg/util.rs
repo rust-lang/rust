@@ -528,7 +528,8 @@ pub fn compile_crate_from_input(input: driver::input,
         }
         None => {
             debug!("Calling compile_upto, outputs = %?", outputs);
-            let (crate, _) = driver::compile_upto(sess, cfg, input, driver::cu_parse, Some(outputs));
+            let (crate, _) = driver::compile_upto(sess, cfg, input,
+                                                  driver::cu_parse, Some(outputs));
 
             // Inject the inferred link_meta info if it's not already there
             // (assumes that name and vers are the only linkage metas)
