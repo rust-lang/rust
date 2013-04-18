@@ -624,10 +624,14 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             let sigil = ty::ty_closure_sigil(expr_ty);
             match blk.node {
                 ast::expr_fn_block(ref decl, ref body) => {
-                    return closure::trans_expr_fn(bcx, sigil,
-                                                  decl, body,
-                                                  expr.id, blk.id,
-                                                  Some(None), dest);
+                    return closure::trans_expr_fn(bcx,
+                                                  sigil,
+                                                  decl,
+                                                  body,
+                                                  expr.id,
+                                                  blk.id,
+                                                  Some(None),
+                                                  dest);
                 }
                 _ => {
                     bcx.sess().impossible_case(
@@ -655,15 +659,30 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         }
         ast::expr_binary(_, lhs, rhs) => {
             // if not overloaded, would be RvalueDatumExpr
-            return trans_overloaded_op(bcx, expr, lhs, ~[rhs], dest);
+            return trans_overloaded_op(bcx,
+                                       expr,
+                                       lhs,
+                                       ~[rhs],
+                                       expr_ty(bcx, expr),
+                                       dest);
         }
         ast::expr_unary(_, subexpr) => {
             // if not overloaded, would be RvalueDatumExpr
-            return trans_overloaded_op(bcx, expr, subexpr, ~[], dest);
+            return trans_overloaded_op(bcx,
+                                       expr,
+                                       subexpr,
+                                       ~[],
+                                       expr_ty(bcx, expr),
+                                       dest);
         }
         ast::expr_index(base, idx) => {
             // if not overloaded, would be RvalueDatumExpr
-            return trans_overloaded_op(bcx, expr, base, ~[idx], dest);
+            return trans_overloaded_op(bcx,
+                                       expr,
+                                       base,
+                                       ~[idx],
+                                       expr_ty(bcx, expr),
+                                       dest);
         }
         ast::expr_cast(val, _) => {
             match ty::get(node_id_type(bcx, expr.id)).sty {
@@ -1554,15 +1573,24 @@ fn trans_overloaded_op(bcx: block,
                        expr: @ast::expr,
                        rcvr: @ast::expr,
                        +args: ~[@ast::expr],
-                       dest: Dest) -> block
-{
+                       ret_ty: ty::t,
+                       dest: Dest)
+                       -> block {
     let origin = *bcx.ccx().maps.method_map.get(&expr.id);
     let fty = node_id_type(bcx, expr.callee_id);
-    return callee::trans_call_inner(
-        bcx, expr.info(), fty,
-        expr_ty(bcx, expr),
-        |bcx| meth::trans_method_callee(bcx, expr.callee_id, rcvr, origin),
-        callee::ArgExprs(args), dest, DoAutorefArg);
+    callee::trans_call_inner(bcx,
+                             expr.info(),
+                             fty,
+                             ret_ty,
+                             |bcx| {
+                                meth::trans_method_callee(bcx,
+                                                          expr.callee_id,
+                                                          rcvr,
+                                                          origin)
+                             },
+                             callee::ArgExprs(args),
+                             dest,
+                             DoAutorefArg)
 }
 
 fn int_cast(bcx: block, lldsttype: TypeRef, llsrctype: TypeRef,
@@ -1697,7 +1725,11 @@ fn trans_assign_op(bcx: block,
     if bcx.ccx().maps.method_map.find(&expr.id).is_some() {
         // FIXME(#2528) evaluates the receiver twice!!
         let scratch = scratch_datum(bcx, dst_datum.ty, false);
-        let bcx = trans_overloaded_op(bcx, expr, dst, ~[src],
+        let bcx = trans_overloaded_op(bcx,
+                                      expr,
+                                      dst,
+                                      ~[src],
+                                      dst_datum.ty,
                                       SaveIn(scratch.val));
         return scratch.move_to_datum(bcx, DROP_EXISTING, dst_datum);
     }

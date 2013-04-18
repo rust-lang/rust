@@ -31,7 +31,7 @@
  * value stored in the datum is indicated in the field `ty`.
  *
  * Generally speaking, you probably do not want to access the `val` field
- * unless you know what mode the value is in.  Intead you should use one
+ * unless you know what mode the value is in.  Instead you should use one
  * of the following accessors:
  *
  * - `to_value_llval()` converts to by-value

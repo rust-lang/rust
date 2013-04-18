@@ -1156,8 +1156,7 @@ pub unsafe fn set_data_for_uv_loop(loop_ptr: *libc::c_void,
 pub unsafe fn get_data_for_uv_handle<T>(handle: *T) -> *libc::c_void {
     return rustrt::rust_uv_get_data_for_uv_handle(handle as *libc::c_void);
 }
-pub unsafe fn set_data_for_uv_handle<T, U>(handle: *T,
-                    data: *U) {
+pub unsafe fn set_data_for_uv_handle<T, U>(handle: *T, data: *U) {
     rustrt::rust_uv_set_data_for_uv_handle(handle as *libc::c_void,
                                            data as *libc::c_void);
 }

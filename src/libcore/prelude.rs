@@ -46,7 +46,7 @@ pub use to_str::ToStr;
 pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
 pub use vec::{CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
-pub use vec::{OwnedVector, OwnedCopyableVector};
+pub use vec::{OwnedVector, OwnedCopyableVector, MutableVector};
 pub use io::{Reader, ReaderUtil, Writer, WriterUtil};
 
 /* Reexported runtime types */
