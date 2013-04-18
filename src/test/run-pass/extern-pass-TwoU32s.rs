@@ -8,21 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we ignore modes when calling extern functions.
+// Test a foreign function that accepts and returns a struct
+// by value.
 
 #[deriving(Eq)]
-struct TwoU64s {
-    one: u64, two: u64
+struct TwoU32s {
+    one: u32, two: u32
 }
 
 pub extern {
-    pub fn rust_dbg_extern_identity_TwoU64s(&&u: TwoU64s) -> TwoU64s;
+    pub fn rust_dbg_extern_identity_TwoU32s(v: TwoU32s) -> TwoU32s;
 }
 
 pub fn main() {
     unsafe {
-        let x = TwoU64s {one: 22, two: 23};
-        let y = rust_dbg_extern_identity_TwoU64s(x);
+        let x = TwoU32s {one: 22, two: 23};
+        let y = rust_dbg_extern_identity_TwoU32s(x);
         assert!(x == y);
     }
 }
