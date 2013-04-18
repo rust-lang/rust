@@ -234,13 +234,14 @@ impl Ctx {
                     }
                 };
 
-                // Find crates inside the workspace
+                // If there was a package script, it should have finished
+                // the build already. Otherwise...
                 if !custom {
+                    // Find crates inside the workspace
                     src.find_crates();
+                    // Build it!
+                    src.build(&dst_dir, cfgs);
                 }
-
-                // Build it!
-                src.build(&dst_dir, cfgs);
             }
             ~"clean" => {
                 if args.len() < 1 {
