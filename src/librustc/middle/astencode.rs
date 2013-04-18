@@ -417,6 +417,7 @@ impl tr for ast::def {
           ast::def_variant(e_did, v_did) => {
             ast::def_variant(e_did.tr(xcx), v_did.tr(xcx))
           }
+          ast::def_trait(did) => ast::def_trait(did.tr(xcx)),
           ast::def_ty(did) => ast::def_ty(did.tr(xcx)),
           ast::def_prim_ty(p) => ast::def_prim_ty(p),
           ast::def_ty_param(did, v) => ast::def_ty_param(did.tr(xcx), v),
@@ -474,9 +475,12 @@ impl tr for ty::Region {
     fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::Region {
         match *self {
             ty::re_bound(br) => ty::re_bound(br.tr(xcx)),
-            ty::re_free(id, br) => ty::re_free(xcx.tr_id(id), br.tr(xcx)),
             ty::re_scope(id) => ty::re_scope(xcx.tr_id(id)),
             ty::re_static | ty::re_infer(*) => *self,
+            ty::re_free(ref fr) => {
+                ty::re_free(ty::FreeRegion {scope_id: xcx.tr_id(fr.scope_id),
+                                            bound_region: fr.bound_region.tr(xcx)})
+            }
         }
     }
 }
@@ -555,6 +559,7 @@ trait read_method_map_entry_helper {
                             -> method_map_entry;
 }
 
+#[cfg(stage0)]
 fn encode_method_map_entry(ecx: @e::EncodeContext,
                               ebml_w: writer::Encoder,
                               mme: method_map_entry) {
@@ -571,7 +576,27 @@ fn encode_method_map_entry(ecx: @e::EncodeContext,
     }
 }
 
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+fn encode_method_map_entry(ecx: @e::EncodeContext,
+                              ebml_w: writer::Encoder,
+                              mme: method_map_entry) {
+    do ebml_w.emit_struct("method_map_entry", 3) {
+        do ebml_w.emit_struct_field("self_arg", 0u) {
+            ebml_w.emit_arg(ecx, mme.self_arg);
+        }
+        do ebml_w.emit_struct_field("explicit_self", 2u) {
+            mme.explicit_self.encode(&ebml_w);
+        }
+        do ebml_w.emit_struct_field("origin", 1u) {
+            mme.origin.encode(&ebml_w);
+        }
+    }
+}
+
 impl read_method_map_entry_helper for reader::Decoder {
+    #[cfg(stage0)]
     fn read_method_map_entry(&self, xcx: @ExtendedDecodeContext)
         -> method_map_entry {
         do self.read_struct("method_map_entry", 3) {
@@ -584,6 +609,29 @@ impl read_method_map_entry_helper for reader::Decoder {
                     self_type
                 }),
                 origin: self.read_field(~"origin", 1u, || {
+                    let method_origin: method_origin =
+                        Decodable::decode(self);
+                    method_origin.tr(xcx)
+                }),
+            }
+        }
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn read_method_map_entry(&self, xcx: @ExtendedDecodeContext)
+        -> method_map_entry {
+        do self.read_struct("method_map_entry", 3) {
+            method_map_entry {
+                self_arg: self.read_struct_field("self_arg", 0u, || {
+                    self.read_arg(xcx)
+                }),
+                explicit_self: self.read_struct_field("explicit_self", 2u, || {
+                    let self_type: ast::self_ty_ = Decodable::decode(self);
+                    self_type
+                }),
+                origin: self.read_struct_field("origin", 1u, || {
                     let method_origin: method_origin =
                         Decodable::decode(self);
                     method_origin.tr(xcx)
@@ -740,7 +788,9 @@ trait ebml_writer_helpers {
     fn emit_ty(&self, ecx: @e::EncodeContext, ty: ty::t);
     fn emit_vstore(&self, ecx: @e::EncodeContext, vstore: ty::vstore);
     fn emit_tys(&self, ecx: @e::EncodeContext, tys: ~[ty::t]);
-    fn emit_bounds(&self, ecx: @e::EncodeContext, bs: ty::param_bounds);
+    fn emit_type_param_def(&self,
+                           ecx: @e::EncodeContext,
+                           type_param_def: &ty::TypeParameterDef);
     fn emit_tpbt(&self, ecx: @e::EncodeContext,
                  tpbt: ty::ty_param_bounds_and_ty);
 }
@@ -770,24 +820,60 @@ impl ebml_writer_helpers for writer::Encoder {
         }
     }
 
-    fn emit_bounds(&self, ecx: @e::EncodeContext, bs: ty::param_bounds) {
+    fn emit_type_param_def(&self,
+                           ecx: @e::EncodeContext,
+                           type_param_def: &ty::TypeParameterDef) {
         do self.emit_opaque {
-            tyencode::enc_bounds(self.writer, ecx.ty_str_ctxt(), bs)
+            tyencode::enc_type_param_def(self.writer, ecx.ty_str_ctxt(),
+                                         type_param_def)
         }
     }
 
+    #[cfg(stage0)]
     fn emit_tpbt(&self, ecx: @e::EncodeContext,
                  tpbt: ty::ty_param_bounds_and_ty) {
-        do self.emit_struct("ty_param_bounds_and_ty", 3) {
-            do self.emit_field(~"bounds", 0) {
-                do self.emit_from_vec(*tpbt.bounds) |bs| {
-                    self.emit_bounds(ecx, *bs);
+        do self.emit_struct("ty_param_bounds_and_ty", 2) {
+            do self.emit_field(~"generics", 0) {
+                do self.emit_struct("Generics", 2) {
+                    do self.emit_field(~"type_param_defs", 0) {
+                        do self.emit_from_vec(*tpbt.generics.type_param_defs)
+                            |type_param_def|
+                        {
+                            self.emit_type_param_def(ecx, type_param_def);
+                        }
+                    }
+                    do self.emit_field(~"region_param", 1) {
+                        tpbt.generics.region_param.encode(self);
+                    }
                 }
             }
-            do self.emit_field(~"region_param", 1u) {
-                tpbt.region_param.encode(self);
+            do self.emit_field(~"ty", 1) {
+                self.emit_ty(ecx, tpbt.ty);
             }
-            do self.emit_field(~"ty", 2u) {
+        }
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn emit_tpbt(&self, ecx: @e::EncodeContext,
+                 tpbt: ty::ty_param_bounds_and_ty) {
+        do self.emit_struct("ty_param_bounds_and_ty", 2) {
+            do self.emit_struct_field("generics", 0) {
+                do self.emit_struct("Generics", 2) {
+                    do self.emit_struct_field("type_param_defs", 0) {
+                        do self.emit_from_vec(*tpbt.generics.type_param_defs)
+                            |type_param_def|
+                        {
+                            self.emit_type_param_def(ecx, type_param_def);
+                        }
+                    }
+                    do self.emit_struct_field("region_param", 1) {
+                        tpbt.generics.region_param.encode(self);
+                    }
+                }
+            }
+            do self.emit_struct_field("ty", 1) {
                 self.emit_ty(ecx, tpbt.ty);
             }
         }
@@ -884,11 +970,11 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         }
     }
 
-    for tcx.ty_param_bounds.find(&id).each |&pbs| {
-        do ebml_w.tag(c::tag_table_param_bounds) {
+    for tcx.ty_param_defs.find(&id).each |&type_param_def| {
+        do ebml_w.tag(c::tag_table_param_defs) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                ebml_w.emit_bounds(ecx, *pbs)
+                ebml_w.emit_type_param_def(ecx, type_param_def)
             }
         }
     }
@@ -985,7 +1071,7 @@ trait ebml_decoder_decoder_helpers {
     fn read_arg(&self, xcx: @ExtendedDecodeContext) -> ty::arg;
     fn read_ty(&self, xcx: @ExtendedDecodeContext) -> ty::t;
     fn read_tys(&self, xcx: @ExtendedDecodeContext) -> ~[ty::t];
-    fn read_bounds(&self, xcx: @ExtendedDecodeContext) -> @~[ty::param_bound];
+    fn read_type_param_def(&self, xcx: @ExtendedDecodeContext) -> ty::TypeParameterDef;
     fn read_ty_param_bounds_and_ty(&self, xcx: @ExtendedDecodeContext)
                                 -> ty::ty_param_bounds_and_ty;
     fn convert_def_id(&self, xcx: @ExtendedDecodeContext,
@@ -1033,27 +1119,56 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
         self.read_to_vec(|| self.read_ty(xcx) )
     }
 
-    fn read_bounds(&self, xcx: @ExtendedDecodeContext)
-                  -> @~[ty::param_bound] {
+    fn read_type_param_def(&self, xcx: @ExtendedDecodeContext) -> ty::TypeParameterDef {
         do self.read_opaque |doc| {
-            tydecode::parse_bounds_data(
+            tydecode::parse_type_param_def_data(
                 doc.data, doc.start, xcx.dcx.cdata.cnum, xcx.dcx.tcx,
                 |s, a| self.convert_def_id(xcx, s, a))
         }
     }
 
+    #[cfg(stage0)]
     fn read_ty_param_bounds_and_ty(&self, xcx: @ExtendedDecodeContext)
         -> ty::ty_param_bounds_and_ty
     {
-        do self.read_struct("ty_param_bounds_and_ty", 3) {
+        do self.read_struct("ty_param_bounds_and_ty", 2) {
             ty::ty_param_bounds_and_ty {
-                bounds: self.read_field(~"bounds", 0u, || {
-                    @self.read_to_vec(|| self.read_bounds(xcx) )
-                }),
-                region_param: self.read_field(~"region_param", 1u, || {
-                    Decodable::decode(self)
-                }),
-                ty: self.read_field(~"ty", 2u, || {
+                generics: do self.read_struct("Generics", 2) {
+                    ty::Generics {
+                        type_param_defs: self.read_field("type_param_defs", 0, || {
+                            @self.read_to_vec(|| self.read_type_param_def(xcx))
+                        }),
+                        region_param: self.read_field(~"region_param", 1, || {
+                            Decodable::decode(self)
+                        })
+                    }
+                },
+                ty: self.read_field(~"ty", 1, || {
+                    self.read_ty(xcx)
+                })
+            }
+        }
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn read_ty_param_bounds_and_ty(&self, xcx: @ExtendedDecodeContext)
+        -> ty::ty_param_bounds_and_ty
+    {
+        do self.read_struct("ty_param_bounds_and_ty", 2) {
+            ty::ty_param_bounds_and_ty {
+                generics: do self.read_struct("Generics", 2) {
+                    ty::Generics {
+                        type_param_defs: self.read_struct_field("type_param_defs", 0, || {
+                            @self.read_to_vec(|| self.read_type_param_def(xcx))
+                        }),
+                        region_param: self.read_struct_field(~"region_param", 1, || {
+                            Decodable::decode(self)
+                        })
+                    }
+                },
+                ty: self.read_struct_field("ty", 1, || {
                     self.read_ty(xcx)
                 })
             }
@@ -1125,9 +1240,9 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                 let tpbt = val_dsr.read_ty_param_bounds_and_ty(xcx);
                 let lid = ast::def_id { crate: ast::local_crate, node: id };
                 dcx.tcx.tcache.insert(lid, tpbt);
-            } else if tag == (c::tag_table_param_bounds as uint) {
-                let bounds = val_dsr.read_bounds(xcx);
-                dcx.tcx.ty_param_bounds.insert(id, bounds);
+            } else if tag == (c::tag_table_param_defs as uint) {
+                let bounds = val_dsr.read_type_param_def(xcx);
+                dcx.tcx.ty_param_defs.insert(id, bounds);
             } else if tag == (c::tag_table_last_use as uint) {
                 let ids = val_dsr.read_to_vec(|| {
                     xcx.tr_id(val_dsr.read_int())

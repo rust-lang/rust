@@ -10,7 +10,7 @@
 
 
 #[link(name = "rustc",
-       vers = "0.6",
+       vers = "0.7-pre",
        uuid = "0ce89b41-2f92-459e-bbc1-8f5fe32f16cf",
        url = "https://github.com/mozilla/rust/tree/master/src/rustc")];
 
@@ -27,9 +27,9 @@
 
 #[no_core];
 
-extern mod core(vers = "0.6");
-extern mod std(vers = "0.6");
-extern mod syntax(vers = "0.6");
+extern mod core(vers = "0.7-pre");
+extern mod std(vers = "0.7-pre");
+extern mod syntax(vers = "0.7-pre");
 
 use core::prelude::*;
 
@@ -83,6 +83,7 @@ pub mod middle {
         pub mod asm;
     }
     pub mod ty;
+    pub mod subst;
     pub mod resolve;
     #[path = "typeck/mod.rs"]
     pub mod typeck;
@@ -176,7 +177,7 @@ Available lint options:
                      padded(max_key, ~"name"), ~"default", ~"meaning"));
     io::println(fmt!("    %s  %7.7s  %s\n",
                      padded(max_key, ~"----"), ~"-------", ~"-------"));
-    for lint_dict.each |&(k, v)| {
+    for lint_dict.each |k, v| {
         let k = str::replace(*k, ~"_", ~"-");
         io::println(fmt!("    %s  %7.7s  %s",
                          padded(max_key, k),

@@ -55,8 +55,36 @@ pub impl<A:Copy> Future<A> {
 }
 
 pub impl<A> Future<A> {
-
+    #[cfg(stage0)]
     fn get_ref(&self) -> &'self A {
+        /*!
+        * Executes the future's closure and then returns a borrowed
+        * pointer to the result.  The borrowed pointer lasts as long as
+        * the future.
+        */
+        unsafe {
+            match self.state {
+                Forced(ref mut v) => { return cast::transmute(v); }
+                Evaluating => fail!(~"Recursive forcing of future!"),
+                Pending(_) => {}
+            }
+
+            let mut state = Evaluating;
+            self.state <-> state;
+            match state {
+                Forced(_) | Evaluating => fail!(~"Logic error."),
+                Pending(f) => {
+                    self.state = Forced(f());
+                    self.get_ref()
+                }
+            }
+        }
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn get_ref<'a>(&'a self) -> &'a A {
         /*!
         * Executes the future's closure and then returns a borrowed
         * pointer to the result.  The borrowed pointer lasts as long as
@@ -144,7 +172,7 @@ pub fn spawn<A:Owned>(blk: ~fn() -> A) -> Future<A> {
 
 #[allow(non_implicitly_copyable_typarams)]
 #[cfg(test)]
-pub mod test {
+mod test {
     use core::prelude::*;
 
     use future::*;
@@ -153,13 +181,13 @@ pub mod test {
     use core::task;
 
     #[test]
-    pub fn test_from_value() {
+    fn test_from_value() {
         let f = from_value(~"snail");
         assert!(f.get() == ~"snail");
     }
 
     #[test]
-    pub fn test_from_port() {
+    fn test_from_port() {
         let (ch, po) = oneshot::init();
         send_one(ch, ~"whale");
         let f = from_port(po);
@@ -167,25 +195,25 @@ pub mod test {
     }
 
     #[test]
-    pub fn test_from_fn() {
+    fn test_from_fn() {
         let f = from_fn(|| ~"brail");
         assert!(f.get() == ~"brail");
     }
 
     #[test]
-    pub fn test_interface_get() {
+    fn test_interface_get() {
         let f = from_value(~"fail");
         assert!(f.get() == ~"fail");
     }
 
     #[test]
-    pub fn test_get_ref_method() {
+    fn test_get_ref_method() {
         let f = from_value(22);
         assert!(*f.get_ref() == 22);
     }
 
     #[test]
-    pub fn test_spawn() {
+    fn test_spawn() {
         let f = spawn(|| ~"bale");
         assert!(f.get() == ~"bale");
     }
@@ -193,13 +221,13 @@ pub mod test {
     #[test]
     #[should_fail]
     #[ignore(cfg(target_os = "win32"))]
-    pub fn test_futurefail() {
+    fn test_futurefail() {
         let f = spawn(|| fail!());
         let _x: ~str = f.get();
     }
 
     #[test]
-    pub fn test_sendable_future() {
+    fn test_sendable_future() {
         let expected = ~"schlorf";
         let f = do spawn { copy expected };
         do task::spawn || {

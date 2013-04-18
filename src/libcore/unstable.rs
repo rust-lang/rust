@@ -16,6 +16,7 @@ use comm::{GenericChan, GenericPort};
 use prelude::*;
 use task;
 use task::atomically;
+use self::finally::Finally;
 
 #[path = "unstable/at_exit.rs"]
 pub mod at_exit;
@@ -106,13 +107,13 @@ fn compare_and_swap(address: &mut int, oldval: int, newval: int) -> bool {
  ****************************************************************************/
 
 struct ArcData<T> {
-    mut count:     libc::intptr_t,
+    count:     libc::intptr_t,
     // FIXME(#3224) should be able to make this non-option to save memory
-    mut data:      Option<T>,
+    data:      Option<T>,
 }
 
 struct ArcDestruct<T> {
-    mut data: *libc::c_void,
+    data: *libc::c_void,
 }
 
 #[unsafe_destructor]
@@ -120,7 +121,7 @@ impl<T> Drop for ArcDestruct<T>{
     fn finalize(&self) {
         unsafe {
             do task::unkillable {
-                let data: ~ArcData<T> = cast::reinterpret_cast(&self.data);
+                let mut data: ~ArcData<T> = cast::reinterpret_cast(&self.data);
                 let new_count =
                     intrinsics::atomic_xsub(&mut data.count, 1) - 1;
                 assert!(new_count >= 0);
@@ -151,45 +152,37 @@ pub type SharedMutableState<T> = ArcDestruct<T>;
 pub unsafe fn shared_mutable_state<T:Owned>(data: T) ->
         SharedMutableState<T> {
     let data = ~ArcData { count: 1, data: Some(data) };
-    unsafe {
-        let ptr = cast::transmute(data);
-        ArcDestruct(ptr)
-    }
+    let ptr = cast::transmute(data);
+    ArcDestruct(ptr)
 }
 
 #[inline(always)]
 pub unsafe fn get_shared_mutable_state<T:Owned>(
     rc: *SharedMutableState<T>) -> *mut T
 {
-    unsafe {
-        let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
-        assert!(ptr.count > 0);
-        let r = cast::transmute(ptr.data.get_ref());
-        cast::forget(ptr);
-        return r;
-    }
+    let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
+    assert!(ptr.count > 0);
+    let r = cast::transmute(ptr.data.get_ref());
+    cast::forget(ptr);
+    return r;
 }
 #[inline(always)]
 pub unsafe fn get_shared_immutable_state<'a,T:Owned>(
         rc: &'a SharedMutableState<T>) -> &'a T {
-    unsafe {
-        let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
-        assert!(ptr.count > 0);
-        // Cast us back into the correct region
-        let r = cast::transmute_region(ptr.data.get_ref());
-        cast::forget(ptr);
-        return r;
-    }
+    let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
+    assert!(ptr.count > 0);
+    // Cast us back into the correct region
+    let r = cast::transmute_region(ptr.data.get_ref());
+    cast::forget(ptr);
+    return r;
 }
 
 pub unsafe fn clone_shared_mutable_state<T:Owned>(rc: &SharedMutableState<T>)
         -> SharedMutableState<T> {
-    unsafe {
-        let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
-        let new_count = intrinsics::atomic_xadd(&mut ptr.count, 1) + 1;
-        assert!(new_count >= 2);
-        cast::forget(ptr);
-    }
+    let mut ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
+    let new_count = intrinsics::atomic_xadd(&mut ptr.count, 1) + 1;
+    assert!(new_count >= 2);
+    cast::forget(ptr);
     ArcDestruct((*rc).data)
 }
 
@@ -229,30 +222,18 @@ fn LittleLock() -> LittleLock {
 pub impl LittleLock {
     #[inline(always)]
     unsafe fn lock<T>(&self, f: &fn() -> T) -> T {
-        struct Unlock {
-            l: rust_little_lock,
-            drop {
-                unsafe {
-                    rustrt::rust_unlock_little_lock(self.l);
-                }
-            }
-        }
-
-        fn Unlock(l: rust_little_lock) -> Unlock {
-            Unlock {
-                l: l
-            }
-        }
-
         do atomically {
             rustrt::rust_lock_little_lock(self.l);
-            let _r = Unlock(self.l);
-            f()
+            do (|| {
+                f()
+            }).finally {
+                rustrt::rust_unlock_little_lock(self.l);
+            }
         }
     }
 }
 
-struct ExData<T> { lock: LittleLock, mut failed: bool, mut data: T, }
+struct ExData<T> { lock: LittleLock, failed: bool, data: T, }
 /**
  * An arc over mutable data that is protected by a lock. For library use only.
  */
@@ -260,7 +241,7 @@ pub struct Exclusive<T> { x: SharedMutableState<ExData<T>> }
 
 pub fn exclusive<T:Owned>(user_data: T) -> Exclusive<T> {
     let data = ExData {
-        lock: LittleLock(), mut failed: false, mut data: user_data
+        lock: LittleLock(), failed: false, data: user_data
     };
     Exclusive { x: unsafe { shared_mutable_state(data) } }
 }
@@ -305,14 +286,14 @@ pub impl<T:Owned> Exclusive<T> {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use comm;
     use super::exclusive;
     use task;
     use uint;
 
     #[test]
-    pub fn exclusive_arc() {
+    fn exclusive_arc() {
         let mut futures = ~[];
 
         let num_tasks = 10;
@@ -343,7 +324,7 @@ pub mod tests {
     }
 
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    pub fn exclusive_poison() {
+    fn exclusive_poison() {
         // Tests that if one task fails inside of an exclusive, subsequent
         // accesses will also fail.
         let x = exclusive(1);

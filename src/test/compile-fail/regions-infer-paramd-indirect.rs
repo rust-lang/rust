@@ -18,12 +18,12 @@ struct c<'self> {
     f: @b<'self>
 }
 
-trait set_f {
+trait set_f<'self> {
     fn set_f_ok(&self, b: @b<'self>);
     fn set_f_bad(&self, b: @b);
 }
 
-impl<'self> set_f for c<'self> {
+impl<'self> set_f<'self> for c<'self> {
     fn set_f_ok(&self, b: @b<'self>) {
         self.f = b;
     }

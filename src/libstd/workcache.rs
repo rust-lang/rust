@@ -24,7 +24,7 @@ use core::pipes::recv;
 use core::prelude::*;
 use core::result;
 use core::run;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::task;
 use core::to_bytes;
 
@@ -136,16 +136,16 @@ pub impl WorkKey {
     }
 }
 
-struct WorkMap(LinearMap<WorkKey, ~str>);
+struct WorkMap(HashMap<WorkKey, ~str>);
 
 impl WorkMap {
-    fn new() -> WorkMap { WorkMap(LinearMap::new()) }
+    fn new() -> WorkMap { WorkMap(HashMap::new()) }
 }
 
 impl<S:Encoder> Encodable<S> for WorkMap {
     fn encode(&self, s: &S) {
         let mut d = ~[];
-        for self.each |&(k, v)| {
+        for self.each |k, v| {
             d.push((copy *k, copy *v))
         }
         sort::tim_sort(d);
@@ -166,7 +166,7 @@ impl<D:Decoder> Decodable<D> for WorkMap {
 
 struct Database {
     db_filename: Path,
-    db_cache: LinearMap<~str, ~str>,
+    db_cache: HashMap<~str, ~str>,
     db_dirty: bool
 }
 
@@ -212,7 +212,7 @@ struct Context {
     db: @mut Database,
     logger: @mut Logger,
     cfg: @json::Object,
-    freshness: LinearMap<~str,@fn(&str,&str)->bool>
+    freshness: HashMap<~str,@fn(&str,&str)->bool>
 }
 
 struct Prep {
@@ -267,7 +267,7 @@ pub impl Context {
             db: db,
             logger: lg,
             cfg: cfg,
-            freshness: LinearMap::new()
+            freshness: HashMap::new()
         }
     }
 
@@ -319,7 +319,7 @@ impl TPrep for Prep {
     }
 
     fn all_fresh(&self, cat: &str, map: &WorkMap) -> bool {
-        for map.each |&(k, v)| {
+        for map.each |k, v| {
             if ! self.is_fresh(cat, k.kind, k.name, *v) {
                 return false;
             }
@@ -411,10 +411,10 @@ fn test() {
     use core::io::WriterUtil;
 
     let db = @mut Database { db_filename: Path("db.json"),
-                             db_cache: LinearMap::new(),
+                             db_cache: HashMap::new(),
                              db_dirty: false };
     let lg = @mut Logger { a: () };
-    let cfg = @LinearMap::new();
+    let cfg = @HashMap::new();
     let cx = @Context::new(db, lg, cfg);
     let w:Work<~str> = do cx.prep("test1") |prep| {
         let pth = Path("foo.c");

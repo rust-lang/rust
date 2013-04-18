@@ -91,7 +91,7 @@ fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
             let vtable_map = fcx.ccx.vtable_map;
             vtable_map.insert(id, r_origins);
             debug!("writeback::resolve_vtable_map_entry(id=%d, vtables=%?)",
-                   id, r_origins.map(|v| v.to_str(fcx.tcx())));
+                   id, r_origins.repr(fcx.tcx()));
         }
     }
 

@@ -144,6 +144,16 @@ pub struct crate_metadata {
     data: ~[u8]
 }
 
+// The type of entry function, so
+// users can have their own entry
+// functions that don't start a
+// scheduler
+#[deriving(Eq)]
+pub enum EntryFnType {
+    EntryMain,
+    EntryStart
+}
+
 pub struct Session_ {
     targ_cfg: @config,
     opts: @options,
@@ -151,7 +161,8 @@ pub struct Session_ {
     parse_sess: @mut ParseSess,
     codemap: @codemap::CodeMap,
     // For a library crate, this is always none
-    main_fn: @mut Option<(node_id, codemap::span)>,
+    entry_fn: @mut Option<(node_id, codemap::span)>,
+    entry_type: @mut Option<EntryFnType>,
     span_diagnostic: @diagnostic::span_handler,
     filesearch: @filesearch::FileSearch,
     building_library: @mut bool,
@@ -343,14 +354,14 @@ pub fn sess_os_to_meta_os(os: os) -> metadata::loader::os {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use driver::session::{bin_crate, building_library, lib_crate};
     use driver::session::{unknown_crate};
 
     use syntax::ast;
     use syntax::codemap;
 
-    pub fn make_crate_type_attr(+t: ~str) -> ast::attribute {
+    fn make_crate_type_attr(+t: ~str) -> ast::attribute {
         codemap::respan(codemap::dummy_sp(), ast::attribute_ {
             style: ast::attr_outer,
             value: @codemap::respan(codemap::dummy_sp(),
@@ -362,7 +373,7 @@ pub mod test {
         })
     }
 
-    pub fn make_crate(with_bin: bool, with_lib: bool) -> @ast::crate {
+    fn make_crate(with_bin: bool, with_lib: bool) -> @ast::crate {
         let mut attrs = ~[];
         if with_bin { attrs += ~[make_crate_type_attr(~"bin")]; }
         if with_lib { attrs += ~[make_crate_type_attr(~"lib")]; }
@@ -374,43 +385,43 @@ pub mod test {
     }
 
     #[test]
-    pub fn bin_crate_type_attr_results_in_bin_output() {
+    fn bin_crate_type_attr_results_in_bin_output() {
         let crate = make_crate(true, false);
         assert!(!building_library(unknown_crate, crate, false));
     }
 
     #[test]
-    pub fn lib_crate_type_attr_results_in_lib_output() {
+    fn lib_crate_type_attr_results_in_lib_output() {
         let crate = make_crate(false, true);
         assert!(building_library(unknown_crate, crate, false));
     }
 
     #[test]
-    pub fn bin_option_overrides_lib_crate_type() {
+    fn bin_option_overrides_lib_crate_type() {
         let crate = make_crate(false, true);
         assert!(!building_library(bin_crate, crate, false));
     }
 
     #[test]
-    pub fn lib_option_overrides_bin_crate_type() {
+    fn lib_option_overrides_bin_crate_type() {
         let crate = make_crate(true, false);
         assert!(building_library(lib_crate, crate, false));
     }
 
     #[test]
-    pub fn bin_crate_type_is_default() {
+    fn bin_crate_type_is_default() {
         let crate = make_crate(false, false);
         assert!(!building_library(unknown_crate, crate, false));
     }
 
     #[test]
-    pub fn test_option_overrides_lib_crate_type() {
+    fn test_option_overrides_lib_crate_type() {
         let crate = make_crate(false, true);
         assert!(!building_library(unknown_crate, crate, true));
     }
 
     #[test]
-    pub fn test_option_does_not_override_requested_lib_type() {
+    fn test_option_does_not_override_requested_lib_type() {
         let crate = make_crate(false, false);
         assert!(building_library(lib_crate, crate, true));
     }

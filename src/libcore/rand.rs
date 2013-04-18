@@ -150,7 +150,21 @@ pub struct Weighted<T> {
 
 pub trait RngUtil {
     fn gen<T:Rand>(&self) -> T;
-    /// Return a random int
+    /**
+     * Return a random int
+     *
+     * *Example*
+     *
+     * ~~~
+     *
+     * use core::rand::RngUtil;
+     *
+     * fn main() {
+     *     rng = rand::Rng();
+     *     println(fmt!("%d",rng.gen_int()));
+     * }
+     * ~~~
+     */
     fn gen_int(&self) -> int;
     fn gen_int_range(&self, start: int, end: int) -> int;
     /// Return a random i8
@@ -176,7 +190,21 @@ pub trait RngUtil {
     fn gen_u32(&self) -> u32;
     /// Return a random u64
     fn gen_u64(&self) -> u64;
-    /// Return a random float in the interval [0,1]
+    /**
+     * Return random float in the interval [0,1]
+     *
+     * *Example*
+     *
+     * ~~~
+     *
+     * use core::rand::RngUtil;
+     *
+     * fn main() {
+     *     rng = rand::Rng();
+     *     println(fmt!("%f",rng.gen_float()));
+     * }
+     * ~~~
+     */
     fn gen_float(&self) -> float;
     /// Return a random f32 in the interval [0,1]
     fn gen_f32(&self) -> f32;
@@ -188,38 +216,184 @@ pub trait RngUtil {
      * Return a char randomly chosen from chars, failing if chars is empty
      */
     fn gen_char_from(&self, chars: &str) -> char;
-    /// Return a random bool
+    /**
+     * Return a random bool
+     *
+     * *Example*
+     *
+     * ~~~
+     *
+     * use core::rand::RngUtil;
+     *
+     * fn main() {
+     *     rng = rand::Rng();
+     *     println(fmt!("%b",rng.gen_bool()));
+     * }
+     * ~~~
+     */
     fn gen_bool(&self) -> bool;
-    /// Return a bool with a 1 in n chance of true
+    /**
+     * Return a bool with a 1 in n chance of true
+     *
+     * *Example*
+     *
+     * ~~~
+     *
+     * use core::rand::RngUtil;
+     *
+     * fn main() {
+     *     rng = rand::Rng();
+     *     println(fmt!("%b",rng.gen_weighted_bool(3)));
+     * }
+     * ~~~
+     */
     fn gen_weighted_bool(&self, n: uint) -> bool;
     /**
      * Return a random string of the specified length composed of A-Z,a-z,0-9
+     *
+     * *Example*
+     *
+     * ~~~
+     *
+     * use core::rand::RngUtil;
+     *
+     * fn main() {
+     *     rng = rand::Rng();
+     *     println(rng.gen_str(8));
+     * }
+     * ~~~
      */
     fn gen_str(&self, len: uint) -> ~str;
-    /// Return a random byte string of the specified length
+    /**
+     * Return a random byte string of the specified length
+     *
+     * *Example*
+     *
+     * ~~~
+     *
+     * use core::rand::RngUtil;
+     *
+     * fn main() {
+     *     rng = rand::Rng();
+     *     println(fmt!("%?",rng.gen_bytes(8)));
+     * }
+     * ~~~
+     */
     fn gen_bytes(&self, len: uint) -> ~[u8];
-    /// Choose an item randomly, failing if values is empty
+    ///
+    /**
+     * Choose an item randomly, failing if values is empty
+     *
+     * *Example*
+     *
+     * ~~~
+     *
+     * use core::rand::RngUtil;
+     *
+     * fn main() {
+     *     rng = rand::Rng();
+     *     println(fmt!("%d",rng.choose([1,2,4,8,16,32])));
+     * }
+     * ~~~
+     */
     fn choose<T:Copy>(&self, values: &[T]) -> T;
     /// Choose Some(item) randomly, returning None if values is empty
     fn choose_option<T:Copy>(&self, values: &[T]) -> Option<T>;
     /**
      * Choose an item respecting the relative weights, failing if the sum of
      * the weights is 0
+     *
+     * *Example*
+     *
+     * ~~~
+     *
+     * use core::rand::RngUtil;
+     *
+     * fn main() {
+     *     rng = rand::Rng();
+     *     let x = [rand::Weighted {weight: 4, item: 'a'},
+     *              rand::Weighted {weight: 2, item: 'b'},
+     *              rand::Weighted {weight: 2, item: 'c'}];
+     *     println(fmt!("%c",rng.choose_weighted(x)));
+     * }
+     * ~~~
      */
     fn choose_weighted<T:Copy>(&self, v : &[Weighted<T>]) -> T;
     /**
      * Choose Some(item) respecting the relative weights, returning none if
      * the sum of the weights is 0
+     *
+     * *Example*
+     *
+     * ~~~
+     *
+     * use core::rand::RngUtil;
+     *
+     * fn main() {
+     *     rng = rand::Rng();
+     *     let x = [rand::Weighted {weight: 4, item: 'a'},
+     *              rand::Weighted {weight: 2, item: 'b'},
+     *              rand::Weighted {weight: 2, item: 'c'}];
+     *     println(fmt!("%?",rng.choose_weighted_option(x)));
+     * }
+     * ~~~
      */
     fn choose_weighted_option<T:Copy>(&self, v: &[Weighted<T>]) -> Option<T>;
     /**
      * Return a vec containing copies of the items, in order, where
      * the weight of the item determines how many copies there are
+     *
+     * *Example*
+     *
+     * ~~~
+     *
+     * use core::rand::RngUtil;
+     *
+     * fn main() {
+     *     rng = rand::Rng();
+     *     let x = [rand::Weighted {weight: 4, item: 'a'},
+     *              rand::Weighted {weight: 2, item: 'b'},
+     *              rand::Weighted {weight: 2, item: 'c'}];
+     *     println(fmt!("%?",rng.weighted_vec(x)));
+     * }
+     * ~~~
      */
     fn weighted_vec<T:Copy>(&self, v: &[Weighted<T>]) -> ~[T];
-    /// Shuffle a vec
+    /**
+     * Shuffle a vec
+     *
+     * *Example*
+     *
+     * ~~~
+     *
+     * use core::rand::RngUtil;
+     *
+     * fn main() {
+     *     rng = rand::Rng();
+     *     println(fmt!("%?",rng.shuffle([1,2,3])));
+     * }
+     * ~~~
+     */
     fn shuffle<T:Copy>(&self, values: &[T]) -> ~[T];
-    /// Shuffle a mutable vec in place
+    /**
+     * Shuffle a mutable vec in place
+     *
+     * *Example*
+     *
+     * ~~~
+     *
+     * use core::rand::RngUtil;
+     *
+     * fn main() {
+     *     rng = rand::Rng();
+     *     let mut y = [1,2,3];
+     *     rng.shuffle_mut(y);
+     *     println(fmt!("%?",y));
+     *     rng.shuffle_mut(y);
+     *     println(fmt!("%?",y));
+     * }
+     * ~~~
+     */
     fn shuffle_mut<T>(&self, values: &mut [T]);
 }
 
@@ -337,7 +511,7 @@ impl RngUtil for @Rng {
         self.next() & 1u32 == 1u32
     }
 
-    /// Return a bool with a 1 in n chance of true
+    /// Return a bool with a 1-in-n chance of true
     fn gen_weighted_bool(&self, n: uint) -> bool {
         if n == 0u {
             true
@@ -573,12 +747,12 @@ pub fn random() -> uint {
 
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use option::{Option, Some};
     use rand;
 
     #[test]
-    pub fn rng_seeded() {
+    fn rng_seeded() {
         let seed = rand::seed();
         let ra = rand::seeded_rng(seed);
         let rb = rand::seeded_rng(seed);
@@ -586,7 +760,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn rng_seeded_custom_seed() {
+    fn rng_seeded_custom_seed() {
         // much shorter than generated seeds which are 1024 bytes
         let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
         let ra = rand::seeded_rng(seed);
@@ -595,7 +769,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn rng_seeded_custom_seed2() {
+    fn rng_seeded_custom_seed2() {
         let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
         let ra = rand::seeded_rng(seed);
         // Regression test that isaac is actually using the above vector
@@ -606,7 +780,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn gen_int_range() {
+    fn gen_int_range() {
         let r = rand::Rng();
         let a = r.gen_int_range(-3, 42);
         assert!(a >= -3 && a < 42);
@@ -617,12 +791,12 @@ pub mod tests {
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    pub fn gen_int_from_fail() {
+    fn gen_int_from_fail() {
         rand::Rng().gen_int_range(5, -2);
     }
 
     #[test]
-    pub fn gen_uint_range() {
+    fn gen_uint_range() {
         let r = rand::Rng();
         let a = r.gen_uint_range(3u, 42u);
         assert!(a >= 3u && a < 42u);
@@ -633,12 +807,12 @@ pub mod tests {
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    pub fn gen_uint_range_fail() {
+    fn gen_uint_range_fail() {
         rand::Rng().gen_uint_range(5u, 2u);
     }
 
     #[test]
-    pub fn gen_float() {
+    fn gen_float() {
         let r = rand::Rng();
         let a = r.gen_float();
         let b = r.gen_float();
@@ -646,14 +820,14 @@ pub mod tests {
     }
 
     #[test]
-    pub fn gen_weighted_bool() {
+    fn gen_weighted_bool() {
         let r = rand::Rng();
         assert!(r.gen_weighted_bool(0u) == true);
         assert!(r.gen_weighted_bool(1u) == true);
     }
 
     #[test]
-    pub fn gen_str() {
+    fn gen_str() {
         let r = rand::Rng();
         debug!(r.gen_str(10u));
         debug!(r.gen_str(10u));
@@ -664,7 +838,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn gen_bytes() {
+    fn gen_bytes() {
         let r = rand::Rng();
         assert!(r.gen_bytes(0u).len() == 0u);
         assert!(r.gen_bytes(10u).len() == 10u);
@@ -672,13 +846,13 @@ pub mod tests {
     }
 
     #[test]
-    pub fn choose() {
+    fn choose() {
         let r = rand::Rng();
         assert!(r.choose([1, 1, 1]) == 1);
     }
 
     #[test]
-    pub fn choose_option() {
+    fn choose_option() {
         let r = rand::Rng();
         let x: Option<int> = r.choose_option([]);
         assert!(x.is_none());
@@ -686,7 +860,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn choose_weighted() {
+    fn choose_weighted() {
         let r = rand::Rng();
         assert!(r.choose_weighted(~[
             rand::Weighted { weight: 1u, item: 42 },
@@ -698,7 +872,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn choose_weighted_option() {
+    fn choose_weighted_option() {
         let r = rand::Rng();
         assert!(r.choose_weighted_option(~[
             rand::Weighted { weight: 1u, item: 42 },
@@ -712,7 +886,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn weighted_vec() {
+    fn weighted_vec() {
         let r = rand::Rng();
         let empty: ~[int] = ~[];
         assert!(r.weighted_vec(~[]) == empty);
@@ -724,7 +898,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn shuffle() {
+    fn shuffle() {
         let r = rand::Rng();
         let empty: ~[int] = ~[];
         assert!(r.shuffle(~[]) == empty);
@@ -732,7 +906,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn task_rng() {
+    fn task_rng() {
         let r = rand::task_rng();
         r.gen_int();
         assert!(r.shuffle(~[1, 1, 1]) == ~[1, 1, 1]);
@@ -740,7 +914,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn random() {
+    fn random() {
         // not sure how to test this aside from just getting a number
         let _n : uint = rand::random();
     }

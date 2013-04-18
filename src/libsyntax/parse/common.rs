@@ -159,6 +159,9 @@ pub impl Parser {
         }
     }
 
+    // if the given word is not a keyword, signal an error.
+    // if the next token is the given keyword, eat it and return
+    // true. Otherwise, return false.
     fn eat_keyword(&self, word: &~str) -> bool {
         self.require_keyword(word);
         let is_kw = match *self.token {
@@ -169,6 +172,9 @@ pub impl Parser {
         is_kw
     }
 
+    // if the given word is not a keyword, signal an error.
+    // if the next token is not the given word, signal an error.
+    // otherwise, eat it.
     fn expect_keyword(&self, word: &~str) {
         self.require_keyword(word);
         if !self.eat_keyword(word) {
@@ -182,10 +188,12 @@ pub impl Parser {
         }
     }
 
+    // return true if the given string is a strict keyword
     fn is_strict_keyword(&self, word: &~str) -> bool {
         self.strict_keywords.contains(word)
     }
 
+    // signal an error if the current token is a strict keyword
     fn check_strict_keywords(&self) {
         match *self.token {
             token::IDENT(_, false) => {
@@ -196,16 +204,19 @@ pub impl Parser {
         }
     }
 
+    // signal an error if the given string is a strict keyword
     fn check_strict_keywords_(&self, w: &~str) {
         if self.is_strict_keyword(w) {
             self.fatal(fmt!("found `%s` in ident position", *w));
         }
     }
 
+    // return true if this is a reserved keyword
     fn is_reserved_keyword(&self, word: &~str) -> bool {
         self.reserved_keywords.contains(word)
     }
 
+    // signal an error if the current token is a reserved keyword
     fn check_reserved_keywords(&self) {
         match *self.token {
             token::IDENT(_, false) => {
@@ -216,6 +227,7 @@ pub impl Parser {
         }
     }
 
+    // signal an error if the given string is a reserved keyword
     fn check_reserved_keywords_(&self, w: &~str) {
         if self.is_reserved_keyword(w) {
             self.fatal(fmt!("`%s` is a reserved keyword", *w));
@@ -223,7 +235,8 @@ pub impl Parser {
     }
 
     // expect and consume a GT. if a >> is seen, replace it
-    // with a single > and continue.
+    // with a single > and continue. If a GT is not seen,
+    // signal an error.
     fn expect_gt(&self) {
         if *self.token == token::GT {
             self.bump();

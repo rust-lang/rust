@@ -580,12 +580,10 @@ pub unsafe fn unkillable<U>(f: &fn() -> U) -> U {
         }
     }
 
-    unsafe {
-        let t = rt::rust_get_task();
-        let _allow_failure = AllowFailure(t);
-        rt::rust_task_inhibit_kill(t);
-        f()
-    }
+    let t = rt::rust_get_task();
+    let _allow_failure = AllowFailure(t);
+    rt::rust_task_inhibit_kill(t);
+    f()
 }
 
 /// The inverse of unkillable. Only ever to be used nested in unkillable().
@@ -605,12 +603,10 @@ pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
         }
     }
 
-    unsafe {
-        let t = rt::rust_get_task();
-        let _allow_failure = DisallowFailure(t);
-        rt::rust_task_allow_kill(t);
-        f()
-    }
+    let t = rt::rust_get_task();
+    let _allow_failure = DisallowFailure(t);
+    rt::rust_task_allow_kill(t);
+    f()
 }
 
 /**
@@ -634,13 +630,11 @@ pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
         }
     }
 
-    unsafe {
-        let t = rt::rust_get_task();
-        let _interrupts = DeferInterrupts(t);
-        rt::rust_task_inhibit_kill(t);
-        rt::rust_task_inhibit_yield(t);
-        f()
-    }
+    let t = rt::rust_get_task();
+    let _interrupts = DeferInterrupts(t);
+    rt::rust_task_inhibit_kill(t);
+    rt::rust_task_inhibit_yield(t);
+    f()
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -931,7 +925,7 @@ fn test_spawn_sched_childs_on_default_sched() {
 }
 
 #[cfg(test)]
-pub mod testrt {
+mod testrt {
     use libc;
 
     #[nolink]

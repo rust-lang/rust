@@ -28,24 +28,6 @@ pub struct TrieMap<T> {
     priv length: uint
 }
 
-impl<'self,T> BaseIter<(uint, &'self T)> for TrieMap<T> {
-    /// Visit all key-value pairs in order
-    #[inline(always)]
-    fn each(&self, f: &fn(&(uint, &'self T)) -> bool) {
-        self.root.each(f);
-    }
-    #[inline(always)]
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
-impl<'self,T> ReverseIter<(uint, &'self T)> for TrieMap<T> {
-    /// Visit all key-value pairs in reverse order
-    #[inline(always)]
-    fn each_reverse(&self, f: &fn(&(uint, &'self T)) -> bool) {
-        self.root.each_reverse(f);
-    }
-}
-
 impl<T> Container for TrieMap<T> {
     /// Return the number of elements in the map
     #[inline(always)]
@@ -72,16 +54,42 @@ impl<T> Map<uint, T> for TrieMap<T> {
         self.find(key).is_some()
     }
 
+    /// Visit all key-value pairs in order
+    #[inline(always)]
+    #[cfg(stage0)]
+    fn each(&self, f: &fn(&uint, &'self T) -> bool) {
+        self.root.each(f);
+    }
+
+    /// Visit all key-value pairs in order
+    #[inline(always)]
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) {
+        self.root.each(f);
+    }
+
     /// Visit all keys in order
     #[inline(always)]
     fn each_key(&self, f: &fn(&uint) -> bool) {
-        self.each(|&(k, _)| f(&k))
+        self.each(|k, _| f(k))
     }
 
     /// Visit all values in order
     #[inline(always)]
+    #[cfg(stage0)]
     fn each_value(&self, f: &fn(&T) -> bool) {
-        self.each(|&(_, v)| f(v))
+        self.each(|_, v| f(v))
+    }
+
+    /// Visit all values in order
+    #[inline(always)]
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn each_value<'a>(&'a self, f: &fn(&'a T) -> bool) {
+        self.each(|_, v| f(v))
     }
 
     /// Iterate over the map and mutate the contained values
@@ -91,6 +99,7 @@ impl<T> Map<uint, T> for TrieMap<T> {
     }
 
     /// Return a reference to the value corresponding to the key
+    #[cfg(stage0)]
     #[inline(hint)]
     fn find(&self, key: &uint) -> Option<&'self T> {
         let mut node: &'self TrieNode<T> = &self.root;
@@ -111,9 +120,43 @@ impl<T> Map<uint, T> for TrieMap<T> {
         }
     }
 
+    /// Return a reference to the value corresponding to the key
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    #[inline(hint)]
+    fn find<'a>(&'a self, key: &uint) -> Option<&'a T> {
+        let mut node: &'a TrieNode<T> = &self.root;
+        let mut idx = 0;
+        loop {
+            match node.children[chunk(*key, idx)] {
+              Internal(ref x) => node = &**x,
+              External(stored, ref value) => {
+                if stored == *key {
+                    return Some(value)
+                } else {
+                    return None
+                }
+              }
+              Nothing => return None
+            }
+            idx += 1;
+        }
+    }
+
     /// Return a mutable reference to the value corresponding to the key
+    #[cfg(stage0)]
     #[inline(always)]
     fn find_mut(&mut self, key: &uint) -> Option<&'self mut T> {
+        find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
+    }
+
+    /// Return a mutable reference to the value corresponding to the key
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    #[inline(always)]
+    fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut T> {
         find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
     }
 
@@ -148,16 +191,32 @@ pub impl<T> TrieMap<T> {
         TrieMap{root: TrieNode::new(), length: 0}
     }
 
+    /// Visit all key-value pairs in reverse order
+    #[inline(always)]
+    #[cfg(stage0)]
+    fn each_reverse(&self, f: &fn(&uint, &'self T) -> bool) {
+        self.root.each_reverse(f);
+    }
+
+    /// Visit all key-value pairs in reverse order
+    #[inline(always)]
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) {
+        self.root.each_reverse(f);
+    }
+
     /// Visit all keys in reverse order
     #[inline(always)]
     fn each_key_reverse(&self, f: &fn(&uint) -> bool) {
-        self.each_reverse(|&(k, _)| f(&k))
+        self.each_reverse(|k, _| f(k))
     }
 
     /// Visit all values in reverse order
     #[inline(always)]
     fn each_value_reverse(&self, f: &fn(&T) -> bool) {
-        self.each_reverse(|&(_, v)| f(v))
+        self.each_reverse(|_, v| f(v))
     }
 }
 
@@ -239,29 +298,59 @@ impl<T> TrieNode<T> {
 }
 
 impl<T> TrieNode<T> {
-    fn each(&self, f: &fn(&(uint, &'self T)) -> bool) -> bool {
+    #[cfg(stage0)]
+    fn each(&self, f: &fn(&uint, &'self T) -> bool) -> bool {
         for uint::range(0, self.children.len()) |idx| {
             match self.children[idx] {
                 Internal(ref x) => if !x.each(f) { return false },
-                External(k, ref v) => if !f(&(k, v)) { return false },
+                External(k, ref v) => if !f(&k, v) { return false },
                 Nothing => ()
             }
         }
         true
     }
 
-    fn each_reverse(&self, f: &fn(&(uint, &'self T)) -> bool) -> bool {
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
+        for uint::range(0, self.children.len()) |idx| {
+            match self.children[idx] {
+                Internal(ref x) => if !x.each(f) { return false },
+                External(k, ref v) => if !f(&k, v) { return false },
+                Nothing => ()
+            }
+        }
+        true
+    }
+
+    #[cfg(stage0)]
+    fn each_reverse(&self, f: &fn(&uint, &'self T) -> bool) -> bool {
         for uint::range_rev(self.children.len(), 0) |idx| {
             match self.children[idx - 1] {
                 Internal(ref x) => if !x.each_reverse(f) { return false },
-                External(k, ref v) => if !f(&(k, v)) { return false },
+                External(k, ref v) => if !f(&k, v) { return false },
                 Nothing => ()
             }
         }
         true
     }
 
-    fn mutate_values(&mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
+        for uint::range_rev(self.children.len(), 0) |idx| {
+            match self.children[idx - 1] {
+                Internal(ref x) => if !x.each_reverse(f) { return false },
+                External(k, ref v) => if !f(&k, v) { return false },
+                Nothing => ()
+            }
+        }
+        true
+    }
+
+    fn mutate_values<'a>(&'a mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
         for vec::each_mut(self.children) |child| {
             match *child {
                 Internal(ref mut x) => if !x.mutate_values(f) {
@@ -438,8 +527,8 @@ mod tests {
         assert!(m.insert(1, 2));
 
         let mut n = 0;
-        for m.each |&(k, v)| {
-            assert!(k == n);
+        for m.each |k, v| {
+            assert!(*k == n);
             assert!(*v == n * 2);
             n += 1;
         }
@@ -454,11 +543,11 @@ mod tests {
         }
 
         let mut n = uint::max_value - 9999;
-        for m.each |&(k, v)| {
+        for m.each |k, v| {
             if n == uint::max_value - 5000 { break }
             assert!(n < uint::max_value - 5000);
 
-            assert!(k == n);
+            assert!(*k == n);
             assert!(*v == n / 2);
             n += 1;
         }
@@ -475,8 +564,8 @@ mod tests {
         assert!(m.insert(1, 2));
 
         let mut n = 4;
-        for m.each_reverse |&(k, v)| {
-            assert!(k == n);
+        for m.each_reverse |k, v| {
+            assert!(*k == n);
             assert!(*v == n * 2);
             n -= 1;
         }
@@ -491,11 +580,11 @@ mod tests {
         }
 
         let mut n = uint::max_value;
-        for m.each_reverse |&(k, v)| {
+        for m.each_reverse |k, v| {
             if n == uint::max_value - 5000 { break }
             assert!(n > uint::max_value - 5000);
 
-            assert!(k == n);
+            assert!(*k == n);
             assert!(*v == n / 2);
             n -= 1;
         }

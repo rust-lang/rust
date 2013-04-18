@@ -42,47 +42,45 @@ pub fn delayed_send<T:Owned>(iotask: &IoTask,
                               msecs: uint,
                               ch: &Chan<T>,
                               val: T) {
+    let (timer_done_po, timer_done_ch) = stream::<()>();
+    let timer_done_ch = SharedChan(timer_done_ch);
+    let timer = uv::ll::timer_t();
+    let timer_ptr = ptr::addr_of(&timer);
+    do iotask::interact(iotask) |loop_ptr| {
         unsafe {
-            let (timer_done_po, timer_done_ch) = stream::<()>();
-            let timer_done_ch = SharedChan(timer_done_ch);
-            let timer = uv::ll::timer_t();
-            let timer_ptr = ptr::addr_of(&timer);
-            do iotask::interact(iotask) |loop_ptr| {
-                unsafe {
-                    let init_result = uv::ll::timer_init(loop_ptr, timer_ptr);
-                    if (init_result == 0i32) {
-                        let start_result = uv::ll::timer_start(
-                            timer_ptr, delayed_send_cb, msecs, 0u);
-                        if (start_result == 0i32) {
-                            // Note: putting the channel into a ~
-                            // to cast to *c_void
-                            let timer_done_ch_clone = ~timer_done_ch.clone();
-                            let timer_done_ch_ptr = transmute::<
-                                ~SharedChan<()>, *c_void>(
-                                timer_done_ch_clone);
-                            uv::ll::set_data_for_uv_handle(
-                                timer_ptr,
-                                timer_done_ch_ptr);
-                        } else {
-                            let error_msg = uv::ll::get_last_err_info(
-                                loop_ptr);
-                            fail!(~"timer::delayed_send() start failed: " +
-                                error_msg);
-                        }
-                    } else {
-                        let error_msg = uv::ll::get_last_err_info(loop_ptr);
-                        fail!(~"timer::delayed_send() init failed: " +
-                            error_msg);
-                    }
+            let init_result = uv::ll::timer_init(loop_ptr, timer_ptr);
+            if (init_result == 0i32) {
+                let start_result = uv::ll::timer_start(
+                    timer_ptr, delayed_send_cb, msecs, 0u);
+                if (start_result == 0i32) {
+                    // Note: putting the channel into a ~
+                    // to cast to *c_void
+                    let timer_done_ch_clone = ~timer_done_ch.clone();
+                    let timer_done_ch_ptr = transmute::<
+                        ~SharedChan<()>, *c_void>(
+                        timer_done_ch_clone);
+                    uv::ll::set_data_for_uv_handle(
+                        timer_ptr,
+                        timer_done_ch_ptr);
+                } else {
+                    let error_msg = uv::ll::get_last_err_info(
+                        loop_ptr);
+                    fail!(~"timer::delayed_send() start failed: " +
+                        error_msg);
                 }
-            };
-            // delayed_send_cb has been processed by libuv
-            timer_done_po.recv();
-            // notify the caller immediately
-            ch.send(val);
-            // uv_close for this timer has been processed
-            timer_done_po.recv();
+            } else {
+                let error_msg = uv::ll::get_last_err_info(loop_ptr);
+                fail!(~"timer::delayed_send() init failed: " +
+                    error_msg);
+            }
+        }
     };
+    // delayed_send_cb has been processed by libuv
+    timer_done_po.recv();
+    // notify the caller immediately
+    ch.send(val);
+    // uv_close for this timer has been processed
+    timer_done_po.recv();
 }
 
 /**
@@ -185,13 +183,13 @@ mod test {
     use core::pipes::{stream, SharedChan};
 
     #[test]
-    pub fn test_gl_timer_simple_sleep_test() {
+    fn test_gl_timer_simple_sleep_test() {
         let hl_loop = &uv::global_loop::get();
         sleep(hl_loop, 1u);
     }
 
     #[test]
-    pub fn test_gl_timer_sleep_stress1() {
+    fn test_gl_timer_sleep_stress1() {
         let hl_loop = &uv::global_loop::get();
         for iter::repeat(50u) {
             sleep(hl_loop, 1u);
@@ -199,7 +197,7 @@ mod test {
     }
 
     #[test]
-    pub fn test_gl_timer_sleep_stress2() {
+    fn test_gl_timer_sleep_stress2() {
         let (po, ch) = stream();
         let ch = SharedChan(ch);
         let hl_loop = &uv::global_loop::get();
@@ -243,7 +241,7 @@ mod test {
 
     #[test]
     #[cfg(ignore)]
-    pub fn test_gl_timer_recv_timeout_before_time_passes() {
+    fn test_gl_timer_recv_timeout_before_time_passes() {
         let times = 100;
         let mut successes = 0;
         let mut failures = 0;
@@ -272,7 +270,7 @@ mod test {
     }
 
     #[test]
-    pub fn test_gl_timer_recv_timeout_after_time_passes() {
+    fn test_gl_timer_recv_timeout_after_time_passes() {
         let times = 100;
         let mut successes = 0;
         let mut failures = 0;

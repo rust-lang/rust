@@ -27,7 +27,7 @@ type Le<'self, T> = &'self fn(v1: &T, v2: &T) -> bool;
 pub fn merge_sort<T:Copy>(v: &const [T], le: Le<T>) -> ~[T] {
     type Slice = (uint, uint);
 
-    unsafe {return merge_sort_(v, (0u, len(v)), le);}
+    return merge_sort_(v, (0u, len(v)), le);
 
     fn merge_sort_<T:Copy>(v: &const [T], slice: Slice, le: Le<T>)
         -> ~[T] {
@@ -68,14 +68,11 @@ fn part<T>(arr: &mut [T], left: uint,
     let mut storage_index: uint = left;
     let mut i: uint = left;
     while i < right {
-        // XXX: Unsafe because borrow check doesn't handle this right
-        unsafe {
-            let a: &T = cast::transmute(&mut arr[i]);
-            let b: &T = cast::transmute(&mut arr[right]);
-            if compare_func(a, b) {
-                arr[i] <-> arr[storage_index];
-                storage_index += 1;
-            }
+        let a: &mut T = &mut arr[i];
+        let b: &mut T = &mut arr[right];
+        if compare_func(a, b) {
+            arr[i] <-> arr[storage_index];
+            storage_index += 1;
         }
         i += 1;
     }
@@ -736,7 +733,7 @@ mod test_qsort3 {
 
     use core::vec;
 
-    pub fn check_sort(v1: &mut [int], v2: &mut [int]) {
+    fn check_sort(v1: &mut [int], v2: &mut [int]) {
         let len = vec::len::<int>(v1);
         quick_sort3::<int>(v1);
         let mut i = 0;
@@ -748,7 +745,7 @@ mod test_qsort3 {
     }
 
     #[test]
-    pub fn test() {
+    fn test() {
         {
             let mut v1 = ~[3, 7, 4, 5, 2, 9, 5, 8];
             let mut v2 = ~[2, 3, 4, 5, 5, 7, 8, 9];
@@ -780,7 +777,7 @@ mod test_qsort {
     use core::int;
     use core::vec;
 
-    pub fn check_sort(v1: &mut [int], v2: &mut [int]) {
+    fn check_sort(v1: &mut [int], v2: &mut [int]) {
         let len = vec::len::<int>(v1);
         fn leual(a: &int, b: &int) -> bool { *a <= *b }
         quick_sort::<int>(v1, leual);
@@ -793,7 +790,7 @@ mod test_qsort {
     }
 
     #[test]
-    pub fn test() {
+    fn test() {
         {
             let mut v1 = ~[3, 7, 4, 5, 2, 9, 5, 8];
             let mut v2 = ~[2, 3, 4, 5, 5, 7, 8, 9];
@@ -819,7 +816,7 @@ mod test_qsort {
 
     // Regression test for #750
     #[test]
-    pub fn test_simple() {
+    fn test_simple() {
         let mut names = ~[2, 1, 3];
 
         let expected = ~[1, 2, 3];
@@ -845,7 +842,7 @@ mod tests {
 
     use core::vec;
 
-    pub fn check_sort(v1: &[int], v2: &[int]) {
+    fn check_sort(v1: &[int], v2: &[int]) {
         let len = vec::len::<int>(v1);
         pub fn le(a: &int, b: &int) -> bool { *a <= *b }
         let f = le;
@@ -859,7 +856,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test() {
+    fn test() {
         {
             let v1 = ~[3, 7, 4, 5, 2, 9, 5, 8];
             let v2 = ~[2, 3, 4, 5, 5, 7, 8, 9];
@@ -876,7 +873,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_merge_sort_mutable() {
+    fn test_merge_sort_mutable() {
         pub fn le(a: &int, b: &int) -> bool { *a <= *b }
         let mut v1 = ~[3, 2, 1];
         let v2 = merge_sort(v1, le);
@@ -884,16 +881,13 @@ mod tests {
     }
 
     #[test]
-    pub fn test_merge_sort_stability() {
+    fn test_merge_sort_stability() {
         // tjc: funny that we have to use parens
         fn ile(x: &(&'static str), y: &(&'static str)) -> bool
         {
-            unsafe // to_lower is not pure...
-            {
-                let x = x.to_lower();
-                let y = y.to_lower();
-                x <= y
-            }
+            let x = x.to_lower();
+            let y = y.to_lower();
+            x <= y
         }
 
         let names1 = ~["joe bob", "Joe Bob", "Jack Brown", "JOE Bob",
@@ -921,10 +915,8 @@ mod test_tim_sort {
 
     impl Ord for CVal {
         fn lt(&self, other: &CVal) -> bool {
-            unsafe {
-                let rng = rand::Rng();
-                if rng.gen_float() > 0.995 { fail!(~"It's happening!!!"); }
-            }
+            let rng = rand::Rng();
+            if rng.gen_float() > 0.995 { fail!(~"It's happening!!!"); }
             (*self).val < other.val
         }
         fn le(&self, other: &CVal) -> bool { (*self).val <= other.val }

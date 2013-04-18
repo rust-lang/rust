@@ -17,7 +17,7 @@ use core::prelude::*;
 use middle::resolve;
 use middle::ty;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use syntax::codemap::span;
 use syntax::{ast, ast_util, visit};
 
@@ -30,7 +30,7 @@ pub struct freevar_entry {
     span: span     //< First span where it is accessed (there can be multiple)
 }
 pub type freevar_info = @~[@freevar_entry];
-pub type freevar_map = @mut LinearMap<ast::node_id, freevar_info>;
+pub type freevar_map = @mut HashMap<ast::node_id, freevar_info>;
 
 // Searches through part of the AST for all references to locals or
 // upvars in this frame and returns the list of definition IDs thus found.
@@ -39,7 +39,7 @@ pub type freevar_map = @mut LinearMap<ast::node_id, freevar_info>;
 // in order to start the search.
 fn collect_freevars(def_map: resolve::DefMap, blk: &ast::blk)
     -> freevar_info {
-    let seen = @mut LinearMap::new();
+    let seen = @mut HashMap::new();
     let refs = @mut ~[];
 
     fn ignore_item(_i: @ast::item, &&_depth: int, _v: visit::vt<int>) { }
@@ -92,7 +92,7 @@ fn collect_freevars(def_map: resolve::DefMap, blk: &ast::blk)
 // one pass. This could be improved upon if it turns out to matter.
 pub fn annotate_freevars(def_map: resolve::DefMap, crate: @ast::crate) ->
    freevar_map {
-    let freevars = @mut LinearMap::new();
+    let freevars = @mut HashMap::new();
 
     let walk_fn: @fn(&visit::fn_kind,
                      &ast::fn_decl,

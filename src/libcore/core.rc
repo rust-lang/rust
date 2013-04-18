@@ -48,7 +48,7 @@ they contained the following prologue:
 
 
 #[link(name = "core",
-       vers = "0.6",
+       vers = "0.7-pre",
        uuid = "c70c24a7-5551-4f73-8e37-380b11d80be8",
        url = "https://github.com/mozilla/rust/tree/master/src/libcore")];
 
@@ -66,7 +66,7 @@ they contained the following prologue:
 #[allow(deprecated_drop)];
 
 // Make core testable by not duplicating lang items. See #2912
-#[cfg(test)] extern mod realcore(name = "core", vers = "0.6");
+#[cfg(test)] extern mod realcore(name = "core", vers = "0.7-pre");
 #[cfg(test)] pub use kinds = realcore::kinds;
 #[cfg(test)] pub use ops = realcore::ops;
 #[cfg(test)] pub use cmp = realcore::cmp;
@@ -99,7 +99,7 @@ pub use vec::{OwnedVector, OwnedCopyableVector};
 pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
 pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
 
-pub use num::NumCast;
+pub use num::{Num, NumCast};
 pub use ptr::Ptr;
 pub use to_str::ToStr;
 pub use clone::Clone;
@@ -176,6 +176,7 @@ pub mod from_str;
 #[path = "num/num.rs"]
 pub mod num;
 pub mod iter;
+pub mod iterator;
 pub mod to_str;
 pub mod to_bytes;
 pub mod clone;

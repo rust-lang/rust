@@ -18,7 +18,7 @@ use middle::typeck::check::{instantiate_path, lookup_def};
 use middle::typeck::check::{structure_of, valid_range_bounds};
 use middle::typeck::require_same_types;
 
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 use core::vec;
 use syntax::ast;
 use syntax::ast_util;
@@ -99,7 +99,7 @@ pub struct pat_ctxt {
     block_region: ty::Region, // Region for the block of the arm
 }
 
-pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
+pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::Path,
                          subpats: &Option<~[@ast::pat]>, expected: ty::t) {
 
     // Typecheck the path.
@@ -135,7 +135,9 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                     ty::enum_variant_with_id(tcx, enm, var);
                 let var_tpt = ty::lookup_item_type(tcx, var);
                 vinfo.args.map(|t| {
-                    if var_tpt.bounds.len() == expected_substs.tps.len() {
+                    if var_tpt.generics.type_param_defs.len() ==
+                        expected_substs.tps.len()
+                    {
                         ty::subst(tcx, expected_substs, *t)
                     }
                     else {
@@ -228,11 +230,11 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
 /// `class_fields` describes the type of each field of the struct.
 /// `class_id` is the ID of the struct.
 /// `substitutions` are the type substitutions applied to this struct type
-/// (e.g. K,V in LinearMap<K,V>).
+/// (e.g. K,V in HashMap<K,V>).
 /// `etc` is true if the pattern said '...' and false otherwise.
 pub fn check_struct_pat_fields(pcx: pat_ctxt,
                                span: span,
-                               path: @ast::path,
+                               path: @ast::Path,
                                fields: &[ast::field_pat],
                                class_fields: ~[ty::field_ty],
                                class_id: ast::def_id,
@@ -241,13 +243,13 @@ pub fn check_struct_pat_fields(pcx: pat_ctxt,
     let tcx = pcx.fcx.ccx.tcx;
 
     // Index the class fields.
-    let mut field_map = LinearMap::new();
+    let mut field_map = HashMap::new();
     for class_fields.eachi |i, class_field| {
         field_map.insert(class_field.ident, i);
     }
 
     // Typecheck each field.
-    let mut found_fields = LinearSet::new();
+    let mut found_fields = HashSet::new();
     for fields.each |field| {
         match field_map.find(&field.ident) {
             Some(&index) => {
@@ -283,7 +285,7 @@ pub fn check_struct_pat_fields(pcx: pat_ctxt,
 }
 
 pub fn check_struct_pat(pcx: pat_ctxt, pat_id: ast::node_id, span: span,
-                        expected: ty::t, path: @ast::path,
+                        expected: ty::t, path: @ast::Path,
                         fields: &[ast::field_pat], etc: bool,
                         class_id: ast::def_id, substitutions: &ty::substs) {
     let fcx = pcx.fcx;
@@ -324,7 +326,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: pat_ctxt,
                                           pat_id: ast::node_id,
                                           span: span,
                                           expected: ty::t,
-                                          path: @ast::path,
+                                          path: @ast::Path,
                                           fields: &[ast::field_pat],
                                           etc: bool,
                                           enum_id: ast::def_id,

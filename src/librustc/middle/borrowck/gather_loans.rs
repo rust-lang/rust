@@ -29,9 +29,9 @@ use middle::pat_util;
 use middle::ty::{ty_region};
 use middle::ty;
 use util::common::indenter;
-use util::ppaux::{expr_repr, region_to_str};
+use util::ppaux::{Repr, region_to_str};
 
-use core::hashmap::linear::{LinearSet, LinearMap};
+use core::hashmap::{HashSet, HashMap};
 use core::vec;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
@@ -72,17 +72,17 @@ struct GatherLoanCtxt {
     req_maps: ReqMaps,
     item_ub: ast::node_id,
     root_ub: ast::node_id,
-    ignore_adjustments: LinearSet<ast::node_id>
+    ignore_adjustments: HashSet<ast::node_id>
 }
 
 pub fn gather_loans(bccx: @BorrowckCtxt, crate: @ast::crate) -> ReqMaps {
     let glcx = @mut GatherLoanCtxt {
         bccx: bccx,
-        req_maps: ReqMaps { req_loan_map: LinearMap::new(),
-                            pure_map: LinearMap::new() },
+        req_maps: ReqMaps { req_loan_map: HashMap::new(),
+                            pure_map: HashMap::new() },
         item_ub: 0,
         root_ub: 0,
-        ignore_adjustments: LinearSet::new()
+        ignore_adjustments: HashSet::new()
     };
     let v = visit::mk_vt(@visit::Visitor {visit_expr: req_loans_in_expr,
                                           visit_fn: req_loans_in_fn,
@@ -242,7 +242,7 @@ fn req_loans_in_expr(ex: @ast::expr,
         // (if used like `a.b(...)`), the call where it's an argument
         // (if used like `x(a.b)`), or the block (if used like `let x
         // = a.b`).
-        let scope_r = ty::re_scope(*self.tcx().region_map.get(&ex.id));
+        let scope_r = self.tcx().region_maps.encl_region(ex.id);
         let rcvr_cmt = self.bccx.cat_expr(rcvr);
         self.guarantee_valid(rcvr_cmt, m_imm, scope_r);
         visit::visit_expr(ex, self, vt);
@@ -282,7 +282,7 @@ pub impl GatherLoanCtxt {
                              expr: @ast::expr,
                              adjustment: &ty::AutoAdjustment) {
         debug!("guarantee_adjustments(expr=%s, adjustment=%?)",
-               expr_repr(self.tcx(), expr), adjustment);
+               expr.repr(self.tcx()), adjustment);
         let _i = indenter();
 
         match *adjustment {
@@ -524,7 +524,10 @@ pub impl GatherLoanCtxt {
         // immutable structures, this is just the converse I suppose)
 
         let scope_id = match scope_r {
-            ty::re_scope(scope_id) | ty::re_free(scope_id, _) => scope_id,
+            ty::re_scope(scope_id) |
+            ty::re_free(ty::FreeRegion {scope_id, _}) => {
+                scope_id
+            }
             _ => {
                 self.bccx.tcx.sess.span_bug(
                     cmt.span,

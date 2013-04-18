@@ -19,7 +19,7 @@ use syntax::codemap;
 use syntax::codemap::dummy_sp;
 use syntax::fold;
 
-static CORE_VERSION: &'static str = "0.6";
+static CORE_VERSION: &'static str = "0.7-pre";
 
 pub fn maybe_inject_libcore_ref(sess: Session,
                                 crate: @ast::crate) -> @ast::crate {
@@ -77,7 +77,7 @@ fn inject_libcore_ref(sess: Session,
         fold_mod: |module, fld| {
             let n2 = sess.next_node_id();
 
-            let prelude_path = @ast::path {
+            let prelude_path = @ast::Path {
                 span: dummy_sp(),
                 global: false,
                 idents: ~[

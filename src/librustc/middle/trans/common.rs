@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -41,11 +41,11 @@ use middle::trans::type_use;
 use middle::ty::substs;
 use middle::ty;
 use middle::typeck;
-use util::ppaux::{expr_repr, ty_to_str};
+use util::ppaux::{Repr};
 
 use core::cast;
 use core::hash;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 use core::libc::{c_uint, c_longlong, c_ulonglong};
 use core::ptr;
 use core::str;
@@ -134,7 +134,7 @@ pub struct Stats {
     n_inlines: uint,
     n_closures: uint,
     llvm_insn_ctxt: @mut ~[~str],
-    llvm_insns: @mut LinearMap<~str, uint>,
+    llvm_insns: @mut HashMap<~str, uint>,
     fn_times: @mut ~[(~str, int)] // (ident, time)
 }
 
@@ -156,7 +156,7 @@ pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
     }
 }
 
-pub type ExternMap = @mut LinearMap<@str, ValueRef>;
+pub type ExternMap = @mut HashMap<@str, ValueRef>;
 
 // Crate context.  Every crate we compile has one of these.
 pub struct CrateContext {
@@ -165,30 +165,30 @@ pub struct CrateContext {
      td: TargetData,
      tn: @TypeNames,
      externs: ExternMap,
-     intrinsics: LinearMap<~str, ValueRef>,
-     item_vals: @mut LinearMap<ast::node_id, ValueRef>,
+     intrinsics: HashMap<~str, ValueRef>,
+     item_vals: @mut HashMap<ast::node_id, ValueRef>,
      exp_map2: resolve::ExportMap2,
      reachable: reachable::map,
-     item_symbols: @mut LinearMap<ast::node_id, ~str>,
+     item_symbols: @mut HashMap<ast::node_id, ~str>,
      link_meta: LinkMeta,
-     enum_sizes: @mut LinearMap<ty::t, uint>,
-     discrims: @mut LinearMap<ast::def_id, ValueRef>,
-     discrim_symbols: @mut LinearMap<ast::node_id, ~str>,
-     tydescs: @mut LinearMap<ty::t, @mut tydesc_info>,
+     enum_sizes: @mut HashMap<ty::t, uint>,
+     discrims: @mut HashMap<ast::def_id, ValueRef>,
+     discrim_symbols: @mut HashMap<ast::node_id, @~str>,
+     tydescs: @mut HashMap<ty::t, @mut tydesc_info>,
      // Set when running emit_tydescs to enforce that no more tydescs are
      // created.
      finished_tydescs: @mut bool,
      // Track mapping of external ids to local items imported for inlining
-     external: @mut LinearMap<ast::def_id, Option<ast::node_id>>,
+     external: @mut HashMap<ast::def_id, Option<ast::node_id>>,
      // Cache instances of monomorphized functions
-     monomorphized: @mut LinearMap<mono_id, ValueRef>,
-     monomorphizing: @mut LinearMap<ast::def_id, uint>,
+     monomorphized: @mut HashMap<mono_id, ValueRef>,
+     monomorphizing: @mut HashMap<ast::def_id, uint>,
      // Cache computed type parameter uses (see type_use.rs)
-     type_use_cache: @mut LinearMap<ast::def_id, ~[type_use::type_uses]>,
+     type_use_cache: @mut HashMap<ast::def_id, ~[type_use::type_uses]>,
      // Cache generated vtables
-     vtables: @mut LinearMap<mono_id, ValueRef>,
+     vtables: @mut HashMap<mono_id, ValueRef>,
      // Cache of constant strings,
-     const_cstr_cache: @mut LinearMap<@~str, ValueRef>,
+     const_cstr_cache: @mut HashMap<@~str, ValueRef>,
 
      // Reverse-direction for const ptrs cast from globals.
      // Key is an int, cast from a ValueRef holding a *T,
@@ -198,24 +198,24 @@ pub struct CrateContext {
      // when we ptrcast, and we have to ptrcast during translation
      // of a [T] const because we form a slice, a [*T,int] pair, not
      // a pointer to an LLVM array type.
-     const_globals: @mut LinearMap<int, ValueRef>,
+     const_globals: @mut HashMap<int, ValueRef>,
 
      // Cache of emitted const values
-     const_values: @mut LinearMap<ast::node_id, ValueRef>,
+     const_values: @mut HashMap<ast::node_id, ValueRef>,
 
      // Cache of external const values
-     extern_const_values: @mut LinearMap<ast::def_id, ValueRef>,
+     extern_const_values: @mut HashMap<ast::def_id, ValueRef>,
 
-     module_data: @mut LinearMap<~str, ValueRef>,
-     lltypes: @mut LinearMap<ty::t, TypeRef>,
-     llsizingtypes: @mut LinearMap<ty::t, TypeRef>,
-     adt_reprs: @mut LinearMap<ty::t, @adt::Repr>,
+     module_data: @mut HashMap<~str, ValueRef>,
+     lltypes: @mut HashMap<ty::t, TypeRef>,
+     llsizingtypes: @mut HashMap<ty::t, TypeRef>,
+     adt_reprs: @mut HashMap<ty::t, @adt::Repr>,
      names: namegen,
      next_addrspace: addrspace_gen,
      symbol_hasher: @hash::State,
-     type_hashcodes: @mut LinearMap<ty::t, @str>,
-     type_short_names: @mut LinearMap<ty::t, ~str>,
-     all_llvm_symbols: @mut LinearSet<~str>,
+     type_hashcodes: @mut HashMap<ty::t, @str>,
+     type_short_names: @mut HashMap<ty::t, ~str>,
+     all_llvm_symbols: @mut HashSet<@~str>,
      tcx: ty::ctxt,
      maps: astencode::Maps,
      stats: @mut Stats,
@@ -250,7 +250,7 @@ pub enum local_val { local_mem(ValueRef), local_imm(ValueRef), }
 pub struct param_substs {
     tys: ~[ty::t],
     vtables: Option<typeck::vtable_res>,
-    bounds: @~[ty::param_bounds],
+    type_param_defs: @~[ty::TypeParameterDef],
     self_ty: Option<ty::t>
 }
 
@@ -261,16 +261,25 @@ pub impl param_substs {
     }
 }
 
-pub fn param_substs_to_str(tcx: ty::ctxt, substs: &param_substs) -> ~str {
-    fmt!("param_substs {tys:%?, vtables:%?, bounds:%?}",
-         substs.tys.map(|t| ty_to_str(tcx, *t)),
-         substs.vtables.map(|vs| vs.map(|v| v.to_str(tcx))),
-         substs.bounds.map(|b| ty::param_bounds_to_str(tcx, *b)))
+fn param_substs_to_str(self: &param_substs,
+                       tcx: ty::ctxt) -> ~str
+{
+    fmt!("param_substs {tys:%s, vtables:%s, type_param_defs:%s}",
+         self.tys.repr(tcx),
+         self.vtables.repr(tcx),
+         self.type_param_defs.repr(tcx))
 }
 
-pub fn opt_param_substs_to_str(tcx: ty::ctxt,
-                               substs: &Option<@param_substs>) -> ~str {
-    substs.map_default(~"None", |&ps| param_substs_to_str(tcx, ps))
+impl Repr for param_substs {
+    fn repr(&self, tcx: ty::ctxt) -> ~str {
+        param_substs_to_str(self, tcx)
+    }
+}
+
+impl Repr for @param_substs {
+    fn repr(&self, tcx: ty::ctxt) -> ~str {
+        param_substs_to_str(*self, tcx)
+    }
 }
 
 // Function context.  Every LLVM function we create will have one of
@@ -314,12 +323,12 @@ pub struct fn_ctxt_ {
     loop_ret: Option<(ValueRef, ValueRef)>,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: @mut LinearMap<ast::node_id, local_val>,
+    llargs: @mut HashMap<ast::node_id, local_val>,
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: @mut LinearMap<ast::node_id, local_val>,
+    lllocals: @mut HashMap<ast::node_id, local_val>,
     // Same as above, but for closure upvars
-    llupvars: @mut LinearMap<ast::node_id, ValueRef>,
+    llupvars: @mut HashMap<ast::node_id, ValueRef>,
 
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.
@@ -413,8 +422,9 @@ pub fn root_for_cleanup(bcx: block, v: ValueRef, t: ty::t)
 pub fn add_clean(bcx: block, val: ValueRef, t: ty::t) {
     if !ty::type_needs_drop(bcx.tcx(), t) { return; }
     debug!("add_clean(%s, %s, %s)",
-           bcx.to_str(), val_str(bcx.ccx().tn, val),
-           ty_to_str(bcx.ccx().tcx, t));
+           bcx.to_str(),
+           val_str(bcx.ccx().tn, val),
+           t.repr(bcx.tcx()));
     let (root, rooted) = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx) |scope_info| {
@@ -429,7 +439,7 @@ pub fn add_clean_temp_immediate(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { return; }
     debug!("add_clean_temp_immediate(%s, %s, %s)",
            cx.to_str(), val_str(cx.ccx().tn, val),
-           ty_to_str(cx.ccx().tcx, ty));
+           ty.repr(cx.tcx()));
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     do in_scope_cx(cx) |scope_info| {
         scope_info.cleanups.push(
@@ -442,7 +452,7 @@ pub fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
     if !ty::type_needs_drop(bcx.tcx(), t) { return; }
     debug!("add_clean_temp_mem(%s, %s, %s)",
            bcx.to_str(), val_str(bcx.ccx().tn, val),
-           ty_to_str(bcx.ccx().tcx, t));
+           t.repr(bcx.tcx()));
     let (root, rooted) = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx) |scope_info| {
@@ -455,7 +465,7 @@ pub fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
 pub fn add_clean_frozen_root(bcx: block, val: ValueRef, t: ty::t) {
     debug!("add_clean_frozen_root(%s, %s, %s)",
            bcx.to_str(), val_str(bcx.ccx().tn, val),
-           ty_to_str(bcx.ccx().tcx, t));
+           t.repr(bcx.tcx()));
     let (root, rooted) = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx) |scope_info| {
@@ -703,7 +713,7 @@ pub impl block_ {
     }
 
     fn expr_to_str(@mut self, e: @ast::expr) -> ~str {
-        expr_repr(self.tcx(), e)
+        e.repr(self.tcx())
     }
 
     fn expr_is_lval(@mut self, e: @ast::expr) -> bool {
@@ -733,7 +743,7 @@ pub impl block_ {
     }
 
     fn ty_to_str(@mut self, t: ty::t) -> ~str {
-        ty_to_str(self.tcx(), t)
+        t.repr(self.tcx())
     }
     fn to_str(@mut self) -> ~str {
         match self.node_info {
@@ -755,7 +765,7 @@ pub fn T_void() -> TypeRef {
 }
 
 pub fn T_nil() -> TypeRef {
-    return T_struct(~[])
+    return T_struct(~[], false)
 }
 
 pub fn T_metadata() -> TypeRef { unsafe { return llvm::LLVMMetadataType(); } }
@@ -838,7 +848,7 @@ pub fn T_fn(inputs: &[TypeRef], output: TypeRef) -> TypeRef {
 }
 
 pub fn T_fn_pair(cx: @CrateContext, tfn: TypeRef) -> TypeRef {
-    return T_struct(~[T_ptr(tfn), T_opaque_cbox_ptr(cx)]);
+    return T_struct(~[T_ptr(tfn), T_opaque_cbox_ptr(cx)], false);
 }
 
 pub fn T_ptr(t: TypeRef) -> TypeRef {
@@ -853,11 +863,11 @@ pub fn T_root(t: TypeRef, addrspace: addrspace) -> TypeRef {
     }
 }
 
-pub fn T_struct(elts: &[TypeRef]) -> TypeRef {
+pub fn T_struct(elts: &[TypeRef], packed: bool) -> TypeRef {
     unsafe {
         return llvm::LLVMStructType(to_ptr(elts),
                                     elts.len() as c_uint,
-                                    False);
+                                    packed as Bool);
     }
 }
 
@@ -868,16 +878,16 @@ pub fn T_named_struct(name: &str) -> TypeRef {
     }
 }
 
-pub fn set_struct_body(t: TypeRef, elts: &[TypeRef]) {
+pub fn set_struct_body(t: TypeRef, elts: &[TypeRef], packed: bool) {
     unsafe {
         llvm::LLVMStructSetBody(t,
                                 to_ptr(elts),
                                 elts.len() as c_uint,
-                                False);
+                                packed as Bool);
     }
 }
 
-pub fn T_empty_struct() -> TypeRef { return T_struct(~[]); }
+pub fn T_empty_struct() -> TypeRef { return T_struct(~[], false); }
 
 // A vtable is, in reality, a vtable pointer followed by zero or more pointers
 // to tydescs and other vtables that it closes over. But the types and number
@@ -903,7 +913,7 @@ pub fn T_task(targ_cfg: @session::config) -> TypeRef {
     let elems =
         ~[t_int, t_int, t_int, t_int,
          t_int, t_int, t_int, t_int];
-    set_struct_body(t, elems);
+    set_struct_body(t, elems, false);
     return t;
 }
 
@@ -946,7 +956,7 @@ pub fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
         ~[int_type, int_type,
           glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty,
           T_ptr(T_i8()), T_ptr(T_i8())];
-    set_struct_body(tydesc, elems);
+    set_struct_body(tydesc, elems, false);
     return tydesc;
 }
 
@@ -959,8 +969,9 @@ pub fn T_array(t: TypeRef, n: uint) -> TypeRef {
 // Interior vector.
 pub fn T_vec2(targ_cfg: @session::config, t: TypeRef) -> TypeRef {
     return T_struct(~[T_int(targ_cfg), // fill
-                  T_int(targ_cfg), // alloc
-                  T_array(t, 0u)]); // elements
+                      T_int(targ_cfg), // alloc
+                      T_array(t, 0u)], // elements
+                    false);
 }
 
 pub fn T_vec(ccx: @CrateContext, t: TypeRef) -> TypeRef {
@@ -991,11 +1002,11 @@ pub fn T_box_header_fields(cx: @CrateContext) -> ~[TypeRef] {
 }
 
 pub fn T_box_header(cx: @CrateContext) -> TypeRef {
-    return T_struct(T_box_header_fields(cx));
+    return T_struct(T_box_header_fields(cx), false);
 }
 
 pub fn T_box(cx: @CrateContext, t: TypeRef) -> TypeRef {
-    return T_struct(vec::append(T_box_header_fields(cx), ~[t]));
+    return T_struct(vec::append(T_box_header_fields(cx), ~[t]), false);
 }
 
 pub fn T_box_ptr(t: TypeRef) -> TypeRef {
@@ -1013,7 +1024,7 @@ pub fn T_opaque_box_ptr(cx: @CrateContext) -> TypeRef {
 }
 
 pub fn T_unique(cx: @CrateContext, t: TypeRef) -> TypeRef {
-    return T_struct(vec::append(T_box_header_fields(cx), ~[t]));
+    return T_struct(vec::append(T_box_header_fields(cx), ~[t]), false);
 }
 
 pub fn T_unique_ptr(t: TypeRef) -> TypeRef {
@@ -1023,12 +1034,12 @@ pub fn T_unique_ptr(t: TypeRef) -> TypeRef {
 }
 
 pub fn T_port(cx: @CrateContext, _t: TypeRef) -> TypeRef {
-    return T_struct(~[cx.int_type]); // Refcount
+    return T_struct(~[cx.int_type], false); // Refcount
 
 }
 
 pub fn T_chan(cx: @CrateContext, _t: TypeRef) -> TypeRef {
-    return T_struct(~[cx.int_type]); // Refcount
+    return T_struct(~[cx.int_type], false); // Refcount
 
 }
 
@@ -1046,24 +1057,22 @@ pub fn T_enum_discrim(cx: @CrateContext) -> TypeRef {
 }
 
 pub fn T_captured_tydescs(cx: @CrateContext, n: uint) -> TypeRef {
-    return T_struct(vec::from_elem::<TypeRef>(n, T_ptr(cx.tydesc_type)));
+    return T_struct(vec::from_elem::<TypeRef>(n, T_ptr(cx.tydesc_type)), false);
 }
 
 pub fn T_opaque_trait(cx: @CrateContext, store: ty::TraitStore) -> TypeRef {
     match store {
         ty::BoxTraitStore => {
-            T_struct(~[T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)])
+            T_struct(~[T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)], false)
         }
         ty::UniqTraitStore => {
             T_struct(~[T_ptr(cx.tydesc_type),
                        T_unique_ptr(T_unique(cx, T_i8())),
-                       T_ptr(cx.tydesc_type)])
+                       T_ptr(cx.tydesc_type)],
+                     false)
         }
         ty::RegionTraitStore(_) => {
-            T_struct(~[T_ptr(cx.tydesc_type), T_ptr(T_i8())])
-        }
-        ty::BareTraitStore => {
-            cx.sess.bug(~"can't make T_opaque_trait with bare trait store")
+            T_struct(~[T_ptr(cx.tydesc_type), T_ptr(T_i8())], false)
         }
     }
 }
@@ -1448,14 +1457,14 @@ pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, +vt: typeck::vtable_origin)
 pub fn find_vtable(tcx: ty::ctxt, ps: &param_substs,
                    n_param: uint, n_bound: uint)
     -> typeck::vtable_origin {
-    debug!("find_vtable_in_fn_ctxt(n_param=%u, n_bound=%u, ps=%?)",
-           n_param, n_bound, param_substs_to_str(tcx, ps));
+    debug!("find_vtable(n_param=%u, n_bound=%u, ps=%s)",
+           n_param, n_bound, ps.repr(tcx));
 
     // Vtables are stored in a flat array, finding the right one is
     // somewhat awkward
-    let first_n_bounds = ps.bounds.slice(0, n_param);
+    let first_n_type_param_defs = ps.type_param_defs.slice(0, n_param);
     let vtables_to_skip =
-        ty::count_traits_and_supertraits(tcx, first_n_bounds);
+        ty::count_traits_and_supertraits(tcx, first_n_type_param_defs);
     let vtable_off = vtables_to_skip + n_bound;
     /*bad*/ copy ps.vtables.get()[vtable_off]
 }

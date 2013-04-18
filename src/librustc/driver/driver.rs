@@ -89,7 +89,7 @@ pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
         abi::X86 => (~"little",~"x86",~"32"),
         abi::X86_64 => (~"little",~"x86_64",~"64"),
         abi::Arm => (~"little",~"arm",~"32"),
-        abi::Mips => (~"little",~"arm",~"32")
+        abi::Mips => (~"big",~"mips",~"32")
     };
 
     return ~[ // Target bindings.
@@ -151,7 +151,7 @@ pub fn parse_input(sess: Session, +cfg: ast::crate_cfg, input: input)
     -> @ast::crate {
     match input {
       file_input(ref file) => {
-        parse::parse_crate_from_file(&(*file), cfg, sess.parse_sess)
+        parse::parse_crate_from_file_using_tts(&(*file), cfg, sess.parse_sess)
       }
       str_input(ref src) => {
         // FIXME (#2319): Don't really want to box the source string
@@ -308,7 +308,7 @@ pub fn compile_rest(sess: Session, cfg: ast::crate_cfg,
 
     };
 
-    // NOTE: Android hack
+    // NB: Android hack
     if sess.targ_cfg.arch == abi::Arm &&
             (sess.opts.output_type == link::output_type_object ||
              sess.opts.output_type == link::output_type_exe) {
@@ -698,7 +698,8 @@ pub fn build_session_(sopts: @session::options,
         parse_sess: p_s,
         codemap: cm,
         // For a library crate, this is always none
-        main_fn: @mut None,
+        entry_fn: @mut None,
+        entry_type: @mut None,
         span_diagnostic: span_diagnostic_handler,
         filesearch: filesearch,
         building_library: @mut false,
@@ -875,7 +876,7 @@ pub fn list_metadata(sess: Session, path: &Path, out: @io::Writer) {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use core::prelude::*;
 
     use driver::driver::{build_configuration, build_session};
@@ -889,7 +890,7 @@ pub mod test {
 
     // When the user supplies --test we should implicitly supply --cfg test
     #[test]
-    pub fn test_switch_implies_cfg_test() {
+    fn test_switch_implies_cfg_test() {
         let matches =
             &match getopts(~[~"--test"], optgroups()) {
               Ok(copy m) => m,
@@ -906,7 +907,7 @@ pub mod test {
     // When the user supplies --test and --cfg test, don't implicitly add
     // another --cfg test
     #[test]
-    pub fn test_switch_implies_cfg_test_unless_cfg_test() {
+    fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
             &match getopts(~[~"--test", ~"--cfg=test"], optgroups()) {
               Ok(copy m) => m,

@@ -30,7 +30,7 @@ pub fn path_name_i(idents: &[ident], intr: @token::ident_interner) -> ~str {
 }
 
 
-pub fn path_to_ident(p: @path) -> ident { copy *p.idents.last() }
+pub fn path_to_ident(p: @Path) -> ident { copy *p.idents.last() }
 
 pub fn local_def(id: node_id) -> def_id {
     ast::def_id { crate: local_crate, node: id }
@@ -61,7 +61,7 @@ pub fn def_id_of_def(d: def) -> def_id {
       def_fn(id, _) | def_static_method(id, _, _) | def_mod(id) |
       def_foreign_mod(id) | def_const(id) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
-      def_use(id) | def_struct(id) => {
+      def_use(id) | def_struct(id) | def_trait(id) => {
         id
       }
       def_arg(id, _, _) | def_local(id, _) | def_self(id, _) | def_self_ty(id)
@@ -223,8 +223,8 @@ pub fn default_block(
     }
 }
 
-pub fn ident_to_path(s: span, +i: ident) -> @path {
-    @ast::path { span: s,
+pub fn ident_to_path(s: span, +i: ident) -> @Path {
+    @ast::Path { span: s,
                  global: false,
                  idents: ~[i],
                  rp: None,

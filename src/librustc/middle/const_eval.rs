@@ -20,7 +20,7 @@ use core::vec;
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
 
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -189,14 +189,14 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
         }
     } else {
         let maps = astencode::Maps {
-            mutbl_map: @mut LinearSet::new(),
-            root_map: @mut LinearMap::new(),
-            last_use_map: @mut LinearMap::new(),
-            method_map: @mut LinearMap::new(),
-            vtable_map: @mut LinearMap::new(),
-            write_guard_map: @mut LinearSet::new(),
-            moves_map: @mut LinearSet::new(),
-            capture_map: @mut LinearMap::new()
+            mutbl_map: @mut HashSet::new(),
+            root_map: @mut HashMap::new(),
+            last_use_map: @mut HashMap::new(),
+            method_map: @mut HashMap::new(),
+            vtable_map: @mut HashMap::new(),
+            write_guard_map: @mut HashSet::new(),
+            moves_map: @mut HashSet::new(),
+            capture_map: @mut HashMap::new()
         };
         match csearch::maybe_get_item_ast(tcx, def_id,
             |a, b, c, d| astencode::decode_inlined_item(a, b, maps, /*bar*/ copy c, d)) {
@@ -371,32 +371,31 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
       expr_cast(base, _) => {
         let ety = ty::expr_ty(tcx, e);
         let base = eval_const_expr_partial(tcx, base);
-        match ty::get(ety).sty {
-          ty::ty_float(_) => {
-            match base {
-              Ok(const_uint(u)) => Ok(const_float(u as f64)),
-              Ok(const_int(i)) => Ok(const_float(i as f64)),
-              Ok(const_float(_)) => base,
-              _ => Err(~"Can't cast float to str")
+        match /*bad*/copy base {
+            Err(_) => base,
+            Ok(val) => {
+                match ty::get(ety).sty {
+                    ty::ty_float(_) => match val {
+                        const_uint(u) => Ok(const_float(u as f64)),
+                        const_int(i) => Ok(const_float(i as f64)),
+                        const_float(_) => base,
+                        _ => Err(~"Can't cast float to str"),
+                    },
+                    ty::ty_uint(_) => match val {
+                        const_uint(_) => base,
+                        const_int(i) => Ok(const_uint(i as u64)),
+                        const_float(f) => Ok(const_uint(f as u64)),
+                        _ => Err(~"Can't cast str to uint"),
+                    },
+                    ty::ty_int(_) | ty::ty_bool => match val {
+                        const_uint(u) => Ok(const_int(u as i64)),
+                        const_int(_) => base,
+                        const_float(f) => Ok(const_int(f as i64)),
+                        _ => Err(~"Can't cast str to int"),
+                    },
+                    _ => Err(~"Can't cast this type")
+                }
             }
-          }
-          ty::ty_uint(_) => {
-            match base {
-              Ok(const_uint(_)) => base,
-              Ok(const_int(i)) => Ok(const_uint(i as u64)),
-              Ok(const_float(f)) => Ok(const_uint(f as u64)),
-              _ => Err(~"Can't cast str to uint")
-            }
-          }
-          ty::ty_int(_) | ty::ty_bool => {
-            match base {
-              Ok(const_uint(u)) => Ok(const_int(u as i64)),
-              Ok(const_int(_)) => base,
-              Ok(const_float(f)) => Ok(const_int(f as i64)),
-              _ => Err(~"Can't cast str to int")
-            }
-          }
-          _ => Err(~"Can't cast this type")
         }
       }
       expr_path(_) => {

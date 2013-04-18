@@ -113,7 +113,7 @@ pub struct Lifetime {
 #[auto_encode]
 #[auto_decode]
 #[deriving(Eq)]
-pub struct path {
+pub struct Path {
     span: span,
     global: bool,
     idents: ~[ident],
@@ -144,7 +144,7 @@ pub static crate_node_id: node_id = 0;
 // the "special" built-in traits (see middle::lang_items) and
 // detects Copy, Send, Owned, and Const.
 pub enum TyParamBound {
-    TraitTyParamBound(@Ty),
+    TraitTyParamBound(@trait_ref),
     RegionTyParamBound
 }
 
@@ -194,6 +194,7 @@ pub enum def {
     def_local(node_id, bool /* is_mutbl */),
     def_variant(def_id /* enum */, def_id /* variant */),
     def_ty(def_id),
+    def_trait(def_id),
     def_prim_ty(prim_ty),
     def_ty_param(def_id, uint),
     def_binding(node_id, binding_mode),
@@ -300,10 +301,10 @@ pub enum pat_ {
     // which it is. The resolver determines this, and
     // records this pattern's node_id in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
-    pat_ident(binding_mode, @path, Option<@pat>),
-    pat_enum(@path, Option<~[@pat]>), /* "none" means a * pattern where
+    pat_ident(binding_mode, @Path, Option<@pat>),
+    pat_enum(@Path, Option<~[@pat]>), /* "none" means a * pattern where
                                        * we don't bind the fields to names */
-    pat_struct(@path, ~[field_pat], bool),
+    pat_struct(@Path, ~[field_pat], bool),
     pat_tup(~[@pat]),
     pat_box(@pat),
     pat_uniq(@pat),
@@ -566,7 +567,7 @@ pub enum expr_ {
     expr_assign_op(binop, @expr, @expr),
     expr_field(@expr, ident, ~[@Ty]),
     expr_index(@expr, @expr),
-    expr_path(@path),
+    expr_path(@Path),
     expr_addr_of(mutability, @expr),
     expr_break(Option<ident>),
     expr_again(Option<ident>),
@@ -578,7 +579,7 @@ pub enum expr_ {
     expr_mac(mac),
 
     // A struct literal expression.
-    expr_struct(@path, ~[field], Option<@expr>),
+    expr_struct(@Path, ~[field], Option<@expr>),
 
     // A vector literal constructed from one repeated element.
     expr_repeat(@expr /* element */, @expr /* count */, mutability),
@@ -696,7 +697,7 @@ pub type mac = spanned<mac_>;
 #[auto_decode]
 #[deriving(Eq)]
 pub enum mac_ {
-    mac_invoc_tt(@path,~[token_tree]),   // new macro-invocation
+    mac_invoc_tt(@Path,~[token_tree]),   // new macro-invocation
 }
 
 pub type lit = spanned<lit_>;
@@ -893,7 +894,7 @@ pub enum ty_ {
     ty_closure(@TyClosure),
     ty_bare_fn(@TyBareFn),
     ty_tup(~[@Ty]),
-    ty_path(@path, node_id),
+    ty_path(@Path, node_id),
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not
@@ -999,15 +1000,6 @@ pub enum self_ty_ {
     sty_region(Option<@Lifetime>, mutability), // `&'lt self`
     sty_box(mutability),                       // `@self`
     sty_uniq(mutability)                       // `~self`
-}
-
-impl self_ty_ {
-    fn is_borrowed(&self) -> bool {
-        match *self {
-            sty_region(*) => true,
-            _ => false
-        }
-    }
 }
 
 pub type self_ty = spanned<self_ty_>;
@@ -1117,13 +1109,13 @@ pub enum view_path_ {
     // or just
     //
     // foo::bar::baz  (with 'baz =' implicitly on the left)
-    view_path_simple(ident, @path, namespace, node_id),
+    view_path_simple(ident, @Path, namespace, node_id),
 
     // foo::bar::*
-    view_path_glob(@path, node_id),
+    view_path_glob(@Path, node_id),
 
     // foo::bar::{a,b,c}
-    view_path_list(@path, ~[path_list_ident], node_id)
+    view_path_list(@Path, ~[path_list_ident], node_id)
 }
 
 #[auto_encode]
@@ -1176,7 +1168,7 @@ pub struct attribute_ {
 #[auto_decode]
 #[deriving(Eq)]
 pub struct trait_ref {
-    path: @path,
+    path: @Path,
     ref_id: node_id,
 }
 
@@ -1184,6 +1176,15 @@ pub struct trait_ref {
 #[auto_decode]
 #[deriving(Eq)]
 pub enum visibility { public, private, inherited }
+
+impl visibility {
+    fn inherit_from(&self, parent_visibility: visibility) -> visibility {
+        match self {
+            &inherited => parent_visibility,
+            &public | &private => *self
+        }
+    }
+}
 
 #[auto_encode]
 #[auto_decode]

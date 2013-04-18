@@ -34,7 +34,7 @@ use ops::Drop;
 use unstable::{Exclusive, exclusive};
 use unstable::at_exit::at_exit;
 use unstable::intrinsics::atomic_cxchg;
-use hashmap::linear::LinearMap;
+use hashmap::HashMap;
 use sys::Closure;
 
 #[cfg(test)] use unstable::{SharedMutableState, shared_mutable_state};
@@ -144,7 +144,7 @@ pub unsafe fn global_data_clone<T:Owned + Clone>(
 // destructor. Keys are pointers derived from the type of the
 // global value.  There is a single GlobalState instance per runtime.
 struct GlobalState {
-    map: LinearMap<uint, (*c_void, ~fn())>
+    map: HashMap<uint, (*c_void, ~fn())>
 }
 
 impl Drop for GlobalState {
@@ -171,7 +171,7 @@ fn get_global_state() -> Exclusive<GlobalState> {
 
         // The global state object
         let state = GlobalState {
-            map: LinearMap::new()
+            map: HashMap::new()
         };
 
         // It's under a reference-counted mutex

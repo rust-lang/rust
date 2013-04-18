@@ -111,16 +111,16 @@ pub unsafe fn copy_lifetime_vec<'a,S,T>(_ptr: &'a [S], ptr: &T) -> &'a T {
  ****************************************************************************/
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use cast::{bump_box_refcount, reinterpret_cast, transmute};
 
     #[test]
-    pub fn test_reinterpret_cast() {
+    fn test_reinterpret_cast() {
         assert!(1u == unsafe { reinterpret_cast(&1) });
     }
 
     #[test]
-    pub fn test_bump_box_refcount() {
+    fn test_bump_box_refcount() {
         unsafe {
             let box = @~"box box box";       // refcount 1
             bump_box_refcount(box);         // refcount 2
@@ -135,7 +135,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn test_transmute() {
+    fn test_transmute() {
         use managed::raw::BoxRepr;
         unsafe {
             let x = @100u8;
@@ -146,7 +146,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn test_transmute2() {
+    fn test_transmute2() {
         unsafe {
             assert!(~[76u8, 0u8] == transmute(~"L"));
         }

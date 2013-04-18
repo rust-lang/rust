@@ -863,8 +863,20 @@ pub mod consts {
             pub static F_TEST : int = 3;
             pub static F_TLOCK : int = 2;
             pub static F_ULOCK : int = 0;
+            pub static SIGHUP : int = 1;
+            pub static SIGINT : int = 2;
+            pub static SIGQUIT : int = 3;
+            pub static SIGILL : int = 4;
+            pub static SIGABRT : int = 6;
+            pub static SIGFPE : int = 8;
+            pub static SIGKILL : int = 9;
+            pub static SIGSEGV : int = 11;
+            pub static SIGPIPE : int = 13;
+            pub static SIGALRM : int = 14;
+            pub static SIGTERM : int = 15;
         }
         pub mod posix01 {
+            pub static SIGTRAP : int = 5;
         }
         pub mod posix08 {
         }
@@ -930,8 +942,20 @@ pub mod consts {
             pub static F_TEST : int = 3;
             pub static F_TLOCK : int = 2;
             pub static F_ULOCK : int = 0;
+            pub static SIGHUP : int = 1;
+            pub static SIGINT : int = 2;
+            pub static SIGQUIT : int = 3;
+            pub static SIGILL : int = 4;
+            pub static SIGABRT : int = 6;
+            pub static SIGFPE : int = 8;
+            pub static SIGKILL : int = 9;
+            pub static SIGSEGV : int = 11;
+            pub static SIGPIPE : int = 13;
+            pub static SIGALRM : int = 14;
+            pub static SIGTERM : int = 15;
         }
         pub mod posix01 {
+            pub static SIGTRAP : int = 5;
         }
         pub mod posix08 {
         }
@@ -998,8 +1022,20 @@ pub mod consts {
             pub static F_TEST : int = 3;
             pub static F_TLOCK : int = 2;
             pub static F_ULOCK : int = 0;
+            pub static SIGHUP : int = 1;
+            pub static SIGINT : int = 2;
+            pub static SIGQUIT : int = 3;
+            pub static SIGILL : int = 4;
+            pub static SIGABRT : int = 6;
+            pub static SIGFPE : int = 8;
+            pub static SIGKILL : int = 9;
+            pub static SIGSEGV : int = 11;
+            pub static SIGPIPE : int = 13;
+            pub static SIGALRM : int = 14;
+            pub static SIGTERM : int = 15;
         }
         pub mod posix01 {
+            pub static SIGTRAP : int = 5;
         }
         pub mod posix08 {
         }
@@ -1394,7 +1430,7 @@ pub mod funcs {
             use libc::types::common::posix88::{DIR, dirent_t};
             use libc::types::os::arch::c95::{c_char, c_int, c_long};
 
-            // NOTE: On OS X opendir and readdir have two versions,
+            // NB: On OS X opendir and readdir have two versions,
             // one for 32-bit kernelspace and one for 64.
             // We should be linking to the 64-bit ones, called
             // opendir$INODE64, etc. but for some reason rustc
@@ -1480,6 +1516,17 @@ pub mod funcs {
                 unsafe fn unlink(c: *c_char) -> c_int;
                 unsafe fn write(fd: c_int, buf: *c_void, count: size_t)
                              -> ssize_t;
+            }
+        }
+
+        #[nolink]
+        #[abi = "cdecl"]
+        pub mod signal {
+            use libc::types::os::arch::c95::{c_int};
+            use libc::types::os::arch::posix88::{pid_t};
+
+            pub extern {
+                unsafe fn kill(pid: pid_t, sig: c_int) -> c_int;
             }
         }
     }
@@ -1623,6 +1670,7 @@ pub mod funcs {
     pub mod extra {
 
         pub mod kernel32 {
+            use libc::types::os::arch::c95::{c_uint};
             use libc::types::os::arch::extra::{BOOL, DWORD, HMODULE};
             use libc::types::os::arch::extra::{LPCWSTR, LPWSTR, LPTCH};
             use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES};
@@ -1663,6 +1711,7 @@ pub mod funcs {
                                        findFileData: HANDLE)
                     -> BOOL;
                 unsafe fn FindClose(findFile: HANDLE) -> BOOL;
+                unsafe fn TerminateProcess(hProcess: HANDLE, uExitCode: c_uint) -> BOOL;
             }
         }
 

@@ -188,16 +188,14 @@ impl<T: Owned> Peekable<T> for Port<T> {
 
 #[inline(always)]
 fn port_peek<T:Owned>(self: &Port<T>) -> bool {
-    unsafe {
-        let mut endp = None;
-        endp <-> self.endp;
-        let peek = match &endp {
-            &Some(ref endp) => peek(endp),
-            &None => fail!(~"peeking empty stream")
-        };
-        self.endp <-> endp;
-        peek
-    }
+    let mut endp = None;
+    endp <-> self.endp;
+    let peek = match &endp {
+        &Some(ref endp) => peek(endp),
+        &None => fail!(~"peeking empty stream")
+    };
+    self.endp <-> endp;
+    peek
 }
 
 impl<T: Owned> Selectable for Port<T> {
@@ -428,12 +426,12 @@ pub fn try_send_one<T: Owned>(chan: ChanOne<T>, data: T)
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use either::Right;
     use super::{Chan, Port, oneshot, recv_one, stream};
 
     #[test]
-    pub fn test_select2() {
+    fn test_select2() {
         let (p1, c1) = stream();
         let (p2, c2) = stream();
 
@@ -448,7 +446,7 @@ pub mod test {
     }
 
     #[test]
-    pub fn test_oneshot() {
+    fn test_oneshot() {
         let (c, p) = oneshot::init();
 
         oneshot::client::send(c, ());

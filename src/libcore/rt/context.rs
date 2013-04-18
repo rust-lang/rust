@@ -189,6 +189,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: 
 
     regs[4] = arg as uint;
     regs[29] = sp as uint;
+    regs[25] = fptr as uint;
     regs[31] = fptr as uint;
 }
 
@@ -204,8 +205,6 @@ fn align_down(sp: *mut uint) -> *mut uint {
 #[inline(always)]
 pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
     use core::sys::size_of;
-    unsafe {
-        (ptr as int + count * (size_of::<T>() as int)) as *mut T
-    }
+    (ptr as int + count * (size_of::<T>() as int)) as *mut T
 }
 

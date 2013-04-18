@@ -22,6 +22,6 @@ impl<A> vec_monad<A> for ~[A] {
 }
 fn main() {
     ["hi"].bind(|x| [x] );
-    //~^ ERROR type `[&'static str * 1]` does not implement any method in scope named `bind`
+    //~^ ERROR type `[&'static str, .. 1]` does not implement any method in scope named `bind`
     //~^^ ERROR Unconstrained region variable
 }

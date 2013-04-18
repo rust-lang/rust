@@ -31,7 +31,7 @@ use syntax::ast_util::local_def;
 use syntax::visit::{default_simple_visitor, mk_simple_visitor, SimpleVisitor};
 use syntax::visit::visit_crate;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::ptr;
 
 pub enum LangItem {
@@ -259,7 +259,7 @@ fn LanguageItemCollector<'r>(crate: @crate,
                              session: Session,
                              items: &'r mut LanguageItems)
                           -> LanguageItemCollector<'r> {
-    let mut item_refs = LinearMap::new();
+    let mut item_refs = HashMap::new();
 
     item_refs.insert(@~"const", ConstTraitLangItem as uint);
     item_refs.insert(@~"copy", CopyTraitLangItem as uint);
@@ -317,7 +317,7 @@ struct LanguageItemCollector<'self> {
     crate: @crate,
     session: Session,
 
-    item_refs: LinearMap<@~str, uint>,
+    item_refs: HashMap<@~str, uint>,
 }
 
 pub impl<'self> LanguageItemCollector<'self> {
@@ -369,7 +369,7 @@ pub impl<'self> LanguageItemCollector<'self> {
     }
 
     fn collect_local_language_items(&self) {
-        let this = unsafe { ptr::addr_of(&self) };
+        let this = ptr::addr_of(&self);
         visit_crate(*self.crate, (), mk_simple_visitor(@SimpleVisitor {
             visit_item: |item| {
                 for item.attrs.each |attribute| {
@@ -397,7 +397,7 @@ pub impl<'self> LanguageItemCollector<'self> {
     }
 
     fn check_completeness(&self) {
-        for self.item_refs.each |&(&key, &item_ref)| {
+        for self.item_refs.each |&key, &item_ref| {
             match self.items.items[item_ref] {
                 None => {
                     self.session.err(fmt!("no item found for `%s`", *key));

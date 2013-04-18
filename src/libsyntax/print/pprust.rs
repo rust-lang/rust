@@ -95,7 +95,6 @@ pub fn rust_printer(writer: @io::Writer, intr: @ident_interner) -> @ps {
 }
 
 pub static indent_unit: uint = 4u;
-pub static match_indent_unit: uint = 2u;
 
 pub static default_columns: uint = 78u;
 
@@ -178,7 +177,7 @@ pub fn generics_to_str(generics: &ast::Generics,
     to_str(generics, print_generics, intr)
 }
 
-pub fn path_to_str(&&p: @ast::path, intr: @ident_interner) -> ~str {
+pub fn path_to_str(&&p: @ast::Path, intr: @ident_interner) -> ~str {
     to_str(p, |a,b| print_path(a, b, false), intr)
 }
 
@@ -562,7 +561,7 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
 
         match opt_trait {
             Some(t) => {
-                print_path(s, t.path, false);
+                print_trait_ref(s, t);
                 space(s.s);
                 word_space(s, ~"for");
             }
@@ -617,6 +616,10 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
       }
     }
     (s.ann.post)(ann_node);
+}
+
+fn print_trait_ref(s: @ps, t: &ast::trait_ref) {
+    print_path(s, t.path, false);
 }
 
 pub fn print_enum_def(s: @ps, enum_definition: ast::enum_def,
@@ -1223,16 +1226,16 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         print_block(s, blk);
       }
       ast::expr_match(expr, ref arms) => {
-        cbox(s, match_indent_unit);
+        cbox(s, indent_unit);
         ibox(s, 4);
         word_nbsp(s, ~"match");
         print_expr(s, expr);
         space(s.s);
         bopen(s);
-        let len = (*arms).len();
-        for (*arms).eachi |i, arm| {
+        let len = arms.len();
+        for arms.eachi |i, arm| {
             space(s.s);
-            cbox(s, match_indent_unit);
+            cbox(s, indent_unit);
             ibox(s, 0u);
             let mut first = true;
             for arm.pats.each |p| {
@@ -1265,7 +1268,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
                             ast::expr_block(ref blk) => {
                                 // the block will close the pattern's ibox
                                 print_block_unclosed_indent(
-                                    s, blk, match_indent_unit);
+                                    s, blk, indent_unit);
                             }
                             _ => {
                                 end(s); // close the ibox for the pattern
@@ -1282,10 +1285,10 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
                 }
             } else {
                 // the block will close the pattern's ibox
-                print_block_unclosed_indent(s, &arm.body, match_indent_unit);
+                print_block_unclosed_indent(s, &arm.body, indent_unit);
             }
         }
-        bclose_(s, expr.span, match_indent_unit);
+        bclose_(s, expr.span, indent_unit);
       }
       ast::expr_fn_block(ref decl, ref body) => {
         // in do/for blocks we don't want to show an empty
@@ -1482,7 +1485,7 @@ pub fn print_for_decl(s: @ps, loc: @ast::local, coll: @ast::expr) {
     print_expr(s, coll);
 }
 
-pub fn print_path(s: @ps, &&path: @ast::path, colons_before_params: bool) {
+pub fn print_path(s: @ps, &&path: @ast::Path, colons_before_params: bool) {
     maybe_print_comment(s, path.span.lo);
     if path.global { word(s.s, ~"::"); }
     let mut first = true;
@@ -1629,6 +1632,10 @@ pub fn print_pat(s: @ps, &&pat: @ast::pat, refutable: bool) {
     (s.ann.post)(ann_node);
 }
 
+pub fn self_ty_to_str(self_ty: ast::self_ty_, intr: @ident_interner) -> ~str {
+    to_str(self_ty, |a, b| { print_self_ty(a, b); () }, intr)
+}
+
 // Returns whether it printed anything
 pub fn print_self_ty(s: @ps, self_ty: ast::self_ty_) -> bool {
     match self_ty {
@@ -1744,7 +1751,7 @@ pub fn print_bounds(s: @ps, bounds: @OptVec<ast::TyParamBound>) {
             }
 
             match *bound {
-                TraitTyParamBound(ty) => print_type(s, ty),
+                TraitTyParamBound(tref) => print_trait_ref(s, tref),
                 RegionTyParamBound => word(s.s, ~"'static"),
             }
         }
@@ -2241,7 +2248,7 @@ pub fn print_onceness(s: @ps, o: ast::Onceness) {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use super::*;
 
     use ast;

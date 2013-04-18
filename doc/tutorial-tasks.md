@@ -2,66 +2,56 @@
 
 # Introduction
 
-The designers of Rust designed the language from the ground up to support pervasive
-and safe concurrency through lightweight, memory-isolated tasks and
-message passing.
+Rust provides safe concurrency through a combination
+of lightweight, memory-isolated tasks and message passing.
+This tutorial will describe the concurrency model in Rust, how it
+relates to the Rust type system, and introduce
+the fundamental library abstractions for constructing concurrent programs.
 
-Rust tasks are not the same as traditional threads: rather, they are more like
-_green threads_. The Rust runtime system schedules tasks cooperatively onto a
-small number of operating system threads. Because tasks are significantly
+Rust tasks are not the same as traditional threads: rather,
+they are considered _green threads_, lightweight units of execution that the Rust
+runtime schedules cooperatively onto a small number of operating system threads.
+On a multi-core system Rust tasks will be scheduled in parallel by default.
+Because tasks are significantly
 cheaper to create than traditional threads, Rust can create hundreds of
 thousands of concurrent tasks on a typical 32-bit system.
+In general, all Rust code executes inside a task, including the `main` function.
 
-Tasks provide failure isolation and recovery. When an exception occurs in Rust
-code (as a result of an explicit call to `fail!()`, an assertion failure, or
-another invalid operation), the runtime system destroys the entire
+In order to make efficient use of memory Rust tasks have dynamically sized stacks.
+A task begins its life with a small
+amount of stack space (currently in the low thousands of bytes, depending on
+platform), and acquires more stack as needed.
+Unlike in languages such as C, a Rust task cannot accidentally write to
+memory beyond the end of the stack, causing crashes or worse.
+
+Tasks provide failure isolation and recovery. When a fatal error occurs in Rust
+code as a result of an explicit call to `fail!()`, an assertion failure, or
+another invalid operation, the runtime system destroys the entire
 task. Unlike in languages such as Java and C++, there is no way to `catch` an
 exception. Instead, tasks may monitor each other for failure.
-
-Rust tasks have dynamically sized stacks. A task begins its life with a small
-amount of stack space (currently in the low thousands of bytes, depending on
-platform), and acquires more stack as needed. Unlike in languages such as C, a
-Rust task cannot run off the end of the stack. However, tasks do have a stack
-budget. If a Rust task exceeds its stack budget, then it will fail safely:
-with a checked exception.
 
 Tasks use Rust's type system to provide strong memory safety guarantees. In
 particular, the type system guarantees that tasks cannot share mutable state
 with each other. Tasks communicate with each other by transferring _owned_
 data through the global _exchange heap_.
 
-This tutorial explains the basics of tasks and communication in Rust,
-explores some typical patterns in concurrent Rust code, and finally
-discusses some of the more unusual synchronization types in the standard
-library.
-
-> ***Warning:*** This tutorial is incomplete
-
 ## A note about the libraries
 
 While Rust's type system provides the building blocks needed for safe
 and efficient tasks, all of the task functionality itself is implemented
 in the core and standard libraries, which are still under development
-and do not always present a consistent interface.
-
-In particular, there are currently two independent modules that provide a
-message passing interface to Rust code: `core::comm` and `core::pipes`.
-`core::comm` is an older, less efficient system that is being phased out in
-favor of `pipes`. At some point, we will remove the existing `core::comm` API
-and move the user-facing portions of `core::pipes` to `core::comm`. In this
-tutorial, we discuss `pipes` and ignore the `comm` API.
+and do not always present a consistent or complete interface.
 
 For your reference, these are the standard modules involved in Rust
 concurrency at this writing.
 
 * [`core::task`] - All code relating to tasks and task scheduling
-* [`core::comm`] - The deprecated message passing API
-* [`core::pipes`] - The new message passing infrastructure and API
-* [`std::comm`] - Higher level messaging types based on `core::pipes`
+* [`core::comm`] - The message passing interface
+* [`core::pipes`] - The underlying messaging infrastructure
+* [`std::comm`] - Additional messaging types based on `core::pipes`
 * [`std::sync`] - More exotic synchronization tools, including locks
-* [`std::arc`] - The ARC (atomic reference counted) type, for safely sharing
-  immutable data
-* [`std::par`] - Some basic tools for implementing parallel algorithms
+* [`std::arc`] - The ARC (atomically reference counted) type,
+  for safely sharing immutable data
 
 [`core::task`]: core/task.html
 [`core::comm`]: core/comm.html
@@ -69,7 +59,6 @@ concurrency at this writing.
 [`std::comm`]: std/comm.html
 [`std::sync`]: std/sync.html
 [`std::arc`]: std/arc.html
-[`std::par`]: std/par.html
 
 # Basics
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,6 +15,7 @@ use lib::llvm::{llvm, TypeRef, Integer, Pointer, Float, Double};
 use lib::llvm::{Struct, Array, Attribute};
 use lib::llvm::{StructRetAttribute, ByValAttribute};
 use lib::llvm::struct_tys;
+use lib::llvm::True;
 use middle::trans::common::*;
 use middle::trans::cabi::*;
 
@@ -76,8 +77,12 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                 Float => 4,
                 Double => 8,
                 Struct => {
-                  do vec::foldl(1, struct_tys(ty)) |a, t| {
+                  if llvm::LLVMIsPackedStruct(ty) == True {
+                    1
+                  } else {
+                    do vec::foldl(1, struct_tys(ty)) |a, t| {
                       uint::max(a, ty_align(*t))
+                    }
                   }
                 }
                 Array => {
@@ -99,10 +104,16 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                 Float => 4,
                 Double => 8,
                 Struct => {
-                  let size = do vec::foldl(0, struct_tys(ty)) |s, t| {
+                  if llvm::LLVMIsPackedStruct(ty) == True {
+                    do vec::foldl(0, struct_tys(ty)) |s, t| {
+                      s + ty_size(*t)
+                    }
+                  } else {
+                    let size = do vec::foldl(0, struct_tys(ty)) |s, t| {
                       align(s, *t) + ty_size(*t)
-                  };
-                  align(size, ty)
+                    };
+                    align(size, ty)
+                  }
                 }
                 Array => {
                   let len = llvm::LLVMGetArrayLength(ty) as uint;
@@ -245,10 +256,10 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                         cls[i] = sse_int_class;
                     } else if is_sse(cls[i]) {
                         i += 1;
-                        while cls[i] == sseup_class { i += 1u; }
+                        while i != e && cls[i] == sseup_class { i += 1u; }
                     } else if cls[i] == x87_class {
                         i += 1;
-                        while cls[i] == x87up_class { i += 1u; }
+                        while i != e && cls[i] == x87up_class { i += 1u; }
                     } else {
                         i += 1;
                     }
@@ -308,7 +319,7 @@ fn llreg_ty(cls: &[x86_64_reg_class]) -> TypeRef {
             }
             i += 1u;
         }
-        return T_struct(tys);
+        return T_struct(tys, false);
     }
 }
 

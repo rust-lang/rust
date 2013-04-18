@@ -22,16 +22,6 @@ pub fn mk_pass() -> Pass {
     text_pass::mk_pass(~"trim", |s| s.trim().to_owned() )
 }
 
-#[test]
-fn should_trim_text() {
-    use core::option::Some;
-
-    let doc = test::mk_doc(~"#[doc = \" desc \"] \
-                            mod m {
-                            }");
-    assert!(doc.cratemod().mods()[0].desc() == Some(~"desc"));
-}
-
 #[cfg(test)]
 mod test {
     use astsrv;
@@ -40,11 +30,21 @@ mod test {
     use extract;
     use trim_pass::mk_pass;
 
-    pub fn mk_doc(source: ~str) -> doc::Doc {
+    fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");
             let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
             (mk_pass().f)(srv.clone(), doc)
         }
+    }
+
+    #[test]
+    fn should_trim_text() {
+        use core::option::Some;
+
+        let doc = mk_doc(~"#[doc = \" desc \"] \
+                                 mod m {
+}");
+        assert!(doc.cratemod().mods()[0].desc() == Some(~"desc"));
     }
 }

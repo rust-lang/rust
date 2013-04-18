@@ -8,19 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test #2443
-// exec-env:RUST_POISON_ON_FREE
+// Test lifetimes are linked properly when we autoslice a vector.
+// Issue #3148.
 
-fn it_takes_two(x: @int, -y: @int) -> int {
-    free(y);
-    debug!("about to deref");
-    *x
+fn subslice1<'r>(v: &'r [uint]) -> &'r [uint] { v }
+
+fn both<'r>(v: &'r [uint]) -> &'r [uint] {
+    subslice1(subslice1(v))
 }
 
-fn free<T>(-_t: T) {
-}
-
-pub fn main() {
-    let z = @3;
-    assert!(3 == it_takes_two(z, z));
+fn main() {
+    let v = ~[1,2,3];
+    both(v);
 }

@@ -16,7 +16,7 @@
 
 use core::prelude::*;
 use core::io::{WriterUtil, ReaderUtil};
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 
 use serialize::Encodable;
 use serialize;
@@ -33,7 +33,7 @@ pub enum Json {
 }
 
 pub type List = ~[Json];
-pub type Object = LinearMap<~str, Json>;
+pub type Object = HashMap<~str, Json>;
 
 #[deriving(Eq)]
 pub struct Error {
@@ -109,6 +109,7 @@ impl serialize::Encoder for Encoder {
     fn emit_str(&self, v: &str) { self.wr.write_str(escape_str(v)) }
 
     fn emit_enum(&self, _name: &str, f: &fn()) { f() }
+
     fn emit_enum_variant(&self, name: &str, _id: uint, cnt: uint, f: &fn()) {
         // enums are encoded as strings or vectors:
         // Bunny => "Bunny"
@@ -126,9 +127,49 @@ impl serialize::Encoder for Encoder {
     }
 
     fn emit_enum_variant_arg(&self, idx: uint, f: &fn()) {
-        if (idx != 0) {self.wr.write_char(',');}
+        if idx != 0 {self.wr.write_char(',');}
         f();
     }
+
+    fn emit_enum_struct_variant(&self, name: &str, id: uint, cnt: uint, f: &fn()) {
+        self.emit_enum_variant(name, id, cnt, f)
+    }
+
+    fn emit_enum_struct_variant_field(&self, _field: &str, idx: uint, f: &fn()) {
+        self.emit_enum_variant_arg(idx, f)
+    }
+
+    fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) {
+        self.wr.write_char('{');
+        f();
+        self.wr.write_char('}');
+    }
+    #[cfg(stage0)]
+    fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
+        if idx != 0 { self.wr.write_char(','); }
+        self.wr.write_str(escape_str(name));
+        self.wr.write_char(':');
+        f();
+    }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn emit_struct_field(&self, name: &str, idx: uint, f: &fn()) {
+        if idx != 0 { self.wr.write_char(','); }
+        self.wr.write_str(escape_str(name));
+        self.wr.write_char(':');
+        f();
+    }
+
+    fn emit_tuple(&self, len: uint, f: &fn()) { self.emit_seq(len, f) }
+    fn emit_tuple_arg(&self, idx: uint, f: &fn()) { self.emit_seq_elt(idx, f) }
+
+    fn emit_tuple_struct(&self, _name: &str, len: uint, f: &fn()) { self.emit_seq(len, f) }
+    fn emit_tuple_struct_arg(&self, idx: uint, f: &fn()) { self.emit_seq_elt(idx, f) }
+
+    fn emit_option(&self, f: &fn()) { f(); }
+    fn emit_option_none(&self) { self.emit_nil(); }
+    fn emit_option_some(&self, f: &fn()) { f(); }
 
     fn emit_seq(&self, _len: uint, f: &fn()) {
         self.wr.write_char('[');
@@ -140,22 +181,6 @@ impl serialize::Encoder for Encoder {
         if idx != 0 { self.wr.write_char(','); }
         f()
     }
-
-    fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) {
-        self.wr.write_char('{');
-        f();
-        self.wr.write_char('}');
-    }
-    fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
-        if idx != 0 { self.wr.write_char(','); }
-        self.wr.write_str(escape_str(name));
-        self.wr.write_char(':');
-        f();
-    }
-
-    fn emit_option(&self, f: &fn()) { f(); }
-    fn emit_option_none(&self) { self.emit_nil(); }
-    fn emit_option_some(&self, f: &fn()) { f(); }
 
     fn emit_map(&self, _len: uint, f: &fn()) {
         self.wr.write_char('{');
@@ -216,6 +241,7 @@ impl serialize::Encoder for PrettyEncoder {
     fn emit_str(&self, v: &str) { self.wr.write_str(escape_str(v)); }
 
     fn emit_enum(&self, _name: &str, f: &fn()) { f() }
+
     fn emit_enum_variant(&self, name: &str, _id: uint, cnt: uint, f: &fn()) {
         if cnt == 0 {
             self.wr.write_str(escape_str(name));
@@ -233,6 +259,7 @@ impl serialize::Encoder for PrettyEncoder {
             self.wr.write_char(']');
         }
     }
+
     fn emit_enum_variant_arg(&self, idx: uint, f: &fn()) {
         if idx != 0 {
             self.wr.write_str(",\n");
@@ -240,6 +267,65 @@ impl serialize::Encoder for PrettyEncoder {
         self.wr.write_str(spaces(self.indent));
         f()
     }
+
+    fn emit_enum_struct_variant(&self, name: &str, id: uint, cnt: uint, f: &fn()) {
+        self.emit_enum_variant(name, id, cnt, f)
+    }
+
+    fn emit_enum_struct_variant_field(&self, _field: &str, idx: uint, f: &fn()) {
+        self.emit_enum_variant_arg(idx, f)
+    }
+
+
+    fn emit_struct(&self, _name: &str, len: uint, f: &fn()) {
+        if len == 0 {
+            self.wr.write_str("{}");
+        } else {
+            self.wr.write_char('{');
+            self.indent += 2;
+            f();
+            self.wr.write_char('\n');
+            self.indent -= 2;
+            self.wr.write_str(spaces(self.indent));
+            self.wr.write_char('}');
+        }
+    }
+    #[cfg(stage0)]
+    fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
+        if idx == 0 {
+            self.wr.write_char('\n');
+        } else {
+            self.wr.write_str(",\n");
+        }
+        self.wr.write_str(spaces(self.indent));
+        self.wr.write_str(escape_str(name));
+        self.wr.write_str(": ");
+        f();
+    }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn emit_struct_field(&self, name: &str, idx: uint, f: &fn()) {
+        if idx == 0 {
+            self.wr.write_char('\n');
+        } else {
+            self.wr.write_str(",\n");
+        }
+        self.wr.write_str(spaces(self.indent));
+        self.wr.write_str(escape_str(name));
+        self.wr.write_str(": ");
+        f();
+    }
+
+    fn emit_tuple(&self, len: uint, f: &fn()) { self.emit_seq(len, f) }
+    fn emit_tuple_arg(&self, idx: uint, f: &fn()) { self.emit_seq_elt(idx, f) }
+
+    fn emit_tuple_struct(&self, _name: &str, len: uint, f: &fn()) { self.emit_seq(len, f) }
+    fn emit_tuple_struct_arg(&self, idx: uint, f: &fn()) { self.emit_seq_elt(idx, f) }
+
+    fn emit_option(&self, f: &fn()) { f(); }
+    fn emit_option_none(&self) { self.emit_nil(); }
+    fn emit_option_some(&self, f: &fn()) { f(); }
 
     fn emit_seq(&self, len: uint, f: &fn()) {
         if len == 0 {
@@ -263,35 +349,6 @@ impl serialize::Encoder for PrettyEncoder {
         self.wr.write_str(spaces(self.indent));
         f()
     }
-
-    fn emit_struct(&self, _name: &str, len: uint, f: &fn()) {
-        if len == 0 {
-            self.wr.write_str("{}");
-        } else {
-            self.wr.write_char('{');
-            self.indent += 2;
-            f();
-            self.wr.write_char('\n');
-            self.indent -= 2;
-            self.wr.write_str(spaces(self.indent));
-            self.wr.write_char('}');
-        }
-    }
-    fn emit_field(&self, name: &str, idx: uint, f: &fn()) {
-        if idx == 0 {
-            self.wr.write_char('\n');
-        } else {
-            self.wr.write_str(",\n");
-        }
-        self.wr.write_str(spaces(self.indent));
-        self.wr.write_str(escape_str(name));
-        self.wr.write_str(": ");
-        f();
-    }
-
-    fn emit_option(&self, f: &fn()) { f(); }
-    fn emit_option_none(&self) { self.emit_nil(); }
-    fn emit_option_some(&self, f: &fn()) { f(); }
 
     fn emit_map(&self, len: uint, f: &fn()) {
         if len == 0 {
@@ -342,10 +399,7 @@ pub fn to_writer(wr: @io::Writer, json: &Json) {
 
 /// Encodes a json value into a string
 pub fn to_str(json: &Json) -> ~str {
-    unsafe {
-        // ugh, should be safe
-        io::with_str_writer(|wr| to_writer(wr, json))
-    }
+    io::with_str_writer(|wr| to_writer(wr, json))
 }
 
 /// Encodes a json value into a io::writer
@@ -360,9 +414,9 @@ pub fn to_pretty_str(json: &Json) -> ~str {
 
 pub struct Parser {
     priv rdr: @io::Reader,
-    priv mut ch: char,
-    priv mut line: uint,
-    priv mut col: uint,
+    priv ch: char,
+    priv line: uint,
+    priv col: uint,
 }
 
 /// Decode a json value from an io::reader
@@ -376,7 +430,7 @@ pub fn Parser(rdr: @io::Reader) -> Parser {
 }
 
 pub impl Parser {
-    fn parse(&self) -> Result<Json, Error> {
+    fn parse(&mut self) -> Result<Json, Error> {
         match self.parse_value() {
           Ok(value) => {
             // Skip trailing whitespaces.
@@ -396,7 +450,7 @@ pub impl Parser {
 priv impl Parser {
     fn eof(&self) -> bool { self.ch == -1 as char }
 
-    fn bump(&self) {
+    fn bump(&mut self) {
         self.ch = self.rdr.read_char();
 
         if self.ch == '\n' {
@@ -407,7 +461,7 @@ priv impl Parser {
         }
     }
 
-    fn next_char(&self) -> char {
+    fn next_char(&mut self) -> char {
         self.bump();
         self.ch
     }
@@ -416,7 +470,7 @@ priv impl Parser {
         Err(Error { line: self.line, col: self.col, msg: @msg })
     }
 
-    fn parse_value(&self) -> Result<Json, Error> {
+    fn parse_value(&mut self) -> Result<Json, Error> {
         self.parse_whitespace();
 
         if self.eof() { return self.error(~"EOF while parsing value"); }
@@ -437,11 +491,11 @@ priv impl Parser {
         }
     }
 
-    fn parse_whitespace(&self) {
+    fn parse_whitespace(&mut self) {
         while char::is_whitespace(self.ch) { self.bump(); }
     }
 
-    fn parse_ident(&self, ident: &str, value: Json) -> Result<Json, Error> {
+    fn parse_ident(&mut self, ident: &str, value: Json) -> Result<Json, Error> {
         if str::all(ident, |c| c == self.next_char()) {
             self.bump();
             Ok(value)
@@ -450,7 +504,7 @@ priv impl Parser {
         }
     }
 
-    fn parse_number(&self) -> Result<Json, Error> {
+    fn parse_number(&mut self) -> Result<Json, Error> {
         let mut neg = 1f;
 
         if self.ch == '-' {
@@ -480,7 +534,7 @@ priv impl Parser {
         Ok(Number(neg * res))
     }
 
-    fn parse_integer(&self) -> Result<float, Error> {
+    fn parse_integer(&mut self) -> Result<float, Error> {
         let mut res = 0f;
 
         match self.ch {
@@ -512,7 +566,7 @@ priv impl Parser {
         Ok(res)
     }
 
-    fn parse_decimal(&self, res: float) -> Result<float, Error> {
+    fn parse_decimal(&mut self, res: float) -> Result<float, Error> {
         self.bump();
 
         // Make sure a digit follows the decimal place.
@@ -538,10 +592,9 @@ priv impl Parser {
         Ok(res)
     }
 
-    fn parse_exponent(&self, res: float) -> Result<float, Error> {
+    fn parse_exponent(&mut self, mut res: float) -> Result<float, Error> {
         self.bump();
 
-        let mut res = res;
         let mut exp = 0u;
         let mut neg_exp = false;
 
@@ -579,7 +632,7 @@ priv impl Parser {
         Ok(res)
     }
 
-    fn parse_str(&self) -> Result<~str, Error> {
+    fn parse_str(&mut self) -> Result<~str, Error> {
         let mut escape = false;
         let mut res = ~"";
 
@@ -643,7 +696,7 @@ priv impl Parser {
         self.error(~"EOF while parsing string")
     }
 
-    fn parse_list(&self) -> Result<Json, Error> {
+    fn parse_list(&mut self) -> Result<Json, Error> {
         self.bump();
         self.parse_whitespace();
 
@@ -673,11 +726,11 @@ priv impl Parser {
         };
     }
 
-    fn parse_object(&self) -> Result<Json, Error> {
+    fn parse_object(&mut self) -> Result<Json, Error> {
         self.bump();
         self.parse_whitespace();
 
-        let mut values = ~LinearMap::new();
+        let mut values = ~HashMap::new();
 
         if self.ch == '}' {
           self.bump();
@@ -726,7 +779,8 @@ priv impl Parser {
 
 /// Decodes a json value from an @io::Reader
 pub fn from_reader(rdr: @io::Reader) -> Result<Json, Error> {
-    Parser(rdr).parse()
+    let mut parser = Parser(rdr);
+    parser.parse()
 }
 
 /// Decodes a json value from a string
@@ -830,6 +884,93 @@ impl serialize::Decoder for Decoder {
         f()
     }
 
+    fn read_enum_struct_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T {
+        debug!("read_enum_struct_variant(names=%?)", names);
+        self.read_enum_variant(names, f)
+    }
+
+
+    fn read_enum_struct_variant_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_enum_struct_variant_field(name=%?, idx=%u)", name, idx);
+        self.read_enum_variant_arg(idx, f)
+    }
+
+    fn read_struct<T>(&self, name: &str, len: uint, f: &fn() -> T) -> T {
+        debug!("read_struct(name=%s, len=%u)", name, len);
+        let value = f();
+        self.stack.pop();
+        value
+    }
+
+    #[cfg(stage0)]
+    fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_field(name=%?, idx=%u)", name, idx);
+        match self.stack.pop() {
+            Object(obj) => {
+                let mut obj = obj;
+                let value = match obj.pop(&name.to_owned()) {
+                    None => fail!(fmt!("no such field: %s", name)),
+                    Some(json) => {
+                        self.stack.push(json);
+                        f()
+                    }
+                };
+                self.stack.push(Object(obj));
+                value
+            }
+            value => fail!(fmt!("not an object: %?", value))
+        }
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn read_struct_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_struct_field(name=%?, idx=%u)", name, idx);
+        match self.stack.pop() {
+            Object(obj) => {
+                let mut obj = obj;
+                let value = match obj.pop(&name.to_owned()) {
+                    None => fail!(fmt!("no such field: %s", name)),
+                    Some(json) => {
+                        self.stack.push(json);
+                        f()
+                    }
+                };
+                self.stack.push(Object(obj));
+                value
+            }
+            value => fail!(fmt!("not an object: %?", value))
+        }
+    }
+
+    fn read_tuple<T>(&self, f: &fn(uint) -> T) -> T {
+        debug!("read_tuple()");
+        self.read_seq(f)
+    }
+
+    fn read_tuple_arg<T>(&self, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_tuple_arg(idx=%u)", idx);
+        self.read_seq_elt(idx, f)
+    }
+
+    fn read_tuple_struct<T>(&self, name: &str, f: &fn(uint) -> T) -> T {
+        debug!("read_tuple_struct(name=%?)", name);
+        self.read_tuple(f)
+    }
+
+    fn read_tuple_struct_arg<T>(&self, idx: uint, f: &fn() -> T) -> T {
+        debug!("read_tuple_struct_arg(idx=%u)", idx);
+        self.read_tuple_arg(idx, f)
+    }
+
+    fn read_option<T>(&self, f: &fn(bool) -> T) -> T {
+        match self.stack.pop() {
+            Null => f(false),
+            value => { self.stack.push(value); f(true) }
+        }
+    }
+
     fn read_seq<T>(&self, f: &fn(uint) -> T) -> T {
         debug!("read_seq()");
         let len = match self.stack.pop() {
@@ -848,39 +989,6 @@ impl serialize::Decoder for Decoder {
     fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
         debug!("read_seq_elt(idx=%u)", idx);
         f()
-    }
-
-    fn read_struct<T>(&self, name: &str, len: uint, f: &fn() -> T) -> T {
-        debug!("read_struct(name=%s, len=%u)", name, len);
-        let value = f();
-        self.stack.pop();
-        value
-    }
-
-    fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
-        debug!("read_field(%s, idx=%u)", name, idx);
-        match self.stack.pop() {
-            Object(obj) => {
-                let mut obj = obj;
-                let value = match obj.pop(&name.to_owned()) {
-                    None => fail!(fmt!("no such field: %s", name)),
-                    Some(json) => {
-                        self.stack.push(json);
-                        f()
-                    }
-                };
-                self.stack.push(Object(obj));
-                value
-            }
-            value => fail!(fmt!("not an object: %?", value))
-        }
-    }
-
-    fn read_option<T>(&self, f: &fn(bool) -> T) -> T {
-        match self.stack.pop() {
-            Null => f(false),
-            value => { self.stack.push(value); f(true) }
-        }
     }
 
     fn read_map<T>(&self, f: &fn(uint) -> T) -> T {
@@ -929,7 +1037,7 @@ impl Eq for Json {
                     &Object(ref d1) => {
                         if d0.len() == d1.len() {
                             let mut equal = true;
-                            for d0.each |&(k, v0)| {
+                            for d0.each |k, v0| {
                                 match d1.find(k) {
                                     Some(v1) if v0 == v1 => { },
                                     _ => { equal = false; break }
@@ -988,23 +1096,21 @@ impl Ord for Json {
                 match *other {
                     Number(_) | String(_) | Boolean(_) | List(_) => false,
                     Object(ref d1) => {
-                        unsafe {
-                            let mut d0_flat = ~[];
-                            let mut d1_flat = ~[];
+                        let mut d0_flat = ~[];
+                        let mut d1_flat = ~[];
 
-                            // FIXME #4430: this is horribly inefficient...
-                            for d0.each |&(k, v)| {
-                                 d0_flat.push((@copy *k, @copy *v));
-                            }
-                            d0_flat.qsort();
-
-                            for d1.each |&(k, v)| {
-                                d1_flat.push((@copy *k, @copy *v));
-                            }
-                            d1_flat.qsort();
-
-                            d0_flat < d1_flat
+                        // FIXME #4430: this is horribly inefficient...
+                        for d0.each |k, v| {
+                             d0_flat.push((@copy *k, @copy *v));
                         }
+                        d0_flat.qsort();
+
+                        for d1.each |k, v| {
+                            d1_flat.push((@copy *k, @copy *v));
+                        }
+                        d1_flat.qsort();
+
+                        d0_flat < d1_flat
                     }
                     Null => true
                 }
@@ -1127,10 +1233,10 @@ impl<A:ToJson> ToJson for ~[A] {
     fn to_json(&self) -> Json { List(self.map(|elt| elt.to_json())) }
 }
 
-impl<A:ToJson + Copy> ToJson for LinearMap<~str, A> {
+impl<A:ToJson + Copy> ToJson for HashMap<~str, A> {
     fn to_json(&self) -> Json {
-        let mut d = LinearMap::new();
-        for self.each |&(key, value)| {
+        let mut d = HashMap::new();
+        for self.each |key, value| {
             d.insert(copy *key, value.to_json());
         }
         Object(~d)
@@ -1161,7 +1267,7 @@ mod tests {
     use super::*;
 
     use core::prelude::*;
-    use core::hashmap::linear::LinearMap;
+    use core::hashmap::HashMap;
 
     use std::serialize::Decodable;
 
@@ -1190,7 +1296,7 @@ mod tests {
     }
 
     fn mk_object(items: &[(~str, Json)]) -> Json {
-        let mut d = ~LinearMap::new();
+        let mut d = ~HashMap::new();
 
         for items.each |item| {
             match *item {
@@ -1755,7 +1861,7 @@ mod tests {
     fn test_decode_map() {
         let s = ~"{\"a\": \"Dog\", \"b\": [\"Frog\", \"Henry\", 349]}";
         let decoder = Decoder(from_str(s).unwrap());
-        let mut map: LinearMap<~str, Animal> = Decodable::decode(&decoder);
+        let mut map: HashMap<~str, Animal> = Decodable::decode(&decoder);
 
         assert_eq!(map.pop(&~"a"), Some(Dog));
         assert_eq!(map.pop(&~"b"), Some(Frog(~"Henry", 349)));

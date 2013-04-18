@@ -13,7 +13,7 @@
 use core::prelude::*;
 
 use middle::ty;
-use middle::typeck::check::SelfInfo;
+
 use middle::typeck::isr_alist;
 use util::common::indenter;
 use util::ppaux::region_to_str;
@@ -26,29 +26,24 @@ use std::list::Cons;
 pub fn replace_bound_regions_in_fn_sig(
     tcx: ty::ctxt,
     isr: isr_alist,
-    self_info: Option<SelfInfo>,
+    opt_self_ty: Option<ty::t>,
     fn_sig: &ty::FnSig,
     mapf: &fn(ty::bound_region) -> ty::Region)
-    -> (isr_alist, Option<SelfInfo>, ty::FnSig)
+    -> (isr_alist, Option<ty::t>, ty::FnSig)
 {
-    // Take self_info apart; the self_ty part is the only one we want
-    // to update here.
-    let self_ty = self_info.map(|s| s.self_ty);
-    let rebuild_self_info = |t| self_info.map(|s| SelfInfo{self_ty: t, ..*s});
-
     let mut all_tys = ty::tys_in_fn_sig(fn_sig);
 
-    for self_info.each |self_info| {
-        all_tys.push(self_info.self_ty);
+    for opt_self_ty.each |&self_ty| {
+        all_tys.push(self_ty);
     }
 
-    for self_ty.each |t| { all_tys.push(*t) }
+    for opt_self_ty.each |&t| { all_tys.push(t) }
 
-    debug!("replace_bound_regions_in_fn_sig(self_info.self_ty=%?, fn_sig=%s, \
+    debug!("replace_bound_regions_in_fn_sig(self_ty=%?, fn_sig=%s, \
             all_tys=%?)",
-           self_ty.map(|t| ppaux::ty_to_str(tcx, *t)),
+           opt_self_ty.map(|&t| ppaux::ty_to_str(tcx, t)),
            ppaux::fn_sig_to_str(tcx, fn_sig),
-           all_tys.map(|t| ppaux::ty_to_str(tcx, *t)));
+           all_tys.map(|&t| ppaux::ty_to_str(tcx, t)));
     let _i = indenter();
 
     let isr = do create_bound_region_mapping(tcx, isr, all_tys) |br| {
@@ -58,20 +53,15 @@ pub fn replace_bound_regions_in_fn_sig(
     let new_fn_sig = ty::fold_sig(fn_sig, |t| {
         replace_bound_regions(tcx, isr, t)
     });
-    let t_self = self_ty.map(|t| replace_bound_regions(tcx, isr, *t));
+    let new_self_ty = opt_self_ty.map(|&t| replace_bound_regions(tcx, isr, t));
 
-    debug!("result of replace_bound_regions_in_fn_sig: self_info.self_ty=%?, \
-                fn_sig=%s",
-           t_self.map(|t| ppaux::ty_to_str(tcx, *t)),
+    debug!("result of replace_bound_regions_in_fn_sig: \
+            new_self_ty=%?, \
+            fn_sig=%s",
+           new_self_ty.map(|&t| ppaux::ty_to_str(tcx, t)),
            ppaux::fn_sig_to_str(tcx, &new_fn_sig));
 
-    // Glue updated self_ty back together with its original def_id.
-    let new_self_info: Option<SelfInfo> = match t_self {
-      None    => None,
-      Some(t) => rebuild_self_info(t)
-    };
-
-    return (isr, new_self_info, new_fn_sig);
+    return (isr, new_self_ty, new_fn_sig);
 
     // Takes `isr`, a (possibly empty) mapping from in-scope region
     // names ("isr"s) to their corresponding regions; `tys`, a list of
@@ -99,7 +89,7 @@ pub fn replace_bound_regions_in_fn_sig(
                       to_r: &fn(ty::bound_region) -> ty::Region,
                       r: ty::Region) -> isr_alist {
             match r {
-              ty::re_free(_, _) | ty::re_static | ty::re_scope(_) |
+              ty::re_free(*) | ty::re_static | ty::re_scope(_) |
               ty::re_infer(_) => {
                 isr
               }
@@ -167,10 +157,125 @@ pub fn replace_bound_regions_in_fn_sig(
               // Free regions like these just stay the same:
               ty::re_static |
               ty::re_scope(_) |
-              ty::re_free(_, _) |
+              ty::re_free(*) |
               ty::re_infer(_) => r
             };
             r1
         }
     }
+}
+
+pub fn relate_nested_regions(
+    tcx: ty::ctxt,
+    opt_region: Option<ty::Region>,
+    ty: ty::t,
+    relate_op: &fn(ty::Region, ty::Region))
+{
+    /*!
+     *
+     * This rather specialized function walks each region `r` that appear
+     * in `ty` and invokes `relate_op(r_encl, r)` for each one.  `r_encl`
+     * here is the region of any enclosing `&'r T` pointer.  If there is
+     * no enclosing pointer, and `opt_region` is Some, then `opt_region.get()`
+     * is used instead.  Otherwise, no callback occurs at all).
+     *
+     * Here are some examples to give you an intution:
+     *
+     * - `relate_nested_regions(Some('r1), &'r2 uint)` invokes
+     *   - `relate_op('r1, 'r2)`
+     * - `relate_nested_regions(Some('r1), &'r2 &'r3 uint)` invokes
+     *   - `relate_op('r1, 'r2)`
+     *   - `relate_op('r2, 'r3)`
+     * - `relate_nested_regions(None, &'r2 &'r3 uint)` invokes
+     *   - `relate_op('r2, 'r3)`
+     * - `relate_nested_regions(None, &'r2 &'r3 &'r4 uint)` invokes
+     *   - `relate_op('r2, 'r3)`
+     *   - `relate_op('r2, 'r4)`
+     *   - `relate_op('r3, 'r4)`
+     *
+     * This function is used in various pieces of code because we enforce the
+     * constraint that a region pointer cannot outlive the things it points at.
+     * Hence, in the second example above, `'r2` must be a subregion of `'r3`.
+     */
+
+    let mut the_stack = ~[];
+    for opt_region.each |&r| { the_stack.push(r); }
+    walk_ty(tcx, &mut the_stack, ty, relate_op);
+
+    fn walk_ty(tcx: ty::ctxt,
+               the_stack: &mut ~[ty::Region],
+               ty: ty::t,
+               relate_op: &fn(ty::Region, ty::Region))
+    {
+        match ty::get(ty).sty {
+            ty::ty_rptr(r, ref mt) |
+            ty::ty_evec(ref mt, ty::vstore_slice(r)) => {
+                relate(*the_stack, r, relate_op);
+                the_stack.push(r);
+                walk_ty(tcx, the_stack, mt.ty, relate_op);
+                the_stack.pop();
+            }
+            _ => {
+                ty::fold_regions_and_ty(
+                    tcx,
+                    ty,
+                    |r| { relate(*the_stack, r, relate_op); r },
+                    |t| { walk_ty(tcx, the_stack, t, relate_op); t },
+                    |t| { walk_ty(tcx, the_stack, t, relate_op); t });
+            }
+        }
+    }
+
+    fn relate(the_stack: &[ty::Region],
+              r_sub: ty::Region,
+              relate_op: &fn(ty::Region, ty::Region))
+    {
+        for the_stack.each |&r| {
+            if !r.is_bound() && !r_sub.is_bound() {
+                relate_op(r, r_sub);
+            }
+        }
+    }
+}
+
+pub fn relate_free_regions(
+    tcx: ty::ctxt,
+    self_ty: Option<ty::t>,
+    fn_sig: &ty::FnSig)
+{
+    /*!
+     * This function populates the region map's `free_region_map`.
+     * It walks over the transformed self type and argument types
+     * for each function just before we check the body of that
+     * function, looking for types where you have a borrowed
+     * pointer to other borrowed data (e.g., `&'a &'b [uint]`.
+     * We do not allow borrowed pointers to outlive the things they
+     * point at, so we can assume that `'a <= 'b`.
+     *
+     * Tests: `src/test/compile-fail/regions-free-region-ordering-*.rs`
+     */
+
+    debug!("relate_free_regions >>");
+
+    let mut all_tys = ~[];
+    for fn_sig.inputs.each |arg| {
+        all_tys.push(arg.ty);
+    }
+    for self_ty.each |&t| {
+        all_tys.push(t);
+    }
+
+    for all_tys.each |&t| {
+        debug!("relate_free_regions(t=%s)", ppaux::ty_to_str(tcx, t));
+        relate_nested_regions(tcx, None, t, |a, b| {
+            match (&a, &b) {
+                (&ty::re_free(free_a), &ty::re_free(free_b)) => {
+                    tcx.region_maps.relate_free_regions(free_a, free_b);
+                }
+                _ => {}
+            }
+        })
+    }
+
+    debug!("<< relate_free_regions");
 }

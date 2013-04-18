@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -63,11 +63,11 @@ use middle::trans::type_of;
 use middle::trans::type_of::*;
 use middle::ty;
 use util::common::indenter;
-use util::ppaux::ty_to_str;
+use util::ppaux::{Repr, ty_to_str};
 use util::ppaux;
 
 use core::hash;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 use core::int;
 use core::io;
 use core::libc::{c_uint, c_ulonglong};
@@ -91,10 +91,8 @@ pub struct icx_popper {
 #[unsafe_destructor]
 impl Drop for icx_popper {
     fn finalize(&self) {
-        unsafe {
-            if self.ccx.sess.count_llvm_insns() {
-                self.ccx.stats.llvm_insn_ctxt.pop();
-            }
+        if self.ccx.sess.count_llvm_insns() {
+            self.ccx.stats.llvm_insn_ctxt.pop();
         }
     }
 }
@@ -145,9 +143,7 @@ pub fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv,
             llvm::LLVMGetOrInsertFunction(llmod, buf, llty)
         }
     });
-    unsafe {
-        lib::llvm::SetFunctionCallConv(llfn, cc);
-    }
+    lib::llvm::SetFunctionCallConv(llfn, cc);
     return llfn;
 }
 
@@ -472,11 +468,9 @@ pub fn set_glue_inlining(f: ValueRef, t: ty::t) {
 
 // Double-check that we never ask LLVM to declare the same symbol twice. It
 // silently mangles such symbols, breaking our linkage model.
-pub fn note_unique_llvm_symbol(ccx: @CrateContext, +sym: ~str) {
-    // XXX: this should not be necessary
-    use core::container::Set;
+pub fn note_unique_llvm_symbol(ccx: @CrateContext, sym: @~str) {
     if ccx.all_llvm_symbols.contains(&sym) {
-        ccx.sess.bug(~"duplicate LLVM symbol: " + sym);
+        ccx.sess.bug(~"duplicate LLVM symbol: " + *sym);
     }
     ccx.all_llvm_symbols.insert(sym);
 }
@@ -730,11 +724,9 @@ pub fn cast_shift_expr_rhs(cx: block, op: ast::binop,
 
 pub fn cast_shift_const_rhs(op: ast::binop,
                             lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    unsafe {
-        cast_shift_rhs(op, lhs, rhs,
-                       |a, b| unsafe { llvm::LLVMConstTrunc(a, b) },
-                       |a, b| unsafe { llvm::LLVMConstZExt(a, b) })
-    }
+    cast_shift_rhs(op, lhs, rhs,
+                   |a, b| unsafe { llvm::LLVMConstTrunc(a, b) },
+                   |a, b| unsafe { llvm::LLVMConstZExt(a, b) })
 }
 
 pub fn cast_shift_rhs(op: ast::binop,
@@ -938,7 +930,7 @@ pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
     // The landing pad return type (the type being propagated). Not sure what
     // this represents but it's determined by the personality function and
     // this is what the EH proposal example uses.
-    let llretty = T_struct(~[T_ptr(T_i8()), T_i32()]);
+    let llretty = T_struct(~[T_ptr(T_i8()), T_i32()], false);
     // The exception handling personality function. This is the C++
     // personality function __gxx_personality_v0, wrapped in our naming
     // convention.
@@ -1592,11 +1584,11 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
     for param_substs.each |p| { p.validate(); }
 
     debug!("new_fn_ctxt_w_id(path=%s, id=%?, impl_id=%?, \
-            param_substs=%s",
+            param_substs=%s)",
            path_str(ccx.sess, path),
            id,
            impl_id,
-           opt_param_substs_to_str(ccx.tcx, &param_substs));
+           param_substs.repr(ccx.tcx));
 
     let llbbs = mk_standard_basic_blocks(llfndecl);
     return @mut fn_ctxt_ {
@@ -1609,9 +1601,9 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           llself: None,
           personality: None,
           loop_ret: None,
-          llargs: @mut LinearMap::new(),
-          lllocals: @mut LinearMap::new(),
-          llupvars: @mut LinearMap::new(),
+          llargs: @mut HashMap::new(),
+          lllocals: @mut HashMap::new(),
+          llupvars: @mut HashMap::new(),
           id: id,
           impl_id: impl_id,
           param_substs: param_substs,
@@ -1788,6 +1780,9 @@ pub fn trans_closure(ccx: @CrateContext,
     let _icx = ccx.insn_ctxt("trans_closure");
     set_uwtable(llfndecl);
 
+    debug!("trans_closure(..., param_substs=%s)",
+           param_substs.repr(ccx.tcx));
+
     // Set up arguments to the function.
     let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, id, impl_id, param_substs,
                                   Some(body.span));
@@ -1849,7 +1844,9 @@ pub fn trans_fn(ccx: @CrateContext,
     let do_time = ccx.sess.trans_stats();
     let start = if do_time { time::get_time() }
                 else { time::Timespec::new(0, 0) };
-    debug!("trans_fn(ty_self=%?)", ty_self);
+    debug!("trans_fn(ty_self=%?, param_substs=%s)",
+           ty_self,
+           param_substs.repr(ccx.tcx));
     let _icx = ccx.insn_ctxt("trans_fn");
     ccx.stats.n_fns += 1;
     let the_path_str = path_str(ccx.sess, path);
@@ -2197,28 +2194,32 @@ pub fn register_fn_fuller(ccx: @CrateContext,
     ccx.item_symbols.insert(node_id, ps);
 
     // FIXME #4404 android JNI hacks
-    let is_main = is_main_fn(&ccx.sess, node_id) &&
+    let is_entry = is_entry_fn(&ccx.sess, node_id) &&
                      (!*ccx.sess.building_library ||
                       (*ccx.sess.building_library &&
                        ccx.sess.targ_cfg.os == session::os_android));
-    if is_main { create_main_wrapper(ccx, sp, llfn); }
+    if is_entry { create_entry_wrapper(ccx, sp, llfn); }
     llfn
 }
 
-pub fn is_main_fn(sess: &Session, node_id: ast::node_id) -> bool {
-    match *sess.main_fn {
-        Some((main_id, _)) => node_id == main_id,
+pub fn is_entry_fn(sess: &Session, node_id: ast::node_id) -> bool {
+    match *sess.entry_fn {
+        Some((entry_id, _)) => node_id == entry_id,
         None => false
     }
 }
 
 // Create a _rust_main(args: ~[str]) function which will be called from the
 // runtime rust_start function
-pub fn create_main_wrapper(ccx: @CrateContext,
+pub fn create_entry_wrapper(ccx: @CrateContext,
                            _sp: span, main_llfn: ValueRef) {
-
-    let llfn = create_main(ccx, main_llfn);
-    create_entry_fn(ccx, llfn);
+    let et = ccx.sess.entry_type.unwrap();
+    if et == session::EntryMain {
+        let llfn = create_main(ccx, main_llfn);
+        create_entry_fn(ccx, llfn, true);
+    } else {
+        create_entry_fn(ccx, main_llfn, false);
+    }
 
     fn create_main(ccx: @CrateContext, main_llfn: ValueRef) -> ValueRef {
         let nt = ty::mk_nil(ccx.tcx);
@@ -2242,18 +2243,18 @@ pub fn create_main_wrapper(ccx: @CrateContext,
         return llfdecl;
     }
 
-    fn create_entry_fn(ccx: @CrateContext, rust_main: ValueRef) {
-        #[cfg(windows)]
-        fn main_name() -> ~str { return ~"WinMain@16"; }
-        #[cfg(unix)]
-        fn main_name() -> ~str { return ~"main"; }
+    fn create_entry_fn(ccx: @CrateContext, rust_main: ValueRef, use_start_lang_item:bool) {
         let llfty = T_fn(~[ccx.int_type, T_ptr(T_ptr(T_i8()))], ccx.int_type);
 
         // FIXME #4404 android JNI hacks
         let llfn = if *ccx.sess.building_library {
             decl_cdecl_fn(ccx.llmod, ~"amain", llfty)
         } else {
-            decl_cdecl_fn(ccx.llmod, main_name(), llfty)
+            let main_name = match ccx.sess.targ_cfg.os {
+                session::os_win32 => ~"WinMain@16",
+                _ => ~"main",
+            };
+            decl_cdecl_fn(ccx.llmod, main_name, llfty)
         };
         let llbb = str::as_c_str(~"top", |buf| {
             unsafe {
@@ -2264,36 +2265,29 @@ pub fn create_main_wrapper(ccx: @CrateContext,
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
         }
-        let crate_map = ccx.crate_map;
-        let start_def_id = ccx.tcx.lang_items.start_fn();
-        let start_fn = if start_def_id.crate == ast::local_crate {
-            ccx.sess.bug(~"start lang item is never in the local crate")
-        } else {
-            let start_fn_type = csearch::get_type(ccx.tcx,
-                                                  start_def_id).ty;
-            trans_external_path(ccx, start_def_id, start_fn_type)
-        };
 
         let retptr = unsafe {
             llvm::LLVMBuildAlloca(bld, ccx.int_type, noname())
         };
 
-        let args = unsafe {
-            let opaque_rust_main = llvm::LLVMBuildPointerCast(
-                bld, rust_main, T_ptr(T_i8()), noname());
-            let opaque_crate_map = llvm::LLVMBuildPointerCast(
-                bld, crate_map, T_ptr(T_i8()), noname());
+        let crate_map = ccx.crate_map;
+        let opaque_crate_map = unsafe {llvm::LLVMBuildPointerCast(
+                bld, crate_map, T_ptr(T_i8()), noname())};
 
-            if *ccx.sess.building_library {
-                ~[
-                    retptr,
-                    C_null(T_opaque_box_ptr(ccx)),
-                    opaque_rust_main,
-                    llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
-                    llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
-                    opaque_crate_map
-                ]
+        let (start_fn, args) = if use_start_lang_item {
+            let start_def_id = ccx.tcx.lang_items.start_fn();
+            let start_fn = if start_def_id.crate == ast::local_crate {
+                ccx.sess.bug(~"start lang item is never in the local crate")
             } else {
+                let start_fn_type = csearch::get_type(ccx.tcx,
+                        start_def_id).ty;
+                trans_external_path(ccx, start_def_id, start_fn_type)
+            };
+
+            let args = unsafe {
+                let opaque_rust_main = llvm::LLVMBuildPointerCast(
+                        bld, rust_main, T_ptr(T_i8()), noname());
+
                 ~[
                     retptr,
                     C_null(T_opaque_box_ptr(ccx)),
@@ -2301,8 +2295,21 @@ pub fn create_main_wrapper(ccx: @CrateContext,
                     llvm::LLVMGetParam(llfn, 0 as c_uint),
                     llvm::LLVMGetParam(llfn, 1 as c_uint),
                     opaque_crate_map
+                 ]
+            };
+            (start_fn, args)
+        } else {
+            debug!("using user-defined start fn");
+            let args = unsafe {
+                ~[ retptr,
+                   C_null(T_opaque_box_ptr(ccx)),
+                   llvm::LLVMGetParam(llfn, 0 as c_uint),
+                   llvm::LLVMGetParam(llfn, 1 as c_uint),
+                   opaque_crate_map
                 ]
-            }
+            };
+
+            (rust_main, args)
         };
 
         unsafe {
@@ -2567,11 +2574,10 @@ pub fn trans_constant(ccx: @CrateContext, it: @ast::item) {
                 path_name(variant.node.name),
                 path_name(special_idents::descrim)
             ]);
-            let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
+            let s = @mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
             let disr_val = vi[i].disr_val;
-            // XXX: Bad copy.
-            note_unique_llvm_symbol(ccx, copy s);
-            let discrim_gvar = str::as_c_str(s, |buf| {
+            note_unique_llvm_symbol(ccx, s);
+            let discrim_gvar = str::as_c_str(*s, |buf| {
                 unsafe {
                     llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
                 }
@@ -2610,7 +2616,7 @@ pub fn p2i(ccx: @CrateContext, v: ValueRef) -> ValueRef {
     }
 }
 
-pub fn declare_intrinsics(llmod: ModuleRef) -> LinearMap<~str, ValueRef> {
+pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     let T_memcpy32_args: ~[TypeRef] =
         ~[T_ptr(T_i8()), T_ptr(T_i8()), T_i32(), T_i32(), T_i1()];
     let T_memcpy64_args: ~[TypeRef] =
@@ -2743,7 +2749,7 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> LinearMap<~str, ValueRef> {
     let bswap64 = decl_cdecl_fn(llmod, ~"llvm.bswap.i64",
                                 T_fn(~[T_i64()], T_i64()));
 
-    let mut intrinsics = LinearMap::new();
+    let mut intrinsics = HashMap::new();
     intrinsics.insert(~"llvm.gcroot", gcroot);
     intrinsics.insert(~"llvm.gcread", gcread);
     intrinsics.insert(~"llvm.memcpy.p0i8.p0i8.i32", memcpy32);
@@ -2804,7 +2810,7 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> LinearMap<~str, ValueRef> {
 }
 
 pub fn declare_dbg_intrinsics(llmod: ModuleRef,
-                              intrinsics: &mut LinearMap<~str, ValueRef>) {
+                              intrinsics: &mut HashMap<~str, ValueRef>) {
     let declare =
         decl_cdecl_fn(llmod, ~"llvm.dbg.declare",
                       T_fn(~[T_metadata(), T_metadata()], T_void()));
@@ -2843,18 +2849,16 @@ pub fn decl_gc_metadata(ccx: @CrateContext, llmod_id: &str) {
 }
 
 pub fn create_module_map(ccx: @CrateContext) -> ValueRef {
-    let elttype = T_struct(~[ccx.int_type, ccx.int_type]);
+    let elttype = T_struct(~[ccx.int_type, ccx.int_type], false);
     let maptype = T_array(elttype, ccx.module_data.len() + 1);
     let map = str::as_c_str(~"_rust_mod_map", |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, maptype, buf)
         }
     });
-    unsafe {
-        lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
-    }
+    lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
     let mut elts: ~[ValueRef] = ~[];
-    for ccx.module_data.each |&(key, &val)| {
+    for ccx.module_data.each |key, &val| {
         let elt = C_struct(~[p2i(ccx, C_cstr(ccx, @/*bad*/ copy *key)),
                             p2i(ccx, val)]);
         elts.push(elt);
@@ -2883,7 +2887,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     };
     let sym_name = ~"_rust_crate_map_" + mapname;
     let arrtype = T_array(int_type, n_subcrates as uint);
-    let maptype = T_struct(~[T_i32(), T_ptr(T_i8()), int_type, arrtype]);
+    let maptype = T_struct(~[T_i32(), T_ptr(T_i8()), int_type, arrtype], false);
     let map = str::as_c_str(sym_name, |buf| {
         unsafe {
             llvm::LLVMAddGlobal(llmod, maptype, buf)
@@ -3052,37 +3056,37 @@ pub fn trans_crate(sess: session::Session,
               llmod: llmod,
               td: td,
               tn: tn,
-              externs: @mut LinearMap::new(),
+              externs: @mut HashMap::new(),
               intrinsics: intrinsics,
-              item_vals: @mut LinearMap::new(),
+              item_vals: @mut HashMap::new(),
               exp_map2: emap2,
               reachable: reachable,
-              item_symbols: @mut LinearMap::new(),
+              item_symbols: @mut HashMap::new(),
               link_meta: link_meta,
-              enum_sizes: @mut LinearMap::new(),
-              discrims: @mut LinearMap::new(),
-              discrim_symbols: @mut LinearMap::new(),
-              tydescs: @mut LinearMap::new(),
+              enum_sizes: @mut HashMap::new(),
+              discrims: @mut HashMap::new(),
+              discrim_symbols: @mut HashMap::new(),
+              tydescs: @mut HashMap::new(),
               finished_tydescs: @mut false,
-              external: @mut LinearMap::new(),
-              monomorphized: @mut LinearMap::new(),
-              monomorphizing: @mut LinearMap::new(),
-              type_use_cache: @mut LinearMap::new(),
-              vtables: @mut LinearMap::new(),
-              const_cstr_cache: @mut LinearMap::new(),
-              const_globals: @mut LinearMap::new(),
-              const_values: @mut LinearMap::new(),
-              extern_const_values: @mut LinearMap::new(),
-              module_data: @mut LinearMap::new(),
-              lltypes: @mut LinearMap::new(),
-              llsizingtypes: @mut LinearMap::new(),
-              adt_reprs: @mut LinearMap::new(),
+              external: @mut HashMap::new(),
+              monomorphized: @mut HashMap::new(),
+              monomorphizing: @mut HashMap::new(),
+              type_use_cache: @mut HashMap::new(),
+              vtables: @mut HashMap::new(),
+              const_cstr_cache: @mut HashMap::new(),
+              const_globals: @mut HashMap::new(),
+              const_values: @mut HashMap::new(),
+              extern_const_values: @mut HashMap::new(),
+              module_data: @mut HashMap::new(),
+              lltypes: @mut HashMap::new(),
+              llsizingtypes: @mut HashMap::new(),
+              adt_reprs: @mut HashMap::new(),
               names: new_namegen(sess.parse_sess.interner),
               next_addrspace: new_addrspace_gen(),
               symbol_hasher: symbol_hasher,
-              type_hashcodes: @mut LinearMap::new(),
-              type_short_names: @mut LinearMap::new(),
-              all_llvm_symbols: @mut LinearSet::new(),
+              type_hashcodes: @mut HashMap::new(),
+              type_short_names: @mut HashMap::new(),
+              all_llvm_symbols: @mut HashSet::new(),
               tcx: tcx,
               maps: maps,
               stats: @mut Stats {
@@ -3095,7 +3099,7 @@ pub fn trans_crate(sess: session::Session,
                 n_inlines: 0u,
                 n_closures: 0u,
                 llvm_insn_ctxt: @mut ~[],
-                llvm_insns: @mut LinearMap::new(),
+                llvm_insns: @mut HashMap::new(),
                 fn_times: @mut ~[]
               },
               upcalls: upcall::declare_upcalls(targ_cfg, llmod),
@@ -3145,7 +3149,7 @@ pub fn trans_crate(sess: session::Session,
         }
 
         if ccx.sess.count_llvm_insns() {
-            for ccx.stats.llvm_insns.each |&(&k, &v)| {
+            for ccx.stats.llvm_insns.each |&k, &v| {
                 io::println(fmt!("%-7u %s", v, k));
             }
         }

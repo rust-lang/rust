@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,24 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_mode]
-struct Foo<'self> {
-    s: &'self str,
-    u: ~()
-}
-
-pub impl<'self> Foo<'self> {
-    fn get_s(&self) -> &'self str {
-        self.s
-    }
-}
-
-fn bar(s: &str, f: &fn(Option<Foo>)) {
-    f(Some(Foo {s: s, u: ~()}));
+#[packed]
+struct Foo {
+    bar: u8,
+    baz: uint
 }
 
 fn main() {
-    do bar(~"testing") |opt| {
-        io::println(opt.unwrap().get_s()); //~ ERROR illegal borrow:
-    };
+    let foo = Foo { bar: 1, baz: 2 };
+    match foo {
+        Foo {bar, baz} => {
+            assert_eq!(bar, 1);
+            assert_eq!(baz, 2);
+        }
+    }
 }

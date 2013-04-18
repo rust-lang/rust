@@ -40,7 +40,6 @@ use core::libc::c_uint;
 use core::str;
 use std::time;
 use syntax::ast;
-use syntax::parse::token::special_idents;
 
 pub fn trans_free(cx: block, v: ValueRef) -> block {
     let _icx = cx.insn_ctxt("trans_free");
@@ -400,11 +399,9 @@ pub fn call_tydesc_glue(++cx: block, v: ValueRef, t: ty::t, field: uint)
 pub fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_visit_glue");
     let mut bcx = bcx;
-    let ty_visitor_name = special_idents::ty_visitor;
-    assert!(bcx.ccx().tcx.intrinsic_defs.contains_key(&ty_visitor_name));
-    let (trait_id, ty) = *bcx.ccx().tcx.intrinsic_defs.get(&ty_visitor_name);
-    let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), ty)));
-    bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, trait_id);
+    let (visitor_trait, object_ty) = ty::visitor_object_ty(bcx.tcx());
+    let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), object_ty)));
+    bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, visitor_trait.def_id);
     build_return(bcx);
 }
 
@@ -554,8 +551,7 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_closure(_) => {
         closure::make_closure_glue(bcx, v0, t, drop_ty)
       }
-      ty::ty_trait(_, _, ty::BoxTraitStore) |
-      ty::ty_trait(_, _, ty::BareTraitStore) => {
+      ty::ty_trait(_, _, ty::BoxTraitStore) => {
         let llbox = Load(bcx, GEPi(bcx, v0, [0u, 1u]));
         decr_refcnt_maybe_free(bcx, llbox, ty::mk_opaque_box(ccx.tcx))
       }
@@ -621,8 +617,7 @@ pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_closure(_) => {
         closure::make_closure_glue(bcx, v, t, take_ty)
       }
-      ty::ty_trait(_, _, ty::BoxTraitStore) |
-      ty::ty_trait(_, _, ty::BareTraitStore) => {
+      ty::ty_trait(_, _, ty::BoxTraitStore) => {
         let llbox = Load(bcx, GEPi(bcx, v, [0u, 1u]));
         incr_refcnt_of_boxed(bcx, llbox);
         bcx
@@ -689,15 +684,14 @@ pub fn declare_tydesc(ccx: @CrateContext, t: ty::t) -> @mut tydesc_info {
     let llalign = llalign_of(ccx, llty);
     let addrspace = declare_tydesc_addrspace(ccx, t);
     //XXX this triggers duplicate LLVM symbols
-    let name = if false /*ccx.sess.opts.debuginfo*/ {
+    let name = @(if false /*ccx.sess.opts.debuginfo*/ {
         mangle_internal_name_by_type_only(ccx, t, ~"tydesc")
     } else {
         mangle_internal_name_by_seq(ccx, ~"tydesc")
-    };
-    // XXX: Bad copy.
-    note_unique_llvm_symbol(ccx, copy name);
-    debug!("+++ declare_tydesc %s %s", ppaux::ty_to_str(ccx.tcx, t), name);
-    let gvar = str::as_c_str(name, |buf| {
+    });
+    note_unique_llvm_symbol(ccx, name);
+    debug!("+++ declare_tydesc %s %s", ppaux::ty_to_str(ccx.tcx, t), *name);
+    let gvar = str::as_c_str(*name, |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type, buf)
         }
@@ -723,17 +717,16 @@ pub fn declare_generic_glue(ccx: @CrateContext, t: ty::t, llfnty: TypeRef,
                             +name: ~str) -> ValueRef {
     let _icx = ccx.insn_ctxt("declare_generic_glue");
     let name = name;
-    let mut fn_nm;
     //XXX this triggers duplicate LLVM symbols
-    if false /*ccx.sess.opts.debuginfo*/ {
-        fn_nm = mangle_internal_name_by_type_only(ccx, t, (~"glue_" + name));
+    let fn_nm = @(if false /*ccx.sess.opts.debuginfo*/ {
+        mangle_internal_name_by_type_only(ccx, t, (~"glue_" + name))
     } else {
-        fn_nm = mangle_internal_name_by_seq(ccx, (~"glue_" + name));
-    }
-    debug!("%s is for type %s", fn_nm, ppaux::ty_to_str(ccx.tcx, t));
+        mangle_internal_name_by_seq(ccx, (~"glue_" + name))
+    });
+    debug!("%s is for type %s", *fn_nm, ppaux::ty_to_str(ccx.tcx, t));
     // XXX: Bad copy.
-    note_unique_llvm_symbol(ccx, copy fn_nm);
-    let llfn = decl_cdecl_fn(ccx.llmod, fn_nm, llfnty);
+    note_unique_llvm_symbol(ccx, fn_nm);
+    let llfn = decl_cdecl_fn(ccx.llmod, *fn_nm, llfnty);
     set_glue_inlining(llfn, t);
     return llfn;
 }

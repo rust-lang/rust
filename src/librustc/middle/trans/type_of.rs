@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -128,11 +128,11 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
         ty::ty_estr(ty::vstore_slice(*)) |
         ty::ty_evec(_, ty::vstore_slice(*)) => {
-            T_struct(~[T_ptr(T_i8()), T_ptr(T_i8())])
+            T_struct(~[T_ptr(T_i8()), T_ptr(T_i8())], false)
         }
 
         ty::ty_bare_fn(*) => T_ptr(T_i8()),
-        ty::ty_closure(*) => T_struct(~[T_ptr(T_i8()), T_ptr(T_i8())]),
+        ty::ty_closure(*) => T_struct(~[T_ptr(T_i8()), T_ptr(T_i8())], false),
         ty::ty_trait(_, _, store) => T_opaque_trait(cx, store),
 
         ty::ty_estr(ty::vstore_fixed(size)) => T_array(T_i8(), size),
@@ -142,9 +142,15 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
         ty::ty_unboxed_vec(mt) => T_vec(cx, sizing_type_of(cx, mt.ty)),
 
-        ty::ty_tup(*) | ty::ty_struct(*) | ty::ty_enum(*) => {
+        ty::ty_tup(*) | ty::ty_enum(*) => {
             let repr = adt::represent_type(cx, t);
-            T_struct(adt::sizing_fields_of(cx, repr))
+            T_struct(adt::sizing_fields_of(cx, repr), false)
+        }
+
+        ty::ty_struct(did, _) => {
+            let repr = adt::represent_type(cx, t);
+            let packed = ty::lookup_packed(cx.tcx, did);
+            T_struct(adt::sizing_fields_of(cx, repr), packed)
         }
 
         ty::ty_self(_) | ty::ty_infer(*) | ty::ty_param(*) | ty::ty_err(*) => {
@@ -223,12 +229,14 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
       ty::ty_evec(ref mt, ty::vstore_slice(_)) => {
         T_struct(~[T_ptr(type_of(cx, mt.ty)),
-                   T_uint_ty(cx, ast::ty_u)])
+                   T_uint_ty(cx, ast::ty_u)],
+                 false)
       }
 
       ty::ty_estr(ty::vstore_slice(_)) => {
         T_struct(~[T_ptr(T_i8()),
-                   T_uint_ty(cx, ast::ty_u)])
+                   T_uint_ty(cx, ast::ty_u)],
+                 false)
       }
 
       ty::ty_estr(ty::vstore_fixed(n)) => {
@@ -245,7 +253,7 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
       ty::ty_type => T_ptr(cx.tydesc_type),
       ty::ty_tup(*) => {
           let repr = adt::represent_type(cx, t);
-          T_struct(adt::fields_of(cx, repr))
+          T_struct(adt::fields_of(cx, repr), false)
       }
       ty::ty_opaque_closure_ptr(_) => T_opaque_box_ptr(cx),
       ty::ty_struct(did, ref substs) => {
@@ -268,9 +276,17 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
     // If this was an enum or struct, fill in the type now.
     match ty::get(t).sty {
-      ty::ty_enum(*) | ty::ty_struct(*) => {
+      ty::ty_enum(*) => {
           let repr = adt::represent_type(cx, t);
-          common::set_struct_body(llty, adt::fields_of(cx, repr));
+          common::set_struct_body(llty, adt::fields_of(cx, repr),
+                                  false);
+      }
+
+      ty::ty_struct(did, _) => {
+        let repr = adt::represent_type(cx, t);
+        let packed = ty::lookup_packed(cx.tcx, did);
+        common::set_struct_body(llty, adt::fields_of(cx, repr),
+                                packed);
       }
       _ => ()
     }

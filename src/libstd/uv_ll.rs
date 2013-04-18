@@ -1111,22 +1111,22 @@ pub unsafe fn freeaddrinfo(res: *addrinfo) {
 }
 
 // libuv struct initializers
-pub unsafe fn tcp_t() -> uv_tcp_t {
+pub fn tcp_t() -> uv_tcp_t {
     return uv_ll_struct_stubgen::gen_stub_uv_tcp_t();
 }
-pub unsafe fn connect_t() -> uv_connect_t {
+pub fn connect_t() -> uv_connect_t {
     return uv_ll_struct_stubgen::gen_stub_uv_connect_t();
 }
-pub unsafe fn write_t() -> uv_write_t {
+pub fn write_t() -> uv_write_t {
     return uv_ll_struct_stubgen::gen_stub_uv_write_t();
 }
-pub unsafe fn async_t() -> uv_async_t {
+pub fn async_t() -> uv_async_t {
     return uv_ll_struct_stubgen::gen_stub_uv_async_t();
 }
-pub unsafe fn timer_t() -> uv_timer_t {
+pub fn timer_t() -> uv_timer_t {
     return uv_ll_struct_stubgen::gen_stub_uv_timer_t();
 }
-pub unsafe fn getaddrinfo_t() -> uv_getaddrinfo_t {
+pub fn getaddrinfo_t() -> uv_getaddrinfo_t {
     return uv_ll_struct_stubgen::gen_stub_uv_getaddrinfo_t();
 }
 
@@ -1225,7 +1225,7 @@ pub unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use core::prelude::*;
     use core::comm::{SharedChan, stream, GenericChan, GenericPort};
     use super::*;
@@ -1759,11 +1759,11 @@ pub mod test {
     #[cfg(target_os="darwin")]
     #[cfg(target_os="linux")]
     #[cfg(target_os="android")]
-    pub mod tcp_and_server_client_test {
+    mod tcp_and_server_client_test {
         #[cfg(target_arch="x86_64")]
-        pub mod impl64 {
+        mod impl64 {
             #[test]
-            pub fn test_uv_ll_tcp_server_and_request() {
+            fn test_uv_ll_tcp_server_and_request() {
                 unsafe {
                     super::super::impl_uv_tcp_server_and_request();
                 }
@@ -1772,10 +1772,10 @@ pub mod test {
         #[cfg(target_arch="x86")]
         #[cfg(target_arch="arm")]
         #[cfg(target_arch="mips")]
-        pub mod impl32 {
+        mod impl32 {
             #[test]
             #[ignore(cfg(target_os = "linux"))]
-            pub fn test_uv_ll_tcp_server_and_request() {
+            fn test_uv_ll_tcp_server_and_request() {
                 unsafe {
                     super::super::impl_uv_tcp_server_and_request();
                 }

@@ -61,7 +61,18 @@ impl<T> OptVec<T> {
         }
     }
 
+    #[cfg(stage0)]
     fn get(&self, i: uint) -> &'self T {
+        match *self {
+            Empty => fail!(fmt!("Invalid index %u", i)),
+            Vec(ref v) => &v[i]
+        }
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn get<'a>(&'a self, i: uint) -> &'a T {
         match *self {
             Empty => fail!(fmt!("Invalid index %u", i)),
             Vec(ref v) => &v[i]
@@ -101,6 +112,16 @@ impl<T:Copy> OptVec<T> {
         for from.each |e| {
             self.push(copy *e);
         }
+    }
+
+    #[inline(always)]
+    fn mapi_to_vec<B>(&self, op: &fn(uint, &T) -> B) -> ~[B] {
+        let mut index = 0;
+        iter::map_to_vec(self, |a| {
+            let i = index;
+            index += 1;
+            op(i, a)
+        })
     }
 }
 

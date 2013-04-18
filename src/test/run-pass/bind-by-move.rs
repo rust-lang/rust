@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
 // xfail-fast
 extern mod std;
 use std::arc;
-fn dispose(+_x: arc::ARC<bool>) unsafe { }
+fn dispose(+_x: arc::ARC<bool>) { unsafe { } }
 
 pub fn main() {
-    let p = arc::arc(true);
+    let p = arc::ARC(true);
     let x = Some(p);
     match x {
         Some(z) => { dispose(z); },
