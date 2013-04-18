@@ -520,7 +520,7 @@ mod tests {
     use run;
 
     // Regression test for memory leaks
-    #[ignore(cfg(windows))] // FIXME (#2626)
+    #[test]
     fn test_leaks() {
         run::run_program("echo", []);
         run::start_program("echo", []);
