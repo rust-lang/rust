@@ -1669,6 +1669,9 @@ do spawn {
 }
 ~~~~
 
+If you want to see the output of `debug!` statements, you will need to turn on `debug!` logging.
+To enable `debug!` logging, set the RUST_LOG environment variable to `debug` (e.g., with bash, `export RUST_LOG=debug`)
+
 ## For loops
 
 The most common way to express iteration in Rust is with a `for`
