@@ -466,8 +466,9 @@ pub fn spawn_unlinked(f: ~fn()) {
 
 pub fn spawn_supervised(f: ~fn()) {
     /*!
-     * Creates a child task unlinked from the current one. If either this
-     * task or the child task fails, the other will not be killed.
+     * Creates a child task supervised by the current one. If the child
+     * task fails, the parent will not be killed, but if the parent fails,
+     * the child will be killed.
      */
 
     task().supervised().spawn(f)
