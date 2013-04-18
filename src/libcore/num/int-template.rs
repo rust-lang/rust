@@ -199,6 +199,30 @@ impl ops::Modulo<T,T> for T {
 impl ops::Neg<T> for T {
     fn neg(&self) -> T { -*self }
 }
+#[cfg(notest)]
+impl ops::BitOr<T,T> for T {
+    fn bitor(&self, other: &T) -> T { *self | *other }
+}
+#[cfg(notest)]
+impl ops::BitAnd<T,T> for T {
+    fn bitand(&self, other: &T) -> T { *self & *other }
+}
+#[cfg(notest)]
+impl ops::BitXor<T,T> for T {
+    fn bitxor(&self, other: &T) -> T { *self ^ *other }
+}
+#[cfg(notest)]
+impl ops::Shl<T,T> for T {
+    fn shl(&self, other: &T) -> T { *self << *other }
+}
+#[cfg(notest)]
+impl ops::Shr<T,T> for T {
+    fn shr(&self, other: &T) -> T { *self >> *other }
+}
+#[cfg(notest)]
+impl ops::Not<T> for T {
+    fn not(&self) -> T { !*self }
+}
 
 // String conversion functions and impl str -> num
 
@@ -282,6 +306,16 @@ mod tests {
     use super::*;
     use super::inst::T;
     use prelude::*;
+
+    #[test]
+    fn test_bitwise_ops() {
+        assert!(0b1110 as T == (0b1100 as T).bitor(&(0b1010 as T)));
+        assert!(0b1000 as T == (0b1100 as T).bitand(&(0b1010 as T)));
+        assert!(0b0110 as T == (0b1100 as T).bitxor(&(0b1010 as T)));
+        assert!(0b1110 as T == (0b0111 as T).shl(&(1 as T)));
+        assert!(0b0111 as T == (0b1110 as T).shr(&(1 as T)));
+        assert!(-(0b11 as T) - (1 as T) == (0b11 as T).not());
+    }
 
     #[test]
     fn test_from_str() {
