@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -234,6 +234,21 @@ pub fn escape_default(c: char) -> ~str {
     }
 }
 
+/// Returns the amount of bytes this character would need if encoded in utf8
+pub fn len_utf8_bytes(c: char) -> uint {
+    static max_one_b: uint = 128u;
+    static max_two_b: uint = 2048u;
+    static max_three_b: uint = 65536u;
+    static max_four_b: uint = 2097152u;
+
+    let code = c as uint;
+    if code < max_one_b { 1u }
+    else if code < max_two_b { 2u }
+    else if code < max_three_b { 3u }
+    else if code < max_four_b { 4u }
+    else { fail!(~"invalid character!") }
+}
+
 /**
  * Compare two chars
  *
@@ -333,7 +348,6 @@ fn test_escape_default() {
     assert_eq!(escape_default('\u011b'), ~"\\u011b");
     assert_eq!(escape_default('\U0001d4b6'), ~"\\U0001d4b6");
 }
-
 
 #[test]
 fn test_escape_unicode() {
