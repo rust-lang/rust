@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -789,16 +789,18 @@ pub fn each_split_within<'a>(ss: &'a str,
 
 /// Convert a string to lowercase. ASCII only
 pub fn to_lower(s: &str) -> ~str {
-    map(s,
-        |c| unsafe{(libc::tolower(c as libc::c_char)) as char}
-    )
+    do map(s) |c| {
+        assert!(char::is_ascii(c));
+        (unsafe{libc::tolower(c as libc::c_char)}) as char
+    }
 }
 
 /// Convert a string to uppercase. ASCII only
 pub fn to_upper(s: &str) -> ~str {
-    map(s,
-        |c| unsafe{(libc::toupper(c as libc::c_char)) as char}
-    )
+    do map(s) |c| {
+        assert!(char::is_ascii(c));
+        (unsafe{libc::toupper(c as libc::c_char)}) as char
+    }
 }
 
 /**
@@ -3096,12 +3098,11 @@ mod tests {
 
     #[test]
     fn test_to_lower() {
-        unsafe {
-            assert!(~"" == map(~"",
-                |c| libc::tolower(c as c_char) as char));
-            assert!(~"ymca" == map(~"YMCA",
-                |c| libc::tolower(c as c_char) as char));
-        }
+        // libc::tolower, and hence str::to_lower
+        // are culturally insensitive: they only work for ASCII
+        // (see Issue #1347)
+        assert!(~"" == to_lower(""));
+        assert!(~"ymca" == to_lower("YMCA"));
     }
 
     #[test]
@@ -3666,12 +3667,8 @@ mod tests {
 
     #[test]
     fn test_map() {
-        unsafe {
-            assert!(~"" == map(~"", |c|
-                libc::toupper(c as c_char) as char));
-            assert!(~"YMCA" == map(~"ymca",
-                                  |c| libc::toupper(c as c_char) as char));
-        }
+        assert!(~"" == map(~"", |c| unsafe {libc::toupper(c as c_char)} as char));
+        assert!(~"YMCA" == map(~"ymca", |c| unsafe {libc::toupper(c as c_char)} as char));
     }
 
     #[test]
@@ -3685,11 +3682,11 @@ mod tests {
 
     #[test]
     fn test_any() {
-        assert!(false  == any(~"", char::is_uppercase));
+        assert!(false == any(~"", char::is_uppercase));
         assert!(false == any(~"ymca", char::is_uppercase));
         assert!(true  == any(~"YMCA", char::is_uppercase));
-        assert!(true == any(~"yMCA", char::is_uppercase));
-        assert!(true == any(~"Ymcy", char::is_uppercase));
+        assert!(true  == any(~"yMCA", char::is_uppercase));
+        assert!(true  == any(~"Ymcy", char::is_uppercase));
     }
 
     #[test]
