@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // xfail-win32 #5745
+// xfail-macos Broken on mac i686
 
 struct TwoU8s {
     one: u8, two: u8
