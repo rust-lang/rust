@@ -4478,18 +4478,38 @@ mod tests {
     #[test]
     fn test_iterator_enumerate() {
         use iterator::*;
-        let xs = [0u,1,2,3,4,5];
+        let xs = [0u, 1, 2, 3, 4, 5];
         let mut it = xs.iter().enumerate();
         for it.advance |(i, &x): (uint, &uint)| {
             assert_eq!(i, x);
         }
     }
-}
 
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
+    #[test]
+    fn test_iterator_takewhile() {
+        use iterator::*;
+        let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19];
+        let ys = [0u, 1, 2, 3, 5, 13];
+        let mut it = xs.iter().takewhile(|&x| *x < 15u);
+        let mut i = 0;
+        for it.advance |&x: &uint| {
+            assert_eq!(x, ys[i]);
+            i += 1;
+        }
+        assert_eq!(i, ys.len());
+    }
+
+    #[test]
+    fn test_iterator_dropwhile() {
+        use iterator::*;
+        let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19];
+        let ys = [15, 16, 17, 19];
+        let mut it = xs.iter().dropwhile(|&x| *x < 15u);
+        let mut i = 0;
+        for it.advance |&x: &uint| {
+            assert_eq!(x, ys[i]);
+            i += 1;
+        }
+        assert_eq!(i, ys.len());
+    }
+}
