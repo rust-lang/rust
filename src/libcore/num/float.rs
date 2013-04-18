@@ -387,15 +387,21 @@ pub fn tan(x: float) -> float {
 
 #[cfg(notest)]
 impl Eq for float {
+    #[inline(always)]
     fn eq(&self, other: &float) -> bool { (*self) == (*other) }
+    #[inline(always)]
     fn ne(&self, other: &float) -> bool { (*self) != (*other) }
 }
 
 #[cfg(notest)]
 impl Ord for float {
+    #[inline(always)]
     fn lt(&self, other: &float) -> bool { (*self) < (*other) }
+    #[inline(always)]
     fn le(&self, other: &float) -> bool { (*self) <= (*other) }
+    #[inline(always)]
     fn ge(&self, other: &float) -> bool { (*self) >= (*other) }
+    #[inline(always)]
     fn gt(&self, other: &float) -> bool { (*self) > (*other) }
 }
 
@@ -444,26 +450,32 @@ impl num::Round for float {
 
 #[cfg(notest)]
 impl ops::Add<float,float> for float {
+    #[inline(always)]
     fn add(&self, other: &float) -> float { *self + *other }
 }
 #[cfg(notest)]
 impl ops::Sub<float,float> for float {
+    #[inline(always)]
     fn sub(&self, other: &float) -> float { *self - *other }
 }
 #[cfg(notest)]
 impl ops::Mul<float,float> for float {
+    #[inline(always)]
     fn mul(&self, other: &float) -> float { *self * *other }
 }
 #[cfg(notest)]
 impl ops::Div<float,float> for float {
+    #[inline(always)]
     fn div(&self, other: &float) -> float { *self / *other }
 }
 #[cfg(notest)]
 impl ops::Modulo<float,float> for float {
+    #[inline(always)]
     fn modulo(&self, other: &float) -> float { *self % *other }
 }
 #[cfg(notest)]
 impl ops::Neg<float> for float {
+    #[inline(always)]
     fn neg(&self) -> float { -*self }
 }
 

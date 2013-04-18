@@ -310,26 +310,32 @@ impl num::One for f64 {
 
 #[cfg(notest)]
 impl ops::Add<f64,f64> for f64 {
+    #[inline(always)]
     fn add(&self, other: &f64) -> f64 { *self + *other }
 }
 #[cfg(notest)]
 impl ops::Sub<f64,f64> for f64 {
+    #[inline(always)]
     fn sub(&self, other: &f64) -> f64 { *self - *other }
 }
 #[cfg(notest)]
 impl ops::Mul<f64,f64> for f64 {
+    #[inline(always)]
     fn mul(&self, other: &f64) -> f64 { *self * *other }
 }
 #[cfg(notest)]
 impl ops::Div<f64,f64> for f64 {
+    #[inline(always)]
     fn div(&self, other: &f64) -> f64 { *self / *other }
 }
 #[cfg(notest)]
 impl ops::Modulo<f64,f64> for f64 {
+    #[inline(always)]
     fn modulo(&self, other: &f64) -> f64 { *self % *other }
 }
 #[cfg(notest)]
 impl ops::Neg<f64> for f64 {
+    #[inline(always)]
     fn neg(&self) -> f64 { -*self }
 }
 

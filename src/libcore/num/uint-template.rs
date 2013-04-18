@@ -142,50 +142,63 @@ impl num::One for T {
 
 #[cfg(notest)]
 impl ops::Add<T,T> for T {
+    #[inline(always)]
     fn add(&self, other: &T) -> T { *self + *other }
 }
 #[cfg(notest)]
 impl ops::Sub<T,T> for T {
+    #[inline(always)]
     fn sub(&self, other: &T) -> T { *self - *other }
 }
 #[cfg(notest)]
 impl ops::Mul<T,T> for T {
+    #[inline(always)]
     fn mul(&self, other: &T) -> T { *self * *other }
 }
 #[cfg(notest)]
 impl ops::Div<T,T> for T {
+    #[inline(always)]
     fn div(&self, other: &T) -> T { *self / *other }
 }
 #[cfg(notest)]
 impl ops::Modulo<T,T> for T {
+    #[inline(always)]
     fn modulo(&self, other: &T) -> T { *self % *other }
 }
 #[cfg(notest)]
 impl ops::Neg<T> for T {
+    #[inline(always)]
     fn neg(&self) -> T { -*self }
 }
+
 #[cfg(notest)]
 impl ops::BitOr<T,T> for T {
+    #[inline(always)]
     fn bitor(&self, other: &T) -> T { *self | *other }
 }
 #[cfg(notest)]
 impl ops::BitAnd<T,T> for T {
+    #[inline(always)]
     fn bitand(&self, other: &T) -> T { *self & *other }
 }
 #[cfg(notest)]
 impl ops::BitXor<T,T> for T {
+    #[inline(always)]
     fn bitxor(&self, other: &T) -> T { *self ^ *other }
 }
 #[cfg(notest)]
 impl ops::Shl<T,T> for T {
+    #[inline(always)]
     fn shl(&self, other: &T) -> T { *self << *other }
 }
 #[cfg(notest)]
 impl ops::Shr<T,T> for T {
+    #[inline(always)]
     fn shr(&self, other: &T) -> T { *self >> *other }
 }
 #[cfg(notest)]
 impl ops::Not<T> for T {
+    #[inline(always)]
     fn not(&self) -> T { !*self }
 }
 
