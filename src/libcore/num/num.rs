@@ -77,7 +77,7 @@ pub enum RoundMode {
  *
  * ~~~
  * let twenty: f32 = num::cast(0x14);
- * assert!(twenty == 20f32);
+ * assert_eq!(twenty, 20f32);
  * ~~~
  */
 #[inline(always)]
@@ -196,17 +196,17 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(
 
 #[cfg(test)]
 fn test_num<T:Num + NumCast>(ten: T, two: T) {
-    assert!(ten.add(&two)    == cast(12));
-    assert!(ten.sub(&two)    == cast(8));
-    assert!(ten.mul(&two)    == cast(20));
-    assert!(ten.div(&two)    == cast(5));
-    assert!(ten.modulo(&two) == cast(0));
+    assert_eq!(ten.add(&two),    cast(12));
+    assert_eq!(ten.sub(&two),    cast(8));
+    assert_eq!(ten.mul(&two),    cast(20));
+    assert_eq!(ten.div(&two),    cast(5));
+    assert_eq!(ten.modulo(&two), cast(0));
 
-    assert!(ten.add(&two)    == ten + two);
-    assert!(ten.sub(&two)    == ten - two);
-    assert!(ten.mul(&two)    == ten * two);
-    assert!(ten.div(&two)    == ten / two);
-    assert!(ten.modulo(&two) == ten % two);
+    assert_eq!(ten.add(&two),    ten + two);
+    assert_eq!(ten.sub(&two),    ten - two);
+    assert_eq!(ten.mul(&two),    ten * two);
+    assert_eq!(ten.div(&two),    ten / two);
+    assert_eq!(ten.modulo(&two), ten % two);
 }
 
 #[test] fn test_u8_num()    { test_num(10u8,  2u8)  }
@@ -227,47 +227,47 @@ macro_rules! test_cast_20(
     ($_20:expr) => ({
         let _20 = $_20;
 
-        assert!(20u   == _20.to_uint());
-        assert!(20u8  == _20.to_u8());
-        assert!(20u16 == _20.to_u16());
-        assert!(20u32 == _20.to_u32());
-        assert!(20u64 == _20.to_u64());
-        assert!(20i   == _20.to_int());
-        assert!(20i8  == _20.to_i8());
-        assert!(20i16 == _20.to_i16());
-        assert!(20i32 == _20.to_i32());
-        assert!(20i64 == _20.to_i64());
-        assert!(20f   == _20.to_float());
-        assert!(20f32 == _20.to_f32());
-        assert!(20f64 == _20.to_f64());
+        assert_eq!(20u,   _20.to_uint());
+        assert_eq!(20u8,  _20.to_u8());
+        assert_eq!(20u16, _20.to_u16());
+        assert_eq!(20u32, _20.to_u32());
+        assert_eq!(20u64, _20.to_u64());
+        assert_eq!(20i,   _20.to_int());
+        assert_eq!(20i8,  _20.to_i8());
+        assert_eq!(20i16, _20.to_i16());
+        assert_eq!(20i32, _20.to_i32());
+        assert_eq!(20i64, _20.to_i64());
+        assert_eq!(20f,   _20.to_float());
+        assert_eq!(20f32, _20.to_f32());
+        assert_eq!(20f64, _20.to_f64());
 
-        assert!(_20 == NumCast::from(20u));
-        assert!(_20 == NumCast::from(20u8));
-        assert!(_20 == NumCast::from(20u16));
-        assert!(_20 == NumCast::from(20u32));
-        assert!(_20 == NumCast::from(20u64));
-        assert!(_20 == NumCast::from(20i));
-        assert!(_20 == NumCast::from(20i8));
-        assert!(_20 == NumCast::from(20i16));
-        assert!(_20 == NumCast::from(20i32));
-        assert!(_20 == NumCast::from(20i64));
-        assert!(_20 == NumCast::from(20f));
-        assert!(_20 == NumCast::from(20f32));
-        assert!(_20 == NumCast::from(20f64));
+        assert_eq!(_20, NumCast::from(20u));
+        assert_eq!(_20, NumCast::from(20u8));
+        assert_eq!(_20, NumCast::from(20u16));
+        assert_eq!(_20, NumCast::from(20u32));
+        assert_eq!(_20, NumCast::from(20u64));
+        assert_eq!(_20, NumCast::from(20i));
+        assert_eq!(_20, NumCast::from(20i8));
+        assert_eq!(_20, NumCast::from(20i16));
+        assert_eq!(_20, NumCast::from(20i32));
+        assert_eq!(_20, NumCast::from(20i64));
+        assert_eq!(_20, NumCast::from(20f));
+        assert_eq!(_20, NumCast::from(20f32));
+        assert_eq!(_20, NumCast::from(20f64));
 
-        assert!(_20 == cast(20u));
-        assert!(_20 == cast(20u8));
-        assert!(_20 == cast(20u16));
-        assert!(_20 == cast(20u32));
-        assert!(_20 == cast(20u64));
-        assert!(_20 == cast(20i));
-        assert!(_20 == cast(20i8));
-        assert!(_20 == cast(20i16));
-        assert!(_20 == cast(20i32));
-        assert!(_20 == cast(20i64));
-        assert!(_20 == cast(20f));
-        assert!(_20 == cast(20f32));
-        assert!(_20 == cast(20f64));
+        assert_eq!(_20, cast(20u));
+        assert_eq!(_20, cast(20u8));
+        assert_eq!(_20, cast(20u16));
+        assert_eq!(_20, cast(20u32));
+        assert_eq!(_20, cast(20u64));
+        assert_eq!(_20, cast(20i));
+        assert_eq!(_20, cast(20i8));
+        assert_eq!(_20, cast(20i16));
+        assert_eq!(_20, cast(20i32));
+        assert_eq!(_20, cast(20i64));
+        assert_eq!(_20, cast(20f));
+        assert_eq!(_20, cast(20f32));
+        assert_eq!(_20, cast(20f64));
     })
 )
 

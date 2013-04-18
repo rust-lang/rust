@@ -387,15 +387,21 @@ pub fn tan(x: float) -> float {
 
 #[cfg(notest)]
 impl Eq for float {
+    #[inline(always)]
     fn eq(&self, other: &float) -> bool { (*self) == (*other) }
+    #[inline(always)]
     fn ne(&self, other: &float) -> bool { (*self) != (*other) }
 }
 
 #[cfg(notest)]
 impl Ord for float {
+    #[inline(always)]
     fn lt(&self, other: &float) -> bool { (*self) < (*other) }
+    #[inline(always)]
     fn le(&self, other: &float) -> bool { (*self) <= (*other) }
+    #[inline(always)]
     fn ge(&self, other: &float) -> bool { (*self) >= (*other) }
+    #[inline(always)]
     fn gt(&self, other: &float) -> bool { (*self) > (*other) }
 }
 
@@ -444,26 +450,32 @@ impl num::Round for float {
 
 #[cfg(notest)]
 impl ops::Add<float,float> for float {
+    #[inline(always)]
     fn add(&self, other: &float) -> float { *self + *other }
 }
 #[cfg(notest)]
 impl ops::Sub<float,float> for float {
+    #[inline(always)]
     fn sub(&self, other: &float) -> float { *self - *other }
 }
 #[cfg(notest)]
 impl ops::Mul<float,float> for float {
+    #[inline(always)]
     fn mul(&self, other: &float) -> float { *self * *other }
 }
 #[cfg(notest)]
 impl ops::Div<float,float> for float {
+    #[inline(always)]
     fn div(&self, other: &float) -> float { *self / *other }
 }
 #[cfg(notest)]
 impl ops::Modulo<float,float> for float {
+    #[inline(always)]
     fn modulo(&self, other: &float) -> float { *self % *other }
 }
 #[cfg(notest)]
 impl ops::Neg<float> for float {
+    #[inline(always)]
     fn neg(&self) -> float { -*self }
 }
 
@@ -474,29 +486,29 @@ mod tests {
     #[test]
     pub fn test_to_str_exact_do_decimal() {
         let s = to_str_exact(5.0, 4u);
-        assert!(s == ~"5.0000");
+        assert_eq!(s, ~"5.0000");
     }
 
     #[test]
     pub fn test_from_str() {
-        assert!(from_str(~"3") == Some(3.));
-        assert!(from_str(~"3.14") == Some(3.14));
-        assert!(from_str(~"+3.14") == Some(3.14));
-        assert!(from_str(~"-3.14") == Some(-3.14));
-        assert!(from_str(~"2.5E10") == Some(25000000000.));
-        assert!(from_str(~"2.5e10") == Some(25000000000.));
-        assert!(from_str(~"25000000000.E-10") == Some(2.5));
-        assert!(from_str(~".") == Some(0.));
-        assert!(from_str(~".e1") == Some(0.));
-        assert!(from_str(~".e-1") == Some(0.));
-        assert!(from_str(~"5.") == Some(5.));
-        assert!(from_str(~".5") == Some(0.5));
-        assert!(from_str(~"0.5") == Some(0.5));
-        assert!(from_str(~"-.5") == Some(-0.5));
-        assert!(from_str(~"-5") == Some(-5.));
-        assert!(from_str(~"inf") == Some(infinity));
-        assert!(from_str(~"+inf") == Some(infinity));
-        assert!(from_str(~"-inf") == Some(neg_infinity));
+        assert_eq!(from_str(~"3"), Some(3.));
+        assert_eq!(from_str(~"3.14"), Some(3.14));
+        assert_eq!(from_str(~"+3.14"), Some(3.14));
+        assert_eq!(from_str(~"-3.14"), Some(-3.14));
+        assert_eq!(from_str(~"2.5E10"), Some(25000000000.));
+        assert_eq!(from_str(~"2.5e10"), Some(25000000000.));
+        assert_eq!(from_str(~"25000000000.E-10"), Some(2.5));
+        assert_eq!(from_str(~"."), Some(0.));
+        assert_eq!(from_str(~".e1"), Some(0.));
+        assert_eq!(from_str(~".e-1"), Some(0.));
+        assert_eq!(from_str(~"5."), Some(5.));
+        assert_eq!(from_str(~".5"), Some(0.5));
+        assert_eq!(from_str(~"0.5"), Some(0.5));
+        assert_eq!(from_str(~"-.5"), Some(-0.5));
+        assert_eq!(from_str(~"-5"), Some(-5.));
+        assert_eq!(from_str(~"inf"), Some(infinity));
+        assert_eq!(from_str(~"+inf"), Some(infinity));
+        assert_eq!(from_str(~"-inf"), Some(neg_infinity));
         // note: NaN != NaN, hence this slightly complex test
         match from_str(~"NaN") {
             Some(f) => assert!(is_NaN(f)),
@@ -526,24 +538,24 @@ mod tests {
 
     #[test]
     pub fn test_from_str_hex() {
-        assert!(from_str_hex(~"a4") == Some(164.));
-        assert!(from_str_hex(~"a4.fe") == Some(164.9921875));
-        assert!(from_str_hex(~"-a4.fe") == Some(-164.9921875));
-        assert!(from_str_hex(~"+a4.fe") == Some(164.9921875));
-        assert!(from_str_hex(~"ff0P4") == Some(0xff00 as float));
-        assert!(from_str_hex(~"ff0p4") == Some(0xff00 as float));
-        assert!(from_str_hex(~"ff0p-4") == Some(0xff as float));
-        assert!(from_str_hex(~".") == Some(0.));
-        assert!(from_str_hex(~".p1") == Some(0.));
-        assert!(from_str_hex(~".p-1") == Some(0.));
-        assert!(from_str_hex(~"f.") == Some(15.));
-        assert!(from_str_hex(~".f") == Some(0.9375));
-        assert!(from_str_hex(~"0.f") == Some(0.9375));
-        assert!(from_str_hex(~"-.f") == Some(-0.9375));
-        assert!(from_str_hex(~"-f") == Some(-15.));
-        assert!(from_str_hex(~"inf") == Some(infinity));
-        assert!(from_str_hex(~"+inf") == Some(infinity));
-        assert!(from_str_hex(~"-inf") == Some(neg_infinity));
+        assert_eq!(from_str_hex(~"a4"), Some(164.));
+        assert_eq!(from_str_hex(~"a4.fe"), Some(164.9921875));
+        assert_eq!(from_str_hex(~"-a4.fe"), Some(-164.9921875));
+        assert_eq!(from_str_hex(~"+a4.fe"), Some(164.9921875));
+        assert_eq!(from_str_hex(~"ff0P4"), Some(0xff00 as float));
+        assert_eq!(from_str_hex(~"ff0p4"), Some(0xff00 as float));
+        assert_eq!(from_str_hex(~"ff0p-4"), Some(0xff as float));
+        assert_eq!(from_str_hex(~"."), Some(0.));
+        assert_eq!(from_str_hex(~".p1"), Some(0.));
+        assert_eq!(from_str_hex(~".p-1"), Some(0.));
+        assert_eq!(from_str_hex(~"f."), Some(15.));
+        assert_eq!(from_str_hex(~".f"), Some(0.9375));
+        assert_eq!(from_str_hex(~"0.f"), Some(0.9375));
+        assert_eq!(from_str_hex(~"-.f"), Some(-0.9375));
+        assert_eq!(from_str_hex(~"-f"), Some(-15.));
+        assert_eq!(from_str_hex(~"inf"), Some(infinity));
+        assert_eq!(from_str_hex(~"+inf"), Some(infinity));
+        assert_eq!(from_str_hex(~"-inf"), Some(neg_infinity));
         // note: NaN != NaN, hence this slightly complex test
         match from_str_hex(~"NaN") {
             Some(f) => assert!(is_NaN(f)),
@@ -558,11 +570,11 @@ mod tests {
             Some(v) if is_zero(v) => assert!(is_positive(v)),
             _ => fail!()
         }
-        assert!(from_str_hex(~"e") == Some(14.));
-        assert!(from_str_hex(~"E") == Some(14.));
-        assert!(from_str_hex(~"E1") == Some(225.));
-        assert!(from_str_hex(~"1e1e1") == Some(123361.));
-        assert!(from_str_hex(~"1e1.1") == Some(481.0625));
+        assert_eq!(from_str_hex(~"e"), Some(14.));
+        assert_eq!(from_str_hex(~"E"), Some(14.));
+        assert_eq!(from_str_hex(~"E1"), Some(225.));
+        assert_eq!(from_str_hex(~"1e1e1"), Some(123361.));
+        assert_eq!(from_str_hex(~"1e1.1"), Some(481.0625));
 
         assert!(from_str_hex(~"").is_none());
         assert!(from_str_hex(~"x").is_none());
@@ -578,92 +590,92 @@ mod tests {
 
     #[test]
     pub fn test_to_str_hex() {
-        assert!(to_str_hex(164.) == ~"a4");
-        assert!(to_str_hex(164.9921875) == ~"a4.fe");
-        assert!(to_str_hex(-164.9921875) == ~"-a4.fe");
-        assert!(to_str_hex(0xff00 as float) == ~"ff00");
-        assert!(to_str_hex(-(0xff00 as float)) == ~"-ff00");
-        assert!(to_str_hex(0.) == ~"0");
-        assert!(to_str_hex(15.) == ~"f");
-        assert!(to_str_hex(-15.) == ~"-f");
-        assert!(to_str_hex(0.9375) == ~"0.f");
-        assert!(to_str_hex(-0.9375) == ~"-0.f");
-        assert!(to_str_hex(infinity) == ~"inf");
-        assert!(to_str_hex(neg_infinity) == ~"-inf");
-        assert!(to_str_hex(NaN) == ~"NaN");
-        assert!(to_str_hex(0.) == ~"0");
-        assert!(to_str_hex(-0.) == ~"-0");
+        assert_eq!(to_str_hex(164.), ~"a4");
+        assert_eq!(to_str_hex(164.9921875), ~"a4.fe");
+        assert_eq!(to_str_hex(-164.9921875), ~"-a4.fe");
+        assert_eq!(to_str_hex(0xff00 as float), ~"ff00");
+        assert_eq!(to_str_hex(-(0xff00 as float)), ~"-ff00");
+        assert_eq!(to_str_hex(0.), ~"0");
+        assert_eq!(to_str_hex(15.), ~"f");
+        assert_eq!(to_str_hex(-15.), ~"-f");
+        assert_eq!(to_str_hex(0.9375), ~"0.f");
+        assert_eq!(to_str_hex(-0.9375), ~"-0.f");
+        assert_eq!(to_str_hex(infinity), ~"inf");
+        assert_eq!(to_str_hex(neg_infinity), ~"-inf");
+        assert_eq!(to_str_hex(NaN), ~"NaN");
+        assert_eq!(to_str_hex(0.), ~"0");
+        assert_eq!(to_str_hex(-0.), ~"-0");
     }
 
     #[test]
     pub fn test_to_str_radix() {
-        assert!(to_str_radix(36., 36u) == ~"10");
-        assert!(to_str_radix(8.125, 2u) == ~"1000.001");
+        assert_eq!(to_str_radix(36., 36u), ~"10");
+        assert_eq!(to_str_radix(8.125, 2u), ~"1000.001");
     }
 
     #[test]
     pub fn test_from_str_radix() {
-        assert!(from_str_radix(~"10", 36u) == Some(36.));
-        assert!(from_str_radix(~"1000.001", 2u) == Some(8.125));
+        assert_eq!(from_str_radix(~"10", 36u), Some(36.));
+        assert_eq!(from_str_radix(~"1000.001", 2u), Some(8.125));
     }
 
     #[test]
     pub fn test_positive() {
-        assert!((is_positive(infinity)));
-        assert!((is_positive(1.)));
-        assert!((is_positive(0.)));
-        assert!((!is_positive(-1.)));
-        assert!((!is_positive(neg_infinity)));
-        assert!((!is_positive(1./neg_infinity)));
-        assert!((!is_positive(NaN)));
+        assert!(is_positive(infinity));
+        assert!(is_positive(1.));
+        assert!(is_positive(0.));
+        assert!(!is_positive(-1.));
+        assert!(!is_positive(neg_infinity));
+        assert!(!is_positive(1./neg_infinity));
+        assert!(!is_positive(NaN));
     }
 
     #[test]
     pub fn test_negative() {
-        assert!((!is_negative(infinity)));
-        assert!((!is_negative(1.)));
-        assert!((!is_negative(0.)));
-        assert!((is_negative(-1.)));
-        assert!((is_negative(neg_infinity)));
-        assert!((is_negative(1./neg_infinity)));
-        assert!((!is_negative(NaN)));
+        assert!(!is_negative(infinity));
+        assert!(!is_negative(1.));
+        assert!(!is_negative(0.));
+        assert!(is_negative(-1.));
+        assert!(is_negative(neg_infinity));
+        assert!(is_negative(1./neg_infinity));
+        assert!(!is_negative(NaN));
     }
 
     #[test]
     pub fn test_nonpositive() {
-        assert!((!is_nonpositive(infinity)));
-        assert!((!is_nonpositive(1.)));
-        assert!((!is_nonpositive(0.)));
-        assert!((is_nonpositive(-1.)));
-        assert!((is_nonpositive(neg_infinity)));
-        assert!((is_nonpositive(1./neg_infinity)));
-        assert!((!is_nonpositive(NaN)));
+        assert!(!is_nonpositive(infinity));
+        assert!(!is_nonpositive(1.));
+        assert!(!is_nonpositive(0.));
+        assert!(is_nonpositive(-1.));
+        assert!(is_nonpositive(neg_infinity));
+        assert!(is_nonpositive(1./neg_infinity));
+        assert!(!is_nonpositive(NaN));
     }
 
     #[test]
     pub fn test_nonnegative() {
-        assert!((is_nonnegative(infinity)));
-        assert!((is_nonnegative(1.)));
-        assert!((is_nonnegative(0.)));
-        assert!((!is_nonnegative(-1.)));
-        assert!((!is_nonnegative(neg_infinity)));
-        assert!((!is_nonnegative(1./neg_infinity)));
-        assert!((!is_nonnegative(NaN)));
+        assert!(is_nonnegative(infinity));
+        assert!(is_nonnegative(1.));
+        assert!(is_nonnegative(0.));
+        assert!(!is_nonnegative(-1.));
+        assert!(!is_nonnegative(neg_infinity));
+        assert!(!is_nonnegative(1./neg_infinity));
+        assert!(!is_nonnegative(NaN));
     }
 
     #[test]
     pub fn test_to_str_inf() {
-        assert!(to_str_digits(infinity, 10u) == ~"inf");
-        assert!(to_str_digits(-infinity, 10u) == ~"-inf");
+        assert_eq!(to_str_digits(infinity, 10u), ~"inf");
+        assert_eq!(to_str_digits(-infinity, 10u), ~"-inf");
     }
 
     #[test]
     pub fn test_round() {
-        assert!(round(5.8) == 6.0);
-        assert!(round(5.2) == 5.0);
-        assert!(round(3.0) == 3.0);
-        assert!(round(2.5) == 3.0);
-        assert!(round(-3.5) == -4.0);
+        assert_eq!(round(5.8), 6.0);
+        assert_eq!(round(5.2), 5.0);
+        assert_eq!(round(3.0), 3.0);
+        assert_eq!(round(2.5), 3.0);
+        assert_eq!(round(-3.5), -4.0);
     }
 }
 
