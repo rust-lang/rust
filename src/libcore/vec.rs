@@ -4474,6 +4474,16 @@ mod tests {
             i += 1;
         }
     }
+
+    #[test]
+    fn test_iterator_enumerate() {
+        use iterator::*;
+        let xs = [0u,1,2,3,4,5];
+        let mut it = xs.iter().enumerate();
+        for it.advance |(i, &x): (uint, &uint)| {
+            assert_eq!(i, x);
+        }
+    }
 }
 
 // Local Variables:

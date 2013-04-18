@@ -22,6 +22,7 @@ pub trait IteratorUtil<A> {
     // FIXME: #5898: should be called map
     fn transform<'r, B>(self, f: &'r fn(A) -> B) -> MapIterator<'r, A, B, Self>;
     fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> FilterIterator<'r, A, Self>;
+    fn enumerate(self) -> EnumerateIterator<Self>;
     fn advance(&mut self, f: &fn(A) -> bool);
 }
 
@@ -40,6 +41,11 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline(always)]
     fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> FilterIterator<'r, A, T> {
         FilterIterator{iter: self, predicate: predicate}
+    }
+
+    #[inline(always)]
+    fn enumerate(self) -> EnumerateIterator<T> {
+        EnumerateIterator{iter: self, count: 0}
     }
 
     /// A shim implementing the `for` loop iteration protocol for iterator objects
@@ -100,6 +106,25 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for MapIterator<'self, A, B, T> {
     fn next(&mut self) -> Option<B> {
         match self.iter.next() {
             Some(a) => Some((self.f)(a)),
+            _ => None
+        }
+    }
+}
+
+pub struct EnumerateIterator<T> {
+    priv iter: T,
+    priv count: uint
+}
+
+impl<A, T: Iterator<A>> Iterator<(uint, A)> for EnumerateIterator<T> {
+    #[inline]
+    fn next(&mut self) -> Option<(uint, A)> {
+        match self.iter.next() {
+            Some(a) => {
+                let ret = Some((self.count, a));
+                self.count += 1;
+                ret
+            }
             _ => None
         }
     }
