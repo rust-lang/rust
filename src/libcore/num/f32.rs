@@ -288,26 +288,32 @@ impl num::One for f32 {
 
 #[cfg(notest)]
 impl ops::Add<f32,f32> for f32 {
+    #[inline(always)]
     fn add(&self, other: &f32) -> f32 { *self + *other }
 }
 #[cfg(notest)]
 impl ops::Sub<f32,f32> for f32 {
+    #[inline(always)]
     fn sub(&self, other: &f32) -> f32 { *self - *other }
 }
 #[cfg(notest)]
 impl ops::Mul<f32,f32> for f32 {
+    #[inline(always)]
     fn mul(&self, other: &f32) -> f32 { *self * *other }
 }
 #[cfg(notest)]
 impl ops::Div<f32,f32> for f32 {
+    #[inline(always)]
     fn div(&self, other: &f32) -> f32 { *self / *other }
 }
 #[cfg(notest)]
 impl ops::Modulo<f32,f32> for f32 {
+    #[inline(always)]
     fn modulo(&self, other: &f32) -> f32 { *self % *other }
 }
 #[cfg(notest)]
 impl ops::Neg<f32> for f32 {
+    #[inline(always)]
     fn neg(&self) -> f32 { -*self }
 }
 
