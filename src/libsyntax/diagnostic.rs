@@ -33,6 +33,7 @@ pub trait handler {
     fn bump_err_count(@mut self);
     fn has_errors(@mut self) -> bool;
     fn abort_if_errors(@mut self);
+    fn abort_error_print(@mut self);
     fn warn(@mut self, msg: &str);
     fn note(@mut self, msg: &str);
     // used to indicate a bug in the compiler:
@@ -42,6 +43,7 @@ pub trait handler {
             cmsp: Option<(@codemap::CodeMap, span)>,
             msg: &str,
             lvl: level);
+    fn emit_print(@mut self, lvl: level);
 }
 
 // a span-handler is like a handler but also
@@ -57,8 +59,15 @@ pub trait span_handler {
     fn handler(@mut self) -> @handler;
 }
 
+struct emitter_arg {
+    cmsp: Option<(@codemap::CodeMap, span)>,
+    msg: ~str,
+    lvl: level,
+}
+
 struct HandlerT {
     err_count: uint,
+    emitters: ~[emitter_arg],
     emit: Emitter,
 }
 
@@ -69,7 +78,11 @@ struct CodemapT {
 
 impl span_handler for CodemapT {
     fn span_fatal(@mut self, sp: span, msg: &str) -> ! {
+        self.handler.bump_err_count();
         self.handler.emit(Some((self.cm, sp)), msg, fatal);
+        self.handler.emit_print(error);
+        self.handler.emit_print(note);
+        self.handler.abort_error_print();
         fail!();
     }
     fn span_err(@mut self, sp: span, msg: &str) {
@@ -77,7 +90,7 @@ impl span_handler for CodemapT {
         self.handler.bump_err_count();
     }
     fn span_warn(@mut self, sp: span, msg: &str) {
-        self.handler.emit(Some((self.cm, sp)), msg, warning);
+        emit_one(Some((self.cm, sp)), msg, warning);
     }
     fn span_note(@mut self, sp: span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, note);
@@ -95,11 +108,13 @@ impl span_handler for CodemapT {
 
 impl handler for HandlerT {
     fn fatal(@mut self, msg: &str) -> ! {
-        (self.emit)(None, msg, fatal);
+        self.emit_print(error);
+        self.emit_print(note);
+        emit_one(None, msg, fatal);
         fail!();
     }
     fn err(@mut self, msg: &str) {
-        (self.emit)(None, msg, error);
+        emit_one(None, msg, error);
         self.bump_err_count();
     }
     fn bump_err_count(@mut self) {
@@ -118,13 +133,26 @@ impl handler for HandlerT {
         }
         self.fatal(s);
     }
+    fn abort_error_print(@mut self) {
+        let s;
+        match self.err_count {
+          0u => return,
+          1u => s = ~"aborting due to previous error",
+          _  => {
+            s = fmt!("aborting due to %u previous errors",
+                     self.err_count);
+          }
+        }
+        emit_one(None, s, fatal);
+    }
     fn warn(@mut self, msg: &str) {
-        (self.emit)(None, msg, warning);
+        emit_one(None, msg, warning);
     }
     fn note(@mut self, msg: &str) {
-        (self.emit)(None, msg, note);
+        self.emit(None, msg, note);
     }
     fn bug(@mut self, msg: &str) -> ! {
+        self.bump_err_count();
         self.fatal(ice_msg(msg));
     }
     fn unimpl(@mut self, msg: &str) -> ! {
@@ -135,6 +163,50 @@ impl handler for HandlerT {
             msg: &str,
             lvl: level) {
         (self.emit)(cmsp, msg, lvl);
+        let emitter = emitter_arg { cmsp: cmsp,
+                                    msg: str::from_slice(msg),
+                                    lvl: lvl };
+        self.emitters.push(emitter);
+    }
+
+    fn emit_print(@mut self, lvl: level) {
+        let mut old_cmsp = None;
+        let mut old_line = 0u;
+
+        let emitters = self.emitters;
+        let length = emitters.len();
+        for uint::range(0, length) |i| {
+            let emitter = copy self.emitters[i];
+            let cmsp = emitter.cmsp;
+            let msg = emitter.msg;
+            if diagnosticstr(lvl) == diagnosticstr(emitter.lvl) {
+                match cmsp {
+                    Some((cm, sp)) => {
+                            let lo = cm.lookup_char_pos_adj(sp.lo);
+                            let sp = cm.adjust_span(sp);
+                            let ss = cm.span_to_str(sp);
+                            if i == 0 || old_line == lo.line {
+                                if old_line == lo.line {
+                                    highlight_lines_cmp(cmsp, old_cmsp);
+                                }
+                                print_diagnostic(ss, lvl, msg);
+                                highlight_lines_cmp(old_cmsp, cmsp);
+                            } else {
+                                highlight_lines(old_cmsp);
+                                print_macro_backtrace(old_cmsp);
+                                print_diagnostic(ss, lvl, msg);
+                            }
+                            old_line = lo.line;
+                            old_cmsp = emitter.cmsp;
+                    }
+                    None => {
+                        print_diagnostic(~"", lvl, msg);
+                    }
+                }
+            }
+        }
+        highlight_lines(old_cmsp);
+        print_macro_backtrace(old_cmsp);
     }
 }
 
@@ -156,7 +228,9 @@ pub fn mk_handler(emitter: Option<Emitter>) -> @handler {
         }
     };
 
-    @mut HandlerT { err_count: 0, emit: emit } as @handler
+    @mut HandlerT { err_count: 0,
+                    emitters: ~[],
+                    emit: emit } as @handler
 }
 
 #[deriving(Eq)]
@@ -208,15 +282,19 @@ pub fn collect(messages: @mut ~[~str])
     f
 }
 
-pub fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
+pub fn emit(_cmsp: Option<(@codemap::CodeMap, span)>, _msg: &str, _lvl: level) {
+    // Nothing to do
+}
+
+pub fn emit_one(cmsp: Option<(@codemap::CodeMap, span)>,
+        msg: &str, lvl: level) {
     match cmsp {
       Some((cm, sp)) => {
         let sp = cm.adjust_span(sp);
         let ss = cm.span_to_str(sp);
-        let lines = cm.span_to_lines(sp);
         print_diagnostic(ss, lvl, msg);
-        highlight_lines(cm, sp, lines);
-        print_macro_backtrace(cm, sp);
+        highlight_lines(cmsp);
+        print_macro_backtrace(cmsp);
       }
       None => {
         print_diagnostic(~"", lvl, msg);
@@ -224,7 +302,7 @@ pub fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
     }
 }
 
-fn highlight_lines(cm: @codemap::CodeMap,
+fn highlight_lines_internal(cm: @codemap::CodeMap,
                    sp: span,
                    lines: @codemap::FileLines) {
     let fm = lines.file;
@@ -291,14 +369,70 @@ fn highlight_lines(cm: @codemap::CodeMap,
     }
 }
 
-fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
+fn highlight_lines(cmsp: Option<(@codemap::CodeMap, span)>) {
+    match cmsp {
+        Some((cm, sp)) => {
+            let sp = cm.adjust_span(sp);
+            let lines = cm.span_to_lines(sp);
+            highlight_lines_internal(cm, sp, lines);
+        }
+        None => ()
+    }
+}
+
+fn highlight_lines_cmp(old_cmsp: Option<(@codemap::CodeMap, span)>,
+                       cmsp: Option<(@codemap::CodeMap, span)> ){
+    let mut old_line = ~[];
+    let mut new_line = ~[];
+    let mut old_lo = 0u;
+    let mut new_lo = 0u;
+    let mut flag = true;
+    match old_cmsp {
+        Some((cm, sp)) => {
+            let lo = cm.lookup_char_pos(sp.lo);
+            let sp = cm.adjust_span(sp);
+            let lines = cm.span_to_lines(sp);
+            old_line = lines.lines;
+            old_lo = lo.col.to_uint();
+        }
+        None => { flag = false; }
+    }
+
+    match cmsp {
+        Some((cm, sp)) => {
+            let lo = cm.lookup_char_pos(sp.lo);
+            let sp = cm.adjust_span(sp);
+            let lines = cm.span_to_lines(sp);
+            new_line = lines.lines;
+            new_lo = lo.col.to_uint();
+        }
+        None => { flag = false; }
+    }
+
+    if flag {
+        if old_line == new_line && old_lo > new_lo {
+            highlight_lines(cmsp);
+        }
+    }
+}
+
+fn print_macro_backtrace_internal(cm: @codemap::CodeMap, sp: span) {
     for sp.expn_info.each |ei| {
         let ss = ei.callee.span.map_default(@~"", |span| @cm.span_to_str(*span));
         print_diagnostic(*ss, note,
                          fmt!("in expansion of %s!", ei.callee.name));
         let ss = cm.span_to_str(ei.call_site);
         print_diagnostic(ss, note, ~"expansion site");
-        print_macro_backtrace(cm, ei.call_site);
+        print_macro_backtrace_internal(cm, ei.call_site);
+    }
+}
+
+fn print_macro_backtrace(cmsp: Option<(@codemap::CodeMap, span)>) {
+    match cmsp {
+        Some((cm, sp)) => {
+            print_macro_backtrace_internal(cm, sp);
+        }
+        None => ()
     }
 }
 
