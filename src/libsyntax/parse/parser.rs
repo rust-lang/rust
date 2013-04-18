@@ -66,7 +66,7 @@ use codemap::{span, BytePos, spanned, mk_sp};
 use codemap;
 use parse::attr::parser_attr;
 use parse::classify;
-use parse::common::{seq_sep_none, token_to_str};
+use parse::common::{seq_sep_none};
 use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed};
 use parse::lexer::reader;
 use parse::lexer::TokenAndSpan;
@@ -252,8 +252,11 @@ pub fn Parser(sess: @mut ParseSess,
 pub struct Parser {
     sess: @mut ParseSess,
     cfg: crate_cfg,
+    // the current token:
     token: @mut token::Token,
+    // the span of the current token:
     span: @mut span,
+    // the span of the prior token:
     last_span: @mut span,
     buffer: @mut [TokenAndSpan, ..4],
     buffer_start: @mut int,
@@ -499,7 +502,7 @@ pub impl Parser {
             let hi = p.last_span.hi;
             debug!("parse_trait_methods(): trait method signature ends in \
                     `%s`",
-                   token_to_str(p.reader, &copy *p.token));
+                   self.this_token_to_str());
             match *p.token {
               token::SEMI => {
                 p.bump();
@@ -541,7 +544,7 @@ pub impl Parser {
                     p.fatal(
                         fmt!(
                             "expected `;` or `}` but found `%s`",
-                            token_to_str(p.reader, &copy *p.token)
+                            self.this_token_to_str()
                         )
                     );
                 }
@@ -698,7 +701,8 @@ pub impl Parser {
             let path = self.parse_path_with_tps(false);
             ty_path(path, self.get_id())
         } else {
-            self.fatal(~"expected type");
+            self.fatal(fmt!("expected type, found token %?",
+                            *self.token));
         };
 
         let sp = mk_sp(lo, self.last_span.hi);
@@ -1455,6 +1459,11 @@ pub impl Parser {
     fn parse_token_tree(&self) -> token_tree {
         maybe_whole!(deref self, nt_tt);
 
+        // this is the fall-through for the 'match' below.
+        // invariants: the current token is not a left-delimiter,
+        // not an EOF, and not the desired right-delimiter (if
+        // it were, parse_seq_to_before_end would have prevented
+        // reaching this point.
         fn parse_non_delim_tt_tok(p: &Parser) -> token_tree {
             maybe_whole!(deref p, nt_tt);
             match *p.token {
@@ -1463,7 +1472,7 @@ pub impl Parser {
                 p.fatal(
                     fmt!(
                         "incorrect close delimiter: `%s`",
-                        token_to_str(p.reader, &copy *p.token)
+                        p.this_token_to_str()
                     )
                 );
               }
@@ -1505,18 +1514,17 @@ pub impl Parser {
 
         match *self.token {
             token::EOF => {
-                self.fatal(~"file ended in the middle of a macro invocation");
+                self.fatal(~"file ended with unbalanced delimiters");
             }
             token::LPAREN | token::LBRACE | token::LBRACKET => {
-                // tjc: ??????
-                let ket = token::flip_delimiter(&*self.token);
+                let close_delim = token::flip_delimiter(&*self.token);
                 tt_delim(
                     vec::append(
                         // the open delimiter:
                         ~[parse_any_tt_tok(self)],
                         vec::append(
                             self.parse_seq_to_before_end(
-                                &ket,
+                                &close_delim,
                                 seq_sep_none(),
                                 |p| p.parse_token_tree()
                             ),
@@ -1530,6 +1538,8 @@ pub impl Parser {
         }
     }
 
+    // parse a stream of tokens into a list of token_trees,
+    // up to EOF.
     fn parse_all_token_trees(&self) -> ~[token_tree] {
         let mut tts = ~[];
         while *self.token != token::EOF {
@@ -2052,6 +2062,7 @@ pub impl Parser {
         return e;
     }
 
+    // parse the RHS of a local variable declaration (e.g. '= 14;')
     fn parse_initializer(&self) -> Option<@expr> {
         match *self.token {
           token::EQ => {
@@ -2138,7 +2149,7 @@ pub impl Parser {
                     self.fatal(
                         fmt!(
                             "expected `}`, found `%s`",
-                            token_to_str(self.reader, &copy *self.token)
+                            self.this_token_to_str()
                         )
                     );
                 }
@@ -2406,6 +2417,7 @@ pub impl Parser {
         pat_ident(binding_mode, name, sub)
     }
 
+    // parse a local variable declaration
     fn parse_local(&self, is_mutbl: bool,
                    allow_init: bool) -> @local {
         let lo = self.span.lo;
@@ -2651,7 +2663,7 @@ pub impl Parser {
                                             fmt!(
                                                 "expected `;` or `}` after \
                                                 expression but found `%s`",
-                                                token_to_str(self.reader, &t)
+                                                self.token_to_str(&t)
                                             )
                                         );
                                     }
@@ -2866,7 +2878,7 @@ pub impl Parser {
             self.fatal(
                 fmt!(
                     "expected `self` but found `%s`",
-                    token_to_str(self.reader, &copy *self.token)
+                    self.this_token_to_str()
                 )
             );
         }
@@ -2990,7 +3002,7 @@ pub impl Parser {
                     self.fatal(
                         fmt!(
                             "expected `,` or `)`, found `%s`",
-                            token_to_str(self.reader, &copy *self.token)
+                            self.this_token_to_str()
                         )
                     );
                 }
@@ -3270,7 +3282,7 @@ pub impl Parser {
                 fmt!(
                     "expected `{`, `(`, or `;` after struct name \
                     but found `%s`",
-                    token_to_str(self.reader, &copy *self.token)
+                    self.this_token_to_str()
                 )
             );
         }
@@ -3320,7 +3332,7 @@ pub impl Parser {
                     copy *self.span,
                     fmt!(
                         "expected `;`, `,`, or '}' but found `%s`",
-                        token_to_str(self.reader, &copy *self.token)
+                        self.this_token_to_str()
                     )
                 );
             }
@@ -3422,7 +3434,7 @@ pub impl Parser {
                 self.fatal(
                     fmt!(
                         "expected item but found `%s`",
-                        token_to_str(self.reader, &copy *self.token)
+                        self.this_token_to_str()
                     )
                 );
               }
@@ -3682,7 +3694,7 @@ pub impl Parser {
                 copy *self.span,
                 fmt!(
                     "expected `{` or `mod` but found `%s`",
-                    token_to_str(self.reader, &copy *self.token)
+                    self.this_token_to_str()
                 )
             );
         }
@@ -3695,7 +3707,7 @@ pub impl Parser {
                         copy *self.span,
                         fmt!(
                             "expected foreign module name but found `%s`",
-                            token_to_str(self.reader, &copy *self.token)
+                            self.this_token_to_str()
                         )
                     );
                 }
@@ -4279,7 +4291,7 @@ pub impl Parser {
                                             rp: None,
                                             types: ~[] };
                     return @spanned(lo, self.span.hi,
-                                 view_path_glob(path, self.get_id()));
+                                    view_path_glob(path, self.get_id()));
                   }
 
                   _ => break

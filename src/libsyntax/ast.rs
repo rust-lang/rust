@@ -22,45 +22,53 @@ use core::to_str::ToStr;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 
-/* can't import macros yet, so this is copied from token.rs. See its comment
- * there. */
-macro_rules! interner_key (
-    () => (cast::transmute::<(uint, uint),
-            &fn(+v: @@::parse::token::ident_interner)>(
-        (-3 as uint, 0u)))
-)
-
 // an identifier contains an index into the interner
 // table and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
 // That Work Together"
 #[deriving(Eq)]
-pub struct ident { repr: Name }
+pub struct ident { repr: Name, ctxt: SyntaxContext }
 
 // a SyntaxContext represents a chain of macro-expandings
 // and renamings. Each macro expansion corresponds to
 // a fresh uint
+
+// I'm representing this syntax context as an index into
+// a table, in order to work around a compiler bug
+// that's causing unreleased memory to cause core dumps
+// and also perhaps to save some work in destructor checks.
+// the special uint '0' will be used to indicate an empty
+// syntax context
+
+// this uint is a reference to a table stored in thread-local
+// storage.
+pub type SyntaxContext = uint;
+
+pub type SCTable = ~[SyntaxContext_];
+pub static empty_ctxt : uint = 0;
+
 #[deriving(Eq)]
-pub enum SyntaxContext {
-    MT,
-    Mark (Mrk,~SyntaxContext),
-    Rename (~ident,Name,~SyntaxContext)
+#[auto_encode]
+#[auto_decode]
+pub enum SyntaxContext_ {
+    EmptyCtxt,
+    Mark (Mrk,SyntaxContext),
+    // flattening the name and syntaxcontext into the rename...
+    // HIDDEN INVARIANTS:
+    // 1) the first name in a Rename node
+    // can only be a programmer-supplied name.
+    // 2) Every Rename node with a given Name in the
+    // "to" slot must have the same name and context
+    // in the "from" slot. In essence, they're all
+    // pointers to a single "rename" event node.
+    Rename (ident,Name,SyntaxContext)
 }
 
-/*
-// ** this is going to have to apply to paths, not to idents.
-// Returns true if these two identifiers access the same
-// local binding or top-level binding... that's what it
-// should do. For now, it just compares the names.
-pub fn free_ident_eq (a : ident, b: ident) -> bool{
-    a.repr == b.repr
-}
-*/
-// a name represents a string, interned
-type Name = uint;
+// a name represents an identifier
+pub type Name = uint;
 // a mark represents a unique id associated
 // with a macro expansion
-type Mrk = uint;
+pub type Mrk = uint;
 
 impl<S:Encoder> Encodable<S> for ident {
     fn encode(&self, s: &S) {
@@ -1310,22 +1318,77 @@ pub enum inlined_item {
     ii_dtor(struct_dtor, ident, Generics, def_id /* parent id */)
 }
 
+/* hold off on tests ... they appear in a later merge.
 #[cfg(test)]
 mod test {
-    //are asts encodable?
-
-    // it looks like this *will* be a compiler bug, after
-    // I get deriving_eq for crates into incoming :)
-    /*
+    use core::option::{None, Option, Some};
+    use core::uint;
     use std;
     use codemap::*;
     use super::*;
 
+
+    #[test] fn xorpush_test () {
+        let mut s = ~[];
+        xorPush(&mut s,14);
+        assert_eq!(s,~[14]);
+        xorPush(&mut s,14);
+        assert_eq!(s,~[]);
+        xorPush(&mut s,14);
+        assert_eq!(s,~[14]);
+        xorPush(&mut s,15);
+        assert_eq!(s,~[14,15]);
+        xorPush (&mut s,16);
+        assert_eq! (s,~[14,15,16]);
+        xorPush (&mut s,16);
+        assert_eq! (s,~[14,15]);
+        xorPush (&mut s,15);
+        assert_eq! (s,~[14]);
+    }
+
+    #[test] fn test_marksof () {
+        let stopname = uints_to_name(&~[12,14,78]);
+        let name1 = uints_to_name(&~[4,9,7]);
+        assert_eq!(marksof (MT,stopname),~[]);
+        assert_eq! (marksof (Mark (4,@Mark(98,@MT)),stopname),~[4,98]);
+        // does xoring work?
+        assert_eq! (marksof (Mark (5, @Mark (5, @Mark (16,@MT))),stopname),
+                     ~[16]);
+        // does nested xoring work?
+        assert_eq! (marksof (Mark (5,
+                                    @Mark (10,
+                                           @Mark (10,
+                                                  @Mark (5,
+                                                         @Mark (16,@MT))))),
+                              stopname),
+                     ~[16]);
+        // stop has no effect on marks
+        assert_eq! (marksof (Mark (9, @Mark (14, @Mark (12, @MT))),stopname),
+                     ~[9,14,12]);
+        // rename where stop doesn't match:
+        assert_eq! (marksof (Mark (9, @Rename
+                                    (name1,
+                                     @Mark (4, @MT),
+                                     uints_to_name(&~[100,101,102]),
+                                     @Mark (14, @MT))),
+                              stopname),
+                     ~[9,14]);
+        // rename where stop does match
+        ;
+        assert_eq! (marksof (Mark(9, @Rename (name1,
+                                               @Mark (4, @MT),
+                                               stopname,
+                                               @Mark (14, @MT))),
+                              stopname),
+                     ~[9]);
+    }
+
+    // are ASTs encodable?
     #[test] fn check_asts_encodable() {
         let bogus_span = span {lo:BytePos(10),
                                hi:BytePos(20),
                                expn_info:None};
-        let _e : crate =
+        let e : crate =
             spanned{
             node: crate_{
                 module: _mod {view_items: ~[], items: ~[]},
@@ -1334,10 +1397,13 @@ mod test {
             },
             span: bogus_span};
         // doesn't matter which encoder we use....
-        let _f = (_e as std::serialize::Encodable::<std::json::Encoder>);
+        let _f = (@e as @std::serialize::Encodable<std::json::Encoder>);
     }
-    */
+
+
 }
+
+*/
 //
 // Local Variables:
 // mode: rust
