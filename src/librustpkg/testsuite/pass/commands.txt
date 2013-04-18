@@ -1,0 +1,35 @@
+Commands that should succeed:
+
+1. rustpkg install github.com/mozilla-servo/rust-http-client
+
+2. Create a git repo containing a package "foo", add a tag called "1.0" -- `rustpkg install foo` should install a library called "libfoo-....-1.0..."
+
+3. rustpkg install foo, if ./.rust/foo exists and is a valid package directory
+
+4. RUST_PATH=/home/rust rustpkg install foo installs an executable in /home/rust/foo if ./foo exists and is a valid package directory
+
+5. RUST_PATH=/home/rust:/home/more_rust rustpkg install foo succeeds if /home/more_rust/foo exists and is a valid package directory
+
+6. rustpkg install foo; rustpkg install bar; rustpkg install quux; rustpkg list should show foo, bar, and quux
+  6a. then, rustpkg remove foo; rustpkg list should show bar and quux, but not foo
+
+7. Execute `rustpkg build foo`. Check the datestamp on build/foo. Execute the same command again. Make sure the datestamp hasn't changed.
+
+8. Execute `rustpkg build foo` where foo has a dependency on bar, which hasn't been built before. Check the datestamps on build/foo and build/bar and make sure bar's datestamp is earlier than foo's.
+
+9. Execute `rustpkg build foo` where foo has a dependency on bar, which hasn't been built before. Then, change one of the source files in bar. Execute `rustpkg build foo` again. Make sure, based on datestamps, that foo was really rebuilt.
+
+10. Repeat test 9 in the case where the contents of the source file in bar change but its datestamp doesn't change.
+
+11. If the current directory contains package directories for foo-0.1 and foo.0.2, `rustpkg install foo#0.1` installs foo#0.1 and doesn't install foo#0.2.
+
+12. `rustpkg do fancy-pkg frob` succeeds if `fancy-pkg` has a package script that defines a custom build hook named `frob`.
+
+13. `rustpkg info foo` prints out something about foo, if foo is installed.
+
+14. (Not sure what prefer and unprefer do)
+
+15. `rustpkg test foo` runs tests and prints their output, if foo contains #[test]s.
+
+16. If foo is installed, `rustpkg uninstall foo; rustpkg list` doesn't include foo in the list
+
