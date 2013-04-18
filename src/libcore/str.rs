@@ -430,6 +430,15 @@ pub fn byte_slice<T>(s: &str, f: &fn(v: &[u8]) -> T) -> T {
     }
 }
 
+/// Work with the string as a byte slice, not including trailing null, without
+/// a callback.
+#[inline(always)]
+pub fn byte_slice_no_callback<'a>(s: &'a str) -> &'a [u8] {
+    unsafe {
+        cast::transmute(s)
+    }
+}
+
 /// Convert a string to a unique vector of characters
 pub fn to_chars(s: &str) -> ~[char] {
     let mut buf = ~[];

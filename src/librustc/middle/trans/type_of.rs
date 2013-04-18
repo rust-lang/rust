@@ -39,20 +39,34 @@ pub fn type_of_explicit_args(ccx: @CrateContext,
     inputs.map(|arg| type_of_explicit_arg(ccx, arg))
 }
 
-pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::arg],
-                  output: ty::t) -> TypeRef {
+pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::arg], output: ty::t)
+               -> TypeRef {
     unsafe {
         let mut atys: ~[TypeRef] = ~[];
 
         // Arg 0: Output pointer.
-        atys.push(T_ptr(type_of(cx, output)));
+        // (if the output type is non-immediate)
+        let output_is_immediate = ty::type_is_immediate(output);
+        let lloutputtype = type_of(cx, output);
+        if !output_is_immediate {
+            atys.push(T_ptr(lloutputtype));
+        } else {
+            // XXX: Eliminate this.
+            atys.push(T_ptr(T_i8()));
+        }
 
         // Arg 1: Environment
         atys.push(T_opaque_box_ptr(cx));
 
         // ... then explicit args.
         atys.push_all(type_of_explicit_args(cx, inputs));
-        return T_fn(atys, llvm::LLVMVoidType());
+
+        // Use the output as the actual return value if it's immediate.
+        if output_is_immediate {
+            T_fn(atys, lloutputtype)
+        } else {
+            T_fn(atys, llvm::LLVMVoidType())
+        }
     }
 }
 
@@ -318,11 +332,9 @@ pub fn llvm_type_name(cx: @CrateContext,
 }
 
 pub fn type_of_dtor(ccx: @CrateContext, self_ty: ty::t) -> TypeRef {
-    unsafe {
-        T_fn(~[T_ptr(type_of(ccx, ty::mk_nil(ccx.tcx))), // output pointer
-               T_ptr(type_of(ccx, self_ty))],            // self arg
-             llvm::LLVMVoidType())
-    }
+    T_fn(~[T_ptr(T_i8()),                   // output pointer
+           T_ptr(type_of(ccx, self_ty))],   // self arg
+         T_nil())
 }
 
 pub fn type_of_rooted(ccx: @CrateContext, t: ty::t) -> TypeRef {
@@ -336,5 +348,5 @@ pub fn type_of_glue_fn(ccx: @CrateContext, t: ty::t) -> TypeRef {
     let tydescpp = T_ptr(T_ptr(ccx.tydesc_type));
     let llty = T_ptr(type_of(ccx, t));
     return T_fn(~[T_ptr(T_nil()), T_ptr(T_nil()), tydescpp, llty],
-                T_void());
+                T_nil());
 }

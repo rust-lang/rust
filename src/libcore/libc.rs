@@ -1097,9 +1097,12 @@ pub mod funcs {
                 unsafe fn setbuf(stream: *FILE, buf: *c_char);
                 // Omitted: printf and scanf variants.
                 unsafe fn fgetc(stream: *FILE) -> c_int;
+                #[fast_ffi]
                 unsafe fn fgets(buf: *mut c_char, n: c_int,
                          stream: *FILE) -> *c_char;
+                #[fast_ffi]
                 unsafe fn fputc(c: c_int, stream: *FILE) -> c_int;
+                #[fast_ffi]
                 unsafe fn fputs(s: *c_char, stream: *FILE) -> *c_char;
                 // Omitted: getc, getchar (might be macros).
 
@@ -1263,6 +1266,7 @@ pub mod funcs {
                 unsafe fn pclose(stream: *FILE) -> c_int;
 
                 #[link_name = "_fdopen"]
+                #[fast_ffi]
                 unsafe fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
 
                 #[link_name = "_fileno"]

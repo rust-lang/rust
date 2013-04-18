@@ -314,11 +314,16 @@ pub fn trans_call(in_cx: block,
                   args: CallArgs,
                   id: ast::node_id,
                   dest: expr::Dest)
-               -> block {
+                  -> block {
     let _icx = in_cx.insn_ctxt("trans_call");
-    trans_call_inner(
-        in_cx, call_ex.info(), expr_ty(in_cx, f), node_id_type(in_cx, id),
-        |cx| trans(cx, f), args, dest, DontAutorefArg)
+    trans_call_inner(in_cx,
+                     call_ex.info(),
+                     expr_ty(in_cx, f),
+                     node_id_type(in_cx, id),
+                     |cx| trans(cx, f),
+                     args,
+                     dest,
+                     DontAutorefArg)
 }
 
 pub fn trans_method_call(in_cx: block,
@@ -326,7 +331,7 @@ pub fn trans_method_call(in_cx: block,
                          rcvr: @ast::expr,
                          args: CallArgs,
                          dest: expr::Dest)
-                      -> block {
+                         -> block {
     let _icx = in_cx.insn_ctxt("trans_method_call");
     debug!("trans_method_call(call_ex=%s, rcvr=%s)",
            call_ex.repr(in_cx.tcx()),
@@ -439,15 +444,15 @@ pub fn body_contains_ret(body: &ast::blk) -> bool {
 }
 
 // See [Note-arg-mode]
-pub fn trans_call_inner(
-    ++in_cx: block,
-    call_info: Option<NodeInfo>,
-    fn_expr_ty: ty::t,
-    ret_ty: ty::t,
-    get_callee: &fn(block) -> Callee,
-    args: CallArgs,
-    dest: expr::Dest,
-    autoref_arg: AutorefArg) -> block {
+pub fn trans_call_inner(++in_cx: block,
+                        call_info: Option<NodeInfo>,
+                        fn_expr_ty: ty::t,
+                        ret_ty: ty::t,
+                        get_callee: &fn(block) -> Callee,
+                        args: CallArgs,
+                        dest: expr::Dest,
+                        autoref_arg: AutorefArg)
+                        -> block {
     do base::with_scope(in_cx, call_info, ~"call") |cx| {
         let ret_in_loop = match args {
           ArgExprs(args) => {
@@ -500,7 +505,15 @@ pub fn trans_call_inner(
         let llretslot = trans_ret_slot(bcx, fn_expr_ty, dest);
 
         let mut llargs = ~[];
-        llargs.push(llretslot);
+
+        if ty::type_is_immediate(ret_ty) {
+            unsafe {
+                llargs.push(llvm::LLVMGetUndef(T_ptr(T_i8())));
+            }
+        } else {
+            llargs.push(llretslot);
+        }
+
         llargs.push(llenv);
         bcx = trans_args(bcx, args, fn_expr_ty,
                          ret_flag, autoref_arg, &mut llargs);
@@ -527,17 +540,34 @@ pub fn trans_call_inner(
         // If the block is terminated, then one or more of the args
         // has type _|_. Since that means it diverges, the code for
         // the call itself is unreachable.
-        bcx = base::invoke(bcx, llfn, llargs);
-        match dest { // drop the value if it is not being saved.
+        let (llresult, new_bcx) = base::invoke(bcx, llfn, llargs);
+        bcx = new_bcx;
+
+        match dest {
             expr::Ignore => {
+                // drop the value if it is not being saved.
                 unsafe {
                     if llvm::LLVMIsUndef(llretslot) != lib::llvm::True {
-                        bcx = glue::drop_ty(bcx, llretslot, ret_ty);
+                        if ty::type_is_immediate(ret_ty) {
+                            let llscratchptr = alloc_ty(bcx, ret_ty);
+                            Store(bcx, llresult, llscratchptr);
+                            bcx = glue::drop_ty(bcx, llscratchptr, ret_ty);
+                        } else {
+                            bcx = glue::drop_ty(bcx, llretslot, ret_ty);
+                        }
                     }
                 }
             }
-            expr::SaveIn(_) => { }
+            expr::SaveIn(lldest) => {
+                // If this is an immediate, store into the result location.
+                // (If this was not an immediate, the result will already be
+                // directly written into the output slot.)
+                if ty::type_is_immediate(ret_ty) {
+                    Store(bcx, llresult, lldest);
+                }
+            }
         }
+
         if ty::type_is_bot(ret_ty) {
             Unreachable(bcx);
         } else if ret_in_loop {
@@ -545,7 +575,7 @@ pub fn trans_call_inner(
             bcx = do with_cond(bcx, ret_flag_result) |bcx| {
                 for (copy bcx.fcx.loop_ret).each |&(flagptr, _)| {
                     Store(bcx, C_bool(true), flagptr);
-                    Store(bcx, C_bool(false), bcx.fcx.llretptr);
+                    Store(bcx, C_bool(false), bcx.fcx.llretptr.get());
                 }
                 base::cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
                 Unreachable(bcx);
@@ -562,11 +592,10 @@ pub enum CallArgs<'self> {
     ArgVals(&'self [ValueRef])
 }
 
-pub fn trans_ret_slot(+bcx: block,
-                      +fn_ty: ty::t,
-                      +dest: expr::Dest) -> ValueRef
-{
+pub fn trans_ret_slot(+bcx: block, +fn_ty: ty::t, +dest: expr::Dest)
+                      -> ValueRef {
     let retty = ty::ty_fn_ret(fn_ty);
+
     match dest {
         expr::SaveIn(dst) => dst,
         expr::Ignore => {

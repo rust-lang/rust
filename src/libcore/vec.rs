@@ -76,6 +76,7 @@ pub fn same_length<T, U>(xs: &const [T], ys: &const [U]) -> bool {
  * * v - A vector
  * * n - The number of elements to reserve space for
  */
+#[inline]
 pub fn reserve<T>(v: &mut ~[T], n: uint) {
     // Only make the (slow) call into the runtime if we have to
     use managed;
@@ -1831,6 +1832,7 @@ pub trait ImmutableVector<T> {
     fn alli(&self, f: &fn(uint, t: &T) -> bool) -> bool;
     fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U];
     fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U];
+    unsafe fn unsafe_ref(&self, index: uint) -> *T;
 }
 
 /// Extension methods for vectors
@@ -1940,6 +1942,14 @@ impl<'self,T> ImmutableVector<T> for &'self [T] {
     #[inline]
     fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U] {
         filter_mapped(*self, f)
+    }
+
+    /// Returns a pointer to the element at the given index, without doing
+    /// bounds checking.
+    #[inline(always)]
+    unsafe fn unsafe_ref(&self, index: uint) -> *T {
+        let (ptr, _): (*T, uint) = transmute(*self);
+        ptr.offset(index)
     }
 }
 
@@ -2178,9 +2188,8 @@ impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
 
     /// Returns the element at the given index, without doing bounds checking.
     #[inline(always)]
-    unsafe fn unsafe_get(&self, elem: uint) -> T {
-        let (ptr, _): (*T, uint) = transmute(*self);
-        *ptr.offset(elem)
+    unsafe fn unsafe_get(&self, index: uint) -> T {
+        *self.unsafe_ref(index)
     }
 }
 
@@ -2323,15 +2332,21 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
 }
 
 pub trait MutableVector<T> {
-    unsafe fn unsafe_set(&self, elem: uint, val: T);
+    unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T;
+    unsafe fn unsafe_set(&self, index: uint, val: T);
 }
 
 impl<'self,T> MutableVector<T> for &'self mut [T] {
     #[inline(always)]
-    unsafe fn unsafe_set(&self, elem: uint, val: T) {
+    unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T {
         let pair_ptr: &(*mut T, uint) = transmute(self);
         let (ptr, _) = *pair_ptr;
-        *ptr.offset(elem) = val;
+        ptr.offset(index)
+    }
+
+    #[inline(always)]
+    unsafe fn unsafe_set(&self, index: uint, val: T) {
+        *self.unsafe_mut_ref(index) = val;
     }
 }
 
