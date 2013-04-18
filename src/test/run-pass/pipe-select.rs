@@ -17,8 +17,9 @@ extern mod std;
 use std::timer::sleep;
 use std::uv;
 
+use core::cell::Cell;
 use core::pipes;
-use core::pipes::{recv, select};
+use core::pipes::*;
 
 proto! oneshot (
     waiting:send {
@@ -32,13 +33,30 @@ proto! stream (
     }
 )
 
+pub fn spawn_service<T:Owned,Tb:Owned>(
+            init: extern fn() -> (SendPacketBuffered<T, Tb>,
+                                  RecvPacketBuffered<T, Tb>),
+            service: ~fn(v: RecvPacketBuffered<T, Tb>))
+        -> SendPacketBuffered<T, Tb> {
+    let (client, server) = init();
+
+    // This is some nasty gymnastics required to safely move the pipe
+    // into a new task.
+    let server = Cell(server);
+    do task::spawn {
+        service(server.take());
+    }
+
+    client
+}
+
 pub fn main() {
     use oneshot::client::*;
     use stream::client::*;
 
     let iotask = &uv::global_loop::get();
     
-    let c = pipes::spawn_service(stream::init, |p| { 
+    let c = spawn_service(stream::init, |p| { 
         error!("waiting for pipes");
         let stream::send(x, p) = recv(p);
         error!("got pipes");

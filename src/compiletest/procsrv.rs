@@ -73,7 +73,7 @@ pub fn run(lib_path: ~str,
 
 
     writeclose(pipe_in.out, input);
-    let p = comm::PortSet();
+    let p = comm::PortSet::new();
     let ch = p.chan();
     do task::spawn_sched(task::SingleThreaded) || {
         let errput = readclose(pipe_err.in);

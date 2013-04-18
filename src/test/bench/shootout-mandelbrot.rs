@@ -173,7 +173,7 @@ fn main() {
     else { uint::from_str(args[1]).get() };
 
     let (pport, pchan) = comm::stream();
-    let pchan = comm::SharedChan(pchan);
+    let pchan = comm::SharedChan::new(pchan);
     for uint::range(0_u, size) |j| {
         let cchan = pchan.clone();
         do task::spawn { cchan.send(chanmb(j, size, depth)) };

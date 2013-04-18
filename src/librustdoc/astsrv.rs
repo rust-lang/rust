@@ -69,7 +69,7 @@ fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
     }
 
     let srv_ = Srv {
-        ch: SharedChan(ch)
+        ch: SharedChan::new(ch)
     };
 
     let res = owner(srv_.clone());
