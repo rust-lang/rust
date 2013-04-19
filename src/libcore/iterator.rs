@@ -22,8 +22,8 @@ pub trait IteratorUtil<A> {
     // FIXME: #5898: should be called map
     fn transform<'r, B>(self, f: &'r fn(A) -> B) -> MapIterator<'r, A, B, Self>;
     fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> FilterIterator<'r, A, Self>;
-    fn dropwhile<'r>(self, predicate: &'r fn(&A) -> bool) -> DropWhileIterator<'r, A, Self>;
-    fn takewhile<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhileIterator<'r, A, Self>;
+    fn skip_while<'r>(self, predicate: &'r fn(&A) -> bool) -> SkipWhileIterator<'r, A, Self>;
+    fn take_while<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhileIterator<'r, A, Self>;
     fn skip(self, n: uint) -> SkipIterator<Self>;
     fn take(self, n: uint) -> TakeIterator<Self>;
     fn enumerate(self) -> EnumerateIterator<Self>;
@@ -53,12 +53,12 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     #[inline(always)]
-    fn dropwhile<'r>(self, predicate: &'r fn(&A) -> bool) -> DropWhileIterator<'r, A, T> {
-        DropWhileIterator{iter: self, flag: false, predicate: predicate}
+    fn skip_while<'r>(self, predicate: &'r fn(&A) -> bool) -> SkipWhileIterator<'r, A, T> {
+        SkipWhileIterator{iter: self, flag: false, predicate: predicate}
     }
 
     #[inline(always)]
-    fn takewhile<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhileIterator<'r, A, T> {
+    fn take_while<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhileIterator<'r, A, T> {
         TakeWhileIterator{iter: self, flag: false, predicate: predicate}
     }
 
@@ -154,13 +154,13 @@ impl<A, T: Iterator<A>> Iterator<(uint, A)> for EnumerateIterator<T> {
     }
 }
 
-pub struct DropWhileIterator<'self, A, T> {
+pub struct SkipWhileIterator<'self, A, T> {
     priv iter: T,
     priv flag: bool,
     priv predicate: &'self fn(&A) -> bool
 }
 
-impl<'self, A, T: Iterator<A>> Iterator<A> for DropWhileIterator<'self, A, T> {
+impl<'self, A, T: Iterator<A>> Iterator<A> for SkipWhileIterator<'self, A, T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         let mut next = self.iter.next();
