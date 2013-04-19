@@ -24,6 +24,8 @@ pub trait IteratorUtil<A> {
     fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> FilterIterator<'r, A, Self>;
     fn dropwhile<'r>(self, predicate: &'r fn(&A) -> bool) -> DropWhileIterator<'r, A, Self>;
     fn takewhile<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhileIterator<'r, A, Self>;
+    fn skip(self, n: uint) -> SkipIterator<Self>;
+    fn take(self, n: uint) -> TakeIterator<Self>;
     fn enumerate(self) -> EnumerateIterator<Self>;
     fn advance(&mut self, f: &fn(A) -> bool);
 }
@@ -58,6 +60,16 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline(always)]
     fn takewhile<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhileIterator<'r, A, T> {
         TakeWhileIterator{iter: self, flag: false, predicate: predicate}
+    }
+
+    #[inline(always)]
+    fn skip(self, n: uint) -> SkipIterator<T> {
+        SkipIterator{iter: self, n: n}
+    }
+
+    #[inline(always)]
+    fn take(self, n: uint) -> TakeIterator<T> {
+        TakeIterator{iter: self, n: n}
     }
 
     /// A shim implementing the `for` loop iteration protocol for iterator objects
@@ -196,6 +208,55 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for TakeWhileIterator<'self, A, T> {
                 }
                 None => None
             }
+        }
+    }
+}
+
+pub struct SkipIterator<T> {
+    priv iter: T,
+    priv n: uint
+}
+
+impl<A, T: Iterator<A>> Iterator<A> for SkipIterator<T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        let mut next = self.iter.next();
+        if self.n == 0 {
+            next
+        } else {
+            let n = self.n;
+            for n.times {
+                match next {
+                    Some(_) => {
+                        next = self.iter.next();
+                        loop
+                    }
+                    None => {
+                        self.n = 0;
+                        return None
+                    }
+                }
+            }
+            self.n = 0;
+            next
+        }
+    }
+}
+
+pub struct TakeIterator<T> {
+    priv iter: T,
+    priv n: uint
+}
+
+impl<A, T: Iterator<A>> Iterator<A> for TakeIterator<T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        let next = self.iter.next();
+        if self.n != 0 {
+            self.n -= 1;
+            next
+        } else {
+            None
         }
     }
 }
