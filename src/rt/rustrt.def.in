@@ -47,6 +47,7 @@ rust_env_pairs
 rust_task_yield
 rust_task_is_unwinding
 rust_get_task
+rust_try_get_task
 rust_get_stack_segment
 rust_log_str
 start_task

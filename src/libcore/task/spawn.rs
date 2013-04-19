@@ -531,6 +531,34 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
 }
 
 pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
+    use rt::*;
+
+    match context() {
+        OldTaskContext => {
+            spawn_raw_oldsched(opts, f)
+        }
+        TaskContext => {
+            spawn_raw_newsched(opts, f)
+        }
+        SchedulerContext => {
+            fail!(~"can't spawn from scheduler context")
+        }
+        GlobalContext => {
+            fail!(~"can't spawn from global context")
+        }
+    }
+}
+
+fn spawn_raw_newsched(opts: TaskOpts, f: ~fn()) {
+    use rt::sched::*;
+
+    let mut sched = local_sched::take();
+    let task = ~Task::new(&mut sched.stack_pool, f);
+    sched.schedule_new_task(task);
+}
+
+fn spawn_raw_oldsched(opts: TaskOpts, f: ~fn()) {
+
     let (child_tg, ancestors, is_main) =
         gen_child_taskgroup(opts.linked, opts.supervised);
 

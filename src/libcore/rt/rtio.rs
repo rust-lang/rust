@@ -11,6 +11,8 @@
 use option::*;
 use result::*;
 
+use super::io::net::ip::IpAddr;
+
 // XXX: ~object doesn't work currently so these are some placeholder
 // types to use instead
 pub type EventLoopObject = super::uvio::UvEventLoop;
@@ -42,9 +44,4 @@ pub trait TcpListener {
 pub trait Stream {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, ()>;
     fn write(&mut self, buf: &[u8]) -> Result<(), ()>;
-}
-
-pub enum IpAddr {
-    Ipv4(u8, u8, u8, u8, u16),
-    Ipv6
 }

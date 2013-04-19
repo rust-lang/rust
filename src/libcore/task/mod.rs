@@ -175,7 +175,7 @@ pub struct TaskOpts {
 // FIXME (#3724): Replace the 'consumed' bit with move mode on self
 pub struct TaskBuilder {
     opts: TaskOpts,
-    gen_body: @fn(v: ~fn()) -> ~fn(),
+    mut gen_body: Option<~fn(v: ~fn()) -> ~fn()>,
     can_not_copy: Option<util::NonCopyable>,
     mut consumed: bool,
 }
@@ -188,7 +188,7 @@ pub struct TaskBuilder {
 pub fn task() -> TaskBuilder {
     TaskBuilder {
         opts: default_task_opts(),
-        gen_body: |body| body, // Identity function
+        gen_body: None,
         can_not_copy: None,
         mut consumed: false,
     }
@@ -201,6 +201,7 @@ priv impl TaskBuilder {
             fail!(~"Cannot copy a task_builder"); // Fake move mode on self
         }
         self.consumed = true;
+        let gen_body = replace(&mut self.gen_body, None);
         let notify_chan = replace(&mut self.opts.notify_chan, None);
         TaskBuilder {
             opts: TaskOpts {
@@ -209,7 +210,7 @@ priv impl TaskBuilder {
                 notify_chan: notify_chan,
                 sched: self.opts.sched
             },
-            gen_body: self.gen_body,
+            gen_body: gen_body,
             can_not_copy: None,
             consumed: false
         }
@@ -341,8 +342,23 @@ pub impl TaskBuilder {
      * generator by applying the task body which results from the
      * existing body generator to the new body generator.
      */
-    fn add_wrapper(&self, wrapper: @fn(v: ~fn()) -> ~fn()) -> TaskBuilder {
-        let prev_gen_body = self.gen_body;
+    fn add_wrapper(&self, wrapper: ~fn(v: ~fn()) -> ~fn()) -> TaskBuilder {
+        let prev_gen_body = replace(&mut self.gen_body, None);
+        let prev_gen_body = match prev_gen_body {
+            Some(gen) => gen,
+            None => {
+                let f: ~fn(~fn()) -> ~fn() = |body| body;
+                f
+            }
+        };
+        let prev_gen_body = Cell(prev_gen_body);
+        let next_gen_body = {
+            let f: ~fn(~fn()) -> ~fn() = |body| {
+                let prev_gen_body = prev_gen_body.take();
+                wrapper(prev_gen_body(body))
+            };
+            f
+        };
         let notify_chan = replace(&mut self.opts.notify_chan, None);
         TaskBuilder {
             opts: TaskOpts {
@@ -351,7 +367,7 @@ pub impl TaskBuilder {
                 notify_chan: notify_chan,
                 sched: self.opts.sched
             },
-            gen_body: |body| { wrapper(prev_gen_body(body)) },
+            gen_body: Some(next_gen_body),
             can_not_copy: None,
             .. self.consume()
         }
@@ -370,6 +386,7 @@ pub impl TaskBuilder {
      * must be greater than zero.
      */
     fn spawn(&self, f: ~fn()) {
+        let gen_body = replace(&mut self.gen_body, None);
         let notify_chan = replace(&mut self.opts.notify_chan, None);
         let x = self.consume();
         let opts = TaskOpts {
@@ -378,7 +395,15 @@ pub impl TaskBuilder {
             notify_chan: notify_chan,
             sched: x.opts.sched
         };
-        spawn::spawn_raw(opts, (x.gen_body)(f));
+        let f = match gen_body {
+            Some(gen) => {
+                gen(f)
+            }
+            None => {
+                f
+            }
+        };
+        spawn::spawn_raw(opts, f);
     }
     /// Runs a task, while transfering ownership of one argument to the child.
     fn spawn_with<A:Owned>(&self, arg: A, f: ~fn(v: A)) {
@@ -1200,4 +1225,13 @@ fn test_spawn_thread_on_demand() {
     }
 
     port.recv();
+}
+
+#[test]
+fn test_simple_newsched_spawn() {
+    use rt::run_in_newsched_task;
+
+    do run_in_newsched_task {
+        spawn(||())
+    }
 }
