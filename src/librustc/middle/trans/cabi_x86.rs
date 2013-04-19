@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use driver::session::os_win32;
+use driver::session::{os_win32, os_macos};
 use core::option::*;
 use lib::llvm::*;
 use lib::llvm::llvm::*;
@@ -38,12 +38,12 @@ impl ABIInfo for X86_ABIInfo {
 
         // Rules for returning structs taken from
         // http://www.angelcode.com/dev/callconv/callconv.html
+        // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
         let sret = {
             let returning_a_struct = unsafe { LLVMGetTypeKind(rty) == Struct && ret_def };
-            let big_struct = if self.ccx.sess.targ_cfg.os != os_win32 {
-                true
-            } else {
-                llsize_of_alloc(self.ccx, rty) > 8
+            let big_struct = match self.ccx.sess.targ_cfg.os {
+                os_win32 | os_macos => llsize_of_alloc(self.ccx, rty) > 8,
+                _ => true
             };
             returning_a_struct && big_struct
         };
