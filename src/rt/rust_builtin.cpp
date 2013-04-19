@@ -539,6 +539,11 @@ rust_get_task() {
     return rust_get_current_task();
 }
 
+extern "C" rust_task *
+rust_try_get_task() {
+    return rust_try_get_current_task();
+}
+
 extern "C" CDECL stk_seg *
 rust_get_stack_segment() {
     return rust_get_current_task()->stk;

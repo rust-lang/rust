@@ -11,12 +11,13 @@
 use option::*;
 use result::*;
 
+use super::io::net::ip::{IpAddr, Ipv4};
 use super::uv::*;
 use super::rtio::*;
 use ops::Drop;
 use cell::{Cell, empty_cell};
 use cast::transmute;
-use super::sched::Scheduler;
+use super::sched::{Scheduler, local_sched};
 
 #[cfg(test)] use super::sched::Task;
 #[cfg(test)] use unstable::run_in_bare_thread;
@@ -120,14 +121,14 @@ impl IoFactory for UvIoFactory {
         let result_cell = empty_cell();
         let result_cell_ptr: *Cell<Option<~StreamObject>> = &result_cell;
 
-        let scheduler = Scheduler::take_local();
+        let scheduler = local_sched::take();
         assert!(scheduler.in_task_context());
 
         // Block this task and take ownership, switch to scheduler context
         do scheduler.deschedule_running_task_and_then |task| {
 
             rtdebug!("connect: entered scheduler context");
-            do Scheduler::borrow_local |scheduler| {
+            do local_sched::borrow |scheduler| {
                 assert!(!scheduler.in_task_context());
             }
             let mut tcp_watcher = TcpWatcher::new(self.uv_loop());
@@ -149,7 +150,7 @@ impl IoFactory for UvIoFactory {
                 unsafe { (*result_cell_ptr).put_back(maybe_stream); }
 
                 // Context switch
-                let scheduler = Scheduler::take_local();
+                let scheduler = local_sched::take();
                 scheduler.resume_task_immediately(task_cell.take());
             }
         }
@@ -194,7 +195,7 @@ impl TcpListener for UvTcpListener {
 
         let server_tcp_watcher = self.watcher();
 
-        let scheduler = Scheduler::take_local();
+        let scheduler = local_sched::take();
         assert!(scheduler.in_task_context());
 
         do scheduler.deschedule_running_task_and_then |task| {
@@ -217,7 +218,7 @@ impl TcpListener for UvTcpListener {
 
                 rtdebug!("resuming task from listen");
                 // Context switch
-                let scheduler = Scheduler::take_local();
+                let scheduler = local_sched::take();
                 scheduler.resume_task_immediately(task_cell.take());
             }
         }
@@ -257,13 +258,13 @@ impl Stream for UvStream {
         let result_cell = empty_cell();
         let result_cell_ptr: *Cell<Result<uint, ()>> = &result_cell;
 
-        let scheduler = Scheduler::take_local();
+        let scheduler = local_sched::take();
         assert!(scheduler.in_task_context());
         let watcher = self.watcher();
         let buf_ptr: *&mut [u8] = &buf;
         do scheduler.deschedule_running_task_and_then |task| {
             rtdebug!("read: entered scheduler context");
-            do Scheduler::borrow_local |scheduler| {
+            do local_sched::borrow |scheduler| {
                 assert!(!scheduler.in_task_context());
             }
             let mut watcher = watcher;
@@ -291,7 +292,7 @@ impl Stream for UvStream {
 
                 unsafe { (*result_cell_ptr).put_back(result); }
 
-                let scheduler = Scheduler::take_local();
+                let scheduler = local_sched::take();
                 scheduler.resume_task_immediately(task_cell.take());
             }
         }
@@ -303,7 +304,7 @@ impl Stream for UvStream {
     fn write(&mut self, buf: &[u8]) -> Result<(), ()> {
         let result_cell = empty_cell();
         let result_cell_ptr: *Cell<Result<(), ()>> = &result_cell;
-        let scheduler = Scheduler::take_local();
+        let scheduler = local_sched::take();
         assert!(scheduler.in_task_context());
         let watcher = self.watcher();
         let buf_ptr: *&[u8] = &buf;
@@ -322,7 +323,7 @@ impl Stream for UvStream {
 
                 unsafe { (*result_cell_ptr).put_back(result); }
 
-                let scheduler = Scheduler::take_local();
+                let scheduler = local_sched::take();
                 scheduler.resume_task_immediately(task_cell.take());
             }
         }
@@ -338,7 +339,7 @@ fn test_simple_io_no_connect() {
     do run_in_bare_thread {
         let mut sched = ~UvEventLoop::new_scheduler();
         let task = ~do Task::new(&mut sched.stack_pool) {
-            let io = unsafe { Scheduler::borrow_local_io() };
+            let io = unsafe { local_sched::unsafe_borrow_io() };
             let addr = Ipv4(127, 0, 0, 1, 2926);
             let maybe_chan = io.connect(addr);
             assert!(maybe_chan.is_none());
@@ -356,25 +357,29 @@ fn test_simple_tcp_server_and_client() {
         let addr = Ipv4(127, 0, 0, 1, 2929);
 
         let client_task = ~do Task::new(&mut sched.stack_pool) {
-            let io = unsafe { Scheduler::borrow_local_io() };
-            let mut stream = io.connect(addr).unwrap();
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
-            stream.close();
+            unsafe {
+                let io = local_sched::unsafe_borrow_io();
+                let mut stream = io.connect(addr).unwrap();
+                stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+                stream.close();
+            }
         };
 
         let server_task = ~do Task::new(&mut sched.stack_pool) {
-            let io = unsafe { Scheduler::borrow_local_io() };
-            let mut listener = io.bind(addr).unwrap();
-            let mut stream = listener.listen().unwrap();
-            let mut buf = [0, .. 2048];
-            let nread = stream.read(buf).unwrap();
-            assert!(nread == 8);
-            for uint::range(0, nread) |i| {
-                rtdebug!("%u", buf[i] as uint);
-                assert!(buf[i] == i as u8);
+            unsafe {
+                let io = local_sched::unsafe_borrow_io();
+                let mut listener = io.bind(addr).unwrap();
+                let mut stream = listener.listen().unwrap();
+                let mut buf = [0, .. 2048];
+                let nread = stream.read(buf).unwrap();
+                assert!(nread == 8);
+                for uint::range(0, nread) |i| {
+                    rtdebug!("%u", buf[i] as uint);
+                    assert!(buf[i] == i as u8);
+                }
+                stream.close();
+                listener.close();
             }
-            stream.close();
-            listener.close();
         };
 
         // Start the server first so it listens before the client connects
@@ -391,7 +396,7 @@ fn test_read_and_block() {
         let addr = Ipv4(127, 0, 0, 1, 2930);
 
         let client_task = ~do Task::new(&mut sched.stack_pool) {
-            let io = unsafe { Scheduler::borrow_local_io() };
+            let io = unsafe { local_sched::unsafe_borrow_io() };
             let mut stream = io.connect(addr).unwrap();
             stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
             stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -401,7 +406,7 @@ fn test_read_and_block() {
         };
 
         let server_task = ~do Task::new(&mut sched.stack_pool) {
-            let io = unsafe { Scheduler::borrow_local_io() };
+            let io = unsafe { local_sched::unsafe_borrow_io() };
             let mut listener = io.bind(addr).unwrap();
             let mut stream = listener.listen().unwrap();
             let mut buf = [0, .. 2048];
@@ -419,13 +424,13 @@ fn test_read_and_block() {
                 }
                 reads += 1;
 
-                let scheduler = Scheduler::take_local();
+                let scheduler = local_sched::take();
                 // Yield to the other task in hopes that it
                 // will trigger a read callback while we are
                 // not ready for it
                 do scheduler.deschedule_running_task_and_then |task| {
                     let task = Cell(task);
-                    do Scheduler::borrow_local |scheduler| {
+                    do local_sched::borrow |scheduler| {
                         scheduler.task_queue.push_back(task.take());
                     }
                 }
@@ -452,7 +457,7 @@ fn test_read_read_read() {
         let addr = Ipv4(127, 0, 0, 1, 2931);
 
         let client_task = ~do Task::new(&mut sched.stack_pool) {
-            let io = unsafe { Scheduler::borrow_local_io() };
+            let io = unsafe { local_sched::unsafe_borrow_io() };
             let mut stream = io.connect(addr).unwrap();
             let mut buf = [0, .. 2048];
             let mut total_bytes_read = 0;
