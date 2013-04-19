@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:cannot be dereferenced
 fn main() {
-  match *1 {
+  match *1 { //~ ERROR: cannot be dereferenced
       _ => { fail!(); }
   }
 }
