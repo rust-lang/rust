@@ -4512,4 +4512,32 @@ mod tests {
         }
         assert_eq!(i, ys.len());
     }
+
+    #[test]
+    fn test_iterator_skip() {
+        use iterator::*;
+        let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
+        let ys = [13, 15, 16, 17, 19, 20, 30];
+        let mut it = xs.iter().skip(5);
+        let mut i = 0;
+        for it.advance |&x: &uint| {
+            assert_eq!(x, ys[i]);
+            i += 1;
+        }
+        assert_eq!(i, ys.len());
+    }
+
+    #[test]
+    fn test_iterator_take() {
+        use iterator::*;
+        let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19];
+        let ys = [0u, 1, 2, 3, 5];
+        let mut it = xs.iter().take(5);
+        let mut i = 0;
+        for it.advance |&x: &uint| {
+            assert_eq!(x, ys[i]);
+            i += 1;
+        }
+        assert_eq!(i, ys.len());
+    }
 }
