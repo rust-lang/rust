@@ -367,7 +367,7 @@ pub impl Parser {
 
         let opt_abis = self.parse_opt_abis();
         let abis = opt_abis.get_or_default(AbiSet::Rust());
-        let purity = self.parse_purity();
+        let purity = self.parse_unsafety();
         self.expect_keyword(&~"fn");
         let (decl, lifetimes) = self.parse_ty_fn_decl();
         return ty_bare_fn(@TyBareFn {
@@ -401,7 +401,7 @@ pub impl Parser {
         // At this point, the allocation type and lifetime bound have been
         // parsed.
 
-        let purity = self.parse_purity();
+        let purity = self.parse_unsafety();
         let onceness = parse_onceness(self);
         self.expect_keyword(&~"fn");
 
@@ -426,7 +426,8 @@ pub impl Parser {
         }
     }
 
-    fn parse_purity(&self) -> purity {
+    // looks like this should be called parse_unsafety
+    fn parse_unsafety(&self) -> purity {
         if self.eat_keyword(&~"pure") {
             self.obsolete(*self.last_span, ObsoletePurity);
             return impure_fn;
