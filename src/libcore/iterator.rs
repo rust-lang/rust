@@ -18,6 +18,7 @@ pub trait Iterator<A> {
 }
 
 pub trait IteratorUtil<A> {
+    fn chain(self, other: Self) -> ChainIterator<Self>;
     fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<Self, U>;
     // FIXME: #5898: should be called map
     fn transform<'r, B>(self, f: &'r fn(A) -> B) -> MapIterator<'r, A, B, Self>;
@@ -31,6 +32,11 @@ pub trait IteratorUtil<A> {
 }
 
 impl<A, T: Iterator<A>> IteratorUtil<A> for T {
+    #[inline(always)]
+    fn chain(self, other: T) -> ChainIterator<T> {
+        ChainIterator{a: self, b: other, flag: false}
+    }
+
     #[inline(always)]
     fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<T, U> {
         ZipIterator{a: self, b: other}
@@ -82,6 +88,28 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
                 }
                 None => return
             }
+        }
+    }
+}
+
+pub struct ChainIterator<T> {
+    priv a: T,
+    priv b: T,
+    priv flag: bool
+}
+
+impl<A, T: Iterator<A>> Iterator<A> for ChainIterator<T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        if self.flag {
+            self.b.next()
+        } else {
+            match self.a.next() {
+                Some(x) => return Some(x),
+                _ => ()
+            }
+            self.flag = true;
+            self.b.next()
         }
     }
 }
@@ -287,6 +315,20 @@ impl<'self, A, St> Iterator<A> for UnfoldrIterator<'self, A, St> {
 mod tests {
     use super::*;
     use prelude::*;
+
+    #[test]
+    fn test_iterator_chain() {
+        let xs = [0u, 1, 2, 3, 4, 5];
+        let ys = [30, 40, 50, 60];
+        let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
+        let mut it = xs.iter().chain(ys.iter());
+        let mut i = 0;
+        for it.advance |&x: &uint| {
+            assert_eq!(x, expected[i]);
+            i += 1;
+        }
+        assert_eq!(i, expected.len());
+    }
 
     #[test]
     fn test_iterator_enumerate() {
