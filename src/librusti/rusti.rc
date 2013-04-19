@@ -127,7 +127,7 @@ fn record(repl: Repl, blk: @ast::blk, intr: @token::ident_interner) -> Repl {
 fn run(repl: Repl, input: ~str) -> Repl {
     let options = @session::options {
         crate_type: session::unknown_crate,
-        binary: repl.binary,
+        binary: @repl.binary,
         addl_lib_search_paths: repl.lib_search_paths.map(|p| Path(*p)),
         jit: true,
         .. *session::basic_options()
@@ -146,7 +146,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
 
     debug!("building driver configuration");
     let cfg = driver::build_configuration(sess,
-                                          repl.binary,
+                                          @repl.binary,
                                           wrapped);
 
     let outputs = driver::build_output_filenames(wrapped, &None, &None, sess);
@@ -191,14 +191,14 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
     match do task::try {
         let src_path = Path(src_filename);
         let options = @session::options {
-            binary: binary,
+            binary: @binary,
             addl_lib_search_paths: ~[os::getcwd()],
             .. *session::basic_options()
         };
         let input = driver::file_input(src_path);
         let sess = driver::build_session(options, diagnostic::emit);
         *sess.building_library = true;
-        let cfg = driver::build_configuration(sess, binary, input);
+        let cfg = driver::build_configuration(sess, @binary, input);
         let outputs = driver::build_output_filenames(
             input, &None, &None, sess);
         // If the library already exists and is newer than the source

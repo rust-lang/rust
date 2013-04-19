@@ -478,7 +478,7 @@ pub fn compile_input(sysroot: Option<Path>,
         test: test,
         maybe_sysroot: sysroot,
         addl_lib_search_paths: ~[copy *out_dir],
-        .. *driver::build_session_options(binary, &matches, diagnostic::emit)
+        .. *driver::build_session_options(@binary, &matches, diagnostic::emit)
     };
     let mut crate_cfg = options.cfg;
 
@@ -518,7 +518,7 @@ pub fn compile_crate_from_input(input: driver::input,
     debug!("Calling build_output_filenames with %?", build_dir_opt);
     let outputs = driver::build_output_filenames(input, &build_dir_opt, &Some(out_file), sess);
     debug!("Outputs are %? and output type = %?", outputs, sess.opts.output_type);
-    let cfg = driver::build_configuration(sess, binary, input);
+    let cfg = driver::build_configuration(sess, @binary, input);
     match crate_opt {
         Some(c) => {
             debug!("Calling compile_rest, outputs = %?", outputs);

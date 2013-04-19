@@ -47,9 +47,9 @@ use syntax::ast_util;
 use syntax::visit;
 
 pub type type_uses = uint; // Bitmask
-pub static use_repr: uint = 1u;   /* Dependency on size/alignment/mode and
+pub static use_repr: uint = 1;   /* Dependency on size/alignment/mode and
                                      take/drop glue */
-pub static use_tydesc: uint = 2u; /* Takes the tydesc, or compares */
+pub static use_tydesc: uint = 2; /* Takes the tydesc, or compares */
 
 pub struct Context {
     ccx: @CrateContext,
@@ -57,9 +57,9 @@ pub struct Context {
 }
 
 pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
-    -> ~[type_uses] {
+    -> @~[type_uses] {
     match ccx.type_use_cache.find(&fn_id) {
-      Some(uses) => return /*bad*/ copy *uses,
+      Some(uses) => return *uses,
       None => ()
     }
 
@@ -70,11 +70,11 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
     };
 
     // Conservatively assume full use for recursive loops
-    ccx.type_use_cache.insert(fn_id, vec::from_elem(n_tps, 3u));
+    ccx.type_use_cache.insert(fn_id, @vec::from_elem(n_tps, 3u));
 
     let cx = Context {
         ccx: ccx,
-        uses: @mut vec::from_elem(n_tps, 0u)
+        uses: @mut vec::from_elem(n_tps, 0)
     };
     match ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).sty {
         ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
@@ -92,8 +92,9 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
     }
 
     if fn_id_loc.crate != local_crate {
-        let uses = copy *cx.uses;
-        ccx.type_use_cache.insert(fn_id, copy uses);
+        let Context { uses: @uses, _ } = cx;
+        let uses = @uses; // mutability
+        ccx.type_use_cache.insert(fn_id, uses);
         return uses;
     }
     let map_node = match ccx.tcx.items.find(&fn_id_loc.node) {
@@ -179,9 +180,9 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                                 ccx.tcx.sess.parse_sess.interner)));
       }
     }
-    // XXX: Bad copies, use @vec instead?
-    let uses = copy *cx.uses;
-    ccx.type_use_cache.insert(fn_id, copy uses);
+    let Context { uses: @uses, _ } = cx;
+    let uses = @uses; // mutability
+    ccx.type_use_cache.insert(fn_id, uses);
     uses
 }
 
@@ -253,7 +254,7 @@ pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
                 //               before stage2
                 let ts = /*bad*/ copy **ts;
                 let type_uses = type_uses_for(cx.ccx, did, ts.len());
-                for vec::each2(type_uses, ts) |uses, subst| {
+                for vec::each2(*type_uses, ts) |uses, subst| {
                     type_needs(cx, *uses, *subst)
                 }
             }
@@ -302,7 +303,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
             let ts = copy **ts;
             let id = ast_util::def_id_of_def(*cx.ccx.tcx.def_map.get(&e.id));
             let uses_for_ts = type_uses_for(cx.ccx, id, ts.len());
-            for vec::each2(uses_for_ts, ts) |uses, subst| {
+            for vec::each2(*uses_for_ts, ts) |uses, subst| {
                 type_needs(cx, *uses, *subst)
             }
         }
