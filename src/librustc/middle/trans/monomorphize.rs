@@ -342,7 +342,7 @@ pub fn make_mono_id(ccx: @CrateContext,
                     substs: &[ty::t],
                     vtables: Option<typeck::vtable_res>,
                     impl_did_opt: Option<ast::def_id>,
-                    +param_uses: Option<~[type_use::type_uses]>) -> mono_id {
+                    param_uses: Option<@~[type_use::type_uses]>) -> mono_id {
     let precise_param_ids = match vtables {
       Some(vts) => {
         let item_ty = ty::lookup_item_type(ccx.tcx, item);
@@ -353,12 +353,12 @@ pub fn make_mono_id(ccx: @CrateContext,
                 match *bound {
                   ty::bound_trait(_) => {
                     v.push(meth::vtable_id(ccx, /*bad*/copy vts[i]));
-                    i += 1u;
+                    i += 1;
                   }
                   _ => ()
                 }
             }
-            (*subst, if v.len() > 0u { Some(v) } else { None })
+            (*subst, if !v.is_empty() { Some(v) } else { None })
         })
       }
       None => {
@@ -367,7 +367,7 @@ pub fn make_mono_id(ccx: @CrateContext,
     };
     let param_ids = match param_uses {
       Some(ref uses) => {
-        vec::map2(precise_param_ids, *uses, |id, uses| {
+        vec::map2(precise_param_ids, **uses, |id, uses| {
             if ccx.sess.no_monomorphic_collapse() {
                 match copy *id {
                     (a, b) => mono_precise(a, b)
@@ -377,7 +377,7 @@ pub fn make_mono_id(ccx: @CrateContext,
                     // XXX: Bad copy.
                     (a, copy b@Some(_)) => mono_precise(a, b),
                     (subst, None) => {
-                        if *uses == 0u {
+                        if *uses == 0 {
                             mono_any
                         } else if *uses == type_use::use_repr &&
                             !ty::type_needs_drop(ccx.tcx, subst)

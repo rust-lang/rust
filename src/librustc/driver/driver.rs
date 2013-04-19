@@ -62,7 +62,7 @@ pub fn source_name(input: input) -> ~str {
     }
 }
 
-pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
+pub fn default_configuration(sess: Session, argv0: @~str, input: input) ->
    ast::crate_cfg {
     let libc = match sess.targ_cfg.os {
       session::os_win32 => ~"msvcrt.dll",
@@ -101,7 +101,7 @@ pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
          mk(@~"target_word_size", @wordsz),
          mk(@~"target_libc", @libc),
          // Build bindings.
-         mk(@~"build_compiler", @argv0),
+         mk(@~"build_compiler", argv0),
          mk(@~"build_input", @source_name(input))];
 }
 
@@ -114,7 +114,7 @@ pub fn append_configuration(+cfg: ast::crate_cfg, +name: ~str)
     }
 }
 
-pub fn build_configuration(sess: Session, +argv0: ~str, input: input) ->
+pub fn build_configuration(sess: Session, argv0: @~str, input: input) ->
    ast::crate_cfg {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
@@ -523,7 +523,7 @@ pub fn host_triple() -> ~str {
         };
 }
 
-pub fn build_session_options(+binary: ~str,
+pub fn build_session_options(binary: @~str,
                              matches: &getopts::Matches,
                              demitter: diagnostic::Emitter)
                           -> @session::options {
@@ -898,9 +898,9 @@ mod test {
                              getopts::fail_str(f))
             };
         let sessopts = build_session_options(
-            ~"rustc", matches, diagnostic::emit);
+            @~"rustc", matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
-        let cfg = build_configuration(sess, ~"whatever", str_input(~""));
+        let cfg = build_configuration(sess, @~"whatever", str_input(~""));
         assert!((attr::contains_name(cfg, ~"test")));
     }
 
@@ -917,9 +917,9 @@ mod test {
               }
             };
         let sessopts = build_session_options(
-            ~"rustc", matches, diagnostic::emit);
+            @~"rustc", matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
-        let cfg = build_configuration(sess, ~"whatever", str_input(~""));
+        let cfg = build_configuration(sess, @~"whatever", str_input(~""));
         let test_items = attr::find_meta_items_by_name(cfg, ~"test");
         assert!((vec::len(test_items) == 1u));
     }
