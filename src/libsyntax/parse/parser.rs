@@ -3321,7 +3321,8 @@ pub impl Parser {
         }
     }
 
-    fn parse_single_class_item(&self, vis: visibility) -> @struct_field {
+    // parse a structure field declaration
+    fn parse_single_struct_field(&self, vis: visibility) -> @struct_field {
         if self.eat_obsolete_ident("let") {
             self.obsolete(*self.last_span, ObsoleteLet);
         }
@@ -3365,11 +3366,11 @@ pub impl Parser {
         let attrs = self.parse_outer_attributes();
 
         if self.eat_keyword(&~"priv") {
-            return members(~[self.parse_single_class_item(private)])
+            return members(~[self.parse_single_struct_field(private)])
         }
 
         if self.eat_keyword(&~"pub") {
-           return members(~[self.parse_single_class_item(public)]);
+           return members(~[self.parse_single_struct_field(public)]);
         }
 
         if self.try_parse_obsolete_struct_ctor() {
@@ -3380,7 +3381,7 @@ pub impl Parser {
            return self.parse_dtor(attrs);
         }
         else {
-           return members(~[self.parse_single_class_item(inherited)]);
+           return members(~[self.parse_single_struct_field(inherited)]);
         }
     }
 
