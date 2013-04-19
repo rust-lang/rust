@@ -1976,6 +1976,7 @@ pub trait ImmutableVector<'self, T> {
     fn alli(&self, f: &fn(uint, t: &T) -> bool) -> bool;
     fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U];
     fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U];
+    unsafe fn unsafe_ref(&self, index: uint) -> *T;
 }
 
 /// Extension methods for vectors
@@ -2096,6 +2097,14 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     #[inline]
     fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U] {
         filter_mapped(*self, f)
+    }
+
+    /// Returns a pointer to the element at the given index, without doing
+    /// bounds checking.
+    #[inline(always)]
+    unsafe fn unsafe_ref(&self, index: uint) -> *T {
+        let (ptr, _): (*T, uint) = transmute(*self);
+        ptr.offset(index)
     }
 }
 
