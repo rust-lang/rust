@@ -3341,7 +3341,7 @@ pub impl Parser {
                 self.span_fatal(
                     copy *self.span,
                     fmt!(
-                        "expected `;`, `,`, or '}' but found `%s`",
+                        "expected `,`, or '}' but found `%s`",
                         self.this_token_to_str()
                     )
                 );
