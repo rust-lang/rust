@@ -583,7 +583,7 @@
 {
    llvm-optimization-reads-uninitialized-memory-3
    Memcheck:Cond
-   fun:_ZN4test9run_tests4anon13expr_fn_*
+   fun:_ZN4test9run_tests*
    ...
 }
 
