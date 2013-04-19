@@ -595,7 +595,6 @@ rust_task::new_big_stack() {
     } else {
         stk_seg *borrowed_big_stack = sched_loop->borrow_big_stack();
         if (!borrowed_big_stack) {
-            dump_stacks();
             abort();
         } else {
             big_stack = borrowed_big_stack;
