@@ -104,7 +104,6 @@ pub use self::stdio::stderr;
 pub use self::stdio::print;
 pub use self::stdio::println;
 
-pub use self::file::open_file;
 pub use self::file::FileStream;
 pub use self::net::Listener;
 pub use self::net::ip::IpAddr;
@@ -113,9 +112,9 @@ pub use self::net::tcp::TcpStream;
 pub use self::net::udp::UdpStream;
 
 // Some extension traits that all Readers and Writers get.
-pub use self::util::ReaderUtil;
-pub use self::util::ReaderByteConversions;
-pub use self::util::WriterByteConversions;
+pub use self::extensions::ReaderUtil;
+pub use self::extensions::ReaderByteConversions;
+pub use self::extensions::WriterByteConversions;
 
 /// Synchronous, non-blocking file I/O.
 pub mod file;
@@ -140,10 +139,10 @@ pub mod flate;
 pub mod comm_adapters;
 
 /// Extension traits
-mod util;
+mod extensions;
 
 /// Non-I/O things needed by the I/O module
-mod misc;
+mod support;
 
 /// Thread-blocking implementations
 pub mod native {
