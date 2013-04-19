@@ -14,10 +14,10 @@ use super::{Reader, Writer, Seekable, Closeable};
 use super::{IoError, SeekStyle};
 
 /// Open a file with the default FileMode and FileAccess
-/// # TODO are there sane defaults here?
+/// # XXX are there sane defaults here?
 pub fn open_file<P: PathLike>(_path: &P) -> FileStream { fail!() }
 
-/// # TODO
+/// # XXX
 /// * Ugh, this is ridiculous. What is the best way to represent these options?
 enum FileMode {
     /// Opens an existing file. IoError if file does not exist.
@@ -33,7 +33,7 @@ enum FileMode {
     /// Opens an existing file or creates a new one, truncating it to 0 bytes.
     CreateOrTruncate,
 }
- 
+
 enum FileAccess {
     Read,
     Write,

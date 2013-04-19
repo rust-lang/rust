@@ -10,8 +10,8 @@
 
 //! Utility mixins that apply to all Readers and Writers
 
-// TODO: Not sure how this should be structured
-// TODO: Iteration should probably be considered seperately
+// XXX: Not sure how this should be structured
+// XXX: Iteration should probably be considered seperately
 
 pub trait ReaderUtil {
 

@@ -11,7 +11,7 @@
 /*! Synchronous I/O
 
 This module defines the Rust interface for synchronous I/O.
-It supports file access, 
+It supports file access,
 
 This will likely live in core::io, not core::rt::io.
 
@@ -73,7 +73,7 @@ Some I/O things don't belong in core
     - http
   - flate
 
-# TODO
+# XXX
 
 * Should default constructors take `Path` or `&str`? `Path` makes simple cases verbose.
   Overloading would be nice.
@@ -149,10 +149,10 @@ mod misc;
 pub mod blocking {
     /// Posix file I/O
     pub mod file;
-    /// # TODO - implement this
+    /// # XXX - implement this
     pub mod stdio { }
     /// Sockets
-    /// # TODO - implement this
+    /// # XXX - implement this
     pub mod net {
         pub mod tcp { }
         pub mod udp { }
@@ -164,7 +164,7 @@ pub mod blocking {
 
 /// The type passed to I/O condition handlers to indicate error
 ///
-/// # TODO
+/// # XXX
 ///
 /// Is something like this sufficient? It's kind of archaic
 pub struct IoError {
@@ -195,7 +195,7 @@ pub trait Reader {
     ///
     /// Raises the `io_error` condition on error, then returns `None`.
     ///
-    /// # TODO
+    /// # XXX
     ///
     /// This doesn't take a `len` argument like the old `read`.
     /// Will people often need to slice their vectors to call this
@@ -211,7 +211,7 @@ pub trait Reader {
     ///         println(reader.read_line());
     ///     }
     ///
-    /// # TODO
+    /// # XXX
     ///
     /// What does this return if the Reader is in an error state?
     fn eof(&mut self) -> bool;
@@ -249,7 +249,7 @@ pub enum SeekStyle {
     SeekCur,
 }
 
-/// # TODO
+/// # XXX
 /// * Are `u64` and `i64` the right choices?
 pub trait Seekable {
     fn tell(&self) -> u64;
@@ -262,13 +262,13 @@ pub trait Seekable {
 /// uses decorators to add functionality like compression and encryption to I/O
 /// streams.
 ///
-/// # TODO
+/// # XXX
 ///
 /// Is this worth having a trait for? May be overkill
 pub trait Decorator<T> {
     /// Destroy the decorator and extract the decorated value
     ///
-    /// # TODO
+    /// # XXX
     ///
     /// Because this takes `self' one could never 'undecorate' a Reader/Writer
     /// that has been boxed. Is that ok? This feature is mostly useful for
