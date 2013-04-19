@@ -15,7 +15,7 @@ use libc::{c_double, c_int};
 use num::strconv;
 use num;
 use option::Option;
-use unstable::intrinsics::floorf64;
+use unstable::intrinsics;
 use to_str;
 use from_str;
 
@@ -93,7 +93,6 @@ delegate!(fn ldexp_radix(n: c_double, i: c_int) -> c_double =
     cmath::c_double_utils::ldexp_radix)
 delegate!(fn sin(n: c_double) -> c_double = cmath::c_double_utils::sin)
 delegate!(fn sinh(n: c_double) -> c_double = cmath::c_double_utils::sinh)
-delegate!(fn sqrt(n: c_double) -> c_double = cmath::c_double_utils::sqrt)
 delegate!(fn tan(n: c_double) -> c_double = cmath::c_double_utils::tan)
 delegate!(fn tanh(n: c_double) -> c_double = cmath::c_double_utils::tanh)
 delegate!(fn tgamma(n: c_double) -> c_double = cmath::c_double_utils::tgamma)
@@ -220,7 +219,10 @@ pub fn is_finite(x: f64) -> bool {
 
 /// Returns `x` rounded down
 #[inline(always)]
-pub fn floor(x: f64) -> f64 { unsafe { floorf64(x) } }
+pub fn floor(x: f64) -> f64 { unsafe { intrinsics::llvm::floorf64(x) } }
+
+#[inline(always)]
+pub fn sqrt(x: f64) -> f64 { unsafe { intrinsics::llvm::sqrtf64(x) } }
 
 // FIXME (#1999): add is_normal, is_subnormal, and fpclassify
 
