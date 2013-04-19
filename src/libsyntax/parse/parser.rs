@@ -2463,8 +2463,8 @@ pub impl Parser {
         return @spanned(lo, self.last_span.hi, decl_local(locals));
     }
 
-    /* assumes "let" token has already been consumed */
-    fn parse_instance_var(&self, pr: visibility) -> @struct_field {
+    // parse a structure field
+    fn parse_name_and_ty(&self, pr: visibility) -> @struct_field {
         let mut is_mutbl = struct_immutable;
         let lo = self.span.lo;
         if self.eat_keyword(&~"mut") {
@@ -3327,7 +3327,7 @@ pub impl Parser {
             self.obsolete(*self.last_span, ObsoleteLet);
         }
 
-        let a_var = self.parse_instance_var(vis);
+        let a_var = self.parse_name_and_ty(vis);
         match *self.token {
             token::SEMI => {
                 self.obsolete(copy *self.span, ObsoleteFieldTerminator);
