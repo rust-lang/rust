@@ -2329,16 +2329,16 @@ pub impl Parser {
                 let binding_mode =
                     if refutable {bind_infer} else {bind_by_copy};
 
-                let cannot_be_enum_or_struct;
+                let can_be_enum_or_struct;
                 match self.look_ahead(1) {
                     token::LPAREN | token::LBRACKET | token::LT |
                     token::LBRACE | token::MOD_SEP =>
-                        cannot_be_enum_or_struct = false,
+                        can_be_enum_or_struct = true,
                     _ =>
-                        cannot_be_enum_or_struct = true
+                        can_be_enum_or_struct = false
                 }
 
-                if is_plain_ident(&*self.token) && cannot_be_enum_or_struct {
+                if is_plain_ident(&*self.token) && !can_be_enum_or_struct {
                     let name = self.parse_path_without_tps();
                     let sub;
                     if self.eat(&token::AT) {
