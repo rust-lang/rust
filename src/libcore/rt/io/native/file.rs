@@ -40,11 +40,11 @@ impl Writer for FileDesc {
     fn flush(&mut self) { fail!() }
 }
 
-impl Closeable for FileDesc {
+impl Close for FileDesc {
     fn close(&mut self) { fail!() }
 }
 
-impl Seekable for FileDesc {
+impl Seek for FileDesc {
     fn tell(&self) -> u64 { fail!() }
 
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
@@ -72,11 +72,11 @@ impl Writer for CFile {
     fn flush(&mut self) { fail!() }
 }
 
-impl Closeable for CFile {
+impl Close for CFile {
     fn close(&mut self) { fail!() }
 }
 
-impl Seekable for CFile {
+impl Seek for CFile {
     fn tell(&self) -> u64 { fail!() }
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
 }

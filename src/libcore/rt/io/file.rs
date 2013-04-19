@@ -10,7 +10,7 @@
 
 use prelude::*;
 use super::misc::PathLike;
-use super::{Reader, Writer, Seekable, Closeable};
+use super::{Reader, Writer, Seek, Close};
 use super::{IoError, SeekStyle};
 
 /// Open a file with the default FileMode and FileAccess
@@ -67,13 +67,13 @@ impl Writer for FileStream {
     fn flush(&mut self) { fail!() }
 }
 
-impl Seekable for FileStream {
+impl Seek for FileStream {
     fn tell(&self) -> u64 { fail!() }
 
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
 }
 
-impl Closeable for FileStream {
+impl Close for FileStream {
     fn close(&mut self) { fail!() }
 }
 

@@ -34,7 +34,7 @@ impl Writer for MemWriter {
     fn flush(&mut self) { /* no-op */ }
 }
 
-impl Seekable for MemWriter {
+impl Seek for MemWriter {
     fn tell(&self) -> u64 { fail!() }
 
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
@@ -82,7 +82,7 @@ impl Reader for MemReader {
     fn eof(&mut self) -> bool { fail!() }
 }
 
-impl Seekable for MemReader {
+impl Seek for MemReader {
     fn tell(&self) -> u64 { fail!() }
 
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
@@ -131,7 +131,7 @@ impl<'self> Writer for BufWriter<'self> {
     fn flush(&mut self) { fail!() }
 }
 
-impl<'self> Seekable for BufWriter<'self> {
+impl<'self> Seek for BufWriter<'self> {
     fn tell(&self) -> u64 { fail!() }
 
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
@@ -159,7 +159,7 @@ impl<'self> Reader for BufReader<'self> {
     fn eof(&mut self) -> bool { fail!() }
 }
 
-impl<'self> Seekable for BufReader<'self> {
+impl<'self> Seek for BufReader<'self> {
     fn tell(&self) -> u64 { fail!() }
 
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }

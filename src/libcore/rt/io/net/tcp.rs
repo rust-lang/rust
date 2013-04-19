@@ -33,7 +33,7 @@ impl Writer for TcpStream {
     fn flush(&mut self) { fail!() }
 }
 
-impl Closeable for TcpStream {
+impl Close for TcpStream {
     fn close(&mut self) { fail!() }
 }
 
