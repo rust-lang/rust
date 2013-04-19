@@ -2359,14 +2359,13 @@ pub impl Parser {
                         }
                         _ => {
                             let mut args: ~[@pat] = ~[];
-                            let mut star_pat = false;
                             match *self.token {
                               token::LPAREN => match self.look_ahead(1u) {
                                 token::BINOP(token::STAR) => {
                                     // This is a "top constructor only" pat
                                       self.bump(); self.bump();
-                                      star_pat = true;
                                       self.expect(&token::RPAREN);
+                                      pat = pat_enum(enum_path, None);
                                   }
                                 _ => {
                                     args = self.parse_unspanned_seq(
@@ -2377,23 +2376,21 @@ pub impl Parser {
                                         ),
                                         |p| p.parse_pat(refutable)
                                     );
+                                    pat = pat_enum(enum_path, Some(args));
                                   }
                               },
-                              _ => ()
-                            }
-                            // at this point, we're not sure whether it's a
-                            // enum or a bind
-                            if star_pat {
-                                pat = pat_enum(enum_path, None);
-                            }
-                            else if vec::is_empty(args) &&
-                                vec::len(enum_path.idents) == 1u {
-                                pat = pat_ident(binding_mode,
-                                                enum_path,
-                                                None);
-                            }
-                            else {
-                                pat = pat_enum(enum_path, Some(args));
+                              _ => {
+                                  if vec::len(enum_path.idents)==1u {
+                                      // it could still be either an enum
+                                      // or an identifier pattern, resolve
+                                      // will sort it out:
+                                      pat = pat_ident(binding_mode,
+                                                      enum_path,
+                                                      None);
+                                  } else {
+                                      pat = pat_enum(enum_path, Some(args));
+                                  }
+                              }
                             }
                         }
                     }
