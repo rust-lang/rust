@@ -409,6 +409,15 @@ pub fn trans_expr_fn(bcx: block,
                                                  ~"expr_fn");
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
+    // Always mark inline if this is a loop body. This is important for
+    // performance on many programs with tight loops.
+    if is_loop_body.is_some() {
+        set_always_inline(llfn);
+    } else {
+        // Can't hurt.
+        set_inline_hint(llfn);
+    }
+
     let Result {bcx: bcx, val: closure} = match sigil {
         ast::BorrowedSigil | ast::ManagedSigil | ast::OwnedSigil => {
             let cap_vars = *ccx.maps.capture_map.get(&user_id);
@@ -416,9 +425,16 @@ pub fn trans_expr_fn(bcx: block,
                                                  None => None};
             let ClosureResult {llbox, cdata_ty, bcx}
                 = build_closure(bcx, cap_vars, sigil, ret_handle);
-            trans_closure(ccx, sub_path, decl,
-                          body, llfn, no_self,
-                          /*bad*/ copy bcx.fcx.param_substs, user_id, None,
+            trans_closure(ccx,
+                          sub_path,
+                          decl,
+                          body,
+                          llfn,
+                          no_self,
+                          /*bad*/ copy bcx.fcx.param_substs,
+                          user_id,
+                          None,
+                          [],
                           |fcx| load_environment(fcx, cdata_ty, cap_vars,
                                                  ret_handle.is_some(), sigil),
                           |bcx| {

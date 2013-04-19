@@ -78,19 +78,6 @@ pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
           Some(a) => { w.write_str(*a.s); return; }
           None => {
             let pos = w.tell();
-            match ty::type_def_id(t) {
-              Some(def_id) => {
-                // Do not emit node ids that map to unexported names.  Those
-                // are not helpful.
-                if def_id.crate != local_crate ||
-                    (cx.reachable)(def_id.node) {
-                    w.write_char('"');
-                    w.write_str((cx.ds)(def_id));
-                    w.write_char('|');
-                }
-              }
-              _ => {}
-            }
             enc_sty(w, cx, /*bad*/copy ty::get(t).sty);
             let end = w.tell();
             let len = end - pos;

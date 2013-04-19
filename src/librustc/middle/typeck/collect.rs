@@ -1085,16 +1085,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
         let region_parameterization =
             RegionParameterization::from_variance_and_generics(rp, generics);
         let tpt = {
-            let ty = {
-                let t0 = ccx.to_ty(&type_rscope(region_parameterization), t);
-                // Do not associate a def id with a named, parameterized type
-                // like "foo<X>".  This is because otherwise ty_to_str will
-                // print the name as merely "foo", as it has no way to
-                // reconstruct the value of X.
-                if generics.is_parameterized() { t0 } else {
-                    ty::mk_with_id(tcx, t0, def_id)
-                }
-            };
+            let ty = ccx.to_ty(&type_rscope(region_parameterization), t);
             ty_param_bounds_and_ty {
                 generics: ty_generics(ccx, rp, generics, 0),
                 ty: ty

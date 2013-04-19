@@ -316,11 +316,11 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
     {
         let llwrapfn = get_item_val(ccx, id);
         let tys = shim_types(ccx, id);
-        if attr::attrs_contains_name(
-            foreign_item.attrs, "rust_stack")
-        {
+        if attr::attrs_contains_name(foreign_item.attrs, "rust_stack") {
             build_direct_fn(ccx, llwrapfn, foreign_item,
                             &tys, cc);
+        } else if attr::attrs_contains_name(foreign_item.attrs, "fast_ffi") {
+            build_fast_ffi_fn(ccx, llwrapfn, foreign_item, &tys, cc);
         } else {
             let llshimfn = build_shim_fn(ccx, foreign_item,
                                          &tys, cc);
@@ -380,6 +380,8 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
     fn build_direct_fn(ccx: @CrateContext, decl: ValueRef,
                        item: @ast::foreign_item, tys: &ShimTypes,
                        cc: lib::llvm::CallConv) {
+        debug!("build_direct_fn(%s)", *link_name(ccx, item));
+
         let fcx = new_fn_ctxt(ccx, ~[], decl, None);
         let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
         let llbasefn = base_fn(ccx, *link_name(ccx, item), tys, cc);
@@ -389,7 +391,36 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
             get_param(decl, i + first_real_arg)
         });
         let retval = Call(bcx, llbasefn, args);
-        if !ty::type_is_nil(ty::ty_fn_ret(ty)) {
+        let ret_ty = ty::ty_fn_ret(ty);
+        if !ty::type_is_nil(ret_ty) && !ty::type_is_bot(ret_ty) {
+            Store(bcx, retval, fcx.llretptr);
+        }
+        build_return(bcx);
+        finish_fn(fcx, lltop);
+    }
+
+    // FIXME (#2535): this is very shaky and probably gets ABIs wrong all
+    // over the place
+    fn build_fast_ffi_fn(ccx: @CrateContext,
+                         decl: ValueRef,
+                         item: @ast::foreign_item,
+                         tys: &ShimTypes,
+                         cc: lib::llvm::CallConv) {
+        debug!("build_fast_ffi_fn(%s)", *link_name(ccx, item));
+
+        let fcx = new_fn_ctxt(ccx, ~[], decl, None);
+        let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
+        let llbasefn = base_fn(ccx, *link_name(ccx, item), tys, cc);
+        set_no_inline(fcx.llfn);
+        set_fixed_stack_segment(fcx.llfn);
+        let ty = ty::lookup_item_type(ccx.tcx,
+                                      ast_util::local_def(item.id)).ty;
+        let args = vec::from_fn(ty::ty_fn_args(ty).len(), |i| {
+            get_param(decl, i + first_real_arg)
+        });
+        let retval = Call(bcx, llbasefn, args);
+        let ret_ty = ty::ty_fn_ret(ty);
+        if !ty::type_is_nil(ret_ty) && !ty::type_is_bot(ret_ty) {
             Store(bcx, retval, fcx.llretptr);
         }
         build_return(bcx);
@@ -1006,7 +1037,16 @@ pub fn trans_foreign_fn(ccx: @CrateContext,
             )));
         let llty = type_of_fn_from_ty(ccx, t);
         let llfndecl = decl_internal_cdecl_fn(ccx.llmod, ps, llty);
-        trans_fn(ccx, path, decl, body, llfndecl, no_self, None, id, None);
+        trans_fn(ccx,
+                 path,
+                 decl,
+                 body,
+                 llfndecl,
+                 no_self,
+                 None,
+                 id,
+                 None,
+                 []);
         return llfndecl;
     }
 
