@@ -17,7 +17,7 @@ struct HttpServer;
 #[cfg(test)]
 mod test {
     use unstable::run_in_bare_thread;
-    
+
     #[test] #[ignore]
     fn smoke_test() {
         do run_in_bare_thread {

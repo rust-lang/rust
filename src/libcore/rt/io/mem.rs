@@ -10,7 +10,7 @@
 
 //! Readers and Writers for in-memory buffers
 //!
-//! # TODO
+//! # XXX
 //!
 //! * Should probably have something like this for strings.
 //! * Should they implement Closable? Would take extra state.
@@ -61,7 +61,7 @@ impl Decorator<~[u8]> for MemWriter {
     }
 }
 
-/// Reads from an owned byte vector 
+/// Reads from an owned byte vector
 pub struct MemReader {
     buf: ~[u8],
     pos: uint
@@ -109,13 +109,13 @@ impl Decorator<~[u8]> for MemReader {
     }
 }
 
- 
+
 /// Writes to a fixed-size byte slice
 struct BufWriter<'self> {
     buf: &'self mut [u8],
     pos: uint
 }
- 
+
 impl<'self> BufWriter<'self> {
     pub fn new<'a>(buf: &'a mut [u8]) -> BufWriter<'a> {
         BufWriter {
@@ -138,7 +138,7 @@ impl<'self> Seekable for BufWriter<'self> {
 }
 
 
-/// Reads from a fixed-size byte slice 
+/// Reads from a fixed-size byte slice
 struct BufReader<'self> {
     buf: &'self [u8],
     pos: uint
