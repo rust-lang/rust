@@ -288,7 +288,7 @@ pub impl Parser {
             self.eat_keyword(&~"priv");
             self.bump();
             while *self.token != token::RBRACE {
-                self.parse_single_class_item(ast::private);
+                self.parse_single_struct_field(ast::private);
             }
             self.bump();
             true
