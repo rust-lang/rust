@@ -376,10 +376,10 @@ pub struct ident_interner {
 
 pub impl ident_interner {
     fn intern(&self, val: @~str) -> ast::ident {
-        ast::ident { repr: self.interner.intern(val), ctxt: 0}
+        ast::ident { repr: self.interner.intern(val), ctxt: 0 }
     }
     fn gensym(&self, val: @~str) -> ast::ident {
-        ast::ident { repr: self.interner.gensym(val), ctxt: 0}
+        ast::ident { repr: self.interner.gensym(val), ctxt: 0 }
     }
     fn get(&self, idx: ast::ident) -> @~str {
         self.interner.get(idx.repr)
@@ -388,9 +388,9 @@ pub impl ident_interner {
         self.interner.len()
     }
     fn find_equiv<Q:Hash + IterBytes + Equiv<@~str>>(&self, val: &Q)
-                                                  -> Option<ast::ident> {
+                                                     -> Option<ast::ident> {
         match self.interner.find_equiv(val) {
-            Some(v) => Some(ast::ident { repr: v }),
+            Some(v) => Some(ast::ident { repr: v, ctxt: 0 }),
             None => None,
         }
     }
