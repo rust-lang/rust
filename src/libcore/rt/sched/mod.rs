@@ -16,11 +16,11 @@ use super::work_queue::WorkQueue;
 use super::stack::{StackPool, StackSegment};
 use super::rtio::{EventLoop, EventLoopObject};
 use super::context::Context;
+use cell::Cell;
 
 #[cfg(test)] use super::uvio::UvEventLoop;
 #[cfg(test)] use unstable::run_in_bare_thread;
 #[cfg(test)] use int;
-#[cfg(test)] use cell::Cell;
 
 // A more convenient name for external callers, e.g. `local_sched::take()`
 pub mod local_sched;
@@ -58,8 +58,6 @@ impl ClosureConverter for UnsafeTaskReceiver {
 
 enum CleanupJob {
     DoNothing,
-    RescheduleTask(~Task),
-    RecycleTask(~Task),
     GiveTask(~Task, UnsafeTaskReceiver)
 }
 
@@ -143,44 +141,25 @@ pub impl Scheduler {
 
         rtdebug!("ending running task");
 
-        let dead_task = self.current_task.swap_unwrap();
-        self.enqueue_cleanup_job(RecycleTask(dead_task));
-
-        local_sched::put(self);
-
-        let sched = unsafe { local_sched::unsafe_borrow() };
-        let (sched_context, last_task_context, _) = sched.get_contexts();
-        let last_task_context = last_task_context.unwrap();
-        Context::swap(last_task_context, sched_context);
+        do self.deschedule_running_task_and_then |dead_task| {
+            let dead_task = Cell(dead_task);
+            do local_sched::borrow |sched| {
+                dead_task.take().recycle(&mut sched.stack_pool);
+            }
+        }
 
         // Control never reaches here
     }
 
-    /// Switch directly to another task, without going through the scheduler.
-    /// You would want to think hard about doing this, e.g. if there are
-    /// pending I/O events it would be a bad idea.
-    fn resume_task_from_running_task_direct(~self, next_task: ~Task) {
+    fn schedule_new_task(~self, task: ~Task) {
         let mut self = self;
         assert!(self.in_task_context());
 
-        rtdebug!("switching tasks");
-
-        let old_running_task = self.current_task.swap_unwrap();
-        self.enqueue_cleanup_job(RescheduleTask(old_running_task));
-        self.current_task = Some(next_task);
-
-        local_sched::put(self);
-
-        unsafe {
-            let sched = local_sched::unsafe_borrow();
-            let (_, last_task_context, next_task_context) = sched.get_contexts();
-            let last_task_context = last_task_context.unwrap();
-            let next_task_context = next_task_context.unwrap();
-            Context::swap(last_task_context, next_task_context);
-
-            // We could be executing in a different thread now
-            let sched = local_sched::unsafe_borrow();
-            sched.run_cleanup_job();
+        do self.switch_running_tasks_and_then(task) |last_task| {
+            let last_task = Cell(last_task);
+            do local_sched::borrow |sched| {
+                sched.task_queue.push_front(last_task.take());
+            }
         }
     }
 
@@ -294,11 +273,6 @@ pub impl Scheduler {
         let cleanup_job = self.cleanup_job.swap_unwrap();
         match cleanup_job {
             DoNothing => { }
-            RescheduleTask(task) => {
-                // NB: Pushing to the *front* of the queue
-                self.task_queue.push_front(task);
-            }
-            RecycleTask(task) => task.recycle(&mut self.stack_pool),
             GiveTask(task, f) => (f.to_fn())(task)
         }
     }
@@ -316,8 +290,6 @@ pub impl Scheduler {
                                           Option<&'a mut Context>,
                                           Option<&'a mut Context>) {
         let last_task = match self.cleanup_job {
-            Some(RescheduleTask(~ref task)) |
-            Some(RecycleTask(~ref task)) |
             Some(GiveTask(~ref task, _)) => {
                 Some(task)
             }
@@ -433,29 +405,6 @@ fn test_several_tasks() {
 }
 
 #[test]
-fn test_swap_tasks() {
-    do run_in_bare_thread {
-        let mut count = 0;
-        let count_ptr: *mut int = &mut count;
-
-        let mut sched = ~UvEventLoop::new_scheduler();
-        let task1 = ~do Task::new(&mut sched.stack_pool) {
-            unsafe { *count_ptr = *count_ptr + 1; }
-            let mut sched = local_sched::take();
-            let task2 = ~do Task::new(&mut sched.stack_pool) {
-                unsafe { *count_ptr = *count_ptr + 1; }
-            };
-            // Context switch directly to the new task
-            sched.resume_task_from_running_task_direct(task2);
-            unsafe { *count_ptr = *count_ptr + 1; }
-        };
-        sched.task_queue.push_back(task1);
-        sched.run();
-        assert!(count == 3);
-    }
-}
-
-#[test]
 fn test_swap_tasks_then() {
     do run_in_bare_thread {
         let mut count = 0;
@@ -512,39 +461,6 @@ fn test_run_a_lot_of_tasks_queued() {
                 };
                 sched.task_queue.push_back(task);
             }
-        };
-    }
-}
-
-#[bench] #[test] #[ignore(reason = "too much stack allocation")]
-fn test_run_a_lot_of_tasks_direct() {
-    do run_in_bare_thread {
-        static MAX: int = 100000;
-        let mut count = 0;
-        let count_ptr: *mut int = &mut count;
-
-        let mut sched = ~UvEventLoop::new_scheduler();
-
-        let start_task = ~do Task::new(&mut sched.stack_pool) {
-            run_task(count_ptr);
-        };
-        sched.task_queue.push_back(start_task);
-        sched.run();
-
-        assert!(count == MAX);
-
-        fn run_task(count_ptr: *mut int) {
-            let mut sched = local_sched::take();
-            let task = ~do Task::new(&mut sched.stack_pool) {
-                unsafe {
-                    *count_ptr = *count_ptr + 1;
-                    if *count_ptr != MAX {
-                        run_task(count_ptr);
-                    }
-                }
-            };
-            // Context switch directly to the new task
-            sched.resume_task_from_running_task_direct(task);
         };
     }
 }

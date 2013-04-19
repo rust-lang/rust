@@ -552,10 +552,9 @@ pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
 fn spawn_raw_newsched(opts: TaskOpts, f: ~fn()) {
     use rt::sched::*;
 
-    // XXX: How to schedule a new task is a policy decision that shouldn't be made here
     let mut sched = local_sched::take();
     let task = ~Task::new(&mut sched.stack_pool, f);
-    sched.resume_task_from_running_task_direct(task);
+    sched.schedule_new_task(task);
 }
 
 fn spawn_raw_oldsched(opts: TaskOpts, f: ~fn()) {
