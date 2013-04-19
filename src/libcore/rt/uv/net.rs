@@ -17,7 +17,7 @@ use super::{Loop, Watcher, Request, UvError, Buf, Callback, NativeHandle, NullCa
             loop_from_watcher, status_to_maybe_uv_error,
             install_watcher_data, get_watcher_data, drop_watcher_data,
             vec_to_uv_buf, vec_from_uv_buf};
-use super::super::rtio::{IpAddr, Ipv4, Ipv6};
+use super::super::io::net::ip::{IpAddr, Ipv4, Ipv6};
 
 #[cfg(test)]
 use unstable::run_in_bare_thread;

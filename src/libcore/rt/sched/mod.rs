@@ -14,15 +14,16 @@ use cast::transmute;
 
 use super::work_queue::WorkQueue;
 use super::stack::{StackPool, StackSegment};
-use super::rtio::{EventLoop, EventLoopObject, IoFactoryObject};
+use super::rtio::{EventLoop, EventLoopObject};
 use super::context::Context;
+use cell::Cell;
 
 #[cfg(test)] use super::uvio::UvEventLoop;
 #[cfg(test)] use unstable::run_in_bare_thread;
 #[cfg(test)] use int;
-#[cfg(test)] use cell::Cell;
 
-mod local;
+// A more convenient name for external callers, e.g. `local_sched::take()`
+pub mod local_sched;
 
 /// The Scheduler is responsible for coordinating execution of Tasks
 /// on a single thread. When the scheduler is running it is owned by
@@ -57,12 +58,12 @@ impl ClosureConverter for UnsafeTaskReceiver {
 
 enum CleanupJob {
     DoNothing,
-    RescheduleTask(~Task),
-    RecycleTask(~Task),
     GiveTask(~Task, UnsafeTaskReceiver)
 }
 
 pub impl Scheduler {
+
+    fn in_task_context(&self) -> bool { self.current_task.is_some() }
 
     fn new(event_loop: ~EventLoopObject) -> Scheduler {
 
@@ -90,47 +91,25 @@ pub impl Scheduler {
         assert!(!self.in_task_context());
 
         // Give ownership of the scheduler (self) to the thread
-        local::put(self);
+        local_sched::put(self);
 
-        let scheduler = unsafe { local::borrow() };
-        fn run_scheduler_once() {
-            let scheduler = Scheduler::take_local();
-            if scheduler.resume_task_from_queue() {
-                // Ok, a task ran. Nice! We'll do it again later
-                do Scheduler::borrow_local |scheduler| {
-                    scheduler.event_loop.callback(run_scheduler_once);
+        unsafe {
+            let scheduler = local_sched::unsafe_borrow();
+            fn run_scheduler_once() {
+                let scheduler = local_sched::take();
+                if scheduler.resume_task_from_queue() {
+                    // Ok, a task ran. Nice! We'll do it again later
+                    do local_sched::borrow |scheduler| {
+                        scheduler.event_loop.callback(run_scheduler_once);
+                    }
                 }
             }
+
+            scheduler.event_loop.callback(run_scheduler_once);
+            scheduler.event_loop.run();
         }
 
-        scheduler.event_loop.callback(run_scheduler_once);
-        scheduler.event_loop.run();
-
-        return local::take();
-    }
-
-    /// Get a mutable pointer to the thread-local I/O
-    /// # Safety Note
-    /// This allows other mutable aliases to the scheduler, both in the current
-    /// execution context and other execution contexts.
-    unsafe fn borrow_local_io() -> &mut IoFactoryObject {
-        unsafe {
-            let io = local::borrow().event_loop.io().unwrap();
-            transmute::<&mut IoFactoryObject, &mut IoFactoryObject>(io)
-        }
-    }
-
-    /// Borrow the thread-local scheduler from thread-local storage.
-    /// While the scheduler is borrowed it is not available in TLS.
-    fn borrow_local(f: &fn(&mut Scheduler)) {
-        let mut sched = local::take();
-        f(sched);
-        local::put(sched);
-    }
-
-    /// Take ownership of the scheduler from thread local storage
-    fn take_local() -> ~Scheduler {
-        local::take()
+        return local_sched::take();
     }
 
     // * Scheduler-context operations
@@ -146,40 +125,11 @@ pub impl Scheduler {
             }
             None => {
                 rtdebug!("no tasks in queue");
-                local::put(self);
+                local_sched::put(self);
                 return false;
             }
         }
     }
-
-    fn resume_task_immediately(~self, task: ~Task) {
-        let mut self = self;
-        assert!(!self.in_task_context());
-
-        rtdebug!("scheduling a task");
-
-        // Store the task in the scheduler so it can be grabbed later
-        self.current_task = Some(task);
-        self.enqueue_cleanup_job(DoNothing);
-
-        local::put(self);
-
-        // Take pointers to both the task and scheduler's saved registers.
-        let sched = unsafe { local::borrow() };
-        let (sched_context, _, next_task_context) = sched.get_contexts();
-        let next_task_context = next_task_context.unwrap();
-        // Context switch to the task, restoring it's registers
-        // and saving the scheduler's
-        Context::swap(sched_context, next_task_context);
-
-        let sched = unsafe { local::borrow() };
-        // The running task should have passed ownership elsewhere
-        assert!(sched.current_task.is_none());
-
-        // Running tasks may have asked us to do some cleanup
-        sched.run_cleanup_job();
-    }
-
 
     // * Task-context operations
 
@@ -191,17 +141,58 @@ pub impl Scheduler {
 
         rtdebug!("ending running task");
 
-        let dead_task = self.current_task.swap_unwrap();
-        self.enqueue_cleanup_job(RecycleTask(dead_task));
-
-        local::put(self);
-
-        let sched = unsafe { local::borrow() };
-        let (sched_context, last_task_context, _) = sched.get_contexts();
-        let last_task_context = last_task_context.unwrap();
-        Context::swap(last_task_context, sched_context);
+        do self.deschedule_running_task_and_then |dead_task| {
+            let dead_task = Cell(dead_task);
+            do local_sched::borrow |sched| {
+                dead_task.take().recycle(&mut sched.stack_pool);
+            }
+        }
 
         // Control never reaches here
+    }
+
+    fn schedule_new_task(~self, task: ~Task) {
+        let mut self = self;
+        assert!(self.in_task_context());
+
+        do self.switch_running_tasks_and_then(task) |last_task| {
+            let last_task = Cell(last_task);
+            do local_sched::borrow |sched| {
+                sched.task_queue.push_front(last_task.take());
+            }
+        }
+    }
+
+    // Core scheduling ops
+
+    fn resume_task_immediately(~self, task: ~Task) {
+        let mut self = self;
+        assert!(!self.in_task_context());
+
+        rtdebug!("scheduling a task");
+
+        // Store the task in the scheduler so it can be grabbed later
+        self.current_task = Some(task);
+        self.enqueue_cleanup_job(DoNothing);
+
+        local_sched::put(self);
+
+        // Take pointers to both the task and scheduler's saved registers.
+        unsafe {
+            let sched = local_sched::unsafe_borrow();
+            let (sched_context, _, next_task_context) = sched.get_contexts();
+            let next_task_context = next_task_context.unwrap();
+            // Context switch to the task, restoring it's registers
+            // and saving the scheduler's
+            Context::swap(sched_context, next_task_context);
+
+            let sched = local_sched::unsafe_borrow();
+            // The running task should have passed ownership elsewhere
+            assert!(sched.current_task.is_none());
+
+            // Running tasks may have asked us to do some cleanup
+            sched.run_cleanup_job();
+        }
     }
 
     /// Block a running task, context switch to the scheduler, then pass the
@@ -223,47 +214,51 @@ pub impl Scheduler {
         let f_opaque = ClosureConverter::from_fn(f_fake_region);
         self.enqueue_cleanup_job(GiveTask(blocked_task, f_opaque));
 
-        local::put(self);
+        local_sched::put(self);
 
-        let sched = unsafe { local::borrow() };
+        let sched = unsafe { local_sched::unsafe_borrow() };
         let (sched_context, last_task_context, _) = sched.get_contexts();
         let last_task_context = last_task_context.unwrap();
         Context::swap(last_task_context, sched_context);
 
         // We could be executing in a different thread now
-        let sched = unsafe { local::borrow() };
+        let sched = unsafe { local_sched::unsafe_borrow() };
         sched.run_cleanup_job();
     }
 
     /// Switch directly to another task, without going through the scheduler.
     /// You would want to think hard about doing this, e.g. if there are
     /// pending I/O events it would be a bad idea.
-    fn resume_task_from_running_task_direct(~self, next_task: ~Task) {
+    fn switch_running_tasks_and_then(~self, next_task: ~Task, f: &fn(~Task)) {
         let mut self = self;
         assert!(self.in_task_context());
 
         rtdebug!("switching tasks");
 
         let old_running_task = self.current_task.swap_unwrap();
-        self.enqueue_cleanup_job(RescheduleTask(old_running_task));
+        let f_fake_region = unsafe { transmute::<&fn(~Task), &fn(~Task)>(f) };
+        let f_opaque = ClosureConverter::from_fn(f_fake_region);
+        self.enqueue_cleanup_job(GiveTask(old_running_task, f_opaque));
         self.current_task = Some(next_task);
 
-        local::put(self);
+        local_sched::put(self);
 
-        let sched = unsafe { local::borrow() };
-        let (_, last_task_context, next_task_context) = sched.get_contexts();
-        let last_task_context = last_task_context.unwrap();
-        let next_task_context = next_task_context.unwrap();
-        Context::swap(last_task_context, next_task_context);
+        unsafe {
+            let sched = local_sched::unsafe_borrow();
+            let (_, last_task_context, next_task_context) = sched.get_contexts();
+            let last_task_context = last_task_context.unwrap();
+            let next_task_context = next_task_context.unwrap();
+            Context::swap(last_task_context, next_task_context);
 
-        // We could be executing in a different thread now
-        let sched = unsafe { local::borrow() };
-        sched.run_cleanup_job();
+            // We could be executing in a different thread now
+            let sched = local_sched::unsafe_borrow();
+            sched.run_cleanup_job();
+        }
     }
 
-    // * Other stuff
 
-    fn in_task_context(&self) -> bool { self.current_task.is_some() }
+
+    // * Other stuff
 
     fn enqueue_cleanup_job(&mut self, job: CleanupJob) {
         assert!(self.cleanup_job.is_none());
@@ -278,11 +273,6 @@ pub impl Scheduler {
         let cleanup_job = self.cleanup_job.swap_unwrap();
         match cleanup_job {
             DoNothing => { }
-            RescheduleTask(task) => {
-                // NB: Pushing to the *front* of the queue
-                self.task_queue.push_front(task);
-            }
-            RecycleTask(task) => task.recycle(&mut self.stack_pool),
             GiveTask(task, f) => (f.to_fn())(task)
         }
     }
@@ -300,8 +290,6 @@ pub impl Scheduler {
                                           Option<&'a mut Context>,
                                           Option<&'a mut Context>) {
         let last_task = match self.cleanup_job {
-            Some(RescheduleTask(~ref task)) |
-            Some(RecycleTask(~ref task)) |
             Some(GiveTask(~ref task, _)) => {
                 Some(task)
             }
@@ -358,12 +346,14 @@ pub impl Task {
             // This is the first code to execute after the initial
             // context switch to the task. The previous context may
             // have asked us to do some cleanup.
-            let sched = unsafe { local::borrow() };
-            sched.run_cleanup_job();
+            unsafe {
+                let sched = local_sched::unsafe_borrow();
+                sched.run_cleanup_job();
+            }
 
             start();
 
-            let sched = Scheduler::take_local();
+            let sched = local_sched::take();
             sched.terminate_current_task();
         };
         return wrapper;
@@ -415,7 +405,7 @@ fn test_several_tasks() {
 }
 
 #[test]
-fn test_swap_tasks() {
+fn test_swap_tasks_then() {
     do run_in_bare_thread {
         let mut count = 0;
         let count_ptr: *mut int = &mut count;
@@ -423,12 +413,17 @@ fn test_swap_tasks() {
         let mut sched = ~UvEventLoop::new_scheduler();
         let task1 = ~do Task::new(&mut sched.stack_pool) {
             unsafe { *count_ptr = *count_ptr + 1; }
-            let mut sched = Scheduler::take_local();
+            let mut sched = local_sched::take();
             let task2 = ~do Task::new(&mut sched.stack_pool) {
                 unsafe { *count_ptr = *count_ptr + 1; }
             };
             // Context switch directly to the new task
-            sched.resume_task_from_running_task_direct(task2);
+            do sched.switch_running_tasks_and_then(task2) |task1| {
+                let task1 = Cell(task1);
+                do local_sched::borrow |sched| {
+                    sched.task_queue.push_front(task1.take());
+                }
+            }
             unsafe { *count_ptr = *count_ptr + 1; }
         };
         sched.task_queue.push_back(task1);
@@ -455,7 +450,7 @@ fn test_run_a_lot_of_tasks_queued() {
         assert!(count == MAX);
 
         fn run_task(count_ptr: *mut int) {
-            do Scheduler::borrow_local |sched| {
+            do local_sched::borrow |sched| {
                 let task = ~do Task::new(&mut sched.stack_pool) {
                     unsafe {
                         *count_ptr = *count_ptr + 1;
@@ -470,49 +465,16 @@ fn test_run_a_lot_of_tasks_queued() {
     }
 }
 
-#[bench] #[test] #[ignore(reason = "too much stack allocation")]
-fn test_run_a_lot_of_tasks_direct() {
-    do run_in_bare_thread {
-        static MAX: int = 100000;
-        let mut count = 0;
-        let count_ptr: *mut int = &mut count;
-
-        let mut sched = ~UvEventLoop::new_scheduler();
-
-        let start_task = ~do Task::new(&mut sched.stack_pool) {
-            run_task(count_ptr);
-        };
-        sched.task_queue.push_back(start_task);
-        sched.run();
-
-        assert!(count == MAX);
-
-        fn run_task(count_ptr: *mut int) {
-            let mut sched = Scheduler::take_local();
-            let task = ~do Task::new(&mut sched.stack_pool) {
-                unsafe {
-                    *count_ptr = *count_ptr + 1;
-                    if *count_ptr != MAX {
-                        run_task(count_ptr);
-                    }
-                }
-            };
-            // Context switch directly to the new task
-            sched.resume_task_from_running_task_direct(task);
-        };
-    }
-}
-
 #[test]
 fn test_block_task() {
     do run_in_bare_thread {
         let mut sched = ~UvEventLoop::new_scheduler();
         let task = ~do Task::new(&mut sched.stack_pool) {
-            let sched = Scheduler::take_local();
+            let sched = local_sched::take();
             assert!(sched.in_task_context());
             do sched.deschedule_running_task_and_then() |task| {
                 let task = Cell(task);
-                do Scheduler::borrow_local |sched| {
+                do local_sched::borrow |sched| {
                     assert!(!sched.in_task_context());
                     sched.task_queue.push_back(task.take());
                 }
