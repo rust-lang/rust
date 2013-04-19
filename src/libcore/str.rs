@@ -1863,7 +1863,7 @@ pub fn char_range_at(s: &str, i: uint) -> CharRange {
     return CharRange {ch: val as char, next: i};
 }
 
-/// Plucks the `n`th character from the beginning of a string
+/// Plucks the character starting at the `i`th byte of a string
 pub fn char_at(s: &str, i: uint) -> char {
     return char_range_at(s, i).ch;
 }
@@ -1874,11 +1874,11 @@ pub struct CharRange {
 }
 
 /**
- * Given a byte position and a str, return the previous char and its position
+ * Given a byte position and a str, return the previous char and its position.
  *
  * This function can be used to iterate over a unicode string in reverse.
  *
- * returns 0 for next index if called on start index 0
+ * Returns 0 for next index if called on start index 0.
  */
 pub fn char_range_at_reverse(ss: &str, start: uint) -> CharRange {
     let mut prev = start;
@@ -1900,7 +1900,7 @@ pub fn char_range_at_reverse(ss: &str, start: uint) -> CharRange {
     return CharRange {ch:ch, next:prev};
 }
 
-/// Plucks the `n`th character from the end of a string
+/// Plucks the character ending at the `i`th byte of a string
 pub fn char_at_reverse(s: &str, i: uint) -> char {
     char_range_at_reverse(s, i).ch
 }
