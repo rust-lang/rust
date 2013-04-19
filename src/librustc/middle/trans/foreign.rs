@@ -185,17 +185,19 @@ fn build_wrap_fn_(ccx: @CrateContext,
                   llshimfn: ValueRef,
                   llwrapfn: ValueRef,
                   shim_upcall: ValueRef,
+                  needs_c_return: bool,
                   arg_builder: wrap_arg_builder,
                   ret_builder: wrap_ret_builder) {
     let _icx = ccx.insn_ctxt("foreign::build_wrap_fn_");
     let fcx = new_fn_ctxt(ccx, ~[], llwrapfn, tys.fn_sig.output, None);
 
-    // Patch up the return type if it's not immediate.
-    /*if !ty::type_is_immediate(tys.fn_sig.output) {
+    // Patch up the return type if it's not immediate and we're returning via
+    // the C ABI.
+    if needs_c_return && !ty::type_is_immediate(tys.fn_sig.output) {
         let lloutputtype = type_of::type_of(*fcx.ccx, tys.fn_sig.output);
         fcx.llretptr = Some(alloca(raw_block(fcx, false, fcx.llstaticallocas),
                                    lloutputtype));
-    }*/
+    }
 
     let bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
@@ -499,6 +501,7 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
                        llshimfn,
                        llwrapfn,
                        ccx.upcalls.call_shim_on_c_stack,
+                       false,
                        build_args,
                        build_ret);
 
@@ -1229,6 +1232,7 @@ pub fn trans_foreign_fn(ccx: @CrateContext,
                        llshimfn,
                        llwrapfn,
                        ccx.upcalls.call_shim_on_rust_stack,
+                       true,
                        build_args,
                        build_ret);
 

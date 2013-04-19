@@ -13,7 +13,6 @@ use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::common::*;
 
-use core::io::println;
 use core::libc::c_uint;
 use core::option;
 use core::vec;

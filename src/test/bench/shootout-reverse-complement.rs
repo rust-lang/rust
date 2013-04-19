@@ -1,3 +1,5 @@
+// xfail-pretty
+
 use core::cast::transmute;
 use core::libc::{STDOUT_FILENO, c_int, fdopen, fgets, fopen, fputc, fwrite};
 use core::libc::{size_t};
