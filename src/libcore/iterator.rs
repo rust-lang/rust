@@ -260,3 +260,70 @@ impl<A, T: Iterator<A>> Iterator<A> for TakeIterator<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use prelude::*;
+
+    #[test]
+    fn test_iterator_enumerate() {
+        let xs = [0u, 1, 2, 3, 4, 5];
+        let mut it = xs.iter().enumerate();
+        for it.advance |(i, &x): (uint, &uint)| {
+            assert_eq!(i, x);
+        }
+    }
+
+    #[test]
+    fn test_iterator_take_while() {
+        let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19];
+        let ys = [0u, 1, 2, 3, 5, 13];
+        let mut it = xs.iter().take_while(|&x| *x < 15u);
+        let mut i = 0;
+        for it.advance |&x: &uint| {
+            assert_eq!(x, ys[i]);
+            i += 1;
+        }
+        assert_eq!(i, ys.len());
+    }
+
+    #[test]
+    fn test_iterator_skip_while() {
+        let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19];
+        let ys = [15, 16, 17, 19];
+        let mut it = xs.iter().skip_while(|&x| *x < 15u);
+        let mut i = 0;
+        for it.advance |&x: &uint| {
+            assert_eq!(x, ys[i]);
+            i += 1;
+        }
+        assert_eq!(i, ys.len());
+    }
+
+    #[test]
+    fn test_iterator_skip() {
+        let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
+        let ys = [13, 15, 16, 17, 19, 20, 30];
+        let mut it = xs.iter().skip(5);
+        let mut i = 0;
+        for it.advance |&x: &uint| {
+            assert_eq!(x, ys[i]);
+            i += 1;
+        }
+        assert_eq!(i, ys.len());
+    }
+
+    #[test]
+    fn test_iterator_take() {
+        let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19];
+        let ys = [0u, 1, 2, 3, 5];
+        let mut it = xs.iter().take(5);
+        let mut i = 0;
+        for it.advance |&x: &uint| {
+            assert_eq!(x, ys[i]);
+            i += 1;
+        }
+        assert_eq!(i, ys.len());
+    }
+}
