@@ -1670,7 +1670,7 @@ do spawn {
 ~~~~
 
 If you want to see the output of `debug!` statements, you will need to turn on `debug!` logging.
-To enable `debug!` logging, set the RUST_LOG environment variable to `debug` (e.g., with bash, `export RUST_LOG=debug`)
+To enable `debug!` logging, set the RUST_LOG environment variable to the name of your crate, which, for a file named `foo.rs`, will be `foo` (e.g., with bash, `export RUST_LOG=foo`).
 
 ## For loops
 
