@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use prelude::*;
-use super::{Reader, Writer, Closeable};
+use super::{Reader, Writer, Close};
 
 pub fn stdin() -> StdReader { fail!() }
 
@@ -39,7 +39,7 @@ impl Reader for StdReader {
     fn eof(&mut self) -> bool { fail!() }
 }
 
-impl Closeable for StdReader {
+impl Close for StdReader {
     fn close(&mut self) { fail!() }
 }
 
@@ -55,6 +55,6 @@ impl Writer for StdWriter {
     fn flush(&mut self) { fail!() }
 }
 
-impl Closeable for StdWriter {
+impl Close for StdWriter {
     fn close(&mut self) { fail!() }
 }

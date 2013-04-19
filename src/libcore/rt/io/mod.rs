@@ -146,7 +146,7 @@ mod util;
 mod misc;
 
 /// Thread-blocking implementations
-pub mod blocking {
+pub mod native {
     /// Posix file I/O
     pub mod file;
     /// # XXX - implement this
@@ -233,12 +233,12 @@ pub trait Writer {
 ///
 /// Any further operations performed on a closed resource will raise
 /// on `io_error`
-pub trait Closeable {
+pub trait Close {
     /// Close the I/O resource
     fn close(&mut self);
 }
 
-pub trait Stream: Reader + Writer + Closeable { }
+pub trait Stream: Reader + Writer + Close { }
 
 pub enum SeekStyle {
     /// Seek from the beginning of the stream
@@ -251,7 +251,7 @@ pub enum SeekStyle {
 
 /// # XXX
 /// * Are `u64` and `i64` the right choices?
-pub trait Seekable {
+pub trait Seek {
     fn tell(&self) -> u64;
     fn seek(&mut self, pos: i64, style: SeekStyle);
 }

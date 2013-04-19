@@ -33,7 +33,7 @@ impl Writer for UnixStream {
     fn flush(&mut self) { fail!() }
 }
 
-impl Closeable for UnixStream {
+impl Close for UnixStream {
     fn close(&mut self) { fail!() }
 }
 

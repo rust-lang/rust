@@ -33,7 +33,7 @@ impl Writer for UdpStream {
     fn flush(&mut self) { fail!() }
 }
 
-impl Closeable for UdpStream {
+impl Close for UdpStream {
     fn close(&mut self) { fail!() }
 }
 
