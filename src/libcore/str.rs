@@ -3346,7 +3346,7 @@ mod tests {
     #[test]
     fn test_shift_byte() {
         let mut s = ~"ABC";
-        let b = unsafe { raw::shift_byte(&mut s) };
+        let b = raw::shift_byte(&mut s);
         assert!((s == ~"BC"));
         assert!((b == 65u8));
     }
@@ -3354,7 +3354,7 @@ mod tests {
     #[test]
     fn test_pop_byte() {
         let mut s = ~"ABC";
-        let b = unsafe { raw::pop_byte(&mut s) };
+        let b = raw::pop_byte(&mut s);
         assert!((s == ~"AB"));
         assert!((b == 67u8));
     }

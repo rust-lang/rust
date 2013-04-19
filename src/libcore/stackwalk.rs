@@ -64,9 +64,7 @@ fn test_simple_deep() {
         if i == 0 { return }
 
         for walk_stack |_frame| {
-            unsafe {
-                breakpoint();
-            }
+            breakpoint();
         }
         run(i - 1);
     }
