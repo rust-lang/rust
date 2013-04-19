@@ -22,6 +22,8 @@ pub trait IteratorUtil<A> {
     // FIXME: #5898: should be called map
     fn transform<'r, B>(self, f: &'r fn(A) -> B) -> MapIterator<'r, A, B, Self>;
     fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> FilterIterator<'r, A, Self>;
+    fn dropwhile<'r>(self, predicate: &'r fn(&A) -> bool) -> DropWhileIterator<'r, A, Self>;
+    fn takewhile<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhileIterator<'r, A, Self>;
     fn enumerate(self) -> EnumerateIterator<Self>;
     fn advance(&mut self, f: &fn(A) -> bool);
 }
@@ -46,6 +48,16 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline(always)]
     fn enumerate(self) -> EnumerateIterator<T> {
         EnumerateIterator{iter: self, count: 0}
+    }
+
+    #[inline(always)]
+    fn dropwhile<'r>(self, predicate: &'r fn(&A) -> bool) -> DropWhileIterator<'r, A, T> {
+        DropWhileIterator{iter: self, flag: false, predicate: predicate}
+    }
+
+    #[inline(always)]
+    fn takewhile<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhileIterator<'r, A, T> {
+        TakeWhileIterator{iter: self, flag: false, predicate: predicate}
     }
 
     /// A shim implementing the `for` loop iteration protocol for iterator objects
@@ -126,6 +138,64 @@ impl<A, T: Iterator<A>> Iterator<(uint, A)> for EnumerateIterator<T> {
                 ret
             }
             _ => None
+        }
+    }
+}
+
+pub struct DropWhileIterator<'self, A, T> {
+    priv iter: T,
+    priv flag: bool,
+    priv predicate: &'self fn(&A) -> bool
+}
+
+impl<'self, A, T: Iterator<A>> Iterator<A> for DropWhileIterator<'self, A, T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        let mut next = self.iter.next();
+        if self.flag {
+            next
+        } else {
+            loop {
+                match next {
+                    Some(x) => {
+                        if (self.predicate)(&x) {
+                            next = self.iter.next();
+                            loop
+                        } else {
+                            self.flag = true;
+                            return Some(x)
+                        }
+                    }
+                    None => return None
+                }
+            }
+        }
+    }
+}
+
+pub struct TakeWhileIterator<'self, A, T> {
+    priv iter: T,
+    priv flag: bool,
+    priv predicate: &'self fn(&A) -> bool
+}
+
+impl<'self, A, T: Iterator<A>> Iterator<A> for TakeWhileIterator<'self, A, T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        if self.flag {
+            None
+        } else {
+            match self.iter.next() {
+                Some(x) => {
+                    if (self.predicate)(&x) {
+                        Some(x)
+                    } else {
+                        self.flag = true;
+                        None
+                    }
+                }
+                None => None
+            }
         }
     }
 }
