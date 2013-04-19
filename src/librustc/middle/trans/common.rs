@@ -184,7 +184,7 @@ pub struct CrateContext {
      monomorphized: @mut HashMap<mono_id, ValueRef>,
      monomorphizing: @mut HashMap<ast::def_id, uint>,
      // Cache computed type parameter uses (see type_use.rs)
-     type_use_cache: @mut HashMap<ast::def_id, ~[type_use::type_uses]>,
+     type_use_cache: @mut HashMap<ast::def_id, @~[type_use::type_uses]>,
      // Cache generated vtables
      vtables: @mut HashMap<mono_id, ValueRef>,
      // Cache of constant strings,

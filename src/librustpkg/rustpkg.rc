@@ -76,13 +76,13 @@ impl PkgScript {
         // Build the rustc session data structures to pass
         // to the compiler
         let options = @session::options {
-            binary: binary,
+            binary: @binary,
             crate_type: session::bin_crate,
             .. *session::basic_options()
         };
         let input = driver::file_input(script);
         let sess = driver::build_session(options, diagnostic::emit);
-        let cfg = driver::build_configuration(sess, binary, input);
+        let cfg = driver::build_configuration(sess, @binary, input);
         let (crate, _) = driver::compile_upto(sess, cfg, input,
                                               driver::cu_parse, None);
         let work_dir = dest_dir(id);
