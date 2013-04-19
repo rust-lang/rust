@@ -160,3 +160,24 @@ fn test_context() {
         sched.run();
     }
 }
+
+// For setting up tests of the new scheduler
+#[cfg(test)]
+pub fn run_in_newsched_task(f: ~fn()) {
+    use cell::Cell;
+    use unstable::run_in_bare_thread;
+    use self::sched::{Scheduler, Task};
+    use self::uvio::UvEventLoop;
+
+    let f = Cell(Cell(f));
+
+    do run_in_bare_thread {
+        let mut sched = ~UvEventLoop::new_scheduler();
+        let f = f.take();
+        let task = ~do Task::new(&mut sched.stack_pool) {
+            (f.take())();
+        };
+        sched.task_queue.push_back(task);
+        sched.run();
+    }
+}
