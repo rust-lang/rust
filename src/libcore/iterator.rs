@@ -8,7 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Composable iterator objects
+/*! Composable external iterators
+
+The `Iterator` trait defines an interface for objects which implement iteration as a state machine.
+
+Algorithms like `zip` are provided as `Iterator` implementations which wrap other objects
+implementing the `Iterator` trait.
+
+*/
 
 use prelude::*;
 
@@ -17,6 +24,10 @@ pub trait Iterator<A> {
     fn next(&mut self) -> Option<A>;
 }
 
+/// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
+/// implementations of the `Iterator` trait.
+///
+/// In the future these will be default methods instead of a utility trait.
 pub trait IteratorUtil<A> {
     fn chain(self, other: Self) -> ChainIterator<Self>;
     fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<Self, U>;
@@ -31,6 +42,10 @@ pub trait IteratorUtil<A> {
     fn advance(&mut self, f: &fn(A) -> bool);
 }
 
+/// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
+/// implementations of the `Iterator` trait.
+///
+/// In the future these will be default methods instead of a utility trait.
 impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline(always)]
     fn chain(self, other: T) -> ChainIterator<T> {
