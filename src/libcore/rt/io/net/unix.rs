@@ -11,7 +11,7 @@
 use prelude::*;
 use super::*;
 use super::super::*;
-use super::super::misc::PathLike;
+use super::super::support::PathLike;
 
 pub struct UnixStream;
 
