@@ -16,6 +16,7 @@ use libc::c_void;
 use cast::transmute;
 
 use super::Scheduler;
+use super::super::rtio::IoFactoryObject;
 use tls = super::super::thread_local_storage;
 #[cfg(test)] use super::super::uvio::UvEventLoop;
 
@@ -50,11 +51,21 @@ pub fn exists() -> bool {
     }
 }
 
+/// Borrow the thread-local scheduler from thread-local storage.
+/// While the scheduler is borrowed it is not available in TLS.
+pub fn borrow(f: &fn(&mut Scheduler)) {
+    let mut sched = take();
+    f(sched);
+    put(sched);
+}
+
 /// Borrow a mutable reference to the thread-local Scheduler
+///
 /// # Safety Note
+///
 /// Because this leaves the Scheduler in thread-local storage it is possible
 /// For the Scheduler pointer to be aliased
-pub unsafe fn borrow() -> &mut Scheduler {
+pub unsafe fn unsafe_borrow() -> &mut Scheduler {
     unsafe {
         let key = tls_key();
         let mut void_sched: *mut c_void = tls::get(key);
@@ -67,6 +78,13 @@ pub unsafe fn borrow() -> &mut Scheduler {
             let sched: &mut Scheduler = &mut **sched;
             return sched;
         }
+    }
+}
+
+pub unsafe fn unsafe_borrow_io() -> &mut IoFactoryObject {
+    unsafe {
+        let sched = unsafe_borrow();
+        return sched.event_loop.io().unwrap();
     }
 }
 
@@ -125,7 +143,7 @@ fn borrow_smoke_test() {
     let scheduler = ~UvEventLoop::new_scheduler();
     put(scheduler);
     unsafe {
-        let _scheduler = borrow();
+        let _scheduler = unsafe_borrow();
     }
     let _scheduler = take();
 }
