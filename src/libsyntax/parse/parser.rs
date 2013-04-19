@@ -3238,7 +3238,7 @@ pub impl Parser {
             is_tuple_like = false;
             fields = ~[];
             while *self.token != token::RBRACE {
-                match self.parse_class_item() {
+                match self.parse_struct_decl_field() {
                   dtor_decl(ref blk, ref attrs, s) => {
                       match the_dtor {
                         Some((_, _, s_first)) => {
@@ -3355,7 +3355,8 @@ pub impl Parser {
         dtor_decl(body, attrs, mk_sp(lo, self.last_span.hi))
     }
 
-    fn parse_class_item(&self) -> class_contents {
+    // parse an item in a struct definition
+    fn parse_struct_decl_field(&self) -> class_contents {
 
         if self.try_parse_obsolete_priv_section() {
             return members(~[]);
@@ -3759,7 +3760,7 @@ pub impl Parser {
         let mut the_dtor: Option<(blk, ~[attribute], codemap::span)> = None;
         let mut fields: ~[@struct_field] = ~[];
         while *self.token != token::RBRACE {
-            match self.parse_class_item() {
+            match self.parse_struct_decl_field() {
                 dtor_decl(ref blk, ref attrs, s) => {
                     match the_dtor {
                         Some((_, _, s_first)) => {
