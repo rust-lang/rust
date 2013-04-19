@@ -1287,18 +1287,16 @@ mod tests {
           node::Content(x) => {
             let str = @mut ~"";
             fn aux(str: @mut ~str, node: @node::Node) {
-                unsafe {
-                    match (*node) {
-                      node::Leaf(x) => {
-                        *str += str::slice(
-                            *x.content, x.byte_offset,
-                            x.byte_offset + x.byte_len).to_owned();
-                      }
-                      node::Concat(ref x) => {
-                        aux(str, x.left);
-                        aux(str, x.right);
-                      }
-                    }
+                match (*node) {
+                  node::Leaf(x) => {
+                    *str += str::slice(
+                        *x.content, x.byte_offset,
+                        x.byte_offset + x.byte_len).to_owned();
+                  }
+                  node::Concat(ref x) => {
+                    aux(str, x.left);
+                    aux(str, x.right);
+                  }
                 }
             }
             aux(str, x);

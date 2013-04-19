@@ -159,8 +159,8 @@ mod tests {
 
             assert!(mem as int != 0);
 
-            return unsafe { c_vec_with_dtor(mem as *mut u8, n as uint,
-                                         || unsafe { free(mem) }) };
+            return c_vec_with_dtor(mem as *mut u8, n as uint,
+                                   || unsafe { free(mem) });
         }
     }
 
@@ -196,7 +196,7 @@ mod tests {
     #[test]
     fn test_and_I_mean_it() {
         let cv = malloc(16u as size_t);
-        let p = unsafe { ptr(cv) };
+        let p = ptr(cv);
 
         set(cv, 0u, 32u8);
         set(cv, 1u, 33u8);
