@@ -388,7 +388,7 @@ fn connect_read() {
                 vec_to_uv_buf(vec::from_elem(size, 0))
             };
             do stream_watcher.read_start(alloc)
-                |stream_watcher, nread, buf, status| {
+                |stream_watcher, _nread, buf, status| {
 
                 let buf = vec_from_uv_buf(buf);
                 rtdebug!("read cb!");
