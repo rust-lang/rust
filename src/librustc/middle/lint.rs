@@ -348,7 +348,7 @@ pub impl Context {
         }
     }
 
-    fn span_lint(&self, level: level, span: span, +msg: ~str) {
+    fn span_lint(&self, level: level, span: span, msg: ~str) {
         self.sess.span_lint_level(level, span, msg);
     }
 
@@ -438,7 +438,7 @@ pub impl Context {
 }
 
 
-fn build_settings_item(i: @ast::item, &&cx: Context, v: visit::vt<Context>) {
+fn build_settings_item(i: @ast::item, cx: Context, v: visit::vt<Context>) {
     do cx.with_lint_attrs(/*bad*/copy i.attrs) |cx| {
         if !cx.is_default {
             cx.sess.lint_settings.settings_map.insert(i.id, cx.curr);
@@ -481,7 +481,7 @@ pub fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
             visit_item: build_settings_item,
             .. *visit::default_visitor()
         });
-        visit::visit_crate(*crate, cx, visit);
+        visit::visit_crate(crate, cx, visit);
     }
 
     sess.abort_if_errors();
@@ -1088,7 +1088,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
             check_fn(tcx, fk, decl, body, span, id),
         .. *visit::default_simple_visitor()
     });
-    visit::visit_crate(*crate, (), v);
+    visit::visit_crate(crate, (), v);
 
     tcx.sess.abort_if_errors();
 }

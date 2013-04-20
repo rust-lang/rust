@@ -563,7 +563,7 @@ enum Constraint {
 }
 
 impl to_bytes::IterBytes for Constraint {
-   fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+   fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         match *self {
           ConstrainVarSubVar(ref v0, ref v1) =>
           to_bytes::iter_bytes_3(&0u8, v0, v1, lsb0, f),
@@ -584,7 +584,7 @@ struct TwoRegions {
 }
 
 impl to_bytes::IterBytes for TwoRegions {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.a, &self.b, lsb0, f)
     }
 }
@@ -729,7 +729,7 @@ pub impl RegionVarBindings {
         re_bound(br_fresh(sc))
     }
 
-    fn add_constraint(&mut self, +constraint: Constraint, span: span) {
+    fn add_constraint(&mut self, constraint: Constraint, span: span) {
         // cannot add constraints once regions are resolved
         assert!(self.values.is_empty());
 
@@ -995,7 +995,7 @@ pub impl RegionVarBindings {
 
         return result_set;
 
-        fn consider_adding_edge(+result_set: ~[Region],
+        fn consider_adding_edge(result_set: ~[Region],
                                 r: &Region,
                                 r1: &Region,
                                 r2: &Region) -> ~[Region]
@@ -1030,7 +1030,7 @@ priv impl RegionVarBindings {
         rm.is_subregion_of(sub, sup)
     }
 
-    fn lub_concrete_regions(&self, +a: Region, +b: Region) -> Region {
+    fn lub_concrete_regions(&self, a: Region, b: Region) -> Region {
         match (a, b) {
           (re_static, _) | (_, re_static) => {
             re_static // nothing lives longer than static
@@ -1122,8 +1122,8 @@ priv impl RegionVarBindings {
     }
 
     fn glb_concrete_regions(&self,
-                            +a: Region,
-                            +b: Region)
+                            a: Region,
+                            b: Region)
                          -> cres<Region> {
         debug!("glb_concrete_regions(%?, %?)", a, b);
         match (a, b) {
@@ -1330,7 +1330,7 @@ pub impl RegionVarBindings {
 
         return (graph);
 
-        fn insert_edge(+graph: &mut Graph,
+        fn insert_edge(graph: &mut Graph,
                        node_id: RegionVid,
                        edge_dir: Direction,
                        edge_idx: uint) {
@@ -1457,9 +1457,9 @@ pub impl RegionVarBindings {
             }
         };
 
-        fn check_node(+self: &mut RegionVarBindings,
+        fn check_node(self: &mut RegionVarBindings,
                       a_vid: RegionVid,
-                      +a_node: &mut GraphNode,
+                      a_node: &mut GraphNode,
                       a_region: Region,
                       b_region: Region)
                    -> bool {
@@ -1471,9 +1471,9 @@ pub impl RegionVarBindings {
             false
         }
 
-        fn adjust_node(+self: &mut RegionVarBindings,
+        fn adjust_node(self: &mut RegionVarBindings,
                        a_vid: RegionVid,
-                       +a_node: &mut GraphNode,
+                       a_node: &mut GraphNode,
                        a_region: Region,
                        b_region: Region)
                     -> bool {

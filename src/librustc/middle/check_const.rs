@@ -26,7 +26,7 @@ pub fn check_crate(sess: Session,
                    def_map: resolve::DefMap,
                    method_map: typeck::method_map,
                    tcx: ty::ctxt) {
-    visit::visit_crate(*crate, false, visit::mk_vt(@visit::Visitor {
+    visit::visit_crate(crate, false, visit::mk_vt(@visit::Visitor {
         visit_item: |a,b,c| check_item(sess, ast_map, def_map, a, b, c),
         visit_pat: check_pat,
         visit_expr: |a,b,c|
@@ -40,7 +40,7 @@ pub fn check_item(sess: Session,
                   ast_map: ast_map::map,
                   def_map: resolve::DefMap,
                   it: @item,
-                  &&_is_const: bool,
+                  _is_const: bool,
                   v: visit::vt<bool>) {
     match it.node {
       item_const(_, ex) => {
@@ -58,7 +58,7 @@ pub fn check_item(sess: Session,
     }
 }
 
-pub fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
+pub fn check_pat(p: @pat, _is_const: bool, v: visit::vt<bool>) {
     fn is_str(e: @expr) -> bool {
         match e.node {
             expr_vstore(
@@ -87,7 +87,7 @@ pub fn check_expr(sess: Session,
                   method_map: typeck::method_map,
                   tcx: ty::ctxt,
                   e: @expr,
-                  &&is_const: bool,
+                  is_const: bool,
                   v: visit::vt<bool>) {
     if is_const {
         match e.node {
@@ -224,7 +224,7 @@ pub fn check_item_recursion(sess: Session,
     });
     (visitor.visit_item)(it, env, visitor);
 
-    fn visit_item(it: @item, &&env: env, v: visit::vt<env>) {
+    fn visit_item(it: @item, env: env, v: visit::vt<env>) {
         if env.idstack.contains(&(it.id)) {
             env.sess.span_fatal(env.root_it.span, ~"recursive constant");
         }
@@ -233,7 +233,7 @@ pub fn check_item_recursion(sess: Session,
         env.idstack.pop();
     }
 
-    fn visit_expr(e: @expr, &&env: env, v: visit::vt<env>) {
+    fn visit_expr(e: @expr, env: env, v: visit::vt<env>) {
         match e.node {
           expr_path(*) => {
             match env.def_map.find(&e.id) {

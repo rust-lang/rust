@@ -785,7 +785,7 @@ pub fn enter_region<'r>(bcx: block,
 // on a set of enum variants or a literal.
 pub fn get_options(bcx: block, m: &[@Match], col: uint) -> ~[Opt] {
     let ccx = bcx.ccx();
-    fn add_to_set(tcx: ty::ctxt, set: &mut ~[Opt], +val: Opt) {
+    fn add_to_set(tcx: ty::ctxt, set: &mut ~[Opt], val: Opt) {
         if set.any(|l| opt_eq(tcx, l, &val)) {return;}
         set.push(val);
     }

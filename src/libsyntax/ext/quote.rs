@@ -419,7 +419,7 @@ fn ids_ext(cx: @ext_ctxt, strs: ~[~str]) -> ~[ast::ident] {
     strs.map(|str| cx.parse_sess().interner.intern(@copy *str))
 }
 
-fn id_ext(cx: @ext_ctxt, +str: ~str) -> ast::ident {
+fn id_ext(cx: @ext_ctxt, str: ~str) -> ast::ident {
     cx.parse_sess().interner.intern(@str)
 }
 
@@ -734,8 +734,8 @@ fn expand_tts(cx: @ext_ctxt,
 
 fn expand_parse_call(cx: @ext_ctxt,
                      sp: span,
-                     +parse_method: ~str,
-                     +arg_exprs: ~[@ast::expr],
+                     parse_method: ~str,
+                     arg_exprs: ~[@ast::expr],
                      tts: &[ast::token_tree]) -> @ast::expr {
     let tts_expr = expand_tts(cx, sp, tts);
 

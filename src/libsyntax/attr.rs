@@ -31,12 +31,12 @@ pub fn mk_name_value_item_str(name: @~str, value: @~str)
     mk_name_value_item(name, value_lit)
 }
 
-pub fn mk_name_value_item(name: @~str, +value: ast::lit)
+pub fn mk_name_value_item(name: @~str, value: ast::lit)
         -> @ast::meta_item {
     @dummy_spanned(ast::meta_name_value(name, value))
 }
 
-pub fn mk_list_item(name: @~str, +items: ~[@ast::meta_item]) ->
+pub fn mk_list_item(name: @~str, items: ~[@ast::meta_item]) ->
    @ast::meta_item {
     @dummy_spanned(ast::meta_list(name, items))
 }
@@ -51,8 +51,8 @@ pub fn mk_attr(item: @ast::meta_item) -> ast::attribute {
                                     is_sugared_doc: false })
 }
 
-pub fn mk_sugared_doc_attr(+text: ~str,
-                           +lo: BytePos, +hi: BytePos) -> ast::attribute {
+pub fn mk_sugared_doc_attr(text: ~str,
+                           lo: BytePos, hi: BytePos) -> ast::attribute {
     let style = doc_comment_style(text);
     let lit = spanned(lo, hi, ast::lit_str(@text));
     let attr = ast::attribute_ {

@@ -77,8 +77,8 @@ pub impl CombineFields {
     fn var_sub_var<T:Copy + InferStr + LatticeValue,
                    V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
         &self,
-        +a_id: V,
-        +b_id: V) -> ures
+        a_id: V,
+        b_id: V) -> ures
     {
         /*!
          *
@@ -130,8 +130,8 @@ pub impl CombineFields {
     fn var_sub_t<T:Copy + InferStr + LatticeValue,
                  V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
         &self,
-        +a_id: V,
-        +b: T) -> ures
+        a_id: V,
+        b: T) -> ures
     {
         /*!
          *
@@ -154,8 +154,8 @@ pub impl CombineFields {
     fn t_sub_var<T:Copy + InferStr + LatticeValue,
                  V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
         &self,
-        +a: T,
-        +b_id: V) -> ures
+        a: T,
+        b_id: V) -> ures
     {
         /*!
          *
@@ -206,7 +206,7 @@ pub impl CombineFields {
     fn set_var_to_merged_bounds<T:Copy + InferStr + LatticeValue,
                                 V:Copy+Eq+ToStr+Vid+UnifyVid<Bounds<T>>>(
         &self,
-        +v_id: V,
+        v_id: V,
         a: &Bounds<T>,
         b: &Bounds<T>,
         rank: uint) -> ures
@@ -296,7 +296,7 @@ pub impl CombineFields {
 pub trait LatticeDir {
     fn combine_fields(&self) -> CombineFields;
     fn bnd<T:Copy>(&self, b: &Bounds<T>) -> Option<T>;
-    fn with_bnd<T:Copy>(&self, b: &Bounds<T>, +t: T) -> Bounds<T>;
+    fn with_bnd<T:Copy>(&self, b: &Bounds<T>, t: T) -> Bounds<T>;
 }
 
 pub trait TyLatticeDir {
@@ -306,7 +306,7 @@ pub trait TyLatticeDir {
 impl LatticeDir for Lub {
     fn combine_fields(&self) -> CombineFields { **self }
     fn bnd<T:Copy>(&self, b: &Bounds<T>) -> Option<T> { b.ub }
-    fn with_bnd<T:Copy>(&self, b: &Bounds<T>, +t: T) -> Bounds<T> {
+    fn with_bnd<T:Copy>(&self, b: &Bounds<T>, t: T) -> Bounds<T> {
         Bounds { ub: Some(t), ..*b }
     }
 }
@@ -320,7 +320,7 @@ impl TyLatticeDir for Lub {
 impl LatticeDir for Glb {
     fn combine_fields(&self) -> CombineFields { **self }
     fn bnd<T:Copy>(&self, b: &Bounds<T>) -> Option<T> { b.lb }
-    fn with_bnd<T:Copy>(&self, b: &Bounds<T>, +t: T) -> Bounds<T> {
+    fn with_bnd<T:Copy>(&self, b: &Bounds<T>, t: T) -> Bounds<T> {
         Bounds { lb: Some(t), ..*b }
     }
 }
@@ -401,8 +401,8 @@ pub fn lattice_vars<L:LatticeDir + Combine,
                     T:Copy + InferStr + LatticeValue,
                     V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
     self: &L,                           // defines whether we want LUB or GLB
-    +a_vid: V,                          // first variable
-    +b_vid: V,                          // second variable
+    a_vid: V,                          // first variable
+    b_vid: V,                          // second variable
     lattice_dir_op: LatticeDirOp<T>)    // LUB or GLB operation on types
     -> cres<LatticeVarResult<V,T>> {
     let nde_a = self.infcx().get(a_vid);
@@ -447,7 +447,7 @@ pub fn lattice_var_and_t<L:LatticeDir + Combine,
                          T:Copy + InferStr + LatticeValue,
                          V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
     self: &L,
-    +a_id: V,
+    a_id: V,
     b: &T,
     lattice_dir_op: LatticeDirOp<T>)
     -> cres<T> {

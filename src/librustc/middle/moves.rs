@@ -285,7 +285,7 @@ pub fn compute_moves(tcx: ty::ctxt,
             capture_map: @mut HashMap::new()
         }
     };
-    visit::visit_crate(*crate, visit_cx, visitor);
+    visit::visit_crate(crate, visit_cx, visitor);
     return visit_cx.move_maps;
 }
 
@@ -293,7 +293,7 @@ pub fn compute_moves(tcx: ty::ctxt,
 // Expressions
 
 fn compute_modes_for_expr(expr: @expr,
-                          &&cx: VisitContext,
+                          cx: VisitContext,
                           v: vt<VisitContext>)
 {
     cx.consume_expr(expr, v);
@@ -760,7 +760,7 @@ pub impl VisitContext {
 
     fn arms_have_by_move_bindings(&self,
                                   moves_map: MovesMap,
-                                  +arms: &[arm]) -> bool
+                                  arms: &[arm]) -> bool
     {
         for arms.each |arm| {
             for arm.pats.each |pat| {

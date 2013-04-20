@@ -79,7 +79,7 @@ enum impurity_cause {
 }
 
 pub fn check_loans(bccx: @BorrowckCtxt,
-                   +req_maps: ReqMaps,
+                   req_maps: ReqMaps,
                    crate: @ast::crate) {
     let clcx = @mut CheckLoanCtxt {
         bccx: bccx,
@@ -94,7 +94,7 @@ pub fn check_loans(bccx: @BorrowckCtxt,
                                            visit_block: check_loans_in_block,
                                            visit_fn: check_loans_in_fn,
                                            .. *visit::default_visitor()});
-    visit::visit_crate(*crate, clcx, vt);
+    visit::visit_crate(crate, clcx, vt);
 }
 
 #[deriving(Eq)]
@@ -619,7 +619,7 @@ fn check_loans_in_fn(fk: &visit::fn_kind,
                      body: &ast::blk,
                      sp: span,
                      id: ast::node_id,
-                     &&self: @mut CheckLoanCtxt,
+                     self: @mut CheckLoanCtxt,
                      visitor: visit::vt<@mut CheckLoanCtxt>) {
     let is_stack_closure = self.is_stack_closure(id);
     let fty = ty::node_id_to_type(self.tcx(), id);
@@ -726,13 +726,13 @@ fn check_loans_in_fn(fk: &visit::fn_kind,
 }
 
 fn check_loans_in_local(local: @ast::local,
-                        &&self: @mut CheckLoanCtxt,
+                        self: @mut CheckLoanCtxt,
                         vt: visit::vt<@mut CheckLoanCtxt>) {
     visit::visit_local(local, self, vt);
 }
 
 fn check_loans_in_expr(expr: @ast::expr,
-                       &&self: @mut CheckLoanCtxt,
+                       self: @mut CheckLoanCtxt,
                        vt: visit::vt<@mut CheckLoanCtxt>) {
     debug!("check_loans_in_expr(expr=%?/%s)",
            expr.id, pprust::expr_to_str(expr, self.tcx().sess.intr()));
@@ -794,7 +794,7 @@ fn check_loans_in_expr(expr: @ast::expr,
 }
 
 fn check_loans_in_block(blk: &ast::blk,
-                        &&self: @mut CheckLoanCtxt,
+                        self: @mut CheckLoanCtxt,
                         vt: visit::vt<@mut CheckLoanCtxt>) {
     do save_and_restore_managed(self.declared_purity) {
         self.check_for_conflicting_loans(blk.node.id);

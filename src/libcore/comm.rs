@@ -112,8 +112,6 @@ pub mod streamp {
 
     #[allow(non_camel_case_types)]
     pub mod server {
-        priv use core::kinds::Owned;
-
         #[allow(non_camel_case_types)]
         pub type Open<T> = ::core::pipes::RecvPacket<super::Open<T>>;
     }
@@ -388,8 +386,6 @@ pub mod oneshot {
 
     #[allow(non_camel_case_types)]
     pub mod server {
-        priv use core::kinds::Owned;
-
         #[allow(non_camel_case_types)]
         pub type Oneshot<T> =
             ::core::pipes::RecvPacketBuffered<super::Oneshot<T>,

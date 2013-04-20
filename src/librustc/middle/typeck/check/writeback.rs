@@ -212,12 +212,12 @@ struct WbCtxt {
 
 type wb_vt = visit::vt<@mut WbCtxt>;
 
-fn visit_stmt(s: @ast::stmt, &&wbcx: @mut WbCtxt, v: wb_vt) {
+fn visit_stmt(s: @ast::stmt, wbcx: @mut WbCtxt, v: wb_vt) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, s.span, ty::stmt_node_id(s));
     visit::visit_stmt(s, wbcx, v);
 }
-fn visit_expr(e: @ast::expr, &&wbcx: @mut WbCtxt, v: wb_vt) {
+fn visit_expr(e: @ast::expr, wbcx: @mut WbCtxt, v: wb_vt) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, e.span, e.id);
     resolve_method_map_entry(wbcx.fcx, e.span, e.id);
@@ -256,12 +256,12 @@ fn visit_expr(e: @ast::expr, &&wbcx: @mut WbCtxt, v: wb_vt) {
     }
     visit::visit_expr(e, wbcx, v);
 }
-fn visit_block(b: &ast::blk, &&wbcx: @mut WbCtxt, v: wb_vt) {
+fn visit_block(b: &ast::blk, wbcx: @mut WbCtxt, v: wb_vt) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, b.span, b.node.id);
     visit::visit_block(b, wbcx, v);
 }
-fn visit_pat(p: @ast::pat, &&wbcx: @mut WbCtxt, v: wb_vt) {
+fn visit_pat(p: @ast::pat, wbcx: @mut WbCtxt, v: wb_vt) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, p.span, p.id);
     debug!("Type for pattern binding %s (id %d) resolved to %s",
@@ -271,7 +271,7 @@ fn visit_pat(p: @ast::pat, &&wbcx: @mut WbCtxt, v: wb_vt) {
                                    p.id)));
     visit::visit_pat(p, wbcx, v);
 }
-fn visit_local(l: @ast::local, &&wbcx: @mut WbCtxt, v: wb_vt) {
+fn visit_local(l: @ast::local, wbcx: @mut WbCtxt, v: wb_vt) {
     if !wbcx.success { return; }
     let var_ty = wbcx.fcx.local_ty(l.span, l.node.id);
     match resolve_type(wbcx.fcx.infcx(), var_ty, resolve_all | force_all) {
@@ -293,7 +293,7 @@ fn visit_local(l: @ast::local, &&wbcx: @mut WbCtxt, v: wb_vt) {
     }
     visit::visit_local(l, wbcx, v);
 }
-fn visit_item(_item: @ast::item, &&_wbcx: @mut WbCtxt, _v: wb_vt) {
+fn visit_item(_item: @ast::item, _wbcx: @mut WbCtxt, _v: wb_vt) {
     // Ignore items
 }
 
