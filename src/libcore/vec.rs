@@ -1227,6 +1227,46 @@ pub fn rposition_between<T>(v: &[T], start: uint, end: uint,
     None
 }
 
+
+
+/**
+ * Binary search a sorted vector with a comparator function.
+ *
+ * The comparator should implement an order consistent with the sort
+ * order of the underlying vector, returning an order code that indicates
+ * whether its argument is `Less`, `Equal` or `Greater` the desired target.
+ *
+ * Returns the index where the comparator returned `Equal`, or `None` if
+ * not found.
+ */
+pub fn bsearch<T>(v: &[T], f: &fn(&T) -> Ordering) -> Option<uint> {
+    let mut base : uint = 0;
+    let mut lim : uint = v.len();
+
+    while lim != 0 {
+        let ix = base + (lim >> 1);
+        match f(&v[ix]) {
+            Equal => return Some(ix),
+            Less => {
+                base = ix + 1;
+                lim -= 1;
+            }
+            Greater => ()
+        }
+        lim >>= 1;
+    }
+    return None;
+}
+
+/**
+ * Binary search a sorted vector for a given element.
+ *
+ * Returns the index of the element or None if not found.
+ */
+pub fn bsearch_elem<T:TotalOrd>(v: &[T], x: &T) -> Option<uint> {
+    bsearch(v, |p| p.cmp(x))
+}
+
 // FIXME: if issue #586 gets implemented, could have a postcondition
 // saying the two result lists have the same length -- or, could
 // return a nominal record with a constraint saying that, instead of
@@ -3787,6 +3827,51 @@ mod tests {
         assert!(rfind_between(v, 3u, 4u, f) == Some((3, 'b')));
 
         assert!(rfind_between(v, 4u, 4u, f).is_none());
+    }
+
+    #[test]
+    fn test_bsearch_elem() {
+        assert!(bsearch_elem([1,2,3,4,5], &5) == Some(4));
+        assert!(bsearch_elem([1,2,3,4,5], &4) == Some(3));
+        assert!(bsearch_elem([1,2,3,4,5], &3) == Some(2));
+        assert!(bsearch_elem([1,2,3,4,5], &2) == Some(1));
+        assert!(bsearch_elem([1,2,3,4,5], &1) == Some(0));
+
+        assert!(bsearch_elem([2,4,6,8,10], &1) == None);
+        assert!(bsearch_elem([2,4,6,8,10], &5) == None);
+        assert!(bsearch_elem([2,4,6,8,10], &4) == Some(1));
+        assert!(bsearch_elem([2,4,6,8,10], &10) == Some(4));
+
+        assert!(bsearch_elem([2,4,6,8], &1) == None);
+        assert!(bsearch_elem([2,4,6,8], &5) == None);
+        assert!(bsearch_elem([2,4,6,8], &4) == Some(1));
+        assert!(bsearch_elem([2,4,6,8], &8) == Some(3));
+
+        assert!(bsearch_elem([2,4,6], &1) == None);
+        assert!(bsearch_elem([2,4,6], &5) == None);
+        assert!(bsearch_elem([2,4,6], &4) == Some(1));
+        assert!(bsearch_elem([2,4,6], &6) == Some(2));
+
+        assert!(bsearch_elem([2,4], &1) == None);
+        assert!(bsearch_elem([2,4], &5) == None);
+        assert!(bsearch_elem([2,4], &2) == Some(0));
+        assert!(bsearch_elem([2,4], &4) == Some(1));
+
+        assert!(bsearch_elem([2], &1) == None);
+        assert!(bsearch_elem([2], &5) == None);
+        assert!(bsearch_elem([2], &2) == Some(0));
+
+        assert!(bsearch_elem([], &1) == None);
+        assert!(bsearch_elem([], &5) == None);
+
+        assert!(bsearch_elem([1,1,1,1,1], &1) != None);
+        assert!(bsearch_elem([1,1,1,1,2], &1) != None);
+        assert!(bsearch_elem([1,1,1,2,2], &1) != None);
+        assert!(bsearch_elem([1,1,2,2,2], &1) != None);
+        assert!(bsearch_elem([1,2,2,2,2], &1) == Some(0));
+
+        assert!(bsearch_elem([1,2,3,4,5], &6) == None);
+        assert!(bsearch_elem([1,2,3,4,5], &0) == None);
     }
 
     #[test]
