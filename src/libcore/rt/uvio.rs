@@ -438,7 +438,7 @@ fn test_read_and_block() {
 fn test_read_read_read() {
     do run_in_newsched_task {
         let addr = next_test_ip4();
-        static MAX: uint = 5000000;
+        static MAX: uint = 500000;
         
         do spawn_immediately {
             unsafe {
