@@ -77,14 +77,14 @@ pub mod rustrt {
 }
 
 unsafe fn bump<T, U>(ptr: *T, count: uint) -> *U {
-    return cast::reinterpret_cast(&ptr::offset(ptr, count));
+    return cast::transmute(ptr::offset(ptr, count));
 }
 
 unsafe fn align_to_pointer<T>(ptr: *T) -> *T {
     let align = sys::min_align_of::<*T>();
-    let ptr: uint = cast::reinterpret_cast(&ptr);
+    let ptr: uint = cast::transmute(ptr);
     let ptr = (ptr + (align - 1)) & -align;
-    return cast::reinterpret_cast(&ptr);
+    return cast::transmute(ptr);
 }
 
 unsafe fn get_safe_point_count() -> uint {
@@ -129,8 +129,8 @@ type Visitor<'self> = &'self fn(root: **Word, tydesc: *Word) -> bool;
 // Walks the list of roots for the given safe point, and calls visitor
 // on each root.
 unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) {
-    let fp_bytes: *u8 = cast::reinterpret_cast(&fp);
-    let sp_meta: *u32 = cast::reinterpret_cast(&sp.sp_meta);
+    let fp_bytes: *u8 = cast::transmute(fp);
+    let sp_meta: *u32 = cast::transmute(sp.sp_meta);
 
     let num_stack_roots = *sp_meta as uint;
     let num_reg_roots = *ptr::offset(sp_meta, 1) as uint;
@@ -171,9 +171,9 @@ unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) {
 
 // Is fp contained in segment?
 unsafe fn is_frame_in_segment(fp: *Word, segment: *StackSegment) -> bool {
-    let begin: Word = cast::reinterpret_cast(&segment);
-    let end: Word = cast::reinterpret_cast(&(*segment).end);
-    let frame: Word = cast::reinterpret_cast(&fp);
+    let begin: Word = cast::transmute(segment);
+    let end: Word = cast::transmute((*segment).end);
+    let frame: Word = cast::transmute(fp);
 
     return begin <= frame && frame <= end;
 }
@@ -339,7 +339,7 @@ pub fn cleanup_stack_for_failure() {
         // own stack roots on the stack anyway.
         let sentinel_box = ~0;
         let sentinel: **Word = if expect_sentinel() {
-            cast::reinterpret_cast(&ptr::addr_of(&sentinel_box))
+            cast::transmute(ptr::addr_of(&sentinel_box))
         } else {
             ptr::null()
         };
