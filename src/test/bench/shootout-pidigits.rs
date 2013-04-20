@@ -1,3 +1,5 @@
+// xfail-test
+
 use core::cast::transmute;
 use core::from_str::FromStr;
 use core::libc::{STDOUT_FILENO, c_char, c_int, c_uint, c_void, fdopen, fputc};
