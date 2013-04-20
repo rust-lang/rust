@@ -39,6 +39,8 @@ pub trait IteratorUtil<A> {
     fn take_while<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhileIterator<'r, A, Self>;
     fn skip(self, n: uint) -> SkipIterator<Self>;
     fn take(self, n: uint) -> TakeIterator<Self>;
+    fn scan<'r, St, B>(self, initial_state: St, f: &'r fn(&mut St, A) -> Option<B>)
+        -> ScanIterator<'r, A, B, Self, St>;
     fn advance(&mut self, f: &fn(A) -> bool);
 }
 
@@ -91,6 +93,12 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline(always)]
     fn take(self, n: uint) -> TakeIterator<T> {
         TakeIterator{iter: self, n: n}
+    }
+
+    #[inline(always)]
+    fn scan<'r, St, B>(self, initial_state: St, f: &'r fn(&mut St, A) -> Option<B>)
+        -> ScanIterator<'r, A, B, T, St> {
+        ScanIterator{iter: self, f: f, state: initial_state}
     }
 
     /// A shim implementing the `for` loop iteration protocol for iterator objects
@@ -306,12 +314,13 @@ impl<A, T: Iterator<A>> Iterator<A> for TakeIterator<T> {
 
 pub struct UnfoldrIterator<'self, A, St> {
     priv f: &'self fn(&mut St) -> Option<A>,
-    priv state: St
+    state: St
 }
 
 pub impl<'self, A, St> UnfoldrIterator<'self, A, St> {
     #[inline]
-    fn new(f: &'self fn(&mut St) -> Option<A>, initial_state: St) -> UnfoldrIterator<'self, A, St> {
+    fn new(f: &'self fn(&mut St) -> Option<A>, initial_state: St)
+        -> UnfoldrIterator<'self, A, St> {
         UnfoldrIterator {
             f: f,
             state: initial_state
@@ -323,6 +332,19 @@ impl<'self, A, St> Iterator<A> for UnfoldrIterator<'self, A, St> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         (self.f)(&mut self.state)
+    }
+}
+
+pub struct ScanIterator<'self, A, B, T, St> {
+    priv iter: T,
+    priv f: &'self fn(&mut St, A) -> Option<B>,
+    state: St
+}
+
+impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for ScanIterator<'self, A, B, T, St> {
+    #[inline]
+    fn next(&mut self) -> Option<B> {
+        self.iter.next().chain(|a| (self.f)(&mut self.state, a))
     }
 }
 
@@ -400,6 +422,25 @@ mod tests {
         let mut it = xs.iter().take(5);
         let mut i = 0;
         for it.advance |&x: &uint| {
+            assert_eq!(x, ys[i]);
+            i += 1;
+        }
+        assert_eq!(i, ys.len());
+    }
+
+    #[test]
+    fn test_iterator_scan() {
+        // test the type inference
+        fn add(old: &mut int, new: &uint) -> Option<float> {
+            *old += *new as int;
+            Some(*old as float)
+        }
+        let xs = [0u, 1, 2, 3, 4];
+        let ys = [0f, 1f, 3f, 6f, 10f];
+
+        let mut it = xs.iter().scan(0, add);
+        let mut i = 0;
+        for it.advance |x| {
             assert_eq!(x, ys[i]);
             i += 1;
         }
