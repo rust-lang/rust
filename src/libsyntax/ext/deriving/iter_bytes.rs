@@ -64,7 +64,7 @@ fn create_derived_iter_bytes_impl(cx: @ext_ctxt,
 // signature of the `iter_bytes` method.
 fn create_iter_bytes_method(cx: @ext_ctxt,
                             span: span,
-                            +statements: ~[@stmt])
+                            statements: ~[@stmt])
                          -> @method {
     // Create the `lsb0` parameter.
     let bool_ident = cx.ident_of(~"bool");

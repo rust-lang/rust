@@ -17,11 +17,10 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[legacy_modes];
-
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
-#[allow(deprecated_mode)];
+#[deny(deprecated_mode)];
+#[deny(deprecated_pattern)];
 
 #[no_core];
 

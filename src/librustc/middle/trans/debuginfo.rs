@@ -104,7 +104,7 @@ pub struct DebugContext {
     crate_file: ~str
 }
 
-pub fn mk_ctxt(+crate: ~str, intr: @ident_interner) -> DebugContext {
+pub fn mk_ctxt(crate: ~str, intr: @ident_interner) -> DebugContext {
     DebugContext {
         llmetadata: @mut HashMap::new(),
         names: new_namegen(intr),
@@ -249,7 +249,7 @@ fn get_file_path_and_dir(work_dir: &str, full_path: &str) -> (~str, ~str) {
     }, work_dir.to_owned())
 }
 
-fn create_file(cx: @CrateContext, +full_path: ~str)
+fn create_file(cx: @CrateContext, full_path: ~str)
     -> @Metadata<FileMetadata> {
     let cache = get_cache(cx);;
     let tg = FileDescriptorTag;
@@ -589,7 +589,7 @@ fn create_boxed_type(cx: @CrateContext, contents: ty::t,
 fn create_composite_type(type_tag: int, name: &str, file: ValueRef,
                          line: int, size: int, align: int, offset: int,
                          derived: Option<ValueRef>,
-                         +members: Option<~[ValueRef]>)
+                         members: Option<~[ValueRef]>)
     -> ValueRef {
     let lldata = ~[lltag(type_tag),
                   file,

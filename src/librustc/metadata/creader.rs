@@ -30,7 +30,7 @@ use syntax::ast;
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
 pub fn read_crates(diag: @span_handler,
-                   crate: ast::crate,
+                   crate: @ast::crate,
                    cstore: @mut cstore::CStore,
                    filesearch: @FileSearch,
                    os: loader::os,
@@ -126,7 +126,7 @@ struct Env {
     intr: @ident_interner
 }
 
-fn visit_crate(e: @mut Env, c: ast::crate) {
+fn visit_crate(e: @mut Env, c: &ast::crate) {
     let cstore = e.cstore;
     let link_args = attr::find_attrs_by_name(c.node.attrs, "link_args");
 
@@ -204,7 +204,7 @@ fn visit_item(e: @mut Env, i: @ast::item) {
     }
 }
 
-fn metas_with(ident: @~str, key: @~str, +metas: ~[@ast::meta_item])
+fn metas_with(ident: @~str, key: @~str, metas: ~[@ast::meta_item])
     -> ~[@ast::meta_item] {
     let name_items = attr::find_meta_items_by_name(metas, *key);
     if name_items.is_empty() {
@@ -214,7 +214,7 @@ fn metas_with(ident: @~str, key: @~str, +metas: ~[@ast::meta_item])
     }
 }
 
-fn metas_with_ident(ident: @~str, +metas: ~[@ast::meta_item])
+fn metas_with_ident(ident: @~str, metas: ~[@ast::meta_item])
     -> ~[@ast::meta_item] {
     metas_with(ident, @~"name", metas)
 }
@@ -232,7 +232,7 @@ fn existing_match(e: @mut Env, metas: &[@ast::meta_item], hash: @~str)
 
 fn resolve_crate(e: @mut Env,
                  ident: ast::ident,
-                 +metas: ~[@ast::meta_item],
+                 metas: ~[@ast::meta_item],
                  hash: @~str,
                  span: span)
               -> ast::crate_num {
@@ -251,7 +251,7 @@ fn resolve_crate(e: @mut Env,
             is_static: e.statik,
             intr: e.intr
         };
-        let (lident, ldata) = loader::load_library_crate(load_ctxt);
+        let (lident, ldata) = loader::load_library_crate(&load_ctxt);
 
         let cfilename = Path(lident);
         let cdata = ldata;

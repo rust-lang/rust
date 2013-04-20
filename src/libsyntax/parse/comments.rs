@@ -319,7 +319,7 @@ pub struct lit {
 
 pub fn gather_comments_and_literals(span_diagnostic:
                                     @diagnostic::span_handler,
-                                    +path: ~str,
+                                    path: ~str,
                                     srdr: @io::Reader)
                                  -> (~[cmnt], ~[lit]) {
     let src = @str::from_bytes(srdr.read_whole_stream());

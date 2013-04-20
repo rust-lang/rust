@@ -37,7 +37,7 @@ use std::{getopts};
 use syntax::{ast, diagnostic};
 use util::*;
 use path_util::{dest_dir, normalize};
-use rustc::driver::session::{lib_crate, bin_crate, unknown_crate, crate_type};
+use rustc::driver::session::{lib_crate, bin_crate, crate_type};
 
 mod conditions;
 mod usage;
@@ -82,8 +82,8 @@ impl PkgScript {
         };
         let input = driver::file_input(script);
         let sess = driver::build_session(options, diagnostic::emit);
-        let cfg = driver::build_configuration(sess, @binary, input);
-        let (crate, _) = driver::compile_upto(sess, cfg, input,
+        let cfg = driver::build_configuration(sess, @binary, &input);
+        let (crate, _) = driver::compile_upto(sess, cfg, &input,
                                               driver::cu_parse, None);
         let work_dir = dest_dir(id);
 
@@ -112,7 +112,7 @@ impl PkgScript {
         // Collect together any user-defined commands in the package script
         let crate = util::ready_crate(sess, self.crate);
         debug!("Building output filenames with script name %s",
-               driver::source_name(self.input));
+               driver::source_name(&self.input));
         match filesearch::get_rustpkg_sysroot() {
             Ok(r) => {
                 let root = r.pop().pop().pop().pop(); // :-\

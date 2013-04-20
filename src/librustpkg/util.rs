@@ -12,7 +12,7 @@ use core::*;
 use core::cmp::Ord;
 use core::hash::Streaming;
 use rustc::driver::{driver, session};
-use rustc::driver::session::{lib_crate, bin_crate, unknown_crate};
+use rustc::driver::session::{lib_crate, unknown_crate};
 use rustc::metadata::filesearch;
 use std::getopts::groups::getopts;
 use std::semver;
@@ -25,7 +25,7 @@ use syntax::{ast, attr, codemap, diagnostic, fold};
 use syntax::ast::{meta_name_value, meta_list, attribute, crate_};
 use syntax::attr::{mk_attr};
 use rustc::back::link::output_type_exe;
-use rustc::driver::session::{lib_crate, bin_crate, unknown_crate, crate_type};
+use rustc::driver::session::{lib_crate, unknown_crate, crate_type};
 
 pub type ExitCode = int; // For now
 
@@ -516,9 +516,9 @@ pub fn compile_crate_from_input(input: driver::input,
                                 binary: ~str,
                                 what: driver::compile_upto) -> @ast::crate {
     debug!("Calling build_output_filenames with %?", build_dir_opt);
-    let outputs = driver::build_output_filenames(input, &build_dir_opt, &Some(out_file), sess);
+    let outputs = driver::build_output_filenames(&input, &build_dir_opt, &Some(out_file), sess);
     debug!("Outputs are %? and output type = %?", outputs, sess.opts.output_type);
-    let cfg = driver::build_configuration(sess, @binary, input);
+    let cfg = driver::build_configuration(sess, @binary, &input);
     match crate_opt {
         Some(c) => {
             debug!("Calling compile_rest, outputs = %?", outputs);
@@ -528,7 +528,7 @@ pub fn compile_crate_from_input(input: driver::input,
         }
         None => {
             debug!("Calling compile_upto, outputs = %?", outputs);
-            let (crate, _) = driver::compile_upto(sess, cfg, input,
+            let (crate, _) = driver::compile_upto(sess, cfg, &input,
                                                   driver::cu_parse, Some(outputs));
 
             // Inject the inferred link_meta info if it's not already there

@@ -182,7 +182,7 @@ pub fn check_crate(tcx: ty::ctxt,
                                    capture_map,
                                    last_use_map,
                                    0);
-    visit::visit_crate(*crate, initial_maps, visitor);
+    visit::visit_crate(crate, initial_maps, visitor);
     tcx.sess.abort_if_errors();
     return last_use_map;
 }
@@ -358,7 +358,7 @@ pub impl IrMaps {
         }
     }
 
-    fn set_captures(&mut self, node_id: node_id, +cs: ~[CaptureInfo]) {
+    fn set_captures(&mut self, node_id: node_id, cs: ~[CaptureInfo]) {
         self.capture_info_map.insert(node_id, @cs);
     }
 
@@ -402,7 +402,7 @@ pub impl IrMaps {
     }
 }
 
-fn visit_item(item: @item, &&self: @mut IrMaps, v: vt<@mut IrMaps>) {
+fn visit_item(item: @item, self: @mut IrMaps, v: vt<@mut IrMaps>) {
     do with(&mut self.cur_item, item.id) {
         visit::visit_item(item, self, v)
     }
@@ -413,7 +413,7 @@ fn visit_fn(fk: &visit::fn_kind,
             body: &blk,
             sp: span,
             id: node_id,
-            &&self: @mut IrMaps,
+            self: @mut IrMaps,
             v: vt<@mut IrMaps>) {
     debug!("visit_fn: id=%d", id);
     let _i = ::util::common::indenter();
@@ -489,7 +489,7 @@ fn visit_fn(fk: &visit::fn_kind,
     lsets.warn_about_unused_args(decl, entry_ln);
 }
 
-fn visit_local(local: @local, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
+fn visit_local(local: @local, self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     let def_map = self.tcx.def_map;
     do pat_util::pat_bindings(def_map, local.node.pat) |_bm, p_id, sp, path| {
         debug!("adding local variable %d", p_id);
@@ -509,7 +509,7 @@ fn visit_local(local: @local, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     visit::visit_local(local, self, vt);
 }
 
-fn visit_arm(arm: &arm, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
+fn visit_arm(arm: &arm, self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     let def_map = self.tcx.def_map;
     for arm.pats.each |pat| {
         do pat_util::pat_bindings(def_map, *pat) |bm, p_id, sp, path| {
@@ -528,7 +528,7 @@ fn visit_arm(arm: &arm, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     visit::visit_arm(arm, self, vt);
 }
 
-fn visit_expr(expr: @expr, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
+fn visit_expr(expr: @expr, self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       expr_path(_) => {
@@ -1510,7 +1510,7 @@ pub impl Liveness {
 // _______________________________________________________________________
 // Checking for error conditions
 
-fn check_local(local: @local, &&self: @Liveness, vt: vt<@Liveness>) {
+fn check_local(local: @local, self: @Liveness, vt: vt<@Liveness>) {
     match local.node.init {
       Some(_) => {
 
@@ -1544,14 +1544,14 @@ fn check_local(local: @local, &&self: @Liveness, vt: vt<@Liveness>) {
     visit::visit_local(local, self, vt);
 }
 
-fn check_arm(arm: &arm, &&self: @Liveness, vt: vt<@Liveness>) {
+fn check_arm(arm: &arm, self: @Liveness, vt: vt<@Liveness>) {
     do self.arm_pats_bindings(arm.pats) |ln, var, sp, id| {
         self.warn_about_unused(sp, id, ln, var);
     }
     visit::visit_arm(arm, self, vt);
 }
 
-fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
+fn check_expr(expr: @expr, self: @Liveness, vt: vt<@Liveness>) {
     match expr.node {
       expr_path(_) => {
         for self.variable_from_def_map(expr.id, expr.span).each |var| {
@@ -1632,7 +1632,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
 
 fn check_fn(_fk: &visit::fn_kind, _decl: &fn_decl,
             _body: &blk, _sp: span, _id: node_id,
-            &&_self: @Liveness, _v: vt<@Liveness>) {
+            _self: @Liveness, _v: vt<@Liveness>) {
     // do not check contents of nested fns
 }
 

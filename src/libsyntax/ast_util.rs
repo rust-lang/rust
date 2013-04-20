@@ -39,7 +39,7 @@ pub fn local_def(id: node_id) -> def_id {
 
 pub fn is_local(did: ast::def_id) -> bool { did.crate == local_crate }
 
-pub fn stmt_id(s: stmt) -> node_id {
+pub fn stmt_id(s: &stmt) -> node_id {
     match s.node {
       stmt_decl(_, id) => id,
       stmt_expr(_, id) => id,
@@ -200,7 +200,7 @@ pub fn is_call_expr(e: @expr) -> bool {
 // This makes def_id hashable
 impl to_bytes::IterBytes for def_id {
     #[inline(always)]
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.crate, &self.node, lsb0, f);
     }
 }
@@ -211,7 +211,7 @@ pub fn block_from_expr(e: @expr) -> blk {
 }
 
 pub fn default_block(
-    +stmts1: ~[@stmt],
+    stmts1: ~[@stmt],
     expr1: Option<@expr>,
     id1: node_id
 ) -> blk_ {
@@ -224,7 +224,7 @@ pub fn default_block(
     }
 }
 
-pub fn ident_to_path(s: span, +i: ident) -> @Path {
+pub fn ident_to_path(s: span, i: ident) -> @Path {
     @ast::Path { span: s,
                  global: false,
                  idents: ~[i],
@@ -232,7 +232,7 @@ pub fn ident_to_path(s: span, +i: ident) -> @Path {
                  types: ~[] }
 }
 
-pub fn ident_to_pat(id: node_id, s: span, +i: ident) -> @pat {
+pub fn ident_to_pat(id: node_id, s: span, i: ident) -> @pat {
     @ast::pat { id: id,
                 node: pat_ident(bind_by_copy, ident_to_path(s, i), None),
                 span: s }
@@ -300,7 +300,7 @@ pub fn struct_field_visibility(field: ast::struct_field) -> visibility {
 pub trait inlined_item_utils {
     fn ident(&self) -> ident;
     fn id(&self) -> ast::node_id;
-    fn accept<E>(&self, e: E, v: visit::vt<E>);
+    fn accept<E: Copy>(&self, e: E, v: visit::vt<E>);
 }
 
 impl inlined_item_utils for inlined_item {
@@ -322,7 +322,7 @@ impl inlined_item_utils for inlined_item {
         }
     }
 
-    fn accept<E>(&self, e: E, v: visit::vt<E>) {
+    fn accept<E: Copy>(&self, e: E, v: visit::vt<E>) {
         match *self {
             ii_item(i) => (v.visit_item)(i, e, v),
             ii_foreign(i) => (v.visit_foreign_item)(i, e, v),
@@ -435,7 +435,7 @@ pub fn id_visitor(vfn: @fn(node_id)) -> visit::vt<()> {
 
         visit_local: |l| vfn(l.node.id),
         visit_block: |b| vfn(b.node.id),
-        visit_stmt: |s| vfn(ast_util::stmt_id(*s)),
+        visit_stmt: |s| vfn(ast_util::stmt_id(s)),
         visit_arm: |_| {},
         visit_pat: |p| vfn(p.id),
         visit_decl: |_| {},
@@ -491,7 +491,7 @@ pub fn id_visitor(vfn: @fn(node_id)) -> visit::vt<()> {
     })
 }
 
-pub fn visit_ids_for_inlined_item(item: inlined_item, vfn: @fn(node_id)) {
+pub fn visit_ids_for_inlined_item(item: &inlined_item, vfn: @fn(node_id)) {
     item.accept((), id_visitor(vfn));
 }
 
@@ -505,7 +505,7 @@ pub fn compute_id_range(visit_ids_fn: &fn(@fn(node_id))) -> id_range {
     id_range { min: *min, max: *max }
 }
 
-pub fn compute_id_range_for_inlined_item(item: inlined_item) -> id_range {
+pub fn compute_id_range_for_inlined_item(item: &inlined_item) -> id_range {
     compute_id_range(|f| visit_ids_for_inlined_item(item, f))
 }
 
@@ -609,7 +609,7 @@ pub fn mk_rename (id:ident, to:Name, tail:SyntaxContext, table: &mut SCTable)
 pub fn mk_sctable() -> SCTable { ~[EmptyCtxt] }
 
 /// Add a value to the end of a vec, return its index
-fn idx_push<T>(vec: &mut ~[T], +val: T) -> uint {
+fn idx_push<T>(vec: &mut ~[T], val: T) -> uint {
     vec.push(val);
     vec.len() - 1
 }

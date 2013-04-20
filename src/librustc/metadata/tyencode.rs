@@ -116,16 +116,16 @@ fn enc_mt(w: @io::Writer, cx: @ctxt, mt: ty::mt) {
 }
 
 fn enc_opt<T>(w: @io::Writer, t: Option<T>, enc_f: &fn(T)) {
-    match &t {
-      &None => w.write_char('n'),
-      &Some(ref v) => {
+    match t {
+      None => w.write_char('n'),
+      Some(v) => {
         w.write_char('s');
-        enc_f((*v));
+        enc_f(v);
       }
     }
 }
 
-fn enc_substs(w: @io::Writer, cx: @ctxt, substs: ty::substs) {
+fn enc_substs(w: @io::Writer, cx: @ctxt, substs: &ty::substs) {
     do enc_opt(w, substs.self_r) |r| { enc_region(w, cx, r) }
     do enc_opt(w, substs.self_ty) |t| { enc_ty(w, cx, t) }
     w.write_char('[');
@@ -210,7 +210,7 @@ pub fn enc_vstore(w: @io::Writer, cx: @ctxt, v: ty::vstore) {
 pub fn enc_trait_ref(w: @io::Writer, cx: @ctxt, s: &ty::TraitRef) {
     w.write_str((cx.ds)(s.def_id));
     w.write_char('|');
-    enc_substs(w, cx, s.substs);
+    enc_substs(w, cx, &s.substs);
 }
 
 pub fn enc_trait_store(w: @io::Writer, cx: @ctxt, s: ty::TraitStore) {
@@ -224,7 +224,7 @@ pub fn enc_trait_store(w: @io::Writer, cx: @ctxt, s: ty::TraitStore) {
     }
 }
 
-fn enc_sty(w: @io::Writer, cx: @ctxt, +st: ty::sty) {
+fn enc_sty(w: @io::Writer, cx: @ctxt, st: ty::sty) {
     match st {
       ty::ty_nil => w.write_char('n'),
       ty::ty_bot => w.write_char('z'),
@@ -259,14 +259,14 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, +st: ty::sty) {
         w.write_str(&"t[");
         w.write_str((cx.ds)(def));
         w.write_char('|');
-        enc_substs(w, cx, (*substs));
+        enc_substs(w, cx, substs);
         w.write_char(']');
       }
       ty::ty_trait(def, ref substs, store, mt) => {
         w.write_str(&"x[");
         w.write_str((cx.ds)(def));
         w.write_char('|');
-        enc_substs(w, cx, (*substs));
+        enc_substs(w, cx, substs);
         enc_trait_store(w, cx, store);
         enc_mutability(w, mt);
         w.write_char(']');
@@ -330,7 +330,7 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, +st: ty::sty) {
           w.write_str(s);
           debug!("~~~~ %s", ~"|");
           w.write_char('|');
-          enc_substs(w, cx, (*substs));
+          enc_substs(w, cx, substs);
           debug!("~~~~ %s", ~"]");
           w.write_char(']');
       }

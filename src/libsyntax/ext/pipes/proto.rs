@@ -81,8 +81,8 @@ pub struct state_ {
 }
 
 pub impl state_ {
-    fn add_message(@self, +name: ~str, span: span,
-                   +data: ~[@ast::Ty], +next: Option<next_state>) {
+    fn add_message(@self, name: ~str, span: span,
+                   data: ~[@ast::Ty], next: Option<next_state>) {
         self.messages.push(message(name, span, data, self,
                                    next));
     }
@@ -119,11 +119,11 @@ pub impl state_ {
 
 pub type protocol = @mut protocol_;
 
-pub fn protocol(+name: ~str, +span: span) -> protocol {
+pub fn protocol(name: ~str, span: span) -> protocol {
     @mut protocol_(name, span)
 }
 
-pub fn protocol_(+name: ~str, span: span) -> protocol_ {
+pub fn protocol_(name: ~str, span: span) -> protocol_ {
     protocol_ {
         name: name,
         span: span,
@@ -177,10 +177,10 @@ pub impl protocol_ {
 
 pub impl protocol_ {
     fn add_state_poly(@mut self,
-                      +name: ~str,
+                      name: ~str,
                       ident: ast::ident,
                       dir: direction,
-                      +generics: ast::Generics)
+                      generics: ast::Generics)
                    -> state {
         let messages = @mut ~[];
         let states = &*self.states;

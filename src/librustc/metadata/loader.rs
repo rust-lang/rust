@@ -55,7 +55,7 @@ pub struct Context {
     intr: @ident_interner
 }
 
-pub fn load_library_crate(cx: Context) -> (~str, @~[u8]) {
+pub fn load_library_crate(cx: &Context) -> (~str, @~[u8]) {
     match find_library_crate(cx) {
       Some(ref t) => return (/*bad*/copy *t),
       None => {
@@ -66,12 +66,12 @@ pub fn load_library_crate(cx: Context) -> (~str, @~[u8]) {
     }
 }
 
-fn find_library_crate(cx: Context) -> Option<(~str, @~[u8])> {
+fn find_library_crate(cx: &Context) -> Option<(~str, @~[u8])> {
     attr::require_unique_names(cx.diag, cx.metas);
     find_library_crate_aux(cx, libname(cx), cx.filesearch)
 }
 
-fn libname(cx: Context) -> (~str, ~str) {
+fn libname(cx: &Context) -> (~str, ~str) {
     if cx.is_static { return (~"lib", ~".rlib"); }
     let (dll_prefix, dll_suffix) = match cx.os {
         os_win32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
@@ -85,7 +85,7 @@ fn libname(cx: Context) -> (~str, ~str) {
 }
 
 fn find_library_crate_aux(
-    cx: Context,
+    cx: &Context,
     (prefix, suffix): (~str, ~str),
     filesearch: @filesearch::FileSearch
 ) -> Option<(~str, @~[u8])> {

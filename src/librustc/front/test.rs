@@ -138,7 +138,7 @@ fn fold_crate(cx: @mut TestCtxt,
 }
 
 
-fn fold_item(cx: @mut TestCtxt, &&i: @ast::item, fld: @fold::ast_fold)
+fn fold_item(cx: @mut TestCtxt, i: @ast::item, fld: @fold::ast_fold)
           -> Option<@ast::item> {
     cx.path.push(i.ident);
     debug!("current path: %s",
@@ -336,7 +336,7 @@ fn nospan<T:Copy>(t: T) -> codemap::spanned<T> {
     codemap::spanned { node: t, span: dummy_sp() }
 }
 
-fn path_node(+ids: ~[ast::ident]) -> @ast::Path {
+fn path_node(ids: ~[ast::ident]) -> @ast::Path {
     @ast::Path { span: dummy_sp(),
                 global: false,
                 idents: ids,
@@ -344,7 +344,7 @@ fn path_node(+ids: ~[ast::ident]) -> @ast::Path {
                 types: ~[] }
 }
 
-fn path_node_global(+ids: ~[ast::ident]) -> @ast::Path {
+fn path_node_global(ids: ~[ast::ident]) -> @ast::Path {
     @ast::Path { span: dummy_sp(),
                  global: true,
                  idents: ids,
@@ -381,7 +381,7 @@ fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {
     debug!("building test vector from %u tests", cx.testfns.len());
     let mut descs = ~[];
     for cx.testfns.each |test| {
-        descs.push(mk_test_desc_and_fn_rec(cx, *test));
+        descs.push(mk_test_desc_and_fn_rec(cx, test));
     }
 
     let sess = cx.sess;
@@ -400,7 +400,7 @@ fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {
     }
 }
 
-fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: Test) -> @ast::expr {
+fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
     let span = test.span;
     let path = /*bad*/copy test.path;
 

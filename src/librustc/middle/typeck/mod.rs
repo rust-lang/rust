@@ -194,7 +194,7 @@ pub fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t) {
 }
 pub fn write_substs_to_tcx(tcx: ty::ctxt,
                            node_id: ast::node_id,
-                           +substs: ~[ty::t]) {
+                           substs: ~[ty::t]) {
     if substs.len() > 0u {
         debug!("write_substs_to_tcx(%d, %?)", node_id,
                substs.map(|t| ppaux::ty_to_str(tcx, *t)));
@@ -397,7 +397,7 @@ fn check_for_entry_fn(ccx: @mut CrateCtxt) {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
-                   +trait_map: resolve::TraitMap,
+                   trait_map: resolve::TraitMap,
                    crate: @ast::crate)
                 -> (method_map, vtable_map) {
     let time_passes = tcx.sess.time_passes();

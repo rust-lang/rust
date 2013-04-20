@@ -80,7 +80,7 @@ trait tr_intern {
 // Top-level methods.
 
 pub fn encode_inlined_item(ecx: @e::EncodeContext,
-                           ebml_w: writer::Encoder,
+                           ebml_w: &writer::Encoder,
                            path: &[ast_map::path_elt],
                            ii: ast::inlined_item,
                            maps: Maps) {
@@ -89,11 +89,11 @@ pub fn encode_inlined_item(ecx: @e::EncodeContext,
            *ecx.tcx.sess.str_of(ii.ident()),
            ebml_w.writer.tell());
 
-    let id_range = ast_util::compute_id_range_for_inlined_item(ii);
+    let id_range = ast_util::compute_id_range_for_inlined_item(&ii);
     do ebml_w.wr_tag(c::tag_ast as uint) {
-        id_range.encode(&ebml_w);
-        encode_ast(ebml_w, simplify_ast(ii));
-        encode_side_tables_for_ii(ecx, maps, ebml_w, ii);
+        id_range.encode(ebml_w);
+        encode_ast(ebml_w, simplify_ast(&ii));
+        encode_side_tables_for_ii(ecx, maps, ebml_w, &ii);
     }
 
     debug!("< Encoded inlined fn: %s::%s (%u)",
@@ -105,7 +105,7 @@ pub fn encode_inlined_item(ecx: @e::EncodeContext,
 pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
                            tcx: ty::ctxt,
                            maps: Maps,
-                           +path: ast_map::path,
+                           path: ast_map::path,
                            par_doc: ebml::Doc)
                         -> Option<ast::inlined_item> {
     let dcx = @DecodeContext {
@@ -133,7 +133,7 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
                ast_map::path_to_str(path, tcx.sess.parse_sess.interner),
                *tcx.sess.str_of(ii.ident()));
         ast_map::map_decoded_item(tcx.sess.diagnostic(),
-                                  dcx.tcx.items, path, ii);
+                                  dcx.tcx.items, path, &ii);
         decode_side_tables(xcx, ast_doc);
         match ii {
           ast::ii_item(i) => {
@@ -275,9 +275,9 @@ impl<D:serialize::Decoder> def_id_decoder_helpers for D {
 // We also have to adjust the spans: for now we just insert a dummy span,
 // but eventually we should add entries to the local codemap as required.
 
-fn encode_ast(ebml_w: writer::Encoder, item: ast::inlined_item) {
+fn encode_ast(ebml_w: &writer::Encoder, item: ast::inlined_item) {
     do ebml_w.wr_tag(c::tag_tree as uint) {
-        item.encode(&ebml_w)
+        item.encode(ebml_w)
     }
 }
 
@@ -291,7 +291,7 @@ fn encode_ast(ebml_w: writer::Encoder, item: ast::inlined_item) {
 // As it happens, trans relies on the fact that we do not export
 // nested items, as otherwise it would get confused when translating
 // inlined items.
-fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
+fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
     fn drop_nested_items(blk: &ast::blk_, fld: @fold::ast_fold) -> ast::blk_ {
         let stmts_sans_items = do blk.stmts.filtered |stmt| {
             match stmt.node {
@@ -319,7 +319,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
         .. *fold::default_ast_fold()
     });
 
-    match ii {
+    match *ii {
       ast::ii_item(i) => {
         ast::ii_item(fld.fold_item(i).get()) //hack: we're not dropping items
       }
@@ -388,8 +388,8 @@ fn renumber_ast(xcx: @ExtendedDecodeContext, ii: ast::inlined_item)
 // ______________________________________________________________________
 // Encoding and decoding of ast::def
 
-fn encode_def(ebml_w: writer::Encoder, def: ast::def) {
-    def.encode(&ebml_w)
+fn encode_def(ebml_w: &writer::Encoder, def: ast::def) {
+    def.encode(ebml_w)
 }
 
 fn decode_def(xcx: @ExtendedDecodeContext, doc: ebml::Doc) -> ast::def {
@@ -499,8 +499,8 @@ impl tr for ty::bound_region {
 // ______________________________________________________________________
 // Encoding and decoding of freevar information
 
-fn encode_freevar_entry(ebml_w: writer::Encoder, fv: @freevar_entry) {
-    (*fv).encode(&ebml_w)
+fn encode_freevar_entry(ebml_w: &writer::Encoder, fv: @freevar_entry) {
+    (*fv).encode(ebml_w)
 }
 
 trait ebml_decoder_helper {
@@ -561,17 +561,17 @@ trait read_method_map_entry_helper {
 
 #[cfg(stage0)]
 fn encode_method_map_entry(ecx: @e::EncodeContext,
-                              ebml_w: writer::Encoder,
+                              ebml_w: &writer::Encoder,
                               mme: method_map_entry) {
     do ebml_w.emit_struct("method_map_entry", 3) {
         do ebml_w.emit_field(~"self_arg", 0u) {
             ebml_w.emit_arg(ecx, mme.self_arg);
         }
         do ebml_w.emit_field(~"explicit_self", 2u) {
-            mme.explicit_self.encode(&ebml_w);
+            mme.explicit_self.encode(ebml_w);
         }
         do ebml_w.emit_field(~"origin", 1u) {
-            mme.origin.encode(&ebml_w);
+            mme.origin.encode(ebml_w);
         }
     }
 }
@@ -580,17 +580,17 @@ fn encode_method_map_entry(ecx: @e::EncodeContext,
 #[cfg(stage2)]
 #[cfg(stage3)]
 fn encode_method_map_entry(ecx: @e::EncodeContext,
-                              ebml_w: writer::Encoder,
+                              ebml_w: &writer::Encoder,
                               mme: method_map_entry) {
     do ebml_w.emit_struct("method_map_entry", 3) {
         do ebml_w.emit_struct_field("self_arg", 0u) {
             ebml_w.emit_arg(ecx, mme.self_arg);
         }
         do ebml_w.emit_struct_field("explicit_self", 2u) {
-            mme.explicit_self.encode(&ebml_w);
+            mme.explicit_self.encode(ebml_w);
         }
         do ebml_w.emit_struct_field("origin", 1u) {
-            mme.origin.encode(&ebml_w);
+            mme.origin.encode(ebml_w);
         }
     }
 }
@@ -672,22 +672,22 @@ impl tr for method_origin {
 // Encoding and decoding vtable_res
 
 fn encode_vtable_res(ecx: @e::EncodeContext,
-                     ebml_w: writer::Encoder,
+                     ebml_w: &writer::Encoder,
                      dr: typeck::vtable_res) {
     // can't autogenerate this code because automatic code of
     // ty::t doesn't work, and there is no way (atm) to have
     // hand-written encoding routines combine with auto-generated
     // ones.  perhaps we should fix this.
     do ebml_w.emit_from_vec(*dr) |vtable_origin| {
-        encode_vtable_origin(ecx, ebml_w, *vtable_origin)
+        encode_vtable_origin(ecx, ebml_w, vtable_origin)
     }
 }
 
 fn encode_vtable_origin(ecx: @e::EncodeContext,
-                      ebml_w: writer::Encoder,
-                      vtable_origin: typeck::vtable_origin) {
+                        ebml_w: &writer::Encoder,
+                        vtable_origin: &typeck::vtable_origin) {
     do ebml_w.emit_enum(~"vtable_origin") {
-        match vtable_origin {
+        match *vtable_origin {
           typeck::vtable_static(def_id, ref tys, vtable_res) => {
             do ebml_w.emit_enum_variant(~"vtable_static", 0u, 3u) {
                 do ebml_w.emit_enum_variant_arg(0u) {
@@ -798,13 +798,13 @@ trait ebml_writer_helpers {
 impl ebml_writer_helpers for writer::Encoder {
     fn emit_ty(&self, ecx: @e::EncodeContext, ty: ty::t) {
         do self.emit_opaque {
-            e::write_type(ecx, *self, ty)
+            e::write_type(ecx, self, ty)
         }
     }
 
     fn emit_vstore(&self, ecx: @e::EncodeContext, vstore: ty::vstore) {
         do self.emit_opaque {
-            e::write_vstore(ecx, *self, vstore)
+            e::write_vstore(ecx, self, vstore)
         }
     }
 
@@ -897,24 +897,25 @@ impl write_tag_and_id for writer::Encoder {
 
 fn encode_side_tables_for_ii(ecx: @e::EncodeContext,
                              maps: Maps,
-                             ebml_w: writer::Encoder,
-                             ii: ast::inlined_item) {
+                             ebml_w: &writer::Encoder,
+                             ii: &ast::inlined_item) {
     do ebml_w.wr_tag(c::tag_table as uint) {
-        let ebml_w = copy ebml_w;
+        let ebml_w = copy *ebml_w;
         ast_util::visit_ids_for_inlined_item(
             ii,
             |id: ast::node_id| {
                 // Note: this will cause a copy of ebml_w, which is bad as
                 // it has mut fields.  But I believe it's harmless since
                 // we generate balanced EBML.
-                encode_side_tables_for_id(ecx, maps, ebml_w, id)
+                /*let ebml_w = copy ebml_w;*/
+                encode_side_tables_for_id(ecx, maps, &ebml_w, id)
             });
     }
 }
 
 fn encode_side_tables_for_id(ecx: @e::EncodeContext,
                              maps: Maps,
-                             ebml_w: writer::Encoder,
+                             ebml_w: &writer::Encoder,
                              id: ast::node_id) {
     let tcx = ecx.tcx;
 
@@ -924,7 +925,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         do ebml_w.tag(c::tag_table_def) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                (*def).encode(&ebml_w)
+                (*def).encode(ebml_w)
             }
         }
     }
@@ -1004,7 +1005,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
                 do ebml_w.emit_from_vec(/*bad*/ copy **m) |id| {
-                    id.encode(&ebml_w);
+                    id.encode(ebml_w);
                 }
             }
         }
@@ -1032,7 +1033,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         do ebml_w.tag(c::tag_table_adjustments) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                (**adj).encode(&ebml_w)
+                (**adj).encode(ebml_w)
             }
         }
     }
@@ -1048,7 +1049,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
                 do ebml_w.emit_from_vec(*cap_vars) |cap_var| {
-                    cap_var.encode(&ebml_w);
+                    cap_var.encode(ebml_w);
                 }
             }
         }
@@ -1279,9 +1280,9 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
 // Testing of astencode_gen
 
 #[cfg(test)]
-fn encode_item_ast(ebml_w: writer::Encoder, item: @ast::item) {
+fn encode_item_ast(ebml_w: &writer::Encoder, item: @ast::item) {
     do ebml_w.wr_tag(c::tag_tree as uint) {
-        (*item).encode(&ebml_w)
+        (*item).encode(ebml_w)
     }
 }
 
@@ -1297,7 +1298,7 @@ trait fake_ext_ctxt {
     fn cfg(&self) -> ast::crate_cfg;
     fn parse_sess(&self) -> @mut parse::ParseSess;
     fn call_site(&self) -> span;
-    fn ident_of(&self, +st: ~str) -> ast::ident;
+    fn ident_of(&self, st: ~str) -> ast::ident;
 }
 
 #[cfg(test)]
@@ -1314,7 +1315,7 @@ impl fake_ext_ctxt for fake_session {
             expn_info: None
         }
     }
-    fn ident_of(&self, +st: ~str) -> ast::ident {
+    fn ident_of(&self, st: ~str) -> ast::ident {
         self.interner.intern(@st)
     }
 }
@@ -1331,7 +1332,7 @@ fn roundtrip(in_item: Option<@ast::item>) {
     let in_item = in_item.get();
     let bytes = do io::with_bytes_writer |wr| {
         let ebml_w = writer::Encoder(wr);
-        encode_item_ast(ebml_w, in_item);
+        encode_item_ast(&ebml_w, in_item);
     };
     let ebml_doc = reader::Doc(@bytes);
     let out_item = decode_item_ast(ebml_doc);
@@ -1375,7 +1376,7 @@ fn test_simplification() {
             return alist {eq_fn: eq_int, data: ~[]};
         }
     ).get());
-    let item_out = simplify_ast(item_in);
+    let item_out = simplify_ast(&item_in);
     let item_exp = ast::ii_item(quote_item!(
         fn new_int_alist<B:Copy>() -> alist<int, B> {
             return alist {eq_fn: eq_int, data: ~[]};

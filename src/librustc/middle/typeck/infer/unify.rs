@@ -42,7 +42,7 @@ pub trait UnifyVid<T> {
 pub impl InferCtxt {
     fn get<T:Copy, V:Copy+Eq+Vid+UnifyVid<T>>(
         &mut self,
-        +vid: V) -> Node<V, T>
+        vid: V) -> Node<V, T>
     {
         /*!
          *
@@ -88,8 +88,8 @@ pub impl InferCtxt {
 
     fn set<T:Copy + InferStr,V:Copy + Vid + ToStr + UnifyVid<T>>(
             &mut self,
-            +vid: V,
-            +new_v: VarValue<V, T>) {
+            vid: V,
+            new_v: VarValue<V, T>) {
         /*!
          *
          * Sets the value for `vid` to `new_v`.  `vid` MUST be a root node!
@@ -147,9 +147,9 @@ pub trait SimplyUnifiable {
     fn to_type_err(expected_found<Self>) -> ty::type_err;
 }
 
-pub fn mk_err<T:SimplyUnifiable>(+a_is_expected: bool,
-                                  +a_t: T,
-                                  +b_t: T) -> ures {
+pub fn mk_err<T:SimplyUnifiable>(a_is_expected: bool,
+                                 a_t: T,
+                                 b_t: T) -> ures {
     if a_is_expected {
         Err(SimplyUnifiable::to_type_err(
             ty::expected_found {expected: a_t, found: b_t}))
@@ -163,9 +163,9 @@ pub impl InferCtxt {
     fn simple_vars<T:Copy + Eq + InferStr + SimplyUnifiable,
                    V:Copy + Eq + Vid + ToStr + UnifyVid<Option<T>>>(
             &mut self,
-            +a_is_expected: bool,
-            +a_id: V,
-            +b_id: V)
+            a_is_expected: bool,
+            a_id: V,
+            b_id: V)
          -> ures {
         /*!
          *
@@ -201,9 +201,9 @@ pub impl InferCtxt {
     fn simple_var_t<T:Copy + Eq + InferStr + SimplyUnifiable,
                     V:Copy + Eq + Vid + ToStr + UnifyVid<Option<T>>>(
             &mut self,
-            +a_is_expected: bool,
-            +a_id: V,
-            +b: T)
+            a_is_expected: bool,
+            a_id: V,
+            b: T)
          -> ures {
         /*!
          *

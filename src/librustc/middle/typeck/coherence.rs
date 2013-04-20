@@ -203,7 +203,7 @@ pub impl CoherenceChecker {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
-        visit_crate(*crate, (), mk_simple_visitor(@SimpleVisitor {
+        visit_crate(crate, (), mk_simple_visitor(@SimpleVisitor {
             visit_item: |item| {
 //                debug!("(checking coherence) item '%s'",
 //                       self.crate_context.tcx.sess.str_of(item.ident));
@@ -655,7 +655,7 @@ pub impl CoherenceChecker {
 
     // Privileged scope checking
     fn check_privileged_scopes(self, crate: @crate) {
-        visit_crate(*crate, (), mk_vt(@Visitor {
+        visit_crate(crate, (), mk_vt(@Visitor {
             visit_item: |item, _context, visitor| {
                 match item.node {
                     item_mod(ref module_) => {
