@@ -20,6 +20,12 @@ pub trait ToStr {
     fn to_str(&self) -> ~str;
 }
 
+/// Trait for converting a type to a string, consuming it in the process.
+pub trait ToStrConsume {
+    // Cosume and convert to a string.
+    fn to_str_consume(self) -> ~str;
+}
+
 impl ToStr for bool {
     #[inline(always)]
     fn to_str(&self) -> ~str { ::bool::to_str(*self) }
