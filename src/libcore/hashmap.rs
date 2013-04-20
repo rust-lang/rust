@@ -16,7 +16,6 @@
 use container::{Container, Mutable, Map, Set};
 use cmp::{Eq, Equiv};
 use hash::Hash;
-use to_bytes::IterBytes;
 use iter::BaseIter;
 use hash::Hash;
 use iter;
@@ -72,7 +71,7 @@ fn linear_map_with_capacity_and_keys<K:Eq + Hash,V>(
     }
 }
 
-priv impl<K:Hash + IterBytes + Eq,V> HashMap<K, V> {
+priv impl<K:Hash + Eq,V> HashMap<K, V> {
     #[inline(always)]
     fn to_bucket(&self, h: uint) -> uint {
         // A good hash function with entropy spread over all of the
@@ -111,9 +110,8 @@ priv impl<K:Hash + IterBytes + Eq,V> HashMap<K, V> {
     }
 
     #[inline(always)]
-    fn bucket_for_key_equiv<Q:Hash + IterBytes + Equiv<K>>(&self,
-                                                           k: &Q)
-                                                        -> SearchResult {
+    fn bucket_for_key_equiv<Q:Hash + Equiv<K>>(&self, k: &Q)
+                                               -> SearchResult {
         let hash = k.hash_keyed(self.k0, self.k1) as uint;
         self.bucket_for_key_with_hash_equiv(hash, k)
     }
@@ -303,7 +301,7 @@ priv impl<K:Hash + IterBytes + Eq,V> HashMap<K, V> {
     }
 }
 
-impl<K:Hash + IterBytes + Eq,V> Container for HashMap<K, V> {
+impl<K:Hash + Eq,V> Container for HashMap<K, V> {
     /// Return the number of elements in the map
     fn len(&const self) -> uint { self.size }
 
@@ -311,7 +309,7 @@ impl<K:Hash + IterBytes + Eq,V> Container for HashMap<K, V> {
     fn is_empty(&const self) -> bool { self.len() == 0 }
 }
 
-impl<K:Hash + IterBytes + Eq,V> Mutable for HashMap<K, V> {
+impl<K:Hash + Eq,V> Mutable for HashMap<K, V> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) {
         for uint::range(0, self.buckets.len()) |idx| {
@@ -321,7 +319,7 @@ impl<K:Hash + IterBytes + Eq,V> Mutable for HashMap<K, V> {
     }
 }
 
-impl<K:Hash + IterBytes + Eq,V> Map<K, V> for HashMap<K, V> {
+impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     /// Return true if the map contains a value for the specified key
     fn contains_key(&self, k: &K) -> bool {
         match self.bucket_for_key(k) {
@@ -458,7 +456,7 @@ impl<K:Hash + IterBytes + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 }
 
-pub impl<K: Hash + IterBytes + Eq, V> HashMap<K, V> {
+pub impl<K: Hash + Eq, V> HashMap<K, V> {
     /// Create an empty HashMap
     fn new() -> HashMap<K, V> {
         HashMap::with_capacity(INITIAL_CAPACITY)
@@ -669,8 +667,7 @@ pub impl<K: Hash + IterBytes + Eq, V> HashMap<K, V> {
 
     /// Return true if the map contains a value for the specified key,
     /// using equivalence
-    fn contains_key_equiv<Q:Hash + IterBytes + Equiv<K>>(&self, key: &Q)
-                                                      -> bool {
+    fn contains_key_equiv<Q:Hash + Equiv<K>>(&self, key: &Q) -> bool {
         match self.bucket_for_key_equiv(key) {
             FoundEntry(_) => {true}
             TableFull | FoundHole(_) => {false}
@@ -680,8 +677,7 @@ pub impl<K: Hash + IterBytes + Eq, V> HashMap<K, V> {
     /// Return the value corresponding to the key in the map, using
     /// equivalence
     #[cfg(stage0)]
-    fn find_equiv<Q:Hash + IterBytes + Equiv<K>>(&self, k: &Q)
-                                              -> Option<&'self V> {
+    fn find_equiv<Q:Hash + Equiv<K>>(&self, k: &Q) -> Option<&'self V> {
         match self.bucket_for_key_equiv(k) {
             FoundEntry(idx) => Some(self.value_for_bucket(idx)),
             TableFull | FoundHole(_) => None,
@@ -693,9 +689,7 @@ pub impl<K: Hash + IterBytes + Eq, V> HashMap<K, V> {
     #[cfg(stage1)]
     #[cfg(stage2)]
     #[cfg(stage3)]
-    fn find_equiv<'a, Q:Hash + IterBytes + Equiv<K>>(
-        &'a self, k: &Q) -> Option<&'a V>
-    {
+    fn find_equiv<'a, Q:Hash + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
         match self.bucket_for_key_equiv(k) {
             FoundEntry(idx) => Some(self.value_for_bucket(idx)),
             TableFull | FoundHole(_) => None,
@@ -703,7 +697,7 @@ pub impl<K: Hash + IterBytes + Eq, V> HashMap<K, V> {
     }
 }
 
-impl<K:Hash + IterBytes + Eq,V:Eq> Eq for HashMap<K, V> {
+impl<K:Hash + Eq,V:Eq> Eq for HashMap<K, V> {
     fn eq(&self, other: &HashMap<K, V>) -> bool {
         if self.len() != other.len() { return false; }
 
@@ -724,18 +718,18 @@ pub struct HashSet<T> {
     priv map: HashMap<T, ()>
 }
 
-impl<T:Hash + IterBytes + Eq> BaseIter<T> for HashSet<T> {
+impl<T:Hash + Eq> BaseIter<T> for HashSet<T> {
     /// Visit all values in order
     fn each(&self, f: &fn(&T) -> bool) { self.map.each_key(f) }
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
-impl<T:Hash + IterBytes + Eq> Eq for HashSet<T> {
+impl<T:Hash + Eq> Eq for HashSet<T> {
     fn eq(&self, other: &HashSet<T>) -> bool { self.map == other.map }
     fn ne(&self, other: &HashSet<T>) -> bool { self.map != other.map }
 }
 
-impl<T:Hash + IterBytes + Eq> Container for HashSet<T> {
+impl<T:Hash + Eq> Container for HashSet<T> {
     /// Return the number of elements in the set
     fn len(&const self) -> uint { self.map.len() }
 
@@ -743,12 +737,12 @@ impl<T:Hash + IterBytes + Eq> Container for HashSet<T> {
     fn is_empty(&const self) -> bool { self.map.is_empty() }
 }
 
-impl<T:Hash + IterBytes + Eq> Mutable for HashSet<T> {
+impl<T:Hash + Eq> Mutable for HashSet<T> {
     /// Clear the set, removing all values.
     fn clear(&mut self) { self.map.clear() }
 }
 
-impl<T:Hash + IterBytes + Eq> Set<T> for HashSet<T> {
+impl<T:Hash + Eq> Set<T> for HashSet<T> {
     /// Return true if the set contains a value
     fn contains(&self, value: &T) -> bool { self.map.contains_key(value) }
 
@@ -816,7 +810,7 @@ impl<T:Hash + IterBytes + Eq> Set<T> for HashSet<T> {
     }
 }
 
-pub impl <T:Hash + IterBytes + Eq> HashSet<T> {
+pub impl <T:Hash + Eq> HashSet<T> {
     /// Create an empty HashSet
     fn new() -> HashSet<T> {
         HashSet::with_capacity(INITIAL_CAPACITY)

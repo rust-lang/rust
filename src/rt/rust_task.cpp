@@ -53,7 +53,8 @@ rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
     disallow_yield(0),
     c_stack(NULL),
     next_c_sp(0),
-    next_rust_sp(0)
+    next_rust_sp(0),
+    big_stack(NULL)
 {
     LOGPTR(sched_loop, "new task", (uintptr_t)this);
     DLOG(sched_loop, task, "sizeof(task) = %d (0x%x)",
@@ -457,8 +458,9 @@ rust_task::get_next_stack_size(size_t min, size_t current, size_t requested) {
         "min: %" PRIdPTR " current: %" PRIdPTR " requested: %" PRIdPTR,
         min, current, requested);
 
-    // Allocate at least enough to accomodate the next frame
-    size_t sz = std::max(min, requested);
+    // Allocate at least enough to accomodate the next frame, plus a little
+    // slack to avoid thrashing
+    size_t sz = std::max(min, requested + (requested / 2));
 
     // And double the stack size each allocation
     const size_t max = 1024 * 1024;
@@ -555,11 +557,61 @@ rust_task::cleanup_after_turn() {
     // Delete any spare stack segments that were left
     // behind by calls to prev_stack
     assert(stk);
+
     while (stk->next) {
         stk_seg *new_next = stk->next->next;
-        free_stack(stk->next);
+
+        if (stk->next->is_big) {
+            assert (big_stack == stk->next);
+            sched_loop->return_big_stack(big_stack);
+            big_stack = NULL;
+        } else {
+            free_stack(stk->next);
+        }
+
         stk->next = new_next;
     }
+}
+
+// NB: Runs on the Rust stack. Returns true if we successfully allocated the big
+// stack and false otherwise.
+bool
+rust_task::new_big_stack() {
+    // If we have a cached big stack segment, use it.
+    if (big_stack) {
+        // Check to see if we're already on the big stack.
+        stk_seg *ss = stk;
+        while (ss != NULL) {
+            if (ss == big_stack)
+                return false;
+            ss = ss->prev;
+        }
+
+        // Unlink the big stack.
+        if (big_stack->next)
+            big_stack->next->prev = big_stack->prev;
+        if (big_stack->prev)
+            big_stack->prev->next = big_stack->next;
+    } else {
+        stk_seg *borrowed_big_stack = sched_loop->borrow_big_stack();
+        if (!borrowed_big_stack) {
+            abort();
+        } else {
+            big_stack = borrowed_big_stack;
+        }
+    }
+
+    big_stack->task = this;
+    big_stack->next = stk->next;
+    if (big_stack->next)
+        big_stack->next->prev = big_stack;
+    big_stack->prev = stk;
+    if (stk)
+        stk->next = big_stack;
+
+    stk = big_stack;
+
+    return true;
 }
 
 static bool
@@ -601,9 +653,16 @@ rust_task::delete_all_stacks() {
     assert(stk->next == NULL);
     while (stk != NULL) {
         stk_seg *prev = stk->prev;
-        free_stack(stk);
+
+        if (stk->is_big)
+            sched_loop->return_big_stack(stk);
+        else
+            free_stack(stk);
+
         stk = prev;
     }
+
+    big_stack = NULL;
 }
 
 /*

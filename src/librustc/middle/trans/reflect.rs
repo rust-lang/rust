@@ -288,11 +288,15 @@ pub impl Reflector {
                 let arg = unsafe {
                     llvm::LLVMGetParam(llfdecl, first_real_arg as c_uint)
                 };
-                let fcx = new_fn_ctxt(ccx, ~[], llfdecl, None);
+                let fcx = new_fn_ctxt(ccx,
+                                      ~[],
+                                      llfdecl,
+                                      ty::mk_uint(ccx.tcx),
+                                      None);
                 let bcx = top_scope_block(fcx, None);
                 let arg = BitCast(bcx, arg, llptrty);
                 let ret = adt::trans_get_discr(bcx, repr, arg);
-                Store(bcx, ret, fcx.llretptr);
+                Store(bcx, ret, fcx.llretptr.get());
                 cleanup_and_Br(bcx, bcx, fcx.llreturn);
                 finish_fn(fcx, bcx.llbb);
                 llfdecl

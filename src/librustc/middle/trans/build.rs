@@ -181,9 +181,15 @@ pub fn noname() -> *libc::c_char {
     }
 }
 
-pub fn Invoke(cx: block, Fn: ValueRef, Args: &[ValueRef],
-              Then: BasicBlockRef, Catch: BasicBlockRef) {
-    if cx.unreachable { return; }
+pub fn Invoke(cx: block,
+              Fn: ValueRef,
+              Args: &[ValueRef],
+              Then: BasicBlockRef,
+              Catch: BasicBlockRef)
+           -> ValueRef {
+    if cx.unreachable {
+        return C_null(T_i8());
+    }
     check_not_terminated(cx);
     terminate(cx, "Invoke");
     debug!("Invoke(%s with arguments (%s))",
@@ -193,9 +199,13 @@ pub fn Invoke(cx: block, Fn: ValueRef, Args: &[ValueRef],
                         ~", "));
     unsafe {
         count_insn(cx, "invoke");
-        llvm::LLVMBuildInvoke(B(cx), Fn, vec::raw::to_ptr(Args),
-                              Args.len() as c_uint, Then, Catch,
-                              noname());
+        llvm::LLVMBuildInvoke(B(cx),
+                              Fn,
+                              vec::raw::to_ptr(Args),
+                              Args.len() as c_uint,
+                              Then,
+                              Catch,
+                              noname())
     }
 }
 

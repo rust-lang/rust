@@ -33,7 +33,7 @@ pub use container::{Container, Mutable, Map, Set};
 pub use hash::Hash;
 pub use iter::{BaseIter, ReverseIter, MutableIter, ExtendedIter, EqIter};
 pub use iter::{CopyableIter, CopyableOrderedIter, CopyableNonstrictIter};
-pub use iter::Times;
+pub use iter::{Times, ExtendedMutableIter};
 pub use num::{Num, NumCast};
 pub use path::GenericPath;
 pub use path::Path;
@@ -46,7 +46,7 @@ pub use to_str::ToStr;
 pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
 pub use vec::{CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
-pub use vec::{OwnedVector, OwnedCopyableVector};
+pub use vec::{OwnedVector, OwnedCopyableVector, MutableVector};
 pub use io::{Reader, ReaderUtil, Writer, WriterUtil};
 
 /* Reexported runtime types */

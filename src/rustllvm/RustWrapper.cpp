@@ -15,6 +15,8 @@
 //
 //===----------------------------------------------------------------------===
 
+#include "llvm/IR/InlineAsm.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/Linker.h"
 #include "llvm/PassManager.h"
 #include "llvm/IR/InlineAsm.h"
@@ -152,7 +154,9 @@ public:
                                        unsigned SectionID);
 
   virtual uint8_t *allocateDataSection(uintptr_t Size, unsigned Alignment,
-                                       unsigned SectionID);
+                                       unsigned SectionID, bool isReadOnly);
+
+  virtual bool applyPermissions(std::string *Str);
 
   virtual void *getPointerToNamedFunction(const std::string &Name,
                                           bool AbortOnFailure = true);
@@ -218,12 +222,6 @@ public:
   virtual void deallocateExceptionTable(void *ET) {
     llvm_unreachable("Unimplemented call");
   }
-  virtual uint8_t* allocateDataSection(uintptr_t, unsigned int, unsigned int, bool) {
-    llvm_unreachable("Unimplemented call");
-  }
-  virtual bool applyPermissions(std::string*) {
-    llvm_unreachable("Unimplemented call");
-  }
 };
 
 bool RustMCJITMemoryManager::loadCrate(const char* file, std::string* err) {
@@ -240,8 +238,9 @@ bool RustMCJITMemoryManager::loadCrate(const char* file, std::string* err) {
 }
 
 uint8_t *RustMCJITMemoryManager::allocateDataSection(uintptr_t Size,
-                                                    unsigned Alignment,
-                                                    unsigned SectionID) {
+                                                     unsigned Alignment,
+                                                     unsigned SectionID,
+                                                     bool isReadOnly) {
   if (!Alignment)
     Alignment = 16;
   uint8_t *Addr = (uint8_t*)calloc((Size + Alignment - 1)/Alignment, Alignment);
@@ -249,9 +248,14 @@ uint8_t *RustMCJITMemoryManager::allocateDataSection(uintptr_t Size,
   return Addr;
 }
 
+bool RustMCJITMemoryManager::applyPermissions(std::string *Str) {
+    // Empty.
+    return true;
+}
+
 uint8_t *RustMCJITMemoryManager::allocateCodeSection(uintptr_t Size,
-                                                    unsigned Alignment,
-                                                    unsigned SectionID) {
+                                                     unsigned Alignment,
+                                                     unsigned SectionID) {
   if (!Alignment)
     Alignment = 16;
   unsigned NeedAllocate = Alignment * ((Size + Alignment - 1)/Alignment + 1);
@@ -451,6 +455,7 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   TargetOptions Options;
   Options.NoFramePointerElim = true;
   Options.EnableSegmentedStacks = EnableSegmentedStacks;
+  Options.FixedStackSegmentSize = 2 * 1024 * 1024;  // XXX: This is too big.
 
   PassManager *PM = unwrap<PassManager>(PMR);
 
@@ -484,13 +489,12 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
 }
 
 extern "C" LLVMModuleRef LLVMRustParseAssemblyFile(const char *Filename) {
-
   SMDiagnostic d;
   Module *m = ParseAssemblyFile(Filename, d, getGlobalContext());
   if (m) {
     return wrap(m);
   } else {
-    LLVMRustError = d.getMessage().data();
+    LLVMRustError = d.getMessage().str().c_str();
     return NULL;
   }
 }
