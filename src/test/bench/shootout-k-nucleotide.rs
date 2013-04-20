@@ -1,3 +1,5 @@
+// xfail-test
+
 extern mod std;
 
 use core::cast::transmute;
