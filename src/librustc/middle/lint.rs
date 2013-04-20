@@ -260,7 +260,7 @@ pub fn get_lint_dict() -> LintDict {
         (~"unused_unsafe",
          LintSpec {
             lint: unused_unsafe,
-            desc: "unnecessary use of an \"unsafe\" block or function",
+            desc: "unnecessary use of an \"unsafe\" block",
             default: warn
         }),
 
@@ -957,17 +957,6 @@ fn check_item_unused_unsafe(cx: ty::ctxt, it: @ast::item) {
 fn check_fn(tcx: ty::ctxt, fk: &visit::fn_kind, decl: &ast::fn_decl,
             _body: &ast::blk, span: span, id: ast::node_id) {
     debug!("lint check_fn fk=%? id=%?", fk, id);
-
-    // Check for an 'unsafe fn' which doesn't need to be unsafe
-    match *fk {
-        visit::fk_item_fn(_, _, ast::unsafe_fn, _) => {
-            if !tcx.used_unsafe.contains(&id) {
-                tcx.sess.span_lint(unused_unsafe, id, id, span,
-                                   ~"unnecessary \"unsafe\" function");
-            }
-        }
-        _ => ()
-    }
 
     // Check for deprecated modes
     match *fk {
