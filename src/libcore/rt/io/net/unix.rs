@@ -40,7 +40,7 @@ impl Close for UnixStream {
 pub struct UnixListener;
 
 impl UnixListener {
-    pub fn new<P: PathLike>(_path: &P) -> UnixListener {
+    pub fn bind<P: PathLike>(_path: &P) -> Result<UnixListener, IoError> {
         fail!()
     }
 }
