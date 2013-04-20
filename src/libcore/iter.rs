@@ -45,6 +45,10 @@ pub trait ExtendedIter<A> {
     fn flat_map_to_vec<B,IB: BaseIter<B>>(&self, op: &fn(&A) -> IB) -> ~[B];
 }
 
+pub trait ExtendedMutableIter<A> {
+    fn eachi_mut(&mut self, blk: &fn(uint, &mut A) -> bool);
+}
+
 pub trait EqIter<A:Eq> {
     fn contains(&self, x: &A) -> bool;
     fn count(&self, x: &A) -> uint;

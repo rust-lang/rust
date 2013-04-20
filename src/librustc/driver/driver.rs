@@ -172,10 +172,13 @@ pub enum compile_upto {
 
 // For continuing compilation after a parsed crate has been
 // modified
-pub fn compile_rest(sess: Session, cfg: ast::crate_cfg,
-                    upto: compile_upto, outputs: Option<@OutputFilenames>,
+#[fixed_stack_segment]
+pub fn compile_rest(sess: Session,
+                    cfg: ast::crate_cfg,
+                    upto: compile_upto,
+                    outputs: Option<@OutputFilenames>,
                     curr: Option<@ast::crate>)
-    -> (@ast::crate, Option<ty::ctxt>) {
+                 -> (@ast::crate, Option<ty::ctxt>) {
     let time_passes = sess.time_passes();
     let mut crate = curr.get();
 

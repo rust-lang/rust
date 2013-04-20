@@ -95,9 +95,10 @@ pub use str::{StrSlice};
 pub use container::{Container, Mutable};
 pub use vec::{CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
-pub use vec::{OwnedVector, OwnedCopyableVector};
+pub use vec::{OwnedVector, OwnedCopyableVector, MutableVector};
 pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
 pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
+pub use iter::{ExtendedMutableIter};
 
 pub use num::{Num, NumCast};
 pub use ptr::Ptr;

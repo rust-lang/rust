@@ -133,7 +133,6 @@ impl to_bytes::IterBytes for creader_cache_key {
 
 struct intern_key {
     sty: *sty,
-    o_def_id: Option<ast::def_id>
 }
 
 // NB: Do not replace this with #[deriving(Eq)]. The automatically-derived
@@ -142,7 +141,7 @@ struct intern_key {
 impl cmp::Eq for intern_key {
     fn eq(&self, other: &intern_key) -> bool {
         unsafe {
-            *self.sty == *other.sty && self.o_def_id == other.o_def_id
+            *self.sty == *other.sty
         }
     }
     fn ne(&self, other: &intern_key) -> bool {
@@ -153,7 +152,7 @@ impl cmp::Eq for intern_key {
 impl to_bytes::IterBytes for intern_key {
     fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         unsafe {
-            to_bytes::iter_bytes_2(&*self.sty, &self.o_def_id, lsb0, f);
+            (*self.sty).iter_bytes(lsb0, f);
         }
     }
 }
@@ -232,7 +231,7 @@ pub type ctxt = @ctxt_;
 
 struct ctxt_ {
     diag: @syntax::diagnostic::span_handler,
-    interner: @mut HashMap<intern_key, t_box>,
+    interner: @mut HashMap<intern_key, ~t_box_>,
     next_id: @mut uint,
     vecs_implicitly_copyable: bool,
     legacy_modes: bool,
@@ -307,7 +306,7 @@ struct ctxt_ {
     used_unsafe: @mut HashSet<ast::node_id>,
 }
 
-enum tbox_flag {
+pub enum tbox_flag {
     has_params = 1,
     has_self = 2,
     needs_infer = 4,
@@ -320,13 +319,12 @@ enum tbox_flag {
     needs_subst = 1 | 2 | 8
 }
 
-type t_box = @t_box_;
+pub type t_box = &'static t_box_;
 
-struct t_box_ {
+pub struct t_box_ {
     sty: sty,
     id: uint,
     flags: uint,
-    o_def_id: Option<ast::def_id>
 }
 
 // To reduce refcounting cost, we're representing types as unsafe pointers
@@ -359,7 +357,6 @@ pub fn type_needs_infer(t: t) -> bool {
 pub fn type_has_regions(t: t) -> bool {
     tbox_has_flag(get(t), has_regions)
 }
-pub fn type_def_id(t: t) -> Option<ast::def_id> { get(t).o_def_id }
 pub fn type_id(t: t) -> uint { get(t).id }
 
 #[deriving(Eq)]
@@ -511,6 +508,53 @@ pub struct substs {
     self_r: opt_region,
     self_ty: Option<ty::t>,
     tps: ~[t]
+}
+
+mod primitives {
+    use super::{sty, t_box_};
+
+    use syntax::ast;
+
+    macro_rules! def_prim_ty(
+        ($name:ident, $sty:expr, $id:expr) => (
+            pub static $name: t_box_ = t_box_ {
+                sty: $sty,
+                id: $id,
+                flags: 0,
+            };
+        )
+    )
+
+    def_prim_ty!(TY_NIL,    super::ty_nil,                  0)
+    def_prim_ty!(TY_BOOL,   super::ty_bool,                 1)
+    def_prim_ty!(TY_INT,    super::ty_int(ast::ty_i),       2)
+    def_prim_ty!(TY_CHAR,   super::ty_int(ast::ty_char),    3)
+    def_prim_ty!(TY_I8,     super::ty_int(ast::ty_i8),      4)
+    def_prim_ty!(TY_I16,    super::ty_int(ast::ty_i16),     5)
+    def_prim_ty!(TY_I32,    super::ty_int(ast::ty_i32),     6)
+    def_prim_ty!(TY_I64,    super::ty_int(ast::ty_i64),     7)
+    def_prim_ty!(TY_UINT,   super::ty_uint(ast::ty_u),      8)
+    def_prim_ty!(TY_U8,     super::ty_uint(ast::ty_u8),     9)
+    def_prim_ty!(TY_U16,    super::ty_uint(ast::ty_u16),    10)
+    def_prim_ty!(TY_U32,    super::ty_uint(ast::ty_u32),    11)
+    def_prim_ty!(TY_U64,    super::ty_uint(ast::ty_u64),    12)
+    def_prim_ty!(TY_FLOAT,  super::ty_float(ast::ty_f),     13)
+    def_prim_ty!(TY_F32,    super::ty_float(ast::ty_f32),   14)
+    def_prim_ty!(TY_F64,    super::ty_float(ast::ty_f64),   15)
+
+    pub static TY_BOT: t_box_ = t_box_ {
+        sty: super::ty_bot,
+        id: 16,
+        flags: super::has_ty_bot as uint,
+    };
+
+    pub static TY_ERR: t_box_ = t_box_ {
+        sty: super::ty_err,
+        id: 17,
+        flags: super::has_ty_err as uint,
+    };
+
+    pub static LAST_PRIMITIVE_ID: uint = 18;
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -852,7 +896,7 @@ pub fn mk_ctxt(s: session::Session,
     @ctxt_ {
         diag: s.diagnostic(),
         interner: @mut HashMap::new(),
-        next_id: @mut 0,
+        next_id: @mut primitives::LAST_PRIMITIVE_ID,
         vecs_implicitly_copyable: vecs_implicitly_copyable,
         legacy_modes: legacy_modes,
         cstore: s.cstore,
@@ -894,16 +938,25 @@ pub fn mk_ctxt(s: session::Session,
      }
 }
 
-
 // Type constructors
-fn mk_t(cx: ctxt, +st: sty) -> t { mk_t_with_id(cx, st, None) }
 
 // Interns a type/name combination, stores the resulting box in cx.interner,
 // and returns the box as cast to an unsafe ptr (see comments for t above).
-fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
-    let key = intern_key { sty: to_unsafe_ptr(&st), o_def_id: o_def_id };
+fn mk_t(cx: ctxt, +st: sty) -> t {
+    // Check for primitive types.
+    match st {
+        ty_nil => return mk_nil(cx),
+        ty_err => return mk_err(cx),
+        ty_bool => return mk_bool(cx),
+        ty_int(i) => return mk_mach_int(cx, i),
+        ty_uint(u) => return mk_mach_uint(cx, u),
+        ty_float(f) => return mk_mach_float(cx, f),
+        _ => {}
+    };
+
+    let key = intern_key { sty: to_unsafe_ptr(&st) };
     match cx.interner.find(&key) {
-      Some(&t) => unsafe { return cast::reinterpret_cast(&t); },
+      Some(t) => unsafe { return cast::transmute(&t.sty); },
       _ => ()
     }
 
@@ -973,66 +1026,116 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       }
     }
 
-    let t = @t_box_ {
+    let t = ~t_box_ {
         sty: st,
         id: *cx.next_id,
         flags: flags,
-        o_def_id: o_def_id
     };
+
+    let sty_ptr = to_unsafe_ptr(&t.sty);
+
     let key = intern_key {
-        sty: to_unsafe_ptr(&t.sty),
-        o_def_id: o_def_id
+        sty: sty_ptr,
     };
 
     cx.interner.insert(key, t);
 
     *cx.next_id += 1;
-    unsafe { cast::reinterpret_cast(&t) }
+
+    unsafe {
+        cast::transmute::<*sty, t>(sty_ptr)
+    }
 }
 
-pub fn mk_nil(cx: ctxt) -> t { mk_t(cx, ty_nil) }
+#[inline(always)]
+pub fn mk_prim_t(cx: ctxt, primitive: &'static t_box_) -> t {
+    unsafe {
+        cast::transmute::<&'static t_box_, t>(primitive)
+    }
+}
 
-pub fn mk_err(cx: ctxt) -> t { mk_t(cx, ty_err) }
+#[inline(always)]
+pub fn mk_nil(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_NIL) }
 
-pub fn mk_bot(cx: ctxt) -> t { mk_t(cx, ty_bot) }
+#[inline(always)]
+pub fn mk_err(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_ERR) }
 
-pub fn mk_bool(cx: ctxt) -> t { mk_t(cx, ty_bool) }
+#[inline(always)]
+pub fn mk_bot(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_BOT) }
 
-pub fn mk_int(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_i)) }
+#[inline(always)]
+pub fn mk_bool(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_BOOL) }
 
-pub fn mk_i8(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_i8)) }
+#[inline(always)]
+pub fn mk_int(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_INT) }
 
-pub fn mk_i16(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_i16)) }
+#[inline(always)]
+pub fn mk_i8(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_I8) }
 
-pub fn mk_i32(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_i32)) }
+#[inline(always)]
+pub fn mk_i16(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_I16) }
 
-pub fn mk_i64(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_i64)) }
+#[inline(always)]
+pub fn mk_i32(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_I32) }
 
-pub fn mk_float(cx: ctxt) -> t { mk_t(cx, ty_float(ast::ty_f)) }
+#[inline(always)]
+pub fn mk_i64(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_I64) }
 
-pub fn mk_uint(cx: ctxt) -> t { mk_t(cx, ty_uint(ast::ty_u)) }
+#[inline(always)]
+pub fn mk_float(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_FLOAT) }
 
-pub fn mk_u8(cx: ctxt) -> t { mk_t(cx, ty_uint(ast::ty_u8)) }
+#[inline(always)]
+pub fn mk_f32(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_F32) }
 
-pub fn mk_u16(cx: ctxt) -> t { mk_t(cx, ty_uint(ast::ty_u16)) }
+#[inline(always)]
+pub fn mk_f64(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_F64) }
 
-pub fn mk_u32(cx: ctxt) -> t { mk_t(cx, ty_uint(ast::ty_u32)) }
+#[inline(always)]
+pub fn mk_uint(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_UINT) }
 
-pub fn mk_u64(cx: ctxt) -> t { mk_t(cx, ty_uint(ast::ty_u64)) }
+#[inline(always)]
+pub fn mk_u8(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_U8) }
 
-pub fn mk_f32(cx: ctxt) -> t { mk_t(cx, ty_float(ast::ty_f32)) }
+#[inline(always)]
+pub fn mk_u16(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_U16) }
 
-pub fn mk_f64(cx: ctxt) -> t { mk_t(cx, ty_float(ast::ty_f64)) }
+#[inline(always)]
+pub fn mk_u32(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_U32) }
 
-pub fn mk_mach_int(cx: ctxt, tm: ast::int_ty) -> t { mk_t(cx, ty_int(tm)) }
+#[inline(always)]
+pub fn mk_u64(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_U64) }
 
-pub fn mk_mach_uint(cx: ctxt, tm: ast::uint_ty) -> t { mk_t(cx, ty_uint(tm)) }
+pub fn mk_mach_int(cx: ctxt, tm: ast::int_ty) -> t {
+    match tm {
+        ast::ty_i    => mk_int(cx),
+        ast::ty_char => mk_char(cx),
+        ast::ty_i8   => mk_i8(cx),
+        ast::ty_i16  => mk_i16(cx),
+        ast::ty_i32  => mk_i32(cx),
+        ast::ty_i64  => mk_i64(cx),
+    }
+}
+
+pub fn mk_mach_uint(cx: ctxt, tm: ast::uint_ty) -> t {
+    match tm {
+        ast::ty_u    => mk_uint(cx),
+        ast::ty_u8   => mk_u8(cx),
+        ast::ty_u16  => mk_u16(cx),
+        ast::ty_u32  => mk_u32(cx),
+        ast::ty_u64  => mk_u64(cx),
+    }
+}
 
 pub fn mk_mach_float(cx: ctxt, tm: ast::float_ty) -> t {
-    mk_t(cx, ty_float(tm))
+    match tm {
+        ast::ty_f    => mk_float(cx),
+        ast::ty_f32  => mk_f32(cx),
+        ast::ty_f64  => mk_f64(cx),
+    }
 }
 
-pub fn mk_char(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_char)) }
+#[inline(always)]
+pub fn mk_char(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_CHAR) }
 
 pub fn mk_estr(cx: ctxt, t: vstore) -> t {
     mk_t(cx, ty_estr(t))
@@ -1148,10 +1251,6 @@ pub fn mk_opaque_closure_ptr(cx: ctxt, sigil: ast::Sigil) -> t {
 }
 
 pub fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
-
-pub fn mk_with_id(cx: ctxt, base: t, def_id: ast::def_id) -> t {
-    mk_t_with_id(cx, /*bad*/copy get(base).sty, Some(def_id))
-}
 
 // Converts s to its machine type equivalent
 pub fn mach_sty(cfg: @session::config, t: t) -> sty {

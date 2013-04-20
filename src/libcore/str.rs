@@ -67,6 +67,15 @@ pub fn from_bytes_with_null<'a>(vv: &'a [u8]) -> &'a str {
     return unsafe { raw::from_bytes_with_null(vv) };
 }
 
+pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
+    unsafe {
+        assert!(is_utf8(vector));
+        let (ptr, len): (*u8, uint) = ::cast::transmute(vector);
+        let string: &'a str = ::cast::transmute((ptr, len + 1));
+        string
+    }
+}
+
 /// Copy a slice into a new unique str
 pub fn from_slice(s: &str) -> ~str {
     unsafe { raw::slice_bytes_owned(s, 0, len(s)) }
@@ -418,6 +427,15 @@ pub fn to_bytes(s: &str) -> ~[u8] {
 pub fn byte_slice<T>(s: &str, f: &fn(v: &[u8]) -> T) -> T {
     do as_buf(s) |p,n| {
         unsafe { vec::raw::buf_as_slice(p, n-1u, f) }
+    }
+}
+
+/// Work with the string as a byte slice, not including trailing null, without
+/// a callback.
+#[inline(always)]
+pub fn byte_slice_no_callback<'a>(s: &'a str) -> &'a [u8] {
+    unsafe {
+        cast::transmute(s)
     }
 }
 

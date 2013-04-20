@@ -274,7 +274,7 @@ pub fn trans_break_cont(bcx: block,
           Some(bcx) => bcx,
           // This is a return from a loop body block
           None => {
-            Store(bcx, C_bool(!to_end), bcx.fcx.llretptr);
+            Store(bcx, C_bool(!to_end), bcx.fcx.llretptr.get());
             cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
             Unreachable(bcx);
             return bcx;
@@ -303,14 +303,14 @@ pub fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
         // to false, return flag to true, and then store the value in the
         // parent's retptr.
         Store(bcx, C_bool(true), flagptr);
-        Store(bcx, C_bool(false), bcx.fcx.llretptr);
+        Store(bcx, C_bool(false), bcx.fcx.llretptr.get());
         match e {
           Some(x) => PointerCast(bcx, retptr,
                                  T_ptr(type_of(bcx.ccx(), expr_ty(bcx, x)))),
           None => retptr
         }
       }
-      None => bcx.fcx.llretptr
+      None => bcx.fcx.llretptr.get()
     };
     match e {
       Some(x) => {

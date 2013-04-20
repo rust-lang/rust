@@ -18,9 +18,11 @@ use util::interner;
 
 use core::cast;
 use core::char;
+use core::cmp::Equiv;
 use core::hashmap::HashSet;
 use core::str;
 use core::task;
+use core::to_bytes;
 
 #[auto_encode]
 #[auto_decode]
@@ -355,22 +357,42 @@ pub mod special_idents {
     pub static type_self: ident = ident { repr: 36u, ctxt: 0};    // `Self`
 }
 
+pub struct StringRef<'self>(&'self str);
+
+impl<'self> Equiv<@~str> for StringRef<'self> {
+    #[inline(always)]
+    fn equiv(&self, other: &@~str) -> bool { str::eq_slice(**self, **other) }
+}
+
+impl<'self> to_bytes::IterBytes for StringRef<'self> {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (**self).iter_bytes(lsb0, f);
+    }
+}
+
 pub struct ident_interner {
     priv interner: Interner<@~str>,
 }
 
 pub impl ident_interner {
     fn intern(&self, val: @~str) -> ast::ident {
-        ast::ident { repr: self.interner.intern(val), ctxt: 0}
+        ast::ident { repr: self.interner.intern(val), ctxt: 0 }
     }
     fn gensym(&self, val: @~str) -> ast::ident {
-        ast::ident { repr: self.interner.gensym(val), ctxt: 0}
+        ast::ident { repr: self.interner.gensym(val), ctxt: 0 }
     }
     fn get(&self, idx: ast::ident) -> @~str {
         self.interner.get(idx.repr)
     }
     fn len(&self) -> uint {
         self.interner.len()
+    }
+    fn find_equiv<Q:Hash + IterBytes + Equiv<@~str>>(&self, val: &Q)
+                                                     -> Option<ast::ident> {
+        match self.interner.find_equiv(val) {
+            Some(v) => Some(ast::ident { repr: v, ctxt: 0 }),
+            None => None,
+        }
     }
 }
 

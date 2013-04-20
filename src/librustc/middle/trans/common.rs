@@ -291,10 +291,15 @@ pub struct fn_ctxt_ {
     // section of the executable we're generating.
     llfn: ValueRef,
 
-    // The two implicit arguments that arrive in the function we're creating.
-    // For instance, foo(int, int) is really foo(ret*, env*, int, int).
+    // The implicit environment argument that arrives in the function we're
+    // creating.
     llenv: ValueRef,
-    llretptr: ValueRef,
+
+    // The place to store the return value. If the return type is immediate,
+    // this is an alloca in the function. Otherwise, it's the hidden first
+    // parameter to the function. After function construction, this should
+    // always be Some.
+    llretptr: Option<ValueRef>,
 
     // These elements: "hoisted basic blocks" containing
     // administrative activities that have to happen in only one place in
@@ -321,6 +326,11 @@ pub struct fn_ctxt_ {
     // If this is a for-loop body that returns, this holds the pointers needed
     // for that (flagptr, retptr)
     loop_ret: Option<(ValueRef, ValueRef)>,
+
+    // True if this function has an immediate return value, false otherwise.
+    // If this is false, the llretptr will alias the first argument of the
+    // function.
+    has_immediate_return_value: bool,
 
     // Maps arguments to allocas created for them in llallocas.
     llargs: @mut HashMap<ast::node_id, local_val>,
