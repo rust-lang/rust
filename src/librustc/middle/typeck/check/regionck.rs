@@ -413,12 +413,9 @@ fn constrain_derefs(rcx: @mut Rcx,
 
         match ty::deref(tcx, derefd_ty, true) {
             Some(mt) => derefd_ty = mt.ty,
-            None => {
-                tcx.sess.span_bug(
-                    deref_expr.span,
-                    fmt!("%?'th deref is of a non-deref'able type `%s`",
-                         i, rcx.fcx.infcx().ty_to_str(derefd_ty)));
-            }
+            /* if this type can't be dereferenced, then there's already an error
+               in the session saying so. Just bail out for now */
+            None => break
         }
     }
 }
