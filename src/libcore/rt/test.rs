@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use super::io::net::ip::{IpAddr, Ipv4};
+
 // For setting up tests of the new scheduler
 pub fn run_in_newsched_task(f: ~fn()) {
     use cell::Cell;
@@ -52,4 +54,9 @@ pub fn next_test_port() -> u16 {
     extern {
         fn rust_dbg_next_port() -> ::libc::uintptr_t;
     }
+}
+
+/// Get a unique localhost:port pair starting at 9600
+pub fn next_test_ip4() -> IpAddr {
+    Ipv4(127, 0, 0, 1, next_test_port())
 }

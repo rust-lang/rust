@@ -22,7 +22,7 @@ use super::super::io::net::ip::{IpAddr, Ipv4, Ipv6};
 #[cfg(test)] use cell::Cell;
 #[cfg(test)] use unstable::run_in_bare_thread;
 #[cfg(test)] use super::super::thread::Thread;
-#[cfg(test)] use super::super::test::next_test_port;
+#[cfg(test)] use super::super::test::*;
 
 fn ip4_as_uv_ip4(addr: IpAddr, f: &fn(*sockaddr_in)) {
     match addr {
@@ -359,7 +359,7 @@ fn connect_close() {
         let mut loop_ = Loop::new();
         let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
         // Connect to a port where nobody is listening
-        let addr = Ipv4(127, 0, 0, 1, next_test_port());
+        let addr = next_test_ip4();
         do tcp_watcher.connect(addr) |stream_watcher, status| {
             rtdebug!("tcp_watcher.connect!");
             assert!(status.is_some());
@@ -377,7 +377,7 @@ fn listen() {
         static MAX: int = 10;
         let mut loop_ = Loop::new();
         let mut server_tcp_watcher = { TcpWatcher::new(&mut loop_) };
-        let addr = Ipv4(127, 0, 0, 1, next_test_port());
+        let addr = next_test_ip4();
         server_tcp_watcher.bind(addr);
         let loop_ = loop_;
         rtdebug!("listening");
