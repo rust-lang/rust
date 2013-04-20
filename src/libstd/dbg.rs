@@ -10,7 +10,7 @@
 
 //! Unsafe debugging functions for inspecting values.
 
-use core::cast::reinterpret_cast;
+use core::cast::transmute;
 use core::ptr;
 use core::sys;
 
@@ -64,9 +64,9 @@ pub fn debug_fn<T>(x: T) {
 }
 
 pub unsafe fn ptr_cast<T, U>(x: @T) -> @U {
-    reinterpret_cast(
-        &rustrt::debug_ptrcast(sys::get_type_desc::<T>(),
-                              reinterpret_cast(&x)))
+    transmute(
+        rustrt::debug_ptrcast(sys::get_type_desc::<T>(),
+                              transmute(x)))
 }
 
 /// Triggers a debugger breakpoint

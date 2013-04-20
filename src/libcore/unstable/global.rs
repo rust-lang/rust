@@ -25,7 +25,7 @@ which case the value should be cached locally whenever possible to
 avoid hitting the mutex.
 */
 
-use cast::{transmute, reinterpret_cast};
+use cast::{transmute};
 use clone::Clone;
 use kinds::Owned;
 use libc::{c_void};
@@ -223,7 +223,7 @@ fn get_global_state() -> Exclusive<GlobalState> {
 
 fn key_ptr<T:Owned>(key: GlobalDataKey<T>) -> uint {
     unsafe {
-        let closure: Closure = reinterpret_cast(&key);
+        let closure: Closure = transmute(key);
         return transmute(closure.code);
     }
 }

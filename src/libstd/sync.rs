@@ -833,7 +833,7 @@ mod tests {
         let ptr = ptr::addr_of(&(*sharedstate));
         do task::spawn || {
             let sharedstate: &mut int =
-                unsafe { cast::reinterpret_cast(&ptr) };
+                unsafe { cast::transmute(ptr) };
             access_shared(sharedstate, m2, 10);
             c.send(());
 
@@ -1111,7 +1111,7 @@ mod tests {
         let ptr = ptr::addr_of(&(*sharedstate));
         do task::spawn || {
             let sharedstate: &mut int =
-                unsafe { cast::reinterpret_cast(&ptr) };
+                unsafe { cast::transmute(ptr) };
             access_shared(sharedstate, &x2, mode1, 10);
             c.send(());
         }

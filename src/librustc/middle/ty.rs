@@ -337,10 +337,8 @@ pub type t = *t_opaque;
 
 pub fn get(t: t) -> t_box {
     unsafe {
-        let t2 = cast::reinterpret_cast::<t, t_box>(&t);
-        let t3 = t2;
-        cast::forget(t2);
-        t3
+        let t2: t_box = cast::transmute(t);
+        t2
     }
 }
 

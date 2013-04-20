@@ -239,10 +239,10 @@ pub fn getenv(n: &str) -> Option<~str> {
     unsafe {
         do with_env_lock {
             let s = str::as_c_str(n, |s| libc::getenv(s));
-            if ptr::null::<u8>() == cast::reinterpret_cast(&s) {
+            if ptr::null::<u8>() == cast::transmute(s) {
                 option::None::<~str>
             } else {
-                let s = cast::reinterpret_cast(&s);
+                let s = cast::transmute(s);
                 option::Some::<~str>(str::raw::from_buf(s))
             }
         }
@@ -644,7 +644,7 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
             // FIXME: turn mode into something useful? #2623
             do as_utf16_p(p.to_str()) |buf| {
                 libc::CreateDirectoryW(buf, unsafe {
-                    cast::reinterpret_cast(&0)
+                    cast::transmute(0)
                 })
                     != (0 as libc::BOOL)
             }

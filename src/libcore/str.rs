@@ -121,7 +121,7 @@ pub fn push_char(s: &mut ~str, ch: char) {
         reserve_at_least(&mut *s, new_len);
         let off = len;
         do as_buf(*s) |buf, _len| {
-            let buf: *mut u8 = ::cast::reinterpret_cast(&buf);
+            let buf: *mut u8 = ::cast::transmute(buf);
             if nb == 1u {
                 *ptr::mut_offset(buf, off) =
                     code as u8;
@@ -2023,9 +2023,9 @@ pub fn as_bytes<T>(s: &const ~str, f: &fn(&~[u8]) -> T) -> T {
  */
 pub fn as_bytes_slice<'a>(s: &'a str) -> &'a [u8] {
     unsafe {
-        let (ptr, len): (*u8, uint) = ::cast::reinterpret_cast(&s);
+        let (ptr, len): (*u8, uint) = ::cast::transmute(s);
         let outgoing_tuple: (*u8, uint) = (ptr, len - 1);
-        return ::cast::reinterpret_cast(&outgoing_tuple);
+        return ::cast::transmute(outgoing_tuple);
     }
 }
 
@@ -2067,7 +2067,7 @@ pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
 #[inline(always)]
 pub fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
     unsafe {
-        let v : *(*u8,uint) = ::cast::reinterpret_cast(&ptr::addr_of(&s));
+        let v : *(*u8,uint) = ::cast::transmute(ptr::addr_of(&s));
         let (buf,len) = *v;
         f(buf, len)
     }
@@ -2217,12 +2217,12 @@ pub mod raw {
 
     /// Create a Rust string from a null-terminated C string
     pub unsafe fn from_c_str(c_str: *libc::c_char) -> ~str {
-        from_buf(::cast::reinterpret_cast(&c_str))
+        from_buf(::cast::transmute(c_str))
     }
 
     /// Create a Rust string from a `*c_char` buffer of the given length
     pub unsafe fn from_c_str_len(c_str: *libc::c_char, len: uint) -> ~str {
-        from_buf_len(::cast::reinterpret_cast(&c_str), len)
+        from_buf_len(::cast::transmute(c_str), len)
     }
 
     /// Converts a vector of bytes to a new owned string.
@@ -2246,7 +2246,7 @@ pub mod raw {
     pub unsafe fn buf_as_slice<T>(buf: *u8, len: uint,
                               f: &fn(v: &str) -> T) -> T {
         let v = (buf, len + 1);
-        assert!(is_utf8(::cast::reinterpret_cast(&v)));
+        assert!(is_utf8(::cast::transmute(v)));
         f(::cast::transmute(v))
     }
 
@@ -2294,7 +2294,7 @@ pub mod raw {
              assert!((end <= n));
 
              let tuple = (ptr::offset(sbuf, begin), end - begin + 1);
-             ::cast::reinterpret_cast(&tuple)
+             ::cast::transmute(tuple)
         }
     }
 
@@ -2303,7 +2303,7 @@ pub mod raw {
         let new_len = s.len() + 1;
         reserve_at_least(&mut *s, new_len);
         do as_buf(*s) |buf, len| {
-            let buf: *mut u8 = ::cast::reinterpret_cast(&buf);
+            let buf: *mut u8 = ::cast::transmute(buf);
             *ptr::mut_offset(buf, len) = b;
         }
         set_len(&mut *s, new_len);

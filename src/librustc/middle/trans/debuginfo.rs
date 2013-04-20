@@ -84,7 +84,7 @@ fn llunused() -> ValueRef {
 }
 fn llnull() -> ValueRef {
     unsafe {
-        cast::reinterpret_cast(&ptr::null::<ValueRef>())
+        cast::transmute(ptr::null::<ValueRef>())
     }
 }
 
