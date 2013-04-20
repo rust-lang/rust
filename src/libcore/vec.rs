@@ -279,8 +279,8 @@ pub fn slice<'r,T>(v: &'r [T], start: uint, end: uint) -> &'r [T] {
     assert!(end <= len(v));
     do as_imm_buf(v) |p, _len| {
         unsafe {
-            ::cast::reinterpret_cast(
-                &(ptr::offset(p, start),
+            ::cast::transmute(
+                (ptr::offset(p, start),
                   (end - start) * sys::nonzero_size_of::<T>()))
         }
     }
@@ -294,8 +294,8 @@ pub fn mut_slice<'r,T>(v: &'r mut [T], start: uint, end: uint)
     assert!(end <= v.len());
     do as_mut_buf(v) |p, _len| {
         unsafe {
-            ::cast::reinterpret_cast(
-                &(ptr::mut_offset(p, start),
+            ::cast::transmute(
+                (ptr::mut_offset(p, start),
                   (end - start) * sys::nonzero_size_of::<T>()))
         }
     }
@@ -309,8 +309,8 @@ pub fn const_slice<'r,T>(v: &'r const [T], start: uint, end: uint)
     assert!(end <= len(v));
     do as_const_buf(v) |p, _len| {
         unsafe {
-            ::cast::reinterpret_cast(
-                &(ptr::const_offset(p, start),
+            ::cast::transmute(
+                (ptr::const_offset(p, start),
                   (end - start) * sys::nonzero_size_of::<T>()))
         }
     }
@@ -1617,7 +1617,7 @@ pub fn as_imm_buf<T,U>(s: &[T],
 
     unsafe {
         let v : *(*T,uint) =
-            ::cast::reinterpret_cast(&addr_of(&s));
+            ::cast::transmute(addr_of(&s));
         let (buf,len) = *v;
         f(buf, len / sys::nonzero_size_of::<T>())
     }
@@ -1628,7 +1628,7 @@ pub fn as_imm_buf<T,U>(s: &[T],
 pub fn as_const_buf<T,U>(s: &const [T], f: &fn(*const T, uint) -> U) -> U {
     unsafe {
         let v : *(*const T,uint) =
-            ::cast::reinterpret_cast(&addr_of(&s));
+            ::cast::transmute(addr_of(&s));
         let (buf,len) = *v;
         f(buf, len / sys::nonzero_size_of::<T>())
     }
@@ -1639,7 +1639,7 @@ pub fn as_const_buf<T,U>(s: &const [T], f: &fn(*const T, uint) -> U) -> U {
 pub fn as_mut_buf<T,U>(s: &mut [T], f: &fn(*mut T, uint) -> U) -> U {
     unsafe {
         let v : *(*mut T,uint) =
-            ::cast::reinterpret_cast(&addr_of(&s));
+            ::cast::transmute(addr_of(&s));
         let (buf,len) = *v;
         f(buf, len / sys::nonzero_size_of::<T>())
     }
@@ -2468,21 +2468,21 @@ pub mod raw {
     #[inline(always)]
     pub unsafe fn to_ptr<T>(v: &[T]) -> *T {
         let repr: **SliceRepr = ::cast::transmute(&v);
-        ::cast::reinterpret_cast(&addr_of(&((**repr).data)))
+        ::cast::transmute(addr_of(&((**repr).data)))
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
     pub unsafe fn to_const_ptr<T>(v: &const [T]) -> *const T {
         let repr: **SliceRepr = ::cast::transmute(&v);
-        ::cast::reinterpret_cast(&addr_of(&((**repr).data)))
+        ::cast::transmute(addr_of(&((**repr).data)))
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
     pub unsafe fn to_mut_ptr<T>(v: &mut [T]) -> *mut T {
         let repr: **SliceRepr = ::cast::transmute(&v);
-        ::cast::reinterpret_cast(&addr_of(&((**repr).data)))
+        ::cast::transmute(addr_of(&((**repr).data)))
     }
 
     /**
@@ -2495,7 +2495,7 @@ pub mod raw {
                                     f: &fn(v: &[T]) -> U) -> U {
         let pair = (p, len * sys::nonzero_size_of::<T>());
         let v : *(&'blk [T]) =
-            ::cast::reinterpret_cast(&addr_of(&pair));
+            ::cast::transmute(addr_of(&pair));
         f(*v)
     }
 
@@ -2509,7 +2509,7 @@ pub mod raw {
                                         f: &fn(v: &mut [T]) -> U) -> U {
         let pair = (p, len * sys::nonzero_size_of::<T>());
         let v : *(&'blk mut [T]) =
-            ::cast::reinterpret_cast(&addr_of(&pair));
+            ::cast::transmute(addr_of(&pair));
         f(*v)
     }
 

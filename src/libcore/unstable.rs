@@ -121,7 +121,7 @@ impl<T> Drop for ArcDestruct<T>{
     fn finalize(&self) {
         unsafe {
             do task::unkillable {
-                let mut data: ~ArcData<T> = cast::reinterpret_cast(&self.data);
+                let mut data: ~ArcData<T> = cast::transmute(self.data);
                 let new_count =
                     intrinsics::atomic_xsub(&mut data.count, 1) - 1;
                 assert!(new_count >= 0);
@@ -160,7 +160,7 @@ pub unsafe fn shared_mutable_state<T:Owned>(data: T) ->
 pub unsafe fn get_shared_mutable_state<T:Owned>(
     rc: *SharedMutableState<T>) -> *mut T
 {
-    let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
+    let ptr: ~ArcData<T> = cast::transmute((*rc).data);
     assert!(ptr.count > 0);
     let r = cast::transmute(ptr.data.get_ref());
     cast::forget(ptr);
@@ -169,7 +169,7 @@ pub unsafe fn get_shared_mutable_state<T:Owned>(
 #[inline(always)]
 pub unsafe fn get_shared_immutable_state<'a,T:Owned>(
         rc: &'a SharedMutableState<T>) -> &'a T {
-    let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
+    let ptr: ~ArcData<T> = cast::transmute((*rc).data);
     assert!(ptr.count > 0);
     // Cast us back into the correct region
     let r = cast::transmute_region(ptr.data.get_ref());
@@ -179,7 +179,7 @@ pub unsafe fn get_shared_immutable_state<'a,T:Owned>(
 
 pub unsafe fn clone_shared_mutable_state<T:Owned>(rc: &SharedMutableState<T>)
         -> SharedMutableState<T> {
-    let mut ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
+    let mut ptr: ~ArcData<T> = cast::transmute((*rc).data);
     let new_count = intrinsics::atomic_xadd(&mut ptr.count, 1) + 1;
     assert!(new_count >= 2);
     cast::forget(ptr);

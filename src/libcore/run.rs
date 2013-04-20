@@ -147,7 +147,7 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
         }
         ptrs.push(ptr::null());
         vec::as_imm_buf(ptrs, |p, _len|
-            unsafe { cb(::cast::reinterpret_cast(&p)) }
+            unsafe { cb(::cast::transmute(p)) }
         )
       }
       _ => cb(ptr::null())
@@ -167,12 +167,12 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
             for vec::each(*es) |e| {
                 let (k,v) = copy *e;
                 let t = fmt!("%s=%s", k, v);
-                let mut v : ~[u8] = ::cast::reinterpret_cast(&t);
+                let mut v : ~[u8] = ::cast::transmute(t);
                 blk += v;
                 ::cast::forget(v);
             }
             blk += ~[0_u8];
-            vec::as_imm_buf(blk, |p, _len| cb(::cast::reinterpret_cast(&p)))
+            vec::as_imm_buf(blk, |p, _len| cb(::cast::transmute(p)))
           }
           _ => cb(ptr::null())
         }

@@ -86,11 +86,11 @@ pub unsafe fn position<T>(buf: *T, f: &fn(&T) -> bool) -> uint {
 
 /// Create an unsafe null pointer
 #[inline(always)]
-pub fn null<T>() -> *T { unsafe { cast::reinterpret_cast(&0u) } }
+pub fn null<T>() -> *T { unsafe { cast::transmute(0u) } }
 
 /// Create an unsafe mutable null pointer
 #[inline(always)]
-pub fn mut_null<T>() -> *mut T { unsafe { cast::reinterpret_cast(&0u) } }
+pub fn mut_null<T>() -> *mut T { unsafe { cast::transmute(0u) } }
 
 /// Returns true if the pointer is equal to the null pointer.
 #[inline(always)]
@@ -134,7 +134,7 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: int, count: uint) {
 */
 #[inline(always)]
 pub fn to_unsafe_ptr<T>(thing: &T) -> *T {
-    unsafe { cast::reinterpret_cast(&thing) }
+    unsafe { cast::transmute(thing) }
 }
 
 /**
@@ -144,7 +144,7 @@ pub fn to_unsafe_ptr<T>(thing: &T) -> *T {
 */
 #[inline(always)]
 pub fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
-    unsafe { cast::reinterpret_cast(&thing) }
+    unsafe { cast::transmute(thing) }
 }
 
 /**
@@ -154,7 +154,7 @@ pub fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
 */
 #[inline(always)]
 pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
-    unsafe { cast::reinterpret_cast(&thing) }
+    unsafe { cast::transmute(thing) }
 }
 
 /**
@@ -167,7 +167,7 @@ pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
 #[inline(always)]
 pub fn to_uint<T>(thing: &T) -> uint {
     unsafe {
-        cast::reinterpret_cast(&thing)
+        cast::transmute(thing)
     }
 }
 
@@ -259,8 +259,8 @@ impl<T> Eq for *const T {
     #[inline(always)]
     fn eq(&self, other: &*const T) -> bool {
         unsafe {
-            let a: uint = cast::reinterpret_cast(&(*self));
-            let b: uint = cast::reinterpret_cast(&(*other));
+            let a: uint = cast::transmute(*self);
+            let b: uint = cast::transmute(*other);
             return a == b;
         }
     }
@@ -274,32 +274,32 @@ impl<T> Ord for *const T {
     #[inline(always)]
     fn lt(&self, other: &*const T) -> bool {
         unsafe {
-            let a: uint = cast::reinterpret_cast(&(*self));
-            let b: uint = cast::reinterpret_cast(&(*other));
+            let a: uint = cast::transmute(*self);
+            let b: uint = cast::transmute(*other);
             return a < b;
         }
     }
     #[inline(always)]
     fn le(&self, other: &*const T) -> bool {
         unsafe {
-            let a: uint = cast::reinterpret_cast(&(*self));
-            let b: uint = cast::reinterpret_cast(&(*other));
+            let a: uint = cast::transmute(*self);
+            let b: uint = cast::transmute(*other);
             return a <= b;
         }
     }
     #[inline(always)]
     fn ge(&self, other: &*const T) -> bool {
         unsafe {
-            let a: uint = cast::reinterpret_cast(&(*self));
-            let b: uint = cast::reinterpret_cast(&(*other));
+            let a: uint = cast::transmute(*self);
+            let b: uint = cast::transmute(*other);
             return a >= b;
         }
     }
     #[inline(always)]
     fn gt(&self, other: &*const T) -> bool {
         unsafe {
-            let a: uint = cast::reinterpret_cast(&(*self));
-            let b: uint = cast::reinterpret_cast(&(*other));
+            let a: uint = cast::transmute(*self);
+            let b: uint = cast::transmute(*other);
             return a > b;
         }
     }
@@ -350,7 +350,7 @@ pub mod ptr_tests {
             struct Pair {mut fst: int, mut snd: int};
             let mut p = Pair {fst: 10, snd: 20};
             let pptr: *mut Pair = &mut p;
-            let iptr: *mut int = cast::reinterpret_cast(&pptr);
+            let iptr: *mut int = cast::transmute(pptr);
             assert!((*iptr == 10));;
             *iptr = 30;
             assert!((*iptr == 30));
