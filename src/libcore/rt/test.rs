@@ -10,7 +10,8 @@
 
 use super::io::net::ip::{IpAddr, Ipv4};
 
-// For setting up tests of the new scheduler
+/// Creates a new scheduler in a new thread and runs a task in it,
+/// then waits for the scheduler to exit.
 pub fn run_in_newsched_task(f: ~fn()) {
     use cell::Cell;
     use unstable::run_in_bare_thread;
