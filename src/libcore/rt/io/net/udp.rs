@@ -40,7 +40,7 @@ impl Close for UdpStream {
 pub struct UdpListener;
 
 impl UdpListener {
-    pub fn new(_addr: IpAddr) -> UdpListener {
+    pub fn bind(_addr: IpAddr) -> Result<UdpListener, IoError> {
         fail!()
     }
 }
