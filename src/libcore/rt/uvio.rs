@@ -335,7 +335,6 @@ impl Stream for UvStream {
 }
 
 #[test]
-#[ignore(reason = "ffi struct issues")]
 fn test_simple_io_no_connect() {
     do run_in_bare_thread {
         let mut sched = ~UvEventLoop::new_scheduler();
@@ -351,7 +350,6 @@ fn test_simple_io_no_connect() {
 }
 
 #[test]
-#[ignore(reason = "ffi struct issues")]
 fn test_simple_tcp_server_and_client() {
     do run_in_bare_thread {
         let mut sched = ~UvEventLoop::new_scheduler();
