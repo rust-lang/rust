@@ -10,8 +10,12 @@
 
 /*! Synchronous I/O
 
-This module defines the Rust interface for synchronous I/O.
-It supports file access,
+This module defines the Rust interface for synchronous I/O.  It is
+build around Reader and Writer traits that define byte stream sources
+and sinks.  Implementations are provided for common I/O streams like
+file, TCP, UDP, Unix domain sockets, multiple types of memory bufers.
+Readers and Writers may be composed to add things like string parsing,
+and compression.
 
 This will likely live in core::io, not core::rt::io.
 
@@ -27,7 +31,7 @@ Some examples of obvious things you might want to do
 
 * Read a complete file to a string, (converting newlines?)
 
-    let contents = open("message.txt").read_to_str(); // read_to_str??
+    let contents = FileStream::open("message.txt").read_to_str(); // read_to_str??
 
 * Write a line to a file
 
@@ -36,13 +40,26 @@ Some examples of obvious things you might want to do
 
 * Iterate over the lines of a file
 
+    do FileStream::open("message.txt").each_line |line| {
+        println(line)
+    }
+
 * Pull the lines of a file into a vector of strings
+
+    let lines = FileStream::open("message.txt").line_iter().to_vec();
+
+* Make an simple HTTP request
+
+    let socket = TcpStream::open("localhost:8080");
+    socket.write_line("GET / HTTP/1.0");
+    socket.write_line("");
+    let response = socket.read_to_end();
 
 * Connect based on URL? Requires thinking about where the URL type lives
   and how to make protocol handlers extensible, e.g. the "tcp" protocol
   yields a `TcpStream`.
 
-    connect("tcp://localhost:8080").write_line("HTTP 1.0 GET /");
+    connect("tcp://localhost:8080");
 
 # Terms
 
