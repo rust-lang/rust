@@ -1,6 +1,5 @@
 use core::from_str::FromStr;
 use core::iter::ExtendedMutableIter;
-use core::unstable::intrinsics::sqrtf64;
 
 #[inline]
 fn A(i: i32, j: i32) -> i32 {
@@ -49,6 +48,5 @@ fn main() {
         mult_AtAv(v, u, tmp);
     }
 
-    println(fmt!("%.9f", sqrtf64(dot(u,v) / dot(v,v)) as float));
+    println(fmt!("%.9f", f64::sqrt(dot(u,v) / dot(v,v)) as float));
 }
-

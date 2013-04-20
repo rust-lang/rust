@@ -10,12 +10,9 @@
 
 //! Operations and constants for `f64`
 
-use cmath;
-use libc::{c_double, c_int};
 use num::strconv;
 use num;
 use option::Option;
-use unstable::intrinsics::floorf64;
 use to_str;
 use from_str;
 
@@ -25,87 +22,98 @@ use from_str;
 pub use cmath::c_double_targ_consts::*;
 pub use cmp::{min, max};
 
+// An inner module is required to get the #[inline(always)] attribute on the
+// functions.
+pub use self::delegated::*;
+
 macro_rules! delegate(
     (
-        fn $name:ident(
-            $(
-                $arg:ident : $arg_ty:ty
-            ),*
-        ) -> $rv:ty = $bound_name:path
+        $(
+            fn $name:ident(
+                $(
+                    $arg:ident : $arg_ty:ty
+                ),*
+            ) -> $rv:ty = $bound_name:path
+        ),*
     ) => (
-        pub fn $name($( $arg : $arg_ty ),*) -> $rv {
-            unsafe {
-                $bound_name($( $arg ),*)
-            }
+        mod delegated {
+            use cmath::c_double_utils;
+            use libc::{c_double, c_int};
+            use unstable::intrinsics;
+
+            $(
+                #[inline(always)]
+                pub fn $name($( $arg : $arg_ty ),*) -> $rv {
+                    unsafe {
+                        $bound_name($( $arg ),*)
+                    }
+                }
+            )*
         }
     )
 )
 
-delegate!(fn acos(n: c_double) -> c_double = cmath::c_double_utils::acos)
-delegate!(fn asin(n: c_double) -> c_double = cmath::c_double_utils::asin)
-delegate!(fn atan(n: c_double) -> c_double = cmath::c_double_utils::atan)
-delegate!(fn atan2(a: c_double, b: c_double) -> c_double =
-    cmath::c_double_utils::atan2)
-delegate!(fn cbrt(n: c_double) -> c_double = cmath::c_double_utils::cbrt)
-delegate!(fn ceil(n: c_double) -> c_double = cmath::c_double_utils::ceil)
-delegate!(fn copysign(x: c_double, y: c_double) -> c_double =
-    cmath::c_double_utils::copysign)
-delegate!(fn cos(n: c_double) -> c_double = cmath::c_double_utils::cos)
-delegate!(fn cosh(n: c_double) -> c_double = cmath::c_double_utils::cosh)
-delegate!(fn erf(n: c_double) -> c_double = cmath::c_double_utils::erf)
-delegate!(fn erfc(n: c_double) -> c_double = cmath::c_double_utils::erfc)
-delegate!(fn exp(n: c_double) -> c_double = cmath::c_double_utils::exp)
-delegate!(fn expm1(n: c_double) -> c_double = cmath::c_double_utils::expm1)
-delegate!(fn exp2(n: c_double) -> c_double = cmath::c_double_utils::exp2)
-delegate!(fn abs(n: c_double) -> c_double = cmath::c_double_utils::abs)
-delegate!(fn abs_sub(a: c_double, b: c_double) -> c_double =
-    cmath::c_double_utils::abs_sub)
-delegate!(fn mul_add(a: c_double, b: c_double, c: c_double) -> c_double =
-    cmath::c_double_utils::mul_add)
-delegate!(fn fmax(a: c_double, b: c_double) -> c_double =
-    cmath::c_double_utils::fmax)
-delegate!(fn fmin(a: c_double, b: c_double) -> c_double =
-    cmath::c_double_utils::fmin)
-delegate!(fn nextafter(x: c_double, y: c_double) -> c_double =
-    cmath::c_double_utils::nextafter)
-delegate!(fn frexp(n: c_double, value: &mut c_int) -> c_double =
-    cmath::c_double_utils::frexp)
-delegate!(fn hypot(x: c_double, y: c_double) -> c_double =
-    cmath::c_double_utils::hypot)
-delegate!(fn ldexp(x: c_double, n: c_int) -> c_double =
-    cmath::c_double_utils::ldexp)
-delegate!(fn lgamma(n: c_double, sign: &mut c_int) -> c_double =
-    cmath::c_double_utils::lgamma)
-delegate!(fn ln(n: c_double) -> c_double = cmath::c_double_utils::ln)
-delegate!(fn log_radix(n: c_double) -> c_double =
-    cmath::c_double_utils::log_radix)
-delegate!(fn ln1p(n: c_double) -> c_double = cmath::c_double_utils::ln1p)
-delegate!(fn log10(n: c_double) -> c_double = cmath::c_double_utils::log10)
-delegate!(fn log2(n: c_double) -> c_double = cmath::c_double_utils::log2)
-delegate!(fn ilog_radix(n: c_double) -> c_int =
-    cmath::c_double_utils::ilog_radix)
-delegate!(fn modf(n: c_double, iptr: &mut c_double) -> c_double =
-    cmath::c_double_utils::modf)
-delegate!(fn pow(n: c_double, e: c_double) -> c_double =
-    cmath::c_double_utils::pow)
-delegate!(fn round(n: c_double) -> c_double = cmath::c_double_utils::round)
-delegate!(fn ldexp_radix(n: c_double, i: c_int) -> c_double =
-    cmath::c_double_utils::ldexp_radix)
-delegate!(fn sin(n: c_double) -> c_double = cmath::c_double_utils::sin)
-delegate!(fn sinh(n: c_double) -> c_double = cmath::c_double_utils::sinh)
-delegate!(fn sqrt(n: c_double) -> c_double = cmath::c_double_utils::sqrt)
-delegate!(fn tan(n: c_double) -> c_double = cmath::c_double_utils::tan)
-delegate!(fn tanh(n: c_double) -> c_double = cmath::c_double_utils::tanh)
-delegate!(fn tgamma(n: c_double) -> c_double = cmath::c_double_utils::tgamma)
-delegate!(fn trunc(n: c_double) -> c_double = cmath::c_double_utils::trunc)
-delegate!(fn j0(n: c_double) -> c_double = cmath::c_double_utils::j0)
-delegate!(fn j1(n: c_double) -> c_double = cmath::c_double_utils::j1)
-delegate!(fn jn(i: c_int, n: c_double) -> c_double =
-    cmath::c_double_utils::jn)
-delegate!(fn y0(n: c_double) -> c_double = cmath::c_double_utils::y0)
-delegate!(fn y1(n: c_double) -> c_double = cmath::c_double_utils::y1)
-delegate!(fn yn(i: c_int, n: c_double) -> c_double =
-    cmath::c_double_utils::yn)
+delegate!(
+    // intrinsics
+    fn abs(n: f64) -> f64 = intrinsics::fabsf64,
+    fn cos(n: f64) -> f64 = intrinsics::cosf64,
+    fn exp(n: f64) -> f64 = intrinsics::expf64,
+    fn exp2(n: f64) -> f64 = intrinsics::exp2f64,
+    fn floor(x: f64) -> f64 = intrinsics::floorf64,
+    fn ln(n: f64) -> f64 = intrinsics::logf64,
+    fn log10(n: f64) -> f64 = intrinsics::log10f64,
+    fn log2(n: f64) -> f64 = intrinsics::log2f64,
+    fn mul_add(a: f64, b: f64, c: f64) -> f64 = intrinsics::fmaf64,
+    fn pow(n: f64, e: f64) -> f64 = intrinsics::powf64,
+    fn powi(n: f64, e: c_int) -> f64 = intrinsics::powif64,
+    fn sin(n: f64) -> f64 = intrinsics::sinf64,
+    fn sqrt(n: f64) -> f64 = intrinsics::sqrtf64,
+
+    // LLVM 3.3 required to use intrinsics for these four
+    fn ceil(n: c_double) -> c_double = c_double_utils::ceil,
+    fn trunc(n: c_double) -> c_double = c_double_utils::trunc,
+    /*
+    fn ceil(n: f64) -> f64 = intrinsics::ceilf64,
+    fn trunc(n: f64) -> f64 = intrinsics::truncf64,
+    fn rint(n: c_double) -> c_double = intrinsics::rintf64,
+    fn nearbyint(n: c_double) -> c_double = intrinsics::nearbyintf64,
+    */
+
+    // cmath
+    fn acos(n: c_double) -> c_double = c_double_utils::acos,
+    fn asin(n: c_double) -> c_double = c_double_utils::asin,
+    fn atan(n: c_double) -> c_double = c_double_utils::atan,
+    fn atan2(a: c_double, b: c_double) -> c_double = c_double_utils::atan2,
+    fn cbrt(n: c_double) -> c_double = c_double_utils::cbrt,
+    fn copysign(x: c_double, y: c_double) -> c_double = c_double_utils::copysign,
+    fn cosh(n: c_double) -> c_double = c_double_utils::cosh,
+    fn erf(n: c_double) -> c_double = c_double_utils::erf,
+    fn erfc(n: c_double) -> c_double = c_double_utils::erfc,
+    fn expm1(n: c_double) -> c_double = c_double_utils::expm1,
+    fn abs_sub(a: c_double, b: c_double) -> c_double = c_double_utils::abs_sub,
+    fn fmax(a: c_double, b: c_double) -> c_double = c_double_utils::fmax,
+    fn fmin(a: c_double, b: c_double) -> c_double = c_double_utils::fmin,
+    fn nextafter(x: c_double, y: c_double) -> c_double = c_double_utils::nextafter,
+    fn frexp(n: c_double, value: &mut c_int) -> c_double = c_double_utils::frexp,
+    fn hypot(x: c_double, y: c_double) -> c_double = c_double_utils::hypot,
+    fn ldexp(x: c_double, n: c_int) -> c_double = c_double_utils::ldexp,
+    fn lgamma(n: c_double, sign: &mut c_int) -> c_double = c_double_utils::lgamma,
+    fn log_radix(n: c_double) -> c_double = c_double_utils::log_radix,
+    fn ln1p(n: c_double) -> c_double = c_double_utils::ln1p,
+    fn ilog_radix(n: c_double) -> c_int = c_double_utils::ilog_radix,
+    fn modf(n: c_double, iptr: &mut c_double) -> c_double = c_double_utils::modf,
+    fn round(n: c_double) -> c_double = c_double_utils::round,
+    fn ldexp_radix(n: c_double, i: c_int) -> c_double = c_double_utils::ldexp_radix,
+    fn sinh(n: c_double) -> c_double = c_double_utils::sinh,
+    fn tan(n: c_double) -> c_double = c_double_utils::tan,
+    fn tanh(n: c_double) -> c_double = c_double_utils::tanh,
+    fn tgamma(n: c_double) -> c_double = c_double_utils::tgamma,
+    fn j0(n: c_double) -> c_double = c_double_utils::j0,
+    fn j1(n: c_double) -> c_double = c_double_utils::j1,
+    fn jn(i: c_int, n: c_double) -> c_double = c_double_utils::jn,
+    fn y0(n: c_double) -> c_double = c_double_utils::y0,
+    fn y1(n: c_double) -> c_double = c_double_utils::y1,
+    fn yn(i: c_int, n: c_double) -> c_double = c_double_utils::yn)
 
 // FIXME (#1433): obtain these in a different way
 
@@ -218,9 +226,6 @@ pub fn is_finite(x: f64) -> bool {
     return !(is_NaN(x) || is_infinite(x));
 }
 
-/// Returns `x` rounded down
-#[inline(always)]
-pub fn floor(x: f64) -> f64 { unsafe { floorf64(x) } }
 
 // FIXME (#1999): add is_normal, is_subnormal, and fpclassify
 

@@ -70,16 +70,28 @@ pub extern "rust-intrinsic" {
     pub fn powif32(a: f32, x: i32) -> f32;
     pub fn powif64(a: f64, x: i32) -> f64;
 
+    // the following kill the stack canary without
+    // `fixed_stack_segment`. This possibly only affects the f64
+    // variants, but it's hard to be sure since it seems to only
+    // occur with fairly specific arguments.
+    #[fixed_stack_segment]
     pub fn sinf32(x: f32) -> f32;
+    #[fixed_stack_segment]
     pub fn sinf64(x: f64) -> f64;
 
+    #[fixed_stack_segment]
     pub fn cosf32(x: f32) -> f32;
+    #[fixed_stack_segment]
     pub fn cosf64(x: f64) -> f64;
 
+    #[fixed_stack_segment]
     pub fn powf32(a: f32, x: f32) -> f32;
+    #[fixed_stack_segment]
     pub fn powf64(a: f64, x: f64) -> f64;
 
+    #[fixed_stack_segment]
     pub fn expf32(x: f32) -> f32;
+    #[fixed_stack_segment]
     pub fn expf64(x: f64) -> f64;
 
     pub fn exp2f32(x: f32) -> f32;
@@ -128,4 +140,3 @@ pub extern "rust-intrinsic" {
     pub fn bswap32(x: i32) -> i32;
     pub fn bswap64(x: i64) -> i64;
 }
-

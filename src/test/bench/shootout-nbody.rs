@@ -1,6 +1,5 @@
 use core::from_str::FromStr;
 use core::uint::range;
-use core::unstable::intrinsics::sqrtf64;
 
 static PI: f64 = 3.141592653589793;
 static SOLAR_MASS: f64 = 4.0 * PI * PI;
@@ -88,7 +87,7 @@ fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: i32) {
                 d[2] = bodies[i].x[2] - bodies[j].x[2];
 
                 let d2 = d[0]*d[0] + d[1]*d[1] + d[2]*d[2];
-                let mag = dt / (d2 * sqrtf64(d2));
+                let mag = dt / (d2 * f64::sqrt(d2));
 
                 let a_mass = bodies[i].mass, b_mass = bodies[j].mass;
                 bodies[i].v[0] -= d[0] * b_mass * mag;
@@ -121,7 +120,7 @@ fn energy(bodies: &[Planet, ..N_BODIES]) -> f64 {
             for range(0, 3) |k| {
                 d[k] = bodies[i].x[k] - bodies[j].x[k];
             }
-            let dist = sqrtf64(d[0]*d[0] + d[1]*d[1] + d[2]*d[2]);
+            let dist = f64::sqrt(d[0]*d[0] + d[1]*d[1] + d[2]*d[2]);
             e -= bodies[i].mass * bodies[j].mass / dist;
         }
     }
@@ -147,4 +146,3 @@ fn main() {
 
     println(fmt!("%.9f", energy(&bodies) as float));
 }
-
