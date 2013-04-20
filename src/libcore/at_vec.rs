@@ -41,7 +41,7 @@ pub mod rustrt {
 pub fn capacity<T>(v: @[T]) -> uint {
     unsafe {
         let repr: **raw::VecRepr =
-            ::cast::reinterpret_cast(&addr_of(&v));
+            ::cast::transmute(addr_of(&v));
         (**repr).unboxed.alloc / sys::size_of::<T>()
     }
 }
@@ -208,7 +208,7 @@ pub mod raw {
      */
     #[inline(always)]
     pub unsafe fn set_len<T>(v: @[T], new_len: uint) {
-        let repr: **mut VecRepr = ::cast::reinterpret_cast(&addr_of(&v));
+        let repr: **mut VecRepr = ::cast::transmute(addr_of(&v));
         (**repr).unboxed.fill = new_len * sys::size_of::<T>();
     }
 
@@ -226,7 +226,7 @@ pub mod raw {
 
     #[inline(always)] // really pretty please
     pub unsafe fn push_fast<T>(v: &mut @[T], initval: T) {
-        let repr: **mut VecRepr = ::cast::reinterpret_cast(&v);
+        let repr: **mut VecRepr = ::cast::transmute(v);
         let fill = (**repr).unboxed.fill;
         (**repr).unboxed.fill += sys::size_of::<T>();
         let p = addr_of(&((**repr).unboxed.data));

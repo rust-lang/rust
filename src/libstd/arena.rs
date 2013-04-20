@@ -36,7 +36,7 @@ use list;
 use list::{List, Cons, Nil};
 
 use core::at_vec;
-use core::cast::reinterpret_cast;
+use core::cast::transmute;
 use core::cast;
 use core::libc::size_t;
 use core::prelude::*;
@@ -135,7 +135,7 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
     let fill = chunk.fill;
 
     while idx < fill {
-        let tydesc_data: *uint = reinterpret_cast(&ptr::offset(buf, idx));
+        let tydesc_data: *uint = transmute(ptr::offset(buf, idx));
         let (tydesc, is_done) = un_bitpack_tydesc_ptr(*tydesc_data);
         let size = (*tydesc).size, align = (*tydesc).align;
 
@@ -161,12 +161,12 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
 // during an initializer.
 #[inline(always)]
 unsafe fn bitpack_tydesc_ptr(p: *TypeDesc, is_done: bool) -> uint {
-    let p_bits: uint = reinterpret_cast(&p);
+    let p_bits: uint = transmute(p);
     p_bits | (is_done as uint)
 }
 #[inline(always)]
 unsafe fn un_bitpack_tydesc_ptr(p: uint) -> (*TypeDesc, bool) {
-    (reinterpret_cast(&(p & !1)), p & 1 == 1)
+    (transmute(p & !1), p & 1 == 1)
 }
 
 pub impl Arena {
@@ -207,9 +207,9 @@ pub impl Arena {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
             let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
-            let ptr: *mut T = reinterpret_cast(&ptr);
+            let ptr: *mut T = transmute(ptr);
             rusti::move_val_init(&mut (*ptr), op());
-            return reinterpret_cast(&ptr);
+            return transmute(ptr);
         }
     }
 
@@ -221,9 +221,9 @@ pub impl Arena {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
             let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
-            let ptr: *mut T = reinterpret_cast(&ptr);
+            let ptr: *mut T = transmute(ptr);
             rusti::move_val_init(&mut (*ptr), op());
-            return reinterpret_cast(&ptr);
+            return transmute(ptr);
         }
     }
 
@@ -268,18 +268,18 @@ pub impl Arena {
             let tydesc = sys::get_type_desc::<T>();
             let (ty_ptr, ptr) =
                 self.alloc_nonpod_inner((*tydesc).size, (*tydesc).align);
-            let ty_ptr: *mut uint = reinterpret_cast(&ty_ptr);
-            let ptr: *mut T = reinterpret_cast(&ptr);
+            let ty_ptr: *mut uint = transmute(ty_ptr);
+            let ptr: *mut T = transmute(ptr);
             // Write in our tydesc along with a bit indicating that it
             // has *not* been initialized yet.
-            *ty_ptr = reinterpret_cast(&tydesc);
+            *ty_ptr = transmute(tydesc);
             // Actually initialize it
             rusti::move_val_init(&mut(*ptr), op());
             // Now that we are done, update the tydesc to indicate that
             // the object is there.
             *ty_ptr = bitpack_tydesc_ptr(tydesc, true);
 
-            return reinterpret_cast(&ptr);
+            return transmute(ptr);
         }
     }
 
@@ -292,18 +292,18 @@ pub impl Arena {
             let tydesc = sys::get_type_desc::<T>();
             let (ty_ptr, ptr) =
                 self.alloc_nonpod_inner((*tydesc).size, (*tydesc).align);
-            let ty_ptr: *mut uint = reinterpret_cast(&ty_ptr);
-            let ptr: *mut T = reinterpret_cast(&ptr);
+            let ty_ptr: *mut uint = transmute(ty_ptr);
+            let ptr: *mut T = transmute(ptr);
             // Write in our tydesc along with a bit indicating that it
             // has *not* been initialized yet.
-            *ty_ptr = reinterpret_cast(&tydesc);
+            *ty_ptr = transmute(tydesc);
             // Actually initialize it
             rusti::move_val_init(&mut(*ptr), op());
             // Now that we are done, update the tydesc to indicate that
             // the object is there.
             *ty_ptr = bitpack_tydesc_ptr(tydesc, true);
 
-            return reinterpret_cast(&ptr);
+            return transmute(ptr);
         }
     }
 

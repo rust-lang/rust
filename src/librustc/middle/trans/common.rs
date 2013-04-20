@@ -1239,7 +1239,7 @@ pub fn C_array(ty: TypeRef, elts: &[ValueRef]) -> ValueRef {
 pub fn C_bytes(bytes: &[u8]) -> ValueRef {
     unsafe {
         return llvm::LLVMConstString(
-            cast::reinterpret_cast(&vec::raw::to_ptr(bytes)),
+            cast::transmute(vec::raw::to_ptr(bytes)),
             bytes.len() as c_uint, True);
     }
 }
@@ -1247,7 +1247,7 @@ pub fn C_bytes(bytes: &[u8]) -> ValueRef {
 pub fn C_bytes_plus_null(bytes: &[u8]) -> ValueRef {
     unsafe {
         return llvm::LLVMConstString(
-            cast::reinterpret_cast(&vec::raw::to_ptr(bytes)),
+            cast::transmute(vec::raw::to_ptr(bytes)),
             bytes.len() as c_uint, False);
     }
 }
