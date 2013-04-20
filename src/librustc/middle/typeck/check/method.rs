@@ -1298,7 +1298,7 @@ pub impl<'self> LookupContext<'self> {
         ty::item_path_str(self.tcx(), did)
     }
 
-    fn bug(&self, +s: ~str) -> ! {
+    fn bug(&self, s: ~str) -> ! {
         self.tcx().sess.bug(s)
     }
 }

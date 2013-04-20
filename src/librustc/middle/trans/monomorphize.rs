@@ -221,9 +221,9 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         let this_tv = vec::find(*tvs, |tv| { tv.id.node == fn_id.node}).get();
         let d = mk_lldecl();
         set_inline_hint(d);
-        match (*v).node.kind {
+        match v.node.kind {
             ast::tuple_variant_kind(ref args) => {
-                trans_enum_variant(ccx, enum_item.id, *v, /*bad*/copy *args,
+                trans_enum_variant(ccx, enum_item.id, v, /*bad*/copy *args,
                                    this_tv.disr_val, psubsts, d);
             }
             ast::struct_variant_kind(_) =>

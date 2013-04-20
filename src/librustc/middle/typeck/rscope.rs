@@ -272,7 +272,7 @@ pub struct binding_rscope {
 
 pub fn in_binding_rscope<RS:region_scope + Copy + Durable>(
         self: &RS,
-        +region_param_names: RegionParamNames)
+        region_param_names: RegionParamNames)
      -> binding_rscope {
     let base = @copy *self;
     let base = base as @region_scope;

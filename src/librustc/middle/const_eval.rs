@@ -229,7 +229,7 @@ pub fn process_crate(crate: @ast::crate,
         visit_expr_post: |e| { classify(e, tcx); },
         .. *visit::default_simple_visitor()
     });
-    visit::visit_crate(*crate, (), v);
+    visit::visit_crate(crate, (), v);
     tcx.sess.abort_if_errors();
 }
 
@@ -426,8 +426,8 @@ pub fn lit_to_const(lit: @lit) -> const_val {
     }
 }
 
-pub fn compare_const_vals(a: const_val, b: const_val) -> int {
-  match (&a, &b) {
+pub fn compare_const_vals(a: &const_val, b: &const_val) -> int {
+  match (a, b) {
     (&const_int(a), &const_int(b)) => {
         if a == b {
             0
@@ -478,7 +478,7 @@ pub fn compare_const_vals(a: const_val, b: const_val) -> int {
 }
 
 pub fn compare_lit_exprs(tcx: middle::ty::ctxt, a: @expr, b: @expr) -> int {
-  compare_const_vals(eval_const_expr(tcx, a), eval_const_expr(tcx, b))
+  compare_const_vals(&eval_const_expr(tcx, a), &eval_const_expr(tcx, b))
 }
 
 pub fn lit_expr_eq(tcx: middle::ty::ctxt, a: @expr, b: @expr) -> bool {
@@ -486,7 +486,7 @@ pub fn lit_expr_eq(tcx: middle::ty::ctxt, a: @expr, b: @expr) -> bool {
 }
 
 pub fn lit_eq(a: @lit, b: @lit) -> bool {
-    compare_const_vals(lit_to_const(a), lit_to_const(b)) == 0
+    compare_const_vals(&lit_to_const(a), &lit_to_const(b)) == 0
 }
 
 

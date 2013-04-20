@@ -39,7 +39,7 @@ use syntax::{ast, ast_util};
 use syntax::{attr, ast_map};
 use syntax::opt_vec;
 use syntax::parse::token::special_idents;
-use syntax::abi::{Architecture, X86, X86_64, Arm, Mips};
+use syntax::abi::{X86, X86_64, Arm, Mips};
 use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall,
                   Cdecl, Aapcs, C};
 
@@ -139,7 +139,7 @@ type shim_ret_builder<'self> =
               llretval: ValueRef);
 
 fn build_shim_fn_(ccx: @CrateContext,
-                  +shim_name: ~str,
+                  shim_name: ~str,
                   llbasefn: ValueRef,
                   tys: &ShimTypes,
                   cc: lib::llvm::CallConv,
@@ -544,7 +544,7 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
 pub fn trans_intrinsic(ccx: @CrateContext,
                        decl: ValueRef,
                        item: @ast::foreign_item,
-                       +path: ast_map::path,
+                       path: ast_map::path,
                        substs: @param_substs,
                        ref_id: Option<ast::node_id>) {
     debug!("trans_intrinsic(item.ident=%s)", *ccx.sess.str_of(item.ident));
@@ -1089,7 +1089,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
  *     }
  */
 pub fn trans_foreign_fn(ccx: @CrateContext,
-                        +path: ast_map::path,
+                        path: ast_map::path,
                         decl: &ast::fn_decl,
                         body: &ast::blk,
                         llwrapfn: ValueRef,
@@ -1097,7 +1097,7 @@ pub fn trans_foreign_fn(ccx: @CrateContext,
     let _icx = ccx.insn_ctxt("foreign::build_foreign_fn");
 
     fn build_rust_fn(ccx: @CrateContext,
-                     +path: ast_map::path,
+                     path: ast_map::path,
                      decl: &ast::fn_decl,
                      body: &ast::blk,
                      id: ast::node_id)
@@ -1125,7 +1125,7 @@ pub fn trans_foreign_fn(ccx: @CrateContext,
     }
 
     fn build_shim_fn(ccx: @CrateContext,
-                     +path: ast_map::path,
+                     path: ast_map::path,
                      llrustfn: ValueRef,
                      tys: &ShimTypes)
                      -> ValueRef {
@@ -1266,7 +1266,7 @@ pub fn trans_foreign_fn(ccx: @CrateContext,
 
 pub fn register_foreign_fn(ccx: @CrateContext,
                            sp: span,
-                           +path: ast_map::path,
+                           path: ast_map::path,
                            node_id: ast::node_id,
                            attrs: &[ast::attribute])
                            -> ValueRef {

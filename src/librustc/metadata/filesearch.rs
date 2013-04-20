@@ -35,9 +35,9 @@ pub trait FileSearch {
     fn get_target_lib_file_path(&self, file: &Path) -> Path;
 }
 
-pub fn mk_filesearch(maybe_sysroot: Option<Path>,
+pub fn mk_filesearch(maybe_sysroot: &Option<Path>,
                      target_triple: &str,
-                     +addl_lib_search_paths: ~[Path])
+                     addl_lib_search_paths: ~[Path])
                   -> @FileSearch {
     struct FileSearchImpl {
         sysroot: Path,
@@ -117,8 +117,8 @@ fn get_or_default_sysroot() -> Path {
     }
 }
 
-fn get_sysroot(maybe_sysroot: Option<Path>) -> Path {
-    match maybe_sysroot {
+fn get_sysroot(maybe_sysroot: &Option<Path>) -> Path {
+    match *maybe_sysroot {
       option::Some(ref sr) => (/*bad*/copy *sr),
       option::None => get_or_default_sysroot()
     }

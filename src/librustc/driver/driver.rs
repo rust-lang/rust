@@ -55,14 +55,14 @@ pub enum pp_mode {
  */
 pub fn anon_src() -> ~str { ~"<anon>" }
 
-pub fn source_name(input: input) -> ~str {
-    match input {
+pub fn source_name(input: &input) -> ~str {
+    match *input {
       file_input(ref ifile) => ifile.to_str(),
       str_input(_) => anon_src()
     }
 }
 
-pub fn default_configuration(sess: Session, argv0: @~str, input: input) ->
+pub fn default_configuration(sess: Session, argv0: @~str, input: &input) ->
    ast::crate_cfg {
     let libc = match sess.targ_cfg.os {
       session::os_win32 => ~"msvcrt.dll",
@@ -105,7 +105,7 @@ pub fn default_configuration(sess: Session, argv0: @~str, input: input) ->
          mk(@~"build_input", @source_name(input))];
 }
 
-pub fn append_configuration(+cfg: ast::crate_cfg, +name: ~str)
+pub fn append_configuration(cfg: ast::crate_cfg, name: ~str)
                          -> ast::crate_cfg {
     if attr::contains_name(cfg, name) {
         cfg
@@ -114,7 +114,7 @@ pub fn append_configuration(+cfg: ast::crate_cfg, +name: ~str)
     }
 }
 
-pub fn build_configuration(sess: Session, argv0: @~str, input: input) ->
+pub fn build_configuration(sess: Session, argv0: @~str, input: &input) ->
    ast::crate_cfg {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
@@ -132,7 +132,7 @@ pub fn build_configuration(sess: Session, argv0: @~str, input: input) ->
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-fn parse_cfgspecs(+cfgspecs: ~[~str],
+fn parse_cfgspecs(cfgspecs: ~[~str],
                   demitter: diagnostic::Emitter) -> ast::crate_cfg {
     do vec::map_consume(cfgspecs) |s| {
         let sess = parse::new_parse_sess(Some(demitter));
@@ -147,9 +147,9 @@ pub enum input {
     str_input(~str)
 }
 
-pub fn parse_input(sess: Session, +cfg: ast::crate_cfg, input: input)
+pub fn parse_input(sess: Session, cfg: ast::crate_cfg, input: &input)
     -> @ast::crate {
-    match input {
+    match *input {
       file_input(ref file) => {
         parse::parse_crate_from_file_using_tts(&(*file), cfg, sess.parse_sess)
       }
@@ -207,10 +207,10 @@ pub fn compile_rest(sess: Session,
         lint::build_settings_crate(sess, crate));
 
     let ast_map = time(time_passes, ~"ast indexing", ||
-            syntax::ast_map::map_crate(sess.diagnostic(), *crate));
+            syntax::ast_map::map_crate(sess.diagnostic(), crate));
 
     time(time_passes, ~"external crate/lib resolution", ||
-        creader::read_crates(sess.diagnostic(), *crate, sess.cstore,
+        creader::read_crates(sess.diagnostic(), crate, sess.cstore,
                              sess.filesearch,
                              session::sess_os_to_meta_os(sess.targ_cfg.os),
                              sess.opts.is_static,
@@ -344,8 +344,8 @@ pub fn compile_rest(sess: Session,
     return (crate, None);
 }
 
-pub fn compile_upto(sess: Session, +cfg: ast::crate_cfg,
-                input: input, upto: compile_upto,
+pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
+                input: &input, upto: compile_upto,
                 outputs: Option<@OutputFilenames>)
     -> (@ast::crate, Option<ty::ctxt>) {
     let time_passes = sess.time_passes();
@@ -356,7 +356,7 @@ pub fn compile_upto(sess: Session, +cfg: ast::crate_cfg,
     compile_rest(sess, cfg, upto, outputs, Some(crate))
 }
 
-pub fn compile_input(sess: Session, +cfg: ast::crate_cfg, input: input,
+pub fn compile_input(sess: Session, cfg: ast::crate_cfg, input: &input,
                      outdir: &Option<Path>, output: &Option<Path>) {
     let upto = if sess.opts.parse_only { cu_parse }
                else if sess.opts.no_trans { cu_no_trans }
@@ -365,7 +365,7 @@ pub fn compile_input(sess: Session, +cfg: ast::crate_cfg, input: input,
     compile_upto(sess, cfg, input, upto, Some(outputs));
 }
 
-pub fn pretty_print_input(sess: Session, +cfg: ast::crate_cfg, input: input,
+pub fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: &input,
                           ppm: pp_mode) {
     fn ann_paren_for_expr(node: pprust::ann_node) {
         match node {
@@ -690,7 +690,7 @@ pub fn build_session_(sopts: @session::options,
                                                     cm);
     let cstore = @mut cstore::mk_cstore(p_s.interner);
     let filesearch = filesearch::mk_filesearch(
-        sopts.maybe_sysroot,
+        &sopts.maybe_sysroot,
         sopts.target_triple,
         /*bad*/copy sopts.addl_lib_search_paths);
     let lint_settings = lint::mk_lint_settings();
@@ -711,13 +711,13 @@ pub fn build_session_(sopts: @session::options,
     }
 }
 
-pub fn parse_pretty(sess: Session, &&name: ~str) -> pp_mode {
+pub fn parse_pretty(sess: Session, name: &str) -> pp_mode {
     match name {
-      ~"normal" => ppm_normal,
-      ~"expanded" => ppm_expanded,
-      ~"typed" => ppm_typed,
-      ~"expanded,identified" => ppm_expanded_identified,
-      ~"identified" => ppm_identified,
+      &"normal" => ppm_normal,
+      &"expanded" => ppm_expanded,
+      &"typed" => ppm_typed,
+      &"expanded,identified" => ppm_expanded_identified,
+      &"identified" => ppm_identified,
       _ => {
         sess.fatal(~"argument to `pretty` must be one of `normal`, \
                      `expanded`, `typed`, `identified`, \
@@ -790,7 +790,7 @@ pub struct OutputFilenames {
     obj_filename: Path
 }
 
-pub fn build_output_filenames(input: input,
+pub fn build_output_filenames(input: &input,
                               odir: &Option<Path>,
                               ofile: &Option<Path>,
                               sess: Session)
@@ -820,13 +820,13 @@ pub fn build_output_filenames(input: input,
         // We want to toss everything after the final '.'
         let dirpath = match *odir {
           Some(ref d) => (/*bad*/copy *d),
-          None => match input {
+          None => match *input {
             str_input(_) => os::getcwd(),
             file_input(ref ifile) => (*ifile).dir_path()
           }
         };
 
-        let stem = match input {
+        let stem = match *input {
           file_input(ref ifile) => (*ifile).filestem().get(),
           str_input(_) => ~"rust_out"
         };
@@ -903,7 +903,7 @@ mod test {
         let sessopts = build_session_options(
             @~"rustc", matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
-        let cfg = build_configuration(sess, @~"whatever", str_input(~""));
+        let cfg = build_configuration(sess, @~"whatever", &str_input(~""));
         assert!((attr::contains_name(cfg, ~"test")));
     }
 
@@ -922,7 +922,7 @@ mod test {
         let sessopts = build_session_options(
             @~"rustc", matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
-        let cfg = build_configuration(sess, @~"whatever", str_input(~""));
+        let cfg = build_configuration(sess, @~"whatever", &str_input(~""));
         let test_items = attr::find_meta_items_by_name(cfg, ~"test");
         assert!((vec::len(test_items) == 1u));
     }

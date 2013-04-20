@@ -104,7 +104,7 @@ pub impl token {
     }
 }
 
-pub fn tok_str(++t: token) -> ~str {
+pub fn tok_str(t: token) -> ~str {
     match t {
         STRING(s, len) => return fmt!("STR(%s,%d)", *s, len),
         BREAK(_) => return ~"BREAK",
@@ -398,7 +398,7 @@ pub impl Printer {
         self.right %= self.buf_len;
         assert!((self.right != self.left));
     }
-    fn advance_left(&mut self, ++x: token, L: int) {
+    fn advance_left(&mut self, x: token, L: int) {
         debug!("advnce_left ~[%u,%u], sizeof(%u)=%d", self.left, self.right,
                self.left, L);
         if L >= 0 {

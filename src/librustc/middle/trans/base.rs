@@ -136,7 +136,7 @@ fn fcx_has_nonzero_span(fcx: fn_ctxt) -> bool {
     }
 }
 
-pub fn log_fn_time(ccx: @CrateContext, +name: ~str, start: time::Timespec,
+pub fn log_fn_time(ccx: @CrateContext, name: ~str, start: time::Timespec,
                    end: time::Timespec) {
     let elapsed = 1000 * ((end.sec - start.sec) as int) +
         ((end.nsec as int) - (start.nsec as int)) / 1000000;
@@ -165,7 +165,7 @@ pub fn decl_cdecl_fn(llmod: ModuleRef, name: &str, llty: TypeRef)
 
 // Only use this if you are going to actually define the function. It's
 // not valid to simply declare a function as internal.
-pub fn decl_internal_cdecl_fn(llmod: ModuleRef, +name: ~str, llty: TypeRef) ->
+pub fn decl_internal_cdecl_fn(llmod: ModuleRef, name: ~str, llty: TypeRef) ->
    ValueRef {
     let llfn = decl_cdecl_fn(llmod, name, llty);
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
@@ -828,7 +828,7 @@ pub fn trans_external_path(ccx: @CrateContext, did: ast::def_id, t: ty::t)
     };
 }
 
-pub fn invoke(bcx: block, llfn: ValueRef, +llargs: ~[ValueRef])
+pub fn invoke(bcx: block, llfn: ValueRef, llargs: ~[ValueRef])
            -> (ValueRef, block) {
     let _icx = bcx.insn_ctxt("invoke_");
     if bcx.unreachable {
@@ -924,7 +924,7 @@ pub fn have_cached_lpad(bcx: block) -> bool {
     return res;
 }
 
-pub fn in_lpad_scope_cx(bcx: block, f: &fn(+si: &mut scope_info)) {
+pub fn in_lpad_scope_cx(bcx: block, f: &fn(si: &mut scope_info)) {
     let mut bcx = bcx;
     loop {
         {
@@ -1057,10 +1057,7 @@ pub fn do_spill(bcx: block, v: ValueRef, t: ty::t) -> ValueRef {
 
 // Since this function does *not* root, it is the caller's responsibility to
 // ensure that the referent is pointed to by a root.
-// [Note-arg-mode]
-// ++ mode is temporary, due to how borrowck treats enums. With hope,
-// will go away anyway when we get rid of modes.
-pub fn do_spill_noroot(++cx: block, v: ValueRef) -> ValueRef {
+pub fn do_spill_noroot(cx: block, v: ValueRef) -> ValueRef {
     let llptr = alloca(cx, val_ty(v));
     Store(cx, v, llptr);
     return llptr;
@@ -1163,7 +1160,7 @@ pub fn init_local(bcx: block, local: @ast::local) -> block {
                                        _match::BindLocal);
 }
 
-pub fn trans_stmt(cx: block, s: ast::stmt) -> block {
+pub fn trans_stmt(cx: block, s: &ast::stmt) -> block {
     let _icx = cx.insn_ctxt("trans_stmt");
     debug!("trans_stmt(%s)", stmt_to_str(s, cx.tcx().sess.intr()));
 
@@ -1189,7 +1186,7 @@ pub fn trans_stmt(cx: block, s: ast::stmt) -> block {
                         }
                     }
                 }
-                ast::decl_item(i) => trans_item(*cx.fcx.ccx, *i)
+                ast::decl_item(i) => trans_item(*cx.fcx.ccx, i)
             }
         }
         ast::stmt_mac(*) => cx.tcx().sess.bug(~"unexpanded macro")
@@ -1200,8 +1197,8 @@ pub fn trans_stmt(cx: block, s: ast::stmt) -> block {
 
 // You probably don't want to use this one. See the
 // next three functions instead.
-pub fn new_block(cx: fn_ctxt, parent: Option<block>, +kind: block_kind,
-                 is_lpad: bool, +name: ~str, opt_node_info: Option<NodeInfo>)
+pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
+                 is_lpad: bool, name: ~str, opt_node_info: Option<NodeInfo>)
     -> block {
 
     let s = if cx.ccx.sess.opts.save_temps || cx.ccx.sess.opts.debuginfo {
@@ -1245,7 +1242,7 @@ pub fn top_scope_block(fcx: fn_ctxt, opt_node_info: Option<NodeInfo>)
 
 pub fn scope_block(bcx: block,
                    opt_node_info: Option<NodeInfo>,
-                   +n: ~str) -> block {
+                   n: ~str) -> block {
     return new_block(bcx.fcx, Some(bcx), simple_block_scope(), bcx.is_lpad,
                   n, opt_node_info);
 }
@@ -1253,7 +1250,7 @@ pub fn scope_block(bcx: block,
 pub fn loop_scope_block(bcx: block,
                         loop_break: block,
                         loop_label: Option<ident>,
-                        +n: ~str,
+                        n: ~str,
                         opt_node_info: Option<NodeInfo>) -> block {
     return new_block(bcx.fcx, Some(bcx), block_scope(scope_info {
         loop_break: Some(loop_break),
@@ -1265,12 +1262,12 @@ pub fn loop_scope_block(bcx: block,
 }
 
 // Use this when creating a block for the inside of a landing pad.
-pub fn lpad_block(bcx: block, +n: ~str) -> block {
+pub fn lpad_block(bcx: block, n: ~str) -> block {
     new_block(bcx.fcx, Some(bcx), block_non_scope, true, n, None)
 }
 
 // Use this when you're making a general CFG BB within a scope.
-pub fn sub_block(bcx: block, +n: ~str) -> block {
+pub fn sub_block(bcx: block, n: ~str) -> block {
     new_block(bcx.fcx, Some(bcx), block_non_scope, bcx.is_lpad, n, None)
 }
 
@@ -1286,12 +1283,12 @@ pub fn raw_block(fcx: fn_ctxt, is_lpad: bool, llbb: BasicBlockRef) -> block {
 // need to make sure those variables go out of scope when the block ends.  We
 // do that by running a 'cleanup' function for each variable.
 // trans_block_cleanups runs all the cleanup functions for the block.
-pub fn trans_block_cleanups(bcx: block, +cleanups: ~[cleanup]) -> block {
+pub fn trans_block_cleanups(bcx: block, cleanups: ~[cleanup]) -> block {
     trans_block_cleanups_(bcx, cleanups, false)
 }
 
 pub fn trans_block_cleanups_(bcx: block,
-                             +cleanups: ~[cleanup],
+                             cleanups: ~[cleanup],
                              /* cleanup_cx: block, */
                              is_lpad: bool) -> block {
     let _icx = bcx.insn_ctxt("trans_block_cleanups");
@@ -1387,7 +1384,7 @@ pub fn leave_block(bcx: block, out_of: block) -> block {
 
 pub fn with_scope(bcx: block,
                   opt_node_info: Option<NodeInfo>,
-                  +name: ~str,
+                  name: ~str,
                   f: &fn(block) -> block) -> block {
     let _icx = bcx.insn_ctxt("with_scope");
 
@@ -1402,7 +1399,7 @@ pub fn with_scope(bcx: block,
 
 pub fn with_scope_result(bcx: block,
                          opt_node_info: Option<NodeInfo>,
-                         +name: ~str,
+                         name: ~str,
                          f: &fn(block) -> Result) -> Result {
     let _icx = bcx.insn_ctxt("with_scope_result");
     let scope_cx = scope_block(bcx, opt_node_info, name);
@@ -1412,7 +1409,7 @@ pub fn with_scope_result(bcx: block,
 }
 
 pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,
-                             +name: ~str, f: &fn(block) -> datum::DatumBlock)
+                             name: ~str, f: &fn(block) -> datum::DatumBlock)
                           -> datum::DatumBlock {
     use middle::trans::datum::DatumBlock;
 
@@ -1620,7 +1617,7 @@ pub fn make_return_pointer(fcx: fn_ctxt, output_type: ty::t) -> ValueRef {
 //  - new_fn_ctxt
 //  - trans_args
 pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
-                        +path: path,
+                        path: path,
                         llfndecl: ValueRef,
                         id: ast::node_id,
                         output_type: ty::t,
@@ -1674,7 +1671,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
 }
 
 pub fn new_fn_ctxt(ccx: @CrateContext,
-                   +path: path,
+                   path: path,
                    llfndecl: ValueRef,
                    output_type: ty::t,
                    sp: Option<span>)
@@ -1839,7 +1836,7 @@ pub enum self_arg { impl_self(ty::t), impl_owned_self(ty::t), no_self, }
 // If the function closes over its environment a closure will be
 // returned.
 pub fn trans_closure(ccx: @CrateContext,
-                     +path: path,
+                     path: path,
                      decl: &ast::fn_decl,
                      body: &ast::blk,
                      llfndecl: ValueRef,
@@ -1920,7 +1917,7 @@ pub fn trans_closure(ccx: @CrateContext,
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
 pub fn trans_fn(ccx: @CrateContext,
-                +path: path,
+                path: path,
                 decl: &ast::fn_decl,
                 body: &ast::blk,
                 llfndecl: ValueRef,
@@ -1965,7 +1962,7 @@ pub fn trans_fn(ccx: @CrateContext,
 
 pub fn trans_enum_variant(ccx: @CrateContext,
                           enum_id: ast::node_id,
-                          variant: ast::variant,
+                          variant: &ast::variant,
                           args: &[ast::variant_arg],
                           disr: int,
                           param_substs: Option<@param_substs>,
@@ -2108,7 +2105,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
 }
 
 pub fn trans_struct_dtor(ccx: @CrateContext,
-                         +path: path,
+                         path: path,
                          body: &ast::blk,
                          dtor_id: ast::node_id,
                          psubsts: Option<@param_substs>,
@@ -2154,7 +2151,7 @@ pub fn trans_struct_dtor(ccx: @CrateContext,
   lldecl
 }
 
-pub fn trans_enum_def(ccx: @CrateContext, enum_definition: ast::enum_def,
+pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
                       id: ast::node_id,
                       path: @ast_map::path, vi: @~[ty::VariantInfo],
                       i: &mut uint) {
@@ -2165,7 +2162,7 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: ast::enum_def,
         match variant.node.kind {
             ast::tuple_variant_kind(ref args) if args.len() > 0 => {
                 let llfn = get_item_val(ccx, variant.node.id);
-                trans_enum_variant(ccx, id, *variant, *args,
+                trans_enum_variant(ccx, id, variant, *args,
                                    disr_val, None, llfn);
             }
             ast::tuple_variant_kind(_) => {
@@ -2179,7 +2176,7 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: ast::enum_def,
     }
 }
 
-pub fn trans_item(ccx: @CrateContext, item: ast::item) {
+pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
     let _icx = ccx.insn_ctxt("trans_item");
     let path = match *ccx.tcx.items.get(&item.id) {
         ast_map::node_item(_, p) => p,
@@ -2214,7 +2211,7 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
                 match stmt.node {
                   ast::stmt_decl(@codemap::spanned { node: ast::decl_item(i),
                                                  _ }, _) => {
-                    trans_item(ccx, *i);
+                    trans_item(ccx, i);
                   }
                   _ => ()
                 }
@@ -2232,7 +2229,7 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
         if !generics.is_type_parameterized() {
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
-            trans_enum_def(ccx, (*enum_definition), item.id,
+            trans_enum_def(ccx, enum_definition, item.id,
                            path, vi, &mut i);
         }
       }
@@ -2279,13 +2276,13 @@ pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def,
 pub fn trans_mod(ccx: @CrateContext, m: &ast::_mod) {
     let _icx = ccx.insn_ctxt("trans_mod");
     for m.items.each |item| {
-        trans_item(ccx, **item);
+        trans_item(ccx, *item);
     }
 }
 
 pub fn register_fn(ccx: @CrateContext,
                    sp: span,
-                   +path: path,
+                   path: path,
                    node_id: ast::node_id,
                    attrs: &[ast::attribute])
                 -> ValueRef {
@@ -2295,7 +2292,7 @@ pub fn register_fn(ccx: @CrateContext,
 
 pub fn register_fn_full(ccx: @CrateContext,
                         sp: span,
-                        +path: path,
+                        path: path,
                         node_id: ast::node_id,
                         attrs: &[ast::attribute],
                         node_type: ty::t)
@@ -2307,7 +2304,7 @@ pub fn register_fn_full(ccx: @CrateContext,
 
 pub fn register_fn_fuller(ccx: @CrateContext,
                           sp: span,
-                          +path: path,
+                          path: path,
                           node_id: ast::node_id,
                           attrs: &[ast::attribute],
                           node_type: ty::t,
@@ -2495,7 +2492,7 @@ pub fn item_path(ccx: @CrateContext, i: @ast::item) -> path {
 /* If there's already a symbol for the dtor with <id> and substs <substs>,
    return it; otherwise, create one and register it, returning it as well */
 pub fn get_dtor_symbol(ccx: @CrateContext,
-                       +path: path,
+                       path: path,
                        id: ast::node_id,
                        substs: Option<@param_substs>)
                     -> ~str {
@@ -2749,7 +2746,7 @@ pub fn trans_constant(ccx: @CrateContext, it: @ast::item) {
 
 pub fn trans_constants(ccx: @CrateContext, crate: &ast::crate) {
     visit::visit_crate(
-        *crate, (),
+        crate, (),
         visit::mk_simple_visitor(@visit::SimpleVisitor {
             visit_item: |a| trans_constant(ccx, a),
             ..*visit::default_simple_visitor()
@@ -3146,7 +3143,7 @@ pub fn trans_crate(sess: session::Session,
                    tcx: ty::ctxt,
                    output: &Path,
                    emap2: resolve::ExportMap2,
-                   +maps: astencode::Maps) -> (ModuleRef, LinkMeta) {
+                   maps: astencode::Maps) -> (ModuleRef, LinkMeta) {
 
     let symbol_hasher = @hash::default_state();
     let link_meta =

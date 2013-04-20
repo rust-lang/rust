@@ -159,7 +159,7 @@ pub impl DatumMode {
 }
 
 impl to_bytes::IterBytes for DatumMode {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f)
     }
 }
@@ -811,7 +811,7 @@ pub impl Datum {
 }
 
 pub impl DatumBlock {
-    fn unpack(&self, +bcx: &mut block) -> Datum {
+    fn unpack(&self, bcx: &mut block) -> Datum {
         *bcx = self.bcx;
         return self.datum;
     }

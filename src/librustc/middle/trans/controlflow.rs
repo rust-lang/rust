@@ -39,7 +39,7 @@ pub fn trans_block(bcx: block, b: &ast::blk, dest: expr::Dest) -> block {
     };
     for vec::each(b.node.stmts) |s| {
         debuginfo::update_source_pos(bcx, b.span);
-        bcx = trans_stmt(bcx, **s);
+        bcx = trans_stmt(bcx, *s);
     }
     match b.node.expr {
         Some(e) => {

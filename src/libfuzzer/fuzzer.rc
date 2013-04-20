@@ -160,7 +160,7 @@ pub fn stash_ty_if(c: @fn(@ast::Ty, test_mode)->bool,
 
 pub struct StolenStuff {exprs: ~[ast::expr], tys: ~[ast::Ty]}
 
-pub fn steal(crate: ast::crate, tm: test_mode) -> StolenStuff {
+pub fn steal(crate: @ast::crate, tm: test_mode) -> StolenStuff {
     let exprs = @mut ~[];
     let tys = @mut ~[];
     let v = visit::mk_simple_visitor(@visit::SimpleVisitor {
@@ -197,7 +197,7 @@ pub fn safe_to_replace_ty(t: &ast::ty_, _tm: test_mode) -> bool {
 }
 
 // Replace the |i|th expr (in fold order) of |crate| with |newexpr|.
-pub fn replace_expr_in_crate(crate: ast::crate, i: uint,
+pub fn replace_expr_in_crate(crate: @ast::crate, i: uint,
                              newexpr: ast::expr, tm: test_mode) ->
    ast::crate {
     let j: @mut uint = @mut 0u;
@@ -222,13 +222,13 @@ pub fn replace_expr_in_crate(crate: ast::crate, i: uint,
         .. *fold::default_ast_fold()
     };
     let af = fold::make_fold(afp);
-    let crate2: @ast::crate = @af.fold_crate(&crate);
+    let crate2: @ast::crate = @af.fold_crate(crate);
     *crate2
 }
 
 
 // Replace the |i|th ty (in fold order) of |crate| with |newty|.
-pub fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::Ty,
+pub fn replace_ty_in_crate(crate: @ast::crate, i: uint, newty: ast::Ty,
                            tm: test_mode) -> ast::crate {
     let j: @mut uint = @mut 0u;
     fn fold_ty_rep(j_: @mut uint,
@@ -248,7 +248,7 @@ pub fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::Ty,
         .. *fold::default_ast_fold()
     };
     let af = fold::make_fold(afp);
-    let crate2: @ast::crate = @af.fold_crate(&crate);
+    let crate2: @ast::crate = @af.fold_crate(crate);
     *crate2
 }
 
@@ -261,7 +261,7 @@ pub fn as_str(f: @fn(+x: @io::Writer)) -> ~str {
     io::with_str_writer(f)
 }
 
-pub fn check_variants_of_ast(crate: ast::crate, codemap: @codemap::CodeMap,
+pub fn check_variants_of_ast(crate: @ast::crate, codemap: @codemap::CodeMap,
                              filename: &Path, cx: Context) {
     let stolen = steal(crate, cx.mode);
     let extra_exprs = do common_exprs().filtered |a| {
@@ -275,13 +275,13 @@ pub fn check_variants_of_ast(crate: ast::crate, codemap: @codemap::CodeMap,
 }
 
 pub fn check_variants_T<T: Copy>(
-  crate: ast::crate,
+  crate: @ast::crate,
   codemap: @codemap::CodeMap,
   filename: &Path,
   thing_label: ~str,
   things: ~[T],
   stringifier: @fn(@T, @syntax::parse::token::ident_interner) -> ~str,
-  replacer: @fn(ast::crate, uint, T, test_mode) -> ast::crate,
+  replacer: @fn(@ast::crate, uint, T, test_mode) -> ast::crate,
   cx: Context
   ) {
     error!("%s contains %u %s objects", filename.to_str(),
@@ -323,7 +323,7 @@ pub fn check_variants_T<T: Copy>(
                                           last_part(filename.to_str()),
                                           thing_label, i, j);
                     let safe_to_run = !(content_is_dangerous_to_run(*str3)
-                                        || has_raw_pointers(*crate2));
+                                        || has_raw_pointers(crate2));
                     check_whole_compiler(*str3, &Path(file_label),
                                          safe_to_run);
                   }
@@ -480,7 +480,7 @@ pub fn parse_and_print(code: @~str) -> ~str {
     }
 }
 
-pub fn has_raw_pointers(c: ast::crate) -> bool {
+pub fn has_raw_pointers(c: @ast::crate) -> bool {
     let has_rp = @mut false;
     fn visit_ty(flag: @mut bool, t: @ast::Ty) {
         match t.node {
@@ -634,7 +634,7 @@ pub fn check_variants(files: &[Path], cx: Context) {
                        pprust::no_ann(),
                        false)))
         });
-        check_variants_of_ast(*crate, sess.cm, file, cx);
+        check_variants_of_ast(crate, sess.cm, file, cx);
     }
 }
 

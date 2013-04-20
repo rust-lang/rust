@@ -215,7 +215,7 @@ pub impl Session_ {
     fn unimpl(@self, msg: ~str) -> ! {
         self.span_diagnostic.handler().unimpl(msg)
     }
-    fn span_lint_level(@self, level: lint::level, sp: span, +msg: ~str) {
+    fn span_lint_level(@self, level: lint::level, sp: span, msg: ~str) {
         match level {
           lint::allow => { },
           lint::warn => self.span_warn(sp, msg),
@@ -228,7 +228,7 @@ pub impl Session_ {
                  expr_id: ast::node_id,
                  item_id: ast::node_id,
                  span: span,
-                 +msg: ~str) {
+                 msg: ~str) {
         let level = lint::get_lint_settings_level(
             self.lint_settings, lint_mode, expr_id, item_id);
         self.span_lint_level(level, span, msg);
@@ -278,7 +278,7 @@ pub impl Session_ {
     fn str_of(@self, id: ast::ident) -> @~str {
         self.parse_sess.interner.get(id)
     }
-    fn ident_of(@self, +st: ~str) -> ast::ident {
+    fn ident_of(@self, st: ~str) -> ast::ident {
         self.parse_sess.interner.intern(@st)
     }
     fn intr(@self) -> @syntax::parse::token::ident_interner {
@@ -361,7 +361,7 @@ mod test {
     use syntax::ast;
     use syntax::codemap;
 
-    fn make_crate_type_attr(+t: ~str) -> ast::attribute {
+    fn make_crate_type_attr(t: ~str) -> ast::attribute {
         codemap::respan(codemap::dummy_sp(), ast::attribute_ {
             style: ast::attr_outer,
             value: @codemap::respan(codemap::dummy_sp(),

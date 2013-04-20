@@ -54,7 +54,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
           csearch::found(ast::ii_item(item)) => {
             ccx.external.insert(fn_id, Some(item.id));
             ccx.stats.n_inlines += 1;
-            if translate { trans_item(ccx, *item); }
+            if translate { trans_item(ccx, item); }
             local_def(item.id)
           }
           csearch::found(ast::ii_foreign(item)) => {
@@ -76,7 +76,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
               _ => ccx.sess.bug(~"maybe_instantiate_inline: item has a \
                     non-enum parent")
             }
-            if translate { trans_item(ccx, *item); }
+            if translate { trans_item(ccx, item); }
             local_def(my_id)
           }
           csearch::found_parent(_, _) => {

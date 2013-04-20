@@ -121,7 +121,7 @@ pub impl Reflector {
 
     fn bracketed(&mut self,
                  bracket_name: ~str,
-                 +extra: ~[ValueRef],
+                 extra: ~[ValueRef],
                  inner: &fn(&mut Reflector)) {
         // XXX: Bad copy.
         self.visit(~"enter_" + bracket_name, copy extra);
@@ -145,7 +145,7 @@ pub impl Reflector {
         }
     }
 
-    fn leaf(&mut self, +name: ~str) {
+    fn leaf(&mut self, name: ~str) {
         self.visit(name, ~[]);
     }
 

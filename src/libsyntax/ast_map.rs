@@ -115,7 +115,7 @@ pub struct Ctx {
 
 pub type vt = visit::vt<@mut Ctx>;
 
-pub fn extend(cx: @mut Ctx, +elt: ident) -> @path {
+pub fn extend(cx: @mut Ctx, elt: ident) -> @path {
     @(vec::append(copy cx.path, ~[path_name(elt)]))
 }
 
@@ -132,7 +132,7 @@ pub fn mk_ast_map_visitor() -> vt {
     });
 }
 
-pub fn map_crate(diag: @span_handler, c: crate) -> map {
+pub fn map_crate(diag: @span_handler, c: @crate) -> map {
     let cx = @mut Ctx {
         map: @mut HashMap::new(),
         path: ~[],
@@ -148,8 +148,8 @@ pub fn map_crate(diag: @span_handler, c: crate) -> map {
 // the item itself.
 pub fn map_decoded_item(diag: @span_handler,
                         map: map,
-                        +path: path,
-                        ii: inlined_item) {
+                        path: path,
+                        ii: &inlined_item) {
     // I believe it is ok for the local IDs of inlined items from other crates
     // to overlap with the local ids from this crate, so just generate the ids
     // starting from 0.  (In particular, I think these ids are only used in
@@ -167,7 +167,7 @@ pub fn map_decoded_item(diag: @span_handler,
     // methods get added to the AST map when their impl is visited.  Since we
     // don't decode and instantiate the impl, but just the method, we have to
     // add it to the table now:
-    match ii {
+    match *ii {
       ii_item(*) | ii_dtor(*) => { /* fallthrough */ }
       ii_foreign(i) => {
         cx.map.insert(i.id, node_foreign_item(i,
@@ -190,7 +190,7 @@ pub fn map_fn(
     body: &blk,
     sp: codemap::span,
     id: node_id,
-    &&cx: @mut Ctx,
+    cx: @mut Ctx,
     v: visit::vt<@mut Ctx>
 ) {
     for decl.inputs.each |a| {
@@ -222,7 +222,7 @@ pub fn map_fn(
     visit::visit_fn(fk, decl, body, sp, id, cx, v);
 }
 
-pub fn map_block(b: &blk, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
+pub fn map_block(b: &blk, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
     cx.map.insert(b.node.id, node_block(/* FIXME (#2543) */ copy *b));
     visit::visit_block(b, cx, v);
 }
@@ -239,24 +239,24 @@ pub fn number_pat(cx: @mut Ctx, pat: @pat) {
     };
 }
 
-pub fn map_local(loc: @local, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
+pub fn map_local(loc: @local, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
     number_pat(cx, loc.node.pat);
     visit::visit_local(loc, cx, v);
 }
 
-pub fn map_arm(arm: &arm, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
+pub fn map_arm(arm: &arm, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
     number_pat(cx, arm.pats[0]);
     visit::visit_arm(arm, cx, v);
 }
 
 pub fn map_method(impl_did: def_id, impl_path: @path,
-                  m: @method, &&cx: @mut Ctx) {
+                  m: @method, cx: @mut Ctx) {
     cx.map.insert(m.id, node_method(m, impl_did, impl_path));
     cx.map.insert(m.self_id, node_local(cx.local_id));
     cx.local_id += 1u;
 }
 
-pub fn map_item(i: @item, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
+pub fn map_item(i: @item, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
     let item_path = @/* FIXME (#2543) */ copy cx.path;
     cx.map.insert(i.id, node_item(i, item_path));
     match i.node {
@@ -355,13 +355,13 @@ pub fn map_struct_def(
     }
 }
 
-pub fn map_expr(ex: @expr, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
+pub fn map_expr(ex: @expr, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
     cx.map.insert(ex.id, node_expr(ex));
     visit::visit_expr(ex, cx, v);
 }
 
-pub fn map_stmt(stmt: @stmt, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
-    cx.map.insert(stmt_id(*stmt), node_stmt(stmt));
+pub fn map_stmt(stmt: @stmt, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
+    cx.map.insert(stmt_id(stmt), node_stmt(stmt));
     visit::visit_stmt(stmt, cx, v);
 }
 
@@ -408,7 +408,7 @@ pub fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
       }
       Some(&node_stmt(stmt)) => {
         fmt!("stmt %s (id=%?)",
-             pprust::stmt_to_str(*stmt, itr), id)
+             pprust::stmt_to_str(stmt, itr), id)
       }
       Some(&node_arg(_, _)) => { // add more info here
         fmt!("arg (id=%?)", id)
@@ -430,7 +430,7 @@ pub fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
 
 pub fn node_item_query<Result>(items: map, id: node_id,
                                query: &fn(@item) -> Result,
-                               +error_msg: ~str) -> Result {
+                               error_msg: ~str) -> Result {
     match items.find(&id) {
         Some(&node_item(it, _)) => query(it),
         _ => fail!(error_msg)

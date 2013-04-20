@@ -444,7 +444,7 @@ pub fn body_contains_ret(body: &ast::blk) -> bool {
 }
 
 // See [Note-arg-mode]
-pub fn trans_call_inner(++in_cx: block,
+pub fn trans_call_inner(in_cx: block,
                         call_info: Option<NodeInfo>,
                         fn_expr_ty: ty::t,
                         ret_ty: ty::t,
@@ -592,7 +592,7 @@ pub enum CallArgs<'self> {
     ArgVals(&'self [ValueRef])
 }
 
-pub fn trans_ret_slot(+bcx: block, +fn_ty: ty::t, +dest: expr::Dest)
+pub fn trans_ret_slot(bcx: block, fn_ty: ty::t, dest: expr::Dest)
                       -> ValueRef {
     let retty = ty::ty_fn_ret(fn_ty);
 
@@ -610,12 +610,12 @@ pub fn trans_ret_slot(+bcx: block, +fn_ty: ty::t, +dest: expr::Dest)
     }
 }
 
-pub fn trans_args(+cx: block,
-                  +args: CallArgs,
-                  +fn_ty: ty::t,
-                  +ret_flag: Option<ValueRef>,
-                  +autoref_arg: AutorefArg,
-                  +llargs: &mut ~[ValueRef]) -> block
+pub fn trans_args(cx: block,
+                  args: CallArgs,
+                  fn_ty: ty::t,
+                  ret_flag: Option<ValueRef>,
+                  autoref_arg: AutorefArg,
+                  llargs: &mut ~[ValueRef]) -> block
 {
     let _icx = cx.insn_ctxt("trans_args");
     let mut temp_cleanups = ~[];
@@ -663,9 +663,9 @@ pub enum AutorefArg {
 pub fn trans_arg_expr(bcx: block,
                       formal_ty: ty::arg,
                       arg_expr: @ast::expr,
-                      +temp_cleanups: &mut ~[ValueRef],
-                      +ret_flag: Option<ValueRef>,
-                      +autoref_arg: AutorefArg) -> Result {
+                      temp_cleanups: &mut ~[ValueRef],
+                      ret_flag: Option<ValueRef>,
+                      autoref_arg: AutorefArg) -> Result {
     let _icx = bcx.insn_ctxt("trans_arg_expr");
     let ccx = bcx.ccx();
 

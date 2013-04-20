@@ -98,9 +98,9 @@ pub enum matcher_pos_up { /* to break a circularity */
     matcher_pos_up(Option<~MatcherPos>)
 }
 
-pub fn is_some(&&mpu: matcher_pos_up) -> bool {
-    match &mpu {
-      &matcher_pos_up(None) => false,
+pub fn is_some(mpu: &matcher_pos_up) -> bool {
+    match *mpu {
+      matcher_pos_up(None) => false,
       _ => true
     }
 }
@@ -115,9 +115,9 @@ pub struct MatcherPos {
     sp_lo: BytePos,
 }
 
-pub fn copy_up(&& mpu: matcher_pos_up) -> ~MatcherPos {
-    match &mpu {
-      &matcher_pos_up(Some(ref mp)) => copy (*mp),
+pub fn copy_up(mpu: &matcher_pos_up) -> ~MatcherPos {
+    match *mpu {
+      matcher_pos_up(Some(ref mp)) => copy (*mp),
       _ => fail!()
     }
 }
@@ -132,7 +132,7 @@ pub fn count_names(ms: &[matcher]) -> uint {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-pub fn initial_matcher_pos(+ms: ~[matcher], +sep: Option<Token>, lo: BytePos)
+pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
                         -> ~MatcherPos {
     let mut match_idx_hi = 0u;
     for ms.each |elt| {
@@ -220,7 +220,7 @@ pub enum parse_result {
 
 pub fn parse_or_else(
     sess: @mut ParseSess,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     rdr: @reader,
     ms: ~[matcher]
 ) -> HashMap<ident, @named_match> {
@@ -257,7 +257,7 @@ pub fn parse(
             /* at end of sequence */
             if idx >= len {
                 // can't move out of `match`es, so:
-                if is_some(ei.up) {
+                if is_some(&ei.up) {
                     // hack: a matcher sequence is repeating iff it has a
                     // parent (the top level is just a container)
 
@@ -267,7 +267,7 @@ pub fn parse(
                     if idx == len {
                         // pop from the matcher position
 
-                        let mut new_pos = copy_up(ei.up);
+                        let mut new_pos = copy_up(&ei.up);
 
                         // update matches (the MBE "parse tree") by appending
                         // each tree as a subtree.
@@ -394,7 +394,7 @@ pub fn parse(
                 match ei.elts[ei.idx].node {
                   match_nonterminal(_, name, idx) => {
                     ei.matches[idx].push(@matched_nonterminal(
-                        parse_nt(rust_parser, *sess.interner.get(name))));
+                        parse_nt(&rust_parser, *sess.interner.get(name))));
                     ei.idx += 1u;
                   }
                   _ => fail!()
@@ -411,7 +411,7 @@ pub fn parse(
     }
 }
 
-pub fn parse_nt(p: Parser, name: ~str) -> nonterminal {
+pub fn parse_nt(p: &Parser, name: ~str) -> nonterminal {
     match name {
       ~"item" => match p.parse_item(~[]) {
         Some(i) => token::nt_item(i),

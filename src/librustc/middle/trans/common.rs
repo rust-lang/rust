@@ -59,9 +59,9 @@ use syntax::parse::token::ident_interner;
 use syntax::{ast, ast_map};
 use syntax::abi::{X86, X86_64, Arm, Mips};
 
-pub type namegen = @fn(+s: ~str) -> ident;
+pub type namegen = @fn(s: ~str) -> ident;
 pub fn new_namegen(intr: @ident_interner) -> namegen {
-    let f: @fn(+s: ~str) -> ident = |prefix| {
+    let f: @fn(s: ~str) -> ident = |prefix| {
         intr.gensym(@fmt!("%s_%u",
                           prefix,
                           intr.gensym(@prefix).repr))
@@ -395,7 +395,7 @@ pub struct cleanup_path {
     dest: BasicBlockRef
 }
 
-pub fn scope_clean_changed(+scope_info: &mut scope_info) {
+pub fn scope_clean_changed(scope_info: &mut scope_info) {
     if scope_info.cleanup_paths.len() > 0u { scope_info.cleanup_paths = ~[]; }
     scope_info.landing_pad = None;
 }
@@ -626,7 +626,7 @@ pub struct block_ {
     fcx: fn_ctxt
 }
 
-pub fn block_(llbb: BasicBlockRef, parent: Option<block>, +kind: block_kind,
+pub fn block_(llbb: BasicBlockRef, parent: Option<block>, kind: block_kind,
               is_lpad: bool, node_info: Option<NodeInfo>, fcx: fn_ctxt)
     -> block_ {
 
@@ -644,7 +644,7 @@ pub fn block_(llbb: BasicBlockRef, parent: Option<block>, +kind: block_kind,
 
 pub type block = @mut block_;
 
-pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>, +kind: block_kind,
+pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>, kind: block_kind,
             is_lpad: bool, node_info: Option<NodeInfo>, fcx: fn_ctxt)
     -> block {
     @mut block_(llbb, parent, kind, is_lpad, node_info, fcx)
@@ -663,7 +663,7 @@ pub fn rslt(bcx: block, val: ValueRef) -> Result {
 }
 
 pub impl Result {
-    fn unpack(&self, +bcx: &mut block) -> ValueRef {
+    fn unpack(&self, bcx: &mut block) -> ValueRef {
         *bcx = self.bcx;
         return self.val;
     }
@@ -683,7 +683,7 @@ pub fn val_str(tn: @TypeNames, v: ValueRef) -> @str {
     return ty_str(tn, val_ty(v));
 }
 
-pub fn in_scope_cx(cx: block, f: &fn(+si: &mut scope_info)) {
+pub fn in_scope_cx(cx: block, f: &fn(si: &mut scope_info)) {
     let mut cur = cx;
     loop {
         {
@@ -1252,7 +1252,7 @@ pub fn C_bytes_plus_null(bytes: &[u8]) -> ValueRef {
     }
 }
 
-pub fn C_shape(ccx: @CrateContext, +bytes: ~[u8]) -> ValueRef {
+pub fn C_shape(ccx: @CrateContext, bytes: ~[u8]) -> ValueRef {
     unsafe {
         let llshape = C_bytes_plus_null(bytes);
         let name = fmt!("shape%u", (ccx.names)(~"shape").repr);
@@ -1325,7 +1325,7 @@ pub struct mono_id_ {
 pub type mono_id = @mono_id_;
 
 impl to_bytes::IterBytes for mono_param_id {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         match *self {
             mono_precise(t, ref mids) =>
                 to_bytes::iter_bytes_3(&0u8, &ty::type_id(t), mids, lsb0, f),
@@ -1339,7 +1339,7 @@ impl to_bytes::IterBytes for mono_param_id {
 }
 
 impl to_bytes::IterBytes for mono_id_ {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.def, &self.params, lsb0, f);
     }
 }
@@ -1433,7 +1433,7 @@ pub fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::vtable_res)
 
 // Apply the typaram substitutions in the fn_ctxt to a vtable. This should
 // eliminate any vtable_params.
-pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, +vt: typeck::vtable_origin)
+pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
     -> typeck::vtable_origin {
     let tcx = fcx.ccx.tcx;
     match vt {
@@ -1479,7 +1479,7 @@ pub fn find_vtable(tcx: ty::ctxt, ps: &param_substs,
     /*bad*/ copy ps.vtables.get()[vtable_off]
 }
 
-pub fn dummy_substs(+tps: ~[ty::t]) -> ty::substs {
+pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
     substs {
         self_r: Some(ty::re_bound(ty::br_self)),
         self_ty: None,

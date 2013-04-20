@@ -88,7 +88,7 @@ pub fn gather_loans(bccx: @BorrowckCtxt, crate: @ast::crate) -> ReqMaps {
                                           visit_fn: req_loans_in_fn,
                                           visit_stmt: add_stmt_to_map,
                                           .. *visit::default_visitor()});
-    visit::visit_crate(*crate, glcx, v);
+    visit::visit_crate(crate, glcx, v);
     let @GatherLoanCtxt{req_maps, _} = glcx;
     return req_maps;
 }
@@ -98,7 +98,7 @@ fn req_loans_in_fn(fk: &visit::fn_kind,
                    body: &ast::blk,
                    sp: span,
                    id: ast::node_id,
-                   &&self: @mut GatherLoanCtxt,
+                   self: @mut GatherLoanCtxt,
                    v: visit::vt<@mut GatherLoanCtxt>) {
     // see explanation attached to the `root_ub` field:
     let old_item_id = self.item_ub;
@@ -119,7 +119,7 @@ fn req_loans_in_fn(fk: &visit::fn_kind,
 }
 
 fn req_loans_in_expr(ex: @ast::expr,
-                     &&self: @mut GatherLoanCtxt,
+                     self: @mut GatherLoanCtxt,
                      vt: visit::vt<@mut GatherLoanCtxt>) {
     let bccx = self.bccx;
     let tcx = bccx.tcx;
@@ -489,7 +489,7 @@ pub impl GatherLoanCtxt {
                  cmt: cmt,
                  loan_kind: LoanKind,
                  scope_r: ty::Region,
-                 +loans: ~[Loan]) {
+                 loans: ~[Loan]) {
         if loans.len() == 0 {
             return;
         }
@@ -555,7 +555,7 @@ pub impl GatherLoanCtxt {
 
     fn add_loans_to_scope_id(&mut self,
                              scope_id: ast::node_id,
-                             +loans: ~[Loan]) {
+                             loans: ~[Loan]) {
         debug!("adding %u loans to scope_id %?: %s",
                loans.len(), scope_id,
                str::connect(loans.map(|l| self.bccx.loan_to_repr(l)), ", "));
@@ -665,7 +665,7 @@ pub impl GatherLoanCtxt {
 // Setting up info that preserve needs.
 // This is just the most convenient place to do it.
 fn add_stmt_to_map(stmt: @ast::stmt,
-                   &&self: @mut GatherLoanCtxt,
+                   self: @mut GatherLoanCtxt,
                    vt: visit::vt<@mut GatherLoanCtxt>) {
     match stmt.node {
         ast::stmt_expr(_, id) | ast::stmt_semi(_, id) => {

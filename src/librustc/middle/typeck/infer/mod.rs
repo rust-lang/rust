@@ -643,8 +643,8 @@ pub impl InferCtxt {
 }
 
 fn next_simple_var<V:Copy,T:Copy>(
-        +counter: &mut uint,
-        +bindings: &mut ValsAndBindings<V,Option<T>>)
+        counter: &mut uint,
+        bindings: &mut ValsAndBindings<V,Option<T>>)
      -> uint {
     let id = *counter;
     *counter += 1;

@@ -126,7 +126,7 @@ pub struct creader_cache_key {
 type creader_cache = @mut HashMap<creader_cache_key, t>;
 
 impl to_bytes::IterBytes for creader_cache_key {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_3(&self.cnum, &self.pos, &self.len, lsb0, f);
     }
 }
@@ -150,7 +150,7 @@ impl cmp::Eq for intern_key {
 }
 
 impl to_bytes::IterBytes for intern_key {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         unsafe {
             (*self.sty).iter_bytes(lsb0, f);
         }
@@ -390,13 +390,13 @@ pub struct FnSig {
 }
 
 impl to_bytes::IterBytes for BareFnTy {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_3(&self.purity, &self.abis, &self.sig, lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for ClosureTy {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_5(&self.purity, &self.sigil, &self.onceness,
                                &self.region, &self.sig, lsb0, f)
     }
@@ -685,7 +685,7 @@ pub enum InferTy {
 }
 
 impl to_bytes::IterBytes for InferTy {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         match *self {
           TyVar(ref tv) => to_bytes::iter_bytes_2(&0u8, tv, lsb0, f),
           IntVar(ref iv) => to_bytes::iter_bytes_2(&1u8, iv, lsb0, f),
@@ -702,7 +702,7 @@ pub enum InferRegion {
 }
 
 impl to_bytes::IterBytes for InferRegion {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         match *self {
             ReVar(ref rv) => to_bytes::iter_bytes_2(&0u8, rv, lsb0, f),
             ReSkolemized(ref v, _) => to_bytes::iter_bytes_2(&1u8, v, lsb0, f)
@@ -790,25 +790,25 @@ impl ToStr for IntVarValue {
 }
 
 impl to_bytes::IterBytes for TyVid {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for IntVid {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for FloatVid {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for RegionVid {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
@@ -877,7 +877,7 @@ pub fn mk_ctxt(s: session::Session,
                freevars: freevars::freevar_map,
                region_maps: @mut middle::region::RegionMaps,
                region_paramd_items: middle::region::region_paramd_items,
-               +lang_items: middle::lang_items::LanguageItems,
+               lang_items: middle::lang_items::LanguageItems,
                crate: @ast::crate)
             -> ctxt {
     let mut legacy_modes = false;
@@ -942,7 +942,7 @@ pub fn mk_ctxt(s: session::Session,
 
 // Interns a type/name combination, stores the resulting box in cx.interner,
 // and returns the box as cast to an unsafe ptr (see comments for t above).
-fn mk_t(cx: ctxt, +st: sty) -> t {
+fn mk_t(cx: ctxt, st: sty) -> t {
     // Check for primitive types.
     match st {
         ty_nil => return mk_nil(cx),
@@ -1141,7 +1141,7 @@ pub fn mk_estr(cx: ctxt, t: vstore) -> t {
     mk_t(cx, ty_estr(t))
 }
 
-pub fn mk_enum(cx: ctxt, did: ast::def_id, +substs: substs) -> t {
+pub fn mk_enum(cx: ctxt, did: ast::def_id, substs: substs) -> t {
     // take a copy of substs so that we own the vectors inside
     mk_t(cx, ty_enum(did, substs))
 }
@@ -1192,13 +1192,13 @@ pub fn mk_mut_unboxed_vec(cx: ctxt, ty: t) -> t {
     mk_t(cx, ty_unboxed_vec(mt {ty: ty, mutbl: ast::m_imm}))
 }
 
-pub fn mk_tup(cx: ctxt, +ts: ~[t]) -> t { mk_t(cx, ty_tup(ts)) }
+pub fn mk_tup(cx: ctxt, ts: ~[t]) -> t { mk_t(cx, ty_tup(ts)) }
 
-pub fn mk_closure(cx: ctxt, +fty: ClosureTy) -> t {
+pub fn mk_closure(cx: ctxt, fty: ClosureTy) -> t {
     mk_t(cx, ty_closure(fty))
 }
 
-pub fn mk_bare_fn(cx: ctxt, +fty: BareFnTy) -> t {
+pub fn mk_bare_fn(cx: ctxt, fty: BareFnTy) -> t {
     mk_t(cx, ty_bare_fn(fty))
 }
 
@@ -1217,7 +1217,7 @@ pub fn mk_ctor_fn(cx: ctxt, input_tys: &[ty::t], output: ty::t) -> t {
 
 pub fn mk_trait(cx: ctxt,
                 did: ast::def_id,
-                +substs: substs,
+                substs: substs,
                 store: TraitStore,
                 mutability: ast::mutability)
              -> t {
@@ -1225,7 +1225,7 @@ pub fn mk_trait(cx: ctxt,
     mk_t(cx, ty_trait(did, substs, store, mutability))
 }
 
-pub fn mk_struct(cx: ctxt, struct_id: ast::def_id, +substs: substs) -> t {
+pub fn mk_struct(cx: ctxt, struct_id: ast::def_id, substs: substs) -> t {
     // take a copy of substs so that we own the vectors inside
     mk_t(cx, ty_struct(struct_id, substs))
 }
@@ -1236,7 +1236,7 @@ pub fn mk_int_var(cx: ctxt, v: IntVid) -> t { mk_infer(cx, IntVar(v)) }
 
 pub fn mk_float_var(cx: ctxt, v: FloatVid) -> t { mk_infer(cx, FloatVar(v)) }
 
-pub fn mk_infer(cx: ctxt, +it: InferTy) -> t { mk_t(cx, ty_infer(it)) }
+pub fn mk_infer(cx: ctxt, it: InferTy) -> t { mk_t(cx, ty_infer(it)) }
 
 pub fn mk_self(cx: ctxt, did: ast::def_id) -> t { mk_t(cx, ty_self(did)) }
 
@@ -2672,7 +2672,7 @@ impl cmp::TotalEq for bound_region {
 }
 
 impl to_bytes::IterBytes for vstore {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         match *self {
           vstore_fixed(ref u) =>
           to_bytes::iter_bytes_2(&0u8, u, lsb0, f),
@@ -2687,7 +2687,7 @@ impl to_bytes::IterBytes for vstore {
 }
 
 impl to_bytes::IterBytes for substs {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_3(&self.self_r,
                                  &self.self_ty,
                                  &self.tps, lsb0, f)
@@ -2695,28 +2695,28 @@ impl to_bytes::IterBytes for substs {
 }
 
 impl to_bytes::IterBytes for mt {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_2(&self.ty,
                                  &self.mutbl, lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for field {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_2(&self.ident,
                                  &self.mt, lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for arg {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.mode,
                                &self.ty, lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for FnSig {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.inputs,
                                &self.output,
                                lsb0, f);
@@ -2724,7 +2724,7 @@ impl to_bytes::IterBytes for FnSig {
 }
 
 impl to_bytes::IterBytes for sty {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         match *self {
           ty_nil => 0u8.iter_bytes(lsb0, f),
           ty_bool => 1u8.iter_bytes(lsb0, f),
@@ -3383,7 +3383,7 @@ pub fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
 // Maintains a little union-set tree for inferred modes.  `canon()` returns
 // the current head value for `m0`.
 fn canon<T:Copy + cmp::Eq>(tbl: &mut HashMap<ast::node_id, ast::inferable<T>>,
-                         +m0: ast::inferable<T>) -> ast::inferable<T> {
+                           m0: ast::inferable<T>) -> ast::inferable<T> {
     match m0 {
         ast::infer(id) => {
             let m1 = match tbl.find(&id) {
