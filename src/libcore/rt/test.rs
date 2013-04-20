@@ -27,3 +27,13 @@ pub fn run_in_newsched_task(f: ~fn()) {
         sched.run();
     }
 }
+
+/// Get a port number, starting at 9600, for use in tests
+pub fn next_test_port() -> u16 {
+    unsafe {
+        return rust_dbg_next_port() as u16;
+    }
+    extern {
+        fn rust_dbg_next_port() -> ::libc::uintptr_t;
+    }
+}
