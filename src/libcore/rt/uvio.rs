@@ -434,22 +434,39 @@ fn test_read_and_block() {
     }
 }
 
-#[test] #[ignore(reason = "needs server")]
+#[test]
 fn test_read_read_read() {
     do run_in_newsched_task {
         let addr = Ipv4(127, 0, 0, 1, next_test_port());
+        static MAX: uint = 5000000;
+        
+        do spawn_immediately {
+            unsafe {
+                let io = local_sched::unsafe_borrow_io();
+                let mut listener = io.bind(addr).unwrap();
+                let mut stream = listener.listen().unwrap();
+                let mut buf = [0, .. 2048];
+                let mut total_bytes_written = 0;
+                while total_bytes_written < MAX {
+                    stream.write(buf);
+                    total_bytes_written += buf.len();
+                }
+                stream.close();
+                listener.close();
+            }
+        }
 
         do spawn_immediately {
             let io = unsafe { local_sched::unsafe_borrow_io() };
             let mut stream = io.connect(addr).unwrap();
             let mut buf = [0, .. 2048];
             let mut total_bytes_read = 0;
-            while total_bytes_read < 500000000 {
+            while total_bytes_read < MAX {
                 let nread = stream.read(buf).unwrap();
                 rtdebug!("read %u bytes", nread as uint);
                 total_bytes_read += nread;
             }
-            rtdebug_!("read %u bytes total", total_bytes_read as uint);
+            rtdebug!("read %u bytes total", total_bytes_read as uint);
             stream.close();
         }
     }
