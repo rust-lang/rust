@@ -49,6 +49,10 @@ mod context;
 mod thread;
 pub mod env;
 
+/// Tools for testing the runtime
+#[cfg(test)]
+pub mod test;
+
 #[cfg(stage0)]
 pub fn start(main: *u8, _argc: int, _argv: *c_char, _crate_map: *u8) -> int {
     use self::sched::{Scheduler, Task};
