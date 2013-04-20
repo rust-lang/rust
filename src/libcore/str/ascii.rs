@@ -22,17 +22,46 @@ pub struct Ascii { priv chr: u8 }
 
 pub impl Ascii {
     /// Converts a ascii character into a `u8`.
+    #[inline(always)]
     fn to_byte(self) -> u8 {
         self.chr
     }
 
     /// Converts a ascii character into a `char`.
+    #[inline(always)]
     fn to_char(self) -> char {
         self.chr as char
+    }
+
+    /// Convert to lowercase.
+    #[inline(always)]
+    fn to_lower(self) -> Ascii {
+        if self.chr >= 65 && self.chr <= 90 {
+            Ascii{chr: self.chr | 0x20 }
+        } else {
+            self
+        }
+    }
+
+    /// Convert to uppercase.
+    #[inline(always)]
+    fn to_upper(self) -> Ascii {
+        if self.chr >= 97 && self.chr <= 122 {
+            Ascii{chr: self.chr & !0x20 }
+        } else {
+            self
+        }
+    }
+
+    // Compares two ascii characters of equality, ignoring case.
+    #[inline(always)]
+    fn eq_ignore_case(self, other: Ascii) -> bool {
+        self.to_lower().chr == other.to_lower().chr
     }
 }
 
 impl ToStr for Ascii {
+    #[inline(always)]
     fn to_str(&self) -> ~str { str::from_bytes(['\'' as u8, self.chr, '\'' as u8]) }
 }
 
@@ -46,12 +75,14 @@ pub trait AsciiCast<T> {
 }
 
 impl<'self> AsciiCast<&'self[Ascii]> for &'self [u8] {
+    #[inline(always)]
     fn to_ascii(&self) -> &'self[Ascii] {
         assert!(self.is_ascii());
 
         unsafe{ cast::transmute(*self) }
     }
 
+    #[inline(always)]
     fn is_ascii(&self) -> bool {
         for self.each |b| {
             if !b.is_ascii() { return false; }
@@ -61,6 +92,7 @@ impl<'self> AsciiCast<&'self[Ascii]> for &'self [u8] {
 }
 
 impl<'self> AsciiCast<&'self[Ascii]> for &'self str {
+    #[inline(always)]
     fn to_ascii(&self) -> &'self[Ascii] {
         assert!(self.is_ascii());
 
@@ -68,6 +100,7 @@ impl<'self> AsciiCast<&'self[Ascii]> for &'self str {
         unsafe{ cast::transmute((p, len - 1))}
     }
 
+    #[inline(always)]
     fn is_ascii(&self) -> bool {
         for self.each |b| {
             if !b.is_ascii() { return false; }
@@ -77,22 +110,27 @@ impl<'self> AsciiCast<&'self[Ascii]> for &'self str {
 }
 
 impl AsciiCast<Ascii> for u8 {
+    #[inline(always)]
     fn to_ascii(&self) -> Ascii {
         assert!(self.is_ascii());
         Ascii{ chr: *self }
     }
 
+    #[inline(always)]
     fn is_ascii(&self) -> bool {
         *self & 128 == 0u8
     }
 }
 
 impl AsciiCast<Ascii> for char {
+
+    #[inline(always)]
     fn to_ascii(&self) -> Ascii {
         assert!(self.is_ascii());
         Ascii{ chr: *self as u8 }
     }
 
+    #[inline(always)]
     fn is_ascii(&self) -> bool {
         *self - ('\x7F' & *self) == '\x00'
     }
@@ -105,6 +143,7 @@ pub trait OwnedAsciiCast {
 }
 
 impl OwnedAsciiCast for ~[u8] {
+    #[inline(always)]
     fn to_ascii_consume(self) -> ~[Ascii] {
         assert!(self.is_ascii());
 
@@ -113,6 +152,7 @@ impl OwnedAsciiCast for ~[u8] {
 }
 
 impl OwnedAsciiCast for ~str {
+    #[inline(always)]
     fn to_ascii_consume(self) -> ~[Ascii] {
         let mut s = self;
         unsafe {
@@ -129,6 +169,7 @@ pub trait ToStrAscii {
 }
 
 impl<'self> ToStrAscii for &'self [Ascii] {
+    #[inline(always)]
     fn to_str_ascii(&self) -> ~str {
         let mut cpy = self.to_owned();
         cpy.push(0u8.to_ascii());
@@ -137,6 +178,7 @@ impl<'self> ToStrAscii for &'self [Ascii] {
 }
 
 impl ToStrConsume for ~[Ascii] {
+    #[inline(always)]
     fn to_str_consume(self) -> ~str {
         let mut cpy = self;
         cpy.push(0u8.to_ascii());
@@ -163,6 +205,16 @@ mod tests {
         assert_eq!(65u8.to_ascii().to_char(), 'A');
         assert_eq!('A'.to_ascii().to_char(), 'A');
         assert_eq!('A'.to_ascii().to_byte(), 65u8);
+
+        assert_eq!('A'.to_ascii().to_lower().to_char, 'a');
+        assert_eq!('Z'.to_ascii().to_lower().to_char, 'z');
+        assert_eq!('a'.to_ascii().to_upper().to_char, 'A');
+        assert_eq!('z'.to_ascii().to_upper().to_char, 'Z');
+
+        assert_eq!('@'.to_ascii().to_lower().to_char, '@');
+        assert_eq!('['.to_ascii().to_lower().to_char, '[');
+        assert_eq!('`'.to_ascii().to_upper().to_char, '`');
+        assert_eq!('{'.to_ascii().to_upper().to_char, '{');
     }
 
     #[test]
