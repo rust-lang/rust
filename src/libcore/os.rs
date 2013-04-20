@@ -912,6 +912,7 @@ pub fn errno() -> int {
     fn errno_location() -> *c_int {
         #[nolink]
         extern {
+            #[fast_ffi]
             unsafe fn __error() -> *c_int;
         }
         unsafe {
@@ -924,6 +925,7 @@ pub fn errno() -> int {
     fn errno_location() -> *c_int {
         #[nolink]
         extern {
+            #[fast_ffi]
             unsafe fn __errno_location() -> *c_int;
         }
         unsafe {
