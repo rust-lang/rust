@@ -12,8 +12,9 @@
 
 #[warn(non_camel_case_types)];
 
-use container::{Container, Mutable};
+use cast::transmute;
 use cast;
+use container::{Container, Mutable};
 use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use iter::BaseIter;
@@ -43,9 +44,11 @@ pub mod rustrt {
     pub extern {
         // These names are terrible. reserve_shared applies
         // to ~[] and reserve_shared_actual applies to @[].
+        #[fast_ffi]
         unsafe fn vec_reserve_shared(++t: *sys::TypeDesc,
                                      ++v: **raw::VecRepr,
                                      ++n: libc::size_t);
+        #[fast_ffi]
         unsafe fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
                                             ++v: **raw::VecRepr,
                                             ++n: libc::size_t);
@@ -73,6 +76,7 @@ pub fn same_length<T, U>(xs: &const [T], ys: &const [U]) -> bool {
  * * v - A vector
  * * n - The number of elements to reserve space for
  */
+#[inline]
 pub fn reserve<T>(v: &mut ~[T], n: uint) {
     // Only make the (slow) call into the runtime if we have to
     use managed;
@@ -1386,13 +1390,19 @@ pub fn each<'r,T>(v: &'r [T], f: &fn(&'r T) -> bool) {
 /// to mutate the contents as you iterate.
 #[inline(always)]
 pub fn each_mut<'r,T>(v: &'r mut [T], f: &fn(elem: &'r mut T) -> bool) {
-    let mut i = 0;
-    let n = v.len();
-    while i < n {
-        if !f(&mut v[i]) {
-            return;
+    do vec::as_mut_buf(v) |p, n| {
+        let mut n = n;
+        let mut p = p;
+        while n > 0 {
+            unsafe {
+                let q: &'r mut T = cast::transmute_mut_region(&mut *p);
+                if !f(q) {
+                    break;
+                }
+                p = p.offset(1);
+            }
+            n -= 1;
         }
-        i += 1;
     }
 }
 
@@ -1420,6 +1430,22 @@ pub fn eachi<'r,T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) {
     let mut i = 0;
     for each(v) |p| {
         if !f(i, p) { return; }
+        i += 1;
+    }
+}
+
+/**
+ * Iterates over a mutable vector's elements and indices
+ *
+ * Return true to continue, false to break.
+ */
+#[inline(always)]
+pub fn eachi_mut<'r,T>(v: &'r mut [T], f: &fn(uint, v: &'r mut T) -> bool) {
+    let mut i = 0;
+    for each_mut(v) |p| {
+        if !f(i, p) {
+            return;
+        }
         i += 1;
     }
 }
@@ -1806,6 +1832,7 @@ pub trait ImmutableVector<T> {
     fn alli(&self, f: &fn(uint, t: &T) -> bool) -> bool;
     fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U];
     fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U];
+    unsafe fn unsafe_ref(&self, index: uint) -> *T;
 }
 
 /// Extension methods for vectors
@@ -1916,6 +1943,14 @@ impl<'self,T> ImmutableVector<T> for &'self [T] {
     fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U] {
         filter_mapped(*self, f)
     }
+
+    /// Returns a pointer to the element at the given index, without doing
+    /// bounds checking.
+    #[inline(always)]
+    unsafe fn unsafe_ref(&self, index: uint) -> *T {
+        let (ptr, _): (*T, uint) = transmute(*self);
+        ptr.offset(index)
+    }
 }
 
 #[cfg(stage1)]
@@ -1941,6 +1976,7 @@ pub trait ImmutableVector<'self, T> {
     fn alli(&self, f: &fn(uint, t: &T) -> bool) -> bool;
     fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U];
     fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U];
+    unsafe fn unsafe_ref(&self, index: uint) -> *T;
 }
 
 /// Extension methods for vectors
@@ -2062,6 +2098,14 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U] {
         filter_mapped(*self, f)
     }
+
+    /// Returns a pointer to the element at the given index, without doing
+    /// bounds checking.
+    #[inline(always)]
+    unsafe fn unsafe_ref(&self, index: uint) -> *T {
+        let (ptr, _): (*T, uint) = transmute(*self);
+        ptr.offset(index)
+    }
 }
 
 pub trait ImmutableEqVector<T:Eq> {
@@ -2113,6 +2157,7 @@ pub trait ImmutableCopyableVector<T> {
     fn filtered(&self, f: &fn(&T) -> bool) -> ~[T];
     fn rfind(&self, f: &fn(t: &T) -> bool) -> Option<T>;
     fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
+    unsafe fn unsafe_get(&self, elem: uint) -> T;
 }
 
 /// Extension methods for vectors
@@ -2148,6 +2193,12 @@ impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
     #[inline]
     fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]) {
         partitioned(*self, f)
+    }
+
+    /// Returns the element at the given index, without doing bounds checking.
+    #[inline(always)]
+    unsafe fn unsafe_get(&self, index: uint) -> T {
+        *self.unsafe_ref(index)
     }
 }
 
@@ -2286,6 +2337,25 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
     #[inline]
     fn dedup(&mut self) {
         dedup(self)
+    }
+}
+
+pub trait MutableVector<T> {
+    unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T;
+    unsafe fn unsafe_set(&self, index: uint, val: T);
+}
+
+impl<'self,T> MutableVector<T> for &'self mut [T] {
+    #[inline(always)]
+    unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T {
+        let pair_ptr: &(*mut T, uint) = transmute(self);
+        let (ptr, _) = *pair_ptr;
+        ptr.offset(index)
+    }
+
+    #[inline(always)]
+    unsafe fn unsafe_set(&self, index: uint, val: T) {
+        *self.unsafe_mut_ref(index) = val;
     }
 }
 
@@ -2649,6 +2719,13 @@ impl<'self,A> iter::ExtendedIter<A> for &'self [A] {
     fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
         -> ~[B] {
         iter::flat_map_to_vec(self, op)
+    }
+}
+
+impl<'self,A> iter::ExtendedMutableIter<A> for &'self mut [A] {
+    #[inline(always)]
+    pub fn eachi_mut(&mut self, blk: &fn(uint, v: &mut A) -> bool) {
+        eachi_mut(*self, blk)
     }
 }
 

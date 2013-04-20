@@ -67,7 +67,9 @@ upcall_del_stack
 upcall_reset_stack_limit
 rust_upcall_fail
 rust_upcall_free
+rust_upcall_free_noswitch
 rust_upcall_malloc
+rust_upcall_malloc_noswitch
 rust_uv_loop_new
 rust_uv_loop_delete
 rust_uv_walk

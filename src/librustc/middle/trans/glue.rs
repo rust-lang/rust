@@ -499,7 +499,8 @@ pub fn trans_struct_drop(bcx: block,
         }
 
         let self_arg = PointerCast(bcx, llval, params[1]);
-        let args = ~[bcx.fcx.llretptr, self_arg];
+        let args = ~[C_null(T_ptr(T_i8())), self_arg];
+
         Call(bcx, dtor_addr, args);
 
         // Drop the fields
@@ -575,9 +576,7 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
     build_return(bcx);
 }
 
-pub fn decr_refcnt_maybe_free(bcx: block,
-                              box_ptr: ValueRef,
-                              t: ty::t)
+pub fn decr_refcnt_maybe_free(bcx: block, box_ptr: ValueRef, t: ty::t)
                            -> block {
     let _icx = bcx.insn_ctxt("decr_refcnt_maybe_free");
     let ccx = bcx.ccx();
@@ -737,7 +736,7 @@ pub fn make_generic_glue_inner(ccx: @CrateContext,
                                helper: glue_helper)
                             -> ValueRef {
     let _icx = ccx.insn_ctxt("make_generic_glue_inner");
-    let fcx = new_fn_ctxt(ccx, ~[], llfn, None);
+    let fcx = new_fn_ctxt(ccx, ~[], llfn, ty::mk_nil(ccx.tcx), None);
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     ccx.stats.n_glues_created += 1u;
     // All glue functions take values passed *by alias*; this is a
@@ -756,8 +755,11 @@ pub fn make_generic_glue_inner(ccx: @CrateContext,
     return llfn;
 }
 
-pub fn make_generic_glue(ccx: @CrateContext, t: ty::t, llfn: ValueRef,
-                         helper: glue_helper, name: &str)
+pub fn make_generic_glue(ccx: @CrateContext,
+                         t: ty::t,
+                         llfn: ValueRef,
+                         helper: glue_helper,
+                         name: &str)
                       -> ValueRef {
     let _icx = ccx.insn_ctxt("make_generic_glue");
     if !ccx.sess.trans_stats() {
@@ -767,8 +769,10 @@ pub fn make_generic_glue(ccx: @CrateContext, t: ty::t, llfn: ValueRef,
     let start = time::get_time();
     let llval = make_generic_glue_inner(ccx, t, llfn, helper);
     let end = time::get_time();
-    log_fn_time(ccx, fmt!("glue %s %s", name, ty_to_short_str(ccx.tcx, t)),
-                start, end);
+    log_fn_time(ccx,
+                fmt!("glue %s %s", name, ty_to_short_str(ccx.tcx, t)),
+                start,
+                end);
     return llval;
 }
 

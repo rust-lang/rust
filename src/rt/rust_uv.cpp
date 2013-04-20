@@ -401,8 +401,7 @@ rust_uv_get_data_for_uv_handle(uv_handle_t* handle) {
 }
 
 extern "C" void
-rust_uv_set_data_for_uv_handle(uv_handle_t* handle,
-        void* data) {
+rust_uv_set_data_for_uv_handle(uv_handle_t* handle, void* data) {
     handle->data = data;
 }
 

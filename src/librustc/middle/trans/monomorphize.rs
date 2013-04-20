@@ -195,7 +195,16 @@ pub fn monomorphic_fn(ccx: @CrateContext,
             }, _) => {
         let d = mk_lldecl();
         set_inline_hint_if_appr(/*bad*/copy i.attrs, d);
-        trans_fn(ccx, pt, decl, body, d, no_self, psubsts, fn_id.node, None);
+        trans_fn(ccx,
+                 pt,
+                 decl,
+                 body,
+                 d,
+                 no_self,
+                 psubsts,
+                 fn_id.node,
+                 None,
+                 []);
         d
       }
       ast_map::node_item(*) => {

@@ -92,16 +92,19 @@ pub impl FnType {
         return llargvals;
     }
 
-    fn build_shim_ret(&self, bcx: block,
-                      arg_tys: &[TypeRef], ret_def: bool,
-                      llargbundle: ValueRef, llretval: ValueRef) {
+    fn build_shim_ret(&self,
+                      bcx: block,
+                      arg_tys: &[TypeRef],
+                      ret_def: bool,
+                      llargbundle: ValueRef,
+                      llretval: ValueRef) {
         for vec::eachi(self.attrs) |i, a| {
             match *a {
                 option::Some(attr) => {
                     unsafe {
-                        llvm::LLVMAddInstrAttribute(
-                            llretval, (i + 1u) as c_uint,
-                                        attr as c_uint);
+                        llvm::LLVMAddInstrAttribute(llretval,
+                                                    (i + 1u) as c_uint,
+                                                    attr as c_uint);
                     }
                 }
                 _ => ()
@@ -125,8 +128,11 @@ pub impl FnType {
         };
     }
 
-    fn build_wrap_args(&self, bcx: block, ret_ty: TypeRef,
-                       llwrapfn: ValueRef, llargbundle: ValueRef) {
+    fn build_wrap_args(&self,
+                       bcx: block,
+                       ret_ty: TypeRef,
+                       llwrapfn: ValueRef,
+                       llargbundle: ValueRef) {
         let mut atys = /*bad*/copy self.arg_tys;
         let mut attrs = /*bad*/copy self.attrs;
         let mut j = 0u;
@@ -161,22 +167,27 @@ pub impl FnType {
         store_inbounds(bcx, llretptr, llargbundle, [0u, n]);
     }
 
-    fn build_wrap_ret(&self, bcx: block,
-                      arg_tys: &[TypeRef], llargbundle: ValueRef) {
+    fn build_wrap_ret(&self,
+                      bcx: block,
+                      arg_tys: &[TypeRef],
+                      llargbundle: ValueRef) {
         unsafe {
             if llvm::LLVMGetTypeKind(self.ret_ty.ty) == Void {
-                RetVoid(bcx);
                 return;
             }
         }
-        let n = vec::len(arg_tys);
-        let llretval = load_inbounds(bcx, llargbundle, ~[0u, n]);
+
+        let llretval = load_inbounds(bcx, llargbundle, ~[ 0, arg_tys.len() ]);
         let llretval = if self.ret_ty.cast {
             let retptr = BitCast(bcx, llretval, T_ptr(self.ret_ty.ty));
             Load(bcx, retptr)
         } else {
             Load(bcx, llretval)
         };
-        Ret(bcx, llretval);
+        let llretptr = BitCast(bcx,
+                               bcx.fcx.llretptr.get(),
+                               T_ptr(self.ret_ty.ty));
+        Store(bcx, llretval, llretptr);
     }
 }
+

@@ -188,8 +188,10 @@ pub mod write {
         return false;
     }
 
-    pub fn run_passes(sess: Session, llmod: ModuleRef,
-            output_type: output_type, output: &Path) {
+    pub fn run_passes(sess: Session,
+                      llmod: ModuleRef,
+                      output_type: output_type,
+                      output: &Path) {
         unsafe {
             let opts = sess.opts;
             if sess.time_llvm_passes() { llvm::LLVMRustEnableTimePasses(); }

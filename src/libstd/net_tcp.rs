@@ -222,7 +222,11 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                         };
                         match connect_result {
                             0i32 => {
-                                debug!("tcp_connect successful");
+                                debug!("tcp_connect successful: \
+                                        stream %x,
+                                        socket data %x",
+                                       stream_handle_ptr as uint,
+                                       socket_data_ptr as uint);
                                 // reusable data that we'll have for the
                                 // duration..
                                 uv::ll::set_data_for_uv_handle(
@@ -556,13 +560,21 @@ pub fn accept(new_conn: TcpNewConnection)
                             server_handle_ptr as *libc::c_void,
                             client_stream_handle_ptr as *libc::c_void) {
                             0i32 => {
-                                debug!(
-                                    "successfully accepted client \
-                                      connection");
+                                debug!("successfully accepted client \
+                                        connection: \
+                                        stream %x, \
+                                        socket data %x",
+                                       client_stream_handle_ptr as uint,
+                                       client_socket_data_ptr as uint);
                                 uv::ll::set_data_for_uv_handle(
                                     client_stream_handle_ptr,
                                     client_socket_data_ptr
                                     as *libc::c_void);
+                                let ptr = uv::ll::get_data_for_uv_handle(
+                                    client_stream_handle_ptr);
+                                debug!("ptrs: %x %x",
+                                       client_socket_data_ptr as uint,
+                                       ptr as uint);
                                 result_ch.send(None);
                             }
                             _ => {
@@ -1268,14 +1280,15 @@ impl ToTcpErr for uv::ll::uv_err_data {
 }
 
 extern fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
-                    nread: libc::ssize_t,
-                    buf: uv::ll::uv_buf_t) {
+                         nread: libc::ssize_t,
+                         buf: uv::ll::uv_buf_t) {
     unsafe {
-        debug!("entering on_tcp_read_cb stream: %? nread: %?",
-                        stream, nread);
+        debug!("entering on_tcp_read_cb stream: %x nread: %?",
+                        stream as uint, nread);
         let loop_ptr = uv::ll::get_loop_for_uv_handle(stream);
         let socket_data_ptr = uv::ll::get_data_for_uv_handle(stream)
             as *TcpSocketData;
+        debug!("socket data is %x", socket_data_ptr as uint);
         match nread as int {
           // incoming err.. probably eof
           -1 => {
