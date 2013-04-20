@@ -212,7 +212,7 @@ fn get_metadata_section(os: os,
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
                 let mut found = None;
                 unsafe {
-                    let cvbuf: *u8 = cast::reinterpret_cast(&cbuf);
+                    let cvbuf: *u8 = cast::transmute(cbuf);
                     let vlen = vec::len(encoder::metadata_encoding_version);
                     debug!("checking %u bytes of metadata-version stamp",
                            vlen);
