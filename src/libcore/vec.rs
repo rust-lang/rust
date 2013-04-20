@@ -1542,6 +1542,7 @@ pub fn each_permutation<T:Copy>(v: &[T], put: &fn(ts: &[T]) -> bool) {
 #[cfg(stage0)] // XXX: lifetimes!
 pub fn windowed<T>(n: uint, v: &[T], it: &fn(&[T]) -> bool) {
     assert!(1u <= n);
+    if n > v.len() { return; }
     for uint::range(0, v.len() - n + 1) |i| {
         if !it(v.slice(i, i+n)) { return }
     }
@@ -1551,6 +1552,7 @@ pub fn windowed<T>(n: uint, v: &[T], it: &fn(&[T]) -> bool) {
 #[cfg(stage3)]
 pub fn windowed<'r, T>(n: uint, v: &'r [T], it: &fn(&'r [T]) -> bool) {
     assert!(1u <= n);
+    if n > v.len() { return; }
     for uint::range(0, v.len() - n + 1) |i| {
         if !it(v.slice(i, i + n)) { return }
     }
@@ -3910,6 +3912,7 @@ mod tests {
         t(3, &[&[1,2,3],&[2,3,4],&[3,4,5],&[4,5,6]]);
         t(4, &[&[1,2,3,4],&[2,3,4,5],&[3,4,5,6]]);
         t(7, &[]);
+        t(8, &[]);
     }
 
     #[test]
