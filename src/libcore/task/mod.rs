@@ -1229,7 +1229,7 @@ fn test_spawn_thread_on_demand() {
 
 #[test]
 fn test_simple_newsched_spawn() {
-    use rt::run_in_newsched_task;
+    use rt::test::run_in_newsched_task;
 
     do run_in_newsched_task {
         spawn(||())
