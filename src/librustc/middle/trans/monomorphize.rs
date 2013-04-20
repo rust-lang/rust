@@ -212,7 +212,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       }
       ast_map::node_foreign_item(i, _, _, _) => {
           let d = mk_lldecl();
-          foreign::trans_intrinsic(ccx, d, i, pt, psubsts.get(),
+          foreign::trans_intrinsic(ccx, d, i, pt, psubsts.get(), i.attrs,
                                 ref_id);
           d
       }
