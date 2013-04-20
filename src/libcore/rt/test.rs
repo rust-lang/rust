@@ -28,6 +28,22 @@ pub fn run_in_newsched_task(f: ~fn()) {
     }
 }
 
+/// Create a new task and run it right now
+pub fn spawn_immediately(f: ~fn()) {
+    use cell::Cell;
+    use super::*;
+    use super::sched::*;
+
+    let mut sched = local_sched::take();
+    let task = ~Task::new(&mut sched.stack_pool, f);
+    do sched.switch_running_tasks_and_then(task) |task| {
+        let task = Cell(task);
+        do local_sched::borrow |sched| {
+            sched.task_queue.push_front(task.take());
+        }
+    }
+}
+
 /// Get a port number, starting at 9600, for use in tests
 pub fn next_test_port() -> u16 {
     unsafe {
