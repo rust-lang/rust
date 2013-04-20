@@ -18,9 +18,7 @@ fn callback<T>(_f: &fn() -> T) -> T { fail!() }
 
 fn bad1() { unsafe {} }                  //~ ERROR: unnecessary "unsafe" block
 fn bad2() { unsafe { bad1() } }          //~ ERROR: unnecessary "unsafe" block
-unsafe fn bad3() {}                      //~ ERROR: unnecessary "unsafe" function
-unsafe fn bad4() { unsafe {} }           //~ ERROR: unnecessary "unsafe" function
-                                         //~^ ERROR: unnecessary "unsafe" block
+unsafe fn bad4() { unsafe {} }           //~ ERROR: unnecessary "unsafe" block
 fn bad5() { unsafe { do callback {} } }  //~ ERROR: unnecessary "unsafe" block
 
 unsafe fn good0() { libc::exit(1) }
@@ -38,7 +36,6 @@ fn good2() {
     }
 }
 
-#[allow(unused_unsafe)] unsafe fn allowed0() {}
-#[allow(unused_unsafe)] fn allowed1() { unsafe {} }
+#[allow(unused_unsafe)] fn allowed() { unsafe {} }
 
 fn main() { }
