@@ -338,7 +338,7 @@ impl Stream for UvStream {
 fn test_simple_io_no_connect() {
     do run_in_newsched_task {
         let io = unsafe { local_sched::unsafe_borrow_io() };
-        let addr = Ipv4(127, 0, 0, 1, next_test_port());
+        let addr = next_test_ip4();
         let maybe_chan = io.connect(addr);
         assert!(maybe_chan.is_none());
     }
@@ -347,7 +347,7 @@ fn test_simple_io_no_connect() {
 #[test]
 fn test_simple_tcp_server_and_client() {
     do run_in_newsched_task {
-        let addr = Ipv4(127, 0, 0, 1, next_test_port());
+        let addr = next_test_ip4();
 
         // Start the server first so it's listening when we connect
         do spawn_immediately {
@@ -381,7 +381,7 @@ fn test_simple_tcp_server_and_client() {
 #[test] #[ignore(reason = "busted")]
 fn test_read_and_block() {
     do run_in_newsched_task {
-        let addr = Ipv4(127, 0, 0, 1, next_test_port());
+        let addr = next_test_ip4();
 
         do spawn_immediately {
             let io = unsafe { local_sched::unsafe_borrow_io() };
@@ -437,7 +437,7 @@ fn test_read_and_block() {
 #[test]
 fn test_read_read_read() {
     do run_in_newsched_task {
-        let addr = Ipv4(127, 0, 0, 1, next_test_port());
+        let addr = next_test_ip4();
         static MAX: uint = 5000000;
         
         do spawn_immediately {
