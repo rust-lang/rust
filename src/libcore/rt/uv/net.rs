@@ -19,12 +19,10 @@ use super::{Loop, Watcher, Request, UvError, Buf, Callback, NativeHandle, NullCa
             vec_to_uv_buf, vec_from_uv_buf};
 use super::super::io::net::ip::{IpAddr, Ipv4, Ipv6};
 
-#[cfg(test)]
-use unstable::run_in_bare_thread;
-#[cfg(test)]
-use super::super::thread::Thread;
-#[cfg(test)]
-use cell::Cell;
+#[cfg(test)] use cell::Cell;
+#[cfg(test)] use unstable::run_in_bare_thread;
+#[cfg(test)] use super::super::thread::Thread;
+#[cfg(test)] use super::super::test::next_test_port;
 
 fn ip4_as_uv_ip4(addr: IpAddr, f: &fn(*sockaddr_in)) {
     match addr {
@@ -361,7 +359,7 @@ fn connect_close() {
         let mut loop_ = Loop::new();
         let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
         // Connect to a port where nobody is listening
-        let addr = Ipv4(127, 0, 0, 1, 2923);
+        let addr = Ipv4(127, 0, 0, 1, next_test_port());
         do tcp_watcher.connect(addr) |stream_watcher, status| {
             rtdebug!("tcp_watcher.connect!");
             assert!(status.is_some());
@@ -374,46 +372,12 @@ fn connect_close() {
 }
 
 #[test]
-#[ignore(reason = "need a server to connect to")]
-fn connect_read() {
-    do run_in_bare_thread() {
-        let mut loop_ = Loop::new();
-        let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
-        let addr = Ipv4(127, 0, 0, 1, 2924);
-        do tcp_watcher.connect(addr) |stream_watcher, status| {
-            let mut stream_watcher = stream_watcher;
-            rtdebug!("tcp_watcher.connect!");
-            assert!(status.is_none());
-            let alloc: AllocCallback = |size| {
-                vec_to_uv_buf(vec::from_elem(size, 0))
-            };
-            do stream_watcher.read_start(alloc)
-                |stream_watcher, nread, buf, status| {
-
-                let buf = vec_from_uv_buf(buf);
-                rtdebug!("read cb!");
-                if status.is_none() {
-                    let bytes = buf.unwrap();
-                    rtdebug!("%s", bytes.slice(0, nread as uint).to_str());
-                } else {
-                    rtdebug!("status after read: %s", status.get().to_str());
-                    rtdebug!("closing");
-                    stream_watcher.close(||());
-                }
-            }
-        }
-        loop_.run();
-        loop_.close();
-    }
-}
-
-#[test]
 fn listen() {
     do run_in_bare_thread() {
         static MAX: int = 10;
         let mut loop_ = Loop::new();
         let mut server_tcp_watcher = { TcpWatcher::new(&mut loop_) };
-        let addr = Ipv4(127, 0, 0, 1, 2925);
+        let addr = Ipv4(127, 0, 0, 1, next_test_port());
         server_tcp_watcher.bind(addr);
         let loop_ = loop_;
         rtdebug!("listening");

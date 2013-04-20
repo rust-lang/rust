@@ -19,9 +19,10 @@ use cell::{Cell, empty_cell};
 use cast::transmute;
 use super::sched::{Scheduler, local_sched};
 
-#[cfg(test)] use super::sched::Task;
-#[cfg(test)] use unstable::run_in_bare_thread;
 #[cfg(test)] use uint;
+#[cfg(test)] use unstable::run_in_bare_thread;
+#[cfg(test)] use super::sched::Task;
+#[cfg(test)] use super::test::next_test_port;
 
 pub struct UvEventLoop {
     uvio: UvIoFactory
@@ -340,7 +341,7 @@ fn test_simple_io_no_connect() {
         let mut sched = ~UvEventLoop::new_scheduler();
         let task = ~do Task::new(&mut sched.stack_pool) {
             let io = unsafe { local_sched::unsafe_borrow_io() };
-            let addr = Ipv4(127, 0, 0, 1, 2926);
+            let addr = Ipv4(127, 0, 0, 1, next_test_port());
             let maybe_chan = io.connect(addr);
             assert!(maybe_chan.is_none());
         };
@@ -354,7 +355,7 @@ fn test_simple_io_no_connect() {
 fn test_simple_tcp_server_and_client() {
     do run_in_bare_thread {
         let mut sched = ~UvEventLoop::new_scheduler();
-        let addr = Ipv4(127, 0, 0, 1, 2929);
+        let addr = Ipv4(127, 0, 0, 1, next_test_port());
 
         let client_task = ~do Task::new(&mut sched.stack_pool) {
             unsafe {
@@ -393,7 +394,7 @@ fn test_simple_tcp_server_and_client() {
 fn test_read_and_block() {
     do run_in_bare_thread {
         let mut sched = ~UvEventLoop::new_scheduler();
-        let addr = Ipv4(127, 0, 0, 1, 2930);
+        let addr = Ipv4(127, 0, 0, 1, next_test_port());
 
         let client_task = ~do Task::new(&mut sched.stack_pool) {
             let io = unsafe { local_sched::unsafe_borrow_io() };
@@ -454,7 +455,7 @@ fn test_read_and_block() {
 fn test_read_read_read() {
     do run_in_bare_thread {
         let mut sched = ~UvEventLoop::new_scheduler();
-        let addr = Ipv4(127, 0, 0, 1, 2931);
+        let addr = Ipv4(127, 0, 0, 1, next_test_port());
 
         let client_task = ~do Task::new(&mut sched.stack_pool) {
             let io = unsafe { local_sched::unsafe_borrow_io() };
