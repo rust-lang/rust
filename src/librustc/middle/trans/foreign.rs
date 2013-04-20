@@ -546,6 +546,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                        item: @ast::foreign_item,
                        path: ast_map::path,
                        substs: @param_substs,
+                       attributes: &[ast::attribute],
                        ref_id: Option<ast::node_id>) {
     debug!("trans_intrinsic(item.ident=%s)", *ccx.sess.str_of(item.ident));
 
@@ -560,6 +561,11 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                                None,
                                Some(copy substs),
                                Some(item.span));
+
+    // Set the fixed stack segment flag if necessary.
+    if attr::attrs_contains_name(attributes, "fixed_stack_segment") {
+        set_fixed_stack_segment(fcx.llfn);
+    }
 
     let mut bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
     match *ccx.sess.str_of(item.ident) {
