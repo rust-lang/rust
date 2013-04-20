@@ -2319,20 +2319,20 @@ pub mod raw {
     }
 
     /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
-    pub fn pop_byte(s: &mut ~str) -> u8 {
+    pub unsafe fn pop_byte(s: &mut ~str) -> u8 {
         let len = len(*s);
         assert!((len > 0u));
         let b = s[len - 1u];
-        unsafe { set_len(s, len - 1u) };
+        set_len(s, len - 1u);
         return b;
     }
 
     /// Removes the first byte from a string and returns it. (Not UTF-8 safe).
-    pub fn shift_byte(s: &mut ~str) -> u8 {
+    pub unsafe fn shift_byte(s: &mut ~str) -> u8 {
         let len = len(*s);
         assert!((len > 0u));
         let b = s[0];
-        *s = unsafe { raw::slice_bytes_owned(*s, 1u, len) };
+        *s = raw::slice_bytes_owned(*s, 1u, len);
         return b;
     }
 
