@@ -4255,7 +4255,7 @@ pub fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
           ast::add => opcat_add,
           ast::subtract => opcat_sub,
           ast::mul => opcat_mult,
-          ast::div => opcat_mult,
+          ast::quot => opcat_mult,
           ast::rem => opcat_mult,
           ast::and => opcat_logic,
           ast::or => opcat_logic,

@@ -46,7 +46,7 @@ syn keyword   rustType        off_t dev_t ino_t pid_t mode_t ssize_t
 
 syn keyword   rustTrait       Const Copy Send Owned " inherent traits
 syn keyword   rustTrait       Eq Ord Num Ptr
-syn keyword   rustTrait       Drop Add Sub Mul Div Modulo Neg BitAnd BitOr
+syn keyword   rustTrait       Drop Add Sub Mul Quot Rem Neg BitAnd BitOr
 syn keyword   rustTrait       BitXor Shl Shr Index
 
 syn keyword   rustSelf        self

@@ -19,8 +19,6 @@ use num;
 use option::Option;
 use prelude::*;
 
-#[cfg(notest)] use cmp::{Eq, Ord};
-
 pub use cmp::{min, max};
 
 pub static bits : uint = inst::bits;
@@ -36,7 +34,7 @@ pub fn sub(x: T, y: T) -> T { x - y }
 #[inline(always)]
 pub fn mul(x: T, y: T) -> T { x * y }
 #[inline(always)]
-pub fn div(x: T, y: T) -> T { x / y }
+pub fn quot(x: T, y: T) -> T { x / y }
 #[inline(always)]
 pub fn rem(x: T, y: T) -> T { x % y }
 
@@ -141,63 +139,71 @@ impl num::One for T {
 }
 
 #[cfg(notest)]
-impl ops::Add<T,T> for T {
-    #[inline(always)]
+impl Add<T,T> for T {
     fn add(&self, other: &T) -> T { *self + *other }
 }
 #[cfg(notest)]
-impl ops::Sub<T,T> for T {
-    #[inline(always)]
+impl Sub<T,T> for T {
     fn sub(&self, other: &T) -> T { *self - *other }
 }
 #[cfg(notest)]
-impl ops::Mul<T,T> for T {
-    #[inline(always)]
+impl Mul<T,T> for T {
     fn mul(&self, other: &T) -> T { *self * *other }
 }
-#[cfg(notest)]
-impl ops::Div<T,T> for T {
-    #[inline(always)]
+#[cfg(stage0,notest)]
+impl Div<T,T> for T {
     fn div(&self, other: &T) -> T { *self / *other }
 }
-#[cfg(notest)]
-impl ops::Modulo<T,T> for T {
+#[cfg(stage1,notest)]
+#[cfg(stage2,notest)]
+#[cfg(stage3,notest)]
+impl Quot<T,T> for T {
     #[inline(always)]
+    fn quot(&self, other: &T) -> T { *self / *other }
+}
+#[cfg(stage0,notest)]
+impl Modulo<T,T> for T {
     fn modulo(&self, other: &T) -> T { *self % *other }
 }
-#[cfg(notest)]
-impl ops::Neg<T> for T {
+#[cfg(stage1,notest)]
+#[cfg(stage2,notest)]
+#[cfg(stage3,notest)]
+impl Rem<T,T> for T {
     #[inline(always)]
+    fn rem(&self, other: &T) -> T { *self % *other }
+}
+#[cfg(notest)]
+impl Neg<T> for T {
     fn neg(&self) -> T { -*self }
 }
 
 #[cfg(notest)]
-impl ops::BitOr<T,T> for T {
+impl BitOr<T,T> for T {
     #[inline(always)]
     fn bitor(&self, other: &T) -> T { *self | *other }
 }
 #[cfg(notest)]
-impl ops::BitAnd<T,T> for T {
+impl BitAnd<T,T> for T {
     #[inline(always)]
     fn bitand(&self, other: &T) -> T { *self & *other }
 }
 #[cfg(notest)]
-impl ops::BitXor<T,T> for T {
+impl BitXor<T,T> for T {
     #[inline(always)]
     fn bitxor(&self, other: &T) -> T { *self ^ *other }
 }
 #[cfg(notest)]
-impl ops::Shl<T,T> for T {
+impl Shl<T,T> for T {
     #[inline(always)]
     fn shl(&self, other: &T) -> T { *self << *other }
 }
 #[cfg(notest)]
-impl ops::Shr<T,T> for T {
+impl Shr<T,T> for T {
     #[inline(always)]
     fn shr(&self, other: &T) -> T { *self >> *other }
 }
 #[cfg(notest)]
-impl ops::Not<T> for T {
+impl Not<T> for T {
     #[inline(always)]
     fn not(&self) -> T { !*self }
 }

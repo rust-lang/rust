@@ -57,8 +57,8 @@
 		<item> Add </item>
 		<item> Sub </item>
 		<item> Mul </item>
-		<item> Div </item>
-		<item> Modulo </item>
+		<item> Quot </item>
+		<item> Rem </item>
 		<item> Neg </item>
 		<item> BitAnd </item>
 		<item> BitOr </item>
