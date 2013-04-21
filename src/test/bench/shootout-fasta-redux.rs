@@ -1,3 +1,5 @@
+// xfail-test FIXME #5985 Doesn't typecheck on x86
+
 use core::cast::transmute;
 use core::from_str::FromStr;
 use core::libc::{FILE, STDOUT_FILENO, c_int, fdopen, fputc, fputs, fwrite};
