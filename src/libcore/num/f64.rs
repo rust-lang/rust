@@ -16,8 +16,13 @@ use option::Option;
 use to_str;
 use from_str;
 
-#[cfg(notest)] use cmp;
-#[cfg(notest)] use ops;
+#[cfg(notest)] use cmp::{Eq, Ord};
+#[cfg(stage0,notest)]
+use ops::{Add, Sub, Mul, Div, Modulo, Neg};
+#[cfg(stage1,notest)]
+#[cfg(stage2,notest)]
+#[cfg(stage3,notest)]
+use ops::{Add, Sub, Mul, Quot, Rem, Neg};
 
 pub use cmath::c_double_targ_consts::*;
 pub use cmp::{min, max};
@@ -155,7 +160,7 @@ pub fn sub(x: f64, y: f64) -> f64 { return x - y; }
 pub fn mul(x: f64, y: f64) -> f64 { return x * y; }
 
 #[inline(always)]
-pub fn div(x: f64, y: f64) -> f64 { return x / y; }
+pub fn quot(x: f64, y: f64) -> f64 { return x / y; }
 
 #[inline(always)]
 pub fn rem(x: f64, y: f64) -> f64 { return x % y; }
@@ -284,7 +289,7 @@ pub fn logarithm(n: f64, b: f64) -> f64 {
 }
 
 #[cfg(notest)]
-impl cmp::Eq for f64 {
+impl Eq for f64 {
     #[inline(always)]
     fn eq(&self, other: &f64) -> bool { (*self) == (*other) }
     #[inline(always)]
@@ -292,7 +297,7 @@ impl cmp::Eq for f64 {
 }
 
 #[cfg(notest)]
-impl cmp::Ord for f64 {
+impl Ord for f64 {
     #[inline(always)]
     fn lt(&self, other: &f64) -> bool { (*self) < (*other) }
     #[inline(always)]
@@ -314,33 +319,41 @@ impl num::One for f64 {
 }
 
 #[cfg(notest)]
-impl ops::Add<f64,f64> for f64 {
-    #[inline(always)]
+impl Add<f64,f64> for f64 {
     fn add(&self, other: &f64) -> f64 { *self + *other }
 }
 #[cfg(notest)]
-impl ops::Sub<f64,f64> for f64 {
-    #[inline(always)]
+impl Sub<f64,f64> for f64 {
     fn sub(&self, other: &f64) -> f64 { *self - *other }
 }
 #[cfg(notest)]
-impl ops::Mul<f64,f64> for f64 {
-    #[inline(always)]
+impl Mul<f64,f64> for f64 {
     fn mul(&self, other: &f64) -> f64 { *self * *other }
 }
-#[cfg(notest)]
-impl ops::Div<f64,f64> for f64 {
-    #[inline(always)]
+#[cfg(stage0,notest)]
+impl Div<f64,f64> for f64 {
     fn div(&self, other: &f64) -> f64 { *self / *other }
 }
-#[cfg(notest)]
-impl ops::Modulo<f64,f64> for f64 {
+#[cfg(stage1,notest)]
+#[cfg(stage2,notest)]
+#[cfg(stage3,notest)]
+impl Quot<f64,f64> for f64 {
     #[inline(always)]
+    fn quot(&self, other: &f64) -> f64 { *self / *other }
+}
+#[cfg(stage0,notest)]
+impl Modulo<f64,f64> for f64 {
     fn modulo(&self, other: &f64) -> f64 { *self % *other }
 }
-#[cfg(notest)]
-impl ops::Neg<f64> for f64 {
+#[cfg(stage1,notest)]
+#[cfg(stage2,notest)]
+#[cfg(stage3,notest)]
+impl Rem<f64,f64> for f64 {
     #[inline(always)]
+    fn rem(&self, other: &f64) -> f64 { *self % *other }
+}
+#[cfg(notest)]
+impl Neg<f64> for f64 {
     fn neg(&self) -> f64 { -*self }
 }
 

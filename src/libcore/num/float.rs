@@ -28,9 +28,14 @@ use to_str;
 use from_str;
 
 #[cfg(notest)] use cmp::{Eq, Ord};
-#[cfg(notest)] use ops;
+#[cfg(stage0,notest)]
+use ops::{Add, Sub, Mul, Div, Modulo, Neg};
+#[cfg(stage1,notest)]
+#[cfg(stage2,notest)]
+#[cfg(stage3,notest)]
+use ops::{Add, Sub, Mul, Quot, Rem, Neg};
 
-pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
+pub use f64::{add, sub, mul, quot, rem, lt, le, eq, ne, ge, gt};
 pub use f64::logarithm;
 pub use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
 pub use f64::{erf, erfc, exp, expm1, exp2, abs_sub};
@@ -449,33 +454,41 @@ impl num::Round for float {
 }
 
 #[cfg(notest)]
-impl ops::Add<float,float> for float {
-    #[inline(always)]
+impl Add<float,float> for float {
     fn add(&self, other: &float) -> float { *self + *other }
 }
 #[cfg(notest)]
-impl ops::Sub<float,float> for float {
-    #[inline(always)]
+impl Sub<float,float> for float {
     fn sub(&self, other: &float) -> float { *self - *other }
 }
 #[cfg(notest)]
-impl ops::Mul<float,float> for float {
-    #[inline(always)]
+impl Mul<float,float> for float {
     fn mul(&self, other: &float) -> float { *self * *other }
 }
-#[cfg(notest)]
-impl ops::Div<float,float> for float {
-    #[inline(always)]
+#[cfg(stage0,notest)]
+impl Div<float,float> for float {
     fn div(&self, other: &float) -> float { *self / *other }
 }
-#[cfg(notest)]
-impl ops::Modulo<float,float> for float {
+#[cfg(stage1,notest)]
+#[cfg(stage2,notest)]
+#[cfg(stage3,notest)]
+impl Quot<float,float> for float {
     #[inline(always)]
+    fn quot(&self, other: &float) -> float { *self / *other }
+}
+#[cfg(stage0,notest)]
+impl Modulo<float,float> for float {
     fn modulo(&self, other: &float) -> float { *self % *other }
 }
-#[cfg(notest)]
-impl ops::Neg<float> for float {
+#[cfg(stage1,notest)]
+#[cfg(stage2,notest)]
+#[cfg(stage3,notest)]
+impl Rem<float,float> for float {
     #[inline(always)]
+    fn rem(&self, other: &float) -> float { *self % *other }
+}
+#[cfg(notest)]
+impl Neg<float> for float {
     fn neg(&self) -> float { -*self }
 }
 

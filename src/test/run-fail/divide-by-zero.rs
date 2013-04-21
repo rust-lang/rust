@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:divide by zero
+// error-pattern:quotient zero
 fn main() {
     let y = 0;
     let z = 1 / y;
