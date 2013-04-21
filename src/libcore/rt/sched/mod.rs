@@ -16,6 +16,7 @@ use super::work_queue::WorkQueue;
 use super::stack::{StackPool, StackSegment};
 use super::rtio::{EventLoop, EventLoopObject};
 use super::context::Context;
+use super::local_services::LocalServices;
 use cell::Cell;
 
 #[cfg(test)] use super::uvio::UvEventLoop;
@@ -38,7 +39,7 @@ pub struct Scheduler {
     /// Always valid when a task is executing, otherwise not
     priv saved_context: Context,
     /// The currently executing task
-    priv current_task: Option<~Task>,
+    current_task: Option<~Task>,
     /// An action performed after a context switch on behalf of the
     /// code running before the context switch
     priv cleanup_job: Option<CleanupJob>
@@ -326,6 +327,8 @@ pub struct Task {
     /// These are always valid when the task is not running, unless
     /// the task is dead
     priv saved_context: Context,
+    /// The heap, GC, unwinding, local storage, logging
+    local_services: LocalServices
 }
 
 pub impl Task {
@@ -337,6 +340,7 @@ pub impl Task {
         return Task {
             current_stack_segment: stack,
             saved_context: initial_context,
+            local_services: LocalServices::new()
         };
     }
 

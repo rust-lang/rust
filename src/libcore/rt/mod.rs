@@ -48,6 +48,7 @@ mod stack;
 mod context;
 mod thread;
 pub mod env;
+pub mod local_services;
 
 /// Tools for testing the runtime
 #[cfg(test)]
@@ -97,7 +98,7 @@ pub fn start(main: *u8, _argc: int, _argv: **c_char, _crate_map: *u8) -> int {
 /// Different runtime services are available depending on context.
 #[deriving(Eq)]
 pub enum RuntimeContext {
-    // Only default services, e.g. exchange heap
+    // Only the exchange heap is available
     GlobalContext,
     // The scheduler may be accessed
     SchedulerContext,
