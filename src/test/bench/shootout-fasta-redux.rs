@@ -1,8 +1,6 @@
-// xfail-test FIXME #5985 Doesn't typecheck on x86
-
 use core::cast::transmute;
 use core::from_str::FromStr;
-use core::libc::{FILE, STDOUT_FILENO, c_int, fdopen, fputc, fputs, fwrite};
+use core::libc::{FILE, STDOUT_FILENO, c_int, fdopen, fputc, fputs, fwrite, size_t};
 use core::uint::{min, range};
 use core::vec::bytes::copy_memory;
 
@@ -101,7 +99,7 @@ impl RepeatFasta {
             let mut pos = 0, bytes, n = n;
             while n > 0 {
                 bytes = min(LINE_LEN, n);
-                fwrite(transmute(&buf[pos]), bytes as u64, 1, stdout);
+                fwrite(transmute(&buf[pos]), bytes as size_t, 1, stdout);
                 fputc('\n' as c_int, stdout);
                 pos += bytes;
                 if pos > alu_len {
@@ -166,14 +164,14 @@ impl RandomFasta {
                 }
                 buf[LINE_LEN] = '\n' as u8;
                 fwrite(transmute(&buf[0]),
-                       LINE_LEN as u64 + 1,
+                       LINE_LEN as size_t + 1,
                        1,
                        self.stdout);
             }
             for range(0, chars_left) |i| {
                 buf[i] = self.nextc();
             }
-            fwrite(transmute(&buf[0]), chars_left as u64, 1, self.stdout);
+            fwrite(transmute(&buf[0]), chars_left as size_t, 1, self.stdout);
         }
     }
 }
