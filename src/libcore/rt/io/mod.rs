@@ -269,6 +269,14 @@ pub enum SeekStyle {
 /// * Are `u64` and `i64` the right choices?
 pub trait Seek {
     fn tell(&self) -> u64;
+
+    /// Seek to an offset in a stream
+    ///
+    /// A successful seek clears the EOF indicator.
+    ///
+    /// # XXX
+    ///
+    /// * What is the behavior when seeking past the end of a stream?
     fn seek(&mut self, pos: i64, style: SeekStyle);
 }
 
