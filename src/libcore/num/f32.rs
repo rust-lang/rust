@@ -16,8 +16,13 @@ use option::Option;
 use from_str;
 use to_str;
 
-#[cfg(notest)] use cmp;
-#[cfg(notest)] use ops;
+#[cfg(notest)] use cmp::{Eq, Ord};
+#[cfg(stage0,notest)]
+use ops::{Add, Sub, Mul, Div, Modulo, Neg};
+#[cfg(stage1,notest)]
+#[cfg(stage2,notest)]
+#[cfg(stage3,notest)]
+use ops::{Add, Sub, Mul, Quot, Rem, Neg};
 
 pub use cmath::c_float_targ_consts::*;
 
@@ -131,7 +136,7 @@ pub fn sub(x: f32, y: f32) -> f32 { return x - y; }
 pub fn mul(x: f32, y: f32) -> f32 { return x * y; }
 
 #[inline(always)]
-pub fn div(x: f32, y: f32) -> f32 { return x / y; }
+pub fn quot(x: f32, y: f32) -> f32 { return x / y; }
 
 #[inline(always)]
 pub fn rem(x: f32, y: f32) -> f32 { return x % y; }
@@ -265,7 +270,7 @@ pub fn logarithm(n: f32, b: f32) -> f32 {
 }
 
 #[cfg(notest)]
-impl cmp::Eq for f32 {
+impl Eq for f32 {
     #[inline(always)]
     fn eq(&self, other: &f32) -> bool { (*self) == (*other) }
     #[inline(always)]
@@ -273,7 +278,7 @@ impl cmp::Eq for f32 {
 }
 
 #[cfg(notest)]
-impl cmp::Ord for f32 {
+impl Ord for f32 {
     #[inline(always)]
     fn lt(&self, other: &f32) -> bool { (*self) < (*other) }
     #[inline(always)]
@@ -295,33 +300,41 @@ impl num::One for f32 {
 }
 
 #[cfg(notest)]
-impl ops::Add<f32,f32> for f32 {
-    #[inline(always)]
+impl Add<f32,f32> for f32 {
     fn add(&self, other: &f32) -> f32 { *self + *other }
 }
 #[cfg(notest)]
-impl ops::Sub<f32,f32> for f32 {
-    #[inline(always)]
+impl Sub<f32,f32> for f32 {
     fn sub(&self, other: &f32) -> f32 { *self - *other }
 }
 #[cfg(notest)]
-impl ops::Mul<f32,f32> for f32 {
-    #[inline(always)]
+impl Mul<f32,f32> for f32 {
     fn mul(&self, other: &f32) -> f32 { *self * *other }
 }
-#[cfg(notest)]
-impl ops::Div<f32,f32> for f32 {
-    #[inline(always)]
+#[cfg(stage0,notest)]
+impl Div<f32,f32> for f32 {
     fn div(&self, other: &f32) -> f32 { *self / *other }
 }
-#[cfg(notest)]
-impl ops::Modulo<f32,f32> for f32 {
+#[cfg(stage1,notest)]
+#[cfg(stage2,notest)]
+#[cfg(stage3,notest)]
+impl Quot<f32,f32> for f32 {
     #[inline(always)]
+    fn quot(&self, other: &f32) -> f32 { *self / *other }
+}
+#[cfg(stage0,notest)]
+impl Modulo<f32,f32> for f32 {
     fn modulo(&self, other: &f32) -> f32 { *self % *other }
 }
-#[cfg(notest)]
-impl ops::Neg<f32> for f32 {
+#[cfg(stage1,notest)]
+#[cfg(stage2,notest)]
+#[cfg(stage3,notest)]
+impl Rem<f32,f32> for f32 {
     #[inline(always)]
+    fn rem(&self, other: &f32) -> f32 { *self % *other }
+}
+#[cfg(notest)]
+impl Neg<f32> for f32 {
     fn neg(&self) -> f32 { -*self }
 }
 

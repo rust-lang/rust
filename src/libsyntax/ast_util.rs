@@ -80,7 +80,7 @@ pub fn binop_to_str(op: binop) -> ~str {
       add => return ~"+",
       subtract => return ~"-",
       mul => return ~"*",
-      div => return ~"/",
+      quot => return ~"/",
       rem => return ~"%",
       and => return ~"&&",
       or => return ~"||",
@@ -103,8 +103,8 @@ pub fn binop_to_method_name(op: binop) -> Option<~str> {
       add => return Some(~"add"),
       subtract => return Some(~"sub"),
       mul => return Some(~"mul"),
-      div => return Some(~"div"),
-      rem => return Some(~"modulo"),
+      quot => return Some(~"quot"),
+      rem => return Some(~"rem"),
       bitxor => return Some(~"bitxor"),
       bitand => return Some(~"bitand"),
       bitor => return Some(~"bitor"),
@@ -348,7 +348,7 @@ pub fn is_self(d: ast::def) -> bool {
 /// Maps a binary operator to its precedence
 pub fn operator_prec(op: ast::binop) -> uint {
   match op {
-      mul | div | rem   => 12u,
+      mul | quot | rem   => 12u,
       // 'as' sits between here with 11
       add | subtract    => 10u,
       shl | shr         =>  9u,

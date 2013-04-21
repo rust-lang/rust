@@ -9,7 +9,16 @@
 // except according to those terms.
 
 use core::cmp::{Ord, Eq};
-use ops::{Add, Div, Modulo, Mul, Neg, Sub};
+#[cfg(stage0)]
+use ops::{Add, Sub, Mul, Neg};
+#[cfg(stage0)]
+use Quot = ops::Div;
+#[cfg(stage0)]
+use Rem = ops::Modulo;
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+use ops::{Add, Sub, Mul, Quot, Rem, Neg};
 use option::{None, Option, Some};
 use char;
 use str;
@@ -58,7 +67,7 @@ fn is_neg_inf<T:Eq+NumStrConv>(num: &T) -> bool {
 }
 
 #[inline(always)]
-fn is_neg_zero<T:Eq+One+Zero+NumStrConv+Div<T,T>>(num: &T) -> bool {
+fn is_neg_zero<T:Eq+One+Zero+NumStrConv+Quot<T,T>>(num: &T) -> bool {
     let _0: T = Zero::zero();
     let _1: T = One::one();
 
@@ -171,7 +180,7 @@ static nan_buf:          [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
  * - Fails if `radix` < 2 or `radix` > 36.
  */
 pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
-                                  Div<T,T>+Neg<T>+Modulo<T,T>+Mul<T,T>>(
+                                  Quot<T,T>+Neg<T>+Rem<T,T>+Mul<T,T>>(
         num: &T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~[u8], bool) {
     if (radix as int) < 2 {
@@ -379,7 +388,7 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
  */
 #[inline(always)]
 pub fn to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
-                            Div<T,T>+Neg<T>+Modulo<T,T>+Mul<T,T>>(
+                            Quot<T,T>+Neg<T>+Rem<T,T>+Mul<T,T>>(
         num: &T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~str, bool) {
     let (bytes, special) = to_str_bytes_common(num, radix,
@@ -432,7 +441,7 @@ priv static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  * - Fails if `radix` > 18 and `special == true` due to conflict
  *   between digit and lowest first character in `inf` and `NaN`, the `'i'`.
  */
-pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
+pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Quot<T,T>+
                                     Mul<T,T>+Sub<T,T>+Neg<T>+Add<T,T>+
                                     NumStrConv>(
         buf: &[u8], radix: uint, negative: bool, fractional: bool,
@@ -629,7 +638,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
  * `from_str_bytes_common()`, for details see there.
  */
 #[inline(always)]
-pub fn from_str_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+Mul<T,T>+
+pub fn from_str_common<T:NumCast+Zero+One+Eq+Ord+Copy+Quot<T,T>+Mul<T,T>+
                               Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv>(
         buf: &str, radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool,

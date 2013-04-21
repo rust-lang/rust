@@ -98,10 +98,19 @@ pub mod cmp;
 pub mod base64;
 pub mod rl;
 pub mod workcache;
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
 #[path="num/bigint.rs"]
 pub mod bigint;
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
 #[path="num/rational.rs"]
 pub mod rational;
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
 #[path="num/complex.rs"]
 pub mod complex;
 pub mod stats;

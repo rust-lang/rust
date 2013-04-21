@@ -118,7 +118,7 @@ pub trait FromBase64 {
 impl FromBase64 for ~[u8] {
     /**
      * Convert base64 `u8` vector into u8 byte values.
-     * Every 4 encoded characters is converted into 3 octets, modulo padding.
+     * Every 4 encoded characters is converted into 3 octets, rem padding.
      *
      * *Example*:
      *

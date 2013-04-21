@@ -1467,10 +1467,10 @@ A complete list of the built-in language items follows:
   : Elements can be subtracted.
 `mul`
   : Elements can be multiplied.
-`div`
-  : Elements can be divided.
-`mod`
-  : Elements have a modulo operation.
+`quot`
+  : Elements have a quotient operation.
+`rem`
+  : Elements have a remainder operation.
 `neg`
   : Elements can be negated arithmetically.
 `not`
@@ -1856,11 +1856,11 @@ The default meaning of the operators on standard types is given here.
   : Multiplication.
     Calls the `mul` method on the `core::ops::Mul` trait.
 `/`
-  : Division.
-    Calls the `div` method on the `core::ops::Div` trait.
+  : Quotient.
+    Calls the `quot` method on the `core::ops::Quot` trait.
 `%`
-  : Modulo (a.k.a. "remainder").
-    Calls the `modulo` method on the `core::ops::Modulo` trait.
+  : Remainder.
+    Calls the `rem` method on the `core::ops::Rem` trait.
 
 #### Bitwise operators
 

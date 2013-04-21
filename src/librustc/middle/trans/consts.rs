@@ -272,7 +272,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                 if is_float { llvm::LLVMConstFMul(te1, te2) }
                 else        { llvm::LLVMConstMul(te1, te2) }
               }
-              ast::div    => {
+              ast::quot   => {
                 if is_float    { llvm::LLVMConstFDiv(te1, te2) }
                 else if signed { llvm::LLVMConstSDiv(te1, te2) }
                 else           { llvm::LLVMConstUDiv(te1, te2) }
