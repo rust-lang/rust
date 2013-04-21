@@ -362,7 +362,7 @@ The nil type, written `()`, has a single value, also written `()`.
 ## Operators
 
 Rust's set of operators contains very few surprises. Arithmetic is done with
-`*`, `/`, `%`, `+`, and `-` (multiply, divide, take remainder, add, and subtract). `-` is
+`*`, `/`, `%`, `+`, and `-` (multiply, quotient, remainder, add, and subtract). `-` is
 also a unary prefix operator that negates numbers. As in C, the bitwise operators
 `>>`, `<<`, `&`, `|`, and `^` are also supported.
 

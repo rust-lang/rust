@@ -480,7 +480,7 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
 
 /// This is rather subtle.  When we are casting a value to a instantiated
 /// trait like `a as trait<'r>`, regionck already ensures that any borrowed
-/// pointers that appear in the type of `a` are bounded by `'r` (ed.: modulo
+/// pointers that appear in the type of `a` are bounded by `'r` (ed.: rem
 /// FIXME(#5723)).  However, it is possible that there are *type parameters*
 /// in the type of `a`, and those *type parameters* may have borrowed pointers
 /// within them.  We have to guarantee that the regions which appear in those
