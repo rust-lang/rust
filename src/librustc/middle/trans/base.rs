@@ -782,12 +782,12 @@ pub fn cast_shift_rhs(op: ast::binop,
     }
 }
 
-pub fn fail_if_zero(cx: block, span: span, divmod: ast::binop,
+pub fn fail_if_zero(cx: block, span: span, quotrem: ast::binop,
                     rhs: ValueRef, rhs_t: ty::t) -> block {
-    let text = if divmod == ast::div {
-        @~"divide by zero"
+    let text = if quotrem == ast::quot {
+        @~"quotient zero"
     } else {
-        @~"modulo zero"
+        @~"remainder zero"
     };
     let is_zero = match ty::get(rhs_t).sty {
       ty::ty_int(t) => {

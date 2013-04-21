@@ -10,7 +10,16 @@
 
 //! An interface for numeric types
 use cmp::{Eq, Ord};
-use ops::{Neg, Add, Sub, Mul, Div, Modulo};
+#[cfg(stage0)]
+use ops::{Add, Sub, Mul, Neg};
+#[cfg(stage0)]
+use Quot = ops::Div;
+#[cfg(stage0)]
+use Rem = ops::Modulo;
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+use ops::{Add, Sub, Mul, Quot, Rem, Neg};
 use option::Option;
 use kinds::Copy;
 
@@ -21,8 +30,8 @@ pub trait Num: Eq + Zero + One
              + Add<Self,Self>
              + Sub<Self,Self>
              + Mul<Self,Self>
-             + Div<Self,Self>
-             + Modulo<Self,Self> {}
+             + Quot<Self,Self>
+             + Rem<Self,Self> {}
 
 impl Num for u8 {}
 impl Num for u16 {}
@@ -174,7 +183,7 @@ pub trait FromStrRadix {
  * - If code written to use this function doesn't care about it, it's
  *   probably assuming that `x^0` always equals `1`.
  */
-pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(
+pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Quot<T,T>+Mul<T,T>>(
     radix: uint, pow: uint) -> T {
     let _0: T = Zero::zero();
     let _1: T = One::one();
@@ -194,7 +203,7 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(
     total
 }
 
-#[cfg(test)]
+#[cfg(stage0,test)]
 fn test_num<T:Num + NumCast>(ten: T, two: T) {
     assert_eq!(ten.add(&two),    cast(12));
     assert_eq!(ten.sub(&two),    cast(8));
@@ -207,6 +216,22 @@ fn test_num<T:Num + NumCast>(ten: T, two: T) {
     assert_eq!(ten.mul(&two),    ten * two);
     assert_eq!(ten.div(&two),    ten / two);
     assert_eq!(ten.modulo(&two), ten % two);
+}
+#[cfg(stage1,test)]
+#[cfg(stage2,test)]
+#[cfg(stage3,test)]
+fn test_num<T:Num + NumCast>(ten: T, two: T) {
+    assert_eq!(ten.add(&two),  cast(12));
+    assert_eq!(ten.sub(&two),  cast(8));
+    assert_eq!(ten.mul(&two),  cast(20));
+    assert_eq!(ten.quot(&two), cast(5));
+    assert_eq!(ten.rem(&two),  cast(0));
+
+    assert_eq!(ten.add(&two),  ten + two);
+    assert_eq!(ten.sub(&two),  ten - two);
+    assert_eq!(ten.mul(&two),  ten * two);
+    assert_eq!(ten.quot(&two), ten / two);
+    assert_eq!(ten.rem(&two),  ten % two);
 }
 
 #[test] fn test_u8_num()    { test_num(10u8,  2u8)  }
