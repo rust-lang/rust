@@ -55,6 +55,12 @@ impl Rand for i64 {
     }
 }
 
+impl Rand for uint {
+    fn rand(rng: @rand::Rng) -> uint {
+        rng.gen_uint()
+    }
+}
+
 impl Rand for u8 {
     fn rand(rng: @rand::Rng) -> u8 {
         rng.gen_u8()
@@ -149,6 +155,7 @@ pub struct Weighted<T> {
 }
 
 pub trait RngUtil {
+    /// Return a random value for a Rand type
     fn gen<T:Rand>(&self) -> T;
     /**
      * Return a random int
@@ -739,10 +746,11 @@ pub fn task_rng() -> @Rng {
 }
 
 /**
- * Returns a random uint, using the task's based random number generator.
+ * Returns a random value of a Rand type, using the task's random number
+ * generator.
  */
-pub fn random() -> uint {
-    task_rng().gen_uint()
+pub fn random<T: Rand>() -> T {
+    task_rng().gen()
 }
 
 
@@ -915,8 +923,10 @@ mod tests {
 
     #[test]
     fn random() {
-        // not sure how to test this aside from just getting a number
+        // not sure how to test this aside from just getting some values
         let _n : uint = rand::random();
+        let _f : f32 = rand::random();
+        let _o : Option<Option<i8>> = rand::random();
     }
 }
 
