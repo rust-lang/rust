@@ -74,7 +74,6 @@ impl<'self> AsciiCast<&'self[Ascii]> for &'self [u8] {
     #[inline(always)]
     fn to_ascii(&self) -> &'self[Ascii] {
         assert!(self.is_ascii());
-
         unsafe{ cast::transmute(*self) }
     }
 
@@ -91,7 +90,6 @@ impl<'self> AsciiCast<&'self[Ascii]> for &'self str {
     #[inline(always)]
     fn to_ascii(&self) -> &'self[Ascii] {
         assert!(self.is_ascii());
-
         let (p,len): (*u8, uint) = unsafe{ cast::transmute(*self) };
         unsafe{ cast::transmute((p, len - 1))}
     }
@@ -119,7 +117,6 @@ impl AsciiCast<Ascii> for u8 {
 }
 
 impl AsciiCast<Ascii> for char {
-
     #[inline(always)]
     fn to_ascii(&self) -> Ascii {
         assert!(self.is_ascii());
@@ -142,7 +139,6 @@ impl OwnedAsciiCast for ~[u8] {
     #[inline(always)]
     fn to_ascii_consume(self) -> ~[Ascii] {
         assert!(self.is_ascii());
-
         unsafe {cast::transmute(self)}
     }
 }
@@ -150,6 +146,7 @@ impl OwnedAsciiCast for ~[u8] {
 impl OwnedAsciiCast for ~str {
     #[inline(always)]
     fn to_ascii_consume(self) -> ~[Ascii] {
+        assert!(self.is_ascii());
         let mut s = self;
         unsafe {
             str::raw::pop_byte(&mut s);
@@ -269,11 +266,3 @@ mod tests {
     #[test] #[should_fail]
     fn test_ascii_fail_char_slice() { 'λ'.to_ascii(); }
 }
-
-
-
-
-
-
-
-
