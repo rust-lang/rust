@@ -81,6 +81,20 @@ doc/rust.pdf: doc/rust.tex
     endif
   endif
 
+DOCS += doc/rustpkg.html
+doc/rustpkg.html: rustpkg.md doc/version_info.html doc/rust.css doc/manual.css
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	"$(CFG_PANDOC)" \
+         --standalone --toc \
+         --section-divs \
+         --number-sections \
+         --from=markdown --to=html \
+         --css=rust.css \
+         --css=manual.css \
+	     --include-before-body=doc/version_info.html \
+         --output=$@
+
 ######################################################################
 # Node (tutorial related)
 ######################################################################
