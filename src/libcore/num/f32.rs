@@ -278,24 +278,12 @@ impl Mul<f32,f32> for f32 {
     #[inline(always)]
     fn mul(&self, other: &f32) -> f32 { *self * *other }
 }
-
-#[cfg(stage0,notest)]
-impl Div<f32,f32> for f32 {
-    #[inline(always)]
-    fn div(&self, other: &f32) -> f32 { *self / *other }
-}
-#[cfg(not(stage0),notest)]
+#[cfg(notest)]
 impl Quot<f32,f32> for f32 {
     #[inline(always)]
     fn quot(&self, other: &f32) -> f32 { *self / *other }
 }
-
-#[cfg(stage0,notest)]
-impl Modulo<f32,f32> for f32 {
-    #[inline(always)]
-    fn modulo(&self, other: &f32) -> f32 { *self % *other }
-}
-#[cfg(not(stage0),notest)]
+#[cfg(notest)]
 impl Rem<f32,f32> for f32 {
     #[inline(always)]
     fn rem(&self, other: &f32) -> f32 { *self % *other }

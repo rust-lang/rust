@@ -30,24 +30,12 @@ pub trait Mul<RHS,Result> {
     fn mul(&self, rhs: &RHS) -> Result;
 }
 
-#[lang="div"]
-#[cfg(stage0)]
-pub trait Div<RHS,Result> {
-    fn div(&self, rhs: &RHS) -> Result;
-}
 #[lang="quot"]
-#[cfg(not(stage0))]
 pub trait Quot<RHS,Result> {
     fn quot(&self, rhs: &RHS) -> Result;
 }
 
-#[lang="modulo"]
-#[cfg(stage0)]
-pub trait Modulo<RHS,Result> {
-    fn modulo(&self, rhs: &RHS) -> Result;
-}
 #[lang="rem"]
-#[cfg(not(stage0))]
 pub trait Rem<RHS,Result> {
     fn rem(&self, rhs: &RHS) -> Result;
 }

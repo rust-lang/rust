@@ -200,13 +200,6 @@ impl Mul<T,T> for T {
     #[inline(always)]
     fn mul(&self, other: &T) -> T { *self * *other }
 }
-
-#[cfg(stage0,notest)]
-impl Div<T,T> for T {
-    #[inline(always)]
-    fn div(&self, other: &T) -> T { *self / *other }
-}
-#[cfg(not(stage0),notest)]
 impl Quot<T,T> for T {
     ///
     /// Returns the integer quotient, truncated towards 0. As this behaviour reflects
@@ -229,13 +222,6 @@ impl Quot<T,T> for T {
     #[inline(always)]
     fn quot(&self, other: &T) -> T { *self / *other }
 }
-
-#[cfg(stage0,notest)]
-impl Modulo<T,T> for T {
-    #[inline(always)]
-    fn modulo(&self, other: &T) -> T { *self % *other }
-}
-#[cfg(not(stage0),notest)]
 impl Rem<T,T> for T {
     ///
     /// Returns the integer remainder after division, satisfying:

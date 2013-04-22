@@ -23,7 +23,6 @@ use io::{Writer, WriterUtil};
 use libc::c_void;
 use managed;
 use ptr;
-#[cfg(stage0)] use sys;
 use reflect;
 use reflect::{MovePtr, align};
 use to_str::ToStr;
