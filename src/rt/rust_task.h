@@ -374,6 +374,7 @@ public:
     void call_on_c_stack(void *args, void *fn_ptr);
     void call_on_rust_stack(void *args, void *fn_ptr);
     bool have_c_stack() { return c_stack != NULL; }
+    stk_seg *get_c_stack() { return c_stack; }
 
     rust_task_state get_state() { return state; }
     rust_cond *get_cond() { return cond; }

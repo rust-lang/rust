@@ -49,6 +49,7 @@ rust_task_is_unwinding
 rust_get_task
 rust_try_get_task
 rust_get_stack_segment
+rust_get_c_stack
 rust_log_str
 start_task
 vec_reserve_shared_actual
