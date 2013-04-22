@@ -357,6 +357,13 @@ pub impl Task {
 
             start();
 
+            unsafe {
+                // Destroy the local heap, TLS, etc.
+                let sched = local_sched::unsafe_borrow();
+                let task = sched.current_task.get_mut_ref();
+                task.local_services.destroy();
+            }
+
             let sched = local_sched::take();
             sched.terminate_current_task();
         };
