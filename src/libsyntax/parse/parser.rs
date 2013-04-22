@@ -1181,7 +1181,7 @@ pub impl Parser {
             self.bump();
             // (e) is parenthesized e
             // (e,) is a tuple with only one field, e
-            let mut one_tuple = false;
+            let mut trailing_comma = false;
             if *self.token == token::RPAREN {
                 hi = self.span.hi;
                 self.bump();
@@ -1195,13 +1195,13 @@ pub impl Parser {
                     es.push(self.parse_expr());
                 }
                 else {
-                    one_tuple = true;
+                    trailing_comma = true;
                 }
             }
             hi = self.span.hi;
             self.expect(&token::RPAREN);
 
-            return if es.len() == 1 && !one_tuple {
+            return if es.len() == 1 && !trailing_comma {
                 self.mk_expr(lo, self.span.hi, expr_paren(es[0]))
             }
             else {
