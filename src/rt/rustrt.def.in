@@ -222,3 +222,9 @@ rust_uv_free_ip6_addr
 rust_call_nullary_fn
 rust_initialize_global_state
 rust_dbg_next_port
+rust_new_memory_region
+rust_delete_memory_region
+rust_new_boxed_region
+rust_delete_boxed_region
+rust_boxed_region_malloc
+rust_boxed_region_free
