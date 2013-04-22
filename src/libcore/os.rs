@@ -60,7 +60,6 @@ pub mod rustrt {
         unsafe fn rust_get_argv() -> **c_char;
         unsafe fn rust_path_is_dir(path: *libc::c_char) -> c_int;
         unsafe fn rust_path_exists(path: *libc::c_char) -> c_int;
-        unsafe fn rust_process_wait(pid: c_int) -> c_int;
         unsafe fn rust_set_exit_status(code: libc::intptr_t);
     }
 }
@@ -351,31 +350,6 @@ pub fn fsync_fd(fd: c_int, _l: io::fsync::Level) -> c_int {
         return fsync(fd);
     }
 }
-
-
-#[cfg(windows)]
-pub fn waitpid(pid: pid_t) -> c_int {
-    unsafe {
-        let status = rustrt::rust_process_wait(pid);
-        if status < 0 {
-            fail!(fmt!("failure in rust_process_wait: %s", last_os_error()));
-        }
-        return status;
-    }
-}
-
-#[cfg(unix)]
-pub fn waitpid(pid: pid_t) -> c_int {
-    unsafe {
-        use libc::funcs::posix01::wait::*;
-        let mut status = 0 as c_int;
-
-        assert!((waitpid(pid, &mut status, 0 as c_int) !=
-                     (-1 as c_int)));
-        return status;
-    }
-}
-
 
 pub struct Pipe { mut in: c_int, mut out: c_int }
 
