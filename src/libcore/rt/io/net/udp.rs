@@ -16,7 +16,7 @@ use super::ip::IpAddr;
 pub struct UdpStream;
 
 impl UdpStream {
-    pub fn connect(_addr: IpAddr) -> Result<UdpStream, IoError> {
+    pub fn connect(_addr: IpAddr) -> Option<UdpStream> {
         fail!()
     }
 }
@@ -40,7 +40,7 @@ impl Close for UdpStream {
 pub struct UdpListener;
 
 impl UdpListener {
-    pub fn bind(_addr: IpAddr) -> Result<UdpListener, IoError> {
+    pub fn bind(_addr: IpAddr) -> Option<UdpListener> {
         fail!()
     }
 }
