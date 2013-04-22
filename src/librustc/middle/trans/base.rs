@@ -2007,6 +2007,11 @@ pub fn trans_enum_variant(ccx: @CrateContext,
     // XXX is there a better way to reconstruct the ty::t?
     let repr = adt::represent_type(ccx, enum_ty);
 
+    debug!("trans_enum_variant: name=%s tps=%s repr=%? enum_ty=%s",
+           unsafe { str::raw::from_c_str(llvm::LLVMGetValueName(llfndecl)) },
+           ~"[" + str::connect(ty_param_substs.map(|&t| ty_to_str(ccx.tcx, t)), ", ") + ~"]",
+           repr, ty_to_str(ccx.tcx, enum_ty));
+
     adt::trans_start_init(bcx, repr, fcx.llretptr.get(), disr);
     for vec::eachi(args) |i, va| {
         let lldestptr = adt::trans_field_ptr(bcx,

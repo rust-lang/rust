@@ -1304,6 +1304,12 @@ pub fn is_undef(val: ValueRef) -> bool {
     }
 }
 
+pub fn is_null(val: ValueRef) -> bool {
+    unsafe {
+        llvm::LLVMIsNull(val) != False
+    }
+}
+
 // Used to identify cached monomorphized functions and vtables
 #[deriving(Eq)]
 pub enum mono_param_id {
@@ -1311,9 +1317,34 @@ pub enum mono_param_id {
     mono_any,
     mono_repr(uint /* size */,
               uint /* align */,
-              bool /* is_float */,
+              MonoDataClass,
               datum::DatumMode),
 }
+
+#[deriving(Eq)]
+pub enum MonoDataClass {
+    MonoBits,    // Anything not treated differently from arbitrary integer data
+    MonoNonNull, // Non-null pointers (used for optional-pointer optimization)
+    // FIXME(#3547)---scalars and floats are
+    // treated differently in most ABIs.  But we
+    // should be doing something more detailed
+    // here.
+    MonoFloat
+}
+
+pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
+    match ty::get(t).sty {
+        ty::ty_float(_) => MonoFloat,
+        ty::ty_rptr(*) | ty::ty_uniq(*) |
+        ty::ty_box(*) | ty::ty_opaque_box(*) |
+        ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) |
+        ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) |
+        ty::ty_bare_fn(*) => MonoNonNull,
+        // Is that everything?  Would closures or slices qualify?
+        _ => MonoBits
+    }
+}
+
 
 #[deriving(Eq)]
 pub struct mono_id_ {
@@ -1335,6 +1366,12 @@ impl to_bytes::IterBytes for mono_param_id {
             mono_repr(ref a, ref b, ref c, ref d) =>
                 to_bytes::iter_bytes_5(&2u8, a, b, c, d, lsb0, f)
         }
+    }
+}
+
+impl to_bytes::IterBytes for MonoDataClass {
+    fn iter_bytes(&self, lsb0: bool, f:to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
     }
 }
 
