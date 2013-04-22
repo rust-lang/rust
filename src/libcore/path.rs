@@ -67,6 +67,8 @@ pub trait GenericPath {
     fn is_restricted(&self) -> bool;
 
     fn normalize(&self) -> Self;
+
+    fn is_absolute(&self) -> bool;
 }
 
 #[cfg(windows)]
@@ -379,10 +381,11 @@ impl ToStr for PosixPath {
 // FIXME (#3227): when default methods in traits are working, de-duplicate
 // PosixPath and WindowsPath, most of their methods are common.
 impl GenericPath for PosixPath {
-
     fn from_str(s: &str) -> PosixPath {
         let mut components = ~[];
-        for str::each_split_nonempty(s, |c| c == '/') |s| { components.push(s.to_owned()) }
+        for str::each_split_nonempty(s, |c| c == '/') |s| {
+            components.push(s.to_owned())
+        }
         let is_absolute = (s.len() != 0 && s[0] == '/' as u8);
         return PosixPath { is_absolute: is_absolute,
                            components: components }
@@ -540,6 +543,10 @@ impl GenericPath for PosixPath {
           //  ..self
         }
     }
+
+    fn is_absolute(&self) -> bool {
+        self.is_absolute
+    }
 }
 
 
@@ -563,7 +570,6 @@ impl ToStr for WindowsPath {
 
 
 impl GenericPath for WindowsPath {
-
     fn from_str(s: &str) -> WindowsPath {
         let host;
         let device;
@@ -808,6 +814,10 @@ impl GenericPath for WindowsPath {
             is_absolute: self.is_absolute,
             components: normalize(self.components)
         }
+    }
+
+    fn is_absolute(&self) -> bool {
+        self.is_absolute
     }
 }
 
