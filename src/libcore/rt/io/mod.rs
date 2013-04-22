@@ -152,6 +152,9 @@ pub mod mem;
 /// Non-blocking access to stdin, stdout, stderr
 pub mod stdio;
 
+/// Implementations for Option
+mod option;
+
 /// Basic stream compression. XXX: Belongs with other flate code
 #[cfg(not(stage0))] // XXX Using unsnapshotted features
 pub mod flate;
@@ -194,12 +197,14 @@ pub struct IoError {
     detail: Option<~str>
 }
 
+#[deriving(Eq)]
 pub enum IoErrorKind {
     FileNotFound,
     FilePermission,
     ConnectionFailed,
     Closed,
-    OtherIoError
+    OtherIoError,
+    PreviousIoError
 }
 
 // XXX: Can't put doc comments on macros
@@ -232,9 +237,9 @@ pub trait Reader {
     ///         println(reader.read_line());
     ///     }
     ///
-    /// # XXX
+    /// # Failue
     ///
-    /// What does this return if the Reader is in an error state?
+    /// Returns `true` on failure.
     fn eof(&mut self) -> bool;
 }
 
@@ -322,4 +327,17 @@ pub trait Decorator<T> {
 
     /// Take a mutable reference to the decorated value
     fn inner_mut_ref<'a>(&'a mut self) -> &'a mut T;
+}
+
+pub fn standard_error(kind: IoErrorKind) -> IoError {
+    match kind {
+        PreviousIoError => {
+            IoError {
+                kind: PreviousIoError,
+                desc: "Failing due to a previous I/O error",
+                detail: None
+            }
+        }
+        _ => fail!()
+    }
 }
