@@ -17,12 +17,6 @@
  * some heavy-duty uses, try std::rope.
  */
 
-// NOTE: Remove markers after snapshot
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
-pub use self::ascii::{Ascii, AsciiCast, OwnedAsciiCast, ToStrAscii};
-
 use at_vec;
 use cast;
 use char;
@@ -39,13 +33,6 @@ use vec;
 use to_str::ToStr;
 
 #[cfg(notest)] use cmp::{Eq, Ord, Equiv, TotalEq};
-
-// NOTE: Remove markers after snapshot
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
-#[path = "str/ascii.rs"]
-mod ascii;
 
 /*
 Section: Creating a string
