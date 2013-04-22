@@ -219,24 +219,26 @@ pub fn cat_expr(tcx: ty::ctxt,
 
 pub fn cat_expr_unadjusted(tcx: ty::ctxt,
                            method_map: typeck::method_map,
-                           expr: @ast::expr)
+                           expr: @ast::expr,
+                           mutbl: bool)
                         -> cmt {
     let mcx = &mem_categorization_ctxt {
         tcx: tcx, method_map: method_map
     };
-    return mcx.cat_expr_unadjusted(expr);
+    return mcx.cat_expr_unadjusted(expr, mutbl);
 }
 
 pub fn cat_expr_autoderefd(
     tcx: ty::ctxt,
     method_map: typeck::method_map,
     expr: @ast::expr,
-    autoderefs: uint) -> cmt
+    autoderefs: uint,
+    mutbl: bool) -> cmt
 {
     let mcx = &mem_categorization_ctxt {
         tcx: tcx, method_map: method_map
     };
-    return mcx.cat_expr_autoderefd(expr, autoderefs);
+    return mcx.cat_expr_autoderefd(expr, autoderefs, mutbl);
 }
 
 pub fn cat_def(
@@ -333,24 +335,24 @@ pub impl mem_categorization_ctxt {
         match self.tcx.adjustments.find(&expr.id) {
             None => {
                 // No adjustments.
-                self.cat_expr_unadjusted(expr)
+                self.cat_expr_unadjusted(expr, false)
             }
 
             Some(&@ty::AutoAddEnv(*)) => {
                 // Convert a bare fn to a closure by adding NULL env.
                 // Result is an rvalue.
                 let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
-                self.cat_rvalue(expr, expr_ty)
+                self.cat_rvalue(expr, expr_ty, false)
             }
 
             Some(
                 &@ty::AutoDerefRef(
                     ty::AutoDerefRef {
-                        autoref: Some(_), _})) => {
+                        autoref: Some(autoref), _})) => {
                 // Equivalent to &*expr or something similar.
                 // Result is an rvalue.
                 let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
-                self.cat_rvalue(expr, expr_ty)
+                self.cat_rvalue(expr, expr_ty, autoref.mutbl == m_mutbl)
             }
 
             Some(
@@ -358,22 +360,23 @@ pub impl mem_categorization_ctxt {
                     ty::AutoDerefRef {
                         autoref: None, autoderefs: autoderefs})) => {
                 // Equivalent to *expr or something similar.
-                self.cat_expr_autoderefd(expr, autoderefs)
+                self.cat_expr_autoderefd(expr, autoderefs, false)
             }
         }
     }
 
     fn cat_expr_autoderefd(&self,
                            expr: @ast::expr,
-                           autoderefs: uint) -> cmt {
-        let mut cmt = self.cat_expr_unadjusted(expr);
+                           autoderefs: uint,
+                           mutbl: bool) -> cmt {
+        let mut cmt = self.cat_expr_unadjusted(expr, mutbl);
         for uint::range(1, autoderefs+1) |deref| {
             cmt = self.cat_deref(expr, cmt, deref);
         }
         return cmt;
     }
 
-    fn cat_expr_unadjusted(&self, expr: @ast::expr) -> cmt {
+    fn cat_expr_unadjusted(&self, expr: @ast::expr, mutbl: bool) -> cmt {
         debug!("cat_expr: id=%d expr=%s",
                expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr()));
 
@@ -381,7 +384,7 @@ pub impl mem_categorization_ctxt {
         match expr.node {
           ast::expr_unary(ast::deref, e_base) => {
             if self.method_map.contains_key(&expr.id) {
-                return self.cat_rvalue(expr, expr_ty);
+                return self.cat_rvalue(expr, expr_ty, mutbl);
             }
 
             let base_cmt = self.cat_expr(e_base);
@@ -399,7 +402,7 @@ pub impl mem_categorization_ctxt {
 
           ast::expr_index(base, _) => {
             if self.method_map.contains_key(&expr.id) {
-                return self.cat_rvalue(expr, expr_ty);
+                return self.cat_rvalue(expr, expr_ty, mutbl);
             }
 
             let base_cmt = self.cat_expr(base);
@@ -411,7 +414,7 @@ pub impl mem_categorization_ctxt {
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
-          ast::expr_paren(e) => self.cat_expr_unadjusted(e),
+          ast::expr_paren(e) => self.cat_expr_unadjusted(e, mutbl),
 
           ast::expr_addr_of(*) | ast::expr_call(*) |
           ast::expr_assign(*) | ast::expr_assign_op(*) |
@@ -424,7 +427,7 @@ pub impl mem_categorization_ctxt {
           ast::expr_match(*) | ast::expr_lit(*) | ast::expr_break(*) |
           ast::expr_mac(*) | ast::expr_again(*) | ast::expr_struct(*) |
           ast::expr_repeat(*) | ast::expr_inline_asm(*) => {
-            return self.cat_rvalue(expr, expr_ty);
+            return self.cat_rvalue(expr, expr_ty, mutbl);
           }
         }
     }
@@ -546,13 +549,13 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_rvalue<N:ast_node>(&self, elt: N, expr_ty: ty::t) -> cmt {
+    fn cat_rvalue<N:ast_node>(&self, elt: N, expr_ty: ty::t, mutbl: bool) -> cmt {
         @cmt_ {
-            id:elt.id(),
-            span:elt.span(),
-            cat:cat_rvalue,
-            mutbl:McImmutable,
-            ty:expr_ty
+            id: elt.id(),
+            span: elt.span(),
+            cat: cat_rvalue,
+            mutbl: if mutbl { McDeclared } else { McImmutable },
+            ty: expr_ty
         }
     }
 
@@ -907,7 +910,7 @@ pub impl mem_categorization_ctxt {
               }
               for slice.each |&slice_pat| {
                   let slice_ty = self.pat_ty(slice_pat);
-                  let slice_cmt = self.cat_rvalue(pat, slice_ty);
+                  let slice_cmt = self.cat_rvalue(pat, slice_ty, false);
                   self.cat_pattern(slice_cmt, slice_pat, op);
               }
               for after.each |&after_pat| {
