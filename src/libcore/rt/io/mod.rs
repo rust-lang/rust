@@ -122,7 +122,6 @@ pub use self::stdio::print;
 pub use self::stdio::println;
 
 pub use self::file::FileStream;
-pub use self::net::Listener;
 pub use self::net::ip::IpAddr;
 pub use self::net::tcp::TcpListener;
 pub use self::net::tcp::TcpStream;
@@ -137,8 +136,14 @@ pub use self::extensions::WriterByteConversions;
 pub mod file;
 
 /// Synchronous, non-blocking network I/O.
-#[path = "net/mod.rs"]
-pub mod net;
+pub mod net {
+    pub mod tcp;
+    pub mod udp;
+    pub mod ip;
+    #[cfg(unix)]
+    pub mod unix;
+    pub mod http;
+}
 
 /// Readers and Writers for memory buffers and strings.
 #[cfg(not(stage0))] // XXX Using unsnapshotted features
@@ -278,6 +283,19 @@ pub trait Seek {
     ///
     /// * What is the behavior when seeking past the end of a stream?
     fn seek(&mut self, pos: i64, style: SeekStyle);
+}
+
+/// A listener is a value that listens for connections
+pub trait Listener<S> {
+    /// Wait for and accept an incoming connection
+    ///
+    /// Returns `None` on timeout.
+    ///
+    /// # Failure
+    ///
+    /// Raises `io_error` condition. If the condition is handled,
+    /// then `accept` returns `None`.
+    fn accept(&mut self) -> Option<S>;
 }
 
 /// Common trait for decorator types.
