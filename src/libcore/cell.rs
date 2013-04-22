@@ -20,7 +20,7 @@ Similar to a mutable option type, but friendlier.
 */
 
 pub struct Cell<T> {
-    value: Option<T>
+    priv value: Option<T>
 }
 
 impl<T:cmp::Eq> cmp::Eq for Cell<T> {
