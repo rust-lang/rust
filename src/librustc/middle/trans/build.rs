@@ -22,7 +22,6 @@ use core::hashmap::HashMap;
 use core::libc::{c_uint, c_ulonglong, c_char};
 use core::libc;
 use core::option::Some;
-use core::ptr;
 use core::str;
 use core::vec;
 
@@ -177,7 +176,7 @@ pub fn IndirectBr(cx: block, Addr: ValueRef, NumDests: uint) {
 pub fn noname() -> *libc::c_char {
     unsafe {
         static cnull: uint = 0u;
-        return cast::transmute(ptr::addr_of(&cnull));
+        return cast::transmute(&cnull);
     }
 }
 
@@ -834,8 +833,8 @@ pub fn Phi(cx: block, Ty: TypeRef, vals: &[ValueRef], bbs: &[BasicBlockRef])
 pub fn AddIncomingToPhi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
     unsafe {
         if llvm::LLVMIsUndef(phi) == lib::llvm::True { return; }
-        let valptr = cast::transmute(ptr::addr_of(&val));
-        let bbptr = cast::transmute(ptr::addr_of(&bb));
+        let valptr = cast::transmute(&val);
+        let bbptr = cast::transmute(&bb);
         llvm::LLVMAddIncoming(phi, valptr, bbptr, 1 as c_uint);
     }
 }

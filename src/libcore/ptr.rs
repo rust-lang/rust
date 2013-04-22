@@ -39,17 +39,6 @@ pub mod libc_ {
     }
 }
 
-pub mod rusti {
-    #[abi = "rust-intrinsic"]
-    pub extern "rust-intrinsic" {
-        fn addr_of<T>(&&val: T) -> *T;
-    }
-}
-
-/// Get an unsafe pointer to a value
-#[inline(always)]
-pub fn addr_of<T>(val: &T) -> *T { unsafe { rusti::addr_of(*val) } }
-
 /// Calculate the offset from a pointer
 #[inline(always)]
 pub fn offset<T>(ptr: *T, count: uint) -> *T {

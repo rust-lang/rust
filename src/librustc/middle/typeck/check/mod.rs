@@ -109,8 +109,8 @@ use util::common::{block_query, indenter, loop_query};
 use util::ppaux::{bound_region_to_str};
 use util::ppaux;
 
+use core::cast::transmute;
 use core::hashmap::HashMap;
-use core::ptr;
 use core::result::{Result, Ok, Err};
 use core::result;
 use core::str;
@@ -685,7 +685,11 @@ impl region_scope for FnCtxt {
 }
 
 pub impl FnCtxt {
-    fn tag(&self) -> ~str { fmt!("%x", ptr::addr_of(&(*self)) as uint) }
+    fn tag(&self) -> ~str {
+        unsafe {
+            fmt!("%x", transmute(self))
+        }
+    }
 
     fn local_ty(&self, span: span, nid: ast::node_id) -> ty::t {
         match self.inh.locals.find(&nid) {
@@ -3418,8 +3422,6 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                     ty::mk_nil(tcx)),
       ~"reinterpret_cast" => (2u, ~[arg(ast::by_ref, param(ccx, 0u))],
                               param(ccx, 1u)),
-      ~"addr_of" => (1u, ~[arg(ast::by_ref, param(ccx, 0u))],
-                      ty::mk_imm_ptr(tcx, param(ccx, 0u))),
       ~"move_val" | ~"move_val_init" => {
           (1u, ~[arg(ast::by_copy,
                      ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)),

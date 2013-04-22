@@ -26,7 +26,7 @@ impl Drop for notify {
         unsafe {
             error!("notify: task=%? v=%x unwinding=%b b=%b",
                    task::get_task(),
-                   ptr::addr_of(&(*(self.v))) as uint,
+                   ptr::to_unsafe_ptr(&(*(self.v))) as uint,
                    task::failing(),
                    *(self.v));
             let b = *(self.v);
@@ -47,7 +47,7 @@ fn joinable(f: ~fn()) -> Port<bool> {
         let b = @mut false;
         error!("wrapper: task=%? allocated v=%x",
                task::get_task(),
-               ptr::addr_of(&(*b)) as uint);
+               ptr::to_unsafe_ptr(&(*b)) as uint);
         let _r = notify(c, b);
         f();
         *b = true;

@@ -21,7 +21,6 @@ use core::libc::c_void;
 use core::libc;
 use core::comm::{stream, Port, Chan, SharedChan};
 use core::prelude::*;
-use core::ptr::addr_of;
 use core::task;
 
 /// Used to abstract-away direct interaction with a libuv loop.
@@ -108,7 +107,7 @@ fn run_loop(iotask_ch: &Chan<IoTask>) {
         // set up the special async handle we'll use to allow multi-task
         // communication with this loop
         let async = ll::async_t();
-        let async_handle = addr_of(&async);
+        let async_handle: *ll::uv_async_t = &async;
 
         // associate the async handle with the loop
         ll::async_init(loop_ptr, async_handle, wake_up_cb);
@@ -120,11 +119,11 @@ fn run_loop(iotask_ch: &Chan<IoTask>) {
             async_handle: async_handle,
             msg_po: msg_po
         };
-        ll::set_data_for_uv_handle(async_handle, addr_of(&data));
+        ll::set_data_for_uv_handle(async_handle, &data);
 
         // Send out a handle through which folks can talk to us
         // while we dwell in the I/O loop
-        let iotask = IoTask{
+        let iotask = IoTask {
             async_handle: async_handle,
             op_chan: SharedChan::new(msg_ch)
         };
@@ -225,7 +224,7 @@ struct AhData {
 #[cfg(test)]
 fn impl_uv_iotask_async(iotask: &IoTask) {
     let async_handle = ll::async_t();
-    let ah_ptr = ptr::addr_of(&async_handle);
+    let ah_ptr: *ll::uv_async_t = &async_handle;
     let (exit_po, exit_ch) = stream::<()>();
     let ah_data = AhData {
         iotask: iotask.clone(),
