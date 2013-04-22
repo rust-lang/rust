@@ -125,18 +125,15 @@ pub mod file;
 pub mod net;
 
 /// Readers and Writers for memory buffers and strings.
-#[cfg(not(stage0))] // XXX Using unsnapshotted features
 pub mod mem;
 
 /// Non-blocking access to stdin, stdout, stderr
 pub mod stdio;
 
 /// Basic stream compression. XXX: Belongs with other flate code
-#[cfg(not(stage0))] // XXX Using unsnapshotted features
 pub mod flate;
 
 /// Interop between byte streams and pipes. Not sure where it belongs
-#[cfg(not(stage0))] // XXX "
 pub mod comm_adapters;
 
 /// Extension traits

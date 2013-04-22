@@ -10,13 +10,6 @@
 
 //! An interface for numeric types
 use cmp::{Eq, Ord};
-#[cfg(stage0)]
-use ops::{Add, Sub, Mul, Neg};
-#[cfg(stage0)]
-use Quot = ops::Div;
-#[cfg(stage0)]
-use Rem = ops::Modulo;
-#[cfg(not(stage0))]
 use ops::{Add, Sub, Mul, Quot, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::Option;
@@ -391,25 +384,8 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Quot<T,T>+Mul<T,T>>(
     total
 }
 
-/// Helper function for testing numeric operations
-#[cfg(stage0,test)]
-pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
-    assert_eq!(ten.add(&two),    cast(12));
-    assert_eq!(ten.sub(&two),    cast(8));
-    assert_eq!(ten.mul(&two),    cast(20));
-    assert_eq!(ten.div(&two),    cast(5));
-    assert_eq!(ten.modulo(&two), cast(0));
-
-    assert_eq!(ten.add(&two),    ten + two);
-    assert_eq!(ten.sub(&two),    ten - two);
-    assert_eq!(ten.mul(&two),    ten * two);
-    assert_eq!(ten.div(&two),    ten / two);
-    assert_eq!(ten.modulo(&two), ten % two);
-}
-#[cfg(stage1,test)]
-#[cfg(stage2,test)]
-#[cfg(stage3,test)]
-pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
+#[cfg(test)]
+fn test_num<T:Num + NumCast>(ten: T, two: T) {
     assert_eq!(ten.add(&two),  cast(12));
     assert_eq!(ten.sub(&two),  cast(8));
     assert_eq!(ten.mul(&two),  cast(20));

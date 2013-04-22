@@ -9,15 +9,6 @@
 // except according to those terms.
 
 use core::cmp::{Ord, Eq};
-#[cfg(stage0)]
-use ops::{Add, Sub, Mul, Neg};
-#[cfg(stage0)]
-use Quot = ops::Div;
-#[cfg(stage0)]
-use Rem = ops::Modulo;
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 use ops::{Add, Sub, Mul, Quot, Rem, Neg};
 use option::{None, Option, Some};
 use char;
