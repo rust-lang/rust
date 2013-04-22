@@ -264,15 +264,15 @@ impl Mul<BigUint, BigUint> for BigUint {
 
 impl Quot<BigUint, BigUint> for BigUint {
     fn quot(&self, other: &BigUint) -> BigUint {
-        let (d, _) = self.quot_rem(other);
-        return d;
+        let (q, _) = self.quot_rem(other);
+        return q;
     }
 }
 
 impl Rem<BigUint, BigUint> for BigUint {
     fn rem(&self, other: &BigUint) -> BigUint {
-        let (_, m) = self.quot_rem(other);
-        return m;
+        let (_, r) = self.quot_rem(other);
+        return r;
     }
 }
 
@@ -302,14 +302,14 @@ impl ToStrRadix for BigUint {
         fn convert_base(n: BigUint, base: uint) -> ~[BigDigit] {
             let divider    = BigUint::from_uint(base);
             let mut result = ~[];
-            let mut r      = n;
-            while r > divider {
-                let (d, r0) = r.quot_rem(&divider);
-                result += [r0.to_uint() as BigDigit];
-                r = d;
+            let mut m      = n;
+            while m > divider {
+                let (d, m0) = m.div_mod(&divider);
+                result += [m0.to_uint() as BigDigit];
+                m = d;
             }
-            if r.is_not_zero() {
-                result += [r.to_uint() as BigDigit];
+            if m.is_not_zero() {
+                result += [m.to_uint() as BigDigit];
             }
             return result;
         }
@@ -384,7 +384,16 @@ pub impl BigUint {
 
     fn abs(&self) -> BigUint { copy *self }
 
-    fn quot_rem(&self, other: &BigUint) -> (BigUint, BigUint) {
+    fn div(&self, other: &BigUint) -> BigUint {
+        let (d, _) = self.div_mod(other);
+        return d;
+    }
+    fn modulo(&self, other: &BigUint) -> BigUint {
+        let (_, m) = self.div_mod(other);
+        return m;
+    }
+
+    fn div_mod(&self, other: &BigUint) -> (BigUint, BigUint) {
         if other.is_zero() { fail!() }
         if self.is_zero() { return (Zero::zero(), Zero::zero()); }
         if *other == One::one() { return (copy *self, Zero::zero()); }
@@ -402,17 +411,17 @@ pub impl BigUint {
             shift += 1;
         }
         assert!(shift < BigDigit::bits);
-        let (d, m) = quot_rem_inner(self << shift, other << shift);
+        let (d, m) = div_mod_inner(self << shift, other << shift);
         return (d, m >> shift);
 
-        fn quot_rem_inner(a: BigUint, b: BigUint) -> (BigUint, BigUint) {
-            let mut r = a;
+        fn div_mod_inner(a: BigUint, b: BigUint) -> (BigUint, BigUint) {
+            let mut m = a;
             let mut d = Zero::zero::<BigUint>();
             let mut n = 1;
-            while r >= b {
-                let mut (d0, d_unit, b_unit) = div_estimate(&r, &b, n);
+            while m >= b {
+                let mut (d0, d_unit, b_unit) = div_estimate(&m, &b, n);
                 let mut prod = b * d0;
-                while prod > r {
+                while prod > m {
                     d0   -= d_unit;
                     prod -= b_unit;
                 }
@@ -422,9 +431,9 @@ pub impl BigUint {
                 }
                 n = 1;
                 d += d0;
-                r -= prod;
+                m -= prod;
             }
-            return (d, r);
+            return (d, m);
         }
 
         fn div_estimate(a: &BigUint, b: &BigUint, n: uint)
@@ -455,16 +464,8 @@ pub impl BigUint {
         }
     }
 
-    fn quot(&self, other: &BigUint) -> BigUint {
-        let (q, _) = self.quotrem(other);
-        return q;
-    }
-    fn rem(&self, other: &BigUint) -> BigUint {
-        let (_, r) = self.quotrem(other);
-        return r;
-    }
-    fn quotrem(&self, other: &BigUint) -> (BigUint, BigUint) {
-        self.quot_rem(other)
+    fn quot_rem(&self, other: &BigUint) -> (BigUint, BigUint) {
+        self.div_mod(other)
     }
 
     fn is_zero(&self) -> bool { self.data.is_empty() }
@@ -739,15 +740,15 @@ impl Mul<BigInt, BigInt> for BigInt {
 
 impl Quot<BigInt, BigInt> for BigInt {
     fn quot(&self, other: &BigInt) -> BigInt {
-        let (d, _) = self.quot_rem(other);
-        return d;
+        let (q, _) = self.quot_rem(other);
+        return q;
     }
 }
 
 impl Rem<BigInt, BigInt> for BigInt {
     fn rem(&self, other: &BigInt) -> BigInt {
-        let (_, m) = self.quot_rem(other);
-        return m;
+        let (_, r) = self.quot_rem(other);
+        return r;
     }
 }
 
@@ -841,7 +842,16 @@ pub impl BigInt {
         BigInt::from_biguint(Plus, copy self.data)
     }
 
-    fn quot_rem(&self, other: &BigInt) -> (BigInt, BigInt) {
+    fn div(&self, other: &BigInt) -> BigInt {
+        let (d, _) = self.div_mod(other);
+        return d;
+    }
+    fn modulo(&self, other: &BigInt) -> BigInt {
+        let (_, m) = self.div_mod(other);
+        return m;
+    }
+
+    fn div_mod(&self, other: &BigInt) -> (BigInt, BigInt) {
         // m.sign == other.sign
         let (d_ui, m_ui) = self.data.quot_rem(&other.data);
         let d = BigInt::from_biguint(Plus, d_ui),
@@ -863,18 +873,9 @@ pub impl BigInt {
         }
     }
 
-    fn quot(&self, other: &BigInt) -> BigInt {
-        let (q, _) = self.quotrem(other);
-        return q;
-    }
-    fn rem(&self, other: &BigInt) -> BigInt {
-        let (_, r) = self.quotrem(other);
-        return r;
-    }
-
-    fn quotrem(&self, other: &BigInt) -> (BigInt, BigInt) {
+    fn quot_rem(&self, other: &BigInt) -> (BigInt, BigInt) {
         // r.sign == self.sign
-        let (q_ui, r_ui) = self.data.quotrem(&other.data);
+        let (q_ui, r_ui) = self.data.div_mod(&other.data);
         let q = BigInt::from_biguint(Plus, q_ui);
         let r = BigInt::from_biguint(Plus, r_ui);
         match (self.sign, other.sign) {
@@ -1151,9 +1152,9 @@ mod biguint_tests {
     ];
 
     static quot_rem_quadruples: &'static [(&'static [BigDigit],
-                                         &'static [BigDigit],
-                                         &'static [BigDigit],
-                                         &'static [BigDigit])]
+                                           &'static [BigDigit],
+                                           &'static [BigDigit],
+                                           &'static [BigDigit])]
         = &[
             (&[ 1],        &[ 2], &[],               &[1]),
             (&[ 1,  1],    &[ 2], &[-1/2+1],         &[1]),
@@ -1517,9 +1518,9 @@ mod bigint_tests {
     ];
 
     static quot_rem_quadruples: &'static [(&'static [BigDigit],
-                                         &'static [BigDigit],
-                                         &'static [BigDigit],
-                                         &'static [BigDigit])]
+                                           &'static [BigDigit],
+                                           &'static [BigDigit],
+                                           &'static [BigDigit])]
         = &[
             (&[ 1],        &[ 2], &[],               &[1]),
             (&[ 1,  1],    &[ 2], &[-1/2+1],         &[1]),
@@ -1556,9 +1557,9 @@ mod bigint_tests {
     }
 
     #[test]
-    fn test_quot_rem() {
+    fn test_div_mod() {
         fn check_sub(a: &BigInt, b: &BigInt, ans_d: &BigInt, ans_m: &BigInt) {
-            let (d, m) = a.quot_rem(b);
+            let (d, m) = a.div_mod(b);
             if m.is_not_zero() {
                 assert!(m.sign == b.sign);
             }
@@ -1607,9 +1608,9 @@ mod bigint_tests {
 
 
     #[test]
-    fn test_quotrem() {
+    fn test_quot_rem() {
         fn check_sub(a: &BigInt, b: &BigInt, ans_q: &BigInt, ans_r: &BigInt) {
-            let (q, r) = a.quotrem(b);
+            let (q, r) = a.quot_rem(b);
             if r.is_not_zero() {
                 assert!(r.sign == a.sign);
             }
