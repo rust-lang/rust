@@ -1123,11 +1123,12 @@ pub impl Parser {
         }
     }
 
-    fn parse_field(&self, sep: token::Token) -> field {
+    // parse ident COLON expr
+    fn parse_field(&self) -> field {
         let lo = self.span.lo;
         let m = self.parse_mutability();
         let i = self.parse_ident();
-        self.expect(&sep);
+        self.expect(&token::COLON);
         let e = self.parse_expr();
         spanned(lo, e.span.hi, ast::field_ { mutbl: m, ident: i, expr: e })
     }
@@ -1323,7 +1324,7 @@ pub impl Parser {
                     let mut fields = ~[];
                     let mut base = None;
 
-                    fields.push(self.parse_field(token::COLON));
+                    fields.push(self.parse_field());
                     while *self.token != token::RBRACE {
                         if self.try_parse_obsolete_with() {
                             break;
@@ -1340,7 +1341,7 @@ pub impl Parser {
                             // Accept an optional trailing comma.
                             break;
                         }
-                        fields.push(self.parse_field(token::COLON));
+                        fields.push(self.parse_field());
                     }
 
                     hi = pth.span.hi;
