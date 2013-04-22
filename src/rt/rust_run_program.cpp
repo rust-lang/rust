@@ -15,6 +15,11 @@
 #include <crt_externs.h>
 #endif
 
+struct RunProgramResult {
+    pid_t pid;
+    void* handle;
+};
+
 #if defined(__WIN32__)
 
 #include <process.h>
@@ -78,7 +83,7 @@ void append_arg(char *& buf, char const *arg, bool last) {
     }
 }
 
-extern "C" CDECL int
+extern "C" CDECL RunProgramResult
 rust_run_program(const char* argv[],
                  void* envp,
                  const char* dir,
@@ -88,19 +93,21 @@ rust_run_program(const char* argv[],
     si.cb = sizeof(STARTUPINFO);
     si.dwFlags = STARTF_USESTDHANDLES;
 
+    RunProgramResult result = {-1, NULL};
+
     HANDLE curproc = GetCurrentProcess();
     HANDLE origStdin = (HANDLE)_get_osfhandle(in_fd ? in_fd : 0);
     if (!DuplicateHandle(curproc, origStdin,
         curproc, &si.hStdInput, 0, 1, DUPLICATE_SAME_ACCESS))
-        return -1;
+        return result;
     HANDLE origStdout = (HANDLE)_get_osfhandle(out_fd ? out_fd : 1);
     if (!DuplicateHandle(curproc, origStdout,
         curproc, &si.hStdOutput, 0, 1, DUPLICATE_SAME_ACCESS))
-        return -1;
+        return result;
     HANDLE origStderr = (HANDLE)_get_osfhandle(err_fd ? err_fd : 2);
     if (!DuplicateHandle(curproc, origStderr,
         curproc, &si.hStdError, 0, 1, DUPLICATE_SAME_ACCESS))
-        return -1;
+        return result;
 
     size_t cmd_len = 0;
     for (const char** arg = argv; *arg; arg++) {
@@ -124,18 +131,39 @@ rust_run_program(const char* argv[],
     CloseHandle(si.hStdError);
     free(cmd);
 
-    if (!created) return -1;
-    return (int)pi.hProcess;
+    if (!created) {
+        return result;
+    }
+
+    // We close the thread handle because we don't care about keeping the thread id valid,
+    // and we aren't keeping the thread handle around to be able to close it later. We don't
+    // close the process handle however because we want the process id to stay valid at least
+    // until the calling rust code closes the process handle.
+    CloseHandle(pi.hThread);
+    result.pid = pi.dwProcessId;
+    result.handle = pi.hProcess;
+    return result;
 }
 
 extern "C" CDECL int
-rust_process_wait(int proc) {
+rust_process_wait(int pid) {
+
+    HANDLE proc = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_INFORMATION, FALSE, pid);
+    if (proc == NULL) {
+        return -1;
+    }
+
     DWORD status;
     while (true) {
-        if (GetExitCodeProcess((HANDLE)proc, &status) &&
-            status != STILL_ACTIVE)
-            return (int)status;
-        WaitForSingleObject((HANDLE)proc, INFINITE);
+        if (!GetExitCodeProcess(proc, &status)) {
+            CloseHandle(proc);
+            return -1;
+        }
+        if (status != STILL_ACTIVE) {
+            CloseHandle(proc);
+            return (int) status;
+        }
+        WaitForSingleObject(proc, INFINITE);
     }
 }
 
@@ -151,13 +179,16 @@ rust_process_wait(int proc) {
 extern char **environ;
 #endif
 
-extern "C" CDECL int
+extern "C" CDECL RunProgramResult
 rust_run_program(const char* argv[],
                  void* envp,
                  const char* dir,
                  int in_fd, int out_fd, int err_fd) {
     int pid = fork();
-    if (pid != 0) return pid;
+    if (pid != 0) {
+        RunProgramResult result = {pid, NULL};
+        return result;
+    }
 
     sigset_t sset;
     sigemptyset(&sset);
@@ -187,7 +218,7 @@ rust_run_program(const char* argv[],
 }
 
 extern "C" CDECL int
-rust_process_wait(int proc) {
+rust_process_wait(int pid) {
     // FIXME: stub; exists to placate linker. (#2692)
     return 0;
 }

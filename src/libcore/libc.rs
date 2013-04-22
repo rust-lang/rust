@@ -1725,6 +1725,7 @@ pub mod funcs {
                                        findFileData: HANDLE)
                     -> BOOL;
                 unsafe fn FindClose(findFile: HANDLE) -> BOOL;
+                unsafe fn CloseHandle(hObject: HANDLE) -> BOOL;
                 unsafe fn TerminateProcess(hProcess: HANDLE, uExitCode: c_uint) -> BOOL;
             }
         }
