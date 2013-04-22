@@ -395,22 +395,14 @@ pub fn make_mono_id(ccx: @CrateContext,
                             let size = machine::llbitsize_of_real(ccx, llty);
                             let align = machine::llalign_of_pref(ccx, llty);
                             let mode = datum::appropriate_mode(subst);
-
-                            // FIXME(#3547)---scalars and floats are
-                            // treated differently in most ABIs.  But we
-                            // should be doing something more detailed
-                            // here.
-                            let is_float = match ty::get(subst).sty {
-                                ty::ty_float(_) => true,
-                                _ => false
-                            };
+                            let data_class = mono_data_classify(subst);
 
                             // Special value for nil to prevent problems
                             // with undef return pointers.
                             if size <= 8u && ty::type_is_nil(subst) {
-                                mono_repr(0u, 0u, is_float, mode)
+                                mono_repr(0u, 0u, data_class, mode)
                             } else {
-                                mono_repr(size, align, is_float, mode)
+                                mono_repr(size, align, data_class, mode)
                             }
                         } else {
                             mono_precise(subst, None)

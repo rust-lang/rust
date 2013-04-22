@@ -29,11 +29,6 @@
  *   that might contain one and adjust GEP indices accordingly.  See
  *   issue #4578.
  *
- * - Rendering `Option<&T>` as a possibly-null `*T` instead of using
- *   an extra word (and likewise for `@T` and `~T`).  Can and probably
- *   should also apply to any enum with one empty case and one case
- *   starting with a non-null pointer (e.g., `Result<(), ~str>`).
- *
  * - Using smaller integer types for discriminants.
  *
  * - Store nested enums' discriminants in the same word.  Rather, if
@@ -54,7 +49,8 @@ use core::libc::c_ulonglong;
 use core::option::{Option, Some, None};
 use core::vec;
 
-use lib::llvm::{ValueRef, TypeRef, True};
+use lib::llvm::{ValueRef, TypeRef, True, IntEQ, IntNE};
+use lib::llvm::llvm::LLVMDumpValue;
 use middle::trans::_match;
 use middle::trans::build::*;
 use middle::trans::common::*;
@@ -81,7 +77,20 @@ pub enum Repr {
      * General-case enums: for each case there is a struct, and they
      * all start with a field for the discriminant.
      */
-    General(~[Struct])
+    General(~[Struct]),
+    /**
+     * Two cases distinguished by a nullable pointer: the case with discriminant
+     * `nndiscr` is represented by the struct `nonnull`, where the `ptrfield`th
+     * field is known to be nonnull due to its type; if that field is null, then
+     * it represents the other case, which is inhabited by at most one value
+     * (and all other fields are undefined/unused).
+     *
+     * For example, `core::option::Option` instantiated at a safe pointer type
+     * is represented such that `None` is a null pointer and `Some` is the
+     * identity function.
+     */
+    NullablePointer{ nonnull: Struct, nndiscr: int, ptrfield: uint,
+                     nullfields: ~[ty::t] }
 }
 
 /// For structs, and struct-like parts of anything fancier.
@@ -108,9 +117,16 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
         Some(repr) => return *repr,
         None => { }
     }
-    let repr = @match ty::get(t).sty {
+    let repr = @represent_type_uncached(cx, t);
+    debug!("Represented as: %?", repr)
+    cx.adt_reprs.insert(t, repr);
+    return repr;
+}
+
+fn represent_type_uncached(cx: @CrateContext, t: ty::t) -> Repr {
+    match ty::get(t).sty {
         ty::ty_tup(ref elems) => {
-            Univariant(mk_struct(cx, *elems, false), false)
+            return Univariant(mk_struct(cx, *elems, false), false)
         }
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx, def_id);
@@ -121,10 +137,18 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
             let dtor = ty::ty_dtor(cx.tcx, def_id).is_present();
             let ftys =
                 if dtor { ftys + [ty::mk_bool(cx.tcx)] } else { ftys };
-            Univariant(mk_struct(cx, ftys, packed), dtor)
+            return Univariant(mk_struct(cx, ftys, packed), dtor)
         }
         ty::ty_enum(def_id, ref substs) => {
             struct Case { discr: int, tys: ~[ty::t] };
+            impl Case {
+                fn is_zerolen(&self, cx: @CrateContext) -> bool {
+                    mk_struct(cx, self.tys, false).size == 0
+                }
+                fn find_ptr(&self) -> Option<uint> {
+                    self.tys.position(|&ty| mono_data_classify(ty) == MonoNonNull)
+                }
+            }
 
             let cases = do ty::enum_variants(cx.tcx, def_id).map |vi| {
                 let arg_tys = do vi.args.map |&raw_ty| {
@@ -132,34 +156,59 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
                 };
                 Case { discr: vi.disr_val, tys: arg_tys }
             };
+
             if cases.len() == 0 {
                 // Uninhabitable; represent as unit
-                Univariant(mk_struct(cx, ~[], false), false)
-            } else if cases.all(|c| c.tys.len() == 0) {
+                return Univariant(mk_struct(cx, ~[], false), false);
+            }
+
+            if cases.all(|c| c.tys.len() == 0) {
                 // All bodies empty -> intlike
                 let discrs = cases.map(|c| c.discr);
-                CEnum(discrs.min(), discrs.max())
-            } else if cases.len() == 1 {
+                return CEnum(discrs.min(), discrs.max());
+            }
+
+            if cases.len() == 1 {
                 // Equivalent to a struct/tuple/newtype.
                 assert!(cases[0].discr == 0);
-                Univariant(mk_struct(cx, cases[0].tys, false), false)
-            } else {
-                // The general case.  Since there's at least one
-                // non-empty body, explicit discriminants should have
-                // been rejected by a checker before this point.
-                if !cases.alli(|i,c| c.discr == (i as int)) {
-                    cx.sess.bug(fmt!("non-C-like enum %s with specified \
-                                      discriminants",
-                                     ty::item_path_str(cx.tcx, def_id)))
-                }
-                let discr = ~[ty::mk_int(cx.tcx)];
-                General(cases.map(|c| mk_struct(cx, discr + c.tys, false)))
+                return Univariant(mk_struct(cx, cases[0].tys, false), false)
             }
+
+            // Since there's at least one
+            // non-empty body, explicit discriminants should have
+            // been rejected by a checker before this point.
+            if !cases.alli(|i,c| c.discr == (i as int)) {
+                cx.sess.bug(fmt!("non-C-like enum %s with specified \
+                                  discriminants",
+                                 ty::item_path_str(cx.tcx, def_id)))
+            }
+
+            if cases.len() == 2 {
+                let mut discr = 0;
+                while discr < 2 {
+                    if cases[1 - discr].is_zerolen(cx) {
+                        match cases[discr].find_ptr() {
+                            Some(ptrfield) => {
+                                return NullablePointer {
+                                    nndiscr: discr,
+                                    nonnull: mk_struct(cx, cases[discr].tys, false),
+                                    ptrfield: ptrfield,
+                                    nullfields: copy cases[1 - discr].tys
+                                }
+                            }
+                            None => { }
+                        }
+                    }
+                    discr += 1;
+                }
+            }
+
+            // The general case.
+            let discr = ~[ty::mk_int(cx.tcx)];
+            return General(cases.map(|c| mk_struct(cx, discr + c.tys, false)))
         }
         _ => cx.sess.bug(~"adt::represent_type called on non-ADT type")
-    };
-    cx.adt_reprs.insert(t, repr);
-    return repr;
+    }
 }
 
 fn mk_struct(cx: @CrateContext, tys: &[ty::t], packed: bool) -> Struct {
@@ -190,6 +239,7 @@ fn generic_fields_of(cx: @CrateContext, r: &Repr, sizing: bool)
     match *r {
         CEnum(*) => ~[T_enum_discrim(cx)],
         Univariant(ref st, _dtor) => struct_llfields(cx, st, sizing),
+        NullablePointer{ nonnull: ref st, _ } => struct_llfields(cx, st, sizing),
         General(ref sts) => {
             // To get "the" type of a general enum, we pick the case
             // with the largest alignment (so it will always align
@@ -239,11 +289,16 @@ pub fn trans_switch(bcx: block, r: &Repr, scrutinee: ValueRef)
         CEnum(*) | General(*) => {
             (_match::switch, Some(trans_get_discr(bcx, r, scrutinee)))
         }
+        NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
+            (_match::switch, Some(nullable_bitdiscr(bcx, nonnull, nndiscr, ptrfield, scrutinee)))
+        }
         Univariant(*) => {
             (_match::single, None)
         }
     }
 }
+
+
 
 /// Obtain the actual discriminant of a value.
 pub fn trans_get_discr(bcx: block, r: &Repr, scrutinee: ValueRef)
@@ -252,8 +307,20 @@ pub fn trans_get_discr(bcx: block, r: &Repr, scrutinee: ValueRef)
         CEnum(min, max) => load_discr(bcx, scrutinee, min, max),
         Univariant(*) => C_int(bcx.ccx(), 0),
         General(ref cases) => load_discr(bcx, scrutinee, 0,
-                                         (cases.len() - 1) as int)
+                                         (cases.len() - 1) as int),
+        NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
+            ZExt(bcx, nullable_bitdiscr(bcx, nonnull, nndiscr, ptrfield, scrutinee),
+                 T_enum_discrim(bcx.ccx()))
+        }
     }
+}
+
+fn nullable_bitdiscr(bcx: block, nonnull: &Struct, nndiscr: int, ptrfield: uint,
+                     scrutinee: ValueRef) -> ValueRef {
+    let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
+    let llptr = Load(bcx, GEPi(bcx, scrutinee, [0, ptrfield]));
+    let llptrty = type_of::type_of(bcx.ccx(), nonnull.fields[ptrfield]);
+    ICmp(bcx, cmp, llptr, C_null(llptrty))
 }
 
 /// Helper for cases where the discriminant is simply loaded.
@@ -286,11 +353,15 @@ pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
         CEnum(*) => {
             _match::single_result(rslt(bcx, C_int(bcx.ccx(), discr)))
         }
-        Univariant(*)=> {
+        Univariant(*) => {
             bcx.ccx().sess.bug(~"no cases for univariants or structs")
         }
         General(*) => {
             _match::single_result(rslt(bcx, C_int(bcx.ccx(), discr)))
+        }
+        NullablePointer{ _ } => {
+            assert!(discr == 0 || discr == 1);
+            _match::single_result(rslt(bcx, C_i1(discr != 0)))
         }
     }
 }
@@ -317,6 +388,13 @@ pub fn trans_start_init(bcx: block, r: &Repr, val: ValueRef, discr: int) {
         General(*) => {
             Store(bcx, C_int(bcx.ccx(), discr), GEPi(bcx, val, [0, 0]))
         }
+        NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
+            if discr != nndiscr {
+                let llptrptr = GEPi(bcx, val, [0, ptrfield]);
+                let llptrty = type_of::type_of(bcx.ccx(), nonnull.fields[ptrfield]);
+                Store(bcx, C_null(llptrty), llptrptr)
+            }
+        }
     }
 }
 
@@ -331,7 +409,10 @@ pub fn num_args(r: &Repr, discr: int) -> uint {
             assert!(discr == 0);
             st.fields.len() - (if dtor { 1 } else { 0 })
         }
-        General(ref cases) => cases[discr as uint].fields.len() - 1
+        General(ref cases) => cases[discr as uint].fields.len() - 1,
+        NullablePointer{ nonnull: ref nonnull, nndiscr, _ } => {
+            if discr == nndiscr { nonnull.fields.len() } else { 0 }
+        }
     }
 }
 
@@ -351,6 +432,19 @@ pub fn trans_field_ptr(bcx: block, r: &Repr, val: ValueRef, discr: int,
         }
         General(ref cases) => {
             struct_field_ptr(bcx, &cases[discr as uint], val, ix + 1, true)
+        }
+        NullablePointer{ nonnull: ref nonnull, nullfields: ref nullfields, nndiscr, _ } => {
+            if (discr == nndiscr) {
+                struct_field_ptr(bcx, nonnull, val, ix, false)
+            } else {
+                // The unit-like case might have a nonzero number of unit-like fields.
+                // (e.g., Result or Either with () as one side.)
+                let llty = type_of::type_of(bcx.ccx(), nullfields[ix]);
+                assert!(machine::llsize_of_alloc(bcx.ccx(), llty) == 0);
+                // The contents of memory at this pointer can't matter, but use
+                // the value that's "reasonable" in case of pointer comparison.
+                PointerCast(bcx, val, T_ptr(llty))
+            }
         }
     }
 }
@@ -420,6 +514,18 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
                                               ~[C_int(ccx, discr)] + vals);
             C_struct(contents + [padding(max_sz - case.size)])
         }
+        NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
+            if discr == nndiscr {
+                C_struct(build_const_struct(ccx, nonnull, vals))
+            } else {
+                assert!(vals.len() == 0);
+                let vals = do nonnull.fields.mapi |i, &ty| {
+                    let llty = type_of::sizing_type_of(ccx, ty);
+                    if i == ptrfield { C_null(llty) } else { C_undef(llty) }
+                };
+                C_struct(build_const_struct(ccx, nonnull, vals))
+            }
+        }
     }
 }
 
@@ -451,10 +557,14 @@ fn build_const_struct(ccx: @CrateContext, st: &Struct, vals: &[ValueRef])
             cfields.push(padding(target_offset - offset));
             offset = target_offset;
         }
-        assert!(!is_undef(vals[i]));
-        // If that assert fails, could change it to wrap in a struct?
-        // (See `const_struct_field` for why real fields must not be undef.)
-        cfields.push(vals[i]);
+        let val = if is_undef(vals[i]) {
+            let wrapped = C_struct([vals[i]]);
+            assert!(!is_undef(wrapped));
+            wrapped
+        } else {
+            vals[i]
+        };
+        cfields.push(val);
     }
 
     return cfields;
@@ -475,6 +585,9 @@ pub fn const_get_discrim(ccx: @CrateContext, r: &Repr, val: ValueRef)
         CEnum(*) => const_to_int(val) as int,
         Univariant(*) => 0,
         General(*) => const_to_int(const_get_elt(ccx, val, [0])) as int,
+        NullablePointer{ nndiscr, ptrfield, _ } => {
+            if is_null(const_struct_field(ccx, val, ptrfield)) { 1 - nndiscr } else { nndiscr }
+        }
     }
 }
 
@@ -490,7 +603,8 @@ pub fn const_get_field(ccx: @CrateContext, r: &Repr, val: ValueRef,
     match *r {
         CEnum(*) => ccx.sess.bug(~"element access in C-like enum const"),
         Univariant(*) => const_struct_field(ccx, val, ix),
-        General(*) => const_struct_field(ccx, val, ix + 1)
+        General(*) => const_struct_field(ccx, val, ix + 1),
+        NullablePointer{ _ } => const_struct_field(ccx, val, ix)
     }
 }
 
