@@ -599,6 +599,7 @@ pub fn build_session_options(binary: @~str,
     let sysroot_opt = getopts::opt_maybe_str(matches, ~"sysroot");
     let sysroot_opt = sysroot_opt.map(|m| Path(*m));
     let target_opt = getopts::opt_maybe_str(matches, ~"target");
+    let target_feature_opt = getopts::opt_maybe_str(matches, ~"target-feature");
     let save_temps = getopts::opt_present(matches, ~"save-temps");
     match output_type {
       // unless we're emitting huamn-readable assembly, omit comments.
@@ -637,6 +638,10 @@ pub fn build_session_options(binary: @~str,
             None => host_triple(),
             Some(s) => s
         };
+    let target_feature = match target_feature_opt {
+        None => ~"",
+        Some(s) => s
+    };
 
     let addl_lib_search_paths =
         getopts::opt_strs(matches, ~"L")
@@ -659,6 +664,7 @@ pub fn build_session_options(binary: @~str,
         addl_lib_search_paths: addl_lib_search_paths,
         maybe_sysroot: sysroot_opt,
         target_triple: target,
+        target_feature: target_feature,
         cfg: cfg,
         binary: binary,
         test: test,
@@ -769,6 +775,9 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
                         ~"Target triple cpu-manufacturer-kernel[-os]
                           to compile for (see chapter 3.4 of http://www.sourceware.org/autobook/
                           for detail)", ~"TRIPLE"),
+  optopt(~"", ~"target-feature",
+                        ~"Target specific attributes (llc -mattr=help
+                          for detail)", ~"FEATURE"),
   optopt(~"", ~"android-cross-path",
          ~"The path to the Android NDK", "PATH"),
   optmulti(~"W", ~"warn",
