@@ -1816,10 +1816,7 @@ pub fn print_meta_item(s: @ps, item: @ast::meta_item) {
 
 pub fn print_view_path(s: @ps, vp: @ast::view_path) {
     match vp.node {
-      ast::view_path_simple(ident, path, namespace, _) => {
-        if namespace == ast::module_ns {
-            word_space(s, ~"mod");
-        }
+      ast::view_path_simple(ident, path, _) => {
         if path.idents[vec::len(path.idents)-1u] != ident {
             print_ident(s, ident);
             space(s.s);

@@ -1100,11 +1100,6 @@ pub struct path_list_ident_ {
 
 pub type path_list_ident = spanned<path_list_ident_>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
-pub enum namespace { module_ns, type_value_ns }
-
 pub type view_path = spanned<view_path_>;
 
 #[auto_encode]
@@ -1117,7 +1112,7 @@ pub enum view_path_ {
     // or just
     //
     // foo::bar::baz  (with 'baz =' implicitly on the left)
-    view_path_simple(ident, @Path, namespace, node_id),
+    view_path_simple(ident, @Path, node_id),
 
     // foo::bar::*
     view_path_glob(@Path, node_id),

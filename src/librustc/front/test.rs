@@ -274,7 +274,6 @@ fn mk_std(cx: &TestCtxt) -> @ast::view_item {
         ast::view_item_use(
             ~[@nospan(ast::view_path_simple(id_std,
                                             path_node(~[id_std]),
-                                            ast::type_value_ns,
                                             cx.sess.next_node_id()))])
     } else {
         ast::view_item_extern_mod(id_std, ~[@mi],
