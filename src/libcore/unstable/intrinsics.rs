@@ -48,8 +48,6 @@ pub extern "rust-intrinsic" {
 
     // XXX: intrinsic uses legacy modes
     fn reinterpret_cast<T,U>(&&src: T) -> U;
-    // XXX: intrinsic uses legacy modes
-    fn addr_of<T>(&&scr: T) -> *T;
 
     pub fn needs_drop<T>() -> bool;
 

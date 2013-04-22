@@ -327,6 +327,7 @@ impl<T: Owned> ::clone::Clone for SharedChan<T> {
 #[allow(non_camel_case_types)]
 pub mod oneshot {
     priv use core::kinds::Owned;
+    use ptr::to_unsafe_ptr;
 
     pub fn init<T: Owned>() -> (client::Oneshot<T>, server::Oneshot<T>) {
         pub use core::pipes::HasBuffer;
@@ -341,7 +342,7 @@ pub mod oneshot {
         do ::core::pipes::entangle_buffer(buffer) |buffer, data| {
             {
                 data.Oneshot.set_buffer(buffer);
-                ::ptr::addr_of(&(data.Oneshot))
+                to_unsafe_ptr(&data.Oneshot)
             }
         }
     }

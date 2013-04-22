@@ -95,7 +95,7 @@ use vec;
 static SPIN_COUNT: uint = 0;
 
 macro_rules! move_it (
-    { $x:expr } => ( unsafe { let y = *ptr::addr_of(&($x)); y } )
+    { $x:expr } => ( unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } )
 )
 
 #[deriving(Eq)]
@@ -218,7 +218,7 @@ fn unibuffer<T>() -> ~Buffer<Packet<T>> {
 
 pub fn packet<T>() -> *Packet<T> {
     let b = unibuffer();
-    let p = ptr::addr_of(&(b.data));
+    let p = ptr::to_unsafe_ptr(&(b.data));
     // We'll take over memory management from here.
     unsafe { forget(b) }
     p
@@ -305,7 +305,7 @@ impl<T> ::ops::Drop for BufferResource<T> {
     fn finalize(&self) {
         unsafe {
             let b = move_it!(self.buffer);
-            //let p = ptr::addr_of(*b);
+            //let p = ptr::to_unsafe_ptr(*b);
             //error!("drop %?", p);
             let old_count = intrinsics::atomic_xsub_rel(&mut b.header.ref_count, 1);
             //let old_count = atomic_xchng_rel(b.header.ref_count, 0);
@@ -322,7 +322,7 @@ impl<T> ::ops::Drop for BufferResource<T> {
 }
 
 fn BufferResource<T>(b: ~Buffer<T>) -> BufferResource<T> {
-    //let p = ptr::addr_of(*b);
+    //let p = ptr::to_unsafe_ptr(*b);
     //error!("take %?", p);
     unsafe { intrinsics::atomic_xadd_acq(&mut b.header.ref_count, 1) };
 
@@ -336,7 +336,7 @@ pub fn send<T,Tbuffer>(p: SendPacketBuffered<T,Tbuffer>, payload: T) -> bool {
     let header = p.header();
     let p_ = p.unwrap();
     let p = unsafe { &*p_ };
-    assert!(ptr::addr_of(&(p.header)) == header);
+    assert!(ptr::to_unsafe_ptr(&(p.header)) == header);
     assert!(p.payload.is_none());
     p.payload = Some(payload);
     let old_state = swap_state_rel(&mut p.header.state, Full);
@@ -356,7 +356,7 @@ pub fn send<T,Tbuffer>(p: SendPacketBuffered<T,Tbuffer>, payload: T) -> bool {
                 unsafe {
                     rustrt::task_signal_event(
                         old_task,
-                        ptr::addr_of(&(p.header)) as *libc::c_void);
+                        ptr::to_unsafe_ptr(&(p.header)) as *libc::c_void);
                     rustrt::rust_task_deref(old_task);
                 }
             }
@@ -521,7 +521,7 @@ fn sender_terminate<T:Owned>(p: *Packet<T>) {
             unsafe {
                 rustrt::task_signal_event(
                     old_task,
-                    ptr::addr_of(&(p.header)) as *libc::c_void);
+                    ptr::to_unsafe_ptr(&(p.header)) as *libc::c_void);
                 rustrt::rust_task_deref(old_task);
             }
         }
@@ -665,7 +665,7 @@ pub fn SendPacketBuffered<T,Tbuffer>(p: *Packet<T>)
         p: Some(p),
         buffer: unsafe {
             Some(BufferResource(
-                get_buffer(ptr::addr_of(&((*p).header)))))
+                get_buffer(ptr::to_unsafe_ptr(&((*p).header)))))
         }
     }
 }
@@ -681,7 +681,7 @@ pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
         match self.p {
           Some(packet) => unsafe {
             let packet = &*packet;
-            let header = ptr::addr_of(&(packet.header));
+            let header = ptr::to_unsafe_ptr(&(packet.header));
             //forget(packet);
             header
           },
@@ -747,7 +747,7 @@ impl<T:Owned,Tbuffer:Owned> Selectable for RecvPacketBuffered<T, Tbuffer> {
         match self.p {
           Some(packet) => unsafe {
             let packet = &*packet;
-            let header = ptr::addr_of(&(packet.header));
+            let header = ptr::to_unsafe_ptr(&(packet.header));
             //forget(packet);
             header
           },
@@ -763,7 +763,7 @@ pub fn RecvPacketBuffered<T,Tbuffer>(p: *Packet<T>)
         p: Some(p),
         buffer: unsafe {
             Some(BufferResource(
-                get_buffer(ptr::addr_of(&((*p).header)))))
+                get_buffer(ptr::to_unsafe_ptr(&((*p).header)))))
         }
     }
 }

@@ -110,6 +110,7 @@ use middle::typeck;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
+use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::util::with;
 use syntax::ast::*;
@@ -418,7 +419,9 @@ fn visit_fn(fk: &visit::fn_kind,
                               self.last_use_map,
                               self.cur_item);
 
-    debug!("creating fn_maps: %x", ptr::addr_of(&(*fn_maps)) as uint);
+    unsafe {
+        debug!("creating fn_maps: %x", transmute(&*fn_maps));
+    }
 
     for decl.inputs.each |arg| {
         let mode = ty::resolved_mode(self.tcx, arg.mode);

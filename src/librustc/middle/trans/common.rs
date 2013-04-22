@@ -750,13 +750,11 @@ pub impl block_ {
         t.repr(self.tcx())
     }
     fn to_str(@mut self) -> ~str {
-        match self.node_info {
-          Some(node_info) => {
-            fmt!("[block %d]", node_info.id)
-          }
-          None => {
-            fmt!("[block %x]", ptr::addr_of(&(*self)) as uint)
-          }
+        unsafe {
+            match self.node_info {
+                Some(node_info) => fmt!("[block %d]", node_info.id),
+                None => fmt!("[block %x]", transmute(&*self)),
+            }
         }
     }
 }

@@ -19,7 +19,7 @@ struct Pointy {
 }
 
 fn make_uniq_closure<A:Owned + Copy>(a: A) -> ~fn() -> uint {
-    let result: ~fn() -> uint = || ptr::addr_of(&a) as uint;
+    let result: ~fn() -> uint = || ptr::to_unsafe_ptr(&a) as uint;
     result
 }
 
