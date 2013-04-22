@@ -413,7 +413,7 @@ pub fn id_visitor(vfn: @fn(node_id)) -> visit::vt<()> {
               view_item_use(ref vps) => {
                   for vps.each |vp| {
                       match vp.node {
-                          view_path_simple(_, _, _, id) => vfn(id),
+                          view_path_simple(_, _, id) => vfn(id),
                           view_path_glob(_, id) => vfn(id),
                           view_path_list(_, _, id) => vfn(id)
                       }
@@ -551,7 +551,8 @@ pub fn walk_pat(pat: @pat, it: &fn(@pat)) {
 
 pub fn view_path_id(p: @view_path) -> node_id {
     match p.node {
-      view_path_simple(_, _, _, id) | view_path_glob(_, id) |
+      view_path_simple(_, _, id) |
+      view_path_glob(_, id) |
       view_path_list(_, _, id) => id
     }
 }

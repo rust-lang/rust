@@ -40,7 +40,7 @@ use ast::{item_mac, item_mod, item_struct, item_trait, item_ty, lit, lit_};
 use ast::{lit_bool, lit_float, lit_float_unsuffixed, lit_int};
 use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const};
 use ast::{m_imm, m_mutbl, mac_, mac_invoc_tt, matcher, match_nonterminal};
-use ast::{match_seq, match_tok, method, mode, module_ns, mt, mul, mutability};
+use ast::{match_seq, match_tok, method, mode, mt, mul, mutability};
 use ast::{named_field, neg, node_id, noreturn, not, pat, pat_box, pat_enum};
 use ast::{pat_ident, pat_lit, pat_range, pat_region, pat_struct};
 use ast::{pat_tup, pat_uniq, pat_wild, private};
@@ -54,7 +54,7 @@ use ast::{tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot, ty_box};
 use ast::{ty_field, ty_fixed_length_vec, ty_closure, ty_bare_fn};
 use ast::{ty_infer, ty_method};
 use ast::{ty_nil, TyParam, TyParamBound, ty_path, ty_ptr, ty_rptr};
-use ast::{ty_tup, ty_u32, ty_uniq, ty_vec, type_value_ns, uniq};
+use ast::{ty_tup, ty_u32, ty_uniq, ty_vec, uniq};
 use ast::{unnamed_field, unsafe_blk, unsafe_fn, view_item};
 use ast::{view_item_, view_item_extern_mod, view_item_use};
 use ast::{view_path, view_path_glob, view_path_list, view_path_simple};
@@ -4224,13 +4224,6 @@ pub impl Parser {
     fn parse_view_path(&self) -> @view_path {
         let lo = self.span.lo;
 
-        let namespace;
-        if self.eat_keyword(&~"mod") {
-            namespace = module_ns;
-        } else {
-            namespace = type_value_ns;
-        }
-
         let first_ident = self.parse_ident();
         let mut path = ~[first_ident];
         debug!("parsed view_path: %s", *self.id_to_str(first_ident));
@@ -4250,8 +4243,9 @@ pub impl Parser {
                                     rp: None,
                                     types: ~[] };
             return @spanned(lo, self.span.hi,
-                         view_path_simple(first_ident, path, namespace,
-                                          self.get_id()));
+                            view_path_simple(first_ident,
+                                             path,
+                                             self.get_id()));
           }
 
           token::MOD_SEP => {
@@ -4306,8 +4300,9 @@ pub impl Parser {
                                 idents: path,
                                 rp: None,
                                 types: ~[] };
-        return @spanned(lo, self.span.hi,
-                     view_path_simple(last, path, namespace, self.get_id()));
+        return @spanned(lo,
+                        self.span.hi,
+                        view_path_simple(last, path, self.get_id()));
     }
 
     // matches view_paths = view_path | view_path , view_paths
