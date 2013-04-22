@@ -49,6 +49,7 @@ mod context;
 mod thread;
 pub mod env;
 pub mod local_services;
+mod local_heap;
 
 /// Tools for testing the runtime
 #[cfg(test)]

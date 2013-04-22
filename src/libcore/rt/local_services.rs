@@ -20,6 +20,7 @@
 
 use prelude::*;
 use super::sched::{Task, local_sched};
+use super::local_heap::LocalHeap;
 
 pub struct LocalServices {
     heap: LocalHeap,
@@ -29,7 +30,6 @@ pub struct LocalServices {
     unwinder: Unwinder
 }
 
-pub struct LocalHeap;
 pub struct GarbageCollector;
 pub struct LocalStorage;
 pub struct Logger;
@@ -38,7 +38,7 @@ pub struct Unwinder;
 impl LocalServices {
     pub fn new() -> LocalServices {
         LocalServices {
-            heap: LocalHeap,
+            heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage,
             logger: Logger,
@@ -58,6 +58,21 @@ pub fn borrow_local_services(f: &fn(&mut LocalServices)) {
             None => {
                 fail!(~"no local services for schedulers yet")
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use rt::test::*;
+
+    #[test]
+    fn local_heap() {
+        do run_in_newsched_task() {
+            let a = @5;
+            let b = a;
+            assert!(*a == 5);
+            assert!(*b == 5);
         }
     }
 }
