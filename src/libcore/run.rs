@@ -36,6 +36,7 @@ pub mod rustrt {
                                    in_fd: c_int,
                                    out_fd: c_int,
                                    err_fd: c_int) -> run::RunProgramResult;
+        unsafe fn rust_process_wait(pid: c_int) -> c_int;
     }
 }
 
@@ -503,17 +504,27 @@ pub fn readclose(fd: c_int) -> ~str {
     }
 }
 
-/// Waits for a process to exit and returns the exit code
+/**
+ * Waits for a process to exit and returns the exit code, failing
+ * if there is no process with the specified id.
+ */
 pub fn waitpid(pid: pid_t) -> int {
     return waitpid_os(pid);
 
     #[cfg(windows)]
     fn waitpid_os(pid: pid_t) -> int {
-        os::waitpid(pid) as int
+        let status = unsafe { rustrt::rust_process_wait(pid) };
+        if status < 0 {
+            fail!(fmt!("failure in rust_process_wait: %s", os::last_os_error()));
+        }
+        return status as int;
     }
 
     #[cfg(unix)]
     fn waitpid_os(pid: pid_t) -> int {
+
+        use libc::funcs::posix01::wait::*;
+
         #[cfg(target_os = "linux")]
         #[cfg(target_os = "android")]
         fn WIFEXITED(status: i32) -> bool {
@@ -538,7 +549,11 @@ pub fn waitpid(pid: pid_t) -> int {
             status >> 8i32
         }
 
-        let status = os::waitpid(pid);
+        let mut status = 0 as c_int;
+        if unsafe { waitpid(pid, &mut status, 0) } == -1 {
+            fail!(fmt!("failure in waitpid: %s", os::last_os_error()));
+        }
+
         return if WIFEXITED(status) {
             WEXITSTATUS(status) as int
         } else {
@@ -584,7 +599,7 @@ mod tests {
         writeclose(pipe_in.out, copy expected);
         let actual = readclose(pipe_out.in);
         readclose(pipe_err.in);
-        os::waitpid(pid);
+        run::waitpid(pid);
 
         debug!(copy expected);
         debug!(copy actual);
