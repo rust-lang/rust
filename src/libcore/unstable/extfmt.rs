@@ -538,7 +538,7 @@ pub mod rt {
     pub fn conv_str(cv: Conv, s: &str, buf: &mut ~str) {
         // For strings, precision is the maximum characters
         // displayed
-        let mut unpadded = match cv.precision {
+        let unpadded = match cv.precision {
           CountImplied => s,
           CountIs(max) => if (max as uint) < str::char_len(s) {
             str::slice(s, 0, max as uint)
@@ -596,7 +596,7 @@ pub mod rt {
     #[deriving(Eq)]
     pub enum PadMode { PadSigned, PadUnsigned, PadNozero, PadFloat }
 
-    pub fn pad(cv: Conv, mut s: &str, head: Option<char>, mode: PadMode,
+    pub fn pad(cv: Conv, s: &str, head: Option<char>, mode: PadMode,
                buf: &mut ~str) {
         let headsize = match head { Some(_) => 1, _ => 0 };
         let uwidth : uint = match cv.width {

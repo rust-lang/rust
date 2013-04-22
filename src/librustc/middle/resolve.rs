@@ -960,7 +960,7 @@ pub impl Resolver {
         // child name directly. Otherwise, we create or reuse an anonymous
         // module and add the child to that.
 
-        let mut module_;
+        let module_;
         match reduced_graph_parent {
             ModuleReducedGraphParent(parent_module) => {
                 module_ = parent_module;
@@ -1527,7 +1527,7 @@ pub impl Resolver {
                                      block: &blk,
                                      parent: ReducedGraphParent,
                                      visitor: vt<ReducedGraphParent>) {
-        let mut new_parent;
+        let new_parent;
         if self.block_needs_anonymous_module(block) {
             let block_id = block.node.id;
 
@@ -2427,7 +2427,7 @@ pub impl Resolver {
 
         let merge_import_resolution = |ident,
                                        name_bindings: @mut NameBindings| {
-            let mut dest_import_resolution;
+            let dest_import_resolution;
             match module_.import_resolutions.find(ident) {
                 None => {
                     // Create a new import resolution from this child.
@@ -2583,8 +2583,8 @@ pub impl Resolver {
         let module_prefix_result = self.resolve_module_prefix(module_,
                                                               module_path);
 
-        let mut search_module;
-        let mut start_index;
+        let search_module;
+        let start_index;
         match module_prefix_result {
             Failed => {
                 self.session.span_err(span, ~"unresolved name");
@@ -3221,7 +3221,7 @@ pub impl Resolver {
                 allow_capturing_self: AllowCapturingSelfFlag)
              -> Option<def_like> {
         let mut def;
-        let mut is_ty_param;
+        let is_ty_param;
 
         match def_like {
             dl_def(d @ def_local(*)) | dl_def(d @ def_upvar(*)) |
@@ -4530,7 +4530,7 @@ pub impl Resolver {
                                  -> Option<def> {
         let module_path_idents = self.intern_module_part_of_path(path);
 
-        let mut containing_module;
+        let containing_module;
         match self.resolve_module_path_for_import(self.current_module,
                                                   module_path_idents,
                                                   UseLexicalScope,
@@ -4578,7 +4578,7 @@ pub impl Resolver {
 
         let root_module = self.graph_root.get_module();
 
-        let mut containing_module;
+        let containing_module;
         match self.resolve_module_path_from_root(root_module,
                                                  module_path_idents,
                                                  0,
@@ -4622,7 +4622,7 @@ pub impl Resolver {
                                         span: span)
                                      -> Option<def> {
         // Check the local set of ribs.
-        let mut search_result;
+        let search_result;
         match namespace {
             ValueNS => {
                 search_result = self.search_ribs(&mut self.value_ribs, ident,

@@ -239,7 +239,7 @@ fn binarysort<T:Copy + Ord>(array: &mut [T], start: uint) {
             }
         }
         assert!(left == right);
-        let mut n = start-left;
+        let n = start-left;
 
         copy_vec(array, left+1, array, left, n);
         array[left] = pivot;
@@ -416,7 +416,7 @@ impl<T:Copy + Ord> MergeState<T> {
     }
 
     fn merge_at(&mut self, n: uint, array: &mut [T]) {
-        let mut size = self.runs.len();
+        let size = self.runs.len();
         assert!(size >= 2);
         assert!(n == size-2 || n == size-3);
 

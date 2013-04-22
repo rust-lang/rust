@@ -261,7 +261,7 @@ pub fn build_closure(bcx0: block,
                      include_ret_handle: Option<ValueRef>) -> ClosureResult {
     let _icx = bcx0.insn_ctxt("closure::build_closure");
     // If we need to, package up the iterator body to call
-    let mut bcx = bcx0;;
+    let bcx = bcx0;;
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     // Package up the captured upvars

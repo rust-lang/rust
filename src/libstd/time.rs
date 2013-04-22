@@ -147,7 +147,7 @@ pub fn empty_tm() -> Tm {
 /// Returns the specified time in UTC
 pub fn at_utc(clock: Timespec) -> Tm {
     unsafe {
-        let mut Timespec { sec, nsec } = clock;
+        let Timespec { sec, nsec } = clock;
         let mut tm = empty_tm();
         rustrt::rust_gmtime(sec, nsec, &mut tm);
         tm
@@ -162,7 +162,7 @@ pub fn now_utc() -> Tm {
 /// Returns the specified time in the local timezone
 pub fn at(clock: Timespec) -> Tm {
     unsafe {
-        let mut Timespec { sec, nsec } = clock;
+        let Timespec { sec, nsec } = clock;
         let mut tm = empty_tm();
         rustrt::rust_localtime(sec, nsec, &mut tm);
         tm

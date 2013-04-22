@@ -229,7 +229,7 @@ fn read_block_comment(rdr: @mut StringReader,
     debug!(">>> block comment");
     let p = rdr.last_pos;
     let mut lines: ~[~str] = ~[];
-    let mut col: CharPos = rdr.col;
+    let col: CharPos = rdr.col;
     bump(rdr);
     bump(rdr);
 

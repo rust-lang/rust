@@ -351,6 +351,16 @@ pub impl MutabilityCategory {
     }
 }
 
+pub impl loan_path {
+    fn node_id(&self) -> Option<ast::node_id> {
+        match *self {
+            lp_local(id) | lp_arg(id) => Some(id),
+            lp_deref(lp, _) | lp_comp(lp, _) => lp.node_id(),
+            lp_self => None
+        }
+    }
+}
+
 pub impl mem_categorization_ctxt {
     fn cat_expr(&self, expr: @ast::expr) -> cmt {
         match self.tcx.adjustments.find(&expr.id) {
