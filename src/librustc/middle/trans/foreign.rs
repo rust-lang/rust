@@ -567,7 +567,8 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         set_fixed_stack_segment(fcx.llfn);
     }
 
-    let mut bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
+    let mut bcx = top_scope_block(fcx, None);
+    let lltop = bcx.llbb;
     match *ccx.sess.str_of(item.ident) {
         ~"atomic_cxchg" => {
             let old = AtomicCmpXchg(bcx,

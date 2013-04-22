@@ -96,7 +96,7 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
             }
         }
         fn make_ty(cx: @ext_ctxt, sp: span, t: Ty) -> @ast::expr {
-            let mut rt_type;
+            let rt_type;
             match t {
               TyHex(c) => match c {
                 CaseUpper => rt_type = ~"TyHexUpper",
@@ -272,6 +272,7 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
     /* Translate each piece (portion of the fmt expression) by invoking the
        corresponding function in core::unstable::extfmt. Each function takes a
        buffer to insert data into along with the data being formatted. */
+    let npieces = pieces.len();
     do vec::consume(pieces) |i, pc| {
         match pc {
             /* Raw strings get appended via str::push_str */
@@ -279,9 +280,10 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
                 let portion = mk_uniq_str(cx, fmt_sp, s);
 
                 /* If this is the first portion, then initialize the local
-                   buffer with it directly */
+                   buffer with it directly. If it's actually the only piece,
+                   then there's no need for it to be mutable */
                 if i == 0 {
-                    stms.push(mk_local(cx, fmt_sp, true, ident, portion));
+                    stms.push(mk_local(cx, fmt_sp, npieces > 1, ident, portion));
                 } else {
                     let args = ~[mk_mut_addr_of(cx, fmt_sp, buf()), portion];
                     let call = mk_call_global(cx,

@@ -349,7 +349,7 @@ pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
                 outputs: Option<@OutputFilenames>)
     -> (@ast::crate, Option<ty::ctxt>) {
     let time_passes = sess.time_passes();
-    let mut crate = time(time_passes, ~"parsing",
+    let crate = time(time_passes, ~"parsing",
                          || parse_input(sess, copy cfg, input) );
     if upto == cu_parse { return (crate, None); }
 

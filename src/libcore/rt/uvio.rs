@@ -206,7 +206,7 @@ impl TcpListener for UvTcpListener {
                     let mut server_stream_watcher = server_stream_watcher;
                     let mut loop_ = loop_from_watcher(&server_stream_watcher);
                     let mut client_tcp_watcher = TcpWatcher::new(&mut loop_);
-                    let mut client_tcp_watcher = client_tcp_watcher.as_stream();
+                    let client_tcp_watcher = client_tcp_watcher.as_stream();
                     // XXX: Need's to be surfaced in interface
                     server_stream_watcher.accept(client_tcp_watcher);
                     Some(~UvStream::new(client_tcp_watcher))

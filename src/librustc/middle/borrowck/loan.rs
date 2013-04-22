@@ -274,7 +274,17 @@ pub impl LoanContext {
         if !owns_lent_data ||
             self.bccx.is_subregion_of(self.scope_region, scope_ub)
         {
-            if loan_kind.is_take() && !cmt.mutbl.is_mutable() {
+            if cmt.mutbl.is_mutable() {
+                // If this loan is a mutable loan, then mark the loan path (if
+                // it exists) as being used. This is similar to the check
+                // performed in check_loans.rs in check_assignment(), but this
+                // is for a different purpose of having the 'mut' qualifier.
+                for cmt.lp.each |lp| {
+                    for lp.node_id().each |&id| {
+                        self.tcx().used_mut_nodes.insert(id);
+                    }
+                }
+            } else if loan_kind.is_take() {
                 // We do not allow non-mutable data to be "taken"
                 // under any circumstances.
                 return Err(bckerr {

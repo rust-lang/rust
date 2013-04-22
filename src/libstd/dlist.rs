@@ -220,7 +220,7 @@ pub impl<T> DList<T> {
      * node. O(1).
      */
     fn push_head_n(@mut self, data: T) -> @mut DListNode<T> {
-        let mut nobe = DList::new_link(data);
+        let nobe = DList::new_link(data);
         self.add_head(nobe);
         nobe.get()
     }
@@ -233,7 +233,7 @@ pub impl<T> DList<T> {
      * node. O(1).
      */
     fn push_n(@mut self, data: T) -> @mut DListNode<T> {
-        let mut nobe = DList::new_link(data);
+        let nobe = DList::new_link(data);
         self.add_tail(nobe);
         nobe.get()
     }
@@ -263,7 +263,7 @@ pub impl<T> DList<T> {
         data: T,
         neighbour: @mut DListNode<T>
     ) -> @mut DListNode<T> {
-        let mut nobe = DList::new_link(data);
+        let nobe = DList::new_link(data);
         self.insert_left(nobe, neighbour);
         nobe.get()
     }
@@ -293,7 +293,7 @@ pub impl<T> DList<T> {
         data: T,
         neighbour: @mut DListNode<T>
     ) -> @mut DListNode<T> {
-        let mut nobe = DList::new_link(data);
+        let nobe = DList::new_link(data);
         self.insert_right(neighbour, nobe);
         nobe.get()
     }

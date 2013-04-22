@@ -1755,7 +1755,7 @@ impl<T: TotalOrd> TotalOrd for @[T] {
 
 fn lt<T:Ord>(a: &[T], b: &[T]) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
-    let mut end = uint::min(a_len, b_len);
+    let end = uint::min(a_len, b_len);
 
     let mut i = 0;
     while i < end {
@@ -3897,7 +3897,7 @@ mod tests {
 
     #[test]
     fn reversed_mut() {
-        let mut v2 = reversed::<int>(~[10, 20]);
+        let v2 = reversed::<int>(~[10, 20]);
         assert!(v2[0] == 20);
         assert!(v2[1] == 10);
     }

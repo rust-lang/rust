@@ -67,7 +67,7 @@ pub fn deflate_bytes(bytes: &const [u8]) -> ~[u8] {
 pub fn inflate_bytes(bytes: &const [u8]) -> ~[u8] {
     do vec::as_const_buf(bytes) |b, len| {
         unsafe {
-            let mut outsz : size_t = 0;
+            let outsz : size_t = 0;
             let res =
                 rustrt::tinfl_decompress_mem_to_heap(b as *c_void,
                                                      len as size_t,

@@ -575,7 +575,7 @@ fn spawn_raw_oldsched(opts: TaskOpts, f: ~fn()) {
             };
             assert!(!new_task.is_null());
             // Getting killed after here would leak the task.
-            let mut notify_chan = if opts.notify_chan.is_none() {
+            let notify_chan = if opts.notify_chan.is_none() {
                 None
             } else {
                 Some(opts.notify_chan.swap_unwrap())
