@@ -115,6 +115,40 @@ impl Rand for bool {
     }
 }
 
+macro_rules! tuple_impl {
+    // use variables to indicate the arity of the tuple
+    ($($tyvar:ident),* ) => {
+        // the trailing commas are for the 1 tuple
+        impl<
+            $( $tyvar : Rand ),*
+            > Rand for ( $( $tyvar ),* , ) {
+
+            fn rand (_rng: @Rng) -> ( $( $tyvar ),* , ) {
+                (
+                    // use the $var's to get the appropriate number of repeats
+                    // (they're not actually needed)
+                    $(
+                        _rng.gen::<$tyvar>()
+                    ),*
+                    ,
+                )
+            }
+        }
+    }
+}
+
+impl Rand for () { fn rand(_: @Rng) -> () { () } }
+tuple_impl!{A}
+tuple_impl!{A, B}
+tuple_impl!{A, B, C}
+tuple_impl!{A, B, C, D}
+tuple_impl!{A, B, C, D, E}
+tuple_impl!{A, B, C, D, E, F}
+tuple_impl!{A, B, C, D, E, F, G}
+tuple_impl!{A, B, C, D, E, F, G, H}
+tuple_impl!{A, B, C, D, E, F, G, H, I}
+tuple_impl!{A, B, C, D, E, F, G, H, I, J}
+
 impl<T:Rand> Rand for Option<T> {
     fn rand(rng: @rand::Rng) -> Option<T> {
         if rng.gen_bool() {
@@ -123,6 +157,14 @@ impl<T:Rand> Rand for Option<T> {
             None
         }
     }
+}
+
+impl<T: Rand> Rand for ~T {
+    fn rand(rng: @Rng) -> ~T { ~rng.gen() }
+}
+
+impl<T: Rand> Rand for @T {
+    fn rand(rng: @Rng) -> @T { @rng.gen() }
 }
 
 #[allow(non_camel_case_types)] // runtime type
@@ -927,6 +969,10 @@ mod tests {
         let _n : uint = rand::random();
         let _f : f32 = rand::random();
         let _o : Option<Option<i8>> = rand::random();
+        let _many : ((),
+                     (~uint, @int, ~Option<~(@char, ~(@bool,))>),
+                     (u8, i8, u16, i16, u32, i32, u64, i64),
+                     (f32, (f64, (float,)))) = rand::random();
     }
 }
 
