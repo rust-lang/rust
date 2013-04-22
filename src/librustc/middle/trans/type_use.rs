@@ -135,8 +135,8 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                 ~"atomic_xsub_acq" | ~"atomic_xchg_rel" |
                 ~"atomic_xadd_rel" | ~"atomic_xsub_rel" => 0,
 
-                ~"visit_tydesc"  | ~"forget" | ~"addr_of" |
-                ~"frame_address" | ~"morestack_addr" => 0,
+                ~"visit_tydesc"  | ~"forget" | ~"frame_address" |
+                ~"morestack_addr" => 0,
 
                 ~"memmove32" | ~"memmove64" => 0,
 

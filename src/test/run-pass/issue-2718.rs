@@ -232,7 +232,7 @@ pub mod pingpong {
     pub fn liberate_ping(+p: ping) -> ::pipes::send_packet<pong> {
         unsafe {
             let addr : *::pipes::send_packet<pong> = match &p {
-              &ping(ref x) => { cast::transmute(ptr::addr_of(x)) }
+              &ping(ref x) => { cast::transmute(x) }
             };
             let liberated_value = *addr;
             cast::forget(p);
@@ -243,7 +243,7 @@ pub mod pingpong {
     pub fn liberate_pong(+p: pong) -> ::pipes::send_packet<ping> {
         unsafe {
             let addr : *::pipes::send_packet<ping> = match &p {
-              &pong(ref x) => { cast::transmute(ptr::addr_of(x)) }
+              &pong(ref x) => { cast::transmute(x) }
             };
             let liberated_value = *addr;
             cast::forget(p);

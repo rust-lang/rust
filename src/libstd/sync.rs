@@ -828,7 +828,7 @@ mod tests {
         let m = ~Mutex();
         let m2 = m.clone();
         let mut sharedstate = ~0;
-        let ptr = ptr::addr_of(&(*sharedstate));
+        let ptr: *int = &*sharedstate;
         do task::spawn || {
             let sharedstate: &mut int =
                 unsafe { cast::transmute(ptr) };
@@ -1106,7 +1106,7 @@ mod tests {
         let (p,c) = comm::stream();
         let x2 = (*x).clone();
         let mut sharedstate = ~0;
-        let ptr = ptr::addr_of(&(*sharedstate));
+        let ptr: *int = &*sharedstate;
         do task::spawn || {
             let sharedstate: &mut int =
                 unsafe { cast::transmute(ptr) };

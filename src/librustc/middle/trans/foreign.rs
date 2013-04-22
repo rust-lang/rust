@@ -745,9 +745,6 @@ pub fn trans_intrinsic(ccx: @CrateContext,
               call_memcpy(bcx, llretptr, llcast, llsize_of(ccx, lltp_ty));
           }
         }
-        ~"addr_of" => {
-            Store(bcx, get_param(decl, first_real_arg), fcx.llretptr.get());
-        }
         ~"needs_drop" => {
             let tp_ty = substs.tys[0];
             Store(bcx,

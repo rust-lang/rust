@@ -17,13 +17,14 @@ pub fn main() {
     match x {
       @@F{f: ref b_x} => {
         assert!(**b_x == 3);
-        assert!(ptr::addr_of(&(x.f)) == ptr::addr_of(b_x));
+        assert!(ptr::to_unsafe_ptr(&(x.f)) == ptr::to_unsafe_ptr(b_x));
 
         *x = @F {f: ~4};
 
-        debug!("ptr::addr_of(*b_x) = %x", ptr::addr_of(&(**b_x)) as uint);
+        debug!("ptr::to_unsafe_ptr(*b_x) = %x",
+               ptr::to_unsafe_ptr(&(**b_x)) as uint);
         assert!(**b_x == 3);
-        assert!(ptr::addr_of(&(*x.f)) != ptr::addr_of(&(**b_x)));
+        assert!(ptr::to_unsafe_ptr(&(*x.f)) != ptr::to_unsafe_ptr(&(**b_x)));
       }
     }
 }

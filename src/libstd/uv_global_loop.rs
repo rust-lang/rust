@@ -162,7 +162,7 @@ mod test {
             debug!("EXIT_CH_PTR newly created exit_ch_ptr: %?",
                             exit_ch_ptr);
             let timer_handle = ll::timer_t();
-            let timer_ptr = ptr::addr_of(&timer_handle);
+            let timer_ptr: *ll::uv_timer_t = &timer_handle;
             do iotask::interact(iotask) |loop_ptr| {
                 unsafe {
                     debug!(~"user code inside interact loop!!!");
