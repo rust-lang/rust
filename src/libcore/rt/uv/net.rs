@@ -393,7 +393,7 @@ fn connect_read() {
                 let buf = vec_from_uv_buf(buf);
                 rtdebug!("read cb!");
                 if status.is_none() {
-                    let bytes = buf.unwrap();
+                    let _bytes = buf.unwrap();
                     rtdebug!("%s", bytes.slice(0, nread as uint).to_str());
                 } else {
                     rtdebug!("status after read: %s", status.get().to_str());

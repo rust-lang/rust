@@ -11,7 +11,7 @@
 use core::prelude::*;
 
 use middle::resolve::Impl;
-use middle::ty::{param_ty};
+use middle::ty::param_ty;
 use middle::ty;
 use middle::typeck::check::{FnCtxt, impl_self_ty};
 use middle::typeck::check::{structurally_resolved_type};

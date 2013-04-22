@@ -13,6 +13,7 @@ use core::prelude::*;
 use driver::session::Session;
 use driver::session;
 use middle::ty;
+use middle::pat_util;
 use util::ppaux::{ty_to_str};
 
 use core::hashmap::HashMap;
@@ -86,6 +87,7 @@ pub enum lint {
 
     unused_variable,
     dead_assignment,
+    unused_mut,
 }
 
 pub fn level_to_str(lv: level) -> &'static str {
@@ -275,6 +277,13 @@ pub fn get_lint_dict() -> LintDict {
          LintSpec {
             lint: dead_assignment,
             desc: "detect assignments that will never be read",
+            default: warn
+        }),
+
+        (~"unused_mut",
+         LintSpec {
+            lint: unused_mut,
+            desc: "detect mut variables which don't need to be mutable",
             default: warn
         }),
     ];
@@ -499,6 +508,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_deprecated_mutable_fields(cx, i);
     check_item_deprecated_drop(cx, i);
     check_item_unused_unsafe(cx, i);
+    check_item_unused_mut(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -949,6 +959,53 @@ fn check_item_unused_unsafe(cx: ty::ctxt, it: @ast::item) {
     let visit = item_stopping_visitor(
         visit::mk_simple_visitor(@visit::SimpleVisitor {
             visit_expr: visit_expr,
+            .. *visit::default_simple_visitor()
+        }));
+    visit::visit_item(it, (), visit);
+}
+
+fn check_item_unused_mut(tcx: ty::ctxt, it: @ast::item) {
+    let check_pat: @fn(@ast::pat) = |p| {
+        let mut used = false;
+        let mut bindings = 0;
+        do pat_util::pat_bindings(tcx.def_map, p) |_, id, _, _| {
+            used = used || tcx.used_mut_nodes.contains(&id);
+            bindings += 1;
+        }
+        if !used {
+            let msg = if bindings == 1 {
+                ~"variable does not need to be mutable"
+            } else {
+                ~"variables do not need to be mutable"
+            };
+            tcx.sess.span_lint(unused_mut, p.id, it.id, p.span, msg);
+        }
+    };
+
+    let visit_fn_decl: @fn(&ast::fn_decl) = |fd| {
+        for fd.inputs.each |arg| {
+            if arg.is_mutbl {
+                check_pat(arg.pat);
+            }
+        }
+    };
+
+    let visit = item_stopping_visitor(
+        visit::mk_simple_visitor(@visit::SimpleVisitor {
+            visit_local: |l| {
+                if l.node.is_mutbl {
+                    check_pat(l.node.pat);
+                }
+            },
+            visit_fn: |_, fd, _, _, _| visit_fn_decl(fd),
+            visit_ty_method: |tm| visit_fn_decl(&tm.decl),
+            visit_struct_method: |sm| visit_fn_decl(&sm.decl),
+            visit_trait_method: |tm| {
+                match *tm {
+                    ast::required(ref tm) => visit_fn_decl(&tm.decl),
+                    ast::provided(m) => visit_fn_decl(&m.decl),
+                }
+            },
             .. *visit::default_simple_visitor()
         }));
     visit::visit_item(it, (), visit);

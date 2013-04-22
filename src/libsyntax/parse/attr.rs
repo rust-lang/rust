@@ -73,7 +73,7 @@ impl parser_attr for Parser {
         self.expect(&token::LBRACKET);
         let meta_item = self.parse_meta_item();
         self.expect(&token::RBRACKET);
-        let mut hi = self.span.hi;
+        let hi = self.span.hi;
         return spanned(lo, hi, ast::attribute_ { style: style,
                                                  value: meta_item,
                                                  is_sugared_doc: false });
@@ -141,16 +141,16 @@ impl parser_attr for Parser {
             token::EQ => {
                 self.bump();
                 let lit = self.parse_lit();
-                let mut hi = self.span.hi;
+                let hi = self.span.hi;
                 @spanned(lo, hi, ast::meta_name_value(name, lit))
             }
             token::LPAREN => {
                 let inner_items = self.parse_meta_seq();
-                let mut hi = self.span.hi;
+                let hi = self.span.hi;
                 @spanned(lo, hi, ast::meta_list(name, inner_items))
             }
             _ => {
-                let mut hi = self.span.hi;
+                let hi = self.span.hi;
                 @spanned(lo, hi, ast::meta_word(name))
             }
         }

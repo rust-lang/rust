@@ -180,7 +180,7 @@ pub struct Candidate {
 
 pub impl<'self> LookupContext<'self> {
     fn do_lookup(&self, self_ty: ty::t) -> Option<method_map_entry> {
-        let mut self_ty = structurally_resolved_type(self.fcx,
+        let self_ty = structurally_resolved_type(self.fcx,
                                                      self.self_expr.span,
                                                      self_ty);
 

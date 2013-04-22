@@ -146,9 +146,9 @@ pub fn mk_printer(out: @io::Writer, linewidth: uint) -> @mut Printer {
     // fall behind.
     let n: uint = 3 * linewidth;
     debug!("mk_printer %u", linewidth);
-    let mut token: ~[token] = vec::from_elem(n, EOF);
-    let mut size: ~[int] = vec::from_elem(n, 0);
-    let mut scan_stack: ~[uint] = vec::from_elem(n, 0u);
+    let token: ~[token] = vec::from_elem(n, EOF);
+    let size: ~[int] = vec::from_elem(n, 0);
+    let scan_stack: ~[uint] = vec::from_elem(n, 0u);
     @mut Printer {
         out: @out,
         buf_len: n,

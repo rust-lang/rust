@@ -854,7 +854,7 @@ pub mod windows {
             while i < s.len() {
                 if is_sep(s[i]) {
                     let pre = s.slice(2, i).to_owned();
-                    let mut rest = s.slice(i, s.len()).to_owned();
+                    let rest = s.slice(i, s.len()).to_owned();
                     return Some((pre, rest));
                 }
                 i += 1;

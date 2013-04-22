@@ -367,7 +367,18 @@ pub impl CheckLoanCtxt {
             // are only assigned once
         } else {
             match cmt.mutbl {
-                McDeclared | McInherited => { /*ok*/ }
+                McDeclared | McInherited => {
+                    // Ok, but if this loan is a mutable loan, then mark the
+                    // loan path (if it exists) as being used. This is similar
+                    // to the check performed in loan.rs in issue_loan(). This
+                    // type of use of mutable is different from issuing a loan,
+                    // however.
+                    for cmt.lp.each |lp| {
+                        for lp.node_id().each |&id| {
+                            self.tcx().used_mut_nodes.insert(id);
+                        }
+                    }
+                }
                 McReadOnly | McImmutable => {
                     self.bccx.span_err(
                         ex.span,

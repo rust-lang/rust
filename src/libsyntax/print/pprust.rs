@@ -1972,7 +1972,7 @@ pub fn print_ty_fn(s: @ps,
 
 pub fn maybe_print_trailing_comment(s: @ps, span: codemap::span,
                                     next_pos: Option<BytePos>) {
-    let mut cm;
+    let cm;
     match s.cm { Some(ccm) => cm = ccm, _ => return }
     match next_comment(s) {
       Some(ref cmnt) => {
