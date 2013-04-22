@@ -73,6 +73,7 @@ pub mod rustrt {
         pub unsafe fn rust_gc_metadata() -> *Word;
 
         pub unsafe fn rust_get_stack_segment() -> *StackSegment;
+        pub unsafe fn rust_get_c_stack() -> *StackSegment;
     }
 }
 
