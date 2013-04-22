@@ -16,7 +16,7 @@ use super::super::support::PathLike;
 pub struct UnixStream;
 
 impl UnixStream {
-    pub fn connect<P: PathLike>(_path: &P) -> Result<UnixStream, IoError> {
+    pub fn connect<P: PathLike>(_path: &P) -> Option<UnixStream> {
         fail!()
     }
 }
@@ -40,7 +40,7 @@ impl Close for UnixStream {
 pub struct UnixListener;
 
 impl UnixListener {
-    pub fn bind<P: PathLike>(_path: &P) -> Result<UnixListener, IoError> {
+    pub fn bind<P: PathLike>(_path: &P) -> Option<UnixListener> {
         fail!()
     }
 }

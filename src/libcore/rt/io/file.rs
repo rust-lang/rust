@@ -42,7 +42,7 @@ impl FileStream {
     pub fn open<P: PathLike>(_path: &P,
                              _mode: FileMode,
                              _access: FileAccess
-                            ) -> Result<FileStream, IoError> {
+                            ) -> Option<FileStream> {
         fail!()
     }
 }

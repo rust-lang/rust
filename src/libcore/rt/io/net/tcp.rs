@@ -16,7 +16,7 @@ use super::ip::IpAddr;
 pub struct TcpStream;
 
 impl TcpStream {
-    pub fn connect(_addr: IpAddr) -> Result<TcpStream, IoError> {
+    pub fn connect(_addr: IpAddr) -> Option<TcpStream> {
         fail!()
     }
 }
@@ -40,7 +40,7 @@ impl Close for TcpStream {
 pub struct TcpListener;
 
 impl TcpListener {
-    pub fn bind(_addr: IpAddr) -> Result<TcpListener, IoError> {
+    pub fn bind(_addr: IpAddr) -> Option<TcpListener> {
         fail!()
     }
 }
