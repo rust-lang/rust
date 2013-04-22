@@ -45,11 +45,7 @@ pub use path::Path;
 pub use path::PosixPath;
 pub use path::WindowsPath;
 pub use ptr::Ptr;
-// NOTE: Remove markers after snapshot
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
-pub use str::{Ascii, AsciiCast, OwnedAsciiCast, ToStrAscii};
+pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr};
 pub use str::{StrSlice, OwnedStr};
 pub use to_bytes::IterBytes;
 pub use to_str::{ToStr, ToStrConsume};

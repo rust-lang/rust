@@ -12,12 +12,8 @@ use to_str::{ToStr,ToStrConsume};
 use str;
 use cast;
 
-#[cfg(test)]
-pub struct Ascii { priv chr: u8 }
-
 /// Datatype to hold one ascii character. It is 8 bit long.
-#[cfg(notest)]
-#[deriving(Clone, Eq, Ord)]
+#[deriving(Clone, Eq)]
 pub struct Ascii { priv chr: u8 }
 
 pub impl Ascii {
@@ -163,17 +159,34 @@ impl OwnedAsciiCast for ~str {
 }
 
 /// Trait for converting an ascii type to a string. Needed to convert `&[Ascii]` to `~str`
-pub trait ToStrAscii {
+pub trait AsciiStr {
     /// Convert to a string.
     fn to_str_ascii(&self) -> ~str;
+
+    /// Convert to vector representing a lower cased ascii string.
+    fn to_lower(&self) -> ~[Ascii];
+
+    /// Convert to vector representing a upper cased ascii string.
+    fn to_upper(&self) -> ~[Ascii];
+
 }
 
-impl<'self> ToStrAscii for &'self [Ascii] {
+impl<'self> AsciiStr for &'self [Ascii] {
     #[inline(always)]
     fn to_str_ascii(&self) -> ~str {
         let mut cpy = self.to_owned();
         cpy.push(0u8.to_ascii());
         unsafe {cast::transmute(cpy)}
+    }
+
+    #[inline(always)]
+    fn to_lower(&self) -> ~[Ascii] {
+        self.map(|a| a.to_lower())
+    }
+
+    #[inline(always)]
+    fn to_upper(&self) -> ~[Ascii] {
+        self.map(|a| a.to_upper())
     }
 }
 
@@ -186,13 +199,8 @@ impl ToStrConsume for ~[Ascii] {
     }
 }
 
-// NOTE: Remove stage0 marker after snapshot
-#[cfg(and(test, not(stage0)))]
 mod tests {
     use super::*;
-    use to_str::{ToStr,ToStrConsume};
-    use str;
-    use cast;
 
     macro_rules! v2ascii (
         ( [$($e:expr),*]) => ( [$(Ascii{chr:$e}),*]);
@@ -206,15 +214,15 @@ mod tests {
         assert_eq!('A'.to_ascii().to_char(), 'A');
         assert_eq!('A'.to_ascii().to_byte(), 65u8);
 
-        assert_eq!('A'.to_ascii().to_lower().to_char, 'a');
-        assert_eq!('Z'.to_ascii().to_lower().to_char, 'z');
-        assert_eq!('a'.to_ascii().to_upper().to_char, 'A');
-        assert_eq!('z'.to_ascii().to_upper().to_char, 'Z');
+        assert_eq!('A'.to_ascii().to_lower().to_char(), 'a');
+        assert_eq!('Z'.to_ascii().to_lower().to_char(), 'z');
+        assert_eq!('a'.to_ascii().to_upper().to_char(), 'A');
+        assert_eq!('z'.to_ascii().to_upper().to_char(), 'Z');
 
-        assert_eq!('@'.to_ascii().to_lower().to_char, '@');
-        assert_eq!('['.to_ascii().to_lower().to_char, '[');
-        assert_eq!('`'.to_ascii().to_upper().to_char, '`');
-        assert_eq!('{'.to_ascii().to_upper().to_char, '{');
+        assert_eq!('@'.to_ascii().to_lower().to_char(), '@');
+        assert_eq!('['.to_ascii().to_lower().to_char(), '[');
+        assert_eq!('`'.to_ascii().to_upper().to_char(), '`');
+        assert_eq!('{'.to_ascii().to_upper().to_char(), '{');
     }
 
     #[test]
@@ -225,6 +233,9 @@ mod tests {
         // if chained-from directly
         let v = ~[40u8, 32u8, 59u8]; assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
         let v = ~"( ;";              assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
+
+        assert_eq!("abCDef&?#".to_ascii().to_lower().to_str_ascii(), ~"abcdef&?#");
+        assert_eq!("abCDef&?#".to_ascii().to_upper().to_str_ascii(), ~"ABCDEF&?#");
     }
 
     #[test]
