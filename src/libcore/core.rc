@@ -164,6 +164,9 @@ pub mod vec;
 pub mod at_vec;
 pub mod str;
 
+#[path = "str/ascii.rs"]
+pub mod ascii;
+
 pub mod ptr;
 pub mod owned;
 pub mod managed;
