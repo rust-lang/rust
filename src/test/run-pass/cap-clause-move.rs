@@ -10,22 +10,22 @@
 
 pub fn main() {
     let x = ~1;
-    let y = ptr::addr_of(&(*x)) as uint;
-    let lam_move: @fn() -> uint = || ptr::addr_of(&(*x)) as uint;
+    let y = ptr::to_unsafe_ptr(&(*x)) as uint;
+    let lam_move: @fn() -> uint = || ptr::to_unsafe_ptr(&(*x)) as uint;
     assert!(lam_move() == y);
 
     let x = ~2;
-    let y = ptr::addr_of(&(*x)) as uint;
-    let lam_move: @fn() -> uint = || ptr::addr_of(&(*x)) as uint;
+    let y = ptr::to_unsafe_ptr(&(*x)) as uint;
+    let lam_move: @fn() -> uint = || ptr::to_unsafe_ptr(&(*x)) as uint;
     assert!(lam_move() == y);
 
     let x = ~3;
-    let y = ptr::addr_of(&(*x)) as uint;
-    let snd_move: ~fn() -> uint = || ptr::addr_of(&(*x)) as uint;
+    let y = ptr::to_unsafe_ptr(&(*x)) as uint;
+    let snd_move: ~fn() -> uint = || ptr::to_unsafe_ptr(&(*x)) as uint;
     assert!(snd_move() == y);
 
     let x = ~4;
-    let y = ptr::addr_of(&(*x)) as uint;
-    let lam_move: ~fn() -> uint = || ptr::addr_of(&(*x)) as uint;
+    let y = ptr::to_unsafe_ptr(&(*x)) as uint;
+    let lam_move: ~fn() -> uint = || ptr::to_unsafe_ptr(&(*x)) as uint;
     assert!(lam_move() == y);
 }

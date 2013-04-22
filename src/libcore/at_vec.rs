@@ -14,7 +14,6 @@ use cast::transmute;
 use kinds::Copy;
 use iter;
 use option::Option;
-use ptr::addr_of;
 use sys;
 use uint;
 use vec;
@@ -40,8 +39,7 @@ pub mod rustrt {
 #[inline(always)]
 pub fn capacity<T>(v: @[T]) -> uint {
     unsafe {
-        let repr: **raw::VecRepr =
-            ::cast::transmute(addr_of(&v));
+        let repr: **raw::VecRepr = transmute(&v);
         (**repr).unboxed.alloc / sys::size_of::<T>()
     }
 }
@@ -189,11 +187,10 @@ pub mod raw {
     use at_vec::{capacity, rustrt};
     use cast::transmute;
     use libc;
-    use unstable::intrinsics::{move_val_init};
-    use ptr::addr_of;
     use ptr;
     use sys;
     use uint;
+    use unstable::intrinsics::{move_val_init};
     use vec;
 
     pub type VecRepr = vec::raw::VecRepr;
@@ -208,7 +205,7 @@ pub mod raw {
      */
     #[inline(always)]
     pub unsafe fn set_len<T>(v: @[T], new_len: uint) {
-        let repr: **mut VecRepr = ::cast::transmute(addr_of(&v));
+        let repr: **mut VecRepr = transmute(&v);
         (**repr).unboxed.fill = new_len * sys::size_of::<T>();
     }
 
@@ -229,7 +226,7 @@ pub mod raw {
         let repr: **mut VecRepr = ::cast::transmute(v);
         let fill = (**repr).unboxed.fill;
         (**repr).unboxed.fill += sys::size_of::<T>();
-        let p = addr_of(&((**repr).unboxed.data));
+        let p = &((**repr).unboxed.data);
         let p = ptr::offset(p, fill) as *mut T;
         move_val_init(&mut(*p), initval);
     }

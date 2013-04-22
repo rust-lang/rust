@@ -642,7 +642,7 @@ struct Triple { x: int, y: int, z: int }
 pub fn main() {
     unsafe {
         let r = (1,2,3,true,false, Triple {x:5,y:4,z:3}, (12,));
-        let p = ptr::addr_of(&r) as *c_void;
+        let p = ptr::to_unsafe_ptr(&r) as *c_void;
         let u = my_visitor(@mut Stuff {ptr1: p,
                                        ptr2: p,
                                        vals: ~[]});
