@@ -70,7 +70,7 @@ use core::hash;
 use core::hashmap::{HashMap, HashSet};
 use core::int;
 use core::io;
-use core::libc::{c_uint, c_ulonglong};
+use core::libc::c_uint;
 use core::uint;
 use std::time;
 use syntax::ast::ident;
