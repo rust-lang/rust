@@ -570,7 +570,16 @@ pub fn failing() -> bool {
         _ => {
             let mut unwinding = false;
             do borrow_local_services |local| {
-                unwinding = local.unwinder.unwinding;
+                unwinding = match local.unwinder {
+                    Some(unwinder) => {
+                        unwinder.unwinding
+                    }
+                    None => {
+                        // Because there is no unwinder we can't be unwinding.
+                        // (The process will abort on failure)
+                        false
+                    }
+                }
             }
             return unwinding;
         }
