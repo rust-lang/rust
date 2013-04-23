@@ -396,12 +396,6 @@ public:
     void allow_yield();
 };
 
-// FIXME (#2697): It would be really nice to be able to get rid of this.
-inline void *operator new[](size_t size, rust_task *task, const char *tag) {
-    return task->malloc(size, tag);
-}
-
-
 template <typename T> struct task_owned {
     inline void *operator new(size_t size, rust_task *task,
                                              const char *tag) {
