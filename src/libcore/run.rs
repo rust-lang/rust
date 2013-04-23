@@ -617,6 +617,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[ignore(cfg(windows))]
     fn waitpid_non_existant_pid() {
         run::waitpid(123456789); // assume that this pid doesn't exist
     }
