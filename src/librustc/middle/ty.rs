@@ -4164,14 +4164,6 @@ pub fn lookup_struct_field(cx: ctxt,
     }
 }
 
-fn is_public(f: field_ty) -> bool {
-    // XXX: This is wrong.
-    match f.vis {
-        public | inherited => true,
-        private => false
-    }
-}
-
 fn struct_field_tys(fields: &[@struct_field]) -> ~[field_ty] {
     do fields.map |field| {
         match field.node.kind {
