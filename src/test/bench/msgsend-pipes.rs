@@ -14,8 +14,6 @@
 //
 // I *think* it's the same, more or less.
 
-#[legacy_modes];
-
 extern mod std;
 use core::io::Writer;
 use core::io::WriterUtil;

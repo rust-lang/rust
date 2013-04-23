@@ -18,8 +18,6 @@
 // different scalability characteristics compared to the select
 // version.
 
-#[legacy_modes];
-
 extern mod std;
 use core::io::Writer;
 use core::io::WriterUtil;

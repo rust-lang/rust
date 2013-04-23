@@ -19,8 +19,6 @@
 
 */
 
-#[legacy_modes];
-
 extern mod std;
 
 use std::{time, getopts};

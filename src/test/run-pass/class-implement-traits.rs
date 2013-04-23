@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 trait noisy {
   fn speak(&mut self);
@@ -66,6 +65,8 @@ pub fn main() {
   let mut nyan = cat(0u, 2, ~"nyan");
   nyan.eat();
   assert!((!nyan.eat()));
-  for uint::range(1u, 10u) |_i| { make_speak(nyan); };
+  for uint::range(1u, 10u) |_i| {
+    make_speak(copy nyan);
+  }
   assert!((nyan.eat()));
 }

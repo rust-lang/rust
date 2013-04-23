@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_modes];
-
-fn takes_mut(&&x: @mut int) { }
-fn takes_imm(&&x: @int) { }
+fn takes_mut(x: @mut int) { }
+fn takes_imm(x: @int) { }
 
 fn apply<T>(t: T, f: &fn(T)) {
     f(t)

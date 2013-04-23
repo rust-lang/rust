@@ -155,7 +155,7 @@ pub fn pref_align_of_val<T>(_val: &T) -> uint {
 pub fn refcount<T>(t: @T) -> uint {
     unsafe {
         let ref_ptr: *uint = cast::transmute(t);
-        *ref_ptr
+        *ref_ptr - 1
     }
 }
 

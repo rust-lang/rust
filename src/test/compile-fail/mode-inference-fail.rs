@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_modes];
-
 // In this test, the mode gets inferred to ++ due to the apply_int(),
 // but then we get a failure in the generic apply().
 
