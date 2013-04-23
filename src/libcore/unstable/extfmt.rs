@@ -521,9 +521,12 @@ pub mod rt {
               TyDefault => uint_to_str_prec(u, 10, prec),
               TyHexLower => uint_to_str_prec(u, 16, prec),
 
-              // FIXME: 4318 Instead of to_str_ascii, could use
-              // to_str_consume to not do a unneccessary copy.
-              TyHexUpper => uint_to_str_prec(u, 16, prec).to_ascii().to_upper().to_str_ascii(),
+              // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
+              // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+              TyHexUpper => {
+                let s = uint_to_str_prec(u, 16, prec);
+                s.to_ascii().to_upper().to_str_ascii()
+              }
               TyBits => uint_to_str_prec(u, 2, prec),
               TyOctal => uint_to_str_prec(u, 8, prec)
             };

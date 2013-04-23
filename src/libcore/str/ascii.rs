@@ -199,6 +199,7 @@ impl ToStrConsume for ~[Ascii] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use str;
 
     macro_rules! v2ascii (
         ( [$($e:expr),*]) => ( [$(Ascii{chr:$e}),*]);
