@@ -262,7 +262,7 @@ pub fn get_lint_dict() -> LintDict {
         (~"unused_unsafe",
          LintSpec {
             lint: unused_unsafe,
-            desc: "unnecessary use of an \"unsafe\" block",
+            desc: "unnecessary use of an `unsafe` block",
             default: warn
         }),
 
@@ -949,7 +949,7 @@ fn check_item_unused_unsafe(cx: ty::ctxt, it: @ast::item) {
                 if !cx.used_unsafe.contains(&blk.node.id) {
                     cx.sess.span_lint(unused_unsafe, blk.node.id, it.id,
                                       blk.span,
-                                      ~"unnecessary \"unsafe\" block");
+                                      ~"unnecessary `unsafe` block");
                 }
             }
             _ => ()
