@@ -126,6 +126,7 @@ pub struct options {
     addl_lib_search_paths: ~[Path],
     maybe_sysroot: Option<Path>,
     target_triple: ~str,
+    target_feature: ~str,
     // User-specified cfg meta items. The compiler itself will add additional
     // items to the crate config, and during parsing the entire crate config
     // will be added to the crate AST node.  This should not be used for
@@ -302,6 +303,7 @@ pub fn basic_options() -> @options {
         addl_lib_search_paths: ~[],
         maybe_sysroot: None,
         target_triple: host_triple(),
+        target_feature: ~"",
         cfg: ~[],
         binary: @~"rustc",
         test: false,

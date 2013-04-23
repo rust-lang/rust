@@ -61,23 +61,32 @@ pub fn llvm_err(sess: Session, msg: ~str) -> ! {
 
 pub fn WriteOutputFile(sess: Session,
         PM: lib::llvm::PassManagerRef, M: ModuleRef,
-        Triple: *c_char,
+        Triple: &str,
+        Feature: &str,
+        Output: &str,
         // FIXME: When #2334 is fixed, change
         // c_uint to FileType
-        Output: *c_char, FileType: c_uint,
+        FileType: c_uint,
         OptLevel: c_int,
         EnableSegmentedStacks: bool) {
     unsafe {
-        let result = llvm::LLVMRustWriteOutputFile(
-                PM,
-                M,
-                Triple,
-                Output,
-                FileType,
-                OptLevel,
-                EnableSegmentedStacks);
-        if (!result) {
-            llvm_err(sess, ~"Could not write output");
+        do str::as_c_str(Triple) |Triple| {
+            do str::as_c_str(Feature) |Feature| {
+                do str::as_c_str(Output) |Output| {
+                    let result = llvm::LLVMRustWriteOutputFile(
+                            PM,
+                            M,
+                            Triple,
+                            Feature,
+                            Output,
+                            FileType,
+                            OptLevel,
+                            EnableSegmentedStacks);
+                    if (!result) {
+                        llvm_err(sess, ~"Could not write output");
+                    }
+                }
+            }
         }
     }
 }
@@ -310,66 +319,49 @@ pub mod write {
                         llvm::LLVMWriteBitcodeToFile(llmod, buf)
                     });
                     pm = mk_pass_manager();
+
                     // Save the assembly file if -S is used
-
                     if output_type == output_type_assembly {
-                        let _: () = str::as_c_str(
+                        WriteOutputFile(
+                            sess,
+                            pm.llpm,
+                            llmod,
                             sess.targ_cfg.target_strs.target_triple,
-                            |buf_t| {
-                                str::as_c_str(output.to_str(), |buf_o| {
-                                    WriteOutputFile(
-                                        sess,
-                                        pm.llpm,
-                                        llmod,
-                                        buf_t,
-                                        buf_o,
-                                        lib::llvm::AssemblyFile as c_uint,
-                                        CodeGenOptLevel,
-                                        true)
-                                })
-                            });
+                            opts.target_feature,
+                            output.to_str(),
+                            lib::llvm::AssemblyFile as c_uint,
+                            CodeGenOptLevel,
+                            true);
                     }
-
 
                     // Save the object file for -c or --save-temps alone
                     // This .o is needed when an exe is built
                     if output_type == output_type_object ||
                            output_type == output_type_exe {
-                        let _: () = str::as_c_str(
+                        WriteOutputFile(
+                            sess,
+                            pm.llpm,
+                            llmod,
                             sess.targ_cfg.target_strs.target_triple,
-                            |buf_t| {
-                                str::as_c_str(output.to_str(), |buf_o| {
-                                    WriteOutputFile(
-                                        sess,
-                                        pm.llpm,
-                                        llmod,
-                                        buf_t,
-                                        buf_o,
-                                        lib::llvm::ObjectFile as c_uint,
-                                        CodeGenOptLevel,
-                                        true)
-                                })
-                            });
+                            opts.target_feature,
+                            output.to_str(),
+                            lib::llvm::ObjectFile as c_uint,
+                            CodeGenOptLevel,
+                            true);
                     }
                 } else {
                     // If we aren't saving temps then just output the file
                     // type corresponding to the '-c' or '-S' flag used
-
-                    let _: () = str::as_c_str(
+                    WriteOutputFile(
+                        sess,
+                        pm.llpm,
+                        llmod,
                         sess.targ_cfg.target_strs.target_triple,
-                        |buf_t| {
-                            str::as_c_str(output.to_str(), |buf_o| {
-                                WriteOutputFile(
-                                    sess,
-                                    pm.llpm,
-                                    llmod,
-                                    buf_t,
-                                    buf_o,
-                                    FileType as c_uint,
-                                    CodeGenOptLevel,
-                                    true)
-                            })
-                        });
+                        opts.target_feature,
+                        output.to_str(),
+                        FileType as c_uint,
+                        CodeGenOptLevel,
+                        true);
                 }
                 // Clean up and return
 
