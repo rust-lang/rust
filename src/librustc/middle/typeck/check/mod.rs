@@ -3502,7 +3502,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                 output: ty::mk_nil()
             }
         });
-        (0u, ~[arg(ast::by_ref, fty)], ty::mk_nil())
+        (0u, ~[arg(ast::by_copy, fty)], ty::mk_nil())
       }
       ~"morestack_addr" => {
         (0u, ~[], ty::mk_nil_ptr(ccx.tcx))

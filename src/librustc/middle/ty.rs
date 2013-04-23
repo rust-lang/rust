@@ -1267,14 +1267,6 @@ pub fn mach_sty(cfg: @session::config, t: t) -> sty {
 }
 
 pub fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
-    // FIXME(#2202) --- We retain by-ref for &fn things to workaround a
-    // memory leak that otherwise results when @fn is upcast to &fn.
-    match ty::get(ty).sty {
-        ty::ty_closure(ClosureTy {sigil: ast::BorrowedSigil, _}) => {
-            return ast::by_ref;
-        }
-        _ => {}
-    }
     return if tcx.legacy_modes {
         if type_is_borrowed(ty) {
             // the old mode default was ++ for things like &ptr, but to be
