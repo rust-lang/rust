@@ -10,8 +10,12 @@
 
 /*! Synchronous I/O
 
-This module defines the Rust interface for synchronous I/O.
-It supports file access,
+This module defines the Rust interface for synchronous I/O.  It is
+build around Reader and Writer traits that define byte stream sources
+and sinks.  Implementations are provided for common I/O streams like
+file, TCP, UDP, Unix domain sockets, multiple types of memory bufers.
+Readers and Writers may be composed to add things like string parsing,
+and compression.
 
 This will likely live in core::io, not core::rt::io.
 
@@ -27,7 +31,7 @@ Some examples of obvious things you might want to do
 
 * Read a complete file to a string, (converting newlines?)
 
-    let contents = open("message.txt").read_to_str(); // read_to_str??
+    let contents = FileStream::open("message.txt").read_to_str(); // read_to_str??
 
 * Write a line to a file
 
@@ -36,13 +40,26 @@ Some examples of obvious things you might want to do
 
 * Iterate over the lines of a file
 
+    do FileStream::open("message.txt").each_line |line| {
+        println(line)
+    }
+
 * Pull the lines of a file into a vector of strings
+
+    let lines = FileStream::open("message.txt").line_iter().to_vec();
+
+* Make an simple HTTP request
+
+    let socket = TcpStream::open("localhost:8080");
+    socket.write_line("GET / HTTP/1.0");
+    socket.write_line("");
+    let response = socket.read_to_end();
 
 * Connect based on URL? Requires thinking about where the URL type lives
   and how to make protocol handlers extensible, e.g. the "tcp" protocol
   yields a `TcpStream`.
 
-    connect("tcp://localhost:8080").write_line("HTTP 1.0 GET /");
+    connect("tcp://localhost:8080");
 
 # Terms
 
@@ -104,25 +121,29 @@ pub use self::stdio::stderr;
 pub use self::stdio::print;
 pub use self::stdio::println;
 
-pub use self::file::open_file;
 pub use self::file::FileStream;
-pub use self::net::Listener;
 pub use self::net::ip::IpAddr;
 pub use self::net::tcp::TcpListener;
 pub use self::net::tcp::TcpStream;
 pub use self::net::udp::UdpStream;
 
 // Some extension traits that all Readers and Writers get.
-pub use self::util::ReaderUtil;
-pub use self::util::ReaderByteConversions;
-pub use self::util::WriterByteConversions;
+pub use self::extensions::ReaderUtil;
+pub use self::extensions::ReaderByteConversions;
+pub use self::extensions::WriterByteConversions;
 
 /// Synchronous, non-blocking file I/O.
 pub mod file;
 
 /// Synchronous, non-blocking network I/O.
-#[path = "net/mod.rs"]
-pub mod net;
+pub mod net {
+    pub mod tcp;
+    pub mod udp;
+    pub mod ip;
+    #[cfg(unix)]
+    pub mod unix;
+    pub mod http;
+}
 
 /// Readers and Writers for memory buffers and strings.
 #[cfg(not(stage0))] // XXX Using unsnapshotted features
@@ -130,6 +151,10 @@ pub mod mem;
 
 /// Non-blocking access to stdin, stdout, stderr
 pub mod stdio;
+
+/// Implementations for Option
+#[cfg(not(stage0))] // Requires condition! fixes
+mod option;
 
 /// Basic stream compression. XXX: Belongs with other flate code
 #[cfg(not(stage0))] // XXX Using unsnapshotted features
@@ -140,10 +165,10 @@ pub mod flate;
 pub mod comm_adapters;
 
 /// Extension traits
-mod util;
+mod extensions;
 
 /// Non-I/O things needed by the I/O module
-mod misc;
+mod support;
 
 /// Thread-blocking implementations
 pub mod native {
@@ -173,12 +198,14 @@ pub struct IoError {
     detail: Option<~str>
 }
 
+#[deriving(Eq)]
 pub enum IoErrorKind {
     FileNotFound,
     FilePermission,
     ConnectionFailed,
     Closed,
-    OtherIoError
+    OtherIoError,
+    PreviousIoError
 }
 
 // XXX: Can't put doc comments on macros
@@ -211,9 +238,9 @@ pub trait Reader {
     ///         println(reader.read_line());
     ///     }
     ///
-    /// # XXX
+    /// # Failue
     ///
-    /// What does this return if the Reader is in an error state?
+    /// Returns `true` on failure.
     fn eof(&mut self) -> bool;
 }
 
@@ -253,7 +280,28 @@ pub enum SeekStyle {
 /// * Are `u64` and `i64` the right choices?
 pub trait Seek {
     fn tell(&self) -> u64;
+
+    /// Seek to an offset in a stream
+    ///
+    /// A successful seek clears the EOF indicator.
+    ///
+    /// # XXX
+    ///
+    /// * What is the behavior when seeking past the end of a stream?
     fn seek(&mut self, pos: i64, style: SeekStyle);
+}
+
+/// A listener is a value that listens for connections
+pub trait Listener<S> {
+    /// Wait for and accept an incoming connection
+    ///
+    /// Returns `None` on timeout.
+    ///
+    /// # Failure
+    ///
+    /// Raises `io_error` condition. If the condition is handled,
+    /// then `accept` returns `None`.
+    fn accept(&mut self) -> Option<S>;
 }
 
 /// Common trait for decorator types.
@@ -280,4 +328,17 @@ pub trait Decorator<T> {
 
     /// Take a mutable reference to the decorated value
     fn inner_mut_ref<'a>(&'a mut self) -> &'a mut T;
+}
+
+pub fn standard_error(kind: IoErrorKind) -> IoError {
+    match kind {
+        PreviousIoError => {
+            IoError {
+                kind: PreviousIoError,
+                desc: "Failing due to a previous I/O error",
+                detail: None
+            }
+        }
+        _ => fail!()
+    }
 }
