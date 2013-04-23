@@ -57,7 +57,7 @@ fn resolve_type_vars_in_types(fcx: @mut FnCtxt, sp: span, tys: &[ty::t])
     tys.map(|t| {
         match resolve_type_vars_in_type(fcx, sp, *t) {
             Some(t1) => t1,
-            None => ty::mk_err(fcx.ccx.tcx)
+            None => ty::mk_err()
         }
     })
 }

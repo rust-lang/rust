@@ -707,7 +707,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
                                     substs.tps, f);
               }
               (_match::switch, Some(lldiscrim_a)) => {
-                  cx = f(cx, lldiscrim_a, ty::mk_int(cx.tcx()));
+                  cx = f(cx, lldiscrim_a, ty::mk_int());
                   let unr_cx = sub_block(cx, ~"enum-iter-unr");
                   Unreachable(unr_cx);
                   let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb,
@@ -2361,7 +2361,7 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
     }
 
     fn create_main(ccx: @CrateContext, main_llfn: ValueRef) -> ValueRef {
-        let nt = ty::mk_nil(ccx.tcx);
+        let nt = ty::mk_nil();
         let llfty = type_of_fn(ccx, ~[], nt);
         let llfdecl = decl_fn(ccx.llmod, ~"_rust_main",
                               lib::llvm::CCallConv, llfty);
@@ -2407,9 +2407,8 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
 
-            let crate_map = ccx.crate_map;
             let start_def_id = ccx.tcx.lang_items.start_fn();
-            let start_fn = if start_def_id.crate == ast::local_crate {
+            if start_def_id.crate == ast::local_crate {
                 ccx.sess.bug(~"start lang item is never in the local crate")
             } else {
                 let start_fn_type = csearch::get_type(ccx.tcx,
@@ -2727,7 +2726,7 @@ pub fn trans_constant(ccx: @CrateContext, it: @ast::item) {
                 path_name(variant.node.name),
                 path_name(special_idents::descrim)
             ]);
-            let s = @mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
+            let s = @mangle_exported_name(ccx, p, ty::mk_int());
             let disr_val = vi[i].disr_val;
             note_unique_llvm_symbol(ccx, s);
             let discrim_gvar = str::as_c_str(*s, |buf| {

@@ -327,7 +327,7 @@ impl LatticeDir for Glb {
 
 impl TyLatticeDir for Glb {
     fn ty_bot(&self, _t: ty::t) -> cres<ty::t> {
-        Ok(ty::mk_bot(self.infcx.tcx))
+        Ok(ty::mk_bot())
     }
 }
 

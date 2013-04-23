@@ -50,7 +50,6 @@ use core::option::{Option, Some, None};
 use core::vec;
 
 use lib::llvm::{ValueRef, TypeRef, True, IntEQ, IntNE};
-use lib::llvm::llvm::LLVMDumpValue;
 use middle::trans::_match;
 use middle::trans::build::*;
 use middle::trans::common::*;
@@ -136,7 +135,7 @@ fn represent_type_uncached(cx: @CrateContext, t: ty::t) -> Repr {
             let packed = ty::lookup_packed(cx.tcx, def_id);
             let dtor = ty::ty_dtor(cx.tcx, def_id).is_present();
             let ftys =
-                if dtor { ftys + [ty::mk_bool(cx.tcx)] } else { ftys };
+                if dtor { ftys + [ty::mk_bool()] } else { ftys };
             return Univariant(mk_struct(cx, ftys, packed), dtor)
         }
         ty::ty_enum(def_id, ref substs) => {
@@ -204,7 +203,7 @@ fn represent_type_uncached(cx: @CrateContext, t: ty::t) -> Repr {
             }
 
             // The general case.
-            let discr = ~[ty::mk_int(cx.tcx)];
+            let discr = ~[ty::mk_int()];
             return General(cases.map(|c| mk_struct(cx, discr + c.tys, false)))
         }
         _ => cx.sess.bug(~"adt::represent_type called on non-ADT type")

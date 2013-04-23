@@ -613,14 +613,13 @@ pub fn super_tys<C:Combine>(
         vid: ty::IntVid,
         val: ty::IntVarValue) -> cres<ty::t>
     {
-        let tcx = self.infcx().tcx;
         if val == IntType(ast::ty_char) {
             Err(ty::terr_integer_as_char)
         } else {
             if_ok!(self.infcx().simple_var_t(vid_is_expected, vid, val));
             match val {
-                IntType(v) => Ok(ty::mk_mach_int(tcx, v)),
-                UintType(v) => Ok(ty::mk_mach_uint(tcx, v))
+                IntType(v) => Ok(ty::mk_mach_int(v)),
+                UintType(v) => Ok(ty::mk_mach_uint(v))
             }
         }
     }
@@ -631,9 +630,8 @@ pub fn super_tys<C:Combine>(
         vid: ty::FloatVid,
         val: ast::float_ty) -> cres<ty::t>
     {
-        let tcx = self.infcx().tcx;
         if_ok!(self.infcx().simple_var_t(vid_is_expected, vid, val));
-        Ok(ty::mk_mach_float(tcx, val))
+        Ok(ty::mk_mach_float(val))
     }
 }
 

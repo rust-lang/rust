@@ -363,11 +363,11 @@ fn check_start_fn_ty(ccx: @mut CrateCtxt,
                 purity: ast::impure_fn,
                 abis: abi::AbiSet::Rust(),
                 sig: ty::FnSig {bound_lifetime_names: opt_vec::Empty,
-                            inputs: ~[arg(ast::by_copy, ty::mk_int(tcx)),
+                            inputs: ~[arg(ast::by_copy, ty::mk_int()),
                                       arg(ast::by_copy, ty::mk_imm_ptr(tcx,
-                                                            ty::mk_imm_ptr(tcx, ty::mk_u8(tcx)))),
-                                      arg(ast::by_copy, ty::mk_imm_ptr(tcx, ty::mk_u8(tcx)))],
-                            output: ty::mk_int(tcx)}
+                                                            ty::mk_imm_ptr(tcx, ty::mk_u8()))),
+                                      arg(ast::by_copy, ty::mk_imm_ptr(tcx, ty::mk_u8()))],
+                            output: ty::mk_int()}
             });
 
             require_same_types(tcx, None, false, start_span, start_t, se_ty,

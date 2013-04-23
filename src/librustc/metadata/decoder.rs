@@ -247,7 +247,7 @@ fn doc_transformed_self_ty(doc: ebml::Doc,
     }
 }
 
-pub fn item_type(item_id: ast::def_id, item: ebml::Doc,
+pub fn item_type(_item_id: ast::def_id, item: ebml::Doc,
                  tcx: ty::ctxt, cdata: cmd) -> ty::t {
     doc_type(item, tcx, cdata)
 }
