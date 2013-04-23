@@ -27,7 +27,6 @@ use option::{None, Option, Some};
 use iterator::Iterator;
 use ptr;
 use str;
-use u8;
 use uint;
 use vec;
 use to_str::ToStr;
