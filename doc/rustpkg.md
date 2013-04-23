@@ -21,7 +21,12 @@ Each directory in this list is a *workspace* for rustpkg.
 `../.rust`, `../../.rust`,
 and so on for every parent of `.` up to the filesystem root).
 That means that if `RUST_PATH` is not set,
-then rustpkg will still search for workspaces in `./.rust` and so on
+then rustpkg will still search for workspaces in `./.rust` and so on.
+`RUST_PATH` also implicitly contains an entry for the system path:
+`/usr/local` or the equivalent on Windows.
+This entry comes after the implicit entries for `./.rust` and so on.
+Finally, the last implicit entry in `RUST_PATH` is `~/.rust`
+or the equivalent on Windows.
 
 Each workspace may contain one or more packages.
 
