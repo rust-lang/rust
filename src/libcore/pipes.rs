@@ -82,7 +82,7 @@ bounded and unbounded protocols allows for less code duplication.
 
 */
 
-use cast::{forget, reinterpret_cast, transmute};
+use cast::{forget, transmute, transmute_copy};
 use either::{Either, Left, Right};
 use kinds::Owned;
 use libc;
@@ -131,7 +131,7 @@ pub struct PacketHeader {
     mut state: State,
     mut blocked_task: *rust_task,
 
-    // This is a reinterpret_cast of a ~buffer, that can also be cast
+    // This is a transmute_copy of a ~buffer, that can also be cast
     // to a buffer_header if need be.
     mut buffer: *libc::c_void,
 }
@@ -170,12 +170,12 @@ pub impl PacketHeader {
     // thing. You'll proobably want to forget them when you're done.
     unsafe fn buf_header(&self) -> ~BufferHeader {
         assert!(self.buffer.is_not_null());
-        reinterpret_cast(&self.buffer)
+        transmute_copy(&self.buffer)
     }
 
     fn set_buffer<T:Owned>(&self, b: ~Buffer<T>) {
         unsafe {
-            self.buffer = reinterpret_cast(&b);
+            self.buffer = transmute_copy(&b);
         }
     }
 }
@@ -211,7 +211,7 @@ fn unibuffer<T>() -> ~Buffer<Packet<T>> {
     };
 
     unsafe {
-        b.data.header.buffer = reinterpret_cast(&b);
+        b.data.header.buffer = transmute_copy(&b);
     }
     b
 }
@@ -229,7 +229,7 @@ pub fn entangle_buffer<T:Owned,Tstart:Owned>(
     init: &fn(*libc::c_void, x: &T) -> *Packet<Tstart>)
     -> (SendPacketBuffered<Tstart, T>, RecvPacketBuffered<Tstart, T>)
 {
-    let p = init(unsafe { reinterpret_cast(&buffer) }, &buffer.data);
+    let p = init(unsafe { transmute_copy(&buffer) }, &buffer.data);
     unsafe { forget(buffer) }
     (SendPacketBuffered(p), RecvPacketBuffered(p))
 }

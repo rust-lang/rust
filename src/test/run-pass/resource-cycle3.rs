@@ -27,8 +27,8 @@ struct R {
 impl Drop for R {
     fn finalize(&self) {
         unsafe {
-            let _v2: ~int = cast::reinterpret_cast(&self.v.c);
-            // let _v3: ~int = unsafe::reinterpret_cast(self.x);
+            let _v2: ~int = cast::transmute(self.v.c);
+            // let _v3: ~int = cast::transmute_copy(self.x);
         }
     }
 }
@@ -38,7 +38,7 @@ fn r(v: U, w: int, _x: *int) -> R {
         R {
             v: v,
             w: w,
-            x: cast::reinterpret_cast(&0)
+            x: cast::transmute(0)
         }
     }
 }
@@ -53,10 +53,10 @@ struct Node {
 pub fn main() { 
     unsafe {
         let i1 = ~0xA;
-        let i1p = cast::reinterpret_cast(&i1);
+        let i1p = cast::transmute_copy(&i1);
         cast::forget(i1);
         let i2 = ~0xA;
-        let i2p = cast::reinterpret_cast(&i2);
+        let i2p = cast::transmute_copy(&i2);
         cast::forget(i2);
 
         let u1 = U {a: 0xB, b: 0xC, c: i1p};

@@ -185,7 +185,7 @@ pub mod traits {}
 
 pub mod raw {
     use at_vec::{capacity, rustrt};
-    use cast::transmute;
+    use cast::{transmute, transmute_copy};
     use libc;
     use ptr;
     use sys;
@@ -211,12 +211,11 @@ pub mod raw {
 
     #[inline(always)]
     pub unsafe fn push<T>(v: &mut @[T], initval: T) {
-        let repr: **VecRepr = ::cast::reinterpret_cast(&v);
+        let repr: **VecRepr = transmute_copy(&v);
         let fill = (**repr).unboxed.fill;
         if (**repr).unboxed.alloc > fill {
             push_fast(v, initval);
-        }
-        else {
+        } else {
             push_slow(v, initval);
         }
     }

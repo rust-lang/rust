@@ -14,7 +14,7 @@ fn addr_of<T>(ptr: &T) -> uint {
 }
 
 fn is_aligned<T>(ptr: &T) -> bool {
-    (to_unsafe_ptr(ptr) % sys::min_align_of::<T>()) == 0
+    (ptr::to_unsafe_ptr(ptr) % sys::min_align_of::<T>()) == 0
 }
 
 pub fn main() {

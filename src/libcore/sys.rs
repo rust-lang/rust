@@ -154,8 +154,8 @@ pub fn pref_align_of_val<T>(_val: &T) -> uint {
 #[inline(always)]
 pub fn refcount<T>(t: @T) -> uint {
     unsafe {
-        let ref_ptr: *uint = cast::reinterpret_cast(&t);
-        *ref_ptr - 1
+        let ref_ptr: *uint = cast::transmute(t);
+        *ref_ptr
     }
 }
 

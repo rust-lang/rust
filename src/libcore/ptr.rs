@@ -119,7 +119,7 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: int, count: uint) {
 /**
   Transform a region pointer - &T - to an unsafe pointer - *T.
   This is safe, but is implemented with an unsafe block due to
-  reinterpret_cast.
+  transmute.
 */
 #[inline(always)]
 pub fn to_unsafe_ptr<T>(thing: &T) -> *T {
@@ -129,7 +129,7 @@ pub fn to_unsafe_ptr<T>(thing: &T) -> *T {
 /**
   Transform a const region pointer - &const T - to a const unsafe pointer -
   *const T. This is safe, but is implemented with an unsafe block due to
-  reinterpret_cast.
+  transmute.
 */
 #[inline(always)]
 pub fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
@@ -139,7 +139,7 @@ pub fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
 /**
   Transform a mutable region pointer - &mut T - to a mutable unsafe pointer -
   *mut T. This is safe, but is implemented with an unsafe block due to
-  reinterpret_cast.
+  transmute.
 */
 #[inline(always)]
 pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
@@ -149,7 +149,7 @@ pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
 /**
   Cast a region pointer - &T - to a uint.
   This is safe, but is implemented with an unsafe block due to
-  reinterpret_cast.
+  transmute.
 
   (I couldn't think of a cutesy name for this one.)
 */

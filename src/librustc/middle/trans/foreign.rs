@@ -718,35 +718,6 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             }
         }
         ~"forget" => {}
-        ~"reinterpret_cast" => {
-            let tp_ty = substs.tys[0];
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            let llout_ty = type_of::type_of(ccx, substs.tys[1]);
-            let tp_sz = machine::llbitsize_of_real(ccx, lltp_ty),
-            out_sz = machine::llbitsize_of_real(ccx, llout_ty);
-          if tp_sz != out_sz {
-              let sp = match *ccx.tcx.items.get(&ref_id.get()) {
-                  ast_map::node_expr(e) => e.span,
-                  _ => fail!(~"reinterpret_cast or forget has non-expr arg")
-              };
-              ccx.sess.span_fatal(
-                  sp, fmt!("reinterpret_cast called on types \
-                            with different size: %s (%u bit(s)) to %s \
-                            (%u bit(s))",
-                           ty_to_str(ccx.tcx, tp_ty), tp_sz,
-                           ty_to_str(ccx.tcx, substs.tys[1]), out_sz));
-          }
-          if !ty::type_is_nil(substs.tys[1]) {
-              // NB: Do not use a Load and Store here. This causes
-              // massive code bloat when reinterpret_cast is used on
-              // large structural types.
-              let llretptr = fcx.llretptr.get();
-              let llretptr = PointerCast(bcx, llretptr, T_ptr(T_i8()));
-              let llcast = get_param(decl, first_real_arg);
-              let llcast = PointerCast(bcx, llcast, T_ptr(T_i8()));
-              call_memcpy(bcx, llretptr, llcast, llsize_of(ccx, lltp_ty));
-          }
-        }
         ~"transmute" => {
             let (in_type, out_type) = (substs.tys[0], substs.tys[1]);
             let llintype = type_of::type_of(ccx, in_type);
