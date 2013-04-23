@@ -18,14 +18,14 @@ use option::{Some, None};
 use os;
 use prelude::*;
 use ptr;
-use run;
 use str;
 use task;
 use vec;
 
 pub mod rustrt {
-    use libc::{c_int, c_void, pid_t};
+    use libc::{c_int, c_void};
     use libc;
+    use run;
 
     #[abi = "cdecl"]
     pub extern {
@@ -34,9 +34,17 @@ pub mod rustrt {
                                    dir: *libc::c_char,
                                    in_fd: c_int,
                                    out_fd: c_int,
-                                   err_fd: c_int)
-                                -> pid_t;
+                                   err_fd: c_int) -> run::RunProgramResult;
+        unsafe fn rust_process_wait(pid: c_int) -> c_int;
     }
+}
+
+pub struct RunProgramResult {
+    // the process id of the program, or -1 if in case of errors
+    pid: pid_t,
+    // a handle to the process - on unix this will always be NULL, but on windows it will be a
+    // HANDLE to the process, which will prevent the pid being re-used until the handle is closed.
+    handle: *(),
 }
 
 /// A value representing a child process
@@ -100,16 +108,24 @@ pub trait Program {
  * The process id of the spawned process
  */
 pub fn spawn_process(prog: &str, args: &[~str],
-                 env: &Option<~[(~str,~str)]>,
-                 dir: &Option<~str>,
-                 in_fd: c_int, out_fd: c_int, err_fd: c_int)
-              -> pid_t {
+                     env: &Option<~[(~str,~str)]>,
+                     dir: &Option<~str>,
+                     in_fd: c_int, out_fd: c_int, err_fd: c_int) -> pid_t {
+
+    let res = spawn_process_internal(prog, args, env, dir, in_fd, out_fd, err_fd);
+    free_handle(res.handle);
+    return res.pid;
+}
+
+fn spawn_process_internal(prog: &str, args: &[~str],
+                          env: &Option<~[(~str,~str)]>,
+                          dir: &Option<~str>,
+                          in_fd: c_int, out_fd: c_int, err_fd: c_int) -> RunProgramResult {
     unsafe {
         do with_argv(prog, args) |argv| {
             do with_envp(env) |envp| {
                 do with_dirp(dir) |dirp| {
-                    rustrt::rust_run_program(argv, envp, dirp,
-                                             in_fd, out_fd, err_fd)
+                    rustrt::rust_run_program(argv, envp, dirp, in_fd, out_fd, err_fd)
                 }
             }
         }
@@ -195,6 +211,18 @@ priv unsafe fn fclose_and_null(f: &mut *libc::FILE) {
     }
 }
 
+#[cfg(windows)]
+priv fn free_handle(handle: *()) {
+    unsafe {
+        libc::funcs::extra::kernel32::CloseHandle(cast::transmute(handle));
+    }
+}
+
+#[cfg(unix)]
+priv fn free_handle(_handle: *()) {
+    // unix has no process handle object, just a pid
+}
+
 /**
  * Spawns a process and waits for it to terminate
  *
@@ -208,10 +236,13 @@ priv unsafe fn fclose_and_null(f: &mut *libc::FILE) {
  * The process's exit code
  */
 pub fn run_program(prog: &str, args: &[~str]) -> int {
-    let pid = spawn_process(prog, args, &None, &None,
-                            0i32, 0i32, 0i32);
-    if pid == -1 as pid_t { fail!(); }
-    return waitpid(pid);
+    let res = spawn_process_internal(prog, args, &None, &None,
+                                     0i32, 0i32, 0i32);
+    if res.pid == -1 as pid_t { fail!(); }
+
+    let code = waitpid(res.pid);
+    free_handle(res.handle);
+    return code;
 }
 
 /**
@@ -234,13 +265,13 @@ pub fn start_program(prog: &str, args: &[~str]) -> @Program {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
-    let pid =
-        spawn_process(prog, args, &None, &None,
-                      pipe_input.in, pipe_output.out,
-                      pipe_err.out);
+    let res =
+        spawn_process_internal(prog, args, &None, &None,
+                               pipe_input.in, pipe_output.out,
+                               pipe_err.out);
 
     unsafe {
-        if pid == -1 as pid_t { fail!(); }
+        if res.pid == -1 as pid_t { fail!(); }
         libc::close(pipe_input.in);
         libc::close(pipe_output.out);
         libc::close(pipe_err.out);
@@ -248,6 +279,7 @@ pub fn start_program(prog: &str, args: &[~str]) -> @Program {
 
     struct ProgRepr {
         pid: pid_t,
+        handle: *(),
         in_fd: c_int,
         out_file: *libc::FILE,
         err_file: *libc::FILE,
@@ -317,6 +349,7 @@ pub fn start_program(prog: &str, args: &[~str]) -> @Program {
                 finish_repr(cast::transmute(&self.r));
                 close_repr_outputs(cast::transmute(&self.r));
             }
+            free_handle(self.r.handle);
         }
     }
 
@@ -344,7 +377,8 @@ pub fn start_program(prog: &str, args: &[~str]) -> @Program {
     }
 
     let repr = ProgRepr {
-        pid: pid,
+        pid: res.pid,
+        handle: res.handle,
         in_fd: pipe_input.out,
         out_file: os::fdopen(pipe_output.in),
         err_file: os::fdopen(pipe_err.in),
@@ -385,13 +419,13 @@ pub fn program_output(prog: &str, args: &[~str]) -> ProgramOutput {
     let pipe_in = os::pipe();
     let pipe_out = os::pipe();
     let pipe_err = os::pipe();
-    let pid = spawn_process(prog, args, &None, &None,
-                            pipe_in.in, pipe_out.out, pipe_err.out);
+    let res = spawn_process_internal(prog, args, &None, &None,
+                                     pipe_in.in, pipe_out.out, pipe_err.out);
 
     os::close(pipe_in.in);
     os::close(pipe_out.out);
     os::close(pipe_err.out);
-    if pid == -1i32 {
+    if res.pid == -1i32 {
         os::close(pipe_in.out);
         os::close(pipe_out.in);
         os::close(pipe_err.in);
@@ -415,7 +449,10 @@ pub fn program_output(prog: &str, args: &[~str]) -> ProgramOutput {
         let output = readclose(pipe_out.in);
         ch_clone.send((1, output));
     };
-    let status = run::waitpid(pid);
+
+    let status = waitpid(res.pid);
+    free_handle(res.handle);
+
     let mut errs = ~"";
     let mut outs = ~"";
     let mut count = 2;
@@ -466,17 +503,27 @@ pub fn readclose(fd: c_int) -> ~str {
     }
 }
 
-/// Waits for a process to exit and returns the exit code
+/**
+ * Waits for a process to exit and returns the exit code, failing
+ * if there is no process with the specified id.
+ */
 pub fn waitpid(pid: pid_t) -> int {
     return waitpid_os(pid);
 
     #[cfg(windows)]
     fn waitpid_os(pid: pid_t) -> int {
-        os::waitpid(pid) as int
+        let status = unsafe { rustrt::rust_process_wait(pid) };
+        if status < 0 {
+            fail!(fmt!("failure in rust_process_wait: %s", os::last_os_error()));
+        }
+        return status as int;
     }
 
     #[cfg(unix)]
     fn waitpid_os(pid: pid_t) -> int {
+
+        use libc::funcs::posix01::wait::*;
+
         #[cfg(target_os = "linux")]
         #[cfg(target_os = "android")]
         fn WIFEXITED(status: i32) -> bool {
@@ -501,7 +548,11 @@ pub fn waitpid(pid: pid_t) -> int {
             status >> 8i32
         }
 
-        let status = os::waitpid(pid);
+        let mut status = 0 as c_int;
+        if unsafe { waitpid(pid, &mut status, 0) } == -1 {
+            fail!(fmt!("failure in waitpid: %s", os::last_os_error()));
+        }
+
         return if WIFEXITED(status) {
             WEXITSTATUS(status) as int
         } else {
@@ -547,7 +598,7 @@ mod tests {
         writeclose(pipe_in.out, copy expected);
         let actual = readclose(pipe_out.in);
         readclose(pipe_err.in);
-        os::waitpid(pid);
+        run::waitpid(pid);
 
         debug!(copy expected);
         debug!(copy actual);
@@ -561,6 +612,13 @@ mod tests {
                                      0i32, 0i32, 0i32);
         let status = run::waitpid(pid);
         assert!(status == 1);
+    }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn waitpid_non_existant_pid() {
+        run::waitpid(123456789); // assume that this pid doesn't exist
     }
 
     #[test]
