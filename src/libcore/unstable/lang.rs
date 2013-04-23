@@ -17,6 +17,8 @@ use str;
 use sys;
 use unstable::exchange_alloc;
 use cast::transmute;
+use rt::{context, OldTaskContext};
+use rt::local_services::borrow_local_services;
 
 #[allow(non_camel_case_types)]
 pub type rust_task = c_void;
@@ -89,7 +91,18 @@ pub unsafe fn exchange_free(ptr: *c_char) {
 #[lang="malloc"]
 #[inline(always)]
 pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    return rustrt::rust_upcall_malloc_noswitch(td, size);
+    match context() {
+        OldTaskContext => {
+            return rustrt::rust_upcall_malloc_noswitch(td, size);
+        }
+        _ => {
+            let mut alloc = ::ptr::null();
+            do borrow_local_services |srv| {
+                alloc = srv.heap.alloc(td as *c_void, size as uint) as *c_char;
+            }
+            return alloc;
+        }
+    }
 }
 
 // NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
@@ -98,7 +111,16 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 #[lang="free"]
 #[inline(always)]
 pub unsafe fn local_free(ptr: *c_char) {
-    rustrt::rust_upcall_free_noswitch(ptr);
+    match context() {
+        OldTaskContext => {
+            rustrt::rust_upcall_free_noswitch(ptr);
+        }
+        _ => {
+            do borrow_local_services |srv| {
+                srv.heap.free(ptr as *c_void);
+            }
+        }
+    }
 }
 
 #[lang="borrow_as_imm"]

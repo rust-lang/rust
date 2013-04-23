@@ -16,7 +16,7 @@ use super::ip::IpAddr;
 pub struct TcpStream;
 
 impl TcpStream {
-    pub fn connect(_addr: IpAddr) -> Result<TcpStream, IoError> {
+    pub fn connect(_addr: IpAddr) -> Option<TcpStream> {
         fail!()
     }
 }
@@ -40,11 +40,38 @@ impl Close for TcpStream {
 pub struct TcpListener;
 
 impl TcpListener {
-    pub fn new(_addr: IpAddr) -> TcpListener {
+    pub fn bind(_addr: IpAddr) -> Option<TcpListener> {
         fail!()
     }
 }
 
 impl Listener<TcpStream> for TcpListener {
     fn accept(&mut self) -> Option<TcpStream> { fail!() }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use rt::test::*;
+
+    #[test] #[ignore]
+    fn smoke_test() {
+        /*do run_in_newsched_task {
+            let addr = next_test_ip4();
+
+            do spawn_immediately {
+                let listener = TcpListener::bind(addr);
+                do listener.accept() {
+                    let mut buf = [0];
+                    listener.read(buf);
+                    assert!(buf[0] == 99);
+                }
+            }
+
+            do spawn_immediately {
+                let stream = TcpStream::connect(addr);
+                stream.write([99]);
+            }
+        }*/
+    }
 }

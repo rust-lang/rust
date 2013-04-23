@@ -238,7 +238,7 @@ $(foreach target,$(CFG_TARGET_TRIPLES),\
 
 CORELIB_CRATE := $(S)src/libcore/core.rc
 CORELIB_INPUTS := $(wildcard $(addprefix $(S)src/libcore/,        \
-                                           core.rc *.rs */*.rs */*/*rs))
+                                           core.rc *.rs */*.rs */*/*rs */*/*/*rs))
 
 ######################################################################
 # Standard library variables

@@ -24,7 +24,7 @@ struct rust_env;
  * a type descr which describes the payload (what follows the header). */
 class boxed_region {
 private:
-    rust_env *env;
+    bool poison_on_free;
     memory_region *backing_region;
     rust_opaque_box *live_allocs;
 
@@ -41,8 +41,8 @@ private:
     boxed_region& operator=(const boxed_region& rhs);
 
 public:
-    boxed_region(rust_env *e, memory_region *br)
-        : env(e)
+    boxed_region(memory_region *br, bool poison_on_free)
+        : poison_on_free(poison_on_free)
         , backing_region(br)
         , live_allocs(NULL)
     {}

@@ -169,7 +169,7 @@ $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 else ifeq ($(OSTYPE_$(1)), linux-androideabi)
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
-		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES) $$(CFLAGS)" \
 		LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
 		CC="$$(CC_$(1))" \
 		CXX="$$(CXX_$(1))" \
@@ -181,7 +181,7 @@ $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 else
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
-		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES) $$(CFLAGS)" \
 		LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
 		CC="$$(CC_$(1))" \
 		CXX="$$(CXX_$(1))" \
