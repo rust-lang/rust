@@ -62,7 +62,7 @@ fn exit_runner(exit_fns: *ExitFunctions) {
     // give us ownership of the array of functions
     let mut exit_fns_vec = unsafe { vec::from_buf(start, count as uint) };
     // Let's not make any promises about execution order
-    rand::Rng().shuffle_mut(exit_fns_vec);
+    rand::rng().shuffle_mut(exit_fns_vec);
 
     debug!("running %u exit functions", exit_fns_vec.len());
 

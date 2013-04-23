@@ -32,7 +32,7 @@ fn timed(result: &mut float, op: &fn()) {
 }
 
 pub impl Results {
-    fn bench_int<T:Set<uint>>(&mut self, rng: @rand::Rng, num_keys: uint,
+    fn bench_int<T:Set<uint>>(&mut self, rng: &rand::Rng, num_keys: uint,
                                rand_cap: uint, f: &fn() -> T) {
         {
             let mut set = f();
@@ -70,7 +70,7 @@ pub impl Results {
         }
     }
 
-    fn bench_str<T:Set<~str>>(&mut self, rng: @rand::Rng, num_keys: uint,
+    fn bench_str<T:Set<~str>>(&mut self, rng: &rand::Rng, num_keys: uint,
                                f: &fn() -> T) {
         {
             let mut set = f();
@@ -156,15 +156,15 @@ fn main() {
     let max = 200000;
 
     {
-        let rng = rand::seeded_rng(seed);
+        let rng = rand::IsaacRng::new_seeded(seed);
         let mut results = empty_results();
-        results.bench_int(rng, num_keys, max, || HashSet::new::<uint>());
-        results.bench_str(rng, num_keys, || HashSet::new::<~str>());
+        results.bench_int(&rng, num_keys, max, || HashSet::new::<uint>());
+        results.bench_str(&rng, num_keys, || HashSet::new::<~str>());
         write_results("core::hashmap::HashSet", &results);
     }
 
     {
-        let rng = rand::seeded_rng(seed);
+        let rng = rand::IsaacRng::new_seeded(seed);
         let mut results = empty_results();
         results.bench_int(rng, num_keys, max, || TreeSet::new::<uint>());
         results.bench_str(rng, num_keys, || TreeSet::new::<~str>());
@@ -172,7 +172,7 @@ fn main() {
     }
 
     {
-        let rng = rand::seeded_rng(seed);
+        let rng = rand::IsaacRng::new_seeded(seed);
         let mut results = empty_results();
         results.bench_int(rng, num_keys, max, || BitvSet::new());
         write_results("std::bitv::BitvSet", &results);
