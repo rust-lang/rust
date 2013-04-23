@@ -36,11 +36,19 @@ pub unsafe fn reinterpret_cast<T, U>(src: &T) -> U {
     rusti::reinterpret_cast(*src)
 }
 
+/// Unsafely copies and casts the value at `src` to U, even if the value is
+/// noncopyable. The two types must have the same length.
+#[inline(always)]
+#[cfg(stage0)]
+pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
+    rusti::reinterpret_cast(*src)
+}
+
 #[inline(always)]
 #[cfg(stage1)]
 #[cfg(stage2)]
 #[cfg(stage3)]
-pub unsafe fn reinterpret_cast<T, U>(src: &T) -> U {
+pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
     let mut dest: U = unstable::intrinsics::init();
     {
         let dest_ptr: *mut u8 = rusti::transmute(&mut dest);
@@ -148,11 +156,20 @@ pub unsafe fn copy_lifetime_vec<'a,S,T>(_ptr: &'a [S], ptr: &T) -> &'a T {
 
 #[cfg(test)]
 mod tests {
-    use cast::{bump_box_refcount, reinterpret_cast, transmute};
+    use cast::{bump_box_refcount, transmute};
 
     #[test]
+    #[cfg(stage0)]
     fn test_reinterpret_cast() {
-        assert!(1u == unsafe { reinterpret_cast(&1) });
+        assert!(1u == unsafe { ::cast::reinterpret_cast(&1) });
+    }
+
+    #[test]
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn test_transmute_copy() {
+        assert!(1u == unsafe { ::cast::transmute_copy(&1) });
     }
 
     #[test]

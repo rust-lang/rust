@@ -15,7 +15,7 @@ extern mod std;
 
 fn null<T>() -> *T {
     unsafe {
-        cast::reinterpret_cast(&0)
+        cast::transmute(0)
     }
 }
 

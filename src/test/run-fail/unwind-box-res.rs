@@ -21,7 +21,7 @@ struct r {
 impl Drop for r {
     fn finalize(&self) {
         unsafe {
-            let _v2: ~int = cast::reinterpret_cast(&self.v);
+            let _v2: ~int = cast::transmute(self.v);
         }
     }
 }
@@ -35,7 +35,7 @@ fn r(v: *int) -> r {
 fn main() {
     unsafe {
         let i1 = ~0;
-        let i1p = cast::reinterpret_cast(&i1);
+        let i1p = cast::transmute_copy(&i1);
         cast::forget(i1);
         let x = @r(i1p);
         failfn();
