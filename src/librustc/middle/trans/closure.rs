@@ -261,8 +261,7 @@ pub fn build_closure(bcx0: block,
                      include_ret_handle: Option<ValueRef>) -> ClosureResult {
     let _icx = bcx0.insn_ctxt("closure::build_closure");
     // If we need to, package up the iterator body to call
-    let bcx = bcx0;;
-    let ccx = bcx.ccx(), tcx = ccx.tcx;
+    let bcx = bcx0;
 
     // Package up the captured upvars
     let mut env_vals = ~[];
@@ -290,7 +289,7 @@ pub fn build_closure(bcx0: block,
     // variables:
     for include_ret_handle.each |flagptr| {
         // Flag indicating we have returned (a by-ref bool):
-        let flag_datum = Datum {val: *flagptr, ty: ty::mk_bool(tcx),
+        let flag_datum = Datum {val: *flagptr, ty: ty::mk_bool(),
                                 mode: ByRef, source: ZeroMem};
         env_vals.push(EnvValue {action: EnvRef,
                                 datum: flag_datum});
@@ -302,7 +301,7 @@ pub fn build_closure(bcx0: block,
             None => bcx.fcx.llretptr.get()
         };
         let ret_casted = PointerCast(bcx, ret_true, T_ptr(T_nil()));
-        let ret_datum = Datum {val: ret_casted, ty: ty::mk_nil(tcx),
+        let ret_datum = Datum {val: ret_casted, ty: ty::mk_nil(),
                                mode: ByRef, source: ZeroMem};
         env_vals.push(EnvValue {action: EnvRef,
                                 datum: ret_datum});
@@ -420,7 +419,7 @@ pub fn trans_expr_fn(bcx: block,
     }
 
     let real_return_type = if is_loop_body.is_some() {
-        ty::mk_bool(bcx.tcx())
+        ty::mk_bool()
     } else {
         ty::ty_fn_ret(fty)
     };

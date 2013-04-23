@@ -549,7 +549,7 @@ pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
     }
 }
 
-fn spawn_raw_newsched(opts: TaskOpts, f: ~fn()) {
+fn spawn_raw_newsched(_opts: TaskOpts, f: ~fn()) {
     use rt::sched::*;
 
     let mut sched = local_sched::take();

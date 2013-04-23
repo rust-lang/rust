@@ -168,19 +168,19 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
         field == abi::tydesc_field_drop_glue ||
         field == abi::tydesc_field_free_glue) &&
         ! ty::type_needs_drop(tcx, t) {
-          return ty::mk_u32(tcx);
+          return ty::mk_u32();
     }
 
     if field == abi::tydesc_field_take_glue {
         match ty::get(t).sty {
-          ty::ty_unboxed_vec(*) => { return ty::mk_u32(tcx); }
+          ty::ty_unboxed_vec(*) => { return ty::mk_u32(); }
           _ => ()
         }
     }
 
     if field == abi::tydesc_field_take_glue &&
         ty::type_is_boxed(t) {
-          return ty::mk_imm_box(tcx, ty::mk_u32(tcx));
+          return ty::mk_imm_box(tcx, ty::mk_u32());
     }
 
     if field == abi::tydesc_field_free_glue {
@@ -193,7 +193,7 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
           ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) |
           ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) |
           ty::ty_opaque_closure_ptr(*) => (),
-          _ => { return ty::mk_u32(tcx); }
+          _ => { return ty::mk_u32(); }
         }
     }
 
@@ -203,12 +203,12 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
           ty::ty_box(mt) |
           ty::ty_evec(mt, ty::vstore_box)
           if ! ty::type_needs_drop(tcx, mt.ty) =>
-          return ty::mk_imm_box(tcx, ty::mk_u32(tcx)),
+          return ty::mk_imm_box(tcx, ty::mk_u32()),
 
           ty::ty_uniq(mt) |
           ty::ty_evec(mt, ty::vstore_uniq)
           if ! ty::type_needs_drop(tcx, mt.ty) =>
-          return ty::mk_imm_uniq(tcx, ty::mk_u32(tcx)),
+          return ty::mk_imm_uniq(tcx, ty::mk_u32()),
 
           _ => ()
         }
@@ -736,7 +736,7 @@ pub fn make_generic_glue_inner(ccx: @CrateContext,
                                helper: glue_helper)
                             -> ValueRef {
     let _icx = ccx.insn_ctxt("make_generic_glue_inner");
-    let fcx = new_fn_ctxt(ccx, ~[], llfn, ty::mk_nil(ccx.tcx), None);
+    let fcx = new_fn_ctxt(ccx, ~[], llfn, ty::mk_nil(), None);
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     ccx.stats.n_glues_created += 1u;
     // All glue functions take values passed *by alias*; this is a

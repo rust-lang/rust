@@ -949,12 +949,12 @@ pub fn mk_ctxt(s: session::Session,
 fn mk_t(cx: ctxt, st: sty) -> t {
     // Check for primitive types.
     match st {
-        ty_nil => return mk_nil(cx),
-        ty_err => return mk_err(cx),
-        ty_bool => return mk_bool(cx),
-        ty_int(i) => return mk_mach_int(cx, i),
-        ty_uint(u) => return mk_mach_uint(cx, u),
-        ty_float(f) => return mk_mach_float(cx, f),
+        ty_nil => return mk_nil(),
+        ty_err => return mk_err(),
+        ty_bool => return mk_bool(),
+        ty_int(i) => return mk_mach_int(i),
+        ty_uint(u) => return mk_mach_uint(u),
+        ty_float(f) => return mk_mach_float(f),
         _ => {}
     };
 
@@ -1052,94 +1052,94 @@ fn mk_t(cx: ctxt, st: sty) -> t {
 }
 
 #[inline(always)]
-pub fn mk_prim_t(cx: ctxt, primitive: &'static t_box_) -> t {
+pub fn mk_prim_t(primitive: &'static t_box_) -> t {
     unsafe {
         cast::transmute::<&'static t_box_, t>(primitive)
     }
 }
 
 #[inline(always)]
-pub fn mk_nil(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_NIL) }
+pub fn mk_nil() -> t { mk_prim_t(&primitives::TY_NIL) }
 
 #[inline(always)]
-pub fn mk_err(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_ERR) }
+pub fn mk_err() -> t { mk_prim_t(&primitives::TY_ERR) }
 
 #[inline(always)]
-pub fn mk_bot(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_BOT) }
+pub fn mk_bot() -> t { mk_prim_t(&primitives::TY_BOT) }
 
 #[inline(always)]
-pub fn mk_bool(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_BOOL) }
+pub fn mk_bool() -> t { mk_prim_t(&primitives::TY_BOOL) }
 
 #[inline(always)]
-pub fn mk_int(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_INT) }
+pub fn mk_int() -> t { mk_prim_t(&primitives::TY_INT) }
 
 #[inline(always)]
-pub fn mk_i8(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_I8) }
+pub fn mk_i8() -> t { mk_prim_t(&primitives::TY_I8) }
 
 #[inline(always)]
-pub fn mk_i16(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_I16) }
+pub fn mk_i16() -> t { mk_prim_t(&primitives::TY_I16) }
 
 #[inline(always)]
-pub fn mk_i32(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_I32) }
+pub fn mk_i32() -> t { mk_prim_t(&primitives::TY_I32) }
 
 #[inline(always)]
-pub fn mk_i64(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_I64) }
+pub fn mk_i64() -> t { mk_prim_t(&primitives::TY_I64) }
 
 #[inline(always)]
-pub fn mk_float(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_FLOAT) }
+pub fn mk_float() -> t { mk_prim_t(&primitives::TY_FLOAT) }
 
 #[inline(always)]
-pub fn mk_f32(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_F32) }
+pub fn mk_f32() -> t { mk_prim_t(&primitives::TY_F32) }
 
 #[inline(always)]
-pub fn mk_f64(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_F64) }
+pub fn mk_f64() -> t { mk_prim_t(&primitives::TY_F64) }
 
 #[inline(always)]
-pub fn mk_uint(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_UINT) }
+pub fn mk_uint() -> t { mk_prim_t(&primitives::TY_UINT) }
 
 #[inline(always)]
-pub fn mk_u8(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_U8) }
+pub fn mk_u8() -> t { mk_prim_t(&primitives::TY_U8) }
 
 #[inline(always)]
-pub fn mk_u16(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_U16) }
+pub fn mk_u16() -> t { mk_prim_t(&primitives::TY_U16) }
 
 #[inline(always)]
-pub fn mk_u32(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_U32) }
+pub fn mk_u32() -> t { mk_prim_t(&primitives::TY_U32) }
 
 #[inline(always)]
-pub fn mk_u64(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_U64) }
+pub fn mk_u64() -> t { mk_prim_t(&primitives::TY_U64) }
 
-pub fn mk_mach_int(cx: ctxt, tm: ast::int_ty) -> t {
+pub fn mk_mach_int(tm: ast::int_ty) -> t {
     match tm {
-        ast::ty_i    => mk_int(cx),
-        ast::ty_char => mk_char(cx),
-        ast::ty_i8   => mk_i8(cx),
-        ast::ty_i16  => mk_i16(cx),
-        ast::ty_i32  => mk_i32(cx),
-        ast::ty_i64  => mk_i64(cx),
+        ast::ty_i    => mk_int(),
+        ast::ty_char => mk_char(),
+        ast::ty_i8   => mk_i8(),
+        ast::ty_i16  => mk_i16(),
+        ast::ty_i32  => mk_i32(),
+        ast::ty_i64  => mk_i64(),
     }
 }
 
-pub fn mk_mach_uint(cx: ctxt, tm: ast::uint_ty) -> t {
+pub fn mk_mach_uint(tm: ast::uint_ty) -> t {
     match tm {
-        ast::ty_u    => mk_uint(cx),
-        ast::ty_u8   => mk_u8(cx),
-        ast::ty_u16  => mk_u16(cx),
-        ast::ty_u32  => mk_u32(cx),
-        ast::ty_u64  => mk_u64(cx),
+        ast::ty_u    => mk_uint(),
+        ast::ty_u8   => mk_u8(),
+        ast::ty_u16  => mk_u16(),
+        ast::ty_u32  => mk_u32(),
+        ast::ty_u64  => mk_u64(),
     }
 }
 
-pub fn mk_mach_float(cx: ctxt, tm: ast::float_ty) -> t {
+pub fn mk_mach_float(tm: ast::float_ty) -> t {
     match tm {
-        ast::ty_f    => mk_float(cx),
-        ast::ty_f32  => mk_f32(cx),
-        ast::ty_f64  => mk_f64(cx),
+        ast::ty_f    => mk_float(),
+        ast::ty_f32  => mk_f32(),
+        ast::ty_f64  => mk_f64(),
     }
 }
 
 #[inline(always)]
-pub fn mk_char(cx: ctxt) -> t { mk_prim_t(cx, &primitives::TY_CHAR) }
+pub fn mk_char() -> t { mk_prim_t(&primitives::TY_CHAR) }
 
 pub fn mk_estr(cx: ctxt, t: vstore) -> t {
     mk_t(cx, ty_estr(t))
@@ -1182,7 +1182,7 @@ pub fn mk_imm_ptr(cx: ctxt, ty: t) -> t {
 }
 
 pub fn mk_nil_ptr(cx: ctxt) -> t {
-    mk_ptr(cx, mt {ty: mk_nil(cx), mutbl: ast::m_imm})
+    mk_ptr(cx, mt {ty: mk_nil(), mutbl: ast::m_imm})
 }
 
 pub fn mk_evec(cx: ctxt, tm: mt, t: vstore) -> t {
@@ -1610,7 +1610,7 @@ pub fn type_is_str(ty: t) -> bool {
 
 pub fn sequence_element_type(cx: ctxt, ty: t) -> t {
     match get(ty).sty {
-      ty_estr(_) => return mk_mach_uint(cx, ast::ty_u8),
+      ty_estr(_) => return mk_mach_uint(ast::ty_u8),
       ty_evec(mt, _) | ty_unboxed_vec(mt) => return mt.ty,
       _ => cx.sess.bug(
           ~"sequence_element_type called on non-sequence value"),
@@ -2614,14 +2614,14 @@ pub fn type_autoderef(cx: ctxt, t: t) -> t {
 }
 
 // Returns the type and mutability of t[i]
-pub fn index(cx: ctxt, t: t) -> Option<mt> {
-    index_sty(cx, &get(t).sty)
+pub fn index(t: t) -> Option<mt> {
+    index_sty(&get(t).sty)
 }
 
-pub fn index_sty(cx: ctxt, sty: &sty) -> Option<mt> {
+pub fn index_sty(sty: &sty) -> Option<mt> {
     match *sty {
       ty_evec(mt, _) => Some(mt),
-      ty_estr(_) => Some(mt {ty: mk_u8(cx), mutbl: ast::m_imm}),
+      ty_estr(_) => Some(mt {ty: mk_u8(), mutbl: ast::m_imm}),
       _ => None
     }
 }
@@ -4161,14 +4161,6 @@ pub fn lookup_struct_field(cx: ctxt,
                  |f| f.id.node == field_id.node) {
         Some(t) => t,
         None => cx.sess.bug(~"struct ID not found in parent's fields")
-    }
-}
-
-fn is_public(f: field_ty) -> bool {
-    // XXX: This is wrong.
-    match f.vis {
-        public | inherited => true,
-        private => false
     }
 }
 

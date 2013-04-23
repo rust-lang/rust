@@ -11,7 +11,7 @@
 use option::*;
 use result::*;
 
-use super::io::net::ip::{IpAddr, Ipv4};
+use super::io::net::ip::{IpAddr, Ipv4}; // n.b. Ipv4 is used only in tests
 use super::uv::*;
 use super::rtio::*;
 use ops::Drop;
