@@ -1101,7 +1101,7 @@ fn mk_enum_deser_body(
     };
 
     let quoted_expr = copy quote_expr!(
-      ::core::sys::begin_unwind(~"explicit failure", ~"empty", 1);
+      ::core::sys::FailWithCause::fail_with("explicit failure", "empty", 1);
     ).node;
 
     let impossible_case = ast::arm {
