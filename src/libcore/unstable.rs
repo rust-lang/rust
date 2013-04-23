@@ -262,18 +262,16 @@ pub impl<T:Owned> Exclusive<T> {
     // the exclusive. Supporting that is a work in progress.
     #[inline(always)]
     unsafe fn with<U>(&self, f: &fn(x: &mut T) -> U) -> U {
-        unsafe {
-            let rec = get_shared_mutable_state(&self.x);
-            do (*rec).lock.lock {
-                if (*rec).failed {
-                    fail!(
-                        ~"Poisoned exclusive - another task failed inside!");
-                }
-                (*rec).failed = true;
-                let result = f(&mut (*rec).data);
-                (*rec).failed = false;
-                result
+        let rec = get_shared_mutable_state(&self.x);
+        do (*rec).lock.lock {
+            if (*rec).failed {
+                fail!(
+                    ~"Poisoned exclusive - another task failed inside!");
             }
+            (*rec).failed = true;
+            let result = f(&mut (*rec).data);
+            (*rec).failed = false;
+            result
         }
     }
 
