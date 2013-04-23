@@ -108,7 +108,7 @@ pub impl Rcx {
         match resolve_type(self.fcx.infcx(), unresolved_ty,
                            resolve_and_force_all_but_regions) {
             Ok(t) => t,
-            Err(_) => ty::mk_err(self.fcx.tcx())
+            Err(_) => ty::mk_err()
         }
     }
 

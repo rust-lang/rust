@@ -245,12 +245,12 @@ pub impl ResolveState {
 
         let node = self.infcx.get(vid);
         match node.possible_types {
-          Some(IntType(t)) => ty::mk_mach_int(self.infcx.tcx, t),
-          Some(UintType(t)) => ty::mk_mach_uint(self.infcx.tcx, t),
+          Some(IntType(t)) => ty::mk_mach_int(t),
+          Some(UintType(t)) => ty::mk_mach_uint(t),
           None => {
             if self.should(force_ivar) {
                 // As a last resort, default to int.
-                let ty = ty::mk_int(self.infcx.tcx);
+                let ty = ty::mk_int();
                 self.infcx.set(vid,
                                Root(Some(IntType(ast::ty_i)), node.rank));
                 ty
@@ -268,11 +268,11 @@ pub impl ResolveState {
 
         let node = self.infcx.get(vid);
         match node.possible_types {
-          Some(t) => ty::mk_mach_float(self.infcx.tcx, t),
+          Some(t) => ty::mk_mach_float(t),
           None => {
             if self.should(force_fvar) {
                 // As a last resort, default to float.
-                let ty = ty::mk_float(self.infcx.tcx);
+                let ty = ty::mk_float();
                 self.infcx.set(vid, Root(Some(ast::ty_f), node.rank));
                 ty
             } else {

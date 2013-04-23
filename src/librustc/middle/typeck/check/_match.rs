@@ -56,7 +56,7 @@ pub fn check_match(fcx: @mut FnCtxt,
         let mut guard_bot = false;
         match arm.guard {
           Some(e) => {
-              check_expr_has_type(fcx, e, ty::mk_bool(tcx));
+              check_expr_has_type(fcx, e, ty::mk_bool());
               let e_ty = fcx.expr_ty(e);
               if ty::type_is_error(e_ty) {
                   guard_err = true;
@@ -84,10 +84,10 @@ pub fn check_match(fcx: @mut FnCtxt,
         demand::suptype(fcx, arm.body.span, result_ty, bty);
     }
     if saw_err {
-        result_ty = ty::mk_err(tcx);
+        result_ty = ty::mk_err();
     }
     else if !arm_non_bot {
-        result_ty = ty::mk_bot(tcx);
+        result_ty = ty::mk_bot();
     }
     fcx.write_ty(expr.id, result_ty);
 }
@@ -230,11 +230,9 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
     }
 
     if error_happened {
-        let tcx = pcx.fcx.ccx.tcx;
-
         for subpats.each |pats| {
             for pats.each |pat| {
-                check_pat(pcx, *pat, ty::mk_err(tcx));
+                check_pat(pcx, *pat, ty::mk_err());
             }
         }
     }

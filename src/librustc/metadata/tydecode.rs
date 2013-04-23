@@ -279,28 +279,28 @@ fn parse_trait_ref(st: @mut PState, conv: conv_did) -> ty::TraitRef {
 
 fn parse_ty(st: @mut PState, conv: conv_did) -> ty::t {
     match next(st) {
-      'n' => return ty::mk_nil(st.tcx),
-      'z' => return ty::mk_bot(st.tcx),
-      'b' => return ty::mk_bool(st.tcx),
-      'i' => return ty::mk_int(st.tcx),
-      'u' => return ty::mk_uint(st.tcx),
-      'l' => return ty::mk_float(st.tcx),
+      'n' => return ty::mk_nil(),
+      'z' => return ty::mk_bot(),
+      'b' => return ty::mk_bool(),
+      'i' => return ty::mk_int(),
+      'u' => return ty::mk_uint(),
+      'l' => return ty::mk_float(),
       'M' => {
         match next(st) {
-          'b' => return ty::mk_mach_uint(st.tcx, ast::ty_u8),
-          'w' => return ty::mk_mach_uint(st.tcx, ast::ty_u16),
-          'l' => return ty::mk_mach_uint(st.tcx, ast::ty_u32),
-          'd' => return ty::mk_mach_uint(st.tcx, ast::ty_u64),
-          'B' => return ty::mk_mach_int(st.tcx, ast::ty_i8),
-          'W' => return ty::mk_mach_int(st.tcx, ast::ty_i16),
-          'L' => return ty::mk_mach_int(st.tcx, ast::ty_i32),
-          'D' => return ty::mk_mach_int(st.tcx, ast::ty_i64),
-          'f' => return ty::mk_mach_float(st.tcx, ast::ty_f32),
-          'F' => return ty::mk_mach_float(st.tcx, ast::ty_f64),
+          'b' => return ty::mk_mach_uint(ast::ty_u8),
+          'w' => return ty::mk_mach_uint(ast::ty_u16),
+          'l' => return ty::mk_mach_uint(ast::ty_u32),
+          'd' => return ty::mk_mach_uint(ast::ty_u64),
+          'B' => return ty::mk_mach_int(ast::ty_i8),
+          'W' => return ty::mk_mach_int(ast::ty_i16),
+          'L' => return ty::mk_mach_int(ast::ty_i32),
+          'D' => return ty::mk_mach_int(ast::ty_i64),
+          'f' => return ty::mk_mach_float(ast::ty_f32),
+          'F' => return ty::mk_mach_float(ast::ty_f64),
           _ => fail!(~"parse_ty: bad numeric type")
         }
       }
-      'c' => return ty::mk_char(st.tcx),
+      'c' => return ty::mk_char(),
       't' => {
         assert!((next(st) == '['));
         let def = parse_def(st, NominalType, conv);

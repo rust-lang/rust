@@ -560,7 +560,7 @@ fn create_boxed_type(cx: @CrateContext, contents: ty::t,
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
     //let cu_node = create_compile_unit_metadata(cx, fname);
-    let int_t = ty::mk_int(cx.tcx);
+    let int_t = ty::mk_int();
     let refcount_type = create_basic_type(cx, int_t, span);
     let name = ty_to_str(cx.tcx, contents);
     let scx = create_structure(file_node, @fmt!("box<%s>", name), 0);
@@ -643,7 +643,7 @@ fn create_boxed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
     let elem_ty_md = create_ty(cx, elem_t, vec_ty_span);
     let vec_scx = create_structure(file_node,
                                @/*bad*/ copy ty_to_str(cx.tcx, vec_t), 0);
-    let size_t_type = create_basic_type(cx, ty::mk_uint(cx.tcx), vec_ty_span);
+    let size_t_type = create_basic_type(cx, ty::mk_uint(), vec_ty_span);
     add_member(vec_scx, ~"fill", 0, sys::size_of::<libc::size_t>() as int,
                sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
     add_member(vec_scx, ~"alloc", 0, sys::size_of::<libc::size_t>() as int,
@@ -666,7 +666,7 @@ fn create_boxed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
     };
 
     let box_scx = create_structure(file_node, @fmt!("box<%s>", name), 0);
-    let int_t = ty::mk_int(cx.tcx);
+    let int_t = ty::mk_int();
     let refcount_type = create_basic_type(cx, int_t, vec_ty_span);
     add_member(box_scx, ~"refcnt", 0, sys::size_of::<uint>() as int,
                sys::min_align_of::<uint>() as int, refcount_type.node);
@@ -692,7 +692,7 @@ fn create_vec_slice(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t, span: span)
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
     let elem_ty_md = create_ty(cx, elem_t, span);
-    let uint_type = create_basic_type(cx, ty::mk_uint(cx.tcx), span);
+    let uint_type = create_basic_type(cx, ty::mk_uint(), span);
     let elem_ptr = create_pointer_type(cx, elem_t, span, elem_ty_md);
     let scx = create_structure(file_node, @ty_to_str(cx.tcx, vec_t), 0);
     let (_, ptr_size, ptr_align) = voidptr();
@@ -744,7 +744,7 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span)
         ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_int(_) | ty::ty_uint(_)
         | ty::ty_float(_) => create_basic_type(cx, t, span),
         ty::ty_estr(ref vstore) => {
-            let i8_t = ty::mk_i8(cx.tcx);
+            let i8_t = ty::mk_i8();
             match *vstore {
                 ty::vstore_fixed(len) => {
                     create_fixed_vec(cx, t, i8_t, len as int + 1, span)
