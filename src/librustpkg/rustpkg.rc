@@ -36,7 +36,8 @@ use rustc::metadata::filesearch;
 use std::{getopts};
 use syntax::{ast, diagnostic};
 use util::*;
-use path_util::{dest_dir, normalize};
+use path_util::{normalize, workspace_contains_package_id};
+use path_util::{build_pkg_id_in_workspace, pkgid_src_in_workspace, rust_path};
 use rustc::driver::session::{lib_crate, bin_crate, crate_type};
 
 mod conditions;
@@ -70,7 +71,7 @@ impl PkgScript {
     /// Given the path name for a package script
     /// and a package ID, parse the package script into
     /// a PkgScript that we can then execute
-    fn parse(script: Path, id: PkgId) -> PkgScript {
+    fn parse(script: Path, workspace: &Path, id: PkgId) -> PkgScript {
         // Get the executable name that was invoked
         let binary = os::args()[0];
         // Build the rustc session data structures to pass
@@ -85,7 +86,7 @@ impl PkgScript {
         let cfg = driver::build_configuration(sess, @binary, &input);
         let (crate, _) = driver::compile_upto(sess, cfg, &input,
                                               driver::cu_parse, None);
-        let work_dir = dest_dir(id);
+        let work_dir = build_pkg_id_in_workspace(id, workspace);
 
         debug!("Returning package script with id %?", id);
 
@@ -193,54 +194,60 @@ impl Ctx {
                 // The package id is presumed to be the first command-line
                 // argument
                 let pkgid = PkgId::new(args[0]);
-                // Should allow the build directory to be configured.
-                // Right now it's always the "build" subdirectory in
-                // the package directory
-                let dst_dir = dest_dir(pkgid);
-                debug!("Destination dir = %s", dst_dir.to_str());
-                // Right now, we assume the pkgid path is a valid dir
-                // relative to the CWD. In the future, we should search
-                // paths
-                let cwd = os::getcwd().normalize();
-                debug!("Current working directory = %s", cwd.to_str());
+                // Using the RUST_PATH, find workspaces that contain
+                // this package ID
+                let workspaces = rust_path().filtered(|ws|
+                    workspace_contains_package_id(pkgid, ws));
+                if workspaces.is_empty() {
+                    fail!(fmt!("Package %s not found in any of \
+                        the following workspaces: %s",
+                               pkgid.path.to_str(),
+                               rust_path().to_str()));
+                }
+                for workspaces.each |workspace| {
+                    let src_dir   = pkgid_src_in_workspace(pkgid, workspace);
+                    let build_dir = build_pkg_id_in_workspace(pkgid, workspace);
+                    debug!("Destination dir = %s", build_dir.to_str());
 
-                // Create the package source
-                let mut src = PkgSrc::new(&cwd, &dst_dir, &pkgid);
-                debug!("Package src = %?", src);
+                    // Create the package source
+                    let mut src = PkgSrc::new(&workspace.push("src"), &build_dir, &pkgid);
+                    debug!("Package src = %?", src);
 
-                // Is there custom build logic? If so, use it
-                let pkg_src_dir = cwd.push_rel(&pkgid.path);
-                let mut custom = false;;
-                debug!("Package source directory = %s", pkg_src_dir.to_str());
-                let cfgs = match src.package_script_option(&pkg_src_dir) {
-                    Some(package_script_path) => {
-                        let pscript = PkgScript::parse(package_script_path,
-                                                       pkgid);
-                        // Limited right now -- we're only running the post_build
-                        // hook and probably fail otherwise
-                        // also post_build should be called pre_build
-                        let (cfgs, hook_result) = pscript.run_custom(~"post_build");
-                        debug!("Command return code = %?", hook_result);
-                        if hook_result != 0 {
-                            fail!(fmt!("Error running custom build command"))
+                    // Is there custom build logic? If so, use it
+                    let pkg_src_dir = src_dir;
+                    let mut custom = false;
+                    debug!("Package source directory = %s", pkg_src_dir.to_str());
+                    let cfgs = match src.package_script_option(&pkg_src_dir) {
+                        Some(package_script_path) => {
+                            let pscript = PkgScript::parse(package_script_path,
+                                                           workspace,
+                                                           pkgid);
+                            // Limited right now -- we're only running the post_build
+                            // hook and probably fail otherwise
+                            // also post_build should be called pre_build
+                            let (cfgs, hook_result) = pscript.run_custom(~"post_build");
+                            debug!("Command return code = %?", hook_result);
+                            if hook_result != 0 {
+                                fail!(fmt!("Error running custom build command"))
+                            }
+                            custom = true;
+                            // otherwise, the package script succeeded
+                            cfgs
                         }
-                        custom = true;
-                        // otherwise, the package script succeeded
-                        cfgs
-                    }
-                    None => {
-                        debug!("No package script, continuing");
-                        ~[]
-                    }
-                };
+                        None => {
+                            debug!("No package script, continuing");
+                            ~[]
+                        }
+                    };
 
-                // If there was a package script, it should have finished
-                // the build already. Otherwise...
-                if !custom {
-                    // Find crates inside the workspace
-                    src.find_crates();
-                    // Build it!
-                    src.build(&dst_dir, cfgs);
+                    // If there was a package script, it should have finished
+                    // the build already. Otherwise...
+                    if !custom {
+                        // Find crates inside the workspace
+                        src.find_crates();
+                        // Build it!
+                        src.build(&build_dir, cfgs);
+                    }
                 }
             }
             ~"clean" => {
@@ -250,8 +257,8 @@ impl Ctx {
                 // The package id is presumed to be the first command-line
                 // argument
                 let pkgid = PkgId::new(args[0]);
-
-                self.clean(pkgid);
+                let cwd = os::getcwd();
+                self.clean(&cwd, pkgid); // tjc: should use workspace, not cwd
             }
             ~"do" => {
                 if args.len() < 2 {
@@ -304,57 +311,16 @@ impl Ctx {
     }
 
     fn do_cmd(&self, cmd: ~str, pkgname: ~str)  {
-        match cmd {
-            ~"build" | ~"test" => {
-                util::error(~"that command cannot be manually called");
-                fail!(~"do_cmd");
-            }
-            _ => {}
-        }
-
-        let cwd = &os::getcwd();
-        let pkgid = PkgId::new(pkgname);
-        // Always use the "build" subdirectory of the package dir,
-        // but we should allow this to be configured
-        let dst_dir = dest_dir(pkgid);
-
-        let mut src = PkgSrc::new(cwd, &dst_dir, &pkgid);
-        match src.package_script_option(cwd) {
-            Some(script_path) => {
-                let script = PkgScript::parse(script_path, pkgid);
-                let (_, status) = script.run_custom(cmd); // Ignore cfgs?
-                if status == 42 {
-                    util::error(~"no fns are listening for that cmd");
-                    fail!(~"do_cmd");
-                }
-            }
-            None => {
-                util::error(fmt!("invoked `do`, but there is no package script in %s",
-                                 cwd.to_str()));
-                fail!(~"do_cmd");
-            }
-        }
+        // stub
+        fail!("`do` not yet implemented");
     }
 
-    fn build(&self, _dir: &Path, _verbose: bool, _opt: bool,
-             _test: bool) -> Option<PkgScript> {
- // either not needed anymore,
- // or needed only when we don't have a package script. Not sure which one.
-        fail!();
-    }
-
-    fn compile(&self, _crate: &Path, _dir: &Path, _flags: ~[~str],
-               _cfgs: ~[~str], _opt: bool, _test: bool)  {
-        // What's the difference between build and compile?
-        fail!(~"compile not yet implemented");
-    }
-
-    fn clean(&self, id: PkgId)  {
+    fn clean(&self, workspace: &Path, id: PkgId)  {
         // Could also support a custom build hook in the pkg
         // script for cleaning files rustpkg doesn't know about.
         // Do something reasonable for now
 
-        let dir = dest_dir(id);
+        let dir = build_pkg_id_in_workspace(id, workspace);
         util::note(fmt!("Cleaning package %s (removing directory %s)",
                         id.to_str(), dir.to_str()));
         if os::path_exists(&dir) {
