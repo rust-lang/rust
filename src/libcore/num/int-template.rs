@@ -14,6 +14,7 @@ use to_str::ToStr;
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
+use num::Signed;
 use num;
 use prelude::*;
 
@@ -69,15 +70,6 @@ pub fn ne(x: T, y: T) -> bool { x != y }
 pub fn ge(x: T, y: T) -> bool { x >= y }
 #[inline(always)]
 pub fn gt(x: T, y: T) -> bool { x > y }
-
-#[inline(always)]
-pub fn is_positive(x: T) -> bool { x > 0 as T }
-#[inline(always)]
-pub fn is_negative(x: T) -> bool { x < 0 as T }
-#[inline(always)]
-pub fn is_nonpositive(x: T) -> bool { x <= 0 as T }
-#[inline(always)]
-pub fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 
 /**
  * Iterate over the range [`lo`..`hi`)
@@ -139,9 +131,7 @@ pub fn compl(i: T) -> T {
 
 /// Computes the absolute value
 #[inline(always)]
-pub fn abs(i: T) -> T {
-    if is_negative(i) { -i } else { i }
-}
+pub fn abs(i: T) -> T { i.abs() }
 
 #[cfg(notest)]
 impl Ord for T {
@@ -223,6 +213,38 @@ impl Rem<T,T> for T {
 impl Neg<T> for T {
     #[inline(always)]
     fn neg(&self) -> T { -*self }
+}
+
+impl Signed for T {
+    /// Computes the absolute value
+    #[inline(always)]
+    fn abs(&self) -> T {
+        if self.is_negative() { -*self } else { *self }
+    }
+
+    /**
+     * # Returns
+     *
+     * - `0` if the number is zero
+     * - `1` if the number is positive
+     * - `-1` if the number is negative
+     */
+    #[inline(always)]
+    fn signum(&self) -> T {
+        match *self {
+            n if n > 0 =>  1,
+            0          =>  0,
+            _          => -1,
+        }
+    }
+
+    /// Returns true if the number is positive
+    #[inline(always)]
+    fn is_positive(&self) -> bool { *self > 0 }
+
+    /// Returns true if the number is negative
+    #[inline(always)]
+    fn is_negative(&self) -> bool { *self < 0 }
 }
 
 #[cfg(notest)]
@@ -343,6 +365,28 @@ mod tests {
     use super::*;
     use super::inst::T;
     use prelude::*;
+
+    #[test]
+    pub fn test_signed() {
+        assert_eq!((1 as T).abs(), 1 as T);
+        assert_eq!((0 as T).abs(), 0 as T);
+        assert_eq!((-1 as T).abs(), 1 as T);
+
+        assert_eq!((1 as T).signum(), 1 as T);
+        assert_eq!((0 as T).signum(), 0 as T);
+        assert_eq!((-0 as T).signum(), 0 as T);
+        assert_eq!((-1 as T).signum(), -1 as T);
+
+        assert!((1 as T).is_positive());
+        assert!(!(0 as T).is_positive());
+        assert!(!(-0 as T).is_positive());
+        assert!(!(-1 as T).is_positive());
+
+        assert!(!(1 as T).is_negative());
+        assert!(!(0 as T).is_negative());
+        assert!(!(-0 as T).is_negative());
+        assert!((-1 as T).is_negative());
+    }
 
     #[test]
     fn test_bitwise_ops() {

@@ -60,6 +60,17 @@ pub trait One {
     fn one() -> Self;
 }
 
+pub trait Signed: Num
+                + Neg<Self> {
+    fn abs(&self) -> Self;
+    fn signum(&self) -> Self;
+    fn is_positive(&self) -> bool;
+    fn is_negative(&self) -> bool;
+}
+
+pub trait Unsigned: Num {}
+
+// This should be moved into the default implementation for Signed::abs
 pub fn abs<T:Ord + Zero + Neg<T>>(v: T) -> T {
     if v < Zero::zero() { v.neg() } else { v }
 }

@@ -15,6 +15,7 @@ use to_str::ToStr;
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
+use num::Unsigned;
 use num;
 use option::Option;
 use prelude::*;
@@ -50,15 +51,6 @@ pub fn ne(x: T, y: T) -> bool { x != y }
 pub fn ge(x: T, y: T) -> bool { x >= y }
 #[inline(always)]
 pub fn gt(x: T, y: T) -> bool { x > y }
-
-#[inline(always)]
-pub fn is_positive(x: T) -> bool { x > 0 as T }
-#[inline(always)]
-pub fn is_negative(x: T) -> bool { x < 0 as T }
-#[inline(always)]
-pub fn is_nonpositive(x: T) -> bool { x <= 0 as T }
-#[inline(always)]
-pub fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 
 #[inline(always)]
 /**
@@ -189,6 +181,8 @@ impl Neg<T> for T {
     #[inline(always)]
     fn neg(&self) -> T { -*self }
 }
+
+impl Unsigned for T {}
 
 #[cfg(notest)]
 impl BitOr<T,T> for T {
