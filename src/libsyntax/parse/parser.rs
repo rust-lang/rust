@@ -4463,7 +4463,7 @@ pub impl Parser {
     }
 
     // Parses a source module as a crate
-    fn parse_crate_mod(&self, _cfg: crate_cfg) -> @crate {
+    fn parse_crate_mod(&self) -> @crate {
         let lo = self.span.lo;
         // parse the crate's inner attrs, maybe (oops) one
         // of the attrs of an item:
