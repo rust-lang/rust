@@ -1799,9 +1799,10 @@ pub mod llvm {
         pub unsafe fn LLVMRustWriteOutputFile(PM: PassManagerRef,
                                               M: ModuleRef,
                                               Triple: *c_char,
+                                              Feature: *c_char,
+                                              Output: *c_char,
                                               // FIXME: When #2334 is fixed,
                                               // change c_uint to FileType
-                                              Output: *c_char,
                                               FileType: c_uint,
                                               OptLevel: c_int,
                                               EnableSegmentedStacks: bool)
