@@ -26,7 +26,7 @@ use core::char;
 use core::hash::Streaming;
 use core::hash;
 use core::io::WriterUtil;
-use core::libc::{c_int, c_uint, c_char};
+use core::libc::{c_int, c_uint};
 use core::os::consts::{macos, freebsd, linux, android, win32};
 use core::os;
 use core::ptr;

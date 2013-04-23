@@ -514,7 +514,7 @@ pub struct substs {
 }
 
 mod primitives {
-    use super::{sty, t_box_};
+    use super::t_box_;
 
     use syntax::ast;
 
