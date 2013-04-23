@@ -415,6 +415,7 @@ pub fn core_macros() -> ~str {
             __log(1u32, fmt!( $($arg),+ ))
         )
     )
+
     macro_rules! warn (
         ($arg:expr) => (
             __log(2u32, fmt!( \"%?\", $arg ))
@@ -423,6 +424,7 @@ pub fn core_macros() -> ~str {
             __log(2u32, fmt!( $($arg),+ ))
         )
     )
+
     macro_rules! info (
         ($arg:expr) => (
             __log(3u32, fmt!( \"%?\", $arg ))
@@ -431,6 +433,7 @@ pub fn core_macros() -> ~str {
             __log(3u32, fmt!( $($arg),+ ))
         )
     )
+
     macro_rules! debug (
         ($arg:expr) => (
             __log(4u32, fmt!( \"%?\", $arg ))
@@ -441,35 +444,48 @@ pub fn core_macros() -> ~str {
     )
 
     macro_rules! fail(
-        ($msg: expr) => (
-            ::core::sys::begin_unwind($msg, file!().to_owned(), line!())
-        );
         () => (
-            fail!(~\"explicit failure\")
+            fail!(\"explicit failure\")
+        );
+        ($msg:expr) => (
+            ::core::sys::FailWithCause::fail_with($msg, file!(), line!())
+        );
+        ($( $arg:expr ),+) => (
+            ::core::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
         )
     )
 
     macro_rules! assert(
         ($cond:expr) => {
             if !$cond {
-                ::core::sys::fail_assert(stringify!($cond), file!(), line!())
+                ::core::sys::FailWithCause::fail_with(
+                    ~\"assertion failed: \" + stringify!($cond), file!(), line!())
             }
         };
         ($cond:expr, $msg:expr) => {
             if !$cond {
-                ::core::sys::fail_assert($msg, file!(), line!())
+                ::core::sys::FailWithCause::fail_with($msg, file!(), line!())
+            }
+        };
+        ($cond:expr, $( $arg:expr ),+) => {
+            if !$cond {
+                ::core::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
             }
         }
     )
 
     macro_rules! assert_eq (
-        ($given:expr , $expected:expr) =>
-        ({let given_val = $given;
-          let expected_val = $expected;
-          // check both directions of equality....
-          if !((given_val == expected_val) && (expected_val == given_val)) {
-            fail!(fmt!(\"expected: %?, given: %?\",expected_val,given_val));
-        }}))
+        ($given:expr , $expected:expr) => (
+            {
+                let given_val = $given;
+                let expected_val = $expected;
+                // check both directions of equality....
+                if !((given_val == expected_val) && (expected_val == given_val)) {
+                    fail!(fmt!(\"left: %? != right: %?\", given_val, expected_val));
+                }
+            }
+        )
+    )
 
     macro_rules! condition (
 
