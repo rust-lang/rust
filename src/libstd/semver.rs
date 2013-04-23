@@ -220,7 +220,7 @@ fn parse_reader(rdr: @io::Reader) -> Version {
 
 
 pub fn parse(s: &str) -> Option<Version> {
-    if ! str::is_ascii(s) {
+    if !s.is_ascii() {
         return None;
     }
     let s = s.trim();
