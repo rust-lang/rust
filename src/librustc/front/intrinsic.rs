@@ -132,7 +132,7 @@ pub mod intrinsic {
         #[abi = "rust-intrinsic"]
         pub extern "rust-intrinsic" {
             pub fn get_tydesc<T>() -> *();
-            pub fn visit_tydesc(++td: *TyDesc, &&tv: @TyVisitor);
+            pub fn visit_tydesc(++td: *TyDesc, ++tv: @TyVisitor);
         }
     }
 }
