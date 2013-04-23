@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use result::{Result, Ok, Err};
 use super::io::net::ip::{IpAddr, Ipv4};
 
 /// Creates a new scheduler in a new thread and runs a task in it,
@@ -45,6 +46,46 @@ pub fn spawn_immediately(f: ~fn()) {
             sched.task_queue.push_front(task.take());
         }
     }
+}
+
+/// Spawn a task and wait for it to finish, returning whether it completed successfully or failed
+pub fn spawn_try(f: ~fn()) -> Result<(), ()> {
+    use cell::Cell;
+    use super::sched::*;
+    use task;
+    use unstable::finally::Finally;
+
+    // Our status variables will be filled in from the scheduler context
+    let mut failed = false;
+    let failed_ptr: *mut bool = &mut failed;
+
+    // Switch to the scheduler
+    let f = Cell(Cell(f));
+    let mut sched = local_sched::take();
+    do sched.deschedule_running_task_and_then() |old_task| {
+        let old_task = Cell(old_task);
+        let f = f.take();
+        let mut sched = local_sched::take();
+        let new_task = ~do Task::new(&mut sched.stack_pool) {
+            do (|| {
+                (f.take())()
+            }).finally {
+                // Check for failure then resume the parent task
+                unsafe { *failed_ptr = task::failing(); }
+                let sched = local_sched::take();
+                do sched.switch_running_tasks_and_then(old_task.take()) |new_task| {
+                    let new_task = Cell(new_task);
+                    do local_sched::borrow |sched| {
+                        sched.task_queue.push_front(new_task.take());
+                    }
+                }
+            }
+        };
+
+        sched.resume_task_immediately(new_task);
+    }
+
+    if !failed { Ok(()) } else { Err(()) }
 }
 
 /// Get a port number, starting at 9600, for use in tests

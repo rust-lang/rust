@@ -228,3 +228,5 @@ rust_new_boxed_region
 rust_delete_boxed_region
 rust_boxed_region_malloc
 rust_boxed_region_free
+rust_try
+rust_begin_unwind

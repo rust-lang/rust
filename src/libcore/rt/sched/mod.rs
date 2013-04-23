@@ -353,15 +353,10 @@ pub impl Task {
             unsafe {
                 let sched = local_sched::unsafe_borrow();
                 sched.run_cleanup_job();
-            }
 
-            start();
-
-            unsafe {
-                // Destroy the local heap, TLS, etc.
                 let sched = local_sched::unsafe_borrow();
                 let task = sched.current_task.get_mut_ref();
-                task.local_services.destroy();
+                task.local_services.run(start);
             }
 
             let sched = local_sched::take();
