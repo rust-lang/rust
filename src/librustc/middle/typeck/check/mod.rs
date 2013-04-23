@@ -3479,7 +3479,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
           let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {ty: tydesc_ty,
                                                    mutbl: ast::m_imm});
           (0u, ~[arg(ast::by_copy, td_ptr),
-                 arg(ast::by_ref, visitor_object_ty)], ty::mk_nil())
+                 arg(ast::by_copy, visitor_object_ty)], ty::mk_nil())
       }
       ~"frame_address" => {
         let fty = ty::mk_closure(ccx.tcx, ty::ClosureTy {

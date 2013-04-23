@@ -771,9 +771,14 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         ~"visit_tydesc" => {
             let td = get_param(decl, first_real_arg);
             let visitor = get_param(decl, first_real_arg + 1u);
+            let llvisitorptr = alloca(bcx, val_ty(visitor));
+            Store(bcx, visitor, llvisitorptr);
             let td = PointerCast(bcx, td, T_ptr(ccx.tydesc_type));
-            glue::call_tydesc_glue_full(bcx, visitor, td,
-                                        abi::tydesc_field_visit_glue, None);
+            glue::call_tydesc_glue_full(bcx,
+                                        llvisitorptr,
+                                        td,
+                                        abi::tydesc_field_visit_glue,
+                                        None);
         }
         ~"frame_address" => {
             let frameaddress = *ccx.intrinsics.get(&~"llvm.frameaddress");
