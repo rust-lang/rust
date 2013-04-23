@@ -221,6 +221,9 @@ mod tests {
         assert_eq!('['.to_ascii().to_lower().to_char(), '[');
         assert_eq!('`'.to_ascii().to_upper().to_char(), '`');
         assert_eq!('{'.to_ascii().to_upper().to_char(), '{');
+
+        assert!(str::all(~"banana", |c| c.is_ascii()));
+        assert!(! str::all(~"ประเทศไทย中华Việt Nam", |c| c.is_ascii()));
     }
 
     #[test]
@@ -234,6 +237,15 @@ mod tests {
 
         assert_eq!("abCDef&?#".to_ascii().to_lower().to_str_ascii(), ~"abcdef&?#");
         assert_eq!("abCDef&?#".to_ascii().to_upper().to_str_ascii(), ~"ABCDEF&?#");
+
+        assert_eq!("".to_ascii().to_lower().to_str_ascii(), ~"");
+        assert_eq!("YMCA".to_ascii().to_lower().to_str_ascii(), ~"ymca");
+        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().to_str_ascii(), ~"ABCDEFXYZ:.;");
+
+        assert!("".is_ascii());
+        assert!("a".is_ascii());
+        assert!(!"\u2009".is_ascii());
+
     }
 
     #[test]
