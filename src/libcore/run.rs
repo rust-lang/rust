@@ -18,7 +18,6 @@ use option::{Some, None};
 use os;
 use prelude::*;
 use ptr;
-use run;
 use str;
 use task;
 use vec;
@@ -377,7 +376,7 @@ pub fn start_program(prog: &str, args: &[~str]) -> @Program {
         fn force_destroy(&mut self) { destroy_repr(&mut self.r, true); }
     }
 
-    let mut repr = ProgRepr {
+    let repr = ProgRepr {
         pid: res.pid,
         handle: res.handle,
         in_fd: pipe_input.out,
