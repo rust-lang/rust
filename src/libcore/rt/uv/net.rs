@@ -107,21 +107,25 @@ pub impl StreamWatcher {
 
         let req = WriteRequest::new();
         let buf = vec_to_uv_buf(msg);
-        // XXX: Allocation
-        let bufs = ~[buf];
+        assert!(data.buf.is_none());
+        data.buf = Some(buf);
+        let bufs = [buf];
         unsafe {
             assert!(0 == uvll::write(req.native_handle(),
                                           self.native_handle(),
-                                          &bufs, write_cb));
+                                          bufs, write_cb));
         }
-        // XXX: Freeing immediately after write. Is this ok?
-        let _v = vec_from_uv_buf(buf);
 
         extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
             let write_request: WriteRequest = NativeHandle::from_native_handle(req);
             let mut stream_watcher = write_request.stream();
             write_request.delete();
-            let cb = get_watcher_data(&mut stream_watcher).write_cb.swap_unwrap();
+            let cb = {
+                let data = get_watcher_data(&mut stream_watcher);
+                let _vec = vec_from_uv_buf(data.buf.swap_unwrap());
+                let cb = data.write_cb.swap_unwrap();
+                cb
+            };
             let status = status_to_maybe_uv_error(stream_watcher.native_handle(), status);
             cb(stream_watcher, status);
         }

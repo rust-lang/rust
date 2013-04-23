@@ -445,7 +445,7 @@ fn test_read_read_read() {
                 let io = local_sched::unsafe_borrow_io();
                 let mut listener = io.bind(addr).unwrap();
                 let mut stream = listener.listen().unwrap();
-                let mut buf = [0, .. 2048];
+                let mut buf = [1, .. 2048];
                 let mut total_bytes_written = 0;
                 while total_bytes_written < MAX {
                     stream.write(buf);
@@ -465,6 +465,9 @@ fn test_read_read_read() {
                 let nread = stream.read(buf).unwrap();
                 rtdebug!("read %u bytes", nread as uint);
                 total_bytes_read += nread;
+                for uint::range(0, nread) |i| {
+                    assert!(buf[i] == 1);
+                }
             }
             rtdebug!("read %u bytes total", total_bytes_read as uint);
             stream.close();
