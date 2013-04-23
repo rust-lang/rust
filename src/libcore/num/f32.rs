@@ -301,20 +301,28 @@ impl num::One for f32 {
 
 #[cfg(notest)]
 impl Add<f32,f32> for f32 {
+    #[inline(always)]
     fn add(&self, other: &f32) -> f32 { *self + *other }
 }
+
 #[cfg(notest)]
 impl Sub<f32,f32> for f32 {
+    #[inline(always)]
     fn sub(&self, other: &f32) -> f32 { *self - *other }
 }
+
 #[cfg(notest)]
 impl Mul<f32,f32> for f32 {
+    #[inline(always)]
     fn mul(&self, other: &f32) -> f32 { *self * *other }
 }
+
 #[cfg(stage0,notest)]
 impl Div<f32,f32> for f32 {
+    #[inline(always)]
     fn div(&self, other: &f32) -> f32 { *self / *other }
 }
+
 #[cfg(stage1,notest)]
 #[cfg(stage2,notest)]
 #[cfg(stage3,notest)]
@@ -322,10 +330,13 @@ impl Quot<f32,f32> for f32 {
     #[inline(always)]
     fn quot(&self, other: &f32) -> f32 { *self / *other }
 }
+
 #[cfg(stage0,notest)]
 impl Modulo<f32,f32> for f32 {
+    #[inline(always)]
     fn modulo(&self, other: &f32) -> f32 { *self % *other }
 }
+
 #[cfg(stage1,notest)]
 #[cfg(stage2,notest)]
 #[cfg(stage3,notest)]
@@ -333,8 +344,10 @@ impl Rem<f32,f32> for f32 {
     #[inline(always)]
     fn rem(&self, other: &f32) -> f32 { *self % *other }
 }
+
 #[cfg(notest)]
 impl Neg<f32> for f32 {
+    #[inline(always)]
     fn neg(&self) -> f32 { -*self }
 }
 

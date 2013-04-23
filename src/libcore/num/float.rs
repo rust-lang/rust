@@ -455,18 +455,25 @@ impl num::Round for float {
 
 #[cfg(notest)]
 impl Add<float,float> for float {
+    #[inline(always)]
     fn add(&self, other: &float) -> float { *self + *other }
 }
+
 #[cfg(notest)]
 impl Sub<float,float> for float {
+    #[inline(always)]
     fn sub(&self, other: &float) -> float { *self - *other }
 }
+
 #[cfg(notest)]
 impl Mul<float,float> for float {
+    #[inline(always)]
     fn mul(&self, other: &float) -> float { *self * *other }
 }
+
 #[cfg(stage0,notest)]
 impl Div<float,float> for float {
+    #[inline(always)]
     fn div(&self, other: &float) -> float { *self / *other }
 }
 #[cfg(stage1,notest)]
@@ -478,6 +485,7 @@ impl Quot<float,float> for float {
 }
 #[cfg(stage0,notest)]
 impl Modulo<float,float> for float {
+    #[inline(always)]
     fn modulo(&self, other: &float) -> float { *self % *other }
 }
 #[cfg(stage1,notest)]
@@ -489,6 +497,7 @@ impl Rem<float,float> for float {
 }
 #[cfg(notest)]
 impl Neg<float> for float {
+    #[inline(always)]
     fn neg(&self) -> float { -*self }
 }
 

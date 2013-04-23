@@ -140,20 +140,28 @@ impl num::One for T {
 
 #[cfg(notest)]
 impl Add<T,T> for T {
+    #[inline(always)]
     fn add(&self, other: &T) -> T { *self + *other }
 }
+
 #[cfg(notest)]
 impl Sub<T,T> for T {
+    #[inline(always)]
     fn sub(&self, other: &T) -> T { *self - *other }
 }
+
 #[cfg(notest)]
 impl Mul<T,T> for T {
+    #[inline(always)]
     fn mul(&self, other: &T) -> T { *self * *other }
 }
+
 #[cfg(stage0,notest)]
 impl Div<T,T> for T {
+    #[inline(always)]
     fn div(&self, other: &T) -> T { *self / *other }
 }
+
 #[cfg(stage1,notest)]
 #[cfg(stage2,notest)]
 #[cfg(stage3,notest)]
@@ -161,10 +169,13 @@ impl Quot<T,T> for T {
     #[inline(always)]
     fn quot(&self, other: &T) -> T { *self / *other }
 }
+
 #[cfg(stage0,notest)]
 impl Modulo<T,T> for T {
+    #[inline(always)]
     fn modulo(&self, other: &T) -> T { *self % *other }
 }
+
 #[cfg(stage1,notest)]
 #[cfg(stage2,notest)]
 #[cfg(stage3,notest)]
@@ -172,8 +183,10 @@ impl Rem<T,T> for T {
     #[inline(always)]
     fn rem(&self, other: &T) -> T { *self % *other }
 }
+
 #[cfg(notest)]
 impl Neg<T> for T {
+    #[inline(always)]
     fn neg(&self) -> T { -*self }
 }
 
@@ -182,26 +195,31 @@ impl BitOr<T,T> for T {
     #[inline(always)]
     fn bitor(&self, other: &T) -> T { *self | *other }
 }
+
 #[cfg(notest)]
 impl BitAnd<T,T> for T {
     #[inline(always)]
     fn bitand(&self, other: &T) -> T { *self & *other }
 }
+
 #[cfg(notest)]
 impl BitXor<T,T> for T {
     #[inline(always)]
     fn bitxor(&self, other: &T) -> T { *self ^ *other }
 }
+
 #[cfg(notest)]
 impl Shl<T,T> for T {
     #[inline(always)]
     fn shl(&self, other: &T) -> T { *self << *other }
 }
+
 #[cfg(notest)]
 impl Shr<T,T> for T {
     #[inline(always)]
     fn shr(&self, other: &T) -> T { *self >> *other }
 }
+
 #[cfg(notest)]
 impl Not<T> for T {
     #[inline(always)]
