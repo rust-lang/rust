@@ -102,7 +102,7 @@ fn main() {
     let mut rand = vec::with_capacity(n_keys);
 
     {
-        let rng = core::rand::seeded_rng([1, 1, 1, 1, 1, 1, 1]);
+        let rng = core::rand::IsaacRng::new_seeded([1, 1, 1, 1, 1, 1, 1]);
         let mut set = HashSet::new();
         while set.len() != n_keys {
             let next = rng.next() as uint;

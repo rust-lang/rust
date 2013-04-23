@@ -71,7 +71,7 @@ fn read_line() {
 }
 
 fn vec_plus() {
-    let r = rand::Rng();
+    let r = rand::rng();
 
     let mut v = ~[];
     let mut i = 0;
@@ -88,7 +88,7 @@ fn vec_plus() {
 }
 
 fn vec_append() {
-    let r = rand::Rng();
+    let r = rand::rng();
 
     let mut v = ~[];
     let mut i = 0;
@@ -105,7 +105,7 @@ fn vec_append() {
 }
 
 fn vec_push_all() {
-    let r = rand::Rng();
+    let r = rand::rng();
 
     let mut v = ~[];
     for uint::range(0, 1500) |i| {
