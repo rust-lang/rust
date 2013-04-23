@@ -30,7 +30,7 @@ use cast;
 use io;
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
-use libc::{mode_t, pid_t, FILE};
+use libc::{mode_t, FILE};
 use option;
 use option::{Some, None};
 use prelude::*;
