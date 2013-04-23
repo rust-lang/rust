@@ -1056,6 +1056,9 @@ pub impl Parser {
         }
     }
 
+    // matches lifetimes = ( lifetime ) | ( lifetime , lifetimes )
+    // actually, it matches the empty one too, but putting that in there
+    // messes up the grammar....
     fn parse_lifetimes(&self) -> OptVec<ast::Lifetime> {
         /*!
          *
@@ -1081,7 +1084,8 @@ pub impl Parser {
                 token::GT => { return res; }
                 token::BINOP(token::SHR) => { return res; }
                 _ => {
-                    self.fatal(~"expected `,` or `>` after lifetime name");
+                    self.fatal(fmt!("expected `,` or `>` after lifetime name, got: %?",
+                                    *self.token));
                 }
             }
         }
@@ -2741,6 +2745,11 @@ pub impl Parser {
         if self.eat_keyword(&~"once") { ast::Once } else { ast::Many }
     }
 
+    // matches optbounds = ( ( : ( boundseq )? )? )
+    // where   boundseq  = ( bound + boundseq ) | bound
+    // and     bound     = ( 'static ) | ty
+    // you might want to insist on the boundseq having seen the colon, but
+    // that's not currently in place.
     fn parse_optional_ty_param_bounds(&self) -> @OptVec<TyParamBound> {
         if !self.eat(&token::COLON) {
             return @opt_vec::Empty;
@@ -2801,6 +2810,7 @@ pub impl Parser {
         return @result;
     }
 
+    // matches typaram = IDENT optbounds
     fn parse_ty_param(&self) -> TyParam {
         let ident = self.parse_ident();
         let bounds = self.parse_optional_ty_param_bounds();

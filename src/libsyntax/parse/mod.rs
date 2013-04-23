@@ -354,6 +354,7 @@ mod test {
     use core::option::None;
     use core::int;
     use core::num::NumCast;
+    use core::path::Path;
     use codemap::{dummy_sp, CodeMap, span, BytePos, spanned};
     use opt_vec;
     use ast;
@@ -546,6 +547,10 @@ mod test {
 
     }
 
+    fn parser_done(p: Parser){
+        assert_eq!(*p.token,token::EOF);
+    }
+
     #[test] fn parse_ident_pat () {
         let parser = string_to_parser(@~"b");
         assert_eq!(parser.parse_pat(false),
@@ -560,7 +565,7 @@ mod test {
                                                   None // no idea
                                                  ),
                              span: sp(0,1)});
-        assert_eq!(*parser.token,token::EOF);
+        parser_done(parser);
     }
 
     #[test] fn parse_arg () {
