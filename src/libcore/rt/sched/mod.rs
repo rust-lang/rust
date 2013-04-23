@@ -149,7 +149,7 @@ pub impl Scheduler {
             }
         }
 
-        // Control never reaches here
+        abort!("control reached end of task");
     }
 
     fn schedule_new_task(~self, task: ~Task) {
@@ -333,6 +333,12 @@ pub struct Task {
 
 pub impl Task {
     fn new(stack_pool: &mut StackPool, start: ~fn()) -> Task {
+        Task::with_local(stack_pool, LocalServices::new(), start)
+    }
+
+    fn with_local(stack_pool: &mut StackPool,
+                  local_services: LocalServices,
+                  start: ~fn()) -> Task {
         let start = Task::build_start_wrapper(start);
         let mut stack = stack_pool.take_segment(TASK_MIN_STACK_SIZE);
         // NB: Context holds a pointer to that ~fn
@@ -340,7 +346,7 @@ pub impl Task {
         return Task {
             current_stack_segment: stack,
             saved_context: initial_context,
-            local_services: LocalServices::new()
+            local_services: local_services
         };
     }
 

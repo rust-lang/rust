@@ -29,7 +29,7 @@ pub struct LocalServices {
     gc: GarbageCollector,
     storage: LocalStorage,
     logger: Logger,
-    unwinder: Unwinder,
+    unwinder: Option<Unwinder>,
     destroyed: bool
 }
 
@@ -48,7 +48,18 @@ impl LocalServices {
             gc: GarbageCollector,
             storage: LocalStorage(ptr::null(), None),
             logger: Logger,
-            unwinder: Unwinder { unwinding: false },
+            unwinder: Some(Unwinder { unwinding: false }),
+            destroyed: false
+        }
+    }
+
+    pub fn without_unwinding() -> LocalServices {
+        LocalServices {
+            heap: LocalHeap::new(),
+            gc: GarbageCollector,
+            storage: LocalStorage(ptr::null(), None),
+            logger: Logger,
+            unwinder: None,
             destroyed: false
         }
     }
@@ -60,7 +71,16 @@ impl LocalServices {
             assert!(ptr::ref_eq(sched, self));
         }
 
-        self.unwinder.try(f);
+        match self.unwinder {
+            Some(ref mut unwinder) => {
+                // If there's an unwinder then set up the catch block
+                unwinder.try(f);
+            }
+            None => {
+                // Otherwise, just run the body
+                f()
+            }
+        }
         self.destroy();
     }
 
@@ -189,9 +209,9 @@ mod test {
     #[test]
     fn unwind() {
         do run_in_newsched_task() {
-            let result = spawn_try(||());
+            let result = spawntask_try(||());
             assert!(result.is_ok());
-            let result = spawn_try(|| fail!());
+            let result = spawntask_try(|| fail!());
             assert!(result.is_err());
         }
     }

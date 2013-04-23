@@ -12,26 +12,6 @@
 
 use libc::c_char;
 
-// Some basic logging
-macro_rules! rtdebug_ (
-    ($( $arg:expr),+) => ( {
-        dumb_println(fmt!( $($arg),+ ));
-
-        fn dumb_println(s: &str) {
-            use io::WriterUtil;
-            let dbg = ::libc::STDERR_FILENO as ::io::fd_t;
-            dbg.write_str(s);
-            dbg.write_str("\n");
-        }
-
-    } )
-)
-
-// An alternate version with no output, for turning off logging
-macro_rules! rtdebug (
-    ($( $arg:expr),+) => ( $(let _ = $arg)*; )
-)
-
 #[path = "sched/mod.rs"]
 mod sched;
 mod rtio;

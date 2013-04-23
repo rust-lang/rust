@@ -350,7 +350,7 @@ fn test_simple_tcp_server_and_client() {
         let addr = next_test_ip4();
 
         // Start the server first so it's listening when we connect
-        do spawn_immediately {
+        do spawntask_immediately {
             unsafe {
                 let io = local_sched::unsafe_borrow_io();
                 let mut listener = io.bind(addr).unwrap();
@@ -367,7 +367,7 @@ fn test_simple_tcp_server_and_client() {
             }
         }
 
-        do spawn_immediately {
+        do spawntask_immediately {
             unsafe {
                 let io = local_sched::unsafe_borrow_io();
                 let mut stream = io.connect(addr).unwrap();
@@ -383,7 +383,7 @@ fn test_read_and_block() {
     do run_in_newsched_task {
         let addr = next_test_ip4();
 
-        do spawn_immediately {
+        do spawntask_immediately {
             let io = unsafe { local_sched::unsafe_borrow_io() };
             let mut listener = io.bind(addr).unwrap();
             let mut stream = listener.listen().unwrap();
@@ -421,7 +421,7 @@ fn test_read_and_block() {
             listener.close();
         }
 
-        do spawn_immediately {
+        do spawntask_immediately {
             let io = unsafe { local_sched::unsafe_borrow_io() };
             let mut stream = io.connect(addr).unwrap();
             stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -440,7 +440,7 @@ fn test_read_read_read() {
         let addr = next_test_ip4();
         static MAX: uint = 500000;
         
-        do spawn_immediately {
+        do spawntask_immediately {
             unsafe {
                 let io = local_sched::unsafe_borrow_io();
                 let mut listener = io.bind(addr).unwrap();
@@ -456,7 +456,7 @@ fn test_read_read_read() {
             }
         }
 
-        do spawn_immediately {
+        do spawntask_immediately {
             let io = unsafe { local_sched::unsafe_borrow_io() };
             let mut stream = io.connect(addr).unwrap();
             let mut buf = [0, .. 2048];

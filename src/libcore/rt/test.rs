@@ -8,38 +8,56 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use cell::Cell;
 use result::{Result, Ok, Err};
 use super::io::net::ip::{IpAddr, Ipv4};
+use rt::local_services::LocalServices;
 
 /// Creates a new scheduler in a new thread and runs a task in it,
-/// then waits for the scheduler to exit.
+/// then waits for the scheduler to exit. Failure of the task
+/// will abort the process.
 pub fn run_in_newsched_task(f: ~fn()) {
-    use cell::Cell;
     use unstable::run_in_bare_thread;
     use super::sched::Task;
     use super::uvio::UvEventLoop;
 
-    let f = Cell(Cell(f));
+    let f = Cell(f);
 
     do run_in_bare_thread {
         let mut sched = ~UvEventLoop::new_scheduler();
-        let f = f.take();
-        let task = ~do Task::new(&mut sched.stack_pool) {
-            (f.take())();
-        };
+        let task = ~Task::with_local(&mut sched.stack_pool,
+                                     LocalServices::without_unwinding(),
+                                     f.take());
         sched.task_queue.push_back(task);
         sched.run();
     }
 }
 
-/// Create a new task and run it right now
-pub fn spawn_immediately(f: ~fn()) {
-    use cell::Cell;
+/// Test tasks will abort on failure instead of unwinding
+pub fn spawntask(f: ~fn()) {
     use super::*;
     use super::sched::*;
 
     let mut sched = local_sched::take();
-    let task = ~Task::new(&mut sched.stack_pool, f);
+    let task = ~Task::with_local(&mut sched.stack_pool,
+                                 LocalServices::without_unwinding(),
+                                 f);
+    do sched.switch_running_tasks_and_then(task) |task| {
+        let task = Cell(task);
+        let sched = local_sched::take();
+        sched.schedule_new_task(task.take());
+    }
+}
+
+/// Create a new task and run it right now. Aborts on failure
+pub fn spawntask_immediately(f: ~fn()) {
+    use super::*;
+    use super::sched::*;
+
+    let mut sched = local_sched::take();
+    let task = ~Task::with_local(&mut sched.stack_pool,
+                                 LocalServices::without_unwinding(),
+                                 f);
     do sched.switch_running_tasks_and_then(task) |task| {
         let task = Cell(task);
         do local_sched::borrow |sched| {
@@ -49,7 +67,7 @@ pub fn spawn_immediately(f: ~fn()) {
 }
 
 /// Spawn a task and wait for it to finish, returning whether it completed successfully or failed
-pub fn spawn_try(f: ~fn()) -> Result<(), ()> {
+pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
     use cell::Cell;
     use super::sched::*;
     use task;
