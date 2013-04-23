@@ -791,7 +791,7 @@ fn trans_def_datum_unadjusted(bcx: block,
             let rust_ty = ty::mk_ptr(
                 bcx.tcx(),
                 ty::mt {
-                    ty: ty::mk_mach_uint(bcx.tcx(), ast::ty_u8),
+                    ty: ty::mk_mach_uint(ast::ty_u8),
                     mutbl: ast::m_imm
                 }); // *u8
             (rust_ty, PointerCast(bcx, fn_data.llfn, T_ptr(T_i8())))

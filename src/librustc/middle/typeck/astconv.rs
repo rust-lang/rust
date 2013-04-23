@@ -352,8 +352,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
 
     tcx.ast_ty_to_ty_cache.insert(ast_ty.id, ty::atttce_unresolved);
     let typ = match ast_ty.node {
-      ast::ty_nil => ty::mk_nil(tcx),
-      ast::ty_bot => ty::mk_bot(tcx),
+      ast::ty_nil => ty::mk_nil(),
+      ast::ty_bot => ty::mk_bot(),
       ast::ty_box(ref mt) => {
         mk_pointer(self, rscope, mt, ty::vstore_box,
                    |tmt| ty::mk_box(tcx, tmt))
@@ -413,7 +413,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
                   fmt!("reference to trait `%s` where a type is expected; \
                         try `@%s`, `~%s`, or `&%s`",
                        path_str, path_str, path_str, path_str));
-              ty::mk_err(tcx)
+              ty::mk_err()
           }
           ast::def_ty(did) | ast::def_struct(did) => {
             ast_path_to_ty(self, rscope, did, path).ty
@@ -422,19 +422,19 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
             match nty {
               ast::ty_bool => {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
-                ty::mk_bool(tcx)
+                ty::mk_bool()
               }
               ast::ty_int(it) => {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
-                ty::mk_mach_int(tcx, it)
+                ty::mk_mach_int(it)
               }
               ast::ty_uint(uit) => {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
-                ty::mk_mach_uint(tcx, uit)
+                ty::mk_mach_uint(uit)
               }
               ast::ty_float(ft) => {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
-                ty::mk_mach_float(tcx, ft)
+                ty::mk_mach_float(ft)
               }
               ast::ty_str => {
                 tcx.sess.span_err(ast_ty.span,

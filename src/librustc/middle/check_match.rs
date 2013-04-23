@@ -211,7 +211,7 @@ pub fn is_useful(cx: @MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
     let real_pat = match m.find(|r| r[0].id != 0) {
       Some(r) => r[0], None => v[0]
     };
-    let left_ty = if real_pat.id == 0 { ty::mk_nil(cx.tcx) }
+    let left_ty = if real_pat.id == 0 { ty::mk_nil() }
                   else { ty::node_id_to_type(cx.tcx, real_pat.id) };
 
     match pat_ctor_id(cx, v[0]) {
