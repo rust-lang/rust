@@ -32,6 +32,7 @@ struct Outer {
 
 
 #[cfg(target_arch = "x86")]
+#[cfg(target_arch = "arm")]
 mod m {
     pub fn align() -> uint { 4u }
     pub fn size() -> uint { 8u }

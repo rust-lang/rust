@@ -27,6 +27,7 @@ pub fn main() {
 }
 
 #[cfg(target_arch = "x86")]
+#[cfg(target_arch = "arm")]
 pub fn main() {
     assert!((sys::size_of::<Cat>() == 4 as uint));
     assert!((sys::size_of::<Kitty>() == 8 as uint));
