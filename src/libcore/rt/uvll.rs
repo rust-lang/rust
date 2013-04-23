@@ -98,7 +98,7 @@ pub enum uv_req_type {
 
 pub unsafe fn malloc_handle(handle: uv_handle_type) -> *c_void {
     assert!(handle != UV_UNKNOWN_HANDLE && handle != UV_HANDLE_TYPE_MAX);
-    let size = unsafe { rust_uv_handle_size(handle as uint) };
+    let size = rust_uv_handle_size(handle as uint);
     let p = malloc(size);
     assert!(p.is_not_null());
     return p;
@@ -110,7 +110,7 @@ pub unsafe fn free_handle(v: *c_void) {
 
 pub unsafe fn malloc_req(req: uv_req_type) -> *c_void {
     assert!(req != UV_UNKNOWN_REQ && req != UV_REQ_TYPE_MAX);
-    let size = unsafe { rust_uv_req_size(req as uint) };
+    let size = rust_uv_req_size(req as uint);
     let p = malloc(size);
     assert!(p.is_not_null());
     return p;

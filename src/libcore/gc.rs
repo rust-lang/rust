@@ -231,66 +231,64 @@ unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
     // the stack.
     let mut reached_sentinel = ptr::is_null(sentinel);
     for stackwalk::walk_stack |frame| {
-        unsafe {
-            let pc = last_ret;
-            let Segment {segment: next_segment, boundary: boundary} =
-                find_segment_for_frame(frame.fp, segment);
-            segment = next_segment;
-            // Each stack segment is bounded by a morestack frame. The
-            // morestack frame includes two return addresses, one for
-            // morestack itself, at the normal offset from the frame
-            // pointer, and then a second return address for the
-            // function prologue (which called morestack after
-            // determining that it had hit the end of the stack).
-            // Since morestack itself takes two parameters, the offset
-            // for this second return address is 3 greater than the
-            // return address for morestack.
-            let ret_offset = if boundary { 4 } else { 1 };
-            last_ret = *ptr::offset(frame.fp, ret_offset) as *Word;
+        let pc = last_ret;
+        let Segment {segment: next_segment, boundary: boundary} =
+            find_segment_for_frame(frame.fp, segment);
+        segment = next_segment;
+        // Each stack segment is bounded by a morestack frame. The
+        // morestack frame includes two return addresses, one for
+        // morestack itself, at the normal offset from the frame
+        // pointer, and then a second return address for the
+        // function prologue (which called morestack after
+        // determining that it had hit the end of the stack).
+        // Since morestack itself takes two parameters, the offset
+        // for this second return address is 3 greater than the
+        // return address for morestack.
+        let ret_offset = if boundary { 4 } else { 1 };
+        last_ret = *ptr::offset(frame.fp, ret_offset) as *Word;
 
-            if ptr::is_null(pc) {
-                loop;
-            }
+        if ptr::is_null(pc) {
+            loop;
+        }
 
-            let mut delay_reached_sentinel = reached_sentinel;
-            let sp = is_safe_point(pc);
-            match sp {
-              Some(sp_info) => {
-                for walk_safe_point(frame.fp, sp_info) |root, tydesc| {
-                    // Skip roots until we see the sentinel.
-                    if !reached_sentinel {
-                        if root == sentinel {
-                            delay_reached_sentinel = true;
-                        }
-                        loop;
+        let mut delay_reached_sentinel = reached_sentinel;
+        let sp = is_safe_point(pc);
+        match sp {
+          Some(sp_info) => {
+            for walk_safe_point(frame.fp, sp_info) |root, tydesc| {
+                // Skip roots until we see the sentinel.
+                if !reached_sentinel {
+                    if root == sentinel {
+                        delay_reached_sentinel = true;
                     }
+                    loop;
+                }
 
-                    // Skip null pointers, which can occur when a
-                    // unique pointer has already been freed.
-                    if ptr::is_null(*root) {
-                        loop;
+                // Skip null pointers, which can occur when a
+                // unique pointer has already been freed.
+                if ptr::is_null(*root) {
+                    loop;
+                }
+
+                if ptr::is_null(tydesc) {
+                    // Root is a generic box.
+                    let refcount = **root;
+                    if mem | task_local_heap != 0 && refcount != -1 {
+                        if !visitor(root, tydesc) { return; }
+                    } else if mem | exchange_heap != 0 && refcount == -1 {
+                        if !visitor(root, tydesc) { return; }
                     }
-
-                    if ptr::is_null(tydesc) {
-                        // Root is a generic box.
-                        let refcount = **root;
-                        if mem | task_local_heap != 0 && refcount != -1 {
-                            if !visitor(root, tydesc) { return; }
-                        } else if mem | exchange_heap != 0 && refcount == -1 {
-                            if !visitor(root, tydesc) { return; }
-                        }
-                    } else {
-                        // Root is a non-immediate.
-                        if mem | stack != 0 {
-                            if !visitor(root, tydesc) { return; }
-                        }
+                } else {
+                    // Root is a non-immediate.
+                    if mem | stack != 0 {
+                        if !visitor(root, tydesc) { return; }
                     }
                 }
-              }
-              None => ()
             }
-            reached_sentinel = delay_reached_sentinel;
+          }
+          None => ()
         }
+        reached_sentinel = delay_reached_sentinel;
     }
 }
 

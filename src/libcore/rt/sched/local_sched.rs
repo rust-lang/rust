@@ -80,10 +80,8 @@ pub unsafe fn unsafe_borrow() -> &mut Scheduler {
 }
 
 pub unsafe fn unsafe_borrow_io() -> &mut IoFactoryObject {
-    unsafe {
-        let sched = unsafe_borrow();
-        return sched.event_loop.io().unwrap();
-    }
+    let sched = unsafe_borrow();
+    return sched.event_loop.io().unwrap();
 }
 
 fn tls_key() -> tls::Key {
