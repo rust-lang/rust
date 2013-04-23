@@ -1073,8 +1073,7 @@ pub fn compare_values(cx: block,
 
     match ty::get(rhs_t).sty {
         ty::ty_estr(ty::vstore_uniq) => {
-            let scratch_result = scratch_datum(cx, ty::mk_bool(cx.tcx()),
-                                               false);
+            let scratch_result = scratch_datum(cx, ty::mk_bool(), false);
             let scratch_lhs = alloca(cx, val_ty(lhs));
             Store(cx, lhs, scratch_lhs);
             let scratch_rhs = alloca(cx, val_ty(rhs));
@@ -1092,8 +1091,7 @@ pub fn compare_values(cx: block,
             }
         }
         ty::ty_estr(_) => {
-            let scratch_result = scratch_datum(cx, ty::mk_bool(cx.tcx()),
-                                               false);
+            let scratch_result = scratch_datum(cx, ty::mk_bool(), false);
             let did = cx.tcx().lang_items.str_eq_fn();
             let bcx = callee::trans_lang_call(cx, did,
                                                         ~[lhs, rhs],

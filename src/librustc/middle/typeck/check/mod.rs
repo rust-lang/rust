@@ -753,13 +753,13 @@ pub impl FnCtxt {
     }
 
     fn write_nil(&self, node_id: ast::node_id) {
-        self.write_ty(node_id, ty::mk_nil(self.tcx()));
+        self.write_ty(node_id, ty::mk_nil());
     }
     fn write_bot(&self, node_id: ast::node_id) {
-        self.write_ty(node_id, ty::mk_bot(self.tcx()));
+        self.write_ty(node_id, ty::mk_bot());
     }
     fn write_error(@mut self, node_id: ast::node_id) {
-        self.write_ty(node_id, ty::mk_err(self.tcx()));
+        self.write_ty(node_id, ty::mk_err());
     }
 
     fn to_ty(&self, ast_t: @ast::Ty) -> ty::t {
@@ -1008,21 +1008,21 @@ pub fn check_lit(fcx: @mut FnCtxt, lit: @ast::lit) -> ty::t {
 
     match lit.node {
       ast::lit_str(*) => ty::mk_estr(tcx, ty::vstore_slice(ty::re_static)),
-      ast::lit_int(_, t) => ty::mk_mach_int(tcx, t),
-      ast::lit_uint(_, t) => ty::mk_mach_uint(tcx, t),
+      ast::lit_int(_, t) => ty::mk_mach_int(t),
+      ast::lit_uint(_, t) => ty::mk_mach_uint(t),
       ast::lit_int_unsuffixed(_) => {
         // An unsuffixed integer literal could have any integral type,
         // so we create an integral type variable for it.
         ty::mk_int_var(tcx, fcx.infcx().next_int_var_id())
       }
-      ast::lit_float(_, t) => ty::mk_mach_float(tcx, t),
+      ast::lit_float(_, t) => ty::mk_mach_float(t),
       ast::lit_float_unsuffixed(_) => {
         // An unsuffixed floating point literal could have any floating point
         // type, so we create a floating point type variable for it.
         ty::mk_float_var(tcx, fcx.infcx().next_float_var_id())
       }
-      ast::lit_nil => ty::mk_nil(tcx),
-      ast::lit_bool(_) => ty::mk_bool(tcx)
+      ast::lit_nil => ty::mk_nil(),
+      ast::lit_bool(_) => ty::mk_bool()
     }
 }
 
@@ -1146,7 +1146,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         deref_args: DerefArgs) -> ty::t
     {
         if ty::type_is_error(method_fn_ty) {
-            let err_inputs = err_args(fcx.tcx(), args.len());
+            let err_inputs = err_args(args.len());
             check_argument_types(fcx, sp, err_inputs, callee_expr,
                                  args, sugar, deref_args);
             method_fn_ty
@@ -1209,7 +1209,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
             tcx.sess.span_err(sp, msg);
 
-            vec::from_elem(supplied_arg_count, ty::mk_err(tcx))
+            vec::from_elem(supplied_arg_count, ty::mk_err())
         };
 
         debug!("check_argument_types: formal_tys=%?",
@@ -1265,9 +1265,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
     }
 
-    fn err_args(tcx: ty::ctxt, len: uint) -> ~[ty::arg] {
+    fn err_args(len: uint) -> ~[ty::arg] {
         vec::from_fn(len, |_| ty::arg {mode: ast::expl(ast::by_copy),
-                                       ty: ty::mk_err(tcx)})
+                                       ty: ty::mk_err()})
     }
 
     // A generic function for checking assignment expressions
@@ -1278,7 +1278,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         check_expr(fcx, lhs);
         let lhs_type = fcx.expr_ty(lhs);
         check_expr_has_type(fcx, rhs, lhs_type);
-        fcx.write_ty(id, ty::mk_nil(fcx.ccx.tcx));
+        fcx.write_ty(id, ty::mk_nil());
         // The callee checks for bot / err, we don't need to
     }
 
@@ -1321,8 +1321,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 // check each arg against "error", in order to set up
                 // all the node type bindings
                 FnSig {bound_lifetime_names: opt_vec::Empty,
-                       inputs: err_args(fcx.tcx(), args.len()),
-                       output: ty::mk_err(fcx.tcx())}
+                       inputs: err_args(args.len()),
+                       output: ty::mk_err()}
             }
         };
 
@@ -1417,7 +1417,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 }
                 None => {
                     check_block_no_value(fcx, thn);
-                    ty::mk_nil(fcx.ccx.tcx)
+                    ty::mk_nil()
                 }
             };
 
@@ -1448,15 +1448,14 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                             ast::NoSugar, deref_args)
             }
             _ => {
-                let tcx = fcx.tcx();
                 unbound_method();
                 // Check the args anyway
                 // so we get all the error messages
-                let expected_ty = ty::mk_err(tcx);
+                let expected_ty = ty::mk_err();
                 check_method_argument_types(fcx, op_ex.span,
                                             expected_ty, op_ex, args,
                                             ast::NoSugar, deref_args);
-                ty::mk_err(tcx)
+                ty::mk_err()
             }
         }
     }
@@ -1494,7 +1493,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             let result_t = match op {
                 ast::eq | ast::ne | ast::lt | ast::le | ast::ge |
                 ast::gt => {
-                    ty::mk_bool(tcx)
+                    ty::mk_bool()
                 }
                 _ => {
                     lhs_t
@@ -1565,7 +1564,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
         }
 
-        ty::mk_err(tcx)
+        ty::mk_err()
     }
 
     fn check_user_unop(fcx: @mut FnCtxt,
@@ -1671,11 +1670,11 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 bound_lifetime_names: opt_vec::Empty,
                 inputs: fn_ty.sig.inputs.map(|an_arg| {
                     arg { mode: an_arg.mode,
-                         ty: ty::mk_err(tcx)
+                         ty: ty::mk_err()
                         }}),
-                output: ty::mk_err(tcx)
+                output: ty::mk_err()
             };
-            ty::mk_err(tcx)
+            ty::mk_err()
         }
         else {
             let fn_ty_copy = copy fn_ty;
@@ -1792,7 +1791,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         // Typecheck each field.
         for ast_fields.each |field| {
-            let mut expected_field_type = ty::mk_err(tcx);
+            let mut expected_field_type = ty::mk_err();
 
             let pair = class_field_map.find(&field.node.ident).
                                        map_consume(|x| *x);
@@ -1934,7 +1933,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                            fields,
                                            base_expr.is_none());
         if ty::type_is_error(fcx.node_ty(id)) {
-            struct_type = ty::mk_err(tcx);
+            struct_type = ty::mk_err();
         }
 
         // Check the base expression if necessary.
@@ -1943,7 +1942,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             Some(base_expr) => {
                 check_expr_has_type(fcx, base_expr, struct_type);
                 if ty::type_is_bot(fcx.node_ty(base_expr.id)) {
-                    struct_type = ty::mk_bot(tcx);
+                    struct_type = ty::mk_bot();
                 }
             }
         }
@@ -2040,10 +2039,10 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let inner_ty = match expected_sty {
             Some(ty::ty_closure(ref fty)) => {
                 match fcx.mk_subty(false, expr.span,
-                                   fty.sig.output, ty::mk_bool(tcx)) {
+                                   fty.sig.output, ty::mk_bool()) {
                     result::Ok(_) => {
                         ty::mk_closure(tcx, ty::ClosureTy {
-                            sig: FnSig {output: ty::mk_nil(tcx),
+                            sig: FnSig {output: ty::mk_nil(),
                                         ..copy fty.sig},
                             ..copy *fty
                         })
@@ -2070,7 +2069,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                             None);
                         err_happened = true;
                         fcx.write_error(expr.id);
-                        ty::mk_err(tcx)
+                        ty::mk_err()
                     }
                 }
             }
@@ -2085,7 +2084,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                      actual)
                             },
                             expected_t, None);
-                        let err_ty = ty::mk_err(tcx);
+                        let err_ty = ty::mk_err();
                         fcx.write_error(expr.id);
                         err_happened = true;
                         err_ty
@@ -2131,7 +2130,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         } else {
             let loop_body_ty =
                 ty::replace_closure_return_type(
-                    tcx, block_ty, ty::mk_bool(tcx));
+                    tcx, block_ty, ty::mk_bool());
             fcx.write_ty(expr.id, loop_body_ty);
         }
     }
@@ -2168,10 +2167,10 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 }
             }
             if any_error {
-                ty::mk_err(tcx)
+                ty::mk_err()
             }
             else if any_bot {
-                ty::mk_bot(tcx)
+                ty::mk_bot()
             }
             else {
                 ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutability}, tt)
@@ -2179,7 +2178,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
           }
           ast::expr_repeat(element, count_expr, mutbl) => {
             let _ = ty::eval_repeat_count(tcx, count_expr);
-            check_expr_with_hint(fcx, count_expr, ty::mk_uint(tcx));
+            check_expr_with_hint(fcx, count_expr, ty::mk_uint());
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             let mutability = match vst {
                 ast::expr_vstore_mut_box | ast::expr_vstore_mut_slice => {
@@ -2191,9 +2190,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             check_expr_has_type(fcx, element, t);
             let arg_t = fcx.expr_ty(element);
             if ty::type_is_error(arg_t) {
-                ty::mk_err(tcx)
+                ty::mk_err()
             } else if ty::type_is_bot(arg_t) {
-                ty::mk_bot(tcx)
+                ty::mk_bot()
             } else {
                 ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutability}, tt)
             }
@@ -2351,9 +2350,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         let tm = ty::mt { ty: fcx.expr_ty(oprnd), mutbl: mutbl };
         let oprnd_t = if ty::type_is_error(tm.ty) {
-            ty::mk_err(tcx)
+            ty::mk_err()
         } else if ty::type_is_bot(tm.ty) {
-            ty::mk_bot(tcx)
+            ty::mk_bot()
         }
         else {
             ty::mk_rptr(tcx, region, tm)
@@ -2387,7 +2386,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         };
         match expr_opt {
           None => match fcx.mk_eqty(false, expr.span,
-                                    ret_ty, ty::mk_nil(tcx)) {
+                                    ret_ty, ty::mk_nil()) {
             result::Ok(_) => { /* fall through */ }
             result::Err(_) => {
                 tcx.sess.span_err(
@@ -2403,7 +2402,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       }
       ast::expr_log(lv, e) => {
         check_expr_has_type(fcx, lv,
-                                  ty::mk_mach_uint(tcx, ast::ty_u32));
+                                  ty::mk_mach_uint(ast::ty_u32));
 
         // Note: this does not always execute, so do not propagate bot:
         check_expr(fcx, e);
@@ -2451,7 +2450,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
       }
       ast::expr_if(cond, ref thn, elsopt) => {
-        check_expr_has_type(fcx, cond, ty::mk_bool(tcx));
+        check_expr_has_type(fcx, cond, ty::mk_bool());
         check_then_else(fcx, thn, elsopt, id, expr.span);
         let cond_ty = fcx.expr_ty(cond);
         let then_ty = fcx.node_ty(thn.node.id);
@@ -2471,7 +2470,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
           // Other cases were handled by check_then_else
       }
       ast::expr_while(cond, ref body) => {
-        check_expr_has_type(fcx, cond, ty::mk_bool(tcx));
+        check_expr_has_type(fcx, cond, ty::mk_bool());
         check_block_no_value(fcx, body);
         let cond_ty = fcx.expr_ty(cond);
         let body_ty = fcx.node_ty(body.node.id);
@@ -2539,7 +2538,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                               has non-closure type: %s",
                              actual)
                     }, expected_t, None);
-                    let err_ty = ty::mk_err(tcx);
+                    let err_ty = ty::mk_err();
                     fcx.write_ty(id, err_ty);
                     err_ty
                 }
@@ -2706,7 +2705,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       }
       ast::expr_repeat(element, count_expr, mutbl) => {
         let count = ty::eval_repeat_count(tcx, count_expr);
-        check_expr_with_hint(fcx, count_expr, ty::mk_uint(tcx));
+        check_expr_with_hint(fcx, count_expr, ty::mk_uint());
         let t: ty::t = fcx.infcx().next_ty_var();
         check_expr_has_type(fcx, element, t);
         let element_ty = fcx.expr_ty(element);
@@ -2782,7 +2781,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
           else {
               let (base_t, derefs) = do_autoderef(fcx, expr.span, raw_base_t);
               let base_sty = structure_of(fcx, expr.span, base_t);
-              match ty::index_sty(tcx, &base_sty) {
+              match ty::index_sty(&base_sty) {
                   Some(mt) => {
                       require_integral(fcx, idx.span, idx_t);
                       fcx.write_ty(id, mt.ty);
@@ -2886,7 +2885,7 @@ pub fn check_stmt(fcx: @mut FnCtxt, stmt: @ast::stmt)  {
       ast::stmt_expr(expr, id) => {
         node_id = id;
         // Check with expected type of ()
-        check_expr_has_type(fcx, expr, ty::mk_nil(fcx.ccx.tcx));
+        check_expr_has_type(fcx, expr, ty::mk_nil());
         let expr_ty = fcx.expr_ty(expr);
         saw_bot = saw_bot || ty::type_is_bot(expr_ty);
         saw_err = saw_err || ty::type_is_error(expr_ty);
@@ -2912,7 +2911,7 @@ pub fn check_stmt(fcx: @mut FnCtxt, stmt: @ast::stmt)  {
 }
 
 pub fn check_block_no_value(fcx: @mut FnCtxt, blk: &ast::blk)  {
-    check_block_with_expected(fcx, blk, Some(ty::mk_nil(fcx.ccx.tcx)));
+    check_block_with_expected(fcx, blk, Some(ty::mk_nil()));
     let blkty = fcx.node_ty(blk.node.id);
     if ty::type_is_error(blkty) {
         fcx.write_error(blk.node.id);
@@ -2921,7 +2920,7 @@ pub fn check_block_no_value(fcx: @mut FnCtxt, blk: &ast::blk)  {
         fcx.write_bot(blk.node.id);
     }
     else {
-        let nilty = ty::mk_nil(fcx.ccx.tcx);
+        let nilty = ty::mk_nil();
         demand::suptype(fcx, blk.span, nilty, blkty);
     }
 }
@@ -3054,7 +3053,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                 let e = *e_ref;
                 debug!("disr expr, checking %s",
                        pprust::expr_to_str(e, ccx.tcx.sess.intr()));
-                let declty = ty::mk_int(ccx.tcx);
+                let declty = ty::mk_int();
                 let fcx = blank_fn_ctxt(ccx, rty, e.id);
                 check_const_with_ty(fcx, e.span, e, declty);
                 // check_expr (from check_const pass) doesn't guarantee
@@ -3173,7 +3172,7 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
             ty: ty::mk_ptr(
                 fcx.ccx.tcx,
                 ty::mt {
-                    ty: ty::mk_mach_uint(fcx.ccx.tcx, ast::ty_u8),
+                    ty: ty::mk_mach_uint(ast::ty_u8),
                     mutbl: ast::m_imm
                 })
         };
@@ -3296,7 +3295,7 @@ pub fn structurally_resolved_type(fcx: @mut FnCtxt, sp: span, tp: ty::t)
             fcx.type_error_message(sp, |_actual| {
                 ~"the type of this value must be known in this context"
             }, tp, None);
-            demand::suptype(fcx, sp, ty::mk_err(fcx.tcx()), tp);
+            demand::suptype(fcx, sp, ty::mk_err(), tp);
             tp
         }
     }
@@ -3413,10 +3412,10 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
     let tcx = ccx.tcx;
     let (n_tps, inputs, output) = match *ccx.tcx.sess.str_of(it.ident) {
       ~"size_of" |
-      ~"pref_align_of" | ~"min_align_of" => (1u, ~[], ty::mk_uint(ccx.tcx)),
+      ~"pref_align_of" | ~"min_align_of" => (1u, ~[], ty::mk_uint()),
       ~"init" => (1u, ~[], param(ccx, 0u)),
       ~"forget" => (1u, ~[arg(ast::by_copy, param(ccx, 0u))],
-                    ty::mk_nil(tcx)),
+                    ty::mk_nil()),
       ~"reinterpret_cast" => (2u, ~[arg(ast::by_ref, param(ccx, 0u))],
                               param(ccx, 1u)),
       ~"addr_of" => (1u, ~[arg(ast::by_ref, param(ccx, 0u))],
@@ -3426,41 +3425,41 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                      ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)),
                                      param(ccx, 0u))),
                arg(ast::by_copy, param(ccx, 0u))],
-         ty::mk_nil(tcx))
+         ty::mk_nil())
       }
-      ~"needs_drop" => (1u, ~[], ty::mk_bool(tcx)),
+      ~"needs_drop" => (1u, ~[], ty::mk_bool()),
 
       ~"atomic_cxchg"    | ~"atomic_cxchg_acq"| ~"atomic_cxchg_rel" => {
         (0u, ~[arg(ast::by_copy,
                    ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)),
-                                   ty::mk_int(tcx))),
-               arg(ast::by_copy, ty::mk_int(tcx)),
-               arg(ast::by_copy, ty::mk_int(tcx))],
-         ty::mk_int(tcx))
+                                   ty::mk_int())),
+               arg(ast::by_copy, ty::mk_int()),
+               arg(ast::by_copy, ty::mk_int())],
+         ty::mk_int())
       }
       ~"atomic_xchg"     | ~"atomic_xadd"     | ~"atomic_xsub"     |
       ~"atomic_xchg_acq" | ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
       ~"atomic_xchg_rel" | ~"atomic_xadd_rel" | ~"atomic_xsub_rel" => {
         (0u, ~[arg(ast::by_copy,
                    ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)),
-                                   ty::mk_int(tcx))),
-               arg(ast::by_copy, ty::mk_int(tcx))],
-         ty::mk_int(tcx))
+                                   ty::mk_int())),
+               arg(ast::by_copy, ty::mk_int())],
+         ty::mk_int())
       }
 
       ~"get_tydesc" => {
         // FIXME (#3730): return *intrinsic::tydesc, not *()
-        (1u, ~[], ty::mk_nil_ptr(tcx))
+        (1u, ~[], ty::mk_nil_ptr(ccx.tcx))
       }
       ~"visit_tydesc" => {
           let tydesc_name = special_idents::tydesc;
           assert!(tcx.intrinsic_defs.contains_key(&tydesc_name));
           let (_, tydesc_ty) = *tcx.intrinsic_defs.get(&tydesc_name);
-          let (_, visitor_object_ty) = ty::visitor_object_ty(tcx);
+          let (_, visitor_object_ty) = ty::visitor_object_ty(ccx.tcx);
           let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {ty: tydesc_ty,
                                                    mutbl: ast::m_imm});
           (0u, ~[arg(ast::by_copy, td_ptr),
-                 arg(ast::by_ref, visitor_object_ty)], ty::mk_nil(tcx))
+                 arg(ast::by_ref, visitor_object_ty)], ty::mk_nil())
       }
       ~"frame_address" => {
         let fty = ty::mk_closure(ccx.tcx, ty::ClosureTy {
@@ -3473,224 +3472,224 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                 inputs: ~[arg {mode: ast::expl(ast::by_copy),
                                ty: ty::mk_imm_ptr(
                                    ccx.tcx,
-                                   ty::mk_mach_uint(ccx.tcx, ast::ty_u8))}],
-                output: ty::mk_nil(ccx.tcx)
+                                   ty::mk_mach_uint(ast::ty_u8))}],
+                output: ty::mk_nil()
             }
         });
-        (0u, ~[arg(ast::by_ref, fty)], ty::mk_nil(tcx))
+        (0u, ~[arg(ast::by_ref, fty)], ty::mk_nil())
       }
       ~"morestack_addr" => {
-        (0u, ~[], ty::mk_nil_ptr(tcx))
+        (0u, ~[], ty::mk_nil_ptr(ccx.tcx))
       }
       ~"memmove32" => {
         (0, ~[arg(ast::by_copy,
                   ty::mk_ptr(tcx,
-                    ty::mt { ty: ty::mk_u8(tcx), mutbl: ast::m_mutbl })),
+                    ty::mt { ty: ty::mk_u8(), mutbl: ast::m_mutbl })),
               arg(ast::by_copy,
                   ty::mk_ptr(tcx,
-                    ty::mt { ty: ty::mk_u8(tcx), mutbl: ast::m_imm })),
+                    ty::mt { ty: ty::mk_u8(), mutbl: ast::m_imm })),
               arg(ast::by_copy,
-                  ty::mk_u32(tcx))],
-         ty::mk_nil(tcx))
+                  ty::mk_u32())],
+         ty::mk_nil())
       }
       ~"memmove64" => {
         (0, ~[arg(ast::by_copy,
                   ty::mk_ptr(tcx,
-                    ty::mt { ty: ty::mk_u8(tcx), mutbl: ast::m_mutbl })),
+                    ty::mt { ty: ty::mk_u8(), mutbl: ast::m_mutbl })),
               arg(ast::by_copy,
                   ty::mk_ptr(tcx,
-                    ty::mt { ty: ty::mk_u8(tcx), mutbl: ast::m_imm })),
+                    ty::mt { ty: ty::mk_u8(), mutbl: ast::m_imm })),
               arg(ast::by_copy,
-                  ty::mk_u64(tcx))],
-         ty::mk_nil(tcx))
+                  ty::mk_u64())],
+         ty::mk_nil())
       }
      ~"sqrtf32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
-         ty::mk_f32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f32())],
+         ty::mk_f32())
      }
      ~"sqrtf64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
-         ty::mk_f64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f64())],
+         ty::mk_f64())
      }
      ~"powif32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx)),
-               arg(ast::by_copy, ty::mk_i32(tcx))],
-         ty::mk_f32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f32()),
+               arg(ast::by_copy, ty::mk_i32())],
+         ty::mk_f32())
      }
      ~"powif64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx)),
-               arg(ast::by_copy, ty::mk_i32(tcx))],
-         ty::mk_f64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f64()),
+               arg(ast::by_copy, ty::mk_i32())],
+         ty::mk_f64())
      }
      ~"sinf32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
-         ty::mk_f32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f32())],
+         ty::mk_f32())
      }
      ~"sinf64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
-         ty::mk_f64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f64())],
+         ty::mk_f64())
      }
      ~"cosf32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
-         ty::mk_f32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f32())],
+         ty::mk_f32())
      }
      ~"cosf64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
-         ty::mk_f64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f64())],
+         ty::mk_f64())
      }
      ~"powf32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx)),
-               arg(ast::by_copy, ty::mk_f32(tcx))],
-         ty::mk_f32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f32()),
+               arg(ast::by_copy, ty::mk_f32())],
+         ty::mk_f32())
      }
      ~"powf64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx)),
-               arg(ast::by_copy, ty::mk_f64(tcx))],
-         ty::mk_f64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f64()),
+               arg(ast::by_copy, ty::mk_f64())],
+         ty::mk_f64())
      }
      ~"expf32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
-         ty::mk_f32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f32())],
+         ty::mk_f32())
      }
      ~"expf64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
-         ty::mk_f64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f64())],
+         ty::mk_f64())
      }
      ~"exp2f32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
-         ty::mk_f32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f32())],
+         ty::mk_f32())
      }
      ~"exp2f64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
-         ty::mk_f64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f64())],
+         ty::mk_f64())
      }
      ~"logf32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
-         ty::mk_f32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f32())],
+         ty::mk_f32())
      }
      ~"logf64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
-         ty::mk_f64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f64())],
+         ty::mk_f64())
      }
      ~"log10f32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
-         ty::mk_f32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f32())],
+         ty::mk_f32())
      }
      ~"log10f64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
-         ty::mk_f64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f64())],
+         ty::mk_f64())
      }
      ~"log2f32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
-         ty::mk_f32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f32())],
+         ty::mk_f32())
      }
      ~"log2f64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
-         ty::mk_f64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f64())],
+         ty::mk_f64())
      }
      ~"fmaf32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx)),
-               arg(ast::by_copy, ty::mk_f32(tcx)),
-               arg(ast::by_copy, ty::mk_f32(tcx))],
-         ty::mk_f32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f32()),
+               arg(ast::by_copy, ty::mk_f32()),
+               arg(ast::by_copy, ty::mk_f32())],
+         ty::mk_f32())
      }
      ~"fmaf64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx)),
-               arg(ast::by_copy, ty::mk_f64(tcx)),
-               arg(ast::by_copy, ty::mk_f64(tcx))],
-         ty::mk_f64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f64()),
+               arg(ast::by_copy, ty::mk_f64()),
+               arg(ast::by_copy, ty::mk_f64())],
+         ty::mk_f64())
      }
      ~"fabsf32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
-         ty::mk_f32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f32())],
+         ty::mk_f32())
      }
      ~"fabsf64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
-         ty::mk_f64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f64())],
+         ty::mk_f64())
      }
      ~"floorf32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
-         ty::mk_f32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f32())],
+         ty::mk_f32())
      }
      ~"floorf64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
-         ty::mk_f64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f64())],
+         ty::mk_f64())
      }
      ~"ceilf32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
-         ty::mk_f32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f32())],
+         ty::mk_f32())
      }
      ~"ceilf64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
-         ty::mk_f64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f64())],
+         ty::mk_f64())
      }
      ~"truncf32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
-         ty::mk_f32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f32())],
+         ty::mk_f32())
      }
      ~"truncf64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
-         ty::mk_f64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_f64())],
+         ty::mk_f64())
      }
      ~"ctpop8" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_i8(tcx))],
-         ty::mk_i8(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_i8())],
+         ty::mk_i8())
      }
      ~"ctpop16" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_i16(tcx))],
-         ty::mk_i16(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_i16())],
+         ty::mk_i16())
      }
      ~"ctpop32" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_i32(tcx))],
-         ty::mk_i32(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_i32())],
+         ty::mk_i32())
      }
      ~"ctpop64" => {
-        (0u, ~[arg(ast::by_copy, ty::mk_i64(tcx))],
-         ty::mk_i64(tcx))
+        (0u, ~[arg(ast::by_copy, ty::mk_i64())],
+         ty::mk_i64())
      }
      ~"ctlz8" => {
-         (0u, ~[arg(ast::by_copy, ty::mk_i8(tcx))],
-         ty::mk_i8(tcx))
+         (0u, ~[arg(ast::by_copy, ty::mk_i8())],
+         ty::mk_i8())
      }
      ~"ctlz16" => {
-         (0u, ~[arg(ast::by_copy, ty::mk_i16(tcx))],
-         ty::mk_i16(tcx))
+         (0u, ~[arg(ast::by_copy, ty::mk_i16())],
+         ty::mk_i16())
      }
      ~"ctlz32" => {
-         (0u, ~[arg(ast::by_copy, ty::mk_i32(tcx))],
-         ty::mk_i32(tcx))
+         (0u, ~[arg(ast::by_copy, ty::mk_i32())],
+         ty::mk_i32())
      }
      ~"ctlz64" => {
-         (0u, ~[arg(ast::by_copy, ty::mk_i64(tcx))],
-         ty::mk_i64(tcx))
+         (0u, ~[arg(ast::by_copy, ty::mk_i64())],
+         ty::mk_i64())
      }
      ~"cttz8" => {
-         (0u, ~[arg(ast::by_copy, ty::mk_i8(tcx))],
-         ty::mk_i8(tcx))
+         (0u, ~[arg(ast::by_copy, ty::mk_i8())],
+         ty::mk_i8())
      }
      ~"cttz16" => {
-         (0u, ~[arg(ast::by_copy, ty::mk_i16(tcx))],
-         ty::mk_i16(tcx))
+         (0u, ~[arg(ast::by_copy, ty::mk_i16())],
+         ty::mk_i16())
      }
      ~"cttz32" => {
-         (0u, ~[arg(ast::by_copy, ty::mk_i32(tcx))],
-         ty::mk_i32(tcx))
+         (0u, ~[arg(ast::by_copy, ty::mk_i32())],
+         ty::mk_i32())
      }
      ~"cttz64" => {
-         (0u, ~[arg(ast::by_copy, ty::mk_i64(tcx))],
-         ty::mk_i64(tcx))
+         (0u, ~[arg(ast::by_copy, ty::mk_i64())],
+         ty::mk_i64())
      }
      ~"bswap16" => {
-         (0u, ~[arg(ast::by_copy, ty::mk_i16(tcx))],
-         ty::mk_i16(tcx))
+         (0u, ~[arg(ast::by_copy, ty::mk_i16())],
+         ty::mk_i16())
      }
      ~"bswap32" => {
-         (0u, ~[arg(ast::by_copy, ty::mk_i32(tcx))],
-         ty::mk_i32(tcx))
+         (0u, ~[arg(ast::by_copy, ty::mk_i32())],
+         ty::mk_i32())
      }
      ~"bswap64" => {
-         (0u, ~[arg(ast::by_copy, ty::mk_i64(tcx))],
-         ty::mk_i64(tcx))
+         (0u, ~[arg(ast::by_copy, ty::mk_i64())],
+         ty::mk_i64())
      }
      ref other => {
         tcx.sess.span_err(it.span, ~"unrecognized intrinsic function: `" +

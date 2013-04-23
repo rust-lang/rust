@@ -307,7 +307,7 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
                     abis: AbiSet::Rust(),
                     sig: FnSig {bound_lifetime_names: opt_vec::Empty,
                                 inputs: ~[],
-                                output: ty::mk_nil(tcx)}}))
+                                output: ty::mk_nil()}}))
         }
         ty::ty_closure(ref fty) => {
             Some(normalized_closure_ty(tcx, fty.sigil))
@@ -323,7 +323,7 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
             Some(normalized_closure_ty(tcx, sigil))
         }
         ty::ty_ptr(_) => {
-            Some(ty::mk_uint(tcx))
+            Some(ty::mk_uint())
         }
         _ => {
             None
@@ -342,7 +342,7 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
                 region: ty::re_static,
                 sig: ty::FnSig {bound_lifetime_names: opt_vec::Empty,
                                 inputs: ~[],
-                                output: ty::mk_nil(tcx)}})
+                                output: ty::mk_nil()}})
     }
 }
 

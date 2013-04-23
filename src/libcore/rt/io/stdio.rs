@@ -17,9 +17,9 @@ pub fn stdout() -> StdWriter { fail!() }
 
 pub fn stderr() -> StdReader { fail!() }
 
-pub fn print(s: &str) { fail!() }
+pub fn print(_s: &str) { fail!() }
 
-pub fn println(s: &str) { fail!() }
+pub fn println(_s: &str) { fail!() }
 
 pub enum StdStream {
     StdIn,

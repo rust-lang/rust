@@ -749,7 +749,7 @@ pub impl mem_categorization_ctxt {
     fn cat_index<N:ast_node>(&self,
                               elt: N,
                               base_cmt: cmt) -> cmt {
-        let mt = match ty::index(self.tcx, base_cmt.ty) {
+        let mt = match ty::index(base_cmt.ty) {
           Some(mt) => mt,
           None => {
             self.tcx.sess.span_bug(

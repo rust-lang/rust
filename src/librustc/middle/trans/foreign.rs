@@ -768,7 +768,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             let frameaddress_val = Call(bcx, frameaddress, ~[C_i32(0i32)]);
             let star_u8 = ty::mk_imm_ptr(
                 bcx.tcx(),
-                ty::mk_mach_uint(bcx.tcx(), ast::ty_u8));
+                ty::mk_mach_uint(ast::ty_u8));
             let fty = ty::mk_closure(bcx.tcx(), ty::ClosureTy {
                 purity: ast::impure_fn,
                 sigil: ast::BorrowedSigil,
@@ -777,13 +777,13 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 sig: FnSig {bound_lifetime_names: opt_vec::Empty,
                             inputs: ~[arg {mode: ast::expl(ast::by_copy),
                                            ty: star_u8}],
-                            output: ty::mk_nil(bcx.tcx())}
+                            output: ty::mk_nil()}
             });
             let datum = Datum {val: get_param(decl, first_real_arg),
                                mode: ByRef, ty: fty, source: ZeroMem};
             let arg_vals = ~[frameaddress_val];
             bcx = trans_call_inner(
-                bcx, None, fty, ty::mk_nil(bcx.tcx()),
+                bcx, None, fty, ty::mk_nil(),
                 |bcx| Callee {bcx: bcx, data: Closure(datum)},
                 ArgVals(arg_vals), Ignore, DontAutorefArg);
         }
@@ -791,7 +791,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             // XXX This is a hack to grab the address of this particular
             // native function. There should be a general in-language
             // way to do this
-            let llfty = type_of_fn(bcx.ccx(), ~[], ty::mk_nil(bcx.tcx()));
+            let llfty = type_of_fn(bcx.ccx(), ~[], ty::mk_nil());
             let morestack_addr = decl_cdecl_fn(
                 bcx.ccx().llmod, ~"__morestack", llfty);
             let morestack_addr = PointerCast(bcx, morestack_addr,

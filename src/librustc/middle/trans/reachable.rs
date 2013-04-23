@@ -95,7 +95,7 @@ fn traverse_public_mod(cx: &ctx, mod_id: node_id, m: &_mod) {
 }
 
 fn traverse_public_item(cx: &ctx, item: @item) {
-    // XXX: it shouldn't be necessary to do this
+    // FIXME #6021: naming rmap shouldn't be necessary
     let rmap: &mut HashSet<node_id> = cx.rmap;
     if rmap.contains(&item.id) { return; }
     rmap.insert(item.id);
@@ -150,7 +150,7 @@ fn traverse_public_item(cx: &ctx, item: @item) {
 }
 
 fn traverse_ty<'a, 'b>(ty: @Ty, cx: &'b ctx<'a>, v: visit::vt<&'b ctx<'a>>) {
-    // XXX: it shouldn't be necessary to do this
+    // FIXME #6021: naming rmap shouldn't be necessary
     let rmap: &mut HashSet<node_id> = cx.rmap;
     if rmap.contains(&ty.id) { return; }
     rmap.insert(ty.id);

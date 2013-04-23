@@ -98,7 +98,7 @@ pub impl Reflector {
         for args.eachi |i, a| {
             debug!("arg %u: %s", i, val_str(bcx.ccx().tn, *a));
         }
-        let bool_ty = ty::mk_bool(tcx);
+        let bool_ty = ty::mk_bool();
         let scratch = scratch_datum(bcx, bool_ty, false);
         // XXX: Should not be BoxTraitStore!
         let bcx = callee::trans_call_inner(
@@ -283,7 +283,7 @@ pub impl Reflector {
                 let sym = mangle_internal_name_by_path_and_seq(ccx, sub_path, ~"get_disr");
                 let args = [ty::arg { mode: ast::expl(ast::by_copy),
                                       ty: opaqueptrty }];
-                let llfty = type_of_fn(ccx, args, ty::mk_int(ccx.tcx));
+                let llfty = type_of_fn(ccx, args, ty::mk_int());
                 let llfdecl = decl_internal_cdecl_fn(ccx.llmod, sym, llfty);
                 let arg = unsafe {
                     llvm::LLVMGetParam(llfdecl, first_real_arg as c_uint)
@@ -291,7 +291,7 @@ pub impl Reflector {
                 let fcx = new_fn_ctxt(ccx,
                                       ~[],
                                       llfdecl,
-                                      ty::mk_uint(ccx.tcx),
+                                      ty::mk_uint(),
                                       None);
                 let bcx = top_scope_block(fcx, None);
                 let arg = BitCast(bcx, arg, llptrty);

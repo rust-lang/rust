@@ -999,9 +999,9 @@ pub fn T_opaque_vec(targ_cfg: @session::config) -> TypeRef {
 pub fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let ptr = ty::mk_ptr(
         tcx,
-        ty::mt {ty: ty::mk_nil(tcx), mutbl: ast::m_imm}
+        ty::mt {ty: ty::mk_nil(), mutbl: ast::m_imm}
     );
-    return ty::mk_tup(tcx, ~[ty::mk_uint(tcx), ty::mk_type(tcx),
+    return ty::mk_tup(tcx, ~[ty::mk_uint(), ty::mk_type(tcx),
                          ptr, ptr,
                          t]);
 }
