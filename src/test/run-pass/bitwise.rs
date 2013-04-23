@@ -11,6 +11,7 @@
 
 
 #[cfg(target_arch = "x86")]
+#[cfg(target_arch = "arm")]
 fn target() {
     assert!((-1000 as uint >> 3u == 536870787u));
 }
