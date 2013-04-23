@@ -11,8 +11,6 @@
 // xfail-pretty (extra blank line is inserted in vec::mapi call)
 // multi tasking k-nucleotide
 
-#[legacy_modes];
-
 extern mod std;
 use std::sort;
 use core::hashmap::HashMap;
@@ -105,9 +103,9 @@ fn windows_with_carry(bb: &[u8], nn: uint,
    return vec::slice(bb, len - (nn - 1u), len).to_vec();
 }
 
-fn make_sequence_processor(sz: uint, from_parent: comm::Port<~[u8]>,
+fn make_sequence_processor(sz: uint,
+                           from_parent: comm::Port<~[u8]>,
                            to_parent: comm::Chan<~str>) {
-
    let mut freqs: HashMap<~[u8], uint> = HashMap::new();
    let mut carry: ~[u8] = ~[];
    let mut total: uint = 0u;

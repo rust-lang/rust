@@ -11,8 +11,6 @@
 // xfail-fast - check-fast doesn't understand aux-build
 // aux-build:cci_iter_lib.rs
 
-#[legacy_modes];
-
 extern mod cci_iter_lib;
 
 pub fn main() {
