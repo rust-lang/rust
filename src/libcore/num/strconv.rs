@@ -655,7 +655,6 @@ mod test {
     use option::*;
 
     #[test]
-    #[ignore(reason = "fails in x86")]
     fn from_str_ignore_underscores() {
         let s : Option<u8> = from_str_common("__1__", 2, false, false, false,
                                              ExpNone, false, true);
@@ -665,9 +664,9 @@ mod test {
                                              ExpNone, false, false);
         assert_eq!(n, None);
 
-        let f : Option<f32> = from_str_common("_1_._1_e_1_", 10, false, true, false,
+        let f : Option<f32> = from_str_common("_1_._5_e_1_", 10, false, true, false,
                                               ExpDec, false, true);
-        assert_eq!(f, Some(1.1e1f32));
+        assert_eq!(f, Some(1.5e1f32));
     }
 
     #[test]
