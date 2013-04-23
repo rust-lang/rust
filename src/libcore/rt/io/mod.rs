@@ -153,6 +153,7 @@ pub mod mem;
 pub mod stdio;
 
 /// Implementations for Option
+#[cfg(not(stage0))] // Requires condition! fixes
 mod option;
 
 /// Basic stream compression. XXX: Belongs with other flate code

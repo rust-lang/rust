@@ -886,6 +886,28 @@ rust_boxed_region_free(boxed_region *region, rust_opaque_box *box) {
     region->free(box);
 }
 
+typedef void *(rust_try_fn)(void*, void*);
+
+extern "C" CDECL uintptr_t
+rust_try(rust_try_fn f, void *fptr, void *env) {
+    try {
+        f(fptr, env);
+    } catch (uintptr_t token) {
+        assert(token != 0);
+        return token;
+    }
+    return 0;
+}
+
+extern "C" CDECL void
+rust_begin_unwind(uintptr_t token) {
+#ifndef __WIN32__
+    throw token;
+#else
+    abort("failing on win32");
+#endif
+}
+
 //
 // Local Variables:
 // mode: C++

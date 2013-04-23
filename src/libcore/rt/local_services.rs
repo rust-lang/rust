@@ -19,7 +19,8 @@
 //! (freestanding rust with local services?).
 
 use prelude::*;
-use libc::c_void;
+use libc::{c_void, uintptr_t};
+use cast::transmute;
 use super::sched::{Task, local_sched};
 use super::local_heap::LocalHeap;
 
@@ -35,7 +36,10 @@ pub struct LocalServices {
 pub struct GarbageCollector;
 pub struct LocalStorage(*c_void, Option<~fn(*c_void)>);
 pub struct Logger;
-pub struct Unwinder;
+
+pub struct Unwinder {
+    unwinding: bool,
+}
 
 impl LocalServices {
     pub fn new() -> LocalServices {
@@ -44,9 +48,20 @@ impl LocalServices {
             gc: GarbageCollector,
             storage: LocalStorage(ptr::null(), None),
             logger: Logger,
-            unwinder: Unwinder,
+            unwinder: Unwinder { unwinding: false },
             destroyed: false
         }
+    }
+
+    pub fn run(&mut self, f: &fn()) {
+        // This is just an assertion that `run` was called unsafely
+        // and this instance of LocalServices is still accessible.
+        do borrow_local_services |sched| {
+            assert!(ptr::ref_eq(sched, self));
+        }
+
+        self.unwinder.try(f);
+        self.destroy();
     }
 
     /// Must be called manually before finalization to clean up
@@ -54,7 +69,7 @@ impl LocalServices {
     /// LocalServices to be available recursively so this must be
     /// called unsafely, without removing LocalServices from
     /// thread-local-storage.
-    pub fn destroy(&mut self) {
+    fn destroy(&mut self) {
         // This is just an assertion that `destroy` was called unsafely
         // and this instance of LocalServices is still accessible.
         do borrow_local_services |sched| {
@@ -70,6 +85,51 @@ impl LocalServices {
 
 impl Drop for LocalServices {
     fn finalize(&self) { assert!(self.destroyed) }
+}
+
+// Just a sanity check to make sure we are catching a Rust-thrown exception
+static UNWIND_TOKEN: uintptr_t = 839147;
+
+impl Unwinder {
+    pub fn try(&mut self, f: &fn()) {
+        use sys::Closure;
+
+        unsafe {
+            let closure: Closure = transmute(f);
+            let code = transmute(closure.code);
+            let env = transmute(closure.env);
+
+            let token = rust_try(try_fn, code, env);
+            assert!(token == 0 || token == UNWIND_TOKEN);
+        }
+
+        extern fn try_fn(code: *c_void, env: *c_void) {
+            unsafe {
+                let closure: Closure = Closure {
+                    code: transmute(code),
+                    env: transmute(env),
+                };
+                let closure: &fn() = transmute(closure);
+                closure();
+            }
+        }
+
+        extern {
+            #[rust_stack]
+            fn rust_try(f: *u8, code: *c_void, data: *c_void) -> uintptr_t;
+        }
+    }
+
+    pub fn begin_unwind(&mut self) -> ! {
+        self.unwinding = true;
+        unsafe {
+            rust_begin_unwind(UNWIND_TOKEN);
+            return transmute(());
+        }
+        extern {
+            fn rust_begin_unwind(token: uintptr_t);
+        }
+    }
 }
 
 /// Borrow a pointer to the installed local services.
@@ -123,6 +183,16 @@ mod test {
                 local_data_set(key, @~"data");
                 assert!(*local_data_get(key).get() == ~"data");
             }
+        }
+    }
+
+    #[test]
+    fn unwind() {
+        do run_in_newsched_task() {
+            let result = spawn_try(||());
+            assert!(result.is_ok());
+            let result = spawn_try(|| fail!());
+            assert!(result.is_err());
         }
     }
 }

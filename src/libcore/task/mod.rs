@@ -558,8 +558,22 @@ pub fn yield() {
 pub fn failing() -> bool {
     //! True if the running task has failed
 
-    unsafe {
-        rt::rust_task_is_unwinding(rt::rust_get_task())
+    use rt::{context, OldTaskContext};
+    use rt::local_services::borrow_local_services;
+
+    match context() {
+        OldTaskContext => {
+            unsafe {
+                rt::rust_task_is_unwinding(rt::rust_get_task())
+            }
+        }
+        _ => {
+            let mut unwinding = false;
+            do borrow_local_services |local| {
+                unwinding = local.unwinder.unwinding;
+            }
+            return unwinding;
+        }
     }
 }
 
