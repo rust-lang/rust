@@ -49,3 +49,14 @@ mod m {
         }
     }
 }
+
+#[cfg(target_os = "android")]
+mod m {
+    #[cfg(target_arch = "arm")]
+    pub fn main() {
+        unsafe {
+            assert!(::rusti::pref_align_of::<u64>() == 8u);
+            assert!(::rusti::min_align_of::<u64>() == 4u);
+        }
+    }
+}
