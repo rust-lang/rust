@@ -16,10 +16,10 @@ use core::libc;
 
 fn callback<T>(_f: &fn() -> T) -> T { fail!() }
 
-fn bad1() { unsafe {} }                  //~ ERROR: unnecessary "unsafe" block
-fn bad2() { unsafe { bad1() } }          //~ ERROR: unnecessary "unsafe" block
-unsafe fn bad4() { unsafe {} }           //~ ERROR: unnecessary "unsafe" block
-fn bad5() { unsafe { do callback {} } }  //~ ERROR: unnecessary "unsafe" block
+fn bad1() { unsafe {} }                  //~ ERROR: unnecessary `unsafe` block
+fn bad2() { unsafe { bad1() } }          //~ ERROR: unnecessary `unsafe` block
+unsafe fn bad4() { unsafe {} }           //~ ERROR: unnecessary `unsafe` block
+fn bad5() { unsafe { do callback {} } }  //~ ERROR: unnecessary `unsafe` block
 
 unsafe fn good0() { libc::exit(1) }
 fn good1() { unsafe { libc::exit(1) } }
