@@ -503,10 +503,11 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     if vec::len(impl_m.fty.sig.inputs) != vec::len(trait_m.fty.sig.inputs) {
         tcx.sess.span_err(
             cm.span,
-            fmt!("method `%s` has %u parameters \
+            fmt!("method `%s` has %u parameter%s \
                   but the trait has %u",
                  *tcx.sess.str_of(trait_m.ident),
                  vec::len(impl_m.fty.sig.inputs),
+                 if vec::len(impl_m.fty.sig.inputs) == 1 { "" } else { "s" },
                  vec::len(trait_m.fty.sig.inputs)));
         return;
     }
