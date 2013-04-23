@@ -374,7 +374,6 @@ impl ext_ctxt_ast_builder for @ext_ctxt {
                         ],
                         codemap::dummy_sp()
                     ),
-                    ast::type_value_ns,
                     self.next_id()
                 ),
                 span: codemap::dummy_sp()
