@@ -105,6 +105,7 @@ pub use iter::{ExtendedMutableIter};
 
 pub use num::{Num, NumCast};
 pub use num::{Signed, Unsigned, Integer};
+pub use num::{Fractional, Real, RealExt};
 pub use ptr::Ptr;
 pub use to_str::ToStr;
 pub use clone::Clone;

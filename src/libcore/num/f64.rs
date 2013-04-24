@@ -337,31 +337,206 @@ impl Signed for f64 {
     fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
 }
 
-impl num::Round for f64 {
+impl Fractional for f64 {
+    /// The reciprocal (multiplicative inverse) of the number
     #[inline(always)]
-    fn round(&self, mode: num::RoundMode) -> f64 {
-        match mode {
-            num::RoundDown                           => floor(*self),
-            num::RoundUp                             => ceil(*self),
-            num::RoundToZero   if self.is_negative() => ceil(*self),
-            num::RoundToZero                         => floor(*self),
-            num::RoundFromZero if self.is_negative() => floor(*self),
-            num::RoundFromZero                       => ceil(*self)
-        }
-    }
+    fn recip(&self) -> f64 { 1.0 / *self }
+}
+
+impl Real for f64 {
+    /// Archimedes' constant
+    #[inline(always)]
+    fn pi() -> f64 { 3.14159265358979323846264338327950288 }
+
+    /// 2.0 * pi
+    #[inline(always)]
+    fn two_pi() -> f64 { 6.28318530717958647692528676655900576 }
+
+    /// pi / 2.0
+    #[inline(always)]
+    fn frac_pi_2() -> f64 { 1.57079632679489661923132169163975144 }
+
+    /// pi / 3.0
+    #[inline(always)]
+    fn frac_pi_3() -> f64 { 1.04719755119659774615421446109316763 }
+
+    /// pi / 4.0
+    #[inline(always)]
+    fn frac_pi_4() -> f64 { 0.785398163397448309615660845819875721 }
+
+    /// pi / 6.0
+    #[inline(always)]
+    fn frac_pi_6() -> f64 { 0.52359877559829887307710723054658381 }
+
+    /// pi / 8.0
+    #[inline(always)]
+    fn frac_pi_8() -> f64 { 0.39269908169872415480783042290993786 }
+
+    /// 1.0 / pi
+    #[inline(always)]
+    fn frac_1_pi() -> f64 { 0.318309886183790671537767526745028724 }
+
+    /// 2.0 / pi
+    #[inline(always)]
+    fn frac_2_pi() -> f64 { 0.636619772367581343075535053490057448 }
+
+    /// 2.0 / sqrt(pi)
+    #[inline(always)]
+    fn frac_2_sqrtpi() -> f64 { 1.12837916709551257389615890312154517 }
+
+    /// sqrt(2.0)
+    #[inline(always)]
+    fn sqrt2() -> f64 { 1.41421356237309504880168872420969808 }
+
+    /// 1.0 / sqrt(2.0)
+    #[inline(always)]
+    fn frac_1_sqrt2() -> f64 { 0.707106781186547524400844362104849039 }
+
+    /// Euler's number
+    #[inline(always)]
+    fn e() -> f64 { 2.71828182845904523536028747135266250 }
+
+    /// log2(e)
+    #[inline(always)]
+    fn log2_e() -> f64 { 1.44269504088896340735992468100189214 }
+
+    /// log10(e)
+    #[inline(always)]
+    fn log10_e() -> f64 { 0.434294481903251827651128918916605082 }
+
+    /// log(2.0)
+    #[inline(always)]
+    fn log_2() -> f64 { 0.693147180559945309417232121458176568 }
+
+    /// log(10.0)
+    #[inline(always)]
+    fn log_10() -> f64 { 2.30258509299404568401799145468436421 }
 
     #[inline(always)]
     fn floor(&self) -> f64 { floor(*self) }
+
     #[inline(always)]
     fn ceil(&self) -> f64 { ceil(*self) }
+
     #[inline(always)]
-    fn fract(&self) -> f64 {
-        if self.is_negative() {
-            (*self) - ceil(*self)
-        } else {
-            (*self) - floor(*self)
-        }
+    fn round(&self) -> f64 { round(*self) }
+
+    #[inline(always)]
+    fn trunc(&self) -> f64 { trunc(*self) }
+
+    /// The fractional part of the number, calculated using: `n - floor(n)`
+    #[inline(always)]
+    fn fract(&self) -> f64 { *self - self.floor() }
+
+    #[inline(always)]
+    fn pow(&self, n: f64) -> f64 { pow(*self, n) }
+
+    #[inline(always)]
+    fn exp(&self) -> f64 { exp(*self) }
+
+    #[inline(always)]
+    fn exp2(&self) -> f64 { exp2(*self) }
+
+    #[inline(always)]
+    fn expm1(&self) -> f64 { expm1(*self) }
+
+    #[inline(always)]
+    fn ldexp(&self, n: int) -> f64 { ldexp(*self, n as c_int) }
+
+    #[inline(always)]
+    fn log(&self) -> f64 { ln(*self) }
+
+    #[inline(always)]
+    fn log2(&self) -> f64 { log2(*self) }
+
+    #[inline(always)]
+    fn log10(&self) -> f64 { log10(*self) }
+
+    #[inline(always)]
+    fn log_radix(&self) -> f64 { log_radix(*self) }
+
+    #[inline(always)]
+    fn ilog_radix(&self) -> int { ilog_radix(*self) as int }
+
+    #[inline(always)]
+    fn sqrt(&self) -> f64 { sqrt(*self) }
+
+    #[inline(always)]
+    fn rsqrt(&self) -> f64 { self.sqrt().recip() }
+
+    #[inline(always)]
+    fn cbrt(&self) -> f64 { cbrt(*self) }
+
+    /// Converts to degrees, assuming the number is in radians
+    #[inline(always)]
+    fn to_degrees(&self) -> f64 { *self * (180.0 / Real::pi::<f64>()) }
+
+    /// Converts to radians, assuming the number is in degrees
+    #[inline(always)]
+    fn to_radians(&self) -> f64 { *self * (Real::pi::<f64>() / 180.0) }
+
+    #[inline(always)]
+    fn hypot(&self, other: f64) -> f64 { hypot(*self, other) }
+
+    #[inline(always)]
+    fn sin(&self) -> f64 { sin(*self) }
+
+    #[inline(always)]
+    fn cos(&self) -> f64 { cos(*self) }
+
+    #[inline(always)]
+    fn tan(&self) -> f64 { tan(*self) }
+
+    #[inline(always)]
+    fn asin(&self) -> f64 { asin(*self) }
+
+    #[inline(always)]
+    fn acos(&self) -> f64 { acos(*self) }
+
+    #[inline(always)]
+    fn atan(&self) -> f64 { atan(*self) }
+
+    #[inline(always)]
+    fn atan2(&self, other: f64) -> f64 { atan2(*self, other) }
+
+    #[inline(always)]
+    fn sinh(&self) -> f64 { sinh(*self) }
+
+    #[inline(always)]
+    fn cosh(&self) -> f64 { cosh(*self) }
+
+    #[inline(always)]
+    fn tanh(&self) -> f64 { tanh(*self) }
+}
+
+impl RealExt for f64 {
+    #[inline(always)]
+    fn lgamma(&self) -> (int, f64) {
+        let mut sign = 0;
+        let result = lgamma(*self, &mut sign);
+        (sign as int, result)
     }
+
+    #[inline(always)]
+    fn tgamma(&self) -> f64 { tgamma(*self) }
+
+    #[inline(always)]
+    fn j0(&self) -> f64 { j0(*self) }
+
+    #[inline(always)]
+    fn j1(&self) -> f64 { j1(*self) }
+
+    #[inline(always)]
+    fn jn(&self, n: int) -> f64 { jn(n as c_int, *self) }
+
+    #[inline(always)]
+    fn y0(&self) -> f64 { y0(*self) }
+
+    #[inline(always)]
+    fn y1(&self) -> f64 { y1(*self) }
+
+    #[inline(always)]
+    fn yn(&self, n: int) -> f64 { yn(n as c_int, *self) }
 }
 
 /**
@@ -587,9 +762,37 @@ mod tests {
     use super::*;
     use prelude::*;
 
+    macro_rules! assert_fuzzy_eq(
+        ($a:expr, $b:expr) => ({
+            let a = $a, b = $b;
+            if !((a - b).abs() < 1.0e-6) {
+                fail!(fmt!("The values were not approximately equal. Found: %? and %?", a, b));
+            }
+        })
+    )
+
     #[test]
     fn test_num() {
         num::test_num(10f64, 2f64);
+    }
+
+    #[test]
+    fn test_real_consts() {
+        assert_fuzzy_eq!(Real::two_pi::<f64>(), 2.0 * Real::pi::<f64>());
+        assert_fuzzy_eq!(Real::frac_pi_2::<f64>(), Real::pi::<f64>() / 2f64);
+        assert_fuzzy_eq!(Real::frac_pi_3::<f64>(), Real::pi::<f64>() / 3f64);
+        assert_fuzzy_eq!(Real::frac_pi_4::<f64>(), Real::pi::<f64>() / 4f64);
+        assert_fuzzy_eq!(Real::frac_pi_6::<f64>(), Real::pi::<f64>() / 6f64);
+        assert_fuzzy_eq!(Real::frac_pi_8::<f64>(), Real::pi::<f64>() / 8f64);
+        assert_fuzzy_eq!(Real::frac_1_pi::<f64>(), 1f64 / Real::pi::<f64>());
+        assert_fuzzy_eq!(Real::frac_2_pi::<f64>(), 2f64 / Real::pi::<f64>());
+        assert_fuzzy_eq!(Real::frac_2_sqrtpi::<f64>(), 2f64 / Real::pi::<f64>().sqrt());
+        assert_fuzzy_eq!(Real::sqrt2::<f64>(), 2f64.sqrt());
+        assert_fuzzy_eq!(Real::frac_1_sqrt2::<f64>(), 1f64 / 2f64.sqrt());
+        assert_fuzzy_eq!(Real::log2_e::<f64>(), Real::e::<f64>().log2());
+        assert_fuzzy_eq!(Real::log10_e::<f64>(), Real::e::<f64>().log10());
+        assert_fuzzy_eq!(Real::log_2::<f64>(), 2f64.log());
+        assert_fuzzy_eq!(Real::log_10::<f64>(), 10f64.log());
     }
 
     #[test]
