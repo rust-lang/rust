@@ -80,10 +80,10 @@ impl gen_send for message {
 
                 body += ~"let b = pipe.reuse_buffer();\n";
                 body += fmt!("let %s = ::core::pipes::SendPacketBuffered(\
-                              ::ptr::addr_of(&(b.buffer.data.%s)));\n",
+                              &(b.buffer.data.%s));\n",
                              sp, next.name);
                 body += fmt!("let %s = ::core::pipes::RecvPacketBuffered(\
-                              ::ptr::addr_of(&(b.buffer.data.%s)));\n",
+                              &(b.buffer.data.%s));\n",
                              rp, next.name);
             }
             else {
@@ -370,9 +370,7 @@ impl gen_init for protocol {
                     |s| ext_cx.parse_stmt(
                         fmt!("data.%s.set_buffer(buffer)",
                              s.name))),
-                ext_cx.parse_expr(
-                    fmt!("::ptr::addr_of(&(data.%s))",
-                         self.states[0].name))));
+                ext_cx.parse_expr(fmt!("&(data.%s)", self.states[0].name))));
 
         quote_expr!({
             let buffer = $buffer;

@@ -53,7 +53,7 @@ pub fn deflate_bytes(bytes: &const [u8]) -> ~[u8] {
             let res =
                 rustrt::tdefl_compress_mem_to_heap(b as *c_void,
                                                    len as size_t,
-                                                   ptr::addr_of(&outsz),
+                                                   &outsz,
                                                    lz_norm);
             assert!(res as int != 0);
             let out = vec::raw::from_buf_raw(res as *u8,
@@ -71,7 +71,7 @@ pub fn inflate_bytes(bytes: &const [u8]) -> ~[u8] {
             let res =
                 rustrt::tinfl_decompress_mem_to_heap(b as *c_void,
                                                      len as size_t,
-                                                     ptr::addr_of(&outsz),
+                                                     &outsz,
                                                      0);
             assert!(res as int != 0);
             let out = vec::raw::from_buf_raw(res as *u8,

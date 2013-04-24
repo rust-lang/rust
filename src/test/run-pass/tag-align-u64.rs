@@ -24,7 +24,7 @@ fn mk_rec() -> t_rec {
 }
 
 fn is_8_byte_aligned(&&u: a_tag) -> bool {
-    let p = ptr::addr_of(u) as u64;
+    let p = ptr::to_unsafe_ptr(u) as u64;
     return (p & 7u64) == 0u64;
 }
 

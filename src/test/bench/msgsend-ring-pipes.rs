@@ -30,7 +30,7 @@ proto! ring (
 )
 
 macro_rules! move_out (
-    ($x:expr) => { unsafe { let y = *ptr::addr_of(&$x); y } }
+    ($x:expr) => { unsafe { let y = *ptr::to_unsafe_ptr(&$x); y } }
 )
 
 fn thread_ring(i: uint,

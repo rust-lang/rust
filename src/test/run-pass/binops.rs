@@ -107,8 +107,8 @@ fn test_class() {
   
   unsafe {
   error!("q = %x, r = %x",
-         (::core::cast::reinterpret_cast::<*p, uint>(&ptr::addr_of(&q))),
-         (::core::cast::reinterpret_cast::<*p, uint>(&ptr::addr_of(&r))));
+         (::core::cast::reinterpret_cast::<*p, uint>(& &q)),
+         (::core::cast::reinterpret_cast::<*p, uint>(& &r)));
   }
   assert!((q == r));
   r.y = 17;

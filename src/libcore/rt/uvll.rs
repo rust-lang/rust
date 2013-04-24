@@ -252,7 +252,7 @@ pub unsafe fn async_send(async_handle: *uv_async_t) {
 }
 pub unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
     let out_buf = uv_buf_t { base: ptr::null(), len: 0 as size_t };
-    let out_buf_ptr = ptr::addr_of(&out_buf);
+    let out_buf_ptr = ptr::to_unsafe_ptr(&out_buf);
     rust_uv_buf_init(out_buf_ptr, input, len as size_t);
     return out_buf;
 }
@@ -330,7 +330,7 @@ pub unsafe fn free_base_of_buf(buf: uv_buf_t) {
 
 pub unsafe fn get_last_err_info(uv_loop: *c_void) -> ~str {
     let err = last_error(uv_loop);
-    let err_ptr = ptr::addr_of(&err);
+    let err_ptr = ptr::to_unsafe_ptr(&err);
     let err_name = str::raw::from_c_str(err_name(err_ptr));
     let err_msg = str::raw::from_c_str(strerror(err_ptr));
     return fmt!("LIBUV ERROR: name: %s msg: %s",
@@ -339,7 +339,7 @@ pub unsafe fn get_last_err_info(uv_loop: *c_void) -> ~str {
 
 pub unsafe fn get_last_err_data(uv_loop: *c_void) -> uv_err_data {
     let err = last_error(uv_loop);
-    let err_ptr = ptr::addr_of(&err);
+    let err_ptr = ptr::to_unsafe_ptr(&err);
     let err_name = str::raw::from_c_str(err_name(err_ptr));
     let err_msg = str::raw::from_c_str(strerror(err_ptr));
     uv_err_data { err_name: err_name, err_msg: err_msg }
