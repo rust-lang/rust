@@ -47,16 +47,48 @@ pub struct RunProgramResult {
     handle: *(),
 }
 
-struct ProgRepr {
-    pid: pid_t,
-    handle: *(),
-    in_fd: c_int,
-    out_file: *libc::FILE,
-    err_file: *libc::FILE,
-    finished: bool,
+/// A value representing a child process
+pub struct Program {
+    priv pid: pid_t,
+    priv handle: *(),
+    priv in_fd: c_int,
+    priv out_file: *libc::FILE,
+    priv err_file: *libc::FILE,
+    priv finished: bool,
 }
 
-impl ProgRepr {
+impl Drop for Program {
+    fn finalize(&self) {
+        // FIXME #4943: transmute is bad.
+        let mut_self: &mut Program = unsafe { cast::transmute(self) };
+
+        mut_self.finish();
+        mut_self.close_outputs();
+        free_handle(self.handle);
+    }
+}
+
+pub impl Program {
+
+    /// Returns the process id of the program
+    fn get_id(&mut self) -> pid_t { self.pid }
+
+    /// Returns an io::Writer that can be used to write to stdin
+    fn input(&mut self) -> @io::Writer {
+        io::fd_writer(self.in_fd, false)
+    }
+
+    /// Returns an io::Reader that can be used to read from stdout
+    fn output(&mut self) -> @io::Reader {
+        io::FILE_reader(self.out_file, false)
+    }
+
+    /// Returns an io::Reader that can be used to read from stderr
+    fn err(&mut self) -> @io::Reader {
+        io::FILE_reader(self.err_file, false)
+    }
+
+    /// Closes the handle to the child processes standard input
     fn close_input(&mut self) {
         let invalid_fd = -1i32;
         if self.in_fd != invalid_fd {
@@ -67,13 +99,17 @@ impl ProgRepr {
         }
     }
 
-    fn close_outputs(&mut self) {
+    priv fn close_outputs(&mut self) {
         unsafe {
             fclose_and_null(&mut self.out_file);
             fclose_and_null(&mut self.err_file);
         }
     }
 
+    /**
+     * Waits for the child process to terminate. Closes the handle
+     * to stdin if necessary.
+     */
     fn finish(&mut self) -> int {
         if self.finished { return 0; }
         self.finished = true;
@@ -81,7 +117,7 @@ impl ProgRepr {
         return waitpid(self.pid);
     }
 
-    fn destroy(&mut self, force: bool) {
+    priv fn destroy_internal(&mut self, force: bool) {
         killpid(self.pid, force);
         self.finish();
         self.close_outputs();
@@ -107,57 +143,6 @@ impl ProgRepr {
             }
         }
     }
-}
-
-/// A value representing a child process
-pub struct Program {
-    priv r: ProgRepr,
-}
-
-impl Drop for Program {
-    fn finalize(&self) {
-        // FIXME #4943: transmute is bad.
-        let selfr: &mut ProgRepr = unsafe { cast::transmute(&self.r) };
-
-        selfr.finish();
-        selfr.close_outputs();
-        free_handle(self.r.handle);
-    }
-}
-
-pub impl Program {
-    priv fn new(r: ProgRepr) -> Program {
-        Program {
-            r: r
-        }
-    }
-
-    /// Returns the process id of the program
-    fn get_id(&mut self) -> pid_t { self.r.pid }
-
-    /// Returns an io::Writer that can be used to write to stdin
-    fn input(&mut self) -> @io::Writer {
-        io::fd_writer(self.r.in_fd, false)
-    }
-
-    /// Returns an io::Reader that can be used to read from stdout
-    fn output(&mut self) -> @io::Reader {
-        io::FILE_reader(self.r.out_file, false)
-    }
-
-    /// Returns an io::Reader that can be used to read from stderr
-    fn err(&mut self) -> @io::Reader {
-        io::FILE_reader(self.r.err_file, false)
-    }
-
-    /// Closes the handle to the child processes standard input
-    fn close_input(&mut self) { self.r.close_input(); }
-
-    /**
-     * Waits for the child process to terminate. Closes the handle
-     * to stdin if necessary.
-     */
-    fn finish(&mut self) -> int { self.r.finish() }
 
     /**
      * Terminate the program, giving it a chance to clean itself up if
@@ -166,7 +151,7 @@ pub impl Program {
      * On Posix OSs SIGTERM will be sent to the process. On Win32
      * TerminateProcess(..) will be called.
      */
-    fn destroy(&mut self) { self.r.destroy(false); }
+    fn destroy(&mut self) { self.destroy_internal(false); }
 
     /**
      * Terminate the program as soon as possible without giving it a
@@ -175,7 +160,7 @@ pub impl Program {
      * On Posix OSs SIGKILL will be sent to the process. On Win32
      * TerminateProcess(..) will be called.
      */
-    fn force_destroy(&mut self) { self.r.destroy(true); }
+    fn force_destroy(&mut self) { self.destroy_internal(true); }
 }
 
 
@@ -366,16 +351,14 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
         libc::close(pipe_err.out);
     }
 
-    let repr = ProgRepr {
+    Program {
         pid: res.pid,
         handle: res.handle,
         in_fd: pipe_input.out,
         out_file: os::fdopen(pipe_output.in),
         err_file: os::fdopen(pipe_err.in),
         finished: false,
-    };
-
-    Program::new(repr)
+    }
 }
 
 fn read_all(rd: @io::Reader) -> ~str {
