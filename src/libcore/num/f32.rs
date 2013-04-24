@@ -11,6 +11,7 @@
 //! Operations and constants for `f32`
 
 use num::strconv;
+use num::Signed;
 use num;
 use option::Option;
 use from_str;
@@ -163,38 +164,6 @@ pub fn gt(x: f32, y: f32) -> bool { return x > y; }
 // FIXME (#1999): replace the predicates below with llvm intrinsics or
 // calls to the libmath macros in the rust runtime for performance.
 
-/// Returns true if `x` is a positive number, including +0.0f320 and +Infinity
-#[inline(always)]
-pub fn is_positive(x: f32) -> bool {
-    x > 0.0f32 || (1.0f32/x) == infinity
-}
-
-/// Returns true if `x` is a negative number, including -0.0f320 and -Infinity
-#[inline(always)]
-pub fn is_negative(x: f32) -> bool {
-    x < 0.0f32 || (1.0f32/x) == neg_infinity
-}
-
-/**
- * Returns true if `x` is a negative number, including -0.0f320 and -Infinity
- *
- * This is the same as `f32::is_negative`.
- */
-#[inline(always)]
-pub fn is_nonpositive(x: f32) -> bool {
-  return x < 0.0f32 || (1.0f32/x) == neg_infinity;
-}
-
-/**
- * Returns true if `x` is a positive number, including +0.0f320 and +Infinity
- *
- * This is the same as `f32::is_positive`.)
- */
-#[inline(always)]
-pub fn is_nonnegative(x: f32) -> bool {
-  return x > 0.0f32 || (1.0f32/x) == infinity;
-}
-
 /// Returns true if `x` is a zero number (positive or negative zero)
 #[inline(always)]
 pub fn is_zero(x: f32) -> bool {
@@ -257,11 +226,6 @@ pub mod consts {
 
     /// ln(10.0)
     pub static ln_10: f32 = 2.30258509299404568401799145468436421_f32;
-}
-
-#[inline(always)]
-pub fn signbit(x: f32) -> int {
-    if is_negative(x) { return 1; } else { return 0; }
 }
 
 #[inline(always)]
@@ -351,15 +315,41 @@ impl Neg<f32> for f32 {
     fn neg(&self) -> f32 { -*self }
 }
 
+impl Signed for f32 {
+    /// Computes the absolute value. Returns `NaN` if the number is `NaN`.
+    #[inline(always)]
+    fn abs(&self) -> f32 { abs(*self) }
+
+    /**
+     * # Returns
+     *
+     * - `1.0` if the number is positive, `+0.0` or `infinity`
+     * - `-1.0` if the number is negative, `-0.0` or `neg_infinity`
+     * - `NaN` if the number is `NaN`
+     */
+    #[inline(always)]
+    fn signum(&self) -> f32 {
+        if is_NaN(*self) { NaN } else { copysign(1.0, *self) }
+    }
+
+    /// Returns `true` if the number is positive, including `+0.0` and `infinity`
+    #[inline(always)]
+    fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == infinity }
+
+    /// Returns `true` if the number is negative, including `-0.0` and `neg_infinity`
+    #[inline(always)]
+    fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
+}
+
 impl num::Round for f32 {
     #[inline(always)]
     fn round(&self, mode: num::RoundMode) -> f32 {
         match mode {
             num::RoundDown                           => floor(*self),
             num::RoundUp                             => ceil(*self),
-            num::RoundToZero   if is_negative(*self) => ceil(*self),
+            num::RoundToZero   if self.is_negative() => ceil(*self),
             num::RoundToZero                         => floor(*self),
-            num::RoundFromZero if is_negative(*self) => floor(*self),
+            num::RoundFromZero if self.is_negative() => floor(*self),
             num::RoundFromZero                       => ceil(*self)
         }
     }
@@ -370,7 +360,7 @@ impl num::Round for f32 {
     fn ceil(&self) -> f32 { ceil(*self) }
     #[inline(always)]
     fn fract(&self) -> f32 {
-        if is_negative(*self) {
+        if self.is_negative() {
             (*self) - ceil(*self)
         } else {
             (*self) - floor(*self)
@@ -592,6 +582,50 @@ impl num::FromStrRadix for f32 {
     #[inline(always)]
     fn from_str_radix(val: &str, rdx: uint) -> Option<f32> {
         from_str_radix(val, rdx)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use f32::*;
+
+    #[test]
+    pub fn test_signed() {
+        assert_eq!(infinity.abs(), infinity);
+        assert_eq!(1f32.abs(), 1f32);
+        assert_eq!(0f32.abs(), 0f32);
+        assert_eq!((-0f32).abs(), 0f32);
+        assert_eq!((-1f32).abs(), 1f32);
+        assert_eq!(neg_infinity.abs(), infinity);
+        assert_eq!((1f32/neg_infinity).abs(), 0f32);
+        assert!(is_NaN(NaN.abs()));
+
+        assert_eq!(infinity.signum(), 1f32);
+        assert_eq!(1f32.signum(), 1f32);
+        assert_eq!(0f32.signum(), 1f32);
+        assert_eq!((-0f32).signum(), -1f32);
+        assert_eq!((-1f32).signum(), -1f32);
+        assert_eq!(neg_infinity.signum(), -1f32);
+        assert_eq!((1f32/neg_infinity).signum(), -1f32);
+        assert!(is_NaN(NaN.signum()));
+
+        assert!(infinity.is_positive());
+        assert!(1f32.is_positive());
+        assert!(0f32.is_positive());
+        assert!(!(-0f32).is_positive());
+        assert!(!(-1f32).is_positive());
+        assert!(!neg_infinity.is_positive());
+        assert!(!(1f32/neg_infinity).is_positive());
+        assert!(!NaN.is_positive());
+
+        assert!(!infinity.is_negative());
+        assert!(!1f32.is_negative());
+        assert!(!0f32.is_negative());
+        assert!((-0f32).is_negative());
+        assert!((-1f32).is_negative());
+        assert!(neg_infinity.is_negative());
+        assert!((1f32/neg_infinity).is_negative());
+        assert!(!NaN.is_negative());
     }
 }
 

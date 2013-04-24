@@ -22,6 +22,7 @@
 
 use f64;
 use num::strconv;
+use num::Signed;
 use num;
 use option::Option;
 use to_str;
@@ -42,7 +43,6 @@ pub use f64::{erf, erfc, exp, expm1, exp2, abs_sub};
 pub use f64::{mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp};
 pub use f64::{lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix};
 pub use f64::{modf, pow, powi, round, sinh, tanh, tgamma, trunc};
-pub use f64::signbit;
 pub use f64::{j0, j1, jn, y0, y1, yn};
 
 pub static NaN: float = 0.0/0.0;
@@ -349,14 +349,6 @@ pub fn pow_with_uint(base: uint, pow: uint) -> float {
 }
 
 #[inline(always)]
-pub fn is_positive(x: float) -> bool { f64::is_positive(x as f64) }
-#[inline(always)]
-pub fn is_negative(x: float) -> bool { f64::is_negative(x as f64) }
-#[inline(always)]
-pub fn is_nonpositive(x: float) -> bool { f64::is_nonpositive(x as f64) }
-#[inline(always)]
-pub fn is_nonnegative(x: float) -> bool { f64::is_nonnegative(x as f64) }
-#[inline(always)]
 pub fn is_zero(x: float) -> bool { f64::is_zero(x as f64) }
 #[inline(always)]
 pub fn is_infinite(x: float) -> bool { f64::is_infinite(x as f64) }
@@ -428,11 +420,11 @@ impl num::Round for float {
                 => f64::floor(*self as f64) as float,
             num::RoundUp
                 => f64::ceil(*self as f64) as float,
-            num::RoundToZero   if is_negative(*self)
+            num::RoundToZero   if self.is_negative()
                 => f64::ceil(*self as f64) as float,
             num::RoundToZero
                 => f64::floor(*self as f64) as float,
-            num::RoundFromZero if is_negative(*self)
+            num::RoundFromZero if self.is_negative()
                 => f64::floor(*self as f64) as float,
             num::RoundFromZero
                 => f64::ceil(*self as f64) as float
@@ -445,7 +437,7 @@ impl num::Round for float {
     fn ceil(&self) -> float { f64::ceil(*self as f64) as float}
     #[inline(always)]
     fn fract(&self) -> float {
-        if is_negative(*self) {
+        if self.is_negative() {
             (*self) - (f64::ceil(*self as f64) as float)
         } else {
             (*self) - (f64::floor(*self as f64) as float)
@@ -501,10 +493,76 @@ impl Neg<float> for float {
     fn neg(&self) -> float { -*self }
 }
 
+impl Signed for float {
+    /// Computes the absolute value. Returns `NaN` if the number is `NaN`.
+    #[inline(always)]
+    fn abs(&self) -> float { abs(*self) }
+
+    /**
+     * # Returns
+     *
+     * - `1.0` if the number is positive, `+0.0` or `infinity`
+     * - `-1.0` if the number is negative, `-0.0` or `neg_infinity`
+     * - `NaN` if the number is NaN
+     */
+    #[inline(always)]
+    fn signum(&self) -> float {
+        if is_NaN(*self) { NaN } else { f64::copysign(1.0, *self as f64) as float }
+    }
+
+    /// Returns `true` if the number is positive, including `+0.0` and `infinity`
+    #[inline(always)]
+    fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == infinity }
+
+    /// Returns `true` if the number is negative, including `-0.0` and `neg_infinity`
+    #[inline(always)]
+    fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use prelude::*;
+
+    #[test]
+    pub fn test_signed() {
+        assert_eq!(infinity.abs(), infinity);
+        assert_eq!(1f.abs(), 1f);
+        assert_eq!(0f.abs(), 0f);
+        assert_eq!((-0f).abs(), 0f);
+        assert_eq!((-1f).abs(), 1f);
+        assert_eq!(neg_infinity.abs(), infinity);
+        assert_eq!((1f/neg_infinity).abs(), 0f);
+        assert!(is_NaN(NaN.abs()));
+
+        assert_eq!(infinity.signum(), 1f);
+        assert_eq!(1f.signum(), 1f);
+        assert_eq!(0f.signum(), 1f);
+        assert_eq!((-0f).signum(), -1f);
+        assert_eq!((-1f).signum(), -1f);
+        assert_eq!(neg_infinity.signum(), -1f);
+        assert_eq!((1f/neg_infinity).signum(), -1f);
+        assert!(is_NaN(NaN.signum()));
+
+        assert!(infinity.is_positive());
+        assert!(1f.is_positive());
+        assert!(0f.is_positive());
+        assert!(!(-0f).is_positive());
+        assert!(!(-1f).is_positive());
+        assert!(!neg_infinity.is_positive());
+        assert!(!(1f/neg_infinity).is_positive());
+        assert!(!NaN.is_positive());
+
+        assert!(!infinity.is_negative());
+        assert!(!1f.is_negative());
+        assert!(!0f.is_negative());
+        assert!((-0f).is_negative());
+        assert!((-1f).is_negative());
+        assert!(neg_infinity.is_negative());
+        assert!((1f/neg_infinity).is_negative());
+        assert!(!NaN.is_negative());
+    }
+
     #[test]
     pub fn test_to_str_exact_do_decimal() {
         let s = to_str_exact(5.0, 4u);
@@ -538,11 +596,11 @@ mod tests {
         }
         // note: -0 == 0, hence these slightly more complex tests
         match from_str(~"-0") {
-            Some(v) if is_zero(v) => assert!(is_negative(v)),
+            Some(v) if is_zero(v) => assert!(v.is_negative()),
             _ => fail!()
         }
         match from_str(~"0") {
-            Some(v) if is_zero(v) => assert!(is_positive(v)),
+            Some(v) if is_zero(v) => assert!(v.is_positive()),
             _ => fail!()
         }
 
@@ -585,11 +643,11 @@ mod tests {
         }
         // note: -0 == 0, hence these slightly more complex tests
         match from_str_hex(~"-0") {
-            Some(v) if is_zero(v) => assert!(is_negative(v)),
+            Some(v) if is_zero(v) => assert!(v.is_negative()),
             _ => fail!()
         }
         match from_str_hex(~"0") {
-            Some(v) if is_zero(v) => assert!(is_positive(v)),
+            Some(v) if is_zero(v) => assert!(v.is_positive()),
             _ => fail!()
         }
         assert_eq!(from_str_hex(~"e"), Some(14.));
@@ -639,50 +697,6 @@ mod tests {
     pub fn test_from_str_radix() {
         assert_eq!(from_str_radix(~"10", 36u), Some(36.));
         assert_eq!(from_str_radix(~"1000.001", 2u), Some(8.125));
-    }
-
-    #[test]
-    pub fn test_positive() {
-        assert!(is_positive(infinity));
-        assert!(is_positive(1.));
-        assert!(is_positive(0.));
-        assert!(!is_positive(-1.));
-        assert!(!is_positive(neg_infinity));
-        assert!(!is_positive(1./neg_infinity));
-        assert!(!is_positive(NaN));
-    }
-
-    #[test]
-    pub fn test_negative() {
-        assert!(!is_negative(infinity));
-        assert!(!is_negative(1.));
-        assert!(!is_negative(0.));
-        assert!(is_negative(-1.));
-        assert!(is_negative(neg_infinity));
-        assert!(is_negative(1./neg_infinity));
-        assert!(!is_negative(NaN));
-    }
-
-    #[test]
-    pub fn test_nonpositive() {
-        assert!(!is_nonpositive(infinity));
-        assert!(!is_nonpositive(1.));
-        assert!(!is_nonpositive(0.));
-        assert!(is_nonpositive(-1.));
-        assert!(is_nonpositive(neg_infinity));
-        assert!(is_nonpositive(1./neg_infinity));
-        assert!(!is_nonpositive(NaN));
-    }
-
-    #[test]
-    pub fn test_nonnegative() {
-        assert!(is_nonnegative(infinity));
-        assert!(is_nonnegative(1.));
-        assert!(is_nonnegative(0.));
-        assert!(!is_nonnegative(-1.));
-        assert!(!is_nonnegative(neg_infinity));
-        assert!(!is_nonnegative(1./neg_infinity));
-        assert!(!is_nonnegative(NaN));
     }
 
     #[test]

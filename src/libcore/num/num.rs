@@ -60,8 +60,35 @@ pub trait One {
     fn one() -> Self;
 }
 
+pub trait Signed: Num
+                + Neg<Self> {
+    fn abs(&self) -> Self;
+    fn signum(&self) -> Self;
+    fn is_positive(&self) -> bool;
+    fn is_negative(&self) -> bool;
+}
+
+pub trait Unsigned: Num {}
+
+// This should be moved into the default implementation for Signed::abs
 pub fn abs<T:Ord + Zero + Neg<T>>(v: T) -> T {
     if v < Zero::zero() { v.neg() } else { v }
+}
+
+pub trait Natural: Num
+                 + Ord
+                 + Quot<Self,Self>
+                 + Rem<Self,Self> {
+    fn div(&self, other: Self) -> Self;
+    fn modulo(&self, other: Self) -> Self;
+    fn div_mod(&self, other: Self) -> (Self,Self);
+    fn quot_rem(&self, other: Self) -> (Self,Self);
+
+    fn gcd(&self, other: Self) -> Self;
+    fn lcm(&self, other: Self) -> Self;
+    fn divisible_by(&self, other: Self) -> bool;
+    fn is_even(&self) -> bool;
+    fn is_odd(&self) -> bool;
 }
 
 pub trait Round {

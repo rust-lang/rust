@@ -785,9 +785,9 @@ pub fn cast_shift_rhs(op: ast::binop,
 pub fn fail_if_zero(cx: block, span: span, quotrem: ast::binop,
                     rhs: ValueRef, rhs_t: ty::t) -> block {
     let text = if quotrem == ast::quot {
-        @~"quotient zero"
+        @~"attempted quotient with a divisor of zero"
     } else {
-        @~"remainder zero"
+        @~"attempted remainder with a divisor of zero"
     };
     let is_zero = match ty::get(rhs_t).sty {
       ty::ty_int(t) => {

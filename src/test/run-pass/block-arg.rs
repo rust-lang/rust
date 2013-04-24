@@ -18,28 +18,28 @@ pub fn main() {
     }
 
     // Usable at all:
-    let mut any_negative = do vec::any(v) |e| { float::is_negative(*e) };
+    let mut any_negative = do vec::any(v) |e| { e.is_negative() };
     assert!(any_negative);
 
     // Higher precedence than assignments:
-    any_negative = do vec::any(v) |e| { float::is_negative(*e) };
+    any_negative = do vec::any(v) |e| { e.is_negative() };
     assert!(any_negative);
 
     // Higher precedence than unary operations:
-    let abs_v = do vec::map(v) |e| { float::abs(*e) };
-    assert!(do vec::all(abs_v) |e| { float::is_nonnegative(*e) });
-    assert!(!do vec::any(abs_v) |e| { float::is_negative(*e) });
+    let abs_v = do vec::map(v) |e| { e.abs() };
+    assert!(do vec::all(abs_v) |e| { e.is_positive() });
+    assert!(!do vec::any(abs_v) |e| { e.is_negative() });
 
     // Usable in funny statement-like forms:
-    if !do vec::any(v) |e| { float::is_positive(*e) } {
+    if !do vec::any(v) |e| { e.is_positive() } {
         assert!(false);
     }
-    match do vec::all(v) |e| { float::is_negative(*e) } {
+    match do vec::all(v) |e| { e.is_negative() } {
         true => { fail!(~"incorrect answer."); }
         false => { }
     }
     match 3 {
-      _ if do vec::any(v) |e| { float::is_negative(*e) } => {
+      _ if do vec::any(v) |e| { e.is_negative() } => {
       }
       _ => {
         fail!(~"wrong answer.");
@@ -56,7 +56,7 @@ pub fn main() {
 
     // In the tail of a block
     let w =
-        if true { do vec::any(abs_v) |e| { float::is_nonnegative(*e) } }
+        if true { do vec::any(abs_v) |e| { e.is_positive() } }
       else { false };
     assert!(w);
 }
