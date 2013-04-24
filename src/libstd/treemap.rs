@@ -698,7 +698,6 @@ mod test_treemap {
     use core::iterator::*;
     use super::*;
     use core::rand::RngUtil;
-    use core::rand;
 
     #[test]
     fn find_empty() {
@@ -835,12 +834,12 @@ mod test_treemap {
         check_equal(ctrl, &map);
         assert!(map.find(&5).is_none());
 
-        let rng = rand::seeded_rng(&[42]);
+        let rng = rand::IsaacRng::new_seeded(&[42]);
 
         for 3.times {
             for 90.times {
-                let k = rng.gen_int();
-                let v = rng.gen_int();
+                let k = rng.gen();
+                let v = rng.gen();
                 if !ctrl.contains(&(k, v)) {
                     assert!(map.insert(k, v));
                     ctrl.push((k, v));

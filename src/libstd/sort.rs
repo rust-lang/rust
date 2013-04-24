@@ -902,12 +902,8 @@ mod tests {
 #[cfg(test)]
 mod test_tim_sort {
     use core::prelude::*;
-
     use sort::tim_sort;
-
     use core::rand::RngUtil;
-    use core::rand;
-    use core::vec;
 
     struct CVal {
         val: float,
@@ -915,8 +911,8 @@ mod test_tim_sort {
 
     impl Ord for CVal {
         fn lt(&self, other: &CVal) -> bool {
-            let rng = rand::Rng();
-            if rng.gen_float() > 0.995 { fail!(~"It's happening!!!"); }
+            let rng = rand::rng();
+            if rng.gen::<float>() > 0.995 { fail!(~"It's happening!!!"); }
             (*self).val < other.val
         }
         fn le(&self, other: &CVal) -> bool { (*self).val <= other.val }
@@ -964,10 +960,9 @@ mod test_tim_sort {
     #[should_fail]
     #[cfg(unix)]
     fn crash_test() {
-        let rng = rand::Rng();
+        let rng = rand::rng();
         let mut arr = do vec::from_fn(1000) |_i| {
-            let randVal = rng.gen_float();
-            CVal { val: randVal }
+            CVal { val: rng.gen() }
         };
 
         tim_sort(arr);
@@ -985,10 +980,9 @@ mod test_tim_sort {
 
     #[test]
     fn test_bad_Ord_impl() {
-        let rng = rand::Rng();
+        let rng = rand::rng();
         let mut arr = do vec::from_fn(500) |_i| {
-            let randVal = rng.gen_uint();
-            DVal { val: randVal }
+            DVal { val: rng.gen() }
         };
 
         tim_sort(arr);
@@ -998,14 +992,8 @@ mod test_tim_sort {
 #[cfg(test)]
 mod big_tests {
     use core::prelude::*;
-
     use sort::*;
-
     use core::rand::RngUtil;
-    use core::rand;
-    use core::task;
-    use core::uint;
-    use core::vec;
 
     #[test]
     fn test_unique() {
@@ -1045,14 +1033,13 @@ mod big_tests {
             }
         }
 
-        let rng = rand::Rng();
+        let rng = rand::rng();
 
         for uint::range(lo, hi) |i| {
             let n = 1 << i;
-            let arr = do vec::from_fn(n) |_i| {
-                rng.gen_float()
+            let mut arr: ~[float] = do vec::from_fn(n) |_i| {
+                rng.gen()
             };
-            let mut arr = arr;
 
             tim_sort(arr); // *sort
             isSorted(arr);
@@ -1076,7 +1063,7 @@ mod big_tests {
                 let size = arr.len();
                 let mut idx = 1;
                 while idx <= 10 {
-                    arr[size-idx] = rng.gen_float();
+                    arr[size-idx] = rng.gen();
                     idx += 1;
                 }
             }
@@ -1085,7 +1072,7 @@ mod big_tests {
 
             for (n/100).times {
                 let idx = rng.gen_uint_range(0, n);
-                arr[idx] = rng.gen_float();
+                arr[idx] = rng.gen();
             }
             tim_sort(arr);
             isSorted(arr);
@@ -1117,12 +1104,12 @@ mod big_tests {
             }
         }
 
-        let rng = rand::Rng();
+        let rng = rand::rng();
 
         for uint::range(lo, hi) |i| {
             let n = 1 << i;
-            let arr = do vec::from_fn(n) |_i| {
-                @rng.gen_float()
+            let arr: ~[@float] = do vec::from_fn(n) |_i| {
+                @rng.gen()
             };
             let mut arr = arr;
 
@@ -1148,7 +1135,7 @@ mod big_tests {
                 let size = arr.len();
                 let mut idx = 1;
                 while idx <= 10 {
-                    arr[size-idx] = @rng.gen_float();
+                    arr[size-idx] = @rng.gen();
                     idx += 1;
                 }
             }
@@ -1157,7 +1144,7 @@ mod big_tests {
 
             for (n/100).times {
                 let idx = rng.gen_uint_range(0, n);
-                arr[idx] = @rng.gen_float();
+                arr[idx] = @rng.gen();
             }
             tim_sort(arr);
             isSorted(arr);
