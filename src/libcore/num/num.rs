@@ -77,19 +77,97 @@ pub trait Integer: Num
     fn is_odd(&self) -> bool;
 }
 
-pub trait Round {
-    fn round(&self, mode: RoundMode) -> Self;
-
-    fn floor(&self) -> Self;
-    fn ceil(&self)  -> Self;
-    fn fract(&self) -> Self;
+pub trait Fractional: Num
+                    + Ord
+                    + Quot<Self,Self> {
+    fn recip(&self) -> Self;
 }
 
-pub enum RoundMode {
-    RoundDown,
-    RoundUp,
-    RoundToZero,
-    RoundFromZero
+pub trait Real: Signed
+              + Fractional {
+    // FIXME (#5527): usages of `int` should be replaced with an associated
+    // integer type once these are implemented
+
+    // Common Constants
+    // FIXME (#5527): These should be associated constants
+    fn pi() -> Self;
+    fn two_pi() -> Self;
+    fn frac_pi_2() -> Self;
+    fn frac_pi_3() -> Self;
+    fn frac_pi_4() -> Self;
+    fn frac_pi_6() -> Self;
+    fn frac_pi_8() -> Self;
+    fn frac_1_pi() -> Self;
+    fn frac_2_pi() -> Self;
+    fn frac_2_sqrtpi() -> Self;
+    fn sqrt2() -> Self;
+    fn frac_1_sqrt2() -> Self;
+    fn e() -> Self;
+    fn log2_e() -> Self;
+    fn log10_e() -> Self;
+    fn log_2() -> Self;
+    fn log_10() -> Self;
+
+    // Rounding operations
+    fn floor(&self) -> Self;
+    fn ceil(&self) -> Self;
+    fn round(&self) -> Self;
+    fn trunc(&self) -> Self;
+    fn fract(&self) -> Self;
+
+    // Exponential functions
+    fn pow(&self, n: Self) -> Self;
+    fn exp(&self) -> Self;
+    fn exp2(&self) -> Self;
+    fn expm1(&self) -> Self;
+    fn ldexp(&self, n: int) -> Self;
+    fn log(&self) -> Self;
+    fn log2(&self) -> Self;
+    fn log10(&self) -> Self;
+    fn log_radix(&self) -> Self;
+    fn ilog_radix(&self) -> int;
+    fn sqrt(&self) -> Self;
+    fn rsqrt(&self) -> Self;
+    fn cbrt(&self) -> Self;
+
+    // Angular conversions
+    fn to_degrees(&self) -> Self;
+    fn to_radians(&self) -> Self;
+
+    // Triganomic functions
+    fn hypot(&self, other: Self) -> Self;
+    fn sin(&self) -> Self;
+    fn cos(&self) -> Self;
+    fn tan(&self) -> Self;
+
+    // Inverse triganomic functions
+    fn asin(&self) -> Self;
+    fn acos(&self) -> Self;
+    fn atan(&self) -> Self;
+    fn atan2(&self, other: Self) -> Self;
+
+    // Hyperbolic triganomic functions
+    fn sinh(&self) -> Self;
+    fn cosh(&self) -> Self;
+    fn tanh(&self) -> Self;
+}
+
+/// Methods that are harder to implement and not commonly used.
+pub trait RealExt: Real {
+    // FIXME (#5527): usages of `int` should be replaced with an associated
+    // integer type once these are implemented
+
+    // Gamma functions
+    fn lgamma(&self) -> (int, Self);
+    fn tgamma(&self) -> Self;
+
+    // Bessel functions
+    fn j0(&self) -> Self;
+    fn j1(&self) -> Self;
+    fn jn(&self, n: int) -> Self;
+    fn y0(&self) -> Self;
+    fn y1(&self) -> Self;
+    fn yn(&self, n: int) -> Self;
 }
 
 /**
