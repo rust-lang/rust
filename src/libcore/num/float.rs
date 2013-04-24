@@ -20,21 +20,10 @@
 
 // PORT this must match in width according to architecture
 
-use f64;
-use num::strconv;
-use num::Signed;
-use num;
-use option::Option;
-use to_str;
 use from_str;
-
-#[cfg(notest)] use cmp::{Eq, Ord};
-#[cfg(stage0,notest)]
-use ops::{Add, Sub, Mul, Div, Modulo, Neg};
-#[cfg(stage1,notest)]
-#[cfg(stage2,notest)]
-#[cfg(stage3,notest)]
-use ops::{Add, Sub, Mul, Quot, Rem, Neg};
+use libc::c_int;
+use num::strconv;
+use prelude::*;
 
 pub use f64::{add, sub, mul, quot, rem, lt, le, eq, ne, ge, gt};
 pub use f64::logarithm;
@@ -382,6 +371,8 @@ pub fn tan(x: float) -> float {
     f64::tan(x as f64) as float
 }
 
+impl Num for float {}
+
 #[cfg(notest)]
 impl Eq for float {
     #[inline(always)]
@@ -523,6 +514,11 @@ impl Signed for float {
 mod tests {
     use super::*;
     use prelude::*;
+
+    #[test]
+    fn test_num() {
+        num::test_num(10f, 2f);
+    }
 
     #[test]
     pub fn test_signed() {

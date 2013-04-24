@@ -10,12 +10,9 @@
 
 use T = self::inst::T;
 
-use to_str::ToStr;
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
-use num::Signed;
-use num;
 use prelude::*;
 
 pub use cmp::{min, max};
@@ -132,6 +129,8 @@ pub fn compl(i: T) -> T {
 /// Computes the absolute value
 #[inline(always)]
 pub fn abs(i: T) -> T { i.abs() }
+
+impl Num for T {}
 
 #[cfg(notest)]
 impl Ord for T {
@@ -521,6 +520,11 @@ mod tests {
     use super::*;
     use super::inst::T;
     use prelude::*;
+
+    #[test]
+    fn test_num() {
+        num::test_num(10 as T, 2 as T);
+    }
 
     #[test]
     pub fn test_signed() {

@@ -10,20 +10,10 @@
 
 //! Operations and constants for `f32`
 
-use num::strconv;
-use num::Signed;
-use num;
-use option::Option;
 use from_str;
-use to_str;
-
-#[cfg(notest)] use cmp::{Eq, Ord};
-#[cfg(stage0,notest)]
-use ops::{Add, Sub, Mul, Div, Modulo, Neg};
-#[cfg(stage1,notest)]
-#[cfg(stage2,notest)]
-#[cfg(stage3,notest)]
-use ops::{Add, Sub, Mul, Quot, Rem, Neg};
+use libc::c_int;
+use num::strconv;
+use prelude::*;
 
 pub use cmath::c_float_targ_consts::*;
 
@@ -232,6 +222,8 @@ pub mod consts {
 pub fn logarithm(n: f32, b: f32) -> f32 {
     return log2(n) / log2(b);
 }
+
+impl Num for f32 {}
 
 #[cfg(notest)]
 impl Eq for f32 {
@@ -588,6 +580,13 @@ impl num::FromStrRadix for f32 {
 #[cfg(test)]
 mod tests {
     use f32::*;
+    use super::*;
+    use prelude::*;
+
+    #[test]
+    fn test_num() {
+        num::test_num(10f32, 2f32);
+    }
 
     #[test]
     pub fn test_signed() {

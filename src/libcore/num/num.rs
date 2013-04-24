@@ -33,30 +33,18 @@ pub trait Num: Eq + Zero + One
              + Quot<Self,Self>
              + Rem<Self,Self> {}
 
-impl Num for u8 {}
-impl Num for u16 {}
-impl Num for u32 {}
-impl Num for u64 {}
-impl Num for uint {}
-impl Num for i8 {}
-impl Num for i16 {}
-impl Num for i32 {}
-impl Num for i64 {}
-impl Num for int {}
-impl Num for f32 {}
-impl Num for f64 {}
-impl Num for float {}
-
 pub trait IntConvertible {
     fn to_int(&self) -> int;
     fn from_int(n: int) -> Self;
 }
 
 pub trait Zero {
+    // FIXME (#5527): These should be associated constants
     fn zero() -> Self;
 }
 
 pub trait One {
+    // FIXME (#5527): These should be associated constants
     fn one() -> Self;
 }
 
@@ -230,8 +218,9 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Quot<T,T>+Mul<T,T>>(
     total
 }
 
+/// Helper function for testing numeric operations
 #[cfg(stage0,test)]
-fn test_num<T:Num + NumCast>(ten: T, two: T) {
+pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
     assert_eq!(ten.add(&two),    cast(12));
     assert_eq!(ten.sub(&two),    cast(8));
     assert_eq!(ten.mul(&two),    cast(20));
@@ -247,7 +236,7 @@ fn test_num<T:Num + NumCast>(ten: T, two: T) {
 #[cfg(stage1,test)]
 #[cfg(stage2,test)]
 #[cfg(stage3,test)]
-fn test_num<T:Num + NumCast>(ten: T, two: T) {
+pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
     assert_eq!(ten.add(&two),  cast(12));
     assert_eq!(ten.sub(&two),  cast(8));
     assert_eq!(ten.mul(&two),  cast(20));
@@ -260,20 +249,6 @@ fn test_num<T:Num + NumCast>(ten: T, two: T) {
     assert_eq!(ten.quot(&two), ten / two);
     assert_eq!(ten.rem(&two),  ten % two);
 }
-
-#[test] fn test_u8_num()    { test_num(10u8,  2u8)  }
-#[test] fn test_u16_num()   { test_num(10u16, 2u16) }
-#[test] fn test_u32_num()   { test_num(10u32, 2u32) }
-#[test] fn test_u64_num()   { test_num(10u64, 2u64) }
-#[test] fn test_uint_num()  { test_num(10u,   2u)   }
-#[test] fn test_i8_num()    { test_num(10i8,  2i8)  }
-#[test] fn test_i16_num()   { test_num(10i16, 2i16) }
-#[test] fn test_i32_num()   { test_num(10i32, 2i32) }
-#[test] fn test_i64_num()   { test_num(10i64, 2i64) }
-#[test] fn test_int_num()   { test_num(10i,   2i)   }
-#[test] fn test_f32_num()   { test_num(10f32, 2f32) }
-#[test] fn test_f64_num()   { test_num(10f64, 2f64) }
-#[test] fn test_float_num() { test_num(10f,   2f)   }
 
 macro_rules! test_cast_20(
     ($_20:expr) => ({
