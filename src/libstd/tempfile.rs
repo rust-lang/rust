@@ -10,13 +10,11 @@
 
 //! Temporary files and directories
 
-use core::os;
 use core::prelude::*;
 use core::rand::RngUtil;
-use core::rand;
 
 pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
-    let r = rand::Rng();
+    let r = rand::rng();
     for 1000.times {
         let p = tmpdir.push(r.gen_str(16) + suffix);
         if os::make_dir(&p, 0x1c0) { // 700

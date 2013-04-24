@@ -876,6 +876,7 @@ mod tests {
     use core::uint;
     use core::vec;
     use core::rand;
+    use core::rand::Rng;
 
     static bench_bits : uint = 1 << 14;
 
@@ -1424,9 +1425,9 @@ mod tests {
         assert!(a.capacity() == uint::bits);
     }
 
-    fn rng() -> @rand::Rng {
+    fn rng() -> rand::IsaacRng {
         let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
-        rand::seeded_rng(seed)
+        rand::IsaacRng::new_seeded(seed)
     }
 
     #[bench]

@@ -175,11 +175,7 @@ mod test {
 
     use timer::*;
     use uv;
-
-    use core::iter;
     use core::rand::RngUtil;
-    use core::rand;
-    use core::task;
     use core::pipes::{stream, SharedChan};
 
     #[test]
@@ -220,7 +216,7 @@ mod test {
                 let hl_loop_clone = hl_loop.clone();
                 do task::spawn {
                     use core::rand::*;
-                    let rng = Rng();
+                    let rng = rng();
                     for iter::repeat(times) {
                         sleep(&hl_loop_clone, rng.next() as uint % maxms);
                     }
@@ -277,7 +273,7 @@ mod test {
         let hl_loop = uv::global_loop::get();
 
         for iter::repeat(times as uint) {
-            let expected = rand::Rng().gen_str(16u);
+            let expected = rand::rng().gen_str(16u);
             let (test_po, test_ch) = stream::<~str>();
             let hl_loop_clone = hl_loop.clone();
             do task::spawn() {
