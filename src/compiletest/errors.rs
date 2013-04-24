@@ -50,7 +50,11 @@ fn parse_expected(line_num: uint, line: ~str) -> ~[ExpectedError] {
     while idx < len && line[idx] == (' ' as u8) { idx += 1u; }
     let start_kind = idx;
     while idx < len && line[idx] != (' ' as u8) { idx += 1u; }
-    let kind = str::to_lower(str::slice(line, start_kind, idx).to_owned());
+
+    // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
+    // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+    let kind = str::slice(line, start_kind, idx);
+    let kind = kind.to_ascii().to_lower().to_str_ascii();
 
     // Extract msg:
     while idx < len && line[idx] == (' ' as u8) { idx += 1u; }

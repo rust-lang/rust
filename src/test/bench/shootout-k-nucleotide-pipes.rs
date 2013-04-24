@@ -59,7 +59,10 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
    for pairs_sorted.each |kv| {
        let (k,v) = copy *kv;
        unsafe {
-           buffer += (fmt!("%s %0.3f\n", str::to_upper(str::raw::from_bytes(k)), v));
+           let b = str::raw::from_bytes(k);
+           // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
+           // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+           buffer += (fmt!("%s %0.3f\n", b.to_ascii().to_upper().to_str_ascii(), v));
        }
    }
 
@@ -68,7 +71,9 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
 
 // given a map, search for the frequency of a pattern
 fn find(mm: &HashMap<~[u8], uint>, key: ~str) -> uint {
-   match mm.find(&str::to_bytes(str::to_lower(key))) {
+   // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
+   // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+   match mm.find(&str::to_bytes(key.to_ascii().to_lower().to_str_ascii())) {
       option::None      => { return 0u; }
       option::Some(&num) => { return num; }
    }

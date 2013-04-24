@@ -885,8 +885,12 @@ mod tests {
         // tjc: funny that we have to use parens
         fn ile(x: &(&'static str), y: &(&'static str)) -> bool
         {
-            let x = x.to_lower();
-            let y = y.to_lower();
+            // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
+            // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+            // (Actually, could just remove the to_str_* call, but needs an deriving(Ord) on
+            // Ascii)
+            let x = x.to_ascii().to_lower().to_str_ascii();
+            let y = y.to_ascii().to_lower().to_str_ascii();
             x <= y
         }
 

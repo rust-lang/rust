@@ -19,6 +19,7 @@ use libc;
 use option::{None, Option, Some};
 use str;
 use to_str::ToStr;
+use ascii::{AsciiCast, AsciiStr};
 
 #[deriving(Clone, Eq)]
 pub struct WindowsPath {
@@ -753,7 +754,9 @@ impl GenericPath for WindowsPath {
     fn is_restricted(&self) -> bool {
         match self.filestem() {
             Some(stem) => {
-                match stem.to_lower() {
+                // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
+                // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+                match stem.to_ascii().to_lower().to_str_ascii() {
                     ~"con" | ~"aux" | ~"com1" | ~"com2" | ~"com3" | ~"com4" |
                     ~"lpt1" | ~"lpt2" | ~"lpt3" | ~"prn" | ~"nul" => true,
                     _ => false
@@ -809,7 +812,10 @@ impl GenericPath for WindowsPath {
             host: copy self.host,
             device: match self.device {
                 None => None,
-                Some(ref device) => Some(device.to_upper())
+
+                // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
+                // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+                Some(ref device) => Some(device.to_ascii().to_upper().to_str_ascii())
             },
             is_absolute: self.is_absolute,
             components: normalize(self.components)
