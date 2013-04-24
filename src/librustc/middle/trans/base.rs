@@ -70,7 +70,7 @@ use core::hash;
 use core::hashmap::{HashMap, HashSet};
 use core::int;
 use core::io;
-use core::libc::{c_uint, c_ulonglong};
+use core::libc::c_uint;
 use core::uint;
 use std::time;
 use syntax::ast::ident;
@@ -2628,13 +2628,11 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
             let class_ty = ty::lookup_item_type(tcx, parent_id).ty;
             // This code shouldn't be reached if the class is generic
             assert!(!ty::type_has_params(class_ty));
-            let lldty = unsafe {
-                T_fn(~[
+            let lldty = T_fn(~[
                     T_ptr(T_i8()),
                     T_ptr(type_of(ccx, class_ty))
                 ],
-                T_nil())
-            };
+                T_nil());
             let s = get_dtor_symbol(ccx, /*bad*/copy *pt, dt.node.id, None);
 
             /* Make the declaration for the dtor */

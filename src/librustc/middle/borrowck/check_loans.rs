@@ -20,6 +20,7 @@
 use core::prelude::*;
 
 use middle::moves;
+use middle::typeck::check::PurityState;
 use middle::borrowck::{Loan, bckerr, BorrowckCtxt, inherent_mutability};
 use middle::borrowck::{ReqMaps, root_map_key, save_and_restore_managed};
 use middle::borrowck::{MoveError, MoveOk, MoveFromIllegalCmt};
@@ -40,11 +41,6 @@ use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::visit;
-
-struct PurityState {
-    def: ast::node_id,
-    purity: ast::purity
-}
 
 struct CheckLoanCtxt {
     bccx: @BorrowckCtxt,
@@ -85,8 +81,7 @@ pub fn check_loans(bccx: @BorrowckCtxt,
         bccx: bccx,
         req_maps: req_maps,
         reported: HashSet::new(),
-        declared_purity: @mut PurityState { purity: ast::impure_fn,
-                                            def: 0 },
+        declared_purity: @mut PurityState::function(ast::impure_fn, 0),
         fn_args: @mut @~[]
     };
     let vt = visit::mk_vt(@visit::Visitor {visit_expr: check_loans_in_expr,
@@ -658,9 +653,7 @@ fn check_loans_in_fn(fk: &visit::fn_kind,
     debug!("purity on entry=%?", copy self.declared_purity);
     do save_and_restore_managed(self.declared_purity) {
         do save_and_restore_managed(self.fn_args) {
-            self.declared_purity = @mut PurityState {
-                purity: declared_purity, def: src
-            };
+            self.declared_purity = @mut PurityState::function(declared_purity, src);
 
             match *fk {
                 visit::fk_anon(*) |
@@ -810,17 +803,7 @@ fn check_loans_in_block(blk: &ast::blk,
     do save_and_restore_managed(self.declared_purity) {
         self.check_for_conflicting_loans(blk.node.id);
 
-        match blk.node.rules {
-          ast::default_blk => {
-          }
-          ast::unsafe_blk => {
-            *self.declared_purity = PurityState {
-                purity: ast::unsafe_fn,
-                def: blk.node.id,
-            };
-          }
-        }
-
+        *self.declared_purity = self.declared_purity.recurse(blk);
         visit::visit_block(blk, self, vt);
     }
 }
