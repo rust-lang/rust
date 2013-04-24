@@ -279,7 +279,7 @@ impl Signed for T {
     fn is_negative(&self) -> bool { *self < 0 }
 }
 
-impl Natural for T {
+impl Integer for T {
     /**
      * Floored integer division
      *
