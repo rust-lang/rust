@@ -154,6 +154,8 @@ impl One for BigUint {
     pub fn one() -> BigUint { BigUint::new(~[1]) }
 }
 
+impl Unsigned for BigUint {}
+
 impl Add<BigUint, BigUint> for BigUint {
     fn add(&self, other: &BigUint) -> BigUint {
         let new_len = uint::max(self.data.len(), other.data.len());
@@ -469,11 +471,8 @@ pub impl BigUint {
     }
 
     fn is_zero(&self) -> bool { self.data.is_empty() }
+
     fn is_not_zero(&self) -> bool { !self.data.is_empty() }
-    fn is_positive(&self) -> bool { self.is_not_zero() }
-    fn is_negative(&self) -> bool { false }
-    fn is_nonpositive(&self) -> bool { self.is_zero() }
-    fn is_nonnegative(&self) -> bool { true }
 
     fn to_uint(&self) -> uint {
         match self.data.len() {
@@ -693,6 +692,27 @@ impl One for BigInt {
     }
 }
 
+impl Signed for BigInt {
+    fn abs(&self) -> BigInt {
+        match self.sign {
+            Plus | Zero => copy *self,
+            Minus => BigInt::from_biguint(Plus, copy self.data)
+        }
+    }
+
+    fn signum(&self) -> BigInt {
+        match self.sign {
+            Plus  => BigInt::from_biguint(Plus, One::one()),
+            Minus => BigInt::from_biguint(Minus, One::one()),
+            Zero  => Zero::zero(),
+        }
+    }
+
+    fn is_positive(&self) -> bool { self.sign == Plus }
+
+    fn is_negative(&self) -> bool { self.sign == Minus }
+}
+
 impl Add<BigInt, BigInt> for BigInt {
     fn add(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
@@ -888,11 +908,8 @@ pub impl BigInt {
     }
 
     fn is_zero(&self) -> bool { self.sign == Zero }
+
     fn is_not_zero(&self) -> bool { self.sign != Zero }
-    fn is_positive(&self) -> bool { self.sign == Plus }
-    fn is_negative(&self) -> bool { self.sign == Minus }
-    fn is_nonpositive(&self) -> bool { self.sign != Plus }
-    fn is_nonnegative(&self) -> bool { self.sign != Minus }
 
     fn to_uint(&self) -> uint {
         match self.sign {

@@ -39,7 +39,7 @@ pub use hash::Hash;
 pub use iter::{BaseIter, ReverseIter, MutableIter, ExtendedIter, EqIter};
 pub use iter::{CopyableIter, CopyableOrderedIter, CopyableNonstrictIter};
 pub use iter::{Times, ExtendedMutableIter};
-pub use num::{Num, NumCast};
+pub use num::{Num, Signed, Unsigned, Natural, NumCast};
 pub use path::GenericPath;
 pub use path::Path;
 pub use path::PosixPath;
