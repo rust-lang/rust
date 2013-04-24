@@ -43,11 +43,11 @@ pub unsafe fn weaken_task(f: &fn(Port<ShutdownMsg>)) {
     let task = get_task_id();
     // Expect the weak task service to be alive
     assert!(service.try_send(RegisterWeakTask(task, shutdown_chan)));
-    unsafe { rust_dec_kernel_live_count(); }
+    rust_dec_kernel_live_count();
     do (|| {
         f(shutdown_port.take())
     }).finally || {
-        unsafe { rust_inc_kernel_live_count(); }
+        rust_inc_kernel_live_count();
         // Service my have already exited
         service.send(UnregisterWeakTask(task));
     }

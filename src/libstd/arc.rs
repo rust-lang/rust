@@ -177,15 +177,13 @@ pub impl<T:Owned> MutexARC<T> {
      */
     #[inline(always)]
     unsafe fn access<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
-        unsafe {
-            let state = get_shared_mutable_state(&self.x);
-            // Borrowck would complain about this if the function were
-            // not already unsafe. See borrow_rwlock, far below.
-            do (&(*state).lock).lock {
-                check_poison(true, (*state).failed);
-                let _z = PoisonOnFail(&mut (*state).failed);
-                blk(&mut (*state).data)
-            }
+        let state = get_shared_mutable_state(&self.x);
+        // Borrowck would complain about this if the function were
+        // not already unsafe. See borrow_rwlock, far below.
+        do (&(*state).lock).lock {
+            check_poison(true, (*state).failed);
+            let _z = PoisonOnFail(&mut (*state).failed);
+            blk(&mut (*state).data)
         }
     }
 
@@ -195,16 +193,14 @@ pub impl<T:Owned> MutexARC<T> {
         &self,
         blk: &fn(x: &'x mut T, c: &'c Condvar) -> U) -> U
     {
-        unsafe {
-            let state = get_shared_mutable_state(&self.x);
-            do (&(*state).lock).lock_cond |cond| {
-                check_poison(true, (*state).failed);
-                let _z = PoisonOnFail(&mut (*state).failed);
-                blk(&mut (*state).data,
-                    &Condvar {is_mutex: true,
-                              failed: &mut (*state).failed,
-                              cond: cond })
-            }
+        let state = get_shared_mutable_state(&self.x);
+        do (&(*state).lock).lock_cond |cond| {
+            check_poison(true, (*state).failed);
+            let _z = PoisonOnFail(&mut (*state).failed);
+            blk(&mut (*state).data,
+                &Condvar {is_mutex: true,
+                          failed: &mut (*state).failed,
+                          cond: cond })
         }
     }
 }

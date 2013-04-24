@@ -115,6 +115,7 @@ use core::result::{Result, Ok, Err};
 use core::result;
 use core::str;
 use core::vec;
+use core::util::replace;
 use std::list::Nil;
 use syntax::abi::AbiSet;
 use syntax::ast::{provided, required};
@@ -179,9 +180,36 @@ pub enum FnKind {
     Vanilla
 }
 
-struct PurityState {
+pub struct PurityState {
+    def: ast::node_id,
     purity: ast::purity,
-    from: ast::node_id,
+    priv from_fn: bool
+}
+
+pub impl PurityState {
+    pub fn function(purity: ast::purity, def: ast::node_id) -> PurityState {
+        PurityState { def: def, purity: purity, from_fn: true }
+    }
+
+    pub fn recurse(&mut self, blk: &ast::blk) -> PurityState {
+        match self.purity {
+            // If this unsafe, then if the outer function was already marked as
+            // unsafe we shouldn't attribute the unsafe'ness to the block. This
+            // way the block can be warned about instead of ignoring this
+            // extraneous block (functions are never warned about).
+            ast::unsafe_fn if self.from_fn => *self,
+
+            purity => {
+                let (purity, def) = match blk.node.rules {
+                    ast::unsafe_blk => (ast::unsafe_fn, blk.node.id),
+                    ast::default_blk => (purity, self.def),
+                };
+                PurityState{ def: def,
+                             purity: purity,
+                             from_fn: false }
+            }
+        }
+    }
 }
 
 pub struct FnCtxt {
@@ -243,7 +271,7 @@ pub fn blank_fn_ctxt(ccx: @mut CrateCtxt,
     @mut FnCtxt {
         ret_ty: rty,
         indirect_ret_ty: None,
-        ps: PurityState { purity: ast::pure_fn, from: 0 },
+        ps: PurityState::function(ast::pure_fn, 0),
         region_lb: region_bnd,
         in_scope_regions: @Nil,
         fn_kind: Vanilla,
@@ -348,7 +376,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         @mut FnCtxt {
             ret_ty: ret_ty,
             indirect_ret_ty: indirect_ret_ty,
-            ps: PurityState { purity: purity, from: id },
+            ps: PurityState::function(purity, id),
             region_lb: body.node.id,
             in_scope_regions: isr,
             fn_kind: fn_kind,
@@ -876,8 +904,8 @@ pub impl FnCtxt {
         match self.ps.purity {
           ast::unsafe_fn => {
             // ok, but flag that we used the source of unsafeness
-            debug!("flagging %? as a used unsafe source", self.ps.from);
-            self.tcx().used_unsafe.insert(self.ps.from);
+            debug!("flagging %? as a used unsafe source", self.ps);
+            self.tcx().used_unsafe.insert(self.ps.def);
           }
           _ => {
             self.ccx.tcx.sess.span_err(
@@ -1689,7 +1717,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(expr.id, fty);
 
         let (inherited_purity, id) =
-            ty::determine_inherited_purity((fcx.ps.purity, fcx.ps.from),
+            ty::determine_inherited_purity((fcx.ps.purity, fcx.ps.def),
                                            (purity, expr.id),
                                            sigil);
 
@@ -2929,16 +2957,11 @@ pub fn check_block(fcx0: @mut FnCtxt, blk: &ast::blk)  {
     check_block_with_expected(fcx0, blk, None)
 }
 
-pub fn check_block_with_expected(fcx0: @mut FnCtxt,
+pub fn check_block_with_expected(fcx: @mut FnCtxt,
                                  blk: &ast::blk,
                                  expected: Option<ty::t>) {
-    let fcx = match blk.node.rules {
-        ast::unsafe_blk => @mut FnCtxt {
-            ps: PurityState { purity: ast::unsafe_fn, from: blk.node.id },
-            .. copy *fcx0
-        },
-        ast::default_blk => fcx0
-    };
+    let prev = replace(&mut fcx.ps, fcx.ps.recurse(blk));
+
     do fcx.with_region_lb(blk.node.id) {
         let mut warned = false;
         let mut last_was_bot = false;
@@ -2990,6 +3013,8 @@ pub fn check_block_with_expected(fcx0: @mut FnCtxt,
           }
         };
     }
+
+    fcx.ps = prev;
 }
 
 pub fn check_const(ccx: @mut CrateCtxt,

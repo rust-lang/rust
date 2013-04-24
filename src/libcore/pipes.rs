@@ -156,9 +156,7 @@ pub impl PacketHeader {
     unsafe fn unblock(&self) {
         let old_task = swap_task(&mut self.blocked_task, ptr::null());
         if !old_task.is_null() {
-            unsafe {
-                rustrt::rust_task_deref(old_task)
-            }
+            rustrt::rust_task_deref(old_task)
         }
         match swap_state_acq(&mut self.state, Empty) {
           Empty | Blocked => (),
