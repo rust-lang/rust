@@ -16,9 +16,7 @@ use ops::{Add, Sub, Mul, Neg};
 use Quot = ops::Div;
 #[cfg(stage0)]
 use Rem = ops::Modulo;
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 use ops::{Add, Sub, Mul, Quot, Rem, Neg};
 use option::Option;
 use kinds::Copy;

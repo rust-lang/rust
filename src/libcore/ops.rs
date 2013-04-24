@@ -36,9 +36,7 @@ pub trait Div<RHS,Result> {
     fn div(&self, rhs: &RHS) -> Result;
 }
 #[lang="quot"]
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 pub trait Quot<RHS,Result> {
     fn quot(&self, rhs: &RHS) -> Result;
 }
@@ -49,9 +47,7 @@ pub trait Modulo<RHS,Result> {
     fn modulo(&self, rhs: &RHS) -> Result;
 }
 #[lang="rem"]
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 pub trait Rem<RHS,Result> {
     fn rem(&self, rhs: &RHS) -> Result;
 }
