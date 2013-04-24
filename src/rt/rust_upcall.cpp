@@ -19,9 +19,15 @@
 #include "rust_globals.h"
 #include "rust_task.h"
 #include "rust_sched_loop.h"
-#include "rust_unwind.h"
 #include "rust_upcall.h"
 #include "rust_util.h"
+
+//Unwinding ABI declarations.
+typedef int _Unwind_Reason_Code;
+typedef int _Unwind_Action;
+
+struct _Unwind_Context;
+struct _Unwind_Exception;
 
 #ifdef __GNUC__
 #define LOG_UPCALL_ENTRY(task)                            \
