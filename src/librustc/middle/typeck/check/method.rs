@@ -101,7 +101,7 @@ use core::uint;
 use core::vec;
 use std::list::Nil;
 use syntax::ast::{def_id, sty_value, sty_region, sty_box};
-use syntax::ast::{sty_uniq, sty_static, node_id, by_copy, by_ref};
+use syntax::ast::{sty_uniq, sty_static, node_id};
 use syntax::ast::{m_const, m_mutbl, m_imm};
 use syntax::ast;
 use syntax::ast_map;
@@ -1056,9 +1056,9 @@ pub impl<'self> LookupContext<'self> {
         self.fcx.write_substs(self.callee_id, all_substs);
         method_map_entry {
             self_arg: arg {
-                mode: ast::expl(self_mode),
                 ty: candidate.rcvr_ty,
             },
+            self_mode: self_mode,
             explicit_self: candidate.method_ty.self_ty,
             origin: candidate.origin,
         }
@@ -1303,6 +1303,9 @@ pub impl<'self> LookupContext<'self> {
     }
 }
 
-pub fn get_mode_from_self_type(self_type: ast::self_ty_) -> ast::rmode {
-    match self_type { sty_value => by_copy, _ => by_ref }
+pub fn get_mode_from_self_type(self_type: ast::self_ty_) -> SelfMode {
+    match self_type {
+        sty_value => ty::ByCopy,
+        _ => ty::ByRef,
+    }
 }

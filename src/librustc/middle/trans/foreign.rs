@@ -793,10 +793,11 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 sigil: ast::BorrowedSigil,
                 onceness: ast::Many,
                 region: ty::re_bound(ty::br_anon(0)),
-                sig: FnSig {bound_lifetime_names: opt_vec::Empty,
-                            inputs: ~[arg {mode: ast::expl(ast::by_copy),
-                                           ty: star_u8}],
-                            output: ty::mk_nil()}
+                sig: FnSig {
+                    bound_lifetime_names: opt_vec::Empty,
+                    inputs: ~[ arg { ty: star_u8 } ],
+                    output: ty::mk_nil()
+                }
             });
             let datum = Datum {val: get_param(decl, first_real_arg),
                                mode: ByRef, ty: fty, source: ZeroMem};
