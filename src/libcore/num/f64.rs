@@ -10,20 +10,10 @@
 
 //! Operations and constants for `f64`
 
-use num::strconv;
-use num::Signed;
-use num;
-use option::Option;
-use to_str;
 use from_str;
-
-#[cfg(notest)] use cmp::{Eq, Ord};
-#[cfg(stage0,notest)]
-use ops::{Add, Sub, Mul, Div, Modulo, Neg};
-#[cfg(stage1,notest)]
-#[cfg(stage2,notest)]
-#[cfg(stage3,notest)]
-use ops::{Add, Sub, Mul, Quot, Rem, Neg};
+use libc::c_int;
+use num::strconv;
+use prelude::*;
 
 pub use cmath::c_double_targ_consts::*;
 pub use cmp::{min, max};
@@ -253,6 +243,8 @@ pub mod consts {
 pub fn logarithm(n: f64, b: f64) -> f64 {
     return log2(n) / log2(b);
 }
+
+impl Num for f64 {}
 
 #[cfg(notest)]
 impl Eq for f64 {
@@ -596,6 +588,13 @@ impl num::FromStrRadix for f64 {
 #[cfg(test)]
 mod tests {
     use f64::*;
+    use super::*;
+    use prelude::*;
+
+    #[test]
+    fn test_num() {
+        num::test_num(10f64, 2f64);
+    }
 
     #[test]
     pub fn test_signed() {

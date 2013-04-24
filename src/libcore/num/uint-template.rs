@@ -11,13 +11,9 @@
 use T = self::inst::T;
 use T_SIGNED = self::inst::T_SIGNED;
 
-use to_str::ToStr;
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
-use num::Unsigned;
-use num;
-use option::Option;
 use prelude::*;
 
 pub use cmp::{min, max};
@@ -99,6 +95,8 @@ pub fn range_rev(hi: T, lo: T, it: &fn(T) -> bool) {
 pub fn compl(i: T) -> T {
     max_value ^ i
 }
+
+impl Num for T {}
 
 #[cfg(notest)]
 impl Ord for T {
@@ -355,6 +353,11 @@ mod tests {
     use super::*;
     use super::inst::T;
     use prelude::*;
+
+    #[test]
+    fn test_num() {
+        num::test_num(10 as T, 2 as T);
+    }
 
     #[test]
     fn test_gcd() {
