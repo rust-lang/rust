@@ -1718,19 +1718,6 @@ pub fn print_fn_block_args(s: @ps, decl: &ast::fn_decl) {
     maybe_print_comment(s, decl.output.span.lo);
 }
 
-pub fn mode_to_str(m: ast::mode) -> ~str {
-    match m {
-      ast::expl(ast::by_ref) => ~"&&",
-      ast::expl(ast::by_copy) => ~"+",
-      ast::infer(_) => ~""
-    }
-}
-
-pub fn print_arg_mode(s: @ps, m: ast::mode) {
-    let ms = mode_to_str(m);
-    if ms != ~"" { word(s.s, ms); }
-}
-
 pub fn print_bounds(s: @ps, bounds: @OptVec<ast::TyParamBound>) {
     if !bounds.is_empty() {
         word(s.s, ~":");
@@ -1879,7 +1866,6 @@ pub fn print_mt(s: @ps, mt: &ast::mt) {
 
 pub fn print_arg(s: @ps, input: ast::arg) {
     ibox(s, indent_unit);
-    print_arg_mode(s, input.mode);
     if input.is_mutbl {
         word_space(s, ~"mut");
     }

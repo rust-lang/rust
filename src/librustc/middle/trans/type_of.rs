@@ -19,11 +19,8 @@ use util::ppaux;
 
 use syntax::ast;
 
-pub fn arg_is_indirect(ccx: @CrateContext, arg: &ty::arg) -> bool {
-    match ty::resolved_mode(ccx.tcx, arg.mode) {
-        ast::by_copy => !ty::type_is_immediate(arg.ty),
-        ast::by_ref => true
-    }
+pub fn arg_is_indirect(_: @CrateContext, arg: &ty::arg) -> bool {
+    !ty::type_is_immediate(arg.ty)
 }
 
 pub fn type_of_explicit_arg(ccx: @CrateContext, arg: &ty::arg) -> TypeRef {

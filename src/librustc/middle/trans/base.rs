@@ -1728,7 +1728,6 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
                             raw_llargs: &[ValueRef],
                             arg_tys: &[ty::arg]) -> block {
     let _icx = fcx.insn_ctxt("copy_args_to_allocas");
-    let tcx = bcx.tcx();
     let mut bcx = bcx;
 
     match fcx.llself {
@@ -1757,24 +1756,16 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
         // the argument would be passed by value, we store it into an alloca.
         // This alloca should be optimized away by LLVM's mem-to-reg pass in
         // the event it's not truly needed.
-        let llarg;
-        match ty::resolved_mode(tcx, arg_ty.mode) {
-            ast::by_ref => {
-                llarg = raw_llarg;
-            }
-            ast::by_copy => {
-                // only by value if immediate:
-                if datum::appropriate_mode(arg_ty.ty).is_by_value() {
-                    let alloc = alloc_ty(bcx, arg_ty.ty);
-                    Store(bcx, raw_llarg, alloc);
-                    llarg = alloc;
-                } else {
-                    llarg = raw_llarg;
-                }
+        // only by value if immediate:
+        let llarg = if datum::appropriate_mode(arg_ty.ty).is_by_value() {
+            let alloc = alloc_ty(bcx, arg_ty.ty);
+            Store(bcx, raw_llarg, alloc);
+            alloc
+        } else {
+            raw_llarg
+        };
 
-                add_clean(bcx, llarg, arg_ty.ty);
-            }
-        }
+        add_clean(bcx, llarg, arg_ty.ty);
 
         bcx = _match::bind_irrefutable_pat(bcx,
                                           args[arg_n].pat,
@@ -1966,7 +1957,6 @@ pub fn trans_enum_variant(ccx: @CrateContext,
     // Translate variant arguments to function arguments.
     let fn_args = do args.map |varg| {
         ast::arg {
-            mode: ast::expl(ast::by_copy),
             is_mutbl: false,
             ty: varg.ty,
             pat: ast_util::ident_to_pat(
@@ -2041,7 +2031,6 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
     // Translate struct fields to function arguments.
     let fn_args = do fields.map |field| {
         ast::arg {
-            mode: ast::expl(ast::by_copy),
             is_mutbl: false,
             ty: field.node.ty,
             pat: ast_util::ident_to_pat(ccx.tcx.sess.next_node_id(),
@@ -2408,8 +2397,8 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
             } else {
                 let start_fn_type = csearch::get_type(ccx.tcx,
                                                       start_def_id).ty;
-                trans_external_path(ccx, start_def_id, start_fn_type)
-            };
+                trans_external_path(ccx, start_def_id, start_fn_type);
+            }
 
             let retptr = llvm::LLVMBuildAlloca(bld, T_i8(), noname());
 

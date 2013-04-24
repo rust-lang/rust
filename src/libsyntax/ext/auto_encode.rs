@@ -608,7 +608,6 @@ fn mk_ser_method(
     };
 
     let ser_inputs = ~[ast::arg {
-        mode: ast::infer(cx.next_id()),
         is_mutbl: false,
         ty: ty_s,
         pat: @ast::pat {
@@ -670,20 +669,22 @@ fn mk_deser_method(
         span: span,
     };
 
-    let deser_inputs = ~[ast::arg {
-        mode: ast::infer(cx.next_id()),
-        is_mutbl: false,
-        ty: ty_d,
-        pat: @ast::pat {
+    let deser_inputs = ~[
+        ast::arg {
+            is_mutbl: false,
+            ty: ty_d,
+            pat: @ast::pat {
+                id: cx.next_id(),
+                node: ast::pat_ident(ast::bind_by_copy,
+                                     ast_util::ident_to_path(span,
+                                                             cx.ident_of(
+                                                                ~"__d")),
+                                     None),
+                span: span,
+            },
             id: cx.next_id(),
-            node: ast::pat_ident(
-                ast::bind_by_copy,
-                ast_util::ident_to_path(span, cx.ident_of(~"__d")),
-                None),
-            span: span,
-        },
-        id: cx.next_id(),
-    }];
+        }
+    ];
 
     let deser_decl = ast::fn_decl {
         inputs: deser_inputs,
@@ -1120,7 +1121,6 @@ fn mk_enum_deser_body(
         ast::expr_fn_block(
             ast::fn_decl {
                 inputs: ~[ast::arg {
-                    mode: ast::infer(ext_cx.next_id()),
                     is_mutbl: false,
                     ty: @ast::Ty {
                         id: ext_cx.next_id(),

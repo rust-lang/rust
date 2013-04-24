@@ -501,52 +501,22 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
     return typ;
 }
 
-pub fn ty_of_arg<AC:AstConv,RS:region_scope + Copy + Durable>(
-        self: &AC,
-        rscope: &RS,
-        a: ast::arg,
-        expected_ty: Option<ty::arg>)
-     -> ty::arg {
+pub fn ty_of_arg<AC:AstConv,
+                 RS:region_scope + Copy + Durable>(
+                 self: &AC,
+                 rscope: &RS,
+                 a: ast::arg,
+                 expected_ty: Option<ty::arg>)
+                 -> ty::arg {
     let ty = match a.ty.node {
-      ast::ty_infer if expected_ty.is_some() => expected_ty.get().ty,
-      ast::ty_infer => self.ty_infer(a.ty.span),
-      _ => ast_ty_to_ty(self, rscope, a.ty)
+        ast::ty_infer if expected_ty.is_some() => expected_ty.get().ty,
+        ast::ty_infer => self.ty_infer(a.ty.span),
+        _ => ast_ty_to_ty(self, rscope, a.ty),
     };
 
-    let mode = {
-        match a.mode {
-          ast::infer(_) if expected_ty.is_some() => {
-            result::get(&ty::unify_mode(
-                self.tcx(),
-                ty::expected_found {expected: expected_ty.get().mode,
-                                    found: a.mode}))
-          }
-          ast::infer(_) => {
-            match ty::get(ty).sty {
-              // If the type is not specified, then this must be a fn expr.
-              // Leave the mode as infer(_), it will get inferred based
-              // on constraints elsewhere.
-              ty::ty_infer(_) => a.mode,
-
-              // If the type is known, then use the default for that type.
-              // Here we unify m and the default.  This should update the
-              // tables in tcx but should never fail, because nothing else
-              // will have been unified with m yet:
-              _ => {
-                let m1 = ast::expl(ty::default_arg_mode_for_ty(self.tcx(),
-                                                               ty));
-                result::get(&ty::unify_mode(
-                    self.tcx(),
-                    ty::expected_found {expected: m1,
-                                        found: a.mode}))
-              }
-            }
-          }
-          ast::expl(_) => a.mode
-        }
-    };
-
-    arg {mode: mode, ty: ty}
+    arg {
+        ty: ty
+    }
 }
 
 pub fn bound_lifetimes<AC:AstConv>(

@@ -344,15 +344,7 @@ fn enc_sigil(w: @io::Writer, sigil: Sigil) {
 }
 
 pub fn enc_arg(w: @io::Writer, cx: @ctxt, arg: ty::arg) {
-    enc_mode(w, cx, arg.mode);
     enc_ty(w, cx, arg.ty);
-}
-
-pub fn enc_mode(w: @io::Writer, cx: @ctxt, m: mode) {
-    match ty::resolved_mode(cx.tcx, m) {
-      by_copy => w.write_char('+'),
-      by_ref => w.write_char('='),
-    }
 }
 
 fn enc_purity(w: @io::Writer, p: purity) {
