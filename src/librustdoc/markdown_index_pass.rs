@@ -157,7 +157,9 @@ pub fn pandoc_header_id(header: &str) -> ~str {
         let s = str::replace(s, ~" ", ~"-");
         return s;
     }
-    fn convert_to_lowercase(s: &str) -> ~str { str::to_lower(s) }
+    // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
+    // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+    fn convert_to_lowercase(s: &str) -> ~str { s.to_ascii().to_lower().to_str_ascii() }
     fn remove_up_to_first_letter(s: &str) -> ~str { s.to_str() }
     fn maybe_use_section_id(s: &str) -> ~str { s.to_str() }
 }

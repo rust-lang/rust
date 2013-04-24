@@ -27,7 +27,6 @@ use option::{None, Option, Some};
 use iterator::Iterator;
 use ptr;
 use str;
-use u8;
 use uint;
 use vec;
 use to_str::ToStr;
@@ -784,22 +783,6 @@ pub fn each_split_within<'a>(ss: &'a str,
     while cont && match state { B | C => true, A => false } {
         machine(fake_i, ' ');
         fake_i += 1;
-    }
-}
-
-/// Convert a string to lowercase. ASCII only
-pub fn to_lower(s: &str) -> ~str {
-    do map(s) |c| {
-        assert!(char::is_ascii(c));
-        (unsafe{libc::tolower(c as libc::c_char)}) as char
-    }
-}
-
-/// Convert a string to uppercase. ASCII only
-pub fn to_upper(s: &str) -> ~str {
-    do map(s) |c| {
-        assert!(char::is_ascii(c));
-        (unsafe{libc::toupper(c as libc::c_char)}) as char
     }
 }
 
@@ -1610,13 +1593,6 @@ pub fn ends_with<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
 Section: String properties
 */
 
-/// Determines if a string contains only ASCII characters
-pub fn is_ascii(s: &str) -> bool {
-    let mut i: uint = len(s);
-    while i > 0u { i -= 1u; if !u8::is_ascii(s[i]) { return false; } }
-    return true;
-}
-
 /// Returns true if the string has length 0
 pub fn is_empty(s: &str) -> bool { len(s) == 0u }
 
@@ -2403,8 +2379,6 @@ pub trait StrSlice<'self> {
     fn each_split_str<'a>(&self, sep: &'a str, it: &fn(&'self str) -> bool);
     fn starts_with<'a>(&self, needle: &'a str) -> bool;
     fn substr(&self, begin: uint, n: uint) -> &'self str;
-    fn to_lower(&self) -> ~str;
-    fn to_upper(&self) -> ~str;
     fn escape_default(&self) -> ~str;
     fn escape_unicode(&self) -> ~str;
     fn trim(&self) -> &'self str;
@@ -2565,12 +2539,6 @@ impl<'self> StrSlice<'self> for &'self str {
     fn substr(&self, begin: uint, n: uint) -> &'self str {
         substr(*self, begin, n)
     }
-    /// Convert a string to lowercase
-    #[inline]
-    fn to_lower(&self) -> ~str { to_lower(*self) }
-    /// Convert a string to uppercase
-    #[inline]
-    fn to_upper(&self) -> ~str { to_upper(*self) }
     /// Escape each char in `s` with char::escape_default.
     #[inline]
     fn escape_default(&self) -> ~str { escape_default(*self) }
@@ -3085,27 +3053,6 @@ mod tests {
     }
 
     #[test]
-    fn test_to_upper() {
-        // libc::toupper, and hence str::to_upper
-        // are culturally insensitive: they only work for ASCII
-        // (see Issue #1347)
-        let unicode = ~""; //"\u65e5\u672c"; // uncomment once non-ASCII works
-        let input = ~"abcDEF" + unicode + ~"xyz:.;";
-        let expected = ~"ABCDEF" + unicode + ~"XYZ:.;";
-        let actual = to_upper(input);
-        assert!(expected == actual);
-    }
-
-    #[test]
-    fn test_to_lower() {
-        // libc::tolower, and hence str::to_lower
-        // are culturally insensitive: they only work for ASCII
-        // (see Issue #1347)
-        assert!(~"" == to_lower(""));
-        assert!(~"ymca" == to_lower("YMCA"));
-    }
-
-    #[test]
     fn test_unsafe_slice() {
         assert!("ab" == unsafe {raw::slice_bytes("abc", 0, 2)});
         assert!("bc" == unsafe {raw::slice_bytes("abc", 1, 3)});
@@ -3335,13 +3282,6 @@ mod tests {
         assert!((is_whitespace(~"\u2009"))); // Thin space
         assert!((is_whitespace(~"  \n\t   ")));
         assert!((!is_whitespace(~"   _   ")));
-    }
-
-    #[test]
-    fn test_is_ascii() {
-        assert!((is_ascii(~"")));
-        assert!((is_ascii(~"a")));
-        assert!((!is_ascii(~"\u2009")));
     }
 
     #[test]

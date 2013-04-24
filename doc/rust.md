@@ -802,7 +802,7 @@ An example of `use` declarations:
 
 ~~~~
 use core::float::sin;
-use core::str::{slice, to_upper};
+use core::str::{slice, contains};
 use core::option::Some;
 
 fn main() {
@@ -813,8 +813,8 @@ fn main() {
     info!(Some(1.0));
 
     // Equivalent to
-    // 'info!(core::str::to_upper(core::str::slice("foo", 0, 1)));'
-    info!(to_upper(slice("foo", 0, 1)));
+    // 'info!(core::str::contains(core::str::slice("foo", 0, 1), "oo"));'
+    info!(contains(slice("foo", 0, 1), "oo"));
 }
 ~~~~
 

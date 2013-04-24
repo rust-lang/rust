@@ -100,12 +100,6 @@ pub fn is_alphanumeric(c: char) -> bool {
         unicode::general_category::No(c);
 }
 
-/// Indicates whether the character is an ASCII character
-#[inline(always)]
-pub fn is_ascii(c: char) -> bool {
-   c - ('\x7F' & c) == '\x00'
-}
-
 /// Indicates whether the character is numeric (Nd, Nl, or No)
 #[inline(always)]
 pub fn is_digit(c: char) -> bool {
@@ -116,7 +110,7 @@ pub fn is_digit(c: char) -> bool {
 
 /**
  * Checks if a character parses as a numeric digit in the given radix.
- * Compared to `is_digit()`, this function only recognizes the ascii
+ * Compared to `is_digit()`, this function only recognizes the
  * characters `0-9`, `a-z` and `A-Z`.
  *
  * Returns `true` if `c` is a valid digit under `radix`, and `false`
@@ -163,7 +157,7 @@ pub fn to_digit(c: char, radix: uint) -> Option<uint> {
 }
 
 /**
- * Converts a number to the ascii character representing it.
+ * Converts a number to the character representing it.
  *
  * Returns `Some(char)` if `num` represents one digit under `radix`,
  * using one character of `0-9` or `a-z`, or `None` if it doesn't.
@@ -314,12 +308,6 @@ fn test_to_digit() {
 
     assert!(to_digit(' ', 10u).is_none());
     assert!(to_digit('$', 36u).is_none());
-}
-
-#[test]
-fn test_is_ascii() {
-   assert!(str::all(~"banana", is_ascii));
-   assert!(! str::all(~"ประเทศไทย中华Việt Nam", is_ascii));
 }
 
 #[test]
