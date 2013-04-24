@@ -83,7 +83,7 @@ unsafe fn get_local_map(handle: Handle) -> TaskLocalMap {
 
 unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
 
-    extern fn cleanup_task_local_map_(map_ptr: *libc::c_void) {
+    extern fn cleanup_task_local_map_extern_cb(map_ptr: *libc::c_void) {
         cleanup_task_local_map(map_ptr);
     }
 
@@ -97,7 +97,7 @@ unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
         // Use reinterpret_cast -- transmute would take map away from us also.
         rt::rust_set_task_local_data(
             task, cast::transmute(map));
-        rt::rust_task_local_data_atexit(task, cleanup_task_local_map_);
+        rt::rust_task_local_data_atexit(task, cleanup_task_local_map_extern_cb);
         // Also need to reference it an extra time to keep it for now.
         let nonmut = cast::transmute::<TaskLocalMap,
                                        @~[Option<TaskLocalElement>]>(map);
