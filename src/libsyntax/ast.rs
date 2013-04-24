@@ -198,7 +198,7 @@ pub enum def {
     def_mod(def_id),
     def_foreign_mod(def_id),
     def_const(def_id),
-    def_arg(node_id, mode, bool /* is_mutbl */),
+    def_arg(node_id, bool /* is_mutbl */),
     def_local(node_id, bool /* is_mutbl */),
     def_variant(def_id /* enum */, def_id /* variant */),
     def_ty(def_id),
@@ -416,43 +416,6 @@ pub enum unop {
     not,
     neg
 }
-
-// Generally, after typeck you can get the inferred value
-// using ty::resolved_T(...).
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
-pub enum inferable<T> {
-    expl(T),
-    infer(node_id)
-}
-
-impl<T:to_bytes::IterBytes> to_bytes::IterBytes for inferable<T> {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        match *self {
-          expl(ref t) =>
-          to_bytes::iter_bytes_2(&0u8, t, lsb0, f),
-
-          infer(ref n) =>
-          to_bytes::iter_bytes_2(&1u8, n, lsb0, f),
-        }
-    }
-}
-
-// "resolved" mode: the real modes.
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
-pub enum rmode { by_ref, by_copy }
-
-impl to_bytes::IterBytes for rmode {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        (*self as u8).iter_bytes(lsb0, f)
-    }
-}
-
-// inferable mode.
-pub type mode = inferable<rmode>;
 
 pub type stmt = spanned<stmt_>;
 
@@ -941,7 +904,6 @@ pub struct inline_asm {
 #[auto_decode]
 #[deriving(Eq)]
 pub struct arg {
-    mode: mode,
     is_mutbl: bool,
     ty: @Ty,
     pat: @pat,

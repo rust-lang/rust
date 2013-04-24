@@ -234,10 +234,6 @@ impl Combine for Lub {
         super_trait_stores(self, vk, a, b)
     }
 
-    fn modes(&self, a: ast::mode, b: ast::mode) -> cres<ast::mode> {
-        super_modes(self, a, b)
-    }
-
     fn args(&self, a: ty::arg, b: ty::arg) -> cres<ty::arg> {
         super_args(self, a, b)
     }

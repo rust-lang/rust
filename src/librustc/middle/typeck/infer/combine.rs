@@ -95,7 +95,6 @@ pub trait Combine {
                    b: &ty::ClosureTy) -> cres<ty::ClosureTy>;
     fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig>;
     fn flds(&self, a: ty::field, b: ty::field) -> cres<ty::field>;
-    fn modes(&self, a: ast::mode, b: ast::mode) -> cres<ast::mode>;
     fn args(&self, a: ty::arg, b: ty::arg) -> cres<ty::arg>;
     fn sigils(&self, p1: ast::Sigil, p2: ast::Sigil) -> cres<ast::Sigil>;
     fn purities(&self, a: purity, b: purity) -> cres<purity>;
@@ -312,28 +311,20 @@ pub fn super_flds<C:Combine>(
     }
 }
 
-pub fn super_modes<C:Combine>(
-    self: &C, a: ast::mode, b: ast::mode)
-    -> cres<ast::mode> {
-
-    let tcx = self.infcx().tcx;
-    ty::unify_mode(tcx, expected_found(self, a, b))
-}
-
-pub fn super_args<C:Combine>(
-    self: &C, a: ty::arg, b: ty::arg)
-    -> cres<ty::arg> {
-
-    do self.modes(a.mode, b.mode).chain |m| {
-        do self.contratys(a.ty, b.ty).chain |t| {
-            Ok(arg {mode: m, ty: t})
-        }
+pub fn super_args<C:Combine>(self: &C, a: ty::arg, b: ty::arg)
+                             -> cres<ty::arg> {
+    do self.contratys(a.ty, b.ty).chain |t| {
+        Ok(arg {
+            ty: t
+        })
     }
 }
 
-pub fn super_vstores<C:Combine>(
-    self: &C, vk: ty::terr_vstore_kind,
-    a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
+pub fn super_vstores<C:Combine>(self: &C,
+                                vk: ty::terr_vstore_kind,
+                                a: ty::vstore,
+                                b: ty::vstore)
+                                -> cres<ty::vstore> {
     debug!("%s.super_vstores(a=%?, b=%?)", self.tag(), a, b);
 
     match (a, b) {

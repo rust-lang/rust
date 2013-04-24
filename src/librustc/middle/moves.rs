@@ -718,41 +718,22 @@ pub impl VisitContext {
                     receiver_expr: @expr,
                     visitor: vt<VisitContext>)
     {
-        self.use_fn_arg(by_copy, receiver_expr, visitor);
+        self.use_fn_arg(receiver_expr, visitor);
     }
 
     fn use_fn_args(&self,
-                   callee_id: node_id,
+                   _: node_id,
                    arg_exprs: &[@expr],
-                   visitor: vt<VisitContext>)
-    {
-        /*!
-         *
-         * Uses the argument expressions according to the function modes.
-         */
-
-        let arg_tys =
-            ty::ty_fn_args(ty::node_id_to_type(self.tcx, callee_id));
-        for vec::each2(arg_exprs, arg_tys) |arg_expr, arg_ty| {
-            let arg_mode = ty::resolved_mode(self.tcx, arg_ty.mode);
-            self.use_fn_arg(arg_mode, *arg_expr, visitor);
+                   visitor: vt<VisitContext>) {
+        //! Uses the argument expressions.
+        for arg_exprs.each |arg_expr| {
+            self.use_fn_arg(*arg_expr, visitor);
         }
     }
 
-    fn use_fn_arg(&self,
-                  arg_mode: rmode,
-                  arg_expr: @expr,
-                  visitor: vt<VisitContext>)
-    {
-        /*!
-         *
-         * Uses the argument according to the given argument mode.
-         */
-
-        match arg_mode {
-            by_ref => self.use_expr(arg_expr, Read, visitor),
-            by_copy => self.consume_expr(arg_expr, visitor)
-        }
+    fn use_fn_arg(&self, arg_expr: @expr, visitor: vt<VisitContext>) {
+        //! Uses the argument.
+        self.consume_expr(arg_expr, visitor)
     }
 
     fn arms_have_by_move_bindings(&self,

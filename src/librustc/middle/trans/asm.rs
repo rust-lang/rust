@@ -33,11 +33,16 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
         constraints.push(copy *c);
 
         let aoutty = ty::arg {
-            mode: ast::expl(ast::by_copy),
             ty: expr_ty(bcx, out)
         };
         aoutputs.push(unpack_result!(bcx, {
-            callee::trans_arg_expr(bcx, aoutty, out, &mut cleanups, None, callee::DontAutorefArg)
+            callee::trans_arg_expr(bcx,
+                                   aoutty,
+                                   ty::ByCopy,
+                                   out,
+                                   &mut cleanups,
+                                   None,
+                                   callee::DontAutorefArg)
         }));
 
         let e = match out.node {
@@ -46,12 +51,17 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
         };
 
         let outty = ty::arg {
-            mode: ast::expl(ast::by_copy),
             ty: expr_ty(bcx, e)
         };
 
         unpack_result!(bcx, {
-            callee::trans_arg_expr(bcx, outty, e, &mut cleanups, None, callee::DontAutorefArg)
+            callee::trans_arg_expr(bcx,
+                                   outty,
+                                   ty::ByCopy,
+                                   e,
+                                   &mut cleanups,
+                                   None,
+                                   callee::DontAutorefArg)
         })
 
     };
@@ -66,12 +76,17 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
         constraints.push(copy *c);
 
         let inty = ty::arg {
-            mode: ast::expl(ast::by_copy),
             ty: expr_ty(bcx, in)
         };
 
         unpack_result!(bcx, {
-            callee::trans_arg_expr(bcx, inty, in, &mut cleanups, None, callee::DontAutorefArg)
+            callee::trans_arg_expr(bcx,
+                                   inty,
+                                   ty::ByCopy,
+                                   in,
+                                   &mut cleanups,
+                                   None,
+                                   callee::DontAutorefArg)
         })
 
     };

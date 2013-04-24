@@ -1072,7 +1072,7 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
                 }
             }
         }
-        ast::def_arg(nid, _, _) => {
+        ast::def_arg(nid, _) => {
             take_local(bcx, bcx.fcx.llargs, nid)
         }
         ast::def_local(nid, _) | ast::def_binding(nid, _) => {

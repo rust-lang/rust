@@ -55,7 +55,7 @@ pub type rvt = visit::vt<@mut Rcx>;
 fn encl_region_of_def(fcx: @mut FnCtxt, def: ast::def) -> ty::Region {
     let tcx = fcx.tcx();
     match def {
-        def_local(node_id, _) | def_arg(node_id, _, _) |
+        def_local(node_id, _) | def_arg(node_id, _) |
         def_self(node_id, _) | def_binding(node_id, _) => {
             tcx.region_maps.encl_region(node_id)
         }
