@@ -546,7 +546,11 @@ pub fn build_session_options(binary: @~str,
     let lint_dict = lint::get_lint_dict();
     for lint_levels.each |level| {
         let level_name = lint::level_to_str(*level);
-        let level_short = level_name.substr(0,1).to_upper();
+
+        // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
+        // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+        let level_short = level_name.substr(0,1);
+        let level_short = level_short.to_ascii().to_upper().to_str_ascii();
         let flags = vec::append(getopts::opt_strs(matches, level_short),
                                 getopts::opt_strs(matches, level_name));
         for flags.each |lint_name| {
