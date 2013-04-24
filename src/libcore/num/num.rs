@@ -65,14 +65,14 @@ pub trait Integer: Num
                  + Ord
                  + Quot<Self,Self>
                  + Rem<Self,Self> {
-    fn div(&self, other: Self) -> Self;
-    fn modulo(&self, other: Self) -> Self;
-    fn div_mod(&self, other: Self) -> (Self,Self);
-    fn quot_rem(&self, other: Self) -> (Self,Self);
+    fn div(&self, other: &Self) -> Self;
+    fn modulo(&self, other: &Self) -> Self;
+    fn div_mod(&self, other: &Self) -> (Self,Self);
+    fn quot_rem(&self, other: &Self) -> (Self,Self);
 
-    fn gcd(&self, other: Self) -> Self;
-    fn lcm(&self, other: Self) -> Self;
-    fn divisible_by(&self, other: Self) -> bool;
+    fn gcd(&self, other: &Self) -> Self;
+    fn lcm(&self, other: &Self) -> Self;
+    fn divisible_by(&self, other: &Self) -> bool;
     fn is_even(&self) -> bool;
     fn is_odd(&self) -> bool;
 }
