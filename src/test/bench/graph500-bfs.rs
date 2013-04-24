@@ -25,7 +25,6 @@ use std::time;
 use std::deque::Deque;
 use std::par;
 use core::hashmap::{HashMap, HashSet};
-use core::io::WriterUtil;
 use core::int::abs;
 use core::rand::RngUtil;
 
@@ -51,7 +50,7 @@ fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
             let j = j * 2i64;
             let scale = scale - 1u;
 
-            let x = r.gen_float();
+            let x = r.gen::<float>();
 
             if x < A {
                 choose_edge(i, j, scale, r)

@@ -8,7 +8,34 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Random number generation
+/*!
+Random number generation.
+
+The key functions are `random()` and `RngUtil::gen()`. These are polymorphic
+and so can be used to generate any type that implements `Rand`. Type inference
+means that often a simple call to `rand::random()` or `rng.gen()` will
+suffice, but sometimes an annotation is required, e.g. `rand::random::<float>()`.
+
+# Examples
+~~~
+use core::rand::RngUtil;
+
+fn main() {
+    let rng = rand::rng();
+    if rng.gen() { // bool
+        println(fmt!("int: %d, uint: %u", rng.gen(), rng.gen()))
+    }
+}
+~~~
+
+~~~
+fn main () {
+    let tuple_ptr = rand::random::<~(f64, char)>();
+    println(fmt!("%?", tuple_ptr))
+}
+~~~
+*/
+
 
 use int;
 use prelude::*;
@@ -20,98 +47,111 @@ use util;
 use vec;
 use libc::size_t;
 
-/// A type that can be randomly generated using an RNG
+/// A type that can be randomly generated using an Rng
 pub trait Rand {
     fn rand<R: Rng>(rng: &R) -> Self;
 }
 
 impl Rand for int {
     fn rand<R: Rng>(rng: &R) -> int {
-        rng.gen_int()
+        if int::bits == 32 {
+            rng.next() as int
+        } else {
+            rng.gen::<i64>() as int
+        }
     }
 }
 
 impl Rand for i8 {
     fn rand<R: Rng>(rng: &R) -> i8 {
-        rng.gen_i8()
+        rng.next() as i8
     }
 }
 
 impl Rand for i16 {
     fn rand<R: Rng>(rng: &R) -> i16 {
-        rng.gen_i16()
+        rng.next() as i16
     }
 }
 
 impl Rand for i32 {
     fn rand<R: Rng>(rng: &R) -> i32 {
-        rng.gen_i32()
+        rng.next() as i32
     }
 }
 
 impl Rand for i64 {
     fn rand<R: Rng>(rng: &R) -> i64 {
-        rng.gen_i64()
+        (rng.next() as i64 << 32) | rng.next() as i64
     }
 }
 
 impl Rand for uint {
     fn rand<R: Rng>(rng: &R) -> uint {
-        rng.gen_uint()
+        if uint::bits == 32 {
+            rng.next() as uint
+        } else {
+            rng.gen::<u64>() as uint
+        }
     }
 }
 
 impl Rand for u8 {
     fn rand<R: Rng>(rng: &R) -> u8 {
-        rng.gen_u8()
+        rng.next() as u8
     }
 }
 
 impl Rand for u16 {
     fn rand<R: Rng>(rng: &R) -> u16 {
-        rng.gen_u16()
+        rng.next() as u16
     }
 }
 
 impl Rand for u32 {
     fn rand<R: Rng>(rng: &R) -> u32 {
-        rng.gen_u32()
+        rng.next()
     }
 }
 
 impl Rand for u64 {
     fn rand<R: Rng>(rng: &R) -> u64 {
-        rng.gen_u64()
+        (rng.next() as u64 << 32) | rng.next() as u64
     }
 }
 
 impl Rand for float {
     fn rand<R: Rng>(rng: &R) -> float {
-        rng.gen_float()
+        rng.gen::<f64>() as float
     }
 }
 
 impl Rand for f32 {
     fn rand<R: Rng>(rng: &R) -> f32 {
-        rng.gen_f32()
+        rng.gen::<f64>() as f32
     }
 }
 
+static scale : f64 = (u32::max_value as f64) + 1.0f64;
 impl Rand for f64 {
     fn rand<R: Rng>(rng: &R) -> f64 {
-        rng.gen_f64()
+        let u1 = rng.next() as f64;
+        let u2 = rng.next() as f64;
+        let u3 = rng.next() as f64;
+
+        ((u1 / scale + u2) / scale + u3) / scale
     }
 }
 
 impl Rand for char {
     fn rand<R: Rng>(rng: &R) -> char {
-        rng.gen_char()
+        rng.next() as char
     }
 }
 
 impl Rand for bool {
     fn rand<R: Rng>(rng: &R) -> bool {
-        rng.gen_bool()
+        rng.next() & 1u32 == 1u32
     }
 }
 
@@ -151,7 +191,7 @@ tuple_impl!{A, B, C, D, E, F, G, H, I, J}
 
 impl<T:Rand> Rand for Option<T> {
     fn rand<R: Rng>(rng: &R) -> Option<T> {
-        if rng.gen_bool() {
+        if rng.gen() {
             Some(rng.gen())
         } else {
             None
@@ -195,93 +235,24 @@ pub struct Weighted<T> {
     weight: uint,
     item: T,
 }
-// this should be in gen_f64, but it causes an ICE there.
-static scale : f64 = (u32::max_value as f64) + 1.0f64;
+
 pub trait RngUtil {
     /// Return a random value of a Rand type
     fn gen<T:Rand>(&self) -> T;
     /**
-     * Return a random int
-     *
-     * *Example*
-     *
-     * ~~~
-     *
-     * use core::rand::RngUtil;
-     *
-     * fn main() {
-     *     rng = rand::rng();
-     *     println(fmt!("%d",rng.gen_int()));
-     * }
-     * ~~~
+     * Return a int randomly chosen from the range [start, end),
+     * failing if start >= end
      */
-    fn gen_int(&self) -> int;
     fn gen_int_range(&self, start: int, end: int) -> int;
-    /// Return a random i8
-    fn gen_i8(&self) -> i8;
-    /// Return a random i16
-    fn gen_i16(&self) -> i16;
-    /// Return a random i32
-    fn gen_i32(&self) -> i32;
-    /// Return a random i64
-    fn gen_i64(&self) -> i64;
-    /// Return a random uint
-    fn gen_uint(&self) -> uint;
     /**
      * Return a uint randomly chosen from the range [start, end),
      * failing if start >= end
      */
     fn gen_uint_range(&self, start: uint, end: uint) -> uint;
-    /// Return a random u8
-    fn gen_u8(&self) -> u8;
-    /// Return a random u16
-    fn gen_u16(&self) -> u16;
-    /// Return a random u32
-    fn gen_u32(&self) -> u32;
-    /// Return a random u64
-    fn gen_u64(&self) -> u64;
-    /**
-     * Return random float in the interval [0,1]
-     *
-     * *Example*
-     *
-     * ~~~
-     *
-     * use core::rand::RngUtil;
-     *
-     * fn main() {
-     *     rng = rand::rng();
-     *     println(fmt!("%f",rng.gen_float()));
-     * }
-     * ~~~
-     */
-    fn gen_float(&self) -> float;
-    /// Return a random f32 in the interval [0,1]
-    fn gen_f32(&self) -> f32;
-    /// Return a random f64 in the interval [0,1]
-    fn gen_f64(&self) -> f64;
-    /// Return a random char
-    fn gen_char(&self) -> char;
     /**
      * Return a char randomly chosen from chars, failing if chars is empty
      */
     fn gen_char_from(&self, chars: &str) -> char;
-    /**
-     * Return a random bool
-     *
-     * *Example*
-     *
-     * ~~~
-     *
-     * use core::rand::RngUtil;
-     *
-     * fn main() {
-     *     rng = rand::rng();
-     *     println(fmt!("%b",rng.gen_bool()));
-     * }
-     * ~~~
-     */
-    fn gen_bool(&self) -> bool;
     /**
      * Return a bool with a 1 in n chance of true
      *
@@ -453,43 +424,13 @@ impl<R: Rng> RngUtil for R {
         Rand::rand(self)
     }
 
-    /// Return a random int
-    fn gen_int(&self) -> int {
-        self.gen_i64() as int
-    }
-
     /**
      * Return an int randomly chosen from the range [start, end),
      * failing if start >= end
      */
     fn gen_int_range(&self, start: int, end: int) -> int {
         assert!(start < end);
-        start + int::abs(self.gen_int() % (end - start))
-    }
-
-    /// Return a random i8
-    fn gen_i8(&self) -> i8 {
-        self.next() as i8
-    }
-
-    /// Return a random i16
-    fn gen_i16(&self) -> i16 {
-        self.next() as i16
-    }
-
-    /// Return a random i32
-    fn gen_i32(&self) -> i32 {
-        self.next() as i32
-    }
-
-    /// Return a random i64
-    fn gen_i64(&self) -> i64 {
-        (self.next() as i64 << 32) | self.next() as i64
-    }
-
-    /// Return a random uint
-    fn gen_uint(&self) -> uint {
-        self.gen_u64() as uint
+        start + int::abs(self.gen::<int>() % (end - start))
     }
 
     /**
@@ -498,51 +439,7 @@ impl<R: Rng> RngUtil for R {
      */
     fn gen_uint_range(&self, start: uint, end: uint) -> uint {
         assert!(start < end);
-        start + (self.gen_uint() % (end - start))
-    }
-
-    /// Return a random u8
-    fn gen_u8(&self) -> u8 {
-        self.next() as u8
-    }
-
-    /// Return a random u16
-    fn gen_u16(&self) -> u16 {
-        self.next() as u16
-    }
-
-    /// Return a random u32
-    fn gen_u32(&self) -> u32 {
-        self.next()
-    }
-
-    /// Return a random u64
-    fn gen_u64(&self) -> u64 {
-        (self.next() as u64 << 32) | self.next() as u64
-    }
-
-    /// Return a random float in the interval [0,1]
-    fn gen_float(&self) -> float {
-        self.gen_f64() as float
-    }
-
-    /// Return a random f32 in the interval [0,1]
-    fn gen_f32(&self) -> f32 {
-        self.gen_f64() as f32
-    }
-
-    /// Return a random f64 in the interval [0,1]
-    fn gen_f64(&self) -> f64 {
-        let u1 = self.next() as f64;
-        let u2 = self.next() as f64;
-        let u3 = self.next() as f64;
-
-        return ((u1 / scale + u2) / scale + u3) / scale;
-    }
-
-    /// Return a random char
-    fn gen_char(&self) -> char {
-        self.next() as char
+        start + (self.gen::<uint>() % (end - start))
     }
 
     /**
@@ -553,11 +450,6 @@ impl<R: Rng> RngUtil for R {
         let mut cs = ~[];
         for str::each_char(chars) |c| { cs.push(c) }
         self.choose(cs)
-    }
-
-    /// Return a random bool
-    fn gen_bool(&self) -> bool {
-        self.next() & 1u32 == 1u32
     }
 
     /// Return a bool with a 1-in-n chance of true
@@ -588,7 +480,7 @@ impl<R: Rng> RngUtil for R {
     /// Return a random byte string of the specified length
     fn gen_bytes(&self, len: uint) -> ~[u8] {
         do vec::from_fn(len) |_i| {
-            self.gen_u8()
+            self.gen()
         }
     }
 
@@ -777,7 +669,7 @@ fn tls_rng_state(_v: @IsaacRng) {}
 /**
  * Gives back a lazily initialized task-local random number generator,
  * seeded by the system. Intended to be used in method chaining style, ie
- * task_rng().gen_int().
+ * `task_rng().gen::<int>()`.
  */
 pub fn task_rng() -> @IsaacRng {
     let r : Option<@IsaacRng>;
@@ -794,6 +686,11 @@ pub fn task_rng() -> @IsaacRng {
         }
         Some(rng) => rng
     }
+}
+
+// Allow direct chaining with `task_rng`
+impl<R: Rng> Rng for @R {
+    fn next(&self) -> u32 { (*self).next() }
 }
 
 /**
@@ -872,8 +769,8 @@ mod tests {
     #[test]
     fn test_gen_float() {
         let r = rng();
-        let a = r.gen_float();
-        let b = r.gen_float();
+        let a = r.gen::<float>();
+        let b = r.gen::<float>();
         debug!((a, b));
     }
 
@@ -966,9 +863,9 @@ mod tests {
     #[test]
     fn test_task_rng() {
         let r = task_rng();
-        (*r).gen_int();
-        assert!((*r).shuffle(~[1, 1, 1]) == ~[1, 1, 1]);
-        assert!((*r).gen_uint_range(0u, 1u) == 0u);
+        r.gen::<int>();
+        assert!(r.shuffle(~[1, 1, 1]) == ~[1, 1, 1]);
+        assert!(r.gen_uint_range(0u, 1u) == 0u);
     }
 
     #[test]

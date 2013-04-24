@@ -698,7 +698,6 @@ mod test_treemap {
     use core::iterator::*;
     use super::*;
     use core::rand::RngUtil;
-    use core::rand;
 
     #[test]
     fn find_empty() {
@@ -839,8 +838,8 @@ mod test_treemap {
 
         for 3.times {
             for 90.times {
-                let k = rng.gen_int();
-                let v = rng.gen_int();
+                let k = rng.gen();
+                let v = rng.gen();
                 if !ctrl.contains(&(k, v)) {
                     assert!(map.insert(k, v));
                     ctrl.push((k, v));
