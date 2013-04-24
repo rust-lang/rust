@@ -15,6 +15,7 @@ use std::time;
 use std::treemap::TreeMap;
 use core::hashmap::{HashMap, HashSet};
 use core::trie::TrieMap;
+use core::rand::Rng;
 
 fn timed(label: &str, f: &fn()) {
     let start = time::precise_time_s();

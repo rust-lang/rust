@@ -175,11 +175,7 @@ mod test {
 
     use timer::*;
     use uv;
-
-    use core::iter;
     use core::rand::RngUtil;
-    use core::rand;
-    use core::task;
     use core::pipes::{stream, SharedChan};
 
     #[test]
