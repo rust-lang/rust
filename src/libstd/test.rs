@@ -19,20 +19,9 @@ use getopts;
 use sort;
 use term;
 
-use core::cmp::Eq;
-
 use core::to_str::ToStr;
-use core::either::Either;
-use core::either;
-use core::io::WriterUtil;
-use core::io;
 use core::comm::{stream, SharedChan};
-use core::option;
 use core::prelude::*;
-use core::result;
-use core::str;
-use core::task;
-use core::vec;
 
 pub mod rustrt {
     use core::libc::size_t;
@@ -608,12 +597,8 @@ pub mod bench {
     use time::precise_time_ns;
     use test::{BenchHarness, BenchSamples};
     use stats::Stats;
-
-    use core::num;
+    use core::prelude::*;
     use core::rand::RngUtil;
-    use core::rand;
-    use core::u64;
-    use core::vec;
 
     pub impl BenchHarness {
 
@@ -705,7 +690,7 @@ pub mod bench {
         // not met, it may run as long as the Go algorithm.
         pub fn auto_bench(&mut self, f: &fn(&mut BenchHarness)) -> ~[f64] {
 
-            let rng = rand::Rng();
+            let rng = rand::rng();
             let mut magnitude = 10;
             let mut prev_madp = 0.0;
 

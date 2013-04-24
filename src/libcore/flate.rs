@@ -85,7 +85,7 @@ pub fn inflate_bytes(bytes: &const [u8]) -> ~[u8] {
 #[test]
 #[allow(non_implicitly_copyable_typarams)]
 fn test_flate_round_trip() {
-    let r = rand::Rng();
+    let r = rand::rng();
     let mut words = ~[];
     for 20.times {
         words.push(r.gen_bytes(r.gen_uint_range(1, 10)));
