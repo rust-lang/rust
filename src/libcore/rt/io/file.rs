@@ -11,7 +11,7 @@
 use prelude::*;
 use super::support::PathLike;
 use super::{Reader, Writer, Seek, Close};
-use super::{IoError, SeekStyle};
+use super::SeekStyle;
 
 /// # XXX
 /// * Ugh, this is ridiculous. What is the best way to represent these options?

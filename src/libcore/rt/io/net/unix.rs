@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use prelude::*;
-use super::*;
 use super::super::*;
 use super::super::support::PathLike;
 

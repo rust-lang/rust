@@ -21,7 +21,7 @@
 use prelude::*;
 use libc::{c_void, uintptr_t};
 use cast::transmute;
-use super::sched::{Task, local_sched};
+use super::sched::local_sched;
 use super::local_heap::LocalHeap;
 
 pub struct LocalServices {

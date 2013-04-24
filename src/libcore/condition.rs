@@ -206,10 +206,12 @@ mod test {
             fn test_conditions_are_public() {
                 let mut trapped = false;
                 do sadness::cond.trap(|_| {
+                    trapped = true;
                     0
                 }).in {
                     sadness::cond.raise(0);
                 }
+                assert!(trapped);
             }
         }
     }
