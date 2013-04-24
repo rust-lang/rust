@@ -439,7 +439,7 @@ fn test_read_read_read() {
     do run_in_newsched_task {
         let addr = next_test_ip4();
         static MAX: uint = 500000;
-        
+
         do spawntask_immediately {
             unsafe {
                 let io = local_sched::unsafe_borrow_io();
