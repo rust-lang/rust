@@ -292,9 +292,7 @@ impl Mul<f64,f64> for f64 {
 impl Div<f64,f64> for f64 {
     fn div(&self, other: &f64) -> f64 { *self / *other }
 }
-#[cfg(stage1,notest)]
-#[cfg(stage2,notest)]
-#[cfg(stage3,notest)]
+#[cfg(not(stage0),notest)]
 impl Quot<f64,f64> for f64 {
     #[inline(always)]
     fn quot(&self, other: &f64) -> f64 { *self / *other }
@@ -303,9 +301,7 @@ impl Quot<f64,f64> for f64 {
 impl Modulo<f64,f64> for f64 {
     fn modulo(&self, other: &f64) -> f64 { *self % *other }
 }
-#[cfg(stage1,notest)]
-#[cfg(stage2,notest)]
-#[cfg(stage3,notest)]
+#[cfg(not(stage0),notest)]
 impl Rem<f64,f64> for f64 {
     #[inline(always)]
     fn rem(&self, other: &f64) -> f64 { *self % *other }

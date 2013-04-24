@@ -459,9 +459,7 @@ impl Div<float,float> for float {
     #[inline(always)]
     fn div(&self, other: &float) -> float { *self / *other }
 }
-#[cfg(stage1,notest)]
-#[cfg(stage2,notest)]
-#[cfg(stage3,notest)]
+#[cfg(not(stage0),notest)]
 impl Quot<float,float> for float {
     #[inline(always)]
     fn quot(&self, other: &float) -> float { *self / *other }
@@ -471,9 +469,7 @@ impl Modulo<float,float> for float {
     #[inline(always)]
     fn modulo(&self, other: &float) -> float { *self % *other }
 }
-#[cfg(stage1,notest)]
-#[cfg(stage2,notest)]
-#[cfg(stage3,notest)]
+#[cfg(not(stage0),notest)]
 impl Rem<float,float> for float {
     #[inline(always)]
     fn rem(&self, other: &float) -> float { *self % *other }
