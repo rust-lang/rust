@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use prelude::*;
-use super::*;
 use super::super::*;
 use super::ip::IpAddr;
 
@@ -51,8 +50,6 @@ impl Listener<TcpStream> for TcpListener {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use rt::test::*;
 
     #[test] #[ignore]
     fn smoke_test() {

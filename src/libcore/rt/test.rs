@@ -35,7 +35,6 @@ pub fn run_in_newsched_task(f: ~fn()) {
 
 /// Test tasks will abort on failure instead of unwinding
 pub fn spawntask(f: ~fn()) {
-    use super::*;
     use super::sched::*;
 
     let mut sched = local_sched::take();
@@ -51,7 +50,6 @@ pub fn spawntask(f: ~fn()) {
 
 /// Create a new task and run it right now. Aborts on failure
 pub fn spawntask_immediately(f: ~fn()) {
-    use super::*;
     use super::sched::*;
 
     let mut sched = local_sched::take();

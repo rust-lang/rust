@@ -11,7 +11,7 @@
 use option::*;
 use result::*;
 
-use super::io::net::ip::{IpAddr, Ipv4}; // n.b. Ipv4 is used only in tests
+use super::io::net::ip::IpAddr;
 use super::uv::*;
 use super::rtio::*;
 use ops::Drop;
@@ -21,7 +21,6 @@ use super::sched::{Scheduler, local_sched};
 
 #[cfg(test)] use uint;
 #[cfg(test)] use unstable::run_in_bare_thread;
-#[cfg(test)] use super::sched::Task;
 #[cfg(test)] use super::test::*;
 
 pub struct UvEventLoop {
