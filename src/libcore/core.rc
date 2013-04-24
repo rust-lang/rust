@@ -105,7 +105,7 @@ pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
 pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
 pub use iter::{ExtendedMutableIter};
 
-pub use num::{Num, NumCast};
+pub use num::{Num, Signed, Unsigned, Natural, NumCast};
 pub use ptr::Ptr;
 pub use to_str::ToStr;
 pub use clone::Clone;
