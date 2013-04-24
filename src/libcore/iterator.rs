@@ -312,6 +312,19 @@ impl<A, T: Iterator<A>> Iterator<A> for TakeIterator<T> {
     }
 }
 
+pub struct ScanIterator<'self, A, B, T, St> {
+    priv iter: T,
+    priv f: &'self fn(&mut St, A) -> Option<B>,
+    state: St
+}
+
+impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for ScanIterator<'self, A, B, T, St> {
+    #[inline]
+    fn next(&mut self) -> Option<B> {
+        self.iter.next().chain(|a| (self.f)(&mut self.state, a))
+    }
+}
+
 pub struct UnfoldrIterator<'self, A, St> {
     priv f: &'self fn(&mut St) -> Option<A>,
     state: St
@@ -335,16 +348,25 @@ impl<'self, A, St> Iterator<A> for UnfoldrIterator<'self, A, St> {
     }
 }
 
-pub struct ScanIterator<'self, A, B, T, St> {
-    priv iter: T,
-    priv f: &'self fn(&mut St, A) -> Option<B>,
-    state: St
+/// An infinite iterator starting at `start` and advancing by `step` with each iteration
+pub struct Counter<A> {
+    state: A,
+    step: A
 }
 
-impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for ScanIterator<'self, A, B, T, St> {
-    #[inline]
-    fn next(&mut self) -> Option<B> {
-        self.iter.next().chain(|a| (self.f)(&mut self.state, a))
+pub impl<A> Counter<A> {
+    #[inline(always)]
+    fn new(start: A, step: A) -> Counter<A> {
+        Counter{state: start, step: step}
+    }
+}
+
+impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
+    #[inline(always)]
+    fn next(&mut self) -> Option<A> {
+        let result = self.state.clone();
+        self.state = self.state.add(&self.step); // FIXME: #6050
+        Some(result)
     }
 }
 
@@ -352,6 +374,13 @@ impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for ScanIterator<'self, A, B, 
 mod tests {
     use super::*;
     use prelude::*;
+
+    #[test]
+    fn test_counter_to_vec() {
+        let mut it = Counter::new(0, 5).take(10);
+        let xs = iter::iter_to_vec(|f| it.advance(f));
+        assert_eq!(xs, ~[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
+    }
 
     #[test]
     fn test_iterator_chain() {
