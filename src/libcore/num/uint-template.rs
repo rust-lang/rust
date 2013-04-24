@@ -176,7 +176,7 @@ impl Neg<T> for T {
 
 impl Unsigned for T {}
 
-impl Natural for T {
+impl Integer for T {
     /// Unsigned integer division. Returns the same result as `quot` (`/`).
     #[inline(always)]
     fn div(&self, other: T) -> T { *self / other }

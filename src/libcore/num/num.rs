@@ -61,7 +61,7 @@ pub fn abs<T:Ord + Zero + Neg<T>>(v: T) -> T {
     if v < Zero::zero() { v.neg() } else { v }
 }
 
-pub trait Natural: Num
+pub trait Integer: Num
                  + Ord
                  + Quot<Self,Self>
                  + Rem<Self,Self> {
