@@ -11,6 +11,7 @@
 use option::*;
 use result::*;
 
+use rt::io::IoError;
 use super::io::net::ip::IpAddr;
 
 // XXX: ~object doesn't work currently so these are some placeholder
@@ -28,8 +29,8 @@ pub trait EventLoop {
 }
 
 pub trait IoFactory {
-    fn connect(&mut self, addr: IpAddr) -> Option<~StreamObject>;
-    fn bind(&mut self, addr: IpAddr) -> Option<~TcpListenerObject>;
+    fn connect(&mut self, addr: IpAddr) -> Result<~StreamObject, IoError>;
+    fn bind(&mut self, addr: IpAddr) -> Result<~TcpListenerObject, IoError>;
 }
 
 pub trait TcpListener {

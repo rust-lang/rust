@@ -8,63 +8,179 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::*;
-use super::super::*;
-use super::ip::IpAddr;
+use option::{Option, Some, None};
+use result::{Result, Ok, Err};
+use ops::Drop;
+use rt::sched::local_sched::unsafe_borrow_io;
+use rt::io::net::ip::IpAddr;
+use rt::io::{Reader, Writer, Listener};
+use rt::io::io_error;
+use rt::rtio;
+use rt::rtio::{IoFactory, TcpListener, Stream};
 
-pub struct TcpStream;
+pub struct TcpStream {
+    rtstream: ~rtio::StreamObject
+}
 
 impl TcpStream {
-    pub fn connect(_addr: IpAddr) -> Option<TcpStream> {
-        fail!()
+    fn new(s: ~rtio::StreamObject) -> TcpStream {
+        TcpStream {
+            rtstream: s
+        }
+    }
+
+    pub fn connect(addr: IpAddr) -> Option<TcpStream> {
+        let stream = unsafe {
+            rtdebug!("borrowing io to connect");
+            let io = unsafe_borrow_io();
+            rtdebug!("about to connect");
+            io.connect(addr)
+        };
+
+        match stream {
+            Ok(s) => {
+                Some(TcpStream::new(s))
+            }
+            Err(ioerr) => {
+                rtdebug!("failed to connect: %?", ioerr);
+                io_error::cond.raise(ioerr);
+                return None;
+            }
+        }
     }
 }
 
 impl Reader for TcpStream {
-    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> { fail!() }
+    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+        let bytes_read = self.rtstream.read(buf);
+        match bytes_read {
+            Ok(read) => Some(read),
+            Err(_) => {
+                abort!("TODO");
+            }
+        }
+    }
 
     fn eof(&mut self) -> bool { fail!() }
 }
 
 impl Writer for TcpStream {
-    fn write(&mut self, _buf: &[u8]) { fail!() }
+    fn write(&mut self, buf: &[u8]) {
+        let res = self.rtstream.write(buf);
+        match res {
+            Ok(_) => (),
+            Err(_) => {
+                abort!("TODO");
+            }
+        }
+    }
 
     fn flush(&mut self) { fail!() }
 }
 
-pub struct TcpListener;
+impl Drop for TcpStream {
+    fn finalize(&self) {
+        self.rtstream.close();
+    }
+}
+
+pub struct TcpListener {
+    rtlistener: ~rtio::TcpListenerObject
+}
 
 impl TcpListener {
-    pub fn bind(_addr: IpAddr) -> Option<TcpListener> {
-        fail!()
+    pub fn bind(addr: IpAddr) -> Option<TcpListener> {
+        let listener = unsafe { unsafe_borrow_io().bind(addr) };
+        match listener {
+            Ok(l) => {
+                Some(TcpListener {
+                    rtlistener: l
+                })
+            }
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                return None;
+            }
+        }
     }
 }
 
 impl Listener<TcpStream> for TcpListener {
-    fn accept(&mut self) -> Option<TcpStream> { fail!() }
+    fn accept(&mut self) -> Option<TcpStream> {
+        let rtstream = self.rtlistener.listen();
+        match rtstream {
+            Some(s) => {
+                Some(TcpStream::new(s))
+            }
+            None => {
+                abort!("TODO");
+            }
+        }
+    }
+}
+
+impl Drop for TcpListener {
+    fn finalize(&self) {
+        self.rtlistener.close();
+    }
 }
 
 #[cfg(test)]
 mod test {
+    use super::*;
+    use rt::test::*;
+    use rt::io::net::ip::Ipv4;
+    use rt::io::*;
 
-    #[test] #[ignore]
+    #[test]
+    fn bind_error() {
+        do run_in_newsched_task {
+            let mut called = false;
+            do io_error::cond.trap(|e| {
+                assert!(e.kind == PermissionDenied);
+                called = true;
+            }).in {
+                let addr = Ipv4(0, 0, 0, 0, 1);
+                let listener = TcpListener::bind(addr);
+                assert!(listener.is_none());
+            }
+            assert!(called);
+        }
+    }
+
+    #[test]
+    fn connect_error() {
+        do run_in_newsched_task {
+            let mut called = false;
+            do io_error::cond.trap(|e| {
+                assert!(e.kind == ConnectionRefused);
+                called = true;
+            }).in {
+                let addr = Ipv4(0, 0, 0, 0, 1);
+                let stream = TcpStream::connect(addr);
+                assert!(stream.is_none());
+            }
+            assert!(called);
+        }
+    }
+
+    #[test]
     fn smoke_test() {
-        /*do run_in_newsched_task {
+        do run_in_newsched_task {
             let addr = next_test_ip4();
 
-            do spawn_immediately {
-                let listener = TcpListener::bind(addr);
-                do listener.accept() {
-                    let mut buf = [0];
-                    listener.read(buf);
-                    assert!(buf[0] == 99);
-                }
+            do spawntask_immediately {
+                let mut listener = TcpListener::bind(addr);
+                let mut stream = listener.accept();
+                let mut buf = [0];
+                stream.read(buf);
+                assert!(buf[0] == 99);
             }
 
-            do spawn_immediately {
-                let stream = TcpStream::connect(addr);
+            do spawntask_immediately {
+                let mut stream = TcpStream::connect(addr);
                 stream.write([99]);
             }
-        }*/
+        }
     }
 }

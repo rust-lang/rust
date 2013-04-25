@@ -13,18 +13,21 @@
 use prelude::*;
 use ptr::mut_null;
 use libc::c_void;
-use cast::transmute;
+use cast;
+use cell::Cell;
 
 use super::Scheduler;
 use super::super::rtio::IoFactoryObject;
 use tls = super::super::thread_local_storage;
+use unstable::finally::Finally;
+
 #[cfg(test)] use super::super::uvio::UvEventLoop;
 
 /// Give the Scheduler to thread-local storage
 pub fn put(sched: ~Scheduler) {
     unsafe {
         let key = tls_key();
-        let void_sched: *mut c_void = transmute::<~Scheduler, *mut c_void>(sched);
+        let void_sched: *mut c_void = cast::transmute(sched);
         tls::set(key, void_sched);
     }
 }
@@ -34,8 +37,8 @@ pub fn take() -> ~Scheduler {
     unsafe {
         let key = tls_key();
         let void_sched: *mut c_void = tls::get(key);
-        assert!(void_sched.is_not_null());
-        let sched = transmute::<*mut c_void, ~Scheduler>(void_sched);
+        rtassert!(void_sched.is_not_null());
+        let sched: ~Scheduler = cast::transmute(void_sched);
         tls::set(key, mut_null());
         return sched;
     }
@@ -55,8 +58,18 @@ pub fn exists() -> bool {
 /// While the scheduler is borrowed it is not available in TLS.
 pub fn borrow(f: &fn(&mut Scheduler)) {
     let mut sched = take();
-    f(sched);
-    put(sched);
+
+    // XXX: Need a different abstraction from 'finally' here to avoid unsafety
+    unsafe {
+        let unsafe_sched = cast::transmute_mut_region(&mut *sched);
+        let sched = Cell(sched);
+        
+        do (|| {
+            f(unsafe_sched);
+        }).finally {
+            put(sched.take());
+        }
+    }
 }
 
 /// Borrow a mutable reference to the thread-local Scheduler
@@ -68,11 +81,11 @@ pub fn borrow(f: &fn(&mut Scheduler)) {
 pub unsafe fn unsafe_borrow() -> &mut Scheduler {
     let key = tls_key();
     let mut void_sched: *mut c_void = tls::get(key);
-    assert!(void_sched.is_not_null());
+    rtassert!(void_sched.is_not_null());
     {
         let void_sched_ptr = &mut void_sched;
         let sched: &mut ~Scheduler = {
-            transmute::<&mut *mut c_void, &mut ~Scheduler>(void_sched_ptr)
+            cast::transmute::<&mut *mut c_void, &mut ~Scheduler>(void_sched_ptr)
         };
         let sched: &mut Scheduler = &mut **sched;
         return sched;
@@ -91,7 +104,7 @@ fn tls_key() -> tls::Key {
 fn maybe_tls_key() -> Option<tls::Key> {
     unsafe {
         let key: *mut c_void = rust_get_sched_tls_key();
-        let key: &mut tls::Key = transmute(key);
+        let key: &mut tls::Key = cast::transmute(key);
         let key = *key;
         // Check that the key has been initialized.
 
