@@ -10,12 +10,9 @@
 
 use T = self::inst::T;
 
-use to_str::ToStr;
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
-use num::Signed;
-use num;
 use prelude::*;
 
 pub use cmp::{min, max};
@@ -133,6 +130,8 @@ pub fn compl(i: T) -> T {
 #[inline(always)]
 pub fn abs(i: T) -> T { i.abs() }
 
+impl Num for T {}
+
 #[cfg(notest)]
 impl Ord for T {
     #[inline(always)]
@@ -186,10 +185,7 @@ impl Div<T,T> for T {
     #[inline(always)]
     fn div(&self, other: &T) -> T { *self / *other }
 }
-
-#[cfg(stage1,notest)]
-#[cfg(stage2,notest)]
-#[cfg(stage3,notest)]
+#[cfg(not(stage0),notest)]
 impl Quot<T,T> for T {
     /**
      * Returns the integer quotient, truncated towards 0. As this behaviour reflects
@@ -218,10 +214,7 @@ impl Modulo<T,T> for T {
     #[inline(always)]
     fn modulo(&self, other: &T) -> T { *self % *other }
 }
-
-#[cfg(stage1,notest)]
-#[cfg(stage2,notest)]
-#[cfg(stage3,notest)]
+#[cfg(not(stage0),notest)]
 impl Rem<T,T> for T {
     /**
      * Returns the integer remainder after division, satisfying:
@@ -286,7 +279,7 @@ impl Signed for T {
     fn is_negative(&self) -> bool { *self < 0 }
 }
 
-impl Natural for T {
+impl Integer for T {
     /**
      * Floored integer division
      *
@@ -305,13 +298,13 @@ impl Natural for T {
      * ~~~
      */
     #[inline(always)]
-    fn div(&self, other: T) -> T {
+    fn div(&self, other: &T) -> T {
         // Algorithm from [Daan Leijen. _Division and Modulus for Computer Scientists_,
         // December 2001](http://research.microsoft.com/pubs/151917/divmodnote-letter.pdf)
         match self.quot_rem(other) {
-            (q, r) if (r > 0 && other < 0)
-                   || (r < 0 && other > 0) => q - 1,
-            (q, _)                         => q,
+            (q, r) if (r > 0 && *other < 0)
+                   || (r < 0 && *other > 0) => q - 1,
+            (q, _)                          => q,
         }
     }
 
@@ -337,32 +330,32 @@ impl Natural for T {
      * ~~~
      */
     #[inline(always)]
-    fn modulo(&self, other: T) -> T {
+    fn modulo(&self, other: &T) -> T {
         // Algorithm from [Daan Leijen. _Division and Modulus for Computer Scientists_,
         // December 2001](http://research.microsoft.com/pubs/151917/divmodnote-letter.pdf)
-        match *self % other {
-            r if (r > 0 && other < 0)
-              || (r < 0 && other > 0) => r + other,
-            r                         => r,
+        match *self % *other {
+            r if (r > 0 && *other < 0)
+              || (r < 0 && *other > 0) => r + *other,
+            r                          => r,
         }
     }
 
     /// Calculates `div` and `modulo` simultaneously
     #[inline(always)]
-    fn div_mod(&self, other: T) -> (T,T) {
+    fn div_mod(&self, other: &T) -> (T,T) {
         // Algorithm from [Daan Leijen. _Division and Modulus for Computer Scientists_,
         // December 2001](http://research.microsoft.com/pubs/151917/divmodnote-letter.pdf)
         match self.quot_rem(other) {
-            (q, r) if (r > 0 && other < 0)
-                   || (r < 0 && other > 0) => (q - 1, r + other),
-            (q, r)                         => (q, r),
+            (q, r) if (r > 0 && *other < 0)
+                   || (r < 0 && *other > 0) => (q - 1, r + *other),
+            (q, r)                          => (q, r),
         }
     }
 
     /// Calculates `quot` (`\`) and `rem` (`%`) simultaneously
     #[inline(always)]
-    fn quot_rem(&self, other: T) -> (T,T) {
-        (*self / other, *self % other)
+    fn quot_rem(&self, other: &T) -> (T,T) {
+        (*self / *other, *self % *other)
     }
 
     /**
@@ -371,9 +364,9 @@ impl Natural for T {
      * The result is always positive
      */
     #[inline(always)]
-    fn gcd(&self, other: T) -> T {
+    fn gcd(&self, other: &T) -> T {
         // Use Euclid's algorithm
-        let mut m = *self, n = other;
+        let mut m = *self, n = *other;
         while m != 0 {
             let temp = m;
             m = n % temp;
@@ -386,17 +379,17 @@ impl Natural for T {
      * Calculates the Lowest Common Multiple (LCM) of the number and `other`
      */
     #[inline(always)]
-    fn lcm(&self, other: T) -> T {
-        ((*self * other) / self.gcd(other)).abs() // should not have to recaluculate abs
+    fn lcm(&self, other: &T) -> T {
+        ((*self * *other) / self.gcd(other)).abs() // should not have to recaluculate abs
     }
 
     /// Returns `true` if the number can be divided by `other` without leaving a remainder
     #[inline(always)]
-    fn divisible_by(&self, other: T) -> bool { *self % other == 0 }
+    fn divisible_by(&self, other: &T) -> bool { *self % *other == 0 }
 
     /// Returns `true` if the number is divisible by `2`
     #[inline(always)]
-    fn is_even(&self) -> bool { self.divisible_by(2) }
+    fn is_even(&self) -> bool { self.divisible_by(&2) }
 
     /// Returns `true` if the number is not divisible by `2`
     #[inline(always)]
@@ -523,6 +516,11 @@ mod tests {
     use prelude::*;
 
     #[test]
+    fn test_num() {
+        num::test_num(10 as T, 2 as T);
+    }
+
+    #[test]
     pub fn test_signed() {
         assert_eq!((1 as T).abs(), 1 as T);
         assert_eq!((0 as T).abs(), 0 as T);
@@ -564,7 +562,7 @@ mod tests {
         fn test_nd_qr(nd: (T,T), qr: (T,T)) {
             let (n,d) = nd;
             let separate_quot_rem = (n / d, n % d);
-            let combined_quot_rem = n.quot_rem(d);
+            let combined_quot_rem = n.quot_rem(&d);
 
             assert_eq!(separate_quot_rem, qr);
             assert_eq!(combined_quot_rem, qr);
@@ -588,8 +586,8 @@ mod tests {
     fn test_div_mod() {
         fn test_nd_dm(nd: (T,T), dm: (T,T)) {
             let (n,d) = nd;
-            let separate_div_mod = (n.div(d), n.modulo(d));
-            let combined_div_mod = n.div_mod(d);
+            let separate_div_mod = (n.div(&d), n.modulo(&d));
+            let combined_div_mod = n.div_mod(&d);
 
             assert_eq!(separate_div_mod, dm);
             assert_eq!(combined_div_mod, dm);
@@ -611,26 +609,26 @@ mod tests {
 
     #[test]
     fn test_gcd() {
-        assert_eq!((10 as T).gcd(2), 2 as T);
-        assert_eq!((10 as T).gcd(3), 1 as T);
-        assert_eq!((0 as T).gcd(3), 3 as T);
-        assert_eq!((3 as T).gcd(3), 3 as T);
-        assert_eq!((56 as T).gcd(42), 14 as T);
-        assert_eq!((3 as T).gcd(-3), 3 as T);
-        assert_eq!((-6 as T).gcd(3), 3 as T);
-        assert_eq!((-4 as T).gcd(-2), 2 as T);
+        assert_eq!((10 as T).gcd(&2), 2 as T);
+        assert_eq!((10 as T).gcd(&3), 1 as T);
+        assert_eq!((0 as T).gcd(&3), 3 as T);
+        assert_eq!((3 as T).gcd(&3), 3 as T);
+        assert_eq!((56 as T).gcd(&42), 14 as T);
+        assert_eq!((3 as T).gcd(&-3), 3 as T);
+        assert_eq!((-6 as T).gcd(&3), 3 as T);
+        assert_eq!((-4 as T).gcd(&-2), 2 as T);
     }
 
     #[test]
     fn test_lcm() {
-        assert_eq!((1 as T).lcm(0), 0 as T);
-        assert_eq!((0 as T).lcm(1), 0 as T);
-        assert_eq!((1 as T).lcm(1), 1 as T);
-        assert_eq!((-1 as T).lcm(1), 1 as T);
-        assert_eq!((1 as T).lcm(-1), 1 as T);
-        assert_eq!((-1 as T).lcm(-1), 1 as T);
-        assert_eq!((8 as T).lcm(9), 72 as T);
-        assert_eq!((11 as T).lcm(5), 55 as T);
+        assert_eq!((1 as T).lcm(&0), 0 as T);
+        assert_eq!((0 as T).lcm(&1), 0 as T);
+        assert_eq!((1 as T).lcm(&1), 1 as T);
+        assert_eq!((-1 as T).lcm(&1), 1 as T);
+        assert_eq!((1 as T).lcm(&-1), 1 as T);
+        assert_eq!((-1 as T).lcm(&-1), 1 as T);
+        assert_eq!((8 as T).lcm(&9), 72 as T);
+        assert_eq!((11 as T).lcm(&5), 55 as T);
     }
 
     #[test]

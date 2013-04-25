@@ -16,9 +16,7 @@ use ops::{Add, Sub, Mul, Neg};
 use Quot = ops::Div;
 #[cfg(stage0)]
 use Rem = ops::Modulo;
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 use ops::{Add, Sub, Mul, Quot, Rem, Neg};
 use option::Option;
 use kinds::Copy;
@@ -33,30 +31,18 @@ pub trait Num: Eq + Zero + One
              + Quot<Self,Self>
              + Rem<Self,Self> {}
 
-impl Num for u8 {}
-impl Num for u16 {}
-impl Num for u32 {}
-impl Num for u64 {}
-impl Num for uint {}
-impl Num for i8 {}
-impl Num for i16 {}
-impl Num for i32 {}
-impl Num for i64 {}
-impl Num for int {}
-impl Num for f32 {}
-impl Num for f64 {}
-impl Num for float {}
-
 pub trait IntConvertible {
     fn to_int(&self) -> int;
     fn from_int(n: int) -> Self;
 }
 
 pub trait Zero {
+    // FIXME (#5527): These should be associated constants
     fn zero() -> Self;
 }
 
 pub trait One {
+    // FIXME (#5527): These should be associated constants
     fn one() -> Self;
 }
 
@@ -75,35 +61,115 @@ pub fn abs<T:Ord + Zero + Neg<T>>(v: T) -> T {
     if v < Zero::zero() { v.neg() } else { v }
 }
 
-pub trait Natural: Num
+pub trait Integer: Num
                  + Ord
                  + Quot<Self,Self>
                  + Rem<Self,Self> {
-    fn div(&self, other: Self) -> Self;
-    fn modulo(&self, other: Self) -> Self;
-    fn div_mod(&self, other: Self) -> (Self,Self);
-    fn quot_rem(&self, other: Self) -> (Self,Self);
+    fn div(&self, other: &Self) -> Self;
+    fn modulo(&self, other: &Self) -> Self;
+    fn div_mod(&self, other: &Self) -> (Self,Self);
+    fn quot_rem(&self, other: &Self) -> (Self,Self);
 
-    fn gcd(&self, other: Self) -> Self;
-    fn lcm(&self, other: Self) -> Self;
-    fn divisible_by(&self, other: Self) -> bool;
+    fn gcd(&self, other: &Self) -> Self;
+    fn lcm(&self, other: &Self) -> Self;
+    fn divisible_by(&self, other: &Self) -> bool;
     fn is_even(&self) -> bool;
     fn is_odd(&self) -> bool;
 }
 
 pub trait Round {
-    fn round(&self, mode: RoundMode) -> Self;
-
     fn floor(&self) -> Self;
-    fn ceil(&self)  -> Self;
+    fn ceil(&self) -> Self;
+    fn round(&self) -> Self;
+    fn trunc(&self) -> Self;
     fn fract(&self) -> Self;
 }
 
-pub enum RoundMode {
-    RoundDown,
-    RoundUp,
-    RoundToZero,
-    RoundFromZero
+pub trait Fractional: Num
+                    + Ord
+                    + Round
+                    + Quot<Self,Self> {
+    fn recip(&self) -> Self;
+}
+
+pub trait Real: Signed
+              + Fractional {
+    // FIXME (#5527): usages of `int` should be replaced with an associated
+    // integer type once these are implemented
+
+    // Common Constants
+    // FIXME (#5527): These should be associated constants
+    fn pi() -> Self;
+    fn two_pi() -> Self;
+    fn frac_pi_2() -> Self;
+    fn frac_pi_3() -> Self;
+    fn frac_pi_4() -> Self;
+    fn frac_pi_6() -> Self;
+    fn frac_pi_8() -> Self;
+    fn frac_1_pi() -> Self;
+    fn frac_2_pi() -> Self;
+    fn frac_2_sqrtpi() -> Self;
+    fn sqrt2() -> Self;
+    fn frac_1_sqrt2() -> Self;
+    fn e() -> Self;
+    fn log2_e() -> Self;
+    fn log10_e() -> Self;
+    fn log_2() -> Self;
+    fn log_10() -> Self;
+
+    // Exponential functions
+    fn pow(&self, n: Self) -> Self;
+    fn exp(&self) -> Self;
+    fn exp2(&self) -> Self;
+    fn expm1(&self) -> Self;
+    fn ldexp(&self, n: int) -> Self;
+    fn log(&self) -> Self;
+    fn log2(&self) -> Self;
+    fn log10(&self) -> Self;
+    fn log_radix(&self) -> Self;
+    fn ilog_radix(&self) -> int;
+    fn sqrt(&self) -> Self;
+    fn rsqrt(&self) -> Self;
+    fn cbrt(&self) -> Self;
+
+    // Angular conversions
+    fn to_degrees(&self) -> Self;
+    fn to_radians(&self) -> Self;
+
+    // Triganomic functions
+    fn hypot(&self, other: Self) -> Self;
+    fn sin(&self) -> Self;
+    fn cos(&self) -> Self;
+    fn tan(&self) -> Self;
+
+    // Inverse triganomic functions
+    fn asin(&self) -> Self;
+    fn acos(&self) -> Self;
+    fn atan(&self) -> Self;
+    fn atan2(&self, other: Self) -> Self;
+
+    // Hyperbolic triganomic functions
+    fn sinh(&self) -> Self;
+    fn cosh(&self) -> Self;
+    fn tanh(&self) -> Self;
+}
+
+/// Methods that are harder to implement and not commonly used.
+pub trait RealExt: Real {
+    // FIXME (#5527): usages of `int` should be replaced with an associated
+    // integer type once these are implemented
+
+    // Gamma functions
+    fn lgamma(&self) -> (int, Self);
+    fn tgamma(&self) -> Self;
+
+    // Bessel functions
+    fn j0(&self) -> Self;
+    fn j1(&self) -> Self;
+    fn jn(&self, n: int) -> Self;
+    fn y0(&self) -> Self;
+    fn y1(&self) -> Self;
+    fn yn(&self, n: int) -> Self;
 }
 
 /**
@@ -230,8 +296,9 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Quot<T,T>+Mul<T,T>>(
     total
 }
 
+/// Helper function for testing numeric operations
 #[cfg(stage0,test)]
-fn test_num<T:Num + NumCast>(ten: T, two: T) {
+pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
     assert_eq!(ten.add(&two),    cast(12));
     assert_eq!(ten.sub(&two),    cast(8));
     assert_eq!(ten.mul(&two),    cast(20));
@@ -247,7 +314,7 @@ fn test_num<T:Num + NumCast>(ten: T, two: T) {
 #[cfg(stage1,test)]
 #[cfg(stage2,test)]
 #[cfg(stage3,test)]
-fn test_num<T:Num + NumCast>(ten: T, two: T) {
+pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
     assert_eq!(ten.add(&two),  cast(12));
     assert_eq!(ten.sub(&two),  cast(8));
     assert_eq!(ten.mul(&two),  cast(20));
@@ -260,20 +327,6 @@ fn test_num<T:Num + NumCast>(ten: T, two: T) {
     assert_eq!(ten.quot(&two), ten / two);
     assert_eq!(ten.rem(&two),  ten % two);
 }
-
-#[test] fn test_u8_num()    { test_num(10u8,  2u8)  }
-#[test] fn test_u16_num()   { test_num(10u16, 2u16) }
-#[test] fn test_u32_num()   { test_num(10u32, 2u32) }
-#[test] fn test_u64_num()   { test_num(10u64, 2u64) }
-#[test] fn test_uint_num()  { test_num(10u,   2u)   }
-#[test] fn test_i8_num()    { test_num(10i8,  2i8)  }
-#[test] fn test_i16_num()   { test_num(10i16, 2i16) }
-#[test] fn test_i32_num()   { test_num(10i32, 2i32) }
-#[test] fn test_i64_num()   { test_num(10i64, 2i64) }
-#[test] fn test_int_num()   { test_num(10i,   2i)   }
-#[test] fn test_f32_num()   { test_num(10f32, 2f32) }
-#[test] fn test_f64_num()   { test_num(10f64, 2f64) }
-#[test] fn test_float_num() { test_num(10f,   2f)   }
 
 macro_rules! test_cast_20(
     ($_20:expr) => ({

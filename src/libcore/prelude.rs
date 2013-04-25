@@ -16,9 +16,7 @@ pub use either::{Either, Left, Right};
 pub use kinds::{Const, Copy, Owned, Durable};
 #[cfg(stage0)]
 pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, Not};
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 pub use ops::{Add, Sub, Mul, Quot, Rem, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
 pub use ops::{Drop};
@@ -39,7 +37,9 @@ pub use hash::Hash;
 pub use iter::{BaseIter, ReverseIter, MutableIter, ExtendedIter, EqIter};
 pub use iter::{CopyableIter, CopyableOrderedIter, CopyableNonstrictIter};
 pub use iter::{Times, ExtendedMutableIter};
-pub use num::{Num, Signed, Unsigned, Natural, NumCast};
+pub use num::{Num, NumCast};
+pub use num::{Signed, Unsigned, Integer};
+pub use num::{Round, Fractional, Real, RealExt};
 pub use path::GenericPath;
 pub use path::Path;
 pub use path::PosixPath;
