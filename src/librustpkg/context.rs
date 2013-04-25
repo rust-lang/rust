@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*
-The test runner should check that, after `rustpkg build fancy-lib`:
-  * testsuite/fancy-lib/build/ exists
-  * testsuite/fancy-lib/build/ contains a file called generated.rs
-  * testsuite/fancy-lib/build/ contains a library named libfancy_lib
-  * testsuite/fancy-lib/build/ does not contain an executable
-  *
-*/
+// Context data structure used by rustpkg
 
-extern mod std;
+use core::hashmap::HashMap;
 
-pub mod foo;
-pub mod bar;
-#[path = "build/generated.rs"] pub mod generated;
+pub struct Ctx {
+    // I'm not sure what this is for
+    json: bool,
+    // Cache of hashes of things already installed
+    // though I'm not sure why the value is a bool
+    dep_cache: @mut HashMap<~str, bool>,
+}
