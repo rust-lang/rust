@@ -78,7 +78,7 @@ impl ToStr for Version {
 }
 
 /// Placeholder
-fn default_version() -> Version { ExactRevision(0.1) }
+pub fn default_version() -> Version { ExactRevision(0.1) }
 
 // Path-fragment identifier of a package such as
 // 'github.com/graydon/test'; path must be a relative
@@ -116,7 +116,14 @@ pub impl PkgId {
 impl ToStr for PkgId {
     fn to_str(&self) -> ~str {
         // should probably use the filestem and not the whole path
-        fmt!("%s-%s", self.path.to_str(), self.version.to_str())
+        fmt!("%s-%s", self.path.to_str(),
+             // Replace dots with -s in the version
+             // this is because otherwise rustc will think
+             // that foo-0.1 has .1 as its extension
+             // (Temporary hack until I figure out how to
+             // get rustc to not name the object file
+             // foo-0.o if I pass in foo-0.1 to build_output_filenames)
+             str::replace(self.version.to_str(), ".", "-"))
     }
 }
 
@@ -438,7 +445,9 @@ pub fn compile_input(sysroot: Option<Path>,
                      test: bool,
                      crate_type: session::crate_type) -> bool {
 
-    let short_name = pkg_id.to_str();
+    // Want just the directory component here
+    let pkg_filename = pkg_id.path.filename().expect(~"Weird pkg id");
+    let short_name = fmt!("%s-%s", pkg_filename, pkg_id.version.to_str());
 
     assert!(in_file.components.len() > 1);
     let input = driver::file_input(copy *in_file);
@@ -515,7 +524,7 @@ pub fn compile_crate_from_input(input: driver::input,
                                 out_file: Path,
                                 binary: ~str,
                                 what: driver::compile_upto) -> @ast::crate {
-    debug!("Calling build_output_filenames with %?", build_dir_opt);
+    debug!("Calling build_output_filenames with %? and %s", build_dir_opt, out_file.to_str());
     let outputs = driver::build_output_filenames(&input, &build_dir_opt, &Some(out_file), sess);
     debug!("Outputs are %? and output type = %?", outputs, sess.opts.output_type);
     let cfg = driver::build_configuration(sess, @binary, &input);

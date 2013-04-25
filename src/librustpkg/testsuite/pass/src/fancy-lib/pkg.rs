@@ -11,13 +11,18 @@
 use core::run;
 
 pub fn main() {
-    let cwd = os::getcwd();
-    debug!("cwd = %s", cwd.to_str());
-    let file = io::file_writer(&Path(~"fancy-lib/build/generated.rs"),
+    use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
+
+    let out_path = Path(~"build/fancy_lib");
+    if !os::path_exists(&out_path) {
+        assert!(os::make_dir(&out_path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+    }
+
+    let file = io::file_writer(&out_path.push("generated.rs"),
                                [io::Create]).get();
     file.write_str("pub fn wheeeee() { for [1, 2, 3].each() |_| { assert!(true); } }");
 
     // now compile the crate itself
-    run::run_program("rustc", ~[~"fancy-lib/fancy-lib.rs", ~"--lib",
-                                ~"-o", ~"fancy-lib/build/fancy_lib"]);
+    run::run_program("rustc", ~[~"src/fancy-lib/fancy-lib.rs", ~"--lib",
+                                ~"-o", out_path.push(~"fancy_lib").to_str()]);
 }
