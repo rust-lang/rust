@@ -64,6 +64,8 @@ totaleq_impl!(i64)
 totaleq_impl!(int)
 totaleq_impl!(uint)
 
+totaleq_impl!(char)
+
 #[deriving(Clone, Eq)]
 pub enum Ordering { Less = -1, Equal = 0, Greater = 1 }
 
@@ -115,6 +117,8 @@ totalord_impl!(i64)
 
 totalord_impl!(int)
 totalord_impl!(uint)
+
+totalord_impl!(char)
 
 pub fn cmp2<A:TotalOrd,B:TotalOrd>(
     a1: &A, b1: &B,
