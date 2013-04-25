@@ -19,10 +19,9 @@ use cell::{Cell, empty_cell};
 use cast::transmute;
 use super::sched::{Scheduler, local_sched};
 
-#[cfg(test)] use super::io::net::ip::Ipv4;
-#[cfg(test)] use super::sched::Task;
-#[cfg(test)] use unstable::run_in_bare_thread;
 #[cfg(test)] use uint;
+#[cfg(test)] use unstable::run_in_bare_thread;
+#[cfg(test)] use super::test::*;
 
 pub struct UvEventLoop {
     uvio: UvIoFactory
@@ -335,38 +334,22 @@ impl Stream for UvStream {
 }
 
 #[test]
-#[ignore(reason = "ffi struct issues")]
 fn test_simple_io_no_connect() {
-    do run_in_bare_thread {
-        let mut sched = ~UvEventLoop::new_scheduler();
-        let task = ~do Task::new(&mut sched.stack_pool) {
-            let io = unsafe { local_sched::unsafe_borrow_io() };
-            let addr = Ipv4(127, 0, 0, 1, 2926);
-            let maybe_chan = io.connect(addr);
-            assert!(maybe_chan.is_none());
-        };
-        sched.task_queue.push_back(task);
-        sched.run();
+    do run_in_newsched_task {
+        let io = unsafe { local_sched::unsafe_borrow_io() };
+        let addr = next_test_ip4();
+        let maybe_chan = io.connect(addr);
+        assert!(maybe_chan.is_none());
     }
 }
 
 #[test]
-#[ignore(reason = "ffi struct issues")]
 fn test_simple_tcp_server_and_client() {
-    do run_in_bare_thread {
-        let mut sched = ~UvEventLoop::new_scheduler();
-        let addr = Ipv4(127, 0, 0, 1, 2929);
+    do run_in_newsched_task {
+        let addr = next_test_ip4();
 
-        let client_task = ~do Task::new(&mut sched.stack_pool) {
-            unsafe {
-                let io = local_sched::unsafe_borrow_io();
-                let mut stream = io.connect(addr).unwrap();
-                stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
-                stream.close();
-            }
-        };
-
-        let server_task = ~do Task::new(&mut sched.stack_pool) {
+        // Start the server first so it's listening when we connect
+        do spawntask_immediately {
             unsafe {
                 let io = local_sched::unsafe_borrow_io();
                 let mut listener = io.bind(addr).unwrap();
@@ -381,32 +364,25 @@ fn test_simple_tcp_server_and_client() {
                 stream.close();
                 listener.close();
             }
-        };
+        }
 
-        // Start the server first so it listens before the client connects
-        sched.task_queue.push_back(server_task);
-        sched.task_queue.push_back(client_task);
-        sched.run();
+        do spawntask_immediately {
+            unsafe {
+                let io = local_sched::unsafe_borrow_io();
+                let mut stream = io.connect(addr).unwrap();
+                stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+                stream.close();
+            }
+        }
     }
 }
 
 #[test] #[ignore(reason = "busted")]
 fn test_read_and_block() {
-    do run_in_bare_thread {
-        let mut sched = ~UvEventLoop::new_scheduler();
-        let addr = Ipv4(127, 0, 0, 1, 2930);
+    do run_in_newsched_task {
+        let addr = next_test_ip4();
 
-        let client_task = ~do Task::new(&mut sched.stack_pool) {
-            let io = unsafe { local_sched::unsafe_borrow_io() };
-            let mut stream = io.connect(addr).unwrap();
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
-            stream.close();
-        };
-
-        let server_task = ~do Task::new(&mut sched.stack_pool) {
+        do spawntask_immediately {
             let io = unsafe { local_sched::unsafe_borrow_io() };
             let mut listener = io.bind(addr).unwrap();
             let mut stream = listener.listen().unwrap();
@@ -442,36 +418,58 @@ fn test_read_and_block() {
 
             stream.close();
             listener.close();
-        };
+        }
 
-        // Start the server first so it listens before the client connects
-        sched.task_queue.push_back(server_task);
-        sched.task_queue.push_back(client_task);
-        sched.run();
+        do spawntask_immediately {
+            let io = unsafe { local_sched::unsafe_borrow_io() };
+            let mut stream = io.connect(addr).unwrap();
+            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+            stream.close();
+        }
+
     }
 }
 
-#[test] #[ignore(reason = "needs server")]
+#[test]
 fn test_read_read_read() {
-    do run_in_bare_thread {
-        let mut sched = ~UvEventLoop::new_scheduler();
-        let addr = Ipv4(127, 0, 0, 1, 2931);
+    do run_in_newsched_task {
+        let addr = next_test_ip4();
+        static MAX: uint = 500000;
 
-        let client_task = ~do Task::new(&mut sched.stack_pool) {
+        do spawntask_immediately {
+            unsafe {
+                let io = local_sched::unsafe_borrow_io();
+                let mut listener = io.bind(addr).unwrap();
+                let mut stream = listener.listen().unwrap();
+                let mut buf = [1, .. 2048];
+                let mut total_bytes_written = 0;
+                while total_bytes_written < MAX {
+                    stream.write(buf);
+                    total_bytes_written += buf.len();
+                }
+                stream.close();
+                listener.close();
+            }
+        }
+
+        do spawntask_immediately {
             let io = unsafe { local_sched::unsafe_borrow_io() };
             let mut stream = io.connect(addr).unwrap();
             let mut buf = [0, .. 2048];
             let mut total_bytes_read = 0;
-            while total_bytes_read < 500000000 {
+            while total_bytes_read < MAX {
                 let nread = stream.read(buf).unwrap();
                 rtdebug!("read %u bytes", nread as uint);
                 total_bytes_read += nread;
+                for uint::range(0, nread) |i| {
+                    assert!(buf[i] == 1);
+                }
             }
-            rtdebug_!("read %u bytes total", total_bytes_read as uint);
+            rtdebug!("read %u bytes total", total_bytes_read as uint);
             stream.close();
-        };
-
-        sched.task_queue.push_back(client_task);
-        sched.run();
+        }
     }
 }

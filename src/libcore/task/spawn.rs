@@ -80,7 +80,7 @@ use prelude::*;
 use unstable;
 use ptr;
 use hashmap::HashSet;
-use task::local_data_priv::{local_get, local_set};
+use task::local_data_priv::{local_get, local_set, OldHandle};
 use task::rt::rust_task;
 use task::rt;
 use task::{Failure, ManualThreads, PlatformThread, SchedOpts, SingleThreaded};
@@ -451,7 +451,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
         /*##################################################################*
          * Step 1. Get spawner's taskgroup info.
          *##################################################################*/
-        let spawner_group = match local_get(spawner, taskgroup_key!()) {
+        let spawner_group = match local_get(OldHandle(spawner), taskgroup_key!()) {
             None => {
                 // Main task, doing first spawn ever. Lazily initialise here.
                 let mut members = new_taskset();
@@ -463,7 +463,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                 // Main task/group has no ancestors, no notifier, etc.
                 let group =
                     @TCB(spawner, tasks, AncestorList(None), true, None);
-                local_set(spawner, taskgroup_key!(), group);
+                local_set(OldHandle(spawner), taskgroup_key!(), group);
                 group
             }
             Some(group) => group
@@ -627,7 +627,7 @@ fn spawn_raw_oldsched(opts: TaskOpts, f: ~fn()) {
                 let group = @TCB(child, child_arc, ancestors,
                                  is_main, notifier);
                 unsafe {
-                    local_set(child, taskgroup_key!(), group);
+                    local_set(OldHandle(child), taskgroup_key!(), group);
                 }
 
                 // Run the child's body.
