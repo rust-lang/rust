@@ -698,7 +698,7 @@ impl<R: Rng> Rng for @R {
  * generator.
  */
 pub fn random<T: Rand>() -> T {
-    task_rng().gen()
+    (*task_rng()).gen()
 }
 
 #[cfg(test)]
