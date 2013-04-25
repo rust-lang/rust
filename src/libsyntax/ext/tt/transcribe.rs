@@ -22,8 +22,6 @@ use core::hashmap::HashMap;
 use core::option;
 use core::vec;
 
-/* FIXME #2811: figure out how to have a uniquely linked stack, and change to
-   `~` */
 ///an unzipping of `token_tree`s
 struct TtFrame {
     forest: @mut ~[ast::token_tree],
