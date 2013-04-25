@@ -10,20 +10,10 @@
 
 //! Operations and constants for `f32`
 
-use num::strconv;
-use num::Signed;
-use num;
-use option::Option;
 use from_str;
-use to_str;
-
-#[cfg(notest)] use cmp::{Eq, Ord};
-#[cfg(stage0,notest)]
-use ops::{Add, Sub, Mul, Div, Modulo, Neg};
-#[cfg(stage1,notest)]
-#[cfg(stage2,notest)]
-#[cfg(stage3,notest)]
-use ops::{Add, Sub, Mul, Quot, Rem, Neg};
+use libc::c_int;
+use num::strconv;
+use prelude::*;
 
 pub use cmath::c_float_targ_consts::*;
 
@@ -233,6 +223,8 @@ pub fn logarithm(n: f32, b: f32) -> f32 {
     return log2(n) / log2(b);
 }
 
+impl Num for f32 {}
+
 #[cfg(notest)]
 impl Eq for f32 {
     #[inline(always)]
@@ -286,10 +278,7 @@ impl Div<f32,f32> for f32 {
     #[inline(always)]
     fn div(&self, other: &f32) -> f32 { *self / *other }
 }
-
-#[cfg(stage1,notest)]
-#[cfg(stage2,notest)]
-#[cfg(stage3,notest)]
+#[cfg(not(stage0),notest)]
 impl Quot<f32,f32> for f32 {
     #[inline(always)]
     fn quot(&self, other: &f32) -> f32 { *self / *other }
@@ -300,10 +289,7 @@ impl Modulo<f32,f32> for f32 {
     #[inline(always)]
     fn modulo(&self, other: &f32) -> f32 { *self % *other }
 }
-
-#[cfg(stage1,notest)]
-#[cfg(stage2,notest)]
-#[cfg(stage3,notest)]
+#[cfg(not(stage0),notest)]
 impl Rem<f32,f32> for f32 {
     #[inline(always)]
     fn rem(&self, other: &f32) -> f32 { *self % *other }
@@ -341,31 +327,188 @@ impl Signed for f32 {
     fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
 }
 
-impl num::Round for f32 {
-    #[inline(always)]
-    fn round(&self, mode: num::RoundMode) -> f32 {
-        match mode {
-            num::RoundDown                           => floor(*self),
-            num::RoundUp                             => ceil(*self),
-            num::RoundToZero   if self.is_negative() => ceil(*self),
-            num::RoundToZero                         => floor(*self),
-            num::RoundFromZero if self.is_negative() => floor(*self),
-            num::RoundFromZero                       => ceil(*self)
-        }
-    }
-
+impl Round for f32 {
+    /// Round half-way cases toward `neg_infinity`
     #[inline(always)]
     fn floor(&self) -> f32 { floor(*self) }
+
+    /// Round half-way cases toward `infinity`
     #[inline(always)]
     fn ceil(&self) -> f32 { ceil(*self) }
+
+    /// Round half-way cases away from `0.0`
     #[inline(always)]
-    fn fract(&self) -> f32 {
-        if self.is_negative() {
-            (*self) - ceil(*self)
-        } else {
-            (*self) - floor(*self)
-        }
-    }
+    fn round(&self) -> f32 { round(*self) }
+
+    /// The integer part of the number (rounds towards `0.0`)
+    #[inline(always)]
+    fn trunc(&self) -> f32 { trunc(*self) }
+
+    ///
+    /// The fractional part of the number, satisfying:
+    ///
+    /// ~~~
+    /// assert!(x == trunc(x) + fract(x))
+    /// ~~~
+    ///
+    #[inline(always)]
+    fn fract(&self) -> f32 { *self - self.trunc() }
+}
+
+impl Fractional for f32 {
+    /// The reciprocal (multiplicative inverse) of the number
+    #[inline(always)]
+    fn recip(&self) -> f32 { 1.0 / *self }
+}
+
+impl Real for f32 {
+    /// Archimedes' constant
+    #[inline(always)]
+    fn pi() -> f32 { 3.14159265358979323846264338327950288 }
+
+    /// 2.0 * pi
+    #[inline(always)]
+    fn two_pi() -> f32 { 6.28318530717958647692528676655900576 }
+
+    /// pi / 2.0
+    #[inline(always)]
+    fn frac_pi_2() -> f32 { 1.57079632679489661923132169163975144 }
+
+    /// pi / 3.0
+    #[inline(always)]
+    fn frac_pi_3() -> f32 { 1.04719755119659774615421446109316763 }
+
+    /// pi / 4.0
+    #[inline(always)]
+    fn frac_pi_4() -> f32 { 0.785398163397448309615660845819875721 }
+
+    /// pi / 6.0
+    #[inline(always)]
+    fn frac_pi_6() -> f32 { 0.52359877559829887307710723054658381 }
+
+    /// pi / 8.0
+    #[inline(always)]
+    fn frac_pi_8() -> f32 { 0.39269908169872415480783042290993786 }
+
+    /// 1 .0/ pi
+    #[inline(always)]
+    fn frac_1_pi() -> f32 { 0.318309886183790671537767526745028724 }
+
+    /// 2.0 / pi
+    #[inline(always)]
+    fn frac_2_pi() -> f32 { 0.636619772367581343075535053490057448 }
+
+    /// 2.0 / sqrt(pi)
+    #[inline(always)]
+    fn frac_2_sqrtpi() -> f32 { 1.12837916709551257389615890312154517 }
+
+    /// sqrt(2.0)
+    #[inline(always)]
+    fn sqrt2() -> f32 { 1.41421356237309504880168872420969808 }
+
+    /// 1.0 / sqrt(2.0)
+    #[inline(always)]
+    fn frac_1_sqrt2() -> f32 { 0.707106781186547524400844362104849039 }
+
+    /// Euler's number
+    #[inline(always)]
+    fn e() -> f32 { 2.71828182845904523536028747135266250 }
+
+    /// log2(e)
+    #[inline(always)]
+    fn log2_e() -> f32 { 1.44269504088896340735992468100189214 }
+
+    /// log10(e)
+    #[inline(always)]
+    fn log10_e() -> f32 { 0.434294481903251827651128918916605082 }
+
+    /// log(2.0)
+    #[inline(always)]
+    fn log_2() -> f32 { 0.693147180559945309417232121458176568 }
+
+    /// log(10.0)
+    #[inline(always)]
+    fn log_10() -> f32 { 2.30258509299404568401799145468436421 }
+
+    #[inline(always)]
+    fn pow(&self, n: f32) -> f32 { pow(*self, n) }
+
+    #[inline(always)]
+    fn exp(&self) -> f32 { exp(*self) }
+
+    #[inline(always)]
+    fn exp2(&self) -> f32 { exp2(*self) }
+
+    #[inline(always)]
+    fn expm1(&self) -> f32 { expm1(*self) }
+
+    #[inline(always)]
+    fn ldexp(&self, n: int) -> f32 { ldexp(*self, n as c_int) }
+
+    #[inline(always)]
+    fn log(&self) -> f32 { ln(*self) }
+
+    #[inline(always)]
+    fn log2(&self) -> f32 { log2(*self) }
+
+    #[inline(always)]
+    fn log10(&self) -> f32 { log10(*self) }
+
+    #[inline(always)]
+    fn log_radix(&self) -> f32 { log_radix(*self) as f32 }
+
+    #[inline(always)]
+    fn ilog_radix(&self) -> int { ilog_radix(*self) as int }
+
+    #[inline(always)]
+    fn sqrt(&self) -> f32 { sqrt(*self) }
+
+    #[inline(always)]
+    fn rsqrt(&self) -> f32 { self.sqrt().recip() }
+
+    #[inline(always)]
+    fn cbrt(&self) -> f32 { cbrt(*self) }
+
+    /// Converts to degrees, assuming the number is in radians
+    #[inline(always)]
+    fn to_degrees(&self) -> f32 { *self * (180.0 / Real::pi::<f32>()) }
+
+    /// Converts to radians, assuming the number is in degrees
+    #[inline(always)]
+    fn to_radians(&self) -> f32 { *self * (Real::pi::<f32>() / 180.0) }
+
+    #[inline(always)]
+    fn hypot(&self, other: f32) -> f32 { hypot(*self, other) }
+
+    #[inline(always)]
+    fn sin(&self) -> f32 { sin(*self) }
+
+    #[inline(always)]
+    fn cos(&self) -> f32 { cos(*self) }
+
+    #[inline(always)]
+    fn tan(&self) -> f32 { tan(*self) }
+
+    #[inline(always)]
+    fn asin(&self) -> f32 { asin(*self) }
+
+    #[inline(always)]
+    fn acos(&self) -> f32 { acos(*self) }
+
+    #[inline(always)]
+    fn atan(&self) -> f32 { atan(*self) }
+
+    #[inline(always)]
+    fn atan2(&self, other: f32) -> f32 { atan2(*self, other) }
+
+    #[inline(always)]
+    fn sinh(&self) -> f32 { sinh(*self) }
+
+    #[inline(always)]
+    fn cosh(&self) -> f32 { cosh(*self) }
+
+    #[inline(always)]
+    fn tanh(&self) -> f32 { tanh(*self) }
 }
 
 /**
@@ -588,6 +731,111 @@ impl num::FromStrRadix for f32 {
 #[cfg(test)]
 mod tests {
     use f32::*;
+    use super::*;
+    use prelude::*;
+
+    macro_rules! assert_fuzzy_eq(
+        ($a:expr, $b:expr) => ({
+            let a = $a, b = $b;
+            if !((a - b).abs() < 1.0e-6) {
+                fail!(fmt!("The values were not approximately equal. Found: %? and %?", a, b));
+            }
+        })
+    )
+
+    #[test]
+    fn test_num() {
+        num::test_num(10f32, 2f32);
+    }
+
+    #[test]
+    fn test_floor() {
+        assert_fuzzy_eq!(1.0f32.floor(), 1.0f32);
+        assert_fuzzy_eq!(1.3f32.floor(), 1.0f32);
+        assert_fuzzy_eq!(1.5f32.floor(), 1.0f32);
+        assert_fuzzy_eq!(1.7f32.floor(), 1.0f32);
+        assert_fuzzy_eq!(0.0f32.floor(), 0.0f32);
+        assert_fuzzy_eq!((-0.0f32).floor(), -0.0f32);
+        assert_fuzzy_eq!((-1.0f32).floor(), -1.0f32);
+        assert_fuzzy_eq!((-1.3f32).floor(), -2.0f32);
+        assert_fuzzy_eq!((-1.5f32).floor(), -2.0f32);
+        assert_fuzzy_eq!((-1.7f32).floor(), -2.0f32);
+    }
+
+    #[test]
+    fn test_ceil() {
+        assert_fuzzy_eq!(1.0f32.ceil(), 1.0f32);
+        assert_fuzzy_eq!(1.3f32.ceil(), 2.0f32);
+        assert_fuzzy_eq!(1.5f32.ceil(), 2.0f32);
+        assert_fuzzy_eq!(1.7f32.ceil(), 2.0f32);
+        assert_fuzzy_eq!(0.0f32.ceil(), 0.0f32);
+        assert_fuzzy_eq!((-0.0f32).ceil(), -0.0f32);
+        assert_fuzzy_eq!((-1.0f32).ceil(), -1.0f32);
+        assert_fuzzy_eq!((-1.3f32).ceil(), -1.0f32);
+        assert_fuzzy_eq!((-1.5f32).ceil(), -1.0f32);
+        assert_fuzzy_eq!((-1.7f32).ceil(), -1.0f32);
+    }
+
+    #[test]
+    fn test_round() {
+        assert_fuzzy_eq!(1.0f32.round(), 1.0f32);
+        assert_fuzzy_eq!(1.3f32.round(), 1.0f32);
+        assert_fuzzy_eq!(1.5f32.round(), 2.0f32);
+        assert_fuzzy_eq!(1.7f32.round(), 2.0f32);
+        assert_fuzzy_eq!(0.0f32.round(), 0.0f32);
+        assert_fuzzy_eq!((-0.0f32).round(), -0.0f32);
+        assert_fuzzy_eq!((-1.0f32).round(), -1.0f32);
+        assert_fuzzy_eq!((-1.3f32).round(), -1.0f32);
+        assert_fuzzy_eq!((-1.5f32).round(), -2.0f32);
+        assert_fuzzy_eq!((-1.7f32).round(), -2.0f32);
+    }
+
+    #[test]
+    fn test_trunc() {
+        assert_fuzzy_eq!(1.0f32.trunc(), 1.0f32);
+        assert_fuzzy_eq!(1.3f32.trunc(), 1.0f32);
+        assert_fuzzy_eq!(1.5f32.trunc(), 1.0f32);
+        assert_fuzzy_eq!(1.7f32.trunc(), 1.0f32);
+        assert_fuzzy_eq!(0.0f32.trunc(), 0.0f32);
+        assert_fuzzy_eq!((-0.0f32).trunc(), -0.0f32);
+        assert_fuzzy_eq!((-1.0f32).trunc(), -1.0f32);
+        assert_fuzzy_eq!((-1.3f32).trunc(), -1.0f32);
+        assert_fuzzy_eq!((-1.5f32).trunc(), -1.0f32);
+        assert_fuzzy_eq!((-1.7f32).trunc(), -1.0f32);
+    }
+
+    #[test]
+    fn test_fract() {
+        assert_fuzzy_eq!(1.0f32.fract(), 0.0f32);
+        assert_fuzzy_eq!(1.3f32.fract(), 0.3f32);
+        assert_fuzzy_eq!(1.5f32.fract(), 0.5f32);
+        assert_fuzzy_eq!(1.7f32.fract(), 0.7f32);
+        assert_fuzzy_eq!(0.0f32.fract(), 0.0f32);
+        assert_fuzzy_eq!((-0.0f32).fract(), -0.0f32);
+        assert_fuzzy_eq!((-1.0f32).fract(), -0.0f32);
+        assert_fuzzy_eq!((-1.3f32).fract(), -0.3f32);
+        assert_fuzzy_eq!((-1.5f32).fract(), -0.5f32);
+        assert_fuzzy_eq!((-1.7f32).fract(), -0.7f32);
+    }
+
+    #[test]
+    fn test_real_consts() {
+        assert_fuzzy_eq!(Real::two_pi::<f32>(), 2f32 * Real::pi::<f32>());
+        assert_fuzzy_eq!(Real::frac_pi_2::<f32>(), Real::pi::<f32>() / 2f32);
+        assert_fuzzy_eq!(Real::frac_pi_3::<f32>(), Real::pi::<f32>() / 3f32);
+        assert_fuzzy_eq!(Real::frac_pi_4::<f32>(), Real::pi::<f32>() / 4f32);
+        assert_fuzzy_eq!(Real::frac_pi_6::<f32>(), Real::pi::<f32>() / 6f32);
+        assert_fuzzy_eq!(Real::frac_pi_8::<f32>(), Real::pi::<f32>() / 8f32);
+        assert_fuzzy_eq!(Real::frac_1_pi::<f32>(), 1f32 / Real::pi::<f32>());
+        assert_fuzzy_eq!(Real::frac_2_pi::<f32>(), 2f32 / Real::pi::<f32>());
+        assert_fuzzy_eq!(Real::frac_2_sqrtpi::<f32>(), 2f32 / Real::pi::<f32>().sqrt());
+        assert_fuzzy_eq!(Real::sqrt2::<f32>(), 2f32.sqrt());
+        assert_fuzzy_eq!(Real::frac_1_sqrt2::<f32>(), 1f32 / 2f32.sqrt());
+        assert_fuzzy_eq!(Real::log2_e::<f32>(), Real::e::<f32>().log2());
+        assert_fuzzy_eq!(Real::log10_e::<f32>(), Real::e::<f32>().log10());
+        assert_fuzzy_eq!(Real::log_2::<f32>(), 2f32.log());
+        assert_fuzzy_eq!(Real::log_10::<f32>(), 10f32.log());
+    }
 
     #[test]
     pub fn test_signed() {

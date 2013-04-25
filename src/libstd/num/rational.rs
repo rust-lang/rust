@@ -204,20 +204,6 @@ impl<T: Copy + Num + Ord>
 /* Utils */
 impl<T: Copy + Num + Ord>
     Round for Ratio<T> {
-    fn round(&self, mode: num::RoundMode) -> Ratio<T> {
-        match mode {
-            num::RoundUp => { self.ceil() }
-            num::RoundDown => { self.floor()}
-            num::RoundToZero => { Ratio::from_integer(self.numer / self.denom) }
-            num::RoundFromZero => {
-                if *self < Zero::zero() {
-                    Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
-                } else {
-                    Ratio::from_integer((self.numer + self.denom - One::one()) / self.denom)
-                }
-            }
-        }
-    }
 
     fn floor(&self) -> Ratio<T> {
         if *self < Zero::zero() {
@@ -226,6 +212,7 @@ impl<T: Copy + Num + Ord>
             Ratio::from_integer(self.numer / self.denom)
         }
     }
+
     fn ceil(&self) -> Ratio<T> {
         if *self < Zero::zero() {
             Ratio::from_integer(self.numer / self.denom)
@@ -233,6 +220,21 @@ impl<T: Copy + Num + Ord>
             Ratio::from_integer((self.numer + self.denom - One::one()) / self.denom)
         }
     }
+
+    #[inline(always)]
+    fn round(&self) -> Ratio<T> {
+        if *self < Zero::zero() {
+            Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
+        } else {
+            Ratio::from_integer((self.numer + self.denom - One::one()) / self.denom)
+        }
+    }
+
+    #[inline(always)]
+    fn trunc(&self) -> Ratio<T> {
+        Ratio::from_integer(self.numer / self.denom)
+    }
+
     fn fract(&self) -> Ratio<T> {
         Ratio::new_raw(self.numer % self.denom, self.denom)
     }
@@ -421,18 +423,18 @@ mod test {
     fn test_round() {
         assert_eq!(_1_2.ceil(), _1);
         assert_eq!(_1_2.floor(), _0);
-        assert_eq!(_1_2.round(num::RoundToZero), _0);
-        assert_eq!(_1_2.round(num::RoundFromZero), _1);
+        assert_eq!(_1_2.round(), _1);
+        assert_eq!(_1_2.trunc(), _0);
 
         assert_eq!(_neg1_2.ceil(), _0);
         assert_eq!(_neg1_2.floor(), -_1);
-        assert_eq!(_neg1_2.round(num::RoundToZero), _0);
-        assert_eq!(_neg1_2.round(num::RoundFromZero), -_1);
+        assert_eq!(_neg1_2.round(), -_1);
+        assert_eq!(_neg1_2.trunc(), _0);
 
         assert_eq!(_1.ceil(), _1);
         assert_eq!(_1.floor(), _1);
-        assert_eq!(_1.round(num::RoundToZero), _1);
-        assert_eq!(_1.round(num::RoundFromZero), _1);
+        assert_eq!(_1.round(), _1);
+        assert_eq!(_1.trunc(), _1);
     }
 
     #[test]
