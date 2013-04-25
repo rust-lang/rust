@@ -78,7 +78,7 @@ impl ToStr for Version {
 }
 
 /// Placeholder
-fn default_version() -> Version { ExactRevision(0.1) }
+pub fn default_version() -> Version { ExactRevision(0.1) }
 
 // Path-fragment identifier of a package such as
 // 'github.com/graydon/test'; path must be a relative

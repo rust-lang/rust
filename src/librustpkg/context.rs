@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Useful conditions
+// Context data structure used by rustpkg
 
-pub use core::path::Path;
-pub use util::PkgId;
+use core::hashmap::HashMap;
 
-condition! {
-    bad_path: (super::Path, ~str) -> super::Path;
-}
-
-condition! {
-    nonexistent_package: (super::PkgId, ~str) -> super::Path;
+pub struct Ctx {
+    // I'm not sure what this is for
+    json: bool,
+    // Cache of hashes of things already installed
+    // though I'm not sure why the value is a bool
+    dep_cache: @mut HashMap<~str, bool>,
 }
