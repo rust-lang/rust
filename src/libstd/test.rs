@@ -19,9 +19,20 @@ use getopts;
 use sort;
 use term;
 
+use core::cmp::Eq;
+
 use core::to_str::ToStr;
+use core::either::Either;
+use core::either;
+use core::io::WriterUtil;
+use core::io;
 use core::comm::{stream, SharedChan};
+use core::option;
 use core::prelude::*;
+use core::result;
+use core::str;
+use core::task;
+use core::vec;
 
 pub mod rustrt {
     use core::libc::size_t;
@@ -597,8 +608,12 @@ pub mod bench {
     use time::precise_time_ns;
     use test::{BenchHarness, BenchSamples};
     use stats::Stats;
-    use core::prelude::*;
+
+    use core::num;
     use core::rand::RngUtil;
+    use core::rand;
+    use core::u64;
+    use core::vec;
 
     pub impl BenchHarness {
 

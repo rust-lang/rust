@@ -13,6 +13,8 @@
 extern mod std;
 
 use std::time::precise_time_s;
+
+use core::io::{Reader, ReaderUtil};
 use core::rand::RngUtil;
 
 macro_rules! bench (
@@ -75,7 +77,7 @@ fn vec_plus() {
     let mut i = 0;
     while i < 1500 {
         let rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
-        if r.gen() {
+        if r.gen_bool() {
             v += rv;
         }
         else {
@@ -92,7 +94,7 @@ fn vec_append() {
     let mut i = 0;
     while i < 1500 {
         let rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
-        if r.gen() {
+        if r.gen_bool() {
             v = vec::append(v, rv);
         }
         else {
@@ -108,7 +110,7 @@ fn vec_push_all() {
     let mut v = ~[];
     for uint::range(0, 1500) |i| {
         let mut rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
-        if r.gen() {
+        if r.gen_bool() {
             v.push_all(rv);
         }
         else {
