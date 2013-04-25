@@ -327,6 +327,34 @@ impl Signed for f32 {
     fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
 }
 
+impl Round for f32 {
+    /// Round half-way cases toward `neg_infinity`
+    #[inline(always)]
+    fn floor(&self) -> f32 { floor(*self) }
+
+    /// Round half-way cases toward `infinity`
+    #[inline(always)]
+    fn ceil(&self) -> f32 { ceil(*self) }
+
+    /// Round half-way cases away from `0.0`
+    #[inline(always)]
+    fn round(&self) -> f32 { round(*self) }
+
+    /// The integer part of the number (rounds towards `0.0`)
+    #[inline(always)]
+    fn trunc(&self) -> f32 { trunc(*self) }
+
+    ///
+    /// The fractional part of the number, satisfying:
+    ///
+    /// ~~~
+    /// assert!(x == trunc(x) + fract(x))
+    /// ~~~
+    ///
+    #[inline(always)]
+    fn fract(&self) -> f32 { *self - self.trunc() }
+}
+
 impl Fractional for f32 {
     /// The reciprocal (multiplicative inverse) of the number
     #[inline(always)]
@@ -401,22 +429,6 @@ impl Real for f32 {
     /// log(10.0)
     #[inline(always)]
     fn log_10() -> f32 { 2.30258509299404568401799145468436421 }
-
-    #[inline(always)]
-    fn floor(&self) -> f32 { floor(*self) }
-
-    #[inline(always)]
-    fn ceil(&self) -> f32 { ceil(*self) }
-
-    #[inline(always)]
-    fn round(&self) -> f32 { round(*self) }
-
-    #[inline(always)]
-    fn trunc(&self) -> f32 { trunc(*self) }
-
-    /// The fractional part of the number, calculated using: `n - floor(n)`
-    #[inline(always)]
-    fn fract(&self) -> f32 { *self - self.floor() }
 
     #[inline(always)]
     fn pow(&self, n: f32) -> f32 { pow(*self, n) }
@@ -734,6 +746,76 @@ mod tests {
     #[test]
     fn test_num() {
         num::test_num(10f32, 2f32);
+    }
+
+    #[test]
+    fn test_floor() {
+        assert_fuzzy_eq!(1.0f32.floor(), 1.0f32);
+        assert_fuzzy_eq!(1.3f32.floor(), 1.0f32);
+        assert_fuzzy_eq!(1.5f32.floor(), 1.0f32);
+        assert_fuzzy_eq!(1.7f32.floor(), 1.0f32);
+        assert_fuzzy_eq!(0.0f32.floor(), 0.0f32);
+        assert_fuzzy_eq!((-0.0f32).floor(), -0.0f32);
+        assert_fuzzy_eq!((-1.0f32).floor(), -1.0f32);
+        assert_fuzzy_eq!((-1.3f32).floor(), -2.0f32);
+        assert_fuzzy_eq!((-1.5f32).floor(), -2.0f32);
+        assert_fuzzy_eq!((-1.7f32).floor(), -2.0f32);
+    }
+
+    #[test]
+    fn test_ceil() {
+        assert_fuzzy_eq!(1.0f32.ceil(), 1.0f32);
+        assert_fuzzy_eq!(1.3f32.ceil(), 2.0f32);
+        assert_fuzzy_eq!(1.5f32.ceil(), 2.0f32);
+        assert_fuzzy_eq!(1.7f32.ceil(), 2.0f32);
+        assert_fuzzy_eq!(0.0f32.ceil(), 0.0f32);
+        assert_fuzzy_eq!((-0.0f32).ceil(), -0.0f32);
+        assert_fuzzy_eq!((-1.0f32).ceil(), -1.0f32);
+        assert_fuzzy_eq!((-1.3f32).ceil(), -1.0f32);
+        assert_fuzzy_eq!((-1.5f32).ceil(), -1.0f32);
+        assert_fuzzy_eq!((-1.7f32).ceil(), -1.0f32);
+    }
+
+    #[test]
+    fn test_round() {
+        assert_fuzzy_eq!(1.0f32.round(), 1.0f32);
+        assert_fuzzy_eq!(1.3f32.round(), 1.0f32);
+        assert_fuzzy_eq!(1.5f32.round(), 2.0f32);
+        assert_fuzzy_eq!(1.7f32.round(), 2.0f32);
+        assert_fuzzy_eq!(0.0f32.round(), 0.0f32);
+        assert_fuzzy_eq!((-0.0f32).round(), -0.0f32);
+        assert_fuzzy_eq!((-1.0f32).round(), -1.0f32);
+        assert_fuzzy_eq!((-1.3f32).round(), -1.0f32);
+        assert_fuzzy_eq!((-1.5f32).round(), -2.0f32);
+        assert_fuzzy_eq!((-1.7f32).round(), -2.0f32);
+    }
+
+    #[test]
+    fn test_trunc() {
+        assert_fuzzy_eq!(1.0f32.trunc(), 1.0f32);
+        assert_fuzzy_eq!(1.3f32.trunc(), 1.0f32);
+        assert_fuzzy_eq!(1.5f32.trunc(), 1.0f32);
+        assert_fuzzy_eq!(1.7f32.trunc(), 1.0f32);
+        assert_fuzzy_eq!(0.0f32.trunc(), 0.0f32);
+        assert_fuzzy_eq!((-0.0f32).trunc(), -0.0f32);
+        assert_fuzzy_eq!((-1.0f32).trunc(), -1.0f32);
+        assert_fuzzy_eq!((-1.3f32).trunc(), -1.0f32);
+        assert_fuzzy_eq!((-1.5f32).trunc(), -1.0f32);
+        assert_fuzzy_eq!((-1.7f32).trunc(), -1.0f32);
+    }
+
+    #[test]
+    fn test_fract() {
+        assert_fuzzy_eq!(1.0f32.fract(), 0.0f32);
+        assert_fuzzy_eq!(1.3f32.fract(), 0.3f32);
+        assert_fuzzy_eq!(1.5f32.fract(), 0.5f32);
+        assert_fuzzy_eq!(1.7f32.fract(), 0.7f32);
+        assert_fuzzy_eq!(0.0f32.fract(), 0.0f32);
+        assert_fuzzy_eq!((-0.0f32).fract(), -0.0f32);
+        assert_fuzzy_eq!((-1.0f32).fract(), -0.0f32);
+        assert_fuzzy_eq!((-1.3f32).fract(), -0.3f32);
+        assert_fuzzy_eq!((-1.5f32).fract(), -0.5f32);
+        assert_fuzzy_eq!((-1.7f32).fract(), -0.7f32);
     }
 
     #[test]

@@ -39,7 +39,7 @@ pub use iter::{CopyableIter, CopyableOrderedIter, CopyableNonstrictIter};
 pub use iter::{Times, ExtendedMutableIter};
 pub use num::{Num, NumCast};
 pub use num::{Signed, Unsigned, Integer};
-pub use num::{Fractional, Real, RealExt};
+pub use num::{Round, Fractional, Real, RealExt};
 pub use path::GenericPath;
 pub use path::Path;
 pub use path::PosixPath;

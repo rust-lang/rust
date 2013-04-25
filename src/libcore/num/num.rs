@@ -77,8 +77,17 @@ pub trait Integer: Num
     fn is_odd(&self) -> bool;
 }
 
+pub trait Round {
+    fn floor(&self) -> Self;
+    fn ceil(&self) -> Self;
+    fn round(&self) -> Self;
+    fn trunc(&self) -> Self;
+    fn fract(&self) -> Self;
+}
+
 pub trait Fractional: Num
                     + Ord
+                    + Round
                     + Quot<Self,Self> {
     fn recip(&self) -> Self;
 }
@@ -107,13 +116,6 @@ pub trait Real: Signed
     fn log10_e() -> Self;
     fn log_2() -> Self;
     fn log_10() -> Self;
-
-    // Rounding operations
-    fn floor(&self) -> Self;
-    fn ceil(&self) -> Self;
-    fn round(&self) -> Self;
-    fn trunc(&self) -> Self;
-    fn fract(&self) -> Self;
 
     // Exponential functions
     fn pow(&self, n: Self) -> Self;

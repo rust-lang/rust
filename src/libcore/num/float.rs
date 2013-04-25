@@ -403,6 +403,34 @@ impl num::One for float {
     fn one() -> float { 1.0 }
 }
 
+impl Round for float {
+    /// Round half-way cases toward `neg_infinity`
+    #[inline(always)]
+    fn floor(&self) -> float { floor(*self as f64) as float }
+
+    /// Round half-way cases toward `infinity`
+    #[inline(always)]
+    fn ceil(&self) -> float { ceil(*self as f64) as float }
+
+    /// Round half-way cases away from `0.0`
+    #[inline(always)]
+    fn round(&self) -> float { round(*self as f64) as float }
+
+    /// The integer part of the number (rounds towards `0.0`)
+    #[inline(always)]
+    fn trunc(&self) -> float { trunc(*self as f64) as float }
+
+    ///
+    /// The fractional part of the number, satisfying:
+    ///
+    /// ~~~
+    /// assert!(x == trunc(x) + fract(x))
+    /// ~~~
+    ///
+    #[inline(always)]
+    fn fract(&self) -> float { *self - self.trunc() }
+}
+
 impl Fractional for float {
     /// The reciprocal (multiplicative inverse) of the number
     #[inline(always)]
@@ -477,22 +505,6 @@ impl Real for float {
     /// log(10.0)
     #[inline(always)]
     fn log_10() -> float { 2.30258509299404568401799145468436421 }
-
-    #[inline(always)]
-    fn floor(&self) -> float { floor(*self as f64) as float }
-
-    #[inline(always)]
-    fn ceil(&self) -> float { ceil(*self as f64) as float }
-
-    #[inline(always)]
-    fn round(&self) -> float { round(*self as f64) as float }
-
-    #[inline(always)]
-    fn trunc(&self) -> float { trunc(*self as f64) as float }
-
-    /// The fractional part of the number, calculated using: `n - floor(n)`
-    #[inline(always)]
-    fn fract(&self) -> float { *self - self.floor() }
 
     #[inline(always)]
     fn pow(&self, n: float) -> float { pow(*self as f64, n as f64) as float }
@@ -695,6 +707,76 @@ mod tests {
     }
 
     #[test]
+    fn test_floor() {
+        assert_fuzzy_eq!(1.0f.floor(), 1.0f);
+        assert_fuzzy_eq!(1.3f.floor(), 1.0f);
+        assert_fuzzy_eq!(1.5f.floor(), 1.0f);
+        assert_fuzzy_eq!(1.7f.floor(), 1.0f);
+        assert_fuzzy_eq!(0.0f.floor(), 0.0f);
+        assert_fuzzy_eq!((-0.0f).floor(), -0.0f);
+        assert_fuzzy_eq!((-1.0f).floor(), -1.0f);
+        assert_fuzzy_eq!((-1.3f).floor(), -2.0f);
+        assert_fuzzy_eq!((-1.5f).floor(), -2.0f);
+        assert_fuzzy_eq!((-1.7f).floor(), -2.0f);
+    }
+
+    #[test]
+    fn test_ceil() {
+        assert_fuzzy_eq!(1.0f.ceil(), 1.0f);
+        assert_fuzzy_eq!(1.3f.ceil(), 2.0f);
+        assert_fuzzy_eq!(1.5f.ceil(), 2.0f);
+        assert_fuzzy_eq!(1.7f.ceil(), 2.0f);
+        assert_fuzzy_eq!(0.0f.ceil(), 0.0f);
+        assert_fuzzy_eq!((-0.0f).ceil(), -0.0f);
+        assert_fuzzy_eq!((-1.0f).ceil(), -1.0f);
+        assert_fuzzy_eq!((-1.3f).ceil(), -1.0f);
+        assert_fuzzy_eq!((-1.5f).ceil(), -1.0f);
+        assert_fuzzy_eq!((-1.7f).ceil(), -1.0f);
+    }
+
+    #[test]
+    fn test_round() {
+        assert_fuzzy_eq!(1.0f.round(), 1.0f);
+        assert_fuzzy_eq!(1.3f.round(), 1.0f);
+        assert_fuzzy_eq!(1.5f.round(), 2.0f);
+        assert_fuzzy_eq!(1.7f.round(), 2.0f);
+        assert_fuzzy_eq!(0.0f.round(), 0.0f);
+        assert_fuzzy_eq!((-0.0f).round(), -0.0f);
+        assert_fuzzy_eq!((-1.0f).round(), -1.0f);
+        assert_fuzzy_eq!((-1.3f).round(), -1.0f);
+        assert_fuzzy_eq!((-1.5f).round(), -2.0f);
+        assert_fuzzy_eq!((-1.7f).round(), -2.0f);
+    }
+
+    #[test]
+    fn test_trunc() {
+        assert_fuzzy_eq!(1.0f.trunc(), 1.0f);
+        assert_fuzzy_eq!(1.3f.trunc(), 1.0f);
+        assert_fuzzy_eq!(1.5f.trunc(), 1.0f);
+        assert_fuzzy_eq!(1.7f.trunc(), 1.0f);
+        assert_fuzzy_eq!(0.0f.trunc(), 0.0f);
+        assert_fuzzy_eq!((-0.0f).trunc(), -0.0f);
+        assert_fuzzy_eq!((-1.0f).trunc(), -1.0f);
+        assert_fuzzy_eq!((-1.3f).trunc(), -1.0f);
+        assert_fuzzy_eq!((-1.5f).trunc(), -1.0f);
+        assert_fuzzy_eq!((-1.7f).trunc(), -1.0f);
+    }
+
+    #[test]
+    fn test_fract() {
+        assert_fuzzy_eq!(1.0f.fract(), 0.0f);
+        assert_fuzzy_eq!(1.3f.fract(), 0.3f);
+        assert_fuzzy_eq!(1.5f.fract(), 0.5f);
+        assert_fuzzy_eq!(1.7f.fract(), 0.7f);
+        assert_fuzzy_eq!(0.0f.fract(), 0.0f);
+        assert_fuzzy_eq!((-0.0f).fract(), -0.0f);
+        assert_fuzzy_eq!((-1.0f).fract(), -0.0f);
+        assert_fuzzy_eq!((-1.3f).fract(), -0.3f);
+        assert_fuzzy_eq!((-1.5f).fract(), -0.5f);
+        assert_fuzzy_eq!((-1.7f).fract(), -0.7f);
+    }
+
+    #[test]
     fn test_real_consts() {
         assert_fuzzy_eq!(Real::two_pi::<float>(), 2f * Real::pi::<float>());
         assert_fuzzy_eq!(Real::frac_pi_2::<float>(), Real::pi::<float>() / 2f);
@@ -892,15 +974,6 @@ mod tests {
     pub fn test_to_str_inf() {
         assert_eq!(to_str_digits(infinity, 10u), ~"inf");
         assert_eq!(to_str_digits(-infinity, 10u), ~"-inf");
-    }
-
-    #[test]
-    pub fn test_round() {
-        assert_eq!(round(5.8), 6.0);
-        assert_eq!(round(5.2), 5.0);
-        assert_eq!(round(3.0), 3.0);
-        assert_eq!(round(2.5), 3.0);
-        assert_eq!(round(-3.5), -4.0);
     }
 }
 

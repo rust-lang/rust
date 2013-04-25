@@ -337,6 +337,34 @@ impl Signed for f64 {
     fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
 }
 
+impl Round for f64 {
+    /// Round half-way cases toward `neg_infinity`
+    #[inline(always)]
+    fn floor(&self) -> f64 { floor(*self) }
+
+    /// Round half-way cases toward `infinity`
+    #[inline(always)]
+    fn ceil(&self) -> f64 { ceil(*self) }
+
+    /// Round half-way cases away from `0.0`
+    #[inline(always)]
+    fn round(&self) -> f64 { round(*self) }
+
+    /// The integer part of the number (rounds towards `0.0`)
+    #[inline(always)]
+    fn trunc(&self) -> f64 { trunc(*self) }
+
+    ///
+    /// The fractional part of the number, satisfying:
+    ///
+    /// ~~~
+    /// assert!(x == trunc(x) + fract(x))
+    /// ~~~
+    ///
+    #[inline(always)]
+    fn fract(&self) -> f64 { *self - self.trunc() }
+}
+
 impl Fractional for f64 {
     /// The reciprocal (multiplicative inverse) of the number
     #[inline(always)]
@@ -411,22 +439,6 @@ impl Real for f64 {
     /// log(10.0)
     #[inline(always)]
     fn log_10() -> f64 { 2.30258509299404568401799145468436421 }
-
-    #[inline(always)]
-    fn floor(&self) -> f64 { floor(*self) }
-
-    #[inline(always)]
-    fn ceil(&self) -> f64 { ceil(*self) }
-
-    #[inline(always)]
-    fn round(&self) -> f64 { round(*self) }
-
-    #[inline(always)]
-    fn trunc(&self) -> f64 { trunc(*self) }
-
-    /// The fractional part of the number, calculated using: `n - floor(n)`
-    #[inline(always)]
-    fn fract(&self) -> f64 { *self - self.floor() }
 
     #[inline(always)]
     fn pow(&self, n: f64) -> f64 { pow(*self, n) }
@@ -766,7 +778,8 @@ mod tests {
         ($a:expr, $b:expr) => ({
             let a = $a, b = $b;
             if !((a - b).abs() < 1.0e-6) {
-                fail!(fmt!("The values were not approximately equal. Found: %? and %?", a, b));
+                fail!(fmt!("The values were not approximately equal. \
+                            Found: %? and expected %?", a, b));
             }
         })
     )
@@ -774,6 +787,76 @@ mod tests {
     #[test]
     fn test_num() {
         num::test_num(10f64, 2f64);
+    }
+
+    #[test]
+    fn test_floor() {
+        assert_fuzzy_eq!(1.0f64.floor(), 1.0f64);
+        assert_fuzzy_eq!(1.3f64.floor(), 1.0f64);
+        assert_fuzzy_eq!(1.5f64.floor(), 1.0f64);
+        assert_fuzzy_eq!(1.7f64.floor(), 1.0f64);
+        assert_fuzzy_eq!(0.0f64.floor(), 0.0f64);
+        assert_fuzzy_eq!((-0.0f64).floor(), -0.0f64);
+        assert_fuzzy_eq!((-1.0f64).floor(), -1.0f64);
+        assert_fuzzy_eq!((-1.3f64).floor(), -2.0f64);
+        assert_fuzzy_eq!((-1.5f64).floor(), -2.0f64);
+        assert_fuzzy_eq!((-1.7f64).floor(), -2.0f64);
+    }
+
+    #[test]
+    fn test_ceil() {
+        assert_fuzzy_eq!(1.0f64.ceil(), 1.0f64);
+        assert_fuzzy_eq!(1.3f64.ceil(), 2.0f64);
+        assert_fuzzy_eq!(1.5f64.ceil(), 2.0f64);
+        assert_fuzzy_eq!(1.7f64.ceil(), 2.0f64);
+        assert_fuzzy_eq!(0.0f64.ceil(), 0.0f64);
+        assert_fuzzy_eq!((-0.0f64).ceil(), -0.0f64);
+        assert_fuzzy_eq!((-1.0f64).ceil(), -1.0f64);
+        assert_fuzzy_eq!((-1.3f64).ceil(), -1.0f64);
+        assert_fuzzy_eq!((-1.5f64).ceil(), -1.0f64);
+        assert_fuzzy_eq!((-1.7f64).ceil(), -1.0f64);
+    }
+
+    #[test]
+    fn test_round() {
+        assert_fuzzy_eq!(1.0f64.round(), 1.0f64);
+        assert_fuzzy_eq!(1.3f64.round(), 1.0f64);
+        assert_fuzzy_eq!(1.5f64.round(), 2.0f64);
+        assert_fuzzy_eq!(1.7f64.round(), 2.0f64);
+        assert_fuzzy_eq!(0.0f64.round(), 0.0f64);
+        assert_fuzzy_eq!((-0.0f64).round(), -0.0f64);
+        assert_fuzzy_eq!((-1.0f64).round(), -1.0f64);
+        assert_fuzzy_eq!((-1.3f64).round(), -1.0f64);
+        assert_fuzzy_eq!((-1.5f64).round(), -2.0f64);
+        assert_fuzzy_eq!((-1.7f64).round(), -2.0f64);
+    }
+
+    #[test]
+    fn test_trunc() {
+        assert_fuzzy_eq!(1.0f64.trunc(), 1.0f64);
+        assert_fuzzy_eq!(1.3f64.trunc(), 1.0f64);
+        assert_fuzzy_eq!(1.5f64.trunc(), 1.0f64);
+        assert_fuzzy_eq!(1.7f64.trunc(), 1.0f64);
+        assert_fuzzy_eq!(0.0f64.trunc(), 0.0f64);
+        assert_fuzzy_eq!((-0.0f64).trunc(), -0.0f64);
+        assert_fuzzy_eq!((-1.0f64).trunc(), -1.0f64);
+        assert_fuzzy_eq!((-1.3f64).trunc(), -1.0f64);
+        assert_fuzzy_eq!((-1.5f64).trunc(), -1.0f64);
+        assert_fuzzy_eq!((-1.7f64).trunc(), -1.0f64);
+    }
+
+    #[test]
+    fn test_fract() {
+        assert_fuzzy_eq!(1.0f64.fract(), 0.0f64);
+        assert_fuzzy_eq!(1.3f64.fract(), 0.3f64);
+        assert_fuzzy_eq!(1.5f64.fract(), 0.5f64);
+        assert_fuzzy_eq!(1.7f64.fract(), 0.7f64);
+        assert_fuzzy_eq!(0.0f64.fract(), 0.0f64);
+        assert_fuzzy_eq!((-0.0f64).fract(), -0.0f64);
+        assert_fuzzy_eq!((-1.0f64).fract(), -0.0f64);
+        assert_fuzzy_eq!((-1.3f64).fract(), -0.3f64);
+        assert_fuzzy_eq!((-1.5f64).fract(), -0.5f64);
+        assert_fuzzy_eq!((-1.7f64).fract(), -0.7f64);
     }
 
     #[test]
