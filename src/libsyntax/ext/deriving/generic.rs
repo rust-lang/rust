@@ -629,7 +629,7 @@ impl<'self> MethodDef<'self> {
                                 }
                             }
                             let field_tuples =
-                                do vec::map2(*self_vec,
+                                do vec::map_zip(*self_vec,
                                              enum_matching_fields) |&(id, self_f), &other| {
                                 (id, self_f, other)
                             };

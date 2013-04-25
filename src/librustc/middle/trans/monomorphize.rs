@@ -356,7 +356,7 @@ pub fn make_mono_id(ccx: @CrateContext,
       Some(vts) => {
         let item_ty = ty::lookup_item_type(ccx.tcx, item);
         let mut i = 0;
-        vec::map2(*item_ty.generics.type_param_defs, substs, |type_param_def, subst| {
+        vec::map_zip(*item_ty.generics.type_param_defs, substs, |type_param_def, subst| {
             let mut v = ~[];
             for type_param_def.bounds.each |bound| {
                 match *bound {
@@ -376,7 +376,7 @@ pub fn make_mono_id(ccx: @CrateContext,
     };
     let param_ids = match param_uses {
       Some(ref uses) => {
-        vec::map2(precise_param_ids, **uses, |id, uses| {
+        vec::map_zip(precise_param_ids, **uses, |id, uses| {
             if ccx.sess.no_monomorphic_collapse() {
                 match copy *id {
                     (a, b) => mono_precise(a, b)
