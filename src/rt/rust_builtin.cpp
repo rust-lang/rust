@@ -909,7 +909,7 @@ rust_begin_unwind(uintptr_t token) {
 #ifndef __WIN32__
     throw token;
 #else
-    abort("failing on win32");
+    abort();
 #endif
 }
 
