@@ -1071,7 +1071,7 @@ pub impl Liveness {
 
     fn propagate_through_opt_expr(&self, opt_expr: Option<@expr>,
                                   succ: LiveNode) -> LiveNode {
-        do iter::foldl(&opt_expr, succ) |succ, expr| {
+        do old_iter::foldl(&opt_expr, succ) |succ, expr| {
             self.propagate_through_expr(*expr, *succ)
         }
     }

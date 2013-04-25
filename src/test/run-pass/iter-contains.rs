@@ -14,7 +14,7 @@ pub fn main() {
     assert!([22u, 1u, 3u].contains(&22u) == true);
     assert!([1u, 22u, 3u].contains(&22u) == true);
     assert!([1u, 3u, 22u].contains(&22u) == true);
-    assert!(iter::contains(&None::<uint>, &22u) == false);
-    assert!(iter::contains(&Some(1u), &22u) == false);
-    assert!(iter::contains(&Some(22u), &22u) == true);
+    assert!(old_iter::contains(&None::<uint>, &22u) == false);
+    assert!(old_iter::contains(&Some(1u), &22u) == false);
+    assert!(old_iter::contains(&Some(22u), &22u) == true);
 }

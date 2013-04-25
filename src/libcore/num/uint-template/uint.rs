@@ -16,9 +16,9 @@ pub use self::inst::{
 };
 
 pub mod inst {
-    use sys;
     use iter;
     use num::{Primitive, BitCount};
+    use sys;
 
     pub type T = uint;
     #[allow(non_camel_case_types)]

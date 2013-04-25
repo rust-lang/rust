@@ -16,9 +16,9 @@
 use container::{Container, Mutable, Map, Set};
 use cmp::{Eq, Equiv};
 use hash::Hash;
-use iter::BaseIter;
+use old_iter::BaseIter;
 use hash::Hash;
-use iter;
+use old_iter;
 use option::{None, Option, Some};
 use rand::RngUtil;
 use rand;
@@ -757,12 +757,12 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     fn is_disjoint(&self, other: &HashSet<T>) -> bool {
-        iter::all(self, |v| !other.contains(v))
+        old_iter::all(self, |v| !other.contains(v))
     }
 
     /// Return true if the set is a subset of another
     fn is_subset(&self, other: &HashSet<T>) -> bool {
-        iter::all(self, |v| other.contains(v))
+        old_iter::all(self, |v| other.contains(v))
     }
 
     /// Return true if the set is a superset of another
