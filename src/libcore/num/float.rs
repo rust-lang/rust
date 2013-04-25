@@ -84,17 +84,17 @@ pub mod consts {
     pub static ln_10: float = 2.30258509299404568401799145468436421;
 }
 
-/*
- * Section: String Conversions
- */
+//
+// Section: String Conversions
+//
 
-/**
- * Converts a float to a string
- *
- * # Arguments
- *
- * * num - The float value
- */
+///
+/// Converts a float to a string
+///
+/// # Arguments
+///
+/// * num - The float value
+///
 #[inline(always)]
 pub fn to_str(num: float) -> ~str {
     let (r, _) = strconv::to_str_common(
@@ -102,13 +102,13 @@ pub fn to_str(num: float) -> ~str {
     r
 }
 
-/**
- * Converts a float to a string in hexadecimal format
- *
- * # Arguments
- *
- * * num - The float value
- */
+///
+/// Converts a float to a string in hexadecimal format
+///
+/// # Arguments
+///
+/// * num - The float value
+///
 #[inline(always)]
 pub fn to_str_hex(num: float) -> ~str {
     let (r, _) = strconv::to_str_common(
@@ -116,20 +116,20 @@ pub fn to_str_hex(num: float) -> ~str {
     r
 }
 
-/**
- * Converts a float to a string in a given radix
- *
- * # Arguments
- *
- * * num - The float value
- * * radix - The base to use
- *
- * # Failure
- *
- * Fails if called on a special value like `inf`, `-inf` or `NaN` due to
- * possible misinterpretation of the result at higher bases. If those values
- * are expected, use `to_str_radix_special()` instead.
- */
+///
+/// Converts a float to a string in a given radix
+///
+/// # Arguments
+///
+/// * num - The float value
+/// * radix - The base to use
+///
+/// # Failure
+///
+/// Fails if called on a special value like `inf`, `-inf` or `NaN` due to
+/// possible misinterpretation of the result at higher bases. If those values
+/// are expected, use `to_str_radix_special()` instead.
+///
 #[inline(always)]
 pub fn to_str_radix(num: float, radix: uint) -> ~str {
     let (r, special) = strconv::to_str_common(
@@ -139,30 +139,30 @@ pub fn to_str_radix(num: float, radix: uint) -> ~str {
     r
 }
 
-/**
- * Converts a float to a string in a given radix, and a flag indicating
- * whether it's a special value
- *
- * # Arguments
- *
- * * num - The float value
- * * radix - The base to use
- */
+///
+/// Converts a float to a string in a given radix, and a flag indicating
+/// whether it's a special value
+///
+/// # Arguments
+///
+/// * num - The float value
+/// * radix - The base to use
+///
 #[inline(always)]
 pub fn to_str_radix_special(num: float, radix: uint) -> (~str, bool) {
     strconv::to_str_common(&num, radix, true,
                            strconv::SignNeg, strconv::DigAll)
 }
 
-/**
- * Converts a float to a string with exactly the number of
- * provided significant digits
- *
- * # Arguments
- *
- * * num - The float value
- * * digits - The number of significant digits
- */
+///
+/// Converts a float to a string with exactly the number of
+/// provided significant digits
+///
+/// # Arguments
+///
+/// * num - The float value
+/// * digits - The number of significant digits
+///
 #[inline(always)]
 pub fn to_str_exact(num: float, digits: uint) -> ~str {
     let (r, _) = strconv::to_str_common(
@@ -170,15 +170,15 @@ pub fn to_str_exact(num: float, digits: uint) -> ~str {
     r
 }
 
-/**
- * Converts a float to a string with a maximum number of
- * significant digits
- *
- * # Arguments
- *
- * * num - The float value
- * * digits - The number of significant digits
- */
+///
+/// Converts a float to a string with a maximum number of
+/// significant digits
+///
+/// # Arguments
+///
+/// * num - The float value
+/// * digits - The number of significant digits
+///
 #[inline(always)]
 pub fn to_str_digits(num: float, digits: uint) -> ~str {
     let (r, _) = strconv::to_str_common(
@@ -198,91 +198,91 @@ impl num::ToStrRadix for float {
     }
 }
 
-/**
- * Convert a string in base 10 to a float.
- * Accepts a optional decimal exponent.
- *
- * This function accepts strings such as
- *
- * * '3.14'
- * * '+3.14', equivalent to '3.14'
- * * '-3.14'
- * * '2.5E10', or equivalently, '2.5e10'
- * * '2.5E-10'
- * * '.' (understood as 0)
- * * '5.'
- * * '.5', or, equivalently,  '0.5'
- * * '+inf', 'inf', '-inf', 'NaN'
- *
- * Leading and trailing whitespace represent an error.
- *
- * # Arguments
- *
- * * num - A string
- *
- * # Return value
- *
- * `none` if the string did not represent a valid number.  Otherwise,
- * `Some(n)` where `n` is the floating-point number represented by `num`.
- */
+///
+/// Convert a string in base 10 to a float.
+/// Accepts a optional decimal exponent.
+///
+/// This function accepts strings such as
+///
+/// * '3.14'
+/// * '+3.14', equivalent to '3.14'
+/// * '-3.14'
+/// * '2.5E10', or equivalently, '2.5e10'
+/// * '2.5E-10'
+/// * '.' (understood as 0)
+/// * '5.'
+/// * '.5', or, equivalently,  '0.5'
+/// * '+inf', 'inf', '-inf', 'NaN'
+///
+/// Leading and trailing whitespace represent an error.
+///
+/// # Arguments
+///
+/// * num - A string
+///
+/// # Return value
+///
+/// `none` if the string did not represent a valid number.  Otherwise,
+/// `Some(n)` where `n` is the floating-point number represented by `num`.
+///
 #[inline(always)]
 pub fn from_str(num: &str) -> Option<float> {
     strconv::from_str_common(num, 10u, true, true, true,
                              strconv::ExpDec, false, false)
 }
 
-/**
- * Convert a string in base 16 to a float.
- * Accepts a optional binary exponent.
- *
- * This function accepts strings such as
- *
- * * 'a4.fe'
- * * '+a4.fe', equivalent to 'a4.fe'
- * * '-a4.fe'
- * * '2b.aP128', or equivalently, '2b.ap128'
- * * '2b.aP-128'
- * * '.' (understood as 0)
- * * 'c.'
- * * '.c', or, equivalently,  '0.c'
- * * '+inf', 'inf', '-inf', 'NaN'
- *
- * Leading and trailing whitespace represent an error.
- *
- * # Arguments
- *
- * * num - A string
- *
- * # Return value
- *
- * `none` if the string did not represent a valid number.  Otherwise,
- * `Some(n)` where `n` is the floating-point number represented by `[num]`.
- */
+///
+/// Convert a string in base 16 to a float.
+/// Accepts a optional binary exponent.
+///
+/// This function accepts strings such as
+///
+/// * 'a4.fe'
+/// * '+a4.fe', equivalent to 'a4.fe'
+/// * '-a4.fe'
+/// * '2b.aP128', or equivalently, '2b.ap128'
+/// * '2b.aP-128'
+/// * '.' (understood as 0)
+/// * 'c.'
+/// * '.c', or, equivalently,  '0.c'
+/// * '+inf', 'inf', '-inf', 'NaN'
+///
+/// Leading and trailing whitespace represent an error.
+///
+/// # Arguments
+///
+/// * num - A string
+///
+/// # Return value
+///
+/// `none` if the string did not represent a valid number.  Otherwise,
+/// `Some(n)` where `n` is the floating-point number represented by `[num]`.
+///
 #[inline(always)]
 pub fn from_str_hex(num: &str) -> Option<float> {
     strconv::from_str_common(num, 16u, true, true, true,
                              strconv::ExpBin, false, false)
 }
 
-/**
- * Convert a string in an given base to a float.
- *
- * Due to possible conflicts, this function does **not** accept
- * the special values `inf`, `-inf`, `+inf` and `NaN`, **nor**
- * does it recognize exponents of any kind.
- *
- * Leading and trailing whitespace represent an error.
- *
- * # Arguments
- *
- * * num - A string
- * * radix - The base to use. Must lie in the range [2 .. 36]
- *
- * # Return value
- *
- * `none` if the string did not represent a valid number. Otherwise,
- * `Some(n)` where `n` is the floating-point number represented by `num`.
- */
+///
+/// Convert a string in an given base to a float.
+///
+/// Due to possible conflicts, this function does **not** accept
+/// the special values `inf`, `-inf`, `+inf` and `NaN`, **nor**
+/// does it recognize exponents of any kind.
+///
+/// Leading and trailing whitespace represent an error.
+///
+/// # Arguments
+///
+/// * num - A string
+/// * radix - The base to use. Must lie in the range [2 .. 36]
+///
+/// # Return value
+///
+/// `none` if the string did not represent a valid number. Otherwise,
+/// `Some(n)` where `n` is the floating-point number represented by `num`.
+///
 #[inline(always)]
 pub fn from_str_radix(num: &str, radix: uint) -> Option<float> {
     strconv::from_str_common(num, radix, true, true, false,
@@ -301,22 +301,22 @@ impl num::FromStrRadix for float {
     }
 }
 
-/**
- * Section: Arithmetics
- */
+//
+// Section: Arithmetics
+//
 
-/**
- * Compute the exponentiation of an integer by another integer as a float
- *
- * # Arguments
- *
- * * x - The base
- * * pow - The exponent
- *
- * # Return value
- *
- * `NaN` if both `x` and `pow` are `0u`, otherwise `x^pow`
- */
+///
+/// Compute the exponentiation of an integer by another integer as a float
+///
+/// # Arguments
+///
+/// * x - The base
+/// * pow - The exponent
+///
+/// # Return value
+///
+/// `NaN` if both `x` and `pow` are `0u`, otherwise `x^pow`
+///
 pub fn pow_with_uint(base: uint, pow: uint) -> float {
     if base == 0u {
         if pow == 0u {
@@ -668,13 +668,13 @@ impl Signed for float {
     #[inline(always)]
     fn abs(&self) -> float { abs(*self) }
 
-    /**
-     * # Returns
-     *
-     * - `1.0` if the number is positive, `+0.0` or `infinity`
-     * - `-1.0` if the number is negative, `-0.0` or `neg_infinity`
-     * - `NaN` if the number is NaN
-     */
+    ///
+    /// # Returns
+    ///
+    /// - `1.0` if the number is positive, `+0.0` or `infinity`
+    /// - `-1.0` if the number is negative, `-0.0` or `neg_infinity`
+    /// - `NaN` if the number is NaN
+    ///
     #[inline(always)]
     fn signum(&self) -> float {
         if is_NaN(*self) { NaN } else { f64::copysign(1.0, *self as f64) as float }

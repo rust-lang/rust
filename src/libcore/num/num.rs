@@ -153,7 +153,9 @@ pub trait Real: Signed
     fn tanh(&self) -> Self;
 }
 
+///
 /// Methods that are harder to implement and not commonly used.
+///
 pub trait RealExt: Real {
     // FIXME (#5527): usages of `int` should be replaced with an associated
     // integer type once these are implemented
@@ -171,24 +173,24 @@ pub trait RealExt: Real {
     fn yn(&self, n: int) -> Self;
 }
 
-/**
- * Cast from one machine scalar to another
- *
- * # Example
- *
- * ~~~
- * let twenty: f32 = num::cast(0x14);
- * assert_eq!(twenty, 20f32);
- * ~~~
- */
+///
+/// Cast from one machine scalar to another
+///
+/// # Example
+///
+/// ~~~
+/// let twenty: f32 = num::cast(0x14);
+/// assert_eq!(twenty, 20f32);
+/// ~~~
+///
 #[inline(always)]
 pub fn cast<T:NumCast,U:NumCast>(n: T) -> U {
     NumCast::from(n)
 }
 
-/**
- * An interface for casting between machine scalars
- */
+///
+/// An interface for casting between machine scalars
+///
 pub trait NumCast {
     fn from<T:NumCast>(n: T) -> Self;
 
@@ -260,21 +262,19 @@ pub trait FromStrRadix {
     pub fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
 }
 
-// Generic math functions:
-
-/**
- * Calculates a power to a given radix, optimized for uint `pow` and `radix`.
- *
- * Returns `radix^pow` as `T`.
- *
- * Note:
- * Also returns `1` for `0^0`, despite that technically being an
- * undefined number. The reason for this is twofold:
- * - If code written to use this function cares about that special case, it's
- *   probably going to catch it before making the call.
- * - If code written to use this function doesn't care about it, it's
- *   probably assuming that `x^0` always equals `1`.
- */
+///
+/// Calculates a power to a given radix, optimized for uint `pow` and `radix`.
+///
+/// Returns `radix^pow` as `T`.
+///
+/// Note:
+/// Also returns `1` for `0^0`, despite that technically being an
+/// undefined number. The reason for this is twofold:
+/// - If code written to use this function cares about that special case, it's
+///   probably going to catch it before making the call.
+/// - If code written to use this function doesn't care about it, it's
+///   probably assuming that `x^0` always equals `1`.
+///
 pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Quot<T,T>+Mul<T,T>>(
     radix: uint, pow: uint) -> T {
     let _0: T = Zero::zero();

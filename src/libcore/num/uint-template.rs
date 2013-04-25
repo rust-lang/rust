@@ -49,10 +49,9 @@ pub fn ge(x: T, y: T) -> bool { x >= y }
 pub fn gt(x: T, y: T) -> bool { x > y }
 
 #[inline(always)]
-/**
- * Iterate over the range [`start`,`start`+`step`..`stop`)
- *
- */
+///
+/// Iterate over the range [`start`,`start`+`step`..`stop`)
+///
 pub fn range_step(start: T,
                        stop: T,
                        step: T_SIGNED,
