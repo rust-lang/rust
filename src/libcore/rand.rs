@@ -801,7 +801,7 @@ pub fn task_rng() -> @IsaacRng {
  * generator.
  */
 pub fn random<T: Rand>() -> T {
-    task_rng().gen()
+    (*task_rng()).gen()
 }
 
 #[cfg(test)]
