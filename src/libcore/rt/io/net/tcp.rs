@@ -32,10 +32,6 @@ impl Writer for TcpStream {
     fn flush(&mut self) { fail!() }
 }
 
-impl Close for TcpStream {
-    fn close(&mut self) { fail!() }
-}
-
 pub struct TcpListener;
 
 impl TcpListener {
