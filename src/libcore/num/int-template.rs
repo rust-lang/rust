@@ -553,10 +553,7 @@ mod tests {
     /// - `qr`: quotient and remainder
     ///
     #[cfg(test)]
-    fn test_division_rule(nd: (T,T), qr: (T,T)) {
-        let (n,d) = nd,
-            (q,r) = qr;
-
+    fn test_division_rule((n,d): (T,T), (q,r): (T,T)) {
         assert_eq!(d * q + r, n);
     }
 
