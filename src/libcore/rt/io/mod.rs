@@ -383,16 +383,7 @@ pub trait Writer {
     fn flush(&mut self);
 }
 
-/// I/O types that may be closed
-///
-/// Any further operations performed on a closed resource will raise
-/// on `io_error`
-pub trait Close {
-    /// Close the I/O resource
-    fn close(&mut self);
-}
-
-pub trait Stream: Reader + Writer + Close { }
+pub trait Stream: Reader + Writer { }
 
 pub enum SeekStyle {
     /// Seek from the beginning of the stream
