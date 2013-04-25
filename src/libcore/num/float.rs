@@ -798,7 +798,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_signed() {
+    fn test_signed() {
         assert_eq!(infinity.abs(), infinity);
         assert_eq!(1f.abs(), 1f);
         assert_eq!(0f.abs(), 0f);
