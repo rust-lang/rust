@@ -73,8 +73,8 @@ pub fn normalize(p: ~Path) -> ~Path {
 mod test {
     use core::{os, rand};
     use core::path::Path;
-    use path_util::*;
     use core::rand::RngUtil;
+    use path_util::*;
 
     // Helper function to create a directory name that doesn't exist
     pub fn mk_nonexistent(tmpdir: &Path, suffix: &str) -> Path {
