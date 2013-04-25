@@ -16,10 +16,10 @@ pub fn main() {
     }
     assert!(c == 5u);
 
-    for iter::eachi(&None::<uint>) |i, v| { fail!(); }
+    for old_iter::eachi(&None::<uint>) |i, v| { fail!(); }
 
     let mut c = 0u;
-    for iter::eachi(&Some(1u)) |i, v| {
+    for old_iter::eachi(&Some(1u)) |i, v| {
         assert!((i + 1u) == *v);
         c += 1u;
     }

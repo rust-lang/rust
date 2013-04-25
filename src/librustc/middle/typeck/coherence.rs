@@ -210,7 +210,7 @@ pub impl CoherenceChecker {
                 match item.node {
                     item_impl(_, opt_trait, _, _) => {
                         self.check_implementation(item,
-                                                  iter::to_vec(&opt_trait));
+                                                  old_iter::to_vec(&opt_trait));
                     }
                     _ => {
                         // Nothing to do.

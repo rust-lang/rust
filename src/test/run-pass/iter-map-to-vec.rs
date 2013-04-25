@@ -13,7 +13,7 @@ fn inc(x: &uint) -> uint { *x + 1 }
 pub fn main() {
     assert!([1, 3].map_to_vec(inc) == ~[2, 4]);
     assert!([1, 2, 3].map_to_vec(inc) == ~[2, 3, 4]);
-    assert!(iter::map_to_vec(&None::<uint>, inc) == ~[]);
-    assert!(iter::map_to_vec(&Some(1u), inc) == ~[2]);
-    assert!(iter::map_to_vec(&Some(2u), inc) == ~[3]);
+    assert!(old_iter::map_to_vec(&None::<uint>, inc) == ~[]);
+    assert!(old_iter::map_to_vec(&Some(1u), inc) == ~[2]);
+    assert!(old_iter::map_to_vec(&Some(2u), inc) == ~[3]);
 }

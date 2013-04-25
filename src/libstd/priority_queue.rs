@@ -10,7 +10,7 @@
 
 //! A priority queue implemented with a binary heap
 
-use core::iter::BaseIter;
+use core::old_iter::BaseIter;
 use core::ptr::addr_of;
 
 #[abi = "rust-intrinsic"]

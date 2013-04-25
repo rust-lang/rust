@@ -10,7 +10,7 @@
 
 //! Base64 binary-to-text encoding
 
-use core::iter;
+use core::old_iter;
 use core::str;
 use core::vec;
 
@@ -152,7 +152,7 @@ impl FromBase64 for ~[u8] {
         while i < len {
             let mut n = 0u;
 
-            for iter::repeat(4u) {
+            for old_iter::repeat(4u) {
                 let ch = self[i] as char;
                 n <<= 6u;
 
