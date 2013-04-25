@@ -11,6 +11,7 @@
 use option::*;
 use result::*;
 
+use rt::io::IoError;
 use super::io::net::ip::IpAddr;
 use super::uv::*;
 use super::rtio::*;
@@ -98,11 +99,11 @@ impl IoFactory for UvIoFactory {
     // Connect to an address and return a new stream
     // NB: This blocks the task waiting on the connection.
     // It would probably be better to return a future
-    fn connect(&mut self, addr: IpAddr) -> Option<~StreamObject> {
+    fn connect(&mut self, addr: IpAddr) -> Result<~StreamObject, IoError> {
         // Create a cell in the task to hold the result. We will fill
         // the cell before resuming the task.
         let result_cell = empty_cell();
-        let result_cell_ptr: *Cell<Option<~StreamObject>> = &result_cell;
+        let result_cell_ptr: *Cell<Result<~StreamObject, IoError>> = &result_cell;
 
         let scheduler = local_sched::take();
         assert!(scheduler.in_task_context());
@@ -122,11 +123,12 @@ impl IoFactory for UvIoFactory {
                 rtdebug!("connect: in connect callback");
                 let maybe_stream = if status.is_none() {
                     rtdebug!("status is none");
-                    Some(~UvStream(stream_watcher))
+                    Ok(~UvStream(stream_watcher))
                 } else {
                     rtdebug!("status is some");
+                    // XXX: Wait for close
                     stream_watcher.close(||());
-                    None
+                    Err(uv_error_to_io_error(status.get()))
                 };
 
                 // Store the stream in the task's stack
@@ -142,10 +144,16 @@ impl IoFactory for UvIoFactory {
         return result_cell.take();
     }
 
-    fn bind(&mut self, addr: IpAddr) -> Option<~TcpListenerObject> {
+    fn bind(&mut self, addr: IpAddr) -> Result<~TcpListenerObject, IoError> {
         let mut watcher = TcpWatcher::new(self.uv_loop());
-        watcher.bind(addr);
-        return Some(~UvTcpListener(watcher));
+        match watcher.bind(addr) {
+            Ok(_) => Ok(~UvTcpListener(watcher)),
+            Err(uverr) => {
+                // XXX: Should we wait until close completes?
+                watcher.as_stream().close(||());
+                Err(uv_error_to_io_error(uverr))
+            }
+        }
     }
 }
 
@@ -321,7 +329,7 @@ fn test_simple_io_no_connect() {
         let io = unsafe { local_sched::unsafe_borrow_io() };
         let addr = next_test_ip4();
         let maybe_chan = io.connect(addr);
-        assert!(maybe_chan.is_none());
+        assert!(maybe_chan.is_err());
     }
 }
 

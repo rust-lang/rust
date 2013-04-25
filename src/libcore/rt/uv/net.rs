@@ -18,13 +18,14 @@ use super::{Loop, Watcher, Request, UvError, Buf, Callback, NativeHandle, NullCa
             install_watcher_data, get_watcher_data, drop_watcher_data,
             vec_to_uv_buf, vec_from_uv_buf};
 use super::super::io::net::ip::{IpAddr, Ipv4, Ipv6};
+use rt::uv::last_uv_error;
 
 #[cfg(test)] use cell::Cell;
 #[cfg(test)] use unstable::run_in_bare_thread;
 #[cfg(test)] use super::super::thread::Thread;
 #[cfg(test)] use super::super::test::*;
 
-fn ip4_as_uv_ip4(addr: IpAddr, f: &fn(*sockaddr_in)) {
+fn ip4_as_uv_ip4<T>(addr: IpAddr, f: &fn(*sockaddr_in) -> T) -> T {
     match addr {
         Ipv4(a, b, c, d, p) => {
             unsafe {
@@ -34,7 +35,7 @@ fn ip4_as_uv_ip4(addr: IpAddr, f: &fn(*sockaddr_in)) {
                                                 c as uint,
                                                 d as uint), p as int);
                 do (|| {
-                    f(addr);
+                    f(addr)
                 }).finally {
                     free_ip4_addr(addr);
                 }
@@ -193,15 +194,18 @@ pub impl TcpWatcher {
         }
     }
 
-    fn bind(&mut self, address: IpAddr) {
+    fn bind(&mut self, address: IpAddr) -> Result<(), UvError> {
         match address {
             Ipv4(*) => {
                 do ip4_as_uv_ip4(address) |addr| {
                     let result = unsafe {
                         uvll::tcp_bind(self.native_handle(), addr)
                     };
-                    // XXX: bind is likely to fail. need real error handling
-                    assert!(result == 0);
+                    if result == 0 {
+                        Ok(())
+                    } else {
+                        Err(last_uv_error(self))
+                    }
                 }
             }
             _ => fail!()

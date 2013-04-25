@@ -34,16 +34,21 @@ via `close` and `delete` methods.
 
 */
 
+use libc;
+use vec;
+use ptr;
+use cast;
+use str;
 use option::*;
 use str::raw::from_c_str;
 use to_str::ToStr;
-use vec;
-use ptr;
 use libc::{c_void, c_int, size_t, malloc, free};
 use cast::transmute;
 use ptr::null;
-use super::uvll;
 use unstable::finally::Finally;
+
+use rt::uvll;
+use rt::io::{IoError, FileNotFound};
 
 #[cfg(test)] use unstable::run_in_bare_thread;
 
@@ -211,6 +216,55 @@ fn error_smoke_test() {
     assert!(err.to_str() == ~"EOF: end of file");
 }
 
+pub fn last_uv_error<H, W: Watcher + NativeHandle<*H>>(watcher: &W) -> UvError {
+    unsafe {
+        let loop_ = loop_from_watcher(watcher);
+        UvError(uvll::last_error(loop_.native_handle()))
+    }
+}
+
+pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
+
+    // XXX: Could go in str::raw
+    unsafe fn c_str_to_static_slice(s: *libc::c_char) -> &'static str {
+        let s = s as *u8;
+        let mut curr = s, len = 0u;
+        while *curr != 0u8 {
+            len += 1u;
+            curr = ptr::offset(s, len);
+        }
+
+        str::raw::buf_as_slice(s, len, |d| cast::transmute(d))
+    }
+
+
+    unsafe {
+        // Importing error constants
+        use rt::uvll::*;
+        use rt::io::*;
+
+        // uv error descriptions are static
+        let c_desc = uvll::strerror(&*uverr);
+        let desc = c_str_to_static_slice(c_desc);
+
+        let kind = match uverr.code {
+            UNKNOWN => OtherIoError,
+            OK => OtherIoError,
+            EOF => EndOfFile,
+            EACCES => PermissionDenied,
+            ECONNREFUSED => ConnectionRefused,
+            e => {
+                abort!("unknown uv error code: %u", e as uint);
+            }
+        };
+
+        IoError {
+            kind: kind,
+            desc: desc,
+            detail: None
+        }
+    }
+}
 
 /// Given a uv handle, convert a callback status to a UvError
 // XXX: Follow the pattern below by parameterizing over T: Watcher, not T

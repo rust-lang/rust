@@ -30,6 +30,14 @@ macro_rules! rtdebug (
     ($( $arg:expr),+) => ( $(let _ = $arg)*; )
 )
 
+macro_rules! rtassert (
+    ( $arg:expr ) => ( {
+        if !$arg {
+            abort!("assertion failed: %s", stringify!($arg));
+        }
+    } )
+)
+
 macro_rules! abort(
     ($( $msg:expr),+) => ( {
         rtdebug!($($msg),+);

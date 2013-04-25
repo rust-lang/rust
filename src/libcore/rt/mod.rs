@@ -8,7 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! The Rust runtime, including the scheduler and I/O interface */
+/*! The Rust runtime, including the scheduler and I/O interface
+
+# XXX
+
+* Unsafe uses of borrowed pointers should just use unsafe pointers
+* Unwinding is not wired up correctly
+
+*/
+
 
 #[doc(hidden)];
 
@@ -16,7 +24,7 @@ use libc::c_char;
 
 #[path = "sched/mod.rs"]
 mod sched;
-mod rtio;
+pub mod rtio;
 pub mod uvll;
 mod uvio;
 #[path = "uv/mod.rs"]

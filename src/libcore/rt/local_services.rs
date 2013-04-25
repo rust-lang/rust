@@ -177,7 +177,8 @@ pub unsafe fn unsafe_borrow_local_services() -> &mut LocalServices {
             transmute_mut_region(&mut task.local_services)
         }
         None => {
-            fail!(~"no local services for schedulers yet")
+            // Don't fail. Infinite recursion
+            abort!("no local services for schedulers yet")
         }
     }
 }

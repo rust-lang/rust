@@ -252,7 +252,9 @@ pub use self::stdio::println;
 
 pub use self::file::FileStream;
 pub use self::net::ip::IpAddr;
+#[cfg(not(stage0))]
 pub use self::net::tcp::TcpListener;
+#[cfg(not(stage0))]
 pub use self::net::tcp::TcpStream;
 pub use self::net::udp::UdpStream;
 
@@ -266,6 +268,7 @@ pub mod file;
 
 /// Synchronous, non-blocking network I/O.
 pub mod net {
+    #[cfg(not(stage0))]
     pub mod tcp;
     pub mod udp;
     pub mod ip;
@@ -326,12 +329,14 @@ pub struct IoError {
 
 #[deriving(Eq)]
 pub enum IoErrorKind {
+    PreviousIoError,
+    OtherIoError,
+    EndOfFile,
     FileNotFound,
-    FilePermission,
+    PermissionDenied,
     ConnectionFailed,
     Closed,
-    OtherIoError,
-    PreviousIoError
+    ConnectionRefused,
 }
 
 // XXX: Can't put doc comments on macros
