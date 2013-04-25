@@ -81,7 +81,6 @@ typedef rust_vec_box rust_str;
 
 inline size_t get_box_size(size_t body_size, size_t body_align) {
     size_t header_size = sizeof(rust_opaque_box);
-    // FIXME (#2699): This alignment calculation is suspicious. Is it right?
     size_t total_size = align_to(header_size, body_align) + body_size;
     return total_size;
 }
