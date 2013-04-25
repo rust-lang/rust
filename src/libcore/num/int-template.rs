@@ -32,26 +32,26 @@ pub fn mul(x: T, y: T) -> T { x * y }
 #[inline(always)]
 pub fn quot(x: T, y: T) -> T { x / y }
 
-/**
- * Returns the remainder of y / x.
- *
- * # Examples
- * ~~~
- * assert!(int::rem(5 / 2) == 1);
- * ~~~
- *
- * When faced with negative numbers, the result copies the sign of the
- * dividend.
- *
- * ~~~
- * assert!(int::rem(2 / -3) ==  2);
- * ~~~
- *
- * ~~~
- * assert!(int::rem(-2 / 3) ==  -2);
- * ~~~
- *
- */
+///
+/// Returns the remainder of y / x.
+///
+/// # Examples
+/// ~~~
+/// assert!(int::rem(5 / 2) == 1);
+/// ~~~
+///
+/// When faced with negative numbers, the result copies the sign of the
+/// dividend.
+///
+/// ~~~
+/// assert!(int::rem(2 / -3) ==  2);
+/// ~~~
+///
+/// ~~~
+/// assert!(int::rem(-2 / 3) ==  -2);
+/// ~~~
+///
+///
 #[inline(always)]
 pub fn rem(x: T, y: T) -> T { x % y }
 
@@ -68,23 +68,23 @@ pub fn ge(x: T, y: T) -> bool { x >= y }
 #[inline(always)]
 pub fn gt(x: T, y: T) -> bool { x > y }
 
-/**
- * Iterate over the range [`lo`..`hi`)
- *
- * # Arguments
- *
- * * `lo` - lower bound, inclusive
- * * `hi` - higher bound, exclusive
- *
- * # Examples
- * ~~~
- * let mut sum = 0;
- * for int::range(1, 5) |i| {
- *     sum += i;
- * }
- * assert!(sum == 10);
- * ~~~
- */
+///
+/// Iterate over the range [`lo`..`hi`)
+///
+/// # Arguments
+///
+/// * `lo` - lower bound, inclusive
+/// * `hi` - higher bound, exclusive
+///
+/// # Examples
+/// ~~~
+/// let mut sum = 0;
+/// for int::range(1, 5) |i| {
+///     sum += i;
+/// }
+/// assert!(sum == 10);
+/// ~~~
+///
 #[inline(always)]
 /// Iterate over the range [`start`,`start`+`step`..`stop`)
 pub fn range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) {
@@ -190,24 +190,24 @@ impl Div<T,T> for T {
 }
 #[cfg(not(stage0),notest)]
 impl Quot<T,T> for T {
-    /**
-     * Returns the integer quotient, truncated towards 0. As this behaviour reflects
-     * the underlying machine implementation it is more efficient than `Natural::div`.
-     *
-     * # Examples
-     *
-     * ~~~
-     * assert!( 8 /  3 ==  2);
-     * assert!( 8 / -3 == -2);
-     * assert!(-8 /  3 == -2);
-     * assert!(-8 / -3 ==  2);
+    ///
+    /// Returns the integer quotient, truncated towards 0. As this behaviour reflects
+    /// the underlying machine implementation it is more efficient than `Natural::div`.
+    ///
+    /// # Examples
+    ///
+    /// ~~~
+    /// assert!( 8 /  3 ==  2);
+    /// assert!( 8 / -3 == -2);
+    /// assert!(-8 /  3 == -2);
+    /// assert!(-8 / -3 ==  2);
 
-     * assert!( 1 /  2 ==  0);
-     * assert!( 1 / -2 ==  0);
-     * assert!(-1 /  2 ==  0);
-     * assert!(-1 / -2 ==  0);
-     * ~~~
-     */
+    /// assert!( 1 /  2 ==  0);
+    /// assert!( 1 / -2 ==  0);
+    /// assert!(-1 /  2 ==  0);
+    /// assert!(-1 / -2 ==  0);
+    /// ~~~
+    ///
     #[inline(always)]
     fn quot(&self, other: &T) -> T { *self / *other }
 }
@@ -219,27 +219,27 @@ impl Modulo<T,T> for T {
 }
 #[cfg(not(stage0),notest)]
 impl Rem<T,T> for T {
-    /**
-     * Returns the integer remainder after division, satisfying:
-     *
-     * ~~~
-     * assert!((n / d) * d + (n % d) == n)
-     * ~~~
-     *
-     * # Examples
-     *
-     * ~~~
-     * assert!( 8 %  3 ==  2);
-     * assert!( 8 % -3 ==  2);
-     * assert!(-8 %  3 == -2);
-     * assert!(-8 % -3 == -2);
+    ///
+    /// Returns the integer remainder after division, satisfying:
+    ///
+    /// ~~~
+    /// assert!((n / d) * d + (n % d) == n)
+    /// ~~~
+    ///
+    /// # Examples
+    ///
+    /// ~~~
+    /// assert!( 8 %  3 ==  2);
+    /// assert!( 8 % -3 ==  2);
+    /// assert!(-8 %  3 == -2);
+    /// assert!(-8 % -3 == -2);
 
-     * assert!( 1 %  2 ==  1);
-     * assert!( 1 % -2 ==  1);
-     * assert!(-1 %  2 == -1);
-     * assert!(-1 % -2 == -1);
-     * ~~~
-     */
+    /// assert!( 1 %  2 ==  1);
+    /// assert!( 1 % -2 ==  1);
+    /// assert!(-1 %  2 == -1);
+    /// assert!(-1 % -2 == -1);
+    /// ~~~
+    ///
     #[inline(always)]
     fn rem(&self, other: &T) -> T { *self % *other }
 }
@@ -257,13 +257,13 @@ impl Signed for T {
         if self.is_negative() { -*self } else { *self }
     }
 
-    /**
-     * # Returns
-     *
-     * - `0` if the number is zero
-     * - `1` if the number is positive
-     * - `-1` if the number is negative
-     */
+    ///
+    /// # Returns
+    ///
+    /// - `0` if the number is zero
+    /// - `1` if the number is positive
+    /// - `-1` if the number is negative
+    ///
     #[inline(always)]
     fn signum(&self) -> T {
         match *self {
@@ -283,23 +283,23 @@ impl Signed for T {
 }
 
 impl Integer for T {
-    /**
-     * Floored integer division
-     *
-     * # Examples
-     *
-     * ~~~
-     * assert!(( 8).div( 3) ==  2);
-     * assert!(( 8).div(-3) == -3);
-     * assert!((-8).div( 3) == -3);
-     * assert!((-8).div(-3) ==  2);
-     *
-     * assert!(( 1).div( 2) ==  0);
-     * assert!(( 1).div(-2) == -1);
-     * assert!((-1).div( 2) == -1);
-     * assert!((-1).div(-2) ==  0);
-     * ~~~
-     */
+    ///
+    /// Floored integer division
+    ///
+    /// # Examples
+    ///
+    /// ~~~
+    /// assert!(( 8).div( 3) ==  2);
+    /// assert!(( 8).div(-3) == -3);
+    /// assert!((-8).div( 3) == -3);
+    /// assert!((-8).div(-3) ==  2);
+    ///
+    /// assert!(( 1).div( 2) ==  0);
+    /// assert!(( 1).div(-2) == -1);
+    /// assert!((-1).div( 2) == -1);
+    /// assert!((-1).div(-2) ==  0);
+    /// ~~~
+    ///
     #[inline(always)]
     fn div(&self, other: &T) -> T {
         // Algorithm from [Daan Leijen. _Division and Modulus for Computer Scientists_,
@@ -311,27 +311,27 @@ impl Integer for T {
         }
     }
 
-    /**
-     * Integer modulo, satisfying:
-     *
-     * ~~~
-     * assert!(n.div(d) * d + n.modulo(d) == n)
-     * ~~~
-     *
-     * # Examples
-     *
-     * ~~~
-     * assert!(( 8).modulo( 3) ==  2);
-     * assert!(( 8).modulo(-3) == -1);
-     * assert!((-8).modulo( 3) ==  1);
-     * assert!((-8).modulo(-3) == -2);
-     *
-     * assert!(( 1).modulo( 2) ==  1);
-     * assert!(( 1).modulo(-2) == -1);
-     * assert!((-1).modulo( 2) ==  1);
-     * assert!((-1).modulo(-2) == -1);
-     * ~~~
-     */
+    ///
+    /// Integer modulo, satisfying:
+    ///
+    /// ~~~
+    /// assert!(n.div(d) * d + n.modulo(d) == n)
+    /// ~~~
+    ///
+    /// # Examples
+    ///
+    /// ~~~
+    /// assert!(( 8).modulo( 3) ==  2);
+    /// assert!(( 8).modulo(-3) == -1);
+    /// assert!((-8).modulo( 3) ==  1);
+    /// assert!((-8).modulo(-3) == -2);
+    ///
+    /// assert!(( 1).modulo( 2) ==  1);
+    /// assert!(( 1).modulo(-2) == -1);
+    /// assert!((-1).modulo( 2) ==  1);
+    /// assert!((-1).modulo(-2) == -1);
+    /// ~~~
+    ///
     #[inline(always)]
     fn modulo(&self, other: &T) -> T {
         // Algorithm from [Daan Leijen. _Division and Modulus for Computer Scientists_,
@@ -361,11 +361,11 @@ impl Integer for T {
         (*self / *other, *self % *other)
     }
 
-    /**
-     * Calculates the Greatest Common Divisor (GCD) of the number and `other`
-     *
-     * The result is always positive
-     */
+    ///
+    /// Calculates the Greatest Common Divisor (GCD) of the number and `other`
+    ///
+    /// The result is always positive
+    ///
     #[inline(always)]
     fn gcd(&self, other: &T) -> T {
         // Use Euclid's algorithm
@@ -378,9 +378,9 @@ impl Integer for T {
         n.abs()
     }
 
-    /**
-     * Calculates the Lowest Common Multiple (LCM) of the number and `other`
-     */
+    ///
+    /// Calculates the Lowest Common Multiple (LCM) of the number and `other`
+    ///
     #[inline(always)]
     fn lcm(&self, other: &T) -> T {
         ((*self * *other) / self.gcd(other)).abs() // should not have to recaluculate abs
@@ -545,13 +545,13 @@ mod tests {
         assert!((-1 as T).is_negative());
     }
 
-    /**
-     * Checks that the division rule holds for:
-     *
-     * - `n`: numerator (dividend)
-     * - `d`: denominator (divisor)
-     * - `qr`: quotient and remainder
-     */
+    ///
+    /// Checks that the division rule holds for:
+    ///
+    /// - `n`: numerator (dividend)
+    /// - `d`: denominator (divisor)
+    /// - `qr`: quotient and remainder
+    ///
     #[cfg(test)]
     fn test_division_rule(nd: (T,T), qr: (T,T)) {
         let (n,d) = nd,
