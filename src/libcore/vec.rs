@@ -173,6 +173,7 @@ pub fn from_slice<T:Copy>(t: &[T]) -> ~[T] {
     from_fn(t.len(), |i| t[i])
 }
 
+/// Creates a new vector with a capacity of `capacity`
 pub fn with_capacity<T>(capacity: uint) -> ~[T] {
     let mut vec = ~[];
     reserve(&mut vec, capacity);
@@ -1565,6 +1566,16 @@ pub fn each_permutation<T:Copy>(v: &[T], put: &fn(ts: &[T]) -> bool) {
     }
 }
 
+// see doc below
+#[cfg(stage0)] // XXX: lifetimes!
+pub fn windowed<T>(n: uint, v: &[T], it: &fn(&[T]) -> bool) {
+    assert!(1u <= n);
+    if n > v.len() { return; }
+    for uint::range(0, v.len() - n + 1) |i| {
+        if !it(v.slice(i, i+n)) { return }
+    }
+}
+
 /**
  * Iterate over all contiguous windows of length `n` of the vector `v`.
  *
@@ -1579,14 +1590,6 @@ pub fn each_permutation<T:Copy>(v: &[T], put: &fn(ts: &[T]) -> bool) {
  * ~~~
  *
  */
-#[cfg(stage0)] // XXX: lifetimes!
-pub fn windowed<T>(n: uint, v: &[T], it: &fn(&[T]) -> bool) {
-    assert!(1u <= n);
-    if n > v.len() { return; }
-    for uint::range(0, v.len() - n + 1) |i| {
-        if !it(v.slice(i, i+n)) { return }
-    }
-}
 #[cfg(stage1)]
 #[cfg(stage2)]
 #[cfg(stage3)]
