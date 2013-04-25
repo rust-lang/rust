@@ -629,12 +629,14 @@ mod tests {
 
     #[test]
     #[cfg(unix)]
+    #[ignore(reason = "long run time")]
     fn test_unforced_destroy_actually_kills() {
         test_destroy_actually_kills(false);
     }
 
     #[test]
     #[cfg(unix)]
+    #[ignore(reason = "long run time")]
     fn test_forced_destroy_actually_kills() {
         test_destroy_actually_kills(true);
     }
