@@ -12,7 +12,7 @@
 
 use from_str;
 use libc::c_int;
-use num::strconv;
+use num::{Zero, One, strconv};
 use prelude::*;
 
 pub use cmath::c_double_targ_consts::*;
@@ -174,12 +174,6 @@ pub fn ge(x: f64, y: f64) -> bool { return x >= y; }
 #[inline(always)]
 pub fn gt(x: f64, y: f64) -> bool { return x > y; }
 
-/// Returns true if `x` is a zero number (positive or negative zero)
-#[inline(always)]
-pub fn is_zero(x: f64) -> bool {
-    return x == 0.0f64 || x == -0.0f64;
-}
-
 /// Returns true if `x`is an infinite number
 #[inline(always)]
 pub fn is_infinite(x: f64) -> bool {
@@ -266,12 +260,16 @@ impl Ord for f64 {
     fn gt(&self, other: &f64) -> bool { (*self) > (*other) }
 }
 
-impl num::Zero for f64 {
+impl Zero for f64 {
     #[inline(always)]
     fn zero() -> f64 { 0.0 }
+
+    /// Returns true if the number is equal to either `0.0` or `-0.0`
+    #[inline(always)]
+    fn is_zero(&self) -> bool { *self == 0.0 || *self == -0.0 }
 }
 
-impl num::One for f64 {
+impl One for f64 {
     #[inline(always)]
     fn one() -> f64 { 1.0 }
 }

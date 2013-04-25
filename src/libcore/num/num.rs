@@ -37,13 +37,12 @@ pub trait IntConvertible {
 }
 
 pub trait Zero {
-    // FIXME (#5527): These should be associated constants
-    fn zero() -> Self;
+    fn zero() -> Self;      // FIXME (#5527): This should be an associated constant
+    fn is_zero(&self) -> bool;
 }
 
 pub trait One {
-    // FIXME (#5527): These should be associated constants
-    fn one() -> Self;
+    fn one() -> Self;       // FIXME (#5527): This should be an associated constant
 }
 
 pub trait Signed: Num

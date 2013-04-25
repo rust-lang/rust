@@ -22,7 +22,7 @@
 
 use from_str;
 use libc::c_int;
-use num::strconv;
+use num::{Zero, One, strconv};
 use prelude::*;
 
 pub use f64::{add, sub, mul, quot, rem, lt, le, eq, ne, ge, gt};
@@ -338,8 +338,6 @@ pub fn pow_with_uint(base: uint, pow: uint) -> float {
 }
 
 #[inline(always)]
-pub fn is_zero(x: float) -> bool { f64::is_zero(x as f64) }
-#[inline(always)]
 pub fn is_infinite(x: float) -> bool { f64::is_infinite(x as f64) }
 #[inline(always)]
 pub fn is_finite(x: float) -> bool { f64::is_finite(x as f64) }
@@ -393,12 +391,16 @@ impl Ord for float {
     fn gt(&self, other: &float) -> bool { (*self) > (*other) }
 }
 
-impl num::Zero for float {
+impl Zero for float {
     #[inline(always)]
     fn zero() -> float { 0.0 }
+
+    /// Returns true if the number is equal to either `0.0` or `-0.0`
+    #[inline(always)]
+    fn is_zero(&self) -> bool { *self == 0.0 || *self == -0.0 }
 }
 
-impl num::One for float {
+impl One for float {
     #[inline(always)]
     fn one() -> float { 1.0 }
 }
@@ -867,11 +869,11 @@ mod tests {
         }
         // note: -0 == 0, hence these slightly more complex tests
         match from_str(~"-0") {
-            Some(v) if is_zero(v) => assert!(v.is_negative()),
+            Some(v) if v.is_zero() => assert!(v.is_negative()),
             _ => fail!()
         }
         match from_str(~"0") {
-            Some(v) if is_zero(v) => assert!(v.is_positive()),
+            Some(v) if v.is_zero() => assert!(v.is_positive()),
             _ => fail!()
         }
 
@@ -914,11 +916,11 @@ mod tests {
         }
         // note: -0 == 0, hence these slightly more complex tests
         match from_str_hex(~"-0") {
-            Some(v) if is_zero(v) => assert!(v.is_negative()),
+            Some(v) if v.is_zero() => assert!(v.is_negative()),
             _ => fail!()
         }
         match from_str_hex(~"0") {
-            Some(v) if is_zero(v) => assert!(v.is_positive()),
+            Some(v) if v.is_zero() => assert!(v.is_positive()),
             _ => fail!()
         }
         assert_eq!(from_str_hex(~"e"), Some(14.));

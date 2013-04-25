@@ -12,7 +12,7 @@ use T = self::inst::T;
 
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
-use num::strconv;
+use num::{Zero, One, strconv};
 use prelude::*;
 
 pub use cmp::{min, max};
@@ -152,12 +152,15 @@ impl Eq for T {
     fn ne(&self, other: &T) -> bool { return (*self) != (*other); }
 }
 
-impl num::Zero for T {
+impl Zero for T {
     #[inline(always)]
     fn zero() -> T { 0 }
+
+    #[inline(always)]
+    fn is_zero(&self) -> bool { *self == 0 }
 }
 
-impl num::One for T {
+impl One for T {
     #[inline(always)]
     fn one() -> T { 1 }
 }
