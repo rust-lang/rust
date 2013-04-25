@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Useful conditions
+/*
+The test runner should check that, after `rustpkg build fancy-lib`:
+  * testsuite/fancy-lib/build/ exists
+  * testsuite/fancy-lib/build/ contains a file called generated.rs
+  * testsuite/fancy-lib/build/ contains a library named libfancy_lib
+  * testsuite/fancy-lib/build/ does not contain an executable
+  *
+*/
 
-pub use core::path::Path;
-pub use util::PkgId;
+extern mod std;
 
-condition! {
-    bad_path: (super::Path, ~str) -> super::Path;
-}
-
-condition! {
-    nonexistent_package: (super::PkgId, ~str) -> super::Path;
-}
+pub mod foo;
+pub mod bar;
+#[path = "../../build/fancy_lib/generated.rs"] pub mod generated;
