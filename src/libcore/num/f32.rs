@@ -12,7 +12,7 @@
 
 use from_str;
 use libc::c_int;
-use num::strconv;
+use num::{Zero, One, strconv};
 use prelude::*;
 
 pub use cmath::c_float_targ_consts::*;
@@ -154,12 +154,6 @@ pub fn gt(x: f32, y: f32) -> bool { return x > y; }
 // FIXME (#1999): replace the predicates below with llvm intrinsics or
 // calls to the libmath macros in the rust runtime for performance.
 
-/// Returns true if `x` is a zero number (positive or negative zero)
-#[inline(always)]
-pub fn is_zero(x: f32) -> bool {
-    return x == 0.0f32 || x == -0.0f32;
-}
-
 /// Returns true if `x`is an infinite number
 #[inline(always)]
 pub fn is_infinite(x: f32) -> bool {
@@ -245,12 +239,16 @@ impl Ord for f32 {
     fn gt(&self, other: &f32) -> bool { (*self) > (*other) }
 }
 
-impl num::Zero for f32 {
+impl Zero for f32 {
     #[inline(always)]
     fn zero() -> f32 { 0.0 }
+
+    /// Returns true if the number is equal to either `0.0` or `-0.0`
+    #[inline(always)]
+    fn is_zero(&self) -> bool { *self == 0.0 || *self == -0.0 }
 }
 
-impl num::One for f32 {
+impl One for f32 {
     #[inline(always)]
     fn one() -> f32 { 1.0 }
 }
