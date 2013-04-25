@@ -209,7 +209,7 @@ fn merge_method_attrs(
         }
     };
 
-    do vec::map2(docs, attrs) |doc, attrs| {
+    do vec::map_zip(docs, attrs) |doc, attrs| {
         assert!(doc.name == attrs.first());
         let desc = attrs.second();
 
