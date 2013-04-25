@@ -77,7 +77,7 @@ pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
 
     // Switch to the scheduler
     let f = Cell(Cell(f));
-    let mut sched = local_sched::take();
+    let sched = local_sched::take();
     do sched.deschedule_running_task_and_then() |old_task| {
         let old_task = Cell(old_task);
         let f = f.take();
