@@ -82,8 +82,7 @@ bounded and unbounded protocols allows for less code duplication.
 
 */
 
-use cast::{forget, reinterpret_cast, transmute};
-use cell::Cell;
+use cast::{forget, transmute, transmute_copy};
 use either::{Either, Left, Right};
 use kinds::Owned;
 use libc;
@@ -93,14 +92,12 @@ use ptr;
 use task;
 use vec;
 
-#[doc(hidden)]
 static SPIN_COUNT: uint = 0;
 
 macro_rules! move_it (
-    { $x:expr } => ( unsafe { let y = *ptr::addr_of(&($x)); y } )
+    { $x:expr } => ( unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } )
 )
 
-#[doc(hidden)]
 #[deriving(Eq)]
 enum State {
     Empty,
@@ -125,7 +122,6 @@ pub fn BufferHeader() -> BufferHeader {
 }
 
 // This is for protocols to associate extra data to thread around.
-#[doc(hidden)]
 pub struct Buffer<T> {
     header: BufferHeader,
     data: T,
@@ -135,7 +131,7 @@ pub struct PacketHeader {
     mut state: State,
     mut blocked_task: *rust_task,
 
-    // This is a reinterpret_cast of a ~buffer, that can also be cast
+    // This is a transmute_copy of a ~buffer, that can also be cast
     // to a buffer_header if need be.
     mut buffer: *libc::c_void,
 }
@@ -160,9 +156,7 @@ pub impl PacketHeader {
     unsafe fn unblock(&self) {
         let old_task = swap_task(&mut self.blocked_task, ptr::null());
         if !old_task.is_null() {
-            unsafe {
-                rustrt::rust_task_deref(old_task)
-            }
+            rustrt::rust_task_deref(old_task)
         }
         match swap_state_acq(&mut self.state, Empty) {
           Empty | Blocked => (),
@@ -176,23 +170,21 @@ pub impl PacketHeader {
     // thing. You'll proobably want to forget them when you're done.
     unsafe fn buf_header(&self) -> ~BufferHeader {
         assert!(self.buffer.is_not_null());
-        reinterpret_cast(&self.buffer)
+        transmute_copy(&self.buffer)
     }
 
     fn set_buffer<T:Owned>(&self, b: ~Buffer<T>) {
         unsafe {
-            self.buffer = reinterpret_cast(&b);
+            self.buffer = transmute_copy(&b);
         }
     }
 }
 
-#[doc(hidden)]
 pub struct Packet<T> {
     header: PacketHeader,
     mut payload: Option<T>,
 }
 
-#[doc(hidden)]
 pub trait HasBuffer {
     fn set_buffer(&self, b: *libc::c_void);
 }
@@ -203,14 +195,12 @@ impl<T:Owned> HasBuffer for Packet<T> {
     }
 }
 
-#[doc(hidden)]
 pub fn mk_packet<T:Owned>() -> Packet<T> {
     Packet {
         header: PacketHeader(),
         payload: None,
     }
 }
-#[doc(hidden)]
 fn unibuffer<T>() -> ~Buffer<Packet<T>> {
     let b = ~Buffer {
         header: BufferHeader(),
@@ -221,55 +211,29 @@ fn unibuffer<T>() -> ~Buffer<Packet<T>> {
     };
 
     unsafe {
-        b.data.header.buffer = reinterpret_cast(&b);
+        b.data.header.buffer = transmute_copy(&b);
     }
     b
 }
 
-#[doc(hidden)]
 pub fn packet<T>() -> *Packet<T> {
     let b = unibuffer();
-    let p = ptr::addr_of(&(b.data));
+    let p = ptr::to_unsafe_ptr(&(b.data));
     // We'll take over memory management from here.
     unsafe { forget(b) }
     p
 }
 
-#[doc(hidden)]
 pub fn entangle_buffer<T:Owned,Tstart:Owned>(
     buffer: ~Buffer<T>,
     init: &fn(*libc::c_void, x: &T) -> *Packet<Tstart>)
     -> (SendPacketBuffered<Tstart, T>, RecvPacketBuffered<Tstart, T>)
 {
-    let p = init(unsafe { reinterpret_cast(&buffer) }, &buffer.data);
+    let p = init(unsafe { transmute_copy(&buffer) }, &buffer.data);
     unsafe { forget(buffer) }
     (SendPacketBuffered(p), RecvPacketBuffered(p))
 }
 
-// If I call the rusti versions directly from a polymorphic function,
-// I get link errors. This is a bug that needs investigated more.
-#[doc(hidden)]
-pub fn atomic_xchng_rel(dst: &mut int, src: int) -> int {
-    unsafe {
-        intrinsics::atomic_xchg_rel(dst, src)
-    }
-}
-
-#[doc(hidden)]
-pub fn atomic_add_acq(dst: &mut int, src: int) -> int {
-    unsafe {
-        intrinsics::atomic_xadd_acq(dst, src)
-    }
-}
-
-#[doc(hidden)]
-pub fn atomic_sub_rel(dst: &mut int, src: int) -> int {
-    unsafe {
-        intrinsics::atomic_xsub_rel(dst, src)
-    }
-}
-
-#[doc(hidden)]
 pub fn swap_task(dst: &mut *rust_task, src: *rust_task) -> *rust_task {
     // It might be worth making both acquire and release versions of
     // this.
@@ -278,11 +242,9 @@ pub fn swap_task(dst: &mut *rust_task, src: *rust_task) -> *rust_task {
     }
 }
 
-#[doc(hidden)]
 #[allow(non_camel_case_types)]
 pub type rust_task = libc::c_void;
 
-#[doc(hidden)]
 pub mod rustrt {
     use libc;
     use super::rust_task;
@@ -304,7 +266,6 @@ pub mod rustrt {
     }
 }
 
-#[doc(hidden)]
 fn wait_event(this: *rust_task) -> *libc::c_void {
     unsafe {
         let mut event = ptr::null();
@@ -317,21 +278,18 @@ fn wait_event(this: *rust_task) -> *libc::c_void {
     }
 }
 
-#[doc(hidden)]
 fn swap_state_acq(dst: &mut State, src: State) -> State {
     unsafe {
         transmute(intrinsics::atomic_xchg_acq(transmute(dst), src as int))
     }
 }
 
-#[doc(hidden)]
 fn swap_state_rel(dst: &mut State, src: State) -> State {
     unsafe {
         transmute(intrinsics::atomic_xchg_rel(transmute(dst), src as int))
     }
 }
 
-#[doc(hidden)]
 pub unsafe fn get_buffer<T>(p: *PacketHeader) -> ~Buffer<T> {
     transmute((*p).buf_header())
 }
@@ -347,9 +305,9 @@ impl<T> ::ops::Drop for BufferResource<T> {
     fn finalize(&self) {
         unsafe {
             let b = move_it!(self.buffer);
-            //let p = ptr::addr_of(*b);
+            //let p = ptr::to_unsafe_ptr(*b);
             //error!("drop %?", p);
-            let old_count = atomic_sub_rel(&mut b.header.ref_count, 1);
+            let old_count = intrinsics::atomic_xsub_rel(&mut b.header.ref_count, 1);
             //let old_count = atomic_xchng_rel(b.header.ref_count, 0);
             if old_count == 1 {
                 // The new count is 0.
@@ -364,9 +322,9 @@ impl<T> ::ops::Drop for BufferResource<T> {
 }
 
 fn BufferResource<T>(b: ~Buffer<T>) -> BufferResource<T> {
-    //let p = ptr::addr_of(*b);
+    //let p = ptr::to_unsafe_ptr(*b);
     //error!("take %?", p);
-    atomic_add_acq(&mut b.header.ref_count, 1);
+    unsafe { intrinsics::atomic_xadd_acq(&mut b.header.ref_count, 1) };
 
     BufferResource {
         // tjc: ????
@@ -374,12 +332,11 @@ fn BufferResource<T>(b: ~Buffer<T>) -> BufferResource<T> {
     }
 }
 
-#[doc(hidden)]
 pub fn send<T,Tbuffer>(p: SendPacketBuffered<T,Tbuffer>, payload: T) -> bool {
     let header = p.header();
     let p_ = p.unwrap();
     let p = unsafe { &*p_ };
-    assert!(ptr::addr_of(&(p.header)) == header);
+    assert!(ptr::to_unsafe_ptr(&(p.header)) == header);
     assert!(p.payload.is_none());
     p.payload = Some(payload);
     let old_state = swap_state_rel(&mut p.header.state, Full);
@@ -399,7 +356,7 @@ pub fn send<T,Tbuffer>(p: SendPacketBuffered<T,Tbuffer>, payload: T) -> bool {
                 unsafe {
                     rustrt::task_signal_event(
                         old_task,
-                        ptr::addr_of(&(p.header)) as *libc::c_void);
+                        ptr::to_unsafe_ptr(&(p.header)) as *libc::c_void);
                     rustrt::rust_task_deref(old_task);
                 }
             }
@@ -551,7 +508,6 @@ pub fn peek<T:Owned,Tb:Owned>(p: &RecvPacketBuffered<T, Tb>) -> bool {
     }
 }
 
-#[doc(hidden)]
 fn sender_terminate<T:Owned>(p: *Packet<T>) {
     let p = unsafe { &*p };
     match swap_state_rel(&mut p.header.state, Terminated) {
@@ -565,7 +521,7 @@ fn sender_terminate<T:Owned>(p: *Packet<T>) {
             unsafe {
                 rustrt::task_signal_event(
                     old_task,
-                    ptr::addr_of(&(p.header)) as *libc::c_void);
+                    ptr::to_unsafe_ptr(&(p.header)) as *libc::c_void);
                 rustrt::rust_task_deref(old_task);
             }
         }
@@ -582,7 +538,6 @@ fn sender_terminate<T:Owned>(p: *Packet<T>) {
     }
 }
 
-#[doc(hidden)]
 fn receiver_terminate<T:Owned>(p: *Packet<T>) {
     let p = unsafe { &*p };
     match swap_state_rel(&mut p.header.state, Terminated) {
@@ -670,94 +625,12 @@ pub fn wait_many<T: Selectable>(pkts: &[T]) -> uint {
     ready_packet
 }
 
-/** Receives a message from one of two endpoints.
-
-The return value is `left` if the first endpoint received something,
-or `right` if the second endpoint receives something. In each case,
-the result includes the other endpoint as well so it can be used
-again. Below is an example of using `select2`.
-
-~~~
-match select2(a, b) {
-  left((none, b)) {
-    // endpoint a was closed.
-  }
-  right((a, none)) {
-    // endpoint b was closed.
-  }
-  left((Some(_), b)) {
-    // endpoint a received a message
-  }
-  right(a, Some(_)) {
-    // endpoint b received a message.
-  }
-}
-~~~
-
-Sometimes messages will be available on both endpoints at once. In
-this case, `select2` may return either `left` or `right`.
-
-*/
-pub fn select2<A:Owned,Ab:Owned,B:Owned,Bb:Owned>(
-    a: RecvPacketBuffered<A, Ab>,
-    b: RecvPacketBuffered<B, Bb>)
-    -> Either<(Option<A>, RecvPacketBuffered<B, Bb>),
-              (RecvPacketBuffered<A, Ab>, Option<B>)>
-{
-    let i = wait_many([a.header(), b.header()]);
-
-    match i {
-      0 => Left((try_recv(a), b)),
-      1 => Right((a, try_recv(b))),
-      _ => fail!(~"select2 return an invalid packet")
-    }
-}
-
-#[doc(hidden)]
-pub trait Selectable {
-    fn header(&self) -> *PacketHeader;
-}
-
-impl Selectable for *PacketHeader {
-    fn header(&self) -> *PacketHeader { *self }
-}
-
-/// Returns the index of an endpoint that is ready to receive.
-pub fn selecti<T:Selectable>(endpoints: &[T]) -> uint {
-    wait_many(endpoints)
-}
-
-/// Returns 0 or 1 depending on which endpoint is ready to receive
-pub fn select2i<A:Selectable,B:Selectable>(a: &A, b: &B) ->
-        Either<(), ()> {
-    match wait_many([a.header(), b.header()]) {
-      0 => Left(()),
-      1 => Right(()),
-      _ => fail!(~"wait returned unexpected index")
-    }
-}
-
-/** Waits on a set of endpoints. Returns a message, its index, and a
- list of the remaining endpoints.
-
-*/
-pub fn select<T:Owned,Tb:Owned>(endpoints: ~[RecvPacketBuffered<T, Tb>])
-    -> (uint, Option<T>, ~[RecvPacketBuffered<T, Tb>])
-{
-    let ready = wait_many(endpoints.map(|p| p.header()));
-    let mut remaining = endpoints;
-    let port = remaining.swap_remove(ready);
-    let result = try_recv(port);
-    (ready, result, remaining)
-}
-
 /** The sending end of a pipe. It can be used to send exactly one
 message.
 
 */
 pub type SendPacket<T> = SendPacketBuffered<T, Packet<T>>;
 
-#[doc(hidden)]
 pub fn SendPacket<T>(p: *Packet<T>) -> SendPacket<T> {
     SendPacketBuffered(p)
 }
@@ -792,7 +665,7 @@ pub fn SendPacketBuffered<T,Tbuffer>(p: *Packet<T>)
         p: Some(p),
         buffer: unsafe {
             Some(BufferResource(
-                get_buffer(ptr::addr_of(&((*p).header)))))
+                get_buffer(ptr::to_unsafe_ptr(&((*p).header)))))
         }
     }
 }
@@ -808,7 +681,7 @@ pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
         match self.p {
           Some(packet) => unsafe {
             let packet = &*packet;
-            let header = ptr::addr_of(&(packet.header));
+            let header = ptr::to_unsafe_ptr(&(packet.header));
             //forget(packet);
             header
           },
@@ -828,7 +701,6 @@ pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
 /// message.
 pub type RecvPacket<T> = RecvPacketBuffered<T, Packet<T>>;
 
-#[doc(hidden)]
 pub fn RecvPacket<T>(p: *Packet<T>) -> RecvPacket<T> {
     RecvPacketBuffered(p)
 }
@@ -875,7 +747,7 @@ impl<T:Owned,Tbuffer:Owned> Selectable for RecvPacketBuffered<T, Tbuffer> {
         match self.p {
           Some(packet) => unsafe {
             let packet = &*packet;
-            let header = ptr::addr_of(&(packet.header));
+            let header = ptr::to_unsafe_ptr(&(packet.header));
             //forget(packet);
             header
           },
@@ -891,60 +763,94 @@ pub fn RecvPacketBuffered<T,Tbuffer>(p: *Packet<T>)
         p: Some(p),
         buffer: unsafe {
             Some(BufferResource(
-                get_buffer(ptr::addr_of(&((*p).header)))))
+                get_buffer(ptr::to_unsafe_ptr(&((*p).header)))))
         }
     }
 }
 
-#[doc(hidden)]
 pub fn entangle<T>() -> (SendPacket<T>, RecvPacket<T>) {
     let p = packet();
     (SendPacket(p), RecvPacket(p))
 }
 
-/** Spawn a task to provide a service.
+/** Receives a message from one of two endpoints.
 
-It takes an initialization function that produces a send and receive
-endpoint. The send endpoint is returned to the caller and the receive
-endpoint is passed to the new task.
+The return value is `left` if the first endpoint received something,
+or `right` if the second endpoint receives something. In each case,
+the result includes the other endpoint as well so it can be used
+again. Below is an example of using `select2`.
+
+~~~
+match select2(a, b) {
+  left((none, b)) {
+    // endpoint a was closed.
+  }
+  right((a, none)) {
+    // endpoint b was closed.
+  }
+  left((Some(_), b)) {
+    // endpoint a received a message
+  }
+  right(a, Some(_)) {
+    // endpoint b received a message.
+  }
+}
+~~~
+
+Sometimes messages will be available on both endpoints at once. In
+this case, `select2` may return either `left` or `right`.
 
 */
-pub fn spawn_service<T:Owned,Tb:Owned>(
-            init: extern fn() -> (SendPacketBuffered<T, Tb>,
-                                  RecvPacketBuffered<T, Tb>),
-            service: ~fn(v: RecvPacketBuffered<T, Tb>))
-        -> SendPacketBuffered<T, Tb> {
-    let (client, server) = init();
+pub fn select2<A:Owned,Ab:Owned,B:Owned,Bb:Owned>(
+    a: RecvPacketBuffered<A, Ab>,
+    b: RecvPacketBuffered<B, Bb>)
+    -> Either<(Option<A>, RecvPacketBuffered<B, Bb>),
+              (RecvPacketBuffered<A, Ab>, Option<B>)>
+{
+    let i = wait_many([a.header(), b.header()]);
 
-    // This is some nasty gymnastics required to safely move the pipe
-    // into a new task.
-    let server = Cell(server);
-    do task::spawn {
-        service(server.take());
+    match i {
+      0 => Left((try_recv(a), b)),
+      1 => Right((a, try_recv(b))),
+      _ => fail!(~"select2 return an invalid packet")
     }
-
-    client
 }
 
-/** Like `spawn_service_recv`, but for protocols that start in the
-receive state.
+pub trait Selectable {
+    fn header(&self) -> *PacketHeader;
+}
+
+impl Selectable for *PacketHeader {
+    fn header(&self) -> *PacketHeader { *self }
+}
+
+/// Returns the index of an endpoint that is ready to receive.
+pub fn selecti<T:Selectable>(endpoints: &[T]) -> uint {
+    wait_many(endpoints)
+}
+
+/// Returns 0 or 1 depending on which endpoint is ready to receive
+pub fn select2i<A:Selectable,B:Selectable>(a: &A, b: &B) ->
+        Either<(), ()> {
+    match wait_many([a.header(), b.header()]) {
+      0 => Left(()),
+      1 => Right(()),
+      _ => fail!(~"wait returned unexpected index")
+    }
+}
+
+/** Waits on a set of endpoints. Returns a message, its index, and a
+ list of the remaining endpoints.
 
 */
-pub fn spawn_service_recv<T:Owned,Tb:Owned>(
-        init: extern fn() -> (RecvPacketBuffered<T, Tb>,
-                              SendPacketBuffered<T, Tb>),
-        service: ~fn(v: SendPacketBuffered<T, Tb>))
-        -> RecvPacketBuffered<T, Tb> {
-    let (client, server) = init();
-
-    // This is some nasty gymnastics required to safely move the pipe
-    // into a new task.
-    let server = Cell(server);
-    do task::spawn {
-        service(server.take())
-    }
-
-    client
+pub fn select<T:Owned,Tb:Owned>(endpoints: ~[RecvPacketBuffered<T, Tb>])
+    -> (uint, Option<T>, ~[RecvPacketBuffered<T, Tb>])
+{
+    let ready = wait_many(endpoints.map(|p| p.header()));
+    let mut remaining = endpoints;
+    let port = remaining.swap_remove(ready);
+    let result = try_recv(port);
+    (ready, result, remaining)
 }
 
 pub mod rt {
@@ -957,13 +863,13 @@ pub mod rt {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use either::Right;
     use comm::{Chan, Port, oneshot, recv_one, stream, Select2,
                GenericChan, Peekable};
 
     #[test]
-    pub fn test_select2() {
+    fn test_select2() {
         let (p1, c1) = stream();
         let (p2, c2) = stream();
 
@@ -978,7 +884,7 @@ pub mod test {
     }
 
     #[test]
-    pub fn test_oneshot() {
+    fn test_oneshot() {
         let (c, p) = oneshot::init();
 
         oneshot::client::send(c, ());

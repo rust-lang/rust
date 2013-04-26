@@ -104,7 +104,7 @@ pub impl token {
     }
 }
 
-pub fn tok_str(++t: token) -> ~str {
+pub fn tok_str(t: token) -> ~str {
     match t {
         STRING(s, len) => return fmt!("STR(%s,%d)", *s, len),
         BREAK(_) => return ~"BREAK",
@@ -146,9 +146,9 @@ pub fn mk_printer(out: @io::Writer, linewidth: uint) -> @mut Printer {
     // fall behind.
     let n: uint = 3 * linewidth;
     debug!("mk_printer %u", linewidth);
-    let mut token: ~[token] = vec::from_elem(n, EOF);
-    let mut size: ~[int] = vec::from_elem(n, 0);
-    let mut scan_stack: ~[uint] = vec::from_elem(n, 0u);
+    let token: ~[token] = vec::from_elem(n, EOF);
+    let size: ~[int] = vec::from_elem(n, 0);
+    let scan_stack: ~[uint] = vec::from_elem(n, 0u);
     @mut Printer {
         out: @out,
         buf_len: n,
@@ -398,7 +398,7 @@ pub impl Printer {
         self.right %= self.buf_len;
         assert!((self.right != self.left));
     }
-    fn advance_left(&mut self, ++x: token, L: int) {
+    fn advance_left(&mut self, x: token, L: int) {
         debug!("advnce_left ~[%u,%u], sizeof(%u)=%d", self.left, self.right,
                self.left, L);
         if L >= 0 {

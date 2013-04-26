@@ -45,6 +45,10 @@ pub trait ExtendedIter<A> {
     fn flat_map_to_vec<B,IB: BaseIter<B>>(&self, op: &fn(&A) -> IB) -> ~[B];
 }
 
+pub trait ExtendedMutableIter<A> {
+    fn eachi_mut(&mut self, blk: &fn(uint, &mut A) -> bool);
+}
+
 pub trait EqIter<A:Eq> {
     fn contains(&self, x: &A) -> bool;
     fn count(&self, x: &A) -> uint;
@@ -161,7 +165,7 @@ pub fn foldl<A,B,IA:BaseIter<A>>(self: &IA, b0: B, blk: &fn(&B, &A) -> B)
 
 #[inline(always)]
 pub fn to_vec<A:Copy,IA:BaseIter<A>>(self: &IA) -> ~[A] {
-    foldl::<A,~[A],IA>(self, ~[], |r, a| vec::append(copy (*r), ~[*a]))
+    map_to_vec(self, |&x| x)
 }
 
 #[inline(always)]
@@ -343,4 +347,30 @@ pub fn copy_seq<T:Copy,IT:BaseIter<T>,BT:Buildable<T>>(v: &IT) -> BT {
     do build_sized_opt(v.size_hint()) |push| {
         for v.each |x| { push(*x); }
     }
+}
+
+/**
+ * Helper function to transform an internal iterator into an owned vector.
+ *
+ * # Example:
+ *
+ * ~~~
+ * let v = ~[1, 2, 3];
+ * let v2 = do iter_to_vec |f| { v.each(|e| f(*e)) };
+ * if v != v2 { fail!() }
+ * ~~~
+ */
+#[inline(always)]
+pub fn iter_to_vec<T>(pusher: &fn(it: &fn(T) -> bool)) -> ~[T] {
+    let mut v = ~[];
+    let pushf = |e| {v.push(e); true};
+    pusher(pushf);
+    v
+}
+
+#[test]
+fn test_iter_to_vec() {
+    let v = ~[1, 2, 3];
+    let v2 = do iter_to_vec |f| { v.each(|e| f(*e)) };
+    if v != v2 { fail!() }
 }

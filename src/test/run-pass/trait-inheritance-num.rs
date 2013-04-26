@@ -16,7 +16,7 @@ use core::cmp::{Eq, Ord};
 use core::num::NumCast::from;
 use std::cmp::FuzzyEq;
 
-pub trait NumExt: NumCast + Eq + Ord {}
+pub trait NumExt: Num + NumCast + Eq + Ord {}
 
 pub trait FloatExt: NumExt + FuzzyEq<Self> {}
 

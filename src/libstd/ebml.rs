@@ -59,10 +59,13 @@ pub mod reader {
     use ebml::{EsVec, EsVecElt, EsVecLen, TaggedDoc};
     use serialize;
 
+    use core::cast::transmute;
     use core::int;
     use core::io;
     use core::prelude::*;
+    use core::ptr::offset;
     use core::str;
+    use core::unstable::intrinsics::bswap32;
     use core::vec;
 
     // ebml reading
@@ -78,7 +81,8 @@ pub mod reader {
         next: uint
     }
 
-    fn vuint_at(data: &[u8], start: uint) -> Res {
+    #[inline(never)]
+    fn vuint_at_slow(data: &[u8], start: uint) -> Res {
         let a = data[start];
         if a & 0x80u8 != 0u8 {
             return Res {val: (a & 0x7fu8) as uint, next: start + 1u};
@@ -87,18 +91,63 @@ pub mod reader {
             return Res {val: ((a & 0x3fu8) as uint) << 8u |
                         (data[start + 1u] as uint),
                     next: start + 2u};
-        } else if a & 0x20u8 != 0u8 {
+        }
+        if a & 0x20u8 != 0u8 {
             return Res {val: ((a & 0x1fu8) as uint) << 16u |
                         (data[start + 1u] as uint) << 8u |
                         (data[start + 2u] as uint),
                     next: start + 3u};
-        } else if a & 0x10u8 != 0u8 {
+        }
+        if a & 0x10u8 != 0u8 {
             return Res {val: ((a & 0x0fu8) as uint) << 24u |
                         (data[start + 1u] as uint) << 16u |
                         (data[start + 2u] as uint) << 8u |
                         (data[start + 3u] as uint),
                     next: start + 4u};
-        } else { error!("vint too big"); fail!(); }
+        }
+        fail!(~"vint too big");
+    }
+
+    #[cfg(target_arch = "x86")]
+    #[cfg(target_arch = "x86_64")]
+    pub fn vuint_at(data: &[u8], start: uint) -> Res {
+        if data.len() - start < 4 {
+            return vuint_at_slow(data, start);
+        }
+
+        unsafe {
+            let (ptr, _): (*u8, uint) = transmute(data);
+            let ptr = offset(ptr, start);
+            let ptr: *i32 = transmute(ptr);
+            let val = bswap32(*ptr);
+            let val: u32 = transmute(val);
+            if (val & 0x80000000) != 0 {
+                Res {
+                    val: ((val >> 24) & 0x7f) as uint,
+                    next: start + 1
+                }
+            } else if (val & 0x40000000) != 0 {
+                Res {
+                    val: ((val >> 16) & 0x3fff) as uint,
+                    next: start + 2
+                }
+            } else if (val & 0x20000000) != 0 {
+                Res {
+                    val: ((val >> 8) & 0x1fffff) as uint,
+                    next: start + 3
+                }
+            } else {
+                Res {
+                    val: (val & 0x0fffffff) as uint,
+                    next: start + 4
+                }
+            }
+        }
+    }
+
+    #[cfg(target_arch = "arm")]
+    pub fn vuint_at(data: &[u8], start: uint) -> Res {
+        vuint_at_slow(data, start)
     }
 
     pub fn Doc(data: @~[u8]) -> Doc {
@@ -335,18 +384,18 @@ pub mod reader {
             f()
         }
 
-        fn read_seq<T>(&self, f: &fn(uint) -> T) -> T {
-            debug!("read_seq()");
-            do self.push_doc(self.next_doc(EsVec)) {
-                let len = self._next_uint(EsVecLen);
-                debug!("  len=%u", len);
-                f(len)
+        fn read_enum_struct_variant<T>(&self, _names: &[&str], f: &fn(uint) -> T) -> T {
+            debug!("read_enum_struct_variant()");
+            let idx = self._next_uint(EsEnumVid);
+            debug!("  idx=%u", idx);
+            do self.push_doc(self.next_doc(EsEnumBody)) {
+                f(idx)
             }
         }
 
-        fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
-            debug!("read_seq_elt(idx=%u)", idx);
-            self.push_doc(self.next_doc(EsVecElt), f)
+        fn read_enum_struct_variant_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
+            debug!("read_enum_struct_variant_arg(name=%?, idx=%u)", name, idx);
+            f()
         }
 
         fn read_struct<T>(&self, name: &str, _len: uint, f: &fn() -> T) -> T {
@@ -354,10 +403,40 @@ pub mod reader {
             f()
         }
 
+        #[cfg(stage0)]
         fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
-            debug!("read_field(name=%s, idx=%u)", name, idx);
+            debug!("read_field(name=%?, idx=%u)", name, idx);
             self._check_label(name);
             f()
+        }
+
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        #[cfg(stage3)]
+        fn read_struct_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
+            debug!("read_struct_field(name=%?, idx=%u)", name, idx);
+            self._check_label(name);
+            f()
+        }
+
+        fn read_tuple<T>(&self, f: &fn(uint) -> T) -> T {
+            debug!("read_tuple()");
+            self.read_seq(f)
+        }
+
+        fn read_tuple_arg<T>(&self, idx: uint, f: &fn() -> T) -> T {
+            debug!("read_tuple_arg(idx=%u)", idx);
+            self.read_seq_elt(idx, f)
+        }
+
+        fn read_tuple_struct<T>(&self, name: &str, f: &fn(uint) -> T) -> T {
+            debug!("read_tuple_struct(name=%?)", name);
+            self.read_tuple(f)
+        }
+
+        fn read_tuple_struct_arg<T>(&self, idx: uint, f: &fn() -> T) -> T {
+            debug!("read_tuple_struct_arg(idx=%u)", idx);
+            self.read_tuple_arg(idx, f)
         }
 
         fn read_option<T>(&self, f: &fn(bool) -> T) -> T {
@@ -371,6 +450,20 @@ pub mod reader {
                     }
                 }
             }
+        }
+
+        fn read_seq<T>(&self, f: &fn(uint) -> T) -> T {
+            debug!("read_seq()");
+            do self.push_doc(self.next_doc(EsVec)) {
+                let len = self._next_uint(EsVecLen);
+                debug!("  len=%u", len);
+                f(len)
+            }
+        }
+
+        fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T {
+            debug!("read_seq_elt(idx=%u)", idx);
+            self.push_doc(self.next_doc(EsVecElt), f)
         }
 
         fn read_map<T>(&self, _f: &fn(uint) -> T) -> T {
@@ -606,12 +699,52 @@ pub mod writer {
             self._emit_label(name);
             self.wr_tag(EsEnum as uint, f)
         }
+
         fn emit_enum_variant(&self, _v_name: &str, v_id: uint, _cnt: uint,
                              f: &fn()) {
             self._emit_tagged_uint(EsEnumVid, v_id);
             self.wr_tag(EsEnumBody as uint, f)
         }
+
         fn emit_enum_variant_arg(&self, _idx: uint, f: &fn()) { f() }
+
+        fn emit_enum_struct_variant(&self, v_name: &str, v_id: uint, cnt: uint, f: &fn()) {
+            self.emit_enum_variant(v_name, v_id, cnt, f)
+        }
+
+        fn emit_enum_struct_variant_field(&self, _f_name: &str, idx: uint, f: &fn()) {
+            self.emit_enum_variant_arg(idx, f)
+        }
+
+        fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) { f() }
+        #[cfg(stage0)]
+        fn emit_field(&self, name: &str, _idx: uint, f: &fn()) {
+            self._emit_label(name);
+            f()
+        }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        #[cfg(stage3)]
+        fn emit_struct_field(&self, name: &str, _idx: uint, f: &fn()) {
+            self._emit_label(name);
+            f()
+        }
+
+        fn emit_tuple(&self, len: uint, f: &fn()) { self.emit_seq(len, f) }
+        fn emit_tuple_arg(&self, idx: uint, f: &fn()) { self.emit_seq_elt(idx, f) }
+
+        fn emit_tuple_struct(&self, _name: &str, len: uint, f: &fn()) { self.emit_seq(len, f) }
+        fn emit_tuple_struct_arg(&self, idx: uint, f: &fn()) { self.emit_seq_elt(idx, f) }
+
+        fn emit_option(&self, f: &fn()) {
+            self.emit_enum("Option", f);
+        }
+        fn emit_option_none(&self) {
+            self.emit_enum_variant("None", 0, 0, || ())
+        }
+        fn emit_option_some(&self, f: &fn()) {
+            self.emit_enum_variant("Some", 1, 1, f)
+        }
 
         fn emit_seq(&self, len: uint, f: &fn()) {
             do self.wr_tag(EsVec as uint) {
@@ -622,22 +755,6 @@ pub mod writer {
 
         fn emit_seq_elt(&self, _idx: uint, f: &fn()) {
             self.wr_tag(EsVecElt as uint, f)
-        }
-
-        fn emit_struct(&self, _name: &str, _len: uint, f: &fn()) { f() }
-        fn emit_field(&self, name: &str, _idx: uint, f: &fn()) {
-            self._emit_label(name);
-            f()
-        }
-
-        fn emit_option(&self, f: &fn()) {
-            self.emit_enum("Option", f);
-        }
-        fn emit_option_none(&self) {
-            self.emit_enum_variant("None", 0, 0, || ())
-        }
-        fn emit_option_some(&self, f: &fn()) {
-            self.emit_enum_variant("Some", 1, 1, f)
         }
 
         fn emit_map(&self, _len: uint, _f: &fn()) {

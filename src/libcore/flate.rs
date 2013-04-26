@@ -53,7 +53,7 @@ pub fn deflate_bytes(bytes: &const [u8]) -> ~[u8] {
             let res =
                 rustrt::tdefl_compress_mem_to_heap(b as *c_void,
                                                    len as size_t,
-                                                   ptr::addr_of(&outsz),
+                                                   &outsz,
                                                    lz_norm);
             assert!(res as int != 0);
             let out = vec::raw::from_buf_raw(res as *u8,
@@ -67,11 +67,11 @@ pub fn deflate_bytes(bytes: &const [u8]) -> ~[u8] {
 pub fn inflate_bytes(bytes: &const [u8]) -> ~[u8] {
     do vec::as_const_buf(bytes) |b, len| {
         unsafe {
-            let mut outsz : size_t = 0;
+            let outsz : size_t = 0;
             let res =
                 rustrt::tinfl_decompress_mem_to_heap(b as *c_void,
                                                      len as size_t,
-                                                     ptr::addr_of(&outsz),
+                                                     &outsz,
                                                      0);
             assert!(res as int != 0);
             let out = vec::raw::from_buf_raw(res as *u8,
@@ -85,7 +85,7 @@ pub fn inflate_bytes(bytes: &const [u8]) -> ~[u8] {
 #[test]
 #[allow(non_implicitly_copyable_typarams)]
 fn test_flate_round_trip() {
-    let r = rand::Rng();
+    let r = rand::rng();
     let mut words = ~[];
     for 20.times {
         words.push(r.gen_bytes(r.gen_uint_range(1, 10)));

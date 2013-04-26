@@ -48,7 +48,7 @@ they contained the following prologue:
 
 
 #[link(name = "core",
-       vers = "0.6",
+       vers = "0.7-pre",
        uuid = "c70c24a7-5551-4f73-8e37-380b11d80be8",
        url = "https://github.com/mozilla/rust/tree/master/src/libcore")];
 
@@ -66,7 +66,7 @@ they contained the following prologue:
 #[allow(deprecated_drop)];
 
 // Make core testable by not duplicating lang items. See #2912
-#[cfg(test)] extern mod realcore(name = "core", vers = "0.6");
+#[cfg(test)] extern mod realcore(name = "core", vers = "0.7-pre");
 #[cfg(test)] pub use kinds = realcore::kinds;
 #[cfg(test)] pub use ops = realcore::ops;
 #[cfg(test)] pub use cmp = realcore::cmp;
@@ -75,7 +75,10 @@ they contained the following prologue:
 
 pub use kinds::{Const, Copy, Owned, Durable};
 pub use ops::{Drop};
+#[cfg(stage0)]
 pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, Not};
+#[cfg(not(stage0))]
+pub use ops::{Add, Sub, Mul, Quot, Rem, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
 pub use ops::{Shl, Shr, Index};
 
@@ -95,11 +98,14 @@ pub use str::{StrSlice};
 pub use container::{Container, Mutable};
 pub use vec::{CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
-pub use vec::{OwnedVector, OwnedCopyableVector};
+pub use vec::{OwnedVector, OwnedCopyableVector, MutableVector};
 pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
 pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
+pub use iter::{ExtendedMutableIter};
 
-pub use num::NumCast;
+pub use num::{Num, NumCast};
+pub use num::{Signed, Unsigned, Integer};
+pub use num::{Round, Fractional, Real, RealExt};
 pub use ptr::Ptr;
 pub use to_str::ToStr;
 pub use clone::Clone;
@@ -158,6 +164,9 @@ pub mod vec;
 pub mod at_vec;
 pub mod str;
 
+#[path = "str/ascii.rs"]
+pub mod ascii;
+
 pub mod ptr;
 pub mod owned;
 pub mod managed;
@@ -176,6 +185,7 @@ pub mod from_str;
 #[path = "num/num.rs"]
 pub mod num;
 pub mod iter;
+pub mod iterator;
 pub mod to_str;
 pub mod to_bytes;
 pub mod clone;

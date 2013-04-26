@@ -1022,19 +1022,17 @@ pub unsafe fn async_send(async_handle: *uv_async_t) {
 }
 pub unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
     let out_buf = uv_buf_t { base: ptr::null(), len: 0 as libc::size_t };
-    let out_buf_ptr = ptr::addr_of(&out_buf);
+    let out_buf_ptr: *uv_buf_t = &out_buf;
     rustrt::rust_uv_buf_init(out_buf_ptr, input, len as size_t);
     return out_buf;
 }
-pub unsafe fn ip4_addr(ip: &str, port: int)
--> sockaddr_in {
+pub unsafe fn ip4_addr(ip: &str, port: int) -> sockaddr_in {
     do str::as_c_str(ip) |ip_buf| {
         rustrt::rust_uv_ip4_addr(ip_buf as *u8,
                                  port as libc::c_int)
     }
 }
-pub unsafe fn ip6_addr(ip: &str, port: int)
--> sockaddr_in6 {
+pub unsafe fn ip6_addr(ip: &str, port: int) -> sockaddr_in6 {
     do str::as_c_str(ip) |ip_buf| {
         rustrt::rust_uv_ip6_addr(ip_buf as *u8,
                                  port as libc::c_int)
@@ -1111,22 +1109,22 @@ pub unsafe fn freeaddrinfo(res: *addrinfo) {
 }
 
 // libuv struct initializers
-pub unsafe fn tcp_t() -> uv_tcp_t {
+pub fn tcp_t() -> uv_tcp_t {
     return uv_ll_struct_stubgen::gen_stub_uv_tcp_t();
 }
-pub unsafe fn connect_t() -> uv_connect_t {
+pub fn connect_t() -> uv_connect_t {
     return uv_ll_struct_stubgen::gen_stub_uv_connect_t();
 }
-pub unsafe fn write_t() -> uv_write_t {
+pub fn write_t() -> uv_write_t {
     return uv_ll_struct_stubgen::gen_stub_uv_write_t();
 }
-pub unsafe fn async_t() -> uv_async_t {
+pub fn async_t() -> uv_async_t {
     return uv_ll_struct_stubgen::gen_stub_uv_async_t();
 }
-pub unsafe fn timer_t() -> uv_timer_t {
+pub fn timer_t() -> uv_timer_t {
     return uv_ll_struct_stubgen::gen_stub_uv_timer_t();
 }
-pub unsafe fn getaddrinfo_t() -> uv_getaddrinfo_t {
+pub fn getaddrinfo_t() -> uv_getaddrinfo_t {
     return uv_ll_struct_stubgen::gen_stub_uv_getaddrinfo_t();
 }
 
@@ -1156,8 +1154,7 @@ pub unsafe fn set_data_for_uv_loop(loop_ptr: *libc::c_void,
 pub unsafe fn get_data_for_uv_handle<T>(handle: *T) -> *libc::c_void {
     return rustrt::rust_uv_get_data_for_uv_handle(handle as *libc::c_void);
 }
-pub unsafe fn set_data_for_uv_handle<T, U>(handle: *T,
-                    data: *U) {
+pub unsafe fn set_data_for_uv_handle<T, U>(handle: *T, data: *U) {
     rustrt::rust_uv_set_data_for_uv_handle(handle as *libc::c_void,
                                            data as *libc::c_void);
 }
@@ -1185,7 +1182,7 @@ pub unsafe fn free_base_of_buf(buf: uv_buf_t) {
 
 pub unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> ~str {
     let err = last_error(uv_loop);
-    let err_ptr = ptr::addr_of(&err);
+    let err_ptr: *uv_err_t = &err;
     let err_name = str::raw::from_c_str(err_name(err_ptr));
     let err_msg = str::raw::from_c_str(strerror(err_ptr));
     return fmt!("LIBUV ERROR: name: %s msg: %s",
@@ -1194,7 +1191,7 @@ pub unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> ~str {
 
 pub unsafe fn get_last_err_data(uv_loop: *libc::c_void) -> uv_err_data {
     let err = last_error(uv_loop);
-    let err_ptr = ptr::addr_of(&err);
+    let err_ptr: *uv_err_t = &err;
     let err_name = str::raw::from_c_str(err_name(err_ptr));
     let err_msg = str::raw::from_c_str(strerror(err_ptr));
     uv_err_data { err_name: err_name, err_msg: err_msg }
@@ -1225,8 +1222,10 @@ pub unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use core::prelude::*;
+
+    use core::cast::transmute;
     use core::comm::{SharedChan, stream, GenericChan, GenericPort};
     use super::*;
 
@@ -1350,9 +1349,9 @@ pub mod test {
         unsafe {
             let test_loop = loop_new();
             let tcp_handle = tcp_t();
-            let tcp_handle_ptr = ptr::addr_of(&tcp_handle);
+            let tcp_handle_ptr: *uv_tcp_t = &tcp_handle;
             let connect_handle = connect_t();
-            let connect_req_ptr = ptr::addr_of(&connect_handle);
+            let connect_req_ptr: *uv_connect_t = &connect_handle;
 
             // this is the persistent payload of data that we
             // need to pass around to get this example to work.
@@ -1368,43 +1367,42 @@ pub mod test {
             // this is the enclosing record, we'll pass a ptr to
             // this to C..
             let write_handle = write_t();
-            let write_handle_ptr = ptr::addr_of(&write_handle);
+            let write_handle_ptr: *uv_write_t = &write_handle;
             debug!("tcp req: tcp stream: %d write_handle: %d",
                              tcp_handle_ptr as int,
                              write_handle_ptr as int);
             let client_data = request_wrapper {
                 write_req: write_handle_ptr,
-                req_buf: ptr::addr_of(&req_msg),
+                req_buf: &req_msg,
                 read_chan: client_chan
             };
 
-            let tcp_init_result = tcp_init(
-                test_loop as *libc::c_void, tcp_handle_ptr);
-            if (tcp_init_result == 0i32) {
+            let tcp_init_result = tcp_init(test_loop as *libc::c_void,
+                                           tcp_handle_ptr);
+            if (tcp_init_result == 0) {
                 debug!(~"sucessful tcp_init_result");
 
                 debug!(~"building addr...");
                 let addr = ip4_addr(ip, port);
                 // FIXME ref #2064
-                let addr_ptr = ptr::addr_of(&addr);
+                let addr_ptr: *sockaddr_in = &addr;
                 debug!("after build addr in rust. port: %u",
-                                 addr.sin_port as uint);
+                       addr.sin_port as uint);
 
                 // this should set up the connection request..
                 debug!("b4 call tcp_connect connect cb: %u ",
-                                on_connect_cb as uint);
-                let tcp_connect_result = tcp_connect(
-                    connect_req_ptr, tcp_handle_ptr,
-                    addr_ptr, on_connect_cb);
-                if (tcp_connect_result == 0i32) {
+                       on_connect_cb as uint);
+                let tcp_connect_result = tcp_connect(connect_req_ptr,
+                                                     tcp_handle_ptr,
+                                                     addr_ptr,
+                                                     on_connect_cb);
+                if (tcp_connect_result == 0) {
                     // not set the data on the connect_req
                     // until its initialized
-                    set_data_for_req(
-                        connect_req_ptr as *libc::c_void,
-                        ptr::addr_of(&client_data) as *libc::c_void);
-                    set_data_for_uv_handle(
-                        tcp_handle_ptr as *libc::c_void,
-                        ptr::addr_of(&client_data) as *libc::c_void);
+                    set_data_for_req(connect_req_ptr as *libc::c_void,
+                                     &client_data);
+                    set_data_for_uv_handle(tcp_handle_ptr as *libc::c_void,
+                                           &client_data);
                     debug!(~"before run tcp req loop");
                     run(test_loop);
                     debug!(~"after run tcp req loop");
@@ -1423,10 +1421,8 @@ pub mod test {
     }
 
     extern fn server_after_close_cb(handle: *libc::c_void) {
-        unsafe {
-            debug!("SERVER server stream closed, should exit. h: %?",
-                       handle);
-        }
+        debug!("SERVER server stream closed, should exit. h: %?",
+                   handle);
     }
 
     extern fn client_stream_after_close_cb(handle: *libc::c_void) {
@@ -1612,37 +1608,37 @@ pub mod test {
         unsafe {
             let test_loop = loop_new();
             let tcp_server = tcp_t();
-            let tcp_server_ptr = ptr::addr_of(&tcp_server);
+            let tcp_server_ptr: *uv_tcp_t = &tcp_server;
 
             let tcp_client = tcp_t();
-            let tcp_client_ptr = ptr::addr_of(&tcp_client);
+            let tcp_client_ptr: *uv_tcp_t = &tcp_client;
 
             let server_write_req = write_t();
-            let server_write_req_ptr = ptr::addr_of(&server_write_req);
+            let server_write_req_ptr: *uv_write_t = &server_write_req;
 
             let resp_str_bytes = str::to_bytes(server_resp_msg);
             let resp_msg_ptr: *u8 = vec::raw::to_ptr(resp_str_bytes);
             debug!("resp_msg ptr: %u", resp_msg_ptr as uint);
             let resp_msg = ~[
-                buf_init(resp_msg_ptr, vec::len(resp_str_bytes))
+                buf_init(resp_msg_ptr, resp_str_bytes.len())
             ];
 
             let continue_async_handle = async_t();
-            let continue_async_handle_ptr =
-                ptr::addr_of(&continue_async_handle);
+            let continue_async_handle_ptr: *uv_async_t =
+                &continue_async_handle;
             let async_data =
                 async_handle_data { continue_chan: continue_chan };
-            let async_data_ptr = ptr::addr_of(&async_data);
+            let async_data_ptr: *async_handle_data = &async_data;
 
             let server_data = tcp_server_data {
                 client: tcp_client_ptr,
                 server: tcp_server_ptr,
                 server_kill_msg: kill_server_msg,
-                server_resp_buf: ptr::addr_of(&resp_msg),
+                server_resp_buf: &resp_msg,
                 server_chan: server_chan,
                 server_write_req: server_write_req_ptr
             };
-            let server_data_ptr = ptr::addr_of(&server_data);
+            let server_data_ptr: *tcp_server_data = &server_data;
             set_data_for_uv_handle(tcp_server_ptr as *libc::c_void,
                                            server_data_ptr as *libc::c_void);
 
@@ -1652,11 +1648,10 @@ pub mod test {
             if (tcp_init_result == 0i32) {
                 let server_addr = ip4_addr(server_ip, server_port);
                 // FIXME ref #2064
-                let server_addr_ptr = ptr::addr_of(&server_addr);
+                let server_addr_ptr: *sockaddr_in = &server_addr;
 
                 // uv_tcp_bind()
-                let bind_result = tcp_bind(tcp_server_ptr,
-                                                   server_addr_ptr);
+                let bind_result = tcp_bind(tcp_server_ptr, server_addr_ptr);
                 if (bind_result == 0i32) {
                     debug!(~"successful uv_tcp_bind, listening");
 
@@ -1710,48 +1705,46 @@ pub mod test {
     // this is the impl for a test that is (maybe) ran on a
     // per-platform/arch basis below
     pub fn impl_uv_tcp_server_and_request() {
-        unsafe {
-            let bind_ip = ~"0.0.0.0";
-            let request_ip = ~"127.0.0.1";
-            let port = 8886;
-            let kill_server_msg = ~"does a dog have buddha nature?";
-            let server_resp_msg = ~"mu!";
-            let (client_port, client_chan) = stream::<~str>();
-            let client_chan = SharedChan(client_chan);
-            let (server_port, server_chan) = stream::<~str>();
-            let server_chan = SharedChan(server_chan);
+        let bind_ip = ~"0.0.0.0";
+        let request_ip = ~"127.0.0.1";
+        let port = 8886;
+        let kill_server_msg = ~"does a dog have buddha nature?";
+        let server_resp_msg = ~"mu!";
+        let (client_port, client_chan) = stream::<~str>();
+        let client_chan = SharedChan::new(client_chan);
+        let (server_port, server_chan) = stream::<~str>();
+        let server_chan = SharedChan::new(server_chan);
 
-            let (continue_port, continue_chan) = stream::<bool>();
-            let continue_chan = SharedChan(continue_chan);
+        let (continue_port, continue_chan) = stream::<bool>();
+        let continue_chan = SharedChan::new(continue_chan);
 
-            let kill_server_msg_copy = copy kill_server_msg;
-            let server_resp_msg_copy = copy server_resp_msg;
-            do task::spawn_sched(task::ManualThreads(1)) {
-                impl_uv_tcp_server(bind_ip, port,
-                                   copy kill_server_msg_copy,
-                                   copy server_resp_msg_copy,
-                                   server_chan.clone(),
-                                   continue_chan.clone());
-            };
+        let kill_server_msg_copy = copy kill_server_msg;
+        let server_resp_msg_copy = copy server_resp_msg;
+        do task::spawn_sched(task::ManualThreads(1)) {
+            impl_uv_tcp_server(bind_ip, port,
+                               copy kill_server_msg_copy,
+                               copy server_resp_msg_copy,
+                               server_chan.clone(),
+                               continue_chan.clone());
+        };
 
-            // block until the server up is.. possibly a race?
-            debug!(~"before receiving on server continue_port");
-            continue_port.recv();
-            debug!(~"received on continue port, set up tcp client");
+        // block until the server up is.. possibly a race?
+        debug!(~"before receiving on server continue_port");
+        continue_port.recv();
+        debug!(~"received on continue port, set up tcp client");
 
-            let kill_server_msg_copy = copy kill_server_msg;
-            do task::spawn_sched(task::ManualThreads(1u)) {
-                impl_uv_tcp_request(request_ip, port,
-                                   kill_server_msg_copy,
-                                   client_chan.clone());
-            };
+        let kill_server_msg_copy = copy kill_server_msg;
+        do task::spawn_sched(task::ManualThreads(1u)) {
+            impl_uv_tcp_request(request_ip, port,
+                               kill_server_msg_copy,
+                               client_chan.clone());
+        };
 
-            let msg_from_client = server_port.recv();
-            let msg_from_server = client_port.recv();
+        let msg_from_client = server_port.recv();
+        let msg_from_server = client_port.recv();
 
-            assert!(str::contains(msg_from_client, kill_server_msg));
-            assert!(str::contains(msg_from_server, server_resp_msg));
-        }
+        assert!(str::contains(msg_from_client, kill_server_msg));
+        assert!(str::contains(msg_from_server, server_resp_msg));
     }
 
     // FIXME don't run on fbsd or linux 32 bit(#2064)
@@ -1759,11 +1752,11 @@ pub mod test {
     #[cfg(target_os="darwin")]
     #[cfg(target_os="linux")]
     #[cfg(target_os="android")]
-    pub mod tcp_and_server_client_test {
+    mod tcp_and_server_client_test {
         #[cfg(target_arch="x86_64")]
-        pub mod impl64 {
+        mod impl64 {
             #[test]
-            pub fn test_uv_ll_tcp_server_and_request() {
+            fn test_uv_ll_tcp_server_and_request() {
                 unsafe {
                     super::super::impl_uv_tcp_server_and_request();
                 }
@@ -1772,10 +1765,10 @@ pub mod test {
         #[cfg(target_arch="x86")]
         #[cfg(target_arch="arm")]
         #[cfg(target_arch="mips")]
-        pub mod impl32 {
+        mod impl32 {
             #[test]
             #[ignore(cfg(target_os = "linux"))]
-            pub fn test_uv_ll_tcp_server_and_request() {
+            fn test_uv_ll_tcp_server_and_request() {
                 unsafe {
                     super::super::impl_uv_tcp_server_and_request();
                 }
@@ -1785,17 +1778,15 @@ pub mod test {
 
     fn struct_size_check_common<TStruct>(t_name: ~str,
                                          foreign_size: libc::c_uint) {
-        unsafe {
-            let rust_size = sys::size_of::<TStruct>();
-            let sizes_match = foreign_size as uint == rust_size;
-            if !sizes_match {
-                let output = fmt!(
-                    "STRUCT_SIZE FAILURE: %s -- actual: %u expected: %u",
-                    t_name, rust_size, foreign_size as uint);
-                debug!(output);
-            }
-            assert!(sizes_match);
+        let rust_size = sys::size_of::<TStruct>();
+        let sizes_match = foreign_size as uint == rust_size;
+        if !sizes_match {
+            let output = fmt!(
+                "STRUCT_SIZE FAILURE: %s -- actual: %u expected: %u",
+                t_name, rust_size, foreign_size as uint);
+            debug!(output);
         }
+        assert!(sizes_match);
     }
 
     // struct size tests

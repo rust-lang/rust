@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -24,17 +24,18 @@ use core::pipes::recv;
 use core::prelude::*;
 use core::result;
 use core::run;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::task;
 use core::to_bytes;
 
 /**
 *
-* This is a loose clone of the fbuild build system, made a touch more
-* generic (not wired to special cases on files) and much less metaprogram-y
-* due to rust's comparative weakness there, relative to python.
+* This is a loose clone of the [fbuild build system](https://github.com/felix-lang/fbuild),
+* made a touch more generic (not wired to special cases on files) and much
+* less metaprogram-y due to rust's comparative weakness there, relative to
+* python.
 *
-* It's based around _imperative bulids_ that happen to have some function
+* It's based around _imperative builds_ that happen to have some function
 * calls cached. That is, it's _just_ a mechanism for describing cached
 * functions. This makes it much simpler and smaller than a "build system"
 * that produces an IR and evaluates it. The evaluation order is normal
@@ -54,7 +55,7 @@ use core::to_bytes;
 * Works are conceptually single units, but we store them most of the time
 * in maps of the form (type,name) => value. These are WorkMaps.
 *
-* A cached function divides the works it's interested up into inputs and
+* A cached function divides the works it's interested in into inputs and
 * outputs, and subdivides those into declared (input) works and
 * discovered (input and output) works.
 *
@@ -136,16 +137,16 @@ pub impl WorkKey {
     }
 }
 
-struct WorkMap(LinearMap<WorkKey, ~str>);
+struct WorkMap(HashMap<WorkKey, ~str>);
 
 impl WorkMap {
-    fn new() -> WorkMap { WorkMap(LinearMap::new()) }
+    fn new() -> WorkMap { WorkMap(HashMap::new()) }
 }
 
 impl<S:Encoder> Encodable<S> for WorkMap {
     fn encode(&self, s: &S) {
         let mut d = ~[];
-        for self.each |&(k, v)| {
+        for self.each |k, v| {
             d.push((copy *k, copy *v))
         }
         sort::tim_sort(d);
@@ -166,7 +167,7 @@ impl<D:Decoder> Decodable<D> for WorkMap {
 
 struct Database {
     db_filename: Path,
-    db_cache: LinearMap<~str, ~str>,
+    db_cache: HashMap<~str, ~str>,
     db_dirty: bool
 }
 
@@ -212,7 +213,7 @@ struct Context {
     db: @mut Database,
     logger: @mut Logger,
     cfg: @json::Object,
-    freshness: LinearMap<~str,@fn(&str,&str)->bool>
+    freshness: HashMap<~str,@fn(&str,&str)->bool>
 }
 
 struct Prep {
@@ -267,7 +268,7 @@ pub impl Context {
             db: db,
             logger: lg,
             cfg: cfg,
-            freshness: LinearMap::new()
+            freshness: HashMap::new()
         }
     }
 
@@ -319,7 +320,7 @@ impl TPrep for Prep {
     }
 
     fn all_fresh(&self, cat: &str, map: &WorkMap) -> bool {
-        for map.each |&(k, v)| {
+        for map.each |k, v| {
             if ! self.is_fresh(cat, k.kind, k.name, *v) {
                 return false;
             }
@@ -411,10 +412,10 @@ fn test() {
     use core::io::WriterUtil;
 
     let db = @mut Database { db_filename: Path("db.json"),
-                             db_cache: LinearMap::new(),
+                             db_cache: HashMap::new(),
                              db_dirty: false };
     let lg = @mut Logger { a: () };
-    let cfg = @LinearMap::new();
+    let cfg = @HashMap::new();
     let cx = @Context::new(db, lg, cfg);
     let w:Work<~str> = do cx.prep("test1") |prep| {
         let pth = Path("foo.c");

@@ -20,7 +20,7 @@ use parse;
 use parse::token;
 
 use core::vec;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 
 // new-style macro! tt code:
 //
@@ -125,7 +125,7 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     fn builtin_item_tt(f: SyntaxExpanderTTItemFun) -> @Transformer {
         @SE(IdentTT(SyntaxExpanderTTItem{expander: f, span: None}))
     }
-    let mut syntax_expanders = LinearMap::new();
+    let mut syntax_expanders = HashMap::new();
     // NB identifier starts with space, and can't conflict with legal idents
     syntax_expanders.insert(@~" block",
                             @ScopeMacros(true));
@@ -238,7 +238,7 @@ pub trait ext_ctxt {
     fn ident_of(@mut self, st: ~str) -> ast::ident;
 }
 
-pub fn mk_ctxt(parse_sess: @mut parse::ParseSess, +cfg: ast::crate_cfg)
+pub fn mk_ctxt(parse_sess: @mut parse::ParseSess, cfg: ast::crate_cfg)
             -> @ext_ctxt {
     struct CtxtRepr {
         parse_sess: @mut parse::ParseSess,
@@ -430,8 +430,8 @@ pub fn get_exprs_from_tts(cx: @ext_ctxt, tts: &[ast::token_tree])
 // a transformer env is either a base map or a map on top
 // of another chain.
 pub enum MapChain<K,V> {
-    BaseMapChain(~LinearMap<K,@V>),
-    ConsMapChain(~LinearMap<K,@V>,@mut MapChain<K,V>)
+    BaseMapChain(~HashMap<K,@V>),
+    ConsMapChain(~HashMap<K,@V>,@mut MapChain<K,V>)
 }
 
 
@@ -439,13 +439,13 @@ pub enum MapChain<K,V> {
 impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 
     // Constructor. I don't think we need a zero-arg one.
-    fn new(+init: ~LinearMap<K,@V>) -> @mut MapChain<K,V> {
+    fn new(init: ~HashMap<K,@V>) -> @mut MapChain<K,V> {
         @mut BaseMapChain(init)
     }
 
     // add a new frame to the environment (functionally)
     fn push_frame (@mut self) -> @mut MapChain<K,V> {
-        @mut ConsMapChain(~LinearMap::new() ,self)
+        @mut ConsMapChain(~HashMap::new() ,self)
     }
 
 // no need for pop, it'll just be functional.
@@ -454,7 +454,20 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 
     // ugh: can't get this to compile with mut because of the
     // lack of flow sensitivity.
-    fn get_map(&self) -> &'self LinearMap<K,@V> {
+    #[cfg(stage0)]
+    fn get_map(&self) -> &'self HashMap<K,@V> {
+        match *self {
+            BaseMapChain (~ref map) => map,
+            ConsMapChain (~ref map,_) => map
+        }
+    }
+
+    // ugh: can't get this to compile with mut because of the
+    // lack of flow sensitivity.
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn get_map<'a>(&'a self) -> &'a HashMap<K,@V> {
         match *self {
             BaseMapChain (~ref map) => map,
             ConsMapChain (~ref map,_) => map
@@ -496,7 +509,7 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
     }
 
     // insert the binding into the top-level map
-    fn insert (&mut self, +key: K, +ext: @V) -> bool {
+    fn insert (&mut self, key: K, ext: @V) -> bool {
         // can't abstract over get_map because of flow sensitivity...
         match *self {
             BaseMapChain (~ref mut map) => map.insert(key, ext),
@@ -509,10 +522,10 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 #[cfg(test)]
 mod test {
     use super::MapChain;
-    use core::hashmap::linear::LinearMap;
+    use core::hashmap::HashMap;
 
     #[test] fn testenv () {
-        let mut a = LinearMap::new();
+        let mut a = HashMap::new();
         a.insert (@~"abc",@15);
         let m = MapChain::new(~a);
         m.insert (@~"def",@16);

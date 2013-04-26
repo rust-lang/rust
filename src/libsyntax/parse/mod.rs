@@ -45,10 +45,14 @@ pub mod classify;
 /// Reporting obsolete syntax
 pub mod obsolete;
 
+// info about a parsing session.
+// This structure and the reader both have
+// an interner associated with them. If they're
+// not the same, bad things can happen.
 pub struct ParseSess {
-    cm: @codemap::CodeMap,
+    cm: @codemap::CodeMap, // better be the same as the one in the reader!
     next_id: node_id,
-    span_diagnostic: @span_handler,
+    span_diagnostic: @span_handler, // better be the same as the one in the reader!
     interner: @ident_interner,
 }
 
@@ -90,6 +94,19 @@ pub fn parse_crate_from_file(
     // why is there no p.abort_if_errors here?
 }
 
+pub fn parse_crate_from_file_using_tts(
+    input: &Path,
+    cfg: ast::crate_cfg,
+    sess: @mut ParseSess
+) -> @ast::crate {
+    let p = new_parser_from_file(sess, /*bad*/ copy cfg, input);
+    let tts = p.parse_all_token_trees();
+    new_parser_from_tts(sess,cfg,tts).parse_crate_mod(/*bad*/ copy cfg)
+    // why is there no p.abort_if_errors here?
+}
+
+
+
 pub fn parse_crate_from_source_str(
     name: ~str,
     source: @~str,
@@ -109,7 +126,7 @@ pub fn parse_crate_from_source_str(
 pub fn parse_expr_from_source_str(
     name: ~str,
     source: @~str,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> @ast::expr {
     let p = new_parser_from_source_str(
@@ -125,8 +142,8 @@ pub fn parse_expr_from_source_str(
 pub fn parse_item_from_source_str(
     name: ~str,
     source: @~str,
-    +cfg: ast::crate_cfg,
-    +attrs: ~[ast::attribute],
+    cfg: ast::crate_cfg,
+    attrs: ~[ast::attribute],
     sess: @mut ParseSess
 ) -> Option<@ast::item> {
     let p = new_parser_from_source_str(
@@ -142,7 +159,7 @@ pub fn parse_item_from_source_str(
 pub fn parse_meta_from_source_str(
     name: ~str,
     source: @~str,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> @ast::meta_item {
     let p = new_parser_from_source_str(
@@ -158,8 +175,8 @@ pub fn parse_meta_from_source_str(
 pub fn parse_stmt_from_source_str(
     name: ~str,
     source: @~str,
-    +cfg: ast::crate_cfg,
-    +attrs: ~[ast::attribute],
+    cfg: ast::crate_cfg,
+    attrs: ~[ast::attribute],
     sess: @mut ParseSess
 ) -> @ast::stmt {
     let p = new_parser_from_source_str(
@@ -175,7 +192,7 @@ pub fn parse_stmt_from_source_str(
 pub fn parse_tts_from_source_str(
     name: ~str,
     source: @~str,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> ~[ast::token_tree] {
     let p = new_parser_from_source_str(
@@ -190,20 +207,20 @@ pub fn parse_tts_from_source_str(
 }
 
 pub fn parse_from_source_str<T>(
-    f: &fn (Parser) -> T,
+    f: &fn(&Parser) -> T,
     name: ~str, ss: codemap::FileSubstr,
     source: @~str,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> T {
     let p = new_parser_from_source_str(
         sess,
         cfg,
-        /*bad*/ copy name,
-        /*bad*/ copy ss,
+        name,
+        ss,
         source
     );
-    let r = f(p);
+    let r = f(&p);
     if !p.reader.is_eof() {
         p.reader.fatal(~"expected end-of-string");
     }
@@ -219,9 +236,9 @@ pub fn next_node_id(sess: @mut ParseSess) -> node_id {
 }
 
 pub fn new_parser_from_source_str(sess: @mut ParseSess,
-                                  +cfg: ast::crate_cfg,
-                                  +name: ~str,
-                                  +ss: codemap::FileSubstr,
+                                  cfg: ast::crate_cfg,
+                                  name: ~str,
+                                  ss: codemap::FileSubstr,
                                   source: @~str)
                                -> Parser {
     let filemap = sess.cm.new_filemap_w_substr(name, ss, source);
@@ -237,7 +254,7 @@ pub fn new_parser_from_source_str(sess: @mut ParseSess,
 /// that draws from that string
 pub fn new_parser_result_from_file(
     sess: @mut ParseSess,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     path: &Path
 ) -> Result<Parser, ~str> {
     match io::read_whole_file_str(path) {
@@ -257,7 +274,7 @@ pub fn new_parser_result_from_file(
 /// if the file doesn't exist
 pub fn new_parser_from_file(
     sess: @mut ParseSess,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     path: &Path
 ) -> Parser {
     match new_parser_result_from_file(sess, cfg, path) {
@@ -272,7 +289,7 @@ pub fn new_parser_from_file(
 /// error messages correctly when the file does not exist.
 pub fn new_sub_parser_from_file(
     sess: @mut ParseSess,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     path: &Path,
     sp: span
 ) -> Parser {
@@ -286,8 +303,8 @@ pub fn new_sub_parser_from_file(
 
 pub fn new_parser_from_tts(
     sess: @mut ParseSess,
-    +cfg: ast::crate_cfg,
-    +tts: ~[ast::token_tree]
+    cfg: ast::crate_cfg,
+    tts: ~[ast::token_tree]
 ) -> Parser {
     let trdr = lexer::new_tt_reader(
         copy sess.span_diagnostic,
@@ -299,7 +316,7 @@ pub fn new_parser_from_tts(
 }
 
 // abort if necessary
-pub fn maybe_aborted<T>(+result : T, p: Parser) -> T {
+pub fn maybe_aborted<T>(result : T, p: Parser) -> T {
     p.abort_if_errors();
     result
 }
@@ -313,6 +330,7 @@ mod test {
     use std;
     use core::io;
     use core::option::None;
+    use ast;
 
     #[test] fn to_json_str<E : Encodable<std::json::Encoder>>(val: @E) -> ~str {
         do io::with_str_writer |writer| {
@@ -320,10 +338,38 @@ mod test {
         }
     }
 
-    #[test] fn alltts () {
+    fn string_to_crate (source_str : @~str) -> @ast::crate {
+        parse_crate_from_source_str(
+            ~"bogofile",
+            source_str,
+            ~[],
+            new_parse_sess(None))
+    }
+
+    fn string_to_tt_to_crate (source_str : @~str) -> @ast::crate {
         let tts = parse_tts_from_source_str(
             ~"bogofile",
-            @~"fn foo (x : int) { x; }",
+           source_str,
+           ~[],
+           new_parse_sess(None));
+        new_parser_from_tts(new_parse_sess(None),~[],tts)
+            .parse_crate_mod(~[])
+    }
+
+    // make sure that parsing from TTs produces the same result
+    // as parsing from strings
+    #[test] fn tts_produce_the_same_result () {
+        let source_str = @~"fn foo (x : int) { x; }";
+        assert_eq!(string_to_tt_to_crate(source_str),
+                     string_to_crate(source_str));
+    }
+
+    // check the contents of the tt manually:
+    #[test] fn alltts () {
+        let source_str = @~"fn foo (x : int) { x; }";
+        let tts = parse_tts_from_source_str(
+            ~"bogofile",
+            source_str,
             ~[],
             new_parse_sess(None));
         assert_eq!(

@@ -12,20 +12,25 @@
 
 #[warn(non_camel_case_types)];
 
-use container::{Container, Mutable};
+use cast::transmute;
 use cast;
+use container::{Container, Mutable};
 use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use iter::BaseIter;
 use iter;
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+use iterator::Iterator;
 use kinds::Copy;
 use libc;
 use option::{None, Option, Some};
-use unstable::intrinsics;
+use ptr::to_unsafe_ptr;
 use ptr;
-use ptr::addr_of;
 use sys;
 use uint;
+use unstable::intrinsics;
 use vec;
 
 #[cfg(notest)] use cmp::Equiv;
@@ -39,9 +44,11 @@ pub mod rustrt {
     pub extern {
         // These names are terrible. reserve_shared applies
         // to ~[] and reserve_shared_actual applies to @[].
+        #[fast_ffi]
         unsafe fn vec_reserve_shared(++t: *sys::TypeDesc,
                                      ++v: **raw::VecRepr,
                                      ++n: libc::size_t);
+        #[fast_ffi]
         unsafe fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
                                             ++v: **raw::VecRepr,
                                             ++n: libc::size_t);
@@ -69,6 +76,7 @@ pub fn same_length<T, U>(xs: &const [T], ys: &const [U]) -> bool {
  * * v - A vector
  * * n - The number of elements to reserve space for
  */
+#[inline]
 pub fn reserve<T>(v: &mut ~[T], n: uint) {
     // Only make the (slow) call into the runtime if we have to
     use managed;
@@ -109,7 +117,7 @@ pub fn reserve_at_least<T>(v: &mut ~[T], n: uint) {
 #[inline(always)]
 pub fn capacity<T>(v: &const ~[T]) -> uint {
     unsafe {
-        let repr: **raw::VecRepr = ::cast::transmute(v);
+        let repr: **raw::VecRepr = transmute(v);
         (**repr).unboxed.alloc / sys::nonzero_size_of::<T>()
     }
 }
@@ -123,7 +131,7 @@ pub fn len<T>(v: &const [T]) -> uint {
 // A botch to tide us over until core and std are fully demuted.
 pub fn uniq_len<T>(v: &const ~[T]) -> uint {
     unsafe {
-        let v: &~[T] = ::cast::transmute(v);
+        let v: &~[T] = transmute(v);
         as_const_buf(*v, |_p, len| len)
     }
 }
@@ -165,9 +173,10 @@ pub fn from_slice<T:Copy>(t: &[T]) -> ~[T] {
     from_fn(t.len(), |i| t[i])
 }
 
+/// Creates a new vector with a capacity of `capacity`
 pub fn with_capacity<T>(capacity: uint) -> ~[T] {
     let mut vec = ~[];
-    unsafe { reserve(&mut vec, capacity); }
+    reserve(&mut vec, capacity);
     vec
 }
 
@@ -186,7 +195,7 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
 #[inline(always)]
 pub fn build_sized<A>(size: uint, builder: &fn(push: &fn(v: A))) -> ~[A] {
     let mut vec = with_capacity(size);
-    builder(|x| unsafe { vec.push(x) });
+    builder(|x| vec.push(x));
     vec
 }
 
@@ -271,9 +280,8 @@ pub fn slice<'r,T>(v: &'r [T], start: uint, end: uint) -> &'r [T] {
     assert!(end <= len(v));
     do as_imm_buf(v) |p, _len| {
         unsafe {
-            ::cast::reinterpret_cast(
-                &(ptr::offset(p, start),
-                  (end - start) * sys::nonzero_size_of::<T>()))
+            transmute((ptr::offset(p, start),
+                       (end - start) * sys::nonzero_size_of::<T>()))
         }
     }
 }
@@ -286,9 +294,8 @@ pub fn mut_slice<'r,T>(v: &'r mut [T], start: uint, end: uint)
     assert!(end <= v.len());
     do as_mut_buf(v) |p, _len| {
         unsafe {
-            ::cast::reinterpret_cast(
-                &(ptr::mut_offset(p, start),
-                  (end - start) * sys::nonzero_size_of::<T>()))
+            transmute((ptr::mut_offset(p, start),
+                       (end - start) * sys::nonzero_size_of::<T>()))
         }
     }
 }
@@ -301,9 +308,8 @@ pub fn const_slice<'r,T>(v: &'r const [T], start: uint, end: uint)
     assert!(end <= len(v));
     do as_const_buf(v) |p, _len| {
         unsafe {
-            ::cast::reinterpret_cast(
-                &(ptr::const_offset(p, start),
-                  (end - start) * sys::nonzero_size_of::<T>()))
+            transmute((ptr::const_offset(p, start),
+                       (end - start) * sys::nonzero_size_of::<T>()))
         }
     }
 }
@@ -437,12 +443,10 @@ pub fn partitioned<T:Copy>(v: &[T], f: &fn(&T) -> bool) -> (~[T], ~[T]) {
     let mut rights = ~[];
 
     for each(v) |elt| {
-        unsafe {
-            if f(elt) {
-                lefts.push(*elt);
-            } else {
-                rights.push(*elt);
-            }
+        if f(elt) {
+            lefts.push(*elt);
+        } else {
+            rights.push(*elt);
         }
     }
 
@@ -482,14 +486,14 @@ pub fn shift<T>(v: &mut ~[T]) -> T {
         {
             let first_slice = slice(*v, 0, 1);
             let last_slice = slice(*v, next_ln, ln);
-            raw::copy_memory(::cast::transmute(last_slice), first_slice, 1);
+            raw::copy_memory(transmute(last_slice), first_slice, 1);
         }
 
         // Memcopy everything to the left one element
         {
             let init_slice = slice(*v, 0, next_ln);
             let tail_slice = slice(*v, 1, ln);
-            raw::copy_memory(::cast::transmute(init_slice),
+            raw::copy_memory(transmute(init_slice),
                              tail_slice,
                              next_ln);
         }
@@ -619,7 +623,7 @@ pub fn swap_remove<T>(v: &mut ~[T], index: uint) -> T {
 #[inline(always)]
 pub fn push<T>(v: &mut ~[T], initval: T) {
     unsafe {
-        let repr: **raw::VecRepr = ::cast::transmute(&mut *v);
+        let repr: **raw::VecRepr = transmute(&mut *v);
         let fill = (**repr).unboxed.fill;
         if (**repr).unboxed.alloc > fill {
             push_fast(v, initval);
@@ -633,10 +637,10 @@ pub fn push<T>(v: &mut ~[T], initval: T) {
 // This doesn't bother to make sure we have space.
 #[inline(always)] // really pretty please
 unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
-    let repr: **raw::VecRepr = ::cast::transmute(v);
+    let repr: **mut raw::VecRepr = transmute(v);
     let fill = (**repr).unboxed.fill;
     (**repr).unboxed.fill += sys::nonzero_size_of::<T>();
-    let p = addr_of(&((**repr).unboxed.data));
+    let p = to_unsafe_ptr(&((**repr).unboxed.data));
     let p = ptr::offset(p, fill) as *mut T;
     intrinsics::move_val_init(&mut(*p), initval);
 }
@@ -735,16 +739,14 @@ pub fn dedup<T:Eq>(v: &mut ~[T]) {
 #[inline(always)]
 pub fn append<T:Copy>(lhs: ~[T], rhs: &const [T]) -> ~[T] {
     let mut v = lhs;
-    unsafe {
-        v.push_all(rhs);
-    }
+    v.push_all(rhs);
     v
 }
 
 #[inline(always)]
 pub fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
     let mut v = lhs;
-    unsafe { v.push(x); }
+    v.push(x);
     v
 }
 
@@ -811,9 +813,7 @@ pub fn grow_set<T:Copy>(v: &mut ~[T], index: uint, initval: &T, val: T) {
 pub fn map<T, U>(v: &[T], f: &fn(t: &T) -> U) -> ~[U] {
     let mut result = with_capacity(len(v));
     for each(v) |elem| {
-        unsafe {
-            result.push(f(elem));
-        }
+        result.push(f(elem));
     }
     result
 }
@@ -841,7 +841,7 @@ pub fn mapi<T, U>(v: &[T], f: &fn(uint, t: &T) -> U) -> ~[U] {
  */
 pub fn flat_map<T, U>(v: &[T], f: &fn(t: &T) -> ~[U]) -> ~[U] {
     let mut result = ~[];
-    for each(v) |elem| { unsafe{ result.push_all_move(f(elem)); } }
+    for each(v) |elem| { result.push_all_move(f(elem)); }
     result
 }
 
@@ -853,7 +853,7 @@ pub fn map2<T:Copy,U:Copy,V>(v0: &[T], v1: &[U],
     let mut u: ~[V] = ~[];
     let mut i = 0u;
     while i < v0_len {
-        unsafe { u.push(f(&v0[i], &v1[i])) };
+        u.push(f(&v0[i], &v1[i]));
         i += 1u;
     }
     u
@@ -894,7 +894,7 @@ pub fn filter_mapped<T, U: Copy>(
     for each(v) |elem| {
         match f(elem) {
           None => {/* no-op */ }
-          Some(result_elem) => unsafe { result.push(result_elem); }
+          Some(result_elem) => { result.push(result_elem); }
         }
     }
     result
@@ -927,7 +927,7 @@ pub fn filter<T>(v: ~[T], f: &fn(t: &T) -> bool) -> ~[T] {
 pub fn filtered<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[T] {
     let mut result = ~[];
     for each(v) |elem| {
-        if f(elem) { unsafe { result.push(*elem); } }
+        if f(elem) { result.push(*elem); }
     }
     result
 }
@@ -959,7 +959,7 @@ pub fn retain<T>(v: &mut ~[T], f: &fn(t: &T) -> bool) {
  */
 pub fn concat<T:Copy>(v: &[~[T]]) -> ~[T] {
     let mut r = ~[];
-    for each(v) |inner| { unsafe { r.push_all(*inner); } }
+    for each(v) |inner| { r.push_all(*inner); }
     r
 }
 
@@ -968,8 +968,8 @@ pub fn connect<T:Copy>(v: &[~[T]], sep: &T) -> ~[T] {
     let mut r: ~[T] = ~[];
     let mut first = true;
     for each(v) |inner| {
-        if first { first = false; } else { unsafe { r.push(*sep); } }
-        unsafe { r.push_all(*inner) };
+        if first { first = false; } else { r.push(*sep); }
+        r.push_all(*inner);
     }
     r
 }
@@ -1225,6 +1225,46 @@ pub fn rposition_between<T>(v: &[T], start: uint, end: uint,
     None
 }
 
+
+
+/**
+ * Binary search a sorted vector with a comparator function.
+ *
+ * The comparator should implement an order consistent with the sort
+ * order of the underlying vector, returning an order code that indicates
+ * whether its argument is `Less`, `Equal` or `Greater` the desired target.
+ *
+ * Returns the index where the comparator returned `Equal`, or `None` if
+ * not found.
+ */
+pub fn bsearch<T>(v: &[T], f: &fn(&T) -> Ordering) -> Option<uint> {
+    let mut base : uint = 0;
+    let mut lim : uint = v.len();
+
+    while lim != 0 {
+        let ix = base + (lim >> 1);
+        match f(&v[ix]) {
+            Equal => return Some(ix),
+            Less => {
+                base = ix + 1;
+                lim -= 1;
+            }
+            Greater => ()
+        }
+        lim >>= 1;
+    }
+    return None;
+}
+
+/**
+ * Binary search a sorted vector for a given element.
+ *
+ * Returns the index of the element or None if not found.
+ */
+pub fn bsearch_elem<T:TotalOrd>(v: &[T], x: &T) -> Option<uint> {
+    bsearch(v, |p| p.cmp(x))
+}
+
 // FIXME: if issue #586 gets implemented, could have a postcondition
 // saying the two result lists have the same length -- or, could
 // return a nominal record with a constraint saying that, instead of
@@ -1236,10 +1276,8 @@ pub fn unzip_slice<T:Copy,U:Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
     let mut ts = ~[], us = ~[];
     for each(v) |p| {
         let (t, u) = *p;
-        unsafe {
-            ts.push(t);
-            us.push(u);
-        }
+        ts.push(t);
+        us.push(u);
     }
     (ts, us)
 }
@@ -1254,12 +1292,10 @@ pub fn unzip_slice<T:Copy,U:Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
  */
 pub fn unzip<T,U>(v: ~[(T, U)]) -> (~[T], ~[U]) {
     let mut ts = ~[], us = ~[];
-    unsafe {
-        do consume(v) |_i, p| {
-            let (t, u) = p;
-            ts.push(t);
-            us.push(u);
-        }
+    do consume(v) |_i, p| {
+        let (t, u) = p;
+        ts.push(t);
+        us.push(u);
     }
     (ts, us)
 }
@@ -1274,7 +1310,8 @@ pub fn zip_slice<T:Copy,U:Copy>(v: &const [T], u: &const [U])
     let mut i = 0u;
     assert!(sz == len(u));
     while i < sz {
-        unsafe { zipped.push((v[i], u[i])); i += 1u; }
+        zipped.push((v[i], u[i]));
+        i += 1u;
     }
     zipped
 }
@@ -1290,10 +1327,10 @@ pub fn zip<T, U>(mut v: ~[T], mut u: ~[U]) -> ~[(T, U)] {
     assert!(i == len(u));
     let mut w = with_capacity(i);
     while i > 0 {
-        unsafe { w.push((v.pop(),u.pop())); }
+        w.push((v.pop(),u.pop()));
         i -= 1;
     }
-    unsafe { reverse(w); }
+    reverse(w);
     w
 }
 
@@ -1322,10 +1359,8 @@ pub fn reversed<T:Copy>(v: &const [T]) -> ~[T] {
     let mut rs: ~[T] = ~[];
     let mut i = len::<T>(v);
     if i == 0 { return (rs); } else { i -= 1; }
-    unsafe {
-        while i != 0 { rs.push(v[i]); i -= 1; }
-        rs.push(v[0]);
-    }
+    while i != 0 { rs.push(v[i]); i -= 1; }
+    rs.push(v[0]);
     rs
 }
 
@@ -1393,13 +1428,19 @@ pub fn each<'r,T>(v: &'r [T], f: &fn(&'r T) -> bool) {
 /// to mutate the contents as you iterate.
 #[inline(always)]
 pub fn each_mut<'r,T>(v: &'r mut [T], f: &fn(elem: &'r mut T) -> bool) {
-    let mut i = 0;
-    let n = v.len();
-    while i < n {
-        if !f(&mut v[i]) {
-            return;
+    do vec::as_mut_buf(v) |p, n| {
+        let mut n = n;
+        let mut p = p;
+        while n > 0 {
+            unsafe {
+                let q: &'r mut T = cast::transmute_mut_region(&mut *p);
+                if !f(q) {
+                    break;
+                }
+                p = p.offset(1);
+            }
+            n -= 1;
         }
-        i += 1;
     }
 }
 
@@ -1427,6 +1468,22 @@ pub fn eachi<'r,T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) {
     let mut i = 0;
     for each(v) |p| {
         if !f(i, p) { return; }
+        i += 1;
+    }
+}
+
+/**
+ * Iterates over a mutable vector's elements and indices
+ *
+ * Return true to continue, false to break.
+ */
+#[inline(always)]
+pub fn eachi_mut<'r,T>(v: &'r mut [T], f: &fn(uint, v: &'r mut T) -> bool) {
+    let mut i = 0;
+    for each_mut(v) |p| {
+        if !f(i, p) {
+            return;
+        }
         i += 1;
     }
 }
@@ -1495,12 +1552,10 @@ pub fn each_permutation<T:Copy>(v: &[T], put: &fn(ts: &[T]) -> bool) {
         while i < ln {
             let elt = v[i];
             let mut rest = slice(v, 0u, i).to_vec();
-            unsafe {
-                rest.push_all(const_slice(v, i+1u, ln));
-                for each_permutation(rest) |permutation| {
-                    if !put(append(~[elt], permutation)) {
-                        return;
-                    }
+            rest.push_all(const_slice(v, i+1u, ln));
+            for each_permutation(rest) |permutation| {
+                if !put(append(~[elt], permutation)) {
+                    return;
                 }
             }
             i += 1u;
@@ -1508,18 +1563,39 @@ pub fn each_permutation<T:Copy>(v: &[T], put: &fn(ts: &[T]) -> bool) {
     }
 }
 
-pub fn windowed<TT:Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
-    let mut ww = ~[];
-    assert!(1u <= nn);
-    for vec::eachi (xx) |ii, _x| {
-        let len = xx.len();
-        if ii+nn <= len {
-            unsafe {
-                ww.push(slice(xx, ii, ii+nn).to_vec());
-            }
-        }
+// see doc below
+#[cfg(stage0)] // XXX: lifetimes!
+pub fn windowed<T>(n: uint, v: &[T], it: &fn(&[T]) -> bool) {
+    assert!(1u <= n);
+    if n > v.len() { return; }
+    for uint::range(0, v.len() - n + 1) |i| {
+        if !it(v.slice(i, i+n)) { return }
     }
-    ww
+}
+
+/**
+ * Iterate over all contiguous windows of length `n` of the vector `v`.
+ *
+ * # Example
+ *
+ * Print the adjacent pairs of a vector (i.e. `[1,2]`, `[2,3]`, `[3,4]`)
+ *
+ * ~~~
+ * for windowed(2, &[1,2,3,4]) |v| {
+ *     io::println(fmt!("%?", v));
+ * }
+ * ~~~
+ *
+ */
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+pub fn windowed<'r, T>(n: uint, v: &'r [T], it: &fn(&'r [T]) -> bool) {
+    assert!(1u <= n);
+    if n > v.len() { return; }
+    for uint::range(0, v.len() - n + 1) |i| {
+        if !it(v.slice(i, i + n)) { return }
+    }
 }
 
 /**
@@ -1540,8 +1616,7 @@ pub fn as_imm_buf<T,U>(s: &[T],
     // instead!
 
     unsafe {
-        let v : *(*T,uint) =
-            ::cast::reinterpret_cast(&addr_of(&s));
+        let v : *(*T,uint) = transmute(&s);
         let (buf,len) = *v;
         f(buf, len / sys::nonzero_size_of::<T>())
     }
@@ -1551,8 +1626,7 @@ pub fn as_imm_buf<T,U>(s: &[T],
 #[inline(always)]
 pub fn as_const_buf<T,U>(s: &const [T], f: &fn(*const T, uint) -> U) -> U {
     unsafe {
-        let v : *(*const T,uint) =
-            ::cast::reinterpret_cast(&addr_of(&s));
+        let v : *(*const T,uint) = transmute(&s);
         let (buf,len) = *v;
         f(buf, len / sys::nonzero_size_of::<T>())
     }
@@ -1562,8 +1636,7 @@ pub fn as_const_buf<T,U>(s: &const [T], f: &fn(*const T, uint) -> U) -> U {
 #[inline(always)]
 pub fn as_mut_buf<T,U>(s: &mut [T], f: &fn(*mut T, uint) -> U) -> U {
     unsafe {
-        let v : *(*mut T,uint) =
-            ::cast::reinterpret_cast(&addr_of(&s));
+        let v : *(*mut T,uint) = transmute(&s);
         let (buf,len) = *v;
         f(buf, len / sys::nonzero_size_of::<T>())
     }
@@ -1679,7 +1752,7 @@ impl<T: TotalOrd> TotalOrd for @[T] {
 
 fn lt<T:Ord>(a: &[T], b: &[T]) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
-    let mut end = uint::min(a_len, b_len);
+    let end = uint::min(a_len, b_len);
 
     let mut i = 0;
     while i < end {
@@ -1778,6 +1851,7 @@ impl<'self,T:Copy> CopyableVector<T> for &'self const [T] {
     }
 }
 
+#[cfg(stage0)]
 pub trait ImmutableVector<T> {
     fn slice(&self, start: uint, end: uint) -> &'self [T];
     fn head(&self) -> &'self T;
@@ -1797,9 +1871,11 @@ pub trait ImmutableVector<T> {
     fn alli(&self, f: &fn(uint, t: &T) -> bool) -> bool;
     fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U];
     fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U];
+    unsafe fn unsafe_ref(&self, index: uint) -> *T;
 }
 
 /// Extension methods for vectors
+#[cfg(stage0)]
 impl<'self,T> ImmutableVector<T> for &'self [T] {
     /// Return a slice that points into another slice.
     #[inline]
@@ -1906,6 +1982,169 @@ impl<'self,T> ImmutableVector<T> for &'self [T] {
     fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U] {
         filter_mapped(*self, f)
     }
+
+    /// Returns a pointer to the element at the given index, without doing
+    /// bounds checking.
+    #[inline(always)]
+    unsafe fn unsafe_ref(&self, index: uint) -> *T {
+        let (ptr, _): (*T, uint) = transmute(*self);
+        ptr.offset(index)
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+pub trait ImmutableVector<'self, T> {
+    fn slice(&self, start: uint, end: uint) -> &'self [T];
+    fn iter(self) -> VecIterator<'self, T>;
+    fn head(&self) -> &'self T;
+    fn head_opt(&self) -> Option<&'self T>;
+    fn tail(&self) -> &'self [T];
+    fn tailn(&self, n: uint) -> &'self [T];
+    fn init(&self) -> &'self [T];
+    fn initn(&self, n: uint) -> &'self [T];
+    fn last(&self) -> &'self T;
+    fn last_opt(&self) -> Option<&'self T>;
+    fn each_reverse(&self, blk: &fn(&T) -> bool);
+    fn eachi_reverse(&self, blk: &fn(uint, &T) -> bool);
+    fn foldr<U: Copy>(&self, z: U, p: &fn(t: &T, u: U) -> U) -> U;
+    fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U];
+    fn mapi<U>(&self, f: &fn(uint, t: &T) -> U) -> ~[U];
+    fn map_r<U>(&self, f: &fn(x: &T) -> U) -> ~[U];
+    fn alli(&self, f: &fn(uint, t: &T) -> bool) -> bool;
+    fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U];
+    fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U];
+    unsafe fn unsafe_ref(&self, index: uint) -> *T;
+}
+
+/// Extension methods for vectors
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
+    /// Return a slice that points into another slice.
+    #[inline]
+    fn slice(&self, start: uint, end: uint) -> &'self [T] {
+        slice(*self, start, end)
+    }
+
+    #[inline]
+    fn iter(self) -> VecIterator<'self, T> {
+        unsafe {
+            let p = vec::raw::to_ptr(self);
+            VecIterator{ptr: p, end: p.offset(self.len()),
+                        lifetime: cast::transmute(p)}
+        }
+    }
+
+    /// Returns the first element of a vector, failing if the vector is empty.
+    #[inline]
+    fn head(&self) -> &'self T { head(*self) }
+
+    /// Returns the first element of a vector
+    #[inline]
+    fn head_opt(&self) -> Option<&'self T> { head_opt(*self) }
+
+    /// Returns all but the first element of a vector
+    #[inline]
+    fn tail(&self) -> &'self [T] { tail(*self) }
+
+    /// Returns all but the first `n' elements of a vector
+    #[inline]
+    fn tailn(&self, n: uint) -> &'self [T] { tailn(*self, n) }
+
+    /// Returns all but the last elemnt of a vector
+    #[inline]
+    fn init(&self) -> &'self [T] { init(*self) }
+
+    /// Returns all but the last `n' elemnts of a vector
+    #[inline]
+    fn initn(&self, n: uint) -> &'self [T] { initn(*self, n) }
+
+    /// Returns the last element of a `v`, failing if the vector is empty.
+    #[inline]
+    fn last(&self) -> &'self T { last(*self) }
+
+    /// Returns the last element of a `v`, failing if the vector is empty.
+    #[inline]
+    fn last_opt(&self) -> Option<&'self T> { last_opt(*self) }
+
+    /// Iterates over a vector's elements in reverse.
+    #[inline]
+    fn each_reverse(&self, blk: &fn(&T) -> bool) {
+        each_reverse(*self, blk)
+    }
+
+    /// Iterates over a vector's elements and indices in reverse.
+    #[inline]
+    fn eachi_reverse(&self, blk: &fn(uint, &T) -> bool) {
+        eachi_reverse(*self, blk)
+    }
+
+    /// Reduce a vector from right to left
+    #[inline]
+    fn foldr<U:Copy>(&self, z: U, p: &fn(t: &T, u: U) -> U) -> U {
+        foldr(*self, z, p)
+    }
+
+    /// Apply a function to each element of a vector and return the results
+    #[inline]
+    fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U] { map(*self, f) }
+
+    /**
+     * Apply a function to the index and value of each element in the vector
+     * and return the results
+     */
+    fn mapi<U>(&self, f: &fn(uint, t: &T) -> U) -> ~[U] {
+        mapi(*self, f)
+    }
+
+    #[inline]
+    fn map_r<U>(&self, f: &fn(x: &T) -> U) -> ~[U] {
+        let mut r = ~[];
+        let mut i = 0;
+        while i < self.len() {
+            r.push(f(&self[i]));
+            i += 1;
+        }
+        r
+    }
+
+    /**
+     * Returns true if the function returns true for all elements.
+     *
+     *     If the vector is empty, true is returned.
+     */
+    fn alli(&self, f: &fn(uint, t: &T) -> bool) -> bool {
+        alli(*self, f)
+    }
+    /**
+     * Apply a function to each element of a vector and return a concatenation
+     * of each result vector
+     */
+    #[inline]
+    fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U] {
+        flat_map(*self, f)
+    }
+    /**
+     * Apply a function to each element of a vector and return the results
+     *
+     * If function `f` returns `none` then that element is excluded from
+     * the resulting vector.
+     */
+    #[inline]
+    fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U] {
+        filter_mapped(*self, f)
+    }
+
+    /// Returns a pointer to the element at the given index, without doing
+    /// bounds checking.
+    #[inline(always)]
+    unsafe fn unsafe_ref(&self, index: uint) -> *T {
+        let (ptr, _): (*T, uint) = transmute(*self);
+        ptr.offset(index)
+    }
 }
 
 pub trait ImmutableEqVector<T:Eq> {
@@ -1957,6 +2196,7 @@ pub trait ImmutableCopyableVector<T> {
     fn filtered(&self, f: &fn(&T) -> bool) -> ~[T];
     fn rfind(&self, f: &fn(t: &T) -> bool) -> Option<T>;
     fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
+    unsafe fn unsafe_get(&self, elem: uint) -> T;
 }
 
 /// Extension methods for vectors
@@ -1992,6 +2232,12 @@ impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
     #[inline]
     fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]) {
         partitioned(*self, f)
+    }
+
+    /// Returns the element at the given index, without doing bounds checking.
+    #[inline(always)]
+    unsafe fn unsafe_get(&self, index: uint) -> T {
+        *self.unsafe_ref(index)
     }
 }
 
@@ -2133,6 +2379,25 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
     }
 }
 
+pub trait MutableVector<T> {
+    unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T;
+    unsafe fn unsafe_set(&self, index: uint, val: T);
+}
+
+impl<'self,T> MutableVector<T> for &'self mut [T] {
+    #[inline(always)]
+    unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T {
+        let pair_ptr: &(*mut T, uint) = transmute(self);
+        let (ptr, _) = *pair_ptr;
+        ptr.offset(index)
+    }
+
+    #[inline(always)]
+    unsafe fn unsafe_set(&self, index: uint, val: T) {
+        *self.unsafe_mut_ref(index) = val;
+    }
+}
+
 /**
 * Constructs a vector from an unsafe pointer to a buffer
 *
@@ -2148,20 +2413,20 @@ pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
 
 /// The internal 'unboxed' representation of a vector
 pub struct UnboxedVecRepr {
-    mut fill: uint,
-    mut alloc: uint,
+    fill: uint,
+    alloc: uint,
     data: u8
 }
 
 /// Unsafe operations
 pub mod raw {
+    use cast::transmute;
     use kinds::Copy;
     use managed;
     use option::{None, Some};
-    use unstable::intrinsics;
-    use ptr::addr_of;
     use ptr;
     use sys;
+    use unstable::intrinsics;
     use vec::{UnboxedVecRepr, as_const_buf, as_mut_buf, len, with_capacity};
 
     /// The internal representation of a (boxed) vector
@@ -2171,8 +2436,8 @@ pub mod raw {
     }
 
     pub struct SliceRepr {
-        mut data: *u8,
-        mut len: uint
+        data: *u8,
+        len: uint
     }
 
     /**
@@ -2184,7 +2449,7 @@ pub mod raw {
      */
     #[inline(always)]
     pub unsafe fn set_len<T>(v: &mut ~[T], new_len: uint) {
-        let repr: **VecRepr = ::cast::transmute(v);
+        let repr: **mut VecRepr = transmute(v);
         (**repr).unboxed.fill = new_len * sys::nonzero_size_of::<T>();
     }
 
@@ -2199,22 +2464,22 @@ pub mod raw {
      */
     #[inline(always)]
     pub unsafe fn to_ptr<T>(v: &[T]) -> *T {
-        let repr: **SliceRepr = ::cast::transmute(&v);
-        ::cast::reinterpret_cast(&addr_of(&((**repr).data)))
+        let repr: **SliceRepr = transmute(&v);
+        transmute(&((**repr).data))
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
     pub unsafe fn to_const_ptr<T>(v: &const [T]) -> *const T {
-        let repr: **SliceRepr = ::cast::transmute(&v);
-        ::cast::reinterpret_cast(&addr_of(&((**repr).data)))
+        let repr: **SliceRepr = transmute(&v);
+        transmute(&((**repr).data))
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
     pub unsafe fn to_mut_ptr<T>(v: &mut [T]) -> *mut T {
-        let repr: **SliceRepr = ::cast::transmute(&v);
-        ::cast::reinterpret_cast(&addr_of(&((**repr).data)))
+        let repr: **SliceRepr = transmute(&v);
+        transmute(&((**repr).data))
     }
 
     /**
@@ -2226,8 +2491,7 @@ pub mod raw {
                                     len: uint,
                                     f: &fn(v: &[T]) -> U) -> U {
         let pair = (p, len * sys::nonzero_size_of::<T>());
-        let v : *(&'blk [T]) =
-            ::cast::reinterpret_cast(&addr_of(&pair));
+        let v : *(&'blk [T]) = transmute(&pair);
         f(*v)
     }
 
@@ -2240,8 +2504,7 @@ pub mod raw {
                                         len: uint,
                                         f: &fn(v: &mut [T]) -> U) -> U {
         let pair = (p, len * sys::nonzero_size_of::<T>());
-        let v : *(&'blk mut [T]) =
-            ::cast::reinterpret_cast(&addr_of(&pair));
+        let v : *(&'blk mut [T]) = transmute(&pair);
         f(*v)
     }
 
@@ -2368,6 +2631,7 @@ pub mod bytes {
 // ___________________________________________________________________________
 // ITERATION TRAIT METHODS
 
+#[cfg(stage0)]
 impl<'self,A> iter::BaseIter<A> for &'self [A] {
     #[inline(always)]
     fn each(&self, blk: &fn(v: &'self A) -> bool) { each(*self, blk) }
@@ -2375,7 +2639,18 @@ impl<'self,A> iter::BaseIter<A> for &'self [A] {
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+impl<'self,A> iter::BaseIter<A> for &'self [A] {
+    #[inline(always)]
+    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) { each(*self, blk) }
+    #[inline(always)]
+    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+}
+
 // FIXME(#4148): This should be redundant
+#[cfg(stage0)]
 impl<A> iter::BaseIter<A> for ~[A] {
     #[inline(always)]
     fn each(&self, blk: &fn(v: &'self A) -> bool) { each(*self, blk) }
@@ -2384,6 +2659,18 @@ impl<A> iter::BaseIter<A> for ~[A] {
 }
 
 // FIXME(#4148): This should be redundant
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+impl<A> iter::BaseIter<A> for ~[A] {
+    #[inline(always)]
+    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) { each(*self, blk) }
+    #[inline(always)]
+    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+}
+
+// FIXME(#4148): This should be redundant
+#[cfg(stage0)]
 impl<A> iter::BaseIter<A> for @[A] {
     #[inline(always)]
     fn each(&self, blk: &fn(v: &'self A) -> bool) { each(*self, blk) }
@@ -2391,6 +2678,18 @@ impl<A> iter::BaseIter<A> for @[A] {
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
+// FIXME(#4148): This should be redundant
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+impl<A> iter::BaseIter<A> for @[A] {
+    #[inline(always)]
+    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) { each(*self, blk) }
+    #[inline(always)]
+    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+}
+
+#[cfg(stage0)]
 impl<'self,A> iter::MutableIter<A> for &'self mut [A] {
     #[inline(always)]
     fn each_mut(&mut self, blk: &fn(v: &'self mut A) -> bool) {
@@ -2398,10 +2697,31 @@ impl<'self,A> iter::MutableIter<A> for &'self mut [A] {
     }
 }
 
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+impl<'self,A> iter::MutableIter<A> for &'self mut [A] {
+    #[inline(always)]
+    fn each_mut<'a>(&'a mut self, blk: &fn(v: &'a mut A) -> bool) {
+        each_mut(*self, blk)
+    }
+}
+
 // FIXME(#4148): This should be redundant
+#[cfg(stage0)]
 impl<A> iter::MutableIter<A> for ~[A] {
     #[inline(always)]
     fn each_mut(&mut self, blk: &fn(v: &'self mut A) -> bool) {
+        each_mut(*self, blk)
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+impl<A> iter::MutableIter<A> for ~[A] {
+    #[inline(always)]
+    fn each_mut<'a>(&'a mut self, blk: &fn(v: &'a mut A) -> bool) {
         each_mut(*self, blk)
     }
 }
@@ -2436,6 +2756,13 @@ impl<'self,A> iter::ExtendedIter<A> for &'self [A] {
     fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
         -> ~[B] {
         iter::flat_map_to_vec(self, op)
+    }
+}
+
+impl<'self,A> iter::ExtendedMutableIter<A> for &'self mut [A] {
+    #[inline(always)]
+    pub fn eachi_mut(&mut self, blk: &fn(uint, v: &mut A) -> bool) {
+        eachi_mut(*self, blk)
     }
 }
 
@@ -2596,7 +2923,33 @@ impl<A:Clone> Clone for ~[A] {
     }
 }
 
-// ___________________________________________________________________________
+// could be implemented with &[T] with .slice(), but this avoids bounds checks
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+pub struct VecIterator<'self, T> {
+    priv ptr: *T,
+    priv end: *T,
+    priv lifetime: &'self T // FIXME: #5922
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+impl<'self, T> Iterator<&'self T> for VecIterator<'self, T> {
+    #[inline]
+    fn next(&mut self) -> Option<&'self T> {
+        unsafe {
+            if self.ptr == self.end {
+                None
+            } else {
+                let old = self.ptr;
+                self.ptr = self.ptr.offset(1);
+                Some(cast::transmute(old))
+            }
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -3472,6 +3825,51 @@ mod tests {
     }
 
     #[test]
+    fn test_bsearch_elem() {
+        assert!(bsearch_elem([1,2,3,4,5], &5) == Some(4));
+        assert!(bsearch_elem([1,2,3,4,5], &4) == Some(3));
+        assert!(bsearch_elem([1,2,3,4,5], &3) == Some(2));
+        assert!(bsearch_elem([1,2,3,4,5], &2) == Some(1));
+        assert!(bsearch_elem([1,2,3,4,5], &1) == Some(0));
+
+        assert!(bsearch_elem([2,4,6,8,10], &1) == None);
+        assert!(bsearch_elem([2,4,6,8,10], &5) == None);
+        assert!(bsearch_elem([2,4,6,8,10], &4) == Some(1));
+        assert!(bsearch_elem([2,4,6,8,10], &10) == Some(4));
+
+        assert!(bsearch_elem([2,4,6,8], &1) == None);
+        assert!(bsearch_elem([2,4,6,8], &5) == None);
+        assert!(bsearch_elem([2,4,6,8], &4) == Some(1));
+        assert!(bsearch_elem([2,4,6,8], &8) == Some(3));
+
+        assert!(bsearch_elem([2,4,6], &1) == None);
+        assert!(bsearch_elem([2,4,6], &5) == None);
+        assert!(bsearch_elem([2,4,6], &4) == Some(1));
+        assert!(bsearch_elem([2,4,6], &6) == Some(2));
+
+        assert!(bsearch_elem([2,4], &1) == None);
+        assert!(bsearch_elem([2,4], &5) == None);
+        assert!(bsearch_elem([2,4], &2) == Some(0));
+        assert!(bsearch_elem([2,4], &4) == Some(1));
+
+        assert!(bsearch_elem([2], &1) == None);
+        assert!(bsearch_elem([2], &5) == None);
+        assert!(bsearch_elem([2], &2) == Some(0));
+
+        assert!(bsearch_elem([], &1) == None);
+        assert!(bsearch_elem([], &5) == None);
+
+        assert!(bsearch_elem([1,1,1,1,1], &1) != None);
+        assert!(bsearch_elem([1,1,1,1,2], &1) != None);
+        assert!(bsearch_elem([1,1,1,2,2], &1) != None);
+        assert!(bsearch_elem([1,1,2,2,2], &1) != None);
+        assert!(bsearch_elem([1,2,2,2,2], &1) == Some(0));
+
+        assert!(bsearch_elem([1,2,3,4,5], &6) == None);
+        assert!(bsearch_elem([1,2,3,4,5], &0) == None);
+    }
+
+    #[test]
     fn reverse_and_reversed() {
         let mut v: ~[int] = ~[10, 20];
         assert!(v[0] == 10);
@@ -3494,7 +3892,7 @@ mod tests {
 
     #[test]
     fn reversed_mut() {
-        let mut v2 = reversed::<int>(~[10, 20]);
+        let v2 = reversed::<int>(~[10, 20]);
         assert!(v2[0] == 20);
         assert!(v2[1] == 10);
     }
@@ -3581,20 +3979,27 @@ mod tests {
 
     #[test]
     fn test_windowed () {
-        assert!(~[~[1u,2u,3u],~[2u,3u,4u],~[3u,4u,5u],~[4u,5u,6u]]
-                     == windowed (3u, ~[1u,2u,3u,4u,5u,6u]));
+        fn t(n: uint, expected: &[&[int]]) {
+            let mut i = 0;
+            for windowed(n, ~[1,2,3,4,5,6]) |v| {
+                assert_eq!(v, expected[i]);
+                i += 1;
+            }
 
-        assert!(~[~[1u,2u,3u,4u],~[2u,3u,4u,5u],~[3u,4u,5u,6u]]
-                     == windowed (4u, ~[1u,2u,3u,4u,5u,6u]));
-
-        assert!(~[] == windowed (7u, ~[1u,2u,3u,4u,5u,6u]));
+            // check that we actually iterated the right number of times
+            assert_eq!(i, expected.len());
+        }
+        t(3, &[&[1,2,3],&[2,3,4],&[3,4,5],&[4,5,6]]);
+        t(4, &[&[1,2,3,4],&[2,3,4,5],&[3,4,5,6]]);
+        t(7, &[]);
+        t(8, &[]);
     }
 
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_windowed_() {
-        let _x = windowed (0u, ~[1u,2u,3u,4u,5u,6u]);
+        for windowed (0u, ~[1u,2u,3u,4u,5u,6u]) |_v| {}
     }
 
     #[test]
@@ -4216,12 +4621,17 @@ mod tests {
         [1, 2, 3, 4, 5, 5, 5, 5].cmp(& &[1, 2, 3, 4, 5, 6]) == Less;
         [2, 2].cmp(& &[1, 2, 3, 4]) == Greater;
     }
-}
 
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
+    #[test]
+    fn test_iterator() {
+        use iterator::*;
+        let xs = [1, 2, 5, 10, 11];
+        let ys = [1, 2, 5, 10, 11, 19];
+        let mut it = xs.iter();
+        let mut i = 0;
+        for it.advance |&x| {
+            assert_eq!(x, ys[i]);
+            i += 1;
+        }
+    }
+}

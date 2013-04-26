@@ -167,7 +167,7 @@ use middle::trans::type_of;
 use middle::ty;
 use util::common::indenter;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_util::path_to_ident;
@@ -248,7 +248,7 @@ pub enum opt_result {
 pub fn trans_opt(bcx: block, o: &Opt) -> opt_result {
     let _icx = bcx.insn_ctxt("match::trans_opt");
     let ccx = bcx.ccx();
-    let mut bcx = bcx;
+    let bcx = bcx;
     match *o {
         lit(ExprLit(lit_expr)) => {
             let datumblock = expr::trans_to_datum(bcx, lit_expr);
@@ -323,7 +323,7 @@ pub struct BindingInfo {
     ty: ty::t,
 }
 
-pub type BindingsMap = LinearMap<ident, BindingInfo>;
+pub type BindingsMap = HashMap<ident, BindingInfo>;
 
 pub struct ArmData<'self> {
     bodycx: block,
@@ -785,7 +785,7 @@ pub fn enter_region<'r>(bcx: block,
 // on a set of enum variants or a literal.
 pub fn get_options(bcx: block, m: &[@Match], col: uint) -> ~[Opt] {
     let ccx = bcx.ccx();
-    fn add_to_set(tcx: ty::ctxt, set: &mut ~[Opt], +val: Opt) {
+    fn add_to_set(tcx: ty::ctxt, set: &mut ~[Opt], val: Opt) {
         if set.any(|l| opt_eq(tcx, l, &val)) {return;}
         set.push(val);
     }
@@ -1073,8 +1073,7 @@ pub fn compare_values(cx: block,
 
     match ty::get(rhs_t).sty {
         ty::ty_estr(ty::vstore_uniq) => {
-            let scratch_result = scratch_datum(cx, ty::mk_bool(cx.tcx()),
-                                               false);
+            let scratch_result = scratch_datum(cx, ty::mk_bool(), false);
             let scratch_lhs = alloca(cx, val_ty(lhs));
             Store(cx, lhs, scratch_lhs);
             let scratch_rhs = alloca(cx, val_ty(rhs));
@@ -1092,8 +1091,7 @@ pub fn compare_values(cx: block,
             }
         }
         ty::ty_estr(_) => {
-            let scratch_result = scratch_datum(cx, ty::mk_bool(cx.tcx()),
-                                               false);
+            let scratch_result = scratch_datum(cx, ty::mk_bool(), false);
             let did = cx.tcx().lang_items.str_eq_fn();
             let bcx = callee::trans_lang_call(cx, did,
                                                         ~[lhs, rhs],
@@ -1620,7 +1618,7 @@ pub fn trans_match_inner(scope_cx: block,
         // to an alloca() that will be the value for that local variable.
         // Note that we use the names because each binding will have many ids
         // from the various alternatives.
-        let mut bindings_map = LinearMap::new();
+        let mut bindings_map = HashMap::new();
         do pat_bindings(tcx.def_map, arm.pats[0]) |bm, p_id, _s, path| {
             let ident = path_to_ident(path);
             let variable_ty = node_id_type(bcx, p_id);

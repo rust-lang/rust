@@ -10,6 +10,7 @@
 
 
 #include "rust_thread.h"
+#include <limits.h>
 
 const size_t default_stack_sz = 1024*1024;
 
@@ -41,6 +42,11 @@ rust_thread::start() {
 #if defined(__WIN32__)
    thread = CreateThread(NULL, stack_sz, rust_thread_start, this, 0, NULL);
 #else
+   // PTHREAD_STACK_MIN of some system is larger than default size
+   // so we check stack_sz to prevent assertion failure.
+   if (stack_sz < PTHREAD_STACK_MIN) {
+      stack_sz = PTHREAD_STACK_MIN;
+   }
    pthread_attr_t attr;
    CHECKED(pthread_attr_init(&attr));
    CHECKED(pthread_attr_setstacksize(&attr, stack_sz));

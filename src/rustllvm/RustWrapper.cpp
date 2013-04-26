@@ -15,14 +15,14 @@
 //
 //===----------------------------------------------------------------------===
 
-#include "llvm/InlineAsm.h"
-#include "llvm/LLVMContext.h"
+#include "llvm/IR/InlineAsm.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/Linker.h"
 #include "llvm/PassManager.h"
+#include "llvm/IR/InlineAsm.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/Analysis/Passes.h"
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/IPO.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/Assembly/Parser.h"
@@ -31,11 +31,9 @@
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Target/TargetMachine.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/SourceMgr.h"
-#include "llvm/Target/TargetOptions.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/DynamicLibrary.h"
@@ -45,6 +43,10 @@
 #include "llvm/ExecutionEngine/JITMemoryManager.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/ExecutionEngine/Interpreter.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/IPO.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/BitReader.h"
 #include "llvm-c/Object.h"
@@ -61,6 +63,8 @@ using namespace llvm;
 using namespace llvm::sys;
 
 static const char *LLVMRustError;
+
+extern cl::opt<bool> EnableARMEHABI;
 
 extern "C" LLVMMemoryBufferRef
 LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {
@@ -150,7 +154,9 @@ public:
                                        unsigned SectionID);
 
   virtual uint8_t *allocateDataSection(uintptr_t Size, unsigned Alignment,
-                                       unsigned SectionID);
+                                       unsigned SectionID, bool isReadOnly);
+
+  virtual bool applyPermissions(std::string *Str);
 
   virtual void *getPointerToNamedFunction(const std::string &Name,
                                           bool AbortOnFailure = true);
@@ -232,8 +238,9 @@ bool RustMCJITMemoryManager::loadCrate(const char* file, std::string* err) {
 }
 
 uint8_t *RustMCJITMemoryManager::allocateDataSection(uintptr_t Size,
-                                                    unsigned Alignment,
-                                                    unsigned SectionID) {
+                                                     unsigned Alignment,
+                                                     unsigned SectionID,
+                                                     bool isReadOnly) {
   if (!Alignment)
     Alignment = 16;
   uint8_t *Addr = (uint8_t*)calloc((Size + Alignment - 1)/Alignment, Alignment);
@@ -241,9 +248,14 @@ uint8_t *RustMCJITMemoryManager::allocateDataSection(uintptr_t Size,
   return Addr;
 }
 
+bool RustMCJITMemoryManager::applyPermissions(std::string *Str) {
+    // Empty.
+    return true;
+}
+
 uint8_t *RustMCJITMemoryManager::allocateCodeSection(uintptr_t Size,
-                                                    unsigned Alignment,
-                                                    unsigned SectionID) {
+                                                     unsigned Alignment,
+                                                     unsigned SectionID) {
   if (!Alignment)
     Alignment = 16;
   unsigned NeedAllocate = Alignment * ((Size + Alignment - 1)/Alignment + 1);
@@ -422,6 +434,7 @@ extern "C" bool
 LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
                         LLVMModuleRef M,
                         const char *triple,
+                        const char *feature,
                         const char *path,
                         TargetMachine::CodeGenFileType FileType,
                         CodeGenOpt::Level OptLevel,
@@ -429,26 +442,36 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
 
   LLVMRustInitializeTargets();
 
-  int argc = 3;
-  const char* argv[] = {"rustc", "-arm-enable-ehabi",
-      "-arm-enable-ehabi-descriptors"};
-  cl::ParseCommandLineOptions(argc, argv);
+  // Initializing the command-line options more than once is not
+  // allowed. So, check if they've already been initialized.
+  // (This could happen if we're being called from rustpkg, for
+  // example.)
+  if (!EnableARMEHABI) {
+    int argc = 3;
+    const char* argv[] = {"rustc", "-arm-enable-ehabi",
+			  "-arm-enable-ehabi-descriptors"};
+    cl::ParseCommandLineOptions(argc, argv);
+  }
 
   TargetOptions Options;
   Options.NoFramePointerElim = true;
   Options.EnableSegmentedStacks = EnableSegmentedStacks;
+  Options.FixedStackSegmentSize = 2 * 1024 * 1024;  // XXX: This is too big.
+
+  PassManager *PM = unwrap<PassManager>(PMR);
 
   std::string Err;
   std::string Trip(Triple::normalize(triple));
-  std::string FeaturesStr;
+  std::string FeaturesStr(feature);
   std::string CPUStr("generic");
   const Target *TheTarget = TargetRegistry::lookupTarget(Trip, Err);
   TargetMachine *Target =
     TheTarget->createTargetMachine(Trip, CPUStr, FeaturesStr,
 				   Options, Reloc::PIC_,
 				   CodeModel::Default, OptLevel);
+  Target->addAnalysisPasses(*PM);
+
   bool NoVerify = false;
-  PassManager *PM = unwrap<PassManager>(PMR);
   std::string ErrorInfo;
   raw_fd_ostream OS(path, ErrorInfo,
                     raw_fd_ostream::F_Binary);
@@ -467,13 +490,12 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
 }
 
 extern "C" LLVMModuleRef LLVMRustParseAssemblyFile(const char *Filename) {
-
   SMDiagnostic d;
   Module *m = ParseAssemblyFile(Filename, d, getGlobalContext());
   if (m) {
     return wrap(m);
   } else {
-    LLVMRustError = d.getMessage().c_str();
+    LLVMRustError = d.getMessage().str().c_str();
     return NULL;
   }
 }

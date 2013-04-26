@@ -54,7 +54,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
           csearch::found(ast::ii_item(item)) => {
             ccx.external.insert(fn_id, Some(item.id));
             ccx.stats.n_inlines += 1;
-            if translate { trans_item(ccx, *item); }
+            if translate { trans_item(ccx, item); }
             local_def(item.id)
           }
           csearch::found(ast::ii_foreign(item)) => {
@@ -76,7 +76,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
               _ => ccx.sess.bug(~"maybe_instantiate_inline: item has a \
                     non-enum parent")
             }
-            if translate { trans_item(ccx, *item); }
+            if translate { trans_item(ccx, item); }
             local_def(my_id)
           }
           csearch::found_parent(_, _) => {
@@ -86,14 +86,11 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
           csearch::found(ast::ii_method(impl_did, mth)) => {
             ccx.stats.n_inlines += 1;
             ccx.external.insert(fn_id, Some(mth.id));
-            let ty::ty_param_bounds_and_ty {
-                bounds: impl_bnds,
-                region_param: _,
-                ty: _
-            } = ty::lookup_item_type(ccx.tcx, impl_did);
-            if translate &&
-                impl_bnds.len() + mth.generics.ty_params.len() == 0u
-            {
+            let impl_tpt = ty::lookup_item_type(ccx.tcx, impl_did);
+            let num_type_params =
+                impl_tpt.generics.type_param_defs.len() +
+                mth.generics.ty_params.len();
+            if translate && num_type_params == 0 {
                 let llfn = get_item_val(ccx, mth.id);
                 let path = vec::append(
                     ty::item_path(ccx.tcx, impl_did),
@@ -119,7 +116,8 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
                          self_kind,
                          None,
                          mth.id,
-                         Some(impl_did));
+                         Some(impl_did),
+                         []);
             }
             local_def(mth.id)
           }

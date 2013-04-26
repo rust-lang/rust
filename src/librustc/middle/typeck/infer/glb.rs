@@ -154,10 +154,6 @@ impl Combine for Glb {
         super_trait_stores(self, vk, a, b)
     }
 
-    fn modes(&self, a: ast::mode, b: ast::mode) -> cres<ast::mode> {
-        super_modes(self, a, b)
-    }
-
     fn args(&self, a: ty::arg, b: ty::arg) -> cres<ty::arg> {
         super_args(self, a, b)
     }
@@ -299,10 +295,11 @@ impl Combine for Glb {
         super_closure_tys(self, a, b)
     }
 
-    fn substs(&self, did: ast::def_id,
+    fn substs(&self,
+              generics: &ty::Generics,
               as_: &ty::substs,
               bs: &ty::substs) -> cres<ty::substs> {
-        super_substs(self, did, as_, bs)
+        super_substs(self, generics, as_, bs)
     }
 
     fn tps(&self, as_: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {
@@ -312,6 +309,10 @@ impl Combine for Glb {
     fn self_tys(&self, a: Option<ty::t>, b: Option<ty::t>)
                -> cres<Option<ty::t>> {
         super_self_tys(self, a, b)
+    }
+
+    fn trait_refs(&self, a: &ty::TraitRef, b: &ty::TraitRef) -> cres<ty::TraitRef> {
+        super_trait_refs(self, a, b)
     }
 }
 

@@ -29,10 +29,9 @@ use middle::pat_util;
 use middle::ty::{ty_region};
 use middle::ty;
 use util::common::indenter;
-use util::ppaux::{expr_repr, region_to_str};
+use util::ppaux::{Repr, region_to_str};
 
-use core::hashmap::linear::{LinearSet, LinearMap};
-use core::vec;
+use core::hashmap::{HashSet, HashMap};
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 use syntax::codemap::span;
@@ -72,23 +71,23 @@ struct GatherLoanCtxt {
     req_maps: ReqMaps,
     item_ub: ast::node_id,
     root_ub: ast::node_id,
-    ignore_adjustments: LinearSet<ast::node_id>
+    ignore_adjustments: HashSet<ast::node_id>
 }
 
 pub fn gather_loans(bccx: @BorrowckCtxt, crate: @ast::crate) -> ReqMaps {
     let glcx = @mut GatherLoanCtxt {
         bccx: bccx,
-        req_maps: ReqMaps { req_loan_map: LinearMap::new(),
-                            pure_map: LinearMap::new() },
+        req_maps: ReqMaps { req_loan_map: HashMap::new(),
+                            pure_map: HashMap::new() },
         item_ub: 0,
         root_ub: 0,
-        ignore_adjustments: LinearSet::new()
+        ignore_adjustments: HashSet::new()
     };
     let v = visit::mk_vt(@visit::Visitor {visit_expr: req_loans_in_expr,
                                           visit_fn: req_loans_in_fn,
                                           visit_stmt: add_stmt_to_map,
                                           .. *visit::default_visitor()});
-    visit::visit_crate(*crate, glcx, v);
+    visit::visit_crate(crate, glcx, v);
     let @GatherLoanCtxt{req_maps, _} = glcx;
     return req_maps;
 }
@@ -98,7 +97,7 @@ fn req_loans_in_fn(fk: &visit::fn_kind,
                    body: &ast::blk,
                    sp: span,
                    id: ast::node_id,
-                   &&self: @mut GatherLoanCtxt,
+                   self: @mut GatherLoanCtxt,
                    v: visit::vt<@mut GatherLoanCtxt>) {
     // see explanation attached to the `root_ub` field:
     let old_item_id = self.item_ub;
@@ -119,7 +118,7 @@ fn req_loans_in_fn(fk: &visit::fn_kind,
 }
 
 fn req_loans_in_expr(ex: @ast::expr,
-                     &&self: @mut GatherLoanCtxt,
+                     self: @mut GatherLoanCtxt,
                      vt: visit::vt<@mut GatherLoanCtxt>) {
     let bccx = self.bccx;
     let tcx = bccx.tcx;
@@ -147,38 +146,6 @@ fn req_loans_in_expr(ex: @ast::expr,
         // for the lifetime `scope_r` of the resulting ptr:
         let scope_r = ty_region(tcx, ex.span, tcx.ty(ex));
         self.guarantee_valid(base_cmt, mutbl, scope_r);
-        visit::visit_expr(ex, self, vt);
-      }
-
-      ast::expr_call(f, ref args, _) => {
-        let arg_tys = ty::ty_fn_args(ty::expr_ty(self.tcx(), f));
-        let scope_r = ty::re_scope(ex.id);
-        for vec::each2(*args, arg_tys) |arg, arg_ty| {
-            match ty::resolved_mode(self.tcx(), arg_ty.mode) {
-                ast::by_ref => {
-                    let arg_cmt = self.bccx.cat_expr(*arg);
-                    self.guarantee_valid(arg_cmt, m_imm,  scope_r);
-                }
-                ast::by_copy => {}
-            }
-        }
-        visit::visit_expr(ex, self, vt);
-      }
-
-      ast::expr_method_call(_, _, _, ref args, _) => {
-        let arg_tys = ty::ty_fn_args(ty::node_id_to_type(self.tcx(),
-                                                         ex.callee_id));
-        let scope_r = ty::re_scope(ex.id);
-        for vec::each2(*args, arg_tys) |arg, arg_ty| {
-            match ty::resolved_mode(self.tcx(), arg_ty.mode) {
-                ast::by_ref => {
-                    let arg_cmt = self.bccx.cat_expr(*arg);
-                    self.guarantee_valid(arg_cmt, m_imm,  scope_r);
-                }
-                ast::by_copy => {}
-            }
-        }
-
         visit::visit_expr(ex, self, vt);
       }
 
@@ -242,7 +209,7 @@ fn req_loans_in_expr(ex: @ast::expr,
         // (if used like `a.b(...)`), the call where it's an argument
         // (if used like `x(a.b)`), or the block (if used like `let x
         // = a.b`).
-        let scope_r = ty::re_scope(*self.tcx().region_map.get(&ex.id));
+        let scope_r = self.tcx().region_maps.encl_region(ex.id);
         let rcvr_cmt = self.bccx.cat_expr(rcvr);
         self.guarantee_valid(rcvr_cmt, m_imm, scope_r);
         visit::visit_expr(ex, self, vt);
@@ -282,7 +249,7 @@ pub impl GatherLoanCtxt {
                              expr: @ast::expr,
                              adjustment: &ty::AutoAdjustment) {
         debug!("guarantee_adjustments(expr=%s, adjustment=%?)",
-               expr_repr(self.tcx(), expr), adjustment);
+               expr.repr(self.tcx()), adjustment);
         let _i = indenter();
 
         match *adjustment {
@@ -305,7 +272,7 @@ pub impl GatherLoanCtxt {
                 let mcx = &mem_categorization_ctxt {
                     tcx: self.tcx(),
                     method_map: self.bccx.method_map};
-                let mut cmt = mcx.cat_expr_autoderefd(expr, autoderefs);
+                let cmt = mcx.cat_expr_autoderefd(expr, autoderefs);
                 debug!("after autoderef, cmt=%s", self.bccx.cmt_to_repr(cmt));
 
                 match autoref.kind {
@@ -489,7 +456,7 @@ pub impl GatherLoanCtxt {
                  cmt: cmt,
                  loan_kind: LoanKind,
                  scope_r: ty::Region,
-                 +loans: ~[Loan]) {
+                 loans: ~[Loan]) {
         if loans.len() == 0 {
             return;
         }
@@ -524,7 +491,10 @@ pub impl GatherLoanCtxt {
         // immutable structures, this is just the converse I suppose)
 
         let scope_id = match scope_r {
-            ty::re_scope(scope_id) | ty::re_free(scope_id, _) => scope_id,
+            ty::re_scope(scope_id) |
+            ty::re_free(ty::FreeRegion {scope_id, _}) => {
+                scope_id
+            }
             _ => {
                 self.bccx.tcx.sess.span_bug(
                     cmt.span,
@@ -552,7 +522,7 @@ pub impl GatherLoanCtxt {
 
     fn add_loans_to_scope_id(&mut self,
                              scope_id: ast::node_id,
-                             +loans: ~[Loan]) {
+                             loans: ~[Loan]) {
         debug!("adding %u loans to scope_id %?: %s",
                loans.len(), scope_id,
                str::connect(loans.map(|l| self.bccx.loan_to_repr(l)), ", "));
@@ -662,7 +632,7 @@ pub impl GatherLoanCtxt {
 // Setting up info that preserve needs.
 // This is just the most convenient place to do it.
 fn add_stmt_to_map(stmt: @ast::stmt,
-                   &&self: @mut GatherLoanCtxt,
+                   self: @mut GatherLoanCtxt,
                    vt: visit::vt<@mut GatherLoanCtxt>) {
     match stmt.node {
         ast::stmt_expr(_, id) | ast::stmt_semi(_, id) => {

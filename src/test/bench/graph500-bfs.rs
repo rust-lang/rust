@@ -10,7 +10,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_modes];
 #[allow(deprecated_mode)];
 
 /*!
@@ -24,7 +23,7 @@ use std::arc;
 use std::time;
 use std::deque::Deque;
 use std::par;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 use core::io::WriterUtil;
 use core::int::abs;
 use core::rand::RngUtil;
@@ -34,9 +33,9 @@ type graph = ~[~[node_id]];
 type bfs_result = ~[node_id];
 
 fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
-    let r = rand::xorshift();
+    let r = rand::XorShiftRng::new();
 
-    fn choose_edge(i: node_id, j: node_id, scale: uint, r: @rand::Rng)
+    fn choose_edge<R: rand::Rng>(i: node_id, j: node_id, scale: uint, r: &R)
         -> (node_id, node_id) {
 
         let A = 0.57;
@@ -75,13 +74,13 @@ fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
     }
 
     do vec::from_fn((1u << scale) * edgefactor) |_i| {
-        choose_edge(0i64, 0i64, scale, r)
+        choose_edge(0i64, 0i64, scale, &r)
     }
 }
 
 fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
     let mut graph = do vec::from_fn(N) |_i| {
-        LinearSet::new()
+        HashSet::new()
     };
 
     do vec::each(edges) |e| {
@@ -104,8 +103,8 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
 }
 
 fn gen_search_keys(graph: &[~[node_id]], n: uint) -> ~[node_id] {
-    let mut keys = LinearSet::new();
-    let r = rand::Rng();
+    let mut keys = HashSet::new();
+    let r = rand::rng();
 
     while keys.len() < n {
         let k = r.gen_uint_range(0u, graph.len());
@@ -227,7 +226,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
 }
 
 /// A parallel version of the bfs function.
-fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
+fn pbfs(graph: &arc::ARC<graph>, key: node_id) -> bfs_result {
     // This works by doing functional updates of a color vector.
 
     enum color {
@@ -238,7 +237,7 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
         black(node_id)
     };
 
-    let graph_vec = arc::get(&graph); // FIXME #3387 requires this temp
+    let graph_vec = arc::get(graph); // FIXME #3387 requires this temp
     let mut colors = do vec::from_fn(graph_vec.len()) |i| {
         if i as node_id == key {
             gray(key)
@@ -273,7 +272,7 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
         let color_vec = arc::get(&color); // FIXME #3387 requires this temp
         colors = do par::mapi(*color_vec) {
             let colors = arc::clone(&color);
-            let graph = arc::clone(&graph);
+            let graph = arc::clone(graph);
             let result: ~fn(+x: uint, +y: &color) -> color = |i, c| {
                 let colors = arc::get(&colors);
                 let graph = arc::get(&graph);
@@ -498,7 +497,7 @@ fn main() {
         }
 
         let start = time::precise_time_s();
-        let bfs_tree = pbfs(graph_arc, *root);
+        let bfs_tree = pbfs(&graph_arc, *root);
         let stop = time::precise_time_s();
 
         total_par += stop - start;

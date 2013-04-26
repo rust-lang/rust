@@ -14,7 +14,6 @@ use cast::transmute;
 use kinds::Copy;
 use iter;
 use option::Option;
-use ptr::addr_of;
 use sys;
 use uint;
 use vec;
@@ -40,8 +39,7 @@ pub mod rustrt {
 #[inline(always)]
 pub fn capacity<T>(v: @[T]) -> uint {
     unsafe {
-        let repr: **raw::VecRepr =
-            ::cast::reinterpret_cast(&addr_of(&v));
+        let repr: **raw::VecRepr = transmute(&v);
         (**repr).unboxed.alloc / sys::size_of::<T>()
     }
 }
@@ -187,13 +185,12 @@ pub mod traits {}
 
 pub mod raw {
     use at_vec::{capacity, rustrt};
-    use cast::transmute;
+    use cast::{transmute, transmute_copy};
     use libc;
-    use unstable::intrinsics::{move_val_init};
-    use ptr::addr_of;
     use ptr;
     use sys;
     use uint;
+    use unstable::intrinsics::{move_val_init};
     use vec;
 
     pub type VecRepr = vec::raw::VecRepr;
@@ -208,28 +205,27 @@ pub mod raw {
      */
     #[inline(always)]
     pub unsafe fn set_len<T>(v: @[T], new_len: uint) {
-        let repr: **VecRepr = ::cast::reinterpret_cast(&addr_of(&v));
+        let repr: **mut VecRepr = transmute(&v);
         (**repr).unboxed.fill = new_len * sys::size_of::<T>();
     }
 
     #[inline(always)]
     pub unsafe fn push<T>(v: &mut @[T], initval: T) {
-        let repr: **VecRepr = ::cast::reinterpret_cast(&v);
+        let repr: **VecRepr = transmute_copy(&v);
         let fill = (**repr).unboxed.fill;
         if (**repr).unboxed.alloc > fill {
             push_fast(v, initval);
-        }
-        else {
+        } else {
             push_slow(v, initval);
         }
     }
 
     #[inline(always)] // really pretty please
     pub unsafe fn push_fast<T>(v: &mut @[T], initval: T) {
-        let repr: **VecRepr = ::cast::reinterpret_cast(&v);
+        let repr: **mut VecRepr = ::cast::transmute(v);
         let fill = (**repr).unboxed.fill;
         (**repr).unboxed.fill += sys::size_of::<T>();
-        let p = addr_of(&((**repr).unboxed.data));
+        let p = &((**repr).unboxed.data);
         let p = ptr::offset(p, fill) as *mut T;
         move_val_init(&mut(*p), initval);
     }
@@ -277,45 +273,49 @@ pub mod raw {
     pub unsafe fn reserve_at_least<T>(v: &mut @[T], n: uint) {
         reserve(v, uint::next_power_of_two(n));
     }
-
 }
 
-#[test]
-pub fn test() {
-    // Some code that could use that, then:
-    fn seq_range(lo: uint, hi: uint) -> @[uint] {
-        do build |push| {
-            for uint::range(lo, hi) |i| {
-                push(i);
+#[cfg(test)]
+mod test {
+    use super::*;
+    use prelude::*;
+
+    #[test]
+    fn test() {
+        // Some code that could use that, then:
+        fn seq_range(lo: uint, hi: uint) -> @[uint] {
+            do build |push| {
+                for uint::range(lo, hi) |i| {
+                    push(i);
+                }
             }
         }
+
+        assert_eq!(seq_range(10, 15), @[10, 11, 12, 13, 14]);
+        assert!(from_fn(5, |x| x+1) == @[1, 2, 3, 4, 5]);
+        assert!(from_elem(5, 3.14) == @[3.14, 3.14, 3.14, 3.14, 3.14]);
     }
 
-    assert_eq!(seq_range(10, 15), @[10, 11, 12, 13, 14]);
-    assert!(from_fn(5, |x| x+1) == @[1, 2, 3, 4, 5]);
-    assert!(from_elem(5, 3.14) == @[3.14, 3.14, 3.14, 3.14, 3.14]);
-}
+    #[test]
+    fn append_test() {
+        assert!(@[1,2,3] + @[4,5,6] == @[1,2,3,4,5,6]);
+    }
 
-#[test]
-pub fn append_test() {
-    assert!(@[1,2,3] + @[4,5,6] == @[1,2,3,4,5,6]);
-}
+    #[test]
+    fn test_from_owned() {
+        assert!(from_owned::<int>(~[]) == @[]);
+        assert!(from_owned(~[true]) == @[true]);
+        assert!(from_owned(~[1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
+        assert!(from_owned(~[~"abc", ~"123"]) == @[~"abc", ~"123"]);
+        assert!(from_owned(~[~[42]]) == @[~[42]]);
+    }
 
-#[test]
-pub fn test_from_owned() {
-    assert!(from_owned::<int>(~[]) == @[]);
-    assert!(from_owned(~[true]) == @[true]);
-    assert!(from_owned(~[1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
-    assert!(from_owned(~[~"abc", ~"123"]) == @[~"abc", ~"123"]);
-    assert!(from_owned(~[~[42]]) == @[~[42]]);
+    #[test]
+    fn test_from_slice() {
+        assert!(from_slice::<int>([]) == @[]);
+        assert!(from_slice([true]) == @[true]);
+        assert!(from_slice([1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
+        assert!(from_slice([@"abc", @"123"]) == @[@"abc", @"123"]);
+        assert!(from_slice([@[42]]) == @[@[42]]);
+    }
 }
-
-#[test]
-pub fn test_from_slice() {
-    assert!(from_slice::<int>([]) == @[]);
-    assert!(from_slice([true]) == @[true]);
-    assert!(from_slice([1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
-    assert!(from_slice([@"abc", @"123"]) == @[@"abc", @"123"]);
-    assert!(from_slice([@[42]]) == @[@[42]]);
-}
-

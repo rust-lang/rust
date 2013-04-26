@@ -57,11 +57,9 @@ struct DtorRes {
 #[unsafe_destructor]
 impl Drop for DtorRes {
     fn finalize(&self) {
-        unsafe {
-            match self.dtor {
-                option::None => (),
-                option::Some(f) => f()
-            }
+        match self.dtor {
+            option::None => (),
+            option::Some(f) => f()
         }
     }
 }
@@ -84,7 +82,7 @@ fn DtorRes(dtor: Option<@fn()>) -> DtorRes {
  * * base - A foreign pointer to a buffer
  * * len - The number of elements in the buffer
  */
-pub unsafe fn CVec<T>(base: *mut T, len: uint) -> CVec<T> {
+pub fn CVec<T>(base: *mut T, len: uint) -> CVec<T> {
     return CVec{
         base: base,
         len: len,
@@ -103,7 +101,7 @@ pub unsafe fn CVec<T>(base: *mut T, len: uint) -> CVec<T> {
  * * dtor - A function to run when the value is destructed, useful
  *          for freeing the buffer, etc.
  */
-pub unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: @fn())
+pub fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: @fn())
   -> CVec<T> {
     return CVec{
         base: base,
@@ -144,7 +142,7 @@ pub fn set<T:Copy>(t: CVec<T>, ofs: uint, v: T) {
 pub fn len<T>(t: CVec<T>) -> uint { t.len }
 
 /// Returns a pointer to the first element of the vector
-pub unsafe fn ptr<T>(t: CVec<T>) -> *mut T { t.base }
+pub fn ptr<T>(t: CVec<T>) -> *mut T { t.base }
 
 #[cfg(test)]
 mod tests {
@@ -161,8 +159,8 @@ mod tests {
 
             assert!(mem as int != 0);
 
-            return unsafe { c_vec_with_dtor(mem as *mut u8, n as uint,
-                                         || unsafe { free(mem) }) };
+            return c_vec_with_dtor(mem as *mut u8, n as uint,
+                                   || unsafe { free(mem) });
         }
     }
 
@@ -198,7 +196,7 @@ mod tests {
     #[test]
     fn test_and_I_mean_it() {
         let cv = malloc(16u as size_t);
-        let p = unsafe { ptr(cv) };
+        let p = ptr(cv);
 
         set(cv, 0u, 32u8);
         set(cv, 1u, 33u8);

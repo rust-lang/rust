@@ -25,7 +25,7 @@ fn foo(s: @int) {
       _ => { debug!("?"); fail!(); }
     }
     debug!(::core::sys::refcount(s));
-    assert!((::core::sys::refcount(s) == count + 1u));
+    assert_eq!(::core::sys::refcount(s), count + 1u);
     let _ = ::core::sys::refcount(s); // don't get bitten by last-use.
 }
 
@@ -39,5 +39,5 @@ pub fn main() {
     debug!("%u", ::core::sys::refcount(s));
     let count2 = ::core::sys::refcount(s);
     let _ = ::core::sys::refcount(s); // don't get bitten by last-use.
-    assert!(count == count2);
+    assert_eq!(count, count2);
 }

@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test #5723
+
+// Test that you cannot escape a borrowed pointer
+// into a trait.
+
 struct ctxt { v: uint }
 
 trait get_ctxt {
@@ -24,8 +29,9 @@ fn make_gc() -> @get_ctxt  {
     let ctxt = ctxt { v: 22u };
     let hc = has_ctxt { c: &ctxt };
     return @hc as @get_ctxt;
+    //^~ ERROR source contains borrowed pointer
 }
 
 fn main() {
-    make_gc().get_ctxt().v; //~ ERROR illegal borrow
+    make_gc().get_ctxt().v;
 }

@@ -19,8 +19,6 @@
 
 */
 
-#[legacy_modes];
-
 extern mod std;
 
 use std::{time, getopts};
@@ -32,23 +30,23 @@ use core::result;
 use core::result::{Ok, Err};
 
 fn fib(n: int) -> int {
-    fn pfib(c: Chan<int>, n: int) {
+    fn pfib(c: &Chan<int>, n: int) {
         if n == 0 {
             c.send(0);
         } else if n <= 2 {
             c.send(1);
         } else {
-            let p = PortSet();
+            let p = PortSet::new();
             let ch = p.chan();
-            task::spawn(|| pfib(ch, n - 1) );
+            task::spawn(|| pfib(&ch, n - 1) );
             let ch = p.chan();
-            task::spawn(|| pfib(ch, n - 2) );
+            task::spawn(|| pfib(&ch, n - 2) );
             c.send(p.recv() + p.recv());
         }
     }
 
     let (p, ch) = stream();
-    let _t = task::spawn(|| pfib(ch, n) );
+    let _t = task::spawn(|| pfib(&ch, n) );
     p.recv()
 }
 

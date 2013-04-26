@@ -130,8 +130,8 @@ pub impl LoanContext {
           }
           cat_local(local_id) | cat_arg(local_id) | cat_self(local_id) => {
               // FIXME(#4903)
-            let local_scope_id = *self.bccx.tcx.region_map.get(&local_id);
-            self.issue_loan(cmt, ty::re_scope(local_scope_id), loan_kind,
+            let local_region = self.bccx.tcx.region_maps.encl_region(local_id);
+            self.issue_loan(cmt, local_region, loan_kind,
                             owns_lent_data)
           }
           cat_stack_upvar(cmt) => {
@@ -257,10 +257,10 @@ pub impl LoanContext {
     }
 
     fn issue_loan(&mut self,
-                  +cmt: cmt,
-                  +scope_ub: ty::Region,
-                  +loan_kind: LoanKind,
-                  +owns_lent_data: bool) -> bckres<()> {
+                  cmt: cmt,
+                  scope_ub: ty::Region,
+                  loan_kind: LoanKind,
+                  owns_lent_data: bool) -> bckres<()> {
         // Subtle: the `scope_ub` is the maximal lifetime of `cmt`.
         // Therefore, if `cmt` owns the data being lent, then the
         // scope of the loan must be less than `scope_ub`, or else the
@@ -274,7 +274,17 @@ pub impl LoanContext {
         if !owns_lent_data ||
             self.bccx.is_subregion_of(self.scope_region, scope_ub)
         {
-            if loan_kind.is_take() && !cmt.mutbl.is_mutable() {
+            if cmt.mutbl.is_mutable() {
+                // If this loan is a mutable loan, then mark the loan path (if
+                // it exists) as being used. This is similar to the check
+                // performed in check_loans.rs in check_assignment(), but this
+                // is for a different purpose of having the 'mut' qualifier.
+                for cmt.lp.each |lp| {
+                    for lp.node_id().each |&id| {
+                        self.tcx().used_mut_nodes.insert(id);
+                    }
+                }
+            } else if loan_kind.is_take() {
                 // We do not allow non-mutable data to be "taken"
                 // under any circumstances.
                 return Err(bckerr {

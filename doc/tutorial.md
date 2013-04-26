@@ -362,7 +362,7 @@ The nil type, written `()`, has a single value, also written `()`.
 ## Operators
 
 Rust's set of operators contains very few surprises. Arithmetic is done with
-`*`, `/`, `%`, `+`, and `-` (multiply, divide, take remainder, add, and subtract). `-` is
+`*`, `/`, `%`, `+`, and `-` (multiply, quotient, remainder, add, and subtract). `-` is
 also a unary prefix operator that negates numbers. As in C, the bitwise operators
 `>>`, `<<`, `&`, `|`, and `^` are also supported.
 
@@ -495,7 +495,11 @@ omitted.
 
 A powerful application of pattern matching is *destructuring*:
 matching in order to bind names to the contents of data
-types. Remember that `(float, float)` is a tuple of two floats:
+types.
+
+> ***Note:*** The following code makes use of tuples (`(float, float)`) which
+> are explained in section 5.3. For now you can think of tuples as a list of
+> items.
 
 ~~~~
 fn angle(vector: (float, float)) -> float {
@@ -747,7 +751,7 @@ fn area(sh: Shape) -> float {
 
 Tuples in Rust behave exactly like structs, except that their fields
 do not have names. Thus, you cannot access their fields with dot notation.
-Tuples can have any arity except for 0 or 1 (though you may consider
+Tuples can have any arity except for 0 (though you may consider
 unit, `()`, as the empty tuple if you like).
 
 ~~~~
@@ -988,7 +992,7 @@ custom destructors.
 
 # Boxes
 
-Many modern languages represent values as as pointers to heap memory by
+Many modern languages represent values as pointers to heap memory by
 default. In contrast, Rust, like C and C++, represents such types directly.
 Another way to say this is that aggregate data in Rust are *unboxed*. This
 means that if you `let x = Point { x: 1f, y: 1f };`, you are creating a struct
@@ -1067,6 +1071,28 @@ let mut d = @mut 5; // mutable variable, mutable box
 d = @mut 15;
 ~~~~
 
+A mutable variable and an immutable variable can refer to the same box, given 
+that their types are compatible. Mutability of a box is a property of its type, 
+however, so for example a mutable handle to an immutable box cannot be 
+assigned a reference to a mutable box.
+
+~~~~
+let a = @1;     // immutable box
+let b = @mut 2; // mutable box
+
+let mut c : @int;       // declare a variable with type managed immutable int
+let mut d : @mut int;   // and one of type managed mutable int
+
+c = a;          // box type is the same, okay
+d = b;          // box type is the same, okay
+~~~~
+
+~~~~ {.xfail-test}
+// but b cannot be assigned to c, or a to d
+c = b;          // error
+~~~~
+
+
 # Move semantics
 
 Rust uses a shallow copy for parameter passing, assignment and returning values
@@ -1079,6 +1105,16 @@ the source location and will not be destroyed there.
 let x = ~5;
 let y = x.clone(); // y is a newly allocated box
 let z = x; // no new memory allocated, x can no longer be used
+~~~~
+
+Since in owned boxes mutability is a property of the owner, not the 
+box, mutable boxes may become immutable when they are moved, and vice-versa.
+
+~~~~
+let r = ~13;
+let mut s = r; // box becomes mutable
+*s += 1;
+let t = s; // box becomes immutable
 ~~~~
 
 # Borrowed pointers
@@ -1191,7 +1227,7 @@ they are frozen:
 let x = @mut 5;
 let y = x;
 {
-    let y = &*y; // the managed box is now frozen
+    let z = &*y; // the managed box is now frozen
     // modifying it through x or y will cause a task failure
 }
 // the box is now unfrozen again
@@ -1633,6 +1669,9 @@ do spawn {
 }
 ~~~~
 
+If you want to see the output of `debug!` statements, you will need to turn on `debug!` logging.
+To enable `debug!` logging, set the RUST_LOG environment variable to the name of your crate, which, for a file named `foo.rs`, will be `foo` (e.g., with bash, `export RUST_LOG=foo`).
+
 ## For loops
 
 The most common way to express iteration in Rust is with a `for`
@@ -1888,8 +1927,8 @@ illegal to copy and pass by value.
 Generic `type`, `struct`, and `enum` declarations follow the same pattern:
 
 ~~~~
-# use core::hashmap::linear::LinearMap;
-type Set<T> = LinearMap<T, ()>;
+# use core::hashmap::HashMap;
+type Set<T> = HashMap<T, ()>;
 
 struct Stack<T> {
     elements: ~[T]
@@ -2288,7 +2327,7 @@ impl Shape for CircleStruct {
 Notice that methods of `Circle` can call methods on `Shape`, as our
 `radius` implementation calls the `area` method.
 This is a silly way to compute the radius of a circle
-(since we could just return the `circle` field), but you get the idea.
+(since we could just return the `radius` field), but you get the idea.
 
 In type-parameterized functions,
 methods of the supertrait may be called on values of subtrait-bound type parameters.

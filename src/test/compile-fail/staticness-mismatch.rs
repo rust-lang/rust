@@ -14,7 +14,7 @@ trait foo {
 }
 
 impl foo for int {
-    fn bar(&self) {} //~ ERROR method `bar` is declared as static in its trait, but not in its impl
+    fn bar(&self) {} //~ ERROR method `bar` has a `&self` declaration in the impl, but not in the trait
 }
 
 fn main() {}

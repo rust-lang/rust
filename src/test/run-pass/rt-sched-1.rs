@@ -48,7 +48,7 @@ pub fn main() {
                 ch.send(());
             }
         };
-        let fptr = cast::reinterpret_cast(&ptr::addr_of(&f));
+        let fptr = cast::transmute(&f);
         rustrt::start_task(new_task_id, fptr);
         cast::forget(f);
         po.recv();

@@ -351,6 +351,16 @@ pub impl MutabilityCategory {
     }
 }
 
+pub impl loan_path {
+    fn node_id(&self) -> Option<ast::node_id> {
+        match *self {
+            lp_local(id) | lp_arg(id) => Some(id),
+            lp_deref(lp, _) | lp_comp(lp, _) => lp.node_id(),
+            lp_self => None
+        }
+    }
+}
+
 pub impl mem_categorization_ctxt {
     fn cat_expr(&self, expr: @ast::expr) -> cmt {
         match self.tcx.adjustments.find(&expr.id) {
@@ -462,7 +472,7 @@ pub impl mem_categorization_ctxt {
           ast::def_fn(*) | ast::def_static_method(*) | ast::def_mod(_) |
           ast::def_foreign_mod(_) | ast::def_const(_) |
           ast::def_use(_) | ast::def_variant(*) |
-          ast::def_ty(_) | ast::def_prim_ty(_) |
+          ast::def_trait(_) | ast::def_ty(_) | ast::def_prim_ty(_) |
           ast::def_ty_param(*) | ast::def_struct(*) |
           ast::def_typaram_binder(*) | ast::def_region(_) |
           ast::def_label(_) | ast::def_self_ty(*) => {
@@ -476,17 +486,14 @@ pub impl mem_categorization_ctxt {
             }
           }
 
-          ast::def_arg(vid, mode, mutbl) => {
+          ast::def_arg(vid, mutbl) => {
             // Idea: make this could be rewritten to model by-ref
             // stuff as `&const` and `&mut`?
 
             // m: mutability of the argument
             // lp: loan path, must be none for aliasable things
             let m = if mutbl {McDeclared} else {McImmutable};
-            let lp = match ty::resolved_mode(self.tcx, mode) {
-                ast::by_copy => Some(@lp_arg(vid)),
-                ast::by_ref => None,
-            };
+            let lp = Some(@lp_arg(vid));
             @cmt_ {
                 id:id,
                 span:span,
@@ -739,7 +746,7 @@ pub impl mem_categorization_ctxt {
     fn cat_index<N:ast_node>(&self,
                               elt: N,
                               base_cmt: cmt) -> cmt {
-        let mt = match ty::index(self.tcx, base_cmt.ty) {
+        let mt = match ty::index(base_cmt.ty) {
           Some(mt) => mt,
           None => {
             self.tcx.sess.span_bug(

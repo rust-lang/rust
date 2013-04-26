@@ -21,7 +21,7 @@ use middle::ty;
 use middle::typeck;
 
 use core::prelude::*;
-use core::hashmap::linear::LinearSet;
+use core::hashmap::HashSet;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_util::def_id_of_def;
@@ -30,18 +30,18 @@ use syntax::codemap;
 use syntax::print::pprust::expr_to_str;
 use syntax::{visit, ast_map};
 
-pub type map = @LinearSet<node_id>;
+pub type map = @HashSet<node_id>;
 
 struct ctx<'self> {
     exp_map2: resolve::ExportMap2,
     tcx: ty::ctxt,
     method_map: typeck::method_map,
-    rmap: &'self mut LinearSet<node_id>,
+    rmap: &'self mut HashSet<node_id>,
 }
 
 pub fn find_reachable(crate_mod: &_mod, exp_map2: resolve::ExportMap2,
                       tcx: ty::ctxt, method_map: typeck::method_map) -> map {
-    let mut rmap = LinearSet::new();
+    let mut rmap = HashSet::new();
     {
         let cx = ctx {
             exp_map2: exp_map2,
@@ -49,13 +49,13 @@ pub fn find_reachable(crate_mod: &_mod, exp_map2: resolve::ExportMap2,
             method_map: method_map,
             rmap: &mut rmap
         };
-        traverse_public_mod(cx, ast::crate_node_id, crate_mod);
-        traverse_all_resources_and_impls(cx, crate_mod);
+        traverse_public_mod(&cx, ast::crate_node_id, crate_mod);
+        traverse_all_resources_and_impls(&cx, crate_mod);
     }
     return @rmap;
 }
 
-fn traverse_exports(cx: ctx, mod_id: node_id) -> bool {
+fn traverse_exports(cx: &ctx, mod_id: node_id) -> bool {
     let mut found_export = false;
     match cx.exp_map2.find(&mod_id) {
       Some(ref exp2s) => {
@@ -69,7 +69,7 @@ fn traverse_exports(cx: ctx, mod_id: node_id) -> bool {
     return found_export;
 }
 
-fn traverse_def_id(cx: ctx, did: def_id) {
+fn traverse_def_id(cx: &ctx, did: def_id) {
     if did.crate != local_crate { return; }
     match cx.tcx.items.find(&did.node) {
         None => (), // This can happen for self, for example
@@ -85,7 +85,7 @@ fn traverse_def_id(cx: ctx, did: def_id) {
     }
 }
 
-fn traverse_public_mod(cx: ctx, mod_id: node_id, m: &_mod) {
+fn traverse_public_mod(cx: &ctx, mod_id: node_id, m: &_mod) {
     if !traverse_exports(cx, mod_id) {
         // No exports, so every local item is exported
         for m.items.each |item| {
@@ -94,9 +94,9 @@ fn traverse_public_mod(cx: ctx, mod_id: node_id, m: &_mod) {
     }
 }
 
-fn traverse_public_item(cx: ctx, item: @item) {
-    // XXX: it shouldn't be necessary to do this
-    let rmap: &mut LinearSet<node_id> = cx.rmap;
+fn traverse_public_item(cx: &ctx, item: @item) {
+    // FIXME #6021: naming rmap shouldn't be necessary
+    let rmap: &mut HashSet<node_id> = cx.rmap;
     if rmap.contains(&item.id) { return; }
     rmap.insert(item.id);
     match item.node {
@@ -139,7 +139,9 @@ fn traverse_public_item(cx: ctx, item: @item) {
         }
       }
       item_ty(t, _) => {
-        traverse_ty(t, cx, mk_ty_visitor());
+        traverse_ty(t, cx,
+                    visit::mk_vt(@visit::Visitor {visit_ty: traverse_ty,
+                                                  ..*visit::default_visitor()}))
       }
       item_const(*) |
       item_enum(*) | item_trait(*) => (),
@@ -147,14 +149,9 @@ fn traverse_public_item(cx: ctx, item: @item) {
     }
 }
 
-fn mk_ty_visitor() -> visit::vt<ctx> {
-    visit::mk_vt(@visit::Visitor {visit_ty: traverse_ty,
-                                  ..*visit::default_visitor()})
-}
-
-fn traverse_ty<'a>(ty: @Ty, cx: ctx<'a>, v: visit::vt<ctx<'a>>) {
-    // XXX: it shouldn't be necessary to do this
-    let rmap: &mut LinearSet<node_id> = cx.rmap;
+fn traverse_ty<'a, 'b>(ty: @Ty, cx: &'b ctx<'a>, v: visit::vt<&'b ctx<'a>>) {
+    // FIXME #6021: naming rmap shouldn't be necessary
+    let rmap: &mut HashSet<node_id> = cx.rmap;
     if rmap.contains(&ty.id) { return; }
     rmap.insert(ty.id);
 
@@ -175,8 +172,9 @@ fn traverse_ty<'a>(ty: @Ty, cx: ctx<'a>, v: visit::vt<ctx<'a>>) {
     }
 }
 
-fn traverse_inline_body(cx: ctx, body: &blk) {
-    fn traverse_expr<'a>(e: @expr, cx: ctx<'a>, v: visit::vt<ctx<'a>>) {
+fn traverse_inline_body(cx: &ctx, body: &blk) {
+    fn traverse_expr<'a, 'b>(e: @expr, cx: &'b ctx<'a>,
+                             v: visit::vt<&'b ctx<'a>>) {
         match e.node {
           expr_path(_) => {
             match cx.tcx.def_map.find(&e.id) {
@@ -221,7 +219,7 @@ fn traverse_inline_body(cx: ctx, body: &blk) {
     // Don't ignore nested items: for example if a generic fn contains a
     // generic impl (as in deque::create), we need to monomorphize the
     // impl as well
-    fn traverse_item(i: @item, cx: ctx, _v: visit::vt<ctx>) {
+    fn traverse_item(i: @item, cx: &ctx, _v: visit::vt<&ctx>) {
       traverse_public_item(cx, i);
     }
     visit::visit_block(body, cx, visit::mk_vt(@visit::Visitor {
@@ -231,7 +229,7 @@ fn traverse_inline_body(cx: ctx, body: &blk) {
     }));
 }
 
-fn traverse_all_resources_and_impls(cx: ctx, crate_mod: &_mod) {
+fn traverse_all_resources_and_impls(cx: &ctx, crate_mod: &_mod) {
     visit::visit_mod(
         crate_mod,
         codemap::dummy_sp(),

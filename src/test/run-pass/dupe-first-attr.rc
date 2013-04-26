@@ -22,3 +22,6 @@ mod hello;
 
 #[cfg(target_os = "freebsd")]
 mod hello;
+
+#[cfg(target_os = "android")]
+mod hello;

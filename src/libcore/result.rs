@@ -39,9 +39,8 @@ pub enum Result<T, U> {
 pub fn get<T:Copy,U>(res: &Result<T, U>) -> T {
     match *res {
       Ok(copy t) => t,
-      Err(ref the_err) => unsafe {
+      Err(ref the_err) =>
         fail!(fmt!("get called on error result: %?", *the_err))
-      }
     }
 }
 
@@ -56,9 +55,8 @@ pub fn get<T:Copy,U>(res: &Result<T, U>) -> T {
 pub fn get_ref<'a, T, U>(res: &'a Result<T, U>) -> &'a T {
     match *res {
         Ok(ref t) => t,
-        Err(ref the_err) => unsafe {
+        Err(ref the_err) =>
             fail!(fmt!("get_ref called on error result: %?", *the_err))
-        }
     }
 }
 
@@ -228,8 +226,15 @@ pub fn map_err<T:Copy,E,F:Copy>(res: &Result<T, E>, op: &fn(&E) -> F)
 }
 
 pub impl<T, E> Result<T, E> {
+    #[cfg(stage0)]
     #[inline(always)]
     fn get_ref(&self) -> &'self T { get_ref(self) }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    #[inline(always)]
+    fn get_ref<'a>(&'a self) -> &'a T { get_ref(self) }
 
     #[inline(always)]
     fn is_ok(&self) -> bool { is_ok(self) }

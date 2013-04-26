@@ -165,7 +165,7 @@ mod test {
             debug!("EXIT_CH_PTR newly created exit_ch_ptr: %?",
                             exit_ch_ptr);
             let timer_handle = ll::timer_t();
-            let timer_ptr = ptr::addr_of(&timer_handle);
+            let timer_ptr: *ll::uv_timer_t = &timer_handle;
             do iotask::interact(iotask) |loop_ptr| {
                 unsafe {
                     debug!(~"user code inside interact loop!!!");
@@ -211,7 +211,7 @@ mod test {
     #[ignore]
     fn test_stress_gl_uv_global_loop_high_level_global_timer() {
         let (exit_po, exit_ch) = stream::<()>();
-        let exit_ch = SharedChan(exit_ch);
+        let exit_ch = SharedChan::new(exit_ch);
         let cycles = 5000u;
         for iter::repeat(cycles) {
             let exit_ch_clone = exit_ch.clone();

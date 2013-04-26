@@ -13,6 +13,8 @@
 #include "vg/valgrind.h"
 #include "vg/memcheck.h"
 
+#include <cstdio>
+
 #ifdef _LP64
 const uintptr_t canary_value = 0xABCDABCDABCDABCD;
 #else
@@ -61,6 +63,7 @@ create_stack(memory_region *region, size_t sz) {
     stk_seg *stk = (stk_seg *)region->malloc(total_sz, "stack");
     memset(stk, 0, sizeof(stk_seg));
     stk->end = (uintptr_t) &stk->data[sz];
+    stk->is_big = 0;
     add_stack_canary(stk);
     register_valgrind_stack(stk);
     return stk;
@@ -78,6 +81,7 @@ create_exchange_stack(rust_exchange_alloc *exchange, size_t sz) {
     stk_seg *stk = (stk_seg *)exchange->malloc(total_sz);
     memset(stk, 0, sizeof(stk_seg));
     stk->end = (uintptr_t) &stk->data[sz];
+    stk->is_big = 0;
     add_stack_canary(stk);
     register_valgrind_stack(stk);
     return stk;

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -18,14 +18,14 @@ use option::{Some, None};
 use os;
 use prelude::*;
 use ptr;
-use run;
 use str;
 use task;
 use vec;
 
 pub mod rustrt {
-    use libc::{c_int, c_void, pid_t};
+    use libc::{c_int, c_void};
     use libc;
+    use run;
 
     #[abi = "cdecl"]
     pub extern {
@@ -34,36 +34,133 @@ pub mod rustrt {
                                    dir: *libc::c_char,
                                    in_fd: c_int,
                                    out_fd: c_int,
-                                   err_fd: c_int)
-                                -> pid_t;
+                                   err_fd: c_int) -> run::RunProgramResult;
+        unsafe fn rust_process_wait(pid: c_int) -> c_int;
     }
 }
 
+pub struct RunProgramResult {
+    // the process id of the program, or -1 if in case of errors
+    pid: pid_t,
+    // a handle to the process - on unix this will always be NULL, but on windows it will be a
+    // HANDLE to the process, which will prevent the pid being re-used until the handle is closed.
+    handle: *(),
+}
+
 /// A value representing a child process
-pub trait Program {
+pub struct Program {
+    priv pid: pid_t,
+    priv handle: *(),
+    priv in_fd: c_int,
+    priv out_file: *libc::FILE,
+    priv err_file: *libc::FILE,
+    priv finished: bool,
+}
+
+impl Drop for Program {
+    fn finalize(&self) {
+        // FIXME #4943: transmute is bad.
+        let mut_self: &mut Program = unsafe { cast::transmute(self) };
+
+        mut_self.finish();
+        mut_self.close_outputs();
+        free_handle(self.handle);
+    }
+}
+
+pub impl Program {
+
     /// Returns the process id of the program
-    fn get_id(&mut self) -> pid_t;
+    fn get_id(&mut self) -> pid_t { self.pid }
 
-    /// Returns an io::writer that can be used to write to stdin
-    fn input(&mut self) -> @io::Writer;
+    /// Returns an io::Writer that can be used to write to stdin
+    fn input(&mut self) -> @io::Writer {
+        io::fd_writer(self.in_fd, false)
+    }
 
-    /// Returns an io::reader that can be used to read from stdout
-    fn output(&mut self) -> @io::Reader;
+    /// Returns an io::Reader that can be used to read from stdout
+    fn output(&mut self) -> @io::Reader {
+        io::FILE_reader(self.out_file, false)
+    }
 
-    /// Returns an io::reader that can be used to read from stderr
-    fn err(&mut self) -> @io::Reader;
+    /// Returns an io::Reader that can be used to read from stderr
+    fn err(&mut self) -> @io::Reader {
+        io::FILE_reader(self.err_file, false)
+    }
 
     /// Closes the handle to the child processes standard input
-    fn close_input(&mut self);
+    fn close_input(&mut self) {
+        let invalid_fd = -1i32;
+        if self.in_fd != invalid_fd {
+            unsafe {
+                libc::close(self.in_fd);
+            }
+            self.in_fd = invalid_fd;
+        }
+    }
+
+    priv fn close_outputs(&mut self) {
+        unsafe {
+            fclose_and_null(&mut self.out_file);
+            fclose_and_null(&mut self.err_file);
+        }
+    }
 
     /**
      * Waits for the child process to terminate. Closes the handle
      * to stdin if necessary.
      */
-    fn finish(&mut self) -> int;
+    fn finish(&mut self) -> int {
+        if self.finished { return 0; }
+        self.finished = true;
+        self.close_input();
+        return waitpid(self.pid);
+    }
 
-    /// Closes open handles
-    fn destroy(&mut self);
+    priv fn destroy_internal(&mut self, force: bool) {
+        killpid(self.pid, force);
+        self.finish();
+        self.close_outputs();
+
+        #[cfg(windows)]
+        fn killpid(pid: pid_t, _force: bool) {
+            unsafe {
+                libc::funcs::extra::kernel32::TerminateProcess(
+                    cast::transmute(pid), 1);
+            }
+        }
+
+        #[cfg(unix)]
+        fn killpid(pid: pid_t, force: bool) {
+            let signal = if force {
+                libc::consts::os::posix88::SIGKILL
+            } else {
+                libc::consts::os::posix88::SIGTERM
+            };
+
+            unsafe {
+                libc::funcs::posix88::signal::kill(pid, signal as c_int);
+            }
+        }
+    }
+
+    /**
+     * Terminate the program, giving it a chance to clean itself up if
+     * this is supported by the operating system.
+     *
+     * On Posix OSs SIGTERM will be sent to the process. On Win32
+     * TerminateProcess(..) will be called.
+     */
+    fn destroy(&mut self) { self.destroy_internal(false); }
+
+    /**
+     * Terminate the program as soon as possible without giving it a
+     * chance to clean itself up.
+     *
+     * On Posix OSs SIGKILL will be sent to the process. On Win32
+     * TerminateProcess(..) will be called.
+     */
+    fn force_destroy(&mut self) { self.destroy_internal(true); }
 }
 
 
@@ -85,16 +182,24 @@ pub trait Program {
  * The process id of the spawned process
  */
 pub fn spawn_process(prog: &str, args: &[~str],
-                 env: &Option<~[(~str,~str)]>,
-                 dir: &Option<~str>,
-                 in_fd: c_int, out_fd: c_int, err_fd: c_int)
-              -> pid_t {
+                     env: &Option<~[(~str,~str)]>,
+                     dir: &Option<~str>,
+                     in_fd: c_int, out_fd: c_int, err_fd: c_int) -> pid_t {
+
+    let res = spawn_process_internal(prog, args, env, dir, in_fd, out_fd, err_fd);
+    free_handle(res.handle);
+    return res.pid;
+}
+
+fn spawn_process_internal(prog: &str, args: &[~str],
+                          env: &Option<~[(~str,~str)]>,
+                          dir: &Option<~str>,
+                          in_fd: c_int, out_fd: c_int, err_fd: c_int) -> RunProgramResult {
     unsafe {
         do with_argv(prog, args) |argv| {
             do with_envp(env) |envp| {
                 do with_dirp(dir) |dirp| {
-                    rustrt::rust_run_program(argv, envp, dirp,
-                                             in_fd, out_fd, err_fd)
+                    rustrt::rust_run_program(argv, envp, dirp, in_fd, out_fd, err_fd)
                 }
             }
         }
@@ -132,7 +237,7 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
         }
         ptrs.push(ptr::null());
         vec::as_imm_buf(ptrs, |p, _len|
-            unsafe { cb(::cast::reinterpret_cast(&p)) }
+            unsafe { cb(::cast::transmute(p)) }
         )
       }
       _ => cb(ptr::null())
@@ -152,12 +257,12 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
             for vec::each(*es) |e| {
                 let (k,v) = copy *e;
                 let t = fmt!("%s=%s", k, v);
-                let mut v : ~[u8] = ::cast::reinterpret_cast(&t);
+                let mut v : ~[u8] = ::cast::transmute(t);
                 blk += v;
                 ::cast::forget(v);
             }
             blk += ~[0_u8];
-            vec::as_imm_buf(blk, |p, _len| cb(::cast::reinterpret_cast(&p)))
+            vec::as_imm_buf(blk, |p, _len| cb(::cast::transmute(p)))
           }
           _ => cb(ptr::null())
         }
@@ -170,6 +275,26 @@ fn with_dirp<T>(d: &Option<~str>,
       Some(ref dir) => str::as_c_str(*dir, cb),
       None => cb(ptr::null())
     }
+}
+
+/// helper function that closes non-NULL files and then makes them NULL
+priv unsafe fn fclose_and_null(f: &mut *libc::FILE) {
+    if *f != 0 as *libc::FILE {
+        libc::fclose(*f);
+        *f = 0 as *libc::FILE;
+    }
+}
+
+#[cfg(windows)]
+priv fn free_handle(handle: *()) {
+    unsafe {
+        libc::funcs::extra::kernel32::CloseHandle(cast::transmute(handle));
+    }
+}
+
+#[cfg(unix)]
+priv fn free_handle(_handle: *()) {
+    // unix has no process handle object, just a pid
 }
 
 /**
@@ -185,18 +310,21 @@ fn with_dirp<T>(d: &Option<~str>,
  * The process's exit code
  */
 pub fn run_program(prog: &str, args: &[~str]) -> int {
-    let pid = spawn_process(prog, args, &None, &None,
-                            0i32, 0i32, 0i32);
-    if pid == -1 as pid_t { fail!(); }
-    return waitpid(pid);
+    let res = spawn_process_internal(prog, args, &None, &None,
+                                     0i32, 0i32, 0i32);
+    if res.pid == -1 as pid_t { fail!(); }
+
+    let code = waitpid(res.pid);
+    free_handle(res.handle);
+    return code;
 }
 
 /**
- * Spawns a process and returns a program
+ * Spawns a process and returns a Program
  *
- * The returned value is a boxed class containing a <program> object that can
- * be used for sending and receiving data over the standard file descriptors.
- * The class will ensure that file descriptors are closed properly.
+ * The returned value is a <Program> object that can be used for sending and
+ * receiving data over the standard file descriptors.  The class will ensure
+ * that file descriptors are closed properly.
  *
  * # Arguments
  *
@@ -205,100 +333,35 @@ pub fn run_program(prog: &str, args: &[~str]) -> int {
  *
  * # Return value
  *
- * A class with a <program> field
+ * A <Program> object
  */
-pub fn start_program(prog: &str, args: &[~str]) -> @Program {
+pub fn start_program(prog: &str, args: &[~str]) -> Program {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
-    let pid =
-        spawn_process(prog, args, &None, &None,
-                      pipe_input.in, pipe_output.out,
-                      pipe_err.out);
+    let res =
+        spawn_process_internal(prog, args, &None, &None,
+                               pipe_input.in, pipe_output.out,
+                               pipe_err.out);
 
     unsafe {
-        if pid == -1 as pid_t { fail!(); }
+        if res.pid == -1 as pid_t { fail!(); }
         libc::close(pipe_input.in);
         libc::close(pipe_output.out);
         libc::close(pipe_err.out);
     }
 
-    struct ProgRepr {
-        pid: pid_t,
-        in_fd: c_int,
-        out_file: *libc::FILE,
-        err_file: *libc::FILE,
-        finished: bool,
-    }
-
-    fn close_repr_input(r: &mut ProgRepr) {
-        let invalid_fd = -1i32;
-        if r.in_fd != invalid_fd {
-            unsafe {
-                libc::close(r.in_fd);
-            }
-            r.in_fd = invalid_fd;
-        }
-    }
-    fn finish_repr(r: &mut ProgRepr) -> int {
-        if r.finished { return 0; }
-        r.finished = true;
-        close_repr_input(&mut *r);
-        return waitpid(r.pid);
-    }
-    fn destroy_repr(r: &mut ProgRepr) {
-        unsafe {
-            finish_repr(&mut *r);
-            libc::fclose(r.out_file);
-            libc::fclose(r.err_file);
-        }
-    }
-    struct ProgRes {
-        r: ProgRepr,
-    }
-
-    impl Drop for ProgRes {
-        fn finalize(&self) {
-            unsafe {
-                // FIXME #4943: This is bad.
-                destroy_repr(cast::transmute(&self.r));
-            }
-        }
-    }
-
-    fn ProgRes(r: ProgRepr) -> ProgRes {
-        ProgRes {
-            r: r
-        }
-    }
-
-    impl Program for ProgRes {
-        fn get_id(&mut self) -> pid_t { return self.r.pid; }
-        fn input(&mut self) -> @io::Writer {
-            io::fd_writer(self.r.in_fd, false)
-        }
-        fn output(&mut self) -> @io::Reader {
-            io::FILE_reader(self.r.out_file, false)
-        }
-        fn err(&mut self) -> @io::Reader {
-            io::FILE_reader(self.r.err_file, false)
-        }
-        fn close_input(&mut self) { close_repr_input(&mut self.r); }
-        fn finish(&mut self) -> int { finish_repr(&mut self.r) }
-        fn destroy(&mut self) { destroy_repr(&mut self.r); }
-    }
-    let mut repr = ProgRepr {
-        pid: pid,
+    Program {
+        pid: res.pid,
+        handle: res.handle,
         in_fd: pipe_input.out,
         out_file: os::fdopen(pipe_output.in),
         err_file: os::fdopen(pipe_err.in),
         finished: false,
-    };
-
-    @ProgRes(repr) as @Program
+    }
 }
 
-fn read_all(rd: io::Reader) -> ~str {
+fn read_all(rd: @io::Reader) -> ~str {
     let buf = io::with_bytes_writer(|wr| {
         let mut bytes = [0, ..4096];
         while !rd.eof() {
@@ -326,64 +389,65 @@ pub struct ProgramOutput {status: int, out: ~str, err: ~str}
  * the contents of stdout and the contents of stderr.
  */
 pub fn program_output(prog: &str, args: &[~str]) -> ProgramOutput {
-    unsafe {
-        let pipe_in = os::pipe();
-        let pipe_out = os::pipe();
-        let pipe_err = os::pipe();
-        let pid = spawn_process(prog, args, &None, &None,
-                                pipe_in.in, pipe_out.out, pipe_err.out);
+    let pipe_in = os::pipe();
+    let pipe_out = os::pipe();
+    let pipe_err = os::pipe();
+    let res = spawn_process_internal(prog, args, &None, &None,
+                                     pipe_in.in, pipe_out.out, pipe_err.out);
 
-        os::close(pipe_in.in);
-        os::close(pipe_out.out);
-        os::close(pipe_err.out);
-        if pid == -1i32 {
-            os::close(pipe_in.out);
-            os::close(pipe_out.in);
-            os::close(pipe_err.in);
-            fail!();
-        }
-
+    os::close(pipe_in.in);
+    os::close(pipe_out.out);
+    os::close(pipe_err.out);
+    if res.pid == -1i32 {
         os::close(pipe_in.out);
-
-        // Spawn two entire schedulers to read both stdout and sterr
-        // in parallel so we don't deadlock while blocking on one
-        // or the other. FIXME (#2625): Surely there's a much more
-        // clever way to do this.
-        let (p, ch) = stream();
-        let ch = SharedChan(ch);
-        let ch_clone = ch.clone();
-        do task::spawn_sched(task::SingleThreaded) {
-            let errput = readclose(pipe_err.in);
-            ch.send((2, errput));
-        };
-        do task::spawn_sched(task::SingleThreaded) {
-            let output = readclose(pipe_out.in);
-            ch_clone.send((1, output));
-        };
-        let status = run::waitpid(pid);
-        let mut errs = ~"";
-        let mut outs = ~"";
-        let mut count = 2;
-        while count > 0 {
-            let stream = p.recv();
-            match stream {
-                (1, copy s) => {
-                    outs = s;
-                }
-                (2, copy s) => {
-                    errs = s;
-                }
-                (n, _) => {
-                    fail!(fmt!("program_output received an unexpected file \
-                               number: %u", n));
-                }
-            };
-            count -= 1;
-        };
-        return ProgramOutput {status: status,
-                              out: outs,
-                              err: errs};
+        os::close(pipe_out.in);
+        os::close(pipe_err.in);
+        fail!();
     }
+
+    os::close(pipe_in.out);
+
+    // Spawn two entire schedulers to read both stdout and sterr
+    // in parallel so we don't deadlock while blocking on one
+    // or the other. FIXME (#2625): Surely there's a much more
+    // clever way to do this.
+    let (p, ch) = stream();
+    let ch = SharedChan::new(ch);
+    let ch_clone = ch.clone();
+    do task::spawn_sched(task::SingleThreaded) {
+        let errput = readclose(pipe_err.in);
+        ch.send((2, errput));
+    };
+    do task::spawn_sched(task::SingleThreaded) {
+        let output = readclose(pipe_out.in);
+        ch_clone.send((1, output));
+    };
+
+    let status = waitpid(res.pid);
+    free_handle(res.handle);
+
+    let mut errs = ~"";
+    let mut outs = ~"";
+    let mut count = 2;
+    while count > 0 {
+        let stream = p.recv();
+        match stream {
+            (1, copy s) => {
+                outs = s;
+            }
+            (2, copy s) => {
+                errs = s;
+            }
+            (n, _) => {
+                fail!(fmt!("program_output received an unexpected file \
+                           number: %u", n));
+            }
+        };
+        count -= 1;
+    };
+    return ProgramOutput {status: status,
+                          out: outs,
+                          err: errs};
 }
 
 pub fn writeclose(fd: c_int, s: ~str) {
@@ -412,17 +476,27 @@ pub fn readclose(fd: c_int) -> ~str {
     }
 }
 
-/// Waits for a process to exit and returns the exit code
+/**
+ * Waits for a process to exit and returns the exit code, failing
+ * if there is no process with the specified id.
+ */
 pub fn waitpid(pid: pid_t) -> int {
     return waitpid_os(pid);
 
     #[cfg(windows)]
     fn waitpid_os(pid: pid_t) -> int {
-        os::waitpid(pid) as int
+        let status = unsafe { rustrt::rust_process_wait(pid) };
+        if status < 0 {
+            fail!(fmt!("failure in rust_process_wait: %s", os::last_os_error()));
+        }
+        return status as int;
     }
 
     #[cfg(unix)]
     fn waitpid_os(pid: pid_t) -> int {
+
+        use libc::funcs::posix01::wait::*;
+
         #[cfg(target_os = "linux")]
         #[cfg(target_os = "android")]
         fn WIFEXITED(status: i32) -> bool {
@@ -447,7 +521,11 @@ pub fn waitpid(pid: pid_t) -> int {
             status >> 8i32
         }
 
-        let status = os::waitpid(pid);
+        let mut status = 0 as c_int;
+        if unsafe { waitpid(pid, &mut status, 0) } == -1 {
+            fail!(fmt!("failure in waitpid: %s", os::last_os_error()));
+        }
+
         return if WIFEXITED(status) {
             WEXITSTATUS(status) as int
         } else {
@@ -458,14 +536,16 @@ pub fn waitpid(pid: pid_t) -> int {
 
 #[cfg(test)]
 mod tests {
+    use libc;
     use option::None;
     use os;
+    use path::Path;
     use run::{readclose, writeclose};
     use run;
 
     // Regression test for memory leaks
-    #[ignore(cfg(windows))] // FIXME (#2626)
-    pub fn test_leaks() {
+    #[test]
+    fn test_leaks() {
         run::run_program("echo", []);
         run::start_program("echo", []);
         run::program_output("echo", []);
@@ -473,7 +553,7 @@ mod tests {
 
     #[test]
     #[allow(non_implicitly_copyable_typarams)]
-    pub fn test_pipes() {
+    fn test_pipes() {
         let pipe_in = os::pipe();
         let pipe_out = os::pipe();
         let pipe_err = os::pipe();
@@ -491,7 +571,7 @@ mod tests {
         writeclose(pipe_in.out, copy expected);
         let actual = readclose(pipe_out.in);
         readclose(pipe_err.in);
-        os::waitpid(pid);
+        run::waitpid(pid);
 
         debug!(copy expected);
         debug!(copy actual);
@@ -499,7 +579,7 @@ mod tests {
     }
 
     #[test]
-    pub fn waitpid() {
+    fn waitpid() {
         let pid = run::spawn_process("false", [],
                                      &None, &None,
                                      0i32, 0i32, 0i32);
@@ -507,6 +587,57 @@ mod tests {
         assert!(status == 1);
     }
 
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn waitpid_non_existant_pid() {
+        run::waitpid(123456789); // assume that this pid doesn't exist
+    }
+
+    #[test]
+    fn test_destroy_once() {
+        let mut p = run::start_program("echo", []);
+        p.destroy(); // this shouldn't crash (and nor should the destructor)
+    }
+
+    #[test]
+    fn test_destroy_twice() {
+        let mut p = run::start_program("echo", []);
+        p.destroy(); // this shouldnt crash...
+        p.destroy(); // ...and nor should this (and nor should the destructor)
+    }
+
+    #[cfg(unix)] // there is no way to sleep on windows from inside libcore...
+    fn test_destroy_actually_kills(force: bool) {
+        let path = Path(fmt!("test/core-run-test-destroy-actually-kills-%?.tmp", force));
+
+        os::remove_file(&path);
+
+        let cmd = fmt!("sleep 5 && echo MurderDeathKill > %s", path.to_str());
+        let mut p = run::start_program("sh", [~"-c", cmd]);
+
+        p.destroy(); // destroy the program before it has a chance to echo its message
+
+        unsafe {
+            // wait to ensure the program is really destroyed and not just waiting itself
+            libc::sleep(10);
+        }
+
+        // the program should not have had chance to echo its message
+        assert!(!path.exists());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_unforced_destroy_actually_kills() {
+        test_destroy_actually_kills(false);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_forced_destroy_actually_kills() {
+        test_destroy_actually_kills(true);
+    }
 }
 
 // Local Variables:

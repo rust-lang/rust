@@ -12,11 +12,15 @@
 // allows bidirectional lookup; i.e. given a value, one can easily find the
 // type, and vice versa.
 
+// allow the interner_key macro to escape this module:
+#[macro_escape];
+
 use core::prelude::*;
-use core::hashmap::linear::LinearMap;
+use core::cmp::Equiv;
+use core::hashmap::HashMap;
 
 pub struct Interner<T> {
-    priv map: @mut LinearMap<T, uint>,
+    priv map: @mut HashMap<T, uint>,
     priv vect: @mut ~[T],
 }
 
@@ -24,7 +28,7 @@ pub struct Interner<T> {
 pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
     fn new() -> Interner<T> {
         Interner {
-            map: @mut LinearMap::new(),
+            map: @mut HashMap::new(),
             vect: @mut ~[],
         }
     }
@@ -64,45 +68,68 @@ pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
     fn get(&self, idx: uint) -> T { self.vect[idx] }
 
     fn len(&self) -> uint { let vect = &*self.vect; vect.len() }
+
+    fn find_equiv<Q:Hash + IterBytes + Equiv<T>>(&self, val: &Q)
+                                              -> Option<uint> {
+        match self.map.find_equiv(val) {
+            Some(v) => Some(*v),
+            None => None,
+        }
+    }
 }
 
-#[test]
-#[should_fail]
-pub fn i1 () {
-    let i : Interner<@~str> = Interner::new();
-    i.get(13);
-}
+/* Key for thread-local data for sneaking interner information to the
+* encoder/decoder. It sounds like a hack because it is one.
+* Bonus ultra-hack: functions as keys don't work across crates,
+* so we have to use a unique number. See taskgroup_key! in task.rs
+* for another case of this. */
+macro_rules! interner_key (
+    () => (cast::transmute::<(uint, uint),
+           &fn(+v: @@::parse::token::ident_interner)>(
+        (-3 as uint, 0u)))
+)
 
-#[test]
-pub fn i2 () {
-    let i : Interner<@~str> = Interner::new();
-    // first one is zero:
-    assert_eq!(i.intern (@~"dog"), 0);
-    // re-use gets the same entry:
-    assert_eq!(i.intern (@~"dog"), 0);
-    // different string gets a different #:
-    assert_eq!(i.intern (@~"cat"), 1);
-    assert_eq!(i.intern (@~"cat"), 1);
-    // dog is still at zero
-    assert_eq!(i.intern (@~"dog"), 0);
-    // gensym gets 3
-    assert_eq!(i.gensym (@~"zebra" ), 2);
-    // gensym of same string gets new number :
-    assert_eq!(i.gensym (@~"zebra" ), 3);
-    // gensym of *existing* string gets new number:
-    assert_eq!(i.gensym (@~"dog"), 4);
-    assert_eq!(i.get(0), @~"dog");
-    assert_eq!(i.get(1), @~"cat");
-    assert_eq!(i.get(2), @~"zebra");
-    assert_eq!(i.get(3), @~"zebra");
-    assert_eq!(i.get(4), @~"dog");
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    #[should_fail]
+    fn i1 () {
+        let i : Interner<@~str> = Interner::new();
+        i.get(13);
+    }
 
-#[test]
-pub fn i3 () {
-    let i : Interner<@~str> = Interner::prefill([@~"Alan",@~"Bob",@~"Carol"]);
-    assert_eq!(i.get(0), @~"Alan");
-    assert_eq!(i.get(1), @~"Bob");
-    assert_eq!(i.get(2), @~"Carol");
-    assert_eq!(i.intern(@~"Bob"), 1);
+    #[test]
+    fn i2 () {
+        let i : Interner<@~str> = Interner::new();
+        // first one is zero:
+        assert_eq!(i.intern (@~"dog"), 0);
+        // re-use gets the same entry:
+        assert_eq!(i.intern (@~"dog"), 0);
+        // different string gets a different #:
+        assert_eq!(i.intern (@~"cat"), 1);
+        assert_eq!(i.intern (@~"cat"), 1);
+        // dog is still at zero
+        assert_eq!(i.intern (@~"dog"), 0);
+        // gensym gets 3
+        assert_eq!(i.gensym (@~"zebra" ), 2);
+        // gensym of same string gets new number :
+        assert_eq!(i.gensym (@~"zebra" ), 3);
+        // gensym of *existing* string gets new number:
+        assert_eq!(i.gensym (@~"dog"), 4);
+        assert_eq!(i.get(0), @~"dog");
+        assert_eq!(i.get(1), @~"cat");
+        assert_eq!(i.get(2), @~"zebra");
+        assert_eq!(i.get(3), @~"zebra");
+        assert_eq!(i.get(4), @~"dog");
+    }
+
+    #[test]
+    fn i3 () {
+        let i : Interner<@~str> = Interner::prefill([@~"Alan",@~"Bob",@~"Carol"]);
+        assert_eq!(i.get(0), @~"Alan");
+        assert_eq!(i.get(1), @~"Bob");
+        assert_eq!(i.get(2), @~"Carol");
+        assert_eq!(i.intern(@~"Bob"), 1);
+    }
 }

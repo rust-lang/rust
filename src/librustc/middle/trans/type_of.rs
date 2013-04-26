@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -22,11 +22,8 @@ use util::ppaux;
 use core::option::None;
 use syntax::ast;
 
-pub fn arg_is_indirect(ccx: @CrateContext, arg: &ty::arg) -> bool {
-    match ty::resolved_mode(ccx.tcx, arg.mode) {
-        ast::by_copy => !ty::type_is_immediate(arg.ty),
-        ast::by_ref => true
-    }
+pub fn arg_is_indirect(_: @CrateContext, arg: &ty::arg) -> bool {
+    !ty::type_is_immediate(arg.ty)
 }
 
 pub fn type_of_explicit_arg(ccx: @CrateContext, arg: &ty::arg) -> TypeRef {
@@ -39,20 +36,34 @@ pub fn type_of_explicit_args(ccx: @CrateContext,
     inputs.map(|arg| type_of_explicit_arg(ccx, arg))
 }
 
-pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::arg],
-                  output: ty::t) -> TypeRef {
+pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::arg], output: ty::t)
+               -> TypeRef {
     unsafe {
         let mut atys: ~[TypeRef] = ~[];
 
         // Arg 0: Output pointer.
-        atys.push(T_ptr(type_of(cx, output)));
+        // (if the output type is non-immediate)
+        let output_is_immediate = ty::type_is_immediate(output);
+        let lloutputtype = type_of(cx, output);
+        if !output_is_immediate {
+            atys.push(T_ptr(lloutputtype));
+        } else {
+            // XXX: Eliminate this.
+            atys.push(T_ptr(T_i8()));
+        }
 
         // Arg 1: Environment
         atys.push(T_opaque_box_ptr(cx));
 
         // ... then explicit args.
         atys.push_all(type_of_explicit_args(cx, inputs));
-        return T_fn(atys, llvm::LLVMVoidType());
+
+        // Use the output as the actual return value if it's immediate.
+        if output_is_immediate {
+            T_fn(atys, lloutputtype)
+        } else {
+            T_fn(atys, llvm::LLVMVoidType())
+        }
     }
 }
 
@@ -128,12 +139,12 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
         ty::ty_estr(ty::vstore_slice(*)) |
         ty::ty_evec(_, ty::vstore_slice(*)) => {
-            T_struct(~[T_ptr(T_i8()), T_ptr(T_i8())])
+            T_struct(~[T_ptr(T_i8()), T_ptr(T_i8())], false)
         }
 
         ty::ty_bare_fn(*) => T_ptr(T_i8()),
-        ty::ty_closure(*) => T_struct(~[T_ptr(T_i8()), T_ptr(T_i8())]),
-        ty::ty_trait(_, _, store) => T_opaque_trait(cx, store),
+        ty::ty_closure(*) => T_struct(~[T_ptr(T_i8()), T_ptr(T_i8())], false),
+        ty::ty_trait(_, _, store, _) => T_opaque_trait(cx, store),
 
         ty::ty_estr(ty::vstore_fixed(size)) => T_array(T_i8(), size),
         ty::ty_evec(mt, ty::vstore_fixed(size)) => {
@@ -142,9 +153,15 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
         ty::ty_unboxed_vec(mt) => T_vec(cx, sizing_type_of(cx, mt.ty)),
 
-        ty::ty_tup(*) | ty::ty_struct(*) | ty::ty_enum(*) => {
+        ty::ty_tup(*) | ty::ty_enum(*) => {
             let repr = adt::represent_type(cx, t);
-            T_struct(adt::sizing_fields_of(cx, repr))
+            T_struct(adt::sizing_fields_of(cx, repr), false)
+        }
+
+        ty::ty_struct(did, _) => {
+            let repr = adt::represent_type(cx, t);
+            let packed = ty::lookup_packed(cx.tcx, did);
+            T_struct(adt::sizing_fields_of(cx, repr), packed)
         }
 
         ty::ty_self(_) | ty::ty_infer(*) | ty::ty_param(*) | ty::ty_err(*) => {
@@ -223,12 +240,14 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
       ty::ty_evec(ref mt, ty::vstore_slice(_)) => {
         T_struct(~[T_ptr(type_of(cx, mt.ty)),
-                   T_uint_ty(cx, ast::ty_u)])
+                   T_uint_ty(cx, ast::ty_u)],
+                 false)
       }
 
       ty::ty_estr(ty::vstore_slice(_)) => {
         T_struct(~[T_ptr(T_i8()),
-                   T_uint_ty(cx, ast::ty_u)])
+                   T_uint_ty(cx, ast::ty_u)],
+                 false)
       }
 
       ty::ty_estr(ty::vstore_fixed(n)) => {
@@ -241,11 +260,11 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
       ty::ty_bare_fn(_) => T_ptr(type_of_fn_from_ty(cx, t)),
       ty::ty_closure(_) => T_fn_pair(cx, type_of_fn_from_ty(cx, t)),
-      ty::ty_trait(_, _, store) => T_opaque_trait(cx, store),
+      ty::ty_trait(_, _, store, _) => T_opaque_trait(cx, store),
       ty::ty_type => T_ptr(cx.tydesc_type),
       ty::ty_tup(*) => {
           let repr = adt::represent_type(cx, t);
-          T_struct(adt::fields_of(cx, repr))
+          T_struct(adt::fields_of(cx, repr), false)
       }
       ty::ty_opaque_closure_ptr(_) => T_opaque_box_ptr(cx),
       ty::ty_struct(did, ref substs) => {
@@ -268,9 +287,17 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
     // If this was an enum or struct, fill in the type now.
     match ty::get(t).sty {
-      ty::ty_enum(*) | ty::ty_struct(*) => {
+      ty::ty_enum(*) => {
           let repr = adt::represent_type(cx, t);
-          common::set_struct_body(llty, adt::fields_of(cx, repr));
+          common::set_struct_body(llty, adt::fields_of(cx, repr),
+                                  false);
+      }
+
+      ty::ty_struct(did, _) => {
+        let repr = adt::represent_type(cx, t);
+        let packed = ty::lookup_packed(cx.tcx, did);
+        common::set_struct_body(llty, adt::fields_of(cx, repr),
+                                packed);
       }
       _ => ()
     }
@@ -302,11 +329,9 @@ pub fn llvm_type_name(cx: @CrateContext,
 }
 
 pub fn type_of_dtor(ccx: @CrateContext, self_ty: ty::t) -> TypeRef {
-    unsafe {
-        T_fn(~[T_ptr(type_of(ccx, ty::mk_nil(ccx.tcx))), // output pointer
-               T_ptr(type_of(ccx, self_ty))],            // self arg
-             llvm::LLVMVoidType())
-    }
+    T_fn(~[T_ptr(T_i8()),                   // output pointer
+           T_ptr(type_of(ccx, self_ty))],   // self arg
+         T_nil())
 }
 
 pub fn type_of_rooted(ccx: @CrateContext, t: ty::t) -> TypeRef {
@@ -320,5 +345,5 @@ pub fn type_of_glue_fn(ccx: @CrateContext, t: ty::t) -> TypeRef {
     let tydescpp = T_ptr(T_ptr(ccx.tydesc_type));
     let llty = T_ptr(type_of(ccx, t));
     return T_fn(~[T_ptr(T_nil()), T_ptr(T_nil()), tydescpp, llty],
-                T_void());
+                T_nil());
 }

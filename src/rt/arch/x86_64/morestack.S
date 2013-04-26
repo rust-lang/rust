@@ -54,7 +54,7 @@ MORESTACK:
 	// Calculate the CFA as on offset from %ebp
 	.cfi_def_cfa_register %rbp
 
-        subq $184, %rsp
+        subq $56, %rsp
 
 	// Save argument registers of the original function
 	movq %rdi,       (%rsp)
@@ -63,14 +63,6 @@ MORESTACK:
 	movq %rcx,     24(%rsp)
 	movq %r8,      32(%rsp)
 	movq %r9,      40(%rsp)
-	movdqa %xmm0,  48(%rsp)
-	movdqa %xmm1,  64(%rsp)
-	movdqa %xmm2,  80(%rsp)
-	movdqa %xmm3,  96(%rsp)
-	movdqa %xmm4, 112(%rsp)
-	movdqa %xmm5, 128(%rsp)
-	movdqa %xmm6, 144(%rsp)
-	movdqa %xmm7, 160(%rsp)
 
 	// Calculate the address of the stack arguments.
 	// We have the base pointer, __morestack's return address,
@@ -101,16 +93,8 @@ MORESTACK:
 	movq    24(%rsp), %rcx
 	movq    32(%rsp), %r8
 	movq    40(%rsp), %r9
-	movdqa  48(%rsp), %xmm0
-	movdqa  64(%rsp), %xmm1
-	movdqa  80(%rsp), %xmm2
-	movdqa  96(%rsp), %xmm3
-	movdqa 112(%rsp), %xmm4
-	movdqa 128(%rsp), %xmm5
-	movdqa 144(%rsp), %xmm6
-	movdqa 160(%rsp), %xmm7
 
-	addq $184, %rsp
+	addq $56, %rsp
 
         movq 8(%rbp),%r10       // Grab the return pointer.
         incq %r10               // Skip past the `ret` in our parent frame

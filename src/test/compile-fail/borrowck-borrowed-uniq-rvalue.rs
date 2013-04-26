@@ -10,11 +10,11 @@
 
 //buggy.rs
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 
 fn main() {
-    let mut buggy_map :LinearMap<uint, &uint> =
-      LinearMap::new::<uint, &uint>();
+    let mut buggy_map :HashMap<uint, &uint> =
+      HashMap::new::<uint, &uint>();
     buggy_map.insert(42, &*~1); //~ ERROR illegal borrow
 
     // but it is ok if we use a temporary

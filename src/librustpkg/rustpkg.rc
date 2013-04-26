@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// rustpkg - a purely function package manager and build system
+// rustpkg - a package manager and build system for Rust
 
 #[link(name = "rustpkg",
-       vers = "0.6",
+       vers = "0.7-pre",
        uuid = "25de5e6e-279e-4a20-845c-4cabae92daaf",
        url = "https://github.com/mozilla/rust/tree/master/src/librustpkg")];
 
@@ -21,242 +21,146 @@
 #[allow(vecs_implicitly_copyable,
         non_implicitly_copyable_typarams)];
 
-extern mod core(vers = "0.6");
-extern mod std(vers = "0.6");
-extern mod rustc(vers = "0.6");
-extern mod syntax(vers = "0.6");
+extern mod core(vers = "0.7-pre");
+extern mod std(vers = "0.7-pre");
+extern mod rustc(vers = "0.7-pre");
+extern mod syntax(vers = "0.7-pre");
 
 use core::*;
+pub use core::path::Path;
 use core::container::Map;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::io::WriterUtil;
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
-use std::net::url;
-use std::{json, semver, getopts};
-use syntax::codemap::spanned;
+use std::{getopts};
 use syntax::{ast, diagnostic};
-use util::Package;
+use util::*;
+use path_util::normalize;
+use path_util::{build_pkg_id_in_workspace, pkgid_src_in_workspace};
+use workspace::pkg_parent_workspaces;
+use rustc::driver::session::{lib_crate, bin_crate, crate_type};
+use context::Ctx;
 
+mod conditions;
+mod context;
 mod usage;
+mod path_util;
+mod tests;
 mod util;
+mod workspace;
 
-struct PackageScript {
-    id: ~str,
-    name: ~str,
-    vers: semver::Version,
-    crates: ~[~str],
-    deps: ~[(~str, Option<~str>)],
+/// A PkgScript represents user-supplied custom logic for
+/// special build hooks. This only exists for packages with
+/// an explicit package script.
+struct PkgScript {
+    /// Uniquely identifies this package
+    id: PkgId,
+    // Used to have this field:    deps: ~[(~str, Option<~str>)]
+    // but I think it shouldn't be stored here
+    /// The contents of the package script: either a file path,
+    /// or a string containing the text of the input
     input: driver::input,
+    /// The session to use *only* for compiling the custom
+    /// build script
     sess: session::Session,
+    /// The config for compiling the custom build script
     cfg: ast::crate_cfg,
+    /// The crate for the custom build script
     crate: @ast::crate,
-    custom: bool
+    /// Directory in which to store build output
+    build_dir: Path
 }
 
-impl PackageScript {
-    fn parse(parent: &Path) -> Result<PackageScript, ~str> {
-        let script = parent.push(~"pkg.rs");
-
-        if !os::path_exists(&script) {
-            return result::Err(~"no pkg.rs file");
-        }
-
+impl PkgScript {
+    /// Given the path name for a package script
+    /// and a package ID, parse the package script into
+    /// a PkgScript that we can then execute
+    fn parse(script: Path, workspace: &Path, id: PkgId) -> PkgScript {
+        // Get the executable name that was invoked
         let binary = os::args()[0];
+        // Build the rustc session data structures to pass
+        // to the compiler
         let options = @session::options {
-            binary: binary,
+            binary: @binary,
             crate_type: session::bin_crate,
             .. *session::basic_options()
         };
         let input = driver::file_input(script);
         let sess = driver::build_session(options, diagnostic::emit);
-        let cfg = driver::build_configuration(sess, binary, input);
-        let (crate, _) = driver::compile_upto(sess, cfg, input,
+        let cfg = driver::build_configuration(sess, @binary, &input);
+        let (crate, _) = driver::compile_upto(sess, cfg, &input,
                                               driver::cu_parse, None);
-        let mut id = None;
-        let mut vers = None;
-        let mut crates = ~[];
-        let mut deps = ~[];
+        let work_dir = build_pkg_id_in_workspace(id, workspace);
 
-        fn load_pkg_attr(mis: ~[@ast::meta_item]) -> (Option<~str>,
-                                                      Option<~str>) {
-            let mut id = None;
-            let mut vers = None;
+        debug!("Returning package script with id %?", id);
 
-            for mis.each |a| {
-                match a.node {
-                    ast::meta_name_value(v, spanned {
-                                                node: ast::lit_str(s),
-                                                span: _}) => {
-                        match *v {
-                            ~"id" => id = Some(*s),
-                            ~"vers" => vers = Some(*s),
-                            _ => ()
-                        }
-                    }
-                    _ => {}
-                }
-            }
-
-            (id, vers)
-        }
-
-        fn load_pkg_dep_attr(mis: ~[@ast::meta_item]) -> (Option<~str>,
-                                                          Option<~str>) {
-            let mut url = None;
-            let mut target = None;
-
-            for mis.each |a| {
-                match a.node {
-                    ast::meta_name_value(v, spanned {
-                                                node: ast::lit_str(s),
-                                                span: _}) => {
-                        match *v {
-                            ~"url" => url = Some(*s),
-                            ~"target" => target = Some(*s),
-                            _ => ()
-                        }
-                    }
-                    _ => {}
-                }
-            }
-
-            (url, target)
-        }
-
-        fn load_pkg_crate_attr(mis: ~[@ast::meta_item]) -> Option<~str> {
-            let mut file = None;
-
-            for mis.each |a| {
-                match a.node {
-                    ast::meta_name_value(v, spanned {
-                                                node: ast::lit_str(s),
-                                                span: _}) => {
-                        match *v {
-                            ~"file" => file = Some(*s),
-                            _ => ()
-                        }
-                    }
-                    _ => {}
-                }
-            }
-
-            file
-        }
-
-        for crate.node.attrs.each |a| {
-            match a.node.value.node {
-                ast::meta_list(v, mis) => {
-                    match *v {
-                        ~"pkg" => {
-                            let (i, v) = load_pkg_attr(mis);
-
-                            id = i;
-                            vers = v;
-                        }
-                        ~"pkg_dep" => {
-                            let (u, t) = load_pkg_dep_attr(mis);
-
-                            if u.is_none() {
-                                fail!(~"pkg_dep attr without a url value");
-                            }
-
-                            deps.push((u.get(), t));
-                        }
-                        ~"pkg_crate" => {
-                            let f = load_pkg_crate_attr(mis);
-
-                            if f.is_none() {
-                                fail!(~"pkg_file attr without a file value");
-                            }
-
-                            crates.push(f.get());
-                        }
-                        _ => {}
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        let mut custom = false;
-
-        // If we hit a function, we assume they want to use
-        // the build API.
-        for crate.node.module.items.each |i| {
-            match i.node {
-                ast::item_fn(*) => {
-                    custom = true;
-
-                    break;
-                }
-                _ => {}
-            }
-        }
-
-        if id.is_none() || vers.is_none() {
-            return result::Err(~"pkg attr without (id, vers) values");
-        }
-
-        let id = id.get();
-        let name = match util::parse_name(id) {
-            result::Ok(name) => name,
-            result::Err(err) => return result::Err(err)
-        };
-        let vers = match util::parse_vers(vers.get()) {
-            result::Ok(vers) => vers,
-            result::Err(err) => return result::Err(err)
-        };
-
-        result::Ok(PackageScript {
+        PkgScript {
             id: id,
-            name: name,
-            vers: vers,
-            crates: crates,
-            deps: deps,
             input: input,
             sess: sess,
             cfg: cfg,
             crate: crate,
-            custom: custom
-        })
+            build_dir: work_dir
+        }
     }
 
-    // Build the bootstrap and run a command
+    /// Run the contents of this package script, where <what>
+    /// is the command to pass to it (e.g., "build", "clean", "install")
+    /// Returns a pair of an exit code and list of configs (obtained by
+    /// calling the package script's configs() function if it exists
     // FIXME (#4432): Use workcache to only compile the script when changed
-    fn run(&self, cmd: ~str, test: bool) -> int {
-        let work_dir = self.work_dir();
-        let input = self.input;
+    fn run_custom(&self, what: ~str) -> (~[~str], ExitCode) {
+        debug!("run_custom: %s", what);
         let sess = self.sess;
-        let cfg = self.cfg;
-        let crate = util::ready_crate(sess, self.crate);
-        let outputs = driver::build_output_filenames(input, &Some(work_dir),
-                                                     &None, sess);
-        let exe = work_dir.push(~"pkg" + util::exe_suffix());
-        let root = filesearch::get_rustpkg_sysroot().get().pop().pop();
 
-        driver::compile_rest(sess, cfg, driver::cu_parse,
-                             Some(outputs), Some(crate));
-        run::run_program(exe.to_str(), ~[root.to_str(), cmd, test.to_str()])
+        debug!("Working directory = %s", self.build_dir.to_str());
+        // Collect together any user-defined commands in the package script
+        let crate = util::ready_crate(sess, self.crate);
+        debug!("Building output filenames with script name %s",
+               driver::source_name(&self.input));
+        match filesearch::get_rustpkg_sysroot() {
+            Ok(r) => {
+                let root = r.pop().pop().pop().pop(); // :-\
+                debug!("Root is %s, calling compile_rest", root.to_str());
+                let exe = self.build_dir.push(~"pkg" + util::exe_suffix());
+                util::compile_crate_from_input(self.input, self.id,
+                                               Some(self.build_dir),
+                                               sess, Some(crate),
+                                               exe, os::args()[0],
+                                               driver::cu_everything);
+                debug!("Running program: %s %s %s", exe.to_str(), root.to_str(), what);
+                let status = run::run_program(exe.to_str(), ~[root.to_str(), what]);
+                if status != 0 {
+                    return (~[], status);
+                }
+                else {
+                    debug!("Running program (configs): %s %s %s",
+                           exe.to_str(), root.to_str(), ~"configs");
+                    let output = run::program_output(exe.to_str(), ~[root.to_str(), ~"configs"]);
+                    // Run the configs() function to get the configs
+                    let mut cfgs = ~[];
+                    for str::each_word(output.out) |w| {
+                        cfgs.push(w.to_owned());
+                    }
+                    (cfgs, output.status)
+                }
+            }
+            Err(e) => {
+                fail!(fmt!("Running package script, couldn't find rustpkg sysroot (%s)",
+                           e))
+            }
+        }
     }
 
     fn hash(&self) -> ~str {
-        fmt!("%s-%s-%s", self.name, util::hash(self.id + self.vers.to_str()),
-                         self.vers.to_str())
+        self.id.hash()
     }
 
-    fn work_dir(&self) -> Path {
-        util::root().push(~"work").push(self.hash())
-    }
-}
-
-struct Ctx {
-    cfgs: ~[~str],
-    json: bool,
-    dep_cache: @mut LinearMap<~str, bool>
 }
 
 impl Ctx {
+
     fn run(&self, cmd: ~str, args: ~[~str]) {
         let root = util::root();
 
@@ -281,26 +185,89 @@ impl Ctx {
 
         match cmd {
             ~"build" => {
-                self.build(&os::getcwd(), true, false, false);
+                if args.len() < 1 {
+                    return usage::build();
+                }
+                // The package id is presumed to be the first command-line
+                // argument
+                let pkgid = PkgId::new(args[0]);
+                for pkg_parent_workspaces(pkgid) |workspace| {
+                    let src_dir   = pkgid_src_in_workspace(pkgid, workspace);
+                    let build_dir = build_pkg_id_in_workspace(pkgid, workspace);
+                    debug!("Destination dir = %s", build_dir.to_str());
+
+                    // Create the package source
+                    let mut src = PkgSrc::new(&workspace.push("src"), &build_dir, &pkgid);
+                    debug!("Package src = %?", src);
+
+                    // Is there custom build logic? If so, use it
+                    let pkg_src_dir = src_dir;
+                    let mut custom = false;
+                    debug!("Package source directory = %s", pkg_src_dir.to_str());
+                    let cfgs = match src.package_script_option(&pkg_src_dir) {
+                        Some(package_script_path) => {
+                            let pscript = PkgScript::parse(package_script_path,
+                                                           workspace,
+                                                           pkgid);
+                            // Limited right now -- we're only running the post_build
+                            // hook and probably fail otherwise
+                            // also post_build should be called pre_build
+                            let (cfgs, hook_result) = pscript.run_custom(~"post_build");
+                            debug!("Command return code = %?", hook_result);
+                            if hook_result != 0 {
+                                fail!(fmt!("Error running custom build command"))
+                            }
+                            custom = true;
+                            // otherwise, the package script succeeded
+                            cfgs
+                        }
+                        None => {
+                            debug!("No package script, continuing");
+                            ~[]
+                        }
+                    };
+
+                    // If there was a package script, it should have finished
+                    // the build already. Otherwise...
+                    if !custom {
+                        // Find crates inside the workspace
+                        src.find_crates();
+                        // Build it!
+                        src.build(&build_dir, cfgs);
+                    }
+                }
             }
             ~"clean" => {
-                self.clean();
+                if args.len() < 1 {
+                    return usage::build();
+                }
+                // The package id is presumed to be the first command-line
+                // argument
+                let pkgid = PkgId::new(args[0]);
+                let cwd = os::getcwd();
+                self.clean(&cwd, pkgid); // tjc: should use workspace, not cwd
             }
             ~"do" => {
-                if args.len() < 1 {
+                if args.len() < 2 {
                     return usage::do_cmd();
                 }
 
-                self.do_cmd(args[0]);
+                self.do_cmd(args[0], args[1]);
             }
             ~"info" => {
                 self.info();
             }
             ~"install" => {
-                self.install(if args.len() >= 1 { Some(args[0]) }
-                             else { None },
-                             if args.len() >= 2 { Some(args[1]) }
-                             else { None }, false);
+                if args.len() < 1 {
+                    return usage::install();
+                }
+
+                // The package id is presumed to be the first command-line
+                // argument
+                let pkgid = PkgId::new(args[0]);
+                for pkg_parent_workspaces(pkgid) |workspace| {
+                    self.install(workspace, pkgid);
+                }
             }
             ~"prefer" => {
                 if args.len() < 1 {
@@ -336,318 +303,43 @@ impl Ctx {
         }
     }
 
-    fn do_cmd(&self, cmd: ~str) -> bool {
-        match cmd {
-            ~"build" | ~"test" => {
-                util::error(~"that command cannot be manually called");
-
-                return false;
-            }
-            _ => {}
-        }
-
-        let cwd = &os::getcwd();
-        let script = match PackageScript::parse(cwd) {
-            result::Ok(script) => script,
-            result::Err(err) => {
-                util::error(err);
-
-                return false;
-            }
-        };
-        let status = script.run(cmd, false);
-
-        if status == 42 {
-            util::error(~"no fns are listening for that cmd");
-
-            return false;
-        }
-
-        status == 0
+    fn do_cmd(&self, _cmd: ~str, _pkgname: ~str)  {
+        // stub
+        fail!(~"`do` not yet implemented");
     }
 
-    fn build(&self, dir: &Path, verbose: bool, opt: bool,
-             test: bool) -> Option<PackageScript> {
-        let cwd = &os::getcwd();
-        let script = match PackageScript::parse(dir) {
-            result::Ok(script) => script,
-            result::Err(err) => {
-                util::error(err);
+    fn clean(&self, workspace: &Path, id: PkgId)  {
+        // Could also support a custom build hook in the pkg
+        // script for cleaning files rustpkg doesn't know about.
+        // Do something reasonable for now
 
-                return None;
-            }
-        };
-        let work_dir = script.work_dir();
-        let mut success = true;
-
-        util::need_dir(&work_dir);
-
-        if script.deps.len() >= 1 {
-            util::note(~"installing dependencies");
-
-            for script.deps.each |&dep| {
-                let (url, target) = dep;
-
-                success = self.install(Some(url), target, true);
-
-                if !success { break; }
-            }
-
-
-            if !success {
-                util::error(
-                    fmt!("building %s v%s failed: a dep wasn't installed",
-                         script.name, script.vers.to_str()));
-
-                return None;
-            }
-
-            util::note(~"installed dependencies");
-        }
-
-        // Build imperative crates
-        os::change_dir(dir);
-
-        if script.custom {
-            let status = script.run(~"build", test);
-
-            if status != 0 && status != 42 {
-                util::error(
-                    fmt!("building %s v%s failed: custom logic failed (%d)",
-                         script.name, script.vers.to_str(), status));
-
-                return None;
-            }
-        }
-
-        os::change_dir(cwd);
-
-        for script.crates.each |&crate| {
-            let crate = &dir.push_rel(&Path(crate)).normalize();
-
-            util::note(fmt!("compiling %s", crate.to_str()));
-
-            success = self.compile(crate, &work_dir, ~[],
-                                   ~[], opt, test);
-
-            if !success { break; }
-        }
-
-        if !success {
-            util::error(
-                fmt!("building %s v%s failed: a crate failed to compile",
-                     script.name, script.vers.to_str()));
-
-            return None;
-        }
-
-        if verbose {
-            util::note(fmt!("built %s v%s", script.name,
-                            script.vers.to_str()));
-        }
-
-        Some(script)
-    }
-
-    fn compile(&self, crate: &Path, dir: &Path, flags: ~[~str],
-               cfgs: ~[~str], opt: bool, test: bool) -> bool {
-        util::compile_crate(None, crate, dir, flags, cfgs, opt, test)
-    }
-
-    fn clean(&self) -> bool {
-        let script = match PackageScript::parse(&os::getcwd()) {
-            result::Ok(script) => script,
-            result::Err(err) => {
-                util::error(err);
-
-                return false;
-            }
-        };
-        let dir = script.work_dir();
-
-        util::note(fmt!("cleaning %s v%s (%s)", script.name,
-                        script.vers.to_str(), script.id));
-
+        let dir = build_pkg_id_in_workspace(id, workspace);
+        util::note(fmt!("Cleaning package %s (removing directory %s)",
+                        id.to_str(), dir.to_str()));
         if os::path_exists(&dir) {
             util::remove_dir_r(&dir);
-            util::note(fmt!("removed %s", dir.to_str()));
+            util::note(fmt!("Removed directory %s", dir.to_str()));
         }
 
-        util::note(fmt!("cleaned %s v%s", script.name,
-                                          script.vers.to_str()));
-
-        true
+        util::note(fmt!("Cleaned package %s", id.to_str()));
     }
 
     fn info(&self) {
-        if self.json {
-            match PackageScript::parse(&os::getcwd()) {
-                result::Ok(script) => {
-                    let mut map = ~LinearMap::new();
-
-                    map.insert(~"id", json::String(script.id));
-                    map.insert(~"name", json::String(script.name));
-                    map.insert(~"vers", json::String(script.vers.to_str()));
-                    map.insert(~"deps", json::List(do script.deps.map |&dep| {
-                        let (url, target) = dep;
-                        let mut inner = ~LinearMap::new();
-
-                        inner.insert(~"url", json::String(url));
-
-                        if !target.is_none() {
-                            inner.insert(~"target",
-                                         json::String(target.get()));
-                        }
-
-                        json::Object(inner)
-                    }));
-
-                    io::println(json::to_pretty_str(&json::Object(map)));
-                }
-                result::Err(_) => io::println(~"{}")
-            }
-        } else {
-            let script = match PackageScript::parse(&os::getcwd()) {
-                result::Ok(script) => script,
-                result::Err(err) => {
-                    util::error(err);
-
-                    return;
-                }
-            };
-
-            util::note(fmt!("id: %s", script.id));
-            util::note(fmt!("name: %s", script.name));
-            util::note(fmt!("vers: %s", script.vers.to_str()));
-            util::note(fmt!("deps: %s",
-                            if script.deps.len() > 0 {
-                                ~""
-                            } else {
-                                ~"none"
-                            }));
-
-            for script.deps.each |&dep| {
-                let (url, target) = dep;
-
-                util::note(fmt!("  <%s> (%s)", url, match target {
-                    Some(target) => target,
-                    None => ~""
-                }));
-            }
-        }
+        // stub
+        fail!(~"info not yet implemented");
     }
 
-    fn install(&self, url: Option<~str>,
-               target: Option<~str>, cache: bool) -> bool {
-        let mut success;
-        let mut dir;
-
-        if url.is_none() {
-            util::note(~"installing from the cwd");
-
-            dir = os::getcwd();
-        } else {
-            let url = url.get();
-            let hash = util::hash(if !target.is_none() { url + target.get() }
-                                  else { url });
-
-            if self.dep_cache.contains_key(&hash) {
-                util::warn(~"already installed dep this run");
-
-                return true;
-            }
-
-            self.dep_cache.insert(hash, true);
-
-            dir = util::root().push(~"tmp").push(hash);
-
-            if cache && os::path_exists(&dir) {
-                return true;
-            }
-
-            success = self.fetch(&dir, url, target);
-
-            if !success {
-                return false;
-            }
-        }
-
-        let script = match self.build(&dir, false, true, false) {
-            Some(script) => script,
-            None => {
-                return false;
-            }
-        };
-        let work_dir = script.work_dir();
-        let from_bin_dir = work_dir.push(~"bin");
-        let from_lib_dir = work_dir.push(~"lib");
-        let to_bin_dir = util::root().push(~"bin");
-        let to_lib_dir = util::root().push(~"lib");
-        let mut bins = ~[];
-        let mut libs = ~[];
-
-        for os::walk_dir(&from_bin_dir) |bin| {
-            let to = to_bin_dir.push_rel(&bin.file_path());
-
-            os::copy_file(bin, &to);
-            bins.push(to.to_str());
-        }
-
-        for os::walk_dir(&from_lib_dir) |lib| {
-            let to = to_lib_dir.push_rel(&lib.file_path());
-
-            os::copy_file(lib, &to);
-            libs.push(to.to_str());
-        }
-
-        let package = Package {
-            id: script.id,
-            vers: script.vers,
-            bins: bins,
-            libs: libs
-        };
-
-        util::note(fmt!("installed %s v%s", script.name,
-                                            script.vers.to_str()));
-        util::add_pkg(&package);
-
-        true
+    fn install(&self, _workspace: &Path, _id: PkgId)  {
+        // stub
+        fail!(~"install not yet implemented");
     }
 
-    fn fetch(&self, dir: &Path, url: ~str, target: Option<~str>) -> bool {
-        let url = if str::find_str(url, "://").is_none() {
-            ~"http://" + url }
-        else { url };
-        let url = match url::from_str(url) {
-            result::Ok(url) => url,
-            result::Err(err) => {
-                util::error(fmt!("failed parsing %s", err.to_lower()));
-
-                return false;
-            }
-        };
-        let str = url.to_str();
-
-        match Path(url.path).filetype() {
-            Some(ext) => {
-                if ext == ~".git" {
-                    return self.fetch_git(dir, str, target);
-                }
-            }
-            None => {}
-        }
-
-        match url.scheme {
-            ~"git" => self.fetch_git(dir, str, target),
-            ~"http" | ~"ftp" | ~"file" => self.fetch_curl(dir, str),
-            _ => {
-                util::warn(~"unknown url scheme to fetch, using curl");
-                self.fetch_curl(dir, str)
-            }
-        }
+    fn fetch(&self, _dir: &Path, _url: ~str, _target: Option<~str>)  {
+        // stub
+        fail!(~"fetch not yet implemented");
     }
 
-    fn fetch_curl(&self, dir: &Path, url: ~str) -> bool {
+    fn fetch_curl(&self, dir: &Path, url: ~str)  {
         util::note(fmt!("fetching from %s using curl", url));
 
         let tar = dir.dir_path().push(&dir.file_path().to_str() + ~".tar");
@@ -657,7 +349,7 @@ impl Ctx {
                                           url]).status != 0 {
             util::error(~"fetching failed: downloading using curl failed");
 
-            return false;
+            fail!();
         }
 
         if run::program_output(~"tar", ~[~"-x", ~"--strip-components=1",
@@ -666,13 +358,11 @@ impl Ctx {
             util::error(~"fetching failed: extracting using tar failed" +
                         ~"(is it a valid tar archive?)");
 
-            return false;
+           fail!();
         }
-
-        true
     }
 
-    fn fetch_git(&self, dir: &Path, url: ~str, target: Option<~str>) -> bool {
+    fn fetch_git(&self, dir: &Path, url: ~str, target: Option<~str>)  {
         util::note(fmt!("fetching from %s using git", url));
 
         // Git can't clone into a non-empty directory
@@ -681,8 +371,7 @@ impl Ctx {
         if run::program_output(~"git", ~[~"clone", url,
                                          dir.to_str()]).status != 0 {
             util::error(~"fetching failed: can't clone repository");
-
-            return false;
+            fail!();
         }
 
         if !target.is_none() {
@@ -696,34 +385,22 @@ impl Ctx {
 
             if !success {
                 util::error(~"fetching failed: can't checkout target");
-
-                return false;
+                fail!();
             }
         }
-
-        true
     }
 
-    fn prefer(&self, id: ~str, vers: Option<~str>) -> bool {
+    fn prefer(&self, id: ~str, vers: Option<~str>)  {
         let package = match util::get_pkg(id, vers) {
             result::Ok(package) => package,
             result::Err(err) => {
                 util::error(err);
-
-                return false;
+                fail!(); // Condition?
             }
         };
-        let name = match util::parse_name(package.id) {
-            result::Ok(name) => name,
-            result::Err(err) => {
-                util::error(err);
+        let name = package.id.path.to_str(); // ???
 
-                return false;
-            }
-        };
-
-        util::note(fmt!("preferring %s v%s (%s)", name, package.vers.to_str(),
-                                                  package.id));
+        util::note(fmt!("preferring %s v%s", name, package.id.version.to_str()));
 
         let bin_dir = util::root().push(~"bin");
 
@@ -740,138 +417,25 @@ impl Ctx {
             util::note(fmt!("linked %s", out.to_str()));
         }
 
-        util::note(fmt!("preferred %s v%s", name, package.vers.to_str()));
-
-        true
+        util::note(fmt!("preferred %s v%s", name, package.id.version.to_str()));
     }
 
-    fn test(&self) -> bool {
-        let script = match self.build(&os::getcwd(), false, false, true) {
-            Some(script) => script,
-            None => {
-                return false;
-            }
-        };
-        let work_dir = script.work_dir();
-        let test_dir = work_dir.push(~"test");
-
-        for os::walk_dir(&test_dir) |test| {
-            util::note(fmt!("running %s", test.to_str()));
-
-            let status = run::run_program(test.to_str(), ~[]);
-
-            if status != 0 {
-                os::set_exit_status(status);
-            }
-        }
-
-        // Run custom test listener
-        if script.custom {
-            let status = script.run(~"test", false);
-
-            if status != 0 && status != 42 {
-                util::error(
-                    fmt!("testing %s v%s failed: custom logic failed (%d)",
-                         script.name, script.vers.to_str(), status));
-
-                os::set_exit_status(status);
-            }
-        }
-
-        util::note(fmt!("tested %s v%s", script.name, script.vers.to_str()));
-
-        true
+    fn test(&self)  {
+        // stub
+        fail!(~"test not yet implemented");
     }
 
-    fn uninstall(&self, id: ~str, vers: Option<~str>) -> bool {
-        let package = match util::get_pkg(id, vers) {
-            result::Ok(package) => package,
-            result::Err(err) => {
-                util::error(err);
-
-                return false;
-            }
-        };
-        let name = match util::parse_name(package.id) {
-            result::Ok(name) => name,
-            result::Err(err) => {
-                util::error(err);
-
-                return false;
-            }
-        };
-
-        util::note(fmt!("uninstalling %s v%s (%s)", name,
-                        package.vers.to_str(), package.id));
-
-        for vec::append(package.bins, package.libs).each |&file| {
-            let path = Path(file);
-
-            if os::path_exists(&path) {
-                if os::remove_file(&path) {
-                    util::note(fmt!("removed %s", path.to_str()));
-                } else {
-                    util::error(fmt!("could not remove %s", path.to_str()));
-                }
-            }
-        }
-
-        util::note(fmt!("uninstalled %s v%s", name, package.vers.to_str()));
-        util::remove_pkg(&package);
-
-        true
+    fn uninstall(&self, _id: ~str, _vers: Option<~str>)  {
+        fail!(~"uninstall not yet implemented");
     }
 
-    fn unprefer(&self, id: ~str, vers: Option<~str>) -> bool {
-        let package = match util::get_pkg(id, vers) {
-            result::Ok(package) => package,
-            result::Err(err) => {
-                util::error(err);
-
-                return false;
-            }
-        };
-        let name = match util::parse_name(package.id) {
-            result::Ok(name) => name,
-            result::Err(err) => {
-                util::error(err);
-
-                return false;
-            }
-        };
-
-        util::note(fmt!("unpreferring %s v%s (%s)", name,
-                        package.vers.to_str(), package.id));
-
-        let bin_dir = util::root().push(~"bin");
-
-        for package.bins.each |&bin| {
-            let path = Path(bin);
-            let mut name = None;
-            for str::each_split_char(path.file_path().to_str(), '-') |s| {
-                name = Some(s.to_owned());
-                break;
-            }
-            let out = bin_dir.push(name.unwrap());
-
-            if os::path_exists(&out) {
-                if os::remove_file(&out) {
-                    util::note(fmt!("unlinked %s", out.to_str()));
-                } else {
-                    util::error(fmt!("could not unlink %s", out.to_str()));
-                }
-            }
-        }
-
-        util::note(fmt!("unpreferred %s v%s", name, package.vers.to_str()));
-
-        true
+    fn unprefer(&self, _id: ~str, _vers: Option<~str>)  {
+        fail!(~"unprefer not yet implemented");
     }
 }
 
 pub fn main() {
-    io::println("WARNING: The Rust package manager is experimental and may");
-    io::println("be unstable.");
+    io::println("WARNING: The Rust package manager is experimental and may be unstable");
 
     let args = os::args();
     let opts = ~[getopts::optflag(~"h"), getopts::optflag(~"help"),
@@ -889,8 +453,6 @@ pub fn main() {
                getopts::opt_present(matches, ~"help");
     let json = getopts::opt_present(matches, ~"j") ||
                getopts::opt_present(matches, ~"json");
-    let cfgs = vec::append(getopts::opt_strs(matches, ~"cfg"),
-                           getopts::opt_strs(matches, ~"c"));
     let mut args = copy matches.free;
 
     args.shift();
@@ -919,15 +481,14 @@ pub fn main() {
     }
 
     Ctx {
-        cfgs: cfgs,
         json: json,
-        dep_cache: @mut LinearMap::new()
+        dep_cache: @mut HashMap::new()
     }.run(cmd, args);
 }
 
 /// A crate is a unit of Rust code to be compiled into a binary or library
 pub struct Crate {
-    file: ~str,
+    file: Path,
     flags: ~[~str],
     cfgs: ~[~str]
 }
@@ -959,41 +520,41 @@ pub fn run(listeners: ~[Listener]) {
 }
 
 pub impl Crate {
-    pub fn flag(&self, flag: ~str) -> Crate {
+
+    fn new(p: &Path) -> Crate {
+        Crate {
+            file: copy *p,
+            flags: ~[],
+            cfgs: ~[]
+        }
+    }
+
+    fn flag(&self, flag: ~str) -> Crate {
         Crate {
             flags: vec::append(copy self.flags, ~[flag]),
             .. copy *self
         }
     }
 
-    pub fn flags(&self, flags: ~[~str]) -> Crate {
+    fn flags(&self, flags: ~[~str]) -> Crate {
         Crate {
             flags: vec::append(copy self.flags, flags),
             .. copy *self
         }
     }
 
-    pub fn cfg(&self, cfg: ~str) -> Crate {
+    fn cfg(&self, cfg: ~str) -> Crate {
         Crate {
             cfgs: vec::append(copy self.cfgs, ~[cfg]),
             .. copy *self
         }
     }
 
-    pub fn cfgs(&self, cfgs: ~[~str]) -> Crate {
+    fn cfgs(&self, cfgs: ~[~str]) -> Crate {
         Crate {
             cfgs: vec::append(copy self.cfgs, cfgs),
             .. copy *self
         }
-    }
-}
-
-/// Create a crate target from a source file
-pub fn Crate(file: ~str) -> Crate {
-    Crate {
-        file: file,
-        flags: ~[],
-        cfgs: ~[]
     }
 }
 
@@ -1016,30 +577,181 @@ pub fn src_dir() -> Path {
     os::getcwd()
 }
 
-/// Build a set of crates, should be called once
-pub fn build(crates: ~[Crate]) -> bool {
-    let args = os::args();
-    let dir = src_dir();
-    let work_dir = work_dir();
-    let mut success = true;
-    let sysroot = Path(args[1]);
-    let test = args[3] == ~"true";
+condition! {
+    bad_pkg_id: (super::Path, ~str) -> ::util::PkgId;
+}
 
-    for crates.each |&crate| {
-        let path = &dir.push_rel(&Path(crate.file)).normalize();
+// An enumeration of the unpacked source of a package workspace.
+// This contains a list of files found in the source workspace.
+pub struct PkgSrc {
+    root: Path, // root of where the package source code lives
+    dst_dir: Path, // directory where we will put the compiled output
+    id: PkgId,
+    libs: ~[Crate],
+    mains: ~[Crate],
+    tests: ~[Crate],
+    benchs: ~[Crate],
+}
 
-        util::note(fmt!("compiling %s", path.to_str()));
+condition! {
+    build_err: (~str) -> ();
+}
 
-        success = util::compile_crate(Some(sysroot), path, &work_dir,
-                                      crate.flags, crate.cfgs,
-                                      false, test);
+impl PkgSrc {
 
-        if !success { break; }
+    fn new(src_dir: &Path, dst_dir: &Path,
+                  id: &PkgId) -> PkgSrc {
+        PkgSrc {
+            root: copy *src_dir,
+            dst_dir: copy *dst_dir,
+            id: copy *id,
+            libs: ~[],
+            mains: ~[],
+            tests: ~[],
+            benchs: ~[]
+        }
     }
 
-    if !success {
-        os::set_exit_status(101);
+
+    fn check_dir(&self) -> Path {
+        use conditions::bad_path::cond;
+
+        debug!("Pushing onto root: %s | %s", self.id.path.to_str(),
+               self.root.to_str());
+
+        let dir = self.root.push_rel(&self.id.path).normalize();
+
+        debug!("Checking dir: %s", dir.to_str());
+
+        if !os::path_exists(&dir) {
+            return cond.raise((dir, ~"missing package dir"));
+        }
+
+        if !os::path_is_dir(&dir) {
+            return cond.raise((dir, ~"supplied path for package dir is a \
+                                      non-directory"));
+        }
+
+        dir
     }
 
-    success
+    // If a file named "pkg.rs" in the current directory exists,
+    // return the path for it. Otherwise, None
+    fn package_script_option(&self, cwd: &Path) -> Option<Path> {
+        let maybe_path = cwd.push("pkg.rs");
+        if os::path_exists(&maybe_path) {
+            Some(maybe_path)
+        }
+        else {
+            None
+        }
+    }
+
+    /// True if the given path's stem is self's pkg ID's stem
+    /// or if the pkg ID's stem is <rust-foo> and the given path's
+    /// stem is foo
+    /// Requires that dashes in p have already been normalized to
+    /// underscores
+    fn stem_matches(&self, p: &Path) -> bool {
+        let self_id = normalize(~self.id.path).filestem();
+        if self_id == p.filestem() {
+            return true;
+        }
+        else {
+            for self_id.each |pth| {
+                if pth.starts_with("rust_") // because p is already normalized
+                    && match p.filestem() {
+                           Some(s) => str::eq_slice(s, pth.slice(5, pth.len())),
+                           None => false
+                       } { return true; }
+            }
+        }
+        false
+    }
+
+    fn push_crate(cs: &mut ~[Crate], prefix: uint, p: &Path) {
+        assert!(p.components.len() > prefix);
+        let mut sub = Path("");
+        for vec::slice(p.components, prefix,
+                       p.components.len()).each |c| {
+            sub = sub.push(*c);
+        }
+        debug!("found crate %s", sub.to_str());
+        cs.push(Crate::new(&sub));
+    }
+
+    /// Infers crates to build. Called only in the case where there
+    /// is no custom build logic
+    fn find_crates(&mut self) {
+        use PkgSrc::push_crate;
+
+        let dir = self.check_dir();
+        let prefix = dir.components.len();
+        debug!("Matching against %?", self.id.path.filestem());
+        for os::walk_dir(&dir) |pth| {
+            match pth.filename() {
+                Some(~"lib.rs") => push_crate(&mut self.libs,
+                                              prefix, pth),
+                Some(~"main.rs") => push_crate(&mut self.mains,
+                                               prefix, pth),
+                Some(~"test.rs") => push_crate(&mut self.tests,
+                                               prefix, pth),
+                Some(~"bench.rs") => push_crate(&mut self.benchs,
+                                                prefix, pth),
+                _ => ()
+            }
+        }
+
+        if self.libs.is_empty() && self.mains.is_empty()
+            && self.tests.is_empty() && self.benchs.is_empty() {
+
+            util::note(~"Couldn't infer any crates to build.\n\
+                         Try naming a crate `main.rs`, `lib.rs`, \
+                         `test.rs`, or `bench.rs`.");
+            fail!(~"Failed to infer crates to build");
+        }
+
+        debug!("found %u libs, %u mains, %u tests, %u benchs",
+               self.libs.len(),
+               self.mains.len(),
+               self.tests.len(),
+               self.benchs.len())
+    }
+
+    fn build_crates(&self, dst_dir: &Path,
+                           src_dir: &Path,
+                           crates: &[Crate],
+                           cfgs: ~[~str],
+                           test: bool, crate_type: crate_type) {
+
+        for crates.each |&crate| {
+            let path = &src_dir.push_rel(&crate.file).normalize();
+            util::note(fmt!("build_crates: compiling %s", path.to_str()));
+            util::note(fmt!("build_crates: destination dir is %s", dst_dir.to_str()));
+
+            let result = util::compile_crate(None, self.id, path,
+                                     dst_dir,
+                                     crate.flags,
+                                     crate.cfgs + cfgs,
+                                     false, test, crate_type);
+            if !result {
+                build_err::cond.raise(fmt!("build failure on %s",
+                                           path.to_str()));
+            }
+            debug!("Result of compiling %s was %?",
+                   path.to_str(), result);
+        }
+    }
+
+    fn build(&self, dst_dir: &Path, cfgs: ~[~str]) {
+        let dir = self.check_dir();
+        debug!("Building libs");
+        self.build_crates(dst_dir, &dir, self.libs, cfgs, false, lib_crate);
+        debug!("Building mains");
+        self.build_crates(dst_dir, &dir, self.mains, cfgs, false, bin_crate);
+        debug!("Building tests");
+        self.build_crates(dst_dir, &dir, self.tests, cfgs, true, bin_crate);
+        debug!("Building benches");
+        self.build_crates(dst_dir, &dir, self.benchs, cfgs, true, bin_crate);
+    }
 }

@@ -21,7 +21,6 @@ use core::libc::c_void;
 use core::libc;
 use core::comm::{stream, Port, Chan, SharedChan};
 use core::prelude::*;
-use core::ptr::addr_of;
 use core::task;
 
 /// Used to abstract-away direct interaction with a libuv loop.
@@ -75,7 +74,7 @@ pub fn spawn_iotask(task: task::TaskBuilder) -> IoTask {
  * module. It is not safe to send the `loop_ptr` param to this callback out
  * via ports/chans.
  */
-pub unsafe fn interact(iotask: &IoTask, cb: ~fn(*c_void)) {
+pub fn interact(iotask: &IoTask, cb: ~fn(*c_void)) {
     send_msg(iotask, Interaction(cb));
 }
 
@@ -87,9 +86,7 @@ pub unsafe fn interact(iotask: &IoTask, cb: ~fn(*c_void)) {
  * closed, causing a failure otherwise.
  */
 pub fn exit(iotask: &IoTask) {
-    unsafe {
-        send_msg(iotask, TeardownLoop);
-    }
+    send_msg(iotask, TeardownLoop);
 }
 
 
@@ -110,7 +107,7 @@ fn run_loop(iotask_ch: &Chan<IoTask>) {
         // set up the special async handle we'll use to allow multi-task
         // communication with this loop
         let async = ll::async_t();
-        let async_handle = addr_of(&async);
+        let async_handle: *ll::uv_async_t = &async;
 
         // associate the async handle with the loop
         ll::async_init(loop_ptr, async_handle, wake_up_cb);
@@ -122,13 +119,13 @@ fn run_loop(iotask_ch: &Chan<IoTask>) {
             async_handle: async_handle,
             msg_po: msg_po
         };
-        ll::set_data_for_uv_handle(async_handle, addr_of(&data));
+        ll::set_data_for_uv_handle(async_handle, &data);
 
         // Send out a handle through which folks can talk to us
         // while we dwell in the I/O loop
-        let iotask = IoTask{
+        let iotask = IoTask {
             async_handle: async_handle,
-            op_chan: SharedChan(msg_ch)
+            op_chan: SharedChan::new(msg_ch)
         };
         iotask_ch.send(iotask);
 
@@ -226,36 +223,32 @@ struct AhData {
 
 #[cfg(test)]
 fn impl_uv_iotask_async(iotask: &IoTask) {
-    unsafe {
-        let async_handle = ll::async_t();
-        let ah_ptr = ptr::addr_of(&async_handle);
-        let (exit_po, exit_ch) = stream::<()>();
-        let ah_data = AhData {
-            iotask: iotask.clone(),
-            exit_ch: SharedChan(exit_ch)
-        };
-        let ah_data_ptr: *AhData = unsafe {
-            ptr::to_unsafe_ptr(&ah_data)
-        };
-        debug!("about to interact");
-        do interact(iotask) |loop_ptr| {
-            unsafe {
-                debug!("interacting");
-                ll::async_init(loop_ptr, ah_ptr, async_handle_cb);
-                ll::set_data_for_uv_handle(
-                    ah_ptr, ah_data_ptr as *libc::c_void);
-                ll::async_send(ah_ptr);
-            }
-        };
-        debug!("waiting for async close");
-        exit_po.recv();
-    }
+    let async_handle = ll::async_t();
+    let ah_ptr: *ll::uv_async_t = &async_handle;
+    let (exit_po, exit_ch) = stream::<()>();
+    let ah_data = AhData {
+        iotask: iotask.clone(),
+        exit_ch: SharedChan::new(exit_ch)
+    };
+    let ah_data_ptr: *AhData = ptr::to_unsafe_ptr(&ah_data);
+    debug!("about to interact");
+    do interact(iotask) |loop_ptr| {
+        unsafe {
+            debug!("interacting");
+            ll::async_init(loop_ptr, ah_ptr, async_handle_cb);
+            ll::set_data_for_uv_handle(
+                ah_ptr, ah_data_ptr as *libc::c_void);
+            ll::async_send(ah_ptr);
+        }
+    };
+    debug!("waiting for async close");
+    exit_po.recv();
 }
 
 // this fn documents the bear minimum neccesary to roll your own
 // high_level_loop
 #[cfg(test)]
-unsafe fn spawn_test_loop(exit_ch: ~Chan<()>) -> IoTask {
+fn spawn_test_loop(exit_ch: ~Chan<()>) -> IoTask {
     let (iotask_port, iotask_ch) = stream::<IoTask>();
     do task::spawn_sched(task::ManualThreads(1u)) {
         debug!("about to run a test loop");
@@ -267,9 +260,7 @@ unsafe fn spawn_test_loop(exit_ch: ~Chan<()>) -> IoTask {
 
 #[cfg(test)]
 extern fn lifetime_handle_close(handle: *libc::c_void) {
-    unsafe {
-        debug!("lifetime_handle_close ptr %?", handle);
-    }
+    debug!("lifetime_handle_close ptr %?", handle);
 }
 
 #[cfg(test)]
@@ -281,38 +272,36 @@ extern fn lifetime_async_callback(handle: *libc::c_void,
 
 #[test]
 fn test_uv_iotask_async() {
-    unsafe {
-        let (exit_po, exit_ch) = stream::<()>();
-        let iotask = &spawn_test_loop(~exit_ch);
+    let (exit_po, exit_ch) = stream::<()>();
+    let iotask = &spawn_test_loop(~exit_ch);
 
-        debug!("spawned iotask");
+    debug!("spawned iotask");
 
-        // using this handle to manage the lifetime of the
-        // high_level_loop, as it will exit the first time one of
-        // the impl_uv_hl_async() is cleaned up with no one ref'd
-        // handles on the loop (Which can happen under
-        // race-condition type situations.. this ensures that the
-        // loop lives until, at least, all of the
-        // impl_uv_hl_async() runs have been called, at least.
-        let (work_exit_po, work_exit_ch) = stream::<()>();
-        let work_exit_ch = SharedChan(work_exit_ch);
-        for iter::repeat(7u) {
-            let iotask_clone = iotask.clone();
-            let work_exit_ch_clone = work_exit_ch.clone();
-            do task::spawn_sched(task::ManualThreads(1u)) {
-                debug!("async");
-                impl_uv_iotask_async(&iotask_clone);
-                debug!("done async");
-                work_exit_ch_clone.send(());
-            };
+    // using this handle to manage the lifetime of the
+    // high_level_loop, as it will exit the first time one of
+    // the impl_uv_hl_async() is cleaned up with no one ref'd
+    // handles on the loop (Which can happen under
+    // race-condition type situations.. this ensures that the
+    // loop lives until, at least, all of the
+    // impl_uv_hl_async() runs have been called, at least.
+    let (work_exit_po, work_exit_ch) = stream::<()>();
+    let work_exit_ch = SharedChan::new(work_exit_ch);
+    for iter::repeat(7u) {
+        let iotask_clone = iotask.clone();
+        let work_exit_ch_clone = work_exit_ch.clone();
+        do task::spawn_sched(task::ManualThreads(1u)) {
+            debug!("async");
+            impl_uv_iotask_async(&iotask_clone);
+            debug!("done async");
+            work_exit_ch_clone.send(());
         };
-        for iter::repeat(7u) {
-            debug!("waiting");
-            work_exit_po.recv();
-        };
-        debug!(~"sending teardown_loop msg..");
-        exit(iotask);
-        exit_po.recv();
-        debug!(~"after recv on exit_po.. exiting..");
-    }
+    };
+    for iter::repeat(7u) {
+        debug!("waiting");
+        work_exit_po.recv();
+    };
+    debug!(~"sending teardown_loop msg..");
+    exit(iotask);
+    exit_po.recv();
+    debug!(~"after recv on exit_po.. exiting..");
 }

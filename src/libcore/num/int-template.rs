@@ -10,14 +10,10 @@
 
 use T = self::inst::T;
 
-use to_str::ToStr;
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
-use num;
 use prelude::*;
-
-#[cfg(notest)] use cmp::{Eq, Ord};
 
 pub use cmp::{min, max};
 
@@ -34,7 +30,7 @@ pub fn sub(x: T, y: T) -> T { x - y }
 #[inline(always)]
 pub fn mul(x: T, y: T) -> T { x * y }
 #[inline(always)]
-pub fn div(x: T, y: T) -> T { x / y }
+pub fn quot(x: T, y: T) -> T { x / y }
 
 /**
  * Returns the remainder of y / x.
@@ -72,15 +68,6 @@ pub fn ge(x: T, y: T) -> bool { x >= y }
 #[inline(always)]
 pub fn gt(x: T, y: T) -> bool { x > y }
 
-#[inline(always)]
-pub fn is_positive(x: T) -> bool { x > 0 as T }
-#[inline(always)]
-pub fn is_negative(x: T) -> bool { x < 0 as T }
-#[inline(always)]
-pub fn is_nonpositive(x: T) -> bool { x <= 0 as T }
-#[inline(always)]
-pub fn is_nonnegative(x: T) -> bool { x >= 0 as T }
-
 /**
  * Iterate over the range [`lo`..`hi`)
  *
@@ -107,11 +94,15 @@ pub fn range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) {
     } else if step > 0 { // ascending
         while i < stop {
             if !it(i) { break }
+            // avoiding overflow. break if i + step > max_value
+            if i > max_value - step { break; }
             i += step;
         }
     } else { // descending
         while i > stop {
             if !it(i) { break }
+            // avoiding underflow. break if i + step < min_value
+            if i < min_value - step { break; }
             i += step;
         }
     }
@@ -137,9 +128,9 @@ pub fn compl(i: T) -> T {
 
 /// Computes the absolute value
 #[inline(always)]
-pub fn abs(i: T) -> T {
-    if is_negative(i) { -i } else { i }
-}
+pub fn abs(i: T) -> T { i.abs() }
+
+impl Num for T {}
 
 #[cfg(notest)]
 impl Ord for T {
@@ -172,28 +163,273 @@ impl num::One for T {
 }
 
 #[cfg(notest)]
-impl ops::Add<T,T> for T {
+impl Add<T,T> for T {
+    #[inline(always)]
     fn add(&self, other: &T) -> T { *self + *other }
 }
+
 #[cfg(notest)]
-impl ops::Sub<T,T> for T {
+impl Sub<T,T> for T {
+    #[inline(always)]
     fn sub(&self, other: &T) -> T { *self - *other }
 }
+
 #[cfg(notest)]
-impl ops::Mul<T,T> for T {
+impl Mul<T,T> for T {
+    #[inline(always)]
     fn mul(&self, other: &T) -> T { *self * *other }
 }
-#[cfg(notest)]
-impl ops::Div<T,T> for T {
+
+#[cfg(stage0,notest)]
+impl Div<T,T> for T {
+    #[inline(always)]
     fn div(&self, other: &T) -> T { *self / *other }
 }
-#[cfg(notest)]
-impl ops::Modulo<T,T> for T {
+#[cfg(not(stage0),notest)]
+impl Quot<T,T> for T {
+    /**
+     * Returns the integer quotient, truncated towards 0. As this behaviour reflects
+     * the underlying machine implementation it is more efficient than `Natural::div`.
+     *
+     * # Examples
+     *
+     * ~~~
+     * assert!( 8 /  3 ==  2);
+     * assert!( 8 / -3 == -2);
+     * assert!(-8 /  3 == -2);
+     * assert!(-8 / -3 ==  2);
+
+     * assert!( 1 /  2 ==  0);
+     * assert!( 1 / -2 ==  0);
+     * assert!(-1 /  2 ==  0);
+     * assert!(-1 / -2 ==  0);
+     * ~~~
+     */
+    #[inline(always)]
+    fn quot(&self, other: &T) -> T { *self / *other }
+}
+
+#[cfg(stage0,notest)]
+impl Modulo<T,T> for T {
+    #[inline(always)]
     fn modulo(&self, other: &T) -> T { *self % *other }
 }
+#[cfg(not(stage0),notest)]
+impl Rem<T,T> for T {
+    /**
+     * Returns the integer remainder after division, satisfying:
+     *
+     * ~~~
+     * assert!((n / d) * d + (n % d) == n)
+     * ~~~
+     *
+     * # Examples
+     *
+     * ~~~
+     * assert!( 8 %  3 ==  2);
+     * assert!( 8 % -3 ==  2);
+     * assert!(-8 %  3 == -2);
+     * assert!(-8 % -3 == -2);
+
+     * assert!( 1 %  2 ==  1);
+     * assert!( 1 % -2 ==  1);
+     * assert!(-1 %  2 == -1);
+     * assert!(-1 % -2 == -1);
+     * ~~~
+     */
+    #[inline(always)]
+    fn rem(&self, other: &T) -> T { *self % *other }
+}
+
 #[cfg(notest)]
-impl ops::Neg<T> for T {
+impl Neg<T> for T {
+    #[inline(always)]
     fn neg(&self) -> T { -*self }
+}
+
+impl Signed for T {
+    /// Computes the absolute value
+    #[inline(always)]
+    fn abs(&self) -> T {
+        if self.is_negative() { -*self } else { *self }
+    }
+
+    /**
+     * # Returns
+     *
+     * - `0` if the number is zero
+     * - `1` if the number is positive
+     * - `-1` if the number is negative
+     */
+    #[inline(always)]
+    fn signum(&self) -> T {
+        match *self {
+            n if n > 0 =>  1,
+            0          =>  0,
+            _          => -1,
+        }
+    }
+
+    /// Returns true if the number is positive
+    #[inline(always)]
+    fn is_positive(&self) -> bool { *self > 0 }
+
+    /// Returns true if the number is negative
+    #[inline(always)]
+    fn is_negative(&self) -> bool { *self < 0 }
+}
+
+impl Integer for T {
+    /**
+     * Floored integer division
+     *
+     * # Examples
+     *
+     * ~~~
+     * assert!(( 8).div( 3) ==  2);
+     * assert!(( 8).div(-3) == -3);
+     * assert!((-8).div( 3) == -3);
+     * assert!((-8).div(-3) ==  2);
+     *
+     * assert!(( 1).div( 2) ==  0);
+     * assert!(( 1).div(-2) == -1);
+     * assert!((-1).div( 2) == -1);
+     * assert!((-1).div(-2) ==  0);
+     * ~~~
+     */
+    #[inline(always)]
+    fn div(&self, other: &T) -> T {
+        // Algorithm from [Daan Leijen. _Division and Modulus for Computer Scientists_,
+        // December 2001](http://research.microsoft.com/pubs/151917/divmodnote-letter.pdf)
+        match self.quot_rem(other) {
+            (q, r) if (r > 0 && *other < 0)
+                   || (r < 0 && *other > 0) => q - 1,
+            (q, _)                          => q,
+        }
+    }
+
+    /**
+     * Integer modulo, satisfying:
+     *
+     * ~~~
+     * assert!(n.div(d) * d + n.modulo(d) == n)
+     * ~~~
+     *
+     * # Examples
+     *
+     * ~~~
+     * assert!(( 8).modulo( 3) ==  2);
+     * assert!(( 8).modulo(-3) == -1);
+     * assert!((-8).modulo( 3) ==  1);
+     * assert!((-8).modulo(-3) == -2);
+     *
+     * assert!(( 1).modulo( 2) ==  1);
+     * assert!(( 1).modulo(-2) == -1);
+     * assert!((-1).modulo( 2) ==  1);
+     * assert!((-1).modulo(-2) == -1);
+     * ~~~
+     */
+    #[inline(always)]
+    fn modulo(&self, other: &T) -> T {
+        // Algorithm from [Daan Leijen. _Division and Modulus for Computer Scientists_,
+        // December 2001](http://research.microsoft.com/pubs/151917/divmodnote-letter.pdf)
+        match *self % *other {
+            r if (r > 0 && *other < 0)
+              || (r < 0 && *other > 0) => r + *other,
+            r                          => r,
+        }
+    }
+
+    /// Calculates `div` and `modulo` simultaneously
+    #[inline(always)]
+    fn div_mod(&self, other: &T) -> (T,T) {
+        // Algorithm from [Daan Leijen. _Division and Modulus for Computer Scientists_,
+        // December 2001](http://research.microsoft.com/pubs/151917/divmodnote-letter.pdf)
+        match self.quot_rem(other) {
+            (q, r) if (r > 0 && *other < 0)
+                   || (r < 0 && *other > 0) => (q - 1, r + *other),
+            (q, r)                          => (q, r),
+        }
+    }
+
+    /// Calculates `quot` (`\`) and `rem` (`%`) simultaneously
+    #[inline(always)]
+    fn quot_rem(&self, other: &T) -> (T,T) {
+        (*self / *other, *self % *other)
+    }
+
+    /**
+     * Calculates the Greatest Common Divisor (GCD) of the number and `other`
+     *
+     * The result is always positive
+     */
+    #[inline(always)]
+    fn gcd(&self, other: &T) -> T {
+        // Use Euclid's algorithm
+        let mut m = *self, n = *other;
+        while m != 0 {
+            let temp = m;
+            m = n % temp;
+            n = temp;
+        }
+        n.abs()
+    }
+
+    /**
+     * Calculates the Lowest Common Multiple (LCM) of the number and `other`
+     */
+    #[inline(always)]
+    fn lcm(&self, other: &T) -> T {
+        ((*self * *other) / self.gcd(other)).abs() // should not have to recaluculate abs
+    }
+
+    /// Returns `true` if the number can be divided by `other` without leaving a remainder
+    #[inline(always)]
+    fn divisible_by(&self, other: &T) -> bool { *self % *other == 0 }
+
+    /// Returns `true` if the number is divisible by `2`
+    #[inline(always)]
+    fn is_even(&self) -> bool { self.divisible_by(&2) }
+
+    /// Returns `true` if the number is not divisible by `2`
+    #[inline(always)]
+    fn is_odd(&self) -> bool { !self.is_even() }
+}
+
+#[cfg(notest)]
+impl BitOr<T,T> for T {
+    #[inline(always)]
+    fn bitor(&self, other: &T) -> T { *self | *other }
+}
+
+#[cfg(notest)]
+impl BitAnd<T,T> for T {
+    #[inline(always)]
+    fn bitand(&self, other: &T) -> T { *self & *other }
+}
+
+#[cfg(notest)]
+impl BitXor<T,T> for T {
+    #[inline(always)]
+    fn bitxor(&self, other: &T) -> T { *self ^ *other }
+}
+
+#[cfg(notest)]
+impl Shl<T,T> for T {
+    #[inline(always)]
+    fn shl(&self, other: &T) -> T { *self << *other }
+}
+
+#[cfg(notest)]
+impl Shr<T,T> for T {
+    #[inline(always)]
+    fn shr(&self, other: &T) -> T { *self >> *other }
+}
+
+#[cfg(notest)]
+impl Not<T> for T {
+    #[inline(always)]
+    fn not(&self) -> T { !*self }
 }
 
 // String conversion functions and impl str -> num
@@ -202,21 +438,21 @@ impl ops::Neg<T> for T {
 #[inline(always)]
 pub fn from_str(s: &str) -> Option<T> {
     strconv::from_str_common(s, 10u, true, false, false,
-                         strconv::ExpNone, false)
+                         strconv::ExpNone, false, false)
 }
 
 /// Parse a string as a number in the given base.
 #[inline(always)]
 pub fn from_str_radix(s: &str, radix: uint) -> Option<T> {
     strconv::from_str_common(s, radix, true, false, false,
-                         strconv::ExpNone, false)
+                         strconv::ExpNone, false, false)
 }
 
 /// Parse a byte slice as a number in the given base.
 #[inline(always)]
 pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
     strconv::from_str_bytes_common(buf, radix, true, false, false,
-                               strconv::ExpNone, false)
+                               strconv::ExpNone, false, false)
 }
 
 impl FromStr for T {
@@ -273,177 +509,309 @@ impl ToStrRadix for T {
     }
 }
 
-#[test]
-fn test_from_str() {
-    assert!(from_str(~"0") == Some(0 as T));
-    assert!(from_str(~"3") == Some(3 as T));
-    assert!(from_str(~"10") == Some(10 as T));
-    assert!(i32::from_str(~"123456789") == Some(123456789 as i32));
-    assert!(from_str(~"00100") == Some(100 as T));
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use super::inst::T;
+    use prelude::*;
 
-    assert!(from_str(~"-1") == Some(-1 as T));
-    assert!(from_str(~"-3") == Some(-3 as T));
-    assert!(from_str(~"-10") == Some(-10 as T));
-    assert!(i32::from_str(~"-123456789") == Some(-123456789 as i32));
-    assert!(from_str(~"-00100") == Some(-100 as T));
-
-    assert!(from_str(~" ").is_none());
-    assert!(from_str(~"x").is_none());
-}
-
-#[test]
-fn test_parse_bytes() {
-    use str::to_bytes;
-    assert!(parse_bytes(to_bytes(~"123"), 10u) == Some(123 as T));
-    assert!(parse_bytes(to_bytes(~"1001"), 2u) == Some(9 as T));
-    assert!(parse_bytes(to_bytes(~"123"), 8u) == Some(83 as T));
-    assert!(i32::parse_bytes(to_bytes(~"123"), 16u) == Some(291 as i32));
-    assert!(i32::parse_bytes(to_bytes(~"ffff"), 16u) ==
-                 Some(65535 as i32));
-    assert!(i32::parse_bytes(to_bytes(~"FFFF"), 16u) ==
-                 Some(65535 as i32));
-    assert!(parse_bytes(to_bytes(~"z"), 36u) == Some(35 as T));
-    assert!(parse_bytes(to_bytes(~"Z"), 36u) == Some(35 as T));
-
-    assert!(parse_bytes(to_bytes(~"-123"), 10u) == Some(-123 as T));
-    assert!(parse_bytes(to_bytes(~"-1001"), 2u) == Some(-9 as T));
-    assert!(parse_bytes(to_bytes(~"-123"), 8u) == Some(-83 as T));
-    assert!(i32::parse_bytes(to_bytes(~"-123"), 16u) ==
-                 Some(-291 as i32));
-    assert!(i32::parse_bytes(to_bytes(~"-ffff"), 16u) ==
-                 Some(-65535 as i32));
-    assert!(i32::parse_bytes(to_bytes(~"-FFFF"), 16u) ==
-                 Some(-65535 as i32));
-    assert!(parse_bytes(to_bytes(~"-z"), 36u) == Some(-35 as T));
-    assert!(parse_bytes(to_bytes(~"-Z"), 36u) == Some(-35 as T));
-
-    assert!(parse_bytes(to_bytes(~"Z"), 35u).is_none());
-    assert!(parse_bytes(to_bytes(~"-9"), 2u).is_none());
-}
-
-#[test]
-fn test_to_str() {
-    assert!((to_str_radix(0 as T, 10u) == ~"0"));
-    assert!((to_str_radix(1 as T, 10u) == ~"1"));
-    assert!((to_str_radix(-1 as T, 10u) == ~"-1"));
-    assert!((to_str_radix(127 as T, 16u) == ~"7f"));
-    assert!((to_str_radix(100 as T, 10u) == ~"100"));
-
-}
-
-#[test]
-fn test_int_to_str_overflow() {
-    let mut i8_val: i8 = 127_i8;
-    assert!((i8::to_str(i8_val) == ~"127"));
-
-    i8_val += 1 as i8;
-    assert!((i8::to_str(i8_val) == ~"-128"));
-
-    let mut i16_val: i16 = 32_767_i16;
-    assert!((i16::to_str(i16_val) == ~"32767"));
-
-    i16_val += 1 as i16;
-    assert!((i16::to_str(i16_val) == ~"-32768"));
-
-    let mut i32_val: i32 = 2_147_483_647_i32;
-    assert!((i32::to_str(i32_val) == ~"2147483647"));
-
-    i32_val += 1 as i32;
-    assert!((i32::to_str(i32_val) == ~"-2147483648"));
-
-    let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
-    assert!((i64::to_str(i64_val) == ~"9223372036854775807"));
-
-    i64_val += 1 as i64;
-    assert!((i64::to_str(i64_val) == ~"-9223372036854775808"));
-}
-
-#[test]
-fn test_int_from_str_overflow() {
-    let mut i8_val: i8 = 127_i8;
-    assert!((i8::from_str(~"127") == Some(i8_val)));
-    assert!((i8::from_str(~"128").is_none()));
-
-    i8_val += 1 as i8;
-    assert!((i8::from_str(~"-128") == Some(i8_val)));
-    assert!((i8::from_str(~"-129").is_none()));
-
-    let mut i16_val: i16 = 32_767_i16;
-    assert!((i16::from_str(~"32767") == Some(i16_val)));
-    assert!((i16::from_str(~"32768").is_none()));
-
-    i16_val += 1 as i16;
-    assert!((i16::from_str(~"-32768") == Some(i16_val)));
-    assert!((i16::from_str(~"-32769").is_none()));
-
-    let mut i32_val: i32 = 2_147_483_647_i32;
-    assert!((i32::from_str(~"2147483647") == Some(i32_val)));
-    assert!((i32::from_str(~"2147483648").is_none()));
-
-    i32_val += 1 as i32;
-    assert!((i32::from_str(~"-2147483648") == Some(i32_val)));
-    assert!((i32::from_str(~"-2147483649").is_none()));
-
-    let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
-    assert!((i64::from_str(~"9223372036854775807") == Some(i64_val)));
-    assert!((i64::from_str(~"9223372036854775808").is_none()));
-
-    i64_val += 1 as i64;
-    assert!((i64::from_str(~"-9223372036854775808") == Some(i64_val)));
-    assert!((i64::from_str(~"-9223372036854775809").is_none()));
-}
-
-#[test]
-pub fn test_num() {
-    let ten: T = num::cast(10);
-    let two: T = num::cast(2);
-
-    assert!((ten.add(&two)    == num::cast(12)));
-    assert!((ten.sub(&two)    == num::cast(8)));
-    assert!((ten.mul(&two)    == num::cast(20)));
-    assert!((ten.div(&two)    == num::cast(5)));
-    assert!((ten.modulo(&two) == num::cast(0)));
-}
-
-#[test]
-pub fn test_ranges() {
-    let mut l = ~[];
-
-    for range(0,3) |i| {
-        l.push(i);
+    #[test]
+    fn test_num() {
+        num::test_num(10 as T, 2 as T);
     }
-    for range_rev(13,10) |i| {
-        l.push(i);
+
+    #[test]
+    pub fn test_signed() {
+        assert_eq!((1 as T).abs(), 1 as T);
+        assert_eq!((0 as T).abs(), 0 as T);
+        assert_eq!((-1 as T).abs(), 1 as T);
+
+        assert_eq!((1 as T).signum(), 1 as T);
+        assert_eq!((0 as T).signum(), 0 as T);
+        assert_eq!((-0 as T).signum(), 0 as T);
+        assert_eq!((-1 as T).signum(), -1 as T);
+
+        assert!((1 as T).is_positive());
+        assert!(!(0 as T).is_positive());
+        assert!(!(-0 as T).is_positive());
+        assert!(!(-1 as T).is_positive());
+
+        assert!(!(1 as T).is_negative());
+        assert!(!(0 as T).is_negative());
+        assert!(!(-0 as T).is_negative());
+        assert!((-1 as T).is_negative());
     }
-    for range_step(20,26,2) |i| {
-        l.push(i);
+
+    /**
+     * Checks that the division rule holds for:
+     *
+     * - `n`: numerator (dividend)
+     * - `d`: denominator (divisor)
+     * - `qr`: quotient and remainder
+     */
+    #[cfg(test)]
+    fn test_division_rule(nd: (T,T), qr: (T,T)) {
+        let (n,d) = nd,
+            (q,r) = qr;
+
+        assert_eq!(d * q + r, n);
     }
-    for range_step(36,30,-2) |i| {
-        l.push(i);
+
+    #[test]
+    fn test_quot_rem() {
+        fn test_nd_qr(nd: (T,T), qr: (T,T)) {
+            let (n,d) = nd;
+            let separate_quot_rem = (n / d, n % d);
+            let combined_quot_rem = n.quot_rem(&d);
+
+            assert_eq!(separate_quot_rem, qr);
+            assert_eq!(combined_quot_rem, qr);
+
+            test_division_rule(nd, separate_quot_rem);
+            test_division_rule(nd, combined_quot_rem);
+        }
+
+        test_nd_qr(( 8,  3), ( 2,  2));
+        test_nd_qr(( 8, -3), (-2,  2));
+        test_nd_qr((-8,  3), (-2, -2));
+        test_nd_qr((-8, -3), ( 2, -2));
+
+        test_nd_qr(( 1,  2), ( 0,  1));
+        test_nd_qr(( 1, -2), ( 0,  1));
+        test_nd_qr((-1,  2), ( 0, -1));
+        test_nd_qr((-1, -2), ( 0, -1));
     }
-    assert!(l == ~[0,1,2,
+
+    #[test]
+    fn test_div_mod() {
+        fn test_nd_dm(nd: (T,T), dm: (T,T)) {
+            let (n,d) = nd;
+            let separate_div_mod = (n.div(&d), n.modulo(&d));
+            let combined_div_mod = n.div_mod(&d);
+
+            assert_eq!(separate_div_mod, dm);
+            assert_eq!(combined_div_mod, dm);
+
+            test_division_rule(nd, separate_div_mod);
+            test_division_rule(nd, combined_div_mod);
+        }
+
+        test_nd_dm(( 8,  3), ( 2,  2));
+        test_nd_dm(( 8, -3), (-3, -1));
+        test_nd_dm((-8,  3), (-3,  1));
+        test_nd_dm((-8, -3), ( 2, -2));
+
+        test_nd_dm(( 1,  2), ( 0,  1));
+        test_nd_dm(( 1, -2), (-1, -1));
+        test_nd_dm((-1,  2), (-1,  1));
+        test_nd_dm((-1, -2), ( 0, -1));
+    }
+
+    #[test]
+    fn test_gcd() {
+        assert_eq!((10 as T).gcd(&2), 2 as T);
+        assert_eq!((10 as T).gcd(&3), 1 as T);
+        assert_eq!((0 as T).gcd(&3), 3 as T);
+        assert_eq!((3 as T).gcd(&3), 3 as T);
+        assert_eq!((56 as T).gcd(&42), 14 as T);
+        assert_eq!((3 as T).gcd(&-3), 3 as T);
+        assert_eq!((-6 as T).gcd(&3), 3 as T);
+        assert_eq!((-4 as T).gcd(&-2), 2 as T);
+    }
+
+    #[test]
+    fn test_lcm() {
+        assert_eq!((1 as T).lcm(&0), 0 as T);
+        assert_eq!((0 as T).lcm(&1), 0 as T);
+        assert_eq!((1 as T).lcm(&1), 1 as T);
+        assert_eq!((-1 as T).lcm(&1), 1 as T);
+        assert_eq!((1 as T).lcm(&-1), 1 as T);
+        assert_eq!((-1 as T).lcm(&-1), 1 as T);
+        assert_eq!((8 as T).lcm(&9), 72 as T);
+        assert_eq!((11 as T).lcm(&5), 55 as T);
+    }
+
+    #[test]
+    fn test_bitwise_ops() {
+        assert_eq!(0b1110 as T, (0b1100 as T).bitor(&(0b1010 as T)));
+        assert_eq!(0b1000 as T, (0b1100 as T).bitand(&(0b1010 as T)));
+        assert_eq!(0b0110 as T, (0b1100 as T).bitxor(&(0b1010 as T)));
+        assert_eq!(0b1110 as T, (0b0111 as T).shl(&(1 as T)));
+        assert_eq!(0b0111 as T, (0b1110 as T).shr(&(1 as T)));
+        assert_eq!(-(0b11 as T) - (1 as T), (0b11 as T).not());
+    }
+
+    #[test]
+    fn test_from_str() {
+        assert_eq!(from_str(~"0"), Some(0 as T));
+        assert_eq!(from_str(~"3"), Some(3 as T));
+        assert_eq!(from_str(~"10"), Some(10 as T));
+        assert_eq!(i32::from_str(~"123456789"), Some(123456789 as i32));
+        assert_eq!(from_str(~"00100"), Some(100 as T));
+
+        assert_eq!(from_str(~"-1"), Some(-1 as T));
+        assert_eq!(from_str(~"-3"), Some(-3 as T));
+        assert_eq!(from_str(~"-10"), Some(-10 as T));
+        assert_eq!(i32::from_str(~"-123456789"), Some(-123456789 as i32));
+        assert_eq!(from_str(~"-00100"), Some(-100 as T));
+
+        assert!(from_str(~" ").is_none());
+        assert!(from_str(~"x").is_none());
+    }
+
+    #[test]
+    fn test_parse_bytes() {
+        use str::to_bytes;
+        assert_eq!(parse_bytes(to_bytes(~"123"), 10u), Some(123 as T));
+        assert_eq!(parse_bytes(to_bytes(~"1001"), 2u), Some(9 as T));
+        assert_eq!(parse_bytes(to_bytes(~"123"), 8u), Some(83 as T));
+        assert_eq!(i32::parse_bytes(to_bytes(~"123"), 16u), Some(291 as i32));
+        assert_eq!(i32::parse_bytes(to_bytes(~"ffff"), 16u), Some(65535 as i32));
+        assert_eq!(i32::parse_bytes(to_bytes(~"FFFF"), 16u), Some(65535 as i32));
+        assert_eq!(parse_bytes(to_bytes(~"z"), 36u), Some(35 as T));
+        assert_eq!(parse_bytes(to_bytes(~"Z"), 36u), Some(35 as T));
+
+        assert_eq!(parse_bytes(to_bytes(~"-123"), 10u), Some(-123 as T));
+        assert_eq!(parse_bytes(to_bytes(~"-1001"), 2u), Some(-9 as T));
+        assert_eq!(parse_bytes(to_bytes(~"-123"), 8u), Some(-83 as T));
+        assert_eq!(i32::parse_bytes(to_bytes(~"-123"), 16u), Some(-291 as i32));
+        assert_eq!(i32::parse_bytes(to_bytes(~"-ffff"), 16u), Some(-65535 as i32));
+        assert_eq!(i32::parse_bytes(to_bytes(~"-FFFF"), 16u), Some(-65535 as i32));
+        assert_eq!(parse_bytes(to_bytes(~"-z"), 36u), Some(-35 as T));
+        assert_eq!(parse_bytes(to_bytes(~"-Z"), 36u), Some(-35 as T));
+
+        assert!(parse_bytes(to_bytes(~"Z"), 35u).is_none());
+        assert!(parse_bytes(to_bytes(~"-9"), 2u).is_none());
+    }
+
+    #[test]
+    fn test_to_str() {
+        assert_eq!(to_str_radix(0 as T, 10u), ~"0");
+        assert_eq!(to_str_radix(1 as T, 10u), ~"1");
+        assert_eq!(to_str_radix(-1 as T, 10u), ~"-1");
+        assert_eq!(to_str_radix(127 as T, 16u), ~"7f");
+        assert_eq!(to_str_radix(100 as T, 10u), ~"100");
+
+    }
+
+    #[test]
+    fn test_int_to_str_overflow() {
+        let mut i8_val: i8 = 127_i8;
+        assert_eq!(i8::to_str(i8_val), ~"127");
+
+        i8_val += 1 as i8;
+        assert_eq!(i8::to_str(i8_val), ~"-128");
+
+        let mut i16_val: i16 = 32_767_i16;
+        assert_eq!(i16::to_str(i16_val), ~"32767");
+
+        i16_val += 1 as i16;
+        assert_eq!(i16::to_str(i16_val), ~"-32768");
+
+        let mut i32_val: i32 = 2_147_483_647_i32;
+        assert_eq!(i32::to_str(i32_val), ~"2147483647");
+
+        i32_val += 1 as i32;
+        assert_eq!(i32::to_str(i32_val), ~"-2147483648");
+
+        let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
+        assert_eq!(i64::to_str(i64_val), ~"9223372036854775807");
+
+        i64_val += 1 as i64;
+        assert_eq!(i64::to_str(i64_val), ~"-9223372036854775808");
+    }
+
+    #[test]
+    fn test_int_from_str_overflow() {
+        let mut i8_val: i8 = 127_i8;
+        assert_eq!(i8::from_str(~"127"), Some(i8_val));
+        assert!(i8::from_str(~"128").is_none());
+
+        i8_val += 1 as i8;
+        assert_eq!(i8::from_str(~"-128"), Some(i8_val));
+        assert!(i8::from_str(~"-129").is_none());
+
+        let mut i16_val: i16 = 32_767_i16;
+        assert_eq!(i16::from_str(~"32767"), Some(i16_val));
+        assert!(i16::from_str(~"32768").is_none());
+
+        i16_val += 1 as i16;
+        assert_eq!(i16::from_str(~"-32768"), Some(i16_val));
+        assert!(i16::from_str(~"-32769").is_none());
+
+        let mut i32_val: i32 = 2_147_483_647_i32;
+        assert_eq!(i32::from_str(~"2147483647"), Some(i32_val));
+        assert!(i32::from_str(~"2147483648").is_none());
+
+        i32_val += 1 as i32;
+        assert_eq!(i32::from_str(~"-2147483648"), Some(i32_val));
+        assert!(i32::from_str(~"-2147483649").is_none());
+
+        let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
+        assert_eq!(i64::from_str(~"9223372036854775807"), Some(i64_val));
+        assert!(i64::from_str(~"9223372036854775808").is_none());
+
+        i64_val += 1 as i64;
+        assert_eq!(i64::from_str(~"-9223372036854775808"), Some(i64_val));
+        assert!(i64::from_str(~"-9223372036854775809").is_none());
+    }
+
+    #[test]
+    fn test_ranges() {
+        let mut l = ~[];
+
+        for range(0,3) |i| {
+            l.push(i);
+        }
+        for range_rev(13,10) |i| {
+            l.push(i);
+        }
+        for range_step(20,26,2) |i| {
+            l.push(i);
+        }
+        for range_step(36,30,-2) |i| {
+            l.push(i);
+        }
+        for range_step(max_value - 2, max_value, 2) |i| {
+            l.push(i);
+        }
+        for range_step(max_value - 3, max_value, 2) |i| {
+            l.push(i);
+        }
+        for range_step(min_value + 2, min_value, -2) |i| {
+            l.push(i);
+        }
+        for range_step(min_value + 3, min_value, -2) |i| {
+            l.push(i);
+        }
+        assert_eq!(l, ~[0,1,2,
                         13,12,11,
                         20,22,24,
-                        36,34,32]);
+                        36,34,32,
+                        max_value-2,
+                        max_value-3,max_value-1,
+                        min_value+2,
+                        min_value+3,min_value+1]);
 
-    // None of the `fail`s should execute.
-    for range(10,0) |_i| {
-        fail!(~"unreachable");
+        // None of the `fail`s should execute.
+        for range(10,0) |_i| {
+            fail!(~"unreachable");
+        }
+        for range_rev(0,10) |_i| {
+            fail!(~"unreachable");
+        }
+        for range_step(10,0,1) |_i| {
+            fail!(~"unreachable");
+        }
+        for range_step(0,10,-1) |_i| {
+            fail!(~"unreachable");
+        }
     }
-    for range_rev(0,10) |_i| {
-        fail!(~"unreachable");
-    }
-    for range_step(10,0,1) |_i| {
-        fail!(~"unreachable");
-    }
-    for range_step(0,10,-1) |_i| {
-        fail!(~"unreachable");
-    }
-}
 
-#[test]
-#[should_fail]
-#[ignore(cfg(windows))]
-fn test_range_step_zero_step() {
-    for range_step(0,10,0) |_i| {}
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_range_step_zero_step() {
+        for range_step(0,10,0) |_i| {}
+    }
 }

@@ -19,7 +19,7 @@
 pub fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 
 mod map_reduce {
-    use core::hashmap::linear::LinearMap;
+    use core::hashmap::HashMap;
     use core::comm::*;
 
     pub type putter = @fn(~str, ~str);
@@ -37,9 +37,9 @@ mod map_reduce {
     }
 
     fn map_task(ctrl: SharedChan<ctrl_proto>, input: ~str) {
-        let intermediates = @mut LinearMap::new();
+        let intermediates = @mut HashMap::new();
 
-        fn emit(im: &mut LinearMap<~str, int>, ctrl: SharedChan<ctrl_proto>, key: ~str,
+        fn emit(im: &mut HashMap<~str, int>, ctrl: SharedChan<ctrl_proto>, key: ~str,
                 _val: ~str) {
             if im.contains_key(&key) {
                 return;
@@ -60,14 +60,14 @@ mod map_reduce {
 
     pub fn map_reduce(inputs: ~[~str]) {
         let (ctrl_port, ctrl_chan) = stream();
-        let ctrl_chan = SharedChan(ctrl_chan);
+        let ctrl_chan = SharedChan::new(ctrl_chan);
 
         // This task becomes the master control task. It spawns others
         // to do the rest.
 
-        let mut reducers: LinearMap<~str, int>;
+        let mut reducers: HashMap<~str, int>;
 
-        reducers = LinearMap::new();
+        reducers = HashMap::new();
 
         start_mappers(ctrl_chan, inputs.clone());
 

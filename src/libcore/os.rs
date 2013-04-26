@@ -30,7 +30,7 @@ use cast;
 use io;
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
-use libc::{mode_t, pid_t, FILE};
+use libc::{mode_t, FILE};
 use option;
 use option::{Some, None};
 use prelude::*;
@@ -42,8 +42,6 @@ use vec;
 
 pub use libc::fclose;
 pub use os::consts::*;
-
-// FIXME: move these to str perhaps? #2620
 
 pub fn close(fd: c_int) -> c_int {
     unsafe {
@@ -60,7 +58,6 @@ pub mod rustrt {
         unsafe fn rust_get_argv() -> **c_char;
         unsafe fn rust_path_is_dir(path: *libc::c_char) -> c_int;
         unsafe fn rust_path_exists(path: *libc::c_char) -> c_int;
-        unsafe fn rust_process_wait(handle: c_int) -> c_int;
         unsafe fn rust_set_exit_status(code: libc::intptr_t);
     }
 }
@@ -79,6 +76,8 @@ pub fn getcwd() -> Path {
         Path(str::raw::from_c_str(&buf[0]))
     }
 }
+
+// FIXME: move these to str perhaps? #2620
 
 pub fn as_c_charp<T>(s: &str, f: &fn(*c_char) -> T) -> T {
     str::as_c_str(s, |b| f(b as *c_char))
@@ -239,10 +238,10 @@ pub fn getenv(n: &str) -> Option<~str> {
     unsafe {
         do with_env_lock {
             let s = str::as_c_str(n, |s| libc::getenv(s));
-            if ptr::null::<u8>() == cast::reinterpret_cast(&s) {
+            if ptr::null::<u8>() == cast::transmute(s) {
                 option::None::<~str>
             } else {
-                let s = cast::reinterpret_cast(&s);
+                let s = cast::transmute(s);
                 option::Some::<~str>(str::raw::from_buf(s))
             }
         }
@@ -351,27 +350,6 @@ pub fn fsync_fd(fd: c_int, _l: io::fsync::Level) -> c_int {
         return fsync(fd);
     }
 }
-
-
-#[cfg(windows)]
-pub fn waitpid(pid: pid_t) -> c_int {
-    unsafe {
-        return rustrt::rust_process_wait(pid);
-    }
-}
-
-#[cfg(unix)]
-pub fn waitpid(pid: pid_t) -> c_int {
-    unsafe {
-        use libc::funcs::posix01::wait::*;
-        let mut status = 0 as c_int;
-
-        assert!((waitpid(pid, &mut status, 0 as c_int) !=
-                     (-1 as c_int)));
-        return status;
-    }
-}
-
 
 pub struct Pipe { mut in: c_int, mut out: c_int }
 
@@ -644,7 +622,7 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
             // FIXME: turn mode into something useful? #2623
             do as_utf16_p(p.to_str()) |buf| {
                 libc::CreateDirectoryW(buf, unsafe {
-                    cast::reinterpret_cast(&0)
+                    cast::transmute(0)
                 })
                     != (0 as libc::BOOL)
             }
@@ -1281,7 +1259,7 @@ mod tests {
     }
 
     fn make_rand_name() -> ~str {
-        let rng: @rand::Rng = rand::Rng();
+        let rng = rand::rng();
         let n = ~"TEST" + rng.gen_str(10u);
         assert!(getenv(n).is_none());
         n

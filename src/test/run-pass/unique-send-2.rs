@@ -16,7 +16,7 @@ fn child(c: &SharedChan<~uint>, i: uint) {
 
 pub fn main() {
     let (p, ch) = stream();
-    let ch = SharedChan(ch);
+    let ch = SharedChan::new(ch);
     let n = 100u;
     let mut expected = 0u;
     for uint::range(0u, n) |i| {

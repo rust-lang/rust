@@ -10,8 +10,7 @@
 
 //! Unsafe debugging functions for inspecting values.
 
-use core::cast::reinterpret_cast;
-use core::ptr;
+use core::cast::transmute;
 use core::sys;
 
 pub mod rustrt {
@@ -37,36 +36,31 @@ pub fn debug_tydesc<T>() {
 
 pub fn debug_opaque<T>(x: T) {
     unsafe {
-        rustrt::debug_opaque(sys::get_type_desc::<T>(),
-                             ptr::addr_of(&x) as *());
+        rustrt::debug_opaque(sys::get_type_desc::<T>(), transmute(&x));
     }
 }
 
 pub fn debug_box<T>(x: @T) {
     unsafe {
-        rustrt::debug_box(sys::get_type_desc::<T>(),
-                          ptr::addr_of(&x) as *());
+        rustrt::debug_box(sys::get_type_desc::<T>(), transmute(&x));
     }
 }
 
 pub fn debug_tag<T>(x: T) {
     unsafe {
-        rustrt::debug_tag(sys::get_type_desc::<T>(),
-                          ptr::addr_of(&x) as *());
+        rustrt::debug_tag(sys::get_type_desc::<T>(), transmute(&x));
     }
 }
 
 pub fn debug_fn<T>(x: T) {
     unsafe {
-        rustrt::debug_fn(sys::get_type_desc::<T>(),
-                         ptr::addr_of(&x) as *());
+        rustrt::debug_fn(sys::get_type_desc::<T>(), transmute(&x));
     }
 }
 
 pub unsafe fn ptr_cast<T, U>(x: @T) -> @U {
-    reinterpret_cast(
-        &rustrt::debug_ptrcast(sys::get_type_desc::<T>(),
-                              reinterpret_cast(&x)))
+    transmute(
+        rustrt::debug_ptrcast(sys::get_type_desc::<T>(), transmute(x)))
 }
 
 /// Triggers a debugger breakpoint

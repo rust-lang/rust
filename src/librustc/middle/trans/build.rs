@@ -18,18 +18,15 @@ use syntax::codemap::span;
 
 use core::prelude::*;
 use core::cast;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::libc::{c_uint, c_ulonglong, c_char};
 use core::libc;
 use core::option::Some;
-use core::ptr;
 use core::str;
 use core::vec;
 
 pub fn terminate(cx: block, _: &str) {
-    unsafe {
-        cx.terminated = true;
-    }
+    cx.terminated = true;
 }
 
 pub fn check_not_terminated(cx: block) {
@@ -55,7 +52,7 @@ pub fn count_insn(cx: block, category: &str) {
         // Build version of path with cycles removed.
 
         // Pass 1: scan table mapping str -> rightmost pos.
-        let mut mm = LinearMap::new();
+        let mut mm = HashMap::new();
         let len = vec::len(*v);
         let mut i = 0u;
         while i < len {
@@ -179,13 +176,19 @@ pub fn IndirectBr(cx: block, Addr: ValueRef, NumDests: uint) {
 pub fn noname() -> *libc::c_char {
     unsafe {
         static cnull: uint = 0u;
-        return cast::reinterpret_cast(&ptr::addr_of(&cnull));
+        return cast::transmute(&cnull);
     }
 }
 
-pub fn Invoke(cx: block, Fn: ValueRef, Args: &[ValueRef],
-              Then: BasicBlockRef, Catch: BasicBlockRef) {
-    if cx.unreachable { return; }
+pub fn Invoke(cx: block,
+              Fn: ValueRef,
+              Args: &[ValueRef],
+              Then: BasicBlockRef,
+              Catch: BasicBlockRef)
+           -> ValueRef {
+    if cx.unreachable {
+        return C_null(T_i8());
+    }
     check_not_terminated(cx);
     terminate(cx, "Invoke");
     debug!("Invoke(%s with arguments (%s))",
@@ -195,9 +198,13 @@ pub fn Invoke(cx: block, Fn: ValueRef, Args: &[ValueRef],
                         ~", "));
     unsafe {
         count_insn(cx, "invoke");
-        llvm::LLVMBuildInvoke(B(cx), Fn, vec::raw::to_ptr(Args),
-                              Args.len() as c_uint, Then, Catch,
-                              noname());
+        llvm::LLVMBuildInvoke(B(cx),
+                              Fn,
+                              vec::raw::to_ptr(Args),
+                              Args.len() as c_uint,
+                              Then,
+                              Catch,
+                              noname())
     }
 }
 
@@ -826,8 +833,8 @@ pub fn Phi(cx: block, Ty: TypeRef, vals: &[ValueRef], bbs: &[BasicBlockRef])
 pub fn AddIncomingToPhi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
     unsafe {
         if llvm::LLVMIsUndef(phi) == lib::llvm::True { return; }
-        let valptr = cast::reinterpret_cast(&ptr::addr_of(&val));
-        let bbptr = cast::reinterpret_cast(&ptr::addr_of(&bb));
+        let valptr = cast::transmute(&val);
+        let bbptr = cast::transmute(&bb);
         llvm::LLVMAddIncoming(phi, valptr, bbptr, 1 as c_uint);
     }
 }

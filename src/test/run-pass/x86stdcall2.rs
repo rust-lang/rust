@@ -40,4 +40,5 @@ pub fn main() {
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "android")]
 pub fn main() { }

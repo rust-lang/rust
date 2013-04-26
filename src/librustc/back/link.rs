@@ -26,7 +26,7 @@ use core::char;
 use core::hash::Streaming;
 use core::hash;
 use core::io::WriterUtil;
-use core::libc::{c_int, c_uint, c_char};
+use core::libc::{c_int, c_uint};
 use core::os::consts::{macos, freebsd, linux, android, win32};
 use core::os;
 use core::ptr;
@@ -48,7 +48,7 @@ pub enum output_type {
     output_type_exe,
 }
 
-pub fn llvm_err(sess: Session, +msg: ~str) -> ! {
+pub fn llvm_err(sess: Session, msg: ~str) -> ! {
     unsafe {
         let cstr = llvm::LLVMRustGetLastError();
         if cstr == ptr::null() {
@@ -61,23 +61,32 @@ pub fn llvm_err(sess: Session, +msg: ~str) -> ! {
 
 pub fn WriteOutputFile(sess: Session,
         PM: lib::llvm::PassManagerRef, M: ModuleRef,
-        Triple: *c_char,
+        Triple: &str,
+        Feature: &str,
+        Output: &str,
         // FIXME: When #2334 is fixed, change
         // c_uint to FileType
-        Output: *c_char, FileType: c_uint,
+        FileType: c_uint,
         OptLevel: c_int,
         EnableSegmentedStacks: bool) {
     unsafe {
-        let result = llvm::LLVMRustWriteOutputFile(
-                PM,
-                M,
-                Triple,
-                Output,
-                FileType,
-                OptLevel,
-                EnableSegmentedStacks);
-        if (!result) {
-            llvm_err(sess, ~"Could not write output");
+        do str::as_c_str(Triple) |Triple| {
+            do str::as_c_str(Feature) |Feature| {
+                do str::as_c_str(Output) |Output| {
+                    let result = llvm::LLVMRustWriteOutputFile(
+                            PM,
+                            M,
+                            Triple,
+                            Feature,
+                            Output,
+                            FileType,
+                            OptLevel,
+                            EnableSegmentedStacks);
+                    if (!result) {
+                        llvm_err(sess, ~"Could not write output");
+                    }
+                }
+            }
         }
     }
 }
@@ -153,9 +162,9 @@ pub mod jit {
                     code: entry,
                     env: ptr::null()
                 };
-                let func: &fn(++argv: ~[~str]) = cast::transmute(closure);
+                let func: &fn(argv: ~[@~str]) = cast::transmute(closure);
 
-                func(~[/*bad*/copy sess.opts.binary]);
+                func(~[sess.opts.binary]);
             }
         }
     }
@@ -188,8 +197,10 @@ pub mod write {
         return false;
     }
 
-    pub fn run_passes(sess: Session, llmod: ModuleRef,
-            output_type: output_type, output: &Path) {
+    pub fn run_passes(sess: Session,
+                      llmod: ModuleRef,
+                      output_type: output_type,
+                      output: &Path) {
         unsafe {
             let opts = sess.opts;
             if sess.time_llvm_passes() { llvm::LLVMRustEnableTimePasses(); }
@@ -271,7 +282,7 @@ pub mod write {
                 let LLVMOptDefault    = 2 as c_int; // -O2, -Os
                 let LLVMOptAggressive = 3 as c_int; // -O3
 
-                let mut CodeGenOptLevel = match opts.optimize {
+                let CodeGenOptLevel = match opts.optimize {
                   session::No => LLVMOptNone,
                   session::Less => LLVMOptLess,
                   session::Default => LLVMOptDefault,
@@ -292,7 +303,7 @@ pub mod write {
                     return;
                 }
 
-                let mut FileType;
+                let FileType;
                 if output_type == output_type_object ||
                        output_type == output_type_exe {
                    FileType = lib::llvm::ObjectFile;
@@ -308,66 +319,49 @@ pub mod write {
                         llvm::LLVMWriteBitcodeToFile(llmod, buf)
                     });
                     pm = mk_pass_manager();
+
                     // Save the assembly file if -S is used
-
                     if output_type == output_type_assembly {
-                        let _: () = str::as_c_str(
+                        WriteOutputFile(
+                            sess,
+                            pm.llpm,
+                            llmod,
                             sess.targ_cfg.target_strs.target_triple,
-                            |buf_t| {
-                                str::as_c_str(output.to_str(), |buf_o| {
-                                    WriteOutputFile(
-                                        sess,
-                                        pm.llpm,
-                                        llmod,
-                                        buf_t,
-                                        buf_o,
-                                        lib::llvm::AssemblyFile as c_uint,
-                                        CodeGenOptLevel,
-                                        true)
-                                })
-                            });
+                            opts.target_feature,
+                            output.to_str(),
+                            lib::llvm::AssemblyFile as c_uint,
+                            CodeGenOptLevel,
+                            true);
                     }
-
 
                     // Save the object file for -c or --save-temps alone
                     // This .o is needed when an exe is built
                     if output_type == output_type_object ||
                            output_type == output_type_exe {
-                        let _: () = str::as_c_str(
+                        WriteOutputFile(
+                            sess,
+                            pm.llpm,
+                            llmod,
                             sess.targ_cfg.target_strs.target_triple,
-                            |buf_t| {
-                                str::as_c_str(output.to_str(), |buf_o| {
-                                    WriteOutputFile(
-                                        sess,
-                                        pm.llpm,
-                                        llmod,
-                                        buf_t,
-                                        buf_o,
-                                        lib::llvm::ObjectFile as c_uint,
-                                        CodeGenOptLevel,
-                                        true)
-                                })
-                            });
+                            opts.target_feature,
+                            output.to_str(),
+                            lib::llvm::ObjectFile as c_uint,
+                            CodeGenOptLevel,
+                            true);
                     }
                 } else {
                     // If we aren't saving temps then just output the file
                     // type corresponding to the '-c' or '-S' flag used
-
-                    let _: () = str::as_c_str(
+                    WriteOutputFile(
+                        sess,
+                        pm.llpm,
+                        llmod,
                         sess.targ_cfg.target_strs.target_triple,
-                        |buf_t| {
-                            str::as_c_str(output.to_str(), |buf_o| {
-                                WriteOutputFile(
-                                    sess,
-                                    pm.llpm,
-                                    llmod,
-                                    buf_t,
-                                    buf_o,
-                                    FileType as c_uint,
-                                    CodeGenOptLevel,
-                                    true)
-                            })
-                        });
+                        opts.target_feature,
+                        output.to_str(),
+                        FileType as c_uint,
+                        CodeGenOptLevel,
+                        true);
                 }
                 // Clean up and return
 
@@ -517,7 +511,7 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
 
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(symbol_hasher: &hash::State,
-                              +cmh_items: ~[@ast::meta_item],
+                              cmh_items: ~[@ast::meta_item],
                               dep_hashes: ~[~str]) -> @str {
         fn len_and_str(s: &str) -> ~str {
             fmt!("%u_%s", s.len(), s)
@@ -566,7 +560,7 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
                        name, default));
     }
 
-    fn crate_meta_name(sess: Session, output: &Path, +opt_name: Option<@str>)
+    fn crate_meta_name(sess: Session, output: &Path, opt_name: Option<@str>)
                     -> @str {
         return match opt_name {
               Some(v) => v,
@@ -615,9 +609,7 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
 }
 
 pub fn truncated_hash_result(symbol_hasher: &hash::State) -> ~str {
-    unsafe {
-        symbol_hasher.result_str()
-    }
+    symbol_hasher.result_str()
 }
 
 
@@ -703,7 +695,7 @@ pub fn mangle(sess: Session, ss: path) -> ~str {
 }
 
 pub fn exported_name(sess: Session,
-                     +path: path,
+                     path: path,
                      hash: &str,
                      vers: &str) -> ~str {
     return mangle(sess,
@@ -713,7 +705,7 @@ pub fn exported_name(sess: Session,
 }
 
 pub fn mangle_exported_name(ccx: @CrateContext,
-                            +path: path,
+                            path: path,
                             t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
     return exported_name(ccx.sess, path,
@@ -733,17 +725,17 @@ pub fn mangle_internal_name_by_type_only(ccx: @CrateContext,
 }
 
 pub fn mangle_internal_name_by_path_and_seq(ccx: @CrateContext,
-                                            +path: path,
-                                            +flav: ~str) -> ~str {
+                                            path: path,
+                                            flav: ~str) -> ~str {
     return mangle(ccx.sess,
                   vec::append_one(path, path_name((ccx.names)(flav))));
 }
 
-pub fn mangle_internal_name_by_path(ccx: @CrateContext, +path: path) -> ~str {
+pub fn mangle_internal_name_by_path(ccx: @CrateContext, path: path) -> ~str {
     return mangle(ccx.sess, path);
 }
 
-pub fn mangle_internal_name_by_seq(ccx: @CrateContext, +flav: ~str) -> ~str {
+pub fn mangle_internal_name_by_seq(ccx: @CrateContext, flav: ~str) -> ~str {
     return fmt!("%s_%u", flav, (ccx.names)(flav).repr);
 }
 
@@ -768,7 +760,7 @@ pub fn link_binary(sess: Session,
                    out_filename: &Path,
                    lm: LinkMeta) {
     // Converts a library file-stem into a cc -l argument
-    fn unlib(config: @session::config, +stem: ~str) -> ~str {
+    fn unlib(config: @session::config, stem: ~str) -> ~str {
         if stem.starts_with("lib") &&
             config.os != session::os_win32 {
             stem.slice(3, stem.len()).to_owned()
@@ -820,7 +812,7 @@ pub fn link_binary(sess: Session,
     cc_args.push(output.to_str());
     cc_args.push(obj_filename.to_str());
 
-    let mut lib_cmd;
+    let lib_cmd;
     let os = sess.targ_cfg.os;
     if os == session::os_macos {
         lib_cmd = ~"-dynamiclib";

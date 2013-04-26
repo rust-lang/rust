@@ -57,9 +57,7 @@ pub struct TcpSocket {
 #[unsafe_destructor]
 impl Drop for TcpSocket {
     fn finalize(&self) {
-        unsafe {
-            tear_down_socket_data(self.socket_data)
-        }
+        tear_down_socket_data(self.socket_data)
     }
 }
 
@@ -152,16 +150,16 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
     -> result::Result<TcpSocket, TcpConnectErrData> {
     unsafe {
         let (result_po, result_ch) = stream::<ConnAttempt>();
-        let result_ch = SharedChan(result_ch);
+        let result_ch = SharedChan::new(result_ch);
         let (closed_signal_po, closed_signal_ch) = stream::<()>();
-        let closed_signal_ch = SharedChan(closed_signal_ch);
+        let closed_signal_ch = SharedChan::new(closed_signal_ch);
         let conn_data = ConnectReqData {
             result_ch: result_ch,
             closed_signal_ch: closed_signal_ch
         };
-        let conn_data_ptr = ptr::addr_of(&conn_data);
+        let conn_data_ptr: *ConnectReqData = &conn_data;
         let (reader_po, reader_ch) = stream::<Result<~[u8], TcpErrData>>();
-        let reader_ch = SharedChan(reader_ch);
+        let reader_ch = SharedChan::new(reader_ch);
         let stream_handle_ptr = malloc_uv_tcp_t();
         *(stream_handle_ptr as *mut uv::ll::uv_tcp_t) = uv::ll::tcp_t();
         let socket_data = @TcpSocketData {
@@ -176,7 +174,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
             },
             iotask: iotask.clone()
         };
-        let socket_data_ptr = ptr::addr_of(&(*socket_data));
+        let socket_data_ptr: *TcpSocketData = &*socket_data;
         // get an unsafe representation of our stream_handle_ptr that
         // we can send into the interact cb to be handled in libuv..
         debug!("stream_handle_ptr outside interact %?",
@@ -190,8 +188,8 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                     0i32 => {
                         debug!("tcp_init successful");
                         debug!("dealing w/ ipv4 connection..");
-                        let connect_req_ptr =
-                            ptr::addr_of(&((*socket_data_ptr).connect_req));
+                        let connect_req_ptr: *uv::ll::uv_connect_t =
+                            &(*socket_data_ptr).connect_req;
                         let addr_str = ip::format_addr(&input_ip);
                         let connect_result = match input_ip {
                             ip::Ipv4(ref addr) => {
@@ -208,7 +206,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                                 uv::ll::tcp_connect(
                                     connect_req_ptr,
                                     stream_handle_ptr,
-                                    ptr::addr_of(&in_addr),
+                                    &in_addr,
                                     tcp_connect_on_connect_cb)
                             }
                             ip::Ipv6(ref addr) => {
@@ -218,13 +216,17 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                                 uv::ll::tcp_connect6(
                                     connect_req_ptr,
                                     stream_handle_ptr,
-                                    ptr::addr_of(&in_addr),
+                                    &in_addr,
                                     tcp_connect_on_connect_cb)
                             }
                         };
                         match connect_result {
                             0i32 => {
-                                debug!("tcp_connect successful");
+                                debug!("tcp_connect successful: \
+                                        stream %x,
+                                        socket data %x",
+                                       stream_handle_ptr as uint,
+                                       socket_data_ptr as uint);
                                 // reusable data that we'll have for the
                                 // duration..
                                 uv::ll::set_data_for_uv_handle(
@@ -302,11 +304,9 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
  * `TcpErrData` value as the `Err` variant
  */
 pub fn write(sock: &TcpSocket, raw_write_data: ~[u8])
-    -> result::Result<(), TcpErrData> {
-    unsafe {
-        let socket_data_ptr = ptr::addr_of(&(*(sock.socket_data)));
-        write_common_impl(socket_data_ptr, raw_write_data)
-    }
+             -> result::Result<(), TcpErrData> {
+    let socket_data_ptr: *TcpSocketData = &*sock.socket_data;
+    write_common_impl(socket_data_ptr, raw_write_data)
 }
 
 /**
@@ -341,13 +341,12 @@ pub fn write(sock: &TcpSocket, raw_write_data: ~[u8])
  * value as the `Err` variant
  */
 pub fn write_future(sock: &TcpSocket, raw_write_data: ~[u8])
-    -> future::Future<result::Result<(), TcpErrData>> {
-    unsafe {
-        let socket_data_ptr = ptr::addr_of(&(*(sock.socket_data)));
-        do future_spawn {
-            let data_copy = copy(raw_write_data);
-            write_common_impl(socket_data_ptr, data_copy)
-        }
+    -> future::Future<result::Result<(), TcpErrData>>
+{
+    let socket_data_ptr: *TcpSocketData = &*sock.socket_data;
+    do future_spawn {
+        let data_copy = copy(raw_write_data);
+        write_common_impl(socket_data_ptr, data_copy)
     }
 }
 
@@ -367,12 +366,11 @@ pub fn write_future(sock: &TcpSocket, raw_write_data: ~[u8])
  * `TcpErrData` record
  */
 pub fn read_start(sock: &TcpSocket)
-    -> result::Result<@Port<
-        result::Result<~[u8], TcpErrData>>, TcpErrData> {
-    unsafe {
-        let socket_data = ptr::addr_of(&(*(sock.socket_data)));
-        read_start_common_impl(socket_data)
-    }
+                  -> result::Result<@Port<result::Result<~[u8],
+                                                         TcpErrData>>,
+                                    TcpErrData> {
+    let socket_data: *TcpSocketData = &*sock.socket_data;
+    read_start_common_impl(socket_data)
 }
 
 /**
@@ -382,12 +380,9 @@ pub fn read_start(sock: &TcpSocket)
  *
  * * `sock` - a `net::tcp::TcpSocket` that you wish to stop reading on
  */
-pub fn read_stop(sock: &TcpSocket) ->
-    result::Result<(), TcpErrData> {
-    unsafe {
-        let socket_data = ptr::addr_of(&(*sock.socket_data));
-        read_stop_common_impl(socket_data)
-    }
+pub fn read_stop(sock: &TcpSocket) -> result::Result<(), TcpErrData> {
+    let socket_data: *TcpSocketData = &*sock.socket_data;
+    read_stop_common_impl(socket_data)
 }
 
 /**
@@ -406,8 +401,8 @@ pub fn read_stop(sock: &TcpSocket) ->
  * read attempt. Pass `0u` to wait indefinitely
  */
 pub fn read(sock: &TcpSocket, timeout_msecs: uint)
-    -> result::Result<~[u8],TcpErrData> {
-    let socket_data = ptr::addr_of(&(*(sock.socket_data)));
+            -> result::Result<~[u8],TcpErrData> {
+    let socket_data: *TcpSocketData = &*sock.socket_data;
     read_common_impl(socket_data, timeout_msecs)
 }
 
@@ -441,8 +436,8 @@ pub fn read(sock: &TcpSocket, timeout_msecs: uint)
  * read attempt. Pass `0u` to wait indefinitely
  */
 fn read_future(sock: &TcpSocket, timeout_msecs: uint)
-    -> future::Future<result::Result<~[u8],TcpErrData>> {
-    let socket_data = ptr::addr_of(&(*(sock.socket_data)));
+               -> future::Future<result::Result<~[u8],TcpErrData>> {
+    let socket_data: *TcpSocketData = &*sock.socket_data;
     do future_spawn {
         read_common_impl(socket_data, timeout_msecs)
     }
@@ -526,7 +521,7 @@ pub fn accept(new_conn: TcpNewConnection)
                     server_handle_ptr) as *TcpListenFcData;
                 let (reader_po, reader_ch) = stream::<
                     Result<~[u8], TcpErrData>>();
-                let reader_ch = SharedChan(reader_ch);
+                let reader_ch = SharedChan::new(reader_ch);
                 let iotask = &(*server_data_ptr).iotask;
                 let stream_handle_ptr = malloc_uv_tcp_t();
                 *(stream_handle_ptr as *mut uv::ll::uv_tcp_t) =
@@ -540,13 +535,13 @@ pub fn accept(new_conn: TcpNewConnection)
                     ipv6: (*server_data_ptr).ipv6,
                     iotask : iotask.clone()
                 };
-                let client_socket_data_ptr = ptr::addr_of(
-                    &(*client_socket_data));
+                let client_socket_data_ptr: *TcpSocketData =
+                    &*client_socket_data;
                 let client_stream_handle_ptr =
                     (*client_socket_data_ptr).stream_handle_ptr;
 
                 let (result_po, result_ch) = stream::<Option<TcpErrData>>();
-                let result_ch = SharedChan(result_ch);
+                let result_ch = SharedChan::new(result_ch);
 
                 // UNSAFE LIBUV INTERACTION BEGIN
                 // .. normally this happens within the context of
@@ -565,13 +560,21 @@ pub fn accept(new_conn: TcpNewConnection)
                             server_handle_ptr as *libc::c_void,
                             client_stream_handle_ptr as *libc::c_void) {
                             0i32 => {
-                                debug!(
-                                    "successfully accepted client \
-                                      connection");
+                                debug!("successfully accepted client \
+                                        connection: \
+                                        stream %x, \
+                                        socket data %x",
+                                       client_stream_handle_ptr as uint,
+                                       client_socket_data_ptr as uint);
                                 uv::ll::set_data_for_uv_handle(
                                     client_stream_handle_ptr,
                                     client_socket_data_ptr
                                     as *libc::c_void);
+                                let ptr = uv::ll::get_data_for_uv_handle(
+                                    client_stream_handle_ptr);
+                                debug!("ptrs: %x %x",
+                                       client_socket_data_ptr as uint,
+                                       ptr as uint);
                                 result_ch.send(None);
                             }
                             _ => {
@@ -654,150 +657,146 @@ fn listen_common(host_ip: ip::IpAddr,
                  on_establish_cb: ~fn(SharedChan<Option<TcpErrData>>),
                  on_connect_cb: ~fn(*uv::ll::uv_tcp_t))
               -> result::Result<(), TcpListenErrData> {
-    unsafe {
-        let (stream_closed_po, stream_closed_ch) = stream::<()>();
-        let stream_closed_ch = SharedChan(stream_closed_ch);
-        let (kill_po, kill_ch) = stream::<Option<TcpErrData>>();
-        let kill_ch = SharedChan(kill_ch);
-        let server_stream = uv::ll::tcp_t();
-        let server_stream_ptr = ptr::addr_of(&server_stream);
-        let server_data: TcpListenFcData = TcpListenFcData {
-            server_stream_ptr: server_stream_ptr,
-            stream_closed_ch: stream_closed_ch,
-            kill_ch: kill_ch.clone(),
-            on_connect_cb: on_connect_cb,
-            iotask: iotask.clone(),
-            ipv6: match &host_ip {
-                &ip::Ipv4(_) => { false }
-                &ip::Ipv6(_) => { true }
-            },
-            mut active: true
-        };
-        let server_data_ptr = ptr::addr_of(&server_data);
+    let (stream_closed_po, stream_closed_ch) = stream::<()>();
+    let stream_closed_ch = SharedChan::new(stream_closed_ch);
+    let (kill_po, kill_ch) = stream::<Option<TcpErrData>>();
+    let kill_ch = SharedChan::new(kill_ch);
+    let server_stream = uv::ll::tcp_t();
+    let server_stream_ptr: *uv::ll::uv_tcp_t = &server_stream;
+    let server_data: TcpListenFcData = TcpListenFcData {
+        server_stream_ptr: server_stream_ptr,
+        stream_closed_ch: stream_closed_ch,
+        kill_ch: kill_ch.clone(),
+        on_connect_cb: on_connect_cb,
+        iotask: iotask.clone(),
+        ipv6: match &host_ip {
+            &ip::Ipv4(_) => { false }
+            &ip::Ipv6(_) => { true }
+        },
+        mut active: true
+    };
+    let server_data_ptr: *TcpListenFcData = &server_data;
 
-        let (setup_po, setup_ch) = stream();
+    let (setup_po, setup_ch) = stream();
 
-        // this is to address a compiler warning about
-        // an implicit copy.. it seems that double nested
-        // will defeat a move sigil, as is done to the host_ip
-        // arg above.. this same pattern works w/o complaint in
-        // tcp::connect (because the iotask::interact cb isn't
-        // nested within a core::comm::listen block)
-        let loc_ip = copy(host_ip);
-        do iotask::interact(iotask) |loop_ptr| {
-            unsafe {
-                match uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
-                    0i32 => {
-                        uv::ll::set_data_for_uv_handle(
-                            server_stream_ptr,
-                            server_data_ptr);
-                        let addr_str = ip::format_addr(&loc_ip);
-                        let bind_result = match loc_ip {
-                            ip::Ipv4(ref addr) => {
-                                debug!("addr: %?", addr);
-                                let in_addr = uv::ll::ip4_addr(
-                                    addr_str,
-                                    port as int);
-                                uv::ll::tcp_bind(server_stream_ptr,
-                                                 ptr::addr_of(&in_addr))
-                            }
-                            ip::Ipv6(ref addr) => {
-                                debug!("addr: %?", addr);
-                                let in_addr = uv::ll::ip6_addr(
-                                    addr_str,
-                                    port as int);
-                                uv::ll::tcp_bind6(server_stream_ptr,
-                                                  ptr::addr_of(&in_addr))
-                            }
-                        };
-                        match bind_result {
-                            0i32 => {
-                                match uv::ll::listen(
-                                    server_stream_ptr,
-                                    backlog as libc::c_int,
-                                    tcp_lfc_on_connection_cb) {
-                                    0i32 => setup_ch.send(None),
-                                    _ => {
-                                        debug!(
-                                            "failure to uv_tcp_init");
-                                        let err_data =
-                                            uv::ll::get_last_err_data(
-                                                loop_ptr);
-                                        setup_ch.send(Some(err_data));
-                                    }
+    // this is to address a compiler warning about
+    // an implicit copy.. it seems that double nested
+    // will defeat a move sigil, as is done to the host_ip
+    // arg above.. this same pattern works w/o complaint in
+    // tcp::connect (because the iotask::interact cb isn't
+    // nested within a core::comm::listen block)
+    let loc_ip = copy(host_ip);
+    do iotask::interact(iotask) |loop_ptr| {
+        unsafe {
+            match uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
+                0i32 => {
+                    uv::ll::set_data_for_uv_handle(
+                        server_stream_ptr,
+                        server_data_ptr);
+                    let addr_str = ip::format_addr(&loc_ip);
+                    let bind_result = match loc_ip {
+                        ip::Ipv4(ref addr) => {
+                            debug!("addr: %?", addr);
+                            let in_addr = uv::ll::ip4_addr(
+                                addr_str,
+                                port as int);
+                            uv::ll::tcp_bind(server_stream_ptr, &in_addr)
+                        }
+                        ip::Ipv6(ref addr) => {
+                            debug!("addr: %?", addr);
+                            let in_addr = uv::ll::ip6_addr(
+                                addr_str,
+                                port as int);
+                            uv::ll::tcp_bind6(server_stream_ptr, &in_addr)
+                        }
+                    };
+                    match bind_result {
+                        0i32 => {
+                            match uv::ll::listen(
+                                server_stream_ptr,
+                                backlog as libc::c_int,
+                                tcp_lfc_on_connection_cb) {
+                                0i32 => setup_ch.send(None),
+                                _ => {
+                                    debug!(
+                                        "failure to uv_tcp_init");
+                                    let err_data =
+                                        uv::ll::get_last_err_data(
+                                            loop_ptr);
+                                    setup_ch.send(Some(err_data));
                                 }
                             }
-                            _ => {
-                                debug!("failure to uv_tcp_bind");
-                                let err_data = uv::ll::get_last_err_data(
-                                    loop_ptr);
-                                setup_ch.send(Some(err_data));
-                            }
+                        }
+                        _ => {
+                            debug!("failure to uv_tcp_bind");
+                            let err_data = uv::ll::get_last_err_data(
+                                loop_ptr);
+                            setup_ch.send(Some(err_data));
                         }
                     }
-                    _ => {
-                        debug!("failure to uv_tcp_bind");
-                        let err_data = uv::ll::get_last_err_data(
-                            loop_ptr);
-                        setup_ch.send(Some(err_data));
-                    }
+                }
+                _ => {
+                    debug!("failure to uv_tcp_bind");
+                    let err_data = uv::ll::get_last_err_data(
+                        loop_ptr);
+                    setup_ch.send(Some(err_data));
                 }
             }
         }
+    }
 
-        let setup_result = setup_po.recv();
+    let setup_result = setup_po.recv();
 
-        match setup_result {
-            Some(ref err_data) => {
-                do iotask::interact(iotask) |loop_ptr| {
-                    unsafe {
-                        debug!(
-                            "tcp::listen post-kill recv hl interact %?",
-                                 loop_ptr);
-                        (*server_data_ptr).active = false;
-                        uv::ll::close(server_stream_ptr, tcp_lfc_close_cb);
-                    }
-                };
-                stream_closed_po.recv();
-                match err_data.err_name {
-                    ~"EACCES" => {
-                        debug!("Got EACCES error");
-                        result::Err(AccessDenied)
-                    }
-                    ~"EADDRINUSE" => {
-                        debug!("Got EADDRINUSE error");
-                        result::Err(AddressInUse)
-                    }
-                    _ => {
-                        debug!("Got '%s' '%s' libuv error",
-                                        err_data.err_name, err_data.err_msg);
-                        result::Err(
-                            GenericListenErr(err_data.err_name,
-                                             err_data.err_msg))
-                    }
+    match setup_result {
+        Some(ref err_data) => {
+            do iotask::interact(iotask) |loop_ptr| {
+                unsafe {
+                    debug!(
+                        "tcp::listen post-kill recv hl interact %?",
+                             loop_ptr);
+                    (*server_data_ptr).active = false;
+                    uv::ll::close(server_stream_ptr, tcp_lfc_close_cb);
+                }
+            };
+            stream_closed_po.recv();
+            match err_data.err_name {
+                ~"EACCES" => {
+                    debug!("Got EACCES error");
+                    result::Err(AccessDenied)
+                }
+                ~"EADDRINUSE" => {
+                    debug!("Got EADDRINUSE error");
+                    result::Err(AddressInUse)
+                }
+                _ => {
+                    debug!("Got '%s' '%s' libuv error",
+                                    err_data.err_name, err_data.err_msg);
+                    result::Err(
+                        GenericListenErr(err_data.err_name,
+                                         err_data.err_msg))
                 }
             }
-            None => {
-                on_establish_cb(kill_ch.clone());
-                let kill_result = kill_po.recv();
-                do iotask::interact(iotask) |loop_ptr| {
-                    unsafe {
-                        debug!(
-                            "tcp::listen post-kill recv hl interact %?",
-                                 loop_ptr);
-                        (*server_data_ptr).active = false;
-                        uv::ll::close(server_stream_ptr, tcp_lfc_close_cb);
-                    }
-                };
-                stream_closed_po.recv();
-                match kill_result {
-                    // some failure post bind/listen
-                    Some(ref err_data) => result::Err(GenericListenErr(
-                        err_data.err_name,
-                        err_data.err_msg)),
-                    // clean exit
-                    None => result::Ok(())
+        }
+        None => {
+            on_establish_cb(kill_ch.clone());
+            let kill_result = kill_po.recv();
+            do iotask::interact(iotask) |loop_ptr| {
+                unsafe {
+                    debug!(
+                        "tcp::listen post-kill recv hl interact %?",
+                             loop_ptr);
+                    (*server_data_ptr).active = false;
+                    uv::ll::close(server_stream_ptr, tcp_lfc_close_cb);
                 }
+            };
+            stream_closed_po.recv();
+            match kill_result {
+                // some failure post bind/listen
+                Some(ref err_data) => result::Err(GenericListenErr(
+                    err_data.err_name,
+                    err_data.err_msg)),
+                // clean exit
+                None => result::Ok(())
             }
         }
     }
@@ -856,12 +855,12 @@ pub impl TcpSocket {
             if self.socket_data.ipv6 {
                 let addr = uv::ll::ip6_addr("", 0);
                 uv::ll::tcp_getpeername6(self.socket_data.stream_handle_ptr,
-                                         ptr::addr_of(&addr));
+                                         &addr);
                 ip::Ipv6(addr)
             } else {
                 let addr = uv::ll::ip4_addr("", 0);
                 uv::ll::tcp_getpeername(self.socket_data.stream_handle_ptr,
-                                        ptr::addr_of(&addr));
+                                        &addr);
                 ip::Ipv4(addr)
             }
         }
@@ -973,13 +972,12 @@ impl io::Reader for TcpSocketBuf {
 impl io::Writer for TcpSocketBuf {
     pub fn write(&self, data: &const [u8]) {
         unsafe {
-            let socket_data_ptr =
-                ptr::addr_of(&(*((*(self.data)).sock).socket_data));
+            let socket_data_ptr: *TcpSocketData =
+                &(*((*(self.data)).sock).socket_data);
             let w_result = write_common_impl(socket_data_ptr,
-                                            vec::slice(data,
-                                                       0,
-                                                       vec::len(data)
-                                                      ).to_vec());
+                                             vec::slice(data,
+                                                        0,
+                                                        data.len()).to_vec());
             if w_result.is_err() {
                 let err_data = w_result.get_err();
                 debug!(
@@ -1008,11 +1006,11 @@ impl io::Writer for TcpSocketBuf {
 fn tear_down_socket_data(socket_data: @TcpSocketData) {
     unsafe {
         let (closed_po, closed_ch) = stream::<()>();
-        let closed_ch = SharedChan(closed_ch);
+        let closed_ch = SharedChan::new(closed_ch);
         let close_data = TcpSocketCloseData {
             closed_ch: closed_ch
         };
-        let close_data_ptr = ptr::addr_of(&close_data);
+        let close_data_ptr: *TcpSocketCloseData = &close_data;
         let stream_handle_ptr = (*socket_data).stream_handle_ptr;
         do iotask::interact(&(*socket_data).iotask) |loop_ptr| {
             unsafe {
@@ -1150,19 +1148,21 @@ fn write_common_impl(socket_data_ptr: *TcpSocketData,
                      raw_write_data: ~[u8])
     -> result::Result<(), TcpErrData> {
     unsafe {
-        let write_req_ptr = ptr::addr_of(&((*socket_data_ptr).write_req));
+        let write_req_ptr: *uv::ll::uv_write_t =
+            &(*socket_data_ptr).write_req;
         let stream_handle_ptr =
             (*socket_data_ptr).stream_handle_ptr;
-        let write_buf_vec =  ~[ uv::ll::buf_init(
-            vec::raw::to_ptr(raw_write_data),
-            vec::len(raw_write_data)) ];
-        let write_buf_vec_ptr = ptr::addr_of(&write_buf_vec);
+        let write_buf_vec = ~[
+            uv::ll::buf_init(vec::raw::to_ptr(raw_write_data),
+                             raw_write_data.len())
+        ];
+        let write_buf_vec_ptr: *~[uv::ll::uv_buf_t] = &write_buf_vec;
         let (result_po, result_ch) = stream::<TcpWriteResult>();
-        let result_ch = SharedChan(result_ch);
+        let result_ch = SharedChan::new(result_ch);
         let write_data = WriteReqData {
             result_ch: result_ch
         };
-        let write_data_ptr = ptr::addr_of(&write_data);
+        let write_data_ptr: *WriteReqData = &write_data;
         do iotask::interact(&(*socket_data_ptr).iotask) |loop_ptr| {
             unsafe {
                 debug!("in interact cb for tcp::write %?",
@@ -1279,14 +1279,15 @@ impl ToTcpErr for uv::ll::uv_err_data {
 }
 
 extern fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
-                    nread: libc::ssize_t,
-                    buf: uv::ll::uv_buf_t) {
+                         nread: libc::ssize_t,
+                         buf: uv::ll::uv_buf_t) {
     unsafe {
-        debug!("entering on_tcp_read_cb stream: %? nread: %?",
-                        stream, nread);
+        debug!("entering on_tcp_read_cb stream: %x nread: %?",
+                        stream as uint, nread);
         let loop_ptr = uv::ll::get_loop_for_uv_handle(stream);
         let socket_data_ptr = uv::ll::get_data_for_uv_handle(stream)
             as *TcpSocketData;
+        debug!("socket data is %x", socket_data_ptr as uint);
         match nread as int {
           // incoming err.. probably eof
           -1 => {
@@ -1382,9 +1383,7 @@ extern fn stream_error_close_cb(handle: *uv::ll::uv_tcp_t) {
 }
 
 extern fn tcp_connect_close_cb(handle: *uv::ll::uv_tcp_t) {
-    unsafe {
-        debug!("closed client tcp handle %?", handle);
-    }
+    debug!("closed client tcp handle %?", handle);
 }
 
 extern fn tcp_connect_on_connect_cb(connect_req_ptr: *uv::ll::uv_connect_t,
@@ -1439,7 +1438,7 @@ struct TcpBufferedSocketData {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use net::ip;
     use net::tcp::{GenericListenErr, TcpConnectErrData, TcpListenErrData};
     use net::tcp::{connect, accept, read, listen, TcpSocket, socket_buf};
@@ -1460,9 +1459,9 @@ pub mod test {
     #[cfg(target_os="darwin")]
     #[cfg(target_os="linux")]
     #[cfg(target_os="android")]
-    pub mod tcp_ipv4_server_and_client_test {
+    mod tcp_ipv4_server_and_client_test {
         #[cfg(target_arch="x86_64")]
-        pub mod impl64 {
+        mod impl64 {
             use net::tcp::test::*;
 
             #[test]
@@ -1510,7 +1509,7 @@ pub mod test {
         #[cfg(target_arch="x86")]
         #[cfg(target_arch="arm")]
         #[cfg(target_arch="mips")]
-        pub mod impl32 {
+        mod impl32 {
             use net::tcp::test::*;
 
             #[test]
@@ -1567,7 +1566,7 @@ pub mod test {
         let (server_result_po, server_result_ch) = stream::<~str>();
 
         let (cont_po, cont_ch) = stream::<()>();
-        let cont_ch = SharedChan(cont_ch);
+        let cont_ch = SharedChan::new(cont_ch);
         // server
         let hl_loop_clone = hl_loop.clone();
         do task::spawn_sched(task::ManualThreads(1u)) {
@@ -1605,7 +1604,7 @@ pub mod test {
         let expected_resp = ~"pong";
 
         let (cont_po, cont_ch) = stream::<()>();
-        let cont_ch = SharedChan(cont_ch);
+        let cont_ch = SharedChan::new(cont_ch);
         // server
         let hl_loop_clone = hl_loop.clone();
         do task::spawn_sched(task::ManualThreads(1u)) {
@@ -1665,7 +1664,7 @@ pub mod test {
         let expected_resp = ~"pong";
 
         let (cont_po, cont_ch) = stream::<()>();
-        let cont_ch = SharedChan(cont_ch);
+        let cont_ch = SharedChan::new(cont_ch);
         // server
         let hl_loop_clone = hl_loop.clone();
         do task::spawn_sched(task::ManualThreads(1u)) {
@@ -1730,7 +1729,7 @@ pub mod test {
         let (server_result_po, server_result_ch) = stream::<~str>();
 
         let (cont_po, cont_ch) = stream::<()>();
-        let cont_ch = SharedChan(cont_ch);
+        let cont_ch = SharedChan::new(cont_ch);
         // server
         let iotask_clone = iotask.clone();
         do task::spawn_sched(task::ManualThreads(1u)) {
@@ -1777,7 +1776,7 @@ pub mod test {
         let expected_resp = ~"A string\nwith multiple lines\n";
 
         let (cont_po, cont_ch) = stream::<()>();
-        let cont_ch = SharedChan(cont_ch);
+        let cont_ch = SharedChan::new(cont_ch);
         // server
         let hl_loop_clone = hl_loop.clone();
         do task::spawn_sched(task::ManualThreads(1u)) {
@@ -1826,7 +1825,7 @@ pub mod test {
                           cont_ch: SharedChan<()>,
                           iotask: &IoTask) -> ~str {
         let (server_po, server_ch) = stream::<~str>();
-        let server_ch = SharedChan(server_ch);
+        let server_ch = SharedChan::new(server_ch);
         let server_ip_addr = ip::v4::parse_addr(server_ip);
         let listen_result = listen(server_ip_addr, server_port, 128,
                                    iotask,

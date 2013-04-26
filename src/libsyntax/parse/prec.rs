@@ -31,7 +31,7 @@ pub static as_prec: uint = 11u;
 pub fn token_to_binop(tok: Token) -> Option<ast::binop> {
   match tok {
       BINOP(STAR)    => Some(mul),
-      BINOP(SLASH)   => Some(div),
+      BINOP(SLASH)   => Some(quot),
       BINOP(PERCENT) => Some(rem),
       // 'as' sits between here with 11
       BINOP(PLUS)    => Some(add),

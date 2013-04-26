@@ -21,7 +21,7 @@ is trying to shut down.
 use cell::Cell;
 use comm::{GenericSmartChan, stream};
 use comm::{Port, Chan, SharedChan, GenericChan, GenericPort};
-use hashmap::linear::LinearMap;
+use hashmap::HashMap;
 use option::{Some, None};
 use unstable::at_exit::at_exit;
 use unstable::finally::Finally;
@@ -43,11 +43,11 @@ pub unsafe fn weaken_task(f: &fn(Port<ShutdownMsg>)) {
     let task = get_task_id();
     // Expect the weak task service to be alive
     assert!(service.try_send(RegisterWeakTask(task, shutdown_chan)));
-    unsafe { rust_dec_kernel_live_count(); }
+    rust_dec_kernel_live_count();
     do (|| {
         f(shutdown_port.take())
     }).finally || {
-        unsafe { rust_inc_kernel_live_count(); }
+        rust_inc_kernel_live_count();
         // Service my have already exited
         service.send(UnregisterWeakTask(task));
     }
@@ -69,7 +69,7 @@ fn create_global_service() -> ~WeakTaskService {
     debug!("creating global weak task service");
     let (port, chan) = stream::<ServiceMsg>();
     let port = Cell(port);
-    let chan = SharedChan(chan);
+    let chan = SharedChan::new(chan);
     let chan_clone = chan.clone();
 
     do task().unlinked().spawn {
@@ -97,7 +97,7 @@ fn create_global_service() -> ~WeakTaskService {
 
 fn run_weak_task_service(port: Port<ServiceMsg>) {
 
-    let mut shutdown_map = LinearMap::new();
+    let mut shutdown_map = HashMap::new();
 
     loop {
         match port.recv() {

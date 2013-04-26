@@ -29,14 +29,14 @@ pub fn md4(msg: &[u8]) -> Quad {
     let mut msg = vec::append(vec::from_slice(msg), ~[0x80u8]);
     let mut bitlen = orig_len + 8u64;
     while (bitlen + 64u64) % 512u64 > 0u64 {
-        unsafe {msg.push(0u8);}
+        msg.push(0u8);
         bitlen += 8u64;
     }
 
     // append length
     let mut i = 0u64;
     while i < 8u64 {
-        unsafe {msg.push((orig_len >> (i * 8u64)) as u8);}
+        msg.push((orig_len >> (i * 8u64)) as u8);
         i += 1u64;
     }
 

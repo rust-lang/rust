@@ -90,7 +90,7 @@ pub trait Combine {
     fn tps(&self, as_: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]>;
     fn self_tys(&self, a: Option<ty::t>, b: Option<ty::t>)
                -> cres<Option<ty::t>>;
-    fn substs(&self, did: ast::def_id, as_: &ty::substs,
+    fn substs(&self, generics: &ty::Generics, as_: &ty::substs,
               bs: &ty::substs) -> cres<ty::substs>;
     fn bare_fn_tys(&self, a: &ty::BareFnTy,
                    b: &ty::BareFnTy) -> cres<ty::BareFnTy>;
@@ -98,7 +98,6 @@ pub trait Combine {
                    b: &ty::ClosureTy) -> cres<ty::ClosureTy>;
     fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig>;
     fn flds(&self, a: ty::field, b: ty::field) -> cres<ty::field>;
-    fn modes(&self, a: ast::mode, b: ast::mode) -> cres<ast::mode>;
     fn args(&self, a: ty::arg, b: ty::arg) -> cres<ty::arg>;
     fn sigils(&self, p1: ast::Sigil, p2: ast::Sigil) -> cres<ast::Sigil>;
     fn purities(&self, a: purity, b: purity) -> cres<purity>;
@@ -114,6 +113,7 @@ pub trait Combine {
                     a: ty::TraitStore,
                     b: ty::TraitStore)
                  -> cres<ty::TraitStore>;
+    fn trait_refs(&self, a: &ty::TraitRef, b: &ty::TraitRef) -> cres<ty::TraitRef>;
 }
 
 pub struct CombineFields {
@@ -123,7 +123,7 @@ pub struct CombineFields {
 }
 
 pub fn expected_found<C:Combine,T>(
-        self: &C, +a: T, +b: T) -> ty::expected_found<T> {
+        self: &C, a: T, b: T) -> ty::expected_found<T> {
     if self.a_is_expected() {
         ty::expected_found {expected: a, found: b}
     } else {
@@ -192,32 +192,31 @@ pub fn eq_opt_regions<C:Combine>(
 }
 
 pub fn super_substs<C:Combine>(
-    self: &C, did: ast::def_id,
+    self: &C, generics: &ty::Generics,
     a: &ty::substs, b: &ty::substs) -> cres<ty::substs> {
 
     fn relate_region_param<C:Combine>(
         self: &C,
-        did: ast::def_id,
+        generics: &ty::Generics,
         a: Option<ty::Region>,
         b: Option<ty::Region>)
         -> cres<Option<ty::Region>>
     {
-        let polyty = ty::lookup_item_type(self.infcx().tcx, did);
-        match (polyty.region_param, a, b) {
-          (None, None, None) => {
+        match (&generics.region_param, &a, &b) {
+          (&None, &None, &None) => {
             Ok(None)
           }
-          (Some(ty::rv_invariant), Some(a), Some(b)) => {
+          (&Some(ty::rv_invariant), &Some(a), &Some(b)) => {
             do eq_regions(self, a, b).then {
                 Ok(Some(a))
             }
           }
-          (Some(ty::rv_covariant), Some(a), Some(b)) => {
+          (&Some(ty::rv_covariant), &Some(a), &Some(b)) => {
             do self.regions(a, b).chain |r| {
                 Ok(Some(r))
             }
           }
-          (Some(ty::rv_contravariant), Some(a), Some(b)) => {
+          (&Some(ty::rv_contravariant), &Some(a), &Some(b)) => {
             do self.contraregions(a, b).chain |r| {
                 Ok(Some(r))
             }
@@ -233,14 +232,14 @@ pub fn super_substs<C:Combine>(
                       b had opt_region %s with variance %?",
                       a.inf_str(self.infcx()),
                       b.inf_str(self.infcx()),
-                      polyty.region_param));
+                     generics.region_param));
           }
         }
     }
 
     do self.tps(a.tps, b.tps).chain |tps| {
         do self.self_tys(a.self_ty, b.self_ty).chain |self_ty| {
-            do relate_region_param(self, did,
+            do relate_region_param(self, generics,
                                    a.self_r, b.self_r).chain |self_r|
             {
                 Ok(substs {
@@ -274,15 +273,14 @@ pub fn super_tps<C:Combine>(
 pub fn super_self_tys<C:Combine>(
     self: &C, a: Option<ty::t>, b: Option<ty::t>) -> cres<Option<ty::t>> {
 
-    // Note: the self type parameter is (currently) always treated as
-    // *invariant* (otherwise the type system would be unsound).
-
     match (a, b) {
       (None, None) => {
         Ok(None)
       }
       (Some(a), Some(b)) => {
-        eq_tys(self, a, b).then(|| Ok(Some(a)) )
+          // FIXME(#5781) this should be eq_tys
+          // eq_tys(self, a, b).then(|| Ok(Some(a)) )
+          self.contratys(a, b).chain(|t| Ok(Some(t)))
       }
       (None, Some(_)) |
       (Some(_), None) => {
@@ -316,28 +314,20 @@ pub fn super_flds<C:Combine>(
     }
 }
 
-pub fn super_modes<C:Combine>(
-    self: &C, a: ast::mode, b: ast::mode)
-    -> cres<ast::mode> {
-
-    let tcx = self.infcx().tcx;
-    ty::unify_mode(tcx, expected_found(self, a, b))
-}
-
-pub fn super_args<C:Combine>(
-    self: &C, a: ty::arg, b: ty::arg)
-    -> cres<ty::arg> {
-
-    do self.modes(a.mode, b.mode).chain |m| {
-        do self.contratys(a.ty, b.ty).chain |t| {
-            Ok(arg {mode: m, ty: t})
-        }
+pub fn super_args<C:Combine>(self: &C, a: ty::arg, b: ty::arg)
+                             -> cres<ty::arg> {
+    do self.contratys(a.ty, b.ty).chain |t| {
+        Ok(arg {
+            ty: t
+        })
     }
 }
 
-pub fn super_vstores<C:Combine>(
-    self: &C, vk: ty::terr_vstore_kind,
-    a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
+pub fn super_vstores<C:Combine>(self: &C,
+                                vk: ty::terr_vstore_kind,
+                                a: ty::vstore,
+                                b: ty::vstore)
+                                -> cres<ty::vstore> {
     debug!("%s.super_vstores(a=%?, b=%?)", self.tag(), a, b);
 
     match (a, b) {
@@ -520,26 +510,29 @@ pub fn super_tys<C:Combine>(
       (ty::ty_enum(a_id, ref a_substs),
        ty::ty_enum(b_id, ref b_substs))
       if a_id == b_id => {
-        do self.substs(a_id, a_substs, b_substs).chain |substs| {
-            Ok(ty::mk_enum(tcx, a_id, substs))
-        }
+          let type_def = ty::lookup_item_type(tcx, a_id);
+          do self.substs(&type_def.generics, a_substs, b_substs).chain |substs| {
+              Ok(ty::mk_enum(tcx, a_id, substs))
+          }
       }
 
-      (ty::ty_trait(a_id, ref a_substs, a_store),
-       ty::ty_trait(b_id, ref b_substs, b_store))
-      if a_id == b_id => {
-        do self.substs(a_id, a_substs, b_substs).chain |substs| {
-            do self.trait_stores(ty::terr_trait, a_store, b_store).chain |s| {
-                Ok(ty::mk_trait(tcx, a_id, /*bad*/copy substs, s))
-            }
-        }
+      (ty::ty_trait(a_id, ref a_substs, a_store, a_mutbl),
+       ty::ty_trait(b_id, ref b_substs, b_store, b_mutbl))
+      if a_id == b_id && a_mutbl == b_mutbl => {
+          let trait_def = ty::lookup_trait_def(tcx, a_id);
+          do self.substs(&trait_def.generics, a_substs, b_substs).chain |substs| {
+              do self.trait_stores(ty::terr_trait, a_store, b_store).chain |s| {
+                  Ok(ty::mk_trait(tcx, a_id, /*bad*/copy substs, s, a_mutbl))
+              }
+          }
       }
 
       (ty::ty_struct(a_id, ref a_substs), ty::ty_struct(b_id, ref b_substs))
       if a_id == b_id => {
-        do self.substs(a_id, a_substs, b_substs).chain |substs| {
-            Ok(ty::mk_struct(tcx, a_id, substs))
-        }
+          let type_def = ty::lookup_item_type(tcx, a_id);
+          do self.substs(&type_def.generics, a_substs, b_substs).chain |substs| {
+              Ok(ty::mk_struct(tcx, a_id, substs))
+          }
       }
 
       (ty::ty_box(ref a_mt), ty::ty_box(ref b_mt)) => {
@@ -611,14 +604,13 @@ pub fn super_tys<C:Combine>(
         vid: ty::IntVid,
         val: ty::IntVarValue) -> cres<ty::t>
     {
-        let tcx = self.infcx().tcx;
         if val == IntType(ast::ty_char) {
             Err(ty::terr_integer_as_char)
         } else {
             if_ok!(self.infcx().simple_var_t(vid_is_expected, vid, val));
             match val {
-                IntType(v) => Ok(ty::mk_mach_int(tcx, v)),
-                UintType(v) => Ok(ty::mk_mach_uint(tcx, v))
+                IntType(v) => Ok(ty::mk_mach_int(v)),
+                UintType(v) => Ok(ty::mk_mach_uint(v))
             }
         }
     }
@@ -629,8 +621,29 @@ pub fn super_tys<C:Combine>(
         vid: ty::FloatVid,
         val: ast::float_ty) -> cres<ty::t>
     {
-        let tcx = self.infcx().tcx;
         if_ok!(self.infcx().simple_var_t(vid_is_expected, vid, val));
-        Ok(ty::mk_mach_float(tcx, val))
+        Ok(ty::mk_mach_float(val))
     }
 }
+
+pub fn super_trait_refs<C:Combine>(
+    self: &C, a: &ty::TraitRef, b: &ty::TraitRef) -> cres<ty::TraitRef>
+{
+    // Different traits cannot be related
+
+    // - NOTE in the future, expand out subtraits!
+
+    if a.def_id != b.def_id {
+        Err(ty::terr_traits(
+            expected_found(self, a.def_id, b.def_id)))
+    } else {
+        let tcx = self.infcx().tcx;
+        let trait_def = ty::lookup_trait_def(tcx, a.def_id);
+        let substs = if_ok!(self.substs(&trait_def.generics, &a.substs, &b.substs));
+        Ok(ty::TraitRef {
+            def_id: a.def_id,
+            substs: substs
+        })
+    }
+}
+

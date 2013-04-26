@@ -158,7 +158,7 @@ impl MethodRscope {
                variance: Option<ty::region_variance>,
                rcvr_generics: &ast::Generics)
             -> MethodRscope {
-        let mut region_param_names =
+        let region_param_names =
             RegionParamNames::from_generics(rcvr_generics);
         MethodRscope {
             self_ty: self_ty,
@@ -180,12 +180,11 @@ impl region_scope for MethodRscope {
         })
     }
     fn self_region(&self, _span: span) -> Result<ty::Region, RegionError> {
-        assert!(self.variance.is_some() || self.self_ty.is_borrowed());
+        assert!(self.variance.is_some());
         match self.variance {
             None => {}  // must be borrowed self, so this is OK
             Some(_) => {
-                if !self.self_ty.is_borrowed() &&
-                        !self.region_param_names.has_self() {
+                if !self.region_param_names.has_self() {
                     return Err(RegionError {
                         msg: ~"the `self` lifetime must be declared",
                         replacement: ty::re_bound(ty::br_self)
@@ -273,7 +272,7 @@ pub struct binding_rscope {
 
 pub fn in_binding_rscope<RS:region_scope + Copy + Durable>(
         self: &RS,
-        +region_param_names: RegionParamNames)
+        region_param_names: RegionParamNames)
      -> binding_rscope {
     let base = @copy *self;
     let base = base as @region_scope;

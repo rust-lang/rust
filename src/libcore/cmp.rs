@@ -64,12 +64,30 @@ totaleq_impl!(i64)
 totaleq_impl!(int)
 totaleq_impl!(uint)
 
-#[deriving(Eq)]
-pub enum Ordering { Less, Equal, Greater }
+#[deriving(Clone, Eq)]
+pub enum Ordering { Less = -1, Equal = 0, Greater = 1 }
 
 /// Trait for types that form a total order
 pub trait TotalOrd: TotalEq {
     fn cmp(&self, other: &Self) -> Ordering;
+}
+
+impl TotalOrd for Ordering {
+    #[inline(always)]
+    fn cmp(&self, other: &Ordering) -> Ordering {
+        (*self as int).cmp(&(*other as int))
+    }
+}
+
+impl Ord for Ordering {
+    #[inline(always)]
+    fn lt(&self, other: &Ordering) -> bool { (*self as int) < (*other as int) }
+    #[inline(always)]
+    fn le(&self, other: &Ordering) -> bool { (*self as int) <= (*other as int) }
+    #[inline(always)]
+    fn gt(&self, other: &Ordering) -> bool { (*self as int) > (*other as int) }
+    #[inline(always)]
+    fn ge(&self, other: &Ordering) -> bool { (*self as int) >= (*other as int) }
 }
 
 macro_rules! totalord_impl(
@@ -97,6 +115,32 @@ totalord_impl!(i64)
 
 totalord_impl!(int)
 totalord_impl!(uint)
+
+pub fn cmp2<A:TotalOrd,B:TotalOrd>(
+    a1: &A, b1: &B,
+    a2: &A, b2: &B) -> Ordering
+{
+    //! Compares (a1, b1) against (a2, b2), where the a values are more significant.
+
+    match a1.cmp(a2) {
+        Less => Less,
+        Greater => Greater,
+        Equal => b1.cmp(b2)
+    }
+}
+
+/**
+Return `o1` if it is not `Equal`, otherwise `o2`. Simulates the
+lexical ordering on a type `(int, int)`.
+*/
+// used in deriving code in libsyntax
+#[inline(always)]
+pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
+    match o1 {
+        Equal => o2,
+        _ => o1
+    }
+}
 
 /**
 * Trait for values that can be compared for a sort-order.
@@ -166,6 +210,8 @@ pub fn max<T:Ord>(v1: T, v2: T) -> T {
 
 #[cfg(test)]
 mod test {
+    use super::lexical_ordering;
+
     #[test]
     fn test_int_totalord() {
         assert_eq!(5.cmp(&10), Less);
@@ -176,8 +222,34 @@ mod test {
     }
 
     #[test]
+    fn test_cmp2() {
+        assert_eq!(cmp2(1, 2, 3, 4), Less);
+        assert_eq!(cmp2(3, 2, 3, 4), Less);
+        assert_eq!(cmp2(5, 2, 3, 4), Greater);
+        assert_eq!(cmp2(5, 5, 5, 4), Greater);
+    }
+
+    #[test]
     fn test_int_totaleq() {
         assert!(5.equals(&5));
         assert!(!2.equals(&17));
+    }
+
+    #[test]
+    fn test_ordering_order() {
+        assert!(Less < Equal);
+        assert_eq!(Greater.cmp(&Less), Greater);
+    }
+
+    #[test]
+    fn test_lexical_ordering() {
+        fn t(o1: Ordering, o2: Ordering, e: Ordering) {
+            assert_eq!(lexical_ordering(o1, o2), e);
+        }
+        for [Less, Equal, Greater].each |&o| {
+            t(Less, o, Less);
+            t(Equal, o, o);
+            t(Greater, o, Greater);
+         }
     }
 }

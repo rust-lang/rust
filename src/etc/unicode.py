@@ -112,7 +112,49 @@ def escape_char(c):
         return "'\\u%4.4x'" % c
     return "'\\U%8.8x'" % c
 
+def ch_prefix(ix):
+    if ix == 0:
+        return "        "
+    if ix % 2 == 0:
+        return ",\n        "
+    else:
+        return ", "
+
+def emit_bsearch_range_table(f):
+    f.write("""
+    pure fn bsearch_range_table(c: char, r: &[(char,char)]) -> bool {
+        use cmp::{EQ, LT, GT};
+        use vec::bsearch;
+        use option::None;
+        (do bsearch(r) |&(lo,hi)| {
+            if lo <= c && c <= hi { EQ }
+            else if hi < c { LT }
+            else { GT }
+        }) != None
+    }\n\n
+""");
+
 def emit_property_module(f, mod, tbl):
+    f.write("pub mod %s {\n" % mod)
+    keys = tbl.keys()
+    keys.sort()
+    emit_bsearch_range_table(f);
+    for cat in keys:
+        f.write("    const %s_table : &[(char,char)] = &[\n" % cat)
+        ix = 0
+        for pair in tbl[cat]:
+            f.write(ch_prefix(ix))
+            f.write("(%s, %s)" % (escape_char(pair[0]), escape_char(pair[1])))
+            ix += 1
+        f.write("\n    ];\n\n")
+
+        f.write("    pub pure fn %s(c: char) -> bool {\n" % cat)
+        f.write("        bsearch_range_table(c, %s_table)\n" % cat)
+        f.write("    }\n\n")
+    f.write("}\n")
+
+
+def emit_property_module_old(f, mod, tbl):
     f.write("mod %s {\n" % mod)
     keys = tbl.keys()
     keys.sort()
@@ -193,8 +235,9 @@ for i in [r]:
 rf = open(r, "w")
 
 (canon_decomp, compat_decomp, gencats) = load_unicode_data("UnicodeData.txt")
-emit_decomp_module(rf, canon_decomp, compat_decomp)
 emit_property_module(rf, "general_category", gencats)
+
+#emit_decomp_module(rf, canon_decomp, compat_decomp)
 
 derived = load_derived_core_properties("DerivedCoreProperties.txt")
 emit_property_module(rf, "derived_property", derived)

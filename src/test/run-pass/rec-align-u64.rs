@@ -57,6 +57,15 @@ mod m {
     }
 }
 
+#[cfg(target_os = "android")]
+mod m {
+    #[cfg(target_arch = "arm")]
+    pub mod m {
+        pub fn align() -> uint { 4u }
+        pub fn size() -> uint { 12u }
+    }
+}
+
 pub fn main() {
     unsafe {
         let x = Outer {c8: 22u8, t: Inner {c64: 44u64}};

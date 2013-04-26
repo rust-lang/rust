@@ -26,7 +26,7 @@ fn target_env(lib_path: ~str, prog: ~str) -> ~[(~str,~str)] {
 
     // Make sure we include the aux directory in the path
     assert!(prog.ends_with(~".exe"));
-    let aux_path = prog.slice(0u, prog.len() - 4u) + ~".libaux";
+    let aux_path = prog.slice(0u, prog.len() - 4u).to_owned() + ~".libaux";
 
     env = do vec::map(env) |pair| {
         let (k,v) = *pair;
@@ -73,7 +73,7 @@ pub fn run(lib_path: ~str,
 
 
     writeclose(pipe_in.out, input);
-    let p = comm::PortSet();
+    let p = comm::PortSet::new();
     let ch = p.chan();
     do task::spawn_sched(task::SingleThreaded) || {
         let errput = readclose(pipe_err.in);

@@ -21,11 +21,12 @@ pub fn main() {
     let mut x = @3;
     do borrow(x) |b_x| {
         assert!(*b_x == 3);
-        assert!(ptr::addr_of(&(*x)) == ptr::addr_of(&(*b_x)));
+        assert!(ptr::to_unsafe_ptr(&(*x)) == ptr::to_unsafe_ptr(&(*b_x)));
         x = @22;
 
-        debug!("ptr::addr_of(*b_x) = %x", ptr::addr_of(&(*b_x)) as uint);
+        debug!("ptr::to_unsafe_ptr(*b_x) = %x",
+               ptr::to_unsafe_ptr(&(*b_x)) as uint);
         assert!(*b_x == 3);
-        assert!(ptr::addr_of(&(*x)) != ptr::addr_of(&(*b_x)));
+        assert!(ptr::to_unsafe_ptr(&(*x)) != ptr::to_unsafe_ptr(&(*b_x)));
     }
 }

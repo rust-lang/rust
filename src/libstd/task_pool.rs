@@ -26,8 +26,7 @@ enum Msg<T> {
 
 pub struct TaskPool<T> {
     channels: ~[Chan<Msg<T>>],
-    mut next_index: uint,
-
+    next_index: uint,
 }
 
 #[unsafe_destructor]
@@ -84,7 +83,7 @@ pub impl<T> TaskPool<T> {
 
     /// Executes the function `f` on a task in the pool. The function
     /// receives a reference to the local data returned by the `init_fn`.
-    fn execute(&self, f: ~fn(&T)) {
+    fn execute(&mut self, f: ~fn(&T)) {
         self.channels[self.next_index].send(Execute(f));
         self.next_index += 1;
         if self.next_index == self.channels.len() { self.next_index = 0; }
@@ -97,7 +96,7 @@ fn test_task_pool() {
         let g: ~fn(uint) -> uint = |i| i;
         g
     };
-    let pool = TaskPool::new(4, Some(SingleThreaded), f);
+    let mut pool = TaskPool::new(4, Some(SingleThreaded), f);
     for 8.times {
         pool.execute(|i| io::println(fmt!("Hello from thread %u!", *i)));
     }

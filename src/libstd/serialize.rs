@@ -17,10 +17,13 @@ Core encoding and decoding interfaces.
 #[forbid(non_camel_case_types)];
 
 use core::prelude::*;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 use core::trie::{TrieMap, TrieSet};
 use deque::Deque;
 use dlist::DList;
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
 use treemap::{TreeMap, TreeSet};
 
 pub trait Encoder {
@@ -44,21 +47,35 @@ pub trait Encoder {
     fn emit_str(&self, v: &str);
 
     // Compound types:
-
     fn emit_enum(&self, name: &str, f: &fn());
-    fn emit_enum_variant(&self, v_name: &str, v_id: uint, sz: uint, f: &fn());
-    fn emit_enum_variant_arg(&self, idx: uint, f: &fn());
 
-    fn emit_seq(&self, len: uint, f: &fn());
-    fn emit_seq_elt(&self, idx: uint, f: &fn());
+    fn emit_enum_variant(&self, v_name: &str, v_id: uint, len: uint, f: &fn());
+    fn emit_enum_variant_arg(&self, a_idx: uint, f: &fn());
 
-    fn emit_struct(&self, name: &str, _len: uint, f: &fn());
+    fn emit_enum_struct_variant(&self, v_name: &str, v_id: uint, len: uint, f: &fn());
+    fn emit_enum_struct_variant_field(&self, f_name: &str, f_idx: uint, f: &fn());
+
+    fn emit_struct(&self, name: &str, len: uint, f: &fn());
+    #[cfg(stage0)]
     fn emit_field(&self, f_name: &str, f_idx: uint, f: &fn());
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn emit_struct_field(&self, f_name: &str, f_idx: uint, f: &fn());
+
+    fn emit_tuple(&self, len: uint, f: &fn());
+    fn emit_tuple_arg(&self, idx: uint, f: &fn());
+
+    fn emit_tuple_struct(&self, name: &str, len: uint, f: &fn());
+    fn emit_tuple_struct_arg(&self, f_idx: uint, f: &fn());
 
     // Specialized types:
     fn emit_option(&self, f: &fn());
     fn emit_option_none(&self);
     fn emit_option_some(&self, f: &fn());
+
+    fn emit_seq(&self, len: uint, f: &fn());
+    fn emit_seq_elt(&self, idx: uint, f: &fn());
 
     fn emit_map(&self, len: uint, f: &fn());
     fn emit_map_elt_key(&self, idx: uint, f: &fn());
@@ -87,17 +104,32 @@ pub trait Decoder {
 
     // Compound types:
     fn read_enum<T>(&self, name: &str, f: &fn() -> T) -> T;
+
     fn read_enum_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T;
-    fn read_enum_variant_arg<T>(&self, idx: uint, f: &fn() -> T) -> T;
+    fn read_enum_variant_arg<T>(&self, a_idx: uint, f: &fn() -> T) -> T;
 
-    fn read_seq<T>(&self, f: &fn(uint) -> T) -> T;
-    fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T;
+    fn read_enum_struct_variant<T>(&self, names: &[&str], f: &fn(uint) -> T) -> T;
+    fn read_enum_struct_variant_field<T>(&self, &f_name: &str, f_idx: uint, f: &fn() -> T) -> T;
 
-    fn read_struct<T>(&self, name: &str, _len: uint, f: &fn() -> T) -> T;
-    fn read_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T;
+    fn read_struct<T>(&self, s_name: &str, len: uint, f: &fn() -> T) -> T;
+    #[cfg(stage0)]
+    fn read_field<T>(&self, f_name: &str, f_idx: uint, f: &fn() -> T) -> T;
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn read_struct_field<T>(&self, f_name: &str, f_idx: uint, f: &fn() -> T) -> T;
+
+    fn read_tuple<T>(&self, f: &fn(uint) -> T) -> T;
+    fn read_tuple_arg<T>(&self, a_idx: uint, f: &fn() -> T) -> T;
+
+    fn read_tuple_struct<T>(&self, s_name: &str, f: &fn(uint) -> T) -> T;
+    fn read_tuple_struct_arg<T>(&self, a_idx: uint, f: &fn() -> T) -> T;
 
     // Specialized types:
     fn read_option<T>(&self, f: &fn(bool) -> T) -> T;
+
+    fn read_seq<T>(&self, f: &fn(uint) -> T) -> T;
+    fn read_seq_elt<T>(&self, idx: uint, f: &fn() -> T) -> T;
 
     fn read_map<T>(&self, f: &fn(uint) -> T) -> T;
     fn read_map_elt_key<T>(&self, idx: uint, f: &fn() -> T) -> T;
@@ -591,11 +623,11 @@ impl<
     E: Encoder,
     K: Encodable<E> + Hash + IterBytes + Eq,
     V: Encodable<E>
-> Encodable<E> for LinearMap<K, V> {
+> Encodable<E> for HashMap<K, V> {
     fn encode(&self, e: &E) {
         do e.emit_map(self.len()) {
             let mut i = 0;
-            for self.each |&(key, val)| {
+            for self.each |key, val| {
                 e.emit_map_elt_key(i, || key.encode(e));
                 e.emit_map_elt_val(i, || val.encode(e));
                 i += 1;
@@ -608,10 +640,10 @@ impl<
     D: Decoder,
     K: Decodable<D> + Hash + IterBytes + Eq,
     V: Decodable<D>
-> Decodable<D> for LinearMap<K, V> {
-    fn decode(d: &D) -> LinearMap<K, V> {
+> Decodable<D> for HashMap<K, V> {
+    fn decode(d: &D) -> HashMap<K, V> {
         do d.read_map |len| {
-            let mut map = LinearMap::with_capacity(len);
+            let mut map = HashMap::with_capacity(len);
             for uint::range(0, len) |i| {
                 let key = d.read_map_elt_key(i, || Decodable::decode(d));
                 let val = d.read_map_elt_val(i, || Decodable::decode(d));
@@ -625,7 +657,7 @@ impl<
 impl<
     S: Encoder,
     T: Encodable<S> + Hash + IterBytes + Eq
-> Encodable<S> for LinearSet<T> {
+> Encodable<S> for HashSet<T> {
     fn encode(&self, s: &S) {
         do s.emit_seq(self.len()) {
             let mut i = 0;
@@ -640,10 +672,10 @@ impl<
 impl<
     D: Decoder,
     T: Decodable<D> + Hash + IterBytes + Eq
-> Decodable<D> for LinearSet<T> {
-    fn decode(d: &D) -> LinearSet<T> {
+> Decodable<D> for HashSet<T> {
+    fn decode(d: &D) -> HashSet<T> {
         do d.read_seq |len| {
-            let mut set = LinearSet::with_capacity(len);
+            let mut set = HashSet::with_capacity(len);
             for uint::range(0, len) |i| {
                 set.insert(d.read_seq_elt(i, || Decodable::decode(d)));
             }
@@ -659,7 +691,7 @@ impl<
     fn encode(&self, e: &E) {
         do e.emit_map(self.len()) {
             let mut i = 0;
-            for self.each |&(key, val)| {
+            for self.each |key, val| {
                 e.emit_map_elt_key(i, || key.encode(e));
                 e.emit_map_elt_val(i, || val.encode(e));
                 i += 1;
@@ -709,6 +741,9 @@ impl<D: Decoder> Decodable<D> for TrieSet {
     }
 }
 
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
 impl<
     E: Encoder,
     K: Encodable<E> + Eq + TotalOrd,
@@ -717,7 +752,7 @@ impl<
     fn encode(&self, e: &E) {
         do e.emit_map(self.len()) {
             let mut i = 0;
-            for self.each |&(key, val)| {
+            for self.each |key, val| {
                 e.emit_map_elt_key(i, || key.encode(e));
                 e.emit_map_elt_val(i, || val.encode(e));
                 i += 1;
@@ -726,6 +761,9 @@ impl<
     }
 }
 
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
 impl<
     D: Decoder,
     K: Decodable<D> + Eq + TotalOrd,
@@ -744,6 +782,9 @@ impl<
     }
 }
 
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
 impl<
     S: Encoder,
     T: Encodable<S> + Eq + TotalOrd
@@ -759,6 +800,9 @@ impl<
     }
 }
 
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
 impl<
     D: Decoder,
     T: Decodable<D> + Eq + TotalOrd

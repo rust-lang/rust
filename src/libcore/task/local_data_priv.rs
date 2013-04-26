@@ -25,8 +25,8 @@ impl<T:Durable> LocalData for @T { }
 impl Eq for @LocalData {
     fn eq(&self, other: &@LocalData) -> bool {
         unsafe {
-            let ptr_a: (uint, uint) = cast::reinterpret_cast(&(*self));
-            let ptr_b: (uint, uint) = cast::reinterpret_cast(other);
+            let ptr_a: (uint, uint) = cast::transmute(*self);
+            let ptr_b: (uint, uint) = cast::transmute(*other);
             return ptr_a == ptr_b;
         }
     }
@@ -44,7 +44,7 @@ extern fn cleanup_task_local_map(map_ptr: *libc::c_void) {
         assert!(!map_ptr.is_null());
         // Get and keep the single reference that was created at the
         // beginning.
-        let _map: TaskLocalMap = cast::reinterpret_cast(&map_ptr);
+        let _map: TaskLocalMap = cast::transmute(map_ptr);
         // All local_data will be destroyed along with the map.
     }
 }
@@ -59,9 +59,7 @@ unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
     let map_ptr = rt::rust_get_task_local_data(task);
     if map_ptr.is_null() {
         let map: TaskLocalMap = @mut ~[];
-        // Use reinterpret_cast -- transmute would take map away from us also.
-        rt::rust_set_task_local_data(
-            task, cast::reinterpret_cast(&map));
+        rt::rust_set_task_local_data(task, cast::transmute(map));
         rt::rust_task_local_data_atexit(task, cleanup_task_local_map);
         // Also need to reference it an extra time to keep it for now.
         let nonmut = cast::transmute::<TaskLocalMap,
@@ -77,12 +75,10 @@ unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
     }
 }
 
-unsafe fn key_to_key_value<T:Durable>(
-    key: LocalDataKey<T>) -> *libc::c_void {
-
+unsafe fn key_to_key_value<T:Durable>(key: LocalDataKey<T>) -> *libc::c_void {
     // Keys are closures, which are (fnptr,envptr) pairs. Use fnptr.
     // Use reintepret_cast -- transmute would leak (forget) the closure.
-    let pair: (*libc::c_void, *libc::c_void) = cast::reinterpret_cast(&key);
+    let pair: (*libc::c_void, *libc::c_void) = cast::transmute_copy(&key);
     pair.first()
 }
 
@@ -152,7 +148,7 @@ pub unsafe fn local_set<T:Durable>(
     // own on it can be dropped when the box is destroyed. The unsafe pointer
     // does not have a reference associated with it, so it may become invalid
     // when the box is destroyed.
-    let data_ptr = cast::reinterpret_cast(&data);
+    let data_ptr = cast::transmute(data);
     let data_box = @data as @LocalData;
     // Construct new entry to store in the map.
     let new_entry = Some((keyval, data_ptr, data_box));

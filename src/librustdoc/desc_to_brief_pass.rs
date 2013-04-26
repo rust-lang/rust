@@ -81,44 +81,7 @@ fn fold_impl(fold: &fold::Fold<()>, doc: doc::ImplDoc) -> doc::ImplDoc {
     }
 }
 
-#[test]
-fn should_promote_desc() {
-    let doc = test::mk_doc(~"#[doc = \"desc\"] mod m { }");
-    assert!(doc.cratemod().mods()[0].brief() == Some(~"desc"));
-}
-
-#[test]
-fn should_promote_trait_method_desc() {
-    let doc = test::mk_doc(~"trait i { #[doc = \"desc\"] fn a(); }");
-    assert!(doc.cratemod().traits()[0].methods[0].brief ==
-        Some(~"desc"));
-}
-
-#[test]
-fn should_promote_impl_method_desc() {
-    let doc = test::mk_doc(
-        ~"impl int { #[doc = \"desc\"] fn a() { } }");
-    assert!(doc.cratemod().impls()[0].methods[0].brief == Some(~"desc"));
-}
-
-#[cfg(test)]
-pub mod test {
-    use astsrv;
-    use attr_pass;
-    use desc_to_brief_pass::run;
-    use doc;
-    use extract;
-
-    pub fn mk_doc(source: ~str) -> doc::Doc {
-        do astsrv::from_str(copy source) |srv| {
-            let doc = extract::from_srv(srv.clone(), ~"");
-            let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
-            run(srv.clone(), doc)
-        }
-    }
-}
-
-fn extract(desc: Option<~str>) -> Option<~str> {
+pub fn extract(desc: Option<~str>) -> Option<~str> {
     if desc.is_none() {
         return None
     }
@@ -182,7 +145,7 @@ fn first_sentence_(s: &str) -> ~str {
     }
 }
 
-fn paragraphs(s: &str) -> ~[~str] {
+pub fn paragraphs(s: &str) -> ~[~str] {
     let mut lines = ~[];
     for str::each_line_any(s) |line| { lines.push(line.to_owned()); }
     let mut whitespace_lines = 0;
@@ -219,28 +182,65 @@ fn paragraphs(s: &str) -> ~[~str] {
     }
 }
 
-#[test]
-fn test_paragraphs_1() {
-    let paras = paragraphs(~"1\n\n2");
-    assert!(paras == ~[~"1", ~"2"]);
-}
+#[cfg(test)]
+mod test {
+    use astsrv;
+    use attr_pass;
+    use super::{extract, paragraphs, run};
+    use doc;
+    use extract;
+    use core::prelude::*;
 
-#[test]
-fn test_paragraphs_2() {
-    let paras = paragraphs(~"\n\n1\n1\n\n2\n\n");
-    assert!(paras == ~[~"1\n1", ~"2"]);
-}
+    fn mk_doc(source: ~str) -> doc::Doc {
+        do astsrv::from_str(copy source) |srv| {
+            let doc = extract::from_srv(srv.clone(), ~"");
+            let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
+            run(srv.clone(), doc)
+        }
+    }
 
-#[test]
-fn should_promote_short_descs() {
-    let desc = Some(~"desc");
-    let brief = extract(copy desc);
-    assert!(brief == desc);
-}
+    #[test]
+    fn should_promote_desc() {
+        let doc = mk_doc(~"#[doc = \"desc\"] mod m { }");
+        assert!(doc.cratemod().mods()[0].brief() == Some(~"desc"));
+    }
 
-#[test]
-fn should_not_promote_long_descs() {
-    let desc = Some(~"Warkworth Castle is a ruined medieval building
+    #[test]
+    fn should_promote_trait_method_desc() {
+        let doc = mk_doc(~"trait i { #[doc = \"desc\"] fn a(); }");
+        assert!(doc.cratemod().traits()[0].methods[0].brief ==
+                Some(~"desc"));
+    }
+
+    #[test]
+    fn should_promote_impl_method_desc() {
+        let doc = mk_doc(
+            ~"impl int { #[doc = \"desc\"] fn a() { } }");
+        assert!(doc.cratemod().impls()[0].methods[0].brief == Some(~"desc"));
+    }
+
+    #[test]
+    fn test_paragraphs_1() {
+        let paras = paragraphs(~"1\n\n2");
+        assert!(paras == ~[~"1", ~"2"]);
+    }
+
+    #[test]
+    fn test_paragraphs_2() {
+        let paras = paragraphs(~"\n\n1\n1\n\n2\n\n");
+        assert!(paras == ~[~"1\n1", ~"2"]);
+    }
+
+    #[test]
+    fn should_promote_short_descs() {
+        let desc = Some(~"desc");
+        let brief = extract(copy desc);
+        assert!(brief == desc);
+    }
+
+    #[test]
+    fn should_not_promote_long_descs() {
+        let desc = Some(~"Warkworth Castle is a ruined medieval building
 in the town of the same name in the English county of Northumberland,
 and the town and castle occupy a loop of the River Coquet, less than a mile
 from England's north-east coast. When the castle was founded is uncertain,
@@ -248,13 +248,13 @@ but traditionally its construction has been ascribed to Prince Henry of
 Scotland in the mid 12th century, although it may have been built by
 King Henry II of England when he took control of England'snorthern
 counties.");
-    let brief = extract(desc);
-    assert!(brief == None);
-}
+        let brief = extract(desc);
+        assert!(brief == None);
+    }
 
-#[test]
-fn should_promote_first_sentence() {
-    let desc = Some(~"Warkworth Castle is a ruined medieval building
+    #[test]
+    fn should_promote_first_sentence() {
+        let desc = Some(~"Warkworth Castle is a ruined medieval building
 in the town. of the same name in the English county of Northumberland,
 and the town and castle occupy a loop of the River Coquet, less than a mile
 from England's north-east coast. When the castle was founded is uncertain,
@@ -262,14 +262,14 @@ but traditionally its construction has been ascribed to Prince Henry of
 Scotland in the mid 12th century, although it may have been built by
 King Henry II of England when he took control of England'snorthern
 counties.");
-    let brief = extract(desc);
-    assert!(brief == Some(
-        ~"Warkworth Castle is a ruined medieval building in the town"));
-}
+        let brief = extract(desc);
+        assert!(brief == Some(
+            ~"Warkworth Castle is a ruined medieval building in the town"));
+    }
 
-#[test]
-fn should_not_consider_double_period_to_end_sentence() {
-    let desc = Some(~"Warkworth..Castle is a ruined medieval building
+    #[test]
+    fn should_not_consider_double_period_to_end_sentence() {
+        let desc = Some(~"Warkworth..Castle is a ruined medieval building
 in the town. of the same name in the English county of Northumberland,
 and the town and castle occupy a loop of the River Coquet, less than a mile
 from England's north-east coast. When the castle was founded is uncertain,
@@ -277,14 +277,14 @@ but traditionally its construction has been ascribed to Prince Henry of
 Scotland in the mid 12th century, although it may have been built by
 King Henry II of England when he took control of England'snorthern
 counties.");
-    let brief = extract(desc);
-    assert!(brief == Some(
-        ~"Warkworth..Castle is a ruined medieval building in the town"));
-}
+        let brief = extract(desc);
+        assert!(brief == Some(
+            ~"Warkworth..Castle is a ruined medieval building in the town"));
+    }
 
-#[test]
-fn should_not_consider_triple_period_to_end_sentence() {
-    let desc = Some(~"Warkworth... Castle is a ruined medieval building
+    #[test]
+    fn should_not_consider_triple_period_to_end_sentence() {
+        let desc = Some(~"Warkworth... Castle is a ruined medieval building
 in the town. of the same name in the English county of Northumberland,
 and the town and castle occupy a loop of the River Coquet, less than a mile
 from England's north-east coast. When the castle was founded is uncertain,
@@ -292,7 +292,8 @@ but traditionally its construction has been ascribed to Prince Henry of
 Scotland in the mid 12th century, although it may have been built by
 King Henry II of England when he took control of England'snorthern
 counties.");
-    let brief = extract(desc);
-    assert!(brief == Some(
-        ~"Warkworth... Castle is a ruined medieval building in the town"));
+        let brief = extract(desc);
+        assert!(brief == Some(
+            ~"Warkworth... Castle is a ruined medieval building in the town"));
+    }
 }

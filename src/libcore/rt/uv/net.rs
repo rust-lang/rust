@@ -17,7 +17,7 @@ use super::{Loop, Watcher, Request, UvError, Buf, Callback, NativeHandle, NullCa
             loop_from_watcher, status_to_maybe_uv_error,
             install_watcher_data, get_watcher_data, drop_watcher_data,
             vec_to_uv_buf, vec_from_uv_buf};
-use super::super::rtio::{IpAddr, Ipv4, Ipv6};
+use super::super::io::net::ip::{IpAddr, Ipv4, Ipv6};
 
 #[cfg(test)]
 use unstable::run_in_bare_thread;
@@ -356,7 +356,6 @@ impl NativeHandle<*uvll::uv_write_t> for WriteRequest {
 
 
 #[test]
-#[ignore(reason = "ffi struct issues")]
 fn connect_close() {
     do run_in_bare_thread() {
         let mut loop_ = Loop::new();
@@ -389,12 +388,12 @@ fn connect_read() {
                 vec_to_uv_buf(vec::from_elem(size, 0))
             };
             do stream_watcher.read_start(alloc)
-                |stream_watcher, nread, buf, status| {
+                |stream_watcher, _nread, buf, status| {
 
                 let buf = vec_from_uv_buf(buf);
                 rtdebug!("read cb!");
                 if status.is_none() {
-                    let bytes = buf.unwrap();
+                    let _bytes = buf.unwrap();
                     rtdebug!("%s", bytes.slice(0, nread as uint).to_str());
                 } else {
                     rtdebug!("status after read: %s", status.get().to_str());
@@ -409,7 +408,6 @@ fn connect_read() {
 }
 
 #[test]
-#[ignore(reason = "ffi struct issues")]
 fn listen() {
     do run_in_bare_thread() {
         static MAX: int = 10;

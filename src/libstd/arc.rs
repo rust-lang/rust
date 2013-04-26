@@ -177,15 +177,13 @@ pub impl<T:Owned> MutexARC<T> {
      */
     #[inline(always)]
     unsafe fn access<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
-        unsafe {
-            let state = get_shared_mutable_state(&self.x);
-            // Borrowck would complain about this if the function were
-            // not already unsafe. See borrow_rwlock, far below.
-            do (&(*state).lock).lock {
-                check_poison(true, (*state).failed);
-                let _z = PoisonOnFail(&mut (*state).failed);
-                blk(&mut (*state).data)
-            }
+        let state = get_shared_mutable_state(&self.x);
+        // Borrowck would complain about this if the function were
+        // not already unsafe. See borrow_rwlock, far below.
+        do (&(*state).lock).lock {
+            check_poison(true, (*state).failed);
+            let _z = PoisonOnFail(&mut (*state).failed);
+            blk(&mut (*state).data)
         }
     }
 
@@ -195,16 +193,14 @@ pub impl<T:Owned> MutexARC<T> {
         &self,
         blk: &fn(x: &'x mut T, c: &'c Condvar) -> U) -> U
     {
-        unsafe {
-            let state = get_shared_mutable_state(&self.x);
-            do (&(*state).lock).lock_cond |cond| {
-                check_poison(true, (*state).failed);
-                let _z = PoisonOnFail(&mut (*state).failed);
-                blk(&mut (*state).data,
-                    &Condvar {is_mutex: true,
-                              failed: &mut (*state).failed,
-                              cond: cond })
-            }
+        let state = get_shared_mutable_state(&self.x);
+        do (&(*state).lock).lock_cond |cond| {
+            check_poison(true, (*state).failed);
+            let _z = PoisonOnFail(&mut (*state).failed);
+            blk(&mut (*state).data,
+                &Condvar {is_mutex: true,
+                          failed: &mut (*state).failed,
+                          cond: cond })
         }
     }
 }
@@ -259,7 +255,7 @@ struct RWARCInner<T> { lock: RWlock, failed: bool, data: T }
  */
 struct RWARC<T> {
     x: SharedMutableState<RWARCInner<T>>,
-    mut cant_nest: ()
+    cant_nest: ()
 }
 
 /// Create a reader/writer ARC with the supplied data.
@@ -492,14 +488,14 @@ mod tests {
     use core::vec;
 
     #[test]
-    pub fn manually_share_arc() {
+    fn manually_share_arc() {
         let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let arc_v = arc::ARC(v);
 
         let (p, c) = comm::stream();
 
         do task::spawn() || {
-            let p = comm::PortSet();
+            let p = comm::PortSet::new();
             c.send(p.chan());
 
             let arc_v = p.recv();
@@ -517,7 +513,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_mutex_arc_condvar() {
+    fn test_mutex_arc_condvar() {
         let arc = ~MutexARC(false);
         let arc2 = ~arc.clone();
         let (p,c) = comm::oneshot();
@@ -539,7 +535,7 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    pub fn test_arc_condvar_poison() {
+    fn test_arc_condvar_poison() {
         let arc = ~MutexARC(1);
         let arc2 = ~arc.clone();
         let (p, c) = comm::stream();
@@ -561,7 +557,7 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    pub fn test_mutex_arc_poison() {
+    fn test_mutex_arc_poison() {
         let arc = ~MutexARC(1);
         let arc2 = ~arc.clone();
         do task::try || {
@@ -574,7 +570,7 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    pub fn test_rw_arc_poison_wr() {
+    fn test_rw_arc_poison_wr() {
         let arc = ~RWARC(1);
         let arc2 = (*arc).clone();
         do task::try || {
@@ -587,7 +583,7 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    pub fn test_rw_arc_poison_ww() {
+    fn test_rw_arc_poison_ww() {
         let arc = ~RWARC(1);
         let arc2 = (*arc).clone();
         do task::try || {
@@ -600,7 +596,7 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    pub fn test_rw_arc_poison_dw() {
+    fn test_rw_arc_poison_dw() {
         let arc = ~RWARC(1);
         let arc2 = (*arc).clone();
         do task::try || {
@@ -615,7 +611,7 @@ mod tests {
         }
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_rw_arc_no_poison_rr() {
+    fn test_rw_arc_no_poison_rr() {
         let arc = ~RWARC(1);
         let arc2 = (*arc).clone();
         do task::try || {
@@ -628,7 +624,7 @@ mod tests {
         }
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_rw_arc_no_poison_rw() {
+    fn test_rw_arc_no_poison_rw() {
         let arc = ~RWARC(1);
         let arc2 = (*arc).clone();
         do task::try || {
@@ -641,7 +637,7 @@ mod tests {
         }
     }
     #[test] #[ignore(cfg(windows))]
-    pub fn test_rw_arc_no_poison_dr() {
+    fn test_rw_arc_no_poison_dr() {
         let arc = ~RWARC(1);
         let arc2 = (*arc).clone();
         do task::try || {
@@ -657,7 +653,7 @@ mod tests {
         }
     }
     #[test]
-    pub fn test_rw_arc() {
+    fn test_rw_arc() {
         let arc = ~RWARC(0);
         let arc2 = (*arc).clone();
         let (p,c) = comm::stream();
@@ -694,7 +690,7 @@ mod tests {
         do arc.read |num| { assert!(*num == 10); }
     }
     #[test]
-    pub fn test_rw_downgrade() {
+    fn test_rw_downgrade() {
         // (1) A downgrader gets in write mode and does cond.wait.
         // (2) A writer gets in write mode, sets state to 42, and does signal.
         // (3) Downgrader wakes, sets state to 31337.

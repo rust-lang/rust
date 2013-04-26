@@ -20,7 +20,7 @@ use parse::token::{Token, EOF, to_str, nonterminal};
 use parse::token;
 
 use core::prelude::*;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it
@@ -98,9 +98,9 @@ pub enum matcher_pos_up { /* to break a circularity */
     matcher_pos_up(Option<~MatcherPos>)
 }
 
-pub fn is_some(&&mpu: matcher_pos_up) -> bool {
-    match &mpu {
-      &matcher_pos_up(None) => false,
+pub fn is_some(mpu: &matcher_pos_up) -> bool {
+    match *mpu {
+      matcher_pos_up(None) => false,
       _ => true
     }
 }
@@ -115,9 +115,9 @@ pub struct MatcherPos {
     sp_lo: BytePos,
 }
 
-pub fn copy_up(&& mpu: matcher_pos_up) -> ~MatcherPos {
-    match &mpu {
-      &matcher_pos_up(Some(ref mp)) => copy (*mp),
+pub fn copy_up(mpu: &matcher_pos_up) -> ~MatcherPos {
+    match *mpu {
+      matcher_pos_up(Some(ref mp)) => copy (*mp),
       _ => fail!()
     }
 }
@@ -132,7 +132,7 @@ pub fn count_names(ms: &[matcher]) -> uint {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-pub fn initial_matcher_pos(+ms: ~[matcher], +sep: Option<Token>, lo: BytePos)
+pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
                         -> ~MatcherPos {
     let mut match_idx_hi = 0u;
     for ms.each |elt| {
@@ -186,9 +186,9 @@ pub enum named_match {
 pub type earley_item = ~MatcherPos;
 
 pub fn nameize(p_s: @mut ParseSess, ms: ~[matcher], res: ~[@named_match])
-            -> LinearMap<ident,@named_match> {
+            -> HashMap<ident,@named_match> {
     fn n_rec(p_s: @mut ParseSess, m: matcher, res: ~[@named_match],
-             ret_val: &mut LinearMap<ident, @named_match>) {
+             ret_val: &mut HashMap<ident, @named_match>) {
         match m {
           codemap::spanned {node: match_tok(_), _} => (),
           codemap::spanned {node: match_seq(ref more_ms, _, _, _, _), _} => {
@@ -207,23 +207,23 @@ pub fn nameize(p_s: @mut ParseSess, ms: ~[matcher], res: ~[@named_match])
           }
         }
     }
-    let mut ret_val = LinearMap::new();
+    let mut ret_val = HashMap::new();
     for ms.each() |m| { n_rec(p_s, *m, res, &mut ret_val) }
     return ret_val;
 }
 
 pub enum parse_result {
-    success(LinearMap<ident, @named_match>),
+    success(HashMap<ident, @named_match>),
     failure(codemap::span, ~str),
     error(codemap::span, ~str)
 }
 
 pub fn parse_or_else(
     sess: @mut ParseSess,
-    +cfg: ast::crate_cfg,
+    cfg: ast::crate_cfg,
     rdr: @reader,
     ms: ~[matcher]
-) -> LinearMap<ident, @named_match> {
+) -> HashMap<ident, @named_match> {
     match parse(sess, cfg, rdr, ms) {
       success(m) => m,
       failure(sp, str) => sess.span_diagnostic.span_fatal(sp, str),
@@ -257,7 +257,7 @@ pub fn parse(
             /* at end of sequence */
             if idx >= len {
                 // can't move out of `match`es, so:
-                if is_some(ei.up) {
+                if is_some(&ei.up) {
                     // hack: a matcher sequence is repeating iff it has a
                     // parent (the top level is just a container)
 
@@ -267,7 +267,7 @@ pub fn parse(
                     if idx == len {
                         // pop from the matcher position
 
-                        let mut new_pos = copy_up(ei.up);
+                        let mut new_pos = copy_up(&ei.up);
 
                         // update matches (the MBE "parse tree") by appending
                         // each tree as a subtree.
@@ -394,7 +394,7 @@ pub fn parse(
                 match ei.elts[ei.idx].node {
                   match_nonterminal(_, name, idx) => {
                     ei.matches[idx].push(@matched_nonterminal(
-                        parse_nt(rust_parser, *sess.interner.get(name))));
+                        parse_nt(&rust_parser, *sess.interner.get(name))));
                     ei.idx += 1u;
                   }
                   _ => fail!()
@@ -411,7 +411,7 @@ pub fn parse(
     }
 }
 
-pub fn parse_nt(p: Parser, name: ~str) -> nonterminal {
+pub fn parse_nt(p: &Parser, name: ~str) -> nonterminal {
     match name {
       ~"item" => match p.parse_item(~[]) {
         Some(i) => token::nt_item(i),

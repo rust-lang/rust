@@ -15,7 +15,7 @@ use syntax::{ast, fold, attr};
 use core::option;
 use core::vec;
 
-type in_cfg_pred = @fn(+attrs: ~[ast::attribute]) -> bool;
+type in_cfg_pred = @fn(attrs: ~[ast::attribute]) -> bool;
 
 struct Context {
     in_cfg: in_cfg_pred
@@ -49,12 +49,12 @@ pub fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
     return res;
 }
 
-fn filter_item(cx: @Context, &&item: @ast::item) ->
+fn filter_item(cx: @Context, item: @ast::item) ->
    Option<@ast::item> {
     if item_in_cfg(cx, item) { option::Some(item) } else { option::None }
 }
 
-fn filter_view_item(cx: @Context, &&view_item: @ast::view_item
+fn filter_view_item(cx: @Context, view_item: @ast::view_item
                    )-> Option<@ast::view_item> {
     if view_item_in_cfg(cx, view_item) {
         option::Some(view_item)
@@ -74,7 +74,7 @@ fn fold_mod(cx: @Context, m: &ast::_mod, fld: @fold::ast_fold) -> ast::_mod {
     }
 }
 
-fn filter_foreign_item(cx: @Context, &&item: @ast::foreign_item) ->
+fn filter_foreign_item(cx: @Context, item: @ast::foreign_item) ->
    Option<@ast::foreign_item> {
     if foreign_item_in_cfg(cx, item) {
         option::Some(item)
@@ -115,7 +115,7 @@ fn fold_item_underscore(cx: @Context, item: &ast::item_,
     fold::noop_fold_item_underscore(&item, fld)
 }
 
-fn filter_stmt(cx: @Context, &&stmt: @ast::stmt) ->
+fn filter_stmt(cx: @Context, stmt: @ast::stmt) ->
    Option<@ast::stmt> {
     match stmt.node {
       ast::stmt_decl(decl, _) => {
@@ -173,12 +173,12 @@ fn trait_method_in_cfg(cx: @Context, meth: &ast::trait_method) -> bool {
 
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
-fn in_cfg(+cfg: ast::crate_cfg, +attrs: ~[ast::attribute]) -> bool {
+fn in_cfg(cfg: ast::crate_cfg, attrs: ~[ast::attribute]) -> bool {
     metas_in_cfg(cfg, attr::attr_metas(attrs))
 }
 
 pub fn metas_in_cfg(cfg: ast::crate_cfg,
-                    +metas: ~[@ast::meta_item]) -> bool {
+                    metas: ~[@ast::meta_item]) -> bool {
     // The "cfg" attributes on the item
     let cfg_metas = attr::find_meta_items_by_name(metas, ~"cfg");
 

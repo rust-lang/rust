@@ -58,7 +58,7 @@ pub impl thing {
     fn foo(@self) -> int { *self.x.a }
     fn bar(~self) -> int { *self.x.a }
     fn quux(&self) -> int { *self.x.a }
-    fn baz(&self) -> &'self A { &self.x }
+    fn baz<'a>(&'a self) -> &'a A { &self.x }
     fn spam(self) -> int { *self.x.a }
 }
 
