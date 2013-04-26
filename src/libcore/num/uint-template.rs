@@ -231,6 +231,8 @@ impl Integer for T {
     fn is_odd(&self) -> bool { !self.is_even() }
 }
 
+impl Bitwise for T {}
+
 #[cfg(notest)]
 impl BitOr<T,T> for T {
     #[inline(always)]
@@ -266,6 +268,16 @@ impl Not<T> for T {
     #[inline(always)]
     fn not(&self) -> T { !*self }
 }
+
+impl Bounded for T {
+    #[inline(always)]
+    fn min_value() -> T { min_value }
+
+    #[inline(always)]
+    fn max_value() -> T { max_value }
+}
+
+impl PrimitiveInt for T {}
 
 // String conversion functions and impl str -> num
 
@@ -382,6 +394,12 @@ mod tests {
         assert_eq!(0b1110 as T, (0b0111 as T).shl(&(1 as T)));
         assert_eq!(0b0111 as T, (0b1110 as T).shr(&(1 as T)));
         assert_eq!(max_value - (0b1011 as T), (0b1011 as T).not());
+    }
+
+    #[test]
+    fn test_primitive() {
+        assert_eq!(Primitive::bits::<T>(), sys::size_of::<T>() * 8);
+        assert_eq!(Primitive::bytes::<T>(), sys::size_of::<T>());
     }
 
     #[test]

@@ -18,6 +18,7 @@ use Quot = ops::Div;
 use Rem = ops::Modulo;
 #[cfg(not(stage0))]
 use ops::{Add, Sub, Mul, Quot, Rem, Neg};
+use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::Option;
 use kinds::Copy;
 
@@ -172,6 +173,60 @@ pub trait RealExt: Real {
     fn y1(&self) -> Self;
     fn yn(&self, n: int) -> Self;
 }
+
+///
+/// Collects the bitwise operators under one trait.
+///
+pub trait Bitwise: Not<Self>
+                 + BitAnd<Self,Self>
+                 + BitOr<Self,Self>
+                 + BitXor<Self,Self>
+                 + Shl<Self,Self>
+                 + Shr<Self,Self> {}
+
+pub trait Bounded {
+    // FIXME (#5527): These should be associated constants
+    fn min_value() -> Self;
+    fn max_value() -> Self;
+}
+
+///
+/// Specifies the available operations common to all of Rust's core numeric primitives.
+/// These may not always make sense from a purely mathematical point of view, but
+/// may be useful for systems programming.
+///
+pub trait Primitive: Num
+                   + NumCast
+                   + Neg<Self>
+                   + Add<Self,Self>
+                   + Sub<Self,Self>
+                   + Mul<Self,Self>
+                   + Quot<Self,Self>
+                   + Rem<Self,Self> {
+    // FIXME (#5527): These should be associated constants
+    fn bits() -> uint;
+    fn bytes() -> uint;
+}
+
+///
+/// A collection of traits relevant to primitive signed and unsigned integers
+///
+pub trait PrimitiveInt: Integer
+                      + Primitive
+                      + Bounded
+                      + Bitwise {}
+
+///
+/// Specialisation of `PrimitiveInt` for unsigned integers
+///
+pub trait Uint: PrimitiveInt
+              + Unsigned {}
+
+///
+/// Specialisation of `PrimitiveInt` for signed integers
+///
+pub trait Int: PrimitiveInt
+             + Signed {}
 
 ///
 /// Cast from one machine scalar to another
