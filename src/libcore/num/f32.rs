@@ -543,6 +543,22 @@ impl Float for f32 {
     fn is_finite(&self) -> bool {
         !(self.is_NaN() || self.is_infinite())
     }
+
+    ///
+    /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
+    /// produces a more accurate result with better performance than a separate multiplication
+    /// operation followed by an add.
+    ///
+    #[inline(always)]
+    fn mul_add(&self, a: f32, b: f32) -> f32 {
+        mul_add(*self, a, b)
+    }
+
+    /// Returns the next representable floating-point value in the direction of `other`
+    #[inline(always)]
+    fn next_after(&self, other: f32) -> f32 {
+        nextafter(*self, other)
+    }
 }
 
 //
