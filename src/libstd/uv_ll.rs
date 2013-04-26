@@ -1396,9 +1396,9 @@ mod test {
                     // not set the data on the connect_req
                     // until its initialized
                     set_data_for_req(connect_req_ptr as *libc::c_void,
-                                     transmute(&client_data));
+                                     &client_data);
                     set_data_for_uv_handle(tcp_handle_ptr as *libc::c_void,
-                                           transmute(&client_data));
+                                           &client_data);
                     debug!(~"before run tcp req loop");
                     run(test_loop);
                     debug!(~"after run tcp req loop");

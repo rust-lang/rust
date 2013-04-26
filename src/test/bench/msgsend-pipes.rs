@@ -30,7 +30,7 @@ enum request {
     stop
 }
 
-fn server(requests: PortSet<request>, responses: Chan<uint>) {
+fn server(requests: &PortSet<request>, responses: &Chan<uint>) {
     let mut count = 0;
     let mut done = false;
     while !done {
@@ -73,7 +73,7 @@ fn run(args: &[~str]) {
         };
     }
     do task::spawn || {
-        server(from_parent, to_parent);
+        server(&from_parent, &to_parent);
     }
 
     for vec::each(worker_results) |r| {
