@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use lib::llvm::llvm;
 use lib::llvm::{TypeRef};
 use middle::trans::adt;
@@ -19,7 +17,6 @@ use middle::trans::common;
 use middle::ty;
 use util::ppaux;
 
-use core::option::None;
 use syntax::ast;
 
 pub fn arg_is_indirect(ccx: @CrateContext, arg: &ty::arg) -> bool {

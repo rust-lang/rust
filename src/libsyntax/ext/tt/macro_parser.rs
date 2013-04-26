@@ -19,7 +19,6 @@ use parse::parser::Parser;
 use parse::token::{Token, EOF, to_str, nonterminal};
 use parse::token;
 
-use core::prelude::*;
 use core::hashmap::HashMap;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,

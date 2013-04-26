@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 /*!
  * A classic liveness analysis based on dataflow over the AST.  Computes,
  * for each local variable in a function, whether that variable is live
@@ -103,7 +102,6 @@
  *   to return explicitly.
  */
 
-use core::prelude::*;
 
 use middle::lint::{unused_variable, dead_assignment};
 use middle::pat_util;
@@ -113,12 +111,6 @@ use middle::moves;
 use util::ppaux::ty_to_str;
 
 use core::hashmap::HashMap;
-use core::io::WriterUtil;
-use core::io;
-use core::ptr;
-use core::to_str;
-use core::uint;
-use core::vec;
 use core::util::with;
 use syntax::ast::*;
 use syntax::codemap::span;

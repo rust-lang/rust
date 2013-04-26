@@ -16,7 +16,6 @@
 use core::container::{Container, Mutable, Map, Set};
 use core::iter::{BaseIter};
 use core::option::{Some, None};
-use core::prelude::*;
 
 pub struct SmallIntMap<T> {
     priv v: ~[Option<T>],
@@ -243,7 +242,6 @@ pub impl<V:Copy> SmallIntMap<V> {
 #[cfg(test)]
 mod tests {
     use super::SmallIntMap;
-    use core::prelude::*;
 
     #[test]
     fn test_find_mut() {

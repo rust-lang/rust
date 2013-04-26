@@ -14,13 +14,8 @@
 // tjc note: Would be great to have a `match check` macro equivalent
 // for some of these
 
-use core::prelude::*;
-
 use middle::ty;
 
-use core::str;
-use core::uint;
-use core::vec;
 use syntax::abi::AbiSet;
 use syntax::abi;
 use syntax::ast;

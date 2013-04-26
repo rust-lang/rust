@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 use core::to_bytes;
-use core::to_str::ToStr;
 
 #[deriving(Eq)]
 pub enum Abi {

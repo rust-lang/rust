@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 use std::smallintmap::SmallIntMap;
 
 use middle::ty::{Vid, expected_found, IntVarValue};

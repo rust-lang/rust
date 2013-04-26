@@ -25,7 +25,6 @@ use core::cast;
 use core::cell::Cell;
 use core::comm::{oneshot, PortOne, send_one};
 use core::pipes::recv;
-use core::prelude::*;
 use core::task;
 
 #[doc = "The future type"]
@@ -173,7 +172,6 @@ pub fn spawn<A:Owned>(blk: ~fn() -> A) -> Future<A> {
 #[allow(non_implicitly_copyable_typarams)]
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use future::*;
 

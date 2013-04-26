@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use codemap::span;
 use ext::base::ext_ctxt;
 use ext::pipes::ast_builder::{append_types, ext_ctxt_ast_builder, path};
-
-use core::to_str::ToStr;
 
 #[deriving(Eq)]
 pub enum direction { send, recv }

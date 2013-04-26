@@ -20,11 +20,6 @@ use ext::quote::rt::*;
 use opt_vec;
 use opt_vec::OptVec;
 
-use core::prelude::*;
-use core::str;
-use core::to_str::ToStr;
-use core::vec;
-
 pub trait gen_send {
     fn gen_send(&mut self, cx: @ext_ctxt, try: bool) -> @ast::item;
     fn to_ty(&mut self, cx: @ext_ctxt) -> @ast::Ty;

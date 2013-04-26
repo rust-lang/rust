@@ -17,8 +17,6 @@ query AST-related information, shielding the rest of Rustdoc from its
 non-sendableness.
 */
 
-use core::prelude::*;
-
 use parse;
 
 use core::cell::Cell;

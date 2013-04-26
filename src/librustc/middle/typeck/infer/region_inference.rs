@@ -536,8 +536,6 @@ more convincing in the future.
 
 */
 
-use core::prelude::*;
-
 use middle::ty;
 use middle::ty::{FreeRegion, Region, RegionVid};
 use middle::ty::{re_static, re_infer, re_free, re_bound};
@@ -548,10 +546,7 @@ use util::ppaux::note_and_explain_region;
 
 use core::cell::{Cell, empty_cell};
 use core::hashmap::{HashMap, HashSet};
-use core::result::{Err, Ok};
 use core::to_bytes;
-use core::uint;
-use core::vec;
 use syntax::codemap::span;
 use syntax::ast;
 

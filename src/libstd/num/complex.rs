@@ -12,7 +12,6 @@
 //! Complex numbers.
 
 use core::num::{Zero,One,ToStrRadix};
-use core::prelude::*;
 
 // FIXME #1284: handle complex NaN & infinity etc. This
 // probably doesn't map to C's _Complex correctly.
@@ -162,7 +161,6 @@ impl<T: ToStrRadix + Num + Ord> ToStrRadix for Cmplx<T> {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
     use super::*;
     use core::num::{Zero,One};
 

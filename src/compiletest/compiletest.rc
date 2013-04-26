@@ -10,14 +10,11 @@
 
 #[crate_type = "bin"];
 
-#[no_core];
-
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
 #[allow(deprecated_mode)];
 #[allow(deprecated_pattern)];
 
-extern mod core(vers = "0.7-pre");
 extern mod std(vers = "0.7-pre");
 
 use core::*;

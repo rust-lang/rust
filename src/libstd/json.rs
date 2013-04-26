@@ -14,7 +14,6 @@
 
 //! json serialization
 
-use core::prelude::*;
 use core::io::{WriterUtil, ReaderUtil};
 use core::hashmap::HashMap;
 
@@ -1266,7 +1265,6 @@ impl to_str::ToStr for Error {
 mod tests {
     use super::*;
 
-    use core::prelude::*;
     use core::hashmap::HashMap;
 
     use std::serialize::Decodable;

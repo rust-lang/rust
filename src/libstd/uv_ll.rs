@@ -34,7 +34,6 @@
 
 use core::libc::size_t;
 use core::libc::c_void;
-use core::prelude::*;
 use core::ptr::to_unsafe_ptr;
 
 pub type uv_handle_t = c_void;
@@ -1225,7 +1224,6 @@ pub unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
     use core::comm::{SharedChan, stream, GenericChan, GenericPort};
     use super::*;
 

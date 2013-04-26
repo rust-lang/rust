@@ -224,8 +224,6 @@ Borrowck results in two maps.
   given a memory location and not used as immediates.
  */
 
-use core::prelude::*;
-
 use middle::mem_categorization::*;
 use middle::ty;
 use middle::typeck;
@@ -234,8 +232,6 @@ use util::common::stmt_set;
 use util::ppaux::note_and_explain_region;
 
 use core::hashmap::{HashSet, HashMap};
-use core::io;
-use core::result::{Result, Ok, Err};
 use core::to_bytes;
 use syntax::ast::{mutability, m_imm};
 use syntax::ast;

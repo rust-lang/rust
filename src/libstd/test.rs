@@ -21,7 +21,6 @@ use term;
 
 use core::to_str::ToStr;
 use core::comm::{stream, SharedChan};
-use core::prelude::*;
 
 pub mod rustrt {
     use core::libc::size_t;
@@ -597,7 +596,6 @@ pub mod bench {
     use time::precise_time_ns;
     use test::{BenchHarness, BenchSamples};
     use stats::Stats;
-    use core::prelude::*;
     use core::rand::RngUtil;
 
     pub impl BenchHarness {

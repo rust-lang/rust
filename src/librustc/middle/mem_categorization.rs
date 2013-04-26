@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 /*!
  * # Categorization
  *
@@ -47,14 +46,11 @@
  * then an index to jump forward to the relevant item.
  */
 
-use core::prelude::*;
-
 use middle::ty;
 use middle::typeck;
 use util::ppaux::{ty_to_str, region_to_str};
 use util::common::indenter;
 
-use core::uint;
 use syntax::ast::{m_imm, m_const, m_mutbl};
 use syntax::ast;
 use syntax::codemap::span;

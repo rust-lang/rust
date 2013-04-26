@@ -8,20 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use ast_util;
 use parse::token;
 use util::interner::Interner;
 use util::interner;
 
-use core::cast;
-use core::char;
 use core::cmp::Equiv;
 use core::hashmap::HashSet;
-use core::str;
-use core::task;
 use core::to_bytes;
 
 #[auto_encode]

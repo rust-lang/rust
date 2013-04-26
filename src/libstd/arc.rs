@@ -17,7 +17,6 @@ use sync;
 use sync::{Mutex, mutex_with_condvars, RWlock, rwlock_with_condvars};
 
 use core::cast;
-use core::prelude::*;
 use core::unstable::{SharedMutableState, shared_mutable_state};
 use core::unstable::{clone_shared_mutable_state};
 use core::unstable::{get_shared_mutable_state, get_shared_immutable_state};
@@ -478,7 +477,6 @@ pub impl<'self, T:Const + Owned> RWReadMode<'self, T> {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use arc::*;
     use arc;

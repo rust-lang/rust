@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use back::rpath;
 use driver::session::Session;
 use driver::session;
@@ -22,17 +20,12 @@ use middle::trans::common::CrateContext;
 use middle::ty;
 use util::ppaux;
 
-use core::char;
 use core::hash::Streaming;
 use core::hash;
 use core::io::WriterUtil;
 use core::libc::{c_int, c_uint};
 use core::os::consts::{macos, freebsd, linux, android, win32};
-use core::os;
-use core::ptr;
 use core::run;
-use core::str;
-use core::vec;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::attr;
@@ -98,10 +91,7 @@ pub mod jit {
     use lib::llvm::{ModuleRef, PassManagerRef};
     use metadata::cstore;
 
-    use core::cast;
     use core::libc::c_int;
-    use core::ptr;
-    use core::str;
 
     pub mod rusti {
         #[nolink]
@@ -183,10 +173,8 @@ pub mod write {
     use lib::llvm::{False, ModuleRef, mk_pass_manager, mk_target_data};
     use lib;
 
-    use core::prelude::*;
     use core::libc::{c_int, c_uint};
     use core::path::Path;
-    use core::str;
     use core::run;
 
     pub fn is_object_or_assembly_or_exe(ot: output_type) -> bool {

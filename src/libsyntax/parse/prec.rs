@@ -13,8 +13,6 @@ use ast::*;
 use parse::token::*;
 use parse::token::Token;
 
-use core::prelude::*;
-
 /// Unary operators have higher precedence than binary
 pub static unop_prec: uint = 100u;
 
