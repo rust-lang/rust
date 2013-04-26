@@ -217,23 +217,11 @@ pub trait Primitive: Num
 ///
 /// A collection of traits relevant to primitive signed and unsigned integers
 ///
-pub trait PrimitiveInt: Integer
-                      + Primitive
-                      + Bounded
-                      + Bitwise
-                      + BitCount {}
-
-///
-/// Specialisation of `PrimitiveInt` for unsigned integers
-///
-pub trait Uint: PrimitiveInt
-              + Unsigned {}
-
-///
-/// Specialisation of `PrimitiveInt` for signed integers
-///
-pub trait Int: PrimitiveInt
-             + Signed {}
+pub trait Int: Integer
+             + Primitive
+             + Bounded
+             + Bitwise
+             + BitCount {}
 
 ///
 /// Primitive floating point numbers. This trait should only be implemented
