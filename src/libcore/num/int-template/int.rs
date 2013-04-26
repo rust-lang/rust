@@ -13,8 +13,29 @@
 pub use self::inst::pow;
 
 mod inst {
+    use num::Primitive;
+
     pub type T = int;
     pub static bits: uint = ::uint::bits;
+
+    impl Primitive for int {
+        #[cfg(target_word_size = "32")]
+        #[inline(always)]
+        fn bits() -> uint { 32 }
+
+        #[cfg(target_word_size = "64")]
+        #[inline(always)]
+        fn bits() -> uint { 64 }
+
+        // fallback if we don't have access to the current word size
+        #[cfg(not(target_word_size = "32"),
+              not(target_word_size = "64"))]
+        #[inline(always)]
+        fn bits() -> uint { sys::size_of::<int>() * 8 }
+
+        #[inline(always)]
+        fn bytes() -> uint { Primitive::bits::<int>() / 8 }
+    }
 
     /// Returns `base` raised to the power of `exponent`
     pub fn pow(base: int, exponent: uint) -> int {

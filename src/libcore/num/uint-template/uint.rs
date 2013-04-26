@@ -18,6 +18,7 @@ pub use self::inst::{
 pub mod inst {
     use sys;
     use iter;
+    use num::Primitive;
 
     pub type T = uint;
     #[allow(non_camel_case_types)]
@@ -30,6 +31,25 @@ pub mod inst {
 
     #[cfg(target_arch = "x86_64")]
     pub static bits: uint = 64;
+
+    impl Primitive for uint {
+        #[cfg(target_word_size = "32")]
+        #[inline(always)]
+        fn bits() -> uint { 32 }
+
+        #[cfg(target_word_size = "64")]
+        #[inline(always)]
+        fn bits() -> uint { 64 }
+
+        // fallback if we don't have access to the current word size
+        #[cfg(not(target_word_size = "32"),
+              not(target_word_size = "64"))]
+        #[inline(always)]
+        fn bits() -> uint { sys::size_of::<uint>() * 8 }
+
+        #[inline(always)]
+        fn bytes() -> uint { Primitive::bits::<uint>() / 8 }
+    }
 
     ///
     /// Divide two numbers, return the result, rounded up.

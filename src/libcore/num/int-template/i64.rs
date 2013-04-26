@@ -11,6 +11,16 @@
 //! Operations and constants for `i64`
 
 mod inst {
+    use num::Primitive;
+
     pub type T = i64;
     pub static bits: uint = ::u64::bits;
+
+    impl Primitive for i64 {
+        #[inline(always)]
+        fn bits() -> uint { 64 }
+
+        #[inline(always)]
+        fn bytes() -> uint { Primitive::bits::<i64>() / 8 }
+    }
 }

@@ -689,6 +689,14 @@ impl Signed for float {
     fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
 }
 
+impl Primitive for float {
+    #[inline(always)]
+    fn bits() -> uint { Primitive::bits::<f64>() }
+
+    #[inline(always)]
+    fn bytes() -> uint { Primitive::bytes::<f64>() }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -834,6 +842,12 @@ mod tests {
         assert!(neg_infinity.is_negative());
         assert!((1f/neg_infinity).is_negative());
         assert!(!NaN.is_negative());
+    }
+
+    #[test]
+    fn test_primitive() {
+        assert_eq!(Primitive::bits::<float>(), sys::size_of::<float>() * 8);
+        assert_eq!(Primitive::bytes::<float>(), sys::size_of::<float>());
     }
 
     #[test]

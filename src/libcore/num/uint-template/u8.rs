@@ -11,8 +11,18 @@
 //! Operations and constants for `u8`
 
 mod inst {
+    use num::Primitive;
+
     pub type T = u8;
     #[allow(non_camel_case_types)]
     pub type T_SIGNED = i8;
     pub static bits: uint = 8;
+
+    impl Primitive for u8 {
+        #[inline(always)]
+        fn bits() -> uint { 8 }
+
+        #[inline(always)]
+        fn bytes() -> uint { Primitive::bits::<u8>() / 8 }
+    }
 }

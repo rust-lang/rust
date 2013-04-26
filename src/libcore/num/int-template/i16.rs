@@ -11,6 +11,16 @@
 //! Operations and constants for `i16`
 
 mod inst {
+    use num::Primitive;
+
     pub type T = i16;
     pub static bits: uint = ::u16::bits;
+
+    impl Primitive for i16 {
+        #[inline(always)]
+        fn bits() -> uint { 16 }
+
+        #[inline(always)]
+        fn bytes() -> uint { Primitive::bits::<i16>() / 8 }
+    }
 }

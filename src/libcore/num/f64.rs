@@ -549,6 +549,14 @@ impl RealExt for f64 {
     fn yn(&self, n: int) -> f64 { yn(n as c_int, *self) }
 }
 
+impl Primitive for f64 {
+    #[inline(always)]
+    fn bits() -> uint { 64 }
+
+    #[inline(always)]
+    fn bytes() -> uint { Primitive::bits::<f64>() / 8 }
+}
+
 //
 // Section: String Conversions
 //
@@ -913,6 +921,12 @@ mod tests {
         assert!(neg_infinity.is_negative());
         assert!((1f64/neg_infinity).is_negative());
         assert!(!NaN.is_negative());
+    }
+
+    #[test]
+    fn test_primitive() {
+        assert_eq!(Primitive::bits::<f64>(), sys::size_of::<f64>() * 8);
+        assert_eq!(Primitive::bytes::<f64>(), sys::size_of::<f64>());
     }
 }
 

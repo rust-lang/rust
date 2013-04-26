@@ -509,6 +509,14 @@ impl Real for f32 {
     fn tanh(&self) -> f32 { tanh(*self) }
 }
 
+impl Primitive for f32 {
+    #[inline(always)]
+    fn bits() -> uint { 32 }
+
+    #[inline(always)]
+    fn bytes() -> uint { Primitive::bits::<f32>() / 8 }
+}
+
 //
 // Section: String Conversions
 //
@@ -872,6 +880,12 @@ mod tests {
         assert!(neg_infinity.is_negative());
         assert!((1f32/neg_infinity).is_negative());
         assert!(!NaN.is_negative());
+    }
+
+    #[test]
+    fn test_primitive() {
+        assert_eq!(Primitive::bits::<f32>(), sys::size_of::<f32>() * 8);
+        assert_eq!(Primitive::bytes::<f32>(), sys::size_of::<f32>());
     }
 }
 
