@@ -53,6 +53,7 @@ pub trait Rand {
 }
 
 impl Rand for int {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> int {
         if int::bits == 32 {
             rng.next() as int
@@ -63,30 +64,35 @@ impl Rand for int {
 }
 
 impl Rand for i8 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> i8 {
         rng.next() as i8
     }
 }
 
 impl Rand for i16 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> i16 {
         rng.next() as i16
     }
 }
 
 impl Rand for i32 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> i32 {
         rng.next() as i32
     }
 }
 
 impl Rand for i64 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> i64 {
         (rng.next() as i64 << 32) | rng.next() as i64
     }
 }
 
 impl Rand for uint {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> uint {
         if uint::bits == 32 {
             rng.next() as uint
@@ -97,36 +103,42 @@ impl Rand for uint {
 }
 
 impl Rand for u8 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> u8 {
         rng.next() as u8
     }
 }
 
 impl Rand for u16 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> u16 {
         rng.next() as u16
     }
 }
 
 impl Rand for u32 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> u32 {
         rng.next()
     }
 }
 
 impl Rand for u64 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> u64 {
         (rng.next() as u64 << 32) | rng.next() as u64
     }
 }
 
 impl Rand for float {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> float {
         rng.gen::<f64>() as float
     }
 }
 
 impl Rand for f32 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> f32 {
         rng.gen::<f64>() as f32
     }
@@ -134,6 +146,7 @@ impl Rand for f32 {
 
 static scale : f64 = (u32::max_value as f64) + 1.0f64;
 impl Rand for f64 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> f64 {
         let u1 = rng.next() as f64;
         let u2 = rng.next() as f64;
@@ -144,12 +157,14 @@ impl Rand for f64 {
 }
 
 impl Rand for char {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> char {
         rng.next() as char
     }
 }
 
 impl Rand for bool {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> bool {
         rng.next() & 1u32 == 1u32
     }
@@ -163,6 +178,7 @@ macro_rules! tuple_impl {
             $( $tyvar : Rand ),*
             > Rand for ( $( $tyvar ),* , ) {
 
+            #[inline]
             fn rand<R: Rng>(_rng: &R) -> ( $( $tyvar ),* , ) {
                 (
                     // use the $tyvar's to get the appropriate number of
@@ -177,7 +193,10 @@ macro_rules! tuple_impl {
     }
 }
 
-impl Rand for () { fn rand<R: Rng>(_: &R) -> () { () } }
+impl Rand for () {
+    #[inline]
+    fn rand<R: Rng>(_: &R) -> () { () }
+}
 tuple_impl!{A}
 tuple_impl!{A, B}
 tuple_impl!{A, B, C}
@@ -190,6 +209,7 @@ tuple_impl!{A, B, C, D, E, F, G, H, I}
 tuple_impl!{A, B, C, D, E, F, G, H, I, J}
 
 impl<T:Rand> Rand for Option<T> {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> Option<T> {
         if rng.gen() {
             Some(rng.gen())
@@ -200,10 +220,12 @@ impl<T:Rand> Rand for Option<T> {
 }
 
 impl<T: Rand> Rand for ~T {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> ~T { ~rng.gen() }
 }
 
 impl<T: Rand> Rand for @T {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> @T { @rng.gen() }
 }
 
@@ -413,6 +435,7 @@ pub trait RngUtil {
 /// Extension methods for random number generators
 impl<R: Rng> RngUtil for R {
     /// Return a random value for a Rand type
+    #[inline(always)]
     fn gen<T: Rand>(&self) -> T {
         Rand::rand(self)
     }
@@ -675,6 +698,7 @@ pub impl IsaacRng {
     }
 
     /// Refills the output buffer (`self.rsl`)
+    #[inline]
     priv fn isaac(&self) {
         self.c += 1;
         // abbreviations
@@ -731,6 +755,9 @@ impl Rng for IsaacRng {
     }
 }
 
+/// An [Xorshift random number
+/// generator](http://en.wikipedia.org/wiki/Xorshift). Not suitable for
+/// cryptographic purposes.
 pub struct XorShiftRng {
     priv mut x: u32,
     priv mut y: u32,
@@ -739,6 +766,7 @@ pub struct XorShiftRng {
 }
 
 impl Rng for XorShiftRng {
+    #[inline]
     pub fn next(&self) -> u32 {
         let x = self.x;
         let t = x ^ (x << 11);
@@ -788,6 +816,7 @@ fn tls_rng_state(_v: @IsaacRng) {}
  * seeded by the system. Intended to be used in method chaining style, ie
  * `task_rng().gen::<int>()`.
  */
+#[inline]
 pub fn task_rng() -> @IsaacRng {
     let r : Option<@IsaacRng>;
     unsafe {
@@ -807,6 +836,7 @@ pub fn task_rng() -> @IsaacRng {
 
 // Allow direct chaining with `task_rng`
 impl<R: Rng> Rng for @R {
+    #[inline(always)]
     fn next(&self) -> u32 { (**self).next() }
 }
 
@@ -814,6 +844,7 @@ impl<R: Rng> Rng for @R {
  * Returns a random value of a Rand type, using the task's random number
  * generator.
  */
+#[inline]
 pub fn random<T: Rand>() -> T {
     task_rng().gen()
 }
