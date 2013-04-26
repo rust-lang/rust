@@ -139,9 +139,6 @@ pub static infinity: f64 = 1.0_f64/0.0_f64;
 pub static neg_infinity: f64 = -1.0_f64/0.0_f64;
 
 #[inline(always)]
-pub fn is_NaN(f: f64) -> bool { f != f }
-
-#[inline(always)]
 pub fn add(x: f64, y: f64) -> f64 { return x + y; }
 
 #[inline(always)]
@@ -173,18 +170,6 @@ pub fn ge(x: f64, y: f64) -> bool { return x >= y; }
 
 #[inline(always)]
 pub fn gt(x: f64, y: f64) -> bool { return x > y; }
-
-/// Returns true if `x`is an infinite number
-#[inline(always)]
-pub fn is_infinite(x: f64) -> bool {
-    return x == infinity || x == neg_infinity;
-}
-
-/// Returns true if `x` is a finite number
-#[inline(always)]
-pub fn is_finite(x: f64) -> bool {
-    return !(is_NaN(x) || is_infinite(x));
-}
 
 
 // FIXME (#1999): add is_normal, is_subnormal, and fpclassify
@@ -323,7 +308,7 @@ impl Signed for f64 {
     ///
     #[inline(always)]
     fn signum(&self) -> f64 {
-        if is_NaN(*self) { NaN } else { copysign(1.0, *self) }
+        if self.is_NaN() { NaN } else { copysign(1.0, *self) }
     }
 
     /// Returns `true` if the number is positive, including `+0.0` and `infinity`
@@ -555,6 +540,35 @@ impl Primitive for f64 {
 
     #[inline(always)]
     fn bytes() -> uint { Primitive::bits::<f64>() / 8 }
+}
+
+impl Float for f64 {
+    #[inline(always)]
+    fn NaN() -> f64 { 0.0 / 0.0 }
+
+    #[inline(always)]
+    fn infinity() -> f64 { 1.0 / 0.0 }
+
+    #[inline(always)]
+    fn neg_infinity() -> f64 { -1.0 / 0.0 }
+
+    #[inline(always)]
+    fn neg_zero() -> f64 { -0.0 }
+
+    #[inline(always)]
+    fn is_NaN(&self) -> bool { *self != *self }
+
+    /// Returns `true` if the number is infinite
+    #[inline(always)]
+    fn is_infinite(&self) -> bool {
+        *self == Float::infinity() || *self == Float::neg_infinity()
+    }
+
+    /// Returns `true` if the number is finite
+    #[inline(always)]
+    fn is_finite(&self) -> bool {
+        !(self.is_NaN() || self.is_infinite())
+    }
 }
 
 //
@@ -893,7 +907,7 @@ mod tests {
         assert_eq!((-1f64).abs(), 1f64);
         assert_eq!(neg_infinity.abs(), infinity);
         assert_eq!((1f64/neg_infinity).abs(), 0f64);
-        assert!(is_NaN(NaN.abs()));
+        assert!(NaN.abs().is_NaN());
 
         assert_eq!(infinity.signum(), 1f64);
         assert_eq!(1f64.signum(), 1f64);
@@ -902,7 +916,7 @@ mod tests {
         assert_eq!((-1f64).signum(), -1f64);
         assert_eq!(neg_infinity.signum(), -1f64);
         assert_eq!((1f64/neg_infinity).signum(), -1f64);
-        assert!(is_NaN(NaN.signum()));
+        assert!(NaN.signum().is_NaN());
 
         assert!(infinity.is_positive());
         assert!(1f64.is_positive());

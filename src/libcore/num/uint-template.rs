@@ -279,6 +279,8 @@ impl Bounded for T {
 
 impl PrimitiveInt for T {}
 
+impl Uint for T {}
+
 // String conversion functions and impl str -> num
 
 /// Parse a string as a number in base 10.
