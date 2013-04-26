@@ -384,6 +384,24 @@ impl Ord for float {
     fn gt(&self, other: &float) -> bool { (*self) > (*other) }
 }
 
+impl Orderable for float {
+    #[inline(always)]
+    fn min(&self, other: &float) -> float {
+        fmin(*self as f64, *other as f64) as float
+    }
+
+    #[inline(always)]
+    fn max(&self, other: &float) -> float {
+        fmax(*self as f64, *other as f64) as float
+    }
+
+    #[inline(always)]
+    fn clamp(&self, mn: &float, mx: &float) -> float {
+        if *self > *mx { *mx } else
+        if *self < *mn { *mn } else { *self }
+    }
+}
+
 impl Zero for float {
     #[inline(always)]
     fn zero() -> float { 0.0 }
@@ -736,6 +754,17 @@ mod tests {
     #[test]
     fn test_num() {
         num::test_num(10f, 2f);
+    }
+
+    #[test]
+    fn test_orderable() {
+        assert_eq!(1f.min(&2f), 1f);
+        assert_eq!(2f.min(&1f), 1f);
+        assert_eq!(1f.max(&2f), 2f);
+        assert_eq!(2f.max(&1f), 2f);
+        assert_eq!(1f.clamp(&2f, &4f), 2f);
+        assert_eq!(8f.clamp(&2f, &4f), 4f);
+        assert_eq!(3f.clamp(&2f, &4f), 3f);
     }
 
     #[test]

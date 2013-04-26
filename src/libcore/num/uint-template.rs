@@ -117,6 +117,24 @@ impl Eq for T {
     fn ne(&self, other: &T) -> bool { return (*self) != (*other); }
 }
 
+impl Orderable for T {
+    #[inline(always)]
+    fn min(&self, other: &T) -> T {
+        if *self < *other { *self } else { *other }
+    }
+
+    #[inline(always)]
+    fn max(&self, other: &T) -> T {
+        if *self > *other { *self } else { *other }
+    }
+
+    #[inline(always)]
+    fn clamp(&self, mn: &T, mx: &T) -> T {
+        if *self > *mx { *mx } else
+        if *self < *mn { *mn } else { *self }
+    }
+}
+
 impl Zero for T {
     #[inline(always)]
     fn zero() -> T { 0 }
@@ -365,6 +383,17 @@ mod tests {
     #[test]
     fn test_num() {
         num::test_num(10 as T, 2 as T);
+    }
+
+    #[test]
+    fn test_orderable() {
+        assert_eq!((1 as T).min(&(2 as T)), 1 as T);
+        assert_eq!((2 as T).min(&(1 as T)), 1 as T);
+        assert_eq!((1 as T).max(&(2 as T)), 2 as T);
+        assert_eq!((2 as T).max(&(1 as T)), 2 as T);
+        assert_eq!((1 as T).clamp(&(2 as T), &(4 as T)), 2 as T);
+        assert_eq!((8 as T).clamp(&(2 as T), &(4 as T)), 4 as T);
+        assert_eq!((3 as T).clamp(&(2 as T), &(4 as T)), 3 as T);
     }
 
     #[test]

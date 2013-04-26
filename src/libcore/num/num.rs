@@ -24,6 +24,9 @@ use kinds::Copy;
 
 pub mod strconv;
 
+///
+/// The base trait for numeric types
+///
 pub trait Num: Eq + Zero + One
              + Neg<Self>
              + Add<Self,Self>
@@ -35,6 +38,16 @@ pub trait Num: Eq + Zero + One
 pub trait IntConvertible {
     fn to_int(&self) -> int;
     fn from_int(n: int) -> Self;
+}
+
+pub trait Orderable: Ord {
+    // These should be methods on `Ord`, with overridable default implementations. We don't want
+    // to encumber all implementors of Ord by requiring them to implement these functions, but at
+    // the same time we want to be able to take advantage of the speed of the specific numeric
+    // functions (like the `fmin` and `fmax` intrinsics).
+    fn min(&self, other: &Self) -> Self;
+    fn max(&self, other: &Self) -> Self;
+    fn clamp(&self, mn: &Self, mx: &Self) -> Self;
 }
 
 pub trait Zero {
@@ -62,7 +75,7 @@ pub fn abs<T:Ord + Zero + Neg<T>>(v: T) -> T {
 }
 
 pub trait Integer: Num
-                 + Ord
+                 + Orderable
                  + Quot<Self,Self>
                  + Rem<Self,Self> {
     fn div(&self, other: &Self) -> Self;
@@ -86,7 +99,7 @@ pub trait Round {
 }
 
 pub trait Fractional: Num
-                    + Ord
+                    + Orderable
                     + Round
                     + Quot<Self,Self> {
     fn recip(&self) -> Self;

@@ -224,6 +224,20 @@ impl Ord for f32 {
     fn gt(&self, other: &f32) -> bool { (*self) > (*other) }
 }
 
+impl Orderable for f32 {
+    #[inline(always)]
+    fn min(&self, other: &f32) -> f32 { fmin(*self, *other) }
+
+    #[inline(always)]
+    fn max(&self, other: &f32) -> f32 { fmax(*self, *other) }
+
+    #[inline(always)]
+    fn clamp(&self, mn: &f32, mx: &f32) -> f32 {
+        if *self > *mx { *mx } else
+        if *self < *mn { *mn } else { *self }
+    }
+}
+
 impl Zero for f32 {
     #[inline(always)]
     fn zero() -> f32 { 0.0 }
@@ -766,6 +780,17 @@ mod tests {
     #[test]
     fn test_num() {
         num::test_num(10f32, 2f32);
+    }
+
+    #[test]
+    fn test_orderable() {
+        assert_eq!(1f32.min(&2f32), 1f32);
+        assert_eq!(2f32.min(&1f32), 1f32);
+        assert_eq!(1f32.max(&2f32), 2f32);
+        assert_eq!(2f32.max(&1f32), 2f32);
+        assert_eq!(1f32.clamp(&2f32, &4f32), 2f32);
+        assert_eq!(8f32.clamp(&2f32, &4f32), 4f32);
+        assert_eq!(3f32.clamp(&2f32, &4f32), 3f32);
     }
 
     #[test]
