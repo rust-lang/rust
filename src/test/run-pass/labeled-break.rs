@@ -12,9 +12,9 @@
 // xfail-test
 
 pub fn main() {
-    loop foo: {
+    'foo: loop {
         loop {
-            break foo;
+            break 'foo;
         }
     }
 }
