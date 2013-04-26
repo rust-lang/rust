@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use driver::session::Session;
 
-use core::vec;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap;

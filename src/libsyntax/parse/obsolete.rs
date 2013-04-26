@@ -17,7 +17,6 @@ Obsolete syntax that becomes too hard to parse can be
 removed.
 */
 
-use core::prelude::*;
 
 use ast::{expr, expr_lit, lit_nil};
 use ast;
@@ -26,7 +25,6 @@ use parse::parser::Parser;
 use parse::token::Token;
 use parse::token;
 
-use core::str;
 use core::to_bytes;
 
 /// The specific types of unsupported syntax

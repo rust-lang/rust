@@ -10,12 +10,9 @@
 
 // Code that generates a test runner to run all the tests in a crate
 
-use core::prelude::*;
-
 use driver::session;
 use front::config;
 
-use core::vec;
 use syntax::ast_util::*;
 use syntax::attr;
 use syntax::codemap::{dummy_sp, span, ExpandedFrom, CallInfo, NameAndSpan};

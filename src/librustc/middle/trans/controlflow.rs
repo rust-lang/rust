@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use back::link;
 use lib;
 use lib::llvm::*;
@@ -24,7 +22,6 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux;
 
-use core::str;
 use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_map::path_mod;

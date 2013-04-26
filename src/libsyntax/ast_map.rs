@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use abi::AbiSet;
 use ast::*;
 use ast;
@@ -22,10 +20,7 @@ use parse::token::ident_interner;
 use print::pprust;
 use visit;
 
-use core::cmp;
 use core::hashmap::HashMap;
-use core::str;
-use core::vec;
 
 pub enum path_elt {
     path_mod(ident),

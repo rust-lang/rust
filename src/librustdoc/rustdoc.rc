@@ -19,11 +19,8 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[no_core];
-
 #[allow(non_implicitly_copyable_typarams)];
 
-extern mod core(vers = "0.7-pre");
 extern mod std(vers = "0.7-pre");
 extern mod rustc(vers = "0.7-pre");
 extern mod syntax(vers = "0.7-pre");

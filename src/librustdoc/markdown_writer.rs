@@ -8,20 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use config;
 use doc::ItemUtils;
 use doc;
 
-use core::io;
 use core::libc;
-use core::os;
-use core::comm;
-use core::result;
 use core::run;
-use core::str;
-use core::task;
 use core::comm::*;
 use std::future;
 
@@ -272,7 +264,6 @@ mod test {
     use path_pass;
     use config;
     use super::make_local_filename;
-    use core::prelude::*;
 
     fn mk_doc(name: ~str, source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {

@@ -10,8 +10,6 @@
 
 //! Prune things that are private
 
-use core::prelude::*;
-
 use extract;
 use syntax::ast;
 use syntax::ast_map;

@@ -8,15 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cast;
-use core::prelude::*;
-use core::ptr;
-use core::sys;
-use core::uint;
-use core::vec;
-
 use future_spawn = future::spawn;
-
 
 /**
  * The maximum number of tasks this module will spawn for a single

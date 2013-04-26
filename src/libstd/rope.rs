@@ -33,8 +33,6 @@
  * * access to a character by index is logarithmic (linear in strings);
  */
 
-use core::prelude::*;
-
 /// The type of ropes.
 pub type Rope = node::Root;
 
@@ -443,7 +441,6 @@ pub mod iterator {
     pub mod leaf {
         use rope::{Rope, node};
 
-        use core::prelude::*;
 
         pub fn start(rope: Rope) -> node::leaf_iterator::T {
             match (rope) {
@@ -458,7 +455,6 @@ pub mod iterator {
     pub mod char {
         use rope::{Rope, node};
 
-        use core::prelude::*;
 
         pub fn start(rope: Rope) -> node::char_iterator::T {
             match (rope) {
@@ -553,8 +549,6 @@ pub fn char_at(rope: Rope, pos: uint) -> char {
 */
 pub mod node {
     use rope::node;
-
-    use core::prelude::*;
 
     /// Implementation of type `rope`
     pub enum Root {
@@ -1135,8 +1129,6 @@ pub mod node {
     pub mod leaf_iterator {
         use rope::node::{Concat, Leaf, Node, height};
 
-        use core::prelude::*;
-
         pub struct T {
             stack: ~[@Node],
             stackpos: int,
@@ -1176,8 +1168,6 @@ pub mod node {
     pub mod char_iterator {
         use rope::node::{Leaf, Node};
         use rope::node::leaf_iterator;
-
-        use core::prelude::*;
 
         pub struct T {
             leaf_iterator: leaf_iterator::T,

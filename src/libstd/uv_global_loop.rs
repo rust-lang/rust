@@ -13,11 +13,9 @@
 use iotask = uv_iotask;
 use uv_iotask::{IoTask, spawn_iotask};
 
-use core::clone::Clone;
 use core::comm::Chan;
 use core::option::{Some, None};
 use core::task::task;
-use core::task;
 use core::unstable::global::{global_data_clone_create, global_data_clone};
 use core::unstable::weak_task::weaken_task;
 
@@ -115,7 +113,6 @@ fn spawn_loop() -> IoTask {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use get_gl = uv_global_loop::get;
     use uv::iotask;

@@ -16,8 +16,6 @@ use parse::common::SeqSep;
 use parse::parser;
 use parse::token;
 
-use core::prelude::*;
-
 pub trait proto_parser {
     fn parse_proto(&self, id: ~str) -> protocol;
     fn parse_state(&self, proto: protocol);

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use middle::const_eval::{compare_const_vals, lookup_const_by_id};
 use middle::const_eval::{eval_const_expr, const_val, const_bool};
 use middle::pat_util::*;
@@ -19,8 +17,6 @@ use middle::typeck::method_map;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
-use core::uint;
-use core::vec;
 use std::sort;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};

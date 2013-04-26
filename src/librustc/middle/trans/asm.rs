@@ -12,8 +12,6 @@
 # Translation of inline assembly.
 */
 
-use core::prelude::*;
-
 use lib;
 use middle::trans::build::*;
 use middle::trans::callee;

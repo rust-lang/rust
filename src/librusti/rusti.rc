@@ -18,18 +18,14 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[no_core];
-
 #[allow(vecs_implicitly_copyable,
         non_implicitly_copyable_typarams)];
 
-extern mod core(vers = "0.7-pre");
 extern mod std(vers = "0.7-pre");
 extern mod rustc(vers = "0.7-pre");
 extern mod syntax(vers = "0.7-pre");
 
 use core::*;
-use core::io::{ReaderUtil, WriterUtil};
 use rustc::driver::{driver, session};
 use syntax::{ast, diagnostic};
 use syntax::ast_util::*;

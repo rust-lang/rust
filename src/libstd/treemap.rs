@@ -12,7 +12,6 @@
 //! trees. The only requirement for the types is that the key implements
 //! `TotalOrd`.
 
-use core::prelude::*;
 use core::iterator::*;
 
 // This is implemented as an AA tree, which is a simplified variation of
@@ -694,7 +693,6 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
 
 #[cfg(test)]
 mod test_treemap {
-    use core::prelude::*;
     use core::iterator::*;
     use super::*;
     use core::rand::RngUtil;
@@ -1013,7 +1011,6 @@ mod test_treemap {
 
 #[cfg(test)]
 mod test_set {
-    use core::prelude::*;
     use core::iterator::*;
     use super::*;
 

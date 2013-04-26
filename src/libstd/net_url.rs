@@ -16,7 +16,6 @@ use core::cmp::Eq;
 use core::from_str::FromStr;
 use core::io::{Reader, ReaderUtil};
 use core::io;
-use core::prelude::*;
 use core::hashmap::HashMap;
 use core::str;
 use core::to_bytes::IterBytes;
@@ -803,7 +802,6 @@ fn test_get_path() {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use net_url::*;
 

@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // Searching for information from the cstore
-
-use core::prelude::*;
 
 use metadata::common::*;
 use metadata::cstore;
@@ -19,7 +16,6 @@ use metadata::decoder;
 use metadata;
 use middle::{ty, resolve};
 
-use core::vec;
 use reader = std::ebml::reader;
 use syntax::ast;
 use syntax::ast_map;

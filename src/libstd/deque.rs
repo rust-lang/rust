@@ -10,10 +10,6 @@
 
 //! A double-ended queue implemented as a circular buffer
 
-use core::container::{Container, Mutable};
-use core::prelude::*;
-use core::vec;
-
 static initial_capacity: uint = 32u; // 2^5
 
 pub struct Deque<T> {

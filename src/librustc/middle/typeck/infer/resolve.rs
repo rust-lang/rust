@@ -46,8 +46,6 @@
 // future).  If you want to resolve everything but one type, you are
 // probably better off writing `resolve_all - resolve_ivar`.
 
-use core::prelude::*;
-
 use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
 use middle::ty::{type_is_bot, IntType, UintType};
 use middle::ty;
@@ -59,8 +57,6 @@ use util::common::{indent, indenter};
 use util::ppaux::ty_to_str;
 
 use syntax::ast;
-
-use core::vec;
 
 pub static resolve_nested_tvar: uint = 0b0000000001;
 pub static resolve_rvar: uint        = 0b0000000010;

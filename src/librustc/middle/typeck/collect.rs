@@ -30,8 +30,6 @@ are represented as `ty_param()` instances.
 
 */
 
-use core::prelude::*;
-
 use metadata::csearch;
 use middle::ty::{substs, ty_param_bounds_and_ty};
 use middle::ty;
@@ -46,7 +44,6 @@ use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
 use util::common::{indenter, pluralize};
 use util::ppaux;
 
-use core::vec;
 use syntax::abi::AbiSet;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
 use syntax::ast;

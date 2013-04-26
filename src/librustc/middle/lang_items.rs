@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // Detecting language items.
 //
 // Language items are items that represent concepts intrinsic to the language
@@ -19,8 +18,6 @@
 // * Traits that represent operators; e.g. "add", "sub", "index".
 //
 // * Functions called by the compiler itself.
-
-use core::prelude::*;
 
 use driver::session::Session;
 use metadata::csearch::each_lang_item;

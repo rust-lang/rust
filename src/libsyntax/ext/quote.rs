@@ -17,8 +17,6 @@ use parse::token::*;
 use parse::token;
 use parse;
 
-use core::prelude::*;
-
 /**
 *
 * Quasiquoting works via token trees.
@@ -36,7 +34,6 @@ pub mod rt {
     use parse;
     use print::pprust;
 
-    use core::prelude::*;
     use core::str;
 
     pub use ast::*;

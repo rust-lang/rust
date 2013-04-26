@@ -10,12 +10,8 @@
 
 //! A priority queue implemented with a binary heap
 
-use core::container::{Container, Mutable};
-use core::cmp::Ord;
 use core::iter::BaseIter;
-use core::prelude::*;
 use core::ptr::addr_of;
-use core::vec;
 
 #[abi = "rust-intrinsic"]
 extern "rust-intrinsic" mod rusti {

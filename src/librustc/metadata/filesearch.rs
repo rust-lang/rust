@@ -8,18 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // A module for searching for libraries
 // FIXME (#2658): I'm not happy how this module turned out. Should
 // probably just be folded into cstore.
-
-use core::prelude::*;
-
-use core::option;
-use core::os;
-use core::result::Result;
-use core::result;
-use core::str;
 
 pub type pick<'self, T> = &'self fn(path: &Path) -> Option<T>;
 

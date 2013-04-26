@@ -8,15 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use codemap::{Pos, span};
 use codemap;
-
-use core::io::WriterUtil;
-use core::io;
-use core::str;
-use core::vec;
 
 use std::term;
 

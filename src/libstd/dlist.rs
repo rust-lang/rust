@@ -18,7 +18,6 @@ Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
 
 */
 
-use core::prelude::*;
 use core::managed;
 
 pub type DListLink<T> = Option<@mut DListNode<T>>;
@@ -534,7 +533,6 @@ impl<T> BaseIter<T> for @mut DList<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::prelude::*;
 
     #[test]
     fn test_dlist_concat() {

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use codemap;
 use codemap::{CodeMap, span, ExpnInfo, ExpandedFrom};
@@ -19,7 +17,6 @@ use ext;
 use parse;
 use parse::token;
 
-use core::vec;
 use core::hashmap::HashMap;
 
 // new-style macro! tt code:

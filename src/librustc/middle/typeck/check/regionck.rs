@@ -27,8 +27,6 @@ this point a bit better.
 
 */
 
-use core::prelude::*;
-
 use middle::freevars::get_freevars;
 use middle::pat_util::pat_bindings;
 use middle::ty::{re_scope};
@@ -41,7 +39,6 @@ use middle::typeck::infer::resolve_type;
 use util::ppaux::{note_and_explain_region, ty_to_str,
                   region_to_str};
 
-use core::result;
 use syntax::ast::{ManagedSigil, OwnedSigil, BorrowedSigil};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
 use syntax::ast;
@@ -688,7 +685,6 @@ pub mod guarantor {
      * but more special purpose.
      */
 
-    use core::prelude::*;
     use middle::typeck::check::regionck::{Rcx, infallibly_mk_subr};
     use middle::ty;
     use syntax::ast;

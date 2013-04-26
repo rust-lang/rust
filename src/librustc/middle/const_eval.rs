@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use metadata::csearch;
 use middle::astencode;
 use middle::ty;
 use middle;
 
-use core::float;
-use core::vec;
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
 
