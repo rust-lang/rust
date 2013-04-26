@@ -11,7 +11,8 @@
 //! Operations and constants for `u32`
 
 mod inst {
-    use num::Primitive;
+    use num::{Primitive, BitCount};
+    use unstable::intrinsics;
 
     pub type T = u32;
     #[allow(non_camel_case_types)]
@@ -24,5 +25,19 @@ mod inst {
 
         #[inline(always)]
         fn bytes() -> uint { Primitive::bits::<u32>() / 8 }
+    }
+
+    impl BitCount for u32 {
+        /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
+        #[inline(always)]
+        fn population_count(&self) -> u32 { unsafe { intrinsics::ctpop32(*self as i32) as u32 } }
+
+        /// Counts the number of leading zeros. Wraps LLVM's `ctlp` intrinsic.
+        #[inline(always)]
+        fn leading_zeros(&self) -> u32 { unsafe { intrinsics::ctlz32(*self as i32) as u32 } }
+
+        /// Counts the number of trailing zeros. Wraps LLVM's `cttp` intrinsic.
+        #[inline(always)]
+        fn trailing_zeros(&self) -> u32 { unsafe { intrinsics::cttz32(*self as i32) as u32 } }
     }
 }

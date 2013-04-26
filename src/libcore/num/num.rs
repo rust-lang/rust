@@ -184,6 +184,12 @@ pub trait Bitwise: Not<Self>
                  + Shl<Self,Self>
                  + Shr<Self,Self> {}
 
+pub trait BitCount {
+    fn population_count(&self) -> Self;
+    fn leading_zeros(&self) -> Self;
+    fn trailing_zeros(&self) -> Self;
+}
+
 pub trait Bounded {
     // FIXME (#5527): These should be associated constants
     fn min_value() -> Self;
@@ -214,7 +220,8 @@ pub trait Primitive: Num
 pub trait PrimitiveInt: Integer
                       + Primitive
                       + Bounded
-                      + Bitwise {}
+                      + Bitwise
+                      + BitCount {}
 
 ///
 /// Specialisation of `PrimitiveInt` for unsigned integers

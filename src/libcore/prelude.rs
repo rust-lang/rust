@@ -40,7 +40,7 @@ pub use iter::{Times, ExtendedMutableIter};
 pub use num::{Num, NumCast};
 pub use num::{Signed, Unsigned, Integer};
 pub use num::{Round, Fractional, Real, RealExt};
-pub use num::{Bitwise, Bounded};
+pub use num::{Bitwise, BitCount, Bounded};
 pub use num::{Primitive, PrimitiveInt};
 pub use num::{Int, Uint, Float};
 pub use path::GenericPath;
