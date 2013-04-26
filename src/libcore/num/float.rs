@@ -700,6 +700,14 @@ impl Signed for float {
     fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
 }
 
+impl Bounded for float {
+    #[inline(always)]
+    fn min_value() -> float { Bounded::min_value::<f64>() as float }
+
+    #[inline(always)]
+    fn max_value() -> float { Bounded::max_value::<f64>() as float }
+}
+
 impl Primitive for float {
     #[inline(always)]
     fn bits() -> uint { Primitive::bits::<f64>() }
@@ -723,6 +731,27 @@ impl Float for float {
 
     #[inline(always)]
     fn is_NaN(&self) -> bool { *self != *self }
+
+    #[inline(always)]
+    fn mantissa_digits() -> uint { Float::mantissa_digits::<f64>() }
+
+    #[inline(always)]
+    fn digits() -> uint { Float::digits::<f64>() }
+
+    #[inline(always)]
+    fn epsilon() -> float { Float::epsilon::<f64>() as float }
+
+    #[inline(always)]
+    fn min_exp() -> int { Float::min_exp::<f64>() }
+
+    #[inline(always)]
+    fn max_exp() -> int { Float::max_exp::<f64>() }
+
+    #[inline(always)]
+    fn min_10_exp() -> int { Float::min_10_exp::<f64>() }
+
+    #[inline(always)]
+    fn max_10_exp() -> int { Float::max_10_exp::<f64>() }
 
     /// Returns `true` if the number is infinite
     #[inline(always)]

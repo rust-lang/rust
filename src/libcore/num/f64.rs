@@ -548,6 +548,14 @@ impl RealExt for f64 {
     fn yn(&self, n: int) -> f64 { yn(n as c_int, *self) }
 }
 
+impl Bounded for f64 {
+    #[inline(always)]
+    fn min_value() -> f64 { 2.2250738585072014e-308 }
+
+    #[inline(always)]
+    fn max_value() -> f64 { 1.7976931348623157e+308 }
+}
+
 impl Primitive for f64 {
     #[inline(always)]
     fn bits() -> uint { 64 }
@@ -583,6 +591,27 @@ impl Float for f64 {
     fn is_finite(&self) -> bool {
         !(self.is_NaN() || self.is_infinite())
     }
+
+    #[inline(always)]
+    fn mantissa_digits() -> uint { 53 }
+
+    #[inline(always)]
+    fn digits() -> uint { 15 }
+
+    #[inline(always)]
+    fn epsilon() -> f64 { 2.2204460492503131e-16 }
+
+    #[inline(always)]
+    fn min_exp() -> int { -1021 }
+
+    #[inline(always)]
+    fn max_exp() -> int { 1024 }
+
+    #[inline(always)]
+    fn min_10_exp() -> int { -307 }
+
+    #[inline(always)]
+    fn max_10_exp() -> int { 308 }
 
     ///
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
