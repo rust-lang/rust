@@ -26,7 +26,7 @@ struct Ccx {
 fn alloc<'a>(_bcx : &'a arena) -> &'a Bcx<'a> {
     unsafe {
         cast::transmute(libc::malloc(sys::size_of::<Bcx<'blk>>()
-            as libc::size_t));
+            as libc::size_t))
     }
 }
 

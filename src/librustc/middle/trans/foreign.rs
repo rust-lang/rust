@@ -729,16 +729,16 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                     _ => fail!(~"transmute has non-expr arg"),
                 };
                 let pluralize = |n| if 1u == n { "" } else { "s" };
-                ccx.sess.span_err(sp,
-                                  fmt!("transmute called on types with \
-                                        different sizes: %s (%u bit%s) to \
-                                        %s (%u bit%s)",
-                                       ty_to_str(ccx.tcx, in_type),
-                                       in_type_size,
-                                       pluralize(in_type_size),
-                                       ty_to_str(ccx.tcx, out_type),
-                                       out_type_size,
-                                       pluralize(out_type_size)));
+                ccx.sess.span_fatal(sp,
+                                    fmt!("transmute called on types with \
+                                          different sizes: %s (%u bit%s) to \
+                                          %s (%u bit%s)",
+                                         ty_to_str(ccx.tcx, in_type),
+                                         in_type_size,
+                                         pluralize(in_type_size),
+                                         ty_to_str(ccx.tcx, out_type),
+                                         out_type_size,
+                                         pluralize(out_type_size)));
             }
 
             if !ty::type_is_nil(out_type) {

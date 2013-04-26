@@ -365,7 +365,9 @@ impl gen_init for protocol {
                     |s| ext_cx.parse_stmt(
                         fmt!("data.%s.set_buffer(buffer)",
                              s.name))),
-                ext_cx.parse_expr(fmt!("&(data.%s)", self.states[0].name))));
+                ext_cx.parse_expr(fmt!(
+                    "::core::ptr::to_unsafe_ptr(&(data.%s))",
+                    self.states[0].name))));
 
         quote_expr!({
             let buffer = $buffer;

@@ -68,5 +68,4 @@ pub fn main() {
   for uint::range(1u, 10u) |_i| {
     make_speak(copy nyan);
   }
-  assert!((nyan.eat()));
 }

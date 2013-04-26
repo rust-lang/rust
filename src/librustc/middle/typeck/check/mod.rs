@@ -3467,11 +3467,11 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
          ~[
             arg(ty::mk_mut_rptr(tcx,
                                 ty::re_bound(ty::br_anon(0)),
-                                ty::mk_int(tcx))),
+                                ty::mk_int())),
                arg(ty::mk_int()),
                arg(ty::mk_int())
          ],
-         ty::mk_int(tcx))
+         ty::mk_int())
       }
       ~"atomic_xchg"     | ~"atomic_xadd"     | ~"atomic_xsub"     |
       ~"atomic_xchg_acq" | ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
@@ -3480,7 +3480,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
          ~[
             arg(ty::mk_mut_rptr(tcx,
                                 ty::re_bound(ty::br_anon(0)),
-                                ty::mk_int(tcx))),
+                                ty::mk_int())),
             arg(ty::mk_int())
          ],
          ty::mk_int())
@@ -3550,7 +3550,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
            })),
            arg(ty::mk_u64())
          ],
-         ty::mk_nil(tcx))
+         ty::mk_nil())
       }
         ~"sqrtf32" => (0, ~[ arg(ty::mk_f32()) ], ty::mk_f32()),
         ~"sqrtf64" => (0, ~[ arg(ty::mk_f64()) ], ty::mk_f64()),
