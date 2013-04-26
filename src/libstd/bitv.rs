@@ -1425,7 +1425,7 @@ mod tests {
         assert!(a.capacity() == uint::bits);
     }
 
-    fn rng() -> rand::IsaacRng {
+    fn rng() -> rand::RandRes {
         let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
         rand::IsaacRng::new_seeded(seed)
     }
