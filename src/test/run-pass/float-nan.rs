@@ -10,82 +10,86 @@
 
 extern mod std;
 
+use core::num::Float::{
+  NaN, infinity, neg_infinity
+};
+
 pub fn main() {
-  let nan = float::NaN;
-  assert!((float::is_NaN(nan)));
+  let nan = NaN::<float>();
+  assert!((nan).is_NaN());
 
-  let inf = float::infinity;
-  assert!((-inf == float::neg_infinity));
+  let inf = infinity::<float>();
+  assert!(-inf == neg_infinity::<float>());
 
-  assert!(( nan !=  nan));
-  assert!(( nan != -nan));
-  assert!((-nan != -nan));
-  assert!((-nan !=  nan));
+  assert!( nan !=  nan);
+  assert!( nan != -nan);
+  assert!(-nan != -nan);
+  assert!(-nan !=  nan);
 
-  assert!(( nan !=   1.));
-  assert!(( nan !=   0.));
-  assert!(( nan !=  inf));
-  assert!(( nan != -inf));
+  assert!( nan !=   1.);
+  assert!( nan !=   0.);
+  assert!( nan !=  inf);
+  assert!( nan != -inf);
 
-  assert!((  1. !=  nan));
-  assert!((  0. !=  nan));
-  assert!(( inf !=  nan));
-  assert!((-inf !=  nan));
+  assert!(  1. !=  nan);
+  assert!(  0. !=  nan);
+  assert!( inf !=  nan);
+  assert!(-inf !=  nan);
 
-  assert!((!( nan ==  nan)));
-  assert!((!( nan == -nan)));
-  assert!((!( nan ==   1.)));
-  assert!((!( nan ==   0.)));
-  assert!((!( nan ==  inf)));
-  assert!((!( nan == -inf)));
-  assert!((!(  1. ==  nan)));
-  assert!((!(  0. ==  nan)));
-  assert!((!( inf ==  nan)));
-  assert!((!(-inf ==  nan)));
-  assert!((!(-nan ==  nan)));
-  assert!((!(-nan == -nan)));
+  assert!(!( nan ==  nan));
+  assert!(!( nan == -nan));
+  assert!(!( nan ==   1.));
+  assert!(!( nan ==   0.));
+  assert!(!( nan ==  inf));
+  assert!(!( nan == -inf));
+  assert!(!(  1. ==  nan));
+  assert!(!(  0. ==  nan));
+  assert!(!( inf ==  nan));
+  assert!(!(-inf ==  nan));
+  assert!(!(-nan ==  nan));
+  assert!(!(-nan == -nan));
 
-  assert!((!( nan >  nan)));
-  assert!((!( nan > -nan)));
-  assert!((!( nan >   0.)));
-  assert!((!( nan >  inf)));
-  assert!((!( nan > -inf)));
-  assert!((!(  0. >  nan)));
-  assert!((!( inf >  nan)));
-  assert!((!(-inf >  nan)));
-  assert!((!(-nan >  nan)));
+  assert!(!( nan >  nan));
+  assert!(!( nan > -nan));
+  assert!(!( nan >   0.));
+  assert!(!( nan >  inf));
+  assert!(!( nan > -inf));
+  assert!(!(  0. >  nan));
+  assert!(!( inf >  nan));
+  assert!(!(-inf >  nan));
+  assert!(!(-nan >  nan));
 
-  assert!((!(nan <   0.)));
-  assert!((!(nan <   1.)));
-  assert!((!(nan <  -1.)));
-  assert!((!(nan <  inf)));
-  assert!((!(nan < -inf)));
-  assert!((!(nan <  nan)));
-  assert!((!(nan < -nan)));
+  assert!(!(nan <   0.));
+  assert!(!(nan <   1.));
+  assert!(!(nan <  -1.));
+  assert!(!(nan <  inf));
+  assert!(!(nan < -inf));
+  assert!(!(nan <  nan));
+  assert!(!(nan < -nan));
 
-  assert!((!(  0. < nan)));
-  assert!((!(  1. < nan)));
-  assert!((!( -1. < nan)));
-  assert!((!( inf < nan)));
-  assert!((!(-inf < nan)));
-  assert!((!(-nan < nan)));
+  assert!(!(  0. < nan));
+  assert!(!(  1. < nan));
+  assert!(!( -1. < nan));
+  assert!(!( inf < nan));
+  assert!(!(-inf < nan));
+  assert!(!(-nan < nan));
 
-  assert!((float::is_NaN(nan + inf)));
-  assert!((float::is_NaN(nan + -inf)));
-  assert!((float::is_NaN(nan + 0.)));
-  assert!((float::is_NaN(nan + 1.)));
-  assert!((float::is_NaN(nan * 1.)));
-  assert!((float::is_NaN(nan / 1.)));
-  assert!((float::is_NaN(nan / 0.)));
-  assert!((float::is_NaN(0. / 0.)));
-  assert!((float::is_NaN(-inf + inf)));
-  assert!((float::is_NaN(inf - inf)));
+  assert!((nan + inf).is_NaN());
+  assert!((nan + -inf).is_NaN());
+  assert!((nan + 0.).is_NaN());
+  assert!((nan + 1.).is_NaN());
+  assert!((nan * 1.).is_NaN());
+  assert!((nan / 1.).is_NaN());
+  assert!((nan / 0.).is_NaN());
+  assert!((0f/0f).is_NaN());
+  assert!((-inf + inf).is_NaN());
+  assert!((inf - inf).is_NaN());
 
-  assert!((!float::is_NaN(-1.)));
-  assert!((!float::is_NaN(0.)));
-  assert!((!float::is_NaN(0.1)));
-  assert!((!float::is_NaN(1.)));
-  assert!((!float::is_NaN(inf)));
-  assert!((!float::is_NaN(-inf)));
-  assert!((!float::is_NaN(1./-inf)));
+  assert!(!(-1f).is_NaN());
+  assert!(!(0f).is_NaN());
+  assert!(!(0.1f).is_NaN());
+  assert!(!(1f).is_NaN());
+  assert!(!(inf).is_NaN());
+  assert!(!(-inf).is_NaN());
+  assert!(!(1./-inf).is_NaN());
 }
