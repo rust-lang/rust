@@ -646,13 +646,18 @@ mod tests {
     }
 
     #[test]
-    fn test_bitwise_ops() {
+    fn test_bitwise() {
         assert_eq!(0b1110 as T, (0b1100 as T).bitor(&(0b1010 as T)));
         assert_eq!(0b1000 as T, (0b1100 as T).bitand(&(0b1010 as T)));
         assert_eq!(0b0110 as T, (0b1100 as T).bitxor(&(0b1010 as T)));
         assert_eq!(0b1110 as T, (0b0111 as T).shl(&(1 as T)));
         assert_eq!(0b0111 as T, (0b1110 as T).shr(&(1 as T)));
         assert_eq!(-(0b11 as T) - (1 as T), (0b11 as T).not());
+    }
+
+    #[test]
+    fn test_bitcount() {
+        assert_eq!((0b010101 as T).population_count(), 3);
     }
 
     #[test]

@@ -11,7 +11,8 @@
 //! Operations and constants for `u8`
 
 mod inst {
-    use num::Primitive;
+    use num::{Primitive, BitCount};
+    use unstable::intrinsics;
 
     pub type T = u8;
     #[allow(non_camel_case_types)]
@@ -24,5 +25,19 @@ mod inst {
 
         #[inline(always)]
         fn bytes() -> uint { Primitive::bits::<u8>() / 8 }
+    }
+
+    impl BitCount for u8 {
+        /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
+        #[inline(always)]
+        fn population_count(&self) -> u8 { unsafe { intrinsics::ctpop8(*self as i8) as u8 } }
+
+        /// Counts the number of leading zeros. Wraps LLVM's `ctlz` intrinsic.
+        #[inline(always)]
+        fn leading_zeros(&self) -> u8 { unsafe { intrinsics::ctlz8(*self as i8) as u8 } }
+
+        /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
+        #[inline(always)]
+        fn trailing_zeros(&self) -> u8 { unsafe { intrinsics::cttz8(*self as i8) as u8 } }
     }
 }
