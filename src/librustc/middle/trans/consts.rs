@@ -25,7 +25,7 @@ use middle::trans::inline;
 use middle::trans::machine;
 use middle::trans::type_of;
 use middle::ty;
-use util::ppaux::{expr_repr, ty_to_str};
+use util::ppaux::{Repr, ty_to_str};
 
 use core::libc::c_uint;
 use syntax::{ast, ast_util, ast_map};
@@ -237,7 +237,7 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
             llvm::LLVMDumpValue(C_undef(llty));
         }
         cx.sess.bug(fmt!("const %s of type %s has size %u instead of %u",
-                         expr_repr(cx.tcx, e), ty_to_str(cx.tcx, ety),
+                         e.repr(cx.tcx), ty_to_str(cx.tcx, ety),
                          csize, tsize));
     }
     llconst
@@ -272,7 +272,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                 if is_float { llvm::LLVMConstFMul(te1, te2) }
                 else        { llvm::LLVMConstMul(te1, te2) }
               }
-              ast::div    => {
+              ast::quot   => {
                 if is_float    { llvm::LLVMConstFDiv(te1, te2) }
                 else if signed { llvm::LLVMConstSDiv(te1, te2) }
                 else           { llvm::LLVMConstUDiv(te1, te2) }

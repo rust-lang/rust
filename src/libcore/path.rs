@@ -19,6 +19,7 @@ use libc;
 use option::{None, Option, Some};
 use str;
 use to_str::ToStr;
+use ascii::{AsciiCast, AsciiStr};
 
 #[deriving(Clone, Eq)]
 pub struct WindowsPath {
@@ -67,6 +68,8 @@ pub trait GenericPath {
     fn is_restricted(&self) -> bool;
 
     fn normalize(&self) -> Self;
+
+    fn is_absolute(&self) -> bool;
 }
 
 #[cfg(windows)]
@@ -379,23 +382,22 @@ impl ToStr for PosixPath {
 // FIXME (#3227): when default methods in traits are working, de-duplicate
 // PosixPath and WindowsPath, most of their methods are common.
 impl GenericPath for PosixPath {
-
     fn from_str(s: &str) -> PosixPath {
         let mut components = ~[];
-        for str::each_split_nonempty(s, |c| c == '/') |s| { components.push(s.to_owned()) }
+        for str::each_split_nonempty(s, |c| c == '/') |s| {
+            components.push(s.to_owned())
+        }
         let is_absolute = (s.len() != 0 && s[0] == '/' as u8);
         return PosixPath { is_absolute: is_absolute,
                            components: components }
     }
 
     fn dirname(&self) -> ~str {
-        unsafe {
-            let s = self.dir_path().to_str();
-            if s.len() == 0 {
-                ~"."
-            } else {
-                s
-            }
+        let s = self.dir_path().to_str();
+        if s.len() == 0 {
+            ~"."
+        } else {
+            s
         }
     }
 
@@ -439,10 +441,8 @@ impl GenericPath for PosixPath {
     }
 
     fn with_filename(&self, f: &str) -> PosixPath {
-        unsafe {
-            assert!(! str::any(f, |c| windows::is_sep(c as u8)));
-            self.dir_path().push(f)
-        }
+        assert!(! str::any(f, |c| windows::is_sep(c as u8)));
+        self.dir_path().push(f)
     }
 
     fn with_filestem(&self, s: &str) -> PosixPath {
@@ -509,7 +509,7 @@ impl GenericPath for PosixPath {
             for str::each_split_nonempty(*e, |c| windows::is_sep(c as u8)) |s| {
                 ss.push(s.to_owned())
             }
-            unsafe { v.push_all_move(ss); }
+            v.push_all_move(ss);
         }
         PosixPath { is_absolute: self.is_absolute,
                     components: v }
@@ -521,14 +521,14 @@ impl GenericPath for PosixPath {
         for str::each_split_nonempty(s, |c| windows::is_sep(c as u8)) |s| {
             ss.push(s.to_owned())
         }
-        unsafe { v.push_all_move(ss); }
+        v.push_all_move(ss);
         PosixPath { components: v, ..copy *self }
     }
 
     fn pop(&self) -> PosixPath {
         let mut cs = copy self.components;
         if cs.len() != 0 {
-            unsafe { cs.pop(); }
+            cs.pop();
         }
         return PosixPath {
             is_absolute: self.is_absolute,
@@ -543,6 +543,10 @@ impl GenericPath for PosixPath {
             components: normalize(self.components)
           //  ..self
         }
+    }
+
+    fn is_absolute(&self) -> bool {
+        self.is_absolute
     }
 }
 
@@ -567,7 +571,6 @@ impl ToStr for WindowsPath {
 
 
 impl GenericPath for WindowsPath {
-
     fn from_str(s: &str) -> WindowsPath {
         let host;
         let device;
@@ -607,13 +610,11 @@ impl GenericPath for WindowsPath {
     }
 
     fn dirname(&self) -> ~str {
-        unsafe {
-            let s = self.dir_path().to_str();
-            if s.len() == 0 {
-                ~"."
-            } else {
-                s
-            }
+        let s = self.dir_path().to_str();
+        if s.len() == 0 {
+            ~"."
+        } else {
+            s
         }
     }
 
@@ -753,7 +754,9 @@ impl GenericPath for WindowsPath {
     fn is_restricted(&self) -> bool {
         match self.filestem() {
             Some(stem) => {
-                match stem.to_lower() {
+                // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
+                // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+                match stem.to_ascii().to_lower().to_str_ascii() {
                     ~"con" | ~"aux" | ~"com1" | ~"com2" | ~"com3" | ~"com4" |
                     ~"lpt1" | ~"lpt2" | ~"lpt3" | ~"prn" | ~"nul" => true,
                     _ => false
@@ -770,7 +773,7 @@ impl GenericPath for WindowsPath {
             for str::each_split_nonempty(*e, |c| windows::is_sep(c as u8)) |s| {
                 ss.push(s.to_owned())
             }
-            unsafe { v.push_all_move(ss); }
+            v.push_all_move(ss);
         }
         // tedious, but as-is, we can't use ..self
         return WindowsPath {
@@ -787,14 +790,14 @@ impl GenericPath for WindowsPath {
         for str::each_split_nonempty(s, |c| windows::is_sep(c as u8)) |s| {
             ss.push(s.to_owned())
         }
-        unsafe { v.push_all_move(ss); }
+        v.push_all_move(ss);
         return WindowsPath { components: v, ..copy *self }
     }
 
     fn pop(&self) -> WindowsPath {
         let mut cs = copy self.components;
         if cs.len() != 0 {
-            unsafe { cs.pop(); }
+            cs.pop();
         }
         return WindowsPath {
             host: copy self.host,
@@ -809,29 +812,32 @@ impl GenericPath for WindowsPath {
             host: copy self.host,
             device: match self.device {
                 None => None,
-                Some(ref device) => Some(device.to_upper())
+
+                // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
+                // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+                Some(ref device) => Some(device.to_ascii().to_upper().to_str_ascii())
             },
             is_absolute: self.is_absolute,
             components: normalize(self.components)
         }
+    }
+
+    fn is_absolute(&self) -> bool {
+        self.is_absolute
     }
 }
 
 
 pub fn normalize(components: &[~str]) -> ~[~str] {
     let mut cs = ~[];
-    unsafe {
-        for components.each |c| {
-            unsafe {
-                if *c == ~"." && components.len() > 1 { loop; }
-                if *c == ~"" { loop; }
-                if *c == ~".." && cs.len() != 0 {
-                    cs.pop();
-                    loop;
-                }
-                cs.push(copy *c);
-            }
+    for components.each |c| {
+        if *c == ~"." && components.len() > 1 { loop; }
+        if *c == ~"" { loop; }
+        if *c == ~".." && cs.len() != 0 {
+            cs.pop();
+            loop;
         }
+        cs.push(copy *c);
     }
     cs
 }
@@ -854,7 +860,7 @@ pub mod windows {
             while i < s.len() {
                 if is_sep(s[i]) {
                     let pre = s.slice(2, i).to_owned();
-                    let mut rest = s.slice(i, s.len()).to_owned();
+                    let rest = s.slice(i, s.len()).to_owned();
                     return Some((pre, rest));
                 }
                 i += 1;

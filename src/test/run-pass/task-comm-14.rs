@@ -11,7 +11,7 @@
 // xfail-fast
 
 pub fn main() {
-    let po = comm::PortSet();
+    let po = comm::PortSet::new();
 
     // Spawn 10 tasks each sending us back one int.
     let mut i = 10;

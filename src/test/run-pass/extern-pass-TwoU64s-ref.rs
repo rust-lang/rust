@@ -10,8 +10,6 @@
 
 // Test that we ignore modes when calling extern functions.
 
-// xfail-test --- broken on 32-bit ABIs! (#5347)
-
 #[deriving(Eq)]
 struct TwoU64s {
     one: u64, two: u64

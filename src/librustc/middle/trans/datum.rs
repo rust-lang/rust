@@ -31,7 +31,7 @@
  * value stored in the datum is indicated in the field `ty`.
  *
  * Generally speaking, you probably do not want to access the `val` field
- * unless you know what mode the value is in.  Intead you should use one
+ * unless you know what mode the value is in.  Instead you should use one
  * of the following accessors:
  *
  * - `to_value_llval()` converts to by-value
@@ -159,7 +159,7 @@ pub impl DatumMode {
 }
 
 impl to_bytes::IterBytes for DatumMode {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f)
     }
 }
@@ -811,7 +811,7 @@ pub impl Datum {
 }
 
 pub impl DatumBlock {
-    fn unpack(&self, +bcx: &mut block) -> Datum {
+    fn unpack(&self, bcx: &mut block) -> Datum {
         *bcx = self.bcx;
         return self.datum;
     }

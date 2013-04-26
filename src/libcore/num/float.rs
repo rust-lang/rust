@@ -20,26 +20,18 @@
 
 // PORT this must match in width according to architecture
 
-use f64;
-use num::NumCast;
-use num::strconv;
-use num;
-use option::Option;
-use to_str;
 use from_str;
+use libc::c_int;
+use num::strconv;
+use prelude::*;
 
-#[cfg(notest)] use cmp::{Eq, Ord};
-#[cfg(notest)] use ops;
-#[cfg(test)] use option::{Some, None};
-
-pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
+pub use f64::{add, sub, mul, quot, rem, lt, le, eq, ne, ge, gt};
 pub use f64::logarithm;
 pub use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
 pub use f64::{erf, erfc, exp, expm1, exp2, abs_sub};
 pub use f64::{mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp};
 pub use f64::{lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix};
-pub use f64::{modf, pow, round, sinh, tanh, tgamma, trunc};
-pub use f64::signbit;
+pub use f64::{modf, pow, powi, round, sinh, tanh, tgamma, trunc};
 pub use f64::{j0, j1, jn, y0, y1, yn};
 
 pub static NaN: float = 0.0/0.0;
@@ -143,7 +135,7 @@ pub fn to_str_radix(num: float, radix: uint) -> ~str {
     let (r, special) = strconv::to_str_common(
         &num, radix, true, strconv::SignNeg, strconv::DigAll);
     if special { fail!(~"number has a special value, \
-                      try to_str_radix_special() if those are expected") }
+                         try to_str_radix_special() if those are expected") }
     r
 }
 
@@ -176,12 +168,6 @@ pub fn to_str_exact(num: float, digits: uint) -> ~str {
     let (r, _) = strconv::to_str_common(
         &num, 10u, true, strconv::SignNeg, strconv::DigExact(digits));
     r
-}
-
-#[test]
-pub fn test_to_str_exact_do_decimal() {
-    let s = to_str_exact(5.0, 4u);
-    assert!(s == ~"5.0000");
 }
 
 /**
@@ -242,7 +228,7 @@ impl num::ToStrRadix for float {
 #[inline(always)]
 pub fn from_str(num: &str) -> Option<float> {
     strconv::from_str_common(num, 10u, true, true, true,
-                             strconv::ExpDec, false)
+                             strconv::ExpDec, false, false)
 }
 
 /**
@@ -275,7 +261,7 @@ pub fn from_str(num: &str) -> Option<float> {
 #[inline(always)]
 pub fn from_str_hex(num: &str) -> Option<float> {
     strconv::from_str_common(num, 16u, true, true, true,
-                             strconv::ExpBin, false)
+                             strconv::ExpBin, false, false)
 }
 
 /**
@@ -300,7 +286,7 @@ pub fn from_str_hex(num: &str) -> Option<float> {
 #[inline(always)]
 pub fn from_str_radix(num: &str, radix: uint) -> Option<float> {
     strconv::from_str_common(num, radix, true, true, false,
-                             strconv::ExpNone, false)
+                             strconv::ExpNone, false, false)
 }
 
 impl from_str::FromStr for float {
@@ -352,14 +338,6 @@ pub fn pow_with_uint(base: uint, pow: uint) -> float {
 }
 
 #[inline(always)]
-pub fn is_positive(x: float) -> bool { f64::is_positive(x as f64) }
-#[inline(always)]
-pub fn is_negative(x: float) -> bool { f64::is_negative(x as f64) }
-#[inline(always)]
-pub fn is_nonpositive(x: float) -> bool { f64::is_nonpositive(x as f64) }
-#[inline(always)]
-pub fn is_nonnegative(x: float) -> bool { f64::is_nonnegative(x as f64) }
-#[inline(always)]
 pub fn is_zero(x: float) -> bool { f64::is_zero(x as f64) }
 #[inline(always)]
 pub fn is_infinite(x: float) -> bool { f64::is_infinite(x as f64) }
@@ -370,40 +348,48 @@ pub fn is_NaN(x: float) -> bool { f64::is_NaN(x as f64) }
 
 #[inline(always)]
 pub fn abs(x: float) -> float {
-    unsafe { f64::abs(x as f64) as float }
+    f64::abs(x as f64) as float
 }
 #[inline(always)]
 pub fn sqrt(x: float) -> float {
-    unsafe { f64::sqrt(x as f64) as float }
+    f64::sqrt(x as f64) as float
 }
 #[inline(always)]
 pub fn atan(x: float) -> float {
-    unsafe { f64::atan(x as f64) as float }
+    f64::atan(x as f64) as float
 }
 #[inline(always)]
 pub fn sin(x: float) -> float {
-    unsafe { f64::sin(x as f64) as float }
+    f64::sin(x as f64) as float
 }
 #[inline(always)]
 pub fn cos(x: float) -> float {
-    unsafe { f64::cos(x as f64) as float }
+    f64::cos(x as f64) as float
 }
 #[inline(always)]
 pub fn tan(x: float) -> float {
-    unsafe { f64::tan(x as f64) as float }
+    f64::tan(x as f64) as float
 }
+
+impl Num for float {}
 
 #[cfg(notest)]
 impl Eq for float {
+    #[inline(always)]
     fn eq(&self, other: &float) -> bool { (*self) == (*other) }
+    #[inline(always)]
     fn ne(&self, other: &float) -> bool { (*self) != (*other) }
 }
 
 #[cfg(notest)]
 impl Ord for float {
+    #[inline(always)]
     fn lt(&self, other: &float) -> bool { (*self) < (*other) }
+    #[inline(always)]
     fn le(&self, other: &float) -> bool { (*self) <= (*other) }
+    #[inline(always)]
     fn ge(&self, other: &float) -> bool { (*self) >= (*other) }
+    #[inline(always)]
     fn gt(&self, other: &float) -> bool { (*self) > (*other) }
 }
 
@@ -417,334 +403,579 @@ impl num::One for float {
     fn one() -> float { 1.0 }
 }
 
-impl NumCast for float {
-    /**
-     * Cast `n` to a `float`
-     */
+impl Round for float {
+    /// Round half-way cases toward `neg_infinity`
     #[inline(always)]
-    fn from<N:NumCast>(n: N) -> float { n.to_float() }
+    fn floor(&self) -> float { floor(*self as f64) as float }
 
-    #[inline(always)] fn to_u8(&self)    -> u8    { *self as u8    }
-    #[inline(always)] fn to_u16(&self)   -> u16   { *self as u16   }
-    #[inline(always)] fn to_u32(&self)   -> u32   { *self as u32   }
-    #[inline(always)] fn to_u64(&self)   -> u64   { *self as u64   }
-    #[inline(always)] fn to_uint(&self)  -> uint  { *self as uint  }
+    /// Round half-way cases toward `infinity`
+    #[inline(always)]
+    fn ceil(&self) -> float { ceil(*self as f64) as float }
 
-    #[inline(always)] fn to_i8(&self)    -> i8    { *self as i8    }
-    #[inline(always)] fn to_i16(&self)   -> i16   { *self as i16   }
-    #[inline(always)] fn to_i32(&self)   -> i32   { *self as i32   }
-    #[inline(always)] fn to_i64(&self)   -> i64   { *self as i64   }
-    #[inline(always)] fn to_int(&self)   -> int   { *self as int   }
+    /// Round half-way cases away from `0.0`
+    #[inline(always)]
+    fn round(&self) -> float { round(*self as f64) as float }
 
-    #[inline(always)] fn to_f32(&self)   -> f32   { *self as f32   }
-    #[inline(always)] fn to_f64(&self)   -> f64   { *self as f64   }
-    #[inline(always)] fn to_float(&self) -> float { *self          }
+    /// The integer part of the number (rounds towards `0.0`)
+    #[inline(always)]
+    fn trunc(&self) -> float { trunc(*self as f64) as float }
+
+    ///
+    /// The fractional part of the number, satisfying:
+    ///
+    /// ~~~
+    /// assert!(x == trunc(x) + fract(x))
+    /// ~~~
+    ///
+    #[inline(always)]
+    fn fract(&self) -> float { *self - self.trunc() }
 }
 
-impl num::Round for float {
+impl Fractional for float {
+    /// The reciprocal (multiplicative inverse) of the number
     #[inline(always)]
-    fn round(&self, mode: num::RoundMode) -> float {
-        match mode {
-            num::RoundDown
-                => f64::floor(*self as f64) as float,
-            num::RoundUp
-                => f64::ceil(*self as f64) as float,
-            num::RoundToZero   if is_negative(*self)
-                => f64::ceil(*self as f64) as float,
-            num::RoundToZero
-                => f64::floor(*self as f64) as float,
-            num::RoundFromZero if is_negative(*self)
-                => f64::floor(*self as f64) as float,
-            num::RoundFromZero
-                => f64::ceil(*self as f64) as float
-        }
+    fn recip(&self) -> float { 1.0 / *self }
+}
+
+impl Real for float {
+    /// Archimedes' constant
+    #[inline(always)]
+    fn pi() -> float { 3.14159265358979323846264338327950288 }
+
+    /// 2.0 * pi
+    #[inline(always)]
+    fn two_pi() -> float { 6.28318530717958647692528676655900576 }
+
+    /// pi / 2.0
+    #[inline(always)]
+    fn frac_pi_2() -> float { 1.57079632679489661923132169163975144 }
+
+    /// pi / 3.0
+    #[inline(always)]
+    fn frac_pi_3() -> float { 1.04719755119659774615421446109316763 }
+
+    /// pi / 4.0
+    #[inline(always)]
+    fn frac_pi_4() -> float { 0.785398163397448309615660845819875721 }
+
+    /// pi / 6.0
+    #[inline(always)]
+    fn frac_pi_6() -> float { 0.52359877559829887307710723054658381 }
+
+    /// pi / 8.0
+    #[inline(always)]
+    fn frac_pi_8() -> float { 0.39269908169872415480783042290993786 }
+
+    /// 1.0 / pi
+    #[inline(always)]
+    fn frac_1_pi() -> float { 0.318309886183790671537767526745028724 }
+
+    /// 2.0 / pi
+    #[inline(always)]
+    fn frac_2_pi() -> float { 0.636619772367581343075535053490057448 }
+
+    /// 2 .0/ sqrt(pi)
+    #[inline(always)]
+    fn frac_2_sqrtpi() -> float { 1.12837916709551257389615890312154517 }
+
+    /// sqrt(2.0)
+    #[inline(always)]
+    fn sqrt2() -> float { 1.41421356237309504880168872420969808 }
+
+    /// 1.0 / sqrt(2.0)
+    #[inline(always)]
+    fn frac_1_sqrt2() -> float { 0.707106781186547524400844362104849039 }
+
+    /// Euler's number
+    #[inline(always)]
+    fn e() -> float { 2.71828182845904523536028747135266250 }
+
+    /// log2(e)
+    #[inline(always)]
+    fn log2_e() -> float { 1.44269504088896340735992468100189214 }
+
+    /// log10(e)
+    #[inline(always)]
+    fn log10_e() -> float { 0.434294481903251827651128918916605082 }
+
+    /// log(2.0)
+    #[inline(always)]
+    fn log_2() -> float { 0.693147180559945309417232121458176568 }
+
+    /// log(10.0)
+    #[inline(always)]
+    fn log_10() -> float { 2.30258509299404568401799145468436421 }
+
+    #[inline(always)]
+    fn pow(&self, n: float) -> float { pow(*self as f64, n as f64) as float }
+
+    #[inline(always)]
+    fn exp(&self) -> float { exp(*self as f64) as float }
+
+    #[inline(always)]
+    fn exp2(&self) -> float { exp2(*self as f64) as float }
+
+    #[inline(always)]
+    fn expm1(&self) -> float { expm1(*self as f64) as float }
+
+    #[inline(always)]
+    fn ldexp(&self, n: int) -> float { ldexp(*self as f64, n as c_int) as float }
+
+    #[inline(always)]
+    fn log(&self) -> float { ln(*self as f64) as float }
+
+    #[inline(always)]
+    fn log2(&self) -> float { log2(*self as f64) as float }
+
+    #[inline(always)]
+    fn log10(&self) -> float { log10(*self as f64) as float }
+
+    #[inline(always)]
+    fn log_radix(&self) -> float { log_radix(*self as f64) as float }
+
+    #[inline(always)]
+    fn ilog_radix(&self) -> int { ilog_radix(*self as f64) as int }
+
+    #[inline(always)]
+    fn sqrt(&self) -> float { sqrt(*self) }
+
+    #[inline(always)]
+    fn rsqrt(&self) -> float { self.sqrt().recip() }
+
+    #[inline(always)]
+    fn cbrt(&self) -> float { cbrt(*self as f64) as float }
+
+    /// Converts to degrees, assuming the number is in radians
+    #[inline(always)]
+    fn to_degrees(&self) -> float { *self * (180.0 / Real::pi::<float>()) }
+
+    /// Converts to radians, assuming the number is in degrees
+    #[inline(always)]
+    fn to_radians(&self) -> float { *self * (Real::pi::<float>() / 180.0) }
+
+    #[inline(always)]
+    fn hypot(&self, other: float) -> float { hypot(*self as f64, other as f64) as float }
+
+    #[inline(always)]
+    fn sin(&self) -> float { sin(*self) }
+
+    #[inline(always)]
+    fn cos(&self) -> float { cos(*self) }
+
+    #[inline(always)]
+    fn tan(&self) -> float { tan(*self) }
+
+    #[inline(always)]
+    fn asin(&self) -> float { asin(*self as f64) as float }
+
+    #[inline(always)]
+    fn acos(&self) -> float { acos(*self as f64) as float }
+
+    #[inline(always)]
+    fn atan(&self) -> float { atan(*self) }
+
+    #[inline(always)]
+    fn atan2(&self, other: float) -> float { atan2(*self as f64, other as f64) as float }
+
+    #[inline(always)]
+    fn sinh(&self) -> float { sinh(*self as f64) as float }
+
+    #[inline(always)]
+    fn cosh(&self) -> float { cosh(*self as f64) as float }
+
+    #[inline(always)]
+    fn tanh(&self) -> float { tanh(*self as f64) as float }
+}
+
+impl RealExt for float {
+    #[inline(always)]
+    fn lgamma(&self) -> (int, float) {
+        let mut sign = 0;
+        let result = lgamma(*self as f64, &mut sign);
+        (sign as int, result as float)
     }
 
     #[inline(always)]
-    fn floor(&self) -> float { f64::floor(*self as f64) as float}
+    fn tgamma(&self) -> float { tgamma(*self as f64) as float }
+
     #[inline(always)]
-    fn ceil(&self) -> float { f64::ceil(*self as f64) as float}
+    fn j0(&self) -> float { j0(*self as f64) as float }
+
     #[inline(always)]
-    fn fract(&self) -> float {
-        if is_negative(*self) {
-            (*self) - (f64::ceil(*self as f64) as float)
-        } else {
-            (*self) - (f64::floor(*self as f64) as float)
-        }
-    }
+    fn j1(&self) -> float { j1(*self as f64) as float }
+
+    #[inline(always)]
+    fn jn(&self, n: int) -> float { jn(n as c_int, *self as f64) as float }
+
+    #[inline(always)]
+    fn y0(&self) -> float { y0(*self as f64) as float }
+
+    #[inline(always)]
+    fn y1(&self) -> float { y1(*self as f64) as float }
+
+    #[inline(always)]
+    fn yn(&self, n: int) -> float { yn(n as c_int, *self as f64) as float }
 }
 
 #[cfg(notest)]
-impl ops::Add<float,float> for float {
+impl Add<float,float> for float {
+    #[inline(always)]
     fn add(&self, other: &float) -> float { *self + *other }
 }
+
 #[cfg(notest)]
-impl ops::Sub<float,float> for float {
+impl Sub<float,float> for float {
+    #[inline(always)]
     fn sub(&self, other: &float) -> float { *self - *other }
 }
+
 #[cfg(notest)]
-impl ops::Mul<float,float> for float {
+impl Mul<float,float> for float {
+    #[inline(always)]
     fn mul(&self, other: &float) -> float { *self * *other }
 }
-#[cfg(notest)]
-impl ops::Div<float,float> for float {
+
+#[cfg(stage0,notest)]
+impl Div<float,float> for float {
+    #[inline(always)]
     fn div(&self, other: &float) -> float { *self / *other }
 }
-#[cfg(notest)]
-impl ops::Modulo<float,float> for float {
+#[cfg(not(stage0),notest)]
+impl Quot<float,float> for float {
+    #[inline(always)]
+    fn quot(&self, other: &float) -> float { *self / *other }
+}
+#[cfg(stage0,notest)]
+impl Modulo<float,float> for float {
+    #[inline(always)]
     fn modulo(&self, other: &float) -> float { *self % *other }
 }
+#[cfg(not(stage0),notest)]
+impl Rem<float,float> for float {
+    #[inline(always)]
+    fn rem(&self, other: &float) -> float { *self % *other }
+}
 #[cfg(notest)]
-impl ops::Neg<float> for float {
+impl Neg<float> for float {
+    #[inline(always)]
     fn neg(&self) -> float { -*self }
 }
 
-#[test]
-pub fn test_from_str() {
-   assert!(from_str(~"3") == Some(3.));
-   assert!(from_str(~"3.14") == Some(3.14));
-   assert!(from_str(~"+3.14") == Some(3.14));
-   assert!(from_str(~"-3.14") == Some(-3.14));
-   assert!(from_str(~"2.5E10") == Some(25000000000.));
-   assert!(from_str(~"2.5e10") == Some(25000000000.));
-   assert!(from_str(~"25000000000.E-10") == Some(2.5));
-   assert!(from_str(~".") == Some(0.));
-   assert!(from_str(~".e1") == Some(0.));
-   assert!(from_str(~".e-1") == Some(0.));
-   assert!(from_str(~"5.") == Some(5.));
-   assert!(from_str(~".5") == Some(0.5));
-   assert!(from_str(~"0.5") == Some(0.5));
-   assert!(from_str(~"-.5") == Some(-0.5));
-   assert!(from_str(~"-5") == Some(-5.));
-   assert!(from_str(~"inf") == Some(infinity));
-   assert!(from_str(~"+inf") == Some(infinity));
-   assert!(from_str(~"-inf") == Some(neg_infinity));
-   // note: NaN != NaN, hence this slightly complex test
-   match from_str(~"NaN") {
-       Some(f) => assert!(is_NaN(f)),
-       None => fail!()
-   }
-   // note: -0 == 0, hence these slightly more complex tests
-   match from_str(~"-0") {
-       Some(v) if is_zero(v) => assert!(is_negative(v)),
-       _ => fail!()
-   }
-   match from_str(~"0") {
-       Some(v) if is_zero(v) => assert!(is_positive(v)),
-       _ => fail!()
-   }
+impl Signed for float {
+    /// Computes the absolute value. Returns `NaN` if the number is `NaN`.
+    #[inline(always)]
+    fn abs(&self) -> float { abs(*self) }
 
-   assert!(from_str(~"").is_none());
-   assert!(from_str(~"x").is_none());
-   assert!(from_str(~" ").is_none());
-   assert!(from_str(~"   ").is_none());
-   assert!(from_str(~"e").is_none());
-   assert!(from_str(~"E").is_none());
-   assert!(from_str(~"E1").is_none());
-   assert!(from_str(~"1e1e1").is_none());
-   assert!(from_str(~"1e1.1").is_none());
-   assert!(from_str(~"1e1-1").is_none());
+    /**
+     * # Returns
+     *
+     * - `1.0` if the number is positive, `+0.0` or `infinity`
+     * - `-1.0` if the number is negative, `-0.0` or `neg_infinity`
+     * - `NaN` if the number is NaN
+     */
+    #[inline(always)]
+    fn signum(&self) -> float {
+        if is_NaN(*self) { NaN } else { f64::copysign(1.0, *self as f64) as float }
+    }
+
+    /// Returns `true` if the number is positive, including `+0.0` and `infinity`
+    #[inline(always)]
+    fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == infinity }
+
+    /// Returns `true` if the number is negative, including `-0.0` and `neg_infinity`
+    #[inline(always)]
+    fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
 }
 
-#[test]
-pub fn test_from_str_hex() {
-   assert!(from_str_hex(~"a4") == Some(164.));
-   assert!(from_str_hex(~"a4.fe") == Some(164.9921875));
-   assert!(from_str_hex(~"-a4.fe") == Some(-164.9921875));
-   assert!(from_str_hex(~"+a4.fe") == Some(164.9921875));
-   assert!(from_str_hex(~"ff0P4") == Some(0xff00 as float));
-   assert!(from_str_hex(~"ff0p4") == Some(0xff00 as float));
-   assert!(from_str_hex(~"ff0p-4") == Some(0xff as float));
-   assert!(from_str_hex(~".") == Some(0.));
-   assert!(from_str_hex(~".p1") == Some(0.));
-   assert!(from_str_hex(~".p-1") == Some(0.));
-   assert!(from_str_hex(~"f.") == Some(15.));
-   assert!(from_str_hex(~".f") == Some(0.9375));
-   assert!(from_str_hex(~"0.f") == Some(0.9375));
-   assert!(from_str_hex(~"-.f") == Some(-0.9375));
-   assert!(from_str_hex(~"-f") == Some(-15.));
-   assert!(from_str_hex(~"inf") == Some(infinity));
-   assert!(from_str_hex(~"+inf") == Some(infinity));
-   assert!(from_str_hex(~"-inf") == Some(neg_infinity));
-   // note: NaN != NaN, hence this slightly complex test
-   match from_str_hex(~"NaN") {
-       Some(f) => assert!(is_NaN(f)),
-       None => fail!()
-   }
-   // note: -0 == 0, hence these slightly more complex tests
-   match from_str_hex(~"-0") {
-       Some(v) if is_zero(v) => assert!(is_negative(v)),
-       _ => fail!()
-   }
-   match from_str_hex(~"0") {
-       Some(v) if is_zero(v) => assert!(is_positive(v)),
-       _ => fail!()
-   }
-   assert!(from_str_hex(~"e") == Some(14.));
-   assert!(from_str_hex(~"E") == Some(14.));
-   assert!(from_str_hex(~"E1") == Some(225.));
-   assert!(from_str_hex(~"1e1e1") == Some(123361.));
-   assert!(from_str_hex(~"1e1.1") == Some(481.0625));
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use prelude::*;
 
-   assert!(from_str_hex(~"").is_none());
-   assert!(from_str_hex(~"x").is_none());
-   assert!(from_str_hex(~" ").is_none());
-   assert!(from_str_hex(~"   ").is_none());
-   assert!(from_str_hex(~"p").is_none());
-   assert!(from_str_hex(~"P").is_none());
-   assert!(from_str_hex(~"P1").is_none());
-   assert!(from_str_hex(~"1p1p1").is_none());
-   assert!(from_str_hex(~"1p1.1").is_none());
-   assert!(from_str_hex(~"1p1-1").is_none());
+    macro_rules! assert_fuzzy_eq(
+        ($a:expr, $b:expr) => ({
+            let a = $a, b = $b;
+            if !((a - b).abs() < 1.0e-6) {
+                fail!(fmt!("The values were not approximately equal. Found: %? and %?", a, b));
+            }
+        })
+    )
+
+    #[test]
+    fn test_num() {
+        num::test_num(10f, 2f);
+    }
+
+    #[test]
+    fn test_floor() {
+        assert_fuzzy_eq!(1.0f.floor(), 1.0f);
+        assert_fuzzy_eq!(1.3f.floor(), 1.0f);
+        assert_fuzzy_eq!(1.5f.floor(), 1.0f);
+        assert_fuzzy_eq!(1.7f.floor(), 1.0f);
+        assert_fuzzy_eq!(0.0f.floor(), 0.0f);
+        assert_fuzzy_eq!((-0.0f).floor(), -0.0f);
+        assert_fuzzy_eq!((-1.0f).floor(), -1.0f);
+        assert_fuzzy_eq!((-1.3f).floor(), -2.0f);
+        assert_fuzzy_eq!((-1.5f).floor(), -2.0f);
+        assert_fuzzy_eq!((-1.7f).floor(), -2.0f);
+    }
+
+    #[test]
+    fn test_ceil() {
+        assert_fuzzy_eq!(1.0f.ceil(), 1.0f);
+        assert_fuzzy_eq!(1.3f.ceil(), 2.0f);
+        assert_fuzzy_eq!(1.5f.ceil(), 2.0f);
+        assert_fuzzy_eq!(1.7f.ceil(), 2.0f);
+        assert_fuzzy_eq!(0.0f.ceil(), 0.0f);
+        assert_fuzzy_eq!((-0.0f).ceil(), -0.0f);
+        assert_fuzzy_eq!((-1.0f).ceil(), -1.0f);
+        assert_fuzzy_eq!((-1.3f).ceil(), -1.0f);
+        assert_fuzzy_eq!((-1.5f).ceil(), -1.0f);
+        assert_fuzzy_eq!((-1.7f).ceil(), -1.0f);
+    }
+
+    #[test]
+    fn test_round() {
+        assert_fuzzy_eq!(1.0f.round(), 1.0f);
+        assert_fuzzy_eq!(1.3f.round(), 1.0f);
+        assert_fuzzy_eq!(1.5f.round(), 2.0f);
+        assert_fuzzy_eq!(1.7f.round(), 2.0f);
+        assert_fuzzy_eq!(0.0f.round(), 0.0f);
+        assert_fuzzy_eq!((-0.0f).round(), -0.0f);
+        assert_fuzzy_eq!((-1.0f).round(), -1.0f);
+        assert_fuzzy_eq!((-1.3f).round(), -1.0f);
+        assert_fuzzy_eq!((-1.5f).round(), -2.0f);
+        assert_fuzzy_eq!((-1.7f).round(), -2.0f);
+    }
+
+    #[test]
+    fn test_trunc() {
+        assert_fuzzy_eq!(1.0f.trunc(), 1.0f);
+        assert_fuzzy_eq!(1.3f.trunc(), 1.0f);
+        assert_fuzzy_eq!(1.5f.trunc(), 1.0f);
+        assert_fuzzy_eq!(1.7f.trunc(), 1.0f);
+        assert_fuzzy_eq!(0.0f.trunc(), 0.0f);
+        assert_fuzzy_eq!((-0.0f).trunc(), -0.0f);
+        assert_fuzzy_eq!((-1.0f).trunc(), -1.0f);
+        assert_fuzzy_eq!((-1.3f).trunc(), -1.0f);
+        assert_fuzzy_eq!((-1.5f).trunc(), -1.0f);
+        assert_fuzzy_eq!((-1.7f).trunc(), -1.0f);
+    }
+
+    #[test]
+    fn test_fract() {
+        assert_fuzzy_eq!(1.0f.fract(), 0.0f);
+        assert_fuzzy_eq!(1.3f.fract(), 0.3f);
+        assert_fuzzy_eq!(1.5f.fract(), 0.5f);
+        assert_fuzzy_eq!(1.7f.fract(), 0.7f);
+        assert_fuzzy_eq!(0.0f.fract(), 0.0f);
+        assert_fuzzy_eq!((-0.0f).fract(), -0.0f);
+        assert_fuzzy_eq!((-1.0f).fract(), -0.0f);
+        assert_fuzzy_eq!((-1.3f).fract(), -0.3f);
+        assert_fuzzy_eq!((-1.5f).fract(), -0.5f);
+        assert_fuzzy_eq!((-1.7f).fract(), -0.7f);
+    }
+
+    #[test]
+    fn test_real_consts() {
+        assert_fuzzy_eq!(Real::two_pi::<float>(), 2f * Real::pi::<float>());
+        assert_fuzzy_eq!(Real::frac_pi_2::<float>(), Real::pi::<float>() / 2f);
+        assert_fuzzy_eq!(Real::frac_pi_3::<float>(), Real::pi::<float>() / 3f);
+        assert_fuzzy_eq!(Real::frac_pi_4::<float>(), Real::pi::<float>() / 4f);
+        assert_fuzzy_eq!(Real::frac_pi_6::<float>(), Real::pi::<float>() / 6f);
+        assert_fuzzy_eq!(Real::frac_pi_8::<float>(), Real::pi::<float>() / 8f);
+        assert_fuzzy_eq!(Real::frac_1_pi::<float>(), 1f / Real::pi::<float>());
+        assert_fuzzy_eq!(Real::frac_2_pi::<float>(), 2f / Real::pi::<float>());
+        assert_fuzzy_eq!(Real::frac_2_sqrtpi::<float>(), 2f / Real::pi::<float>().sqrt());
+        assert_fuzzy_eq!(Real::sqrt2::<float>(), 2f.sqrt());
+        assert_fuzzy_eq!(Real::frac_1_sqrt2::<float>(), 1f / 2f.sqrt());
+        assert_fuzzy_eq!(Real::log2_e::<float>(), Real::e::<float>().log2());
+        assert_fuzzy_eq!(Real::log10_e::<float>(), Real::e::<float>().log10());
+        assert_fuzzy_eq!(Real::log_2::<float>(), 2f.log());
+        assert_fuzzy_eq!(Real::log_10::<float>(), 10f.log());
+    }
+
+    #[test]
+    pub fn test_signed() {
+        assert_eq!(infinity.abs(), infinity);
+        assert_eq!(1f.abs(), 1f);
+        assert_eq!(0f.abs(), 0f);
+        assert_eq!((-0f).abs(), 0f);
+        assert_eq!((-1f).abs(), 1f);
+        assert_eq!(neg_infinity.abs(), infinity);
+        assert_eq!((1f/neg_infinity).abs(), 0f);
+        assert!(is_NaN(NaN.abs()));
+
+        assert_eq!(infinity.signum(), 1f);
+        assert_eq!(1f.signum(), 1f);
+        assert_eq!(0f.signum(), 1f);
+        assert_eq!((-0f).signum(), -1f);
+        assert_eq!((-1f).signum(), -1f);
+        assert_eq!(neg_infinity.signum(), -1f);
+        assert_eq!((1f/neg_infinity).signum(), -1f);
+        assert!(is_NaN(NaN.signum()));
+
+        assert!(infinity.is_positive());
+        assert!(1f.is_positive());
+        assert!(0f.is_positive());
+        assert!(!(-0f).is_positive());
+        assert!(!(-1f).is_positive());
+        assert!(!neg_infinity.is_positive());
+        assert!(!(1f/neg_infinity).is_positive());
+        assert!(!NaN.is_positive());
+
+        assert!(!infinity.is_negative());
+        assert!(!1f.is_negative());
+        assert!(!0f.is_negative());
+        assert!((-0f).is_negative());
+        assert!((-1f).is_negative());
+        assert!(neg_infinity.is_negative());
+        assert!((1f/neg_infinity).is_negative());
+        assert!(!NaN.is_negative());
+    }
+
+    #[test]
+    pub fn test_to_str_exact_do_decimal() {
+        let s = to_str_exact(5.0, 4u);
+        assert_eq!(s, ~"5.0000");
+    }
+
+    #[test]
+    pub fn test_from_str() {
+        assert_eq!(from_str(~"3"), Some(3.));
+        assert_eq!(from_str(~"3.14"), Some(3.14));
+        assert_eq!(from_str(~"+3.14"), Some(3.14));
+        assert_eq!(from_str(~"-3.14"), Some(-3.14));
+        assert_eq!(from_str(~"2.5E10"), Some(25000000000.));
+        assert_eq!(from_str(~"2.5e10"), Some(25000000000.));
+        assert_eq!(from_str(~"25000000000.E-10"), Some(2.5));
+        assert_eq!(from_str(~"."), Some(0.));
+        assert_eq!(from_str(~".e1"), Some(0.));
+        assert_eq!(from_str(~".e-1"), Some(0.));
+        assert_eq!(from_str(~"5."), Some(5.));
+        assert_eq!(from_str(~".5"), Some(0.5));
+        assert_eq!(from_str(~"0.5"), Some(0.5));
+        assert_eq!(from_str(~"-.5"), Some(-0.5));
+        assert_eq!(from_str(~"-5"), Some(-5.));
+        assert_eq!(from_str(~"inf"), Some(infinity));
+        assert_eq!(from_str(~"+inf"), Some(infinity));
+        assert_eq!(from_str(~"-inf"), Some(neg_infinity));
+        // note: NaN != NaN, hence this slightly complex test
+        match from_str(~"NaN") {
+            Some(f) => assert!(is_NaN(f)),
+            None => fail!()
+        }
+        // note: -0 == 0, hence these slightly more complex tests
+        match from_str(~"-0") {
+            Some(v) if is_zero(v) => assert!(v.is_negative()),
+            _ => fail!()
+        }
+        match from_str(~"0") {
+            Some(v) if is_zero(v) => assert!(v.is_positive()),
+            _ => fail!()
+        }
+
+        assert!(from_str(~"").is_none());
+        assert!(from_str(~"x").is_none());
+        assert!(from_str(~" ").is_none());
+        assert!(from_str(~"   ").is_none());
+        assert!(from_str(~"e").is_none());
+        assert!(from_str(~"E").is_none());
+        assert!(from_str(~"E1").is_none());
+        assert!(from_str(~"1e1e1").is_none());
+        assert!(from_str(~"1e1.1").is_none());
+        assert!(from_str(~"1e1-1").is_none());
+    }
+
+    #[test]
+    pub fn test_from_str_hex() {
+        assert_eq!(from_str_hex(~"a4"), Some(164.));
+        assert_eq!(from_str_hex(~"a4.fe"), Some(164.9921875));
+        assert_eq!(from_str_hex(~"-a4.fe"), Some(-164.9921875));
+        assert_eq!(from_str_hex(~"+a4.fe"), Some(164.9921875));
+        assert_eq!(from_str_hex(~"ff0P4"), Some(0xff00 as float));
+        assert_eq!(from_str_hex(~"ff0p4"), Some(0xff00 as float));
+        assert_eq!(from_str_hex(~"ff0p-4"), Some(0xff as float));
+        assert_eq!(from_str_hex(~"."), Some(0.));
+        assert_eq!(from_str_hex(~".p1"), Some(0.));
+        assert_eq!(from_str_hex(~".p-1"), Some(0.));
+        assert_eq!(from_str_hex(~"f."), Some(15.));
+        assert_eq!(from_str_hex(~".f"), Some(0.9375));
+        assert_eq!(from_str_hex(~"0.f"), Some(0.9375));
+        assert_eq!(from_str_hex(~"-.f"), Some(-0.9375));
+        assert_eq!(from_str_hex(~"-f"), Some(-15.));
+        assert_eq!(from_str_hex(~"inf"), Some(infinity));
+        assert_eq!(from_str_hex(~"+inf"), Some(infinity));
+        assert_eq!(from_str_hex(~"-inf"), Some(neg_infinity));
+        // note: NaN != NaN, hence this slightly complex test
+        match from_str_hex(~"NaN") {
+            Some(f) => assert!(is_NaN(f)),
+            None => fail!()
+        }
+        // note: -0 == 0, hence these slightly more complex tests
+        match from_str_hex(~"-0") {
+            Some(v) if is_zero(v) => assert!(v.is_negative()),
+            _ => fail!()
+        }
+        match from_str_hex(~"0") {
+            Some(v) if is_zero(v) => assert!(v.is_positive()),
+            _ => fail!()
+        }
+        assert_eq!(from_str_hex(~"e"), Some(14.));
+        assert_eq!(from_str_hex(~"E"), Some(14.));
+        assert_eq!(from_str_hex(~"E1"), Some(225.));
+        assert_eq!(from_str_hex(~"1e1e1"), Some(123361.));
+        assert_eq!(from_str_hex(~"1e1.1"), Some(481.0625));
+
+        assert!(from_str_hex(~"").is_none());
+        assert!(from_str_hex(~"x").is_none());
+        assert!(from_str_hex(~" ").is_none());
+        assert!(from_str_hex(~"   ").is_none());
+        assert!(from_str_hex(~"p").is_none());
+        assert!(from_str_hex(~"P").is_none());
+        assert!(from_str_hex(~"P1").is_none());
+        assert!(from_str_hex(~"1p1p1").is_none());
+        assert!(from_str_hex(~"1p1.1").is_none());
+        assert!(from_str_hex(~"1p1-1").is_none());
+    }
+
+    #[test]
+    pub fn test_to_str_hex() {
+        assert_eq!(to_str_hex(164.), ~"a4");
+        assert_eq!(to_str_hex(164.9921875), ~"a4.fe");
+        assert_eq!(to_str_hex(-164.9921875), ~"-a4.fe");
+        assert_eq!(to_str_hex(0xff00 as float), ~"ff00");
+        assert_eq!(to_str_hex(-(0xff00 as float)), ~"-ff00");
+        assert_eq!(to_str_hex(0.), ~"0");
+        assert_eq!(to_str_hex(15.), ~"f");
+        assert_eq!(to_str_hex(-15.), ~"-f");
+        assert_eq!(to_str_hex(0.9375), ~"0.f");
+        assert_eq!(to_str_hex(-0.9375), ~"-0.f");
+        assert_eq!(to_str_hex(infinity), ~"inf");
+        assert_eq!(to_str_hex(neg_infinity), ~"-inf");
+        assert_eq!(to_str_hex(NaN), ~"NaN");
+        assert_eq!(to_str_hex(0.), ~"0");
+        assert_eq!(to_str_hex(-0.), ~"-0");
+    }
+
+    #[test]
+    pub fn test_to_str_radix() {
+        assert_eq!(to_str_radix(36., 36u), ~"10");
+        assert_eq!(to_str_radix(8.125, 2u), ~"1000.001");
+    }
+
+    #[test]
+    pub fn test_from_str_radix() {
+        assert_eq!(from_str_radix(~"10", 36u), Some(36.));
+        assert_eq!(from_str_radix(~"1000.001", 2u), Some(8.125));
+    }
+
+    #[test]
+    pub fn test_to_str_inf() {
+        assert_eq!(to_str_digits(infinity, 10u), ~"inf");
+        assert_eq!(to_str_digits(-infinity, 10u), ~"-inf");
+    }
 }
-
-#[test]
-pub fn test_to_str_hex() {
-   assert!(to_str_hex(164.) == ~"a4");
-   assert!(to_str_hex(164.9921875) == ~"a4.fe");
-   assert!(to_str_hex(-164.9921875) == ~"-a4.fe");
-   assert!(to_str_hex(0xff00 as float) == ~"ff00");
-   assert!(to_str_hex(-(0xff00 as float)) == ~"-ff00");
-   assert!(to_str_hex(0.) == ~"0");
-   assert!(to_str_hex(15.) == ~"f");
-   assert!(to_str_hex(-15.) == ~"-f");
-   assert!(to_str_hex(0.9375) == ~"0.f");
-   assert!(to_str_hex(-0.9375) == ~"-0.f");
-   assert!(to_str_hex(infinity) == ~"inf");
-   assert!(to_str_hex(neg_infinity) == ~"-inf");
-   assert!(to_str_hex(NaN) == ~"NaN");
-   assert!(to_str_hex(0.) == ~"0");
-   assert!(to_str_hex(-0.) == ~"-0");
-}
-
-#[test]
-pub fn test_to_str_radix() {
-   assert!(to_str_radix(36., 36u) == ~"10");
-   assert!(to_str_radix(8.125, 2u) == ~"1000.001");
-}
-
-#[test]
-pub fn test_from_str_radix() {
-   assert!(from_str_radix(~"10", 36u) == Some(36.));
-   assert!(from_str_radix(~"1000.001", 2u) == Some(8.125));
-}
-
-#[test]
-pub fn test_positive() {
-  assert!((is_positive(infinity)));
-  assert!((is_positive(1.)));
-  assert!((is_positive(0.)));
-  assert!((!is_positive(-1.)));
-  assert!((!is_positive(neg_infinity)));
-  assert!((!is_positive(1./neg_infinity)));
-  assert!((!is_positive(NaN)));
-}
-
-#[test]
-pub fn test_negative() {
-  assert!((!is_negative(infinity)));
-  assert!((!is_negative(1.)));
-  assert!((!is_negative(0.)));
-  assert!((is_negative(-1.)));
-  assert!((is_negative(neg_infinity)));
-  assert!((is_negative(1./neg_infinity)));
-  assert!((!is_negative(NaN)));
-}
-
-#[test]
-pub fn test_nonpositive() {
-  assert!((!is_nonpositive(infinity)));
-  assert!((!is_nonpositive(1.)));
-  assert!((!is_nonpositive(0.)));
-  assert!((is_nonpositive(-1.)));
-  assert!((is_nonpositive(neg_infinity)));
-  assert!((is_nonpositive(1./neg_infinity)));
-  assert!((!is_nonpositive(NaN)));
-}
-
-#[test]
-pub fn test_nonnegative() {
-  assert!((is_nonnegative(infinity)));
-  assert!((is_nonnegative(1.)));
-  assert!((is_nonnegative(0.)));
-  assert!((!is_nonnegative(-1.)));
-  assert!((!is_nonnegative(neg_infinity)));
-  assert!((!is_nonnegative(1./neg_infinity)));
-  assert!((!is_nonnegative(NaN)));
-}
-
-#[test]
-pub fn test_to_str_inf() {
-    assert!(to_str_digits(infinity, 10u) == ~"inf");
-    assert!(to_str_digits(-infinity, 10u) == ~"-inf");
-}
-
-#[test]
-pub fn test_round() {
-    assert!(round(5.8) == 6.0);
-    assert!(round(5.2) == 5.0);
-    assert!(round(3.0) == 3.0);
-    assert!(round(2.5) == 3.0);
-    assert!(round(-3.5) == -4.0);
-}
-
-#[test]
-pub fn test_num() {
-    let ten: float = num::cast(10);
-    let two: float = num::cast(2);
-
-    assert!((ten.add(&two)    == num::cast(12)));
-    assert!((ten.sub(&two)    == num::cast(8)));
-    assert!((ten.mul(&two)    == num::cast(20)));
-    assert!((ten.div(&two)    == num::cast(5)));
-    assert!((ten.modulo(&two) == num::cast(0)));
-}
-
-#[test]
-fn test_numcast() {
-    assert!((20u   == 20f.to_uint()));
-    assert!((20u8  == 20f.to_u8()));
-    assert!((20u16 == 20f.to_u16()));
-    assert!((20u32 == 20f.to_u32()));
-    assert!((20u64 == 20f.to_u64()));
-    assert!((20i   == 20f.to_int()));
-    assert!((20i8  == 20f.to_i8()));
-    assert!((20i16 == 20f.to_i16()));
-    assert!((20i32 == 20f.to_i32()));
-    assert!((20i64 == 20f.to_i64()));
-    assert!((20f   == 20f.to_float()));
-    assert!((20f32 == 20f.to_f32()));
-    assert!((20f64 == 20f.to_f64()));
-
-    assert!((20f == NumCast::from(20u)));
-    assert!((20f == NumCast::from(20u8)));
-    assert!((20f == NumCast::from(20u16)));
-    assert!((20f == NumCast::from(20u32)));
-    assert!((20f == NumCast::from(20u64)));
-    assert!((20f == NumCast::from(20i)));
-    assert!((20f == NumCast::from(20i8)));
-    assert!((20f == NumCast::from(20i16)));
-    assert!((20f == NumCast::from(20i32)));
-    assert!((20f == NumCast::from(20i64)));
-    assert!((20f == NumCast::from(20f)));
-    assert!((20f == NumCast::from(20f32)));
-    assert!((20f == NumCast::from(20f64)));
-
-    assert!((20f == num::cast(20u)));
-    assert!((20f == num::cast(20u8)));
-    assert!((20f == num::cast(20u16)));
-    assert!((20f == num::cast(20u32)));
-    assert!((20f == num::cast(20u64)));
-    assert!((20f == num::cast(20i)));
-    assert!((20f == num::cast(20i8)));
-    assert!((20f == num::cast(20i16)));
-    assert!((20f == num::cast(20i32)));
-    assert!((20f == num::cast(20i64)));
-    assert!((20f == num::cast(20f)));
-    assert!((20f == num::cast(20f32)));
-    assert!((20f == num::cast(20f64)));
-}
-
 
 //
 // Local Variables:

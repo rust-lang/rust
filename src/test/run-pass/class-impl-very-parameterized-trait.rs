@@ -49,18 +49,6 @@ pub impl<T> cat<T> {
     }
 }
 
-impl<'self,T> BaseIter<(int, &'self T)> for cat<T> {
-    fn each(&self, f: &fn(&(int, &'self T)) -> bool) {
-        let mut n = int::abs(self.meows);
-        while n > 0 {
-            if !f(&(n, &self.name)) { break; }
-            n -= 1;
-        }
-    }
-
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
 impl<T> Container for cat<T> {
     fn len(&const self) -> uint { self.meows as uint }
     fn is_empty(&const self) -> bool { self.meows == 0 }
@@ -71,17 +59,25 @@ impl<T> Mutable for cat<T> {
 }
 
 impl<T> Map<int, T> for cat<T> {
+    fn each<'a>(&'a self, f: &fn(&int, &'a T) -> bool) {
+        let mut n = int::abs(self.meows);
+        while n > 0 {
+            if !f(&n, &self.name) { break; }
+            n -= 1;
+        }
+    }
+
     fn contains_key(&self, k: &int) -> bool { *k <= self.meows }
 
     fn each_key(&self, f: &fn(v: &int) -> bool) {
-        for self.each |&(k, _)| { if !f(&k) { break; } loop;};
+        for self.each |k, _| { if !f(k) { break; } loop;};
     }
 
-    fn each_value(&self, f: &fn(v: &T) -> bool) {
-        for self.each |&(_, v)| { if !f(v) { break; } loop;};
+    fn each_value<'a>(&'a self, f: &fn(v: &'a T) -> bool) {
+        for self.each |_, v| { if !f(v) { break; } loop;};
     }
 
-    fn mutate_values(&mut self, f: &fn(&int, &mut T) -> bool) {
+    fn mutate_values(&mut self, _f: &fn(&int, &mut T) -> bool) {
         fail!(~"nope")
     }
 
@@ -90,7 +86,7 @@ impl<T> Map<int, T> for cat<T> {
         true
     }
 
-    fn find(&self, k: &int) -> Option<&'self T> {
+    fn find<'a>(&'a self, k: &int) -> Option<&'a T> {
         if *k <= self.meows {
             Some(&self.name)
         } else {
@@ -98,7 +94,7 @@ impl<T> Map<int, T> for cat<T> {
         }
     }
 
-    fn find_mut(&mut self, k: &int) -> Option<&'self mut T> { fail!() }
+    fn find_mut<'a>(&'a mut self, _k: &int) -> Option<&'a mut T> { fail!() }
 
     fn remove(&mut self, k: &int) -> bool {
         if self.find(k).is_some() {
@@ -110,7 +106,7 @@ impl<T> Map<int, T> for cat<T> {
 }
 
 pub impl<T> cat<T> {
-    fn get(&self, k: &int) -> &'self T {
+    fn get<'a>(&'a self, k: &int) -> &'a T {
         match self.find(k) {
           Some(v) => { v }
           None    => { fail!(~"epic fail"); }

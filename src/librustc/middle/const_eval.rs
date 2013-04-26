@@ -20,7 +20,7 @@ use core::vec;
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
 
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -189,14 +189,14 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
         }
     } else {
         let maps = astencode::Maps {
-            mutbl_map: @mut LinearSet::new(),
-            root_map: @mut LinearMap::new(),
-            last_use_map: @mut LinearMap::new(),
-            method_map: @mut LinearMap::new(),
-            vtable_map: @mut LinearMap::new(),
-            write_guard_map: @mut LinearSet::new(),
-            moves_map: @mut LinearSet::new(),
-            capture_map: @mut LinearMap::new()
+            mutbl_map: @mut HashSet::new(),
+            root_map: @mut HashMap::new(),
+            last_use_map: @mut HashMap::new(),
+            method_map: @mut HashMap::new(),
+            vtable_map: @mut HashMap::new(),
+            write_guard_map: @mut HashSet::new(),
+            moves_map: @mut HashSet::new(),
+            capture_map: @mut HashMap::new()
         };
         match csearch::maybe_get_item_ast(tcx, def_id,
             |a, b, c, d| astencode::decode_inlined_item(a, b, maps, /*bar*/ copy c, d)) {
@@ -229,7 +229,7 @@ pub fn process_crate(crate: @ast::crate,
         visit_expr_post: |e| { classify(e, tcx); },
         .. *visit::default_simple_visitor()
     });
-    visit::visit_crate(*crate, (), v);
+    visit::visit_crate(crate, (), v);
     tcx.sess.abort_if_errors();
 }
 
@@ -283,7 +283,7 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
               add => Ok(const_float(a + b)),
               subtract => Ok(const_float(a - b)),
               mul => Ok(const_float(a * b)),
-              div => Ok(const_float(a / b)),
+              quot => Ok(const_float(a / b)),
               rem => Ok(const_float(a % b)),
               eq => fromb(a == b),
               lt => fromb(a < b),
@@ -299,9 +299,9 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
               add => Ok(const_int(a + b)),
               subtract => Ok(const_int(a - b)),
               mul => Ok(const_int(a * b)),
-              div if b == 0 => Err(~"divide by zero"),
-              div => Ok(const_int(a / b)),
-              rem if b == 0 => Err(~"modulo zero"),
+              quot if b == 0 => Err(~"attempted quotient with a divisor of zero"),
+              quot => Ok(const_int(a / b)),
+              rem if b == 0 => Err(~"attempted remainder with a divisor of zero"),
               rem => Ok(const_int(a % b)),
               and | bitand => Ok(const_int(a & b)),
               or | bitor => Ok(const_int(a | b)),
@@ -321,9 +321,9 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
               add => Ok(const_uint(a + b)),
               subtract => Ok(const_uint(a - b)),
               mul => Ok(const_uint(a * b)),
-              div if b == 0 => Err(~"divide by zero"),
-              div => Ok(const_uint(a / b)),
-              rem if b == 0 => Err(~"modulo zero"),
+              quot if b == 0 => Err(~"attempted quotient with a divisor of zero"),
+              quot => Ok(const_uint(a / b)),
+              rem if b == 0 => Err(~"attempted remainder with a divisor of zero"),
               rem => Ok(const_uint(a % b)),
               and | bitand => Ok(const_uint(a & b)),
               or | bitor => Ok(const_uint(a | b)),
@@ -371,32 +371,31 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
       expr_cast(base, _) => {
         let ety = ty::expr_ty(tcx, e);
         let base = eval_const_expr_partial(tcx, base);
-        match ty::get(ety).sty {
-          ty::ty_float(_) => {
-            match base {
-              Ok(const_uint(u)) => Ok(const_float(u as f64)),
-              Ok(const_int(i)) => Ok(const_float(i as f64)),
-              Ok(const_float(_)) => base,
-              _ => Err(~"Can't cast float to str")
+        match /*bad*/copy base {
+            Err(_) => base,
+            Ok(val) => {
+                match ty::get(ety).sty {
+                    ty::ty_float(_) => match val {
+                        const_uint(u) => Ok(const_float(u as f64)),
+                        const_int(i) => Ok(const_float(i as f64)),
+                        const_float(_) => base,
+                        _ => Err(~"Can't cast float to str"),
+                    },
+                    ty::ty_uint(_) => match val {
+                        const_uint(_) => base,
+                        const_int(i) => Ok(const_uint(i as u64)),
+                        const_float(f) => Ok(const_uint(f as u64)),
+                        _ => Err(~"Can't cast str to uint"),
+                    },
+                    ty::ty_int(_) | ty::ty_bool => match val {
+                        const_uint(u) => Ok(const_int(u as i64)),
+                        const_int(_) => base,
+                        const_float(f) => Ok(const_int(f as i64)),
+                        _ => Err(~"Can't cast str to int"),
+                    },
+                    _ => Err(~"Can't cast this type")
+                }
             }
-          }
-          ty::ty_uint(_) => {
-            match base {
-              Ok(const_uint(_)) => base,
-              Ok(const_int(i)) => Ok(const_uint(i as u64)),
-              Ok(const_float(f)) => Ok(const_uint(f as u64)),
-              _ => Err(~"Can't cast str to uint")
-            }
-          }
-          ty::ty_int(_) | ty::ty_bool => {
-            match base {
-              Ok(const_uint(u)) => Ok(const_int(u as i64)),
-              Ok(const_int(_)) => base,
-              Ok(const_float(f)) => Ok(const_int(f as i64)),
-              _ => Err(~"Can't cast str to int")
-            }
-          }
-          _ => Err(~"Can't cast this type")
         }
       }
       expr_path(_) => {
@@ -427,8 +426,8 @@ pub fn lit_to_const(lit: @lit) -> const_val {
     }
 }
 
-pub fn compare_const_vals(a: const_val, b: const_val) -> int {
-  match (&a, &b) {
+pub fn compare_const_vals(a: &const_val, b: &const_val) -> int {
+  match (a, b) {
     (&const_int(a), &const_int(b)) => {
         if a == b {
             0
@@ -479,7 +478,7 @@ pub fn compare_const_vals(a: const_val, b: const_val) -> int {
 }
 
 pub fn compare_lit_exprs(tcx: middle::ty::ctxt, a: @expr, b: @expr) -> int {
-  compare_const_vals(eval_const_expr(tcx, a), eval_const_expr(tcx, b))
+  compare_const_vals(&eval_const_expr(tcx, a), &eval_const_expr(tcx, b))
 }
 
 pub fn lit_expr_eq(tcx: middle::ty::ctxt, a: @expr, b: @expr) -> bool {
@@ -487,7 +486,7 @@ pub fn lit_expr_eq(tcx: middle::ty::ctxt, a: @expr, b: @expr) -> bool {
 }
 
 pub fn lit_eq(a: @lit, b: @lit) -> bool {
-    compare_const_vals(lit_to_const(a), lit_to_const(b)) == 0
+    compare_const_vals(&lit_to_const(a), &lit_to_const(b)) == 0
 }
 
 

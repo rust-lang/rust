@@ -11,7 +11,7 @@
 use core::cmp::Ord;
 use core::num::NumCast::from;
 
-pub trait NumExt: NumCast + Ord { }
+pub trait NumExt: Num + NumCast + Ord { }
 
 fn greater_than_one<T:NumExt>(n: &T) -> bool {
     *n > from(1)

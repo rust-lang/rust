@@ -437,8 +437,7 @@ pub impl Bitv {
             if offset >= bitv.nbits {
                 0
             } else {
-                // NOTE cannot use bitv[offset] until snapshot
-                bitv.index(&offset) as u8 << (7 - bit)
+                bitv[offset] as u8 << (7 - bit)
             }
         }
 
@@ -460,8 +459,7 @@ pub impl Bitv {
      * Transform self into a [bool] by turning each bit into a bool
      */
     fn to_bools(&self) -> ~[bool] {
-        // NOTE cannot use self[i] until snapshot
-        vec::from_fn(self.nbits, |i| self.index(&i))
+        vec::from_fn(self.nbits, |i| self[i])
     }
 
     /**
@@ -878,11 +876,12 @@ mod tests {
     use core::uint;
     use core::vec;
     use core::rand;
+    use core::rand::Rng;
 
     static bench_bits : uint = 1 << 14;
 
     #[test]
-    pub fn test_to_str() {
+    fn test_to_str() {
         let zerolen = Bitv::new(0u, false);
         assert!(zerolen.to_str() == ~"");
 
@@ -891,16 +890,16 @@ mod tests {
     }
 
     #[test]
-    pub fn test_0_elements() {
+    fn test_0_elements() {
         let mut act;
-        let mut exp;
+        let exp;
         act = Bitv::new(0u, false);
         exp = vec::from_elem::<uint>(0u, 0u);
         assert!(act.eq_vec(exp));
     }
 
     #[test]
-    pub fn test_1_element() {
+    fn test_1_element() {
         let mut act;
         act = Bitv::new(1u, false);
         assert!(act.eq_vec(~[0u]));
@@ -909,7 +908,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_2_elements() {
+    fn test_2_elements() {
         let mut b = bitv::Bitv::new(2, false);
         b.set(0, true);
         b.set(1, false);
@@ -917,7 +916,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_10_elements() {
+    fn test_10_elements() {
         let mut act;
         // all 0
 
@@ -956,7 +955,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_31_elements() {
+    fn test_31_elements() {
         let mut act;
         // all 0
 
@@ -1029,7 +1028,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_32_elements() {
+    fn test_32_elements() {
         let mut act;
         // all 0
 
@@ -1104,7 +1103,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_33_elements() {
+    fn test_33_elements() {
         let mut act;
         // all 0
 
@@ -1180,21 +1179,21 @@ mod tests {
     }
 
     #[test]
-    pub fn test_equal_differing_sizes() {
+    fn test_equal_differing_sizes() {
         let v0 = Bitv::new(10u, false);
         let v1 = Bitv::new(11u, false);
         assert!(!v0.equal(&v1));
     }
 
     #[test]
-    pub fn test_equal_greatly_differing_sizes() {
+    fn test_equal_greatly_differing_sizes() {
         let v0 = Bitv::new(10u, false);
         let v1 = Bitv::new(110u, false);
         assert!(!v0.equal(&v1));
     }
 
     #[test]
-    pub fn test_equal_sneaky_small() {
+    fn test_equal_sneaky_small() {
         let mut a = bitv::Bitv::new(1, false);
         a.set(0, true);
 
@@ -1205,7 +1204,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_equal_sneaky_big() {
+    fn test_equal_sneaky_big() {
         let mut a = bitv::Bitv::new(100, false);
         for uint::range(0, 100) |i| {
             a.set(i, true);
@@ -1220,14 +1219,14 @@ mod tests {
     }
 
     #[test]
-    pub fn test_from_bytes() {
+    fn test_from_bytes() {
         let bitv = from_bytes([0b10110110, 0b00000000, 0b11111111]);
         let str = ~"10110110" + ~"00000000" + ~"11111111";
         assert!(bitv.to_str() == str);
     }
 
     #[test]
-    pub fn test_to_bytes() {
+    fn test_to_bytes() {
         let mut bv = Bitv::new(3, true);
         bv.set(1, false);
         assert!(bv.to_bytes() == ~[0b10100000]);
@@ -1239,19 +1238,19 @@ mod tests {
     }
 
     #[test]
-    pub fn test_from_bools() {
+    fn test_from_bools() {
         assert!(from_bools([true, false, true, true]).to_str() ==
             ~"1011");
     }
 
     #[test]
-    pub fn test_to_bools() {
+    fn test_to_bools() {
         let bools = ~[false, false, true, false, false, true, true, false];
         assert!(from_bytes([0b00100110]).to_bools() == bools);
     }
 
     #[test]
-    pub fn test_small_difference() {
+    fn test_small_difference() {
         let mut b1 = Bitv::new(3, false);
         let mut b2 = Bitv::new(3, false);
         b1.set(0, true);
@@ -1265,7 +1264,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_big_difference() {
+    fn test_big_difference() {
         let mut b1 = Bitv::new(100, false);
         let mut b2 = Bitv::new(100, false);
         b1.set(0, true);
@@ -1279,7 +1278,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_small_clear() {
+    fn test_small_clear() {
         let mut b = Bitv::new(14, true);
         b.clear();
         for b.ones |i| {
@@ -1288,7 +1287,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_big_clear() {
+    fn test_big_clear() {
         let mut b = Bitv::new(140, true);
         b.clear();
         for b.ones |i| {
@@ -1297,7 +1296,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_bitv_set_basic() {
+    fn test_bitv_set_basic() {
         let mut b = BitvSet::new();
         assert!(b.insert(3));
         assert!(!b.insert(3));
@@ -1384,7 +1383,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_bitv_set_union() {
+    fn test_bitv_set_union() {
         let mut a = BitvSet::new();
         let mut b = BitvSet::new();
         assert!(a.insert(1));
@@ -1412,7 +1411,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_bitv_remove() {
+    fn test_bitv_remove() {
         let mut a = BitvSet::new();
 
         assert!(a.insert(1));
@@ -1426,13 +1425,13 @@ mod tests {
         assert!(a.capacity() == uint::bits);
     }
 
-    fn rng() -> @rand::Rng {
+    fn rng() -> rand::IsaacRng {
         let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
-        rand::seeded_rng(seed)
+        rand::IsaacRng::new_seeded(seed)
     }
 
     #[bench]
-    pub fn bench_uint_small(b: &mut BenchHarness) {
+    fn bench_uint_small(b: &mut BenchHarness) {
         let r = rng();
         let mut bitv = 0 as uint;
         do b.iter {
@@ -1441,7 +1440,7 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_small_bitv_small(b: &mut BenchHarness) {
+    fn bench_small_bitv_small(b: &mut BenchHarness) {
         let r = rng();
         let mut bitv = SmallBitv::new(uint::bits);
         do b.iter {
@@ -1450,7 +1449,7 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_big_bitv_small(b: &mut BenchHarness) {
+    fn bench_big_bitv_small(b: &mut BenchHarness) {
         let r = rng();
         let mut bitv = BigBitv::new(~[0]);
         do b.iter {
@@ -1459,7 +1458,7 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_big_bitv_big(b: &mut BenchHarness) {
+    fn bench_big_bitv_big(b: &mut BenchHarness) {
         let r = rng();
         let mut storage = ~[];
         storage.grow(bench_bits / uint::bits, &0);
@@ -1470,7 +1469,7 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_bitv_big(b: &mut BenchHarness) {
+    fn bench_bitv_big(b: &mut BenchHarness) {
         let r = rng();
         let mut bitv = Bitv::new(bench_bits, false);
         do b.iter {
@@ -1479,7 +1478,7 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_bitv_small(b: &mut BenchHarness) {
+    fn bench_bitv_small(b: &mut BenchHarness) {
         let r = rng();
         let mut bitv = Bitv::new(uint::bits, false);
         do b.iter {
@@ -1488,7 +1487,7 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_bitv_set_small(b: &mut BenchHarness) {
+    fn bench_bitv_set_small(b: &mut BenchHarness) {
         let r = rng();
         let mut bitv = BitvSet::new();
         do b.iter {
@@ -1497,7 +1496,7 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_bitv_set_big(b: &mut BenchHarness) {
+    fn bench_bitv_set_big(b: &mut BenchHarness) {
         let r = rng();
         let mut bitv = BitvSet::new();
         do b.iter {
@@ -1506,7 +1505,7 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_bitv_big_union(b: &mut BenchHarness) {
+    fn bench_bitv_big_union(b: &mut BenchHarness) {
         let mut b1 = Bitv::new(bench_bits, false);
         let mut b2 = Bitv::new(bench_bits, false);
         do b.iter {

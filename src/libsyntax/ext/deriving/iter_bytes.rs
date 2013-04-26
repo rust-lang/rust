@@ -17,6 +17,7 @@ use ext::build;
 use ext::deriving::*;
 use codemap::{span, spanned};
 use ast_util;
+use opt_vec;
 
 use core::uint;
 
@@ -49,19 +50,21 @@ fn create_derived_iter_bytes_impl(cx: @ext_ctxt,
                                   method: @method)
                                -> @item {
     let methods = [ method ];
-    let trait_path = [
+    let trait_path = ~[
         cx.ident_of(~"core"),
         cx.ident_of(~"to_bytes"),
         cx.ident_of(~"IterBytes")
     ];
-    create_derived_impl(cx, span, type_ident, generics, methods, trait_path)
+    let trait_path = build::mk_raw_path_global(span, trait_path);
+    create_derived_impl(cx, span, type_ident, generics, methods, trait_path,
+                        opt_vec::Empty, opt_vec::Empty)
 }
 
 // Creates a method from the given set of statements conforming to the
 // signature of the `iter_bytes` method.
 fn create_iter_bytes_method(cx: @ext_ctxt,
                             span: span,
-                            +statements: ~[@stmt])
+                            statements: ~[@stmt])
                          -> @method {
     // Create the `lsb0` parameter.
     let bool_ident = cx.ident_of(~"bool");
@@ -191,7 +194,7 @@ fn expand_deriving_iter_bytes_struct_method(cx: @ext_ctxt,
             }
             unnamed_field => {
                 cx.span_unimpl(span,
-                               ~"unnamed fields with `deriving_iter_bytes`");
+                               ~"unnamed fields with `deriving(IterBytes)`");
             }
         }
     }
@@ -228,7 +231,7 @@ fn expand_deriving_iter_bytes_enum_method(cx: @ext_ctxt,
         // as well.
         for uint::range(0, variant_arg_count(cx, span, variant)) |j| {
             // Create the expression for this field.
-            let field_ident = cx.ident_of(~"__self" + j.to_str());
+            let field_ident = cx.ident_of(~"__self_" + j.to_str());
             let field = build::mk_path(cx, span, ~[ field_ident ]);
 
             // Call the substructure method.

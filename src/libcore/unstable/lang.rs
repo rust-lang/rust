@@ -35,6 +35,14 @@ pub mod rustrt {
 
         #[rust_stack]
         unsafe fn rust_upcall_free(ptr: *c_char);
+
+        #[fast_ffi]
+        unsafe fn rust_upcall_malloc_noswitch(td: *c_char,
+                                              size: uintptr_t)
+                                           -> *c_char;
+
+        #[fast_ffi]
+        unsafe fn rust_upcall_free_noswitch(ptr: *c_char);
     }
 }
 
@@ -44,7 +52,7 @@ pub fn fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
 }
 
 #[lang="fail_bounds_check"]
-pub unsafe fn fail_bounds_check(file: *c_char, line: size_t,
+pub fn fail_bounds_check(file: *c_char, line: size_t,
                                 index: size_t, len: size_t) {
     let msg = fmt!("index out of bounds: the len is %d but the index is %d",
                     len as int, index as int);
@@ -53,7 +61,7 @@ pub unsafe fn fail_bounds_check(file: *c_char, line: size_t,
     }
 }
 
-pub unsafe fn fail_borrowed() {
+pub fn fail_borrowed() {
     let msg = "borrowed";
     do str::as_buf(msg) |msg_p, _| {
         do str::as_buf("???") |file_p, _| {
@@ -81,7 +89,7 @@ pub unsafe fn exchange_free(ptr: *c_char) {
 #[lang="malloc"]
 #[inline(always)]
 pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    return rustrt::rust_upcall_malloc(td, size);
+    return rustrt::rust_upcall_malloc_noswitch(td, size);
 }
 
 // NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
@@ -90,7 +98,7 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 #[lang="free"]
 #[inline(always)]
 pub unsafe fn local_free(ptr: *c_char) {
-    rustrt::rust_upcall_free(ptr);
+    rustrt::rust_upcall_free_noswitch(ptr);
 }
 
 #[lang="borrow_as_imm"]

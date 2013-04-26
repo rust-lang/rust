@@ -227,14 +227,13 @@ Borrowck results in two maps.
 use core::prelude::*;
 
 use middle::mem_categorization::*;
-use middle::region;
 use middle::ty;
 use middle::typeck;
 use middle::moves;
 use util::common::stmt_set;
 use util::ppaux::note_and_explain_region;
 
-use core::hashmap::linear::{LinearSet, LinearMap};
+use core::hashmap::{HashSet, HashMap};
 use core::io;
 use core::result::{Result, Ok, Err};
 use core::to_bytes;
@@ -260,9 +259,9 @@ pub fn check_crate(
         moves_map: moves_map,
         capture_map: capture_map,
         root_map: root_map(),
-        mutbl_map: @mut LinearSet::new(),
-        write_guard_map: @mut LinearSet::new(),
-        stmt_map: @mut LinearSet::new(),
+        mutbl_map: @mut HashSet::new(),
+        write_guard_map: @mut HashSet::new(),
+        stmt_map: @mut HashSet::new(),
         stats: @mut BorrowStats {
             loaned_paths_same: 0,
             loaned_paths_imm: 0,
@@ -333,7 +332,7 @@ pub struct RootInfo {
 // a map mapping id's of expressions of gc'd type (@T, @[], etc) where
 // the box needs to be kept live to the id of the scope for which they
 // must stay live.
-pub type root_map = @mut LinearMap<root_map_key, RootInfo>;
+pub type root_map = @mut HashMap<root_map_key, RootInfo>;
 
 // the keys to the root map combine the `id` of the expression with
 // the number of types that it is autodereferenced.  So, for example,
@@ -348,11 +347,11 @@ pub struct root_map_key {
 
 // set of ids of local vars / formal arguments that are modified / moved.
 // this is used in trans for optimization purposes.
-pub type mutbl_map = @mut LinearSet<ast::node_id>;
+pub type mutbl_map = @mut HashSet<ast::node_id>;
 
 // A set containing IDs of expressions of gc'd type that need to have a write
 // guard.
-pub type write_guard_map = @mut LinearSet<root_map_key>;
+pub type write_guard_map = @mut HashSet<root_map_key>;
 
 // Errors that can occur
 #[deriving(Eq)]
@@ -405,8 +404,8 @@ pub struct Loan {
 /// - `pure_map`: map from block/expr that must be pure to the error message
 ///   that should be reported if they are not pure
 pub struct ReqMaps {
-    req_loan_map: LinearMap<ast::node_id, @mut ~[Loan]>,
-    pure_map: LinearMap<ast::node_id, bckerr>
+    req_loan_map: HashMap<ast::node_id, @mut ~[Loan]>,
+    pure_map: HashMap<ast::node_id, bckerr>
 }
 
 pub fn save_and_restore<T:Copy,U>(save_and_restore_t: &mut T,
@@ -444,13 +443,13 @@ pub impl LoanKind {
 /// Creates and returns a new root_map
 
 impl to_bytes::IterBytes for root_map_key {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.id, &self.derefs, lsb0, f);
     }
 }
 
 pub fn root_map() -> root_map {
-    return @mut LinearMap::new();
+    return @mut HashMap::new();
 }
 
 // ___________________________________________________________________________
@@ -458,7 +457,7 @@ pub fn root_map() -> root_map {
 
 pub impl BorrowckCtxt {
     fn is_subregion_of(&self, r_sub: ty::Region, r_sup: ty::Region) -> bool {
-        region::is_subregion_of(self.tcx.region_map, r_sub, r_sup)
+        self.tcx.region_maps.is_subregion_of(r_sub, r_sup)
     }
 
     fn cat_expr(&self, expr: @ast::expr) -> cmt {
@@ -530,11 +529,11 @@ pub impl BorrowckCtxt {
         self.note_and_explain_bckerr(err);
     }
 
-    fn span_err(&self, s: span, +m: ~str) {
+    fn span_err(&self, s: span, m: ~str) {
         self.tcx.sess.span_err(s, m);
     }
 
-    fn span_note(&self, s: span, +m: ~str) {
+    fn span_note(&self, s: span, m: ~str) {
         self.tcx.sess.span_note(s, m);
     }
 

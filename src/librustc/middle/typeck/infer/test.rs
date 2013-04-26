@@ -210,7 +210,9 @@ pub impl Env {
     }
 
     fn t_rptr_free(&self, nid: ast::node_id, id: uint) -> ty::t {
-        ty::mk_imm_rptr(self.tcx, ty::re_free(nid, ty::br_anon(id)),
+        ty::mk_imm_rptr(self.tcx,
+                        ty::re_free(ty::FreeRegion {scope_id: nid,
+                                                    bound_region: ty::br_anon(id)}),
                         self.t_int())
     }
 

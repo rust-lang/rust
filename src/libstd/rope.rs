@@ -455,7 +455,7 @@ pub mod iterator {
               node::Content(x) => return node::leaf_iterator::start(x)
             }
         }
-        pub fn next(it: &node::leaf_iterator::T) -> Option<node::Leaf> {
+        pub fn next(it: &mut node::leaf_iterator::T) -> Option<node::Leaf> {
             return node::leaf_iterator::next(it);
         }
     }
@@ -470,7 +470,7 @@ pub mod iterator {
               node::Content(x) => return node::char_iterator::start(x)
             }
         }
-        pub fn next(it: &node::char_iterator::T) -> Option<char> {
+        pub fn next(it: &mut node::char_iterator::T) -> Option<char> {
             return node::char_iterator::next(it)
         }
     }
@@ -832,14 +832,13 @@ pub mod node {
         unsafe {
             let mut buf = vec::from_elem(byte_len(node), 0);
             let mut offset = 0u;//Current position in the buffer
-            let it = leaf_iterator::start(node);
+            let mut it = leaf_iterator::start(node);
             loop {
-                match (leaf_iterator::next(&it)) {
+                match leaf_iterator::next(&mut it) {
                   option::None => break,
                   option::Some(x) => {
                     //FIXME (#2744): Replace with memcpy or something similar
-                    let mut local_buf: ~[u8] =
-                        cast::reinterpret_cast(&*x.content);
+                    let local_buf: ~[u8] = cast::transmute(*x.content);
                     let mut i = x.byte_offset;
                     while i < x.byte_len {
                         buf[offset] = local_buf[i];
@@ -862,17 +861,15 @@ pub mod node {
      * This function executes in linear time.
      */
     pub fn flatten(node: @Node) -> @Node {
-        unsafe {
-            match (*node) {
-                Leaf(_) => node,
-                Concat(ref x) => {
-                    @Leaf(Leaf {
-                        byte_offset: 0u,
-                        byte_len: x.byte_len,
-                        char_len: x.char_len,
-                        content: @serialize_node(node),
-                    })
-                }
+        match (*node) {
+            Leaf(_) => node,
+            Concat(ref x) => {
+                @Leaf(Leaf {
+                    byte_offset: 0u,
+                    byte_len: x.byte_len,
+                    char_len: x.char_len,
+                    content: @serialize_node(node),
+                })
             }
         }
     }
@@ -896,9 +893,9 @@ pub mod node {
         if height(node) < hint_max_node_height { return option::None; }
         //1. Gather all leaves as a forest
         let mut forest = ~[];
-        let it = leaf_iterator::start(node);
+        let mut it = leaf_iterator::start(node);
         loop {
-            match (leaf_iterator::next(&it)) {
+            match leaf_iterator::next(&mut it) {
               option::None    => break,
               option::Some(x) => forest.push(@Leaf(x))
             }
@@ -1058,11 +1055,12 @@ pub mod node {
     }
 
     pub fn cmp(a: @Node, b: @Node) -> int {
-        let ita = char_iterator::start(a);
-        let itb = char_iterator::start(b);
+        let mut ita = char_iterator::start(a);
+        let mut itb = char_iterator::start(b);
         let mut result = 0;
         while result == 0 {
-            match ((char_iterator::next(&ita), char_iterator::next(&itb))) {
+            match (char_iterator::next(&mut ita), char_iterator::next(&mut itb))
+            {
               (option::None, option::None) => break,
               (option::Some(chara), option::Some(charb)) => {
                 result = char::cmp(chara, charb);
@@ -1131,9 +1129,7 @@ pub mod node {
      * proportional to the height of the rope + the (bounded)
      * length of the largest leaf.
      */
-    pub fn char_at(node: @Node, pos: uint) -> char {
-        let mut node    = node;
-        let mut pos     = pos;
+    pub fn char_at(mut node: @Node, mut pos: uint) -> char {
         loop {
             match *node {
               Leaf(x) => return str::char_at(*x.content, pos),
@@ -1154,12 +1150,12 @@ pub mod node {
         use core::vec;
 
         pub struct T {
-            mut stack: ~[@Node],
-            mut stackpos: int,
+            stack: ~[@Node],
+            stackpos: int,
         }
 
         pub fn empty() -> T {
-            let mut stack : ~[@Node] = ~[];
+            let stack : ~[@Node] = ~[];
             T { stack: stack, stackpos: -1 }
         }
 
@@ -1171,7 +1167,7 @@ pub mod node {
             }
         }
 
-        pub fn next(it: &T) -> Option<Leaf> {
+        pub fn next(it: &mut T) -> Option<Leaf> {
             if it.stackpos < 0 { return option::None; }
             loop {
                 let current = it.stack[it.stackpos];
@@ -1199,8 +1195,8 @@ pub mod node {
 
         pub struct T {
             leaf_iterator: leaf_iterator::T,
-            mut leaf:  Option<Leaf>,
-            mut leaf_byte_pos: uint,
+            leaf:  Option<Leaf>,
+            leaf_byte_pos: uint,
         }
 
         pub fn start(node: @Node) -> T {
@@ -1219,13 +1215,13 @@ pub mod node {
             }
         }
 
-        pub fn next(it: &T) -> Option<char> {
+        pub fn next(it: &mut T) -> Option<char> {
             loop {
-                match (get_current_or_next_leaf(it)) {
+                match get_current_or_next_leaf(it) {
                   option::None => return option::None,
                   option::Some(_) => {
                     let next_char = get_next_char_in_leaf(it);
-                    match (next_char) {
+                    match next_char {
                       option::None => loop,
                       option::Some(_) => return next_char
                     }
@@ -1234,16 +1230,16 @@ pub mod node {
             };
         }
 
-        pub fn get_current_or_next_leaf(it: &T) -> Option<Leaf> {
-            match ((*it).leaf) {
-              option::Some(_) => return (*it).leaf,
+        pub fn get_current_or_next_leaf(it: &mut T) -> Option<Leaf> {
+            match it.leaf {
+              option::Some(_) => return it.leaf,
               option::None => {
-                let next = leaf_iterator::next(&((*it).leaf_iterator));
-                match (next) {
+                let next = leaf_iterator::next(&mut it.leaf_iterator);
+                match next {
                   option::None => return option::None,
                   option::Some(_) => {
-                    (*it).leaf          = next;
-                    (*it).leaf_byte_pos = 0u;
+                    it.leaf          = next;
+                    it.leaf_byte_pos = 0u;
                     return next;
                   }
                 }
@@ -1251,13 +1247,13 @@ pub mod node {
             }
         }
 
-        pub fn get_next_char_in_leaf(it: &T) -> Option<char> {
-            match copy (*it).leaf {
+        pub fn get_next_char_in_leaf(it: &mut T) -> Option<char> {
+            match copy it.leaf {
               option::None => return option::None,
               option::Some(aleaf) => {
-                if (*it).leaf_byte_pos >= aleaf.byte_len {
+                if it.leaf_byte_pos >= aleaf.byte_len {
                     //We are actually past the end of the leaf
-                    (*it).leaf = option::None;
+                    it.leaf = option::None;
                     return option::None
                 } else {
                     let range =
@@ -1290,18 +1286,16 @@ mod tests {
           node::Content(x) => {
             let str = @mut ~"";
             fn aux(str: @mut ~str, node: @node::Node) {
-                unsafe {
-                    match (*node) {
-                      node::Leaf(x) => {
-                        *str += str::slice(
-                            *x.content, x.byte_offset,
-                            x.byte_offset + x.byte_len).to_owned();
-                      }
-                      node::Concat(ref x) => {
-                        aux(str, x.left);
-                        aux(str, x.right);
-                      }
-                    }
+                match (*node) {
+                  node::Leaf(x) => {
+                    *str += str::slice(
+                        *x.content, x.byte_offset,
+                        x.byte_offset + x.byte_len).to_owned();
+                  }
+                  node::Concat(ref x) => {
+                    aux(str, x.left);
+                    aux(str, x.right);
+                  }
                 }
             }
             aux(str, x);
@@ -1342,11 +1336,11 @@ mod tests {
         assert!(rope_to_string(r) == *sample);
 
         let mut string_iter = 0u;
-        let string_len  = str::len(*sample);
-        let rope_iter   = iterator::char::start(r);
-        let mut equal   = true;
+        let string_len = str::len(*sample);
+        let mut rope_iter = iterator::char::start(r);
+        let mut equal = true;
         while equal {
-            match (node::char_iterator::next(&rope_iter)) {
+            match (node::char_iterator::next(&mut rope_iter)) {
               option::None => {
                 if string_iter < string_len {
                     equal = false;
@@ -1376,9 +1370,9 @@ mod tests {
         let r      = of_str(sample);
 
         let mut len = 0u;
-        let it  = iterator::char::start(r);
+        let mut it  = iterator::char::start(r);
         loop {
-            match (node::char_iterator::next(&it)) {
+            match (node::char_iterator::next(&mut it)) {
               option::None => break,
               option::Some(_) => len += 1u
             }

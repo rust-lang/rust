@@ -7,7 +7,7 @@
 	<!ENTITY rustIdent "[a-zA-Z_][a-zA-Z_0-9]*">
 	<!ENTITY rustIntSuf "([iu](8|16|32|64)?)?">
 ]>
-<language name="Rust" version="0.6" kateversion="2.4" section="Sources" extensions="*.rs;*.rc" mimetype="text/x-rust" priority="15">
+<language name="Rust" version="0.7-pre" kateversion="2.4" section="Sources" extensions="*.rs;*.rc" mimetype="text/x-rust" priority="15">
 <highlighting>
 	<list name="fn">
 		<item> fn </item>
@@ -57,8 +57,8 @@
 		<item> Add </item>
 		<item> Sub </item>
 		<item> Mul </item>
-		<item> Div </item>
-		<item> Modulo </item>
+		<item> Quot </item>
+		<item> Rem </item>
 		<item> Neg </item>
 		<item> BitAnd </item>
 		<item> BitOr </item>

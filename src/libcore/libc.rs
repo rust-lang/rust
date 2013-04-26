@@ -863,8 +863,20 @@ pub mod consts {
             pub static F_TEST : int = 3;
             pub static F_TLOCK : int = 2;
             pub static F_ULOCK : int = 0;
+            pub static SIGHUP : int = 1;
+            pub static SIGINT : int = 2;
+            pub static SIGQUIT : int = 3;
+            pub static SIGILL : int = 4;
+            pub static SIGABRT : int = 6;
+            pub static SIGFPE : int = 8;
+            pub static SIGKILL : int = 9;
+            pub static SIGSEGV : int = 11;
+            pub static SIGPIPE : int = 13;
+            pub static SIGALRM : int = 14;
+            pub static SIGTERM : int = 15;
         }
         pub mod posix01 {
+            pub static SIGTRAP : int = 5;
         }
         pub mod posix08 {
         }
@@ -930,8 +942,20 @@ pub mod consts {
             pub static F_TEST : int = 3;
             pub static F_TLOCK : int = 2;
             pub static F_ULOCK : int = 0;
+            pub static SIGHUP : int = 1;
+            pub static SIGINT : int = 2;
+            pub static SIGQUIT : int = 3;
+            pub static SIGILL : int = 4;
+            pub static SIGABRT : int = 6;
+            pub static SIGFPE : int = 8;
+            pub static SIGKILL : int = 9;
+            pub static SIGSEGV : int = 11;
+            pub static SIGPIPE : int = 13;
+            pub static SIGALRM : int = 14;
+            pub static SIGTERM : int = 15;
         }
         pub mod posix01 {
+            pub static SIGTRAP : int = 5;
         }
         pub mod posix08 {
         }
@@ -998,8 +1022,20 @@ pub mod consts {
             pub static F_TEST : int = 3;
             pub static F_TLOCK : int = 2;
             pub static F_ULOCK : int = 0;
+            pub static SIGHUP : int = 1;
+            pub static SIGINT : int = 2;
+            pub static SIGQUIT : int = 3;
+            pub static SIGILL : int = 4;
+            pub static SIGABRT : int = 6;
+            pub static SIGFPE : int = 8;
+            pub static SIGKILL : int = 9;
+            pub static SIGSEGV : int = 11;
+            pub static SIGPIPE : int = 13;
+            pub static SIGALRM : int = 14;
+            pub static SIGTERM : int = 15;
         }
         pub mod posix01 {
+            pub static SIGTRAP : int = 5;
         }
         pub mod posix08 {
         }
@@ -1061,9 +1097,12 @@ pub mod funcs {
                 unsafe fn setbuf(stream: *FILE, buf: *c_char);
                 // Omitted: printf and scanf variants.
                 unsafe fn fgetc(stream: *FILE) -> c_int;
+                #[fast_ffi]
                 unsafe fn fgets(buf: *mut c_char, n: c_int,
                          stream: *FILE) -> *c_char;
+                #[fast_ffi]
                 unsafe fn fputc(c: c_int, stream: *FILE) -> c_int;
+                #[fast_ffi]
                 unsafe fn fputs(s: *c_char, stream: *FILE) -> *c_char;
                 // Omitted: getc, getchar (might be macros).
 
@@ -1073,8 +1112,10 @@ pub mod funcs {
                 // Omitted: putc, putchar (might be macros).
                 unsafe fn puts(s: *c_char) -> c_int;
                 unsafe fn ungetc(c: c_int, stream: *FILE) -> c_int;
+                #[fast_ffi]
                 unsafe fn fread(ptr: *mut c_void, size: size_t,
                          nobj: size_t, stream: *FILE) -> size_t;
+                #[fast_ffi]
                 unsafe fn fwrite(ptr: *c_void, size: size_t,
                           nobj: size_t, stream: *FILE) -> size_t;
                 unsafe fn fseek(stream: *FILE, offset: c_long,
@@ -1108,9 +1149,13 @@ pub mod funcs {
                               -> c_long;
                 unsafe fn strtoul(s: *c_char, endp: **c_char, base: c_int)
                                -> c_ulong;
+                #[fast_ffi]
                 unsafe fn calloc(nobj: size_t, size: size_t) -> *c_void;
+                #[fast_ffi]
                 unsafe fn malloc(size: size_t) -> *c_void;
+                #[fast_ffi]
                 unsafe fn realloc(p: *c_void, size: size_t) -> *c_void;
+                #[fast_ffi]
                 unsafe fn free(p: *c_void);
                 unsafe fn abort() -> !;
                 unsafe fn exit(status: c_int) -> !;
@@ -1221,6 +1266,7 @@ pub mod funcs {
                 unsafe fn pclose(stream: *FILE) -> c_int;
 
                 #[link_name = "_fdopen"]
+                #[fast_ffi]
                 unsafe fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
 
                 #[link_name = "_fileno"]
@@ -1304,6 +1350,7 @@ pub mod funcs {
                         textmode: c_int) -> c_int;
 
                 #[link_name = "_read"]
+                #[fast_ffi]
                 unsafe fn read(fd: c_int, buf: *mut c_void, count: c_uint)
                             -> c_int;
 
@@ -1314,6 +1361,7 @@ pub mod funcs {
                 unsafe fn unlink(c: *c_char) -> c_int;
 
                 #[link_name = "_write"]
+                #[fast_ffi]
                 unsafe fn write(fd: c_int, buf: *c_void, count: c_uint)
                              -> c_int;
             }
@@ -1394,7 +1442,7 @@ pub mod funcs {
             use libc::types::common::posix88::{DIR, dirent_t};
             use libc::types::os::arch::c95::{c_char, c_int, c_long};
 
-            // NOTE: On OS X opendir and readdir have two versions,
+            // NB: On OS X opendir and readdir have two versions,
             // one for 32-bit kernelspace and one for 64.
             // We should be linking to the 64-bit ones, called
             // opendir$INODE64, etc. but for some reason rustc
@@ -1466,6 +1514,7 @@ pub mod funcs {
                 unsafe fn pathconf(path: *c_char, name: c_int) -> c_long;
                 unsafe fn pause() -> c_int;
                 unsafe fn pipe(fds: *mut c_int) -> c_int;
+                #[fast_ffi]
                 unsafe fn read(fd: c_int, buf: *mut c_void,
                         count: size_t) -> ssize_t;
                 unsafe fn rmdir(path: *c_char) -> c_int;
@@ -1478,8 +1527,20 @@ pub mod funcs {
                 unsafe fn tcgetpgrp(fd: c_int) -> pid_t;
                 unsafe fn ttyname(fd: c_int) -> *c_char;
                 unsafe fn unlink(c: *c_char) -> c_int;
+                #[fast_ffi]
                 unsafe fn write(fd: c_int, buf: *c_void, count: size_t)
                              -> ssize_t;
+            }
+        }
+
+        #[nolink]
+        #[abi = "cdecl"]
+        pub mod signal {
+            use libc::types::os::arch::c95::{c_int};
+            use libc::types::os::arch::posix88::{pid_t};
+
+            pub extern {
+                unsafe fn kill(pid: pid_t, sig: c_int) -> c_int;
             }
         }
     }
@@ -1623,6 +1684,7 @@ pub mod funcs {
     pub mod extra {
 
         pub mod kernel32 {
+            use libc::types::os::arch::c95::{c_uint};
             use libc::types::os::arch::extra::{BOOL, DWORD, HMODULE};
             use libc::types::os::arch::extra::{LPCWSTR, LPWSTR, LPTCH};
             use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES};
@@ -1663,6 +1725,8 @@ pub mod funcs {
                                        findFileData: HANDLE)
                     -> BOOL;
                 unsafe fn FindClose(findFile: HANDLE) -> BOOL;
+                unsafe fn CloseHandle(hObject: HANDLE) -> BOOL;
+                unsafe fn TerminateProcess(hProcess: HANDLE, uExitCode: c_uint) -> BOOL;
             }
         }
 

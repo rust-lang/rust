@@ -65,7 +65,7 @@ fn map_slices<A:Copy + Owned,B:Copy + Owned>(
                                      len * sys::size_of::<A>());
                         info!("pre-slice: %?", (base, slice));
                         let slice : &[A] =
-                            cast::reinterpret_cast(&slice);
+                            cast::transmute(slice);
                         info!("slice: %?",
                                        (base, vec::len(slice), end - base));
                         assert!((vec::len(slice) == end - base));

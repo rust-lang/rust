@@ -133,6 +133,9 @@
 #define RZ_BSD_32   (1024*20)
 #define RZ_BSD_64   (1024*20)
 
+// The threshold beyond which we switch to the C stack.
+#define STACK_THRESHOLD (1024 * 1024)
+
 #ifdef __linux__
 #ifdef __i386__
 #define RED_ZONE_SIZE RZ_LINUX_32
@@ -263,9 +266,13 @@ private:
     uintptr_t next_c_sp;
     uintptr_t next_rust_sp;
 
+    // The big stack.
+    stk_seg *big_stack;
+
     // Called when the atomic refcount reaches zero
     void delete_this();
 
+    bool new_big_stack();
     void new_stack_fast(size_t requested_sz);
     void new_stack(size_t requested_sz);
     void free_stack(stk_seg *stk);
@@ -367,6 +374,7 @@ public:
     void call_on_c_stack(void *args, void *fn_ptr);
     void call_on_rust_stack(void *args, void *fn_ptr);
     bool have_c_stack() { return c_stack != NULL; }
+    stk_seg *get_c_stack() { return c_stack; }
 
     rust_task_state get_state() { return state; }
     rust_cond *get_cond() { return cond; }
@@ -387,12 +395,6 @@ public:
     void inhibit_yield();
     void allow_yield();
 };
-
-// FIXME (#2697): It would be really nice to be able to get rid of this.
-inline void *operator new[](size_t size, rust_task *task, const char *tag) {
-    return task->malloc(size, tag);
-}
-
 
 template <typename T> struct task_owned {
     inline void *operator new(size_t size, rust_task *task,
@@ -567,6 +569,11 @@ inline void
 rust_task::new_stack_fast(size_t requested_sz) {
     // The minimum stack size, in bytes, of a Rust stack, excluding red zone
     size_t min_sz = sched_loop->min_stack_size;
+
+    if (requested_sz > STACK_THRESHOLD) {
+        if (new_big_stack())
+            return;
+    }
 
     // Try to reuse an existing stack segment
     if (stk != NULL && stk->next != NULL) {

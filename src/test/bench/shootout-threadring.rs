@@ -10,6 +10,8 @@
 
 // Based on threadring.erlang by Jira Isa
 
+// xfail-test FIXME #5985 OOM's on the mac bot
+
 fn start(n_tasks: int, token: int) {
     let mut (p, ch1) = comm::stream();
     ch1.send(token);

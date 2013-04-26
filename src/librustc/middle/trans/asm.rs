@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -108,7 +108,7 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
     } else if numOutputs == 1 {
         val_ty(outputs[0])
     } else {
-        T_struct(outputs.map(|o| val_ty(*o)))
+        T_struct(outputs.map(|o| val_ty(*o)), false)
     };
 
     let dialect = match ia.dialect {

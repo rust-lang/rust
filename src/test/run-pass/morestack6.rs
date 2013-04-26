@@ -54,6 +54,7 @@ fn runtest2(f: extern fn(), frame_backoff: u32, last_stk: *u8) -> u32 {
 }
 
 pub fn main() {
+    use core::rand::Rng;
     let fns = ~[
         calllink01,
         calllink02,
@@ -61,7 +62,7 @@ pub fn main() {
         calllink09,
         calllink10
     ];
-    let rng = rand::Rng();
+    let rng = rand::rng();
     for fns.each |f| {
         let f = *f;
         let sz = rng.next() % 256u32 + 256u32;

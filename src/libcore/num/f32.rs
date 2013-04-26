@@ -10,94 +10,100 @@
 
 //! Operations and constants for `f32`
 
-use cmath;
-use libc::{c_float, c_int};
-use num::NumCast;
-use num::strconv;
-use num;
-use option::Option;
-use unstable::intrinsics::floorf32;
 use from_str;
-use to_str;
-
-#[cfg(notest)] use cmp;
-#[cfg(notest)] use ops;
+use libc::c_int;
+use num::strconv;
+use prelude::*;
 
 pub use cmath::c_float_targ_consts::*;
 
+// An inner module is required to get the #[inline(always)] attribute on the
+// functions.
+pub use self::delegated::*;
+
 macro_rules! delegate(
     (
-        fn $name:ident(
-            $(
-                $arg:ident : $arg_ty:ty
-            ),*
-        ) -> $rv:ty = $bound_name:path
+        $(
+            fn $name:ident(
+                $(
+                    $arg:ident : $arg_ty:ty
+                ),*
+            ) -> $rv:ty = $bound_name:path
+        ),*
     ) => (
-        pub fn $name($( $arg : $arg_ty ),*) -> $rv {
-            unsafe {
-                $bound_name($( $arg ),*)
-            }
+        mod delegated {
+            use cmath::c_float_utils;
+            use libc::{c_float, c_int};
+            use unstable::intrinsics;
+
+            $(
+                #[inline(always)]
+                pub fn $name($( $arg : $arg_ty ),*) -> $rv {
+                    unsafe {
+                        $bound_name($( $arg ),*)
+                    }
+                }
+            )*
         }
     )
 )
 
-delegate!(fn acos(n: c_float) -> c_float = cmath::c_float_utils::acos)
-delegate!(fn asin(n: c_float) -> c_float = cmath::c_float_utils::asin)
-delegate!(fn atan(n: c_float) -> c_float = cmath::c_float_utils::atan)
-delegate!(fn atan2(a: c_float, b: c_float) -> c_float =
-    cmath::c_float_utils::atan2)
-delegate!(fn cbrt(n: c_float) -> c_float = cmath::c_float_utils::cbrt)
-delegate!(fn ceil(n: c_float) -> c_float = cmath::c_float_utils::ceil)
-delegate!(fn copysign(x: c_float, y: c_float) -> c_float =
-    cmath::c_float_utils::copysign)
-delegate!(fn cos(n: c_float) -> c_float = cmath::c_float_utils::cos)
-delegate!(fn cosh(n: c_float) -> c_float = cmath::c_float_utils::cosh)
-delegate!(fn erf(n: c_float) -> c_float = cmath::c_float_utils::erf)
-delegate!(fn erfc(n: c_float) -> c_float = cmath::c_float_utils::erfc)
-delegate!(fn exp(n: c_float) -> c_float = cmath::c_float_utils::exp)
-delegate!(fn expm1(n: c_float) -> c_float = cmath::c_float_utils::expm1)
-delegate!(fn exp2(n: c_float) -> c_float = cmath::c_float_utils::exp2)
-delegate!(fn abs(n: c_float) -> c_float = cmath::c_float_utils::abs)
-delegate!(fn abs_sub(a: c_float, b: c_float) -> c_float =
-    cmath::c_float_utils::abs_sub)
-delegate!(fn mul_add(a: c_float, b: c_float, c: c_float) -> c_float =
-    cmath::c_float_utils::mul_add)
-delegate!(fn fmax(a: c_float, b: c_float) -> c_float =
-    cmath::c_float_utils::fmax)
-delegate!(fn fmin(a: c_float, b: c_float) -> c_float =
-    cmath::c_float_utils::fmin)
-delegate!(fn nextafter(x: c_float, y: c_float) -> c_float =
-    cmath::c_float_utils::nextafter)
-delegate!(fn frexp(n: c_float, value: &mut c_int) -> c_float =
-    cmath::c_float_utils::frexp)
-delegate!(fn hypot(x: c_float, y: c_float) -> c_float =
-    cmath::c_float_utils::hypot)
-delegate!(fn ldexp(x: c_float, n: c_int) -> c_float =
-    cmath::c_float_utils::ldexp)
-delegate!(fn lgamma(n: c_float, sign: &mut c_int) -> c_float =
-    cmath::c_float_utils::lgamma)
-delegate!(fn ln(n: c_float) -> c_float = cmath::c_float_utils::ln)
-delegate!(fn log_radix(n: c_float) -> c_float =
-    cmath::c_float_utils::log_radix)
-delegate!(fn ln1p(n: c_float) -> c_float = cmath::c_float_utils::ln1p)
-delegate!(fn log10(n: c_float) -> c_float = cmath::c_float_utils::log10)
-delegate!(fn log2(n: c_float) -> c_float = cmath::c_float_utils::log2)
-delegate!(fn ilog_radix(n: c_float) -> c_int =
-    cmath::c_float_utils::ilog_radix)
-delegate!(fn modf(n: c_float, iptr: &mut c_float) -> c_float =
-    cmath::c_float_utils::modf)
-delegate!(fn pow(n: c_float, e: c_float) -> c_float =
-    cmath::c_float_utils::pow)
-delegate!(fn round(n: c_float) -> c_float = cmath::c_float_utils::round)
-delegate!(fn ldexp_radix(n: c_float, i: c_int) -> c_float =
-    cmath::c_float_utils::ldexp_radix)
-delegate!(fn sin(n: c_float) -> c_float = cmath::c_float_utils::sin)
-delegate!(fn sinh(n: c_float) -> c_float = cmath::c_float_utils::sinh)
-delegate!(fn sqrt(n: c_float) -> c_float = cmath::c_float_utils::sqrt)
-delegate!(fn tan(n: c_float) -> c_float = cmath::c_float_utils::tan)
-delegate!(fn tanh(n: c_float) -> c_float = cmath::c_float_utils::tanh)
-delegate!(fn tgamma(n: c_float) -> c_float = cmath::c_float_utils::tgamma)
-delegate!(fn trunc(n: c_float) -> c_float = cmath::c_float_utils::trunc)
+delegate!(
+    // intrinsics
+    fn abs(n: f32) -> f32 = intrinsics::fabsf32,
+    fn cos(n: f32) -> f32 = intrinsics::cosf32,
+    fn exp(n: f32) -> f32 = intrinsics::expf32,
+    fn exp2(n: f32) -> f32 = intrinsics::exp2f32,
+    fn floor(x: f32) -> f32 = intrinsics::floorf32,
+    fn ln(n: f32) -> f32 = intrinsics::logf32,
+    fn log10(n: f32) -> f32 = intrinsics::log10f32,
+    fn log2(n: f32) -> f32 = intrinsics::log2f32,
+    fn mul_add(a: f32, b: f32, c: f32) -> f32 = intrinsics::fmaf32,
+    fn pow(n: f32, e: f32) -> f32 = intrinsics::powf32,
+    fn powi(n: f32, e: c_int) -> f32 = intrinsics::powif32,
+    fn sin(n: f32) -> f32 = intrinsics::sinf32,
+    fn sqrt(n: f32) -> f32 = intrinsics::sqrtf32,
+
+    // LLVM 3.3 required to use intrinsics for these four
+    fn ceil(n: c_float) -> c_float = c_float_utils::ceil,
+    fn trunc(n: c_float) -> c_float = c_float_utils::trunc,
+    /*
+    fn ceil(n: f32) -> f32 = intrinsics::ceilf32,
+    fn trunc(n: f32) -> f32 = intrinsics::truncf32,
+    fn rint(n: f32) -> f32 = intrinsics::rintf32,
+    fn nearbyint(n: f32) -> f32 = intrinsics::nearbyintf32,
+    */
+
+    // cmath
+    fn acos(n: c_float) -> c_float = c_float_utils::acos,
+    fn asin(n: c_float) -> c_float = c_float_utils::asin,
+    fn atan(n: c_float) -> c_float = c_float_utils::atan,
+    fn atan2(a: c_float, b: c_float) -> c_float = c_float_utils::atan2,
+    fn cbrt(n: c_float) -> c_float = c_float_utils::cbrt,
+    fn copysign(x: c_float, y: c_float) -> c_float = c_float_utils::copysign,
+    fn cosh(n: c_float) -> c_float = c_float_utils::cosh,
+    fn erf(n: c_float) -> c_float = c_float_utils::erf,
+    fn erfc(n: c_float) -> c_float = c_float_utils::erfc,
+    fn expm1(n: c_float) -> c_float = c_float_utils::expm1,
+    fn abs_sub(a: c_float, b: c_float) -> c_float = c_float_utils::abs_sub,
+    fn fmax(a: c_float, b: c_float) -> c_float = c_float_utils::fmax,
+    fn fmin(a: c_float, b: c_float) -> c_float = c_float_utils::fmin,
+    fn nextafter(x: c_float, y: c_float) -> c_float = c_float_utils::nextafter,
+    fn frexp(n: c_float, value: &mut c_int) -> c_float = c_float_utils::frexp,
+    fn hypot(x: c_float, y: c_float) -> c_float = c_float_utils::hypot,
+    fn ldexp(x: c_float, n: c_int) -> c_float = c_float_utils::ldexp,
+    fn lgamma(n: c_float, sign: &mut c_int) -> c_float = c_float_utils::lgamma,
+    fn log_radix(n: c_float) -> c_float = c_float_utils::log_radix,
+    fn ln1p(n: c_float) -> c_float = c_float_utils::ln1p,
+    fn ilog_radix(n: c_float) -> c_int = c_float_utils::ilog_radix,
+    fn modf(n: c_float, iptr: &mut c_float) -> c_float = c_float_utils::modf,
+    fn round(n: c_float) -> c_float = c_float_utils::round,
+    fn ldexp_radix(n: c_float, i: c_int) -> c_float = c_float_utils::ldexp_radix,
+    fn sinh(n: c_float) -> c_float = c_float_utils::sinh,
+    fn tan(n: c_float) -> c_float = c_float_utils::tan,
+    fn tanh(n: c_float) -> c_float = c_float_utils::tanh,
+    fn tgamma(n: c_float) -> c_float = c_float_utils::tgamma)
+
 
 // These are not defined inside consts:: for consistency with
 // the integer types
@@ -121,7 +127,7 @@ pub fn sub(x: f32, y: f32) -> f32 { return x - y; }
 pub fn mul(x: f32, y: f32) -> f32 { return x * y; }
 
 #[inline(always)]
-pub fn div(x: f32, y: f32) -> f32 { return x / y; }
+pub fn quot(x: f32, y: f32) -> f32 { return x / y; }
 
 #[inline(always)]
 pub fn rem(x: f32, y: f32) -> f32 { return x % y; }
@@ -144,44 +150,9 @@ pub fn ge(x: f32, y: f32) -> bool { return x >= y; }
 #[inline(always)]
 pub fn gt(x: f32, y: f32) -> bool { return x > y; }
 
-/// Returns `x` rounded down
-#[inline(always)]
-pub fn floor(x: f32) -> f32 { unsafe { floorf32(x) } }
 
 // FIXME (#1999): replace the predicates below with llvm intrinsics or
 // calls to the libmath macros in the rust runtime for performance.
-
-/// Returns true if `x` is a positive number, including +0.0f320 and +Infinity
-#[inline(always)]
-pub fn is_positive(x: f32) -> bool {
-    x > 0.0f32 || (1.0f32/x) == infinity
-}
-
-/// Returns true if `x` is a negative number, including -0.0f320 and -Infinity
-#[inline(always)]
-pub fn is_negative(x: f32) -> bool {
-    x < 0.0f32 || (1.0f32/x) == neg_infinity
-}
-
-/**
- * Returns true if `x` is a negative number, including -0.0f320 and -Infinity
- *
- * This is the same as `f32::is_negative`.
- */
-#[inline(always)]
-pub fn is_nonpositive(x: f32) -> bool {
-  return x < 0.0f32 || (1.0f32/x) == neg_infinity;
-}
-
-/**
- * Returns true if `x` is a positive number, including +0.0f320 and +Infinity
- *
- * This is the same as `f32::is_positive`.)
- */
-#[inline(always)]
-pub fn is_nonnegative(x: f32) -> bool {
-  return x > 0.0f32 || (1.0f32/x) == infinity;
-}
 
 /// Returns true if `x` is a zero number (positive or negative zero)
 #[inline(always)]
@@ -248,17 +219,14 @@ pub mod consts {
 }
 
 #[inline(always)]
-pub fn signbit(x: f32) -> int {
-    if is_negative(x) { return 1; } else { return 0; }
-}
-
-#[inline(always)]
 pub fn logarithm(n: f32, b: f32) -> f32 {
     return log2(n) / log2(b);
 }
 
+impl Num for f32 {}
+
 #[cfg(notest)]
-impl cmp::Eq for f32 {
+impl Eq for f32 {
     #[inline(always)]
     fn eq(&self, other: &f32) -> bool { (*self) == (*other) }
     #[inline(always)]
@@ -266,7 +234,7 @@ impl cmp::Eq for f32 {
 }
 
 #[cfg(notest)]
-impl cmp::Ord for f32 {
+impl Ord for f32 {
     #[inline(always)]
     fn lt(&self, other: &f32) -> bool { (*self) < (*other) }
     #[inline(always)]
@@ -287,80 +255,260 @@ impl num::One for f32 {
     fn one() -> f32 { 1.0 }
 }
 
-impl NumCast for f32 {
-    /**
-     * Cast `n` to an `f32`
-     */
-    #[inline(always)]
-    fn from<N:NumCast>(n: N) -> f32 { n.to_f32() }
-
-    #[inline(always)] fn to_u8(&self)    -> u8    { *self as u8    }
-    #[inline(always)] fn to_u16(&self)   -> u16   { *self as u16   }
-    #[inline(always)] fn to_u32(&self)   -> u32   { *self as u32   }
-    #[inline(always)] fn to_u64(&self)   -> u64   { *self as u64   }
-    #[inline(always)] fn to_uint(&self)  -> uint  { *self as uint  }
-
-    #[inline(always)] fn to_i8(&self)    -> i8    { *self as i8    }
-    #[inline(always)] fn to_i16(&self)   -> i16   { *self as i16   }
-    #[inline(always)] fn to_i32(&self)   -> i32   { *self as i32   }
-    #[inline(always)] fn to_i64(&self)   -> i64   { *self as i64   }
-    #[inline(always)] fn to_int(&self)   -> int   { *self as int   }
-
-    #[inline(always)] fn to_f32(&self)   -> f32   { *self          }
-    #[inline(always)] fn to_f64(&self)   -> f64   { *self as f64   }
-    #[inline(always)] fn to_float(&self) -> float { *self as float }
-}
-
 #[cfg(notest)]
-impl ops::Add<f32,f32> for f32 {
+impl Add<f32,f32> for f32 {
+    #[inline(always)]
     fn add(&self, other: &f32) -> f32 { *self + *other }
 }
+
 #[cfg(notest)]
-impl ops::Sub<f32,f32> for f32 {
+impl Sub<f32,f32> for f32 {
+    #[inline(always)]
     fn sub(&self, other: &f32) -> f32 { *self - *other }
 }
+
 #[cfg(notest)]
-impl ops::Mul<f32,f32> for f32 {
+impl Mul<f32,f32> for f32 {
+    #[inline(always)]
     fn mul(&self, other: &f32) -> f32 { *self * *other }
 }
-#[cfg(notest)]
-impl ops::Div<f32,f32> for f32 {
+
+#[cfg(stage0,notest)]
+impl Div<f32,f32> for f32 {
+    #[inline(always)]
     fn div(&self, other: &f32) -> f32 { *self / *other }
 }
-#[cfg(notest)]
-impl ops::Modulo<f32,f32> for f32 {
+#[cfg(not(stage0),notest)]
+impl Quot<f32,f32> for f32 {
+    #[inline(always)]
+    fn quot(&self, other: &f32) -> f32 { *self / *other }
+}
+
+#[cfg(stage0,notest)]
+impl Modulo<f32,f32> for f32 {
+    #[inline(always)]
     fn modulo(&self, other: &f32) -> f32 { *self % *other }
 }
+#[cfg(not(stage0),notest)]
+impl Rem<f32,f32> for f32 {
+    #[inline(always)]
+    fn rem(&self, other: &f32) -> f32 { *self % *other }
+}
+
 #[cfg(notest)]
-impl ops::Neg<f32> for f32 {
+impl Neg<f32> for f32 {
+    #[inline(always)]
     fn neg(&self) -> f32 { -*self }
 }
 
-impl num::Round for f32 {
+impl Signed for f32 {
+    /// Computes the absolute value. Returns `NaN` if the number is `NaN`.
     #[inline(always)]
-    fn round(&self, mode: num::RoundMode) -> f32 {
-        match mode {
-            num::RoundDown                           => floor(*self),
-            num::RoundUp                             => ceil(*self),
-            num::RoundToZero   if is_negative(*self) => ceil(*self),
-            num::RoundToZero                         => floor(*self),
-            num::RoundFromZero if is_negative(*self) => floor(*self),
-            num::RoundFromZero                       => ceil(*self)
-        }
+    fn abs(&self) -> f32 { abs(*self) }
+
+    /**
+     * # Returns
+     *
+     * - `1.0` if the number is positive, `+0.0` or `infinity`
+     * - `-1.0` if the number is negative, `-0.0` or `neg_infinity`
+     * - `NaN` if the number is `NaN`
+     */
+    #[inline(always)]
+    fn signum(&self) -> f32 {
+        if is_NaN(*self) { NaN } else { copysign(1.0, *self) }
     }
 
+    /// Returns `true` if the number is positive, including `+0.0` and `infinity`
+    #[inline(always)]
+    fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == infinity }
+
+    /// Returns `true` if the number is negative, including `-0.0` and `neg_infinity`
+    #[inline(always)]
+    fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
+}
+
+impl Round for f32 {
+    /// Round half-way cases toward `neg_infinity`
     #[inline(always)]
     fn floor(&self) -> f32 { floor(*self) }
+
+    /// Round half-way cases toward `infinity`
     #[inline(always)]
     fn ceil(&self) -> f32 { ceil(*self) }
+
+    /// Round half-way cases away from `0.0`
     #[inline(always)]
-    fn fract(&self) -> f32 {
-        if is_negative(*self) {
-            (*self) - ceil(*self)
-        } else {
-            (*self) - floor(*self)
-        }
-    }
+    fn round(&self) -> f32 { round(*self) }
+
+    /// The integer part of the number (rounds towards `0.0`)
+    #[inline(always)]
+    fn trunc(&self) -> f32 { trunc(*self) }
+
+    ///
+    /// The fractional part of the number, satisfying:
+    ///
+    /// ~~~
+    /// assert!(x == trunc(x) + fract(x))
+    /// ~~~
+    ///
+    #[inline(always)]
+    fn fract(&self) -> f32 { *self - self.trunc() }
+}
+
+impl Fractional for f32 {
+    /// The reciprocal (multiplicative inverse) of the number
+    #[inline(always)]
+    fn recip(&self) -> f32 { 1.0 / *self }
+}
+
+impl Real for f32 {
+    /// Archimedes' constant
+    #[inline(always)]
+    fn pi() -> f32 { 3.14159265358979323846264338327950288 }
+
+    /// 2.0 * pi
+    #[inline(always)]
+    fn two_pi() -> f32 { 6.28318530717958647692528676655900576 }
+
+    /// pi / 2.0
+    #[inline(always)]
+    fn frac_pi_2() -> f32 { 1.57079632679489661923132169163975144 }
+
+    /// pi / 3.0
+    #[inline(always)]
+    fn frac_pi_3() -> f32 { 1.04719755119659774615421446109316763 }
+
+    /// pi / 4.0
+    #[inline(always)]
+    fn frac_pi_4() -> f32 { 0.785398163397448309615660845819875721 }
+
+    /// pi / 6.0
+    #[inline(always)]
+    fn frac_pi_6() -> f32 { 0.52359877559829887307710723054658381 }
+
+    /// pi / 8.0
+    #[inline(always)]
+    fn frac_pi_8() -> f32 { 0.39269908169872415480783042290993786 }
+
+    /// 1 .0/ pi
+    #[inline(always)]
+    fn frac_1_pi() -> f32 { 0.318309886183790671537767526745028724 }
+
+    /// 2.0 / pi
+    #[inline(always)]
+    fn frac_2_pi() -> f32 { 0.636619772367581343075535053490057448 }
+
+    /// 2.0 / sqrt(pi)
+    #[inline(always)]
+    fn frac_2_sqrtpi() -> f32 { 1.12837916709551257389615890312154517 }
+
+    /// sqrt(2.0)
+    #[inline(always)]
+    fn sqrt2() -> f32 { 1.41421356237309504880168872420969808 }
+
+    /// 1.0 / sqrt(2.0)
+    #[inline(always)]
+    fn frac_1_sqrt2() -> f32 { 0.707106781186547524400844362104849039 }
+
+    /// Euler's number
+    #[inline(always)]
+    fn e() -> f32 { 2.71828182845904523536028747135266250 }
+
+    /// log2(e)
+    #[inline(always)]
+    fn log2_e() -> f32 { 1.44269504088896340735992468100189214 }
+
+    /// log10(e)
+    #[inline(always)]
+    fn log10_e() -> f32 { 0.434294481903251827651128918916605082 }
+
+    /// log(2.0)
+    #[inline(always)]
+    fn log_2() -> f32 { 0.693147180559945309417232121458176568 }
+
+    /// log(10.0)
+    #[inline(always)]
+    fn log_10() -> f32 { 2.30258509299404568401799145468436421 }
+
+    #[inline(always)]
+    fn pow(&self, n: f32) -> f32 { pow(*self, n) }
+
+    #[inline(always)]
+    fn exp(&self) -> f32 { exp(*self) }
+
+    #[inline(always)]
+    fn exp2(&self) -> f32 { exp2(*self) }
+
+    #[inline(always)]
+    fn expm1(&self) -> f32 { expm1(*self) }
+
+    #[inline(always)]
+    fn ldexp(&self, n: int) -> f32 { ldexp(*self, n as c_int) }
+
+    #[inline(always)]
+    fn log(&self) -> f32 { ln(*self) }
+
+    #[inline(always)]
+    fn log2(&self) -> f32 { log2(*self) }
+
+    #[inline(always)]
+    fn log10(&self) -> f32 { log10(*self) }
+
+    #[inline(always)]
+    fn log_radix(&self) -> f32 { log_radix(*self) as f32 }
+
+    #[inline(always)]
+    fn ilog_radix(&self) -> int { ilog_radix(*self) as int }
+
+    #[inline(always)]
+    fn sqrt(&self) -> f32 { sqrt(*self) }
+
+    #[inline(always)]
+    fn rsqrt(&self) -> f32 { self.sqrt().recip() }
+
+    #[inline(always)]
+    fn cbrt(&self) -> f32 { cbrt(*self) }
+
+    /// Converts to degrees, assuming the number is in radians
+    #[inline(always)]
+    fn to_degrees(&self) -> f32 { *self * (180.0 / Real::pi::<f32>()) }
+
+    /// Converts to radians, assuming the number is in degrees
+    #[inline(always)]
+    fn to_radians(&self) -> f32 { *self * (Real::pi::<f32>() / 180.0) }
+
+    #[inline(always)]
+    fn hypot(&self, other: f32) -> f32 { hypot(*self, other) }
+
+    #[inline(always)]
+    fn sin(&self) -> f32 { sin(*self) }
+
+    #[inline(always)]
+    fn cos(&self) -> f32 { cos(*self) }
+
+    #[inline(always)]
+    fn tan(&self) -> f32 { tan(*self) }
+
+    #[inline(always)]
+    fn asin(&self) -> f32 { asin(*self) }
+
+    #[inline(always)]
+    fn acos(&self) -> f32 { acos(*self) }
+
+    #[inline(always)]
+    fn atan(&self) -> f32 { atan(*self) }
+
+    #[inline(always)]
+    fn atan2(&self, other: f32) -> f32 { atan2(*self, other) }
+
+    #[inline(always)]
+    fn sinh(&self) -> f32 { sinh(*self) }
+
+    #[inline(always)]
+    fn cosh(&self) -> f32 { cosh(*self) }
+
+    #[inline(always)]
+    fn tanh(&self) -> f32 { tanh(*self) }
 }
 
 /**
@@ -507,7 +655,7 @@ impl num::ToStrRadix for f32 {
 #[inline(always)]
 pub fn from_str(num: &str) -> Option<f32> {
     strconv::from_str_common(num, 10u, true, true, true,
-                             strconv::ExpDec, false)
+                             strconv::ExpDec, false, false)
 }
 
 /**
@@ -540,7 +688,7 @@ pub fn from_str(num: &str) -> Option<f32> {
 #[inline(always)]
 pub fn from_str_hex(num: &str) -> Option<f32> {
     strconv::from_str_common(num, 16u, true, true, true,
-                             strconv::ExpBin, false)
+                             strconv::ExpBin, false, false)
 }
 
 /**
@@ -565,7 +713,7 @@ pub fn from_str_hex(num: &str) -> Option<f32> {
 #[inline(always)]
 pub fn from_str_radix(num: &str, rdx: uint) -> Option<f32> {
     strconv::from_str_common(num, rdx, true, true, false,
-                             strconv::ExpNone, false)
+                             strconv::ExpNone, false, false)
 }
 
 impl from_str::FromStr for f32 {
@@ -580,61 +728,153 @@ impl num::FromStrRadix for f32 {
     }
 }
 
-#[test]
-pub fn test_num() {
-    let ten: f32 = num::cast(10);
-    let two: f32 = num::cast(2);
+#[cfg(test)]
+mod tests {
+    use f32::*;
+    use super::*;
+    use prelude::*;
 
-    assert!((ten.add(&two)    == num::cast(12)));
-    assert!((ten.sub(&two)    == num::cast(8)));
-    assert!((ten.mul(&two)    == num::cast(20)));
-    assert!((ten.div(&two)    == num::cast(5)));
-    assert!((ten.modulo(&two) == num::cast(0)));
-}
+    macro_rules! assert_fuzzy_eq(
+        ($a:expr, $b:expr) => ({
+            let a = $a, b = $b;
+            if !((a - b).abs() < 1.0e-6) {
+                fail!(fmt!("The values were not approximately equal. Found: %? and %?", a, b));
+            }
+        })
+    )
 
-#[test]
-fn test_numcast() {
-    assert!((20u     == 20f32.to_uint()));
-    assert!((20u8    == 20f32.to_u8()));
-    assert!((20u16   == 20f32.to_u16()));
-    assert!((20u32   == 20f32.to_u32()));
-    assert!((20u64   == 20f32.to_u64()));
-    assert!((20i     == 20f32.to_int()));
-    assert!((20i8    == 20f32.to_i8()));
-    assert!((20i16   == 20f32.to_i16()));
-    assert!((20i32   == 20f32.to_i32()));
-    assert!((20i64   == 20f32.to_i64()));
-    assert!((20f     == 20f32.to_float()));
-    assert!((20f32   == 20f32.to_f32()));
-    assert!((20f64   == 20f32.to_f64()));
+    #[test]
+    fn test_num() {
+        num::test_num(10f32, 2f32);
+    }
 
-    assert!((20f32 == NumCast::from(20u)));
-    assert!((20f32 == NumCast::from(20u8)));
-    assert!((20f32 == NumCast::from(20u16)));
-    assert!((20f32 == NumCast::from(20u32)));
-    assert!((20f32 == NumCast::from(20u64)));
-    assert!((20f32 == NumCast::from(20i)));
-    assert!((20f32 == NumCast::from(20i8)));
-    assert!((20f32 == NumCast::from(20i16)));
-    assert!((20f32 == NumCast::from(20i32)));
-    assert!((20f32 == NumCast::from(20i64)));
-    assert!((20f32 == NumCast::from(20f)));
-    assert!((20f32 == NumCast::from(20f32)));
-    assert!((20f32 == NumCast::from(20f64)));
+    #[test]
+    fn test_floor() {
+        assert_fuzzy_eq!(1.0f32.floor(), 1.0f32);
+        assert_fuzzy_eq!(1.3f32.floor(), 1.0f32);
+        assert_fuzzy_eq!(1.5f32.floor(), 1.0f32);
+        assert_fuzzy_eq!(1.7f32.floor(), 1.0f32);
+        assert_fuzzy_eq!(0.0f32.floor(), 0.0f32);
+        assert_fuzzy_eq!((-0.0f32).floor(), -0.0f32);
+        assert_fuzzy_eq!((-1.0f32).floor(), -1.0f32);
+        assert_fuzzy_eq!((-1.3f32).floor(), -2.0f32);
+        assert_fuzzy_eq!((-1.5f32).floor(), -2.0f32);
+        assert_fuzzy_eq!((-1.7f32).floor(), -2.0f32);
+    }
 
-    assert!((20f32 == num::cast(20u)));
-    assert!((20f32 == num::cast(20u8)));
-    assert!((20f32 == num::cast(20u16)));
-    assert!((20f32 == num::cast(20u32)));
-    assert!((20f32 == num::cast(20u64)));
-    assert!((20f32 == num::cast(20i)));
-    assert!((20f32 == num::cast(20i8)));
-    assert!((20f32 == num::cast(20i16)));
-    assert!((20f32 == num::cast(20i32)));
-    assert!((20f32 == num::cast(20i64)));
-    assert!((20f32 == num::cast(20f)));
-    assert!((20f32 == num::cast(20f32)));
-    assert!((20f32 == num::cast(20f64)));
+    #[test]
+    fn test_ceil() {
+        assert_fuzzy_eq!(1.0f32.ceil(), 1.0f32);
+        assert_fuzzy_eq!(1.3f32.ceil(), 2.0f32);
+        assert_fuzzy_eq!(1.5f32.ceil(), 2.0f32);
+        assert_fuzzy_eq!(1.7f32.ceil(), 2.0f32);
+        assert_fuzzy_eq!(0.0f32.ceil(), 0.0f32);
+        assert_fuzzy_eq!((-0.0f32).ceil(), -0.0f32);
+        assert_fuzzy_eq!((-1.0f32).ceil(), -1.0f32);
+        assert_fuzzy_eq!((-1.3f32).ceil(), -1.0f32);
+        assert_fuzzy_eq!((-1.5f32).ceil(), -1.0f32);
+        assert_fuzzy_eq!((-1.7f32).ceil(), -1.0f32);
+    }
+
+    #[test]
+    fn test_round() {
+        assert_fuzzy_eq!(1.0f32.round(), 1.0f32);
+        assert_fuzzy_eq!(1.3f32.round(), 1.0f32);
+        assert_fuzzy_eq!(1.5f32.round(), 2.0f32);
+        assert_fuzzy_eq!(1.7f32.round(), 2.0f32);
+        assert_fuzzy_eq!(0.0f32.round(), 0.0f32);
+        assert_fuzzy_eq!((-0.0f32).round(), -0.0f32);
+        assert_fuzzy_eq!((-1.0f32).round(), -1.0f32);
+        assert_fuzzy_eq!((-1.3f32).round(), -1.0f32);
+        assert_fuzzy_eq!((-1.5f32).round(), -2.0f32);
+        assert_fuzzy_eq!((-1.7f32).round(), -2.0f32);
+    }
+
+    #[test]
+    fn test_trunc() {
+        assert_fuzzy_eq!(1.0f32.trunc(), 1.0f32);
+        assert_fuzzy_eq!(1.3f32.trunc(), 1.0f32);
+        assert_fuzzy_eq!(1.5f32.trunc(), 1.0f32);
+        assert_fuzzy_eq!(1.7f32.trunc(), 1.0f32);
+        assert_fuzzy_eq!(0.0f32.trunc(), 0.0f32);
+        assert_fuzzy_eq!((-0.0f32).trunc(), -0.0f32);
+        assert_fuzzy_eq!((-1.0f32).trunc(), -1.0f32);
+        assert_fuzzy_eq!((-1.3f32).trunc(), -1.0f32);
+        assert_fuzzy_eq!((-1.5f32).trunc(), -1.0f32);
+        assert_fuzzy_eq!((-1.7f32).trunc(), -1.0f32);
+    }
+
+    #[test]
+    fn test_fract() {
+        assert_fuzzy_eq!(1.0f32.fract(), 0.0f32);
+        assert_fuzzy_eq!(1.3f32.fract(), 0.3f32);
+        assert_fuzzy_eq!(1.5f32.fract(), 0.5f32);
+        assert_fuzzy_eq!(1.7f32.fract(), 0.7f32);
+        assert_fuzzy_eq!(0.0f32.fract(), 0.0f32);
+        assert_fuzzy_eq!((-0.0f32).fract(), -0.0f32);
+        assert_fuzzy_eq!((-1.0f32).fract(), -0.0f32);
+        assert_fuzzy_eq!((-1.3f32).fract(), -0.3f32);
+        assert_fuzzy_eq!((-1.5f32).fract(), -0.5f32);
+        assert_fuzzy_eq!((-1.7f32).fract(), -0.7f32);
+    }
+
+    #[test]
+    fn test_real_consts() {
+        assert_fuzzy_eq!(Real::two_pi::<f32>(), 2f32 * Real::pi::<f32>());
+        assert_fuzzy_eq!(Real::frac_pi_2::<f32>(), Real::pi::<f32>() / 2f32);
+        assert_fuzzy_eq!(Real::frac_pi_3::<f32>(), Real::pi::<f32>() / 3f32);
+        assert_fuzzy_eq!(Real::frac_pi_4::<f32>(), Real::pi::<f32>() / 4f32);
+        assert_fuzzy_eq!(Real::frac_pi_6::<f32>(), Real::pi::<f32>() / 6f32);
+        assert_fuzzy_eq!(Real::frac_pi_8::<f32>(), Real::pi::<f32>() / 8f32);
+        assert_fuzzy_eq!(Real::frac_1_pi::<f32>(), 1f32 / Real::pi::<f32>());
+        assert_fuzzy_eq!(Real::frac_2_pi::<f32>(), 2f32 / Real::pi::<f32>());
+        assert_fuzzy_eq!(Real::frac_2_sqrtpi::<f32>(), 2f32 / Real::pi::<f32>().sqrt());
+        assert_fuzzy_eq!(Real::sqrt2::<f32>(), 2f32.sqrt());
+        assert_fuzzy_eq!(Real::frac_1_sqrt2::<f32>(), 1f32 / 2f32.sqrt());
+        assert_fuzzy_eq!(Real::log2_e::<f32>(), Real::e::<f32>().log2());
+        assert_fuzzy_eq!(Real::log10_e::<f32>(), Real::e::<f32>().log10());
+        assert_fuzzy_eq!(Real::log_2::<f32>(), 2f32.log());
+        assert_fuzzy_eq!(Real::log_10::<f32>(), 10f32.log());
+    }
+
+    #[test]
+    pub fn test_signed() {
+        assert_eq!(infinity.abs(), infinity);
+        assert_eq!(1f32.abs(), 1f32);
+        assert_eq!(0f32.abs(), 0f32);
+        assert_eq!((-0f32).abs(), 0f32);
+        assert_eq!((-1f32).abs(), 1f32);
+        assert_eq!(neg_infinity.abs(), infinity);
+        assert_eq!((1f32/neg_infinity).abs(), 0f32);
+        assert!(is_NaN(NaN.abs()));
+
+        assert_eq!(infinity.signum(), 1f32);
+        assert_eq!(1f32.signum(), 1f32);
+        assert_eq!(0f32.signum(), 1f32);
+        assert_eq!((-0f32).signum(), -1f32);
+        assert_eq!((-1f32).signum(), -1f32);
+        assert_eq!(neg_infinity.signum(), -1f32);
+        assert_eq!((1f32/neg_infinity).signum(), -1f32);
+        assert!(is_NaN(NaN.signum()));
+
+        assert!(infinity.is_positive());
+        assert!(1f32.is_positive());
+        assert!(0f32.is_positive());
+        assert!(!(-0f32).is_positive());
+        assert!(!(-1f32).is_positive());
+        assert!(!neg_infinity.is_positive());
+        assert!(!(1f32/neg_infinity).is_positive());
+        assert!(!NaN.is_positive());
+
+        assert!(!infinity.is_negative());
+        assert!(!1f32.is_negative());
+        assert!(!0f32.is_negative());
+        assert!((-0f32).is_negative());
+        assert!((-1f32).is_negative());
+        assert!(neg_infinity.is_negative());
+        assert!((1f32/neg_infinity).is_negative());
+        assert!(!NaN.is_negative());
+    }
 }
 
 //

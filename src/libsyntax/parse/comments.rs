@@ -229,7 +229,7 @@ fn read_block_comment(rdr: @mut StringReader,
     debug!(">>> block comment");
     let p = rdr.last_pos;
     let mut lines: ~[~str] = ~[];
-    let mut col: CharPos = rdr.col;
+    let col: CharPos = rdr.col;
     bump(rdr);
     bump(rdr);
 
@@ -319,7 +319,7 @@ pub struct lit {
 
 pub fn gather_comments_and_literals(span_diagnostic:
                                     @diagnostic::span_handler,
-                                    +path: ~str,
+                                    path: ~str,
                                     srdr: @io::Reader)
                                  -> (~[cmnt], ~[lit]) {
     let src = @str::from_bytes(srdr.read_whole_stream());

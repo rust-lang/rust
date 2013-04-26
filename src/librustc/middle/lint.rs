@@ -13,9 +13,10 @@ use core::prelude::*;
 use driver::session::Session;
 use driver::session;
 use middle::ty;
+use middle::pat_util;
 use util::ppaux::{ty_to_str};
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::char;
 use core::cmp;
 use core::i8;
@@ -75,6 +76,7 @@ pub enum lint {
     default_methods,
     deprecated_mutable_fields,
     deprecated_drop,
+    unused_unsafe,
     foreign_mode,
 
     managed_heap_memory,
@@ -83,9 +85,9 @@ pub enum lint {
 
     legacy_modes,
 
-    // FIXME(#3266)--make liveness warnings lintable
-    // unused_variable,
-    // dead_assignment
+    unused_variable,
+    dead_assignment,
+    unused_mut,
 }
 
 pub fn level_to_str(lv: level) -> &'static str {
@@ -108,7 +110,7 @@ struct LintSpec {
     default: level
 }
 
-pub type LintDict = @LinearMap<~str, LintSpec>;
+pub type LintDict = @HashMap<~str, LintSpec>;
 
 /*
   Pass names should not contain a '-', as the compiler normalizes
@@ -257,23 +259,35 @@ pub fn get_lint_dict() -> LintDict {
             default: deny
         }),
 
-        /* FIXME(#3266)--make liveness warnings lintable
-        (@~"unused_variable",
-         @LintSpec {
+        (~"unused_unsafe",
+         LintSpec {
+            lint: unused_unsafe,
+            desc: "unnecessary use of an `unsafe` block",
+            default: warn
+        }),
+
+        (~"unused_variable",
+         LintSpec {
             lint: unused_variable,
             desc: "detect variables which are not used in any way",
             default: warn
-         }),
+        }),
 
-        (@~"dead_assignment",
-         @LintSpec {
+        (~"dead_assignment",
+         LintSpec {
             lint: dead_assignment,
             desc: "detect assignments that will never be read",
             default: warn
-         }),
-        */
+        }),
+
+        (~"unused_mut",
+         LintSpec {
+            lint: unused_mut,
+            desc: "detect mut variables which don't need to be mutable",
+            default: warn
+        }),
     ];
-    let mut map = LinearMap::new();
+    let mut map = HashMap::new();
     do vec::consume(v) |_, (k, v)| {
         map.insert(k, v);
     }
@@ -282,7 +296,7 @@ pub fn get_lint_dict() -> LintDict {
 
 // This is a highly not-optimal set of data structure decisions.
 type LintModes = @mut SmallIntMap<level>;
-type LintModeMap = @mut LinearMap<ast::node_id, LintModes>;
+type LintModeMap = @mut HashMap<ast::node_id, LintModes>;
 
 // settings_map maps node ids of items with non-default lint settings
 // to their settings; default_settings contains the settings for everything
@@ -295,7 +309,7 @@ pub struct LintSettings {
 pub fn mk_lint_settings() -> LintSettings {
     LintSettings {
         default_settings: @mut SmallIntMap::new(),
-        settings_map: @mut LinearMap::new()
+        settings_map: @mut HashMap::new()
     }
 }
 
@@ -343,7 +357,7 @@ pub impl Context {
         }
     }
 
-    fn span_lint(&self, level: level, span: span, +msg: ~str) {
+    fn span_lint(&self, level: level, span: span, msg: ~str) {
         self.sess.span_lint_level(level, span, msg);
     }
 
@@ -433,7 +447,7 @@ pub impl Context {
 }
 
 
-fn build_settings_item(i: @ast::item, &&cx: Context, v: visit::vt<Context>) {
+fn build_settings_item(i: @ast::item, cx: Context, v: visit::vt<Context>) {
     do cx.with_lint_attrs(/*bad*/copy i.attrs) |cx| {
         if !cx.is_default {
             cx.sess.lint_settings.settings_map.insert(i.id, cx.curr);
@@ -463,7 +477,7 @@ pub fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
 
     do cx.with_lint_attrs(/*bad*/copy crate.node.attrs) |cx| {
         // Copy out the default settings
-        for cx.curr.each |&(k, &v)| {
+        for cx.curr.each |&k, &v| {
             sess.lint_settings.default_settings.insert(k, v);
         }
 
@@ -476,7 +490,7 @@ pub fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
             visit_item: build_settings_item,
             .. *visit::default_visitor()
         });
-        visit::visit_crate(*crate, cx, visit);
+        visit::visit_crate(crate, cx, visit);
     }
 
     sess.abort_if_errors();
@@ -493,6 +507,8 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_default_methods(cx, i);
     check_item_deprecated_mutable_fields(cx, i);
     check_item_deprecated_drop(cx, i);
+    check_item_unused_unsafe(cx, i);
+    check_item_unused_mut(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -825,8 +841,7 @@ fn check_item_heap(cx: ty::ctxt, it: @ast::item) {
       ast::item_fn(*) |
       ast::item_ty(*) |
       ast::item_enum(*) |
-      ast::item_struct(*) |
-      ast::item_trait(*) => check_type(cx, it.id, it.id, it.span,
+      ast::item_struct(*) => check_type(cx, it.id, it.id, it.span,
                                        ty::node_id_to_type(cx, it.id)),
       _ => ()
     }
@@ -927,19 +942,91 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
     }
 }
 
+fn check_item_unused_unsafe(cx: ty::ctxt, it: @ast::item) {
+    let visit_expr: @fn(@ast::expr) = |e| {
+        match e.node {
+            ast::expr_block(ref blk) if blk.node.rules == ast::unsafe_blk => {
+                if !cx.used_unsafe.contains(&blk.node.id) {
+                    cx.sess.span_lint(unused_unsafe, blk.node.id, it.id,
+                                      blk.span,
+                                      ~"unnecessary `unsafe` block");
+                }
+            }
+            _ => ()
+        }
+    };
+
+    let visit = item_stopping_visitor(
+        visit::mk_simple_visitor(@visit::SimpleVisitor {
+            visit_expr: visit_expr,
+            .. *visit::default_simple_visitor()
+        }));
+    visit::visit_item(it, (), visit);
+}
+
+fn check_item_unused_mut(tcx: ty::ctxt, it: @ast::item) {
+    let check_pat: @fn(@ast::pat) = |p| {
+        let mut used = false;
+        let mut bindings = 0;
+        do pat_util::pat_bindings(tcx.def_map, p) |_, id, _, _| {
+            used = used || tcx.used_mut_nodes.contains(&id);
+            bindings += 1;
+        }
+        if !used {
+            let msg = if bindings == 1 {
+                ~"variable does not need to be mutable"
+            } else {
+                ~"variables do not need to be mutable"
+            };
+            tcx.sess.span_lint(unused_mut, p.id, it.id, p.span, msg);
+        }
+    };
+
+    let visit_fn_decl: @fn(&ast::fn_decl) = |fd| {
+        for fd.inputs.each |arg| {
+            if arg.is_mutbl {
+                check_pat(arg.pat);
+            }
+        }
+    };
+
+    let visit = item_stopping_visitor(
+        visit::mk_simple_visitor(@visit::SimpleVisitor {
+            visit_local: |l| {
+                if l.node.is_mutbl {
+                    check_pat(l.node.pat);
+                }
+            },
+            visit_fn: |_, fd, _, _, _| visit_fn_decl(fd),
+            visit_ty_method: |tm| visit_fn_decl(&tm.decl),
+            visit_struct_method: |sm| visit_fn_decl(&sm.decl),
+            visit_trait_method: |tm| {
+                match *tm {
+                    ast::required(ref tm) => visit_fn_decl(&tm.decl),
+                    ast::provided(m) => visit_fn_decl(&m.decl),
+                }
+            },
+            .. *visit::default_simple_visitor()
+        }));
+    visit::visit_item(it, (), visit);
+}
+
 fn check_fn(tcx: ty::ctxt, fk: &visit::fn_kind, decl: &ast::fn_decl,
             _body: &ast::blk, span: span, id: ast::node_id) {
     debug!("lint check_fn fk=%? id=%?", fk, id);
 
-    // don't complain about blocks, since they tend to get their modes
-    // specified from the outside
+    // Check for deprecated modes
     match *fk {
-      visit::fk_fn_block(*) => { return; }
-      _ => {}
+        // don't complain about blocks, since they tend to get their modes
+        // specified from the outside
+        visit::fk_fn_block(*) => {}
+
+        _ => {
+            let fn_ty = ty::node_id_to_type(tcx, id);
+            check_fn_deprecated_modes(tcx, fn_ty, decl, span, id);
+        }
     }
 
-    let fn_ty = ty::node_id_to_type(tcx, id);
-    check_fn_deprecated_modes(tcx, fn_ty, decl, span, id);
 }
 
 fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: &ast::fn_decl,
@@ -1047,7 +1134,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
             check_fn(tcx, fk, decl, body, span, id),
         .. *visit::default_simple_visitor()
     });
-    visit::visit_crate(*crate, (), v);
+    visit::visit_crate(crate, (), v);
 
     tcx.sess.abort_if_errors();
 }

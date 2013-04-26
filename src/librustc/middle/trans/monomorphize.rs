@@ -30,7 +30,7 @@ use middle::trans::type_use;
 use middle::ty;
 use middle::ty::{FnSig};
 use middle::typeck;
-use util::ppaux::ty_to_str;
+use util::ppaux::Repr;
 
 use core::vec;
 use syntax::ast;
@@ -46,8 +46,21 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                       real_substs: &[ty::t],
                       vtables: Option<typeck::vtable_res>,
                       impl_did_opt: Option<ast::def_id>,
-                      ref_id: Option<ast::node_id>) ->
-                      (ValueRef, bool) {
+                      ref_id: Option<ast::node_id>)
+    -> (ValueRef, bool)
+{
+    debug!("monomorphic_fn(\
+            fn_id=%s, \
+            real_substs=%s, \
+            vtables=%s, \
+            impl_did_opt=%s, \
+            ref_id=%?)",
+           fn_id.repr(ccx.tcx),
+           real_substs.repr(ccx.tcx),
+           vtables.repr(ccx.tcx),
+           impl_did_opt.repr(ccx.tcx),
+           ref_id);
+
     assert!(real_substs.all(|t| !ty::type_needs_infer(*t)));
     let _icx = ccx.insn_ctxt("monomorphic_fn");
     let mut must_cast = false;
@@ -69,13 +82,15 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         must_cast = true;
     }
 
-    debug!("monomorphic_fn(fn_id=%? (%s), vtables=%?, \
-            real_substs=%?, substs=%?, \
-            hash_id = %?",
-           fn_id, ty::item_path_str(ccx.tcx, fn_id),
-           vtables,
-           real_substs.map(|s| ty_to_str(ccx.tcx, *s)),
-           substs.map(|s| ty_to_str(ccx.tcx, *s)), hash_id);
+    debug!("monomorphic_fn(\
+            fn_id=%s, \
+            vtables=%s, \
+            substs=%s, \
+            hash_id=%?)",
+           fn_id.repr(ccx.tcx),
+           vtables.repr(ccx.tcx),
+           substs.repr(ccx.tcx),
+           hash_id);
 
     match ccx.monomorphized.find(&hash_id) {
       Some(&val) => {
@@ -87,7 +102,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     }
 
     let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
-    let mut llitem_ty = tpt.ty;
+    let llitem_ty = tpt.ty;
 
     let map_node = session::expect(ccx.sess, ccx.tcx.items.find(&fn_id.node),
      || fmt!("While monomorphizing %?, couldn't find it in the item map \
@@ -169,7 +184,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     let psubsts = Some(@param_substs {
         tys: substs,
         vtables: vtables,
-        bounds: tpt.bounds,
+        type_param_defs: tpt.generics.type_param_defs,
         self_ty: impl_ty_opt
     });
 
@@ -180,7 +195,16 @@ pub fn monomorphic_fn(ccx: @CrateContext,
             }, _) => {
         let d = mk_lldecl();
         set_inline_hint_if_appr(/*bad*/copy i.attrs, d);
-        trans_fn(ccx, pt, decl, body, d, no_self, psubsts, fn_id.node, None);
+        trans_fn(ccx,
+                 pt,
+                 decl,
+                 body,
+                 d,
+                 no_self,
+                 psubsts,
+                 fn_id.node,
+                 None,
+                 []);
         d
       }
       ast_map::node_item(*) => {
@@ -188,7 +212,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       }
       ast_map::node_foreign_item(i, _, _, _) => {
           let d = mk_lldecl();
-          foreign::trans_intrinsic(ccx, d, i, pt, psubsts.get(),
+          foreign::trans_intrinsic(ccx, d, i, pt, psubsts.get(), i.attrs,
                                 ref_id);
           d
       }
@@ -197,9 +221,9 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         let this_tv = vec::find(*tvs, |tv| { tv.id.node == fn_id.node}).get();
         let d = mk_lldecl();
         set_inline_hint(d);
-        match (*v).node.kind {
+        match v.node.kind {
             ast::tuple_variant_kind(ref args) => {
-                trans_enum_variant(ccx, enum_item.id, *v, /*bad*/copy *args,
+                trans_enum_variant(ccx, enum_item.id, v, /*bad*/copy *args,
                                    this_tv.disr_val, psubsts, d);
             }
             ast::struct_variant_kind(_) =>
@@ -283,15 +307,15 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
                     abis: AbiSet::Rust(),
                     sig: FnSig {bound_lifetime_names: opt_vec::Empty,
                                 inputs: ~[],
-                                output: ty::mk_nil(tcx)}}))
+                                output: ty::mk_nil()}}))
         }
         ty::ty_closure(ref fty) => {
             Some(normalized_closure_ty(tcx, fty.sigil))
         }
-        ty::ty_trait(_, _, ref store) => {
+        ty::ty_trait(_, _, ref store, _) => {
             let sigil = match *store {
                 ty::UniqTraitStore => ast::OwnedSigil,
-                ty::BoxTraitStore | ty::BareTraitStore => ast::ManagedSigil,
+                ty::BoxTraitStore => ast::ManagedSigil,
                 ty::RegionTraitStore(_) => ast::BorrowedSigil,
             };
 
@@ -299,7 +323,7 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
             Some(normalized_closure_ty(tcx, sigil))
         }
         ty::ty_ptr(_) => {
-            Some(ty::mk_uint(tcx))
+            Some(ty::mk_uint())
         }
         _ => {
             None
@@ -318,30 +342,32 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
                 region: ty::re_static,
                 sig: ty::FnSig {bound_lifetime_names: opt_vec::Empty,
                                 inputs: ~[],
-                                output: ty::mk_nil(tcx)}})
+                                output: ty::mk_nil()}})
     }
 }
 
-pub fn make_mono_id(ccx: @CrateContext, item: ast::def_id, substs: &[ty::t],
+pub fn make_mono_id(ccx: @CrateContext,
+                    item: ast::def_id,
+                    substs: &[ty::t],
                     vtables: Option<typeck::vtable_res>,
                     impl_did_opt: Option<ast::def_id>,
-                    +param_uses: Option<~[type_use::type_uses]>) -> mono_id {
+                    param_uses: Option<@~[type_use::type_uses]>) -> mono_id {
     let precise_param_ids = match vtables {
       Some(vts) => {
-        let bounds = ty::lookup_item_type(ccx.tcx, item).bounds;
+        let item_ty = ty::lookup_item_type(ccx.tcx, item);
         let mut i = 0;
-        vec::map2(*bounds, substs, |bounds, subst| {
+        vec::map2(*item_ty.generics.type_param_defs, substs, |type_param_def, subst| {
             let mut v = ~[];
-            for bounds.each |bound| {
+            for type_param_def.bounds.each |bound| {
                 match *bound {
                   ty::bound_trait(_) => {
                     v.push(meth::vtable_id(ccx, /*bad*/copy vts[i]));
-                    i += 1u;
+                    i += 1;
                   }
                   _ => ()
                 }
             }
-            (*subst, if v.len() > 0u { Some(v) } else { None })
+            (*subst, if !v.is_empty() { Some(v) } else { None })
         })
       }
       None => {
@@ -350,7 +376,7 @@ pub fn make_mono_id(ccx: @CrateContext, item: ast::def_id, substs: &[ty::t],
     };
     let param_ids = match param_uses {
       Some(ref uses) => {
-        vec::map2(precise_param_ids, *uses, |id, uses| {
+        vec::map2(precise_param_ids, **uses, |id, uses| {
             if ccx.sess.no_monomorphic_collapse() {
                 match copy *id {
                     (a, b) => mono_precise(a, b)
@@ -360,7 +386,7 @@ pub fn make_mono_id(ccx: @CrateContext, item: ast::def_id, substs: &[ty::t],
                     // XXX: Bad copy.
                     (a, copy b@Some(_)) => mono_precise(a, b),
                     (subst, None) => {
-                        if *uses == 0u {
+                        if *uses == 0 {
                             mono_any
                         } else if *uses == type_use::use_repr &&
                             !ty::type_needs_drop(ccx.tcx, subst)
@@ -369,22 +395,14 @@ pub fn make_mono_id(ccx: @CrateContext, item: ast::def_id, substs: &[ty::t],
                             let size = machine::llbitsize_of_real(ccx, llty);
                             let align = machine::llalign_of_pref(ccx, llty);
                             let mode = datum::appropriate_mode(subst);
-
-                            // FIXME(#3547)---scalars and floats are
-                            // treated differently in most ABIs.  But we
-                            // should be doing something more detailed
-                            // here.
-                            let is_float = match ty::get(subst).sty {
-                                ty::ty_float(_) => true,
-                                _ => false
-                            };
+                            let data_class = mono_data_classify(subst);
 
                             // Special value for nil to prevent problems
                             // with undef return pointers.
                             if size <= 8u && ty::type_is_nil(subst) {
-                                mono_repr(0u, 0u, is_float, mode)
+                                mono_repr(0u, 0u, data_class, mode)
                             } else {
-                                mono_repr(size, align, is_float, mode)
+                                mono_repr(size, align, data_class, mode)
                             }
                         } else {
                             mono_precise(subst, None)

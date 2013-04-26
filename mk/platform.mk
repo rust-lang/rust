@@ -239,6 +239,31 @@ CFG_RUN_arm-linux-androideabi=
 CFG_RUN_TARG_arm-linux-androideabi=
 RUSTC_FLAGS_arm-linux-androideabi :=--android-cross-path=$(CFG_ANDROID_CROSS_PATH)
 
+# mips-unknown-linux-gnu configuration
+CC_mips-unknown-linux-gnu=mips-linux-gnu-gcc
+CXX_mips-unknown-linux-gnu=mips-linux-gnu-g++
+CPP_mips-unknown-linux-gnu=mips-linux-gnu-gcc -E
+AR_mips-unknown-linux-gnu=mips-linux-gnu-ar
+CFG_LIB_NAME_mips-unknown-linux-gnu=lib$(1).so
+CFG_LIB_GLOB_mips-unknown-linux-gnu=lib$(1)-*.so
+CFG_LIB_DSYM_GLOB_mips-unknown-linux-gnu=lib$(1)-*.dylib.dSYM
+CFG_GCCISH_CFLAGS_mips-unknown-linux-gnu := -Wall -g -fPIC -mips32r2 -msoft-float -mabi=32
+CFG_GCCISH_CXXFLAGS_mips-unknown-linux-gnu := -fno-rtti
+CFG_GCCISH_LINK_FLAGS_mips-unknown-linux-gnu := -shared -fPIC -g -mips32r2 -msoft-float -mabi=32
+CFG_GCCISH_DEF_FLAG_mips-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=
+CFG_GCCISH_PRE_LIB_FLAGS_mips-unknown-linux-gnu := -Wl,-whole-archive
+CFG_GCCISH_POST_LIB_FLAGS_mips-unknown-linux-gnu := -Wl,-no-whole-archive -Wl,-znoexecstack
+CFG_DEF_SUFFIX_mips-unknown-linux-gnu := .linux.def
+CFG_INSTALL_NAME_mips-unknown-linux-gnu =
+CFG_LIBUV_LINK_FLAGS_mips-unknown-linux-gnu =
+CFG_EXE_SUFFIX_mips-unknown-linux-gnu :=
+CFG_WINDOWSY_mips-unknown-linux-gnu :=
+CFG_UNIXY_mips-unknown-linux-gnu := 1
+CFG_PATH_MUNGE_mips-unknown-linux-gnu := true
+CFG_LDPATH_mips-unknown-linux-gnu :=
+CFG_RUN_mips-unknown-linux-gnu=
+CFG_RUN_TARG_mips-unknown-linux-gnu=
+
 # i686-pc-mingw32 configuration
 CC_i686-pc-mingw32=$(CC)
 CXX_i686-pc-mingw32=$(CXX)

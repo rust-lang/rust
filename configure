@@ -237,7 +237,7 @@ need_cmd uname
 need_cmd date
 need_cmd tr
 need_cmd sed
-
+need_cmd file
 
 msg "inspecting environment"
 
@@ -533,7 +533,7 @@ then
     LLVM_VERSION=$($LLVM_CONFIG --version)
 
     case $LLVM_VERSION in
-	(3.2svn|3.2|3.1svn|3.1|3.0svn|3.0)
+	(3.3|3.3svn|3.2|3.2svn)
 	    msg "found ok version of LLVM: $LLVM_VERSION"
 	    ;;
 	(*)
@@ -859,7 +859,7 @@ do
         LDFLAGS=$LLVM_LDFLAGS
 
         LLVM_FLAGS="$LLVM_TARGETS $LLVM_OPTS $LLVM_BUILD \
-                        $LLVM_HOST $LLVM_TARGET"
+                        $LLVM_HOST $LLVM_TARGET --with-python=$CFG_PYTHON"
 
         msg "configuring LLVM with:"
         msg "$LLVM_FLAGS"

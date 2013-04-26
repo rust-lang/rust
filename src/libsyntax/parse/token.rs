@@ -18,9 +18,11 @@ use util::interner;
 
 use core::cast;
 use core::char;
-use core::hashmap::linear::LinearSet;
+use core::cmp::Equiv;
+use core::hashmap::HashSet;
 use core::str;
 use core::task;
+use core::to_bytes;
 
 #[auto_encode]
 #[auto_decode]
@@ -113,7 +115,7 @@ pub enum nonterminal {
     nt_expr(@ast::expr),
     nt_ty(  @ast::Ty),
     nt_ident(ast::ident, bool),
-    nt_path(@ast::path),
+    nt_path(@ast::Path),
     nt_tt(  @ast::token_tree), //needs @ed to break a circularity
     nt_matchers(~[ast::matcher])
 }
@@ -309,50 +311,63 @@ pub fn is_bar(t: &Token) -> bool {
 pub mod special_idents {
     use ast::ident;
 
-    pub static underscore : ident = ident { repr: 0u };
-    pub static anon : ident = ident { repr: 1u };
-    pub static dtor : ident = ident { repr: 2u }; // 'drop', but that's
+    pub static underscore : ident = ident { repr: 0u, ctxt: 0};
+    pub static anon : ident = ident { repr: 1u, ctxt: 0};
+    pub static dtor : ident = ident { repr: 2u, ctxt: 0}; // 'drop', but that's
                                                  // reserved
-    pub static invalid : ident = ident { repr: 3u }; // ''
-    pub static unary : ident = ident { repr: 4u };
-    pub static not_fn : ident = ident { repr: 5u };
-    pub static idx_fn : ident = ident { repr: 6u };
-    pub static unary_minus_fn : ident = ident { repr: 7u };
-    pub static clownshoes_extensions : ident = ident { repr: 8u };
+    pub static invalid : ident = ident { repr: 3u, ctxt: 0}; // ''
+    pub static unary : ident = ident { repr: 4u, ctxt: 0};
+    pub static not_fn : ident = ident { repr: 5u, ctxt: 0};
+    pub static idx_fn : ident = ident { repr: 6u, ctxt: 0};
+    pub static unary_minus_fn : ident = ident { repr: 7u, ctxt: 0};
+    pub static clownshoes_extensions : ident = ident { repr: 8u, ctxt: 0};
 
-    pub static self_ : ident = ident { repr: 9u }; // 'self'
+    pub static self_ : ident = ident { repr: 9u, ctxt: 0}; // 'self'
 
     /* for matcher NTs */
-    pub static item : ident = ident { repr: 10u };
-    pub static block : ident = ident { repr: 11u };
-    pub static stmt : ident = ident { repr: 12u };
-    pub static pat : ident = ident { repr: 13u };
-    pub static expr : ident = ident { repr: 14u };
-    pub static ty : ident = ident { repr: 15u };
-    pub static ident : ident = ident { repr: 16u };
-    pub static path : ident = ident { repr: 17u };
-    pub static tt : ident = ident { repr: 18u };
-    pub static matchers : ident = ident { repr: 19u };
+    pub static item : ident = ident { repr: 10u, ctxt: 0};
+    pub static block : ident = ident { repr: 11u, ctxt: 0};
+    pub static stmt : ident = ident { repr: 12u, ctxt: 0};
+    pub static pat : ident = ident { repr: 13u, ctxt: 0};
+    pub static expr : ident = ident { repr: 14u, ctxt: 0};
+    pub static ty : ident = ident { repr: 15u, ctxt: 0};
+    pub static ident : ident = ident { repr: 16u, ctxt: 0};
+    pub static path : ident = ident { repr: 17u, ctxt: 0};
+    pub static tt : ident = ident { repr: 18u, ctxt: 0};
+    pub static matchers : ident = ident { repr: 19u, ctxt: 0};
 
-    pub static str : ident = ident { repr: 20u }; // for the type
+    pub static str : ident = ident { repr: 20u, ctxt: 0}; // for the type
 
     /* outside of libsyntax */
-    pub static ty_visitor : ident = ident { repr: 21u };
-    pub static arg : ident = ident { repr: 22u };
-    pub static descrim : ident = ident { repr: 23u };
-    pub static clownshoe_abi : ident = ident { repr: 24u };
-    pub static clownshoe_stack_shim : ident = ident { repr: 25u };
-    pub static tydesc : ident = ident { repr: 26u };
-    pub static literally_dtor : ident = ident { repr: 27u };
-    pub static main : ident = ident { repr: 28u };
-    pub static opaque : ident = ident { repr: 29u };
-    pub static blk : ident = ident { repr: 30u };
-    pub static static : ident = ident { repr: 31u };
-    pub static intrinsic : ident = ident { repr: 32u };
-    pub static clownshoes_foreign_mod: ident = ident { repr: 33 };
-    pub static unnamed_field: ident = ident { repr: 34 };
-    pub static c_abi: ident = ident { repr: 35 };
-    pub static type_self: ident = ident { repr: 36 };    // `Self`
+    pub static ty_visitor : ident = ident { repr: 21u, ctxt: 0};
+    pub static arg : ident = ident { repr: 22u, ctxt: 0};
+    pub static descrim : ident = ident { repr: 23u, ctxt: 0};
+    pub static clownshoe_abi : ident = ident { repr: 24u, ctxt: 0};
+    pub static clownshoe_stack_shim : ident = ident { repr: 25u, ctxt: 0};
+    pub static tydesc : ident = ident { repr: 26u, ctxt: 0};
+    pub static literally_dtor : ident = ident { repr: 27u, ctxt: 0};
+    pub static main : ident = ident { repr: 28u, ctxt: 0};
+    pub static opaque : ident = ident { repr: 29u, ctxt: 0};
+    pub static blk : ident = ident { repr: 30u, ctxt: 0};
+    pub static static : ident = ident { repr: 31u, ctxt: 0};
+    pub static intrinsic : ident = ident { repr: 32u, ctxt: 0};
+    pub static clownshoes_foreign_mod: ident = ident { repr: 33u, ctxt: 0};
+    pub static unnamed_field: ident = ident { repr: 34u, ctxt: 0};
+    pub static c_abi: ident = ident { repr: 35u, ctxt: 0};
+    pub static type_self: ident = ident { repr: 36u, ctxt: 0};    // `Self`
+}
+
+pub struct StringRef<'self>(&'self str);
+
+impl<'self> Equiv<@~str> for StringRef<'self> {
+    #[inline(always)]
+    fn equiv(&self, other: &@~str) -> bool { str::eq_slice(**self, **other) }
+}
+
+impl<'self> to_bytes::IterBytes for StringRef<'self> {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (**self).iter_bytes(lsb0, f);
+    }
 }
 
 pub struct ident_interner {
@@ -361,10 +376,10 @@ pub struct ident_interner {
 
 pub impl ident_interner {
     fn intern(&self, val: @~str) -> ast::ident {
-        ast::ident { repr: self.interner.intern(val) }
+        ast::ident { repr: self.interner.intern(val), ctxt: 0 }
     }
     fn gensym(&self, val: @~str) -> ast::ident {
-        ast::ident { repr: self.interner.gensym(val) }
+        ast::ident { repr: self.interner.gensym(val), ctxt: 0 }
     }
     fn get(&self, idx: ast::ident) -> @~str {
         self.interner.get(idx.repr)
@@ -372,17 +387,14 @@ pub impl ident_interner {
     fn len(&self) -> uint {
         self.interner.len()
     }
+    fn find_equiv<Q:Hash + IterBytes + Equiv<@~str>>(&self, val: &Q)
+                                                     -> Option<ast::ident> {
+        match self.interner.find_equiv(val) {
+            Some(v) => Some(ast::ident { repr: v, ctxt: 0 }),
+            None => None,
+        }
+    }
 }
-
-/* Key for thread-local data for sneaking interner information to the
- * encoder/decoder. It sounds like a hack because it is one.
- * Bonus ultra-hack: functions as keys don't work across crates,
- * so we have to use a unique number. See taskgroup_key! in task.rs
- * for another case of this. */
-macro_rules! interner_key (
-    () => (cast::transmute::<(uint, uint), &fn(+v: @@token::ident_interner)>(
-        (-3 as uint, 0u)))
-)
 
 pub fn mk_ident_interner() -> @ident_interner {
     unsafe {
@@ -458,8 +470,8 @@ pub fn mk_fake_ident_interner() -> @ident_interner {
  * appear as identifiers at all. Reserved keywords are not used anywhere in
  * the language and may not appear as identifiers.
  */
-pub fn keyword_table() -> LinearSet<~str> {
-    let mut keywords = LinearSet::new();
+pub fn keyword_table() -> HashSet<~str> {
+    let mut keywords = HashSet::new();
     let mut tmp = temporary_keyword_table();
     let mut strict = strict_keyword_table();
     let mut reserved = reserved_keyword_table();
@@ -471,8 +483,8 @@ pub fn keyword_table() -> LinearSet<~str> {
 }
 
 /// Keywords that may be used as identifiers
-pub fn temporary_keyword_table() -> LinearSet<~str> {
-    let mut words = LinearSet::new();
+pub fn temporary_keyword_table() -> HashSet<~str> {
+    let mut words = HashSet::new();
     let keys = ~[
         ~"self", ~"static",
     ];
@@ -483,8 +495,8 @@ pub fn temporary_keyword_table() -> LinearSet<~str> {
 }
 
 /// Full keywords. May not appear anywhere else.
-pub fn strict_keyword_table() -> LinearSet<~str> {
-    let mut words = LinearSet::new();
+pub fn strict_keyword_table() -> HashSet<~str> {
+    let mut words = HashSet::new();
     let keys = ~[
         ~"as",
         ~"break",
@@ -509,8 +521,8 @@ pub fn strict_keyword_table() -> LinearSet<~str> {
     return words;
 }
 
-pub fn reserved_keyword_table() -> LinearSet<~str> {
-    let mut words = LinearSet::new();
+pub fn reserved_keyword_table() -> HashSet<~str> {
+    let mut words = HashSet::new();
     let keys = ~[
         ~"be"
     ];

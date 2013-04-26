@@ -22,9 +22,7 @@ struct stk_seg {
     stk_seg *next;
     uintptr_t end;
     unsigned int valgrind_id;
-#ifndef _LP64
-    uint32_t pad;
-#endif
+    uint8_t is_big;
 
     rust_task *task;
     uintptr_t canary;

@@ -83,10 +83,22 @@ pub fn get_type_desc<T>() -> *TypeDesc {
     unsafe { rusti::get_tydesc::<T>() as *TypeDesc }
 }
 
+/// Returns a pointer to a type descriptor.
+#[inline(always)]
+pub fn get_type_desc_val<T>(_val: &T) -> *TypeDesc {
+    get_type_desc::<T>()
+}
+
 /// Returns the size of a type
 #[inline(always)]
 pub fn size_of<T>() -> uint {
     unsafe { rusti::size_of::<T>() }
+}
+
+/// Returns the size of the type that `_val` points to
+#[inline(always)]
+pub fn size_of_val<T>(_val: &T) -> uint {
+    size_of::<T>()
 }
 
 /**
@@ -100,6 +112,13 @@ pub fn nonzero_size_of<T>() -> uint {
     if s == 0 { 1 } else { s }
 }
 
+/// Returns the size of the type of the value that `_val` points to
+#[inline(always)]
+pub fn nonzero_size_of_val<T>(_val: &T) -> uint {
+    nonzero_size_of::<T>()
+}
+
+
 /**
  * Returns the ABI-required minimum alignment of a type
  *
@@ -111,10 +130,24 @@ pub fn min_align_of<T>() -> uint {
     unsafe { rusti::min_align_of::<T>() }
 }
 
+/// Returns the ABI-required minimum alignment of the type of the value that
+/// `_val` points to
+#[inline(always)]
+pub fn min_align_of_val<T>(_val: &T) -> uint {
+    min_align_of::<T>()
+}
+
 /// Returns the preferred alignment of a type
 #[inline(always)]
 pub fn pref_align_of<T>() -> uint {
     unsafe { rusti::pref_align_of::<T>() }
+}
+
+/// Returns the preferred alignment of the type of the value that
+/// `_val` points to
+#[inline(always)]
+pub fn pref_align_of_val<T>(_val: &T) -> uint {
+    pref_align_of::<T>()
 }
 
 /// Returns the refcount of a shared box (as just before calling this)
@@ -127,10 +160,8 @@ pub fn refcount<T>(t: @T) -> uint {
 }
 
 pub fn log_str<T>(t: &T) -> ~str {
-    unsafe {
-        do io::with_str_writer |wr| {
-            repr::write_repr(wr, t)
-        }
+    do io::with_str_writer |wr| {
+        repr::write_repr(wr, t)
     }
 }
 
@@ -157,19 +188,17 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
 }
 
 pub fn fail_assert(msg: &str, file: &str, line: uint) -> ! {
-    unsafe {
-        let (msg, file) = (msg.to_owned(), file.to_owned());
-        begin_unwind(~"assertion failed: " + msg, file, line)
-    }
+    let (msg, file) = (msg.to_owned(), file.to_owned());
+    begin_unwind(~"assertion failed: " + msg, file, line)
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use cast;
-    use sys::{Closure, pref_align_of, size_of, nonzero_size_of};
+    use sys::*;
 
     #[test]
-    pub fn size_of_basic() {
+    fn size_of_basic() {
         assert!(size_of::<u8>() == 1u);
         assert!(size_of::<u16>() == 2u);
         assert!(size_of::<u32>() == 4u);
@@ -180,20 +209,28 @@ pub mod tests {
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "arm")]
     #[cfg(target_arch = "mips")]
-    pub fn size_of_32() {
+    fn size_of_32() {
         assert!(size_of::<uint>() == 4u);
         assert!(size_of::<*uint>() == 4u);
     }
 
     #[test]
     #[cfg(target_arch = "x86_64")]
-    pub fn size_of_64() {
+    fn size_of_64() {
         assert!(size_of::<uint>() == 8u);
         assert!(size_of::<*uint>() == 8u);
     }
 
     #[test]
-    pub fn nonzero_size_of_basic() {
+    fn size_of_val_basic() {
+        assert_eq!(size_of_val(&1u8), 1);
+        assert_eq!(size_of_val(&1u16), 2);
+        assert_eq!(size_of_val(&1u32), 4);
+        assert_eq!(size_of_val(&1u64), 8);
+    }
+
+    #[test]
+    fn nonzero_size_of_basic() {
         type Z = [i8, ..0];
         assert!(size_of::<Z>() == 0u);
         assert!(nonzero_size_of::<Z>() == 1u);
@@ -201,7 +238,15 @@ pub mod tests {
     }
 
     #[test]
-    pub fn align_of_basic() {
+    fn nonzero_size_of_val_basic() {
+        let z = [0u8, ..0];
+        assert_eq!(size_of_val(&z), 0u);
+        assert_eq!(nonzero_size_of_val(&z), 1u);
+        assert_eq!(nonzero_size_of_val(&1u), size_of_val(&1u));
+    }
+
+    #[test]
+    fn align_of_basic() {
         assert!(pref_align_of::<u8>() == 1u);
         assert!(pref_align_of::<u16>() == 2u);
         assert!(pref_align_of::<u32>() == 4u);
@@ -211,20 +256,27 @@ pub mod tests {
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "arm")]
     #[cfg(target_arch = "mips")]
-    pub fn align_of_32() {
+    fn align_of_32() {
         assert!(pref_align_of::<uint>() == 4u);
         assert!(pref_align_of::<*uint>() == 4u);
     }
 
     #[test]
     #[cfg(target_arch = "x86_64")]
-    pub fn align_of_64() {
+    fn align_of_64() {
         assert!(pref_align_of::<uint>() == 8u);
         assert!(pref_align_of::<*uint>() == 8u);
     }
 
     #[test]
-    pub fn synthesize_closure() {
+    fn align_of_val_basic() {
+        assert_eq!(pref_align_of_val(&1u8), 1u);
+        assert_eq!(pref_align_of_val(&1u16), 2u);
+        assert_eq!(pref_align_of_val(&1u32), 4u);
+    }
+
+    #[test]
+    fn synthesize_closure() {
         unsafe {
             let x = 10;
             let f: &fn(int) -> int = |y| x + y;

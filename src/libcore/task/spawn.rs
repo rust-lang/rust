@@ -79,7 +79,7 @@ use comm::{Chan, GenericChan};
 use prelude::*;
 use unstable;
 use ptr;
-use hashmap::linear::LinearSet;
+use hashmap::HashSet;
 use task::local_data_priv::{local_get, local_set};
 use task::rt::rust_task;
 use task::rt;
@@ -96,10 +96,10 @@ macro_rules! move_it (
     { $x:expr } => ( unsafe { let y = *ptr::addr_of(&($x)); y } )
 )
 
-type TaskSet = LinearSet<*rust_task>;
+type TaskSet = HashSet<*rust_task>;
 
 fn new_taskset() -> TaskSet {
-    LinearSet::new()
+    HashSet::new()
 }
 fn taskset_insert(tasks: &mut TaskSet, task: *rust_task) {
     let didnt_overwrite = tasks.insert(task);
@@ -157,13 +157,13 @@ struct AncestorList(Option<unstable::Exclusive<AncestorNode>>);
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline(always)]
 fn access_group<U>(x: &TaskGroupArc, blk: &fn(TaskGroupInner) -> U) -> U {
-    unsafe { x.with(blk) }
+    x.with(blk)
 }
 
 #[inline(always)]
 fn access_ancestors<U>(x: &unstable::Exclusive<AncestorNode>,
                        blk: &fn(x: &mut AncestorNode) -> U) -> U {
-    unsafe { x.with(blk) }
+    x.with(blk)
 }
 
 // Iterates over an ancestor list.
@@ -531,6 +531,34 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
 }
 
 pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
+    use rt::*;
+
+    match context() {
+        OldTaskContext => {
+            spawn_raw_oldsched(opts, f)
+        }
+        TaskContext => {
+            spawn_raw_newsched(opts, f)
+        }
+        SchedulerContext => {
+            fail!(~"can't spawn from scheduler context")
+        }
+        GlobalContext => {
+            fail!(~"can't spawn from global context")
+        }
+    }
+}
+
+fn spawn_raw_newsched(_opts: TaskOpts, f: ~fn()) {
+    use rt::sched::*;
+
+    let mut sched = local_sched::take();
+    let task = ~Task::new(&mut sched.stack_pool, f);
+    sched.schedule_new_task(task);
+}
+
+fn spawn_raw_oldsched(opts: TaskOpts, f: ~fn()) {
+
     let (child_tg, ancestors, is_main) =
         gen_child_taskgroup(opts.linked, opts.supervised);
 
@@ -547,7 +575,7 @@ pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
             };
             assert!(!new_task.is_null());
             // Getting killed after here would leak the task.
-            let mut notify_chan = if opts.notify_chan.is_none() {
+            let notify_chan = if opts.notify_chan.is_none() {
                 None
             } else {
                 Some(opts.notify_chan.swap_unwrap())

@@ -150,32 +150,28 @@ fn test_tls_modify() {
 
 #[test]
 fn test_tls_crust_automorestack_memorial_bug() {
-    unsafe {
-        // This might result in a stack-canary clobber if the runtime fails to
-        // set sp_limit to 0 when calling the cleanup extern - it might
-        // automatically jump over to the rust stack, which causes next_c_sp
-        // to get recorded as something within a rust stack segment. Then a
-        // subsequent upcall (esp. for logging, think vsnprintf) would run on
-        // a stack smaller than 1 MB.
-        fn my_key(_x: @~str) { }
-        do task::spawn {
-            unsafe { local_data_set(my_key, @~"hax"); }
-        }
+    // This might result in a stack-canary clobber if the runtime fails to
+    // set sp_limit to 0 when calling the cleanup extern - it might
+    // automatically jump over to the rust stack, which causes next_c_sp
+    // to get recorded as something within a rust stack segment. Then a
+    // subsequent upcall (esp. for logging, think vsnprintf) would run on
+    // a stack smaller than 1 MB.
+    fn my_key(_x: @~str) { }
+    do task::spawn {
+        unsafe { local_data_set(my_key, @~"hax"); }
     }
 }
 
 #[test]
 fn test_tls_multiple_types() {
-    unsafe {
-        fn str_key(_x: @~str) { }
-        fn box_key(_x: @@()) { }
-        fn int_key(_x: @int) { }
-        do task::spawn {
-            unsafe {
-                local_data_set(str_key, @~"string data");
-                local_data_set(box_key, @@());
-                local_data_set(int_key, @42);
-            }
+    fn str_key(_x: @~str) { }
+    fn box_key(_x: @@()) { }
+    fn int_key(_x: @int) { }
+    do task::spawn {
+        unsafe {
+            local_data_set(str_key, @~"string data");
+            local_data_set(box_key, @@());
+            local_data_set(int_key, @42);
         }
     }
 }

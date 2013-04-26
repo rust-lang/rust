@@ -138,7 +138,7 @@ fn fold_crate(cx: @mut TestCtxt,
 }
 
 
-fn fold_item(cx: @mut TestCtxt, &&i: @ast::item, fld: @fold::ast_fold)
+fn fold_item(cx: @mut TestCtxt, i: @ast::item, fld: @fold::ast_fold)
           -> Option<@ast::item> {
     cx.path.push(i.ident);
     debug!("current path: %s",
@@ -265,7 +265,7 @@ mod __test {
 */
 
 fn mk_std(cx: &TestCtxt) -> @ast::view_item {
-    let vers = ast::lit_str(@~"0.6");
+    let vers = ast::lit_str(@~"0.7-pre");
     let vers = nospan(vers);
     let mi = ast::meta_name_value(@~"vers", vers);
     let mi = nospan(mi);
@@ -274,7 +274,6 @@ fn mk_std(cx: &TestCtxt) -> @ast::view_item {
         ast::view_item_use(
             ~[@nospan(ast::view_path_simple(id_std,
                                             path_node(~[id_std]),
-                                            ast::type_value_ns,
                                             cx.sess.next_node_id()))])
     } else {
         ast::view_item_extern_mod(id_std, ~[@mi],
@@ -336,16 +335,16 @@ fn nospan<T:Copy>(t: T) -> codemap::spanned<T> {
     codemap::spanned { node: t, span: dummy_sp() }
 }
 
-fn path_node(+ids: ~[ast::ident]) -> @ast::path {
-    @ast::path { span: dummy_sp(),
+fn path_node(ids: ~[ast::ident]) -> @ast::Path {
+    @ast::Path { span: dummy_sp(),
                 global: false,
                 idents: ids,
                 rp: None,
                 types: ~[] }
 }
 
-fn path_node_global(+ids: ~[ast::ident]) -> @ast::path {
-    @ast::path { span: dummy_sp(),
+fn path_node_global(ids: ~[ast::ident]) -> @ast::Path {
+    @ast::Path { span: dummy_sp(),
                  global: true,
                  idents: ids,
                  rp: None,
@@ -381,7 +380,7 @@ fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {
     debug!("building test vector from %u tests", cx.testfns.len());
     let mut descs = ~[];
     for cx.testfns.each |test| {
-        descs.push(mk_test_desc_and_fn_rec(cx, *test));
+        descs.push(mk_test_desc_and_fn_rec(cx, test));
     }
 
     let sess = cx.sess;
@@ -400,7 +399,7 @@ fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {
     }
 }
 
-fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: Test) -> @ast::expr {
+fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
     let span = test.span;
     let path = /*bad*/copy test.path;
 

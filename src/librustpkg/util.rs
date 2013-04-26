@@ -9,24 +9,134 @@
 // except according to those terms.
 
 use core::*;
+use core::cmp::Ord;
 use core::hash::Streaming;
-use core::hashmap::linear::LinearMap;
 use rustc::driver::{driver, session};
+use rustc::driver::session::{lib_crate, unknown_crate};
 use rustc::metadata::filesearch;
 use std::getopts::groups::getopts;
 use std::semver;
-use std::{json, term, sort, getopts};
+use std::{json, term, getopts};
 use syntax::ast_util::*;
-use syntax::codemap::{dummy_sp, spanned};
+use syntax::codemap::{dummy_sp, spanned, dummy_spanned};
 use syntax::ext::base::{mk_ctxt, ext_ctxt};
 use syntax::ext::build;
 use syntax::{ast, attr, codemap, diagnostic, fold};
+use syntax::ast::{meta_name_value, meta_list, attribute, crate_};
+use syntax::attr::{mk_attr};
+use rustc::back::link::output_type_exe;
+use rustc::driver::session::{lib_crate, unknown_crate, crate_type};
 
-pub struct Package {
-    id: ~str,
-    vers: semver::Version,
+pub type ExitCode = int; // For now
+
+/// A version is either an exact revision,
+/// or a semantic version
+pub enum Version {
+    ExactRevision(float),
+    SemVersion(semver::Version)
+}
+
+impl Ord for Version {
+    fn lt(&self, other: &Version) -> bool {
+        match (self, other) {
+            (&ExactRevision(f1), &ExactRevision(f2)) => f1 < f2,
+            (&SemVersion(v1), &SemVersion(v2)) => v1 < v2,
+            _ => false // incomparable, really
+        }
+    }
+    fn le(&self, other: &Version) -> bool {
+        match (self, other) {
+            (&ExactRevision(f1), &ExactRevision(f2)) => f1 <= f2,
+            (&SemVersion(v1), &SemVersion(v2)) => v1 <= v2,
+            _ => false // incomparable, really
+        }
+    }
+    fn ge(&self, other: &Version) -> bool {
+        match (self, other) {
+            (&ExactRevision(f1), &ExactRevision(f2)) => f1 > f2,
+            (&SemVersion(v1), &SemVersion(v2)) => v1 > v2,
+            _ => false // incomparable, really
+        }
+    }
+    fn gt(&self, other: &Version) -> bool {
+        match (self, other) {
+            (&ExactRevision(f1), &ExactRevision(f2)) => f1 >= f2,
+            (&SemVersion(v1), &SemVersion(v2)) => v1 >= v2,
+            _ => false // incomparable, really
+        }
+    }
+
+}
+
+impl ToStr for Version {
+    fn to_str(&self) -> ~str {
+        match *self {
+            ExactRevision(n) => n.to_str(),
+            SemVersion(v) => v.to_str()
+        }
+    }
+}
+
+/// Placeholder
+pub fn default_version() -> Version { ExactRevision(0.1) }
+
+// Path-fragment identifier of a package such as
+// 'github.com/graydon/test'; path must be a relative
+// path with >=1 component.
+pub struct PkgId {
+    path: Path,
+    version: Version
+}
+
+pub impl PkgId {
+    fn new(s: &str) -> PkgId {
+        use bad_pkg_id::cond;
+
+        let p = Path(s);
+        if p.is_absolute {
+            return cond.raise((p, ~"absolute pkgid"));
+        }
+        if p.components.len() < 1 {
+            return cond.raise((p, ~"0-length pkgid"));
+        }
+        PkgId {
+            path: p,
+            version: default_version()
+        }
+    }
+
+    fn hash(&self) -> ~str {
+        fmt!("%s-%s-%s", self.path.to_str(),
+             hash(self.path.to_str() + self.version.to_str()),
+             self.version.to_str())
+    }
+
+}
+
+impl ToStr for PkgId {
+    fn to_str(&self) -> ~str {
+        // should probably use the filestem and not the whole path
+        fmt!("%s-%s", self.path.to_str(),
+             // Replace dots with -s in the version
+             // this is because otherwise rustc will think
+             // that foo-0.1 has .1 as its extension
+             // (Temporary hack until I figure out how to
+             // get rustc to not name the object file
+             // foo-0.o if I pass in foo-0.1 to build_output_filenames)
+             str::replace(self.version.to_str(), ".", "-"))
+    }
+}
+
+pub struct Pkg {
+    id: PkgId,
     bins: ~[~str],
     libs: ~[~str],
+}
+
+impl ToStr for Pkg {
+    fn to_str(&self) -> ~str {
+        self.id.to_str()
+    }
 }
 
 pub fn root() -> Path {
@@ -140,7 +250,7 @@ fn add_pkg_module(ctx: @mut ReadyCtx, m: ast::_mod) -> ast::_mod {
     let ext_cx = ctx.ext_cx;
     let item = quote_item! (
         mod __pkg {
-            extern mod rustpkg (vers="0.6");
+            extern mod rustpkg (vers="0.7-pre");
             static listeners : &[rustpkg::Listener] = $listeners;
             #[main]
             fn main() {
@@ -309,307 +419,75 @@ pub fn wait_for_lock(path: &Path) {
     }
 }
 
-fn _add_pkg(packages: ~[json::Json], pkg: &Package) -> ~[json::Json] {
-    for packages.each |&package| {
-        match &package {
-            &json::Object(ref map) => {
-                let mut has_id = false;
-
-                match map.get(&~"id") {
-                    &json::String(ref str) => {
-                        if pkg.id == *str {
-                            has_id = true;
-                        }
-                    }
-                    _ => {}
-                }
-
-                match map.get(&~"vers") {
-                    &json::String(ref str) => {
-                        if has_id && pkg.vers.to_str() == *str {
-                            return copy packages;
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-    }
-
-    let mut map = ~LinearMap::new();
-
-    map.insert(~"id", json::String(pkg.id));
-    map.insert(~"vers", json::String(pkg.vers.to_str()));
-    map.insert(~"bins", json::List(do pkg.bins.map |&bin| {
-        json::String(bin)
-    }));
-    map.insert(~"libs", json::List(do pkg.libs.map |&lib| {
-        json::String(lib)
-    }));
-
-    vec::append(packages, ~[json::Object(map)])
-}
-
-fn _rm_pkg(packages: ~[json::Json], pkg: &Package) -> ~[json::Json] {
-    do packages.filter_mapped |&package| {
-        match &package {
-            &json::Object(ref map) => {
-                let mut has_id = false;
-
-                match map.get(&~"id") {
-                    &json::String(str) => {
-                        if pkg.id == str {
-                            has_id = true;
-                        }
-                    }
-                    _ => {}
-                }
-
-                match map.get(&~"vers") {
-                    &json::String(ref str) => {
-                        if has_id && pkg.vers.to_str() == *str {
-                            None
-                        } else {
-                            Some(copy package)
-                        }
-                    }
-                    _ => { Some(copy package) }
-                }
-            }
-            _ => { Some(copy package) }
-        }
-    }
-}
-
 pub fn load_pkgs() -> result::Result<~[json::Json], ~str> {
-    let root = root();
-    let db = root.push(~"db.json");
-    let db_lock = root.push(~"db.json.lck");
-
-    wait_for_lock(&db_lock);
-    touch(&db_lock);
-
-    let packages = if os::path_exists(&db) {
-        match io::read_whole_file_str(&db) {
-            result::Ok(str) => {
-                match json::from_str(str) {
-                    result::Ok(json) => {
-                        match json {
-                            json::List(list) => list,
-                            _ => {
-                                os::remove_file(&db_lock);
-
-                                return result::Err(
-                                    ~"package db's json is not a list");
-                            }
-                        }
-                    }
-                    result::Err(err) => {
-                        os::remove_file(&db_lock);
-
-                        return result::Err(
-                            fmt!("failed to parse package db: %s",
-                            err.to_str()));
-                    }
-                }
-            }
-            result::Err(err) => {
-                os::remove_file(&db_lock);
-
-                return result::Err(fmt!("failed to read package db: %s",
-                                        err));
-            }
-        }
-    } else { ~[] };
-
-    os::remove_file(&db_lock);
-
-    result::Ok(packages)
+    fail!(~"load_pkg not implemented");
 }
 
-pub fn get_pkg(id: ~str,
-               vers: Option<~str>) -> result::Result<Package, ~str> {
-    let name = match parse_name(id) {
-        result::Ok(name) => name,
-        result::Err(err) => return result::Err(err)
-    };
-    let packages = match load_pkgs() {
-        result::Ok(packages) => packages,
-        result::Err(err) => return result::Err(err)
-    };
-    let mut sel = None;
-    let mut possibs = ~[];
-    let mut err = None;
-
-    for packages.each |&package| {
-        match package {
-            json::Object(map) => {
-                let pid = match map.get(&~"id") {
-                    &json::String(str) => str,
-                    _ => loop
-                };
-                let pname = match parse_name(pid) {
-                    result::Ok(pname) => pname,
-                    result::Err(perr) => {
-                        err = Some(perr);
-
-                        break;
-                    }
-                };
-                let pvers = match map.get(&~"vers") {
-                    &json::String(str) => str,
-                    _ => loop
-                };
-                if pid == id || pname == name {
-                    let bins = match map.get(&~"bins") {
-                        &json::List(ref list) => {
-                            do list.map |&bin| {
-                                match bin {
-                                    json::String(str) => str,
-                                    _ => ~""
-                                }
-                            }
-                        }
-                        _ => ~[]
-                    };
-                    let libs = match map.get(&~"libs") {
-                        &json::List(ref list) => {
-                            do list.map |&lib| {
-                                match lib {
-                                    json::String(str) => str,
-                                    _ => ~""
-                                }
-                            }
-                        }
-                        _ => ~[]
-                    };
-                    let package = Package {
-                        id: pid,
-                        vers: match parse_vers(pvers) {
-                            result::Ok(vers) => vers,
-                            result::Err(verr) => {
-                                err = Some(verr);
-
-                                break;
-                            }
-                        },
-                        bins: bins,
-                        libs: libs
-                    };
-
-                    if !vers.is_none() && vers.get() == pvers {
-                        sel = Some(package);
-                    }
-                    else {
-                        possibs.push(package);
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-
-    if !err.is_none() {
-        return result::Err(err.get());
-    }
-    if !sel.is_none() {
-        return result::Ok(sel.get());
-    }
-    if !vers.is_none() || possibs.len() < 1 {
-        return result::Err(~"package not found");
-    }
-
-    let possibs = sort::merge_sort(possibs, |v1, v2| {
-        v1.vers <= v2.vers
-    });
-
-    result::Ok(copy *possibs.last())
+pub fn get_pkg(_id: ~str,
+               _vers: Option<~str>) -> result::Result<Pkg, ~str> {
+    fail!(~"get_pkg not implemented");
 }
 
-pub fn add_pkg(pkg: &Package) -> bool {
-    let root = root();
-    let db = root.push(~"db.json");
-    let db_lock = root.push(~"db.json.lck");
-    let packages = match load_pkgs() {
-        result::Ok(packages) => packages,
-        result::Err(err) => {
-            error(err);
-
-            return false;
-        }
-    };
-
-    wait_for_lock(&db_lock);
-    touch(&db_lock);
-    os::remove_file(&db);
-
-    match io::mk_file_writer(&db, ~[io::Create]) {
-        result::Ok(writer) => {
-            writer.write_line(json::to_pretty_str(&json::List(
-                _add_pkg(packages, pkg))));
-        }
-        result::Err(err) => {
-            error(fmt!("failed to dump package db: %s", err));
-            os::remove_file(&db_lock);
-
-            return false;
-        }
-    }
-
-    os::remove_file(&db_lock);
-
-    true
+pub fn add_pkg(pkg: &Pkg) -> bool {
+    note(fmt!("Would be adding package, but add_pkg is not yet implemented %s",
+         pkg.to_str()));
+    false
 }
 
-pub fn remove_pkg(pkg: &Package) -> bool {
-    let root = root();
-    let db = root.push(~"db.json");
-    let db_lock = root.push(~"db.json.lck");
-    let packages = match load_pkgs() {
-        result::Ok(packages) => packages,
-        result::Err(err) => {
-            error(err);
+// FIXME (#4432): Use workcache to only compile when needed
+pub fn compile_input(sysroot: Option<Path>,
+                     pkg_id: PkgId,
+                     in_file: &Path,
+                     out_dir: &Path,
+                     flags: ~[~str],
+                     cfgs: ~[~str],
+                     opt: bool,
+                     test: bool,
+                     crate_type: session::crate_type) -> bool {
 
-            return false;
-        }
-    };
+    // Want just the directory component here
+    let pkg_filename = pkg_id.path.filename().expect(~"Weird pkg id");
+    let short_name = fmt!("%s-%s", pkg_filename, pkg_id.version.to_str());
 
-    wait_for_lock(&db_lock);
-    touch(&db_lock);
-    os::remove_file(&db);
+    assert!(in_file.components.len() > 1);
+    let input = driver::file_input(copy *in_file);
+    debug!("compile_input: %s / %?", in_file.to_str(), crate_type);
+    // tjc: by default, use the package ID name as the link name
+    // not sure if we should support anything else
 
-    match io::mk_file_writer(&db, ~[io::Create]) {
-        result::Ok(writer) => {
-            writer.write_line(json::to_pretty_str(&json::List(
-                _rm_pkg(packages, pkg))));
-        }
-        result::Err(err) => {
-            error(fmt!("failed to dump package db: %s", err));
-            os::remove_file(&db_lock);
-
-            return false;
-        }
-    }
-
-    os::remove_file(&db_lock);
-
-    true
-}
-
-pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
-               flags: ~[~str], cfgs: ~[~str], opt: bool, test: bool) -> bool {
-    let lib_dir = dir.push(~"lib");
-    let bin_dir = dir.push(~"bin");
-    let test_dir = dir.push(~"test");
     let binary = os::args()[0];
-    let matches = getopts(flags, driver::optgroups()).get();
+    let building_library = match crate_type {
+        lib_crate | unknown_crate => true,
+        _ => false
+    };
+
+    let out_file = if building_library {
+        out_dir.push(os::dll_filename(short_name))
+    }
+    else {
+        out_dir.push(short_name + if test { ~"test" } else { ~"" }
+                     + os::EXE_SUFFIX)
+    };
+
+    debug!("compiling %s into %s",
+           in_file.to_str(),
+           out_file.to_str());
+    debug!("flags: %s", str::connect(flags, ~" "));
+    debug!("cfgs: %s", str::connect(cfgs, ~" "));
+
+    let matches = getopts(~[~"-Z", ~"time-passes"]
+                          + if building_library { ~[~"--lib"] }
+                            else { ~[] }
+                          + flags
+                          + cfgs.flat_map(|&c| { ~[~"--cfg", c] }),
+                          driver::optgroups()).get();
     let options = @session::options {
-        crate_type: session::unknown_crate,
+        crate_type: crate_type,
         optimize: if opt { session::Aggressive } else { session::No },
         test: test,
         maybe_sysroot: sysroot,
-        .. *driver::build_session_options(binary, &matches, diagnostic::emit)
+        addl_lib_search_paths: ~[copy *out_dir],
+        .. *driver::build_session_options(@binary, &matches, diagnostic::emit)
     };
     let mut crate_cfg = options.cfg;
 
@@ -619,124 +497,66 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
 
     let options = @session::options {
         cfg: vec::append(options.cfg, crate_cfg),
+        // output_type should be conditional
+        output_type: output_type_exe, // Use this to get a library? That's weird
         .. *options
     };
     let sess = driver::build_session(options, diagnostic::emit);
-    let cfg = driver::build_configuration(sess, binary, input);
-    let mut outputs = driver::build_output_filenames(input, &None, &None,
-                                                     sess);
-    let (crate, _) = driver::compile_upto(sess, cfg, input, driver::cu_parse,
-                                          Some(outputs));
 
-    let mut name = None;
-    let mut vers = None;
-    let mut uuid = None;
-    let mut crate_type = None;
+    debug!("calling compile_crate_from_input, out_dir = %s,
+           building_library = %?", out_dir.to_str(), sess.building_library);
+    let _ = compile_crate_from_input(input, pkg_id, Some(*out_dir), sess, None,
+                                     out_file, binary,
+                                     driver::cu_everything);
+    true
+}
 
-    fn load_link_attr(mis: ~[@ast::meta_item]) -> (Option<~str>,
-                                                   Option<~str>,
-                                                   Option<~str>) {
-        let mut name = None;
-        let mut vers = None;
-        let mut uuid = None;
-
-        for mis.each |a| {
-            match a.node {
-                ast::meta_name_value(v, spanned {node: ast::lit_str(s),
-                                         span: _}) => {
-                    match *v {
-                        ~"name" => name = Some(*s),
-                        ~"vers" => vers = Some(*s),
-                        ~"uuid" => uuid = Some(*s),
-                        _ => { }
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        (name, vers, uuid)
-    }
-
-    for crate.node.attrs.each |a| {
-        match a.node.value.node {
-            ast::meta_name_value(v, spanned {node: ast::lit_str(s),
-                                     span: _}) => {
-                match *v {
-                    ~"crate_type" => crate_type = Some(*s),
-                    _ => {}
-                }
-            }
-            ast::meta_list(v, mis) => {
-                match *v {
-                    ~"link" => {
-                        let (n, v, u) = load_link_attr(mis);
-
-                        name = n;
-                        vers = v;
-                        uuid = u;
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-    }
-
-    if name.is_none() || vers.is_none() || uuid.is_none() {
-        error(~"link attr without (name, vers, uuid) values");
-
-        return false;
-    }
-
-    let name = name.get();
-    let vers = vers.get();
-    let uuid = uuid.get();
-
-    let is_bin = match crate_type {
-        Some(crate_type) => {
-            match crate_type {
-                ~"bin" => true,
-                ~"lib" => false,
-                _ => {
-                    warn(~"unknown crate_type, falling back to lib");
-
-                    false
-                }
-            }
+// Should use workcache to avoid recompiling when not necessary
+// Should also rename this to something better
+// If crate_opt is present, then finish compilation. If it's None, then
+// call compile_upto and return the crate
+// also, too many arguments
+pub fn compile_crate_from_input(input: driver::input,
+                                pkg_id: PkgId,
+                                build_dir_opt: Option<Path>,
+                                sess: session::Session,
+                                crate_opt: Option<@ast::crate>,
+                                out_file: Path,
+                                binary: ~str,
+                                what: driver::compile_upto) -> @ast::crate {
+    debug!("Calling build_output_filenames with %? and %s", build_dir_opt, out_file.to_str());
+    let outputs = driver::build_output_filenames(&input, &build_dir_opt, &Some(out_file), sess);
+    debug!("Outputs are %? and output type = %?", outputs, sess.opts.output_type);
+    let cfg = driver::build_configuration(sess, @binary, &input);
+    match crate_opt {
+        Some(c) => {
+            debug!("Calling compile_rest, outputs = %?", outputs);
+            assert!(what == driver::cu_everything);
+            driver::compile_rest(sess, cfg, driver::cu_everything, Some(outputs), Some(c));
+            c
         }
         None => {
-            warn(~"missing crate_type attr, assuming lib");
+            debug!("Calling compile_upto, outputs = %?", outputs);
+            let (crate, _) = driver::compile_upto(sess, cfg, &input,
+                                                  driver::cu_parse, Some(outputs));
 
-            false
+            // Inject the inferred link_meta info if it's not already there
+            // (assumes that name and vers are the only linkage metas)
+            let mut crate_to_use = crate;
+            if attr::find_linkage_metas(crate.node.attrs).is_empty() {
+                crate_to_use = add_attrs(*crate, ~[mk_attr(@dummy_spanned(meta_list(@~"link",
+                                                  // change PkgId to have a <shortname> field?
+                    ~[@dummy_spanned(meta_name_value(@~"name",
+                                                    mk_string_lit(@pkg_id.path.filestem().get()))),
+                      @dummy_spanned(meta_name_value(@~"vers",
+                                                    mk_string_lit(@pkg_id.version.to_str())))])))]);
+            }
+
+
+            driver::compile_rest(sess, cfg, what, Some(outputs), Some(crate_to_use));
+            crate_to_use
         }
-    };
-
-    if test {
-        need_dir(&test_dir);
-
-        outputs = driver::build_output_filenames(input, &Some(test_dir),
-                                                 &None, sess)
     }
-    else if is_bin {
-        need_dir(&bin_dir);
-
-        let path = bin_dir.push(fmt!("%s-%s-%s%s", name,
-                                                   hash(name + uuid + vers),
-                                                   vers, exe_suffix()));
-        outputs = driver::build_output_filenames(input, &None, &Some(path),
-                                                 sess);
-    } else {
-        need_dir(&lib_dir);
-
-        outputs = driver::build_output_filenames(input, &Some(lib_dir),
-                                                 &None, sess)
-    }
-
-    driver::compile_rest(sess, cfg, driver::cu_everything,
-                         Some(outputs), Some(crate));
-
-    true
 }
 
 #[cfg(windows)]
@@ -749,20 +569,32 @@ pub fn exe_suffix() -> ~str { ~".exe" }
 pub fn exe_suffix() -> ~str { ~"" }
 
 
-// FIXME (#4432): Use workcache to only compile when needed
-pub fn compile_crate(sysroot: Option<Path>, crate: &Path, dir: &Path,
-                     flags: ~[~str], cfgs: ~[~str], opt: bool,
-                     test: bool) -> bool {
-    compile_input(sysroot, driver::file_input(*crate), dir, flags, cfgs,
-                  opt, test)
+/// Returns a copy of crate `c` with attributes `attrs` added to its
+/// attributes
+fn add_attrs(c: ast::crate, new_attrs: ~[attribute]) -> @ast::crate {
+    @spanned {
+        node: crate_ {
+            attrs: c.node.attrs + new_attrs, ..c.node
+        },
+        span: c.span
+    }
 }
 
-pub fn compile_str(sysroot: Option<Path>, code: ~str, dir: &Path,
-                   flags: ~[~str], cfgs: ~[~str], opt: bool,
-                   test: bool) -> bool {
-    compile_input(sysroot, driver::str_input(code), dir, flags, cfgs,
-                  opt, test)
+// Called by build_crates
+// FIXME (#4432): Use workcache to only compile when needed
+pub fn compile_crate(sysroot: Option<Path>, pkg_id: PkgId,
+                     crate: &Path, dir: &Path,
+                     flags: ~[~str], cfgs: ~[~str], opt: bool,
+                     test: bool, crate_type: crate_type) -> bool {
+    debug!("compile_crate: crate=%s, dir=%s", crate.to_str(), dir.to_str());
+    debug!("compile_crate: short_name = %s, flags =...", pkg_id.to_str());
+    for flags.each |&fl| {
+        debug!("+++ %s", fl);
+    }
+    compile_input(sysroot, pkg_id,
+                  crate, dir, flags, cfgs, opt, test, crate_type)
 }
+
 
 #[cfg(windows)]
 pub fn link_exe(_src: &Path, _dest: &Path) -> bool {
@@ -788,21 +620,33 @@ pub fn link_exe(src: &Path, dest: &Path) -> bool {
     }
 }
 
-#[test]
-fn test_is_cmd() {
-    assert!(is_cmd(~"build"));
-    assert!(is_cmd(~"clean"));
-    assert!(is_cmd(~"do"));
-    assert!(is_cmd(~"info"));
-    assert!(is_cmd(~"install"));
-    assert!(is_cmd(~"prefer"));
-    assert!(is_cmd(~"test"));
-    assert!(is_cmd(~"uninstall"));
-    assert!(is_cmd(~"unprefer"));
+pub fn mk_string_lit(s: @~str) -> ast::lit {
+    spanned {
+        node: ast::lit_str(s),
+        span: dummy_sp()
+    }
 }
 
-#[test]
-fn test_parse_name() {
-    assert!(parse_name(~"org.mozilla.servo").get() == ~"servo");
-    assert!(parse_name(~"org. mozilla.servo 2131").is_err());
+#[cfg(test)]
+mod test {
+    use super::{is_cmd, parse_name};
+
+    #[test]
+    fn test_is_cmd() {
+        assert!(is_cmd(~"build"));
+        assert!(is_cmd(~"clean"));
+        assert!(is_cmd(~"do"));
+        assert!(is_cmd(~"info"));
+        assert!(is_cmd(~"install"));
+        assert!(is_cmd(~"prefer"));
+        assert!(is_cmd(~"test"));
+        assert!(is_cmd(~"uninstall"));
+        assert!(is_cmd(~"unprefer"));
+    }
+
+    #[test]
+    fn test_parse_name() {
+        assert!(parse_name(~"org.mozilla.servo").get() == ~"servo");
+        assert!(parse_name(~"org. mozilla.servo 2131").is_err());
+    }
 }

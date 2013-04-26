@@ -16,12 +16,13 @@ use core::prelude::*;
 use middle::ty::param_ty;
 use middle::ty;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::io::WriterUtil;
 use core::io;
 use core::uint;
 use core::vec;
 use syntax::abi::AbiSet;
+use syntax::ast;
 use syntax::ast::*;
 use syntax::diagnostic::span_handler;
 use syntax::print::pprust::*;
@@ -47,7 +48,7 @@ pub struct ty_abbrev {
 
 pub enum abbrev_ctxt {
     ac_no_abbrevs,
-    ac_use_abbrevs(@mut LinearMap<ty::t, ty_abbrev>),
+    ac_use_abbrevs(@mut HashMap<ty::t, ty_abbrev>),
 }
 
 fn cx_uses_abbrevs(cx: @ctxt) -> bool {
@@ -77,19 +78,6 @@ pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
           Some(a) => { w.write_str(*a.s); return; }
           None => {
             let pos = w.tell();
-            match ty::type_def_id(t) {
-              Some(def_id) => {
-                // Do not emit node ids that map to unexported names.  Those
-                // are not helpful.
-                if def_id.crate != local_crate ||
-                    (cx.reachable)(def_id.node) {
-                    w.write_char('"');
-                    w.write_str((cx.ds)(def_id));
-                    w.write_char('|');
-                }
-              }
-              _ => {}
-            }
             enc_sty(w, cx, /*bad*/copy ty::get(t).sty);
             let end = w.tell();
             let len = end - pos;
@@ -113,26 +101,31 @@ pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
       }
     }
 }
-fn enc_mt(w: @io::Writer, cx: @ctxt, mt: ty::mt) {
-    match mt.mutbl {
+
+fn enc_mutability(w: @io::Writer, mt: ast::mutability) {
+    match mt {
       m_imm => (),
       m_mutbl => w.write_char('m'),
       m_const => w.write_char('?')
     }
+}
+
+fn enc_mt(w: @io::Writer, cx: @ctxt, mt: ty::mt) {
+    enc_mutability(w, mt.mutbl);
     enc_ty(w, cx, mt.ty);
 }
 
 fn enc_opt<T>(w: @io::Writer, t: Option<T>, enc_f: &fn(T)) {
-    match &t {
-      &None => w.write_char('n'),
-      &Some(ref v) => {
+    match t {
+      None => w.write_char('n'),
+      Some(v) => {
         w.write_char('s');
-        enc_f((*v));
+        enc_f(v);
       }
     }
 }
 
-fn enc_substs(w: @io::Writer, cx: @ctxt, substs: ty::substs) {
+fn enc_substs(w: @io::Writer, cx: @ctxt, substs: &ty::substs) {
     do enc_opt(w, substs.self_r) |r| { enc_region(w, cx, r) }
     do enc_opt(w, substs.self_ty) |t| { enc_ty(w, cx, t) }
     w.write_char('[');
@@ -146,12 +139,12 @@ fn enc_region(w: @io::Writer, cx: @ctxt, r: ty::Region) {
         w.write_char('b');
         enc_bound_region(w, cx, br);
       }
-      ty::re_free(id, br) => {
+      ty::re_free(ref fr) => {
         w.write_char('f');
         w.write_char('[');
-        w.write_int(id);
+        w.write_int(fr.scope_id);
         w.write_char('|');
-        enc_bound_region(w, cx, br);
+        enc_bound_region(w, cx, fr.bound_region);
         w.write_char(']');
       }
       ty::re_scope(nid) => {
@@ -214,11 +207,16 @@ pub fn enc_vstore(w: @io::Writer, cx: @ctxt, v: ty::vstore) {
     }
 }
 
+pub fn enc_trait_ref(w: @io::Writer, cx: @ctxt, s: &ty::TraitRef) {
+    w.write_str((cx.ds)(s.def_id));
+    w.write_char('|');
+    enc_substs(w, cx, &s.substs);
+}
+
 pub fn enc_trait_store(w: @io::Writer, cx: @ctxt, s: ty::TraitStore) {
     match s {
         ty::UniqTraitStore => w.write_char('~'),
         ty::BoxTraitStore => w.write_char('@'),
-        ty::BareTraitStore => w.write_char('.'),
         ty::RegionTraitStore(re) => {
             w.write_char('&');
             enc_region(w, cx, re);
@@ -226,7 +224,7 @@ pub fn enc_trait_store(w: @io::Writer, cx: @ctxt, s: ty::TraitStore) {
     }
 }
 
-fn enc_sty(w: @io::Writer, cx: @ctxt, +st: ty::sty) {
+fn enc_sty(w: @io::Writer, cx: @ctxt, st: ty::sty) {
     match st {
       ty::ty_nil => w.write_char('n'),
       ty::ty_bot => w.write_char('z'),
@@ -261,15 +259,16 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, +st: ty::sty) {
         w.write_str(&"t[");
         w.write_str((cx.ds)(def));
         w.write_char('|');
-        enc_substs(w, cx, (*substs));
+        enc_substs(w, cx, substs);
         w.write_char(']');
       }
-      ty::ty_trait(def, ref substs, store) => {
+      ty::ty_trait(def, ref substs, store, mt) => {
         w.write_str(&"x[");
         w.write_str((cx.ds)(def));
         w.write_char('|');
-        enc_substs(w, cx, (*substs));
+        enc_substs(w, cx, substs);
         enc_trait_store(w, cx, store);
+        enc_mutability(w, mt);
         w.write_char(']');
       }
       ty::ty_tup(ts) => {
@@ -331,7 +330,7 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, +st: ty::sty) {
           w.write_str(s);
           debug!("~~~~ %s", ~"|");
           w.write_char('|');
-          enc_substs(w, cx, (*substs));
+          enc_substs(w, cx, substs);
           debug!("~~~~ %s", ~"]");
           w.write_char(']');
       }
@@ -384,7 +383,7 @@ fn enc_onceness(w: @io::Writer, o: Onceness) {
     }
 }
 
-fn enc_bare_fn_ty(w: @io::Writer, cx: @ctxt, ft: &ty::BareFnTy) {
+pub fn enc_bare_fn_ty(w: @io::Writer, cx: @ctxt, ft: &ty::BareFnTy) {
     enc_purity(w, ft.purity);
     enc_abi_set(w, ft.abis);
     enc_fn_sig(w, cx, &ft.sig);
@@ -407,7 +406,7 @@ fn enc_fn_sig(w: @io::Writer, cx: @ctxt, fsig: &ty::FnSig) {
     enc_ty(w, cx, fsig.output);
 }
 
-pub fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
+fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
     for vec::each(*bs) |bound| {
         match *bound {
           ty::bound_owned => w.write_char('S'),
@@ -415,12 +414,18 @@ pub fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
           ty::bound_const => w.write_char('K'),
           ty::bound_durable => w.write_char('O'),
           ty::bound_trait(tp) => {
-            w.write_char('I');
-            enc_ty(w, cx, tp);
+              w.write_char('I');
+              enc_trait_ref(w, cx, tp);
           }
         }
     }
     w.write_char('.');
+}
+
+pub fn enc_type_param_def(w: @io::Writer, cx: @ctxt, v: &ty::TypeParameterDef) {
+    w.write_str((cx.ds)(v.def_id));
+    w.write_char('|');
+    enc_bounds(w, cx, v.bounds);
 }
 
 //

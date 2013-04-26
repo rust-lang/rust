@@ -74,7 +74,9 @@ pub static tag_crate_dep_vers: uint = 0x2cu;
 pub static tag_mod_impl: uint = 0x30u;
 
 pub static tag_item_trait_method: uint = 0x31u;
-pub static tag_impl_trait: uint = 0x32u;
+
+pub static tag_item_trait_ref: uint = 0x32u;
+pub static tag_item_super_trait_ref: uint = 0x33u;
 
 // discriminator value for variants
 pub static tag_disr_val: uint = 0x34u;
@@ -102,6 +104,7 @@ pub static tag_item_dtor: uint = 0x49u;
 pub static tag_item_trait_method_self_ty: uint = 0x4b;
 pub static tag_item_trait_method_self_ty_region: uint = 0x4c;
 
+
 // Reexports are found within module tags. Each reexport contains def_ids
 // and names.
 pub static tag_items_data_item_reexport: uint = 0x4d;
@@ -124,7 +127,7 @@ pub enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_table_node_type_subst = 0x58,
     tag_table_freevars = 0x59,
     tag_table_tcache = 0x5a,
-    tag_table_param_bounds = 0x5b,
+    tag_table_param_defs = 0x5b,
     tag_table_inferred_modes = 0x5c,
     tag_table_mutbl = 0x5d,
     tag_table_last_use = 0x5e,
@@ -158,6 +161,10 @@ pub static tag_items_data_item_visibility: uint = 0x78;
 
 pub static tag_link_args: uint = 0x79;
 pub static tag_link_args_arg: uint = 0x7a;
+
+pub static tag_item_method_tps: uint = 0x7b;
+pub static tag_item_method_fty: uint = 0x7c;
+pub static tag_item_method_transformed_self_ty: uint = 0x7d;
 
 pub struct LinkMeta {
     name: @str,

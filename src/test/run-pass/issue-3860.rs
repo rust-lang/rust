@@ -11,7 +11,7 @@
 struct Foo { x: int }
 
 pub impl Foo {
-    fn stuff(&mut self) -> &'self mut Foo {
+    fn stuff<'a>(&'a mut self) -> &'a mut Foo {
         return self;
     }
 }

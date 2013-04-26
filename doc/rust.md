@@ -441,10 +441,10 @@ expression context, the final namespace qualifier is omitted.
 Two examples of paths with type arguments:
 
 ~~~~
-# use core::hashmap::linear::LinearMap;
+# use core::hashmap::HashMap;
 # fn f() {
 # fn id<T:Copy>(t: T) -> T { t }
-type t = LinearMap<int,~str>;  // Type arguments used in a type expression
+type t = HashMap<int,~str>;  // Type arguments used in a type expression
 let x = id::<int>(10);         // Type arguments used in a call expression
 # }
 ~~~~
@@ -802,7 +802,7 @@ An example of `use` declarations:
 
 ~~~~
 use core::float::sin;
-use core::str::{slice, to_upper};
+use core::str::{slice, contains};
 use core::option::Some;
 
 fn main() {
@@ -813,8 +813,8 @@ fn main() {
     info!(Some(1.0));
 
     // Equivalent to
-    // 'info!(core::str::to_upper(core::str::slice("foo", 0, 1)));'
-    info!(to_upper(slice("foo", 0, 1)));
+    // 'info!(core::str::contains(core::str::slice("foo", 0, 1), "oo"));'
+    info!(contains(slice("foo", 0, 1), "oo"));
 }
 ~~~~
 
@@ -1467,10 +1467,10 @@ A complete list of the built-in language items follows:
   : Elements can be subtracted.
 `mul`
   : Elements can be multiplied.
-`div`
-  : Elements can be divided.
-`mod`
-  : Elements have a modulo operation.
+`quot`
+  : Elements have a quotient operation.
+`rem`
+  : Elements have a remainder operation.
 `neg`
   : Elements can be negated arithmetically.
 `not`
@@ -1653,11 +1653,12 @@ Path expressions are [lvalues](#lvalues-rvalues-and-temporaries).
 
 ### Tuple expressions
 
-Tuples are written by enclosing two or more comma-separated
+Tuples are written by enclosing one or more comma-separated
 expressions in parentheses. They are used to create [tuple-typed](#tuple-types)
 values.
 
 ~~~~~~~~ {.tuple}
+(0,);
 (0f, 4.5f);
 ("a", 4u, true);
 ~~~~~~~~
@@ -1855,11 +1856,11 @@ The default meaning of the operators on standard types is given here.
   : Multiplication.
     Calls the `mul` method on the `core::ops::Mul` trait.
 `/`
-  : Division.
-    Calls the `div` method on the `core::ops::Div` trait.
+  : Quotient.
+    Calls the `quot` method on the `core::ops::Quot` trait.
 `%`
-  : Modulo (a.k.a. "remainder").
-    Calls the `modulo` method on the `core::ops::Modulo` trait.
+  : Remainder.
+    Calls the `rem` method on the `core::ops::Rem` trait.
 
 #### Bitwise operators
 
@@ -2578,7 +2579,7 @@ to the record type-constructor. The differences are as follows:
 
 Tuple types and values are denoted by listing the types or values of their
 elements, respectively, in a parenthesized, comma-separated
-list. Single-element tuples are not legal; all tuples have two or more values.
+list.
 
 The members of a tuple are laid out in memory contiguously, like a record, in
 order specified by the tuple type.
@@ -3251,6 +3252,28 @@ of runtime logging modules follows.
 * `::rt::backtrace` Log a backtrace on task failure
 * `::rt::callback` Unused
 
+#### Logging Expressions
+
+Rust provides several macros to log information. Here's a simple Rust program
+that demonstrates all four of them:
+
+```rust
+fn main() {
+    error!("This is an error log")
+    warn!("This is a warn log")
+    info!("this is an info log")
+    debug!("This is a debug log")
+}
+```
+
+These four log levels correspond to levels 1-4, as controlled by `RUST_LOG`:
+
+```bash
+$ RUST_LOG=rust=3 ./rust
+rust: ~"\"This is an error log\""
+rust: ~"\"This is a warn log\""
+rust: ~"\"this is an info log\""
+```
 
 # Appendix: Rationales and design tradeoffs
 

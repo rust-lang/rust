@@ -13,3 +13,6 @@ pub fn main() { }
 
 #[cfg(target_arch = "x86_64")]
 pub fn main() { }
+
+#[cfg(target_arch = "arm")]
+pub fn main() { }

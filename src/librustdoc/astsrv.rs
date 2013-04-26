@@ -69,7 +69,7 @@ fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
     }
 
     let srv_ = Srv {
-        ch: SharedChan(ch)
+        ch: SharedChan::new(ch)
     };
 
     let res = owner(srv_.clone());
@@ -117,7 +117,7 @@ fn build_ctxt(sess: Session,
     let ast = syntax::ext::expand::expand_crate(sess.parse_sess,
                                                 copy sess.opts.cfg, ast);
     let ast = front::test::modify_for_testing(sess, ast);
-    let ast_map = ast_map::map_crate(sess.diagnostic(), *ast);
+    let ast_map = ast_map::map_crate(sess.diagnostic(), ast);
 
     Ctxt {
         ast: ast,

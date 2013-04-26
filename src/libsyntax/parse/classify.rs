@@ -40,7 +40,7 @@ pub fn expr_is_simple_block(e: @ast::expr) -> bool {
     }
 }
 
-pub fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
+pub fn stmt_ends_with_semi(stmt: &ast::stmt) -> bool {
     return match stmt.node {
         ast::stmt_decl(d, _) => {
             match d.node {

@@ -105,19 +105,21 @@
 
 use core::prelude::*;
 
+use middle::lint::{unused_variable, dead_assignment};
 use middle::pat_util;
 use middle::ty;
 use middle::typeck;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 use core::io::WriterUtil;
 use core::io;
 use core::ptr;
 use core::to_str;
 use core::uint;
 use core::vec;
+use core::util::with;
 use syntax::ast::*;
 use syntax::codemap::span;
 use syntax::parse::token::special_idents;
@@ -134,7 +136,7 @@ use syntax::{visit, ast_util};
 //
 // Very subtle (#2633): borrowck will remove entries from this table
 // if it detects an outstanding loan (that is, the addr is taken).
-pub type last_use_map = @mut LinearMap<node_id, @mut ~[node_id]>;
+pub type last_use_map = @mut HashMap<node_id, @mut ~[node_id]>;
 
 #[deriving(Eq)]
 struct Variable(uint);
@@ -169,16 +171,18 @@ pub fn check_crate(tcx: ty::ctxt,
         visit_local: visit_local,
         visit_expr: visit_expr,
         visit_arm: visit_arm,
+        visit_item: visit_item,
         .. *visit::default_visitor()
     });
 
-    let last_use_map = @mut LinearMap::new();
+    let last_use_map = @mut HashMap::new();
     let initial_maps = @mut IrMaps(tcx,
                                    method_map,
                                    variable_moves_map,
                                    capture_map,
-                                   last_use_map);
-    visit::visit_crate(*crate, initial_maps, visitor);
+                                   last_use_map,
+                                   0);
+    visit::visit_crate(crate, initial_maps, visitor);
     tcx.sess.abort_if_errors();
     return last_use_map;
 }
@@ -264,18 +268,21 @@ struct IrMaps {
 
     num_live_nodes: uint,
     num_vars: uint,
-    live_node_map: LinearMap<node_id, LiveNode>,
-    variable_map: LinearMap<node_id, Variable>,
-    capture_info_map: LinearMap<node_id, @~[CaptureInfo]>,
+    live_node_map: HashMap<node_id, LiveNode>,
+    variable_map: HashMap<node_id, Variable>,
+    capture_info_map: HashMap<node_id, @~[CaptureInfo]>,
     var_kinds: ~[VarKind],
     lnks: ~[LiveNodeKind],
+
+    cur_item: node_id,
 }
 
 fn IrMaps(tcx: ty::ctxt,
           method_map: typeck::method_map,
           variable_moves_map: moves::VariableMovesMap,
           capture_map: moves::CaptureMap,
-          last_use_map: last_use_map)
+          last_use_map: last_use_map,
+          cur_item: node_id)
        -> IrMaps {
     IrMaps {
         tcx: tcx,
@@ -285,11 +292,12 @@ fn IrMaps(tcx: ty::ctxt,
         last_use_map: last_use_map,
         num_live_nodes: 0,
         num_vars: 0,
-        live_node_map: LinearMap::new(),
-        variable_map: LinearMap::new(),
-        capture_info_map: LinearMap::new(),
+        live_node_map: HashMap::new(),
+        variable_map: HashMap::new(),
+        capture_info_map: HashMap::new(),
         var_kinds: ~[],
-        lnks: ~[]
+        lnks: ~[],
+        cur_item: cur_item,
     }
 }
 
@@ -350,7 +358,7 @@ pub impl IrMaps {
         }
     }
 
-    fn set_captures(&mut self, node_id: node_id, +cs: ~[CaptureInfo]) {
+    fn set_captures(&mut self, node_id: node_id, cs: ~[CaptureInfo]) {
         self.capture_info_map.insert(node_id, @cs);
     }
 
@@ -394,12 +402,18 @@ pub impl IrMaps {
     }
 }
 
+fn visit_item(item: @item, self: @mut IrMaps, v: vt<@mut IrMaps>) {
+    do with(&mut self.cur_item, item.id) {
+        visit::visit_item(item, self, v)
+    }
+}
+
 fn visit_fn(fk: &visit::fn_kind,
             decl: &fn_decl,
             body: &blk,
             sp: span,
             id: node_id,
-            &&self: @mut IrMaps,
+            self: @mut IrMaps,
             v: vt<@mut IrMaps>) {
     debug!("visit_fn: id=%d", id);
     let _i = ::util::common::indenter();
@@ -409,7 +423,8 @@ fn visit_fn(fk: &visit::fn_kind,
                               self.method_map,
                               self.variable_moves_map,
                               self.capture_map,
-                              self.last_use_map);
+                              self.last_use_map,
+                              self.cur_item);
 
     debug!("creating fn_maps: %x", ptr::addr_of(&(*fn_maps)) as uint);
 
@@ -474,7 +489,7 @@ fn visit_fn(fk: &visit::fn_kind,
     lsets.warn_about_unused_args(decl, entry_ln);
 }
 
-fn visit_local(local: @local, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
+fn visit_local(local: @local, self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     let def_map = self.tcx.def_map;
     do pat_util::pat_bindings(def_map, local.node.pat) |_bm, p_id, sp, path| {
         debug!("adding local variable %d", p_id);
@@ -494,7 +509,7 @@ fn visit_local(local: @local, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     visit::visit_local(local, self, vt);
 }
 
-fn visit_arm(arm: &arm, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
+fn visit_arm(arm: &arm, self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     let def_map = self.tcx.def_map;
     for arm.pats.each |pat| {
         do pat_util::pat_bindings(def_map, *pat) |bm, p_id, sp, path| {
@@ -513,7 +528,7 @@ fn visit_arm(arm: &arm, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     visit::visit_arm(arm, self, vt);
 }
 
-fn visit_expr(expr: @expr, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
+fn visit_expr(expr: @expr, self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       expr_path(_) => {
@@ -612,7 +627,7 @@ static ACC_READ: uint = 1u;
 static ACC_WRITE: uint = 2u;
 static ACC_USE: uint = 4u;
 
-type LiveNodeMap = @mut LinearMap<node_id, LiveNode>;
+type LiveNodeMap = @mut HashMap<node_id, LiveNode>;
 
 struct Liveness {
     tcx: ty::ctxt,
@@ -639,8 +654,8 @@ fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
         users: @mut vec::from_elem(ir.num_live_nodes * ir.num_vars,
                                    invalid_users()),
         loop_scope: @mut ~[],
-        break_ln: @mut LinearMap::new(),
-        cont_ln: @mut LinearMap::new()
+        break_ln: @mut HashMap::new(),
+        cont_ln: @mut HashMap::new()
     }
 }
 
@@ -692,17 +707,19 @@ pub impl Liveness {
         }
     }
 
-    fn pat_bindings(&self, pat: @pat, f: &fn(LiveNode, Variable, span)) {
+    fn pat_bindings(&self, pat: @pat,
+                    f: &fn(LiveNode, Variable, span, node_id)) {
         let def_map = self.tcx.def_map;
         do pat_util::pat_bindings(def_map, pat) |_bm, p_id, sp, _n| {
             let ln = self.live_node(p_id, sp);
             let var = self.variable(p_id, sp);
-            f(ln, var, sp);
+            f(ln, var, sp, p_id);
         }
     }
 
     fn arm_pats_bindings(&self,
-                         pats: &[@pat], f: &fn(LiveNode, Variable, span)) {
+                         pats: &[@pat],
+                         f: &fn(LiveNode, Variable, span, node_id)) {
         // only consider the first pattern; any later patterns must have
         // the same bindings, and we also consider the first pattern to be
         // the "authoratative" set of ids
@@ -718,7 +735,7 @@ pub impl Liveness {
     fn define_bindings_in_arm_pats(&self, pats: &[@pat],
                                    succ: LiveNode) -> LiveNode {
         let mut succ = succ;
-        do self.arm_pats_bindings(pats) |ln, var, _sp| {
+        do self.arm_pats_bindings(pats) |ln, var, _sp, _id| {
             self.init_from_succ(ln, succ);
             self.define(ln, var);
             succ = ln;
@@ -1493,15 +1510,14 @@ pub impl Liveness {
 // _______________________________________________________________________
 // Checking for error conditions
 
-fn check_local(local: @local, &&self: @Liveness, vt: vt<@Liveness>) {
+fn check_local(local: @local, self: @Liveness, vt: vt<@Liveness>) {
     match local.node.init {
       Some(_) => {
 
         // Initializer:
         self.warn_about_unused_or_dead_vars_in_pat(local.node.pat);
-        if !local.node.is_mutbl {
-            self.check_for_reassignments_in_pat(local.node.pat);
-        }
+        self.check_for_reassignments_in_pat(local.node.pat,
+                                            local.node.is_mutbl);
       }
       None => {
 
@@ -1509,8 +1525,8 @@ fn check_local(local: @local, &&self: @Liveness, vt: vt<@Liveness>) {
         // should not be live at this point.
 
         debug!("check_local() with no initializer");
-        do self.pat_bindings(local.node.pat) |ln, var, sp| {
-            if !self.warn_about_unused(sp, ln, var) {
+        do self.pat_bindings(local.node.pat) |ln, var, sp, id| {
+            if !self.warn_about_unused(sp, id, ln, var) {
                 match self.live_on_exit(ln, var) {
                   None => { /* not live: good */ }
                   Some(lnk) => {
@@ -1527,14 +1543,14 @@ fn check_local(local: @local, &&self: @Liveness, vt: vt<@Liveness>) {
     visit::visit_local(local, self, vt);
 }
 
-fn check_arm(arm: &arm, &&self: @Liveness, vt: vt<@Liveness>) {
-    do self.arm_pats_bindings(arm.pats) |ln, var, sp| {
-        self.warn_about_unused(sp, ln, var);
+fn check_arm(arm: &arm, self: @Liveness, vt: vt<@Liveness>) {
+    do self.arm_pats_bindings(arm.pats) |ln, var, sp, id| {
+        self.warn_about_unused(sp, id, ln, var);
     }
     visit::visit_arm(arm, self, vt);
 }
 
-fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
+fn check_expr(expr: @expr, self: @Liveness, vt: vt<@Liveness>) {
     match expr.node {
       expr_path(_) => {
         for self.variable_from_def_map(expr.id, expr.span).each |var| {
@@ -1615,7 +1631,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
 
 fn check_fn(_fk: &visit::fn_kind, _decl: &fn_decl,
             _body: &blk, _sp: span, _id: node_id,
-            &&_self: @Liveness, _v: vt<@Liveness>) {
+            _self: @Liveness, _v: vt<@Liveness>) {
     // do not check contents of nested fns
 }
 
@@ -1685,20 +1701,23 @@ pub impl Liveness {
         match expr.node {
           expr_path(_) => {
             match *self.tcx.def_map.get(&expr.id) {
-              def_local(nid, false) => {
-                // Assignment to an immutable variable or argument:
-                // only legal if there is no later assignment.
+              def_local(nid, mutbl) => {
+                // Assignment to an immutable variable or argument: only legal
+                // if there is no later assignment. If this local is actually
+                // mutable, then check for a reassignment to flag the mutability
+                // as being used.
                 let ln = self.live_node(expr.id, expr.span);
                 let var = self.variable(nid, expr.span);
-                self.check_for_reassignment(ln, var, expr.span);
-                self.warn_about_dead_assign(expr.span, ln, var);
+                self.check_for_reassignment(ln, var, expr.span,
+                                            if mutbl {Some(nid)} else {None});
+                self.warn_about_dead_assign(expr.span, expr.id, ln, var);
               }
               def => {
                 match relevant_def(def) {
                   Some(nid) => {
                     let ln = self.live_node(expr.id, expr.span);
                     let var = self.variable(nid, expr.span);
-                    self.warn_about_dead_assign(expr.span, ln, var);
+                    self.warn_about_dead_assign(expr.span, expr.id, ln, var);
                   }
                   None => {}
                 }
@@ -1714,23 +1733,28 @@ pub impl Liveness {
        }
     }
 
-    fn check_for_reassignments_in_pat(@self, pat: @pat) {
-        do self.pat_bindings(pat) |ln, var, sp| {
-            self.check_for_reassignment(ln, var, sp);
+    fn check_for_reassignments_in_pat(@self, pat: @pat, mutbl: bool) {
+        do self.pat_bindings(pat) |ln, var, sp, id| {
+            self.check_for_reassignment(ln, var, sp,
+                                        if mutbl {Some(id)} else {None});
         }
     }
 
     fn check_for_reassignment(@self, ln: LiveNode, var: Variable,
-                              orig_span: span) {
+                              orig_span: span, mutbl: Option<node_id>) {
         match self.assigned_on_exit(ln, var) {
           Some(ExprNode(span)) => {
-            self.tcx.sess.span_err(
-                span,
-                ~"re-assignment of immutable variable");
-
-            self.tcx.sess.span_note(
-                orig_span,
-                ~"prior assignment occurs here");
+            match mutbl {
+              Some(id) => { self.tcx.used_mut_nodes.insert(id); }
+              None => {
+                self.tcx.sess.span_err(
+                    span,
+                    ~"re-assignment of immutable variable");
+                self.tcx.sess.span_note(
+                    orig_span,
+                    ~"prior assignment occurs here");
+              }
+            }
           }
           Some(lnk) => {
             self.tcx.sess.span_bug(
@@ -1861,21 +1885,21 @@ pub impl Liveness {
             do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
                     |_bm, p_id, sp, _n| {
                 let var = self.variable(p_id, sp);
-                self.warn_about_unused(sp, entry_ln, var);
+                self.warn_about_unused(sp, p_id, entry_ln, var);
             }
         }
     }
 
     fn warn_about_unused_or_dead_vars_in_pat(@self, pat: @pat) {
-        do self.pat_bindings(pat) |ln, var, sp| {
-            if !self.warn_about_unused(sp, ln, var) {
-                self.warn_about_dead_assign(sp, ln, var);
+        do self.pat_bindings(pat) |ln, var, sp, id| {
+            if !self.warn_about_unused(sp, id, ln, var) {
+                self.warn_about_dead_assign(sp, id, ln, var);
             }
         }
     }
 
-    fn warn_about_unused(@self, sp: span, ln: LiveNode, var: Variable)
-                        -> bool {
+    fn warn_about_unused(@self, sp: span, id: node_id,
+                         ln: LiveNode, var: Variable) -> bool {
         if !self.used_on_entry(ln, var) {
             for self.should_warn(var).each |name| {
 
@@ -1889,14 +1913,14 @@ pub impl Liveness {
                 };
 
                 if is_assigned {
-                    // FIXME(#3266)--make liveness warnings lintable
-                    self.tcx.sess.span_warn(
-                        sp, fmt!("variable `%s` is assigned to, \
+                    self.tcx.sess.span_lint(unused_variable, id,
+                        self.ir.cur_item, sp,
+                        fmt!("variable `%s` is assigned to, \
                                   but never used", **name));
                 } else {
-                    // FIXME(#3266)--make liveness warnings lintable
-                    self.tcx.sess.span_warn(
-                        sp, fmt!("unused variable: `%s`", **name));
+                    self.tcx.sess.span_lint(unused_variable, id,
+                        self.ir.cur_item, sp,
+                        fmt!("unused variable: `%s`", **name));
                 }
             }
             return true;
@@ -1904,12 +1928,12 @@ pub impl Liveness {
         return false;
     }
 
-    fn warn_about_dead_assign(@self, sp: span, ln: LiveNode, var: Variable) {
+    fn warn_about_dead_assign(@self, sp: span, id: node_id,
+                              ln: LiveNode, var: Variable) {
         if self.live_on_exit(ln, var).is_none() {
             for self.should_warn(var).each |name| {
-                // FIXME(#3266)--make liveness warnings lintable
-                self.tcx.sess.span_warn(
-                    sp,
+                self.tcx.sess.span_lint(dead_assignment, id,
+                    self.ir.cur_item, sp,
                     fmt!("value assigned to `%s` is never read", **name));
             }
         }

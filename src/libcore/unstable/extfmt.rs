@@ -512,7 +512,7 @@ pub mod rt {
                 None
             }
         } else { Some('-') };
-        unsafe { pad(cv, s, head, PadSigned, buf) };
+        pad(cv, s, head, PadSigned, buf);
     }
     pub fn conv_uint(cv: Conv, u: uint, buf: &mut ~str) {
         let prec = get_int_precision(cv);
@@ -520,11 +520,17 @@ pub mod rt {
             match cv.ty {
               TyDefault => uint_to_str_prec(u, 10, prec),
               TyHexLower => uint_to_str_prec(u, 16, prec),
-              TyHexUpper => str::to_upper(uint_to_str_prec(u, 16, prec)),
+
+              // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
+              // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+              TyHexUpper => {
+                let s = uint_to_str_prec(u, 16, prec);
+                s.to_ascii().to_upper().to_str_ascii()
+              }
               TyBits => uint_to_str_prec(u, 2, prec),
               TyOctal => uint_to_str_prec(u, 8, prec)
             };
-        unsafe { pad(cv, rs, None, PadUnsigned, buf) };
+        pad(cv, rs, None, PadUnsigned, buf);
     }
     pub fn conv_bool(cv: Conv, b: bool, buf: &mut ~str) {
         let s = if b { "true" } else { "false" };
@@ -533,12 +539,12 @@ pub mod rt {
         conv_str(cv, s, buf);
     }
     pub fn conv_char(cv: Conv, c: char, buf: &mut ~str) {
-        unsafe { pad(cv, "", Some(c), PadNozero, buf) };
+        pad(cv, "", Some(c), PadNozero, buf);
     }
     pub fn conv_str(cv: Conv, s: &str, buf: &mut ~str) {
         // For strings, precision is the maximum characters
         // displayed
-        let mut unpadded = match cv.precision {
+        let unpadded = match cv.precision {
           CountImplied => s,
           CountIs(max) => if (max as uint) < str::char_len(s) {
             str::slice(s, 0, max as uint)
@@ -546,14 +552,14 @@ pub mod rt {
             s
           }
         };
-        unsafe { pad(cv, unpadded, None, PadNozero, buf) };
+        pad(cv, unpadded, None, PadNozero, buf);
     }
     pub fn conv_float(cv: Conv, f: float, buf: &mut ~str) {
         let (to_str, digits) = match cv.precision {
               CountIs(c) => (float::to_str_exact, c as uint),
               CountImplied => (float::to_str_digits, 6u)
         };
-        let mut s = unsafe { to_str(f, digits) };
+        let mut s = to_str(f, digits);
         let head = if 0.0 <= f {
             if have_flag(cv.flags, flag_sign_always) {
                 Some('+')
@@ -563,7 +569,7 @@ pub mod rt {
                 None
             }
         } else { None };
-        unsafe { pad(cv, s, head, PadFloat, buf) };
+        pad(cv, s, head, PadFloat, buf);
     }
     pub fn conv_poly<T>(cv: Conv, v: &T, buf: &mut ~str) {
         let s = sys::log_str(v);
@@ -596,7 +602,7 @@ pub mod rt {
     #[deriving(Eq)]
     pub enum PadMode { PadSigned, PadUnsigned, PadNozero, PadFloat }
 
-    pub fn pad(cv: Conv, mut s: &str, head: Option<char>, mode: PadMode,
+    pub fn pad(cv: Conv, s: &str, head: Option<char>, mode: PadMode,
                buf: &mut ~str) {
         let headsize = match head { Some(_) => 1, _ => 0 };
         let uwidth : uint = match cv.width {

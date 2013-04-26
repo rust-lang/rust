@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -63,14 +63,14 @@ use middle::trans::type_of;
 use middle::trans::type_of::*;
 use middle::ty;
 use util::common::indenter;
-use util::ppaux::ty_to_str;
+use util::ppaux::{Repr, ty_to_str};
 use util::ppaux;
 
 use core::hash;
-use core::hashmap::linear::{LinearMap, LinearSet};
+use core::hashmap::{HashMap, HashSet};
 use core::int;
 use core::io;
-use core::libc::{c_uint, c_ulonglong};
+use core::libc::c_uint;
 use core::uint;
 use std::time;
 use syntax::ast::ident;
@@ -91,10 +91,8 @@ pub struct icx_popper {
 #[unsafe_destructor]
 impl Drop for icx_popper {
     fn finalize(&self) {
-        unsafe {
-            if self.ccx.sess.count_llvm_insns() {
-                self.ccx.stats.llvm_insn_ctxt.pop();
-            }
+        if self.ccx.sess.count_llvm_insns() {
+            self.ccx.stats.llvm_insn_ctxt.pop();
         }
     }
 }
@@ -131,23 +129,32 @@ impl get_insn_ctxt for fn_ctxt {
     }
 }
 
-pub fn log_fn_time(ccx: @CrateContext, +name: ~str, start: time::Timespec,
+fn fcx_has_nonzero_span(fcx: fn_ctxt) -> bool {
+    match fcx.span {
+        None => true,
+        Some(span) => *span.lo != 0 || *span.hi != 0
+    }
+}
+
+pub fn log_fn_time(ccx: @CrateContext, name: ~str, start: time::Timespec,
                    end: time::Timespec) {
     let elapsed = 1000 * ((end.sec - start.sec) as int) +
         ((end.nsec as int) - (start.nsec as int)) / 1000000;
     ccx.stats.fn_times.push((name, elapsed));
 }
 
-pub fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv,
-               llty: TypeRef) -> ValueRef {
+pub fn decl_fn(llmod: ModuleRef,
+               name: &str,
+               cc: lib::llvm::CallConv,
+               llty: TypeRef)
+               -> ValueRef {
     let llfn: ValueRef = str::as_c_str(name, |buf| {
         unsafe {
             llvm::LLVMGetOrInsertFunction(llmod, buf, llty)
         }
     });
-    unsafe {
-        lib::llvm::SetFunctionCallConv(llfn, cc);
-    }
+
+    lib::llvm::SetFunctionCallConv(llfn, cc);
     return llfn;
 }
 
@@ -158,7 +165,7 @@ pub fn decl_cdecl_fn(llmod: ModuleRef, name: &str, llty: TypeRef)
 
 // Only use this if you are going to actually define the function. It's
 // not valid to simply declare a function as internal.
-pub fn decl_internal_cdecl_fn(llmod: ModuleRef, +name: ~str, llty: TypeRef) ->
+pub fn decl_internal_cdecl_fn(llmod: ModuleRef, name: ~str, llty: TypeRef) ->
    ValueRef {
     let llfn = decl_cdecl_fn(llmod, name, llty);
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
@@ -403,24 +410,24 @@ pub fn set_optimize_for_size(f: ValueRef) {
     unsafe {
         llvm::LLVMAddFunctionAttr(f,
                                   lib::llvm::OptimizeForSizeAttribute
-                                  as c_ulonglong,
-                                  0u as c_ulonglong);
+                                    as c_uint,
+                                  0);
     }
 }
 
 pub fn set_no_inline(f: ValueRef) {
     unsafe {
         llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::NoInlineAttribute as c_ulonglong,
-                                  0u as c_ulonglong);
+                                  lib::llvm::NoInlineAttribute as c_uint,
+                                  0);
     }
 }
 
 pub fn set_no_unwind(f: ValueRef) {
     unsafe {
         llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::NoUnwindAttribute as c_ulonglong,
-                                  0u as c_ulonglong);
+                                  lib::llvm::NoUnwindAttribute as c_uint,
+                                  0);
     }
 }
 
@@ -429,15 +436,16 @@ pub fn set_no_unwind(f: ValueRef) {
 pub fn set_uwtable(f: ValueRef) {
     unsafe {
         llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::UWTableAttribute as c_ulonglong,
-                                  0u as c_ulonglong);
+                                  lib::llvm::UWTableAttribute as c_uint,
+                                  0);
     }
 }
 
 pub fn set_inline_hint(f: ValueRef) {
     unsafe {
-        llvm::LLVMAddFunctionAttr(f, lib::llvm::InlineHintAttribute
-                                  as c_ulonglong, 0u as c_ulonglong);
+        llvm::LLVMAddFunctionAttr(f,
+                                  lib::llvm::InlineHintAttribute as c_uint,
+                                  0);
     }
 }
 
@@ -453,14 +461,15 @@ pub fn set_inline_hint_if_appr(attrs: &[ast::attribute],
 
 pub fn set_always_inline(f: ValueRef) {
     unsafe {
-        llvm::LLVMAddFunctionAttr(f, lib::llvm::AlwaysInlineAttribute
-                                  as c_ulonglong, 0u as c_ulonglong);
+        llvm::LLVMAddFunctionAttr(f,
+                                  lib::llvm::AlwaysInlineAttribute as c_uint,
+                                  0);
     }
 }
 
-pub fn set_custom_stack_growth_fn(f: ValueRef) {
+pub fn set_fixed_stack_segment(f: ValueRef) {
     unsafe {
-        llvm::LLVMAddFunctionAttr(f, 0u as c_ulonglong, 1u as c_ulonglong);
+        llvm::LLVMAddFunctionAttr(f, 0, 1 << (39 - 32));
     }
 }
 
@@ -472,27 +481,33 @@ pub fn set_glue_inlining(f: ValueRef, t: ty::t) {
 
 // Double-check that we never ask LLVM to declare the same symbol twice. It
 // silently mangles such symbols, breaking our linkage model.
-pub fn note_unique_llvm_symbol(ccx: @CrateContext, +sym: ~str) {
-    // XXX: this should not be necessary
-    use core::container::Set;
+pub fn note_unique_llvm_symbol(ccx: @CrateContext, sym: @~str) {
     if ccx.all_llvm_symbols.contains(&sym) {
-        ccx.sess.bug(~"duplicate LLVM symbol: " + sym);
+        ccx.sess.bug(~"duplicate LLVM symbol: " + *sym);
     }
     ccx.all_llvm_symbols.insert(sym);
 }
 
 
-pub fn get_res_dtor(ccx: @CrateContext, did: ast::def_id,
-                    parent_id: ast::def_id, substs: &[ty::t])
-   -> ValueRef {
+pub fn get_res_dtor(ccx: @CrateContext,
+                    did: ast::def_id,
+                    parent_id: ast::def_id,
+                    substs: &[ty::t])
+                 -> ValueRef {
     let _icx = ccx.insn_ctxt("trans_res_dtor");
     if !substs.is_empty() {
         let did = if did.crate != ast::local_crate {
             inline::maybe_instantiate_inline(ccx, did, true)
-        } else { did };
+        } else {
+            did
+        };
         assert!(did.crate == ast::local_crate);
-        let (val, _) =
-            monomorphize::monomorphic_fn(ccx, did, substs, None, None, None);
+        let (val, _) = monomorphize::monomorphic_fn(ccx,
+                                                    did,
+                                                    substs,
+                                                    None,
+                                                    None,
+                                                    None);
 
         val
     } else if did.crate == ast::local_crate {
@@ -500,11 +515,16 @@ pub fn get_res_dtor(ccx: @CrateContext, did: ast::def_id,
     } else {
         let tcx = ccx.tcx;
         let name = csearch::get_symbol(ccx.sess.cstore, did);
-        let class_ty = ty::subst_tps(tcx, substs, None,
-                          ty::lookup_item_type(tcx, parent_id).ty);
+        let class_ty = ty::subst_tps(tcx,
+                                     substs,
+                                     None,
+                                     ty::lookup_item_type(tcx, parent_id).ty);
         let llty = type_of_dtor(ccx, class_ty);
         let name = name.to_managed(); // :-(
-        get_extern_fn(ccx.externs, ccx.llmod, name, lib::llvm::CCallConv,
+        get_extern_fn(ccx.externs,
+                      ccx.llmod,
+                      name,
+                      lib::llvm::CCallConv,
                       llty)
     }
 }
@@ -687,7 +707,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
                                     substs.tps, f);
               }
               (_match::switch, Some(lldiscrim_a)) => {
-                  cx = f(cx, lldiscrim_a, ty::mk_int(cx.tcx()));
+                  cx = f(cx, lldiscrim_a, ty::mk_int());
                   let unr_cx = sub_block(cx, ~"enum-iter-unr");
                   Unreachable(unr_cx);
                   let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb,
@@ -730,11 +750,9 @@ pub fn cast_shift_expr_rhs(cx: block, op: ast::binop,
 
 pub fn cast_shift_const_rhs(op: ast::binop,
                             lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    unsafe {
-        cast_shift_rhs(op, lhs, rhs,
-                       |a, b| unsafe { llvm::LLVMConstTrunc(a, b) },
-                       |a, b| unsafe { llvm::LLVMConstZExt(a, b) })
-    }
+    cast_shift_rhs(op, lhs, rhs,
+                   |a, b| unsafe { llvm::LLVMConstTrunc(a, b) },
+                   |a, b| unsafe { llvm::LLVMConstZExt(a, b) })
 }
 
 pub fn cast_shift_rhs(op: ast::binop,
@@ -764,12 +782,12 @@ pub fn cast_shift_rhs(op: ast::binop,
     }
 }
 
-pub fn fail_if_zero(cx: block, span: span, divmod: ast::binop,
+pub fn fail_if_zero(cx: block, span: span, quotrem: ast::binop,
                     rhs: ValueRef, rhs_t: ty::t) -> block {
-    let text = if divmod == ast::div {
-        @~"divide by zero"
+    let text = if quotrem == ast::quot {
+        @~"attempted quotient with a divisor of zero"
     } else {
-        @~"modulo zero"
+        @~"attempted remainder with a divisor of zero"
     };
     let is_zero = match ty::get(rhs_t).sty {
       ty::ty_int(t) => {
@@ -810,9 +828,12 @@ pub fn trans_external_path(ccx: @CrateContext, did: ast::def_id, t: ty::t)
     };
 }
 
-pub fn invoke(bcx: block, llfn: ValueRef, +llargs: ~[ValueRef]) -> block {
+pub fn invoke(bcx: block, llfn: ValueRef, llargs: ~[ValueRef])
+           -> (ValueRef, block) {
     let _icx = bcx.insn_ctxt("invoke_");
-    if bcx.unreachable { return bcx; }
+    if bcx.unreachable {
+        return (C_null(T_i8()), bcx);
+    }
 
     match bcx.node_info {
         None => debug!("invoke at ???"),
@@ -832,8 +853,12 @@ pub fn invoke(bcx: block, llfn: ValueRef, +llargs: ~[ValueRef]) -> block {
             }
         }
         let normal_bcx = sub_block(bcx, ~"normal return");
-        Invoke(bcx, llfn, llargs, normal_bcx.llbb, get_landing_pad(bcx));
-        return normal_bcx;
+        let llresult = Invoke(bcx,
+                              llfn,
+                              llargs,
+                              normal_bcx.llbb,
+                              get_landing_pad(bcx));
+        return (llresult, normal_bcx);
     } else {
         unsafe {
             debug!("calling %x at %x",
@@ -843,8 +868,8 @@ pub fn invoke(bcx: block, llfn: ValueRef, +llargs: ~[ValueRef]) -> block {
                 debug!("arg: %x", ::core::cast::transmute(llarg));
             }
         }
-        Call(bcx, llfn, llargs);
-        return bcx;
+        let llresult = Call(bcx, llfn, llargs);
+        return (llresult, bcx);
     }
 }
 
@@ -899,7 +924,7 @@ pub fn have_cached_lpad(bcx: block) -> bool {
     return res;
 }
 
-pub fn in_lpad_scope_cx(bcx: block, f: &fn(+si: &mut scope_info)) {
+pub fn in_lpad_scope_cx(bcx: block, f: &fn(si: &mut scope_info)) {
     let mut bcx = bcx;
     loop {
         {
@@ -938,7 +963,7 @@ pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
     // The landing pad return type (the type being propagated). Not sure what
     // this represents but it's determined by the personality function and
     // this is what the EH proposal example uses.
-    let llretty = T_struct(~[T_ptr(T_i8()), T_i32()]);
+    let llretty = T_struct(~[T_ptr(T_i8()), T_i32()], false);
     // The exception handling personality function. This is the C++
     // personality function __gxx_personality_v0, wrapped in our naming
     // convention.
@@ -1032,10 +1057,7 @@ pub fn do_spill(bcx: block, v: ValueRef, t: ty::t) -> ValueRef {
 
 // Since this function does *not* root, it is the caller's responsibility to
 // ensure that the referent is pointed to by a root.
-// [Note-arg-mode]
-// ++ mode is temporary, due to how borrowck treats enums. With hope,
-// will go away anyway when we get rid of modes.
-pub fn do_spill_noroot(++cx: block, v: ValueRef) -> ValueRef {
+pub fn do_spill_noroot(cx: block, v: ValueRef) -> ValueRef {
     let llptr = alloca(cx, val_ty(v));
     Store(cx, v, llptr);
     return llptr;
@@ -1138,7 +1160,7 @@ pub fn init_local(bcx: block, local: @ast::local) -> block {
                                        _match::BindLocal);
 }
 
-pub fn trans_stmt(cx: block, s: ast::stmt) -> block {
+pub fn trans_stmt(cx: block, s: &ast::stmt) -> block {
     let _icx = cx.insn_ctxt("trans_stmt");
     debug!("trans_stmt(%s)", stmt_to_str(s, cx.tcx().sess.intr()));
 
@@ -1158,12 +1180,13 @@ pub fn trans_stmt(cx: block, s: ast::stmt) -> block {
                 ast::decl_local(ref locals) => {
                     for locals.each |local| {
                         bcx = init_local(bcx, *local);
-                        if cx.sess().opts.extra_debuginfo {
+                        if cx.sess().opts.extra_debuginfo
+                            && fcx_has_nonzero_span(bcx.fcx) {
                             debuginfo::create_local_var(bcx, *local);
                         }
                     }
                 }
-                ast::decl_item(i) => trans_item(*cx.fcx.ccx, *i)
+                ast::decl_item(i) => trans_item(*cx.fcx.ccx, i)
             }
         }
         ast::stmt_mac(*) => cx.tcx().sess.bug(~"unexpanded macro")
@@ -1174,8 +1197,8 @@ pub fn trans_stmt(cx: block, s: ast::stmt) -> block {
 
 // You probably don't want to use this one. See the
 // next three functions instead.
-pub fn new_block(cx: fn_ctxt, parent: Option<block>, +kind: block_kind,
-                 is_lpad: bool, +name: ~str, opt_node_info: Option<NodeInfo>)
+pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
+                 is_lpad: bool, name: ~str, opt_node_info: Option<NodeInfo>)
     -> block {
 
     let s = if cx.ccx.sess.opts.save_temps || cx.ccx.sess.opts.debuginfo {
@@ -1219,7 +1242,7 @@ pub fn top_scope_block(fcx: fn_ctxt, opt_node_info: Option<NodeInfo>)
 
 pub fn scope_block(bcx: block,
                    opt_node_info: Option<NodeInfo>,
-                   +n: ~str) -> block {
+                   n: ~str) -> block {
     return new_block(bcx.fcx, Some(bcx), simple_block_scope(), bcx.is_lpad,
                   n, opt_node_info);
 }
@@ -1227,7 +1250,7 @@ pub fn scope_block(bcx: block,
 pub fn loop_scope_block(bcx: block,
                         loop_break: block,
                         loop_label: Option<ident>,
-                        +n: ~str,
+                        n: ~str,
                         opt_node_info: Option<NodeInfo>) -> block {
     return new_block(bcx.fcx, Some(bcx), block_scope(scope_info {
         loop_break: Some(loop_break),
@@ -1239,12 +1262,12 @@ pub fn loop_scope_block(bcx: block,
 }
 
 // Use this when creating a block for the inside of a landing pad.
-pub fn lpad_block(bcx: block, +n: ~str) -> block {
+pub fn lpad_block(bcx: block, n: ~str) -> block {
     new_block(bcx.fcx, Some(bcx), block_non_scope, true, n, None)
 }
 
 // Use this when you're making a general CFG BB within a scope.
-pub fn sub_block(bcx: block, +n: ~str) -> block {
+pub fn sub_block(bcx: block, n: ~str) -> block {
     new_block(bcx.fcx, Some(bcx), block_non_scope, bcx.is_lpad, n, None)
 }
 
@@ -1260,12 +1283,12 @@ pub fn raw_block(fcx: fn_ctxt, is_lpad: bool, llbb: BasicBlockRef) -> block {
 // need to make sure those variables go out of scope when the block ends.  We
 // do that by running a 'cleanup' function for each variable.
 // trans_block_cleanups runs all the cleanup functions for the block.
-pub fn trans_block_cleanups(bcx: block, +cleanups: ~[cleanup]) -> block {
+pub fn trans_block_cleanups(bcx: block, cleanups: ~[cleanup]) -> block {
     trans_block_cleanups_(bcx, cleanups, false)
 }
 
 pub fn trans_block_cleanups_(bcx: block,
-                             +cleanups: ~[cleanup],
+                             cleanups: ~[cleanup],
                              /* cleanup_cx: block, */
                              is_lpad: bool) -> block {
     let _icx = bcx.insn_ctxt("trans_block_cleanups");
@@ -1361,7 +1384,7 @@ pub fn leave_block(bcx: block, out_of: block) -> block {
 
 pub fn with_scope(bcx: block,
                   opt_node_info: Option<NodeInfo>,
-                  +name: ~str,
+                  name: ~str,
                   f: &fn(block) -> block) -> block {
     let _icx = bcx.insn_ctxt("with_scope");
 
@@ -1376,7 +1399,7 @@ pub fn with_scope(bcx: block,
 
 pub fn with_scope_result(bcx: block,
                          opt_node_info: Option<NodeInfo>,
-                         +name: ~str,
+                         name: ~str,
                          f: &fn(block) -> Result) -> Result {
     let _icx = bcx.insn_ctxt("with_scope_result");
     let scope_cx = scope_block(bcx, opt_node_info, name);
@@ -1386,7 +1409,7 @@ pub fn with_scope_result(bcx: block,
 }
 
 pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,
-                             +name: ~str, f: &fn(block) -> datum::DatumBlock)
+                             name: ~str, f: &fn(block) -> datum::DatumBlock)
                           -> datum::DatumBlock {
     use middle::trans::datum::DatumBlock;
 
@@ -1574,6 +1597,18 @@ pub fn mk_standard_basic_blocks(llfn: ValueRef) -> BasicBlocks {
     }
 }
 
+// Creates and returns space for, or returns the argument representing, the
+// slot where the return value of the function must go.
+pub fn make_return_pointer(fcx: fn_ctxt, output_type: ty::t) -> ValueRef {
+    unsafe {
+        if !ty::type_is_immediate(output_type) {
+            llvm::LLVMGetParam(fcx.llfn, 0)
+        } else {
+            let lloutputtype = type_of::type_of(*fcx.ccx, output_type);
+            alloca(raw_block(fcx, false, fcx.llstaticallocas), lloutputtype)
+        }
+    }
+}
 
 // NB: must keep 4 fns in sync:
 //
@@ -1582,36 +1617,47 @@ pub fn mk_standard_basic_blocks(llfn: ValueRef) -> BasicBlocks {
 //  - new_fn_ctxt
 //  - trans_args
 pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
-                        +path: path,
+                        path: path,
                         llfndecl: ValueRef,
                         id: ast::node_id,
+                        output_type: ty::t,
                         impl_id: Option<ast::def_id>,
                         param_substs: Option<@param_substs>,
-                        sp: Option<span>) -> fn_ctxt
-{
+                        sp: Option<span>)
+                     -> fn_ctxt {
     for param_substs.each |p| { p.validate(); }
 
     debug!("new_fn_ctxt_w_id(path=%s, id=%?, impl_id=%?, \
-            param_substs=%s",
+            param_substs=%s)",
            path_str(ccx.sess, path),
            id,
            impl_id,
-           opt_param_substs_to_str(ccx.tcx, &param_substs));
+           param_substs.repr(ccx.tcx));
 
     let llbbs = mk_standard_basic_blocks(llfndecl);
-    return @mut fn_ctxt_ {
+
+    let substd_output_type = match param_substs {
+        None => output_type,
+        Some(substs) => {
+            ty::subst_tps(ccx.tcx, substs.tys, substs.self_ty, output_type)
+        }
+    };
+    let is_immediate = ty::type_is_immediate(substd_output_type);
+
+    let fcx = @mut fn_ctxt_ {
           llfn: llfndecl,
           llenv: unsafe { llvm::LLVMGetParam(llfndecl, 1u as c_uint) },
-          llretptr: unsafe { llvm::LLVMGetParam(llfndecl, 0u as c_uint) },
+          llretptr: None,
           llstaticallocas: llbbs.sa,
           llloadenv: None,
           llreturn: llbbs.rt,
           llself: None,
           personality: None,
           loop_ret: None,
-          llargs: @mut LinearMap::new(),
-          lllocals: @mut LinearMap::new(),
-          llupvars: @mut LinearMap::new(),
+          has_immediate_return_value: is_immediate,
+          llargs: @mut HashMap::new(),
+          lllocals: @mut HashMap::new(),
+          llupvars: @mut HashMap::new(),
           id: id,
           impl_id: impl_id,
           param_substs: param_substs,
@@ -1619,14 +1665,18 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           path: path,
           ccx: @ccx
     };
+
+    fcx.llretptr = Some(make_return_pointer(fcx, substd_output_type));
+    fcx
 }
 
 pub fn new_fn_ctxt(ccx: @CrateContext,
-                   +path: path,
+                   path: path,
                    llfndecl: ValueRef,
+                   output_type: ty::t,
                    sp: Option<span>)
                 -> fn_ctxt {
-    return new_fn_ctxt_w_id(ccx, path, llfndecl, -1, None, None, sp);
+    new_fn_ctxt_w_id(ccx, path, llfndecl, -1, output_type, None, None, sp)
 }
 
 // NB: must keep 4 fns in sync:
@@ -1645,7 +1695,8 @@ pub fn new_fn_ctxt(ccx: @CrateContext,
 // field of the fn_ctxt with
 pub fn create_llargs_for_fn_args(cx: fn_ctxt,
                                  ty_self: self_arg,
-                                 args: &[ast::arg]) -> ~[ValueRef] {
+                                 args: &[ast::arg])
+                              -> ~[ValueRef] {
     let _icx = cx.insn_ctxt("create_llargs_for_fn_args");
 
     match ty_self {
@@ -1738,7 +1789,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
 
         fcx.llargs.insert(arg_id, local_mem(llarg));
 
-        if fcx.ccx.sess.opts.extra_debuginfo {
+        if fcx.ccx.sess.opts.extra_debuginfo && fcx_has_nonzero_span(fcx) {
             debuginfo::create_arg(bcx, args[arg_n], args[arg_n].ty.span);
         }
     }
@@ -1751,8 +1802,19 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
 pub fn finish_fn(fcx: fn_ctxt, lltop: BasicBlockRef) {
     let _icx = fcx.insn_ctxt("finish_fn");
     tie_up_header_blocks(fcx, lltop);
+    build_return_block(fcx);
+}
+
+// Builds the return block for a function.
+pub fn build_return_block(fcx: fn_ctxt) {
     let ret_cx = raw_block(fcx, false, fcx.llreturn);
-    RetVoid(ret_cx);
+
+    // Return the value if this function immediate; otherwise, return void.
+    if fcx.has_immediate_return_value {
+        Ret(ret_cx, Load(ret_cx, fcx.llretptr.get()))
+    } else {
+        RetVoid(ret_cx)
+    }
 }
 
 pub fn tie_up_header_blocks(fcx: fn_ctxt, lltop: BasicBlockRef) {
@@ -1774,7 +1836,7 @@ pub enum self_arg { impl_self(ty::t), impl_owned_self(ty::t), no_self, }
 // If the function closes over its environment a closure will be
 // returned.
 pub fn trans_closure(ccx: @CrateContext,
-                     +path: path,
+                     path: path,
                      decl: &ast::fn_decl,
                      body: &ast::blk,
                      llfndecl: ValueRef,
@@ -1782,17 +1844,33 @@ pub fn trans_closure(ccx: @CrateContext,
                      param_substs: Option<@param_substs>,
                      id: ast::node_id,
                      impl_id: Option<ast::def_id>,
+                     attributes: &[ast::attribute],
+                     output_type: ty::t,
                      maybe_load_env: &fn(fn_ctxt),
                      finish: &fn(block)) {
     ccx.stats.n_closures += 1;
     let _icx = ccx.insn_ctxt("trans_closure");
     set_uwtable(llfndecl);
 
+    debug!("trans_closure(..., param_substs=%s)",
+           param_substs.repr(ccx.tcx));
+
     // Set up arguments to the function.
-    let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, id, impl_id, param_substs,
-                                  Some(body.span));
-    let raw_llargs = create_llargs_for_fn_args(fcx, ty_self,
-                                               decl.inputs);
+    let fcx = new_fn_ctxt_w_id(ccx,
+                               path,
+                               llfndecl,
+                               id,
+                               output_type,
+                               impl_id,
+                               param_substs,
+                               Some(body.span));
+    let raw_llargs = create_llargs_for_fn_args(fcx, ty_self, decl.inputs);
+
+    // Set the fixed stack segment flag if necessary.
+    if attr::attrs_contains_name(attributes, "fixed_stack_segment") {
+        set_no_inline(fcx.llfn);
+        set_fixed_stack_segment(fcx.llfn);
+    }
 
     // Set GC for function.
     if ccx.sess.opts.gc {
@@ -1825,7 +1903,8 @@ pub fn trans_closure(ccx: @CrateContext,
     {
         bcx = controlflow::trans_block(bcx, body, expr::Ignore);
     } else {
-        bcx = controlflow::trans_block(bcx, body, expr::SaveIn(fcx.llretptr));
+        let dest = expr::SaveIn(fcx.llretptr.get());
+        bcx = controlflow::trans_block(bcx, body, dest);
     }
 
     finish(bcx);
@@ -1838,25 +1917,39 @@ pub fn trans_closure(ccx: @CrateContext,
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
 pub fn trans_fn(ccx: @CrateContext,
-                +path: path,
+                path: path,
                 decl: &ast::fn_decl,
                 body: &ast::blk,
                 llfndecl: ValueRef,
                 ty_self: self_arg,
                 param_substs: Option<@param_substs>,
                 id: ast::node_id,
-                impl_id: Option<ast::def_id>) {
+                impl_id: Option<ast::def_id>,
+                attrs: &[ast::attribute]) {
     let do_time = ccx.sess.trans_stats();
     let start = if do_time { time::get_time() }
                 else { time::Timespec::new(0, 0) };
-    debug!("trans_fn(ty_self=%?)", ty_self);
+    debug!("trans_fn(ty_self=%?, param_substs=%s)",
+           ty_self,
+           param_substs.repr(ccx.tcx));
     let _icx = ccx.insn_ctxt("trans_fn");
     ccx.stats.n_fns += 1;
     let the_path_str = path_str(ccx.sess, path);
-    trans_closure(ccx, path, decl, body, llfndecl, ty_self,
-                  param_substs, id, impl_id,
+    let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, id));
+    trans_closure(ccx,
+                  path,
+                  decl,
+                  body,
+                  llfndecl,
+                  ty_self,
+                  param_substs,
+                  id,
+                  impl_id,
+                  attrs,
+                  output_type,
                   |fcx| {
-                      if ccx.sess.opts.extra_debuginfo {
+                      if ccx.sess.opts.extra_debuginfo
+                          && fcx_has_nonzero_span(fcx) {
                           debuginfo::create_function(fcx);
                       }
                   },
@@ -1869,7 +1962,7 @@ pub fn trans_fn(ccx: @CrateContext,
 
 pub fn trans_enum_variant(ccx: @CrateContext,
                           enum_id: ast::node_id,
-                          variant: ast::variant,
+                          variant: &ast::variant,
                           args: &[ast::variant_arg],
                           disr: int,
                           param_substs: Option<@param_substs>,
@@ -1888,26 +1981,44 @@ pub fn trans_enum_variant(ccx: @CrateContext,
             id: varg.id,
         }
     };
-    let fcx = new_fn_ctxt_w_id(ccx, ~[], llfndecl, variant.node.id, None,
-                               param_substs, None);
-    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
+
     let ty_param_substs = match param_substs {
         Some(ref substs) => { copy substs.tys }
         None => ~[]
     };
+    let enum_ty = ty::subst_tps(ccx.tcx,
+                                ty_param_substs,
+                                None,
+                                ty::node_id_to_type(ccx.tcx, enum_id));
+    let fcx = new_fn_ctxt_w_id(ccx,
+                               ~[],
+                               llfndecl,
+                               variant.node.id,
+                               enum_ty,
+                               None,
+                               param_substs,
+                               None);
+
+    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
     let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, variant.node.id));
     let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
 
     // XXX is there a better way to reconstruct the ty::t?
-    let enum_ty = ty::subst_tps(ccx.tcx, ty_param_substs, None,
-                                ty::node_id_to_type(ccx.tcx, enum_id));
     let repr = adt::represent_type(ccx, enum_ty);
 
-    adt::trans_start_init(bcx, repr, fcx.llretptr, disr);
+    debug!("trans_enum_variant: name=%s tps=%s repr=%? enum_ty=%s",
+           unsafe { str::raw::from_c_str(llvm::LLVMGetValueName(llfndecl)) },
+           ~"[" + str::connect(ty_param_substs.map(|&t| ty_to_str(ccx.tcx, t)), ", ") + ~"]",
+           repr, ty_to_str(ccx.tcx, enum_ty));
+
+    adt::trans_start_init(bcx, repr, fcx.llretptr.get(), disr);
     for vec::eachi(args) |i, va| {
-        let lldestptr = adt::trans_field_ptr(bcx, repr, fcx.llretptr,
-                                             disr, i);
+        let lldestptr = adt::trans_field_ptr(bcx,
+                                             repr,
+                                             fcx.llretptr.get(),
+                                             disr,
+                                             i);
 
         // If this argument to this function is a enum, it'll have come in to
         // this function as an opaque blob due to the way that type_of()
@@ -1945,21 +2056,6 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
         }
     };
 
-    let fcx = new_fn_ctxt_w_id(ccx,
-                               ~[],
-                               llfndecl,
-                               ctor_id,
-                               None,
-                               param_substs,
-                               None);
-
-    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
-
-    let bcx = top_scope_block(fcx, None);
-    let lltop = bcx.llbb;
-    let arg_tys = ty::ty_fn_args(node_id_type(bcx, ctor_id));
-    let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
-
     // XXX is there a better way to reconstruct the ty::t?
     let ty_param_substs = match param_substs {
         Some(ref substs) => { copy substs.tys }
@@ -1973,10 +2069,31 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
                                 return type %s",
                                ty_to_str(ccx.tcx, ctor_ty)))
     };
+
+    let fcx = new_fn_ctxt_w_id(ccx,
+                               ~[],
+                               llfndecl,
+                               ctor_id,
+                               tup_ty,
+                               None,
+                               param_substs,
+                               None);
+
+    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
+
+    let bcx = top_scope_block(fcx, None);
+    let lltop = bcx.llbb;
+    let arg_tys = ty::ty_fn_args(node_id_type(bcx, ctor_id));
+    let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
+
     let repr = adt::represent_type(ccx, tup_ty);
 
     for fields.eachi |i, field| {
-        let lldestptr = adt::trans_field_ptr(bcx, repr, fcx.llretptr, 0, i);
+        let lldestptr = adt::trans_field_ptr(bcx,
+                                             repr,
+                                             fcx.llretptr.get(),
+                                             0,
+                                             i);
         let llarg = match *fcx.llargs.get(&field.node.id) {
             local_mem(x) => x,
             _ => {
@@ -1993,7 +2110,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
 }
 
 pub fn trans_struct_dtor(ccx: @CrateContext,
-                         +path: path,
+                         path: path,
                          body: &ast::blk,
                          dtor_id: ast::node_id,
                          psubsts: Option<@param_substs>,
@@ -2026,12 +2143,20 @@ pub fn trans_struct_dtor(ccx: @CrateContext,
   }
   /* Translate the dtor body */
   let decl = ast_util::dtor_dec();
-  trans_fn(ccx, path, &decl, body, lldecl,
-           impl_self(class_ty), psubsts, dtor_id, None);
+  trans_fn(ccx,
+           path,
+           &decl,
+           body,
+           lldecl,
+           impl_self(class_ty),
+           psubsts,
+           dtor_id,
+           None,
+           []);
   lldecl
 }
 
-pub fn trans_enum_def(ccx: @CrateContext, enum_definition: ast::enum_def,
+pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
                       id: ast::node_id,
                       path: @ast_map::path, vi: @~[ty::VariantInfo],
                       i: &mut uint) {
@@ -2042,7 +2167,7 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: ast::enum_def,
         match variant.node.kind {
             ast::tuple_variant_kind(ref args) if args.len() > 0 => {
                 let llfn = get_item_val(ccx, variant.node.id);
-                trans_enum_variant(ccx, id, *variant, *args,
+                trans_enum_variant(ccx, id, variant, *args,
                                    disr_val, None, llfn);
             }
             ast::tuple_variant_kind(_) => {
@@ -2056,7 +2181,7 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: ast::enum_def,
     }
 }
 
-pub fn trans_item(ccx: @CrateContext, item: ast::item) {
+pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
     let _icx = ccx.insn_ctxt("trans_item");
     let path = match *ccx.tcx.items.get(&item.id) {
         ast_map::node_item(_, p) => p,
@@ -2068,21 +2193,30 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
         if purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_foreign_fn(ccx,
-                                     vec::append(
-                                         /*bad*/copy *path,
-                                         ~[path_name(item.ident)]),
-                                      decl, body, llfndecl, item.id);
+                                      vec::append(/*bad*/copy *path,
+                                                  ~[path_name(item.ident)]),
+                                      decl,
+                                      body,
+                                      llfndecl,
+                                      item.id);
         } else if !generics.is_type_parameterized() {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx,
                      vec::append(/*bad*/copy *path, ~[path_name(item.ident)]),
-                     decl, body, llfndecl, no_self, None, item.id, None);
+                     decl,
+                     body,
+                     llfndecl,
+                     no_self,
+                     None,
+                     item.id,
+                     None,
+                     item.attrs);
         } else {
             for body.node.stmts.each |stmt| {
                 match stmt.node {
                   ast::stmt_decl(@codemap::spanned { node: ast::decl_item(i),
                                                  _ }, _) => {
-                    trans_item(ccx, *i);
+                    trans_item(ccx, i);
                   }
                   _ => ()
                 }
@@ -2100,7 +2234,7 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
         if !generics.is_type_parameterized() {
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
-            trans_enum_def(ccx, (*enum_definition), item.id,
+            trans_enum_def(ccx, enum_definition, item.id,
                            path, vi, &mut i);
         }
       }
@@ -2147,13 +2281,13 @@ pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def,
 pub fn trans_mod(ccx: @CrateContext, m: &ast::_mod) {
     let _icx = ccx.insn_ctxt("trans_mod");
     for m.items.each |item| {
-        trans_item(ccx, **item);
+        trans_item(ccx, *item);
     }
 }
 
 pub fn register_fn(ccx: @CrateContext,
                    sp: span,
-                   +path: path,
+                   path: path,
                    node_id: ast::node_id,
                    attrs: &[ast::attribute])
                 -> ValueRef {
@@ -2163,7 +2297,7 @@ pub fn register_fn(ccx: @CrateContext,
 
 pub fn register_fn_full(ccx: @CrateContext,
                         sp: span,
-                        +path: path,
+                        path: path,
                         node_id: ast::node_id,
                         attrs: &[ast::attribute],
                         node_type: ty::t)
@@ -2175,13 +2309,13 @@ pub fn register_fn_full(ccx: @CrateContext,
 
 pub fn register_fn_fuller(ccx: @CrateContext,
                           sp: span,
-                          +path: path,
+                          path: path,
                           node_id: ast::node_id,
                           attrs: &[ast::attribute],
                           node_type: ty::t,
                           cc: lib::llvm::CallConv,
                           llfty: TypeRef)
-                       -> ValueRef {
+                          -> ValueRef {
     debug!("register_fn_fuller creating fn for item %d with path %s",
            node_id,
            ast_map::path_to_str(path, ccx.sess.parse_sess.interner));
@@ -2197,63 +2331,72 @@ pub fn register_fn_fuller(ccx: @CrateContext,
     ccx.item_symbols.insert(node_id, ps);
 
     // FIXME #4404 android JNI hacks
-    let is_main = is_main_fn(&ccx.sess, node_id) &&
+    let is_entry = is_entry_fn(&ccx.sess, node_id) &&
                      (!*ccx.sess.building_library ||
                       (*ccx.sess.building_library &&
                        ccx.sess.targ_cfg.os == session::os_android));
-    if is_main { create_main_wrapper(ccx, sp, llfn); }
+    if is_entry {
+        create_entry_wrapper(ccx, sp, llfn);
+    }
     llfn
 }
 
-pub fn is_main_fn(sess: &Session, node_id: ast::node_id) -> bool {
-    match *sess.main_fn {
-        Some((main_id, _)) => node_id == main_id,
+pub fn is_entry_fn(sess: &Session, node_id: ast::node_id) -> bool {
+    match *sess.entry_fn {
+        Some((entry_id, _)) => node_id == entry_id,
         None => false
     }
 }
 
 // Create a _rust_main(args: ~[str]) function which will be called from the
 // runtime rust_start function
-pub fn create_main_wrapper(ccx: @CrateContext,
+pub fn create_entry_wrapper(ccx: @CrateContext,
                            _sp: span, main_llfn: ValueRef) {
-
-    let llfn = create_main(ccx, main_llfn);
-    create_entry_fn(ccx, llfn);
+    let et = ccx.sess.entry_type.unwrap();
+    if et == session::EntryMain {
+        let llfn = create_main(ccx, main_llfn);
+        create_entry_fn(ccx, llfn, true);
+    } else {
+        create_entry_fn(ccx, main_llfn, false);
+    }
 
     fn create_main(ccx: @CrateContext, main_llfn: ValueRef) -> ValueRef {
-        let nt = ty::mk_nil(ccx.tcx);
+        let nt = ty::mk_nil();
         let llfty = type_of_fn(ccx, ~[], nt);
         let llfdecl = decl_fn(ccx.llmod, ~"_rust_main",
                               lib::llvm::CCallConv, llfty);
 
-        let fcx = new_fn_ctxt(ccx, ~[], llfdecl, None);
+        let fcx = new_fn_ctxt(ccx, ~[], llfdecl, nt, None);
 
         let bcx = top_scope_block(fcx, None);
         let lltop = bcx.llbb;
 
         // Call main.
-        let lloutputarg = unsafe { llvm::LLVMGetParam(llfdecl, 0 as c_uint) };
+        let lloutputarg = C_null(T_ptr(T_i8()));
         let llenvarg = unsafe { llvm::LLVMGetParam(llfdecl, 1 as c_uint) };
         let mut args = ~[lloutputarg, llenvarg];
-        Call(bcx, main_llfn, args);
+        let llresult = Call(bcx, main_llfn, args);
+        Store(bcx, llresult, fcx.llretptr.get());
 
         build_return(bcx);
         finish_fn(fcx, lltop);
         return llfdecl;
     }
 
-    fn create_entry_fn(ccx: @CrateContext, rust_main: ValueRef) {
-        #[cfg(windows)]
-        fn main_name() -> ~str { return ~"WinMain@16"; }
-        #[cfg(unix)]
-        fn main_name() -> ~str { return ~"main"; }
+    fn create_entry_fn(ccx: @CrateContext,
+                       rust_main: ValueRef,
+                       use_start_lang_item: bool) {
         let llfty = T_fn(~[ccx.int_type, T_ptr(T_ptr(T_i8()))], ccx.int_type);
 
         // FIXME #4404 android JNI hacks
         let llfn = if *ccx.sess.building_library {
             decl_cdecl_fn(ccx.llmod, ~"amain", llfty)
         } else {
-            decl_cdecl_fn(ccx.llmod, main_name(), llfty)
+            let main_name = match ccx.sess.targ_cfg.os {
+                session::os_win32 => ~"WinMain@16",
+                _ => ~"main",
+            };
+            decl_cdecl_fn(ccx.llmod, main_name, llfty)
         };
         let llbb = str::as_c_str(~"top", |buf| {
             unsafe {
@@ -2263,52 +2406,69 @@ pub fn create_main_wrapper(ccx: @CrateContext,
         let bld = ccx.builder.B;
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
-        }
-        let crate_map = ccx.crate_map;
-        let start_def_id = ccx.tcx.lang_items.start_fn();
-        let start_fn = if start_def_id.crate == ast::local_crate {
-            ccx.sess.bug(~"start lang item is never in the local crate")
-        } else {
-            let start_fn_type = csearch::get_type(ccx.tcx,
-                                                  start_def_id).ty;
-            trans_external_path(ccx, start_def_id, start_fn_type)
-        };
 
-        let retptr = unsafe {
-            llvm::LLVMBuildAlloca(bld, ccx.int_type, noname())
-        };
-
-        let args = unsafe {
-            let opaque_rust_main = llvm::LLVMBuildPointerCast(
-                bld, rust_main, T_ptr(T_i8()), noname());
-            let opaque_crate_map = llvm::LLVMBuildPointerCast(
-                bld, crate_map, T_ptr(T_i8()), noname());
-
-            if *ccx.sess.building_library {
-                ~[
-                    retptr,
-                    C_null(T_opaque_box_ptr(ccx)),
-                    opaque_rust_main,
-                    llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
-                    llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
-                    opaque_crate_map
-                ]
+            let start_def_id = ccx.tcx.lang_items.start_fn();
+            if start_def_id.crate == ast::local_crate {
+                ccx.sess.bug(~"start lang item is never in the local crate")
             } else {
-                ~[
-                    retptr,
-                    C_null(T_opaque_box_ptr(ccx)),
-                    opaque_rust_main,
-                    llvm::LLVMGetParam(llfn, 0 as c_uint),
-                    llvm::LLVMGetParam(llfn, 1 as c_uint),
-                    opaque_crate_map
-                ]
-            }
-        };
+                let start_fn_type = csearch::get_type(ccx.tcx,
+                                                      start_def_id).ty;
+                trans_external_path(ccx, start_def_id, start_fn_type)
+            };
 
-        unsafe {
-            llvm::LLVMBuildCall(bld, start_fn, vec::raw::to_ptr(args),
-                                args.len() as c_uint, noname());
-            let result = llvm::LLVMBuildLoad(bld, retptr, noname());
+            let retptr = llvm::LLVMBuildAlloca(bld, T_i8(), noname());
+
+            let crate_map = ccx.crate_map;
+            let opaque_crate_map = llvm::LLVMBuildPointerCast(bld,
+                                                              crate_map,
+                                                              T_ptr(T_i8()),
+                                                              noname());
+
+            let (start_fn, args) = if use_start_lang_item {
+                let start_def_id = ccx.tcx.lang_items.start_fn();
+                let start_fn = if start_def_id.crate == ast::local_crate {
+                    ccx.sess.bug(~"start lang item is never in the local \
+                                   crate")
+                } else {
+                    let start_fn_type = csearch::get_type(ccx.tcx,
+                            start_def_id).ty;
+                    trans_external_path(ccx, start_def_id, start_fn_type)
+                };
+
+                let args = {
+                    let opaque_rust_main = llvm::LLVMBuildPointerCast(
+                            bld, rust_main, T_ptr(T_i8()), noname());
+
+                    ~[
+                        retptr,
+                        C_null(T_opaque_box_ptr(ccx)),
+                        opaque_rust_main,
+                        llvm::LLVMGetParam(llfn, 0),
+                        llvm::LLVMGetParam(llfn, 1),
+                        opaque_crate_map
+                     ]
+                };
+                (start_fn, args)
+            } else {
+                debug!("using user-defined start fn");
+                let args = {
+                    ~[
+                        retptr,
+                        C_null(T_opaque_box_ptr(ccx)),
+                        llvm::LLVMGetParam(llfn, 0 as c_uint),
+                        llvm::LLVMGetParam(llfn, 1 as c_uint),
+                        opaque_crate_map
+                    ]
+                };
+
+                (rust_main, args)
+            };
+
+            let result = llvm::LLVMBuildCall(bld,
+                                             start_fn,
+                                             &args[0],
+                                             args.len() as c_uint,
+                                             noname());
             llvm::LLVMBuildRet(bld, result);
         }
     }
@@ -2336,7 +2496,7 @@ pub fn item_path(ccx: @CrateContext, i: @ast::item) -> path {
 /* If there's already a symbol for the dtor with <id> and substs <substs>,
    return it; otherwise, create one and register it, returning it as well */
 pub fn get_dtor_symbol(ccx: @CrateContext,
-                       +path: path,
+                       path: path,
                        id: ast::node_id,
                        substs: Option<@param_substs>)
                     -> ~str {
@@ -2379,7 +2539,6 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
     match ccx.item_vals.find(&id) {
       Some(&v) => v,
       None => {
-
         let mut exprt = false;
         let val = match *ccx.tcx.items.get(&id) {
           ast_map::node_item(i, pth) => {
@@ -2469,13 +2628,11 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
             let class_ty = ty::lookup_item_type(tcx, parent_id).ty;
             // This code shouldn't be reached if the class is generic
             assert!(!ty::type_has_params(class_ty));
-            let lldty = unsafe {
-                T_fn(~[
-                    T_ptr(type_of(ccx, ty::mk_nil(tcx))),
+            let lldty = T_fn(~[
+                    T_ptr(T_i8()),
                     T_ptr(type_of(ccx, class_ty))
                 ],
-                llvm::LLVMVoidType())
-            };
+                T_nil());
             let s = get_dtor_symbol(ccx, /*bad*/copy *pt, dt.node.id, None);
 
             /* Make the declaration for the dtor */
@@ -2567,11 +2724,10 @@ pub fn trans_constant(ccx: @CrateContext, it: @ast::item) {
                 path_name(variant.node.name),
                 path_name(special_idents::descrim)
             ]);
-            let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
+            let s = @mangle_exported_name(ccx, p, ty::mk_int());
             let disr_val = vi[i].disr_val;
-            // XXX: Bad copy.
-            note_unique_llvm_symbol(ccx, copy s);
-            let discrim_gvar = str::as_c_str(s, |buf| {
+            note_unique_llvm_symbol(ccx, s);
+            let discrim_gvar = str::as_c_str(*s, |buf| {
                 unsafe {
                     llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
                 }
@@ -2592,7 +2748,7 @@ pub fn trans_constant(ccx: @CrateContext, it: @ast::item) {
 
 pub fn trans_constants(ccx: @CrateContext, crate: &ast::crate) {
     visit::visit_crate(
-        *crate, (),
+        crate, (),
         visit::mk_simple_visitor(@visit::SimpleVisitor {
             visit_item: |a| trans_constant(ccx, a),
             ..*visit::default_simple_visitor()
@@ -2610,7 +2766,7 @@ pub fn p2i(ccx: @CrateContext, v: ValueRef) -> ValueRef {
     }
 }
 
-pub fn declare_intrinsics(llmod: ModuleRef) -> LinearMap<~str, ValueRef> {
+pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     let T_memcpy32_args: ~[TypeRef] =
         ~[T_ptr(T_i8()), T_ptr(T_i8()), T_i32(), T_i32(), T_i1()];
     let T_memcpy64_args: ~[TypeRef] =
@@ -2743,7 +2899,7 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> LinearMap<~str, ValueRef> {
     let bswap64 = decl_cdecl_fn(llmod, ~"llvm.bswap.i64",
                                 T_fn(~[T_i64()], T_i64()));
 
-    let mut intrinsics = LinearMap::new();
+    let mut intrinsics = HashMap::new();
     intrinsics.insert(~"llvm.gcroot", gcroot);
     intrinsics.insert(~"llvm.gcread", gcread);
     intrinsics.insert(~"llvm.memcpy.p0i8.p0i8.i32", memcpy32);
@@ -2804,7 +2960,7 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> LinearMap<~str, ValueRef> {
 }
 
 pub fn declare_dbg_intrinsics(llmod: ModuleRef,
-                              intrinsics: &mut LinearMap<~str, ValueRef>) {
+                              intrinsics: &mut HashMap<~str, ValueRef>) {
     let declare =
         decl_cdecl_fn(llmod, ~"llvm.dbg.declare",
                       T_fn(~[T_metadata(), T_metadata()], T_void()));
@@ -2843,18 +2999,16 @@ pub fn decl_gc_metadata(ccx: @CrateContext, llmod_id: &str) {
 }
 
 pub fn create_module_map(ccx: @CrateContext) -> ValueRef {
-    let elttype = T_struct(~[ccx.int_type, ccx.int_type]);
+    let elttype = T_struct(~[ccx.int_type, ccx.int_type], false);
     let maptype = T_array(elttype, ccx.module_data.len() + 1);
     let map = str::as_c_str(~"_rust_mod_map", |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, maptype, buf)
         }
     });
-    unsafe {
-        lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
-    }
+    lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
     let mut elts: ~[ValueRef] = ~[];
-    for ccx.module_data.each |&(key, &val)| {
+    for ccx.module_data.each |key, &val| {
         let elt = C_struct(~[p2i(ccx, C_cstr(ccx, @/*bad*/ copy *key)),
                             p2i(ccx, val)]);
         elts.push(elt);
@@ -2883,7 +3037,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     };
     let sym_name = ~"_rust_crate_map_" + mapname;
     let arrtype = T_array(int_type, n_subcrates as uint);
-    let maptype = T_struct(~[T_i32(), T_ptr(T_i8()), int_type, arrtype]);
+    let maptype = T_struct(~[T_i32(), T_ptr(T_i8()), int_type, arrtype], false);
     let map = str::as_c_str(sym_name, |buf| {
         unsafe {
             llvm::LLVMAddGlobal(llmod, maptype, buf)
@@ -2991,7 +3145,7 @@ pub fn trans_crate(sess: session::Session,
                    tcx: ty::ctxt,
                    output: &Path,
                    emap2: resolve::ExportMap2,
-                   +maps: astencode::Maps) -> (ModuleRef, LinkMeta) {
+                   maps: astencode::Maps) -> (ModuleRef, LinkMeta) {
 
     let symbol_hasher = @hash::default_state();
     let link_meta =
@@ -3052,37 +3206,37 @@ pub fn trans_crate(sess: session::Session,
               llmod: llmod,
               td: td,
               tn: tn,
-              externs: @mut LinearMap::new(),
+              externs: @mut HashMap::new(),
               intrinsics: intrinsics,
-              item_vals: @mut LinearMap::new(),
+              item_vals: @mut HashMap::new(),
               exp_map2: emap2,
               reachable: reachable,
-              item_symbols: @mut LinearMap::new(),
+              item_symbols: @mut HashMap::new(),
               link_meta: link_meta,
-              enum_sizes: @mut LinearMap::new(),
-              discrims: @mut LinearMap::new(),
-              discrim_symbols: @mut LinearMap::new(),
-              tydescs: @mut LinearMap::new(),
+              enum_sizes: @mut HashMap::new(),
+              discrims: @mut HashMap::new(),
+              discrim_symbols: @mut HashMap::new(),
+              tydescs: @mut HashMap::new(),
               finished_tydescs: @mut false,
-              external: @mut LinearMap::new(),
-              monomorphized: @mut LinearMap::new(),
-              monomorphizing: @mut LinearMap::new(),
-              type_use_cache: @mut LinearMap::new(),
-              vtables: @mut LinearMap::new(),
-              const_cstr_cache: @mut LinearMap::new(),
-              const_globals: @mut LinearMap::new(),
-              const_values: @mut LinearMap::new(),
-              extern_const_values: @mut LinearMap::new(),
-              module_data: @mut LinearMap::new(),
-              lltypes: @mut LinearMap::new(),
-              llsizingtypes: @mut LinearMap::new(),
-              adt_reprs: @mut LinearMap::new(),
+              external: @mut HashMap::new(),
+              monomorphized: @mut HashMap::new(),
+              monomorphizing: @mut HashMap::new(),
+              type_use_cache: @mut HashMap::new(),
+              vtables: @mut HashMap::new(),
+              const_cstr_cache: @mut HashMap::new(),
+              const_globals: @mut HashMap::new(),
+              const_values: @mut HashMap::new(),
+              extern_const_values: @mut HashMap::new(),
+              module_data: @mut HashMap::new(),
+              lltypes: @mut HashMap::new(),
+              llsizingtypes: @mut HashMap::new(),
+              adt_reprs: @mut HashMap::new(),
               names: new_namegen(sess.parse_sess.interner),
               next_addrspace: new_addrspace_gen(),
               symbol_hasher: symbol_hasher,
-              type_hashcodes: @mut LinearMap::new(),
-              type_short_names: @mut LinearMap::new(),
-              all_llvm_symbols: @mut LinearSet::new(),
+              type_hashcodes: @mut HashMap::new(),
+              type_short_names: @mut HashMap::new(),
+              all_llvm_symbols: @mut HashSet::new(),
               tcx: tcx,
               maps: maps,
               stats: @mut Stats {
@@ -3095,7 +3249,7 @@ pub fn trans_crate(sess: session::Session,
                 n_inlines: 0u,
                 n_closures: 0u,
                 llvm_insn_ctxt: @mut ~[],
-                llvm_insns: @mut LinearMap::new(),
+                llvm_insns: @mut HashMap::new(),
                 fn_times: @mut ~[]
               },
               upcalls: upcall::declare_upcalls(targ_cfg, llmod),
@@ -3145,7 +3299,7 @@ pub fn trans_crate(sess: session::Session,
         }
 
         if ccx.sess.count_llvm_insns() {
-            for ccx.stats.llvm_insns.each |&(&k, &v)| {
+            for ccx.stats.llvm_insns.each |&k, &v| {
                 io::println(fmt!("%-7u %s", v, k));
             }
         }

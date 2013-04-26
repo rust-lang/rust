@@ -211,11 +211,11 @@ use core::prelude::*;
 use middle::pat_util::{pat_bindings};
 use middle::freevars;
 use middle::ty;
-use middle::typeck::method_map;
+use middle::typeck::{method_map};
 use util::ppaux;
 use util::common::indenter;
 
-use core::hashmap::linear::{LinearSet, LinearMap};
+use core::hashmap::{HashSet, HashMap};
 use core::vec;
 use syntax::ast::*;
 use syntax::ast_util;
@@ -240,14 +240,14 @@ pub struct CaptureVar {
     mode: CaptureMode // How variable is being accessed
 }
 
-pub type CaptureMap = @mut LinearMap<node_id, @[CaptureVar]>;
+pub type CaptureMap = @mut HashMap<node_id, @[CaptureVar]>;
 
-pub type MovesMap = @mut LinearSet<node_id>;
+pub type MovesMap = @mut HashSet<node_id>;
 
 /**
  * For each variable which will be moved, links to the
  * expression */
-pub type VariableMovesMap = @mut LinearMap<node_id, @expr>;
+pub type VariableMovesMap = @mut HashMap<node_id, @expr>;
 
 /** See the section Output on the module comment for explanation. */
 pub struct MoveMaps {
@@ -280,12 +280,12 @@ pub fn compute_moves(tcx: ty::ctxt,
         tcx: tcx,
         method_map: method_map,
         move_maps: MoveMaps {
-            moves_map: @mut LinearSet::new(),
-            variable_moves_map: @mut LinearMap::new(),
-            capture_map: @mut LinearMap::new()
+            moves_map: @mut HashSet::new(),
+            variable_moves_map: @mut HashMap::new(),
+            capture_map: @mut HashMap::new()
         }
     };
-    visit::visit_crate(*crate, visit_cx, visitor);
+    visit::visit_crate(crate, visit_cx, visitor);
     return visit_cx.move_maps;
 }
 
@@ -293,7 +293,7 @@ pub fn compute_moves(tcx: ty::ctxt,
 // Expressions
 
 fn compute_modes_for_expr(expr: @expr,
-                          &&cx: VisitContext,
+                          cx: VisitContext,
                           v: vt<VisitContext>)
 {
     cx.consume_expr(expr, v);
@@ -463,7 +463,7 @@ pub impl VisitContext {
             expr_method_call(callee, _, _, ref args, _) => { // callee.m(args)
                 // Implicit self is equivalent to & mode, but every
                 // other kind should be + mode.
-                self.use_receiver(expr.id, expr.span, callee, visitor);
+                self.use_receiver(callee, visitor);
                 self.use_fn_args(expr.callee_id, *args, visitor);
             }
 
@@ -665,7 +665,7 @@ pub impl VisitContext {
             return false;
         }
 
-        self.use_receiver(expr.id, expr.span, receiver_expr, visitor);
+        self.use_receiver(receiver_expr, visitor);
 
         // for overloaded operatrs, we are always passing in a
         // borrowed pointer, so it's always read mode:
@@ -718,8 +718,6 @@ pub impl VisitContext {
     }
 
     fn use_receiver(&self,
-                    _expr_id: node_id,
-                    _span: span,
                     receiver_expr: @expr,
                     visitor: vt<VisitContext>)
     {
@@ -762,7 +760,7 @@ pub impl VisitContext {
 
     fn arms_have_by_move_bindings(&self,
                                   moves_map: MovesMap,
-                                  +arms: &[arm]) -> bool
+                                  arms: &[arm]) -> bool
     {
         for arms.each |arm| {
             for arm.pats.each |pat| {

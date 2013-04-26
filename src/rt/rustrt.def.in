@@ -47,7 +47,9 @@ rust_env_pairs
 rust_task_yield
 rust_task_is_unwinding
 rust_get_task
+rust_try_get_task
 rust_get_stack_segment
+rust_get_c_stack
 rust_log_str
 start_task
 vec_reserve_shared_actual
@@ -66,7 +68,9 @@ upcall_del_stack
 upcall_reset_stack_limit
 rust_upcall_fail
 rust_upcall_free
+rust_upcall_free_noswitch
 rust_upcall_malloc
+rust_upcall_malloc_noswitch
 rust_uv_loop_new
 rust_uv_loop_delete
 rust_uv_walk
@@ -198,7 +202,15 @@ rust_readdir
 rust_opendir
 rust_dbg_extern_identity_u32
 rust_dbg_extern_identity_u64
+rust_dbg_extern_identity_TwoU8s
+rust_dbg_extern_identity_TwoU16s
+rust_dbg_extern_identity_TwoU32s
 rust_dbg_extern_identity_TwoU64s
+rust_dbg_extern_identity_TwoDoubles
+rust_dbg_extern_return_TwoU8s
+rust_dbg_extern_return_TwoU16s
+rust_dbg_extern_return_TwoU32s
+rust_dbg_extern_return_TwoU64s
 rust_dbg_extern_identity_double
 rust_dbg_extern_identity_u8
 rust_get_rt_env
@@ -212,5 +224,4 @@ rust_uv_free_ip4_addr
 rust_uv_free_ip6_addr
 rust_call_nullary_fn
 rust_initialize_global_state
-
 

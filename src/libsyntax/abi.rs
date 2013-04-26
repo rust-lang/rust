@@ -255,13 +255,13 @@ pub impl AbiSet {
 }
 
 impl to_bytes::IterBytes for Abi {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         self.index().iter_bytes(lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for AbiSet {
-    fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         self.bits.iter_bytes(lsb0, f)
     }
 }
@@ -274,13 +274,11 @@ impl ToStr for Abi {
 
 impl ToStr for AbiSet {
     fn to_str(&self) -> ~str {
-        unsafe { // so we can push to strs.
-            let mut strs = ~[];
-            for self.each |abi| {
-                strs.push(abi.data().name);
-            }
-            fmt!("\"%s\"", str::connect_slices(strs, " "))
+        let mut strs = ~[];
+        for self.each |abi| {
+            strs.push(abi.data().name);
         }
+        fmt!("\"%s\"", str::connect_slices(strs, " "))
     }
 }
 

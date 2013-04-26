@@ -11,6 +11,8 @@
 use option::*;
 use result::*;
 
+use super::io::net::ip::IpAddr;
+
 // XXX: ~object doesn't work currently so these are some placeholder
 // types to use instead
 pub type EventLoopObject = super::uvio::UvEventLoop;
@@ -22,7 +24,12 @@ pub trait EventLoop {
     fn run(&mut self);
     fn callback(&mut self, ~fn());
     /// The asynchronous I/O services. Not all event loops may provide one
+    #[cfg(stage0)]
     fn io(&mut self) -> Option<&'self mut IoFactoryObject>;
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn io<'a>(&'a mut self) -> Option<&'a mut IoFactoryObject>;
 }
 
 pub trait IoFactory {
@@ -37,9 +44,4 @@ pub trait TcpListener {
 pub trait Stream {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, ()>;
     fn write(&mut self, buf: &[u8]) -> Result<(), ()>;
-}
-
-pub enum IpAddr {
-    Ipv4(u8, u8, u8, u8, u16),
-    Ipv6
 }
