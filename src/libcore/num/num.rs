@@ -229,6 +229,24 @@ pub trait Int: PrimitiveInt
              + Signed {}
 
 ///
+/// Primitive floating point numbers. This trait should only be implemented
+/// for the `f32`, `f64`, and `float` types.
+///
+pub trait Float: Real
+               + Signed
+               + Primitive {
+    // FIXME (#5527): These should be associated constants
+    fn NaN() -> Self;
+    fn infinity() -> Self;
+    fn neg_infinity() -> Self;
+    fn neg_zero() -> Self;
+
+    fn is_NaN(&self) -> bool;
+    fn is_infinite(&self) -> bool;
+    fn is_finite(&self) -> bool;
+}
+
+///
 /// Cast from one machine scalar to another
 ///
 /// # Example
