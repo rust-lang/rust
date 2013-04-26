@@ -508,6 +508,14 @@ impl Real for f32 {
     fn tanh(&self) -> f32 { tanh(*self) }
 }
 
+impl Bounded for f32 {
+    #[inline(always)]
+    fn min_value() -> f32 { 1.17549435e-38 }
+
+    #[inline(always)]
+    fn max_value() -> f32 { 3.40282347e+38 }
+}
+
 impl Primitive for f32 {
     #[inline(always)]
     fn bits() -> uint { 32 }
@@ -531,6 +539,27 @@ impl Float for f32 {
 
     #[inline(always)]
     fn is_NaN(&self) -> bool { *self != *self }
+
+    #[inline(always)]
+    fn mantissa_digits() -> uint { 24 }
+
+    #[inline(always)]
+    fn digits() -> uint { 6 }
+
+    #[inline(always)]
+    fn epsilon() -> f32 { 1.19209290e-07 }
+
+    #[inline(always)]
+    fn min_exp() -> int { -125 }
+
+    #[inline(always)]
+    fn max_exp() -> int { 128 }
+
+    #[inline(always)]
+    fn min_10_exp() -> int { -37 }
+
+    #[inline(always)]
+    fn max_10_exp() -> int { 38 }
 
     /// Returns `true` if the number is infinite
     #[inline(always)]

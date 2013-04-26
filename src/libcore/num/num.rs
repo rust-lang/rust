@@ -219,6 +219,7 @@ pub trait Bounded {
 ///
 pub trait Primitive: Num
                    + NumCast
+                   + Bounded
                    + Neg<Self>
                    + Add<Self,Self>
                    + Sub<Self,Self>
@@ -235,7 +236,6 @@ pub trait Primitive: Num
 ///
 pub trait Int: Integer
              + Primitive
-             + Bounded
              + Bitwise
              + BitCount {}
 
@@ -254,6 +254,14 @@ pub trait Float: Real
     fn is_NaN(&self) -> bool;
     fn is_infinite(&self) -> bool;
     fn is_finite(&self) -> bool;
+
+    fn mantissa_digits() -> uint;
+    fn digits() -> uint;
+    fn epsilon() -> Self;
+    fn min_exp() -> int;
+    fn max_exp() -> int;
+    fn min_10_exp() -> int;
+    fn max_10_exp() -> int;
 
     fn mul_add(&self, a: Self, b: Self) -> Self;
     fn next_after(&self, other: Self) -> Self;
