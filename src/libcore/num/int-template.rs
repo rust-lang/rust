@@ -445,8 +445,6 @@ impl Bounded for T {
     fn max_value() -> T { max_value }
 }
 
-impl PrimitiveInt for T {}
-
 impl Int for T {}
 
 // String conversion functions and impl str -> num
