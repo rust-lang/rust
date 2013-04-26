@@ -245,6 +245,20 @@ impl Ord for f64 {
     fn gt(&self, other: &f64) -> bool { (*self) > (*other) }
 }
 
+impl Orderable for f64 {
+    #[inline(always)]
+    fn min(&self, other: &f64) -> f64 { fmin(*self, *other) }
+
+    #[inline(always)]
+    fn max(&self, other: &f64) -> f64 { fmax(*self, *other) }
+
+    #[inline(always)]
+    fn clamp(&self, mn: &f64, mx: &f64) -> f64 {
+        if *self > *mx { *mx } else
+        if *self < *mn { *mn } else { *self }
+    }
+}
+
 impl Zero for f64 {
     #[inline(always)]
     fn zero() -> f64 { 0.0 }
@@ -807,6 +821,17 @@ mod tests {
     #[test]
     fn test_num() {
         num::test_num(10f64, 2f64);
+    }
+
+    #[test]
+    fn test_orderable() {
+        assert_eq!(1f64.min(&2f64), 1f64);
+        assert_eq!(2f64.min(&1f64), 1f64);
+        assert_eq!(1f64.max(&2f64), 2f64);
+        assert_eq!(2f64.max(&1f64), 2f64);
+        assert_eq!(1f64.clamp(&2f64, &4f64), 2f64);
+        assert_eq!(8f64.clamp(&2f64, &4f64), 4f64);
+        assert_eq!(3f64.clamp(&2f64, &4f64), 3f64);
     }
 
     #[test]
