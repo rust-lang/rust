@@ -105,6 +105,9 @@ pub trait Fractional: Num
     fn recip(&self) -> Self;
 }
 
+///
+/// Defines constants and methods common to real numbers
+///
 pub trait Real: Signed
               + Fractional {
     // FIXME (#5527): usages of `int` should be replaced with an associated
@@ -237,8 +240,7 @@ pub trait Int: Integer
              + BitCount {}
 
 ///
-/// Primitive floating point numbers. This trait should only be implemented
-/// for the `f32`, `f64`, and `float` types.
+/// Primitive floating point numbers
 ///
 pub trait Float: Real
                + Signed
@@ -252,6 +254,9 @@ pub trait Float: Real
     fn is_NaN(&self) -> bool;
     fn is_infinite(&self) -> bool;
     fn is_finite(&self) -> bool;
+
+    fn mul_add(&self, a: Self, b: Self) -> Self;
+    fn next_after(&self, other: Self) -> Self;
 }
 
 ///
