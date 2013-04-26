@@ -482,10 +482,10 @@ pub impl<T:Copy + Zero> Option<T> {
 fn test_unwrap_ptr() {
     unsafe {
         let x = ~0;
-        let addr_x: *int = transmute(&*x);
+        let addr_x: *int = ::cast::transmute(&*x);
         let opt = Some(x);
         let y = opt.unwrap();
-        let addr_y: *int = transmute(&*y);
+        let addr_y: *int = ::cast::transmute(&*y);
         assert!(addr_x == addr_y);
     }
 }

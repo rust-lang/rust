@@ -58,10 +58,10 @@ fn build<A, B: buildable<A>>(builder: &fn(push: &fn(+v: A))) -> B {
 
 /// Apply a function to each element of an iterable and return the results
 fn map<T, IT: BaseIter<T>, U, BU: buildable<U>>
-    (v: IT, f: &fn(T) -> U) -> BU {
+    (v: IT, f: &fn(&T) -> U) -> BU {
     do build |push| {
         for v.each() |elem| {
-            push(f(*elem));
+            push(f(elem));
         }
     }
 }
@@ -78,9 +78,9 @@ pub fn main() {
     let v: @[int] = seq_range(0, 10);
     assert!(v == @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
-    let v: @[int] = map(&[1,2,3], |x| 1+x);
+    let v: @[int] = map(&[1,2,3], |&x| 1+x);
     assert!(v == @[2, 3, 4]);
-    let v: ~[int] = map(&[1,2,3], |x| 1+x);
+    let v: ~[int] = map(&[1,2,3], |&x| 1+x);
     assert!(v == ~[2, 3, 4]);
 
     assert!(bool_like::select(true, 9, 14) == 9);

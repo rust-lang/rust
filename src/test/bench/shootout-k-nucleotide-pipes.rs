@@ -104,8 +104,8 @@ fn windows_with_carry(bb: &[u8], nn: uint,
 }
 
 fn make_sequence_processor(sz: uint,
-                           from_parent: comm::Port<~[u8]>,
-                           to_parent: comm::Chan<~str>) {
+                           from_parent: &comm::Port<~[u8]>,
+                           to_parent: &comm::Chan<~str>) {
    let mut freqs: HashMap<~[u8], uint> = HashMap::new();
    let mut carry: ~[u8] = ~[];
    let mut total: uint = 0u;
@@ -140,7 +140,7 @@ fn make_sequence_processor(sz: uint,
 // given a FASTA file on stdin, process sequence THREE
 fn main() {
     let args = os::args();
-   let rdr = if os::getenv(~"RUST_BENCH").is_some() {
+    let rdr = if os::getenv(~"RUST_BENCH").is_some() {
        // FIXME: Using this compile-time env variable is a crummy way to
        // get to this massive data set, but include_bin! chokes on it (#2598)
        let path = Path(env!("CFG_SRC_DIR"))
@@ -168,7 +168,7 @@ fn main() {
         let (from_parent, to_child) = comm::stream();
 
         do task::spawn_with(from_parent) |from_parent| {
-            make_sequence_processor(sz, from_parent, to_parent_);
+            make_sequence_processor(sz, &from_parent, &to_parent_);
         };
 
         to_child
