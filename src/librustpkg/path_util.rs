@@ -14,6 +14,7 @@ use core::path::*;
 use core::{os, str};
 use core::option::*;
 use util::PkgId;
+use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 
 #[deriving(Eq)]
 pub enum OutputType { Main, Lib, Bench, Test }
@@ -25,34 +26,15 @@ pub fn rust_path() -> ~[Path] {
     ~[Path(".")]
 }
 
+static u_rwx: i32 = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
+
 /// Creates a directory that is readable, writeable,
 /// and executable by the user. Returns true iff creation
 /// succeeded.
 pub fn make_dir_rwx(p: &Path) -> bool {
     use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 
-    os::make_dir(p, (S_IRUSR | S_IWUSR | S_IXUSR) as i32)
-}
-
-/// Creates a directory that is readable, writeable,
-/// and executable by the user. Returns true iff creation
-/// succeeded. Also creates all intermediate subdirectories
-/// if they don't already exist.
-pub fn mkdir_recursive(p: &Path) -> bool {
-    if os::path_is_dir(p) {
-        return true;
-    }
-    let parent = p.dir_path();
-    debug!("mkdir_recursive: parent = %s",
-           parent.to_str());
-    if parent.to_str() == ~"."
-        || parent.to_str() == ~"/" { // !!!
-        // No parent directories to create
-        os::path_is_dir(&parent) && make_dir_rwx(p)
-    }
-    else {
-        mkdir_recursive(&parent) && make_dir_rwx(p)
-    }
+    os::make_dir(p, u_rwx)
 }
 
 /// Replace all occurrences of '-' in the stem part of path with '_'
@@ -130,7 +112,7 @@ pub fn build_pkg_id_in_workspace(pkgid: PkgId, workspace: &Path) -> Path {
     // n.b. Should actually use a target-specific
     // subdirectory of build/
     result = result.push(normalize(~pkgid.path).to_str());
-    if os::path_exists(&result) || mkdir_recursive(&result) {
+    if os::path_exists(&result) || os::mkdir_recursive(&result, u_rwx) {
         result
     }
     else {
@@ -146,21 +128,5 @@ pub fn mk_output_path(what: OutputType, short_name: ~str, dir: Path) -> Path {
         _ => dir.push(fmt!("%s%s%s", short_name,
                            if what == Test { ~"test" } else { ~"" },
                            os::EXE_SUFFIX))
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use core::os;
-
-    #[test]
-    fn recursive_mkdir_ok() {
-        let root = os::tmpdir();
-        let path = "xy/z/zy";
-        let nested = root.push(path);
-        assert!(super::mkdir_recursive(&nested));
-        assert!(os::path_is_dir(&root.push("xy")));
-        assert!(os::path_is_dir(&root.push("xy/z")));
-        assert!(os::path_is_dir(&nested));
     }
 }
