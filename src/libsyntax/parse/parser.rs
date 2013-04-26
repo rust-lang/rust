@@ -352,6 +352,20 @@ pub impl Parser {
             self.token_is_keyword(&~"fn", tok)
     }
 
+    fn token_is_lifetime(&self, tok: &token::Token) -> bool {
+        match *tok {
+            token::LIFETIME(*) => true,
+            _ => false,
+        }
+    }
+
+    fn get_lifetime(&self, tok: &token::Token) -> ast::ident {
+        match *tok {
+            token::LIFETIME(ref ident) => copy *ident,
+            _ => self.bug(~"not a lifetime"),
+        }
+    }
+
     // parse a ty_bare_fun type:
     fn parse_ty_bare_fn(&self) -> ty_
     {
@@ -1204,8 +1218,14 @@ pub impl Parser {
                                                expr_do_body);
         } else if self.eat_keyword(&~"while") {
             return self.parse_while_expr();
+        } else if self.token_is_lifetime(&*self.token) {
+            let lifetime = self.get_lifetime(&*self.token);
+            self.bump();
+            self.expect(&token::COLON);
+            self.expect_keyword(&~"loop");
+            return self.parse_loop_expr(Some(lifetime));
         } else if self.eat_keyword(&~"loop") {
-            return self.parse_loop_expr();
+            return self.parse_loop_expr(None);
         } else if self.eat_keyword(&~"match") {
             return self.parse_match_expr();
         } else if self.eat_keyword(&~"unsafe") {
@@ -1263,8 +1283,10 @@ pub impl Parser {
                 ex = expr_ret(Some(e));
             } else { ex = expr_ret(None); }
         } else if self.eat_keyword(&~"break") {
-            if is_ident(&*self.token) {
-                ex = expr_break(Some(self.parse_ident()));
+            if self.token_is_lifetime(&*self.token) {
+                let lifetime = self.get_lifetime(&*self.token);
+                self.bump();
+                ex = expr_break(Some(lifetime));
             } else {
                 ex = expr_break(None);
             }
@@ -1961,37 +1983,32 @@ pub impl Parser {
         return self.mk_expr(lo, hi, expr_while(cond, body));
     }
 
-    fn parse_loop_expr(&self) -> @expr {
+    fn parse_loop_expr(&self, opt_ident: Option<ast::ident>) -> @expr {
         // loop headers look like 'loop {' or 'loop unsafe {'
         let is_loop_header =
             *self.token == token::LBRACE
             || (is_ident(&*self.token)
                 && self.look_ahead(1) == token::LBRACE);
-        // labeled loop headers look like 'loop foo: {'
-        let is_labeled_loop_header =
-            is_ident(&*self.token)
-            && !self.is_any_keyword(&copy *self.token)
-            && self.look_ahead(1) == token::COLON;
 
-        if is_loop_header || is_labeled_loop_header {
+        if is_loop_header {
             // This is a loop body
-            let opt_ident;
-            if is_labeled_loop_header {
-                opt_ident = Some(self.parse_ident());
-                self.expect(&token::COLON);
-            } else {
-                opt_ident = None;
-            }
-
             let lo = self.last_span.lo;
             let body = self.parse_block_no_value();
             let hi = body.span.hi;
             return self.mk_expr(lo, hi, expr_loop(body, opt_ident));
         } else {
             // This is a 'continue' expression
+            if opt_ident.is_some() {
+                self.span_err(*self.last_span,
+                              ~"a label may not be used with a `loop` \
+                                expression");
+            }
+
             let lo = self.span.lo;
-            let ex = if is_ident(&*self.token) {
-                expr_again(Some(self.parse_ident()))
+            let ex = if self.token_is_lifetime(&*self.token) {
+                let lifetime = self.get_lifetime(&*self.token);
+                self.bump();
+                expr_again(Some(lifetime))
             } else {
                 expr_again(None)
             };

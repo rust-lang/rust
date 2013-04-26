@@ -1217,12 +1217,13 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
         print_block(s, blk);
       }
       ast::expr_loop(ref blk, opt_ident) => {
-        head(s, ~"loop");
-        space(s.s);
         for opt_ident.each |ident| {
+            word(s.s, ~"'");
             print_ident(s, *ident);
             word_space(s, ~":");
         }
+        head(s, ~"loop");
+        space(s.s);
         print_block(s, blk);
       }
       ast::expr_match(expr, ref arms) => {
@@ -1370,12 +1371,20 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
       ast::expr_break(opt_ident) => {
         word(s.s, ~"break");
         space(s.s);
-        for opt_ident.each |ident| { print_ident(s, *ident); space(s.s) }
+        for opt_ident.each |ident| {
+            word(s.s, ~"'");
+            print_ident(s, *ident);
+            space(s.s);
+        }
       }
       ast::expr_again(opt_ident) => {
         word(s.s, ~"loop");
         space(s.s);
-        for opt_ident.each |ident| { print_ident(s, *ident); space(s.s) }
+        for opt_ident.each |ident| {
+            word(s.s, ~"'");
+            print_ident(s, *ident);
+            space(s.s)
+        }
       }
       ast::expr_ret(result) => {
         word(s.s, ~"return");
