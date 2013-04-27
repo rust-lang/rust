@@ -25,7 +25,6 @@ use middle::trans::inline;
 use middle::trans::monomorphize;
 use middle::trans::type_of::*;
 use middle::ty;
-use middle::ty::arg;
 use middle::typeck;
 use util::common::indenter;
 use util::ppaux::Repr;
@@ -155,12 +154,10 @@ pub fn trans_self_arg(bcx: block,
     let mut temp_cleanups = ~[];
 
     // Compute the type of self.
-    let self_arg = arg {
-        ty: monomorphize_type(bcx, mentry.self_arg.ty)
-    };
+    let self_ty = monomorphize_type(bcx, mentry.self_ty);
 
     let result = trans_arg_expr(bcx,
-                                self_arg,
+                                self_ty,
                                 mentry.self_mode,
                                 base,
                                 &mut temp_cleanups,

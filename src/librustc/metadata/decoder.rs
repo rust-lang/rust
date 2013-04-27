@@ -653,7 +653,7 @@ pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                                 item, tcx, cdata);
         let name = item_name(intr, item);
         let arg_tys = match ty::get(ctor_ty).sty {
-          ty::ty_bare_fn(ref f) => f.sig.inputs.map(|a| a.ty),
+          ty::ty_bare_fn(ref f) => copy f.sig.inputs,
           _ => ~[], // Nullary enum variant.
         };
         match variant_disr_val(item) {

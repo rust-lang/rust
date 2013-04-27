@@ -53,7 +53,7 @@
  */
 
 use middle::const_eval;
-use middle::ty::{arg, substs};
+use middle::ty::{substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::rscope::in_binding_rscope;
@@ -501,16 +501,12 @@ pub fn ty_of_arg<AC:AstConv,
                  this: &AC,
                  rscope: &RS,
                  a: ast::arg,
-                 expected_ty: Option<ty::arg>)
-                 -> ty::arg {
-    let ty = match a.ty.node {
-        ast::ty_infer if expected_ty.is_some() => expected_ty.get().ty,
+                 expected_ty: Option<ty::t>)
+                 -> ty::t {
+    match a.ty.node {
+        ast::ty_infer if expected_ty.is_some() => expected_ty.get(),
         ast::ty_infer => this.ty_infer(a.ty.span),
         _ => ast_ty_to_ty(this, rscope, a.ty),
-    };
-
-    arg {
-        ty: ty
     }
 }
 

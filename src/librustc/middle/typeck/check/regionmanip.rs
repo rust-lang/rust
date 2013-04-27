@@ -258,7 +258,7 @@ pub fn relate_free_regions(
 
     let mut all_tys = ~[];
     for fn_sig.inputs.each |arg| {
-        all_tys.push(arg.ty);
+        all_tys.push(*arg);
     }
     for self_ty.each |&t| {
         all_tys.push(t);

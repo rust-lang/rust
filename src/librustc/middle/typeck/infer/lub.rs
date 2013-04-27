@@ -236,7 +236,7 @@ impl Combine for Lub {
         super_trait_stores(self, vk, a, b)
     }
 
-    fn args(&self, a: ty::arg, b: ty::arg) -> cres<ty::arg> {
+    fn args(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
         super_args(self, a, b)
     }
 

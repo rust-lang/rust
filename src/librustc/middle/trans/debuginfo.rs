@@ -785,7 +785,7 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span)
             cx.sess.span_bug(span, "debuginfo for rptr NYI")
         },
         ty::ty_bare_fn(ref barefnty) => {
-            let inputs = do barefnty.sig.inputs.map |a| { a.ty };
+            let inputs = barefnty.sig.inputs.map(|a| *a);
             let output = barefnty.sig.output;
             create_fn_ty(cx, t, inputs, output, span)
         },

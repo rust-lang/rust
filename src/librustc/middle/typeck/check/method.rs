@@ -1053,9 +1053,7 @@ pub impl<'self> LookupContext<'self> {
         self.fcx.write_ty(self.callee_id, fty);
         self.fcx.write_substs(self.callee_id, all_substs);
         method_map_entry {
-            self_arg: arg {
-                ty: candidate.rcvr_ty,
-            },
+            self_ty: candidate.rcvr_ty,
             self_mode: self_mode,
             explicit_self: candidate.method_ty.self_ty,
             origin: candidate.origin,

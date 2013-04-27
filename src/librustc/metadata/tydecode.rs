@@ -126,12 +126,6 @@ pub fn parse_trait_ref_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ct
     parse_trait_ref(st, conv)
 }
 
-pub fn parse_arg_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
-                      conv: conv_did) -> ty::arg {
-    let st = parse_state_from_data(data, crate_num, pos, tcx);
-    parse_arg(st, conv)
-}
-
 fn parse_path(st: @mut PState) -> @ast::Path {
     let mut idents: ~[ast::ident] = ~[];
     fn is_last(c: char) -> bool { return c == '(' || c == ':'; }
@@ -471,12 +465,6 @@ fn parse_onceness(c: char) -> ast::Onceness {
     }
 }
 
-fn parse_arg(st: @mut PState, conv: conv_did) -> ty::arg {
-    ty::arg {
-        ty: parse_ty(st, conv)
-    }
-}
-
 fn parse_closure_ty(st: @mut PState, conv: conv_did) -> ty::ClosureTy {
     let sigil = parse_sigil(st);
     let purity = parse_purity(next(st));
@@ -505,9 +493,9 @@ fn parse_bare_fn_ty(st: @mut PState, conv: conv_did) -> ty::BareFnTy {
 
 fn parse_sig(st: @mut PState, conv: conv_did) -> ty::FnSig {
     assert!((next(st) == '['));
-    let mut inputs: ~[ty::arg] = ~[];
+    let mut inputs = ~[];
     while peek(st) != ']' {
-        inputs.push(ty::arg { ty: parse_ty(st, conv) });
+        inputs.push(parse_ty(st, conv));
     }
     st.pos += 1u; // eat the ']'
     let ret_ty = parse_ty(st, conv);

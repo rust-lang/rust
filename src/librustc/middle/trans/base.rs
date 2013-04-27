@@ -1701,7 +1701,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
                             bcx: block,
                             args: &[ast::arg],
                             raw_llargs: &[ValueRef],
-                            arg_tys: &[ty::arg]) -> block {
+                            arg_tys: &[ty::t]) -> block {
     let _icx = fcx.insn_ctxt("copy_args_to_allocas");
     let mut bcx = bcx;
 
@@ -1720,7 +1720,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
     }
 
     for uint::range(0, arg_tys.len()) |arg_n| {
-        let arg_ty = &arg_tys[arg_n];
+        let arg_ty = arg_tys[arg_n];
         let raw_llarg = raw_llargs[arg_n];
         let arg_id = args[arg_n].id;
 
@@ -1732,15 +1732,15 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
         // This alloca should be optimized away by LLVM's mem-to-reg pass in
         // the event it's not truly needed.
         // only by value if immediate:
-        let llarg = if datum::appropriate_mode(arg_ty.ty).is_by_value() {
-            let alloc = alloc_ty(bcx, arg_ty.ty);
+        let llarg = if datum::appropriate_mode(arg_ty).is_by_value() {
+            let alloc = alloc_ty(bcx, arg_ty);
             Store(bcx, raw_llarg, alloc);
             alloc
         } else {
             raw_llarg
         };
 
-        add_clean(bcx, llarg, arg_ty.ty);
+        add_clean(bcx, llarg, arg_ty);
 
         bcx = _match::bind_irrefutable_pat(bcx,
                                           args[arg_n].pat,
@@ -1987,7 +1987,7 @@ pub fn trans_enum_variant(ccx: @CrateContext,
             Some(&local_mem(x)) => x,
             _ => fail!("trans_enum_variant: how do we know this works?"),
         };
-        let arg_ty = arg_tys[i].ty;
+        let arg_ty = arg_tys[i];
         memcpy_ty(bcx, lldestptr, llarg, arg_ty);
     }
     build_return(bcx);
@@ -2061,7 +2061,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
                                    local_mem")
             }
         };
-        let arg_ty = arg_tys[i].ty;
+        let arg_ty = arg_tys[i];
         memcpy_ty(bcx, lldestptr, llarg, arg_ty);
     }
 
