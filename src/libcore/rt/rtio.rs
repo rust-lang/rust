@@ -13,13 +13,14 @@ use result::*;
 
 use rt::io::IoError;
 use super::io::net::ip::IpAddr;
+use rt::uv::uvio;
 
 // XXX: ~object doesn't work currently so these are some placeholder
 // types to use instead
-pub type EventLoopObject = super::uvio::UvEventLoop;
-pub type IoFactoryObject = super::uvio::UvIoFactory;
-pub type RtioTcpStreamObject = super::uvio::UvTcpStream;
-pub type RtioTcpListenerObject = super::uvio::UvTcpListener;
+pub type EventLoopObject = uvio::UvEventLoop;
+pub type IoFactoryObject = uvio::UvIoFactory;
+pub type RtioTcpStreamObject = uvio::UvTcpStream;
+pub type RtioTcpListenerObject = uvio::UvTcpListener;
 
 pub trait EventLoop {
     fn run(&mut self);
