@@ -78,23 +78,24 @@ pub fn borrow(f: &fn(&mut Scheduler)) {
 ///
 /// Because this leaves the Scheduler in thread-local storage it is possible
 /// For the Scheduler pointer to be aliased
-pub unsafe fn unsafe_borrow() -> &mut Scheduler {
+pub unsafe fn unsafe_borrow() -> *mut Scheduler {
     let key = tls_key();
     let mut void_sched: *mut c_void = tls::get(key);
     rtassert!(void_sched.is_not_null());
     {
-        let void_sched_ptr = &mut void_sched;
-        let sched: &mut ~Scheduler = {
-            cast::transmute::<&mut *mut c_void, &mut ~Scheduler>(void_sched_ptr)
-        };
-        let sched: &mut Scheduler = &mut **sched;
+        let sched: *mut *mut c_void = &mut void_sched;
+        let sched: *mut ~Scheduler = sched as *mut ~Scheduler;
+        let sched: *mut Scheduler = &mut **sched;
         return sched;
     }
 }
 
-pub unsafe fn unsafe_borrow_io() -> &mut IoFactoryObject {
-    let sched = unsafe_borrow();
-    return sched.event_loop.io().unwrap();
+pub unsafe fn unsafe_borrow_io() -> *mut IoFactoryObject {
+    unsafe {
+        let sched = unsafe_borrow();
+        let io: *mut IoFactoryObject = (*sched).event_loop.io().unwrap();
+        return io;
+    }
 }
 
 fn tls_key() -> tls::Key {

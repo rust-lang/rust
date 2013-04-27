@@ -35,7 +35,7 @@ impl TcpStream {
             rtdebug!("borrowing io to connect");
             let io = unsafe_borrow_io();
             rtdebug!("about to connect");
-            io.tcp_connect(addr)
+            (*io).tcp_connect(addr)
         };
 
         match stream {
@@ -91,7 +91,7 @@ pub struct TcpListener {
 
 impl TcpListener {
     pub fn bind(addr: IpAddr) -> Option<TcpListener> {
-        let listener = unsafe { unsafe_borrow_io().tcp_bind(addr) };
+        let listener = unsafe { (*unsafe_borrow_io()).tcp_bind(addr) };
         match listener {
             Ok(l) => {
                 Some(TcpListener {

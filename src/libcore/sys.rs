@@ -218,7 +218,7 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
             gc::cleanup_stack_for_failure();
             unsafe {
                 let local_services = unsafe_borrow_local_services();
-                match local_services.unwinder {
+                match (*local_services).unwinder {
                     Some(ref mut unwinder) => unwinder.begin_unwind(),
                     None => abort!("failure without unwinder. aborting process")
                 }
