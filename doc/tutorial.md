@@ -868,108 +868,27 @@ fn first((value, _): (int, float)) -> int { value }
 
 # Destructors
 
-C-style resource management requires the programmer to match every allocation
-with a free, which means manually tracking the responsibility for cleaning up
-(the owner). Correctness is left to the programmer, and it's easy to get wrong.
+A *destructor* is a function responsible for cleaning up the resources used by
+an object when it is no longer accessible. Destructors can be defined to handle
+the release of resources like files, sockets and heap memory.
 
-The following code demonstrates manual memory management, in order to contrast
-it with Rust's resource management. Rust enforces safety, so the `unsafe`
-keyword is used to explicitly wrap the unsafe code. The keyword is a promise to
-the compiler that unsafety does not leak outside of the unsafe block, and is
-used to create safe concepts on top of low-level code.
+Objects are never accessible after their destructor has been called, so there
+are no dynamic failures from accessing freed resources. When a task fails, the
+destructors of all objects in the task are called.
+
+The `~` sigil represents a unique handle for a memory allocation on the heap:
 
 ~~~~
-use core::libc::{calloc, free, size_t};
-
-fn main() {
-    unsafe {
-        let a = calloc(1, int::bytes as size_t);
-
-        let d;
-
-        {
-            let b = calloc(1, int::bytes as size_t);
-
-            let c = calloc(1, int::bytes as size_t);
-            d = c; // move ownership to d
-
-            free(b);
-        }
-
-        free(d);
-        free(a);
-    }
+{
+    // an integer allocated on the heap
+    let y = ~10;
 }
+// the destructor frees the heap memory as soon as `y` goes out of scope
 ~~~~
 
-Rust uses destructors to handle the release of resources like memory
-allocations, files and sockets. An object will only be destroyed when there is
-no longer any way to access it, which prevents dynamic failures from an attempt
-to use a freed resource. When a task fails, the stack unwinds and the
-destructors of all objects owned by that task are called.
-
-The unsafe code from above can be contained behind a safe API that prevents
-memory leaks or use-after-free:
-
-~~~~
-use core::libc::{calloc, free, c_void, size_t};
-
-struct Blob { priv ptr: *c_void }
-
-impl Blob {
-    fn new() -> Blob {
-        unsafe { Blob{ptr: calloc(1, int::bytes as size_t)} }
-    }
-}
-
-impl Drop for Blob {
-    fn finalize(&self) {
-        unsafe { free(self.ptr); }
-    }
-}
-
-fn main() {
-    let a = Blob::new();
-
-    let d;
-
-    {
-        let b = Blob::new();
-
-        let c = Blob::new();
-        d = c; // move ownership to d
-
-        // b is destroyed here
-    }
-
-    // d is destroyed here
-    // a is destroyed here
-}
-~~~~
-
-This pattern is common enough that Rust includes dynamically allocated memory
-as first-class types (`~` and `@`). Non-memory resources like files are cleaned
-up with custom destructors.
-
-~~~~
-fn main() {
-    let a = ~0;
-
-    let d;
-
-    {
-        let b = ~0;
-
-        let c = ~0;
-        d = c; // move ownership to d
-
-        // b is destroyed here
-    }
-
-    // d is destroyed here
-    // a is destroyed here
-}
-~~~~
+Rust includes syntax for heap memory allocation in the language since it's
+commonly used, but the same semantics can be implemented by a type with a
+custom destructor.
 
 # Ownership
 
@@ -983,6 +902,22 @@ destroys the contained tree of owned objects. Variables are top-level owners
 and destroy the contained object when they go out of scope. A box managed by
 the garbage collector starts a new ownership tree, and the destructor is called
 when it is collected.
+
+~~~~
+// the struct owns the objects contained in the `x` and `y` fields
+struct Foo { x: int, y: ~int }
+
+{
+    // `a` is the owner of the struct, and thus the owner of the struct's fields
+    let a = Foo { x: 5, y: ~10 };
+}
+// when `a` goes out of scope, the destructor for the `~int` in the struct's
+// field is called
+
+// `b` is mutable, and the mutability is inherited by the objects it owns
+let mut b = Foo { x: 5, y: ~10 };
+b.x = 10;
+~~~~
 
 If an object doesn't contain garbage-collected boxes, it consists of a single
 ownership tree and is given the `Owned` trait which allows it to be sent
@@ -1007,7 +942,7 @@ refer to that through a pointer.
 ## Owned boxes
 
 An owned box (`~`) is a uniquely owned allocation on the heap. It inherits the
-mutability and lifetime of the owner as it would if there was no box.
+mutability and lifetime of the owner as it would if there was no box:
 
 ~~~~
 let x = 5; // immutable
@@ -1021,8 +956,8 @@ let mut y = ~5; // mutable
 
 The purpose of an owned box is to add a layer of indirection in order to create
 recursive data structures or cheaply pass around an object larger than a
-pointer. Since an owned box has a unique owner, it can be used to represent any
-tree data structure.
+pointer. Since an owned box has a unique owner, it can only be used to
+represent a tree data structure.
 
 The following struct won't compile, because the lack of indirection would mean
 it has an infinite size:
@@ -1091,7 +1026,6 @@ d = b;          // box type is the same, okay
 // but b cannot be assigned to c, or a to d
 c = b;          // error
 ~~~~
-
 
 # Move semantics
 
