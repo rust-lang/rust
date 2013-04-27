@@ -2996,7 +2996,14 @@ pub impl Resolver {
         let imports: &mut ~[@ImportDirective] = &mut *module_.imports;
         let import_count = imports.len();
         if index != import_count {
-            self.session.span_err(imports[index].span, ~"unresolved import");
+            let sn = self.session.codemap.span_to_snippet(imports[index].span);
+            if str::contains(sn, "::") {
+                self.session.span_err(imports[index].span, ~"unresolved import");
+            } else {
+                let err = fmt!("unresolved import (maybe you meant `%s::*`?)",
+                               sn.slice(0, sn.len() - 1)); // -1 to adjust for semicolon
+                self.session.span_err(imports[index].span, err);
+            }
         }
 
         // Descend into children and anonymous children.
