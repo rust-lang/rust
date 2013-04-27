@@ -191,6 +191,11 @@ impl<T: Copy + Num + Ord>
     fn zero() -> Ratio<T> {
         Ratio::new_raw(Zero::zero(), One::one())
     }
+
+    #[inline]
+    fn is_zero(&self) -> bool {
+        *self == Zero::zero()
+    }
 }
 
 impl<T: Copy + Num + Ord>

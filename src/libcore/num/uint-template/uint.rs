@@ -18,6 +18,7 @@ pub use self::inst::{
 pub mod inst {
     use sys;
     use iter;
+    use num::{Primitive, BitCount};
 
     pub type T = uint;
     #[allow(non_camel_case_types)]
@@ -31,74 +32,119 @@ pub mod inst {
     #[cfg(target_arch = "x86_64")]
     pub static bits: uint = 64;
 
-    /**
-    * Divide two numbers, return the result, rounded up.
-    *
-    * # Arguments
-    *
-    * * x - an integer
-    * * y - an integer distinct from 0u
-    *
-    * # Return value
-    *
-    * The smallest integer `q` such that `x/y <= q`.
-    */
+    impl Primitive for uint {
+        #[cfg(target_word_size = "32")]
+        #[inline(always)]
+        fn bits() -> uint { 32 }
+
+        #[cfg(target_word_size = "64")]
+        #[inline(always)]
+        fn bits() -> uint { 64 }
+
+        #[inline(always)]
+        fn bytes() -> uint { Primitive::bits::<uint>() / 8 }
+    }
+
+    #[cfg(target_word_size = "32")]
+    #[inline(always)]
+    impl BitCount for uint {
+        /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
+        #[inline(always)]
+        fn population_count(&self) -> uint { (*self as i32).population_count() as uint }
+
+        /// Counts the number of leading zeros. Wraps LLVM's `ctlz` intrinsic.
+        #[inline(always)]
+        fn leading_zeros(&self) -> uint { (*self as i32).leading_zeros() as uint }
+
+        /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
+        #[inline(always)]
+        fn trailing_zeros(&self) -> uint { (*self as i32).trailing_zeros() as uint }
+    }
+
+    #[cfg(target_word_size = "64")]
+    #[inline(always)]
+    impl BitCount for uint {
+        /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
+        #[inline(always)]
+        fn population_count(&self) -> uint { (*self as i64).population_count() as uint }
+
+        /// Counts the number of leading zeros. Wraps LLVM's `ctlz` intrinsic.
+        #[inline(always)]
+        fn leading_zeros(&self) -> uint { (*self as i64).leading_zeros() as uint }
+
+        /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
+        #[inline(always)]
+        fn trailing_zeros(&self) -> uint { (*self as i64).trailing_zeros() as uint }
+    }
+
+    ///
+    /// Divide two numbers, return the result, rounded up.
+    ///
+    /// # Arguments
+    ///
+    /// * x - an integer
+    /// * y - an integer distinct from 0u
+    ///
+    /// # Return value
+    ///
+    /// The smallest integer `q` such that `x/y <= q`.
+    ///
     pub fn div_ceil(x: uint, y: uint) -> uint {
         let div = x / y;
         if x % y == 0u { div }
         else { div + 1u }
     }
 
-    /**
-    * Divide two numbers, return the result, rounded to the closest integer.
-    *
-    * # Arguments
-    *
-    * * x - an integer
-    * * y - an integer distinct from 0u
-    *
-    * # Return value
-    *
-    * The integer `q` closest to `x/y`.
-    */
+    ///
+    /// Divide two numbers, return the result, rounded to the closest integer.
+    ///
+    /// # Arguments
+    ///
+    /// * x - an integer
+    /// * y - an integer distinct from 0u
+    ///
+    /// # Return value
+    ///
+    /// The integer `q` closest to `x/y`.
+    ///
     pub fn div_round(x: uint, y: uint) -> uint {
         let div = x / y;
         if x % y * 2u  < y { div }
         else { div + 1u }
     }
 
-    /**
-    * Divide two numbers, return the result, rounded down.
-    *
-    * Note: This is the same function as `div`.
-    *
-    * # Arguments
-    *
-    * * x - an integer
-    * * y - an integer distinct from 0u
-    *
-    * # Return value
-    *
-    * The smallest integer `q` such that `x/y <= q`. This
-    * is either `x/y` or `x/y + 1`.
-    */
+    ///
+    /// Divide two numbers, return the result, rounded down.
+    ///
+    /// Note: This is the same function as `div`.
+    ///
+    /// # Arguments
+    ///
+    /// * x - an integer
+    /// * y - an integer distinct from 0u
+    ///
+    /// # Return value
+    ///
+    /// The smallest integer `q` such that `x/y <= q`. This
+    /// is either `x/y` or `x/y + 1`.
+    ///
     pub fn div_floor(x: uint, y: uint) -> uint { return x / y; }
 
-    /**
-    * Iterate over the range [`lo`..`hi`), or stop when requested
-    *
-    * # Arguments
-    *
-    * * lo - The integer at which to start the loop (included)
-    * * hi - The integer at which to stop the loop (excluded)
-    * * it - A block to execute with each consecutive integer of the range.
-    *        Return `true` to continue, `false` to stop.
-    *
-    * # Return value
-    *
-    * `true` If execution proceeded correctly, `false` if it was interrupted,
-    * that is if `it` returned `false` at any point.
-    */
+    ///
+    /// Iterate over the range [`lo`..`hi`), or stop when requested
+    ///
+    /// # Arguments
+    ///
+    /// * lo - The integer at which to start the loop (included)
+    /// * hi - The integer at which to stop the loop (excluded)
+    /// * it - A block to execute with each consecutive integer of the range.
+    ///        Return `true` to continue, `false` to stop.
+    ///
+    /// # Return value
+    ///
+    /// `true` If execution proceeded correctly, `false` if it was interrupted,
+    /// that is if `it` returned `false` at any point.
+    ///
     pub fn iterate(lo: uint, hi: uint, it: &fn(uint) -> bool) -> bool {
         let mut i = lo;
         while i < hi {
@@ -110,16 +156,16 @@ pub mod inst {
 
     impl iter::Times for uint {
         #[inline(always)]
-        /**
-        * A convenience form for basic iteration. Given a uint `x`,
-        * `for x.times { ... }` executes the given block x times.
-        *
-        * Equivalent to `for uint::range(0, x) |_| { ... }`.
-        *
-        * Not defined on all integer types to permit unambiguous
-        * use with integer literals of inferred integer-type as
-        * the self-value (eg. `for 100.times { ... }`).
-        */
+        ///
+        /// A convenience form for basic iteration. Given a uint `x`,
+        /// `for x.times { ... }` executes the given block x times.
+        ///
+        /// Equivalent to `for uint::range(0, x) |_| { ... }`.
+        ///
+        /// Not defined on all integer types to permit unambiguous
+        /// use with integer literals of inferred integer-type as
+        /// the self-value (eg. `for 100.times { ... }`).
+        ///
         fn times(&self, it: &fn() -> bool) {
             let mut i = *self;
             while i > 0 {
