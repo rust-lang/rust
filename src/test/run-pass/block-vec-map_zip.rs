@@ -12,7 +12,7 @@ extern mod std;
 
 pub fn main() {
     let v =
-        vec::map2(~[1, 2, 3, 4, 5],
+        vec::map_zip(~[1, 2, 3, 4, 5],
                   ~[true, false, false, true, true],
                   |i, b| if *b { -(*i) } else { *i } );
     error!(v.clone());

@@ -358,7 +358,7 @@ pub fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
 
 /**
  * Applies op to the pairwise elements from `ss` and `ts`, aborting on
- * error.  This could be implemented using `map2()` but it is more efficient
+ * error.  This could be implemented using `map_zip()` but it is more efficient
  * on its own as no result vector is built.
  */
 #[inline(always)]

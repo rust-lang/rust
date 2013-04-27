@@ -848,8 +848,11 @@ pub fn flat_map<T, U>(v: &[T], f: &fn(t: &T) -> ~[U]) -> ~[U] {
     result
 }
 
-/// Apply a function to each pair of elements and return the results
-pub fn map2<T:Copy,U:Copy,V>(v0: &[T], v1: &[U],
+/**
+ * Apply a function to each pair of elements and return the results.
+ * Equivalent to `map(zip(v0, v1), f)`.
+ */
+pub fn map_zip<T:Copy,U:Copy,V>(v0: &[T], v1: &[U],
                                   f: &fn(t: &T, v: &U) -> V) -> ~[V] {
     let v0_len = len(v0);
     if v0_len != len(v1) { fail!(); }
@@ -3399,12 +3402,12 @@ mod tests {
     }
 
     #[test]
-    fn test_map2() {
+    fn test_map_zip() {
         fn times(x: &int, y: &int) -> int { *x * *y }
         let f = times;
         let v0 = ~[1, 2, 3, 4, 5];
         let v1 = ~[5, 4, 3, 2, 1];
-        let u = map2::<int, int, int>(v0, v1, f);
+        let u = map_zip::<int, int, int>(v0, v1, f);
         let mut i = 0;
         while i < 5 { assert!(v0[i] * v1[i] == u[i]); i += 1; }
     }
@@ -4338,10 +4341,10 @@ mod tests {
     #[ignore(windows)]
     #[should_fail]
     #[allow(non_implicitly_copyable_typarams)]
-    fn test_map2_fail() {
+    fn test_map_zip_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do map2(v, v) |_elt1, _elt2| {
+        do map_zip(v, v) |_elt1, _elt2| {
             if i == 2 {
                 fail!()
             }
