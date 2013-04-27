@@ -27,12 +27,6 @@ mod inst {
         #[inline(always)]
         fn bits() -> uint { 64 }
 
-        // fallback if we don't have access to the current word size
-        #[cfg(not(target_word_size = "32"),
-              not(target_word_size = "64"))]
-        #[inline(always)]
-        fn bits() -> uint { ::sys::size_of::<int>() * 8 }
-
         #[inline(always)]
         fn bytes() -> uint { Primitive::bits::<int>() / 8 }
     }
@@ -67,41 +61,6 @@ mod inst {
         /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
         #[inline(always)]
         fn trailing_zeros(&self) -> int { (*self as i32).trailing_zeros() as int }
-    }
-
-    // fallback if we don't have access to the current word size
-    #[cfg(not(target_word_size = "32"),
-          not(target_word_size = "64"))]
-    impl BitCount for int {
-        /// Counts the number of bits set.
-        #[inline(always)]
-        fn population_count(&self) -> int {
-            match ::sys::size_of::<int>() {
-                8 => (*self as i64).population_count() as int,
-                4 => (*self as i32).population_count() as int,
-                s => fail!(fmt!("unsupported word size: %?", s)),
-            }
-        }
-
-        /// Counts the number of leading zeros.
-        #[inline(always)]
-        fn leading_zeros(&self) -> int {
-            match ::sys::size_of::<int>() {
-                8 => (*self as i64).leading_zeros() as int,
-                4 => (*self as i32).leading_zeros() as int,
-                s => fail!(fmt!("unsupported word size: %?", s)),
-            }
-        }
-
-        /// Counts the number of trailing zeros.
-        #[inline(always)]
-        fn trailing_zeros(&self) -> int {
-            match ::sys::size_of::<int>() {
-                8 => (*self as i64).trailing_zeros() as int,
-                4 => (*self as i32).trailing_zeros() as int,
-                s => fail!(fmt!("unsupported word size: %?", s)),
-            }
-        }
     }
 
     /// Returns `base` raised to the power of `exponent`
