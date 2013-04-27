@@ -18,11 +18,15 @@ use Quot = ops::Div;
 use Rem = ops::Modulo;
 #[cfg(not(stage0))]
 use ops::{Add, Sub, Mul, Quot, Rem, Neg};
+use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::Option;
 use kinds::Copy;
 
 pub mod strconv;
 
+///
+/// The base trait for numeric types
+///
 pub trait Num: Eq + Zero + One
              + Neg<Self>
              + Add<Self,Self>
@@ -36,14 +40,23 @@ pub trait IntConvertible {
     fn from_int(n: int) -> Self;
 }
 
+pub trait Orderable: Ord {
+    // These should be methods on `Ord`, with overridable default implementations. We don't want
+    // to encumber all implementors of Ord by requiring them to implement these functions, but at
+    // the same time we want to be able to take advantage of the speed of the specific numeric
+    // functions (like the `fmin` and `fmax` intrinsics).
+    fn min(&self, other: &Self) -> Self;
+    fn max(&self, other: &Self) -> Self;
+    fn clamp(&self, mn: &Self, mx: &Self) -> Self;
+}
+
 pub trait Zero {
-    // FIXME (#5527): These should be associated constants
-    fn zero() -> Self;
+    fn zero() -> Self;      // FIXME (#5527): This should be an associated constant
+    fn is_zero(&self) -> bool;
 }
 
 pub trait One {
-    // FIXME (#5527): These should be associated constants
-    fn one() -> Self;
+    fn one() -> Self;       // FIXME (#5527): This should be an associated constant
 }
 
 pub trait Signed: Num
@@ -62,7 +75,7 @@ pub fn abs<T:Ord + Zero + Neg<T>>(v: T) -> T {
 }
 
 pub trait Integer: Num
-                 + Ord
+                 + Orderable
                  + Quot<Self,Self>
                  + Rem<Self,Self> {
     fn div(&self, other: &Self) -> Self;
@@ -86,12 +99,15 @@ pub trait Round {
 }
 
 pub trait Fractional: Num
-                    + Ord
+                    + Orderable
                     + Round
                     + Quot<Self,Self> {
     fn recip(&self) -> Self;
 }
 
+///
+/// Defines constants and methods common to real numbers
+///
 pub trait Real: Signed
               + Fractional {
     // FIXME (#5527): usages of `int` should be replaced with an associated
@@ -154,7 +170,9 @@ pub trait Real: Signed
     fn tanh(&self) -> Self;
 }
 
+///
 /// Methods that are harder to implement and not commonly used.
+///
 pub trait RealExt: Real {
     // FIXME (#5527): usages of `int` should be replaced with an associated
     // integer type once these are implemented
@@ -172,24 +190,101 @@ pub trait RealExt: Real {
     fn yn(&self, n: int) -> Self;
 }
 
-/**
- * Cast from one machine scalar to another
- *
- * # Example
- *
- * ~~~
- * let twenty: f32 = num::cast(0x14);
- * assert_eq!(twenty, 20f32);
- * ~~~
- */
+///
+/// Collects the bitwise operators under one trait.
+///
+pub trait Bitwise: Not<Self>
+                 + BitAnd<Self,Self>
+                 + BitOr<Self,Self>
+                 + BitXor<Self,Self>
+                 + Shl<Self,Self>
+                 + Shr<Self,Self> {}
+
+pub trait BitCount {
+    fn population_count(&self) -> Self;
+    fn leading_zeros(&self) -> Self;
+    fn trailing_zeros(&self) -> Self;
+}
+
+pub trait Bounded {
+    // FIXME (#5527): These should be associated constants
+    fn min_value() -> Self;
+    fn max_value() -> Self;
+}
+
+///
+/// Specifies the available operations common to all of Rust's core numeric primitives.
+/// These may not always make sense from a purely mathematical point of view, but
+/// may be useful for systems programming.
+///
+pub trait Primitive: Num
+                   + NumCast
+                   + Bounded
+                   + Neg<Self>
+                   + Add<Self,Self>
+                   + Sub<Self,Self>
+                   + Mul<Self,Self>
+                   + Quot<Self,Self>
+                   + Rem<Self,Self> {
+    // FIXME (#5527): These should be associated constants
+    fn bits() -> uint;
+    fn bytes() -> uint;
+}
+
+///
+/// A collection of traits relevant to primitive signed and unsigned integers
+///
+pub trait Int: Integer
+             + Primitive
+             + Bitwise
+             + BitCount {}
+
+///
+/// Primitive floating point numbers
+///
+pub trait Float: Real
+               + Signed
+               + Primitive {
+    // FIXME (#5527): These should be associated constants
+    fn NaN() -> Self;
+    fn infinity() -> Self;
+    fn neg_infinity() -> Self;
+    fn neg_zero() -> Self;
+
+    fn is_NaN(&self) -> bool;
+    fn is_infinite(&self) -> bool;
+    fn is_finite(&self) -> bool;
+
+    fn mantissa_digits() -> uint;
+    fn digits() -> uint;
+    fn epsilon() -> Self;
+    fn min_exp() -> int;
+    fn max_exp() -> int;
+    fn min_10_exp() -> int;
+    fn max_10_exp() -> int;
+
+    fn mul_add(&self, a: Self, b: Self) -> Self;
+    fn next_after(&self, other: Self) -> Self;
+}
+
+///
+/// Cast from one machine scalar to another
+///
+/// # Example
+///
+/// ~~~
+/// let twenty: f32 = num::cast(0x14);
+/// assert_eq!(twenty, 20f32);
+/// ~~~
+///
 #[inline(always)]
 pub fn cast<T:NumCast,U:NumCast>(n: T) -> U {
     NumCast::from(n)
 }
 
-/**
- * An interface for casting between machine scalars
- */
+///
+/// An interface for casting between machine scalars
+///
 pub trait NumCast {
     fn from<T:NumCast>(n: T) -> Self;
 
@@ -261,21 +356,19 @@ pub trait FromStrRadix {
     pub fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
 }
 
-// Generic math functions:
-
-/**
- * Calculates a power to a given radix, optimized for uint `pow` and `radix`.
- *
- * Returns `radix^pow` as `T`.
- *
- * Note:
- * Also returns `1` for `0^0`, despite that technically being an
- * undefined number. The reason for this is twofold:
- * - If code written to use this function cares about that special case, it's
- *   probably going to catch it before making the call.
- * - If code written to use this function doesn't care about it, it's
- *   probably assuming that `x^0` always equals `1`.
- */
+///
+/// Calculates a power to a given radix, optimized for uint `pow` and `radix`.
+///
+/// Returns `radix^pow` as `T`.
+///
+/// Note:
+/// Also returns `1` for `0^0`, despite that technically being an
+/// undefined number. The reason for this is twofold:
+/// - If code written to use this function cares about that special case, it's
+///   probably going to catch it before making the call.
+/// - If code written to use this function doesn't care about it, it's
+///   probably assuming that `x^0` always equals `1`.
+///
 pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Quot<T,T>+Mul<T,T>>(
     radix: uint, pow: uint) -> T {
     let _0: T = Zero::zero();
