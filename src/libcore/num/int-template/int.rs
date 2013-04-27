@@ -36,15 +36,15 @@ mod inst {
     impl BitCount for int {
         /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
         #[inline(always)]
-        fn population_count(&self) -> int { (*self as i32).population_count() as uint }
+        fn population_count(&self) -> int { (*self as i32).population_count() as int }
 
         /// Counts the number of leading zeros. Wraps LLVM's `ctlz` intrinsic.
         #[inline(always)]
-        fn leading_zeros(&self) -> int { (*self as i32).leading_zeros() as uint }
+        fn leading_zeros(&self) -> int { (*self as i32).leading_zeros() as int }
 
         /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
         #[inline(always)]
-        fn trailing_zeros(&self) -> int { (*self as i32).trailing_zeros() as uint }
+        fn trailing_zeros(&self) -> int { (*self as i32).trailing_zeros() as int }
     }
 
     #[cfg(target_word_size = "64")]
@@ -60,7 +60,7 @@ mod inst {
 
         /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
         #[inline(always)]
-        fn trailing_zeros(&self) -> int { (*self as i32).trailing_zeros() as int }
+        fn trailing_zeros(&self) -> int { (*self as i64).trailing_zeros() as int }
     }
 
     /// Returns `base` raised to the power of `exponent`
