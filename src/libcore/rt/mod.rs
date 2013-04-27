@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! The Rust runtime, including the scheduler and I/O interface
+/*! Rust runtime services, including the task scheduler and I/O interface
 
 # XXX
 
 * Unsafe uses of borrowed pointers should just use unsafe pointers
-* Unwinding is not wired up correctly
 
 */
 
@@ -22,29 +21,76 @@
 
 use libc::c_char;
 
+/// The Scheduler and Task types, and thread-local access thereof
 #[path = "sched/mod.rs"]
 mod sched;
-pub mod rtio;
-pub mod uvll;
-mod uvio;
+
+/// Synchronous I/O
+#[path = "io/mod.rs"]
+pub mod io;
+
+/// Thread-local implementations of language-critical runtime features like @
+pub mod local_services;
+
+/// The EventLoop and internal synchronous I/O interface, dynamically
+/// overridable so that it's primary implementation on libuv can
+/// live outside of core.
+mod rtio;
+
+/// libuv
 #[path = "uv/mod.rs"]
 mod uv;
-#[path = "io/mod.rs"]
-mod io;
+
+/// The implementation of `rtio` for libuv
+mod uvio;
+
+/// C bindings to libuv
+pub mod uvll;
+
+
 // FIXME #5248: The import in `sched` doesn't resolve unless this is pub!
+/// Bindings to pthread/windows thread-local storage
 pub mod thread_local_storage;
+
+/// A parallel work-stealing queue
 mod work_queue;
+
+/// Stack segments and their cacheing
 mod stack;
+
+/// CPU context swapping
 mod context;
+
+/// Bindings to system threading libraries
 mod thread;
+
+/// The runtime configuration, read from environment variables
 pub mod env;
-pub mod local_services;
+
+/// The local, managed heap
 mod local_heap;
 
 /// Tools for testing the runtime
 #[cfg(test)]
 pub mod test;
 
+/// Set up a default runtime configuration, given compiler-supplied arguments.
+///
+/// This is invoked by the `start` _language item_ (unstable::lang) to
+/// run a Rust executable.
+///
+/// # Arguments
+///
+/// * `main` - A C-abi function that takes no arguments and returns `c_void`.
+///   It is a wrapper around the user-defined `main` function, and will be run
+///   in a task.
+/// * `argc` & `argv` - The argument vector. On Unix this information is used
+///   by os::args.
+/// * `crate_map` - Runtime information about the executing crate, mostly for logging
+///
+/// # Return value
+///
+/// The return value is used as the process return code. 0 on success, 101 on error.
 pub fn start(main: *u8, _argc: int, _argv: **c_char, _crate_map: *u8) -> int {
 
     use self::sched::{Scheduler, Task};
@@ -79,6 +125,8 @@ pub fn start(main: *u8, _argc: int, _argv: **c_char, _crate_map: *u8) -> int {
 
 /// Possible contexts in which Rust code may be executing.
 /// Different runtime services are available depending on context.
+/// Mostly used for determining if we're using the new scheduler
+/// or the old scheduler.
 #[deriving(Eq)]
 pub enum RuntimeContext {
     // Only the exchange heap is available
@@ -91,6 +139,7 @@ pub enum RuntimeContext {
     OldTaskContext
 }
 
+/// Determine the current RuntimeContext
 pub fn context() -> RuntimeContext {
 
     use task::rt::rust_task;
