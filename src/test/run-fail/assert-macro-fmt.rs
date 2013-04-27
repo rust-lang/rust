@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:failed to find an implementation of trait core::sys::FailWithCause for int
+// error-pattern:task failed at 'test-assert-fmt 42 rust'
 
-fn main() { fail!(5); }
+fn main() {
+    assert!(false, "test-assert-fmt %d %s", 42, "rust");
+}
