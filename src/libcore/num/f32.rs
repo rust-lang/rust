@@ -88,7 +88,7 @@ delegate!(
     fn abs_sub(a: c_float, b: c_float) -> c_float = c_float_utils::abs_sub,
     fn fmax(a: c_float, b: c_float) -> c_float = c_float_utils::fmax,
     fn fmin(a: c_float, b: c_float) -> c_float = c_float_utils::fmin,
-    fn nextafter(x: c_float, y: c_float) -> c_float = c_float_utils::nextafter,
+    fn next_after(x: c_float, y: c_float) -> c_float = c_float_utils::next_after,
     fn frexp(n: c_float, value: &mut c_int) -> c_float = c_float_utils::frexp,
     fn hypot(x: c_float, y: c_float) -> c_float = c_float_utils::hypot,
     fn ldexp(x: c_float, n: c_int) -> c_float = c_float_utils::ldexp,
@@ -586,7 +586,7 @@ impl Float for f32 {
     /// Returns the next representable floating-point value in the direction of `other`
     #[inline(always)]
     fn next_after(&self, other: f32) -> f32 {
-        nextafter(*self, other)
+        next_after(*self, other)
     }
 }
 

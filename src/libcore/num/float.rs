@@ -29,7 +29,7 @@ pub use f64::{add, sub, mul, quot, rem, lt, le, eq, ne, ge, gt};
 pub use f64::logarithm;
 pub use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
 pub use f64::{erf, erfc, exp, expm1, exp2, abs_sub};
-pub use f64::{mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp};
+pub use f64::{mul_add, fmax, fmin, next_after, frexp, hypot, ldexp};
 pub use f64::{lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix};
 pub use f64::{modf, pow, powi, round, sinh, tanh, tgamma, trunc};
 pub use f64::{j0, j1, jn, y0, y1, yn};
@@ -778,7 +778,7 @@ impl Float for float {
     /// Returns the next representable floating-point value in the direction of `other`
     #[inline(always)]
     fn next_after(&self, other: float) -> float {
-        nextafter(*self as f64, other as f64) as float
+        next_after(*self as f64, other as f64) as float
     }
 }
 

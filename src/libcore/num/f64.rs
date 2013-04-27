@@ -89,7 +89,7 @@ delegate!(
     fn abs_sub(a: c_double, b: c_double) -> c_double = c_double_utils::abs_sub,
     fn fmax(a: c_double, b: c_double) -> c_double = c_double_utils::fmax,
     fn fmin(a: c_double, b: c_double) -> c_double = c_double_utils::fmin,
-    fn nextafter(x: c_double, y: c_double) -> c_double = c_double_utils::nextafter,
+    fn next_after(x: c_double, y: c_double) -> c_double = c_double_utils::next_after,
     fn frexp(n: c_double, value: &mut c_int) -> c_double = c_double_utils::frexp,
     fn hypot(x: c_double, y: c_double) -> c_double = c_double_utils::hypot,
     fn ldexp(x: c_double, n: c_int) -> c_double = c_double_utils::ldexp,
@@ -626,7 +626,7 @@ impl Float for f64 {
     /// Returns the next representable floating-point value in the direction of `other`
     #[inline(always)]
     fn next_after(&self, other: f64) -> f64 {
-        nextafter(*self, other)
+        next_after(*self, other)
     }
 }
 

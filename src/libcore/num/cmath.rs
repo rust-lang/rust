@@ -47,7 +47,8 @@ pub mod c_double_utils {
         unsafe fn fmax(a: c_double, b: c_double) -> c_double;
         #[link_name="fmin"]
         unsafe fn fmin(a: c_double, b: c_double) -> c_double;
-        unsafe fn nextafter(x: c_double, y: c_double) -> c_double;
+        #[link_name="nextafter"]
+        unsafe fn next_after(x: c_double, y: c_double) -> c_double;
         unsafe fn frexp(n: c_double, value: &mut c_int) -> c_double;
         unsafe fn hypot(x: c_double, y: c_double) -> c_double;
         unsafe fn ldexp(x: c_double, n: c_int) -> c_double;
@@ -131,7 +132,7 @@ pub mod c_float_utils {
         #[link_name="fminf"]
         unsafe fn fmin(a: c_float, b: c_float) -> c_float;
         #[link_name="nextafterf"]
-        unsafe fn nextafter(x: c_float, y: c_float) -> c_float;
+        unsafe fn next_after(x: c_float, y: c_float) -> c_float;
         #[link_name="hypotf"]
         unsafe fn hypot(x: c_float, y: c_float) -> c_float;
         #[link_name="ldexpf"]
