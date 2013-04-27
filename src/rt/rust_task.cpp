@@ -530,11 +530,11 @@ rust_task::new_stack(size_t requested_sz) {
     // arbitrarily selected as 2x the maximum stack size.
     if (!unwinding && used_stack > max_stack) {
         LOG_ERR(this, task, "task %" PRIxPTR " ran out of stack", this);
-        fail();
+        abort();
     } else if (unwinding && used_stack > max_stack * 2) {
         LOG_ERR(this, task,
                 "task %" PRIxPTR " ran out of stack during unwinding", this);
-        fail();
+        abort();
     }
 
     size_t sz = rust_stk_sz + RED_ZONE_SIZE;
