@@ -395,24 +395,55 @@ pub mod oneshot {
 }
 
 /// The send end of a oneshot pipe.
-pub type ChanOne<T> = oneshot::client::Oneshot<T>;
+pub struct ChanOne<T> {
+    contents: oneshot::client::Oneshot<T>
+}
+
+impl<T> ChanOne<T> {
+    pub fn new(contents: oneshot::client::Oneshot<T>) -> ChanOne<T> {
+        ChanOne {
+            contents: contents
+        }
+    }
+}
+
 /// The receive end of a oneshot pipe.
-pub type PortOne<T> = oneshot::server::Oneshot<T>;
+pub struct PortOne<T> {
+    contents: oneshot::server::Oneshot<T>
+}
+
+impl<T> PortOne<T> {
+    pub fn new(contents: oneshot::server::Oneshot<T>) -> PortOne<T> {
+        PortOne {
+            contents: contents
+        }
+    }
+}
 
 /// Initialiase a (send-endpoint, recv-endpoint) oneshot pipe pair.
 pub fn oneshot<T: Owned>() -> (PortOne<T>, ChanOne<T>) {
     let (chan, port) = oneshot::init();
-    (port, chan)
+    (PortOne::new(port), ChanOne::new(chan))
 }
 
 pub impl<T: Owned> PortOne<T> {
     fn recv(self) -> T { recv_one(self) }
     fn try_recv(self) -> Option<T> { try_recv_one(self) }
+    fn unwrap(self) -> oneshot::server::Oneshot<T> {
+        match self {
+            PortOne { contents: s } => s
+        }
+    }
 }
 
 pub impl<T: Owned> ChanOne<T> {
     fn send(self, data: T) { send_one(self, data) }
     fn try_send(self, data: T) -> bool { try_send_one(self, data) }
+    fn unwrap(self) -> oneshot::client::Oneshot<T> {
+        match self {
+            ChanOne { contents: s } => s
+        }
+    }
 }
 
 /**
@@ -420,33 +451,47 @@ pub impl<T: Owned> ChanOne<T> {
  * closed.
  */
 pub fn recv_one<T: Owned>(port: PortOne<T>) -> T {
-    let oneshot::send(message) = recv(port);
-    message
+    match port {
+        PortOne { contents: port } => {
+            let oneshot::send(message) = recv(port);
+            message
+        }
+    }
 }
 
 /// Receive a message from a oneshot pipe unless the connection was closed.
 pub fn try_recv_one<T: Owned> (port: PortOne<T>) -> Option<T> {
-    let message = try_recv(port);
+    match port {
+        PortOne { contents: port } => {
+            let message = try_recv(port);
 
-    if message.is_none() { None }
-    else {
-        let oneshot::send(message) = message.unwrap();
-        Some(message)
+            if message.is_none() {
+                None
+            } else {
+                let oneshot::send(message) = message.unwrap();
+                Some(message)
+            }
+        }
     }
 }
 
 /// Send a message on a oneshot pipe, failing if the connection was closed.
 pub fn send_one<T: Owned>(chan: ChanOne<T>, data: T) {
-    oneshot::client::send(chan, data);
+    match chan {
+        ChanOne { contents: chan } => oneshot::client::send(chan, data),
+    }
 }
 
 /**
  * Send a message on a oneshot pipe, or return false if the connection was
  * closed.
  */
-pub fn try_send_one<T: Owned>(chan: ChanOne<T>, data: T)
-        -> bool {
-    oneshot::client::try_send(chan, data).is_some()
+pub fn try_send_one<T: Owned>(chan: ChanOne<T>, data: T) -> bool {
+    match chan {
+        ChanOne { contents: chan } => {
+            oneshot::client::try_send(chan, data).is_some()
+        }
+    }
 }
 
 
