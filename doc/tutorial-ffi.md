@@ -139,6 +139,74 @@ pub fn uncompress(src: &[u8]) -> Option<~[u8]> {
 For reference, the examples used here are also available as an [library on
 GitHub](https://github.com/thestinger/rust-snappy).
 
+# Destructors
+
+Foreign libraries often hand off ownership of resources to the calling code,
+which should be wrapped in a destructor to provide safety and guarantee their
+release.
+
+A type with the same functionality as owned boxes can be implemented by
+wrapping `malloc` and `free`:
+
+~~~~
+use core::libc::{c_void, size_t, malloc, free};
+
+#[abi = "rust-intrinsic"]
+extern "rust-intrinsic" mod rusti {
+    fn init<T>() -> T;
+}
+
+// a wrapper around the handle returned by the foreign code
+pub struct Unique<T> {
+    priv ptr: *mut T
+}
+
+pub impl<'self, T: Owned> Unique<T> {
+    fn new(value: T) -> Unique<T> {
+        unsafe {
+            let ptr = malloc(core::sys::size_of::<T>() as size_t) as *mut T;
+            assert!(!ptr::is_null(ptr));
+            *ptr = value;
+            Unique{ptr: ptr}
+        }
+    }
+
+    // the 'self lifetime results in the same semantics as `&*x` with ~T
+    fn borrow(&self) -> &'self T {
+        unsafe { cast::transmute(self.ptr) }
+    }
+
+    // the 'self lifetime results in the same semantics as `&mut *x` with ~T
+    fn borrow_mut(&mut self) -> &'self mut T {
+        unsafe { cast::transmute(self.ptr) }
+    }
+}
+
+#[unsafe_destructor]
+impl<T: Owned> Drop for Unique<T> {
+    fn finalize(&self) {
+        unsafe {
+            let mut x = rusti::init(); // dummy value to swap in
+            x <-> *self.ptr; // moving the object out is needed to call the destructor
+            free(self.ptr as *c_void)
+        }
+    }
+}
+
+// A comparison between the built-in ~ and this reimplementation
+fn main() {
+    {
+        let mut x = ~5;
+        *x = 10;
+    } // `x` is freed here
+
+    {
+        let mut y = Unique::new(5);
+        *y.borrow_mut() = 10;
+    } // `y` is freed here
+}
+~~~~
+
 # Linking
 
 In addition to the `#[link_args]` attribute for explicitly passing arguments to the linker, an
