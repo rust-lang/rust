@@ -10,7 +10,6 @@
 
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use ops::Drop;
 use rt::sched::local_sched::unsafe_borrow_io;
 use rt::io::net::ip::IpAddr;
 use rt::io::{Reader, Writer, Listener};
@@ -79,12 +78,6 @@ impl Writer for TcpStream {
     fn flush(&mut self) { fail!() }
 }
 
-impl Drop for TcpStream {
-    fn finalize(&self) {
-        self.rtstream.close();
-    }
-}
-
 pub struct TcpListener {
     rtlistener: ~RtioTcpListenerObject
 }
@@ -117,12 +110,6 @@ impl Listener<TcpStream> for TcpListener {
                 abort!("TODO");
             }
         }
-    }
-}
-
-impl Drop for TcpListener {
-    fn finalize(&self) {
-        self.rtlistener.close();
     }
 }
 

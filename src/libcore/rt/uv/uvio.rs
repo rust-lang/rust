@@ -124,7 +124,7 @@ impl IoFactory for UvIoFactory {
                 rtdebug!("connect: in connect callback");
                 let maybe_stream = if status.is_none() {
                     rtdebug!("status is none");
-                    Ok(~UvTcpStream(stream_watcher))
+                    Ok(~UvTcpStream { watcher: stream_watcher })
                 } else {
                     rtdebug!("status is some");
                     // XXX: Wait for close
@@ -148,7 +148,7 @@ impl IoFactory for UvIoFactory {
     fn tcp_bind(&mut self, addr: IpAddr) -> Result<~RtioTcpListenerObject, IoError> {
         let mut watcher = TcpWatcher::new(self.uv_loop());
         match watcher.bind(addr) {
-            Ok(_) => Ok(~UvTcpListener(watcher)),
+            Ok(_) => Ok(~UvTcpListener { watcher: watcher }),
             Err(uverr) => {
                 // XXX: Should we wait until close completes?
                 watcher.as_stream().close(||());
@@ -158,23 +158,19 @@ impl IoFactory for UvIoFactory {
     }
 }
 
-pub struct UvTcpListener(TcpWatcher);
+// FIXME #6090: Prefer newtype structs but Drop doesn't work
+pub struct UvTcpListener {
+    watcher: TcpWatcher
+}
 
 impl UvTcpListener {
-    fn watcher(&self) -> TcpWatcher {
-        match self { &UvTcpListener(w) => w }
-    }
-
-    fn close(&self) {
-        // XXX: Need to wait until close finishes before returning
-        self.watcher().as_stream().close(||());
-    }
+    fn watcher(&self) -> TcpWatcher { self.watcher }
 }
 
 impl Drop for UvTcpListener {
     fn finalize(&self) {
-        // XXX: Again, this never gets called. Use .close() instead
-        //self.watcher().as_stream().close(||());
+        // XXX: Need to wait until close finishes before returning
+        self.watcher().as_stream().close(||());
     }
 }
 
@@ -200,7 +196,7 @@ impl RtioTcpListener for UvTcpListener {
                     let client_tcp_watcher = TcpWatcher::new(&mut loop_).as_stream();
                     // XXX: Needs to be surfaced in interface
                     server_stream_watcher.accept(client_tcp_watcher);
-                    Ok(~UvTcpStream::new(client_tcp_watcher))
+                    Ok(~UvTcpStream { watcher: client_tcp_watcher })
                 } else {
                     Err(standard_error(OtherIoError))
                 };
@@ -219,28 +215,19 @@ impl RtioTcpListener for UvTcpListener {
     }
 }
 
-pub struct UvTcpStream(StreamWatcher);
+// FIXME #6090: Prefer newtype structs but Drop doesn't work
+pub struct UvTcpStream {
+    watcher: StreamWatcher
+}
 
 impl UvTcpStream {
-    fn new(watcher: StreamWatcher) -> UvTcpStream {
-        UvTcpStream(watcher)
-    }
-
-    fn watcher(&self) -> StreamWatcher {
-        match self { &UvTcpStream(w) => w }
-    }
-
-    // XXX: finalize isn't working for ~UvStream???
-    fn close(&self) {
-        // XXX: Need to wait until this finishes before returning
-        self.watcher().close(||());
-    }
+    fn watcher(&self) -> StreamWatcher { self.watcher }
 }
 
 impl Drop for UvTcpStream {
     fn finalize(&self) {
         rtdebug!("closing stream");
-        //self.watcher().close(||());
+        self.watcher().close(||());
     }
 }
 
@@ -354,8 +341,6 @@ fn test_simple_tcp_server_and_client() {
                     rtdebug!("%u", buf[i] as uint);
                     assert!(buf[i] == i as u8);
                 }
-                stream.close();
-                listener.close();
             }
         }
 
@@ -364,7 +349,6 @@ fn test_simple_tcp_server_and_client() {
                 let io = local_sched::unsafe_borrow_io();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
-                stream.close();
             }
         }
     }
@@ -408,9 +392,6 @@ fn test_read_and_block() {
 
             // Make sure we had multiple reads
             assert!(reads > 1);
-
-            stream.close();
-            listener.close();
         }
 
         do spawntask_immediately {
@@ -421,7 +402,6 @@ fn test_read_and_block() {
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
-                stream.close();
             }
         }
 
@@ -445,8 +425,6 @@ fn test_read_read_read() {
                     stream.write(buf);
                     total_bytes_written += buf.len();
                 }
-                stream.close();
-                listener.close();
             }
         }
 
@@ -465,7 +443,6 @@ fn test_read_read_read() {
                     }
                 }
                 rtdebug!("read %u bytes total", total_bytes_read as uint);
-                stream.close();
             }
         }
     }
