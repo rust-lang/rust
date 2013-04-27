@@ -23,7 +23,12 @@
   :require 'rust-mode
   :group 'rust-mode)
 
-(defvar rust-indent-unit 4)
+(defcustom rust-indent-unit 4
+  "Amount of offset per level of indentation"
+  :type 'integer
+  :require 'rust-mode
+  :group 'rust-mode)
+
 (defvar rust-syntax-table (let ((table (make-syntax-table)))
                             (c-populate-syntax-table table)
                             table))
