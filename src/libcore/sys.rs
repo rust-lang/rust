@@ -165,7 +165,42 @@ pub fn log_str<T>(t: &T) -> ~str {
     }
 }
 
-/** Initiate task failure */
+/// Trait for initiating task failure.
+pub trait FailWithCause {
+    /// Fail the current task, taking ownership of `cause`
+    fn fail_with(cause: Self, file: &'static str, line: uint) -> !;
+}
+
+impl FailWithCause for ~str {
+    fn fail_with(cause: ~str, file: &'static str, line: uint) -> ! {
+        do str::as_buf(cause) |msg_buf, _msg_len| {
+            do str::as_buf(file) |file_buf, _file_len| {
+                unsafe {
+                    let msg_buf = cast::transmute(msg_buf);
+                    let file_buf = cast::transmute(file_buf);
+                    begin_unwind_(msg_buf, file_buf, line as libc::size_t)
+                }
+            }
+        }
+    }
+}
+
+impl FailWithCause for &'static str {
+    fn fail_with(cause: &'static str, file: &'static str, line: uint) -> ! {
+        do str::as_buf(cause) |msg_buf, _msg_len| {
+            do str::as_buf(file) |file_buf, _file_len| {
+                unsafe {
+                    let msg_buf = cast::transmute(msg_buf);
+                    let file_buf = cast::transmute(file_buf);
+                    begin_unwind_(msg_buf, file_buf, line as libc::size_t)
+                }
+            }
+        }
+    }
+}
+
+// NOTE: remove function after snapshot
+#[cfg(stage0)]
 pub fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
     do str::as_buf(msg) |msg_buf, _msg_len| {
         do str::as_buf(file) |file_buf, _file_len| {
@@ -187,6 +222,8 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     }
 }
 
+// NOTE: remove function after snapshot
+#[cfg(stage0)]
 pub fn fail_assert(msg: &str, file: &str, line: uint) -> ! {
     let (msg, file) = (msg.to_owned(), file.to_owned());
     begin_unwind(~"assertion failed: " + msg, file, line)
@@ -297,6 +334,14 @@ mod tests {
             assert!(new_f(20) == 30);
         }
     }
+
+    #[test]
+    #[should_fail]
+    fn fail_static() { FailWithCause::fail_with("cause", file!(), line!())  }
+
+    #[test]
+    #[should_fail]
+    fn fail_owned() { FailWithCause::fail_with(~"cause", file!(), line!())  }
 }
 
 // Local Variables:

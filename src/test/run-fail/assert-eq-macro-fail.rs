@@ -1,4 +1,4 @@
-// error-pattern:expected: 15, given: 14
+// error-pattern:left: 14 != right: 15
 
 #[deriving(Eq)]
 struct Point { x : int }
