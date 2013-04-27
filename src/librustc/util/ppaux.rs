@@ -281,7 +281,7 @@ pub fn tys_to_str(cx: ctxt, ts: &[t]) -> ~str {
 
 pub fn fn_sig_to_str(cx: ctxt, typ: &ty::FnSig) -> ~str {
     fmt!("fn%s -> %s",
-         tys_to_str(cx, typ.inputs.map(|a| a.ty)),
+         tys_to_str(cx, typ.inputs.map(|a| *a)),
          ty_to_str(cx, typ.output))
 }
 
@@ -290,8 +290,8 @@ pub fn trait_ref_to_str(cx: ctxt, trait_ref: &ty::TraitRef) -> ~str {
 }
 
 pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
-    fn fn_input_to_str(cx: ctxt, input: ty::arg) -> ~str {
-        ty_to_str(cx, input.ty)
+    fn fn_input_to_str(cx: ctxt, input: ty::t) -> ~str {
+        ty_to_str(cx, input)
     }
     fn bare_fn_to_str(cx: ctxt,
                       purity: ast::purity,
@@ -685,15 +685,9 @@ impl Repr for typeck::method_map_entry {
         fmt!("method_map_entry {self_arg: %s, \
               explicit_self: %s, \
               origin: %s}",
-             self.self_arg.repr(tcx),
+             self.self_ty.repr(tcx),
              self.explicit_self.repr(tcx),
              self.origin.repr(tcx))
-    }
-}
-
-impl Repr for ty::arg {
-    fn repr(&self, tcx: ctxt) -> ~str {
-        fmt!("(%s)", self.ty.repr(tcx))
     }
 }
 
