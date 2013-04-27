@@ -70,7 +70,12 @@ pub fn trans_impl(ccx: @CrateContext, path: path, name: ast::ident,
                 }
             }
 
-            trans_method(ccx, path, *method, param_substs_opt, self_ty, llfn,
+            trans_method(ccx,
+                         path,
+                         *method,
+                         param_substs_opt,
+                         self_ty,
+                         llfn,
                          ast_util::local_def(id));
         }
     }
@@ -106,11 +111,10 @@ pub fn trans_method(ccx: @CrateContext,
       _ => {
         // determine the (monomorphized) type that `self` maps to for
         // this method
-        let self_ty;
-        match base_self_ty {
-            None => self_ty = ty::node_id_to_type(ccx.tcx, method.self_id),
-            Some(provided_self_ty) => self_ty = provided_self_ty
-        }
+        let self_ty = match base_self_ty {
+            None => ty::node_id_to_type(ccx.tcx, method.self_id),
+            Some(provided_self_ty) => provided_self_ty,
+        };
         let self_ty = match param_substs {
             None => self_ty,
             Some(@param_substs {tys: ref tys, _}) => {
