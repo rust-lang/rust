@@ -21,6 +21,11 @@ use str;
 use to_str::ToStr;
 use ascii::{AsciiCast, AsciiStr};
 
+#[cfg(windows)]
+pub use Path = self::WindowsPath;
+#[cfg(unix)]
+pub use Path = self::PosixPath;
+
 #[deriving(Clone, Eq)]
 pub struct WindowsPath {
     host: Option<~str>,
@@ -70,22 +75,6 @@ pub trait GenericPath {
     fn normalize(&self) -> Self;
 
     fn is_absolute(&self) -> bool;
-}
-
-#[cfg(windows)]
-pub type Path = WindowsPath;
-
-#[cfg(windows)]
-pub fn Path(s: &str) -> Path {
-    WindowsPath(s)
-}
-
-#[cfg(unix)]
-pub type Path = PosixPath;
-
-#[cfg(unix)]
-pub fn Path(s: &str) -> Path {
-    PosixPath(s)
 }
 
 #[cfg(target_os = "linux")]

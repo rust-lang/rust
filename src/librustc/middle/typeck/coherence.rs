@@ -38,8 +38,9 @@ use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar};
 use middle::typeck::infer::{resolve_nested_tvar, resolve_type};
-use syntax::ast::{crate, def_id, def_mod, def_trait};
-use syntax::ast::{item, item_impl, item_mod, local_crate, method, trait_ref};
+use syntax::ast::{crate, def_id, def_mod, def_struct, def_trait, def_ty};
+use syntax::ast::{item, item_enum, item_impl, item_mod, item_struct};
+use syntax::ast::{local_crate, method, trait_ref, ty_path};
 use syntax::ast;
 use syntax::ast_map::node_item;
 use syntax::ast_map;
@@ -661,7 +662,19 @@ pub impl CoherenceChecker {
                         // Then visit the module items.
                         visit_mod(module_, item.span, item.id, (), visitor);
                     }
-                    item_impl(_, opt_trait, _, _) => {
+                    item_impl(_, None, ast_ty, _) => {
+                        if !self.ast_type_is_defined_in_local_crate(ast_ty) {
+                            // This is an error.
+                            let session = self.crate_context.tcx.sess;
+                            session.span_err(item.span,
+                                             ~"cannot associate methods with \
+                                               a type outside the crate the \
+                                               type is defined in; define \
+                                               and implement a trait or new \
+                                               type instead");
+                        }
+                    }
+                    item_impl(_, Some(trait_ref), _, _) => {
                         // `for_ty` is `Type` in `impl Trait for Type`
                         let for_ty =
                             ty::node_id_to_type(self.crate_context.tcx,
@@ -671,40 +684,16 @@ pub impl CoherenceChecker {
                             // type. This still might be OK if the trait is
                             // defined in the same crate.
 
-                            match opt_trait {
-                                None => {
-                                    // There is no trait to implement, so
-                                    // this is an error.
+                            let trait_def_id =
+                                self.trait_ref_to_trait_def_id(trait_ref);
 
-                                    let session = self.crate_context.tcx.sess;
-                                    session.span_err(item.span,
-                                                     ~"cannot implement \
-                                                      inherent methods for a \
-                                                      type outside the crate \
-                                                      the type was defined \
-                                                      in; define and \
-                                                      implement a trait or \
-                                                      new type instead");
-                                }
-
-                                Some(trait_ref) => {
-                                    // This is OK if and only if the trait was
-                                    // defined in this crate.
-
-                                    let trait_def_id =
-                                        self.trait_ref_to_trait_def_id(
-                                            trait_ref);
-
-                                    if trait_def_id.crate != local_crate {
-                                        let session = self.crate_context.tcx.sess;
-                                        session.span_err(item.span,
-                                                         ~"cannot provide an \
-                                                           extension \
-                                                           implementation for a \
-                                                           trait not defined in \
-                                                           this crate");
-                                    }
-                                }
+                            if trait_def_id.crate != local_crate {
+                                let session = self.crate_context.tcx.sess;
+                                session.span_err(item.span,
+                                                 ~"cannot provide an \
+                                                   extension implementation \
+                                                   for a trait not defined \
+                                                   in this crate");
                             }
                         }
 
@@ -751,6 +740,46 @@ pub impl CoherenceChecker {
             tcx.sess.span_err(trait_ref_span,
                               fmt!("missing method `%s`",
                                    *tcx.sess.str_of(method.ident)));
+        }
+    }
+
+    /// For coherence, when we have `impl Type`, we need to guarantee that
+    /// `Type` is "local" to the crate. For our purposes, this means that it
+    /// must precisely name some nominal type defined in this crate.
+    pub fn ast_type_is_defined_in_local_crate(&self, original_type: @ast::Ty)
+                                              -> bool {
+        match original_type.node {
+            ty_path(_, path_id) => {
+                match *self.crate_context.tcx.def_map.get(&path_id) {
+                    def_ty(def_id) | def_struct(def_id) => {
+                        if def_id.crate != local_crate {
+                            return false;
+                        }
+
+                        // Make sure that this type precisely names a nominal
+                        // type.
+                        match self.crate_context
+                                  .tcx
+                                  .items
+                                  .find(&def_id.node) {
+                            None => {
+                                self.crate_context.tcx.sess.span_bug(
+                                    original_type.span,
+                                    ~"resolve didn't resolve this type?!");
+                            }
+                            Some(&node_item(item, _)) => {
+                                match item.node {
+                                    item_struct(*) | item_enum(*) => true,
+                                    _ => false,
+                                }
+                            }
+                            Some(_) => false,
+                        }
+                    }
+                    _ => false
+                }
+            }
+            _ => false
         }
     }
 

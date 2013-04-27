@@ -56,6 +56,3 @@ fn context_res() -> context_res {
 
 pub type context = arc_destruct<context_res>;
 
-pub impl context {
-    fn socket(&self) { }
-}
