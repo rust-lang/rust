@@ -385,20 +385,23 @@ impl Ord for float {
 }
 
 impl Orderable for float {
+    /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
     fn min(&self, other: &float) -> float {
-        fmin(*self as f64, *other as f64) as float
+        (*self as f64).min(&(*other as f64)) as float
     }
 
+    /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
     fn max(&self, other: &float) -> float {
-        fmax(*self as f64, *other as f64) as float
+        (*self as f64).max(&(*other as f64)) as float
     }
 
+    /// Returns the number constrained within the range `mn <= self <= mx`.
+    /// If any of the numbers are `NaN` then `NaN` is returned.
     #[inline(always)]
     fn clamp(&self, mn: &float, mx: &float) -> float {
-        if *self > *mx { *mx } else
-        if *self < *mn { *mn } else { *self }
+        (*self as f64).clamp(&(*mn as f64), &(*mx as f64)) as float
     }
 }
 
@@ -802,14 +805,25 @@ mod tests {
     }
 
     #[test]
-    fn test_orderable() {
+    fn test_min() {
         assert_eq!(1f.min(&2f), 1f);
         assert_eq!(2f.min(&1f), 1f);
+    }
+
+    #[test]
+    fn test_max() {
         assert_eq!(1f.max(&2f), 2f);
         assert_eq!(2f.max(&1f), 2f);
+    }
+
+    #[test]
+    fn test_clamp() {
         assert_eq!(1f.clamp(&2f, &4f), 2f);
         assert_eq!(8f.clamp(&2f, &4f), 4f);
         assert_eq!(3f.clamp(&2f, &4f), 3f);
+        assert!(3f.clamp(&Float::NaN::<float>(), &4f).is_NaN());
+        assert!(3f.clamp(&2f, &Float::NaN::<float>()).is_NaN());
+        assert!(Float::NaN::<float>().clamp(&2f, &4f).is_NaN());
     }
 
     #[test]
