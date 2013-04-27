@@ -871,7 +871,11 @@ impl ast_fold for AstFoldFns {
     }
 }
 
-pub impl @ast_fold {
+pub trait AstFoldExtensions {
+    fn fold_attributes(&self, attrs: ~[attribute]) -> ~[attribute];
+}
+
+impl AstFoldExtensions for @ast_fold {
     fn fold_attributes(&self, attrs: ~[attribute]) -> ~[attribute] {
         attrs.map(|x| fold_attribute_(*x, *self))
     }
