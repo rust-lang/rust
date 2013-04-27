@@ -8,14 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Rust runtime services, including the task scheduler and I/O interface
-
-# XXX
-
-* Unsafe uses of borrowed pointers should just use unsafe pointers
-
-*/
-
+//! Rust runtime services, including the task scheduler and I/O interface
 
 #[doc(hidden)];
 

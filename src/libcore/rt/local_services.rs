@@ -169,16 +169,17 @@ pub fn borrow_local_services(f: &fn(&mut LocalServices)) {
     }
 }
 
-pub unsafe fn unsafe_borrow_local_services() -> &mut LocalServices {
-    use cast::transmute_mut_region;
-
-    match local_sched::unsafe_borrow().current_task {
-        Some(~ref mut task) => {
-            transmute_mut_region(&mut task.local_services)
-        }
-        None => {
-            // Don't fail. Infinite recursion
-            abort!("no local services for schedulers yet")
+pub unsafe fn unsafe_borrow_local_services() -> *mut LocalServices {
+    unsafe {
+        match (*local_sched::unsafe_borrow()).current_task {
+            Some(~ref mut task) => {
+                let s: *mut LocalServices = &mut task.local_services;
+                return s;
+            }
+            None => {
+                // Don't fail. Infinite recursion
+                abort!("no local services for schedulers yet")
+            }
         }
     }
 }
