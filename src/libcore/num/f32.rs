@@ -225,16 +225,26 @@ impl Ord for f32 {
 }
 
 impl Orderable for f32 {
+    /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
-    fn min(&self, other: &f32) -> f32 { fmin(*self, *other) }
+    fn min(&self, other: &f32) -> f32 {
+        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmin(*self, *other) }
+    }
 
+    /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
-    fn max(&self, other: &f32) -> f32 { fmax(*self, *other) }
+    fn max(&self, other: &f32) -> f32 {
+        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmax(*self, *other) }
+    }
 
+    /// Returns the number constrained within the range `mn <= self <= mx`.
+    /// If any of the numbers are `NaN` then `NaN` is returned.
     #[inline(always)]
     fn clamp(&self, mn: &f32, mx: &f32) -> f32 {
-        if *self > *mx { *mx } else
-        if *self < *mn { *mn } else { *self }
+        if self.is_NaN() { *self }
+        else if !(*self <= *mx) { *mx }
+        else if !(*self >= *mn) { *mn }
+        else { *self }
     }
 }
 
@@ -828,14 +838,25 @@ mod tests {
     }
 
     #[test]
-    fn test_orderable() {
+    fn test_min() {
         assert_eq!(1f32.min(&2f32), 1f32);
         assert_eq!(2f32.min(&1f32), 1f32);
+    }
+
+    #[test]
+    fn test_max() {
         assert_eq!(1f32.max(&2f32), 2f32);
         assert_eq!(2f32.max(&1f32), 2f32);
+    }
+
+    #[test]
+    fn test_clamp() {
         assert_eq!(1f32.clamp(&2f32, &4f32), 2f32);
         assert_eq!(8f32.clamp(&2f32, &4f32), 4f32);
         assert_eq!(3f32.clamp(&2f32, &4f32), 3f32);
+        assert!(3f32.clamp(&Float::NaN::<f32>(), &4f32).is_NaN());
+        assert!(3f32.clamp(&2f32, &Float::NaN::<f32>()).is_NaN());
+        assert!(Float::NaN::<f32>().clamp(&2f32, &4f32).is_NaN());
     }
 
     #[test]

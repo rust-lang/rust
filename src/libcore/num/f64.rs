@@ -246,16 +246,26 @@ impl Ord for f64 {
 }
 
 impl Orderable for f64 {
+    /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
-    fn min(&self, other: &f64) -> f64 { fmin(*self, *other) }
+    fn min(&self, other: &f64) -> f64 {
+        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmin(*self, *other) }
+    }
 
+    /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
-    fn max(&self, other: &f64) -> f64 { fmax(*self, *other) }
+    fn max(&self, other: &f64) -> f64 {
+        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmax(*self, *other) }
+    }
 
+    /// Returns the number constrained within the range `mn <= self <= mx`.
+    /// If any of the numbers are `NaN` then `NaN` is returned.
     #[inline(always)]
     fn clamp(&self, mn: &f64, mx: &f64) -> f64 {
-        if *self > *mx { *mx } else
-        if *self < *mn { *mn } else { *self }
+        if self.is_NaN() { *self }
+        else if !(*self <= *mx) { *mx }
+        else if !(*self >= *mn) { *mn }
+        else { *self }
     }
 }
 
@@ -869,14 +879,29 @@ mod tests {
     }
 
     #[test]
-    fn test_orderable() {
+    fn test_min() {
         assert_eq!(1f64.min(&2f64), 1f64);
         assert_eq!(2f64.min(&1f64), 1f64);
+        assert!(1f64.min(&Float::NaN::<f64>()).is_NaN());
+        assert!(Float::NaN::<f64>().min(&1f64).is_NaN());
+    }
+
+    #[test]
+    fn test_max() {
         assert_eq!(1f64.max(&2f64), 2f64);
         assert_eq!(2f64.max(&1f64), 2f64);
+        assert!(1f64.max(&Float::NaN::<f64>()).is_NaN());
+        assert!(Float::NaN::<f64>().max(&1f64).is_NaN());
+    }
+
+    #[test]
+    fn test_clamp() {
         assert_eq!(1f64.clamp(&2f64, &4f64), 2f64);
         assert_eq!(8f64.clamp(&2f64, &4f64), 4f64);
         assert_eq!(3f64.clamp(&2f64, &4f64), 3f64);
+        assert!(3f64.clamp(&Float::NaN::<f64>(), &4f64).is_NaN());
+        assert!(3f64.clamp(&2f64, &Float::NaN::<f64>()).is_NaN());
+        assert!(Float::NaN::<f64>().clamp(&2f64, &4f64).is_NaN());
     }
 
     #[test]
