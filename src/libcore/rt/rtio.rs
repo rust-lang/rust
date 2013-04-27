@@ -18,8 +18,8 @@ use super::io::net::ip::IpAddr;
 // types to use instead
 pub type EventLoopObject = super::uvio::UvEventLoop;
 pub type IoFactoryObject = super::uvio::UvIoFactory;
-pub type StreamObject = super::uvio::UvStream;
-pub type TcpListenerObject = super::uvio::UvTcpListener;
+pub type RtioTcpStreamObject = super::uvio::UvTcpStream;
+pub type RtioTcpListenerObject = super::uvio::UvTcpListener;
 
 pub trait EventLoop {
     fn run(&mut self);
@@ -29,15 +29,15 @@ pub trait EventLoop {
 }
 
 pub trait IoFactory {
-    fn connect(&mut self, addr: IpAddr) -> Result<~StreamObject, IoError>;
-    fn bind(&mut self, addr: IpAddr) -> Result<~TcpListenerObject, IoError>;
+    fn tcp_connect(&mut self, addr: IpAddr) -> Result<~RtioTcpStreamObject, IoError>;
+    fn tcp_bind(&mut self, addr: IpAddr) -> Result<~RtioTcpListenerObject, IoError>;
 }
 
-pub trait TcpListener {
-    fn listen(&mut self) -> Option<~StreamObject>;
+pub trait RtioTcpListener {
+    fn accept(&mut self) -> Result<~RtioTcpStreamObject, IoError>;
 }
 
-pub trait Stream {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, ()>;
-    fn write(&mut self, buf: &[u8]) -> Result<(), ()>;
+pub trait RtioTcpStream {
+    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
 }

@@ -238,6 +238,7 @@ Out of scope
 * How does I/O relate to the Iterator trait?
 * std::base64 filters
 * Using conditions is a big unknown since we don't have much experience with them
+* Too many uses of OtherIoError
 
 */
 

@@ -48,7 +48,7 @@ use ptr::null;
 use unstable::finally::Finally;
 
 use rt::uvll;
-use rt::io::{IoError, FileNotFound};
+use rt::io::IoError;
 
 #[cfg(test)] use unstable::run_in_bare_thread;
 
