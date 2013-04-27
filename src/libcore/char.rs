@@ -10,6 +10,7 @@
 
 //! Utilities for manipulating the char type
 
+use cmp::Ord;
 use option::{None, Option, Some};
 use str;
 use u32;
@@ -243,24 +244,24 @@ pub fn len_utf8_bytes(c: char) -> uint {
     else { fail!(~"invalid character!") }
 }
 
-/**
- * Compare two chars
- *
- * # Return value
- *
- * -1 if a < b, 0 if a == b, +1 if a > b
- */
-#[inline(always)]
-pub fn cmp(a: char, b: char) -> int {
-    return  if b > a { -1 }
-    else if b < a { 1 }
-    else { 0 }
+#[cfg(notest)]
+impl Eq for char {
+    #[inline(always)]
+    fn eq(&self, other: &char) -> bool { (*self) == (*other) }
+    #[inline(always)]
+    fn ne(&self, other: &char) -> bool { (*self) != (*other) }
 }
 
 #[cfg(notest)]
-impl Eq for char {
-    fn eq(&self, other: &char) -> bool { (*self) == (*other) }
-    fn ne(&self, other: &char) -> bool { (*self) != (*other) }
+impl Ord for char {
+    #[inline(always)]
+    fn lt(&self, other: &char) -> bool { *self < *other }
+    #[inline(always)]
+    fn le(&self, other: &char) -> bool { *self <= *other }
+    #[inline(always)]
+    fn gt(&self, other: &char) -> bool { *self > *other }
+    #[inline(always)]
+    fn ge(&self, other: &char) -> bool { *self >= *other }
 }
 
 #[test]
