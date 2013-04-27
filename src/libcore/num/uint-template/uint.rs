@@ -74,7 +74,7 @@ pub mod inst {
 
         /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
         #[inline(always)]
-        fn trailing_zeros(&self) -> uint { (*self as i32).trailing_zeros() as uint }
+        fn trailing_zeros(&self) -> uint { (*self as i64).trailing_zeros() as uint }
     }
 
     ///
