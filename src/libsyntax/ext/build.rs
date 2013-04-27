@@ -474,11 +474,12 @@ pub fn mk_unreachable(cx: @ext_ctxt, span: span) -> @ast::expr {
         ~[
             cx.ident_of(~"core"),
             cx.ident_of(~"sys"),
-            cx.ident_of(~"begin_unwind"),
+            cx.ident_of(~"FailWithCause"),
+            cx.ident_of(~"fail_with"),
         ],
         ~[
-            mk_uniq_str(cx, span, ~"internal error: entered unreachable code"),
-            mk_uniq_str(cx, span, loc.file.name),
+            mk_base_str(cx, span, ~"internal error: entered unreachable code"),
+            mk_base_str(cx, span, loc.file.name),
             mk_uint(cx, span, loc.line),
         ]
     )
