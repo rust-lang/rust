@@ -16,12 +16,12 @@ use libc::c_void;
 use cast;
 use cell::Cell;
 
-use super::Scheduler;
-use super::super::rtio::IoFactoryObject;
-use tls = super::super::thread_local_storage;
+use rt::sched::Scheduler;
+use rt::rtio::{EventLoop, IoFactoryObject};
+use tls = rt::thread_local_storage;
 use unstable::finally::Finally;
 
-#[cfg(test)] use super::super::uvio::UvEventLoop;
+#[cfg(test)] use rt::uv::uvio::UvEventLoop;
 
 /// Give the Scheduler to thread-local storage
 pub fn put(sched: ~Scheduler) {

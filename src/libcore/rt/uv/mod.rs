@@ -10,7 +10,7 @@
 
 /*!
 
-Bindings to libuv.
+Bindings to libuv, along with the default implementation of `core::rt::rtio`.
 
 UV types consist of the event loop (Loop), Watchers, Requests and
 Callbacks.
@@ -47,7 +47,6 @@ use cast::transmute;
 use ptr::null;
 use unstable::finally::Finally;
 
-use rt::uvll;
 use rt::io::IoError;
 
 #[cfg(test)] use unstable::run_in_bare_thread;
@@ -55,6 +54,13 @@ use rt::io::IoError;
 pub use self::file::{FsRequest, FsCallback};
 pub use self::net::{StreamWatcher, TcpWatcher};
 pub use self::net::{ReadCallback, AllocCallback, ConnectionCallback, ConnectCallback};
+
+
+/// The implementation of `rtio` for libuv
+pub mod uvio;
+
+/// C bindings to libuv
+pub mod uvll;
 
 pub mod file;
 pub mod net;
@@ -240,7 +246,7 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
 
     unsafe {
         // Importing error constants
-        use rt::uvll::*;
+        use rt::uv::uvll::*;
         use rt::io::*;
 
         // uv error descriptions are static

@@ -11,8 +11,8 @@
 use prelude::*;
 use libc::{size_t, ssize_t, c_int, c_void};
 use cast::transmute_mut_region;
-use super::super::uvll;
-use super::super::uvll::*;
+use rt::uv::uvll;
+use rt::uv::uvll::*;
 use super::{Loop, Watcher, Request, UvError, Buf, Callback, NativeHandle, NullCallback,
             loop_from_watcher, status_to_maybe_uv_error,
             install_watcher_data, get_watcher_data, drop_watcher_data,

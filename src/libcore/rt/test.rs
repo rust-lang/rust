@@ -19,7 +19,7 @@ use rt::local_services::LocalServices;
 pub fn run_in_newsched_task(f: ~fn()) {
     use unstable::run_in_bare_thread;
     use super::sched::Task;
-    use super::uvio::UvEventLoop;
+    use rt::uv::uvio::UvEventLoop;
 
     let f = Cell(f);
 

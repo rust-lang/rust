@@ -21,9 +21,11 @@
 
 use libc::c_char;
 
-/// The Scheduler and Task types, and thread-local access thereof
-#[path = "sched/mod.rs"]
+/// The Scheduler and Task types
 mod sched;
+
+/// Thread-local access to the current Scheduler
+mod local_sched;
 
 /// Synchronous I/O
 #[path = "io/mod.rs"]
@@ -39,14 +41,7 @@ mod rtio;
 
 /// libuv
 #[path = "uv/mod.rs"]
-mod uv;
-
-/// The implementation of `rtio` for libuv
-mod uvio;
-
-/// C bindings to libuv
-pub mod uvll;
-
+pub mod uv;
 
 // FIXME #5248: The import in `sched` doesn't resolve unless this is pub!
 /// Bindings to pthread/windows thread-local storage
@@ -94,7 +89,7 @@ pub mod test;
 pub fn start(main: *u8, _argc: int, _argv: **c_char, _crate_map: *u8) -> int {
 
     use self::sched::{Scheduler, Task};
-    use self::uvio::UvEventLoop;
+    use self::uv::uvio::UvEventLoop;
     use sys::Closure;
     use ptr;
     use cast;
@@ -175,7 +170,7 @@ pub fn context() -> RuntimeContext {
 fn test_context() {
     use unstable::run_in_bare_thread;
     use self::sched::{local_sched, Task};
-    use self::uvio::UvEventLoop;
+    use rt::uv::uvio::UvEventLoop;
     use cell::Cell;
 
     assert!(context() == OldTaskContext);

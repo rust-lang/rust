@@ -12,8 +12,8 @@ use prelude::*;
 use ptr::null;
 use libc::c_void;
 use super::{UvError, Callback, Request, NativeHandle, Loop};
-use super::super::uvll;
-use super::super::uvll::*;
+use rt::uv::uvll;
+use rt::uv::uvll::*;
 
 pub type FsCallback = ~fn(FsRequest, Option<UvError>);
 impl Callback for FsCallback { }

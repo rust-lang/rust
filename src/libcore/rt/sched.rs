@@ -19,7 +19,7 @@ use super::context::Context;
 use super::local_services::LocalServices;
 use cell::Cell;
 
-#[cfg(test)] use super::uvio::UvEventLoop;
+#[cfg(test)] use rt::uv::uvio::UvEventLoop;
 #[cfg(test)] use unstable::run_in_bare_thread;
 #[cfg(test)] use int;
 
