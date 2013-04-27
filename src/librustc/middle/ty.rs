@@ -1382,7 +1382,7 @@ pub fn fold_sty_to_ty(tcx: ty::ctxt, sty: &sty, foldop: &fn(t) -> t) -> t {
 }
 
 pub fn fold_sig(sig: &FnSig, fldop: &fn(t) -> t) -> FnSig {
-    let args = sig.inputs.map(|arg| fldop(*arg)); 
+    let args = sig.inputs.map(|arg| fldop(*arg));
 
     FnSig {
         bound_lifetime_names: copy sig.bound_lifetime_names,
