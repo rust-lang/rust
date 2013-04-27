@@ -331,8 +331,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
         node_type_needs(cx, use_tydesc, val.id);
       }
       expr_call(f, _, _) => {
-          for vec::each(ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx,
-                                                           f.id))) |a| {
+          for ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id))).each |a| {
               type_needs(cx, use_repr, a.ty);
           }
       }
