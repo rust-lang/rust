@@ -12,7 +12,7 @@
 
 use from_str;
 use libc::c_int;
-use num::strconv;
+use num::{Zero, One, strconv};
 use prelude::*;
 
 pub use cmath::c_float_targ_consts::*;
@@ -88,7 +88,7 @@ delegate!(
     fn abs_sub(a: c_float, b: c_float) -> c_float = c_float_utils::abs_sub,
     fn fmax(a: c_float, b: c_float) -> c_float = c_float_utils::fmax,
     fn fmin(a: c_float, b: c_float) -> c_float = c_float_utils::fmin,
-    fn nextafter(x: c_float, y: c_float) -> c_float = c_float_utils::nextafter,
+    fn next_after(x: c_float, y: c_float) -> c_float = c_float_utils::next_after,
     fn frexp(n: c_float, value: &mut c_int) -> c_float = c_float_utils::frexp,
     fn hypot(x: c_float, y: c_float) -> c_float = c_float_utils::hypot,
     fn ldexp(x: c_float, n: c_int) -> c_float = c_float_utils::ldexp,
@@ -113,9 +113,6 @@ pub static NaN: f32 = 0.0_f32/0.0_f32;
 pub static infinity: f32 = 1.0_f32/0.0_f32;
 
 pub static neg_infinity: f32 = -1.0_f32/0.0_f32;
-
-#[inline(always)]
-pub fn is_NaN(f: f32) -> bool { f != f }
 
 #[inline(always)]
 pub fn add(x: f32, y: f32) -> f32 { return x + y; }
@@ -153,24 +150,6 @@ pub fn gt(x: f32, y: f32) -> bool { return x > y; }
 
 // FIXME (#1999): replace the predicates below with llvm intrinsics or
 // calls to the libmath macros in the rust runtime for performance.
-
-/// Returns true if `x` is a zero number (positive or negative zero)
-#[inline(always)]
-pub fn is_zero(x: f32) -> bool {
-    return x == 0.0f32 || x == -0.0f32;
-}
-
-/// Returns true if `x`is an infinite number
-#[inline(always)]
-pub fn is_infinite(x: f32) -> bool {
-    return x == infinity || x == neg_infinity;
-}
-
-/// Returns true if `x`is a finite number
-#[inline(always)]
-pub fn is_finite(x: f32) -> bool {
-    return !(is_NaN(x) || is_infinite(x));
-}
 
 // FIXME (#1999): add is_normal, is_subnormal, and fpclassify.
 
@@ -245,12 +224,40 @@ impl Ord for f32 {
     fn gt(&self, other: &f32) -> bool { (*self) > (*other) }
 }
 
-impl num::Zero for f32 {
+impl Orderable for f32 {
+    /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
-    fn zero() -> f32 { 0.0 }
+    fn min(&self, other: &f32) -> f32 {
+        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmin(*self, *other) }
+    }
+
+    /// Returns `NaN` if either of the numbers are `NaN`.
+    #[inline(always)]
+    fn max(&self, other: &f32) -> f32 {
+        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmax(*self, *other) }
+    }
+
+    /// Returns the number constrained within the range `mn <= self <= mx`.
+    /// If any of the numbers are `NaN` then `NaN` is returned.
+    #[inline(always)]
+    fn clamp(&self, mn: &f32, mx: &f32) -> f32 {
+        if self.is_NaN() { *self }
+        else if !(*self <= *mx) { *mx }
+        else if !(*self >= *mn) { *mn }
+        else { *self }
+    }
 }
 
-impl num::One for f32 {
+impl Zero for f32 {
+    #[inline(always)]
+    fn zero() -> f32 { 0.0 }
+
+    /// Returns true if the number is equal to either `0.0` or `-0.0`
+    #[inline(always)]
+    fn is_zero(&self) -> bool { *self == 0.0 || *self == -0.0 }
+}
+
+impl One for f32 {
     #[inline(always)]
     fn one() -> f32 { 1.0 }
 }
@@ -306,16 +313,16 @@ impl Signed for f32 {
     #[inline(always)]
     fn abs(&self) -> f32 { abs(*self) }
 
-    /**
-     * # Returns
-     *
-     * - `1.0` if the number is positive, `+0.0` or `infinity`
-     * - `-1.0` if the number is negative, `-0.0` or `neg_infinity`
-     * - `NaN` if the number is `NaN`
-     */
+    ///
+    /// # Returns
+    ///
+    /// - `1.0` if the number is positive, `+0.0` or `infinity`
+    /// - `-1.0` if the number is negative, `-0.0` or `neg_infinity`
+    /// - `NaN` if the number is NaN
+    ///
     #[inline(always)]
     fn signum(&self) -> f32 {
-        if is_NaN(*self) { NaN } else { copysign(1.0, *self) }
+        if self.is_NaN() { NaN } else { copysign(1.0, *self) }
     }
 
     /// Returns `true` if the number is positive, including `+0.0` and `infinity`
@@ -511,17 +518,99 @@ impl Real for f32 {
     fn tanh(&self) -> f32 { tanh(*self) }
 }
 
-/**
- * Section: String Conversions
- */
+impl Bounded for f32 {
+    #[inline(always)]
+    fn min_value() -> f32 { 1.17549435e-38 }
 
-/**
- * Converts a float to a string
- *
- * # Arguments
- *
- * * num - The float value
- */
+    #[inline(always)]
+    fn max_value() -> f32 { 3.40282347e+38 }
+}
+
+impl Primitive for f32 {
+    #[inline(always)]
+    fn bits() -> uint { 32 }
+
+    #[inline(always)]
+    fn bytes() -> uint { Primitive::bits::<f32>() / 8 }
+}
+
+impl Float for f32 {
+    #[inline(always)]
+    fn NaN() -> f32 { 0.0 / 0.0 }
+
+    #[inline(always)]
+    fn infinity() -> f32 { 1.0 / 0.0 }
+
+    #[inline(always)]
+    fn neg_infinity() -> f32 { -1.0 / 0.0 }
+
+    #[inline(always)]
+    fn neg_zero() -> f32 { -0.0 }
+
+    #[inline(always)]
+    fn is_NaN(&self) -> bool { *self != *self }
+
+    #[inline(always)]
+    fn mantissa_digits() -> uint { 24 }
+
+    #[inline(always)]
+    fn digits() -> uint { 6 }
+
+    #[inline(always)]
+    fn epsilon() -> f32 { 1.19209290e-07 }
+
+    #[inline(always)]
+    fn min_exp() -> int { -125 }
+
+    #[inline(always)]
+    fn max_exp() -> int { 128 }
+
+    #[inline(always)]
+    fn min_10_exp() -> int { -37 }
+
+    #[inline(always)]
+    fn max_10_exp() -> int { 38 }
+
+    /// Returns `true` if the number is infinite
+    #[inline(always)]
+    fn is_infinite(&self) -> bool {
+        *self == Float::infinity() || *self == Float::neg_infinity()
+    }
+
+    /// Returns `true` if the number is finite
+    #[inline(always)]
+    fn is_finite(&self) -> bool {
+        !(self.is_NaN() || self.is_infinite())
+    }
+
+    ///
+    /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
+    /// produces a more accurate result with better performance than a separate multiplication
+    /// operation followed by an add.
+    ///
+    #[inline(always)]
+    fn mul_add(&self, a: f32, b: f32) -> f32 {
+        mul_add(*self, a, b)
+    }
+
+    /// Returns the next representable floating-point value in the direction of `other`
+    #[inline(always)]
+    fn next_after(&self, other: f32) -> f32 {
+        next_after(*self, other)
+    }
+}
+
+//
+// Section: String Conversions
+//
+
+///
+/// Converts a float to a string
+///
+/// # Arguments
+///
+/// * num - The float value
+///
 #[inline(always)]
 pub fn to_str(num: f32) -> ~str {
     let (r, _) = strconv::to_str_common(
@@ -529,13 +618,13 @@ pub fn to_str(num: f32) -> ~str {
     r
 }
 
-/**
- * Converts a float to a string in hexadecimal format
- *
- * # Arguments
- *
- * * num - The float value
- */
+///
+/// Converts a float to a string in hexadecimal format
+///
+/// # Arguments
+///
+/// * num - The float value
+///
 #[inline(always)]
 pub fn to_str_hex(num: f32) -> ~str {
     let (r, _) = strconv::to_str_common(
@@ -543,20 +632,20 @@ pub fn to_str_hex(num: f32) -> ~str {
     r
 }
 
-/**
- * Converts a float to a string in a given radix
- *
- * # Arguments
- *
- * * num - The float value
- * * radix - The base to use
- *
- * # Failure
- *
- * Fails if called on a special value like `inf`, `-inf` or `NaN` due to
- * possible misinterpretation of the result at higher bases. If those values
- * are expected, use `to_str_radix_special()` instead.
- */
+///
+/// Converts a float to a string in a given radix
+///
+/// # Arguments
+///
+/// * num - The float value
+/// * radix - The base to use
+///
+/// # Failure
+///
+/// Fails if called on a special value like `inf`, `-inf` or `NaN` due to
+/// possible misinterpretation of the result at higher bases. If those values
+/// are expected, use `to_str_radix_special()` instead.
+///
 #[inline(always)]
 pub fn to_str_radix(num: f32, rdx: uint) -> ~str {
     let (r, special) = strconv::to_str_common(
@@ -566,30 +655,30 @@ pub fn to_str_radix(num: f32, rdx: uint) -> ~str {
     r
 }
 
-/**
- * Converts a float to a string in a given radix, and a flag indicating
- * whether it's a special value
- *
- * # Arguments
- *
- * * num - The float value
- * * radix - The base to use
- */
+///
+/// Converts a float to a string in a given radix, and a flag indicating
+/// whether it's a special value
+///
+/// # Arguments
+///
+/// * num - The float value
+/// * radix - The base to use
+///
 #[inline(always)]
 pub fn to_str_radix_special(num: f32, rdx: uint) -> (~str, bool) {
     strconv::to_str_common(&num, rdx, true,
                            strconv::SignNeg, strconv::DigAll)
 }
 
-/**
- * Converts a float to a string with exactly the number of
- * provided significant digits
- *
- * # Arguments
- *
- * * num - The float value
- * * digits - The number of significant digits
- */
+///
+/// Converts a float to a string with exactly the number of
+/// provided significant digits
+///
+/// # Arguments
+///
+/// * num - The float value
+/// * digits - The number of significant digits
+///
 #[inline(always)]
 pub fn to_str_exact(num: f32, dig: uint) -> ~str {
     let (r, _) = strconv::to_str_common(
@@ -597,15 +686,15 @@ pub fn to_str_exact(num: f32, dig: uint) -> ~str {
     r
 }
 
-/**
- * Converts a float to a string with a maximum number of
- * significant digits
- *
- * # Arguments
- *
- * * num - The float value
- * * digits - The number of significant digits
- */
+///
+/// Converts a float to a string with a maximum number of
+/// significant digits
+///
+/// # Arguments
+///
+/// * num - The float value
+/// * digits - The number of significant digits
+///
 #[inline(always)]
 pub fn to_str_digits(num: f32, dig: uint) -> ~str {
     let (r, _) = strconv::to_str_common(
@@ -625,91 +714,91 @@ impl num::ToStrRadix for f32 {
     }
 }
 
-/**
- * Convert a string in base 10 to a float.
- * Accepts a optional decimal exponent.
- *
- * This function accepts strings such as
- *
- * * '3.14'
- * * '+3.14', equivalent to '3.14'
- * * '-3.14'
- * * '2.5E10', or equivalently, '2.5e10'
- * * '2.5E-10'
- * * '.' (understood as 0)
- * * '5.'
- * * '.5', or, equivalently,  '0.5'
- * * '+inf', 'inf', '-inf', 'NaN'
- *
- * Leading and trailing whitespace represent an error.
- *
- * # Arguments
- *
- * * num - A string
- *
- * # Return value
- *
- * `none` if the string did not represent a valid number.  Otherwise,
- * `Some(n)` where `n` is the floating-point number represented by `num`.
- */
+///
+/// Convert a string in base 10 to a float.
+/// Accepts a optional decimal exponent.
+///
+/// This function accepts strings such as
+///
+/// * '3.14'
+/// * '+3.14', equivalent to '3.14'
+/// * '-3.14'
+/// * '2.5E10', or equivalently, '2.5e10'
+/// * '2.5E-10'
+/// * '.' (understood as 0)
+/// * '5.'
+/// * '.5', or, equivalently,  '0.5'
+/// * '+inf', 'inf', '-inf', 'NaN'
+///
+/// Leading and trailing whitespace represent an error.
+///
+/// # Arguments
+///
+/// * num - A string
+///
+/// # Return value
+///
+/// `none` if the string did not represent a valid number.  Otherwise,
+/// `Some(n)` where `n` is the floating-point number represented by `num`.
+///
 #[inline(always)]
 pub fn from_str(num: &str) -> Option<f32> {
     strconv::from_str_common(num, 10u, true, true, true,
                              strconv::ExpDec, false, false)
 }
 
-/**
- * Convert a string in base 16 to a float.
- * Accepts a optional binary exponent.
- *
- * This function accepts strings such as
- *
- * * 'a4.fe'
- * * '+a4.fe', equivalent to 'a4.fe'
- * * '-a4.fe'
- * * '2b.aP128', or equivalently, '2b.ap128'
- * * '2b.aP-128'
- * * '.' (understood as 0)
- * * 'c.'
- * * '.c', or, equivalently,  '0.c'
- * * '+inf', 'inf', '-inf', 'NaN'
- *
- * Leading and trailing whitespace represent an error.
- *
- * # Arguments
- *
- * * num - A string
- *
- * # Return value
- *
- * `none` if the string did not represent a valid number.  Otherwise,
- * `Some(n)` where `n` is the floating-point number represented by `[num]`.
- */
+///
+/// Convert a string in base 16 to a float.
+/// Accepts a optional binary exponent.
+///
+/// This function accepts strings such as
+///
+/// * 'a4.fe'
+/// * '+a4.fe', equivalent to 'a4.fe'
+/// * '-a4.fe'
+/// * '2b.aP128', or equivalently, '2b.ap128'
+/// * '2b.aP-128'
+/// * '.' (understood as 0)
+/// * 'c.'
+/// * '.c', or, equivalently,  '0.c'
+/// * '+inf', 'inf', '-inf', 'NaN'
+///
+/// Leading and trailing whitespace represent an error.
+///
+/// # Arguments
+///
+/// * num - A string
+///
+/// # Return value
+///
+/// `none` if the string did not represent a valid number.  Otherwise,
+/// `Some(n)` where `n` is the floating-point number represented by `[num]`.
+///
 #[inline(always)]
 pub fn from_str_hex(num: &str) -> Option<f32> {
     strconv::from_str_common(num, 16u, true, true, true,
                              strconv::ExpBin, false, false)
 }
 
-/**
- * Convert a string in an given base to a float.
- *
- * Due to possible conflicts, this function does **not** accept
- * the special values `inf`, `-inf`, `+inf` and `NaN`, **nor**
- * does it recognize exponents of any kind.
- *
- * Leading and trailing whitespace represent an error.
- *
- * # Arguments
- *
- * * num - A string
- * * radix - The base to use. Must lie in the range [2 .. 36]
- *
- * # Return value
- *
- * `none` if the string did not represent a valid number. Otherwise,
- * `Some(n)` where `n` is the floating-point number represented by `num`.
- */
+///
+/// Convert a string in an given base to a float.
+///
+/// Due to possible conflicts, this function does **not** accept
+/// the special values `inf`, `-inf`, `+inf` and `NaN`, **nor**
+/// does it recognize exponents of any kind.
+///
+/// Leading and trailing whitespace represent an error.
+///
+/// # Arguments
+///
+/// * num - A string
+/// * radix - The base to use. Must lie in the range [2 .. 36]
+///
+/// # Return value
+///
+/// `none` if the string did not represent a valid number. Otherwise,
+/// `Some(n)` where `n` is the floating-point number represented by `num`.
+///
 #[inline(always)]
 pub fn from_str_radix(num: &str, rdx: uint) -> Option<f32> {
     strconv::from_str_common(num, rdx, true, true, false,
@@ -746,6 +835,28 @@ mod tests {
     #[test]
     fn test_num() {
         num::test_num(10f32, 2f32);
+    }
+
+    #[test]
+    fn test_min() {
+        assert_eq!(1f32.min(&2f32), 1f32);
+        assert_eq!(2f32.min(&1f32), 1f32);
+    }
+
+    #[test]
+    fn test_max() {
+        assert_eq!(1f32.max(&2f32), 2f32);
+        assert_eq!(2f32.max(&1f32), 2f32);
+    }
+
+    #[test]
+    fn test_clamp() {
+        assert_eq!(1f32.clamp(&2f32, &4f32), 2f32);
+        assert_eq!(8f32.clamp(&2f32, &4f32), 4f32);
+        assert_eq!(3f32.clamp(&2f32, &4f32), 3f32);
+        assert!(3f32.clamp(&Float::NaN::<f32>(), &4f32).is_NaN());
+        assert!(3f32.clamp(&2f32, &Float::NaN::<f32>()).is_NaN());
+        assert!(Float::NaN::<f32>().clamp(&2f32, &4f32).is_NaN());
     }
 
     #[test]
@@ -846,7 +957,7 @@ mod tests {
         assert_eq!((-1f32).abs(), 1f32);
         assert_eq!(neg_infinity.abs(), infinity);
         assert_eq!((1f32/neg_infinity).abs(), 0f32);
-        assert!(is_NaN(NaN.abs()));
+        assert!(NaN.abs().is_NaN());
 
         assert_eq!(infinity.signum(), 1f32);
         assert_eq!(1f32.signum(), 1f32);
@@ -855,7 +966,7 @@ mod tests {
         assert_eq!((-1f32).signum(), -1f32);
         assert_eq!(neg_infinity.signum(), -1f32);
         assert_eq!((1f32/neg_infinity).signum(), -1f32);
-        assert!(is_NaN(NaN.signum()));
+        assert!(NaN.signum().is_NaN());
 
         assert!(infinity.is_positive());
         assert!(1f32.is_positive());
@@ -874,6 +985,12 @@ mod tests {
         assert!(neg_infinity.is_negative());
         assert!((1f32/neg_infinity).is_negative());
         assert!(!NaN.is_negative());
+    }
+
+    #[test]
+    fn test_primitive() {
+        assert_eq!(Primitive::bits::<f32>(), sys::size_of::<f32>() * 8);
+        assert_eq!(Primitive::bytes::<f32>(), sys::size_of::<f32>());
     }
 }
 

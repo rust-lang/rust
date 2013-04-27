@@ -148,10 +148,12 @@ impl Shr<uint, BigUint> for BigUint {
 
 impl Zero for BigUint {
     fn zero() -> BigUint { BigUint::new(~[]) }
+
+    fn is_zero(&self) -> bool { self.data.is_empty() }
 }
 
 impl One for BigUint {
-    pub fn one() -> BigUint { BigUint::new(~[1]) }
+    fn one() -> BigUint { BigUint::new(~[1]) }
 }
 
 impl Unsigned for BigUint {}
@@ -310,7 +312,7 @@ impl ToStrRadix for BigUint {
                 result += [m0.to_uint() as BigDigit];
                 m = d;
             }
-            if m.is_not_zero() {
+            if !m.is_zero() {
                 result += [m.to_uint() as BigDigit];
             }
             return result;
@@ -469,10 +471,6 @@ pub impl BigUint {
     fn quot_rem(&self, other: &BigUint) -> (BigUint, BigUint) {
         self.div_mod(other)
     }
-
-    fn is_zero(&self) -> bool { self.data.is_empty() }
-
-    fn is_not_zero(&self) -> bool { !self.data.is_empty() }
 
     fn to_uint(&self) -> uint {
         match self.data.len() {
@@ -684,6 +682,8 @@ impl Zero for BigInt {
     pub fn zero() -> BigInt {
         BigInt::from_biguint(Zero, Zero::zero())
     }
+
+    fn is_zero(&self) -> bool { self.sign == Zero }
 }
 
 impl One for BigInt {
@@ -908,8 +908,6 @@ pub impl BigInt {
     }
 
     fn is_zero(&self) -> bool { self.sign == Zero }
-
-    fn is_not_zero(&self) -> bool { self.sign != Zero }
 
     fn to_uint(&self) -> uint {
         match self.sign {
@@ -1212,10 +1210,10 @@ mod biguint_tests {
             let b = BigUint::from_slice(bVec);
             let c = BigUint::from_slice(cVec);
 
-            if a.is_not_zero() {
+            if !a.is_zero() {
                 assert!(c.quot_rem(&a) == (b, Zero::zero()));
             }
-            if b.is_not_zero() {
+            if !b.is_zero() {
                 assert!(c.quot_rem(&b) == (a, Zero::zero()));
             }
         }
@@ -1227,7 +1225,7 @@ mod biguint_tests {
             let c = BigUint::from_slice(cVec);
             let d = BigUint::from_slice(dVec);
 
-            if b.is_not_zero() { assert!(a.quot_rem(&b) == (c, d)); }
+            if !b.is_zero() { assert!(a.quot_rem(&b) == (c, d)); }
         }
     }
 
@@ -1577,7 +1575,7 @@ mod bigint_tests {
     fn test_div_mod() {
         fn check_sub(a: &BigInt, b: &BigInt, ans_d: &BigInt, ans_m: &BigInt) {
             let (d, m) = a.div_mod(b);
-            if m.is_not_zero() {
+            if !m.is_zero() {
                 assert!(m.sign == b.sign);
             }
             assert!(m.abs() <= b.abs());
@@ -1606,8 +1604,8 @@ mod bigint_tests {
             let b = BigInt::from_slice(Plus, bVec);
             let c = BigInt::from_slice(Plus, cVec);
 
-            if a.is_not_zero() { check(&c, &a, &b, &Zero::zero()); }
-            if b.is_not_zero() { check(&c, &b, &a, &Zero::zero()); }
+            if !a.is_zero() { check(&c, &a, &b, &Zero::zero()); }
+            if !b.is_zero() { check(&c, &b, &a, &Zero::zero()); }
         }
 
         for quot_rem_quadruples.each |elm| {
@@ -1617,7 +1615,7 @@ mod bigint_tests {
             let c = BigInt::from_slice(Plus, cVec);
             let d = BigInt::from_slice(Plus, dVec);
 
-            if b.is_not_zero() {
+            if !b.is_zero() {
                 check(&a, &b, &c, &d);
             }
         }
@@ -1628,7 +1626,7 @@ mod bigint_tests {
     fn test_quot_rem() {
         fn check_sub(a: &BigInt, b: &BigInt, ans_q: &BigInt, ans_r: &BigInt) {
             let (q, r) = a.quot_rem(b);
-            if r.is_not_zero() {
+            if !r.is_zero() {
                 assert!(r.sign == a.sign);
             }
             assert!(r.abs() <= b.abs());
@@ -1649,8 +1647,8 @@ mod bigint_tests {
             let b = BigInt::from_slice(Plus, bVec);
             let c = BigInt::from_slice(Plus, cVec);
 
-            if a.is_not_zero() { check(&c, &a, &b, &Zero::zero()); }
-            if b.is_not_zero() { check(&c, &b, &a, &Zero::zero()); }
+            if !a.is_zero() { check(&c, &a, &b, &Zero::zero()); }
+            if !b.is_zero() { check(&c, &b, &a, &Zero::zero()); }
         }
 
         for quot_rem_quadruples.each |elm| {
@@ -1660,7 +1658,7 @@ mod bigint_tests {
             let c = BigInt::from_slice(Plus, cVec);
             let d = BigInt::from_slice(Plus, dVec);
 
-            if b.is_not_zero() {
+            if !b.is_zero() {
                 check(&a, &b, &c, &d);
             }
         }

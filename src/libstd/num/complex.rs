@@ -125,6 +125,11 @@ impl<T: Copy + Num> Zero for Cmplx<T> {
     fn zero() -> Cmplx<T> {
         Cmplx::new(Zero::zero(), Zero::zero())
     }
+
+    #[inline]
+    fn is_zero(&self) -> bool {
+        *self == Zero::zero()
+    }
 }
 
 impl<T: Copy + Num> One for Cmplx<T> {
