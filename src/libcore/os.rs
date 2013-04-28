@@ -639,6 +639,27 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
     }
 }
 
+/// Creates a directory with a given mode.
+/// Returns true iff creation
+/// succeeded. Also creates all intermediate subdirectories
+/// if they don't already exist, giving all of them the same mode.
+pub fn mkdir_recursive(p: &Path, mode: c_int) -> bool {
+    if path_is_dir(p) {
+        return true;
+    }
+    let parent = p.dir_path();
+    debug!("mkdir_recursive: parent = %s",
+           parent.to_str());
+    if parent.to_str() == ~"."
+        || parent.to_str() == ~"/" { // !!!
+        // No parent directories to create
+        path_is_dir(&parent) && make_dir(p, mode)
+    }
+    else {
+        mkdir_recursive(&parent, mode) && make_dir(p, mode)
+    }
+}
+
 /// Lists the contents of a directory
 #[allow(non_implicitly_copyable_typarams)]
 pub fn list_dir(p: &Path) -> ~[~str] {
@@ -1467,4 +1488,18 @@ mod tests {
           assert!((remove_file(&out)));
         }
     }
+
+    #[test]
+    fn recursive_mkdir_ok() {
+        use libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
+
+        let root = os::tmpdir();
+        let path = "xy/z/zy";
+        let nested = root.push(path);
+        assert!(os::mkdir_recursive(&nested,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+        assert!(os::path_is_dir(&root.push("xy")));
+        assert!(os::path_is_dir(&root.push("xy/z")));
+        assert!(os::path_is_dir(&nested));
+    }
+
 }
