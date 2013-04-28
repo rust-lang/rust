@@ -15,16 +15,15 @@
 // xfail-test
 
 extern mod std;
-use task::join;
 
-fn loop(n: int) {
-    let t1: task;
-    let t2: task;
-
-    if n > 0 { t1 = spawn loop(n - 1); t2 = spawn loop(n - 1); }
-
-
+fn loopy(n: int) {
+    if n > 0 { do spawn { loopy(n - 1) }; do spawn { loopy(n - 1) }; }
     loop { }
 }
 
-pub fn main() { let t: task = spawn loop(5); join(t); }
+pub fn main() { 
+    // Commenting this out, as this will hang forever otherwise.
+    // Even after seeing the comment above, I'm not sure what the
+    // intention of this test is.
+    // do spawn { loopy(5) }; 
+}
