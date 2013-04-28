@@ -726,6 +726,21 @@ impl Float for float {
     #[inline(always)]
     fn is_NaN(&self) -> bool { *self != *self }
 
+    /// Returns `true` if the number is infinite
+    #[inline(always)]
+    fn is_infinite(&self) -> bool {
+        *self == Float::infinity() || *self == Float::neg_infinity()
+    }
+
+    /// Returns `true` if the number is finite
+    #[inline(always)]
+    fn is_finite(&self) -> bool {
+        !(self.is_NaN() || self.is_infinite())
+    }
+
+    #[inline(always)]
+    fn radix() -> uint { Float::radix::<f64>() }
+
     #[inline(always)]
     fn mantissa_digits() -> uint { Float::mantissa_digits::<f64>() }
 
@@ -747,17 +762,23 @@ impl Float for float {
     #[inline(always)]
     fn max_10_exp() -> int { Float::max_10_exp::<f64>() }
 
-    /// Returns `true` if the number is infinite
+    /// Constructs a floating-point number from a significand and exponent
     #[inline(always)]
-    fn is_infinite(&self) -> bool {
-        *self == Float::infinity() || *self == Float::neg_infinity()
+    fn encode(sig: float, exp: int) -> float { Float::encode(sig as f64, exp) as float  }
+
+    /// Splits the number into its significand and exponent
+    #[inline(always)]
+    fn decode(&self) -> (float, int) {
+        match (*self as f64).decode() {
+            (sig, exp) => (sig as float, exp)
+        }
     }
 
-    /// Returns `true` if the number is finite
     #[inline(always)]
-    fn is_finite(&self) -> bool {
-        !(self.is_NaN() || self.is_infinite())
-    }
+    fn significand(&self) -> float { (*self as f64).significand() as float }
+
+    #[inline(always)]
+    fn exponent(&self) -> int { (*self as f64).exponent() }
 
     ///
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
@@ -949,6 +970,39 @@ mod tests {
     fn test_primitive() {
         assert_eq!(Primitive::bits::<float>(), sys::size_of::<float>() * 8);
         assert_eq!(Primitive::bytes::<float>(), sys::size_of::<float>());
+    }
+
+    #[cfg(test)]
+    fn float_encode(sig: float, exp: int) -> float {
+        sig * (exp as float).exp2()
+    }
+
+    #[test]
+    fn test_encode() {
+        let sig = 0.54321f, exp = 12;
+        assert_eq!(Float::encode(sig, exp), float_encode(sig, exp));
+        assert_eq!(Float::encode(sig, -exp), float_encode(sig, -exp));
+    }
+
+    #[test]
+    fn test_decode() {
+        let sig = 0.54321f, exp = 12;
+        assert_eq!(float_encode(sig, exp).decode(), (sig, exp));
+        assert_eq!(float_encode(sig, -exp).decode(), (sig, -exp));
+    }
+
+    #[test]
+    fn test_significand() {
+        let sig = 0.54321f, exp = 12;
+        assert_eq!(Float::encode(sig, exp).significand(), float_encode(sig, -exp).significand());
+        assert_eq!(Float::encode(sig, -exp).significand(), float_encode(sig, -exp).significand());
+    }
+
+    #[test]
+    fn test_exponent() {
+        let sig = 0.54321f, exp = 12;
+        assert_eq!(Float::encode(sig, exp).exponent(), float_encode(sig, exp).exponent());
+        assert_eq!(Float::encode(sig, -exp).exponent(), float_encode(sig, -exp).exponent());
     }
 
     #[test]

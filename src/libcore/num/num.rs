@@ -252,6 +252,7 @@ pub trait Float: Real
     fn is_infinite(&self) -> bool;
     fn is_finite(&self) -> bool;
 
+    fn radix() -> uint;
     fn mantissa_digits() -> uint;
     fn digits() -> uint;
     fn epsilon() -> Self;
@@ -259,6 +260,11 @@ pub trait Float: Real
     fn max_exp() -> int;
     fn min_10_exp() -> int;
     fn max_10_exp() -> int;
+
+    fn encode(sig: Self, exp: int) -> Self;
+    fn decode(&self) -> (Self, int);
+    fn significand(&self) -> Self;
+    fn exponent(&self) -> int;
 
     fn mul_add(&self, a: Self, b: Self) -> Self;
     fn next_after(&self, other: Self) -> Self;

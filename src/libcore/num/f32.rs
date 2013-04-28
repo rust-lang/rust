@@ -541,6 +541,21 @@ impl Float for f32 {
     #[inline(always)]
     fn is_NaN(&self) -> bool { *self != *self }
 
+    /// Returns `true` if the number is infinite
+    #[inline(always)]
+    fn is_infinite(&self) -> bool {
+        *self == Float::infinity() || *self == Float::neg_infinity()
+    }
+
+    /// Returns `true` if the number is finite
+    #[inline(always)]
+    fn is_finite(&self) -> bool {
+        !(self.is_NaN() || self.is_infinite())
+    }
+
+    #[inline(always)]
+    fn radix() -> uint { 2 }
+
     #[inline(always)]
     fn mantissa_digits() -> uint { 24 }
 
@@ -562,17 +577,26 @@ impl Float for f32 {
     #[inline(always)]
     fn max_10_exp() -> int { 38 }
 
-    /// Returns `true` if the number is infinite
+    /// Constructs a floating-point number from a significand and exponent
     #[inline(always)]
-    fn is_infinite(&self) -> bool {
-        *self == Float::infinity() || *self == Float::neg_infinity()
+    fn encode(sig: f32, exp: int) -> f32 { ldexp(sig, exp as c_int) }
+
+    /// Splits the number into its significand and exponent
+    #[inline(always)]
+    fn decode(&self) -> (f32, int) {
+        let mut exp = 0;
+        let sig = frexp(*self, &mut exp);
+        (sig, exp as int)
     }
 
-    /// Returns `true` if the number is finite
     #[inline(always)]
-    fn is_finite(&self) -> bool {
-        !(self.is_NaN() || self.is_infinite())
+    fn significand(&self) -> f32 {
+        let mut _exp = 0;
+        frexp(*self, &mut _exp)
     }
+
+    #[inline(always)]
+    fn exponent(&self) -> int { ilog_radix(*self) as int }
 
     ///
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
@@ -982,6 +1006,39 @@ mod tests {
     fn test_primitive() {
         assert_eq!(Primitive::bits::<f32>(), sys::size_of::<f32>() * 8);
         assert_eq!(Primitive::bytes::<f32>(), sys::size_of::<f32>());
+    }
+
+    #[cfg(test)]
+    fn f32_encode(sig: f32, exp: int) -> f32 {
+        sig * (exp as f32).exp2()
+    }
+
+    #[test]
+    fn test_encode() {
+        let sig = 0.54321f32, exp = 12;
+        assert_eq!(Float::encode(sig, exp), f32_encode(sig, exp));
+        assert_eq!(Float::encode(sig, -exp), f32_encode(sig, -exp));
+    }
+
+    #[test]
+    fn test_decode() {
+        let sig = 0.54321f32, exp = 12;
+        assert_eq!(f32_encode(sig, exp).decode(), (sig, exp));
+        assert_eq!(f32_encode(sig, -exp).decode(), (sig, -exp));
+    }
+
+    #[test]
+    fn test_significand() {
+        let sig = 0.54321f32, exp = 12;
+        assert_eq!(Float::encode(sig, exp).significand(), f32_encode(sig, -exp).significand());
+        assert_eq!(Float::encode(sig, -exp).significand(), f32_encode(sig, -exp).significand());
+    }
+
+    #[test]
+    fn test_exponent() {
+        let sig = 0.54321f32, exp = 12;
+        assert_eq!(Float::encode(sig, exp).exponent(), f32_encode(sig, exp).exponent());
+        assert_eq!(Float::encode(sig, -exp).exponent(), f32_encode(sig, -exp).exponent());
     }
 }
 
