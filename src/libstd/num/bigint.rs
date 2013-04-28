@@ -284,6 +284,141 @@ impl Neg<BigUint> for BigUint {
     fn neg(&self) -> BigUint { fail!() }
 }
 
+impl Integer for BigUint {
+    #[inline(always)]
+    fn div(&self, other: &BigUint) -> BigUint {
+        let (d, _) = self.div_mod(other);
+        return d;
+    }
+
+    #[inline(always)]
+    fn modulo(&self, other: &BigUint) -> BigUint {
+        let (_, m) = self.div_mod(other);
+        return m;
+    }
+
+    #[inline(always)]
+    fn div_mod(&self, other: &BigUint) -> (BigUint, BigUint) {
+        if other.is_zero() { fail!() }
+        if self.is_zero() { return (Zero::zero(), Zero::zero()); }
+        if *other == One::one() { return (copy *self, Zero::zero()); }
+
+        match self.cmp(other) {
+            Less    => return (Zero::zero(), copy *self),
+            Equal   => return (One::one(), Zero::zero()),
+            Greater => {} // Do nothing
+        }
+
+        let mut shift = 0;
+        let mut n = *other.data.last();
+        while n < (1 << BigDigit::bits - 2) {
+            n <<= 1;
+            shift += 1;
+        }
+        assert!(shift < BigDigit::bits);
+        let (d, m) = div_mod_inner(self << shift, other << shift);
+        return (d, m >> shift);
+
+        #[inline(always)]
+        fn div_mod_inner(a: BigUint, b: BigUint) -> (BigUint, BigUint) {
+            let mut m = a;
+            let mut d = Zero::zero::<BigUint>();
+            let mut n = 1;
+            while m >= b {
+                let mut (d0, d_unit, b_unit) = div_estimate(&m, &b, n);
+                let mut prod = b * d0;
+                while prod > m {
+                    d0   -= d_unit;
+                    prod -= b_unit;
+                }
+                if d0.is_zero() {
+                    n = 2;
+                    loop;
+                }
+                n = 1;
+                d += d0;
+                m -= prod;
+            }
+            return (d, m);
+        }
+
+        #[inline(always)]
+        fn div_estimate(a: &BigUint, b: &BigUint, n: uint)
+            -> (BigUint, BigUint, BigUint) {
+            if a.data.len() < n {
+                return (Zero::zero(), Zero::zero(), copy *a);
+            }
+
+            let an = vec::slice(a.data, a.data.len() - n, a.data.len());
+            let bn = *b.data.last();
+            let mut d = ~[];
+            let mut carry = 0;
+            for an.each_reverse |elt| {
+                let ai = BigDigit::to_uint(carry, *elt);
+                let di = ai / (bn as uint);
+                assert!(di < BigDigit::base);
+                carry = (ai % (bn as uint)) as BigDigit;
+                d = ~[di as BigDigit] + d;
+            }
+
+            let shift = (a.data.len() - an.len()) - (b.data.len() - 1);
+            if shift == 0 {
+                return (BigUint::new(d), One::one(), copy *b);
+            }
+            return (BigUint::from_slice(d).shl_unit(shift),
+                    One::one::<BigUint>().shl_unit(shift),
+                    b.shl_unit(shift));
+        }
+    }
+
+    #[inline(always)]
+    fn quot_rem(&self, other: &BigUint) -> (BigUint, BigUint) {
+        self.div_mod(other)
+    }
+
+    /**
+     * Calculates the Greatest Common Divisor (GCD) of the number and `other`
+     *
+     * The result is always positive
+     */
+    #[inline(always)]
+    fn gcd(&self, other: &BigUint) -> BigUint {
+        // Use Euclid's algorithm
+        let mut m = *self, n = *other;
+        while !m.is_zero() {
+            let temp = m;
+            m = n % temp;
+            n = temp;
+        }
+        return n;
+    }
+
+    /**
+     * Calculates the Lowest Common Multiple (LCM) of the number and `other`
+     */
+    #[inline(always)]
+    fn lcm(&self, other: &BigUint) -> BigUint { ((*self * *other) / self.gcd(other)) }
+
+    /// Returns `true` if the number can be divided by `other` without leaving a remainder
+    #[inline(always)]
+    fn divisible_by(&self, other: &BigUint) -> bool { (*self % *other).is_zero() }
+
+    /// Returns `true` if the number is divisible by `2`
+    #[inline(always)]
+    fn is_even(&self) -> bool {
+        // Considering only the last digit.
+        if self.data.is_empty() {
+            true
+        } else {
+            self.data.last().is_even()
+        }
+    }
+
+    /// Returns `true` if the number is not divisible by `2`
+    #[inline(always)]
+    fn is_odd(&self) -> bool { !self.is_even() }
+}
+
 impl IntConvertible for BigUint {
     fn to_int(&self) -> int {
         uint::min(self.to_uint(), int::max_value as uint) as int
@@ -386,93 +521,7 @@ pub impl BigUint {
         }
     }
 
-    fn abs(&self) -> BigUint { copy *self }
-
-    fn div(&self, other: &BigUint) -> BigUint {
-        let (d, _) = self.div_mod(other);
-        return d;
-    }
-    fn modulo(&self, other: &BigUint) -> BigUint {
-        let (_, m) = self.div_mod(other);
-        return m;
-    }
-
-    fn div_mod(&self, other: &BigUint) -> (BigUint, BigUint) {
-        if other.is_zero() { fail!() }
-        if self.is_zero() { return (Zero::zero(), Zero::zero()); }
-        if *other == One::one() { return (copy *self, Zero::zero()); }
-
-        match self.cmp(other) {
-            Less    => return (Zero::zero(), copy *self),
-            Equal   => return (One::one(), Zero::zero()),
-            Greater => {} // Do nothing
-        }
-
-        let mut shift = 0;
-        let mut n = *other.data.last();
-        while n < (1 << BigDigit::bits - 2) {
-            n <<= 1;
-            shift += 1;
-        }
-        assert!(shift < BigDigit::bits);
-        let (d, m) = div_mod_inner(self << shift, other << shift);
-        return (d, m >> shift);
-
-        fn div_mod_inner(a: BigUint, b: BigUint) -> (BigUint, BigUint) {
-            let mut m = a;
-            let mut d = Zero::zero::<BigUint>();
-            let mut n = 1;
-            while m >= b {
-                let mut (d0, d_unit, b_unit) = div_estimate(&m, &b, n);
-                let mut prod = b * d0;
-                while prod > m {
-                    d0   -= d_unit;
-                    prod -= b_unit;
-                }
-                if d0.is_zero() {
-                    n = 2;
-                    loop;
-                }
-                n = 1;
-                d += d0;
-                m -= prod;
-            }
-            return (d, m);
-        }
-
-        fn div_estimate(a: &BigUint, b: &BigUint, n: uint)
-            -> (BigUint, BigUint, BigUint) {
-            if a.data.len() < n {
-                return (Zero::zero(), Zero::zero(), copy *a);
-            }
-
-            let an = vec::slice(a.data, a.data.len() - n, a.data.len());
-            let bn = *b.data.last();
-            let mut d = ~[];
-            let mut carry = 0;
-            for an.each_reverse |elt| {
-                let ai = BigDigit::to_uint(carry, *elt);
-                let di = ai / (bn as uint);
-                assert!(di < BigDigit::base);
-                carry = (ai % (bn as uint)) as BigDigit;
-                d = ~[di as BigDigit] + d;
-            }
-
-            let shift = (a.data.len() - an.len()) - (b.data.len() - 1);
-            if shift == 0 {
-                return (BigUint::new(d), One::one(), copy *b);
-            }
-            return (BigUint::from_slice(d).shl_unit(shift),
-                    One::one::<BigUint>().shl_unit(shift),
-                    b.shl_unit(shift));
-        }
-    }
-
-    fn quot_rem(&self, other: &BigUint) -> (BigUint, BigUint) {
-        self.div_mod(other)
-    }
-
-    fn to_uint(&self) -> uint {
+    pub fn to_uint(&self) -> uint {
         match self.data.len() {
             0 => 0,
             1 => self.data[0] as uint,
@@ -679,7 +728,7 @@ impl Shr<uint, BigInt> for BigInt {
 }
 
 impl Zero for BigInt {
-    pub fn zero() -> BigInt {
+    fn zero() -> BigInt {
         BigInt::from_biguint(Zero, Zero::zero())
     }
 
@@ -687,7 +736,7 @@ impl Zero for BigInt {
 }
 
 impl One for BigInt {
-    pub fn one() -> BigInt {
+    fn one() -> BigInt {
         BigInt::from_biguint(Plus, One::one())
     }
 }
@@ -778,6 +827,88 @@ impl Neg<BigInt> for BigInt {
     }
 }
 
+impl Integer for BigInt {
+    #[inline(always)]
+    fn div(&self, other: &BigInt) -> BigInt {
+        let (d, _) = self.div_mod(other);
+        return d;
+    }
+
+    #[inline(always)]
+    fn modulo(&self, other: &BigInt) -> BigInt {
+        let (_, m) = self.div_mod(other);
+        return m;
+    }
+
+    #[inline(always)]
+    fn div_mod(&self, other: &BigInt) -> (BigInt, BigInt) {
+        // m.sign == other.sign
+        let (d_ui, m_ui) = self.data.quot_rem(&other.data);
+        let d = BigInt::from_biguint(Plus, d_ui),
+            m = BigInt::from_biguint(Plus, m_ui);
+        match (self.sign, other.sign) {
+            (_,    Zero)   => fail!(),
+            (Plus, Plus)  | (Zero, Plus)  => (d, m),
+            (Plus, Minus) | (Zero, Minus) => if m.is_zero() {
+                (-d, Zero::zero())
+            } else {
+                (-d - One::one(), m + *other)
+            },
+            (Minus, Plus) => if m.is_zero() {
+                (-d, Zero::zero())
+            } else {
+                (-d - One::one(), other - m)
+            },
+            (Minus, Minus) => (d, -m)
+        }
+    }
+
+    #[inline(always)]
+    fn quot_rem(&self, other: &BigInt) -> (BigInt, BigInt) {
+        // r.sign == self.sign
+        let (q_ui, r_ui) = self.data.div_mod(&other.data);
+        let q = BigInt::from_biguint(Plus, q_ui);
+        let r = BigInt::from_biguint(Plus, r_ui);
+        match (self.sign, other.sign) {
+            (_,    Zero)   => fail!(),
+            (Plus, Plus)  | (Zero, Plus)  => ( q,  r),
+            (Plus, Minus) | (Zero, Minus) => (-q,  r),
+            (Minus, Plus)                 => (-q, -r),
+            (Minus, Minus)                => ( q, -r)
+        }
+    }
+
+    /**
+     * Calculates the Greatest Common Divisor (GCD) of the number and `other`
+     *
+     * The result is always positive
+     */
+    #[inline(always)]
+    fn gcd(&self, other: &BigInt) -> BigInt {
+        BigInt::from_biguint(Plus, self.data.gcd(&other.data))
+    }
+
+    /**
+     * Calculates the Lowest Common Multiple (LCM) of the number and `other`
+     */
+    #[inline(always)]
+    fn lcm(&self, other: &BigInt) -> BigInt {
+        BigInt::from_biguint(Plus, self.data.lcm(&other.data))
+    }
+
+    /// Returns `true` if the number can be divided by `other` without leaving a remainder
+    #[inline(always)]
+    fn divisible_by(&self, other: &BigInt) -> bool { self.data.divisible_by(&other.data) }
+
+    /// Returns `true` if the number is divisible by `2`
+    #[inline(always)]
+    fn is_even(&self) -> bool { self.data.is_even() }
+
+    /// Returns `true` if the number is not divisible by `2`
+    #[inline(always)]
+    fn is_odd(&self) -> bool { self.data.is_odd() }
+}
+
 impl IntConvertible for BigInt {
     fn to_int(&self) -> int {
         match self.sign {
@@ -813,7 +944,7 @@ impl ToStrRadix for BigInt {
 
 impl FromStrRadix for BigInt {
     /// Creates and initializes an BigInt.
-    pub fn from_str_radix(s: &str, radix: uint)
+    fn from_str_radix(s: &str, radix: uint)
         -> Option<BigInt> {
         BigInt::parse_bytes(str::to_bytes(s), radix)
     }
@@ -857,57 +988,6 @@ pub impl BigInt {
         return BigUint::parse_bytes(vec::slice(buf, start, buf.len()), radix)
             .map(|bu| BigInt::from_biguint(sign, *bu));
     }
-
-    fn abs(&self) -> BigInt {
-        BigInt::from_biguint(Plus, copy self.data)
-    }
-
-    fn div(&self, other: &BigInt) -> BigInt {
-        let (d, _) = self.div_mod(other);
-        return d;
-    }
-    fn modulo(&self, other: &BigInt) -> BigInt {
-        let (_, m) = self.div_mod(other);
-        return m;
-    }
-
-    fn div_mod(&self, other: &BigInt) -> (BigInt, BigInt) {
-        // m.sign == other.sign
-        let (d_ui, m_ui) = self.data.quot_rem(&other.data);
-        let d = BigInt::from_biguint(Plus, d_ui),
-            m = BigInt::from_biguint(Plus, m_ui);
-        match (self.sign, other.sign) {
-            (_,    Zero)   => fail!(),
-            (Plus, Plus)  | (Zero, Plus)  => (d, m),
-            (Plus, Minus) | (Zero, Minus) => if m.is_zero() {
-                (-d, Zero::zero())
-            } else {
-                (-d - One::one(), m + *other)
-            },
-            (Minus, Plus) => if m.is_zero() {
-                (-d, Zero::zero())
-            } else {
-                (-d - One::one(), other - m)
-            },
-            (Minus, Minus) => (d, -m)
-        }
-    }
-
-    fn quot_rem(&self, other: &BigInt) -> (BigInt, BigInt) {
-        // r.sign == self.sign
-        let (q_ui, r_ui) = self.data.div_mod(&other.data);
-        let q = BigInt::from_biguint(Plus, q_ui);
-        let r = BigInt::from_biguint(Plus, r_ui);
-        match (self.sign, other.sign) {
-            (_,    Zero)   => fail!(),
-            (Plus, Plus)  | (Zero, Plus)  => ( q,  r),
-            (Plus, Minus) | (Zero, Minus) => (-q,  r),
-            (Minus, Plus)                 => (-q, -r),
-            (Minus, Minus)                => ( q, -r)
-        }
-    }
-
-    fn is_zero(&self) -> bool { self.sign == Zero }
 
     fn to_uint(&self) -> uint {
         match self.sign {
@@ -1227,6 +1307,41 @@ mod biguint_tests {
 
             if !b.is_zero() { assert!(a.quot_rem(&b) == (c, d)); }
         }
+    }
+
+    #[test]
+    fn test_gcd() {
+        fn check(a: uint, b: uint, c: uint) {
+            let big_a = BigUint::from_uint(a);
+            let big_b = BigUint::from_uint(b);
+            let big_c = BigUint::from_uint(c);
+
+            assert_eq!(big_a.gcd(&big_b), big_c);
+        }
+
+        check(10, 2, 2);
+        check(10, 3, 1);
+        check(0, 3, 3);
+        check(3, 3, 3);
+        check(56, 42, 14);
+    }
+
+    #[test]
+    fn test_lcm() {
+        fn check(a: uint, b: uint, c: uint) {
+            let big_a = BigUint::from_uint(a);
+            let big_b = BigUint::from_uint(b);
+            let big_c = BigUint::from_uint(c);
+
+            assert_eq!(big_a.lcm(&big_b), big_c);
+        }
+
+        check(1, 0, 0);
+        check(0, 1, 0);
+        check(1, 1, 1);
+        check(8, 9, 72);
+        check(11, 5, 55);
+        check(99, 17, 1683);
     }
 
     fn to_str_pairs() -> ~[ (BigUint, ~[(uint, ~str)]) ] {
@@ -1665,10 +1780,49 @@ mod bigint_tests {
     }
 
     #[test]
+    fn test_gcd() {
+        fn check(a: int, b: int, c: int) {
+            let big_a: BigInt = IntConvertible::from_int(a);
+            let big_b: BigInt = IntConvertible::from_int(b);
+            let big_c: BigInt = IntConvertible::from_int(c);
+
+            assert_eq!(big_a.gcd(&big_b), big_c);
+        }
+
+        check(10, 2, 2);
+        check(10, 3, 1);
+        check(0, 3, 3);
+        check(3, 3, 3);
+        check(56, 42, 14);
+        check(3, -3, 3);
+        check(-6, 3, 3);
+        check(-4, -2, 2);
+    }
+
+    #[test]
+    fn test_lcm() {
+        fn check(a: int, b: int, c: int) {
+            let big_a: BigInt = IntConvertible::from_int(a);
+            let big_b: BigInt = IntConvertible::from_int(b);
+            let big_c: BigInt = IntConvertible::from_int(c);
+
+            assert_eq!(big_a.lcm(&big_b), big_c);
+        }
+
+        check(1, 0, 0);
+        check(0, 1, 0);
+        check(1, 1, 1);
+        check(-1, 1, 1);
+        check(1, -1, 1);
+        check(-1, -1, 1);
+        check(8, 9, 72);
+        check(11, 5, 55);
+    }
+
+    #[test]
     fn test_to_str_radix() {
         fn check(n: int, ans: &str) {
-            assert!(ans == IntConvertible::from_int::<BigInt>(
-                n).to_str_radix(10));
+            assert!(ans == IntConvertible::from_int::<BigInt>(n).to_str_radix(10));
         }
         check(10, "10");
         check(1, "1");
