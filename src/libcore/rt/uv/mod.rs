@@ -132,28 +132,38 @@ pub impl IdleWatcher {
             let handle = uvll::idle_new();
             assert!(handle.is_not_null());
             assert!(0 == uvll::idle_init(loop_.native_handle(), handle));
-            uvll::set_data_for_uv_handle(handle, null::<()>());
-            NativeHandle::from_native_handle(handle)
+            let mut watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
+            watcher.install_watcher_data();
+            return watcher
         }
     }
 
     fn start(&mut self, cb: IdleCallback) {
+        {
+            let data = self.get_watcher_data();
+            data.idle_cb = Some(cb);
+        }
 
-        self.set_callback(cb);
         unsafe {
             assert!(0 == uvll::idle_start(self.native_handle(), idle_cb))
         };
 
         extern fn idle_cb(handle: *uvll::uv_idle_t, status: c_int) {
-            let idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
-            let cb: &IdleCallback = idle_watcher.borrow_callback();
+            let mut idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
+            let data = idle_watcher.get_watcher_data();
+            let cb: &IdleCallback = data.idle_cb.get_ref();
             let status = status_to_maybe_uv_error(handle, status);
             (*cb)(idle_watcher, status);
         }
     }
 
     fn stop(&mut self) {
-        unsafe { assert!(0 == uvll::idle_stop(self.native_handle())); }
+        // NB: Not resetting the Rust idl_cb to None here because `stop` is likely
+        // called from *within* the idle callback, which would cause a use after free
+
+        unsafe {
+            assert!(0 == uvll::idle_stop(self.native_handle()));
+        }
     }
 
     fn close(self) {
@@ -162,7 +172,7 @@ pub impl IdleWatcher {
         extern fn close_cb(handle: *uvll::uv_idle_t) {
             unsafe {
                 let mut idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
-                idle_watcher.drop_callback::<IdleCallback>();
+                idle_watcher.drop_watcher_data();
                 uvll::idle_delete(handle);
             }
         }
@@ -185,13 +195,11 @@ struct WatcherData {
     connect_cb: Option<ConnectionCallback>,
     close_cb: Option<NullCallback>,
     alloc_cb: Option<AllocCallback>,
+    idle_cb: Option<IdleCallback>
 }
 
 pub trait WatcherInterop {
     fn event_loop(&self) -> Loop;
-    fn set_callback<CB: Callback>(&mut self, cb: CB);
-    fn drop_callback<CB: Callback>(&mut self);
-    fn borrow_callback<CB: Callback>(&self) -> &CB;
     fn install_watcher_data(&mut self);
     fn get_watcher_data<'r>(&'r mut self) -> &'r mut WatcherData;
     fn drop_watcher_data(&mut self);
@@ -207,46 +215,6 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
         }
     }
 
-    /// Set the custom data on a handle to a callback Note: This is only
-    /// suitable for watchers that make just one type of callback.  For
-    /// others use WatcherData
-    pub fn set_callback<CB: Callback>(&mut self, cb: CB) {
-        unsafe {
-            self.drop_callback::<CB>();
-
-            // XXX: Boxing the callback so it fits into a
-            // pointer. Unfortunate extra allocation
-            let boxed_cb = ~cb;
-            let data = transmute::<~CB, *c_void>(boxed_cb);
-            uvll::set_data_for_uv_handle(self.native_handle(), data);
-        }
-    }
-
-    /// Delete a callback from a handle's custom data
-    pub fn drop_callback<CB: Callback>(&mut self) {
-        unsafe {
-            let handle = self.native_handle();
-            let handle_data: *c_void = uvll::get_data_for_uv_handle(handle);
-            if handle_data.is_not_null() {
-                // Take ownership of the callback and drop it
-                let _cb = transmute::<*c_void, ~CB>(handle_data);
-                // Make sure the pointer is zeroed
-                uvll::set_data_for_uv_handle(self.native_handle(), null::<()>());
-            }
-        }
-    }
-
-    /// Take a pointer to the callback installed as custom data
-    pub fn borrow_callback<CB: Callback>(&self) -> &CB {
-        unsafe {
-            let handle = self.native_handle();
-            let handle_data: *c_void = uvll::get_data_for_uv_handle(handle);
-            assert!(handle_data.is_not_null());
-            let cb = transmute::<&*c_void, &~CB>(&handle_data);
-            return &**cb;
-        }
-    }
-
     pub fn install_watcher_data(&mut self) {
         unsafe {
             let data = ~WatcherData {
@@ -255,6 +223,7 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
                 connect_cb: None,
                 close_cb: None,
                 alloc_cb: None,
+                idle_cb: None
             };
             let data = transmute::<~WatcherData, *c_void>(data);
             uvll::set_data_for_uv_handle(self.native_handle(), data);
