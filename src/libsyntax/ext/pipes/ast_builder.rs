@@ -13,8 +13,6 @@
 // To start with, it will be use dummy spans, but it might someday do
 // something smarter.
 
-use core::prelude::*;
-
 use abi::AbiSet;
 use ast::ident;
 use ast;
@@ -25,8 +23,6 @@ use ext::base::ext_ctxt;
 use ext::quote::rt::*;
 use opt_vec;
 use opt_vec::OptVec;
-
-use core::vec;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {

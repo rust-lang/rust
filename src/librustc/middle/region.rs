@@ -17,8 +17,6 @@ region parameterized.
 
 */
 
-use core::prelude::*;
-
 use driver::session::Session;
 use metadata::csearch;
 use middle::resolve;
@@ -27,7 +25,6 @@ use middle::ty::{rv_contravariant, FreeRegion};
 use middle::ty;
 
 use core::hashmap::{HashMap, HashSet};
-use core::vec;
 use syntax::ast_map;
 use syntax::codemap::span;
 use syntax::print::pprust;

@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
 /*
  * The compiler code necessary to support the fmt! extension. Eventually this
  * should all get sucked into either the standard library extfmt module or the
  * compiler syntax extension plugin interface.
  */
-
-use core::prelude::*;
 
 use ast;
 use codemap::span;

@@ -51,7 +51,6 @@ block the scheduler thread, so will their pipes.
 use core::io;
 use core::comm::GenericChan;
 use core::comm::GenericPort;
-use core::prelude::*;
 use core::sys::size_of;
 use core::vec;
 
@@ -177,7 +176,6 @@ pub mod pod {
     use core::io::{Reader, Writer};
     use core::comm::{Port, Chan};
     use core::comm;
-    use core::prelude::*;
 
     pub type ReaderPort<T, R> =
         FlatPort<T, PodUnflattener<T>, ReaderBytePort<R>>;
@@ -341,7 +339,6 @@ pub mod flatteners {
 
     use core::cast;
     use core::io::{Writer, Reader, ReaderUtil};
-    use core::prelude::*;
     use core::ptr;
     use core::sys::size_of;
     use core::vec;
@@ -504,7 +501,6 @@ pub mod bytepipes {
 
     use core::io::{Writer, Reader, ReaderUtil};
     use core::comm::{Port, Chan};
-    use core::prelude::*;
 
     pub struct ReaderBytePort<R> {
         reader: R
@@ -626,8 +622,6 @@ pub mod bytepipes {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
-
     use flatpipes::{Flattener, Unflattener};
     use flatpipes::bytepipes::*;
     use flatpipes::pod;
@@ -636,11 +630,7 @@ mod test {
     use flatpipes::{BytePort, FlatChan, FlatPort};
     use net::tcp::TcpSocketBuf;
 
-    use core::int;
     use core::io::BytesWriter;
-    use core::prelude::*;
-    use core::result;
-    use core::task;
 
     #[test]
     fn test_serializing_memory_stream() {
@@ -805,7 +795,6 @@ mod test {
         // Client task
         let addr = copy addr0;
         do task::spawn || {
-
             // Wait for the server to start listening
             begin_connect_port.recv();
 
@@ -858,16 +847,10 @@ mod test {
     // Tests that the different backends behave the same when the
     // binary streaming protocol is broken
     mod broken_protocol {
-        use core::prelude::*;
-
         use flatpipes::{BytePort, FlatPort};
         use flatpipes::flatteners::PodUnflattener;
         use flatpipes::pod;
         use io_util::BufReader;
-
-        use core::io;
-        use core::sys;
-        use core::task;
 
         type PortLoader<P> =
             ~fn(~[u8]) -> FlatPort<int, PodUnflattener<int>, P>;

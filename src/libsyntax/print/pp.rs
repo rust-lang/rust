@@ -8,12 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
-use core::io::WriterUtil;
-use core::io;
-use core::vec;
-
 /*
  * This pretty-printer is a direct reimplementation of Philip Karlton's
  * Mesa pretty-printer, as described in appendix A of

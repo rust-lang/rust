@@ -11,7 +11,6 @@
 //! Sorting methods
 
 use core::cmp::{Eq, Ord};
-use core::prelude::*;
 use core::util;
 use core::vec::len;
 use core::vec;
@@ -836,7 +835,6 @@ mod test_qsort {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use sort::*;
 
@@ -905,7 +903,6 @@ mod tests {
 
 #[cfg(test)]
 mod test_tim_sort {
-    use core::prelude::*;
     use sort::tim_sort;
     use core::rand::RngUtil;
 
@@ -995,7 +992,6 @@ mod test_tim_sort {
 
 #[cfg(test)]
 mod big_tests {
-    use core::prelude::*;
     use sort::*;
     use core::rand::RngUtil;
 

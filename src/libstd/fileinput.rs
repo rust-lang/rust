@@ -96,7 +96,6 @@ total line count).
 
 #[allow(deprecated_mutable_fields)];
 
-use core::prelude::*;
 use core::io::ReaderUtil;
 
 /**
@@ -410,7 +409,6 @@ pub fn input_vec_state(files: ~[Option<Path>],
 #[cfg(test)]
 mod test {
     use core::io::WriterUtil;
-    use core::prelude::*;
     use super::{FileInput, pathify, input_vec, input_vec_state};
 
     fn make_file(path : &Path, contents: &[~str]) {

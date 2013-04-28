@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use astsrv;
 use doc;
 use time;
 
 #[cfg(test)] use extract;
-
-use core::vec;
 
 /// A single operation on the document model
 pub struct Pass {

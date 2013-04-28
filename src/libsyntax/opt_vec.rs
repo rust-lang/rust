@@ -16,7 +16,6 @@
  * other useful things like `push()` and `len()`.
  */
 
-use core::prelude::*;
 use core::iter;
 use core::iter::BaseIter;
 

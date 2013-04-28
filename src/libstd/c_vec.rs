@@ -36,10 +36,6 @@
  * still held if needed.
  */
 
-use core::option;
-use core::prelude::*;
-use core::ptr;
-
 /**
  * The type representing a foreign chunk of memory
  *
@@ -146,7 +142,6 @@ pub fn ptr<T>(t: CVec<T>) -> *mut T { t.base }
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use c_vec::*;
 

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use common::mode_run_pass;
 use common::mode_run_fail;
 use common::mode_compile_fail;
@@ -21,13 +19,6 @@ use header::TestProps;
 use procsrv;
 use util;
 use util::logv;
-
-use core::io::WriterUtil;
-use core::io;
-use core::os;
-use core::str;
-use core::uint;
-use core::vec;
 
 pub fn run(config: config, testfile: ~str) {
     if config.verbose {

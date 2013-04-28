@@ -17,7 +17,6 @@
 #[comment = "The Rust fuzzer library"];
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
-#[no_core];
 
 #[legacy_modes];
 
@@ -26,12 +25,10 @@
 #[allow(deprecated_mode)];
 #[allow(deprecated_pattern)];
 
-extern mod core(vers = "0.7-pre");
 extern mod std(vers = "0.7-pre");
 extern mod syntax(vers = "0.7-pre");
 
-use core::*;
-use core::io::WriterUtil;
+use core::run;
 
 use syntax::{ast, fold, visit, codemap};
 use syntax::parse;

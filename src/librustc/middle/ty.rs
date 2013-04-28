@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use driver::session;
 use metadata::csearch;
@@ -29,15 +28,8 @@ use util::ppaux::Repr;
 use util::common::{indenter};
 
 use core;
-use core::cast;
-use core::cmp;
-use core::ops;
 use core::ptr::to_unsafe_ptr;
-use core::result::Result;
-use core::result;
 use core::to_bytes;
-use core::uint;
-use core::vec;
 use core::hashmap::{HashMap, HashSet};
 use std::smallintmap::SmallIntMap;
 use syntax::ast::*;

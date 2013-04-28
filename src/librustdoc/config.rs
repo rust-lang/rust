@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use core::cell::Cell;
-use core::os;
-use core::result;
 use core::run;
 use core::run::ProgramOutput;
-use core::vec;
 use core::result::Result;
 use std::getopts;
 
@@ -246,7 +242,6 @@ pub fn maybe_find_pandoc(
 #[cfg(test)]
 mod test {
     use config::*;
-    use core::prelude::*;
     use core::run::ProgramOutput;
 
     fn parse_config(args: &[~str]) -> Result<Config, ~str> {

@@ -11,7 +11,6 @@
 //! Types/fns concerning Internet Protocol (IP), versions 4 & 6
 
 use core::libc;
-use core::prelude::*;
 use core::comm::{stream, SharedChan};
 use core::ptr;
 use core::result;
@@ -152,7 +151,6 @@ pub mod v4 {
     use uv_ip4_addr = uv::ll::ip4_addr;
     use uv_ip4_name = uv::ll::ip4_name;
 
-    use core::prelude::*;
     use core::ptr;
     use core::result;
     use core::str;
@@ -252,7 +250,6 @@ pub mod v6 {
     use uv_ip6_addr = uv::ll::ip6_addr;
     use uv_ip6_name = uv::ll::ip6_name;
 
-    use core::prelude::*;
     use core::result;
     use core::str;
 
@@ -364,7 +361,6 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use net_ip::*;
     use net_ip::v4;

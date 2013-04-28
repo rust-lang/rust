@@ -11,8 +11,6 @@
 
 //! Finds crate binaries and loads their metadata
 
-use core::prelude::*;
-
 use lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
 use metadata::decoder;
 use metadata::encoder;
@@ -24,16 +22,8 @@ use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::{ast, attr};
 
-use core::cast;
 use core::flate;
-use core::io::WriterUtil;
-use core::io;
 use core::os::consts::{macos, freebsd, linux, android, win32};
-use core::option;
-use core::ptr;
-use core::str;
-use core::uint;
-use core::vec;
 
 pub enum os {
     os_macos,

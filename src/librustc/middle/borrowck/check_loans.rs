@@ -17,8 +17,6 @@
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
 
-use core::prelude::*;
-
 use middle::moves;
 use middle::typeck::check::PurityState;
 use middle::borrowck::{Loan, bckerr, BorrowckCtxt, inherent_mutability};
@@ -33,7 +31,6 @@ use middle::ty;
 use util::ppaux::ty_to_str;
 
 use core::hashmap::HashSet;
-use core::uint;
 use core::util::with;
 use syntax::ast::m_mutbl;
 use syntax::ast;

@@ -17,7 +17,6 @@ Higher level communication abstractions.
 use core::comm::{GenericChan, GenericSmartChan, GenericPort};
 use core::comm::{Chan, Port, Selectable, Peekable};
 use core::pipes;
-use core::prelude::*;
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
 pub struct DuplexStream<T, U> {

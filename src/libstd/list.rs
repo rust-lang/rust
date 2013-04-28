@@ -10,11 +10,6 @@
 
 //! A standard linked list
 
-use core::cmp::Eq;
-use core::option::*;
-use core::prelude::*;
-use core::vec;
-
 #[deriving(Eq)]
 pub enum List<T> {
     Cons(T, @List<T>),

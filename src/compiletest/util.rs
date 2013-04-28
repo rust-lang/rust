@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use common::config;
 
-use core::io;
 use core::os::getenv;
 
 pub fn make_new_path(path: ~str) -> ~str {

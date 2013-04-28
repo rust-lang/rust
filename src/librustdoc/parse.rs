@@ -10,8 +10,6 @@
 
 //! AST-parsing helpers
 
-use core::prelude::*;
-
 use rustc::driver::driver::{file_input, str_input};
 use rustc::driver::driver;
 use rustc::driver::session;

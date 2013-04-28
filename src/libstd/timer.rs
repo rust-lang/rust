@@ -14,13 +14,10 @@ use uv;
 use uv::iotask;
 use uv::iotask::IoTask;
 
-use core::either;
 use core::libc;
 use core::libc::c_void;
 use core::cast::transmute;
 use core::comm::{stream, Chan, SharedChan, Port, select2i};
-use core::prelude::*;
-use core::ptr;
 
 /**
  * Wait for timeout period then send provided value over a channel
@@ -171,7 +168,6 @@ extern fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use timer::*;
     use uv;

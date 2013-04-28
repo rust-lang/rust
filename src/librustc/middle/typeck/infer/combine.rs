@@ -54,8 +54,6 @@
 // terms of error reporting, although we do not do that properly right
 // now.
 
-use core::prelude::*;
-
 use middle::ty::{FloatVar, FnSig, IntVar, TyVar};
 use middle::ty::{IntType, UintType, arg, substs};
 use middle::ty;
@@ -67,7 +65,6 @@ use middle::typeck::infer::{cres, InferCtxt, ures, IntType, UintType};
 use util::common::indent;
 
 use core::result::{iter_vec2, map_vec2};
-use core::vec;
 use syntax::ast::{Onceness, purity};
 use syntax::ast;
 use syntax::opt_vec;

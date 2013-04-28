@@ -8,12 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::container::{Container, Mutable, Set};
-use core::ops;
-use core::prelude::*;
-use core::uint;
 use core::vec::from_elem;
-use core::vec;
 
 struct SmallBitv {
     /// only the lowest nbits of this value are used. the rest is undefined.
@@ -867,7 +862,6 @@ priv impl BitvSet {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
     use std::test::BenchHarness;
 
     use bitv::*;

@@ -20,7 +20,6 @@ use middle::resolve;
 use middle::ty;
 use middle::typeck;
 
-use core::prelude::*;
 use core::hashmap::HashSet;
 use syntax::ast;
 use syntax::ast::*;

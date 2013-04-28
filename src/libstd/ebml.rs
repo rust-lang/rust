@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
 // cursor model. See the specification here:
 //     http://www.matroska.org/technical/specs/rfc/index.html
@@ -62,7 +60,6 @@ pub mod reader {
     use core::cast::transmute;
     use core::int;
     use core::io;
-    use core::prelude::*;
     use core::ptr::offset;
     use core::str;
     use core::unstable::intrinsics::bswap32;

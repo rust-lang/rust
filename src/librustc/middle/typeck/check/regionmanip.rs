@@ -10,8 +10,6 @@
 
 // #[warn(deprecated_mode)];
 
-use core::prelude::*;
-
 use middle::ty;
 
 use middle::typeck::isr_alist;

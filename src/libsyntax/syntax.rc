@@ -12,8 +12,6 @@
        vers = "0.7-pre",
        uuid = "9311401b-d6ea-4cd9-a1d9-61f89499c645")];
 
-
-
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
@@ -22,12 +20,7 @@
 #[deny(deprecated_mode)];
 #[deny(deprecated_pattern)];
 
-#[no_core];
-
-extern mod core(vers = "0.7-pre");
 extern mod std(vers = "0.7-pre");
-
-use core::*;
 
 // allow the interner_key macro
 // to escape this module:

@@ -13,8 +13,6 @@
 // the scope S.
 //
 
-use core::prelude::*;
-
 use middle::borrowck::{RootInfo, bckerr, bckerr_code, bckres, BorrowckCtxt};
 use middle::borrowck::{err_mut_uniq, err_mut_variant};
 use middle::borrowck::{err_out_of_root_scope, err_out_of_scope};
