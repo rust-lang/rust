@@ -17,6 +17,7 @@ use cast::transmute;
 use rt::io::IoError;
 use rt::io::net::ip::IpAddr;
 use rt::uv::*;
+use rt::uv::idle::IdleWatcher;
 use rt::rtio::*;
 use rt::sched::{Scheduler, local_sched};
 use rt::io::{standard_error, OtherIoError};
