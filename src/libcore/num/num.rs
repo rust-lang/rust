@@ -138,12 +138,9 @@ pub trait Real: Signed
     fn exp(&self) -> Self;
     fn exp2(&self) -> Self;
     fn expm1(&self) -> Self;
-    fn ldexp(&self, n: int) -> Self;
     fn log(&self) -> Self;
     fn log2(&self) -> Self;
     fn log10(&self) -> Self;
-    fn log_radix(&self) -> Self;
-    fn ilog_radix(&self) -> int;
     fn sqrt(&self) -> Self;
     fn rsqrt(&self) -> Self;
     fn cbrt(&self) -> Self;

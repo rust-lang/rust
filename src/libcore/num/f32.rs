@@ -450,9 +450,6 @@ impl Real for f32 {
     fn expm1(&self) -> f32 { expm1(*self) }
 
     #[inline(always)]
-    fn ldexp(&self, n: int) -> f32 { ldexp(*self, n as c_int) }
-
-    #[inline(always)]
     fn log(&self) -> f32 { ln(*self) }
 
     #[inline(always)]
@@ -460,12 +457,6 @@ impl Real for f32 {
 
     #[inline(always)]
     fn log10(&self) -> f32 { log10(*self) }
-
-    #[inline(always)]
-    fn log_radix(&self) -> f32 { log_radix(*self) as f32 }
-
-    #[inline(always)]
-    fn ilog_radix(&self) -> int { ilog_radix(*self) as int }
 
     #[inline(always)]
     fn sqrt(&self) -> f32 { sqrt(*self) }

@@ -535,9 +535,6 @@ impl Real for float {
     fn expm1(&self) -> float { expm1(*self as f64) as float }
 
     #[inline(always)]
-    fn ldexp(&self, n: int) -> float { ldexp(*self as f64, n as c_int) as float }
-
-    #[inline(always)]
     fn log(&self) -> float { ln(*self as f64) as float }
 
     #[inline(always)]
@@ -545,12 +542,6 @@ impl Real for float {
 
     #[inline(always)]
     fn log10(&self) -> float { log10(*self as f64) as float }
-
-    #[inline(always)]
-    fn log_radix(&self) -> float { log_radix(*self as f64) as float }
-
-    #[inline(always)]
-    fn ilog_radix(&self) -> int { ilog_radix(*self as f64) as int }
 
     #[inline(always)]
     fn sqrt(&self) -> float { sqrt(*self) }

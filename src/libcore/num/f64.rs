@@ -460,9 +460,6 @@ impl Real for f64 {
     fn expm1(&self) -> f64 { expm1(*self) }
 
     #[inline(always)]
-    fn ldexp(&self, n: int) -> f64 { ldexp(*self, n as c_int) }
-
-    #[inline(always)]
     fn log(&self) -> f64 { ln(*self) }
 
     #[inline(always)]
@@ -470,12 +467,6 @@ impl Real for f64 {
 
     #[inline(always)]
     fn log10(&self) -> f64 { log10(*self) }
-
-    #[inline(always)]
-    fn log_radix(&self) -> f64 { log_radix(*self) }
-
-    #[inline(always)]
-    fn ilog_radix(&self) -> int { ilog_radix(*self) as int }
 
     #[inline(always)]
     fn sqrt(&self) -> f64 { sqrt(*self) }
