@@ -58,6 +58,9 @@ pub mod env;
 /// The local, managed heap
 mod local_heap;
 
+/// The Logger trait and implementations
+pub mod logging;
+
 /// Tools for testing the runtime
 #[cfg(test)]
 pub mod test;
