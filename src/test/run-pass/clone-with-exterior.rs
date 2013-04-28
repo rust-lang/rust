@@ -8,17 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//xfail-test
-
 extern mod std;
+use core::task::spawn;
 
-fn f(x : @{a:int, b:int}) {
-    assert!((x.a == 10));
-    assert!((x.b == 12));
+struct Pair {
+    a: int,
+    b: int
 }
 
 pub fn main() {
-    let z : @{a:int, b:int} = @{ a : 10, b : 12};
-    let p = task::_spawn(bind f(z));
-    task::join_id(p);
+    let z = ~Pair { a : 10, b : 12};
+    
+    let f: ~fn() = || {
+        assert!((z.a == 10));
+        assert!((z.b == 12));
+    };
+
+    spawn(f);
 }
