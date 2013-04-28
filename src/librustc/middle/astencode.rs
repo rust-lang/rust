@@ -412,7 +412,7 @@ impl tr for ast::def {
           ast::def_mod(did) => { ast::def_mod(did.tr(xcx)) }
           ast::def_foreign_mod(did) => { ast::def_foreign_mod(did.tr(xcx)) }
           ast::def_const(did) => { ast::def_const(did.tr(xcx)) }
-          ast::def_arg(nid, m, b) => { ast::def_arg(xcx.tr_id(nid), m, b) }
+          ast::def_arg(nid, b) => { ast::def_arg(xcx.tr_id(nid), b) }
           ast::def_local(nid, b) => { ast::def_local(xcx.tr_id(nid), b) }
           ast::def_variant(e_did, v_did) => {
             ast::def_variant(e_did.tr(xcx), v_did.tr(xcx))
@@ -573,6 +573,9 @@ fn encode_method_map_entry(ecx: @e::EncodeContext,
         do ebml_w.emit_field(~"origin", 1u) {
             mme.origin.encode(ebml_w);
         }
+        do ebml_w.emit_field(~"self_mode", 3) {
+            mme.self_mode.encode(ebml_w);
+        }
     }
 }
 
@@ -591,6 +594,9 @@ fn encode_method_map_entry(ecx: @e::EncodeContext,
         }
         do ebml_w.emit_struct_field("origin", 1u) {
             mme.origin.encode(ebml_w);
+        }
+        do ebml_w.emit_struct_field("self_mode", 3) {
+            mme.self_mode.encode(ebml_w);
         }
     }
 }
@@ -613,6 +619,10 @@ impl read_method_map_entry_helper for reader::Decoder {
                         Decodable::decode(self);
                     method_origin.tr(xcx)
                 }),
+                self_mode: self.read_field(~"self_mode", 3, || {
+                    let self_mode: ty::SelfMode = Decodable::decode(self);
+                    self_mode
+                }),
             }
         }
     }
@@ -627,7 +637,7 @@ impl read_method_map_entry_helper for reader::Decoder {
                 self_arg: self.read_struct_field("self_arg", 0u, || {
                     self.read_arg(xcx)
                 }),
-                explicit_self: self.read_struct_field("explicit_self", 2u, || {
+                explicit_self: self.read_struct_field("explicit_self", 2, || {
                     let self_type: ast::self_ty_ = Decodable::decode(self);
                     self_type
                 }),
@@ -635,6 +645,10 @@ impl read_method_map_entry_helper for reader::Decoder {
                     let method_origin: method_origin =
                         Decodable::decode(self);
                     method_origin.tr(xcx)
+                }),
+                self_mode: self.read_struct_field("self_mode", 3, || {
+                    let self_mode: ty::SelfMode = Decodable::decode(self);
+                    self_mode
                 }),
             }
         }
@@ -979,20 +993,6 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
             }
         }
     }
-
-    // I believe it is not necessary to encode this information.  The
-    // ids will appear in the AST but in the *type* information, which
-    // is what we actually use in trans, all modes will have been
-    // resolved.
-    //
-    //for tcx.inferred_modes.find(&id).each |m| {
-    //    ebml_w.tag(c::tag_table_inferred_modes) {||
-    //        ebml_w.id(id);
-    //        ebml_w.tag(c::tag_table_val) {||
-    //            tyencode::enc_mode(ebml_w.writer, ty_str_ctxt(), m);
-    //        }
-    //    }
-    //}
 
     if maps.mutbl_map.contains(&id) {
         do ebml_w.tag(c::tag_table_mutbl) {

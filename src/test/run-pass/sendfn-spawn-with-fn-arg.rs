@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::cell::Cell;
+
 pub fn main() { test05(); }
 
 fn test05_start(&&f: ~fn(int)) {
@@ -20,7 +22,8 @@ fn test05() {
         error!(*three + n); // will copy x into the closure
         assert!((*three == 3));
     };
+    let fn_to_send = Cell(fn_to_send);
     task::spawn(|| {
-        test05_start(fn_to_send);
+        test05_start(fn_to_send.take());
     });
 }

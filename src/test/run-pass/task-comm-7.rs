@@ -9,13 +9,12 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 extern mod std;
 
 pub fn main() { test00(); }
 
-fn test00_start(c: comm::Chan<int>, start: int, number_of_messages: int) {
+fn test00_start(c: &comm::Chan<int>, start: int, number_of_messages: int) {
     let mut i: int = 0;
     while i < number_of_messages { c.send(start + i); i += 1; }
 }
@@ -28,19 +27,19 @@ fn test00() {
 
     let c = p.chan();
     do task::spawn || {
-        test00_start(c, number_of_messages * 0, number_of_messages);
+        test00_start(&c, number_of_messages * 0, number_of_messages);
     }
     let c = p.chan();
     do task::spawn || {
-        test00_start(c, number_of_messages * 1, number_of_messages);
+        test00_start(&c, number_of_messages * 1, number_of_messages);
     }
     let c = p.chan();
     do task::spawn || {
-        test00_start(c, number_of_messages * 2, number_of_messages);
+        test00_start(&c, number_of_messages * 2, number_of_messages);
     }
     let c = p.chan();
     do task::spawn || {
-        test00_start(c, number_of_messages * 3, number_of_messages);
+        test00_start(&c, number_of_messages * 3, number_of_messages);
     }
 
     let mut i: int = 0;
