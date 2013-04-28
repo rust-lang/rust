@@ -16,16 +16,10 @@ use serialize::{Encoder, Encodable, Decoder, Decodable};
 use sort;
 
 use core::cell::Cell;
-use core::cmp;
-use core::either::{Either, Left, Right};
-use core::io;
 use core::comm::{oneshot, PortOne, send_one};
 use core::pipes::recv;
-use core::prelude::*;
-use core::result;
 use core::run;
 use core::hashmap::HashMap;
-use core::task;
 use core::to_bytes;
 
 /**

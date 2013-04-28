@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use codemap::{BytePos, spanned};
 use parse::lexer::reader;
 use parse::parser::Parser;
 use parse::token;
-
-use core::option::{None, Option, Some};
 
 use opt_vec;
 use opt_vec::OptVec;

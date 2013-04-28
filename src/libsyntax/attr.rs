@@ -10,8 +10,6 @@
 
 // Functions dealing with attributes and meta_items
 
-use core::prelude::*;
-
 use ast;
 use codemap::{spanned, dummy_spanned};
 use attr;
@@ -19,7 +17,6 @@ use codemap::BytePos;
 use diagnostic::span_handler;
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
 
-use core::vec;
 use core::hashmap::HashSet;
 use std;
 

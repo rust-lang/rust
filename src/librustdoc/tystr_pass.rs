@@ -10,8 +10,6 @@
 
 //! Pulls type information out of the AST and attaches it to the document
 
-use core::prelude::*;
-
 use astsrv;
 use doc::ItemUtils;
 use doc;
@@ -21,7 +19,6 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use core::vec;
 use syntax::ast;
 use syntax::print::pprust;
 use syntax::ast_map;
@@ -358,7 +355,6 @@ mod test {
     use doc;
     use extract;
     use tystr_pass::run;
-    use core::prelude::*;
 
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {

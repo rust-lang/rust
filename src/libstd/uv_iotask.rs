@@ -20,9 +20,7 @@ use ll = uv_ll;
 use core::libc::c_void;
 use core::libc;
 use core::comm::{stream, Port, Chan, SharedChan};
-use core::prelude::*;
 use core::ptr::addr_of;
-use core::task;
 
 /// Used to abstract-away direct interaction with a libuv loop.
 pub struct IoTask {

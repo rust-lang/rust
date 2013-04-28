@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast::*;
 use ast;
 use ast_util;
@@ -18,12 +16,7 @@ use parse::token;
 use visit;
 use opt_vec;
 
-use core::int;
-use core::option;
-use core::str;
 use core::to_bytes;
-use core::vec;
-
 
 pub fn path_name_i(idents: &[ident], intr: @token::ident_interner) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use driver::session::{os_win32, os_macos};
-use core::option::*;
 use lib::llvm::*;
 use lib::llvm::llvm::*;
 use super::cabi::*;

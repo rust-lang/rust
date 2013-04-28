@@ -10,8 +10,6 @@
 
 //! Generate markdown from a document tree
 
-use core::prelude::*;
-
 use astsrv;
 use doc::ItemUtils;
 use doc;
@@ -23,8 +21,6 @@ use pass::Pass;
 use sort_pass;
 
 use core::cell::Cell;
-use core::str;
-use core::vec;
 use syntax;
 
 pub fn mk_pass(writer_factory: WriterFactory) -> Pass {
@@ -522,7 +518,6 @@ mod test {
     use trim_pass;
     use tystr_pass;
     use unindent_pass;
-    use core::prelude::*;
 
     fn render(source: ~str) -> ~str {
         let (srv, doc) = create_doc_srv(source);

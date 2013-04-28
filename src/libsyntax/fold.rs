@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast::*;
 use ast;
 use codemap::{span, spanned};
 use opt_vec::OptVec;
-
-use core::vec;
 
 pub trait ast_fold {
     fn fold_crate(@self, &crate) -> crate;

@@ -15,8 +15,6 @@ If the first paragraph of a long description is short enough then it
 is interpreted as the brief description.
 */
 
-use core::prelude::*;
-
 use astsrv;
 use doc::ItemUtils;
 use doc;
@@ -24,8 +22,6 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use core::str;
-use core::vec;
 use core::util;
 
 pub fn mk_pass() -> Pass {
@@ -189,7 +185,6 @@ mod test {
     use super::{extract, paragraphs, run};
     use doc;
     use extract;
-    use core::prelude::*;
 
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {

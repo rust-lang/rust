@@ -76,8 +76,6 @@ type parameter).
 
 */
 
-use core::prelude::*;
-
 use middle::const_eval;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
@@ -110,11 +108,6 @@ use util::ppaux::{bound_region_to_str};
 use util::ppaux;
 
 use core::hashmap::HashMap;
-use core::ptr;
-use core::result::{Result, Ok, Err};
-use core::result;
-use core::str;
-use core::vec;
 use core::util::replace;
 use std::list::Nil;
 use syntax::abi::AbiSet;

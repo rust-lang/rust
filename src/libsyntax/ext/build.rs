@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use codemap;
 use codemap::span;
@@ -17,8 +15,6 @@ use ext::base::ext_ctxt;
 use ext::build;
 
 use opt_vec::OptVec;
-
-use core::option;
 
 pub struct Field {
     ident: ast::ident,

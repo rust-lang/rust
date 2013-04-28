@@ -206,8 +206,6 @@ and so on.
 
 */
 
-use core::prelude::*;
-
 use middle::pat_util::{pat_bindings};
 use middle::freevars;
 use middle::ty;
@@ -216,7 +214,6 @@ use util::ppaux;
 use util::common::indenter;
 
 use core::hashmap::{HashSet, HashMap};
-use core::vec;
 use syntax::ast::*;
 use syntax::ast_util;
 use syntax::visit;

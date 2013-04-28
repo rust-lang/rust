@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // Decoding metadata from a single crate's metadata
-
-use core::prelude::*;
 
 use metadata::cstore::crate_metadata;
 use metadata::common::*;

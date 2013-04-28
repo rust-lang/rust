@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos};
 use diagnostic;
@@ -19,12 +17,6 @@ use parse::lexer::{is_line_non_doc_comment, is_block_non_doc_comment};
 use parse::lexer;
 use parse::token;
 use parse;
-
-use core::io::ReaderUtil;
-use core::io;
-use core::str;
-use core::uint;
-use core::vec;
 
 #[deriving(Eq)]
 pub enum cmnt_style {

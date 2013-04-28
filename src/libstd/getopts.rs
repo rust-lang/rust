@@ -79,7 +79,6 @@
  */
 
 use core::cmp::Eq;
-use core::prelude::*;
 use core::result::{Err, Ok};
 use core::result;
 use core::option::{Some, None};
@@ -461,7 +460,6 @@ pub mod groups {
     use getopts::{HasArg, Long, Maybe, Multi, No, Occur, Opt, Optional, Req};
     use getopts::{Short, Yes};
 
-    use core::prelude::*;
     use core::str;
     use core::vec;
 
@@ -654,7 +652,6 @@ pub mod groups {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use getopts::groups::OptGroup;
     use getopts::*;

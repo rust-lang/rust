@@ -15,7 +15,6 @@
  * in std.
  */
 
-use core::prelude::*;
 use core::unstable::{Exclusive, exclusive};
 use core::ptr;
 use core::task;
@@ -713,7 +712,6 @@ pub impl<'self> RWlockReadMode<'self> {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use sync::*;
 

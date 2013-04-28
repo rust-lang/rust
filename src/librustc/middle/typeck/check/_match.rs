@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
 use middle::ty;
 use middle::typeck::check::demand;
@@ -19,7 +17,6 @@ use middle::typeck::check::{structure_of, valid_range_bounds};
 use middle::typeck::require_same_types;
 
 use core::hashmap::{HashMap, HashSet};
-use core::vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;

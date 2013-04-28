@@ -8,16 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
-use core::io::{ReaderUtil, WriterUtil};
-use core::io;
 use core::libc::c_int;
-use core::os;
 use core::run::spawn_process;
 use core::run;
-use core::str;
-use core::task;
 
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: ~str, prog: ~str) -> ~[(~str,~str)] {

@@ -20,8 +20,6 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-extern mod core(vers = "0.7-pre");
-
 use core::run;
 
 enum ValidUsage {

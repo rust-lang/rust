@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // A pass that checks to make sure private fields and methods aren't used
 // outside their scopes.
-
-use core::prelude::*;
 
 use metadata::csearch;
 use middle::ty::{ty_struct, ty_enum};

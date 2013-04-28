@@ -125,8 +125,6 @@ For `C0(a)` and `C1 {x}` ,
 
 */
 
-use core::prelude::*;
-
 use ast;
 
 use ast::{

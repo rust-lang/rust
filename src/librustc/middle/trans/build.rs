@@ -16,15 +16,8 @@ use lib;
 use middle::trans::common::*;
 use syntax::codemap::span;
 
-use core::prelude::*;
-use core::cast;
 use core::hashmap::HashMap;
 use core::libc::{c_uint, c_ulonglong, c_char};
-use core::libc;
-use core::option::Some;
-use core::ptr;
-use core::str;
-use core::vec;
 
 pub fn terminate(cx: block, _: &str) {
     cx.terminated = true;
@@ -174,7 +167,7 @@ pub fn IndirectBr(cx: block, Addr: ValueRef, NumDests: uint) {
 
 // This is a really awful way to get a zero-length c-string, but better (and a
 // lot more efficient) than doing str::as_c_str("", ...) every time.
-pub fn noname() -> *libc::c_char {
+pub fn noname() -> *c_char {
     unsafe {
         static cnull: uint = 0u;
         return cast::transmute(ptr::addr_of(&cnull));
@@ -618,7 +611,7 @@ pub fn StructGEP(cx: block, Pointer: ValueRef, Idx: uint) -> ValueRef {
     }
 }
 
-pub fn GlobalString(cx: block, _Str: *libc::c_char) -> ValueRef {
+pub fn GlobalString(cx: block, _Str: *c_char) -> ValueRef {
     unsafe {
         if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_i8())); }
         count_insn(cx, "globalstring");
@@ -626,7 +619,7 @@ pub fn GlobalString(cx: block, _Str: *libc::c_char) -> ValueRef {
     }
 }
 
-pub fn GlobalStringPtr(cx: block, _Str: *libc::c_char) -> ValueRef {
+pub fn GlobalStringPtr(cx: block, _Str: *c_char) -> ValueRef {
     unsafe {
         if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_i8())); }
         count_insn(cx, "globalstringptr");

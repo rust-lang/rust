@@ -27,8 +27,6 @@
 // much information, but have the disadvantage of being very
 // invasive.)
 
-use core::prelude::*;
-
 use middle::freevars;
 use middle::trans::common::*;
 use middle::trans::inline;
