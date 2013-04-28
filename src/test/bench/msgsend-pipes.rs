@@ -14,8 +14,6 @@
 //
 // I *think* it's the same, more or less.
 
-#[legacy_modes];
-
 extern mod std;
 use core::io::Writer;
 use core::io::WriterUtil;
@@ -23,7 +21,7 @@ use core::io::WriterUtil;
 use core::comm::{Port, PortSet, Chan, stream};
 
 macro_rules! move_out (
-    { $x:expr } => { unsafe { let y = *ptr::addr_of(&($x)); y } }
+    { $x:expr } => { unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } }
 )
 
 enum request {
@@ -32,7 +30,7 @@ enum request {
     stop
 }
 
-fn server(requests: PortSet<request>, responses: Chan<uint>) {
+fn server(requests: &PortSet<request>, responses: &Chan<uint>) {
     let mut count = 0;
     let mut done = false;
     while !done {
@@ -75,7 +73,7 @@ fn run(args: &[~str]) {
         };
     }
     do task::spawn || {
-        server(from_parent, to_parent);
+        server(&from_parent, &to_parent);
     }
 
     for vec::each(worker_results) |r| {

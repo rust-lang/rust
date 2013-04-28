@@ -1028,10 +1028,10 @@ fn avoid_copying_the_body(spawnfn: &fn(v: ~fn())) {
     let (p, ch) = stream::<uint>();
 
     let x = ~1;
-    let x_in_parent = ptr::addr_of(&(*x)) as uint;
+    let x_in_parent = ptr::to_unsafe_ptr(&*x) as uint;
 
     do spawnfn || {
-        let x_in_child = ptr::addr_of(&(*x)) as uint;
+        let x_in_child = ptr::to_unsafe_ptr(&*x) as uint;
         ch.send(x_in_child);
     }
 

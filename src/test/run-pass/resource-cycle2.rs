@@ -23,7 +23,7 @@ struct r {
 impl Drop for r {
     fn finalize(&self) {
         unsafe {
-            let v2: ~int = cast::reinterpret_cast(&self.v.c);
+            let v2: ~int = cast::transmute(self.v.c);
         }
     }
 }
@@ -44,10 +44,10 @@ struct Node {
 pub fn main() {
     unsafe {
         let i1 = ~0xA;
-        let i1p = cast::reinterpret_cast(&i1);
+        let i1p = cast::transmute_copy(&i1);
         cast::forget(i1);
         let i2 = ~0xA;
-        let i2p = cast::reinterpret_cast(&i2);
+        let i2p = cast::transmute_copy(&i2);
         cast::forget(i2);
 
         let u1 = U {a: 0xB, b: 0xC, c: i1p};

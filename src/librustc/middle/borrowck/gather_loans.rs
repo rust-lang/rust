@@ -32,7 +32,6 @@ use util::common::indenter;
 use util::ppaux::{Repr, region_to_str};
 
 use core::hashmap::{HashSet, HashMap};
-use core::vec;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 use syntax::codemap::span;
@@ -147,38 +146,6 @@ fn req_loans_in_expr(ex: @ast::expr,
         // for the lifetime `scope_r` of the resulting ptr:
         let scope_r = ty_region(tcx, ex.span, tcx.ty(ex));
         self.guarantee_valid(base_cmt, mutbl, scope_r);
-        visit::visit_expr(ex, self, vt);
-      }
-
-      ast::expr_call(f, ref args, _) => {
-        let arg_tys = ty::ty_fn_args(ty::expr_ty(self.tcx(), f));
-        let scope_r = ty::re_scope(ex.id);
-        for vec::each2(*args, arg_tys) |arg, arg_ty| {
-            match ty::resolved_mode(self.tcx(), arg_ty.mode) {
-                ast::by_ref => {
-                    let arg_cmt = self.bccx.cat_expr(*arg);
-                    self.guarantee_valid(arg_cmt, m_imm,  scope_r);
-                }
-                ast::by_copy => {}
-            }
-        }
-        visit::visit_expr(ex, self, vt);
-      }
-
-      ast::expr_method_call(_, _, _, ref args, _) => {
-        let arg_tys = ty::ty_fn_args(ty::node_id_to_type(self.tcx(),
-                                                         ex.callee_id));
-        let scope_r = ty::re_scope(ex.id);
-        for vec::each2(*args, arg_tys) |arg, arg_ty| {
-            match ty::resolved_mode(self.tcx(), arg_ty.mode) {
-                ast::by_ref => {
-                    let arg_cmt = self.bccx.cat_expr(*arg);
-                    self.guarantee_valid(arg_cmt, m_imm,  scope_r);
-                }
-                ast::by_copy => {}
-            }
-        }
-
         visit::visit_expr(ex, self, vt);
       }
 

@@ -18,6 +18,7 @@
  */
 
 use at_vec;
+use cast::transmute;
 use cast;
 use char;
 use clone::Clone;
@@ -2045,7 +2046,7 @@ pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
 #[inline(always)]
 pub fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
     unsafe {
-        let v : *(*u8,uint) = ::cast::transmute(ptr::addr_of(&s));
+        let v : *(*u8,uint) = transmute(&s);
         let (buf,len) = *v;
         f(buf, len)
     }

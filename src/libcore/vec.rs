@@ -26,11 +26,11 @@ use iterator::Iterator;
 use kinds::Copy;
 use libc;
 use option::{None, Option, Some};
-use unstable::intrinsics;
+use ptr::to_unsafe_ptr;
 use ptr;
-use ptr::addr_of;
 use sys;
 use uint;
+use unstable::intrinsics;
 use vec;
 
 #[cfg(notest)] use cmp::Equiv;
@@ -117,7 +117,7 @@ pub fn reserve_at_least<T>(v: &mut ~[T], n: uint) {
 #[inline(always)]
 pub fn capacity<T>(v: &const ~[T]) -> uint {
     unsafe {
-        let repr: **raw::VecRepr = ::cast::transmute(v);
+        let repr: **raw::VecRepr = transmute(v);
         (**repr).unboxed.alloc / sys::nonzero_size_of::<T>()
     }
 }
@@ -131,7 +131,7 @@ pub fn len<T>(v: &const [T]) -> uint {
 // A botch to tide us over until core and std are fully demuted.
 pub fn uniq_len<T>(v: &const ~[T]) -> uint {
     unsafe {
-        let v: &~[T] = ::cast::transmute(v);
+        let v: &~[T] = transmute(v);
         as_const_buf(*v, |_p, len| len)
     }
 }
@@ -280,9 +280,8 @@ pub fn slice<'r,T>(v: &'r [T], start: uint, end: uint) -> &'r [T] {
     assert!(end <= len(v));
     do as_imm_buf(v) |p, _len| {
         unsafe {
-            ::cast::transmute(
-                (ptr::offset(p, start),
-                  (end - start) * sys::nonzero_size_of::<T>()))
+            transmute((ptr::offset(p, start),
+                       (end - start) * sys::nonzero_size_of::<T>()))
         }
     }
 }
@@ -295,9 +294,8 @@ pub fn mut_slice<'r,T>(v: &'r mut [T], start: uint, end: uint)
     assert!(end <= v.len());
     do as_mut_buf(v) |p, _len| {
         unsafe {
-            ::cast::transmute(
-                (ptr::mut_offset(p, start),
-                  (end - start) * sys::nonzero_size_of::<T>()))
+            transmute((ptr::mut_offset(p, start),
+                       (end - start) * sys::nonzero_size_of::<T>()))
         }
     }
 }
@@ -310,9 +308,8 @@ pub fn const_slice<'r,T>(v: &'r const [T], start: uint, end: uint)
     assert!(end <= len(v));
     do as_const_buf(v) |p, _len| {
         unsafe {
-            ::cast::transmute(
-                (ptr::const_offset(p, start),
-                  (end - start) * sys::nonzero_size_of::<T>()))
+            transmute((ptr::const_offset(p, start),
+                       (end - start) * sys::nonzero_size_of::<T>()))
         }
     }
 }
@@ -489,14 +486,14 @@ pub fn shift<T>(v: &mut ~[T]) -> T {
         {
             let first_slice = slice(*v, 0, 1);
             let last_slice = slice(*v, next_ln, ln);
-            raw::copy_memory(::cast::transmute(last_slice), first_slice, 1);
+            raw::copy_memory(transmute(last_slice), first_slice, 1);
         }
 
         // Memcopy everything to the left one element
         {
             let init_slice = slice(*v, 0, next_ln);
             let tail_slice = slice(*v, 1, ln);
-            raw::copy_memory(::cast::transmute(init_slice),
+            raw::copy_memory(transmute(init_slice),
                              tail_slice,
                              next_ln);
         }
@@ -626,7 +623,7 @@ pub fn swap_remove<T>(v: &mut ~[T], index: uint) -> T {
 #[inline(always)]
 pub fn push<T>(v: &mut ~[T], initval: T) {
     unsafe {
-        let repr: **raw::VecRepr = ::cast::transmute(&mut *v);
+        let repr: **raw::VecRepr = transmute(&mut *v);
         let fill = (**repr).unboxed.fill;
         if (**repr).unboxed.alloc > fill {
             push_fast(v, initval);
@@ -640,10 +637,10 @@ pub fn push<T>(v: &mut ~[T], initval: T) {
 // This doesn't bother to make sure we have space.
 #[inline(always)] // really pretty please
 unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
-    let repr: **mut raw::VecRepr = ::cast::transmute(v);
+    let repr: **mut raw::VecRepr = transmute(v);
     let fill = (**repr).unboxed.fill;
     (**repr).unboxed.fill += sys::nonzero_size_of::<T>();
-    let p = addr_of(&((**repr).unboxed.data));
+    let p = to_unsafe_ptr(&((**repr).unboxed.data));
     let p = ptr::offset(p, fill) as *mut T;
     intrinsics::move_val_init(&mut(*p), initval);
 }
@@ -1622,8 +1619,7 @@ pub fn as_imm_buf<T,U>(s: &[T],
     // instead!
 
     unsafe {
-        let v : *(*T,uint) =
-            ::cast::transmute(addr_of(&s));
+        let v : *(*T,uint) = transmute(&s);
         let (buf,len) = *v;
         f(buf, len / sys::nonzero_size_of::<T>())
     }
@@ -1633,8 +1629,7 @@ pub fn as_imm_buf<T,U>(s: &[T],
 #[inline(always)]
 pub fn as_const_buf<T,U>(s: &const [T], f: &fn(*const T, uint) -> U) -> U {
     unsafe {
-        let v : *(*const T,uint) =
-            ::cast::transmute(addr_of(&s));
+        let v : *(*const T,uint) = transmute(&s);
         let (buf,len) = *v;
         f(buf, len / sys::nonzero_size_of::<T>())
     }
@@ -1644,8 +1639,7 @@ pub fn as_const_buf<T,U>(s: &const [T], f: &fn(*const T, uint) -> U) -> U {
 #[inline(always)]
 pub fn as_mut_buf<T,U>(s: &mut [T], f: &fn(*mut T, uint) -> U) -> U {
     unsafe {
-        let v : *(*mut T,uint) =
-            ::cast::transmute(addr_of(&s));
+        let v : *(*mut T,uint) = transmute(&s);
         let (buf,len) = *v;
         f(buf, len / sys::nonzero_size_of::<T>())
     }
@@ -2429,13 +2423,13 @@ pub struct UnboxedVecRepr {
 
 /// Unsafe operations
 pub mod raw {
+    use cast::transmute;
     use kinds::Copy;
     use managed;
     use option::{None, Some};
-    use unstable::intrinsics;
-    use ptr::addr_of;
     use ptr;
     use sys;
+    use unstable::intrinsics;
     use vec::{UnboxedVecRepr, as_const_buf, as_mut_buf, len, with_capacity};
 
     /// The internal representation of a (boxed) vector
@@ -2458,7 +2452,7 @@ pub mod raw {
      */
     #[inline(always)]
     pub unsafe fn set_len<T>(v: &mut ~[T], new_len: uint) {
-        let repr: **mut VecRepr = ::cast::transmute(v);
+        let repr: **mut VecRepr = transmute(v);
         (**repr).unboxed.fill = new_len * sys::nonzero_size_of::<T>();
     }
 
@@ -2473,22 +2467,22 @@ pub mod raw {
      */
     #[inline(always)]
     pub unsafe fn to_ptr<T>(v: &[T]) -> *T {
-        let repr: **SliceRepr = ::cast::transmute(&v);
-        ::cast::transmute(addr_of(&((**repr).data)))
+        let repr: **SliceRepr = transmute(&v);
+        transmute(&((**repr).data))
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
     pub unsafe fn to_const_ptr<T>(v: &const [T]) -> *const T {
-        let repr: **SliceRepr = ::cast::transmute(&v);
-        ::cast::transmute(addr_of(&((**repr).data)))
+        let repr: **SliceRepr = transmute(&v);
+        transmute(&((**repr).data))
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
     pub unsafe fn to_mut_ptr<T>(v: &mut [T]) -> *mut T {
-        let repr: **SliceRepr = ::cast::transmute(&v);
-        ::cast::transmute(addr_of(&((**repr).data)))
+        let repr: **SliceRepr = transmute(&v);
+        transmute(&((**repr).data))
     }
 
     /**
@@ -2500,8 +2494,7 @@ pub mod raw {
                                     len: uint,
                                     f: &fn(v: &[T]) -> U) -> U {
         let pair = (p, len * sys::nonzero_size_of::<T>());
-        let v : *(&'blk [T]) =
-            ::cast::transmute(addr_of(&pair));
+        let v : *(&'blk [T]) = transmute(&pair);
         f(*v)
     }
 
@@ -2514,8 +2507,7 @@ pub mod raw {
                                         len: uint,
                                         f: &fn(v: &mut [T]) -> U) -> U {
         let pair = (p, len * sys::nonzero_size_of::<T>());
-        let v : *(&'blk mut [T]) =
-            ::cast::transmute(addr_of(&pair));
+        let v : *(&'blk mut [T]) = transmute(&pair);
         f(*v)
     }
 
