@@ -362,7 +362,6 @@ struct WatcherData {
     connect_cb: Option<ConnectionCallback>,
     close_cb: Option<NullCallback>,
     alloc_cb: Option<AllocCallback>,
-    buf: Option<Buf>
 }
 
 pub fn install_watcher_data<H, W: Watcher + NativeHandle<*H>>(watcher: &mut W) {
@@ -373,7 +372,6 @@ pub fn install_watcher_data<H, W: Watcher + NativeHandle<*H>>(watcher: &mut W) {
             connect_cb: None,
             close_cb: None,
             alloc_cb: None,
-            buf: None
         };
         let data = transmute::<~WatcherData, *c_void>(data);
         uvll::set_data_for_uv_handle(watcher.native_handle(), data);

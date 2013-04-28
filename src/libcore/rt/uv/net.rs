@@ -11,12 +11,13 @@
 use prelude::*;
 use libc::{size_t, ssize_t, c_int, c_void};
 use cast::transmute_mut_region;
+use util::ignore;
 use rt::uv::uvll;
 use rt::uv::uvll::*;
 use super::{Loop, Watcher, Request, UvError, Buf, Callback, NativeHandle, NullCallback,
             loop_from_watcher, status_to_maybe_uv_error,
             install_watcher_data, get_watcher_data, drop_watcher_data,
-            vec_to_uv_buf, vec_from_uv_buf};
+            vec_to_uv_buf, vec_from_uv_buf, slice_to_uv_buf};
 use super::super::io::net::ip::{IpAddr, Ipv4, Ipv6};
 use rt::uv::last_uv_error;
 
@@ -99,17 +100,13 @@ pub impl StreamWatcher {
         unsafe { uvll::read_stop(handle); }
     }
 
-    // XXX: Needs to take &[u8], not ~[u8]
-    fn write(&mut self, msg: ~[u8], cb: ConnectionCallback) {
+    fn write(&mut self, buf: Buf, cb: ConnectionCallback) {
         // XXX: Borrowck
         let data = get_watcher_data(unsafe { transmute_mut_region(self) });
         assert!(data.write_cb.is_none());
         data.write_cb = Some(cb);
 
         let req = WriteRequest::new();
-        let buf = vec_to_uv_buf(msg);
-        assert!(data.buf.is_none());
-        data.buf = Some(buf);
         let bufs = [buf];
         unsafe {
             assert!(0 == uvll::write(req.native_handle(),
@@ -123,7 +120,6 @@ pub impl StreamWatcher {
             write_request.delete();
             let cb = {
                 let data = get_watcher_data(&mut stream_watcher);
-                let _vec = vec_from_uv_buf(data.buf.swap_unwrap());
                 let cb = data.write_cb.swap_unwrap();
                 cb
             };
@@ -434,10 +430,13 @@ fn listen() {
                 assert!(status.is_none());
                 let mut stream_watcher = stream_watcher;
                 let msg = ~[0, 1, 2, 3, 4, 5, 6 ,7 ,8, 9];
-                do stream_watcher.write(msg) |stream_watcher, status| {
+                let buf = slice_to_uv_buf(msg);
+                let msg_cell = Cell(msg);
+                do stream_watcher.write(buf) |stream_watcher, status| {
                     rtdebug!("writing");
                     assert!(status.is_none());
-                    stream_watcher.close(||());
+                    let msg_cell = Cell(msg_cell.take());
+                    stream_watcher.close(||ignore(msg_cell.take()));
                 }
             }
             loop_.run();
