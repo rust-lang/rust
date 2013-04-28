@@ -54,7 +54,7 @@ use rt::io::IoError;
 pub use self::file::{FsRequest, FsCallback};
 pub use self::net::{StreamWatcher, TcpWatcher};
 pub use self::net::{ReadCallback, AllocCallback, ConnectionCallback, ConnectCallback};
-
+pub use self::idle::{IdleWatcher, IdleCallback};
 
 /// The implementation of `rtio` for libuv
 pub mod uvio;
@@ -64,6 +64,7 @@ pub mod uvll;
 
 pub mod file;
 pub mod net;
+pub mod idle;
 
 /// A trait for callbacks to implement. Provides a little extra type safety
 /// for generic, unsafe interop functions like `set_watcher_callback`.
@@ -117,74 +118,6 @@ impl NativeHandle<*uvll::uv_loop_t> for Loop {
     }
     fn native_handle(&self) -> *uvll::uv_loop_t {
         self.handle
-    }
-}
-
-pub struct IdleWatcher(*uvll::uv_idle_t);
-impl Watcher for IdleWatcher { }
-
-pub type IdleCallback = ~fn(IdleWatcher, Option<UvError>);
-impl Callback for IdleCallback { }
-
-pub impl IdleWatcher {
-    fn new(loop_: &mut Loop) -> IdleWatcher {
-        unsafe {
-            let handle = uvll::idle_new();
-            assert!(handle.is_not_null());
-            assert!(0 == uvll::idle_init(loop_.native_handle(), handle));
-            let mut watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
-            watcher.install_watcher_data();
-            return watcher
-        }
-    }
-
-    fn start(&mut self, cb: IdleCallback) {
-        {
-            let data = self.get_watcher_data();
-            data.idle_cb = Some(cb);
-        }
-
-        unsafe {
-            assert!(0 == uvll::idle_start(self.native_handle(), idle_cb))
-        };
-
-        extern fn idle_cb(handle: *uvll::uv_idle_t, status: c_int) {
-            let mut idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
-            let data = idle_watcher.get_watcher_data();
-            let cb: &IdleCallback = data.idle_cb.get_ref();
-            let status = status_to_maybe_uv_error(handle, status);
-            (*cb)(idle_watcher, status);
-        }
-    }
-
-    fn stop(&mut self) {
-        // NB: Not resetting the Rust idl_cb to None here because `stop` is likely
-        // called from *within* the idle callback, which would cause a use after free
-
-        unsafe {
-            assert!(0 == uvll::idle_stop(self.native_handle()));
-        }
-    }
-
-    fn close(self) {
-        unsafe { uvll::close(self.native_handle(), close_cb) };
-
-        extern fn close_cb(handle: *uvll::uv_idle_t) {
-            unsafe {
-                let mut idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
-                idle_watcher.drop_watcher_data();
-                uvll::idle_delete(handle);
-            }
-        }
-    }
-}
-
-impl NativeHandle<*uvll::uv_idle_t> for IdleWatcher {
-    fn from_native_handle(handle: *uvll::uv_idle_t) -> IdleWatcher {
-        IdleWatcher(handle)
-    }
-    fn native_handle(&self) -> *uvll::uv_idle_t {
-        match self { &IdleWatcher(ptr) => ptr }
     }
 }
 
