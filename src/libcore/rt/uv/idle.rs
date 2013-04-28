@@ -9,16 +9,13 @@
 // except according to those terms.
 
 use libc::c_int;
-use option::{Option, Some, None};
+use option::{Some, None};
 use rt::uv::uvll;
-use rt::uv::{Watcher, Callback, Loop, UvError, NativeHandle};
+use rt::uv::{Watcher, Loop, NativeHandle, IdleCallback};
 use rt::uv::status_to_maybe_uv_error;
 
 pub struct IdleWatcher(*uvll::uv_idle_t);
 impl Watcher for IdleWatcher { }
-
-pub type IdleCallback = ~fn(IdleWatcher, Option<UvError>);
-impl Callback for IdleCallback { }
 
 pub impl IdleWatcher {
     fn new(loop_: &mut Loop) -> IdleWatcher {

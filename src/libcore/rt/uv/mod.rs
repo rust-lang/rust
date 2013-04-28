@@ -51,10 +51,9 @@ use rt::io::IoError;
 
 #[cfg(test)] use unstable::run_in_bare_thread;
 
-pub use self::file::{FsRequest, FsCallback};
+pub use self::file::FsRequest;
 pub use self::net::{StreamWatcher, TcpWatcher};
-pub use self::net::{ReadCallback, AllocCallback, ConnectionCallback, ConnectCallback};
-pub use self::idle::{IdleWatcher, IdleCallback};
+pub use self::idle::IdleWatcher;
 
 /// The implementation of `rtio` for libuv
 pub mod uvio;
@@ -66,11 +65,12 @@ pub mod file;
 pub mod net;
 pub mod idle;
 
-/// A trait for callbacks to implement. Provides a little extra type safety
-/// for generic, unsafe interop functions like `set_watcher_callback`.
-pub trait Callback { }
-
-pub trait Request { }
+/// XXX: Loop(*handle) is buggy with destructors. Normal structs
+/// with dtors may not be destructured, but tuple structs can,
+/// but the results are not correct.
+pub struct Loop {
+    handle: *uvll::uv_loop_t
+}
 
 /// The trait implemented by uv 'watchers' (handles). Watchers are
 /// non-owning wrappers around the uv handles and are not completely
@@ -80,20 +80,12 @@ pub trait Request { }
 /// entirely memory safe if used in unanticipated patterns.
 pub trait Watcher { }
 
-pub type NullCallback = ~fn();
-impl Callback for NullCallback { }
+pub trait Request { }
 
 /// A type that wraps a native handle
 pub trait NativeHandle<T> {
     pub fn from_native_handle(T) -> Self;
     pub fn native_handle(&self) -> T;
-}
-
-/// XXX: Loop(*handle) is buggy with destructors. Normal structs
-/// with dtors may not be destructured, but tuple structs can,
-/// but the results are not correct.
-pub struct Loop {
-    handle: *uvll::uv_loop_t
 }
 
 pub impl Loop {
@@ -120,6 +112,15 @@ impl NativeHandle<*uvll::uv_loop_t> for Loop {
         self.handle
     }
 }
+
+// XXX: The uv alloc callback also has a *uv_handle_t arg
+pub type AllocCallback = ~fn(uint) -> Buf;
+pub type ReadCallback = ~fn(StreamWatcher, int, Buf, Option<UvError>);
+pub type NullCallback = ~fn();
+pub type IdleCallback = ~fn(IdleWatcher, Option<UvError>);
+pub type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
+pub type FsCallback = ~fn(FsRequest, Option<UvError>);
+
 
 /// Callbacks used by StreamWatchers, set as custom data on the foreign handle
 struct WatcherData {

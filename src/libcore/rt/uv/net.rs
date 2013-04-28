@@ -13,7 +13,8 @@ use libc::{size_t, ssize_t, c_int, c_void};
 use util::ignore;
 use rt::uv::uvll;
 use rt::uv::uvll::*;
-use super::{Loop, Watcher, Request, UvError, Buf, Callback, NativeHandle, NullCallback,
+use rt::uv::{AllocCallback, ConnectionCallback, ReadCallback};
+use super::{Loop, Watcher, Request, UvError, Buf, NativeHandle, NullCallback,
             status_to_maybe_uv_error, vec_to_uv_buf, vec_from_uv_buf, slice_to_uv_buf};
 use super::super::io::net::ip::{IpAddr, Ipv4, Ipv6};
 use rt::uv::last_uv_error;
@@ -47,13 +48,6 @@ fn ip4_as_uv_ip4<T>(addr: IpAddr, f: &fn(*sockaddr_in) -> T) -> T {
 // and uv_file_t
 pub struct StreamWatcher(*uvll::uv_stream_t);
 impl Watcher for StreamWatcher { }
-
-pub type ReadCallback = ~fn(StreamWatcher, int, Buf, Option<UvError>);
-impl Callback for ReadCallback { }
-
-// XXX: The uv alloc callback also has a *uv_handle_t arg
-pub type AllocCallback = ~fn(uint) -> Buf;
-impl Callback for AllocCallback { }
 
 pub impl StreamWatcher {
 
@@ -165,9 +159,6 @@ impl NativeHandle<*uvll::uv_stream_t> for StreamWatcher {
 pub struct TcpWatcher(*uvll::uv_tcp_t);
 impl Watcher for TcpWatcher { }
 
-pub type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
-impl Callback for ConnectionCallback { }
-
 pub impl TcpWatcher {
     fn new(loop_: &mut Loop) -> TcpWatcher {
         unsafe {
@@ -268,12 +259,8 @@ impl NativeHandle<*uvll::uv_tcp_t> for TcpWatcher {
     }
 }
 
-pub type ConnectCallback = ~fn(ConnectRequest, Option<UvError>);
-impl Callback for ConnectCallback { }
-
 // uv_connect_t is a subclass of uv_req_t
 struct ConnectRequest(*uvll::uv_connect_t);
-
 impl Request for ConnectRequest { }
 
 impl ConnectRequest {
