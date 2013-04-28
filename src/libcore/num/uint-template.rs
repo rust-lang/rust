@@ -423,6 +423,24 @@ mod tests {
     }
 
     #[test]
+    fn test_even() {
+        assert_eq!((0 as T).is_even(), true);
+        assert_eq!((1 as T).is_even(), false);
+        assert_eq!((2 as T).is_even(), true);
+        assert_eq!((3 as T).is_even(), false);
+        assert_eq!((4 as T).is_even(), true);
+    }
+
+    #[test]
+    fn test_odd() {
+        assert_eq!((0 as T).is_odd(), false);
+        assert_eq!((1 as T).is_odd(), true);
+        assert_eq!((2 as T).is_odd(), false);
+        assert_eq!((3 as T).is_odd(), true);
+        assert_eq!((4 as T).is_odd(), false);
+    }
+
+    #[test]
     fn test_bitwise() {
         assert_eq!(0b1110 as T, (0b1100 as T).bitor(&(0b1010 as T)));
         assert_eq!(0b1000 as T, (0b1100 as T).bitand(&(0b1010 as T)));
