@@ -289,9 +289,7 @@ impl RtioTcpStream for UvTcpStream {
         do scheduler.deschedule_running_task_and_then |task| {
             let mut watcher = watcher;
             let task_cell = Cell(task);
-            let buf = unsafe { &*buf_ptr };
-            // XXX: OMGCOPIES
-            let buf = buf.to_vec();
+            let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
             do watcher.write(buf) |_watcher, status| {
                 let result = if status.is_none() {
                     Ok(())
