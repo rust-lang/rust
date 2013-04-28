@@ -16,8 +16,6 @@
 // their associated scopes.  In phase two, checking loans, we will then make
 // sure that all of these loans are honored.
 
-use core::prelude::*;
-
 use middle::borrowck::preserve::{PreserveCondition, PcOk, PcIfPure};
 use middle::borrowck::{Loan, bckerr, bckres, BorrowckCtxt, err_mutbl};
 use middle::borrowck::{LoanKind, TotalFreeze, PartialFreeze,
@@ -32,7 +30,6 @@ use util::common::indenter;
 use util::ppaux::{Repr, region_to_str};
 
 use core::hashmap::{HashSet, HashMap};
-use core::vec;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 use syntax::codemap::span;

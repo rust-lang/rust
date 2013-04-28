@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use driver::session::Session;
 use driver::session;
 use middle::ty;
@@ -17,20 +15,6 @@ use middle::pat_util;
 use util::ppaux::{ty_to_str};
 
 use core::hashmap::HashMap;
-use core::char;
-use core::cmp;
-use core::i8;
-use core::i16;
-use core::i32;
-use core::i64;
-use core::int;
-use core::str;
-use core::u8;
-use core::u16;
-use core::u32;
-use core::u64;
-use core::uint;
-use core::vec;
 use std::smallintmap::SmallIntMap;
 use syntax::attr;
 use syntax::codemap::span;

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 // Just a named container for our op, so it can have impls
 pub struct NominalOp<T> {
     op: T

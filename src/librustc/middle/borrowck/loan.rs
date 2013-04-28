@@ -41,8 +41,6 @@ FIXME #4730 --- much more needed, don't have time to write this all up now
 // Loan(Ex, M, S) = Ls holds if ToAddr(Ex) will remain valid for the entirety
 // of the scope S, presuming that the returned set of loans `Ls` are honored.
 
-use core::prelude::*;
-
 use middle::borrowck::{Loan, bckerr, bckres, BorrowckCtxt, err_mutbl};
 use middle::borrowck::{LoanKind, TotalFreeze, PartialFreeze,
                        TotalTake, PartialTake, Immobile};
@@ -55,7 +53,6 @@ use middle::mem_categorization::{gc_ptr, region_ptr};
 use middle::ty;
 use util::common::indenter;
 
-use core::result::{Err, Ok};
 use syntax::ast::m_imm;
 use syntax::ast;
 

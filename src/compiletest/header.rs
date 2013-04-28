@@ -8,15 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use common;
 use common::config;
-
-use core::io::ReaderUtil;
-use core::io;
-use core::os;
-use core::str;
 
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out

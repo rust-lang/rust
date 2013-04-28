@@ -10,8 +10,6 @@
 
 // Information concerning the machine representation of various types.
 
-use core::prelude::*;
-
 use lib::llvm::{ValueRef, TypeRef};
 use lib::llvm::False;
 use lib::llvm::llvm;

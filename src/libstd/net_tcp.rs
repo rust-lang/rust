@@ -24,7 +24,6 @@ use core::io;
 use core::libc::size_t;
 use core::libc;
 use core::comm::{stream, Port, SharedChan};
-use core::prelude::*;
 use core::ptr;
 use core::result::{Result};
 use core::result;
@@ -1449,7 +1448,6 @@ mod test {
 
     use core::io;
     use core::comm::{stream, SharedChan};
-    use core::prelude::*;
     use core::result;
     use core::str;
     use core::task;

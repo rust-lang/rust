@@ -30,11 +30,6 @@ not required in or otherwise suitable for the core library.
 #[deny(non_camel_case_types)];
 #[allow(deprecated_mutable_fields)];
 
-#[no_core];
-
-extern mod core(vers = "0.7-pre");
-use core::prelude::*;
-
 pub mod uv_ll;
 
 // General io and system-services modules

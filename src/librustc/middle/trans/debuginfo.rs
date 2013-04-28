@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use driver::session;
 use lib::llvm::ValueRef;
@@ -22,8 +21,6 @@ use util::ppaux::ty_to_str;
 
 use core::hashmap::HashMap;
 use core::libc;
-use core::option;
-use core::sys;
 use syntax::codemap::span;
 use syntax::parse::token::ident_interner;
 use syntax::{ast, codemap, ast_util, ast_map};

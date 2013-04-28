@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use ast::*;
 use ext::base::ext_ctxt;
@@ -18,8 +16,6 @@ use ext::deriving::*;
 use codemap::{span, spanned};
 use ast_util;
 use opt_vec;
-
-use core::uint;
 
 pub fn expand_deriving_decodable(
     cx: @ext_ctxt,

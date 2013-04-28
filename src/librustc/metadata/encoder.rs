@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // Metadata encoding
-
-use core::prelude::*;
 
 use metadata::common::*;
 use metadata::cstore;
@@ -26,13 +23,6 @@ use util::ppaux::ty_to_str;
 use core::flate;
 use core::hash::HashUtil;
 use core::hashmap::HashMap;
-use core::int;
-use core::io::{Writer, WriterUtil};
-use core::io;
-use core::str;
-use core::to_bytes::IterBytes;
-use core::uint;
-use core::vec;
 use std::serialize::Encodable;
 use std;
 use syntax::abi::AbiSet;

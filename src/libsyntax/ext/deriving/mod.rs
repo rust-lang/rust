@@ -11,8 +11,6 @@
 /// The compiler code necessary to implement the #[deriving(Eq)] and
 /// #[deriving(IterBytes)] extensions.
 
-use core::prelude::*;
-
 use ast;
 use ast::{Ty, bind_by_ref, deref, enum_def};
 use ast::{expr, expr_match, ident, item, item_};
@@ -27,8 +25,6 @@ use ext::build;
 use codemap::{span, respan};
 use parse::token::special_idents::clownshoes_extensions;
 use opt_vec;
-
-use core::uint;
 
 pub mod clone;
 pub mod iter_bytes;

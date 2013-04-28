@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use driver::session;
 use driver::session::Session;
 use metadata::csearch::{each_path, get_trait_method_def_ids};
@@ -23,8 +21,6 @@ use middle::lint::{allow, level, unused_imports};
 use middle::lint::{get_lint_level, get_lint_settings_level};
 use middle::pat_util::pat_bindings;
 
-use core::str;
-use core::vec;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound, _mod, add, arm};
 use syntax::ast::{binding_mode, bitand, bitor, bitxor, blk};
 use syntax::ast::{bind_infer, bind_by_ref, bind_by_copy};

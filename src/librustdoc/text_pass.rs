@@ -10,8 +10,6 @@
 
 //! Generic pass for performing an operation on all descriptions
 
-use core::prelude::*;
-
 use astsrv;
 use doc::ItemUtils;
 use doc;
@@ -146,8 +144,6 @@ mod test {
     use extract;
     use sectionalize_pass;
     use text_pass::mk_pass;
-
-    use core::prelude::*;
 
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {

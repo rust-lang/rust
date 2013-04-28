@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use middle::ty;
 
-use core::result::Result;
-use core::result;
 use syntax::ast;
 use syntax::codemap::span;
 use syntax::opt_vec::OptVec;

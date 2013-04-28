@@ -10,9 +10,6 @@
 
 // rustpkg utilities having to do with paths and directories
 
-use core::path::*;
-use core::{os, str};
-use core::option::*;
 use util::PkgId;
 use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 

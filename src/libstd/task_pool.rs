@@ -12,7 +12,6 @@
 /// parallelism.
 
 use core::comm::Chan;
-use core::prelude::*;
 use core::task::SchedMode;
 use core::task;
 use core::vec;

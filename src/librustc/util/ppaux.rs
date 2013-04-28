@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use middle::ty;
 use middle::typeck;
 use middle::ty::canon_mode;
@@ -32,9 +30,6 @@ use syntax::print::pprust::mode_to_str;
 use syntax::{ast, ast_util};
 use syntax::ast_map;
 use syntax::abi::AbiSet;
-
-use core::str;
-use core::vec;
 
 pub trait Repr {
     fn repr(&self, tcx: ctxt) -> ~str;

@@ -18,12 +18,6 @@ use ext::build::{mk_base_vec_e, mk_uint, mk_u8, mk_base_str};
 use parse;
 use print::pprust;
 
-use core::io;
-use core::prelude::*;
-use core::result;
-use core::str;
-use core::vec;
-
 // These macros all relate to the file system; they either return
 // the column/row/filename of the expression, or they include
 // a given file into the current one.

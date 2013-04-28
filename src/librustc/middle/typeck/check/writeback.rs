@@ -12,8 +12,6 @@
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
 
-use core::prelude::*;
-
 use middle::pat_util;
 use middle::ty::arg;
 use middle::ty;
@@ -27,8 +25,6 @@ use middle::typeck::write_substs_to_tcx;
 use middle::typeck::write_ty_to_tcx;
 use util::ppaux;
 
-use core::result::{Ok, Err};
-use core::vec;
 use syntax::ast;
 use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;

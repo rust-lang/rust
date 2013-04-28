@@ -119,8 +119,6 @@ lvalues are *never* stored by value.
 
 */
 
-use core::prelude::*;
-
 use back::abi;
 use lib;
 use lib::llvm::{ValueRef, TypeRef, llvm};

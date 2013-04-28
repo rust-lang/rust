@@ -15,7 +15,6 @@
 // allow the interner_key macro to escape this module:
 #[macro_escape];
 
-use core::prelude::*;
 use core::cmp::Equiv;
 use core::hashmap::HashMap;
 

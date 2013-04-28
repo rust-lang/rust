@@ -8,12 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use syntax::{ast, fold, attr};
-
-use core::option;
-use core::vec;
 
 type in_cfg_pred = @fn(attrs: ~[ast::attribute]) -> bool;
 

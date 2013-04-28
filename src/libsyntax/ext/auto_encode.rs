@@ -88,8 +88,6 @@ node twice.
 
 */
 
-use core::prelude::*;
-
 use ast;
 use ast_util;
 use attr;
@@ -100,8 +98,6 @@ use parse;
 use opt_vec;
 use opt_vec::OptVec;
 use ext::build;
-
-use core::vec;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {

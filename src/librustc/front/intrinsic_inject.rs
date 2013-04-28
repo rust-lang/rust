@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use driver::session::Session;
 use syntax::parse;
 use syntax::ast;
 use syntax::codemap::spanned;
-
-use core::vec;
 
 pub fn inject_intrinsic(sess: Session, crate: @ast::crate) -> @ast::crate {
     let intrinsic_module = @(include_str!("intrinsic.rs").to_owned());

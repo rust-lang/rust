@@ -13,9 +13,6 @@
 
 use core::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
 use core::from_str::FromStr;
-use core::to_str::ToStr;
-use core::prelude::*;
-use core::cmp::TotalEq;
 use super::bigint::BigInt;
 
 /// Represents the ratio between 2 numbers.
@@ -299,7 +296,6 @@ impl<T: FromStrRadix + Copy + Num + Ord>
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
     use super::*;
     use core::num::{Zero,One,FromStrRadix};
     use core::from_str::FromStr;

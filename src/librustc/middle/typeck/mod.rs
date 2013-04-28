@@ -48,8 +48,6 @@ independently:
 
 */
 
-use core::prelude::*;
-
 use driver::session;
 
 use middle::resolve;
@@ -59,8 +57,6 @@ use util::ppaux::Repr;
 use util::ppaux;
 
 use core::hashmap::HashMap;
-use core::result;
-use core::vec;
 use std::list::List;
 use std::list;
 use syntax::codemap::span;

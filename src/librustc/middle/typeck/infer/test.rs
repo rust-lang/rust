@@ -16,8 +16,6 @@ Note: This module is only compiled when doing unit testing.
 
 */
 
-use core::prelude::*;
-
 use driver::diagnostic;
 use driver::driver::{optgroups, build_session_options, build_session};
 use driver::driver::{str_input, build_configuration};
