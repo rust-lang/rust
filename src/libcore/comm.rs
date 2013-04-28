@@ -565,11 +565,11 @@ mod test {
 
     #[test]
     fn test_oneshot() {
-        let (c, p) = oneshot::init();
+        let (p, c) = oneshot();
 
-        oneshot::client::send(c, ());
+        c.send(());
 
-        recv_one(p)
+        p.recv()
     }
 
     #[test]

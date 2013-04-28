@@ -185,7 +185,7 @@ mod test {
 
     #[test]
     fn test_from_port() {
-        let (ch, po) = oneshot();
+        let (po, ch) = oneshot();
         send_one(ch, ~"whale");
         let f = from_port(po);
         assert!(f.get() == ~"whale");
