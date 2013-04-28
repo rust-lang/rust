@@ -1075,7 +1075,7 @@ mod tests {
     #[test]
     fn test_significand() {
         let sig = 0.54321f64, exp = 12;
-        assert_eq!(Float::encode(sig, exp).significand(), f64_encode(sig, -exp).significand());
+        assert_eq!(Float::encode(sig, exp).significand(), f64_encode(sig, exp).significand());
         assert_eq!(Float::encode(sig, -exp).significand(), f64_encode(sig, -exp).significand());
     }
 
