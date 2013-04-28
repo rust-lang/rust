@@ -151,6 +151,7 @@ pub mod v4 {
     use uv_ip4_addr = uv::ll::ip4_addr;
     use uv_ip4_name = uv::ll::ip4_name;
 
+    use core::cast::transmute;
     use core::ptr;
     use core::result;
     use core::str;

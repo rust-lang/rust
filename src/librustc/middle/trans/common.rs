@@ -41,6 +41,7 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux::{Repr};
 
+use core::cast::transmute;
 use core::hash;
 use core::hashmap::{HashMap, HashSet};
 use core::libc::{c_uint, c_longlong, c_ulonglong};
