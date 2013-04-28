@@ -77,9 +77,7 @@ pub trait Request { }
 /// handle.  Watchers are generally created, then `start`ed, `stop`ed
 /// and `close`ed, but due to their complex life cycle may not be
 /// entirely memory safe if used in unanticipated patterns.
-pub trait Watcher {
-    fn event_loop(&self) -> Loop;
-}
+pub trait Watcher { }
 
 pub type NullCallback = ~fn();
 impl Callback for NullCallback { }
@@ -123,12 +121,7 @@ impl NativeHandle<*uvll::uv_loop_t> for Loop {
 }
 
 pub struct IdleWatcher(*uvll::uv_idle_t);
-
-impl Watcher for IdleWatcher {
-    fn event_loop(&self) -> Loop {
-        loop_from_watcher(self)
-    }
-}
+impl Watcher for IdleWatcher { }
 
 pub type IdleCallback = ~fn(IdleWatcher, Option<UvError>);
 impl Callback for IdleCallback { }
@@ -146,14 +139,14 @@ pub impl IdleWatcher {
 
     fn start(&mut self, cb: IdleCallback) {
 
-        set_watcher_callback(self, cb);
+        self.set_callback(cb);
         unsafe {
             assert!(0 == uvll::idle_start(self.native_handle(), idle_cb))
         };
 
         extern fn idle_cb(handle: *uvll::uv_idle_t, status: c_int) {
             let idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
-            let cb: &IdleCallback = borrow_callback_from_watcher(&idle_watcher);
+            let cb: &IdleCallback = idle_watcher.borrow_callback();
             let status = status_to_maybe_uv_error(handle, status);
             (*cb)(idle_watcher, status);
         }
@@ -167,9 +160,11 @@ pub impl IdleWatcher {
         unsafe { uvll::close(self.native_handle(), close_cb) };
 
         extern fn close_cb(handle: *uvll::uv_idle_t) {
-            let mut idle_watcher = NativeHandle::from_native_handle(handle);
-            drop_watcher_callback::<uvll::uv_idle_t, IdleWatcher, IdleCallback>(&mut idle_watcher);
-            unsafe { uvll::idle_delete(handle) };
+            unsafe {
+                let mut idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
+                idle_watcher.drop_callback::<IdleCallback>();
+                uvll::idle_delete(handle);
+            }
         }
     }
 }
@@ -224,7 +219,7 @@ fn error_smoke_test() {
 
 pub fn last_uv_error<H, W: Watcher + NativeHandle<*H>>(watcher: &W) -> UvError {
     unsafe {
-        let loop_ = loop_from_watcher(watcher);
+        let loop_ = watcher.event_loop();
         UvError(uvll::last_error(loop_.native_handle()))
     }
 }
@@ -288,73 +283,6 @@ pub fn status_to_maybe_uv_error<T>(handle: *T, status: c_int) -> Option<UvError>
     }
 }
 
-/// Get the uv event loop from a Watcher
-pub fn loop_from_watcher<H, W: Watcher + NativeHandle<*H>>(
-    watcher: &W) -> Loop {
-
-    let handle = watcher.native_handle();
-    let loop_ = unsafe { uvll::get_loop_for_uv_handle(handle) };
-    NativeHandle::from_native_handle(loop_)
-}
-
-/// Set the custom data on a handle to a callback Note: This is only
-/// suitable for watchers that make just one type of callback.  For
-/// others use WatcherData
-pub fn set_watcher_callback<H, W: Watcher + NativeHandle<*H>, CB: Callback>(
-    watcher: &mut W, cb: CB) {
-
-    drop_watcher_callback::<H, W, CB>(watcher);
-    // XXX: Boxing the callback so it fits into a
-    // pointer. Unfortunate extra allocation
-    let boxed_cb = ~cb;
-    let data = unsafe { transmute::<~CB, *c_void>(boxed_cb) };
-    unsafe { uvll::set_data_for_uv_handle(watcher.native_handle(), data) };
-}
-
-/// Delete a callback from a handle's custom data
-pub fn drop_watcher_callback<H, W: Watcher + NativeHandle<*H>, CB: Callback>(
-    watcher: &mut W) {
-
-    unsafe {
-        let handle = watcher.native_handle();
-        let handle_data: *c_void = uvll::get_data_for_uv_handle(handle);
-        if handle_data.is_not_null() {
-            // Take ownership of the callback and drop it
-            let _cb = transmute::<*c_void, ~CB>(handle_data);
-            // Make sure the pointer is zeroed
-            uvll::set_data_for_uv_handle(watcher.native_handle(), null::<()>());
-        }
-    }
-}
-
-/// Take a pointer to the callback installed as custom data
-pub fn borrow_callback_from_watcher<H, W: Watcher + NativeHandle<*H>,
-                                CB: Callback>(watcher: &W) -> &CB {
-
-    unsafe {
-        let handle = watcher.native_handle();
-        let handle_data: *c_void = uvll::get_data_for_uv_handle(handle);
-        assert!(handle_data.is_not_null());
-        let cb = transmute::<&*c_void, &~CB>(&handle_data);
-        return &**cb;
-    }
-}
-
-/// Take ownership of the callback installed as custom data
-pub fn take_callback_from_watcher<H, W: Watcher + NativeHandle<*H>, CB: Callback>(
-    watcher: &mut W) -> CB {
-
-    unsafe {
-        let handle = watcher.native_handle();
-        let handle_data: *c_void = uvll::get_data_for_uv_handle(handle);
-        assert!(handle_data.is_not_null());
-        uvll::set_data_for_uv_handle(handle, null::<()>());
-        let cb: ~CB = transmute::<*c_void, ~CB>(handle_data);
-        let cb = match cb { ~cb => cb };
-        return cb;
-    }
-}
-
 /// Callbacks used by StreamWatchers, set as custom data on the foreign handle
 struct WatcherData {
     read_cb: Option<ReadCallback>,
@@ -364,35 +292,94 @@ struct WatcherData {
     alloc_cb: Option<AllocCallback>,
 }
 
-pub fn install_watcher_data<H, W: Watcher + NativeHandle<*H>>(watcher: &mut W) {
-    unsafe {
-        let data = ~WatcherData {
-            read_cb: None,
-            write_cb: None,
-            connect_cb: None,
-            close_cb: None,
-            alloc_cb: None,
-        };
-        let data = transmute::<~WatcherData, *c_void>(data);
-        uvll::set_data_for_uv_handle(watcher.native_handle(), data);
-    }
+pub trait WatcherInterop {
+    fn event_loop(&self) -> Loop;
+    fn set_callback<CB: Callback>(&mut self, cb: CB);
+    fn drop_callback<CB: Callback>(&mut self);
+    fn borrow_callback<CB: Callback>(&self) -> &CB;
+    fn install_watcher_data(&mut self);
+    fn get_watcher_data<'r>(&'r mut self) -> &'r mut WatcherData;
+    fn drop_watcher_data(&mut self);
 }
 
-pub fn get_watcher_data<'r, H, W: Watcher + NativeHandle<*H>>(
-    watcher: &'r mut W) -> &'r mut WatcherData {
-
-    unsafe {
-        let data = uvll::get_data_for_uv_handle(watcher.native_handle());
-        let data = transmute::<&*c_void, &mut ~WatcherData>(&data);
-        return &mut **data;
+impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
+    /// Get the uv event loop from a Watcher
+    pub fn event_loop(&self) -> Loop {
+        unsafe {
+            let handle = self.native_handle();
+            let loop_ = uvll::get_loop_for_uv_handle(handle);
+            NativeHandle::from_native_handle(loop_)
+        }
     }
-}
 
-pub fn drop_watcher_data<H, W: Watcher + NativeHandle<*H>>(watcher: &mut W) {
-    unsafe {
-        let data = uvll::get_data_for_uv_handle(watcher.native_handle());
-        let _data = transmute::<*c_void, ~WatcherData>(data);
-        uvll::set_data_for_uv_handle(watcher.native_handle(), null::<()>());
+    /// Set the custom data on a handle to a callback Note: This is only
+    /// suitable for watchers that make just one type of callback.  For
+    /// others use WatcherData
+    pub fn set_callback<CB: Callback>(&mut self, cb: CB) {
+        unsafe {
+            self.drop_callback::<CB>();
+
+            // XXX: Boxing the callback so it fits into a
+            // pointer. Unfortunate extra allocation
+            let boxed_cb = ~cb;
+            let data = transmute::<~CB, *c_void>(boxed_cb);
+            uvll::set_data_for_uv_handle(self.native_handle(), data);
+        }
+    }
+
+    /// Delete a callback from a handle's custom data
+    pub fn drop_callback<CB: Callback>(&mut self) {
+        unsafe {
+            let handle = self.native_handle();
+            let handle_data: *c_void = uvll::get_data_for_uv_handle(handle);
+            if handle_data.is_not_null() {
+                // Take ownership of the callback and drop it
+                let _cb = transmute::<*c_void, ~CB>(handle_data);
+                // Make sure the pointer is zeroed
+                uvll::set_data_for_uv_handle(self.native_handle(), null::<()>());
+            }
+        }
+    }
+
+    /// Take a pointer to the callback installed as custom data
+    pub fn borrow_callback<CB: Callback>(&self) -> &CB {
+        unsafe {
+            let handle = self.native_handle();
+            let handle_data: *c_void = uvll::get_data_for_uv_handle(handle);
+            assert!(handle_data.is_not_null());
+            let cb = transmute::<&*c_void, &~CB>(&handle_data);
+            return &**cb;
+        }
+    }
+
+    pub fn install_watcher_data(&mut self) {
+        unsafe {
+            let data = ~WatcherData {
+                read_cb: None,
+                write_cb: None,
+                connect_cb: None,
+                close_cb: None,
+                alloc_cb: None,
+            };
+            let data = transmute::<~WatcherData, *c_void>(data);
+            uvll::set_data_for_uv_handle(self.native_handle(), data);
+        }
+    }
+
+    pub fn get_watcher_data<'r>(&'r mut self) -> &'r mut WatcherData {
+        unsafe {
+            let data = uvll::get_data_for_uv_handle(self.native_handle());
+            let data = transmute::<&*c_void, &mut ~WatcherData>(&data);
+            return &mut **data;
+        }
+    }
+
+    pub fn drop_watcher_data(&mut self) {
+        unsafe {
+            let data = uvll::get_data_for_uv_handle(self.native_handle());
+            let _data = transmute::<*c_void, ~WatcherData>(data);
+            uvll::set_data_for_uv_handle(self.native_handle(), null::<()>());
+        }
     }
 }
 
