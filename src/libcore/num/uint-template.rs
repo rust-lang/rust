@@ -238,11 +238,11 @@ impl Integer for T {
 
     /// Returns `true` if the number can be divided by `other` without leaving a remainder
     #[inline(always)]
-    fn divisible_by(&self, other: &T) -> bool { *self % *other == 0 }
+    fn is_multiple_of(&self, other: &T) -> bool { *self % *other == 0 }
 
     /// Returns `true` if the number is divisible by `2`
     #[inline(always)]
-    fn is_even(&self) -> bool { self.divisible_by(&2) }
+    fn is_even(&self) -> bool { self.is_multiple_of(&2) }
 
     /// Returns `true` if the number is not divisible by `2`
     #[inline(always)]
@@ -413,6 +413,13 @@ mod tests {
         assert_eq!((8 as T).lcm(&9), 72 as T);
         assert_eq!((11 as T).lcm(&5), 55 as T);
         assert_eq!((99 as T).lcm(&17), 1683 as T);
+    }
+
+    #[test]
+    fn test_multiple_of() {
+        assert!((6 as T).is_multiple_of(&(6 as T)));
+        assert!((6 as T).is_multiple_of(&(3 as T)));
+        assert!((6 as T).is_multiple_of(&(1 as T)));
     }
 
     #[test]

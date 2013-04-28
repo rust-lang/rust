@@ -85,7 +85,8 @@ pub trait Integer: Num
 
     fn gcd(&self, other: &Self) -> Self;
     fn lcm(&self, other: &Self) -> Self;
-    fn divisible_by(&self, other: &Self) -> bool;
+
+    fn is_multiple_of(&self, other: &Self) -> bool;
     fn is_even(&self) -> bool;
     fn is_odd(&self) -> bool;
 }
