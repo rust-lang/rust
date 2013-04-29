@@ -100,6 +100,9 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ]
 }
 
+// Information output flags
+pub static out_link_args : uint = 1 << 0;
+
 #[deriving(Eq)]
 pub enum OptLevel {
     No, // -O0
@@ -136,6 +139,7 @@ pub struct options {
     parse_only: bool,
     no_trans: bool,
     debugging_opts: uint,
+    output_info: uint,
     android_cross_path: Option<~str>
 }
 
@@ -310,6 +314,7 @@ pub fn basic_options() -> @options {
         parse_only: false,
         no_trans: false,
         debugging_opts: 0u,
+        output_info: 0u,
         android_cross_path: None
     }
 }
