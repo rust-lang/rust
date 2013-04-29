@@ -11,7 +11,7 @@
 //! Runtime calls emitted by the compiler.
 
 use cast::transmute;
-use libc::{c_char, c_uchar, c_void, size_t, uintptr_t, c_int};
+use libc::{c_char, c_uchar, c_void, size_t, uintptr_t, c_int, STDERR_FILENO};
 use managed::raw::BoxRepr;
 use str;
 use sys;
@@ -74,7 +74,44 @@ pub fn fail_borrowed() {
 #[lang="exchange_malloc"]
 #[inline(always)]
 pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    transmute(exchange_alloc::malloc(transmute(td), transmute(size)))
+    let result = transmute(exchange_alloc::malloc(transmute(td), transmute(size)));
+    debug_ptr("exchange_malloc: ", result);
+    return result;
+}
+
+/// Because this code is so perf. sensitive, use a static constant so that
+/// debug printouts are compiled out most of the time.
+static ENABLE_DEBUG_PTR: bool = false;
+
+#[inline]
+pub fn debug_ptr<T>(tag: &'static str, p: *T) {
+    //! A useful debugging function that prints a pointer + tag + newline
+    //! without allocating memory.
+
+    if ENABLE_DEBUG_PTR && ::rt::env::get().debug_mem {
+        debug_ptr_slow(tag, p);
+    }
+
+    fn debug_ptr_slow<T>(tag: &'static str, p: *T) {
+        use io;
+        let dbg = STDERR_FILENO as io::fd_t;
+        let letters = ['0', '1', '2', '3', '4', '5', '6', '7', '8',
+                       '9', 'a', 'b', 'c', 'd', 'e', 'f'];
+        dbg.write_str(tag);
+
+        static uint_nibbles: uint = ::uint::bytes << 1;
+        let mut buffer = [0_u8, ..uint_nibbles+1];
+        let mut i = p as uint;
+        let mut c = uint_nibbles;
+        while c > 0 {
+            c -= 1;
+            buffer[c] = letters[i & 0xF] as u8;
+            i >>= 4;
+        }
+        dbg.write(buffer.slice(0, uint_nibbles));
+
+        dbg.write_str("\n");
+    }
 }
 
 // NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
@@ -83,13 +120,16 @@ pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 #[lang="exchange_free"]
 #[inline(always)]
 pub unsafe fn exchange_free(ptr: *c_char) {
+    debug_ptr("exchange_free: ", ptr);
     exchange_alloc::free(transmute(ptr))
 }
 
 #[lang="malloc"]
 #[inline(always)]
 pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    return rustrt::rust_upcall_malloc_noswitch(td, size);
+    let result = rustrt::rust_upcall_malloc_noswitch(td, size);
+    debug_ptr("local_malloc: ", result);
+    return result;
 }
 
 // NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
@@ -98,6 +138,7 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 #[lang="free"]
 #[inline(always)]
 pub unsafe fn local_free(ptr: *c_char) {
+    debug_ptr("local_free: ", ptr);
     rustrt::rust_upcall_free_noswitch(ptr);
 }
 
