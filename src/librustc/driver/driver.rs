@@ -234,7 +234,6 @@ pub fn compile_rest(sess: Session,
     let rp_set = time(time_passes, ~"region parameterization inference", ||
         middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
 
-
     let outputs = outputs.get();
 
     let (llmod, link_meta) = {
@@ -308,6 +307,11 @@ pub fn compile_rest(sess: Session,
                                       exp_map2, maps))
 
     };
+
+    if (sess.opts.output_info & session::out_link_args) > 0 {
+        io::println(str::connect(link::link_args(sess,
+            &outputs.obj_filename, &outputs.out_filename, link_meta), " "));
+    }
 
     // NB: Android hack
     if sess.targ_cfg.arch == abi::Arm &&
@@ -659,6 +663,12 @@ pub fn build_session_options(binary: @~str,
     let test = opt_present(matches, ~"test");
     let android_cross_path = getopts::opt_maybe_str(
         matches, ~"android-cross-path");
+
+    let mut output_info = 0;
+    if opt_present(matches, "print-link-args") {
+        output_info |= session::out_link_args;
+    }
+
     let sopts = @session::options {
         crate_type: crate_type,
         is_static: static,
@@ -681,6 +691,7 @@ pub fn build_session_options(binary: @~str,
         parse_only: parse_only,
         no_trans: no_trans,
         debugging_opts: debugging_opts,
+        output_info: output_info,
         android_cross_path: android_cross_path
     };
     return sopts;
