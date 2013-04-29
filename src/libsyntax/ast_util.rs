@@ -355,6 +355,10 @@ pub fn operator_prec(op: ast::binop) -> uint {
   }
 }
 
+/// Precedence of the `as` operator, which is a binary operator
+/// not appearing in the prior table.
+pub static as_prec: uint = 11u;
+
 pub fn dtor_ty() -> @ast::Ty {
     @ast::Ty {id: 0, node: ty_nil, span: dummy_sp()}
 }
@@ -755,7 +759,6 @@ mod test {
         assert_eq!(t[3],Mark(3,2));
         assert_eq!(refold_test_sc(3,&t),test_sc);
     }
-
 
     // extend a syntax context with a sequence of marks given
     // in a vector. v[0] will be the outermost mark.
