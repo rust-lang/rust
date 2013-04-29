@@ -437,7 +437,9 @@ impl Exponential for f64 {
 
     #[inline(always)]
     fn log10(&self) -> f64 { log10(*self) }
+}
 
+impl Hyperbolic for f64 {
     #[inline(always)]
     fn sinh(&self) -> f64 { sinh(*self) }
 

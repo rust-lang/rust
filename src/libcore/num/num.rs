@@ -131,9 +131,9 @@ pub trait Exponential {
     fn log(&self) -> Self;
     fn log2(&self) -> Self;
     fn log10(&self) -> Self;
+}
 
-    // The Hyperbolic Functions are trivially implemented in terms of `exp`, so it's  simpler
-    // to group them within this trait. In the future these would have default implementations.
+pub trait Hyperbolic: Exponential {
     fn sinh(&self) -> Self;
     fn cosh(&self) -> Self;
     fn tanh(&self) -> Self;
@@ -146,7 +146,7 @@ pub trait Real: Signed
               + Fractional
               + Algebraic
               + Trigonometric
-              + Exponential {
+              + Hyperbolic {
     // Common Constants
     // FIXME (#5527): These should be associated constants
     fn pi() -> Self;
