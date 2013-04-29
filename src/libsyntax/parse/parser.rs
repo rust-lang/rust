@@ -2496,6 +2496,7 @@ pub impl Parser {
         @ast::pat { id: self.get_id(), node: pat, span: mk_sp(lo, hi) }
     }
 
+    // parse ident or ident @ pat
     // used by the copy foo and ref foo patterns to give a good
     // error message when parsing mistakes like ref foo(a,b)
     fn parse_pat_ident(&self,
