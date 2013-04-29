@@ -93,7 +93,10 @@ pub mod rustrt {
 pub mod rusti {
     #[abi = "rust-intrinsic"]
     pub extern "rust-intrinsic" {
+        #[cfg(stage0)]
         pub fn frame_address(f: &once fn(x: *u8));
+        #[cfg(not(stage0))]
+        pub fn frame_address(+f: &once fn(x: *u8));
     }
 }
 

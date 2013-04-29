@@ -18,10 +18,10 @@ impl Drop for r {
     fn finalize(&self) {
         unsafe {
             debug!("r's dtor: self = %x, self.v = %x, self.v's value = %x",
-              cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(self)),
-              cast::reinterpret_cast::<**int, uint>(&ptr::addr_of(&(self.v))),
-              cast::reinterpret_cast::<*int, uint>(&self.v));
-            let v2: ~int = cast::reinterpret_cast(&self.v);
+              cast::transmute::<*r, uint>(self),
+              cast::transmute::<**int, uint>(&(self.v)),
+              cast::transmute::<*int, uint>(self.v));
+            let v2: ~int = cast::transmute(self.v);
         }
     }
 }
@@ -44,38 +44,36 @@ struct Node {
 pub fn main() {
     unsafe {
         let i1 = ~0;
-        let i1p = cast::reinterpret_cast(&i1);
+        let i1p = cast::transmute_copy(&i1);
         cast::forget(i1);
         let i2 = ~0;
-        let i2p = cast::reinterpret_cast(&i2);
+        let i2p = cast::transmute_copy(&i2);
         cast::forget(i2);
 
         let mut x1 = @mut t(Node{
             next: None,
               r: {
               let rs = r(i1p);
-              debug!("r = %x",
-                     cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(&rs)));
+              debug!("r = %x", cast::transmute::<*r, uint>(&rs));
               rs }
         });
         
         debug!("x1 = %x, x1.r = %x",
-            cast::reinterpret_cast::<@mut t, uint>(&x1),
-            cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(&(x1.r))));
+               cast::transmute::<@mut t, uint>(x1),
+               cast::transmute::<*r, uint>(&x1.r));
 
         let mut x2 = @mut t(Node{
             next: None,
               r: {
               let rs = r(i2p);
-              debug!("r2 = %x",
-                     cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(&rs)));
+              debug!("r2 = %x", cast::transmute::<*r, uint>(&rs));
               rs
                 }
         });
         
         debug!("x2 = %x, x2.r = %x",
-               cast::reinterpret_cast::<@mut t, uint>(&x2),
-               cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(&(x2.r))));
+               cast::transmute::<@mut t, uint>(x2),
+               cast::transmute::<*r, uint>(&(x2.r)));
 
         x1.next = Some(x2);
         x2.next = Some(x1);

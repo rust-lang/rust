@@ -18,42 +18,38 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[legacy_modes];
-
-#[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
-#[allow(deprecated_mode)];
-#[allow(deprecated_pattern)];
 
 extern mod std(vers = "0.7-pre");
 extern mod syntax(vers = "0.7-pre");
 
 use core::run;
 
-use syntax::{ast, fold, visit, codemap};
+use syntax::diagnostic;
+use syntax::parse::token::ident_interner;
+use syntax::parse::token;
 use syntax::parse;
 use syntax::print::pprust;
-use syntax::diagnostic;
+use syntax::{ast, fold, visit, codemap};
 
 #[deriving(Eq)]
 pub enum test_mode { tm_converge, tm_run, }
 
 pub struct Context { mode: test_mode } // + rng
 
-pub fn write_file(filename: &Path, content: ~str) {
-    result::get(
-        &io::file_writer(filename, ~[io::Create, io::Truncate]))
-        .write_str(content);
+pub fn write_file(filename: &Path, content: &str) {
+    result::get(&io::file_writer(filename, ~[io::Create, io::Truncate]))
+                    .write_str(content);
 }
 
-pub fn contains(haystack: ~str, needle: ~str) -> bool {
+pub fn contains(haystack: &str, needle: &str) -> bool {
     str::contains(haystack, needle)
 }
 
 pub fn find_rust_files(files: &mut ~[Path], path: &Path) {
     if path.filetype() == Some(~".rs") && !contains(path.to_str(), ~"utf8") {
         // ignoring "utf8" tests because something is broken
-        files.push(*path);
+        files.push(path.clone());
     } else if os::path_is_dir(path)
         && !contains(path.to_str(), ~"compile-fail")
         && !contains(path.to_str(), ~"build") {
@@ -64,9 +60,9 @@ pub fn find_rust_files(files: &mut ~[Path], path: &Path) {
 }
 
 
-pub fn common_exprs() -> ~[ast::expr] {
-    fn dse(e: ast::expr_) -> ast::expr {
-        ast::expr {
+pub fn common_exprs() -> ~[@ast::expr] {
+    fn dse(e: ast::expr_) -> @ast::expr {
+        @ast::expr {
             id: 0,
             callee_id: -1,
             node: e,
@@ -85,17 +81,17 @@ pub fn common_exprs() -> ~[ast::expr] {
      dse(ast::expr_lit(@dsl(ast::lit_bool(false)))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(true)))),
      dse(ast::expr_unary(ast::box(ast::m_imm),
-                         @dse(ast::expr_lit(@dsl(ast::lit_bool(true)))))),
+                         dse(ast::expr_lit(@dsl(ast::lit_bool(true)))))),
      dse(ast::expr_unary(ast::uniq(ast::m_imm),
-                         @dse(ast::expr_lit(@dsl(ast::lit_bool(true))))))
+                         dse(ast::expr_lit(@dsl(ast::lit_bool(true))))))
     ]
 }
 
 pub fn safe_to_steal_expr(e: @ast::expr, tm: test_mode) -> bool {
-    safe_to_use_expr(*e, tm)
+    safe_to_use_expr(e, tm)
 }
 
-pub fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
+pub fn safe_to_use_expr(e: @ast::expr, tm: test_mode) -> bool {
     match tm {
       tm_converge => {
         match e.node {
@@ -134,28 +130,31 @@ pub fn safe_to_steal_ty(t: @ast::Ty, tm: test_mode) -> bool {
 
 // Not type-parameterized: https://github.com/mozilla/rust/issues/898 (FIXED)
 pub fn stash_expr_if(c: @fn(@ast::expr, test_mode)->bool,
-                     es: @mut ~[ast::expr],
+                     es: @mut ~[@ast::expr],
                      e: @ast::expr,
                      tm: test_mode) {
     if c(e, tm) {
-        *es += ~[*e];
+        *es += ~[e];
     } else {
         /* now my indices are wrong :( */
     }
 }
 
-pub fn stash_ty_if(c: @fn(@ast::Ty, test_mode)->bool,
-                   es: @mut ~[ast::Ty],
+pub fn stash_ty_if(c: @fn(@ast::Ty, test_mode) -> bool,
+                   es: @mut ~[@ast::Ty],
                    e: @ast::Ty,
                    tm: test_mode) {
     if c(e, tm) {
-        es.push(*e);
+        es.push(e);
     } else {
         /* now my indices are wrong :( */
     }
 }
 
-pub struct StolenStuff {exprs: ~[ast::expr], tys: ~[ast::Ty]}
+pub struct StolenStuff {
+    exprs: ~[@ast::expr],
+    tys: ~[@ast::Ty]
+}
 
 pub fn steal(crate: @ast::crate, tm: test_mode) -> StolenStuff {
     let exprs = @mut ~[];
@@ -166,20 +165,23 @@ pub fn steal(crate: @ast::crate, tm: test_mode) -> StolenStuff {
         .. *visit::default_simple_visitor()
     });
     visit::visit_crate(crate, (), v);
-    StolenStuff {exprs: *exprs, tys: *tys}
+    StolenStuff {
+        exprs: (*exprs).clone(),
+        tys: (*tys).clone(),
+    }
 }
 
 
 pub fn safe_to_replace_expr(e: &ast::expr_, _tm: test_mode) -> bool {
     match *e {
-      // https://github.com/mozilla/rust/issues/652
-      ast::expr_if(*) => { false }
-      ast::expr_block(_) => { false }
+        // https://github.com/mozilla/rust/issues/652
+        ast::expr_if(*) => false,
+        ast::expr_block(_) => false,
 
-      // expr_call is also missing a constraint
-      ast::expr_fn_block(*) => { false }
+        // expr_call is also missing a constraint
+        ast::expr_fn_block(*) => false,
 
-      _ => { true }
+        _ => true,
     }
 }
 
@@ -194,59 +196,66 @@ pub fn safe_to_replace_ty(t: &ast::ty_, _tm: test_mode) -> bool {
 }
 
 // Replace the |i|th expr (in fold order) of |crate| with |newexpr|.
-pub fn replace_expr_in_crate(crate: @ast::crate, i: uint,
-                             newexpr: ast::expr, tm: test_mode) ->
-   ast::crate {
+pub fn replace_expr_in_crate(crate: @ast::crate,
+                             i: uint,
+                             newexpr: @ast::expr,
+                             tm: test_mode)
+                             -> @ast::crate {
     let j: @mut uint = @mut 0u;
     fn fold_expr_rep(j_: @mut uint,
                      i_: uint,
-                     newexpr_: ast::expr_,
+                     newexpr_: &ast::expr_,
                      original: &ast::expr_,
                      fld: @fold::ast_fold,
                      tm_: test_mode)
-                  -> ast::expr_ {
-        *j_ += 1u;
-        if i_ + 1u == *j_ && safe_to_replace_expr(original, tm_) {
-            newexpr_
+                     -> ast::expr_ {
+        *j_ += 1;
+        if i_ + 1 == *j_ && safe_to_replace_expr(original, tm_) {
+            copy *newexpr_
         } else {
             fold::noop_fold_expr(original, fld)
         }
     }
     let afp = @fold::AstFoldFns {
         fold_expr: fold::wrap(|a,b| {
-            fold_expr_rep(j, i, newexpr.node, a, b, tm)
+            fold_expr_rep(j, i, &newexpr.node, a, b, tm)
         }),
         .. *fold::default_ast_fold()
     };
     let af = fold::make_fold(afp);
     let crate2: @ast::crate = @af.fold_crate(crate);
-    *crate2
+    crate2
 }
 
 
 // Replace the |i|th ty (in fold order) of |crate| with |newty|.
-pub fn replace_ty_in_crate(crate: @ast::crate, i: uint, newty: ast::Ty,
-                           tm: test_mode) -> ast::crate {
+pub fn replace_ty_in_crate(crate: @ast::crate,
+                           i: uint,
+                           newty: @ast::Ty,
+                           tm: test_mode)
+                           -> @ast::crate {
     let j: @mut uint = @mut 0u;
     fn fold_ty_rep(j_: @mut uint,
                    i_: uint,
-                   newty_: ast::ty_,
+                   newty_: &ast::ty_,
                    original: &ast::ty_,
                    fld: @fold::ast_fold,
                    tm_: test_mode)
-                -> ast::ty_ {
-        *j_ += 1u;
-        if i_ + 1u == *j_ && safe_to_replace_ty(original, tm_) {
-            newty_
-        } else { fold::noop_fold_ty(original, fld) }
+                   -> ast::ty_ {
+        *j_ += 1;
+        if i_ + 1 == *j_ && safe_to_replace_ty(original, tm_) {
+            copy *newty_
+        } else {
+            fold::noop_fold_ty(original, fld)
+        }
     }
     let afp = @fold::AstFoldFns {
-        fold_ty: fold::wrap(|a,b| fold_ty_rep(j, i, newty.node, a, b, tm) ),
+        fold_ty: fold::wrap(|a,b| fold_ty_rep(j, i, &newty.node, a, b, tm)),
         .. *fold::default_ast_fold()
     };
     let af = fold::make_fold(afp);
     let crate2: @ast::crate = @af.fold_crate(crate);
-    *crate2
+    crate2
 }
 
 pub fn under(n: uint, it: &fn(uint)) {
@@ -258,29 +267,44 @@ pub fn as_str(f: @fn(+x: @io::Writer)) -> ~str {
     io::with_str_writer(f)
 }
 
-pub fn check_variants_of_ast(crate: @ast::crate, codemap: @codemap::CodeMap,
-                             filename: &Path, cx: Context) {
+pub fn check_variants_of_ast(crate: @ast::crate,
+                             codemap: @codemap::CodeMap,
+                             filename: &Path,
+                             cx: Context) {
     let stolen = steal(crate, cx.mode);
-    let extra_exprs = do common_exprs().filtered |a| {
-        safe_to_use_expr(*a, cx.mode)
+    let extra_exprs = do common_exprs().filtered |&a| {
+        safe_to_use_expr(a, cx.mode)
     };
-    check_variants_T(crate, codemap, filename, ~"expr",
-                     extra_exprs + stolen.exprs, pprust::expr_to_str,
-                     replace_expr_in_crate, cx);
-    check_variants_T(crate, codemap, filename, ~"ty", stolen.tys,
-                     pprust::ty_to_str, replace_ty_in_crate, cx);
+    check_variants_T(crate,
+                     codemap,
+                     filename,
+                     ~"expr",
+                     extra_exprs + stolen.exprs,
+                     pprust::expr_to_str,
+                     replace_expr_in_crate,
+                     cx);
+    check_variants_T(crate,
+                     codemap,
+                     filename,
+                     ~"ty",
+                     stolen.tys,
+                     pprust::ty_to_str,
+                     replace_ty_in_crate,
+                     cx);
 }
 
-pub fn check_variants_T<T: Copy>(
-  crate: @ast::crate,
-  codemap: @codemap::CodeMap,
-  filename: &Path,
-  thing_label: ~str,
-  things: ~[T],
-  stringifier: @fn(@T, @syntax::parse::token::ident_interner) -> ~str,
-  replacer: @fn(@ast::crate, uint, T, test_mode) -> ast::crate,
-  cx: Context
-  ) {
+pub fn check_variants_T<T:Copy>(crate: @ast::crate,
+                                codemap: @codemap::CodeMap,
+                                filename: &Path,
+                                thing_label: ~str,
+                                things: &[T],
+                                stringifier: @fn(T, @ident_interner) -> ~str,
+                                replacer: @fn(@ast::crate,
+                                              uint,
+                                              T,
+                                              test_mode)
+                                              -> @ast::crate,
+                                cx: Context) {
     error!("%s contains %u %s objects", filename.to_str(),
            things.len(), thing_label);
 
@@ -294,36 +318,43 @@ pub fn check_variants_T<T: Copy>(
             error!("Replacing... #%?", uint::to_str(i));
             let fname = str::from_slice(filename.to_str());
             do under(uint::min(L, 30)) |j| {
-                error!("With... %?", stringifier(@things[j], intr));
-                let crate2 = @replacer(crate, i, things[j], cx.mode);
+                let fname = fname.to_str();
+                error!("With... %?", stringifier(things[j], intr));
+                let crate2 = replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but
                 // testing the string for stability is easier and ok for now.
                 let handler = diagnostic::mk_handler(None);
                 let str3 = do io::with_str_reader("") |rdr| {
-                    @as_str(|a|pprust::print_crate(
-                        codemap,
-                        intr,
-                        diagnostic::mk_span_handler(handler, codemap),
-                        crate2,
-                        fname,
-                        rdr,
-                        a,
-                        pprust::no_ann(),
-                        false))
+                    let fname = fname.to_str();
+                    let string = do as_str |a| {
+                        let span_handler =
+                            diagnostic::mk_span_handler(handler, codemap);
+                        pprust::print_crate(codemap,
+                                            intr,
+                                            span_handler,
+                                            crate2,
+                                            fname.to_str(),
+                                            rdr,
+                                            a,
+                                            pprust::no_ann(),
+                                            false)
+                    };
+                    @string
                 };
                 match cx.mode {
-                  tm_converge => {
-                    check_roundtrip_convergence(str3, 1u);
-                  }
-                  tm_run => {
-                    let file_label = fmt!("rusttmp/%s_%s_%u_%u",
-                                          last_part(filename.to_str()),
-                                          thing_label, i, j);
-                    let safe_to_run = !(content_is_dangerous_to_run(*str3)
-                                        || has_raw_pointers(crate2));
-                    check_whole_compiler(*str3, &Path(file_label),
-                                         safe_to_run);
-                  }
+                    tm_converge => check_roundtrip_convergence(str3, 1),
+                    tm_run => {
+                        let file_label = fmt!("rusttmp/%s_%s_%u_%u",
+                                              last_part(filename.to_str()),
+                                              thing_label,
+                                              i,
+                                              j);
+                        let safe_to_run = !(content_is_dangerous_to_run(*str3)
+                                            || has_raw_pointers(crate2));
+                        check_whole_compiler(*str3,
+                                             &Path(file_label),
+                                             safe_to_run);
+                    }
                 }
             }
         }
@@ -347,7 +378,8 @@ pub enum happiness {
 // - that would be tricky, requiring use of tasks or serialization
 //   or randomness.
 // This seems to find plenty of bugs as it is :)
-pub fn check_whole_compiler(code: ~str, suggested_filename_prefix: &Path,
+pub fn check_whole_compiler(code: &str,
+                            suggested_filename_prefix: &Path,
                             allow_running: bool) {
     let filename = &suggested_filename_prefix.with_filetype("rs");
     write_file(filename, code);
@@ -460,20 +492,24 @@ pub fn parse_and_print(code: @~str) -> ~str {
     let filename = Path("tmp.rs");
     let sess = parse::new_parse_sess(option::None);
     write_file(&filename, *code);
-    let crate = parse::parse_crate_from_source_str(
-        filename.to_str(), code, ~[], sess);
+    let crate = parse::parse_crate_from_source_str(filename.to_str(),
+                                                   code,
+                                                   ~[],
+                                                   sess);
     do io::with_str_reader(*code) |rdr| {
-        as_str(|a|
-               pprust::print_crate(
-                   sess.cm,
-                   // Assuming there are no token_trees
-                   syntax::parse::token::mk_fake_ident_interner(),
-                   copy sess.span_diagnostic,
-                   crate,
-                   filename.to_str(),
-                   rdr, a,
-                   pprust::no_ann(),
-                   false) )
+        let filename = filename.to_str();
+        do as_str |a| {
+            pprust::print_crate(sess.cm,
+                                // Assuming there are no token_trees
+                                token::mk_fake_ident_interner(),
+                                copy sess.span_diagnostic,
+                                crate,
+                                filename.to_str(),
+                                rdr,
+                                a,
+                                pprust::no_ann(),
+                                false)
+        }
     }
 }
 
@@ -493,7 +529,7 @@ pub fn has_raw_pointers(c: @ast::crate) -> bool {
     return *has_rp;
 }
 
-pub fn content_is_dangerous_to_run(code: ~str) -> bool {
+pub fn content_is_dangerous_to_run(code: &str) -> bool {
     let dangerous_patterns =
         ~[~"xfail-test",
          ~"import",  // espeically fs, run
@@ -505,7 +541,7 @@ pub fn content_is_dangerous_to_run(code: ~str) -> bool {
     return false;
 }
 
-pub fn content_is_dangerous_to_compile(code: ~str) -> bool {
+pub fn content_is_dangerous_to_compile(code: &str) -> bool {
     let dangerous_patterns =
         ~[~"xfail-test"];
 
@@ -513,7 +549,7 @@ pub fn content_is_dangerous_to_compile(code: ~str) -> bool {
     return false;
 }
 
-pub fn content_might_not_converge(code: ~str) -> bool {
+pub fn content_might_not_converge(code: &str) -> bool {
     let confusing_patterns =
         ~[~"xfail-test",
          ~"xfail-pretty",
@@ -549,7 +585,6 @@ pub fn file_might_not_converge(filename: &Path) -> bool {
 }
 
 pub fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
-
     let mut i = 0u;
     let mut newv = code;
     let mut oldv = code;
@@ -613,23 +648,27 @@ pub fn check_variants(files: &[Path], cx: Context) {
         let file_str = file.to_str();
 
         error!("check_variants: %?", file_str);
-        let sess = parse::new_parse_sess(option::None);
-        let crate =
-            parse::parse_crate_from_source_str(
-                file_str,
-                s, ~[], sess);
+        let sess = parse::new_parse_sess(None);
+        let crate = parse::parse_crate_from_source_str(file_str.to_str(),
+                                                       s,
+                                                       ~[],
+                                                       sess);
         io::with_str_reader(*s, |rdr| {
+            let file_str = file_str.to_str();
             error!("%s",
-                   as_str(|a| pprust::print_crate(
-                       sess.cm,
-                       // Assuming no token_trees
-                       syntax::parse::token::mk_fake_ident_interner(),
-                       copy sess.span_diagnostic,
-                       crate,
-                       file_str,
-                       rdr, a,
-                       pprust::no_ann(),
-                       false)))
+                   as_str(|a| {
+                    pprust::print_crate(
+                        sess.cm,
+                        // Assuming no token_trees
+                        token::mk_fake_ident_interner(),
+                        copy sess.span_diagnostic,
+                        crate,
+                        file_str.to_str(),
+                        rdr,
+                        a,
+                        pprust::no_ann(),
+                        false)
+                    }))
         });
         check_variants_of_ast(crate, sess.cm, file, cx);
     }

@@ -23,7 +23,7 @@
 
 use core::cast;
 use core::cell::Cell;
-use core::comm::{oneshot, PortOne, send_one};
+use core::comm::{ChanOne, PortOne, oneshot, send_one};
 use core::pipes::recv;
 use core::task;
 
@@ -120,8 +120,7 @@ pub fn from_value<A>(val: A) -> Future<A> {
     Future {state: Forced(val)}
 }
 
-pub fn from_port<A:Owned>(port: PortOne<A>) ->
-        Future<A> {
+pub fn from_port<A:Owned>(port: PortOne<A>) -> Future<A> {
     /*!
      * Create a future from a port
      *
@@ -131,7 +130,7 @@ pub fn from_port<A:Owned>(port: PortOne<A>) ->
 
     let port = Cell(port);
     do from_fn || {
-        let port = port.take();
+        let port = port.take().unwrap();
         match recv(port) {
             oneshot::send(data) => data
         }
@@ -158,10 +157,10 @@ pub fn spawn<A:Owned>(blk: ~fn() -> A) -> Future<A> {
      * value of the future.
      */
 
-    let (chan, port) = oneshot::init();
+    let (port, chan) = oneshot();
 
     let chan = Cell(chan);
-    do task::spawn || {
+    do task::spawn {
         let chan = chan.take();
         send_one(chan, blk());
     }
@@ -186,7 +185,7 @@ mod test {
 
     #[test]
     fn test_from_port() {
-        let (ch, po) = oneshot::init();
+        let (po, ch) = oneshot();
         send_one(ch, ~"whale");
         let f = from_port(po);
         assert!(f.get() == ~"whale");

@@ -42,7 +42,7 @@ use syntax::ast::Generics;
 use syntax::ast::{gt, ident, inherited, item, item_struct};
 use syntax::ast::{item_const, item_enum, item_fn, item_foreign_mod};
 use syntax::ast::{item_impl, item_mac, item_mod, item_trait, item_ty, le};
-use syntax::ast::{local, local_crate, lt, method, mode, mul};
+use syntax::ast::{local, local_crate, lt, method, mul};
 use syntax::ast::{named_field, ne, neg, node_id, pat, pat_enum, pat_ident};
 use syntax::ast::{Path, pat_lit, pat_range, pat_struct};
 use syntax::ast::{prim_ty, private, provided};
@@ -123,7 +123,7 @@ pub struct Export2 {
 pub enum PatternBindingMode {
     RefutableMode,
     LocalIrrefutableMode,
-    ArgumentIrrefutableMode(mode)
+    ArgumentIrrefutableMode,
 }
 
 #[deriving(Eq)]
@@ -3708,8 +3708,7 @@ pub impl Resolver {
                 }
                 Some(declaration) => {
                     for declaration.inputs.each |argument| {
-                        let binding_mode =
-                            ArgumentIrrefutableMode(argument.mode);
+                        let binding_mode = ArgumentIrrefutableMode;
                         let mutability =
                             if argument.is_mutbl {Mutable} else {Immutable};
                         self.resolve_pattern(argument.pat,
@@ -4184,10 +4183,9 @@ pub impl Resolver {
                                     // But for locals, we use `def_local`.
                                     def_local(pattern.id, is_mutable)
                                 }
-                                ArgumentIrrefutableMode(argument_mode) => {
+                                ArgumentIrrefutableMode => {
                                     // And for function arguments, `def_arg`.
-                                    def_arg(pattern.id, argument_mode,
-                                            is_mutable)
+                                    def_arg(pattern.id, is_mutable)
                                 }
                             };
 

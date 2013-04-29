@@ -21,10 +21,10 @@ pub struct Thread {
 
 pub impl Thread {
     fn start(main: ~fn()) -> Thread {
-        fn substart(main: &fn()) -> *raw_thread {
-            unsafe { rust_raw_thread_start(&main) }
+        fn substart(main: &~fn()) -> *raw_thread {
+            unsafe { rust_raw_thread_start(main) }
         }
-        let raw = substart(main);
+        let raw = substart(&main);
         Thread {
             main: main,
             raw_thread: raw
@@ -39,6 +39,6 @@ impl Drop for Thread {
 }
 
 extern {
-    pub unsafe fn rust_raw_thread_start(f: &(&fn())) -> *raw_thread;
+    pub unsafe fn rust_raw_thread_start(f: &(~fn())) -> *raw_thread;
     pub unsafe fn rust_raw_thread_join_delete(thread: *raw_thread);
 }

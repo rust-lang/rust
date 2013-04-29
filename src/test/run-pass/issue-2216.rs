@@ -11,17 +11,17 @@
 pub fn main() {
     let mut x = 0;
     
-    loop foo: {
-        loop bar: {
-            loop quux: {
+    'foo: loop {
+        'bar: loop {
+            'quux: loop {
                 if 1 == 2 {
-                    break foo;
+                    break 'foo;
                 }
                 else {
-                    break bar;
+                    break 'bar;
                 }
             }
-            loop foo;
+            loop 'foo;
         }
         x = 42;
         break;

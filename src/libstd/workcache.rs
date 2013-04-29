@@ -16,10 +16,13 @@ use serialize::{Encoder, Encodable, Decoder, Decodable};
 use sort;
 
 use core::cell::Cell;
-use core::comm::{oneshot, PortOne, send_one};
+use core::cmp;
+use core::comm::{ChanOne, PortOne, oneshot, send_one};
+use core::either::{Either, Left, Right};
+use core::hashmap::HashMap;
+use core::io;
 use core::pipes::recv;
 use core::run;
-use core::hashmap::HashMap;
 use core::to_bytes;
 
 /**
@@ -340,13 +343,13 @@ impl TPrep for Prep {
             }
 
             _ => {
-                let (chan, port) = oneshot::init();
+                let (port, chan) = oneshot();
                 let mut blk = None;
                 blk <-> bo;
                 let blk = blk.unwrap();
                 let chan = Cell(chan);
 
-                do task::spawn || {
+                do task::spawn {
                     let exe = Exec {
                         discovered_inputs: WorkMap::new(),
                         discovered_outputs: WorkMap::new(),
@@ -383,7 +386,7 @@ fn unwrap<T:Owned +
         None => fail!(),
         Some(Left(v)) => v,
         Some(Right(port)) => {
-            let (exe, v) = match recv(port) {
+            let (exe, v) = match recv(port.unwrap()) {
                 oneshot::send(data) => data
             };
 

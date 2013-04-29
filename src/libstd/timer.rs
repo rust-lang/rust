@@ -42,7 +42,7 @@ pub fn delayed_send<T:Owned>(iotask: &IoTask,
     let (timer_done_po, timer_done_ch) = stream::<()>();
     let timer_done_ch = SharedChan::new(timer_done_ch);
     let timer = uv::ll::timer_t();
-    let timer_ptr = ptr::addr_of(&timer);
+    let timer_ptr: *uv::ll::uv_timer_t = &timer;
     do iotask::interact(iotask) |loop_ptr| {
         unsafe {
             let init_result = uv::ll::timer_init(loop_ptr, timer_ptr);

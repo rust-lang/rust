@@ -49,7 +49,6 @@ use num::Zero;
 use old_iter::{BaseIter, MutableIter, ExtendedIter};
 use old_iter;
 
-#[cfg(test)] use ptr;
 #[cfg(test)] use str;
 
 /// The option type
@@ -481,12 +480,14 @@ pub impl<T:Copy + Zero> Option<T> {
 
 #[test]
 fn test_unwrap_ptr() {
-    let x = ~0;
-    let addr_x = ptr::addr_of(&(*x));
-    let opt = Some(x);
-    let y = opt.unwrap();
-    let addr_y = ptr::addr_of(&(*y));
-    assert!(addr_x == addr_y);
+    unsafe {
+        let x = ~0;
+        let addr_x: *int = ::cast::transmute(&*x);
+        let opt = Some(x);
+        let y = opt.unwrap();
+        let addr_y: *int = ::cast::transmute(&*y);
+        assert!(addr_x == addr_y);
+    }
 }
 
 #[test]

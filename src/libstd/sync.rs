@@ -828,18 +828,22 @@ mod tests {
         let m = ~Mutex();
         let m2 = m.clone();
         let mut sharedstate = ~0;
-        let ptr = ptr::addr_of(&(*sharedstate));
-        do task::spawn || {
-            let sharedstate: &mut int =
-                unsafe { cast::transmute(ptr) };
-            access_shared(sharedstate, m2, 10);
-            c.send(());
+        {
+            let ptr: *int = &*sharedstate;
+            do task::spawn || {
+                let sharedstate: &mut int =
+                    unsafe { cast::transmute(ptr) };
+                access_shared(sharedstate, m2, 10);
+                c.send(());
 
+            }
         }
-        access_shared(sharedstate, m, 10);
-        let _ = p.recv();
+        {
+            access_shared(sharedstate, m, 10);
+            let _ = p.recv();
 
-        assert!(*sharedstate == 20);
+            assert!(*sharedstate == 20);
+        }
 
         fn access_shared(sharedstate: &mut int, m: &Mutex, n: uint) {
             for n.times {
@@ -1106,17 +1110,21 @@ mod tests {
         let (p,c) = comm::stream();
         let x2 = (*x).clone();
         let mut sharedstate = ~0;
-        let ptr = ptr::addr_of(&(*sharedstate));
-        do task::spawn || {
-            let sharedstate: &mut int =
-                unsafe { cast::transmute(ptr) };
-            access_shared(sharedstate, &x2, mode1, 10);
-            c.send(());
+        {
+            let ptr: *int = &*sharedstate;
+            do task::spawn || {
+                let sharedstate: &mut int =
+                    unsafe { cast::transmute(ptr) };
+                access_shared(sharedstate, &x2, mode1, 10);
+                c.send(());
+            }
         }
-        access_shared(sharedstate, x, mode2, 10);
-        let _ = p.recv();
+        {
+            access_shared(sharedstate, x, mode2, 10);
+            let _ = p.recv();
 
-        assert!(*sharedstate == 20);
+            assert!(*sharedstate == 20);
+        }
 
         fn access_shared(sharedstate: &mut int, x: &RWlock, mode: RWlockMode,
                          n: uint) {
