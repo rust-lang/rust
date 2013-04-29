@@ -66,7 +66,7 @@ fn test_make_dir_rwx() {
 fn test_install_valid() {
     let ctxt = fake_ctxt();
     let temp_pkg_id = fake_pkg();
-    let temp_workspace() = mk_temp_workspace();
+    let temp_workspace = mk_temp_workspace();
     // should have test, bench, lib, and main
     ctxt.install(&temp_workspace, temp_pkg_id);
     // Check that all files exist

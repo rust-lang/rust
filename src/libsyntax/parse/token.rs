@@ -364,6 +364,34 @@ impl<'self> to_bytes::IterBytes for StringRef<'self> {
     }
 }
 
+/**
+ * Maps a token to a record specifying the corresponding binary
+ * operator
+ */
+pub fn token_to_binop(tok: Token) -> Option<ast::binop> {
+  match tok {
+      BINOP(STAR)    => Some(ast::mul),
+      BINOP(SLASH)   => Some(ast::quot),
+      BINOP(PERCENT) => Some(ast::rem),
+      BINOP(PLUS)    => Some(ast::add),
+      BINOP(MINUS)   => Some(ast::subtract),
+      BINOP(SHL)     => Some(ast::shl),
+      BINOP(SHR)     => Some(ast::shr),
+      BINOP(AND)     => Some(ast::bitand),
+      BINOP(CARET)   => Some(ast::bitxor),
+      BINOP(OR)      => Some(ast::bitor),
+      LT             => Some(ast::lt),
+      LE             => Some(ast::le),
+      GE             => Some(ast::ge),
+      GT             => Some(ast::gt),
+      EQEQ           => Some(ast::eq),
+      NE             => Some(ast::ne),
+      ANDAND         => Some(ast::and),
+      OROR           => Some(ast::or),
+      _              => None
+  }
+}
+
 pub struct ident_interner {
     priv interner: Interner<@~str>,
 }
@@ -390,60 +418,68 @@ pub impl ident_interner {
     }
 }
 
+// return a fresh interner, preloaded with special identifiers.
+// EFFECT: stores this interner in TLS
+pub fn mk_fresh_ident_interner() -> @ident_interner {
+    // the indices here must correspond to the numbers in
+    // special_idents.
+    let init_vec = ~[
+        @~"_",                  // 0
+        @~"anon",               // 1
+        @~"drop",               // 2
+        @~"",                   // 3
+        @~"unary",              // 4
+        @~"!",                  // 5
+        @~"[]",                 // 6
+        @~"unary-",             // 7
+        @~"__extensions__",     // 8
+        @~"self",               // 9
+        @~"item",               // 10
+        @~"block",              // 11
+        @~"stmt",               // 12
+        @~"pat",                // 13
+        @~"expr",               // 14
+        @~"ty",                 // 15
+        @~"ident",              // 16
+        @~"path",               // 17
+        @~"tt",                 // 18
+        @~"matchers",           // 19
+        @~"str",                // 20
+        @~"TyVisitor",          // 21
+        @~"arg",                // 22
+        @~"descrim",            // 23
+        @~"__rust_abi",         // 24
+        @~"__rust_stack_shim",  // 25
+        @~"TyDesc",             // 26
+        @~"dtor",               // 27
+        @~"main",               // 28
+        @~"<opaque>",           // 29
+        @~"blk",                // 30
+        @~"static",             // 31
+        @~"intrinsic",          // 32
+        @~"__foreign_mod__",    // 33
+        @~"__field__",          // 34
+        @~"C",                  // 35
+        @~"Self",               // 36
+    ];
+
+    let rv = @ident_interner {
+        interner: interner::Interner::prefill(init_vec)
+    };
+    unsafe {
+        task::local_data::local_data_set(interner_key!(), @rv);
+    }
+    rv
+}
+
+// if an interner exists in TLS, return it. Otherwise, prepare a
+// fresh one.
 pub fn mk_ident_interner() -> @ident_interner {
     unsafe {
         match task::local_data::local_data_get(interner_key!()) {
             Some(interner) => *interner,
             None => {
-                // the indices here must correspond to the numbers in
-                // special_idents.
-                let init_vec = ~[
-                    @~"_",                  // 0
-                    @~"anon",               // 1
-                    @~"drop",               // 2
-                    @~"",                   // 3
-                    @~"unary",              // 4
-                    @~"!",                  // 5
-                    @~"[]",                 // 6
-                    @~"unary-",             // 7
-                    @~"__extensions__",     // 8
-                    @~"self",               // 9
-                    @~"item",               // 10
-                    @~"block",              // 11
-                    @~"stmt",               // 12
-                    @~"pat",                // 13
-                    @~"expr",               // 14
-                    @~"ty",                 // 15
-                    @~"ident",              // 16
-                    @~"path",               // 17
-                    @~"tt",                 // 18
-                    @~"matchers",           // 19
-                    @~"str",                // 20
-                    @~"TyVisitor",          // 21
-                    @~"arg",                // 22
-                    @~"descrim",            // 23
-                    @~"__rust_abi",         // 24
-                    @~"__rust_stack_shim",  // 25
-                    @~"TyDesc",             // 26
-                    @~"dtor",               // 27
-                    @~"main",               // 28
-                    @~"<opaque>",           // 29
-                    @~"blk",                // 30
-                    @~"static",             // 31
-                    @~"intrinsic",          // 32
-                    @~"__foreign_mod__",    // 33
-                    @~"__field__",          // 34
-                    @~"C",                  // 35
-                    @~"Self",               // 36
-                ];
-
-                let rv = @ident_interner {
-                    interner: interner::Interner::prefill(init_vec)
-                };
-
-                task::local_data::local_data_set(interner_key!(), @rv);
-
-                rv
+                mk_fresh_ident_interner()
             }
         }
     }
