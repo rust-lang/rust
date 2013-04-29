@@ -79,7 +79,7 @@ mod test {
 
         let parse_sess = syntax::parse::new_parse_sess(None);
         let parser = parse::new_parser_from_source_str(
-            parse_sess, ~[], ~"-", codemap::FssNone, @source);
+            parse_sess, ~[], ~"-", @source);
 
         parser.parse_outer_attributes()
     }

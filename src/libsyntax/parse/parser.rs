@@ -58,7 +58,7 @@ use ast::{view_item_, view_item_extern_mod, view_item_use};
 use ast::{view_path, view_path_glob, view_path_list, view_path_simple};
 use ast::visibility;
 use ast;
-use ast_util::{ident_to_path, operator_prec};
+use ast_util::{as_prec, ident_to_path, operator_prec};
 use ast_util;
 use codemap::{span, BytePos, spanned, mk_sp};
 use codemap;
@@ -82,9 +82,8 @@ use parse::obsolete::ObsoleteMode;
 use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
 use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
 use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
-use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
-use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
+use parse::token::{is_plain_ident, INTERPOLATED, special_idents, token_to_binop};
 use parse::token;
 use parse::{new_sub_parser_from_file, next_node_id, ParseSess};
 use opt_vec;
@@ -99,7 +98,6 @@ use core::vec;
 enum restriction {
     UNRESTRICTED,
     RESTRICT_STMT_EXPR,
-    RESTRICT_NO_CALL_EXPRS,
     RESTRICT_NO_BAR_OP,
     RESTRICT_NO_BAR_OR_DOUBLEBAR_OP,
 }
@@ -369,7 +367,7 @@ pub impl Parser {
 
         let opt_abis = self.parse_opt_abis();
         let abis = opt_abis.get_or_default(AbiSet::Rust());
-        let purity = self.parse_purity();
+        let purity = self.parse_unsafety();
         self.expect_keyword(&~"fn");
         let (decl, lifetimes) = self.parse_ty_fn_decl();
         return ty_bare_fn(@TyBareFn {
@@ -403,7 +401,7 @@ pub impl Parser {
         // At this point, the allocation type and lifetime bound have been
         // parsed.
 
-        let purity = self.parse_purity();
+        let purity = self.parse_unsafety();
         let onceness = parse_onceness(self);
         self.expect_keyword(&~"fn");
 
@@ -428,7 +426,8 @@ pub impl Parser {
         }
     }
 
-    fn parse_purity(&self) -> purity {
+    // looks like this should be called parse_unsafety
+    fn parse_unsafety(&self) -> purity {
         if self.eat_keyword(&~"pure") {
             self.obsolete(*self.last_span, ObsoletePurity);
             return impure_fn;
@@ -474,6 +473,7 @@ pub impl Parser {
         (decl, lifetimes)
     }
 
+    // parse the methods in a trait declaration
     fn parse_trait_methods(&self) -> ~[trait_method] {
         do self.parse_unspanned_seq(
             &token::LBRACE,
@@ -521,7 +521,7 @@ pub impl Parser {
               token::LBRACE => {
                 debug!("parse_trait_methods(): parsing provided method");
                 let (inner_attrs, body) =
-                    p.parse_inner_attrs_and_block(true);
+                    p.parse_inner_attrs_and_block();
                 let attrs = vec::append(attrs, inner_attrs);
                 provided(@ast::method {
                     ident: ident,
@@ -559,6 +559,7 @@ pub impl Parser {
     }
 
     // parse [mut/const/imm] ID : TY
+    // now used only by obsolete record syntax parser...
     fn parse_ty_field(&self) -> ty_field {
         let lo = self.span.lo;
         let mutbl = self.parse_mutability();
@@ -763,6 +764,7 @@ pub impl Parser {
         return ty_rptr(opt_lifetime, mt);
     }
 
+    // parse an optional mode.
     fn parse_arg_mode(&self) -> mode {
         if self.eat(&token::BINOP(token::MINUS)) {
             self.obsolete(*self.span, ObsoleteMode);
@@ -829,10 +831,12 @@ pub impl Parser {
                   ty: t, pat: pat, id: self.get_id() }
     }
 
+    // parse a single function argument
     fn parse_arg(&self) -> arg_or_capture_item {
         either::Left(self.parse_arg_general(true))
     }
 
+    // parse an argument in a lambda header e.g. |arg, arg|
     fn parse_fn_block_arg(&self) -> arg_or_capture_item {
         let m = self.parse_arg_mode();
         let is_mutbl = self.eat_keyword(&~"mut");
@@ -869,6 +873,7 @@ pub impl Parser {
         }
     }
 
+    // matches token_lit = LIT_INT | ...
     fn lit_from_token(&self, tok: &token::Token) -> lit_ {
         match *tok {
             token::LIT_INT(i, it) => lit_int(i, it),
@@ -883,6 +888,7 @@ pub impl Parser {
         }
     }
 
+    // matches lit = true | false | token_lit
     fn parse_lit(&self) -> lit {
         let lo = self.span.lo;
         let lit = if self.eat_keyword(&~"true") {
@@ -898,30 +904,45 @@ pub impl Parser {
         codemap::spanned { node: lit, span: mk_sp(lo, self.last_span.hi) }
     }
 
+    // parse a path into a vector of idents, whether the path starts
+    // with ::, and a span.
+    fn parse_path(&self) -> (~[ast::ident],bool,span) {
+        let lo = self.span.lo;
+        let is_global = self.eat(&token::MOD_SEP);
+        let (ids,span{lo:_,hi,expn_info}) = self.parse_path_non_global();
+        (ids,is_global,span{lo:lo,hi:hi,expn_info:expn_info})
+    }
+
+    // parse a path beginning with an identifier into a vector of idents and a span
+    fn parse_path_non_global(&self) -> (~[ast::ident],span) {
+        let lo = self.span.lo;
+        let mut ids = ~[];
+        // must be at least one to begin:
+        ids.push(self.parse_ident());
+        loop {
+            match *self.token {
+                token::MOD_SEP => {
+                    match self.look_ahead(1u) {
+                        token::IDENT(id,_) => {
+                            self.bump();
+                            ids.push(self.parse_ident());
+                        }
+                        _ => break
+                    }
+                }
+                _ => break
+            }
+        }
+        (ids, mk_sp(lo, self.last_span.hi))
+    }
+
     // parse a path that doesn't have type parameters attached
     fn parse_path_without_tps(&self)
         -> @ast::Path {
         maybe_whole!(self, nt_path);
-        let lo = self.span.lo;
-        let global = self.eat(&token::MOD_SEP);
-        let mut ids = ~[];
-        loop {
-            // if there's a ::< coming, stop processing
-            // the path.
-            let is_not_last =
-                self.look_ahead(2u) != token::LT
-                && self.look_ahead(1u) == token::MOD_SEP;
-
-            if is_not_last {
-                ids.push(self.parse_ident());
-                self.expect(&token::MOD_SEP);
-            } else {
-                ids.push(self.parse_ident());
-                break;
-            }
-        }
-        @ast::Path { span: mk_sp(lo, self.last_span.hi),
-                     global: global,
+        let (ids,is_global,sp) = self.parse_path();
+        @ast::Path { span: sp,
+                     global: is_global,
                      idents: ids,
                      rp: None,
                      types: ~[] }
@@ -1054,6 +1075,9 @@ pub impl Parser {
         }
     }
 
+    // matches lifetimes = ( lifetime ) | ( lifetime , lifetimes )
+    // actually, it matches the empty one too, but putting that in there
+    // messes up the grammar....
     fn parse_lifetimes(&self) -> OptVec<ast::Lifetime> {
         /*!
          *
@@ -1079,7 +1103,8 @@ pub impl Parser {
                 token::GT => { return res; }
                 token::BINOP(token::SHR) => { return res; }
                 _ => {
-                    self.fatal(~"expected `,` or `>` after lifetime name");
+                    self.fatal(fmt!("expected `,` or `>` after lifetime name, got: %?",
+                                    *self.token));
                 }
             }
         }
@@ -1101,11 +1126,12 @@ pub impl Parser {
         }
     }
 
-    fn parse_field(&self, sep: token::Token) -> field {
+    // parse ident COLON expr
+    fn parse_field(&self) -> field {
         let lo = self.span.lo;
         let m = self.parse_mutability();
         let i = self.parse_ident();
-        self.expect(&sep);
+        self.expect(&token::COLON);
         let e = self.parse_expr();
         spanned(lo, e.span.hi, ast::field_ { mutbl: m, ident: i, expr: e })
     }
@@ -1158,7 +1184,7 @@ pub impl Parser {
             self.bump();
             // (e) is parenthesized e
             // (e,) is a tuple with only one field, e
-            let mut one_tuple = false;
+            let mut trailing_comma = false;
             if *self.token == token::RPAREN {
                 hi = self.span.hi;
                 self.bump();
@@ -1172,13 +1198,13 @@ pub impl Parser {
                     es.push(self.parse_expr());
                 }
                 else {
-                    one_tuple = true;
+                    trailing_comma = true;
                 }
             }
             hi = self.span.hi;
             self.expect(&token::RPAREN);
 
-            return if es.len() == 1 && !one_tuple {
+            return if es.len() == 1 && !trailing_comma {
                 self.mk_expr(lo, self.span.hi, expr_paren(es[0]))
             }
             else {
@@ -1246,6 +1272,7 @@ pub impl Parser {
             }
             hi = self.span.hi;
         } else if self.eat_keyword(&~"__log") {
+            // LOG expression
             self.expect(&token::LPAREN);
             let lvl = self.parse_expr();
             self.expect(&token::COMMA);
@@ -1254,12 +1281,14 @@ pub impl Parser {
             hi = self.span.hi;
             self.expect(&token::RPAREN);
         } else if self.eat_keyword(&~"return") {
+            // RETURN expression
             if can_begin_expr(&*self.token) {
                 let e = self.parse_expr();
                 hi = e.span.hi;
                 ex = expr_ret(Some(e));
             } else { ex = expr_ret(None); }
         } else if self.eat_keyword(&~"break") {
+            // BREAK expression
             if is_ident(&*self.token) {
                 ex = expr_break(Some(self.parse_ident()));
             } else {
@@ -1267,6 +1296,7 @@ pub impl Parser {
             }
             hi = self.span.hi;
         } else if self.eat_keyword(&~"copy") {
+            // COPY expression
             let e = self.parse_expr();
             ex = expr_copy(e);
             hi = e.span.hi;
@@ -1277,6 +1307,7 @@ pub impl Parser {
 
             // `!`, as an operator, is prefix, so we know this isn't that
             if *self.token == token::NOT {
+                // MACRO INVOCATION expression
                 self.bump();
                 match *self.token {
                     token::LPAREN | token::LBRACE => {}
@@ -1301,7 +1332,7 @@ pub impl Parser {
                     let mut fields = ~[];
                     let mut base = None;
 
-                    fields.push(self.parse_field(token::COLON));
+                    fields.push(self.parse_field());
                     while *self.token != token::RBRACE {
                         if self.try_parse_obsolete_with() {
                             break;
@@ -1318,7 +1349,7 @@ pub impl Parser {
                             // Accept an optional trailing comma.
                             break;
                         }
-                        fields.push(self.parse_field(token::COLON));
+                        fields.push(self.parse_field());
                     }
 
                     hi = pth.span.hi;
@@ -1331,6 +1362,7 @@ pub impl Parser {
             hi = pth.span.hi;
             ex = expr_path(pth);
         } else {
+            // other literal expression
             let lit = self.parse_lit();
             hi = lit.span.hi;
             ex = expr_lit(@lit);
@@ -1339,6 +1371,7 @@ pub impl Parser {
         return self.mk_expr(lo, hi, ex);
     }
 
+    // parse a block or unsafe block
     fn parse_block_expr(
         &self,
         lo: BytePos,
@@ -1349,14 +1382,10 @@ pub impl Parser {
         return self.mk_expr(blk.span.lo, blk.span.hi, expr_block(blk));
     }
 
-    // parse a.b or a(13) or just a
+    // parse a.b or a(13) or a[4] or just a
     fn parse_dot_or_call_expr(&self) -> @expr {
         let b = self.parse_bottom_expr();
         self.parse_dot_or_call_expr_with(b)
-    }
-
-    fn permits_call(&self) -> bool {
-        return *self.restriction != RESTRICT_NO_CALL_EXPRS;
     }
 
     fn parse_dot_or_call_expr_with(&self, e0: @expr) -> @expr {
@@ -1379,7 +1408,7 @@ pub impl Parser {
 
                     // expr.f() method call
                     match *self.token {
-                        token::LPAREN if self.permits_call() => {
+                        token::LPAREN => {
                             let es = self.parse_unspanned_seq(
                                 &token::LPAREN,
                                 &token::RPAREN,
@@ -1403,7 +1432,7 @@ pub impl Parser {
             if self.expr_is_complete(e) { break; }
             match *self.token {
               // expr(...)
-              token::LPAREN if self.permits_call() => {
+              token::LPAREN => {
                 let es = self.parse_unspanned_seq(
                     &token::LPAREN,
                     &token::RPAREN,
@@ -1771,10 +1800,10 @@ pub impl Parser {
         let lo = self.span.lo;
         let lhs = self.parse_binops();
         match *self.token {
-            token::EQ => {
-                self.bump();
-                let rhs = self.parse_expr();
-                self.mk_expr(lo, rhs.span.hi, expr_assign(lhs, rhs))
+          token::EQ => {
+              self.bump();
+              let rhs = self.parse_expr();
+              self.mk_expr(lo, rhs.span.hi, expr_assign(lhs, rhs))
           }
           token::BINOPEQ(op) => {
               self.bump();
@@ -1815,6 +1844,7 @@ pub impl Parser {
         }
     }
 
+    // parse an 'if' expression ('if' token already eaten)
     fn parse_if_expr(&self) -> @expr {
         let lo = self.last_span.lo;
         let cond = self.parse_expr();
@@ -1829,7 +1859,7 @@ pub impl Parser {
         self.mk_expr(lo, hi, expr_if(cond, thn, els))
     }
 
-    // `|args| { ... }` like in `do` expressions
+    // `|args| { ... }` or `{ ...}` like in `do` expressions
     fn parse_lambda_block_expr(&self) -> @expr {
         self.parse_lambda_expr_(
             || {
@@ -1863,6 +1893,9 @@ pub impl Parser {
                                 || self.parse_expr())
     }
 
+    // parse something of the form |args| expr
+    // this is used both in parsing a lambda expr
+    // and in parsing a block expr as e.g. in for...
     fn parse_lambda_expr_(
         &self,
         parse_decl: &fn() -> fn_decl,
@@ -1893,6 +1926,9 @@ pub impl Parser {
         }
     }
 
+    // parse a 'for' or 'do'.
+    // the 'for' and 'do' expressions parse as calls, but look like
+    // function calls followed by a closure expression.
     fn parse_sugary_call_expr(&self, keyword: ~str,
                               sugar: CallSugar,
                               ctor: &fn(v: @expr) -> expr_) -> @expr {
@@ -1953,7 +1989,7 @@ pub impl Parser {
     fn parse_while_expr(&self) -> @expr {
         let lo = self.last_span.lo;
         let cond = self.parse_expr();
-        let body = self.parse_block_no_value();
+        let body = self.parse_block();
         let hi = body.span.hi;
         return self.mk_expr(lo, hi, expr_while(cond, body));
     }
@@ -1981,7 +2017,7 @@ pub impl Parser {
             }
 
             let lo = self.last_span.lo;
-            let body = self.parse_block_no_value();
+            let body = self.parse_block();
             let hi = body.span.hi;
             return self.mk_expr(lo, hi, expr_loop(body, opt_ident));
         } else {
@@ -2079,6 +2115,7 @@ pub impl Parser {
         }
     }
 
+    // parse patterns, separated by '|' s
     fn parse_pats(&self) -> ~[@pat] {
         let mut pats = ~[];
         loop {
@@ -2133,6 +2170,7 @@ pub impl Parser {
         (before, slice, after)
     }
 
+    // parse the fields of a struct-like pattern
     fn parse_pat_fields(&self, refutable: bool) -> (~[ast::field_pat], bool) {
         let mut fields = ~[];
         let mut etc = false;
@@ -2176,6 +2214,9 @@ pub impl Parser {
         return (fields, etc);
     }
 
+    // parse a pattern. The 'refutable' argument
+    // appears to control whether the binding_mode
+    // 'bind_infer' or 'bind_by_copy' is used.
     fn parse_pat(&self, refutable: bool) -> @pat {
         maybe_whole!(self, nt_pat);
 
@@ -2183,7 +2224,9 @@ pub impl Parser {
         let mut hi = self.span.hi;
         let pat;
         match *self.token {
+            // parse _
           token::UNDERSCORE => { self.bump(); pat = pat_wild; }
+            // parse @pat
           token::AT => {
             self.bump();
             let sub = self.parse_pat(refutable);
@@ -2207,6 +2250,7 @@ pub impl Parser {
             };
           }
           token::TILDE => {
+            // parse ~pat
             self.bump();
             let sub = self.parse_pat(refutable);
             hi = sub.span.hi;
@@ -2229,6 +2273,7 @@ pub impl Parser {
             };
           }
           token::BINOP(token::AND) => {
+              // parse &pat
               let lo = self.span.lo;
               self.bump();
               let sub = self.parse_pat(refutable);
@@ -2259,6 +2304,7 @@ pub impl Parser {
             pat = pat_wild;
           }
           token::LPAREN => {
+            // parse (pat,pat,pat,...) as tuple
             self.bump();
             if *self.token == token::RPAREN {
                 hi = self.span.hi;
@@ -2283,6 +2329,7 @@ pub impl Parser {
             }
           }
           token::LBRACKET => {
+            // parse [pat,pat,...] as vector pattern
             self.bump();
             let (before, slice, after) =
                 self.parse_pat_vec_elements(refutable);
@@ -2295,6 +2342,7 @@ pub impl Parser {
                 || self.is_keyword(&~"true")
                 || self.is_keyword(&~"false")
             {
+                // parse an expression pattern or exp .. exp
                 let val = self.parse_expr_res(RESTRICT_NO_BAR_OP);
                 if self.eat(&token::DOTDOT) {
                     let end = self.parse_expr_res(RESTRICT_NO_BAR_OP);
@@ -2303,34 +2351,39 @@ pub impl Parser {
                     pat = pat_lit(val);
                 }
             } else if self.eat_keyword(&~"ref") {
+                // parse ref pat
                 let mutbl = self.parse_mutability();
                 pat = self.parse_pat_ident(refutable, bind_by_ref(mutbl));
             } else if self.eat_keyword(&~"copy") {
+                // parse copy pat
                 pat = self.parse_pat_ident(refutable, bind_by_copy);
             } else {
                 // XXX---refutable match bindings should work same as let
                 let binding_mode =
                     if refutable {bind_infer} else {bind_by_copy};
 
-                let cannot_be_enum_or_struct;
+                let can_be_enum_or_struct;
                 match self.look_ahead(1) {
                     token::LPAREN | token::LBRACKET | token::LT |
                     token::LBRACE | token::MOD_SEP =>
-                        cannot_be_enum_or_struct = false,
+                        can_be_enum_or_struct = true,
                     _ =>
-                        cannot_be_enum_or_struct = true
+                        can_be_enum_or_struct = false
                 }
 
-                if is_plain_ident(&*self.token) && cannot_be_enum_or_struct {
+                if is_plain_ident(&*self.token) && !can_be_enum_or_struct {
                     let name = self.parse_path_without_tps();
                     let sub;
                     if self.eat(&token::AT) {
+                        // parse foo @ pat
                         sub = Some(self.parse_pat(refutable));
                     } else {
+                        // or just foo
                         sub = None;
                     };
                     pat = pat_ident(binding_mode, name, sub);
                 } else {
+                    // parse an enum pat
                     let enum_path = self.parse_path_with_tps(true);
                     match *self.token {
                         token::LBRACE => {
@@ -2342,14 +2395,13 @@ pub impl Parser {
                         }
                         _ => {
                             let mut args: ~[@pat] = ~[];
-                            let mut star_pat = false;
                             match *self.token {
                               token::LPAREN => match self.look_ahead(1u) {
                                 token::BINOP(token::STAR) => {
                                     // This is a "top constructor only" pat
                                       self.bump(); self.bump();
-                                      star_pat = true;
                                       self.expect(&token::RPAREN);
+                                      pat = pat_enum(enum_path, None);
                                   }
                                 _ => {
                                     args = self.parse_unspanned_seq(
@@ -2360,23 +2412,21 @@ pub impl Parser {
                                         ),
                                         |p| p.parse_pat(refutable)
                                     );
+                                    pat = pat_enum(enum_path, Some(args));
                                   }
                               },
-                              _ => ()
-                            }
-                            // at this point, we're not sure whether it's a
-                            // enum or a bind
-                            if star_pat {
-                                pat = pat_enum(enum_path, None);
-                            }
-                            else if vec::is_empty(args) &&
-                                vec::len(enum_path.idents) == 1u {
-                                pat = pat_ident(binding_mode,
-                                                enum_path,
-                                                None);
-                            }
-                            else {
-                                pat = pat_enum(enum_path, Some(args));
+                              _ => {
+                                  if vec::len(enum_path.idents)==1u {
+                                      // it could still be either an enum
+                                      // or an identifier pattern, resolve
+                                      // will sort it out:
+                                      pat = pat_ident(binding_mode,
+                                                      enum_path,
+                                                      None);
+                                  } else {
+                                      pat = pat_enum(enum_path, Some(args));
+                                  }
+                              }
                             }
                         }
                     }
@@ -2388,6 +2438,8 @@ pub impl Parser {
         @ast::pat { id: self.get_id(), node: pat, span: mk_sp(lo, hi) }
     }
 
+    // used by the copy foo and ref foo patterns to give a good
+    // error message when parsing mistakes like ref foo(a,b)
     fn parse_pat_ident(&self, refutable: bool,
                        binding_mode: ast::binding_mode) -> ast::pat_ {
         if !is_plain_ident(&*self.token) {
@@ -2395,6 +2447,7 @@ pub impl Parser {
                 *self.last_span,
                 ~"expected identifier, found path");
         }
+        // why a path here, and not just an identifier?
         let name = self.parse_path_without_tps();
         let sub = if self.eat(&token::AT) {
             Some(self.parse_pat(refutable))
@@ -2416,8 +2469,7 @@ pub impl Parser {
     }
 
     // parse a local variable declaration
-    fn parse_local(&self, is_mutbl: bool,
-                   allow_init: bool) -> @local {
+    fn parse_local(&self, is_mutbl: bool) -> @local {
         let lo = self.span.lo;
         let pat = self.parse_pat(false);
         let mut ty = @Ty {
@@ -2426,7 +2478,7 @@ pub impl Parser {
             span: mk_sp(lo, lo),
         };
         if self.eat(&token::COLON) { ty = self.parse_ty(false); }
-        let init = if allow_init { self.parse_initializer() } else { None };
+        let init = self.parse_initializer();
         @spanned(
             lo,
             self.last_span.hi,
@@ -2440,18 +2492,19 @@ pub impl Parser {
         )
     }
 
+    // parse a "let" stmt
     fn parse_let(&self) -> @decl {
         let is_mutbl = self.eat_keyword(&~"mut");
         let lo = self.span.lo;
-        let mut locals = ~[self.parse_local(is_mutbl, true)];
+        let mut locals = ~[self.parse_local(is_mutbl)];
         while self.eat(&token::COMMA) {
-            locals.push(self.parse_local(is_mutbl, true));
+            locals.push(self.parse_local(is_mutbl));
         }
         return @spanned(lo, self.last_span.hi, decl_local(locals));
     }
 
-    /* assumes "let" token has already been consumed */
-    fn parse_instance_var(&self, pr: visibility) -> @struct_field {
+    // parse a structure field
+    fn parse_name_and_ty(&self, pr: visibility) -> @struct_field {
         let mut is_mutbl = struct_immutable;
         let lo = self.span.lo;
         if self.eat_keyword(&~"mut") {
@@ -2470,6 +2523,7 @@ pub impl Parser {
         })
     }
 
+    // parse a statement. may include decl
     fn parse_stmt(&self, first_item_attrs: ~[attribute]) -> @stmt {
         maybe_whole!(self, nt_stmt);
 
@@ -2489,6 +2543,11 @@ pub impl Parser {
         } else if is_ident(&*self.token)
             && !self.is_any_keyword(&copy *self.token)
             && self.look_ahead(1) == token::NOT {
+            // parse a macro invocation. Looks like there's serious
+            // overlap here; if this clause doesn't catch it (and it
+            // won't, for brace-delimited macros) it will fall through
+            // to the macro clause of parse_item_or_view_item. This
+            // could use some cleanup, it appears to me.
 
             check_expected_item(self, first_item_attrs);
 
@@ -2530,7 +2589,7 @@ pub impl Parser {
                                          self.parse_outer_attributes());
 
             match self.parse_item_or_view_item(/*bad*/ copy item_attrs,
-                                               true, false, false) {
+                                                           false) {
               iovi_item(i) => {
                 let hi = i.span.hi;
                 let decl = @spanned(lo, hi, decl_item(i));
@@ -2554,50 +2613,39 @@ pub impl Parser {
         }
     }
 
+    // is this expression a successfully-parsed statement?
     fn expr_is_complete(&self, e: @expr) -> bool {
         return *self.restriction == RESTRICT_STMT_EXPR &&
             !classify::expr_requires_semi_to_be_stmt(e);
     }
 
+    // parse a block. No inner attrs are allowed.
     fn parse_block(&self) -> blk {
-        // disallow inner attrs:
-        let (attrs, blk) = self.parse_inner_attrs_and_block(false);
-        assert!(vec::is_empty(attrs));
-        return blk;
-    }
-
-    // I claim the existence of the 'parse_attrs' flag strongly
-    // suggests a name-change or refactoring for this function.
-    fn parse_inner_attrs_and_block(&self, parse_attrs: bool)
-        -> (~[attribute], blk) {
-
-        maybe_whole!(pair_empty self, nt_block);
-
-        fn maybe_parse_inner_attrs_and_next(p: &Parser, parse_attrs: bool) ->
-            (~[attribute], ~[attribute]) {
-            if parse_attrs {
-                p.parse_inner_attrs_and_next()
-            } else {
-                (~[], ~[])
-            }
-        }
+        maybe_whole!(self, nt_block);
 
         let lo = self.span.lo;
         if self.eat_keyword(&~"unsafe") {
             self.obsolete(copy *self.span, ObsoleteUnsafeBlock);
         }
         self.expect(&token::LBRACE);
-        let (inner, next) =
-            maybe_parse_inner_attrs_and_next(self, parse_attrs);
 
-        (inner, self.parse_block_tail_(lo, default_blk, next))
+        return self.parse_block_tail_(lo, default_blk, ~[]);
     }
 
-    fn parse_block_no_value(&self) -> blk {
-        // We parse blocks that cannot have a value the same as any other
-        // block; the type checker will make sure that the tail expression (if
-        // any) has unit type.
-        return self.parse_block();
+    // parse a block. Inner attrs are allowed.
+    fn parse_inner_attrs_and_block(&self)
+        -> (~[attribute], blk) {
+
+        maybe_whole!(pair_empty self, nt_block);
+
+        let lo = self.span.lo;
+        if self.eat_keyword(&~"unsafe") {
+            self.obsolete(copy *self.span, ObsoleteUnsafeBlock);
+        }
+        self.expect(&token::LBRACE);
+        let (inner, next) = self.parse_inner_attrs_and_next();
+
+        (inner, self.parse_block_tail_(lo, default_blk, next))
     }
 
     // Precondition: already parsed the '{' or '#{'
@@ -2620,7 +2668,7 @@ pub impl Parser {
             items: items,
             _
         } = self.parse_items_and_view_items(first_item_attrs,
-                                            IMPORTS_AND_ITEMS_ALLOWED, false);
+                                            false, false);
 
         for items.each |item| {
             let decl = @spanned(item.span.lo, item.span.hi, decl_item(*item));
@@ -2739,6 +2787,9 @@ pub impl Parser {
         if self.eat_keyword(&~"once") { ast::Once } else { ast::Many }
     }
 
+    // matches optbounds = ( ( : ( boundseq )? )? )
+    // where   boundseq  = ( bound + boundseq ) | bound
+    // and     bound     = 'static | ty
     fn parse_optional_ty_param_bounds(&self) -> @OptVec<TyParamBound> {
         if !self.eat(&token::COLON) {
             return @opt_vec::Empty;
@@ -2799,6 +2850,7 @@ pub impl Parser {
         return @result;
     }
 
+    // matches typaram = IDENT optbounds
     fn parse_ty_param(&self) -> TyParam {
         let ident = self.parse_ident();
         let bounds = self.parse_optional_ty_param_bounds();
@@ -2842,7 +2894,8 @@ pub impl Parser {
         (lifetimes, opt_vec::take_vec(result))
     }
 
-    fn parse_fn_decl(&self, parse_arg_fn: &fn(&Parser) -> arg_or_capture_item)
+    // parse the argument list and result type of a function declaration
+    fn parse_fn_decl(&self)
         -> fn_decl
     {
         let args_or_capture_items: ~[arg_or_capture_item] =
@@ -2850,7 +2903,7 @@ pub impl Parser {
                 &token::LPAREN,
                 &token::RPAREN,
                 seq_sep_trailing_disallowed(token::COMMA),
-                parse_arg_fn
+                |p| p.parse_arg()
             );
 
         let inputs = either::lefts(args_or_capture_items);
@@ -2883,6 +2936,8 @@ pub impl Parser {
         self.bump();
     }
 
+    // parse the argument list and result type of a function
+    // that may have a self type.
     fn parse_fn_decl_with_self(
         &self,
         parse_arg_fn:
@@ -3030,6 +3085,7 @@ pub impl Parser {
         (spanned(lo, hi, self_ty), fn_decl)
     }
 
+    // parse the |arg, arg| header on a lambda
     fn parse_fn_block_decl(&self) -> fn_decl {
         let inputs_captures = {
             if self.eat(&token::OROR) {
@@ -3056,6 +3112,7 @@ pub impl Parser {
         }
     }
 
+    // parse the name and optional generic types of a function header.
     fn parse_fn_header(&self) -> (ident, ast::Generics) {
         let id = self.parse_ident();
         let generics = self.parse_generics();
@@ -3073,15 +3130,17 @@ pub impl Parser {
                      span: mk_sp(lo, hi) }
     }
 
+    // parse an item-position function declaration.
     fn parse_item_fn(&self, purity: purity, abis: AbiSet) -> item_info {
         let (ident, generics) = self.parse_fn_header();
-        let decl = self.parse_fn_decl(|p| p.parse_arg());
-        let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
+        let decl = self.parse_fn_decl();
+        let (inner_attrs, body) = self.parse_inner_attrs_and_block();
         (ident,
          item_fn(decl, purity, abis, generics, body),
          Some(inner_attrs))
     }
 
+    // parse a method in a trait impl
     fn parse_method(&self) -> @method {
         let attrs = self.parse_outer_attributes();
         let lo = self.span.lo;
@@ -3094,7 +3153,7 @@ pub impl Parser {
             p.parse_arg()
         };
 
-        let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
+        let (inner_attrs, body) = self.parse_inner_attrs_and_block();
         let hi = body.span.hi;
         let attrs = vec::append(attrs, inner_attrs);
         @ast::method {
@@ -3227,7 +3286,7 @@ pub impl Parser {
             is_tuple_like = false;
             fields = ~[];
             while *self.token != token::RBRACE {
-                match self.parse_class_item() {
+                match self.parse_struct_decl_field() {
                   dtor_decl(ref blk, ref attrs, s) => {
                       match the_dtor {
                         Some((_, _, s_first)) => {
@@ -3310,12 +3369,13 @@ pub impl Parser {
         }
     }
 
-    fn parse_single_class_item(&self, vis: visibility) -> @struct_field {
+    // parse a structure field declaration
+    fn parse_single_struct_field(&self, vis: visibility) -> @struct_field {
         if self.eat_obsolete_ident("let") {
             self.obsolete(*self.last_span, ObsoleteLet);
         }
 
-        let a_var = self.parse_instance_var(vis);
+        let a_var = self.parse_name_and_ty(vis);
         match *self.token {
             token::SEMI => {
                 self.obsolete(copy *self.span, ObsoleteFieldTerminator);
@@ -3329,7 +3389,7 @@ pub impl Parser {
                 self.span_fatal(
                     copy *self.span,
                     fmt!(
-                        "expected `;`, `,`, or '}' but found `%s`",
+                        "expected `,`, or '}' but found `%s`",
                         self.this_token_to_str()
                     )
                 );
@@ -3338,13 +3398,8 @@ pub impl Parser {
         a_var
     }
 
-    fn parse_dtor(&self, attrs: ~[attribute]) -> class_contents {
-        let lo = self.last_span.lo;
-        let body = self.parse_block();
-        dtor_decl(body, attrs, mk_sp(lo, self.last_span.hi))
-    }
-
-    fn parse_class_item(&self) -> class_contents {
+    // parse an element of a struct definition
+    fn parse_struct_decl_field(&self) -> class_contents {
 
         if self.try_parse_obsolete_priv_section() {
             return members(~[]);
@@ -3353,11 +3408,11 @@ pub impl Parser {
         let attrs = self.parse_outer_attributes();
 
         if self.eat_keyword(&~"priv") {
-            return members(~[self.parse_single_class_item(private)])
+            return members(~[self.parse_single_struct_field(private)])
         }
 
         if self.eat_keyword(&~"pub") {
-           return members(~[self.parse_single_class_item(public)]);
+           return members(~[self.parse_single_struct_field(public)]);
         }
 
         if self.try_parse_obsolete_struct_ctor() {
@@ -3365,13 +3420,16 @@ pub impl Parser {
         }
 
         if self.eat_keyword(&~"drop") {
-           return self.parse_dtor(attrs);
+            let lo = self.last_span.lo;
+            let body = self.parse_block();
+            return dtor_decl(body, attrs, mk_sp(lo, self.last_span.hi))
         }
         else {
-           return members(~[self.parse_single_class_item(inherited)]);
+           return members(~[self.parse_single_struct_field(inherited)]);
         }
     }
 
+    // parse visiility: PUB, PRIV, or nothing
     fn parse_visibility(&self) -> visibility {
         if self.eat_keyword(&~"pub") { public }
         else if self.eat_keyword(&~"priv") { private }
@@ -3399,14 +3457,12 @@ pub impl Parser {
             items: starting_items,
             _
         } = self.parse_items_and_view_items(first_item_attrs,
-                                            VIEW_ITEMS_AND_ITEMS_ALLOWED,
-                                            true);
+                                            true, true);
         let mut items: ~[@item] = starting_items;
         let attrs_remaining_len = attrs_remaining.len();
 
-        // looks like this code depends on the invariant that
-        // outer attributes can't occur on view items (or macros
-        // invocations?)
+        // don't think this other loop is even necessary....
+
         let mut first = true;
         while *self.token != term {
             let mut attrs = self.parse_outer_attributes();
@@ -3418,9 +3474,7 @@ pub impl Parser {
                    attrs);
             match self.parse_item_or_view_item(
                 /*bad*/ copy attrs,
-                true,
-                false,
-                true
+                true // macros allowed
             ) {
               iovi_item(item) => items.push(item),
               iovi_view_item(view_item) => {
@@ -3525,6 +3579,7 @@ pub impl Parser {
         self.mod_path_stack.pop();
     }
 
+    // read a module from a source file.
     fn eval_src_mod(&self, id: ast::ident,
                     outer_attrs: ~[ast::attribute],
                     id_sp: span) -> (ast::item_, ~[ast::attribute]) {
@@ -3582,12 +3637,13 @@ pub impl Parser {
         }
     }
 
+    // parse a function declaration from a foreign module
     fn parse_item_foreign_fn(&self,  attrs: ~[attribute]) -> @foreign_item {
         let lo = self.span.lo;
         let vis = self.parse_visibility();
         let purity = self.parse_fn_purity();
         let (ident, generics) = self.parse_fn_header();
-        let decl = self.parse_fn_decl(|p| p.parse_arg());
+        let decl = self.parse_fn_decl();
         let hi = self.span.hi;
         self.expect(&token::SEMI);
         @ast::foreign_item { ident: ident,
@@ -3598,6 +3654,7 @@ pub impl Parser {
                              vis: vis }
     }
 
+    // parse a const definition from a foreign module
     fn parse_item_foreign_const(&self, vis: ast::visibility,
                                 attrs: ~[attribute]) -> @foreign_item {
         let lo = self.span.lo;
@@ -3622,6 +3679,7 @@ pub impl Parser {
                              vis: vis }
     }
 
+    // parse safe/unsafe and fn
     fn parse_fn_purity(&self) -> purity {
         if self.eat_keyword(&~"fn") { impure_fn }
         else if self.eat_keyword(&~"pure") {
@@ -3636,45 +3694,30 @@ pub impl Parser {
         else { self.unexpected(); }
     }
 
-    fn parse_foreign_item(&self, attrs: ~[attribute]) -> @foreign_item {
-        let vis = self.parse_visibility();
-        if self.is_keyword(&~"const") || self.is_keyword(&~"static") {
-            self.parse_item_foreign_const(vis, attrs)
-        } else {
-            self.parse_item_foreign_fn(attrs)
-        }
-    }
 
+    // at this point, this is essentially a wrapper for
+    // parse_foreign_items.
     fn parse_foreign_mod_items(&self, sort: ast::foreign_mod_sort,
                                abis: AbiSet,
                                first_item_attrs: ~[attribute])
                             -> foreign_mod {
-        // Shouldn't be any view items since we've already parsed an item attr
         let ParsedItemsAndViewItems {
             attrs_remaining: attrs_remaining,
             view_items: view_items,
             items: _,
             foreign_items: foreign_items
-        } = self.parse_items_and_view_items(first_item_attrs,
-                                            FOREIGN_ITEMS_ALLOWED,
-                                            true);
-
-        let mut items: ~[@foreign_item] = foreign_items;
+        } = self.parse_foreign_items(first_item_attrs, true);
         let mut initial_attrs = attrs_remaining;
-        while *self.token != token::RBRACE {
-            let attrs = vec::append(initial_attrs,
-                                    self.parse_outer_attributes());
-            initial_attrs = ~[];
-            items.push(self.parse_foreign_item(attrs));
-        }
+        assert!(*self.token == token::RBRACE);
         ast::foreign_mod {
             sort: sort,
             abis: abis,
             view_items: view_items,
-            items: items
+            items: foreign_items
         }
     }
 
+    // parse extern foo; or extern mod foo { ... } or extern { ... }
     fn parse_item_foreign_mod(&self,
                               lo: BytePos,
                               opt_abis: Option<AbiSet>,
@@ -3744,15 +3787,9 @@ pub impl Parser {
         })
     }
 
-    fn parse_type_decl(&self) -> (BytePos, ident) {
-        let lo = self.last_span.lo;
-        let id = self.parse_ident();
-        (lo, id)
-    }
-
     // parse type Foo = Bar;
     fn parse_item_type(&self) -> item_info {
-        let (_, ident) = self.parse_type_decl();
+        let ident = self.parse_ident();
         self.parse_region_param();
         let tps = self.parse_generics();
         self.expect(&token::EQ);
@@ -3769,11 +3806,13 @@ pub impl Parser {
         }
     }
 
+    // parse a structure-like enum variant definition
+    // this should probably be renamed or refactored...
     fn parse_struct_def(&self) -> @struct_def {
         let mut the_dtor: Option<(blk, ~[attribute], codemap::span)> = None;
         let mut fields: ~[@struct_field] = ~[];
         while *self.token != token::RBRACE {
-            match self.parse_class_item() {
+            match self.parse_struct_decl_field() {
                 dtor_decl(ref blk, ref attrs, s) => {
                     match the_dtor {
                         Some((_, _, s_first)) => {
@@ -3812,6 +3851,7 @@ pub impl Parser {
         };
     }
 
+    // parse the part of an "enum" decl following the '{'
     fn parse_enum_def(&self, _generics: &ast::Generics) -> enum_def {
         let mut variants = ~[];
         let mut all_nullary = true, have_disr = false;
@@ -3821,7 +3861,7 @@ pub impl Parser {
 
             let vis = self.parse_visibility();
 
-            let ident, needs_comma, kind;
+            let ident, kind;
             let mut args = ~[], disr_expr = None;
             ident = self.parse_ident();
             if self.eat(&token::LBRACE) {
@@ -3850,7 +3890,6 @@ pub impl Parser {
             } else {
                 kind = tuple_variant_kind(~[]);
             }
-            needs_comma = true;
 
             let vr = ast::variant_ {
                 name: ident,
@@ -3862,7 +3901,7 @@ pub impl Parser {
             };
             variants.push(spanned(vlo, self.last_span.hi, vr));
 
-            if needs_comma && !self.eat(&token::COMMA) { break; }
+            if !self.eat(&token::COMMA) { break; }
         }
         self.expect(&token::RBRACE);
         if (have_disr && !all_nullary) {
@@ -3873,6 +3912,7 @@ pub impl Parser {
         ast::enum_def { variants: variants }
     }
 
+    // parse an "enum" declaration
     fn parse_item_enum(&self) -> item_info {
         let id = self.parse_ident();
         self.parse_region_param();
@@ -3938,6 +3978,7 @@ pub impl Parser {
         }
     }
 
+    // parse a string as an ABI spec on an extern type or module
     fn parse_opt_abis(&self) -> Option<AbiSet> {
         match *self.token {
             token::LIT_STR(s) => {
@@ -3983,31 +4024,53 @@ pub impl Parser {
 
     // parse one of the items or view items allowed by the
     // flags; on failure, return iovi_none.
+    // NB: this function no longer parses the items inside an
+    // extern mod.
     fn parse_item_or_view_item(
         &self,
         attrs: ~[attribute],
-        items_allowed: bool,
-        foreign_items_allowed: bool,
         macros_allowed: bool
     ) -> item_or_view_item {
-        assert!(items_allowed != foreign_items_allowed);
-
         maybe_whole!(iovi self, nt_item);
         let lo = self.span.lo;
 
-        let visibility;
-        if self.eat_keyword(&~"pub") {
-            visibility = public;
-        } else if self.eat_keyword(&~"priv") {
-            visibility = private;
-        } else {
-            visibility = inherited;
-        }
+        let visibility = self.parse_visibility();
 
-        if items_allowed &&
-                (self.is_keyword(&~"const") ||
-                (self.is_keyword(&~"static") &&
-                    !self.token_is_keyword(&~"fn", &self.look_ahead(1)))) {
+        // must be a view item:
+        if self.eat_keyword(&~"use") {
+            // USE ITEM (iovi_view_item)
+            let view_item = self.parse_use();
+            self.expect(&token::SEMI);
+            return iovi_view_item(@ast::view_item {
+                node: view_item,
+                attrs: attrs,
+                vis: visibility,
+                span: mk_sp(lo, self.last_span.hi)
+            });
+        }
+        // either a view item or an item:
+        if self.eat_keyword(&~"extern") {
+            let opt_abis = self.parse_opt_abis();
+
+            if self.eat_keyword(&~"fn") {
+                // EXTERN FUNCTION ITEM
+                let abis = opt_abis.get_or_default(AbiSet::C());
+                let (ident, item_, extra_attrs) =
+                    self.parse_item_fn(extern_fn, abis);
+                return iovi_item(self.mk_item(lo, self.last_span.hi, ident,
+                                              item_, visibility,
+                                              maybe_append(attrs,
+                                                           extra_attrs)));
+            } else  {
+                // EXTERN MODULE ITEM (iovi_view_item)
+                return self.parse_item_foreign_mod(lo, opt_abis, visibility, attrs,
+                                                   true);
+            }
+        }
+        // the rest are all guaranteed to be items:
+        if (self.is_keyword(&~"const") ||
+            (self.is_keyword(&~"static") &&
+             !self.token_is_keyword(&~"fn", &self.look_ahead(1)))) {
             // CONST / STATIC ITEM
             if self.is_keyword(&~"const") {
                 self.obsolete(*self.span, ObsoleteConstItem);
@@ -4018,13 +4081,7 @@ pub impl Parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if foreign_items_allowed &&
-                (self.is_keyword(&~"const") || self.is_keyword(&~"static")) {
-            // FOREIGN CONST ITEM
-            let item = self.parse_item_foreign_const(visibility, attrs);
-            return iovi_foreign_item(item);
-        }
-        if items_allowed && self.is_keyword(&~"fn") &&
+        if self.is_keyword(&~"fn") &&
             !self.fn_expr_lookahead(self.look_ahead(1u)) {
             // FUNCTION ITEM
             self.bump();
@@ -4034,7 +4091,7 @@ pub impl Parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && self.eat_keyword(&~"pure") {
+        if self.eat_keyword(&~"pure") {
             // PURE FUNCTION ITEM (obsolete)
             self.obsolete(*self.last_span, ObsoletePurity);
             self.expect_keyword(&~"fn");
@@ -4044,16 +4101,9 @@ pub impl Parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if foreign_items_allowed &&
-            (self.is_keyword(&~"fn") || self.is_keyword(&~"pure") ||
-             self.is_keyword(&~"unsafe")) {
-            // FOREIGN FUNCTION ITEM (no items allowed)
-                let item = self.parse_item_foreign_fn(attrs);
-                return iovi_foreign_item(item);
-        }
-        if items_allowed && self.is_keyword(&~"unsafe")
+        if self.is_keyword(&~"unsafe")
             && self.look_ahead(1u) != token::LBRACE {
-            // UNSAFE FUNCTION ITEM (where items are allowed)
+            // UNSAFE FUNCTION ITEM
             self.bump();
             self.expect_keyword(&~"fn");
             let (ident, item_, extra_attrs) =
@@ -4062,59 +4112,35 @@ pub impl Parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if self.eat_keyword(&~"extern") {
-            let opt_abis = self.parse_opt_abis();
-
-            if items_allowed && self.eat_keyword(&~"fn") {
-                // EXTERN FUNCTION ITEM
-                let abis = opt_abis.get_or_default(AbiSet::C());
-                let (ident, item_, extra_attrs) =
-                    self.parse_item_fn(extern_fn, abis);
-                return iovi_item(self.mk_item(lo, self.last_span.hi, ident,
-                                              item_, visibility,
-                                              maybe_append(attrs,
-                                                           extra_attrs)));
-            }
-            if !foreign_items_allowed {
-                // EXTERN MODULE ITEM
-                return self.parse_item_foreign_mod(lo, opt_abis, visibility, attrs,
-                                                   items_allowed);
-            }
-        }
-        if items_allowed && !foreign_items_allowed &&
-                self.eat_keyword(&~"mod") {
+        if self.eat_keyword(&~"mod") {
             // MODULE ITEM
             let (ident, item_, extra_attrs) = self.parse_item_mod(attrs);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && !foreign_items_allowed &&
-                self.eat_keyword(&~"type") {
+        if self.eat_keyword(&~"type") {
             // TYPE ITEM
             let (ident, item_, extra_attrs) = self.parse_item_type();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && !foreign_items_allowed &&
-                self.eat_keyword(&~"enum") {
+        if self.eat_keyword(&~"enum") {
             // ENUM ITEM
             let (ident, item_, extra_attrs) = self.parse_item_enum();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && !foreign_items_allowed &&
-                self.eat_keyword(&~"trait") {
+        if self.eat_keyword(&~"trait") {
             // TRAIT ITEM
             let (ident, item_, extra_attrs) = self.parse_item_trait();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && !foreign_items_allowed &&
-                self.eat_keyword(&~"impl") {
+        if self.eat_keyword(&~"impl") {
             // IMPL ITEM
             let (ident, item_, extra_attrs) =
                 self.parse_item_impl(visibility);
@@ -4122,25 +4148,49 @@ pub impl Parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if items_allowed && !foreign_items_allowed &&
-                self.eat_keyword(&~"struct") {
+        if self.eat_keyword(&~"struct") {
             // STRUCT ITEM
             let (ident, item_, extra_attrs) = self.parse_item_struct();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         }
-        if !foreign_items_allowed && self.eat_keyword(&~"use") {
-            // USE ITEM
-            let view_item = self.parse_use();
-            self.expect(&token::SEMI);
-            return iovi_view_item(@ast::view_item {
-                node: view_item,
-                attrs: attrs,
-                vis: visibility,
-                span: mk_sp(lo, self.last_span.hi)
-            });
+        self.parse_macro_use_or_failure(attrs,macros_allowed,lo,visibility)
+    }
+
+    // parse a foreign item; on failure, return iovi_none.
+    fn parse_foreign_item(
+        &self,
+        attrs: ~[attribute],
+        macros_allowed: bool
+    ) -> item_or_view_item {
+        maybe_whole!(iovi self, nt_item);
+        let lo = self.span.lo;
+
+        let visibility = self.parse_visibility();
+
+        if (self.is_keyword(&~"const") || self.is_keyword(&~"static")) {
+            // FOREIGN CONST ITEM
+            let item = self.parse_item_foreign_const(visibility, attrs);
+            return iovi_foreign_item(item);
         }
+        if (self.is_keyword(&~"fn") || self.is_keyword(&~"pure") ||
+             self.is_keyword(&~"unsafe")) {
+            // FOREIGN FUNCTION ITEM
+                let item = self.parse_item_foreign_fn(attrs);
+                return iovi_foreign_item(item);
+        }
+        self.parse_macro_use_or_failure(attrs,macros_allowed,lo,visibility)
+    }
+
+    // this is the fall-through for parsing items.
+    fn parse_macro_use_or_failure(
+        &self,
+        attrs: ~[attribute],
+        macros_allowed: bool,
+        lo : BytePos,
+        visibility : visibility
+    ) -> item_or_view_item {
         if macros_allowed && !self.is_any_keyword(&copy *self.token)
                 && self.look_ahead(1) == token::NOT
                 && (is_plain_ident(&self.look_ahead(2))
@@ -4197,7 +4247,7 @@ pub impl Parser {
     }
 
     fn parse_item(&self, attrs: ~[attribute]) -> Option<@ast::item> {
-        match self.parse_item_or_view_item(attrs, true, false, true) {
+        match self.parse_item_or_view_item(attrs, true) {
             iovi_none =>
                 None,
             iovi_view_item(_) =>
@@ -4209,6 +4259,7 @@ pub impl Parser {
         }
     }
 
+    // parse, e.g., "use a::b::{z,y}"
     fn parse_use(&self) -> view_item_ {
         return view_item_use(self.parse_view_paths());
     }
@@ -4353,101 +4404,73 @@ pub impl Parser {
 
     // Parses a sequence of items. Stops when it finds program
     // text that can't be parsed as an item
-    // - mod_items uses VIEW_ITEMS_AND_ITEMS_ALLOWED
-    // - block_tail_ uses IMPORTS_AND_ITEMS_ALLOWED
-    // - foreign_mod_items uses FOREIGN_ITEMS_ALLOWED
+    // - mod_items uses extern_mod_allowed = true
+    // - block_tail_ uses extern_mod_allowed = false
     fn parse_items_and_view_items(&self, first_item_attrs: ~[attribute],
-                                  mode: view_item_parse_mode,
+                                  mut extern_mod_allowed: bool,
                                   macros_allowed: bool)
                                 -> ParsedItemsAndViewItems {
         let mut attrs = vec::append(first_item_attrs,
                                     self.parse_outer_attributes());
-
-        let items_allowed = match mode {
-            VIEW_ITEMS_AND_ITEMS_ALLOWED | IMPORTS_AND_ITEMS_ALLOWED => true,
-            FOREIGN_ITEMS_ALLOWED => false
-        };
-        let foreign_items_allowed = match mode {
-            FOREIGN_ITEMS_ALLOWED => true,
-            VIEW_ITEMS_AND_ITEMS_ALLOWED | IMPORTS_AND_ITEMS_ALLOWED => false
-        };
-
         // First, parse view items.
-        let mut (view_items, items, foreign_items) = (~[], ~[], ~[]);
+        let mut (view_items, items) = (~[], ~[]);
         let mut done = false;
-        if mode != FOREIGN_ITEMS_ALLOWED {
-            let mut extern_mod_allowed = match mode {
-                VIEW_ITEMS_AND_ITEMS_ALLOWED => true,
-                IMPORTS_AND_ITEMS_ALLOWED => false,
-                FOREIGN_ITEMS_ALLOWED => {
-                    self.bug(~"couldn't get here with FOREIGN_ITEMS_ALLOWED")
+        // I think this code would probably read better as a single
+        // loop with a mutable three-state-variable (for extern mods,
+        // view items, and regular items) ... except that because
+        // of macros, I'd like to delay that entire check until later.
+        loop {
+            match self.parse_item_or_view_item(/*bad*/ copy attrs,
+                                                           macros_allowed) {
+                iovi_none => {
+                    done = true;
+                    break;
                 }
-            };
-
-            loop {
-                match self.parse_item_or_view_item(/*bad*/ copy attrs,
-                                                   items_allowed,
-                                                   foreign_items_allowed,
-                                                   macros_allowed) {
-                    iovi_none => {
-                        done = true;
-                        break;
-                    }
-                    iovi_view_item(view_item) => {
-                        match view_item.node {
-                            view_item_use(*) => {
-                                // `extern mod` must precede `use`.
-                                extern_mod_allowed = false;
-                            }
-                            view_item_extern_mod(*)
-                                    if !extern_mod_allowed => {
-                                self.span_err(view_item.span,
-                                              ~"\"extern mod\" \
-                                                declarations are not \
-                                                allowed here");
-                            }
-                            view_item_extern_mod(*) => {}
+                iovi_view_item(view_item) => {
+                    match view_item.node {
+                        view_item_use(*) => {
+                            // `extern mod` must precede `use`.
+                            extern_mod_allowed = false;
                         }
-                        view_items.push(view_item);
+                        view_item_extern_mod(*)
+                        if !extern_mod_allowed => {
+                            self.span_err(view_item.span,
+                                          ~"\"extern mod\" \
+                                            declarations are not \
+                                            allowed here");
+                        }
+                        view_item_extern_mod(*) => {}
                     }
-                    iovi_item(item) => {
-                        assert!(items_allowed);
-                        items.push(item);
-                        attrs = self.parse_outer_attributes();
-                        break;
-                    }
-                    iovi_foreign_item(foreign_item) => {
-                        assert!(foreign_items_allowed);
-                        foreign_items.push(foreign_item);
-                        attrs = self.parse_outer_attributes();
-                        break;
-                    }
+                    view_items.push(view_item);
                 }
-                attrs = self.parse_outer_attributes();
+                iovi_item(item) => {
+                    items.push(item);
+                    attrs = self.parse_outer_attributes();
+                    break;
+                }
+                iovi_foreign_item(_) => {
+                    fail!();
+                }
             }
+            attrs = self.parse_outer_attributes();
         }
 
         // Next, parse items.
         if !done {
             loop {
                 match self.parse_item_or_view_item(/*bad*/ copy attrs,
-                                                   items_allowed,
-                                                   foreign_items_allowed,
                                                    macros_allowed) {
                     iovi_none => break,
                     iovi_view_item(view_item) => {
                         self.span_err(view_item.span,
                                       ~"`use` and `extern mod` declarations \
                                         must precede items");
-                        view_items.push(view_item);
                     }
                     iovi_item(item) => {
-                        assert!(items_allowed);
                         items.push(item)
                     }
-                    iovi_foreign_item(foreign_item) => {
-                        assert!(foreign_items_allowed);
-                        foreign_items.push(foreign_item);
+                    iovi_foreign_item(_) => {
+                        fail!();
                     }
                 }
                 attrs = self.parse_outer_attributes();
@@ -4458,12 +4481,49 @@ pub impl Parser {
             attrs_remaining: attrs,
             view_items: view_items,
             items: items,
+            foreign_items: ~[]
+        }
+    }
+
+    // Parses a sequence of foreign items. Stops when it finds program
+    // text that can't be parsed as an item
+    fn parse_foreign_items(&self, first_item_attrs: ~[attribute],
+                           macros_allowed: bool)
+        -> ParsedItemsAndViewItems {
+        let mut attrs = vec::append(first_item_attrs,
+                                    self.parse_outer_attributes());
+        let mut foreign_items = ~[];
+        loop {
+            match self.parse_foreign_item(/*bad*/ copy attrs, macros_allowed) {
+                iovi_none => break,
+                iovi_view_item(view_item) => {
+                    // I think this can't occur:
+                    self.span_err(view_item.span,
+                                  ~"`use` and `extern mod` declarations \
+                                    must precede items");
+                }
+                iovi_item(_) => {
+                    // FIXME #5668: this will occur for a macro invocation:
+                    fail!();
+                }
+                iovi_foreign_item(foreign_item) => {
+                    foreign_items.push(foreign_item);
+                }
+            }
+            attrs = self.parse_outer_attributes();
+        }
+
+        ParsedItemsAndViewItems {
+            attrs_remaining: attrs,
+            view_items: ~[],
+            items: ~[],
             foreign_items: foreign_items
         }
     }
 
-    // Parses a source module as a crate
-    fn parse_crate_mod(&self, _cfg: crate_cfg) -> @crate {
+    // Parses a source module as a crate. This is the main
+    // entry point for the parser.
+    fn parse_crate_mod(&self) -> @crate {
         let lo = self.span.lo;
         // parse the crate's inner attrs, maybe (oops) one
         // of the attrs of an item:

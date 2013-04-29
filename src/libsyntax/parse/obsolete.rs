@@ -259,7 +259,7 @@ pub impl Parser {
     fn try_parse_obsolete_struct_ctor(&self) -> bool {
         if self.eat_obsolete_ident("new") {
             self.obsolete(*self.last_span, ObsoleteStructCtor);
-            self.parse_fn_decl(|p| p.parse_arg());
+            self.parse_fn_decl();
             self.parse_block();
             true
         } else {
@@ -288,7 +288,7 @@ pub impl Parser {
             self.eat_keyword(&~"priv");
             self.bump();
             while *self.token != token::RBRACE {
-                self.parse_single_class_item(ast::private);
+                self.parse_single_struct_field(ast::private);
             }
             self.bump();
             true
