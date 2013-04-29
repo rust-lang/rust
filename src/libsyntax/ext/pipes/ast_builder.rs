@@ -196,7 +196,6 @@ impl ext_ctxt_ast_builder for @ext_ctxt {
 
     fn arg(&self, name: ident, ty: @ast::Ty) -> ast::arg {
         ast::arg {
-            mode: ast::infer(self.next_id()),
             is_mutbl: false,
             ty: ty,
             pat: @ast::pat {

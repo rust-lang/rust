@@ -110,6 +110,7 @@ use middle::typeck;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
+use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::util::with;
 use syntax::ast::*;
@@ -235,19 +236,19 @@ struct LocalInfo {
 }
 
 enum VarKind {
-    Arg(node_id, ident, rmode),
+    Arg(node_id, ident),
     Local(LocalInfo),
     ImplicitRet
 }
 
 fn relevant_def(def: def) -> Option<node_id> {
     match def {
-      def_binding(nid, _) |
-      def_arg(nid, _, _) |
-      def_local(nid, _) |
-      def_self(nid, _) => Some(nid),
+        def_binding(nid, _) |
+        def_arg(nid, _) |
+        def_local(nid, _) |
+        def_self(nid, _) => Some(nid),
 
-      _ => None
+        _ => None
     }
 }
 
@@ -320,10 +321,9 @@ pub impl IrMaps {
         self.num_vars += 1;
 
         match vk {
-            Local(LocalInfo {id:node_id, _}) |
-            Arg(node_id, _, _) => {
+            Local(LocalInfo { id: node_id, _ }) | Arg(node_id, _) => {
                 self.variable_map.insert(node_id, v);
-            }
+            },
             ImplicitRet => {}
         }
 
@@ -344,8 +344,9 @@ pub impl IrMaps {
 
     fn variable_name(&mut self, var: Variable) -> @~str {
         match self.var_kinds[*var] {
-            Local(LocalInfo {ident: nm, _}) |
-            Arg(_, nm, _) => self.tcx.sess.str_of(nm),
+            Local(LocalInfo { ident: nm, _ }) | Arg(_, nm) => {
+                self.tcx.sess.str_of(nm)
+            },
             ImplicitRet => @~"<implicit-ret>"
         }
     }
@@ -371,25 +372,22 @@ pub impl IrMaps {
         let vk = self.var_kinds[*var];
         debug!("Node %d is a last use of variable %?", expr_id, vk);
         match vk {
-          Arg(id, _, by_copy) |
-          Local(LocalInfo {id: id, kind: FromLetNoInitializer, _}) |
-          Local(LocalInfo {id: id, kind: FromLetWithInitializer, _}) |
-          Local(LocalInfo {id: id, kind: FromMatch(_), _}) => {
-            let v = match self.last_use_map.find(&expr_id) {
-              Some(&v) => v,
-              None => {
-                let v = @mut ~[];
-                self.last_use_map.insert(expr_id, v);
-                v
-              }
-            };
+            Arg(id, _) |
+            Local(LocalInfo { id: id, kind: FromLetNoInitializer, _ }) |
+            Local(LocalInfo { id: id, kind: FromLetWithInitializer, _ }) |
+            Local(LocalInfo { id: id, kind: FromMatch(_), _ }) => {
+                let v = match self.last_use_map.find(&expr_id) {
+                    Some(&v) => v,
+                    None => {
+                        let v = @mut ~[];
+                        self.last_use_map.insert(expr_id, v);
+                        v
+                    }
+                };
 
-            v.push(id);
-          }
-          Arg(_, _, by_ref) |
-          ImplicitRet => {
-            debug!("--but it is not owned");
-          }
+                v.push(id);
+            }
+            ImplicitRet => debug!("--but it is not owned"),
         }
     }
 }
@@ -418,15 +416,16 @@ fn visit_fn(fk: &visit::fn_kind,
                               self.last_use_map,
                               self.cur_item);
 
-    debug!("creating fn_maps: %x", ptr::addr_of(&(*fn_maps)) as uint);
+    unsafe {
+        debug!("creating fn_maps: %x", transmute(&*fn_maps));
+    }
 
     for decl.inputs.each |arg| {
-        let mode = ty::resolved_mode(self.tcx, arg.mode);
         do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
                 |_bm, arg_id, _x, path| {
             debug!("adding argument %d", arg_id);
             let ident = ast_util::path_to_ident(path);
-            fn_maps.add_variable(Arg(arg_id, ident, mode));
+            fn_maps.add_variable(Arg(arg_id, ident));
         }
     };
 
@@ -436,16 +435,13 @@ fn visit_fn(fk: &visit::fn_kind,
             match method.self_ty.node {
                 sty_value | sty_region(*) | sty_box(_) | sty_uniq(_) => {
                     fn_maps.add_variable(Arg(method.self_id,
-                                             special_idents::self_,
-                                             by_copy));
+                                             special_idents::self_));
                 }
                 sty_static => {}
             }
         }
         fk_dtor(_, _, self_id, _) => {
-            fn_maps.add_variable(Arg(self_id,
-                                     special_idents::self_,
-                                     by_copy));
+            fn_maps.add_variable(Arg(self_id, special_idents::self_));
         }
         fk_item_fn(*) | fk_anon(*) | fk_fn_block(*) => {}
     }
@@ -970,30 +966,8 @@ pub impl Liveness {
         entry_ln
     }
 
-    fn propagate_through_fn_block(&self, decl: &fn_decl, blk: &blk)
-                                 -> LiveNode {
-        // inputs passed by & mode should be considered live on exit:
-        for decl.inputs.each |arg| {
-            match ty::resolved_mode(self.tcx, arg.mode) {
-                by_ref => {
-                    // By val and by ref do not own, so register a
-                    // read at the end.  This will prevent us from
-                    // moving out of such variables but also prevent
-                    // us from registering last uses and so forth.
-                    do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
-                        |_bm, arg_id, _sp, _path|
-                    {
-                        let var = self.variable(arg_id, blk.span);
-                        self.acc(self.s.exit_ln, var, ACC_READ);
-                    }
-                }
-                by_copy => {
-                    // By copy is an owned mode.  If we don't use the
-                    // variable, nobody will.
-                }
-            }
-        }
-
+    fn propagate_through_fn_block(&self, _: &fn_decl, blk: &blk)
+                                  -> LiveNode {
         // the fallthrough exit is only for those cases where we do not
         // explicitly return:
         self.init_from_succ(self.s.fallthrough_ln, self.s.exit_ln);
@@ -1768,7 +1742,7 @@ pub impl Liveness {
             // borrow checker
             let vk = self.ir.var_kinds[*var];
             match vk {
-              Arg(_, name, _) => {
+              Arg(_, name) => {
                 self.tcx.sess.span_err(
                     move_expr.span,
                     fmt!("illegal move from argument `%s`, which is not \

@@ -215,7 +215,50 @@ pub fn expand_auto_decode(
     }
 }
 
-priv impl @ext_ctxt {
+trait ExtCtxtMethods {
+    fn bind_path(&self,
+                 span: span,
+                 ident: ast::ident,
+                 path: @ast::Path,
+                 bounds: @OptVec<ast::TyParamBound>)
+                 -> ast::TyParam;
+    fn expr(&self, span: span, node: ast::expr_) -> @ast::expr;
+    fn path(&self, span: span, strs: ~[ast::ident]) -> @ast::Path;
+    fn path_global(&self, span: span, strs: ~[ast::ident]) -> @ast::Path;
+    fn path_tps(&self, span: span, strs: ~[ast::ident], tps: ~[@ast::Ty])
+                -> @ast::Path;
+    fn path_tps_global(&self,
+                       span: span,
+                       strs: ~[ast::ident],
+                       tps: ~[@ast::Ty])
+                       -> @ast::Path;
+    fn ty_path(&self, span: span, strs: ~[ast::ident], tps: ~[@ast::Ty])
+               -> @ast::Ty;
+    fn binder_pat(&self, span: span, nm: ast::ident) -> @ast::pat;
+    fn stmt(&self, expr: @ast::expr) -> @ast::stmt;
+    fn lit_str(&self, span: span, s: @~str) -> @ast::expr;
+    fn lit_uint(&self, span: span, i: uint) -> @ast::expr;
+    fn lambda(&self, blk: ast::blk) -> @ast::expr;
+    fn blk(&self, span: span, stmts: ~[@ast::stmt]) -> ast::blk;
+    fn expr_blk(&self, expr: @ast::expr) -> ast::blk;
+    fn expr_path(&self, span: span, strs: ~[ast::ident]) -> @ast::expr;
+    fn expr_path_global(&self, span: span, strs: ~[ast::ident]) -> @ast::expr;
+    fn expr_var(&self, span: span, var: ~str) -> @ast::expr;
+    fn expr_field(&self, span: span, expr: @ast::expr, ident: ast::ident)
+                  -> @ast::expr;
+    fn expr_call(&self, span: span, expr: @ast::expr, args: ~[@ast::expr])
+                 -> @ast::expr;
+    fn expr_method_call(&self,
+                        span: span,
+                        expr: @ast::expr,
+                        ident: ast::ident,
+                        args: ~[@ast::expr])
+                        -> @ast::expr;
+    fn lambda_expr(&self, expr: @ast::expr) -> @ast::expr;
+    fn lambda_stmts(&self, span: span, stmts: ~[@ast::stmt]) -> @ast::expr;
+}
+
+impl ExtCtxtMethods for @ext_ctxt {
     fn bind_path(
         &self,
         _span: span,
@@ -608,7 +651,6 @@ fn mk_ser_method(
     };
 
     let ser_inputs = ~[ast::arg {
-        mode: ast::infer(cx.next_id()),
         is_mutbl: false,
         ty: ty_s,
         pat: @ast::pat {
@@ -670,20 +712,22 @@ fn mk_deser_method(
         span: span,
     };
 
-    let deser_inputs = ~[ast::arg {
-        mode: ast::infer(cx.next_id()),
-        is_mutbl: false,
-        ty: ty_d,
-        pat: @ast::pat {
+    let deser_inputs = ~[
+        ast::arg {
+            is_mutbl: false,
+            ty: ty_d,
+            pat: @ast::pat {
+                id: cx.next_id(),
+                node: ast::pat_ident(ast::bind_by_copy,
+                                     ast_util::ident_to_path(span,
+                                                             cx.ident_of(
+                                                                ~"__d")),
+                                     None),
+                span: span,
+            },
             id: cx.next_id(),
-            node: ast::pat_ident(
-                ast::bind_by_copy,
-                ast_util::ident_to_path(span, cx.ident_of(~"__d")),
-                None),
-            span: span,
-        },
-        id: cx.next_id(),
-    }];
+        }
+    ];
 
     let deser_decl = ast::fn_decl {
         inputs: deser_inputs,
@@ -1120,7 +1164,6 @@ fn mk_enum_deser_body(
         ast::expr_fn_block(
             ast::fn_decl {
                 inputs: ~[ast::arg {
-                    mode: ast::infer(ext_cx.next_id()),
                     is_mutbl: false,
                     ty: @ast::Ty {
                         id: ext_cx.next_id(),

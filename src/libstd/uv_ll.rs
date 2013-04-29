@@ -1021,19 +1021,17 @@ pub unsafe fn async_send(async_handle: *uv_async_t) {
 }
 pub unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
     let out_buf = uv_buf_t { base: ptr::null(), len: 0 as libc::size_t };
-    let out_buf_ptr = ptr::addr_of(&out_buf);
+    let out_buf_ptr: *uv_buf_t = &out_buf;
     rustrt::rust_uv_buf_init(out_buf_ptr, input, len as size_t);
     return out_buf;
 }
-pub unsafe fn ip4_addr(ip: &str, port: int)
--> sockaddr_in {
+pub unsafe fn ip4_addr(ip: &str, port: int) -> sockaddr_in {
     do str::as_c_str(ip) |ip_buf| {
         rustrt::rust_uv_ip4_addr(ip_buf as *u8,
                                  port as libc::c_int)
     }
 }
-pub unsafe fn ip6_addr(ip: &str, port: int)
--> sockaddr_in6 {
+pub unsafe fn ip6_addr(ip: &str, port: int) -> sockaddr_in6 {
     do str::as_c_str(ip) |ip_buf| {
         rustrt::rust_uv_ip6_addr(ip_buf as *u8,
                                  port as libc::c_int)
@@ -1183,7 +1181,7 @@ pub unsafe fn free_base_of_buf(buf: uv_buf_t) {
 
 pub unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> ~str {
     let err = last_error(uv_loop);
-    let err_ptr = ptr::addr_of(&err);
+    let err_ptr: *uv_err_t = &err;
     let err_name = str::raw::from_c_str(err_name(err_ptr));
     let err_msg = str::raw::from_c_str(strerror(err_ptr));
     return fmt!("LIBUV ERROR: name: %s msg: %s",
@@ -1192,7 +1190,7 @@ pub unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> ~str {
 
 pub unsafe fn get_last_err_data(uv_loop: *libc::c_void) -> uv_err_data {
     let err = last_error(uv_loop);
-    let err_ptr = ptr::addr_of(&err);
+    let err_ptr: *uv_err_t = &err;
     let err_name = str::raw::from_c_str(err_name(err_ptr));
     let err_msg = str::raw::from_c_str(strerror(err_ptr));
     uv_err_data { err_name: err_name, err_msg: err_msg }
@@ -1347,9 +1345,9 @@ mod test {
         unsafe {
             let test_loop = loop_new();
             let tcp_handle = tcp_t();
-            let tcp_handle_ptr = ptr::addr_of(&tcp_handle);
+            let tcp_handle_ptr: *uv_tcp_t = &tcp_handle;
             let connect_handle = connect_t();
-            let connect_req_ptr = ptr::addr_of(&connect_handle);
+            let connect_req_ptr: *uv_connect_t = &connect_handle;
 
             // this is the persistent payload of data that we
             // need to pass around to get this example to work.
@@ -1365,43 +1363,42 @@ mod test {
             // this is the enclosing record, we'll pass a ptr to
             // this to C..
             let write_handle = write_t();
-            let write_handle_ptr = ptr::addr_of(&write_handle);
+            let write_handle_ptr: *uv_write_t = &write_handle;
             debug!("tcp req: tcp stream: %d write_handle: %d",
                              tcp_handle_ptr as int,
                              write_handle_ptr as int);
             let client_data = request_wrapper {
                 write_req: write_handle_ptr,
-                req_buf: ptr::addr_of(&req_msg),
+                req_buf: &req_msg,
                 read_chan: client_chan
             };
 
-            let tcp_init_result = tcp_init(
-                test_loop as *libc::c_void, tcp_handle_ptr);
-            if (tcp_init_result == 0i32) {
+            let tcp_init_result = tcp_init(test_loop as *libc::c_void,
+                                           tcp_handle_ptr);
+            if (tcp_init_result == 0) {
                 debug!(~"sucessful tcp_init_result");
 
                 debug!(~"building addr...");
                 let addr = ip4_addr(ip, port);
                 // FIXME ref #2064
-                let addr_ptr = ptr::addr_of(&addr);
+                let addr_ptr: *sockaddr_in = &addr;
                 debug!("after build addr in rust. port: %u",
-                                 addr.sin_port as uint);
+                       addr.sin_port as uint);
 
                 // this should set up the connection request..
                 debug!("b4 call tcp_connect connect cb: %u ",
-                                on_connect_cb as uint);
-                let tcp_connect_result = tcp_connect(
-                    connect_req_ptr, tcp_handle_ptr,
-                    addr_ptr, on_connect_cb);
-                if (tcp_connect_result == 0i32) {
+                       on_connect_cb as uint);
+                let tcp_connect_result = tcp_connect(connect_req_ptr,
+                                                     tcp_handle_ptr,
+                                                     addr_ptr,
+                                                     on_connect_cb);
+                if (tcp_connect_result == 0) {
                     // not set the data on the connect_req
                     // until its initialized
-                    set_data_for_req(
-                        connect_req_ptr as *libc::c_void,
-                        ptr::addr_of(&client_data) as *libc::c_void);
-                    set_data_for_uv_handle(
-                        tcp_handle_ptr as *libc::c_void,
-                        ptr::addr_of(&client_data) as *libc::c_void);
+                    set_data_for_req(connect_req_ptr as *libc::c_void,
+                                     &client_data);
+                    set_data_for_uv_handle(tcp_handle_ptr as *libc::c_void,
+                                           &client_data);
                     debug!(~"before run tcp req loop");
                     run(test_loop);
                     debug!(~"after run tcp req loop");
@@ -1607,37 +1604,37 @@ mod test {
         unsafe {
             let test_loop = loop_new();
             let tcp_server = tcp_t();
-            let tcp_server_ptr = ptr::addr_of(&tcp_server);
+            let tcp_server_ptr: *uv_tcp_t = &tcp_server;
 
             let tcp_client = tcp_t();
-            let tcp_client_ptr = ptr::addr_of(&tcp_client);
+            let tcp_client_ptr: *uv_tcp_t = &tcp_client;
 
             let server_write_req = write_t();
-            let server_write_req_ptr = ptr::addr_of(&server_write_req);
+            let server_write_req_ptr: *uv_write_t = &server_write_req;
 
             let resp_str_bytes = str::to_bytes(server_resp_msg);
             let resp_msg_ptr: *u8 = vec::raw::to_ptr(resp_str_bytes);
             debug!("resp_msg ptr: %u", resp_msg_ptr as uint);
             let resp_msg = ~[
-                buf_init(resp_msg_ptr, vec::len(resp_str_bytes))
+                buf_init(resp_msg_ptr, resp_str_bytes.len())
             ];
 
             let continue_async_handle = async_t();
-            let continue_async_handle_ptr =
-                ptr::addr_of(&continue_async_handle);
+            let continue_async_handle_ptr: *uv_async_t =
+                &continue_async_handle;
             let async_data =
                 async_handle_data { continue_chan: continue_chan };
-            let async_data_ptr = ptr::addr_of(&async_data);
+            let async_data_ptr: *async_handle_data = &async_data;
 
             let server_data = tcp_server_data {
                 client: tcp_client_ptr,
                 server: tcp_server_ptr,
                 server_kill_msg: kill_server_msg,
-                server_resp_buf: ptr::addr_of(&resp_msg),
+                server_resp_buf: &resp_msg,
                 server_chan: server_chan,
                 server_write_req: server_write_req_ptr
             };
-            let server_data_ptr = ptr::addr_of(&server_data);
+            let server_data_ptr: *tcp_server_data = &server_data;
             set_data_for_uv_handle(tcp_server_ptr as *libc::c_void,
                                            server_data_ptr as *libc::c_void);
 
@@ -1647,11 +1644,10 @@ mod test {
             if (tcp_init_result == 0i32) {
                 let server_addr = ip4_addr(server_ip, server_port);
                 // FIXME ref #2064
-                let server_addr_ptr = ptr::addr_of(&server_addr);
+                let server_addr_ptr: *sockaddr_in = &server_addr;
 
                 // uv_tcp_bind()
-                let bind_result = tcp_bind(tcp_server_ptr,
-                                                   server_addr_ptr);
+                let bind_result = tcp_bind(tcp_server_ptr, server_addr_ptr);
                 if (bind_result == 0i32) {
                     debug!(~"successful uv_tcp_bind, listening");
 

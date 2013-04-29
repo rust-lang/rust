@@ -2187,7 +2187,7 @@ A loop expression denotes an infinite loop;
 see [Continue expressions](#continue-expressions) for continue expressions.
 
 ~~~~~~~~{.ebnf .gram}
-loop_expr : "loop" [ ident ':' ] '{' block '}';
+loop_expr : [ lifetime ':' ] "loop" '{' block '}';
 ~~~~~~~~
 
 A `loop` expression may optionally have a _label_.
@@ -2198,7 +2198,7 @@ See [Break expressions](#break-expressions).
 ### Break expressions
 
 ~~~~~~~~{.ebnf .gram}
-break_expr : "break" [ ident ];
+break_expr : "break" [ lifetime ];
 ~~~~~~~~
 
 A `break` expression has an optional `label`.
@@ -2211,7 +2211,7 @@ but must enclose it.
 ### Continue expressions
 
 ~~~~~~~~{.ebnf .gram}
-continue_expr : "loop" [ ident ];
+continue_expr : "loop" [ lifetime ];
 ~~~~~~~~
 
 A continue expression, written `loop`, also has an optional `label`.
@@ -2393,7 +2393,7 @@ variables in the arm's block, and control enters the block.
 An example of an `match` expression:
 
 
-~~~~
+~~~~ {.xfail-test}
 # fn process_pair(a: int, b: int) { }
 # fn process_ten() { }
 

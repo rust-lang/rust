@@ -11,7 +11,6 @@
 //! A priority queue implemented with a binary heap
 
 use core::old_iter::BaseIter;
-use core::ptr::addr_of;
 
 #[abi = "rust-intrinsic"]
 extern "rust-intrinsic" mod rusti {
@@ -151,7 +150,7 @@ pub impl <T:Ord> PriorityQueue<T> {
 
     priv fn siftup(&mut self, start: uint, mut pos: uint) {
         unsafe {
-            let new = *addr_of(&self.data[pos]);
+            let new = *ptr::to_unsafe_ptr(&self.data[pos]);
 
             while pos > start {
                 let parent = (pos - 1) >> 1;
@@ -171,7 +170,7 @@ pub impl <T:Ord> PriorityQueue<T> {
     priv fn siftdown_range(&mut self, mut pos: uint, end: uint) {
         unsafe {
             let start = pos;
-            let new = *addr_of(&self.data[pos]);
+            let new = *ptr::to_unsafe_ptr(&self.data[pos]);
 
             let mut child = 2 * pos + 1;
             while child < end {

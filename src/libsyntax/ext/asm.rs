@@ -52,7 +52,10 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
     let mut dialect = ast::asm_att;
 
     let mut state = Asm;
-    loop outer: {
+
+    // Not using labeled break to get us through one round of bootstrapping.
+    let mut continue = true;
+    while continue {
         match state {
             Asm => {
                 asm = expr_to_str(cx, p.parse_expr(),
@@ -139,20 +142,30 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
                 p.bump();
                 match next_state(state) {
                     Some(x) => x,
-                    None    => break outer
+                    None    => {
+                        continue = false;
+                        break
+                    }
                 }
             } else if *p.token == token::MOD_SEP {
                 p.bump();
                 let s = match next_state(state) {
                     Some(x) => x,
-                    None    => break outer
+                    None    => {
+                        continue = false;
+                        break
+                    }
                 };
                 match next_state(s) {
                     Some(x) => x,
-                    None    => break outer
+                    None    => {
+                        continue = false;
+                        break
+                    }
                 }
             } else if *p.token == token::EOF {
-                break outer;
+                continue = false;
+                break;
             } else {
                state
             };

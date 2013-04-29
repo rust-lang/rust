@@ -280,9 +280,15 @@ pub impl Reflector {
 
             let make_get_disr = || {
                 let sub_path = bcx.fcx.path + ~[path_name(special_idents::anon)];
-                let sym = mangle_internal_name_by_path_and_seq(ccx, sub_path, ~"get_disr");
-                let args = [ty::arg { mode: ast::expl(ast::by_copy),
-                                      ty: opaqueptrty }];
+                let sym = mangle_internal_name_by_path_and_seq(ccx,
+                                                               sub_path,
+                                                               ~"get_disr");
+                let args = [
+                    ty::arg {
+                        ty: opaqueptrty
+                    }
+                ];
+
                 let llfty = type_of_fn(ccx, args, ty::mk_int());
                 let llfdecl = decl_internal_cdecl_fn(ccx.llmod, sym, llfty);
                 let arg = unsafe {
@@ -347,13 +353,7 @@ pub impl Reflector {
 
     fn visit_sig(&mut self, retval: uint, sig: &ty::FnSig) {
         for sig.inputs.eachi |i, arg| {
-            let modeval = match arg.mode {
-                ast::infer(_) => 0u,
-                ast::expl(e) => match e {
-                    ast::by_ref => 1u,
-                    ast::by_copy => 5u
-                }
-            };
+            let modeval = 5u;   // "by copy"
             let extra = ~[self.c_uint(i),
                          self.c_uint(modeval),
                          self.c_tydesc(arg.ty)];

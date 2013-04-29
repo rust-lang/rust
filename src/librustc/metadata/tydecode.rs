@@ -469,16 +469,9 @@ fn parse_onceness(c: char) -> ast::Onceness {
 }
 
 fn parse_arg(st: @mut PState, conv: conv_did) -> ty::arg {
-    ty::arg { mode: parse_mode(st), ty: parse_ty(st, conv) }
-}
-
-fn parse_mode(st: @mut PState) -> ast::mode {
-    let m = ast::expl(match next(st) {
-        '+' => ast::by_copy,
-        '=' => ast::by_ref,
-        _ => fail!(~"bad mode")
-    });
-    return m;
+    ty::arg {
+        ty: parse_ty(st, conv)
+    }
 }
 
 fn parse_closure_ty(st: @mut PState, conv: conv_did) -> ty::ClosureTy {
@@ -511,8 +504,7 @@ fn parse_sig(st: @mut PState, conv: conv_did) -> ty::FnSig {
     assert!((next(st) == '['));
     let mut inputs: ~[ty::arg] = ~[];
     while peek(st) != ']' {
-        let mode = parse_mode(st);
-        inputs.push(ty::arg { mode: mode, ty: parse_ty(st, conv) });
+        inputs.push(ty::arg { ty: parse_ty(st, conv) });
     }
     st.pos += 1u; // eat the ']'
     let ret_ty = parse_ty(st, conv);

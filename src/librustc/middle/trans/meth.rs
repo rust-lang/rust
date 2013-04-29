@@ -145,14 +145,18 @@ pub fn trans_self_arg(bcx: block,
     let _icx = bcx.insn_ctxt("impl::trans_self_arg");
     let mut temp_cleanups = ~[];
 
-    // Compute the mode and type of self.
+    // Compute the type of self.
     let self_arg = arg {
-        mode: mentry.self_arg.mode,
         ty: monomorphize_type(bcx, mentry.self_arg.ty)
     };
 
-    let result = trans_arg_expr(bcx, self_arg, base,
-                                &mut temp_cleanups, None, DontAutorefArg);
+    let result = trans_arg_expr(bcx,
+                                self_arg,
+                                mentry.self_mode,
+                                base,
+                                &mut temp_cleanups,
+                                None,
+                                DontAutorefArg);
 
     // FIXME(#3446)---this is wrong, actually.  The temp_cleanups
     // should be revoked only after all arguments have been passed.
@@ -224,14 +228,13 @@ pub fn trans_method_callee(bcx: block,
         typeck::method_static(did) => {
             let callee_fn = callee::trans_fn_ref(bcx, did, callee_id);
             let Result {bcx, val} = trans_self_arg(bcx, self, mentry);
-            let tcx = bcx.tcx();
             Callee {
                 bcx: bcx,
                 data: Method(MethodData {
                     llfn: callee_fn.llfn,
                     llself: val,
                     self_ty: node_id_type(bcx, self.id),
-                    self_mode: ty::resolved_mode(tcx, mentry.self_arg.mode)
+                    self_mode: mentry.self_mode,
                 })
             }
         }
@@ -442,7 +445,7 @@ pub fn trans_monomorphized_callee(bcx: block,
                                   trait_id: ast::def_id,
                                   n_method: uint,
                                   vtbl: typeck::vtable_origin)
-                               -> Callee {
+                                  -> Callee {
     let _icx = bcx.insn_ctxt("impl::trans_monomorphized_callee");
     return match vtbl {
       typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
@@ -463,8 +466,11 @@ pub fn trans_monomorphized_callee(bcx: block,
               bcx, mth_id, impl_did, callee_id, rcvr_origins);
 
           // translate the function
-          let callee = trans_fn_ref_with_vtables(
-              bcx, mth_id, callee_id, callee_substs, Some(callee_origins));
+          let callee = trans_fn_ref_with_vtables(bcx,
+                                                 mth_id,
+                                                 callee_id,
+                                                 callee_substs,
+                                                 Some(callee_origins));
 
           // create a llvalue that represents the fn ptr
           let fn_ty = node_id_type(bcx, callee_id);
@@ -472,14 +478,13 @@ pub fn trans_monomorphized_callee(bcx: block,
           let llfn_val = PointerCast(bcx, callee.llfn, llfn_ty);
 
           // combine the self environment with the rest
-          let tcx = bcx.tcx();
           Callee {
               bcx: bcx,
               data: Method(MethodData {
                   llfn: llfn_val,
                   llself: llself_val,
                   self_ty: node_id_type(bcx, base.id),
-                  self_mode: ty::resolved_mode(tcx, mentry.self_arg.mode)
+                  self_mode: mentry.self_mode,
               })
           }
       }
@@ -496,7 +501,7 @@ pub fn combine_impl_and_methods_tps(bcx: block,
                                     impl_did: ast::def_id,
                                     callee_id: ast::node_id,
                                     rcvr_substs: &[ty::t])
-                                 -> ~[ty::t] {
+                                    -> ~[ty::t] {
     /*!
     *
     * Creates a concatenated set of substitutions which includes
@@ -668,7 +673,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
             Store(bcx, llself, llscratch);
             llself = llscratch;
 
-            self_mode = ast::by_ref;
+            self_mode = ty::ByRef;
         }
         ast::sty_box(_) => {
             // Bump the reference count on the box.
@@ -686,7 +691,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
             Store(bcx, llself, llscratch);
             llself = llscratch;
 
-            self_mode = ast::by_ref;
+            self_mode = ty::ByRef;
         }
         ast::sty_uniq(_) => {
             // Pass the unique pointer.
@@ -699,7 +704,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
             Store(bcx, llself, llscratch);
             llself = llscratch;
 
-            self_mode = ast::by_ref;
+            self_mode = ty::ByRef;
         }
     }
 

@@ -156,7 +156,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
             result_ch: result_ch,
             closed_signal_ch: closed_signal_ch
         };
-        let conn_data_ptr = ptr::addr_of(&conn_data);
+        let conn_data_ptr: *ConnectReqData = &conn_data;
         let (reader_po, reader_ch) = stream::<Result<~[u8], TcpErrData>>();
         let reader_ch = SharedChan::new(reader_ch);
         let stream_handle_ptr = malloc_uv_tcp_t();
@@ -173,7 +173,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
             },
             iotask: iotask.clone()
         };
-        let socket_data_ptr = ptr::addr_of(&(*socket_data));
+        let socket_data_ptr: *TcpSocketData = &*socket_data;
         // get an unsafe representation of our stream_handle_ptr that
         // we can send into the interact cb to be handled in libuv..
         debug!("stream_handle_ptr outside interact %?",
@@ -187,8 +187,8 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                     0i32 => {
                         debug!("tcp_init successful");
                         debug!("dealing w/ ipv4 connection..");
-                        let connect_req_ptr =
-                            ptr::addr_of(&((*socket_data_ptr).connect_req));
+                        let connect_req_ptr: *uv::ll::uv_connect_t =
+                            &(*socket_data_ptr).connect_req;
                         let addr_str = ip::format_addr(&input_ip);
                         let connect_result = match input_ip {
                             ip::Ipv4(ref addr) => {
@@ -205,7 +205,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                                 uv::ll::tcp_connect(
                                     connect_req_ptr,
                                     stream_handle_ptr,
-                                    ptr::addr_of(&in_addr),
+                                    &in_addr,
                                     tcp_connect_on_connect_cb)
                             }
                             ip::Ipv6(ref addr) => {
@@ -215,7 +215,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                                 uv::ll::tcp_connect6(
                                     connect_req_ptr,
                                     stream_handle_ptr,
-                                    ptr::addr_of(&in_addr),
+                                    &in_addr,
                                     tcp_connect_on_connect_cb)
                             }
                         };
@@ -303,9 +303,8 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
  * `TcpErrData` value as the `Err` variant
  */
 pub fn write(sock: &TcpSocket, raw_write_data: ~[u8])
-    -> result::Result<(), TcpErrData>
-{
-    let socket_data_ptr = ptr::addr_of(&(*(sock.socket_data)));
+             -> result::Result<(), TcpErrData> {
+    let socket_data_ptr: *TcpSocketData = &*sock.socket_data;
     write_common_impl(socket_data_ptr, raw_write_data)
 }
 
@@ -343,7 +342,7 @@ pub fn write(sock: &TcpSocket, raw_write_data: ~[u8])
 pub fn write_future(sock: &TcpSocket, raw_write_data: ~[u8])
     -> future::Future<result::Result<(), TcpErrData>>
 {
-    let socket_data_ptr = ptr::addr_of(&(*(sock.socket_data)));
+    let socket_data_ptr: *TcpSocketData = &*sock.socket_data;
     do future_spawn {
         let data_copy = copy(raw_write_data);
         write_common_impl(socket_data_ptr, data_copy)
@@ -366,9 +365,10 @@ pub fn write_future(sock: &TcpSocket, raw_write_data: ~[u8])
  * `TcpErrData` record
  */
 pub fn read_start(sock: &TcpSocket)
-    -> result::Result<@Port<
-        result::Result<~[u8], TcpErrData>>, TcpErrData> {
-    let socket_data = ptr::addr_of(&(*(sock.socket_data)));
+                  -> result::Result<@Port<result::Result<~[u8],
+                                                         TcpErrData>>,
+                                    TcpErrData> {
+    let socket_data: *TcpSocketData = &*sock.socket_data;
     read_start_common_impl(socket_data)
 }
 
@@ -380,7 +380,7 @@ pub fn read_start(sock: &TcpSocket)
  * * `sock` - a `net::tcp::TcpSocket` that you wish to stop reading on
  */
 pub fn read_stop(sock: &TcpSocket) -> result::Result<(), TcpErrData> {
-    let socket_data = ptr::addr_of(&(*sock.socket_data));
+    let socket_data: *TcpSocketData = &*sock.socket_data;
     read_stop_common_impl(socket_data)
 }
 
@@ -400,8 +400,8 @@ pub fn read_stop(sock: &TcpSocket) -> result::Result<(), TcpErrData> {
  * read attempt. Pass `0u` to wait indefinitely
  */
 pub fn read(sock: &TcpSocket, timeout_msecs: uint)
-    -> result::Result<~[u8],TcpErrData> {
-    let socket_data = ptr::addr_of(&(*(sock.socket_data)));
+            -> result::Result<~[u8],TcpErrData> {
+    let socket_data: *TcpSocketData = &*sock.socket_data;
     read_common_impl(socket_data, timeout_msecs)
 }
 
@@ -435,8 +435,8 @@ pub fn read(sock: &TcpSocket, timeout_msecs: uint)
  * read attempt. Pass `0u` to wait indefinitely
  */
 fn read_future(sock: &TcpSocket, timeout_msecs: uint)
-    -> future::Future<result::Result<~[u8],TcpErrData>> {
-    let socket_data = ptr::addr_of(&(*(sock.socket_data)));
+               -> future::Future<result::Result<~[u8],TcpErrData>> {
+    let socket_data: *TcpSocketData = &*sock.socket_data;
     do future_spawn {
         read_common_impl(socket_data, timeout_msecs)
     }
@@ -534,8 +534,8 @@ pub fn accept(new_conn: TcpNewConnection)
                     ipv6: (*server_data_ptr).ipv6,
                     iotask : iotask.clone()
                 };
-                let client_socket_data_ptr = ptr::addr_of(
-                    &(*client_socket_data));
+                let client_socket_data_ptr: *TcpSocketData =
+                    &*client_socket_data;
                 let client_stream_handle_ptr =
                     (*client_socket_data_ptr).stream_handle_ptr;
 
@@ -661,7 +661,7 @@ fn listen_common(host_ip: ip::IpAddr,
     let (kill_po, kill_ch) = stream::<Option<TcpErrData>>();
     let kill_ch = SharedChan::new(kill_ch);
     let server_stream = uv::ll::tcp_t();
-    let server_stream_ptr = ptr::addr_of(&server_stream);
+    let server_stream_ptr: *uv::ll::uv_tcp_t = &server_stream;
     let server_data: TcpListenFcData = TcpListenFcData {
         server_stream_ptr: server_stream_ptr,
         stream_closed_ch: stream_closed_ch,
@@ -674,7 +674,7 @@ fn listen_common(host_ip: ip::IpAddr,
         },
         mut active: true
     };
-    let server_data_ptr = ptr::addr_of(&server_data);
+    let server_data_ptr: *TcpListenFcData = &server_data;
 
     let (setup_po, setup_ch) = stream();
 
@@ -699,16 +699,14 @@ fn listen_common(host_ip: ip::IpAddr,
                             let in_addr = uv::ll::ip4_addr(
                                 addr_str,
                                 port as int);
-                            uv::ll::tcp_bind(server_stream_ptr,
-                                             ptr::addr_of(&in_addr))
+                            uv::ll::tcp_bind(server_stream_ptr, &in_addr)
                         }
                         ip::Ipv6(ref addr) => {
                             debug!("addr: %?", addr);
                             let in_addr = uv::ll::ip6_addr(
                                 addr_str,
                                 port as int);
-                            uv::ll::tcp_bind6(server_stream_ptr,
-                                              ptr::addr_of(&in_addr))
+                            uv::ll::tcp_bind6(server_stream_ptr, &in_addr)
                         }
                     };
                     match bind_result {
@@ -856,12 +854,12 @@ pub impl TcpSocket {
             if self.socket_data.ipv6 {
                 let addr = uv::ll::ip6_addr("", 0);
                 uv::ll::tcp_getpeername6(self.socket_data.stream_handle_ptr,
-                                         ptr::addr_of(&addr));
+                                         &addr);
                 ip::Ipv6(addr)
             } else {
                 let addr = uv::ll::ip4_addr("", 0);
                 uv::ll::tcp_getpeername(self.socket_data.stream_handle_ptr,
-                                        ptr::addr_of(&addr));
+                                        &addr);
                 ip::Ipv4(addr)
             }
         }
@@ -973,13 +971,12 @@ impl io::Reader for TcpSocketBuf {
 impl io::Writer for TcpSocketBuf {
     pub fn write(&self, data: &const [u8]) {
         unsafe {
-            let socket_data_ptr =
-                ptr::addr_of(&(*((*(self.data)).sock).socket_data));
+            let socket_data_ptr: *TcpSocketData =
+                &(*((*(self.data)).sock).socket_data);
             let w_result = write_common_impl(socket_data_ptr,
-                                            vec::slice(data,
-                                                       0,
-                                                       vec::len(data)
-                                                      ).to_vec());
+                                             vec::slice(data,
+                                                        0,
+                                                        data.len()).to_vec());
             if w_result.is_err() {
                 let err_data = w_result.get_err();
                 debug!(
@@ -1012,7 +1009,7 @@ fn tear_down_socket_data(socket_data: @TcpSocketData) {
         let close_data = TcpSocketCloseData {
             closed_ch: closed_ch
         };
-        let close_data_ptr = ptr::addr_of(&close_data);
+        let close_data_ptr: *TcpSocketCloseData = &close_data;
         let stream_handle_ptr = (*socket_data).stream_handle_ptr;
         do iotask::interact(&(*socket_data).iotask) |loop_ptr| {
             unsafe {
@@ -1150,19 +1147,21 @@ fn write_common_impl(socket_data_ptr: *TcpSocketData,
                      raw_write_data: ~[u8])
     -> result::Result<(), TcpErrData> {
     unsafe {
-        let write_req_ptr = ptr::addr_of(&((*socket_data_ptr).write_req));
+        let write_req_ptr: *uv::ll::uv_write_t =
+            &(*socket_data_ptr).write_req;
         let stream_handle_ptr =
             (*socket_data_ptr).stream_handle_ptr;
-        let write_buf_vec =  ~[ uv::ll::buf_init(
-            vec::raw::to_ptr(raw_write_data),
-            vec::len(raw_write_data)) ];
-        let write_buf_vec_ptr = ptr::addr_of(&write_buf_vec);
+        let write_buf_vec = ~[
+            uv::ll::buf_init(vec::raw::to_ptr(raw_write_data),
+                             raw_write_data.len())
+        ];
+        let write_buf_vec_ptr: *~[uv::ll::uv_buf_t] = &write_buf_vec;
         let (result_po, result_ch) = stream::<TcpWriteResult>();
         let result_ch = SharedChan::new(result_ch);
         let write_data = WriteReqData {
             result_ch: result_ch
         };
-        let write_data_ptr = ptr::addr_of(&write_data);
+        let write_data_ptr: *WriteReqData = &write_data;
         do iotask::interact(&(*socket_data_ptr).iotask) |loop_ptr| {
             unsafe {
                 debug!("in interact cb for tcp::write %?",

@@ -128,7 +128,6 @@ pub enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_table_freevars = 0x59,
     tag_table_tcache = 0x5a,
     tag_table_param_defs = 0x5b,
-    tag_table_inferred_modes = 0x5c,
     tag_table_mutbl = 0x5d,
     tag_table_last_use = 0x5e,
     tag_table_spill = 0x5f,

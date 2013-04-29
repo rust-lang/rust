@@ -10,7 +10,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_modes];
 #[allow(deprecated_mode)];
 
 /*!
@@ -226,7 +225,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
 }
 
 /// A parallel version of the bfs function.
-fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
+fn pbfs(graph: &arc::ARC<graph>, key: node_id) -> bfs_result {
     // This works by doing functional updates of a color vector.
 
     enum color {
@@ -237,7 +236,7 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
         black(node_id)
     };
 
-    let graph_vec = arc::get(&graph); // FIXME #3387 requires this temp
+    let graph_vec = arc::get(graph); // FIXME #3387 requires this temp
     let mut colors = do vec::from_fn(graph_vec.len()) |i| {
         if i as node_id == key {
             gray(key)
@@ -272,7 +271,7 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
         let color_vec = arc::get(&color); // FIXME #3387 requires this temp
         colors = do par::mapi(*color_vec) {
             let colors = arc::clone(&color);
-            let graph = arc::clone(&graph);
+            let graph = arc::clone(graph);
             let result: ~fn(+x: uint, +y: &color) -> color = |i, c| {
                 let colors = arc::get(&colors);
                 let graph = arc::get(&graph);
@@ -497,7 +496,7 @@ fn main() {
         }
 
         let start = time::precise_time_s();
-        let bfs_tree = pbfs(graph_arc, *root);
+        let bfs_tree = pbfs(&graph_arc, *root);
         let stop = time::precise_time_s();
 
         total_par += stop - start;

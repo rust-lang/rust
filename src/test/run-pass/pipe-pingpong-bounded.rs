@@ -40,7 +40,7 @@ mod pingpong {
         do pipes::entangle_buffer(buffer) |buffer, data| {
             data.ping.set_buffer(buffer);
             data.pong.set_buffer(buffer);
-            ptr::addr_of(&(data.ping))
+            ptr::to_unsafe_ptr(&(data.ping))
         }
     }
     pub struct ping(server::pong);
@@ -53,8 +53,8 @@ mod pingpong {
         pub fn ping(+pipe: ping) -> pong {
             {
                 let b = pipe.reuse_buffer();
-                let s = SendPacketBuffered(ptr::addr_of(&(b.buffer.data.pong)));
-                let c = RecvPacketBuffered(ptr::addr_of(&(b.buffer.data.pong)));
+                let s = SendPacketBuffered(&b.buffer.data.pong);
+                let c = RecvPacketBuffered(&b.buffer.data.pong);
                 let message = ::pingpong::ping(s);
                 send(pipe, message);
                 c
@@ -75,8 +75,8 @@ mod pingpong {
         pub fn pong(+pipe: pong) -> ping {
             {
                 let b = pipe.reuse_buffer();
-                let s = SendPacketBuffered(ptr::addr_of(&(b.buffer.data.ping)));
-                let c = RecvPacketBuffered(ptr::addr_of(&(b.buffer.data.ping)));
+                let s = SendPacketBuffered(&b.buffer.data.ping);
+                let c = RecvPacketBuffered(&b.buffer.data.ping);
                 let message = ::pingpong::pong(s);
                 send(pipe, message);
                 c

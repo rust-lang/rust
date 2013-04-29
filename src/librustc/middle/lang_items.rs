@@ -28,8 +28,8 @@ use syntax::ast_util::local_def;
 use syntax::visit::{default_simple_visitor, mk_simple_visitor, SimpleVisitor};
 use syntax::visit::visit_crate;
 
+use core::cast::transmute;
 use core::hashmap::HashMap;
-use core::ptr;
 
 pub enum LangItem {
     ConstTraitLangItem,         // 0
@@ -366,20 +366,22 @@ pub impl<'self> LanguageItemCollector<'self> {
     }
 
     fn collect_local_language_items(&self) {
-        let this = ptr::addr_of(&self);
-        visit_crate(self.crate, (), mk_simple_visitor(@SimpleVisitor {
-            visit_item: |item| {
-                for item.attrs.each |attribute| {
-                    unsafe {
-                        (*this).match_and_collect_meta_item(
-                            local_def(item.id),
-                            attribute.node.value
-                        );
+        unsafe {
+            let this: *LanguageItemCollector<'self> = transmute(self);
+            visit_crate(self.crate, (), mk_simple_visitor(@SimpleVisitor {
+                visit_item: |item| {
+                    for item.attrs.each |attribute| {
+                        unsafe {
+                            (*this).match_and_collect_meta_item(
+                                local_def(item.id),
+                                attribute.node.value
+                            );
+                        }
                     }
-                }
-            },
-            .. *default_simple_visitor()
-        }));
+                },
+                .. *default_simple_visitor()
+            }));
+        }
     }
 
     fn collect_external_language_items(&self) {

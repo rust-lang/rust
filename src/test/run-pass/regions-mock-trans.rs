@@ -25,8 +25,8 @@ struct Ccx {
 
 fn alloc<'a>(_bcx : &'a arena) -> &'a Bcx<'a> {
     unsafe {
-        return cast::reinterpret_cast(
-            &libc::malloc(sys::size_of::<Bcx<'blk>>() as libc::size_t));
+        cast::transmute(libc::malloc(sys::size_of::<Bcx<'blk>>()
+            as libc::size_t))
     }
 }
 
@@ -38,7 +38,7 @@ fn g(fcx : &Fcx) {
     let bcx = Bcx { fcx: fcx };
     let bcx2 = h(&bcx);
     unsafe {
-        libc::free(cast::reinterpret_cast(&bcx2));
+        libc::free(cast::transmute(bcx2));
     }
 }
 
