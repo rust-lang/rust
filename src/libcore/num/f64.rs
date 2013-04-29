@@ -109,7 +109,8 @@ delegate!(
     fn jn(i: c_int, n: c_double) -> c_double = c_double_utils::jn,
     fn y0(n: c_double) -> c_double = c_double_utils::y0,
     fn y1(n: c_double) -> c_double = c_double_utils::y1,
-    fn yn(i: c_int, n: c_double) -> c_double = c_double_utils::yn)
+    fn yn(i: c_int, n: c_double) -> c_double = c_double_utils::yn
+)
 
 // FIXME (#1433): obtain these in a different way
 
@@ -378,6 +379,77 @@ impl Fractional for f64 {
     fn recip(&self) -> f64 { 1.0 / *self }
 }
 
+impl Algebraic for f64 {
+    #[inline(always)]
+    fn pow(&self, n: f64) -> f64 { pow(*self, n) }
+
+    #[inline(always)]
+    fn sqrt(&self) -> f64 { sqrt(*self) }
+
+    #[inline(always)]
+    fn rsqrt(&self) -> f64 { self.sqrt().recip() }
+
+    #[inline(always)]
+    fn cbrt(&self) -> f64 { cbrt(*self) }
+
+    #[inline(always)]
+    fn hypot(&self, other: f64) -> f64 { hypot(*self, other) }
+}
+
+impl Trigonometric for f64 {
+    #[inline(always)]
+    fn sin(&self) -> f64 { sin(*self) }
+
+    #[inline(always)]
+    fn cos(&self) -> f64 { cos(*self) }
+
+    #[inline(always)]
+    fn tan(&self) -> f64 { tan(*self) }
+
+    #[inline(always)]
+    fn asin(&self) -> f64 { asin(*self) }
+
+    #[inline(always)]
+    fn acos(&self) -> f64 { acos(*self) }
+
+    #[inline(always)]
+    fn atan(&self) -> f64 { atan(*self) }
+
+    #[inline(always)]
+    fn atan2(&self, other: f64) -> f64 { atan2(*self, other) }
+}
+
+impl Exponential for f64 {
+    #[inline(always)]
+    fn exp(&self) -> f64 { exp(*self) }
+
+    #[inline(always)]
+    fn exp2(&self) -> f64 { exp2(*self) }
+
+    #[inline(always)]
+    fn expm1(&self) -> f64 { expm1(*self) }
+
+    #[inline(always)]
+    fn log(&self) -> f64 { ln(*self) }
+
+    #[inline(always)]
+    fn log2(&self) -> f64 { log2(*self) }
+
+    #[inline(always)]
+    fn log10(&self) -> f64 { log10(*self) }
+}
+
+impl Hyperbolic for f64 {
+    #[inline(always)]
+    fn sinh(&self) -> f64 { sinh(*self) }
+
+    #[inline(always)]
+    fn cosh(&self) -> f64 { cosh(*self) }
+
+    #[inline(always)]
+    fn tanh(&self) -> f64 { tanh(*self) }
+}
+
 impl Real for f64 {
     /// Archimedes' constant
     #[inline(always)]
@@ -447,45 +519,6 @@ impl Real for f64 {
     #[inline(always)]
     fn log_10() -> f64 { 2.30258509299404568401799145468436421 }
 
-    #[inline(always)]
-    fn pow(&self, n: f64) -> f64 { pow(*self, n) }
-
-    #[inline(always)]
-    fn exp(&self) -> f64 { exp(*self) }
-
-    #[inline(always)]
-    fn exp2(&self) -> f64 { exp2(*self) }
-
-    #[inline(always)]
-    fn expm1(&self) -> f64 { expm1(*self) }
-
-    #[inline(always)]
-    fn ldexp(&self, n: int) -> f64 { ldexp(*self, n as c_int) }
-
-    #[inline(always)]
-    fn log(&self) -> f64 { ln(*self) }
-
-    #[inline(always)]
-    fn log2(&self) -> f64 { log2(*self) }
-
-    #[inline(always)]
-    fn log10(&self) -> f64 { log10(*self) }
-
-    #[inline(always)]
-    fn log_radix(&self) -> f64 { log_radix(*self) }
-
-    #[inline(always)]
-    fn ilog_radix(&self) -> int { ilog_radix(*self) as int }
-
-    #[inline(always)]
-    fn sqrt(&self) -> f64 { sqrt(*self) }
-
-    #[inline(always)]
-    fn rsqrt(&self) -> f64 { self.sqrt().recip() }
-
-    #[inline(always)]
-    fn cbrt(&self) -> f64 { cbrt(*self) }
-
     /// Converts to degrees, assuming the number is in radians
     #[inline(always)]
     fn to_degrees(&self) -> f64 { *self * (180.0 / Real::pi::<f64>()) }
@@ -493,39 +526,6 @@ impl Real for f64 {
     /// Converts to radians, assuming the number is in degrees
     #[inline(always)]
     fn to_radians(&self) -> f64 { *self * (Real::pi::<f64>() / 180.0) }
-
-    #[inline(always)]
-    fn hypot(&self, other: f64) -> f64 { hypot(*self, other) }
-
-    #[inline(always)]
-    fn sin(&self) -> f64 { sin(*self) }
-
-    #[inline(always)]
-    fn cos(&self) -> f64 { cos(*self) }
-
-    #[inline(always)]
-    fn tan(&self) -> f64 { tan(*self) }
-
-    #[inline(always)]
-    fn asin(&self) -> f64 { asin(*self) }
-
-    #[inline(always)]
-    fn acos(&self) -> f64 { acos(*self) }
-
-    #[inline(always)]
-    fn atan(&self) -> f64 { atan(*self) }
-
-    #[inline(always)]
-    fn atan2(&self, other: f64) -> f64 { atan2(*self, other) }
-
-    #[inline(always)]
-    fn sinh(&self) -> f64 { sinh(*self) }
-
-    #[inline(always)]
-    fn cosh(&self) -> f64 { cosh(*self) }
-
-    #[inline(always)]
-    fn tanh(&self) -> f64 { tanh(*self) }
 }
 
 impl RealExt for f64 {
