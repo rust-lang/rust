@@ -15,29 +15,46 @@ use syntax::ast::{crate, node_id, item, item_fn};
 use syntax::codemap::span;
 use syntax::visit::{default_visitor, mk_vt, vt, Visitor, visit_crate, visit_item};
 use syntax::attr::{attrs_contains_name};
+use syntax::ast_map;
+use core::util;
 
 struct EntryContext {
     session: Session,
 
+    ast_map: ast_map::map,
+
+    // The top-level function called 'main'
+    main_fn: Option<(node_id, span)>,
+
     // The function that has attribute named 'main'
     attr_main_fn: Option<(node_id, span)>,
 
-    // The functions that could be main functions
-    main_fns: ~[Option<(node_id, span)>],
-
     // The function that has the attribute 'start' on it
     start_fn: Option<(node_id, span)>,
+
+    // The functions that one might think are 'main' but aren't, e.g.
+    // main functions not defined at the top level. For diagnostics.
+    non_main_fns: ~[(node_id, span)],
 }
 
 type EntryVisitor = vt<@mut EntryContext>;
 
-pub fn find_entry_point(session: Session, crate: @crate) {
+pub fn find_entry_point(session: Session, crate: @crate, ast_map: ast_map::map) {
+
+    // FIXME #4404 android JNI hacks
+    if *session.building_library ||
+        session.targ_cfg.os == session::os_android {
+        // No need to find a main function
+        return;
+    }
 
     let ctxt = @mut EntryContext {
         session: session,
+        ast_map: ast_map,
+        main_fn: None,
         attr_main_fn: None,
-        main_fns: ~[],
         start_fn: None,
+        non_main_fns: ~[],
     };
 
     visit_crate(crate, ctxt, mk_vt(@Visitor {
@@ -45,43 +62,50 @@ pub fn find_entry_point(session: Session, crate: @crate) {
         .. *default_visitor()
     }));
 
-    check_duplicate_main(ctxt);
+    configure_main(ctxt);
 }
 
 fn find_item(item: @item, ctxt: @mut EntryContext, visitor: EntryVisitor) {
     match item.node {
         item_fn(*) => {
-            // If this is the main function, we must record it in the
-            // session.
-
-            // FIXME #4404 android JNI hacks
-            if !*ctxt.session.building_library ||
-                ctxt.session.targ_cfg.os == session::os_android {
-
-                if ctxt.attr_main_fn.is_none() &&
-                    item.ident == special_idents::main {
-
-                    ctxt.main_fns.push(Some((item.id, item.span)));
-                }
-
-                if attrs_contains_name(item.attrs, ~"main") {
-                    if ctxt.attr_main_fn.is_none() {
-                        ctxt.attr_main_fn = Some((item.id, item.span));
-                    } else {
-                        ctxt.session.span_err(
-                            item.span,
-                            ~"multiple 'main' functions");
+            if item.ident == special_idents::main {
+                match ctxt.ast_map.find(&item.id) {
+                    Some(&ast_map::node_item(_, path)) => {
+                        if path.len() == 0 {
+                            // This is a top-level function so can be 'main'
+                            if ctxt.main_fn.is_none() {
+                                ctxt.main_fn = Some((item.id, item.span));
+                            } else {
+                                ctxt.session.span_err(
+                                    item.span,
+                                    ~"multiple 'main' functions");
+                            }
+                        } else {
+                            // This isn't main
+                            ctxt.non_main_fns.push((item.id, item.span));
+                        }
                     }
+                    _ => util::unreachable()
                 }
+            }
 
-                if attrs_contains_name(item.attrs, ~"start") {
-                    if ctxt.start_fn.is_none() {
-                        ctxt.start_fn = Some((item.id, item.span));
-                    } else {
-                        ctxt.session.span_err(
-                            item.span,
-                            ~"multiple 'start' functions");
-                    }
+            if attrs_contains_name(item.attrs, ~"main") {
+                if ctxt.attr_main_fn.is_none() {
+                    ctxt.attr_main_fn = Some((item.id, item.span));
+                } else {
+                    ctxt.session.span_err(
+                        item.span,
+                        ~"multiple 'main' functions");
+                }
+            }
+
+            if attrs_contains_name(item.attrs, ~"start") {
+                if ctxt.start_fn.is_none() {
+                    ctxt.start_fn = Some((item.id, item.span));
+                } else {
+                    ctxt.session.span_err(
+                        item.span,
+                        ~"multiple 'start' functions");
                 }
             }
         }
@@ -91,29 +115,30 @@ fn find_item(item: @item, ctxt: @mut EntryContext, visitor: EntryVisitor) {
     visit_item(item, ctxt, visitor);
 }
 
-// main function checking
-//
-// be sure that there is only one main function
-fn check_duplicate_main(ctxt: @mut EntryContext) {
+fn configure_main(ctxt: @mut EntryContext) {
     let this = &mut *ctxt;
-    if this.attr_main_fn.is_none() && this.start_fn.is_none() {
-        if this.main_fns.len() >= 1u {
-            let mut i = 1u;
-            while i < this.main_fns.len() {
-                let (_, dup_main_span) = this.main_fns[i].unwrap();
-                this.session.span_err(
-                    dup_main_span,
-                    ~"multiple 'main' functions");
-                i += 1;
-            }
-            *this.session.entry_fn = this.main_fns[0];
-            *this.session.entry_type = Some(session::EntryMain);
-        }
-    } else if !this.start_fn.is_none() {
+    if this.start_fn.is_some() {
         *this.session.entry_fn = this.start_fn;
         *this.session.entry_type = Some(session::EntryStart);
-    } else {
+    } else if this.attr_main_fn.is_some() {
         *this.session.entry_fn = this.attr_main_fn;
         *this.session.entry_type = Some(session::EntryMain);
+    } else if this.main_fn.is_some() {
+        *this.session.entry_fn = this.main_fn;
+        *this.session.entry_type = Some(session::EntryMain);
+    } else {
+        // No main function
+        this.session.err(~"main function not found");
+        if !this.non_main_fns.is_empty() {
+            // There were some functions named 'main' though. Try to give the user a hint.
+            this.session.note(~"the main function must be defined at the crate level \
+                                 but you have one or more functions named 'main' that are not \
+                                 defined at the crate level. Either move the definition or attach \
+                                 the `#[main]` attribute to override this behavior.");
+            for this.non_main_fns.each |&(_, span)| {
+                this.session.span_note(span, ~"here is a function named 'main'");
+            }
+        }
+        this.session.abort_if_errors();
     }
 }

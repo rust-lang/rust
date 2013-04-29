@@ -22,6 +22,7 @@ mod rusti {
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 mod m {
+    #[main]
     #[cfg(target_arch = "x86")]
     pub fn main() {
         unsafe {
@@ -30,6 +31,7 @@ mod m {
         }
     }
 
+    #[main]
     #[cfg(target_arch = "x86_64")]
     pub fn main() {
         unsafe {
@@ -41,6 +43,7 @@ mod m {
 
 #[cfg(target_os = "win32")]
 mod m {
+    #[main]
     #[cfg(target_arch = "x86")]
     pub fn main() {
         unsafe {
@@ -52,6 +55,7 @@ mod m {
 
 #[cfg(target_os = "android")]
 mod m {
+    #[main]
     #[cfg(target_arch = "arm")]
     pub fn main() {
         unsafe {
