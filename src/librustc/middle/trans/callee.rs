@@ -57,7 +57,7 @@ pub struct MethodData {
     llfn: ValueRef,
     llself: ValueRef,
     self_ty: ty::t,
-    self_mode: ast::rmode
+    self_mode: ty::SelfMode,
 }
 
 pub enum CalleeData {
@@ -378,10 +378,20 @@ pub fn trans_lang_call(bcx: block,
         csearch::get_type(bcx.ccx().tcx, did).ty
     };
     let rty = ty::ty_fn_ret(fty);
-    return callee::trans_call_inner(
-        bcx, None, fty, rty,
-        |bcx| trans_fn_ref_with_vtables_to_callee(bcx, did, 0, ~[], None),
-        ArgVals(args), dest, DontAutorefArg);
+    callee::trans_call_inner(bcx,
+                             None,
+                             fty,
+                             rty,
+                             |bcx| {
+                                trans_fn_ref_with_vtables_to_callee(bcx,
+                                                                    did,
+                                                                    0,
+                                                                    ~[],
+                                                                    None)
+                             },
+                             ArgVals(args),
+                             dest,
+                             DontAutorefArg)
 }
 
 pub fn trans_lang_call_with_type_params(bcx: block,
@@ -483,7 +493,8 @@ pub fn trans_call_inner(in_cx: block,
                 }
                 Method(d) => {
                     // Weird but true: we pass self in the *environment* slot!
-                    let llself = PointerCast(bcx, d.llself,
+                    let llself = PointerCast(bcx,
+                                             d.llself,
                                              T_opaque_box_ptr(ccx));
                     (d.llfn, llself)
                 }
@@ -520,7 +531,7 @@ pub fn trans_call_inner(in_cx: block,
         // Now that the arguments have finished evaluating, we need to revoke
         // the cleanup for the self argument, if it exists
         match callee.data {
-            Method(d) if d.self_mode == ast::by_copy => {
+            Method(d) if d.self_mode == ty::ByCopy => {
                 revoke_clean(bcx, d.llself);
             }
             _ => {}
@@ -629,7 +640,11 @@ pub fn trans_args(cx: block,
         let last = arg_exprs.len() - 1u;
         for vec::eachi(arg_exprs) |i, arg_expr| {
             let arg_val = unpack_result!(bcx, {
-                trans_arg_expr(bcx, arg_tys[i], *arg_expr, &mut temp_cleanups,
+                trans_arg_expr(bcx,
+                               arg_tys[i],
+                               ty::ByCopy,
+                               *arg_expr,
+                               &mut temp_cleanups,
                                if i == last { ret_flag } else { None },
                                autoref_arg)
             });
@@ -660,6 +675,7 @@ pub enum AutorefArg {
 // call takes place:
 pub fn trans_arg_expr(bcx: block,
                       formal_ty: ty::arg,
+                      self_mode: ty::SelfMode,
                       arg_expr: @ast::expr,
                       temp_cleanups: &mut ~[ValueRef],
                       ret_flag: Option<ValueRef>,
@@ -667,10 +683,10 @@ pub fn trans_arg_expr(bcx: block,
     let _icx = bcx.insn_ctxt("trans_arg_expr");
     let ccx = bcx.ccx();
 
-    debug!("trans_arg_expr(formal_ty=(%?,%s), arg_expr=%s, \
+    debug!("trans_arg_expr(formal_ty=(%s), self_mode=%?, arg_expr=%s, \
             ret_flag=%?)",
-           formal_ty.mode,
            formal_ty.ty.repr(bcx.tcx()),
+           self_mode,
            arg_expr.repr(bcx.tcx()),
            ret_flag.map(|v| bcx.val_str(*v)));
     let _indenter = indenter();
@@ -686,8 +702,7 @@ pub fn trans_arg_expr(bcx: block,
                     blk @ @ast::expr {
                         node: ast::expr_fn_block(ref decl, ref body),
                         _
-                    }) =>
-                {
+                    }) => {
                     let scratch_ty = expr_ty(bcx, arg_expr);
                     let scratch = alloc_ty(bcx, scratch_ty);
                     let arg_ty = expr_ty(bcx, arg_expr);
@@ -714,8 +729,6 @@ pub fn trans_arg_expr(bcx: block,
 
     debug!("   arg datum: %s", arg_datum.to_str(bcx.ccx()));
 
-    // finally, deal with the various modes
-    let arg_mode = ty::resolved_mode(ccx.tcx, formal_ty.mode);
     let mut val;
     if ty::type_is_bot(arg_datum.ty) {
         // For values of type _|_, we generate an
@@ -735,24 +748,27 @@ pub fn trans_arg_expr(bcx: block,
                 val = arg_datum.to_ref_llval(bcx);
             }
             DontAutorefArg => {
-                match arg_mode {
-                    ast::by_ref => {
+                match self_mode {
+                    ty::ByRef => {
                         // This assertion should really be valid, but because
                         // the explicit self code currently passes by-ref, it
                         // does not hold.
                         //
                         //assert !bcx.ccx().maps.moves_map.contains_key(
                         //    &arg_expr.id);
+                        debug!("by ref arg with type %s",
+                               bcx.ty_to_str(arg_datum.ty));
                         val = arg_datum.to_ref_llval(bcx);
                     }
-
-                    ast::by_copy => {
+                    ty::ByCopy => {
                         debug!("by copy arg with type %s, storing to scratch",
                                bcx.ty_to_str(arg_datum.ty));
                         let scratch = scratch_datum(bcx, arg_datum.ty, false);
 
-                        arg_datum.store_to_datum(bcx, arg_expr.id,
-                                                 INIT, scratch);
+                        arg_datum.store_to_datum(bcx,
+                                                 arg_expr.id,
+                                                 INIT,
+                                                 scratch);
 
                         // Technically, ownership of val passes to the callee.
                         // However, we must cleanup should we fail before the
@@ -761,12 +777,8 @@ pub fn trans_arg_expr(bcx: block,
                         temp_cleanups.push(scratch.val);
 
                         match arg_datum.appropriate_mode() {
-                            ByValue => {
-                                val = Load(bcx, scratch.val);
-                            }
-                            ByRef => {
-                                val = scratch.val;
-                            }
+                            ByValue => val = Load(bcx, scratch.val),
+                            ByRef => val = scratch.val,
                         }
                     }
                 }
@@ -776,6 +788,10 @@ pub fn trans_arg_expr(bcx: block,
         if formal_ty.ty != arg_datum.ty {
             // this could happen due to e.g. subtyping
             let llformal_ty = type_of::type_of_explicit_arg(ccx, &formal_ty);
+            let llformal_ty = match self_mode {
+                ty::ByRef => T_ptr(llformal_ty),
+                ty::ByCopy => llformal_ty,
+            };
             debug!("casting actual type (%s) to match formal (%s)",
                    bcx.val_str(val), bcx.llty_str(llformal_ty));
             val = PointerCast(bcx, val, llformal_ty);

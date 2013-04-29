@@ -13,7 +13,7 @@
 // the error points to the start of the file, not the line with the
 // transmute
 
-// error-pattern: reinterpret_cast called on types with different size
+// error-pattern: transmute called on types with different size
 
 #[packed]
 struct Foo<T,S> {

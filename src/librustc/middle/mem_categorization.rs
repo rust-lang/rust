@@ -482,17 +482,14 @@ pub impl mem_categorization_ctxt {
             }
           }
 
-          ast::def_arg(vid, mode, mutbl) => {
+          ast::def_arg(vid, mutbl) => {
             // Idea: make this could be rewritten to model by-ref
             // stuff as `&const` and `&mut`?
 
             // m: mutability of the argument
             // lp: loan path, must be none for aliasable things
             let m = if mutbl {McDeclared} else {McImmutable};
-            let lp = match ty::resolved_mode(self.tcx, mode) {
-                ast::by_copy => Some(@lp_arg(vid)),
-                ast::by_ref => None,
-            };
+            let lp = Some(@lp_arg(vid));
             @cmt_ {
                 id:id,
                 span:span,

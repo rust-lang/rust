@@ -17,10 +17,10 @@ use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{provided, public, purity};
 use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
 use ast::{bind_by_copy, bitand, bitor, bitxor, blk};
-use ast::{blk_check_mode, box, by_copy, by_ref};
+use ast::{blk_check_mode, box};
 use ast::{crate, crate_cfg, decl, decl_item};
 use ast::{decl_local, default_blk, deref, quot, enum_def};
-use ast::{expl, expr, expr_, expr_addr_of, expr_match, expr_again};
+use ast::{expr, expr_, expr_addr_of, expr_match, expr_again};
 use ast::{expr_assign, expr_assign_op, expr_binary, expr_block};
 use ast::{expr_break, expr_call, expr_cast, expr_copy, expr_do_body};
 use ast::{expr_field, expr_fn_block, expr_if, expr_index};
@@ -32,13 +32,13 @@ use ast::{expr_vstore_slice, expr_vstore_box};
 use ast::{expr_vstore_mut_slice, expr_while, extern_fn, field, fn_decl};
 use ast::{expr_vstore_uniq, TyClosure, TyBareFn, Onceness, Once, Many};
 use ast::{foreign_item, foreign_item_const, foreign_item_fn, foreign_mod};
-use ast::{ident, impure_fn, infer, inherited, item, item_, item_const};
+use ast::{ident, impure_fn, inherited, item, item_, item_const};
 use ast::{item_const, item_enum, item_fn, item_foreign_mod, item_impl};
 use ast::{item_mac, item_mod, item_struct, item_trait, item_ty, lit, lit_};
 use ast::{lit_bool, lit_float, lit_float_unsuffixed, lit_int};
 use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const};
 use ast::{m_imm, m_mutbl, mac_, mac_invoc_tt, matcher, match_nonterminal};
-use ast::{match_seq, match_tok, method, mode, mt, mul, mutability};
+use ast::{match_seq, match_tok, method, mt, mul, mutability};
 use ast::{named_field, neg, node_id, noreturn, not, pat, pat_box, pat_enum};
 use ast::{pat_ident, pat_lit, pat_range, pat_region, pat_struct};
 use ast::{pat_tup, pat_uniq, pat_wild, private};
@@ -346,6 +346,20 @@ pub impl Parser {
             self.token_is_keyword(&~"unsafe", tok) ||
             self.token_is_keyword(&~"once", tok) ||
             self.token_is_keyword(&~"fn", tok)
+    }
+
+    fn token_is_lifetime(&self, tok: &token::Token) -> bool {
+        match *tok {
+            token::LIFETIME(*) => true,
+            _ => false,
+        }
+    }
+
+    fn get_lifetime(&self, tok: &token::Token) -> ast::ident {
+        match *tok {
+            token::LIFETIME(ref ident) => copy *ident,
+            _ => self.bug(~"not a lifetime"),
+        }
     }
 
     // parse a ty_bare_fun type:
@@ -765,22 +779,22 @@ pub impl Parser {
     }
 
     // parse an optional mode.
-    fn parse_arg_mode(&self) -> mode {
+    // XXX: Remove after snapshot.
+    fn parse_arg_mode(&self) {
         if self.eat(&token::BINOP(token::MINUS)) {
             self.obsolete(*self.span, ObsoleteMode);
-            expl(by_copy)
         } else if self.eat(&token::ANDAND) {
-            expl(by_ref)
+            // Ignore.
         } else if self.eat(&token::BINOP(token::PLUS)) {
             if self.eat(&token::BINOP(token::PLUS)) {
                 // ++ mode is obsolete, but we need a snapshot
                 // to stop parsing it.
-                expl(by_copy)
+                // Ignore.
             } else {
-                expl(by_copy)
+                // Ignore.
             }
         } else {
-            infer(self.get_id())
+            // Ignore.
         }
     }
 
@@ -810,16 +824,14 @@ pub impl Parser {
     // This version of parse arg doesn't necessarily require
     // identifier names.
     fn parse_arg_general(&self, require_name: bool) -> arg {
-        let m;
         let mut is_mutbl = false;
         let pat = if require_name || self.is_named_argument() {
-            m = self.parse_arg_mode();
+            self.parse_arg_mode();
             is_mutbl = self.eat_keyword(&~"mut");
             let pat = self.parse_pat(false);
             self.expect(&token::COLON);
             pat
         } else {
-            m = infer(self.get_id());
             ast_util::ident_to_pat(self.get_id(),
                                    *self.last_span,
                                    special_idents::invalid)
@@ -827,8 +839,12 @@ pub impl Parser {
 
         let t = self.parse_ty(false);
 
-        ast::arg { mode: m, is_mutbl: is_mutbl,
-                  ty: t, pat: pat, id: self.get_id() }
+        ast::arg {
+            is_mutbl: is_mutbl,
+            ty: t,
+            pat: pat,
+            id: self.get_id(),
+        }
     }
 
     // parse a single function argument
@@ -838,7 +854,7 @@ pub impl Parser {
 
     // parse an argument in a lambda header e.g. |arg, arg|
     fn parse_fn_block_arg(&self) -> arg_or_capture_item {
-        let m = self.parse_arg_mode();
+        self.parse_arg_mode();
         let is_mutbl = self.eat_keyword(&~"mut");
         let pat = self.parse_pat(false);
         let t = if self.eat(&token::COLON) {
@@ -851,7 +867,6 @@ pub impl Parser {
             }
         };
         either::Left(ast::arg {
-            mode: m,
             is_mutbl: is_mutbl,
             ty: t,
             pat: pat,
@@ -1227,8 +1242,14 @@ pub impl Parser {
                                                expr_do_body);
         } else if self.eat_keyword(&~"while") {
             return self.parse_while_expr();
+        } else if self.token_is_lifetime(&*self.token) {
+            let lifetime = self.get_lifetime(&*self.token);
+            self.bump();
+            self.expect(&token::COLON);
+            self.expect_keyword(&~"loop");
+            return self.parse_loop_expr(Some(lifetime));
         } else if self.eat_keyword(&~"loop") {
-            return self.parse_loop_expr();
+            return self.parse_loop_expr(None);
         } else if self.eat_keyword(&~"match") {
             return self.parse_match_expr();
         } else if self.eat_keyword(&~"unsafe") {
@@ -1289,8 +1310,10 @@ pub impl Parser {
             } else { ex = expr_ret(None); }
         } else if self.eat_keyword(&~"break") {
             // BREAK expression
-            if is_ident(&*self.token) {
-                ex = expr_break(Some(self.parse_ident()));
+            if self.token_is_lifetime(&*self.token) {
+                let lifetime = self.get_lifetime(&*self.token);
+                self.bump();
+                ex = expr_break(Some(lifetime));
             } else {
                 ex = expr_break(None);
             }
@@ -1994,37 +2017,32 @@ pub impl Parser {
         return self.mk_expr(lo, hi, expr_while(cond, body));
     }
 
-    fn parse_loop_expr(&self) -> @expr {
+    fn parse_loop_expr(&self, opt_ident: Option<ast::ident>) -> @expr {
         // loop headers look like 'loop {' or 'loop unsafe {'
         let is_loop_header =
             *self.token == token::LBRACE
             || (is_ident(&*self.token)
                 && self.look_ahead(1) == token::LBRACE);
-        // labeled loop headers look like 'loop foo: {'
-        let is_labeled_loop_header =
-            is_ident(&*self.token)
-            && !self.is_any_keyword(&copy *self.token)
-            && self.look_ahead(1) == token::COLON;
 
-        if is_loop_header || is_labeled_loop_header {
+        if is_loop_header {
             // This is a loop body
-            let opt_ident;
-            if is_labeled_loop_header {
-                opt_ident = Some(self.parse_ident());
-                self.expect(&token::COLON);
-            } else {
-                opt_ident = None;
-            }
-
             let lo = self.last_span.lo;
             let body = self.parse_block();
             let hi = body.span.hi;
             return self.mk_expr(lo, hi, expr_loop(body, opt_ident));
         } else {
             // This is a 'continue' expression
+            if opt_ident.is_some() {
+                self.span_err(*self.last_span,
+                              ~"a label may not be used with a `loop` \
+                                expression");
+            }
+
             let lo = self.span.lo;
-            let ex = if is_ident(&*self.token) {
-                expr_again(Some(self.parse_ident()))
+            let ex = if self.token_is_lifetime(&*self.token) {
+                let lifetime = self.get_lifetime(&*self.token);
+                self.bump();
+                expr_again(Some(lifetime))
             } else {
                 expr_again(None)
             };
@@ -2440,18 +2458,21 @@ pub impl Parser {
 
     // used by the copy foo and ref foo patterns to give a good
     // error message when parsing mistakes like ref foo(a,b)
-    fn parse_pat_ident(&self, refutable: bool,
-                       binding_mode: ast::binding_mode) -> ast::pat_ {
+    fn parse_pat_ident(&self,
+                       refutable: bool,
+                       binding_mode: ast::binding_mode)
+                       -> ast::pat_ {
         if !is_plain_ident(&*self.token) {
-            self.span_fatal(
-                *self.last_span,
-                ~"expected identifier, found path");
+            self.span_fatal(*self.last_span,
+                            ~"expected identifier, found path");
         }
         // why a path here, and not just an identifier?
         let name = self.parse_path_without_tps();
         let sub = if self.eat(&token::AT) {
             Some(self.parse_pat(refutable))
-        } else { None };
+        } else {
+            None
+        };
 
         // just to be friendly, if they write something like
         //   ref Some(i)
@@ -4406,10 +4427,11 @@ pub impl Parser {
     // text that can't be parsed as an item
     // - mod_items uses extern_mod_allowed = true
     // - block_tail_ uses extern_mod_allowed = false
-    fn parse_items_and_view_items(&self, first_item_attrs: ~[attribute],
+    fn parse_items_and_view_items(&self,
+                                  first_item_attrs: ~[attribute],
                                   mut extern_mod_allowed: bool,
                                   macros_allowed: bool)
-                                -> ParsedItemsAndViewItems {
+                                  -> ParsedItemsAndViewItems {
         let mut attrs = vec::append(first_item_attrs,
                                     self.parse_outer_attributes());
         // First, parse view items.
@@ -4539,8 +4561,11 @@ pub impl Parser {
 
     fn parse_str(&self) -> @~str {
         match *self.token {
-          token::LIT_STR(s) => { self.bump(); self.id_to_str(s) }
-          _ =>  self.fatal(~"expected string literal")
+            token::LIT_STR(s) => {
+                self.bump();
+                self.id_to_str(s)
+            }
+            _ =>  self.fatal(~"expected string literal")
         }
     }
 }

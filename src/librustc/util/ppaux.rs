@@ -8,28 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::ty;
-use middle::typeck;
-use middle::ty::canon_mode;
-use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid,
-                 br_fresh};
-use middle::ty::{ctxt, field, method};
+use metadata::encoder;
+use middle::ty::{ReSkolemized, ReVar};
+use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
+use middle::ty::{br_fresh, ctxt, field, method};
 use middle::ty::{mt, t, param_bound, param_ty};
 use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region};
-use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{ty_bool, ty_bot, ty_box, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_estr, ty_evec, ty_float, ty_bare_fn, ty_closure};
-use middle::ty::{ty_trait, ty_int};
 use middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
 use middle::ty::{ty_ptr, ty_rptr, ty_self, ty_tup, ty_type, ty_uniq};
+use middle::ty::{ty_trait, ty_int};
 use middle::ty::{ty_uint, ty_unboxed_vec, ty_infer};
-use metadata::encoder;
+use middle::ty;
+use middle::typeck;
+use syntax::abi::AbiSet;
+use syntax::ast_map;
 use syntax::codemap::span;
 use syntax::print::pprust;
-use syntax::print::pprust::mode_to_str;
 use syntax::{ast, ast_util};
-use syntax::ast_map;
-use syntax::abi::AbiSet;
 
 pub trait Repr {
     fn repr(&self, tcx: ctxt) -> ~str;
@@ -293,26 +290,14 @@ pub fn trait_ref_to_str(cx: ctxt, trait_ref: &ty::TraitRef) -> ~str {
 
 pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     fn fn_input_to_str(cx: ctxt, input: ty::arg) -> ~str {
-        let ty::arg {mode: mode, ty: ty} = input;
-        let modestr = match canon_mode(cx, mode) {
-          ast::infer(_) => ~"",
-          ast::expl(m) => {
-            if !ty::type_needs_infer(ty) &&
-                m == ty::default_arg_mode_for_ty(cx, ty) {
-                ~""
-            } else {
-                mode_to_str(ast::expl(m)) + ~":"
-            }
-          }
-        };
-        fmt!("%s%s", modestr, ty_to_str(cx, ty))
+        ty_to_str(cx, input.ty)
     }
     fn bare_fn_to_str(cx: ctxt,
                       purity: ast::purity,
                       abis: AbiSet,
                       ident: Option<ast::ident>,
-                      sig: &ty::FnSig) -> ~str
-    {
+                      sig: &ty::FnSig)
+                      -> ~str {
         let mut s = ~"extern ";
 
         s.push_str(abis.to_str());
@@ -701,7 +686,7 @@ impl Repr for typeck::method_map_entry {
 
 impl Repr for ty::arg {
     fn repr(&self, tcx: ctxt) -> ~str {
-        fmt!("%?(%s)", self.mode, self.ty.repr(tcx))
+        fmt!("(%s)", self.ty.repr(tcx))
     }
 }
 

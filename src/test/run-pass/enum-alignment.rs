@@ -9,12 +9,15 @@
 // except according to those terms.
 
 fn addr_of<T>(ptr: &T) -> uint {
-    let ptr = ptr::addr_of(ptr);
+    let ptr = ptr::to_unsafe_ptr(ptr);
     unsafe { ptr as uint }
 }
 
 fn is_aligned<T>(ptr: &T) -> bool {
-    (addr_of(ptr) % sys::min_align_of::<T>()) == 0
+    unsafe {
+        let addr: uint = ::cast::transmute(ptr);
+        (addr % sys::min_align_of::<T>()) == 0
+    }
 }
 
 pub fn main() {

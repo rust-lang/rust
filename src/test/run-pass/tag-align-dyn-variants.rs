@@ -27,7 +27,7 @@ fn mk_rec<A:copy,B:copy>(a: A, b: B) -> t_rec<A,B> {
 }
 
 fn is_aligned<A>(amnt: uint, &&u: A) -> bool {
-    let p = ptr::addr_of(u) as uint;
+    let p = ptr::to_unsafe_ptr(u) as uint;
     return (p & (amnt-1u)) == 0u;
 }
 

@@ -366,14 +366,15 @@ pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
 
 /// Transmute an owned vector to a Buf
 pub fn vec_to_uv_buf(v: ~[u8]) -> Buf {
-    let data = unsafe { malloc(v.len() as size_t) } as *u8;
-    assert!(data.is_not_null());
-    do vec::as_imm_buf(v) |b, l| {
-        let data = data as *mut u8;
-        unsafe { ptr::copy_memory(data, b, l) }
+    unsafe {
+        let data = malloc(v.len() as size_t) as *u8;
+        assert!(data.is_not_null());
+        do vec::as_imm_buf(v) |b, l| {
+            let data = data as *mut u8;
+            ptr::copy_memory(data, b, l)
+        }
+        uvll::buf_init(data, v.len())
     }
-    let buf = unsafe { uvll::buf_init(data, v.len()) };
-    return buf;
 }
 
 /// Transmute a Buf that was once a ~[u8] back to ~[u8]
@@ -384,6 +385,7 @@ pub fn vec_from_uv_buf(buf: Buf) -> Option<~[u8]> {
         return Some(v);
     } else {
         // No buffer
+        rtdebug!("No buffer!");
         return None;
     }
 }

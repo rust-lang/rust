@@ -38,7 +38,6 @@ use syntax::ast_util;
 use syntax::attr;
 use syntax::codemap::span;
 use syntax::codemap;
-use syntax::print::pprust;
 use syntax::parse::token::special_idents;
 use syntax::{ast, ast_map};
 use syntax::opt_vec::OptVec;
@@ -48,11 +47,8 @@ use syntax;
 
 // Data types
 
-// Note: after typeck, you should use resolved_mode() to convert this mode
-// into an rmode, which will take into account the results of mode inference.
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub struct arg {
-    mode: ast::mode,
     ty: t
 }
 
@@ -97,6 +93,16 @@ pub enum TraitStore {
     BoxTraitStore,              // @Trait
     UniqTraitStore,             // ~Trait
     RegionTraitStore(Region),   // &Trait
+}
+
+// XXX: This should probably go away at some point. Maybe after destructors
+// do?
+#[auto_encode]
+#[auto_decode]
+#[deriving(Eq)]
+pub enum SelfMode {
+    ByCopy,
+    ByRef,
 }
 
 pub struct field_ty {
@@ -270,7 +276,6 @@ struct ctxt_ {
     ast_ty_to_ty_cache: @mut HashMap<node_id, ast_ty_to_ty_cache_entry>,
     enum_var_cache: @mut HashMap<def_id, @~[VariantInfo]>,
     ty_param_defs: @mut HashMap<ast::node_id, TypeParameterDef>,
-    inferred_modes: @mut HashMap<ast::node_id, ast::mode>,
     adjustments: @mut HashMap<ast::node_id, @AutoAdjustment>,
     normalized_cache: @mut HashMap<t, t>,
     lang_items: middle::lang_items::LanguageItems,
@@ -630,7 +635,6 @@ pub enum type_err {
     terr_record_mutability,
     terr_record_fields(expected_found<ident>),
     terr_arg_count,
-    terr_mode_mismatch(expected_found<mode>),
     terr_regions_does_not_outlive(Region, Region),
     terr_regions_not_same(Region, Region),
     terr_regions_no_overlap(Region, Region),
@@ -919,7 +923,6 @@ pub fn mk_ctxt(s: session::Session,
         trait_method_def_ids: @mut HashMap::new(),
         trait_methods_cache: @mut HashMap::new(),
         ty_param_defs: @mut HashMap::new(),
-        inferred_modes: @mut HashMap::new(),
         adjustments: @mut HashMap::new(),
         normalized_cache: new_ty_hash(),
         lang_items: lang_items,
@@ -1199,15 +1202,17 @@ pub fn mk_bare_fn(cx: ctxt, fty: BareFnTy) -> t {
 }
 
 pub fn mk_ctor_fn(cx: ctxt, input_tys: &[ty::t], output: ty::t) -> t {
-    let input_args = input_tys.map(|t| arg {mode: ast::expl(ast::by_copy),
-                                            ty: *t});
+    let input_args = input_tys.map(|t| arg { ty: *t });
     mk_bare_fn(cx,
                BareFnTy {
                    purity: ast::pure_fn,
                    abis: AbiSet::Rust(),
-                   sig: FnSig {bound_lifetime_names: opt_vec::Empty,
-                               inputs: input_args,
-                               output: output}})
+                   sig: FnSig {
+                    bound_lifetime_names: opt_vec::Empty,
+                    inputs: input_args,
+                    output: output
+                   }
+                })
 }
 
 
@@ -1258,48 +1263,14 @@ pub fn mach_sty(cfg: @session::config, t: t) -> sty {
     }
 }
 
-pub fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
-    // FIXME(#2202) --- We retain by-ref for &fn things to workaround a
-    // memory leak that otherwise results when @fn is upcast to &fn.
-    match ty::get(ty).sty {
-        ty::ty_closure(ClosureTy {sigil: ast::BorrowedSigil, _}) => {
-            return ast::by_ref;
-        }
-        _ => {}
-    }
-    return if tcx.legacy_modes {
-        if type_is_borrowed(ty) {
-            // the old mode default was ++ for things like &ptr, but to be
-            // forward-compatible with non-legacy, we should use +
-            ast::by_copy
-        } else if ty::type_is_immediate(ty) {
-            ast::by_copy
-        } else {
-            ast::by_ref
-        }
-    } else {
-        ast::by_copy
-    };
-
-    fn type_is_borrowed(ty: t) -> bool {
-        match ty::get(ty).sty {
-            ty::ty_rptr(*) => true,
-            ty_evec(_, vstore_slice(_)) => true,
-            ty_estr(vstore_slice(_)) => true,
-
-            // technically, we prob ought to include
-            // &fn(), but that is treated specially due to #2202
-            _ => false
-        }
-    }
-}
-
 pub fn walk_ty(ty: t, f: &fn(t)) {
     maybe_walk_ty(ty, |t| { f(t); true });
 }
 
 pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
-    if !f(ty) { return; }
+    if !f(ty) {
+        return;
+    }
     match get(ty).sty {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_estr(_) | ty_type | ty_opaque_box | ty_self(_) |
@@ -1331,7 +1302,9 @@ pub fn fold_sty_to_ty(tcx: ty::ctxt, sty: &sty, foldop: &fn(t) -> t) -> t {
 
 pub fn fold_sig(sig: &FnSig, fldop: &fn(t) -> t) -> FnSig {
     let args = do sig.inputs.map |arg| {
-        arg { mode: arg.mode, ty: fldop(arg.ty) }
+        arg {
+            ty: fldop(arg.ty)
+        }
     };
 
     FnSig {
@@ -2704,13 +2677,6 @@ impl to_bytes::IterBytes for field {
     }
 }
 
-impl to_bytes::IterBytes for arg {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_2(&self.mode,
-                               &self.ty, lsb0, f)
-    }
-}
-
 impl to_bytes::IterBytes for FnSig {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.inputs,
@@ -3376,78 +3342,6 @@ pub fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
     }
 }
 
-// Maintains a little union-set tree for inferred modes.  `canon()` returns
-// the current head value for `m0`.
-fn canon<T:Copy + cmp::Eq>(tbl: &mut HashMap<ast::node_id, ast::inferable<T>>,
-                           m0: ast::inferable<T>) -> ast::inferable<T> {
-    match m0 {
-        ast::infer(id) => {
-            let m1 = match tbl.find(&id) {
-                None => return m0,
-                Some(&m1) => m1
-            };
-            let cm1 = canon(tbl, m1);
-            // path compression:
-            if cm1 != m1 { tbl.insert(id, cm1); }
-            cm1
-        },
-        _ => m0
-    }
-}
-
-// Maintains a little union-set tree for inferred modes.  `resolve_mode()`
-// returns the current head value for `m0`.
-pub fn canon_mode(cx: ctxt, m0: ast::mode) -> ast::mode {
-    canon(cx.inferred_modes, m0)
-}
-
-// Returns the head value for mode, failing if `m` was a infer(_) that
-// was never inferred.  This should be safe for use after typeck.
-pub fn resolved_mode(cx: ctxt, m: ast::mode) -> ast::rmode {
-    match canon_mode(cx, m) {
-      ast::infer(_) => {
-        cx.sess.bug(fmt!("mode %? was never resolved", m));
-      }
-      ast::expl(m0) => m0
-    }
-}
-
-pub fn arg_mode(cx: ctxt, a: arg) -> ast::rmode { resolved_mode(cx, a.mode) }
-
-// Unifies `m1` and `m2`.  Returns unified value or failure code.
-pub fn unify_mode(cx: ctxt, modes: expected_found<ast::mode>)
-               -> Result<ast::mode, type_err> {
-    let m1 = modes.expected;
-    let m2 = modes.found;
-    match (canon_mode(cx, m1), canon_mode(cx, m2)) {
-      (m1, m2) if (m1 == m2) => {
-        result::Ok(m1)
-      }
-      (ast::infer(_), ast::infer(id2)) => {
-        cx.inferred_modes.insert(id2, m1);
-        result::Ok(m1)
-      }
-      (ast::infer(id), m) | (m, ast::infer(id)) => {
-        cx.inferred_modes.insert(id, m);
-        result::Ok(m1)
-      }
-      (_, _) => {
-        result::Err(terr_mode_mismatch(modes))
-      }
-    }
-}
-
-// If `m` was never unified, unifies it with `m_def`.  Returns the final value
-// for `m`.
-pub fn set_default_mode(cx: ctxt, m: ast::mode, m_def: ast::rmode) {
-    match canon_mode(cx, m) {
-      ast::infer(id) => {
-        cx.inferred_modes.insert(id, ast::expl(m_def));
-      }
-      ast::expl(_) => ()
-    }
-}
-
 pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
     match get(t).sty {
       ty_nil | ty_bot | ty_bool | ty_int(_) |
@@ -3545,11 +3439,6 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
                  *cx.sess.str_of(values.found))
         }
         terr_arg_count => ~"incorrect number of function parameters",
-        terr_mode_mismatch(values) => {
-            fmt!("expected argument mode %s, but found %s",
-                 pprust::mode_to_str(values.expected),
-                 pprust::mode_to_str(values.found))
-        }
         terr_regions_does_not_outlive(*) => {
             fmt!("lifetime mismatch")
         }

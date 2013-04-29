@@ -552,10 +552,14 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     // represent the self argument (unless this is a static method).
     // This argument will have the *transformed* self type.
     for trait_m.transformed_self_ty.each |&t| {
-        trait_fn_args.push(ty::arg {mode: ast::expl(ast::by_copy), ty: t});
+        trait_fn_args.push(ty::arg {
+            ty: t
+        });
     }
     for impl_m.transformed_self_ty.each |&t| {
-        impl_fn_args.push(ty::arg {mode: ast::expl(ast::by_copy), ty: t});
+        impl_fn_args.push(ty::arg {
+            ty: t
+        });
     }
 
     // Add in the normal arguments.

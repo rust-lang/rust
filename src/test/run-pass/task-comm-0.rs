@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 extern mod std;
 
@@ -18,7 +17,7 @@ use core::comm::Port;
 
 pub fn main() { test05(); }
 
-fn test05_start(ch : Chan<int>) {
+fn test05_start(ch : &Chan<int>) {
     ch.send(10);
     error!("sent 10");
     ch.send(20);
@@ -29,8 +28,8 @@ fn test05_start(ch : Chan<int>) {
 
 fn test05() {
     let (po, ch) = comm::stream();
-    task::spawn(|| test05_start(ch) );
-    let mut value = po.recv();
+    task::spawn(|| test05_start(&ch) );
+    let mut value: int = po.recv();
     error!(value);
     value = po.recv();
     error!(value);

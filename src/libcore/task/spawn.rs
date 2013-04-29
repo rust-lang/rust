@@ -93,7 +93,7 @@ use util;
 #[cfg(test)] use task::default_task_opts;
 
 macro_rules! move_it (
-    { $x:expr } => ( unsafe { let y = *ptr::addr_of(&($x)); y } )
+    { $x:expr } => ( unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } )
 )
 
 type TaskSet = HashSet<*rust_task>;

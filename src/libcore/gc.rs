@@ -338,7 +338,7 @@ pub fn cleanup_stack_for_failure() {
         // own stack roots on the stack anyway.
         let sentinel_box = ~0;
         let sentinel: **Word = if expect_sentinel() {
-            cast::transmute(ptr::addr_of(&sentinel_box))
+            cast::transmute(&sentinel_box)
         } else {
             ptr::null()
         };

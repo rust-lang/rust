@@ -66,7 +66,9 @@ fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
             for resolve_type_vars_in_type(fcx, sp, mme.self_arg.ty).each |t| {
                 let method_map = fcx.ccx.method_map;
                 let new_entry = method_map_entry {
-                    self_arg: arg {mode: mme.self_arg.mode, ty: *t },
+                    self_arg: arg {
+                        ty: *t
+                    },
                     ..*mme
                 };
                 debug!("writeback::resolve_method_map_entry(id=%?, \
@@ -213,52 +215,55 @@ fn visit_stmt(s: @ast::stmt, wbcx: @mut WbCtxt, v: wb_vt) {
     resolve_type_vars_for_node(wbcx, s.span, ty::stmt_node_id(s));
     visit::visit_stmt(s, wbcx, v);
 }
+
 fn visit_expr(e: @ast::expr, wbcx: @mut WbCtxt, v: wb_vt) {
-    if !wbcx.success { return; }
+    if !wbcx.success {
+        return;
+    }
+
     resolve_type_vars_for_node(wbcx, e.span, e.id);
     resolve_method_map_entry(wbcx.fcx, e.span, e.id);
     resolve_method_map_entry(wbcx.fcx, e.span, e.callee_id);
     resolve_vtable_map_entry(wbcx.fcx, e.span, e.id);
     resolve_vtable_map_entry(wbcx.fcx, e.span, e.callee_id);
+
     match e.node {
-      ast::expr_fn_block(ref decl, _) => {
-          for vec::each(decl.inputs) |input| {
-              let r_ty = resolve_type_vars_for_node(wbcx, e.span, input.id);
+        ast::expr_fn_block(ref decl, _) => {
+            for vec::each(decl.inputs) |input| {
+                let _ = resolve_type_vars_for_node(wbcx, e.span, input.id);
+            }
+        }
 
-              // Just in case we never constrained the mode to anything,
-              // constrain it to the default for the type in question.
-              match (r_ty, input.mode) {
-                  (Some(t), ast::infer(_)) => {
-                      let tcx = wbcx.fcx.ccx.tcx;
-                      let m_def = ty::default_arg_mode_for_ty(tcx, t);
-                      ty::set_default_mode(tcx, input.mode, m_def);
-                  }
-                  _ => ()
-              }
-          }
-      }
+        ast::expr_binary(*) | ast::expr_unary(*) | ast::expr_assign_op(*) |
+        ast::expr_index(*) => {
+            maybe_resolve_type_vars_for_node(wbcx, e.span, e.callee_id);
+        }
 
-      ast::expr_binary(*) | ast::expr_unary(*) | ast::expr_assign_op(*)
-        | ast::expr_index(*) => {
-        maybe_resolve_type_vars_for_node(wbcx, e.span, e.callee_id);
-      }
+        ast::expr_method_call(*) => {
+            // We must always have written in a callee ID type for these.
+            resolve_type_vars_for_node(wbcx, e.span, e.callee_id);
+        }
 
-      ast::expr_method_call(*) => {
-        // We must always have written in a callee ID type for these.
-        resolve_type_vars_for_node(wbcx, e.span, e.callee_id);
-      }
-
-      _ => ()
+        _ => ()
     }
+
     visit::visit_expr(e, wbcx, v);
 }
+
 fn visit_block(b: &ast::blk, wbcx: @mut WbCtxt, v: wb_vt) {
-    if !wbcx.success { return; }
+    if !wbcx.success {
+        return;
+    }
+
     resolve_type_vars_for_node(wbcx, b.span, b.node.id);
     visit::visit_block(b, wbcx, v);
 }
+
 fn visit_pat(p: @ast::pat, wbcx: @mut WbCtxt, v: wb_vt) {
-    if !wbcx.success { return; }
+    if !wbcx.success {
+        return;
+    }
+
     resolve_type_vars_for_node(wbcx, p.span, p.id);
     debug!("Type for pattern binding %s (id %d) resolved to %s",
            pat_to_str(p, wbcx.fcx.ccx.tcx.sess.intr()), p.id,
@@ -267,6 +272,7 @@ fn visit_pat(p: @ast::pat, wbcx: @mut WbCtxt, v: wb_vt) {
                                    p.id)));
     visit::visit_pat(p, wbcx, v);
 }
+
 fn visit_local(l: @ast::local, wbcx: @mut WbCtxt, v: wb_vt) {
     if !wbcx.success { return; }
     let var_ty = wbcx.fcx.local_ty(l.span, l.node.id);

@@ -110,18 +110,18 @@ enum IpGetAddrErr {
  * object in the case of failure
 */
 pub fn get_addr(node: &str, iotask: &iotask)
-    -> result::Result<~[IpAddr], IpGetAddrErr> {
+                -> result::Result<~[IpAddr], IpGetAddrErr> {
     let (output_po, output_ch) = stream();
     let mut output_ch = Some(SharedChan::new(output_ch));
     do str::as_buf(node) |node_ptr, len| {
         let output_ch = output_ch.swap_unwrap();
         debug!("slice len %?", len);
         let handle = create_uv_getaddrinfo_t();
-        let handle_ptr = ptr::addr_of(&handle);
+        let handle_ptr: *uv_getaddrinfo_t = &handle;
         let handle_data = GetAddrData {
             output_ch: output_ch.clone()
         };
-        let handle_data_ptr = ptr::addr_of(&handle_data);
+        let handle_data_ptr: *GetAddrData = &handle_data;
         do interact(iotask) |loop_ptr| {
             unsafe {
                 let result = uv_getaddrinfo(
@@ -151,7 +151,7 @@ pub mod v4 {
     use uv_ip4_addr = uv::ll::ip4_addr;
     use uv_ip4_name = uv::ll::ip4_name;
 
-    use core::ptr;
+    use core::cast::transmute;
     use core::result;
     use core::str;
     use core::uint;
@@ -189,7 +189,8 @@ pub mod v4 {
     impl AsUnsafeU32 for Ipv4Rep {
         // this is pretty dastardly, i know
         unsafe fn as_u32(&self) -> u32 {
-            *((ptr::addr_of(self)) as *u32)
+            let this: &mut u32 = transmute(self);
+            *this
         }
     }
     pub fn parse_to_ipv4_rep(ip: &str) -> result::Result<Ipv4Rep, ~str> {
@@ -297,7 +298,8 @@ struct GetAddrData {
     output_ch: SharedChan<result::Result<~[IpAddr],IpGetAddrErr>>
 }
 
-extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
+extern fn get_addr_cb(handle: *uv_getaddrinfo_t,
+                      status: libc::c_int,
                       res: *addrinfo) {
     unsafe {
         debug!("in get_addr_cb");

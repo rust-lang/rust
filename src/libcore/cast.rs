@@ -10,19 +10,54 @@
 
 //! Unsafe casting functions
 
+use sys;
+use unstable;
+
 pub mod rusti {
     #[abi = "rust-intrinsic"]
     #[link_name = "rusti"]
     pub extern "rust-intrinsic" {
         fn forget<T>(+x: T);
+
+        #[cfg(stage0)]
         fn reinterpret_cast<T, U>(&&e: T) -> U;
+
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        #[cfg(stage3)]
+        fn transmute<T,U>(e: T) -> U;
     }
 }
 
 /// Casts the value at `src` to U. The two types must have the same length.
 #[inline(always)]
+#[cfg(stage0)]
 pub unsafe fn reinterpret_cast<T, U>(src: &T) -> U {
     rusti::reinterpret_cast(*src)
+}
+
+/// Unsafely copies and casts the value at `src` to U, even if the value is
+/// noncopyable. The two types must have the same length.
+#[inline(always)]
+#[cfg(stage0)]
+pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
+    rusti::reinterpret_cast(*src)
+}
+
+#[inline(always)]
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
+    let mut dest: U = unstable::intrinsics::init();
+    {
+        let dest_ptr: *mut u8 = rusti::transmute(&mut dest);
+        let src_ptr: *u8 = rusti::transmute(src);
+        unstable::intrinsics::memmove64(dest_ptr,
+                                        src_ptr,
+                                        sys::size_of::<U>() as u64);
+    }
+    dest
 }
 
 /**
@@ -53,10 +88,19 @@ pub unsafe fn bump_box_refcount<T>(t: @T) { forget(t); }
  *     assert!(transmute("L") == ~[76u8, 0u8]);
  */
 #[inline(always)]
+#[cfg(stage0)]
 pub unsafe fn transmute<L, G>(thing: L) -> G {
     let newthing: G = reinterpret_cast(&thing);
     forget(thing);
     newthing
+}
+
+#[inline(always)]
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+pub unsafe fn transmute<L, G>(thing: L) -> G {
+    rusti::transmute(thing)
 }
 
 /// Coerce an immutable reference to be mutable.
@@ -112,11 +156,20 @@ pub unsafe fn copy_lifetime_vec<'a,S,T>(_ptr: &'a [S], ptr: &T) -> &'a T {
 
 #[cfg(test)]
 mod tests {
-    use cast::{bump_box_refcount, reinterpret_cast, transmute};
+    use cast::{bump_box_refcount, transmute};
 
     #[test]
+    #[cfg(stage0)]
     fn test_reinterpret_cast() {
-        assert!(1u == unsafe { reinterpret_cast(&1) });
+        assert!(1u == unsafe { ::cast::reinterpret_cast(&1) });
+    }
+
+    #[test]
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn test_transmute_copy() {
+        assert!(1u == unsafe { ::cast::transmute_copy(&1) });
     }
 
     #[test]
@@ -125,8 +178,8 @@ mod tests {
             let box = @~"box box box";       // refcount 1
             bump_box_refcount(box);         // refcount 2
             let ptr: *int = transmute(box); // refcount 2
-            let _box1: @~str = reinterpret_cast(&ptr);
-            let _box2: @~str = reinterpret_cast(&ptr);
+            let _box1: @~str = ::cast::transmute_copy(&ptr);
+            let _box2: @~str = ::cast::transmute_copy(&ptr);
             assert!(*_box1 == ~"box box box");
             assert!(*_box2 == ~"box box box");
             // Will destroy _box1 and _box2. Without the bump, this would

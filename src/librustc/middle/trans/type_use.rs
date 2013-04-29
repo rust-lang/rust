@@ -78,12 +78,7 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
         ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
         ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => {
             for vec::each(sig.inputs) |arg| {
-                match ty::resolved_mode(ccx.tcx, arg.mode) {
-                    by_copy => {
-                        type_needs(cx, use_repr, arg.ty);
-                    }
-                    by_ref => {}
-                }
+                type_needs(cx, use_repr, arg.ty);
             }
         }
         _ => ()
@@ -122,9 +117,9 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                                  _) => {
         if abi.is_intrinsic() {
             let flags = match *cx.ccx.sess.str_of(i.ident) {
-                ~"size_of"  | ~"pref_align_of"    | ~"min_align_of" |
-                ~"init"     | ~"reinterpret_cast" |
-                ~"move_val" | ~"move_val_init" => use_repr,
+                ~"size_of"  | ~"pref_align_of" | ~"min_align_of" |
+                ~"init"     | ~"transmute"     | ~"move_val"     |
+                ~"move_val_init" => use_repr,
 
                 ~"get_tydesc" | ~"needs_drop" => use_tydesc,
 
@@ -135,8 +130,8 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                 ~"atomic_xsub_acq" | ~"atomic_xchg_rel" |
                 ~"atomic_xadd_rel" | ~"atomic_xsub_rel" => 0,
 
-                ~"visit_tydesc"  | ~"forget" | ~"addr_of" |
-                ~"frame_address" | ~"morestack_addr" => 0,
+                ~"visit_tydesc"  | ~"forget" | ~"frame_address" |
+                ~"morestack_addr" => 0,
 
                 ~"memmove32" | ~"memmove64" => 0,
 
@@ -332,15 +327,9 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
         node_type_needs(cx, use_tydesc, val.id);
       }
       expr_call(f, _, _) => {
-          for vec::each(
-              ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id))
-          ) |a| {
-              match a.mode {
-                  expl(by_copy) => {
-                      type_needs(cx, use_repr, a.ty);
-                  }
-                  _ => ()
-              }
+          for vec::each(ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx,
+                                                           f.id))) |a| {
+              type_needs(cx, use_repr, a.ty);
           }
       }
       expr_method_call(rcvr, _, _, _, _) => {
@@ -349,12 +338,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
 
         for ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx,
                                                e.callee_id)).each |a| {
-          match a.mode {
-              expl(by_copy) => {
-                  type_needs(cx, use_repr, a.ty);
-              }
-              _ => ()
-          }
+            type_needs(cx, use_repr, a.ty);
         }
         mark_for_method_call(cx, e.id, e.callee_id);
       }

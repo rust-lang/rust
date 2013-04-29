@@ -716,37 +716,51 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             }
         }
         ~"forget" => {}
-        ~"reinterpret_cast" => {
-            let tp_ty = substs.tys[0];
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            let llout_ty = type_of::type_of(ccx, substs.tys[1]);
-            let tp_sz = machine::llbitsize_of_real(ccx, lltp_ty),
-            out_sz = machine::llbitsize_of_real(ccx, llout_ty);
-          if tp_sz != out_sz {
-              let sp = match *ccx.tcx.items.get(&ref_id.get()) {
-                  ast_map::node_expr(e) => e.span,
-                  _ => fail!(~"reinterpret_cast or forget has non-expr arg")
-              };
-              ccx.sess.span_fatal(
-                  sp, fmt!("reinterpret_cast called on types \
-                            with different size: %s (%u bit(s)) to %s \
-                            (%u bit(s))",
-                           ty_to_str(ccx.tcx, tp_ty), tp_sz,
-                           ty_to_str(ccx.tcx, substs.tys[1]), out_sz));
-          }
-          if !ty::type_is_nil(substs.tys[1]) {
-              // NB: Do not use a Load and Store here. This causes
-              // massive code bloat when reinterpret_cast is used on
-              // large structural types.
-              let llretptr = fcx.llretptr.get();
-              let llretptr = PointerCast(bcx, llretptr, T_ptr(T_i8()));
-              let llcast = get_param(decl, first_real_arg);
-              let llcast = PointerCast(bcx, llcast, T_ptr(T_i8()));
-              call_memcpy(bcx, llretptr, llcast, llsize_of(ccx, lltp_ty));
-          }
-        }
-        ~"addr_of" => {
-            Store(bcx, get_param(decl, first_real_arg), fcx.llretptr.get());
+        ~"transmute" => {
+            let (in_type, out_type) = (substs.tys[0], substs.tys[1]);
+            let llintype = type_of::type_of(ccx, in_type);
+            let llouttype = type_of::type_of(ccx, out_type);
+
+            let in_type_size = machine::llbitsize_of_real(ccx, llintype);
+            let out_type_size = machine::llbitsize_of_real(ccx, llouttype);
+            if in_type_size != out_type_size {
+                let sp = match *ccx.tcx.items.get(&ref_id.get()) {
+                    ast_map::node_expr(e) => e.span,
+                    _ => fail!(~"transmute has non-expr arg"),
+                };
+                let pluralize = |n| if 1u == n { "" } else { "s" };
+                ccx.sess.span_fatal(sp,
+                                    fmt!("transmute called on types with \
+                                          different sizes: %s (%u bit%s) to \
+                                          %s (%u bit%s)",
+                                         ty_to_str(ccx.tcx, in_type),
+                                         in_type_size,
+                                         pluralize(in_type_size),
+                                         ty_to_str(ccx.tcx, out_type),
+                                         out_type_size,
+                                         pluralize(out_type_size)));
+            }
+
+            if !ty::type_is_nil(out_type) {
+                // NB: Do not use a Load and Store here. This causes massive
+                // code bloat when `transmute` is used on large structural
+                // types.
+                let lldestptr = fcx.llretptr.get();
+                let lldestptr = PointerCast(bcx, lldestptr, T_ptr(T_i8()));
+
+                let llsrcval = get_param(decl, first_real_arg);
+                let llsrcptr = if ty::type_is_immediate(in_type) {
+                    let llsrcptr = alloca(bcx, llintype);
+                    Store(bcx, llsrcval, llsrcptr);
+                    llsrcptr
+                } else {
+                    llsrcval
+                };
+                let llsrcptr = PointerCast(bcx, llsrcptr, T_ptr(T_i8()));
+
+                let llsize = llsize_of(ccx, llintype);
+                call_memcpy(bcx, lldestptr, llsrcptr, llsize);
+            }
         }
         ~"needs_drop" => {
             let tp_ty = substs.tys[0];
@@ -757,9 +771,14 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         ~"visit_tydesc" => {
             let td = get_param(decl, first_real_arg);
             let visitor = get_param(decl, first_real_arg + 1u);
+            //let llvisitorptr = alloca(bcx, val_ty(visitor));
+            //Store(bcx, visitor, llvisitorptr);
             let td = PointerCast(bcx, td, T_ptr(ccx.tydesc_type));
-            glue::call_tydesc_glue_full(bcx, visitor, td,
-                                        abi::tydesc_field_visit_glue, None);
+            glue::call_tydesc_glue_full(bcx,
+                                        visitor,
+                                        td,
+                                        abi::tydesc_field_visit_glue,
+                                        None);
         }
         ~"frame_address" => {
             let frameaddress = *ccx.intrinsics.get(&~"llvm.frameaddress");
@@ -772,10 +791,11 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 sigil: ast::BorrowedSigil,
                 onceness: ast::Many,
                 region: ty::re_bound(ty::br_anon(0)),
-                sig: FnSig {bound_lifetime_names: opt_vec::Empty,
-                            inputs: ~[arg {mode: ast::expl(ast::by_copy),
-                                           ty: star_u8}],
-                            output: ty::mk_nil()}
+                sig: FnSig {
+                    bound_lifetime_names: opt_vec::Empty,
+                    inputs: ~[ arg { ty: star_u8 } ],
+                    output: ty::mk_nil()
+                }
             });
             let datum = Datum {val: get_param(decl, first_real_arg),
                                mode: ByRef, ty: fty, source: ZeroMem};

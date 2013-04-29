@@ -105,7 +105,6 @@ fn fold_attribute_(at: attribute, fld: @ast_fold) -> attribute {
 //used in noop_fold_foreign_item and noop_fold_fn_decl
 fn fold_arg_(a: arg, fld: @ast_fold) -> arg {
     ast::arg {
-        mode: a.mode,
         is_mutbl: a.is_mutbl,
         ty: fld.fold_ty(a.ty),
         pat: fld.fold_pat(a.pat),
@@ -868,7 +867,11 @@ impl ast_fold for AstFoldFns {
     }
 }
 
-pub impl @ast_fold {
+pub trait AstFoldExtensions {
+    fn fold_attributes(&self, attrs: ~[attribute]) -> ~[attribute];
+}
+
+impl AstFoldExtensions for @ast_fold {
     fn fold_attributes(&self, attrs: ~[attribute]) -> ~[attribute] {
         attrs.map(|x| fold_attribute_(*x, *self))
     }
