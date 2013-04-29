@@ -16,8 +16,9 @@
  * other useful things like `push()` and `len()`.
  */
 
-use core::iter;
-use core::iter::BaseIter;
+use core::prelude::*;
+use core::old_iter;
+use core::old_iter::BaseIter;
 
 #[auto_encode]
 #[auto_decode]
@@ -116,7 +117,7 @@ impl<T:Copy> OptVec<T> {
     #[inline(always)]
     fn mapi_to_vec<B>(&self, op: &fn(uint, &T) -> B) -> ~[B] {
         let mut index = 0;
-        iter::map_to_vec(self, |a| {
+        old_iter::map_to_vec(self, |a| {
             let i = index;
             index += 1;
             op(i, a)
@@ -154,62 +155,62 @@ impl<A> BaseIter<A> for OptVec<A> {
     }
 }
 
-impl<A> iter::ExtendedIter<A> for OptVec<A> {
+impl<A> old_iter::ExtendedIter<A> for OptVec<A> {
     #[inline(always)]
     fn eachi(&self, blk: &fn(v: uint, v: &A) -> bool) {
-        iter::eachi(self, blk)
+        old_iter::eachi(self, blk)
     }
     #[inline(always)]
     fn all(&self, blk: &fn(&A) -> bool) -> bool {
-        iter::all(self, blk)
+        old_iter::all(self, blk)
     }
     #[inline(always)]
     fn any(&self, blk: &fn(&A) -> bool) -> bool {
-        iter::any(self, blk)
+        old_iter::any(self, blk)
     }
     #[inline(always)]
     fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
-        iter::foldl(self, b0, blk)
+        old_iter::foldl(self, b0, blk)
     }
     #[inline(always)]
     fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
-        iter::position(self, f)
+        old_iter::position(self, f)
     }
     #[inline(always)]
     fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
-        iter::map_to_vec(self, op)
+        old_iter::map_to_vec(self, op)
     }
     #[inline(always)]
     fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
         -> ~[B] {
-        iter::flat_map_to_vec(self, op)
+        old_iter::flat_map_to_vec(self, op)
     }
 
 }
 
-impl<A: Eq> iter::EqIter<A> for OptVec<A> {
+impl<A: Eq> old_iter::EqIter<A> for OptVec<A> {
     #[inline(always)]
-    fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
+    fn contains(&self, x: &A) -> bool { old_iter::contains(self, x) }
     #[inline(always)]
-    fn count(&self, x: &A) -> uint { iter::count(self, x) }
+    fn count(&self, x: &A) -> uint { old_iter::count(self, x) }
 }
 
-impl<A: Copy> iter::CopyableIter<A> for OptVec<A> {
+impl<A: Copy> old_iter::CopyableIter<A> for OptVec<A> {
     #[inline(always)]
     fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
-        iter::filter_to_vec(self, pred)
+        old_iter::filter_to_vec(self, pred)
     }
     #[inline(always)]
-    fn to_vec(&self) -> ~[A] { iter::to_vec(self) }
+    fn to_vec(&self) -> ~[A] { old_iter::to_vec(self) }
     #[inline(always)]
     fn find(&self, f: &fn(&A) -> bool) -> Option<A> {
-        iter::find(self, f)
+        old_iter::find(self, f)
     }
 }
 
-impl<A: Copy+Ord> iter::CopyableOrderedIter<A> for OptVec<A> {
+impl<A: Copy+Ord> old_iter::CopyableOrderedIter<A> for OptVec<A> {
     #[inline(always)]
-    fn min(&self) -> A { iter::min(self) }
+    fn min(&self) -> A { old_iter::min(self) }
     #[inline(always)]
-    fn max(&self) -> A { iter::max(self) }
+    fn max(&self) -> A { old_iter::max(self) }
 }

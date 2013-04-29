@@ -285,7 +285,7 @@ fn test_uv_iotask_async() {
     // impl_uv_hl_async() runs have been called, at least.
     let (work_exit_po, work_exit_ch) = stream::<()>();
     let work_exit_ch = SharedChan::new(work_exit_ch);
-    for iter::repeat(7u) {
+    for old_iter::repeat(7u) {
         let iotask_clone = iotask.clone();
         let work_exit_ch_clone = work_exit_ch.clone();
         do task::spawn_sched(task::ManualThreads(1u)) {
@@ -295,7 +295,7 @@ fn test_uv_iotask_async() {
             work_exit_ch_clone.send(());
         };
     };
-    for iter::repeat(7u) {
+    for old_iter::repeat(7u) {
         debug!("waiting");
         work_exit_po.recv();
     };

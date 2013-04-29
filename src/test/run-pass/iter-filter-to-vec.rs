@@ -13,7 +13,7 @@ fn is_even(x: &uint) -> bool { (*x % 2) == 0 }
 pub fn main() {
     assert!([1, 3].filter_to_vec(is_even) == ~[]);
     assert!([1, 2, 3].filter_to_vec(is_even) == ~[2]);
-    assert!(iter::filter_to_vec(&None::<uint>, is_even) == ~[]);
-    assert!(iter::filter_to_vec(&Some(1u), is_even) == ~[]);
-    assert!(iter::filter_to_vec(&Some(2u), is_even) == ~[2]);
+    assert!(old_iter::filter_to_vec(&None::<uint>, is_even) == ~[]);
+    assert!(old_iter::filter_to_vec(&Some(1u), is_even) == ~[]);
+    assert!(old_iter::filter_to_vec(&Some(2u), is_even) == ~[2]);
 }

@@ -21,5 +21,5 @@ fn bitv_test() -> bool {
 }
 
 pub fn main() {
-    do iter::repeat(10000) || {bitv_test()};
+    do old_iter::repeat(10000) || {bitv_test()};
 }

@@ -483,7 +483,7 @@ pub impl<T:Copy> DList<T> {
     /// Get the elements of the list as a vector. O(n).
     fn to_vec(@mut self) -> ~[T] {
         let mut v = vec::with_capacity(self.size);
-        for iter::eachi(&self) |index,data| {
+        for old_iter::eachi(&self) |index,data| {
             v[index] = *data;
         }
         v
@@ -750,7 +750,7 @@ mod tests {
     #[test]
     fn test_dlist_foldl() {
         let l = from_vec(vec::from_fn(101, |x|x));
-        assert_eq!(iter::foldl(&l, 0, |accum,elem| *accum+*elem), 5050);
+        assert_eq!(old_iter::foldl(&l, 0, |accum,elem| *accum+*elem), 5050);
     }
     #[test]
     fn test_dlist_break_early() {

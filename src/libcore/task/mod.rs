@@ -687,7 +687,7 @@ fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
         let ch = ch.clone();
         do spawn_unlinked {
             // Give middle task a chance to fail-but-not-kill-us.
-            for iter::repeat(16) { task::yield(); }
+            for old_iter::repeat(16) { task::yield(); }
             ch.send(()); // If killed first, grandparent hangs.
         }
         fail!(); // Shouldn't kill either (grand)parent or (grand)child.
@@ -702,7 +702,7 @@ fn test_spawn_unlinked_unsup_no_fail_up() { // child unlinked fails
 fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
     do spawn_supervised { fail!(); }
     // Give child a chance to fail-but-not-kill-us.
-    for iter::repeat(16) { task::yield(); }
+    for old_iter::repeat(16) { task::yield(); }
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_sup_fail_down() {
@@ -783,7 +783,7 @@ fn test_spawn_failure_propagate_grandchild() {
             loop { task::yield(); }
         }
     }
-    for iter::repeat(16) { task::yield(); }
+    for old_iter::repeat(16) { task::yield(); }
     fail!();
 }
 
@@ -795,7 +795,7 @@ fn test_spawn_failure_propagate_secondborn() {
             loop { task::yield(); }
         }
     }
-    for iter::repeat(16) { task::yield(); }
+    for old_iter::repeat(16) { task::yield(); }
     fail!();
 }
 
@@ -807,7 +807,7 @@ fn test_spawn_failure_propagate_nephew_or_niece() {
             loop { task::yield(); }
         }
     }
-    for iter::repeat(16) { task::yield(); }
+    for old_iter::repeat(16) { task::yield(); }
     fail!();
 }
 
@@ -819,7 +819,7 @@ fn test_spawn_linked_sup_propagate_sibling() {
             loop { task::yield(); }
         }
     }
-    for iter::repeat(16) { task::yield(); }
+    for old_iter::repeat(16) { task::yield(); }
     fail!();
 }
 
@@ -971,7 +971,7 @@ fn test_spawn_sched_blocking() {
 
         // Testing that a task in one scheduler can block in foreign code
         // without affecting other schedulers
-        for iter::repeat(20u) {
+        for old_iter::repeat(20u) {
 
             let (start_po, start_ch) = stream();
             let (fin_po, fin_ch) = stream();
@@ -1088,7 +1088,7 @@ fn test_unkillable() {
 
     // We want to do this after failing
     do spawn_unlinked {
-        for iter::repeat(10) { yield() }
+        for old_iter::repeat(10) { yield() }
         ch.send(());
     }
 
@@ -1123,7 +1123,7 @@ fn test_unkillable_nested() {
 
     // We want to do this after failing
     do spawn_unlinked || {
-        for iter::repeat(10) { yield() }
+        for old_iter::repeat(10) { yield() }
         ch.send(());
     }
 

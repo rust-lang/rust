@@ -14,7 +14,7 @@
  */
 
 use core::container::{Container, Mutable, Map, Set};
-use core::iter::{BaseIter};
+use core::old_iter::{BaseIter};
 use core::option::{Some, None};
 
 pub struct SmallIntMap<T> {
