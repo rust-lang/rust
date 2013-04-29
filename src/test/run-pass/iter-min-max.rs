@@ -13,9 +13,9 @@ fn is_even(&&x: uint) -> bool { (x % 2u) == 0u }
 pub fn main() {
     assert!([1u, 3u].min() == 1u);
     assert!([3u, 1u].min() == 1u);
-    assert!(iter::min(&Some(1u)) == 1u);
+    assert!(old_iter::min(&Some(1u)) == 1u);
 
     assert!([1u, 3u].max() == 3u);
     assert!([3u, 1u].max() == 3u);
-    assert!(iter::max(&Some(3u)) == 3u);
+    assert!(old_iter::max(&Some(3u)) == 3u);
 }

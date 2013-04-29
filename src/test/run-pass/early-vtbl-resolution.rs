@@ -21,7 +21,7 @@ struct A { a: int }
 
 pub fn main() {
 
-    for iter::eachi(&(Some(A {a: 0}))) |i, a| { 
+    for old_iter::eachi(&(Some(A {a: 0}))) |i, a| {
         debug!("%u %d", i, a.a);
     }
 

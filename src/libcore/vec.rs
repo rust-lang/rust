@@ -17,8 +17,8 @@ use cast;
 use container::{Container, Mutable};
 use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
-use iter::BaseIter;
-use iter;
+use old_iter::BaseIter;
+use old_iter;
 #[cfg(stage1)]
 #[cfg(stage2)]
 #[cfg(stage3)]
@@ -142,7 +142,7 @@ pub fn uniq_len<T>(v: &const ~[T]) -> uint {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
-pub fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
+pub fn from_fn<T>(n_elts: uint, op: old_iter::InitOp<T>) -> ~[T] {
     unsafe {
         let mut v = with_capacity(n_elts);
         do as_mut_buf(v) |p, _len| {
@@ -786,7 +786,7 @@ pub fn grow<T:Copy>(v: &mut ~[T], n: uint, initval: &T) {
  * * init_op - A function to call to retreive each appended element's
  *             value
  */
-pub fn grow_fn<T>(v: &mut ~[T], n: uint, op: iter::InitOp<T>) {
+pub fn grow_fn<T>(v: &mut ~[T], n: uint, op: old_iter::InitOp<T>) {
     let new_len = v.len() + n;
     reserve_at_least(&mut *v, new_len);
     let mut i: uint = 0u;
@@ -2265,7 +2265,7 @@ pub trait OwnedVector<T> {
     fn consume_reverse(self, f: &fn(uint, v: T));
     fn filter(self, f: &fn(t: &T) -> bool) -> ~[T];
     fn partition(self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
-    fn grow_fn(&mut self, n: uint, op: iter::InitOp<T>);
+    fn grow_fn(&mut self, n: uint, op: old_iter::InitOp<T>);
 }
 
 impl<T> OwnedVector<T> for ~[T] {
@@ -2344,7 +2344,7 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     #[inline]
-    fn grow_fn(&mut self, n: uint, op: iter::InitOp<T>) {
+    fn grow_fn(&mut self, n: uint, op: old_iter::InitOp<T>) {
         grow_fn(self, n, op);
     }
 }
@@ -2643,7 +2643,7 @@ pub mod bytes {
 // ITERATION TRAIT METHODS
 
 #[cfg(stage0)]
-impl<'self,A> iter::BaseIter<A> for &'self [A] {
+impl<'self,A> old_iter::BaseIter<A> for &'self [A] {
     #[inline(always)]
     fn each(&self, blk: &fn(v: &'self A) -> bool) { each(*self, blk) }
     #[inline(always)]
@@ -2653,7 +2653,7 @@ impl<'self,A> iter::BaseIter<A> for &'self [A] {
 #[cfg(stage1)]
 #[cfg(stage2)]
 #[cfg(stage3)]
-impl<'self,A> iter::BaseIter<A> for &'self [A] {
+impl<'self,A> old_iter::BaseIter<A> for &'self [A] {
     #[inline(always)]
     fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) { each(*self, blk) }
     #[inline(always)]
@@ -2662,27 +2662,7 @@ impl<'self,A> iter::BaseIter<A> for &'self [A] {
 
 // FIXME(#4148): This should be redundant
 #[cfg(stage0)]
-impl<A> iter::BaseIter<A> for ~[A] {
-    #[inline(always)]
-    fn each(&self, blk: &fn(v: &'self A) -> bool) { each(*self, blk) }
-    #[inline(always)]
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
-// FIXME(#4148): This should be redundant
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
-impl<A> iter::BaseIter<A> for ~[A] {
-    #[inline(always)]
-    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) { each(*self, blk) }
-    #[inline(always)]
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
-// FIXME(#4148): This should be redundant
-#[cfg(stage0)]
-impl<A> iter::BaseIter<A> for @[A] {
+impl<A> old_iter::BaseIter<A> for ~[A] {
     #[inline(always)]
     fn each(&self, blk: &fn(v: &'self A) -> bool) { each(*self, blk) }
     #[inline(always)]
@@ -2693,7 +2673,27 @@ impl<A> iter::BaseIter<A> for @[A] {
 #[cfg(stage1)]
 #[cfg(stage2)]
 #[cfg(stage3)]
-impl<A> iter::BaseIter<A> for @[A] {
+impl<A> old_iter::BaseIter<A> for ~[A] {
+    #[inline(always)]
+    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) { each(*self, blk) }
+    #[inline(always)]
+    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+}
+
+// FIXME(#4148): This should be redundant
+#[cfg(stage0)]
+impl<A> old_iter::BaseIter<A> for @[A] {
+    #[inline(always)]
+    fn each(&self, blk: &fn(v: &'self A) -> bool) { each(*self, blk) }
+    #[inline(always)]
+    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+}
+
+// FIXME(#4148): This should be redundant
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+impl<A> old_iter::BaseIter<A> for @[A] {
     #[inline(always)]
     fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) { each(*self, blk) }
     #[inline(always)]
@@ -2701,7 +2701,7 @@ impl<A> iter::BaseIter<A> for @[A] {
 }
 
 #[cfg(stage0)]
-impl<'self,A> iter::MutableIter<A> for &'self mut [A] {
+impl<'self,A> old_iter::MutableIter<A> for &'self mut [A] {
     #[inline(always)]
     fn each_mut(&mut self, blk: &fn(v: &'self mut A) -> bool) {
         each_mut(*self, blk)
@@ -2711,7 +2711,7 @@ impl<'self,A> iter::MutableIter<A> for &'self mut [A] {
 #[cfg(stage1)]
 #[cfg(stage2)]
 #[cfg(stage3)]
-impl<'self,A> iter::MutableIter<A> for &'self mut [A] {
+impl<'self,A> old_iter::MutableIter<A> for &'self mut [A] {
     #[inline(always)]
     fn each_mut<'a>(&'a mut self, blk: &fn(v: &'a mut A) -> bool) {
         each_mut(*self, blk)
@@ -2720,7 +2720,7 @@ impl<'self,A> iter::MutableIter<A> for &'self mut [A] {
 
 // FIXME(#4148): This should be redundant
 #[cfg(stage0)]
-impl<A> iter::MutableIter<A> for ~[A] {
+impl<A> old_iter::MutableIter<A> for ~[A] {
     #[inline(always)]
     fn each_mut(&mut self, blk: &fn(v: &'self mut A) -> bool) {
         each_mut(*self, blk)
@@ -2730,7 +2730,7 @@ impl<A> iter::MutableIter<A> for ~[A] {
 #[cfg(stage1)]
 #[cfg(stage2)]
 #[cfg(stage3)]
-impl<A> iter::MutableIter<A> for ~[A] {
+impl<A> old_iter::MutableIter<A> for ~[A] {
     #[inline(always)]
     fn each_mut<'a>(&'a mut self, blk: &fn(v: &'a mut A) -> bool) {
         each_mut(*self, blk)
@@ -2738,39 +2738,39 @@ impl<A> iter::MutableIter<A> for ~[A] {
 }
 
 // FIXME(#4148): This should be redundant
-impl<A> iter::MutableIter<A> for @mut [A] {
+impl<A> old_iter::MutableIter<A> for @mut [A] {
     #[inline(always)]
     fn each_mut(&mut self, blk: &fn(v: &mut A) -> bool) {
         each_mut(*self, blk)
     }
 }
 
-impl<'self,A> iter::ExtendedIter<A> for &'self [A] {
+impl<'self,A> old_iter::ExtendedIter<A> for &'self [A] {
     pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) {
-        iter::eachi(self, blk)
+        old_iter::eachi(self, blk)
     }
     pub fn all(&self, blk: &fn(&A) -> bool) -> bool {
-        iter::all(self, blk)
+        old_iter::all(self, blk)
     }
     pub fn any(&self, blk: &fn(&A) -> bool) -> bool {
-        iter::any(self, blk)
+        old_iter::any(self, blk)
     }
     pub fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
-        iter::foldl(self, b0, blk)
+        old_iter::foldl(self, b0, blk)
     }
     pub fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
-        iter::position(self, f)
+        old_iter::position(self, f)
     }
     fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
-        iter::map_to_vec(self, op)
+        old_iter::map_to_vec(self, op)
     }
     fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
         -> ~[B] {
-        iter::flat_map_to_vec(self, op)
+        old_iter::flat_map_to_vec(self, op)
     }
 }
 
-impl<'self,A> iter::ExtendedMutableIter<A> for &'self mut [A] {
+impl<'self,A> old_iter::ExtendedMutableIter<A> for &'self mut [A] {
     #[inline(always)]
     pub fn eachi_mut(&mut self, blk: &fn(uint, v: &mut A) -> bool) {
         eachi_mut(*self, blk)
@@ -2778,124 +2778,124 @@ impl<'self,A> iter::ExtendedMutableIter<A> for &'self mut [A] {
 }
 
 // FIXME(#4148): This should be redundant
-impl<A> iter::ExtendedIter<A> for ~[A] {
+impl<A> old_iter::ExtendedIter<A> for ~[A] {
     pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) {
-        iter::eachi(self, blk)
+        old_iter::eachi(self, blk)
     }
     pub fn all(&self, blk: &fn(&A) -> bool) -> bool {
-        iter::all(self, blk)
+        old_iter::all(self, blk)
     }
     pub fn any(&self, blk: &fn(&A) -> bool) -> bool {
-        iter::any(self, blk)
+        old_iter::any(self, blk)
     }
     pub fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
-        iter::foldl(self, b0, blk)
+        old_iter::foldl(self, b0, blk)
     }
     pub fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
-        iter::position(self, f)
+        old_iter::position(self, f)
     }
     fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
-        iter::map_to_vec(self, op)
+        old_iter::map_to_vec(self, op)
     }
     fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
         -> ~[B] {
-        iter::flat_map_to_vec(self, op)
+        old_iter::flat_map_to_vec(self, op)
     }
 }
 
 // FIXME(#4148): This should be redundant
-impl<A> iter::ExtendedIter<A> for @[A] {
+impl<A> old_iter::ExtendedIter<A> for @[A] {
     pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) {
-        iter::eachi(self, blk)
+        old_iter::eachi(self, blk)
     }
     pub fn all(&self, blk: &fn(&A) -> bool) -> bool {
-        iter::all(self, blk)
+        old_iter::all(self, blk)
     }
     pub fn any(&self, blk: &fn(&A) -> bool) -> bool {
-        iter::any(self, blk)
+        old_iter::any(self, blk)
     }
     pub fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
-        iter::foldl(self, b0, blk)
+        old_iter::foldl(self, b0, blk)
     }
     pub fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
-        iter::position(self, f)
+        old_iter::position(self, f)
     }
     fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
-        iter::map_to_vec(self, op)
+        old_iter::map_to_vec(self, op)
     }
     fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
         -> ~[B] {
-        iter::flat_map_to_vec(self, op)
+        old_iter::flat_map_to_vec(self, op)
     }
 }
 
-impl<'self,A:Eq> iter::EqIter<A> for &'self [A] {
-    pub fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
-    pub fn count(&self, x: &A) -> uint { iter::count(self, x) }
+impl<'self,A:Eq> old_iter::EqIter<A> for &'self [A] {
+    pub fn contains(&self, x: &A) -> bool { old_iter::contains(self, x) }
+    pub fn count(&self, x: &A) -> uint { old_iter::count(self, x) }
 }
 
 // FIXME(#4148): This should be redundant
-impl<A:Eq> iter::EqIter<A> for ~[A] {
-    pub fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
-    pub fn count(&self, x: &A) -> uint { iter::count(self, x) }
+impl<A:Eq> old_iter::EqIter<A> for ~[A] {
+    pub fn contains(&self, x: &A) -> bool { old_iter::contains(self, x) }
+    pub fn count(&self, x: &A) -> uint { old_iter::count(self, x) }
 }
 
 // FIXME(#4148): This should be redundant
-impl<A:Eq> iter::EqIter<A> for @[A] {
-    pub fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
-    pub fn count(&self, x: &A) -> uint { iter::count(self, x) }
+impl<A:Eq> old_iter::EqIter<A> for @[A] {
+    pub fn contains(&self, x: &A) -> bool { old_iter::contains(self, x) }
+    pub fn count(&self, x: &A) -> uint { old_iter::count(self, x) }
 }
 
-impl<'self,A:Copy> iter::CopyableIter<A> for &'self [A] {
+impl<'self,A:Copy> old_iter::CopyableIter<A> for &'self [A] {
     fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
-        iter::filter_to_vec(self, pred)
+        old_iter::filter_to_vec(self, pred)
     }
-    fn to_vec(&self) -> ~[A] { iter::to_vec(self) }
+    fn to_vec(&self) -> ~[A] { old_iter::to_vec(self) }
     pub fn find(&self, f: &fn(&A) -> bool) -> Option<A> {
-        iter::find(self, f)
+        old_iter::find(self, f)
     }
 }
 
 // FIXME(#4148): This should be redundant
-impl<A:Copy> iter::CopyableIter<A> for ~[A] {
+impl<A:Copy> old_iter::CopyableIter<A> for ~[A] {
     fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
-        iter::filter_to_vec(self, pred)
+        old_iter::filter_to_vec(self, pred)
     }
-    fn to_vec(&self) -> ~[A] { iter::to_vec(self) }
+    fn to_vec(&self) -> ~[A] { old_iter::to_vec(self) }
     pub fn find(&self, f: &fn(&A) -> bool) -> Option<A> {
-        iter::find(self, f)
+        old_iter::find(self, f)
     }
 }
 
 // FIXME(#4148): This should be redundant
-impl<A:Copy> iter::CopyableIter<A> for @[A] {
+impl<A:Copy> old_iter::CopyableIter<A> for @[A] {
     fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
-        iter::filter_to_vec(self, pred)
+        old_iter::filter_to_vec(self, pred)
     }
-    fn to_vec(&self) -> ~[A] { iter::to_vec(self) }
+    fn to_vec(&self) -> ~[A] { old_iter::to_vec(self) }
     pub fn find(&self, f: &fn(&A) -> bool) -> Option<A> {
-        iter::find(self, f)
+        old_iter::find(self, f)
     }
 }
 
-impl<'self,A:Copy + Ord> iter::CopyableOrderedIter<A> for &'self [A] {
-    fn min(&self) -> A { iter::min(self) }
-    fn max(&self) -> A { iter::max(self) }
+impl<'self,A:Copy + Ord> old_iter::CopyableOrderedIter<A> for &'self [A] {
+    fn min(&self) -> A { old_iter::min(self) }
+    fn max(&self) -> A { old_iter::max(self) }
 }
 
 // FIXME(#4148): This should be redundant
-impl<A:Copy + Ord> iter::CopyableOrderedIter<A> for ~[A] {
-    fn min(&self) -> A { iter::min(self) }
-    fn max(&self) -> A { iter::max(self) }
+impl<A:Copy + Ord> old_iter::CopyableOrderedIter<A> for ~[A] {
+    fn min(&self) -> A { old_iter::min(self) }
+    fn max(&self) -> A { old_iter::max(self) }
 }
 
 // FIXME(#4148): This should be redundant
-impl<A:Copy + Ord> iter::CopyableOrderedIter<A> for @[A] {
-    fn min(&self) -> A { iter::min(self) }
-    fn max(&self) -> A { iter::max(self) }
+impl<A:Copy + Ord> old_iter::CopyableOrderedIter<A> for @[A] {
+    fn min(&self) -> A { old_iter::min(self) }
+    fn max(&self) -> A { old_iter::max(self) }
 }
 
-impl<'self,A:Copy> iter::CopyableNonstrictIter<A> for &'self [A] {
+impl<'self,A:Copy> old_iter::CopyableNonstrictIter<A> for &'self [A] {
     fn each_val(&const self, f: &fn(A) -> bool) {
         let mut i = 0;
         while i < self.len() {
@@ -2906,7 +2906,7 @@ impl<'self,A:Copy> iter::CopyableNonstrictIter<A> for &'self [A] {
 }
 
 // FIXME(#4148): This should be redundant
-impl<A:Copy> iter::CopyableNonstrictIter<A> for ~[A] {
+impl<A:Copy> old_iter::CopyableNonstrictIter<A> for ~[A] {
     fn each_val(&const self, f: &fn(A) -> bool) {
         let mut i = 0;
         while i < uniq_len(self) {
@@ -2917,7 +2917,7 @@ impl<A:Copy> iter::CopyableNonstrictIter<A> for ~[A] {
 }
 
 // FIXME(#4148): This should be redundant
-impl<A:Copy> iter::CopyableNonstrictIter<A> for @[A] {
+impl<A:Copy> old_iter::CopyableNonstrictIter<A> for @[A] {
     fn each_val(&const self, f: &fn(A) -> bool) {
         let mut i = 0;
         while i < self.len() {

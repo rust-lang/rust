@@ -11,7 +11,7 @@
 // xfail-fast
 
 use core::container::{Container, Mutable, Map};
-use core::iter::BaseIter;
+use core::old_iter::BaseIter;
 
 enum cat_type { tuxedo, tabby, tortoiseshell }
 

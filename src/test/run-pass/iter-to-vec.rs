@@ -12,7 +12,7 @@ pub fn main() {
     assert!([1u, 3u].to_vec() == ~[1u, 3u]);
     let e: ~[uint] = ~[];
     assert!(e.to_vec() == ~[]);
-    assert!(iter::to_vec(&None::<uint>) == ~[]);
-    assert!(iter::to_vec(&Some(1u)) == ~[1u]);
-    assert!(iter::to_vec(&Some(2u)) == ~[2u]);
+    assert!(old_iter::to_vec(&None::<uint>) == ~[]);
+    assert!(old_iter::to_vec(&Some(1u)) == ~[1u]);
+    assert!(old_iter::to_vec(&Some(2u)) == ~[2u]);
 }

@@ -30,7 +30,7 @@ fn main() {
 }
 
 fn run(repeat: int, depth: int) {
-    for iter::repeat(repeat as uint) {
+    for old_iter::repeat(repeat as uint) {
         debug!("starting %.4f", precise_time_s());
         do task::try {
             recurse_or_fail(depth, None)

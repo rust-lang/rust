@@ -15,7 +15,7 @@ pub fn main() {
     assert!([1u, 2u].any(is_even));
     assert!(![].any(is_even));
 
-    assert!(!iter::any(&Some(1u), is_even));
-    assert!(iter::any(&Some(2u), is_even));
-    assert!(!iter::any(&None::<uint>, is_even));
+    assert!(!old_iter::any(&Some(1u), is_even));
+    assert!(old_iter::any(&Some(2u), is_even));
+    assert!(!old_iter::any(&None::<uint>, is_even));
 }
