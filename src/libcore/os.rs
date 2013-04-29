@@ -643,20 +643,22 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
 /// Returns true iff creation
 /// succeeded. Also creates all intermediate subdirectories
 /// if they don't already exist, giving all of them the same mode.
+
+// tjc: if directory exists but with different permissions,
+// should we return false?
 pub fn mkdir_recursive(p: &Path, mode: c_int) -> bool {
     if path_is_dir(p) {
         return true;
     }
-    let parent = p.dir_path();
-    debug!("mkdir_recursive: parent = %s",
-           parent.to_str());
-    if parent.to_str() == ~"."
-        || parent.to_str() == ~"/" { // !!!
+    else if p.components.is_empty() {
+        return false;
+    }
+    else if p.components.len() == 1 {
         // No parent directories to create
-        path_is_dir(&parent) && make_dir(p, mode)
+        path_is_dir(p) || make_dir(p, mode)
     }
     else {
-        mkdir_recursive(&parent, mode) && make_dir(p, mode)
+        mkdir_recursive(&p.pop(), mode) && make_dir(p, mode)
     }
 }
 
@@ -1267,6 +1269,8 @@ mod tests {
     use run;
     use str;
     use vec;
+    use libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
+
 
     #[test]
     pub fn last_os_error() {
@@ -1490,16 +1494,16 @@ mod tests {
     }
 
     #[test]
-    fn recursive_mkdir_ok() {
-        use libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
-
-        let root = os::tmpdir();
-        let path = "xy/z/zy";
-        let nested = root.push(path);
-        assert!(os::mkdir_recursive(&nested,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
-        assert!(os::path_is_dir(&root.push("xy")));
-        assert!(os::path_is_dir(&root.push("xy/z")));
-        assert!(os::path_is_dir(&nested));
+    fn recursive_mkdir_slash() {
+        let path = Path("/");
+        assert!(os::mkdir_recursive(&path,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
     }
 
+    #[test]
+    fn recursive_mkdir_empty() {
+        let path = Path("");
+        assert!(!os::mkdir_recursive(&path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+    }
+
+    // More recursive_mkdir tests are in std::tempfile
 }
