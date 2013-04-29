@@ -547,7 +547,9 @@ impl Exponential for float {
     fn log10(&self) -> float {
         (*self as f64).log10() as float
     }
+}
 
+impl Hyperbolic for float {
     #[inline(always)]
     fn sinh(&self) -> float {
         (*self as f64).sinh() as float
