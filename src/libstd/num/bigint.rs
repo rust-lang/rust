@@ -623,7 +623,7 @@ impl BigUint {
         let mut shifted = ~[];
         for self.data.each_reverse |elem| {
             shifted = ~[(*elem >> n_bits) | borrow] + shifted;
-            borrow = *elem << (uint::bits - n_bits);
+            borrow = *elem << (BigDigit::bits - n_bits);
         }
         return BigUint::new(shifted);
     }
@@ -1213,6 +1213,7 @@ mod biguint_tests {
         check(~[1 << 2], 2, ~[1]);
         check(~[1, 2], 3, ~[1 << (BigDigit::bits - 2)]);
         check(~[1, 1, 2], 3 + BigDigit::bits, ~[1 << (BigDigit::bits - 2)]);
+        check(~[0, 1], 1, ~[0x80000000]);
         test_shr_bits();
 
         #[cfg(target_arch = "x86_64")]
