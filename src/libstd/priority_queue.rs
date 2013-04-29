@@ -11,7 +11,6 @@
 //! A priority queue implemented with a binary heap
 
 use core::old_iter::BaseIter;
-use core::ptr::addr_of;
 
 #[abi = "rust-intrinsic"]
 extern "rust-intrinsic" mod rusti {

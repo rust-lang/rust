@@ -569,9 +569,8 @@ mod test {
         let parser = string_to_parser(@~"b : int");
         assert_eq!(parser.parse_arg_general(true),
                    ast::arg{
-                       mode: ast::infer(1),
                        is_mutbl: false,
-                       ty: @ast::Ty{id:4, // fixme
+                       ty: @ast::Ty{id:3, // fixme
                                     node: ast::ty_path(@ast::Path{
                                         span:sp(4,4), // this is bizarre...
                                         // check this in the original parser?
@@ -579,9 +578,9 @@ mod test {
                                         idents:~[mk_ident(105)],
                                         rp: None,
                                         types: ~[]},
-                                                       3),
+                                                       2),
                                     span:sp(4,7)},
-                       pat: @ast::pat{id:2,
+                       pat: @ast::pat{id:1,
                                       node: ast::pat_ident(ast::bind_by_copy,
                                                            @ast::Path{
                                                                span:sp(0,1),
@@ -592,7 +591,7 @@ mod test {
                                                            None // no idea
                                                           ),
                                       span: sp(0,3)}, // really?
-                       id: 5 // fixme
+                       id: 4 // fixme
                    })
     }
 
@@ -604,21 +603,20 @@ mod test {
                   Some(
                       @ast::item{ident:mk_ident(100),
                             attrs:~[],
-                            id: 11, // fixme
+                            id: 10, // fixme
                             node: ast::item_fn(ast::fn_decl{
                                 inputs: ~[ast::arg{
-                                    mode: ast::infer(1),
                                     is_mutbl: false,
-                                    ty: @ast::Ty{id:4, // fixme
+                                    ty: @ast::Ty{id:3, // fixme
                                                 node: ast::ty_path(@ast::Path{
                                         span:sp(10,13),
                                         global:false,
                                         idents:~[mk_ident(106)],
                                         rp: None,
                                         types: ~[]},
-                                                       3),
+                                                       2),
                                                 span:sp(10,13)},
-                                    pat: @ast::pat{id:2, // fixme
+                                    pat: @ast::pat{id:1, // fixme
                                                    node: ast::pat_ident(
                                                        ast::bind_by_copy,
                                                        @ast::Path{
@@ -630,9 +628,9 @@ mod test {
                                                        None // no idea
                                                    ),
                                                   span: sp(6,9)}, // bleah.
-                                    id: 5 // fixme
+                                    id: 4 // fixme
                                 }],
-                                output: @ast::Ty{id:6, // fixme
+                                output: @ast::Ty{id:5, // fixme
                                                  node: ast::ty_nil,
                                                  span:sp(15,15)}, // not sure
                                 cf: ast::return_val
@@ -649,8 +647,8 @@ mod test {
                                             view_items: ~[],
                                             stmts: ~[@spanned{
                                                 node: ast::stmt_semi(@ast::expr{
-                                                    id: 7,
-                                                    callee_id: 8,
+                                                    id: 6,
+                                                    callee_id: 7,
                                                     node: ast::expr_path(
                                                         @ast::Path{
                                                             span:sp(17,18),
@@ -659,10 +657,10 @@ mod test {
                                                             rp:None,
                                                             types: ~[]}),
                                                     span: sp(17,18)},
-                                                                     9), // fixme
+                                                                     8), // fixme
                                                 span: sp(17,18)}],
                                             expr: None,
-                                            id: 10, // fixme
+                                            id: 9, // fixme
                                             rules: ast::default_blk // no idea
                                         }}),
                             vis: ast::inherited,
