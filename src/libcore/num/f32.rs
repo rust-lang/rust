@@ -11,7 +11,6 @@
 //! Operations and constants for `f32`
 
 use from_str;
-use libc::c_int;
 use num::{Zero, One, strconv};
 use prelude::*;
 
@@ -102,8 +101,8 @@ delegate!(
     fn sinh(n: c_float) -> c_float = c_float_utils::sinh,
     fn tan(n: c_float) -> c_float = c_float_utils::tan,
     fn tanh(n: c_float) -> c_float = c_float_utils::tanh,
-    fn tgamma(n: c_float) -> c_float = c_float_utils::tgamma)
-
+    fn tgamma(n: c_float) -> c_float = c_float_utils::tgamma
+)
 
 // These are not defined inside consts:: for consistency with
 // the integer types
@@ -368,6 +367,77 @@ impl Fractional for f32 {
     fn recip(&self) -> f32 { 1.0 / *self }
 }
 
+impl Algebraic for f32 {
+    #[inline(always)]
+    fn pow(&self, n: f32) -> f32 { pow(*self, n) }
+
+    #[inline(always)]
+    fn sqrt(&self) -> f32 { sqrt(*self) }
+
+    #[inline(always)]
+    fn rsqrt(&self) -> f32 { self.sqrt().recip() }
+
+    #[inline(always)]
+    fn cbrt(&self) -> f32 { cbrt(*self) }
+
+    #[inline(always)]
+    fn hypot(&self, other: f32) -> f32 { hypot(*self, other) }
+}
+
+impl Trigonometric for f32 {
+    #[inline(always)]
+    fn sin(&self) -> f32 { sin(*self) }
+
+    #[inline(always)]
+    fn cos(&self) -> f32 { cos(*self) }
+
+    #[inline(always)]
+    fn tan(&self) -> f32 { tan(*self) }
+
+    #[inline(always)]
+    fn asin(&self) -> f32 { asin(*self) }
+
+    #[inline(always)]
+    fn acos(&self) -> f32 { acos(*self) }
+
+    #[inline(always)]
+    fn atan(&self) -> f32 { atan(*self) }
+
+    #[inline(always)]
+    fn atan2(&self, other: f32) -> f32 { atan2(*self, other) }
+}
+
+impl Exponential for f32 {
+    #[inline(always)]
+    fn exp(&self) -> f32 { exp(*self) }
+
+    #[inline(always)]
+    fn exp2(&self) -> f32 { exp2(*self) }
+
+    #[inline(always)]
+    fn expm1(&self) -> f32 { expm1(*self) }
+
+    #[inline(always)]
+    fn log(&self) -> f32 { ln(*self) }
+
+    #[inline(always)]
+    fn log2(&self) -> f32 { log2(*self) }
+
+    #[inline(always)]
+    fn log10(&self) -> f32 { log10(*self) }
+}
+
+impl Hyperbolic for f32 {
+    #[inline(always)]
+    fn sinh(&self) -> f32 { sinh(*self) }
+
+    #[inline(always)]
+    fn cosh(&self) -> f32 { cosh(*self) }
+
+    #[inline(always)]
+    fn tanh(&self) -> f32 { tanh(*self) }
+}
+
 impl Real for f32 {
     /// Archimedes' constant
     #[inline(always)]
@@ -437,45 +507,6 @@ impl Real for f32 {
     #[inline(always)]
     fn log_10() -> f32 { 2.30258509299404568401799145468436421 }
 
-    #[inline(always)]
-    fn pow(&self, n: f32) -> f32 { pow(*self, n) }
-
-    #[inline(always)]
-    fn exp(&self) -> f32 { exp(*self) }
-
-    #[inline(always)]
-    fn exp2(&self) -> f32 { exp2(*self) }
-
-    #[inline(always)]
-    fn expm1(&self) -> f32 { expm1(*self) }
-
-    #[inline(always)]
-    fn ldexp(&self, n: int) -> f32 { ldexp(*self, n as c_int) }
-
-    #[inline(always)]
-    fn log(&self) -> f32 { ln(*self) }
-
-    #[inline(always)]
-    fn log2(&self) -> f32 { log2(*self) }
-
-    #[inline(always)]
-    fn log10(&self) -> f32 { log10(*self) }
-
-    #[inline(always)]
-    fn log_radix(&self) -> f32 { log_radix(*self) as f32 }
-
-    #[inline(always)]
-    fn ilog_radix(&self) -> int { ilog_radix(*self) as int }
-
-    #[inline(always)]
-    fn sqrt(&self) -> f32 { sqrt(*self) }
-
-    #[inline(always)]
-    fn rsqrt(&self) -> f32 { self.sqrt().recip() }
-
-    #[inline(always)]
-    fn cbrt(&self) -> f32 { cbrt(*self) }
-
     /// Converts to degrees, assuming the number is in radians
     #[inline(always)]
     fn to_degrees(&self) -> f32 { *self * (180.0 / Real::pi::<f32>()) }
@@ -483,39 +514,6 @@ impl Real for f32 {
     /// Converts to radians, assuming the number is in degrees
     #[inline(always)]
     fn to_radians(&self) -> f32 { *self * (Real::pi::<f32>() / 180.0) }
-
-    #[inline(always)]
-    fn hypot(&self, other: f32) -> f32 { hypot(*self, other) }
-
-    #[inline(always)]
-    fn sin(&self) -> f32 { sin(*self) }
-
-    #[inline(always)]
-    fn cos(&self) -> f32 { cos(*self) }
-
-    #[inline(always)]
-    fn tan(&self) -> f32 { tan(*self) }
-
-    #[inline(always)]
-    fn asin(&self) -> f32 { asin(*self) }
-
-    #[inline(always)]
-    fn acos(&self) -> f32 { acos(*self) }
-
-    #[inline(always)]
-    fn atan(&self) -> f32 { atan(*self) }
-
-    #[inline(always)]
-    fn atan2(&self, other: f32) -> f32 { atan2(*self, other) }
-
-    #[inline(always)]
-    fn sinh(&self) -> f32 { sinh(*self) }
-
-    #[inline(always)]
-    fn cosh(&self) -> f32 { cosh(*self) }
-
-    #[inline(always)]
-    fn tanh(&self) -> f32 { tanh(*self) }
 }
 
 impl Bounded for f32 {

@@ -453,6 +453,119 @@ impl Fractional for float {
     fn recip(&self) -> float { 1.0 / *self }
 }
 
+impl Algebraic for float {
+    #[inline(always)]
+    fn pow(&self, n: float) -> float {
+        (*self as f64).pow(n as f64) as float
+    }
+
+    #[inline(always)]
+    fn sqrt(&self) -> float {
+        (*self as f64).sqrt() as float
+    }
+
+    #[inline(always)]
+    fn rsqrt(&self) -> float {
+        (*self as f64).rsqrt() as float
+    }
+
+    #[inline(always)]
+    fn cbrt(&self) -> float {
+        (*self as f64).cbrt() as float
+    }
+
+    #[inline(always)]
+    fn hypot(&self, other: float) -> float {
+        (*self as f64).hypot(other as f64) as float
+    }
+}
+
+impl Trigonometric for float {
+    #[inline(always)]
+    fn sin(&self) -> float {
+        (*self as f64).sin() as float
+    }
+
+    #[inline(always)]
+    fn cos(&self) -> float {
+        (*self as f64).cos() as float
+    }
+
+    #[inline(always)]
+    fn tan(&self) -> float {
+        (*self as f64).tan() as float
+    }
+
+    #[inline(always)]
+    fn asin(&self) -> float {
+        (*self as f64).asin() as float
+    }
+
+    #[inline(always)]
+    fn acos(&self) -> float {
+        (*self as f64).acos() as float
+    }
+
+    #[inline(always)]
+    fn atan(&self) -> float {
+        (*self as f64).atan() as float
+    }
+
+    #[inline(always)]
+    fn atan2(&self, other: float) -> float {
+        (*self as f64).atan2(other as f64) as float
+    }
+}
+
+impl Exponential for float {
+    #[inline(always)]
+    fn exp(&self) -> float {
+        (*self as f64).exp() as float
+    }
+
+    #[inline(always)]
+    fn exp2(&self) -> float {
+        (*self as f64).exp2() as float
+    }
+
+    #[inline(always)]
+    fn expm1(&self) -> float {
+        (*self as f64).expm1() as float
+    }
+
+    #[inline(always)]
+    fn log(&self) -> float {
+        (*self as f64).log() as float
+    }
+
+    #[inline(always)]
+    fn log2(&self) -> float {
+        (*self as f64).log2() as float
+    }
+
+    #[inline(always)]
+    fn log10(&self) -> float {
+        (*self as f64).log10() as float
+    }
+}
+
+impl Hyperbolic for float {
+    #[inline(always)]
+    fn sinh(&self) -> float {
+        (*self as f64).sinh() as float
+    }
+
+    #[inline(always)]
+    fn cosh(&self) -> float {
+        (*self as f64).cosh() as float
+    }
+
+    #[inline(always)]
+    fn tanh(&self) -> float {
+        (*self as f64).tanh() as float
+    }
+}
+
 impl Real for float {
     /// Archimedes' constant
     #[inline(always)]
@@ -522,85 +635,13 @@ impl Real for float {
     #[inline(always)]
     fn log_10() -> float { 2.30258509299404568401799145468436421 }
 
-    #[inline(always)]
-    fn pow(&self, n: float) -> float { pow(*self as f64, n as f64) as float }
-
-    #[inline(always)]
-    fn exp(&self) -> float { exp(*self as f64) as float }
-
-    #[inline(always)]
-    fn exp2(&self) -> float { exp2(*self as f64) as float }
-
-    #[inline(always)]
-    fn expm1(&self) -> float { expm1(*self as f64) as float }
-
-    #[inline(always)]
-    fn ldexp(&self, n: int) -> float { ldexp(*self as f64, n as c_int) as float }
-
-    #[inline(always)]
-    fn log(&self) -> float { ln(*self as f64) as float }
-
-    #[inline(always)]
-    fn log2(&self) -> float { log2(*self as f64) as float }
-
-    #[inline(always)]
-    fn log10(&self) -> float { log10(*self as f64) as float }
-
-    #[inline(always)]
-    fn log_radix(&self) -> float { log_radix(*self as f64) as float }
-
-    #[inline(always)]
-    fn ilog_radix(&self) -> int { ilog_radix(*self as f64) as int }
-
-    #[inline(always)]
-    fn sqrt(&self) -> float { sqrt(*self) }
-
-    #[inline(always)]
-    fn rsqrt(&self) -> float { self.sqrt().recip() }
-
-    #[inline(always)]
-    fn cbrt(&self) -> float { cbrt(*self as f64) as float }
-
     /// Converts to degrees, assuming the number is in radians
     #[inline(always)]
-    fn to_degrees(&self) -> float { *self * (180.0 / Real::pi::<float>()) }
+    fn to_degrees(&self) -> float { (*self as f64).to_degrees() as float }
 
     /// Converts to radians, assuming the number is in degrees
     #[inline(always)]
-    fn to_radians(&self) -> float { *self * (Real::pi::<float>() / 180.0) }
-
-    #[inline(always)]
-    fn hypot(&self, other: float) -> float { hypot(*self as f64, other as f64) as float }
-
-    #[inline(always)]
-    fn sin(&self) -> float { sin(*self) }
-
-    #[inline(always)]
-    fn cos(&self) -> float { cos(*self) }
-
-    #[inline(always)]
-    fn tan(&self) -> float { tan(*self) }
-
-    #[inline(always)]
-    fn asin(&self) -> float { asin(*self as f64) as float }
-
-    #[inline(always)]
-    fn acos(&self) -> float { acos(*self as f64) as float }
-
-    #[inline(always)]
-    fn atan(&self) -> float { atan(*self) }
-
-    #[inline(always)]
-    fn atan2(&self, other: float) -> float { atan2(*self as f64, other as f64) as float }
-
-    #[inline(always)]
-    fn sinh(&self) -> float { sinh(*self as f64) as float }
-
-    #[inline(always)]
-    fn cosh(&self) -> float { cosh(*self as f64) as float }
-
-    #[inline(always)]
-    fn tanh(&self) -> float { tanh(*self as f64) as float }
+    fn to_radians(&self) -> float { (*self as f64).to_radians() as float }
 }
 
 impl RealExt for float {

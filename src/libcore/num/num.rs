@@ -85,7 +85,8 @@ pub trait Integer: Num
 
     fn gcd(&self, other: &Self) -> Self;
     fn lcm(&self, other: &Self) -> Self;
-    fn divisible_by(&self, other: &Self) -> bool;
+
+    fn is_multiple_of(&self, other: &Self) -> bool;
     fn is_even(&self) -> bool;
     fn is_odd(&self) -> bool;
 }
@@ -105,14 +106,47 @@ pub trait Fractional: Num
     fn recip(&self) -> Self;
 }
 
+pub trait Algebraic {
+    fn pow(&self, n: Self) -> Self;
+    fn sqrt(&self) -> Self;
+    fn rsqrt(&self) -> Self;
+    fn cbrt(&self) -> Self;
+    fn hypot(&self, other: Self) -> Self;
+}
+
+pub trait Trigonometric {
+    fn sin(&self) -> Self;
+    fn cos(&self) -> Self;
+    fn tan(&self) -> Self;
+    fn asin(&self) -> Self;
+    fn acos(&self) -> Self;
+    fn atan(&self) -> Self;
+    fn atan2(&self, other: Self) -> Self;
+}
+
+pub trait Exponential {
+    fn exp(&self) -> Self;
+    fn exp2(&self) -> Self;
+    fn expm1(&self) -> Self;
+    fn log(&self) -> Self;
+    fn log2(&self) -> Self;
+    fn log10(&self) -> Self;
+}
+
+pub trait Hyperbolic: Exponential {
+    fn sinh(&self) -> Self;
+    fn cosh(&self) -> Self;
+    fn tanh(&self) -> Self;
+}
+
 ///
 /// Defines constants and methods common to real numbers
 ///
 pub trait Real: Signed
-              + Fractional {
-    // FIXME (#5527): usages of `int` should be replaced with an associated
-    // integer type once these are implemented
-
+              + Fractional
+              + Algebraic
+              + Trigonometric
+              + Hyperbolic {
     // Common Constants
     // FIXME (#5527): These should be associated constants
     fn pi() -> Self;
@@ -133,41 +167,9 @@ pub trait Real: Signed
     fn log_2() -> Self;
     fn log_10() -> Self;
 
-    // Exponential functions
-    fn pow(&self, n: Self) -> Self;
-    fn exp(&self) -> Self;
-    fn exp2(&self) -> Self;
-    fn expm1(&self) -> Self;
-    fn ldexp(&self, n: int) -> Self;
-    fn log(&self) -> Self;
-    fn log2(&self) -> Self;
-    fn log10(&self) -> Self;
-    fn log_radix(&self) -> Self;
-    fn ilog_radix(&self) -> int;
-    fn sqrt(&self) -> Self;
-    fn rsqrt(&self) -> Self;
-    fn cbrt(&self) -> Self;
-
     // Angular conversions
     fn to_degrees(&self) -> Self;
     fn to_radians(&self) -> Self;
-
-    // Triganomic functions
-    fn hypot(&self, other: Self) -> Self;
-    fn sin(&self) -> Self;
-    fn cos(&self) -> Self;
-    fn tan(&self) -> Self;
-
-    // Inverse triganomic functions
-    fn asin(&self) -> Self;
-    fn acos(&self) -> Self;
-    fn atan(&self) -> Self;
-    fn atan2(&self, other: Self) -> Self;
-
-    // Hyperbolic triganomic functions
-    fn sinh(&self) -> Self;
-    fn cosh(&self) -> Self;
-    fn tanh(&self) -> Self;
 }
 
 ///
