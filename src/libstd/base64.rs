@@ -10,10 +10,6 @@
 
 //! Base64 binary-to-text encoding
 
-use core::old_iter;
-use core::str;
-use core::vec;
-
 pub trait ToBase64 {
     fn to_base64(&self) -> ~str;
 }
@@ -152,7 +148,7 @@ impl FromBase64 for ~[u8] {
         while i < len {
             let mut n = 0u;
 
-            for old_iter::repeat(4u) {
+            for 4u.times {
                 let ch = self[i] as char;
                 n <<= 6u;
 

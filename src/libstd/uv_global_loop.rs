@@ -215,7 +215,7 @@ mod test {
         let (exit_po, exit_ch) = stream::<()>();
         let exit_ch = SharedChan::new(exit_ch);
         let cycles = 5000u;
-        for old_iter::repeat(cycles) {
+        for cycles.times {
             let exit_ch_clone = exit_ch.clone();
             task::spawn_sched(task::ManualThreads(1u), || {
                 let hl_loop = &get_gl();
@@ -223,7 +223,7 @@ mod test {
                 exit_ch_clone.send(());
             });
         };
-        for old_iter::repeat(cycles) {
+        for cycles.times {
             exit_po.recv();
         };
         debug!(~"test_stress_gl_uv_global_loop_high_level_global_timer"+
