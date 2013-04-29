@@ -460,9 +460,6 @@ impl Real for f64 {
     fn expm1(&self) -> f64 { expm1(*self) }
 
     #[inline(always)]
-    fn ldexp(&self, n: int) -> f64 { ldexp(*self, n as c_int) }
-
-    #[inline(always)]
     fn log(&self) -> f64 { ln(*self) }
 
     #[inline(always)]
@@ -470,12 +467,6 @@ impl Real for f64 {
 
     #[inline(always)]
     fn log10(&self) -> f64 { log10(*self) }
-
-    #[inline(always)]
-    fn log_radix(&self) -> f64 { log_radix(*self) }
-
-    #[inline(always)]
-    fn ilog_radix(&self) -> int { ilog_radix(*self) as int }
 
     #[inline(always)]
     fn sqrt(&self) -> f64 { sqrt(*self) }
@@ -603,6 +594,9 @@ impl Float for f64 {
     }
 
     #[inline(always)]
+    fn radix() -> uint { 2 }
+
+    #[inline(always)]
     fn mantissa_digits() -> uint { 53 }
 
     #[inline(always)]
@@ -622,6 +616,27 @@ impl Float for f64 {
 
     #[inline(always)]
     fn max_10_exp() -> int { 308 }
+
+    /// Constructs a floating-point number from a significand and exponent
+    #[inline(always)]
+    fn encode(sig: f64, exp: int) -> f64 { ldexp(sig, exp as c_int) }
+
+    /// Splits the numder into its significand and exponent
+    #[inline(always)]
+    fn decode(&self) -> (f64, int) {
+        let mut exp = 0;
+        let sig = frexp(*self, &mut exp);
+        (sig, exp as int)
+    }
+
+    #[inline(always)]
+    fn significand(&self) -> f64 {
+        let mut _exp = 0;
+        frexp(*self, &mut _exp)
+    }
+
+    #[inline(always)]
+    fn exponent(&self) -> int { ilog_radix(*self) as int }
 
     ///
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
@@ -1036,6 +1051,39 @@ mod tests {
     fn test_primitive() {
         assert_eq!(Primitive::bits::<f64>(), sys::size_of::<f64>() * 8);
         assert_eq!(Primitive::bytes::<f64>(), sys::size_of::<f64>());
+    }
+
+    #[cfg(test)]
+    fn f64_encode(sig: f64, exp: int) -> f64 {
+        sig * (exp as f64).exp2()
+    }
+
+    #[test]
+    fn test_encode() {
+        let sig = 0.54321f64, exp = 12;
+        assert_eq!(Float::encode(sig, exp), f64_encode(sig, exp));
+        assert_eq!(Float::encode(sig, -exp), f64_encode(sig, -exp));
+    }
+
+    #[test]
+    fn test_decode() {
+        let sig = 0.54321f64, exp = 12;
+        assert_eq!(f64_encode(sig, exp).decode(), (sig, exp));
+        assert_eq!(f64_encode(sig, -exp).decode(), (sig, -exp));
+    }
+
+    #[test]
+    fn test_significand() {
+        let sig = 0.54321f64, exp = 12;
+        assert_eq!(Float::encode(sig, exp).significand(), f64_encode(sig, exp).significand());
+        assert_eq!(Float::encode(sig, -exp).significand(), f64_encode(sig, -exp).significand());
+    }
+
+    #[test]
+    fn test_exponent() {
+        let sig = 0.54321f64, exp = 12;
+        assert_eq!(Float::encode(sig, exp).exponent(), f64_encode(sig, exp).exponent());
+        assert_eq!(Float::encode(sig, -exp).exponent(), f64_encode(sig, -exp).exponent());
     }
 }
 

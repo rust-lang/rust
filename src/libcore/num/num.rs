@@ -85,7 +85,8 @@ pub trait Integer: Num
 
     fn gcd(&self, other: &Self) -> Self;
     fn lcm(&self, other: &Self) -> Self;
-    fn divisible_by(&self, other: &Self) -> bool;
+
+    fn is_multiple_of(&self, other: &Self) -> bool;
     fn is_even(&self) -> bool;
     fn is_odd(&self) -> bool;
 }
@@ -138,12 +139,9 @@ pub trait Real: Signed
     fn exp(&self) -> Self;
     fn exp2(&self) -> Self;
     fn expm1(&self) -> Self;
-    fn ldexp(&self, n: int) -> Self;
     fn log(&self) -> Self;
     fn log2(&self) -> Self;
     fn log10(&self) -> Self;
-    fn log_radix(&self) -> Self;
-    fn ilog_radix(&self) -> int;
     fn sqrt(&self) -> Self;
     fn rsqrt(&self) -> Self;
     fn cbrt(&self) -> Self;
@@ -255,6 +253,7 @@ pub trait Float: Real
     fn is_infinite(&self) -> bool;
     fn is_finite(&self) -> bool;
 
+    fn radix() -> uint;
     fn mantissa_digits() -> uint;
     fn digits() -> uint;
     fn epsilon() -> Self;
@@ -262,6 +261,11 @@ pub trait Float: Real
     fn max_exp() -> int;
     fn min_10_exp() -> int;
     fn max_10_exp() -> int;
+
+    fn encode(sig: Self, exp: int) -> Self;
+    fn decode(&self) -> (Self, int);
+    fn significand(&self) -> Self;
+    fn exponent(&self) -> int;
 
     fn mul_add(&self, a: Self, b: Self) -> Self;
     fn next_after(&self, other: Self) -> Self;

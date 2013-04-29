@@ -203,6 +203,9 @@ impl<T: Copy + Num + Ord>
     }
 }
 
+impl<T: Copy + Num + Ord>
+    Num for Ratio<T> {}
+
 /* Utils */
 impl<T: Copy + Num + Ord>
     Round for Ratio<T> {
@@ -242,6 +245,12 @@ impl<T: Copy + Num + Ord>
     }
 }
 
+impl<T: Copy + Num + Ord> Fractional for Ratio<T> {
+    #[inline]
+    fn recip(&self) -> Ratio<T> {
+        Ratio::new_raw(self.denom, self.numer)
+    }
+}
 
 /* String conversions */
 impl<T: ToStr> ToStr for Ratio<T> {
@@ -444,6 +453,15 @@ mod test {
         assert_eq!(_neg1_2.fract(), _neg1_2);
         assert_eq!(_1_2.fract(), _1_2);
         assert_eq!(_3_2.fract(), _1_2);
+    }
+
+    #[test]
+    fn test_recip() {
+        assert_eq!(_1 * _1.recip(), _1);
+        assert_eq!(_2 * _2.recip(), _1);
+        assert_eq!(_1_2 * _1_2.recip(), _1);
+        assert_eq!(_3_2 * _3_2.recip(), _1);
+        assert_eq!(_neg1_2 * _neg1_2.recip(), _1);
     }
 
     #[test]
