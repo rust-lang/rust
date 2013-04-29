@@ -425,9 +425,7 @@ impl Exponential for f32 {
 
     #[inline(always)]
     fn log10(&self) -> f32 { log10(*self) }
-}
 
-impl Hyperbolic for f32 {
     #[inline(always)]
     fn sinh(&self) -> f32 { sinh(*self) }
 
