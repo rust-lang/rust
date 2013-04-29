@@ -524,10 +524,10 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
       }
       ast::pat_box(inner) => {
-          check_pointer_pat(pcx, At, inner, pat.id, pat.span, expected);
+          check_pointer_pat(pcx, Managed, inner, pat.id, pat.span, expected);
       }
       ast::pat_uniq(inner) => {
-          check_pointer_pat(pcx, Uniq, inner, pat.id, pat.span, expected);
+          check_pointer_pat(pcx, Owned, inner, pat.id, pat.span, expected);
       }
       ast::pat_region(inner) => {
           check_pointer_pat(pcx, Borrowed, inner, pat.id, pat.span, expected);
@@ -609,10 +609,10 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
         fcx.write_ty(pat_id, expected);
     };
     match structure_of(fcx, span, expected) {
-        ty::ty_box(e_inner) if pointer_kind == At => {
+        ty::ty_box(e_inner) if pointer_kind == Managed => {
             check_inner(e_inner);
         }
-        ty::ty_uniq(e_inner) if pointer_kind == Uniq => {
+        ty::ty_uniq(e_inner) if pointer_kind == Owned => {
             check_inner(e_inner);
         }
         ty::ty_rptr(_, e_inner) if pointer_kind == Borrowed => {
@@ -626,8 +626,8 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
                     fmt!("mismatched types: expected `%s` but found %s",
                          resolved_expected, actual)},
                                                fmt!("an %s pattern", match pointer_kind {
-                                                   At => "@-box",
-                                                   Uniq => "~-box",
+                                                   Managed => "@-box",
+                                                   Owned => "~-box",
                                                    Borrowed => "&-pointer"
                                                }),
                     None);
@@ -637,5 +637,5 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
 }
 
 #[deriving(Eq)]
-enum PointerKind { At, Uniq, Borrowed }
+enum PointerKind { Managed, Owned, Borrowed }
 
