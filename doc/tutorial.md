@@ -2056,11 +2056,10 @@ method declarations. So, re-declaring the type parameter
 `T` as an explicit type parameter for `len`, in either the trait or
 the impl, would be a compile-time error.
 
-Within a trait definition, `self` is a special type that you can think
+Within a trait definition, `Self` is a special type that you can think
 of as a type parameter. An implementation of the trait for any given
-type `T` replaces the `self` type parameter with `T`. Simply, in a
-trait, `self` is a type, and in an impl, `self` is a value. The
-following trait describes types that support an equality operation:
+type `T` replaces the `Self` type parameter with `T`. The following
+trait describes types that support an equality operation:
 
 ~~~~
 // In a trait, `self` refers to the self argument.
@@ -2076,7 +2075,7 @@ impl Eq for int {
 ~~~~
 
 Notice that in the trait definition, `equals` takes a
-second parameter of type `self`.
+second parameter of type `Self`.
 In contrast, in the `impl`, `equals` takes a second parameter of
 type `int`, only using `self` as the name of the receiver.
 
