@@ -90,6 +90,14 @@ pub unsafe fn exchange_free(ptr: *c_char) {
 
 #[lang="malloc"]
 #[inline(always)]
+#[cfg(stage0)] // For some reason this isn't working on windows in stage0
+pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char { 
+    return rustrt::rust_upcall_malloc_noswitch(td, size);
+}
+
+#[lang="malloc"]
+#[inline(always)]
+#[cfg(not(stage0))]
 pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     match context() {
         OldTaskContext => {
@@ -110,6 +118,17 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 // problem occurs, call exit instead.
 #[lang="free"]
 #[inline(always)]
+#[cfg(stage0)]
+pub unsafe fn local_free(ptr: *c_char) {
+    rustrt::rust_upcall_free_noswitch(ptr);
+}
+
+// NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
+// inside a landing pad may corrupt the state of the exception handler. If a
+// problem occurs, call exit instead.
+#[lang="free"]
+#[inline(always)]
+#[cfg(not(stage0))]
 pub unsafe fn local_free(ptr: *c_char) {
     match context() {
         OldTaskContext => {
