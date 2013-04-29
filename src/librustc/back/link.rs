@@ -904,6 +904,9 @@ pub fn link_binary(sess: Session,
     // extern libraries might live, based on the addl_lib_search_paths
     cc_args.push_all(rpath::get_rpath_flags(sess, &output));
 
+    // Finally add all the linker arguments provided on the command line
+    cc_args.push_all(sess.opts.linker_args);
+
     debug!("%s link args: %s", cc_prog, str::connect(cc_args, ~" "));
     // We run 'cc' here
     let prog = run::program_output(cc_prog, cc_args);
