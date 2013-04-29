@@ -428,7 +428,7 @@ impl Integer for BigUint {
 
     /// Returns `true` if the number can be divided by `other` without leaving a remainder
     #[inline(always)]
-    fn divisible_by(&self, other: &BigUint) -> bool { (*self % *other).is_zero() }
+    fn is_multiple_of(&self, other: &BigUint) -> bool { (*self % *other).is_zero() }
 
     /// Returns `true` if the number is divisible by `2`
     #[inline(always)]
@@ -973,7 +973,7 @@ impl Integer for BigInt {
 
     /// Returns `true` if the number can be divided by `other` without leaving a remainder
     #[inline(always)]
-    fn divisible_by(&self, other: &BigInt) -> bool { self.data.divisible_by(&other.data) }
+    fn is_multiple_of(&self, other: &BigInt) -> bool { self.data.is_multiple_of(&other.data) }
 
     /// Returns `true` if the number is divisible by `2`
     #[inline(always)]
