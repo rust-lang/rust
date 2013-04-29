@@ -119,7 +119,7 @@ mod test {
     use uv::ll;
     use uv_iotask::IoTask;
 
-    use core::iter;
+    use core::old_iter;
     use core::libc;
     use core::ptr;
     use core::task;
@@ -210,7 +210,7 @@ mod test {
         let (exit_po, exit_ch) = stream::<()>();
         let exit_ch = SharedChan::new(exit_ch);
         let cycles = 5000u;
-        for iter::repeat(cycles) {
+        for old_iter::repeat(cycles) {
             let exit_ch_clone = exit_ch.clone();
             task::spawn_sched(task::ManualThreads(1u), || {
                 let hl_loop = &get_gl();
@@ -218,7 +218,7 @@ mod test {
                 exit_ch_clone.send(());
             });
         };
-        for iter::repeat(cycles) {
+        for old_iter::repeat(cycles) {
             exit_po.recv();
         };
         debug!(~"test_stress_gl_uv_global_loop_high_level_global_timer"+

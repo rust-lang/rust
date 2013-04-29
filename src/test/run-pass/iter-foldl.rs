@@ -13,7 +13,7 @@ fn add(x: &float, y: &uint) -> float { *x + ((*y) as float) }
 pub fn main() {
     assert!([1u, 3u].foldl(20f, add) == 24f);
     assert!([].foldl(20f, add) == 20f);
-    assert!(iter::foldl(&None::<uint>, 20f, add) == 20f);
-    assert!(iter::foldl(&Some(1u), 20f, add) == 21f);
-    assert!(iter::foldl(&Some(2u), 20f, add) == 22f);
+    assert!(old_iter::foldl(&None::<uint>, 20f, add) == 20f);
+    assert!(old_iter::foldl(&Some(1u), 20f, add) == 21f);
+    assert!(old_iter::foldl(&Some(2u), 20f, add) == 22f);
 }

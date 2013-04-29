@@ -13,7 +13,7 @@ pub fn main() {
     assert!([1u, 3u].count(&22u) == 0u);
     assert!([22u, 1u, 3u].count(&22u) == 1u);
     assert!([22u, 1u, 22u].count(&22u) == 2u);
-    assert!(iter::count(&None::<uint>, &22u) == 0u);
-    assert!(iter::count(&Some(1u), &22u) == 0u);
-    assert!(iter::count(&Some(22u), &22u) == 1u);
+    assert!(old_iter::count(&None::<uint>, &22u) == 0u);
+    assert!(old_iter::count(&Some(1u), &22u) == 0u);
+    assert!(old_iter::count(&Some(22u), &22u) == 1u);
 }

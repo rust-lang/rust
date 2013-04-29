@@ -183,7 +183,7 @@ mod test {
     #[test]
     fn test_gl_timer_sleep_stress1() {
         let hl_loop = &uv::global_loop::get();
-        for iter::repeat(50u) {
+        for old_iter::repeat(50u) {
             sleep(hl_loop, 1u);
         }
     }
@@ -203,7 +203,7 @@ mod test {
 
         };
 
-        for iter::repeat(repeat) {
+        for old_iter::repeat(repeat) {
 
             let ch = ch.clone();
             for spec.each |spec| {
@@ -213,7 +213,7 @@ mod test {
                 do task::spawn {
                     use core::rand::*;
                     let rng = rng();
-                    for iter::repeat(times) {
+                    for old_iter::repeat(times) {
                         sleep(&hl_loop_clone, rng.next() as uint % maxms);
                     }
                     ch.send(());
@@ -221,7 +221,7 @@ mod test {
             }
         }
 
-        for iter::repeat(repeat * spec.len()) {
+        for old_iter::repeat(repeat * spec.len()) {
             po.recv()
         }
     }
@@ -239,7 +239,7 @@ mod test {
         let mut failures = 0;
         let hl_loop = uv::global_loop::get();
 
-        for iter::repeat(times as uint) {
+        for old_iter::repeat(times as uint) {
             task::yield();
 
             let expected = rand::rng().gen_str(16u);
@@ -268,7 +268,7 @@ mod test {
         let mut failures = 0;
         let hl_loop = uv::global_loop::get();
 
-        for iter::repeat(times as uint) {
+        for old_iter::repeat(times as uint) {
             let expected = rand::rng().gen_str(16u);
             let (test_po, test_ch) = stream::<~str>();
             let hl_loop_clone = hl_loop.clone();

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::iter::BaseIter;
+use core::old_iter::BaseIter;
 
 trait FlatMapToVec<A> {
   fn flat_map_to_vec<B, IB:BaseIter<B>>(&self, op: &fn(&A) -> IB) -> ~[B];
@@ -16,7 +16,7 @@ trait FlatMapToVec<A> {
 
 impl<A:Copy> FlatMapToVec<A> for ~[A] {
    fn flat_map_to_vec<B, IB:BaseIter<B>>(&self, op: &fn(&A) -> IB) -> ~[B] {
-     iter::flat_map_to_vec(self, op)
+     old_iter::flat_map_to_vec(self, op)
    }
 }
 
