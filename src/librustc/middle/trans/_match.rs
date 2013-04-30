@@ -291,6 +291,7 @@ pub fn variant_opt(bcx: block, pat_id: ast::node_id)
             }
             ::core::util::unreachable();
         }
+        ast::def_fn(*) |
         ast::def_struct(_) => {
             return lit(UnitLikeStructLit(pat_id));
         }
@@ -818,6 +819,7 @@ pub fn get_options(bcx: block, m: &[@Match], col: uint) -> ~[Opt] {
                 // This could be one of: a tuple-like enum variant, a
                 // struct-like enum variant, or a struct.
                 match ccx.tcx.def_map.find(&cur.id) {
+                    Some(&ast::def_fn(*)) |
                     Some(&ast::def_variant(*)) => {
                         add_to_set(ccx.tcx, &mut found,
                                    variant_opt(bcx, cur.id));
@@ -1011,6 +1013,7 @@ pub fn any_tuple_struct_pat(bcx: block, m: &[@Match], col: uint) -> bool {
         match pat.node {
             ast::pat_enum(_, Some(_)) => {
                 match bcx.tcx().def_map.find(&pat.id) {
+                    Some(&ast::def_fn(*)) |
                     Some(&ast::def_struct(*)) => true,
                     _ => false
                 }
@@ -1780,6 +1783,7 @@ pub fn bind_irrefutable_pat(bcx: block,
                         }
                     }
                 }
+                Some(&ast::def_fn(*)) |
                 Some(&ast::def_struct(*)) => {
                     match *sub_pats {
                         None => {

@@ -912,6 +912,7 @@ pub impl mem_categorization_ctxt {
                         self.cat_pattern(subcmt, *subpat, op);
                     }
                 }
+                Some(&ast::def_fn(*)) |
                 Some(&ast::def_struct(*)) => {
                     for subpats.each |subpat| {
                         let cmt_field = self.cat_anon_struct_field(*subpat,

@@ -4277,6 +4277,7 @@ pub impl Resolver {
                 pat_enum(path, _) => {
                     // This must be an enum variant, struct or const.
                     match self.resolve_path(path, ValueNS, false, visitor) {
+                        Some(def @ def_fn(*))      |
                         Some(def @ def_variant(*)) |
                         Some(def @ def_struct(*))  |
                         Some(def @ def_const(*)) => {
