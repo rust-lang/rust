@@ -16,6 +16,9 @@ A BigUint is represented as an array of BigDigits.
 A BigInt is a combination of BigUint and Sign.
 */
 
+#[deny(vecs_implicitly_copyable)];
+#[deny(deprecated_mutable_fields)];
+
 use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use core::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix};
 use core::*;
@@ -355,16 +358,24 @@ impl Integer for BigUint {
                 let mut (d0, d_unit, b_unit) = div_estimate(&m, &b, n);
                 let mut prod = b * d0;
                 while prod > m {
-                    d0   -= d_unit;
-                    prod -= b_unit;
+                    // FIXME(#6050): overloaded operators force moves with generic types
+                    // d0 -= d_unit
+                    d0   = d0 - d_unit;
+                    // FIXME(#6050): overloaded operators force moves with generic types
+                    // prod = prod - b_unit;
+                    prod = prod - b_unit
                 }
                 if d0.is_zero() {
                     n = 2;
                     loop;
                 }
                 n = 1;
-                d += d0;
-                m -= prod;
+                // FIXME(#6102): Assignment operator for BigInt causes ICE
+                // d += d0;
+                d = d + d0;
+                // FIXME(#6102): Assignment operator for BigInt causes ICE
+                // m -= prod;
+                m = m - prod;
             }
             return (d, m);
         }
@@ -411,7 +422,7 @@ impl Integer for BigUint {
     #[inline(always)]
     fn gcd(&self, other: &BigUint) -> BigUint {
         // Use Euclid's algorithm
-        let mut m = *self, n = *other;
+        let mut m = copy *self, n = copy *other;
         while !m.is_zero() {
             let temp = m;
             m = n % temp;
@@ -547,14 +558,18 @@ impl BigUint {
         loop {
             let start = uint::max(end, unit_len) - unit_len;
             match uint::parse_bytes(vec::slice(buf, start, end), radix) {
-                Some(d) => n += BigUint::from_uint(d) * power,
+                // FIXME(#6102): Assignment operator for BigInt causes ICE
+                // Some(d) => n += BigUint::from_uint(d) * power,
+                Some(d) => n = n + BigUint::from_uint(d) * power,
                 None    => return None
             }
             if end <= unit_len {
                 return Some(n);
             }
             end -= unit_len;
-            power *= base_num;
+            // FIXME(#6050): overloaded operators force moves with generic types
+            // power *= base_num;
+            power = power * base_num;
         }
     }
 
@@ -569,15 +584,15 @@ impl BigUint {
     }
 
     #[inline(always)]
-    priv fn shl_unit(self, n_unit: uint) -> BigUint {
-        if n_unit == 0 || self.is_zero() { return self; }
+    priv fn shl_unit(&self, n_unit: uint) -> BigUint {
+        if n_unit == 0 || self.is_zero() { return copy *self; }
 
         return BigUint::new(vec::from_elem(n_unit, 0) + self.data);
     }
 
     #[inline(always)]
-    priv fn shl_bits(self, n_bits: uint) -> BigUint {
-        if n_bits == 0 || self.is_zero() { return self; }
+    priv fn shl_bits(&self, n_bits: uint) -> BigUint {
+        if n_bits == 0 || self.is_zero() { return copy *self; }
 
         let mut carry = 0;
         let shifted = do vec::map(self.data) |elem| {
@@ -592,8 +607,8 @@ impl BigUint {
     }
 
     #[inline(always)]
-    priv fn shr_unit(self, n_unit: uint) -> BigUint {
-        if n_unit == 0 { return self; }
+    priv fn shr_unit(&self, n_unit: uint) -> BigUint {
+        if n_unit == 0 { return copy *self; }
         if self.data.len() < n_unit { return Zero::zero(); }
         return BigUint::from_slice(
             vec::slice(self.data, n_unit, self.data.len())
@@ -601,14 +616,14 @@ impl BigUint {
     }
 
     #[inline(always)]
-    priv fn shr_bits(self, n_bits: uint) -> BigUint {
-        if n_bits == 0 || self.data.is_empty() { return self; }
+    priv fn shr_bits(&self, n_bits: uint) -> BigUint {
+        if n_bits == 0 || self.data.is_empty() { return copy *self; }
 
         let mut borrow = 0;
         let mut shifted = ~[];
         for self.data.each_reverse |elem| {
             shifted = ~[(*elem >> n_bits) | borrow] + shifted;
-            borrow = *elem << (uint::bits - n_bits);
+            borrow = *elem << (BigDigit::bits - n_bits);
         }
         return BigUint::new(shifted);
     }
@@ -1070,7 +1085,7 @@ pub impl BigInt {
             start = 1;
         }
         return BigUint::parse_bytes(vec::slice(buf, start, buf.len()), radix)
-            .map(|bu| BigInt::from_biguint(sign, *bu));
+            .map_consume(|bu| BigInt::from_biguint(sign, bu));
     }
 
     #[inline(always)]
@@ -1198,6 +1213,7 @@ mod biguint_tests {
         check(~[1 << 2], 2, ~[1]);
         check(~[1, 2], 3, ~[1 << (BigDigit::bits - 2)]);
         check(~[1, 1, 2], 3 + BigDigit::bits, ~[1 << (BigDigit::bits - 2)]);
+        check(~[0, 1], 1, ~[0x80000000]);
         test_shr_bits();
 
         #[cfg(target_arch = "x86_64")]
@@ -1376,10 +1392,10 @@ mod biguint_tests {
             let c = BigUint::from_slice(cVec);
 
             if !a.is_zero() {
-                assert!(c.quot_rem(&a) == (b, Zero::zero()));
+                assert!(c.quot_rem(&a) == (copy b, Zero::zero()));
             }
             if !b.is_zero() {
-                assert!(c.quot_rem(&b) == (a, Zero::zero()));
+                assert!(c.quot_rem(&b) == (copy a, Zero::zero()));
             }
         }
 
@@ -1503,7 +1519,7 @@ mod biguint_tests {
             let &(n, rs) = num_pair;
             for rs.each |str_pair| {
                 let &(radix, str) = str_pair;
-                assert_eq!(Some(n), FromStrRadix::from_str_radix(str, radix));
+                assert_eq!(&n, &FromStrRadix::from_str_radix(str, radix).get());
             }
         }
 
@@ -1517,7 +1533,9 @@ mod biguint_tests {
         fn factor(n: uint) -> BigUint {
             let mut f= One::one::<BigUint>();
             for uint::range(2, n + 1) |i| {
-                f *= BigUint::from_uint(i);
+                // FIXME(#6102): Assignment operator for BigInt causes ICE
+                // f *= BigUint::from_uint(i);
+                f = f * BigUint::from_uint(i);
             }
             return f;
         }
