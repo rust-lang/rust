@@ -17,7 +17,6 @@ use container::{Container, Mutable, Map, Set};
 use cmp::{Eq, Equiv};
 use hash::Hash;
 use old_iter::BaseIter;
-use hash::Hash;
 use old_iter;
 use option::{None, Option, Some};
 use rand::RngUtil;

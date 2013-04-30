@@ -196,6 +196,7 @@ pub fn mk_global_struct_e(cx: @ext_ctxt,
 }
 pub fn mk_glob_use(cx: @ext_ctxt,
                    sp: span,
+                   vis: ast::visibility,
                    path: ~[ast::ident]) -> @ast::view_item {
     let glob = @codemap::spanned {
         node: ast::view_path_glob(mk_raw_path(sp, path), cx.next_id()),
@@ -203,7 +204,7 @@ pub fn mk_glob_use(cx: @ext_ctxt,
     };
     @ast::view_item { node: ast::view_item_use(~[glob]),
                       attrs: ~[],
-                      vis: ast::private,
+                      vis: vis,
                       span: sp }
 }
 pub fn mk_local(cx: @ext_ctxt, sp: span, mutbl: bool,
