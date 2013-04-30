@@ -299,7 +299,7 @@ pub fn compute_moves(tcx: ty::ctxt,
 pub fn moved_variable_node_id_from_def(def: def) -> Option<node_id> {
     match def {
       def_binding(nid, _) |
-      def_arg(nid, _, _) |
+      def_arg(nid, _) |
       def_local(nid, _) |
       def_self(nid, _) => Some(nid),
 

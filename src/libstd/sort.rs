@@ -11,7 +11,6 @@
 //! Sorting methods
 
 use core::cmp::{Eq, Ord};
-use core::util;
 use core::vec::len;
 use core::vec;
 

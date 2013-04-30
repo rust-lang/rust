@@ -13,7 +13,8 @@ use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
 use middle::ty::{br_fresh, ctxt, field, method};
 use middle::ty::{mt, t, param_bound, param_ty};
-use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region};
+use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region,
+                 re_empty};
 use middle::ty::{ty_bool, ty_bot, ty_box, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_estr, ty_evec, ty_float, ty_bare_fn, ty_closure};
 use middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
