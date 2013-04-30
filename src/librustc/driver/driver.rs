@@ -308,7 +308,7 @@ pub fn compile_rest(sess: Session,
 
     };
 
-    if (sess.opts.output_info & session::out_link_args) > 0 {
+    if (sess.opts.debugging_opts & session::print_link_args) != 0 {
         io::println(str::connect(link::link_args(sess,
             &outputs.obj_filename, &outputs.out_filename, link_meta), " "));
     }
@@ -651,7 +651,7 @@ pub fn build_session_options(binary: @~str,
 
     let addl_lib_search_paths = getopts::opt_strs(matches, ~"L").map(|s| Path(*s));
 
-    let linker_args = getopts::opt_strs(matches, ~"linker").flat_map( |a| {
+    let linker_args = getopts::opt_strs(matches, ~"link-args").flat_map( |a| {
         let mut args = ~[];
         for str::each_split_char(*a, ',') |arg| {
             args.push(str::from_slice(arg));
@@ -663,11 +663,6 @@ pub fn build_session_options(binary: @~str,
     let test = opt_present(matches, ~"test");
     let android_cross_path = getopts::opt_maybe_str(
         matches, ~"android-cross-path");
-
-    let mut output_info = 0;
-    if opt_present(matches, "print-link-args") {
-        output_info |= session::out_link_args;
-    }
 
     let sopts = @session::options {
         crate_type: crate_type,
@@ -691,7 +686,6 @@ pub fn build_session_options(binary: @~str,
         parse_only: parse_only,
         no_trans: no_trans,
         debugging_opts: debugging_opts,
-        output_info: output_info,
         android_cross_path: android_cross_path
     };
     return sopts;
@@ -766,7 +760,7 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
   optmulti("L", "",   "Add a directory to the library search path",
                               "PATH"),
   optflag("",  "lib", "Compile a library crate"),
-  optmulti("",  "linker", "FLAGS is a comma-separated list of flags
+  optmulti("",  "link-args", "FLAGS is a comma-separated list of flags
                             passed to the linker", "FLAGS"),
   optflag("",  "ls",  "List the symbols defined by a library crate"),
   optflag("", "no-trans",
@@ -787,8 +781,6 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
                           typed (crates expanded, with type annotations),
                           or identified (fully parenthesized,
                           AST nodes and blocks with IDs)", "TYPE"),
-  optflag("", "print-link-args", "Prints all the arguments that would be
-                                    passed to the linker."),
   optflag("S", "",    "Compile only; do not assemble or link"),
   optflag("", "save-temps",
                         "Write intermediate files (.bc, .opt.bc, .o)
