@@ -10,6 +10,7 @@
 
 //! Utilities for manipulating the char type
 
+#[cfg(notest)]
 use cmp::Ord;
 use option::{None, Option, Some};
 use str;
