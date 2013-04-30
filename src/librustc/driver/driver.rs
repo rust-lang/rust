@@ -22,6 +22,7 @@ use middle;
 use util::common::time;
 use util::ppaux;
 
+use core::hashmap::HashMap;
 use core::int;
 use core::io;
 use core::os;
@@ -199,9 +200,6 @@ pub fn compile_rest(sess: Session,
 
     crate = time(time_passes, ~"core injection", ||
         front::core_inject::maybe_inject_libcore_ref(sess, crate));
-
-    time(time_passes, ~"building lint settings table", ||
-        lint::build_settings_crate(sess, crate));
 
     let ast_map = time(time_passes, ~"ast indexing", ||
             syntax::ast_map::map_crate(sess.diagnostic(), crate));
@@ -709,7 +707,6 @@ pub fn build_session_(sopts: @session::options,
         &sopts.maybe_sysroot,
         sopts.target_triple,
         /*bad*/copy sopts.addl_lib_search_paths);
-    let lint_settings = lint::mk_lint_settings();
     @Session_ {
         targ_cfg: target_cfg,
         opts: sopts,
@@ -723,7 +720,7 @@ pub fn build_session_(sopts: @session::options,
         filesearch: filesearch,
         building_library: @mut false,
         working_dir: os::getcwd(),
-        lint_settings: lint_settings
+        lints: @mut HashMap::new(),
     }
 }
 

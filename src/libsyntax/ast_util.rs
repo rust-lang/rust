@@ -412,7 +412,12 @@ pub fn id_visitor(vfn: @fn(node_id)) -> visit::vt<()> {
                       match vp.node {
                           view_path_simple(_, _, id) => vfn(id),
                           view_path_glob(_, id) => vfn(id),
-                          view_path_list(_, _, id) => vfn(id)
+                          view_path_list(_, ref paths, id) => {
+                              vfn(id);
+                              for paths.each |p| {
+                                  vfn(p.node.id);
+                              }
+                          }
                       }
                   }
               }
