@@ -32,6 +32,7 @@
 // think it's fine to remove this test, just because it's old and cruft and not hard to reproduce. *However* it should eventually be possible to implement the same interface for the same type multiple times with different type parameters, it's just that our current trait implementation has accidental limitations.
 
 // so I'm leaving it in.
+// actually, it looks like this is related to bug #3429. I'll rename this bug.
 
 // This test had to do with an outdated version of the iterable trait.
 // However, the condition it was testing seemed complex enough to
