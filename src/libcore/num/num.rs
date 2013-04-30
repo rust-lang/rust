@@ -385,7 +385,7 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Quot<T,T>+Mul<T,T>>(
 }
 
 #[cfg(test)]
-fn test_num<T:Num + NumCast>(ten: T, two: T) {
+pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
     assert_eq!(ten.add(&two),  cast(12));
     assert_eq!(ten.sub(&two),  cast(8));
     assert_eq!(ten.mul(&two),  cast(20));

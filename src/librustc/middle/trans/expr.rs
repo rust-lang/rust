@@ -563,7 +563,6 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
 
 fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                                dest: Dest) -> block {
-    let mut bcx = bcx;
     let _icx = bcx.insn_ctxt("trans_rvalue_dps_unadjusted");
     let tcx = bcx.tcx();
 
@@ -1408,7 +1407,6 @@ fn trans_eager_binop(bcx: block,
                      lhs_datum: &Datum,
                      rhs_datum: &Datum)
                   -> DatumBlock {
-    let mut bcx = bcx;
     let _icx = bcx.insn_ctxt("trans_eager_binop");
 
     let lhs = lhs_datum.to_appropriate_llval(bcx);
