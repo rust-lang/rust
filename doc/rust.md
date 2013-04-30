@@ -2393,7 +2393,7 @@ variables in the arm's block, and control enters the block.
 An example of an `match` expression:
 
 
-~~~~ {.xfail-test}
+~~~~
 # fn process_pair(a: int, b: int) { }
 # fn process_ten() { }
 
