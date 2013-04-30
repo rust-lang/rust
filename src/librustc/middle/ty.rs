@@ -1553,6 +1553,13 @@ pub fn type_is_ty_var(ty: t) -> bool {
 
 pub fn type_is_bool(ty: t) -> bool { get(ty).sty == ty_bool }
 
+pub fn type_is_self(ty: t) -> bool {
+    match get(ty).sty {
+        ty_self(*) => true,
+        _ => false
+    }
+}
+
 pub fn type_is_structural(ty: t) -> bool {
     match get(ty).sty {
       ty_struct(*) | ty_tup(_) | ty_enum(*) | ty_closure(_) | ty_trait(*) |

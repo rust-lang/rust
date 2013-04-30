@@ -658,6 +658,12 @@ pub impl<'self> LookupContext<'self> {
 
         let tcx = self.tcx();
         return match ty::get(self_ty).sty {
+            ty::ty_rptr(_, self_mt) if default_method_hack(self_mt) => {
+                (self_ty,
+                 ty::AutoDerefRef(ty::AutoDerefRef {
+                     autoderefs: autoderefs,
+                     autoref: None}))
+            }
             ty::ty_rptr(_, self_mt) => {
                 let region = self.infcx().next_region_var_nb(self.expr.span);
                 (ty::mk_rptr(tcx, region, self_mt),
@@ -679,6 +685,16 @@ pub impl<'self> LookupContext<'self> {
                      autoref: None}))
             }
         };
+
+        fn default_method_hack(self_mt: ty::mt) -> bool {
+            // FIXME(#6129). Default methods can't deal with autoref.
+            //
+            // I am a horrible monster and I pray for death. Currently
+            // the default method code fails when you try to reborrow
+            // because it is not handling types correctly. In lieu of
+            // fixing that, I am introducing this horrible hack. - ndm
+            self_mt.mutbl == m_imm && ty::type_is_self(self_mt.ty)
+        }
     }
 
     fn search_for_autosliced_method(
