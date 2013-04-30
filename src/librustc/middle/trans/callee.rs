@@ -722,7 +722,7 @@ pub fn trans_arg_expr(bcx: block,
             }
         }
     };
-    let mut arg_datum = arg_datumblock.datum;
+    let arg_datum = arg_datumblock.datum;
     let bcx = arg_datumblock.bcx;
 
     debug!("   arg datum: %s", arg_datum.to_str(bcx.ccx()));

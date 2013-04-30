@@ -1,9 +1,7 @@
 // error-pattern:borrowed
 
-fn f(x: &int, y: @mut int) {
-    unsafe {
-        *y = 2;
-    }
+fn f(_x: &int, y: @mut int) {
+    *y = 2;
 }
 
 fn main() {

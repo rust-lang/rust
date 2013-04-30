@@ -871,7 +871,7 @@ pub mod guarantor {
         let tcx = rcx.tcx();
         debug!("guarantor::for_by_ref(expr=%s, callee_scope=%?)",
                expr.repr(tcx), callee_scope);
-        let mut expr_cat = categorize(rcx, expr);
+        let expr_cat = categorize(rcx, expr);
         debug!("guarantor::for_by_ref(expr=%?, callee_scope=%?) category=%?",
                expr.id, callee_scope, expr_cat);
         let minimum_lifetime = ty::re_scope(callee_scope);

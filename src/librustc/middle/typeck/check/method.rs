@@ -120,7 +120,7 @@ pub fn lookup(
         expr: @ast::expr,                   // The expression `a.b(...)`.
         self_expr: @ast::expr,              // The expression `a`.
         callee_id: node_id,                 /* Where to store `a.b`'s type,
-                                             * also the scope of the call */ 
+                                             * also the scope of the call */
         m_name: ast::ident,                 // The ident `b`.
         self_ty: ty::t,                     // The type of `a`.
         supplied_tps: &[ty::t],             // The list of types X, Y, ... .
@@ -128,7 +128,7 @@ pub fn lookup(
         check_traits: CheckTraitsFlag,      // Whether we check traits only.
         autoderef_receiver: AutoderefReceiverFlag)
      -> Option<method_map_entry> {
-    let mut impl_dups = @mut HashSet::new();
+    let impl_dups = @mut HashSet::new();
     let lcx = LookupContext {
         fcx: fcx,
         expr: expr,

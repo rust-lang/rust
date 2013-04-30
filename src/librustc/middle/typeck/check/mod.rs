@@ -1684,7 +1684,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         };
 
         // construct the function type
-        let mut fn_ty = astconv::ty_of_closure(fcx,
+        let fn_ty = astconv::ty_of_closure(fcx,
                                                fcx,
                                                sigil,
                                                purity,
@@ -1695,7 +1695,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                                &opt_vec::Empty,
                                                expr.span);
 
-        let mut fty_sig;
+        let fty_sig;
         let fty = if error_happened {
             fty_sig = FnSig {
                 bound_lifetime_names: opt_vec::Empty,

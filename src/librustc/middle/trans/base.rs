@@ -2366,7 +2366,7 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
         // Call main.
         let lloutputarg = C_null(T_ptr(T_i8()));
         let llenvarg = unsafe { llvm::LLVMGetParam(llfdecl, 1 as c_uint) };
-        let mut args = ~[lloutputarg, llenvarg];
+        let args = ~[lloutputarg, llenvarg];
         let llresult = Call(bcx, main_llfn, args);
         Store(bcx, llresult, fcx.llretptr.get());
 
