@@ -625,10 +625,10 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
             fcx.infcx().type_error_message_str(span, |actual| {
                     fmt!("mismatched types: expected `%s` but found %s",
                          resolved_expected, actual)},
-                                               fmt!("an %s pattern", match pointer_kind {
-                                                   Managed => "@-box",
-                                                   Owned => "~-box",
-                                                   Borrowed => "&-pointer"
+                                               fmt!("%s pattern", match pointer_kind {
+                                                   Managed => "an @-box",
+                                                   Owned => "a ~-box",
+                                                   Borrowed => "an &-pointer"
                                                }),
                     None);
             fcx.write_error(pat_id);
