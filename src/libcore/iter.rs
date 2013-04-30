@@ -41,6 +41,7 @@ much easier to implement.
 
 */
 
+use cmp::Ord;
 use option::{Option, Some, None};
 
 pub trait Times {
@@ -107,8 +108,7 @@ pub fn all<T>(predicate: &fn(T) -> bool, iter: &fn(f: &fn(T) -> bool)) -> bool {
 }
 
 /**
- * Return the first element where `predicate` returns `true`, otherwise return `Npne` if no element
- * is found.
+ * Return the first element where `predicate` returns `true`. Return `None` if no element is found.
  *
  * # Example:
  *
@@ -125,6 +125,58 @@ pub fn find<T>(predicate: &fn(&T) -> bool, iter: &fn(f: &fn(T) -> bool)) -> Opti
         }
     }
     None
+}
+
+/**
+ * Return the largest item yielded by an iterator. Return `None` if the iterator is empty.
+ *
+ * # Example:
+ *
+ * ~~~~
+ * let xs = ~[8, 2, 3, 1, -5, 9, 11, 15];
+ * assert_eq!(max(|f| xs.each(f)).unwrap(), &15);
+ * ~~~~
+ */
+#[inline]
+pub fn max<T: Ord>(iter: &fn(f: &fn(T) -> bool)) -> Option<T> {
+    let mut result = None;
+    for iter |x| {
+        match result {
+            Some(ref mut y) => {
+                if x > *y {
+                    *y = x;
+                }
+            }
+            None => result = Some(x)
+        }
+    }
+    result
+}
+
+/**
+ * Return the smallest item yielded by an iterator. Return `None` if the iterator is empty.
+ *
+ * # Example:
+ *
+ * ~~~~
+ * let xs = ~[8, 2, 3, 1, -5, 9, 11, 15];
+ * assert_eq!(max(|f| xs.each(f)).unwrap(), &-5);
+ * ~~~~
+ */
+#[inline]
+pub fn min<T: Ord>(iter: &fn(f: &fn(T) -> bool)) -> Option<T> {
+    let mut result = None;
+    for iter |x| {
+        match result {
+            Some(ref mut y) => {
+                if x < *y {
+                    *y = x;
+                }
+            }
+            None => result = Some(x)
+        }
+    }
+    result
 }
 
 #[cfg(test)]
@@ -156,5 +208,17 @@ mod tests {
     fn test_find() {
         let xs = ~[1u, 2, 3, 4, 5, 6];
         assert_eq!(*find(|& &x: & &uint| x > 3, |f| xs.each(f)).unwrap(), 4);
+    }
+
+    #[test]
+    fn test_max() {
+        let xs = ~[8, 2, 3, 1, -5, 9, 11, 15];
+        assert_eq!(max(|f| xs.each(f)).unwrap(), &15);
+    }
+
+    #[test]
+    fn test_min() {
+        let xs = ~[8, 2, 3, 1, -5, 9, 11, 15];
+        assert_eq!(min(|f| xs.each(f)).unwrap(), &-5);
     }
 }
