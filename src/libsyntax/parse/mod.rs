@@ -612,4 +612,20 @@ mod test {
         string_to_expr(@~"3 + 4");
         string_to_expr(@~"a::z.froob(b,@(987+3))");
     }
+
+    #[test] fn attrs_fix_bug () {
+        string_to_item(@~"pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
+                   -> Result<@Writer, ~str> {
+    #[cfg(windows)]
+    fn wb() -> c_int {
+      (O_WRONLY | libc::consts::os::extra::O_BINARY) as c_int
+    }
+
+    #[cfg(unix)]
+    fn wb() -> c_int { O_WRONLY as c_int }
+
+    let mut fflags: c_int = wb();
+}");
+    }
+
 }
