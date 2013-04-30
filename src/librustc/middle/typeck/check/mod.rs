@@ -527,7 +527,7 @@ pub fn check_method(ccx: @mut CrateCtxt,
     let opt_self_info = method_ty.transformed_self_ty.map(|&ty| {
         SelfInfo {self_ty: ty,
                   self_id: method.self_id,
-                  span: method.self_ty.span}
+                  span: method.explicit_self.span}
     });
 
     check_bare_fn(

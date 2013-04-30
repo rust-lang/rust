@@ -142,7 +142,7 @@ impl RegionParameterization {
 }
 
 pub struct MethodRscope {
-    self_ty: ast::self_ty_,
+    explicit_self: ast::explicit_self_,
     variance: Option<ty::region_variance>,
     region_param_names: RegionParamNames,
 }
@@ -150,14 +150,14 @@ pub struct MethodRscope {
 impl MethodRscope {
     // `generics` here refers to the generics of the outer item (impl or
     // trait).
-    pub fn new(self_ty: ast::self_ty_,
+    pub fn new(explicit_self: ast::explicit_self_,
                variance: Option<ty::region_variance>,
                rcvr_generics: &ast::Generics)
             -> MethodRscope {
         let region_param_names =
             RegionParamNames::from_generics(rcvr_generics);
         MethodRscope {
-            self_ty: self_ty,
+            explicit_self: explicit_self,
             variance: variance,
             region_param_names: region_param_names
         }

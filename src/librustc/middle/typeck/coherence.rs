@@ -156,7 +156,7 @@ pub fn method_to_MethodInfo(ast_method: @method) -> @MethodInfo {
         did: local_def(ast_method.id),
         n_tps: ast_method.generics.ty_params.len(),
         ident: ast_method.ident,
-        self_type: ast_method.self_ty.node
+        explicit_self: ast_method.explicit_self.node
     }
 }
 
@@ -383,7 +383,7 @@ pub impl CoherenceChecker {
                         did: new_did,
                         n_tps: trait_method.generics.type_param_defs.len(),
                         ident: trait_method.ident,
-                        self_type: trait_method.self_ty
+                        explicit_self: trait_method.explicit_self
                     },
                     trait_method_def_id: trait_method.def_id
                 };
@@ -975,7 +975,7 @@ pub impl CoherenceChecker {
                         did: new_did,
                         n_tps: trait_method_info.ty.generics.type_param_defs.len(),
                         ident: trait_method_info.ty.ident,
-                        self_type: trait_method_info.ty.self_ty
+                        explicit_self: trait_method_info.ty.explicit_self
                     },
                     trait_method_def_id: trait_method_info.def_id
                 };
@@ -1126,7 +1126,7 @@ fn subst_receiver_types_in_method_ty(
         // method types *can* appear in the generic bounds or the fty
         generics: method.generics.subst(tcx, &combined_substs),
         fty: method.fty.subst(tcx, &combined_substs),
-        self_ty: method.self_ty,
+        explicit_self: method.explicit_self,
         vis: method.vis,
         def_id: new_def_id
     }

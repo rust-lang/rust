@@ -103,7 +103,7 @@ pub fn trans_method(ccx: @CrateContext,
                     llfn: ValueRef,
                     impl_id: ast::def_id) {
     // figure out how self is being passed
-    let self_arg = match method.self_ty.node {
+    let self_arg = match method.explicit_self.node {
       ast::sty_static => {
         no_self
       }
@@ -123,7 +123,7 @@ pub fn trans_method(ccx: @CrateContext,
         debug!("calling trans_fn with base_self_ty %s, self_ty %s",
                base_self_ty.repr(ccx.tcx),
                self_ty.repr(ccx.tcx));
-        match method.self_ty.node {
+        match method.explicit_self.node {
           ast::sty_value => {
             impl_owned_self(self_ty)
           }
@@ -590,7 +590,7 @@ pub fn trans_trait_callee(bcx: block,
                           n_method: uint,
                           self_expr: @ast::expr,
                           store: ty::TraitStore,
-                          explicit_self: ast::self_ty_)
+                          explicit_self: ast::explicit_self_)
                        -> Callee {
     //!
     //
@@ -627,7 +627,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
                                      n_method: uint,
                                      llpair: ValueRef,
                                      store: ty::TraitStore,
-                                     explicit_self: ast::self_ty_)
+                                     explicit_self: ast::explicit_self_)
                                   -> Callee {
     //!
     //

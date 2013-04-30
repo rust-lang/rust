@@ -767,7 +767,7 @@ pub struct ty_method {
     purity: purity,
     decl: fn_decl,
     generics: Generics,
-    self_ty: self_ty,
+    explicit_self: explicit_self,
     id: node_id,
     span: span,
 }
@@ -1064,7 +1064,7 @@ impl to_bytes::IterBytes for ret_style {
 #[auto_encode]
 #[auto_decode]
 #[deriving(Eq)]
-pub enum self_ty_ {
+pub enum explicit_self_ {
     sty_static,                                // no self
     sty_value,                                 // `self`
     sty_region(Option<@Lifetime>, mutability), // `&'lt self`
@@ -1073,7 +1073,7 @@ pub enum self_ty_ {
 }
 
 #[cfg(stage0)]
-impl to_bytes::IterBytes for self_ty_ {
+impl to_bytes::IterBytes for explicit_self_ {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         match *self {
             sty_static => 0u8.iter_bytes(lsb0, f),
@@ -1086,7 +1086,7 @@ impl to_bytes::IterBytes for self_ty_ {
 }
 
 #[cfg(not(stage0))]
-impl to_bytes::IterBytes for self_ty_ {
+impl to_bytes::IterBytes for explicit_self_ {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
             sty_static => 0u8.iter_bytes(lsb0, f),
@@ -1098,7 +1098,7 @@ impl to_bytes::IterBytes for self_ty_ {
     }
 }
 
-pub type self_ty = spanned<self_ty_>;
+pub type explicit_self = spanned<explicit_self_>;
 
 #[auto_encode]
 #[auto_decode]
@@ -1107,7 +1107,7 @@ pub struct method {
     ident: ident,
     attrs: ~[attribute],
     generics: Generics,
-    self_ty: self_ty,
+    explicit_self: explicit_self,
     purity: purity,
     decl: fn_decl,
     body: blk,

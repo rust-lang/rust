@@ -124,7 +124,7 @@ pub struct method_map_entry {
     self_mode: ty::SelfMode,
 
     // the type of explicit self on the method
-    explicit_self: ast::self_ty_,
+    explicit_self: ast::explicit_self_,
 
     // method details being invoked
     origin: method_origin,

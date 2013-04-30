@@ -636,12 +636,12 @@ impl Repr for ty::Generics {
 impl Repr for ty::method {
     fn repr(&self, tcx: ctxt) -> ~str {
         fmt!("method {ident: %s, generics: %s, transformed_self_ty: %s, \
-              fty: %s, self_ty: %s, vis: %s, def_id: %s}",
+              fty: %s, explicit_self: %s, vis: %s, def_id: %s}",
              self.ident.repr(tcx),
              self.generics.repr(tcx),
              self.transformed_self_ty.repr(tcx),
              self.fty.repr(tcx),
-             self.self_ty.repr(tcx),
+             self.explicit_self.repr(tcx),
              self.vis.repr(tcx),
              self.def_id.repr(tcx))
     }
@@ -653,7 +653,7 @@ impl Repr for ast::ident {
     }
 }
 
-impl Repr for ast::self_ty_ {
+impl Repr for ast::explicit_self_ {
     fn repr(&self, _tcx: ctxt) -> ~str {
         fmt!("%?", *self)
     }

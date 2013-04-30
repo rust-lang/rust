@@ -135,11 +135,12 @@ pub fn get_method(tcx: ty::ctxt,
     decoder::get_method(tcx.cstore.intr, cdata, def.node, tcx)
 }
 
-pub fn get_method_name_and_self_ty(cstore: @mut cstore::CStore,
-                                   def: ast::def_id) -> (ast::ident, ast::self_ty_)
+pub fn get_method_name_and_explicit_self(cstore: @mut cstore::CStore,
+                                         def: ast::def_id)
+                                     -> (ast::ident, ast::explicit_self_)
 {
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_method_name_and_self_ty(cstore.intr, cdata, def.node)
+    decoder::get_method_name_and_explicit_self(cstore.intr, cdata, def.node)
 }
 
 pub fn get_trait_method_def_ids(cstore: @mut cstore::CStore,

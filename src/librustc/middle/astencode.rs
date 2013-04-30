@@ -552,8 +552,8 @@ impl read_method_map_entry_helper for reader::Decoder {
                 explicit_self: this.read_struct_field("explicit_self",
                                                       2,
                                                       |this| {
-                    let self_type: ast::self_ty_ = Decodable::decode(this);
-                    self_type
+                    let explicit_self: ast::explicit_self_ = Decodable::decode(this);
+                    explicit_self
                 }),
                 origin: this.read_struct_field("origin", 1, |this| {
                     let method_origin: method_origin =
