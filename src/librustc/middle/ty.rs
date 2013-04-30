@@ -58,7 +58,7 @@ pub struct method {
     generics: ty::Generics,
     transformed_self_ty: Option<ty::t>,
     fty: BareFnTy,
-    self_ty: ast::self_ty_,
+    explicit_self: ast::explicit_self_,
     vis: ast::visibility,
     def_id: ast::def_id
 }

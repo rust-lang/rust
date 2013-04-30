@@ -181,12 +181,12 @@ pub fn path_to_str(p: @ast::Path, intr: @ident_interner) -> ~str {
 }
 
 pub fn fun_to_str(decl: &ast::fn_decl, purity: ast::purity, name: ast::ident,
-                  opt_self_ty: Option<ast::self_ty_>,
+                  opt_explicit_self: Option<ast::explicit_self_>,
                   generics: &ast::Generics, intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
         print_fn(s, decl, Some(purity), AbiSet::Rust(),
-                 name, generics, opt_self_ty, ast::inherited);
+                 name, generics, opt_explicit_self, ast::inherited);
         end(s); // Close the head box
         end(s); // Close the outer box
         eof(s.s);
@@ -797,7 +797,7 @@ pub fn print_ty_method(s: @ps, m: &ast::ty_method) {
     print_outer_attributes(s, m.attrs);
     print_ty_fn(s, None, None, None, m.purity, ast::Many,
                 &m.decl, Some(m.ident), Some(&m.generics),
-                Some(/*bad*/ copy m.self_ty.node));
+                Some(/*bad*/ copy m.explicit_self.node));
     word(s.s, ~";");
 }
 
@@ -813,7 +813,7 @@ pub fn print_method(s: @ps, meth: @ast::method) {
     maybe_print_comment(s, meth.span.lo);
     print_outer_attributes(s, meth.attrs);
     print_fn(s, &meth.decl, Some(meth.purity), AbiSet::Rust(),
-             meth.ident, &meth.generics, Some(meth.self_ty.node),
+             meth.ident, &meth.generics, Some(meth.explicit_self.node),
              meth.vis);
     word(s.s, ~" ");
     print_block_with_attrs(s, &meth.body, meth.attrs);
@@ -1626,13 +1626,13 @@ pub fn print_pat(s: @ps, pat: @ast::pat, refutable: bool) {
     (s.ann.post)(ann_node);
 }
 
-pub fn self_ty_to_str(self_ty: ast::self_ty_, intr: @ident_interner) -> ~str {
-    to_str(self_ty, |a, b| { print_self_ty(a, b); () }, intr)
+pub fn explicit_self_to_str(explicit_self: ast::explicit_self_, intr: @ident_interner) -> ~str {
+    to_str(explicit_self, |a, b| { print_explicit_self(a, b); () }, intr)
 }
 
 // Returns whether it printed anything
-pub fn print_self_ty(s: @ps, self_ty: ast::self_ty_) -> bool {
-    match self_ty {
+pub fn print_explicit_self(s: @ps, explicit_self: ast::explicit_self_) -> bool {
+    match explicit_self {
         ast::sty_static => { return false; }
         ast::sty_value => { word(s.s, ~"self"); }
         ast::sty_region(lt, m) => {
@@ -1657,24 +1657,24 @@ pub fn print_fn(s: @ps,
                 abis: AbiSet,
                 name: ast::ident,
                 generics: &ast::Generics,
-                opt_self_ty: Option<ast::self_ty_>,
+                opt_explicit_self: Option<ast::explicit_self_>,
                 vis: ast::visibility) {
     head(s, ~"");
-    print_fn_header_info(s, opt_self_ty, purity, abis, ast::Many, None, vis);
+    print_fn_header_info(s, opt_explicit_self, purity, abis, ast::Many, None, vis);
     nbsp(s);
     print_ident(s, name);
     print_generics(s, generics);
-    print_fn_args_and_ret(s, decl, opt_self_ty);
+    print_fn_args_and_ret(s, decl, opt_explicit_self);
 }
 
 pub fn print_fn_args(s: @ps, decl: &ast::fn_decl,
-                 opt_self_ty: Option<ast::self_ty_>) {
+                 opt_explicit_self: Option<ast::explicit_self_>) {
     // It is unfortunate to duplicate the commasep logic, but we we want the
     // self type and the args all in the same box.
     box(s, 0u, inconsistent);
     let mut first = true;
-    for opt_self_ty.each |self_ty| {
-        first = !print_self_ty(s, *self_ty);
+    for opt_explicit_self.each |explicit_self| {
+        first = !print_explicit_self(s, *explicit_self);
     }
 
     for decl.inputs.each |arg| {
@@ -1686,9 +1686,9 @@ pub fn print_fn_args(s: @ps, decl: &ast::fn_decl,
 }
 
 pub fn print_fn_args_and_ret(s: @ps, decl: &ast::fn_decl,
-                             opt_self_ty: Option<ast::self_ty_>) {
+                             opt_explicit_self: Option<ast::explicit_self_>) {
     popen(s);
-    print_fn_args(s, decl, opt_self_ty);
+    print_fn_args(s, decl, opt_explicit_self);
     pclose(s);
 
     maybe_print_comment(s, decl.output.span.lo);
@@ -1900,7 +1900,7 @@ pub fn print_ty_fn(s: @ps,
                    decl: &ast::fn_decl,
                    id: Option<ast::ident>,
                    generics: Option<&ast::Generics>,
-                   opt_self_ty: Option<ast::self_ty_>) {
+                   opt_explicit_self: Option<ast::explicit_self_>) {
     ibox(s, indent_unit);
 
     // Duplicates the logic in `print_fn_header_info()`.  This is because that
@@ -1920,8 +1920,8 @@ pub fn print_ty_fn(s: @ps,
     // self type and the args all in the same box.
     box(s, 0u, inconsistent);
     let mut first = true;
-    for opt_self_ty.each |self_ty| {
-        first = !print_self_ty(s, *self_ty);
+    for opt_explicit_self.each |explicit_self| {
+        first = !print_explicit_self(s, *explicit_self);
     }
     for decl.inputs.each |arg| {
         if first { first = false; } else { word_space(s, ~","); }
@@ -2163,7 +2163,7 @@ pub fn print_opt_sigil(s: @ps, opt_sigil: Option<ast::Sigil>) {
 }
 
 pub fn print_fn_header_info(s: @ps,
-                            _opt_sty: Option<ast::self_ty_>,
+                            _opt_explicit_self: Option<ast::explicit_self_>,
                             opt_purity: Option<ast::purity>,
                             abis: AbiSet,
                             onceness: ast::Onceness,

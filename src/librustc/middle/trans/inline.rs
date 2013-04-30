@@ -99,14 +99,14 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
               let path = vec::append(
                   ty::item_path(ccx.tcx, impl_did),
                   ~[path_name(mth.ident)]);
-              let self_kind = match mth.self_ty.node {
+              let self_kind = match mth.explicit_self.node {
                   ast::sty_static => no_self,
                   _ => {
                       let self_ty = ty::node_id_to_type(ccx.tcx,
                                                         mth.self_id);
                       debug!("calling inline trans_fn with self_ty %s",
                              ty_to_str(ccx.tcx, self_ty));
-                      match mth.self_ty.node {
+                      match mth.explicit_self.node {
                           ast::sty_value => impl_owned_self(self_ty),
                           _ => impl_self(self_ty),
                       }

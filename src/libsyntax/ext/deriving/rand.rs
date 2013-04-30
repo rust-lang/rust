@@ -32,7 +32,7 @@ pub fn expand_deriving_rand(cx: @ext_ctxt,
                     bounds: ~[(~"R",
                                ~[ Path::new(~[~"core", ~"rand", ~"Rng"]) ])]
                 },
-                self_ty: None,
+                explicit_self: None,
                 args: ~[
                     Ptr(~Literal(Path::new_local(~"R")),
                         Borrowed(None, ast::m_mutbl))

@@ -216,7 +216,7 @@ pub struct MethodDef<'self> {
     /// Whether there is a self argument (outer Option) i.e. whether
     /// this is a static function, and whether it is a pointer (inner
     /// Option)
-    self_ty: Option<Option<PtrTy>>,
+    explicit_self: Option<Option<PtrTy>>,
 
     /// Arguments other than the self argument
     args: ~[Ty],
@@ -321,7 +321,7 @@ impl<'self> TraitDef<'self> {
                          type_ident: ident,
                          generics: &Generics) -> @ast::item {
         let methods = do self.methods.map |method_def| {
-            let (self_ty, self_args, nonself_args, tys) =
+            let (explicit_self, self_args, nonself_args, tys) =
                 method_def.split_self_nonself_args(cx, span, type_ident, generics);
 
             let body = if method_def.is_static() {
@@ -339,7 +339,7 @@ impl<'self> TraitDef<'self> {
 
             method_def.create_method(cx, span,
                                      type_ident, generics,
-                                     self_ty, tys,
+                                     explicit_self, tys,
                                      body)
         };
 
@@ -352,7 +352,7 @@ impl<'self> TraitDef<'self> {
                        type_ident: ident,
                        generics: &Generics) -> @ast::item {
         let methods = do self.methods.map |method_def| {
-            let (self_ty, self_args, nonself_args, tys) =
+            let (explicit_self, self_args, nonself_args, tys) =
                 method_def.split_self_nonself_args(cx, span, type_ident, generics);
 
             let body = if method_def.is_static() {
@@ -370,7 +370,7 @@ impl<'self> TraitDef<'self> {
 
             method_def.create_method(cx, span,
                                      type_ident, generics,
-                                     self_ty, tys,
+                                     explicit_self, tys,
                                      body)
         };
 
@@ -404,28 +404,27 @@ impl<'self> MethodDef<'self> {
     }
 
     fn is_static(&self) -> bool {
-        self.self_ty.is_none()
+        self.explicit_self.is_none()
     }
 
     fn split_self_nonself_args(&self, cx: @ext_ctxt, span: span,
                              type_ident: ident, generics: &Generics)
-        -> (ast::self_ty, ~[@expr], ~[@expr], ~[(ident, @ast::Ty)]) {
+        -> (ast::explicit_self, ~[@expr], ~[@expr], ~[(ident, @ast::Ty)]) {
 
         let mut self_args = ~[], nonself_args = ~[], arg_tys = ~[];
-        let mut ast_self_ty = respan(span, ast::sty_static);
         let mut nonstatic = false;
 
-        match self.self_ty {
+        let ast_explicit_self = match self.explicit_self {
             Some(ref self_ptr) => {
-                let (self_expr, self_ty) = ty::get_explicit_self(cx, span,
-                                                                 self_ptr);
+                let (self_expr, explicit_self) = ty::get_explicit_self(cx, span, self_ptr);
 
-                ast_self_ty = self_ty;
                 self_args.push(self_expr);
                 nonstatic = true;
+
+                explicit_self
             }
-            _ => {}
-        }
+            None => respan(span, ast::sty_static),
+        };
 
         for self.args.eachi |i, ty| {
             let ast_ty = ty.to_ty(cx, span, type_ident, generics);
@@ -449,13 +448,13 @@ impl<'self> MethodDef<'self> {
             }
         }
 
-        (ast_self_ty, self_args, nonself_args, arg_tys)
+        (ast_explicit_self, self_args, nonself_args, arg_tys)
     }
 
     fn create_method(&self, cx: @ext_ctxt, span: span,
                      type_ident: ident,
                      generics: &Generics,
-                     self_ty: ast::self_ty,
+                     explicit_self: ast::explicit_self,
                      arg_types: ~[(ident, @ast::Ty)],
                      body: @expr) -> @ast::method {
         // create the generics that aren't for Self
@@ -477,7 +476,7 @@ impl<'self> MethodDef<'self> {
             ident: method_ident,
             attrs: ~[],
             generics: fn_generics,
-            self_ty: self_ty,
+            explicit_self: explicit_self,
             purity: ast::impure_fn,
             decl: fn_decl,
             body: body_block,
