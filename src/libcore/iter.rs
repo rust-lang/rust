@@ -41,6 +41,8 @@ much easier to implement.
 
 */
 
+use option::{Option, Some, None};
+
 pub trait Times {
     fn times(&self, it: &fn() -> bool);
 }
@@ -104,6 +106,27 @@ pub fn all<T>(predicate: &fn(T) -> bool, iter: &fn(f: &fn(T) -> bool)) -> bool {
     true
 }
 
+/**
+ * Return the first element where `predicate` returns `true`, otherwise return `Npne` if no element
+ * is found.
+ *
+ * # Example:
+ *
+ * ~~~~
+ * let xs = ~[1u, 2, 3, 4, 5, 6];
+ * assert_eq!(*find(|& &x: & &uint| x > 3, |f| xs.each(f)).unwrap(), 4);
+ * ~~~~
+ */
+#[inline(always)]
+pub fn find<T>(predicate: &fn(&T) -> bool, iter: &fn(f: &fn(T) -> bool)) -> Option<T> {
+    for iter |x| {
+        if predicate(&x) {
+            return Some(x);
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -127,5 +150,11 @@ mod tests {
     fn test_all() {
         assert!(all(|x: uint| x < 6, |f| uint::range(1, 6, f)));
         assert!(!all(|x: uint| x < 5, |f| uint::range(1, 6, f)));
+    }
+
+    #[test]
+    fn test_find() {
+        let xs = ~[1u, 2, 3, 4, 5, 6];
+        assert_eq!(*find(|& &x: & &uint| x > 3, |f| xs.each(f)).unwrap(), 4);
     }
 }
