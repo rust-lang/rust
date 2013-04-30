@@ -260,11 +260,21 @@ pub impl<'self> CheckLoanCtxt<'self> {
         // and report an error otherwise.
         match cmt.mutbl {
             mc::McDeclared => {
-                // OK
+                // OK, but we have to mark arguments as requiring mut
+                // if they are assigned (other cases are handled by liveness,
+                // since we need to distinguish local variables assigned
+                // once vs those assigned multiple times)
+                match cmt.cat {
+                    mc::cat_self(*) |
+                    mc::cat_arg(*) => {
+                        mark_variable_as_used_mut(self, cmt);
+                    }
+                    _ => {}
+                }
             }
             mc::McInherited => {
                 // OK, but we may have to add an entry to `used_mut_nodes`
-                mark_writes_through_upvars_as_used_mut(self, cmt);
+                mark_variable_as_used_mut(self, cmt);
             }
             mc::McReadOnly | mc::McImmutable => {
                 // Subtle: liveness guarantees that immutable local
@@ -289,33 +299,28 @@ pub impl<'self> CheckLoanCtxt<'self> {
                 self, expr, cmt);
         }
 
-        fn mark_writes_through_upvars_as_used_mut(self: &CheckLoanCtxt,
-                                                  cmt: mc::cmt) {
+        fn mark_variable_as_used_mut(self: &CheckLoanCtxt,
+                                     cmt: mc::cmt) {
             //! If the mutability of the `cmt` being written is inherited
-            //! from a local variable in another closure, liveness may
+            //! from a local variable, liveness will
             //! not have been able to detect that this variable's mutability
             //! is important, so we must add the variable to the
-            //! `used_mut_nodes` table here. This is because liveness
-            //! does not consider closures.
+            //! `used_mut_nodes` table here.
 
-            let mut passed_upvar = false;
             let mut cmt = cmt;
             loop {
                 debug!("mark_writes_through_upvars_as_used_mut(cmt=%s)",
                        cmt.repr(self.tcx()));
                 match cmt.cat {
                     mc::cat_local(id) |
-                    mc::cat_arg(id, _) |
+                    mc::cat_arg(id) |
                     mc::cat_self(id) => {
-                        if passed_upvar {
-                            self.tcx().used_mut_nodes.insert(id);
-                        }
+                        self.tcx().used_mut_nodes.insert(id);
                         return;
                     }
 
                     mc::cat_stack_upvar(b) => {
                         cmt = b;
-                        passed_upvar = true;
                     }
 
                     mc::cat_rvalue |
@@ -552,7 +557,7 @@ pub impl<'self> CheckLoanCtxt<'self> {
         match cmt.cat {
             // Rvalues, locals, and arguments can be moved:
             mc::cat_rvalue | mc::cat_local(_) |
-            mc::cat_arg(_, ast::by_copy) | mc::cat_self(_) => {}
+            mc::cat_arg(_) | mc::cat_self(_) => {}
 
             // It seems strange to allow a move out of a static item,
             // but what happens in practice is that you have a

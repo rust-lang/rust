@@ -255,7 +255,7 @@ impl GuaranteeLifetimeContext {
         match cmt.guarantor().cat {
             mc::cat_local(id) |
             mc::cat_self(id) |
-            mc::cat_arg(id, _) => {
+            mc::cat_arg(id) => {
                 self.bccx.moved_variables_set.contains(&id)
             }
             mc::cat_rvalue |
@@ -292,7 +292,7 @@ impl GuaranteeLifetimeContext {
                 ty::re_static
             }
             mc::cat_local(local_id) |
-            mc::cat_arg(local_id, _) |
+            mc::cat_arg(local_id) |
             mc::cat_self(local_id) => {
                 self.bccx.tcx.region_maps.encl_region(local_id)
             }
