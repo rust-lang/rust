@@ -63,6 +63,7 @@ pub static jit: uint = 1 << 19;
 pub static debug_info: uint = 1 << 20;
 pub static extra_debug_info: uint = 1 << 21;
 pub static static: uint = 1 << 22;
+pub static print_link_args: uint = 1 << 23;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -90,6 +91,7 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"no-opt", ~"do not optimize, even if -O is passed", no_opt),
      (~"no-monomorphic-collapse", ~"do not collapse template instantiations",
       no_monomorphic_collapse),
+     (~"print-link-args", ~"Print the arguments passed to the linker", print_link_args),
      (~"gc", ~"Garbage collect shared data (experimental)", gc),
      (~"jit", ~"Execute using JIT (experimental)", jit),
      (~"extra-debug-info", ~"Extra debugging info (experimental)",
@@ -99,9 +101,6 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
       "(experimental)", static)
     ]
 }
-
-// Information output flags
-pub static out_link_args : uint = 1 << 0;
 
 #[deriving(Eq)]
 pub enum OptLevel {
@@ -139,7 +138,6 @@ pub struct options {
     parse_only: bool,
     no_trans: bool,
     debugging_opts: uint,
-    output_info: uint,
     android_cross_path: Option<~str>
 }
 
@@ -314,7 +312,6 @@ pub fn basic_options() -> @options {
         parse_only: false,
         no_trans: false,
         debugging_opts: 0u,
-        output_info: 0u,
         android_cross_path: None
     }
 }
