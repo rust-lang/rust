@@ -551,6 +551,8 @@ pub fn specialize(cx: @MatchCheckCtxt,
                         Some(vec::append(args, vec::from_slice(r.tail())))
                     }
                     def_variant(_, _) => None,
+
+                    def_fn(*) |
                     def_struct(*) => {
                         // FIXME #4731: Is this right? --pcw
                         let new_args;
