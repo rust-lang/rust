@@ -23,9 +23,62 @@ pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
     None
 }
 
-#[test]
-fn test_mkdtemp() {
-    let p = mkdtemp(&Path("."), "foobar").unwrap();
-    os::remove_dir(&p);
-    assert!(str::ends_with(p.to_str(), "foobar"));
+#[cfg(test)]
+mod tests {
+    use tempfile::mkdtemp;
+    use tempfile;
+
+    #[test]
+    fn test_mkdtemp() {
+        let p = mkdtemp(&Path("."), "foobar").unwrap();
+        os::remove_dir(&p);
+        assert!(str::ends_with(p.to_str(), "foobar"));
+    }
+
+    // Ideally these would be in core::os but then core would need
+    // to depend on std
+    #[test]
+    fn recursive_mkdir_rel() {
+        use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
+        use core::os;
+
+        let root = mkdtemp(&os::tmpdir(), "temp").expect("recursive_mkdir_rel");
+        os::change_dir(&root);
+        let path = Path("frob");
+        assert!(os::mkdir_recursive(&path,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+        assert!(os::path_is_dir(&path));
+        assert!(os::mkdir_recursive(&path,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+        assert!(os::path_is_dir(&path));
+    }
+
+    #[test]
+    fn recursive_mkdir_dot() {
+        use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
+        use core::os;
+
+        let dot = Path(".");
+        assert!(os::mkdir_recursive(&dot,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+        let dotdot = Path("..");
+        assert!(os::mkdir_recursive(&dotdot,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+    }
+
+    #[test]
+    fn recursive_mkdir_rel_2() {
+        use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
+        use core::os;
+
+        let root = mkdtemp(&os::tmpdir(), "temp").expect("recursive_mkdir_rel_2");
+        os::change_dir(&root);
+        let path = Path("./frob/baz");
+        debug!("...Making: %s in cwd %s", path.to_str(), os::getcwd().to_str());
+        assert!(os::mkdir_recursive(&path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+        assert!(os::path_is_dir(&path));
+        assert!(os::path_is_dir(&path.pop()));
+        let path2 = Path("quux/blat");
+        debug!("Making: %s in cwd %s", path2.to_str(), os::getcwd().to_str());
+        assert!(os::mkdir_recursive(&path2, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+        assert!(os::path_is_dir(&path2));
+        assert!(os::path_is_dir(&path2.pop()));
+    }
+
 }
