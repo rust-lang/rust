@@ -90,6 +90,7 @@ impl GuaranteeLifetimeContext {
 
                 // See rule Freeze-Imm-Managed-Ptr-2 in doc.rs
                 let omit_root = (
+                    ptr_mutbl == m_imm &&
                     self.bccx.is_subregion_of(self.loan_region, base_scope) &&
                     base.mutbl.is_immutable() &&
                     !self.is_moved(base)

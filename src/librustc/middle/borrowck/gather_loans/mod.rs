@@ -148,7 +148,7 @@ fn gather_loans_in_expr(ex: @ast::expr,
 
     // If this expression is borrowed, have to ensure it remains valid:
     {
-        let mut this = &mut *self; // FIXME(#5074)
+        let this = &mut *self; // FIXME(#5074)
         if !this.ignore_adjustments.contains(&ex.id) {
             for tcx.adjustments.find(&ex.id).each |&adjustments| {
                 this.guarantee_adjustments(ex, *adjustments);
@@ -283,7 +283,7 @@ pub impl GatherLoanCtxt {
                 let mcx = &mc::mem_categorization_ctxt {
                     tcx: self.tcx(),
                     method_map: self.bccx.method_map};
-                let mut cmt = mcx.cat_expr_autoderefd(expr, autoderefs);
+                let cmt = mcx.cat_expr_autoderefd(expr, autoderefs);
                 debug!("after autoderef, cmt=%s", cmt.repr(self.tcx()));
 
                 match *autoref {

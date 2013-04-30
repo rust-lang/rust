@@ -357,6 +357,8 @@ pub impl<'self> CheckLoanCtxt<'self> {
             //! Safety checks related to writes to aliasable, mutable locations
 
             let guarantor = cmt.guarantor();
+            debug!("check_for_aliasable_mutable_writes(cmt=%s, guarantor=%s)",
+                   cmt.repr(self.tcx()), guarantor.repr(self.tcx()));
             match guarantor.cat {
                 mc::cat_deref(b, _, mc::region_ptr(m_mutbl, _)) => {
                     // Statically prohibit writes to `&mut` when aliasable
@@ -379,6 +381,7 @@ pub impl<'self> CheckLoanCtxt<'self> {
                         id: base.id,
                         derefs: deref_count
                     };
+                    debug!("Inserting write guard at %?", key);
                     self.bccx.write_guard_map.insert(key);
                 }
 
