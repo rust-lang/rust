@@ -830,10 +830,10 @@ pub impl<'self> LookupContext<'self> {
     }
 
     fn search_for_method(&self,
-                         self_ty: ty::t)
+                         rcvr_ty: ty::t)
         -> Option<method_map_entry>
     {
-        debug!("search_for_method(self_ty=%s)", self.ty_to_str(self_ty));
+        debug!("search_for_method(rcvr_ty=%s)", self.ty_to_str(rcvr_ty));
         let _indenter = indenter();
 
         // I am not sure that inherent methods should have higher
@@ -841,7 +841,7 @@ pub impl<'self> LookupContext<'self> {
         // existing code.
 
         debug!("searching inherent candidates");
-        match self.consider_candidates(self_ty, self.inherent_candidates) {
+        match self.consider_candidates(rcvr_ty, self.inherent_candidates) {
             None => {}
             Some(mme) => {
                 return Some(mme);
@@ -849,7 +849,7 @@ pub impl<'self> LookupContext<'self> {
         }
 
         debug!("searching extension candidates");
-        match self.consider_candidates(self_ty, self.extension_candidates) {
+        match self.consider_candidates(rcvr_ty, self.extension_candidates) {
             None => {
                 return None;
             }
@@ -860,12 +860,12 @@ pub impl<'self> LookupContext<'self> {
     }
 
     fn consider_candidates(&self,
-                           self_ty: ty::t,
+                           rcvr_ty: ty::t,
                            candidates: &mut ~[Candidate])
         -> Option<method_map_entry>
     {
         let relevant_candidates =
-            candidates.filter_to_vec(|c| self.is_relevant(self_ty, c));
+            candidates.filter_to_vec(|c| self.is_relevant(rcvr_ty, c));
 
         let relevant_candidates = self.merge_candidates(relevant_candidates);
 
@@ -882,7 +882,7 @@ pub impl<'self> LookupContext<'self> {
             }
         }
 
-        Some(self.confirm_candidate(self_ty, &relevant_candidates[0]))
+        Some(self.confirm_candidate(rcvr_ty, &relevant_candidates[0]))
     }
 
     fn merge_candidates(&self, candidates: &[Candidate]) -> ~[Candidate] {
@@ -932,7 +932,7 @@ pub impl<'self> LookupContext<'self> {
     }
 
     fn confirm_candidate(&self,
-                         self_ty: ty::t,
+                         rcvr_ty: ty::t,
                          candidate: &Candidate)
         -> method_map_entry
     {
@@ -1041,11 +1041,11 @@ pub impl<'self> LookupContext<'self> {
         // nothing has changed in the meantime, this unification
         // should never fail.
         match self.fcx.mk_subty(false, self.self_expr.span,
-                                self_ty, transformed_self_ty) {
+                                rcvr_ty, transformed_self_ty) {
             result::Ok(_) => (),
             result::Err(_) => {
                 self.bug(fmt!("%s was a subtype of %s but now is not?",
-                              self.ty_to_str(self_ty),
+                              self.ty_to_str(rcvr_ty),
                               self.ty_to_str(transformed_self_ty)));
             }
         }
@@ -1114,9 +1114,11 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn is_relevant(&self, self_ty: ty::t, candidate: &Candidate) -> bool {
-        debug!("is_relevant(self_ty=%s, candidate=%s)",
-               self.ty_to_str(self_ty), self.cand_to_str(candidate));
+    // `rcvr_ty` is the type of the expression. It may be a subtype of a
+    // candidate method's `self_ty`.
+    fn is_relevant(&self, rcvr_ty: ty::t, candidate: &Candidate) -> bool {
+        debug!("is_relevant(rcvr_ty=%s, candidate=%s)",
+               self.ty_to_str(rcvr_ty), self.cand_to_str(candidate));
 
         // Check for calls to object methods.  We resolve these differently.
         //
@@ -1134,7 +1136,7 @@ pub impl<'self> LookupContext<'self> {
                         // an &@Trait receiver (wacky)
                     }
                     sty_box(*) | sty_uniq(*) => {
-                        return self.fcx.can_mk_subty(self_ty,
+                        return self.fcx.can_mk_subty(rcvr_ty,
                                                      candidate.rcvr_ty).is_ok();
                     }
                 };
@@ -1148,11 +1150,11 @@ pub impl<'self> LookupContext<'self> {
             }
 
             sty_value => {
-                self.fcx.can_mk_subty(self_ty, candidate.rcvr_ty).is_ok()
+                self.fcx.can_mk_subty(rcvr_ty, candidate.rcvr_ty).is_ok()
             }
 
             sty_region(_, m) => {
-                match ty::get(self_ty).sty {
+                match ty::get(rcvr_ty).sty {
                     ty::ty_rptr(_, mt) => {
                         mutability_matches(mt.mutbl, m) &&
                         self.fcx.can_mk_subty(mt.ty, candidate.rcvr_ty).is_ok()
@@ -1163,7 +1165,7 @@ pub impl<'self> LookupContext<'self> {
             }
 
             sty_box(m) => {
-                match ty::get(self_ty).sty {
+                match ty::get(rcvr_ty).sty {
                     ty::ty_box(mt) => {
                         mutability_matches(mt.mutbl, m) &&
                         self.fcx.can_mk_subty(mt.ty, candidate.rcvr_ty).is_ok()
@@ -1174,7 +1176,7 @@ pub impl<'self> LookupContext<'self> {
             }
 
             sty_uniq(m) => {
-                match ty::get(self_ty).sty {
+                match ty::get(rcvr_ty).sty {
                     ty::ty_uniq(mt) => {
                         mutability_matches(mt.mutbl, m) &&
                         self.fcx.can_mk_subty(mt.ty, candidate.rcvr_ty).is_ok()
