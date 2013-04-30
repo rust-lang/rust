@@ -457,20 +457,18 @@ fn constrain_call(rcx: @mut Rcx,
     let callee_scope = call_expr.id;
     let callee_region = ty::re_scope(callee_scope);
 
-    for fn_sig.inputs.eachi |i, input| {
+    for arg_exprs.each |&arg_expr| {
         // ensure that any regions appearing in the argument type are
         // valid for at least the lifetime of the function:
         constrain_regions_in_type_of_node(
-            rcx, arg_exprs[i].id, callee_region, arg_exprs[i].span);
+            rcx, arg_expr.id, callee_region, arg_expr.span);
 
         // unfortunately, there are two means of taking implicit
         // references, and we need to propagate constraints as a
         // result. modes are going away and the "DerefArgs" code
         // should be ported to use adjustments
-        ty::set_default_mode(tcx, input.mode, ast::by_copy);
-        let is_by_ref = ty::resolved_mode(tcx, input.mode) == ast::by_ref;
-        if implicitly_ref_args || is_by_ref {
-            guarantor::for_by_ref(rcx, arg_exprs[i], callee_scope);
+        if implicitly_ref_args {
+            guarantor::for_by_ref(rcx, arg_expr, callee_scope);
         }
     }
 

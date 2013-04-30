@@ -2966,7 +2966,8 @@ pub fn check_block(fcx0: @mut FnCtxt, blk: &ast::blk)  {
 pub fn check_block_with_expected(fcx: @mut FnCtxt,
                                  blk: &ast::blk,
                                  expected: Option<ty::t>) {
-    let prev = replace(&mut fcx.ps, fcx.ps.recurse(blk));
+    let purity_state = fcx.ps.recurse(blk);
+    let prev = replace(&mut fcx.ps, purity_state);
 
     do fcx.with_region_lb(blk.node.id) {
         let mut warned = false;
