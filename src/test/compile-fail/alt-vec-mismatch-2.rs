@@ -1,5 +1,5 @@
 fn main() {
     match () {
-        [()] => { } //~ ERROR mismatched type: expected `()` but found a vector pattern
+        [()] => { } //~ ERROR mismatched types: expected `()` but found a vector pattern
     }
 }
