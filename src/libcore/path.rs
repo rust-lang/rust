@@ -49,31 +49,71 @@ pub fn PosixPath(s: &str) -> PosixPath {
 }
 
 pub trait GenericPath {
+    /// Converts a string to a Path
     fn from_str(&str) -> Self;
 
+    /// Returns the directory component of `self`, as a string
     fn dirname(&self) -> ~str;
+    /// Returns the file component of `self`, as a string option.
+    /// Returns None if `self` names a directory.
     fn filename(&self) -> Option<~str>;
+    /// Returns the stem of the file component of `self`, as a string option.
+    /// The stem is the slice of a filename starting at 0 and ending just before
+    /// the last '.' in the name.
+    /// Returns None if `self` names a directory.
     fn filestem(&self) -> Option<~str>;
+    /// Returns the type of the file component of `self`, as a string option.
+    /// The file type is the slice of a filename starting just after the last
+    /// '.' in the name and ending at the last index in the filename.
+    /// Returns None if `self` names a directory.
     fn filetype(&self) -> Option<~str>;
 
+    /// Returns a new path consisting of `self` with the parent directory component replaced
+    /// with the given string.
     fn with_dirname(&self, (&str)) -> Self;
+    /// Returns a new path consisting of `self` with the file component replaced
+    /// with the given string.
     fn with_filename(&self, (&str)) -> Self;
+    /// Returns a new path consisting of `self` with the file stem replaced
+    /// with the given string.
     fn with_filestem(&self, (&str)) -> Self;
+    /// Returns a new path consisting of `self` with the file type replaced
+    /// with the given string.
     fn with_filetype(&self, (&str)) -> Self;
 
+    /// Returns the directory component of `self`, as a new path.
+    /// If `self` has no parent, returns `self`.
     fn dir_path(&self) -> Self;
+    /// Returns the file component of `self`, as a new path.
+    /// If `self` names a directory, returns the empty path.
     fn file_path(&self) -> Self;
 
+    /// Returns a new Path whose parent directory is `self` and whose
+    /// file component is the given string.
     fn push(&self, (&str)) -> Self;
+    /// Returns a new Path consisting of the given path, made relative to `self`.
     fn push_rel(&self, (&Self)) -> Self;
+    /// Returns a new Path consisting of the path given by the given vector
+    /// of strings, relative to `self`.
     fn push_many(&self, (&[~str])) -> Self;
+    /// Identical to `dir_path` except in the case where `self` has only one
+    /// component. In this case, `pop` returns the empty path.
     fn pop(&self) -> Self;
 
+    /// The same as `push_rel`, except that the directory argument must not
+    /// contain directory separators in any of its components.
     fn unsafe_join(&self, (&Self)) -> Self;
+    /// On Unix, always returns false. On Windows, returns true iff `self`'s
+    /// file stem is one of: `con` `aux` `com1` `com2` `com3` `com4`
+    /// `lpt1` `lpt2` `lpt3` `prn` `nul`
     fn is_restricted(&self) -> bool;
 
+    /// Returns a new path that names the same file as `self`, without containing
+    /// any '.', '..', or empty components. On Windows, uppercases the drive letter
+    /// as well.
     fn normalize(&self) -> Self;
 
+    /// Returns `true` if `self` is an absolute path.
     fn is_absolute(&self) -> bool;
 }
 
