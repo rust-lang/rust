@@ -8,29 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/*! The Rust runtime, including the scheduler and I/O interface */
+
 #[doc(hidden)];
 
 use libc::c_char;
-
-// Some basic logging
-macro_rules! rtdebug_ (
-    ($( $arg:expr),+) => ( {
-        dumb_println(fmt!( $($arg),+ ));
-
-        fn dumb_println(s: &str) {
-            use io::WriterUtil;
-            let dbg = ::libc::STDERR_FILENO as ::io::fd_t;
-            dbg.write_str(s);
-            dbg.write_str("\n");
-        }
-
-    } )
-)
-
-// An alternate version with no output, for turning off logging
-macro_rules! rtdebug (
-    ($( $arg:expr),+) => ( $(let _ = $arg)*; )
-)
 
 #[path = "sched/mod.rs"]
 mod sched;
@@ -48,6 +30,12 @@ mod stack;
 mod context;
 mod thread;
 pub mod env;
+pub mod local_services;
+mod local_heap;
+
+/// Tools for testing the runtime
+#[cfg(test)]
+pub mod test;
 
 #[cfg(stage0)]
 pub fn start(main: *u8, _argc: int, _argv: *c_char, _crate_map: *u8) -> int {
@@ -93,7 +81,7 @@ pub fn start(main: *u8, _argc: int, _argv: **c_char, _crate_map: *u8) -> int {
 /// Different runtime services are available depending on context.
 #[deriving(Eq)]
 pub enum RuntimeContext {
-    // Only default services, e.g. exchange heap
+    // Only the exchange heap is available
     GlobalContext,
     // The scheduler may be accessed
     SchedulerContext,
@@ -155,27 +143,6 @@ fn test_context() {
                     sched.task_queue.push_back(task.take());
                 }
             }
-        };
-        sched.task_queue.push_back(task);
-        sched.run();
-    }
-}
-
-// For setting up tests of the new scheduler
-#[cfg(test)]
-pub fn run_in_newsched_task(f: ~fn()) {
-    use cell::Cell;
-    use unstable::run_in_bare_thread;
-    use self::sched::Task;
-    use self::uvio::UvEventLoop;
-
-    let f = Cell(Cell(f));
-
-    do run_in_bare_thread {
-        let mut sched = ~UvEventLoop::new_scheduler();
-        let f = f.take();
-        let task = ~do Task::new(&mut sched.stack_pool) {
-            (f.take())();
         };
         sched.task_queue.push_back(task);
         sched.run();

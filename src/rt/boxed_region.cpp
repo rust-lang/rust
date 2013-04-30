@@ -27,11 +27,11 @@ rust_opaque_box *boxed_region::malloc(type_desc *td, size_t body_size) {
     if (live_allocs) live_allocs->prev = box;
     live_allocs = box;
 
-    LOG(rust_get_current_task(), box,
+    /*LOG(rust_get_current_task(), box,
         "@malloc()=%p with td %p, size %lu==%lu+%lu, "
         "align %lu, prev %p, next %p\n",
         box, td, total_size, sizeof(rust_opaque_box), body_size,
-        td->align, box->prev, box->next);
+        td->align, box->prev, box->next);*/
 
     return box;
 }
@@ -50,9 +50,9 @@ rust_opaque_box *boxed_region::realloc(rust_opaque_box *box,
     if (new_box->next) new_box->next->prev = new_box;
     if (live_allocs == box) live_allocs = new_box;
 
-    LOG(rust_get_current_task(), box,
+    /*LOG(rust_get_current_task(), box,
         "@realloc()=%p with orig=%p, size %lu==%lu+%lu",
-        new_box, box, total_size, sizeof(rust_opaque_box), new_size);
+        new_box, box, total_size, sizeof(rust_opaque_box), new_size);*/
 
     return new_box;
 }
@@ -74,15 +74,15 @@ void boxed_region::free(rust_opaque_box *box) {
     // double frees (kind of).
     assert(box->td != NULL);
 
-    LOG(rust_get_current_task(), box,
+    /*LOG(rust_get_current_task(), box,
         "@free(%p) with td %p, prev %p, next %p\n",
-        box, box->td, box->prev, box->next);
+        box, box->td, box->prev, box->next);*/
 
     if (box->prev) box->prev->next = box->next;
     if (box->next) box->next->prev = box->prev;
     if (live_allocs == box) live_allocs = box->next;
 
-    if (env->poison_on_free) {
+    if (poison_on_free) {
         memset(box_body(box), 0xab, box->td->size);
     }
 

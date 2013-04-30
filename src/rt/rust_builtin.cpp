@@ -856,6 +856,63 @@ rust_initialize_global_state() {
     }
 }
 
+extern "C" CDECL memory_region*
+rust_new_memory_region(uintptr_t synchronized,
+                       uintptr_t detailed_leaks,
+                       uintptr_t poison_on_free) {
+    return new memory_region((bool)synchronized,
+                             (bool)detailed_leaks,
+                             (bool)poison_on_free);
+}
+
+extern "C" CDECL void
+rust_delete_memory_region(memory_region *region) {
+    delete region;
+}
+
+extern "C" CDECL boxed_region*
+rust_new_boxed_region(memory_region *region,
+                      uintptr_t poison_on_free) {
+    return new boxed_region(region, poison_on_free);
+}
+
+extern "C" CDECL void
+rust_delete_boxed_region(boxed_region *region) {
+    delete region;
+}
+
+extern "C" CDECL rust_opaque_box*
+rust_boxed_region_malloc(boxed_region *region, type_desc *td, size_t size) {
+    return region->malloc(td, size);
+}
+
+extern "C" CDECL void
+rust_boxed_region_free(boxed_region *region, rust_opaque_box *box) {
+    region->free(box);
+}
+
+typedef void *(rust_try_fn)(void*, void*);
+
+extern "C" CDECL uintptr_t
+rust_try(rust_try_fn f, void *fptr, void *env) {
+    try {
+        f(fptr, env);
+    } catch (uintptr_t token) {
+        assert(token != 0);
+        return token;
+    }
+    return 0;
+}
+
+extern "C" CDECL void
+rust_begin_unwind(uintptr_t token) {
+#ifndef __WIN32__
+    throw token;
+#else
+    abort();
+#endif
+}
+
 //
 // Local Variables:
 // mode: C++
