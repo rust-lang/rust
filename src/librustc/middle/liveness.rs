@@ -359,7 +359,7 @@ pub impl IrMaps {
         match self.capture_info_map.find(&expr.id) {
           Some(&caps) => caps,
           None => {
-            self.tcx.sess.span_bug(expr.span, ~"no registered caps");
+            self.tcx.sess.span_bug(expr.span, "no registered caps");
           }
         }
     }
@@ -687,7 +687,7 @@ pub impl Liveness {
           }
           None => {
             self.tcx.sess.span_bug(
-                span, ~"Not present in def map")
+                span, "Not present in def map")
           }
         }
     }
@@ -804,15 +804,15 @@ pub impl Liveness {
                       // to find with one
                 match self.tcx.def_map.find(&id) {
                     Some(&def_label(loop_id)) => loop_id,
-                    _ => self.tcx.sess.span_bug(sp, ~"Label on break/loop \
-                                                    doesn't refer to a loop")
+                    _ => self.tcx.sess.span_bug(sp, "Label on break/loop \
+                                                     doesn't refer to a loop")
                 },
             None => {
                 // Vanilla 'break' or 'loop', so use the enclosing
                 // loop scope
                 let loop_scope = &mut *self.loop_scope;
                 if loop_scope.len() == 0 {
-                    self.tcx.sess.span_bug(sp, ~"break outside loop");
+                    self.tcx.sess.span_bug(sp, "break outside loop");
                 }
                 else {
                     // FIXME(#5275): this shouldn't have to be a method...
@@ -994,7 +994,7 @@ pub impl Liveness {
           }
 
           stmt_mac(*) => {
-            self.tcx.sess.span_bug(stmt.span, ~"unexpanded macro");
+            self.tcx.sess.span_bug(stmt.span, "unexpanded macro");
           }
         }
     }
@@ -1164,7 +1164,7 @@ pub impl Liveness {
               match self.break_ln.find(&sc) {
                   Some(&b) => b,
                   None => self.tcx.sess.span_bug(expr.span,
-                                ~"Break to unknown label")
+                                                 "Break to unknown label")
               }
           }
 
@@ -1178,7 +1178,7 @@ pub impl Liveness {
               match self.cont_ln.find(&sc) {
                   Some(&b) => b,
                   None => self.tcx.sess.span_bug(expr.span,
-                                ~"Loop to unknown label")
+                                                 "Loop to unknown label")
               }
           }
 
@@ -1304,7 +1304,7 @@ pub impl Liveness {
           }
 
           expr_mac(*) => {
-            self.tcx.sess.span_bug(expr.span, ~"unexpanded macro");
+            self.tcx.sess.span_bug(expr.span, "unexpanded macro");
           }
         }
     }
@@ -1618,10 +1618,10 @@ pub impl Liveness {
             } else if ty::type_is_bot(t_ret) {
                 // for bot return types, not ok.  Function should fail.
                 self.tcx.sess.span_err(
-                    sp, ~"some control paths may return");
+                    sp, "some control paths may return");
             } else {
                 self.tcx.sess.span_err(
-                    sp, ~"not all control paths return a value");
+                    sp, "not all control paths return a value");
             }
         }
     }
@@ -1712,10 +1712,10 @@ pub impl Liveness {
               None => {
                 self.tcx.sess.span_err(
                     span,
-                    ~"re-assignment of immutable variable");
+                    "re-assignment of immutable variable");
                 self.tcx.sess.span_note(
                     orig_span,
-                    ~"prior assignment occurs here");
+                    "prior assignment occurs here");
               }
             }
           }

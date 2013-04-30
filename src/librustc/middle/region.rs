@@ -320,7 +320,7 @@ pub impl RegionMaps {
 pub fn parent_id(cx: ctxt, span: span) -> ast::node_id {
     match cx.parent {
       None => {
-        cx.sess.span_bug(span, ~"crate should not be parent here");
+        cx.sess.span_bug(span, "crate should not be parent here");
       }
       Some(parent_id) => {
         parent_id
