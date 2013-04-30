@@ -351,13 +351,13 @@ pub fn fsync_fd(fd: c_int, _l: io::fsync::Level) -> c_int {
     }
 }
 
-pub struct Pipe { mut in: c_int, mut out: c_int }
+pub struct Pipe { in: c_int, out: c_int }
 
 #[cfg(unix)]
 pub fn pipe() -> Pipe {
     unsafe {
         let mut fds = Pipe {in: 0 as c_int,
-                        out: 0 as c_int };
+                            out: 0 as c_int };
         assert!((libc::pipe(&mut fds.in) == (0 as c_int)));
         return Pipe {in: fds.in, out: fds.out};
     }
@@ -373,8 +373,7 @@ pub fn pipe() -> Pipe {
         // fully understand. Here we explicitly make the pipe non-inheritable,
         // which means to pass it to a subprocess they need to be duplicated
         // first, as in rust_run_program.
-        let mut fds = Pipe {in: 0 as c_int,
-                    out: 0 as c_int };
+        let mut fds = Pipe {in: 0 as c_int, out: 0 as c_int};
         let res = libc::pipe(&mut fds.in, 1024 as ::libc::c_uint,
                              (libc::O_BINARY | libc::O_NOINHERIT) as c_int);
         assert!((res == 0 as c_int));
@@ -959,10 +958,10 @@ pub fn last_os_error() -> ~str {
         #[cfg(target_os = "macos")]
         #[cfg(target_os = "android")]
         #[cfg(target_os = "freebsd")]
-        fn strerror_r(errnum: c_int, buf: *c_char, buflen: size_t) -> c_int {
+        fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: size_t) -> c_int {
             #[nolink]
             extern {
-                unsafe fn strerror_r(errnum: c_int, buf: *c_char,
+                unsafe fn strerror_r(errnum: c_int, buf: *mut c_char,
                                      buflen: size_t) -> c_int;
             }
             unsafe {
@@ -974,10 +973,10 @@ pub fn last_os_error() -> ~str {
         // and requires macros to instead use the POSIX compliant variant.
         // So we just use __xpg_strerror_r which is always POSIX compliant
         #[cfg(target_os = "linux")]
-        fn strerror_r(errnum: c_int, buf: *c_char, buflen: size_t) -> c_int {
+        fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: size_t) -> c_int {
             #[nolink]
             extern {
-                unsafe fn __xpg_strerror_r(errnum: c_int, buf: *c_char,
+                unsafe fn __xpg_strerror_r(errnum: c_int, buf: *mut c_char,
                                            buflen: size_t) -> c_int;
             }
             unsafe {
@@ -987,7 +986,7 @@ pub fn last_os_error() -> ~str {
 
         let mut buf = [0 as c_char, ..TMPBUF_SZ];
         unsafe {
-            let err = strerror_r(errno() as c_int, &buf[0],
+            let err = strerror_r(errno() as c_int, &mut buf[0],
                                  TMPBUF_SZ as size_t);
             if err < 0 {
                 fail!(~"strerror_r failure");

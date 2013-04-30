@@ -938,7 +938,7 @@ pub impl Parser {
             match *self.token {
                 token::MOD_SEP => {
                     match self.look_ahead(1u) {
-                        token::IDENT(id,_) => {
+                        token::IDENT(*) => {
                             self.bump();
                             ids.push(self.parse_ident());
                         }
@@ -3728,7 +3728,6 @@ pub impl Parser {
             items: _,
             foreign_items: foreign_items
         } = self.parse_foreign_items(first_item_attrs, true);
-        let mut initial_attrs = attrs_remaining;
         assert!(*self.token == token::RBRACE);
         ast::foreign_mod {
             sort: sort,

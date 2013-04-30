@@ -1826,12 +1826,9 @@ impl<'self,T:Copy> CopyableVector<T> for &'self [T] {
     #[inline]
     fn to_owned(&self) -> ~[T] {
         let mut result = ~[];
-        // FIXME: #4568
-        unsafe {
-            reserve(&mut result, self.len());
-            for self.each |e| {
-                result.push(copy *e);
-            }
+        reserve(&mut result, self.len());
+        for self.each |e| {
+            result.push(copy *e);
         }
         result
 

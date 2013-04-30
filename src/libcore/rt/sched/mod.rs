@@ -136,7 +136,6 @@ pub impl Scheduler {
     /// Called by a running task to end execution, after which it will
     /// be recycled by the scheduler for reuse in a new task.
     fn terminate_current_task(~self) {
-        let mut self = self;
         assert!(self.in_task_context());
 
         rtdebug!("ending running task");
@@ -152,7 +151,6 @@ pub impl Scheduler {
     }
 
     fn schedule_new_task(~self, task: ~Task) {
-        let mut self = self;
         assert!(self.in_task_context());
 
         do self.switch_running_tasks_and_then(task) |last_task| {
