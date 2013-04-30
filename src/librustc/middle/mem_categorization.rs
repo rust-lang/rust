@@ -64,7 +64,7 @@ pub enum categorization {
     cat_copied_upvar(CopiedUpvar),     // upvar copied into @fn or ~fn env
     cat_stack_upvar(cmt),              // by ref upvar from &fn
     cat_local(ast::node_id),           // local variable
-    cat_arg(ast::node_id, ast::rmode), // formal argument
+    cat_arg(ast::node_id),             // formal argument
     cat_deref(cmt, uint, ptr_kind),    // deref of a ptr
     cat_interior(cmt, interior_kind),          // something interior
     cat_discr(cmt, ast::node_id),      // match discriminant (see preserve())
@@ -465,11 +465,10 @@ pub impl mem_categorization_ctxt {
 
             // m: mutability of the argument
             let m = if mutbl {McDeclared} else {McImmutable};
-            let mode = ty::resolved_mode(self.tcx, mode);
             @cmt_ {
                 id: id,
                 span: span,
-                cat: cat_arg(vid, mode),
+                cat: cat_arg(vid),
                 mutbl: m,
                 ty:expr_ty
             }
@@ -1059,7 +1058,7 @@ pub impl cmt_ {
             cat_copied_upvar(CopiedUpvar {onceness: ast::Once, _}) |
             cat_rvalue(*) |
             cat_local(*) |
-            cat_arg(_, ast::by_copy) |
+            cat_arg(_) |
             cat_self(*) |
             cat_deref(_, _, unsafe_ptr(*)) | // of course it is aliasable, but...
             cat_deref(_, _, region_ptr(m_mutbl, _)) => {
@@ -1068,8 +1067,7 @@ pub impl cmt_ {
 
             cat_copied_upvar(CopiedUpvar {onceness: ast::Many, _}) |
             cat_static_item(*) |
-            cat_implicit_self(*) |
-            cat_arg(_, ast::by_ref) => {
+            cat_implicit_self(*) => {
                 Some(AliasableOther)
             }
 
