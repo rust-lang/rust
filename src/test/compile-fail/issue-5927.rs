@@ -10,7 +10,7 @@
 
 
 
-// error-pattern:cant-use-x-as-pattern-mumble
+// error-pattern:unresolved enum variant
 
 fn main() {
     let z = match 3 {
