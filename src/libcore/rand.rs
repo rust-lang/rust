@@ -53,6 +53,7 @@ pub trait Rand {
 }
 
 impl Rand for int {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> int {
         if int::bits == 32 {
             rng.next() as int
@@ -63,30 +64,35 @@ impl Rand for int {
 }
 
 impl Rand for i8 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> i8 {
         rng.next() as i8
     }
 }
 
 impl Rand for i16 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> i16 {
         rng.next() as i16
     }
 }
 
 impl Rand for i32 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> i32 {
         rng.next() as i32
     }
 }
 
 impl Rand for i64 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> i64 {
         (rng.next() as i64 << 32) | rng.next() as i64
     }
 }
 
 impl Rand for uint {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> uint {
         if uint::bits == 32 {
             rng.next() as uint
@@ -97,36 +103,42 @@ impl Rand for uint {
 }
 
 impl Rand for u8 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> u8 {
         rng.next() as u8
     }
 }
 
 impl Rand for u16 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> u16 {
         rng.next() as u16
     }
 }
 
 impl Rand for u32 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> u32 {
         rng.next()
     }
 }
 
 impl Rand for u64 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> u64 {
         (rng.next() as u64 << 32) | rng.next() as u64
     }
 }
 
 impl Rand for float {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> float {
         rng.gen::<f64>() as float
     }
 }
 
 impl Rand for f32 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> f32 {
         rng.gen::<f64>() as f32
     }
@@ -134,6 +146,7 @@ impl Rand for f32 {
 
 static scale : f64 = (u32::max_value as f64) + 1.0f64;
 impl Rand for f64 {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> f64 {
         let u1 = rng.next() as f64;
         let u2 = rng.next() as f64;
@@ -144,12 +157,14 @@ impl Rand for f64 {
 }
 
 impl Rand for char {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> char {
         rng.next() as char
     }
 }
 
 impl Rand for bool {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> bool {
         rng.next() & 1u32 == 1u32
     }
@@ -163,6 +178,7 @@ macro_rules! tuple_impl {
             $( $tyvar : Rand ),*
             > Rand for ( $( $tyvar ),* , ) {
 
+            #[inline]
             fn rand<R: Rng>(_rng: &R) -> ( $( $tyvar ),* , ) {
                 (
                     // use the $tyvar's to get the appropriate number of
@@ -177,7 +193,10 @@ macro_rules! tuple_impl {
     }
 }
 
-impl Rand for () { fn rand<R: Rng>(_: &R) -> () { () } }
+impl Rand for () {
+    #[inline]
+    fn rand<R: Rng>(_: &R) -> () { () }
+}
 tuple_impl!{A}
 tuple_impl!{A, B}
 tuple_impl!{A, B, C}
@@ -190,6 +209,7 @@ tuple_impl!{A, B, C, D, E, F, G, H, I}
 tuple_impl!{A, B, C, D, E, F, G, H, I, J}
 
 impl<T:Rand> Rand for Option<T> {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> Option<T> {
         if rng.gen() {
             Some(rng.gen())
@@ -200,27 +220,22 @@ impl<T:Rand> Rand for Option<T> {
 }
 
 impl<T: Rand> Rand for ~T {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> ~T { ~rng.gen() }
 }
 
 impl<T: Rand> Rand for @T {
+    #[inline]
     fn rand<R: Rng>(rng: &R) -> @T { @rng.gen() }
 }
-
-#[allow(non_camel_case_types)] // runtime type
-pub enum rust_rng {}
 
 #[abi = "cdecl"]
 pub mod rustrt {
     use libc::size_t;
-    use super::rust_rng;
 
     pub extern {
         unsafe fn rand_seed_size() -> size_t;
         unsafe fn rand_gen_seed(buf: *mut u8, sz: size_t);
-        unsafe fn rand_new_seeded(buf: *u8, sz: size_t) -> *rust_rng;
-        unsafe fn rand_next(rng: *rust_rng) -> u32;
-        unsafe fn rand_free(rng: *rust_rng);
     }
 }
 
@@ -420,6 +435,7 @@ pub trait RngUtil {
 /// Extension methods for random number generators
 impl<R: Rng> RngUtil for R {
     /// Return a random value for a Rand type
+    #[inline(always)]
     fn gen<T: Rand>(&self) -> T {
         Rand::rand(self)
     }
@@ -566,66 +582,183 @@ pub fn rng() -> IsaacRng {
     IsaacRng::new()
 }
 
-pub struct IsaacRng {
-    priv rng: *rust_rng,
-}
+static RAND_SIZE_LEN: u32 = 8;
+static RAND_SIZE: u32 = 1 << RAND_SIZE_LEN;
 
-impl Drop for IsaacRng {
-    fn finalize(&self) {
-        unsafe {
-            rustrt::rand_free(self.rng);
-        }
-    }
+/// A random number generator that uses the [ISAAC
+/// algorithm](http://en.wikipedia.org/wiki/ISAAC_%28cipher%29).
+pub struct IsaacRng {
+    priv mut cnt: u32,
+    priv mut rsl: [u32, .. RAND_SIZE],
+    priv mut mem: [u32, .. RAND_SIZE],
+    priv mut a: u32,
+    priv mut b: u32,
+    priv mut c: u32
 }
 
 pub impl IsaacRng {
-    priv fn from_rust_rng(rng: *rust_rng) -> IsaacRng {
-        IsaacRng {
-            rng: rng
-        }
-    }
-
-    /// Create an ISAAC random number generator with a system specified seed
+    /// Create an ISAAC random number generator with a random seed.
     fn new() -> IsaacRng {
         IsaacRng::new_seeded(seed())
     }
 
-    /**
-     * Create a random number generator using the specified seed. A generator
-     * constructed with a given seed will generate the same sequence of values as
-     * all other generators constructed with the same seed. The seed may be any
-     * length.
-     */
+    /// Create an ISAAC random number generator with a seed. This can be any
+    /// length, although the maximum number of bytes used is 1024 and any more
+    /// will be silently ignored. A generator constructed with a given seed
+    /// will generate the same sequence of values as all other generators
+    /// constructed with the same seed.
     fn new_seeded(seed: &[u8]) -> IsaacRng {
-        unsafe {
-            do vec::as_imm_buf(seed) |p, sz| {
-                IsaacRng::from_rust_rng(rustrt::rand_new_seeded(p, sz as size_t))
+        let mut rng = IsaacRng {
+            cnt: 0,
+            rsl: [0, .. RAND_SIZE],
+            mem: [0, .. RAND_SIZE],
+            a: 0, b: 0, c: 0
+        };
+
+        let array_size = sys::size_of_val(&rng.rsl);
+        let copy_length = cmp::min(array_size, seed.len());
+
+        // manually create a &mut [u8] slice of randrsl to copy into.
+        let dest = unsafe { cast::transmute((&mut rng.rsl, array_size)) };
+        vec::bytes::copy_memory(dest, seed, copy_length);
+        rng.init(true);
+        rng
+    }
+
+    /// Create an ISAAC random number generator using the default
+    /// fixed seed.
+    fn new_unseeded() -> IsaacRng {
+        let mut rng = IsaacRng {
+            cnt: 0,
+            rsl: [0, .. RAND_SIZE],
+            mem: [0, .. RAND_SIZE],
+            a: 0, b: 0, c: 0
+        };
+        rng.init(false);
+        rng
+    }
+
+    /// Initialises `self`. If `use_rsl` is true, then use the current value
+    /// of `rsl` as a seed, otherwise construct one algorithmically (not
+    /// randomly).
+    priv fn init(&self, use_rsl: bool) {
+        macro_rules! init_mut_many (
+            ($( $var:ident ),* = $val:expr ) => {
+                let mut $( $var = $val ),*;
+            }
+        );
+        init_mut_many!(a, b, c, d, e, f, g, h = 0x9e3779b9);
+
+
+        macro_rules! mix(
+            () => {{
+                a^=b<<11; d+=a; b+=c;
+                b^=c>>2;  e+=b; c+=d;
+                c^=d<<8;  f+=c; d+=e;
+                d^=e>>16; g+=d; e+=f;
+                e^=f<<10; h+=e; f+=g;
+                f^=g>>4;  a+=f; g+=h;
+                g^=h<<8;  b+=g; h+=a;
+                h^=a>>9;  c+=h; a+=b;
+            }}
+        );
+
+        for 4.times { mix!(); }
+
+        if use_rsl {
+            macro_rules! memloop (
+                ($arr:expr) => {{
+                    for u32::range_step(0, RAND_SIZE, 8) |i| {
+                        a+=$arr[i  ]; b+=$arr[i+1];
+                        c+=$arr[i+2]; d+=$arr[i+3];
+                        e+=$arr[i+4]; f+=$arr[i+5];
+                        g+=$arr[i+6]; h+=$arr[i+7];
+                        mix!();
+                        self.mem[i  ]=a; self.mem[i+1]=b;
+                        self.mem[i+2]=c; self.mem[i+3]=d;
+                        self.mem[i+4]=e; self.mem[i+5]=f;
+                        self.mem[i+6]=g; self.mem[i+7]=h;
+                    }
+                }}
+            );
+
+            memloop!(self.rsl);
+            memloop!(self.mem);
+        } else {
+            for u32::range_step(0, RAND_SIZE, 8) |i| {
+                mix!();
+                self.mem[i  ]=a; self.mem[i+1]=b;
+                self.mem[i+2]=c; self.mem[i+3]=d;
+                self.mem[i+4]=e; self.mem[i+5]=f;
+                self.mem[i+6]=g; self.mem[i+7]=h;
             }
         }
+
+        self.isaac();
+    }
+
+    /// Refills the output buffer (`self.rsl`)
+    #[inline]
+    priv fn isaac(&self) {
+        self.c += 1;
+        // abbreviations
+        let mut a = self.a, b = self.b + self.c;
+        let mem = &mut self.mem;
+        let rsl = &mut self.rsl;
+
+        static midpoint: uint =  RAND_SIZE as uint / 2;
+
+        macro_rules! ind (($x:expr) => { mem[($x >> 2) & (RAND_SIZE - 1)] });
+        macro_rules! rngstep(
+            ($j:expr, $shift:expr) => {{
+                let base = base + $j;
+                let mix = if $shift < 0 {
+                    a >> -$shift as uint
+                } else {
+                    a << $shift as uint
+                };
+
+                let x = mem[base  + mr_offset];
+                a = (a ^ mix) + mem[base + m2_offset];
+                let y = ind!(x) + a + b;
+                mem[base + mr_offset] = y;
+
+                b = ind!(y >> RAND_SIZE_LEN) + x;
+                rsl[base + mr_offset] = b;
+            }}
+        );
+
+        for [(0, midpoint), (midpoint, 0)].each |&(mr_offset, m2_offset)| {
+            for uint::range_step(0, midpoint, 4) |base| {
+                rngstep!(0, 13);
+                rngstep!(1, -6);
+                rngstep!(2, 2);
+                rngstep!(3, -16);
+            }
+        }
+
+        self.a = a;
+        self.b = b;
+        self.cnt = RAND_SIZE;
     }
 }
 
 impl Rng for IsaacRng {
-    pub fn next(&self) -> u32 {
-        unsafe {
-            return rustrt::rand_next(self.rng);
+    #[inline(always)]
+    fn next(&self) -> u32 {
+        if self.cnt == 0 {
+            // make some more numbers
+            self.isaac();
         }
+        self.cnt -= 1;
+        self.rsl[self.cnt]
     }
 }
 
-/// Create a new random seed for IsaacRng::new_seeded
-pub fn seed() -> ~[u8] {
-    unsafe {
-        let n = rustrt::rand_seed_size() as uint;
-        let mut s = vec::from_elem(n, 0_u8);
-        do vec::as_mut_buf(s) |p, sz| {
-            rustrt::rand_gen_seed(p, sz as size_t)
-        }
-        s
-    }
-}
-
-struct XorShiftRng {
+/// An [Xorshift random number
+/// generator](http://en.wikipedia.org/wiki/Xorshift). Not suitable for
+/// cryptographic purposes.
+pub struct XorShiftRng {
     priv mut x: u32,
     priv mut y: u32,
     priv mut z: u32,
@@ -633,6 +766,7 @@ struct XorShiftRng {
 }
 
 impl Rng for XorShiftRng {
+    #[inline]
     pub fn next(&self) -> u32 {
         let x = self.x;
         let t = x ^ (x << 11);
@@ -660,7 +794,18 @@ pub impl XorShiftRng {
     fn new_seeded(x: u32, y: u32, z: u32, w: u32) -> XorShiftRng {
         XorShiftRng { x: x, y: y, z: z, w: w }
     }
+}
 
+/// Create a new random seed.
+pub fn seed() -> ~[u8] {
+    unsafe {
+        let n = rustrt::rand_seed_size() as uint;
+        let mut s = vec::from_elem(n, 0_u8);
+        do vec::as_mut_buf(s) |p, sz| {
+            rustrt::rand_gen_seed(p, sz as size_t)
+        }
+        s
+    }
 }
 
 // used to make space in TLS for a random number generator
@@ -671,6 +816,7 @@ fn tls_rng_state(_v: @IsaacRng) {}
  * seeded by the system. Intended to be used in method chaining style, ie
  * `task_rng().gen::<int>()`.
  */
+#[inline]
 pub fn task_rng() -> @IsaacRng {
     let r : Option<@IsaacRng>;
     unsafe {
@@ -690,6 +836,7 @@ pub fn task_rng() -> @IsaacRng {
 
 // Allow direct chaining with `task_rng`
 impl<R: Rng> Rng for @R {
+    #[inline(always)]
     fn next(&self) -> u32 { (**self).next() }
 }
 
@@ -697,6 +844,7 @@ impl<R: Rng> Rng for @R {
  * Returns a random value of a Rand type, using the task's random number
  * generator.
  */
+#[inline]
 pub fn random<T: Rand>() -> T {
     (*task_rng()).gen()
 }
@@ -878,6 +1026,45 @@ mod tests {
                      (~uint, @int, ~Option<~(@char, ~(@bool,))>),
                      (u8, i8, u16, i16, u32, i32, u64, i64),
                      (f32, (f64, (float,)))) = random();
+    }
+
+    #[test]
+    fn compare_isaac_implementation() {
+        // This is to verify that the implementation of the ISAAC rng is
+        // correct (i.e. matches the output of the upstream implementation,
+        // which is in the runtime)
+        use vec;
+        use libc::size_t;
+
+        #[abi = "cdecl"]
+        mod rustrt {
+            use libc::size_t;
+
+            #[allow(non_camel_case_types)] // runtime type
+            pub enum rust_rng {}
+
+            pub extern {
+                unsafe fn rand_new_seeded(buf: *u8, sz: size_t) -> *rust_rng;
+                unsafe fn rand_next(rng: *rust_rng) -> u32;
+                unsafe fn rand_free(rng: *rust_rng);
+            }
+        }
+
+        // run against several seeds
+        for 10.times {
+            unsafe {
+                let seed = super::seed();
+                let rt_rng = do vec::as_imm_buf(seed) |p, sz| {
+                    rustrt::rand_new_seeded(p, sz as size_t)
+                };
+                let rng = IsaacRng::new_seeded(seed);
+
+                for 10000.times {
+                    assert_eq!(rng.next(), rustrt::rand_next(rt_rng));
+                }
+                rustrt::rand_free(rt_rng);
+            }
+        }
     }
 }
 
