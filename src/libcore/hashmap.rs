@@ -833,7 +833,7 @@ pub impl <T:Hash + Eq> HashSet<T> {
     }
 }
 
-#[test]
+#[cfg(test)]
 mod test_map {
     use container::{Container, Map, Set};
     use option::{None, Some};
@@ -1009,7 +1009,7 @@ mod test_map {
     }
 }
 
-#[test]
+#[cfg(test)]
 mod test_set {
     use super::*;
     use container::{Container, Map, Set};
