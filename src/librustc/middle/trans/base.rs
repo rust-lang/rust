@@ -2071,6 +2071,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
     let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
 
     let repr = adt::represent_type(ccx, tup_ty);
+    adt::trans_start_init(bcx, repr, fcx.llretptr.get(), 0);
 
     for fields.eachi |i, field| {
         let lldestptr = adt::trans_field_ptr(bcx,
