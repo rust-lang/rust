@@ -846,10 +846,9 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         // alternatives, so we must treat this like an N-way select
         // statement.
         let initial_state = reslice(in_out).to_vec();
-        self.reset(in_out);
         for pats.each |&pat| {
             let mut temp = copy initial_state;
-            self.walk_pat(pat, in_out, loop_scopes);
+            self.walk_pat(pat, temp, loop_scopes);
             join_bits(&self.dfcx.oper, temp, in_out);
         }
     }
