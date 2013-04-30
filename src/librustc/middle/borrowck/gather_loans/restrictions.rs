@@ -15,7 +15,6 @@ use middle::borrowck::*;
 use mc = middle::mem_categorization;
 use middle::ty;
 use syntax::ast::{m_const, m_imm, m_mutbl};
-use syntax::ast;
 use syntax::codemap::span;
 
 pub enum RestrictionResult {
@@ -74,7 +73,7 @@ impl RestrictionsContext {
             }
 
             mc::cat_local(local_id) |
-            mc::cat_arg(local_id, ast::by_copy) |
+            mc::cat_arg(local_id) |
             mc::cat_self(local_id) => {
                 let lp = @LpVar(local_id);
                 SafeIf(lp, ~[Restriction {loan_path: lp,
@@ -114,7 +113,6 @@ impl RestrictionsContext {
             mc::cat_copied_upvar(*) | // FIXME(#2152) allow mutation of upvars
             mc::cat_static_item(*) |
             mc::cat_implicit_self(*) |
-            mc::cat_arg(_, ast::by_ref) |
             mc::cat_deref(_, _, mc::region_ptr(m_imm, _)) |
             mc::cat_deref(_, _, mc::gc_ptr(m_imm)) => {
                 Safe

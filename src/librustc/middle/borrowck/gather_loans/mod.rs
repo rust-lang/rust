@@ -27,7 +27,6 @@ use util::common::indenter;
 use util::ppaux::{Repr};
 
 use core::hashmap::HashSet;
-use core::vec;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 use syntax::ast_util::id_range;
@@ -169,20 +168,6 @@ fn gather_loans_in_expr(ex: @ast::expr,
         visit::visit_expr(ex, self, vt);
       }
 
-      ast::expr_call(f, ref args, _) => {
-        let arg_tys = ty::ty_fn_args(ty::expr_ty(self.tcx(), f));
-        self.guarantee_arguments(ex, *args, arg_tys);
-        visit::visit_expr(ex, self, vt);
-      }
-
-      ast::expr_method_call(_, _, _, ref args, _) => {
-        let arg_tys = ty::ty_fn_args(ty::node_id_to_type(self.tcx(),
-                                                         ex.callee_id));
-        self.guarantee_arguments(ex, *args, arg_tys);
-
-        visit::visit_expr(ex, self, vt);
-      }
-
       ast::expr_match(ex_v, ref arms) => {
         let cmt = self.bccx.cat_expr(ex_v);
         for arms.each |arm| {
@@ -269,30 +254,6 @@ pub impl GatherLoanCtxt {
     fn pop_repeating_id(&mut self, id: ast::node_id) {
         let popped = self.repeating_ids.pop();
         assert!(id == popped);
-    }
-
-    fn guarantee_arguments(&mut self,
-                           call_expr: @ast::expr,
-                           args: &[@ast::expr],
-                           arg_tys: &[ty::arg]) {
-        for vec::each2(args, arg_tys) |arg, arg_ty| {
-            match ty::resolved_mode(self.tcx(), arg_ty.mode) {
-                ast::by_ref => {
-                    self.guarantee_by_ref_argument(call_expr, *arg);
-                }
-                ast::by_copy => {}
-            }
-        }
-    }
-
-    fn guarantee_by_ref_argument(&mut self,
-                                 call_expr: @ast::expr,
-                                 arg_expr: @ast::expr) {
-        // FIXME(#5074) nested method calls
-        let scope_r = ty::re_scope(call_expr.id);
-        let arg_cmt = self.bccx.cat_expr(arg_expr);
-        self.guarantee_valid(arg_expr.id, arg_expr.span,
-                             arg_cmt, m_imm, scope_r);
     }
 
     fn guarantee_adjustments(&mut self,
