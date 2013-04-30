@@ -10,6 +10,7 @@
 
 //! Misc low level stuff
 
+use option::{Some, None};
 use cast;
 use cmp::{Eq, Ord};
 use gc;
@@ -202,12 +203,30 @@ impl FailWithCause for &'static str {
 // NOTE: remove function after snapshot
 #[cfg(stage0)]
 pub fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
-    do str::as_buf(msg) |msg_buf, _msg_len| {
-        do str::as_buf(file) |file_buf, _file_len| {
+
+    use rt::{context, OldTaskContext};
+    use rt::local_services::unsafe_borrow_local_services;
+
+    match context() {
+        OldTaskContext => {
+            do str::as_buf(msg) |msg_buf, _msg_len| {
+                do str::as_buf(file) |file_buf, _file_len| {
+                    unsafe {
+                        let msg_buf = cast::transmute(msg_buf);
+                        let file_buf = cast::transmute(file_buf);
+                        begin_unwind_(msg_buf, file_buf, line as libc::size_t)
+                    }
+                }
+            }
+        }
+        _ => {
+            gc::cleanup_stack_for_failure();
             unsafe {
-                let msg_buf = cast::transmute(msg_buf);
-                let file_buf = cast::transmute(file_buf);
-                begin_unwind_(msg_buf, file_buf, line as libc::size_t)
+                let local_services = unsafe_borrow_local_services();
+                match local_services.unwinder {
+                    Some(ref mut unwinder) => unwinder.begin_unwind(),
+                    None => abort!("failure without unwinder. aborting process")
+                }
             }
         }
     }

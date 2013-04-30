@@ -11,7 +11,6 @@
 
 #include "sync/sync.h"
 #include "memory_region.h"
-#include "rust_env.h"
 
 #if RUSTRT_TRACK_ALLOCATIONS >= 3
 #include <execinfo.h>
@@ -35,15 +34,19 @@ void *memory_region::get_data(alloc_header *ptr) {
     return (void*)((char *)ptr + HEADER_SIZE);
 }
 
-memory_region::memory_region(rust_env *env, bool synchronized) :
-    _env(env), _parent(NULL), _live_allocations(0),
-    _detailed_leaks(env->detailed_leaks),
+memory_region::memory_region(bool synchronized,
+                             bool detailed_leaks,
+                             bool poison_on_free) :
+    _parent(NULL), _live_allocations(0),
+    _detailed_leaks(detailed_leaks),
+    _poison_on_free(poison_on_free),
     _synchronized(synchronized) {
 }
 
 memory_region::memory_region(memory_region *parent) :
-    _env(parent->_env), _parent(parent), _live_allocations(0),
+    _parent(parent), _live_allocations(0),
     _detailed_leaks(parent->_detailed_leaks),
+    _poison_on_free(parent->_poison_on_free),
     _synchronized(parent->_synchronized) {
 }
 
@@ -241,7 +244,7 @@ memory_region::claim_alloc(void *mem) {
 void
 memory_region::maybe_poison(void *mem) {
 
-    if (!_env->poison_on_free)
+    if (!_poison_on_free)
         return;
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 1
