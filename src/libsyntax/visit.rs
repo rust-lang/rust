@@ -757,11 +757,3 @@ pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
             v_struct_method(v.visit_struct_method, a, b, c)
     });
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

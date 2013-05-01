@@ -242,11 +242,3 @@ mod tests {
             == list::append(list::from_vec(~[1,2]), list::from_vec(~[3,4])));
     }
 }
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

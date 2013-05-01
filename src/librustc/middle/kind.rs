@@ -587,13 +587,3 @@ pub fn check_kind_bounds_of_cast(cx: Context, source: @expr, target: @expr) {
         _ => {} // Nothing to do.
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//
