@@ -598,8 +598,8 @@ mod tests {
         let arc = ~RWARC(1);
         let arc2 = (*arc).clone();
         do task::try || {
-            do arc2.write_downgrade |write_mode| {
-                do (&write_mode).write |one| {
+            do arc2.write_downgrade |mut write_mode| {
+                do write_mode.write |one| {
                     assert!(*one == 2);
                 }
             }
@@ -733,8 +733,8 @@ mod tests {
         }
 
         // Downgrader (us)
-        do arc.write_downgrade |write_mode| {
-            do (&write_mode).write_cond |state, cond| {
+        do arc.write_downgrade |mut write_mode| {
+            do write_mode.write_cond |state, cond| {
                 wc1.send(()); // send to another writer who will wake us up
                 while *state == 0 {
                     cond.wait();
