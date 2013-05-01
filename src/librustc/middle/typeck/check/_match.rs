@@ -175,11 +175,18 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
             kind_name = "structure";
         }
         _ => {
-            tcx.sess.span_fatal(
-                pat.span,
-                fmt!("mismatched types: expected `%s` but found enum or \
-                      structure",
-                     fcx.infcx().ty_to_str(expected)));
+            let resolved_expected =
+                fcx.infcx().ty_to_str(fcx.infcx().resolve_type_vars_if_possible(expected));
+            fcx.infcx().type_error_message_str(pat.span,
+                                               |actual| {
+                    fmt!("mismatched types: expected `%s` but found %s",
+                         resolved_expected, actual)},
+                    ~"an enum or structure pattern",
+                    None);
+            fcx.write_error(pat.id);
+            kind_name = "[error]";
+            arg_types = (copy subpats).get_or_default(~[]).map(|_|
+                                                               ty::mk_err());
         }
     }
 
@@ -486,74 +493,44 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
       }
       ast::pat_tup(ref elts) => {
         let s = structure_of(fcx, pat.span, expected);
-        let ex_elts = match s {
-          ty::ty_tup(ref elts) => elts,
-          _ => {
-            tcx.sess.span_fatal
-                (pat.span,
-                 fmt!("mismatched types: expected `%s`, found tuple",
-                      fcx.infcx().ty_to_str(expected)));
-          }
-        };
         let e_count = elts.len();
-        if e_count != ex_elts.len() {
-            tcx.sess.span_fatal
-                (pat.span, fmt!("mismatched types: expected a tuple \
-                      with %u fields, found one with %u \
-                      fields", ex_elts.len(), e_count));
+        match s {
+            ty::ty_tup(ref ex_elts) if e_count == ex_elts.len() => {
+                for elts.eachi |i, elt| {
+                    check_pat(pcx, *elt, ex_elts[i]);
+                }
+                fcx.write_ty(pat.id, expected);
+            }
+            _ => {
+                for elts.each |elt| {
+                    check_pat(pcx, *elt, ty::mk_err());
+                }
+                let actual = ty::mk_tup(tcx, elts.map(|pat_var| {
+                    fcx.node_ty(pat_var.id)
+                }));
+                // use terr_tuple_size if both types are tuples
+                let type_error = match s {
+                    ty::ty_tup(ref ex_elts) =>
+                        ty::terr_tuple_size(ty::expected_found{expected: ex_elts.len(),
+                                                           found: e_count}),
+                    _ => ty::terr_mismatch
+                };
+                fcx.infcx().report_mismatched_types(pat.span,
+                                                    expected,
+                                                    actual,
+                                                    &type_error);
+                fcx.write_error(pat.id);
+            }
         }
-        let mut i = 0u;
-        for elts.each |elt| {
-            check_pat(pcx, *elt, ex_elts[i]);
-            i += 1u;
-        }
-
-        fcx.write_ty(pat.id, expected);
       }
       ast::pat_box(inner) => {
-        match structure_of(fcx, pat.span, expected) {
-          ty::ty_box(e_inner) => {
-            check_pat(pcx, inner, e_inner.ty);
-            fcx.write_ty(pat.id, expected);
-          }
-          _ => {
-            tcx.sess.span_fatal(
-                pat.span,
-                ~"mismatched types: expected `" +
-                fcx.infcx().ty_to_str(expected) +
-                ~"` found box");
-          }
-        }
+          check_pointer_pat(pcx, Managed, inner, pat.id, pat.span, expected);
       }
       ast::pat_uniq(inner) => {
-        match structure_of(fcx, pat.span, expected) {
-          ty::ty_uniq(e_inner) => {
-            check_pat(pcx, inner, e_inner.ty);
-            fcx.write_ty(pat.id, expected);
-          }
-          _ => {
-            tcx.sess.span_fatal(
-                pat.span,
-                ~"mismatched types: expected `" +
-                fcx.infcx().ty_to_str(expected) +
-                ~"` found uniq");
-          }
-        }
+          check_pointer_pat(pcx, Owned, inner, pat.id, pat.span, expected);
       }
       ast::pat_region(inner) => {
-        match structure_of(fcx, pat.span, expected) {
-          ty::ty_rptr(_, e_inner) => {
-            check_pat(pcx, inner, e_inner.ty);
-            fcx.write_ty(pat.id, expected);
-          }
-          _ => {
-            tcx.sess.span_fatal(
-                pat.span,
-                ~"mismatched types: expected `" +
-                fcx.infcx().ty_to_str(expected) +
-                ~"` found borrowed pointer");
-          }
-        }
+          check_pointer_pat(pcx, Borrowed, inner, pat.id, pat.span, expected);
       }
       ast::pat_vec(ref before, slice, ref after) => {
         let default_region_var =
@@ -577,11 +554,25 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
             (mt, default_region_var)
           },
           _ => {
-            tcx.sess.span_fatal(
-                pat.span,
-                fmt!("mismatched type: expected `%s` but found vector",
-                     fcx.infcx().ty_to_str(expected))
-            );
+              for before.each |&elt| {
+                  check_pat(pcx, elt, ty::mk_err());
+              }
+              for slice.each |&elt| {
+                  check_pat(pcx, elt, ty::mk_err());
+              }
+              for after.each |&elt| {
+                  check_pat(pcx, elt, ty::mk_err());
+              }
+              let resolved_expected =
+                  fcx.infcx().ty_to_str(fcx.infcx().resolve_type_vars_if_possible(expected));
+              fcx.infcx().type_error_message_str(pat.span,
+                  |actual| {
+                      fmt!("mismatched types: expected `%s` but found %s",
+                           resolved_expected, actual)},
+                                                 ~"a vector pattern",
+                                                 None);
+              fcx.write_error(pat.id);
+              return;
           }
         };
         for before.each |elt| {
@@ -604,4 +595,47 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
       }
     }
 }
+
+// Helper function to check @, ~ and & patterns
+pub fn check_pointer_pat(pcx: &pat_ctxt,
+                         pointer_kind: PointerKind,
+                         inner: @ast::pat,
+                         pat_id: ast::node_id,
+                         span: span,
+                         expected: ty::t) {
+    let fcx = pcx.fcx;
+    let check_inner: &fn(ty::mt) = |e_inner| {
+        check_pat(pcx, inner, e_inner.ty);
+        fcx.write_ty(pat_id, expected);
+    };
+    match structure_of(fcx, span, expected) {
+        ty::ty_box(e_inner) if pointer_kind == Managed => {
+            check_inner(e_inner);
+        }
+        ty::ty_uniq(e_inner) if pointer_kind == Owned => {
+            check_inner(e_inner);
+        }
+        ty::ty_rptr(_, e_inner) if pointer_kind == Borrowed => {
+            check_inner(e_inner);
+        }
+        _ => {
+            check_pat(pcx, inner, ty::mk_err());
+            let resolved_expected =
+                fcx.infcx().ty_to_str(fcx.infcx().resolve_type_vars_if_possible(expected));
+            fcx.infcx().type_error_message_str(span, |actual| {
+                    fmt!("mismatched types: expected `%s` but found %s",
+                         resolved_expected, actual)},
+                                               fmt!("%s pattern", match pointer_kind {
+                                                   Managed => "an @-box",
+                                                   Owned => "a ~-box",
+                                                   Borrowed => "an &-pointer"
+                                               }),
+                    None);
+            fcx.write_error(pat_id);
+          }
+    }
+}
+
+#[deriving(Eq)]
+enum PointerKind { Managed, Owned, Borrowed }
 

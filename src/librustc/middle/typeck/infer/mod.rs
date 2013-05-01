@@ -749,6 +749,19 @@ pub impl InferCtxt {
         }
     }
 
+
+    fn type_error_message_str(@mut self, sp: span, mk_msg: &fn(~str) -> ~str,
+                          actual_ty: ~str, err: Option<&ty::type_err>) {
+        let error_str = err.map_default(~"", |t_err|
+                         fmt!(" (%s)",
+                              ty::type_err_to_str(self.tcx, *t_err)));
+        self.tcx.sess.span_err(sp,
+           fmt!("%s%s", mk_msg(actual_ty), error_str));
+        for err.each |err| {
+            ty::note_and_explain_type_err(self.tcx, *err)
+        }
+    }
+
     fn type_error_message(@mut self, sp: span, mk_msg: &fn(~str) -> ~str,
                           actual_ty: ty::t, err: Option<&ty::type_err>) {
         let actual_ty = self.resolve_type_vars_if_possible(actual_ty);
@@ -757,15 +770,9 @@ pub impl InferCtxt {
         if ty::type_is_error(actual_ty) {
             return;
         }
-        let error_str = err.map_default(~"", |t_err|
-                         fmt!(" (%s)",
-                              ty::type_err_to_str(self.tcx, *t_err)));
-        self.tcx.sess.span_err(sp,
-           fmt!("%s%s", mk_msg(self.ty_to_str(actual_ty)),
-                error_str));
-        for err.each |err| {
-            ty::note_and_explain_type_err(self.tcx, *err)
-        }
+
+        self.type_error_message_str(sp, mk_msg, self.ty_to_str(actual_ty),
+                                    err);
     }
 
     fn report_mismatched_types(@mut self, sp: span, e: ty::t, a: ty::t,
