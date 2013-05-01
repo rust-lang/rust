@@ -157,9 +157,6 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
             for uint::range(0u, n_tps) |n| { cx.uses[n] |= flags;}
         }
       }
-      ast_map::node_dtor(_, ref dtor, _, _) => {
-        handle_body(cx, &dtor.node.body);
-      }
       ast_map::node_struct_ctor(*) => {
         // Similarly to node_variant, this monomorphized function just uses
         // the representations of all of its type parameters.

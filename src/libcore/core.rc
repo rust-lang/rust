@@ -63,7 +63,6 @@ they contained the following prologue:
 #[warn(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 #[allow(deprecated_mutable_fields)];
-#[allow(deprecated_drop)];
 
 // Make core testable by not duplicating lang items. See #2912
 #[cfg(test)] extern mod realcore(name = "core", vers = "0.7-pre");

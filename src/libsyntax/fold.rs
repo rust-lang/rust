@@ -222,9 +222,12 @@ pub fn noop_fold_item(i: @item, fld: @ast_fold) -> Option<@item> {
 
 fn noop_fold_struct_field(sf: @struct_field, fld: @ast_fold)
                        -> @struct_field {
+    let fold_attribute = |x| fold_attribute_(x, fld);
+
     @spanned { node: ast::struct_field_ { kind: copy sf.node.kind,
                                           id: sf.node.id,
-                                          ty: fld.fold_ty(sf.node.ty) },
+                                          ty: fld.fold_ty(sf.node.ty),
+                                          attrs: sf.node.attrs.map(|e| fold_attribute(*e)) },
                span: sf.span }
 }
 
@@ -290,21 +293,8 @@ pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
 
 fn fold_struct_def(struct_def: @ast::struct_def, fld: @ast_fold)
                 -> @ast::struct_def {
-    let dtor = do struct_def.dtor.map |dtor| {
-        let dtor_body = fld.fold_block(&dtor.node.body);
-        let dtor_id   = fld.new_id(dtor.node.id);
-        spanned {
-            node: ast::struct_dtor_ {
-                body: dtor_body,
-                id: dtor_id,
-                .. copy dtor.node
-            },
-            span: copy dtor.span
-        }
-    };
     @ast::struct_def {
         fields: struct_def.fields.map(|f| fold_struct_field(*f, fld)),
-        dtor: dtor,
         ctor_id: struct_def.ctor_id.map(|cid| fld.new_id(*cid)),
     }
 }
@@ -322,6 +312,7 @@ fn fold_struct_field(f: @struct_field, fld: @ast_fold) -> @struct_field {
             kind: copy f.node.kind,
             id: fld.new_id(f.node.id),
             ty: fld.fold_ty(f.node.ty),
+            attrs: /* FIXME (#2543) */ copy f.node.attrs,
         },
         span: fld.new_span(f.span),
     }
@@ -655,22 +646,9 @@ fn noop_fold_variant(v: &variant_, fld: @ast_fold) -> variant_ {
             })
         }
         struct_variant_kind(struct_def) => {
-            let dtor = do struct_def.dtor.map |dtor| {
-                let dtor_body = fld.fold_block(&dtor.node.body);
-                let dtor_id   = fld.new_id(dtor.node.id);
-                spanned {
-                    node: ast::struct_dtor_ {
-                        body: dtor_body,
-                        id: dtor_id,
-                        .. copy dtor.node
-                    },
-                    .. copy *dtor
-                }
-            };
             kind = struct_variant_kind(@ast::struct_def {
                 fields: vec::map(struct_def.fields,
                                  |f| fld.fold_struct_field(*f)),
-                dtor: dtor,
                 ctor_id: struct_def.ctor_id.map(|c| fld.new_id(*c))
             })
         }
@@ -783,6 +761,7 @@ impl ast_fold for AstFoldFns {
                 kind: copy sf.node.kind,
                 id: sf.node.id,
                 ty: (self as @ast_fold).fold_ty(sf.node.ty),
+                attrs: copy sf.node.attrs,
             },
             span: (self.new_span)(sf.span),
         }

@@ -11,7 +11,6 @@
 use abi::AbiSet;
 use ast::*;
 use ast;
-use ast_util;
 use codemap::span;
 use parse;
 use opt_vec;
@@ -39,13 +38,6 @@ pub enum fn_kind<'self> {
 
     // |x, y| ...
     fk_fn_block,
-
-    fk_dtor( // class destructor
-        &'self Generics,
-        &'self [attribute],
-        node_id /* self id */,
-        def_id /* parent class id */
-    )
 }
 
 pub fn name_of_fn(fk: &fn_kind) -> ident {
@@ -54,15 +46,13 @@ pub fn name_of_fn(fk: &fn_kind) -> ident {
           name
       }
       fk_anon(*) | fk_fn_block(*) => parse::token::special_idents::anon,
-      fk_dtor(*)                  => parse::token::special_idents::dtor
     }
 }
 
 pub fn generics_of_fn(fk: &fn_kind) -> Generics {
     match *fk {
         fk_item_fn(_, generics, _, _) |
-        fk_method(_, generics, _) |
-        fk_dtor(generics, _, _, _) => {
+        fk_method(_, generics, _) => {
             copy *generics
         }
         fk_anon(*) | fk_fn_block(*) => {
@@ -369,25 +359,6 @@ pub fn visit_method_helper<E: Copy>(m: &method, e: E, v: vt<E>) {
     );
 }
 
-pub fn visit_struct_dtor_helper<E>(dtor: struct_dtor, generics: &Generics,
-                                   parent_id: def_id, e: E, v: vt<E>) {
-    (v.visit_fn)(
-        &fk_dtor(
-            generics,
-            dtor.node.attrs,
-            dtor.node.self_id,
-            parent_id
-        ),
-        &ast_util::dtor_dec(),
-        &dtor.node.body,
-        dtor.span,
-        dtor.node.id,
-        e,
-        v
-    )
-
-}
-
 pub fn visit_fn<E: Copy>(fk: &fn_kind, decl: &fn_decl, body: &blk, _sp: span,
                          _id: node_id, e: E, v: vt<E>) {
     visit_fn_decl(decl, e, v);
@@ -412,22 +383,13 @@ pub fn visit_trait_method<E: Copy>(m: &trait_method, e: E, v: vt<E>) {
 pub fn visit_struct_def<E: Copy>(
     sd: @struct_def,
     _nm: ast::ident,
-    generics: &Generics,
-    id: node_id,
+    _generics: &Generics,
+    _id: node_id,
     e: E,
     v: vt<E>
 ) {
     for sd.fields.each |f| {
         (v.visit_struct_field)(*f, e, v);
-    }
-    for sd.dtor.each |dtor| {
-        visit_struct_dtor_helper(
-            *dtor,
-            generics,
-            ast_util::local_def(id),
-            e,
-            v
-        )
     }
 }
 

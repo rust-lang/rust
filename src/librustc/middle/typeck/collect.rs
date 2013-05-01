@@ -49,7 +49,6 @@ use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, split_trait_methods};
-use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::codemap;
 use syntax::print::pprust::{path_to_str, self_ty_to_str};
@@ -896,30 +895,6 @@ pub fn convert_struct(ccx: &CrateCtxt,
                       tpt: ty::ty_param_bounds_and_ty,
                       id: ast::node_id) {
     let tcx = ccx.tcx;
-
-    for struct_def.dtor.each |dtor| {
-        let region_parameterization =
-            RegionParameterization::from_variance_and_generics(rp, generics);
-
-        // Write the dtor type
-        let t_dtor = ty::mk_bare_fn(
-            tcx,
-            astconv::ty_of_bare_fn(
-                ccx,
-                &type_rscope(region_parameterization),
-                ast::impure_fn,
-                AbiSet::Rust(),
-                &opt_vec::Empty,
-                &ast_util::dtor_dec()));
-        write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
-        tcx.tcache.insert(local_def(dtor.node.id),
-                          ty_param_bounds_and_ty {
-                              generics: ty::Generics {
-                                  type_param_defs: tpt.generics.type_param_defs,
-                                  region_param: rp
-                              },
-                              ty: t_dtor});
-    };
 
     // Write the type of each of the members
     for struct_def.fields.each |f| {

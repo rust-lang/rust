@@ -102,11 +102,6 @@ enum restriction {
     RESTRICT_NO_BAR_OR_DOUBLEBAR_OP,
 }
 
-//  So that we can distinguish a class dtor from other class members
-
-enum class_contents { dtor_decl(blk, ~[attribute], codemap::span),
-                      members(~[@struct_field]) }
-
 type arg_or_capture_item = Either<arg, ()>;
 type item_info = (ident, item_, Option<~[attribute]>);
 
@@ -2525,7 +2520,9 @@ pub impl Parser {
     }
 
     // parse a structure field
-    fn parse_name_and_ty(&self, pr: visibility) -> @struct_field {
+    fn parse_name_and_ty(&self,
+                         pr: visibility,
+                         attrs: ~[attribute]) -> @struct_field {
         let mut is_mutbl = struct_immutable;
         let lo = self.span.lo;
         if self.eat_keyword(&~"mut") {
@@ -2540,7 +2537,8 @@ pub impl Parser {
         @spanned(lo, self.last_span.hi, ast::struct_field_ {
             kind: named_field(name, is_mutbl, pr),
             id: self.get_id(),
-            ty: ty
+            ty: ty,
+            attrs: attrs,
         })
     }
 
@@ -3299,7 +3297,6 @@ pub impl Parser {
         }
 
         let mut fields: ~[@struct_field];
-        let mut the_dtor: Option<(blk, ~[attribute], codemap::span)> = None;
         let is_tuple_like;
 
         if self.eat(&token::LBRACE) {
@@ -3307,26 +3304,8 @@ pub impl Parser {
             is_tuple_like = false;
             fields = ~[];
             while *self.token != token::RBRACE {
-                match self.parse_struct_decl_field() {
-                  dtor_decl(ref blk, ref attrs, s) => {
-                      match the_dtor {
-                        Some((_, _, s_first)) => {
-                          self.span_note(s, fmt!("Duplicate destructor \
-                                     declaration for class %s",
-                                     *self.interner.get(class_name)));
-                          self.span_fatal(copy s_first, ~"First destructor \
-                                                          declared here");
-                        }
-                        None => {
-                          the_dtor = Some((copy *blk, copy *attrs, s));
-                        }
-                      }
-                  }
-                  members(mms) => {
-                    for mms.each |struct_field| {
-                        fields.push(*struct_field)
-                    }
-                  }
+                for self.parse_struct_decl_field().each |struct_field| {
+                    fields.push(*struct_field)
                 }
             }
             if fields.len() == 0 {
@@ -3342,11 +3321,13 @@ pub impl Parser {
                 &token::RPAREN,
                 seq_sep_trailing_allowed(token::COMMA)
             ) |p| {
+                let attrs = self.parse_outer_attributes();
                 let lo = p.span.lo;
                 let struct_field_ = ast::struct_field_ {
                     kind: unnamed_field,
                     id: self.get_id(),
-                    ty: p.parse_ty(false)
+                    ty: p.parse_ty(false),
+                    attrs: attrs,
                 };
                 @spanned(lo, p.span.hi, struct_field_)
             };
@@ -3365,19 +3346,11 @@ pub impl Parser {
             );
         }
 
-        let actual_dtor = do the_dtor.map |dtor| {
-            let (d_body, d_attrs, d_s) = copy *dtor;
-            codemap::spanned { node: ast::struct_dtor_ { id: self.get_id(),
-                                                     attrs: d_attrs,
-                                                     self_id: self.get_id(),
-                                                     body: d_body},
-                       span: d_s}};
         let _ = self.get_id();  // XXX: Workaround for crazy bug.
         let new_id = self.get_id();
         (class_name,
          item_struct(@ast::struct_def {
              fields: fields,
-             dtor: actual_dtor,
              ctor_id: if is_tuple_like { Some(new_id) } else { None }
          }, generics),
          None)
@@ -3391,12 +3364,14 @@ pub impl Parser {
     }
 
     // parse a structure field declaration
-    fn parse_single_struct_field(&self, vis: visibility) -> @struct_field {
+    fn parse_single_struct_field(&self,
+                                 vis: visibility,
+                                 attrs: ~[attribute]) -> @struct_field {
         if self.eat_obsolete_ident("let") {
             self.obsolete(*self.last_span, ObsoleteLet);
         }
 
-        let a_var = self.parse_name_and_ty(vis);
+        let a_var = self.parse_name_and_ty(vis, attrs);
         match *self.token {
             token::SEMI => {
                 self.obsolete(copy *self.span, ObsoleteFieldTerminator);
@@ -3420,34 +3395,27 @@ pub impl Parser {
     }
 
     // parse an element of a struct definition
-    fn parse_struct_decl_field(&self) -> class_contents {
-
-        if self.try_parse_obsolete_priv_section() {
-            return members(~[]);
-        }
+    fn parse_struct_decl_field(&self) -> ~[@struct_field] {
 
         let attrs = self.parse_outer_attributes();
 
+        if self.try_parse_obsolete_priv_section(attrs) {
+            return ~[];
+        }
+
         if self.eat_keyword(&~"priv") {
-            return members(~[self.parse_single_struct_field(private)])
+            return ~[self.parse_single_struct_field(private, attrs)]
         }
 
         if self.eat_keyword(&~"pub") {
-           return members(~[self.parse_single_struct_field(public)]);
+           return ~[self.parse_single_struct_field(public, attrs)];
         }
 
         if self.try_parse_obsolete_struct_ctor() {
-            return members(~[]);
+            return ~[];
         }
 
-        if self.eat_keyword(&~"drop") {
-            let lo = self.last_span.lo;
-            let body = self.parse_block();
-            return dtor_decl(body, attrs, mk_sp(lo, self.last_span.hi))
-        }
-        else {
-           return members(~[self.parse_single_struct_field(inherited)]);
-        }
+        return ~[self.parse_single_struct_field(inherited, attrs)];
     }
 
     // parse visiility: PUB, PRIV, or nothing
@@ -3830,44 +3798,16 @@ pub impl Parser {
     // parse a structure-like enum variant definition
     // this should probably be renamed or refactored...
     fn parse_struct_def(&self) -> @struct_def {
-        let mut the_dtor: Option<(blk, ~[attribute], codemap::span)> = None;
         let mut fields: ~[@struct_field] = ~[];
         while *self.token != token::RBRACE {
-            match self.parse_struct_decl_field() {
-                dtor_decl(ref blk, ref attrs, s) => {
-                    match the_dtor {
-                        Some((_, _, s_first)) => {
-                            self.span_note(s, ~"duplicate destructor \
-                                                declaration");
-                            self.span_fatal(copy s_first,
-                                            ~"first destructor \
-                                              declared here");
-                        }
-                        None => {
-                            the_dtor = Some((copy *blk, copy *attrs, s));
-                        }
-                    }
-                }
-                members(mms) => {
-                    for mms.each |struct_field| {
-                        fields.push(*struct_field);
-                    }
-                }
+            for self.parse_struct_decl_field().each |struct_field| {
+                fields.push(*struct_field);
             }
         }
         self.bump();
-        let actual_dtor = do the_dtor.map |dtor| {
-            let (d_body, d_attrs, d_s) = copy *dtor;
-            codemap::spanned { node: ast::struct_dtor_ { id: self.get_id(),
-                                                     attrs: d_attrs,
-                                                     self_id: self.get_id(),
-                                                     body: d_body },
-                      span: d_s }
-        };
 
         return @ast::struct_def {
             fields: fields,
-            dtor: actual_dtor,
             ctor_id: None
         };
     }

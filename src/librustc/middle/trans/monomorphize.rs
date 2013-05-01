@@ -13,7 +13,7 @@ use driver::session;
 use lib::llvm::ValueRef;
 use middle::trans::base::{get_insn_ctxt};
 use middle::trans::base::{set_inline_hint_if_appr, set_inline_hint};
-use middle::trans::base::{trans_enum_variant, trans_struct_dtor};
+use middle::trans::base::{trans_enum_variant};
 use middle::trans::base::{trans_fn, decl_internal_cdecl_fn};
 use middle::trans::base::{get_item_val, no_self};
 use middle::trans::base;
@@ -35,7 +35,6 @@ use syntax::ast_map;
 use syntax::ast_map::path_name;
 use syntax::ast_util::local_def;
 use syntax::opt_vec;
-use syntax::parse::token::special_idents;
 use syntax::abi::AbiSet;
 
 pub fn monomorphic_fn(ccx: @CrateContext,
@@ -116,8 +115,6 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         // Foreign externs don't have to be monomorphized.
         return (get_item_val(ccx, fn_id.node), true);
       }
-      ast_map::node_dtor(_, dtor, _, pt) =>
-          (pt, special_idents::dtor, dtor.span),
       ast_map::node_trait_method(@ast::provided(m), _, pt) => {
         (pt, m.ident, m.span)
       }
@@ -242,16 +239,6 @@ pub fn monomorphic_fn(ccx: @CrateContext,
 
         meth::trans_method(ccx, pt, mth, psubsts, None, d, impl_did);
         d
-      }
-      ast_map::node_dtor(_, dtor, _, pt) => {
-        let parent_id = match ty::ty_to_def_id(ty::node_id_to_type(ccx.tcx,
-                                              dtor.node.self_id)) {
-                Some(did) => did,
-                None      => ccx.sess.span_bug(dtor.span, ~"Bad self ty in \
-                                                            dtor")
-        };
-        trans_struct_dtor(ccx, /*bad*/copy *pt, &dtor.node.body,
-          dtor.node.id, psubsts, Some(hash_id), parent_id)
       }
       ast_map::node_trait_method(@ast::provided(mth), _, pt) => {
         let d = mk_lldecl();
