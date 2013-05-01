@@ -53,7 +53,7 @@ doc/rust.html: rust.md doc/version_info.html doc/rust.css doc/manual.css
 	     --include-before-body=doc/version_info.html \
          --output=$@
 
-DOCS += doc/rust.pdf
+DOCS += doc/rust.tex
 doc/rust.tex: rust.md doc/version.md
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js $< | \
@@ -139,6 +139,7 @@ doc/tutorial-tasks.html: tutorial-tasks.md doc/version_info.html doc/rust.css
         $(info cfg: lacking luatex, disabling pdflatex)
       else
 
+DOCS += doc/rust.pdf
 doc/rust.pdf: doc/rust.tex
 	@$(call E, pdflatex: $@)
 	$(Q)$(CFG_PDFLATEX) \
