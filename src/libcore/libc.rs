@@ -104,6 +104,7 @@ pub use libc::funcs::posix88::unistd::*;
 
 pub use libc::funcs::posix01::stat_::*;
 pub use libc::funcs::posix01::unistd::*;
+pub use libc::funcs::posix01::glob::*;
 pub use libc::funcs::posix08::unistd::*;
 
 pub use libc::funcs::bsd44::*;
@@ -210,7 +211,21 @@ pub mod types {
     #[cfg(target_os = "android")]
     pub mod os {
         pub mod common {
-            pub mod posix01 {}
+            pub mod posix01 {
+                use libc::types::common::c95::{c_void};
+                use libc::types::os::arch::c95::{c_char, size_t};
+                pub struct glob_t {
+                    gl_pathc: size_t,
+                    gl_pathv: **c_char,
+                    gl_offs:  size_t,
+
+                    __unused1: *c_void,
+                    __unused2: *c_void,
+                    __unused3: *c_void,
+                    __unused4: *c_void,
+                    __unused5: *c_void,
+                }
+            }
         }
 
         #[cfg(target_arch = "x86")]
@@ -369,7 +384,25 @@ pub mod types {
     #[cfg(target_os = "freebsd")]
     pub mod os {
         pub mod common {
-            pub mod posix01 {}
+            pub mod posix01 {
+                use libc::types::common::c95::{c_void};
+                use libc::types::os::arch::c95::{c_char, c_int, size_t};
+                pub struct glob_t {
+                    gl_pathc:  size_t,
+                    __unused1: size_t,
+                    gl_offs:   size_t,
+                    __unused2: c_int,
+                    gl_pathv:  **c_char,
+
+                    __unused3: *c_void,
+
+                    __unused4: *c_void,
+                    __unused5: *c_void,
+                    __unused6: *c_void,
+                    __unused7: *c_void,
+                    __unused8: *c_void,
+                }
+            }
         }
 
         #[cfg(target_arch = "x86_64")]
@@ -571,6 +604,23 @@ pub mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
+                use libc::types::common::c95::{c_void};
+                use libc::types::os::arch::c95::{c_char, c_int, size_t};
+                pub struct glob_t {
+                    gl_pathc:  size_t,
+                    __unused1: c_int,
+                    gl_offs:   size_t,
+                    __unused2: c_int,
+                    gl_pathv:  **c_char,
+
+                    __unused3: *c_void,
+
+                    __unused4: *c_void,
+                    __unused5: *c_void,
+                    __unused6: *c_void,
+                    __unused7: *c_void,
+                    __unused8: *c_void,
+                }
             }
         }
 
@@ -877,6 +927,18 @@ pub mod consts {
         }
         pub mod posix01 {
             pub static SIGTRAP : int = 5;
+
+            pub static GLOB_ERR      : int = 1 << 0;
+            pub static GLOB_MARK     : int = 1 << 1;
+            pub static GLOB_NOSORT   : int = 1 << 2;
+            pub static GLOB_DOOFFS   : int = 1 << 3;
+            pub static GLOB_NOCHECK  : int = 1 << 4;
+            pub static GLOB_APPEND   : int = 1 << 5;
+            pub static GLOB_NOESCAPE : int = 1 << 6;
+
+            pub static GLOB_NOSPACE  : int = 1;
+            pub static GLOB_ABORTED  : int = 2;
+            pub static GLOB_NOMATCH  : int = 3;
         }
         pub mod posix08 {
         }
@@ -956,6 +1018,18 @@ pub mod consts {
         }
         pub mod posix01 {
             pub static SIGTRAP : int = 5;
+
+            pub static GLOB_APPEND   : int = 0x0001;
+            pub static GLOB_DOOFFS   : int = 0x0002;
+            pub static GLOB_ERR      : int = 0x0004;
+            pub static GLOB_MARK     : int = 0x0008;
+            pub static GLOB_NOCHECK  : int = 0x0010;
+            pub static GLOB_NOSORT   : int = 0x0020;
+            pub static GLOB_NOESCAPE : int = 0x2000;
+
+            pub static GLOB_NOSPACE  : int = -1;
+            pub static GLOB_ABORTED  : int = -2;
+            pub static GLOB_NOMATCH  : int = -3;
         }
         pub mod posix08 {
         }
@@ -1036,6 +1110,18 @@ pub mod consts {
         }
         pub mod posix01 {
             pub static SIGTRAP : int = 5;
+
+            pub static GLOB_APPEND   : int = 0x0001;
+            pub static GLOB_DOOFFS   : int = 0x0002;
+            pub static GLOB_ERR      : int = 0x0004;
+            pub static GLOB_MARK     : int = 0x0008;
+            pub static GLOB_NOCHECK  : int = 0x0010;
+            pub static GLOB_NOSORT   : int = 0x0020;
+            pub static GLOB_NOESCAPE : int = 0x2000;
+
+            pub static GLOB_NOSPACE  : int = -1;
+            pub static GLOB_ABORTED  : int = -2;
+            pub static GLOB_NOMATCH  : int = -3;
         }
         pub mod posix08 {
         }
@@ -1606,6 +1692,21 @@ pub mod funcs {
                                -> pid_t;
             }
         }
+
+        #[nolink]
+        #[abi = "cdecl"]
+        pub mod glob {
+            use libc::types::common::c95::{c_void};
+            use libc::types::os::arch::c95::{c_char, c_int};
+            use libc::types::os::common::posix01::{glob_t};
+
+            pub extern {
+                unsafe fn glob(pattern: *c_char, flags: c_int,
+                               errfunc: *c_void, // XXX callback
+                               pglob: *mut glob_t);
+                unsafe fn globfree(pglob: *mut glob_t);
+            }
+        }
     }
 
     #[cfg(target_os = "win32")]
@@ -1614,6 +1715,9 @@ pub mod funcs {
         }
 
         pub mod unistd {
+        }
+
+        pub mod glob {
         }
     }
 
