@@ -1467,8 +1467,8 @@ A complete list of the built-in language items follows:
   : Elements can be subtracted.
 `mul`
   : Elements can be multiplied.
-`quot`
-  : Elements have a quotient operation.
+`div`
+  : Elements have a division operation.
 `rem`
   : Elements have a remainder operation.
 `neg`
@@ -1857,7 +1857,7 @@ The default meaning of the operators on standard types is given here.
     Calls the `mul` method on the `core::ops::Mul` trait.
 `/`
   : Quotient.
-    Calls the `quot` method on the `core::ops::Quot` trait.
+    Calls the `div` method on the `core::ops::Div` trait.
 `%`
   : Remainder.
     Calls the `rem` method on the `core::ops::Rem` trait.

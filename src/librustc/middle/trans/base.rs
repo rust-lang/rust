@@ -777,10 +777,10 @@ pub fn cast_shift_rhs(op: ast::binop,
     }
 }
 
-pub fn fail_if_zero(cx: block, span: span, quotrem: ast::binop,
+pub fn fail_if_zero(cx: block, span: span, divrem: ast::binop,
                     rhs: ValueRef, rhs_t: ty::t) -> block {
-    let text = if quotrem == ast::quot {
-        @~"attempted quotient with a divisor of zero"
+    let text = if divrem == ast::div {
+        @~"attempted to divide by zero"
     } else {
         @~"attempted remainder with a divisor of zero"
     };
