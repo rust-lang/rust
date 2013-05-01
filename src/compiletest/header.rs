@@ -88,7 +88,7 @@ pub fn is_test_ignored(config: config, testfile: &Path) -> bool {
         if config.mode == common::mode_pretty &&
            parse_name_directive(ln, ~"xfail-pretty") { return true; }
     };
-    return true;
+    return false;
 
     fn xfail_target() -> ~str {
         ~"xfail-" + str::from_slice(os::SYSNAME)
