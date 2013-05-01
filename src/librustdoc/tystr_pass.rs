@@ -435,13 +435,6 @@ mod test {
     }
 
     #[test]
-    fn should_not_serialize_struct_drop_blocks() {
-        // All we care about are the fields
-        let doc = mk_doc(~"struct S { field: (), drop { } }");
-        assert!(!(&doc.cratemod().structs()[0].sig).get().contains("drop"));
-    }
-
-    #[test]
     fn should_not_serialize_struct_attrs() {
         // All we care about are the fields
         let doc = mk_doc(~"#[wut] struct S { field: () }");
