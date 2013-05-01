@@ -693,13 +693,6 @@ pub fn print_struct(s: @ps,
         nbsp(s);
         bopen(s);
         hardbreak_if_not_bol(s);
-        for struct_def.dtor.each |dtor| {
-          hardbreak_if_not_bol(s);
-          maybe_print_comment(s, dtor.span.lo);
-          print_outer_attributes(s, dtor.node.attrs);
-          head(s, ~"drop");
-          print_block(s, &dtor.node.body);
-        }
 
         for struct_def.fields.each |field| {
             match field.node.kind {

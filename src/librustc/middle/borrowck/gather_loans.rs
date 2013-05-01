@@ -104,8 +104,7 @@ fn req_loans_in_fn(fk: &visit::fn_kind,
 
     match *fk {
         visit::fk_anon(*) | visit::fk_fn_block(*) => {}
-        visit::fk_item_fn(*) | visit::fk_method(*) |
-        visit::fk_dtor(*) => {
+        visit::fk_item_fn(*) | visit::fk_method(*) => {
             self.item_ub = body.node.id;
         }
     }

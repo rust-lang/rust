@@ -47,7 +47,7 @@ use syntax::ast::{named_field, ne, neg, node_id, pat, pat_enum, pat_ident};
 use syntax::ast::{Path, pat_lit, pat_range, pat_struct};
 use syntax::ast::{prim_ty, private, provided};
 use syntax::ast::{public, required, rem, self_ty_, shl, shr, stmt_decl};
-use syntax::ast::{struct_dtor, struct_field, struct_variant_kind};
+use syntax::ast::{struct_field, struct_variant_kind};
 use syntax::ast::{sty_static, subtract, trait_ref, tuple_variant_kind, Ty};
 use syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
 use syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, TyParam, ty_path};
@@ -3512,7 +3512,6 @@ pub impl Resolver {
                 self.resolve_struct(item.id,
                                     generics,
                                     struct_def.fields,
-                                    &struct_def.dtor,
                                     visitor);
             }
 
@@ -3770,7 +3769,6 @@ pub impl Resolver {
                       id: node_id,
                       generics: &Generics,
                       fields: &[@struct_field],
-                      optional_destructor: &Option<struct_dtor>,
                       visitor: ResolveVisitor) {
         // If applicable, create a rib for the type parameters.
         do self.with_type_parameter_rib(HasTypeParameters
@@ -3783,23 +3781,6 @@ pub impl Resolver {
             // Resolve fields.
             for fields.each |field| {
                 self.resolve_type(field.node.ty, visitor);
-            }
-
-            // Resolve the destructor, if applicable.
-            match *optional_destructor {
-                None => {
-                    // Nothing to do.
-                }
-                Some(ref destructor) => {
-                    self.resolve_function(NormalRibKind,
-                                          None,
-                                          NoTypeParameters,
-                                          &destructor.node.body,
-                                          HasSelfBinding
-                                            ((*destructor).node.self_id,
-                                             true),
-                                          visitor);
-                }
             }
         }
     }

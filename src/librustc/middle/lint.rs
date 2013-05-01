@@ -57,7 +57,6 @@ pub enum lint {
     type_limits,
     default_methods,
     deprecated_mutable_fields,
-    deprecated_drop,
     unused_unsafe,
 
     managed_heap_memory,
@@ -207,13 +206,6 @@ pub fn get_lint_dict() -> LintDict {
          LintSpec {
             lint: deprecated_mutable_fields,
             desc: "deprecated mutable fields in structures",
-            default: deny
-        }),
-
-        (~"deprecated_drop",
-         LintSpec {
-            lint: deprecated_drop,
-            desc: "deprecated \"drop\" notation for the destructor",
             default: deny
         }),
 
@@ -463,7 +455,6 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_type_limits(cx, i);
     check_item_default_methods(cx, i);
     check_item_deprecated_mutable_fields(cx, i);
-    check_item_deprecated_drop(cx, i);
     check_item_unused_unsafe(cx, i);
     check_item_unused_mut(cx, i);
 }
@@ -661,26 +652,6 @@ fn check_item_deprecated_mutable_fields(cx: ty::ctxt, item: @ast::item) {
                                           ~"mutable fields are deprecated");
                     }
                     ast::named_field(*) | ast::unnamed_field => {}
-                }
-            }
-        }
-        _ => {}
-    }
-}
-
-fn check_item_deprecated_drop(cx: ty::ctxt, item: @ast::item) {
-    match item.node {
-        ast::item_struct(struct_def, _) => {
-            match struct_def.dtor {
-                None => {}
-                Some(ref dtor) => {
-                    cx.sess.span_lint(deprecated_drop,
-                                      item.id,
-                                      item.id,
-                                      dtor.span,
-                                      ~"`drop` notation for destructors is \
-                                        deprecated; implement the `Drop` \
-                                        trait instead");
                 }
             }
         }

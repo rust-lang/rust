@@ -327,15 +327,6 @@ fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
       ast::ii_foreign(i) => {
         ast::ii_foreign(fld.fold_foreign_item(i))
       }
-      ast::ii_dtor(ref dtor, nm, ref tps, parent_id) => {
-        let dtor_body = fld.fold_block(&dtor.node.body);
-        ast::ii_dtor(
-            codemap::spanned {
-                node: ast::struct_dtor_ { body: dtor_body,
-                                          .. /*bad*/copy (*dtor).node },
-                .. (/*bad*/copy *dtor) },
-            nm, /*bad*/copy *tps, parent_id)
-      }
     }
 }
 
@@ -362,23 +353,6 @@ fn renumber_ast(xcx: @ExtendedDecodeContext, ii: ast::inlined_item)
       }
       ast::ii_foreign(i) => {
         ast::ii_foreign(fld.fold_foreign_item(i))
-      }
-      ast::ii_dtor(ref dtor, nm, ref generics, parent_id) => {
-        let dtor_body = fld.fold_block(&dtor.node.body);
-        let dtor_attrs = fld.fold_attributes(/*bad*/copy (*dtor).node.attrs);
-        let new_generics = fold::fold_generics(generics, fld);
-        let dtor_id = fld.new_id((*dtor).node.id);
-        let new_parent = xcx.tr_def_id(parent_id);
-        let new_self = fld.new_id((*dtor).node.self_id);
-        ast::ii_dtor(
-            codemap::spanned {
-                node: ast::struct_dtor_ { id: dtor_id,
-                                          attrs: dtor_attrs,
-                                          self_id: new_self,
-                                          body: dtor_body },
-                .. (/*bad*/copy *dtor)
-            },
-            nm, new_generics, new_parent)
       }
      }
 }

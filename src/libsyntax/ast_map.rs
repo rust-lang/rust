@@ -14,7 +14,6 @@ use ast;
 use ast_util::{inlined_item_utils, stmt_id};
 use ast_util;
 use codemap;
-use codemap::spanned;
 use diagnostic::span_handler;
 use parse::token::ident_interner;
 use print::pprust;
@@ -93,8 +92,6 @@ pub enum ast_node {
     // order they are introduced.
     node_arg(arg, uint),
     node_local(uint),
-    // Destructor for a struct
-    node_dtor(Generics, @struct_dtor, def_id, @path),
     node_block(blk),
     node_struct_ctor(@struct_def, @item, @path),
 }
@@ -163,7 +160,7 @@ pub fn map_decoded_item(diag: @span_handler,
     // don't decode and instantiate the impl, but just the method, we have to
     // add it to the table now:
     match *ii {
-      ii_item(*) | ii_dtor(*) => { /* fallthrough */ }
+      ii_item(*) => { /* fallthrough */ }
       ii_foreign(i) => {
         cx.map.insert(i.id, node_foreign_item(i,
                                               AbiSet::Intrinsic(),
@@ -192,27 +189,6 @@ pub fn map_fn(
         cx.map.insert(a.id,
                       node_arg(/* FIXME (#2543) */ copy *a, cx.local_id));
         cx.local_id += 1u;
-    }
-    match *fk {
-        visit::fk_dtor(generics, ref attrs, self_id, parent_id) => {
-            let dt = @spanned {
-                node: ast::struct_dtor_ {
-                    id: id,
-                    attrs: /* FIXME (#2543) */ vec::from_slice(*attrs),
-                    self_id: self_id,
-                    body: /* FIXME (#2543) */ copy *body,
-                },
-                span: sp,
-            };
-            cx.map.insert(
-                id,
-                node_dtor(
-                    /* FIXME (#2543) */ copy *generics,
-                    dt,
-                    parent_id,
-                    @/* FIXME (#2543) */ copy cx.path));
-      }
-      _ => ()
     }
     visit::visit_fn(fk, decl, body, sp, id, cx, v);
 }
@@ -410,9 +386,6 @@ pub fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
       }
       Some(&node_local(_)) => { // add more info here
         fmt!("local (id=%?)", id)
-      }
-      Some(&node_dtor(*)) => { // add more info here
-        fmt!("node_dtor (id=%?)", id)
       }
       Some(&node_block(_)) => {
         fmt!("block")

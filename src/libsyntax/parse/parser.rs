@@ -3346,7 +3346,6 @@ pub impl Parser {
         (class_name,
          item_struct(@ast::struct_def {
              fields: fields,
-             dtor: None,
              ctor_id: if is_tuple_like { Some(new_id) } else { None }
          }, generics),
          None)
@@ -3803,7 +3802,6 @@ pub impl Parser {
 
         return @ast::struct_def {
             fields: fields,
-            dtor: None,
             ctor_id: None
         };
     }
