@@ -415,7 +415,8 @@ impl gen_init for protocol {
                             ast::struct_immutable,
                             ast::inherited),
                     id: cx.next_id(),
-                    ty: fty
+                    ty: fty,
+                    attrs: ~[],
                 },
                 span: dummy_sp()
             }

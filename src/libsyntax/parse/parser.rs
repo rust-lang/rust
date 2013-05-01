@@ -2520,7 +2520,9 @@ pub impl Parser {
     }
 
     // parse a structure field
-    fn parse_name_and_ty(&self, pr: visibility) -> @struct_field {
+    fn parse_name_and_ty(&self,
+                         pr: visibility,
+                         attrs: ~[attribute]) -> @struct_field {
         let mut is_mutbl = struct_immutable;
         let lo = self.span.lo;
         if self.eat_keyword(&~"mut") {
@@ -2535,7 +2537,8 @@ pub impl Parser {
         @spanned(lo, self.last_span.hi, ast::struct_field_ {
             kind: named_field(name, is_mutbl, pr),
             id: self.get_id(),
-            ty: ty
+            ty: ty,
+            attrs: attrs,
         })
     }
 
@@ -3318,11 +3321,13 @@ pub impl Parser {
                 &token::RPAREN,
                 seq_sep_trailing_allowed(token::COMMA)
             ) |p| {
+                let attrs = self.parse_outer_attributes();
                 let lo = p.span.lo;
                 let struct_field_ = ast::struct_field_ {
                     kind: unnamed_field,
                     id: self.get_id(),
-                    ty: p.parse_ty(false)
+                    ty: p.parse_ty(false),
+                    attrs: attrs,
                 };
                 @spanned(lo, p.span.hi, struct_field_)
             };
@@ -3359,12 +3364,14 @@ pub impl Parser {
     }
 
     // parse a structure field declaration
-    fn parse_single_struct_field(&self, vis: visibility) -> @struct_field {
+    fn parse_single_struct_field(&self,
+                                 vis: visibility,
+                                 attrs: ~[attribute]) -> @struct_field {
         if self.eat_obsolete_ident("let") {
             self.obsolete(*self.last_span, ObsoleteLet);
         }
 
-        let a_var = self.parse_name_and_ty(vis);
+        let a_var = self.parse_name_and_ty(vis, attrs);
         match *self.token {
             token::SEMI => {
                 self.obsolete(copy *self.span, ObsoleteFieldTerminator);
@@ -3390,26 +3397,25 @@ pub impl Parser {
     // parse an element of a struct definition
     fn parse_struct_decl_field(&self) -> ~[@struct_field] {
 
-        if self.try_parse_obsolete_priv_section() {
+        let attrs = self.parse_outer_attributes();
+
+        if self.try_parse_obsolete_priv_section(attrs) {
             return ~[];
         }
 
-        // Need this to parse comments on fields.
-        let _attrs = self.parse_outer_attributes();
-
         if self.eat_keyword(&~"priv") {
-            return ~[self.parse_single_struct_field(private)]
+            return ~[self.parse_single_struct_field(private, attrs)]
         }
 
         if self.eat_keyword(&~"pub") {
-           return ~[self.parse_single_struct_field(public)];
+           return ~[self.parse_single_struct_field(public, attrs)];
         }
 
         if self.try_parse_obsolete_struct_ctor() {
             return ~[];
         }
 
-        return ~[self.parse_single_struct_field(inherited)];
+        return ~[self.parse_single_struct_field(inherited, attrs)];
     }
 
     // parse visiility: PUB, PRIV, or nothing

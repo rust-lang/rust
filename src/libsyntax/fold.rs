@@ -222,9 +222,12 @@ pub fn noop_fold_item(i: @item, fld: @ast_fold) -> Option<@item> {
 
 fn noop_fold_struct_field(sf: @struct_field, fld: @ast_fold)
                        -> @struct_field {
+    let fold_attribute = |x| fold_attribute_(x, fld);
+
     @spanned { node: ast::struct_field_ { kind: copy sf.node.kind,
                                           id: sf.node.id,
-                                          ty: fld.fold_ty(sf.node.ty) },
+                                          ty: fld.fold_ty(sf.node.ty),
+                                          attrs: sf.node.attrs.map(|e| fold_attribute(*e)) },
                span: sf.span }
 }
 
@@ -309,6 +312,7 @@ fn fold_struct_field(f: @struct_field, fld: @ast_fold) -> @struct_field {
             kind: copy f.node.kind,
             id: fld.new_id(f.node.id),
             ty: fld.fold_ty(f.node.ty),
+            attrs: /* FIXME (#2543) */ copy f.node.attrs,
         },
         span: fld.new_span(f.span),
     }
@@ -757,6 +761,7 @@ impl ast_fold for AstFoldFns {
                 kind: copy sf.node.kind,
                 id: sf.node.id,
                 ty: (self as @ast_fold).fold_ty(sf.node.ty),
+                attrs: copy sf.node.attrs,
             },
             span: (self.new_span)(sf.span),
         }
