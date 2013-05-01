@@ -1435,7 +1435,7 @@ fn trans_eager_binop(bcx: block,
         if is_float { FMul(bcx, lhs, rhs) }
         else { Mul(bcx, lhs, rhs) }
       }
-      ast::quot => {
+      ast::div => {
         if is_float {
             FDiv(bcx, lhs, rhs)
         } else {

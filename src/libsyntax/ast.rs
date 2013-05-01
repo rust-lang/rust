@@ -389,7 +389,7 @@ pub enum binop {
     add,
     subtract,
     mul,
-    quot,
+    div,
     rem,
     and,
     or,

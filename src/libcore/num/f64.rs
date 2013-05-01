@@ -149,7 +149,7 @@ pub fn sub(x: f64, y: f64) -> f64 { return x - y; }
 pub fn mul(x: f64, y: f64) -> f64 { return x * y; }
 
 #[inline(always)]
-pub fn quot(x: f64, y: f64) -> f64 { return x / y; }
+pub fn div(x: f64, y: f64) -> f64 { return x / y; }
 
 #[inline(always)]
 pub fn rem(x: f64, y: f64) -> f64 { return x % y; }
@@ -296,14 +296,9 @@ impl Sub<f64,f64> for f64 {
 impl Mul<f64,f64> for f64 {
     fn mul(&self, other: &f64) -> f64 { *self * *other }
 }
-#[cfg(stage0,notest)]
+#[cfg(notest)]
 impl Div<f64,f64> for f64 {
     fn div(&self, other: &f64) -> f64 { *self / *other }
-}
-#[cfg(not(stage0),notest)]
-impl Quot<f64,f64> for f64 {
-    #[inline(always)]
-    fn quot(&self, other: &f64) -> f64 { *self / *other }
 }
 #[cfg(stage0,notest)]
 impl Modulo<f64,f64> for f64 {
