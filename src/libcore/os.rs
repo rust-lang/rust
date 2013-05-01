@@ -38,6 +38,7 @@ use ptr;
 use str;
 use task;
 use uint;
+use unstable::finally::Finally;
 use vec;
 
 pub use libc::fclose;
@@ -1181,6 +1182,88 @@ pub fn set_args(new_args: ~[~str]) {
         let overridden_args = @OverriddenArgs { val: copy new_args };
         task::local_data::local_data_set(overridden_arg_key, overridden_args);
     }
+}
+
+// FIXME #6100 we should really use an internal implementation of this - using
+// the POSIX glob functions isn't portable to windows, probably has slight
+// inconsistencies even where it is implemented, and makes extending
+// functionality a lot more difficult
+// FIXME #6101 also provide a non-allocating version - each_glob or so?
+/// Returns a vector of Path objects that match the given glob pattern
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "android")]
+#[cfg(target_os = "freebsd")]
+#[cfg(target_os = "macos")]
+pub fn glob(pattern: &str) -> ~[Path] {
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
+    fn default_glob_t () -> libc::glob_t {
+        libc::glob_t {
+            gl_pathc: 0,
+            gl_pathv: ptr::null(),
+            gl_offs: 0,
+            __unused1: ptr::null(),
+            __unused2: ptr::null(),
+            __unused3: ptr::null(),
+            __unused4: ptr::null(),
+            __unused5: ptr::null(),
+        }
+    }
+
+    #[cfg(target_os = "freebsd")]
+    fn default_glob_t () -> libc::glob_t {
+        libc::glob_t {
+            gl_pathc: 0,
+            __unused1: 0,
+            gl_offs: 0,
+            __unused2: 0,
+            gl_pathv: ptr::null(),
+            __unused3: ptr::null(),
+            __unused4: ptr::null(),
+            __unused5: ptr::null(),
+            __unused6: ptr::null(),
+            __unused7: ptr::null(),
+            __unused8: ptr::null(),
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    fn default_glob_t () -> libc::glob_t {
+        libc::glob_t {
+            gl_pathc: 0,
+            __unused1: 0,
+            gl_offs: 0,
+            __unused2: 0,
+            gl_pathv: ptr::null(),
+            __unused3: ptr::null(),
+            __unused4: ptr::null(),
+            __unused5: ptr::null(),
+            __unused6: ptr::null(),
+            __unused7: ptr::null(),
+            __unused8: ptr::null(),
+        }
+    }
+
+    let mut g = default_glob_t();
+    do str::as_c_str(pattern) |c_pattern| {
+        unsafe { libc::glob(c_pattern, 0, ptr::null(), &mut g) }
+    };
+    do(|| {
+        let paths = unsafe {
+            vec::raw::from_buf_raw(g.gl_pathv, g.gl_pathc as uint)
+        };
+        do paths.map |&c_str| {
+            Path(unsafe { str::raw::from_c_str(c_str) })
+        }
+    }).finally {
+        unsafe { libc::globfree(&mut g) };
+    }
+}
+
+/// Returns a vector of Path objects that match the given glob pattern
+#[cfg(target_os = "win32")]
+pub fn glob(pattern: &str) -> ~[Path] {
+    fail!(~"glob() is unimplemented on Windows")
 }
 
 #[cfg(target_os = "macos")]
