@@ -32,7 +32,7 @@ impl Positioned<int> for Point {
     }
 }
 
-impl Point: Movable<int, int>;
+impl Movable<int, int> for Point;
 
 pub fn main() {
     let p = Point{ x: 1, y: 2};
