@@ -190,7 +190,7 @@ fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {
 
     if has_test_attr && !has_test_signature(i) {
         let sess = cx.sess;
-        sess.span_fatal(
+        sess.span_err(
             i.span,
             ~"functions used as tests must have signature fn() -> ()."
         );
