@@ -234,7 +234,6 @@ pub fn compile_rest(sess: Session,
     let rp_set = time(time_passes, ~"region parameterization inference", ||
         middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
 
-
     let outputs = outputs.get();
 
     let (llmod, link_meta) = {
@@ -308,6 +307,11 @@ pub fn compile_rest(sess: Session,
                                       exp_map2, maps))
 
     };
+
+    if (sess.opts.debugging_opts & session::print_link_args) != 0 {
+        io::println(str::connect(link::link_args(sess,
+            &outputs.obj_filename, &outputs.out_filename, link_meta), " "));
+    }
 
     // NB: Android hack
     if sess.targ_cfg.arch == abi::Arm &&
@@ -645,13 +649,21 @@ pub fn build_session_options(binary: @~str,
         Some(s) => s
     };
 
-    let addl_lib_search_paths =
-        getopts::opt_strs(matches, ~"L")
-        .map(|s| Path(*s));
+    let addl_lib_search_paths = getopts::opt_strs(matches, ~"L").map(|s| Path(*s));
+
+    let linker_args = getopts::opt_strs(matches, ~"link-args").flat_map( |a| {
+        let mut args = ~[];
+        for str::each_split_char(*a, ',') |arg| {
+            args.push(str::from_slice(arg));
+        }
+        args
+    });
+
     let cfg = parse_cfgspecs(getopts::opt_strs(matches, ~"cfg"), demitter);
     let test = opt_present(matches, ~"test");
     let android_cross_path = getopts::opt_maybe_str(
         matches, ~"android-cross-path");
+
     let sopts = @session::options {
         crate_type: crate_type,
         is_static: static,
@@ -664,6 +676,7 @@ pub fn build_session_options(binary: @~str,
         jit: jit,
         output_type: output_type,
         addl_lib_search_paths: addl_lib_search_paths,
+        linker_args: linker_args,
         maybe_sysroot: sysroot_opt,
         target_triple: target,
         target_feature: target_feature,
@@ -737,62 +750,64 @@ pub fn parse_pretty(sess: Session, name: &str) -> pp_mode {
 // rustc command line options
 pub fn optgroups() -> ~[getopts::groups::OptGroup] {
  ~[
-  optflag(~"",  ~"bin", ~"Compile an executable crate (default)"),
-  optflag(~"c", ~"",    ~"Compile and assemble, but do not link"),
-  optmulti(~"", ~"cfg", ~"Configure the compilation
-                          environment", ~"SPEC"),
-  optflag(~"",  ~"emit-llvm",
-                        ~"Produce an LLVM bitcode file"),
-  optflag(~"h", ~"help",~"Display this message"),
-  optmulti(~"L", ~"",   ~"Add a directory to the library search path",
-                              ~"PATH"),
-  optflag(~"",  ~"lib", ~"Compile a library crate"),
-  optflag(~"",  ~"ls",  ~"List the symbols defined by a library crate"),
-  optflag(~"", ~"no-trans",
-                        ~"Run all passes except translation; no output"),
-  optflag(~"O", ~"",    ~"Equivalent to --opt-level=2"),
-  optopt(~"o", ~"",     ~"Write output to <filename>", ~"FILENAME"),
-  optopt(~"", ~"opt-level",
-                        ~"Optimize with possible levels 0-3", ~"LEVEL"),
-  optopt( ~"",  ~"out-dir",
-                        ~"Write output to compiler-chosen filename
-                          in <dir>", ~"DIR"),
-  optflag(~"", ~"parse-only",
-                        ~"Parse only; do not compile, assemble, or link"),
-  optflagopt(~"", ~"pretty",
-                        ~"Pretty-print the input instead of compiling;
+  optflag("",  "bin", "Compile an executable crate (default)"),
+  optflag("c", "",    "Compile and assemble, but do not link"),
+  optmulti("", "cfg", "Configure the compilation
+                          environment", "SPEC"),
+  optflag("",  "emit-llvm",
+                        "Produce an LLVM bitcode file"),
+  optflag("h", "help","Display this message"),
+  optmulti("L", "",   "Add a directory to the library search path",
+                              "PATH"),
+  optflag("",  "lib", "Compile a library crate"),
+  optmulti("",  "link-args", "FLAGS is a comma-separated list of flags
+                            passed to the linker", "FLAGS"),
+  optflag("",  "ls",  "List the symbols defined by a library crate"),
+  optflag("", "no-trans",
+                        "Run all passes except translation; no output"),
+  optflag("O", "",    "Equivalent to --opt-level=2"),
+  optopt("o", "",     "Write output to <filename>", "FILENAME"),
+  optopt("", "opt-level",
+                        "Optimize with possible levels 0-3", "LEVEL"),
+  optopt( "",  "out-dir",
+                        "Write output to compiler-chosen filename
+                          in <dir>", "DIR"),
+  optflag("", "parse-only",
+                        "Parse only; do not compile, assemble, or link"),
+  optflagopt("", "pretty",
+                        "Pretty-print the input instead of compiling;
                           valid types are: normal (un-annotated source),
                           expanded (crates expanded),
                           typed (crates expanded, with type annotations),
                           or identified (fully parenthesized,
-                          AST nodes and blocks with IDs)", ~"TYPE"),
-  optflag(~"S", ~"",    ~"Compile only; do not assemble or link"),
-  optflag(~"", ~"save-temps",
-                        ~"Write intermediate files (.bc, .opt.bc, .o)
+                          AST nodes and blocks with IDs)", "TYPE"),
+  optflag("S", "",    "Compile only; do not assemble or link"),
+  optflag("", "save-temps",
+                        "Write intermediate files (.bc, .opt.bc, .o)
                           in addition to normal output"),
-  optopt(~"", ~"sysroot",
-                        ~"Override the system root", ~"PATH"),
-  optflag(~"", ~"test", ~"Build a test harness"),
-  optopt(~"", ~"target",
-                        ~"Target triple cpu-manufacturer-kernel[-os]
+  optopt("", "sysroot",
+                        "Override the system root", "PATH"),
+  optflag("", "test", "Build a test harness"),
+  optopt("", "target",
+                        "Target triple cpu-manufacturer-kernel[-os]
                           to compile for (see chapter 3.4 of http://www.sourceware.org/autobook/
-                          for detail)", ~"TRIPLE"),
-  optopt(~"", ~"target-feature",
-                        ~"Target specific attributes (llc -mattr=help
-                          for detail)", ~"FEATURE"),
-  optopt(~"", ~"android-cross-path",
-         ~"The path to the Android NDK", "PATH"),
-  optmulti(~"W", ~"warn",
-                        ~"Set lint warnings", ~"OPT"),
-  optmulti(~"A", ~"allow",
-                        ~"Set lint allowed", ~"OPT"),
-  optmulti(~"D", ~"deny",
-                        ~"Set lint denied", ~"OPT"),
-  optmulti(~"F", ~"forbid",
-                        ~"Set lint forbidden", ~"OPT"),
-  optmulti(~"Z", ~"",   ~"Set internal debugging options", "FLAG"),
-  optflag( ~"v", ~"version",
-                        ~"Print version info and exit"),
+                          for detail)", "TRIPLE"),
+  optopt("", "target-feature",
+                        "Target specific attributes (llc -mattr=help
+                          for detail)", "FEATURE"),
+  optopt("", "android-cross-path",
+         "The path to the Android NDK", "PATH"),
+  optmulti("W", "warn",
+                        "Set lint warnings", "OPT"),
+  optmulti("A", "allow",
+                        "Set lint allowed", "OPT"),
+  optmulti("D", "deny",
+                        "Set lint denied", "OPT"),
+  optmulti("F", "forbid",
+                        "Set lint forbidden", "OPT"),
+  optmulti("Z", "",   "Set internal debugging options", "FLAG"),
+  optflag( "v", "version",
+                        "Print version info and exit"),
  ]
 }
 
