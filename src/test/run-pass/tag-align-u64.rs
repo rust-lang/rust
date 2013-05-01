@@ -8,27 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
 
-tag a_tag {
-    a_tag(u64);
+enum a_tag {
+    a_tag(u64)
 }
 
-type t_rec = {
+struct t_rec {
     c8: u8,
     t: a_tag
-};
-
-fn mk_rec() -> t_rec {
-    return { c8:0u8, t:a_tag(0u64) };
 }
 
-fn is_8_byte_aligned(&&u: a_tag) -> bool {
+fn mk_rec() -> t_rec {
+    return t_rec { c8:0u8, t:a_tag(0u64) };
+}
+
+fn is_8_byte_aligned(u: &a_tag) -> bool {
     let p = ptr::to_unsafe_ptr(u) as u64;
     return (p & 7u64) == 0u64;
 }
 
 pub fn main() {
     let x = mk_rec();
-    assert!(is_8_byte_aligned(x.t));
+    assert!(is_8_byte_aligned(&x.t));
 }
