@@ -353,7 +353,7 @@ mod tests {
         assert!(*deq.get(3) == d);
     }
 
-    #[test]
+    #[cfg(test)]
     fn test_parameterized<T:Copy + Eq + Durable>(a: T, b: T, c: T, d: T) {
         let mut deq = Deque::new();
         assert!(deq.len() == 0);
