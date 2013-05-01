@@ -700,6 +700,7 @@ pub fn print_struct(s: @ps,
                 ast::named_field(ident, mutability, visibility) => {
                     hardbreak_if_not_bol(s);
                     maybe_print_comment(s, field.span.lo);
+                    print_outer_attributes(s, field.node.attrs);
                     print_visibility(s, visibility);
                     if mutability == ast::struct_mutable {
                         word_nbsp(s, ~"mut");
