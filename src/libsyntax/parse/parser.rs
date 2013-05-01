@@ -19,7 +19,7 @@ use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
 use ast::{bind_by_copy, bitand, bitor, bitxor, blk};
 use ast::{blk_check_mode, box};
 use ast::{crate, crate_cfg, decl, decl_item};
-use ast::{decl_local, default_blk, deref, quot, enum_def};
+use ast::{decl_local, default_blk, deref, div, enum_def};
 use ast::{expr, expr_, expr_addr_of, expr_match, expr_again};
 use ast::{expr_assign, expr_assign_op, expr_binary, expr_block};
 use ast::{expr_break, expr_call, expr_cast, expr_copy, expr_do_body};
@@ -1836,7 +1836,7 @@ pub impl Parser {
                   token::PLUS => aop = add,
                   token::MINUS => aop = subtract,
                   token::STAR => aop = mul,
-                  token::SLASH => aop = quot,
+                  token::SLASH => aop = div,
                   token::PERCENT => aop = rem,
                   token::CARET => aop = bitxor,
                   token::AND => aop = bitand,

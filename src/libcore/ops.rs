@@ -31,14 +31,8 @@ pub trait Mul<RHS,Result> {
 }
 
 #[lang="div"]
-#[cfg(stage0)]
 pub trait Div<RHS,Result> {
     fn div(&self, rhs: &RHS) -> Result;
-}
-#[lang="quot"]
-#[cfg(not(stage0))]
-pub trait Quot<RHS,Result> {
-    fn quot(&self, rhs: &RHS) -> Result;
 }
 
 #[lang="modulo"]

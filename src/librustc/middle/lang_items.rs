@@ -42,7 +42,7 @@ pub enum LangItem {
     AddTraitLangItem,           // 5
     SubTraitLangItem,           // 6
     MulTraitLangItem,           // 7
-    QuotTraitLangItem,          // 8
+    DivTraitLangItem,           // 8
     RemTraitLangItem,           // 9
     NegTraitLangItem,           // 10
     NotTraitLangItem,           // 11
@@ -105,7 +105,7 @@ pub impl LanguageItems {
             5  => "add",
             6  => "sub",
             7  => "mul",
-            8  => "quot",
+            8  => "div",
             9  => "rem",
             10 => "neg",
             11 => "not",
@@ -167,8 +167,8 @@ pub impl LanguageItems {
     pub fn mul_trait(&const self) -> def_id {
         self.items[MulTraitLangItem as uint].get()
     }
-    pub fn quot_trait(&const self) -> def_id {
-        self.items[QuotTraitLangItem as uint].get()
+    pub fn div_trait(&const self) -> def_id {
+        self.items[DivTraitLangItem as uint].get()
     }
     pub fn rem_trait(&const self) -> def_id {
         self.items[RemTraitLangItem as uint].get()
@@ -268,7 +268,7 @@ fn LanguageItemCollector<'r>(crate: @crate,
     item_refs.insert(@~"add", AddTraitLangItem as uint);
     item_refs.insert(@~"sub", SubTraitLangItem as uint);
     item_refs.insert(@~"mul", MulTraitLangItem as uint);
-    item_refs.insert(@~"quot", QuotTraitLangItem as uint);
+    item_refs.insert(@~"div", DivTraitLangItem as uint);
     item_refs.insert(@~"rem", RemTraitLangItem as uint);
     item_refs.insert(@~"neg", NegTraitLangItem as uint);
     item_refs.insert(@~"not", NotTraitLangItem as uint);
