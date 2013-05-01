@@ -205,7 +205,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
 
             if adj.autoderefs > 0 {
                 let DatumBlock { bcx: new_bcx, datum: new_datum } =
-                    datum.autoderef(bcx, expr.id, adj.autoderefs);
+                    datum.autoderef(bcx, expr.span, expr.id, adj.autoderefs);
                 datum = new_datum;
                 bcx = new_bcx;
             }

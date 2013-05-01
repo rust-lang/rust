@@ -53,7 +53,7 @@ pub fn fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
 
 #[lang="fail_bounds_check"]
 pub fn fail_bounds_check(file: *c_char, line: size_t,
-                                index: size_t, len: size_t) {
+                         index: size_t, len: size_t) {
     let msg = fmt!("index out of bounds: the len is %d but the index is %d",
                     len as int, index as int);
     do str::as_buf(msg) |p, _len| {
@@ -61,12 +61,10 @@ pub fn fail_bounds_check(file: *c_char, line: size_t,
     }
 }
 
-pub fn fail_borrowed() {
+pub fn fail_borrowed(file: *c_char, line: size_t) {
     let msg = "borrowed";
     do str::as_buf(msg) |msg_p, _| {
-        do str::as_buf("???") |file_p, _| {
-            fail_(msg_p as *c_char, file_p as *c_char, 0);
-        }
+        fail_(msg_p as *c_char, file, line);
     }
 }
 
@@ -160,12 +158,27 @@ pub unsafe fn return_to_mut(a: *u8) {
     }
 }
 
+#[cfg(stage0)]
 #[lang="check_not_borrowed"]
 #[inline(always)]
 pub unsafe fn check_not_borrowed(a: *u8) {
     let a: *mut BoxRepr = transmute(a);
     if ((*a).header.ref_count & FROZEN_BIT) != 0 {
-        fail_borrowed();
+        do str::as_buf("XXX") |file_p, _| {
+            fail_borrowed(file_p as *c_char, 0);
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+#[lang="check_not_borrowed"]
+#[inline(always)]
+pub unsafe fn check_not_borrowed(a: *u8,
+                                 file: *c_char,
+                                 line: size_t) {
+    let a: *mut BoxRepr = transmute(a);
+    if ((*a).header.ref_count & FROZEN_BIT) != 0 {
+        fail_borrowed(file, line);
     }
 }
 
