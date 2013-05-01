@@ -374,7 +374,7 @@ fn spawn_process_internal(prog: &str, args: &[~str],
             unsafe fn rust_set_environ(envp: *c_void);
         }
     }
-    
+
     unsafe {
 
         let pid = fork();
