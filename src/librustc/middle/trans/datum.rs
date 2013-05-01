@@ -105,6 +105,7 @@ use util::ppaux::ty_to_str;
 use core::container::Set; // XXX: this should not be necessary
 use core::to_bytes;
 use syntax::ast;
+use syntax::codemap::span;
 use syntax::parse::token::special_idents;
 
 #[deriving(Eq)]
@@ -556,17 +557,24 @@ pub impl Datum {
         }
     }
 
-    fn perform_write_guard(&self, bcx: block) -> block {
+    fn perform_write_guard(&self, bcx: block, span: span) -> block {
         // Create scratch space, but do not root it.
         let llval = match self.mode {
             ByValue => self.val,
             ByRef => Load(bcx, self.val),
         };
 
+        let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
+        let line = C_int(bcx.ccx(), loc.line as int);
+        let filename_cstr = C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name);
+        let filename = PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
+
         callee::trans_lang_call(
             bcx,
             bcx.tcx().lang_items.check_not_borrowed_fn(),
-            ~[ PointerCast(bcx, llval, T_ptr(T_i8())) ],
+            ~[PointerCast(bcx, llval, T_ptr(T_i8())),
+              filename,
+              line],
             expr::Ignore)
     }
 
@@ -621,6 +629,7 @@ pub impl Datum {
 
     fn try_deref(&self,
         bcx: block,            // block wherein to generate insn's
+        span: span,            // location where deref occurs
         expr_id: ast::node_id, // id of expr being deref'd
         derefs: uint,          // number of times deref'd already
         is_auto: bool)         // if true, only deref if auto-derefable
@@ -645,7 +654,7 @@ pub impl Datum {
         //
         // (Note: write-guarded values are always boxes)
         let bcx = if ccx.maps.write_guard_map.contains(&key) {
-            self.perform_write_guard(bcx)
+            self.perform_write_guard(bcx, span)
         } else { bcx };
 
         match ty::get(self.ty).sty {
@@ -759,7 +768,7 @@ pub impl Datum {
              expr: @ast::expr,  // the expression whose value is being deref'd
              derefs: uint)
           -> DatumBlock {
-        match self.try_deref(bcx, expr.id, derefs, false) {
+        match self.try_deref(bcx, expr.span, expr.id, derefs, false) {
             (Some(lvres), bcx) => DatumBlock { bcx: bcx, datum: lvres },
             (None, _) => {
                 bcx.ccx().sess.span_bug(
@@ -769,6 +778,7 @@ pub impl Datum {
     }
 
     fn autoderef(&self, bcx: block,
+                 span: span,
                  expr_id: ast::node_id,
                  max: uint)
               -> DatumBlock {
@@ -783,7 +793,7 @@ pub impl Datum {
         let mut bcx = bcx;
         while derefs < max {
             derefs += 1u;
-            match datum.try_deref(bcx, expr_id, derefs, true) {
+            match datum.try_deref(bcx, span, expr_id, derefs, true) {
                 (None, new_bcx) => { bcx = new_bcx; break }
                 (Some(datum_deref), new_bcx) => {
                     datum = datum_deref;

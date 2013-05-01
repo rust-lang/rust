@@ -3723,7 +3723,7 @@ pub impl Parser {
                                first_item_attrs: ~[attribute])
                             -> foreign_mod {
         let ParsedItemsAndViewItems {
-            attrs_remaining: attrs_remaining,
+            attrs_remaining: _,
             view_items: view_items,
             items: _,
             foreign_items: foreign_items

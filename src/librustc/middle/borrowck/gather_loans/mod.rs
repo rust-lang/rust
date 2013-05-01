@@ -26,7 +26,6 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr};
 
-use core::hashmap::HashSet;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 use syntax::ast_util::id_range;
