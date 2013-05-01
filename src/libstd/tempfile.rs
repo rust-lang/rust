@@ -42,13 +42,18 @@ mod tests {
         use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
         use core::os;
 
-        let root = mkdtemp(&os::tmpdir(), "temp").expect("recursive_mkdir_rel");
-        os::change_dir(&root);
-        let path = Path("frob");
-        assert!(os::mkdir_recursive(&path,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
-        assert!(os::path_is_dir(&path));
-        assert!(os::mkdir_recursive(&path,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
-        assert!(os::path_is_dir(&path));
+        let root = mkdtemp(&os::tmpdir(), "recursive_mkdir_rel").
+            expect("recursive_mkdir_rel");
+        assert!(do os::change_dir_locked(&root) {
+            let path = Path("frob");
+            debug!("recursive_mkdir_rel: Making: %s in cwd %s [%?]", path.to_str(),
+                   os::getcwd().to_str(),
+                   os::path_exists(&path));
+            assert!(os::mkdir_recursive(&path,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+            assert!(os::path_is_dir(&path));
+            assert!(os::mkdir_recursive(&path,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+            assert!(os::path_is_dir(&path));
+        });
     }
 
     #[test]
@@ -67,18 +72,21 @@ mod tests {
         use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
         use core::os;
 
-        let root = mkdtemp(&os::tmpdir(), "temp").expect("recursive_mkdir_rel_2");
-        os::change_dir(&root);
-        let path = Path("./frob/baz");
-        debug!("...Making: %s in cwd %s", path.to_str(), os::getcwd().to_str());
-        assert!(os::mkdir_recursive(&path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
-        assert!(os::path_is_dir(&path));
-        assert!(os::path_is_dir(&path.pop()));
-        let path2 = Path("quux/blat");
-        debug!("Making: %s in cwd %s", path2.to_str(), os::getcwd().to_str());
-        assert!(os::mkdir_recursive(&path2, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
-        assert!(os::path_is_dir(&path2));
-        assert!(os::path_is_dir(&path2.pop()));
+        let root = mkdtemp(&os::tmpdir(), "recursive_mkdir_rel_2").
+            expect("recursive_mkdir_rel_2");
+        assert!(do os::change_dir_locked(&root) {
+            let path = Path("./frob/baz");
+            debug!("recursive_mkdir_rel_2: Making: %s in cwd %s [%?]", path.to_str(),
+                   os::getcwd().to_str(), os::path_exists(&path));
+            assert!(os::mkdir_recursive(&path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+                assert!(os::path_is_dir(&path));
+            assert!(os::path_is_dir(&path.pop()));
+            let path2 = Path("quux/blat");
+            debug!("recursive_mkdir_rel_2: Making: %s in cwd %s", path2.to_str(),
+                   os::getcwd().to_str());
+            assert!(os::mkdir_recursive(&path2, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+                assert!(os::path_is_dir(&path2));
+            assert!(os::path_is_dir(&path2.pop()));
+        });
     }
-
 }
