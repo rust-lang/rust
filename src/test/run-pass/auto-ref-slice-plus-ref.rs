@@ -23,7 +23,7 @@ impl<'self> MyIter for &'self [int] {
 
 impl<'self> MyIter for &'self str {
     fn test_imm(&self) { assert_eq!(*self, "test") }
-    fn test_const(&const self) { assert_eq!(self[0], 't') }
+    fn test_const(&const self) { assert_eq!(self[0], 't' as u8) }
 }
 
 pub fn main() {
