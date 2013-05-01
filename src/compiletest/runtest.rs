@@ -524,7 +524,7 @@ fn exec_compiled_test(config: config, props: TestProps,
                 // execute program
                 logv(config, fmt!("executing (%s) %s", config.target, cmdline));
 
-                // NOTE : adb shell dose not forward to each stdout and stderr of internal result 
+                // NOTE : adb shell dose not forward to each stdout and stderr of internal result
                 //        but forward to stdout only
                 let mut newargs_out = ~[];
                 let mut newargs_err = ~[];
