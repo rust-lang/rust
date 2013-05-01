@@ -88,6 +88,7 @@ use kinds::Owned;
 use libc;
 use ops::Drop;
 use option::{None, Option, Some};
+use unstable::finally::Finally;
 use unstable::intrinsics;
 use ptr;
 use task;
@@ -396,28 +397,22 @@ pub fn try_recv<T:Owned,Tbuffer:Owned>(p: RecvPacketBuffered<T, Tbuffer>)
     let p_ = p.unwrap();
     let p = unsafe { &*p_ };
 
-    struct DropState<'self> {
-        p: &'self PacketHeader,
-    }
-
-    #[unsafe_destructor]
-    impl<'self> Drop for DropState<'self> {
-        fn finalize(&self) {
-            unsafe {
-                if task::failing() {
-                    self.p.state = Terminated;
-                    let old_task = swap_task(&mut self.p.blocked_task,
-                                             ptr::null());
-                    if !old_task.is_null() {
-                        rustrt::rust_task_deref(old_task);
-                    }
+    do (|| {
+        try_recv_(p)
+    }).finally {
+        unsafe {
+            if task::failing() {
+                p.header.state = Terminated;
+                let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
+                if !old_task.is_null() {
+                    rustrt::rust_task_deref(old_task);
                 }
             }
         }
     }
+}
 
-    let _drop_state = DropState { p: &p.header };
-
+fn try_recv_<T:Owned>(p: &Packet<T>) -> Option<T> {
     // optimistic path
     match p.header.state {
       Full => {
@@ -454,7 +449,7 @@ pub fn try_recv<T:Owned,Tbuffer:Owned>(p: RecvPacketBuffered<T, Tbuffer>)
                                        Blocked);
         match old_state {
           Empty => {
-            debug!("no data available on %?, going to sleep.", p_);
+            debug!("no data available on %?, going to sleep.", p);
             if count == 0 {
                 wait_event(this);
             }
