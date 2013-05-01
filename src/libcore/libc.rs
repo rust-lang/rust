@@ -387,7 +387,7 @@ pub mod types {
             pub mod posix01 {
                 use libc::types::common::c95::{c_void};
                 use libc::types::os::arch::c95::{c_char, c_int, size_t};
-                struct glob_t {
+                pub struct glob_t {
                     gl_pathc:  size_t,
                     __unused1: size_t,
                     gl_offs:   size_t,
@@ -606,7 +606,7 @@ pub mod types {
             pub mod posix01 {
                 use libc::types::common::c95::{c_void};
                 use libc::types::os::arch::c95::{c_char, c_int, size_t};
-                struct glob_t {
+                pub struct glob_t {
                     gl_pathc:  size_t,
                     __unused1: c_int,
                     gl_offs:   size_t,
