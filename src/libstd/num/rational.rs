@@ -143,9 +143,9 @@ impl<T: Copy + Num + Ord>
 
 // (a/b) / (c/d) = (a*d)/(b*c)
 impl<T: Copy + Num + Ord>
-    Quot<Ratio<T>,Ratio<T>> for Ratio<T> {
+    Div<Ratio<T>,Ratio<T>> for Ratio<T> {
     #[inline]
-    fn quot(&self, rhs: &Ratio<T>) -> Ratio<T> {
+    fn div(&self, rhs: &Ratio<T>) -> Ratio<T> {
         Ratio::new(self.numer * rhs.denom, self.denom * rhs.numer)
     }
 }
@@ -395,7 +395,7 @@ mod test {
         }
 
         #[test]
-        fn test_quot() {
+        fn test_div() {
             assert_eq!(_1 / _1_2, _2);
             assert_eq!(_3_2 / _1_2, _1 + _2);
             assert_eq!(_1 / _neg1_2, _neg1_2 + _neg1_2 + _neg1_2 + _neg1_2);
@@ -424,7 +424,7 @@ mod test {
         }
         #[test]
         #[should_fail]
-        fn test_quot_0() {
+        fn test_div_0() {
             let _a =  _1 / _0;
         }
     }

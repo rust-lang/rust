@@ -11,13 +11,11 @@
 //! An interface for numeric types
 use cmp::{Eq, Ord};
 #[cfg(stage0)]
-use ops::{Add, Sub, Mul, Neg};
-#[cfg(stage0)]
-use Quot = ops::Div;
+use ops::{Add, Sub, Mul, Div, Neg};
 #[cfg(stage0)]
 use Rem = ops::Modulo;
 #[cfg(not(stage0))]
-use ops::{Add, Sub, Mul, Quot, Rem, Neg};
+use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::Option;
 use kinds::Copy;
@@ -32,7 +30,7 @@ pub trait Num: Eq + Zero + One
              + Add<Self,Self>
              + Sub<Self,Self>
              + Mul<Self,Self>
-             + Quot<Self,Self>
+             + Div<Self,Self>
              + Rem<Self,Self> {}
 
 pub trait IntConvertible {
@@ -76,12 +74,13 @@ pub fn abs<T:Ord + Zero + Neg<T>>(v: T) -> T {
 
 pub trait Integer: Num
                  + Orderable
-                 + Quot<Self,Self>
+                 + Div<Self,Self>
                  + Rem<Self,Self> {
-    fn div(&self, other: &Self) -> Self;
-    fn modulo(&self, other: &Self) -> Self;
-    fn div_mod(&self, other: &Self) -> (Self,Self);
-    fn quot_rem(&self, other: &Self) -> (Self,Self);
+    fn div_rem(&self, other: &Self) -> (Self,Self);
+
+    fn div_floor(&self, other: &Self) -> Self;
+    fn mod_floor(&self, other: &Self) -> Self;
+    fn div_mod_floor(&self, other: &Self) -> (Self,Self);
 
     fn gcd(&self, other: &Self) -> Self;
     fn lcm(&self, other: &Self) -> Self;
@@ -102,7 +101,7 @@ pub trait Round {
 pub trait Fractional: Num
                     + Orderable
                     + Round
-                    + Quot<Self,Self> {
+                    + Div<Self,Self> {
     fn recip(&self) -> Self;
 }
 
@@ -226,7 +225,7 @@ pub trait Primitive: Num
                    + Add<Self,Self>
                    + Sub<Self,Self>
                    + Mul<Self,Self>
-                   + Quot<Self,Self>
+                   + Div<Self,Self>
                    + Rem<Self,Self> {
     // FIXME (#5527): These should be associated constants
     fn bits() -> uint;
@@ -371,7 +370,7 @@ pub trait FromStrRadix {
 /// - If code written to use this function doesn't care about it, it's
 ///   probably assuming that `x^0` always equals `1`.
 ///
-pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Quot<T,T>+Mul<T,T>>(
+pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(
     radix: uint, pow: uint) -> T {
     let _0: T = Zero::zero();
     let _1: T = One::one();
@@ -413,13 +412,13 @@ pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
     assert_eq!(ten.add(&two),  cast(12));
     assert_eq!(ten.sub(&two),  cast(8));
     assert_eq!(ten.mul(&two),  cast(20));
-    assert_eq!(ten.quot(&two), cast(5));
+    assert_eq!(ten.div(&two), cast(5));
     assert_eq!(ten.rem(&two),  cast(0));
 
     assert_eq!(ten.add(&two),  ten + two);
     assert_eq!(ten.sub(&two),  ten - two);
     assert_eq!(ten.mul(&two),  ten * two);
-    assert_eq!(ten.quot(&two), ten / two);
+    assert_eq!(ten.div(&two), ten / two);
     assert_eq!(ten.rem(&two),  ten % two);
 }
 

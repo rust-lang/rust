@@ -33,7 +33,7 @@ use syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
 use syntax::ast::{expr_binary, expr_break, expr_field};
 use syntax::ast::{expr_fn_block, expr_index, expr_method_call, expr_path};
 use syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
-use syntax::ast::{def_upvar, def_use, def_variant, quot, eq};
+use syntax::ast::{def_upvar, def_use, def_variant, div, eq};
 use syntax::ast::{expr, expr_again, expr_assign_op};
 use syntax::ast::{expr_index, expr_loop};
 use syntax::ast::{expr_path, expr_struct, expr_unary, fn_decl};
@@ -4901,9 +4901,9 @@ pub impl Resolver {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.mul_trait());
             }
-            expr_binary(quot, _, _) | expr_assign_op(quot, _, _) => {
+            expr_binary(div, _, _) | expr_assign_op(div, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
-                                              self.lang_items.quot_trait());
+                                              self.lang_items.div_trait());
             }
             expr_binary(rem, _, _) | expr_assign_op(rem, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,

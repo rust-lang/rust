@@ -371,7 +371,7 @@ impl<'self> to_bytes::IterBytes for StringRef<'self> {
 pub fn token_to_binop(tok: Token) -> Option<ast::binop> {
   match tok {
       BINOP(STAR)    => Some(ast::mul),
-      BINOP(SLASH)   => Some(ast::quot),
+      BINOP(SLASH)   => Some(ast::div),
       BINOP(PERCENT) => Some(ast::rem),
       BINOP(PLUS)    => Some(ast::add),
       BINOP(MINUS)   => Some(ast::subtract),

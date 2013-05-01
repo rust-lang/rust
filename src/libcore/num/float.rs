@@ -25,7 +25,7 @@ use libc::c_int;
 use num::{Zero, One, strconv};
 use prelude::*;
 
-pub use f64::{add, sub, mul, quot, rem, lt, le, eq, ne, ge, gt};
+pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
 pub use f64::logarithm;
 pub use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
 pub use f64::{erf, erfc, exp, expm1, exp2, abs_sub};
@@ -692,16 +692,12 @@ impl Mul<float,float> for float {
     fn mul(&self, other: &float) -> float { *self * *other }
 }
 
-#[cfg(stage0,notest)]
+#[cfg(notest)]
 impl Div<float,float> for float {
     #[inline(always)]
     fn div(&self, other: &float) -> float { *self / *other }
 }
-#[cfg(not(stage0),notest)]
-impl Quot<float,float> for float {
-    #[inline(always)]
-    fn quot(&self, other: &float) -> float { *self / *other }
-}
+
 #[cfg(stage0,notest)]
 impl Modulo<float,float> for float {
     #[inline(always)]

@@ -31,7 +31,7 @@ pub fn sub(x: T, y: T) -> T { x - y }
 #[inline(always)]
 pub fn mul(x: T, y: T) -> T { x * y }
 #[inline(always)]
-pub fn quot(x: T, y: T) -> T { x / y }
+pub fn div(x: T, y: T) -> T { x / y }
 #[inline(always)]
 pub fn rem(x: T, y: T) -> T { x % y }
 
@@ -166,15 +166,10 @@ impl Mul<T,T> for T {
     fn mul(&self, other: &T) -> T { *self * *other }
 }
 
-#[cfg(stage0,notest)]
+#[cfg(notest)]
 impl Div<T,T> for T {
     #[inline(always)]
     fn div(&self, other: &T) -> T { *self / *other }
-}
-#[cfg(not(stage0),notest)]
-impl Quot<T,T> for T {
-    #[inline(always)]
-    fn quot(&self, other: &T) -> T { *self / *other }
 }
 
 #[cfg(stage0,notest)]
@@ -197,23 +192,23 @@ impl Neg<T> for T {
 impl Unsigned for T {}
 
 impl Integer for T {
-    /// Unsigned integer division. Returns the same result as `quot` (`/`).
+    /// Calculates `div` (`\`) and `rem` (`%`) simultaneously
     #[inline(always)]
-    fn div(&self, other: &T) -> T { *self / *other }
-
-    /// Unsigned integer modulo operation. Returns the same result as `rem` (`%`).
-    #[inline(always)]
-    fn modulo(&self, other: &T) -> T { *self / *other }
-
-    /// Calculates `div` and `modulo` simultaneously
-    #[inline(always)]
-    fn div_mod(&self, other: &T) -> (T,T) {
+    fn div_rem(&self, other: &T) -> (T,T) {
         (*self / *other, *self % *other)
     }
 
-    /// Calculates `quot` (`\`) and `rem` (`%`) simultaneously
+    /// Unsigned integer division. Returns the same result as `div` (`/`).
     #[inline(always)]
-    fn quot_rem(&self, other: &T) -> (T,T) {
+    fn div_floor(&self, other: &T) -> T { *self / *other }
+
+    /// Unsigned integer modulo operation. Returns the same result as `rem` (`%`).
+    #[inline(always)]
+    fn mod_floor(&self, other: &T) -> T { *self / *other }
+
+    /// Calculates `div_floor` and `modulo_floor` simultaneously
+    #[inline(always)]
+    fn div_mod_floor(&self, other: &T) -> (T,T) {
         (*self / *other, *self % *other)
     }
 
