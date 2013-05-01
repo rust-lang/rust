@@ -765,26 +765,6 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: &writer::Encoder,
            class itself */
         let idx = encode_info_for_struct(ecx, ebml_w, path,
                                          struct_def.fields, index);
-        /* Encode the dtor */
-        for struct_def.dtor.each |dtor| {
-            index.push(entry {val: dtor.node.id, pos: ebml_w.writer.tell()});
-          encode_info_for_ctor(ecx,
-                               ebml_w,
-                               dtor.node.id,
-                               ecx.tcx.sess.ident_of(
-                                   *ecx.tcx.sess.str_of(item.ident) +
-                                   ~"_dtor"),
-                               path,
-                               if generics.ty_params.len() > 0u {
-                                   Some(ii_dtor(copy *dtor,
-                                                item.ident,
-                                                copy *generics,
-                                                local_def(item.id))) }
-                               else {
-                                   None
-                               },
-                               generics);
-        }
 
         /* Index the class*/
         add_to_index();
@@ -816,13 +796,6 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: &writer::Encoder,
         encode_name(ecx, ebml_w, item.ident);
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ecx, ebml_w, item);
-        /* Encode the dtor */
-        /* Encode id for dtor */
-        for struct_def.dtor.each |dtor| {
-            do ebml_w.wr_tag(tag_item_dtor) {
-                encode_def_id(ebml_w, local_def(dtor.node.id));
-            }
-        };
 
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_trait_method

@@ -438,8 +438,7 @@ pub fn resolve_fn(fk: &visit::fn_kind,
                   cx: ctxt,
                   visitor: visit::vt<ctxt>) {
     let fn_cx = match *fk {
-        visit::fk_item_fn(*) | visit::fk_method(*) |
-        visit::fk_dtor(*) => {
+        visit::fk_item_fn(*) | visit::fk_method(*) => {
             // Top-level functions are a root scope.
             ctxt {parent: Some(id),.. cx}
         }

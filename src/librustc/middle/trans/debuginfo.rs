@@ -983,9 +983,6 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
                                        expected an expr_fn_block here")
         }
       }
-      ast_map::node_dtor(_, _, did, _) => {
-        ((dbg_cx.names)(~"dtor"), ast_util::dtor_ty(), did.node)
-      }
       _ => fcx.ccx.sess.bug(~"create_function: unexpected \
                               sort of node")
     };

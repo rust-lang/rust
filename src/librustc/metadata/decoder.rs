@@ -445,22 +445,6 @@ pub fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     found.get()
 }
 
-pub fn struct_dtor(cdata: cmd, id: ast::node_id) -> Option<ast::def_id> {
-    let items = reader::get_doc(reader::Doc(cdata.data), tag_items);
-    let mut found = None;
-    let cls_items = match maybe_find_item(id, items) {
-            Some(it) => it,
-            None     => fail!(fmt!("struct_dtor: class id not found \
-              when looking up dtor for %d", id))
-    };
-    for reader::tagged_docs(cls_items, tag_item_dtor) |doc| {
-         let doc1 = reader::get_doc(doc, tag_def_id);
-         let did = reader::with_doc_data(doc1, |d| parse_def_id(d));
-         found = Some(translate_def_id(cdata, did));
-    };
-    found
-}
-
 pub fn get_symbol(data: @~[u8], id: ast::node_id) -> ~str {
     return item_symbol(lookup_item(id, data));
 }

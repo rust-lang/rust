@@ -2093,53 +2093,6 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
     finish_fn(fcx, lltop);
 }
 
-pub fn trans_struct_dtor(ccx: @CrateContext,
-                         path: path,
-                         body: &ast::blk,
-                         dtor_id: ast::node_id,
-                         psubsts: Option<@param_substs>,
-                         hash_id: Option<mono_id>,
-                         parent_id: ast::def_id)
-                      -> ValueRef {
-  let tcx = ccx.tcx;
-  /* Look up the parent class's def_id */
-  let mut class_ty = ty::lookup_item_type(tcx, parent_id).ty;
-  /* Substitute in the class type if necessary */
-  for psubsts.each |ss| {
-    class_ty = ty::subst_tps(tcx, ss.tys, ss.self_ty, class_ty);
-  }
-
-  /* The dtor takes a (null) output pointer, and a self argument,
-     and returns () */
-  let lldty = type_of_dtor(ccx, class_ty);
-
-  // XXX: Bad copies.
-  let s = get_dtor_symbol(ccx, copy path, dtor_id, psubsts);
-
-  /* Register the dtor as a function. It has external linkage */
-  let lldecl = decl_internal_cdecl_fn(ccx.llmod, s, lldty);
-  lib::llvm::SetLinkage(lldecl, lib::llvm::ExternalLinkage);
-
-  /* If we're monomorphizing, register the monomorphized decl
-     for the dtor */
-  for hash_id.each |h_id| {
-    ccx.monomorphized.insert(*h_id, lldecl);
-  }
-  /* Translate the dtor body */
-  let decl = ast_util::dtor_dec();
-  trans_fn(ccx,
-           path,
-           &decl,
-           body,
-           lldecl,
-           impl_self(class_ty),
-           psubsts,
-           dtor_id,
-           None,
-           []);
-  lldecl
-}
-
 pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
                       id: ast::node_id,
                       path: @ast_map::path, vi: @~[ty::VariantInfo],
@@ -2158,8 +2111,7 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
                 // Nothing to do.
             }
             ast::struct_variant_kind(struct_def) => {
-                trans_struct_def(ccx, struct_def, path,
-                                 variant.node.id);
+                trans_struct_def(ccx, struct_def);
             }
         }
     }
@@ -2228,22 +2180,14 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
       }
       ast::item_struct(struct_def, ref generics) => {
         if !generics.is_type_parameterized() {
-            trans_struct_def(ccx, struct_def, path, item.id);
+            trans_struct_def(ccx, struct_def);
         }
       }
       _ => {/* fall through */ }
     }
 }
 
-pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def,
-                        path: @ast_map::path,
-                        id: ast::node_id) {
-    // Translate the destructor.
-    for struct_def.dtor.each |dtor| {
-        trans_struct_dtor(ccx, /*bad*/copy *path, &dtor.node.body,
-                         dtor.node.id, None, None, local_def(id));
-    };
-
+pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def) {
     // If this is a tuple-like struct, translate the constructor.
     match struct_def.ctor_id {
         // We only need to translate a constructor if there are fields;
@@ -2477,46 +2421,6 @@ pub fn item_path(ccx: @CrateContext, i: @ast::item) -> path {
     vec::append(/*bad*/copy *base, ~[path_name(i.ident)])
 }
 
-/* If there's already a symbol for the dtor with <id> and substs <substs>,
-   return it; otherwise, create one and register it, returning it as well */
-pub fn get_dtor_symbol(ccx: @CrateContext,
-                       path: path,
-                       id: ast::node_id,
-                       substs: Option<@param_substs>)
-                    -> ~str {
-  let t = ty::node_id_to_type(ccx.tcx, id);
-  match ccx.item_symbols.find(&id) {
-     Some(s) => (/*bad*/copy *s),
-     None if substs.is_none() => {
-       let s = mangle_exported_name(
-           ccx,
-           vec::append(path, ~[path_name((ccx.names)(~"dtor"))]),
-           t);
-       // XXX: Bad copy, use `@str`?
-       ccx.item_symbols.insert(id, copy s);
-       s
-     }
-     None   => {
-       // Monomorphizing, so just make a symbol, don't add
-       // this to item_symbols
-       match substs {
-         Some(ss) => {
-           let mono_ty = ty::subst_tps(ccx.tcx, ss.tys, ss.self_ty, t);
-           mangle_exported_name(
-               ccx,
-               vec::append(path,
-                           ~[path_name((ccx.names)(~"dtor"))]),
-               mono_ty)
-         }
-         None => {
-             ccx.sess.bug(fmt!("get_dtor_symbol: not monomorphizing and \
-               couldn't find a symbol for dtor %?", path));
-         }
-       }
-     }
-  }
-}
-
 pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
     debug!("get_item_val(id=`%?`)", id);
     let tcx = ccx.tcx;
@@ -2601,28 +2505,6 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                     g
                 }
             }
-          }
-          ast_map::node_dtor(_, dt, parent_id, pt) => {
-            /*
-                Don't just call register_fn, since we don't want to add
-                the implicit self argument automatically (we want to make sure
-                it has the right type)
-            */
-            // Want parent_id and not id, because id is the dtor's type
-            let class_ty = ty::lookup_item_type(tcx, parent_id).ty;
-            // This code shouldn't be reached if the class is generic
-            assert!(!ty::type_has_params(class_ty));
-            let lldty = T_fn(~[
-                    T_ptr(T_i8()),
-                    T_ptr(type_of(ccx, class_ty))
-                ],
-                T_nil());
-            let s = get_dtor_symbol(ccx, /*bad*/copy *pt, dt.node.id, None);
-
-            /* Make the declaration for the dtor */
-            let llfn = decl_internal_cdecl_fn(ccx.llmod, s, lldty);
-            lib::llvm::SetLinkage(llfn, lib::llvm::ExternalLinkage);
-            llfn
           }
 
           ast_map::node_variant(ref v, enm, pth) => {
