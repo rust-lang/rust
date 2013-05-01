@@ -100,7 +100,6 @@ pub static tag_mod_impl_trait: uint = 0x47u;
   different tags.
  */
 pub static tag_item_impl_method: uint = 0x48u;
-pub static tag_item_dtor: uint = 0x49u;
 pub static tag_item_trait_method_self_ty: uint = 0x4b;
 pub static tag_item_trait_method_self_ty_region: uint = 0x4c;
 

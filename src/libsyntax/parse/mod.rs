@@ -24,7 +24,7 @@ use parse::token::{ident_interner, mk_ident_interner};
 use core::io;
 use core::option::{None, Option, Some};
 use core::path::Path;
-use core::result::{Err, Ok, Result};
+use core::result::{Err, Ok};
 
 pub mod lexer;
 pub mod parser;

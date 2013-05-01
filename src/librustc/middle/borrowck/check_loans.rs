@@ -629,8 +629,7 @@ fn check_loans_in_fn(fk: &visit::fn_kind,
 
     let declared_purity, src;
     match *fk {
-        visit::fk_item_fn(*) | visit::fk_method(*) |
-        visit::fk_dtor(*) => {
+        visit::fk_item_fn(*) | visit::fk_method(*) => {
             declared_purity = ty::ty_fn_purity(fty);
             src = id;
         }
@@ -658,8 +657,7 @@ fn check_loans_in_fn(fk: &visit::fn_kind,
                     // inherits the fn_args from enclosing ctxt
                 }
                 visit::fk_anon(*) | visit::fk_fn_block(*) |
-                visit::fk_method(*) | visit::fk_item_fn(*) |
-                visit::fk_dtor(*) => {
+                visit::fk_method(*) | visit::fk_item_fn(*) => {
                     let mut fn_args = ~[];
                     for decl.inputs.each |input| {
                         // For the purposes of purity, only consider function-

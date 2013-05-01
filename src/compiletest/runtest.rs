@@ -106,7 +106,7 @@ fn run_rpass_test(config: config, props: TestProps, testfile: &Path) {
             fatal_ProcRes(~"test run failed!", ProcRes);
         }
     } else {
-        let mut ProcRes = jit_test(config, props, testfile);
+        let ProcRes = jit_test(config, props, testfile);
 
         if ProcRes.status != 0 { fatal_ProcRes(~"jit failed!", ProcRes); }
     }

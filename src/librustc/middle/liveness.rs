@@ -117,7 +117,7 @@ use syntax::ast::*;
 use syntax::codemap::span;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::{expr_to_str, block_to_str};
-use syntax::visit::{fk_anon, fk_dtor, fk_fn_block, fk_item_fn, fk_method};
+use syntax::visit::{fk_anon, fk_fn_block, fk_item_fn, fk_method};
 use syntax::visit::{vt};
 use syntax::{visit, ast_util};
 
@@ -439,9 +439,6 @@ fn visit_fn(fk: &visit::fn_kind,
                 }
                 sty_static => {}
             }
-        }
-        fk_dtor(_, _, self_id, _) => {
-            fn_maps.add_variable(Arg(self_id, special_idents::self_));
         }
         fk_item_fn(*) | fk_anon(*) | fk_fn_block(*) => {}
     }

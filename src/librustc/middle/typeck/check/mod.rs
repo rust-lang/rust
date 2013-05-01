@@ -557,30 +557,7 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
     }
 }
 
-pub fn check_struct(ccx: @mut CrateCtxt,
-                    struct_def: @ast::struct_def,
-                    id: ast::node_id,
-                    span: span) {
-    let tcx = ccx.tcx;
-    let self_ty = ty::node_id_to_type(tcx, id);
-
-    for struct_def.dtor.each |dtor| {
-        let class_t = SelfInfo {
-            self_ty: self_ty,
-            self_id: dtor.node.self_id,
-            span: dtor.span,
-        };
-        // typecheck the dtor
-        let dtor_dec = ast_util::dtor_dec();
-        check_bare_fn(
-            ccx,
-            &dtor_dec,
-            &dtor.node.body,
-            dtor.node.id,
-            Some(class_t)
-        );
-    };
-
+pub fn check_struct(ccx: @mut CrateCtxt, id: ast::node_id, span: span) {
     // Check that the class is instantiable
     check_instantiable(ccx.tcx, span, id);
 }
@@ -623,8 +600,8 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
             }
         }
       }
-      ast::item_struct(struct_def, _) => {
-        check_struct(ccx, struct_def, it.id, it.span);
+      ast::item_struct(*) => {
+        check_struct(ccx, it.id, it.span);
       }
       ast::item_ty(t, ref generics) => {
         let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);
