@@ -1420,12 +1420,3 @@ pub fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> ~str {
         tyencode::enc_ty(wr, cx, t);
     }
 }
-
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

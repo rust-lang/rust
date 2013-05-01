@@ -77,12 +77,3 @@ pub fn bzero_glue_name() -> ~str { return ~"rust_bzero_glue"; }
 pub fn yield_glue_name() -> ~str { return ~"rust_yield_glue"; }
 
 pub fn no_op_type_glue_name() -> ~str { return ~"rust_no_op_type_glue"; }
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

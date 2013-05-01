@@ -426,12 +426,3 @@ pub fn check_crate(tcx: ty::ctxt,
     tcx.sess.abort_if_errors();
     (ccx.method_map, ccx.vtable_map)
 }
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

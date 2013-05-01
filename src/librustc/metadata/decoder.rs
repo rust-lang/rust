@@ -1176,11 +1176,3 @@ pub fn get_link_args_for_crate(cdata: cmd) -> ~[~str] {
     }
     result
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
