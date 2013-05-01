@@ -17,6 +17,7 @@ use str;
 use sys;
 use unstable::exchange_alloc;
 use cast::transmute;
+use task::rt::rust_get_task;
 
 #[allow(non_camel_case_types)]
 pub type rust_task = c_void;
@@ -27,7 +28,8 @@ pub static FROZEN_BIT: uint = 0x80000000;
 pub static FROZEN_BIT: uint = 0x8000000000000000;
 
 pub mod rustrt {
-    use libc::{c_char, uintptr_t};
+    use unstable::lang::rust_task;
+    use libc::{c_void, c_char, uintptr_t};
 
     pub extern {
         #[rust_stack]
@@ -43,6 +45,12 @@ pub mod rustrt {
 
         #[fast_ffi]
         unsafe fn rust_upcall_free_noswitch(ptr: *c_char);
+
+        #[rust_stack]
+        fn rust_take_task_borrow_list(task: *rust_task) -> *c_void;
+
+        #[rust_stack]
+        fn rust_set_task_borrow_list(task: *rust_task, map: *c_void);
     }
 }
 
@@ -61,10 +69,50 @@ pub fn fail_bounds_check(file: *c_char, line: size_t,
     }
 }
 
-pub fn fail_borrowed(file: *c_char, line: size_t) {
-    let msg = "borrowed";
-    do str::as_buf(msg) |msg_p, _| {
-        fail_(msg_p as *c_char, file, line);
+struct BorrowRecord {
+    box: *mut BoxRepr,
+    file: *c_char,
+    line: size_t
+}
+
+fn swap_task_borrow_list(f: &fn(~[BorrowRecord]) -> ~[BorrowRecord]) {
+    unsafe {
+        let cur_task = rust_get_task();
+        let mut borrow_list: ~[BorrowRecord] = {
+            let ptr = rustrt::rust_take_task_borrow_list(cur_task);
+            if ptr.is_null() { ~[] } else { transmute(ptr) }
+        };
+        borrow_list = f(borrow_list);
+        rustrt::rust_set_task_borrow_list(cur_task, transmute(borrow_list));
+    }
+}
+
+pub fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
+    if !::rt::env::get().debug_borrows {
+        let msg = "borrowed";
+        do str::as_buf(msg) |msg_p, _| {
+            fail_(msg_p as *c_char, file, line);
+        }
+    } else {
+        do swap_task_borrow_list |borrow_list| {
+            let mut msg = ~"borrowed";
+            let mut sep = " at ";
+            for borrow_list.each_reverse |entry| {
+                if entry.box == box {
+                    str::push_str(&mut msg, sep);
+                    let filename = unsafe {
+                        str::raw::from_c_str(entry.file)
+                    };
+                    str::push_str(&mut msg, filename);
+                    str::push_str(&mut msg, fmt!(":%u", line as uint));
+                    sep = " and at ";
+                }
+            }
+            do str::as_buf(msg) |msg_p, _| {
+                fail_(msg_p as *c_char, file, line)
+            }
+            borrow_list
+        }
     }
 }
 
@@ -140,11 +188,27 @@ pub unsafe fn local_free(ptr: *c_char) {
     rustrt::rust_upcall_free_noswitch(ptr);
 }
 
+#[cfg(stage0)]
 #[lang="borrow_as_imm"]
 #[inline(always)]
 pub unsafe fn borrow_as_imm(a: *u8) {
     let a: *mut BoxRepr = transmute(a);
     (*a).header.ref_count |= FROZEN_BIT;
+}
+
+#[cfg(not(stage0))]
+#[lang="borrow_as_imm"]
+#[inline(always)]
+pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) {
+    let a: *mut BoxRepr = transmute(a);
+    (*a).header.ref_count |= FROZEN_BIT;
+    if ::rt::env::get().debug_borrows {
+        do swap_task_borrow_list |borrow_list| {
+            let mut borrow_list = borrow_list;
+            borrow_list.push(BorrowRecord {box: a, file: file, line: line});
+            borrow_list
+        }
+    }
 }
 
 #[lang="return_to_mut"]
@@ -165,7 +229,7 @@ pub unsafe fn check_not_borrowed(a: *u8) {
     let a: *mut BoxRepr = transmute(a);
     if ((*a).header.ref_count & FROZEN_BIT) != 0 {
         do str::as_buf("XXX") |file_p, _| {
-            fail_borrowed(file_p as *c_char, 0);
+            fail_borrowed(a, file_p as *c_char, 0);
         }
     }
 }
@@ -178,7 +242,7 @@ pub unsafe fn check_not_borrowed(a: *u8,
                                  line: size_t) {
     let a: *mut BoxRepr = transmute(a);
     if ((*a).header.ref_count & FROZEN_BIT) != 0 {
-        fail_borrowed(file, line);
+        fail_borrowed(a, file, line);
     }
 }
 

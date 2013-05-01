@@ -828,7 +828,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     // at the end of the scope with id `scope_id`:
     let root_key = root_map_key { id: expr.id, derefs: 0u };
     for bcx.ccx().maps.root_map.find(&root_key).each |&root_info| {
-        bcx = unrooted_datum.root(bcx, *root_info);
+        bcx = unrooted_datum.root(bcx, expr.span, *root_info);
     }
 
     return DatumBlock {bcx: bcx, datum: unrooted_datum};
