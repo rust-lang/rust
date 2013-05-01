@@ -153,17 +153,6 @@ fn check_item(item: @item, cx: Context, visitor: visit::vt<Context>) {
                     }
                 }
             }
-            item_struct(struct_def, _) => {
-                match struct_def.dtor {
-                    None => {}
-                    Some(ref dtor) => {
-                        let struct_did = def_id { crate: 0, node: item.id };
-                        check_struct_safe_for_destructor(cx,
-                                                         dtor.span,
-                                                         struct_did);
-                    }
-                }
-            }
             _ => {}
         }
     }

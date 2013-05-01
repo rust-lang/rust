@@ -1158,6 +1158,7 @@ pub struct struct_field_ {
     kind: struct_field_kind,
     id: node_id,
     ty: @Ty,
+    attrs: ~[attribute],
 }
 
 pub type struct_field = spanned<struct_field_>;
@@ -1174,10 +1175,7 @@ pub enum struct_field_kind {
 #[auto_decode]
 #[deriving(Eq)]
 pub struct struct_def {
-    fields: ~[@struct_field], /* fields */
-    /* (not including ctor or dtor) */
-    /* dtor is optional */
-    dtor: Option<struct_dtor>,
+    fields: ~[@struct_field], /* fields, not including ctor */
     /* ID of the constructor. This is only used for tuple- or enum-like
      * structs. */
     ctor_id: Option<node_id>
@@ -1230,18 +1228,6 @@ impl to_bytes::IterBytes for struct_mutability {
     }
 }
 
-pub type struct_dtor = spanned<struct_dtor_>;
-
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
-pub struct struct_dtor_ {
-    id: node_id,
-    attrs: ~[attribute],
-    self_id: node_id,
-    body: blk,
-}
-
 #[auto_encode]
 #[auto_decode]
 #[deriving(Eq)]
@@ -1272,7 +1258,6 @@ pub enum inlined_item {
     ii_item(@item),
     ii_method(def_id /* impl id */, @method),
     ii_foreign(@foreign_item),
-    ii_dtor(struct_dtor, ident, Generics, def_id /* parent id */)
 }
 
 /* hold off on tests ... they appear in a later merge.
