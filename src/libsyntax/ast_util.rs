@@ -11,7 +11,7 @@
 use ast::*;
 use ast;
 use ast_util;
-use codemap::{span, dummy_sp, spanned};
+use codemap::{span, spanned};
 use parse::token;
 use visit;
 use opt_vec;
