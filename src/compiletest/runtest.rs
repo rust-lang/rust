@@ -77,8 +77,10 @@ fn run_rfail_test(config: config, props: TestProps, testfile: &Path) {
         fatal_ProcRes(~"run-fail test isn't valgrind-clean!", ProcRes);
     }
 
-    check_correct_failure_status(ProcRes);
-    check_error_patterns(props, testfile, ProcRes);
+    if (config.flag_runnable) {
+        check_correct_failure_status(ProcRes);
+        check_error_patterns(props, testfile, ProcRes);
+    }
 }
 
 fn check_correct_failure_status(ProcRes: ProcRes) {
@@ -483,10 +485,96 @@ fn exec_compiled_test(config: config, props: TestProps,
         props.exec_env
     };
 
-    compose_and_run(config, testfile,
-                    make_run_args(config, props, testfile),
-                    env,
-                    config.run_lib_path, None)
+    if (config.host == config.target) {
+        compose_and_run(config, testfile,
+                        make_run_args(config, props, testfile),
+                        env,
+                        config.run_lib_path, None)
+    }
+    else {
+        let args = make_run_args(config, props, testfile);
+        let cmdline = make_cmdline(~"", args.prog, args.args);
+
+        let defaultRes = match config.mode {
+            mode_run_fail => ProcRes {status: 101, stdout: ~"", stderr: ~"", cmdline: cmdline},
+            _             => ProcRes {status: 0, stdout: ~"", stderr: ~"", cmdline: cmdline}
+        };
+
+        match (config.target, config.flag_runnable) {
+
+            (~"arm-linux-androideabi", true) => {
+
+                // get bare program string
+                let mut tvec = ~[];
+                let tstr = args.prog;
+                for str::each_split_char(tstr, '/') |ts| { tvec.push(ts.to_owned()) }
+                let prog_short = tvec.pop();
+
+                // copy to target
+                let copy_result = procsrv::run(~"", config.adb_path,
+                    ~[~"push", args.prog, ~"/system/tmp"],
+                    ~[(~"",~"")], Some(~""));
+
+                if config.verbose {
+                    io::stdout().write_str(fmt!("push (%s) %s %s %s",
+                        config.target, args.prog,
+                        copy_result.out, copy_result.err));
+                }
+
+                // execute program
+                logv(config, fmt!("executing (%s) %s", config.target, cmdline));
+
+                // NOTE : adb shell dose not forward to each stdout and stderr of internal result 
+                //        but forward to stdout only
+                let mut newargs_out = ~[];
+                let mut newargs_err = ~[];
+                let subargs = args.args;
+                newargs_out.push(~"shell");
+                newargs_err.push(~"shell");
+
+                let mut newcmd_out = ~"";
+                let mut newcmd_err = ~"";
+                newcmd_out.push_str(~"LD_LIBRARY_PATH=/system/tmp; ");
+                newcmd_err.push_str(~"LD_LIBRARY_PATH=/system/tmp; ");
+                newcmd_out.push_str(~"export LD_LIBRARY_PATH; ");
+                newcmd_err.push_str(~"export LD_LIBRARY_PATH; ");
+                newcmd_out.push_str(~"cd /system/tmp; ");
+                newcmd_err.push_str(~"cd /system/tmp; ");
+                newcmd_out.push_str("./");
+                newcmd_err.push_str("./");
+                newcmd_out.push_str(prog_short);
+                newcmd_err.push_str(prog_short);
+
+                for vec::each(subargs) |tv| {
+                    newcmd_out.push_str(" ");
+                    newcmd_err.push_str(" ");
+                    newcmd_out.push_str(tv.to_owned());
+                    newcmd_err.push_str(tv.to_owned());
+                }
+
+                newcmd_out.push_str(" 2>/dev/null");
+                newcmd_err.push_str(" 1>/dev/null");
+
+                newargs_out.push(newcmd_out);
+                newargs_err.push(newcmd_err);
+
+                let exe_result_out = procsrv::run(~"", config.adb_path,
+                    newargs_out, ~[(~"",~"")], Some(~""));
+                let exe_result_err = procsrv::run(~"", config.adb_path,
+                    newargs_err, ~[(~"",~"")], Some(~""));
+
+                dump_output(config, testfile, exe_result_out.out, exe_result_err.out);
+
+                match exe_result_err.out {
+                    ~"" => ProcRes {status: exe_result_out.status, stdout: exe_result_out.out,
+                        stderr: exe_result_err.out, cmdline: cmdline },
+                    _   => ProcRes {status: 101, stdout: exe_result_out.out,
+                        stderr: exe_result_err.out, cmdline: cmdline }
+                }
+            }
+            _=> defaultRes
+        }
+    }
 }
 
 fn compose_and_run_compiler(
@@ -515,6 +603,33 @@ fn compose_and_run_compiler(
                 fmt!("auxiliary build of %s failed to compile: ",
                      abs_ab.to_str()),
                 auxres);
+        }
+        if (config.host != config.target)
+        {
+            match (config.target, config.flag_runnable) {
+
+                (~"arm-linux-androideabi", true) => {
+
+                    let tstr = aux_output_dir_name(config, testfile).to_str();
+
+                    for os::list_dir_path(&Path(tstr)).each |file| {
+
+                        if (file.filetype() == Some(~".so")) {
+
+                            let copy_result = procsrv::run(~"", config.adb_path,
+                                ~[~"push", file.to_str(), ~"/system/tmp"],
+                                ~[(~"",~"")], Some(~""));
+
+                            if config.verbose {
+                                io::stdout().write_str(fmt!("push (%s) %s %s %s",
+                                    config.target, file.to_str(),
+                                    copy_result.out, copy_result.err));
+                            }
+                        }
+                    }
+                }
+                _=> ()
+            }
         }
     }
 
