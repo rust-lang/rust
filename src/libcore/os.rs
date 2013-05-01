@@ -818,6 +818,36 @@ pub fn change_dir(p: &Path) -> bool {
     }
 }
 
+/// Changes the current working directory to the specified
+/// path while acquiring a global lock, then calls `action`.
+/// If the change is successful, releases the lock and restores the
+/// CWD to what it was before, returning true.
+/// Returns false if the directory doesn't exist or if the directory change
+/// is otherwise unsuccessful.
+pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
+    use unstable::global::global_data_clone_create;
+    use unstable::{Exclusive, exclusive};
+
+    fn key(_: Exclusive<()>) { }
+
+    let result = unsafe {
+        global_data_clone_create(key, || {
+            ~exclusive(())
+        })
+    };
+
+    do result.with_imm() |_| {
+        let old_dir = os::getcwd();
+        if change_dir(p) {
+            action();
+            change_dir(&old_dir)
+        }
+        else {
+            false
+        }
+    }
+}
+
 /// Copies a file from one location to another
 pub fn copy_file(from: &Path, to: &Path) -> bool {
     return do_copy_file(from, to);
