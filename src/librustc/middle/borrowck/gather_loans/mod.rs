@@ -68,8 +68,7 @@ struct GatherLoanCtxt {
     id_range: id_range,
     all_loans: @mut ~[Loan],
     item_ub: ast::node_id,
-    repeating_ids: ~[ast::node_id],
-    ignore_adjustments: HashSet<ast::node_id>
+    repeating_ids: ~[ast::node_id]
 }
 
 pub fn gather_loans(bccx: @BorrowckCtxt,
@@ -79,8 +78,7 @@ pub fn gather_loans(bccx: @BorrowckCtxt,
         id_range: id_range::max(),
         all_loans: @mut ~[],
         item_ub: body.node.id,
-        repeating_ids: ~[body.node.id],
-        ignore_adjustments: HashSet::new()
+        repeating_ids: ~[body.node.id]
     };
     let v = visit::mk_vt(@visit::Visitor {visit_expr: gather_loans_in_expr,
                                           visit_block: gather_loans_in_block,
@@ -147,13 +145,8 @@ fn gather_loans_in_expr(ex: @ast::expr,
     self.id_range.add(ex.callee_id);
 
     // If this expression is borrowed, have to ensure it remains valid:
-    {
-        let this = &mut *self; // FIXME(#5074)
-        if !this.ignore_adjustments.contains(&ex.id) {
-            for tcx.adjustments.find(&ex.id).each |&adjustments| {
-                this.guarantee_adjustments(ex, *adjustments);
-            }
-        }
+    for tcx.adjustments.find(&ex.id).each |&adjustments| {
+        self.guarantee_adjustments(ex, *adjustments);
     }
 
     // Special checks for various kinds of expressions:
@@ -178,45 +171,19 @@ fn gather_loans_in_expr(ex: @ast::expr,
         visit::visit_expr(ex, self, vt);
       }
 
-      ast::expr_index(rcvr, _) |
-      ast::expr_binary(_, rcvr, _) |
-      ast::expr_unary(_, rcvr) |
-      ast::expr_assign_op(_, rcvr, _)
+      ast::expr_index(_, arg) |
+      ast::expr_binary(_, _, arg)
       if self.bccx.method_map.contains_key(&ex.id) => {
-        // Receivers in method calls are always passed by ref.
-        //
-        // Here, in an overloaded operator, the call is this expression,
-        // and hence the scope of the borrow is this call.
-        //
-        // FIX? / NOT REALLY---technically we should check the other
-        // argument and consider the argument mode.  But how annoying.
-        // And this problem when goes away when argument modes are
-        // phased out.  So I elect to leave this undone.
-        let scope_r = ty::re_scope(ex.id);
-        let rcvr_cmt = self.bccx.cat_expr(rcvr);
-        self.guarantee_valid(rcvr.id, rcvr.span, rcvr_cmt, m_imm, scope_r);
-
-        // FIXME (#3387): Total hack: Ignore adjustments for the left-hand
-        // side. Their regions will be inferred to be too large.
-        self.ignore_adjustments.insert(rcvr.id);
-
-        visit::visit_expr(ex, self, vt);
+          // Arguments in method calls are always passed by ref.
+          //
+          // Currently these do not use adjustments, so we have to
+          // hardcode this check here (note that the receiver DOES use
+          // adjustments).
+          let scope_r = ty::re_scope(ex.id);
+          let arg_cmt = self.bccx.cat_expr(arg);
+          self.guarantee_valid(arg.id, arg.span, arg_cmt, m_imm, scope_r);
+          visit::visit_expr(ex, self, vt);
       }
-
-      // FIXME--#3387
-      // ast::expr_binary(_, lhs, rhs) => {
-      //     // Universal comparison operators like ==, >=, etc
-      //     // take their arguments by reference.
-      //     let lhs_ty = ty::expr_ty(self.tcx(), lhs);
-      //     if !ty::type_is_scalar(lhs_ty) {
-      //         let scope_r = ty::re_scope(ex.id);
-      //         let lhs_cmt = self.bccx.cat_expr(lhs);
-      //         self.guarantee_valid(lhs_cmt, m_imm, scope_r);
-      //         let rhs_cmt = self.bccx.cat_expr(rhs);
-      //         self.guarantee_valid(rhs_cmt, m_imm, scope_r);
-      //     }
-      //     visit::visit_expr(ex, self, vt);
-      // }
 
       // see explanation attached to the `root_ub` field:
       ast::expr_while(cond, ref body) => {

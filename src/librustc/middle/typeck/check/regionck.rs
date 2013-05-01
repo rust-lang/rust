@@ -236,9 +236,16 @@ fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
     // overloaded.  See #3511.
     let tcx = rcx.fcx.tcx();
     match expr.node {
+        // You'd think that x += y where `+=` is overloaded would be a
+        // cleanup scope. You'd be... kind of right. In fact the
+        // handling of `+=` and friends in trans for overloaded
+        // operators is a hopeless mess and I can't figure out how to
+        // represent it. - ndm
+        //
+        // ast::expr_assign_op(*) |
+
         ast::expr_index(*) |
         ast::expr_binary(*) |
-        ast::expr_assign_op(*) |
         ast::expr_unary(*) if has_method_map => {
             tcx.region_maps.record_cleanup_scope(expr.id);
         }
