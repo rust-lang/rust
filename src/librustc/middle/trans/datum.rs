@@ -87,7 +87,7 @@
 
 use lib;
 use lib::llvm::ValueRef;
-use middle::borrowck::{RootInfo, root_map_key};
+use middle::borrowck::{RootInfo, root_map_key, DynaImm, DynaMut};
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -517,7 +517,7 @@ pub impl Datum {
         }
     }
 
-    fn root(&self, bcx: block, span: span, root_info: RootInfo) -> block {
+    fn root(&self, mut bcx: block, span: span, root_info: RootInfo) -> block {
         /*!
          *
          * In some cases, borrowck will decide that an @T/@[]/@str
@@ -535,34 +535,53 @@ pub impl Datum {
                      root_info.scope));
         }
 
+        // First, root the datum. Note that we must zero this value,
+        // because sometimes we root on one path but not another.
+        // See e.g. #4904.
         let scratch = scratch_datum(bcx, self.ty, true);
         self.copy_to_datum(bcx, INIT, scratch);
-        add_root_cleanup(bcx, root_info, scratch.val, scratch.ty);
+        let cleanup_bcx = find_bcx_for_scope(bcx, root_info.scope);
+        add_clean_temp_mem(cleanup_bcx, scratch.val, scratch.ty);
 
-        // If we need to freeze the box, do that now.
-        if root_info.freeze.is_some() {
-            // NOTE distinguish the two kinds of freezing here
+        // Now, consider also freezing it.
+        match root_info.freeze {
+            None => {}
+            Some(freeze_kind) => {
+                let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
+                let line = C_int(bcx.ccx(), loc.line as int);
+                let filename_cstr = C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name);
+                let filename = PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
 
-            let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
-            let line = C_int(bcx.ccx(), loc.line as int);
-            let filename_cstr = C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name);
-            let filename = PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
+                // in this case, we don't have to zero, because
+                // scratch.val will be NULL should the cleanup get
+                // called without the freezing actually occurring, and
+                // return_to_mut checks for this condition.
+                let scratch_bits = scratch_datum(bcx, ty::mk_uint(), false);
 
-            callee::trans_lang_call(
-                bcx,
-                bcx.tcx().lang_items.borrow_as_imm_fn(),
-                ~[
-                    Load(bcx,
-                         PointerCast(bcx,
-                                     scratch.val,
-                                     T_ptr(T_ptr(T_i8())))),
-                    filename,
-                    line
-                ],
-                expr::Ignore)
-        } else {
-            bcx
+                let freeze_did = match freeze_kind {
+                    DynaImm => bcx.tcx().lang_items.borrow_as_imm_fn(),
+                    DynaMut => bcx.tcx().lang_items.borrow_as_mut_fn(),
+                };
+
+                bcx = callee::trans_lang_call(
+                    bcx,
+                    freeze_did,
+                    ~[
+                        Load(bcx,
+                             PointerCast(bcx,
+                                         scratch.val,
+                                         T_ptr(T_ptr(T_i8())))),
+                        filename,
+                        line
+                    ],
+                    expr::SaveIn(scratch_bits.val));
+
+                add_clean_return_to_mut(
+                    cleanup_bcx, scratch.val, scratch_bits.val);
+            }
         }
+
+        bcx
     }
 
     fn perform_write_guard(&self, bcx: block, span: span) -> block {

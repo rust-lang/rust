@@ -991,63 +991,30 @@ pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
     return pad_bcx.llbb;
 }
 
-// Arranges for the value found in `*root_loc` to be dropped once the scope
-// associated with `scope_id` exits.  This is used to keep boxes live when
-// there are extant region pointers pointing at the interior.
-//
-// Note that `root_loc` is not the value itself but rather a pointer to the
-// value.  Generally it in alloca'd value.  The reason for this is that the
-// value is initialized in an inner block but may be freed in some outer
-// block, so an SSA value that is valid in the inner block may not be valid in
-// the outer block.  In fact, the inner block may not even execute.  Rather
-// than generate the full SSA form, we just use an alloca'd value.
-pub fn add_root_cleanup(bcx: block,
-                        root_info: RootInfo,
-                        root_loc: ValueRef,
-                        ty: ty::t) {
-
-    debug!("add_root_cleanup(bcx=%s, \
-                             scope=%d, \
-                             freezes=%?, \
-                             root_loc=%s, \
-                             ty=%s)",
-           bcx.to_str(),
-           root_info.scope,
-           root_info.freeze,
-           val_str(bcx.ccx().tn, root_loc),
-           ppaux::ty_to_str(bcx.ccx().tcx, ty));
-
-    let bcx_scope = find_bcx_for_scope(bcx, root_info.scope);
-    if root_info.freeze.is_some() {
-        add_clean_frozen_root(bcx_scope, root_loc, ty);
-    } else {
-        add_clean_temp_mem(bcx_scope, root_loc, ty);
-    }
-
-    fn find_bcx_for_scope(bcx: block, scope_id: ast::node_id) -> block {
-        let mut bcx_sid = bcx;
-        loop {
-            bcx_sid = match bcx_sid.node_info {
-              Some(NodeInfo { id, _ }) if id == scope_id => {
+pub fn find_bcx_for_scope(bcx: block, scope_id: ast::node_id) -> block {
+    let mut bcx_sid = bcx;
+    loop {
+        bcx_sid = match bcx_sid.node_info {
+            Some(NodeInfo { id, _ }) if id == scope_id => {
                 return bcx_sid
               }
 
-              // NOTE This is messier than it ought to be and not really right
-              Some(NodeInfo { callee_id: Some(id), _ }) if id == scope_id => {
-                return bcx_sid
-              }
-
-              _ => {
-                match bcx_sid.parent {
-                  None => bcx.tcx().sess.bug(
-                      fmt!("no enclosing scope with id %d", scope_id)),
-                  Some(bcx_par) => bcx_par
+                // NOTE This is messier than it ought to be and not really right
+                Some(NodeInfo { callee_id: Some(id), _ }) if id == scope_id => {
+                    return bcx_sid
                 }
-              }
+
+                _ => {
+                    match bcx_sid.parent {
+                        None => bcx.tcx().sess.bug(
+                            fmt!("no enclosing scope with id %d", scope_id)),
+                        Some(bcx_par) => bcx_par
+                    }
+                }
             }
         }
     }
-}
+
 
 pub fn do_spill(bcx: block, v: ValueRef, t: ty::t) -> ValueRef {
     if ty::type_is_bot(t) {
