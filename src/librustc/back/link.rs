@@ -747,34 +747,6 @@ pub fn link_binary(sess: Session,
                    obj_filename: &Path,
                    out_filename: &Path,
                    lm: LinkMeta) {
-    // Converts a library file-stem into a cc -l argument
-    fn unlib(config: @session::config, stem: ~str) -> ~str {
-        if stem.starts_with("lib") &&
-            config.os != session::os_win32 {
-            stem.slice(3, stem.len()).to_owned()
-        } else {
-            stem
-        }
-    }
-
-    let output = if *sess.building_library {
-        let long_libname = output_dll_filename(sess.targ_cfg.os, lm);
-        debug!("link_meta.name:  %s", lm.name);
-        debug!("long_libname: %s", long_libname);
-        debug!("out_filename: %s", out_filename.to_str());
-        debug!("dirname(out_filename): %s", out_filename.dir_path().to_str());
-
-        out_filename.dir_path().push(long_libname)
-    } else {
-        /*bad*/copy *out_filename
-    };
-
-    debug!("output: %s", output.to_str());
-
-    // The default library location, we need this to find the runtime.
-    // The location of crates will be determined as needed.
-    let stage: ~str = ~"-L" + sess.filesearch.get_target_lib_path().to_str();
-
     // In the future, FreeBSD will use clang as default compiler.
     // It would be flexible to use cc (system's default C compiler)
     // instead of hard-coded gcc.
@@ -794,116 +766,21 @@ pub fn link_binary(sess: Session,
     else { ~"cc" };
     // The invocations of cc share some flags across platforms
 
-    let mut cc_args =
-        vec::append(~[stage], sess.targ_cfg.target_strs.cc_args);
-    cc_args.push(~"-o");
-    cc_args.push(output.to_str());
-    cc_args.push(obj_filename.to_str());
 
-    let lib_cmd;
-    let os = sess.targ_cfg.os;
-    if os == session::os_macos {
-        lib_cmd = ~"-dynamiclib";
+    let output = if *sess.building_library {
+        let long_libname = output_dll_filename(sess.targ_cfg.os, lm);
+        debug!("link_meta.name:  %s", lm.name);
+        debug!("long_libname: %s", long_libname);
+        debug!("out_filename: %s", out_filename.to_str());
+        debug!("dirname(out_filename): %s", out_filename.dir_path().to_str());
+
+        out_filename.dir_path().push(long_libname)
     } else {
-        lib_cmd = ~"-shared";
-    }
+        /*bad*/copy *out_filename
+    };
 
-    // # Crate linking
-
-    let cstore = sess.cstore;
-    for cstore::get_used_crate_files(cstore).each |cratepath| {
-        if cratepath.filetype() == Some(~".rlib") {
-            cc_args.push(cratepath.to_str());
-            loop;
-        }
-        let dir = cratepath.dirname();
-        if dir != ~"" { cc_args.push(~"-L" + dir); }
-        let libarg = unlib(sess.targ_cfg, cratepath.filestem().get());
-        cc_args.push(~"-l" + libarg);
-    }
-
-    let ula = cstore::get_used_link_args(cstore);
-    for ula.each |arg| { cc_args.push(/*bad*/copy *arg); }
-
-    // Add all the link args for external crates.
-    do cstore::iter_crate_data(cstore) |crate_num, _| {
-        let link_args = csearch::get_link_args_for_crate(cstore, crate_num);
-        do vec::consume(link_args) |_, link_arg| {
-            cc_args.push(link_arg);
-        }
-    }
-
-    // # Extern library linking
-
-    // User-supplied library search paths (-L on the cammand line) These are
-    // the same paths used to find Rust crates, so some of them may have been
-    // added already by the previous crate linking code. This only allows them
-    // to be found at compile time so it is still entirely up to outside
-    // forces to make sure that library can be found at runtime.
-
-    for sess.opts.addl_lib_search_paths.each |path| {
-        cc_args.push(~"-L" + path.to_str());
-    }
-
-    // The names of the extern libraries
-    let used_libs = cstore::get_used_libraries(cstore);
-    for used_libs.each |l| { cc_args.push(~"-l" + *l); }
-
-    if *sess.building_library {
-        cc_args.push(lib_cmd);
-
-        // On mac we need to tell the linker to let this library
-        // be rpathed
-        if sess.targ_cfg.os == session::os_macos {
-            cc_args.push(~"-Wl,-install_name,@rpath/"
-                      + output.filename().get());
-        }
-    }
-
-    // On linux librt and libdl are an indirect dependencies via rustrt,
-    // and binutils 2.22+ won't add them automatically
-    if sess.targ_cfg.os == session::os_linux {
-        cc_args.push_all(~[~"-lrt", ~"-ldl"]);
-
-        // LLVM implements the `frem` instruction as a call to `fmod`,
-        // which lives in libm. Similar to above, on some linuxes we
-        // have to be explicit about linking to it. See #2510
-        cc_args.push(~"-lm");
-    }
-    else if sess.targ_cfg.os == session::os_android {
-        cc_args.push_all(~[~"-ldl", ~"-llog",  ~"-lsupc++",
-                           ~"-lgnustl_shared"]);
-        cc_args.push(~"-lm");
-    }
-
-    if sess.targ_cfg.os == session::os_freebsd {
-        cc_args.push_all(~[~"-pthread", ~"-lrt",
-                                ~"-L/usr/local/lib", ~"-lexecinfo",
-                                ~"-L/usr/local/lib/gcc46",
-                                ~"-L/usr/local/lib/gcc44", ~"-lstdc++",
-                                ~"-Wl,-z,origin",
-                                ~"-Wl,-rpath,/usr/local/lib/gcc46",
-                                ~"-Wl,-rpath,/usr/local/lib/gcc44"]);
-    }
-
-    // OS X 10.6 introduced 'compact unwind info', which is produced by the
-    // linker from the dwarf unwind info. Unfortunately, it does not seem to
-    // understand how to unwind our __morestack frame, so we have to turn it
-    // off. This has impacted some other projects like GHC.
-    if sess.targ_cfg.os == session::os_macos {
-        cc_args.push(~"-Wl,-no_compact_unwind");
-    }
-
-    // Stack growth requires statically linking a __morestack function
-    cc_args.push(~"-lmorestack");
-
-    // Always want the runtime linked in
-    cc_args.push(~"-lrustrt");
-
-    // FIXME (#2397): At some point we want to rpath our guesses as to where
-    // extern libraries might live, based on the addl_lib_search_paths
-    cc_args.push_all(rpath::get_rpath_flags(sess, &output));
-
+    debug!("output: %s", output.to_str());
+    let mut cc_args = link_args(sess, obj_filename, out_filename, lm);
     debug!("%s link args: %s", cc_prog, str::connect(cc_args, ~" "));
     // We run 'cc' here
     let prog = run::program_output(cc_prog, cc_args);
@@ -929,6 +806,150 @@ pub fn link_binary(sess: Session,
         }
     }
 }
+
+pub fn link_args(sess: Session,
+                 obj_filename: &Path,
+                 out_filename: &Path,
+                 lm:LinkMeta) -> ~[~str] {
+
+    // Converts a library file-stem into a cc -l argument
+    fn unlib(config: @session::config, stem: ~str) -> ~str {
+        if stem.starts_with("lib") &&
+            config.os != session::os_win32 {
+            stem.slice(3, stem.len()).to_owned()
+        } else {
+            stem
+        }
+    }
+
+
+    let output = if *sess.building_library {
+        let long_libname = output_dll_filename(sess.targ_cfg.os, lm);
+        out_filename.dir_path().push(long_libname)
+    } else {
+        /*bad*/copy *out_filename
+    };
+
+    // The default library location, we need this to find the runtime.
+    // The location of crates will be determined as needed.
+    let stage: ~str = ~"-L" + sess.filesearch.get_target_lib_path().to_str();
+
+    let mut args = vec::append(~[stage], sess.targ_cfg.target_strs.cc_args);
+
+    args.push(~"-o");
+    args.push(output.to_str());
+    args.push(obj_filename.to_str());
+
+    let lib_cmd;
+    let os = sess.targ_cfg.os;
+    if os == session::os_macos {
+        lib_cmd = ~"-dynamiclib";
+    } else {
+        lib_cmd = ~"-shared";
+    }
+
+    // # Crate linking
+
+    let cstore = sess.cstore;
+    for cstore::get_used_crate_files(cstore).each |cratepath| {
+        if cratepath.filetype() == Some(~".rlib") {
+            args.push(cratepath.to_str());
+            loop;
+        }
+        let dir = cratepath.dirname();
+        if dir != ~"" { args.push(~"-L" + dir); }
+        let libarg = unlib(sess.targ_cfg, cratepath.filestem().get());
+        args.push(~"-l" + libarg);
+    }
+
+    let ula = cstore::get_used_link_args(cstore);
+    for ula.each |arg| { args.push(/*bad*/copy *arg); }
+
+    // Add all the link args for external crates.
+    do cstore::iter_crate_data(cstore) |crate_num, _| {
+        let link_args = csearch::get_link_args_for_crate(cstore, crate_num);
+        do vec::consume(link_args) |_, link_arg| {
+            args.push(link_arg);
+        }
+    }
+
+    // # Extern library linking
+
+    // User-supplied library search paths (-L on the cammand line) These are
+    // the same paths used to find Rust crates, so some of them may have been
+    // added already by the previous crate linking code. This only allows them
+    // to be found at compile time so it is still entirely up to outside
+    // forces to make sure that library can be found at runtime.
+
+    for sess.opts.addl_lib_search_paths.each |path| {
+        args.push(~"-L" + path.to_str());
+    }
+
+    // The names of the extern libraries
+    let used_libs = cstore::get_used_libraries(cstore);
+    for used_libs.each |l| { args.push(~"-l" + *l); }
+
+    if *sess.building_library {
+        args.push(lib_cmd);
+
+        // On mac we need to tell the linker to let this library
+        // be rpathed
+        if sess.targ_cfg.os == session::os_macos {
+            args.push(~"-Wl,-install_name,@rpath/"
+                      + output.filename().get());
+        }
+    }
+
+    // On linux librt and libdl are an indirect dependencies via rustrt,
+    // and binutils 2.22+ won't add them automatically
+    if sess.targ_cfg.os == session::os_linux {
+        args.push_all(~[~"-lrt", ~"-ldl"]);
+
+        // LLVM implements the `frem` instruction as a call to `fmod`,
+        // which lives in libm. Similar to above, on some linuxes we
+        // have to be explicit about linking to it. See #2510
+        args.push(~"-lm");
+    }
+    else if sess.targ_cfg.os == session::os_android {
+        args.push_all(~[~"-ldl", ~"-llog",  ~"-lsupc++",
+                           ~"-lgnustl_shared"]);
+        args.push(~"-lm");
+    }
+
+    if sess.targ_cfg.os == session::os_freebsd {
+        args.push_all(~[~"-pthread", ~"-lrt",
+                        ~"-L/usr/local/lib", ~"-lexecinfo",
+                        ~"-L/usr/local/lib/gcc46",
+                        ~"-L/usr/local/lib/gcc44", ~"-lstdc++",
+                        ~"-Wl,-z,origin",
+                        ~"-Wl,-rpath,/usr/local/lib/gcc46",
+                        ~"-Wl,-rpath,/usr/local/lib/gcc44"]);
+    }
+
+    // OS X 10.6 introduced 'compact unwind info', which is produced by the
+    // linker from the dwarf unwind info. Unfortunately, it does not seem to
+    // understand how to unwind our __morestack frame, so we have to turn it
+    // off. This has impacted some other projects like GHC.
+    if sess.targ_cfg.os == session::os_macos {
+        args.push(~"-Wl,-no_compact_unwind");
+    }
+
+    // Stack growth requires statically linking a __morestack function
+    args.push(~"-lmorestack");
+
+    // Always want the runtime linked in
+    args.push(~"-lrustrt");
+
+    // FIXME (#2397): At some point we want to rpath our guesses as to where
+    // extern libraries might live, based on the addl_lib_search_paths
+    args.push_all(rpath::get_rpath_flags(sess, &output));
+
+    // Finally add all the linker arguments provided on the command line
+    args.push_all(sess.opts.linker_args);
+
+    return args;
+}
+
 //
 // Local Variables:
 // mode: rust
