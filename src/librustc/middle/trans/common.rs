@@ -467,28 +467,40 @@ pub fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
         scope_clean_changed(scope_info);
     }
 }
-pub fn add_clean_frozen_root(bcx: block, val: ValueRef, t: ty::t) {
-    debug!("add_clean_frozen_root(%s, %s, %s)",
-           bcx.to_str(), val_str(bcx.ccx().tn, val),
-           t.repr(bcx.tcx()));
-    let (root, rooted) = root_for_cleanup(bcx, val, t);
-    let cleanup_type = cleanup_type(bcx.tcx(), t);
+pub fn add_clean_return_to_mut(bcx: block,
+                               frozen_val_ref: ValueRef,
+                               bits_val_ref: ValueRef) {
+    //! When an `@mut` has been frozen, we have to
+    //! call the lang-item `return_to_mut` when the
+    //! freeze goes out of scope. We need to pass
+    //! in both the value which was frozen (`frozen_val`) and
+    //! the value (`bits_val_ref`) which was returned when the
+    //! box was frozen initially. Here, both `frozen_val_ref` and
+    //! `bits_val_ref` are in fact pointers to stack slots.
+
+    debug!("add_clean_return_to_mut(%s, %s, %s)",
+           bcx.to_str(),
+           val_str(bcx.ccx().tn, frozen_val_ref),
+           val_str(bcx.ccx().tn, bits_val_ref));
     do in_scope_cx(bcx) |scope_info| {
         scope_info.cleanups.push(
-            clean_temp(val, |bcx| {
-                let bcx = callee::trans_lang_call(
-                    bcx,
-                    bcx.tcx().lang_items.return_to_mut_fn(),
-                    ~[
-                        build::Load(bcx,
-                                    build::PointerCast(bcx,
-                                                       root,
-                                                       T_ptr(T_ptr(T_i8()))))
-                    ],
-                    expr::Ignore
-                );
-                glue::drop_ty_root(bcx, root, rooted, t)
-            }, cleanup_type));
+            clean_temp(
+                frozen_val_ref,
+                |bcx| {
+                    callee::trans_lang_call(
+                        bcx,
+                        bcx.tcx().lang_items.return_to_mut_fn(),
+                        ~[
+                            build::Load(bcx,
+                                        build::PointerCast(bcx,
+                                                           frozen_val_ref,
+                                                           T_ptr(T_ptr(T_i8())))),
+                            build::Load(bcx, bits_val_ref)
+                        ],
+                        expr::Ignore
+                    )
+                },
+                normal_exit_only));
         scope_clean_changed(scope_info);
     }
 }

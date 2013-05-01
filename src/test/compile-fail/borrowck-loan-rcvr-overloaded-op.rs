@@ -40,10 +40,11 @@ fn b() {
 
     let q = &mut p;
 
-    p + 3;  // ok for pure fns
+    p + 3;  //~ ERROR cannot borrow `p`
     p.times(3); //~ ERROR cannot borrow `p`
 
-    q.x += 1;
+    *q + 3; // OK to use the new alias `q`
+    q.x += 1; // and OK to mutate it
 }
 
 fn c() {

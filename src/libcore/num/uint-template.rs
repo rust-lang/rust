@@ -165,10 +165,14 @@ impl Mul<T,T> for T {
     #[inline(always)]
     fn mul(&self, other: &T) -> T { *self * *other }
 }
+
+#[cfg(notest)]
 impl Quot<T,T> for T {
     #[inline(always)]
     fn quot(&self, other: &T) -> T { *self / *other }
 }
+
+#[cfg(notest)]
 impl Rem<T,T> for T {
     #[inline(always)]
     fn rem(&self, other: &T) -> T { *self % *other }
