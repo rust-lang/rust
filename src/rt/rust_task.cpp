@@ -42,6 +42,7 @@ rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
     total_stack_sz(0),
     task_local_data(NULL),
     task_local_data_cleanup(NULL),
+    borrow_list(NULL),
     state(state),
     cond(NULL),
     cond_name("none"),
@@ -74,6 +75,16 @@ rust_task::delete_this()
        assertions that hold at task-lifecycle events. */
     assert(ref_count == 0); // ||
     //   (ref_count == 1 && this == sched->root_task));
+
+    if (borrow_list) {
+        // NOTE should free borrow_list from within rust code!
+        // If there is a pointer in there, it is a ~[BorrowRecord] pointer,
+        // which are currently allocated with LIBC malloc/free. But this is
+        // not really the right way to do this, we should be freeing this
+        // pointer from Rust code.
+        free(borrow_list);
+        borrow_list = NULL;
+    }
 
     sched_loop->release_task(this);
 }

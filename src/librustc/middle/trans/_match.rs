@@ -966,7 +966,7 @@ pub fn root_pats_as_necessary(bcx: block,
 
                 let datum = Datum {val: val, ty: node_id_type(bcx, pat_id),
                                    mode: ByRef, source: ZeroMem};
-                bcx = datum.root(bcx, root_info);
+                bcx = datum.root(bcx, br.pats[col].span, root_info);
                 // If we kept going, we'd only re-root the same value, so
                 // return now.
                 return bcx;

@@ -517,7 +517,7 @@ pub impl Datum {
         }
     }
 
-    fn root(&self, bcx: block, root_info: RootInfo) -> block {
+    fn root(&self, bcx: block, span: span, root_info: RootInfo) -> block {
         /*!
          *
          * In some cases, borrowck will decide that an @T/@[]/@str
@@ -542,6 +542,12 @@ pub impl Datum {
         // If we need to freeze the box, do that now.
         if root_info.freeze.is_some() {
             // NOTE distinguish the two kinds of freezing here
+
+            let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
+            let line = C_int(bcx.ccx(), loc.line as int);
+            let filename_cstr = C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name);
+            let filename = PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
+
             callee::trans_lang_call(
                 bcx,
                 bcx.tcx().lang_items.borrow_as_imm_fn(),
@@ -549,7 +555,9 @@ pub impl Datum {
                     Load(bcx,
                          PointerCast(bcx,
                                      scratch.val,
-                                     T_ptr(T_ptr(T_i8()))))
+                                     T_ptr(T_ptr(T_i8())))),
+                    filename,
+                    line
                 ],
                 expr::Ignore)
         } else {
@@ -647,7 +655,7 @@ pub impl Datum {
         let key = root_map_key { id: expr_id, derefs: derefs };
         let bcx = match ccx.maps.root_map.find(&key) {
             None => bcx,
-            Some(&root_info) => self.root(bcx, root_info)
+            Some(&root_info) => self.root(bcx, span, root_info)
         };
 
         // Perform the write guard, if necessary.
