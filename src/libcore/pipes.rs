@@ -86,6 +86,7 @@ use cast::{forget, transmute, transmute_copy};
 use either::{Either, Left, Right};
 use kinds::Owned;
 use libc;
+use ops::Drop;
 use option::{None, Option, Some};
 use unstable::intrinsics;
 use ptr;
@@ -395,11 +396,13 @@ pub fn try_recv<T:Owned,Tbuffer:Owned>(p: RecvPacketBuffered<T, Tbuffer>)
     let p_ = p.unwrap();
     let p = unsafe { &*p_ };
 
-    #[unsafe_destructor]
     struct DropState<'self> {
         p: &'self PacketHeader,
+    }
 
-        drop {
+    #[unsafe_destructor]
+    impl<'self> Drop for DropState<'self> {
+        fn finalize(&self) {
             unsafe {
                 if task::failing() {
                     self.p.state = Terminated;
@@ -411,7 +414,7 @@ pub fn try_recv<T:Owned,Tbuffer:Owned>(p: RecvPacketBuffered<T, Tbuffer>)
                 }
             }
         }
-    };
+    }
 
     let _drop_state = DropState { p: &p.header };
 
