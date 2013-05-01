@@ -42,6 +42,7 @@ use result;
 use task::rt::{task_id, sched_id, rust_task};
 use util;
 use util::replace;
+use unstable::finally::Finally;
 
 #[cfg(test)] use comm::SharedChan;
 
@@ -591,48 +592,24 @@ pub fn get_scheduler() -> Scheduler {
  * ~~~
  */
 pub unsafe fn unkillable<U>(f: &fn() -> U) -> U {
-    struct AllowFailure {
-        t: *rust_task,
-        drop {
-            unsafe {
-                rt::rust_task_allow_kill(self.t);
-            }
-        }
-    }
-
-    fn AllowFailure(t: *rust_task) -> AllowFailure{
-        AllowFailure {
-            t: t
-        }
-    }
-
     let t = rt::rust_get_task();
-    let _allow_failure = AllowFailure(t);
-    rt::rust_task_inhibit_kill(t);
-    f()
+    do (|| {
+        rt::rust_task_inhibit_kill(t);
+        f()
+    }).finally {
+        rt::rust_task_allow_kill(t);
+    }
 }
 
 /// The inverse of unkillable. Only ever to be used nested in unkillable().
 pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
-    struct DisallowFailure {
-        t: *rust_task,
-        drop {
-            unsafe {
-                rt::rust_task_inhibit_kill(self.t);
-            }
-        }
-    }
-
-    fn DisallowFailure(t: *rust_task) -> DisallowFailure {
-        DisallowFailure {
-            t: t
-        }
-    }
-
     let t = rt::rust_get_task();
-    let _allow_failure = DisallowFailure(t);
-    rt::rust_task_allow_kill(t);
-    f()
+    do (|| {
+        rt::rust_task_allow_kill(t);
+        f()
+    }).finally {
+        rt::rust_task_inhibit_kill(t);
+    }
 }
 
 /**
@@ -640,27 +617,15 @@ pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
  * For use with exclusive ARCs, which use pthread mutexes directly.
  */
 pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
-    struct DeferInterrupts {
-        t: *rust_task,
-        drop {
-            unsafe {
-                rt::rust_task_allow_yield(self.t);
-                rt::rust_task_allow_kill(self.t);
-            }
-        }
-    }
-
-    fn DeferInterrupts(t: *rust_task) -> DeferInterrupts {
-        DeferInterrupts {
-            t: t
-        }
-    }
-
     let t = rt::rust_get_task();
-    let _interrupts = DeferInterrupts(t);
-    rt::rust_task_inhibit_kill(t);
-    rt::rust_task_inhibit_yield(t);
-    f()
+    do (|| {
+        rt::rust_task_inhibit_kill(t);
+        rt::rust_task_inhibit_yield(t);
+        f()
+    }).finally {
+        rt::rust_task_allow_yield(t);
+        rt::rust_task_allow_kill(t);
+    }
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
