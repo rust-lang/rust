@@ -63,6 +63,7 @@ pub static jit: uint = 1 << 19;
 pub static debug_info: uint = 1 << 20;
 pub static extra_debug_info: uint = 1 << 21;
 pub static static: uint = 1 << 22;
+pub static print_link_args: uint = 1 << 23;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -90,6 +91,7 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"no-opt", ~"do not optimize, even if -O is passed", no_opt),
      (~"no-monomorphic-collapse", ~"do not collapse template instantiations",
       no_monomorphic_collapse),
+     (~"print-link-args", ~"Print the arguments passed to the linker", print_link_args),
      (~"gc", ~"Garbage collect shared data (experimental)", gc),
      (~"jit", ~"Execute using JIT (experimental)", jit),
      (~"extra-debug-info", ~"Extra debugging info (experimental)",
@@ -122,6 +124,7 @@ pub struct options {
     jit: bool,
     output_type: back::link::output_type,
     addl_lib_search_paths: ~[Path],
+    linker_args: ~[~str],
     maybe_sysroot: Option<Path>,
     target_triple: ~str,
     target_feature: ~str,
@@ -299,6 +302,7 @@ pub fn basic_options() -> @options {
         jit: false,
         output_type: link::output_type_exe,
         addl_lib_search_paths: ~[],
+        linker_args:~[],
         maybe_sysroot: None,
         target_triple: host_triple(),
         target_feature: ~"",
