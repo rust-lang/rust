@@ -77,6 +77,7 @@ pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
 }
 
 /// Copy a slice into a new unique str
+#[inline(always)]
 pub fn from_slice(s: &str) -> ~str {
     unsafe { raw::slice_bytes_owned(s, 0, len(s)) }
 }
@@ -820,6 +821,7 @@ Section: Comparing strings
 /// Bytewise slice equality
 #[cfg(notest)]
 #[lang="str_eq"]
+#[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
     do as_buf(a) |ap, alen| {
         do as_buf(b) |bp, blen| {
@@ -836,6 +838,7 @@ pub fn eq_slice(a: &str, b: &str) -> bool {
 }
 
 #[cfg(test)]
+#[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
     do as_buf(a) |ap, alen| {
         do as_buf(b) |bp, blen| {
@@ -854,15 +857,18 @@ pub fn eq_slice(a: &str, b: &str) -> bool {
 /// Bytewise string equality
 #[cfg(notest)]
 #[lang="uniq_str_eq"]
+#[inline]
 pub fn eq(a: &~str, b: &~str) -> bool {
     eq_slice(*a, *b)
 }
 
 #[cfg(test)]
+#[inline]
 pub fn eq(a: &~str, b: &~str) -> bool {
     eq_slice(*a, *b)
 }
 
+#[inline]
 fn cmp(a: &str, b: &str) -> Ordering {
     let low = uint::min(a.len(), b.len());
 
@@ -879,20 +885,24 @@ fn cmp(a: &str, b: &str) -> Ordering {
 
 #[cfg(notest)]
 impl<'self> TotalOrd for &'self str {
+    #[inline]
     fn cmp(&self, other: & &'self str) -> Ordering { cmp(*self, *other) }
 }
 
 #[cfg(notest)]
 impl TotalOrd for ~str {
+    #[inline]
     fn cmp(&self, other: &~str) -> Ordering { cmp(*self, *other) }
 }
 
 #[cfg(notest)]
 impl TotalOrd for @str {
+    #[inline]
     fn cmp(&self, other: &@str) -> Ordering { cmp(*self, *other) }
 }
 
 /// Bytewise slice less than
+#[inline]
 fn lt(a: &str, b: &str) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
     let end = uint::min(a_len, b_len);
@@ -909,16 +919,19 @@ fn lt(a: &str, b: &str) -> bool {
 }
 
 /// Bytewise less than or equal
+#[inline]
 pub fn le(a: &str, b: &str) -> bool {
     !lt(b, a)
 }
 
 /// Bytewise greater than or equal
+#[inline]
 fn ge(a: &str, b: &str) -> bool {
     !lt(a, b)
 }
 
 /// Bytewise greater than
+#[inline]
 fn gt(a: &str, b: &str) -> bool {
     !le(a, b)
 }
@@ -1595,6 +1608,7 @@ Section: String properties
 */
 
 /// Returns true if the string has length 0
+#[inline(always)]
 pub fn is_empty(s: &str) -> bool { len(s) == 0u }
 
 /**
@@ -1616,11 +1630,13 @@ fn is_alphanumeric(s: &str) -> bool {
 }
 
 /// Returns the string length/size in bytes not counting the null terminator
+#[inline(always)]
 pub fn len(s: &str) -> uint {
     do as_buf(s) |_p, n| { n - 1u }
 }
 
 /// Returns the number of characters that a string holds
+#[inline(always)]
 pub fn char_len(s: &str) -> uint { count_chars(s, 0u, len(s)) }
 
 /*
@@ -1752,7 +1768,8 @@ pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
     return len;
 }
 
-/// Counts the number of bytes taken by the `n` in `s` starting from `start`.
+/// Counts the number of bytes taken by the first `n` chars in `s`
+/// starting from `start`.
 pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
     assert!(is_char_boundary(s, start));
     let mut end = start, cnt = n;
@@ -1988,6 +2005,7 @@ static tag_six_b: uint = 252u;
  * let i = str::as_bytes("Hello World") { |bytes| vec::len(bytes) };
  * ~~~
  */
+#[inline]
 pub fn as_bytes<T>(s: &const ~str, f: &fn(&~[u8]) -> T) -> T {
     unsafe {
         let v: *~[u8] = cast::transmute(copy s);
@@ -2023,6 +2041,7 @@ pub fn as_bytes_slice<'a>(s: &'a str) -> &'a [u8] {
  * let s = str::as_c_str("PATH", { |path| libc::getenv(path) });
  * ~~~
  */
+#[inline]
 pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
     do as_buf(s) |buf, len| {
         // NB: len includes the trailing null.
@@ -2099,6 +2118,7 @@ pub fn subslice_offset(outer: &str, inner: &str) -> uint {
  * * s - A string
  * * n - The number of bytes to reserve space for
  */
+#[inline(always)]
 pub fn reserve(s: &mut ~str, n: uint) {
     unsafe {
         let v: *mut ~[u8] = cast::transmute(s);
@@ -2126,6 +2146,7 @@ pub fn reserve(s: &mut ~str, n: uint) {
  * * s - A string
  * * n - The number of bytes to reserve space for
  */
+#[inline(always)]
 pub fn reserve_at_least(s: &mut ~str, n: uint) {
     reserve(s, uint::next_power_of_two(n + 1u) - 1u)
 }
@@ -2314,6 +2335,7 @@ pub mod raw {
     }
 
     /// Sets the length of the string and adds the null terminator
+    #[inline]
     pub unsafe fn set_len(v: &mut ~str, new_len: uint) {
         let v: **mut vec::raw::VecRepr = cast::transmute(v);
         let repr: *mut vec::raw::VecRepr = *v;
@@ -2489,7 +2511,7 @@ impl<'self> StrSlice<'self> for &'self str {
     #[inline]
     fn is_alphanumeric(&self) -> bool { is_alphanumeric(*self) }
     /// Returns the size in bytes not counting the null terminator
-    #[inline]
+    #[inline(always)]
     fn len(&self) -> uint { len(*self) }
     /// Returns the number of characters that a string holds
     #[inline]
@@ -2599,10 +2621,11 @@ pub trait OwnedStr {
 }
 
 impl OwnedStr for ~str {
+    #[inline]
     fn push_str(&mut self, v: &str) {
         push_str(self, v);
     }
-
+    #[inline]
     fn push_char(&mut self, c: char) {
         push_char(self, c);
     }
