@@ -22,7 +22,7 @@ use syntax::ast_map;
 use syntax::diagnostic::expect;
 
 pub struct ProvidedTraitMethodInfo {
-    ty: ty::method,
+    ty: ty::Method,
     def_id: ast::def_id
 }
 
@@ -129,7 +129,7 @@ pub fn get_impls_for_mod(cstore: @mut cstore::CStore, def: ast::def_id,
 }
 
 pub fn get_method(tcx: ty::ctxt,
-                  def: ast::def_id) -> ty::method
+                  def: ast::def_id) -> ty::Method
 {
     let cdata = cstore::get_crate_data(tcx.cstore, def.crate);
     decoder::get_method(tcx.cstore.intr, cdata, def.node, tcx)

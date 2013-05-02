@@ -35,7 +35,7 @@ use syntax::parse::token::special_idents;
 
 pub struct Reflector {
     visitor_val: ValueRef,
-    visitor_methods: @~[@ty::method],
+    visitor_methods: @~[@ty::Method],
     final_bcx: block,
     tydesc_ty: TypeRef,
     bcx: block

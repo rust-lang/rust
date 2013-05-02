@@ -227,7 +227,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         }, _) => {
             let trait_ty_generics = ty_generics(ccx, region_paramd, generics, 0);
 
-            // For each method, construct a suitable ty::method and
+            // For each method, construct a suitable ty::Method and
             // store it into the `tcx.methods` table:
             for ms.each |m| {
                 let ty_method = @match m {
@@ -270,7 +270,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 
     fn make_static_method_ty(ccx: &CrateCtxt,
                              trait_id: ast::node_id,
-                             m: &ty::method,
+                             m: &ty::Method,
                              trait_ty_generics: &ty::Generics) {
         // If declaration is
         //
@@ -379,7 +379,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                                  m_explicit_self: &ast::explicit_self,
                                  m_generics: &ast::Generics,
                                  m_purity: &ast::purity,
-                                 m_decl: &ast::fn_decl) -> ty::method
+                                 m_decl: &ast::fn_decl) -> ty::Method
     {
         let trait_self_ty = ty::mk_self(this.tcx, local_def(trait_id));
         let rscope = MethodRscope::new(m_explicit_self.node, trait_rp, trait_generics);
@@ -387,16 +387,16 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
             astconv::ty_of_method(this, &rscope, *m_purity, &m_generics.lifetimes,
                                   trait_self_ty, *m_explicit_self, m_decl);
         let num_trait_type_params = trait_generics.ty_params.len();
-        ty::method {
-            ident: *m_ident,
-            generics: ty_generics(this, None, m_generics, num_trait_type_params),
-            transformed_self_ty: transformed_self_ty,
-            fty: fty,
-            explicit_self: m_explicit_self.node,
+        ty::Method::new(
+            *m_ident,
+            ty_generics(this, None, m_generics, num_trait_type_params),
+            transformed_self_ty,
+            fty,
+            m_explicit_self.node,
             // assume public, because this is only invoked on trait methods
-            vis: ast::public,
-            def_id: local_def(*m_id)
-        }
+            ast::public,
+            local_def(*m_id)
+        )
     }
 }
 
@@ -444,7 +444,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
 pub fn compare_impl_method(tcx: ty::ctxt,
                            impl_tps: uint,
                            cm: &ConvertedMethod,
-                           trait_m: &ty::method,
+                           trait_m: &ty::Method,
                            trait_substs: &ty::substs,
                            self_ty: ty::t) {
     debug!("compare_impl_method()");
@@ -723,7 +723,7 @@ pub fn convert_field(ccx: &CrateCtxt,
 }
 
 pub struct ConvertedMethod {
-    mty: @ty::method,
+    mty: @ty::Method,
     id: ast::node_id,
     span: span,
     body_id: ast::node_id
@@ -776,7 +776,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
                     untransformed_rcvr_ty: ty::t,
                     rcvr_generics: &ast::Generics,
                     rcvr_visibility: ast::visibility,
-                    method_generics: &ast::Generics) -> ty::method
+                    method_generics: &ast::Generics) -> ty::Method
     {
         let rscope = MethodRscope::new(m.explicit_self.node,
                                        rp,
@@ -794,15 +794,15 @@ pub fn convert_methods(ccx: &CrateCtxt,
         let method_vis = m.vis.inherit_from(rcvr_visibility);
 
         let num_rcvr_type_params = rcvr_generics.ty_params.len();
-        ty::method {
-            ident: m.ident,
-            generics: ty_generics(ccx, None, &m.generics, num_rcvr_type_params),
-            transformed_self_ty: transformed_self_ty,
-            fty: fty,
-            explicit_self: m.explicit_self.node,
-            vis: method_vis,
-            def_id: local_def(m.id)
-        }
+        ty::Method::new(
+            m.ident,
+            ty_generics(ccx, None, &m.generics, num_rcvr_type_params),
+            transformed_self_ty,
+            fty,
+            m.explicit_self.node,
+            method_vis,
+            local_def(m.id)
+        )
     }
 }
 

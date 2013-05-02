@@ -53,7 +53,7 @@ pub struct field {
     mt: mt
 }
 
-pub struct method {
+pub struct Method {
     ident: ast::ident,
     generics: ty::Generics,
     transformed_self_ty: Option<ty::t>,
@@ -61,6 +61,33 @@ pub struct method {
     explicit_self: ast::explicit_self_,
     vis: ast::visibility,
     def_id: ast::def_id
+}
+
+pub impl Method {
+    fn new(ident: ast::ident,
+           generics: ty::Generics,
+           transformed_self_ty: Option<ty::t>,
+           fty: BareFnTy,
+           explicit_self: ast::explicit_self_,
+           vis: ast::visibility,
+           def_id: ast::def_id) -> Method {
+        // Check the invariants.
+        if explicit_self == ast::sty_static {
+            assert!(transformed_self_ty.is_none());
+        } else {
+            assert!(transformed_self_ty.is_some());
+        }
+
+       Method {
+            ident: ident,
+            generics: generics,
+            transformed_self_ty: transformed_self_ty,
+            fty: fty,
+            explicit_self: explicit_self,
+            vis: vis,
+            def_id: def_id
+        }
+    }
 }
 
 #[deriving(Eq)]
@@ -254,13 +281,13 @@ struct ctxt_ {
     node_type_substs: @mut HashMap<node_id, ~[t]>,
 
     // Maps from a method to the method "descriptor"
-    methods: @mut HashMap<def_id, @method>,
+    methods: @mut HashMap<def_id, @Method>,
 
     // Maps from a trait def-id to a list of the def-ids of its methods
     trait_method_def_ids: @mut HashMap<def_id, @~[def_id]>,
 
     // A cache for the trait_methods() routine
-    trait_methods_cache: @mut HashMap<def_id, @~[@method]>,
+    trait_methods_cache: @mut HashMap<def_id, @~[@Method]>,
 
     trait_refs: @mut HashMap<node_id, @TraitRef>,
     trait_defs: @mut HashMap<def_id, @TraitDef>,
@@ -3498,7 +3525,7 @@ pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
 
-pub fn method_idx(id: ast::ident, meths: &[@method]) -> Option<uint> {
+pub fn method_idx(id: ast::ident, meths: &[@Method]) -> Option<uint> {
     vec::position(meths, |m| m.ident == id)
 }
 
@@ -3822,12 +3849,12 @@ fn lookup_locally_or_in_crate_store<V:Copy>(
     return v;
 }
 
-pub fn trait_method(cx: ctxt, trait_did: ast::def_id, idx: uint) -> @method {
+pub fn trait_method(cx: ctxt, trait_did: ast::def_id, idx: uint) -> @Method {
     let method_def_id = ty::trait_method_def_ids(cx, trait_did)[idx];
     ty::method(cx, method_def_id)
 }
 
-pub fn trait_methods(cx: ctxt, trait_did: ast::def_id) -> @~[@method] {
+pub fn trait_methods(cx: ctxt, trait_did: ast::def_id) -> @~[@Method] {
     match cx.trait_methods_cache.find(&trait_did) {
         Some(&methods) => methods,
         None => {
@@ -3839,7 +3866,7 @@ pub fn trait_methods(cx: ctxt, trait_did: ast::def_id) -> @~[@method] {
     }
 }
 
-pub fn method(cx: ctxt, id: ast::def_id) -> @method {
+pub fn method(cx: ctxt, id: ast::def_id) -> @Method {
     lookup_locally_or_in_crate_store(
         "methods", id, cx.methods,
         || @csearch::get_method(cx, id))

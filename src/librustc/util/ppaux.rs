@@ -11,7 +11,7 @@
 use metadata::encoder;
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
-use middle::ty::{br_fresh, ctxt, field, method};
+use middle::ty::{br_fresh, ctxt, field};
 use middle::ty::{mt, t, param_ty};
 use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region,
                  re_empty};
@@ -375,7 +375,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
             }
         }
     }
-    fn method_to_str(cx: ctxt, m: method) -> ~str {
+    fn method_to_str(cx: ctxt, m: ty::Method) -> ~str {
         bare_fn_to_str(cx,
                        m.fty.purity,
                        m.fty.abis,
@@ -633,7 +633,7 @@ impl Repr for ty::Generics {
     }
 }
 
-impl Repr for ty::method {
+impl Repr for ty::Method {
     fn repr(&self, tcx: ctxt) -> ~str {
         fmt!("method {ident: %s, generics: %s, transformed_self_ty: %s, \
               fty: %s, explicit_self: %s, vis: %s, def_id: %s}",
