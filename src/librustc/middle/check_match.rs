@@ -94,7 +94,7 @@ pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, s: (), v: visit::vt<()>) {
        }
        let arms = vec::concat(arms.filter_mapped(unguarded_pat));
        if arms.is_empty() {
-           cx.tcx.sess.span_err(ex.span, ~"non-exhaustive patterns");
+           cx.tcx.sess.span_err(ex.span, "non-exhaustive patterns");
        } else {
            check_exhaustive(cx, ex.span, arms);
        }
@@ -111,7 +111,7 @@ pub fn check_arms(cx: @MatchCheckCtxt, arms: &[arm]) {
             let v = ~[*pat];
             match is_useful(cx, &seen, v) {
               not_useful => {
-                cx.tcx.sess.span_err(pat.span, ~"unreachable pattern");
+                cx.tcx.sess.span_err(pat.span, "unreachable pattern");
               }
               _ => ()
             }
@@ -685,7 +685,7 @@ pub fn check_local(cx: @MatchCheckCtxt,
     visit::visit_local(loc, s, v);
     if is_refutable(cx, loc.node.pat) {
         cx.tcx.sess.span_err(loc.node.pat.span,
-                          ~"refutable pattern in local binding");
+                             "refutable pattern in local binding");
     }
 
     // Check legality of move bindings.
@@ -708,7 +708,7 @@ pub fn check_fn(cx: @MatchCheckCtxt,
     for decl.inputs.each |input| {
         if is_refutable(cx, input.pat) {
             cx.tcx.sess.span_err(input.pat.span,
-                              ~"refutable pattern in function argument");
+                                 "refutable pattern in function argument");
         }
     }
 }
@@ -780,24 +780,24 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
         if sub.is_some() {
             tcx.sess.span_err(
                 p.span,
-                ~"cannot bind by-move with sub-bindings");
+                "cannot bind by-move with sub-bindings");
         } else if has_guard {
             tcx.sess.span_err(
                 p.span,
-                ~"cannot bind by-move into a pattern guard");
+                "cannot bind by-move into a pattern guard");
         } else if by_ref_span.is_some() {
             tcx.sess.span_err(
                 p.span,
-                ~"cannot bind by-move and by-ref \
-                  in the same pattern");
+                "cannot bind by-move and by-ref \
+                 in the same pattern");
             tcx.sess.span_note(
                 by_ref_span.get(),
-                ~"by-ref binding occurs here");
+                "by-ref binding occurs here");
         } else if is_lvalue {
             tcx.sess.span_err(
                 p.span,
-                ~"cannot bind by-move when \
-                  matching an lvalue");
+                "cannot bind by-move when \
+                 matching an lvalue");
         }
     };
 
@@ -837,9 +837,9 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
                         {
                             cx.tcx.sess.span_err(
                                 pat.span,
-                                ~"by-move pattern \
-                                  bindings may not occur \
-                                  behind @ or & bindings");
+                                "by-move pattern \
+                                 bindings may not occur \
+                                 behind @ or & bindings");
                         }
 
                         match sub {

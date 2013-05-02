@@ -92,13 +92,13 @@ pub fn check_expr(sess: Session,
           expr_unary(deref, _) => { }
           expr_unary(box(_), _) | expr_unary(uniq(_), _) => {
             sess.span_err(e.span,
-                          ~"disallowed operator in constant expression");
+                          "disallowed operator in constant expression");
             return;
           }
           expr_lit(@codemap::spanned {node: lit_str(_), _}) => { }
           expr_binary(_, _, _) | expr_unary(_, _) => {
             if method_map.contains_key(&e.id) {
-                sess.span_err(e.span, ~"user-defined operators are not \
+                sess.span_err(e.span, "user-defined operators are not \
                                        allowed in constant expressions");
             }
           }
@@ -118,8 +118,8 @@ pub fn check_expr(sess: Session,
             // a path in trans::callee that only works in block contexts.
             if pth.types.len() != 0 {
                 sess.span_err(
-                    e.span, ~"paths in constants may only refer to \
-                              items without type parameters");
+                    e.span, "paths in constants may only refer to \
+                             items without type parameters");
             }
             match def_map.find(&e.id) {
               Some(&def_const(_)) |
@@ -131,11 +131,11 @@ pub fn check_expr(sess: Session,
                 debug!("(checking const) found bad def: %?", def);
                 sess.span_err(
                     e.span,
-                    fmt!("paths in constants may only refer to \
-                          constants or functions"));
+                    "paths in constants may only refer to \
+                     constants or functions");
               }
               None => {
-                sess.span_bug(e.span, ~"unbound path in const?!");
+                sess.span_bug(e.span, "unbound path in const?!");
               }
             }
           }
@@ -146,8 +146,8 @@ pub fn check_expr(sess: Session,
                 _ => {
                     sess.span_err(
                         e.span,
-                        ~"function calls in constants are limited to \
-                          struct and enum constructors");
+                        "function calls in constants are limited to \
+                         struct and enum constructors");
                 }
             }
           }
@@ -163,12 +163,12 @@ pub fn check_expr(sess: Session,
           expr_addr_of(*) => {
                 sess.span_err(
                     e.span,
-                    ~"borrowed pointers in constants may only refer to \
-                      immutable values");
+                    "borrowed pointers in constants may only refer to \
+                     immutable values");
           }
           _ => {
             sess.span_err(e.span,
-                          ~"constant contains unimplemented expression type");
+                          "constant contains unimplemented expression type");
             return;
           }
         }
@@ -178,14 +178,14 @@ pub fn check_expr(sess: Session,
         if t != ty_char {
             if (v as u64) > ast_util::int_ty_max(
                 if t == ty_i { sess.targ_cfg.int_type } else { t }) {
-                sess.span_err(e.span, ~"literal out of range for its type");
+                sess.span_err(e.span, "literal out of range for its type");
             }
         }
       }
       expr_lit(@codemap::spanned {node: lit_uint(v, t), _}) => {
         if v > ast_util::uint_ty_max(
             if t == ty_u { sess.targ_cfg.uint_type } else { t }) {
-            sess.span_err(e.span, ~"literal out of range for its type");
+            sess.span_err(e.span, "literal out of range for its type");
         }
       }
       _ => ()
@@ -224,7 +224,7 @@ pub fn check_item_recursion(sess: Session,
 
     fn visit_item(it: @item, env: env, v: visit::vt<env>) {
         if env.idstack.contains(&(it.id)) {
-            env.sess.span_fatal(env.root_it.span, ~"recursive constant");
+            env.sess.span_fatal(env.root_it.span, "recursive constant");
         }
         env.idstack.push(it.id);
         visit::visit_item(it, env, v);
