@@ -484,12 +484,3 @@ pub fn lit_expr_eq(tcx: middle::ty::ctxt, a: @expr, b: @expr) -> bool {
 pub fn lit_eq(a: @lit, b: @lit) -> bool {
     compare_const_vals(&lit_to_const(a), &lit_to_const(b)) == 0
 }
-
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

@@ -565,11 +565,3 @@ fn test_get_or_zero() {
     let no_stuff: Option<int> = None;
     assert!(no_stuff.get_or_zero() == 0);
 }
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

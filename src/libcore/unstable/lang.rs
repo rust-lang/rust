@@ -183,11 +183,3 @@ pub fn start(main: *u8, argc: int, argv: **c_char,
                       crate_map: *c_void) -> c_int;
     }
 }
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

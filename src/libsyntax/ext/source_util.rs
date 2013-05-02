@@ -150,13 +150,3 @@ fn res_rel_file(cx: @ext_ctxt, sp: codemap::span, arg: &Path) -> Path {
         copy *arg
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

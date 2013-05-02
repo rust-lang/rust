@@ -243,11 +243,3 @@ pub fn get_link_args_for_crate(cstore: @mut cstore::CStore,
     let cdata = cstore::get_crate_data(cstore, crate_num);
     decoder::get_link_args_for_crate(cdata)
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

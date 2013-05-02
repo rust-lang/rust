@@ -32,11 +32,3 @@ fn child(&&args: (int, int, int, int, int, int, int, int, int)) {
     assert!((i8 == 80));
     assert!((i9 == 90));
 }
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
