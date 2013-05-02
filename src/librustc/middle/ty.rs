@@ -4370,11 +4370,3 @@ pub fn visitor_object_ty(tcx: ctxt) -> (@TraitRef, t) {
     (trait_ref,
      mk_trait(tcx, trait_ref.def_id, copy trait_ref.substs, BoxTraitStore, ast::m_imm))
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
