@@ -517,7 +517,8 @@ pub impl Datum {
         }
     }
 
-    fn root(&self, mut bcx: block, span: span, root_info: RootInfo) -> block {
+    fn root(&self, mut bcx: block, span: span,
+            root_key: root_map_key, root_info: RootInfo) -> block {
         /*!
          *
          * In some cases, borrowck will decide that an @T/@[]/@str
@@ -525,8 +526,8 @@ pub impl Datum {
          * case, we will call this function, which will stash a copy
          * away until we exit the scope `scope_id`. */
 
-        debug!("root(root_info=%?, self=%?)",
-               root_info, self.to_str(bcx.ccx()));
+        debug!("root(root_map_key=%?, root_info=%?, self=%?)",
+               root_key, root_info, self.to_str(bcx.ccx()));
 
         if bcx.sess().trace() {
             trans_trace(
@@ -674,7 +675,7 @@ pub impl Datum {
         let key = root_map_key { id: expr_id, derefs: derefs };
         let bcx = match ccx.maps.root_map.find(&key) {
             None => bcx,
-            Some(&root_info) => self.root(bcx, span, root_info)
+            Some(&root_info) => self.root(bcx, span, key, root_info)
         };
 
         // Perform the write guard, if necessary.
