@@ -3261,7 +3261,7 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_mac(*) => {
             tcx.sess.span_bug(
                 expr.span,
-                ~"macro expression remains after expansion");
+                "macro expression remains after expansion");
         }
     }
 }
@@ -4242,27 +4242,27 @@ pub fn eval_repeat_count(tcx: ctxt, count_expr: @ast::expr) -> uint {
         const_eval::const_uint(count) => return count as uint,
         const_eval::const_float(count) => {
             tcx.sess.span_err(count_expr.span,
-                              ~"expected signed or unsigned integer for \
-                                repeat count but found float");
+                              "expected signed or unsigned integer for \
+                               repeat count but found float");
             return count as uint;
         }
         const_eval::const_str(_) => {
             tcx.sess.span_err(count_expr.span,
-                              ~"expected signed or unsigned integer for \
-                                repeat count but found string");
+                              "expected signed or unsigned integer for \
+                               repeat count but found string");
             return 0;
         }
         const_eval::const_bool(_) => {
             tcx.sess.span_err(count_expr.span,
-                              ~"expected signed or unsigned integer for \
-                                repeat count but found boolean");
+                              "expected signed or unsigned integer for \
+                               repeat count but found boolean");
             return 0;
         }
       },
       Err(*) => {
         tcx.sess.span_err(count_expr.span,
-                          ~"expected constant integer for repeat count \
-                            but found variable");
+                          "expected constant integer for repeat count \
+                           but found variable");
         return 0;
       }
     }

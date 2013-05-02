@@ -97,21 +97,21 @@ fn check_struct_safe_for_destructor(cx: Context,
         });
         if !ty::type_is_owned(cx.tcx, struct_ty) {
             cx.tcx.sess.span_err(span,
-                                 ~"cannot implement a destructor on a struct \
-                                   that is not Owned");
+                                 "cannot implement a destructor on a struct \
+                                  that is not Owned");
             cx.tcx.sess.span_note(span,
-                                  ~"use \"#[unsafe_destructor]\" on the \
-                                    implementation to force the compiler to \
-                                    allow this");
+                                  "use \"#[unsafe_destructor]\" on the \
+                                   implementation to force the compiler to \
+                                   allow this");
         }
     } else {
         cx.tcx.sess.span_err(span,
-                             ~"cannot implement a destructor on a struct \
-                               with type parameters");
+                             "cannot implement a destructor on a struct \
+                              with type parameters");
         cx.tcx.sess.span_note(span,
-                              ~"use \"#[unsafe_destructor]\" on the \
-                                implementation to force the compiler to \
-                                allow this");
+                              "use \"#[unsafe_destructor]\" on the \
+                               implementation to force the compiler to \
+                               allow this");
     }
 }
 
@@ -143,10 +143,10 @@ fn check_item(item: @item, cx: Context, visitor: visit::vt<Context>) {
                                 }
                                 _ => {
                                     cx.tcx.sess.span_bug(self_type.span,
-                                                         ~"the self type for \
-                                                           the Drop trait \
-                                                           impl is not a \
-                                                           path");
+                                                         "the self type for \
+                                                          the Drop trait \
+                                                          impl is not a \
+                                                          path");
                                 }
                             }
                         }
@@ -193,7 +193,7 @@ fn with_appropriate_checker(cx: Context, id: node_id, b: &fn(check_fn)) {
     fn check_for_bare(cx: Context, fv: @freevar_entry) {
         cx.tcx.sess.span_err(
             fv.span,
-            ~"attempted dynamic environment capture");
+            "attempted dynamic environment capture");
     }
 
     let fty = ty::node_id_to_type(cx.tcx, id);
@@ -409,7 +409,7 @@ fn check_imm_free_var(cx: Context, def: def, sp: span) {
             if is_mutbl {
                 cx.tcx.sess.span_err(
                     sp,
-                    ~"mutable variables cannot be implicitly captured");
+                    "mutable variables cannot be implicitly captured");
             }
         }
         def_arg(*) => { /* ok */ }
@@ -451,12 +451,12 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
     if !ty::type_is_durable(tcx, ty) {
         match ty::get(ty).sty {
           ty::ty_param(*) => {
-            tcx.sess.span_err(sp, ~"value may contain borrowed \
-                                    pointers; use `'static` bound");
+            tcx.sess.span_err(sp, "value may contain borrowed \
+                                   pointers; use `'static` bound");
           }
           _ => {
-            tcx.sess.span_err(sp, ~"value may contain borrowed \
-                                    pointers");
+            tcx.sess.span_err(sp, "value may contain borrowed \
+                                   pointers");
           }
         }
         false
@@ -581,7 +581,7 @@ pub fn check_kind_bounds_of_cast(cx: Context, source: @expr, target: @expr) {
             if !ty::type_is_owned(cx.tcx, source_ty) {
                 cx.tcx.sess.span_err(
                     target.span,
-                    ~"uniquely-owned trait objects must be sendable");
+                    "uniquely-owned trait objects must be sendable");
             }
         }
         _ => {} // Nothing to do.

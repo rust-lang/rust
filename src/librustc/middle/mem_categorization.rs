@@ -928,7 +928,7 @@ pub impl mem_categorization_ctxt {
                 _ => {
                     self.tcx.sess.span_bug(
                         pat.span,
-                        ~"enum pattern didn't resolve to enum or struct");
+                        "enum pattern didn't resolve to enum or struct");
                 }
             }
           }
