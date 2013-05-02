@@ -140,6 +140,7 @@ pub fn iter<T>(l: @List<T>, f: &fn(&T)) {
 }
 
 /// Iterate over a list
+#[cfg(stage0)]
 pub fn each<T>(l: @List<T>, f: &fn(&T) -> bool) {
     let mut cur = l;
     loop {
@@ -152,9 +153,24 @@ pub fn each<T>(l: @List<T>, f: &fn(&T) -> bool) {
         }
     }
 }
+/// Iterate over a list
+#[cfg(not(stage0))]
+pub fn each<T>(l: @List<T>, f: &fn(&T) -> bool) -> bool {
+    let mut cur = l;
+    loop {
+        cur = match *cur {
+          Cons(ref hd, tl) => {
+            if !f(hd) { return false; }
+            tl
+          }
+          Nil => { return true; }
+        }
+    }
+}
 
 impl<T> MutList<T> {
     /// Iterate over a mutable list
+    #[cfg(stage0)]
     pub fn each(@mut self, f: &fn(&mut T) -> bool) {
         let mut cur = self;
         loop {
@@ -169,6 +185,24 @@ impl<T> MutList<T> {
                 MutNil => break
             }
         }
+    }
+    /// Iterate over a mutable list
+    #[cfg(not(stage0))]
+    pub fn each(@mut self, f: &fn(&mut T) -> bool) -> bool {
+        let mut cur = self;
+        loop {
+            let borrowed = &mut *cur;
+            cur = match *borrowed {
+                MutCons(ref mut hd, tl) => {
+                    if !f(hd) {
+                        return false;
+                    }
+                    tl
+                }
+                MutNil => break
+            }
+        }
+        return true;
     }
 }
 

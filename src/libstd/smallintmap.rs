@@ -51,6 +51,7 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
     }
 
     /// Visit all key-value pairs in order
+    #[cfg(stage0)]
     fn each<'a>(&'a self, it: &fn(&uint, &'a V) -> bool) {
         for uint::range(0, self.v.len()) |i| {
             match self.v[i] {
@@ -60,24 +61,61 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
         }
     }
 
+    /// Visit all key-value pairs in order
+    #[cfg(not(stage0))]
+    fn each<'a>(&'a self, it: &fn(&uint, &'a V) -> bool) -> bool {
+        for uint::range(0, self.v.len()) |i| {
+            match self.v[i] {
+              Some(ref elt) => if !it(&i, elt) { return false; },
+              None => ()
+            }
+        }
+        return true;
+    }
+
     /// Visit all keys in order
+    #[cfg(stage0)]
     fn each_key(&self, blk: &fn(key: &uint) -> bool) {
+        self.each(|k, _| blk(k))
+    }
+    #[cfg(not(stage0))]
+    /// Visit all keys in order
+    fn each_key(&self, blk: &fn(key: &uint) -> bool) -> bool {
         self.each(|k, _| blk(k))
     }
 
     /// Visit all values in order
+    #[cfg(stage0)]
     fn each_value<'a>(&'a self, blk: &fn(value: &'a V) -> bool) {
         self.each(|_, v| blk(v))
     }
 
+    /// Visit all values in order
+    #[cfg(not(stage0))]
+    fn each_value<'a>(&'a self, blk: &fn(value: &'a V) -> bool) -> bool {
+        self.each(|_, v| blk(v))
+    }
+
     /// Iterate over the map and mutate the contained values
+    #[cfg(stage0)]
     fn mutate_values(&mut self, it: &fn(&uint, &mut V) -> bool) {
         for uint::range(0, self.v.len()) |i| {
             match self.v[i] {
-              Some(ref mut elt) => if !it(&i, elt) { break },
+              Some(ref mut elt) => if !it(&i, elt) { return; },
               None => ()
             }
         }
+    }
+    /// Iterate over the map and mutate the contained values
+    #[cfg(not(stage0))]
+    fn mutate_values(&mut self, it: &fn(&uint, &mut V) -> bool) -> bool {
+        for uint::range(0, self.v.len()) |i| {
+            match self.v[i] {
+              Some(ref mut elt) => if !it(&i, elt) { return false; },
+              None => ()
+            }
+        }
+        return true;
     }
 
     /// Return a reference to the value corresponding to the key
@@ -149,6 +187,7 @@ pub impl<V> SmallIntMap<V> {
     fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
 
     /// Visit all key-value pairs in reverse order
+    #[cfg(stage0)]
     fn each_reverse<'a>(&'a self, it: &fn(uint, &'a V) -> bool) {
         for uint::range_rev(self.v.len(), 0) |i| {
             match self.v[i - 1] {
@@ -156,6 +195,18 @@ pub impl<V> SmallIntMap<V> {
               None => ()
             }
         }
+    }
+
+    /// Visit all key-value pairs in reverse order
+    #[cfg(not(stage0))]
+    fn each_reverse<'a>(&'a self, it: &fn(uint, &'a V) -> bool) -> bool {
+        for uint::range_rev(self.v.len(), 0) |i| {
+            match self.v[i - 1] {
+              Some(ref elt) => if !it(i - 1, elt) { return false; },
+              None => ()
+            }
+        }
+        return true;
     }
 
     fn get<'a>(&'a self, key: &uint) -> &'a V {
