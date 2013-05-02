@@ -438,8 +438,11 @@ pub mod flatteners {
     SerializingFlattener
     */
 
+    #[cfg(stage0)]
     pub fn deserialize_buffer<D: Decoder + FromReader,
-                              T: Decodable<D>>(buf: &[u8]) -> T {
+                              T: Decodable<D>>(
+                              buf: &[u8])
+                              -> T {
         let buf = vec::from_slice(buf);
         let buf_reader = @BufReader::new(buf);
         let reader = buf_reader as @Reader;
@@ -447,11 +450,37 @@ pub mod flatteners {
         Decodable::decode(&deser)
     }
 
+    #[cfg(not(stage0))]
+    pub fn deserialize_buffer<D: Decoder + FromReader,
+                              T: Decodable<D>>(
+                              buf: &[u8])
+                              -> T {
+        let buf = vec::from_slice(buf);
+        let buf_reader = @BufReader::new(buf);
+        let reader = buf_reader as @Reader;
+        let mut deser: D = FromReader::from_reader(reader);
+        Decodable::decode(&mut deser)
+    }
+
+    #[cfg(stage0)]
     pub fn serialize_value<D: Encoder + FromWriter,
-                           T: Encodable<D>>(val: &T) -> ~[u8] {
+                           T: Encodable<D>>(
+                           val: &T)
+                           -> ~[u8] {
         do io::with_bytes_writer |writer| {
             let ser = FromWriter::from_writer(writer);
             val.encode(&ser);
+        }
+    }
+
+    #[cfg(not(stage0))]
+    pub fn serialize_value<D: Encoder + FromWriter,
+                           T: Encodable<D>>(
+                           val: &T)
+                           -> ~[u8] {
+        do io::with_bytes_writer |writer| {
+            let mut ser = FromWriter::from_writer(writer);
+            val.encode(&mut ser);
         }
     }
 

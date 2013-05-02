@@ -272,9 +272,18 @@ fn item_ty_param_defs(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd,
     @bounds
 }
 
+#[cfg(stage0)]
 fn item_ty_region_param(item: ebml::Doc) -> Option<ty::region_variance> {
     reader::maybe_get_doc(item, tag_region_param).map(|doc| {
         Decodable::decode(&reader::Decoder(*doc))
+    })
+}
+
+#[cfg(not(stage0))]
+fn item_ty_region_param(item: ebml::Doc) -> Option<ty::region_variance> {
+    reader::maybe_get_doc(item, tag_region_param).map(|doc| {
+        let mut decoder = reader::Decoder(*doc);
+        Decodable::decode(&mut decoder)
     })
 }
 

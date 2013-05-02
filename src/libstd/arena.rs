@@ -348,7 +348,7 @@ pub impl Arena {
 
 #[test]
 fn test_arena_destructors() {
-    let arena = Arena();
+    let mut arena = Arena();
     for uint::range(0, 10) |i| {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
@@ -363,7 +363,7 @@ fn test_arena_destructors() {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_arena_destructors_fail() {
-    let arena = Arena();
+    let mut arena = Arena();
     // Put some stuff in the arena.
     for uint::range(0, 10) |i| {
         // Arena allocate something with drop glue to make sure it
