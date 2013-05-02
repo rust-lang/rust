@@ -10,7 +10,6 @@
 
 use T = self::inst::T;
 
-use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::{Zero, One, strconv};
 use prelude::*;

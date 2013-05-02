@@ -13,15 +13,13 @@
 #[allow(deprecated_mode)];
 
 use core::cmp::Eq;
+#[cfg(stage0)]
 use core::from_str::FromStr;
 use core::io::{Reader, ReaderUtil};
 use core::io;
 use core::hashmap::HashMap;
 use core::str;
-use core::to_bytes::IterBytes;
 use core::to_bytes;
-use core::to_str::ToStr;
-use core::to_str;
 use core::uint;
 
 #[deriving(Clone, Eq)]
@@ -703,13 +701,13 @@ pub fn to_str(url: &Url) -> ~str {
     fmt!("%s:%s%s%s%s", url.scheme, authority, url.path, query, fragment)
 }
 
-impl to_str::ToStr for Url {
+impl ToStr for Url {
     pub fn to_str(&self) -> ~str {
         to_str(self)
     }
 }
 
-impl to_bytes::IterBytes for Url {
+impl IterBytes for Url {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         self.to_str().iter_bytes(lsb0, f)
     }

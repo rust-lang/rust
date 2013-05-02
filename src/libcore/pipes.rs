@@ -303,7 +303,7 @@ struct BufferResource<T> {
 }
 
 #[unsafe_destructor]
-impl<T> ::ops::Drop for BufferResource<T> {
+impl<T> Drop for BufferResource<T> {
     fn finalize(&self) {
         unsafe {
             let b = move_it!(self.buffer);
@@ -639,7 +639,7 @@ pub struct SendPacketBuffered<T, Tbuffer> {
 }
 
 #[unsafe_destructor]
-impl<T:Owned,Tbuffer:Owned> ::ops::Drop for SendPacketBuffered<T,Tbuffer> {
+impl<T:Owned,Tbuffer:Owned> Drop for SendPacketBuffered<T,Tbuffer> {
     fn finalize(&self) {
         //if self.p != none {
         //    debug!("drop send %?", option::get(self.p));
@@ -708,7 +708,7 @@ pub struct RecvPacketBuffered<T, Tbuffer> {
 }
 
 #[unsafe_destructor]
-impl<T:Owned,Tbuffer:Owned> ::ops::Drop for RecvPacketBuffered<T,Tbuffer> {
+impl<T:Owned,Tbuffer:Owned> Drop for RecvPacketBuffered<T,Tbuffer> {
     fn finalize(&self) {
         //if self.p != none {
         //    debug!("drop recv %?", option::get(self.p));

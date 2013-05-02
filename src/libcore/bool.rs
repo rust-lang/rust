@@ -108,6 +108,7 @@ mod tests {
 
     #[test]
     fn test_bool_from_str() {
+        #[cfg(stage0)]
         use from_str::FromStr;
 
         do all_values |v| {
