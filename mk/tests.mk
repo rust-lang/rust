@@ -502,12 +502,13 @@ ifeq ($(CFG_ADB_DEVICE),true)
 CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
 		--compile-lib-path $$(HLIB$(1)_H_$(3))				\
         --run-lib-path $$(TLIB$(1)_T_$(2)_H_$(3))			\
-        --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))			\
-        --aux-base $$(S)src/test/auxiliary/                 \
+        --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))	\
+        --aux-base $$(S)src/test/auxiliary/					\
         --stage-id stage$(1)-$(2)							\
         --host $(CFG_BUILD_TRIPLE)                          \
         --target $(2)                                       \
         --adb-path=$(CFG_ADB_PATH)                          \
+        --adb-test-dir=$(CFG_ADB_TEST_DIR)                  \
         --rustcflags "$(RUSTC_FLAGS_$(2)) $$(CFG_RUSTC_FLAGS) --target=$(2)" \
         $$(CTEST_TESTARGS)
 
@@ -516,7 +517,7 @@ else
 CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
 		--compile-lib-path $$(HLIB$(1)_H_$(3))				\
         --run-lib-path $$(TLIB$(1)_T_$(2)_H_$(3))			\
-        --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))			\
+        --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))	\
         --aux-base $$(S)src/test/auxiliary/                 \
         --stage-id stage$(1)-$(2)							\
         --host $(CFG_BUILD_TRIPLE)                          \

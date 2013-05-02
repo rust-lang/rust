@@ -70,8 +70,11 @@ pub struct config {
     // Target System to be executed
     target: ~str,
 
-    // Extra parameter to run arm-linux-androideabi
+    // Extra parameter to run adb on arm-linux-androideabi
     adb_path: ~str,
+
+    // Extra parameter to run test sute on arm-linux-androideabi
+    adb_test_dir: ~str,
 
     // check if can be run or not
     flag_runnable: bool,
