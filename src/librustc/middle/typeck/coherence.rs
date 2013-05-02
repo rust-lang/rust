@@ -527,7 +527,7 @@ pub impl CoherenceChecker {
     #[cfg(stage0)]
     fn each_provided_trait_method(&self,
             trait_did: ast::def_id,
-            f: &fn(x: @ty::method) -> bool) {
+            f: &fn(@ty::Method) -> bool) {
         // Make a list of all the names of the provided methods.
         // XXX: This is horrible.
         let mut provided_method_idents = HashSet::new();
@@ -547,7 +547,7 @@ pub impl CoherenceChecker {
     #[cfg(not(stage0))]
     fn each_provided_trait_method(&self,
             trait_did: ast::def_id,
-            f: &fn(x: @ty::method) -> bool) -> bool {
+            f: &fn(x: @ty::Method) -> bool) -> bool {
         // Make a list of all the names of the provided methods.
         // XXX: This is horrible.
         let mut provided_method_idents = HashSet::new();
@@ -1073,7 +1073,7 @@ fn subst_receiver_types_in_method_ty(
     impl_id: ast::node_id,
     trait_ref: &ty::TraitRef,
     new_def_id: ast::def_id,
-    method: &ty::method) -> ty::method
+    method: &ty::Method) -> ty::Method
 {
     /*!
      * Substitutes the values for the receiver's type parameters
@@ -1117,19 +1117,22 @@ fn subst_receiver_types_in_method_ty(
         tps: combined_tps
     };
 
-    ty::method {
-        ident: method.ident,
+    ty::Method::new(
+        method.ident,
+
+        // method types *can* appear in the generic bounds
+        method.generics.subst(tcx, &combined_substs),
 
         // method tps cannot appear in the self_ty, so use `substs` from trait ref
-        transformed_self_ty: method.transformed_self_ty.subst(tcx, &trait_ref.substs),
+        method.transformed_self_ty.subst(tcx, &trait_ref.substs),
 
-        // method types *can* appear in the generic bounds or the fty
-        generics: method.generics.subst(tcx, &combined_substs),
-        fty: method.fty.subst(tcx, &combined_substs),
-        explicit_self: method.explicit_self,
-        vis: method.vis,
-        def_id: new_def_id
-    }
+        // method types *can* appear in the fty
+        method.fty.subst(tcx, &combined_substs),
+
+        method.explicit_self,
+        method.vis,
+        new_def_id
+    )
 }
 
 pub fn check_coherence(crate_context: @mut CrateCtxt, crate: @crate) {
