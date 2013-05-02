@@ -76,10 +76,3 @@ pub fn fg(writer: @io::Writer, color: u8) {
 pub fn bg(writer: @io::Writer, color: u8) {
     return set_color(writer, '4' as u8, color);
 }
-
-// Local Variables:
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

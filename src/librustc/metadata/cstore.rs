@@ -161,11 +161,3 @@ pub fn get_dep_hashes(cstore: &CStore) -> ~[~str] {
 
     sorted.map(|ch| /*bad*/copy *ch.hash)
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

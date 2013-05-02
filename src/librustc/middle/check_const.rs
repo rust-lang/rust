@@ -253,11 +253,3 @@ pub fn check_item_recursion(sess: Session,
         visit::visit_expr(e, env, v);
     }
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
