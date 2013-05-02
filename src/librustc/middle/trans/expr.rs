@@ -821,57 +821,30 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
 
     trace_span!(bcx, expr.span, @shorten(bcx.expr_to_str(expr)));
 
-    let unrooted_datum = unpack_datum!(bcx, unrooted(bcx, expr));
-
-    // If the lvalue must remain rooted, create a scratch datum, copy
-    // the lvalue in there, and then arrange for it to be cleaned up
-    // at the end of the scope with id `scope_id`:
-    let root_key = root_map_key { id: expr.id, derefs: 0u };
-    for bcx.ccx().maps.root_map.find(&root_key).each |&root_info| {
-        bcx = unrooted_datum.root(bcx, expr.span, *root_info);
-    }
-
-    return DatumBlock {bcx: bcx, datum: unrooted_datum};
-
-    fn unrooted(bcx: block, expr: @ast::expr) -> DatumBlock {
-        /*!
-         *
-         * Translates `expr`.  Note that this version generally
-         * yields an unrooted, unmoved version.  Rooting and possible
-         * moves are dealt with above in trans_lvalue_unadjusted().
-         *
-         * One exception is if `expr` refers to a local variable,
-         * in which case the source may already be FromMovedLvalue
-         * if appropriate.
-         */
-
-        let mut bcx = bcx;
-
-        match expr.node {
-            ast::expr_paren(e) => {
-                return unrooted(bcx, e);
-            }
-            ast::expr_path(_) => {
-                return trans_def_lvalue(bcx, expr, bcx.def(expr.id));
-            }
-            ast::expr_field(base, ident, _) => {
-                return trans_rec_field(bcx, base, ident);
-            }
-            ast::expr_index(base, idx) => {
-                return trans_index(bcx, expr, base, idx);
-            }
-            ast::expr_unary(ast::deref, base) => {
-                let basedatum = unpack_datum!(bcx, trans_to_datum(bcx, base));
-                return basedatum.deref(bcx, base, 0);
-            }
-            _ => {
-                bcx.tcx().sess.span_bug(
-                    expr.span,
-                    fmt!("trans_lvalue reached fall-through case: %?",
-                         expr.node));
-            }
+    return match expr.node {
+        ast::expr_paren(e) => {
+            unrooted(bcx, e)
         }
-    }
+        ast::expr_path(_) => {
+            trans_def_lvalue(bcx, expr, bcx.def(expr.id))
+        }
+        ast::expr_field(base, ident, _) => {
+            trans_rec_field(bcx, base, ident)
+        }
+        ast::expr_index(base, idx) => {
+            trans_index(bcx, expr, base, idx)
+        }
+        ast::expr_unary(ast::deref, base) => {
+            let basedatum = unpack_datum!(bcx, trans_to_datum(bcx, base));
+            basedatum.deref(bcx, base, 0)
+        }
+        _ => {
+            bcx.tcx().sess.span_bug(
+                expr.span,
+                fmt!("trans_lvalue reached fall-through case: %?",
+                     expr.node));
+        }
+    };
 
     fn trans_rec_field(bcx: block,
                        base: @ast::expr,
