@@ -204,8 +204,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
     if arg_len > 0 {
         // N-ary variant.
         if arg_len != subpats_len {
-            let s = fmt!("this pattern has %u field%s, but the corresponding \
-                          %s has %u field%s",
+            let s = fmt!("this pattern has %u field%s, but the corresponding %s has %u field%s",
                          subpats_len,
                          if subpats_len == 1u { ~"" } else { ~"s" },
                          kind_name,
@@ -223,13 +222,12 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
             }
         }
     } else if subpats_len > 0 {
-        tcx.sess.span_err
-            (pat.span, fmt!("this pattern has %u field%s, but the \
-                             corresponding %s has no fields",
-                            subpats_len,
-                            if subpats_len == 1u { ~"" }
-                            else { ~"s" },
-                            kind_name));
+        tcx.sess.span_err(pat.span,
+                          fmt!("this pattern has %u field%s, but the corresponding %s has no \
+                                fields",
+                               subpats_len,
+                               if subpats_len == 1u { "" } else { "s" },
+                               kind_name));
         error_happened = true;
     }
 
@@ -319,20 +317,19 @@ pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::node_id, span: span,
         Some(&ast::def_struct(*)) | Some(&ast::def_variant(*)) => {
             let name = pprust::path_to_str(path, tcx.sess.intr());
             tcx.sess.span_err(span,
-                              fmt!("mismatched types: expected `%s` but \
-                                    found `%s`",
+                              fmt!("mismatched types: expected `%s` but found `%s`",
                                    fcx.infcx().ty_to_str(expected),
                                    name));
         }
         _ => {
-            tcx.sess.span_bug(span, ~"resolve didn't write in class");
+            tcx.sess.span_bug(span, "resolve didn't write in class");
         }
     }
 
     // Forbid pattern-matching structs with destructors.
     if ty::has_dtor(tcx, class_id) {
-        tcx.sess.span_err(span, ~"deconstructing struct not allowed in \
-                                  pattern (it has a destructor)");
+        tcx.sess.span_err(span, "deconstructing struct not allowed in pattern \
+                                 (it has a destructor)");
     }
 
     check_struct_pat_fields(pcx, span, path, fields, class_fields, class_id,
@@ -370,7 +367,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
                                    name));
         }
         _ => {
-            tcx.sess.span_bug(span, ~"resolve didn't write in variant");
+            tcx.sess.span_bug(span, "resolve didn't write in variant");
         }
     }
 }
@@ -404,10 +401,9 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
         {
             // no-op
         } else if !ty::type_is_numeric(b_ty) {
-            tcx.sess.span_err(pat.span, ~"non-numeric type used in range");
+            tcx.sess.span_err(pat.span, "non-numeric type used in range");
         } else if !valid_range_bounds(fcx.ccx, begin, end) {
-            tcx.sess.span_err(begin.span, ~"lower range bound must be less \
-                                           than upper");
+            tcx.sess.span_err(begin.span, "lower range bound must be less than upper");
         }
         fcx.write_ty(pat.id, b_ty);
       }
@@ -476,9 +472,8 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
             }
             _ => {
                 tcx.sess.span_err(pat.span,
-                                    fmt!("mismatched types: expected `%s` \
-                                          but found struct",
-                                         fcx.infcx().ty_to_str(expected)));
+                                  fmt!("mismatched types: expected `%s` but found struct",
+                                       fcx.infcx().ty_to_str(expected)));
                 error_happened = true;
             }
         }

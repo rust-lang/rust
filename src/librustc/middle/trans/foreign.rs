@@ -1080,7 +1080,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         _ => {
             // Could we make this an enum rather than a string? does it get
             // checked earlier?
-            ccx.sess.span_bug(item.span, ~"unknown intrinsic");
+            ccx.sess.span_bug(item.span, "unknown intrinsic");
         }
     }
     build_return(bcx);

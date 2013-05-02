@@ -214,7 +214,7 @@ pub fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
     match tcx.def_map.find(&id) {
       Some(&x) => x,
       _ => {
-        tcx.sess.span_fatal(sp, ~"internal error looking up a definition")
+        tcx.sess.span_fatal(sp, "internal error looking up a definition")
       }
     }
 }
@@ -301,8 +301,7 @@ fn check_main_fn_ty(ccx: @mut CrateCtxt,
                         if ps.is_parameterized() => {
                             tcx.sess.span_err(
                                 main_span,
-                                ~"main function is not allowed \
-                                  to have type parameters");
+                                "main function is not allowed to have type parameters");
                             return;
                         }
                         _ => ()
@@ -343,8 +342,7 @@ fn check_start_fn_ty(ccx: @mut CrateCtxt,
                         if ps.is_parameterized() => {
                             tcx.sess.span_err(
                                 start_span,
-                                ~"start function is not allowed to have type \
-                                parameters");
+                                "start function is not allowed to have type parameters");
                             return;
                         }
                         _ => ()

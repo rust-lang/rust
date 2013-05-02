@@ -469,7 +469,7 @@ pub fn write_content(bcx: block,
         }
         _ => {
             bcx.tcx().sess.span_bug(content_expr.span,
-                                    ~"Unexpected evec content");
+                                    "Unexpected evec content");
         }
     }
 }
@@ -503,7 +503,7 @@ pub fn elements_required(bcx: block, content_expr: @ast::expr) -> uint {
             ty::eval_repeat_count(bcx.tcx(), count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,
-                                     ~"Unexpected evec content")
+                                     "Unexpected evec content")
     }
 }
 
