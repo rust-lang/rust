@@ -141,7 +141,7 @@ fn fold_item(cx: @mut TestCtxt, i: @ast::item, fld: @fold::ast_fold)
     debug!("current path: %s",
            ast_util::path_name_i(copy cx.path, cx.sess.parse_sess.interner));
 
-    if is_test_fn(i) || is_bench_fn(i) {
+    if is_test_fn(cx, i) || is_bench_fn(i) {
         match i.node {
           ast::item_fn(_, purity, _, _, _) if purity == ast::unsafe_fn => {
             let sess = cx.sess;
@@ -169,7 +169,7 @@ fn fold_item(cx: @mut TestCtxt, i: @ast::item, fld: @fold::ast_fold)
     return res;
 }
 
-fn is_test_fn(i: @ast::item) -> bool {
+fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {
     let has_test_attr = !attr::find_attrs_by_name(i.attrs,
                                                   ~"test").is_empty();
 
@@ -188,6 +188,13 @@ fn is_test_fn(i: @ast::item) -> bool {
         }
     }
 
+    if has_test_attr && !has_test_signature(i) {
+        let sess = cx.sess;
+        sess.span_err(
+            i.span,
+            ~"functions used as tests must have signature fn() -> ()."
+        );
+    }
     return has_test_attr && has_test_signature(i);
 }
 

@@ -64,7 +64,7 @@ fn test_fuzzy_eq_eps() {
     assert!(!(&1.5f).fuzzy_eq_eps(&0.9, &0.5));
 }
 
-#[test]
+#[cfg(test)]
 mod test_complex{
     use cmp::*;
 
