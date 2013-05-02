@@ -550,6 +550,7 @@ pub fn tmpdir() -> Path {
     }
 }
 /// Recursively walk a directory structure
+#[cfg(stage0)]
 pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) {
 
     walk_dir_(p, f);
@@ -576,6 +577,14 @@ pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) {
         }
         return keepgoing;
     }
+}
+/// Recursively walk a directory structure
+#[cfg(not(stage0))]
+pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) -> bool {
+    list_dir(p).each(|q| {
+        let path = &p.push(*q);
+        f(path) && (!path_is_dir(path) || walk_dir(path, f))
+    })
 }
 
 /// Indicates whether a path represents a directory
