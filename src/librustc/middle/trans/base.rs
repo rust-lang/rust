@@ -1258,7 +1258,7 @@ pub fn trans_block_cleanups(bcx: block, cleanups: ~[cleanup]) -> block {
 }
 
 pub fn trans_block_cleanups_(bcx: block,
-                             cleanups: ~[cleanup],
+                             cleanups: &[cleanup],
                              /* cleanup_cx: block, */
                              is_lpad: bool) -> block {
     let _icx = bcx.insn_ctxt("trans_block_cleanups");
@@ -1317,7 +1317,7 @@ pub fn cleanup_and_leave(bcx: block,
                     dest: sub_cx.llbb
                 });
                 bcx = trans_block_cleanups_(sub_cx,
-                                            block_cleanups(cur),
+                                            inf.cleanups,
                                             is_lpad);
               }
               _ => ()
