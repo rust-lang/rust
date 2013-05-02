@@ -772,6 +772,28 @@ pub fn list_dir_path(p: &Path) -> ~[~Path] {
     list_dir(p).map(|f| ~p.push(*f))
 }
 
+/// Removes a directory at the specified path, after removing
+/// all its contents. Use carefully!
+pub fn remove_dir_recursive(p: &Path) -> bool {
+    let mut error_happened = false;
+    for walk_dir(p) |inner| {
+        if !error_happened {
+            if path_is_dir(inner) {
+                if !remove_dir_recursive(inner) {
+                    error_happened = true;
+                }
+            }
+            else {
+                if !remove_file(inner) {
+                    error_happened = true;
+                }
+            }
+        }
+    };
+    // Directory should now be empty
+    !error_happened && remove_dir(p)
+}
+
 /// Removes a directory at the specified path
 pub fn remove_dir(p: &Path) -> bool {
    return rmdir(p);
@@ -877,6 +899,10 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
             if istream as uint == 0u {
                 return false;
             }
+            // Preserve permissions
+            let from_mode = from.get_mode().expect("copy_file: couldn't get permissions \
+                                                    for source file");
+
             let ostream = do as_c_charp(to.to_str()) |top| {
                 do as_c_charp("w+b") |modebuf| {
                     libc::fopen(top, modebuf)
@@ -908,6 +934,15 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
             }
             fclose(istream);
             fclose(ostream);
+
+            // Give the new file the old file's permissions
+            unsafe {
+                if do str::as_c_str(to.to_str()) |to_buf| {
+                    libc::chmod(to_buf, from_mode as mode_t)
+                } != 0 {
+                    return false; // should be a condition...
+                }
+            }
             return ok;
         }
     }
@@ -1594,6 +1629,7 @@ mod tests {
                       == buf.len() as size_t))
           }
           assert!((libc::fclose(ostream) == (0u as c_int)));
+          let in_mode = in.get_mode();
           let rs = os::copy_file(&in, &out);
           if (!os::path_exists(&in)) {
             fail!(fmt!("%s doesn't exist", in.to_str()));
@@ -1601,6 +1637,7 @@ mod tests {
           assert!((rs));
           let rslt = run::run_program(~"diff", ~[in.to_str(), out.to_str()]);
           assert!((rslt == 0));
+          assert!(out.get_mode() == in_mode);
           assert!((remove_file(&in)));
           assert!((remove_file(&out)));
         }

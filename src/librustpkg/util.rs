@@ -477,6 +477,8 @@ pub fn compile_input(sysroot: Option<Path>,
 
     let matches = getopts(~[~"-Z", ~"time-passes"]
                           + if building_library { ~[~"--lib"] }
+                            else if test { ~[~"--test"] }
+                            // bench?
                             else { ~[] }
                           + flags
                           + cfgs.flat_map(|&c| { ~[~"--cfg", c] }),
@@ -540,9 +542,13 @@ pub fn compile_crate_from_input(input: driver::input,
             let (crate, _) = driver::compile_upto(sess, cfg, &input,
                                                   driver::cu_parse, Some(outputs));
 
+            debug!("About to inject link_meta info...");
             // Inject the inferred link_meta info if it's not already there
             // (assumes that name and vers are the only linkage metas)
             let mut crate_to_use = crate;
+
+            debug!("How many attrs? %?", attr::find_linkage_metas(crate.node.attrs).len());
+
             if attr::find_linkage_metas(crate.node.attrs).is_empty() {
                 crate_to_use = add_attrs(*crate, ~[mk_attr(@dummy_spanned(meta_list(@~"link",
                                                   // change PkgId to have a <shortname> field?
@@ -551,7 +557,6 @@ pub fn compile_crate_from_input(input: driver::input,
                       @dummy_spanned(meta_name_value(@~"vers",
                                                     mk_string_lit(@pkg_id.version.to_str())))])))]);
             }
-
 
             driver::compile_rest(sess, cfg, what, Some(outputs), Some(crate_to_use));
             crate_to_use
