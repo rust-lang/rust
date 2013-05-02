@@ -240,8 +240,8 @@ pub impl CoherenceChecker {
 
     fn check_implementation(&self,
                             item: @item, associated_traits: ~[@trait_ref]) {
-        let self_type = self.crate_context.tcx.tcache.get(
-            &local_def(item.id));
+        let tcx = self.crate_context.tcx;
+        let self_type = ty::lookup_item_type(tcx, local_def(item.id));
 
         // If there are no traits, then this implementation must have a
         // base type.
@@ -452,10 +452,8 @@ pub impl CoherenceChecker {
     }
 
     fn check_implementation_coherence(&self) {
-        let coherence_info = &mut self.crate_context.coherence_info;
-        let extension_methods = &coherence_info.extension_methods;
-
-        for extension_methods.each_key |&trait_id| {
+        let coherence_info = self.crate_context.coherence_info;
+        for coherence_info.extension_methods.each_key |&trait_id| {
             self.check_implementation_coherence_of(trait_id);
         }
     }
@@ -514,13 +512,16 @@ pub impl CoherenceChecker {
     }
 
     fn iter_impls_of_trait(&self, trait_def_id: def_id, f: &fn(@Impl)) {
-        let coherence_info = &mut self.crate_context.coherence_info;
-        let extension_methods = &coherence_info.extension_methods;
+        let coherence_info = self.crate_context.coherence_info;
+        let extension_methods = &*coherence_info.extension_methods;
 
         match extension_methods.find(&trait_def_id) {
             Some(impls) => {
-                let impls: &mut ~[@Impl] = *impls;
-                for uint::range(0, impls.len()) |i| {
+                let len = { // FIXME(#5074) stage0 requires this
+                    let impls: &mut ~[@Impl] = *impls;
+                    impls.len()
+                };
+                for uint::range(0, len) |i| {
                     f(impls[i]);
                 }
             }
@@ -1014,7 +1015,7 @@ pub impl CoherenceChecker {
     //
 
     fn populate_destructor_table(&self) {
-        let coherence_info = &mut self.crate_context.coherence_info;
+        let coherence_info = self.crate_context.coherence_info;
         let tcx = self.crate_context.tcx;
         let drop_trait = tcx.lang_items.drop_trait();
         let impls_opt = coherence_info.extension_methods.find(&drop_trait);

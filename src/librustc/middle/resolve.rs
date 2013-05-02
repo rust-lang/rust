@@ -779,9 +779,9 @@ pub fn Resolver(session: Session,
         unresolved_imports: 0,
 
         current_module: current_module,
-        value_ribs: ~[],
-        type_ribs: ~[],
-        label_ribs: ~[],
+        value_ribs: @mut ~[],
+        type_ribs: @mut ~[],
+        label_ribs: @mut ~[],
 
         xray_context: NoXray,
         current_trait_refs: None,
@@ -830,13 +830,13 @@ pub struct Resolver {
 
     // The current set of local scopes, for values.
     // FIXME #4948: Reuse ribs to avoid allocation.
-    value_ribs: ~[@Rib],
+    value_ribs: @mut ~[@Rib],
 
     // The current set of local scopes, for types.
-    type_ribs: ~[@Rib],
+    type_ribs: @mut ~[@Rib],
 
     // The current set of local scopes, for labels.
-    label_ribs: ~[@Rib],
+    label_ribs: @mut ~[@Rib],
 
     // Whether the current context is an X-ray context. An X-ray context is
     // allowed to access private names of any module.
@@ -4313,19 +4313,18 @@ pub impl Resolver {
                 }
 
                 pat_struct(path, _, _) => {
-                    let structs: &mut HashSet<def_id> = &mut self.structs;
                     match self.resolve_path(path, TypeNS, false, visitor) {
                         Some(def_ty(class_id))
-                                if structs.contains(&class_id) => {
+                                if self.structs.contains(&class_id) => {
                             let class_def = def_struct(class_id);
                             self.record_def(pattern.id, class_def);
                         }
-                        Some(definition @ def_struct(class_id))
-                                if structs.contains(&class_id) => {
+                        Some(definition @ def_struct(class_id)) => {
+                            assert!(self.structs.contains(&class_id));
                             self.record_def(pattern.id, definition);
                         }
                         Some(definition @ def_variant(_, variant_id))
-                                if structs.contains(&variant_id) => {
+                                if self.structs.contains(&variant_id) => {
                             self.record_def(pattern.id, definition);
                         }
                         result => {
@@ -4627,12 +4626,12 @@ pub impl Resolver {
         let search_result;
         match namespace {
             ValueNS => {
-                search_result = self.search_ribs(&mut self.value_ribs, ident,
+                search_result = self.search_ribs(self.value_ribs, ident,
                                                  span,
                                                  DontAllowCapturingSelf);
             }
             TypeNS => {
-                search_result = self.search_ribs(&mut self.type_ribs, ident,
+                search_result = self.search_ribs(self.type_ribs, ident,
                                                  span, AllowCapturingSelf);
             }
         }
@@ -4822,15 +4821,14 @@ pub impl Resolver {
 
             expr_struct(path, _, _) => {
                 // Resolve the path to the structure it goes to.
-                let structs: &mut HashSet<def_id> = &mut self.structs;
                 match self.resolve_path(path, TypeNS, false, visitor) {
                     Some(def_ty(class_id)) | Some(def_struct(class_id))
-                            if structs.contains(&class_id) => {
+                            if self.structs.contains(&class_id) => {
                         let class_def = def_struct(class_id);
                         self.record_def(expr.id, class_def);
                     }
                     Some(definition @ def_variant(_, class_id))
-                            if structs.contains(&class_id) => {
+                            if self.structs.contains(&class_id) => {
                         self.record_def(expr.id, definition);
                     }
                     _ => {
@@ -4856,7 +4854,7 @@ pub impl Resolver {
             }
 
             expr_break(Some(label)) | expr_again(Some(label)) => {
-                match self.search_ribs(&mut self.label_ribs, label, expr.span,
+                match self.search_ribs(self.label_ribs, label, expr.span,
                                        DontAllowCapturingSelf) {
                     None =>
                         self.session.span_err(expr.span,
