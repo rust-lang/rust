@@ -111,6 +111,7 @@ pub use num::{Bitwise, BitCount, Bounded};
 pub use num::{Primitive, Int, Float};
 
 pub use ptr::Ptr;
+pub use from_str::FromStr;
 pub use to_str::ToStr;
 pub use clone::Clone;
 

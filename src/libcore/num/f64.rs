@@ -10,7 +10,6 @@
 
 //! Operations and constants for `f64`
 
-use from_str;
 use libc::c_int;
 use num::{Zero, One, strconv};
 use prelude::*;
@@ -840,7 +839,7 @@ pub fn from_str_radix(num: &str, rdx: uint) -> Option<f64> {
                              strconv::ExpNone, false, false)
 }
 
-impl from_str::FromStr for f64 {
+impl FromStr for f64 {
     #[inline(always)]
     fn from_str(val: &str) -> Option<f64> { from_str(val) }
 }
