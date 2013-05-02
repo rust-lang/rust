@@ -3728,7 +3728,6 @@ pub fn item_path_str(cx: ctxt, id: ast::def_id) -> ~str {
 
 pub enum DtorKind {
     NoDtor,
-    LegacyDtor(def_id),
     TraitDtor(def_id)
 }
 
