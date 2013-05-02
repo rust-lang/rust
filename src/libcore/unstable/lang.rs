@@ -51,6 +51,8 @@ pub mod rustrt {
 
         #[rust_stack]
         fn rust_set_task_borrow_list(task: *rust_task, map: *c_void);
+
+        fn rust_dbg_breakpoint();
     }
 }
 
@@ -88,6 +90,8 @@ fn swap_task_borrow_list(f: &fn(~[BorrowRecord]) -> ~[BorrowRecord]) {
 }
 
 pub fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
+    debug_ptr("fail_borrowed: ", box);
+
     if !::rt::env::get().debug_borrows {
         let msg = "borrowed";
         do str::as_buf(msg) |msg_p, _| {
@@ -130,7 +134,7 @@ pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 static ENABLE_DEBUG_PTR: bool = false;
 
 #[inline]
-pub fn debug_ptr<T>(tag: &'static str, p: *T) {
+pub fn debug_ptr<T>(tag: &'static str, p: *const T) {
     //! A useful debugging function that prints a pointer + tag + newline
     //! without allocating memory.
 
@@ -138,7 +142,7 @@ pub fn debug_ptr<T>(tag: &'static str, p: *T) {
         debug_ptr_slow(tag, p);
     }
 
-    fn debug_ptr_slow<T>(tag: &'static str, p: *T) {
+    fn debug_ptr_slow<T>(tag: &'static str, p: *const T) {
         use io;
         let dbg = STDERR_FILENO as io::fd_t;
         let letters = ['0', '1', '2', '3', '4', '5', '6', '7', '8',
@@ -209,14 +213,17 @@ fn add_borrow_to_task_list(a: *mut BoxRepr, file: *c_char, line: size_t) {
 #[inline(always)]
 pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) -> uint {
     let a: *mut BoxRepr = transmute(a);
-
     let ref_count = (*a).header.ref_count;
+
+    debug_ptr("borrow_as_imm (ptr): ", a);
+    debug_ptr("borrow_as_imm (ref): ", ref_count as *());
+
     if (ref_count & MUT_BIT) != 0 {
         fail_borrowed(a, file, line);
     } else {
         (*a).header.ref_count |= FROZEN_BIT;
         if ::rt::env::get().debug_borrows {
-            add_borrow_to_list(a, file, line);
+            add_borrow_to_task_list(a, file, line);
         }
     }
     ref_count
@@ -228,13 +235,16 @@ pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) -> uint {
 pub unsafe fn borrow_as_mut(a: *u8, file: *c_char, line: size_t) -> uint {
     let a: *mut BoxRepr = transmute(a);
 
+    debug_ptr("borrow_as_mut (ptr): ", a);
+    debug_ptr("borrow_as_mut (line): ", line as *());
+
     let ref_count = (*a).header.ref_count;
     if (ref_count & (MUT_BIT|FROZEN_BIT)) != 0 {
         fail_borrowed(a, file, line);
     } else {
         (*a).header.ref_count |= (MUT_BIT|FROZEN_BIT);
         if ::rt::env::get().debug_borrows {
-            add_borrow_to_list(a, file, line);
+            add_borrow_to_task_list(a, file, line);
         }
     }
     ref_count
@@ -260,6 +270,9 @@ pub unsafe fn return_to_mut(a: *u8, old_ref_count: uint) {
     // See e.g. #4904.
     if !a.is_null() {
         let a: *mut BoxRepr = transmute(a);
+
+        debug_ptr("return_to_mut (ptr): ", a);
+        debug_ptr("return_to_mut (ref): ", old_ref_count as *());
 
         let ref_count = (*a).header.ref_count & !ALL_BITS;
         let old_bits = old_ref_count & ALL_BITS;
