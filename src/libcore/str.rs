@@ -77,6 +77,7 @@ pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
 }
 
 /// Copy a slice into a new unique str
+#[inline(always)]
 pub fn from_slice(s: &str) -> ~str {
     unsafe { raw::slice_bytes_owned(s, 0, len(s)) }
 }
@@ -240,38 +241,132 @@ pub fn append(lhs: ~str, rhs: &str) -> ~str {
 
 /// Concatenate a vector of strings
 pub fn concat(v: &[~str]) -> ~str {
-    let mut s: ~str = ~"";
-    for vec::each(v) |ss| {
-        push_str(&mut s, *ss);
+    if v.is_empty() { return ~""; }
+
+    let mut len = 0;
+    for v.each |ss| {
+        len += ss.len();
+    }
+    let mut s = ~"";
+
+    reserve(&mut s, len);
+
+    unsafe {
+        do as_buf(s) |buf, _len| {
+            let mut buf = ::cast::transmute_mut_unsafe(buf);
+            for v.each |ss| {
+                do as_buf(*ss) |ssbuf, sslen| {
+                    let sslen = sslen - 1;
+                    ptr::copy_memory(buf, ssbuf, sslen);
+                    buf = buf.offset(sslen);
+                }
+            }
+        }
+        raw::set_len(&mut s, len);
     }
     s
 }
 
 /// Concatenate a vector of strings, placing a given separator between each
 pub fn connect(v: &[~str], sep: &str) -> ~str {
+    if v.is_empty() { return ~""; }
+
+    // concat is faster
+    if sep.is_empty() { return concat(v); }
+
+    // this is wrong without the guarantee that v is non-empty
+    let mut len = sep.len() * (v.len() - 1);
+    for v.each |ss| {
+        len += ss.len();
+    }
     let mut s = ~"", first = true;
-    for vec::each(v) |ss| {
-        if first { first = false; } else { push_str(&mut s, sep); }
-        push_str(&mut s, *ss);
+
+    reserve(&mut s, len);
+
+    unsafe {
+        do as_buf(s) |buf, _len| {
+            do as_buf(sep) |sepbuf, seplen| {
+                let seplen = seplen - 1;
+                let mut buf = ::cast::transmute_mut_unsafe(buf);
+                for v.each |ss| {
+                    do as_buf(*ss) |ssbuf, sslen| {
+                        let sslen = sslen - 1;
+                        if first {
+                            first = false;
+                        } else {
+                            ptr::copy_memory(buf, sepbuf, seplen);
+                            buf = buf.offset(seplen);
+                        }
+                        ptr::copy_memory(buf, ssbuf, sslen);
+                        buf = buf.offset(sslen);
+                    }
+                }
+            }
+        }
+        raw::set_len(&mut s, len);
     }
     s
 }
 
 /// Concatenate a vector of strings, placing a given separator between each
 pub fn connect_slices(v: &[&str], sep: &str) -> ~str {
+    if v.is_empty() { return ~""; }
+
+    // this is wrong without the guarantee that v is non-empty
+    let mut len = sep.len() * (v.len() - 1);
+    for v.each |ss| {
+        len += ss.len();
+    }
     let mut s = ~"", first = true;
-    for vec::each(v) |ss| {
-        if first { first = false; } else { push_str(&mut s, sep); }
-        push_str(&mut s, *ss);
+
+    reserve(&mut s, len);
+
+    unsafe {
+        do as_buf(s) |buf, _len| {
+            do as_buf(sep) |sepbuf, seplen| {
+                let seplen = seplen - 1;
+                let mut buf = ::cast::transmute_mut_unsafe(buf);
+                for vec::each(v) |ss| {
+                    do as_buf(*ss) |ssbuf, sslen| {
+                        let sslen = sslen - 1;
+                        if first {
+                            first = false;
+                        } else if seplen > 0 {
+                            ptr::copy_memory(buf, sepbuf, seplen);
+                            buf = buf.offset(seplen);
+                        }
+                        ptr::copy_memory(buf, ssbuf, sslen);
+                        buf = buf.offset(sslen);
+                    }
+                }
+            }
+        }
+        raw::set_len(&mut s, len);
     }
     s
 }
 
 /// Given a string, make a new string with repeated copies of it
 pub fn repeat(ss: &str, nn: uint) -> ~str {
-    let mut acc = ~"";
-    for nn.times { acc += ss; }
-    acc
+    do as_buf(ss) |buf, len| {
+        let mut ret = ~"";
+        // ignore the NULL terminator
+        let len = len - 1;
+        reserve(&mut ret, nn * len);
+
+        unsafe {
+            do as_buf(ret) |rbuf, _len| {
+                let mut rbuf = ::cast::transmute_mut_unsafe(rbuf);
+
+                for nn.times {
+                    ptr::copy_memory(rbuf, buf, len);
+                    rbuf = rbuf.offset(len);
+                }
+            }
+            raw::set_len(&mut ret, nn * len);
+        }
+        ret
+    }
 }
 
 /*
@@ -820,6 +915,7 @@ Section: Comparing strings
 /// Bytewise slice equality
 #[cfg(notest)]
 #[lang="str_eq"]
+#[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
     do as_buf(a) |ap, alen| {
         do as_buf(b) |bp, blen| {
@@ -836,6 +932,7 @@ pub fn eq_slice(a: &str, b: &str) -> bool {
 }
 
 #[cfg(test)]
+#[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
     do as_buf(a) |ap, alen| {
         do as_buf(b) |bp, blen| {
@@ -854,15 +951,18 @@ pub fn eq_slice(a: &str, b: &str) -> bool {
 /// Bytewise string equality
 #[cfg(notest)]
 #[lang="uniq_str_eq"]
+#[inline]
 pub fn eq(a: &~str, b: &~str) -> bool {
     eq_slice(*a, *b)
 }
 
 #[cfg(test)]
+#[inline]
 pub fn eq(a: &~str, b: &~str) -> bool {
     eq_slice(*a, *b)
 }
 
+#[inline]
 fn cmp(a: &str, b: &str) -> Ordering {
     let low = uint::min(a.len(), b.len());
 
@@ -879,20 +979,24 @@ fn cmp(a: &str, b: &str) -> Ordering {
 
 #[cfg(notest)]
 impl<'self> TotalOrd for &'self str {
+    #[inline]
     fn cmp(&self, other: & &'self str) -> Ordering { cmp(*self, *other) }
 }
 
 #[cfg(notest)]
 impl TotalOrd for ~str {
+    #[inline]
     fn cmp(&self, other: &~str) -> Ordering { cmp(*self, *other) }
 }
 
 #[cfg(notest)]
 impl TotalOrd for @str {
+    #[inline]
     fn cmp(&self, other: &@str) -> Ordering { cmp(*self, *other) }
 }
 
 /// Bytewise slice less than
+#[inline]
 fn lt(a: &str, b: &str) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
     let end = uint::min(a_len, b_len);
@@ -909,16 +1013,19 @@ fn lt(a: &str, b: &str) -> bool {
 }
 
 /// Bytewise less than or equal
+#[inline]
 pub fn le(a: &str, b: &str) -> bool {
     !lt(b, a)
 }
 
 /// Bytewise greater than or equal
+#[inline]
 fn ge(a: &str, b: &str) -> bool {
     !lt(a, b)
 }
 
 /// Bytewise greater than
+#[inline]
 fn gt(a: &str, b: &str) -> bool {
     !le(a, b)
 }
@@ -1595,6 +1702,7 @@ Section: String properties
 */
 
 /// Returns true if the string has length 0
+#[inline(always)]
 pub fn is_empty(s: &str) -> bool { len(s) == 0u }
 
 /**
@@ -1616,11 +1724,13 @@ fn is_alphanumeric(s: &str) -> bool {
 }
 
 /// Returns the string length/size in bytes not counting the null terminator
+#[inline(always)]
 pub fn len(s: &str) -> uint {
     do as_buf(s) |_p, n| { n - 1u }
 }
 
 /// Returns the number of characters that a string holds
+#[inline(always)]
 pub fn char_len(s: &str) -> uint { count_chars(s, 0u, len(s)) }
 
 /*
@@ -1752,7 +1862,8 @@ pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
     return len;
 }
 
-/// Counts the number of bytes taken by the `n` in `s` starting from `start`.
+/// Counts the number of bytes taken by the first `n` chars in `s`
+/// starting from `start`.
 pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
     assert!(is_char_boundary(s, start));
     let mut end = start, cnt = n;
@@ -1988,6 +2099,7 @@ static tag_six_b: uint = 252u;
  * let i = str::as_bytes("Hello World") { |bytes| vec::len(bytes) };
  * ~~~
  */
+#[inline]
 pub fn as_bytes<T>(s: &const ~str, f: &fn(&~[u8]) -> T) -> T {
     unsafe {
         let v: *~[u8] = cast::transmute(copy s);
@@ -2023,6 +2135,7 @@ pub fn as_bytes_slice<'a>(s: &'a str) -> &'a [u8] {
  * let s = str::as_c_str("PATH", { |path| libc::getenv(path) });
  * ~~~
  */
+#[inline]
 pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
     do as_buf(s) |buf, len| {
         // NB: len includes the trailing null.
@@ -2099,6 +2212,7 @@ pub fn subslice_offset(outer: &str, inner: &str) -> uint {
  * * s - A string
  * * n - The number of bytes to reserve space for
  */
+#[inline(always)]
 pub fn reserve(s: &mut ~str, n: uint) {
     unsafe {
         let v: *mut ~[u8] = cast::transmute(s);
@@ -2126,6 +2240,7 @@ pub fn reserve(s: &mut ~str, n: uint) {
  * * s - A string
  * * n - The number of bytes to reserve space for
  */
+#[inline(always)]
 pub fn reserve_at_least(s: &mut ~str, n: uint) {
     reserve(s, uint::next_power_of_two(n + 1u) - 1u)
 }
@@ -2314,6 +2429,7 @@ pub mod raw {
     }
 
     /// Sets the length of the string and adds the null terminator
+    #[inline]
     pub unsafe fn set_len(v: &mut ~str, new_len: uint) {
         let v: **mut vec::raw::VecRepr = cast::transmute(v);
         let repr: *mut vec::raw::VecRepr = *v;
@@ -2489,7 +2605,7 @@ impl<'self> StrSlice<'self> for &'self str {
     #[inline]
     fn is_alphanumeric(&self) -> bool { is_alphanumeric(*self) }
     /// Returns the size in bytes not counting the null terminator
-    #[inline]
+    #[inline(always)]
     fn len(&self) -> uint { len(*self) }
     /// Returns the number of characters that a string holds
     #[inline]
@@ -2599,10 +2715,11 @@ pub trait OwnedStr {
 }
 
 impl OwnedStr for ~str {
+    #[inline]
     fn push_str(&mut self, v: &str) {
         push_str(self, v);
     }
-
+    #[inline]
     fn push_char(&mut self, c: char) {
         push_char(self, c);
     }
