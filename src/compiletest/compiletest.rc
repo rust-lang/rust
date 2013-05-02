@@ -63,7 +63,8 @@ pub fn parse_config(args: ~[~str]) -> config {
           getopts::optflag(~"newrt"),
           getopts::optopt(~"host"),
           getopts::optopt(~"target"),
-          getopts::optopt(~"adb-path")
+          getopts::optopt(~"adb-path"),
+          getopts::optopt(~"adb-test-dir")
          ];
 
     assert!(!args.is_empty());
@@ -100,6 +101,7 @@ pub fn parse_config(args: ~[~str]) -> config {
         host: opt_str(getopts::opt_maybe_str(matches, ~"host")),
         target: opt_str(getopts::opt_maybe_str(matches, ~"target")),
         adb_path: opt_str(getopts::opt_maybe_str(matches, ~"adb-path")),
+        adb_test_dir: opt_str(getopts::opt_maybe_str(matches, ~"adb-test-dir")),
         flag_runnable:
             if (getopts::opt_maybe_str(matches, ~"host") ==
                 getopts::opt_maybe_str(matches, ~"target")) { true }
@@ -136,6 +138,7 @@ pub fn log_config(config: config) {
     logv(c, fmt!("host: %s", config.host));
     logv(c, fmt!("target: %s", config.target));
     logv(c, fmt!("adb_path: %s", config.adb_path));
+    logv(c, fmt!("adb_test_dir: %s", config.adb_test_dir));
     logv(c, fmt!("flag_runnable: %b", config.flag_runnable));
     logv(c, fmt!("verbose: %b", config.verbose));
     logv(c, fmt!("\n"));

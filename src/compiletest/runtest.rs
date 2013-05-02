@@ -512,7 +512,7 @@ fn exec_compiled_test(config: config, props: TestProps,
 
                 // copy to target
                 let copy_result = procsrv::run(~"", config.adb_path,
-                    ~[~"push", args.prog, ~"/system/tmp"],
+                    ~[~"push", args.prog, config.adb_test_dir],
                     ~[(~"",~"")], Some(~""));
 
                 if config.verbose {
@@ -534,16 +534,13 @@ fn exec_compiled_test(config: config, props: TestProps,
 
                 let mut newcmd_out = ~"";
                 let mut newcmd_err = ~"";
-                newcmd_out.push_str(~"LD_LIBRARY_PATH=/system/tmp; ");
-                newcmd_err.push_str(~"LD_LIBRARY_PATH=/system/tmp; ");
-                newcmd_out.push_str(~"export LD_LIBRARY_PATH; ");
-                newcmd_err.push_str(~"export LD_LIBRARY_PATH; ");
-                newcmd_out.push_str(~"cd /system/tmp; ");
-                newcmd_err.push_str(~"cd /system/tmp; ");
-                newcmd_out.push_str("./");
-                newcmd_err.push_str("./");
-                newcmd_out.push_str(prog_short);
-                newcmd_err.push_str(prog_short);
+                newcmd_out.push_str(fmt!(
+                    "LD_LIBRARY_PATH=%s; export LD_LIBRARY_PATH; cd %s; ./%s",
+                    config.adb_test_dir, config.adb_test_dir, prog_short));
+
+                newcmd_err.push_str(fmt!(
+                    "LD_LIBRARY_PATH=%s; export LD_LIBRARY_PATH; cd %s; ./%s",
+                    config.adb_test_dir, config.adb_test_dir, prog_short));
 
                 for vec::each(subargs) |tv| {
                     newcmd_out.push_str(" ");
@@ -617,7 +614,7 @@ fn compose_and_run_compiler(
                         if (file.filetype() == Some(~".so")) {
 
                             let copy_result = procsrv::run(~"", config.adb_path,
-                                ~[~"push", file.to_str(), ~"/system/tmp"],
+                                ~[~"push", file.to_str(), config.adb_test_dir],
                                 ~[(~"",~"")], Some(~""));
 
                             if config.verbose {
