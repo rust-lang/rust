@@ -137,9 +137,9 @@ pub fn uniq_len<T>(v: &const ~[T]) -> uint {
 }
 
 /**
- * Creates and initializes an immutable vector.
+ * Creates and initializes an owned vector.
  *
- * Creates an immutable vector of size `n_elts` and initializes the elements
+ * Creates an owned vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
 pub fn from_fn<T>(n_elts: uint, op: old_iter::InitOp<T>) -> ~[T] {
@@ -159,9 +159,9 @@ pub fn from_fn<T>(n_elts: uint, op: old_iter::InitOp<T>) -> ~[T] {
 }
 
 /**
- * Creates and initializes an immutable vector.
+ * Creates and initializes an owned vector.
  *
- * Creates an immutable vector of size `n_elts` and initializes the elements
+ * Creates an owned vector of size `n_elts` and initializes the elements
  * to the value `t`.
  */
 pub fn from_elem<T:Copy>(n_elts: uint, t: T) -> ~[T] {
