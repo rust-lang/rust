@@ -418,7 +418,7 @@ mod test {
         new_parser_from_source_str(ps,~[],~"bogofile",source_str)
     }
 
-    #[test] fn to_json_str<E : Encodable<std::json::Encoder>>(val: @E) -> ~str {
+    #[cfg(test)] fn to_json_str<E : Encodable<std::json::Encoder>>(val: @E) -> ~str {
         do io::with_str_writer |writer| {
             val.encode(~std::json::Encoder(writer));
         }
