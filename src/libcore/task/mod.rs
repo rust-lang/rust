@@ -797,7 +797,7 @@ fn test_run_basic() {
     po.recv();
 }
 
-#[test]
+#[cfg(test)]
 struct Wrapper {
     mut f: Option<Chan<()>>
 }
