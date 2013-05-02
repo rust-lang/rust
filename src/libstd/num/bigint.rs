@@ -80,6 +80,7 @@ A big unsigned integer type.
 A BigUint-typed value BigUint { data: @[a, b, c] } represents a number
 (a + b * BigDigit::base + c * BigDigit::base^2).
 */
+#[deriving(Clone)]
 pub struct BigUint {
     priv data: ~[BigDigit]
 }
@@ -680,7 +681,7 @@ priv fn get_radix_base(radix: uint) -> (uint, uint) {
 }
 
 /// A Sign is a BigInt's composing element.
-#[deriving(Eq)]
+#[deriving(Eq, Clone)]
 pub enum Sign { Minus, Zero, Plus }
 
 impl Ord for Sign {
@@ -726,6 +727,7 @@ impl Neg<Sign> for Sign {
 }
 
 /// A big signed integer type.
+#[deriving(Clone)]
 pub struct BigInt {
     priv sign: Sign,
     priv data: BigUint
@@ -825,8 +827,8 @@ impl Signed for BigInt {
     #[inline(always)]
     fn abs(&self) -> BigInt {
         match self.sign {
-            Plus | Zero => copy *self,
-            Minus => BigInt::from_biguint(Plus, copy self.data)
+            Plus | Zero => self.clone(),
+            Minus => BigInt::from_biguint(Plus, self.data.clone())
         }
     }
 
@@ -850,8 +852,8 @@ impl Add<BigInt, BigInt> for BigInt {
     #[inline(always)]
     fn add(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
-            (Zero, _)      => copy *other,
-            (_,    Zero)   => copy *self,
+            (Zero, _)      => other.clone(),
+            (_,    Zero)   => self.clone(),
             (Plus, Plus)   => BigInt::from_biguint(Plus,
                                                    self.data + other.data),
             (Plus, Minus)  => self - (-*other),
@@ -866,7 +868,7 @@ impl Sub<BigInt, BigInt> for BigInt {
     fn sub(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
             (Zero, _)    => -other,
-            (_,    Zero) => copy *self,
+            (_,    Zero) => self.clone(),
             (Plus, Plus) => match self.data.cmp(&other.data) {
                 Less    => BigInt::from_biguint(Minus, other.data - self.data),
                 Greater => BigInt::from_biguint(Plus, self.data - other.data),
@@ -913,7 +915,7 @@ impl Rem<BigInt, BigInt> for BigInt {
 impl Neg<BigInt> for BigInt {
     #[inline(always)]
     fn neg(&self) -> BigInt {
-        BigInt::from_biguint(self.sign.neg(), copy self.data)
+        BigInt::from_biguint(self.sign.neg(), self.data.clone())
     }
 }
 
@@ -1100,9 +1102,9 @@ pub impl BigInt {
 
 #[cfg(test)]
 mod biguint_tests {
+    use super::*;
     use core::num::{IntConvertible, Zero, One, FromStrRadix};
     use core::cmp::{Less, Equal, Greater};
-    use super::{BigUint, BigDigit};
 
     #[test]
     fn test_from_slice() {
@@ -1390,10 +1392,10 @@ mod biguint_tests {
             let c = BigUint::from_slice(cVec);
 
             if !a.is_zero() {
-                assert!(c.div_rem(&a) == (copy b, Zero::zero()));
+                assert!(c.div_rem(&a) == (b.clone(), Zero::zero()));
             }
             if !b.is_zero() {
-                assert!(c.div_rem(&b) == (copy a, Zero::zero()));
+                assert!(c.div_rem(&b) == (a.clone(), Zero::zero()));
             }
         }
 
@@ -1555,7 +1557,7 @@ mod biguint_tests {
 
 #[cfg(test)]
 mod bigint_tests {
-    use super::{BigInt, BigUint, BigDigit, Sign, Minus, Zero, Plus};
+    use super::*;
     use core::cmp::{Less, Equal, Greater};
     use core::num::{IntConvertible, Zero, One, FromStrRadix};
 
