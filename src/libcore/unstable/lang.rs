@@ -91,7 +91,16 @@ fn swap_task_borrow_list(f: &fn(~[BorrowRecord]) -> ~[BorrowRecord]) {
     }
 }
 
-pub fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
+pub unsafe fn clear_task_borrow_list() {
+    // pub because it is used by the box annihilator.
+    let cur_task = rust_get_task();
+    let ptr = rustrt::rust_take_task_borrow_list(cur_task);
+    if !ptr.is_null() {
+        let _: ~[BorrowRecord] = transmute(ptr);
+    }
+}
+
+fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
     debug_ptr("fail_borrowed: ", box);
 
     if !::rt::env::get().debug_borrows {
