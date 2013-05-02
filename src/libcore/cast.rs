@@ -22,9 +22,7 @@ pub mod rusti {
         #[cfg(stage0)]
         fn reinterpret_cast<T, U>(&&e: T) -> U;
 
-        #[cfg(stage1)]
-        #[cfg(stage2)]
-        #[cfg(stage3)]
+        #[cfg(not(stage0))]
         fn transmute<T,U>(e: T) -> U;
     }
 }
@@ -45,9 +43,7 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 }
 
 #[inline(always)]
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
     let mut dest: U = unstable::intrinsics::init();
     {
@@ -96,9 +92,7 @@ pub unsafe fn transmute<L, G>(thing: L) -> G {
 }
 
 #[inline(always)]
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 pub unsafe fn transmute<L, G>(thing: L) -> G {
     rusti::transmute(thing)
 }
@@ -165,9 +159,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn test_transmute_copy() {
         assert!(1u == unsafe { ::cast::transmute_copy(&1) });
     }

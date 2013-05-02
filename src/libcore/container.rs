@@ -58,9 +58,7 @@ pub trait Map<K, V>: Mutable {
     fn remove(&mut self, key: &K) -> bool;
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 pub trait Map<K, V>: Mutable {
     /// Return true if the map contains a value for the specified key
     fn contains_key(&self, key: &K) -> bool;

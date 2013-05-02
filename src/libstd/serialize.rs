@@ -20,9 +20,7 @@ use core::hashmap::{HashMap, HashSet};
 use core::trie::{TrieMap, TrieSet};
 use deque::Deque;
 use dlist::DList;
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 use treemap::{TreeMap, TreeSet};
 
 pub trait Encoder {
@@ -57,9 +55,7 @@ pub trait Encoder {
     fn emit_struct(&self, name: &str, len: uint, f: &fn());
     #[cfg(stage0)]
     fn emit_field(&self, f_name: &str, f_idx: uint, f: &fn());
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn emit_struct_field(&self, f_name: &str, f_idx: uint, f: &fn());
 
     fn emit_tuple(&self, len: uint, f: &fn());
@@ -113,9 +109,7 @@ pub trait Decoder {
     fn read_struct<T>(&self, s_name: &str, len: uint, f: &fn() -> T) -> T;
     #[cfg(stage0)]
     fn read_field<T>(&self, f_name: &str, f_idx: uint, f: &fn() -> T) -> T;
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn read_struct_field<T>(&self, f_name: &str, f_idx: uint, f: &fn() -> T) -> T;
 
     fn read_tuple<T>(&self, f: &fn(uint) -> T) -> T;
@@ -740,9 +734,7 @@ impl<D: Decoder> Decodable<D> for TrieSet {
     }
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 impl<
     E: Encoder,
     K: Encodable<E> + Eq + TotalOrd,
@@ -760,9 +752,7 @@ impl<
     }
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 impl<
     D: Decoder,
     K: Decodable<D> + Eq + TotalOrd,
@@ -781,9 +771,7 @@ impl<
     }
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 impl<
     S: Encoder,
     T: Encodable<S> + Eq + TotalOrd
@@ -799,9 +787,7 @@ impl<
     }
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 impl<
     D: Decoder,
     T: Decodable<D> + Eq + TotalOrd

@@ -78,17 +78,13 @@ impl<T, U> ImmutableTuple<T, U> for (T, U) {
     }
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 pub trait ImmutableTuple<T, U> {
     fn first_ref<'a>(&'a self) -> &'a T;
     fn second_ref<'a>(&'a self) -> &'a U;
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 impl<T, U> ImmutableTuple<T, U> for (T, U) {
     #[inline(always)]
     fn first_ref<'a>(&'a self) -> &'a T {

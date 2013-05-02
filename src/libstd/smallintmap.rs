@@ -61,9 +61,7 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
     }
 
     /// Visit all key-value pairs in order
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn each<'a>(&'a self, it: &fn(&uint, &'a V) -> bool) {
         for uint::range(0, self.v.len()) |i| {
             match self.v[i] {
@@ -85,9 +83,7 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
     }
 
     /// Visit all values in order
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn each_value<'a>(&'a self, blk: &fn(value: &'a V) -> bool) {
         self.each(|_, v| blk(v))
     }
@@ -116,9 +112,7 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
     }
 
     /// Return a reference to the value corresponding to the key
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn find<'a>(&'a self, key: &uint) -> Option<&'a V> {
         if *key < self.v.len() {
             match self.v[*key] {
@@ -144,9 +138,7 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
     }
 
     /// Return a mutable reference to the value corresponding to the key
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut V> {
         if *key < self.v.len() {
             match self.v[*key] {
@@ -199,9 +191,7 @@ pub impl<V> SmallIntMap<V> {
     }
 
     /// Visit all key-value pairs in reverse order
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn each_reverse<'a>(&'a self, it: &fn(uint, &'a V) -> bool) {
         for uint::range_rev(self.v.len(), 0) |i| {
             match self.v[i - 1] {
@@ -216,9 +206,7 @@ pub impl<V> SmallIntMap<V> {
         self.find(key).expect("key not present")
     }
 
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn get<'a>(&'a self, key: &uint) -> &'a V {
         self.find(key).expect("key not present")
     }

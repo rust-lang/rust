@@ -107,9 +107,7 @@ impl<T> BaseIter<T> for Option<T> {
     }
 
     /// Performs an operation on the contained value by reference
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     #[inline(always)]
     fn each<'a>(&'a self, f: &fn(x: &'a T) -> bool) {
         match *self { None => (), Some(ref t) => { f(t); } }
@@ -128,9 +126,7 @@ impl<T> MutableIter<T> for Option<T> {
         match *self { None => (), Some(ref mut t) => { f(t); } }
     }
 
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     #[inline(always)]
     fn each_mut<'a>(&'a mut self, f: &fn(&'a mut T) -> bool) {
         match *self { None => (), Some(ref mut t) => { f(t); } }
@@ -210,9 +206,7 @@ pub impl<T> Option<T> {
      * Update an optional value by optionally running its content by reference
      * through a function that returns an option.
      */
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     #[inline(always)]
     fn chain_ref<'a, U>(&'a self, f: &fn(x: &'a T) -> Option<U>) -> Option<U> {
         match *self { Some(ref x) => f(x), None => None }
@@ -226,9 +220,7 @@ pub impl<T> Option<T> {
     }
 
     /// Maps a `some` value from one type to another by reference
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     #[inline(always)]
     fn map<'a, U>(&self, f: &fn(&'a T) -> U) -> Option<U> {
         match *self { Some(ref x) => Some(f(x)), None => None }
@@ -249,9 +241,7 @@ pub impl<T> Option<T> {
     }
 
     /// Applies a function to the contained value or returns a default
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     #[inline(always)]
     fn map_default<'a, U>(&'a self, def: U, f: &fn(&'a T) -> U) -> U {
         match *self { None => def, Some(ref t) => f(t) }
@@ -318,9 +308,7 @@ pub impl<T> Option<T> {
     case explicitly.
      */
     #[inline(always)]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
           Some(ref x) => x,
@@ -366,9 +354,7 @@ pub impl<T> Option<T> {
     case explicitly.
      */
     #[inline(always)]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn get_mut_ref<'a>(&'a mut self) -> &'a mut T {
         match *self {
           Some(ref mut x) => x,

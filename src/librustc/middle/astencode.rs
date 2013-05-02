@@ -551,9 +551,7 @@ fn encode_method_map_entry(ecx: @e::EncodeContext,
     }
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 fn encode_method_map_entry(ecx: @e::EncodeContext,
                               ebml_w: &writer::Encoder,
                               mme: method_map_entry) {
@@ -599,9 +597,7 @@ impl read_method_map_entry_helper for reader::Decoder {
         }
     }
 
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn read_method_map_entry(&self, xcx: @ExtendedDecodeContext)
         -> method_map_entry {
         do self.read_struct("method_map_entry", 3) {
@@ -839,9 +835,7 @@ impl ebml_writer_helpers for writer::Encoder {
         }
     }
 
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn emit_tpbt(&self, ecx: @e::EncodeContext,
                  tpbt: ty::ty_param_bounds_and_ty) {
         do self.emit_struct("ty_param_bounds_and_ty", 2) {
@@ -1123,9 +1117,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
         }
     }
 
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn read_ty_param_bounds_and_ty(&self, xcx: @ExtendedDecodeContext)
         -> ty::ty_param_bounds_and_ty
     {

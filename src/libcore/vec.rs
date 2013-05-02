@@ -19,9 +19,7 @@ use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use old_iter::BaseIter;
 use old_iter;
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 use iterator::Iterator;
 use kinds::Copy;
 use libc;
@@ -1590,9 +1588,7 @@ pub fn windowed<T>(n: uint, v: &[T], it: &fn(&[T]) -> bool) {
  * ~~~
  *
  */
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 pub fn windowed<'r, T>(n: uint, v: &'r [T], it: &fn(&'r [T]) -> bool) {
     assert!(1u <= n);
     if n > v.len() { return; }
@@ -1995,9 +1991,7 @@ impl<'self,T> ImmutableVector<T> for &'self [T] {
     }
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 pub trait ImmutableVector<'self, T> {
     fn slice(&self, start: uint, end: uint) -> &'self [T];
     fn iter(self) -> VecIterator<'self, T>;
@@ -2022,9 +2016,7 @@ pub trait ImmutableVector<'self, T> {
 }
 
 /// Extension methods for vectors
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     /// Return a slice that points into another slice.
     #[inline]
@@ -2642,9 +2634,7 @@ impl<'self,A> old_iter::BaseIter<A> for &'self [A] {
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 impl<'self,A> old_iter::BaseIter<A> for &'self [A] {
     #[inline(always)]
     fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) { each(*self, blk) }
@@ -2662,9 +2652,7 @@ impl<A> old_iter::BaseIter<A> for ~[A] {
 }
 
 // FIXME(#4148): This should be redundant
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 impl<A> old_iter::BaseIter<A> for ~[A] {
     #[inline(always)]
     fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) { each(*self, blk) }
@@ -2682,9 +2670,7 @@ impl<A> old_iter::BaseIter<A> for @[A] {
 }
 
 // FIXME(#4148): This should be redundant
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 impl<A> old_iter::BaseIter<A> for @[A] {
     #[inline(always)]
     fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) { each(*self, blk) }
@@ -2700,9 +2686,7 @@ impl<'self,A> old_iter::MutableIter<A> for &'self mut [A] {
     }
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 impl<'self,A> old_iter::MutableIter<A> for &'self mut [A] {
     #[inline(always)]
     fn each_mut<'a>(&'a mut self, blk: &fn(v: &'a mut A) -> bool) {
@@ -2719,9 +2703,7 @@ impl<A> old_iter::MutableIter<A> for ~[A] {
     }
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 impl<A> old_iter::MutableIter<A> for ~[A] {
     #[inline(always)]
     fn each_mut<'a>(&'a mut self, blk: &fn(v: &'a mut A) -> bool) {
@@ -2927,18 +2909,14 @@ impl<A:Clone> Clone for ~[A] {
 }
 
 // could be implemented with &[T] with .slice(), but this avoids bounds checks
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 pub struct VecIterator<'self, T> {
     priv ptr: *T,
     priv end: *T,
     priv lifetime: &'self T // FIXME: #5922
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 impl<'self, T> Iterator<&'self T> for VecIterator<'self, T> {
     #[inline]
     fn next(&mut self) -> Option<&'self T> {

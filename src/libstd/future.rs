@@ -80,9 +80,7 @@ pub impl<A> Future<A> {
         }
     }
 
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn get_ref<'a>(&'a self) -> &'a A {
         /*!
         * Executes the future's closure and then returns a borrowed
