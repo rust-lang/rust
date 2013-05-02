@@ -112,7 +112,6 @@ use util::ppaux::ty_to_str;
 
 use core::cast::transmute;
 use core::hashmap::HashMap;
-use core::util::with;
 use syntax::ast::*;
 use syntax::codemap::span;
 use syntax::parse::token::special_idents;
@@ -343,9 +342,10 @@ pub impl IrMaps {
 }
 
 fn visit_item(item: @item, self: @mut IrMaps, v: vt<@mut IrMaps>) {
-    do with(&mut self.cur_item, item.id) {
-        visit::visit_item(item, self, v)
-    }
+    let old_cur_item = self.cur_item;
+    self.cur_item = item.id;
+    visit::visit_item(item, self, v);
+    self.cur_item = old_cur_item;
 }
 
 fn visit_fn(fk: &visit::fn_kind,
@@ -762,11 +762,13 @@ pub impl Liveness {
             None => {
                 // Vanilla 'break' or 'loop', so use the enclosing
                 // loop scope
-                let loop_scope = &mut *self.loop_scope;
-                if loop_scope.len() == 0 {
+                let len = { // FIXME(#5074) stage0
+                    let loop_scope = &mut *self.loop_scope;
+                    loop_scope.len()
+                };
+                if len == 0 {
                     self.tcx.sess.span_bug(sp, ~"break outside loop");
-                }
-                else {
+                } else {
                     // FIXME(#5275): this shouldn't have to be a method...
                     self.last_loop_scope()
                 }

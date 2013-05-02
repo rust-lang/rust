@@ -355,7 +355,7 @@ pub impl CodeMap {
     }
 
     pub fn span_to_str(&self, sp: span) -> ~str {
-        let files = &mut *self.files;
+        let files = &*self.files;
         if files.len() == 0 && sp == dummy_sp() {
             return ~"no-location";
         }

@@ -574,7 +574,7 @@ pub impl InferCtxt {
     }
 
     /// Execute `f` and commit the bindings if successful
-    fn commit<T,E>(&mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
+    fn commit<T,E>(@mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
         assert!(!self.in_snapshot());
 
         debug!("commit()");
@@ -589,7 +589,7 @@ pub impl InferCtxt {
     }
 
     /// Execute `f`, unroll bindings on failure
-    fn try<T,E>(&mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
+    fn try<T,E>(@mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
         debug!("try()");
         do indent {
             let snapshot = self.start_snapshot();
@@ -603,7 +603,7 @@ pub impl InferCtxt {
     }
 
     /// Execute `f` then unroll any bindings it creates
-    fn probe<T,E>(&mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
+    fn probe<T,E>(@mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
         debug!("probe()");
         do indent {
             let snapshot = self.start_snapshot();
@@ -783,15 +783,14 @@ pub impl InferCtxt {
             });
         (fn_sig, isr)
     }
+}
 
-    fn fold_regions_in_sig(
-        &mut self,
-        fn_sig: &ty::FnSig,
-        fldr: &fn(r: ty::Region, in_fn: bool) -> ty::Region) -> ty::FnSig
-    {
-        do ty::fold_sig(fn_sig) |t| {
-            ty::fold_regions(self.tcx, t, fldr)
-        }
+pub fn fold_regions_in_sig(
+    tcx: ty::ctxt,
+    fn_sig: &ty::FnSig,
+    fldr: &fn(r: ty::Region, in_fn: bool) -> ty::Region) -> ty::FnSig
+{
+    do ty::fold_sig(fn_sig) |t| {
+        ty::fold_regions(tcx, t, fldr)
     }
-
 }
