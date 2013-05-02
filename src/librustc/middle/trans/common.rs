@@ -469,7 +469,9 @@ pub fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
 }
 pub fn add_clean_return_to_mut(bcx: block,
                                frozen_val_ref: ValueRef,
-                               bits_val_ref: ValueRef) {
+                               bits_val_ref: ValueRef,
+                               filename_val: ValueRef,
+                               line_val: ValueRef) {
     //! When an `@mut` has been frozen, we have to
     //! call the lang-item `return_to_mut` when the
     //! freeze goes out of scope. We need to pass
@@ -495,7 +497,9 @@ pub fn add_clean_return_to_mut(bcx: block,
                                         build::PointerCast(bcx,
                                                            frozen_val_ref,
                                                            T_ptr(T_ptr(T_i8())))),
-                            build::Load(bcx, bits_val_ref)
+                            build::Load(bcx, bits_val_ref),
+                            filename_val,
+                            line_val
                         ],
                         expr::Ignore
                     )

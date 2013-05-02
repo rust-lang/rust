@@ -578,7 +578,8 @@ pub impl Datum {
                     expr::SaveIn(scratch_bits.val));
 
                 add_clean_return_to_mut(
-                    cleanup_bcx, scratch.val, scratch_bits.val);
+                    cleanup_bcx, scratch.val, scratch_bits.val,
+                    filename, line);
             }
         }
 
