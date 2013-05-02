@@ -454,7 +454,7 @@ pub fn trans_call_inner(in_cx: block,
                         dest: expr::Dest,
                         autoref_arg: AutorefArg)
                         -> block {
-    do base::with_scope(in_cx, call_info, ~"call") |cx| {
+    do base::with_scope(in_cx, call_info, "call") |cx| {
         let ret_in_loop = match args {
           ArgExprs(args) => {
             args.len() > 0u && match vec::last(args).node {

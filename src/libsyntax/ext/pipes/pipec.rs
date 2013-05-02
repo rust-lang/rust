@@ -58,7 +58,7 @@ impl gen_send for message {
                 path(~[this.data_name()], span)
                 .add_tys(cx.ty_vars_global(&this.generics.ty_params)));
             let args_ast = vec::append(
-                ~[cx.arg(cx.ident_of(~"pipe"),
+                ~[cx.arg(cx.ident_of("pipe"),
                               pipe_ty)],
                 args_ast);
 
@@ -136,7 +136,7 @@ impl gen_send for message {
                 };
 
                 let args_ast = vec::append(
-                    ~[cx.arg(cx.ident_of(~"pipe"),
+                    ~[cx.arg(cx.ident_of("pipe"),
                              cx.ty_path_ast_builder(
                                  path(~[this.data_name()], span)
                                  .add_tys(cx.ty_vars_global(
@@ -212,8 +212,8 @@ impl to_type_decls for state {
                 let next_name = cx.str_of(next.data_name());
 
                 let dir = match this.dir {
-                  send => ~"server",
-                  recv => ~"client"
+                  send => "server",
+                  recv => "client"
                 };
 
                 vec::append_one(tys,
@@ -265,12 +265,12 @@ impl to_type_decls for state {
                     self.data_name(),
                     self.span,
                     cx.ty_path_ast_builder(
-                        path_global(~[cx.ident_of(~"core"),
-                                      cx.ident_of(~"pipes"),
-                                      cx.ident_of(dir.to_str() + ~"Packet")],
+                        path_global(~[cx.ident_of("core"),
+                                      cx.ident_of("pipes"),
+                                      cx.ident_of(dir.to_str() + "Packet")],
                              dummy_sp())
                         .add_ty(cx.ty_path_ast_builder(
-                            path(~[cx.ident_of(~"super"),
+                            path(~[cx.ident_of("super"),
                                    self.data_name()],
                                  dummy_sp())
                             .add_tys(cx.ty_vars_global(
@@ -283,13 +283,13 @@ impl to_type_decls for state {
                     self.data_name(),
                     self.span,
                     cx.ty_path_ast_builder(
-                        path_global(~[cx.ident_of(~"core"),
-                                      cx.ident_of(~"pipes"),
+                        path_global(~[cx.ident_of("core"),
+                                      cx.ident_of("pipes"),
                                       cx.ident_of(dir.to_str()
-                                                  + ~"PacketBuffered")],
+                                                  + "PacketBuffered")],
                              dummy_sp())
                         .add_tys(~[cx.ty_path_ast_builder(
-                            path(~[cx.ident_of(~"super"),
+                            path(~[cx.ident_of("super"),
                                    self.data_name()],
                                         dummy_sp())
                             .add_tys(cx.ty_vars_global(
@@ -341,7 +341,7 @@ impl gen_init for protocol {
     }
 
     fn gen_buffer_init(&self, ext_cx: @ext_ctxt) -> @ast::expr {
-        ext_cx.struct_expr(path(~[ext_cx.ident_of(~"__Buffer")],
+        ext_cx.struct_expr(path(~[ext_cx.ident_of("__Buffer")],
                                 dummy_sp()),
                       self.states.map_to_vec(|s| {
             let fty = s.to_ty(ext_cx);
@@ -389,8 +389,8 @@ impl gen_init for protocol {
             }
         }
 
-        cx.ty_path_ast_builder(path(~[cx.ident_of(~"super"),
-                                      cx.ident_of(~"__Buffer")],
+        cx.ty_path_ast_builder(path(~[cx.ident_of("super"),
+                                      cx.ident_of("__Buffer")],
                                     copy self.span)
                                .add_tys(cx.ty_vars_global(&params)))
     }
@@ -427,7 +427,7 @@ impl gen_init for protocol {
         };
 
         cx.item_struct_poly(
-            cx.ident_of(~"__Buffer"),
+            cx.ident_of("__Buffer"),
             dummy_sp(),
             ast::struct_def {
                 fields: fields,
@@ -452,13 +452,13 @@ impl gen_init for protocol {
             items.push(self.gen_buffer_type(cx))
         }
 
-        items.push(cx.item_mod(cx.ident_of(~"client"),
+        items.push(cx.item_mod(cx.ident_of("client"),
                                copy self.span,
                                client_states));
-        items.push(cx.item_mod(cx.ident_of(~"server"),
+        items.push(cx.item_mod(cx.ident_of("server"),
                                copy self.span,
                                server_states));
 
-        cx.item_mod(cx.ident_of(self.name), copy self.span, items)
+        cx.item_mod(cx.ident_of(copy self.name), copy self.span, items)
     }
 }

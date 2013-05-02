@@ -671,9 +671,9 @@ pub fn declare_tydesc(ccx: @CrateContext, t: ty::t) -> @mut tydesc_info {
     let addrspace = declare_tydesc_addrspace(ccx, t);
     //XXX this triggers duplicate LLVM symbols
     let name = @(if false /*ccx.sess.opts.debuginfo*/ {
-        mangle_internal_name_by_type_only(ccx, t, ~"tydesc")
+        mangle_internal_name_by_type_only(ccx, t, "tydesc")
     } else {
-        mangle_internal_name_by_seq(ccx, ~"tydesc")
+        mangle_internal_name_by_seq(ccx, "tydesc")
     });
     note_unique_llvm_symbol(ccx, name);
     debug!("+++ declare_tydesc %s %s", ppaux::ty_to_str(ccx.tcx, t), *name);

@@ -44,9 +44,9 @@ fn to_str_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> @exp
         [self_obj] => {
             let self_addr = build::mk_addr_of(cx, span, self_obj);
             build::mk_call_global(cx, span,
-                                  ~[cx.ident_of(~"core"),
-                                    cx.ident_of(~"sys"),
-                                    cx.ident_of(~"log_str")],
+                                  ~[cx.ident_of("core"),
+                                    cx.ident_of("sys"),
+                                    cx.ident_of("log_str")],
                                   ~[self_addr])
         }
         _ => cx.span_bug(span, ~"Invalid number of arguments in `deriving(ToStr)`")

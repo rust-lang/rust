@@ -263,7 +263,7 @@ pub fn create_struct_pattern(cx: @ext_ctxt,
                              span: span,
                              struct_ident: ident,
                              struct_def: &struct_def,
-                             prefix: ~str,
+                             prefix: &str,
                              mutbl: ast::mutability)
     -> (@ast::pat, ~[(Option<ident>, @expr)]) {
     if struct_def.fields.is_empty() {
@@ -323,7 +323,7 @@ pub fn create_struct_pattern(cx: @ext_ctxt,
 pub fn create_enum_variant_pattern(cx: @ext_ctxt,
                                    span: span,
                                    variant: &ast::variant,
-                                   prefix: ~str,
+                                   prefix: &str,
                                    mutbl: ast::mutability)
     -> (@ast::pat, ~[(Option<ident>, @expr)]) {
 
@@ -371,7 +371,7 @@ pub fn expand_enum_or_struct_match(cx: @ext_ctxt,
                                span: span,
                                arms: ~[ ast::arm ])
                             -> @expr {
-    let self_ident = cx.ident_of(~"self");
+    let self_ident = cx.ident_of("self");
     let self_expr = build::mk_path(cx, span, ~[ self_ident ]);
     let self_expr = build::mk_unary(cx, span, ast::deref, self_expr);
     let self_match_expr = ast::expr_match(self_expr, arms);

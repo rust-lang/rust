@@ -218,7 +218,7 @@ pub impl LifetimeBounds {
 
 pub fn get_explicit_self(cx: @ext_ctxt, span: span, self_ptr: Option<PtrTy>)
     -> (@expr, ast::self_ty) {
-    let self_path = build::mk_path(cx, span, ~[cx.ident_of(~"self")]);
+    let self_path = build::mk_path(cx, span, ~[cx.ident_of("self")]);
     match self_ptr {
         None => {
             (self_path, respan(span, ast::sty_value))

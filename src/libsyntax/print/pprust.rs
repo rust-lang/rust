@@ -2249,7 +2249,7 @@ mod test {
     #[test]
     fn test_fun_to_str() {
         let mock_interner = parse::token::mk_fake_ident_interner();
-        let abba_ident = mock_interner.intern(@~"abba");
+        let abba_ident = mock_interner.intern("abba");
 
         let decl = ast::fn_decl {
             inputs: ~[],
@@ -2267,7 +2267,7 @@ mod test {
     #[test]
     fn test_variant_to_str() {
         let mock_interner = parse::token::mk_fake_ident_interner();
-        let ident = mock_interner.intern(@~"principal_skinner");
+        let ident = mock_interner.intern("principal_skinner");
 
         let var = codemap::respan(codemap::dummy_sp(), ast::variant_ {
             name: ident,
