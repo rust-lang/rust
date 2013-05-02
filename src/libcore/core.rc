@@ -164,6 +164,7 @@ pub mod nil;
 pub mod bool;
 pub mod char;
 pub mod tuple;
+pub mod simd;
 
 pub mod vec;
 pub mod at_vec;
