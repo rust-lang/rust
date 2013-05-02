@@ -115,7 +115,7 @@ pub impl LoanContext {
         if cmt.lp.is_none() {
             self.bccx.tcx.sess.span_bug(
                 cmt.span,
-                ~"loan() called with non-lendable value");
+                "loan() called with non-lendable value");
         }
 
         match cmt.cat {
@@ -123,7 +123,7 @@ pub impl LoanContext {
             // should never be loanable
             self.bccx.tcx.sess.span_bug(
                 cmt.span,
-                ~"rvalue with a non-none lp");
+                "rvalue with a non-none lp");
           }
           cat_local(local_id) | cat_arg(local_id) | cat_self(local_id) => {
               // FIXME(#4903)
@@ -188,7 +188,7 @@ pub impl LoanContext {
             // Aliased data is simply not lendable.
             self.bccx.tcx.sess.span_bug(
                 cmt.span,
-                ~"aliased ptr with a non-none lp");
+                "aliased ptr with a non-none lp");
           }
         }
     }

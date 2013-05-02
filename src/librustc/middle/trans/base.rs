@@ -1125,10 +1125,11 @@ pub fn init_local(bcx: block, local: @ast::local) -> block {
     }
 
     let llptr = match bcx.fcx.lllocals.find(&local.node.id) {
-      Some(&local_mem(v)) => v,
-      _ => { bcx.tcx().sess.span_bug(local.span,
-                        ~"init_local: Someone forgot to document why it's\
-                         safe to assume local.node.init must be local_mem!");
+        Some(&local_mem(v)) => v,
+        _ => {
+            bcx.tcx().sess.span_bug(local.span,
+                                    "init_local: Someone forgot to document why it's\
+                                     safe to assume local.node.init must be local_mem!");
         }
     };
 

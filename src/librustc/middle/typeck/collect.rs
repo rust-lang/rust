@@ -151,7 +151,7 @@ impl AstConv for CrateCtxt {
 
     fn ty_infer(&self, span: span) -> ty::t {
         self.tcx.sess.span_bug(span,
-                               ~"found `ty_infer` in unexpected place");
+                               "found `ty_infer` in unexpected place");
     }
 }
 
@@ -416,8 +416,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
         if ty_trait_refs.any(|other_trait| other_trait.def_id == trait_ref.def_id) {
             // This means a trait inherited from the same supertrait more
             // than once.
-            tcx.sess.span_err(sp, ~"Duplicate supertrait in trait \
-                                     declaration");
+            tcx.sess.span_err(sp, "Duplicate supertrait in trait declaration");
             break;
         } else {
             ty_trait_refs.push(trait_ref);

@@ -490,13 +490,13 @@ fn constrain_auto_ref(rcx: @mut Rcx, expr: @ast::expr) {
             // reporting an error would be the correct path.
             tcx.sess.span_err(
                 expr.span,
-                ~"lifetime of borrowed pointer does not include \
-                  the expression being borrowed");
+                "lifetime of borrowed pointer does not include \
+                 the expression being borrowed");
             note_and_explain_region(
                 tcx,
-                ~"lifetime of the borrowed pointer is",
+                "lifetime of the borrowed pointer is",
                 region,
-                ~"");
+                "");
             rcx.errors_reported += 1;
         }
     }
@@ -522,17 +522,17 @@ fn constrain_free_variables(
           result::Err(_) => {
             tcx.sess.span_err(
                 freevar.span,
-                ~"captured variable does not outlive the enclosing closure");
+                "captured variable does not outlive the enclosing closure");
             note_and_explain_region(
                 tcx,
-                ~"captured variable is valid for ",
+                "captured variable is valid for ",
                 en_region,
-                ~"");
+                "");
             note_and_explain_region(
                 tcx,
-                ~"closure is valid for ",
+                "closure is valid for ",
                 region,
-                ~"");
+                "");
           }
         }
     }

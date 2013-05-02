@@ -557,8 +557,7 @@ pub fn enter_opt<'r>(bcx: block,
                             struct_id = found_struct_id;
                         }
                         _ => {
-                            tcx.sess.span_bug(p.span, ~"expected enum \
-                                                        variant def");
+                            tcx.sess.span_bug(p.span, "expected enum variant def");
                         }
                     }
 
