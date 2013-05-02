@@ -550,7 +550,14 @@ pub fn trans_call_inner(in_cx: block,
                 // drop the value if it is not being saved.
                 unsafe {
                     if llvm::LLVMIsUndef(llretslot) != lib::llvm::True {
-                        if ty::type_is_immediate(ret_ty) {
+                        if ty::type_is_nil(ret_ty) {
+                            // When implementing the for-loop sugar syntax, the
+                            // type of the for-loop is nil, but the function
+                            // it's invoking returns a bool. This is a special
+                            // case to ignore instead of invoking the Store
+                            // below into a scratch pointer of a mismatched
+                            // type.
+                        } else if ty::type_is_immediate(ret_ty) {
                             let llscratchptr = alloc_ty(bcx, ret_ty);
                             Store(bcx, llresult, llscratchptr);
                             bcx = glue::drop_ty(bcx, llscratchptr, ret_ty);
