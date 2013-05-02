@@ -690,7 +690,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                 }
                 _ => {
                     bcx.tcx().sess.span_bug(expr.span,
-                                            ~"expr_cast of non-trait");
+                                            "expr_cast of non-trait");
                 }
             }
         }
@@ -700,8 +700,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         _ => {
             bcx.tcx().sess.span_bug(
                 expr.span,
-                fmt!("trans_rvalue_dps_unadjusted reached \
-                      fall-through case: %?",
+                fmt!("trans_rvalue_dps_unadjusted reached fall-through case: %?",
                      expr.node));
         }
     }
@@ -1202,7 +1201,7 @@ fn trans_rec_or_struct(bcx: block,
                 }
                 None => {
                     tcx.sess.span_bug(field.span,
-                                      ~"Couldn't find field in struct type")
+                                      "Couldn't find field in struct type")
                 }
             }
         };
@@ -1478,7 +1477,7 @@ fn trans_eager_binop(bcx: block,
         } else {
             if !ty::type_is_scalar(rhs_t) {
                 bcx.tcx().sess.span_bug(binop_expr.span,
-                                        ~"non-scalar comparison");
+                                        "non-scalar comparison");
             }
             let cmpr = base::compare_scalar_types(bcx, lhs, rhs, rhs_t, op);
             bcx = cmpr.bcx;
@@ -1486,7 +1485,7 @@ fn trans_eager_binop(bcx: block,
         }
       }
       _ => {
-        bcx.tcx().sess.span_bug(binop_expr.span, ~"unexpected binop");
+        bcx.tcx().sess.span_bug(binop_expr.span, "unexpected binop");
       }
     };
 

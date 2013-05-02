@@ -342,7 +342,7 @@ pub fn expr_to_str(cx: @ext_ctxt, expr: @ast::expr, err_msg: ~str) -> ~str {
 
 pub fn expr_to_ident(cx: @ext_ctxt,
                      expr: @ast::expr,
-                     err_msg: ~str) -> ast::ident {
+                     err_msg: &str) -> ast::ident {
     match expr.node {
       ast::expr_path(p) => {
         if vec::len(p.types) > 0u || vec::len(p.idents) != 1u {

@@ -160,7 +160,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     // causing an infinite expansion.
     if depth > 30 {
         ccx.sess.span_fatal(
-            span, ~"overly deep expansion of inlined function");
+            span, "overly deep expansion of inlined function");
     }
     ccx.monomorphizing.insert(fn_id, depth + 1);
 
