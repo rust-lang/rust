@@ -163,14 +163,16 @@ endif
 ifdef CFG_WINDOWSY_$(1)
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
+		CFLAGS="$$(CFG_GCCISH_CFLAGS)" \
+		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS)" \
 		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
 		OS=mingw \
 		V=$$(VERBOSE)
 else ifeq ($(OSTYPE_$(1)), linux-androideabi)
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
-		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
-		LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
+		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
 		CC="$$(CC_$(1))" \
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
@@ -181,8 +183,8 @@ $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 else
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
-		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
-		LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
+		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
 		CC="$$(CC_$(1))" \
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
