@@ -171,7 +171,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
 
     let pt = vec::append(/*bad*/copy *pt,
                          ~[path_name((ccx.names)(
-                             copy *ccx.sess.str_of(name)))]);
+                             *ccx.sess.str_of(name)))]);
     let s = mangle_exported_name(ccx, /*bad*/copy pt, mono_ty);
 
     let mk_lldecl = || {

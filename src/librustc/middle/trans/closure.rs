@@ -400,7 +400,7 @@ pub fn trans_expr_fn(bcx: block,
     // XXX: Bad copy.
     let s = mangle_internal_name_by_path_and_seq(ccx,
                                                  copy sub_path,
-                                                 ~"expr_fn");
+                                                 "expr_fn");
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
     // Always mark inline if this is a loop body. This is important for

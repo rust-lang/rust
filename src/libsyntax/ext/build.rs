@@ -502,10 +502,10 @@ pub fn mk_unreachable(cx: @ext_ctxt, span: span) -> @ast::expr {
         cx,
         span,
         ~[
-            cx.ident_of(~"core"),
-            cx.ident_of(~"sys"),
-            cx.ident_of(~"FailWithCause"),
-            cx.ident_of(~"fail_with"),
+            cx.ident_of("core"),
+            cx.ident_of("sys"),
+            cx.ident_of("FailWithCause"),
+            cx.ident_of("fail_with"),
         ],
         ~[
             mk_base_str(cx, span, ~"internal error: entered unreachable code"),

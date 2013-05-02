@@ -698,8 +698,8 @@ pub fn exported_name(sess: Session,
                      vers: &str) -> ~str {
     return mangle(sess,
             vec::append_one(
-            vec::append_one(path, path_name(sess.ident_of(hash.to_owned()))),
-            path_name(sess.ident_of(vers.to_owned()))));
+            vec::append_one(path, path_name(sess.ident_of(hash))),
+            path_name(sess.ident_of(vers))));
 }
 
 pub fn mangle_exported_name(ccx: @CrateContext,
@@ -717,14 +717,14 @@ pub fn mangle_internal_name_by_type_only(ccx: @CrateContext,
     let s = ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
     return mangle(ccx.sess,
-        ~[path_name(ccx.sess.ident_of(name.to_owned())),
+        ~[path_name(ccx.sess.ident_of(name)),
           path_name(ccx.sess.ident_of(s)),
-          path_name(ccx.sess.ident_of(hash.to_owned()))]);
+          path_name(ccx.sess.ident_of(hash))]);
 }
 
 pub fn mangle_internal_name_by_path_and_seq(ccx: @CrateContext,
                                             path: path,
-                                            flav: ~str) -> ~str {
+                                            flav: &str) -> ~str {
     return mangle(ccx.sess,
                   vec::append_one(path, path_name((ccx.names)(flav))));
 }
@@ -733,7 +733,7 @@ pub fn mangle_internal_name_by_path(ccx: @CrateContext, path: path) -> ~str {
     return mangle(ccx.sess, path);
 }
 
-pub fn mangle_internal_name_by_seq(ccx: @CrateContext, flav: ~str) -> ~str {
+pub fn mangle_internal_name_by_seq(ccx: @CrateContext, flav: &str) -> ~str {
     return fmt!("%s_%u", flav, (ccx.names)(flav).repr);
 }
 
