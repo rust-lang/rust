@@ -230,9 +230,7 @@ pub impl<T, E> Result<T, E> {
     #[inline(always)]
     fn get_ref(&self) -> &'self T { get_ref(self) }
 
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     #[inline(always)]
     fn get_ref<'a>(&'a self) -> &'a T { get_ref(self) }
 

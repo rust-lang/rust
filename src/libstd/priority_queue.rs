@@ -49,9 +49,7 @@ pub impl <T:Ord> PriorityQueue<T> {
     fn top(&self) -> &'self T { &self.data[0] }
 
     /// Returns the greatest item in the queue - fails if empty
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn top<'a>(&'a self) -> &'a T { &self.data[0] }
 
     /// Returns the greatest item in the queue - None if empty
@@ -61,9 +59,7 @@ pub impl <T:Ord> PriorityQueue<T> {
     }
 
     /// Returns the greatest item in the queue - None if empty
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn maybe_top<'a>(&'a self) -> Option<&'a T> {
         if self.is_empty() { None } else { Some(self.top()) }
     }

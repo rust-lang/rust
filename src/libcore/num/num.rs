@@ -405,9 +405,7 @@ pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
     assert_eq!(ten.div(&two),    ten / two);
     assert_eq!(ten.modulo(&two), ten % two);
 }
-#[cfg(stage1,test)]
-#[cfg(stage2,test)]
-#[cfg(stage3,test)]
+#[cfg(not(stage0), test)]
 pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
     assert_eq!(ten.add(&two),  cast(12));
     assert_eq!(ten.sub(&two),  cast(8));

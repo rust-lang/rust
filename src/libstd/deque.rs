@@ -54,9 +54,7 @@ pub impl<T> Deque<T> {
     /// Return a reference to the first element in the deque
     ///
     /// Fails if the deque is empty
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn peek_front<'a>(&'a self) -> &'a T { get(self.elts, self.lo) }
 
     /// Return a reference to the last element in the deque
@@ -68,9 +66,7 @@ pub impl<T> Deque<T> {
     /// Return a reference to the last element in the deque
     ///
     /// Fails if the deque is empty
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn peek_back<'a>(&'a self) -> &'a T { get(self.elts, self.hi - 1u) }
 
     /// Retrieve an element in the deque by index
@@ -85,9 +81,7 @@ pub impl<T> Deque<T> {
     /// Retrieve an element in the deque by index
     ///
     /// Fails if there is no element with the given index
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn get<'a>(&'a self, i: int) -> &'a T {
         let idx = (self.lo + (i as uint)) % self.elts.len();
         get(self.elts, idx)
@@ -156,9 +150,7 @@ pub impl<T> Deque<T> {
     }
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
+#[cfg(not(stage0))]
 pub impl<T> Deque<T> {
     /// Create an empty Deque
     fn new() -> Deque<T> {

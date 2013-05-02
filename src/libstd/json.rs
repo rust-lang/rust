@@ -150,9 +150,7 @@ impl serialize::Encoder for Encoder {
         self.wr.write_char(':');
         f();
     }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn emit_struct_field(&self, name: &str, idx: uint, f: &fn()) {
         if idx != 0 { self.wr.write_char(','); }
         self.wr.write_str(escape_str(name));
@@ -301,9 +299,7 @@ impl serialize::Encoder for PrettyEncoder {
         self.wr.write_str(": ");
         f();
     }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn emit_struct_field(&self, name: &str, idx: uint, f: &fn()) {
         if idx == 0 {
             self.wr.write_char('\n');
@@ -921,9 +917,7 @@ impl serialize::Decoder for Decoder {
         }
     }
 
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn read_struct_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
         debug!("read_struct_field(name=%?, idx=%u)", name, idx);
         match self.stack.pop() {

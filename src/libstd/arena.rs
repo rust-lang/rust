@@ -213,9 +213,7 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     priv fn alloc_pod<'a, T>(&'a self, op: &fn() -> T) -> &'a T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
@@ -283,9 +281,7 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     priv fn alloc_nonpod<'a, T>(&'a self, op: &fn() -> T) -> &'a T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
@@ -321,9 +317,7 @@ pub impl Arena {
 
     // The external interface
     #[inline(always)]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn alloc<'a, T>(&'a self, op: &fn() -> T) -> &'a T {
         unsafe {
             if !rusti::needs_drop::<T>() {

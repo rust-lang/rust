@@ -193,9 +193,7 @@ priv impl<K:Hash + Eq,V> HashMap<K, V> {
         }
     }
 
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     #[inline(always)]
     fn value_for_bucket<'a>(&'a self, idx: uint) -> &'a V {
         match self.buckets[idx] {
@@ -213,9 +211,7 @@ priv impl<K:Hash + Eq,V> HashMap<K, V> {
         }
     }
 
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     #[inline(always)]
     fn mut_value_for_bucket<'a>(&'a mut self, idx: uint) -> &'a mut V {
         match self.buckets[idx] {
@@ -341,9 +337,7 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 
     /// Visit all key-value pairs
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn each<'a>(&'a self, blk: &fn(&'a K, &'a V) -> bool) {
         for uint::range(0, self.buckets.len()) |i| {
             for self.buckets[i].each |bucket| {
@@ -366,9 +360,7 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 
     /// Visit all values
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn each_value<'a>(&'a self, blk: &fn(v: &'a V) -> bool) {
         self.each(|_, v| blk(v))
     }
@@ -395,9 +387,7 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 
     /// Return a reference to the value corresponding to the key
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn find<'a>(&'a self, k: &K) -> Option<&'a V> {
         match self.bucket_for_key(k) {
             FoundEntry(idx) => Some(self.value_for_bucket(idx)),
@@ -418,9 +408,7 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 
     /// Return a mutable reference to the value corresponding to the key
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn find_mut<'a>(&'a mut self, k: &K) -> Option<&'a mut V> {
         let idx = match self.bucket_for_key(k) {
             FoundEntry(idx) => idx,
@@ -534,9 +522,7 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return the value corresponding to the key in the map, or insert
     /// and return the value if it doesn't exist.
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a V {
         if self.size >= self.resize_at {
             // n.b.: We could also do this after searching, so
@@ -599,9 +585,7 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return the value corresponding to the key in the map, or create,
     /// insert, and return a new value if it doesn't exist.
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn find_or_insert_with<'a>(&'a mut self, k: K, f: &fn(&K) -> V) -> &'a V {
         if self.size >= self.resize_at {
             // n.b.: We could also do this after searching, so
@@ -655,9 +639,7 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
         }
     }
 
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn get<'a>(&'a self, k: &K) -> &'a V {
         match self.find(k) {
             Some(v) => v,
@@ -686,9 +668,7 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return the value corresponding to the key in the map, using
     /// equivalence
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
+    #[cfg(not(stage0))]
     fn find_equiv<'a, Q:Hash + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
         match self.bucket_for_key_equiv(k) {
             FoundEntry(idx) => Some(self.value_for_bucket(idx)),

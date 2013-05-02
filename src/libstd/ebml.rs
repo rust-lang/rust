@@ -407,9 +407,7 @@ pub mod reader {
             f()
         }
 
-        #[cfg(stage1)]
-        #[cfg(stage2)]
-        #[cfg(stage3)]
+        #[cfg(not(stage0))]
         fn read_struct_field<T>(&self, name: &str, idx: uint, f: &fn() -> T) -> T {
             debug!("read_struct_field(name=%?, idx=%u)", name, idx);
             self._check_label(name);
@@ -719,9 +717,7 @@ pub mod writer {
             self._emit_label(name);
             f()
         }
-        #[cfg(stage1)]
-        #[cfg(stage2)]
-        #[cfg(stage3)]
+        #[cfg(not(stage0))]
         fn emit_struct_field(&self, name: &str, _idx: uint, f: &fn()) {
             self._emit_label(name);
             f()
