@@ -132,9 +132,17 @@ impl<A:Eq> Eq for OptVec<A> {
 }
 
 impl<A> BaseIter<A> for OptVec<A> {
+    #[cfg(stage0)]
     fn each(&self, blk: &fn(v: &A) -> bool) {
         match *self {
             Empty => {}
+            Vec(ref v) => v.each(blk)
+        }
+    }
+    #[cfg(not(stage0))]
+    fn each(&self, blk: &fn(v: &A) -> bool) -> bool {
+        match *self {
+            Empty => true,
             Vec(ref v) => v.each(blk)
         }
     }
@@ -146,7 +154,13 @@ impl<A> BaseIter<A> for OptVec<A> {
 
 impl<A> old_iter::ExtendedIter<A> for OptVec<A> {
     #[inline(always)]
+    #[cfg(stage0)]
     fn eachi(&self, blk: &fn(v: uint, v: &A) -> bool) {
+        old_iter::eachi(self, blk)
+    }
+    #[inline(always)]
+    #[cfg(not(stage0))]
+    fn eachi(&self, blk: &fn(v: uint, v: &A) -> bool) -> bool {
         old_iter::eachi(self, blk)
     }
     #[inline(always)]

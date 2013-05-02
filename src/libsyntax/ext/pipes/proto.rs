@@ -100,6 +100,7 @@ pub impl state_ {
 
     /// Iterate over the states that can be reached in one message
     /// from this state.
+    #[cfg(stage0)]
     fn reachable(&self, f: &fn(state) -> bool) {
         for self.messages.each |m| {
             match *m {
@@ -110,6 +111,21 @@ pub impl state_ {
               _ => ()
             }
         }
+    }
+    /// Iterate over the states that can be reached in one message
+    /// from this state.
+    #[cfg(not(stage0))]
+    fn reachable(&self, f: &fn(state) -> bool) -> bool {
+        for self.messages.each |m| {
+            match *m {
+              message(_, _, _, _, Some(next_state { state: ref id, _ })) => {
+                let state = self.proto.get_state((*id));
+                if !f(state) { return false; }
+              }
+              _ => ()
+            }
+        }
+        return true;
     }
 }
 
