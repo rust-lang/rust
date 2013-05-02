@@ -95,10 +95,6 @@ extern "C" void
 rust_uv_free(void* ptr) {
     current_kernel_free(ptr);
 }
-extern "C" void*
-rust_uv_loop_new() {
-    return (void*)uv_loop_new();
-}
 
 extern "C" void
 rust_uv_loop_delete(uv_loop_t* loop) {
@@ -150,16 +146,6 @@ rust_uv_run(uv_loop_t* loop) {
 }
 
 extern "C" void
-rust_uv_close(uv_handle_t* handle, uv_close_cb cb) {
-    uv_close(handle, cb);
-}
-
-extern "C" void
-rust_uv_walk(uv_loop_t* loop, uv_walk_cb cb, void* arg) {
-    uv_walk(loop, cb, arg);
-}
-
-extern "C" void
 rust_uv_hilvl_close(uv_handle_t* handle, extern_close_cb cb) {
     handle_data* data = (handle_data*)handle->data;
     data->close_cb = cb;
@@ -176,18 +162,6 @@ extern "C" void
 rust_uv_hilvl_close_timer(uv_async_t* handle) {
     current_kernel_free(handle->data);
     current_kernel_free(handle);
-}
-
-extern "C" void
-rust_uv_async_send(uv_async_t* handle) {
-    uv_async_send(handle);
-}
-
-extern "C" int
-rust_uv_async_init(uv_loop_t* loop_handle,
-        uv_async_t* async_handle,
-        uv_async_cb cb) {
-    return uv_async_init(loop_handle, async_handle, cb);
 }
 
 extern "C" void*
@@ -220,27 +194,6 @@ extern "C" void
 rust_uv_hilvl_timer_start(uv_timer_t* the_timer, uint32_t timeout,
         uint32_t repeat) {
     uv_timer_start(the_timer, foreign_timer_cb, timeout, repeat);
-}
-
-extern "C" int
-rust_uv_timer_init(uv_loop_t* loop, uv_timer_t* timer) {
-    return uv_timer_init(loop, timer);
-}
-
-extern "C" int
-rust_uv_timer_start(uv_timer_t* the_timer, uv_timer_cb cb,
-                        uint32_t timeout, uint32_t repeat) {
-    return uv_timer_start(the_timer, cb, timeout, repeat);
-}
-
-extern "C" int
-rust_uv_timer_stop(uv_timer_t* the_timer) {
-    return uv_timer_stop(the_timer);
-}
-
-extern "C" int
-rust_uv_tcp_init(uv_loop_t* loop, uv_tcp_t* handle) {
-    return uv_tcp_init(loop, handle);
 }
 
 extern "C" int
@@ -291,17 +244,6 @@ rust_uv_tcp_getpeername6
 (uv_tcp_t* handle, sockaddr_in6* name) {
     int namelen = sizeof(sockaddr_in6);
     return uv_tcp_getpeername(handle, (sockaddr*)name, &namelen);
-}
-
-extern "C" int
-rust_uv_listen(uv_stream_t* stream, int backlog,
-        uv_connection_cb cb) {
-    return uv_listen(stream, backlog, cb);
-}
-
-extern "C" int
-rust_uv_accept(uv_stream_t* server, uv_stream_t* client) {
-    return uv_accept(server, client);
 }
 
 extern "C" size_t
@@ -442,23 +384,6 @@ rust_uv_err_name(uv_err_t* err_ptr) {
     return uv_err_name(err);
 }
 
-extern "C" int
-rust_uv_write(uv_write_t* req, uv_stream_t* handle,
-        uv_buf_t* bufs, int buf_cnt,
-        uv_write_cb cb) {
-    return uv_write(req, handle, bufs, buf_cnt, cb);
-}
-extern "C" int
-rust_uv_read_start(uv_stream_t* stream, uv_alloc_cb on_alloc,
-        uv_read_cb on_read) {
-    return uv_read_start(stream, on_alloc, on_read);
-}
-
-extern "C" int
-rust_uv_read_stop(uv_stream_t* stream) {
-    return uv_read_stop(stream);
-}
-
 extern "C" char*
 rust_uv_malloc_buf_base_of(size_t suggested_size) {
     return (char*) current_kernel_malloc(sizeof(char)*suggested_size,
@@ -467,16 +392,6 @@ rust_uv_malloc_buf_base_of(size_t suggested_size) {
 extern "C" void
 rust_uv_free_base_of_buf(uv_buf_t buf) {
     current_kernel_free(buf.base);
-}
-
-extern "C" struct sockaddr_in
-rust_uv_ip4_addr(const char* ip, int port) {
-    struct sockaddr_in addr = uv_ip4_addr(ip, port);
-    return addr;
-}
-extern "C" struct sockaddr_in6
-rust_uv_ip6_addr(const char* ip, int port) {
-    return uv_ip6_addr(ip, port);
 }
 
 extern "C" struct sockaddr_in*
@@ -506,15 +421,6 @@ rust_uv_free_ip6_addr(sockaddr_in6 *addrp) {
   free(addrp);
 }
 
-extern "C" int
-rust_uv_ip4_name(struct sockaddr_in* src, char* dst, size_t size) {
-    return uv_ip4_name(src, dst, size);
-}
-extern "C" int
-rust_uv_ip6_name(struct sockaddr_in6* src, char* dst, size_t size) {
-    int result = uv_ip6_name(src, dst, size);
-    return result;
-}
 extern "C" unsigned int
 rust_uv_ip4_port(struct sockaddr_in* src) {
     return ntohs(src->sin_port);
@@ -533,17 +439,16 @@ extern "C" void
 rust_uv_current_kernel_free(void* mem) {
     current_kernel_free(mem);
 }
-
 extern  "C" int
 rust_uv_getaddrinfo(uv_loop_t* loop, uv_getaddrinfo_t* handle,
                     uv_getaddrinfo_cb cb,
                     char* node, char* service,
                     addrinfo* hints) {
-    return uv_getaddrinfo(loop, handle, cb, node, service, hints);
+  return uv_getaddrinfo(loop, handle, cb, node, service, hints);
 }
 extern "C" void
 rust_uv_freeaddrinfo(addrinfo* res) {
-    uv_freeaddrinfo(res);
+  uv_freeaddrinfo(res);
 }
 extern "C" bool
 rust_uv_is_ipv4_addrinfo(addrinfo* input) {
@@ -574,31 +479,6 @@ rust_uv_idle_new() {
 extern "C" void
 rust_uv_idle_delete(uv_idle_t* handle) {
   delete handle;
-}
-
-extern "C" int
-rust_uv_idle_init(uv_loop_t* loop, uv_idle_t* idle) {
-  return uv_idle_init(loop, idle);
-}
-
-extern "C" int
-rust_uv_idle_start(uv_idle_t* idle, uv_idle_cb cb) {
-  return uv_idle_start(idle, cb);
-}
-
-extern "C" int
-rust_uv_idle_stop(uv_idle_t* idle) {
-  return uv_idle_stop(idle);
-}
-
-extern "C" size_t
-rust_uv_handle_size(uintptr_t type) {
-  return uv_handle_size((uv_handle_type)type);
-}
-
-extern "C" size_t
-rust_uv_req_size(uintptr_t type) {
-  return uv_req_size((uv_req_type)type);
 }
 
 extern "C" uintptr_t
