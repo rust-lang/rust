@@ -97,8 +97,15 @@ impl<D:Decoder> Decodable<D> for ident {
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for ident {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        self.repr.iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for ident {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         self.repr.iter_bytes(lsb0, f)
     }
 }
@@ -284,6 +291,7 @@ pub enum binding_mode {
     bind_infer
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for binding_mode {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         match *self {
@@ -294,6 +302,18 @@ impl to_bytes::IterBytes for binding_mode {
 
           bind_infer =>
           2u8.iter_bytes(lsb0, f),
+        }
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for binding_mode {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
+        match *self {
+          bind_by_copy => 0u8.iter_bytes(lsb0, f),
+
+          bind_by_ref(ref m) => to_bytes::iter_bytes_2(&1u8, m, lsb0, f),
+
+          bind_infer => 2u8.iter_bytes(lsb0, f),
         }
     }
 }
@@ -330,8 +350,15 @@ pub enum pat_ {
 #[deriving(Eq)]
 pub enum mutability { m_mutbl, m_imm, m_const, }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for mutability {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for mutability {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }
@@ -345,8 +372,15 @@ pub enum Sigil {
     ManagedSigil
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for Sigil {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (*self as uint).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for Sigil {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as uint).iter_bytes(lsb0, f)
     }
 }
@@ -744,8 +778,15 @@ impl ToStr for int_ty {
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for int_ty {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for int_ty {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }
@@ -761,8 +802,15 @@ impl ToStr for uint_ty {
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for uint_ty {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for uint_ty {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }
@@ -778,8 +826,15 @@ impl ToStr for float_ty {
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for float_ty {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for float_ty {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }
@@ -823,9 +878,16 @@ impl ToStr for Onceness {
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for Onceness {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f);
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for Onceness {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
+        (*self as uint).iter_bytes(lsb0, f)
     }
 }
 
@@ -874,9 +936,16 @@ pub enum ty_ {
     ty_infer,
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for Ty {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.span.lo, &self.span.hi, lsb0, f);
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for Ty {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
+        to_bytes::iter_bytes_2(&self.span.lo, &self.span.hi, lsb0, f)
     }
 }
 
@@ -941,8 +1010,15 @@ impl ToStr for purity {
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for purity {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for purity {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }
@@ -956,8 +1032,15 @@ pub enum ret_style {
     return_val, // everything else
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for ret_style {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for ret_style {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }

@@ -195,18 +195,8 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
 }
 
 // does this attribute list contain "macro_escape" ?
-pub fn contains_macro_escape (attrs: &[ast::attribute]) -> bool{
-    let mut accum = false;
-    do attrs.each |attr| {
-        let mname = attr::get_attr_name(attr);
-        if (mname == @~"macro_escape") {
-            accum = true;
-            false
-        } else {
-            true
-        }
-    }
-    accum
+pub fn contains_macro_escape (attrs: &[ast::attribute]) -> bool {
+    attrs.any(|attr| "macro_escape" == *attr::get_attr_name(attr))
 }
 
 // this macro disables (one layer of) macro

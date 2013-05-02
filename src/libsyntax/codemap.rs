@@ -65,8 +65,15 @@ impl Sub<BytePos, BytePos> for BytePos {
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for BytePos {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (**self).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for BytePos {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (**self).iter_bytes(lsb0, f)
     }
 }
@@ -83,8 +90,15 @@ impl cmp::Ord for CharPos {
     fn gt(&self, other: &CharPos) -> bool { **self > **other }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for CharPos {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (**self).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for CharPos {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (**self).iter_bytes(lsb0, f)
     }
 }
