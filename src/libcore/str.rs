@@ -241,38 +241,132 @@ pub fn append(lhs: ~str, rhs: &str) -> ~str {
 
 /// Concatenate a vector of strings
 pub fn concat(v: &[~str]) -> ~str {
-    let mut s: ~str = ~"";
-    for vec::each(v) |ss| {
-        push_str(&mut s, *ss);
+    if v.is_empty() { return ~""; }
+
+    let mut len = 0;
+    for v.each |ss| {
+        len += ss.len();
+    }
+    let mut s = ~"";
+
+    reserve(&mut s, len);
+
+    unsafe {
+        do as_buf(s) |buf, _len| {
+            let mut buf = ::cast::transmute_mut_unsafe(buf);
+            for v.each |ss| {
+                do as_buf(*ss) |ssbuf, sslen| {
+                    let sslen = sslen - 1;
+                    ptr::copy_memory(buf, ssbuf, sslen);
+                    buf = buf.offset(sslen);
+                }
+            }
+        }
+        raw::set_len(&mut s, len);
     }
     s
 }
 
 /// Concatenate a vector of strings, placing a given separator between each
 pub fn connect(v: &[~str], sep: &str) -> ~str {
+    if v.is_empty() { return ~""; }
+
+    // concat is faster
+    if sep.is_empty() { return concat(v); }
+
+    // this is wrong without the guarantee that v is non-empty
+    let mut len = sep.len() * (v.len() - 1);
+    for v.each |ss| {
+        len += ss.len();
+    }
     let mut s = ~"", first = true;
-    for vec::each(v) |ss| {
-        if first { first = false; } else { push_str(&mut s, sep); }
-        push_str(&mut s, *ss);
+
+    reserve(&mut s, len);
+
+    unsafe {
+        do as_buf(s) |buf, _len| {
+            do as_buf(sep) |sepbuf, seplen| {
+                let seplen = seplen - 1;
+                let mut buf = ::cast::transmute_mut_unsafe(buf);
+                for v.each |ss| {
+                    do as_buf(*ss) |ssbuf, sslen| {
+                        let sslen = sslen - 1;
+                        if first {
+                            first = false;
+                        } else {
+                            ptr::copy_memory(buf, sepbuf, seplen);
+                            buf = buf.offset(seplen);
+                        }
+                        ptr::copy_memory(buf, ssbuf, sslen);
+                        buf = buf.offset(sslen);
+                    }
+                }
+            }
+        }
+        raw::set_len(&mut s, len);
     }
     s
 }
 
 /// Concatenate a vector of strings, placing a given separator between each
 pub fn connect_slices(v: &[&str], sep: &str) -> ~str {
+    if v.is_empty() { return ~""; }
+
+    // this is wrong without the guarantee that v is non-empty
+    let mut len = sep.len() * (v.len() - 1);
+    for v.each |ss| {
+        len += ss.len();
+    }
     let mut s = ~"", first = true;
-    for vec::each(v) |ss| {
-        if first { first = false; } else { push_str(&mut s, sep); }
-        push_str(&mut s, *ss);
+
+    reserve(&mut s, len);
+
+    unsafe {
+        do as_buf(s) |buf, _len| {
+            do as_buf(sep) |sepbuf, seplen| {
+                let seplen = seplen - 1;
+                let mut buf = ::cast::transmute_mut_unsafe(buf);
+                for vec::each(v) |ss| {
+                    do as_buf(*ss) |ssbuf, sslen| {
+                        let sslen = sslen - 1;
+                        if first {
+                            first = false;
+                        } else if seplen > 0 {
+                            ptr::copy_memory(buf, sepbuf, seplen);
+                            buf = buf.offset(seplen);
+                        }
+                        ptr::copy_memory(buf, ssbuf, sslen);
+                        buf = buf.offset(sslen);
+                    }
+                }
+            }
+        }
+        raw::set_len(&mut s, len);
     }
     s
 }
 
 /// Given a string, make a new string with repeated copies of it
 pub fn repeat(ss: &str, nn: uint) -> ~str {
-    let mut acc = ~"";
-    for nn.times { acc += ss; }
-    acc
+    do as_buf(ss) |buf, len| {
+        let mut ret = ~"";
+        // ignore the NULL terminator
+        let len = len - 1;
+        reserve(&mut ret, nn * len);
+
+        unsafe {
+            do as_buf(ret) |rbuf, _len| {
+                let mut rbuf = ::cast::transmute_mut_unsafe(rbuf);
+
+                for nn.times {
+                    ptr::copy_memory(rbuf, buf, len);
+                    rbuf = rbuf.offset(len);
+                }
+            }
+            raw::set_len(&mut ret, nn * len);
+        }
+        ret
+    }
 }
 
 /*
