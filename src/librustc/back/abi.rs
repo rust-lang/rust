@@ -57,6 +57,13 @@ pub static n_tydesc_fields: uint = 8u;
 pub static fn_field_code: uint = 0u;
 pub static fn_field_box: uint = 1u;
 
+// The three fields of a trait object/trait instance: vtable, box, and type
+// description.
+pub static trt_field_vtable: uint = 0u;
+pub static trt_field_box: uint = 1u;
+// This field is only present in unique trait objects, so it comes last.
+pub static trt_field_tydesc: uint = 2u;
+
 pub static vec_elt_fill: uint = 0u;
 
 pub static vec_elt_alloc: uint = 1u;

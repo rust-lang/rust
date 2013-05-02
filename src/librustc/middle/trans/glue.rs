@@ -537,12 +537,12 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
         closure::make_closure_glue(bcx, v0, t, drop_ty)
       }
       ty::ty_trait(_, _, ty::BoxTraitStore, _) => {
-        let llbox = Load(bcx, GEPi(bcx, v0, [0u, 1u]));
+        let llbox = Load(bcx, GEPi(bcx, v0, [0u, abi::trt_field_box]));
         decr_refcnt_maybe_free(bcx, llbox, ty::mk_opaque_box(ccx.tcx))
       }
       ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
-        let lluniquevalue = GEPi(bcx, v0, [0, 1]);
-        let lltydesc = Load(bcx, GEPi(bcx, v0, [0, 2]));
+        let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
+        let lltydesc = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_tydesc]));
         call_tydesc_glue_full(bcx, lluniquevalue, lltydesc,
                               abi::tydesc_field_free_glue, None);
         bcx
@@ -601,13 +601,13 @@ pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
         closure::make_closure_glue(bcx, v, t, take_ty)
       }
       ty::ty_trait(_, _, ty::BoxTraitStore, _) => {
-        let llbox = Load(bcx, GEPi(bcx, v, [0u, 1u]));
+        let llbox = Load(bcx, GEPi(bcx, v, [0u, abi::trt_field_box]));
         incr_refcnt_of_boxed(bcx, llbox);
         bcx
       }
       ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
-        let llval = GEPi(bcx, v, [0, 1]);
-        let lltydesc = Load(bcx, GEPi(bcx, v, [0, 2]));
+        let llval = GEPi(bcx, v, [0, abi::trt_field_box]);
+        let lltydesc = Load(bcx, GEPi(bcx, v, [0, abi::trt_field_tydesc]));
         call_tydesc_glue_full(bcx, llval, lltydesc,
                               abi::tydesc_field_take_glue, None);
         bcx
