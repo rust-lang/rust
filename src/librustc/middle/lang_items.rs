@@ -75,13 +75,13 @@ pub enum LangItem {
 }
 
 pub struct LanguageItems {
-    items: [Option<def_id>, ..35]
+    items: [Option<def_id>, ..36]
 }
 
 pub impl LanguageItems {
     pub fn new() -> LanguageItems {
         LanguageItems {
-            items: [ None, ..35 ]
+            items: [ None, ..36 ]
         }
     }
 
