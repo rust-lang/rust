@@ -823,7 +823,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
 
     return match expr.node {
         ast::expr_paren(e) => {
-            unrooted(bcx, e)
+            trans_lvalue_unadjusted(bcx, e)
         }
         ast::expr_path(_) => {
             trans_def_lvalue(bcx, expr, bcx.def(expr.id))
@@ -849,12 +849,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     fn trans_rec_field(bcx: block,
                        base: @ast::expr,
                        field: ast::ident) -> DatumBlock {
-        /*!
-         *
-         * Translates `base.field`.  Note that this version always
-         * yields an unrooted, unmoved version.  Rooting and possible
-         * moves are dealt with above in trans_lvalue_unadjusted().
-         */
+        //! Translates `base.field`.
 
         let mut bcx = bcx;
         let _icx = bcx.insn_ctxt("trans_rec_field");
@@ -878,12 +873,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                    index_expr: @ast::expr,
                    base: @ast::expr,
                    idx: @ast::expr) -> DatumBlock {
-        /*!
-         *
-         * Translates `base[idx]`.  Note that this version always
-         * yields an unrooted, unmoved version.  Rooting and possible
-         * moves are dealt with above in trans_lvalue_unadjusted().
-         */
+        //! Translates `base[idx]`.
 
         let _icx = bcx.insn_ctxt("trans_index");
         let ccx = bcx.ccx();
@@ -946,14 +936,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                         def: ast::def)
         -> DatumBlock
     {
-        /*!
-         *
-         * Translates a reference to a path.  Note that this version
-         * generally yields an unrooted, unmoved version.  Rooting and
-         * possible moves are dealt with above in
-         * trans_lvalue_unadjusted(), with the caveat that local variables
-         * may already be in move mode.
-         */
+        //! Translates a reference to a path.
 
         let _icx = bcx.insn_ctxt("trans_def_lvalue");
         let ccx = bcx.ccx();
