@@ -653,7 +653,7 @@ pub fn build_session_options(binary: @~str,
 
     let linker_args = getopts::opt_strs(matches, ~"link-args").flat_map( |a| {
         let mut args = ~[];
-        for str::each_split_char(*a, ',') |arg| {
+        for str::each_split_char(*a, ' ') |arg| {
             args.push(str::from_slice(arg));
         }
         args
@@ -760,7 +760,7 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
   optmulti("L", "",   "Add a directory to the library search path",
                               "PATH"),
   optflag("",  "lib", "Compile a library crate"),
-  optmulti("",  "link-args", "FLAGS is a comma-separated list of flags
+  optmulti("",  "link-args", "FLAGS is a space-separated list of flags
                             passed to the linker", "FLAGS"),
   optflag("",  "ls",  "List the symbols defined by a library crate"),
   optflag("", "no-trans",
