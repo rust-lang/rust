@@ -76,10 +76,8 @@ pub fn get_base_type(inference_context: @mut InferCtxt,
         }
         _ => {
             inference_context.tcx.sess.span_fatal(span,
-                                                  ~"the type of this value \
-                                                    must be known in order \
-                                                    to determine the base \
-                                                    type");
+                                                  "the type of this value must be known in order \
+                                                   to determine the base type");
         }
     }
 
@@ -257,9 +255,8 @@ pub impl CoherenceChecker {
                 None => {
                     let session = self.crate_context.tcx.sess;
                     session.span_err(item.span,
-                                     ~"no base type found for inherent \
-                                       implementation; implement a \
-                                       trait or new type instead");
+                                     "no base type found for inherent implementation; \
+                                      implement a trait or new type instead");
                 }
                 Some(_) => {
                     // Nothing to do.
@@ -483,11 +480,9 @@ pub impl CoherenceChecker {
                     if self.polytypes_unify(polytype_a, polytype_b) {
                         let session = self.crate_context.tcx.sess;
                         session.span_err(self.span_of_impl(implementation_b),
-                                         ~"conflicting implementations for a \
-                                           trait");
+                                         "conflicting implementations for a trait");
                         session.span_note(self.span_of_impl(implementation_a),
-                                          ~"note conflicting implementation \
-                                            here");
+                                          "note conflicting implementation here");
                     }
                 }
             }
@@ -667,11 +662,9 @@ pub impl CoherenceChecker {
                             // This is an error.
                             let session = self.crate_context.tcx.sess;
                             session.span_err(item.span,
-                                             ~"cannot associate methods with \
-                                               a type outside the crate the \
-                                               type is defined in; define \
-                                               and implement a trait or new \
-                                               type instead");
+                                             "cannot associate methods with a type outside the \
+                                              crate the type is defined in; define and implement \
+                                              a trait or new type instead");
                         }
                     }
                     item_impl(_, Some(trait_ref), _, _) => {
@@ -690,10 +683,8 @@ pub impl CoherenceChecker {
                             if trait_def_id.crate != local_crate {
                                 let session = self.crate_context.tcx.sess;
                                 session.span_err(item.span,
-                                                 ~"cannot provide an \
-                                                   extension implementation \
-                                                   for a trait not defined \
-                                                   in this crate");
+                                                 "cannot provide an extension implementation \
+                                                  for a trait not defined in this crate");
                             }
                         }
 
@@ -765,7 +756,7 @@ pub impl CoherenceChecker {
                             None => {
                                 self.crate_context.tcx.sess.span_bug(
                                     original_type.span,
-                                    ~"resolve didn't resolve this type?!");
+                                    "resolve didn't resolve this type?!");
                             }
                             Some(&node_item(item, _)) => {
                                 match item.node {
@@ -849,8 +840,7 @@ pub impl CoherenceChecker {
             }
             _ => {
                 self.crate_context.tcx.sess.span_bug(item.span,
-                                                     ~"can't convert a \
-                                                       non-impl to an impl");
+                                                     "can't convert a non-impl to an impl");
             }
         }
     }
@@ -862,9 +852,8 @@ pub impl CoherenceChecker {
                 return item.span;
             }
             _ => {
-                self.crate_context.tcx.sess.bug(~"span_of_impl() called on \
-                                                  something that wasn't an \
-                                                  impl!");
+                self.crate_context.tcx.sess.bug("span_of_impl() called on something that \
+                                                 wasn't an impl!");
             }
         }
     }
@@ -1045,17 +1034,16 @@ pub impl CoherenceChecker {
                         match tcx.items.find(&impl_info.did.node) {
                             Some(&ast_map::node_item(@ref item, _)) => {
                                 tcx.sess.span_err((*item).span,
-                                                  ~"the Drop trait may only \
-                                                    be implemented on \
-                                                    structures");
+                                                  "the Drop trait may only be implemented on \
+                                                   structures");
                             }
                             _ => {
-                                tcx.sess.bug(~"didn't find impl in ast map");
+                                tcx.sess.bug("didn't find impl in ast map");
                             }
                         }
                     } else {
-                        tcx.sess.bug(~"found external impl of Drop trait on \
-                                       something other than a struct");
+                        tcx.sess.bug("found external impl of Drop trait on \
+                                      something other than a struct");
                     }
                 }
             }

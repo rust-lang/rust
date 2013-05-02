@@ -356,9 +356,7 @@ pub fn trans_method_call(in_cx: block,
                                               origin)
                 }
                 None => {
-                    cx.tcx().sess.span_bug(call_ex.span,
-                                           ~"method call expr wasn't in \
-                                             method map")
+                    cx.tcx().sess.span_bug(call_ex.span, "method call expr wasn't in method map")
                 }
             }
         },
