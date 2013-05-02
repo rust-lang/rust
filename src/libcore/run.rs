@@ -781,7 +781,6 @@ mod tests {
     use libc;
     use option::None;
     use os;
-    use path::Path;
     use run::{readclose, writeclose};
     use run;
 
@@ -870,34 +869,59 @@ mod tests {
         p.destroy(); // ...and nor should this (and nor should the destructor)
     }
 
-    #[cfg(unix)] // there is no way to sleep on windows from inside libcore...
     fn test_destroy_actually_kills(force: bool) {
-        let path = Path(fmt!("test/core-run-test-destroy-actually-kills-%?.tmp", force));
 
-        os::remove_file(&path);
+        #[cfg(unix)]
+        static BLOCK_COMMAND: &'static str = "cat";
 
-        let cmd = fmt!("sleep 5 && echo MurderDeathKill > %s", path.to_str());
-        let mut p = run::start_program("sh", [~"-c", cmd]);
+        #[cfg(windows)]
+        static BLOCK_COMMAND: &'static str = "cmd";
 
-        p.destroy(); // destroy the program before it has a chance to echo its message
-
-        unsafe {
-            // wait to ensure the program is really destroyed and not just waiting itself
-            libc::sleep(10);
+        #[cfg(unix)]
+        fn process_exists(pid: libc::pid_t) -> bool {
+            run::program_output("ps", [~"-p", pid.to_str()]).out.contains(pid.to_str())
         }
 
-        // the program should not have had chance to echo its message
-        assert!(!path.exists());
+        #[cfg(windows)]
+        fn process_exists(pid: libc::pid_t) -> bool {
+
+            use libc::types::os::arch::extra::DWORD;
+            use libc::funcs::extra::kernel32::{CloseHandle, GetExitCodeProcess, OpenProcess};
+            use libc::consts::os::extra::{FALSE, PROCESS_QUERY_INFORMATION, STILL_ACTIVE };
+
+            unsafe {
+                let proc = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid as DWORD);
+                if proc.is_null() {
+                    return false;
+                }
+                // proc will be non-null if the process is alive, or if it died recently
+                let mut status = 0;
+                GetExitCodeProcess(proc, &mut status);
+                CloseHandle(proc);
+                return status == STILL_ACTIVE;
+            }
+        }
+
+        // this program will stay alive indefinitely trying to read from stdin
+        let mut p = run::start_program(BLOCK_COMMAND, []);
+
+        assert!(process_exists(p.get_id()));
+
+        if force {
+            p.force_destroy();
+        } else {
+            p.destroy();
+        }
+
+        assert!(!process_exists(p.get_id()));
     }
 
     #[test]
-    #[cfg(unix)]
     fn test_unforced_destroy_actually_kills() {
         test_destroy_actually_kills(false);
     }
 
     #[test]
-    #[cfg(unix)]
     fn test_forced_destroy_actually_kills() {
         test_destroy_actually_kills(true);
     }
