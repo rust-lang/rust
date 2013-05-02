@@ -872,7 +872,7 @@ pub impl<'self> LookupContext<'self> {
         if relevant_candidates.len() > 1 {
             self.tcx().sess.span_err(
                 self.expr.span,
-                ~"multiple applicable methods in scope");
+                "multiple applicable methods in scope");
             for uint::range(0, relevant_candidates.len()) |idx| {
                 self.report_candidate(idx, &relevant_candidates[idx].origin);
             }
@@ -983,12 +983,12 @@ pub impl<'self> LookupContext<'self> {
             } else if num_method_tps == 0u {
                 tcx.sess.span_err(
                     self.expr.span,
-                    ~"this method does not take type parameters");
+                    "this method does not take type parameters");
                 self.fcx.infcx().next_ty_vars(num_method_tps)
             } else if num_supplied_tps != num_method_tps {
                 tcx.sess.span_err(
                     self.expr.span,
-                    ~"incorrect number of type \
+                    "incorrect number of type \
                      parameters given for this method");
                 self.fcx.infcx().next_ty_vars(num_method_tps)
             } else {
@@ -1082,14 +1082,14 @@ pub impl<'self> LookupContext<'self> {
         if ty::type_has_self(method_fty) {
             self.tcx().sess.span_err(
                 self.expr.span,
-                ~"cannot call a method whose type contains a \
-                  self-type through a boxed trait");
+                "cannot call a method whose type contains a \
+                 self-type through a boxed trait");
         }
 
         if candidate.method_ty.generics.has_type_params() {
             self.tcx().sess.span_err(
                 self.expr.span,
-                ~"cannot call a generic method through a boxed trait");
+                "cannot call a generic method through a boxed trait");
         }
     }
 
@@ -1109,7 +1109,7 @@ pub impl<'self> LookupContext<'self> {
 
         if bad {
             self.tcx().sess.span_err(self.expr.span,
-                                     ~"explicit call to destructor");
+                                     "explicit call to destructor");
         }
     }
 

@@ -414,7 +414,7 @@ fn lookup_vtable(vcx: &VtableContext,
                     if !is_early {
                         vcx.tcx().sess.span_err(
                             location_info.span,
-                            ~"multiple applicable methods in scope");
+                            "multiple applicable methods in scope");
                     }
                     return Some(/*bad*/copy found[0]);
                 }

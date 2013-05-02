@@ -308,22 +308,22 @@ pub impl Parser {
         }
         return copy self.buffer[(*self.buffer_start + dist - 1) & 3].tok;
     }
-    fn fatal(&self, m: ~str) -> ! {
+    fn fatal(&self, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(*copy self.span, m)
     }
-    fn span_fatal(&self, sp: span, m: ~str) -> ! {
+    fn span_fatal(&self, sp: span, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(sp, m)
     }
-    fn span_note(&self, sp: span, m: ~str) {
+    fn span_note(&self, sp: span, m: &str) {
         self.sess.span_diagnostic.span_note(sp, m)
     }
-    fn bug(&self, m: ~str) -> ! {
+    fn bug(&self, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(*copy self.span, m)
     }
-    fn warn(&self, m: ~str) {
+    fn warn(&self, m: &str) {
         self.sess.span_diagnostic.span_warn(*copy self.span, m)
     }
-    fn span_err(&self, sp: span, m: ~str) {
+    fn span_err(&self, sp: span, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)
     }
     fn abort_if_errors(&self) {
@@ -2029,8 +2029,7 @@ pub impl Parser {
             // This is a 'continue' expression
             if opt_ident.is_some() {
                 self.span_err(*self.last_span,
-                              ~"a label may not be used with a `loop` \
-                                expression");
+                              "a label may not be used with a `loop` expression");
             }
 
             let lo = self.span.lo;
@@ -2167,7 +2166,7 @@ pub impl Parser {
                     @ast::pat { node: pat_wild, _ } => (),
                     @ast::pat { node: pat_ident(_, _, _), _ } => (),
                     @ast::pat { span, _ } => self.span_fatal(
-                        span, ~"expected an identifier or `_`"
+                        span, "expected an identifier or `_`"
                     )
                 }
                 slice = Some(subpat);
@@ -2459,7 +2458,7 @@ pub impl Parser {
                        -> ast::pat_ {
         if !is_plain_ident(&*self.token) {
             self.span_fatal(*self.last_span,
-                            ~"expected identifier, found path");
+                            "expected identifier, found path");
         }
         // why a path here, and not just an identifier?
         let name = self.parse_path_without_tps();
@@ -2478,7 +2477,7 @@ pub impl Parser {
         if *self.token == token::LPAREN {
             self.span_fatal(
                 *self.last_span,
-                ~"expected identifier, found enum pattern");
+                "expected identifier, found enum pattern");
         }
 
         pat_ident(binding_mode, name, sub)
@@ -2609,19 +2608,19 @@ pub impl Parser {
 
             match self.parse_item_or_view_item(/*bad*/ copy item_attrs,
                                                            false) {
-              iovi_item(i) => {
-                let hi = i.span.hi;
-                let decl = @spanned(lo, hi, decl_item(i));
-                return @spanned(lo, hi, stmt_decl(decl, self.get_id()));
-              }
-              iovi_view_item(vi) => {
-                self.span_fatal(vi.span, ~"view items must be declared at \
-                                           the top of the block");
-              }
-              iovi_foreign_item(_) => {
-                  self.fatal(~"foreign items are not allowed here");
-              }
-              iovi_none() => { /* fallthrough */ }
+                iovi_item(i) => {
+                    let hi = i.span.hi;
+                    let decl = @spanned(lo, hi, decl_item(i));
+                    return @spanned(lo, hi, stmt_decl(decl, self.get_id()));
+                }
+                iovi_view_item(vi) => {
+                    self.span_fatal(vi.span,
+                                    "view items must be declared at the top of the block");
+                }
+                iovi_foreign_item(_) => {
+                    self.fatal(~"foreign items are not allowed here");
+                }
+                iovi_none() => { /* fallthrough */ }
             }
 
             check_expected_item(self, item_attrs);
@@ -2822,8 +2821,7 @@ pub impl Parser {
                         result.push(RegionTyParamBound);
                     } else {
                         self.span_err(*self.span,
-                                      ~"`'static` is the only permissible \
-                                        region bound here");
+                                      "`'static` is the only permissible region bound here");
                     }
                     self.bump();
                 }
@@ -3238,7 +3236,7 @@ pub impl Parser {
                     })
                 }
                 _ => {
-                    self.span_err(*self.span, ~"not a trait");
+                    self.span_err(*self.span, "not a trait");
                     None
                 }
             };
@@ -3467,9 +3465,8 @@ pub impl Parser {
             ) {
               iovi_item(item) => items.push(item),
               iovi_view_item(view_item) => {
-                self.span_fatal(view_item.span, ~"view items must be \
-                                                  declared at the top of the \
-                                                  module");
+                self.span_fatal(view_item.span, "view items must be  declared at the top of the \
+                                                 module");
               }
               _ => {
                 self.fatal(
@@ -3762,7 +3759,7 @@ pub impl Parser {
         }
 
         if opt_abis.is_some() {
-            self.span_err(*self.span, ~"an ABI may not be specified here");
+            self.span_err(*self.span, "an ABI may not be specified here");
         }
 
         // extern mod foo;
@@ -4397,9 +4394,7 @@ pub impl Parser {
                         view_item_extern_mod(*)
                         if !extern_mod_allowed => {
                             self.span_err(view_item.span,
-                                          ~"\"extern mod\" \
-                                            declarations are not \
-                                            allowed here");
+                                          "\"extern mod\" declarations are not allowed here");
                         }
                         view_item_extern_mod(*) => {}
                     }
@@ -4425,8 +4420,7 @@ pub impl Parser {
                     iovi_none => break,
                     iovi_view_item(view_item) => {
                         self.span_err(view_item.span,
-                                      ~"`use` and `extern mod` declarations \
-                                        must precede items");
+                                      "`use` and `extern mod` declarations must precede items");
                     }
                     iovi_item(item) => {
                         items.push(item)
@@ -4461,8 +4455,7 @@ pub impl Parser {
                 iovi_view_item(view_item) => {
                     // I think this can't occur:
                     self.span_err(view_item.span,
-                                  ~"`use` and `extern mod` declarations \
-                                    must precede items");
+                                  "`use` and `extern mod` declarations must precede items");
                 }
                 iovi_item(_) => {
                     // FIXME #5668: this will occur for a macro invocation:

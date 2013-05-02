@@ -124,7 +124,7 @@ pub impl<'self> PreserveCtxt<'self> {
             if self.root_managed_data {
                 self.tcx().sess.span_bug(
                     cmt.span,
-                    ~"preserve() called with local and !root_managed_data");
+                    "preserve() called with local and !root_managed_data");
             }
             let local_region = self.tcx().region_maps.encl_region(local_id);
             self.compare_scope(cmt, local_region)

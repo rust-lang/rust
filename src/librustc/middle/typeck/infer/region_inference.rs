@@ -1587,9 +1587,9 @@ pub impl RegionVarBindings {
 
                     note_and_explain_region(
                         self.tcx,
-                        ~"first, the lifetime cannot outlive ",
+                        "first, the lifetime cannot outlive ",
                         upper_bound.region,
-                        ~"...");
+                        "...");
 
                     self.tcx.sess.span_note(
                         upper_bound.span,
@@ -1597,9 +1597,9 @@ pub impl RegionVarBindings {
 
                     note_and_explain_region(
                         self.tcx,
-                        ~"but, the lifetime must be valid for ",
+                        "but, the lifetime must be valid for ",
                         lower_bound.region,
-                        ~"...");
+                        "...");
 
                     self.tcx.sess.span_note(
                         lower_bound.span,
