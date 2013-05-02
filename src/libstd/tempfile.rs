@@ -28,7 +28,7 @@ mod tests {
     use tempfile::mkdtemp;
     use tempfile;
     use core::os;
-    
+
     #[test]
     fn test_mkdtemp() {
         let p = mkdtemp(&Path("."), "foobar").unwrap();
