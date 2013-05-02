@@ -19,6 +19,7 @@ use sys;
 use unstable::exchange_alloc;
 use cast::transmute;
 use task::rt::rust_get_task;
+use option::{Some, None};
 
 #[allow(non_camel_case_types)]
 pub type rust_task = c_void;
@@ -71,6 +72,7 @@ pub fn fail_bounds_check(file: *c_char, line: size_t,
     }
 }
 
+#[deriving(Eq)]
 struct BorrowRecord {
     box: *mut BoxRepr,
     file: *c_char,
@@ -108,7 +110,7 @@ pub fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
                         str::raw::from_c_str(entry.file)
                     };
                     str::push_str(&mut msg, filename);
-                    str::push_str(&mut msg, fmt!(":%u", line as uint));
+                    str::push_str(&mut msg, fmt!(":%u", entry.line as uint));
                     sep = " and at ";
                 }
             }
@@ -208,6 +210,26 @@ fn add_borrow_to_task_list(a: *mut BoxRepr, file: *c_char, line: size_t) {
     }
 }
 
+fn remove_borrow_from_task_list(a: *mut BoxRepr, file: *c_char, line: size_t) {
+    do swap_task_borrow_list |borrow_list| {
+        let mut borrow_list = borrow_list;
+        let br = BorrowRecord {box: a, file: file, line: line};
+        match borrow_list.rposition_elem(&br) {
+            Some(idx) => {
+                borrow_list.remove(idx);
+                borrow_list
+            }
+            None => {
+                let err = fmt!("no borrow found, br=%?, borrow_list=%?",
+                               br, borrow_list);
+                do str::as_buf(err) |msg_p, _| {
+                    fail_(msg_p as *c_char, file, line)
+                }
+            }
+        }
+    }
+}
+
 #[cfg(not(stage0))]
 #[lang="borrow_as_imm"]
 #[inline(always)]
@@ -215,8 +237,9 @@ pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) -> uint {
     let a: *mut BoxRepr = transmute(a);
     let ref_count = (*a).header.ref_count;
 
-    debug_ptr("borrow_as_imm (ptr): ", a);
-    debug_ptr("borrow_as_imm (ref): ", ref_count as *());
+    debug_ptr("borrow_as_imm (ptr) :", a);
+    debug_ptr("              (ref) :", ref_count as *());
+    debug_ptr("              (line): ", line as *());
 
     if (ref_count & MUT_BIT) != 0 {
         fail_borrowed(a, file, line);
@@ -236,7 +259,7 @@ pub unsafe fn borrow_as_mut(a: *u8, file: *c_char, line: size_t) -> uint {
     let a: *mut BoxRepr = transmute(a);
 
     debug_ptr("borrow_as_mut (ptr): ", a);
-    debug_ptr("borrow_as_mut (line): ", line as *());
+    debug_ptr("              (line): ", line as *());
 
     let ref_count = (*a).header.ref_count;
     if (ref_count & (MUT_BIT|FROZEN_BIT)) != 0 {
@@ -265,18 +288,25 @@ pub unsafe fn return_to_mut(a: *u8) {
 #[cfg(not(stage0))]
 #[lang="return_to_mut"]
 #[inline(always)]
-pub unsafe fn return_to_mut(a: *u8, old_ref_count: uint) {
+pub unsafe fn return_to_mut(a: *u8, old_ref_count: uint,
+                            file: *c_char, line: size_t) {
     // Sometimes the box is null, if it is conditionally frozen.
     // See e.g. #4904.
     if !a.is_null() {
         let a: *mut BoxRepr = transmute(a);
+        let ref_count = (*a).header.ref_count;
+        let combined = (ref_count & !ALL_BITS) | (old_ref_count & ALL_BITS);
+        (*a).header.ref_count = combined;
 
-        debug_ptr("return_to_mut (ptr): ", a);
-        debug_ptr("return_to_mut (ref): ", old_ref_count as *());
+        debug_ptr("return_to_mut (ptr) : ", a);
+        debug_ptr("              (line): ", line as *());
+        debug_ptr("              (old) : ", old_ref_count as *());
+        debug_ptr("              (new) : ", ref_count as *());
+        debug_ptr("              (comb): ", combined as *());
 
-        let ref_count = (*a).header.ref_count & !ALL_BITS;
-        let old_bits = old_ref_count & ALL_BITS;
-        (*a).header.ref_count = ref_count | old_bits;
+        if ::rt::env::get().debug_borrows {
+            remove_borrow_from_task_list(a, file, line);
+        }
     }
 }
 
