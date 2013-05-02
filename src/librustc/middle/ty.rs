@@ -2381,6 +2381,14 @@ pub fn type_is_signed(ty: t) -> bool {
     }
 }
 
+pub fn type_is_machine(ty: t) -> bool {
+    match get(ty).sty {
+        ty_int(ast::ty_i) | ty_uint(ast::ty_u) | ty_float(ast::ty_f) => false,
+        ty_int(*) | ty_uint(*) | ty_float(*) => true,
+        _ => false
+    }
+}
+
 // Whether a type is Plain Old Data -- meaning it does not contain pointers
 // that the cycle collector might care about.
 pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
@@ -3896,7 +3904,7 @@ pub fn has_attr(tcx: ctxt, did: def_id, attr: &str) -> bool {
                     attrs: ref attrs,
                     _
                 }, _)) => attr::attrs_contains_name(*attrs, attr),
-            _ => tcx.sess.bug(fmt!("lookup_packed: %? is not an item",
+            _ => tcx.sess.bug(fmt!("has_attr: %? is not an item",
                                    did))
         }
     } else {
@@ -3908,9 +3916,14 @@ pub fn has_attr(tcx: ctxt, did: def_id, attr: &str) -> bool {
     }
 }
 
-/// Determine whether an item is annotated with `#[packed]` or not
+/// Determine whether an item is annotated with `#[packed]`
 pub fn lookup_packed(tcx: ctxt, did: def_id) -> bool {
     has_attr(tcx, did, "packed")
+}
+
+/// Determine whether an item is annotated with `#[simd]` 
+pub fn lookup_simd(tcx: ctxt, did: def_id) -> bool {
+    has_attr(tcx, did, "simd")
 }
 
 // Look up a field ID, whether or not it's local
