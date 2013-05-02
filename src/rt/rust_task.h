@@ -175,6 +175,10 @@
 #define RED_ZONE_SIZE RZ_MAC_32
 #endif
 
+#ifndef RED_ZONE_SIZE
+# error "Red zone not defined for this platform"
+#endif
+
 struct frame_glue_fns {
     uintptr_t mark_glue_off;
     uintptr_t drop_glue_off;
