@@ -51,41 +51,67 @@ pub fn gt(x: T, y: T) -> bool { x > y }
 ///
 /// Iterate over the range [`start`,`start`+`step`..`stop`)
 ///
-pub fn range_step(start: T,
-                       stop: T,
-                       step: T_SIGNED,
-                       it: &fn(T) -> bool) {
+pub fn _range_step(start: T,
+                   stop: T,
+                   step: T_SIGNED,
+                   it: &fn(T) -> bool) -> bool {
     let mut i = start;
     if step == 0 {
         fail!(~"range_step called with step == 0");
     }
     if step >= 0 {
         while i < stop {
-            if !it(i) { break }
+            if !it(i) { return false; }
             // avoiding overflow. break if i + step > max_value
-            if i > max_value - (step as T) { break; }
+            if i > max_value - (step as T) { return true; }
             i += step as T;
         }
     } else {
         while i > stop {
-            if !it(i) { break }
+            if !it(i) { return false; }
             // avoiding underflow. break if i + step < min_value
-            if i < min_value + ((-step) as T) { break; }
+            if i < min_value + ((-step) as T) { return true; }
             i -= -step as T;
         }
     }
+    return true;
+}
+
+#[cfg(stage0)]
+pub fn range_step(start: T, stop: T, step: T_SIGNED, it: &fn(T) -> bool) {
+    _range_step(start, stop, step, it);
+}
+#[cfg(not(stage0))]
+pub fn range_step(start: T, stop: T, step: T_SIGNED, it: &fn(T) -> bool) -> bool {
+    _range_step(start, stop, step, it)
 }
 
 #[inline(always)]
+#[cfg(stage0)]
 /// Iterate over the range [`lo`..`hi`)
 pub fn range(lo: T, hi: T, it: &fn(T) -> bool) {
     range_step(lo, hi, 1 as T_SIGNED, it);
 }
 
 #[inline(always)]
+#[cfg(not(stage0))]
+/// Iterate over the range [`lo`..`hi`)
+pub fn range(lo: T, hi: T, it: &fn(T) -> bool) -> bool {
+    range_step(lo, hi, 1 as T_SIGNED, it)
+}
+
+#[inline(always)]
+#[cfg(stage0)]
 /// Iterate over the range [`hi`..`lo`)
 pub fn range_rev(hi: T, lo: T, it: &fn(T) -> bool) {
     range_step(hi, lo, -1 as T_SIGNED, it);
+}
+
+#[inline(always)]
+#[cfg(not(stage0))]
+/// Iterate over the range [`hi`..`lo`)
+pub fn range_rev(hi: T, lo: T, it: &fn(T) -> bool) -> bool {
+    range_step(hi, lo, -1 as T_SIGNED, it)
 }
 
 /// Computes the bitwise complement

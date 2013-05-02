@@ -110,7 +110,12 @@ fn taskset_remove(tasks: &mut TaskSet, task: *rust_task) {
     let was_present = tasks.remove(&task);
     assert!(was_present);
 }
+#[cfg(stage0)]
 pub fn taskset_each(tasks: &TaskSet, blk: &fn(v: *rust_task) -> bool) {
+    tasks.each(|k| blk(*k))
+}
+#[cfg(not(stage0))]
+pub fn taskset_each(tasks: &TaskSet, blk: &fn(v: *rust_task) -> bool) -> bool {
     tasks.each(|k| blk(*k))
 }
 
@@ -685,13 +690,11 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
                 };
                 // Attempt to join every ancestor group.
                 result =
-                    for each_ancestor(ancestors, Some(bail)) |ancestor_tg| {
+                    each_ancestor(ancestors, Some(bail), |ancestor_tg| {
                         // Enlist as a descendant, not as an actual member.
                         // Descendants don't kill ancestor groups on failure.
-                        if !enlist_in_taskgroup(ancestor_tg, child, false) {
-                            break;
-                        }
-                    };
+                        enlist_in_taskgroup(ancestor_tg, child, false)
+                    });
                 // If any ancestor group fails, need to exit this group too.
                 if !result {
                     do access_group(child_arc) |child_tg| {
