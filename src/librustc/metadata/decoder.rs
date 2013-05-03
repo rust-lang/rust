@@ -196,12 +196,22 @@ fn item_def_id(d: ebml::Doc, cdata: cmd) -> ast::def_id {
                                                     |d| parse_def_id(d)));
 }
 
+#[cfg(stage0)]
 fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) {
     for reader::tagged_docs(d, tag_items_data_item_reexport) |reexport_doc| {
         if !f(reexport_doc) {
             return;
         }
     }
+}
+#[cfg(not(stage0))]
+fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) -> bool {
+    for reader::tagged_docs(d, tag_items_data_item_reexport) |reexport_doc| {
+        if !f(reexport_doc) {
+            return false;
+        }
+    }
+    return true;
 }
 
 fn variant_disr_val(d: ebml::Doc) -> Option<int> {
@@ -454,6 +464,7 @@ fn def_like_to_def(def_like: def_like) -> ast::def {
 }
 
 /// Iterates over the language items in the given crate.
+#[cfg(stage0)]
 pub fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) {
     let root = reader::Doc(cdata.data);
     let lang_items = reader::get_doc(root, tag_lang_items);
@@ -469,11 +480,29 @@ pub fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) {
         }
     }
 }
+/// Iterates over the language items in the given crate.
+#[cfg(not(stage0))]
+pub fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) -> bool {
+    let root = reader::Doc(cdata.data);
+    let lang_items = reader::get_doc(root, tag_lang_items);
+    for reader::tagged_docs(lang_items, tag_lang_items_item) |item_doc| {
+        let id_doc = reader::get_doc(item_doc, tag_lang_items_item_id);
+        let id = reader::doc_as_u32(id_doc) as uint;
+        let node_id_doc = reader::get_doc(item_doc,
+                                          tag_lang_items_item_node_id);
+        let node_id = reader::doc_as_u32(node_id_doc) as ast::node_id;
+
+        if !f(node_id, id) {
+            return false;
+        }
+    }
+    return true;
+}
 
 /// Iterates over all the paths in the given crate.
-pub fn each_path(intr: @ident_interner, cdata: cmd,
-                 get_crate_data: GetCrateDataCb,
-                 f: &fn(&str, def_like) -> bool) {
+pub fn _each_path(intr: @ident_interner, cdata: cmd,
+                  get_crate_data: GetCrateDataCb,
+                  f: &fn(&str, def_like) -> bool) -> bool {
     let root = reader::Doc(cdata.data);
     let items = reader::get_doc(root, tag_items);
     let items_data = reader::get_doc(items, tag_items_data);
@@ -555,10 +584,20 @@ pub fn each_path(intr: @ident_interner, cdata: cmd,
         }
     }
 
-    // If broken, stop here.
-    if broken {
-        return;
-    }
+    return broken;
+}
+
+#[cfg(stage0)]
+pub fn each_path(intr: @ident_interner, cdata: cmd,
+                 get_crate_data: GetCrateDataCb,
+                 f: &fn(&str, def_like) -> bool) {
+    _each_path(intr, cdata, get_crate_data, f);
+}
+#[cfg(not(stage0))]
+pub fn each_path(intr: @ident_interner, cdata: cmd,
+                 get_crate_data: GetCrateDataCb,
+                 f: &fn(&str, def_like) -> bool) -> bool {
+    _each_path(intr, cdata, get_crate_data, f)
 }
 
 pub fn get_item_path(intr: @ident_interner, cdata: cmd, id: ast::node_id)

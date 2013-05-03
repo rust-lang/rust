@@ -2408,14 +2408,14 @@ pub impl Resolver {
         let merge_import_resolution = |ident,
                                        name_bindings: @mut NameBindings| {
             let dest_import_resolution;
-            match module_.import_resolutions.find(ident) {
+            match module_.import_resolutions.find(&ident) {
                 None => {
                     // Create a new import resolution from this child.
                     dest_import_resolution = @mut ImportResolution(privacy,
                                                                    span,
                                                                    state);
                     module_.import_resolutions.insert
-                        (*ident, dest_import_resolution);
+                        (ident, dest_import_resolution);
                 }
                 Some(&existing_import_resolution) => {
                     dest_import_resolution = existing_import_resolution;
@@ -2424,7 +2424,7 @@ pub impl Resolver {
 
             debug!("(resolving glob import) writing resolution `%s` in `%s` \
                     to `%s`, privacy=%?",
-                   *self.session.str_of(*ident),
+                   *self.session.str_of(ident),
                    self.module_to_str(containing_module),
                    self.module_to_str(module_),
                    copy dest_import_resolution.privacy);
@@ -2443,13 +2443,13 @@ pub impl Resolver {
         };
 
         // Add all children from the containing module.
-        for containing_module.children.each |ident, name_bindings| {
+        for containing_module.children.each |&ident, name_bindings| {
             merge_import_resolution(ident, *name_bindings);
         }
 
         // Add external module children from the containing module.
         for containing_module.external_module_children.each
-                |ident, module| {
+                |&ident, module| {
             let name_bindings =
                 @mut Resolver::create_name_bindings_from_module(*module);
             merge_import_resolution(ident, name_bindings);
