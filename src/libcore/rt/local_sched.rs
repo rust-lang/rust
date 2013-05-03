@@ -63,7 +63,7 @@ pub fn borrow(f: &fn(&mut Scheduler)) {
     unsafe {
         let unsafe_sched = cast::transmute_mut_region(&mut *sched);
         let sched = Cell(sched);
-        
+
         do (|| {
             f(unsafe_sched);
         }).finally {
