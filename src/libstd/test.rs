@@ -688,7 +688,7 @@ pub mod bench {
         // not met, it may run as long as the Go algorithm.
         pub fn auto_bench(&mut self, f: &fn(&mut BenchHarness)) -> ~[f64] {
 
-            let rng = rand::rng();
+            let mut rng = rand::rng();
             let mut magnitude = 10;
             let mut prev_madp = 0.0;
 
