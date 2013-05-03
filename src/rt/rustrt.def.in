@@ -37,8 +37,8 @@ rust_list_dir_wfd_size
 rust_list_dir_wfd_fp_buf
 rust_log_console_on
 rust_log_console_off
-rust_process_wait
-rust_run_program
+rust_set_environ
+rust_unset_sigprocmask
 rust_sched_current_nonlazy_threads
 rust_sched_threads
 rust_set_exit_status
