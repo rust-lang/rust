@@ -14,6 +14,7 @@
 use cmp::Ord;
 use option::{None, Option, Some};
 use str;
+use to_str::ToStr;
 use u32;
 use uint;
 use unicode;
@@ -263,6 +264,12 @@ impl Ord for char {
     fn gt(&self, other: &char) -> bool { *self > *other }
     #[inline(always)]
     fn ge(&self, other: &char) -> bool { *self >= *other }
+}
+
+impl ToStr for char {
+    fn to_str(&self) -> ~str {
+        str::from_char(*self)
+    }
 }
 
 #[test]
