@@ -101,6 +101,7 @@ use middle::trans::type_of;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
+use driver::session;
 
 use core::container::Set; // XXX: this should not be necessary
 use core::to_bytes;
@@ -564,18 +565,33 @@ pub impl Datum {
                     DynaMut => bcx.tcx().lang_items.borrow_as_mut_fn(),
                 };
 
+                let box_ptr = Load(bcx,
+                                   PointerCast(bcx,
+                                               scratch.val,
+                                               T_ptr(T_ptr(T_i8()))));
+
                 bcx = callee::trans_lang_call(
                     bcx,
                     freeze_did,
                     ~[
-                        Load(bcx,
-                             PointerCast(bcx,
-                                         scratch.val,
-                                         T_ptr(T_ptr(T_i8())))),
+                        box_ptr,
                         filename,
                         line
                     ],
                     expr::SaveIn(scratch_bits.val));
+
+                if bcx.tcx().sess.opts.optimize == session::No {
+                    bcx = callee::trans_lang_call(
+                        bcx,
+                        bcx.tcx().lang_items.record_borrow_fn(),
+                        ~[
+                            box_ptr,
+                            Load(bcx, scratch_bits.val),
+                            filename,
+                            line
+                        ],
+                        expr::Ignore);
+                }
 
                 add_clean_return_to_mut(
                     cleanup_bcx, scratch.val, scratch_bits.val,

@@ -489,15 +489,37 @@ pub fn add_clean_return_to_mut(bcx: block,
             clean_temp(
                 frozen_val_ref,
                 |bcx| {
+                    let mut bcx = bcx;
+
+                    let box_ptr =
+                        build::Load(bcx,
+                                    build::PointerCast(bcx,
+                                                       frozen_val_ref,
+                                                       T_ptr(T_ptr(T_i8()))));
+
+                    let bits_val =
+                        build::Load(bcx,
+                                    bits_val_ref);
+
+                    if bcx.tcx().sess.opts.optimize == session::No {
+                        bcx = callee::trans_lang_call(
+                            bcx,
+                            bcx.tcx().lang_items.unrecord_borrow_fn(),
+                            ~[
+                                box_ptr,
+                                bits_val,
+                                filename_val,
+                                line_val
+                            ],
+                            expr::Ignore);
+                    }
+
                     callee::trans_lang_call(
                         bcx,
                         bcx.tcx().lang_items.return_to_mut_fn(),
                         ~[
-                            build::Load(bcx,
-                                        build::PointerCast(bcx,
-                                                           frozen_val_ref,
-                                                           T_ptr(T_ptr(T_i8())))),
-                            build::Load(bcx, bits_val_ref),
+                            box_ptr,
+                            bits_val,
                             filename_val,
                             line_val
                         ],
