@@ -235,6 +235,8 @@ pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) -> uint {
         fail_borrowed(a, file, line);
     }
 
+    (*a).header.ref_count = ref_count | FROZEN_BIT;
+
     ref_count
 }
 
@@ -251,6 +253,9 @@ pub unsafe fn borrow_as_mut(a: *u8, file: *c_char, line: size_t) -> uint {
     if (ref_count & (MUT_BIT|FROZEN_BIT)) != 0 {
         fail_borrowed(a, file, line);
     }
+
+    (*a).header.ref_count = ref_count | MUT_BIT | FROZEN_BIT;
+
     ref_count
 }
 
@@ -349,7 +354,12 @@ pub unsafe fn check_not_borrowed(a: *u8,
                                  file: *c_char,
                                  line: size_t) {
     let a: *mut BoxRepr = transmute(a);
-    if ((*a).header.ref_count & FROZEN_BIT) != 0 {
+    let ref_count = (*a).header.ref_count;
+    debug_ptr("check_not_borrowed (ptr) : ", a);
+    debug_ptr("                   (line): ", line as *());
+    debug_ptr("                   (rc)  : ", ref_count as *());
+
+    if (ref_count & FROZEN_BIT) != 0 {
         fail_borrowed(a, file, line);
     }
 }
