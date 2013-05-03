@@ -420,7 +420,8 @@ mod test {
 
     #[cfg(test)] fn to_json_str<E : Encodable<std::json::Encoder>>(val: @E) -> ~str {
         do io::with_str_writer |writer| {
-            val.encode(~std::json::Encoder(writer));
+            let mut encoder = std::json::Encoder(writer);
+            val.encode(&mut encoder);
         }
     }
 

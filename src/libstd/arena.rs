@@ -32,11 +32,11 @@
 // overhead when initializing plain-old-data and means we don't need
 // to waste time running the destructors of POD.
 
+use list::{MutList, MutCons, MutNil};
 use list;
-use list::{List, Cons, Nil};
 
 use core::at_vec;
-use core::cast::transmute;
+use core::cast::{transmute, transmute_mut_region};
 use core::cast;
 use core::libc::size_t;
 use core::ptr;
@@ -74,7 +74,7 @@ static tydesc_drop_glue_index: size_t = 3 as size_t;
 // will always stay at 0.
 struct Chunk {
     data: @[u8],
-    mut fill: uint,
+    fill: uint,
     is_pod: bool,
 }
 
@@ -82,9 +82,9 @@ pub struct Arena {
     // The head is seperated out from the list as a unbenchmarked
     // microoptimization, to avoid needing to case on the list to
     // access the head.
-    priv mut head: Chunk,
-    priv mut pod_head: Chunk,
-    priv mut chunks: @List<Chunk>,
+    priv head: Chunk,
+    priv pod_head: Chunk,
+    priv chunks: @mut MutList<Chunk>,
 }
 
 #[unsafe_destructor]
@@ -92,8 +92,10 @@ impl Drop for Arena {
     fn finalize(&self) {
         unsafe {
             destroy_chunk(&self.head);
-            for list::each(self.chunks) |chunk| {
-                if !chunk.is_pod { destroy_chunk(chunk); }
+            for self.chunks.each |chunk| {
+                if !chunk.is_pod {
+                    destroy_chunk(chunk);
+                }
             }
         }
     }
@@ -113,7 +115,7 @@ pub fn arena_with_size(initial_size: uint) -> Arena {
     Arena {
         head: chunk(initial_size, false),
         pod_head: chunk(initial_size, true),
-        chunks: @Nil,
+        chunks: @mut MutNil,
     }
 }
 
@@ -170,11 +172,11 @@ unsafe fn un_bitpack_tydesc_ptr(p: uint) -> (*TypeDesc, bool) {
 
 pub impl Arena {
     // Functions for the POD part of the arena
-    priv fn alloc_pod_grow(&self, n_bytes: uint, align: uint) -> *u8 {
+    priv fn alloc_pod_grow(&mut self, n_bytes: uint, align: uint) -> *u8 {
         // Allocate a new chunk.
         let chunk_size = at_vec::capacity(self.pod_head.data);
         let new_min_chunk_size = uint::max(n_bytes, chunk_size);
-        self.chunks = @Cons(copy self.pod_head, self.chunks);
+        self.chunks = @mut MutCons(copy self.pod_head, self.chunks);
         self.pod_head =
             chunk(uint::next_power_of_two(new_min_chunk_size + 1u), true);
 
@@ -182,27 +184,28 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    priv fn alloc_pod_inner(&self, n_bytes: uint, align: uint) -> *u8 {
-        let head = &mut self.pod_head;
-
-        let start = round_up_to(head.fill, align);
-        let end = start + n_bytes;
-        if end > at_vec::capacity(head.data) {
-            return self.alloc_pod_grow(n_bytes, align);
-        }
-        head.fill = end;
-
-        //debug!("idx = %u, size = %u, align = %u, fill = %u",
-        //       start, n_bytes, align, head.fill);
-
+    priv fn alloc_pod_inner(&mut self, n_bytes: uint, align: uint) -> *u8 {
         unsafe {
+            // XXX: Borrow check
+            let head = transmute_mut_region(&mut self.pod_head);
+
+            let start = round_up_to(head.fill, align);
+            let end = start + n_bytes;
+            if end > at_vec::capacity(head.data) {
+                return self.alloc_pod_grow(n_bytes, align);
+            }
+            head.fill = end;
+
+            //debug!("idx = %u, size = %u, align = %u, fill = %u",
+            //       start, n_bytes, align, head.fill);
+
             ptr::offset(vec::raw::to_ptr(head.data), start)
         }
     }
 
     #[inline(always)]
     #[cfg(stage0)]
-    priv fn alloc_pod<T>(&self, op: &fn() -> T) -> &'self T {
+    priv fn alloc_pod<T>(&mut self, op: &fn() -> T) -> &'self T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
             let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
@@ -216,7 +219,7 @@ pub impl Arena {
     #[cfg(stage1)]
     #[cfg(stage2)]
     #[cfg(stage3)]
-    priv fn alloc_pod<'a, T>(&'a self, op: &fn() -> T) -> &'a T {
+    priv fn alloc_pod<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
             let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
@@ -227,11 +230,12 @@ pub impl Arena {
     }
 
     // Functions for the non-POD part of the arena
-    priv fn alloc_nonpod_grow(&self, n_bytes: uint, align: uint) -> (*u8, *u8) {
+    priv fn alloc_nonpod_grow(&mut self, n_bytes: uint, align: uint)
+                             -> (*u8, *u8) {
         // Allocate a new chunk.
         let chunk_size = at_vec::capacity(self.head.data);
         let new_min_chunk_size = uint::max(n_bytes, chunk_size);
-        self.chunks = @Cons(copy self.head, self.chunks);
+        self.chunks = @mut MutCons(copy self.head, self.chunks);
         self.head =
             chunk(uint::next_power_of_two(new_min_chunk_size + 1u), false);
 
@@ -239,22 +243,23 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    priv fn alloc_nonpod_inner(&self, n_bytes: uint, align: uint) -> (*u8, *u8) {
-        let head = &mut self.head;
-
-        let tydesc_start = head.fill;
-        let after_tydesc = head.fill + sys::size_of::<*TypeDesc>();
-        let start = round_up_to(after_tydesc, align);
-        let end = start + n_bytes;
-        if end > at_vec::capacity(head.data) {
-            return self.alloc_nonpod_grow(n_bytes, align);
-        }
-        head.fill = round_up_to(end, sys::pref_align_of::<*TypeDesc>());
-
-        //debug!("idx = %u, size = %u, align = %u, fill = %u",
-        //       start, n_bytes, align, head.fill);
-
+    priv fn alloc_nonpod_inner(&mut self, n_bytes: uint, align: uint)
+                               -> (*u8, *u8) {
         unsafe {
+            let head = transmute_mut_region(&mut self.head);
+
+            let tydesc_start = head.fill;
+            let after_tydesc = head.fill + sys::size_of::<*TypeDesc>();
+            let start = round_up_to(after_tydesc, align);
+            let end = start + n_bytes;
+            if end > at_vec::capacity(head.data) {
+                return self.alloc_nonpod_grow(n_bytes, align);
+            }
+            head.fill = round_up_to(end, sys::pref_align_of::<*TypeDesc>());
+
+            //debug!("idx = %u, size = %u, align = %u, fill = %u",
+            //       start, n_bytes, align, head.fill);
+
             let buf = vec::raw::to_ptr(head.data);
             return (ptr::offset(buf, tydesc_start), ptr::offset(buf, start));
         }
@@ -262,7 +267,7 @@ pub impl Arena {
 
     #[inline(always)]
     #[cfg(stage0)]
-    priv fn alloc_nonpod<T>(&self, op: &fn() -> T) -> &'self T {
+    priv fn alloc_nonpod<T>(&mut self, op: &fn() -> T) -> &'self T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
             let (ty_ptr, ptr) =
@@ -286,7 +291,7 @@ pub impl Arena {
     #[cfg(stage1)]
     #[cfg(stage2)]
     #[cfg(stage3)]
-    priv fn alloc_nonpod<'a, T>(&'a self, op: &fn() -> T) -> &'a T {
+    priv fn alloc_nonpod<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
             let (ty_ptr, ptr) =
@@ -309,13 +314,16 @@ pub impl Arena {
     // The external interface
     #[inline(always)]
     #[cfg(stage0)]
-    fn alloc<T>(&self, op: &fn() -> T) -> &'self T {
+    fn alloc<T>(&mut self, op: &fn() -> T) -> &'self T {
         unsafe {
+            // XXX: Borrow check
+            let this = transmute_mut_region(self);
             if !rusti::needs_drop::<T>() {
-                self.alloc_pod(op)
-            } else {
-                self.alloc_nonpod(op)
+                return this.alloc_pod(op);
             }
+            // XXX: Borrow check
+            let this = transmute_mut_region(self);
+            this.alloc_nonpod(op)
         }
     }
 
@@ -324,20 +332,23 @@ pub impl Arena {
     #[cfg(stage1)]
     #[cfg(stage2)]
     #[cfg(stage3)]
-    fn alloc<'a, T>(&'a self, op: &fn() -> T) -> &'a T {
+    fn alloc<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
         unsafe {
+            // XXX: Borrow check
+            let this = transmute_mut_region(self);
             if !rusti::needs_drop::<T>() {
-                self.alloc_pod(op)
-            } else {
-                self.alloc_nonpod(op)
+                return this.alloc_pod(op);
             }
+            // XXX: Borrow check
+            let this = transmute_mut_region(self);
+            this.alloc_nonpod(op)
         }
     }
 }
 
 #[test]
 fn test_arena_destructors() {
-    let arena = Arena();
+    let mut arena = Arena();
     for uint::range(0, 10) |i| {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
@@ -348,9 +359,11 @@ fn test_arena_destructors() {
     }
 }
 
-#[test] #[should_fail] #[ignore(cfg(windows))]
+#[test]
+#[should_fail]
+#[ignore(cfg(windows))]
 fn test_arena_destructors_fail() {
-    let arena = Arena();
+    let mut arena = Arena();
     // Put some stuff in the arena.
     for uint::range(0, 10) |i| {
         // Arena allocate something with drop glue to make sure it
