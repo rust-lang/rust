@@ -65,6 +65,9 @@ pub mod logging;
 #[cfg(test)]
 pub mod test;
 
+/// Reference counting
+pub mod rc;
+
 /// Set up a default runtime configuration, given compiler-supplied arguments.
 ///
 /// This is invoked by the `start` _language item_ (unstable::lang) to
