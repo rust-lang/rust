@@ -394,10 +394,15 @@ pub fn call_tydesc_glue(cx: block, v: ValueRef, t: ty::t, field: uint)
 
 pub fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_visit_glue");
-    let mut bcx = bcx;
-    let (visitor_trait, object_ty) = ty::visitor_object_ty(bcx.tcx());
-    let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), object_ty)));
-    bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, visitor_trait.def_id);
+    let bcx = do with_scope(bcx, None, ~"visitor cleanup") |bcx| {
+        let mut bcx = bcx;
+        let (visitor_trait, object_ty) = ty::visitor_object_ty(bcx.tcx());
+        let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), object_ty)));
+        bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, visitor_trait.def_id);
+        // The visitor is a boxed object and needs to be dropped
+        add_clean(bcx, v, object_ty);
+        bcx
+    };
     build_return(bcx);
 }
 
