@@ -157,40 +157,46 @@ uninstall:
 
 # target platform specific variables
 # for arm-linux-androidabi
-define DEF_ADB_STATUS
-CFG_ADB_DEVICE=$(1)
+define DEF_ADB_DEVICE_STATUS
+CFG_ADB_DEVICE_STATUS=$(1)
 endef
 
 $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(if $(findstring $(target),"arm-linux-androideabi"), \
-    $(if $(findstring adb,$(shell which adb)), \
-      $(if $(findstring device,$(shell adb devices 2>/dev/null | grep -E '^[A-Za-z0-9-]+[[:blank:]]+device')), \
-        $(info install: install-runtime-target for arm-linux-androideabi enabled \
+    $(if $(findstring adb,$(CFG_ADB)), \
+      $(if $(findstring device,$(shell adb devices 2>/dev/null | grep -E '^[_A-Za-z0-9-]+[[:blank:]]+device')), \
+        $(info install: install-runtime-target for $(target) enabled \
           $(info install: android device attached) \
-          $(eval $(call DEF_ADB_STATUS, true))), \
-        $(info install: install-runtime-target for arm-linux-androideabi disabled \
+          $(eval $(call DEF_ADB_DEVICE_STATUS, true))), \
+        $(info install: install-runtime-target for $(target) disabled \
           $(info install: android device not attached) \
-          $(eval $(call DEF_ADB_STATUS, false))) \
+          $(eval $(call DEF_ADB_DEVICE_STATUS, false))) \
       ), \
-      $(info install: install-runtime-target for arm-linux-androideabi disabled \
+      $(info install: install-runtime-target for $(target) disabled \
         $(info install: adb not found) \
-        $(eval $(call DEF_ADB_STATUS, false))) \
+        $(eval $(call DEF_ADB_DEVICE_STATUS, false))) \
     ), \
   ) \
 )
 
-ifeq ($(CFG_ADB_DEVICE),true)
-
+ifeq (install-runtime-target,$(firstword $(MAKECMDGOALS)))
+$(eval $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS)):;@:)
+L_TOKEN := $(word 2,$(MAKECMDGOALS))
+ifeq ($(L_TOKEN),)
 CFG_RUNTIME_PUSH_DIR=/system/lib
+else
+CFG_RUNTIME_PUSH_DIR=$(L_TOKEN)
+endif
 
+ifeq ($(CFG_ADB_DEVICE_STATUS),true)
 ifdef VERBOSE
  ADB = adb $(1)
  ADB_PUSH = adb push $(1) $(2)
  ADB_SHELL = adb shell $(1) $(2) 
 else
- ADB = $(Q)$(call E, adb $(1)) && adb $(1) 1>/dev/null 2>/dev/null
- ADB_PUSH = $(Q)$(call E, adb push $(1)) && adb push $(1) $(2) 1>/dev/null 2>/dev/null
- ADB_SHELL = $(Q)$(call E, adb shell $(1) $(2)) && adb shell $(1) $(2) 1>/dev/null 2>/dev/null
+ ADB = $(Q)$(call E, adb $(1)) && adb $(1) 1>/dev/null 
+ ADB_PUSH = $(Q)$(call E, adb push $(1)) && adb push $(1) $(2) 1>/dev/null
+ ADB_SHELL = $(Q)$(call E, adb shell $(1) $(2)) && adb shell $(1) $(2) 1>/dev/null
 endif
 
 define INSTALL_RUNTIME_TARGET_N
@@ -215,8 +221,9 @@ $(eval $(call INSTALL_RUNTIME_TARGET_CLEANUP_N,arm-linux-androideabi))
 install-runtime-target: \
 	install-runtime-target-arm-linux-androideabi-cleanup \
 	install-runtime-target-arm-linux-androideabi-host-$(CFG_BUILD_TRIPLE)
-
 else
 install-runtime-target: 
-	@echo
+	@echo "No device to install runtime library"
+	@echo 
+endif
 endif
