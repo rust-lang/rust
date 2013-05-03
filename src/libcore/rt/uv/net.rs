@@ -10,7 +10,6 @@
 
 use prelude::*;
 use libc::{size_t, ssize_t, c_int, c_void};
-use util::ignore;
 use rt::uv::uvll;
 use rt::uv::uvll::*;
 use rt::uv::{AllocCallback, ConnectionCallback, ReadCallback};
@@ -19,6 +18,7 @@ use super::{Loop, Watcher, Request, UvError, Buf, NativeHandle, NullCallback,
 use super::super::io::net::ip::{IpAddr, Ipv4, Ipv6};
 use rt::uv::last_uv_error;
 
+#[cfg(test)] use util::ignore;
 #[cfg(test)] use cell::Cell;
 #[cfg(test)] use unstable::run_in_bare_thread;
 #[cfg(test)] use super::super::thread::Thread;
