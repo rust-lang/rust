@@ -12,7 +12,7 @@
 Message passing
 */
 
-use cast::transmute;
+use cast::{transmute, transmute_mut};
 use cast;
 use either::{Either, Left, Right};
 use kinds::Owned;
@@ -119,13 +119,15 @@ pub mod streamp {
 }
 
 /// An endpoint that can send many messages.
+#[unsafe_mut_field(endp)]
 pub struct Chan<T> {
-    mut endp: Option<streamp::client::Open<T>>
+    endp: Option<streamp::client::Open<T>>
 }
 
 /// An endpoint that can receive many messages.
+#[unsafe_mut_field(endp)]
 pub struct Port<T> {
-    mut endp: Option<streamp::server::Open<T>>,
+    endp: Option<streamp::server::Open<T>>,
 }
 
 /** Creates a `(Port, Chan)` pair.
@@ -136,30 +138,39 @@ These allow sending or receiving an unlimited number of messages.
 pub fn stream<T:Owned>() -> (Port<T>, Chan<T>) {
     let (c, s) = streamp::init();
 
-    (Port { endp: Some(s) }, Chan { endp: Some(c) })
+    (Port {
+        endp: Some(s)
+    }, Chan {
+        endp: Some(c)
+    })
 }
 
 impl<T: Owned> GenericChan<T> for Chan<T> {
     #[inline(always)]
     fn send(&self, x: T) {
-        let mut endp = None;
-        endp <-> self.endp;
-        self.endp = Some(
-            streamp::client::data(endp.unwrap(), x))
+        unsafe {
+            let mut endp = None;
+            let mut self_endp = transmute_mut(&self.endp);
+            endp <-> *self_endp;
+            *self_endp = Some(streamp::client::data(endp.unwrap(), x))
+        }
     }
 }
 
 impl<T: Owned> GenericSmartChan<T> for Chan<T> {
     #[inline(always)]
     fn try_send(&self, x: T) -> bool {
-        let mut endp = None;
-        endp <-> self.endp;
-        match streamp::client::try_data(endp.unwrap(), x) {
-            Some(next) => {
-                self.endp = Some(next);
-                true
+        unsafe {
+            let mut endp = None;
+            let mut self_endp = transmute_mut(&self.endp);
+            endp <-> *self_endp;
+            match streamp::client::try_data(endp.unwrap(), x) {
+                Some(next) => {
+                    *self_endp = Some(next);
+                    true
+                }
+                None => false
             }
-            None => false
         }
     }
 }
@@ -167,23 +178,29 @@ impl<T: Owned> GenericSmartChan<T> for Chan<T> {
 impl<T: Owned> GenericPort<T> for Port<T> {
     #[inline(always)]
     fn recv(&self) -> T {
-        let mut endp = None;
-        endp <-> self.endp;
-        let streamp::data(x, endp) = recv(endp.unwrap());
-        self.endp = Some(endp);
-        x
+        unsafe {
+            let mut endp = None;
+            let mut self_endp = transmute_mut(&self.endp);
+            endp <-> *self_endp;
+            let streamp::data(x, endp) = recv(endp.unwrap());
+            *self_endp = Some(endp);
+            x
+        }
     }
 
     #[inline(always)]
     fn try_recv(&self) -> Option<T> {
-        let mut endp = None;
-        endp <-> self.endp;
-        match try_recv(endp.unwrap()) {
-            Some(streamp::data(x, endp)) => {
-                self.endp = Some(endp);
-                Some(x)
+        unsafe {
+            let mut endp = None;
+            let mut self_endp = transmute_mut(&self.endp);
+            endp <-> *self_endp;
+            match try_recv(endp.unwrap()) {
+                Some(streamp::data(x, endp)) => {
+                    *self_endp = Some(endp);
+                    Some(x)
+                }
+                None => None
             }
-            None => None
         }
     }
 }
@@ -191,14 +208,17 @@ impl<T: Owned> GenericPort<T> for Port<T> {
 impl<T: Owned> Peekable<T> for Port<T> {
     #[inline(always)]
     fn peek(&self) -> bool {
-        let mut endp = None;
-        endp <-> self.endp;
-        let peek = match endp {
-            Some(ref mut endp) => peek(endp),
-            None => fail!(~"peeking empty stream")
-        };
-        self.endp <-> endp;
-        peek
+        unsafe {
+            let mut endp = None;
+            let mut self_endp = transmute_mut(&self.endp);
+            endp <-> *self_endp;
+            let peek = match endp {
+                Some(ref mut endp) => peek(endp),
+                None => fail!(~"peeking empty stream")
+            };
+            *self_endp <-> endp;
+            peek
+        }
     }
 }
 
@@ -219,7 +239,6 @@ pub struct PortSet<T> {
 }
 
 pub impl<T: Owned> PortSet<T> {
-
     fn new() -> PortSet<T> {
         PortSet {
             ports: ~[]
