@@ -145,7 +145,7 @@ struct FileInput_ {
 // "self.fi." -> "self." and renaming FileInput_. Documentation above
 // will likely have to be updated to use `let mut in = ...`.
 pub struct FileInput  {
-    priv mut fi: FileInput_
+    priv fi: @mut FileInput_
 }
 
 impl FileInput {
@@ -170,7 +170,7 @@ impl FileInput {
     pub fn from_vec_raw(files: ~[Option<Path>])
                                          -> FileInput {
         FileInput{
-            fi: FileInput_ {
+            fi: @mut FileInput_ {
                 files: files,
                 current_reader: None,
                 state: FileInputState {
