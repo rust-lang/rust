@@ -480,20 +480,12 @@ pub fn super_tys<C:Combine>(
             unify_float_variable(self, !self.a_is_expected(), v_id, v)
         }
 
+      (ty::ty_nil, _) |
+      (ty::ty_bool, _) |
       (ty::ty_int(_), _) |
       (ty::ty_uint(_), _) |
       (ty::ty_float(_), _) => {
         if ty::get(a).sty == ty::get(b).sty {
-            Ok(a)
-        } else {
-            Err(ty::terr_sorts(expected_found(self, a, b)))
-        }
-      }
-
-      (ty::ty_nil, _) |
-      (ty::ty_bool, _) => {
-        let cfg = tcx.sess.targ_cfg;
-        if ty::mach_sty(cfg, a) == ty::mach_sty(cfg, b) {
             Ok(a)
         } else {
             Err(ty::terr_sorts(expected_found(self, a, b)))
