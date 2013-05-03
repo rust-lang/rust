@@ -293,7 +293,13 @@ upcall_rust_personality(int version,
     s_rust_personality_args args = {(_Unwind_Reason_Code)0,
                                     version, actions, exception_class,
                                     ue_header, context};
-    rust_task *task = rust_get_current_task();
+    rust_task *task = rust_try_get_current_task();
+
+    if (task == NULL) {
+        // Assuming we're running with the new scheduler
+        upcall_s_rust_personality(&args);
+        return args.retval;
+    }
 
     // The personality function is run on the stack of the
     // last function that threw or landed, which is going
@@ -330,8 +336,12 @@ upcall_del_stack() {
 // needs to acquire the value of the stack pointer
 extern "C" CDECL void
 upcall_reset_stack_limit() {
-    rust_task *task = rust_get_current_task();
-    task->reset_stack_limit();
+    rust_task *task = rust_try_get_current_task();
+    if (task != NULL) {
+        task->reset_stack_limit();
+    } else {
+        // We must be in a newsched task
+    }
 }
 
 //

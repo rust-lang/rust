@@ -9,13 +9,9 @@
 // except according to those terms.
 
 use prelude::*;
-use super::misc::PathLike;
+use super::support::PathLike;
 use super::{Reader, Writer, Seek, Close};
-use super::{IoError, SeekStyle};
-
-/// Open a file with the default FileMode and FileAccess
-/// # XXX are there sane defaults here?
-pub fn open_file<P: PathLike>(_path: &P) -> FileStream { fail!() }
+use super::SeekStyle;
 
 /// # XXX
 /// * Ugh, this is ridiculous. What is the best way to represent these options?
@@ -46,7 +42,7 @@ impl FileStream {
     pub fn open<P: PathLike>(_path: &P,
                              _mode: FileMode,
                              _access: FileAccess
-                            ) -> Result<FileStream, IoError> {
+                            ) -> Option<FileStream> {
         fail!()
     }
 }
