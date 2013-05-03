@@ -22,9 +22,9 @@ use util::ppaux;
 
 use core::hash::Streaming;
 use core::hash;
-use core::io::WriterUtil;
 use core::libc::{c_int, c_uint};
 use core::os::consts::{macos, freebsd, linux, android, win32};
+use core::rt::io::Writer;
 use core::run;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
@@ -39,6 +39,11 @@ pub enum output_type {
     output_type_llvm_assembly,
     output_type_object,
     output_type_exe,
+}
+
+fn write_string<W:Writer>(writer: &mut W, string: &str) {
+    let buffer = str::as_bytes_slice(string);
+    writer.write(buffer);
 }
 
 pub fn llvm_err(sess: Session, msg: ~str) -> ! {
@@ -458,9 +463,11 @@ pub mod write {
  *
  */
 
-pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
-                   symbol_hasher: &hash::State) -> LinkMeta {
-
+pub fn build_link_meta(sess: Session,
+                       c: &ast::crate,
+                       output: &Path,
+                       symbol_hasher: &mut hash::State)
+                       -> LinkMeta {
     struct ProvidedMetas {
         name: Option<@str>,
         vers: Option<@str>,
@@ -498,7 +505,7 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
     }
 
     // This calculates CMH as defined above
-    fn crate_meta_extras_hash(symbol_hasher: &hash::State,
+    fn crate_meta_extras_hash(symbol_hasher: &mut hash::State,
                               cmh_items: ~[@ast::meta_item],
                               dep_hashes: ~[~str]) -> @str {
         fn len_and_str(s: &str) -> ~str {
@@ -511,17 +518,17 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
 
         let cmh_items = attr::sort_meta_items(cmh_items);
 
-        fn hash(symbol_hasher: &hash::State, m: &@ast::meta_item) {
+        fn hash(symbol_hasher: &mut hash::State, m: &@ast::meta_item) {
             match m.node {
               ast::meta_name_value(key, value) => {
-                symbol_hasher.write_str(len_and_str(*key));
-                symbol_hasher.write_str(len_and_str_lit(value));
+                write_string(symbol_hasher, len_and_str(*key));
+                write_string(symbol_hasher, len_and_str_lit(value));
               }
               ast::meta_word(name) => {
-                symbol_hasher.write_str(len_and_str(*name));
+                write_string(symbol_hasher, len_and_str(*name));
               }
               ast::meta_list(name, ref mis) => {
-                symbol_hasher.write_str(len_and_str(*name));
+                write_string(symbol_hasher, len_and_str(*name));
                 for mis.each |m_| {
                     hash(symbol_hasher, m_);
                 }
@@ -535,7 +542,7 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
         }
 
         for dep_hashes.each |dh| {
-            symbol_hasher.write_str(len_and_str(*dh));
+            write_string(symbol_hasher, len_and_str(*dh));
         }
 
     // tjc: allocation is unfortunate; need to change core::hash
@@ -596,23 +603,26 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
     }
 }
 
-pub fn truncated_hash_result(symbol_hasher: &hash::State) -> ~str {
+pub fn truncated_hash_result(symbol_hasher: &mut hash::State) -> ~str {
     symbol_hasher.result_str()
 }
 
 
 // This calculates STH for a symbol, as defined above
-pub fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
-               link_meta: LinkMeta) -> @str {
+pub fn symbol_hash(tcx: ty::ctxt,
+                   symbol_hasher: &mut hash::State,
+                   t: ty::t,
+                   link_meta: LinkMeta)
+                   -> @str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
     symbol_hasher.reset();
-    symbol_hasher.write_str(link_meta.name);
-    symbol_hasher.write_str(~"-");
-    symbol_hasher.write_str(link_meta.extras_hash);
-    symbol_hasher.write_str(~"-");
-    symbol_hasher.write_str(encoder::encoded_ty(tcx, t));
+    write_string(symbol_hasher, link_meta.name);
+    write_string(symbol_hasher, ~"-");
+    write_string(symbol_hasher, link_meta.extras_hash);
+    write_string(symbol_hasher, ~"-");
+    write_string(symbol_hasher, encoder::encoded_ty(tcx, t));
     let mut hash = truncated_hash_result(symbol_hasher);
     // Prefix with _ so that it never blends into adjacent digits
     str::unshift_char(&mut hash, '_');
