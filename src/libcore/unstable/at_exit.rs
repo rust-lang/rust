@@ -70,7 +70,9 @@ fn exit_runner(exit_fns: *ExitFunctions) {
     while !exit_fns_vec.is_empty() {
         match exit_fns_vec.pop() {
             ~f => {
-                task::task().supervised().spawn(f);
+                let mut task = task::task();
+                task.supervised();
+                task.spawn(f);
             }
         }
     }

@@ -580,7 +580,7 @@ fn spawn_raw_newsched(_opts: TaskOpts, f: ~fn()) {
     sched.schedule_new_task(task);
 }
 
-fn spawn_raw_oldsched(opts: TaskOpts, f: ~fn()) {
+fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
 
     let (child_tg, ancestors, is_main) =
         gen_child_taskgroup(opts.linked, opts.supervised);

@@ -62,7 +62,9 @@ fn get_monitor_task_gl() -> IoTask {
                 }
             };
             if installed {
-                do task().unlinked().spawn() {
+                let mut task = task();
+                task.unlinked();
+                do task.spawn {
                     unsafe {
                         debug!("global monitor task starting");
                         // As a weak task the runtime will notify us
@@ -88,7 +90,9 @@ fn get_monitor_task_gl() -> IoTask {
 }
 
 fn spawn_loop() -> IoTask {
-    let builder = do task().add_wrapper |task_body| {
+    let mut builder = task();
+
+    do builder.add_wrapper |task_body| {
         let result: ~fn() = || {
             // The I/O loop task also needs to be weak so it doesn't keep
             // the runtime alive
@@ -107,7 +111,8 @@ fn spawn_loop() -> IoTask {
         };
         result
     };
-    let builder = builder.unlinked();
+
+    builder.unlinked();
     spawn_iotask(builder)
 }
 
