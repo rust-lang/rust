@@ -56,7 +56,7 @@ impl Reader for TcpStream {
         match bytes_read {
             Ok(read) => Some(read),
             Err(_) => {
-                abort!("TODO");
+                abort!("XXX");
             }
         }
     }
@@ -70,7 +70,7 @@ impl Writer for TcpStream {
         match res {
             Ok(_) => (),
             Err(_) => {
-                abort!("TODO");
+                abort!("XXX");
             }
         }
     }
@@ -107,7 +107,7 @@ impl Listener<TcpStream> for TcpListener {
                 Some(TcpStream::new(s))
             }
             Err(_) => {
-                abort!("TODO");
+                abort!("XXX");
             }
         }
     }
