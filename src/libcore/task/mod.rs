@@ -559,8 +559,31 @@ pub fn yield() {
 pub fn failing() -> bool {
     //! True if the running task has failed
 
-    unsafe {
-        rt::rust_task_is_unwinding(rt::rust_get_task())
+    use rt::{context, OldTaskContext};
+    use rt::local_services::borrow_local_services;
+
+    match context() {
+        OldTaskContext => {
+            unsafe {
+                rt::rust_task_is_unwinding(rt::rust_get_task())
+            }
+        }
+        _ => {
+            let mut unwinding = false;
+            do borrow_local_services |local| {
+                unwinding = match local.unwinder {
+                    Some(unwinder) => {
+                        unwinder.unwinding
+                    }
+                    None => {
+                        // Because there is no unwinder we can't be unwinding.
+                        // (The process will abort on failure)
+                        false
+                    }
+                }
+            }
+            return unwinding;
+        }
     }
 }
 
@@ -1194,7 +1217,7 @@ fn test_spawn_thread_on_demand() {
 
 #[test]
 fn test_simple_newsched_spawn() {
-    use rt::run_in_newsched_task;
+    use rt::test::run_in_newsched_task;
 
     do run_in_newsched_task {
         spawn(||())
