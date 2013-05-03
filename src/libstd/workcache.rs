@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(deprecated_mode)];
-
 use json;
 use sha1;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
@@ -17,7 +15,7 @@ use sort;
 
 use core::cell::Cell;
 use core::cmp;
-use core::comm::{ChanOne, PortOne, oneshot, send_one};
+use core::comm::{PortOne, oneshot, send_one};
 use core::either::{Either, Left, Right};
 use core::hashmap::HashMap;
 use core::io;
