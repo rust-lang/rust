@@ -10,7 +10,9 @@
 
 //! Unsafe casting functions
 
+#[cfg(not(stage0))]
 use sys;
+#[cfg(not(stage0))]
 use unstable;
 
 pub mod rusti {

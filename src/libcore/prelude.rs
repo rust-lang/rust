@@ -51,6 +51,7 @@ pub use path::WindowsPath;
 pub use ptr::Ptr;
 pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr};
 pub use str::{StrSlice, OwnedStr};
+pub use from_str::{FromStr};
 pub use to_bytes::IterBytes;
 pub use to_str::{ToStr, ToStrConsume};
 pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};

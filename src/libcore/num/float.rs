@@ -20,7 +20,6 @@
 
 // PORT this must match in width according to architecture
 
-use from_str;
 use libc::c_int;
 use num::{Zero, One, strconv};
 use prelude::*;
@@ -289,7 +288,7 @@ pub fn from_str_radix(num: &str, radix: uint) -> Option<float> {
                              strconv::ExpNone, false, false)
 }
 
-impl from_str::FromStr for float {
+impl FromStr for float {
     #[inline(always)]
     fn from_str(val: &str) -> Option<float> { from_str(val) }
 }
