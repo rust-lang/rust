@@ -164,7 +164,7 @@ endef
 $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(if $(findstring $(target),"arm-linux-androideabi"), \
     $(if $(findstring adb,$(shell which adb)), \
-      $(if $(findstring device,$(shell adb devices 2>/dev/null | grep -E '^[A-Za-z0-9]+[[:blank:]]+device')), \
+      $(if $(findstring device,$(shell adb devices 2>/dev/null | grep -E '^[A-Za-z0-9-]+[[:blank:]]+device')), \
         $(info install: install-runtime-target for arm-linux-androideabi enabled \
           $(info install: android device attached) \
           $(eval $(call DEF_ADB_STATUS, true))), \
@@ -181,6 +181,8 @@ $(foreach target,$(CFG_TARGET_TRIPLES), \
 
 ifeq ($(CFG_ADB_DEVICE),true)
 
+CFG_RUNTIME_PUSH_DIR=/system/lib
+
 ifdef VERBOSE
  ADB = adb $(1)
  ADB_PUSH = adb push $(1) $(2)
@@ -193,17 +195,18 @@ endif
 
 define INSTALL_RUNTIME_TARGET_N
 install-runtime-target-$(1)-host-$(2): $$(TSREQ$$(ISTAGE)_T_$(1)_H_$(2)) $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
-	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(CFG_RUNTIME_$(1)),/system/lib)
-	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(CORELIB_GLOB_$(1)),/system/lib)
-	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(STDLIB_GLOB_$(1)),/system/lib)
+	$(Q)$(call ADB_SHELL,mkdir,$(CFG_RUNTIME_PUSH_DIR))
+	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(CFG_RUNTIME_$(1)),$(CFG_RUNTIME_PUSH_DIR))
+	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(CORELIB_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
+	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(STDLIB_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
 endef
 
 define INSTALL_RUNTIME_TARGET_CLEANUP_N
 install-runtime-target-$(1)-cleanup:
 	$(Q)$(call ADB,remount)
-	$(Q)$(call ADB_SHELL,rm,/system/lib/$(CFG_RUNTIME_$(1)))
-	$(Q)$(call ADB_SHELL,rm,/system/lib/$(CORELIB_GLOB_$(1)))
-	$(Q)$(call ADB_SHELL,rm,/system/lib/$(STDLIB_GLOB_$(1)))
+	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(CFG_RUNTIME_$(1)))
+	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(CORELIB_GLOB_$(1)))
+	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(STDLIB_GLOB_$(1)))
 endef
 
 $(eval $(call INSTALL_RUNTIME_TARGET_N,arm-linux-androideabi,$(CFG_BUILD_TRIPLE)))

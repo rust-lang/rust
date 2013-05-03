@@ -104,7 +104,7 @@ $(foreach target,$(CFG_TARGET_TRIPLES), \
       $(eval $(call DEF_RUNNABLE_STATUS,$(target),true))), \
     $(if $(findstring $(target),"arm-linux-androideabi"), \
       $(if $(findstring adb,$(shell which adb)), \
-        $(if $(findstring device,$(shell adb devices 2>/dev/null | grep -E '^[A-Za-z0-9]+[[:blank:]]+device')), \
+        $(if $(findstring device,$(shell adb devices 2>/dev/null | grep -E '^[A-Za-z0-9-]+[[:blank:]]+device')), \
           $(info check: $(target) test set is runnable \
             $(info check: adb device attached) \
             $(eval $(call DEF_RUNNABLE_STATUS,$(target),true))), \
@@ -129,9 +129,8 @@ CFG_ADB_PATH := $(shell which adb)
 CFG_ADB_TEST_DIR=/system/tmp
 
 $(info check: device $(CFG_ADB_TEST_DIR) \
+ $(shell $(CFG_ADB_PATH) remount 1>/dev/null) \
  $(shell $(CFG_ADB_PATH) shell mkdir $(CFG_ADB_TEST_DIR) 1>/dev/null) \
- $(shell $(CFG_ADB_PATH) shell rm $(CFG_ADB_TEST_DIR)/*-arm-linux-androideabi 1>/dev/null) \
- $(shell $(CFG_ADB_PATH) shell rm $(CFG_ADB_TEST_DIR)/*.so 1>/dev/null) \
  )
 endif
 
