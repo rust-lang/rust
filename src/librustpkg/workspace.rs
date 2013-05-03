@@ -14,7 +14,7 @@ use path_util::{rust_path, workspace_contains_package_id};
 use util::PkgId;
 use core::path::Path;
 
-pub fn pkg_parent_workspaces(pkgid: PkgId, action: &fn(&Path) -> bool) {
+pub fn pkg_parent_workspaces(pkgid: PkgId, action: &fn(&Path) -> bool) -> bool {
     // Using the RUST_PATH, find workspaces that contain
     // this package ID
     let workspaces = rust_path().filtered(|ws|
@@ -31,4 +31,5 @@ pub fn pkg_parent_workspaces(pkgid: PkgId, action: &fn(&Path) -> bool) {
             break;
         }
     }
+    return true;
 }
