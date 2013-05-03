@@ -11,6 +11,7 @@
 use core::*;
 use core::cmp::Ord;
 use core::hash::Streaming;
+use core::rt::io::Writer;
 use rustc::driver::{driver, session};
 use rustc::driver::session::{lib_crate, unknown_crate};
 use rustc::metadata::filesearch;
@@ -367,9 +368,9 @@ pub fn error(msg: ~str) {
 }
 
 pub fn hash(data: ~str) -> ~str {
-    let hasher = &hash::default_state();
-
-    hasher.write_str(data);
+    let mut hasher = hash::default_state();
+    let buffer = str::as_bytes_slice(data);
+    hasher.write(buffer);
     hasher.result_str()
 }
 
