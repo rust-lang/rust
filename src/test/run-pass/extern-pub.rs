@@ -6,5 +6,3 @@ extern {
 
 pub fn main() {
 }
-
-

@@ -1957,4 +1957,3 @@ mod bigint_tests {
         assert!(-Zero::zero::<BigInt>() == Zero::zero::<BigInt>());
     }
 }
-

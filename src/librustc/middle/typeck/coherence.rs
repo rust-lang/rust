@@ -1119,4 +1119,3 @@ pub fn check_coherence(crate_context: @mut CrateCtxt, crate: @crate) {
     let coherence_checker = @CoherenceChecker(crate_context);
     coherence_checker.check_coherence(crate);
 }
-

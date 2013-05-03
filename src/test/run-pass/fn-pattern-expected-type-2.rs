@@ -15,4 +15,3 @@ pub fn main() {
         io::println(x.to_str());
     }
 }
-

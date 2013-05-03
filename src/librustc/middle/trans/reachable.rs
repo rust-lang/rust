@@ -242,4 +242,3 @@ fn traverse_all_resources_and_impls(cx: &ctx, crate_mod: &_mod) {
             ..*visit::default_visitor()
         }));
 }
-

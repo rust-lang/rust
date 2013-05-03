@@ -4,4 +4,3 @@ fn main() {
     let mut y = /*move*/ b; //~ ERROR moving out of mutable local variable prohibited
     *y += 1;
 }
-

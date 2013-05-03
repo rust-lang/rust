@@ -24,4 +24,3 @@ fn foo(p: @point) -> &int {
 }
 
 fn main() {}
-

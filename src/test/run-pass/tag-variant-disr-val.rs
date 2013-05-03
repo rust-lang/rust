@@ -69,5 +69,3 @@ fn get_color_if(color: color) -> ~str {
     else if color == orange {~"orange"}
     else {~"unknown"}
 }
-
-

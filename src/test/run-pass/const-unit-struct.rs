@@ -17,4 +17,3 @@ pub fn main() {
         Foo => {}
     }
 }
-

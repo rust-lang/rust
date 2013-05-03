@@ -47,4 +47,3 @@ impl UdpListener {
 impl Listener<UdpStream> for UdpListener {
     fn accept(&mut self) -> Option<UdpStream> { fail!() }
 }
-

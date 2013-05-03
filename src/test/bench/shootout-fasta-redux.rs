@@ -201,4 +201,3 @@ fn main() {
         fputc('\n' as c_int, stdout);
     }
 }
-

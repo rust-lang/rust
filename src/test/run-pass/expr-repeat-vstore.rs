@@ -20,4 +20,3 @@ fn main() {
     println((copy v[3]).to_str());
     println((copy v[4]).to_str());
 }
-

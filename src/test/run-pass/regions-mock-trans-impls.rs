@@ -52,4 +52,3 @@ pub fn main() {
     let mut ccx = Ccx { x: 0 };
     f(&mut ccx);
 }
-

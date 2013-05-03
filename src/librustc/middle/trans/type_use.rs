@@ -383,4 +383,3 @@ pub fn handle_body(cx: Context, body: &blk) {
     });
     (v.visit_block)(body, cx, v);
 }
-

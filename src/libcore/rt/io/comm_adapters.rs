@@ -56,4 +56,3 @@ impl<W: Writer> WriterChan<W> {
 impl<W: Writer> GenericChan<~[u8]> for WriterChan<W> {
     fn send(&self, _x: ~[u8]) { fail!() }
 }
-

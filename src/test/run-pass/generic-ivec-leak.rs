@@ -11,4 +11,3 @@
 enum wrapper<T> { wrapped(T), }
 
 pub fn main() { let w = wrapped(~[1, 2, 3, 4, 5]); }
-

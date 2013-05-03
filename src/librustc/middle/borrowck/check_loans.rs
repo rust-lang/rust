@@ -802,4 +802,3 @@ fn check_loans_in_block(blk: &ast::blk,
         visit::visit_block(blk, self, vt);
     }
 }
-

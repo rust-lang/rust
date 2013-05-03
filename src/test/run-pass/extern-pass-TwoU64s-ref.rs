@@ -26,4 +26,3 @@ pub fn main() {
         assert!(x == y);
     }
 }
-

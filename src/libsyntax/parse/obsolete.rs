@@ -298,4 +298,3 @@ pub impl Parser {
     }
 
 }
-

@@ -20,4 +20,3 @@ fn main() {
         &Bar(ref identifier) => io::println(*identifier)
     };
 }
-    

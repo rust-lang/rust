@@ -398,4 +398,3 @@ pub fn trans_fail_bounds_check(bcx: block, sp: span,
     Unreachable(bcx);
     return bcx;
 }
-

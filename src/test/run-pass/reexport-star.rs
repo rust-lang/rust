@@ -25,4 +25,3 @@ pub fn main() {
     b::f();
     b::g();
 }
-
