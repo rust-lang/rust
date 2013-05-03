@@ -13,7 +13,7 @@
 use core::rand::RngUtil;
 
 pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
-    let r = rand::rng();
+    let mut r = rand::rng();
     for 1000.times {
         let p = tmpdir.push(r.gen_str(16) + suffix);
         if os::make_dir(&p, 0x1c0) { // 700

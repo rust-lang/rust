@@ -27,13 +27,13 @@ mod ziggurat_tables;
 
 // inlining should mean there is no performance penalty for this
 #[inline(always)]
-fn ziggurat<R:Rng>(rng: &R,
+fn ziggurat<R:Rng>(rng: &mut R,
                    center_u: bool,
                    X: ziggurat_tables::ZigTable,
                    F: ziggurat_tables::ZigTable,
                    F_DIFF: ziggurat_tables::ZigTable,
                    pdf: &'static fn(f64) -> f64, // probability density function
-                   zero_case: &'static fn(&R, f64) -> f64) -> f64 {
+                   zero_case: &'static fn(&mut R, f64) -> f64) -> f64 {
     loop {
         let u = if center_u {2.0 * rng.gen() - 1.0} else {rng.gen()};
         let i: uint = rng.gen::<uint>() & 0xff;
@@ -76,13 +76,13 @@ fn ziggurat<R:Rng>(rng: &R,
 pub struct StandardNormal(f64);
 
 impl Rand for StandardNormal {
-    fn rand<R:Rng>(rng: &R) -> StandardNormal {
+    fn rand<R:Rng>(rng: &mut R) -> StandardNormal {
         #[inline(always)]
         fn pdf(x: f64) -> f64 {
             f64::exp((-x*x/2.0) as f64) as f64
         }
         #[inline(always)]
-        fn zero_case<R:Rng>(rng: &R, u: f64) -> f64 {
+        fn zero_case<R:Rng>(rng: &mut R, u: f64) -> f64 {
             // compute a random number in the tail by hand
 
             // strange initial conditions, because the loop is not
@@ -130,13 +130,13 @@ pub struct Exp1(f64);
 // This could be done via `-f64::ln(rng.gen::<f64>())` but that is slower.
 impl Rand for Exp1 {
     #[inline]
-    fn rand<R:Rng>(rng: &R) -> Exp1 {
+    fn rand<R:Rng>(rng: &mut R) -> Exp1 {
         #[inline(always)]
         fn pdf(x: f64) -> f64 {
             f64::exp(-x)
         }
         #[inline(always)]
-        fn zero_case<R:Rng>(rng: &R, _u: f64) -> f64 {
+        fn zero_case<R:Rng>(rng: &mut R, _u: f64) -> f64 {
             ziggurat_tables::ZIG_EXP_R - f64::ln(rng.gen())
         }
 
