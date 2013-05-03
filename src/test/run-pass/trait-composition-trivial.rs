@@ -17,5 +17,3 @@ trait Bar : Foo {
 }
 
 pub fn main() {}
-
-

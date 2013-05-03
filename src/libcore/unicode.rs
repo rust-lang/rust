@@ -2642,4 +2642,3 @@ pub mod derived_property {
         bsearch_range_table(c, XID_Start_table)
     }
 }
-

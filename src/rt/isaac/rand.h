@@ -52,5 +52,3 @@ void isaac(randctx *r);
      (r)->randrsl[(r)->randcnt])
 
 #endif  /* RAND */
-
-

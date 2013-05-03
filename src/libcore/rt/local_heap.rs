@@ -78,4 +78,3 @@ extern {
                                 size: size_t) -> *OpaqueBox;
     fn rust_boxed_region_free(region: *BoxedRegion, box: *OpaqueBox);
 }
-

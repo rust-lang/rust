@@ -799,4 +799,3 @@ pub fn trans_arg_expr(bcx: block,
     debug!("--- trans_arg_expr passing %s", val_str(bcx.ccx().tn, val));
     return rslt(bcx, val);
 }
-

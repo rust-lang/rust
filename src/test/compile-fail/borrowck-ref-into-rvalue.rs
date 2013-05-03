@@ -13,9 +13,8 @@ fn main() {
     match Some(~"Hello") { //~ ERROR illegal borrow
         Some(ref m) => {
             msg = m;
-        },  
+        },
         None => { fail!() }
-    }   
+    }
     io::println(*msg);
 }
-

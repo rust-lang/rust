@@ -29,4 +29,3 @@ fn consume(v: ~List) -> int {
 }
 
 fn main() {}
-

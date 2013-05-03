@@ -32,4 +32,3 @@ pub fn main() {
     assert!(x != y);
     assert!(x == z);
 }
-

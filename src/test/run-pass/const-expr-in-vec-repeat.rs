@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that constant expressions can be used in vec repeat syntax. 
+// Check that constant expressions can be used in vec repeat syntax.
 
 pub fn main() {
 

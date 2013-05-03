@@ -250,7 +250,7 @@ Version 0.3  (July 2012)
       * Slices and fixed-size, interior-allocated vectors
       * #!-comments for lang versioning, shell execution
       * Destructors and iface implementation for classes;
-      	type-parameterized classes and class methods
+        type-parameterized classes and class methods
       * 'const' type kind for types that can be used to implement
         shared-memory concurrency patterns
 
@@ -261,7 +261,7 @@ Version 0.3  (July 2012)
                  'crust', 'native' (now 'extern'), 'cont' (now 'again')
 
       * Constructs: do-while loops ('do' repurposed), fn binding,
-      	            resources (replaced by destructors)
+                    resources (replaced by destructors)
 
    * Compiler reorganization
       * Syntax-layer of compiler split into separate crate
@@ -276,7 +276,7 @@ Version 0.3  (July 2012)
       * Extensive work on libuv interface
       * Much vector code moved to libraries
       * Syntax extensions: #line, #col, #file, #mod, #stringify,
-      	#include, #include_str, #include_bin
+        #include, #include_str, #include_bin
 
    * Tool improvements
       * Cargo automatically resolves dependencies

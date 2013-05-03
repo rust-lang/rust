@@ -104,7 +104,7 @@ fn p(x: int, y: int) -> p {
 fn test_class() {
   let mut q = p(1, 2);
   let mut r = p(1, 2);
-  
+
   unsafe {
   error!("q = %x, r = %x",
          (::core::cast::transmute::<*p, uint>(&q)),

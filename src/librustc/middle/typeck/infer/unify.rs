@@ -265,5 +265,3 @@ impl SimplyUnifiable for ast::float_ty {
         return ty::terr_float_mismatch(err);
     }
 }
-
-

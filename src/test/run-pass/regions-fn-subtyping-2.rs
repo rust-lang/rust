@@ -19,10 +19,8 @@ fn has_same_region(f: &fn<'a>(x: &'a int, g: &fn(y: &'a int))) {
     wants_same_region(f);
 }
 
-fn wants_same_region(_f: &fn<'b>(x: &'b int, g: &fn(y: &'b int))) { 
+fn wants_same_region(_f: &fn<'b>(x: &'b int, g: &fn(y: &'b int))) {
 }
 
 pub fn main() {
 }
-
-

@@ -603,4 +603,3 @@ pub fn check_crate(tcx: ty::ctxt,
     });
     visit::visit_crate(crate, method_map, visitor);
 }
-

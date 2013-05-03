@@ -21,4 +21,3 @@ pub fn main() {
     }
     debug!(*z);
 }
-

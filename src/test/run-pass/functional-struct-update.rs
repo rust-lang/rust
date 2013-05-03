@@ -18,4 +18,3 @@ pub fn main() {
     let c = Foo { x: 4, .. a};
     io::println(fmt!("%?", c));
 }
-

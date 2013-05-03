@@ -52,5 +52,3 @@ def download_new_file (date, rev, platform, hsh):
 for ff in newestSet["files"]:
    download_new_file (newestSet["date"], newestSet["rev"],
                       ff["platform"], ff["hash"])
-
-

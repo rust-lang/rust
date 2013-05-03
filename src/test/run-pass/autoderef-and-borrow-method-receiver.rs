@@ -22,4 +22,3 @@ fn g(x: &mut Foo) {
 
 pub fn main() {
 }
-

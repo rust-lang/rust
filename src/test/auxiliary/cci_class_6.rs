@@ -31,4 +31,3 @@ pub mod kitties {
         }
     }
 }
-

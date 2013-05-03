@@ -666,5 +666,3 @@ pub fn resolve_in_block(fcx: @mut FnCtxt, bl: &ast::blk) {
         .. *visit::default_visitor()
     }));
 }
-
-

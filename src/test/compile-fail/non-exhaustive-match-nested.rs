@@ -20,4 +20,3 @@ fn main() {
       b => { fail!(~"goodbye"); }
     }
 }
-

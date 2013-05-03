@@ -30,4 +30,3 @@ impl Bar for A {
 
 fn main() {
 }
-

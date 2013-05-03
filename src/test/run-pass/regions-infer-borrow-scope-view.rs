@@ -16,4 +16,3 @@ pub fn main() {
     let y = view(x);
     assert!((v[0] == x[0]) && (v[0] == y[0]));
 }
-

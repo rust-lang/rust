@@ -7,4 +7,3 @@ pub struct Foo {
 impl Foo {
     fn new() -> Foo { Foo { x: 1 } }
 }
-

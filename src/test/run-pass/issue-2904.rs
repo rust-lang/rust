@@ -37,7 +37,7 @@ impl to_str::ToStr for square {
           closed_lift => { ~"L" }
           open_lift => { ~"O" }
           earth => { ~"." }
-          empty => { ~" " } 
+          empty => { ~" " }
         }
     }
 }

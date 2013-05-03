@@ -122,4 +122,3 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
       }
     }
 }
-
