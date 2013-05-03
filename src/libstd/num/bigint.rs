@@ -21,7 +21,6 @@ A BigInt is a combination of BigUint and Sign.
 
 use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use core::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix};
-use core::*;
 
 /**
 A BigDigit is a BigUint's composing element.
@@ -141,7 +140,7 @@ impl ToStr for BigUint {
     fn to_str(&self) -> ~str { self.to_str_radix(10) }
 }
 
-impl from_str::FromStr for BigUint {
+impl FromStr for BigUint {
     #[inline(always)]
     fn from_str(s: &str) -> Option<BigUint> {
         FromStrRadix::from_str_radix(s, 10)
@@ -785,7 +784,7 @@ impl ToStr for BigInt {
     fn to_str(&self) -> ~str { self.to_str_radix(10) }
 }
 
-impl from_str::FromStr for BigInt {
+impl FromStr for BigInt {
     #[inline(always)]
     fn from_str(s: &str) -> Option<BigInt> {
         FromStrRadix::from_str_radix(s, 10)

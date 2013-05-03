@@ -10,7 +10,6 @@
 
 //! Operations and constants for `f32`
 
-use from_str;
 use num::{Zero, One, strconv};
 use prelude::*;
 
@@ -798,7 +797,7 @@ pub fn from_str_radix(num: &str, rdx: uint) -> Option<f32> {
                              strconv::ExpNone, false, false)
 }
 
-impl from_str::FromStr for f32 {
+impl FromStr for f32 {
     #[inline(always)]
     fn from_str(val: &str) -> Option<f32> { from_str(val) }
 }
