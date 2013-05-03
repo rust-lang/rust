@@ -204,22 +204,32 @@ impl FailWithCause for &'static str {
 #[cfg(stage0)]
 pub fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
 
+    do str::as_buf(msg) |msg_buf, _msg_len| {
+        do str::as_buf(file) |file_buf, _file_len| {
+            unsafe {
+                let msg_buf = cast::transmute(msg_buf);
+                let file_buf = cast::transmute(file_buf);
+                begin_unwind_(msg_buf, file_buf, line as libc::size_t)
+            }
+        }
+    }
+}
+
+// FIXME #4427: Temporary until rt::rt_fail_ goes away
+pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     use rt::{context, OldTaskContext};
     use rt::local_services::unsafe_borrow_local_services;
 
     match context() {
         OldTaskContext => {
-            do str::as_buf(msg) |msg_buf, _msg_len| {
-                do str::as_buf(file) |file_buf, _file_len| {
-                    unsafe {
-                        let msg_buf = cast::transmute(msg_buf);
-                        let file_buf = cast::transmute(file_buf);
-                        begin_unwind_(msg_buf, file_buf, line as libc::size_t)
-                    }
-                }
+            unsafe {
+                gc::cleanup_stack_for_failure();
+                rustrt::rust_upcall_fail(msg, file, line);
+                cast::transmute(())
             }
         }
         _ => {
+            // XXX: Need to print the failure message
             gc::cleanup_stack_for_failure();
             unsafe {
                 let local_services = unsafe_borrow_local_services();
@@ -229,15 +239,6 @@ pub fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
                 }
             }
         }
-    }
-}
-
-// FIXME #4427: Temporary until rt::rt_fail_ goes away
-pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
-    unsafe {
-        gc::cleanup_stack_for_failure();
-        rustrt::rust_upcall_fail(msg, file, line);
-        cast::transmute(())
     }
 }
 
