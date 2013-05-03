@@ -140,6 +140,7 @@ impl WorkMap {
     fn new() -> WorkMap { WorkMap(HashMap::new()) }
 }
 
+#[cfg(stage0)]
 impl<S:Encoder> Encodable<S> for WorkMap {
     fn encode(&self, s: &S) {
         let mut d = ~[];
@@ -151,8 +152,33 @@ impl<S:Encoder> Encodable<S> for WorkMap {
     }
 }
 
+#[cfg(not(stage0))]
+impl<S:Encoder> Encodable<S> for WorkMap {
+    fn encode(&self, s: &mut S) {
+        let mut d = ~[];
+        for self.each |k, v| {
+            d.push((copy *k, copy *v))
+        }
+        sort::tim_sort(d);
+        d.encode(s)
+    }
+}
+
+#[cfg(stage0)]
 impl<D:Decoder> Decodable<D> for WorkMap {
     fn decode(d: &D) -> WorkMap {
+        let v : ~[(WorkKey,~str)] = Decodable::decode(d);
+        let mut w = WorkMap::new();
+        for v.each |&(k, v)| {
+            w.insert(copy k, copy v);
+        }
+        w
+    }
+}
+
+#[cfg(not(stage0))]
+impl<D:Decoder> Decodable<D> for WorkMap {
+    fn decode(d: &mut D) -> WorkMap {
         let v : ~[(WorkKey,~str)] = Decodable::decode(d);
         let mut w = WorkMap::new();
         for v.each |&(k, v)| {
@@ -171,8 +197,8 @@ struct Database {
 pub impl Database {
     fn prepare(&mut self,
                fn_name: &str,
-               declared_inputs: &WorkMap) -> Option<(WorkMap, WorkMap, ~str)>
-    {
+               declared_inputs: &WorkMap)
+               -> Option<(WorkMap, WorkMap, ~str)> {
         let k = json_encode(&(fn_name, declared_inputs));
         match self.db_cache.find(&k) {
             None => None,
@@ -229,17 +255,38 @@ struct Work<T> {
     res: Option<Either<T,PortOne<(Exec,T)>>>
 }
 
+#[cfg(stage0)]
 fn json_encode<T:Encodable<json::Encoder>>(t: &T) -> ~str {
     do io::with_str_writer |wr| {
         t.encode(&json::Encoder(wr));
     }
 }
 
+#[cfg(not(stage0))]
+fn json_encode<T:Encodable<json::Encoder>>(t: &T) -> ~str {
+    do io::with_str_writer |wr| {
+        let mut encoder = json::Encoder(wr);
+        t.encode(&mut encoder);
+    }
+}
+
 // FIXME(#5121)
+#[cfg(stage0)]
 fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
     do io::with_str_reader(s) |rdr| {
         let j = result::unwrap(json::from_reader(rdr));
-        Decodable::decode(&json::Decoder(j))
+        let decoder = json::Decoder(j);
+        Decodable::decode(&decoder)
+    }
+}
+
+// FIXME(#5121)
+#[cfg(not(stage0))]
+fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
+    do io::with_str_reader(s) |rdr| {
+        let j = result::unwrap(json::from_reader(rdr));
+        let mut decoder = json::Decoder(j);
+        Decodable::decode(&mut decoder)
     }
 }
 

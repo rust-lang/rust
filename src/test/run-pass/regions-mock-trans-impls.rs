@@ -21,7 +21,7 @@ struct Bcx<'self> {
 }
 
 struct Fcx<'self> {
-    arena: &'self Arena,
+    arena: &'self mut Arena,
     ccx: &'self Ccx
 }
 
@@ -29,23 +29,27 @@ struct Ccx {
     x: int
 }
 
-fn h<'r>(bcx : &'r Bcx<'r>) -> &'r Bcx<'r> {
-    return bcx.fcx.arena.alloc(|| Bcx { fcx: bcx.fcx });
+fn h<'r>(bcx : &'r mut Bcx<'r>) -> &'r mut Bcx<'r> {
+    // XXX: Arena has a bad interface here; it should return mutable pointers.
+    // But this patch is too big to roll that in.
+    unsafe {
+        cast::transmute(bcx.fcx.arena.alloc(|| Bcx { fcx: bcx.fcx }))
+    }
 }
 
-fn g(fcx : &Fcx) {
-    let bcx = Bcx { fcx: fcx };
-    h(&bcx);
+fn g(fcx: &mut Fcx) {
+    let mut bcx = Bcx { fcx: fcx };
+    h(&mut bcx);
 }
 
-fn f(ccx : &Ccx) {
-    let a = Arena();
-    let fcx = &Fcx { arena: &a, ccx: ccx };
-    return g(fcx);
+fn f(ccx: &mut Ccx) {
+    let mut a = Arena();
+    let mut fcx = Fcx { arena: &mut a, ccx: ccx };
+    return g(&mut fcx);
 }
 
 pub fn main() {
-    let ccx = Ccx { x: 0 };
-    f(&ccx);
+    let mut ccx = Ccx { x: 0 };
+    f(&mut ccx);
 }
 
