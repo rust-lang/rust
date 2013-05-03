@@ -92,47 +92,43 @@ endef
 $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(eval $(call DEF_TARGET_COMMANDS,$(target))))
 
-# Target specific variables 
+# Target platform specific variables 
 # for arm-linux-androidabi
-define DEF_RUNNABLE_STATUS
-CFG_RUNNABLE_$(1)=$(2)
+define DEF_ADB_DEVICE_STATUS
+CFG_ADB_DEVICE_STATUS=$(1)
 endef
 
 $(foreach target,$(CFG_TARGET_TRIPLES), \
-  $(if $(findstring $(target),$(CFG_BUILD_TRIPLE)), \
-    $(info check: $(target) test set is runnable \
-      $(eval $(call DEF_RUNNABLE_STATUS,$(target),true))), \
-    $(if $(findstring $(target),"arm-linux-androideabi"), \
-      $(if $(findstring adb,$(shell which adb)), \
-        $(if $(findstring device,$(shell adb devices 2>/dev/null | grep -E '^[A-Za-z0-9-]+[[:blank:]]+device')), \
-          $(info check: $(target) test set is runnable \
-            $(info check: adb device attached) \
-            $(eval $(call DEF_RUNNABLE_STATUS,$(target),true))), \
-          $(info check: $(target) test set is not runnable \
-            $(info check: adb device not attached) \
-            $(eval $(call DEF_RUNNABLE_STATUS,$(target),false))) \
-        ), \
-        $(info check: $(target) test set is not runnable \
-          $(info check: adb not found) \
-          $(eval $(call DEF_RUNNABLE_STATUS,$(target),false))) \
+  $(if $(findstring $(target),"arm-linux-androideabi"), \
+    $(if $(findstring adb,$(CFG_ADB)), \
+      $(if $(findstring device,$(shell adb devices 2>/dev/null | grep -E '^[_A-Za-z0-9-]+[[:blank:]]+device')), \
+        $(info check: $(target) test enabled \
+          $(info check: android device attached) \
+          $(eval $(call DEF_ADB_DEVICE_STATUS, true))), \
+        $(info check: $(target) test disabled \
+          $(info check: android device not attached) \
+          $(eval $(call DEF_ADB_DEVICE_STATUS, false))) \
       ), \
-      $(info check: $(target) test set is not runnable \
-        $(eval $(call DEF_RUNNABLE_STATUS,$(target),false)) \
-      ) \
-    ) \
+      $(info check: $(target) test disabled \
+        $(info check: adb not found) \
+        $(eval $(call DEF_ADB_DEVICE_STATUS, false))) \
+    ), \
   ) \
 )
 
-ifeq ($(CFG_RUNNABLE_arm-linux-androideabi),true)
-CFG_ADB_DEVICE=true
-CFG_ADB_PATH := $(shell which adb)
-CFG_ADB_TEST_DIR=/system/tmp
+ifeq ($(CFG_ADB_DEVICE_STATUS),true)
+CFG_ADB_TEST_DIR=/data/tmp
 
-$(info check: device $(CFG_ADB_TEST_DIR) \
- $(shell $(CFG_ADB_PATH) remount 1>/dev/null) \
- $(shell $(CFG_ADB_PATH) shell mkdir $(CFG_ADB_TEST_DIR) 1>/dev/null) \
+$(info check: android device test dir $(CFG_ADB_TEST_DIR) ready \
+ $(shell adb remount 1>/dev/null) \
+ $(shell adb shell mkdir $(CFG_ADB_TEST_DIR) 1>/dev/null) \
+ $(shell adb push $(CFG_ANDROID_CROSS_PATH)/arm-linux-androideabi/lib/armv7-a/libgnustl_shared.so \
+                  $(CFG_ADB_TEST_DIR) 1>/dev/null) \
  )
+else
+CFG_ADB_TEST_DIR=
 endif
+
 
 ######################################################################
 # Main test targets
@@ -366,14 +362,15 @@ check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$(3)/test/$(4)test.stage$(1)-$(2)$$(X_$(2))
 	@$$(call E, run: $$< via adb)
-	@$(CFG_ADB_PATH) push $$< $(CFG_ADB_TEST_DIR)
-	@$(CFG_ADB_PATH) shell $(CFG_ADB_TEST_DIR)/`echo $$< | sed 's/.*\///'` \
+	@$(CFG_ADB) push $$< $(CFG_ADB_TEST_DIR)
+	@$(CFG_ADB) shell LD_LIBRARY_PATH=$(CFG_ADB_TEST_DIR) \
+        $(CFG_ADB_TEST_DIR)/`echo $$< | sed 's/.*\///'` \
 		--logfile $(CFG_ADB_TEST_DIR)/check-stage$(1)-T-$(2)-H-$(3)-$(4).log > \
 		tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).tmp
 	@cat tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).tmp
 	@touch tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
-	@$(CFG_ADB_PATH) pull $(CFG_ADB_TEST_DIR)/check-stage$(1)-T-$(2)-H-$(3)-$(4).log tmp/
-	@$(CFG_ADB_PATH) shell rm $(CFG_ADB_TEST_DIR)/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
+	@$(CFG_ADB) pull $(CFG_ADB_TEST_DIR)/check-stage$(1)-T-$(2)-H-$(3)-$(4).log tmp/
+	@$(CFG_ADB) shell rm $(CFG_ADB_TEST_DIR)/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
 	@if grep -q "result: ok" tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).tmp; \
 	then \
 		rm tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).tmp; \
@@ -400,11 +397,11 @@ $(foreach host,$(CFG_HOST_TRIPLES), \
     $(if $(findstring $(target),$(CFG_BUILD_TRIPLE)), \
      $(eval $(call DEF_TEST_CRATE_RULES,$(stage),$(target),$(host),$(crate))), \
      $(if $(findstring $(target),"arm-linux-androideabi"), \
-      $(if $(findstring $(CFG_RUNNABLE_arm-linux-androideabi),"true"), \
+      $(if $(findstring $(CFG_ADB_DEVICE_STATUS),"true"), \
        $(eval $(call DEF_TEST_CRATE_RULES_arm-linux-androideabi,$(stage),$(target),$(host),$(crate))), \
        $(eval $(call DEF_TEST_CRATE_RULES_null,$(stage),$(target),$(host),$(crate))) \
       ), \
-      $(eval $(call DEF_TEST_CRATE_RULES_null,$(stage),$(target),$(host),$(crate))) \
+      $(eval $(call DEF_TEST_CRATE_RULES,$(stage),$(target),$(host),$(crate))) \
      )))))) 
 
 
@@ -496,35 +493,18 @@ TEST_SREQ$(1)_T_$(2)_H_$(3) = \
 
 # Rules for the cfail/rfail/rpass/bench/perf test runner
 
-ifeq ($(CFG_ADB_DEVICE),true)
-
 CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
 		--compile-lib-path $$(HLIB$(1)_H_$(3))				\
         --run-lib-path $$(TLIB$(1)_T_$(2)_H_$(3))			\
-        --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))	\
+        --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))			\
         --aux-base $$(S)src/test/auxiliary/					\
         --stage-id stage$(1)-$(2)							\
         --host $(CFG_BUILD_TRIPLE)                          \
         --target $(2)                                       \
-        --adb-path=$(CFG_ADB_PATH)                          \
+        --adb-path=$(CFG_ADB)                          \
         --adb-test-dir=$(CFG_ADB_TEST_DIR)                  \
         --rustcflags "$(RUSTC_FLAGS_$(2)) $$(CFG_RUSTC_FLAGS) --target=$(2)" \
         $$(CTEST_TESTARGS)
-
-else
-
-CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
-		--compile-lib-path $$(HLIB$(1)_H_$(3))				\
-        --run-lib-path $$(TLIB$(1)_T_$(2)_H_$(3))			\
-        --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))	\
-        --aux-base $$(S)src/test/auxiliary/                 \
-        --stage-id stage$(1)-$(2)							\
-        --host $(CFG_BUILD_TRIPLE)                          \
-        --target $(2)                                       \
-        --rustcflags "$(RUSTC_FLAGS_$(2)) $$(CFG_RUSTC_FLAGS) --target=$(2)" \
-        $$(CTEST_TESTARGS)
-
-endif
 
 CTEST_DEPS_rpass_$(1)-T-$(2)-H-$(3) = $$(RPASS_TESTS)
 CTEST_DEPS_rpass_full_$(1)-T-$(2)-H-$(3) = $$(RPASS_FULL_TESTS) $$(TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3))
