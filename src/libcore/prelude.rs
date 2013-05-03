@@ -31,7 +31,7 @@ pub use io::{print, println};
 /* Reexported types and traits */
 
 pub use clone::Clone;
-pub use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
+pub use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
 pub use container::{Container, Mutable, Map, Set};
 pub use hash::Hash;
 pub use old_iter::{BaseIter, ReverseIter, MutableIter, ExtendedIter, EqIter};
