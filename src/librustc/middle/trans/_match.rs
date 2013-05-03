@@ -866,7 +866,18 @@ pub fn extract_variant_args(bcx: block,
     ExtractedBlock { vals: args, bcx: bcx }
 }
 
+fn match_datum(bcx: block, val: ValueRef, pat_id: ast::node_id) -> Datum {
+    //! Helper for converting from the ValueRef that we pass around in
+    //! the match code, which is always by ref, into a Datum. Eventually
+    //! we should just pass around a Datum and be done with it.
+
+    let ty = node_id_type(bcx, pat_id);
+    Datum {val: val, ty: ty, mode: datum::ByRef, source: RevokeClean}
+}
+
+
 pub fn extract_vec_elems(bcx: block,
+                         pat_span: span,
                          pat_id: ast::node_id,
                          elem_count: uint,
                          slice: Option<uint>,
@@ -874,9 +885,9 @@ pub fn extract_vec_elems(bcx: block,
                          count: ValueRef)
                       -> ExtractedBlock {
     let _icx = bcx.insn_ctxt("match::extract_vec_elems");
+    let vec_datum = match_datum(bcx, val, pat_id);
+    let (bcx, base, len) = vec_datum.get_vec_base_and_len(bcx, pat_span, pat_id);
     let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
-    let unboxed = load_if_immediate(bcx, val, vt.vec_ty);
-    let (base, len) = tvec::get_base_and_len(bcx, unboxed, vt.vec_ty);
 
     let mut elems = do vec::from_fn(elem_count) |i| {
         match slice {
@@ -1308,10 +1319,14 @@ pub fn compile_submatch(bcx: block,
                                 vec::slice(vals, col + 1u, vals.len()));
     let ccx = *bcx.fcx.ccx;
     let mut pat_id = 0;
+    let mut pat_span = dummy_sp();
     for vec::each(m) |br| {
         // Find a real id (we're adding placeholder wildcard patterns, but
         // each column is guaranteed to have at least one real pattern)
-        if pat_id == 0 { pat_id = br.pats[col].id; }
+        if pat_id == 0 {
+            pat_id = br.pats[col].id;
+            pat_span = br.pats[col].span;
+        }
     }
 
     // If we are not matching against an `@T`, we should not be
@@ -1579,8 +1594,8 @@ pub fn compile_submatch(bcx: block,
                     vec_len_ge(_, i) => Some(i),
                     _ => None
                 };
-                let args = extract_vec_elems(opt_cx, pat_id, n, slice,
-                    val, test_val);
+                let args = extract_vec_elems(opt_cx, pat_span, pat_id, n, slice,
+                                             val, test_val);
                 size = args.vals.len();
                 unpacked = /*bad*/copy args.vals;
                 opt_cx = args.bcx;

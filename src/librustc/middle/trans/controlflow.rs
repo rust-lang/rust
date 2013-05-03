@@ -333,7 +333,7 @@ pub fn trans_fail_expr(bcx: block,
                 bcx, expr::trans_to_datum(bcx, arg_expr));
 
             if ty::type_is_str(arg_datum.ty) {
-                let (lldata, _lllen) = arg_datum.get_base_and_len(bcx);
+                let (lldata, _) = arg_datum.get_vec_base_and_len_no_root(bcx);
                 return trans_fail_value(bcx, sp_opt, lldata);
             } else if bcx.unreachable || ty::type_is_bot(arg_datum.ty) {
                 return bcx;

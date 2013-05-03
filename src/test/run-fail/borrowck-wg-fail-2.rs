@@ -1,5 +1,8 @@
 // error-pattern:borrowed
 
+// Test that write guards trigger when there is a write to a field
+// of a frozen structure.
+
 struct S {
     x: int
 }
