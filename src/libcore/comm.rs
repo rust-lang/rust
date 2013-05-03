@@ -12,6 +12,7 @@
 Message passing
 */
 
+use cast::transmute;
 use cast;
 use either::{Either, Left, Right};
 use kinds::Owned;
@@ -192,9 +193,9 @@ impl<T: Owned> Peekable<T> for Port<T> {
     fn peek(&self) -> bool {
         let mut endp = None;
         endp <-> self.endp;
-        let peek = match &endp {
-            &Some(ref endp) => peek(endp),
-            &None => fail!(~"peeking empty stream")
+        let peek = match endp {
+            Some(ref mut endp) => peek(endp),
+            None => fail!(~"peeking empty stream")
         };
         self.endp <-> endp;
         peek
@@ -202,10 +203,10 @@ impl<T: Owned> Peekable<T> for Port<T> {
 }
 
 impl<T: Owned> Selectable for Port<T> {
-    fn header(&self) -> *PacketHeader {
+    fn header(&mut self) -> *mut PacketHeader {
         unsafe {
             match self.endp {
-                Some(ref endp) => endp.header(),
+                Some(ref mut endp) => endp.header(),
                 None => fail!(~"peeking empty stream")
             }
         }
@@ -327,23 +328,20 @@ impl<T: Owned> ::clone::Clone for SharedChan<T> {
 #[allow(non_camel_case_types)]
 pub mod oneshot {
     priv use core::kinds::Owned;
-    use ptr::to_unsafe_ptr;
+    use ptr::to_mut_unsafe_ptr;
 
     pub fn init<T: Owned>() -> (client::Oneshot<T>, server::Oneshot<T>) {
         pub use core::pipes::HasBuffer;
 
-        let buffer =
-            ~::core::pipes::Buffer{
+        let mut buffer = ~::core::pipes::Buffer {
             header: ::core::pipes::BufferHeader(),
-            data: __Buffer{
+            data: __Buffer {
                 Oneshot: ::core::pipes::mk_packet::<Oneshot<T>>()
             },
         };
         do ::core::pipes::entangle_buffer(buffer) |buffer, data| {
-            {
-                data.Oneshot.set_buffer(buffer);
-                to_unsafe_ptr(&data.Oneshot)
-            }
+            data.Oneshot.set_buffer(buffer);
+            to_mut_unsafe_ptr(&mut data.Oneshot)
         }
     }
     #[allow(non_camel_case_types)]
@@ -497,48 +495,66 @@ pub fn try_send_one<T: Owned>(chan: ChanOne<T>, data: T) -> bool {
 
 
 /// Returns the index of an endpoint that is ready to receive.
-pub fn selecti<T: Selectable>(endpoints: &[T]) -> uint {
+pub fn selecti<T: Selectable>(endpoints: &mut [T]) -> uint {
     wait_many(endpoints)
 }
 
 /// Returns 0 or 1 depending on which endpoint is ready to receive
-pub fn select2i<A: Selectable, B: Selectable>(a: &A, b: &B) ->
-        Either<(), ()> {
-    match wait_many([a.header(), b.header()]) {
-      0 => Left(()),
-      1 => Right(()),
-      _ => fail!(~"wait returned unexpected index")
+pub fn select2i<A:Selectable, B:Selectable>(a: &mut A, b: &mut B)
+                                            -> Either<(), ()> {
+    let mut endpoints = [ a.header(), b.header() ];
+    match wait_many(endpoints) {
+        0 => Left(()),
+        1 => Right(()),
+        _ => fail!(~"wait returned unexpected index"),
     }
 }
 
 /// Receive a message from one of two endpoints.
 pub trait Select2<T: Owned, U: Owned> {
     /// Receive a message or return `None` if a connection closes.
-    fn try_select(&self) -> Either<Option<T>, Option<U>>;
+    fn try_select(&mut self) -> Either<Option<T>, Option<U>>;
     /// Receive a message or fail if a connection closes.
-    fn select(&self) -> Either<T, U>;
+    fn select(&mut self) -> Either<T, U>;
 }
 
-impl<T: Owned, U: Owned,
-     Left: Selectable + GenericPort<T>,
-     Right: Selectable + GenericPort<U>>
-    Select2<T, U> for (Left, Right) {
-
-    fn select(&self) -> Either<T, U> {
-        match *self {
-          (ref lp, ref rp) => match select2i(lp, rp) {
-            Left(()) => Left (lp.recv()),
-            Right(()) => Right(rp.recv())
-          }
+impl<T:Owned,
+     U:Owned,
+     Left:Selectable + GenericPort<T>,
+     Right:Selectable + GenericPort<U>>
+     Select2<T, U>
+     for (Left, Right) {
+    fn select(&mut self) -> Either<T, U> {
+        // XXX: Bad borrow check workaround.
+        unsafe {
+            let this: &(Left, Right) = transmute(self);
+            match *this {
+                (ref lp, ref rp) => {
+                    let lp: &mut Left = transmute(lp);
+                    let rp: &mut Right = transmute(rp);
+                    match select2i(lp, rp) {
+                        Left(()) => Left(lp.recv()),
+                        Right(()) => Right(rp.recv()),
+                    }
+                }
+            }
         }
     }
 
-    fn try_select(&self) -> Either<Option<T>, Option<U>> {
-        match *self {
-          (ref lp, ref rp) => match select2i(lp, rp) {
-            Left(()) => Left (lp.try_recv()),
-            Right(()) => Right(rp.try_recv())
-          }
+    fn try_select(&mut self) -> Either<Option<T>, Option<U>> {
+        // XXX: Bad borrow check workaround.
+        unsafe {
+            let this: &(Left, Right) = transmute(self);
+            match *this {
+                (ref lp, ref rp) => {
+                    let lp: &mut Left = transmute(lp);
+                    let rp: &mut Right = transmute(rp);
+                    match select2i(lp, rp) {
+                        Left(()) => Left (lp.try_recv()),
+                        Right(()) => Right(rp.try_recv()),
+                    }
+                }
+            }
         }
     }
 }
