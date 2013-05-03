@@ -16,7 +16,7 @@ use option::{None, Option, Some};
 use str;
 use u32;
 use uint;
-use unicode;
+use unicode::{derived_property, general_category};
 
 #[cfg(notest)] use cmp::Eq;
 
@@ -53,10 +53,9 @@ use unicode;
     Cn  Unassigned  a reserved unassigned code point or a noncharacter
 */
 
-pub use is_alphabetic = unicode::derived_property::Alphabetic;
-pub use is_XID_start = unicode::derived_property::XID_Start;
-pub use is_XID_continue = unicode::derived_property::XID_Continue;
-
+pub fn is_alphabetic(c: char) -> bool   { derived_property::Alphabetic(c) }
+pub fn is_XID_start(c: char) -> bool    { derived_property::XID_Start(c) }
+pub fn is_XID_continue(c: char) -> bool { derived_property::XID_Continue(c) }
 
 /**
  * Indicates whether a character is in lower case, defined
@@ -64,7 +63,7 @@ pub use is_XID_continue = unicode::derived_property::XID_Continue;
  */
 #[inline(always)]
 pub fn is_lowercase(c: char) -> bool {
-    return unicode::general_category::Ll(c);
+    return general_category::Ll(c);
 }
 
 /**
@@ -73,7 +72,7 @@ pub fn is_lowercase(c: char) -> bool {
  */
 #[inline(always)]
 pub fn is_uppercase(c: char) -> bool {
-    return unicode::general_category::Lu(c);
+    return general_category::Lu(c);
 }
 
 /**
@@ -84,9 +83,9 @@ pub fn is_uppercase(c: char) -> bool {
 #[inline(always)]
 pub fn is_whitespace(c: char) -> bool {
     return ('\x09' <= c && c <= '\x0d')
-        || unicode::general_category::Zs(c)
-        || unicode::general_category::Zl(c)
-        || unicode::general_category::Zp(c);
+        || general_category::Zs(c)
+        || general_category::Zl(c)
+        || general_category::Zp(c);
 }
 
 /**
@@ -96,18 +95,18 @@ pub fn is_whitespace(c: char) -> bool {
  */
 #[inline(always)]
 pub fn is_alphanumeric(c: char) -> bool {
-    return unicode::derived_property::Alphabetic(c) ||
-        unicode::general_category::Nd(c) ||
-        unicode::general_category::Nl(c) ||
-        unicode::general_category::No(c);
+    return derived_property::Alphabetic(c) ||
+        general_category::Nd(c) ||
+        general_category::Nl(c) ||
+        general_category::No(c);
 }
 
 /// Indicates whether the character is numeric (Nd, Nl, or No)
 #[inline(always)]
 pub fn is_digit(c: char) -> bool {
-    return unicode::general_category::Nd(c) ||
-        unicode::general_category::Nl(c) ||
-        unicode::general_category::No(c);
+    return general_category::Nd(c) ||
+        general_category::Nl(c) ||
+        general_category::No(c);
 }
 
 /**
