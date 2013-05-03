@@ -20,8 +20,9 @@ use path_util::{target_executable_in_workspace, target_library_in_workspace,
                make_dir_rwx, u_rwx};
 use core::os::mkdir_recursive;
 
-fn fake_ctxt() -> Ctx {
+fn fake_ctxt(sysroot_opt: Option<@Path>) -> Ctx {
     Ctx {
+        sysroot_opt: sysroot_opt,
         json: false,
         dep_cache: @mut HashMap::new()
     }
@@ -30,6 +31,13 @@ fn fake_ctxt() -> Ctx {
 fn fake_pkg() -> PkgId {
     PkgId {
         path: Path(~"bogus"),
+        version: default_version()
+    }
+}
+
+fn remote_pkg() -> PkgId {
+    PkgId {
+        path: Path(~"github.com/catamorphism/test-pkg"),
         version: default_version()
     }
 }
@@ -69,6 +77,15 @@ fn is_rwx(p: &Path) -> bool {
     }
 }
 
+#[cfg(test)]
+fn test_sysroot() -> Path {
+    // Totally gross hack but it's just for test cases.
+    // Infer the sysroot from the exe name and tack "stage2"
+    // onto it. (Did I mention it was a gross hack?)
+    let self_path = os::self_exe_path().expect("Couldn't get self_exe path");
+    self_path.pop().push("stage2")
+}
+
 #[test]
 fn test_make_dir_rwx() {
     let temp = &os::tmpdir();
@@ -84,11 +101,9 @@ fn test_make_dir_rwx() {
 
 #[test]
 fn test_install_valid() {
-    use rustc::metadata::filesearch;
-
-    let sysroot = filesearch::get_rustpkg_sysroot();
-    debug!("sysroot = %s", sysroot.get().to_str());
-    let ctxt = fake_ctxt();
+    let sysroot = test_sysroot();
+    debug!("sysroot = %s", sysroot.to_str());
+    let ctxt = fake_ctxt(Some(@sysroot));
     let temp_pkg_id = fake_pkg();
     let temp_workspace = mk_temp_workspace(&temp_pkg_id.path);
     // should have test, bench, lib, and main
@@ -114,7 +129,7 @@ fn test_install_invalid() {
     use conditions::nonexistent_package::cond;
     use cond1 = conditions::missing_pkg_files::cond;
 
-    let ctxt = fake_ctxt();
+    let ctxt = fake_ctxt(None);
     let pkgid = fake_pkg();
     let temp_workspace = mkdtemp(&os::tmpdir(), "test").expect("couldn't create temp dir");
     let mut error_occurred = false;
@@ -129,4 +144,30 @@ fn test_install_invalid() {
         }
     }
     assert!(error_occurred && error1_occurred);
+}
+
+#[test]
+#[ignore(reason = "install from URL-fragment not yet implemented")]
+fn test_install_url() {
+    let sysroot = test_sysroot();
+    debug!("sysroot = %s", sysroot.to_str());
+    let ctxt = fake_ctxt(Some(@sysroot));
+    let temp_pkg_id = remote_pkg();
+    let temp_workspace = mk_temp_workspace(&temp_pkg_id.path);
+    // should have test, bench, lib, and main
+    ctxt.install(&temp_workspace, temp_pkg_id);
+    // Check that all files exist
+    let exec = target_executable_in_workspace(temp_pkg_id, &temp_workspace);
+    debug!("exec = %s", exec.to_str());
+    assert!(os::path_exists(&exec));
+    assert!(is_rwx(&exec));
+    let lib = target_library_in_workspace(temp_pkg_id, &temp_workspace);
+    debug!("lib = %s", lib.to_str());
+    assert!(os::path_exists(&lib));
+    assert!(is_rwx(&lib));
+    // And that the test and bench executables aren't installed
+    assert!(!os::path_exists(&target_test_in_workspace(temp_pkg_id, &temp_workspace)));
+    let bench = target_bench_in_workspace(temp_pkg_id, &temp_workspace);
+    debug!("bench = %s", bench.to_str());
+    assert!(!os::path_exists(&bench));
 }

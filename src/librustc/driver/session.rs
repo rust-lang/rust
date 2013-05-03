@@ -125,7 +125,7 @@ pub struct options {
     output_type: back::link::output_type,
     addl_lib_search_paths: ~[Path],
     linker_args: ~[~str],
-    maybe_sysroot: Option<Path>,
+    maybe_sysroot: Option<@Path>,
     target_triple: ~str,
     target_feature: ~str,
     // User-specified cfg meta items. The compiler itself will add additional
