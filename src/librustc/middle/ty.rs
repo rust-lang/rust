@@ -1808,15 +1808,6 @@ pub impl TypeContents {
         if cx.vecs_implicitly_copyable {base} else {base + TC_OWNED_VEC}
     }
 
-    fn is_safe_for_default_mode(&self, cx: ctxt) -> bool {
-        !self.intersects(TypeContents::nondefault_mode(cx))
-    }
-
-    fn nondefault_mode(cx: ctxt) -> TypeContents {
-        let tc = TypeContents::nonimplicitly_copyable(cx);
-        tc + TC_BIG + TC_OWNED_VEC // disregard cx.vecs_implicitly_copyable
-    }
-
     fn needs_drop(&self, cx: ctxt) -> bool {
         let tc = TC_MANAGED + TC_DTOR + TypeContents::owned(cx);
         self.intersects(tc)
@@ -1875,9 +1866,6 @@ static TC_MUTABLE: TypeContents =          TypeContents{bits:0b000010000000};
 
 /// Mutable content, whether owned or by ref
 static TC_ONCE_CLOSURE: TypeContents =     TypeContents{bits:0b000100000000};
-
-/// Something we estimate to be "big"
-static TC_BIG: TypeContents =              TypeContents{bits:0b001000000000};
 
 /// An enum with no variants.
 static TC_EMPTY_ENUM: TypeContents =       TypeContents{bits:0b010000000000};
@@ -2099,10 +2087,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
         };
 
-        if type_size(cx, ty) > 4 {
-            result = result + TC_BIG;
-        }
-
         cache.insert(ty_id, result);
         return result;
     }
@@ -2177,68 +2161,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
         debug!("result = %s", r.to_str());
         return r;
-    }
-
-    /// gives a rough estimate of how much space it takes to represent
-    /// an instance of `ty`.  Used for the mode transition.
-    fn type_size(cx: ctxt, ty: t) -> uint {
-        match get(ty).sty {
-          ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-          ty_ptr(_) | ty_box(_) | ty_uniq(_) | ty_estr(vstore_uniq) |
-          ty_trait(*) | ty_rptr(*) | ty_evec(_, vstore_uniq) |
-          ty_evec(_, vstore_box) | ty_estr(vstore_box) => {
-            1
-          }
-
-          ty_evec(_, vstore_slice(_)) |
-          ty_estr(vstore_slice(_)) |
-          ty_bare_fn(*) |
-          ty_closure(*) => {
-            2
-          }
-
-          ty_evec(t, vstore_fixed(n)) => {
-            type_size(cx, t.ty) * n
-          }
-
-          ty_estr(vstore_fixed(n)) => {
-            n
-          }
-
-          ty_struct(did, ref substs) => {
-            let flds = struct_fields(cx, did, substs);
-            flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
-          }
-
-          ty_tup(ref tys) => {
-            tys.foldl(0, |s, t| *s + type_size(cx, *t))
-          }
-
-          ty_enum(did, ref substs) => {
-            let variants = substd_enum_variants(cx, did, substs);
-            variants.foldl( // find max size of any variant
-                0,
-                |m, v| uint::max(
-                    *m,
-                    // find size of this variant:
-                    v.args.foldl(0, |s, a| *s + type_size(cx, *a))))
-          }
-
-          ty_param(_) | ty_self(_) => {
-            1
-          }
-
-          ty_infer(_) => {
-            cx.sess.bug(~"Asked to compute kind of a type variable");
-          }
-          ty_type => 1,
-          ty_opaque_closure_ptr(_) => 1,
-          ty_opaque_box => 1,
-          ty_unboxed_vec(_) => 10,
-          ty_err => {
-            cx.sess.bug(~"Asked to compute kind of fictitious type");
-          }
-        }
     }
 }
 
