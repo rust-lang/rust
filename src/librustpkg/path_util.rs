@@ -29,11 +29,7 @@ pub static u_rwx: i32 = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
 /// Creates a directory that is readable, writeable,
 /// and executable by the user. Returns true iff creation
 /// succeeded.
-pub fn make_dir_rwx(p: &Path) -> bool {
-    use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
-
-    os::make_dir(p, u_rwx)
-}
+pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, u_rwx) }
 
 /// Replace all occurrences of '-' in the stem part of path with '_'
 /// This is because we treat rust-foo-bar-quux and rust_foo_bar_quux

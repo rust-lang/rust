@@ -435,7 +435,7 @@ pub fn add_pkg(pkg: &Pkg) -> bool {
 }
 
 // FIXME (#4432): Use workcache to only compile when needed
-pub fn compile_input(sysroot: Option<Path>,
+pub fn compile_input(sysroot: Option<@Path>,
                      pkg_id: PkgId,
                      in_file: &Path,
                      out_dir: &Path,
@@ -474,6 +474,7 @@ pub fn compile_input(sysroot: Option<Path>,
            out_file.to_str());
     debug!("flags: %s", str::connect(flags, ~" "));
     debug!("cfgs: %s", str::connect(cfgs, ~" "));
+    debug!("compile_input's sysroot = %?", sysroot);
 
     let matches = getopts(~[~"-Z", ~"time-passes"]
                           + if building_library { ~[~"--lib"] }
@@ -587,7 +588,7 @@ fn add_attrs(c: ast::crate, new_attrs: ~[attribute]) -> @ast::crate {
 
 // Called by build_crates
 // FIXME (#4432): Use workcache to only compile when needed
-pub fn compile_crate(sysroot: Option<Path>, pkg_id: PkgId,
+pub fn compile_crate(sysroot: Option<@Path>, pkg_id: PkgId,
                      crate: &Path, dir: &Path,
                      flags: ~[~str], cfgs: ~[~str], opt: bool,
                      test: bool, crate_type: crate_type) -> bool {

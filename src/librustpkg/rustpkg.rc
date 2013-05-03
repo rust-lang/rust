@@ -306,7 +306,7 @@ impl Ctx {
             // Find crates inside the workspace
             src.find_crates();
             // Build it!
-            src.build(&build_dir, cfgs);
+            src.build(&build_dir, cfgs, self.sysroot_opt);
         }
 
     }
@@ -506,6 +506,7 @@ pub fn main() {
     }
 
     Ctx {
+        sysroot_opt: None, // Currently, only tests override this
         json: json,
         dep_cache: @mut HashMap::new()
     }.run(cmd, args);
@@ -648,6 +649,8 @@ impl PkgSrc {
 
         debug!("Checking dir: %s", dir.to_str());
 
+        // tjc: Rather than erroring out, need to try downloading the
+        // contents of the path to a local directory (#5679)
         if !os::path_exists(&dir) {
             cond.raise((self.id, ~"missing package dir"));
         }
@@ -744,18 +747,20 @@ impl PkgSrc {
                self.benchs.len())
     }
 
-    fn build_crates(&self, dst_dir: &Path,
-                           src_dir: &Path,
-                           crates: &[Crate],
-                           cfgs: ~[~str],
-                           test: bool, crate_type: crate_type) {
+    fn build_crates(&self,
+                    maybe_sysroot: Option<@Path>,
+                    dst_dir: &Path,
+                    src_dir: &Path,
+                    crates: &[Crate],
+                    cfgs: ~[~str],
+                    test: bool, crate_type: crate_type) {
 
         for crates.each |&crate| {
             let path = &src_dir.push_rel(&crate.file).normalize();
             util::note(fmt!("build_crates: compiling %s", path.to_str()));
             util::note(fmt!("build_crates: destination dir is %s", dst_dir.to_str()));
 
-            let result = util::compile_crate(None, self.id, path,
+            let result = util::compile_crate(maybe_sysroot, self.id, path,
                                      dst_dir,
                                      crate.flags,
                                      crate.cfgs + cfgs,
@@ -769,15 +774,15 @@ impl PkgSrc {
         }
     }
 
-    fn build(&self, dst_dir: &Path, cfgs: ~[~str]) {
+    fn build(&self, dst_dir: &Path, cfgs: ~[~str], maybe_sysroot: Option<@Path>) {
         let dir = self.check_dir();
         debug!("Building libs");
-        self.build_crates(dst_dir, &dir, self.libs, cfgs, false, lib_crate);
+        self.build_crates(maybe_sysroot, dst_dir, &dir, self.libs, cfgs, false, lib_crate);
         debug!("Building mains");
-        self.build_crates(dst_dir, &dir, self.mains, cfgs, false, bin_crate);
+        self.build_crates(maybe_sysroot, dst_dir, &dir, self.mains, cfgs, false, bin_crate);
         debug!("Building tests");
-        self.build_crates(dst_dir, &dir, self.tests, cfgs, true, bin_crate);
+        self.build_crates(maybe_sysroot, dst_dir, &dir, self.tests, cfgs, true, bin_crate);
         debug!("Building benches");
-        self.build_crates(dst_dir, &dir, self.benchs, cfgs, true, bin_crate);
+        self.build_crates(maybe_sysroot, dst_dir, &dir, self.benchs, cfgs, true, bin_crate);
     }
 }
