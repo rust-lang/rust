@@ -171,4 +171,30 @@ mod test {
             }
         }
     }
+
+    #[test] #[ignore]
+    fn multiple_connect_serial() {
+        do run_in_newsched_task {
+            let addr = next_test_ip4();
+            let max = 100;
+
+            do spawntask_immediately {
+                let mut listener = TcpListener::bind(addr);
+                for max.times {
+                    let mut stream = listener.accept();
+                    let mut buf = [0];
+                    stream.read(buf);
+                    assert!(buf[0] == 99);
+                }
+            }
+
+            do spawntask_immediately {
+                for max.times {
+                    let mut stream = TcpStream::connect(addr);
+                    stream.write([99]);
+                }
+            }
+        }
+    }
+
 }
