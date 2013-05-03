@@ -378,7 +378,7 @@ pub impl<'self> CheckLoanCtxt<'self> {
                     // Dynamically check writes to `@mut`
 
                     let key = root_map_key {
-                        id: base.id,
+                        id: guarantor.id,
                         derefs: deref_count
                     };
                     debug!("Inserting write guard at %?", key);

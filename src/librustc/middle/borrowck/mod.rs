@@ -172,11 +172,19 @@ pub struct BorrowStats {
 
 pub type LoanMap = @mut HashMap<ast::node_id, @Loan>;
 
-// the keys to the root map combine the `id` of the expression with
-// the number of types that it is autodereferenced. So, for example,
-// if you have an expression `x.f` and x has type ~@T, we could add an
-// entry {id:x, derefs:0} to refer to `x` itself, `{id:x, derefs:1}`
-// to refer to the deref of the unique pointer, and so on.
+// The keys to the root map combine the `id` of the deref expression
+// with the number of types that it is *autodereferenced*. So, for
+// example, imagine I have a variable `x: @@@T` and an expression
+// `(*x).f`.  This will have 3 derefs, one explicit and then two
+// autoderefs. These are the relevant `root_map_key` values that could
+// appear:
+//
+//    {id:*x, derefs:0} --> roots `x` (type: @@@T, due to explicit deref)
+//    {id:*x, derefs:1} --> roots `*x` (type: @@T, due to autoderef #1)
+//    {id:*x, derefs:2} --> roots `**x` (type: @T, due to autoderef #2)
+//
+// Note that there is no entry with derefs:3---the type of that expression
+// is T, which is not a box.
 #[deriving(Eq, IterBytes)]
 pub struct root_map_key {
     id: ast::node_id,

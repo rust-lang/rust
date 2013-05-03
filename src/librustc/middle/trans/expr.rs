@@ -835,7 +835,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         }
         ast::expr_unary(ast::deref, base) => {
             let basedatum = unpack_datum!(bcx, trans_to_datum(bcx, base));
-            basedatum.deref(bcx, base, 0)
+            basedatum.deref(bcx, expr, 0)
         }
         _ => {
             bcx.tcx().sess.span_bug(

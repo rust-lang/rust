@@ -92,12 +92,12 @@ pub enum ptr_kind {
 pub enum interior_kind {
     interior_tuple,                  // elt in a tuple
     interior_anon_field,             // anonymous field (in e.g.
-                                 // struct Foo(int, int);
+                                     // struct Foo(int, int);
     interior_variant(ast::def_id),   // internals to a variant of given enum
     interior_field(ast::ident,       // name of field
-               ast::mutability), // declared mutability of field
+                   ast::mutability), // declared mutability of field
     interior_index(ty::t,            // type of vec/str/etc being deref'd
-               ast::mutability)  // mutability of vec content
+                   ast::mutability)  // mutability of vec content
 }
 
 #[deriving(Eq)]
@@ -108,18 +108,27 @@ pub enum MutabilityCategory {
     McInherited  // Inherited from the fact that owner is mutable.
 }
 
+// `cmt`: "Category, Mutability, and Type".
+//
 // a complete categorization of a value indicating where it originated
 // and how it is located, as well as the mutability of the memory in
 // which the value is stored.
 //
-// note: cmt stands for "categorized mutable type".
+// *WARNING* The field `cmt.type` is NOT necessarily the same as the
+// result of `node_id_to_type(cmt.id)`. This is because the `id` is
+// always the `id` of the node producing the type; in an expression
+// like `*x`, the type of this deref node is the deref'd type (`T`),
+// but in a pattern like `@x`, the `@x` pattern is again a
+// dereference, but its type is the type *before* the dereference
+// (`@T`). So use `cmt.type` to find the type of the value in a consistent
+// fashion. For more details, see the method `cat_pattern`
 #[deriving(Eq)]
 pub struct cmt_ {
     id: ast::node_id,          // id of expr/pat producing this value
     span: span,                // span of same expr/pat
     cat: categorization,       // categorization of expr
     mutbl: MutabilityCategory, // mutability of expr as lvalue
-    ty: ty::t                  // type of the expr
+    ty: ty::t                  // type of the expr (*see WARNING above*)
 }
 
 pub type cmt = @cmt_;
@@ -245,19 +254,6 @@ pub fn cat_def(
     return mcx.cat_def(expr_id, expr_span, expr_ty, def);
 }
 
-pub fn cat_variant<N:ast_node>(
-    tcx: ty::ctxt,
-    method_map: typeck::method_map,
-    arg: N,
-    enum_did: ast::def_id,
-    cmt: cmt) -> cmt {
-
-    let mcx = &mem_categorization_ctxt {
-        tcx: tcx, method_map: method_map
-    };
-    return mcx.cat_variant(arg, enum_did, cmt);
-}
-
 pub trait ast_node {
     fn id(&self) -> ast::node_id;
     fn span(&self) -> span;
@@ -271,16 +267,6 @@ impl ast_node for @ast::expr {
 impl ast_node for @ast::pat {
     fn id(&self) -> ast::node_id { self.id }
     fn span(&self) -> span { self.span }
-}
-
-pub trait get_type_for_node {
-    fn ty<N:ast_node>(&self, node: N) -> ty::t;
-}
-
-impl get_type_for_node for ty::ctxt {
-    fn ty<N:ast_node>(&self, node: N) -> ty::t {
-        ty::node_id_to_type(*self, node.id())
-    }
 }
 
 pub struct mem_categorization_ctxt {
@@ -336,6 +322,14 @@ pub impl MutabilityCategory {
 }
 
 pub impl mem_categorization_ctxt {
+    fn expr_ty(&self, expr: @ast::expr) -> ty::t {
+        ty::expr_ty(self.tcx, expr)
+    }
+
+    fn pat_ty(&self, pat: @ast::pat) -> ty::t {
+        ty::node_id_to_type(self.tcx, pat.id)
+    }
+
     fn cat_expr(&self, expr: @ast::expr) -> cmt {
         match self.tcx.adjustments.find(&expr.id) {
             None => {
@@ -385,7 +379,7 @@ pub impl mem_categorization_ctxt {
                expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr()));
 
         let tcx = self.tcx;
-        let expr_ty = tcx.ty(expr);
+        let expr_ty = self.expr_ty(expr);
         match expr.node {
           ast::expr_unary(ast::deref, e_base) => {
             if self.method_map.contains_key(&expr.id) {
@@ -402,7 +396,8 @@ pub impl mem_categorization_ctxt {
             assert!(!self.method_map.contains_key(&expr.id));
 
             let base_cmt = self.cat_expr(base);
-            self.cat_field(expr, base_cmt, f_name, expr.id)
+            self.cat_field(expr, base_cmt, f_name,
+                           self.expr_ty(expr), expr.id)
           }
 
           ast::expr_index(base, _) => {
@@ -554,19 +549,6 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_variant<N:ast_node>(&self,
-                                arg: N,
-                                enum_did: ast::def_id,
-                                cmt: cmt) -> cmt {
-        @cmt_ {
-            id: arg.id(),
-            span: arg.span(),
-            cat: cat_interior(cmt, interior_variant(enum_did)),
-            mutbl: cmt.mutbl.inherit(),
-            ty: self.tcx.ty(arg)
-        }
-    }
-
     fn cat_rvalue<N:ast_node>(&self, elt: N, expr_ty: ty::t) -> cmt {
         @cmt_ {
             id:elt.id(),
@@ -598,6 +580,7 @@ pub impl mem_categorization_ctxt {
                              node: N,
                              base_cmt: cmt,
                              f_name: ast::ident,
+                             f_ty: ty::t,
                              field_id: ast::node_id) -> cmt {
         let f_mutbl = match field_mutbl(self.tcx, base_cmt.ty,
                                         f_name, field_id) {
@@ -617,7 +600,7 @@ pub impl mem_categorization_ctxt {
             span: node.span(),
             cat: cat_interior(base_cmt, f_interior),
             mutbl: m,
-            ty: self.tcx.ty(node)
+            ty: f_ty
         }
     }
 
@@ -697,8 +680,8 @@ pub impl mem_categorization_ctxt {
     }
 
     fn cat_index<N:ast_node>(&self,
-                              elt: N,
-                              base_cmt: cmt) -> cmt {
+                             elt: N,
+                             base_cmt: cmt) -> cmt {
         let mt = match ty::index(base_cmt.ty) {
           Some(mt) => mt,
           None => {
@@ -756,27 +739,17 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_tuple_elt<N:ast_node>(&self,
-                                  elt: N,
-                                  cmt: cmt) -> cmt {
+    fn cat_imm_interior<N:ast_node>(&self,
+                                    node: N,
+                                    base_cmt: cmt,
+                                    interior_ty: ty::t,
+                                    interior: interior_kind) -> cmt {
         @cmt_ {
-            id: elt.id(),
-            span: elt.span(),
-            cat: cat_interior(cmt, interior_tuple),
-            mutbl: cmt.mutbl.inherit(),
-            ty: self.tcx.ty(elt)
-        }
-    }
-
-    fn cat_anon_struct_field<N:ast_node>(&self,
-                                          elt: N,
-                                          cmt: cmt) -> cmt {
-        @cmt_ {
-            id: elt.id(),
-            span: elt.span(),
-            cat: cat_interior(cmt, interior_anon_field),
-            mutbl: cmt.mutbl.inherit(),
-            ty: self.tcx.ty(elt)
+            id: node.id(),
+            span: node.span(),
+            cat: cat_interior(base_cmt, interior),
+            mutbl: base_cmt.mutbl.inherit(),
+            ty: interior_ty
         }
     }
 
@@ -797,27 +770,37 @@ pub impl mem_categorization_ctxt {
         // we can be sure that the binding will remain valid for the
         // duration of the arm.
         //
-        // The correspondence between the id in the cmt and which
-        // pattern is being referred to is somewhat...subtle.  In
-        // general, the id of the cmt is the id of the node that
-        // produces the value.  For patterns, that's actually the
-        // *subpattern*, generally speaking.
+        // (*) There is subtlety concerning the correspondence between
+        // pattern ids and types as compared to *expression* ids and
+        // types. This is explained briefly. on the definition of the
+        // type `cmt`, so go off and read what it says there, then
+        // come back and I'll dive into a bit more detail here. :) OK,
+        // back?
         //
-        // To see what I mean about ids etc, consider:
+        // In general, the id of the cmt should be the node that
+        // "produces" the value---patterns aren't executable code
+        // exactly, but I consider them to "execute" when they match a
+        // value. So if you have something like:
         //
         //     let x = @@3;
         //     match x {
         //       @@y { ... }
         //     }
         //
-        // Here the cmt for `y` would be something like
+        // In this case, the cmt and the relevant ids would be:
+        //
+        //     CMT             Id                  Type of Id Type of cmt
         //
         //     local(x)->@->@
+        //     ^~~~~~~^        `x` from discr      @@int      @@int
+        //     ^~~~~~~~~~^     `@@y` pattern node  @@int      @int
+        //     ^~~~~~~~~~~~~^  `@y` pattern node   @int       int
         //
-        // where the id of `local(x)` is the id of the `x` that appears
-        // in the match, the id of `local(x)->@` is the `@y` pattern,
-        // and the id of `local(x)->@->@` is the id of the `y` pattern.
-
+        // You can see that the types of the id and the cmt are in
+        // sync in the first line, because that id is actually the id
+        // of an expression. But once we get to pattern ids, the types
+        // step out of sync again. So you'll see below that we always
+        // get the type of the *subpattern* and use that.
 
         let tcx = self.tcx;
         debug!("cat_pattern: id=%d pat=%s cmt=%s",
@@ -839,22 +822,27 @@ pub impl mem_categorization_ctxt {
             match self.tcx.def_map.find(&pat.id) {
                 Some(&ast::def_variant(enum_did, _)) => {
                     // variant(x, y, z)
-                    for subpats.each |subpat| {
-                        let subcmt = self.cat_variant(*subpat, enum_did, cmt);
-                        self.cat_pattern(subcmt, *subpat, op);
+                    for subpats.each |&subpat| {
+                        let subpat_ty = self.pat_ty(subpat); // see (*)
+                        let subcmt =
+                            self.cat_imm_interior(pat, cmt, subpat_ty,
+                                                  interior_variant(enum_did));
+                        self.cat_pattern(subcmt, subpat, op);
                     }
                 }
                 Some(&ast::def_fn(*)) |
                 Some(&ast::def_struct(*)) => {
-                    for subpats.each |subpat| {
-                        let cmt_field = self.cat_anon_struct_field(*subpat,
-                                                                   cmt);
-                        self.cat_pattern(cmt_field, *subpat, op);
+                    for subpats.each |&subpat| {
+                        let subpat_ty = self.pat_ty(subpat); // see (*)
+                        let cmt_field =
+                            self.cat_imm_interior(pat, cmt, subpat_ty,
+                                                  interior_anon_field);
+                        self.cat_pattern(cmt_field, subpat, op);
                     }
                 }
                 Some(&ast::def_const(*)) => {
-                    for subpats.each |subpat| {
-                        self.cat_pattern(cmt, *subpat, op);
+                    for subpats.each |&subpat| {
+                        self.cat_pattern(cmt, subpat, op);
                     }
                 }
                 _ => {
@@ -876,39 +864,43 @@ pub impl mem_categorization_ctxt {
           ast::pat_struct(_, ref field_pats, _) => {
             // {f1: p1, ..., fN: pN}
             for field_pats.each |fp| {
-                let cmt_field = self.cat_field(fp.pat, cmt, fp.ident, pat.id);
+                let field_ty = self.pat_ty(fp.pat); // see (*)
+                let cmt_field = self.cat_field(pat, cmt, fp.ident,
+                                               field_ty, pat.id);
                 self.cat_pattern(cmt_field, fp.pat, op);
             }
           }
 
           ast::pat_tup(ref subpats) => {
             // (p1, ..., pN)
-            for subpats.each |subpat| {
-                let subcmt = self.cat_tuple_elt(*subpat, cmt);
-                self.cat_pattern(subcmt, *subpat, op);
+            for subpats.each |&subpat| {
+                let subpat_ty = self.pat_ty(subpat); // see (*)
+                let subcmt = self.cat_imm_interior(pat, cmt, subpat_ty,
+                                                   interior_tuple);
+                self.cat_pattern(subcmt, subpat, op);
             }
           }
 
           ast::pat_box(subpat) | ast::pat_uniq(subpat) |
           ast::pat_region(subpat) => {
             // @p1, ~p1
-            let subcmt = self.cat_deref(subpat, cmt, 0);
+            let subcmt = self.cat_deref(pat, cmt, 0);
             self.cat_pattern(subcmt, subpat, op);
           }
 
           ast::pat_vec(ref before, slice, ref after) => {
-              for before.each |pat| {
-                  let elt_cmt = self.cat_index(*pat, cmt);
-                  self.cat_pattern(elt_cmt, *pat, op);
+              for before.each |&before_pat| {
+                  let elt_cmt = self.cat_index(pat, cmt);
+                  self.cat_pattern(elt_cmt, before_pat, op);
               }
-              for slice.each |slice_pat| {
-                  let slice_ty = self.tcx.ty(*slice_pat);
-                  let slice_cmt = self.cat_rvalue(*slice_pat, slice_ty);
-                  self.cat_pattern(slice_cmt, *slice_pat, op);
+              for slice.each |&slice_pat| {
+                  let slice_ty = self.pat_ty(slice_pat);
+                  let slice_cmt = self.cat_rvalue(pat, slice_ty);
+                  self.cat_pattern(slice_cmt, slice_pat, op);
               }
-              for after.each |pat| {
-                  let elt_cmt = self.cat_index(*pat, cmt);
-                  self.cat_pattern(elt_cmt, *pat, op);
+              for after.each |&after_pat| {
+                  let elt_cmt = self.cat_index(pat, cmt);
+                  self.cat_pattern(elt_cmt, after_pat, op);
               }
           }
 
@@ -1145,4 +1137,3 @@ impl Repr for interior_kind {
         }
     }
 }
-
