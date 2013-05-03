@@ -352,7 +352,10 @@ pub fn fsync_fd(fd: c_int, _l: io::fsync::Level) -> c_int {
     }
 }
 
-pub struct Pipe { in: c_int, out: c_int }
+pub struct Pipe {
+    in: c_int,
+    out: c_int
+}
 
 #[cfg(unix)]
 pub fn pipe() -> Pipe {
