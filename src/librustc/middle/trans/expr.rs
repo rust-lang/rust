@@ -218,10 +218,10 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
                     unpack_datum!(bcx, auto_ref(bcx, datum))
                 }
                 Some(AutoBorrowVec(*)) => {
-                    unpack_datum!(bcx, auto_slice(bcx, datum))
+                    unpack_datum!(bcx, auto_slice(bcx, expr, datum))
                 }
                 Some(AutoBorrowVecRef(*)) => {
-                    unpack_datum!(bcx, auto_slice_and_ref(bcx, datum))
+                    unpack_datum!(bcx, auto_slice_and_ref(bcx, expr, datum))
                 }
                 Some(AutoBorrowFn(*)) => {
                     // currently, all closure types are
@@ -241,7 +241,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         DatumBlock {bcx: bcx, datum: datum.to_rptr(bcx)}
     }
 
-    fn auto_slice(bcx: block, datum: Datum) -> DatumBlock {
+    fn auto_slice(bcx: block, expr: @ast::expr, datum: Datum) -> DatumBlock {
         // This is not the most efficient thing possible; since slices
         // are two words it'd be better if this were compiled in
         // 'dest' mode, but I can't find a nice way to structure the
@@ -250,7 +250,9 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
 
         let tcx = bcx.tcx();
         let unit_ty = ty::sequence_element_type(tcx, datum.ty);
-        let (base, len) = datum.get_base_and_len(bcx);
+        // NOTE prob need to distinguish "auto-slice" from explicit index?
+        let (bcx, base, len) =
+            datum.get_vec_base_and_len(bcx, expr.span, expr.id);
 
         // this type may have a different region/mutability than the
         // real one, but it will have the same runtime representation
@@ -283,8 +285,10 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         DatumBlock {bcx: bcx, datum: scratch}
     }
 
-    fn auto_slice_and_ref(bcx: block, datum: Datum) -> DatumBlock {
-        let DatumBlock { bcx, datum } = auto_slice(bcx, datum);
+    fn auto_slice_and_ref(bcx: block,
+                          expr: @ast::expr,
+                          datum: Datum) -> DatumBlock {
+        let DatumBlock { bcx, datum } = auto_slice(bcx, expr, datum);
         auto_ref(bcx, datum)
     }
 }
@@ -903,7 +907,8 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         let scaled_ix = Mul(bcx, ix_val, vt.llunit_size);
         base::maybe_name_value(bcx.ccx(), scaled_ix, ~"scaled_ix");
 
-        let mut (base, len) = base_datum.get_base_and_len(bcx);
+        let mut (bcx, base, len) =
+            base_datum.get_vec_base_and_len(bcx, index_expr.span, index_expr.id);
 
         if ty::type_is_str(base_ty) {
             // acccount for null terminator in the case of string

@@ -603,6 +603,8 @@ pub impl Datum {
     }
 
     fn perform_write_guard(&self, bcx: block, span: span) -> block {
+        debug!("perform_write_guard");
+
         // Create scratch space, but do not root it.
         let llval = match self.mode {
             ByValue => self.val,
@@ -682,25 +684,10 @@ pub impl Datum {
     {
         let ccx = bcx.ccx();
 
-        debug!("try_deref(expr_id=%d, derefs=%?, is_auto=%b, self=%?)",
+        debug!("try_deref(expr_id=%?, derefs=%?, is_auto=%b, self=%?)",
                expr_id, derefs, is_auto, self.to_str(bcx.ccx()));
-        let _indenter = indenter();
 
-        // root the autoderef'd value, if necessary:
-        //
-        // (Note: root'd values are always boxes)
-        let key = root_map_key { id: expr_id, derefs: derefs };
-        let bcx = match ccx.maps.root_map.find(&key) {
-            None => bcx,
-            Some(&root_info) => self.root(bcx, span, key, root_info)
-        };
-
-        // Perform the write guard, if necessary.
-        //
-        // (Note: write-guarded values are always boxes)
-        let bcx = if ccx.maps.write_guard_map.contains(&key) {
-            self.perform_write_guard(bcx, span)
-        } else { bcx };
+        let bcx = self.root_and_write_guard(bcx, span, expr_id, derefs);
 
         match ty::get(self.ty).sty {
             ty::ty_box(_) | ty::ty_uniq(_) => {
@@ -854,8 +841,53 @@ pub impl Datum {
         DatumBlock { bcx: bcx, datum: datum }
     }
 
-    fn get_base_and_len(&self, bcx: block) -> (ValueRef, ValueRef) {
-        tvec::get_base_and_len(bcx, self.to_appropriate_llval(bcx), self.ty)
+    fn root_and_write_guard(&self,
+                            mut bcx: block,
+                            span: span,
+                            expr_id: ast::node_id,
+                            derefs: uint) -> block {
+        let key = root_map_key { id: expr_id, derefs: derefs };
+        debug!("root_and_write_guard(key=%?)", key);
+
+        // root the autoderef'd value, if necessary:
+        //
+        // (Note: root'd values are always boxes)
+        let ccx = bcx.ccx();
+        bcx = match ccx.maps.root_map.find(&key) {
+            None => bcx,
+            Some(&root_info) => self.root(bcx, span, key, root_info)
+        };
+
+        // Perform the write guard, if necessary.
+        //
+        // (Note: write-guarded values are always boxes)
+        if ccx.maps.write_guard_map.contains(&key) {
+            self.perform_write_guard(bcx, span)
+        } else {
+            bcx
+        }
+    }
+
+    fn get_vec_base_and_len(&self,
+                            mut bcx: block,
+                            span: span,
+                            expr_id: ast::node_id)
+                            -> (block, ValueRef, ValueRef) {
+        //! Converts a vector into the slice pair. Performs rooting
+        //! and write guards checks.
+
+        // only imp't for @[] and @str, but harmless
+        bcx = self.root_and_write_guard(bcx, span, expr_id, 0);
+        let (base, len) = self.get_vec_base_and_len_no_root(bcx);
+        (bcx, base, len)
+    }
+
+    fn get_vec_base_and_len_no_root(&self, bcx: block) -> (ValueRef, ValueRef) {
+        //! Converts a vector into the slice pair. Des not root
+        //! nor perform write guard checks.
+
+        let llval = self.to_appropriate_llval(bcx);
+        tvec::get_base_and_len(bcx, llval, self.ty)
     }
 
     fn to_result(&self, bcx: block) -> common::Result {
