@@ -9,14 +9,13 @@
 // except according to those terms.
 
 use prelude::*;
-use super::*;
 use super::super::*;
-use super::super::misc::PathLike;
+use super::super::support::PathLike;
 
 pub struct UnixStream;
 
 impl UnixStream {
-    pub fn connect<P: PathLike>(_path: &P) -> Result<UnixStream, IoError> {
+    pub fn connect<P: PathLike>(_path: &P) -> Option<UnixStream> {
         fail!()
     }
 }
@@ -40,7 +39,7 @@ impl Close for UnixStream {
 pub struct UnixListener;
 
 impl UnixListener {
-    pub fn new<P: PathLike>(_path: &P) -> UnixListener {
+    pub fn bind<P: PathLike>(_path: &P) -> Option<UnixListener> {
         fail!()
     }
 }
