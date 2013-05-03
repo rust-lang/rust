@@ -28,7 +28,6 @@ struct rust_env {
     int argc;
     char **argv;
     rust_bool debug_mem;
-    rust_bool debug_borrows;
 };
 
 rust_env* load_env(int argc, char **argv);
