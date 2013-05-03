@@ -532,6 +532,7 @@ pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
 // drop glue checks whether it is zero.
 pub fn revoke_clean(cx: block, val: ValueRef) {
     do in_scope_cx(cx) |scope_info| {
+        let scope_info = &mut *scope_info; // FIXME(#5074) workaround borrowck
         let cleanup_pos = vec::position(
             scope_info.cleanups,
             |cu| match *cu {
@@ -550,9 +551,9 @@ pub fn revoke_clean(cx: block, val: ValueRef) {
 }
 
 pub fn block_cleanups(bcx: block) -> ~[cleanup] {
-    match *bcx.kind {
+    match bcx.kind {
        block_non_scope  => ~[],
-       block_scope(ref mut inf) => /*bad*/copy inf.cleanups
+       block_scope(inf) => /*bad*/copy inf.cleanups
     }
 }
 
@@ -561,7 +562,7 @@ pub enum block_kind {
     // cleaned up. May correspond to an actual block in the language, but also
     // to an implicit scope, for example, calls introduce an implicit scope in
     // which the arguments are evaluated and cleaned up.
-    block_scope(scope_info),
+    block_scope(@mut scope_info),
 
     // A non-scope block is a basic block created as a translation artifact
     // from translating code that expresses conditional logic rather than by
@@ -582,6 +583,12 @@ pub struct scope_info {
     cleanup_paths: ~[cleanup_path],
     // Unwinding landing pad. Also cleared when cleanups change.
     landing_pad: Option<BasicBlockRef>,
+}
+
+pub impl scope_info {
+    fn empty_cleanups(&mut self) -> bool {
+        self.cleanups.is_empty()
+    }
 }
 
 pub trait get_node_info {
@@ -632,7 +639,7 @@ pub struct block_ {
     unreachable: bool,
     parent: Option<block>,
     // The 'kind' of basic block this is.
-    kind: @mut block_kind,
+    kind: block_kind,
     // Is this block part of a landing pad?
     is_lpad: bool,
     // info about the AST node this block originated from, if any
@@ -651,7 +658,7 @@ pub fn block_(llbb: BasicBlockRef, parent: Option<block>, kind: block_kind,
         terminated: false,
         unreachable: false,
         parent: parent,
-        kind: @mut kind,
+        kind: kind,
         is_lpad: is_lpad,
         node_info: node_info,
         fcx: fcx
@@ -699,21 +706,17 @@ pub fn val_str(tn: @TypeNames, v: ValueRef) -> @str {
     return ty_str(tn, val_ty(v));
 }
 
-pub fn in_scope_cx(cx: block, f: &fn(si: &mut scope_info)) {
+pub fn in_scope_cx(cx: block, f: &fn(si: @mut scope_info)) {
     let mut cur = cx;
     loop {
-        {
-            // XXX: Borrow check bug workaround.
-            let kind: &mut block_kind = &mut *cur.kind;
-            match *kind {
-              block_scope(ref mut inf) => {
-                  debug!("in_scope_cx: selected cur=%s (cx=%s)",
-                         cur.to_str(), cx.to_str());
-                  f(inf);
-                  return;
-              }
-              _ => ()
+        match cur.kind {
+            block_scope(inf) => {
+                debug!("in_scope_cx: selected cur=%s (cx=%s)",
+                       cur.to_str(), cx.to_str());
+                f(inf);
+                return;
             }
+            _ => ()
         }
         cur = block_parent(cur);
     }

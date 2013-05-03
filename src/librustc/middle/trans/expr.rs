@@ -123,7 +123,6 @@ use back::abi;
 use lib;
 use lib::llvm::{ValueRef, TypeRef, llvm};
 use metadata::csearch;
-use middle::borrowck::root_map_key;
 use middle::trans::_match;
 use middle::trans::adt;
 use middle::trans::asm;
