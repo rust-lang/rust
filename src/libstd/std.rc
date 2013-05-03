@@ -107,6 +107,7 @@ pub mod complex;
 pub mod stats;
 pub mod semver;
 pub mod fileinput;
+pub mod flate;
 
 #[cfg(unicode)]
 mod unicode;
