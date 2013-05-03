@@ -674,7 +674,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
                 a = x.next();
             }
         }
-        return a.each(|&x| f(x)) && y.advance(f);
+        return b.each(|&x| f(x)) && y.advance(f);
     }
 }
 
@@ -1326,7 +1326,7 @@ mod test_set {
     }
 
     fn check(a: &[int], b: &[int], expected: &[int],
-             f: &fn(&TreeSet<int>, &TreeSet<int>, f: &fn(&int) -> bool)) {
+             f: &fn(&TreeSet<int>, &TreeSet<int>, f: &fn(&int) -> bool) -> bool) {
         let mut set_a = TreeSet::new();
         let mut set_b = TreeSet::new();
 

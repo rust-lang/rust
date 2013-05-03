@@ -393,6 +393,7 @@ pub impl<T> DList<T> {
     }
 
     /// Iterate over nodes.
+    #[cfg(stage0)]
     fn each_node(@mut self, f: &fn(@mut DListNode<T>) -> bool) {
         let mut link = self.peek_n();
         while link.is_some() {
@@ -400,6 +401,17 @@ pub impl<T> DList<T> {
             if !f(nobe) { break; }
             link = nobe.next_link();
         }
+    }
+    /// Iterate over nodes.
+    #[cfg(not(stage0))]
+    fn each_node(@mut self, f: &fn(@mut DListNode<T>) -> bool) -> bool {
+        let mut link = self.peek_n();
+        while link.is_some() {
+            let nobe = link.get();
+            if !f(nobe) { return false; }
+            link = nobe.next_link();
+        }
+        return true;
     }
 
     /// Check data structure integrity. O(n).

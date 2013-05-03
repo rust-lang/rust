@@ -86,9 +86,34 @@ pub fn to_vec<T>(iter: &fn(f: &fn(T) -> bool) -> bool) -> ~[T] {
 #[cfg(not(stage0))]
 pub fn any<T>(predicate: &fn(T) -> bool,
               iter: &fn(f: &fn(T) -> bool) -> bool) -> bool {
-    // If the predicate returns true, we break. If we ever broke, then we found
-    // something
-    !iter(|x| !predicate(x))
+    for iter |x| {
+        if predicate(x) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Return true if `predicate` is true for all values yielded by an internal iterator.
+ *
+ * # Example:
+ *
+ * ~~~~
+ * assert!(all(|&x: &uint| x < 6, |f| uint::range(1, 6, f)));
+ * assert!(!all(|&x: &uint| x < 5, |f| uint::range(1, 6, f)));
+ * ~~~~
+ */
+#[inline(always)]
+#[cfg(stage0)]
+pub fn all<T>(predicate: &fn(T) -> bool,
+              iter: &fn(f: &fn(T) -> bool)) -> bool {
+    for iter |x| {
+        if !predicate(x) {
+            return false;
+        }
+    }
+    return true;
 }
 
 /**

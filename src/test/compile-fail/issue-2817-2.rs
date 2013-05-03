@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn not_bool(f: &fn(int) -> ~str) {}
+fn not_bool(f: &fn(int) -> ~str) -> bool {}
 
 fn main() {
     for uint::range(0, 100000) |_i| { //~ ERROR A for-loop body must return (), but
