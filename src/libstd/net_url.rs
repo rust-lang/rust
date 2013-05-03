@@ -13,8 +13,6 @@
 #[allow(deprecated_mode)];
 
 use core::cmp::Eq;
-#[cfg(stage0)]
-use core::from_str::FromStr;
 use core::io::{Reader, ReaderUtil};
 use core::io;
 use core::hashmap::HashMap;
