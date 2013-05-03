@@ -41,12 +41,12 @@ pub fn stmt_id(s: &stmt) -> node_id {
     }
 }
 
-pub fn variant_def_ids(d: def) -> (def_id, def_id) {
+pub fn variant_def_ids(d: def) -> Option<(def_id, def_id)> {
     match d {
       def_variant(enum_id, var_id) => {
-        return (enum_id, var_id);
+          Some((enum_id, var_id))
       }
-      _ => fail!(~"non-variant in variant_def_ids")
+      _ => None
     }
 }
 

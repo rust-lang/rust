@@ -114,37 +114,53 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
         ty::ty_enum(_, ref expected_substs) => {
             // Lookup the enum and variant def ids:
             let v_def = lookup_def(pcx.fcx, pat.span, pat.id);
-            let (enm, var) = ast_util::variant_def_ids(v_def);
+            match ast_util::variant_def_ids(v_def) {
+                Some((enm, var)) => {
+                    // Assign the pattern the type of the *enum*, not the variant.
+                    let enum_tpt = ty::lookup_item_type(tcx, enm);
+                    instantiate_path(pcx.fcx, path, enum_tpt, pat.span, pat.id,
+                                     pcx.block_region);
 
-            // Assign the pattern the type of the *enum*, not the variant.
-            let enum_tpt = ty::lookup_item_type(tcx, enm);
-            instantiate_path(pcx.fcx, path, enum_tpt, pat.span, pat.id,
-                             pcx.block_region);
+                    // check that the type of the value being matched is a subtype
+                    // of the type of the pattern:
+                    let pat_ty = fcx.node_ty(pat.id);
+                    demand::subtype(fcx, pat.span, expected, pat_ty);
 
-            // check that the type of the value being matched is a subtype
-            // of the type of the pattern:
-            let pat_ty = fcx.node_ty(pat.id);
-            demand::subtype(fcx, pat.span, expected, pat_ty);
+                    // Get the expected types of the arguments.
+                    arg_types = {
+                        let vinfo =
+                            ty::enum_variant_with_id(tcx, enm, var);
+                        let var_tpt = ty::lookup_item_type(tcx, var);
+                        vinfo.args.map(|t| {
+                            if var_tpt.generics.type_param_defs.len() ==
+                                expected_substs.tps.len()
+                            {
+                                ty::subst(tcx, expected_substs, *t)
+                            }
+                            else {
+                                *t // In this case, an error was already signaled
+                                    // anyway
+                            }
+                        })
+                    };
 
-            // Get the expected types of the arguments.
-            arg_types = {
-                let vinfo =
-                    ty::enum_variant_with_id(tcx, enm, var);
-                let var_tpt = ty::lookup_item_type(tcx, var);
-                vinfo.args.map(|t| {
-                    if var_tpt.generics.type_param_defs.len() ==
-                        expected_substs.tps.len()
-                    {
-                        ty::subst(tcx, expected_substs, *t)
-                    }
-                    else {
-                        *t // In this case, an error was already signaled
-                           // anyway
-                    }
-                })
-            };
-
-            kind_name = "variant";
+                    kind_name = "variant";
+                }
+                None => {
+                    let resolved_expected =
+                        fcx.infcx().ty_to_str(fcx.infcx().resolve_type_vars_if_possible(expected));
+                    fcx.infcx().type_error_message_str(pat.span,
+                                                       |actual| {
+                        fmt!("mismatched types: expected `%s` but found %s",
+                             resolved_expected, actual)},
+                             ~"a structure pattern",
+                             None);
+                    fcx.write_error(pat.id);
+                    kind_name = "[error]";
+                    arg_types = (copy subpats).get_or_default(~[]).map(|_|
+                                                                       ty::mk_err());
+                }
+            }
         }
         ty::ty_struct(struct_def_id, ref expected_substs) => {
             // Lookup the struct ctor def id
