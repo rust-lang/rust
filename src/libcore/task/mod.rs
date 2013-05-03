@@ -39,7 +39,7 @@ use result::Result;
 use comm::{stream, Chan, GenericChan, GenericPort, Port};
 use prelude::*;
 use result;
-use task::rt::{task_id, sched_id, rust_task};
+use task::rt::{task_id, sched_id};
 use util;
 use util::replace;
 use unstable::finally::Finally;
