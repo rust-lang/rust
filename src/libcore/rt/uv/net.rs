@@ -239,9 +239,10 @@ pub impl TcpWatcher {
         extern fn connection_cb(handle: *uvll::uv_stream_t, status: c_int) {
             rtdebug!("connection_cb");
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
-            let cb = stream_watcher.get_watcher_data().connect_cb.swap_unwrap();
-            let status = status_to_maybe_uv_error(stream_watcher.native_handle(), status);
-            cb(stream_watcher, status);
+            let data = stream_watcher.get_watcher_data();
+            let cb = data.connect_cb.get_ref();
+            let status = status_to_maybe_uv_error(handle, status);
+            (*cb)(stream_watcher, status);
         }
     }
 
