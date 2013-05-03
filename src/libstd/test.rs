@@ -556,9 +556,12 @@ pub fn run_test(force_ignore: bool,
         let testfn_cell = ::core::cell::Cell(testfn);
         do task::spawn {
             let mut result_future = None; // task::future_result(builder);
-            task::task().unlinked().future_result(|+r| {
-                result_future = Some(r);
-            }).spawn(testfn_cell.take());
+
+            let mut task = task::task();
+            task.unlinked();
+            task.future_result(|+r| { result_future = Some(r) });
+            task.spawn(testfn_cell.take());
+
             let task_result = result_future.unwrap().recv();
             let test_result = calc_result(&desc,
                                           task_result == task::Success);

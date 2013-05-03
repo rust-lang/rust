@@ -156,7 +156,7 @@ pub struct SchedOpts {
 pub struct TaskOpts {
     linked: bool,
     supervised: bool,
-    mut notify_chan: Option<Chan<TaskResult>>,
+    notify_chan: Option<Chan<TaskResult>>,
     sched: SchedOpts
 }
 
@@ -176,9 +176,9 @@ pub struct TaskOpts {
 // FIXME (#3724): Replace the 'consumed' bit with move mode on self
 pub struct TaskBuilder {
     opts: TaskOpts,
-    mut gen_body: Option<~fn(v: ~fn()) -> ~fn()>,
+    gen_body: Option<~fn(v: ~fn()) -> ~fn()>,
     can_not_copy: Option<util::NonCopyable>,
-    mut consumed: bool,
+    consumed: bool,
 }
 
 /**
@@ -191,13 +191,13 @@ pub fn task() -> TaskBuilder {
         opts: default_task_opts(),
         gen_body: None,
         can_not_copy: None,
-        mut consumed: false,
+        consumed: false,
     }
 }
 
 #[doc(hidden)] // FIXME #3538
 priv impl TaskBuilder {
-    fn consume(&self) -> TaskBuilder {
+    fn consume(&mut self) -> TaskBuilder {
         if self.consumed {
             fail!(~"Cannot copy a task_builder"); // Fake move mode on self
         }
@@ -219,57 +219,23 @@ priv impl TaskBuilder {
 }
 
 pub impl TaskBuilder {
-    /**
-     * Decouple the child task's failure from the parent's. If either fails,
-     * the other will not be killed.
-     */
-    fn unlinked(&self) -> TaskBuilder {
-        let notify_chan = replace(&mut self.opts.notify_chan, None);
-        TaskBuilder {
-            opts: TaskOpts {
-                linked: false,
-                supervised: self.opts.supervised,
-                notify_chan: notify_chan,
-                sched: self.opts.sched
-            },
-            can_not_copy: None,
-            .. self.consume()
-        }
+    /// Decouple the child task's failure from the parent's. If either fails,
+    /// the other will not be killed.
+    fn unlinked(&mut self) {
+        self.opts.linked = false;
     }
-    /**
-     * Unidirectionally link the child task's failure with the parent's. The
-     * child's failure will not kill the parent, but the parent's will kill
-     * the child.
-     */
-    fn supervised(&self) -> TaskBuilder {
-        let notify_chan = replace(&mut self.opts.notify_chan, None);
-        TaskBuilder {
-            opts: TaskOpts {
-                linked: false,
-                supervised: true,
-                notify_chan: notify_chan,
-                sched: self.opts.sched
-            },
-            can_not_copy: None,
-            .. self.consume()
-        }
+
+    /// Unidirectionally link the child task's failure with the parent's. The
+    /// child's failure will not kill the parent, but the parent's will kill
+    /// the child.
+    fn supervised(&mut self) {
+        self.opts.supervised = true;
     }
-    /**
-     * Link the child task's and parent task's failures. If either fails, the
-     * other will be killed.
-     */
-    fn linked(&self) -> TaskBuilder {
-        let notify_chan = replace(&mut self.opts.notify_chan, None);
-        TaskBuilder {
-            opts: TaskOpts {
-                linked: true,
-                supervised: false,
-                notify_chan: notify_chan,
-                sched: self.opts.sched
-            },
-            can_not_copy: None,
-            .. self.consume()
-        }
+
+    /// Link the child task's and parent task's failures. If either fails, the
+    /// other will be killed.
+    fn linked(&mut self) {
+        self.opts.linked = true;
     }
 
     /**
@@ -289,7 +255,7 @@ pub impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn future_result(&self, blk: &fn(v: Port<TaskResult>)) -> TaskBuilder {
+    fn future_result(&mut self, blk: &fn(v: Port<TaskResult>)) {
         // FIXME (#3725): Once linked failure and notification are
         // handled in the library, I can imagine implementing this by just
         // registering an arbitrary number of task::on_exit handlers and
@@ -305,30 +271,12 @@ pub impl TaskBuilder {
         blk(notify_pipe_po);
 
         // Reconfigure self to use a notify channel.
-        TaskBuilder {
-            opts: TaskOpts {
-                linked: self.opts.linked,
-                supervised: self.opts.supervised,
-                notify_chan: Some(notify_pipe_ch),
-                sched: self.opts.sched
-            },
-            can_not_copy: None,
-            .. self.consume()
-        }
+        self.opts.notify_chan = Some(notify_pipe_ch);
     }
+
     /// Configure a custom scheduler mode for the task.
-    fn sched_mode(&self, mode: SchedMode) -> TaskBuilder {
-        let notify_chan = replace(&mut self.opts.notify_chan, None);
-        TaskBuilder {
-            opts: TaskOpts {
-                linked: self.opts.linked,
-                supervised: self.opts.supervised,
-                notify_chan: notify_chan,
-                sched: SchedOpts { mode: mode, foreign_stack_size: None}
-            },
-            can_not_copy: None,
-            .. self.consume()
-        }
+    fn sched_mode(&mut self, mode: SchedMode) {
+        self.opts.sched.mode = mode;
     }
 
     /**
@@ -343,7 +291,7 @@ pub impl TaskBuilder {
      * generator by applying the task body which results from the
      * existing body generator to the new body generator.
      */
-    fn add_wrapper(&self, wrapper: ~fn(v: ~fn()) -> ~fn()) -> TaskBuilder {
+    fn add_wrapper(&mut self, wrapper: ~fn(v: ~fn()) -> ~fn()) {
         let prev_gen_body = replace(&mut self.gen_body, None);
         let prev_gen_body = match prev_gen_body {
             Some(gen) => gen,
@@ -360,18 +308,7 @@ pub impl TaskBuilder {
             };
             f
         };
-        let notify_chan = replace(&mut self.opts.notify_chan, None);
-        TaskBuilder {
-            opts: TaskOpts {
-                linked: self.opts.linked,
-                supervised: self.opts.supervised,
-                notify_chan: notify_chan,
-                sched: self.opts.sched
-            },
-            gen_body: Some(next_gen_body),
-            can_not_copy: None,
-            .. self.consume()
-        }
+        self.gen_body = Some(next_gen_body);
     }
 
     /**
@@ -386,7 +323,7 @@ pub impl TaskBuilder {
      * When spawning into a new scheduler, the number of threads requested
      * must be greater than zero.
      */
-    fn spawn(&self, f: ~fn()) {
+    fn spawn(&mut self, f: ~fn()) {
         let gen_body = replace(&mut self.gen_body, None);
         let notify_chan = replace(&mut self.opts.notify_chan, None);
         let x = self.consume();
@@ -406,8 +343,9 @@ pub impl TaskBuilder {
         };
         spawn::spawn_raw(opts, f);
     }
+
     /// Runs a task, while transfering ownership of one argument to the child.
-    fn spawn_with<A:Owned>(&self, arg: A, f: ~fn(v: A)) {
+    fn spawn_with<A:Owned>(&mut self, arg: A, f: ~fn(v: A)) {
         let arg = Cell(arg);
         do self.spawn {
             f(arg.take());
@@ -427,16 +365,16 @@ pub impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn try<T:Owned>(&self, f: ~fn() -> T) -> Result<T,()> {
+    fn try<T:Owned>(&mut self, f: ~fn() -> T) -> Result<T,()> {
         let (po, ch) = stream::<T>();
         let mut result = None;
 
-        let fr_task_builder = self.future_result(|+r| {
-            result = Some(r);
-        });
-        do fr_task_builder.spawn || {
+        self.future_result(|+r| { result = Some(r); });
+
+        do self.spawn {
             ch.send(f());
         }
+
         match result.unwrap().recv() {
             Success => result::Ok(po.recv()),
             Failure => result::Err(())
@@ -468,26 +406,23 @@ pub fn default_task_opts() -> TaskOpts {
 
 /* Spawn convenience functions */
 
+/// Creates and executes a new child task
+///
+/// Sets up a new task with its own call stack and schedules it to run
+/// the provided unique closure.
+///
+/// This function is equivalent to `task().spawn(f)`.
 pub fn spawn(f: ~fn()) {
-    /*!
-     * Creates and executes a new child task
-     *
-     * Sets up a new task with its own call stack and schedules it to run
-     * the provided unique closure.
-     *
-     * This function is equivalent to `task().spawn(f)`.
-     */
-
-    task().spawn(f)
+    let mut task = task();
+    task.spawn(f)
 }
 
+/// Creates a child task unlinked from the current one. If either this
+/// task or the child task fails, the other will not be killed.
 pub fn spawn_unlinked(f: ~fn()) {
-    /*!
-     * Creates a child task unlinked from the current one. If either this
-     * task or the child task fails, the other will not be killed.
-     */
-
-    task().unlinked().spawn(f)
+    let mut task = task();
+    task.unlinked();
+    task.spawn(f)
 }
 
 pub fn spawn_supervised(f: ~fn()) {
@@ -497,7 +432,9 @@ pub fn spawn_supervised(f: ~fn()) {
      * the child will be killed.
      */
 
-    task().supervised().spawn(f)
+    let mut task = task();
+    task.supervised();
+    task.spawn(f)
 }
 
 pub fn spawn_with<A:Owned>(arg: A, f: ~fn(v: A)) {
@@ -511,7 +448,8 @@ pub fn spawn_with<A:Owned>(arg: A, f: ~fn(v: A)) {
      * This function is equivalent to `task().spawn_with(arg, f)`.
      */
 
-    task().spawn_with(arg, f)
+    let mut task = task();
+    task.spawn_with(arg, f)
 }
 
 pub fn spawn_sched(mode: SchedMode, f: ~fn()) {
@@ -527,7 +465,9 @@ pub fn spawn_sched(mode: SchedMode, f: ~fn()) {
      * greater than zero.
      */
 
-    task().sched_mode(mode).spawn(f)
+    let mut task = task();
+    task.sched_mode(mode);
+    task.spawn(f)
 }
 
 pub fn try<T:Owned>(f: ~fn() -> T) -> Result<T,()> {
@@ -538,7 +478,9 @@ pub fn try<T:Owned>(f: ~fn() -> T) -> Result<T,()> {
      * This is equivalent to task().supervised().try.
      */
 
-    task().supervised().try(f)
+    let mut task = task();
+    task.supervised();
+    task.try(f)
 }
 
 
@@ -822,7 +764,7 @@ fn test_run_basic() {
 
 #[cfg(test)]
 struct Wrapper {
-    mut f: Option<Chan<()>>
+    f: Option<Chan<()>>
 }
 
 #[test]
