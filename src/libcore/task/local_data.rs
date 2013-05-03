@@ -27,8 +27,7 @@ magic.
 */
 
 use prelude::*;
-use task::local_data_priv::{local_get, local_pop, local_modify, local_set};
-use task::rt;
+use task::local_data_priv::{local_get, local_pop, local_modify, local_set, Handle};
 
 /**
  * Indexes a task-local data slot. The function's code pointer is used for
@@ -53,7 +52,7 @@ pub type LocalDataKey<'self,T> = &'self fn(v: @T);
 pub unsafe fn local_data_pop<T:Durable>(
     key: LocalDataKey<T>) -> Option<@T> {
 
-    local_pop(rt::rust_get_task(), key)
+    local_pop(Handle::new(), key)
 }
 /**
  * Retrieve a task-local data value. It will also be kept alive in the
@@ -62,7 +61,7 @@ pub unsafe fn local_data_pop<T:Durable>(
 pub unsafe fn local_data_get<T:Durable>(
     key: LocalDataKey<T>) -> Option<@T> {
 
-    local_get(rt::rust_get_task(), key)
+    local_get(Handle::new(), key)
 }
 /**
  * Store a value in task-local data. If this key already has a value,
@@ -71,7 +70,7 @@ pub unsafe fn local_data_get<T:Durable>(
 pub unsafe fn local_data_set<T:Durable>(
     key: LocalDataKey<T>, data: @T) {
 
-    local_set(rt::rust_get_task(), key, data)
+    local_set(Handle::new(), key, data)
 }
 /**
  * Modify a task-local data value. If the function returns 'None', the
@@ -81,7 +80,7 @@ pub unsafe fn local_data_modify<T:Durable>(
     key: LocalDataKey<T>,
     modify_fn: &fn(Option<@T>) -> Option<@T>) {
 
-    local_modify(rt::rust_get_task(), key, modify_fn)
+    local_modify(Handle::new(), key, modify_fn)
 }
 
 #[test]

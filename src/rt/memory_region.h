@@ -54,11 +54,11 @@ private:
     inline alloc_header *get_header(void *mem);
     inline void *get_data(alloc_header *);
 
-    rust_env *_env;
     memory_region *_parent;
     int _live_allocations;
     array_list<alloc_header *> _allocation_list;
     const bool _detailed_leaks;
+    const bool _poison_on_free;
     const bool _synchronized;
     lock_and_signal _lock;
 
@@ -75,7 +75,8 @@ private:
     memory_region& operator=(const memory_region& rhs);
 
 public:
-    memory_region(rust_env *env, bool synchronized);
+    memory_region(bool synchronized,
+                  bool detailed_leaks, bool poison_on_free);
     memory_region(memory_region *parent);
     void *malloc(size_t size, const char *tag);
     void *realloc(void *mem, size_t size);
