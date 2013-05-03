@@ -108,11 +108,13 @@ pub fn parse_config(args: ~[~str]) -> config {
             else {
                 match getopts::opt_maybe_str(matches, ~"target") {
                     Some(~"arm-linux-androideabi") => {
-                        if (getopts::opt_maybe_str(matches, ~"adb-path") !=
-                            option::None) { true }
+                        if (opt_str(getopts::opt_maybe_str(matches, ~"adb-test-dir")) !=
+                            ~"(none)" &&
+                            opt_str(getopts::opt_maybe_str(matches, ~"adb-test-dir")) !=
+                            ~"") { true }
                         else { false }
                     }
-                    _ => { false }
+                    _ => { true }
                 }
             },
         verbose: getopts::opt_present(matches, ~"verbose")

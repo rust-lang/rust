@@ -77,9 +77,18 @@ fn run_rfail_test(config: config, props: TestProps, testfile: &Path) {
         fatal_ProcRes(~"run-fail test isn't valgrind-clean!", ProcRes);
     }
 
-    if (config.flag_runnable) {
+    if (config.host == config.target) {
         check_correct_failure_status(ProcRes);
         check_error_patterns(props, testfile, ProcRes);
+    } else {
+        match (config.target, config.flag_runnable) {
+
+            (~"arm-linux-androideabi", false) => { }
+            _ => {
+                check_correct_failure_status(ProcRes);
+                check_error_patterns(props, testfile, ProcRes);
+            }
+        }
     }
 }
 
@@ -490,15 +499,9 @@ fn exec_compiled_test(config: config, props: TestProps,
                         make_run_args(config, props, testfile),
                         env,
                         config.run_lib_path, None)
-    }
-    else {
+    } else {
         let args = make_run_args(config, props, testfile);
         let cmdline = make_cmdline(~"", args.prog, args.args);
-
-        let defaultRes = match config.mode {
-            mode_run_fail => ProcRes {status: 101, stdout: ~"", stderr: ~"", cmdline: cmdline},
-            _             => ProcRes {status: 0, stdout: ~"", stderr: ~"", cmdline: cmdline}
-        };
 
         match (config.target, config.flag_runnable) {
 
@@ -524,8 +527,8 @@ fn exec_compiled_test(config: config, props: TestProps,
                 // execute program
                 logv(config, fmt!("executing (%s) %s", config.target, cmdline));
 
-                // NOTE : adb shell dose not forward to each stdout and stderr of internal result
-                //        but forward to stdout only
+                // NOTE: adb shell dose not forward stdout and stderr of internal result
+                //       to stdout and stderr seperately but to stdout only
                 let mut newargs_out = ~[];
                 let mut newargs_err = ~[];
                 let subargs = args.args;
@@ -534,12 +537,11 @@ fn exec_compiled_test(config: config, props: TestProps,
 
                 let mut newcmd_out = ~"";
                 let mut newcmd_err = ~"";
-                newcmd_out.push_str(fmt!(
-                    "LD_LIBRARY_PATH=%s; export LD_LIBRARY_PATH; cd %s; ./%s",
+
+                newcmd_out.push_str(fmt!("LD_LIBRARY_PATH=%s %s/%s",
                     config.adb_test_dir, config.adb_test_dir, prog_short));
 
-                newcmd_err.push_str(fmt!(
-                    "LD_LIBRARY_PATH=%s; export LD_LIBRARY_PATH; cd %s; ./%s",
+                newcmd_err.push_str(fmt!("LD_LIBRARY_PATH=%s %s/%s",
                     config.adb_test_dir, config.adb_test_dir, prog_short));
 
                 for vec::each(subargs) |tv| {
@@ -569,7 +571,22 @@ fn exec_compiled_test(config: config, props: TestProps,
                         stderr: exe_result_err.out, cmdline: cmdline }
                 }
             }
-            _=> defaultRes
+
+            (~"arm-linux-androideabi", false) => {
+                match config.mode {
+                    mode_run_fail => ProcRes {status: 101, stdout: ~"",
+                                             stderr: ~"", cmdline: cmdline},
+                    _             => ProcRes {status: 0, stdout: ~"",
+                                             stderr: ~"", cmdline: cmdline}
+                }
+            }
+
+            _=> {
+                compose_and_run(config, testfile,
+                                make_run_args(config, props, testfile),
+                                env,
+                                config.run_lib_path, None)
+            }
         }
     }
 }
