@@ -1253,16 +1253,6 @@ pub fn mk_opaque_closure_ptr(cx: ctxt, sigil: ast::Sigil) -> t {
 
 pub fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
 
-// Converts s to its machine type equivalent
-pub fn mach_sty(cfg: @session::config, t: t) -> sty {
-    match get(t).sty {
-      ty_int(ast::ty_i) => ty_int(cfg.int_type),
-      ty_uint(ast::ty_u) => ty_uint(cfg.uint_type),
-      ty_float(ast::ty_f) => ty_float(cfg.float_type),
-      ref s => (/*bad*/copy *s)
-    }
-}
-
 pub fn walk_ty(ty: t, f: &fn(t)) {
     maybe_walk_ty(ty, |t| { f(t); true });
 }
