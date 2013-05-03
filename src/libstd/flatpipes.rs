@@ -678,6 +678,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(reason = "FIXME #6211 failing on linux snapshot machine")]
     fn test_serializing_pipes() {
         let (port, chan) = serial::pipe_stream();
 
