@@ -675,7 +675,7 @@ pub impl Datum {
     fn try_deref(&self,
         bcx: block,            // block wherein to generate insn's
         span: span,            // location where deref occurs
-        expr_id: ast::node_id, // id of expr being deref'd
+        expr_id: ast::node_id, // id of deref expr
         derefs: uint,          // number of times deref'd already
         is_auto: bool)         // if true, only deref if auto-derefable
         -> (Option<Datum>, block)
@@ -810,7 +810,7 @@ pub impl Datum {
     }
 
     fn deref(&self, bcx: block,
-             expr: @ast::expr,  // the expression whose value is being deref'd
+             expr: @ast::expr,  // the deref expression
              derefs: uint)
           -> DatumBlock {
         match self.try_deref(bcx, expr.span, expr.id, derefs, false) {

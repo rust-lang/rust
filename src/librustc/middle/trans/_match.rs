@@ -947,6 +947,17 @@ pub fn collect_record_or_struct_fields(bcx: block,
     }
 }
 
+pub fn pats_require_rooting(bcx: block,
+                            m: &[@Match],
+                            col: uint)
+                         -> bool {
+    vec::any(m, |br| {
+        let pat_id = br.pats[col].id;
+        let key = root_map_key {id: pat_id, derefs: 0u };
+        bcx.ccx().maps.root_map.contains_key(&key)
+    })
+}
+
 pub fn root_pats_as_necessary(bcx: block,
                               m: &[@Match],
                               col: uint,
@@ -1303,7 +1314,10 @@ pub fn compile_submatch(bcx: block,
         if pat_id == 0 { pat_id = br.pats[col].id; }
     }
 
-    bcx = root_pats_as_necessary(bcx, m, col, val);
+    // If we are not matching against an `@T`, we should not be
+    // required to root any values.
+    assert!(any_box_pat(m, col) || !pats_require_rooting(bcx, m, col));
+
     let rec_fields = collect_record_or_struct_fields(bcx, m, col);
     if rec_fields.len() > 0 {
         let pat_ty = node_id_type(bcx, pat_id);
@@ -1364,6 +1378,7 @@ pub fn compile_submatch(bcx: block,
 
     // Unbox in case of a box field
     if any_box_pat(m, col) {
+        bcx = root_pats_as_necessary(bcx, m, col, val);
         let llbox = Load(bcx, val);
         let box_no_addrspace = non_gc_box_cast(bcx, llbox);
         let unboxed =

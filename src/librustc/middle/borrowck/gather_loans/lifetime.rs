@@ -97,7 +97,7 @@ impl GuaranteeLifetimeContext {
                 );
 
                 if !omit_root {
-                    self.check_root(base, derefs, ptr_mutbl, discr_scope);
+                    self.check_root(cmt, base, derefs, ptr_mutbl, discr_scope);
                 } else {
                     debug!("omitting root, base=%s, base_scope=%?",
                            base.repr(self.tcx()), base_scope);
@@ -168,12 +168,14 @@ impl GuaranteeLifetimeContext {
     }
 
     fn check_root(&self,
+                  cmt_deref: mc::cmt,
                   cmt_base: mc::cmt,
                   derefs: uint,
                   ptr_mutbl: ast::mutability,
                   discr_scope: Option<ast::node_id>) {
-        debug!("check_root(cmt_base=%s, derefs=%? ptr_mutbl=%?, \
+        debug!("check_root(cmt_deref=%s, cmt_base=%s, derefs=%?, ptr_mutbl=%?, \
                 discr_scope=%?)",
+               cmt_deref.repr(self.tcx()),
                cmt_base.repr(self.tcx()),
                derefs,
                ptr_mutbl,
@@ -234,7 +236,7 @@ impl GuaranteeLifetimeContext {
         };
 
         // Add a record of what is required
-        let rm_key = root_map_key {id: cmt_base.id, derefs: derefs};
+        let rm_key = root_map_key {id: cmt_deref.id, derefs: derefs};
         let root_info = RootInfo {scope: root_scope, freeze: opt_dyna};
         self.bccx.root_map.insert(rm_key, root_info);
 
