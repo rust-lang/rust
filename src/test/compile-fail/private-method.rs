@@ -18,7 +18,7 @@ mod kitties {
     }
 
     pub impl cat {
-        priv fn nap(&self) { uint::range(1u, 10000u, |_i| false)}
+        priv fn nap(&self) { uint::range(1u, 10000u, |_i| false); }
     }
 
     pub fn cat(in_x : uint, in_y : int) -> cat {

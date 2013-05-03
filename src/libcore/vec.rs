@@ -1744,12 +1744,36 @@ pub fn each_permutation<T:Copy>(v: &[T], put: &fn(ts: &[T]) -> bool) -> bool {
  * ~~~
  *
  */
+#[cfg(stage0)]
 pub fn windowed<'r, T>(n: uint, v: &'r [T], it: &fn(&'r [T]) -> bool) {
     assert!(1u <= n);
     if n > v.len() { return; }
     for uint::range(0, v.len() - n + 1) |i| {
         if !it(v.slice(i, i + n)) { return }
     }
+}
+/**
+ * Iterate over all contiguous windows of length `n` of the vector `v`.
+ *
+ * # Example
+ *
+ * Print the adjacent pairs of a vector (i.e. `[1,2]`, `[2,3]`, `[3,4]`)
+ *
+ * ~~~
+ * for windowed(2, &[1,2,3,4]) |v| {
+ *     io::println(fmt!("%?", v));
+ * }
+ * ~~~
+ *
+ */
+#[cfg(not(stage0))]
+pub fn windowed<'r, T>(n: uint, v: &'r [T], it: &fn(&'r [T]) -> bool) -> bool {
+    assert!(1u <= n);
+    if n > v.len() { return true; }
+    for uint::range(0, v.len() - n + 1) |i| {
+        if !it(v.slice(i, i + n)) { return false; }
+    }
+    return true;
 }
 
 /**
@@ -4566,7 +4590,7 @@ mod tests {
             }
             i += 0;
             false
-        }
+        };
     }
 
     #[test]
@@ -4581,7 +4605,7 @@ mod tests {
             }
             i += 0;
             false
-        }
+        };
     }
 
     #[test]

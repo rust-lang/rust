@@ -3404,7 +3404,7 @@ mod tests {
         let lf = ~"\nMary had a little lamb\nLittle lamb\n";
         let crlf = ~"\r\nMary had a little lamb\r\nLittle lamb\r\n";
 
-        fn t(s: &str, f: &fn(&str, &fn(&str) -> bool), u: &[~str]) {
+        fn t(s: &str, f: &fn(&str, &fn(&str) -> bool) -> bool, u: &[~str]) {
             let mut v = ~[];
             for f(s) |s| { v.push(s.to_owned()) }
             assert!(vec::all2(v, u, |a,b| a == b));
@@ -3424,7 +3424,7 @@ mod tests {
 
     #[test]
     fn test_words () {
-        fn t(s: &str, f: &fn(&str, &fn(&str) -> bool), u: &[~str]) {
+        fn t(s: &str, f: &fn(&str, &fn(&str) -> bool) -> bool, u: &[~str]) {
             let mut v = ~[];
             for f(s) |s| { v.push(s.to_owned()) }
             assert!(vec::all2(v, u, |a,b| a == b));

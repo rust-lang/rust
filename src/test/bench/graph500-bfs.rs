@@ -10,8 +10,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(deprecated_mode)];
-
 /*!
 
 An implementation of the Graph500 Breadth First Search problem in Rust.
@@ -23,7 +21,7 @@ use std::arc;
 use std::time;
 use std::deque::Deque;
 use std::par;
-use core::hashmap::{HashMap, HashSet};
+use core::hashmap::HashSet;
 use core::int::abs;
 use core::rand::RngUtil;
 
@@ -83,14 +81,13 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
         HashSet::new()
     };
 
-    do vec::each(edges) |e| {
+    for vec::each(edges) |e| {
         match *e {
             (i, j) => {
                 graph[i].insert(j);
                 graph[j].insert(i);
             }
         }
-        true
     }
 
     do vec::map_consume(graph) |mut v| {
