@@ -34,7 +34,6 @@ use lib;
 use metadata::common::LinkMeta;
 use metadata::{csearch, cstore, encoder};
 use middle::astencode;
-use middle::borrowck::RootInfo;
 use middle::resolve;
 use middle::trans::_match;
 use middle::trans::adt;
@@ -62,7 +61,6 @@ use middle::trans::type_of::*;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
-use util::ppaux;
 
 use core::hash;
 use core::hashmap::{HashMap, HashSet};
@@ -887,11 +885,10 @@ pub fn need_invoke(bcx: block) -> bool {
     // Walk the scopes to look for cleanups
     let mut cur = bcx;
     loop {
-        let current = &mut *cur;
-        let kind = &mut *current.kind;
-        match *kind {
-            block_scope(ref mut inf) => {
-                for vec::each((*inf).cleanups) |cleanup| {
+        match cur.kind {
+            block_scope(inf) => {
+                let inf = &mut *inf; // FIXME(#5074) workaround old borrowck
+                for vec::each(inf.cleanups) |cleanup| {
                     match *cleanup {
                         clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) => {
                             if cleanup_type == normal_exit_and_unwind {
@@ -903,7 +900,7 @@ pub fn need_invoke(bcx: block) -> bool {
             }
             _ => ()
         }
-        cur = match current.parent {
+        cur = match cur.parent {
           Some(next) => next,
           None => return false
         }
@@ -925,11 +922,13 @@ pub fn in_lpad_scope_cx(bcx: block, f: &fn(si: &mut scope_info)) {
     let mut bcx = bcx;
     loop {
         {
-            // FIXME #4280: Borrow check bug workaround.
-            let kind: &mut block_kind = &mut *bcx.kind;
-            match *kind {
-                block_scope(ref mut inf) => {
-                    if inf.cleanups.len() > 0u || bcx.parent.is_none() {
+            match bcx.kind {
+                block_scope(inf) => {
+                    let len = { // FIXME(#5074) workaround old borrowck
+                        let inf = &mut *inf;
+                        inf.cleanups.len()
+                    };
+                    if len > 0u || bcx.parent.is_none() {
                         f(inf);
                         return;
                     }
@@ -1194,7 +1193,7 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
 }
 
 pub fn simple_block_scope() -> block_kind {
-    block_scope(scope_info {
+    block_scope(@mut scope_info {
         loop_break: None,
         loop_label: None,
         cleanups: ~[],
@@ -1222,7 +1221,7 @@ pub fn loop_scope_block(bcx: block,
                         loop_label: Option<ident>,
                         n: ~str,
                         opt_node_info: Option<NodeInfo>) -> block {
-    return new_block(bcx.fcx, Some(bcx), block_scope(scope_info {
+    return new_block(bcx.fcx, Some(bcx), block_scope(@mut scope_info {
         loop_break: Some(loop_break),
         loop_label: loop_label,
         cleanups: ~[],
@@ -1300,28 +1299,28 @@ pub fn cleanup_and_leave(bcx: block,
                 @fmt!("cleanup_and_leave(%s)", cur.to_str()));
         }
 
-        {
-            // FIXME #4280: Borrow check bug workaround.
-            let kind: &mut block_kind = &mut *cur.kind;
-            match *kind {
-              block_scope(ref mut inf) if !inf.cleanups.is_empty() => {
-                for vec::find((*inf).cleanup_paths,
-                              |cp| cp.target == leave).each |cp| {
-                    Br(bcx, cp.dest);
-                    return;
-                }
-                let sub_cx = sub_block(bcx, ~"cleanup");
-                Br(bcx, sub_cx.llbb);
-                inf.cleanup_paths.push(cleanup_path {
-                    target: leave,
-                    dest: sub_cx.llbb
-                });
+        match cur.kind {
+            block_scope(inf) if !inf.empty_cleanups() => {
+                let (sub_cx, inf_cleanups) = {
+                    let inf = &mut *inf; // FIXME(#5074) workaround stage0
+                    for vec::find((*inf).cleanup_paths,
+                                  |cp| cp.target == leave).each |cp| {
+                        Br(bcx, cp.dest);
+                        return;
+                    }
+                    let sub_cx = sub_block(bcx, ~"cleanup");
+                    Br(bcx, sub_cx.llbb);
+                    inf.cleanup_paths.push(cleanup_path {
+                        target: leave,
+                        dest: sub_cx.llbb
+                    });
+                    (sub_cx, copy inf.cleanups)
+                };
                 bcx = trans_block_cleanups_(sub_cx,
-                                            inf.cleanups,
+                                            inf_cleanups,
                                             is_lpad);
-              }
-              _ => ()
             }
+            _ => ()
         }
 
         match upto {

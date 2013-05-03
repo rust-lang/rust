@@ -243,8 +243,8 @@ pub fn trans_break_cont(bcx: block,
     let mut unwind = bcx;
     let mut target;
     loop {
-        match *unwind.kind {
-          block_scope(scope_info {
+        match unwind.kind {
+          block_scope(@scope_info {
             loop_break: Some(brk),
             loop_label: l,
             _
