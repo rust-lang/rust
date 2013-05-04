@@ -22,7 +22,6 @@
 
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
-#[deny(deprecated_mode)];
 #[deny(deprecated_pattern)];
 
 extern mod std(vers = "0.7-pre");

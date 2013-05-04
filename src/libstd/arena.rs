@@ -33,7 +33,6 @@
 // to waste time running the destructors of POD.
 
 use list::{MutList, MutCons, MutNil};
-use list;
 
 use core::at_vec;
 use core::cast::{transmute, transmute_mut_region};
@@ -79,7 +78,7 @@ struct Chunk {
 }
 
 pub struct Arena {
-    // The head is seperated out from the list as a unbenchmarked
+    // The head is separated out from the list as a unbenchmarked
     // microoptimization, to avoid needing to case on the list to
     // access the head.
     priv head: Chunk,

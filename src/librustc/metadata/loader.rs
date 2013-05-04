@@ -196,7 +196,7 @@ fn get_metadata_section(os: os,
         while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
             let name_buf = llvm::LLVMGetSectionName(si.llsi);
             let name = unsafe { str::raw::from_c_str(name_buf) };
-            debug!("get_matadata_section: name %s", name);
+            debug!("get_metadata_section: name %s", name);
             if name == read_meta_section_name(os) {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;

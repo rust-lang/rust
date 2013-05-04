@@ -33,7 +33,7 @@ use core::to_bytes;
 use core::hashmap::{HashMap, HashSet};
 use std::smallintmap::SmallIntMap;
 use syntax::ast::*;
-use syntax::ast_util::{is_local, local_def};
+use syntax::ast_util::is_local;
 use syntax::ast_util;
 use syntax::attr;
 use syntax::codemap::span;
