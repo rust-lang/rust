@@ -10,8 +10,6 @@
 
 //! Types/fns concerning URLs (see RFC 3986)
 
-#[allow(deprecated_mode)];
-
 use core::cmp::Eq;
 use core::io::{Reader, ReaderUtil};
 use core::io;

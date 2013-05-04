@@ -2096,8 +2096,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
 }
 
 pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
-                      id: ast::node_id,
-                      path: @ast_map::path, vi: @~[ty::VariantInfo],
+                      id: ast::node_id, vi: @~[ty::VariantInfo],
                       i: &mut uint) {
     for vec::each(enum_definition.variants) |variant| {
         let disr_val = vi[*i].disr_val;
@@ -2172,8 +2171,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
         if !generics.is_type_parameterized() {
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
-            trans_enum_def(ccx, enum_definition, item.id,
-                           path, vi, &mut i);
+            trans_enum_def(ccx, enum_definition, item.id, vi, &mut i);
         }
       }
       ast::item_const(_, expr) => consts::trans_const(ccx, expr, item.id),
@@ -2430,13 +2428,13 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
       Some(&v) => v,
       None => {
         let mut exprt = false;
-        let val = match *ccx.tcx.items.get(&id) {
+        let val = match *tcx.items.get(&id) {
           ast_map::node_item(i, pth) => {
             let my_path = vec::append(/*bad*/copy *pth,
                                       ~[path_name(i.ident)]);
             match i.node {
               ast::item_const(_, expr) => {
-                let typ = ty::node_id_to_type(ccx.tcx, i.id);
+                let typ = ty::node_id_to_type(tcx, i.id);
                 let s = mangle_exported_name(ccx, my_path, typ);
                 // We need the translated value here, because for enums the
                 // LLVM type is not fully determined by the Rust type.
@@ -2495,7 +2493,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                                 ni.attrs)
                 }
                 ast::foreign_item_const(*) => {
-                    let typ = ty::node_id_to_type(ccx.tcx, ni.id);
+                    let typ = ty::node_id_to_type(tcx, ni.id);
                     let ident = ccx.sess.parse_sess.interner.get(ni.ident);
                     let g = do str::as_c_str(*ident) |buf| {
                         unsafe {
@@ -2536,7 +2534,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
             // Only register the constructor if this is a tuple-like struct.
             match struct_def.ctor_id {
                 None => {
-                    ccx.tcx.sess.bug(~"attempt to register a constructor of \
+                    tcx.sess.bug(~"attempt to register a constructor of \
                                        a non-tuple-like struct")
                 }
                 Some(ctor_id) => {

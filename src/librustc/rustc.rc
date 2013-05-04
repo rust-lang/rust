@@ -20,7 +20,6 @@
 #[allow(non_implicitly_copyable_typarams)];
 #[allow(non_camel_case_types)];
 #[deny(deprecated_pattern)];
-#[deny(deprecated_mode)];
 
 extern mod std(vers = "0.7-pre");
 extern mod syntax(vers = "0.7-pre");

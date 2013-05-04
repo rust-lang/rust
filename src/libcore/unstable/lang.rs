@@ -17,7 +17,9 @@ use str;
 use sys;
 use unstable::exchange_alloc;
 use cast::transmute;
+#[cfg(not(stage0))]
 use rt::{context, OldTaskContext};
+#[cfg(not(stage0))]
 use rt::local_services::borrow_local_services;
 
 #[allow(non_camel_case_types)]
