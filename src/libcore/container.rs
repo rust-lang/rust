@@ -55,6 +55,14 @@ pub trait Map<K, V>: Mutable {
     /// Remove a key-value pair from the map. Return true if the key
     /// was present in the map, otherwise false.
     fn remove(&mut self, key: &K) -> bool;
+
+    /// Insert a key-value pair from the map. If the key already had a value
+    /// present in the map, that value is returned. Otherwise None is returned.
+    fn swap(&mut self, k: K, v: V) -> Option<V>;
+
+    /// Removes a key from the map, returning the value at the key if the key
+    /// was previously in the map.
+    fn pop(&mut self, k: &K) -> Option<V>;
 }
 
 pub trait Set<T>: Mutable {
