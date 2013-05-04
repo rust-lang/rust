@@ -128,7 +128,7 @@ $$(HLIB$(2)_H_$(4))/$(CFG_RUSTLLVM_$(4)): \
 	$$(Q)cp $$< $$@
 
 $$(HBIN$(2)_H_$(4))/:
-	mkdir -p $@
+	mkdir -p $$@
 
 endef
 
