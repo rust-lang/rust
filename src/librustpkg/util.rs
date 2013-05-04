@@ -435,7 +435,7 @@ pub fn add_pkg(pkg: &Pkg) -> bool {
 }
 
 // FIXME (#4432): Use workcache to only compile when needed
-pub fn compile_input(sysroot: Option<Path>,
+pub fn compile_input(sysroot: Option<@Path>,
                      pkg_id: PkgId,
                      in_file: &Path,
                      out_dir: &Path,
@@ -474,9 +474,12 @@ pub fn compile_input(sysroot: Option<Path>,
            out_file.to_str());
     debug!("flags: %s", str::connect(flags, ~" "));
     debug!("cfgs: %s", str::connect(cfgs, ~" "));
+    debug!("compile_input's sysroot = %?", sysroot);
 
     let matches = getopts(~[~"-Z", ~"time-passes"]
                           + if building_library { ~[~"--lib"] }
+                            else if test { ~[~"--test"] }
+                            // bench?
                             else { ~[] }
                           + flags
                           + cfgs.flat_map(|&c| { ~[~"--cfg", c] }),
@@ -540,9 +543,13 @@ pub fn compile_crate_from_input(input: driver::input,
             let (crate, _) = driver::compile_upto(sess, cfg, &input,
                                                   driver::cu_parse, Some(outputs));
 
+            debug!("About to inject link_meta info...");
             // Inject the inferred link_meta info if it's not already there
             // (assumes that name and vers are the only linkage metas)
             let mut crate_to_use = crate;
+
+            debug!("How many attrs? %?", attr::find_linkage_metas(crate.node.attrs).len());
+
             if attr::find_linkage_metas(crate.node.attrs).is_empty() {
                 crate_to_use = add_attrs(*crate, ~[mk_attr(@dummy_spanned(meta_list(@~"link",
                                                   // change PkgId to have a <shortname> field?
@@ -551,7 +558,6 @@ pub fn compile_crate_from_input(input: driver::input,
                       @dummy_spanned(meta_name_value(@~"vers",
                                                     mk_string_lit(@pkg_id.version.to_str())))])))]);
             }
-
 
             driver::compile_rest(sess, cfg, what, Some(outputs), Some(crate_to_use));
             crate_to_use
@@ -582,7 +588,7 @@ fn add_attrs(c: ast::crate, new_attrs: ~[attribute]) -> @ast::crate {
 
 // Called by build_crates
 // FIXME (#4432): Use workcache to only compile when needed
-pub fn compile_crate(sysroot: Option<Path>, pkg_id: PkgId,
+pub fn compile_crate(sysroot: Option<@Path>, pkg_id: PkgId,
                      crate: &Path, dir: &Path,
                      flags: ~[~str], cfgs: ~[~str], opt: bool,
                      test: bool, crate_type: crate_type) -> bool {
