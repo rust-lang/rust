@@ -603,7 +603,7 @@ pub fn build_session_options(binary: @~str,
             link::output_type_bitcode
         } else { link::output_type_exe };
     let sysroot_opt = getopts::opt_maybe_str(matches, ~"sysroot");
-    let sysroot_opt = sysroot_opt.map(|m| Path(*m));
+    let sysroot_opt = sysroot_opt.map(|m| @Path(*m));
     let target_opt = getopts::opt_maybe_str(matches, ~"target");
     let target_feature_opt = getopts::opt_maybe_str(matches, ~"target-feature");
     let save_temps = getopts::opt_present(matches, ~"save-temps");

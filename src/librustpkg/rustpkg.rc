@@ -34,6 +34,8 @@ use syntax::{ast, diagnostic};
 use util::*;
 use path_util::normalize;
 use path_util::{build_pkg_id_in_workspace, pkgid_src_in_workspace};
+use path_util::{built_executable_in_workspace, built_library_in_workspace};
+use path_util::{target_executable_in_workspace, target_library_in_workspace};
 use workspace::pkg_parent_workspaces;
 use rustc::driver::session::{lib_crate, bin_crate, crate_type};
 use context::Ctx;
@@ -188,49 +190,7 @@ impl Ctx {
                 // argument
                 let pkgid = PkgId::new(args[0]);
                 for pkg_parent_workspaces(pkgid) |workspace| {
-                    let src_dir   = pkgid_src_in_workspace(pkgid, workspace);
-                    let build_dir = build_pkg_id_in_workspace(pkgid, workspace);
-                    debug!("Destination dir = %s", build_dir.to_str());
-
-                    // Create the package source
-                    let mut src = PkgSrc::new(&workspace.push("src"), &build_dir, &pkgid);
-                    debug!("Package src = %?", src);
-
-                    // Is there custom build logic? If so, use it
-                    let pkg_src_dir = src_dir;
-                    let mut custom = false;
-                    debug!("Package source directory = %s", pkg_src_dir.to_str());
-                    let cfgs = match src.package_script_option(&pkg_src_dir) {
-                        Some(package_script_path) => {
-                            let pscript = PkgScript::parse(package_script_path,
-                                                           workspace,
-                                                           pkgid);
-                            // Limited right now -- we're only running the post_build
-                            // hook and probably fail otherwise
-                            // also post_build should be called pre_build
-                            let (cfgs, hook_result) = pscript.run_custom(~"post_build");
-                            debug!("Command return code = %?", hook_result);
-                            if hook_result != 0 {
-                                fail!(fmt!("Error running custom build command"))
-                            }
-                            custom = true;
-                            // otherwise, the package script succeeded
-                            cfgs
-                        }
-                        None => {
-                            debug!("No package script, continuing");
-                            ~[]
-                        }
-                    };
-
-                    // If there was a package script, it should have finished
-                    // the build already. Otherwise...
-                    if !custom {
-                        // Find crates inside the workspace
-                        src.find_crates();
-                        // Build it!
-                        src.build(&build_dir, cfgs);
-                    }
+                    self.build(workspace, pkgid);
                 }
             }
             ~"clean" => {
@@ -304,6 +264,53 @@ impl Ctx {
         fail!(~"`do` not yet implemented");
     }
 
+    fn build(&self, workspace: &Path, pkgid: PkgId) {
+        let src_dir   = pkgid_src_in_workspace(pkgid, workspace);
+        let build_dir = build_pkg_id_in_workspace(pkgid, workspace);
+        debug!("Destination dir = %s", build_dir.to_str());
+
+        // Create the package source
+        let mut src = PkgSrc::new(&workspace.push("src"), &build_dir, &pkgid);
+        debug!("Package src = %?", src);
+
+        // Is there custom build logic? If so, use it
+        let pkg_src_dir = src_dir;
+        let mut custom = false;
+        debug!("Package source directory = %s", pkg_src_dir.to_str());
+        let cfgs = match src.package_script_option(&pkg_src_dir) {
+            Some(package_script_path) => {
+                let pscript = PkgScript::parse(package_script_path,
+                                               workspace,
+                                               pkgid);
+                // Limited right now -- we're only running the post_build
+                // hook and probably fail otherwise
+                // also post_build should be called pre_build
+                let (cfgs, hook_result) = pscript.run_custom(~"post_build");
+                debug!("Command return code = %?", hook_result);
+                if hook_result != 0 {
+                    fail!(fmt!("Error running custom build command"))
+                }
+                custom = true;
+                // otherwise, the package script succeeded
+                cfgs
+            }
+            None => {
+                debug!("No package script, continuing");
+                ~[]
+            }
+        };
+
+        // If there was a package script, it should have finished
+        // the build already. Otherwise...
+        if !custom {
+            // Find crates inside the workspace
+            src.find_crates();
+            // Build it!
+            src.build(&build_dir, cfgs, self.sysroot_opt);
+        }
+
+    }
+
     fn clean(&self, workspace: &Path, id: PkgId)  {
         // Could also support a custom build hook in the pkg
         // script for cleaning files rustpkg doesn't know about.
@@ -325,9 +332,31 @@ impl Ctx {
         fail!(~"info not yet implemented");
     }
 
-    fn install(&self, _workspace: &Path, _id: PkgId)  {
-        // stub
-        fail!(~"install not yet implemented");
+    fn install(&self, workspace: &Path, id: PkgId)  {
+        use conditions::copy_failed::cond;
+
+        // Should use RUST_PATH in the future.
+        // Also should use workcache to not build if not necessary.
+        self.build(workspace, id);
+
+        // Now copy stuff into the install dirs
+        let maybe_executable = built_executable_in_workspace(id, workspace);
+        let maybe_library = built_library_in_workspace(id, workspace);
+        let target_exec = target_executable_in_workspace(id, workspace);
+        let target_lib = target_library_in_workspace(id, workspace);
+
+        for maybe_executable.each |exec| {
+            debug!("Copying: %s -> %s", exec.to_str(), target_exec.to_str());
+            if !os::copy_file(exec, &target_exec) {
+                cond.raise((*exec, target_exec));
+            }
+        }
+        for maybe_library.each |lib| {
+            debug!("Copying: %s -> %s", lib.to_str(), target_lib.to_str());
+            if !os::copy_file(lib, &target_lib) {
+                cond.raise((*lib, target_lib));
+            }
+        }
     }
 
     fn fetch(&self, _dir: &Path, _url: ~str, _target: Option<~str>)  {
@@ -477,6 +506,7 @@ pub fn main() {
     }
 
     Ctx {
+        sysroot_opt: None, // Currently, only tests override this
         json: json,
         dep_cache: @mut HashMap::new()
     }.run(cmd, args);
@@ -610,7 +640,7 @@ impl PkgSrc {
 
 
     fn check_dir(&self) -> Path {
-        use conditions::bad_path::cond;
+        use conditions::nonexistent_package::cond;
 
         debug!("Pushing onto root: %s | %s", self.id.path.to_str(),
                self.root.to_str());
@@ -619,13 +649,15 @@ impl PkgSrc {
 
         debug!("Checking dir: %s", dir.to_str());
 
+        // tjc: Rather than erroring out, need to try downloading the
+        // contents of the path to a local directory (#5679)
         if !os::path_exists(&dir) {
-            return cond.raise((dir, ~"missing package dir"));
+            cond.raise((self.id, ~"missing package dir"));
         }
 
         if !os::path_is_dir(&dir) {
-            return cond.raise((dir, ~"supplied path for package dir is a \
-                                      non-directory"));
+            cond.raise((self.id, ~"supplied path for package dir is a \
+                                   non-directory"));
         }
 
         dir
@@ -680,6 +712,7 @@ impl PkgSrc {
     /// is no custom build logic
     fn find_crates(&mut self) {
         use PkgSrc::push_crate;
+        use conditions::missing_pkg_files::cond;
 
         let dir = self.check_dir();
         let prefix = dir.components.len();
@@ -704,7 +737,7 @@ impl PkgSrc {
             util::note(~"Couldn't infer any crates to build.\n\
                          Try naming a crate `main.rs`, `lib.rs`, \
                          `test.rs`, or `bench.rs`.");
-            fail!(~"Failed to infer crates to build");
+            cond.raise(self.id);
         }
 
         debug!("found %u libs, %u mains, %u tests, %u benchs",
@@ -714,18 +747,20 @@ impl PkgSrc {
                self.benchs.len())
     }
 
-    fn build_crates(&self, dst_dir: &Path,
-                           src_dir: &Path,
-                           crates: &[Crate],
-                           cfgs: ~[~str],
-                           test: bool, crate_type: crate_type) {
+    fn build_crates(&self,
+                    maybe_sysroot: Option<@Path>,
+                    dst_dir: &Path,
+                    src_dir: &Path,
+                    crates: &[Crate],
+                    cfgs: ~[~str],
+                    test: bool, crate_type: crate_type) {
 
         for crates.each |&crate| {
             let path = &src_dir.push_rel(&crate.file).normalize();
             util::note(fmt!("build_crates: compiling %s", path.to_str()));
             util::note(fmt!("build_crates: destination dir is %s", dst_dir.to_str()));
 
-            let result = util::compile_crate(None, self.id, path,
+            let result = util::compile_crate(maybe_sysroot, self.id, path,
                                      dst_dir,
                                      crate.flags,
                                      crate.cfgs + cfgs,
@@ -739,15 +774,15 @@ impl PkgSrc {
         }
     }
 
-    fn build(&self, dst_dir: &Path, cfgs: ~[~str]) {
+    fn build(&self, dst_dir: &Path, cfgs: ~[~str], maybe_sysroot: Option<@Path>) {
         let dir = self.check_dir();
         debug!("Building libs");
-        self.build_crates(dst_dir, &dir, self.libs, cfgs, false, lib_crate);
+        self.build_crates(maybe_sysroot, dst_dir, &dir, self.libs, cfgs, false, lib_crate);
         debug!("Building mains");
-        self.build_crates(dst_dir, &dir, self.mains, cfgs, false, bin_crate);
+        self.build_crates(maybe_sysroot, dst_dir, &dir, self.mains, cfgs, false, bin_crate);
         debug!("Building tests");
-        self.build_crates(dst_dir, &dir, self.tests, cfgs, true, bin_crate);
+        self.build_crates(maybe_sysroot, dst_dir, &dir, self.tests, cfgs, true, bin_crate);
         debug!("Building benches");
-        self.build_crates(dst_dir, &dir, self.benchs, cfgs, true, bin_crate);
+        self.build_crates(maybe_sysroot, dst_dir, &dir, self.benchs, cfgs, true, bin_crate);
     }
 }
