@@ -273,15 +273,13 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
         match pc {
             /* Raw strings get appended via str::push_str */
             PieceString(s) => {
-                let portion = mk_uniq_str(cx, fmt_sp, s);
-
                 /* If this is the first portion, then initialize the local
                    buffer with it directly. If it's actually the only piece,
                    then there's no need for it to be mutable */
                 if i == 0 {
-                    stms.push(mk_local(cx, fmt_sp, npieces > 1, ident, portion));
+                    stms.push(mk_local(cx, fmt_sp, npieces > 1, ident, mk_uniq_str(cx, fmt_sp, s)));
                 } else {
-                    let args = ~[mk_mut_addr_of(cx, fmt_sp, buf()), portion];
+                    let args = ~[mk_mut_addr_of(cx, fmt_sp, buf()), mk_base_str(cx, fmt_sp, s)];
                     let call = mk_call_global(cx,
                                               fmt_sp,
                                               ~[str_ident, push_ident],
