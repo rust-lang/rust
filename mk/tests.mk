@@ -497,9 +497,8 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
 		--compile-lib-path $$(HLIB$(1)_H_$(3))				\
         --run-lib-path $$(TLIB$(1)_T_$(2)_H_$(3))			\
         --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))			\
-        --aux-base $$(S)src/test/auxiliary/					\
+        --aux-base $$(S)src/test/auxiliary/                 \
         --stage-id stage$(1)-$(2)							\
-        --host $(CFG_BUILD_TRIPLE)                          \
         --target $(2)                                       \
         --adb-path=$(CFG_ADB)                          \
         --adb-test-dir=$(CFG_ADB_TEST_DIR)                  \

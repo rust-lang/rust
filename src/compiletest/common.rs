@@ -64,10 +64,7 @@ pub struct config {
     // Run tests using the new runtime
     newrt: bool,
 
-    // Host System to be built
-    host: ~str,
-
-    // Target System to be executed
+    // Target system to be tested
     target: ~str,
 
     // Extra parameter to run adb on arm-linux-androideabi
@@ -76,8 +73,8 @@ pub struct config {
     // Extra parameter to run test sute on arm-linux-androideabi
     adb_test_dir: ~str,
 
-    // check if can be run or not
-    flag_runnable: bool,
+    // status whether android device available or not
+    adb_device_status: bool,
 
     // Explain what's going on
     verbose: bool
