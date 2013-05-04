@@ -385,13 +385,7 @@ fn trans_fail_value(bcx: block,
 pub fn trans_fail_bounds_check(bcx: block, sp: span,
                                index: ValueRef, len: ValueRef) -> block {
     let _icx = bcx.insn_ctxt("trans_fail_bounds_check");
-    let ccx = bcx.ccx();
-
-    let loc = bcx.sess().parse_sess.cm.lookup_char_pos(sp.lo);
-    let line = C_int(ccx, loc.line as int);
-    let filename_cstr = C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name);
-    let filename = PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
-
+    let (filename, line) = filename_and_line_num_from_span(bcx, sp);
     let args = ~[filename, line, index, len];
     let bcx = callee::trans_lang_call(
         bcx, bcx.tcx().lang_items.fail_bounds_check_fn(), args, expr::Ignore);

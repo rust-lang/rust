@@ -87,21 +87,19 @@
 
 use lib;
 use lib::llvm::ValueRef;
-use middle::borrowck::{RootInfo, root_map_key, DynaImm, DynaMut};
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::build::*;
-use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::common;
 use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::tvec;
 use middle::trans::type_of;
+use middle::trans::write_guard;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
-use driver::session;
 
 use core::container::Set; // XXX: this should not be necessary
 use core::to_bytes;
@@ -518,113 +516,6 @@ pub impl Datum {
         }
     }
 
-    fn root(&self, mut bcx: block, span: span,
-            root_key: root_map_key, root_info: RootInfo) -> block {
-        /*!
-         *
-         * In some cases, borrowck will decide that an @T/@[]/@str
-         * value must be rooted for the program to be safe.  In that
-         * case, we will call this function, which will stash a copy
-         * away until we exit the scope `scope_id`. */
-
-        debug!("root(root_map_key=%?, root_info=%?, self=%?)",
-               root_key, root_info, self.to_str(bcx.ccx()));
-
-        if bcx.sess().trace() {
-            trans_trace(
-                bcx, None,
-                @fmt!("preserving until end of scope %d",
-                     root_info.scope));
-        }
-
-        // First, root the datum. Note that we must zero this value,
-        // because sometimes we root on one path but not another.
-        // See e.g. #4904.
-        let scratch = scratch_datum(bcx, self.ty, true);
-        self.copy_to_datum(bcx, INIT, scratch);
-        let cleanup_bcx = find_bcx_for_scope(bcx, root_info.scope);
-        add_clean_temp_mem(cleanup_bcx, scratch.val, scratch.ty);
-
-        // Now, consider also freezing it.
-        match root_info.freeze {
-            None => {}
-            Some(freeze_kind) => {
-                let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
-                let line = C_int(bcx.ccx(), loc.line as int);
-                let filename_cstr = C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name);
-                let filename = PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
-
-                // in this case, we don't have to zero, because
-                // scratch.val will be NULL should the cleanup get
-                // called without the freezing actually occurring, and
-                // return_to_mut checks for this condition.
-                let scratch_bits = scratch_datum(bcx, ty::mk_uint(), false);
-
-                let freeze_did = match freeze_kind {
-                    DynaImm => bcx.tcx().lang_items.borrow_as_imm_fn(),
-                    DynaMut => bcx.tcx().lang_items.borrow_as_mut_fn(),
-                };
-
-                let box_ptr = Load(bcx,
-                                   PointerCast(bcx,
-                                               scratch.val,
-                                               T_ptr(T_ptr(T_i8()))));
-
-                bcx = callee::trans_lang_call(
-                    bcx,
-                    freeze_did,
-                    ~[
-                        box_ptr,
-                        filename,
-                        line
-                    ],
-                    expr::SaveIn(scratch_bits.val));
-
-                if bcx.tcx().sess.opts.optimize == session::No {
-                    bcx = callee::trans_lang_call(
-                        bcx,
-                        bcx.tcx().lang_items.record_borrow_fn(),
-                        ~[
-                            box_ptr,
-                            Load(bcx, scratch_bits.val),
-                            filename,
-                            line
-                        ],
-                        expr::Ignore);
-                }
-
-                add_clean_return_to_mut(
-                    cleanup_bcx, scratch.val, scratch_bits.val,
-                    filename, line);
-            }
-        }
-
-        bcx
-    }
-
-    fn perform_write_guard(&self, bcx: block, span: span) -> block {
-        debug!("perform_write_guard");
-
-        // Create scratch space, but do not root it.
-        let llval = match self.mode {
-            ByValue => self.val,
-            ByRef => Load(bcx, self.val),
-        };
-
-        let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
-        let line = C_int(bcx.ccx(), loc.line as int);
-        let filename_cstr = C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name);
-        let filename = PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
-
-        callee::trans_lang_call(
-            bcx,
-            bcx.tcx().lang_items.check_not_borrowed_fn(),
-            ~[PointerCast(bcx, llval, T_ptr(T_i8())),
-              filename,
-              line],
-            expr::Ignore)
-    }
-
     fn drop_val(&self, bcx: block) -> block {
         if !ty::type_needs_drop(bcx.tcx(), self.ty) {
             return bcx;
@@ -687,7 +578,9 @@ pub impl Datum {
         debug!("try_deref(expr_id=%?, derefs=%?, is_auto=%b, self=%?)",
                expr_id, derefs, is_auto, self.to_str(bcx.ccx()));
 
-        let bcx = self.root_and_write_guard(bcx, span, expr_id, derefs);
+        let bcx =
+            write_guard::root_and_write_guard(
+                self, bcx, span, expr_id, derefs);
 
         match ty::get(self.ty).sty {
             ty::ty_box(_) | ty::ty_uniq(_) => {
@@ -841,33 +734,6 @@ pub impl Datum {
         DatumBlock { bcx: bcx, datum: datum }
     }
 
-    fn root_and_write_guard(&self,
-                            mut bcx: block,
-                            span: span,
-                            expr_id: ast::node_id,
-                            derefs: uint) -> block {
-        let key = root_map_key { id: expr_id, derefs: derefs };
-        debug!("root_and_write_guard(key=%?)", key);
-
-        // root the autoderef'd value, if necessary:
-        //
-        // (Note: root'd values are always boxes)
-        let ccx = bcx.ccx();
-        bcx = match ccx.maps.root_map.find(&key) {
-            None => bcx,
-            Some(&root_info) => self.root(bcx, span, key, root_info)
-        };
-
-        // Perform the write guard, if necessary.
-        //
-        // (Note: write-guarded values are always boxes)
-        if ccx.maps.write_guard_map.contains(&key) {
-            self.perform_write_guard(bcx, span)
-        } else {
-            bcx
-        }
-    }
-
     fn get_vec_base_and_len(&self,
                             mut bcx: block,
                             span: span,
@@ -877,7 +743,7 @@ pub impl Datum {
         //! and write guards checks.
 
         // only imp't for @[] and @str, but harmless
-        bcx = self.root_and_write_guard(bcx, span, expr_id, 0);
+        bcx = write_guard::root_and_write_guard(self, bcx, span, expr_id, 0);
         let (base, len) = self.get_vec_base_and_len_no_root(bcx);
         (bcx, base, len)
     }
@@ -888,6 +754,14 @@ pub impl Datum {
 
         let llval = self.to_appropriate_llval(bcx);
         tvec::get_base_and_len(bcx, llval, self.ty)
+    }
+
+    fn root_and_write_guard(&self,
+                            bcx: block,
+                            span: span,
+                            expr_id: ast::node_id,
+                            derefs: uint) -> block {
+        write_guard::root_and_write_guard(self, bcx, span, expr_id, derefs)
     }
 
     fn to_result(&self, bcx: block) -> common::Result {
