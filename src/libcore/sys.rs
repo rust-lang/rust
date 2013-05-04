@@ -200,21 +200,6 @@ impl FailWithCause for &'static str {
     }
 }
 
-// NOTE: remove function after snapshot
-#[cfg(stage0)]
-pub fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
-
-    do str::as_buf(msg) |msg_buf, _msg_len| {
-        do str::as_buf(file) |file_buf, _file_len| {
-            unsafe {
-                let msg_buf = cast::transmute(msg_buf);
-                let file_buf = cast::transmute(file_buf);
-                begin_unwind_(msg_buf, file_buf, line as libc::size_t)
-            }
-        }
-    }
-}
-
 // FIXME #4427: Temporary until rt::rt_fail_ goes away
 pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     use rt::{context, OldTaskContext};
@@ -240,13 +225,6 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
             }
         }
     }
-}
-
-// NOTE: remove function after snapshot
-#[cfg(stage0)]
-pub fn fail_assert(msg: &str, file: &str, line: uint) -> ! {
-    let (msg, file) = (msg.to_owned(), file.to_owned());
-    begin_unwind(~"assertion failed: " + msg, file, line)
 }
 
 #[cfg(test)]
