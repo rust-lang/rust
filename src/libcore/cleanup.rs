@@ -126,14 +126,17 @@ struct AnnihilateStats {
     n_bytes_freed: uint
 }
 
-unsafe fn each_live_alloc(f: &fn(box: *mut BoxRepr, uniq: bool) -> bool) {
+unsafe fn each_live_alloc(read_next_before: bool,
+                          f: &fn(box: *mut BoxRepr, uniq: bool) -> bool) {
+    //! Walks the internal list of allocations
+
     use managed;
 
     let task: *Task = transmute(rustrt::rust_get_task());
     let box = (*task).boxed_region.live_allocs;
     let mut box: *mut BoxRepr = transmute(copy box);
     while box != mut_null() {
-        let next = transmute(copy (*box).header.next);
+        let next_before = transmute(copy (*box).header.next);
         let uniq =
             (*box).header.ref_count == managed::raw::RC_MANAGED_UNIQUE;
 
@@ -141,7 +144,11 @@ unsafe fn each_live_alloc(f: &fn(box: *mut BoxRepr, uniq: bool) -> bool) {
             break
         }
 
-        box = next
+        if read_next_before {
+            box = next_before;
+        } else {
+            box = transmute(copy (*box).header.next);
+        }
     }
 }
 
@@ -173,7 +180,10 @@ pub unsafe fn annihilate() {
     };
 
     // Pass 1: Make all boxes immortal.
-    for each_live_alloc |box, uniq| {
+    //
+    // In this pass, nothing gets freed, so it does not matter whether
+    // we read the next field before or after the callback.
+    for each_live_alloc(true) |box, uniq| {
         stats.n_total_boxes += 1;
         if uniq {
             stats.n_unique_boxes += 1;
@@ -183,7 +193,11 @@ pub unsafe fn annihilate() {
     }
 
     // Pass 2: Drop all boxes.
-    for each_live_alloc |box, uniq| {
+    //
+    // In this pass, unique-managed boxes may get freed, but not
+    // managed boxes, so we must read the `next` field *after* the
+    // callback, as the original value may have been freed.
+    for each_live_alloc(false) |box, uniq| {
         if !uniq {
             let tydesc: *TypeDesc = transmute(copy (*box).header.type_desc);
             let drop_glue: DropGlue = transmute(((*tydesc).drop_glue, 0));
@@ -192,7 +206,12 @@ pub unsafe fn annihilate() {
     }
 
     // Pass 3: Free all boxes.
-    for each_live_alloc |box, uniq| {
+    //
+    // In this pass, managed boxes may get freed (but not
+    // unique-managed boxes, though I think that none of those are
+    // left), so we must read the `next` field before, since it will
+    // not be valid after.
+    for each_live_alloc(true) |box, uniq| {
         if !uniq {
             stats.n_bytes_freed +=
                 (*((*box).header.type_desc)).size
