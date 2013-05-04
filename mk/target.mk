@@ -73,7 +73,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)):		\
 $$(TBIN$(1)_T_$(2)_H_$(3))/rustc$$(X_$(3)):			\
 		$$(DRIVER_CRATE)				\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)) \
-		| $$(TLIB$(1)_T_$(2)_H_$(3))/
+		| $$(TBIN$(1)_T_$(2)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) --cfg rustc -o $$@ $$<
 ifdef CFG_ENABLE_PAX_FLAGS
@@ -82,6 +82,9 @@ ifdef CFG_ENABLE_PAX_FLAGS
 endif
 
 endif
+
+$$(TBIN$(1)_T_$(2)_H_$(3))/:
+	mkdir -p $$@
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/:
 	mkdir -p $$@
