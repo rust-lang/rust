@@ -7,5 +7,3 @@ fn foo(x: &mut int) {
 
 fn main() {
 }
-
-

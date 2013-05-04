@@ -27,4 +27,3 @@ pub fn main() {
     let y = x as @Foo<int>;
     assert!(y.get() == 1);
 }
-

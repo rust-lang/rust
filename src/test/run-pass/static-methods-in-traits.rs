@@ -9,27 +9,26 @@
 // except according to those terms.
 
 mod a {
-	pub trait Foo {
-		pub fn foo() -> Self;
-	}
+    pub trait Foo {
+        pub fn foo() -> Self;
+    }
 
-	impl Foo for int {
-		pub fn foo() -> int {
-			3
-		}
-	}
-	
-	impl Foo for uint {
-		pub fn foo() -> uint {
-			5u
-		}
-	}
+    impl Foo for int {
+        pub fn foo() -> int {
+            3
+        }
+    }
+
+    impl Foo for uint {
+        pub fn foo() -> uint {
+            5u
+        }
+    }
 }
 
 pub fn main() {
-	let x: int = a::Foo::foo();
-	let y: uint = a::Foo::foo();
-	assert!(x == 3);
-	assert!(y == 5);
+    let x: int = a::Foo::foo();
+    let y: uint = a::Foo::foo();
+    assert!(x == 3);
+    assert!(y == 5);
 }
-

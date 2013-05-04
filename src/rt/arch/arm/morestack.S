@@ -35,7 +35,7 @@ __morestack:
     mov r0, r4         // The amount of stack needed
     add r1, fp, #20    // Address of stack arguments
     mov r2, r5         // Size of stack arguments
-    
+
     // Create new stack
     bl upcall_new_stack@plt
 
@@ -64,7 +64,7 @@ __morestack:
     // Restore return value
 	mov r0, r4
 	mov r1, r5
-	
+
     // Return
     pop {r6, fp, lr}
     mov pc, lr

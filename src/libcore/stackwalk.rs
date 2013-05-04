@@ -99,4 +99,3 @@ pub mod rusti {
         pub fn frame_address(+f: &once fn(x: *u8));
     }
 }
-

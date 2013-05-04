@@ -243,4 +243,3 @@ int main() {
   extra_consts();
   printf("}\n");
 }
-

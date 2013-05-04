@@ -18,4 +18,3 @@ pub fn main() {
     let x = Bar { x: ~"hello" };
     x.f();
 }
-

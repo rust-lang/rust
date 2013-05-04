@@ -14,4 +14,3 @@ pub struct S {
     x: int,
     y: int
 }
-

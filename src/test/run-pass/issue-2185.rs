@@ -15,7 +15,7 @@
 // notes on this test case:
 // On Thu, Apr 18, 2013 at 6:30 PM, John Clements <clements@brinckerhoff.org> wrote:
 // the "issue-2185.rs" test was xfailed with a ref to #2263. Issue #2263 is now fixed, so I tried it again, and after adding some &self parameters, I got this error:
-// 
+//
 // Running /usr/local/bin/rustc:
 // issue-2185.rs:24:0: 26:1 error: conflicting implementations for a trait
 // issue-2185.rs:24 impl iterable<uint> for @fn(&fn(uint)) {
@@ -25,7 +25,7 @@
 // issue-2185.rs:20 impl<A> iterable<A> for @fn(&fn(A)) {
 // issue-2185.rs:21     fn iter(&self, blk: &fn(A)) { self(blk); }
 // issue-2185.rs:22 }
-// 
+//
 // … so it looks like it's just not possible to implement both the generic iterable<uint> and iterable<A> for the type iterable<uint>. Is it okay if I just remove this test?
 //
 // but Niko responded:

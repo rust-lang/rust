@@ -14,4 +14,3 @@ fn f<'a>(_x : &'a int) -> &'a int {
 
 fn main() {
 }
-

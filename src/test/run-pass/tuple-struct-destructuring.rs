@@ -17,4 +17,3 @@ pub fn main() {
     assert!(y == 1);
     assert!(z == 2);
 }
-

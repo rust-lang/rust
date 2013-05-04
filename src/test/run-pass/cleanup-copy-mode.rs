@@ -16,4 +16,3 @@ pub fn main() {
         adder(@2, failer()); ()
     })));
 }
-

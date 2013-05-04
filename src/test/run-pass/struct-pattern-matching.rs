@@ -19,6 +19,3 @@ pub fn main() {
         Foo { x: x, y: y } => io::println(fmt!("yes, %d, %d", x, y))
     }
 }
-
-
-

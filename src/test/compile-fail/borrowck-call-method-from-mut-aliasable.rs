@@ -38,4 +38,3 @@ fn c(x: &const Foo) {
 
 fn main() {
 }
-

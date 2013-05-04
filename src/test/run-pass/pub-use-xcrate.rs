@@ -21,4 +21,3 @@ pub fn main() {
         name: 0
     };
 }
-

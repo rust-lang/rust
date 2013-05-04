@@ -53,4 +53,3 @@ impl Ord for int {
         self == (*a)
     }
 }
-

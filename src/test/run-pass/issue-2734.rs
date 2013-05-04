@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait hax { } 
-impl<A> hax for A { } 
+trait hax { }
+impl<A> hax for A { }
 
 fn perform_hax<T:'static>(x: @T) -> @hax {
     @x as @hax

@@ -27,4 +27,3 @@ pub fn main() {
     let y = x as ~Foo;
     assert!(y.f() == 10);
 }
-

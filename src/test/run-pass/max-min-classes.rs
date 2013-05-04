@@ -37,4 +37,3 @@ pub fn main() {
     let foo = Foo(3, 20);
     io::println(fmt!("%d %d", foo.sum(), foo.product()));
 }
-

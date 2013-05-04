@@ -23,4 +23,3 @@ impl foo of plus for int { fn plus() -> int { self + 10 } }
 pub fn main() {
     assert!(10.plus() == 20);
 }
-

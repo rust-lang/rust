@@ -17,5 +17,3 @@ pub mod cloth {
         gingham, flannel, calico
     }
 }
-
-

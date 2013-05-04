@@ -66,5 +66,3 @@ pub fn coerce(fcx: @mut FnCtxt,
       }
     }
 }
-
-

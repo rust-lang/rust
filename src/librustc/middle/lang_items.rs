@@ -423,4 +423,3 @@ pub fn collect_language_items(crate: @crate,
     collector.collect();
     copy items
 }
-

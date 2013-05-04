@@ -26,4 +26,3 @@ fn get_x<'r>(x: &'r Character) -> &'r int {
 
 pub fn main() {
 }
-

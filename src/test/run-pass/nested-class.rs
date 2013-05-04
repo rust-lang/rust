@@ -9,14 +9,13 @@
 // except according to those terms.
 
 pub fn main() {
-  
-  struct b {
-    i: int,
-  }
+    struct b {
+        i: int,
+    }
 
-  pub impl b {
-    fn do_stuff(&self) -> int { return 37; }
-  }
+    pub impl b {
+        fn do_stuff(&self) -> int { return 37; }
+    }
 
     fn b(i:int) -> b {
         b {
@@ -24,10 +23,9 @@ pub fn main() {
         }
     }
 
-  //  fn b(x:int) -> int { fail!(); }
+    //  fn b(x:int) -> int { fail!(); }
 
-  let z = b(42);
-  assert!((z.i == 42));
-  assert!((z.do_stuff() == 37));
-  
+    let z = b(42);
+    assert!((z.i == 42));
+    assert!((z.do_stuff() == 37));
 }

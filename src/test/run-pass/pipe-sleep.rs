@@ -55,6 +55,6 @@ pub fn main() {
 
     let iotask = &uv::global_loop::get();
     sleep(iotask, 500);
-    
+
     signal(c);
 }

@@ -23,5 +23,3 @@ impl Foo for Bar {
         io::println((*self).x);
     }
 }
-
-
