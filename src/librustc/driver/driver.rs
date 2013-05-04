@@ -600,11 +600,6 @@ pub fn build_session_options(binary: @~str,
     let target_opt = getopts::opt_maybe_str(matches, ~"target");
     let target_feature_opt = getopts::opt_maybe_str(matches, ~"target-feature");
     let save_temps = getopts::opt_present(matches, ~"save-temps");
-    match output_type {
-      // unless we're emitting huamn-readable assembly, omit comments.
-      link::output_type_llvm_assembly | link::output_type_assembly => (),
-      _ => debugging_opts |= session::no_asm_comments
-    }
     let opt_level = {
         if (debugging_opts & session::no_opt) != 0 {
             No

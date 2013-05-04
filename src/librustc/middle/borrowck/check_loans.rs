@@ -374,7 +374,7 @@ pub impl<'self> CheckLoanCtxt<'self> {
                     }
                 }
 
-                mc::cat_deref(base, deref_count, mc::gc_ptr(ast::m_mutbl)) => {
+                mc::cat_deref(_, deref_count, mc::gc_ptr(ast::m_mutbl)) => {
                     // Dynamically check writes to `@mut`
 
                     let key = root_map_key {

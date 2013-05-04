@@ -224,7 +224,7 @@ pub fn store_environment(bcx: block,
     for vec::eachi(bound_values) |i, bv| {
         debug!("Copy %s into closure", bv.to_str(ccx));
 
-        if !ccx.sess.no_asm_comments() {
+        if ccx.sess.asm_comments() {
             add_comment(bcx, fmt!("Copy %s into closure",
                                   bv.to_str(ccx)));
         }
