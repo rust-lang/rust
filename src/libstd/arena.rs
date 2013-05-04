@@ -203,21 +203,6 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    #[cfg(stage0)]
-    priv fn alloc_pod<T>(&mut self, op: &fn() -> T) -> &'self T {
-        unsafe {
-            let tydesc = sys::get_type_desc::<T>();
-            let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
-            let ptr: *mut T = transmute(ptr);
-            rusti::move_val_init(&mut (*ptr), op());
-            return transmute(ptr);
-        }
-    }
-
-    #[inline(always)]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     priv fn alloc_pod<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
@@ -265,31 +250,6 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    #[cfg(stage0)]
-    priv fn alloc_nonpod<T>(&mut self, op: &fn() -> T) -> &'self T {
-        unsafe {
-            let tydesc = sys::get_type_desc::<T>();
-            let (ty_ptr, ptr) =
-                self.alloc_nonpod_inner((*tydesc).size, (*tydesc).align);
-            let ty_ptr: *mut uint = transmute(ty_ptr);
-            let ptr: *mut T = transmute(ptr);
-            // Write in our tydesc along with a bit indicating that it
-            // has *not* been initialized yet.
-            *ty_ptr = transmute(tydesc);
-            // Actually initialize it
-            rusti::move_val_init(&mut(*ptr), op());
-            // Now that we are done, update the tydesc to indicate that
-            // the object is there.
-            *ty_ptr = bitpack_tydesc_ptr(tydesc, true);
-
-            return transmute(ptr);
-        }
-    }
-
-    #[inline(always)]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     priv fn alloc_nonpod<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
@@ -312,25 +272,6 @@ pub impl Arena {
 
     // The external interface
     #[inline(always)]
-    #[cfg(stage0)]
-    fn alloc<T>(&mut self, op: &fn() -> T) -> &'self T {
-        unsafe {
-            // XXX: Borrow check
-            let this = transmute_mut_region(self);
-            if !rusti::needs_drop::<T>() {
-                return this.alloc_pod(op);
-            }
-            // XXX: Borrow check
-            let this = transmute_mut_region(self);
-            this.alloc_nonpod(op)
-        }
-    }
-
-    // The external interface
-    #[inline(always)]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn alloc<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
         unsafe {
             // XXX: Borrow check
