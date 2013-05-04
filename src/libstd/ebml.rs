@@ -600,9 +600,16 @@ pub mod writer {
     use core::vec;
 
     // ebml writing
+    #[cfg(stage0)]
     pub struct Encoder {
         writer: @io::Writer,
         priv mut size_positions: ~[uint],
+    }
+
+    #[cfg(not(stage0))]
+    pub struct Encoder {
+        writer: @io::Writer,
+        priv size_positions: ~[uint],
     }
 
     fn write_sized_vuint(w: @io::Writer, n: uint, size: uint) {
@@ -625,9 +632,22 @@ pub mod writer {
         fail!(fmt!("vint to write too big: %?", n));
     }
 
+    #[cfg(stage0)]
     pub fn Encoder(w: @io::Writer) -> Encoder {
         let size_positions: ~[uint] = ~[];
-        Encoder { writer: w, mut size_positions: size_positions }
+        Encoder {
+            writer: w,
+            mut size_positions: size_positions
+        }
+    }
+
+    #[cfg(not(stage0))]
+    pub fn Encoder(w: @io::Writer) -> Encoder {
+        let size_positions: ~[uint] = ~[];
+        Encoder {
+            writer: w,
+            size_positions: size_positions
+        }
     }
 
     // FIXME (#2741): Provide a function to write the standard ebml header.
