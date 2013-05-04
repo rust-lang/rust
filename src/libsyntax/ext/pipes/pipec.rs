@@ -410,10 +410,8 @@ impl gen_init for protocol {
 
             @spanned {
                 node: ast::struct_field_ {
-                    kind: ast::named_field(
-                            cx.ident_of(s.name),
-                            ast::struct_immutable,
-                            ast::inherited),
+                    kind: ast::named_field(cx.ident_of(s.name),
+                                           ast::inherited),
                     id: cx.next_id(),
                     ty: fty,
                     attrs: ~[],

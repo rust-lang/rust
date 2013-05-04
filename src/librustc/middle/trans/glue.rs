@@ -496,9 +496,7 @@ pub fn trans_struct_drop(bcx: block,
         Call(bcx, dtor_addr, args);
 
         // Drop the fields
-        let field_tys =
-            ty::struct_mutable_fields(bcx.tcx(), class_did,
-                                              substs);
+        let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
         for vec::eachi(field_tys) |i, fld| {
             let llfld_a = adt::trans_field_ptr(bcx, repr, v0, 0, i);
             bcx = drop_ty(bcx, llfld_a, fld.mt.ty);

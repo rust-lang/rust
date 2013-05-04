@@ -274,7 +274,7 @@ fn structdoc_from_struct(
         item: itemdoc,
         fields: do struct_def.fields.map |field| {
             match field.node.kind {
-                ast::named_field(ident, _, _) => to_str(ident),
+                ast::named_field(ident, _) => to_str(ident),
                 ast::unnamed_field => ~"(unnamed)",
             }
         },

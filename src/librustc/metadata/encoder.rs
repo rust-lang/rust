@@ -119,16 +119,6 @@ fn encode_region_param(ecx: @EncodeContext,
     }
 }
 
-fn encode_mutability(ebml_w: &mut writer::Encoder, mt: struct_mutability) {
-    ebml_w.start_tag(tag_struct_mut);
-    let val = match mt {
-      struct_immutable => 'a',
-      struct_mutable => 'm'
-    };
-    ebml_w.writer.write(&[val as u8]);
-    ebml_w.end_tag();
-}
-
 struct entry<T> {
     val: T,
     pos: uint
@@ -518,13 +508,9 @@ fn encode_info_for_struct(ecx: @EncodeContext,
      /* We encode both private and public fields -- need to include
         private fields to get the offsets right */
     for fields.each |field| {
-        let (nm, mt, vis) = match field.node.kind {
-            named_field(nm, mt, vis) => (nm, mt, vis),
-            unnamed_field => (
-                special_idents::unnamed_field,
-                struct_immutable,
-                inherited
-            )
+        let (nm, vis) = match field.node.kind {
+            named_field(nm, vis) => (nm, vis),
+            unnamed_field => (special_idents::unnamed_field, inherited)
         };
 
         let id = field.node.id;
@@ -537,7 +523,6 @@ fn encode_info_for_struct(ecx: @EncodeContext,
         encode_name(ecx, ebml_w, nm);
         encode_path(ecx, ebml_w, path, ast_map::path_name(nm));
         encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
-        encode_mutability(ebml_w, mt);
         encode_def_id(ebml_w, local_def(id));
         ebml_w.end_tag();
     }
@@ -828,7 +813,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
         needs to know*/
         for struct_def.fields.each |f| {
             match f.node.kind {
-                named_field(ident, _, vis) => {
+                named_field(ident, vis) => {
                    ebml_w.start_tag(tag_item_field);
                    encode_struct_field_family(ebml_w, vis);
                    encode_name(ecx, ebml_w, ident);

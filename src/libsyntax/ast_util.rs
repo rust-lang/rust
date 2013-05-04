@@ -285,7 +285,7 @@ pub fn split_trait_methods(trait_methods: &[trait_method])
 
 pub fn struct_field_visibility(field: ast::struct_field) -> visibility {
     match field.node.kind {
-        ast::named_field(_, _, visibility) => visibility,
+        ast::named_field(_, visibility) => visibility,
         ast::unnamed_field => ast::public
     }
 }

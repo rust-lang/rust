@@ -280,7 +280,7 @@ fn expand_deriving_decodable_struct_method(
     let mut fields = ~[];
     for struct_def.fields.each |struct_field| {
         match struct_field.node.kind {
-            named_field(ident, _, _) => {
+            named_field(ident, _) => {
                 fields.push(create_read_struct_field(cx, span, i, ident));
             }
             unnamed_field => {

@@ -106,10 +106,9 @@ pub enum SelfMode {
 }
 
 pub struct field_ty {
-  ident: ident,
-  id: def_id,
-  vis: ast::visibility,
-  mutability: ast::struct_mutability,
+    ident: ident,
+    id: def_id,
+    vis: ast::visibility,
 }
 
 // Contains information needed to resolve types and (in the future) look up
@@ -4027,12 +4026,11 @@ pub fn lookup_struct_field(cx: ctxt,
 fn struct_field_tys(fields: &[@struct_field]) -> ~[field_ty] {
     do fields.map |field| {
         match field.node.kind {
-            named_field(ident, mutability, visibility) => {
+            named_field(ident, visibility) => {
                 field_ty {
                     ident: ident,
                     id: ast_util::local_def(field.node.id),
                     vis: visibility,
-                    mutability: mutability,
                 }
             }
             unnamed_field => {
@@ -4041,51 +4039,22 @@ fn struct_field_tys(fields: &[@struct_field]) -> ~[field_ty] {
                         syntax::parse::token::special_idents::unnamed_field,
                     id: ast_util::local_def(field.node.id),
                     vis: ast::public,
-                    mutability: ast::struct_immutable,
                 }
             }
         }
     }
 }
 
-// Return a list of fields corresponding to the struct's items
-// (as if the struct was a record). trans uses this
-// Takes a list of substs with which to instantiate field types
-// Keep in mind that this function reports that all fields are
-// mutable, regardless of how they were declared. It's meant to
-// be used in trans.
-pub fn struct_mutable_fields(cx: ctxt,
-                             did: ast::def_id,
-                             substs: &substs)
-                          -> ~[field] {
-    struct_item_fields(cx, did, substs, |_mt| m_mutbl)
-}
-
-// Same as struct_mutable_fields, but doesn't change
-// mutability.
-pub fn struct_fields(cx: ctxt,
-                     did: ast::def_id,
-                     substs: &substs)
-                  -> ~[field] {
-    struct_item_fields(cx, did, substs, |mt| match mt {
-      struct_mutable => m_mutbl,
-        struct_immutable => m_imm })
-}
-
-
-fn struct_item_fields(cx:ctxt,
-                     did: ast::def_id,
-                     substs: &substs,
-                     frob_mutability: &fn(struct_mutability) -> mutability)
-    -> ~[field] {
+// Returns a list of fields corresponding to the struct's items. trans uses
+// this. Takes a list of substs with which to instantiate field types.
+pub fn struct_fields(cx: ctxt, did: ast::def_id, substs: &substs)
+                     -> ~[field] {
     do lookup_struct_fields(cx, did).map |f| {
-       // consider all instance vars mut, because the
-       // constructor may mutate all vars
        field {
-           ident: f.ident,
+            ident: f.ident,
             mt: mt {
                 ty: lookup_field_type(cx, did, f.id, substs),
-                mutbl: frob_mutability(f.mutability)
+                mutbl: m_imm
             }
         }
     }
