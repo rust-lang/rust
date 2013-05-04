@@ -211,7 +211,7 @@ fn expand_deriving_encodable_struct_method(
     let mut statements = ~[];
     for struct_def.fields.each |struct_field| {
         match struct_field.node.kind {
-            named_field(ident, _, _) => {
+            named_field(ident, _) => {
                 // Create the accessor for this field.
                 let self_field = build::mk_access(
                     cx,
