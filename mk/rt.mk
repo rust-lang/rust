@@ -1,27 +1,27 @@
 # This is a procedure to define the targets for building
-# the runtime.  
+# the runtime.
 #
 # Argument 1 is the target triple.
 #
 # This is not really the right place to explain this, but
 # for those of you who are not Makefile gurus, let me briefly
-# cover the $ expansion system in use here, because it 
+# cover the $ expansion system in use here, because it
 # confused me for a while!  The variable DEF_RUNTIME_TARGETS
 # will be defined once and then expanded with different
 # values substituted for $(1) each time it is called.
-# That resulting text is then eval'd. 
+# That resulting text is then eval'd.
 #
 # For most variables, you could use a single $ sign.  The result
 # is that the substitution would occur when the CALL occurs,
 # I believe.  The problem is that the automatic variables $< and $@
 # need to be expanded-per-rule.  Therefore, for those variables at
-# least, you need $$< and $$@ in the variable text.  This way, after 
+# least, you need $$< and $$@ in the variable text.  This way, after
 # the CALL substitution occurs, you will have $< and $@.  This text
 # will then be evaluated, and all will work as you like.
 #
 # Reader beware, this explanantion could be wrong, but it seems to
-# fit the experimental data (i.e., I was able to get the system 
-# working under these assumptions). 
+# fit the experimental data (i.e., I was able to get the system
+# working under these assumptions).
 
 # Hack for passing flags into LIBUV, see below.
 LIBUV_FLAGS_i386 = -m32 -fPIC

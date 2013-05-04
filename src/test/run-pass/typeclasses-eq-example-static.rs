@@ -38,7 +38,7 @@ impl Equal for ColorTree {
     fn isEq(a: ColorTree, b: ColorTree) -> bool {
         match (a, b) {
           (leaf(x), leaf(y)) => { Equal::isEq(x, y) }
-          (branch(l1, r1), branch(l2, r2)) => { 
+          (branch(l1, r1), branch(l2, r2)) => {
             Equal::isEq(*l1, *l2) && Equal::isEq(*r1, *r2)
           }
           _ => { false }

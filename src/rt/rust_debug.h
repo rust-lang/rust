@@ -70,4 +70,3 @@ void dump_origin(rust_task *task, void *ptr);
 }   // end namespace debug
 
 #endif
-

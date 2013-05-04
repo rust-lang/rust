@@ -26,4 +26,3 @@ pub fn main() {
     let s = S { x: 1 };
     s.g();
 }
-

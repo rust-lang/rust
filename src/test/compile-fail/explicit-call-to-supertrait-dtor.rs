@@ -31,5 +31,3 @@ impl Bar for Foo {
 fn main() {
     let x = Foo { x: 3 };
 }
-
-

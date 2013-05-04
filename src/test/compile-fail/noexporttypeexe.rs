@@ -20,4 +20,3 @@ fn main() {
   let x: int = noexporttypelib::foo();
     //~^ ERROR expected `int` but found `core::option::Option<int>`
 }
-

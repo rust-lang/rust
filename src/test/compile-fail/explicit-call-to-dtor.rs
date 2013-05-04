@@ -22,4 +22,3 @@ fn main() {
     let x = Foo { x: 3 };
     x.finalize();   //~ ERROR explicit call to destructor
 }
-

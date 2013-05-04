@@ -76,4 +76,3 @@ std::string symbolicate(const std::vector<frame> &frames);
 uint32_t get_abi_version();
 
 #endif
-

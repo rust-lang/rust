@@ -18,5 +18,3 @@ struct Foo {
 }
 
 pub fn main() {}
-
-

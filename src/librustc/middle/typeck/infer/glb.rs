@@ -313,4 +313,3 @@ impl Combine for Glb {
         super_trait_refs(self, a, b)
     }
 }
-

@@ -635,4 +635,3 @@ pub fn super_trait_refs<C:Combine>(
         })
     }
 }
-

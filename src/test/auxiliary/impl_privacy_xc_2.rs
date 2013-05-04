@@ -11,5 +11,3 @@ mod unexported {
         fn ne(&self, _: &Fish) -> bool { false }
     }
 }
-
-

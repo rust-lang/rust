@@ -968,4 +968,3 @@ pub fn determine_rp_in_crate(sess: Session,
     // return final set
     return cx.region_paramd_items;
 }
-

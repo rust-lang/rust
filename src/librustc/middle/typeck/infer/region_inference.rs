@@ -1746,4 +1746,3 @@ fn iterate_until_fixed_point(
     }
     debug!("---- %s Complete after %u iteration(s)", tag, iteration);
 }
-

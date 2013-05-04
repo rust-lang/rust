@@ -17,4 +17,3 @@ pub impl Foo {
         Foo { x: 3 }
     }
 }
-

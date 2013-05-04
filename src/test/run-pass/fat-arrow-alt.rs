@@ -23,4 +23,3 @@ pub fn main() {
         blue => { 3 }
     });
 }
-

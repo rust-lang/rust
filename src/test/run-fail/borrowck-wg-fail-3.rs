@@ -5,4 +5,3 @@ fn main() {
     let y: &mut int = x;
     *x = 5;
 }
-

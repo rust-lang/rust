@@ -12,4 +12,3 @@ char **backtrace_symbols (void *__const *__array, int __size);
 void backtrace_symbols_fd (void *__const *__array, int __size, int __fd);
 
 #endif
-

@@ -5,4 +5,3 @@ trait Foo { //~ ERROR default methods are experimental
 }
 
 fn main() {}
-

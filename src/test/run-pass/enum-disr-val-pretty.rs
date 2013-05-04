@@ -23,4 +23,3 @@ fn test_color(color: color, val: int, name: ~str) {
     assert!(color as int == val);
     assert!(color as float == val as float);
 }
-

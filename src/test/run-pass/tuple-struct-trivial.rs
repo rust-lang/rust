@@ -14,4 +14,3 @@ struct Foo(int, int, int);
 
 pub fn main() {
 }
-

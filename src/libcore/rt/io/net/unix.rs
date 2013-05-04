@@ -47,4 +47,3 @@ impl UnixListener {
 impl Listener<UnixStream> for UnixListener {
     fn accept(&mut self) -> Option<UnixStream> { fail!() }
 }
-

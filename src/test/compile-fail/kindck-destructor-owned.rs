@@ -9,4 +9,3 @@ impl Drop for Foo { //~ ERROR cannot implement a destructor on a struct that is 
 }
 
 fn main() { }
-

@@ -205,4 +205,3 @@ fn test_select_stream_and_oneshot() {
     chan.send(());
     waitport.recv();
 }
-
