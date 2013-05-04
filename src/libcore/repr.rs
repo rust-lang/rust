@@ -18,12 +18,11 @@ use cast::transmute;
 use char;
 use intrinsic;
 use intrinsic::{TyDesc, TyVisitor, visit_tydesc};
-#[cfg(not(stage0))] use intrinsic::Opaque;
+use intrinsic::Opaque;
 use io::{Writer, WriterUtil};
 use libc::c_void;
 use managed;
 use ptr;
-#[cfg(stage0)] use sys;
 use reflect;
 use reflect::{MovePtr, align};
 use to_str::ToStr;
@@ -138,14 +137,6 @@ impl Repr for char {
 
 // New implementation using reflect::MovePtr
 
-#[cfg(stage0)]
-enum VariantState {
-    Degenerate,
-    TagMatch,
-    TagMismatch,
-}
-
-#[cfg(not(stage0))]
 enum VariantState {
     SearchingFor(int),
     Matched,
@@ -188,18 +179,6 @@ pub impl ReprVisitor {
             f(transmute::<*c_void,&T>(copy self.ptr));
         }
         true
-    }
-
-    #[cfg(stage0)] #[inline(always)]
-    fn bump(&self, sz: uint) {
-      do self.move_ptr() |p| {
-            ((p as uint) + sz) as *c_void
-      };
-    }
-
-    #[cfg(stage0)] #[inline(always)]
-    fn bump_past<T>(&self) {
-        self.bump(sys::size_of::<T>());
     }
 
     #[inline(always)]
@@ -467,18 +446,6 @@ impl TyVisitor for ReprVisitor {
         true
     }
 
-    #[cfg(stage0)]
-    fn visit_enter_enum(&self, n_variants: uint,
-                        _sz: uint, _align: uint) -> bool {
-        if n_variants == 1 {
-            self.var_stk.push(Degenerate)
-        } else {
-            self.var_stk.push(TagMatch)
-        }
-        true
-    }
-
-    #[cfg(not(stage0))]
     fn visit_enter_enum(&self, _n_variants: uint,
                         get_disr: extern unsafe fn(ptr: *Opaque) -> int,
                         _sz: uint, _align: uint) -> bool {
@@ -487,40 +454,6 @@ impl TyVisitor for ReprVisitor {
         true
     }
 
-    #[cfg(stage0)]
-    fn visit_enter_enum_variant(&self, _variant: uint,
-                                disr_val: int,
-                                n_fields: uint,
-                                name: &str) -> bool {
-        let mut write = false;
-        match self.var_stk.pop() {
-            Degenerate => {
-                write = true;
-                self.var_stk.push(Degenerate);
-            }
-            TagMatch | TagMismatch => {
-                do self.get::<int>() |t| {
-                    if disr_val == *t {
-                        write = true;
-                        self.var_stk.push(TagMatch);
-                    } else {
-                        self.var_stk.push(TagMismatch);
-                    }
-                };
-                self.bump_past::<int>();
-            }
-        }
-
-        if write {
-            self.writer.write_str(name);
-            if n_fields > 0 {
-                self.writer.write_char('(');
-            }
-        }
-        true
-    }
-
-    #[cfg(not(stage0))]
     fn visit_enter_enum_variant(&self, _variant: uint,
                                 disr_val: int,
                                 n_fields: uint,
@@ -549,23 +482,6 @@ impl TyVisitor for ReprVisitor {
         true
     }
 
-    #[cfg(stage0)]
-    fn visit_enum_variant_field(&self, i: uint, inner: *TyDesc) -> bool {
-        match self.var_stk[vec::uniq_len(&const self.var_stk) - 1] {
-            Degenerate | TagMatch => {
-                if i != 0 {
-                    self.writer.write_str(", ");
-                }
-                if ! self.visit_inner(inner) {
-                    return false;
-                }
-            }
-            TagMismatch => ()
-        }
-        true
-    }
-
-    #[cfg(not(stage0))]
     fn visit_enum_variant_field(&self, i: uint, _offset: uint, inner: *TyDesc) -> bool {
         match self.var_stk[vec::uniq_len(&const self.var_stk) - 1] {
             Matched => {
@@ -581,23 +497,6 @@ impl TyVisitor for ReprVisitor {
         true
     }
 
-    #[cfg(stage0)]
-    fn visit_leave_enum_variant(&self, _variant: uint,
-                                _disr_val: int,
-                                n_fields: uint,
-                                _name: &str) -> bool {
-        match self.var_stk[vec::uniq_len(&const self.var_stk) - 1] {
-            Degenerate | TagMatch => {
-                if n_fields > 0 {
-                    self.writer.write_char(')');
-                }
-            }
-            TagMismatch => ()
-        }
-        true
-    }
-
-    #[cfg(not(stage0))]
     fn visit_leave_enum_variant(&self, _variant: uint,
                                 _disr_val: int,
                                 n_fields: uint,
@@ -613,14 +512,6 @@ impl TyVisitor for ReprVisitor {
         true
     }
 
-    #[cfg(stage0)]
-    fn visit_leave_enum(&self, _n_variants: uint,
-                        _sz: uint, _align: uint) -> bool {
-        self.var_stk.pop();
-        true
-    }
-
-    #[cfg(not(stage0))]
     fn visit_leave_enum(&self, _n_variants: uint,
                         _get_disr: extern unsafe fn(ptr: *Opaque) -> int,
                         _sz: uint, _align: uint) -> bool {

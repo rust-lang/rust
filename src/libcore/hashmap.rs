@@ -184,18 +184,6 @@ priv impl<K:Hash + Eq,V> HashMap<K, V> {
         }
     }
 
-    #[cfg(stage0)]
-    #[inline(always)]
-    fn value_for_bucket(&self, idx: uint) -> &'self V {
-        match self.buckets[idx] {
-            Some(ref bkt) => &bkt.value,
-            None => fail!(~"HashMap::find: internal logic error"),
-        }
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     #[inline(always)]
     fn value_for_bucket<'a>(&'a self, idx: uint) -> &'a V {
         match self.buckets[idx] {
@@ -204,18 +192,6 @@ priv impl<K:Hash + Eq,V> HashMap<K, V> {
         }
     }
 
-    #[cfg(stage0)]
-    #[inline(always)]
-    fn mut_value_for_bucket(&mut self, idx: uint) -> &'self mut V {
-        match self.buckets[idx] {
-            Some(ref mut bkt) => &mut bkt.value,
-            None => unreachable()
-        }
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     #[inline(always)]
     fn mut_value_for_bucket<'a>(&'a mut self, idx: uint) -> &'a mut V {
         match self.buckets[idx] {
@@ -329,21 +305,6 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 
     /// Visit all key-value pairs
-    #[cfg(stage0)]
-    fn each(&self, blk: &fn(&'self K, &'self V) -> bool) {
-        for uint::range(0, self.buckets.len()) |i| {
-            for self.buckets[i].each |bucket| {
-                if !blk(&bucket.key, &bucket.value) {
-                    return;
-                }
-            }
-        }
-    }
-
-    /// Visit all key-value pairs
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn each<'a>(&'a self, blk: &fn(&'a K, &'a V) -> bool) {
         for uint::range(0, self.buckets.len()) |i| {
             for self.buckets[i].each |bucket| {
@@ -360,15 +321,6 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 
     /// Visit all values
-    #[cfg(stage0)]
-    fn each_value(&self, blk: &fn(v: &V) -> bool) {
-        self.each(|_, v| blk(v))
-    }
-
-    /// Visit all values
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn each_value<'a>(&'a self, blk: &fn(v: &'a V) -> bool) {
         self.each(|_, v| blk(v))
     }
@@ -386,18 +338,6 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 
     /// Return a reference to the value corresponding to the key
-    #[cfg(stage0)]
-    fn find(&self, k: &K) -> Option<&'self V> {
-        match self.bucket_for_key(k) {
-            FoundEntry(idx) => Some(self.value_for_bucket(idx)),
-            TableFull | FoundHole(_) => None,
-        }
-    }
-
-    /// Return a reference to the value corresponding to the key
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn find<'a>(&'a self, k: &K) -> Option<&'a V> {
         match self.bucket_for_key(k) {
             FoundEntry(idx) => Some(self.value_for_bucket(idx)),
@@ -406,21 +346,6 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 
     /// Return a mutable reference to the value corresponding to the key
-    #[cfg(stage0)]
-    fn find_mut(&mut self, k: &K) -> Option<&'self mut V> {
-        let idx = match self.bucket_for_key(k) {
-            FoundEntry(idx) => idx,
-            TableFull | FoundHole(_) => return None
-        };
-        unsafe {  // FIXME(#4903)---requires flow-sensitive borrow checker
-            Some(::cast::transmute_mut_region(self.mut_value_for_bucket(idx)))
-        }
-    }
-
-    /// Return a mutable reference to the value corresponding to the key
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn find_mut<'a>(&'a mut self, k: &K) -> Option<&'a mut V> {
         let idx = match self.bucket_for_key(k) {
             FoundEntry(idx) => idx,
@@ -503,40 +428,6 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return the value corresponding to the key in the map, or insert
     /// and return the value if it doesn't exist.
-    #[cfg(stage0)]
-    fn find_or_insert(&mut self, k: K, v: V) -> &'self V {
-        if self.size >= self.resize_at {
-            // n.b.: We could also do this after searching, so
-            // that we do not resize if this call to insert is
-            // simply going to update a key in place.  My sense
-            // though is that it's worse to have to search through
-            // buckets to find the right spot twice than to just
-            // resize in this corner case.
-            self.expand();
-        }
-
-        let hash = k.hash_keyed(self.k0, self.k1) as uint;
-        let idx = match self.bucket_for_key_with_hash(hash, &k) {
-            TableFull => fail!(~"Internal logic error"),
-            FoundEntry(idx) => idx,
-            FoundHole(idx) => {
-                self.buckets[idx] = Some(Bucket{hash: hash, key: k,
-                                     value: v});
-                self.size += 1;
-                idx
-            },
-        };
-
-        unsafe { // FIXME(#4903)---requires flow-sensitive borrow checker
-            ::cast::transmute_region(self.value_for_bucket(idx))
-        }
-    }
-
-    /// Return the value corresponding to the key in the map, or insert
-    /// and return the value if it doesn't exist.
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a V {
         if self.size >= self.resize_at {
             // n.b.: We could also do this after searching, so
@@ -567,41 +458,6 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return the value corresponding to the key in the map, or create,
     /// insert, and return a new value if it doesn't exist.
-    #[cfg(stage0)]
-    fn find_or_insert_with(&mut self, k: K, f: &fn(&K) -> V) -> &'self V {
-        if self.size >= self.resize_at {
-            // n.b.: We could also do this after searching, so
-            // that we do not resize if this call to insert is
-            // simply going to update a key in place.  My sense
-            // though is that it's worse to have to search through
-            // buckets to find the right spot twice than to just
-            // resize in this corner case.
-            self.expand();
-        }
-
-        let hash = k.hash_keyed(self.k0, self.k1) as uint;
-        let idx = match self.bucket_for_key_with_hash(hash, &k) {
-            TableFull => fail!(~"Internal logic error"),
-            FoundEntry(idx) => idx,
-            FoundHole(idx) => {
-                let v = f(&k);
-                self.buckets[idx] = Some(Bucket{hash: hash, key: k,
-                                     value: v});
-                self.size += 1;
-                idx
-            },
-        };
-
-        unsafe { // FIXME(#4903)---requires flow-sensitive borrow checker
-            ::cast::transmute_region(self.value_for_bucket(idx))
-        }
-    }
-
-    /// Return the value corresponding to the key in the map, or create,
-    /// insert, and return a new value if it doesn't exist.
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn find_or_insert_with<'a>(&'a mut self, k: K, f: &fn(&K) -> V) -> &'a V {
         if self.size >= self.resize_at {
             // n.b.: We could also do this after searching, so
@@ -647,17 +503,6 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
         }
     }
 
-    #[cfg(stage0)]
-    fn get(&self, k: &K) -> &'self V {
-        match self.find(k) {
-            Some(v) => v,
-            None => fail!(fmt!("No entry found for key: %?", k)),
-        }
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn get<'a>(&'a self, k: &K) -> &'a V {
         match self.find(k) {
             Some(v) => v,
@@ -676,19 +521,6 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return the value corresponding to the key in the map, using
     /// equivalence
-    #[cfg(stage0)]
-    fn find_equiv<Q:Hash + Equiv<K>>(&self, k: &Q) -> Option<&'self V> {
-        match self.bucket_for_key_equiv(k) {
-            FoundEntry(idx) => Some(self.value_for_bucket(idx)),
-            TableFull | FoundHole(_) => None,
-        }
-    }
-
-    /// Return the value corresponding to the key in the map, using
-    /// equivalence
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn find_equiv<'a, Q:Hash + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
         match self.bucket_for_key_equiv(k) {
             FoundEntry(idx) => Some(self.value_for_bucket(idx)),
