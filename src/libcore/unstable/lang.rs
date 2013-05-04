@@ -20,6 +20,7 @@ use unstable::exchange_alloc;
 use cast::transmute;
 use task::rt::rust_get_task;
 use option::{Option, Some, None};
+use io;
 
 #[allow(non_camel_case_types)]
 pub type rust_task = c_void;
@@ -109,8 +110,8 @@ pub unsafe fn clear_task_borrow_list() {
     let _ = try_take_task_borrow_list();
 }
 
-fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
-    debug_ptr("fail_borrowed: ", box);
+unsafe fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
+    debug_borrow("fail_borrowed: ", box, 0, 0, file, line);
 
     match try_take_task_borrow_list() {
         None => { // not recording borrows
@@ -145,42 +146,95 @@ fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
 #[inline(always)]
 pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     let result = transmute(exchange_alloc::malloc(transmute(td), transmute(size)));
-    debug_ptr("exchange_malloc: ", result);
+    debug_mem("exchange_malloc: ", result);
     return result;
 }
 
 /// Because this code is so perf. sensitive, use a static constant so that
 /// debug printouts are compiled out most of the time.
-static ENABLE_DEBUG_PTR: bool = true;
+static ENABLE_DEBUG: bool = true;
 
 #[inline]
-pub fn debug_ptr<T>(tag: &'static str, p: *const T) {
+pub fn debug_mem<T>(tag: &'static str, p: *const T) {
     //! A useful debugging function that prints a pointer + tag + newline
     //! without allocating memory.
 
-    if ENABLE_DEBUG_PTR && ::rt::env::get().debug_mem {
-        debug_ptr_slow(tag, p);
+    if ENABLE_DEBUG && ::rt::env::get().debug_mem {
+        debug_mem_slow(tag, p);
     }
 
-    fn debug_ptr_slow<T>(tag: &'static str, p: *const T) {
-        use io;
+    fn debug_mem_slow<T>(tag: &'static str, p: *const T) {
         let dbg = STDERR_FILENO as io::fd_t;
+        dbg.write_str(tag);
+        dbg.write_hex(p as uint);
+        dbg.write_str("\n");
+    }
+}
+
+#[inline]
+unsafe fn debug_borrow<T>(tag: &'static str,
+                          p: *const T,
+                          old_bits: uint,
+                          new_bits: uint,
+                          filename: *c_char,
+                          line: size_t) {
+    //! A useful debugging function that prints a pointer + tag + newline
+    //! without allocating memory.
+
+    if ENABLE_DEBUG && ::rt::env::get().debug_borrow {
+        debug_borrow_slow(tag, p, old_bits, new_bits, filename, line);
+    }
+
+    unsafe fn debug_borrow_slow<T>(tag: &'static str,
+                                   p: *const T,
+                                   old_bits: uint,
+                                   new_bits: uint,
+                                   filename: *c_char,
+                                   line: size_t) {
+        let dbg = STDERR_FILENO as io::fd_t;
+        dbg.write_str(tag);
+        dbg.write_hex(p as uint);
+        dbg.write_str(" ");
+        dbg.write_hex(old_bits);
+        dbg.write_str(" ");
+        dbg.write_hex(new_bits);
+        dbg.write_str(" ");
+        dbg.write_cstr(filename);
+        dbg.write_str(":");
+        dbg.write_hex(line as uint);
+        dbg.write_str("\n");
+    }
+}
+
+trait DebugPrints {
+    fn write_hex(&self, val: uint);
+    unsafe fn write_cstr(&self, str: *c_char);
+}
+
+impl DebugPrints for io::fd_t {
+    fn write_hex(&self, mut i: uint) {
         let letters = ['0', '1', '2', '3', '4', '5', '6', '7', '8',
                        '9', 'a', 'b', 'c', 'd', 'e', 'f'];
-        dbg.write_str(tag);
-
         static uint_nibbles: uint = ::uint::bytes << 1;
         let mut buffer = [0_u8, ..uint_nibbles+1];
-        let mut i = p as uint;
         let mut c = uint_nibbles;
         while c > 0 {
             c -= 1;
             buffer[c] = letters[i & 0xF] as u8;
             i >>= 4;
         }
-        dbg.write(buffer.slice(0, uint_nibbles));
+        self.write(buffer.slice(0, uint_nibbles));
+    }
 
-        dbg.write_str("\n");
+    unsafe fn write_cstr(&self, p: *c_char) {
+        use libc::strlen;
+        use vec;
+
+        let len = strlen(p);
+        let p: *u8 = transmute(p);
+        do vec::raw::buf_as_slice(p, len as uint) |s| {
+            self.write(s);
+        }
     }
 }
 
@@ -190,7 +244,7 @@ pub fn debug_ptr<T>(tag: &'static str, p: *const T) {
 #[lang="exchange_free"]
 #[inline(always)]
 pub unsafe fn exchange_free(ptr: *c_char) {
-    debug_ptr("exchange_free: ", ptr);
+    debug_mem("exchange_free: ", ptr);
     exchange_alloc::free(transmute(ptr))
 }
 
@@ -198,7 +252,7 @@ pub unsafe fn exchange_free(ptr: *c_char) {
 #[inline(always)]
 pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     let result = rustrt::rust_upcall_malloc_noswitch(td, size);
-    debug_ptr("local_malloc: ", result);
+    debug_mem("local_malloc: ", result);
     return result;
 }
 
@@ -208,7 +262,7 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 #[lang="free"]
 #[inline(always)]
 pub unsafe fn local_free(ptr: *c_char) {
-    debug_ptr("local_free: ", ptr);
+    debug_mem("local_free: ", ptr);
     rustrt::rust_upcall_free_noswitch(ptr);
 }
 
@@ -225,19 +279,18 @@ pub unsafe fn borrow_as_imm(a: *u8) {
 #[inline(always)]
 pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) -> uint {
     let a: *mut BoxRepr = transmute(a);
-    let ref_count = (*a).header.ref_count;
+    let old_ref_count = (*a).header.ref_count;
+    let new_ref_count = old_ref_count | FROZEN_BIT;
 
-    debug_ptr("borrow_as_imm (ptr) :", a);
-    debug_ptr("              (ref) :", ref_count as *());
-    debug_ptr("              (line): ", line as *());
+    debug_borrow("borrow_as_imm:", a, old_ref_count, new_ref_count, file, line);
 
-    if (ref_count & MUT_BIT) != 0 {
+    if (old_ref_count & MUT_BIT) != 0 {
         fail_borrowed(a, file, line);
     }
 
-    (*a).header.ref_count = ref_count | FROZEN_BIT;
+    (*a).header.ref_count = new_ref_count;
 
-    ref_count
+    old_ref_count
 }
 
 #[cfg(not(stage0))]
@@ -245,18 +298,18 @@ pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) -> uint {
 #[inline(always)]
 pub unsafe fn borrow_as_mut(a: *u8, file: *c_char, line: size_t) -> uint {
     let a: *mut BoxRepr = transmute(a);
+    let old_ref_count = (*a).header.ref_count;
+    let new_ref_count = old_ref_count | MUT_BIT | FROZEN_BIT;
 
-    debug_ptr("borrow_as_mut (ptr): ", a);
-    debug_ptr("              (line): ", line as *());
+    debug_borrow("borrow_as_mut:", a, old_ref_count, new_ref_count, file, line);
 
-    let ref_count = (*a).header.ref_count;
-    if (ref_count & (MUT_BIT|FROZEN_BIT)) != 0 {
+    if (old_ref_count & (MUT_BIT|FROZEN_BIT)) != 0 {
         fail_borrowed(a, file, line);
     }
 
-    (*a).header.ref_count = ref_count | MUT_BIT | FROZEN_BIT;
+    (*a).header.ref_count = new_ref_count;
 
-    ref_count
+    old_ref_count
 }
 
 
@@ -267,6 +320,7 @@ pub unsafe fn record_borrow(a: *u8, old_ref_count: uint,
     if (old_ref_count & ALL_BITS) == 0 {
         // was not borrowed before
         let a: *mut BoxRepr = transmute(a);
+        debug_borrow("record_borrow:", a, old_ref_count, 0, file, line);
         do swap_task_borrow_list |borrow_list| {
             let mut borrow_list = borrow_list;
             borrow_list.push(BorrowRecord {box: a, file: file, line: line});
@@ -282,6 +336,7 @@ pub unsafe fn unrecord_borrow(a: *u8, old_ref_count: uint,
     if (old_ref_count & ALL_BITS) == 0 {
         // was not borrowed before
         let a: *mut BoxRepr = transmute(a);
+        debug_borrow("unrecord_borrow:", a, old_ref_count, 0, file, line);
         do swap_task_borrow_list |borrow_list| {
             let mut borrow_list = borrow_list;
             let br = BorrowRecord {box: a, file: file, line: line};
@@ -317,21 +372,20 @@ pub unsafe fn return_to_mut(a: *u8) {
 #[cfg(not(stage0))]
 #[lang="return_to_mut"]
 #[inline(always)]
-pub unsafe fn return_to_mut(a: *u8, old_ref_count: uint,
+pub unsafe fn return_to_mut(a: *u8, orig_ref_count: uint,
                             file: *c_char, line: size_t) {
     // Sometimes the box is null, if it is conditionally frozen.
     // See e.g. #4904.
     if !a.is_null() {
         let a: *mut BoxRepr = transmute(a);
-        let ref_count = (*a).header.ref_count;
-        let combined = (ref_count & !ALL_BITS) | (old_ref_count & ALL_BITS);
-        (*a).header.ref_count = combined;
+        let old_ref_count = (*a).header.ref_count;
+        let new_ref_count =
+            (old_ref_count & !ALL_BITS) | (orig_ref_count & ALL_BITS);
 
-        debug_ptr("return_to_mut (ptr) : ", a);
-        debug_ptr("              (line): ", line as *());
-        debug_ptr("              (old) : ", old_ref_count as *());
-        debug_ptr("              (new) : ", ref_count as *());
-        debug_ptr("              (comb): ", combined as *());
+        debug_borrow("return_to_mut:",
+                     a, old_ref_count, new_ref_count, file, line);
+
+        (*a).header.ref_count = new_ref_count;
     }
 }
 
@@ -355,10 +409,7 @@ pub unsafe fn check_not_borrowed(a: *u8,
                                  line: size_t) {
     let a: *mut BoxRepr = transmute(a);
     let ref_count = (*a).header.ref_count;
-    debug_ptr("check_not_borrowed (ptr) : ", a);
-    debug_ptr("                   (line): ", line as *());
-    debug_ptr("                   (rc)  : ", ref_count as *());
-
+    debug_borrow("check_not_borrowed:", a, ref_count, 0, file, line);
     if (ref_count & FROZEN_BIT) != 0 {
         fail_borrowed(a, file, line);
     }

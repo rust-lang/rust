@@ -33,6 +33,8 @@ pub struct Environment {
     argv: **c_char,
     /// Print GC debugging info (true if env var RUST_DEBUG_MEM is set)
     debug_mem: bool,
+    /// Print GC debugging info (true if env var RUST_DEBUG_BORROW is set)
+    debug_borrow: bool,
 }
 
 /// Get the global environment settings
