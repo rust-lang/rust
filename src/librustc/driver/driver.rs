@@ -650,7 +650,7 @@ pub fn build_session_options(binary: @~str,
     };
 
     let addl_lib_search_paths = getopts::opt_strs(matches, ~"L").map(|s| Path(*s));
-
+    let linker = getopts::opt_maybe_str(matches, ~"linker");
     let linker_args = getopts::opt_strs(matches, ~"link-args").flat_map( |a| {
         let mut args = ~[];
         for str::each_split_char(*a, ' ') |arg| {
@@ -676,6 +676,7 @@ pub fn build_session_options(binary: @~str,
         jit: jit,
         output_type: output_type,
         addl_lib_search_paths: addl_lib_search_paths,
+        linker: linker,
         linker_args: linker_args,
         maybe_sysroot: sysroot_opt,
         target_triple: target,
@@ -760,6 +761,7 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
   optmulti("L", "",   "Add a directory to the library search path",
                               "PATH"),
   optflag("",  "lib", "Compile a library crate"),
+  optopt("", "linker", "Program to use for linking instead of the default.", "LINKER"),
   optmulti("",  "link-args", "FLAGS is a space-separated list of flags
                             passed to the linker", "FLAGS"),
   optflag("",  "ls",  "List the symbols defined by a library crate"),
