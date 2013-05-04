@@ -14,9 +14,6 @@
 
 pub use either::{Either, Left, Right};
 pub use kinds::{Const, Copy, Owned, Durable};
-#[cfg(stage0)]
-pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, Not};
-#[cfg(not(stage0))]
 pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
 pub use ops::{Drop};

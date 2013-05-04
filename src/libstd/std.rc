@@ -71,7 +71,6 @@ pub mod rope;
 pub mod smallintmap;
 pub mod sort;
 pub mod dlist;
-#[cfg(not(stage0))]
 pub mod treemap;
 
 // And ... other stuff
@@ -91,13 +90,10 @@ pub mod cmp;
 pub mod base64;
 pub mod rl;
 pub mod workcache;
-#[cfg(not(stage0))]
 #[path="num/bigint.rs"]
 pub mod bigint;
-#[cfg(not(stage0))]
 #[path="num/rational.rs"]
 pub mod rational;
-#[cfg(not(stage0))]
 #[path="num/complex.rs"]
 pub mod complex;
 pub mod stats;

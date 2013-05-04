@@ -54,35 +54,6 @@ pub impl<A:Copy> Future<A> {
 }
 
 pub impl<A> Future<A> {
-    #[cfg(stage0)]
-    fn get_ref(&self) -> &'self A {
-        /*!
-        * Executes the future's closure and then returns a borrowed
-        * pointer to the result.  The borrowed pointer lasts as long as
-        * the future.
-        */
-        unsafe {
-            match self.state {
-                Forced(ref mut v) => { return cast::transmute(v); }
-                Evaluating => fail!(~"Recursive forcing of future!"),
-                Pending(_) => {}
-            }
-
-            let mut state = Evaluating;
-            self.state <-> state;
-            match state {
-                Forced(_) | Evaluating => fail!(~"Logic error."),
-                Pending(f) => {
-                    self.state = Forced(f());
-                    self.get_ref()
-                }
-            }
-        }
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn get_ref<'a>(&'a self) -> &'a A {
         /*!
         * Executes the future's closure and then returns a borrowed
