@@ -39,9 +39,8 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
         fn sysroot(&self) -> @Path { self.sysroot }
         fn for_each_lib_search_path(&self, f: &fn(&Path) -> bool) {
             debug!("filesearch: searching additional lib search paths");
-            if !self.addl_lib_search_paths.each(f) {
-                return;
-            }
+            // a little weird
+            self.addl_lib_search_paths.each(f);
 
             debug!("filesearch: searching target lib path");
             if !f(&make_target_lib_path(self.sysroot,
@@ -59,7 +58,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
            match get_rustpkg_lib_path() {
               result::Ok(ref p) => f(p),
               result::Err(_) => true
-           }
+           };
         }
         fn get_target_lib_path(&self) -> Path {
             make_target_lib_path(self.sysroot, self.target_triple)
