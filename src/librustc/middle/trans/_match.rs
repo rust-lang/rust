@@ -969,30 +969,17 @@ pub fn pats_require_rooting(bcx: block,
     })
 }
 
-pub fn root_pats_as_necessary(bcx: block,
+pub fn root_pats_as_necessary(mut bcx: block,
                               m: &[@Match],
                               col: uint,
                               val: ValueRef)
                            -> block {
-    let mut bcx = bcx;
     for vec::each(m) |br| {
         let pat_id = br.pats[col].id;
-
-        let key = root_map_key {id: pat_id, derefs: 0u };
-        match bcx.ccx().maps.root_map.find(&key) {
-            None => (),
-            Some(&root_info) => {
-                // Note: the scope_id will always be the id of the match.  See
-                // the extended comment in rustc::middle::borrowck::preserve()
-                // for details (look for the case covering cat_discr).
-
-                let datum = Datum {val: val, ty: node_id_type(bcx, pat_id),
-                                   mode: ByRef, source: ZeroMem};
-                bcx = datum.root(bcx, br.pats[col].span, key, root_info);
-                // If we kept going, we'd only re-root the same value, so
-                // return now.
-                return bcx;
-            }
+        if pat_id != 0 {
+            let datum = Datum {val: val, ty: node_id_type(bcx, pat_id),
+                               mode: ByRef, source: ZeroMem};
+            bcx = datum.root_and_write_guard(bcx, br.pats[col].span, pat_id, 0);
         }
     }
     return bcx;

@@ -27,18 +27,18 @@ use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::build;
-use middle::trans::callee;
 use middle::trans::datum;
 use middle::trans::debuginfo;
-use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::reachable;
 use middle::trans::shape;
 use middle::trans::type_of;
 use middle::trans::type_use;
+use middle::trans::write_guard;
 use middle::ty::substs;
 use middle::ty;
 use middle::typeck;
+use middle::borrowck::root_map_key;
 use util::ppaux::{Repr};
 
 use core::cast::transmute;
@@ -468,6 +468,7 @@ pub fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
     }
 }
 pub fn add_clean_return_to_mut(bcx: block,
+                               root_key: root_map_key,
                                frozen_val_ref: ValueRef,
                                bits_val_ref: ValueRef,
                                filename_val: ValueRef,
@@ -488,44 +489,12 @@ pub fn add_clean_return_to_mut(bcx: block,
         scope_info.cleanups.push(
             clean_temp(
                 frozen_val_ref,
-                |bcx| {
-                    let mut bcx = bcx;
-
-                    let box_ptr =
-                        build::Load(bcx,
-                                    build::PointerCast(bcx,
-                                                       frozen_val_ref,
-                                                       T_ptr(T_ptr(T_i8()))));
-
-                    let bits_val =
-                        build::Load(bcx,
-                                    bits_val_ref);
-
-                    if bcx.tcx().sess.opts.optimize == session::No {
-                        bcx = callee::trans_lang_call(
-                            bcx,
-                            bcx.tcx().lang_items.unrecord_borrow_fn(),
-                            ~[
-                                box_ptr,
-                                bits_val,
-                                filename_val,
-                                line_val
-                            ],
-                            expr::Ignore);
-                    }
-
-                    callee::trans_lang_call(
-                        bcx,
-                        bcx.tcx().lang_items.return_to_mut_fn(),
-                        ~[
-                            box_ptr,
-                            bits_val,
-                            filename_val,
-                            line_val
-                        ],
-                        expr::Ignore
-                    )
-                },
+                |bcx| write_guard::return_to_mut(bcx,
+                                                 root_key,
+                                                 frozen_val_ref,
+                                                 bits_val_ref,
+                                                 filename_val,
+                                                 line_val),
                 normal_exit_only));
         scope_clean_changed(scope_info);
     }
@@ -1561,6 +1530,15 @@ pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
         self_ty: None,
         tps: tps
     }
+}
+
+pub fn filename_and_line_num_from_span(bcx: block,
+                                       span: span) -> (ValueRef, ValueRef) {
+    let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
+    let filename_cstr = C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name);
+    let filename = build::PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
+    let line = C_int(bcx.ccx(), loc.line as int);
+    (filename, line)
 }
 
 // Casts a Rust bool value to an i1.
