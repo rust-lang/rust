@@ -234,8 +234,9 @@ impl<T: Owned> Selectable for Port<T> {
 }
 
 /// Treat many ports as one.
+#[unsafe_mut_field(ports)]
 pub struct PortSet<T> {
-    mut ports: ~[Port<T>],
+    ports: ~[Port<T>],
 }
 
 pub impl<T: Owned> PortSet<T> {
@@ -246,7 +247,10 @@ pub impl<T: Owned> PortSet<T> {
     }
 
     fn add(&self, port: Port<T>) {
-        self.ports.push(port)
+        unsafe {
+            let self_ports = transmute_mut(&self.ports);
+            self_ports.push(port)
+        }
     }
 
     fn chan(&self) -> Chan<T> {
@@ -258,25 +262,28 @@ pub impl<T: Owned> PortSet<T> {
 
 impl<T:Owned> GenericPort<T> for PortSet<T> {
     fn try_recv(&self) -> Option<T> {
-        let mut result = None;
-        // we have to swap the ports array so we aren't borrowing
-        // aliasable mutable memory.
-        let mut ports = ~[];
-        ports <-> self.ports;
-        while result.is_none() && ports.len() > 0 {
-            let i = wait_many(ports);
-            match ports[i].try_recv() {
-                Some(m) => {
-                    result = Some(m);
-                }
-                None => {
-                    // Remove this port.
-                    let _ = ports.swap_remove(i);
+        unsafe {
+            let mut self_ports = transmute_mut(&self.ports);
+            let mut result = None;
+            // we have to swap the ports array so we aren't borrowing
+            // aliasable mutable memory.
+            let mut ports = ~[];
+            ports <-> *self_ports;
+            while result.is_none() && ports.len() > 0 {
+                let i = wait_many(ports);
+                match ports[i].try_recv() {
+                    Some(m) => {
+                        result = Some(m);
+                    }
+                    None => {
+                        // Remove this port.
+                        let _ = ports.swap_remove(i);
+                    }
                 }
             }
+            ports <-> *self_ports;
+            result
         }
-        ports <-> self.ports;
-        result
     }
     fn recv(&self) -> T {
         self.try_recv().expect("port_set: endpoints closed")
@@ -288,10 +295,9 @@ impl<T: Owned> Peekable<T> for PortSet<T> {
         // It'd be nice to use self.port.each, but that version isn't
         // pure.
         for uint::range(0, vec::uniq_len(&const self.ports)) |i| {
-            // XXX: Botch pending demuting.
-            unsafe {
-                let port: &Port<T> = cast::transmute(&mut self.ports[i]);
-                if port.peek() { return true }
+            let port: &Port<T> = &self.ports[i];
+            if port.peek() {
+                return true;
             }
         }
         false
