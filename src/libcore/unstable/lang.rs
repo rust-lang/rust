@@ -98,7 +98,6 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 }
 
 #[lang="malloc"]
-#[inline(always)]
 #[cfg(not(stage0))]
 pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     match context() {
@@ -129,7 +128,6 @@ pub unsafe fn local_free(ptr: *c_char) {
 // inside a landing pad may corrupt the state of the exception handler. If a
 // problem occurs, call exit instead.
 #[lang="free"]
-#[inline(always)]
 #[cfg(not(stage0))]
 pub unsafe fn local_free(ptr: *c_char) {
     match context() {
