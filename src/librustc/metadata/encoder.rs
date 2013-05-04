@@ -1372,41 +1372,40 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
 
     encode_hash(&mut ebml_w, ecx.link_meta.extras_hash);
 
-    let mut i = wr.pos;
+    let mut i = *wr.pos;
     let crate_attrs = synthesize_crate_attrs(ecx, crate);
     encode_attributes(&mut ebml_w, crate_attrs);
-    ecx.stats.attr_bytes = wr.pos - i;
+    ecx.stats.attr_bytes = *wr.pos - i;
 
-    i = wr.pos;
+    i = *wr.pos;
     encode_crate_deps(ecx, &mut ebml_w, ecx.cstore);
-    ecx.stats.dep_bytes = wr.pos - i;
+    ecx.stats.dep_bytes = *wr.pos - i;
 
     // Encode the language items.
-    i = wr.pos;
+    i = *wr.pos;
     encode_lang_items(ecx, &mut ebml_w);
-    ecx.stats.lang_item_bytes = wr.pos - i;
+    ecx.stats.lang_item_bytes = *wr.pos - i;
 
     // Encode the link args.
-    i = wr.pos;
+    i = *wr.pos;
     encode_link_args(ecx, &mut ebml_w);
-    ecx.stats.link_args_bytes = wr.pos - i;
+    ecx.stats.link_args_bytes = *wr.pos - i;
 
     // Encode and index the items.
     ebml_w.start_tag(tag_items);
-    i = wr.pos;
+    i = *wr.pos;
     let items_index = encode_info_for_items(ecx, &mut ebml_w, crate);
-    ecx.stats.item_bytes = wr.pos - i;
+    ecx.stats.item_bytes = *wr.pos - i;
 
-    i = wr.pos;
+    i = *wr.pos;
     let items_buckets = create_index(items_index);
     encode_index(&mut ebml_w, items_buckets, write_int);
-    ecx.stats.index_bytes = wr.pos - i;
+    ecx.stats.index_bytes = *wr.pos - i;
     ebml_w.end_tag();
 
-    ecx.stats.total_bytes = wr.pos;
+    ecx.stats.total_bytes = *wr.pos;
 
     if (tcx.sess.meta_stats()) {
-
         do wr.bytes.each |e| {
             if *e == 0 {
                 ecx.stats.zero_bytes += 1;
@@ -1438,9 +1437,11 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
     //
     //   vec::from_slice(metadata_encoding_version) +
 
+    let writer_bytes: &mut ~[u8] = wr.bytes;
+
     (do str::as_bytes(&~"rust\x00\x00\x00\x01") |bytes| {
         vec::slice(*bytes, 0, 8).to_vec()
-    }) + flate::deflate_bytes(wr.bytes)
+    }) + flate::deflate_bytes(*writer_bytes)
 }
 
 // Get the encoded string for a type

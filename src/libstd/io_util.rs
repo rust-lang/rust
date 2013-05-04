@@ -29,13 +29,13 @@ pub impl BufReader {
         // I can't get the borrowing to work correctly
         let bytes_reader = BytesReader {
             bytes: ::core::util::id::<&[u8]>(self.buf),
-            pos: *self.pos
+            pos: @mut *self.pos
         };
 
         let res = f(&bytes_reader);
 
         // FIXME #4429: This isn't correct if f fails
-        *self.pos = bytes_reader.pos;
+        *self.pos = *bytes_reader.pos;
 
         return res;
     }
