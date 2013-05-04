@@ -220,9 +220,16 @@ impl serialize::Encoder for Encoder {
     }
 }
 
+#[cfg(stage0)]
 pub struct PrettyEncoder {
     priv wr: @io::Writer,
     priv mut indent: uint,
+}
+
+#[cfg(not(stage0))]
+pub struct PrettyEncoder {
+    priv wr: @io::Writer,
+    priv indent: uint,
 }
 
 pub fn PrettyEncoder(wr: @io::Writer) -> PrettyEncoder {
@@ -838,8 +845,14 @@ pub fn from_str(s: &str) -> Result<Json, Error> {
     }
 }
 
+#[cfg(stage0)]
 pub struct Decoder {
     priv mut stack: ~[Json],
+}
+
+#[cfg(not(stage0))]
+pub struct Decoder {
+    priv stack: ~[Json],
 }
 
 pub fn Decoder(json: Json) -> Decoder {
