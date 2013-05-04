@@ -103,6 +103,10 @@ impl<T> Map<int, T> for cat<T> {
             false
         }
     }
+
+    fn pop(&mut self, _k: &int) -> Option<T> { fail!() }
+
+    fn swap(&mut self, _k: int, _v: T) -> Option<T> { fail!() }
 }
 
 pub impl<T> cat<T> {
