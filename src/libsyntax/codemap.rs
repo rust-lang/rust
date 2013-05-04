@@ -125,13 +125,6 @@ impl cmp::Eq for span {
     fn ne(&self, other: &span) -> bool { !(*self).eq(other) }
 }
 
-#[cfg(stage0)]
-impl<S:Encoder> Encodable<S> for span {
-    /* Note #1972 -- spans are encoded but not decoded */
-    fn encode(&self, _s: &S) { _s.emit_nil() }
-}
-
-#[cfg(not(stage0))]
 impl<S:Encoder> Encodable<S> for span {
     /* Note #1972 -- spans are encoded but not decoded */
     fn encode(&self, s: &mut S) {
@@ -139,14 +132,6 @@ impl<S:Encoder> Encodable<S> for span {
     }
 }
 
-#[cfg(stage0)]
-impl<D:Decoder> Decodable<D> for span {
-    fn decode(_d: &D) -> span {
-        dummy_sp()
-    }
-}
-
-#[cfg(not(stage0))]
 impl<D:Decoder> Decodable<D> for span {
     fn decode(_d: &mut D) -> span {
         dummy_sp()

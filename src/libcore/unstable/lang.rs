@@ -17,9 +17,7 @@ use str;
 use sys;
 use unstable::exchange_alloc;
 use cast::transmute;
-#[cfg(not(stage0))]
 use rt::{context, OldTaskContext};
-#[cfg(not(stage0))]
 use rt::local_services::borrow_local_services;
 
 #[allow(non_camel_case_types)]
@@ -91,14 +89,6 @@ pub unsafe fn exchange_free(ptr: *c_char) {
 }
 
 #[lang="malloc"]
-#[inline(always)]
-#[cfg(stage0)] // For some reason this isn't working on windows in stage0
-pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    return rustrt::rust_upcall_malloc_noswitch(td, size);
-}
-
-#[lang="malloc"]
-#[cfg(not(stage0))]
 pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     match context() {
         OldTaskContext => {
@@ -118,17 +108,6 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 // inside a landing pad may corrupt the state of the exception handler. If a
 // problem occurs, call exit instead.
 #[lang="free"]
-#[inline(always)]
-#[cfg(stage0)]
-pub unsafe fn local_free(ptr: *c_char) {
-    rustrt::rust_upcall_free_noswitch(ptr);
-}
-
-// NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
-// inside a landing pad may corrupt the state of the exception handler. If a
-// problem occurs, call exit instead.
-#[lang="free"]
-#[cfg(not(stage0))]
 pub unsafe fn local_free(ptr: *c_char) {
     match context() {
         OldTaskContext => {
@@ -176,32 +155,6 @@ pub unsafe fn strdup_uniq(ptr: *c_uchar, len: uint) -> ~str {
 }
 
 #[lang="start"]
-#[cfg(stage0)]
-pub fn start(main: *u8, argc: int, argv: *c_char,
-             crate_map: *u8) -> int {
-    use libc::getenv;
-    use rt::start;
-
-    unsafe {
-        let use_old_rt = do str::as_c_str("RUST_NEWRT") |s| {
-            getenv(s).is_null()
-        };
-        if use_old_rt {
-            return rust_start(main as *c_void, argc as c_int, argv,
-                              crate_map as *c_void) as int;
-        } else {
-            return start(main, argc, argv, crate_map);
-        }
-    }
-
-    extern {
-        fn rust_start(main: *c_void, argc: c_int, argv: *c_char,
-                      crate_map: *c_void) -> c_int;
-    }
-}
-
-#[lang="start"]
-#[cfg(not(stage0))]
 pub fn start(main: *u8, argc: int, argv: **c_char,
              crate_map: *u8) -> int {
     use libc::getenv;

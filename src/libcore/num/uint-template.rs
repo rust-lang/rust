@@ -171,12 +171,7 @@ impl Div<T,T> for T {
     fn div(&self, other: &T) -> T { *self / *other }
 }
 
-#[cfg(stage0,notest)]
-impl Modulo<T,T> for T {
-    #[inline(always)]
-    fn modulo(&self, other: &T) -> T { *self % *other }
-}
-#[cfg(not(stage0),notest)]
+#[cfg(notest)]
 impl Rem<T,T> for T {
     #[inline(always)]
     fn rem(&self, other: &T) -> T { *self % *other }

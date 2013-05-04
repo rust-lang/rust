@@ -46,10 +46,6 @@ pub extern "rust-intrinsic" {
 
     pub fn forget<T>(_: T) -> ();
 
-    // XXX: intrinsic uses legacy modes
-    #[cfg(stage0)]
-    fn reinterpret_cast<T,U>(&&src: T) -> U;
-
     pub fn needs_drop<T>() -> bool;
 
     // XXX: intrinsic uses legacy modes and has reference to TyDesc

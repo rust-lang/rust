@@ -10,9 +10,7 @@
 
 //! Unsafe casting functions
 
-#[cfg(not(stage0))]
 use sys;
-#[cfg(not(stage0))]
 use unstable;
 
 pub mod rusti {
@@ -21,35 +19,11 @@ pub mod rusti {
     pub extern "rust-intrinsic" {
         fn forget<T>(+x: T);
 
-        #[cfg(stage0)]
-        fn reinterpret_cast<T, U>(&&e: T) -> U;
-
-        #[cfg(stage1)]
-        #[cfg(stage2)]
-        #[cfg(stage3)]
         fn transmute<T,U>(e: T) -> U;
     }
 }
 
 /// Casts the value at `src` to U. The two types must have the same length.
-#[inline(always)]
-#[cfg(stage0)]
-pub unsafe fn reinterpret_cast<T, U>(src: &T) -> U {
-    rusti::reinterpret_cast(*src)
-}
-
-/// Unsafely copies and casts the value at `src` to U, even if the value is
-/// noncopyable. The two types must have the same length.
-#[inline(always)]
-#[cfg(stage0)]
-pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
-    rusti::reinterpret_cast(*src)
-}
-
-#[inline(always)]
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
     let mut dest: U = unstable::intrinsics::init();
     {
@@ -90,17 +64,6 @@ pub unsafe fn bump_box_refcount<T>(t: @T) { forget(t); }
  *     assert!(transmute("L") == ~[76u8, 0u8]);
  */
 #[inline(always)]
-#[cfg(stage0)]
-pub unsafe fn transmute<L, G>(thing: L) -> G {
-    let newthing: G = reinterpret_cast(&thing);
-    forget(thing);
-    newthing
-}
-
-#[inline(always)]
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 pub unsafe fn transmute<L, G>(thing: L) -> G {
     rusti::transmute(thing)
 }
@@ -161,15 +124,6 @@ mod tests {
     use cast::{bump_box_refcount, transmute};
 
     #[test]
-    #[cfg(stage0)]
-    fn test_reinterpret_cast() {
-        assert!(1u == unsafe { ::cast::reinterpret_cast(&1) });
-    }
-
-    #[test]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn test_transmute_copy() {
         assert!(1u == unsafe { ::cast::transmute_copy(&1) });
     }

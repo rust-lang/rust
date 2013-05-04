@@ -70,22 +70,6 @@ pub type Name = uint;
 // with a macro expansion
 pub type Mrk = uint;
 
-#[cfg(stage0)]
-impl<S:Encoder> Encodable<S> for ident {
-    fn encode(&self, s: &S) {
-        unsafe {
-            let intr =
-                match task::local_data::local_data_get(interner_key!()) {
-                    None => fail!(~"encode: TLS interner not set up"),
-                    Some(intr) => intr
-                };
-
-            s.emit_str(*(*intr).get(*self));
-        }
-    }
-}
-
-#[cfg(not(stage0))]
 impl<S:Encoder> Encodable<S> for ident {
     fn encode(&self, s: &mut S) {
         unsafe {
@@ -100,21 +84,6 @@ impl<S:Encoder> Encodable<S> for ident {
     }
 }
 
-#[cfg(stage0)]
-impl<D:Decoder> Decodable<D> for ident {
-    fn decode(d: &D) -> ident {
-        let intr = match unsafe {
-            task::local_data::local_data_get(interner_key!())
-        } {
-            None => fail!(~"decode: TLS interner not set up"),
-            Some(intr) => intr
-        };
-
-        (*intr).intern(@d.read_str())
-    }
-}
-
-#[cfg(not(stage0))]
 impl<D:Decoder> Decodable<D> for ident {
     fn decode(d: &mut D) -> ident {
         let intr = match unsafe {
