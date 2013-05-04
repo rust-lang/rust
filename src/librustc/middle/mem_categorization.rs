@@ -378,7 +378,6 @@ pub impl mem_categorization_ctxt {
         debug!("cat_expr: id=%d expr=%s",
                expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr()));
 
-        let tcx = self.tcx;
         let expr_ty = self.expr_ty(expr);
         match expr.node {
           ast::expr_unary(ast::deref, e_base) => {
