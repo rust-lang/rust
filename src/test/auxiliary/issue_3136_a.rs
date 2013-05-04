@@ -12,7 +12,7 @@ trait x {
     fn use_x<T>(&self);
 }
 struct y(());
-impl x for y { 
+impl x for y {
     fn use_x<T>(&self) {
         struct foo { //~ ERROR quux
             i: ()
@@ -20,6 +20,5 @@ impl x for y {
         fn new_foo<T>(i: ()) -> foo {
             foo { i: i }
         }
-    }   
+    }
 }
-

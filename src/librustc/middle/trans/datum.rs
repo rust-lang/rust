@@ -855,4 +855,3 @@ pub impl DatumBlock {
         self.datum.to_str(self.ccx())
     }
 }
-

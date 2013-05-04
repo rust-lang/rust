@@ -19,4 +19,3 @@ pub fn main() {
     let xc = x_coord(p);
     assert!(*xc == 3);
 }
-

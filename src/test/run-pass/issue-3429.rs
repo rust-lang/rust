@@ -13,4 +13,3 @@ pub fn main() {
   let y: @fn() -> int = || x;
   let z = y();
 }
-

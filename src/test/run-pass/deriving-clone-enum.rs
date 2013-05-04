@@ -16,4 +16,3 @@ enum E {
 }
 
 pub fn main() {}
-

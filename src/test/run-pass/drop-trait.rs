@@ -21,4 +21,3 @@ impl Drop for Foo {
 pub fn main() {
     let x: Foo = Foo { x: 3 };
 }
-

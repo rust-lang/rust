@@ -92,4 +92,3 @@ fn main() {
     let n: i32 = FromStr::from_str(os::args()[1]).get();
     println(fmt!("Pfannkuchen(%d) = %d", n as int, fannkuch_redux(n) as int));
 }
-

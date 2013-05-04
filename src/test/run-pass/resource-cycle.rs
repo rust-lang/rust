@@ -57,7 +57,7 @@ pub fn main() {
               debug!("r = %x", cast::transmute::<*r, uint>(&rs));
               rs }
         });
-        
+
         debug!("x1 = %x, x1.r = %x",
                cast::transmute::<@mut t, uint>(x1),
                cast::transmute::<*r, uint>(&x1.r));
@@ -70,7 +70,7 @@ pub fn main() {
               rs
                 }
         });
-        
+
         debug!("x2 = %x, x2.r = %x",
                cast::transmute::<@mut t, uint>(x2),
                cast::transmute::<*r, uint>(&(x2.r)));

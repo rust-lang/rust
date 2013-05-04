@@ -28,4 +28,3 @@ fn main() {
     let x = Foo { x: 3 };
     x.printme();    //~ ERROR illegal borrow
 }
-

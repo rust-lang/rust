@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
 pub fn main() {
     let mut i = 0;
     while i < 20 { i += 1; if i == 10 { break; } }
@@ -22,8 +20,8 @@ pub fn main() {
     i = 0;
     while i < 10 { i += 1; if i % 2 == 0 { loop; } assert!((i % 2 != 0)); }
     i = 0;
-    loop { 
-        i += 1; if i % 2 == 0 { loop; } assert!((i % 2 != 0)); 
+    loop {
+        i += 1; if i % 2 == 0 { loop; } assert!((i % 2 != 0));
         if i >= 10 { break; }
     }
     for vec::each(~[1, 2, 3, 4, 5, 6]) |x| {

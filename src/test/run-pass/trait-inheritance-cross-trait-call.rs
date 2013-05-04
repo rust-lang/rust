@@ -24,4 +24,3 @@ pub fn main() {
     let a = &A { x: 3 };
     assert!(a.g() == 10);
 }
-

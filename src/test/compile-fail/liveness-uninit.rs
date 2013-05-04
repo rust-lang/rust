@@ -11,6 +11,6 @@
 fn foo(x: int) { debug!(x); }
 
 fn main() {
-	let x: int;
-	foo(x); //~ ERROR use of possibly uninitialized variable: `x`
+    let x: int;
+    foo(x); //~ ERROR use of possibly uninitialized variable: `x`
 }

@@ -10,7 +10,7 @@
 
 pub fn main() {
     let mut x = 0;
-    
+
     'foo: loop {
         'bar: loop {
             'quux: loop {

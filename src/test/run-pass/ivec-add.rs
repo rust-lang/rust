@@ -21,4 +21,3 @@ pub fn main() {
     assert!((d[0] == 1));
     assert!((d[1] == 1));
 }
-

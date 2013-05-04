@@ -89,7 +89,7 @@ pub fn main() {
         assert!((cttz16(-1i16) == 0i16));
         assert!((cttz32(-1i32) == 0i32));
         assert!((cttz64(-1i64) == 0i64));
-        
+
         assert!((cttz8(0i8) == 8i8));
         assert!((cttz16(0i16) == 16i16));
         assert!((cttz32(0i32) == 32i32));

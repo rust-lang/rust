@@ -169,4 +169,3 @@ pub struct LinkMeta {
     vers: @str,
     extras_hash: @str
 }
-

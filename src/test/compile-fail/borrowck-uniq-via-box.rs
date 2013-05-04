@@ -52,4 +52,3 @@ fn box_imm_recs(v: @Outer) {
 
 fn main() {
 }
-

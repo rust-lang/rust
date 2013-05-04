@@ -1179,4 +1179,3 @@ pub impl categorization {
         }
     }
 }
-

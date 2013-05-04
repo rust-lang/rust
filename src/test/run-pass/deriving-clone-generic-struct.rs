@@ -16,4 +16,3 @@ struct S<T> {
 }
 
 pub fn main() {}
-

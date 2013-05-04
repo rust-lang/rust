@@ -43,4 +43,3 @@ pub fn main() {
     let z = f(x, y);
     assert!(z.val == 13);
 }
-

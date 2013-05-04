@@ -309,4 +309,3 @@ pub impl LoanContext {
         }
     }
 }
-

@@ -5,4 +5,3 @@ fn main() {
     let mut d = /*move*/ a; //~ ERROR moving out of mutable local variable prohibited due to outstanding loan
     *d += 1;
 }
-

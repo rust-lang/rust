@@ -649,4 +649,3 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
 
 #[deriving(Eq)]
 enum PointerKind { Managed, Owned, Borrowed }
-

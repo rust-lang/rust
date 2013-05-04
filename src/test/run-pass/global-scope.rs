@@ -18,4 +18,3 @@ pub mod foo {
 }
 
 pub fn main() { return foo::g(); }
-

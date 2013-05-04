@@ -22,4 +22,3 @@ void rust_gpr::load() {
     LOAD(r8);  LOAD(r9);  LOAD(r10); LOAD(r11);
     LOAD(r12); LOAD(r13); LOAD(r14); LOAD(r15);
 }
-

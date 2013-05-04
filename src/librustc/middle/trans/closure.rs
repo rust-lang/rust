@@ -599,4 +599,3 @@ pub fn make_opaque_cbox_free_glue(
         }
     }
 }
-

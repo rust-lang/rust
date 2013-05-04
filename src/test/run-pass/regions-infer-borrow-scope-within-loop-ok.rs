@@ -15,6 +15,6 @@ pub fn main() {
     loop {
         let y = borrow(x);
         assert!(*x == *y);
-	break;
+        break;
     }
 }
