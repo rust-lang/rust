@@ -18,6 +18,7 @@ use middle::ty;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 use syntax::codemap::span;
+use util::ppaux::{note_and_explain_region};
 
 pub fn guarantee_lifetime(bccx: @BorrowckCtxt,
                           item_scope_id: ast::node_id,
@@ -215,13 +216,6 @@ impl GuaranteeLifetimeContext {
             }
         };
 
-        // FIXME(#3511) grow to the nearest cleanup scope---this can
-        // cause observable errors if freezing!
-        if !self.bccx.tcx.region_maps.is_cleanup_scope(root_scope) {
-            debug!("%? is not a cleanup scope, adjusting", root_scope);
-            root_scope = self.bccx.tcx.region_maps.cleanup_scope(root_scope);
-        }
-
         // If we are borrowing the inside of an `@mut` box,
         // we need to dynamically mark it to prevent incompatible
         // borrows from happening later.
@@ -234,6 +228,34 @@ impl GuaranteeLifetimeContext {
                 }
             }
         };
+
+        // FIXME(#3511) grow to the nearest cleanup scope---this can
+        // cause observable errors if freezing!
+        if !self.bccx.tcx.region_maps.is_cleanup_scope(root_scope) {
+            debug!("%? is not a cleanup scope, adjusting", root_scope);
+
+            let cleanup_scope =
+                self.bccx.tcx.region_maps.cleanup_scope(root_scope);
+
+            if opt_dyna.is_some() {
+                self.tcx().sess.span_warn(
+                    self.span,
+                    fmt!("Dynamic freeze scope artifically extended \
+                          (see Issue #6248)"));
+                note_and_explain_region(
+                    self.bccx.tcx,
+                    "managed value only needs to be frozen for ",
+                    ty::re_scope(root_scope),
+                    "...");
+                note_and_explain_region(
+                    self.bccx.tcx,
+                    "...but due to Issue #6248, it will be frozen for ",
+                    ty::re_scope(cleanup_scope),
+                    "");
+            }
+
+            root_scope = cleanup_scope;
+        }
 
         // Add a record of what is required
         let rm_key = root_map_key {id: cmt_deref.id, derefs: derefs};

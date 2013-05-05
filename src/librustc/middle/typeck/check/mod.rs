@@ -433,7 +433,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             assign(self_info.self_id, Some(self_info.self_ty));
             debug!("self is assigned to %s",
                    fcx.infcx().ty_to_str(
-                       *fcx.inh.locals.get(&self_info.self_id)));
+                       fcx.inh.locals.get_copy(&self_info.self_id)));
         }
 
         // Add formal parameters.
@@ -466,7 +466,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             debug!("Local variable %s is assigned type %s",
                    fcx.pat_to_str(local.node.pat),
                    fcx.infcx().ty_to_str(
-                       *fcx.inh.locals.get(&local.node.id)));
+                       fcx.inh.locals.get_copy(&local.node.id)));
             visit::visit_local(local, e, v);
         };
 
@@ -479,7 +479,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                 debug!("Pattern binding %s is assigned to %s",
                        *tcx.sess.str_of(path.idents[0]),
                        fcx.infcx().ty_to_str(
-                           *fcx.inh.locals.get(&p.id)));
+                           fcx.inh.locals.get_copy(&p.id)));
               }
               _ => {}
             }
@@ -3492,7 +3492,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
       ~"visit_tydesc" => {
         let tydesc_name = special_idents::tydesc;
         assert!(tcx.intrinsic_defs.contains_key(&tydesc_name));
-        let (_, tydesc_ty) = *tcx.intrinsic_defs.get(&tydesc_name);
+        let (_, tydesc_ty) = tcx.intrinsic_defs.get_copy(&tydesc_name);
         let (_, visitor_object_ty) = ty::visitor_object_ty(tcx);
         let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
             ty: tydesc_ty,

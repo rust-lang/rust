@@ -3893,7 +3893,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
           call eval_const_expr, it should never get called twice for the same
           expr, since check_enum_variants also updates the enum_var_cache
          */
-        match *cx.items.get(&id.node) {
+        match cx.items.get_copy(&id.node) {
           ast_map::node_item(@ast::item {
                     node: ast::item_enum(ref enum_definition, _),
                     _
@@ -4424,7 +4424,7 @@ pub fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
 pub fn visitor_object_ty(tcx: ctxt) -> (@TraitRef, t) {
     let ty_visitor_name = special_idents::ty_visitor;
     assert!(tcx.intrinsic_traits.contains_key(&ty_visitor_name));
-    let trait_ref = *tcx.intrinsic_traits.get(&ty_visitor_name);
+    let trait_ref = tcx.intrinsic_traits.get_copy(&ty_visitor_name);
     (trait_ref,
      mk_trait(tcx, trait_ref.def_id, copy trait_ref.substs, BoxTraitStore, ast::m_imm))
 }

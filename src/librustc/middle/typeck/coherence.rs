@@ -651,7 +651,7 @@ pub impl CoherenceChecker {
 
     fn get_self_type_for_implementation(&self, implementation: @Impl)
                                      -> ty_param_bounds_and_ty {
-        return *self.crate_context.tcx.tcache.get(&implementation.did);
+        return self.crate_context.tcx.tcache.get_copy(&implementation.did);
     }
 
     // Privileged scope checking
@@ -711,7 +711,7 @@ pub impl CoherenceChecker {
 
     fn trait_ref_to_trait_def_id(&self, trait_ref: @trait_ref) -> def_id {
         let def_map = self.crate_context.tcx.def_map;
-        let trait_def = *def_map.get(&trait_ref.ref_id);
+        let trait_def = def_map.get_copy(&trait_ref.ref_id);
         let trait_id = def_id_of_def(trait_def);
         return trait_id;
     }
@@ -751,7 +751,7 @@ pub impl CoherenceChecker {
                                               -> bool {
         match original_type.node {
             ty_path(_, path_id) => {
-                match *self.crate_context.tcx.def_map.get(&path_id) {
+                match self.crate_context.tcx.def_map.get_copy(&path_id) {
                     def_ty(def_id) | def_struct(def_id) => {
                         if def_id.crate != local_crate {
                             return false;

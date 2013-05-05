@@ -409,7 +409,7 @@ pub impl mem_categorization_ctxt {
           }
 
           ast::expr_path(_) => {
-            let def = *self.tcx.def_map.get(&expr.id);
+            let def = self.tcx.def_map.get_copy(&expr.id);
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
@@ -977,7 +977,7 @@ pub fn field_mutbl(tcx: ty::ctxt,
         }
       }
       ty::ty_enum(*) => {
-        match *tcx.def_map.get(&node_id) {
+        match tcx.def_map.get_copy(&node_id) {
           ast::def_variant(_, variant_id) => {
             for ty::lookup_struct_fields(tcx, variant_id).each |fld| {
                 if fld.ident == f_name {

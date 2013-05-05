@@ -2052,7 +2052,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
                                              fcx.llretptr.get(),
                                              0,
                                              i);
-        let llarg = match *fcx.llargs.get(&field.node.id) {
+        let llarg = match fcx.llargs.get_copy(&field.node.id) {
             local_mem(x) => x,
             _ => {
                 ccx.tcx.sess.bug(~"trans_tuple_struct: llarg wasn't \
@@ -2141,7 +2141,7 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
 
 pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
     let _icx = ccx.insn_ctxt("trans_item");
-    let path = match *ccx.tcx.items.get(&item.id) {
+    let path = match ccx.tcx.items.get_copy(&item.id) {
         ast_map::node_item(_, p) => p,
         // tjc: ?
         _ => fail!(~"trans_item"),
@@ -2443,7 +2443,7 @@ pub fn fill_fn_pair(bcx: block, pair: ValueRef, llfn: ValueRef,
 }
 
 pub fn item_path(ccx: @CrateContext, i: @ast::item) -> path {
-    let base = match *ccx.tcx.items.get(&i.id) {
+    let base = match ccx.tcx.items.get_copy(&i.id) {
         ast_map::node_item(_, p) => p,
             // separate map for paths?
         _ => fail!(~"item_path")

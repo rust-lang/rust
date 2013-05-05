@@ -158,7 +158,7 @@ pub fn get_const_val(cx: @CrateContext, def_id: ast::def_id) -> ValueRef {
         if !ast_util::is_local(def_id) {
             def_id = inline::maybe_instantiate_inline(cx, def_id, true);
         }
-        match *cx.tcx.items.get(&def_id.node) {
+        match cx.tcx.items.get_copy(&def_id.node) {
             ast_map::node_item(@ast::item {
                 node: ast::item_const(_, subexpr), _
             }, _) => {
@@ -167,7 +167,7 @@ pub fn get_const_val(cx: @CrateContext, def_id: ast::def_id) -> ValueRef {
             _ => cx.tcx.sess.bug(~"expected a const to be an item")
         }
     }
-    *cx.const_values.get(&def_id.node)
+    cx.const_values.get_copy(&def_id.node)
 }
 
 pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
@@ -560,7 +560,7 @@ pub fn trans_const(ccx: @CrateContext, _e: @ast::expr, id: ast::node_id) {
         let g = base::get_item_val(ccx, id);
         // At this point, get_item_val has already translated the
         // constant's initializer to determine its LLVM type.
-        let v = *ccx.const_values.get(&id);
+        let v = ccx.const_values.get_copy(&id);
         llvm::LLVMSetInitializer(g, v);
         llvm::LLVMSetGlobalConstant(g, True);
     }

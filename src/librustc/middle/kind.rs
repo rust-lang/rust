@@ -128,7 +128,7 @@ fn check_item(item: @item, cx: Context, visitor: visit::vt<Context>) {
                             // Yes, it's a destructor.
                             match self_type.node {
                                 ty_path(_, path_node_id) => {
-                                    let struct_def = *cx.tcx.def_map.get(
+                                    let struct_def = cx.tcx.def_map.get_copy(
                                         &path_node_id);
                                     let struct_did =
                                         ast_util::def_id_of_def(struct_def);
@@ -272,7 +272,7 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
         let ts = /*bad*/ copy **ts;
         let type_param_defs = match e.node {
           expr_path(_) => {
-            let did = ast_util::def_id_of_def(*cx.tcx.def_map.get(&e.id));
+            let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&e.id));
             ty::lookup_item_type(cx.tcx, did).generics.type_param_defs
           }
           _ => {
@@ -333,7 +333,7 @@ fn check_ty(aty: @Ty, cx: Context, v: visit::vt<Context>) {
         for cx.tcx.node_type_substs.find(&id).each |ts| {
             // FIXME(#5562): removing this copy causes a segfault before stage2
             let ts = /*bad*/ copy **ts;
-            let did = ast_util::def_id_of_def(*cx.tcx.def_map.get(&id));
+            let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&id));
             let type_param_defs =
                 ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
             for vec::each2(ts, *type_param_defs) |&ty, type_param_def| {
@@ -399,7 +399,7 @@ pub fn check_bounds(cx: Context,
 fn is_nullary_variant(cx: Context, ex: @expr) -> bool {
     match ex.node {
       expr_path(_) => {
-        match *cx.tcx.def_map.get(&ex.id) {
+        match cx.tcx.def_map.get_copy(&ex.id) {
           def_variant(edid, vdid) => {
             vec::len(ty::enum_variant_with_id(cx.tcx, edid, vdid).args) == 0u
           }

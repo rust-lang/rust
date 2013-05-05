@@ -523,7 +523,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                 }
             }
             pat_enum(_, args) => {
-                match *cx.tcx.def_map.get(&pat_id) {
+                match cx.tcx.def_map.get_copy(&pat_id) {
                     def_const(did) => {
                         let const_expr =
                             lookup_const_by_id(cx.tcx, did).get();
@@ -567,7 +567,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
             }
             pat_struct(_, ref flds, _) => {
                 // Is this a struct or an enum variant?
-                match *cx.tcx.def_map.get(&pat_id) {
+                match cx.tcx.def_map.get_copy(&pat_id) {
                     def_variant(_, variant_id) => {
                         if variant(variant_id) == *ctor_id {
                             // FIXME #4731: Is this right? --pcw

@@ -490,7 +490,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
         for fcx.opt_node_ty_substs(ex.id) |substs| {
             debug!("vtable resolution on parameter bounds for expr %s",
                    ex.repr(fcx.tcx()));
-            let def = *cx.tcx.def_map.get(&ex.id);
+            let def = cx.tcx.def_map.get_copy(&ex.id);
             let did = ast_util::def_id_of_def(def);
             let item_ty = ty::lookup_item_type(cx.tcx, did);
             debug!("early resolve expr: def %? %?, %?, %s", ex.id, did, def,

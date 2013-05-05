@@ -441,7 +441,7 @@ pub impl VisitContext {
                         self.move_maps.variable_moves_map.insert(
                             expr.id, entire_expr);
 
-                        let def = *self.tcx.def_map.get(&expr.id);
+                        let def = self.tcx.def_map.get_copy(&expr.id);
                         for moved_variable_node_id_from_def(def).each |&id| {
                             self.move_maps.moved_variables_set.insert(id);
                         }
