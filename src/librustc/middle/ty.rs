@@ -1687,7 +1687,7 @@ pub fn simd_type(cx: ctxt, ty: t) -> t {
             let fields = lookup_struct_fields(cx, did);
             lookup_field_type(cx, did, fields[0].id, substs)
         }
-        _ => fail!(~"simd_type called on invalid type")
+        _ => fail!("simd_type called on invalid type")
     }
 }
 
@@ -1697,14 +1697,14 @@ pub fn simd_size(cx: ctxt, ty: t) -> uint {
             let fields = lookup_struct_fields(cx, did);
             fields.len()
         }
-        _ => fail!(~"simd_size called on invalid type")
+        _ => fail!("simd_size called on invalid type")
     }
 }
 
 pub fn get_element_type(ty: t, i: uint) -> t {
     match get(ty).sty {
       ty_tup(ref ts) => return ts[i],
-      _ => fail!(~"get_element_type called on invalid type")
+      _ => fail!("get_element_type called on invalid type")
     }
 }
 
@@ -3001,7 +3001,7 @@ pub fn ty_fn_sig(fty: t) -> FnSig {
         ty_bare_fn(ref f) => copy f.sig,
         ty_closure(ref f) => copy f.sig,
         ref s => {
-            fail!(fmt!("ty_fn_sig() called on non-fn type: %?", s))
+            fail!("ty_fn_sig() called on non-fn type: %?", s)
         }
     }
 }
@@ -3012,7 +3012,7 @@ pub fn ty_fn_args(fty: t) -> ~[arg] {
         ty_bare_fn(ref f) => copy f.sig.inputs,
         ty_closure(ref f) => copy f.sig.inputs,
         ref s => {
-            fail!(fmt!("ty_fn_args() called on non-fn type: %?", s))
+            fail!("ty_fn_args() called on non-fn type: %?", s)
         }
     }
 }
@@ -3021,8 +3021,7 @@ pub fn ty_closure_sigil(fty: t) -> Sigil {
     match get(fty).sty {
         ty_closure(ref f) => f.sigil,
         ref s => {
-            fail!(fmt!("ty_closure_sigil() called on non-closure type: %?",
-                       s))
+            fail!("ty_closure_sigil() called on non-closure type: %?", s)
         }
     }
 }
@@ -3032,7 +3031,7 @@ pub fn ty_fn_purity(fty: t) -> ast::purity {
         ty_bare_fn(ref f) => f.purity,
         ty_closure(ref f) => f.purity,
         ref s => {
-            fail!(fmt!("ty_fn_purity() called on non-fn type: %?", s))
+            fail!("ty_fn_purity() called on non-fn type: %?", s)
         }
     }
 }
@@ -3042,7 +3041,7 @@ pub fn ty_fn_ret(fty: t) -> t {
         ty_bare_fn(ref f) => f.sig.output,
         ty_closure(ref f) => f.sig.output,
         ref s => {
-            fail!(fmt!("ty_fn_ret() called on non-fn type: %?", s))
+            fail!("ty_fn_ret() called on non-fn type: %?", s)
         }
     }
 }
@@ -3059,7 +3058,7 @@ pub fn ty_vstore(ty: t) -> vstore {
     match get(ty).sty {
         ty_evec(_, vstore) => vstore,
         ty_estr(vstore) => vstore,
-        ref s => fail!(fmt!("ty_vstore() called on invalid sty: %?", s))
+        ref s => fail!("ty_vstore() called on invalid sty: %?", s)
     }
 }
 
@@ -3496,7 +3495,7 @@ pub fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
       ast::stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) => {
         return id;
       }
-      ast::stmt_mac(*) => fail!(~"unexpanded macro in trans")
+      ast::stmt_mac(*) => fail!("unexpanded macro in trans")
     }
 }
 
@@ -3833,8 +3832,7 @@ fn lookup_locally_or_in_crate_store<V:Copy>(
     }
 
     if def_id.crate == ast::local_crate {
-        fail!(fmt!("No def'n found for %? in tcx.%s",
-                   def_id, descr));
+        fail!("No def'n found for %? in tcx.%s", def_id, descr);
     }
     let v = load_external();
     map.insert(def_id, v);
@@ -4095,7 +4093,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                          }
                     }
                     ast::struct_variant_kind(_) => {
-                        fail!(~"struct variant kinds unimpl in enum_variants")
+                        fail!("struct variant kinds unimpl in enum_variants")
                     }
                 }
             })

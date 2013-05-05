@@ -67,14 +67,14 @@ pub impl<A> Future<A> {
             {
                 match self.state {
                     Forced(ref mut v) => { return cast::transmute(v); }
-                    Evaluating => fail!(~"Recursive forcing of future!"),
+                    Evaluating => fail!("Recursive forcing of future!"),
                     Pending(_) => {}
                 }
             }
             {
                 let state = replace(&mut self.state, Evaluating);
                 match state {
-                    Forced(_) | Evaluating => fail!(~"Logic error."),
+                    Forced(_) | Evaluating => fail!("Logic error."),
                     Pending(f) => {
                         self.state = Forced(f());
                         cast::transmute(self.get_ref())

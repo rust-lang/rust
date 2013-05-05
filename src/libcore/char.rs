@@ -145,7 +145,7 @@ pub fn is_digit_radix(c: char, radix: uint) -> bool {
 #[inline]
 pub fn to_digit(c: char, radix: uint) -> Option<uint> {
     if radix > 36 {
-        fail!(fmt!("to_digit: radix %? is to high (maximum 36)", radix));
+        fail!("to_digit: radix %? is to high (maximum 36)", radix);
     }
     let val = match c {
       '0' .. '9' => c as uint - ('0' as uint),
@@ -168,7 +168,7 @@ pub fn to_digit(c: char, radix: uint) -> Option<uint> {
 #[inline]
 pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     if radix > 36 {
-        fail!(fmt!("from_digit: radix %? is to high (maximum 36)", num));
+        fail!("from_digit: radix %? is to high (maximum 36)", num);
     }
     if num < radix {
         if num < 10 {
@@ -241,7 +241,7 @@ pub fn len_utf8_bytes(c: char) -> uint {
     else if code < max_two_b { 2u }
     else if code < max_three_b { 3u }
     else if code < max_four_b { 4u }
-    else { fail!(~"invalid character!") }
+    else { fail!("invalid character!") }
 }
 
 #[cfg(not(test))]

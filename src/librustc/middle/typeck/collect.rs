@@ -1137,7 +1137,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
       }
       ast::item_impl(*) | ast::item_mod(_) |
       ast::item_foreign_mod(_) => fail!(),
-      ast::item_mac(*) => fail!(~"item macros unimplemented")
+      ast::item_mac(*) => fail!("item macros unimplemented")
     }
 }
 

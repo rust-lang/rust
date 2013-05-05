@@ -63,13 +63,11 @@ pub fn delayed_send<T:Owned>(iotask: &IoTask,
                 } else {
                     let error_msg = uv::ll::get_last_err_info(
                         loop_ptr);
-                    fail!(~"timer::delayed_send() start failed: " +
-                        error_msg);
+                    fail!("timer::delayed_send() start failed: %s", error_msg);
                 }
             } else {
                 let error_msg = uv::ll::get_last_err_info(loop_ptr);
-                fail!(~"timer::delayed_send() init failed: " +
-                    error_msg);
+                fail!("timer::delayed_send() init failed: %s", error_msg);
             }
         }
     };
@@ -158,7 +156,7 @@ extern fn delayed_send_cb(handle: *uv::ll::uv_timer_t, status: libc::c_int) {
         } else {
             let loop_ptr = uv::ll::get_loop_for_uv_handle(handle);
             let error_msg = uv::ll::get_last_err_info(loop_ptr);
-            fail!(~"timer::sleep() init failed: "+error_msg);
+            fail!("timer::sleep() init failed: %s", error_msg);
         }
     }
 }

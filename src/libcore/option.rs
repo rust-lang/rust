@@ -265,7 +265,7 @@ pub impl<T> Option<T> {
     fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
           Some(ref x) => x,
-          None => fail!(~"option::get_ref none")
+          None => fail!("option::get_ref none")
         }
     }
 
@@ -287,7 +287,7 @@ pub impl<T> Option<T> {
     fn get_mut_ref<'a>(&'a mut self) -> &'a mut T {
         match *self {
           Some(ref mut x) => x,
-          None => fail!(~"option::get_mut_ref none")
+          None => fail!("option::get_mut_ref none")
         }
     }
 
@@ -311,7 +311,7 @@ pub impl<T> Option<T> {
          */
         match self {
           Some(x) => x,
-          None => fail!(~"option::unwrap none")
+          None => fail!("option::unwrap none")
         }
     }
 
@@ -325,7 +325,7 @@ pub impl<T> Option<T> {
      */
     #[inline(always)]
     fn swap_unwrap(&mut self) -> T {
-        if self.is_none() { fail!(~"option::swap_unwrap none") }
+        if self.is_none() { fail!("option::swap_unwrap none") }
         util::replace(self, None).unwrap()
     }
 
@@ -365,7 +365,7 @@ pub impl<T:Copy> Option<T> {
     fn get(self) -> T {
         match self {
           Some(copy x) => return x,
-          None => fail!(~"option::get none")
+          None => fail!("option::get none")
         }
     }
 

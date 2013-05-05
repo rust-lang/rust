@@ -14,4 +14,4 @@
 
 struct T { t: ~str }
 
-fn main() { let pth = fail!(~"bye"); let rs: T = T {t: pth}; }
+fn main() { let pth = fail!("bye"); let rs: T = T {t: pth}; }

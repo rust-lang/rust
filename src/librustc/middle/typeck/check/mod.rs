@@ -2147,8 +2147,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                 inner_ty, fcx.expr_ty(loop_body));
             }
             ref n => {
-                fail!(fmt!(
-                    "check_loop_body expected expr_fn_block, not %?", n))
+                fail!("check_loop_body expected expr_fn_block, not %?", n)
             }
         }
 
@@ -2573,7 +2572,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
           }
           // argh
-          _ => fail!(~"expected fn ty")
+          _ => fail!("expected fn ty")
         }
         fcx.write_ty(expr.id, fcx.node_ty(b.id));
       }

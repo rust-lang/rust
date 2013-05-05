@@ -319,7 +319,7 @@ pub fn namespace_for_duplicate_checking_mode(mode: DuplicateCheckingMode)
         ForbidDuplicateModules | ForbidDuplicateTypes |
         ForbidDuplicateTypesAndValues => TypeNS,
         ForbidDuplicateValues => ValueNS,
-        OverwriteDuplicates => fail!(~"OverwriteDuplicates has no namespace")
+        OverwriteDuplicates => fail!("OverwriteDuplicates has no namespace")
     }
 }
 
@@ -605,7 +605,7 @@ pub impl NameBindings {
     fn get_module(@mut self) -> @mut Module {
         match self.get_module_if_available() {
             None => {
-                fail!(~"get_module called on a node with no module \
+                fail!("get_module called on a node with no module \
                        definition!")
             }
             Some(module_def) => module_def
@@ -1336,7 +1336,7 @@ pub impl Resolver {
             }
 
             item_mac(*) => {
-                fail!(~"item macros unimplemented")
+                fail!("item macros unimplemented")
             }
         }
     }
@@ -1577,7 +1577,7 @@ pub impl Resolver {
                     match existing_module.parent_link {
                       NoParentLink |
                       BlockParentLink(*) => {
-                        fail!(~"can't happen");
+                        fail!("can't happen");
                       }
                       ModuleParentLink(parent_module, ident) => {
                         let name_bindings = parent_module.children.get(
@@ -1647,7 +1647,7 @@ pub impl Resolver {
           def_prim_ty(*) | def_ty_param(*) | def_binding(*) |
           def_use(*) | def_upvar(*) | def_region(*) |
           def_typaram_binder(*) | def_label(*) | def_self_ty(*) => {
-            fail!(fmt!("didn't expect `%?`", def));
+            fail!("didn't expect `%?`", def);
           }
         }
     }
@@ -2269,7 +2269,7 @@ pub impl Resolver {
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
-                fail!(~"value result should be known at this point");
+                fail!("value result should be known at this point");
             }
         }
         match type_result {
@@ -2279,7 +2279,7 @@ pub impl Resolver {
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
-                fail!(~"type result should be known at this point");
+                fail!("type result should be known at this point");
             }
         }
 
@@ -3573,7 +3573,7 @@ pub impl Resolver {
             }
 
           item_mac(*) => {
-            fail!(~"item macros unimplemented")
+            fail!("item macros unimplemented")
           }
         }
 
@@ -4310,7 +4310,7 @@ pub impl Resolver {
             Success(target) => {
                 match target.bindings.value_def {
                     None => {
-                        fail!(~"resolved name in the value namespace to a \
+                        fail!("resolved name in the value namespace to a \
                               set of name bindings with no def?!");
                     }
                     Some(def) => {
@@ -4330,7 +4330,7 @@ pub impl Resolver {
             }
 
             Indeterminate => {
-                fail!(~"unexpected indeterminate result");
+                fail!("unexpected indeterminate result");
             }
 
             Failed => {
@@ -4501,7 +4501,7 @@ pub impl Resolver {
             }
 
             Indeterminate => {
-                fail!(~"indeterminate unexpected");
+                fail!("indeterminate unexpected");
             }
 
             Success(resulting_module) => {
@@ -4550,7 +4550,7 @@ pub impl Resolver {
             }
 
             Indeterminate => {
-                fail!(~"indeterminate unexpected");
+                fail!("indeterminate unexpected");
             }
 
             Success(resulting_module) => {
@@ -4660,7 +4660,7 @@ pub impl Resolver {
                 }
             }
             Indeterminate => {
-                fail!(~"unexpected indeterminate result");
+                fail!("unexpected indeterminate result");
             }
             Failed => {
                 return None;

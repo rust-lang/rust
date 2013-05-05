@@ -198,7 +198,7 @@ pub fn task() -> TaskBuilder {
 priv impl TaskBuilder {
     fn consume(&mut self) -> TaskBuilder {
         if self.consumed {
-            fail!(~"Cannot copy a task_builder"); // Fake move mode on self
+            fail!("Cannot copy a task_builder"); // Fake move mode on self
         }
         self.consumed = true;
         let gen_body = replace(&mut self.gen_body, None);
@@ -263,7 +263,7 @@ pub impl TaskBuilder {
         // sending out messages.
 
         if self.opts.notify_chan.is_some() {
-            fail!(~"Can't set multiple future_results for one task!");
+            fail!("Can't set multiple future_results for one task!");
         }
 
         // Construct the future and give it to the caller.
@@ -494,7 +494,7 @@ pub fn yield() {
         let task_ = rt::rust_get_task();
         let killed = rt::rust_task_yield(task_);
         if killed && !failing() {
-            fail!(~"killed");
+            fail!("killed");
         }
     }
 }
