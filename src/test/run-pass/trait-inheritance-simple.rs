@@ -29,4 +29,3 @@ pub fn main() {
     assert!(ff(a) == 10);
     assert!(gg(a) == 20);
 }
-

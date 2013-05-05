@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test -- #2378 unfixed 
 // aux-build:issue2378a.rs
 // aux-build:issue2378b.rs
+// xfail-fast - check-fast doesn't understand aux-build
 
-use issue2378a;
-use issue2378b;
+extern mod issue2378a;
+extern mod issue2378b;
 
-use issue2378a::{just, methods};
-use issue2378b::{methods};
+use issue2378a::{just};
+use issue2378b::{two_maybes};
 
 pub fn main() {
-    let x = {a: just(3), b: just(5)};
+    let x = two_maybes{a: just(3), b: just(5)};
     assert!(x[0u] == (3, 5));
 }

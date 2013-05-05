@@ -43,5 +43,3 @@
 #   define RUSTRT_ARG4_S %r8
 #   define RUSTRT_ARG5_S %r9
 #endif
-
-

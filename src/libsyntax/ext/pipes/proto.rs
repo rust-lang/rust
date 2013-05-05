@@ -217,4 +217,3 @@ pub fn visit<Tproto, Tstate, Tmessage, V: visitor<Tproto, Tstate, Tmessage>>(
     };
     visitor.visit_proto(proto, states)
 }
-

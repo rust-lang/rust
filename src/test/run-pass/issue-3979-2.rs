@@ -24,4 +24,3 @@ trait C: B {
 }
 
 pub fn main() {}
-

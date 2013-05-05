@@ -59,4 +59,3 @@ pub fn log_type<T>(level: u32, object: &T) {
         rustrt::rust_log_str(level, transmute(vec::raw::to_ptr(bytes)), len);
     }
 }
-

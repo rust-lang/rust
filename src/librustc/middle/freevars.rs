@@ -119,11 +119,3 @@ pub fn get_freevars(tcx: ty::ctxt, fid: ast::node_id) -> freevar_info {
 pub fn has_freevars(tcx: ty::ctxt, fid: ast::node_id) -> bool {
     return vec::len(*get_freevars(tcx, fid)) != 0u;
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

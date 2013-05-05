@@ -469,7 +469,7 @@ pub fn write_content(bcx: block,
         }
         _ => {
             bcx.tcx().sess.span_bug(content_expr.span,
-                                    ~"Unexpected evec content");
+                                    "Unexpected evec content");
         }
     }
 }
@@ -503,7 +503,7 @@ pub fn elements_required(bcx: block, content_expr: @ast::expr) -> uint {
             ty::eval_repeat_count(bcx.tcx(), count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,
-                                     ~"Unexpected evec content")
+                                     "Unexpected evec content")
     }
 }
 
@@ -594,13 +594,3 @@ pub fn iter_vec_unboxed(bcx: block, body_ptr: ValueRef, vec_ty: ty::t,
     let dataptr = get_dataptr(bcx, body_ptr);
     return iter_vec_raw(bcx, dataptr, vec_ty, fill, f);
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

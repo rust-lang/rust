@@ -31,11 +31,12 @@ fn test_ebml<A:
     Decodable<EBReader::Decoder>
 >(a1: &A) {
     let bytes = do io::with_bytes_writer |wr| {
-        let ebml_w = &EBWriter::Encoder(wr);
-        a1.encode(ebml_w)
+        let mut ebml_w = EBWriter::Encoder(wr);
+        a1.encode(&mut ebml_w)
     };
     let d = EBReader::Doc(@bytes);
-    let a2: A = Decodable::decode(&EBReader::Decoder(d));
+    let mut decoder = EBReader::Decoder(d);
+    let a2: A = Decodable::decode(&mut decoder);
     assert!(*a1 == a2);
 }
 

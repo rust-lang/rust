@@ -30,9 +30,9 @@ pub trait Mul<RHS,Result> {
     fn mul(&self, rhs: &RHS) -> Result;
 }
 
-#[lang="quot"]
-pub trait Quot<RHS,Result> {
-    fn quot(&self, rhs: &RHS) -> Result;
+#[lang="div"]
+pub trait Div<RHS,Result> {
+    fn div(&self, rhs: &RHS) -> Result;
 }
 
 #[lang="rem"]

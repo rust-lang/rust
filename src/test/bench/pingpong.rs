@@ -11,7 +11,7 @@
 // Compare bounded and unbounded protocol performance.
 
 // xfail-pretty
- 
+
 extern mod std;
 
 use core::cell::Cell;

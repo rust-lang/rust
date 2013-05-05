@@ -22,7 +22,7 @@ fn b() {
 //////////////////////////////////
 // some single-line non-doc comment preceded by a separator
 
-//////////////////////////////////           
+//////////////////////////////////
 /// some single-line outer-docs preceded by a separator
 /// (and trailing whitespaces)
 fn c() { }

@@ -8,24 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::*;
+struct S(Either<uint, uint>);
 
-pub mod tcp;
-pub mod udp;
-pub mod ip;
-#[cfg(unix)]
-pub mod unix;
-pub mod http;
-
-/// A listener is a value that listens for connections
-pub trait Listener<S> {
-    /// Wait for and accept an incoming connection
-    ///
-    /// Returns `None` on timeout.
-    ///
-    /// # Failure
-    ///
-    /// Raises `io_error` condition. If the condition is handled,
-    /// then `accept` returns `None`.
-    fn accept(&mut self) -> Option<S>;
+fn main() {
+    match S(Left(5)) {
+        Right(_) => {}  //~ ERROR mismatched types: expected `S` but found `core::either::Either
+        _ => {}
+    }
 }

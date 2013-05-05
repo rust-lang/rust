@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// exec-env:RUST_CC_ZEAL=1
-// xfail-test
-
 pub fn main() {
-    error!("%?", os::getenv(~"RUST_CC_ZEAL"));
-    let _x = @{a: @10, b: ~true};
+    match Left(@17) {
+        Right(()) => {}
+        _ => {}
+    }
 }

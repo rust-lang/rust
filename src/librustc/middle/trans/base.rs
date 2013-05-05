@@ -777,10 +777,10 @@ pub fn cast_shift_rhs(op: ast::binop,
     }
 }
 
-pub fn fail_if_zero(cx: block, span: span, quotrem: ast::binop,
+pub fn fail_if_zero(cx: block, span: span, divrem: ast::binop,
                     rhs: ValueRef, rhs_t: ty::t) -> block {
-    let text = if quotrem == ast::quot {
-        @~"attempted quotient with a divisor of zero"
+    let text = if divrem == ast::div {
+        @~"attempted to divide by zero"
     } else {
         @~"attempted remainder with a divisor of zero"
     };
@@ -1099,10 +1099,11 @@ pub fn init_local(bcx: block, local: @ast::local) -> block {
     }
 
     let llptr = match bcx.fcx.lllocals.find(&local.node.id) {
-      Some(&local_mem(v)) => v,
-      _ => { bcx.tcx().sess.span_bug(local.span,
-                        ~"init_local: Someone forgot to document why it's\
-                         safe to assume local.node.init must be local_mem!");
+        Some(&local_mem(v)) => v,
+        _ => {
+            bcx.tcx().sess.span_bug(local.span,
+                                    "init_local: Someone forgot to document why it's\
+                                     safe to assume local.node.init must be local_mem!");
         }
     };
 
@@ -2045,6 +2046,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
     let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
 
     let repr = adt::represent_type(ccx, tup_ty);
+    adt::trans_start_init(bcx, repr, fcx.llretptr.get(), 0);
 
     for fields.eachi |i, field| {
         let lldestptr = adt::trans_field_ptr(bcx,
@@ -2067,56 +2069,8 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
     finish_fn(fcx, lltop);
 }
 
-pub fn trans_struct_dtor(ccx: @CrateContext,
-                         path: path,
-                         body: &ast::blk,
-                         dtor_id: ast::node_id,
-                         psubsts: Option<@param_substs>,
-                         hash_id: Option<mono_id>,
-                         parent_id: ast::def_id)
-                      -> ValueRef {
-  let tcx = ccx.tcx;
-  /* Look up the parent class's def_id */
-  let mut class_ty = ty::lookup_item_type(tcx, parent_id).ty;
-  /* Substitute in the class type if necessary */
-  for psubsts.each |ss| {
-    class_ty = ty::subst_tps(tcx, ss.tys, ss.self_ty, class_ty);
-  }
-
-  /* The dtor takes a (null) output pointer, and a self argument,
-     and returns () */
-  let lldty = type_of_dtor(ccx, class_ty);
-
-  // XXX: Bad copies.
-  let s = get_dtor_symbol(ccx, copy path, dtor_id, psubsts);
-
-  /* Register the dtor as a function. It has external linkage */
-  let lldecl = decl_internal_cdecl_fn(ccx.llmod, s, lldty);
-  lib::llvm::SetLinkage(lldecl, lib::llvm::ExternalLinkage);
-
-  /* If we're monomorphizing, register the monomorphized decl
-     for the dtor */
-  for hash_id.each |h_id| {
-    ccx.monomorphized.insert(*h_id, lldecl);
-  }
-  /* Translate the dtor body */
-  let decl = ast_util::dtor_dec();
-  trans_fn(ccx,
-           path,
-           &decl,
-           body,
-           lldecl,
-           impl_self(class_ty),
-           psubsts,
-           dtor_id,
-           None,
-           []);
-  lldecl
-}
-
 pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
-                      id: ast::node_id,
-                      path: @ast_map::path, vi: @~[ty::VariantInfo],
+                      id: ast::node_id, vi: @~[ty::VariantInfo],
                       i: &mut uint) {
     for vec::each(enum_definition.variants) |variant| {
         let disr_val = vi[*i].disr_val;
@@ -2132,8 +2086,7 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
                 // Nothing to do.
             }
             ast::struct_variant_kind(struct_def) => {
-                trans_struct_def(ccx, struct_def, path,
-                                 variant.node.id);
+                trans_struct_def(ccx, struct_def);
             }
         }
     }
@@ -2192,8 +2145,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
         if !generics.is_type_parameterized() {
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
-            trans_enum_def(ccx, enum_definition, item.id,
-                           path, vi, &mut i);
+            trans_enum_def(ccx, enum_definition, item.id, vi, &mut i);
         }
       }
       ast::item_const(_, expr) => consts::trans_const(ccx, expr, item.id),
@@ -2202,22 +2154,14 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
       }
       ast::item_struct(struct_def, ref generics) => {
         if !generics.is_type_parameterized() {
-            trans_struct_def(ccx, struct_def, path, item.id);
+            trans_struct_def(ccx, struct_def);
         }
       }
       _ => {/* fall through */ }
     }
 }
 
-pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def,
-                        path: @ast_map::path,
-                        id: ast::node_id) {
-    // Translate the destructor.
-    for struct_def.dtor.each |dtor| {
-        trans_struct_dtor(ccx, /*bad*/copy *path, &dtor.node.body,
-                         dtor.node.id, None, None, local_def(id));
-    };
-
+pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def) {
     // If this is a tuple-like struct, translate the constructor.
     match struct_def.ctor_id {
         // We only need to translate a constructor if there are fields;
@@ -2451,49 +2395,6 @@ pub fn item_path(ccx: @CrateContext, i: @ast::item) -> path {
     vec::append(/*bad*/copy *base, ~[path_name(i.ident)])
 }
 
-/* If there's already a symbol for the dtor with <id> and substs <substs>,
-   return it; otherwise, create one and register it, returning it as well */
-pub fn get_dtor_symbol(ccx: @CrateContext,
-                       path: path,
-                       id: ast::node_id,
-                       substs: Option<@param_substs>)
-                    -> ~str {
-    let t = ty::node_id_to_type(ccx.tcx, id);
-    match ccx.item_symbols.find(&id) {
-        Some(s) => {
-            return /*bad*/copy *s;
-        }
-        None => { }
-    }
-
-    return if substs.is_none() {
-        let s = mangle_exported_name(
-            ccx,
-            vec::append(path, ~[path_name((ccx.names)(~"dtor"))]),
-            t);
-        // XXX: Bad copy, use `@str`?
-        ccx.item_symbols.insert(id, copy s);
-        s
-    } else {
-        // Monomorphizing, so just make a symbol, don't add
-        // this to item_symbols
-        match substs {
-            Some(ss) => {
-                let mono_ty = ty::subst_tps(ccx.tcx, ss.tys, ss.self_ty, t);
-                mangle_exported_name(
-                    ccx,
-                    vec::append(path,
-                                ~[path_name((ccx.names)(~"dtor"))]),
-                    mono_ty)
-            }
-            None => {
-                ccx.sess.bug(fmt!("get_dtor_symbol: not monomorphizing and \
-                                   couldn't find a symbol for dtor %?", path));
-            }
-        }
-    };
-}
-
 pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
     debug!("get_item_val(id=`%?`)", id);
     let tcx = ccx.tcx;
@@ -2501,13 +2402,13 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
       Some(&v) => v,
       None => {
         let mut exprt = false;
-        let val = match ccx.tcx.items.get_copy(&id) {
+        let val = match tcx.items.get_copy(&id) {
           ast_map::node_item(i, pth) => {
             let my_path = vec::append(/*bad*/copy *pth,
                                       ~[path_name(i.ident)]);
             match i.node {
               ast::item_const(_, expr) => {
-                let typ = ty::node_id_to_type(ccx.tcx, i.id);
+                let typ = ty::node_id_to_type(tcx, i.id);
                 let s = mangle_exported_name(ccx, my_path, typ);
                 // We need the translated value here, because for enums the
                 // LLVM type is not fully determined by the Rust type.
@@ -2566,7 +2467,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                                 ni.attrs)
                 }
                 ast::foreign_item_const(*) => {
-                    let typ = ty::node_id_to_type(ccx.tcx, ni.id);
+                    let typ = ty::node_id_to_type(tcx, ni.id);
                     let ident = ccx.sess.parse_sess.interner.get(ni.ident);
                     let g = do str::as_c_str(*ident) |buf| {
                         unsafe {
@@ -2578,28 +2479,6 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                     g
                 }
             }
-          }
-          ast_map::node_dtor(_, dt, parent_id, pt) => {
-            /*
-                Don't just call register_fn, since we don't want to add
-                the implicit self argument automatically (we want to make sure
-                it has the right type)
-            */
-            // Want parent_id and not id, because id is the dtor's type
-            let class_ty = ty::lookup_item_type(tcx, parent_id).ty;
-            // This code shouldn't be reached if the class is generic
-            assert!(!ty::type_has_params(class_ty));
-            let lldty = T_fn(~[
-                    T_ptr(T_i8()),
-                    T_ptr(type_of(ccx, class_ty))
-                ],
-                T_nil());
-            let s = get_dtor_symbol(ccx, /*bad*/copy *pt, dt.node.id, None);
-
-            /* Make the declaration for the dtor */
-            let llfn = decl_internal_cdecl_fn(ccx.llmod, s, lldty);
-            lib::llvm::SetLinkage(llfn, lib::llvm::ExternalLinkage);
-            llfn
           }
 
           ast_map::node_variant(ref v, enm, pth) => {
@@ -2629,7 +2508,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
             // Only register the constructor if this is a tuple-like struct.
             match struct_def.ctor_id {
                 None => {
-                    ccx.tcx.sess.bug(~"attempt to register a constructor of \
+                    tcx.sess.bug(~"attempt to register a constructor of \
                                        a non-tuple-like struct")
                 }
                 Some(ctor_id) => {
@@ -3267,12 +3146,3 @@ pub fn trans_crate(sess: session::Session,
         return (llmod, link_meta);
     }
 }
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

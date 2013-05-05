@@ -3,4 +3,3 @@ fn main() {
     let _x = &mut *b;
     let _y = &mut *b; //~ ERROR cannot borrow
 }
-

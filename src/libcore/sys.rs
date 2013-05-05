@@ -10,6 +10,7 @@
 
 //! Misc low level stuff
 
+use option::{Some, None};
 use cast;
 use cmp::{Eq, Ord};
 use gc;
@@ -199,34 +200,31 @@ impl FailWithCause for &'static str {
     }
 }
 
-// NOTE: remove function after snapshot
-#[cfg(stage0)]
-pub fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
-    do str::as_buf(msg) |msg_buf, _msg_len| {
-        do str::as_buf(file) |file_buf, _file_len| {
+// FIXME #4427: Temporary until rt::rt_fail_ goes away
+pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
+    use rt::{context, OldTaskContext};
+    use rt::local_services::unsafe_borrow_local_services;
+
+    match context() {
+        OldTaskContext => {
             unsafe {
-                let msg_buf = cast::transmute(msg_buf);
-                let file_buf = cast::transmute(file_buf);
-                begin_unwind_(msg_buf, file_buf, line as libc::size_t)
+                gc::cleanup_stack_for_failure();
+                rustrt::rust_upcall_fail(msg, file, line);
+                cast::transmute(())
+            }
+        }
+        _ => {
+            // XXX: Need to print the failure message
+            gc::cleanup_stack_for_failure();
+            unsafe {
+                let local_services = unsafe_borrow_local_services();
+                match local_services.unwinder {
+                    Some(ref mut unwinder) => unwinder.begin_unwind(),
+                    None => abort!("failure without unwinder. aborting process")
+                }
             }
         }
     }
-}
-
-// FIXME #4427: Temporary until rt::rt_fail_ goes away
-pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
-    unsafe {
-        gc::cleanup_stack_for_failure();
-        rustrt::rust_upcall_fail(msg, file, line);
-        cast::transmute(())
-    }
-}
-
-// NOTE: remove function after snapshot
-#[cfg(stage0)]
-pub fn fail_assert(msg: &str, file: &str, line: uint) -> ! {
-    let (msg, file) = (msg.to_owned(), file.to_owned());
-    begin_unwind(~"assertion failed: " + msg, file, line)
 }
 
 #[cfg(test)]
@@ -343,11 +341,3 @@ mod tests {
     #[should_fail]
     fn fail_owned() { FailWithCause::fail_with(~"cause", file!(), line!())  }
 }
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

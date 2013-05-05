@@ -19,5 +19,3 @@
 #   define RUSTRT_ARG1_S r1
 #   define RUSTRT_ARG2_S r2
 #   define RUSTRT_ARG3_S r3
-
-

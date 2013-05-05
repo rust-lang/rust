@@ -62,7 +62,7 @@ impl Drop for AsciiArt {
 
 // It's common to define a constructor sort of function to create struct instances.
 // If there is a canonical constructor it is typically named the same as the type.
-// Other constructor sort of functions are typically named from_foo, from_bar, etc. 
+// Other constructor sort of functions are typically named from_foo, from_bar, etc.
 fn AsciiArt(width: uint, height: uint, fill: char) -> AsciiArt
 {
     // Use an anonymous function to build a vector of vectors containing
@@ -72,7 +72,7 @@ fn AsciiArt(width: uint, height: uint, fill: char) -> AsciiArt
         {
             for height.times
             {
-                let mut line = ~[];   
+                let mut line = ~[];
                 vec::grow_set(&mut line, width-1, &'.', '.');
                 push(line);
             }
@@ -208,4 +208,3 @@ pub fn main() {
     test_add_pt();
     test_shapes();
 }
-

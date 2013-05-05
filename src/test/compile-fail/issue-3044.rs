@@ -16,4 +16,3 @@ fn main() {
     //
     // the first error is, um, non-ideal.
 }
-

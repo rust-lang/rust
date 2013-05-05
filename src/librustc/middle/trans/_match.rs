@@ -557,8 +557,7 @@ pub fn enter_opt<'r>(bcx: block,
                             struct_id = found_struct_id;
                         }
                         _ => {
-                            tcx.sess.span_bug(p.span, ~"expected enum \
-                                                        variant def");
+                            tcx.sess.span_bug(p.span, "expected enum variant def");
                         }
                     }
 
@@ -1882,11 +1881,3 @@ pub fn bind_irrefutable_pat(bcx: block,
     }
     return bcx;
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

@@ -20,7 +20,7 @@ use core::{option, cast};
 
 enum E<T> { Thing(int, T), Nothing((), ((), ()), [i8, ..0]) }
 impl<T> E<T> {
-    fn is_none(&self) -> bool { 
+    fn is_none(&self) -> bool {
         match *self {
             Thing(*) => false,
             Nothing(*) => true

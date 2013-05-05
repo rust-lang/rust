@@ -13,4 +13,3 @@
 
 extern mod issue_3136_a;
 pub fn main() {}
-

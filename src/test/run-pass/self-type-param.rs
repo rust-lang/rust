@@ -13,4 +13,3 @@ impl MyTrait for S {
 }
 
 pub fn main() {}
-

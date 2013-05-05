@@ -116,7 +116,7 @@ use syntax::ast::*;
 use syntax::codemap::span;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::{expr_to_str, block_to_str};
-use syntax::visit::{fk_anon, fk_dtor, fk_fn_block, fk_item_fn, fk_method};
+use syntax::visit::{fk_anon, fk_fn_block, fk_item_fn, fk_method};
 use syntax::visit::{vt};
 use syntax::{visit, ast_util};
 
@@ -331,7 +331,7 @@ pub impl IrMaps {
         match self.capture_info_map.find(&expr.id) {
           Some(&caps) => caps,
           None => {
-            self.tcx.sess.span_bug(expr.span, ~"no registered caps");
+            self.tcx.sess.span_bug(expr.span, "no registered caps");
           }
         }
     }
@@ -388,9 +388,6 @@ fn visit_fn(fk: &visit::fn_kind,
                 }
                 sty_static => {}
             }
-        }
-        fk_dtor(_, _, self_id, _) => {
-            fn_maps.add_variable(Arg(self_id, special_idents::self_));
         }
         fk_item_fn(*) | fk_anon(*) | fk_fn_block(*) => {}
     }
@@ -639,7 +636,7 @@ pub impl Liveness {
           }
           None => {
             self.tcx.sess.span_bug(
-                span, ~"Not present in def map")
+                span, "Not present in def map")
           }
         }
     }
@@ -756,8 +753,8 @@ pub impl Liveness {
                       // to find with one
                 match self.tcx.def_map.find(&id) {
                     Some(&def_label(loop_id)) => loop_id,
-                    _ => self.tcx.sess.span_bug(sp, ~"Label on break/loop \
-                                                    doesn't refer to a loop")
+                    _ => self.tcx.sess.span_bug(sp, "Label on break/loop \
+                                                     doesn't refer to a loop")
                 },
             None => {
                 // Vanilla 'break' or 'loop', so use the enclosing
@@ -948,7 +945,7 @@ pub impl Liveness {
           }
 
           stmt_mac(*) => {
-            self.tcx.sess.span_bug(stmt.span, ~"unexpanded macro");
+            self.tcx.sess.span_bug(stmt.span, "unexpanded macro");
           }
         }
     }
@@ -1118,7 +1115,7 @@ pub impl Liveness {
               match self.break_ln.find(&sc) {
                   Some(&b) => b,
                   None => self.tcx.sess.span_bug(expr.span,
-                                ~"Break to unknown label")
+                                                 "Break to unknown label")
               }
           }
 
@@ -1132,7 +1129,7 @@ pub impl Liveness {
               match self.cont_ln.find(&sc) {
                   Some(&b) => b,
                   None => self.tcx.sess.span_bug(expr.span,
-                                ~"Loop to unknown label")
+                                                 "Loop to unknown label")
               }
           }
 
@@ -1258,7 +1255,7 @@ pub impl Liveness {
           }
 
           expr_mac(*) => {
-            self.tcx.sess.span_bug(expr.span, ~"unexpanded macro");
+            self.tcx.sess.span_bug(expr.span, "unexpanded macro");
           }
         }
     }
@@ -1570,10 +1567,10 @@ pub impl Liveness {
             } else if ty::type_is_bot(t_ret) {
                 // for bot return types, not ok.  Function should fail.
                 self.tcx.sess.span_err(
-                    sp, ~"some control paths may return");
+                    sp, "some control paths may return");
             } else {
                 self.tcx.sess.span_err(
-                    sp, ~"not all control paths return a value");
+                    sp, "not all control paths return a value");
             }
         }
     }
@@ -1654,10 +1651,10 @@ pub impl Liveness {
               None => {
                 self.tcx.sess.span_err(
                     span,
-                    ~"re-assignment of immutable variable");
+                    "re-assignment of immutable variable");
                 self.tcx.sess.span_note(
                     orig_span,
-                    ~"prior assignment occurs here");
+                    "prior assignment occurs here");
               }
             }
           }

@@ -17,7 +17,7 @@
 
 use prelude::*;
 use super::*;
-
+use cmp::min;
 
 /// Writes to an owned, growable byte vector
 pub struct MemWriter {
@@ -29,13 +29,15 @@ impl MemWriter {
 }
 
 impl Writer for MemWriter {
-    fn write(&mut self, _buf: &[u8]) { fail!() }
+    fn write(&mut self, buf: &[u8]) {
+        self.buf.push_all(buf)
+    }
 
     fn flush(&mut self) { /* no-op */ }
 }
 
 impl Seek for MemWriter {
-    fn tell(&self) -> u64 { fail!() }
+    fn tell(&self) -> u64 { self.buf.len() as u64 }
 
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
 }
@@ -77,13 +79,27 @@ impl MemReader {
 }
 
 impl Reader for MemReader {
-    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> { fail!() }
+    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+        { if self.eof() { return None; } }
 
-    fn eof(&mut self) -> bool { fail!() }
+        let write_len = min(buf.len(), self.buf.len() - self.pos);
+        {
+            let input = self.buf.slice(self.pos, self.pos + write_len);
+            let output = vec::mut_slice(buf, 0, write_len);
+            assert!(input.len() == output.len());
+            vec::bytes::copy_memory(output, input, write_len);
+        }
+        self.pos += write_len;
+        assert!(self.pos <= self.buf.len());
+
+        return Some(write_len);
+    }
+
+    fn eof(&mut self) -> bool { self.pos == self.buf.len() }
 }
 
 impl Seek for MemReader {
-    fn tell(&self) -> u64 { fail!() }
+    fn tell(&self) -> u64 { self.pos as u64 }
 
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
 }
@@ -163,4 +179,43 @@ impl<'self> Seek for BufReader<'self> {
     fn tell(&self) -> u64 { fail!() }
 
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+}
+
+#[cfg(test)]
+mod test {
+    use prelude::*;
+    use super::*;
+
+    #[test]
+    fn test_mem_writer() {
+        let mut writer = MemWriter::new();
+        assert!(writer.tell() == 0);
+        writer.write([0]);
+        assert!(writer.tell() == 1);
+        writer.write([1, 2, 3]);
+        writer.write([4, 5, 6, 7]);
+        assert!(writer.tell() == 8);
+        assert!(writer.inner() == ~[0, 1, 2, 3, 4, 5 , 6, 7]);
+    }
+
+    #[test]
+    fn test_mem_reader() {
+        let mut reader = MemReader::new(~[0, 1, 2, 3, 4, 5, 6, 7]);
+        let mut buf = [];
+        assert!(reader.read(buf) == Some(0));
+        assert!(reader.tell() == 0);
+        let mut buf = [0];
+        assert!(reader.read(buf) == Some(1));
+        assert!(reader.tell() == 1);
+        assert!(buf == [0]);
+        let mut buf = [0, ..4];
+        assert!(reader.read(buf) == Some(4));
+        assert!(reader.tell() == 5);
+        assert!(buf == [1, 2, 3, 4]);
+        assert!(reader.read(buf) == Some(3));
+        assert!(buf.slice(0, 3) == [5, 6, 7]);
+        assert!(reader.eof());
+        assert!(reader.read(buf) == None);
+        assert!(reader.eof());
+    }
 }

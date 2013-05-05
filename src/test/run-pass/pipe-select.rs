@@ -55,8 +55,8 @@ pub fn main() {
     use stream::client::*;
 
     let iotask = &uv::global_loop::get();
-    
-    let c = spawn_service(stream::init, |p| { 
+
+    let c = spawn_service(stream::init, |p| {
         error!("waiting for pipes");
         let stream::send(x, p) = recv(p);
         error!("got pipes");
@@ -86,7 +86,7 @@ pub fn main() {
     let (_c2, p2) = oneshot::init();
 
     let c = send(c, (p1, p2));
-    
+
     sleep(iotask, 100);
 
     signal(c1);

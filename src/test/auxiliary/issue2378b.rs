@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use issue2378a;
+#[link (name = "issue2378b")];
+#[crate_type = "lib"];
+
+extern mod issue2378a;
 
 use issue2378a::maybe;
-use issue2378a::methods;
 
-type two_maybes<T> = {a: maybe<T>, b: maybe<T>};
+struct two_maybes<T> {a: maybe<T>, b: maybe<T>}
 
-impl copy> for two_maybes<T> for methods<T {
-    fn ~[](idx: uint) -> (T, T) {
-        (self.a[idx], self.b[idx])
+impl <T:Copy> Index<uint,(T,T)> for two_maybes<T> {
+    fn index(&self, idx: &uint) -> (T, T) {
+        (self.a[*idx], self.b[*idx])
     }
 }

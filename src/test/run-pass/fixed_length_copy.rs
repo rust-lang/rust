@@ -10,7 +10,7 @@
 
 
 // error on implicit copies to check fixed length vectors
-// are implicitly copyable 
+// are implicitly copyable
 #[deny(implicit_copies)]
 pub fn main() {
     let arr = [1,2,3];

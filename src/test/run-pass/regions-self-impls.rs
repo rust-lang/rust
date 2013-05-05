@@ -25,4 +25,3 @@ pub fn main() {
     debug!(*clam.get_chowder());
     clam.get_chowder();
 }
-

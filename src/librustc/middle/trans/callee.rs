@@ -351,9 +351,7 @@ pub fn trans_method_call(in_cx: block,
                                               origin)
                 }
                 None => {
-                    cx.tcx().sess.span_bug(call_ex.span,
-                                           ~"method call expr wasn't in \
-                                             method map")
+                    cx.tcx().sess.span_bug(call_ex.span, "method call expr wasn't in method map")
                 }
             }
         },
@@ -795,4 +793,3 @@ pub fn trans_arg_expr(bcx: block,
     debug!("--- trans_arg_expr passing %s", val_str(bcx.ccx().tn, val));
     return rslt(bcx, val);
 }
-

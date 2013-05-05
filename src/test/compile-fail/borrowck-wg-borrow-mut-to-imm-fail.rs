@@ -4,4 +4,3 @@ fn main() {
     let mut y = /*move*/ b; //~ ERROR cannot move out
     *y += 1;
 }
-

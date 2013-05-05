@@ -9,4 +9,3 @@ fn main() {
     let z = x;
     *z = 5;
 }
-

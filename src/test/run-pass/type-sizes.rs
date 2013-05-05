@@ -8,9 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-use sys::rustrt::size_of;
-extern mod std;
+extern mod core;
+use core::sys::size_of;
+
+struct t {a: u8, b: i8}
+struct u {a: u8, b: i8, c: u8}
+struct v {a: u8, b: i8, c: v2, d: u32}
+struct v2 {u: char, v: u8}
+struct w {a: int, b: ()}
+struct x {a: int, b: (), c: ()}
+struct y {x: int}
 
 pub fn main() {
     assert!((size_of::<u8>() == 1 as uint));
@@ -18,14 +25,14 @@ pub fn main() {
     assert!((size_of::<char>() == 4 as uint));
     assert!((size_of::<i8>() == 1 as uint));
     assert!((size_of::<i32>() == 4 as uint));
-    assert!((size_of::<{a: u8, b: i8}>() == 2 as uint));
-    assert!((size_of::<{a: u8, b: i8, c: u8}>() == 3 as uint));
+    assert!((size_of::<t>() == 2 as uint));
+    assert!((size_of::<u>() == 3 as uint));
     // Alignment causes padding before the char and the u32.
 
-    assert!(size_of::<{a: u8, b: i8, c: {u: char, v: u8}, d: u32}>() ==
+    assert!(size_of::<v>() ==
                 16 as uint);
     assert!((size_of::<int>() == size_of::<uint>()));
-    assert!((size_of::<{a: int, b: ()}>() == size_of::<int>()));
-    assert!((size_of::<{a: int, b: (), c: ()}>() == size_of::<int>()));
-    assert!((size_of::<int>() == size_of::<{x: int}>()));
+    assert!((size_of::<w>() == size_of::<int>()));
+    assert!((size_of::<x>() == size_of::<int>()));
+    assert!((size_of::<int>() == size_of::<y>()));
 }

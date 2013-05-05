@@ -542,45 +542,20 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
         let (id, sp) = *p;
         let orig_sp = field_names.find(&id).map_consume(|x| *x);
         match orig_sp {
-          Some(orig_sp) => {
-            tcx.sess.span_err(sp, fmt!("Duplicate field \
-                                   name %s in record type declaration",
-                                        *tcx.sess.str_of(id)));
-            tcx.sess.span_note(orig_sp, ~"First declaration of \
-                                          this field occurred here");
-            break;
-          }
-          None => {
-            field_names.insert(id, sp);
-          }
+            Some(orig_sp) => {
+                tcx.sess.span_err(sp, fmt!("Duplicate field name %s in record type declaration",
+                                           *tcx.sess.str_of(id)));
+                tcx.sess.span_note(orig_sp, "First declaration of this field occurred here");
+                break;
+            }
+            None => {
+                field_names.insert(id, sp);
+            }
         }
     }
 }
 
-pub fn check_struct(ccx: @mut CrateCtxt,
-                    struct_def: @ast::struct_def,
-                    id: ast::node_id,
-                    span: span) {
-    let tcx = ccx.tcx;
-    let self_ty = ty::node_id_to_type(tcx, id);
-
-    for struct_def.dtor.each |dtor| {
-        let class_t = SelfInfo {
-            self_ty: self_ty,
-            self_id: dtor.node.self_id,
-            span: dtor.span,
-        };
-        // typecheck the dtor
-        let dtor_dec = ast_util::dtor_dec();
-        check_bare_fn(
-            ccx,
-            &dtor_dec,
-            &dtor.node.body,
-            dtor.node.id,
-            Some(class_t)
-        );
-    };
-
+pub fn check_struct(ccx: @mut CrateCtxt, id: ast::node_id, span: span) {
     // Check that the class is instantiable
     check_instantiable(ccx.tcx, span, id);
 }
@@ -623,8 +598,8 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
             }
         }
       }
-      ast::item_struct(struct_def, _) => {
-        check_struct(ccx, struct_def, it.id, it.span);
+      ast::item_struct(*) => {
+        check_struct(ccx, it.id, it.span);
       }
       ast::item_ty(t, ref generics) => {
         let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);
@@ -1272,8 +1247,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                 ty::ty_rptr(_, mt) => formal_ty = mt.ty,
                                 ty::ty_err => (),
                                 _ => {
-                                    fcx.ccx.tcx.sess.span_bug(arg.span,
-                                                              ~"no ref");
+                                    fcx.ccx.tcx.sess.span_bug(arg.span, "no ref");
                                 }
                             }
                         }
@@ -1588,8 +1562,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             match ty::get(lhs_resolved_t).sty {
                 ty::ty_bare_fn(_) | ty::ty_closure(_) => {
                     tcx.sess.span_note(
-                        ex.span, ~"did you forget the `do` keyword \
-                                   for the call?");
+                        ex.span, "did you forget the `do` keyword for the call?");
                 }
                 _ => ()
             }
@@ -1880,9 +1853,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 tcx.sess.span_err(span,
                                   fmt!("missing field%s: %s",
                                        if missing_fields.len() == 1 {
-                                           ~""
+                                           ""
                                        } else {
-                                           ~"s"
+                                           "s"
                                        },
                                        str::connect(missing_fields, ~", ")));
              }
@@ -1930,7 +1903,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 }
                 _ => {
                     tcx.sess.span_bug(span,
-                                      ~"resolve didn't map this to a class");
+                                      "resolve didn't map this to a class");
                 }
             }
         } else {
@@ -2016,7 +1989,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 }
                 _ => {
                     tcx.sess.span_bug(span,
-                                      ~"resolve didn't map this to an enum");
+                                      "resolve didn't map this to an enum");
                 }
             }
         } else {
@@ -2226,7 +2199,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
           }
           _ =>
-            tcx.sess.span_bug(expr.span, ~"vstore modifier on non-sequence")
+            tcx.sess.span_bug(expr.span, "vstore modifier on non-sequence")
         };
         fcx.write_ty(ev.id, typ);
         fcx.write_ty(id, typ);
@@ -2309,21 +2282,18 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                 ty::ty_enum(*) => {
                                     tcx.sess.span_err(
                                         expr.span,
-                                        ~"can only dereference enums \
-                                          with a single variant which has a \
-                                          single argument");
+                                        "can only dereference enums with a single variant which \
+                                         has a single argument");
                                 }
                                 ty::ty_struct(*) => {
                                     tcx.sess.span_err(
                                         expr.span,
-                                        ~"can only dereference structs with \
-                                          one anonymous field");
+                                        "can only dereference structs with one anonymous field");
                                 }
                                 _ => {
                                     fcx.type_error_message(expr.span,
                                         |actual| {
-                                            fmt!("type %s cannot be \
-                                                  dereferenced", actual)
+                                            fmt!("type %s cannot be dereferenced", actual)
                                     }, oprnd_t, None);
                                 }
                             }
@@ -2417,7 +2387,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             result::Err(_) => {
                 tcx.sess.span_err(
                     expr.span,
-                    ~"`return;` in function returning non-nil");
+                    "`return;` in function returning non-nil");
             }
           },
           Some(e) => {
@@ -2781,8 +2751,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                           variant_id, *fields);
             }
             _ => {
-                tcx.sess.span_bug(path.span, ~"structure constructor does \
-                                               not name a structure type");
+                tcx.sess.span_bug(path.span,
+                                  "structure constructor does not name a structure type");
             }
         }
       }
@@ -2985,7 +2955,7 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
                   }
                   _ => false
                 } {
-                fcx.ccx.tcx.sess.span_warn(s.span, ~"unreachable statement");
+                fcx.ccx.tcx.sess.span_warn(s.span, "unreachable statement");
                 warned = true;
             }
             if ty::type_is_bot(s_ty) {
@@ -3006,7 +2976,7 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
             },
           Some(e) => {
             if any_bot && !warned {
-                fcx.ccx.tcx.sess.span_warn(e.span, ~"unreachable expression");
+                fcx.ccx.tcx.sess.span_warn(e.span, "unreachable expression");
             }
             check_expr_with_opt_hint(fcx, e, expected);
               let ety = fcx.expr_ty(e);
@@ -3097,8 +3067,8 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                     *disr_val = val as int;
                   }
                   Ok(_) => {
-                    ccx.tcx.sess.span_err(e.span, ~"expected signed integer \
-                                                    constant");
+                    ccx.tcx.sess.span_err(e.span, "expected signed integer \
+                                                   constant");
                   }
                   Err(ref err) => {
                     ccx.tcx.sess.span_err(e.span,
@@ -3109,7 +3079,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
             }
             if vec::contains(*disr_vals, &*disr_val) {
                 ccx.tcx.sess.span_err(v.span,
-                                      ~"discriminator value already exists");
+                                      "discriminator value already exists");
             }
             disr_vals.push(*disr_val);
             let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
@@ -3166,9 +3136,9 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
           _ => false
         }
     }) {
-        ccx.tcx.sess.span_err(sp, ~"illegal recursive enum type; \
-                                 wrap the inner value in a box to \
-                                 make it representable");
+        ccx.tcx.sess.span_err(sp,
+                              "illegal recursive enum type; \
+                               wrap the inner value in a box to make it representable");
     }
 
     // Check that it is possible to instantiate this enum:
@@ -3229,26 +3199,25 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
       ast::def_ty(_) |
       ast::def_prim_ty(_) |
       ast::def_ty_param(*)=> {
-        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found type");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found type");
       }
       ast::def_mod(*) | ast::def_foreign_mod(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found module");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found module");
       }
       ast::def_use(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found use");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found use");
       }
       ast::def_region(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found region");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found region");
       }
       ast::def_typaram_binder(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found type \
-                                          parameter");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found type parameter");
       }
       ast::def_label(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found label");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found label");
       }
       ast::def_self_ty(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found self ty");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found self ty");
       }
     }
 }
@@ -3276,7 +3245,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
         match tpt.generics.region_param {
           None => { // ...but the type is not lifetime parameterized!
             fcx.ccx.tcx.sess.span_err
-                (span, ~"this item is not region-parameterized");
+                (span, "this item is not region-parameterized");
             None
           }
           Some(_) => { // ...and the type is lifetime parameterized, ok.
@@ -3295,15 +3264,15 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
         fcx.infcx().next_ty_vars(ty_param_count)
     } else if ty_param_count == 0 {
         fcx.ccx.tcx.sess.span_err
-            (span, ~"this item does not take type parameters");
+            (span, "this item does not take type parameters");
         fcx.infcx().next_ty_vars(ty_param_count)
     } else if ty_substs_len > ty_param_count {
         fcx.ccx.tcx.sess.span_err
-            (span, ~"too many type parameters provided for this item");
+            (span, "too many type parameters provided for this item");
         fcx.infcx().next_ty_vars(ty_param_count)
     } else if ty_substs_len < ty_param_count {
         fcx.ccx.tcx.sess.span_err
-            (span, ~"not enough type parameters provided for this item");
+            (span, "not enough type parameters provided for this item");
         fcx.infcx().next_ty_vars(ty_param_count)
     } else {
         pth.types.map(|aty| fcx.to_ty(*aty))

@@ -121,4 +121,3 @@ SWAP_REGISTERS:
         // Jump to the instruction pointer
         // found in regs:
         jmp *(RUSTRT_IP*8)(ARG1)
-

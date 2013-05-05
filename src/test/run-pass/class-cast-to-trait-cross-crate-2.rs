@@ -24,4 +24,3 @@ pub fn main() {
   let nyan : @ToStr = @cat(0u, 2, ~"nyan") as @ToStr;
   print_out(nyan, ~"nyan");
 }
-
