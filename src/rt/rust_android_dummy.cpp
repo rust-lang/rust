@@ -64,7 +64,10 @@ extern "C" void tgammaf()
 {
 }
 
-extern "C" int glob(const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno), glob_t *pglob)
+extern "C" int glob(const char *pattern,
+                    int flags,
+                    int (*errfunc) (const char *epath, int eerrno),
+                    glob_t *pglob)
 {
     return 0;
 }
