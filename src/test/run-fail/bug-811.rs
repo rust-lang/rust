@@ -21,4 +21,4 @@ struct chan_t<T> {
 
 fn send<T:Owned>(ch: chan_t<T>, data: T) { fail!(); }
 
-fn main() { fail!(~"quux"); }
+fn main() { fail!("quux"); }

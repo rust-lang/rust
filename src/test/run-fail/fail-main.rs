@@ -10,4 +10,4 @@
 
 // error-pattern:moop
 extern mod std;
-fn main() { fail!(~"moop"); }
+fn main() { fail!("moop"); }

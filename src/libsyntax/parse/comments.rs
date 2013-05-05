@@ -111,7 +111,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         return str::connect(lines, ~"\n");
     }
 
-    fail!(~"not a doc-comment: " + comment);
+    fail!("not a doc-comment: %s", comment);
 }
 
 fn read_to_eol(rdr: @mut StringReader) -> ~str {

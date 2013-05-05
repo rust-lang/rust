@@ -281,7 +281,7 @@ fn wait_event(this: *rust_task) -> *libc::c_void {
 
         let killed = rustrt::task_wait_event(this, &mut event);
         if killed && !task::failing() {
-            fail!(~"killed")
+            fail!("killed")
         }
         event
     }
@@ -365,7 +365,7 @@ pub fn send<T,Tbuffer>(mut p: SendPacketBuffered<T,Tbuffer>,
             //unsafe { forget(p); }
             return true;
         }
-        Full => fail!(~"duplicate send"),
+        Full => fail!("duplicate send"),
         Blocked => {
             debug!("waking up task for %?", p_);
             let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
@@ -478,7 +478,7 @@ fn try_recv_<T:Owned>(p: &mut Packet<T>) -> Option<T> {
             debug!("woke up, p.state = %?", copy p.header.state);
           }
           Blocked => if first {
-            fail!(~"blocking on already blocked packet")
+            fail!("blocking on already blocked packet")
           },
           Full => {
             let payload = replace(&mut p.payload, None);
@@ -514,7 +514,7 @@ pub fn peek<T:Owned,Tb:Owned>(p: &mut RecvPacketBuffered<T, Tb>) -> bool {
     unsafe {
         match (*p.header()).state {
             Empty | Terminated => false,
-            Blocked => fail!(~"peeking on blocked packet"),
+            Blocked => fail!("peeking on blocked packet"),
             Full => true
         }
     }
@@ -543,7 +543,7 @@ fn sender_terminate<T:Owned>(p: *mut Packet<T>) {
       }
       Full => {
         // This is impossible
-        fail!(~"you dun goofed")
+        fail!("you dun goofed")
       }
       Terminated => {
         assert!(p.header.blocked_task.is_null());
@@ -609,7 +609,7 @@ pub fn wait_many<T: Selectable>(pkts: &mut [T]) -> uint {
                     (*p).state = old;
                     break;
                 }
-                Blocked => fail!(~"blocking on blocked packet"),
+                Blocked => fail!("blocking on blocked packet"),
                 Empty => ()
             }
         }
@@ -704,7 +704,7 @@ pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
                 let header = ptr::to_mut_unsafe_ptr(&mut packet.header);
                 header
             },
-            None => fail!(~"packet already consumed")
+            None => fail!("packet already consumed")
         }
     }
 
@@ -758,7 +758,7 @@ impl<T:Owned,Tbuffer:Owned> Selectable for RecvPacketBuffered<T, Tbuffer> {
                 let header = ptr::to_mut_unsafe_ptr(&mut packet.header);
                 header
             },
-            None => fail!(~"packet already consumed")
+            None => fail!("packet already consumed")
         }
     }
 }
@@ -816,7 +816,7 @@ pub fn select2<A:Owned,Ab:Owned,B:Owned,Bb:Owned>(
     match i {
         0 => Left((try_recv(a), b)),
         1 => Right((a, try_recv(b))),
-        _ => fail!(~"select2 return an invalid packet")
+        _ => fail!("select2 return an invalid packet")
     }
 }
 
@@ -840,7 +840,7 @@ pub fn select2i<A:Selectable,B:Selectable>(a: &mut A, b: &mut B)
     match wait_many(endpoints) {
         0 => Left(()),
         1 => Right(()),
-        _ => fail!(~"wait returned unexpected index")
+        _ => fail!("wait returned unexpected index")
     }
 }
 

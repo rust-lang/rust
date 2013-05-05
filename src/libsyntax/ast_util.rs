@@ -37,7 +37,7 @@ pub fn stmt_id(s: &stmt) -> node_id {
       stmt_decl(_, id) => id,
       stmt_expr(_, id) => id,
       stmt_semi(_, id) => id,
-      stmt_mac(*) => fail!(~"attempted to analyze unexpanded stmt")
+      stmt_mac(*) => fail!("attempted to analyze unexpanded stmt")
     }
 }
 

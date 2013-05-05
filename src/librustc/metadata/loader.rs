@@ -142,7 +142,7 @@ pub fn crate_name_from_metas(metas: &[@ast::meta_item]) -> @~str {
                 _ => fail!()
             }
         }
-        None => fail!(~"expected to find the crate name")
+        None => fail!("expected to find the crate name")
     }
 }
 

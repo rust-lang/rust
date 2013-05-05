@@ -467,7 +467,7 @@ pub fn compare_const_vals(a: &const_val, b: &const_val) -> int {
             1
         }
     }
-    _ => fail!(~"compare_const_vals: ill-typed comparison")
+    _ => fail!("compare_const_vals: ill-typed comparison")
   }
 }
 

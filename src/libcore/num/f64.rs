@@ -814,7 +814,7 @@ pub fn to_str_hex(num: f64) -> ~str {
 pub fn to_str_radix(num: f64, rdx: uint) -> ~str {
     let (r, special) = strconv::to_str_common(
         &num, rdx, true, strconv::SignNeg, strconv::DigAll);
-    if special { fail!(~"number has a special value, \
+    if special { fail!("number has a special value, \
                       try to_str_radix_special() if those are expected") }
     r
 }

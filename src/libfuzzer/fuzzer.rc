@@ -606,7 +606,7 @@ pub fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
         run::run_program(~"diff",
                          ~[~"-w", ~"-u", ~"round-trip-a.rs",
                           ~"round-trip-b.rs"]);
-        fail!(~"Mismatch");
+        fail!("Mismatch");
     }
 }
 

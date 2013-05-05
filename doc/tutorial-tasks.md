@@ -325,7 +325,7 @@ let result: Result<int, ()> = do task::try {
     if some_condition() {
         calculate_result()
     } else {
-        fail!(~"oops!");
+        fail!("oops!");
     }
 };
 assert!(result.is_err());
