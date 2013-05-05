@@ -1035,7 +1035,7 @@ A _structure_ is a nominal [structure type](#structure-types) defined with the k
 An example of a `struct` item and its use:
 
 ~~~~
-struct Point {x: int, y: int}
+struct Point {x: int, y: int};
 let p = Point {x: 10, y: 11};
 let px: int = p.x;
 ~~~~
