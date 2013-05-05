@@ -2022,13 +2022,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 if ty::has_dtor(cx, did) {
                     res += TC_DTOR;
                 }
-                if has_attr(cx, did, "mutable") {
-                    res += TC_MUTABLE;
-                }
-                if has_attr(cx, did, "non_owned") {
-                    res += TC_NON_OWNED;
-                }
-                res
+                apply_tc_attr(cx, did, res)
             }
 
             ty_tup(ref tys) => {
@@ -2037,7 +2031,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
             ty_enum(did, ref substs) => {
                 let variants = substd_enum_variants(cx, did, substs);
-                let mut res = if variants.is_empty() {
+                let res = if variants.is_empty() {
                     // we somewhat arbitrary declare that empty enums
                     // are non-copyable
                     TC_EMPTY_ENUM
@@ -2048,13 +2042,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                             |tc, arg_ty| *tc + tc_ty(cx, *arg_ty, cache))
                     })
                 };
-                if has_attr(cx, did, "mutable") {
-                    res += TC_MUTABLE;
-                }
-                if has_attr(cx, did, "non_owned") {
-                    res += TC_NON_OWNED;
-                }
-                res
+                apply_tc_attr(cx, did, res)
             }
 
             ty_param(p) => {
@@ -2112,6 +2100,16 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
     {
         let mc = if mt.mutbl == m_mutbl {TC_MUTABLE} else {TC_NONE};
         mc + tc_ty(cx, mt.ty, cache)
+    }
+
+    fn apply_tc_attr(cx: ctxt, did: def_id, mut tc: TypeContents) -> TypeContents {
+        if has_attr(cx, did, "mutable") {
+            tc += TC_MUTABLE;
+        }
+        if has_attr(cx, did, "non_owned") {
+            tc += TC_NON_OWNED;
+        }
+        tc
     }
 
     fn borrowed_contents(region: ty::Region,
