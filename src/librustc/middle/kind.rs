@@ -268,8 +268,6 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
         _ => e.id
     };
     for cx.tcx.node_type_substs.find(&type_parameter_id).each |ts| {
-        // FIXME(#5562): removing this copy causes a segfault before stage2
-        let ts = /*bad*/ copy **ts;
         let type_param_defs = match e.node {
           expr_path(_) => {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&e.id));
@@ -293,7 +291,7 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
                        ts.repr(cx.tcx),
                        type_param_defs.repr(cx.tcx)));
         }
-        for vec::each2(ts, *type_param_defs) |&ty, type_param_def| {
+        for vec::each2(**ts, *type_param_defs) |&ty, type_param_def| {
             check_bounds(cx, type_parameter_id, e.span, ty, type_param_def)
         }
     }
@@ -331,12 +329,10 @@ fn check_ty(aty: @Ty, cx: Context, v: visit::vt<Context>) {
     match aty.node {
       ty_path(_, id) => {
         for cx.tcx.node_type_substs.find(&id).each |ts| {
-            // FIXME(#5562): removing this copy causes a segfault before stage2
-            let ts = /*bad*/ copy **ts;
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&id));
             let type_param_defs =
                 ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
-            for vec::each2(ts, *type_param_defs) |&ty, type_param_def| {
+            for vec::each2(**ts, *type_param_defs) |&ty, type_param_def| {
                 check_bounds(cx, aty.id, aty.span, ty, type_param_def)
             }
         }

@@ -260,10 +260,10 @@ pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
     // above because the recursive call to `type_needs` can trigger
     // inlining and hence can cause `method_map` and
     // `node_type_substs` to be modified.
-    for opt_static_did.each |did| {
+    for opt_static_did.each |&did| {
         for cx.ccx.tcx.node_type_substs.find_copy(&callee_id).each |ts| {
             let type_uses = type_uses_for(cx.ccx, did, ts.len());
-            for vec::each2(*type_uses, ts) |uses, subst| {
+            for vec::each2(*type_uses, *ts) |uses, subst| {
                 type_needs(cx, *uses, *subst)
             }
         }
