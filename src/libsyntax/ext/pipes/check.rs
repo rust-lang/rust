@@ -80,4 +80,3 @@ impl proto::visitor<(), (), ()> for @ext_ctxt {
         }
     }
 }
-

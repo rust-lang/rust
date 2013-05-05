@@ -32,4 +32,3 @@ Commands that should succeed:
 15. `rustpkg test foo` runs tests and prints their output, if foo contains #[test]s.
 
 16. If foo is installed, `rustpkg uninstall foo; rustpkg list` doesn't include foo in the list
-

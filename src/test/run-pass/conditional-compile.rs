@@ -27,7 +27,7 @@ mod rustrt {
         // module was translated
         pub fn bogus();
     }
-    
+
     #[abi = "cdecl"]
     pub extern {}
 }

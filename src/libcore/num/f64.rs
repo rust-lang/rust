@@ -10,7 +10,6 @@
 
 //! Operations and constants for `f64`
 
-use from_str;
 use libc::c_int;
 use num::{Zero, One, strconv};
 use prelude::*;
@@ -149,7 +148,7 @@ pub fn sub(x: f64, y: f64) -> f64 { return x - y; }
 pub fn mul(x: f64, y: f64) -> f64 { return x * y; }
 
 #[inline(always)]
-pub fn quot(x: f64, y: f64) -> f64 { return x / y; }
+pub fn div(x: f64, y: f64) -> f64 { return x / y; }
 
 #[inline(always)]
 pub fn rem(x: f64, y: f64) -> f64 { return x % y; }
@@ -297,9 +296,8 @@ impl Mul<f64,f64> for f64 {
     fn mul(&self, other: &f64) -> f64 { *self * *other }
 }
 #[cfg(notest)]
-impl Quot<f64,f64> for f64 {
-    #[inline(always)]
-    fn quot(&self, other: &f64) -> f64 { *self / *other }
+impl Div<f64,f64> for f64 {
+    fn div(&self, other: &f64) -> f64 { *self / *other }
 }
 #[cfg(notest)]
 impl Rem<f64,f64> for f64 {
@@ -837,7 +835,7 @@ pub fn from_str_radix(num: &str, rdx: uint) -> Option<f64> {
                              strconv::ExpNone, false, false)
 }
 
-impl from_str::FromStr for f64 {
+impl FromStr for f64 {
     #[inline(always)]
     fn from_str(val: &str) -> Option<f64> { from_str(val) }
 }
@@ -1030,13 +1028,3 @@ mod tests {
         assert_eq!(Primitive::bytes::<f64>(), sys::size_of::<f64>());
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

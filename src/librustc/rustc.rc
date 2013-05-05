@@ -20,7 +20,6 @@
 #[allow(non_implicitly_copyable_typarams)];
 #[allow(non_camel_case_types)];
 #[deny(deprecated_pattern)];
-#[deny(deprecated_mode)];
 
 extern mod std(vers = "0.7-pre");
 extern mod syntax(vers = "0.7-pre");
@@ -362,11 +361,3 @@ pub fn main() {
         run_compiler(&args, demitter);
     }
 }
-
-
-// Local Variables:
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

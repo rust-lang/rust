@@ -258,4 +258,3 @@ pub mod rustrt {
         pub unsafe fn rust_get_task() -> *c_void;
     }
 }
-

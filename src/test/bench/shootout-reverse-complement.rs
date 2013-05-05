@@ -152,4 +152,3 @@ fn main() {
         fwrite(transmute(out.unsafe_ref(0)), 1, pos as size_t, stdout);
     }
 }
-

@@ -11,4 +11,3 @@ fn main() {
     let x = @mut 3;
     f(x, x);
 }
-

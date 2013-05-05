@@ -7,16 +7,16 @@ $(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X_$(CFG_BUILD_TRIPLE)):		\
 		$(S)src/etc/get-snapshot.py $(MKFILE_DEPS)
 	@$(call E, fetch: $@)
 #   Note: the variable "SNAPSHOT_FILE" is generally not set, and so
-#   we generally only pass one argument to this script.  
+#   we generally only pass one argument to this script.
 ifdef CFG_ENABLE_LOCAL_RUST
 	$(Q)$(S)src/etc/local_stage0.sh $(CFG_BUILD_TRIPLE) $(CFG_LOCAL_RUST_ROOT)
-else 
+else
 	$(Q)$(CFG_PYTHON) $(S)src/etc/get-snapshot.py $(CFG_BUILD_TRIPLE) $(SNAPSHOT_FILE)
 ifdef CFG_ENABLE_PAX_FLAGS
 	@$(call E, apply PaX flags: $@)
 	@"$(CFG_PAXCTL)" -cm "$@"
 endif
-endif 
+endif
 	$(Q)touch $@
 
 # Host libs will be extracted by the above rule

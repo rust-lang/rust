@@ -18,9 +18,11 @@ use str;
 use sys;
 use unstable::exchange_alloc;
 use cast::transmute;
-use task::rt::rust_get_task;
+use rt::{context, OldTaskContext};
+use rt::local_services::borrow_local_services;
 use option::{Option, Some, None};
 use io;
+use task::rt::rust_get_task;
 
 #[allow(non_camel_case_types)]
 pub type rust_task = c_void;
@@ -249,21 +251,36 @@ pub unsafe fn exchange_free(ptr: *c_char) {
 }
 
 #[lang="malloc"]
-#[inline(always)]
 pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    let result = rustrt::rust_upcall_malloc_noswitch(td, size);
-    debug_mem("local_malloc: ", result);
-    return result;
+    match context() {
+        OldTaskContext => {
+            return rustrt::rust_upcall_malloc_noswitch(td, size);
+        }
+        _ => {
+            let mut alloc = ::ptr::null();
+            do borrow_local_services |srv| {
+                alloc = srv.heap.alloc(td as *c_void, size as uint) as *c_char;
+            }
+            return alloc;
+        }
+    }
 }
 
 // NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
 // inside a landing pad may corrupt the state of the exception handler. If a
 // problem occurs, call exit instead.
 #[lang="free"]
-#[inline(always)]
 pub unsafe fn local_free(ptr: *c_char) {
-    debug_mem("local_free: ", ptr);
-    rustrt::rust_upcall_free_noswitch(ptr);
+    match context() {
+        OldTaskContext => {
+            rustrt::rust_upcall_free_noswitch(ptr);
+        }
+        _ => {
+            do borrow_local_services |srv| {
+                srv.heap.free(ptr as *c_void);
+            }
+        }
+    }
 }
 
 #[cfg(stage0)]
@@ -444,11 +461,3 @@ pub fn start(main: *u8, argc: int, argv: **c_char,
                       crate_map: *c_void) -> c_int;
     }
 }
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

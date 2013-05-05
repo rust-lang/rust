@@ -190,4 +190,3 @@ pub impl FnType {
         Store(bcx, llretval, llretptr);
     }
 }
-

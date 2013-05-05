@@ -29,7 +29,9 @@ $$(HBIN$(2)_H_$(4))/rustc$$(X_$(4)): \
 	$$(HLIB$(2)_H_$(4))/$(CFG_RUSTLLVM_$(4)) \
 	$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(4)) \
 	$$(HCORELIB_DEFAULT$(2)_H_$(4)) \
-	$$(HSTDLIB_DEFAULT$(2)_H_$(4))
+	$$(HSTDLIB_DEFAULT$(2)_H_$(4)) \
+	| $$(HBIN$(2)_H_$(4))/
+
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
@@ -39,7 +41,9 @@ $$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(4)): \
 	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
 	$$(HLIB$(2)_H_$(4))/$(CFG_RUSTLLVM_$(4)) \
 	$$(HCORELIB_DEFAULT$(2)_H_$(4)) \
-	$$(HSTDLIB_DEFAULT$(2)_H_$(4))
+	$$(HSTDLIB_DEFAULT$(2)_H_$(4)) \
+	| $$(HLIB$(2)_H_$(4))/
+
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTC_GLOB_$(4)) \
@@ -51,7 +55,8 @@ $$(HLIB$(2)_H_$(4))/$(CFG_LIBSYNTAX_$(4)): \
 	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
 	$$(HLIB$(2)_H_$(4))/$(CFG_RUSTLLVM_$(4)) \
 	$$(HCORELIB_DEFAULT$(2)_H_$(4)) \
-	$$(HSTDLIB_DEFAULT$(2)_H_$(4))
+	$$(HSTDLIB_DEFAULT$(2)_H_$(4)) \
+	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBSYNTAX_GLOB_$(4)) \
@@ -59,13 +64,15 @@ $$(HLIB$(2)_H_$(4))/$(CFG_LIBSYNTAX_$(4)): \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)): \
-	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_RUNTIME_$(4))
+	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_RUNTIME_$(4)) \
+	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
 $$(HLIB$(2)_H_$(4))/$(CFG_CORELIB_$(4)): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_CORELIB_$(4)) \
-	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4))
+	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
+	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 # Subtle: We do not let the shell expand $(CORELIB_DSYM_GLOB) directly rather
@@ -82,7 +89,8 @@ $$(HLIB$(2)_H_$(4))/$(CFG_CORELIB_$(4)): \
 $$(HLIB$(2)_H_$(4))/$(CFG_STDLIB_$(4)): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(4)) \
 	$$(HLIB$(2)_H_$(4))/$(CFG_CORELIB_$(4)) \
-	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4))
+	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
+	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(STDLIB_GLOB_$(4)) \
@@ -91,14 +99,16 @@ $$(HLIB$(2)_H_$(4))/$(CFG_STDLIB_$(4)): \
 
 $$(HLIB$(2)_H_$(4))/libcore.rlib: \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/libcore.rlib \
-	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME_$(4))
+	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME_$(4)) \
+	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
 $$(HLIB$(2)_H_$(4))/libstd.rlib: \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/libstd.rlib \
 	$$(HLIB$(2)_H_$(4))/libcore.rlib \
-	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME_$(4))
+	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME_$(4)) \
+	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
@@ -106,14 +116,22 @@ $$(HLIB$(2)_H_$(4))/librustc.rlib: \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/librustc.rlib \
 	$$(HLIB$(2)_H_$(4))/libcore.rlib \
 	$$(HLIB$(2)_H_$(4))/libstd.rlib \
-	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME_$(4))
+	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME_$(4)) \
+	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
 $$(HLIB$(2)_H_$(4))/$(CFG_RUSTLLVM_$(4)): \
-	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_RUSTLLVM_$(4))
+	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_RUSTLLVM_$(4)) \
+	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
+
+$$(HBIN$(2)_H_$(4))/:
+	mkdir -p $$@
+
+$$(HLIB$(2)_H_$(4))/:
+	mkdir -p $$@
 
 endef
 

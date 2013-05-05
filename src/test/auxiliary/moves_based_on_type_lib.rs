@@ -25,4 +25,3 @@ pub fn f() {
     let y = x;
     let z = y;
 }
-

@@ -11,8 +11,6 @@
 //! High-level interface to libuv's TCP functionality
 // FIXME #4425: Need FFI fixes
 
-#[allow(deprecated_mode)];
-
 use future;
 use future_spawn = future::spawn;
 use ip = net_ip;

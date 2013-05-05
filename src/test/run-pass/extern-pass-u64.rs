@@ -19,4 +19,3 @@ pub fn main() {
         assert!(22_u64 == rust_dbg_extern_identity_u64(22_u64));
     }
 }
-

@@ -11,4 +11,3 @@ fn f() -> Au {
 pub fn main() {
     let _ = f();
 }
-

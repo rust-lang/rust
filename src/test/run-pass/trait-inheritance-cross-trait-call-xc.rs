@@ -27,4 +27,3 @@ pub fn main() {
     let a = &aux::A { x: 3 };
     assert!(a.g() == 10);
 }
-

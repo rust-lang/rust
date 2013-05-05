@@ -9,4 +9,3 @@ pub fn main() {
     assert!(x == x);
     assert!(!(x != x));
 }
-

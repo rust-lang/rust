@@ -22,4 +22,3 @@ pub fn main() {
     assert!(a.eq(&b));
     assert!(!a.ne(&b));
 }
-

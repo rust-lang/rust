@@ -18,4 +18,3 @@ fn main() {
     }
     io::println(*msg);
 }
-

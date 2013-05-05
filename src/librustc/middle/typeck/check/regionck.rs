@@ -613,17 +613,17 @@ fn constrain_free_variables(rcx: @mut Rcx,
           result::Err(_) => {
             tcx.sess.span_err(
                 freevar.span,
-                ~"captured variable does not outlive the enclosing closure");
+                "captured variable does not outlive the enclosing closure");
             note_and_explain_region(
                 tcx,
-                ~"captured variable is valid for ",
+                "captured variable is valid for ",
                 en_region,
-                ~"");
+                "");
             note_and_explain_region(
                 tcx,
-                ~"closure is valid for ",
+                "closure is valid for ",
                 region,
-                ~"");
+                "");
           }
         }
     }

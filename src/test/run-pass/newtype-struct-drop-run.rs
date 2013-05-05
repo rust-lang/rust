@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// Make sure the destructor is run for newtype structs.
 
-fn is_even(i: int) -> bool { (i%2) == 0 }
-fn even(i: int) : is_even(i) -> int { i }
+struct Foo(@mut int);
 
-fn test() {
-    let v = 4;
-    loop {
-        check is_even(v);
-        break;
+#[unsafe_destructor]
+impl Drop for Foo {
+    fn finalize(&self) {
+        ***self = 23;
     }
-    even(v);
 }
 
-pub fn main() {
-    test();
+fn main() {
+    let y = @mut 32;
+    {
+        let x = Foo(y);
+    }
+    assert_eq!(*y, 23);
 }

@@ -27,5 +27,3 @@ pub fn main() {
     let y = x as ~Foo;
     y.f();
 }
-
-

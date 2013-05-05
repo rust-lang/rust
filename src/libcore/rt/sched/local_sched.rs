@@ -143,4 +143,3 @@ fn borrow_smoke_test() {
     }
     let _scheduler = take();
 }
-

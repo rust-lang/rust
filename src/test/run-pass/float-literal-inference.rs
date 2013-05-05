@@ -20,4 +20,3 @@ pub fn main() {
     let z = S { z: 1.0 };
     io::println(z.z.to_str());
 }
-

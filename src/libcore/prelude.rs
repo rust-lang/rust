@@ -14,7 +14,7 @@
 
 pub use either::{Either, Left, Right};
 pub use kinds::{Const, Copy, Owned, Durable};
-pub use ops::{Add, Sub, Mul, Quot, Rem, Neg, Not};
+pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
 pub use ops::{Drop};
 pub use ops::{Shl, Shr, Index};
@@ -28,7 +28,7 @@ pub use io::{print, println};
 /* Reexported types and traits */
 
 pub use clone::Clone;
-pub use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
+pub use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
 pub use container::{Container, Mutable, Map, Set};
 pub use hash::Hash;
 pub use old_iter::{BaseIter, ReverseIter, MutableIter, ExtendedIter, EqIter};
@@ -48,6 +48,7 @@ pub use path::WindowsPath;
 pub use ptr::Ptr;
 pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr};
 pub use str::{StrSlice, OwnedStr};
+pub use from_str::{FromStr};
 pub use to_bytes::IterBytes;
 pub use to_str::{ToStr, ToStrConsume};
 pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};

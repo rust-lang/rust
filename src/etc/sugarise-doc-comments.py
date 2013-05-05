@@ -80,4 +80,3 @@ def sugarise_file(path):
 for (dirpath, dirnames, filenames) in os.walk('.'):
     for name in fnmatch.filter(filenames, '*.r[sc]'):
         sugarise_file(os.path.join(dirpath, name))
-

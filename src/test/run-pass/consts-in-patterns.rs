@@ -20,4 +20,3 @@ pub fn main() {
     };
     assert!(y == 2);
 }
-

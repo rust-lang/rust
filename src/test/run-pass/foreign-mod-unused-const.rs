@@ -17,4 +17,3 @@ mod foo {
 
 pub fn main() {
 }
-

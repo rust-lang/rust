@@ -57,7 +57,6 @@ pub enum lint {
     type_limits,
     default_methods,
     deprecated_mutable_fields,
-    deprecated_drop,
     unused_unsafe,
 
     managed_heap_memory,
@@ -210,13 +209,6 @@ pub fn get_lint_dict() -> LintDict {
             default: deny
         }),
 
-        (~"deprecated_drop",
-         LintSpec {
-            lint: deprecated_drop,
-            desc: "deprecated \"drop\" notation for the destructor",
-            default: deny
-        }),
-
         (~"unused_unsafe",
          LintSpec {
             lint: unused_unsafe,
@@ -346,14 +338,14 @@ pub impl Context {
                           _ => {
                             self.sess.span_err(
                                 meta.span,
-                                ~"malformed lint attribute");
+                                "malformed lint attribute");
                           }
                         }
                     }
                   }
                   _  => {
                     self.sess.span_err(meta.span,
-                                       ~"malformed lint attribute");
+                                       "malformed lint attribute");
                   }
                 }
             }
@@ -463,7 +455,6 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_type_limits(cx, i);
     check_item_default_methods(cx, i);
     check_item_deprecated_mutable_fields(cx, i);
-    check_item_deprecated_drop(cx, i);
     check_item_unused_unsafe(cx, i);
     check_item_unused_mut(cx, i);
 }
@@ -494,8 +485,8 @@ fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
                                 cx.sess.span_lint(
                                     while_true, e.id, it.id,
                                     e.span,
-                                    ~"denote infinite loops \
-                                      with loop { ... }");
+                                    "denote infinite loops \
+                                     with loop { ... }");
                             }
                             _ => ()
                         }
@@ -612,7 +603,7 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
                     && !check_limits(cx, *binop, l, r) {
                     cx.sess.span_lint(
                         type_limits, e.id, it.id, e.span,
-                        ~"comparison is useless due to type limits");
+                        "comparison is useless due to type limits");
                 }
             }
             _ => ()
@@ -639,7 +630,7 @@ fn check_item_default_methods(cx: ty::ctxt, item: @ast::item) {
                             item.id,
                             item.id,
                             item.span,
-                            ~"default methods are experimental");
+                            "default methods are experimental");
                     }
                 }
             }
@@ -658,29 +649,9 @@ fn check_item_deprecated_mutable_fields(cx: ty::ctxt, item: @ast::item) {
                                           item.id,
                                           item.id,
                                           field.span,
-                                          ~"mutable fields are deprecated");
+                                          "mutable fields are deprecated");
                     }
                     ast::named_field(*) | ast::unnamed_field => {}
-                }
-            }
-        }
-        _ => {}
-    }
-}
-
-fn check_item_deprecated_drop(cx: ty::ctxt, item: @ast::item) {
-    match item.node {
-        ast::item_struct(struct_def, _) => {
-            match struct_def.dtor {
-                None => {}
-                Some(ref dtor) => {
-                    cx.sess.span_lint(deprecated_drop,
-                                      item.id,
-                                      item.id,
-                                      dtor.span,
-                                      ~"`drop` notation for destructors is \
-                                        deprecated; implement the `Drop` \
-                                        trait instead");
                 }
             }
         }
@@ -701,14 +672,14 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
                     cx.sess.span_lint(
                         ctypes, id, fn_id,
                         ty.span,
-                        ~"found rust type `int` in foreign module, while \
+                        "found rust type `int` in foreign module, while \
                          libc::c_int or libc::c_long should be used");
                   }
                   ast::def_prim_ty(ast::ty_uint(ast::ty_u)) => {
                     cx.sess.span_lint(
                         ctypes, id, fn_id,
                         ty.span,
-                        ~"found rust type `uint` in foreign module, while \
+                        "found rust type `uint` in foreign module, while \
                          libc::c_uint or libc::c_ulong should be used");
                   }
                   _ => ()
@@ -824,7 +795,7 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
                         cx.sess.span_lint(
                             path_statement, id, it.id,
                             s.span,
-                            ~"path statement with no effect");
+                            "path statement with no effect");
                     }
                     _ => ()
                 }
@@ -864,8 +835,8 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
         if !is_camel_case(cx, ident) {
             cx.sess.span_lint(
                 non_camel_case_types, expr_id, item_id, span,
-                ~"type, variant, or trait should have \
-                  a camel case identifier");
+                "type, variant, or trait should have \
+                 a camel case identifier");
         }
     }
 
@@ -892,7 +863,7 @@ fn check_item_unused_unsafe(cx: ty::ctxt, it: @ast::item) {
                 if !cx.used_unsafe.contains(&blk.node.id) {
                     cx.sess.span_lint(unused_unsafe, blk.node.id, it.id,
                                       blk.span,
-                                      ~"unnecessary `unsafe` block");
+                                      "unnecessary `unsafe` block");
                 }
             }
             _ => ()
@@ -917,9 +888,9 @@ fn check_item_unused_mut(tcx: ty::ctxt, it: @ast::item) {
         }
         if !used {
             let msg = if bindings == 1 {
-                ~"variable does not need to be mutable"
+                "variable does not need to be mutable"
             } else {
-                ~"variables do not need to be mutable"
+                "variables do not need to be mutable"
             };
             tcx.sess.span_lint(unused_mut, p.id, it.id, p.span, msg);
         }
@@ -975,13 +946,3 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
 
     tcx.sess.abort_if_errors();
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

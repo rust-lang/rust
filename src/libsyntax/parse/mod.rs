@@ -418,9 +418,10 @@ mod test {
         new_parser_from_source_str(ps,~[],~"bogofile",source_str)
     }
 
-    #[test] fn to_json_str<E : Encodable<std::json::Encoder>>(val: @E) -> ~str {
+    #[cfg(test)] fn to_json_str<E : Encodable<std::json::Encoder>>(val: @E) -> ~str {
         do io::with_str_writer |writer| {
-            val.encode(~std::json::Encoder(writer));
+            let mut encoder = std::json::Encoder(writer);
+            val.encode(&mut encoder);
         }
     }
 
@@ -674,13 +675,3 @@ mod test {
         string_to_expr(@~"a::z.froob(b,@(987+3))");
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

@@ -11,7 +11,7 @@
 use ast::*;
 use ast;
 use ast_util;
-use codemap::{span, dummy_sp, spanned};
+use codemap::{span, spanned};
 use parse::token;
 use visit;
 use opt_vec;
@@ -41,12 +41,12 @@ pub fn stmt_id(s: &stmt) -> node_id {
     }
 }
 
-pub fn variant_def_ids(d: def) -> (def_id, def_id) {
+pub fn variant_def_ids(d: def) -> Option<(def_id, def_id)> {
     match d {
       def_variant(enum_id, var_id) => {
-        return (enum_id, var_id);
+          Some((enum_id, var_id))
       }
-      _ => fail!(~"non-variant in variant_def_ids")
+      _ => None
     }
 }
 
@@ -73,7 +73,7 @@ pub fn binop_to_str(op: binop) -> ~str {
       add => return ~"+",
       subtract => return ~"-",
       mul => return ~"*",
-      quot => return ~"/",
+      div => return ~"/",
       rem => return ~"%",
       and => return ~"&&",
       or => return ~"||",
@@ -96,7 +96,7 @@ pub fn binop_to_method_name(op: binop) -> Option<~str> {
       add => return Some(~"add"),
       subtract => return Some(~"sub"),
       mul => return Some(~"mul"),
-      quot => return Some(~"quot"),
+      div => return Some(~"div"),
       rem => return Some(~"rem"),
       bitxor => return Some(~"bitxor"),
       bitand => return Some(~"bitand"),
@@ -302,7 +302,6 @@ impl inlined_item_utils for inlined_item {
             ii_item(i) => /* FIXME (#2543) */ copy i.ident,
             ii_foreign(i) => /* FIXME (#2543) */ copy i.ident,
             ii_method(_, m) => /* FIXME (#2543) */ copy m.ident,
-            ii_dtor(_, nm, _, _) => /* FIXME (#2543) */ copy nm
         }
     }
 
@@ -311,7 +310,6 @@ impl inlined_item_utils for inlined_item {
             ii_item(i) => i.id,
             ii_foreign(i) => i.id,
             ii_method(_, m) => m.id,
-            ii_dtor(ref dtor, _, _, _) => (*dtor).node.id
         }
     }
 
@@ -320,10 +318,6 @@ impl inlined_item_utils for inlined_item {
             ii_item(i) => (v.visit_item)(i, e, v),
             ii_foreign(i) => (v.visit_foreign_item)(i, e, v),
             ii_method(_, m) => visit::visit_method_helper(m, e, v),
-            ii_dtor(/*bad*/ copy dtor, _, ref generics, parent_id) => {
-                visit::visit_struct_dtor_helper(dtor, generics,
-                                                parent_id, e, v);
-            }
         }
     }
 }
@@ -341,7 +335,7 @@ pub fn is_self(d: ast::def) -> bool {
 /// Maps a binary operator to its precedence
 pub fn operator_prec(op: ast::binop) -> uint {
   match op {
-      mul | quot | rem   => 12u,
+      mul | div | rem   => 12u,
       // 'as' sits between here with 11
       add | subtract    => 10u,
       shl | shr         =>  9u,
@@ -358,20 +352,6 @@ pub fn operator_prec(op: ast::binop) -> uint {
 /// Precedence of the `as` operator, which is a binary operator
 /// not appearing in the prior table.
 pub static as_prec: uint = 11u;
-
-pub fn dtor_ty() -> @ast::Ty {
-    @ast::Ty {id: 0, node: ty_nil, span: dummy_sp()}
-}
-
-pub fn dtor_dec() -> fn_decl {
-    let nil_t = dtor_ty();
-    // dtor has no args
-    ast::fn_decl {
-        inputs: ~[],
-        output: nil_t,
-        cf: return_val,
-    }
-}
 
 pub fn empty_generics() -> Generics {
     Generics {lifetimes: opt_vec::Empty,
@@ -469,12 +449,6 @@ pub fn id_visitor(vfn: @fn(node_id)) -> visit::vt<()> {
             vfn(id);
 
             match *fk {
-                visit::fk_dtor(generics, _, self_id, parent_id) => {
-                    visit_generics(generics);
-                    vfn(id);
-                    vfn(self_id);
-                    vfn(parent_id.node);
-                }
                 visit::fk_item_fn(_, generics, _, _) => {
                     visit_generics(generics);
                 }
@@ -868,11 +842,3 @@ mod test {
     }
 
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

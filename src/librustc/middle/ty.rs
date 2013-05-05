@@ -33,7 +33,7 @@ use core::to_bytes;
 use core::hashmap::{HashMap, HashSet};
 use std::smallintmap::SmallIntMap;
 use syntax::ast::*;
-use syntax::ast_util::{is_local, local_def};
+use syntax::ast_util::is_local;
 use syntax::ast_util;
 use syntax::attr;
 use syntax::codemap::span;
@@ -1257,16 +1257,6 @@ pub fn mk_opaque_closure_ptr(cx: ctxt, sigil: ast::Sigil) -> t {
 
 pub fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
 
-// Converts s to its machine type equivalent
-pub fn mach_sty(cfg: @session::config, t: t) -> sty {
-    match get(t).sty {
-      ty_int(ast::ty_i) => ty_int(cfg.int_type),
-      ty_uint(ast::ty_u) => ty_uint(cfg.uint_type),
-      ty_float(ast::ty_f) => ty_float(cfg.float_type),
-      ref s => (/*bad*/copy *s)
-    }
-}
-
 pub fn walk_ty(ty: t, f: &fn(t)) {
     maybe_walk_ty(ty, |t| { f(t); true });
 }
@@ -1829,15 +1819,6 @@ pub impl TypeContents {
         if cx.vecs_implicitly_copyable {base} else {base + TC_OWNED_VEC}
     }
 
-    fn is_safe_for_default_mode(&self, cx: ctxt) -> bool {
-        !self.intersects(TypeContents::nondefault_mode(cx))
-    }
-
-    fn nondefault_mode(cx: ctxt) -> TypeContents {
-        let tc = TypeContents::nonimplicitly_copyable(cx);
-        tc + TC_BIG + TC_OWNED_VEC // disregard cx.vecs_implicitly_copyable
-    }
-
     fn needs_drop(&self, cx: ctxt) -> bool {
         let tc = TC_MANAGED + TC_DTOR + TypeContents::owned(cx);
         self.intersects(tc)
@@ -1896,9 +1877,6 @@ static TC_MUTABLE: TypeContents =          TypeContents{bits:0b000010000000};
 
 /// Mutable content, whether owned or by ref
 static TC_ONCE_CLOSURE: TypeContents =     TypeContents{bits:0b000100000000};
-
-/// Something we estimate to be "big"
-static TC_BIG: TypeContents =              TypeContents{bits:0b001000000000};
 
 /// An enum with no variants.
 static TC_EMPTY_ENUM: TypeContents =       TypeContents{bits:0b010000000000};
@@ -2120,10 +2098,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
         };
 
-        if type_size(cx, ty) > 4 {
-            result = result + TC_BIG;
-        }
-
         cache.insert(ty_id, result);
         return result;
     }
@@ -2198,68 +2172,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
         debug!("result = %s", r.to_str());
         return r;
-    }
-
-    /// gives a rough estimate of how much space it takes to represent
-    /// an instance of `ty`.  Used for the mode transition.
-    fn type_size(cx: ctxt, ty: t) -> uint {
-        match get(ty).sty {
-          ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-          ty_ptr(_) | ty_box(_) | ty_uniq(_) | ty_estr(vstore_uniq) |
-          ty_trait(*) | ty_rptr(*) | ty_evec(_, vstore_uniq) |
-          ty_evec(_, vstore_box) | ty_estr(vstore_box) => {
-            1
-          }
-
-          ty_evec(_, vstore_slice(_)) |
-          ty_estr(vstore_slice(_)) |
-          ty_bare_fn(*) |
-          ty_closure(*) => {
-            2
-          }
-
-          ty_evec(t, vstore_fixed(n)) => {
-            type_size(cx, t.ty) * n
-          }
-
-          ty_estr(vstore_fixed(n)) => {
-            n
-          }
-
-          ty_struct(did, ref substs) => {
-            let flds = struct_fields(cx, did, substs);
-            flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
-          }
-
-          ty_tup(ref tys) => {
-            tys.foldl(0, |s, t| *s + type_size(cx, *t))
-          }
-
-          ty_enum(did, ref substs) => {
-            let variants = substd_enum_variants(cx, did, substs);
-            variants.foldl( // find max size of any variant
-                0,
-                |m, v| uint::max(
-                    *m,
-                    // find size of this variant:
-                    v.args.foldl(0, |s, a| *s + type_size(cx, *a))))
-          }
-
-          ty_param(_) | ty_self(_) => {
-            1
-          }
-
-          ty_infer(_) => {
-            cx.sess.bug(~"Asked to compute kind of a type variable");
-          }
-          ty_type => 1,
-          ty_opaque_closure_ptr(_) => 1,
-          ty_opaque_box => 1,
-          ty_unboxed_vec(_) => 10,
-          ty_err => {
-            cx.sess.bug(~"Asked to compute kind of fictitious type");
-          }
-        }
     }
 }
 
@@ -2520,12 +2432,15 @@ pub fn type_is_enum(ty: t) -> bool {
 // constructors
 pub fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
     match get(ty).sty {
-      ty_enum(did, _) => {
-        let variants = enum_variants(cx, did);
-        let some_n_ary = vec::any(*variants, |v| vec::len(v.args) > 0u);
-        return !some_n_ary;
-      }
-      _ => return false
+        ty_enum(did, _) => {
+            let variants = enum_variants(cx, did);
+            if variants.len() == 0 {
+                false
+            } else {
+                variants.all(|v| v.args.len() == 0)
+            }
+        }
+        _ => false
     }
 }
 
@@ -3294,7 +3209,7 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_mac(*) => {
             tcx.sess.span_bug(
                 expr.span,
-                ~"macro expression remains after expansion");
+                "macro expression remains after expansion");
         }
     }
 }
@@ -3761,7 +3676,6 @@ pub fn item_path_str(cx: ctxt, id: ast::def_id) -> ~str {
 
 pub enum DtorKind {
     NoDtor,
-    LegacyDtor(def_id),
     TraitDtor(def_id)
 }
 
@@ -3781,28 +3695,8 @@ pub impl DtorKind {
    Otherwise return none. */
 pub fn ty_dtor(cx: ctxt, struct_id: def_id) -> DtorKind {
     match cx.destructor_for_type.find(&struct_id) {
-        Some(&method_def_id) => return TraitDtor(method_def_id),
-        None => {}  // Continue.
-    }
-
-    if is_local(struct_id) {
-       match cx.items.find(&struct_id.node) {
-           Some(&ast_map::node_item(@ast::item {
-               node: ast::item_struct(@ast::struct_def { dtor: Some(ref dtor),
-                                                         _ },
-                                      _),
-               _
-           }, _)) =>
-               LegacyDtor(local_def((*dtor).node.id)),
-           _ =>
-               NoDtor
-       }
-    }
-    else {
-      match csearch::struct_dtor(cx.sess.cstore, struct_id) {
+        Some(&method_def_id) => TraitDtor(method_def_id),
         None => NoDtor,
-        Some(did) => LegacyDtor(did),
-      }
     }
 }
 
@@ -3850,11 +3744,6 @@ pub fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
           ast_map::node_variant(ref variant, _, path) => {
             vec::append_one(vec::from_slice(vec::init(*path)),
                             ast_map::path_name((*variant).node.name))
-          }
-
-          ast_map::node_dtor(_, _, _, path) => {
-            vec::append_one(/*bad*/copy *path, ast_map::path_name(
-                syntax::parse::token::special_idents::literally_dtor))
           }
 
           ast_map::node_struct_ctor(_, item, path) => {
@@ -4167,7 +4056,7 @@ pub fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
           ast::add => opcat_add,
           ast::subtract => opcat_sub,
           ast::mul => opcat_mult,
-          ast::quot => opcat_mult,
+          ast::div => opcat_mult,
           ast::rem => opcat_mult,
           ast::and => opcat_logic,
           ast::or => opcat_logic,
@@ -4300,27 +4189,27 @@ pub fn eval_repeat_count(tcx: ctxt, count_expr: @ast::expr) -> uint {
         const_eval::const_uint(count) => return count as uint,
         const_eval::const_float(count) => {
             tcx.sess.span_err(count_expr.span,
-                              ~"expected signed or unsigned integer for \
-                                repeat count but found float");
+                              "expected signed or unsigned integer for \
+                               repeat count but found float");
             return count as uint;
         }
         const_eval::const_str(_) => {
             tcx.sess.span_err(count_expr.span,
-                              ~"expected signed or unsigned integer for \
-                                repeat count but found string");
+                              "expected signed or unsigned integer for \
+                               repeat count but found string");
             return 0;
         }
         const_eval::const_bool(_) => {
             tcx.sess.span_err(count_expr.span,
-                              ~"expected signed or unsigned integer for \
-                                repeat count but found boolean");
+                              "expected signed or unsigned integer for \
+                               repeat count but found boolean");
             return 0;
         }
       },
       Err(*) => {
         tcx.sess.span_err(count_expr.span,
-                          ~"expected constant integer for repeat count \
-                            but found variable");
+                          "expected constant integer for repeat count \
+                           but found variable");
         return 0;
       }
     }
@@ -4428,11 +4317,3 @@ pub fn visitor_object_ty(tcx: ctxt) -> (@TraitRef, t) {
     (trait_ref,
      mk_trait(tcx, trait_ref.def_id, copy trait_ref.substs, BoxTraitStore, ast::m_imm))
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

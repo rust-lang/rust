@@ -83,7 +83,7 @@ pub fn main() {
 
         assert!((log2f32(8f32).fuzzy_eq(&3f32)));
         assert!((log2f64(f64::consts::e).fuzzy_eq(&f64::consts::log2_e)));
-      
+
         assert!((fmaf32(1.0f32, 2.0f32, 5.0f32).fuzzy_eq(&7.0f32)));
         assert!((fmaf64(0.0f64, -2.0f64, f64::consts::e).fuzzy_eq(&f64::consts::e)));
 
@@ -97,7 +97,7 @@ pub fn main() {
         // undefined reference to llvm.ceil.f32/64
         //assert!((ceilf32(-2.3f32) == -2.0f32));
         //assert!((ceilf64(3.8f64) == 4.0f64));
-      
+
         // Causes linker error
         // undefined reference to llvm.trunc.f32/64
         //assert!((truncf32(0.1f32) == 0.0f32));

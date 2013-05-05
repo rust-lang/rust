@@ -19,4 +19,3 @@ fn foo<T>(Foo{_}: Foo<T>) {
 
 pub fn main() {
 }
-

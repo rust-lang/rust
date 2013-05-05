@@ -564,7 +564,7 @@ pub fn write_repr<T>(writer: @Writer, object: &T) {
     }
 }
 
-#[test]
+#[cfg(test)]
 struct P {a: int, b: float}
 
 #[test]

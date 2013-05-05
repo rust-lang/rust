@@ -23,4 +23,3 @@ pub fn main() {
     io::println(Thingy { x: 1, y: 2 }.to_str());
     io::println(PolymorphicThingy { x: Thingy { x: 1, y: 2 } }.to_str());
 }
-

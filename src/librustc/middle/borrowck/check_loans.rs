@@ -618,8 +618,7 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
                          visitor: visit::vt<@mut CheckLoanCtxt<'a>>) {
     match *fk {
         visit::fk_item_fn(*) |
-        visit::fk_method(*) |
-        visit::fk_dtor(*) => {
+        visit::fk_method(*) => {
             // Don't process nested items.
             return;
         }
@@ -761,4 +760,3 @@ fn check_loans_in_block<'a>(blk: &ast::blk,
     visit::visit_block(blk, self, vt);
     self.check_for_conflicting_loans(blk.node.id);
 }
-

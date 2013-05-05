@@ -277,7 +277,7 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
               add => Ok(const_float(a + b)),
               subtract => Ok(const_float(a - b)),
               mul => Ok(const_float(a * b)),
-              quot => Ok(const_float(a / b)),
+              div => Ok(const_float(a / b)),
               rem => Ok(const_float(a % b)),
               eq => fromb(a == b),
               lt => fromb(a < b),
@@ -293,8 +293,8 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
               add => Ok(const_int(a + b)),
               subtract => Ok(const_int(a - b)),
               mul => Ok(const_int(a * b)),
-              quot if b == 0 => Err(~"attempted quotient with a divisor of zero"),
-              quot => Ok(const_int(a / b)),
+              div if b == 0 => Err(~"attempted to divide by zero"),
+              div => Ok(const_int(a / b)),
               rem if b == 0 => Err(~"attempted remainder with a divisor of zero"),
               rem => Ok(const_int(a % b)),
               and | bitand => Ok(const_int(a & b)),
@@ -315,8 +315,8 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
               add => Ok(const_uint(a + b)),
               subtract => Ok(const_uint(a - b)),
               mul => Ok(const_uint(a * b)),
-              quot if b == 0 => Err(~"attempted quotient with a divisor of zero"),
-              quot => Ok(const_uint(a / b)),
+              div if b == 0 => Err(~"attempted to divide by zero"),
+              div => Ok(const_uint(a / b)),
               rem if b == 0 => Err(~"attempted remainder with a divisor of zero"),
               rem => Ok(const_uint(a % b)),
               and | bitand => Ok(const_uint(a & b)),
@@ -482,12 +482,3 @@ pub fn lit_expr_eq(tcx: middle::ty::ctxt, a: @expr, b: @expr) -> bool {
 pub fn lit_eq(a: @lit, b: @lit) -> bool {
     compare_const_vals(&lit_to_const(a), &lit_to_const(b)) == 0
 }
-
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

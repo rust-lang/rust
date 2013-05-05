@@ -76,11 +76,3 @@ fn test_breakpoint_should_not_abort_process_when_not_under_gdb() {
     // the process under normal circumstances
     breakpoint();
 }
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

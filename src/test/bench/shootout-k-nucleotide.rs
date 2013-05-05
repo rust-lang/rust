@@ -252,7 +252,7 @@ fn generate_frequencies(frequencies: &mut Table,
                         mut input: &[u8],
                         frame: i32) {
     let mut code = Code(0);
-    
+
     // Pull first frame.
     for (frame as uint).times {
         code = code.push_char(input[0]);
@@ -313,4 +313,3 @@ fn main() {
         print_occurrences(frequencies, occurrence);
     }
 }
-

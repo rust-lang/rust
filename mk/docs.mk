@@ -16,15 +16,8 @@ DOCS :=
 
 
 ######################################################################
-# Pandoc (reference-manual related)
+# Docs, from pandoc, rustdoc (which runs pandoc), and node
 ######################################################################
-ifeq ($(CFG_PANDOC),)
-  $(info cfg: no pandoc found, omitting doc/rust.pdf)
-else
-
-  ifeq ($(CFG_NODE),)
-    $(info cfg: no node found, omitting doc/tutorial.html)
-  else
 
 doc/rust.css: rust.css
 	@$(call E, cp: $@)
@@ -33,6 +26,18 @@ doc/rust.css: rust.css
 doc/manual.css: manual.css
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
+
+ifeq ($(CFG_PANDOC),)
+  $(info cfg: no pandoc found, omitting docs)
+  NO_DOCS = 1
+endif
+
+ifeq ($(CFG_NODE),)
+  $(info cfg: no node found, omitting docs)
+  NO_DOCS = 1
+endif
+
+ifneq ($(NO_DOCS),1)
 
 DOCS += doc/rust.html
 doc/rust.html: rust.md doc/version_info.html doc/rust.css doc/manual.css
@@ -47,19 +52,8 @@ doc/rust.html: rust.md doc/version_info.html doc/rust.css doc/manual.css
          --css=manual.css \
 	     --include-before-body=doc/version_info.html \
          --output=$@
-  endif
 
-  ifeq ($(CFG_PDFLATEX),)
-    $(info cfg: no pdflatex found, omitting doc/rust.pdf)
-  else
-    ifeq ($(CFG_XETEX),)
-      $(info cfg: no xetex found, disabling doc/rust.pdf)
-    else
-      ifeq ($(CFG_LUATEX),)
-        $(info cfg: lacking luatex, disabling pdflatex)
-      else
-
-DOCS += doc/rust.pdf
+DOCS += doc/rust.tex
 doc/rust.tex: rust.md doc/version.md
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js $< | \
@@ -69,17 +63,6 @@ doc/rust.tex: rust.md doc/version.md
 	     --include-before-body=doc/version.md \
          --from=markdown --to=latex \
          --output=$@
-
-doc/rust.pdf: doc/rust.tex
-	@$(call E, pdflatex: $@)
-	$(Q)$(CFG_PDFLATEX) \
-        -interaction=batchmode \
-        -output-directory=doc \
-        $<
-
-      endif
-    endif
-  endif
 
 DOCS += doc/rustpkg.html
 doc/rustpkg.html: rustpkg.md doc/version_info.html doc/rust.css doc/manual.css
@@ -94,13 +77,6 @@ doc/rustpkg.html: rustpkg.md doc/version_info.html doc/rust.css doc/manual.css
          --css=manual.css \
 	     --include-before-body=doc/version_info.html \
          --output=$@
-
-######################################################################
-# Node (tutorial related)
-######################################################################
-  ifeq ($(CFG_NODE),)
-    $(info cfg: no node found, omitting doc/tutorial.html)
-  else
 
 DOCS += doc/tutorial.html
 doc/tutorial.html: tutorial.md doc/version_info.html doc/rust.css
@@ -153,9 +129,29 @@ doc/tutorial-tasks.html: tutorial-tasks.md doc/version_info.html doc/rust.css
 	   --include-before-body=doc/version_info.html \
            --output=$@
 
-  endif
-endif
+  ifeq ($(CFG_PDFLATEX),)
+    $(info cfg: no pdflatex found, omitting doc/rust.pdf)
+  else
+    ifeq ($(CFG_XETEX),)
+      $(info cfg: no xetex found, disabling doc/rust.pdf)
+    else
+      ifeq ($(CFG_LUATEX),)
+        $(info cfg: lacking luatex, disabling pdflatex)
+      else
 
+DOCS += doc/rust.pdf
+doc/rust.pdf: doc/rust.tex
+	@$(call E, pdflatex: $@)
+	$(Q)$(CFG_PDFLATEX) \
+        -interaction=batchmode \
+        -output-directory=doc \
+        $<
+
+      endif
+    endif
+  endif
+
+endif # No pandoc / node
 
 ######################################################################
 # LLnextgen (grammar analysis from refman)

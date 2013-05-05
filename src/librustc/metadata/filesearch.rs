@@ -20,41 +20,48 @@ pub fn pick_file(file: Path, path: &Path) -> Option<Path> {
 }
 
 pub trait FileSearch {
-    fn sysroot(&self) -> Path;
-    fn lib_search_paths(&self) -> ~[Path];
+    fn sysroot(&self) -> @Path;
+    fn for_each_lib_search_path(&self, f: &fn(&Path) -> bool);
     fn get_target_lib_path(&self) -> Path;
     fn get_target_lib_file_path(&self, file: &Path) -> Path;
 }
 
-pub fn mk_filesearch(maybe_sysroot: &Option<Path>,
+pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
                      target_triple: &str,
                      addl_lib_search_paths: ~[Path])
                   -> @FileSearch {
     struct FileSearchImpl {
-        sysroot: Path,
+        sysroot: @Path,
         addl_lib_search_paths: ~[Path],
         target_triple: ~str
     }
     impl FileSearch for FileSearchImpl {
-        fn sysroot(&self) -> Path { /*bad*/copy self.sysroot }
-        fn lib_search_paths(&self) -> ~[Path] {
-            let mut paths = /*bad*/copy self.addl_lib_search_paths;
+        fn sysroot(&self) -> @Path { self.sysroot }
+        fn for_each_lib_search_path(&self, f: &fn(&Path) -> bool) {
+            debug!("filesearch: searching additional lib search paths");
+            // a little weird
+            self.addl_lib_search_paths.each(f);
 
-            paths.push(
-                make_target_lib_path(&self.sysroot,
-                                     self.target_triple));
-            match get_rustpkg_lib_path_nearest() {
-              result::Ok(ref p) => paths.push((/*bad*/copy *p)),
-              result::Err(_) => ()
+            debug!("filesearch: searching target lib path");
+            if !f(&make_target_lib_path(self.sysroot,
+                                        self.target_triple)) {
+                return;
             }
-            match get_rustpkg_lib_path() {
-              result::Ok(ref p) => paths.push((/*bad*/copy *p)),
-              result::Err(_) => ()
-            }
-            paths
+            debug!("filesearch: searching rustpkg lib path nearest");
+            if match get_rustpkg_lib_path_nearest() {
+                    result::Ok(ref p) => f(p),
+                    result::Err(_) => true
+                } {
+                    return;
+                }
+           debug!("filesearch: searching rustpkg lib path");
+           match get_rustpkg_lib_path() {
+              result::Ok(ref p) => f(p),
+              result::Err(_) => true
+           };
         }
         fn get_target_lib_path(&self) -> Path {
-            make_target_lib_path(&self.sysroot, self.target_triple)
+            make_target_lib_path(self.sysroot, self.target_triple)
         }
         fn get_target_lib_file_path(&self, file: &Path) -> Path {
             self.get_target_lib_path().push_rel(file)
@@ -72,7 +79,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<Path>,
 
 pub fn search<T:Copy>(filesearch: @FileSearch, pick: pick<T>) -> Option<T> {
     let mut rslt = None;
-    for filesearch.lib_search_paths().each |lib_search_path| {
+    for filesearch.for_each_lib_search_path() |lib_search_path| {
         debug!("searching %s", lib_search_path.to_str());
         for os::list_dir_path(lib_search_path).each |path| {
             debug!("testing %s", path.to_str());
@@ -108,10 +115,10 @@ fn get_or_default_sysroot() -> Path {
     }
 }
 
-fn get_sysroot(maybe_sysroot: &Option<Path>) -> Path {
+fn get_sysroot(maybe_sysroot: &Option<@Path>) -> @Path {
     match *maybe_sysroot {
-      option::Some(ref sr) => (/*bad*/copy *sr),
-      option::None => get_or_default_sysroot()
+      option::Some(sr) => sr,
+      option::None => @get_or_default_sysroot()
     }
 }
 

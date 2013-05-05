@@ -110,8 +110,7 @@ fn gather_loans_in_fn(fk: &visit::fn_kind,
     match fk {
         // Do not visit items here, the outer loop in borrowck/mod
         // will visit them for us in turn.
-        &visit::fk_item_fn(*) | &visit::fk_method(*) |
-        &visit::fk_dtor(*) => {
+        &visit::fk_item_fn(*) | &visit::fk_method(*) => {
             return;
         }
 

@@ -104,4 +104,3 @@ pub fn analyze(proto: &mut protocol_, _cx: @ext_ctxt) {
         proto.bounded = Some(true);
     }
 }
-

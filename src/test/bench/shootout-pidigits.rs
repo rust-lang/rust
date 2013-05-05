@@ -175,4 +175,3 @@ fn main() {
     let n: u32 = FromStr::from_str(os::args()[1]).get();
     pidigits(n);
 }
-

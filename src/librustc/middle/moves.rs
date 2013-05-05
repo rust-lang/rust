@@ -450,7 +450,7 @@ pub impl VisitContext {
                     MoveInWhole => {
                         self.tcx.sess.span_bug(
                             expr.span,
-                            fmt!("Component mode can never be MoveInWhole"));
+                            "Component mode can never be MoveInWhole");
                     }
                 }
             }
@@ -673,7 +673,7 @@ pub impl VisitContext {
             expr_mac(*) => {
                 self.tcx.sess.span_bug(
                     expr.span,
-                    ~"macro expression remains after expansion");
+                    "macro expression remains after expansion");
             }
         }
     }

@@ -334,7 +334,7 @@ pub impl RegionMaps {
 pub fn parent_id(cx: Context, span: span) -> ast::node_id {
     match cx.parent {
       None => {
-        cx.sess.span_bug(span, ~"crate should not be parent here");
+        cx.sess.span_bug(span, "crate should not be parent here");
       }
       Some(parent_id) => {
         parent_id
@@ -464,8 +464,7 @@ pub fn resolve_fn(fk: &visit::fn_kind,
     // or it continues with the inherited scope (closures).
     let body_cx = match *fk {
         visit::fk_item_fn(*) |
-        visit::fk_method(*) |
-        visit::fk_dtor(*) => {
+        visit::fk_method(*) => {
             Context {parent: None, var_parent: None, ..cx}
         }
         visit::fk_anon(*) |
@@ -980,4 +979,3 @@ pub fn determine_rp_in_crate(sess: Session,
     // return final set
     return cx.region_paramd_items;
 }
-
