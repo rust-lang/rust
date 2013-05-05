@@ -19,6 +19,7 @@ use libc;
 use repr;
 use vec;
 use cast;
+use str;
 
 /// Turns on logging to stdout globally
 pub fn console_on() {
@@ -57,7 +58,7 @@ pub fn log_type<T>(level: u32, object: &T) {
         }
         _ => {
             // XXX: Bad allocation
-            let msg = bytes.to_str();
+            let msg = str::from_bytes(bytes);
             newsched_log_str(msg);
         }
     }

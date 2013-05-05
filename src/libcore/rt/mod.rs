@@ -18,7 +18,7 @@ use libc::c_char;
 mod sched;
 
 /// Thread-local access to the current Scheduler
-mod local_sched;
+pub mod local_sched;
 
 /// Synchronous I/O
 #[path = "io/mod.rs"]
@@ -67,6 +67,10 @@ pub mod test;
 
 /// Reference counting
 pub mod rc;
+
+/// A simple single-threaded channel type for passing buffered data between
+/// scheduler and task context
+pub mod tube;
 
 /// Set up a default runtime configuration, given compiler-supplied arguments.
 ///
