@@ -152,7 +152,7 @@ pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 
 /// Because this code is so perf. sensitive, use a static constant so that
 /// debug printouts are compiled out most of the time.
-static ENABLE_DEBUG: bool = true;
+static ENABLE_DEBUG: bool = false;
 
 #[inline]
 pub fn debug_mem<T>(tag: &'static str, p: *const T) {
