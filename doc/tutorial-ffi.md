@@ -150,11 +150,7 @@ wrapping `malloc` and `free`:
 
 ~~~~
 use core::libc::{c_void, size_t, malloc, free};
-
-#[abi = "rust-intrinsic"]
-extern "rust-intrinsic" mod rusti {
-    fn init<T>() -> T;
-}
+use core::unstable::intrinsics;
 
 // a wrapper around the handle returned by the foreign code
 pub struct Unique<T> {
@@ -166,7 +162,8 @@ pub impl<'self, T: Owned> Unique<T> {
         unsafe {
             let ptr = malloc(core::sys::size_of::<T>() as size_t) as *mut T;
             assert!(!ptr::is_null(ptr));
-            *ptr = value;
+            // `*ptr` is uninitialized, and `*ptr = value` would attempt to destroy it
+            intrinsics::move_val_init(&mut *ptr, value);
             Unique{ptr: ptr}
         }
     }
@@ -186,7 +183,7 @@ pub impl<'self, T: Owned> Unique<T> {
 impl<T: Owned> Drop for Unique<T> {
     fn finalize(&self) {
         unsafe {
-            let mut x = rusti::init(); // dummy value to swap in
+            let mut x = intrinsics::init(); // dummy value to swap in
             x <-> *self.ptr; // moving the object out is needed to call the destructor
             free(self.ptr as *c_void)
         }
