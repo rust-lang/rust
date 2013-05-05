@@ -312,7 +312,7 @@ pub fn trans_static_method_callee(bcx: block,
     };
 
     let mname = if method_id.crate == ast::local_crate {
-        match *bcx.tcx().items.get(&method_id.node) {
+        match bcx.tcx().items.get_copy(&method_id.node) {
             ast_map::node_trait_method(trait_method, _, _) => {
                 ast_util::trait_method_to_ty_method(trait_method).ident
             }
@@ -329,7 +329,7 @@ pub fn trans_static_method_callee(bcx: block,
             name=%s", method_id, callee_id, *ccx.sess.str_of(mname));
 
     let vtbls = resolve_vtables_in_fn_ctxt(
-        bcx.fcx, *ccx.maps.vtable_map.get(&callee_id));
+        bcx.fcx, ccx.maps.vtable_map.get_copy(&callee_id));
 
     match vtbls[bound_index] {
         typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
@@ -367,7 +367,7 @@ pub fn method_from_methods(ms: &[@ast::method], name: ast::ident)
 pub fn method_with_name(ccx: @CrateContext, impl_id: ast::def_id,
                         name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
-        match *ccx.tcx.items.get(&impl_id.node) {
+        match ccx.tcx.items.get_copy(&impl_id.node) {
           ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref ms),
                 _
@@ -385,7 +385,7 @@ pub fn method_with_name_or_default(ccx: @CrateContext,
                                    impl_id: ast::def_id,
                                    name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
-        match *ccx.tcx.items.get(&impl_id.node) {
+        match ccx.tcx.items.get_copy(&impl_id.node) {
           ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref ms), _
           }, _) => {

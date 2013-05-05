@@ -280,7 +280,7 @@ pub fn trans_opt(bcx: block, o: &Opt) -> opt_result {
 pub fn variant_opt(bcx: block, pat_id: ast::node_id)
     -> Opt {
     let ccx = bcx.ccx();
-    match *ccx.tcx.def_map.get(&pat_id) {
+    match ccx.tcx.def_map.get_copy(&pat_id) {
         ast::def_variant(enum_id, var_id) => {
             let variants = ty::enum_variants(ccx.tcx, enum_id);
             for vec::each(*variants) |v| {
@@ -516,7 +516,7 @@ pub fn enter_opt<'r>(bcx: block,
         match p.node {
             ast::pat_enum(*) |
             ast::pat_ident(_, _, None) if pat_is_const(tcx.def_map, p) => {
-                let const_def = *tcx.def_map.get(&p.id);
+                let const_def = tcx.def_map.get_copy(&p.id);
                 let const_def_id = ast_util::def_id_of_def(const_def);
                 if opt_eq(tcx, &lit(ConstLit(const_def_id)), opt) {
                     Some(~[])
@@ -552,7 +552,7 @@ pub fn enter_opt<'r>(bcx: block,
                 if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
                     // Look up the struct variant ID.
                     let struct_id;
-                    match *tcx.def_map.get(&p.id) {
+                    match tcx.def_map.get_copy(&p.id) {
                         ast::def_variant(_, found_struct_id) => {
                             struct_id = found_struct_id;
                         }

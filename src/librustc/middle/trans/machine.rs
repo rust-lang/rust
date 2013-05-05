@@ -118,7 +118,7 @@ pub fn llalign_of(cx: @CrateContext, t: TypeRef) -> ValueRef {
 // Computes the size of the data part of an enum.
 pub fn static_size_of_enum(cx: @CrateContext, t: ty::t) -> uint {
     if cx.enum_sizes.contains_key(&t) {
-        return *cx.enum_sizes.get(&t);
+        return cx.enum_sizes.get_copy(&t);
     }
 
     debug!("static_size_of_enum %s", ty_to_str(cx.tcx, t));

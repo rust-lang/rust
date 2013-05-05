@@ -109,7 +109,8 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
       item_foreign_mod(ref nm) => {
           if !traverse_exports(cx, item.id) {
               for nm.items.each |item| {
-                  (&mut *cx).rmap.insert(item.id); // NOTE reborrow @mut
+                  let cx = &mut *cx; // NOTE reborrow @mut
+                  cx.rmap.insert(item.id);
               }
           }
       }
@@ -125,17 +126,24 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
                 m.generics.ty_params.len() > 0u ||
                 attr::find_inline_attr(m.attrs) != attr::ia_none
             {
-                (&mut *cx).rmap.insert(m.id); // NOTE reborrow @mut
+                {
+                    let cx = &mut *cx; // NOTE reborrow @mut
+                    cx.rmap.insert(m.id);
+                }
                 traverse_inline_body(cx, &m.body);
             }
         }
       }
       item_struct(ref struct_def, ref generics) => {
         for struct_def.ctor_id.each |&ctor_id| {
-            (&mut *cx).rmap.insert(ctor_id); // NOTE reborrow @mut
+            let cx = &mut *cx; // NOTE reborrow @mut
+            cx.rmap.insert(ctor_id);
         }
         for struct_def.dtor.each |dtor| {
-            (&mut *cx).rmap.insert(dtor.node.id);
+            {
+                let cx = &mut *cx; // NOTE reborrow @mut
+                cx.rmap.insert(dtor.node.id);
+            }
             if generics.ty_params.len() > 0u ||
                 attr::find_inline_attr(dtor.node.attrs) != attr::ia_none
             {
@@ -156,8 +164,7 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
 
 fn traverse_ty<'a>(ty: @Ty, cx: @mut ctx<'a>, v: visit::vt<@mut ctx<'a>>) {
     {
-        // FIXME #6021: naming rmap shouldn't be necessary
-        let cx = &mut *cx;
+        let cx = &mut *cx; // NOTE reborrow @mut
         if cx.rmap.contains(&ty.id) { return; }
         cx.rmap.insert(ty.id);
     }

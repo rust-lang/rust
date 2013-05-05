@@ -724,7 +724,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             let in_type_size = machine::llbitsize_of_real(ccx, llintype);
             let out_type_size = machine::llbitsize_of_real(ccx, llouttype);
             if in_type_size != out_type_size {
-                let sp = match *ccx.tcx.items.get(&ref_id.get()) {
+                let sp = match ccx.tcx.items.get_copy(&ref_id.get()) {
                     ast_map::node_expr(e) => e.span,
                     _ => fail!(~"transmute has non-expr arg"),
                 };

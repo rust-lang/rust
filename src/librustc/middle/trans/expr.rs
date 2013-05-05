@@ -1117,7 +1117,7 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
                         ty.repr(tcx)));
                 }
                 Some(node_id) => {
-                    match *tcx.def_map.get(&node_id) {
+                    match tcx.def_map.get_copy(&node_id) {
                         ast::def_variant(enum_id, variant_id) => {
                             let variant_info = ty::enum_variant_with_id(
                                 tcx, enum_id, variant_id);
@@ -1536,7 +1536,7 @@ fn trans_overloaded_op(bcx: block,
                        ret_ty: ty::t,
                        dest: Dest)
                        -> block {
-    let origin = *bcx.ccx().maps.method_map.get(&expr.id);
+    let origin = bcx.ccx().maps.method_map.get_copy(&expr.id);
     let fty = node_id_type(bcx, expr.callee_id);
     callee::trans_call_inner(bcx,
                              expr.info(),

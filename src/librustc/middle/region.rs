@@ -949,7 +949,7 @@ pub fn determine_rp_in_crate(sess: Session,
         let cx = &mut *cx;
         while cx.worklist.len() != 0 {
             let c_id = cx.worklist.pop();
-            let c_variance = { *cx.region_paramd_items.get(&c_id) };
+            let c_variance = cx.region_paramd_items.get_copy(&c_id);
             // NOTE cleanup scopes cause an exaggerated lock here
             debug!("popped %d from worklist", c_id);
             match cx.dep_map.find(&c_id) {

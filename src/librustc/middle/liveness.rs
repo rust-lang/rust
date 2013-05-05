@@ -469,7 +469,7 @@ fn visit_expr(expr: @expr, self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       expr_path(_) => {
-        let def = *self.tcx.def_map.get(&expr.id);
+        let def = self.tcx.def_map.get_copy(&expr.id);
         debug!("expr %d: path that leads to %?", expr.id, def);
         if moves::moved_variable_node_id_from_def(def).is_some() {
             self.add_live_node_for_node(expr.id, ExprNode(expr.span));
@@ -616,7 +616,7 @@ pub impl Liveness {
     fn variable_from_path(&self, expr: @expr) -> Option<Variable> {
         match expr.node {
           expr_path(_) => {
-            let def = *self.tcx.def_map.get(&expr.id);
+            let def = self.tcx.def_map.get_copy(&expr.id);
             moves::moved_variable_node_id_from_def(def).map(
                 |rdef| self.variable(*rdef, expr.span)
             )
@@ -1338,7 +1338,7 @@ pub impl Liveness {
 
     fn access_path(&self, expr: @expr, succ: LiveNode, acc: uint)
                   -> LiveNode {
-        let def = *self.tcx.def_map.get(&expr.id);
+        let def = self.tcx.def_map.get_copy(&expr.id);
         match moves::moved_variable_node_id_from_def(def) {
           Some(nid) => {
             let ln = self.live_node(expr.id, expr.span);
@@ -1605,7 +1605,7 @@ pub impl Liveness {
     fn check_lvalue(@self, expr: @expr, vt: vt<@Liveness>) {
         match expr.node {
           expr_path(_) => {
-            match *self.tcx.def_map.get(&expr.id) {
+            match self.tcx.def_map.get_copy(&expr.id) {
               def_local(nid, mutbl) => {
                 // Assignment to an immutable variable or argument: only legal
                 // if there is no later assignment. If this local is actually
