@@ -2444,7 +2444,7 @@ pub impl Parser {
                     }
                 }
             }
-            hi = self.span.hi;
+            hi = self.last_span.hi;
           }
         }
         @ast::pat { id: self.get_id(), node: pat, span: mk_sp(lo, hi) }
@@ -4308,7 +4308,7 @@ pub impl Parser {
                                 rp: None,
                                 types: ~[] };
         return @spanned(lo,
-                        self.span.hi,
+                        self.last_span.hi,
                         view_path_simple(last, path, self.get_id()));
     }
 
