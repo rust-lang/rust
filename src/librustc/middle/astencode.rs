@@ -739,7 +739,7 @@ trait ebml_writer_helpers {
     fn emit_arg(&self, ecx: @e::EncodeContext, arg: ty::arg);
     fn emit_ty(&self, ecx: @e::EncodeContext, ty: ty::t);
     fn emit_vstore(&self, ecx: @e::EncodeContext, vstore: ty::vstore);
-    fn emit_tys(&self, ecx: @e::EncodeContext, tys: ~[ty::t]);
+    fn emit_tys(&self, ecx: @e::EncodeContext, tys: &[ty::t]);
     fn emit_type_param_def(&self,
                            ecx: @e::EncodeContext,
                            type_param_def: &ty::TypeParameterDef);
@@ -766,7 +766,7 @@ impl ebml_writer_helpers for writer::Encoder {
         }
     }
 
-    fn emit_tys(&self, ecx: @e::EncodeContext, tys: ~[ty::t]) {
+    fn emit_tys(&self, ecx: @e::EncodeContext, tys: &[ty::t]) {
         do self.emit_from_vec(tys) |ty| {
             self.emit_ty(ecx, *ty)
         }
@@ -868,9 +868,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         do ebml_w.tag(c::tag_table_node_type_subst) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                // FIXME(#5562): removing this copy causes a segfault
-                //               before stage2
-                ebml_w.emit_tys(ecx, /*bad*/copy **tys)
+                ebml_w.emit_tys(ecx, **tys)
             }
         }
     }

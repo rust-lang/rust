@@ -2501,7 +2501,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
       Some(&v) => v,
       None => {
         let mut exprt = false;
-        let val = match *ccx.tcx.items.get(&id) {
+        let val = match ccx.tcx.items.get_copy(&id) {
           ast_map::node_item(i, pth) => {
             let my_path = vec::append(/*bad*/copy *pth,
                                       ~[path_name(i.ident)]);

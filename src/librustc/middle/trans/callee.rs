@@ -339,15 +339,11 @@ pub fn trans_method_call(in_cx: block,
         node_id_type(in_cx, call_ex.callee_id),
         expr_ty(in_cx, call_ex),
         |cx| {
-            match cx.ccx().maps.method_map.find(&call_ex.id) {
+            match cx.ccx().maps.method_map.find_copy(&call_ex.id) {
                 Some(origin) => {
                     debug!("origin for %s: %s",
                            call_ex.repr(in_cx.tcx()),
                            origin.repr(in_cx.tcx()));
-
-                    // FIXME(#5562): removing this copy causes a segfault
-                    //               before stage2
-                    let origin = /*bad*/ copy *origin;
 
                     meth::trans_method_callee(cx,
                                               call_ex.callee_id,
