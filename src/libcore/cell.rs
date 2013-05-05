@@ -19,6 +19,7 @@ A dynamic, mutable location.
 Similar to a mutable option type, but friendlier.
 */
 
+#[mutable]
 pub struct Cell<T> {
     priv value: Option<T>
 }
