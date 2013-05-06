@@ -14,20 +14,22 @@ use ext::base::ext_ctxt;
 use ext::build;
 use ext::deriving::generic::*;
 use core::cmp::{Ordering, Equal, Less, Greater};
-use core::option::Some;
 
 pub fn expand_deriving_totalord(cx: @ext_ctxt,
                                 span: span,
                                 mitem: @meta_item,
                                 in_items: ~[@item]) -> ~[@item] {
     let trait_def = TraitDef {
-        path: ~[~"core", ~"cmp", ~"TotalOrd"],
+        path: Path::new(~[~"core", ~"cmp", ~"TotalOrd"]),
         additional_bounds: ~[],
+        generics: LifetimeBounds::empty(),
         methods: ~[
             MethodDef {
                 name: ~"cmp",
-                output_type: Some(~[~"core", ~"cmp", ~"Ordering"]),
-                nargs: 1,
+                generics: LifetimeBounds::empty(),
+                self_ty: borrowed_explicit_self(),
+                args: ~[borrowed_self()],
+                ret_ty: Literal(Path::new(~[~"core", ~"cmp", ~"Ordering"])),
                 const_nonmatching: false,
                 combine_substructure: cs_cmp
             }
@@ -64,7 +66,7 @@ pub fn cs_cmp(cx: @ext_ctxt, span: span,
             build::mk_call_global(cx, span, lexical_ord, ~[old, new])
         },
         ordering_const(cx, span, Equal),
-        |cx, span, list| {
+        |cx, span, list, _| {
             match list {
                 // an earlier nonmatching variant is Less than a
                 // later one
