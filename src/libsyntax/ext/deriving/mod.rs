@@ -23,6 +23,8 @@ pub mod clone;
 pub mod iter_bytes;
 pub mod encodable;
 pub mod decodable;
+pub mod rand;
+pub mod to_str;
 
 #[path="cmp/eq.rs"]
 pub mod eq;
@@ -85,6 +87,10 @@ pub fn expand_meta_deriving(cx: @ext_ctxt,
                             ~"TotalEq" => expand!(totaleq::expand_deriving_totaleq),
                             ~"Ord" => expand!(ord::expand_deriving_ord),
                             ~"TotalOrd" => expand!(totalord::expand_deriving_totalord),
+
+                            ~"Rand" => expand!(rand::expand_deriving_rand),
+
+                            ~"ToStr" => expand!(to_str::expand_deriving_to_str),
 
                             tname => {
                                 cx.span_err(titem.span, fmt!("unknown \
