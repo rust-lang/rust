@@ -14,29 +14,33 @@ use codemap::span;
 use ext::base::ext_ctxt;
 use ext::build;
 use ext::deriving::generic::*;
-use core::option::Some;
-
-macro_rules! md {
-    ($name:expr, $less:expr, $equal:expr) => {
-        MethodDef {
-            name: $name,
-            output_type: Some(~[~"bool"]),
-            nargs: 1,
-            const_nonmatching: false,
-            combine_substructure: |cx, span, substr|
-                    cs_ord($less, $equal, cx, span, substr)
-        }
-    }
-}
 
 pub fn expand_deriving_ord(cx: @ext_ctxt,
                            span: span,
                            mitem: @meta_item,
                            in_items: ~[@item]) -> ~[@item] {
+    macro_rules! md (
+        ($name:expr, $less:expr, $equal:expr) => {
+            MethodDef {
+                name: $name,
+                generics: LifetimeBounds::empty(),
+                self_ty: borrowed_explicit_self(),
+                args: ~[borrowed_self()],
+                ret_ty: Literal(Path::new(~[~"bool"])),
+                const_nonmatching: false,
+                combine_substructure: |cx, span, substr|
+                    cs_ord($less, $equal, cx, span, substr)
+            }
+        }
+    );
+
+
+
     let trait_def = TraitDef {
-        path: ~[~"core", ~"cmp", ~"Ord"],
+        path: Path::new(~[~"core", ~"cmp", ~"Ord"]),
         // XXX: Ord doesn't imply Eq yet
-        additional_bounds: ~[~[~"core", ~"cmp", ~"Eq"]],
+        additional_bounds: ~[Literal(Path::new(~[~"core", ~"cmp", ~"Eq"]))],
+        generics: LifetimeBounds::empty(),
         methods: ~[
             md!(~"lt", true,  false),
             md!(~"le", true,  true),
@@ -97,19 +101,19 @@ fn cs_ord(less: bool, equal: bool,
             }
 
             let cmp = build::mk_method_call(cx, span,
-                                            self_f, cx.ident_of(~"eq"), other_fs);
+                                            self_f, cx.ident_of(~"eq"), other_fs.to_owned());
             let subexpr = build::mk_simple_block(cx, span, subexpr);
             let elseif = expr_if(cmp, subexpr, Some(false_blk_expr));
             let elseif = build::mk_expr(cx, span, elseif);
 
             let cmp = build::mk_method_call(cx, span,
-                                            self_f, binop, other_fs);
+                                            self_f, binop, other_fs.to_owned());
             let if_ = expr_if(cmp, true_blk, Some(elseif));
 
             build::mk_expr(cx, span, if_)
         },
         base,
-        |cx, span, args| {
+        |cx, span, args, _| {
             // nonmatching enums, order by the order the variants are
             // written
             match args {

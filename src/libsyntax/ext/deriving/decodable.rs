@@ -66,6 +66,7 @@ fn create_derived_decodable_impl(
             cx.ident_of(~"serialize"),
             cx.ident_of(~"Decodable")
         ],
+        None,
         ~[
             build::mk_simple_ty_path(cx, span, cx.ident_of(~"__D"))
         ]
@@ -77,7 +78,7 @@ fn create_derived_decodable_impl(
         generics,
         methods,
         trait_path,
-        generic_ty_params,
+        Generics { ty_params: generic_ty_params, lifetimes: opt_vec::Empty },
         opt_vec::Empty
     )
 }
@@ -96,6 +97,7 @@ fn create_decode_method(
         cx,
         span,
         build::mk_simple_ty_path(cx, span, cx.ident_of(~"__D")),
+        None,
         ast::m_mutbl
     );
     let d_ident = cx.ident_of(~"__d");
