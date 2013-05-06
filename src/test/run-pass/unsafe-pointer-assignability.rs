@@ -17,6 +17,3 @@ fn f(x: *int) {
 pub fn main() {
     f(&3);
 }
-
-
-

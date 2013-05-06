@@ -756,7 +756,7 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span)
             }
         },
         ty::ty_enum(_did, ref _substs) => {
-            cx.sess.span_bug(span, ~"debuginfo for enum NYI")
+            cx.sess.span_bug(span, "debuginfo for enum NYI")
         }
         ty::ty_box(ref mt) | ty::ty_uniq(ref mt) => {
             let boxed = create_ty(cx, mt.ty, span);
@@ -782,7 +782,7 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span)
             create_pointer_type(cx, t, span, pointee)
         },
         ty::ty_rptr(ref _region, ref _mt) => {
-            cx.sess.span_bug(span, ~"debuginfo for rptr NYI")
+            cx.sess.span_bug(span, "debuginfo for rptr NYI")
         },
         ty::ty_bare_fn(ref barefnty) => {
             let inputs = do barefnty.sig.inputs.map |a| { a.ty };
@@ -790,10 +790,10 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span)
             create_fn_ty(cx, t, inputs, output, span)
         },
         ty::ty_closure(ref _closurety) => {
-            cx.sess.span_bug(span, ~"debuginfo for closure NYI")
+            cx.sess.span_bug(span, "debuginfo for closure NYI")
         },
         ty::ty_trait(_did, ref _substs, ref _vstore, _) => {
-            cx.sess.span_bug(span, ~"debuginfo for trait NYI")
+            cx.sess.span_bug(span, "debuginfo for trait NYI")
         },
         ty::ty_struct(did, ref substs) => {
             let fields = ty::struct_fields(cx.tcx, did, substs);
@@ -860,14 +860,12 @@ pub fn create_local_var(bcx: block, local: @ast::local)
     let llptr = match bcx.fcx.lllocals.find(&local.node.id) {
       option::Some(&local_mem(v)) => v,
       option::Some(_) => {
-        bcx.tcx().sess.span_bug(local.span, ~"local is bound to \
-                something weird");
+        bcx.tcx().sess.span_bug(local.span, "local is bound to something weird");
       }
       option::None => {
-        match *bcx.fcx.lllocals.get(&local.node.pat.id) {
+        match bcx.fcx.lllocals.get_copy(&local.node.pat.id) {
           local_imm(v) => v,
-          _ => bcx.tcx().sess.span_bug(local.span, ~"local is bound to \
-                                                     something weird")
+          _ => bcx.tcx().sess.span_bug(local.span, "local is bound to something weird")
         }
       }
     };
@@ -917,7 +915,7 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
             };
             update_cache(cache, tg, argument_metadata(mdval));
 
-            let llptr = match *fcx.llargs.get(&arg.id) {
+            let llptr = match fcx.llargs.get_copy(&arg.id) {
               local_mem(v) | local_imm(v) => v,
             };
             let declargs = ~[llmdnode(~[llptr]), mdnode];
@@ -960,14 +958,13 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
     let sp = fcx.span.get();
     debug!("%s", cx.sess.codemap.span_to_str(sp));
 
-    let (ident, ret_ty, id) = match *cx.tcx.items.get(&fcx.id) {
+    let (ident, ret_ty, id) = match cx.tcx.items.get_copy(&fcx.id) {
       ast_map::node_item(item, _) => {
         match item.node {
           ast::item_fn(ref decl, _, _, _, _) => {
             (item.ident, decl.output, item.id)
           }
-          _ => fcx.ccx.sess.span_bug(item.span, ~"create_function: item \
-                                                  bound to non-function")
+          _ => fcx.ccx.sess.span_bug(item.span, "create_function: item bound to non-function")
         }
       }
       ast_map::node_method(method, _, _) => {
@@ -979,15 +976,10 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
             ((dbg_cx.names)(~"fn"), decl.output, expr.id)
           }
           _ => fcx.ccx.sess.span_bug(expr.span,
-                                     ~"create_function: \
-                                       expected an expr_fn_block here")
+                  "create_function: expected an expr_fn_block here")
         }
       }
-      ast_map::node_dtor(_, _, did, _) => {
-        ((dbg_cx.names)(~"dtor"), ast_util::dtor_ty(), did.node)
-      }
-      _ => fcx.ccx.sess.bug(~"create_function: unexpected \
-                              sort of node")
+      _ => fcx.ccx.sess.bug("create_function: unexpected sort of node")
     };
 
     debug!("%?", ident);

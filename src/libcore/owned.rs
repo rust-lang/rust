@@ -31,4 +31,3 @@ impl<T:Ord> Ord for ~T {
     #[inline(always)]
     fn gt(&self, other: &~T) -> bool { *(*self) > *(*other) }
 }
-

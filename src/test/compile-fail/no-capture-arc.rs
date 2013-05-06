@@ -16,7 +16,7 @@ use std::arc;
 fn main() {
     let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     let arc_v = arc::ARC(v);
-    
+
     do task::spawn() {
         let v = *arc::get(&arc_v);
         assert!(v[3] == 4);

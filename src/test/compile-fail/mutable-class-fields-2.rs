@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:assigning to immutable field
 struct cat {
   priv mut meows : uint,
 
@@ -17,7 +16,7 @@ struct cat {
 
 pub impl cat {
   fn eat(&self) {
-    self.how_hungry -= 5;
+    self.how_hungry -= 5; //~ ERROR cannot assign
   }
 
 }

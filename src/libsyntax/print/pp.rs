@@ -491,9 +491,9 @@ pub impl Printer {
           }
           END => {
             debug!("print END -> pop END");
-            let print_stack = &*self.print_stack;
+            let print_stack = &mut *self.print_stack;
             assert!((print_stack.len() != 0u));
-            self.print_stack.pop();
+            print_stack.pop();
           }
           BREAK(b) => {
             let top = self.get_top();
@@ -587,14 +587,3 @@ pub fn hardbreak_tok_offset(off: int) -> token {
 }
 
 pub fn hardbreak_tok() -> token { return hardbreak_tok_offset(0); }
-
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

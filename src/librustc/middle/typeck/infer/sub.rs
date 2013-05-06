@@ -269,4 +269,3 @@ impl Combine for Sub {
         super_trait_refs(self, a, b)
     }
 }
-

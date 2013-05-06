@@ -81,4 +81,3 @@ extern {
     #[rust_stack]
     fn rust_get_exchange_count_ptr() -> *mut int;
 }
-

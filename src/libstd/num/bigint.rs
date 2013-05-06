@@ -21,7 +21,6 @@ A BigInt is a combination of BigUint and Sign.
 
 use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use core::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix};
-use core::*;
 
 /**
 A BigDigit is a BigUint's composing element.
@@ -80,6 +79,7 @@ A big unsigned integer type.
 A BigUint-typed value BigUint { data: @[a, b, c] } represents a number
 (a + b * BigDigit::base + c * BigDigit::base^2).
 */
+#[deriving(Clone)]
 pub struct BigUint {
     priv data: ~[BigDigit]
 }
@@ -140,7 +140,7 @@ impl ToStr for BigUint {
     fn to_str(&self) -> ~str { self.to_str_radix(10) }
 }
 
-impl from_str::FromStr for BigUint {
+impl FromStr for BigUint {
     #[inline(always)]
     fn from_str(s: &str) -> Option<BigUint> {
         FromStrRadix::from_str_radix(s, 10)
@@ -293,10 +293,10 @@ impl Mul<BigUint, BigUint> for BigUint {
     }
 }
 
-impl Quot<BigUint, BigUint> for BigUint {
+impl Div<BigUint, BigUint> for BigUint {
     #[inline(always)]
-    fn quot(&self, other: &BigUint) -> BigUint {
-        let (q, _) = self.quot_rem(other);
+    fn div(&self, other: &BigUint) -> BigUint {
+        let (q, _) = self.div_rem(other);
         return q;
     }
 }
@@ -304,7 +304,7 @@ impl Quot<BigUint, BigUint> for BigUint {
 impl Rem<BigUint, BigUint> for BigUint {
     #[inline(always)]
     fn rem(&self, other: &BigUint) -> BigUint {
-        let (_, r) = self.quot_rem(other);
+        let (_, r) = self.div_rem(other);
         return r;
     }
 }
@@ -316,19 +316,24 @@ impl Neg<BigUint> for BigUint {
 
 impl Integer for BigUint {
     #[inline(always)]
-    fn div(&self, other: &BigUint) -> BigUint {
-        let (d, _) = self.div_mod(other);
+    fn div_rem(&self, other: &BigUint) -> (BigUint, BigUint) {
+        self.div_mod_floor(other)
+    }
+
+    #[inline(always)]
+    fn div_floor(&self, other: &BigUint) -> BigUint {
+        let (d, _) = self.div_mod_floor(other);
         return d;
     }
 
     #[inline(always)]
-    fn modulo(&self, other: &BigUint) -> BigUint {
-        let (_, m) = self.div_mod(other);
+    fn mod_floor(&self, other: &BigUint) -> BigUint {
+        let (_, m) = self.div_mod_floor(other);
         return m;
     }
 
     #[inline(always)]
-    fn div_mod(&self, other: &BigUint) -> (BigUint, BigUint) {
+    fn div_mod_floor(&self, other: &BigUint) -> (BigUint, BigUint) {
         if other.is_zero() { fail!() }
         if self.is_zero() { return (Zero::zero(), Zero::zero()); }
         if *other == One::one() { return (copy *self, Zero::zero()); }
@@ -346,11 +351,11 @@ impl Integer for BigUint {
             shift += 1;
         }
         assert!(shift < BigDigit::bits);
-        let (d, m) = div_mod_inner(self << shift, other << shift);
+        let (d, m) = div_mod_floor_inner(self << shift, other << shift);
         return (d, m >> shift);
 
         #[inline(always)]
-        fn div_mod_inner(a: BigUint, b: BigUint) -> (BigUint, BigUint) {
+        fn div_mod_floor_inner(a: BigUint, b: BigUint) -> (BigUint, BigUint) {
             let mut m = a;
             let mut d = Zero::zero::<BigUint>();
             let mut n = 1;
@@ -407,11 +412,6 @@ impl Integer for BigUint {
                     One::one::<BigUint>().shl_unit(shift),
                     b.shl_unit(shift));
         }
-    }
-
-    #[inline(always)]
-    fn quot_rem(&self, other: &BigUint) -> (BigUint, BigUint) {
-        self.div_mod(other)
     }
 
     /**
@@ -485,7 +485,7 @@ impl ToStrRadix for BigUint {
             let mut result = ~[];
             let mut m      = n;
             while m > divider {
-                let (d, m0) = m.div_mod(&divider);
+                let (d, m0) = m.div_mod_floor(&divider);
                 result += [m0.to_uint() as BigDigit];
                 m = d;
             }
@@ -680,7 +680,7 @@ priv fn get_radix_base(radix: uint) -> (uint, uint) {
 }
 
 /// A Sign is a BigInt's composing element.
-#[deriving(Eq)]
+#[deriving(Eq, Clone)]
 pub enum Sign { Minus, Zero, Plus }
 
 impl Ord for Sign {
@@ -726,6 +726,7 @@ impl Neg<Sign> for Sign {
 }
 
 /// A big signed integer type.
+#[deriving(Clone)]
 pub struct BigInt {
     priv sign: Sign,
     priv data: BigUint
@@ -783,7 +784,7 @@ impl ToStr for BigInt {
     fn to_str(&self) -> ~str { self.to_str_radix(10) }
 }
 
-impl from_str::FromStr for BigInt {
+impl FromStr for BigInt {
     #[inline(always)]
     fn from_str(s: &str) -> Option<BigInt> {
         FromStrRadix::from_str_radix(s, 10)
@@ -825,8 +826,8 @@ impl Signed for BigInt {
     #[inline(always)]
     fn abs(&self) -> BigInt {
         match self.sign {
-            Plus | Zero => copy *self,
-            Minus => BigInt::from_biguint(Plus, copy self.data)
+            Plus | Zero => self.clone(),
+            Minus => BigInt::from_biguint(Plus, self.data.clone())
         }
     }
 
@@ -850,8 +851,8 @@ impl Add<BigInt, BigInt> for BigInt {
     #[inline(always)]
     fn add(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
-            (Zero, _)      => copy *other,
-            (_,    Zero)   => copy *self,
+            (Zero, _)      => other.clone(),
+            (_,    Zero)   => self.clone(),
             (Plus, Plus)   => BigInt::from_biguint(Plus,
                                                    self.data + other.data),
             (Plus, Minus)  => self - (-*other),
@@ -866,7 +867,7 @@ impl Sub<BigInt, BigInt> for BigInt {
     fn sub(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
             (Zero, _)    => -other,
-            (_,    Zero) => copy *self,
+            (_,    Zero) => self.clone(),
             (Plus, Plus) => match self.data.cmp(&other.data) {
                 Less    => BigInt::from_biguint(Minus, other.data - self.data),
                 Greater => BigInt::from_biguint(Plus, self.data - other.data),
@@ -894,10 +895,10 @@ impl Mul<BigInt, BigInt> for BigInt {
     }
 }
 
-impl Quot<BigInt, BigInt> for BigInt {
+impl Div<BigInt, BigInt> for BigInt {
     #[inline(always)]
-    fn quot(&self, other: &BigInt) -> BigInt {
-        let (q, _) = self.quot_rem(other);
+    fn div(&self, other: &BigInt) -> BigInt {
+        let (q, _) = self.div_rem(other);
         return q;
     }
 }
@@ -905,7 +906,7 @@ impl Quot<BigInt, BigInt> for BigInt {
 impl Rem<BigInt, BigInt> for BigInt {
     #[inline(always)]
     fn rem(&self, other: &BigInt) -> BigInt {
-        let (_, r) = self.quot_rem(other);
+        let (_, r) = self.div_rem(other);
         return r;
     }
 }
@@ -913,27 +914,42 @@ impl Rem<BigInt, BigInt> for BigInt {
 impl Neg<BigInt> for BigInt {
     #[inline(always)]
     fn neg(&self) -> BigInt {
-        BigInt::from_biguint(self.sign.neg(), copy self.data)
+        BigInt::from_biguint(self.sign.neg(), self.data.clone())
     }
 }
 
 impl Integer for BigInt {
     #[inline(always)]
-    fn div(&self, other: &BigInt) -> BigInt {
-        let (d, _) = self.div_mod(other);
+    fn div_rem(&self, other: &BigInt) -> (BigInt, BigInt) {
+        // r.sign == self.sign
+        let (d_ui, r_ui) = self.data.div_mod_floor(&other.data);
+        let d = BigInt::from_biguint(Plus, d_ui);
+        let r = BigInt::from_biguint(Plus, r_ui);
+        match (self.sign, other.sign) {
+            (_,    Zero)   => fail!(),
+            (Plus, Plus)  | (Zero, Plus)  => ( d,  r),
+            (Plus, Minus) | (Zero, Minus) => (-d,  r),
+            (Minus, Plus)                 => (-d, -r),
+            (Minus, Minus)                => ( d, -r)
+        }
+    }
+
+    #[inline(always)]
+    fn div_floor(&self, other: &BigInt) -> BigInt {
+        let (d, _) = self.div_mod_floor(other);
         return d;
     }
 
     #[inline(always)]
-    fn modulo(&self, other: &BigInt) -> BigInt {
-        let (_, m) = self.div_mod(other);
+    fn mod_floor(&self, other: &BigInt) -> BigInt {
+        let (_, m) = self.div_mod_floor(other);
         return m;
     }
 
     #[inline(always)]
-    fn div_mod(&self, other: &BigInt) -> (BigInt, BigInt) {
+    fn div_mod_floor(&self, other: &BigInt) -> (BigInt, BigInt) {
         // m.sign == other.sign
-        let (d_ui, m_ui) = self.data.quot_rem(&other.data);
+        let (d_ui, m_ui) = self.data.div_rem(&other.data);
         let d = BigInt::from_biguint(Plus, d_ui),
             m = BigInt::from_biguint(Plus, m_ui);
         match (self.sign, other.sign) {
@@ -950,21 +966,6 @@ impl Integer for BigInt {
                 (-d - One::one(), other - m)
             },
             (Minus, Minus) => (d, -m)
-        }
-    }
-
-    #[inline(always)]
-    fn quot_rem(&self, other: &BigInt) -> (BigInt, BigInt) {
-        // r.sign == self.sign
-        let (q_ui, r_ui) = self.data.div_mod(&other.data);
-        let q = BigInt::from_biguint(Plus, q_ui);
-        let r = BigInt::from_biguint(Plus, r_ui);
-        match (self.sign, other.sign) {
-            (_,    Zero)   => fail!(),
-            (Plus, Plus)  | (Zero, Plus)  => ( q,  r),
-            (Plus, Minus) | (Zero, Minus) => (-q,  r),
-            (Minus, Plus)                 => (-q, -r),
-            (Minus, Minus)                => ( q, -r)
         }
     }
 
@@ -1100,11 +1101,9 @@ pub impl BigInt {
 
 #[cfg(test)]
 mod biguint_tests {
-
-    use core::*;
+    use super::*;
     use core::num::{IntConvertible, Zero, One, FromStrRadix};
     use core::cmp::{Less, Equal, Greater};
-    use super::{BigUint, BigDigit};
 
     #[test]
     fn test_from_slice() {
@@ -1347,7 +1346,7 @@ mod biguint_tests {
         (&[ 0,  0,  1],     &[ 0,  0,  0,  1], &[0, 0,  0,  0,  0,  1])
     ];
 
-    static quot_rem_quadruples: &'static [(&'static [BigDigit],
+    static div_rem_quadruples: &'static [(&'static [BigDigit],
                                            &'static [BigDigit],
                                            &'static [BigDigit],
                                            &'static [BigDigit])]
@@ -1371,7 +1370,7 @@ mod biguint_tests {
             assert!(b * a == c);
         }
 
-        for quot_rem_quadruples.each |elm| {
+        for div_rem_quadruples.each |elm| {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigUint::from_slice(aVec);
             let b = BigUint::from_slice(bVec);
@@ -1384,7 +1383,7 @@ mod biguint_tests {
     }
 
     #[test]
-    fn test_quot_rem() {
+    fn test_div_rem() {
         for mul_triples.each |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigUint::from_slice(aVec);
@@ -1392,21 +1391,21 @@ mod biguint_tests {
             let c = BigUint::from_slice(cVec);
 
             if !a.is_zero() {
-                assert!(c.quot_rem(&a) == (copy b, Zero::zero()));
+                assert!(c.div_rem(&a) == (b.clone(), Zero::zero()));
             }
             if !b.is_zero() {
-                assert!(c.quot_rem(&b) == (copy a, Zero::zero()));
+                assert!(c.div_rem(&b) == (a.clone(), Zero::zero()));
             }
         }
 
-        for quot_rem_quadruples.each |elm| {
+        for div_rem_quadruples.each |elm| {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigUint::from_slice(aVec);
             let b = BigUint::from_slice(bVec);
             let c = BigUint::from_slice(cVec);
             let d = BigUint::from_slice(dVec);
 
-            if !b.is_zero() { assert!(a.quot_rem(&b) == (c, d)); }
+            if !b.is_zero() { assert!(a.div_rem(&b) == (c, d)); }
         }
     }
 
@@ -1557,8 +1556,7 @@ mod biguint_tests {
 
 #[cfg(test)]
 mod bigint_tests {
-    use super::{BigInt, BigUint, BigDigit, Sign, Minus, Zero, Plus};
-    use core::*;
+    use super::*;
     use core::cmp::{Less, Equal, Greater};
     use core::num::{IntConvertible, Zero, One, FromStrRadix};
 
@@ -1750,10 +1748,10 @@ mod bigint_tests {
         (&[ 0,  0,  1],     &[ 0,  0,  0,  1], &[0, 0,  0,  0,  0,  1])
     ];
 
-    static quot_rem_quadruples: &'static [(&'static [BigDigit],
-                                           &'static [BigDigit],
-                                           &'static [BigDigit],
-                                           &'static [BigDigit])]
+    static div_rem_quadruples: &'static [(&'static [BigDigit],
+                                          &'static [BigDigit],
+                                          &'static [BigDigit],
+                                          &'static [BigDigit])]
         = &[
             (&[ 1],        &[ 2], &[],               &[1]),
             (&[ 1,  1],    &[ 2], &[-1/2+1],         &[1]),
@@ -1777,7 +1775,7 @@ mod bigint_tests {
             assert!((-b) * a == -c);
         }
 
-        for quot_rem_quadruples.each |elm| {
+        for div_rem_quadruples.each |elm| {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1790,9 +1788,9 @@ mod bigint_tests {
     }
 
     #[test]
-    fn test_div_mod() {
+    fn test_div_mod_floor() {
         fn check_sub(a: &BigInt, b: &BigInt, ans_d: &BigInt, ans_m: &BigInt) {
-            let (d, m) = a.div_mod(b);
+            let (d, m) = a.div_mod_floor(b);
             if !m.is_zero() {
                 assert!(m.sign == b.sign);
             }
@@ -1826,7 +1824,7 @@ mod bigint_tests {
             if !b.is_zero() { check(&c, &b, &a, &Zero::zero()); }
         }
 
-        for quot_rem_quadruples.each |elm| {
+        for div_rem_quadruples.each |elm| {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1841,9 +1839,9 @@ mod bigint_tests {
 
 
     #[test]
-    fn test_quot_rem() {
+    fn test_div_rem() {
         fn check_sub(a: &BigInt, b: &BigInt, ans_q: &BigInt, ans_r: &BigInt) {
-            let (q, r) = a.quot_rem(b);
+            let (q, r) = a.div_rem(b);
             if !r.is_zero() {
                 assert!(r.sign == a.sign);
             }
@@ -1869,7 +1867,7 @@ mod bigint_tests {
             if !b.is_zero() { check(&c, &b, &a, &Zero::zero()); }
         }
 
-        for quot_rem_quadruples.each |elm| {
+        for div_rem_quadruples.each |elm| {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1959,4 +1957,3 @@ mod bigint_tests {
         assert!(-Zero::zero::<BigInt>() == Zero::zero::<BigInt>());
     }
 }
-

@@ -45,7 +45,7 @@ pub static time_passes: uint = 1 << 1;
 pub static count_llvm_insns: uint = 1 << 2;
 pub static time_llvm_passes: uint = 1 << 3;
 pub static trans_stats: uint = 1 << 4;
-pub static no_asm_comments: uint = 1 << 5;
+pub static asm_comments: uint = 1 << 5;
 pub static no_verify: uint = 1 << 6;
 pub static trace: uint = 1 << 7;
 pub static coherence: uint = 1 << 8;
@@ -63,6 +63,7 @@ pub static jit: uint = 1 << 19;
 pub static debug_info: uint = 1 << 20;
 pub static extra_debug_info: uint = 1 << 21;
 pub static static: uint = 1 << 22;
+pub static print_link_args: uint = 1 << 23;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -72,7 +73,7 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"time-llvm-passes", ~"measure time of each LLVM pass",
       time_llvm_passes),
      (~"trans-stats", ~"gather trans statistics", trans_stats),
-     (~"no-asm-comments", ~"omit comments when using -S", no_asm_comments),
+     (~"asm-comments", ~"generate comments into the assembly (may change behavior)", asm_comments),
      (~"no-verify", ~"skip LLVM verification", no_verify),
      (~"trace", ~"emit trace logs", trace),
      (~"coherence", ~"perform coherence checking", coherence),
@@ -90,6 +91,7 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"no-opt", ~"do not optimize, even if -O is passed", no_opt),
      (~"no-monomorphic-collapse", ~"do not collapse template instantiations",
       no_monomorphic_collapse),
+     (~"print-link-args", ~"Print the arguments passed to the linker", print_link_args),
      (~"gc", ~"Garbage collect shared data (experimental)", gc),
      (~"jit", ~"Execute using JIT (experimental)", jit),
      (~"extra-debug-info", ~"Extra debugging info (experimental)",
@@ -122,7 +124,9 @@ pub struct options {
     jit: bool,
     output_type: back::link::output_type,
     addl_lib_search_paths: ~[Path],
-    maybe_sysroot: Option<Path>,
+    linker: Option<~str>,
+    linker_args: ~[~str],
+    maybe_sysroot: Option<@Path>,
     target_triple: ~str,
     target_feature: ~str,
     // User-specified cfg meta items. The compiler itself will add additional
@@ -172,17 +176,20 @@ pub struct Session_ {
 pub type Session = @Session_;
 
 pub impl Session_ {
-    fn span_fatal(@self, sp: span, msg: ~str) -> ! {
+    fn span_fatal(@self, sp: span, msg: &str) -> ! {
         self.span_diagnostic.span_fatal(sp, msg)
     }
-    fn fatal(@self, msg: ~str) -> ! {
+    fn fatal(@self, msg: &str) -> ! {
         self.span_diagnostic.handler().fatal(msg)
     }
-    fn span_err(@self, sp: span, msg: ~str) {
+    fn span_err(@self, sp: span, msg: &str) {
         self.span_diagnostic.span_err(sp, msg)
     }
-    fn err(@self, msg: ~str) {
+    fn err(@self, msg: &str) {
         self.span_diagnostic.handler().err(msg)
+    }
+    fn err_count(@self) -> uint {
+        self.span_diagnostic.handler().err_count()
     }
     fn has_errors(@self) -> bool {
         self.span_diagnostic.handler().has_errors()
@@ -190,31 +197,31 @@ pub impl Session_ {
     fn abort_if_errors(@self) {
         self.span_diagnostic.handler().abort_if_errors()
     }
-    fn span_warn(@self, sp: span, msg: ~str) {
+    fn span_warn(@self, sp: span, msg: &str) {
         self.span_diagnostic.span_warn(sp, msg)
     }
-    fn warn(@self, msg: ~str) {
+    fn warn(@self, msg: &str) {
         self.span_diagnostic.handler().warn(msg)
     }
-    fn span_note(@self, sp: span, msg: ~str) {
+    fn span_note(@self, sp: span, msg: &str) {
         self.span_diagnostic.span_note(sp, msg)
     }
-    fn note(@self, msg: ~str) {
+    fn note(@self, msg: &str) {
         self.span_diagnostic.handler().note(msg)
     }
-    fn span_bug(@self, sp: span, msg: ~str) -> ! {
+    fn span_bug(@self, sp: span, msg: &str) -> ! {
         self.span_diagnostic.span_bug(sp, msg)
     }
-    fn bug(@self, msg: ~str) -> ! {
+    fn bug(@self, msg: &str) -> ! {
         self.span_diagnostic.handler().bug(msg)
     }
-    fn span_unimpl(@self, sp: span, msg: ~str) -> ! {
+    fn span_unimpl(@self, sp: span, msg: &str) -> ! {
         self.span_diagnostic.span_unimpl(sp, msg)
     }
-    fn unimpl(@self, msg: ~str) -> ! {
+    fn unimpl(@self, msg: &str) -> ! {
         self.span_diagnostic.handler().unimpl(msg)
     }
-    fn span_lint_level(@self, level: lint::level, sp: span, msg: ~str) {
+    fn span_lint_level(@self, level: lint::level, sp: span, msg: &str) {
         match level {
           lint::allow => { },
           lint::warn => self.span_warn(sp, msg),
@@ -227,7 +234,7 @@ pub impl Session_ {
                  expr_id: ast::node_id,
                  item_id: ast::node_id,
                  span: span,
-                 msg: ~str) {
+                 msg: &str) {
         let level = lint::get_lint_settings_level(
             self.lint_settings, lint_mode, expr_id, item_id);
         self.span_lint_level(level, span, msg);
@@ -259,7 +266,7 @@ pub impl Session_ {
     }
     fn trans_stats(@self) -> bool { self.debugging_opt(trans_stats) }
     fn meta_stats(@self) -> bool { self.debugging_opt(meta_stats) }
-    fn no_asm_comments(@self) -> bool { self.debugging_opt(no_asm_comments) }
+    fn asm_comments(@self) -> bool { self.debugging_opt(asm_comments) }
     fn no_verify(@self) -> bool { self.debugging_opt(no_verify) }
     fn trace(@self) -> bool { self.debugging_opt(trace) }
     fn coherence(@self) -> bool { self.debugging_opt(coherence) }
@@ -299,6 +306,8 @@ pub fn basic_options() -> @options {
         jit: false,
         output_type: link::output_type_exe,
         addl_lib_search_paths: ~[],
+        linker: None,
+        linker_args: ~[],
         maybe_sysroot: None,
         target_triple: host_triple(),
         target_feature: ~"",
@@ -426,10 +435,3 @@ mod test {
         assert!(building_library(lib_crate, crate, true));
     }
 }
-
-// Local Variables:
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

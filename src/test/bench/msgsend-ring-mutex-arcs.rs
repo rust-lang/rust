@@ -72,7 +72,7 @@ fn main() {
         ~[~"", ~"10", ~"100"]
     } else {
         copy args
-    }; 
+    };
 
     let num_tasks = uint::from_str(args[1]).get();
     let msg_per_task = uint::from_str(args[2]).get();

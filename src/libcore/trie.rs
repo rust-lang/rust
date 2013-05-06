@@ -56,16 +56,6 @@ impl<T> Map<uint, T> for TrieMap<T> {
 
     /// Visit all key-value pairs in order
     #[inline(always)]
-    #[cfg(stage0)]
-    fn each(&self, f: &fn(&uint, &'self T) -> bool) {
-        self.root.each(f);
-    }
-
-    /// Visit all key-value pairs in order
-    #[inline(always)]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) {
         self.root.each(f);
     }
@@ -78,16 +68,6 @@ impl<T> Map<uint, T> for TrieMap<T> {
 
     /// Visit all values in order
     #[inline(always)]
-    #[cfg(stage0)]
-    fn each_value(&self, f: &fn(&T) -> bool) {
-        self.each(|_, v| f(v))
-    }
-
-    /// Visit all values in order
-    #[inline(always)]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn each_value<'a>(&'a self, f: &fn(&'a T) -> bool) {
         self.each(|_, v| f(v))
     }
@@ -99,31 +79,6 @@ impl<T> Map<uint, T> for TrieMap<T> {
     }
 
     /// Return a reference to the value corresponding to the key
-    #[cfg(stage0)]
-    #[inline(hint)]
-    fn find(&self, key: &uint) -> Option<&'self T> {
-        let mut node: &'self TrieNode<T> = &self.root;
-        let mut idx = 0;
-        loop {
-            match node.children[chunk(*key, idx)] {
-              Internal(ref x) => node = &**x,
-              External(stored, ref value) => {
-                if stored == *key {
-                    return Some(value)
-                } else {
-                    return None
-                }
-              }
-              Nothing => return None
-            }
-            idx += 1;
-        }
-    }
-
-    /// Return a reference to the value corresponding to the key
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     #[inline(hint)]
     fn find<'a>(&'a self, key: &uint) -> Option<&'a T> {
         let mut node: &'a TrieNode<T> = &self.root;
@@ -145,16 +100,6 @@ impl<T> Map<uint, T> for TrieMap<T> {
     }
 
     /// Return a mutable reference to the value corresponding to the key
-    #[cfg(stage0)]
-    #[inline(always)]
-    fn find_mut(&mut self, key: &uint) -> Option<&'self mut T> {
-        find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
-    }
-
-    /// Return a mutable reference to the value corresponding to the key
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     #[inline(always)]
     fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut T> {
         find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
@@ -193,16 +138,6 @@ pub impl<T> TrieMap<T> {
 
     /// Visit all key-value pairs in reverse order
     #[inline(always)]
-    #[cfg(stage0)]
-    fn each_reverse(&self, f: &fn(&uint, &'self T) -> bool) {
-        self.root.each_reverse(f);
-    }
-
-    /// Visit all key-value pairs in reverse order
-    #[inline(always)]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) {
         self.root.each_reverse(f);
     }
@@ -298,21 +233,6 @@ impl<T> TrieNode<T> {
 }
 
 impl<T> TrieNode<T> {
-    #[cfg(stage0)]
-    fn each(&self, f: &fn(&uint, &'self T) -> bool) -> bool {
-        for uint::range(0, self.children.len()) |idx| {
-            match self.children[idx] {
-                Internal(ref x) => if !x.each(f) { return false },
-                External(k, ref v) => if !f(&k, v) { return false },
-                Nothing => ()
-            }
-        }
-        true
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
         for uint::range(0, self.children.len()) |idx| {
             match self.children[idx] {
@@ -324,21 +244,6 @@ impl<T> TrieNode<T> {
         true
     }
 
-    #[cfg(stage0)]
-    fn each_reverse(&self, f: &fn(&uint, &'self T) -> bool) -> bool {
-        for uint::range_rev(self.children.len(), 0) |idx| {
-            match self.children[idx - 1] {
-                Internal(ref x) => if !x.each_reverse(f) { return false },
-                External(k, ref v) => if !f(&k, v) { return false },
-                Nothing => ()
-            }
-        }
-        true
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
         for uint::range_rev(self.children.len(), 0) |idx| {
             match self.children[idx - 1] {

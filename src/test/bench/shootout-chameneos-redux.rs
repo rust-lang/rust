@@ -218,4 +218,3 @@ fn main() {
     rendezvous(nn,
         ~[Blue, Red, Yellow, Red, Yellow, Blue, Red, Yellow, Red, Blue]);
 }
-

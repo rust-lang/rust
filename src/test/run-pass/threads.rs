@@ -19,4 +19,3 @@ pub fn main() {
 }
 
 fn child(&&x: int) { debug!(x); }
-

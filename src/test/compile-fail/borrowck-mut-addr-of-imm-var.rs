@@ -10,7 +10,7 @@
 
 fn main() {
     let x: int = 3;
-    let y: &mut int = &mut x; //~ ERROR illegal borrow
+    let y: &mut int = &mut x; //~ ERROR cannot borrow
     *y = 5;
     debug!(*y);
 }

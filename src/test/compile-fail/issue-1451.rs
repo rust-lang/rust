@@ -30,4 +30,3 @@ fn main() {
     fooT(T {f: x});
     fooT(T {f: bar});
 }
-

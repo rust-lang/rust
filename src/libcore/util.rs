@@ -26,19 +26,20 @@ pub fn ignore<T>(_x: T) { }
 
 /// Sets `*ptr` to `new_value`, invokes `op()`, and then restores the
 /// original value of `*ptr`.
+///
+/// NB: This function accepts `@mut T` and not `&mut T` to avoid
+/// an obvious borrowck hazard. Typically passing in `&mut T` will
+/// cause borrow check errors because it freezes whatever location
+/// that `&mut T` is stored in (either statically or dynamically).
 #[inline(always)]
-pub fn with<T:Copy,R>(
-    ptr: &mut T,
-    new_value: T,
+pub fn with<T,R>(
+    ptr: @mut T,
+    mut value: T,
     op: &fn() -> R) -> R
 {
-    // NDM: if swap operator were defined somewhat differently,
-    // we wouldn't need to copy...
-
-    let old_value = *ptr;
-    *ptr = new_value;
+    value <-> *ptr;
     let result = op();
-    *ptr = old_value;
+    *ptr = value;
     return result;
 }
 

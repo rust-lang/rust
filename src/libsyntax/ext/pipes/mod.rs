@@ -85,4 +85,3 @@ pub fn expand_proto(cx: @ext_ctxt, _sp: span, id: ast::ident,
     // compile
     base::MRItem(proto.compile(cx))
 }
-

@@ -2,6 +2,6 @@
   <mime-type type="text/x-rust">
     <comment>Rust Source</comment>
     <glob pattern="*.rs"/>
-    <glob pattern="*.rc"/>    
+    <glob pattern="*.rc"/>
   </mime-type>
 </mime-info>

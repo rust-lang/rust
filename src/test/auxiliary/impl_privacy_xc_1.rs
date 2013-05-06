@@ -7,4 +7,3 @@ pub struct Fish {
 pub impl Fish {
     fn swim(&self) {}
 }
-

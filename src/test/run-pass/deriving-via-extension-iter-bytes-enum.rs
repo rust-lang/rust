@@ -25,4 +25,3 @@ enum A {
 }
 
 pub fn main(){}
-

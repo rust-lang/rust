@@ -85,4 +85,3 @@ fn check_pp<T>(cx: fake_ext_ctxt,
         assert!(s == expect);
     }
 }
-

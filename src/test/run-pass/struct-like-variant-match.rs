@@ -38,4 +38,3 @@ pub fn main() {
     let y = Baz { x: 1.0, y: 2.0 };
     f(&y);
 }
-

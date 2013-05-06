@@ -13,5 +13,3 @@
 fn main() {
     globnar::brotz!();
 }
-
-

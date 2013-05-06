@@ -366,7 +366,7 @@
    ...
 }
 
-{  
+{
    llvm-user-new-leak
    Memcheck:Leak
    fun:_Znwj
@@ -401,7 +401,7 @@
    Helgrind:Race
    fun:_ZN15lock_and_signal27lock_held_by_current_threadEv
    ...
-}  
+}
 
 {
    lock_and_signal-probably-threadsafe-access-outside-of-lock2

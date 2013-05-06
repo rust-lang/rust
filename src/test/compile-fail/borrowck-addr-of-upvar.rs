@@ -9,12 +9,12 @@
 // except according to those terms.
 
 fn foo(x: @int) -> @fn() -> &'static int {
-    let result: @fn() -> &'static int = || &*x;  //~ ERROR illegal borrow
+    let result: @fn() -> &'static int = || &*x;  //~ ERROR cannot root
     result
 }
 
 fn bar(x: @int) -> @fn() -> &int {
-    let result: @fn() -> &int = || &*x; //~ ERROR illegal borrow
+    let result: @fn() -> &int = || &*x; //~ ERROR cannot root
     result
 }
 

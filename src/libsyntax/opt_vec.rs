@@ -61,15 +61,6 @@ impl<T> OptVec<T> {
         }
     }
 
-    #[cfg(stage0)]
-    fn get(&self, i: uint) -> &'self T {
-        match *self {
-            Empty => fail!(fmt!("Invalid index %u", i)),
-            Vec(ref v) => &v[i]
-        }
-    }
-
-    #[cfg(not(stage0))]
     fn get<'a>(&'a self, i: uint) -> &'a T {
         match *self {
             Empty => fail!(fmt!("Invalid index %u", i)),

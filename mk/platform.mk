@@ -11,7 +11,7 @@
 
 # Create variables HOST_<triple> containing the host part
 # of each target triple.  For example, the triple i686-darwin-macos
-# would create a variable HOST_i686-darwin-macos with the value 
+# would create a variable HOST_i686-darwin-macos with the value
 # i386.
 define DEF_HOST_VAR
   HOST_$(1) = $(subst i686,i386,$(word 1,$(subst -, ,$(1))))
@@ -276,8 +276,8 @@ CFG_GCCISH_CFLAGS_i686-pc-mingw32 := -Wall -Werror -g -march=i686
 CFG_GCCISH_CXXFLAGS_i686-pc-mingw32 := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_i686-pc-mingw32 := -shared -fPIC -g
 CFG_GCCISH_DEF_FLAG_i686-pc-mingw32 :=
-CFG_GCCISH_PRE_LIB_FLAGS_i686-pc-mingw32 := 
-CFG_GCCISH_POST_LIB_FLAGS_i686-pc-mingw32 := 
+CFG_GCCISH_PRE_LIB_FLAGS_i686-pc-mingw32 :=
+CFG_GCCISH_POST_LIB_FLAGS_i686-pc-mingw32 :=
 CFG_DEF_SUFFIX_i686-pc-mingw32 := .mingw32.def
 CFG_INSTALL_NAME_i686-pc-mingw32 =
 CFG_LIBUV_LINK_FLAGS_i686-pc-mingw32 := -lWs2_32 -lpsapi -liphlpapi

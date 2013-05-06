@@ -34,7 +34,6 @@ use lib;
 use metadata::common::LinkMeta;
 use metadata::{csearch, cstore, encoder};
 use middle::astencode;
-use middle::borrowck::RootInfo;
 use middle::resolve;
 use middle::trans::_match;
 use middle::trans::adt;
@@ -62,7 +61,6 @@ use middle::trans::type_of::*;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
-use util::ppaux;
 
 use core::hash;
 use core::hashmap::{HashMap, HashSet};
@@ -391,14 +389,16 @@ pub fn get_tydesc_simple(ccx: @CrateContext, t: ty::t) -> ValueRef {
 
 pub fn get_tydesc(ccx: @CrateContext, t: ty::t) -> @mut tydesc_info {
     match ccx.tydescs.find(&t) {
-      Some(&inf) => inf,
-      _ => {
-        ccx.stats.n_static_tydescs += 1u;
-        let inf = glue::declare_tydesc(ccx, t);
-        ccx.tydescs.insert(t, inf);
-        inf
-      }
+        Some(&inf) => {
+            return inf;
+        }
+        _ => { }
     }
+
+    ccx.stats.n_static_tydescs += 1u;
+    let inf = glue::declare_tydesc(ccx, t);
+    ccx.tydescs.insert(t, inf);
+    return inf;
 }
 
 pub fn set_optimize_for_size(f: ValueRef) {
@@ -777,10 +777,10 @@ pub fn cast_shift_rhs(op: ast::binop,
     }
 }
 
-pub fn fail_if_zero(cx: block, span: span, quotrem: ast::binop,
+pub fn fail_if_zero(cx: block, span: span, divrem: ast::binop,
                     rhs: ValueRef, rhs_t: ty::t) -> block {
-    let text = if quotrem == ast::quot {
-        @~"attempted quotient with a divisor of zero"
+    let text = if divrem == ast::div {
+        @~"attempted to divide by zero"
     } else {
         @~"attempted remainder with a divisor of zero"
     };
@@ -885,23 +885,22 @@ pub fn need_invoke(bcx: block) -> bool {
     // Walk the scopes to look for cleanups
     let mut cur = bcx;
     loop {
-        let current = &mut *cur;
-        let kind = &mut *current.kind;
-        match *kind {
-          block_scope(ref mut inf) => {
-            for vec::each((*inf).cleanups) |cleanup| {
-                match *cleanup {
-                  clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) => {
-                    if cleanup_type == normal_exit_and_unwind {
-                        return true;
+        match cur.kind {
+            block_scope(inf) => {
+                let inf = &mut *inf; // FIXME(#5074) workaround old borrowck
+                for vec::each(inf.cleanups) |cleanup| {
+                    match *cleanup {
+                        clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) => {
+                            if cleanup_type == normal_exit_and_unwind {
+                                return true;
+                            }
+                        }
                     }
-                  }
                 }
             }
-          }
-          _ => ()
+            _ => ()
         }
-        cur = match current.parent {
+        cur = match cur.parent {
           Some(next) => next,
           None => return false
         }
@@ -923,11 +922,13 @@ pub fn in_lpad_scope_cx(bcx: block, f: &fn(si: &mut scope_info)) {
     let mut bcx = bcx;
     loop {
         {
-            // FIXME #4280: Borrow check bug workaround.
-            let kind: &mut block_kind = &mut *bcx.kind;
-            match *kind {
-                block_scope(ref mut inf) => {
-                    if inf.cleanups.len() > 0u || bcx.parent.is_none() {
+            match bcx.kind {
+                block_scope(inf) => {
+                    let len = { // FIXME(#5074) workaround old borrowck
+                        let inf = &mut *inf;
+                        inf.cleanups.len()
+                    };
+                    if len > 0u || bcx.parent.is_none() {
                         f(inf);
                         return;
                     }
@@ -989,57 +990,30 @@ pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
     return pad_bcx.llbb;
 }
 
-// Arranges for the value found in `*root_loc` to be dropped once the scope
-// associated with `scope_id` exits.  This is used to keep boxes live when
-// there are extant region pointers pointing at the interior.
-//
-// Note that `root_loc` is not the value itself but rather a pointer to the
-// value.  Generally it in alloca'd value.  The reason for this is that the
-// value is initialized in an inner block but may be freed in some outer
-// block, so an SSA value that is valid in the inner block may not be valid in
-// the outer block.  In fact, the inner block may not even execute.  Rather
-// than generate the full SSA form, we just use an alloca'd value.
-pub fn add_root_cleanup(bcx: block,
-                        root_info: RootInfo,
-                        root_loc: ValueRef,
-                        ty: ty::t) {
-
-    debug!("add_root_cleanup(bcx=%s, \
-                             scope=%d, \
-                             freezes=%?, \
-                             root_loc=%s, \
-                             ty=%s)",
-           bcx.to_str(),
-           root_info.scope,
-           root_info.freezes,
-           val_str(bcx.ccx().tn, root_loc),
-           ppaux::ty_to_str(bcx.ccx().tcx, ty));
-
-    let bcx_scope = find_bcx_for_scope(bcx, root_info.scope);
-    if root_info.freezes {
-        add_clean_frozen_root(bcx_scope, root_loc, ty);
-    } else {
-        add_clean_temp_mem(bcx_scope, root_loc, ty);
-    }
-
-    fn find_bcx_for_scope(bcx: block, scope_id: ast::node_id) -> block {
-        let mut bcx_sid = bcx;
-        loop {
-            bcx_sid = match bcx_sid.node_info {
-              Some(NodeInfo { id, _ }) if id == scope_id => {
+pub fn find_bcx_for_scope(bcx: block, scope_id: ast::node_id) -> block {
+    let mut bcx_sid = bcx;
+    loop {
+        bcx_sid = match bcx_sid.node_info {
+            Some(NodeInfo { id, _ }) if id == scope_id => {
                 return bcx_sid
               }
-              _ => {
-                match bcx_sid.parent {
-                  None => bcx.tcx().sess.bug(
-                      fmt!("no enclosing scope with id %d", scope_id)),
-                  Some(bcx_par) => bcx_par
+
+                // FIXME(#6268, #6248) hacky cleanup for nested method calls
+                Some(NodeInfo { callee_id: Some(id), _ }) if id == scope_id => {
+                    return bcx_sid
                 }
-              }
+
+                _ => {
+                    match bcx_sid.parent {
+                        None => bcx.tcx().sess.bug(
+                            fmt!("no enclosing scope with id %d", scope_id)),
+                        Some(bcx_par) => bcx_par
+                    }
+                }
             }
         }
     }
-}
+
 
 pub fn do_spill(bcx: block, v: ValueRef, t: ty::t) -> ValueRef {
     if ty::type_is_bot(t) {
@@ -1125,10 +1099,11 @@ pub fn init_local(bcx: block, local: @ast::local) -> block {
     }
 
     let llptr = match bcx.fcx.lllocals.find(&local.node.id) {
-      Some(&local_mem(v)) => v,
-      _ => { bcx.tcx().sess.span_bug(local.span,
-                        ~"init_local: Someone forgot to document why it's\
-                         safe to assume local.node.init must be local_mem!");
+        Some(&local_mem(v)) => v,
+        _ => {
+            bcx.tcx().sess.span_bug(local.span,
+                                    "init_local: Someone forgot to document why it's\
+                                     safe to assume local.node.init must be local_mem!");
         }
     };
 
@@ -1159,7 +1134,7 @@ pub fn trans_stmt(cx: block, s: &ast::stmt) -> block {
     let _icx = cx.insn_ctxt("trans_stmt");
     debug!("trans_stmt(%s)", stmt_to_str(s, cx.tcx().sess.intr()));
 
-    if !cx.sess().no_asm_comments() {
+    if cx.sess().asm_comments() {
         add_span_comment(cx, s.span, stmt_to_str(s, cx.ccx().sess.intr()));
     }
 
@@ -1219,7 +1194,7 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
 }
 
 pub fn simple_block_scope() -> block_kind {
-    block_scope(scope_info {
+    block_scope(@mut scope_info {
         loop_break: None,
         loop_label: None,
         cleanups: ~[],
@@ -1247,7 +1222,7 @@ pub fn loop_scope_block(bcx: block,
                         loop_label: Option<ident>,
                         n: ~str,
                         opt_node_info: Option<NodeInfo>) -> block {
-    return new_block(bcx.fcx, Some(bcx), block_scope(scope_info {
+    return new_block(bcx.fcx, Some(bcx), block_scope(@mut scope_info {
         loop_break: Some(loop_break),
         loop_label: loop_label,
         cleanups: ~[],
@@ -1283,7 +1258,7 @@ pub fn trans_block_cleanups(bcx: block, cleanups: ~[cleanup]) -> block {
 }
 
 pub fn trans_block_cleanups_(bcx: block,
-                             cleanups: ~[cleanup],
+                             cleanups: &[cleanup],
                              /* cleanup_cx: block, */
                              is_lpad: bool) -> block {
     let _icx = bcx.insn_ctxt("trans_block_cleanups");
@@ -1325,28 +1300,28 @@ pub fn cleanup_and_leave(bcx: block,
                 @fmt!("cleanup_and_leave(%s)", cur.to_str()));
         }
 
-        {
-            // FIXME #4280: Borrow check bug workaround.
-            let kind: &mut block_kind = &mut *cur.kind;
-            match *kind {
-              block_scope(ref mut inf) if !inf.cleanups.is_empty() => {
-                for vec::find((*inf).cleanup_paths,
-                              |cp| cp.target == leave).each |cp| {
-                    Br(bcx, cp.dest);
-                    return;
-                }
-                let sub_cx = sub_block(bcx, ~"cleanup");
-                Br(bcx, sub_cx.llbb);
-                inf.cleanup_paths.push(cleanup_path {
-                    target: leave,
-                    dest: sub_cx.llbb
-                });
+        match cur.kind {
+            block_scope(inf) if !inf.empty_cleanups() => {
+                let (sub_cx, inf_cleanups) = {
+                    let inf = &mut *inf; // FIXME(#5074) workaround stage0
+                    for vec::find((*inf).cleanup_paths,
+                                  |cp| cp.target == leave).each |cp| {
+                        Br(bcx, cp.dest);
+                        return;
+                    }
+                    let sub_cx = sub_block(bcx, ~"cleanup");
+                    Br(bcx, sub_cx.llbb);
+                    inf.cleanup_paths.push(cleanup_path {
+                        target: leave,
+                        dest: sub_cx.llbb
+                    });
+                    (sub_cx, copy inf.cleanups)
+                };
                 bcx = trans_block_cleanups_(sub_cx,
-                                            block_cleanups(cur),
+                                            inf_cleanups,
                                             is_lpad);
-              }
-              _ => ()
             }
+            _ => ()
         }
 
         match upto {
@@ -2071,6 +2046,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
     let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
 
     let repr = adt::represent_type(ccx, tup_ty);
+    adt::trans_start_init(bcx, repr, fcx.llretptr.get(), 0);
 
     for fields.eachi |i, field| {
         let lldestptr = adt::trans_field_ptr(bcx,
@@ -2078,7 +2054,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
                                              fcx.llretptr.get(),
                                              0,
                                              i);
-        let llarg = match *fcx.llargs.get(&field.node.id) {
+        let llarg = match fcx.llargs.get_copy(&field.node.id) {
             local_mem(x) => x,
             _ => {
                 ccx.tcx.sess.bug(~"trans_tuple_struct: llarg wasn't \
@@ -2093,56 +2069,8 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
     finish_fn(fcx, lltop);
 }
 
-pub fn trans_struct_dtor(ccx: @CrateContext,
-                         path: path,
-                         body: &ast::blk,
-                         dtor_id: ast::node_id,
-                         psubsts: Option<@param_substs>,
-                         hash_id: Option<mono_id>,
-                         parent_id: ast::def_id)
-                      -> ValueRef {
-  let tcx = ccx.tcx;
-  /* Look up the parent class's def_id */
-  let mut class_ty = ty::lookup_item_type(tcx, parent_id).ty;
-  /* Substitute in the class type if necessary */
-  for psubsts.each |ss| {
-    class_ty = ty::subst_tps(tcx, ss.tys, ss.self_ty, class_ty);
-  }
-
-  /* The dtor takes a (null) output pointer, and a self argument,
-     and returns () */
-  let lldty = type_of_dtor(ccx, class_ty);
-
-  // XXX: Bad copies.
-  let s = get_dtor_symbol(ccx, copy path, dtor_id, psubsts);
-
-  /* Register the dtor as a function. It has external linkage */
-  let lldecl = decl_internal_cdecl_fn(ccx.llmod, s, lldty);
-  lib::llvm::SetLinkage(lldecl, lib::llvm::ExternalLinkage);
-
-  /* If we're monomorphizing, register the monomorphized decl
-     for the dtor */
-  for hash_id.each |h_id| {
-    ccx.monomorphized.insert(*h_id, lldecl);
-  }
-  /* Translate the dtor body */
-  let decl = ast_util::dtor_dec();
-  trans_fn(ccx,
-           path,
-           &decl,
-           body,
-           lldecl,
-           impl_self(class_ty),
-           psubsts,
-           dtor_id,
-           None,
-           []);
-  lldecl
-}
-
 pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
-                      id: ast::node_id,
-                      path: @ast_map::path, vi: @~[ty::VariantInfo],
+                      id: ast::node_id, vi: @~[ty::VariantInfo],
                       i: &mut uint) {
     for vec::each(enum_definition.variants) |variant| {
         let disr_val = vi[*i].disr_val;
@@ -2158,8 +2086,7 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
                 // Nothing to do.
             }
             ast::struct_variant_kind(struct_def) => {
-                trans_struct_def(ccx, struct_def, path,
-                                 variant.node.id);
+                trans_struct_def(ccx, struct_def);
             }
         }
     }
@@ -2167,7 +2094,7 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
 
 pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
     let _icx = ccx.insn_ctxt("trans_item");
-    let path = match *ccx.tcx.items.get(&item.id) {
+    let path = match ccx.tcx.items.get_copy(&item.id) {
         ast_map::node_item(_, p) => p,
         // tjc: ?
         _ => fail!(~"trans_item"),
@@ -2218,8 +2145,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
         if !generics.is_type_parameterized() {
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
-            trans_enum_def(ccx, enum_definition, item.id,
-                           path, vi, &mut i);
+            trans_enum_def(ccx, enum_definition, item.id, vi, &mut i);
         }
       }
       ast::item_const(_, expr) => consts::trans_const(ccx, expr, item.id),
@@ -2228,22 +2154,14 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
       }
       ast::item_struct(struct_def, ref generics) => {
         if !generics.is_type_parameterized() {
-            trans_struct_def(ccx, struct_def, path, item.id);
+            trans_struct_def(ccx, struct_def);
         }
       }
       _ => {/* fall through */ }
     }
 }
 
-pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def,
-                        path: @ast_map::path,
-                        id: ast::node_id) {
-    // Translate the destructor.
-    for struct_def.dtor.each |dtor| {
-        trans_struct_dtor(ccx, /*bad*/copy *path, &dtor.node.body,
-                         dtor.node.id, None, None, local_def(id));
-    };
-
+pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def) {
     // If this is a tuple-like struct, translate the constructor.
     match struct_def.ctor_id {
         // We only need to translate a constructor if there are fields;
@@ -2358,7 +2276,7 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
         // Call main.
         let lloutputarg = C_null(T_ptr(T_i8()));
         let llenvarg = unsafe { llvm::LLVMGetParam(llfdecl, 1 as c_uint) };
-        let mut args = ~[lloutputarg, llenvarg];
+        let args = ~[lloutputarg, llenvarg];
         let llresult = Call(bcx, main_llfn, args);
         Store(bcx, llresult, fcx.llretptr.get());
 
@@ -2469,52 +2387,12 @@ pub fn fill_fn_pair(bcx: block, pair: ValueRef, llfn: ValueRef,
 }
 
 pub fn item_path(ccx: @CrateContext, i: @ast::item) -> path {
-    let base = match *ccx.tcx.items.get(&i.id) {
+    let base = match ccx.tcx.items.get_copy(&i.id) {
         ast_map::node_item(_, p) => p,
             // separate map for paths?
         _ => fail!(~"item_path")
     };
     vec::append(/*bad*/copy *base, ~[path_name(i.ident)])
-}
-
-/* If there's already a symbol for the dtor with <id> and substs <substs>,
-   return it; otherwise, create one and register it, returning it as well */
-pub fn get_dtor_symbol(ccx: @CrateContext,
-                       path: path,
-                       id: ast::node_id,
-                       substs: Option<@param_substs>)
-                    -> ~str {
-  let t = ty::node_id_to_type(ccx.tcx, id);
-  match ccx.item_symbols.find(&id) {
-     Some(s) => (/*bad*/copy *s),
-     None if substs.is_none() => {
-       let s = mangle_exported_name(
-           ccx,
-           vec::append(path, ~[path_name((ccx.names)(~"dtor"))]),
-           t);
-       // XXX: Bad copy, use `@str`?
-       ccx.item_symbols.insert(id, copy s);
-       s
-     }
-     None   => {
-       // Monomorphizing, so just make a symbol, don't add
-       // this to item_symbols
-       match substs {
-         Some(ss) => {
-           let mono_ty = ty::subst_tps(ccx.tcx, ss.tys, ss.self_ty, t);
-           mangle_exported_name(
-               ccx,
-               vec::append(path,
-                           ~[path_name((ccx.names)(~"dtor"))]),
-               mono_ty)
-         }
-         None => {
-             ccx.sess.bug(fmt!("get_dtor_symbol: not monomorphizing and \
-               couldn't find a symbol for dtor %?", path));
-         }
-       }
-     }
-  }
 }
 
 pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
@@ -2524,13 +2402,13 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
       Some(&v) => v,
       None => {
         let mut exprt = false;
-        let val = match *ccx.tcx.items.get(&id) {
+        let val = match tcx.items.get_copy(&id) {
           ast_map::node_item(i, pth) => {
             let my_path = vec::append(/*bad*/copy *pth,
                                       ~[path_name(i.ident)]);
             match i.node {
               ast::item_const(_, expr) => {
-                let typ = ty::node_id_to_type(ccx.tcx, i.id);
+                let typ = ty::node_id_to_type(tcx, i.id);
                 let s = mangle_exported_name(ccx, my_path, typ);
                 // We need the translated value here, because for enums the
                 // LLVM type is not fully determined by the Rust type.
@@ -2589,7 +2467,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                                 ni.attrs)
                 }
                 ast::foreign_item_const(*) => {
-                    let typ = ty::node_id_to_type(ccx.tcx, ni.id);
+                    let typ = ty::node_id_to_type(tcx, ni.id);
                     let ident = ccx.sess.parse_sess.interner.get(ni.ident);
                     let g = do str::as_c_str(*ident) |buf| {
                         unsafe {
@@ -2601,28 +2479,6 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                     g
                 }
             }
-          }
-          ast_map::node_dtor(_, dt, parent_id, pt) => {
-            /*
-                Don't just call register_fn, since we don't want to add
-                the implicit self argument automatically (we want to make sure
-                it has the right type)
-            */
-            // Want parent_id and not id, because id is the dtor's type
-            let class_ty = ty::lookup_item_type(tcx, parent_id).ty;
-            // This code shouldn't be reached if the class is generic
-            assert!(!ty::type_has_params(class_ty));
-            let lldty = T_fn(~[
-                    T_ptr(T_i8()),
-                    T_ptr(type_of(ccx, class_ty))
-                ],
-                T_nil());
-            let s = get_dtor_symbol(ccx, /*bad*/copy *pt, dt.node.id, None);
-
-            /* Make the declaration for the dtor */
-            let llfn = decl_internal_cdecl_fn(ccx.llmod, s, lldty);
-            lib::llvm::SetLinkage(llfn, lib::llvm::ExternalLinkage);
-            llfn
           }
 
           ast_map::node_variant(ref v, enm, pth) => {
@@ -2652,7 +2508,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
             // Only register the constructor if this is a tuple-like struct.
             match struct_def.ctor_id {
                 None => {
-                    ccx.tcx.sess.bug(~"attempt to register a constructor of \
+                    tcx.sess.bug(~"attempt to register a constructor of \
                                        a non-tuple-like struct")
                 }
                 Some(ctor_id) => {
@@ -3290,12 +3146,3 @@ pub fn trans_crate(sess: session::Session,
         return (llmod, link_meta);
     }
 }
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

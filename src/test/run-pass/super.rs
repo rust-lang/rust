@@ -9,4 +9,3 @@ pub mod a {
 
 pub fn main() {
 }
-

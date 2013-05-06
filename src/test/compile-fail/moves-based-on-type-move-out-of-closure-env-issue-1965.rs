@@ -13,6 +13,6 @@ fn test(_x: ~uint) {}
 fn main() {
     let i = ~3;
     for uint::range(0, 10) |_x| {
-        test(i); //~ ERROR moving out of captured outer immutable variable in a stack closure
+        test(i); //~ ERROR cannot move out
     }
 }

@@ -22,32 +22,37 @@ fn make_foo() -> ~Foo { fail!() }
 
 fn borrow_same_field_twice_mut_mut() {
     let mut foo = make_foo();
-    let _bar1 = &mut foo.bar1;
-    let _bar2 = &mut foo.bar1;  //~ ERROR conflicts with prior loan
+    let bar1 = &mut foo.bar1;
+    let _bar2 = &mut foo.bar1;  //~ ERROR cannot borrow
+    *bar1;
 }
 
 fn borrow_same_field_twice_mut_imm() {
     let mut foo = make_foo();
-    let _bar1 = &mut foo.bar1;
-    let _bar2 = &foo.bar1;  //~ ERROR conflicts with prior loan
+    let bar1 = &mut foo.bar1;
+    let _bar2 = &foo.bar1;  //~ ERROR cannot borrow
+    *bar1;
 }
 
 fn borrow_same_field_twice_imm_mut() {
     let mut foo = make_foo();
-    let _bar1 = &foo.bar1;
-    let _bar2 = &mut foo.bar1;  //~ ERROR conflicts with prior loan
+    let bar1 = &foo.bar1;
+    let _bar2 = &mut foo.bar1;  //~ ERROR cannot borrow
+    *bar1;
 }
 
 fn borrow_same_field_twice_imm_imm() {
     let mut foo = make_foo();
-    let _bar1 = &foo.bar1;
+    let bar1 = &foo.bar1;
     let _bar2 = &foo.bar1;
+    *bar1;
 }
 
-fn borrow_both_mut() {
+fn borrow_both_fields_mut() {
     let mut foo = make_foo();
-    let _bar1 = &mut foo.bar1;
+    let bar1 = &mut foo.bar1;
     let _bar2 = &mut foo.bar2;
+    *bar1;
 }
 
 fn borrow_both_mut_pattern() {
@@ -59,66 +64,77 @@ fn borrow_both_mut_pattern() {
 
 fn borrow_var_and_pattern() {
     let mut foo = make_foo();
-    let _bar1 = &mut foo.bar1;
+    let bar1 = &mut foo.bar1;
     match *foo {
         Foo { bar1: ref mut _bar1, bar2: _ } => {}
-        //~^ ERROR conflicts with prior loan
+        //~^ ERROR cannot borrow
     }
+    *bar1;
 }
 
 fn borrow_mut_and_base_imm() {
     let mut foo = make_foo();
-    let _bar1 = &mut foo.bar1.int1;
-    let _foo1 = &foo.bar1; //~ ERROR conflicts with prior loan
-    let _foo2 = &*foo; //~ ERROR conflicts with prior loan
+    let bar1 = &mut foo.bar1.int1;
+    let _foo1 = &foo.bar1; //~ ERROR cannot borrow
+    let _foo2 = &*foo; //~ ERROR cannot borrow
+    *bar1;
 }
 
 fn borrow_mut_and_base_mut() {
     let mut foo = make_foo();
-    let _bar1 = &mut foo.bar1.int1;
-    let _foo1 = &mut foo.bar1; //~ ERROR conflicts with prior loan
+    let bar1 = &mut foo.bar1.int1;
+    let _foo1 = &mut foo.bar1; //~ ERROR cannot borrow
+    *bar1;
 }
 
 fn borrow_mut_and_base_mut2() {
     let mut foo = make_foo();
-    let _bar1 = &mut foo.bar1.int1;
-    let _foo2 = &mut *foo; //~ ERROR conflicts with prior loan
+    let bar1 = &mut foo.bar1.int1;
+    let _foo2 = &mut *foo; //~ ERROR cannot borrow
+    *bar1;
 }
 
 fn borrow_imm_and_base_mut() {
     let mut foo = make_foo();
-    let _bar1 = &foo.bar1.int1;
-    let _foo1 = &mut foo.bar1; //~ ERROR conflicts with prior loan
+    let bar1 = &foo.bar1.int1;
+    let _foo1 = &mut foo.bar1; //~ ERROR cannot borrow
+    *bar1;
 }
 
 fn borrow_imm_and_base_mut2() {
     let mut foo = make_foo();
-    let _bar1 = &foo.bar1.int1;
-    let _foo2 = &mut *foo; //~ ERROR conflicts with prior loan
+    let bar1 = &foo.bar1.int1;
+    let _foo2 = &mut *foo; //~ ERROR cannot borrow
+    *bar1;
 }
 
 fn borrow_imm_and_base_imm() {
     let mut foo = make_foo();
-    let _bar1 = &foo.bar1.int1;
+    let bar1 = &foo.bar1.int1;
     let _foo1 = &foo.bar1;
     let _foo2 = &*foo;
+    *bar1;
 }
 
 fn borrow_mut_and_imm() {
     let mut foo = make_foo();
-    let _bar1 = &mut foo.bar1;
+    let bar1 = &mut foo.bar1;
     let _foo1 = &foo.bar2;
+    *bar1;
 }
 
 fn borrow_mut_from_imm() {
     let foo = make_foo();
-    let _bar1 = &mut foo.bar1; //~ ERROR illegal borrow
+    let bar1 = &mut foo.bar1; //~ ERROR cannot borrow
+    *bar1;
 }
 
 fn borrow_long_path_both_mut() {
     let mut foo = make_foo();
-    let _bar1 = &mut foo.bar1.int1;
-    let _foo1 = &mut foo.bar2.int2;
+    let bar1 = &mut foo.bar1.int1;
+    let foo1 = &mut foo.bar2.int2;
+    *bar1;
+    *foo1;
 }
 
 fn main() {}

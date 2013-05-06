@@ -415,7 +415,8 @@ impl gen_init for protocol {
                             ast::struct_immutable,
                             ast::inherited),
                     id: cx.next_id(),
-                    ty: fty
+                    ty: fty,
+                    attrs: ~[],
                 },
                 span: dummy_sp()
             }
@@ -431,7 +432,6 @@ impl gen_init for protocol {
             dummy_sp(),
             ast::struct_def {
                 fields: fields,
-                dtor: None,
                 ctor_id: None
             },
             cx.strip_bounds(&generics))
