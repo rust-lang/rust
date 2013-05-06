@@ -22,7 +22,6 @@ use rt::{context, OldTaskContext};
 use rt::local_services::borrow_local_services;
 use option::{Option, Some, None};
 use io;
-use task::rt::rust_get_task;
 
 #[allow(non_camel_case_types)]
 pub type rust_task = c_void;
@@ -56,6 +55,9 @@ pub mod rustrt {
         #[rust_stack]
         fn rust_set_task_borrow_list(task: *rust_task, map: *c_void);
 
+        #[rust_stack]
+        fn rust_try_get_task() -> *rust_task;
+
         fn rust_dbg_breakpoint();
     }
 }
@@ -84,26 +86,32 @@ struct BorrowRecord {
 
 fn try_take_task_borrow_list() -> Option<~[BorrowRecord]> {
     unsafe {
-        let cur_task = rust_get_task();
-        let ptr = rustrt::rust_take_task_borrow_list(cur_task);
-        if ptr.is_null() {
-            None
+        let cur_task: *rust_task = rustrt::rust_try_get_task();
+        if cur_task.is_not_null() {
+            let ptr = rustrt::rust_take_task_borrow_list(cur_task);
+            if ptr.is_null() {
+                None
+            } else {
+                let v: ~[BorrowRecord] = transmute(ptr);
+                Some(v)
+            }
         } else {
-            let v: ~[BorrowRecord] = transmute(ptr);
-            Some(v)
+            None
         }
     }
 }
 
 fn swap_task_borrow_list(f: &fn(~[BorrowRecord]) -> ~[BorrowRecord]) {
     unsafe {
-        let cur_task = rust_get_task();
-        let mut borrow_list: ~[BorrowRecord] = {
-            let ptr = rustrt::rust_take_task_borrow_list(cur_task);
-            if ptr.is_null() { ~[] } else { transmute(ptr) }
-        };
-        borrow_list = f(borrow_list);
-        rustrt::rust_set_task_borrow_list(cur_task, transmute(borrow_list));
+        let cur_task: *rust_task = rustrt::rust_try_get_task();
+        if cur_task.is_not_null() {
+            let mut borrow_list: ~[BorrowRecord] = {
+                let ptr = rustrt::rust_take_task_borrow_list(cur_task);
+                if ptr.is_null() { ~[] } else { transmute(ptr) }
+            };
+            borrow_list = f(borrow_list);
+            rustrt::rust_set_task_borrow_list(cur_task, transmute(borrow_list));
+        }
     }
 }
 
@@ -128,9 +136,7 @@ unsafe fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
             for borrow_list.each_reverse |entry| {
                 if entry.box == box {
                     str::push_str(&mut msg, sep);
-                    let filename = unsafe {
-                        str::raw::from_c_str(entry.file)
-                    };
+                    let filename = str::raw::from_c_str(entry.file);
                     str::push_str(&mut msg, filename);
                     str::push_str(&mut msg, fmt!(":%u", entry.line as uint));
                     sep = " and at ";
@@ -351,25 +357,21 @@ pub unsafe fn record_borrow(a: *u8, old_ref_count: uint,
 pub unsafe fn unrecord_borrow(a: *u8, old_ref_count: uint,
                               file: *c_char, line: size_t) {
     if (old_ref_count & ALL_BITS) == 0 {
-        // was not borrowed before
+        // was not borrowed before, so we should find the record at
+        // the end of the list
         let a: *mut BoxRepr = transmute(a);
         debug_borrow("unrecord_borrow:", a, old_ref_count, 0, file, line);
         do swap_task_borrow_list |borrow_list| {
             let mut borrow_list = borrow_list;
-            let br = BorrowRecord {box: a, file: file, line: line};
-            match borrow_list.rposition_elem(&br) {
-                Some(idx) => {
-                    borrow_list.remove(idx);
-                    borrow_list
-                }
-                None => {
-                    let err = fmt!("no borrow found, br=%?, borrow_list=%?",
-                                   br, borrow_list);
-                    do str::as_buf(err) |msg_p, _| {
-                        fail_(msg_p as *c_char, file, line)
-                    }
+            assert!(!borrow_list.is_empty());
+            let br = borrow_list.pop();
+            if br.box != a || br.file != file || br.line != line {
+                let err = fmt!("wrong borrow found, br=%?", br);
+                do str::as_buf(err) |msg_p, _| {
+                    fail_(msg_p as *c_char, file, line)
                 }
             }
+            borrow_list
         }
     }
 }
