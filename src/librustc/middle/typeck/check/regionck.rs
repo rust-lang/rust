@@ -157,14 +157,17 @@ pub fn regionck_fn(fcx: @mut FnCtxt, blk: &ast::blk) {
 }
 
 fn regionck_visitor() -> rvt {
+    // FIXME(#3238) should use visit_pat, not visit_arm/visit_local,
+    // However, right now we run into an issue whereby some free
+    // regions are not properly related if they appear within the
+    // types of arguments that must be inferred. This could be
+    // addressed by deferring the construction of the region
+    // hierarchy, and in particular the relationships between free
+    // regions, until regionck, as described in #3238.
     visit::mk_vt(@visit::Visitor {visit_item: visit_item,
                                   visit_expr: visit_expr,
 
-                                  // NOTE this should be visit_pat
-                                  // but causes errors in formal
-                                  // arguments in closures due to
-                                  // #XYZ!
-                                  //visit_pat: visit_pat,
+                                  //visit_pat: visit_pat, // (*) see FIXME above
                                   visit_arm: visit_arm,
                                   visit_local: visit_local,
 
@@ -294,7 +297,7 @@ fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
                     // Require that the resulting region encompasses
                     // the current node.
                     //
-                    // FIXME(#5074) remove to support nested method calls
+                    // FIXME(#6268) remove to support nested method calls
                     constrain_regions_in_type_of_node(
                         rcx, expr.id, ty::re_scope(expr.id), expr.span);
                 }
@@ -374,7 +377,7 @@ fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
             // the type of the node expr.id here *before applying
             // adjustments*.
             //
-            // FIXME(#5074) nested method calls requires that this rule change
+            // FIXME(#6268) nested method calls requires that this rule change
             let ty0 = rcx.resolve_node_type(expr.id);
             constrain_regions_in_type(rcx, ty::re_scope(expr.id), expr.span, ty0);
         }
@@ -462,7 +465,7 @@ fn constrain_call(rcx: @mut Rcx,
     // `callee_region` is the scope representing the time in which the
     // call occurs.
     //
-    // FIXME(#5074) to support nested method calls, should be callee_id
+    // FIXME(#6268) to support nested method calls, should be callee_id
     let callee_scope = call_expr.id;
     let callee_region = ty::re_scope(callee_scope);
 

@@ -393,7 +393,7 @@ pub fn resolve_expr(expr: @ast::expr, cx: Context, visitor: visit::vt<Context>) 
     match expr.node {
         ast::expr_assign_op(*) | ast::expr_index(*) | ast::expr_binary(*) |
         ast::expr_unary(*) | ast::expr_call(*) | ast::expr_method_call(*) => {
-            // FIXME(#5074) Nested method calls
+            // FIXME(#6268) Nested method calls
             //
             // The lifetimes for a call or method call look as follows:
             //
@@ -949,7 +949,6 @@ pub fn determine_rp_in_crate(sess: Session,
         while cx.worklist.len() != 0 {
             let c_id = cx.worklist.pop();
             let c_variance = cx.region_paramd_items.get_copy(&c_id);
-            // NOTE cleanup scopes cause an exaggerated lock here
             debug!("popped %d from worklist", c_id);
             match cx.dep_map.find(&c_id) {
               None => {}

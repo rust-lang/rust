@@ -808,7 +808,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         self.walk_expr(arg0, in_out, loop_scopes);
         self.walk_exprs(args, in_out, loop_scopes);
 
-        // FIXME(#5074) nested method calls
+        // FIXME(#6268) nested method calls
         // self.merge_with_entry_set(callee_id, in_out);
         // self.dfcx.apply_gen_kill(callee_id, in_out);
 

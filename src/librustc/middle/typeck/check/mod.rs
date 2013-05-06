@@ -1301,12 +1301,11 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // Store the type of `f` as the type of the callee
         let fn_ty = fcx.expr_ty(f);
 
-        // NOTE here we write the callee type before regions have been
-        // substituted; in the method case, we write the type after
-        // regions have been substituted. Methods are correct, but it
-        // is awkward to deal with this now. Best thing would I think
-        // be to just have a separate "callee table" that contains the
-        // FnSig and not a general purpose ty::t
+        // FIXME(#6273) should write callee type AFTER regions have
+        // been subst'd.  However, it is awkward to deal with this
+        // now. Best thing would I think be to just have a separate
+        // "callee table" that contains the FnSig and not a general
+        // purpose ty::t
         fcx.write_ty(call_expr.callee_id, fn_ty);
 
         // Extract the function signature from `in_fty`.

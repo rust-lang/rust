@@ -579,7 +579,7 @@ pub impl<'self> CheckLoanCtxt<'self> {
             }
         }
 
-        // NOTE inadequare if/when we permit `move a.b`
+        // FIXME(#4384) inadequare if/when we permit `move a.b`
 
         // check for a conflicting loan:
         for opt_loan_path(cmt).each |&lp| {
@@ -604,7 +604,7 @@ pub impl<'self> CheckLoanCtxt<'self> {
         // However, I added it for consistency and lest the system
         // should change in the future.
         //
-        // FIXME(#5074) nested method calls
+        // FIXME(#6268) nested method calls
         // self.check_for_conflicting_loans(callee_id);
     }
 }

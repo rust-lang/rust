@@ -516,7 +516,7 @@ pub impl BorrowckCtxt {
                     fmt!("%s in an aliasable location", prefix));
             }
             mc::AliasableManaged(ast::m_mutbl) => {
-                // FIXME(#5074) we should prob do this borrow
+                // FIXME(#6269) reborrow @mut to &mut
                 self.tcx.sess.span_err(
                     span,
                     fmt!("%s in a `@mut` pointer; \
