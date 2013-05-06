@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //! An interface for numeric types
-use cmp::{Eq, Ord};
+use cmp::{Eq, ApproxEq, Ord};
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::Option;
@@ -240,7 +240,8 @@ pub trait Int: Integer
 ///
 pub trait Float: Real
                + Signed
-               + Primitive {
+               + Primitive
+               + ApproxEq<Self> {
     // FIXME (#5527): These should be associated constants
     fn NaN() -> Self;
     fn infinity() -> Self;

@@ -1,6 +1,4 @@
-// xfail-fast
-
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,16 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-
-use core::cmp::{Eq, Ord};
-use core::num::NumCast::from;
-
-pub trait NumExt: Num + NumCast + Eq + Ord {}
-
-pub trait FloatExt: NumExt + ApproxEq<Self> {}
-
-fn greater_than_one<T:NumExt>(n: &T) -> bool { *n > from(1) }
-fn greater_than_one_float<T:FloatExt>(n: &T) -> bool { *n > from(1) }
-
-pub fn main() {}
+// error-pattern:left: 1.0000001 does not approximately equal right: 1 with epsilon: 0.0000001
+pub fn main() {
+    assert_approx_eq!(1.0000001f, 1.0f, 1.0e-7);
+}
