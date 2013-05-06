@@ -483,6 +483,42 @@ pub fn core_macros() -> ~str {
         )
     )
 
+    macro_rules! assert_approx_eq (
+        ($given:expr , $expected:expr) => (
+            {
+                use core::cmp::ApproxEq;
+
+                let given_val = $given;
+                let expected_val = $expected;
+                // check both directions of equality....
+                if !(
+                    given_val.approx_eq(&expected_val) &&
+                    expected_val.approx_eq(&given_val)
+                ) {
+                    fail!(\"left: %? does not approximately equal right: %?\",
+                          given_val, expected_val);
+                }
+            }
+        );
+        ($given:expr , $expected:expr , $epsilon:expr) => (
+            {
+                use core::cmp::ApproxEq;
+
+                let given_val = $given;
+                let expected_val = $expected;
+                let epsilon_val = $epsilon;
+                // check both directions of equality....
+                if !(
+                    given_val.approx_eq_eps(&expected_val, &epsilon_val) &&
+                    expected_val.approx_eq_eps(&given_val, &epsilon_val)
+                ) {
+                    fail!(\"left: %? does not approximately equal right: %? with epsilon: %?\",
+                          given_val, expected_val, epsilon_val);
+                }
+            }
+        )
+    )
+
     macro_rules! condition (
 
         { $c:ident: $in:ty -> $out:ty; } => {
