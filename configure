@@ -439,6 +439,10 @@ then
     probe CFG_ZCAT             zcat
 fi
 
+step_msg "looking for target specific programs"
+
+probe CFG_ADB        adb
+
 if [ ! -z "$CFG_PANDOC" ]
 then
     PV_MAJOR_MINOR=$(pandoc --version | grep '^pandoc ' |
