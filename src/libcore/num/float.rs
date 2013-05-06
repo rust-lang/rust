@@ -26,9 +26,9 @@ use prelude::*;
 
 pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
 pub use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
-pub use f64::{erf, erfc, exp, expm1, exp2, abs_sub};
+pub use f64::{erf, erfc, exp, exp_m1, exp2, abs_sub};
 pub use f64::{mul_add, fmax, fmin, next_after, frexp, hypot, ldexp};
-pub use f64::{lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix};
+pub use f64::{lgamma, ln, log_radix, ln_1p, log10, log2, ilog_radix};
 pub use f64::{modf, pow, powi, round, sinh, tanh, tgamma, trunc};
 pub use f64::{j0, j1, jn, y0, y1, yn};
 
@@ -532,19 +532,16 @@ impl Trigonometric for float {
 }
 
 impl Exponential for float {
+    /// Returns the exponential of the number
     #[inline(always)]
     fn exp(&self) -> float {
         (*self as f64).exp() as float
     }
 
+    /// Returns 2 raised to the power of the number
     #[inline(always)]
     fn exp2(&self) -> float {
         (*self as f64).exp2() as float
-    }
-
-    #[inline(always)]
-    fn expm1(&self) -> float {
-        (*self as f64).expm1() as float
     }
 
     /// Returns the natural logarithm of the number
@@ -821,6 +818,24 @@ impl Float for float {
     #[inline(always)]
     fn is_finite(&self) -> bool {
         !(self.is_NaN() || self.is_infinite())
+    }
+
+    ///
+    /// Returns the exponential of the number, minus `1`, in a way that is accurate
+    /// even if the number is close to zero
+    ///
+    #[inline(always)]
+    fn exp_m1(&self) -> float {
+        (*self as f64).exp_m1() as float
+    }
+
+    ///
+    /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
+    /// than if the operations were performed separately
+    ///
+    #[inline(always)]
+    fn ln_1p(&self) -> float {
+        (*self as f64).ln_1p() as float
     }
 
     ///

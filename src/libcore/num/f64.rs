@@ -84,7 +84,7 @@ delegate!(
     fn cosh(n: c_double) -> c_double = c_double_utils::cosh,
     fn erf(n: c_double) -> c_double = c_double_utils::erf,
     fn erfc(n: c_double) -> c_double = c_double_utils::erfc,
-    fn expm1(n: c_double) -> c_double = c_double_utils::expm1,
+    fn exp_m1(n: c_double) -> c_double = c_double_utils::exp_m1,
     fn abs_sub(a: c_double, b: c_double) -> c_double = c_double_utils::abs_sub,
     fn fmax(a: c_double, b: c_double) -> c_double = c_double_utils::fmax,
     fn fmin(a: c_double, b: c_double) -> c_double = c_double_utils::fmin,
@@ -94,7 +94,7 @@ delegate!(
     fn ldexp(x: c_double, n: c_int) -> c_double = c_double_utils::ldexp,
     fn lgamma(n: c_double, sign: &mut c_int) -> c_double = c_double_utils::lgamma,
     fn log_radix(n: c_double) -> c_double = c_double_utils::log_radix,
-    fn ln1p(n: c_double) -> c_double = c_double_utils::ln1p,
+    fn ln_1p(n: c_double) -> c_double = c_double_utils::ln_1p,
     fn ilog_radix(n: c_double) -> c_int = c_double_utils::ilog_radix,
     fn modf(n: c_double, iptr: &mut c_double) -> c_double = c_double_utils::modf,
     fn round(n: c_double) -> c_double = c_double_utils::round,
@@ -421,14 +421,13 @@ impl Trigonometric for f64 {
 }
 
 impl Exponential for f64 {
+    /// Returns the exponential of the number
     #[inline(always)]
     fn exp(&self) -> f64 { exp(*self) }
 
+    /// Returns 2 raised to the power of the number
     #[inline(always)]
     fn exp2(&self) -> f64 { exp2(*self) }
-
-    #[inline(always)]
-    fn expm1(&self) -> f64 { expm1(*self) }
 
     /// Returns the natural logarithm of the number
     #[inline(always)]
@@ -630,6 +629,20 @@ impl Float for f64 {
 
     #[inline(always)]
     fn max_10_exp() -> int { 308 }
+
+    ///
+    /// Returns the exponential of the number, minus `1`, in a way that is accurate
+    /// even if the number is close to zero
+    ///
+    #[inline(always)]
+    fn exp_m1(&self) -> f64 { exp_m1(*self) }
+
+    ///
+    /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
+    /// than if the operations were performed separately
+    ///
+    #[inline(always)]
+    fn ln_1p(&self) -> f64 { ln_1p(*self) }
 
     ///
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This

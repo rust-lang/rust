@@ -121,7 +121,6 @@ pub trait Trigonometric {
 pub trait Exponential {
     fn exp(&self) -> Self;
     fn exp2(&self) -> Self;
-    fn expm1(&self) -> Self;
     fn ln(&self) -> Self;
     fn log(&self, base: Self) -> Self;
     fn log2(&self) -> Self;
@@ -261,6 +260,8 @@ pub trait Float: Real
     fn min_10_exp() -> int;
     fn max_10_exp() -> int;
 
+    fn exp_m1(&self) -> Self;
+    fn ln_1p(&self) -> Self;
     fn mul_add(&self, a: Self, b: Self) -> Self;
     fn next_after(&self, other: Self) -> Self;
 }
