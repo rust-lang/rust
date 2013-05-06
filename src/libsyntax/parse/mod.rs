@@ -591,7 +591,7 @@ mod test {
                                                                types: ~[]},
                                                            None // no idea
                                                           ),
-                                      span: sp(0,3)}, // really?
+                                      span: sp(0,1)},
                        id: 4 // fixme
                    })
     }
@@ -628,7 +628,7 @@ mod test {
                                                            types: ~[]},
                                                        None // no idea
                                                    ),
-                                                  span: sp(6,9)}, // bleah.
+                                                  span: sp(6,7)},
                                     id: 4 // fixme
                                 }],
                                 output: @ast::Ty{id:5, // fixme
