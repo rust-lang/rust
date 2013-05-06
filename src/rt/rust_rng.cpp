@@ -12,6 +12,26 @@
 #include "rust_rng.h"
 #include "rust_util.h"
 
+
+#ifdef __WIN32__
+void
+win32_require(LPCTSTR fn, BOOL ok) {
+    if (!ok) {
+        LPTSTR buf;
+        DWORD err = GetLastError();
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                      FORMAT_MESSAGE_FROM_SYSTEM |
+                      FORMAT_MESSAGE_IGNORE_INSERTS,
+                      NULL, err,
+                      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                      (LPTSTR) &buf, 0, NULL );
+        fprintf(stderr, "%s failed with error %ld: %s", fn, err, buf);
+        LocalFree((HLOCAL)buf);
+        abort();
+    }
+}
+#endif
+
 size_t
 rng_seed_size() {
     randctx rctx;
@@ -24,13 +44,13 @@ void
 rng_gen_seed(rust_kernel* kernel, uint8_t* dest, size_t size) {
 #ifdef __WIN32__
     HCRYPTPROV hProv;
-    kernel->win32_require
+    win32_require
         (_T("CryptAcquireContext"),
          CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL,
                              CRYPT_VERIFYCONTEXT|CRYPT_SILENT));
-    kernel->win32_require
+    win32_require
         (_T("CryptGenRandom"), CryptGenRandom(hProv, size, (BYTE*) dest));
-    kernel->win32_require
+    win32_require
         (_T("CryptReleaseContext"), CryptReleaseContext(hProv, 0));
 #else
     int fd = open("/dev/urandom", O_RDONLY);
