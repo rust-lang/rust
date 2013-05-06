@@ -154,3 +154,76 @@ uninstall:
         done
 	$(Q)rm -Rf $(PHL)/rustc
 	$(Q)rm -f $(PREFIX_ROOT)/share/man/man1/rustc.1
+
+# target platform specific variables
+# for arm-linux-androidabi
+define DEF_ADB_DEVICE_STATUS
+CFG_ADB_DEVICE_STATUS=$(1)
+endef
+
+$(foreach target,$(CFG_TARGET_TRIPLES), \
+  $(if $(findstring $(target),"arm-linux-androideabi"), \
+    $(if $(findstring adb,$(CFG_ADB)), \
+      $(if $(findstring device,$(shell adb devices 2>/dev/null | grep -E '^[_A-Za-z0-9-]+[[:blank:]]+device')), \
+        $(info install: install-runtime-target for $(target) enabled \
+          $(info install: android device attached) \
+          $(eval $(call DEF_ADB_DEVICE_STATUS, true))), \
+        $(info install: install-runtime-target for $(target) disabled \
+          $(info install: android device not attached) \
+          $(eval $(call DEF_ADB_DEVICE_STATUS, false))) \
+      ), \
+      $(info install: install-runtime-target for $(target) disabled \
+        $(info install: adb not found) \
+        $(eval $(call DEF_ADB_DEVICE_STATUS, false))) \
+    ), \
+  ) \
+)
+
+ifeq (install-runtime-target,$(firstword $(MAKECMDGOALS)))
+$(eval $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS)):;@:)
+L_TOKEN := $(word 2,$(MAKECMDGOALS))
+ifeq ($(L_TOKEN),)
+CFG_RUNTIME_PUSH_DIR=/system/lib
+else
+CFG_RUNTIME_PUSH_DIR=$(L_TOKEN)
+endif
+
+ifeq ($(CFG_ADB_DEVICE_STATUS),true)
+ifdef VERBOSE
+ ADB = adb $(1)
+ ADB_PUSH = adb push $(1) $(2)
+ ADB_SHELL = adb shell $(1) $(2) 
+else
+ ADB = $(Q)$(call E, adb $(1)) && adb $(1) 1>/dev/null 
+ ADB_PUSH = $(Q)$(call E, adb push $(1)) && adb push $(1) $(2) 1>/dev/null
+ ADB_SHELL = $(Q)$(call E, adb shell $(1) $(2)) && adb shell $(1) $(2) 1>/dev/null
+endif
+
+define INSTALL_RUNTIME_TARGET_N
+install-runtime-target-$(1)-host-$(2): $$(TSREQ$$(ISTAGE)_T_$(1)_H_$(2)) $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
+	$(Q)$(call ADB_SHELL,mkdir,$(CFG_RUNTIME_PUSH_DIR))
+	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(CFG_RUNTIME_$(1)),$(CFG_RUNTIME_PUSH_DIR))
+	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(CORELIB_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
+	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(STDLIB_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
+endef
+
+define INSTALL_RUNTIME_TARGET_CLEANUP_N
+install-runtime-target-$(1)-cleanup:
+	$(Q)$(call ADB,remount)
+	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(CFG_RUNTIME_$(1)))
+	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(CORELIB_GLOB_$(1)))
+	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(STDLIB_GLOB_$(1)))
+endef
+
+$(eval $(call INSTALL_RUNTIME_TARGET_N,arm-linux-androideabi,$(CFG_BUILD_TRIPLE)))
+$(eval $(call INSTALL_RUNTIME_TARGET_CLEANUP_N,arm-linux-androideabi))
+
+install-runtime-target: \
+	install-runtime-target-arm-linux-androideabi-cleanup \
+	install-runtime-target-arm-linux-androideabi-host-$(CFG_BUILD_TRIPLE)
+else
+install-runtime-target: 
+	@echo "No device to install runtime library"
+	@echo 
+endif
+endif
