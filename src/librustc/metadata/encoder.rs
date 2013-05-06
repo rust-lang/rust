@@ -819,6 +819,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
         }
 
         encode_name(ecx, ebml_w, item.ident);
+        encode_attributes(ebml_w, item.attrs);
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ecx, ebml_w, item);
 
