@@ -218,11 +218,6 @@ pub mod consts {
     pub static ln_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
-#[inline(always)]
-pub fn logarithm(n: f64, b: f64) -> f64 {
-    return log2(n) / log2(b);
-}
-
 impl Num for f64 {}
 
 #[cfg(notest)]
@@ -435,12 +430,19 @@ impl Exponential for f64 {
     #[inline(always)]
     fn expm1(&self) -> f64 { expm1(*self) }
 
+    /// Returns the natural logarithm of the number
     #[inline(always)]
-    fn log(&self) -> f64 { ln(*self) }
+    fn ln(&self) -> f64 { ln(*self) }
 
+    /// Returns the logarithm of the number with respect to an arbitrary base
+    #[inline(always)]
+    fn log(&self, base: f64) -> f64 { self.ln() / base.ln() }
+
+    /// Returns the base 2 logarithm of the number
     #[inline(always)]
     fn log2(&self) -> f64 { log2(*self) }
 
+    /// Returns the base 10 logarithm of the number
     #[inline(always)]
     fn log10(&self) -> f64 { log10(*self) }
 }
@@ -517,13 +519,13 @@ impl Real for f64 {
     #[inline(always)]
     fn log10_e() -> f64 { 0.434294481903251827651128918916605082 }
 
-    /// log(2.0)
+    /// ln(2.0)
     #[inline(always)]
-    fn log_2() -> f64 { 0.693147180559945309417232121458176568 }
+    fn ln_2() -> f64 { 0.693147180559945309417232121458176568 }
 
-    /// log(10.0)
+    /// ln(10.0)
     #[inline(always)]
-    fn log_10() -> f64 { 2.30258509299404568401799145468436421 }
+    fn ln_10() -> f64 { 2.30258509299404568401799145468436421 }
 
     /// Converts to degrees, assuming the number is in radians
     #[inline(always)]
@@ -985,8 +987,8 @@ mod tests {
         assert_approx_eq!(Real::frac_1_sqrt2::<f64>(), 1f64 / 2f64.sqrt());
         assert_approx_eq!(Real::log2_e::<f64>(), Real::e::<f64>().log2());
         assert_approx_eq!(Real::log10_e::<f64>(), Real::e::<f64>().log10());
-        assert_approx_eq!(Real::log_2::<f64>(), 2f64.log());
-        assert_approx_eq!(Real::log_10::<f64>(), 10f64.log());
+        assert_approx_eq!(Real::ln_2::<f64>(), 2f64.ln());
+        assert_approx_eq!(Real::ln_10::<f64>(), 10f64.ln());
     }
 
     #[test]
