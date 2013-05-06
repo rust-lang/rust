@@ -138,15 +138,19 @@ pub impl Rcx {
 
 pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::expr) {
     let rcx = @mut Rcx { fcx: fcx, errors_reported: 0 };
-    let v = regionck_visitor();
-    (v.visit_expr)(e, rcx, v);
+    if !fcx.tcx().sess.has_errors() { // regionck assumes typeck succeeded
+        let v = regionck_visitor();
+        (v.visit_expr)(e, rcx, v);
+    }
     fcx.infcx().resolve_regions();
 }
 
 pub fn regionck_fn(fcx: @mut FnCtxt, blk: &ast::blk) {
     let rcx = @mut Rcx { fcx: fcx, errors_reported: 0 };
-    let v = regionck_visitor();
-    (v.visit_block)(blk, rcx, v);
+    if !fcx.tcx().sess.has_errors() { // regionck assumes typeck succeeded
+        let v = regionck_visitor();
+        (v.visit_block)(blk, rcx, v);
+    }
     fcx.infcx().resolve_regions();
 }
 
