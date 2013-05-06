@@ -16,7 +16,6 @@ extern mod std;
 
 use core::cmp::{Eq, Ord};
 use core::num::NumCast::from;
-use std::cmp::FuzzyEq;
 
 pub trait TypeExt {}
 
@@ -94,7 +93,7 @@ impl IntegerExt for i64 {}
 impl IntegerExt for int {}
 
 
-pub trait FloatExt: NumExt + FuzzyEq<Self> {}
+pub trait FloatExt: NumExt + ApproxEq<Self> {}
 
 impl FloatExt for f32 {}
 impl FloatExt for f64 {}
